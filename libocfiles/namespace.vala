@@ -67,7 +67,7 @@
  * var contents = yield file.buffer.read_async();
  * 
  * // Or use convenience method
- * var contents2 = file.get_contents();
+ * var contents2 = file.contents();
  * }}}
  * 
  * === Reading Line Range ===

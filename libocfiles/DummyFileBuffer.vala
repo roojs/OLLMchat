@@ -16,6 +16,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#if !G_OS_WIN32
+[CCode (cname = "strcasestr", cheader_filename = "string.h")]
+extern unowned string? strcasestr (string haystack, string needle);
+#endif
+
 namespace OLLMfiles
 {
 	/**
@@ -107,16 +112,16 @@ namespace OLLMfiles
 				}
 			}
 			
-			// Handle line range
-			start_line = start_line < 0 ? 0 : start_line;
-			end_line = end_line == -1 ? this.lines.length - 1 : (end_line >= this.lines.length ? this.lines.length - 1 : end_line);
-			
-			if (start_line > end_line) {
+			// Handle line range (0-based inclusive; ''end_line == -1'' = through last line)
+			if (start_line < 0 || start_line >= this.lines.length) {
 				return "";
 			}
-			
-			// Extract lines and join
-			return string.joinv("\n", this.lines[start_line:end_line+1]);
+			int el = end_line == -1 ? this.lines.length - 1 : 
+				(end_line >= this.lines.length ? this.lines.length - 1 : end_line);
+			if (el < start_line) {
+				return "";
+			}
+			return string.joinv("\n", this.lines[start_line:el + 1]);
 		}
 		
 		/**
@@ -174,6 +179,130 @@ namespace OLLMfiles
 			}
 			
 			return this.lines[line];
+		}
+		
+		private int index_of_caseless (string haystack, string needle, int start_index = 0)
+		{
+			if (needle.length == 0) {
+				return start_index;
+			}
+			if (start_index < 0 || start_index > haystack.length) {
+				return -1;
+			}
+			var tail = haystack.substring (start_index);
+#if !G_OS_WIN32
+			if (Posix.memchr ((void*) needle, 0x80, needle.length) == null) {
+				unowned string? hit = strcasestr (tail, needle);
+				if (hit == null) {
+					return -1;
+				}
+				return start_index + (int) tail.pointer_to_offset (hit);
+			}
+#endif
+			var i = tail.casefold ().index_of (needle.casefold ());
+			return i < 0 ? -1 : start_index + i;
+		}
+		
+		/**
+		 * Append to result every match of needle in the current window whose end lies
+		 * on or before the safe search limit (full window at EOF; otherwise exclude the
+		 * carry tail so a match spanning the next chunk is not committed early).
+		 * Map value is full line(s) covering the match (expand span to line boundaries).
+		 *
+		 * @return true if the caller should slide the window (drop prefix, advance
+		 * line_base): i.e. not at EOF and window is longer than the needle.
+		 */
+		private bool locate_in_window(
+			string window,
+			string needle,
+			long line_base,
+			bool eof,
+			bool case_sensitive,
+			Gee.HashMap<int, string> result
+		)
+		{
+			var search_limit = eof
+				? window.length
+				: (window.length > needle.length ? window.length - needle.length : 0);
+			var pos = 0;
+			var prev = 0;
+			long nl_before_match = 0;
+			while (true) {
+				var found = case_sensitive
+					? window.index_of(needle, pos)
+					: this.index_of_caseless(window, needle, pos);
+				if (found < 0) {
+					break;
+				}
+				if (found + (int) needle.length > search_limit) {
+					break;
+				}
+				nl_before_match += found > prev
+					? window.substring(prev, found - prev).split("\n").length - 1
+					: 0;
+				var match_end = found + (int) needle.length;
+				var prev_nl = found > 0 ? window.substring(0, found).last_index_of("\n") : -1;
+				var line_start = prev_nl >= 0 ? prev_nl + 1 : 0;
+				var rest = window.substring(match_end);
+				var nl_after = rest.index_of("\n");
+				var line_end = nl_after >= 0 ? match_end + nl_after + 1 : window.length;
+				result.set(
+					(int) (line_base + nl_before_match),
+					window.substring(line_start, line_end - line_start)
+				);
+				prev = found;
+				pos = found + (int) needle.length;
+			}
+			return !eof && window.length > needle.length;
+		}
+
+		public Gee.HashMap<int, string> locate(string needle, bool match_trimmed, bool case_sensitive)
+		{
+			var result = new Gee.HashMap<int, string>();
+			if (needle.strip() == "") {
+				return result;
+			}
+			/* Trimmed multiline not implemented on dummy; same as literal search. */
+			var path_file = GLib.File.new_for_path(this.file.path);
+			GLib.FileInputStream stream;
+			try {
+				if (!path_file.query_exists()) {
+					return result;
+				}
+				stream = path_file.read(null);
+			} catch (GLib.Error e) {
+				GLib.debug("DummyFileBuffer.locate: %s", e.message);
+				return result;
+			}
+			var window = "";
+			long line_base = 0;
+			if (needle.length < 1) {
+				return result;
+			}
+			var eof = false;
+			var chunk_buf = new uint8[65536];
+			while (!eof) {
+				ssize_t n_read;
+				try {
+					n_read = stream.read(chunk_buf);
+				} catch (GLib.Error e) {
+					GLib.debug("DummyFileBuffer.locate: %s", e.message);
+					break; /* continuation: fall through to return partial result */
+				}
+				if (n_read < 0) {
+					break; /* same: best-effort map so far */
+				}
+				eof = eof || n_read == 0;
+				window = n_read > 0 ? window + (string) chunk_buf[0:n_read] : window;
+				if (this.locate_in_window(window, needle, line_base, eof, case_sensitive, result)) {
+					var keep_from = window.length - needle.length;
+					line_base += keep_from > 0
+						? window.substring(0, keep_from).split("\n").length - 1
+						: 0;
+					window = window.substring(keep_from);
+				}
+			}
+			return result;
 		}
 		
 		/**
@@ -318,9 +447,13 @@ namespace OLLMfiles
 			}
 			
 			// Get array slices using array slicing syntax
-			string[] lines_before = this.lines[0:start_idx];
-			string[] replacement_lines = change.replacement.split("\n");
-			string[] lines_after = this.lines[end_idx:this.lines.length];
+			var lines_before = this.lines[0:start_idx];
+			// Empty replacement must not use split alone ("" yields one line).
+			var replacement_lines = change.replacement.split("\n");
+			if (!is_insertion && change.replacement == "") {
+				replacement_lines = {};
+			}
+			var lines_after = this.lines[end_idx:this.lines.length];
 			
 			// Build new lines array efficiently using GLib.Array
 			var array = new GLib.Array<string>(false, true, sizeof(string));

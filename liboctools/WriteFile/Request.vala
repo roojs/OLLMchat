@@ -16,6 +16,13 @@ namespace OLLMtools.WriteFile
 	{
 		public string file_path { get; set; default = ""; }
 		public string content { get; set; default = ""; }
+		/**
+		 * Literal excerpt to find in an existing file when using
+		 * search/replace mode. Mutually exclusive with ast_path line
+		 * range and complete_file; use with {{{content}}} as the
+		 * replacement. Empty when not using this mode.
+		 */
+		public string search_text { get; set; default = ""; }
 		public string ast_path { get; set; default = ""; }
 		public string location { get; set; default = ""; }
 		public int start_line { get; set; default = -1; }
@@ -67,6 +74,99 @@ namespace OLLMtools.WriteFile
 			return true;
 		}
 
+		/**
+		 * Structure, file existence (modify modes when project_manager is set),
+		 * and AST resolution for ast_path mode. Returns "" if valid.
+		 */
+		private async string validate()
+		{
+			var project_manager = ((Tool) this.tool).project_manager;
+			if (this.file_path.strip() == "") {
+				return "file_path is required";
+			}
+			bool has_ast = (this.ast_path.strip() != "");
+			bool has_lines = (this.start_line >= 1 && this.end_line >= this.start_line);
+			bool has_search = (this.search_text.strip() != "");
+			if ((has_ast ? 1 : 0) + (has_lines ? 1 : 0) + (this.complete_file ? 1 : 0) + (has_search ? 1 : 0) != 1) {
+				return "use exactly one of: ast_path, line numbers (start_line/end_line), complete_file, or search_text";
+			}
+			if (this.start_line >= 1 || this.end_line >= 1) {
+				if (this.start_line < 1 || this.end_line < this.start_line) {
+					return "start_line must be >= 1 and end_line >= start_line";
+				}
+			}
+			if (has_ast) {
+				switch (this.location) {
+					case "replace":
+					case "replace-with-comment":
+					case "before":
+					case "after":
+					case "remove":
+					case "with-comment":
+					case "before-comment":
+						break;
+					default:
+						return "location must be one of: replace, replace-with-comment, before, after, remove, before-comment";
+				}
+			}
+			if (project_manager != null && (has_ast || has_lines)) {
+				string norm = this.normalize_file_path(this.file_path);
+				if (!GLib.FileUtils.test(norm, GLib.FileTest.IS_REGULAR)) {
+					return "file does not exist (required for ast_path / line_numbers mode)";
+				}
+			}
+			if (project_manager != null && has_search) {
+				string norm = this.normalize_file_path(this.file_path);
+				if (!GLib.FileUtils.test(norm, GLib.FileTest.IS_REGULAR)) {
+					return "file does not exist (required for search_text mode)";
+				}
+				var file = project_manager.get_file_from_active_project(norm);
+				if (file == null) {
+					file = new OLLMfiles.File.new_fake(project_manager, norm);
+				}
+				project_manager.buffer_provider.create_buffer(file);
+				if (!file.buffer.is_loaded) {
+					try {
+						yield file.buffer.read_async();
+					} catch (GLib.Error e) {
+						return "failed to read file: " + e.message;
+					}
+				}
+				var matches = file.buffer.locate(this.search_text, true, true);
+				if (matches.size == 0) {
+					return "search_text not found in file";
+				}
+				if (matches.size > 1) {
+					return "search_text must match exactly once";
+				}
+				return "";
+			}
+			if (project_manager != null && has_ast) {
+				string norm = this.normalize_file_path(this.file_path);
+				var file = project_manager.get_file_from_active_project(norm);
+				if (file == null) {
+					file = new OLLMfiles.File.new_fake(project_manager, norm);
+				}
+				project_manager.buffer_provider.create_buffer(file);
+				if (!file.buffer.is_loaded) {
+					try {
+						yield file.buffer.read_async();
+					} catch (GLib.Error e) {
+						return "failed to read file: " + e.message;
+					}
+				}
+				var change = new OLLMfiles.FileChange(file) {
+					ast_path = this.ast_path.strip(),
+					replacement = this.content
+				};
+				yield change.resolve_ast_path();
+				if (change.has_error || (change.result != "" && change.result != "applied")) {
+					return change.result != "" ? change.result : "AST path did not resolve";
+				}
+			}
+			return "";
+		}
+
 		private async void file_history() throws Error
 		{
 			if (this.history_created) {
@@ -94,17 +194,7 @@ namespace OLLMtools.WriteFile
 
 		protected override async string execute_request() throws Error
 		{
-			var err = yield OLLMtools.WriteFile.Tool.validate(
-				((Tool) this.tool).project_manager,
-				this.file_path,
-				this.content,
-				this.ast_path,
-				this.location,
-				this.start_line,
-				this.end_line,
-				this.complete_file,
-				this.overwrite
-			);
+			var err = yield this.validate();
 			if (err != "") {
 				throw new GLib.IOError.INVALID_ARGUMENT(err);
 			}
@@ -119,6 +209,33 @@ namespace OLLMtools.WriteFile
 			}
 			this.creating_file = !GLib.FileUtils.test(
 				this.normalized_path, GLib.FileTest.IS_REGULAR);
+			if (this.search_text.strip() != "") {
+				if (this.creating_file) {
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"search_text requires an existing file");
+				}
+				project_manager.buffer_provider.create_buffer(this.file);
+				if (!this.file.buffer.is_loaded) {
+					try {
+						yield this.file.buffer.read_async();
+					} catch (GLib.Error e) {
+						throw new GLib.IOError.FAILED(
+							"Failed to read file: " + e.message);
+					}
+				}
+				var matches = this.file.buffer.locate(this.search_text, true, true);
+				if (matches.size != 1) {
+					throw new GLib.IOError.FAILED(
+						"search_text match count inconsistent with validate");
+				}
+				var keys_arr = matches.keys.to_array();
+				var match_block = matches.get(keys_arr[0]);
+				var line_parts = match_block.split("\n");
+				this.start_line = keys_arr[0] + 1;
+				this.end_line = this.start_line + line_parts.length
+					- (line_parts.length > 0 && line_parts[line_parts.length - 1] == "" ? 1 : 0);
+				this.search_text = "";
+			}
 			if (this.complete_file && !this.creating_file && !this.overwrite) {
 				throw new GLib.IOError.EXISTS(
 					"File already exists: " + this.normalized_path + ". Use overwrite=true to overwrite.");
@@ -128,10 +245,12 @@ namespace OLLMtools.WriteFile
 			if (this.complete_file) {
 				change = new OLLMfiles.FileChange(this.file) { replacement = this.content };
 			} else if (this.start_line >= 1 && this.end_line >= this.start_line) {
+				// Whitespace-only body deletes the range; normalize to a true
+				// empty string so dummy buffers do not insert a spurious line.
 				change = new OLLMfiles.FileChange(this.file) {
 					start = this.start_line,
 					end = this.end_line,
-					replacement = this.content
+					replacement = this.content.strip() == "" ? "" : this.content
 				};
 			} else {
 				var operation_type = OLLMfiles.OperationType.REPLACE;
@@ -206,8 +325,10 @@ namespace OLLMtools.WriteFile
 					throw e;
 				}
 			}
-			this.agent.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced("text.oc-frame-success.collapsed Write File",
-				"Successfully wrote file: " + this.normalized_path + "\nProject file: " + (is_in_project ? "yes" : "no"))));
+			this.agent.add_message(new OLLMchat.Message("ui", 
+				OLLMchat.Message.fenced("text.oc-frame-success Write File",
+				"Successfully wrote file: " + this.normalized_path + 
+					"\nProject file: " + (is_in_project ? "yes" : "no"))));
 			if (change_type == "added" && this.file.id <= 0 && is_in_project) {
 				yield project_manager.convert_fake_file_to_real(this.file, this.normalized_path);
 				this.file = project_manager.get_file_from_active_project(this.normalized_path);

@@ -4,7 +4,7 @@ description: Use after research_online_search to fetch and analyze specific web 
 tools: web_fetch
 ---
 
-## Refinement
+**During refinement**
 
 **Purpose of this skill:** Fetch and analyze specific web pages; the executor needs the fetched page content so it can synthesize findings. Refinement **uses the information in the task list summaries** (output summaries from previous tasks) to **create web_fetch requests** — then execution can analyze the fetched content.
 

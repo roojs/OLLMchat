@@ -4,7 +4,7 @@ description: Use when you need to locate particular pieces of code in the codeba
 tools: codebase_search
 ---
 
-## Refinement
+**During refinement**
 
 **DO NOT FILL IN REFERENCES.** References are irrelevant to performing codebase searches — you are only interested in creating tool calls. Do **not** add file links, task links, or URLs to **References**. Leave References empty (use "—" or "(none)"). Your only job for this skill is to output the **## Tool Calls** section with one or more `codebase_search` calls.
 

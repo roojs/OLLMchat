@@ -31,13 +31,13 @@ public enum MarkdownPhase
  * Task list (input): each list item under a task section heading has a nested list
  * with labels ''What is needed'', ''Skill'', ''References'', ''Expected output''.
  * Links in References: current_file, paths, plan:...
- * Keys are exactly these labels (no other format accepted):
- * "What is needed", "Skill", "References", "Expected output",
- * "Requires user approval".
+ * Keys are lowercase labels from List.to_key_map(..., a_2_z), e.g.
+ * "what is needed", "skill", "references", "expected output",
+ * "requires user approval", "shared references", "examination references".
  *
  * Refined task (refinement output): section "Refined task" with same list plus
  * ''Skill call'' and an optional fenced code block. Parser uses
- * ListItem.to_key_map() for both; update_props(refined_map); code added
+ * ListItem.to_key_map(..., a_2_z) for both; update_props(refined_map); code added
  * directly to code_blocks.
  *
  * Execution: after refinement, the runner calls build_exec_runs() then run_exec().
@@ -50,7 +50,7 @@ public class Details : OLLMchat.Agent.Base
 {
 	// - stored task content (exact keys only, see class doc)
 	/**
-	 * Map from ListItem.to_key_map(); keys are exact labels only.
+	 * Map from ListItem.to_key_map(..., a_2_z); keys are lowercase labels only.
 	 * All task content is read from here.
 	 */
 	public Gee.Map<string, Markdown.Document.Block> task_data {
@@ -110,10 +110,16 @@ public class Details : OLLMchat.Agent.Base
 	public ResultParser result_parser { get; set; }
 
 	/**
-	 * Markdown links from references block (current_file, paths, plan:...);
+	 * Markdown links from task "references" block (current_file, paths, plan:...);
 	 * Runner resolves for prompt fill. Filled in fill_task_data().
 	 */
-	public Gee.ArrayList<Markdown.Document.Format> reference_targets { 
+	public Gee.ArrayList<Markdown.Document.Format> references {
+		get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
+	/** Links from "shared references" task_data (refinement). */
+	public Gee.ArrayList<Markdown.Document.Format> shared_references {
+		get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
+	/** Links from "examination references" task_data (per-run execution). */
+	public Gee.ArrayList<Markdown.Document.Format> exam_references {
 		get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
 
 	/**
@@ -153,11 +159,11 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Initial task_data from ListItem.to_key_map() for one task list item
-	 * (keys: exact labels only, see class doc). Runner and session come from step.list.runner (tree).
+	 * Initial task_data from ListItem.to_key_map(..., a_2_z) for one task list item
+	 * (keys: lowercase labels only, see class doc). Runner and session come from step.list.runner (tree).
 	 *
 	 * @param step the step this task belongs to (provides list and runner via tree)
-	 * @param task_data initial map from list item (exact keys only)
+	 * @param task_data initial map from list item (lowercase keys only)
 	 */
 	public Details(Step step, Gee.Map<string, Markdown.Document.Block> task_data)
 	{
@@ -174,25 +180,39 @@ public class Details : OLLMchat.Agent.Base
 
 	/**
 	 * Ensure expected task_data keys exist (placeholder block if missing), then refresh
-	 * fields derived from task_data (e.g. reference_targets from the References block).
+	 * fields derived from task_data (e.g. references, shared_references, exam_references).
 	 * Called from the ctor and update_props after task_data changes — the name alone
 	 * does not spell out that dual role.
 	 */
 	private void fill_task_data()
 	{
-		this.requires_user_approval = this.task_data.has_key("Requires user approval");
-		string[] keys_to_fill = {
-			"What is needed",
-			"Skill",
-			"References",
-			"Expected output" };
+		this.requires_user_approval = this.task_data.has_key("requires user approval");
 		var empty = new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH);
+		string[] keys_to_fill = {
+			"what is needed",
+			"skill",
+			"references",
+			"expected output",
+			"shared references",
+			"examination references" };
 		foreach (var key in keys_to_fill) {
 			if (!this.task_data.has_key(key)) {
 				this.task_data.set(key, empty);
 			}
+			switch (key) {
+				case "references":
+					this.references = this.task_data.get(key).links();
+					break;
+				case "shared references":
+					this.shared_references = this.task_data.get(key).links();
+					break;
+				case "examination references":
+					this.exam_references = this.task_data.get(key).links();
+					break;
+				default:
+					break;
+			}
 		}
-		this.reference_targets = this.task_data.get("References").links();
 	}
 
 	/**
@@ -225,7 +245,7 @@ public class Details : OLLMchat.Agent.Base
 		this.issues = "";
 		foreach (var e in refined_map.entries) {
 			// Keep original task's Skill; do not overwrite from refinement output.
-			if (e.key == "Skill") {
+			if (e.key == "skill") {
 				continue;
 			}
 			this.task_data.set(e.key, e.value);
@@ -233,244 +253,40 @@ public class Details : OLLMchat.Agent.Base
 		this.fill_task_data();
 	}
 
-	internal void validate_link(Markdown.Document.Format link, MarkdownPhase stage)
-	{
-		if (link.path == "") {
-			if (this.runner.user_request != null &&
-					this.runner.user_request.headings.has_key(link.hash)) {
-				return;
-			}
-			switch (stage) {
-				case MarkdownPhase.POST_EXEC:
-					if (this.task_output_document.headings.has_key(link.hash)) {
-						return;
-					}
-					break;
-				default:
-					break;
-			}
-			this.issues += "\n" + "Invalid reference target \"" + link.href +
-				"\": unknown anchor \"" + link.hash + "\".";
-			return;
-		}
-		if (link.scheme == "http" || link.scheme == "https") {
-			this.validate_link_http(stage, link.href);
-			return;
-		}
-		if (link.path != "" && link.scheme == "file") {
-			this.validate_link_file(link, stage, link.href);
-			return;
-		}
-		if (link.scheme == "task") {
-			this.validate_link_task(link, stage, link.href);
-			return;
-		}
-		this.issues += "\n" + "Invalid reference target \"" + link.href + "\". " +
-			"Use only: #anchor (document sections), task://taskname.md, http(s) URL, " +
-			"or absolute file path (must exist).";
-	}
-
-	private void validate_link_http(MarkdownPhase stage, string href)
-	{
-		switch (stage) {
-			case MarkdownPhase.LIST:
-			case MarkdownPhase.POST_EXEC:
-				return;
-			case MarkdownPhase.REFINEMENT:
-			default:
-				this.issues += "\n" +
-					"References must not contain http(s) URLs. Do not put URLs in References " +
-					"- create a tool call (e.g. web_fetch) in ## Tool Calls to fetch the content instead.";
-				return;
-		}
-	}
-
-	private void validate_link_file(Markdown.Document.Format link,
-		MarkdownPhase stage, string href)
-	{
-		var project = this.runner.sr_factory.project_manager.active_project;
-		if (project == null) {
-			this.issues += "\n" + "Invalid reference target \"" + href +
-				"\": file references require an active project.";
-			return;
-		}
-		var resolved_path = link.path;
-		if (link.is_relative) {
-			resolved_path = link.abspath(project.path);
-		}
-		if (resolved_path == "") {
-			return;
-		}
-		if (project.project_files.child_map.has_key(
-				resolved_path.has_suffix("/") ?
-					resolved_path.substring(0, resolved_path.length - 1) :
-					resolved_path)) {
-			return;
-		}
-		if (project.project_files.folder_map.has_key(
-				resolved_path.has_suffix("/") ?
-					resolved_path.substring(0, resolved_path.length - 1) :
-					resolved_path)) {
-			switch (stage) {
-				case MarkdownPhase.REFINEMENT:
-				case MarkdownPhase.POST_EXEC:
-					this.issues += "\n" + "Invalid reference target \"" + href +
-						"\": path is a directory; use a file path, not a folder.";
-					return;
-				case MarkdownPhase.LIST:
-				default:
-					return;
-			}
-		}
-		var under_project = GLib.File.new_for_path(resolved_path);
-		var project_root = GLib.File.new_for_path(project.path);
-		if (link.is_relative &&
-				!under_project.has_prefix(project_root) &&
-				!under_project.equal(project_root)) {
-			this.issues += "\n" + "Invalid reference target \"" + href +
-				"\": path is outside project folder.";
-			return;
-		}
-		var resolved_file = GLib.File.new_for_path(resolved_path);
-		if (!resolved_file.query_exists()) {
-			this.issues += "\n" + "Invalid reference target \"" + href +
-				"\": file does not exist (resolved from project folder).";
-			return;
-		}
-		if (resolved_file.query_file_type(GLib.FileQueryInfoFlags.NONE) !=
-				GLib.FileType.DIRECTORY) {
-			return;
-		}
-		switch (stage) {
-			case MarkdownPhase.REFINEMENT:
-			case MarkdownPhase.POST_EXEC:
-				this.issues += "\n" + "Invalid reference target \"" + href +
-					"\": path is a directory; use a file path, not a folder.";
-				return;
-			case MarkdownPhase.LIST:
-			default:
-				return;
-		}
-	}
-
-	private void validate_link_task(Markdown.Document.Format link,
-		MarkdownPhase stage, string href)
-	{
-		if (link.path.strip().contains("/")) {
-			this.issues += "\n" + "Invalid reference target \"" + href +
-				"\": task path must not contain '/'.";
-			return;
-		}
-		var slug = (link.path.strip().has_suffix(".md") ?
-			link.path.strip().substring(0, link.path.strip().length - 3) :
-			link.path.strip()).strip();
-		if (slug == "") {
-			this.issues += "\n" + "Invalid reference target \"" + href +
-				"\": task path is empty.";
-			return;
-		}
-		switch (stage) {
-			case MarkdownPhase.POST_EXEC:
-				if (slug == this.slug()) {
-					this.issues += "\n" + "Invalid reference target \"" + href +
-						"\": do not use task:// links to this task in your output; " +
-						"use ## section headings only.";
-					return;
-				}
-				if (!this.runner.completed.slugs.has_key(slug)) {
-					this.issues += "\n" + "Invalid reference target \"" + href +
-						"\": no completed task for \"" + slug + "\".";
-					return;
-				}
-				var other_task = this.runner.completed.slugs.get(slug);
-				if (link.hash != "" && !other_task.task_output_document.headings.has_key(link.hash)) {
-					this.issues += "\n" + "Invalid reference target \"" + href +
-						"\": task \"" + slug + "\" has no section \"" + link.hash +
-						"\". Use `task://" + slug + ".md` with no suffix after `.md` for the full output.";
-				}
-				return;
-			case MarkdownPhase.REFINEMENT:
-				var completed_ref = this.runner.completed.slugs.get(slug);
-				if (completed_ref == null) {
-					this.issues += "\n" + "Invalid reference target \"" + href +
-						"\": no completed task for \"" + slug +
-						"\" (references must be to completed tasks only).";
-					return;
-				}
-				if (link.hash != "" && !completed_ref.task_output_document.headings.has_key(link.hash)) {
-					this.issues += "\n" + "Invalid reference target \"" + href +
-						"\": task \"" + slug + "\" has no section \"" + link.hash +
-						"\". Use `task://" + slug + ".md` with no suffix after `.md` for the full output.";
-				}
-				return;
-			case MarkdownPhase.LIST:
-			default:
-				Details? ref_task = null;
-				var ref_is_completed = this.runner.completed.slugs.has_key(slug);
-				if (ref_is_completed) {
-					ref_task = this.runner.completed.slugs.get(slug);
-				} else {
-					ref_task = this.runner.pending.slugs.get(slug);
-				}
-				if (ref_task == null) {
-					this.issues += "\n" + "Invalid reference target \"" + href +
-						"\": no task for \"" + slug + "\".";
-					return;
-				}
-				if (this.step_index != 0) {
-					return;
-				}
-				if (ref_task.exec_done && link.hash != "" &&
-						!ref_task.task_output_document.headings.has_key(link.hash)) {
-					this.issues += "\n" + "Invalid reference target \"" + href +
-						"\": task \"" + slug + "\" has no section \"" + link.hash +
-						"\". Use `task://" + slug + ".md` with no suffix after `.md` for the full output.";
-				}
-				if (!ref_is_completed && this.step_index >= 0 && ref_task.step_index >= 0 &&
-						ref_task.step_index >= this.step_index) {
-					this.issues += "\n" + "Reference target \"" + href +
-						"\" refers to a task in the same or later section. " +
-						"A task may only reference the output of a task from an earlier section. " +
-						"I suggest you split this task into its own section.";
-				}
-				return;
-		}
-	}
-
 	/**
-	 * If task_data has no "Name" or empty, set Name = (Skill or "Task") + " " + index.
+	 * If task_data has no "name" or empty, set name = (skill or "Task") + " " + index.
 	 * Single method.
 	 *
 	 * @param i step index (0-based) used for the default name
 	 */
 	public void fill_name(int i)
 	{
-		var name_block = this.task_data.has_key("Name") ?
-			this.task_data.get("Name").to_markdown().strip() : "";
+		var name_block = this.task_data.has_key("name") ?
+			this.task_data.get("name").to_markdown().strip() : "";
 		if (name_block != "") {
 			return;
 		}
 		// Allow empty skill; validate_skills() will report this as a bad task.
-		var skill = this.task_data.has_key("Skill") ?
-			this.task_data.get("Skill").to_markdown().strip() : "";
+		var skill = this.task_data.has_key("skill") ?
+			this.task_data.get("skill").to_markdown().strip() : "";
 		var name = (skill != "" ? skill : "Task") + " " + i.to_string();
 		var b = new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH);
 		b.adopt(new Markdown.Document.Format.from_text(name));
-		this.task_data.set("Name", b);
+		this.task_data.set("name", b);
 	}
 
 	/**
 	 * This task's name as slug (e.g. "Research 1" → "research-1").
-	 * Returns "" if no Name in task_data or empty.
+	 * Returns "" if no name in task_data or empty.
 	 *
 	 * @return slug string for filenames and task refs
 	 */
 	public string slug()
 	{
-		if (!this.task_data.has_key("Name")) {
+		if (!this.task_data.has_key("name")) {
 			return "";
 		}
-		var name = this.task_data.get("Name").to_markdown().strip();
+		var name = this.task_data.get("name").to_markdown().strip();
 		if (name == "") {
 			return "";
 		}
@@ -487,8 +303,8 @@ public class Details : OLLMchat.Agent.Base
 	{
 		var section = (this.step.title != "") ?
 			this.step.title : "section " + (this.step_index >= 0 ? (this.step_index + 1).to_string() : "?");
-		var name = this.task_data.has_key("Name") ? 
-			this.task_data.get("Name").to_markdown().strip() : "";
+		var name = this.task_data.has_key("name") ?
+			this.task_data.get("name").to_markdown().strip() : "";
 		if (name != "") {
 			return section + " \"" + name + "\"";
 		}
@@ -526,32 +342,74 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
+	 * Fenced JSON blocks from the session tool registry for each name in the skill's tools list.
+	 * Empty when there are no tools, the skill lists write_file, or nothing resolves to BaseTool.
+	 */
+	public string tool_instructions(OLLMcoder.Skill.Definition definition)
+	{
+		if (definition.tools.size < 1 || definition.tools.contains("write_file")) {
+			return "";
+		}
+		string[] chunks = {};
+		foreach (var tool_name in definition.tools) {
+			var original = this.runner.session.manager.tools.get(tool_name);
+			if (original == null || !(original is OLLMchat.Tool.BaseTool)) {
+				continue;
+			}
+			var base_tool = (OLLMchat.Tool.BaseTool) original;
+			var schema = new Json.Object();
+			schema.set_string_member("name", base_tool.function.name);
+			schema.set_string_member("description", base_tool.function.description);
+			var param_node = Json.gobject_serialize(base_tool.function.parameters);
+			param_node.get_object().set_string_member("type", base_tool.function.parameters.x_type);
+			schema.set_object_member("parameters", param_node.get_object());
+			var root = new Json.Node(Json.NodeType.OBJECT);
+			root.set_object(schema);
+			var gen = new Json.Generator();
+			gen.set_root(root);
+			var ret = gen.to_data(null);
+			if (base_tool.example_call != "") {
+				ret += "\nExample: " + base_tool.example_call;
+			}
+			chunks += "```json\n" + ret + "\n```\n\n";
+		}
+		if (chunks.length == 0) {
+			return "";
+		}
+		return "## Registered tool definitions\n\n" + string.joinv("", chunks);
+	}
+
+	/**
 	 * Build refinement prompt template (no current_file; reference_contents
 	 * includes current file when in the task's References).
 	 */
 	public OLLMcoder.Skill.PromptTemplate refinement_prompt() throws GLib.Error
 	{
 		var definition = this.skill_manager.fetch(this);
-		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_refinement.md");
+		var tpl = OLLMcoder.Skill.PromptTemplate.template(
+			definition.tools.size > 0 && !definition.tools.contains("write_file")
+				? "task_refinement.md"
+				: "task_refinement_references.md");
 		tpl.system_fill(0);
 		var completed_md = this.runner.completed.to_markdown(MarkdownPhase.REFINE_COMPLETED);
-		tpl.fill(7,
+		tpl.fill(8,
 			"issues", tpl.header_raw("Issues with the current call", this.result_parser.issues),
 			"task_data", tpl.header_raw("Task", this.to_markdown(MarkdownPhase.REFINEMENT)),
 			"environment", this.runner.env(),
 			"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
 				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
-			"task_reference_contents", this.reference_contents(),
+			"task_reference_contents", this.reference_contents(MarkdownPhase.REFINEMENT),
 			"skill_details", definition.refine,
-			"completed_task_list", (completed_md == "" ? "" : 
-				"## Completed tasks (so far)\n\n" + completed_md));
+			"tool_instructions", this.tool_instructions(definition),
+			"completed_task_list", (completed_md == "" ? "" :
+				"## Completed tasks (so far) for your reference only\n\n" + completed_md));
 		return tpl;
 	}
 
 	/**
 	 * Refinement: fill template. Caller has validated via skill_manager.validate(this);
 	 * definition from skill_manager.fetch(this) is non-null. Details builds
-	 * task_reference_contents by looping reference_targets and asking Runner
+	 * task_reference_contents by looping references and asking Runner
 	 * for each item (see "Building the task reference block").
 	 * Up to 5 refinement attempts; up to 3 communication retries per attempt.
 	 * Caller (Runner) must catch and report to user; see 1.23.14.
@@ -562,14 +420,12 @@ public class Details : OLLMchat.Agent.Base
 		this.refine_error = null;
 		this.add_message(new OLLMchat.Message("ui",
 			OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Refining " +
-				this.task_data.get("Name").to_markdown().strip() + " with " +
+				this.task_data.get("name").to_markdown().strip() + " with " +
 				this.session.model_usage.display_name_with_size(),
 					  this.to_markdown(MarkdownPhase.COARSE))));
 		yield this.fill_model();
 		// Refiner must not have tools; the model must only output text (Skill call + Tool Calls as text).
 		this.chat_call.tools.clear();
-		// Load file reference buffers so reference_contents() can get content (same as code search tool)
-		yield this.runner.load_files(this.reference_targets);
 		for (var i = 0; i < 5; i++) {
 			if (cancellable != null && cancellable.is_cancelled()) {
 				return;
@@ -579,6 +435,7 @@ public class Details : OLLMchat.Agent.Base
 			// to echo them and producing combined output that fails to parse).
 			this.tools.clear();
 			this.code_blocks.clear();
+			yield this.runner.load_links(this.references);
 			this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response…"));
 			var tpl = this.refinement_prompt();
 			this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
@@ -606,7 +463,7 @@ public class Details : OLLMchat.Agent.Base
 			}
 			this.result_parser = new ResultParser(this.runner, response_text);
 			this.result_parser.extract_refinement(this);
-			var task_name = this.task_data.get("Name").to_markdown().strip();
+			var task_name = this.task_data.get("name").to_markdown().strip();
 			if (this.runner.in_replay) {
 				((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(this.result_parser.issues);
 			}
@@ -623,13 +480,13 @@ public class Details : OLLMchat.Agent.Base
 					response_text + "\n\nParse issues:\n" + this.result_parser.issues);
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 					"text.oc-frame-danger.collapsed Refinement for \"" + 
-						this.task_data.get("Name").to_markdown().strip() + "\" had issues (retrying)",
+						this.task_data.get("name").to_markdown().strip() + "\" had issues (retrying)",
 					this.result_parser.issues.strip())));
 			}
 		}
 		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 			"text.oc-frame-danger.collapsed Refinement for \"" + 
-				this.task_data.get("Name").to_markdown().strip() + "\" failed after 5 tries",
+				this.task_data.get("name").to_markdown().strip() + "\" failed after 5 tries",
 			this.result_parser.issues.strip())));
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
 	}
@@ -673,44 +530,52 @@ public class Details : OLLMchat.Agent.Base
 	public string to_markdown(MarkdownPhase phase)
 	{
 		string[] order = {
-			"Name",
-			"What is needed",
-			"Skill",
-			"References",
-			"Expected output",
-			"Output"
+			"name",
+			"what is needed",
+			"skill",
+			"references",
+			"shared references",
+			"examination references",
+			"expected output",
+			"requires user approval",
+			"output"
 		};
 		var ret = "";
 		for (var i = 0; i < order.length; i++) {
 			var key = order[i];
 			switch (key) {
-				case "References":
+				case "references":
+				case "shared references":
+				case "examination references":
 					if (phase == MarkdownPhase.REFINE_COMPLETED) {
 						continue;
 					}
 					break;
-				case "Output":
+				case "output":
 					if ((phase != MarkdownPhase.LIST &&
 							phase != MarkdownPhase.REFINE_COMPLETED)
 							|| !this.exec_done) {
 						continue;
 					}
-					if (this.task_post_exec_summary.text_content().strip() != "" ||
-							this.task_output_document.header_list.size > 0) {
-						ret += "#### Task result\n\n";
-						ret += this.task_post_exec_summary.to_markdown_with_content()
-							.strip() + "\n\n";
-						if (this.task_output_document.header_list.size > 0) {
-							string[] titles = {};
-							foreach (var hkey in this.task_output_document.header_list) {
-								var hb = this.task_output_document.headings.get(hkey);
-								var t = hb != null ? hb.text_content().strip() : hkey;
-								titles += (t != "" ? t : hkey);
-							}
-							ret += "**Sections in this output:** " +
-								string.joinv(", ", titles) + "\n\n";
-						}
+					// Executor output: always include the post-exec result summary (Result summary body).
+					ret += "#### Task result\n\n";
+					ret += this.task_post_exec_summary.to_markdown_with_content()
+						.strip() + "\n\n";
+					// Other top-level headings in the output doc: bullet list of [title](#gfm-slug) for in-doc navigation.
+					if (this.task_output_document.header_list.size == 0) {
+						continue;
 					}
+					string[] section_links = {};
+					foreach (var slug in this.task_output_document.header_list) {
+						var hb = this.task_output_document.headings.get(slug);
+						var title = hb != null ? hb.text_content().strip() : slug;
+						if (title == "") {
+							title = slug;
+						}
+						section_links += "- [" + title + "](#" + slug + ")";
+					}
+					ret += "**Sections in this output:**\n\n"
+						+ string.joinv("\n", section_links) + "\n\n";
 					continue;
 				default:
 					break;
@@ -718,11 +583,15 @@ public class Details : OLLMchat.Agent.Base
 			if (!this.task_data.has_key(key)) {
 				continue;
 			}
-			ret += "- **" + key + "** " + this.task_data.get(key).to_markdown() + "\n";
+			var block = this.task_data.get(key);
+			if (block.children.size == 0) {
+				continue;
+			}
+			ret += "- **" + key.substring(0, 1).up() + key.substring(1) + "** "
+				+ block.to_markdown() + "\n";
 		}
-		// Omit ## Tool Calls for REFINE_COMPLETED and POST_EXEC; include only for REFINEMENT/EXECUTION when tools exist.
 		if (phase == MarkdownPhase.REFINE_COMPLETED || phase == MarkdownPhase.POST_EXEC ||
-			 this.tools.size == 0) {
+				this.tools.size == 0) {
 			return ret;
 		}
 		ret += "\n## Tool Calls\n\n";
@@ -767,11 +636,24 @@ public class Details : OLLMchat.Agent.Base
 	 *
 	 * @param line heading or label line
 	 * @param file file to read content and language from
+	 * @param start **-1** = no line-range fragment (head or refinement preview); else 1-based start line from **#L…** fragment
+	 * @param end **-1** with **start == -1** = head / refinement preview; else 1-based end line (**#L…**)
 	 * @return fenced block with line + content
 	 */
-	internal string header_file(string line, OLLMfiles.File file)
+	internal string header_file(string line, OLLMfiles.File file, MarkdownPhase stage,
+		int start = -1, int end = -1)
 	{
-		var content = file.get_contents(0);
+		var content = stage == MarkdownPhase.REFINEMENT
+			? file.contents(int.max(start, 1), start == -1 ? 20 : int.min(end, start + 29))
+			: file.contents(int.max(-1, start), start == -1 ? -1 : end);
+		if (stage == MarkdownPhase.REFINEMENT
+				&& (
+					(start == -1 && file.line_count() > 20)
+					|| (start != -1 && end > start + 29)
+				)) {
+			content += "\n\n**This has been abbreviated.** The full content has "
+				+ file.line_count().to_string() + " lines.\n";
+		}
 		var fence = (content.index_of("\n```") >= 0 || content.has_prefix("```")) ? "~~~~" : "```";
 		return line + "\n\n"
 			+ fence
@@ -806,37 +688,35 @@ public class Details : OLLMchat.Agent.Base
 	 * Resolved content for a single reference link. Uses link.scheme (file, task,
 	 * http(s), or path == "" for `#anchor`). File: project manager or
 	 * File.new_fake, create_buffer, header_file. Other schemes:
-	 * runner.reference_content(link).
+	 * runner.reference_content(link, stage).
 	 *
 	 * @param link the reference link (scheme, path, href, title
 	 * already parsed)
+	 * @param stage markdown phase forwarded to runner / file preview
 	 * @return fenced or file block for prompt, or "" if unresolved/empty
 	 */
-	internal string link_content(Markdown.Document.Format link)
+	internal string link_content(Markdown.Document.Format link, MarkdownPhase stage)
 	{
 		var name = link.title != "" ? link.title : (link.href != "" ? link.href : "unnamed reference");
+		var ref_url = link.href != "" ? link.href : link.path;
+		var title = "### Reference contents for " + name;
+		if (ref_url != "") {
+			title += " — " + ref_url;
+		}
 		if (link.path == "") {
-			var content = this.runner.reference_content(link);
-			if (content != "") {
-				return this.header_fenced(
-					"### Reference contents for " + name,
-					content,
-					"markdown");
-			}
-			return "";
+			var body = this.runner.reference_content(link, stage);
+			return body != "" ? this.header_fenced(title, body, "markdown") : "";
 		}
 		if (link.scheme == "http" || link.scheme == "https") {
-			return "";
+			if (stage != MarkdownPhase.EXECUTION) {
+				return "";
+			}
+			var body = this.runner.reference_content(link, stage);
+			return body != "" ? this.header_fenced(title, body, "markdown") : "";
 		}
 		if (link.scheme == "task") {
-			var content = this.runner.reference_content(link);
-			if (content != "") {
-				return this.header_fenced(
-					"### Reference contents for " + name,
-					content,
-					"markdown");
-			}
-			return "";
+			var body = this.runner.reference_content(link, stage);
+			return body != "" ? this.header_fenced(title, body, "markdown") : "";
 		}
 		if (link.scheme != "file") {
 			return "";
@@ -853,23 +733,35 @@ public class Details : OLLMchat.Agent.Base
 			found = new OLLMfiles.File.new_fake(this.runner.sr_factory.project_manager, resolved_path);
 		}
 		this.runner.sr_factory.project_manager.buffer_provider.create_buffer(found);
-		return this.header_file(
-			"### Reference contents for " + name,
-			found);
+		GLib.MatchInfo mi;
+		if (new GLib.Regex(
+				"^[Ll](\\d+)-[Ll](\\d+)$",
+				GLib.RegexCompileFlags.OPTIMIZE | GLib.RegexCompileFlags.CASELESS)
+				.match(link.hash, 0, out mi)) {
+			return this.header_file(title, found, stage,
+				int.parse(mi.fetch(1)), int.parse(mi.fetch(2)));
+		}
+		return this.header_file(title, found, stage);
 	}
 
 	/**
-	 * Resolved reference block for this task: loop reference_targets; for each,
+	 * Resolved reference block for this task: loop references; for each,
 	 * get content via link_content(). When there are no references, returns "".
 	 * When there are references, returns "## Reference Contents" plus each block.
 	 */
-	private string reference_contents()
+	internal string reference_contents(MarkdownPhase stage)
 	{
 		string[] parts = {};
-		foreach (var link in this.reference_targets) {
-			GLib.debug("reference_contents: resolving link scheme=%s path=%s href=%s hash=%s", 
+		foreach (var link in this.references) {
+			GLib.debug("reference_contents: resolving link scheme=%s path=%s href=%s hash=%s",
 				link.scheme, link.path, link.href, link.hash);
-			var block = this.link_content(link);
+			var block = this.link_content(link, stage);
+			if (block != "") {
+				parts += block;
+			}
+		}
+		foreach (var link in this.shared_references) {
+			var block = this.link_content(link, stage);
 			if (block != "") {
 				parts += block;
 			}
@@ -880,78 +772,31 @@ public class Details : OLLMchat.Agent.Base
 		return "## Reference Contents\n\n" + string.joinv("", parts);
 	}
 
-	/**
-	 * Add all reference_targets to the given Tool.
-	 * Used by add_exec_runs_for_tools() and by the combined branch in
-	 * build_exec_runs().
-	 *
-	 * @param ex the Tool (exec run) to add references to
-	 */
-	private void add_all_references_to(Tool ex)
-	{
-		foreach (var link in this.reference_targets) {
-			ex.references.add(link);
-		}
-	}
-
-	/**
-	 * Scenario 1: one Tool per tool; reuse each from this.tools, set id, add all references,
-	 * add to exec_runs.
-	 */
-	private void add_exec_runs_for_tools()
-	{
-		var idx = 0;
-		foreach (var ex in this.tools) {
-			ex.id = "tool-%d".printf(idx++);
-			this.add_all_references_to(ex);
-			this.exec_runs.add(ex);
-		}
-	}
-
-	/**
-	 * Scenario 2: one Tool per reference; each with references =
-	 * single-element list.
-	 * If no refs, one Tool with id "exec".
-	 */
-	private void add_exec_runs_for_references()
-	{
-		var factory = (OLLMchat.Agent.Factory) this.runner.sr_factory;
-		var idx = 0;
-		foreach (var link in this.reference_targets) {
-			var ex = new Tool(factory, this.session, this, "ref-%d".printf(idx++));
-			ex.references.add(link);
-			this.exec_runs.add(ex);
-		}
-		if (this.exec_runs.size == 0) {
-			var ex = new Tool(factory, this.session, this, "exec");
-			this.exec_runs.add(ex);
-		}
-	}
-
-	/**
-	 * Populate exec_runs. Three scenarios only: (1) tools when run →
-	 * one Tool per tool; (2) refs without tools → one per ref;
-	 * (3) combined → one run with all refs.
-	 * Does not run them. Return early per branch.
-	 */
 	public void build_exec_runs()
 	{
 		this.exec_runs.clear();
-		var definition = this.skill_manager.fetch(this);
-		var execute_combined = definition.header.has_key("execute-combined") &&
-			definition.header.get("execute-combined").strip() != "";
+		var factory = (OLLMchat.Agent.Factory) this.runner.sr_factory;
+		var idx = 0;
+		if (this.exam_references.size > 0) {
+			foreach (var exam in this.exam_references) {
+				var ex = new Tool(factory, this.session, this, "exam-%d".printf(idx++));
+				ex.exam_reference = exam;
+				ex.references = this.shared_references;
+				this.exec_runs.add(ex);
+			}
+			return;
+		}
 		if (this.tools.size > 0) {
-			this.add_exec_runs_for_tools();
+			foreach (var ex in this.tools) {
+				ex.id = "tool-%d".printf(idx++);
+				ex.references = this.shared_references;
+				this.exec_runs.add(ex);
+			}
 			return;
 		}
-		if (execute_combined) {
-			var factory = (OLLMchat.Agent.Factory) this.runner.sr_factory;
-			var ex = new Tool(factory, this.session, this, "exec");
-			this.add_all_references_to(ex);
-			this.exec_runs.add(ex);
-			return;
-		}
-		this.add_exec_runs_for_references();
+		var lone = new Tool(factory, this.session, this, "exec");
+		lone.references = this.shared_references;
+		this.exec_runs.add(lone);
 	}
 
 	/**
@@ -960,7 +805,7 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	public async void run_exec() throws GLib.Error
 	{
-		var task_name = this.task_data.get("Name").to_markdown().strip();
+		var task_name = this.task_data.get("name").to_markdown().strip();
 		for (var i = 0; i < this.exec_runs.size; i++) {
 			var ex = this.exec_runs.get(i);
 			this.add_message(new OLLMchat.Message("ui",
@@ -974,7 +819,17 @@ public class Details : OLLMchat.Agent.Base
 				break;
 			}
 		}
-		yield this.run_post_exec();
+		// Multi-run: post-exec summarizes combined tool runs (write_file runs are included inside each run).
+		// Single run: no synthesis pass — copy that run's executor output.
+		// Invariant: build_exec_runs() leaves exec_runs.size >= 1 before run_exec().
+		if (this.exec_runs.size > 1) {
+			yield this.run_post_exec();
+			this.exec_done = true;
+			return;
+		}
+		var last = this.exec_runs.get(this.exec_runs.size - 1);
+		this.task_post_exec_summary = last.summary;
+		this.task_output_document = last.document;
 		this.exec_done = true;
 	}
 
@@ -1023,7 +878,7 @@ public class Details : OLLMchat.Agent.Base
 		var last_issues = "";
 		for (var try_count = 0; try_count < 5; try_count++) {
 			var tpl = this.post_exec_prompt(response_text, last_issues);
-			var task_name = this.task_data.get("Name").to_markdown().strip();
+			var task_name = this.task_data.get("name").to_markdown().strip();
 			var model_label = this.session.model_usage.model != "" ?
 				this.session.model_usage.display_name_with_size() : "";
 			var model_part = model_label != "" ? " with " + model_label : "";
@@ -1061,7 +916,7 @@ public class Details : OLLMchat.Agent.Base
 					last_issues)));
 			}
 		}
-		var task_name_fail = this.task_data.get("Name").to_markdown().strip();
+		var task_name_fail = this.task_data.get("name").to_markdown().strip();
 		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 			"text.oc-frame-danger.collapsed Summation of tool calls failed for \"" + task_name_fail + "\"",
 			last_issues.strip())));

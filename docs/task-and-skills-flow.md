@@ -161,10 +161,10 @@ Empty path + **`#anchor`** resolves against **`Runner.user_request`** (task-crea
 
 ## Skills: file format and runtime use
 
-Skills are loaded as `Definition`: **YAML** → `---` → **## Refinement** → `---` → **## Execution**.
+Skills are loaded as `Definition`: **YAML** → `---` → **refinement body** (second part; often starts with **`**During refinement**`**) → `---` → **execution body** (third part; often starts with **`**At execution**`**). The split is **`---` only** — do **not** rely on `## Refinement` / `## Execution` headings in skill files.
 
-- **Refinement** section: instructions for the **refiner** (tools, arguments, reference hygiene).
-- **Execution** section: instructions for the **executor** (how to interpret Precursor and shape output).
+- **Refinement** part: instructions for the **refiner** (tools, arguments, reference hygiene).
+- **Execution** part: instructions for the **executor** (how to interpret Precursor and shape output).
 
 Optional YAML keys (non-exhaustive): **`tools`** (declared tool names), **`model`**, **`execute-combined`**. The manager validates that a task’s **Skill** field names a file / skill in the catalog.
 

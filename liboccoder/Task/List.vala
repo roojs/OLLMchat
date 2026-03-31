@@ -123,7 +123,7 @@ public class List : Object
 				if (t.skill_manager.validate(t)) {
 					continue;
 				}
-				var skill_name = t.task_data.get("Skill").to_markdown().strip();
+				var skill_name = t.task_data.get("skill").to_markdown().strip();
 				issues += t.issue_label() + " references skill \"" + skill_name + 
 					"\", which is not in the available skills list.\n";
 			}

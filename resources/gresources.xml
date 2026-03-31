@@ -45,8 +45,10 @@
   <gresource prefix="/skill-prompts">
     <file>task_creation_initial.md</file>
     <file>task_refinement.md</file>
+    <file>task_refinement_references.md</file>
     <file>task_list_iteration.md</file>
     <file>task_execution.md</file>
+    <file>task_execution_write.md</file>
     <file>task_post_exec.md</file>
   </gresource>
 </gresources>

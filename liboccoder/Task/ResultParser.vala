@@ -129,9 +129,9 @@ public class ResultParser : Object
 			step.register_slugs(i);
 			foreach (var t in step.children) {
 				this.validate_task(t, MarkdownPhase.LIST);
-				foreach (var link in t.reference_targets) {
-					t.validate_link(link, MarkdownPhase.LIST);
-				}
+				var vl_list = new ValidateLink(t.runner, t, MarkdownPhase.LIST);
+				vl_list.validate_all(t.references);
+				t.issues += vl_list.issues;
 				if (t.issues != "") {
 					this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
 				}
@@ -181,9 +181,9 @@ public class ResultParser : Object
 			step.register_slugs(i);
 			foreach (var t in step.children) {
 				this.validate_task(t, MarkdownPhase.LIST);
-				foreach (var link in t.reference_targets) {
-					t.validate_link(link, MarkdownPhase.LIST);
-				}
+				var vl_list = new ValidateLink(t.runner, t, MarkdownPhase.LIST);
+				vl_list.validate_all(t.references);
+				t.issues += vl_list.issues;
 				if (t.issues != "") {
 					this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
 				}
@@ -199,7 +199,7 @@ public class ResultParser : Object
 	 * Cached in ''valid_key_cache''. Use ''valid_keys().contains(key)'' to reject
 	 * disallowed keys.
 	 *
-	 * @return cached list: Name, What is needed, Skill, References, Expected output, Requires user approval
+	 * @return cached list of allowed lowercase task_data keys (see plan 1.23.44)
 	 */
 	private static Gee.ArrayList<string> valid_keys()
 	{
@@ -207,12 +207,14 @@ public class ResultParser : Object
 			return valid_key_cache;
 		}
 		string[] valid_keys_array = {
-			"Name",
-			"What is needed",
-			"Skill",
-			"References",
-			"Expected output",
-			"Requires user approval"
+			"name",
+			"what is needed",
+			"skill",
+			"references",
+			"expected output",
+			"requires user approval",
+			"shared references",
+			"examination references"
 		};
 		valid_key_cache = new Gee.ArrayList<string>();
 		foreach (string s in valid_keys_array) {
@@ -225,7 +227,7 @@ public class ResultParser : Object
 	 * Returns the list of required task field names for task list parsing.
 	 * Cached in ''required_key_cache''. Use to validate that required keys are present.
 	 *
-	 * @return cached list: What is needed, Skill, Expected output
+	 * @return cached list: what is needed, skill, expected output
 	 */
 	private static Gee.ArrayList<string> required_keys()
 	{
@@ -233,9 +235,9 @@ public class ResultParser : Object
 			return required_key_cache;
 		}
 		string[] required_keys_array = {
-			"What is needed",
-			"Skill",
-			"Expected output"
+			"what is needed",
+			"skill",
+			"expected output"
 		};
 		required_key_cache = new Gee.ArrayList<string>();
 		foreach (string s in required_keys_array) {
@@ -262,12 +264,12 @@ public class ResultParser : Object
 	 */
 	public void validate_task(Details t, MarkdownPhase phase)
 	{
-		if (t.task_data.has_key("Output")) {
+		if (t.task_data.has_key("output")) {
 			this.issues += "\n" + t.issue_label() + " must not contain Output " +
 				"(tasks in the list have no results yet).";
 		}
 		foreach (var req in required_keys()) {
-			if (phase == MarkdownPhase.REFINEMENT && req == "Name") {
+			if (phase == MarkdownPhase.REFINEMENT && req == "name") {
 				continue;
 			}
 			if (!t.task_data.has_key(req)) {
@@ -280,16 +282,19 @@ public class ResultParser : Object
 			if (valid_keys().contains(k)) {
 				continue;
 			}
+			if (phase == MarkdownPhase.REFINEMENT &&
+					(k == "shared references" || k == "examination references" || k == "skill call")) {
+				continue;
+			}
 			this.issues += "\n" + t.issue_label() + " has disallowed field: \"" + k + "\". " +
 				"Use only these valid fields: " + string.joinv(", ", valid_keys().to_array()) + ". " +
 				"Consider whether the field is wrongly named (fix the name to match a valid field) or " +
 				"whether its content belongs in one of the valid fields; then resubmit the task list " +
 				"with only the valid fields for each task.";
 		}
-		// Refinement: do not validate skill name; use original task's skill as-is.
 		if (phase != MarkdownPhase.REFINEMENT && !t.skill_manager.validate(t)) {
-			var skill_block = t.task_data.get("Skill");
-			var skill_name = (skill_block != null) ? 
+			var skill_block = t.task_data.get("skill");
+			var skill_name = (skill_block != null) ?
 				skill_block.to_markdown().strip() : "";
 			this.issues += "\n" + t.issue_label() + " references skill \"" + skill_name + "\", which is not in the available skills list.";
 		}
@@ -350,7 +355,7 @@ public class ResultParser : Object
 			// node is List; one list → one task (to_key_map returns map from list items)
 			found_any_list = true;
 			var list_block = (Markdown.Document.List) node;
-			var task_data = list_block.to_key_map();
+			var task_data = list_block.to_key_map(GLib.CharacterSet.a_2_z);
 			var task = new Details(step, task_data);
 			step.children.add(task);
 			last_task = task;
@@ -408,15 +413,23 @@ public class ResultParser : Object
 					"**Expected output**, **Skill call**).";
 				return;
 			}
-			var refined_map = list_block.to_key_map();
+			var refined_map = list_block.to_key_map(GLib.CharacterSet.a_2_z);
 			var refined_task = new Details(task.step, refined_map);
 			this.validate_task(refined_task, MarkdownPhase.REFINEMENT);
 			if (this.issues != "") {
 				break;
 			}
 			task.update_props(refined_map);
-			foreach (var link in task.reference_targets) {
-				task.validate_link(link, MarkdownPhase.REFINEMENT);
+			var vl_ref = new ValidateLink(task.runner, task, MarkdownPhase.REFINEMENT);
+			vl_ref.validate_all(task.references);
+			vl_ref.validate_all(task.shared_references);
+			vl_ref.validate_all(task.exam_references);
+			task.issues += vl_ref.issues;
+			if (task.references.size > 0) {
+				this.issues += "\n" + "Section \"Task\": **References** must be **empty** in refined output; " +
+					"do not put markdown links there. Move all links to **Shared references** " +
+					"(shared context for every run) and/or **Examination references** " +
+					"(one examination target per execution run).";
 			}
 			if (task.issues != "") {
 				this.issues += "\n" + "Section \"Task\" (References): " + task.issues;
@@ -458,11 +471,12 @@ public class ResultParser : Object
 			}
 			task.tools.add(tool);
 		}
-		// Require at least one of References or Tool calls so execution has precursor content.
-		if (task.reference_targets.size == 0 && task.tools.size == 0) {
-			this.issues += "\n" + "Refinement must provide at least one of References or Tool calls. " +
-				"This task has neither; add markdown links in References and/or fenced JSON blocks in " +
-				" ## Tool Calls so execution has precursor content.";
+		if (task.shared_references.size == 0 && task.exam_references.size == 0
+				&& task.tools.size == 0) {
+			this.issues += "\n" + "Refinement must provide at least one of **Shared references**, " +
+				"**Examination references**, or **Tool calls** (fenced JSON under **## Tool Calls**). " +
+				"put all links in **Shared references** " +
+				"and/or **Examination references** so execution has precursor content.";
 		}
 	}
 
@@ -483,6 +497,54 @@ public class ResultParser : Object
 		}
 		ex.summary = this.document.headings.get("result-summary");
 		ex.document = this.document;
+		var sum_render = new Markdown.Document.Render();
+		sum_render.parse(ex.summary.to_markdown_with_content());
+		var vl_sum = new ValidateLink(this.runner, ex.parent, MarkdownPhase.POST_EXEC);
+		vl_sum.validate_all(sum_render.document.links);
+		if (vl_sum.issues != "") {
+			this.issues += vl_sum.issues;
+			return false;
+		}
+		if (!ex.parent.skill_manager.fetch(ex.parent).tools.contains("write_file")) {
+			return true;
+		}
+		ex.writes.clear();
+		var write_path_issues_start = this.issues.length;
+		foreach (var slug in this.document.header_list) {
+			if (slug == "result-summary") {
+				continue;
+			}
+			var hb = this.document.headings.get(slug);
+			if (hb.parent != this.document) {
+				continue;
+			}
+			if (!slug.has_prefix("change-details")) {
+				this.issues += "\nWrite executor: unexpected top-level section (use ## Change details or Path 2 only): \"" + slug + "\".";
+				continue;
+			}
+			var wc = new WriteChange.from_header (hb, ex.parent.runner.sr_factory.project_manager);
+			if (wc.issues == "") {
+				ex.writes.add(wc);
+				continue;
+			}
+			this.issues += "\n"
+				+ "Change details — " + hb.text_content().strip() + ":"
+				+ wc.issues.strip();
+		}
+		if (ex.writes.size == 0) {
+			if (this.issues.length > write_path_issues_start) {
+				return false;
+			}
+			var md = this.document.to_markdown().strip();
+			if (md.down().contains("**no changes needed**")) {
+				return true;
+			}
+			this.issues += "\nWrite executor output must include a recognizable Change details section, or Path 2 (full markdown must contain **no changes needed**).";
+			return false;
+		}
+		if (this.issues.length > write_path_issues_start) {
+			return false;
+		}
 		return true;
 	}
 
@@ -496,15 +558,16 @@ public class ResultParser : Object
 	public void exec_post_extract(Details task)
 	{
 		if (!this.document.headings.has_key("result-summary")) {
-			this.issues += "\n" +
-				"Post-exec output must include ## Result summary.";
+			this.issues += "\nPost-exec output must include ## Result summary.";
 			return;
 		}
 		task.task_post_exec_summary = this.document.headings.get("result-summary");
 		task.task_output_document = this.document;
-		foreach (var link in task.task_output_document.links) {
-			task.validate_link(link, MarkdownPhase.POST_EXEC);
-		}
+		var sum_render = new Markdown.Document.Render();
+		sum_render.parse(task.task_post_exec_summary.to_markdown_with_content());
+		var vl_sum = new ValidateLink(task.runner, task, MarkdownPhase.POST_EXEC);
+		vl_sum.validate_all(sum_render.document.links);
+		task.issues += vl_sum.issues;
 		if (task.issues != "") {
 			this.issues += task.issues;
 		}

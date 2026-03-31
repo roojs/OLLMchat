@@ -182,10 +182,10 @@ Examples:
 					stdout.printf("  Step: %d tasks\n", (int) step.children.size);
 					foreach (var t in step.children) {
 						task_index++;
-						var skill = t.task_data.has_key("Skill") ?
-							t.task_data.get("Skill").to_markdown().strip() : "";
-						var needed = t.task_data.has_key("What is needed") ?
-							t.task_data.get("What is needed").to_markdown().strip() : "";
+						var skill = t.task_data.has_key("skill") ?
+							t.task_data.get("skill").to_markdown().strip() : "";
+						var needed = t.task_data.has_key("what is needed") ?
+							t.task_data.get("what is needed").to_markdown().strip() : "";
 						stdout.printf("    Task %d: skill=%s  What is needed: %s\n",
 							task_index, skill, needed.replace("\n", " "));
 					}

@@ -22,8 +22,9 @@ namespace Markdown.Document
 
 		/**
 		 * Build a map from this list: children are ListItems. Iterate and call key_value on each; key = return value, value = caller-created block.
+		 * @param key_mode empty string keeps trimmed key; GLib.CharacterSet.a_2_z lowercases keys (task_data normalization).
 		 */
-		public Gee.Map<string, Block> to_key_map()
+		public Gee.Map<string, Block> to_key_map(string key_mode = "")
 		{
 			var result = new Gee.HashMap<string, Block>();
 			foreach (var node in this.children) {
@@ -32,10 +33,11 @@ namespace Markdown.Document
 					continue;
 				}
 				var v = new Block(FormatType.PARAGRAPH);
-				var k = item.key_value(v);
+				var k = item.key_value(v).strip();
 				if (k == "") {
 					continue;
 				}
+				k = key_mode == GLib.CharacterSet.a_2_z ? k.down() : k;
 				result.set(k, v);
 			}
 			return result;

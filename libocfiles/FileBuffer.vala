@@ -362,6 +362,29 @@ namespace OLLMfiles
 		public abstract async void clear() throws Error;
 		
 		/**
+		 * Find all literal occurrences of a needle in this buffer.
+		 *
+		 * Returns a map from 0-based start line of each match (first line touched)
+		 * to the full line(s) covering that match — from line start through line end
+		 * in buffer coordinates, not the minimal substring span only. The needle is
+		 * always a literal string, not a user regex (regex may be used internally on
+		 * GtkSource paths only). On DummyFileBuffer, match_trimmed is ignored and
+		 * treated the same as a plain substring search; searching uses chunked I/O
+		 * and does not load the whole file into one string.
+		 *
+		 * @param needle literal text to find; may contain "\n" for multiline
+		 * @param match_trimmed trimmed multiline semantics on GtkSourceFileBuffer only
+		 * @param case_sensitive whether matching is case-sensitive (see DummyFileBuffer
+		 * index_of_caseless in Part I.2.a when false)
+		 * @return map start_line -> full line(s) text; empty if needle is empty or no matches
+		 */
+		public abstract Gee.HashMap<int, string> locate(
+			string needle,
+			bool match_trimmed,
+			bool case_sensitive
+		);
+		
+		/**
 		 * Write contents to file on disk (sync buffer to file).
 		 * 
 		 * Creates backup if needed, writes to disk, and updates file metadata.

@@ -3,7 +3,7 @@ name: analyze_code
 description: Use when you need to extract information from code. Input is a set of links in the task's References (to code) and What is needed.
 ---
 
-## Refinement
+**During refinement**
 
 **Purpose of this skill:** Extract information from code; the executor needs links to code (in References) and What is needed. Refinement fills in **References** so the executor can deliver what is needed.
 

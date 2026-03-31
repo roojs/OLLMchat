@@ -53,7 +53,7 @@ Between task creation and execution, **each task is refined**. The refiner turns
 - **The skill document** — The full content of the assigned skill. The refiner uses it to see what the skill needs (inputs, tools) and what information to gather via tool calls before the skill runs.
 - **Tools definition** — Tool names, descriptions, and parameters. This defines how to invoke each tool (e.g. one fenced JSON block per call with **name** and **arguments**). The refiner builds the Tool Calls section in this format.
 - **Task reference contents** — The **resolved** content of this task's References only (environment, project description, current file, file contents, prior task outputs, URLs). The refiner uses this to fill in concrete values for the Skill call and to decide what to request via tool calls (e.g. avoid requesting a whole file if it's already in References; use a tool for a specific line range if needed).
-- **Completed tasks (so far)** — When present, a list of tasks that have already been executed. The runner injects this via the **`{completed_task_list}`** placeholder. Format: **task name** (from the task’s Name field) plus **Result summary** (the task’s raw summary text; no **Output** line). Reference links (file paths, task output anchors, URLs) live **inside** the summary content, not as a separate section. The refiner uses this to fill in References only when relevant; for tool calls, include prior task/output in References only when very relevant.
+- **Completed tasks (so far) for your reference only** — When present, a list of tasks that have already been executed. The runner injects this via the **`{completed_task_list}`** placeholder (section heading **`## Completed tasks (so far) for your reference only`** plus body). Format: **task name** (from the task’s Name field) plus **Result summary** (the task’s raw summary text; no **Output** line). Reference links (file paths, task output anchors, URLs) live **inside** the summary content, not as a separate section. The refiner uses this to fill in References only when relevant; for tool calls, include prior task/output in References only when very relevant.
 
 When a previous refinement attempt had issues (e.g. invalid tool, malformed output), the refiner also receives **Issues with the current call** and the **current task data** so it can correct and re-output.
 
@@ -124,12 +124,11 @@ Some skills are used in pairs: the first produces raw findings; the second consu
 
 ### Planning and implementation
 
-- **plan_create**: creates a new plan (write only; write_file). Use when starting implementation planning. Plan content comes from Precursor (References).
-- **plan_iterate**: produces revised plan content (no tools). Plan comes via References; output is the revised content in Detail for **plan_apply_changes** to write. Use when the plan needs changes after review or new information.
-- **plan_apply_changes**: writes the plan file (write_file only). Content to write comes from Precursor (e.g. plan_iterate or revised content). Use after plan_iterate to persist the plan.
+- **plan_create**: creates a new plan focused on **requirements, scope, and steps** — not implementation code in the plan. Typical next step: **plan_code** (concrete code proposals into the plan document), then **implement_code**. Plan content comes from Precursor (References). May persist the plan file via **Result summary** + **Change details** when a path is given.
+- **plan_iterate**: revises an existing plan from feedback or new information; plan comes via References. May persist targeted edits (or full rewrite when appropriate) via **Result summary** + **Change details**. Use when the plan needs changes after review or new information.
 - **plan_review**: reviews a plan against **coding standards** and API usage (no tools; plan and standards via References). Output: issues and proposed changes. Use before or alongside implement_code.
 - **analyze_code_standards**: locates project coding standards and style guides (e.g. .cursor/rules, CODING_STANDARDS); outputs **Code standards references** (links). Use so plan_review and implement_code can reference standards. No follow-up skill required; the references are added to task References.
-- **implement_code**: writes or modifies code from a plan. **Multiple implement_code tasks** should be created for all implementation steps (e.g. one per step or per file). The **task iterator** typically adds these after the user has reviewed and approved the plan(s).
+- **implement_code**: implements or edits code from a plan. **Multiple implement_code tasks** are typical (e.g. per step or per file) after the plan is approved.
 
 ---
 
@@ -138,16 +137,28 @@ Some skills are used in pairs: the first produces raw findings; the second consu
 Each skill file is split by the **double-dash separator** (`---`) into **three parts**. Use a separator between each part:
 
 1. **Front matter** (YAML header) — then `---`
-2. **Refinement** — body section under `## Refinement` — then `---`
-3. **Execution** — body section under `## Execution`
+2. **Refinement** — second part of the file (stored as `Definition.refine`; used when refining the task). **Do not** use a top-level `## Refinement` heading — start with a lead-in such as **`**During refinement**`** (see `research_online_search.md`). Then `---`
+3. **Execution** — third part of the file (stored as `Definition.execute`; injected when the executor runs). **Do not** use a top-level `## Execution` heading — use a lead-in such as **`**At execution**`**. The split is **`---` only**; the parser does not key off `## Refinement` or `## Execution`.
 
-The runner uses the Refinement section when refining the task and the Execution section when running the skill.
+The runner uses the second part when refining the task and the third part when running the skill. Individual skill files under `resources/skills/` must not explain runner mechanics, internal prompts, or chat layout; see **No implementation or plumbing language** (below).
 
 ### Writing rules (stage-focused content)
 
 **Refinement section:** Write only what the **refiner** needs to do its job. Include: which tool(s) to call, what arguments to pass, and what to expect back from the tools. Do **not** describe how the execution stage works, what execution will do with the output, or how downstream tasks use results. Do not describe the system; give instructions.
 
 **Execution section:** Write only what the **executor** needs to do its job. Include: what to do with Precursor (tool outputs and references), what output sections to produce (e.g. Result summary, skill-specific sections), and optionally an example. Do **not** describe the refinement stage, the runner, or downstream tasks (e.g. "plan_review will add these to References"). Do not describe the system; give instructions.
+
+### No implementation or plumbing language
+
+Skill refinement and execution bodies must **not** describe **how** the product wires prompts, tools, or templates. They should read like instructions for the refiner or executor, not like internal documentation.
+
+**Do not** use:
+
+- Names or paths of **internal executor prompts** (e.g. bundled `task_execution*.md` templates) or phrases like “Tool Output follows …”, “per the apply-file executor”, or “as in the X prompt”.
+- **UI or message layout** implementation details (e.g. “after **Project Description**”, “earlier in this message”) — use task-field names only: **What is needed**, **Precursor**, **References**, **Result summary**, **Change details**, and the fields those sections use.
+- **Tool wiring** explanations (“this skill uses the **write_file** executor”, “because **`tools:`** includes …”). The YAML **`tools`** key is for the parser/catalog; the skill body does not explain it.
+
+**Do** specify **what** to produce and **how** in task terms: which sections, which **Change details** bullets (**file_path**, **output_mode**, **complete_file**, etc.), when **Result summary** alone is enough, and when to use the **no changes needed** signal — without citing runner internals.
 
 ### Location and naming
 
@@ -165,17 +176,17 @@ Optional:
 
 - **tools** — Comma-separated list of tool names this skill uses (e.g. `web_search` or `read_file`, `grep` — use the exact name from the wrapped-tool @name). Omit if the skill uses no tools.
 
-**Principles:** (A) **Do not use read_file** — put content the skill needs in **References** so the runner injects it into Precursor. (B) **Each skill does one job** — e.g. produce revised content (plan_iterate) vs write the file (plan_apply_changes); do not combine read-then-write in one skill.
+**Principles:** (A) **Do not use read_file** — put content the skill needs in **References** so the runner injects it into Precursor. (B) **Each skill does one job** — e.g. research vs synthesize vs implement; do not combine unrelated steps in one skill definition.
 
-**Separator:** Use exactly `---` (double dash) on its own line after the front matter and again between the Refinement and Execution sections. So the file reads: front matter, `---`, `## Refinement` and its content, `---`, `## Execution` and its content. Do not duplicate the execution system template (task_execution.md); it already defines standard inputs and the Result summary / Detail shape. Skills add only what is **specific** to this skill. Do **not** reference docs/skills-format.md or any other doc path in skill files; the LLM does not have access to them.
+**Separator:** Use exactly `---` (double dash) on its own line after the front matter and again between the second and third parts. So the file reads: front matter, `---`, refinement body (lead-in **`**During refinement**`**, **not** `## Refinement`), `---`, execution body (lead-in **`**At execution**`**, **not** `## Execution`). Do not duplicate the standard executor prompt bundled with the runner; it already defines standard inputs and the Result summary / Detail shape. Skills add only what is **specific** to this skill. Do **not** reference docs/skills-format.md or any other doc path in skill files; the LLM does not have access to them.
 
-### Part 2: Refinement
+### Part 2: Refinement (second `---`-separated part; no `## Refinement` title)
 
-Under **## Refinement**, write only what the refiner needs: which tool calls to emit and with what arguments (or "No tool calls" and what to put in References); what information to **put in** (e.g. query phrasing, element_type, paths); what to **expect out** of the tools so the refiner can judge whether more calls are needed. If the skill uses multiple tool calls, state whether execution runs once on all outputs (combined) or once per tool result. Do not describe execution behaviour or downstream use of the output.
+In the **second part** of the file, write only what the refiner needs: which tool calls to emit and with what arguments (or "No tool calls" and what to put in References); what information to **put in** (e.g. query phrasing, element_type, paths); what to **expect out** of the tools so the refiner can judge whether more calls are needed. If the skill uses multiple tool calls, state whether execution runs once on all outputs (combined) or once per tool result. Do not describe execution behaviour or downstream use of the output. Start with a clear lead-in (e.g. **`**During refinement**`**) rather than a second-level heading titled “Refinement”.
 
-### Part 3: Execution (heading in skill file: `## Execution`)
+### Part 3: Execution (third `---`-separated part; no `## Execution` title)
 
-Under **## Execution**, write only what the executor needs: how to build Result summary, Detail, and any skill-specific sections from Precursor; what output sections this skill produces (beyond the standard); optionally an example. Do not describe refinement, the runner, or how other tasks use the output. Use heading + body or heading + sections with links consistently.
+In the **third part** of the file, write only what the executor needs: how to build Result summary, Detail, and any skill-specific sections from Precursor; what output sections this skill produces (beyond the standard); optionally an example. Do not describe refinement, the runner, or how other tasks use the output. Start with a clear lead-in (e.g. **At execution**) rather than a second-level heading titled “Execution”, so this part reads as instructions for the executor, not a duplicate document section title.
 
 ---
 

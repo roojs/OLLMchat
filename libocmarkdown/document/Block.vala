@@ -34,6 +34,19 @@ namespace Markdown.Document
 		}
 
 		/**
+		 * GFM-style anchor string for this heading (used by Document.register_heading and task parsers).
+		 */
+		public string slug()
+		{
+			var raw = this.text_content().strip();
+			if (raw == "") {
+				return "";
+			}
+			var key = new GLib.Regex("[^a-z0-9]+").replace(raw.down(), -1, 0, "-", 0);
+			return new GLib.Regex("^-+|-+$").replace(key, -1, 0, "", 0);
+		}
+
+		/**
 		 * Heading line plus section body as markdown. Used by Runner for
 		 * template placeholders (e.g. project-description, current-file).
 		 *

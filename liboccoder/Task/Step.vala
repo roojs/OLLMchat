@@ -86,8 +86,8 @@ public class Step : Object
 			}
 			uid++;
 			if (s == "") {
-				var skill = t.task_data.has_key("Skill") ?
-					t.task_data.get("Skill").to_markdown().strip() : "";
+				var skill = t.task_data.has_key("skill") ?
+					t.task_data.get("skill").to_markdown().strip() : "";
 				s = (skill != "" ? skill : "Task") + " " + uid.to_string();
 			} else {
 				s = s + "-" + uid.to_string();

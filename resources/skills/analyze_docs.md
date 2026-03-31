@@ -3,7 +3,7 @@ name: analyze_docs
 description: Use when you need to extract information from documentation. Input is a set of links in the task's References (to docs) and What is needed.
 ---
 
-## Refinement
+**During refinement**
 
 **Purpose of this skill:** Extract information from documentation; the executor needs links to docs (in References) and What is needed. Refinement fills in **References** so the executor can deliver what is needed.
 

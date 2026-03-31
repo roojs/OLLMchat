@@ -56,7 +56,7 @@ namespace OLLMcoder.Skill
 		/** ## heading + fenced code block. Uses file.language (FileBase; set by detect_language()). Exception: we do output the header (and empty block if needed) when file content is empty. Caller must not pass null file. */
 		public string header_file(string heading, OLLMfiles.File file)
 		{
-			var body = file.get_contents(200);
+			var body = file.contents(200);
 			var fence = (body.index_of("\n```") >= 0 || body.has_prefix("```")) ? "~~~~" : "```";
 			return "## " + heading.strip() + "\n\n"
 				+ fence

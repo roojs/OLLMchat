@@ -39,7 +39,7 @@ namespace OLLMcoder.Skill
 			this.skill_name = skill_name != "" ? skill_name : "task_creator";
 		}
 
-		/** Returns active file; ensures buffer exists so caller can call get_contents(). */
+		/** Returns active file; ensures buffer exists so caller can call contents(). */
 		public OLLMfiles.File? current_file()
 		{
 			var file = this.project_manager.active_file;
