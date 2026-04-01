@@ -487,65 +487,80 @@ public class ResultParser : Object
 	 * @param ex the Tool (exec run) to fill with result summary and document
 	 * @return true on success; false on missing Result summary (issues appended)
 	 */
-	public bool exec_extract(Tool ex)
+	public bool exec_extract (Tool ex)
 	{
-		if (!this.document.headings.has_key("result-summary")) {
+		if (!this.document.headings.has_key ("result-summary")) {
 			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
 				"It was missing or not found in the response. " +
 				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
 			return false;
 		}
-		ex.summary = this.document.headings.get("result-summary");
+		ex.summary = this.document.headings.get ("result-summary");
 		ex.document = this.document;
-		var sum_render = new Markdown.Document.Render();
-		sum_render.parse(ex.summary.to_markdown_with_content());
-		var vl_sum = new ValidateLink(this.runner, ex.parent, MarkdownPhase.POST_EXEC);
-		vl_sum.validate_all(sum_render.document.links);
+		var sum_render = new Markdown.Document.Render ();
+		sum_render.parse (ex.summary.to_markdown_with_content ());
+		if (ex.parent.skill.tools.contains ("write_file")) {
+			ex.writes.clear ();
+			foreach (var slug in this.document.header_list) {
+				if (slug == "result-summary") {
+					continue;
+				}
+				var hb = this.document.headings.get (slug);
+				if (hb.parent != this.document) {
+					continue;
+				}
+				if (!slug.has_prefix ("change-details")) {
+					this.issues += "\nWrite executor: unexpected top-level section (use ## Change details or Path 2 only): \"" + slug + "\".";
+					continue;
+				}
+				var wc = new WriteChange.from_header (hb, ex.parent.runner.sr_factory.project_manager);
+				if (wc.issues == "") {
+					ex.writes.add (wc);
+					continue;
+				}
+				this.issues += "\n"
+					+ "Change details — " + hb.text_content ().strip () + ":"
+					+ wc.issues.strip ();
+			}
+			if (this.issues != "") {
+				return false;
+			}
+		}
+		var vl_sum = new ValidateLink (this.runner, ex.parent, MarkdownPhase.EXECUTION) {
+			writes = ex.writes,
+			document = sum_render.document
+		};
+		vl_sum.validate_all (sum_render.document.links);
 		if (vl_sum.issues != "") {
 			this.issues += vl_sum.issues;
 			return false;
 		}
-		if (!ex.parent.skill_manager.fetch(ex.parent).tools.contains("write_file")) {
+		foreach (var link in sum_render.document.links) {
+			if (link.path != "" || link.hash == "") {
+				continue;
+			}
+			foreach (var wc in ex.writes) {
+				if (!wc.document.headings.has_key (link.hash)) {
+					continue;
+				}
+				link.up_relpath (wc.file_path.strip ());
+				break;
+			}
+		}
+		if (sum_render.document.headings.has_key ("result-summary")) {
+			ex.summary = sum_render.document.headings.get ("result-summary");
+		}
+		/* Full executor tree stays in ResultParser.this.document (Path 2 still uses this.document.to_markdown ()).
+		   ex.document still aliases this.document until Tool.run replaces ex.document with a new summary-only Document (§5.7a). */
+		if (!ex.parent.skill.tools.contains ("write_file") || ex.writes.size > 0) {
 			return true;
 		}
-		ex.writes.clear();
-		var write_path_issues_start = this.issues.length;
-		foreach (var slug in this.document.header_list) {
-			if (slug == "result-summary") {
-				continue;
-			}
-			var hb = this.document.headings.get(slug);
-			if (hb.parent != this.document) {
-				continue;
-			}
-			if (!slug.has_prefix("change-details")) {
-				this.issues += "\nWrite executor: unexpected top-level section (use ## Change details or Path 2 only): \"" + slug + "\".";
-				continue;
-			}
-			var wc = new WriteChange.from_header (hb, ex.parent.runner.sr_factory.project_manager);
-			if (wc.issues == "") {
-				ex.writes.add(wc);
-				continue;
-			}
-			this.issues += "\n"
-				+ "Change details — " + hb.text_content().strip() + ":"
-				+ wc.issues.strip();
+		var md = this.document.to_markdown ().strip ();
+		if (md.down ().contains ("**no changes needed**")) {
+			return true;
 		}
-		if (ex.writes.size == 0) {
-			if (this.issues.length > write_path_issues_start) {
-				return false;
-			}
-			var md = this.document.to_markdown().strip();
-			if (md.down().contains("**no changes needed**")) {
-				return true;
-			}
-			this.issues += "\nWrite executor output must include a recognizable Change details section, or Path 2 (full markdown must contain **no changes needed**).";
-			return false;
-		}
-		if (this.issues.length > write_path_issues_start) {
-			return false;
-		}
-		return true;
+		this.issues += "\nWrite executor output must include a recognizable Change details section, or Path 2 (full markdown must contain **no changes needed**).";
+		return false;
 	}
 
 	/**
@@ -565,7 +580,9 @@ public class ResultParser : Object
 		task.out_doc = this.document;
 		var sum_render = new Markdown.Document.Render();
 		sum_render.parse(task.post_summary.to_markdown_with_content());
-		var vl_sum = new ValidateLink(task.runner, task, MarkdownPhase.POST_EXEC);
+		var vl_sum = new ValidateLink (task.runner, task, MarkdownPhase.POST_EXEC) {
+			document = this.document
+		};
 		vl_sum.validate_all(sum_render.document.links);
 		task.issues += vl_sum.issues;
 		if (task.issues != "") {

@@ -29,6 +29,18 @@ namespace OLLMcoder.Task
 		/** From list: `fenced` or `next_section`; kept for logging/UI only. */
 		public string output_mode { get; set; default = ""; }
 
+		/**
+		 * Parsed copy of the body for heading and fragment (hash) resolution.
+		 *
+		 * For `output_mode` next_section, always filled with {@link Markdown.Document.Render.parse}
+		 * on `content` (section body is markdown). For a fenced body, filled only when the
+		 * fence `lang` is exactly `markdown` or `md` (case-insensitive after strip); otherwise empty.
+		 * Omitted from the write_file tool JSON via serialize_property.
+		 */
+		public Markdown.Document.Document document {
+			get; set; default = new Markdown.Document.Document ();
+		}
+
 		// --- write_file tool arguments (included in Json.gobject_serialize for exec) ---
 
 		public string file_path { get; set; default = ""; }
@@ -67,6 +79,7 @@ namespace OLLMcoder.Task
 				case "output-mode":
 				case "issues":
 				case "project_manager":
+				case "document":
 					return null;
 				default:
 					return default_serialize_property(property_name, value, pspec);
@@ -174,6 +187,9 @@ namespace OLLMcoder.Task
 					return;
 				}
 				this.content = body;
+				var body_render = new Markdown.Document.Render ();
+				body_render.parse (this.content);
+				this.document = body_render.document;
 				this.validate_structure();
 				return;
 			}
@@ -204,6 +220,12 @@ namespace OLLMcoder.Task
 			}
 			if (this.output_mode.strip().down() != "replace") {
 				this.content = code;
+				var fence_lang = fence_block.lang.strip ().down ();
+				if (fence_lang == "markdown" || fence_lang == "md") {
+					var body_render = new Markdown.Document.Render ();
+					body_render.parse (this.content);
+					this.document = body_render.document;
+				}
 				this.validate_structure();
 				return;
 			}
@@ -226,6 +248,12 @@ namespace OLLMcoder.Task
 				code = code.substring(0, code.length - 1);
 			}
 			this.content = code;
+			var fence_lang = fence_block.lang.strip ().down ();
+			if (fence_lang == "markdown" || fence_lang == "md") {
+				var body_render = new Markdown.Document.Render ();
+				body_render.parse (this.content);
+				this.document = body_render.document;
+			}
 			this.validate_structure();
 		}
 

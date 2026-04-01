@@ -38,11 +38,19 @@ namespace OLLMcoder.Skill
 			this.skills_directories = skills_directories;
 		}
 
-		/** Returns true if task's skill exists in by_name; false otherwise. Caller generates error message. */
+		/**
+		 * Returns true if task's skill name is non-empty and exists in by_name; false otherwise.
+		 * On success, assigns {@link OLLMcoder.Task.Details.skill} from {@link by_name}.
+		 * Caller generates error messages when false.
+		 */
 		public bool validate(OLLMcoder.Task.Details task)
 		{
 			var skill_name = task.task_data.get("skill").to_markdown().strip();
-			return skill_name != "" && this.by_name.has_key(skill_name);
+			if (skill_name != "" && this.by_name.has_key(skill_name)) {
+				task.skill = this.by_name.get(skill_name);
+				return true;
+			}
+			return false;
 		}
 
 		/** Skill name from task; call only after validate(task). */

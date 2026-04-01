@@ -167,12 +167,11 @@ namespace OLLMcoder.Task
 		 */
 		protected override async void fill_model()
 		{
-			var definition = this.parent.skill_manager.fetch(this.parent);
-			if (!definition.header.has_key("model")) {
+			if (!this.parent.skill.header.has_key("model")) {
 				yield base.fill_model();
 				return;
 			}
-			var skill_model = definition.header.get("model").strip();
+			var skill_model = this.parent.skill.header.get("model").strip();
 			if (skill_model != "" && this.connection.models.has_key(skill_model)) {
 				this.chat_call.model = skill_model;
 				// this.add_message(new OLLMchat.Message("ui", "skill using " + skill_model + " model."));
@@ -298,6 +297,11 @@ namespace OLLMcoder.Task
 					foreach (var w in this.writes) {
 						yield w.exec (this);
 					}
+					if (this.parent.skill.tools.contains ("write_file")) {
+						var summary_only = new Markdown.Document.Render ();
+						summary_only.parse (this.summary.to_markdown_with_content ());
+						this.document = summary_only.document;
+					}
 					return;
 				}
 				this.parent.runner.replay_step("exec_parse_issues",
@@ -345,17 +349,16 @@ namespace OLLMcoder.Task
 			string previous_analysis = "",
 			string previous_issues = "") throws GLib.Error
 		{
-			var definition = this.parent.skill_manager.fetch(this.parent);
 			var project = this.parent.runner.sr_factory.project_manager.active_project;
 			var project_description = (project == null) ? "" : project.project_description();
 			var tpl = OLLMcoder.Skill.PromptTemplate.template(
-				definition.tools.contains("write_file")
+				this.parent.skill.tools.contains("write_file")
 					? "task_execution_write.md"
 					: "task_execution.md");
 			tpl.system_fill(0);
 			tpl.fill(6,
 				"what_is_needed", this.parent.task_data.get("what is needed").to_markdown(),
-				"skill_definition", definition.execute,
+				"skill_definition", this.parent.skill.execute,
 				"project_description", project_description,
 				"executor_input", executor_input,
 				"executor_previous_analysis", previous_analysis.strip() == "" ? "" :

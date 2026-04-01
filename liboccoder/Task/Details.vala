@@ -104,6 +104,16 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
+	 * Resolved YAML skill for this task.
+	 *
+	 * Set when {@link OLLMcoder.Skill.Manager.validate} succeeds (same check as catalog
+	 * membership), e.g. from {@link ResultParser.validate_task} for list-phase tasks or
+	 * {@link List.validate_skills}. Downstream code assumes this is set before refinement or
+	 * execution once the task list has been validated.
+	 */
+	public OLLMcoder.Skill.Definition skill { get; set; }
+
+	/**
 	 * Parser for last refine or executor response; exec_runs valid after exec_done
 	 * (from exec_runs). Initialized in ctor so issues is always available.
 	 */
@@ -385,9 +395,8 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	public OLLMcoder.Skill.PromptTemplate refinement_prompt() throws GLib.Error
 	{
-		var definition = this.skill_manager.fetch(this);
 		var tpl = OLLMcoder.Skill.PromptTemplate.template(
-			definition.tools.size > 0 && !definition.tools.contains("write_file")
+			this.skill.tools.size > 0 && !this.skill.tools.contains("write_file")
 				? "task_refinement.md"
 				: "task_refinement_references.md");
 		tpl.system_fill(0);
@@ -399,8 +408,8 @@ public class Details : OLLMchat.Agent.Base
 			"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
 				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
 			"task_reference_contents", this.reference_contents(MarkdownPhase.REFINEMENT),
-			"skill_details", definition.refine,
-			"tool_instructions", this.tool_instructions(definition),
+			"skill_details", this.skill.refine,
+			"tool_instructions", this.tool_instructions(this.skill),
 			"completed_task_list", (completed_md == "" ? "" :
 				"## Completed tasks (so far) for your reference only\n\n" + completed_md));
 		return tpl;
@@ -408,7 +417,7 @@ public class Details : OLLMchat.Agent.Base
 
 	/**
 	 * Refinement: fill template. Caller has validated via skill_manager.validate(this);
-	 * definition from skill_manager.fetch(this) is non-null. Details builds
+	 * definition from this.skill is non-null. Details builds
 	 * task_reference_contents by looping references and asking Runner
 	 * for each item (see "Building the task reference block").
 	 * Up to 5 refinement attempts; up to 3 communication retries per attempt.
@@ -497,12 +506,11 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	protected override async void fill_model()
 	{
-		var definition = this.skill_manager.fetch(this);
-		if (!definition.header.has_key("model")) {
+		if (!this.skill.header.has_key("model")) {
 			yield base.fill_model();
 			return;
 		}
-		var skill_model = definition.header.get("model").strip();
+		var skill_model = this.skill.header.get("model").strip();
 		if (skill_model != "" && this.connection.models.has_key(skill_model)) {
 			this.chat_call.model = skill_model;
 			// this.add_message(new OLLMchat.Message("ui", "skill using " + skill_model + " model."));
@@ -840,7 +848,6 @@ public class Details : OLLMchat.Agent.Base
 	public OLLMcoder.Skill.PromptTemplate post_exec_prompt(
 			string previous_response, string retry_issues) throws GLib.Error
 	{
-		var definition = this.skill_manager.fetch(this);
 		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_post_exec.md");
 		tpl.system_fill(0);
 		string[] run_blocks = {};
@@ -853,8 +860,8 @@ public class Details : OLLMchat.Agent.Base
 		}
 		tpl.fill(6,
 			"task_definition", this.to_markdown(MarkdownPhase.POST_EXEC),
-			"skill_name", definition.header.get("name"),
-			"skill_execute_body", definition.execute,
+			"skill_name", this.skill.header.get("name"),
+			"skill_execute_body", this.skill.execute,
 			"tool_runs_combined", string.joinv("\n\n---\n\n", run_blocks),
 			"post_exec_previous_output",
 			previous_response.strip() == "" ? "" :
