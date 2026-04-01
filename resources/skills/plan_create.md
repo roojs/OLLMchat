@@ -10,6 +10,8 @@ tools: write_file
 
 You receive **what is needed** for this task and a **summary of the task list so far executed** (including output summaries from previous tasks). Fill in **References** so the executor can deliver what is needed — e.g. goals, prior research or analyze_code outputs, and relevant doc or code sections. **Avoid whole files** — add **code sections** or **references to parts of a task output** (e.g. file + section/method/snippet) rather than full file contents.
 
+Put all of those links in **Shared references**; omit **Examination references**. The executor should see one precursor with everything needed to draft the plan.
+
 When the user wants the plan **written to disk**, include the **target plan path** (absolute or repo-relative) in **What is needed** or **References** so **Change details** can set **file_path**. If no path is given and choosing one would be guesswork, give **Result summary** only: explain what to add or refine next, recommendations, and the **`no changes needed`** line — **no** **Change details** that write a file.
 
 ---
