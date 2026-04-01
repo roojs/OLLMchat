@@ -514,13 +514,16 @@ public class ResultParser : Object
 					continue;
 				}
 				var wc = new WriteChange.from_header (hb, ex.parent.runner.sr_factory.project_manager);
-				if (wc.issues == "") {
-					ex.writes.add (wc);
+				if (wc.issues != "") {
+					this.issues += "\n"
+						+ "Change details — " + hb.text_content ().strip () + ":"
+						+ wc.issues.strip ();
 					continue;
 				}
-				this.issues += "\n"
-					+ "Change details — " + hb.text_content ().strip () + ":"
-					+ wc.issues.strip ();
+				ex.writes.add (wc);
+				if (wc.output_mode.strip ().down () == "next_section") {
+					break;
+				}
 			}
 			if (this.issues != "") {
 				return false;
