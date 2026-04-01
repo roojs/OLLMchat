@@ -28,6 +28,22 @@ public class ValidateLink : GLib.Object
 	MarkdownPhase stage;
 
 	/**
+	 * Change-detail sections used to resolve fragment links (hash targets).
+	 * In exec_extract, assign the same list as the Tool's writes; may be empty.
+	 */
+	public Gee.ArrayList<WriteChange> writes {
+		get; set; default = new Gee.ArrayList<WriteChange> ();
+	}
+
+	/**
+	 * Parsed Result summary (or synthesis slice) for fragment fallback when writes do not match.
+	 * Default empty until set by ResultParser before validate_all.
+	 */
+	public Markdown.Document.Document document {
+		get; set; default = new Markdown.Document.Document ();
+	}
+
+	/**
 	 * Cumulative validation messages. [[validate]] / [[validate_all]] append only; use a new [[ValidateLink]] for a clean buffer.
 	 */
 	public string issues { get; private set; default = ""; }
@@ -43,6 +59,28 @@ public class ValidateLink : GLib.Object
 	}
 
 	/**
+	 * Whether link.hash matches a heading in any WriteChange body or in this.document.
+	 *
+	 * Only considers bare fragment links (empty path and non-empty hash). If the model
+	 * emits path-plus-hash links, extend this helper once that shape appears in executor output.
+	 *
+	 * @param link parsed link (fragment-style: path empty, hash set)
+	 * @return true if the anchor resolves in writes or document
+	 */
+	public bool check_writes (Markdown.Document.Format link)
+	{
+		if (link.path != "" || link.hash == "") {
+			return false;
+		}
+		foreach (var wc in this.writes) {
+			if (wc.document.headings.has_key (link.hash)) {
+				return true;
+			}
+		}
+		return this.document.headings.has_key (link.hash);
+	}
+
+	/**
 	 * Validate one link; appends lines (each prefixed with \\n) to [[issues]].
 	 */
 	public void validate (Markdown.Document.Format link)
@@ -53,8 +91,12 @@ public class ValidateLink : GLib.Object
 				return;
 			}
 			switch (this.stage) {
+				case MarkdownPhase.EXECUTION:
 				case MarkdownPhase.POST_EXEC:
 					if (this.details.out_doc.headings.has_key (link.hash)) {
+						return;
+					}
+					if (this.check_writes (link)) {
 						return;
 					}
 					break;
@@ -96,6 +138,7 @@ public class ValidateLink : GLib.Object
 	{
 		switch (this.stage) {
 			case MarkdownPhase.LIST:
+			case MarkdownPhase.EXECUTION:
 			case MarkdownPhase.POST_EXEC:
 				return;
 			case MarkdownPhase.REFINEMENT:
@@ -134,6 +177,7 @@ public class ValidateLink : GLib.Object
 					resolved_path)) {
 			switch (this.stage) {
 				case MarkdownPhase.REFINEMENT:
+				case MarkdownPhase.EXECUTION:
 				case MarkdownPhase.POST_EXEC:
 					this.issues += "\n" + "Invalid reference target \"" + link.href +
 						"\": path is a directory; use a file path, not a folder.";
@@ -164,6 +208,7 @@ public class ValidateLink : GLib.Object
 		}
 		switch (this.stage) {
 			case MarkdownPhase.REFINEMENT:
+			case MarkdownPhase.EXECUTION:
 			case MarkdownPhase.POST_EXEC:
 				this.issues += "\n" + "Invalid reference target \"" + link.href +
 					"\": path is a directory; use a file path, not a folder.";
@@ -190,6 +235,7 @@ public class ValidateLink : GLib.Object
 			return;
 		}
 		switch (this.stage) {
+			case MarkdownPhase.EXECUTION:
 			case MarkdownPhase.POST_EXEC:
 				if (slug == this.details.slug ()) {
 					this.issues += "\n" + "Invalid reference target \"" + link.href +
