@@ -13,6 +13,7 @@ When fixing a bug, follow this order. Do not skip steps or apply code changes be
 - Reproduce the failure.
 - Add **minimal, targeted** logging—only what’s needed to see the real values and control flow. Don’t splatter debug code everywhere; keep it small so we’re less likely to forget to remove it.
 - Use **GLib.debug()** for debug output. Do not add method/class name in the message—file and line are already in the output.
+- **OLLMchat test apps** (`TestAppBase`, main app): `GLib.debug()` is routed through `ApplicationInterface.debug_log`. Pass **`--debug`** so debug lines are printed to stderr. Setting `G_MESSAGES_DEBUG` alone is not enough for those programs because the default GLib log handler is replaced.
 - Prefer **readable output**: use strings when they’re more relevant than raw numbers (e.g. paths, IDs with context, “found”/“not found”); length alone is rarely enough. Output length is fine if it helps.
 - Run and capture evidence. Do not guess.
 

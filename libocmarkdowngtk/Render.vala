@@ -411,7 +411,7 @@ namespace MarkdownGtk
 		public override void on_list(bool is_start)
 		{
 			if (!is_start) {
-				this.current_state.close_state();
+				// End of LIST_BLOCK is always emitted after on_li(false); there is no matching open in on_list(true).
 				this.current_state.add_text("\n");
 			}
 		}
