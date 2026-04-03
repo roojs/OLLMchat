@@ -293,12 +293,7 @@ Examples:
 			return;
 		}
 		assert(this.md_renderer.childview != null);
-		var tlines = this.file_markdown.split("\n");
-		for (var ti = 0; ti < tlines.length; ti++) {
-			this.md_renderer.childview.add_code_text(
-				ti < tlines.length - 1 ? tlines[ti] + "\n" : tlines[ti]
-			);
-		}
+		this.md_renderer.childview.add_code_text(this.file_markdown);
 		this.md_renderer.childview.end_code_block();
 		GLib.Timeout.add(200, () => {
 			this.text_view_box.queue_resize();
@@ -340,21 +335,11 @@ Examples:
 			if (think != "") {
 				this.md_renderer.on_code_block(true, "markdown.oc-frame-info.thinking oc-test-gtkmd");
 				assert(this.md_renderer.childview != null);
-				var tlines = think.split("\n");
-				for (var ti = 0; ti < tlines.length; ti++) {
-					this.md_renderer.childview.add_code_text(
-						ti < tlines.length - 1 ? tlines[ti] + "\n" : tlines[ti]
-					);
-				}
+				this.md_renderer.childview.add_code_text(think);
 				this.md_renderer.childview.end_code_block();
 			}
 			if (body != "") {
-				var blines = body.split("\n");
-				for (var bi = 0; bi < blines.length; bi++) {
-					this.md_renderer.add(
-						bi < blines.length - 1 ? blines[bi] + "\n" : blines[bi]
-					);
-				}
+				this.md_renderer.add(body);
 				this.md_renderer.flush();
 			}
 		}
@@ -374,12 +359,13 @@ Examples:
 			});
 			return;
 		}
-		var lines = markdown_content.split("\n");
-		int[] line_i = { 0 };
+		// Same chunk strategy as stream_content_chunks (2–8 Unicode chars, ~30ms), not line-by-line.
+		int[] pos = { 0 };
 		const uint interval_ms = 30;
 		GLib.Timeout.add(interval_ms, () => {
 			assert(this.md_renderer.childview != null);
-			if (line_i[0] >= lines.length) {
+			var cc = markdown_content.char_count();
+			if (pos[0] >= cc) {
 				this.md_renderer.childview.end_code_block();
 				GLib.Timeout.add(200, () => {
 					this.md_renderer.box.queue_resize();
@@ -388,10 +374,12 @@ Examples:
 				});
 				return false;
 			}
-			this.md_renderer.childview.add_code_text(
-				line_i[0] < lines.length - 1 ? lines[line_i[0]] + "\n" : lines[line_i[0]]
-			);
-			line_i[0]++;
+			var chunk_chars = (int) (GLib.Random.next_int() % 7 + 2);
+			var end_ci = int.min(pos[0] + chunk_chars, cc);
+			var start_byte = markdown_content.index_of_nth_char(pos[0]);
+			var end_byte = end_ci >= cc ? markdown_content.length : markdown_content.index_of_nth_char(end_ci);
+			this.md_renderer.childview.add_code_text(markdown_content.substring(start_byte, end_byte - start_byte));
+			pos[0] = end_ci;
 			GLib.Idle.add(() => {
 				var vadj = this.scrolled.vadjustment;
 				if (vadj.upper < 100.0) {

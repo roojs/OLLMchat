@@ -245,11 +245,6 @@ namespace Markdown
 			var str = "";
 			// Start of current TEXT run in chunk, not yet merged into str (bytes). Slice: [text_start_pos, chunk_pos).
 			var text_start_pos = 0;
-			// Large-chunk diagnostics (see docs/plans/6.8); two GLib.debug facts only, per CODING_STANDARDS.
-			bool dbg_large = in_chunk.length > 8192;
-			if (dbg_large) {
-				GLib.debug("chunk_len=%d in_len=%d block=%d", chunk.length, in_chunk.length, (int) this.current_block);
-			}
 
 			while (chunk_pos < chunk.length) {
 				saved_chunk_pos = chunk_pos;
@@ -560,10 +555,6 @@ namespace Markdown
 				chunk_pos += c.to_string().length;
 				this.at_line_start = false;
 				continue;
-			}
-
-			if (dbg_large) {
-				GLib.debug("after loop pos=%d len=%d str_len=%d", chunk_pos, chunk.length, str.length);
 			}
 
 			// Flush any remaining text
