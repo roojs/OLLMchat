@@ -579,7 +579,7 @@ namespace MarkdownGtk
 			}
 			
 			// Stream to nested markdown renderer when this is a ```markdown block
-			// Feeds libocmarkdown Parser.add (see docs/plans/6.8-fixing-large-restore.md); incremental line-by-line add is the dominant cost for large thinking blocks.
+			// Feeds libocmarkdown Parser.add (see docs/plans/done/6.8-DONE-fixing-large-restore.md); incremental line-by-line add is the dominant cost for large thinking blocks.
 			if (this.nested_markdown_render != null) {
 				// GLib.debug(
 				// 	"nested add cum=%d chunk=%d",
