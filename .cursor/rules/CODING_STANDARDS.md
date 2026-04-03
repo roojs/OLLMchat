@@ -27,8 +27,11 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **New methods**: Does the plan **avoid introducing new methods** unless the user or the plan **explicitly** calls for them? Default to changing **existing** methods / call sites. Whether to extract a helper is a **user** decision, not the LLM’s — do not assume a new method is warranted.
 - **Docblocks**: Do new or modified docblocks follow the code documentation standards and use multiline form (not short one-liners)? See "Docblocks / code documentation" below.
 - **Debug time**: Does the plan avoid putting timestamps or monotonic time in `GLib.debug()` / `GLib.warning()` messages (log output already includes time)? See "Debug and Warning Statements" below.
+- **Debug output vs debug-only logic**: Does the plan avoid any gating, sampling, throttling, or “sparse debug” logic? Debug is toggled outside the app (`--debug`, log domains, etc.); use unconditional `GLib.debug()` at real boundaries only. See "Debug and Warning Statements" below.
 
 These checklist items should be copied (or referenced) at the top of new plan documents in `docs/plans/` so they can be quickly verified.
+
+**Plan layout** (brief summaries, code hunks with **`#### Remove` / `Replace with` / `Add` / `Keep`**, minimal prose): **`docs/plans/README.md`**.
 
 ## Docblocks / code documentation
 
@@ -880,7 +883,11 @@ already includes a time prefix from the logging pipeline or
 application; repeating time in the message is redundant and clutters
 logs.
 
-**IMPORTANT:** When asked to add debugging, use at most 3-4 debug statements, preferably just one targeted debug statement. Avoid "splattering" debug statements everywhere - be selective and focus on the key points that will help diagnose the issue.
+**IMPORTANT:** **Debugging is output, not new program structure.** Strongly avoid adding instance fields, static counters, extra parameters, flags, or branches whose **only** purpose is to support, sample, gate, or **reduce the volume of** debug output. Prefer placing `GLib.debug()` at **important existing points** in the real control flow (after a substantive call, before return, at a real phase boundary) and logging values already in scope. Do **not** add logic solely to make logs “sparse” or quieter—use logging controls instead. When you must choose between **more `GLib.debug()` lines** and **extra code** whose only job is to conditionalize or throttle those lines, add the lines unconditionally.
+
+**WARNING (strict — do not repeat this mistake):** Do **not** introduce **sampling**, **throttling**, **gating**, or **“every Nth”** behaviour to control how much debug runs. That includes: counters, `i % N == 0`, boundary-crossing arithmetic (`len / 8192 != …`), locals like `crossed_*` used only around `GLib.debug()`, or `if (verbose)` flags whose only job is to skip logs. **Debug volume is not a problem to solve in code.** Operators disable or enable debug via the logging pipeline (`--debug`, `G_MESSAGES_DEBUG`, domains, build flags, or removing lines later)—**never** implement “sparse” debug inside the application. Prefer **unconditional** `GLib.debug()` at **fixed semantic sites** (real phase boundaries). Verbose logs in hot paths are acceptable; gating them is not. Violating this rule has wasted real debugging time; treat it as prohibited unless the user explicitly approves an exception.
+
+**IMPORTANT:** When adding debugging, pick **meaningful** places (substantive calls, phase boundaries, returns)—preferably a **small number of high-value** `GLib.debug()` lines in one change, not noise on every line. That is **not** permission to throttle: do **not** gate or sample to stay under a numeric cap. If many lines are genuinely needed, add them unconditionally and rely on log controls to turn output off later.
 
 **IMPORTANT:** For CLI/example apps, route debug output through the
 standard `--debug` option handled by the app/test base classes. Do
@@ -914,6 +921,14 @@ GLib.debug("Processing item 2");
 GLib.debug("Processing item 3");
 GLib.debug("Finished processing");
 GLib.debug("Returning result");
+```
+
+**Bad (debug-only control flow — prohibited):**
+```vala
+this.feed_diag_n++;
+if (this.feed_diag_n % 32 == 0) { GLib.debug("…"); }
+// or: len_before / 8192 != len_after / 8192 solely to gate GLib.debug()
+// or: bool crossed = … only used for if (crossed) { GLib.debug(…); }
 ```
 
 **Good:**

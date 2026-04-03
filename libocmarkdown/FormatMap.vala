@@ -315,7 +315,7 @@ namespace Markdown
 			}
 			if (html_res == 0) {
 				var html_text = chunk.substring(chunk_pos, seq_pos - chunk_pos);
-				str += html_text;
+				str = str + html_text;
 				chunk_pos = seq_pos;
 				return false;
 			}

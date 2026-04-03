@@ -339,7 +339,7 @@ namespace MarkdownGtk
 		public override void on_h(bool is_start, uint level)
 		{
 			if (!is_start) {
-				this.current_state.close_state();
+				this.current_state.close_state(true);
 				return;
 			}
 			
@@ -419,7 +419,7 @@ namespace MarkdownGtk
 		public override void on_li(bool is_start, int list_number = 0, uint space_skip = 0, int task_checked = -1)
 		{
 			if (!is_start) {
-				this.current_state.close_state();
+				this.current_state.close_state(true);
 				this.current_state.add_text("\n");
 				return;
 			}
@@ -472,7 +472,7 @@ namespace MarkdownGtk
 		public override void on_code(bool is_start, string lang, char fence_char)
 		{
 			if (!is_start) {
-				this.current_state.close_state();
+				this.current_state.close_state(true);
 				return;
 			}
 			
@@ -485,7 +485,7 @@ namespace MarkdownGtk
 		public override void on_p(bool is_start)
 		{
 			if (!is_start) {
-				this.current_state.close_state();
+				this.current_state.close_state(true);
 				return;
 			}
 			
