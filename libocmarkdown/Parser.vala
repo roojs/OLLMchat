@@ -158,9 +158,6 @@ namespace Markdown
 		/** True when at the first character of list item content (after marker); avoid ending list on block_match == 0 there. */
 		public bool at_list_start { get; set; default = false; }
 
-		private static uint _dbg_fenced_interior_stall = 0;
-		private static uint _dbg_fenced_linestart_stall = 0;
-
 		/**
 		 * Creates a new Parser instance.
 		 * 
@@ -246,7 +243,13 @@ namespace Markdown
 			// Flushed on format match, newline, need-more-input, or end of add();
 			// never contains newlines.
 			var str = "";
-			//GLib.debug("  [str] INIT: str='%s' (empty)", str);
+			// Start of current TEXT run in chunk, not yet merged into str (bytes). Slice: [text_start_pos, chunk_pos).
+			var text_start_pos = 0;
+			// Large-chunk diagnostics (see docs/plans/6.8); two GLib.debug facts only, per CODING_STANDARDS.
+			bool dbg_large = in_chunk.length > 8192;
+			if (dbg_large) {
+				GLib.debug("chunk_len=%d in_len=%d block=%d", chunk.length, in_chunk.length, (int) this.current_block);
+			}
 
 			while (chunk_pos < chunk.length) {
 				saved_chunk_pos = chunk_pos;
@@ -256,7 +259,11 @@ namespace Markdown
 				//GLib.debug("chunk_pos=%d, c='%s', at_line_start=%s, current_block=%s",
 				//	 chunk_pos, c.to_string(), this.at_line_start.to_string(), this.current_block.to_string());
 				if (c == '\n') {
-					this.handle_line_break(ref chunk_pos, ref str);
+					if (saved_chunk_pos > text_start_pos) {
+						str = str + chunk.substring(text_start_pos, saved_chunk_pos - text_start_pos);
+						text_start_pos = saved_chunk_pos;
+					}
+					this.handle_line_break(ref chunk_pos, ref str, ref text_start_pos);
 					escape_next = false;
 					continue;
 				}
@@ -267,56 +274,61 @@ namespace Markdown
 					 || this.current_block == FormatType.FENCED_CODE_TILD) {
 					if (!this.at_line_start) {
 						if (this.blockmap.check_fenced_newline(ref chunk_pos, chunk)) {
-							assert(str == "");
+							assert(str == "" && text_start_pos == chunk_pos);
 							return;
 						}
-						if (chunk_pos == saved_chunk_pos && _dbg_fenced_interior_stall < 16u) {
-							_dbg_fenced_interior_stall++;
-							GLib.debug("fenced interior: chunk_pos unchanged after check_fenced_newline (pos=%d, c=%s)", chunk_pos, c.to_string());
+						if (chunk_pos != saved_chunk_pos) {
+							text_start_pos = chunk_pos;
 						}
 						continue;
 					}
 					// At line start - check for closing fence
 					var fence_result = this.blockmap.peekFencedEnd(chunk, ref chunk_pos, this.current_block, is_end_of_chunks);
 					if (this.blockmap.handle_fence_result(fence_result, ref chunk_pos, chunk)) {
-						assert(str == "");
+						assert(str == "" && text_start_pos == chunk_pos);
 						return;
 					}
-					if (chunk_pos == saved_chunk_pos && _dbg_fenced_linestart_stall < 16u) {
-						_dbg_fenced_linestart_stall++;
-						GLib.debug("fenced line-start: no net advance after peek+handle (fence_result=%d, pos=%d)", fence_result, chunk_pos);
+					if (chunk_pos != saved_chunk_pos) {
+						text_start_pos = chunk_pos;
 					}
 					continue;
 				}
-				
-				
-				 
-				
+
 				// In table: at line start, consume one full line and either feed as row or end table
 				if (this.at_line_start && this.current_block == FormatType.TABLE) {
 					if (this.table_state.handle_line_start(ref chunk_pos, chunk, is_end_of_chunks)) {
-						assert(str == "");
+						assert(str == "" && text_start_pos == chunk_pos);
 						return;
 					}
+					text_start_pos = chunk_pos;
 					continue;
 				}
 
 				// this makes more sense as a location to check of rescaping - before we do block.
 				if (escape_next) {
-					var char_str = c.to_string();
-					str += char_str;
+					if (saved_chunk_pos > text_start_pos) {
+						str = str + chunk.substring(text_start_pos, saved_chunk_pos - text_start_pos);
+						text_start_pos = saved_chunk_pos;
+					}
+					str = str + c.to_string();
 					escape_next = false;
 					chunk_pos += c.to_string().length;
+					text_start_pos = chunk_pos;
 					this.at_line_start = false;
 					continue;
 				}
 				if (c == '\\') {
+					if (saved_chunk_pos > text_start_pos) {
+						str = str + chunk.substring(text_start_pos, saved_chunk_pos - text_start_pos);
+						text_start_pos = saved_chunk_pos;
+					}
 					if (this.at_line_start && this.current_block == FormatType.NONE) {
 						this.current_block = FormatType.PARAGRAPH;
 						this.do_block(true, FormatType.PARAGRAPH);
 					}
 					escape_next = true;
 					chunk_pos += c.to_string().length;
+					text_start_pos = chunk_pos;
 					this.at_line_start = false;
 					continue;
 				}
@@ -325,23 +337,38 @@ namespace Markdown
 					int flush_chars = 0;
 					var result = this.formatmap.peek_literal(chunk, chunk_pos, is_end_of_chunks, this.is_literal, out flush_chars);
 					if (result == -1) {
+						if (chunk_pos > text_start_pos) {
+							str = str + chunk.substring(text_start_pos, chunk_pos - text_start_pos);
+							text_start_pos = chunk_pos;
+						}
 						this.leftover_chunk = str + chunk.substring(chunk_pos, chunk.length - chunk_pos);
 						str = "";
 						return;
 					}
 					if (result == 0 && flush_chars > 0) {
 						// Backticks only (ASCII, 1 byte each)
-						str += chunk.substring(chunk_pos, flush_chars);
+						if (chunk_pos > text_start_pos) {
+							str = str + chunk.substring(text_start_pos, chunk_pos - text_start_pos);
+							text_start_pos = chunk_pos;
+						}
+						str = str + chunk.substring(chunk_pos, flush_chars);
 						chunk_pos += flush_chars;
+						text_start_pos = chunk_pos;
 						this.at_line_start = false;
 						continue;
 					}
 				 
 					if (result == 0) {
-						str += c.to_string();
+						if (str == "" && text_start_pos == chunk_pos) {
+							text_start_pos = saved_chunk_pos;
+						}
 						chunk_pos += c.to_string().length;
 						this.at_line_start = (c == '\n');
 						continue;
+					}
+					if (chunk_pos > text_start_pos) {
+						str = str + chunk.substring(text_start_pos, chunk_pos - text_start_pos);
+						text_start_pos = chunk_pos;
 					}
 					this.renderer.on_node(FormatType.TEXT, false, str);
 					str = "";
@@ -349,6 +376,7 @@ namespace Markdown
 					this.do_format(false, this.is_literal.length == 1 ? FormatType.LITERAL : FormatType.CODE);
 					this.is_literal = "";
 					chunk_pos += result;
+					text_start_pos = chunk_pos;
 					this.at_line_start = false;
 					continue;
 				}
@@ -380,12 +408,13 @@ namespace Markdown
 						saved_chunk_pos,
 						is_end_of_chunks
 					)) {
-						assert(str == "");
+						assert(str == "" && text_start_pos == chunk_pos);
 						return;
 					}
 					// Only continue when we consumed a block (chunk_pos advanced);
 					// else fall through to process current char as inline
 					if (chunk_pos != saved_chunk_pos) {
+						text_start_pos = chunk_pos;
 						continue;
 					}
 					// At list item content start, no block consumed → clear so next line can end list
@@ -415,10 +444,11 @@ namespace Markdown
 						saved_chunk_pos,
 						is_end_of_chunks
 					)) {
-						assert(str == "");
+						assert(str == "" && text_start_pos == chunk_pos);
 						return;
 					}
 					if (chunk_pos != saved_chunk_pos) {
+						text_start_pos = chunk_pos;
 						continue;
 					}
 					// let the next tests try and match...
@@ -426,9 +456,14 @@ namespace Markdown
 
 				// Left (opening) delimiter: must be preceded by whitespace; peek + handle
 				// If str is empty and current char is space, flush str and leave space in chunk for left check
+				if (chunk_pos > text_start_pos) {
+					str = str + chunk.substring(text_start_pos, chunk_pos - text_start_pos);
+					text_start_pos = chunk_pos;
+				}
 				if (str.length != 0 && c.isspace()) {
 					this.renderer.on_node(FormatType.TEXT, false, str);
 					str = "";
+					text_start_pos = chunk_pos;
 				}
 				FormatType left_matched = FormatType.NONE;
 				int left_byte_length = 0;
@@ -449,10 +484,11 @@ namespace Markdown
 					saved_chunk_pos,
 					is_end_of_chunks
 				)) {
-					assert(str == "");
+					assert(str == "" && text_start_pos == chunk_pos);
 					return;
 				}
 				if (chunk_pos != saved_chunk_pos) {
+					text_start_pos = chunk_pos;
 					continue;
 				}
 
@@ -476,10 +512,11 @@ namespace Markdown
 					saved_chunk_pos,
 					is_end_of_chunks
 				)) {
-					assert(str == "");
+					assert(str == "" && text_start_pos == chunk_pos);
 					return;
 				}
 				if (chunk_pos != saved_chunk_pos) {
+					text_start_pos = chunk_pos;
 					continue;
 				}
 
@@ -493,6 +530,12 @@ namespace Markdown
 					out matched_format,
 					out unused_byte_length
 				);
+				if (match_len != 0) {
+					if (chunk_pos > text_start_pos) {
+						str = str + chunk.substring(text_start_pos, chunk_pos - text_start_pos);
+						text_start_pos = chunk_pos;
+					}
+				}
 
 				if (this.formatmap.handle_format_result(
 					match_len,
@@ -502,24 +545,33 @@ namespace Markdown
 					ref str, 
 					ref chunk, 
 					is_end_of_chunks)) {
-					assert(str == "");
+					assert(str == "" && text_start_pos == chunk_pos);
 					return;
 				}
 				// If we consumed (chunk_pos advanced), continue; else no match - advance here
 				if (chunk_pos != saved_chunk_pos) {
 					this.at_line_start = false;
+					text_start_pos = chunk_pos;
 					continue;
 				}
-				str += c.to_string();
+				if (str == "" && text_start_pos == chunk_pos) {
+					text_start_pos = saved_chunk_pos;
+				}
 				chunk_pos += c.to_string().length;
 				this.at_line_start = false;
 				continue;
 			}
-			
 
+			if (dbg_large) {
+				GLib.debug("after loop pos=%d len=%d str_len=%d", chunk_pos, chunk.length, str.length);
+			}
 
 			// Flush any remaining text
 			//GLib.debug("  [str] FINAL FLUSH: str='%s'", str);
+			if (chunk_pos > text_start_pos) {
+				str = str + chunk.substring(text_start_pos, chunk_pos - text_start_pos);
+				text_start_pos = chunk_pos;
+			}
 			this.renderer.on_node(FormatType.TEXT, false, str);
 			// Only at end of chunks (no more data will ever come) do we close the open block.
 			// At end of chunk only, more add() may follow - we must not close or we break the next chunk.
@@ -659,13 +711,14 @@ namespace Markdown
 		 * accumulated text, ends the current block, and sends the newline as text.
 		 * Updates chunk_pos and str (clears str when flushed).
 		 */
-		private void handle_line_break(ref int chunk_pos, ref string str)
+		private void handle_line_break(ref int chunk_pos, ref string str, ref int text_start_pos)
 		{
 			if (this.current_block == FormatType.FENCED_CODE_QUOTE
 				|| this.current_block == FormatType.FENCED_CODE_TILD) {
 				this.renderer.on_node(FormatType.CODE_TEXT, false, "\n");
 				this.at_line_start = true;
 				chunk_pos += 1;
+				text_start_pos = chunk_pos;
 				return;
 			}
 			if (this.current_block == FormatType.TABLE) {
@@ -673,6 +726,7 @@ namespace Markdown
 				this.current_block = FormatType.NONE;
 				this.at_line_start = true;
 				chunk_pos += 1;
+				text_start_pos = chunk_pos;
 				return;
 			}
 			// Reset inline formatting so next block starts clean (CommonMark: inline scoped per block)
@@ -699,6 +753,7 @@ namespace Markdown
 				this.current_block = FormatType.NONE;
 				this.at_line_start = true;
 				chunk_pos += 1;
+				text_start_pos = chunk_pos;
 				return;
 			}
 			// Close current block on newline iff we're in a block and it's not a list (lists stay open until blank line or non-list line)
@@ -716,6 +771,7 @@ namespace Markdown
 			}
 			this.at_line_start = true;
 			chunk_pos += 1;
+			text_start_pos = chunk_pos;
 		}
 		
 		/**

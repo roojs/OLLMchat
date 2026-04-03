@@ -66,9 +66,9 @@ namespace MarkdownGtk
 			buffer.move_mark(this.end, iter);
 		}
 		
-		public override void close_state()
+		public override void close_state(bool sync_ancestors = false)
 		{
-			// TopState cannot be closed - reset to top_state
+			// TopState cannot be closed - reset to top_state (no parent to sync)
 			this.render.current_state = this.render.top_state;
 		}
 		

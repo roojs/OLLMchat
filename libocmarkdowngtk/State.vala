@@ -80,12 +80,18 @@ namespace MarkdownGtk
 		}
 		
 		/**
-		 * Updates this state's end range to match the child's end and applies this state's tag.
+		 * Moves each ancestor's `end` mark to the child's end and reapplies that ancestor's
+		 * tag over the full span `[start, end]`.
+		 *
+		 * **Not** called from `add_text` (too hot while streaming). Call sites use
+		 * `close_state(true)` at **block** boundaries only (`on_p`/`on_h`/`on_code`/`on_li` end);
+		 * inline closes use `close_state()` / `close_state(false)`.
+		 *
 		 * Walks ancestors iteratively so a deep style stack cannot overflow the C stack.
-		 * 
-		 * @param child The child state whose range should be included
+		 *
+		 * @param child The deepest open state whose subtree just finished receiving text
 		 */
-		protected virtual void update_ranges_from(State child)
+		public virtual void update_ranges_from(State child)
 		{
 			var buf = this.render.current_buffer;
 			State? ancestor = this;
@@ -119,11 +125,6 @@ namespace MarkdownGtk
 			buf.get_iter_at_mark(out end_iter, this.end);
 			buf.apply_tag(this.style, end_iter, start_iter);
 			buf.move_mark(this.end, start_iter);
-
-			// Update parent ranges and apply parent tags
-			if (this.parent != null) {
-				this.parent.update_ranges_from(this);
-			}
 		}
 		
 		/**
@@ -142,10 +143,16 @@ namespace MarkdownGtk
 		
 		/**
 		 * Closes this state, pops to parent, and updates Render's current_state.
+		 *
+		 * @param sync_ancestors If true, reapplies ancestor tags over full ranges (see
+		 *   `update_ranges_from`). Use only at **block** boundaries — inline span closes
+		 *   must pass false (default) or the cost is per span again.
 		 */
-		public virtual void close_state()
+		public virtual void close_state(bool sync_ancestors = false)
 		{
-			// Pop to parent
+			if (sync_ancestors && this.parent != null) {
+				this.parent.update_ranges_from(this);
+			}
 			this.render.current_state = this.parent;
 		}
 		

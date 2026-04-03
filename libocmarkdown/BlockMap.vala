@@ -32,9 +32,6 @@ namespace Markdown
 		/** The whole matched string that opened the fenced block (e.g. "```" or "   ```"). Set by peek() when matching fenced code. */
 		public string fence_open { get; private set; }
 
-		private static uint _dbg_cf_newline_eq = 0;
-		private static uint _dbg_peek_indent_skip = 0;
-
 		public int blockquote_depth { get; set; default = 0; }
 
 		private static void init()
@@ -493,7 +490,6 @@ namespace Markdown
 			FormatType fence_type,
 			bool is_end_of_chunks)
 		{
-			int pos_at_entry = chunk_pos;
 			if (chunk_pos >= chunk.length) {
 				return 0;
 			}
@@ -509,10 +505,6 @@ namespace Markdown
 			if (at_marker != this.fence_open) {
 				if (this.fence_open.length > 3 && at_marker.has_prefix("   ")) {
 					chunk_pos += 3;
-					if (_dbg_peek_indent_skip < 12u) {
-						_dbg_peek_indent_skip++;
-						GLib.debug("fenced close probe: indent skip +3 (entry=%d, now=%d)", pos_at_entry, chunk_pos);
-					}
 				}
 				return 0;
 			}
@@ -565,10 +557,6 @@ namespace Markdown
 				return true;
 			}
 			var newline_pos = chunk.index_of_char('\n', chunk_pos);
-			if (newline_pos == chunk_pos && _dbg_cf_newline_eq < 16u) {
-				_dbg_cf_newline_eq++;
-				GLib.debug("fenced interior probe: first newline at chunk_pos (pos=%d)", chunk_pos);
-			}
 			var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
 			this.parser.renderer.on_node(FormatType.CODE_TEXT, false, code_text);
 			chunk_pos = newline_pos;

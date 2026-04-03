@@ -33,17 +33,15 @@ class TestGtkMd : TestAppBase
 	private static bool opt_thinking = false;
 	private static string? opt_history = null;
 
-	private const int HISTORY_TAIL = 25;
-
 	private Gtk.Window window;
 	private Gtk.Box text_view_box;
 	private Gtk.ScrolledWindow scrolled;
 	private MarkdownGtk.Render md_renderer;
 
-	private string window_title = "";
-	private string file_markdown = "";
-	private Json.Array history_messages = new Json.Array();
-	private int history_msg_start = 0;
+	private string window_title { get; set; default = ""; }
+	private string file_markdown { get; set; default = ""; }
+	private Json.Array history_messages { get; set; default = new Json.Array(); }
+	private int history_msg_start { get; set; default = 0; }
 
 	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS] [<markdown_file>]
@@ -56,7 +54,7 @@ Arguments:
 Options:
   -s, --stream SECS          Emulate streaming: wait SECS seconds then feed content in chunks (0 = start immediately)
   -t, --thinking             Nested ```markdown block (RenderSourceView + nested MarkdownGtk.Render), like ChatView thinking
-      --history FILE         Session JSON: inject last 25 visible messages (ui / think-stream / content-stream) like ChatWidget
+      --history FILE         Session JSON: replay messages from the start (ui / think-stream / content-stream) like ChatWidget
 
 Examples:
   {ARG} README.md
@@ -83,7 +81,7 @@ Examples:
 		{ "file", 'f', 0, OptionArg.STRING, ref opt_file, "Markdown file to render (alternative to positional arg)", "FILE" },
 		{ "stream", 's', 0, OptionArg.INT, ref opt_stream_delay_sec, "Seconds to wait before starting stream (0 = immediately)", "SECS" },
 		{ "thinking", 't', 0, OptionArg.NONE, ref opt_thinking, "Use ChatView-style markdown code block + nested MarkdownGtk.Render", null },
-		{ "history", 0, 0, OptionArg.STRING, ref opt_history, "Session JSON: replay tail messages like history restore", "FILE" },
+		{ "history", 0, 0, OptionArg.STRING, ref opt_history, "Session JSON: replay messages from the start", "FILE" },
 		{ null }
 	};
 
@@ -178,7 +176,7 @@ Examples:
 
 	private void load_file(string path) throws Error
 	{
-		string p = this.resolve_path(path);
+		var p = this.resolve_path(path);
 		if (!GLib.FileUtils.test(p, GLib.FileTest.EXISTS)) {
 			throw new GLib.IOError.NOT_FOUND("File not found: " + p);
 		}
@@ -186,18 +184,20 @@ Examples:
 			throw new GLib.IOError.INVALID_ARGUMENT("Not a regular file: " + p);
 		}
 		try {
-			GLib.FileUtils.get_contents(p, out this.file_markdown);
+			var contents = "";
+			GLib.FileUtils.get_contents(p, out contents);
+			this.file_markdown = contents;
 		} catch (GLib.FileError e) {
 			throw new GLib.IOError.FAILED("Failed to read file: %s", e.message);
 		}
 		this.window_title = GLib.Path.get_basename(p);
-		this.history_msg_start = 0;
 		GLib.debug("%s", p);
 	}
 
 	private void load_json(string path) throws Error
 	{
-		string p = this.resolve_path(path);
+		var p = this.resolve_path(path);
+		GLib.debug("loading json %s", p);
 		if (!GLib.FileUtils.test(p, GLib.FileTest.EXISTS)) {
 			throw new GLib.IOError.NOT_FOUND("File not found: " + p);
 		}
@@ -220,12 +220,9 @@ Examples:
 			throw new GLib.IOError.INVALID_ARGUMENT("messages must be array");
 		}
 		var arr = msg_node.get_array();
-		int n = (int) arr.get_length();
-		this.history_msg_start = n > HISTORY_TAIL ? n - HISTORY_TAIL : 0;
 		this.history_messages = arr;
-		this.file_markdown = "";
 		this.window_title = GLib.Path.get_basename(p);
-		GLib.debug("%s", p);
+		GLib.debug("messages=%u", this.history_messages.get_length());
 	}
 
 	private void build_window()
@@ -245,7 +242,7 @@ Examples:
 			}
 		}
 
-		bool stream = (opt_stream_delay_sec >= 0);
+		var stream = (opt_stream_delay_sec >= 0);
 
 		this.window = new Gtk.Window() {
 			title = this.window_title,
@@ -294,8 +291,15 @@ Examples:
 		if (stream) {
 			this.start_streaming_thinking(this.file_markdown, stream_delay_sec);
 			return;
-		} 
-		this.render_thinking_code_text(this.file_markdown);
+		}
+		assert(this.md_renderer.childview != null);
+		var tlines = this.file_markdown.split("\n");
+		for (var ti = 0; ti < tlines.length; ti++) {
+			this.md_renderer.childview.add_code_text(
+				ti < tlines.length - 1 ? tlines[ti] + "\n" : tlines[ti]
+			);
+		}
+		this.md_renderer.childview.end_code_block();
 		GLib.Timeout.add(200, () => {
 			this.text_view_box.queue_resize();
 			this.scrolled.queue_resize();
@@ -304,40 +308,20 @@ Examples:
 		
 	}
 
-	private void render_thinking_code_text(string text)
-	{
-		if (text == "") {
-			return;
-		}
-		this.md_renderer.on_code_block(true, "markdown.oc-frame-info.thinking oc-test-gtkmd");
-		assert(this.md_renderer.childview != null);
-		this.md_renderer.childview.add_code_text(text);
-		this.md_renderer.childview.end_code_block();
-	}
-
-	private void render_body_markdown(string text)
-	{
-		if (text == "") {
-			return;
-		}
-		this.md_renderer.add(text);
-		this.md_renderer.flush();
-	}
-
 	private void render_history()
 	{
-		int n = (int) this.history_messages.get_length();
-		for (int i = this.history_msg_start; i < n; i++) {
+		var n = this.history_messages.get_length();
+		for (var i = this.history_msg_start; i < n; i++) {
 			var el = this.history_messages.get_element(i);
 			if (el.get_node_type() != Json.NodeType.OBJECT) {
 				continue;
 			}
 			var msg = el.get_object();
-			string role = msg.has_member("role") ? msg.get_string_member("role") : "";
-			string content = msg.has_member("content") ? msg.get_string_member("content") : "";
+			var role = msg.has_member("role") ? msg.get_string_member("role") : "";
+			var content = msg.has_member("content") ? msg.get_string_member("content") : "";
 
-			string think = "";
-			string body = "";
+			var think = "";
+			var body = "";
 			switch (role) {
 				case "think-stream":
 					think = content;
@@ -353,8 +337,26 @@ Examples:
 				default:
 					continue;
 			}
-			this.render_thinking_code_text(think);
-			this.render_body_markdown(body);
+			if (think != "") {
+				this.md_renderer.on_code_block(true, "markdown.oc-frame-info.thinking oc-test-gtkmd");
+				assert(this.md_renderer.childview != null);
+				var tlines = think.split("\n");
+				for (var ti = 0; ti < tlines.length; ti++) {
+					this.md_renderer.childview.add_code_text(
+						ti < tlines.length - 1 ? tlines[ti] + "\n" : tlines[ti]
+					);
+				}
+				this.md_renderer.childview.end_code_block();
+			}
+			if (body != "") {
+				var blines = body.split("\n");
+				for (var bi = 0; bi < blines.length; bi++) {
+					this.md_renderer.add(
+						bi < blines.length - 1 ? blines[bi] + "\n" : blines[bi]
+					);
+				}
+				this.md_renderer.flush();
+			}
 		}
 		GLib.Timeout.add(200, () => {
 			this.text_view_box.queue_resize();
@@ -372,12 +374,12 @@ Examples:
 			});
 			return;
 		}
-		int[] pos = { 0 };
+		var lines = markdown_content.split("\n");
+		int[] line_i = { 0 };
 		const uint interval_ms = 30;
 		GLib.Timeout.add(interval_ms, () => {
 			assert(this.md_renderer.childview != null);
-			int cc = (int) markdown_content.char_count();
-			if (pos[0] >= cc) {
+			if (line_i[0] >= lines.length) {
 				this.md_renderer.childview.end_code_block();
 				GLib.Timeout.add(200, () => {
 					this.md_renderer.box.queue_resize();
@@ -386,14 +388,10 @@ Examples:
 				});
 				return false;
 			}
-			int chunk_chars = (int) (GLib.Random.next_int() % 7 + 2);
-			int end_ci = int.min(pos[0] + chunk_chars, cc);
-			int start_byte = (int) markdown_content.index_of_nth_char(pos[0]);
-			int end_byte = end_ci >= cc ? markdown_content.length : (int) markdown_content.index_of_nth_char(end_ci);
 			this.md_renderer.childview.add_code_text(
-				markdown_content.substring(start_byte, end_byte - start_byte)
+				line_i[0] < lines.length - 1 ? lines[line_i[0]] + "\n" : lines[line_i[0]]
 			);
-			pos[0] = end_ci;
+			line_i[0]++;
 			GLib.Idle.add(() => {
 				var vadj = this.scrolled.vadjustment;
 				if (vadj.upper < 100.0) {
@@ -428,7 +426,7 @@ Examples:
 		int[] pos = { 0 };
 		const uint interval_ms = 30;
 		GLib.Timeout.add(interval_ms, () => {
-			int cc = (int) markdown_content.char_count();
+			var cc = markdown_content.char_count();
 			if (pos[0] >= cc) {
 				this.md_renderer.flush();
 				// Re-layout after nested blocks (e.g. ```markdown) finish.
@@ -439,10 +437,10 @@ Examples:
 				});
 				return false;
 			}
-			int chunk_chars = (int) (GLib.Random.next_int() % 7 + 2);
-			int end_ci = int.min(pos[0] + chunk_chars, cc);
-			int start_byte = (int) markdown_content.index_of_nth_char(pos[0]);
-			int end_byte = end_ci >= cc ? markdown_content.length : (int) markdown_content.index_of_nth_char(end_ci);
+			var chunk_chars = (int) (GLib.Random.next_int() % 7 + 2);
+			var end_ci = int.min(pos[0] + chunk_chars, cc);
+			var start_byte = markdown_content.index_of_nth_char(pos[0]);
+			var end_byte = end_ci >= cc ? markdown_content.length : markdown_content.index_of_nth_char(end_ci);
 			this.md_renderer.add(markdown_content.substring(start_byte, end_byte - start_byte));
 			pos[0] = end_ci;
 			GLib.Idle.add(() => {

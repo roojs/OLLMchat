@@ -502,14 +502,14 @@ namespace MarkdownGtk
 			int nat_natural = 0;
 			widget.measure(Gtk.Orientation.VERTICAL, for_width, out min_natural, out nat_natural, null, null);
 			int natural_height = nat_natural;
-			GLib.debug(
-				"mode=%d for_width=%d min_natural=%d natural_height=%d max_collapsed=%d",
-				(int) mode,
-				for_width,
-				min_natural,
-				natural_height,
-				this.get_max_collapsed_height()
-			);
+			// GLib.debug(
+			// 	"mode=%d for_width=%d min_natural=%d natural_height=%d max_collapsed=%d",
+			// 	(int) mode,
+			// 	for_width,
+			// 	min_natural,
+			// 	natural_height,
+			// 	this.get_max_collapsed_height()
+			// );
 
 			switch (mode) {
 				case ResizeMode.EXPAND:
@@ -556,7 +556,13 @@ namespace MarkdownGtk
 		
 		/**
 		 * Adds text to the current code block.
-		 * 
+		 *
+		 * Profiling: to A/B isolate cost, try commenting out **one** of these per run (not all at once):
+		 * - `nested_markdown_render.add(text)` — nested MarkdownGtk.Render / libocmarkdown Parser.add
+		 * - `this.renderer.code_block_content_updated()` (both call sites below) — parent signal handlers
+		 * - `GLib.Idle.add` for `scroll_bottom` — scroll work queued every chunk
+		 * - the `text.contains("\\n")` branch with `resize_widget_callback` — resize on newline chunks
+		 *
 		 * @param text The text to add
 		 */
 		public void add_code_text(string text)
@@ -565,6 +571,7 @@ namespace MarkdownGtk
 			this.code_content.append(text);
 			
 			// Add to source buffer if it exists
+			// GtkSource insert was profiled with this block commented out — not the dominant cost (issue elsewhere).
 			if (this.source_buffer != null) {
 				Gtk.TextIter end_iter;
 				this.source_buffer.get_end_iter(out end_iter);
@@ -572,7 +579,13 @@ namespace MarkdownGtk
 			}
 			
 			// Stream to nested markdown renderer when this is a ```markdown block
+			// Feeds libocmarkdown Parser.add (see docs/plans/6.8-fixing-large-restore.md); incremental line-by-line add is the dominant cost for large thinking blocks.
 			if (this.nested_markdown_render != null) {
+				// GLib.debug(
+				// 	"nested add cum=%d chunk=%d",
+				// 	(int) this.code_content.len,
+				// 	(int) text.length
+				// );
 				this.nested_markdown_render.add(text);
 			}
 			
@@ -629,6 +642,7 @@ namespace MarkdownGtk
 
 			// Phase 2: when markdown block, flush the streamed nested renderer then resize and scroll to bottom
 			if (this.nested_markdown_render != null) {
+				// GLib.debug("nested markdown block flush len=%d", content.length);
 				this.nested_markdown_render.flush();
 				this.nested_markdown_render = null;
 				GLib.Timeout.add(200, () => {
