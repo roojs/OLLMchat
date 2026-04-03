@@ -31,7 +31,7 @@ Before marking a plan as ready to implement, make sure it answers these:
 
 These checklist items should be copied (or referenced) at the top of new plan documents in `docs/plans/` so they can be quickly verified.
 
-**Plan layout** (brief summaries, code hunks with **`#### Remove` / `Replace with` / `Add` / `Keep`**, minimal prose): **`docs/plans/README.md`**.
+**Plan layout** (brief summaries, code hunks with **`#### Remove` / `Replace with` / `Add` / `Keep`**, minimal prose): **`docs/guide-to-writing-plans.md`**.
 
 ## Docblocks / code documentation
 
