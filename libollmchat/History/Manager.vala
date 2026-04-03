@@ -52,6 +52,8 @@ namespace OLLMchat.History
 		public Settings.ModelUsage? default_model_usage { get; private set; }
 		public Settings.Config2 config { get; private set; }
 		public SessionBase session { get; internal set; }
+		/** Cancelled when a new `switch_to_session` starts so in-flight `restore_messages` stops. */
+		private GLib.Cancellable? cancel_restore;
 		public Gee.HashMap<string, OLLMchat.Agent.Factory> agent_factories { 
 			get; private set; default = new Gee.HashMap<string, OLLMchat.Agent.Factory>(); 
 		}
@@ -76,6 +78,8 @@ namespace OLLMchat.History
 		
 		// Signal emitted when a session is activated
 		public signal void session_activated(SessionBase session);
+		/** After async history replay finishes, was cancelled, or there was nothing to replay. */
+		public signal void session_restored(SessionBase session);
 		
 		// Signal emitted when an agent is activated (for UI updates)
 		public signal void agent_activated(Agent.Factory agent);
@@ -215,30 +219,33 @@ namespace OLLMchat.History
 		 */
 		public async void switch_to_session(SessionBase session) throws Error
 		{
-			// Store previous session's client for state preservation
-			 
-			// Deactivate current session
+			if (this.cancel_restore != null) {
+				this.cancel_restore.cancel();
+			}
+			this.cancel_restore = new GLib.Cancellable();
+			var cancellable = this.cancel_restore;
+
 			this.session.deactivate();
-			
-			// Load session data if needed (no-op for already loaded sessions)
-			// For SessionPlaceholder, this returns a new Session object
-			// For Session, this returns the same session
+
 			SessionBase? loaded_session = yield session.load();
-			
+
 			if (loaded_session == null) {
 				throw new GLib.IOError.FAILED("Session load returned null");
 			}
-			
-			// If switching to EmptySession, copy model and tool states from previous session
-			 
-			  
-			// Activate new session
+
 			this.session = loaded_session;
 			loaded_session.activate();
-			
+
 			this.session_activated(loaded_session);
-			// So UI has a single signal for unhide+button: agent_status_change
 			this.agent_status_change();
+
+			// After load(), loaded_session is only Session or EmptySession (SessionPlaceholder.load returns Session).
+			// restore_messages is on Session only; EmptySession has nothing to replay.
+			if (loaded_session is Session) {
+				yield ((Session) loaded_session).restore_messages(cancellable);
+			}
+
+			this.session_restored(loaded_session);
 		}
 		
 		 

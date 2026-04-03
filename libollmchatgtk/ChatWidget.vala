@@ -161,14 +161,22 @@ namespace OLLMchatGtk
 			});
 			this.manager.message_added.connect(this.on_message_created);
 			
-			// session_activated: only clear restoring_session and adjust scroll; do not set streaming state here
+			// session_activated: scroll only when not mid-restore; restoring_session cleared on session_restored
 			this.manager.session_activated.connect((session) => {
-				this.restoring_session = false;
 				GLib.Idle.add(() => {
-					if (session.is_running) {
+					if (!this.restoring_session && session.is_running) {
 						this.chat_view.scroll_enabled = true;
 						this.chat_view.scroll_to_bottom();
 					}
+					return false;
+				});
+			});
+
+			this.manager.session_restored.connect((_session) => {
+				this.restoring_session = false;
+				GLib.Idle.add(() => {
+					this.chat_view.scroll_enabled = true;
+					this.chat_view.scroll_to_bottom();
 					return false;
 				});
 			});
@@ -298,80 +306,6 @@ namespace OLLMchatGtk
 				this.restoring_session = false;
 				return;
 			}
-		}
-
-		/**
-		 * Loads and renders messages from the current session.
-		 * 
-		 * Renders messages from session.messages with filtering for UI display.
-		 * Display special session types: "think-stream", "content-stream", "user-sent", "ui"
-		 * Handle "end-stream" message: when encountered, flag to ignore the next message if it's a "done" message from streaming
-		 * Skip certain chat message types: "system" (not displayed in UI), "tool" (already handled), "user" (use "user-sent" instead)
-		 */
-		private void load_messages()
-		{
-			// Scrolling is already disabled in switch_to_session() before this is called
-			bool ignore_next_done = false;
-			int total_messages = this.manager.session.messages.size;
-			int visible_count = 0;
-			int message_index = 0;
-			
-			GLib.debug("ChatWidget.load_messages: Starting to load %d messages from session", total_messages);
-			
-			foreach (var msg in this.manager.session.messages) {
-				message_index++;
-				// Use is_ui_visible to filter messages
-				if (!msg.is_ui_visible) {
-					// Handle special case: "end-stream" flags next message to ignore
-					if (msg.role == "end-stream") {
-						ignore_next_done = true;
-					}
-					continue;
-				}
-				
-				// Reset ignore flag for visible messages
-				ignore_next_done = false;
-				visible_count++;
-				
-				// Truncate content for debug output (show first 20 chars)
-				string content_preview = msg.content.length > 20 ? msg.content.substring(0, 20) + "..." : msg.content;
-				GLib.debug("ChatWidget.load_messages: Adding message %d/%d (role=%s, content='%s')", 
-					message_index, total_messages, msg.role, content_preview);
-				 
-				// Display message based on role (only UI-visible messages reach here)
-				// Use manager.session for rendering (load_messages is called when switching sessions)
-				var session = this.manager.session;
-				switch (msg.role) {
-					case "ui":
-						// Use same path as live so code blocks get frames with titles
-						var ui_msg = new OLLMchat.Message("assistant", msg.content, msg.thinking);
-						this.chat_view.append_complete_assistant_message(ui_msg, session);
-						break;
-					case "ui-warning":
-						var warning_msg = new OLLMchat.Message("assistant", "⚠️ " + msg.content, msg.thinking);
-						this.chat_view.append_complete_assistant_message(warning_msg, session);
-						break;
-					case "think-stream":
-						// For think-stream, content is the thinking text
-						var stream_msg = new OLLMchat.Message("assistant", "", msg.content);
-						this.chat_view.append_complete_assistant_message(stream_msg, session);
-						break;
-					case "content-stream":
-					case "content-non-stream":
-						// Render streaming/non-streaming messages as assistant messages
-						var stream_msg = new OLLMchat.Message("assistant", msg.content, msg.thinking);
-						this.chat_view.append_complete_assistant_message(stream_msg, session);
-						break;
-					default:
-						// Should not reach here if is_ui_visible is working correctly
-						break;
-				}
-			}
-			
-			GLib.debug("ChatWidget.load_messages: Finished loading %d visible messages out of %d total", visible_count, total_messages);
-			
-			// Don't re-enable scrolling here - keep it disabled after loading history
-			// Scrolling will be re-enabled when new messages arrive (in on_message_created)
 		}
 
 		/**

@@ -90,14 +90,6 @@ namespace OLLMchat.History
 		this.manager.config.changed.connect(this.on_config_changed);
 	}
 		
-		public override void activate()
-		{
-			base.activate();
-			if (this.messages.size > 0) {
-				this.restore_messages();
-			}
-		}
-		
 		/**
 		* Handler for message_created signal from this session's client.
 		* Handles message persistence when a message is created.
@@ -145,38 +137,50 @@ namespace OLLMchat.History
 			this.notify_property("display_info");
 			this.notify_property("display_title");
 		}
-			
-		private void restore_messages()
+
+		/**
+		 * Replays persisted messages to the UI with delays so the main loop stays responsive.
+		 * Stops when `cancellable` is cancelled (e.g. user switched session) or this session is no longer active.
+		 */
+		internal async void restore_messages(GLib.Cancellable cancellable)
 		{
 			if (this.messages.size == 0) {
 				return;
 			}
-			
+
 			for (int i = 0; i < this.messages.size - 1; i++) {
+				if (cancellable.is_cancelled() || this.manager.session != this) {
+					return;
+				}
 				if (this.messages[i].role == "ui-waiting") {
-					continue;  // Transient; do not restore
+					continue;
 				}
 				this.manager.message_added(this.messages[i], this);
+				GLib.Timeout.add(100, () => {
+					this.restore_messages.callback();
+					return false;
+				});
+				yield;
 			}
-			
+
+			if (cancellable.is_cancelled() || this.manager.session != this) {
+				return;
+			}
+
 			var last_msg = this.messages[this.messages.size - 1];
 			if (last_msg.role == "ui-waiting") {
-				return;  // Transient; do not restore
+				return;
 			}
-			
-			if (!this.is_running || 
+
+			if (!this.is_running ||
 				(last_msg.role != "content-stream" && last_msg.role != "think-stream")) {
 				this.manager.message_added(last_msg, this);
 				return;
 			}
-			
-			// For streaming messages, set up current_stream_message and emit through streaming infrastructure
-			// This creates the block in streaming mode (not finalized) so new chunks can append to it
+
 			this.current_stream_message = last_msg;
 			this.current_stream_is_thinking = (last_msg.role == "think-stream");
-			
-			// Create a minimal response object for restoration
-			// Set is_thinking to match the stream type so append_assistant_chunk() uses correct formatting
+
 			var dummy_message = new OLLMchat.Message("assistant", "", "");
 			var dummy_response = new Response.Chat(
 					this.agent.chat().connection, this.agent.chat()) {
@@ -184,10 +188,7 @@ namespace OLLMchat.History
 				done = false,
 				is_thinking = this.current_stream_is_thinking
 			};
-			
-			// Call base.handle_stream_chunk() directly to emit through streaming infrastructure
-			// This bypasses Session's handle_stream_chunk() which would append content again
-			// The message already has the full content, we just need to display it in streaming mode
+
 			base.handle_stream_chunk(last_msg.content, this.current_stream_is_thinking, dummy_response);
 		}
 		
