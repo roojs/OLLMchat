@@ -81,30 +81,25 @@ namespace MarkdownGtk
 		
 		/**
 		 * Updates this state's end range to match the child's end and applies this state's tag.
-		 * Also recursively updates parent states.
+		 * Walks ancestors iteratively so a deep style stack cannot overflow the C stack.
 		 * 
 		 * @param child The child state whose range should be included
 		 */
 		protected virtual void update_ranges_from(State child)
 		{
-			Gtk.TextIter child_end, this_start, this_end;
-			
-			// Get child's end position
-			this.render.current_buffer.get_iter_at_mark(out child_end, child.end);
-			
-			// Update end mark to match child's end
-			this.render.current_buffer.move_mark(this.end, child_end);
-			
-			// Get this state's range
-			this.render.current_buffer.get_iter_at_mark(out this_start, this.start);
-			this.render.current_buffer.get_iter_at_mark(out this_end, this.end);
-			
-			// Apply this state's tag to its own range
-			this.render.current_buffer.apply_tag(this.style, this_start, this_end);
-			
-			// Recursively update parent
-			if (this.parent != null) {
-				this.parent.update_ranges_from(this);
+			var buf = this.render.current_buffer;
+			State? ancestor = this;
+			State? from_child = child;
+
+			while (ancestor != null) {
+				Gtk.TextIter child_end, range_start, range_end;
+				buf.get_iter_at_mark(out child_end, from_child.end);
+				buf.move_mark(ancestor.end, child_end);
+				buf.get_iter_at_mark(out range_start, ancestor.start);
+				buf.get_iter_at_mark(out range_end, ancestor.end);
+				buf.apply_tag(ancestor.style, range_start, range_end);
+				from_child = ancestor;
+				ancestor = ancestor.parent;
 			}
 		}
 		

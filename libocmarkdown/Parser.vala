@@ -158,6 +158,9 @@ namespace Markdown
 		/** True when at the first character of list item content (after marker); avoid ending list on block_match == 0 there. */
 		public bool at_list_start { get; set; default = false; }
 
+		private static uint _dbg_fenced_interior_stall = 0;
+		private static uint _dbg_fenced_linestart_stall = 0;
+
 		/**
 		 * Creates a new Parser instance.
 		 * 
@@ -267,6 +270,10 @@ namespace Markdown
 							assert(str == "");
 							return;
 						}
+						if (chunk_pos == saved_chunk_pos && _dbg_fenced_interior_stall < 16u) {
+							_dbg_fenced_interior_stall++;
+							GLib.debug("fenced interior: chunk_pos unchanged after check_fenced_newline (pos=%d, c=%s)", chunk_pos, c.to_string());
+						}
 						continue;
 					}
 					// At line start - check for closing fence
@@ -274,6 +281,10 @@ namespace Markdown
 					if (this.blockmap.handle_fence_result(fence_result, ref chunk_pos, chunk)) {
 						assert(str == "");
 						return;
+					}
+					if (chunk_pos == saved_chunk_pos && _dbg_fenced_linestart_stall < 16u) {
+						_dbg_fenced_linestart_stall++;
+						GLib.debug("fenced line-start: no net advance after peek+handle (fence_result=%d, pos=%d)", fence_result, chunk_pos);
 					}
 					continue;
 				}
@@ -669,6 +680,12 @@ namespace Markdown
 				//GLib.debug("  [str] FLUSH on newline: str='%s'", str);
 				this.renderer.on_node(FormatType.TEXT, false, str);
 				str = "";
+			}
+			// Inline spans end at line end (CommonMark). Close renderer formats before clearing the
+			// parser stack — otherwise Gtk state (emphasis/code) accumulates and State.update_ranges_from
+			// walks an enormous parent chain (see process_inline end).
+			for (var i = this.state_stack.size - 1; i >= 0; i--) {
+				this.do_format(false, this.state_stack.get(i));
 			}
 			this.state_stack.clear();
 			this.is_literal = "";
