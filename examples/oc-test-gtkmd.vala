@@ -42,6 +42,8 @@ class TestGtkMd : TestAppBase
 	private string file_markdown { get; set; default = ""; }
 	private Json.Array history_messages { get; set; default = new Json.Array(); }
 	private int history_msg_start { get; set; default = 0; }
+	private int msg_no { get; set; default = 0; }
+	// private Gtk.Button history_next_button;
 
 	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS] [<markdown_file>]
@@ -121,42 +123,17 @@ Examples:
 			throw new GLib.IOError.FAILED("Failed to initialize GTK");
 		}
 
-		if (opt_history != "") {
-			this.load_json(opt_history);
-			this.build_window();
-			this.render_history();
-			this.run_loop();
-			return;
-		}
-
-		this.load_file(opt_file != "" ? opt_file : args[1]);
 		this.build_window();
 
-		if (opt_thinking) {
-			this.render_thinking(
-				opt_stream_delay_sec > -1,
-				opt_stream_delay_sec > -1 ? opt_stream_delay_sec : 0
-			);
-			this.run_loop();
-			return;
-		}
-		if (opt_stream_delay_sec > -1) {
-			this.start_streaming(this.file_markdown, opt_stream_delay_sec);
-			this.run_loop();
-			return;
-		}
-		this.md_renderer.add(this.file_markdown);
-		this.md_renderer.flush();
-		GLib.Timeout.add(200, () => {
-			this.text_view_box.queue_resize();
-			this.scrolled.queue_resize();
+		GLib.Timeout.add(500, () => {
+			try {
+				this.on_show_window(args);
+			} catch (GLib.Error e) {
+				command_line.printerr("%s\n", e.message);
+				this.window.close();
+			}
 			return false;
 		});
-		this.run_loop();
-	}
-
-	private void run_loop()
-	{
 		var loop = new GLib.MainLoop();
 		this.window.close_request.connect(() => {
 			loop.quit();
@@ -166,6 +143,57 @@ Examples:
 		loop.run();
 	}
 
+	private void on_show_window(string[] args) throws Error
+	{
+		if (opt_history != "") {
+			this.load_json(opt_history);
+		} else {
+			this.load_file(opt_file != "" ? opt_file : args[1]);
+		}
+		this.window.set_title(this.window_title);
+
+		var stream = (opt_stream_delay_sec >= 0);
+		this.md_renderer.scroll_to_end = this.history_messages.get_length() == 0 && stream;
+
+		if (opt_history != "") {
+			// Previous: single-step replay via Next button only (see commented history_next_button in build_window).
+			// this.history_next_button.label = "Next message — msg_no %d".printf(this.msg_no);
+			// this.history_next_button.sensitive = true;
+			// return;
+			this.msg_no = this.history_msg_start;
+			var n = this.history_messages.get_length();
+			while (this.msg_no < n) {
+				this.render_history();
+			}
+			GLib.Timeout.add(200, () => {
+				this.text_view_box.queue_resize();
+				this.scrolled.queue_resize();
+				return false;
+			});
+			return;
+		}
+		// this.history_next_button.sensitive = false;
+		if (opt_thinking) {
+			this.render_thinking(
+				opt_stream_delay_sec > -1,
+				opt_stream_delay_sec > -1 ? opt_stream_delay_sec : 0
+			);
+			return;
+		}
+		if (opt_stream_delay_sec > -1) {
+			this.start_streaming(this.file_markdown, opt_stream_delay_sec);
+			return;
+		}
+		this.md_renderer.add(this.file_markdown);
+		this.md_renderer.flush();
+		GLib.Timeout.add(200, () => {
+			this.text_view_box.queue_resize();
+			this.scrolled.queue_resize();
+			return false;
+		});
+	}
+
+	 
 	private string resolve_path(string path)
 	{
 		if (GLib.Path.is_absolute(path)) {
@@ -245,7 +273,7 @@ Examples:
 		var stream = (opt_stream_delay_sec >= 0);
 
 		this.window = new Gtk.Window() {
-			title = this.window_title,
+			title = this.window_title != "" ? this.window_title : this.get_app_name(),
 			default_width = 700,
 			default_height = 500
 		};
@@ -280,33 +308,33 @@ Examples:
 			}
 		});
 
-		this.window.set_child(this.scrolled);
+		var outer = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+		// this.history_next_button = new Gtk.Button() {
+		// 	label = "Next message",
+		// 	halign = Gtk.Align.START,
+		// 	margin_start = 8,
+		// 	margin_end = 8,
+		// 	margin_top = 8
+		// };
+		// this.history_next_button.clicked.connect(() => {
+		// 	this.render_history();
+		// });
+		// outer.append(this.history_next_button);
+		outer.append(this.scrolled);
+		this.window.set_child(outer);
 
 		this.md_renderer.start();
 	}
 
-	private void render_thinking(bool stream, int stream_delay_sec)
-	{
-		this.md_renderer.on_code_block(true, "markdown.oc-frame-info.thinking oc-test-gtkmd");
-		if (stream) {
-			this.start_streaming_thinking(this.file_markdown, stream_delay_sec);
-			return;
-		}
-		assert(this.md_renderer.childview != null);
-		this.md_renderer.childview.add_code_text(this.file_markdown);
-		this.md_renderer.childview.end_code_block();
-		GLib.Timeout.add(200, () => {
-			this.text_view_box.queue_resize();
-			this.scrolled.queue_resize();
-			return false;
-		});
-		
-	}
-
 	private void render_history()
 	{
+		if (opt_history == "") {
+			return;
+		}
 		var n = this.history_messages.get_length();
-		for (var i = this.history_msg_start; i < n; i++) {
+		while (this.msg_no < n) {
+			var i = this.msg_no;
+			this.msg_no++;
 			var el = this.history_messages.get_element(i);
 			if (el.get_node_type() != Json.NodeType.OBJECT) {
 				continue;
@@ -314,7 +342,6 @@ Examples:
 			var msg = el.get_object();
 			var role = msg.has_member("role") ? msg.get_string_member("role") : "";
 			var content = msg.has_member("content") ? msg.get_string_member("content") : "";
-
 			var think = "";
 			var body = "";
 			switch (role) {
@@ -330,24 +357,58 @@ Examples:
 					body = "⚠️ " + content;
 					break;
 				default:
+					GLib.debug("history replay skip index=%d role=\"%s\"", i, role);
 					continue;
 			}
+			this.md_renderer.end_block();
+			this.md_renderer.start();
 			if (think != "") {
 				this.md_renderer.on_code_block(true, "markdown.oc-frame-info.thinking oc-test-gtkmd");
 				assert(this.md_renderer.childview != null);
 				this.md_renderer.childview.add_code_text(think);
-				this.md_renderer.childview.end_code_block();
+				this.md_renderer.on_code_block(false, "");
 			}
 			if (body != "") {
 				this.md_renderer.add(body);
 				this.md_renderer.flush();
 			}
+			GLib.Timeout.add(200, () => {
+				this.text_view_box.queue_resize();
+				this.scrolled.queue_resize();
+				return false;
+			});
+			// this.history_next_button.label = "Next message — msg_no %d".printf(this.msg_no);
+			// this.history_next_button.sensitive = this.msg_no < n;
+			// if (this.msg_no >= n) {
+			// 	this.history_next_button.label = "Done";
+			// }
+			return;
 		}
+		// this.history_next_button.sensitive = false;
+		// this.history_next_button.label = "Done";
 		GLib.Timeout.add(200, () => {
 			this.text_view_box.queue_resize();
 			this.scrolled.queue_resize();
 			return false;
 		});
+	}
+
+	private void render_thinking(bool stream, int stream_delay_sec)
+	{
+		this.md_renderer.on_code_block(true, "markdown.oc-frame-info.thinking oc-test-gtkmd");
+		if (stream) {
+			this.start_streaming_thinking(this.file_markdown, stream_delay_sec);
+			return;
+		}
+		assert(this.md_renderer.childview != null);
+		this.md_renderer.childview.add_code_text(this.file_markdown);
+		this.md_renderer.on_code_block(false, "");
+		GLib.Timeout.add(200, () => {
+			this.text_view_box.queue_resize();
+			this.scrolled.queue_resize();
+			return false;
+		});
+		
 	}
 
 	private void start_streaming_thinking(string markdown_content, int delay_sec)
@@ -366,7 +427,7 @@ Examples:
 			assert(this.md_renderer.childview != null);
 			var cc = markdown_content.char_count();
 			if (pos[0] >= cc) {
-				this.md_renderer.childview.end_code_block();
+				this.md_renderer.on_code_block(false, "");
 				GLib.Timeout.add(200, () => {
 					this.md_renderer.box.queue_resize();
 					this.scrolled.queue_resize();

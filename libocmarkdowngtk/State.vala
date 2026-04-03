@@ -150,8 +150,23 @@ namespace MarkdownGtk
 		 */
 		public virtual void close_state(bool sync_ancestors = false)
 		{
-			if (sync_ancestors && this.parent != null) {
+			if (this.parent == null) {
+				this.render.current_state = this.parent;
+				return;
+			}
+			if (sync_ancestors) {
 				this.parent.update_ranges_from(this);
+				this.render.current_state = this.parent;
+				return;
+			}
+			/* Inline closes: child insert moved only this.end forward; parent.end kept
+			 * GTK left-gravity at the segment start. Advance parent so the next insert
+			 * (sibling text after link/code/em, etc.) continues at the correct offset. */
+			var buf = this.render.current_buffer;
+			if (buf != null) {
+				Gtk.TextIter child_end;
+				buf.get_iter_at_mark(out child_end, this.end);
+				buf.move_mark(this.parent.end, child_end);
 			}
 			this.render.current_state = this.parent;
 		}
