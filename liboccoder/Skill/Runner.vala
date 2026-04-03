@@ -57,8 +57,7 @@ namespace OLLMcoder.Skill
 		 */
 		public bool in_replay { get; set; default = false; }
 
-		// Filled only by Task.Tool.load_http; read by reference_content; dedupe skips refetch (no clear).
-		// internal: Task.Tool writes; keep cache off Details and off a second map on Tool.
+		// Filled by ResolveLink.preload_http; read by ResolveLink.resolve (http). Dedupe skips refetch (no clear).
 		internal Gee.HashMap<string, string> http_cache { get; default = new Gee.HashMap<string, string>(); }
 
 		/**
@@ -95,114 +94,6 @@ namespace OLLMcoder.Skill
 					 this.sr_factory.project_manager.active_project.path + "`";
 			}
 			return ret;
-		}
-
-		public async void load_file(Markdown.Document.Format link)
-		{
-			var project = this.sr_factory.project_manager.active_project;
-			var resolved_path = link.is_relative ? link.abspath(project.path) : link.path;
-			var found = this.sr_factory.project_manager.get_file_from_active_project(resolved_path);
-			if (found == null) {
-				found = new OLLMfiles.File.new_fake(this.sr_factory.project_manager, resolved_path);
-			}
-			this.sr_factory.project_manager.buffer_provider.create_buffer(found);
-			try {
-				yield found.buffer.read_async();
-			} catch (GLib.Error e) {
-				GLib.debug("%s: %s", found.path, e.message);
-			}
-		}
-
-		public async void load_links(Gee.Collection<Markdown.Document.Format> links)
-		{
-			foreach (var link in links) {
-				if (link.scheme != "file") {
-					continue;
-				}
-				yield this.load_file(link);
-			}
-		}
-
-		/**
-		 * Resolve non-file reference content for task refs, document
-		 * anchor, or http (deferred). Do not add validation here;
-		 * validation is done in Details.validate_references(). Call only
-		 * for links that validation has accepted; never return "".
-		 *
-		 * @param link the reference link (scheme, path, href, hash
-		 *        already parsed)
-		 * @param stage refinement uses abbreviated / result-summary-scoped markdown; other stages match prior behavior
-		 * @return resolved content for the link
-		 */
-		public string reference_content(Markdown.Document.Format link, OLLMcoder.Task.MarkdownPhase stage)
-		{
-			GLib.debug("reference_content: link scheme=%s path=%s href=%s hash=%s",
-				 link.scheme, link.path, link.href, link.hash);
-			if (link.scheme == "task") {
-				var slug = link.path.has_suffix(".md") ?
-					link.path.substring(0, link.path.length - 3) : link.path;
-				if (!this.completed.slugs.has_key(slug) && !this.pending.slugs.has_key(slug)) {
-					GLib.error("reference_content: no task for slug=%s", slug);
-				}
-				var task = this.completed.slugs.has_key(slug) ?
-					this.completed.slugs.get(slug) : this.pending.slugs.get(slug);
-				var doc = task.out_doc;
-				if (link.hash == "") {
-					if (stage == OLLMcoder.Task.MarkdownPhase.REFINEMENT) {
-						if (!doc.headings.has_key("result-summary")) {
-							return "";
-						}
-						var inner = doc.headings.get("result-summary").to_markdown_with_content();
-						var fence = (inner.index_of("\n```") >= 0 || inner.has_prefix("```")) ? "~~~~" : "```";
-						return fence + "markdown\n" + inner + "\n" + fence + "\n";
-					}
-					return doc.to_markdown();
-				}
-				if (!doc.headings.has_key(link.hash)) {
-					GLib.error("reference_content: task section missing slug=%s hash=%s",
-						slug, link.hash);
-				}
-				var section_md = doc.headings.get(link.hash).to_markdown_with_content();
-				if (stage == OLLMcoder.Task.MarkdownPhase.REFINEMENT) {
-					string[] lines = section_md.split("\n");
-					if (lines.length <= 20) {
-						return section_md;
-					}
-					return string.joinv("\n", lines[0:20])
-						+ "\n\n**This has been abbreviated.** The full content has "
-						+ lines.length.to_string() + " lines.\n";
-				}
-				return section_md;
-			}
-			if (link.path == "") {
-				var anchor = link.hash;
-				var block = this.user_request.headings.get(anchor);
-				GLib.debug("reference_content: anchor href=%s user_request=%p headings.has_key(%s)=%s block=%p",
-					link.href, this.user_request, anchor,
-					this.user_request != null ? this.user_request.headings.has_key(anchor).to_string() : "n/a", block);
-				var anchor_md = block.to_markdown_with_content();
-				if (stage == OLLMcoder.Task.MarkdownPhase.REFINEMENT) {
-					string[] lines = anchor_md.split("\n");
-					if (lines.length <= 20) {
-						return anchor_md;
-					}
-					return string.joinv("\n", lines[0:20])
-						+ "\n\n**This has been abbreviated.** The full content has "
-						+ lines.length.to_string() + " lines.\n";
-				}
-				return anchor_md;
-			}
-			if (link.scheme == "http" || link.scheme == "https") {
-				if (stage != OLLMcoder.Task.MarkdownPhase.EXECUTION) {
-					return "";
-				}
-				var key = link.href != "" ? link.href : link.path;
-				if (key == "" || !this.http_cache.has_key(key)) {
-					return "";
-				}
-				return this.http_cache.get(key);
-			}
-			GLib.error("reference_content: unsupported link scheme or path (href=%s)", link.href);
 		}
 
 		/**

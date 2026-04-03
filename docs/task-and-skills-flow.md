@@ -18,7 +18,7 @@ This document explains **how the Skill Runner agent** turns a user request into 
 | **Execution** | For each task: build one or more **execution runs** (`Tool` instances), run each tool call if present, then run the **executor** LLM with `task_execution.md` + skill execution body + “Tool Output and/or Reference information”. |
 | **Post-exec** | After the executor runs, a final LLM pass (`task_post_exec.md`) merges run outputs into the canonical **`out_doc`** and **task post-exec summary** used for `task://…` links and iteration. |
 
-**Pending vs completed:** `Runner.pending` is the list still to run; `Runner.completed` holds finished steps. Task output for linking is resolved from `completed` (and pending during a run) via `Runner.reference_content()`.
+**Pending vs completed:** `Runner.pending` is the list still to run; `Runner.completed` holds finished steps. Task output for linking is resolved from `completed` (and pending during a run) via **`ResolveLink.resolve`** (task scheme) after preload — same data as before; see `liboccoder/Task/ResolveLink.vala`.
 
 ---
 
@@ -139,7 +139,7 @@ Parse failures: up to **5** tries; unrecoverable failure cancels the session run
 
 References to another task’s **canonical output** use **`[label](task://{slug}.md)`** — the URL **ends at `.md`**. Task lists, refinement, and executor prompts use that shape only; the runner injects the **full** **`out_doc`** for that slug.
 
-Parsing (`libocmarkdown/document/Render.vala`): **`scheme`** is `task`, **`path`** is the segment after `task://` (no `/`), optional **`hash`**. **Resolution** (`Runner.reference_content`): empty **`hash`** → **`out_doc.to_markdown()`**; non-empty **`hash`** → that section only (legacy paths, tests, or malformed model output — not described to the LLM). **Prompts** and **`docs/skills-format.md`** describe URLs that **stop at `.md`**.
+Parsing (`libocmarkdown/document/Render.vala`): **`scheme`** is `task`, **`path`** is the segment after `task://` (no `/`), optional **`hash`**. **Resolution** (`ResolveLink.resolve`, task branch): empty **`hash`** → **`out_doc.to_markdown()`**; non-empty **`hash`** → that section only (legacy paths, tests, or malformed model output — not described to the LLM). **Prompts** and **`docs/skills-format.md`** describe URLs that **stop at `.md`**.
 
 ### Slug
 
@@ -247,32 +247,7 @@ The original **Conductor / skills agent** vision (skill runner as a chat agent, 
 		}
 ```
 
-**Task links — resolution:**
-
-```136:157:liboccoder/Skill/Runner.vala
-		public string reference_content(Markdown.Document.Format link)
-		{
-			GLib.debug("reference_content: link scheme=%s path=%s href=%s hash=%s",
-				 link.scheme, link.path, link.href, link.hash);
-			if (link.scheme == "task") {
-				var slug = link.path.has_suffix(".md") ?
-					link.path.substring(0, link.path.length - 3) : link.path;
-				if (!this.completed.slugs.has_key(slug) && !this.pending.slugs.has_key(slug)) {
-					GLib.error("reference_content: no task for slug=%s", slug);
-				}
-				var task = this.completed.slugs.has_key(slug) ?
-					this.completed.slugs.get(slug) : this.pending.slugs.get(slug);
-				var doc = task.out_doc;
-				if (link.hash == "") {
-					return doc.to_markdown();
-				}
-				if (!doc.headings.has_key(link.hash)) {
-					GLib.error("reference_content: task section missing slug=%s hash=%s",
-						slug, link.hash);
-				}
-				return doc.headings.get(link.hash).to_markdown_with_content();
-			}
-```
+**Task links — resolution:** `liboccoder/Task/ResolveLink.vala` (`task` branch); preload + `reference_contents` / executor use the same resolver.
 
 ```495:506:liboccoder/Task/Details.vala
 	public string slug()

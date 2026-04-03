@@ -89,44 +89,6 @@ namespace OLLMcoder.Task
 			}
 		}
 
-		private async void load_http(Markdown.Document.Format link)
-		{
-			if (link.scheme != "http" && link.scheme != "https") {
-				return;
-			}
-			var key = link.href != "" ? link.href : link.path;
-			if (this.parent.runner.http_cache.has_key(key)) {
-				return;
-			}
-			if (key == "") {
-				this.parent.runner.http_cache.set(key,
-					"ERROR: Reference URL is empty; cannot prefetch.");
-				return;
-			}
-			var tool_impl = this.parent.runner.session.manager.tools.get("web_fetch");
-			var args = new Json.Object();
-			args.set_string_member("url", key);
-			args.set_string_member("format", "markdown");
-			var fn = new OLLMchat.Response.CallFunction.with_values("web_fetch", args);
-			var call = new OLLMchat.Response.ToolCall.with_values("http-fake-id", fn);
-			var md = yield tool_impl.execute(this.chat(), call, true);
-			this.parent.runner.http_cache.set(key, md);
-		}
-
-		private async void load_links(Gee.Collection<Markdown.Document.Format> links)
-		{
-			foreach (var link in links) {
-				if (link.scheme == "file") {
-					yield this.parent.runner.load_file(link);
-					continue;
-				}
-				if (link.scheme == "http" || link.scheme == "https") {
-					yield this.load_http(link);
-					continue;
-				}
-			}
-		}
-
 		/**
 		 * True when the tail of this run's executor output says the task
 		 * is complete — no further tool calls in this task. Call only after
@@ -211,12 +173,13 @@ namespace OLLMcoder.Task
 			foreach (var link in this.references) {
 				load_list.add(link);
 			}
-			yield this.load_links(load_list);
+			var res = new ResolveLink (this.parent.runner, this.parent, MarkdownPhase.EXECUTION);
+			yield res.preload_links(load_list);
 			var reference_content = "";
 			if (this.references.size > 0) {
 				string[] ref_parts = {};
 				foreach (var link in this.references) {
-					var block = this.parent.link_content(link, MarkdownPhase.EXECUTION);
+					var block = res.resolve(link);
 					if (block != "") {
 						ref_parts += block;
 					}
@@ -227,7 +190,7 @@ namespace OLLMcoder.Task
 			}
 			var exam_content = "";
 			if (this.exam_reference != null) {
-				var eb = this.parent.link_content(this.exam_reference, MarkdownPhase.EXECUTION);
+				var eb = res.resolve(this.exam_reference);
 				exam_content = "\n\n## Specific Document or Code to consider for this task\n\n";
 				if (eb != "") {
 					exam_content += eb;
