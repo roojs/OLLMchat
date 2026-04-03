@@ -417,9 +417,8 @@ public class Details : OLLMchat.Agent.Base
 
 	/**
 	 * Refinement: fill template. Caller has validated via skill_manager.validate(this);
-	 * definition from this.skill is non-null. Details builds
-	 * task_reference_contents by looping references and asking Runner
-	 * for each item (see "Building the task reference block").
+	 * definition from this.skill is non-null. task_reference_contents comes from
+	 * reference_contents() → ResolveLink after preload_links (this.references only) in this loop.
 	 * Up to 5 refinement attempts; up to 3 communication retries per attempt.
 	 * Caller (Runner) must catch and report to user; see 1.23.14.
 	 */
@@ -444,7 +443,8 @@ public class Details : OLLMchat.Agent.Base
 			// to echo them and producing combined output that fails to parse).
 			this.tools.clear();
 			this.code_blocks.clear();
-			yield this.runner.load_links(this.references);
+			var r = new ResolveLink (this.runner, this, MarkdownPhase.REFINEMENT);
+			yield r.preload_links (this.references);
 			this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response…"));
 			var tpl = this.refinement_prompt();
 			this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
@@ -693,91 +693,27 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Resolved content for a single reference link. Uses link.scheme (file, task,
-	 * http(s), or path == "" for `#anchor`). File: project manager or
-	 * File.new_fake, create_buffer, header_file. Other schemes:
-	 * runner.reference_content(link, stage).
-	 *
-	 * @param link the reference link (scheme, path, href, title
-	 * already parsed)
-	 * @param stage markdown phase forwarded to runner / file preview
-	 * @return fenced or file block for prompt, or "" if unresolved/empty
-	 */
-	internal string link_content(Markdown.Document.Format link, MarkdownPhase stage)
-	{
-		var name = link.title != "" ? link.title : (link.href != "" ? link.href : "unnamed reference");
-		var ref_url = link.href != "" ? link.href : link.path;
-		var title = "### Reference contents for " + name;
-		if (ref_url != "") {
-			title += " — " + ref_url;
-		}
-		if (link.path == "") {
-			var body = this.runner.reference_content(link, stage);
-			return body != "" ? this.header_fenced(title, body, "markdown") : "";
-		}
-		if (link.scheme == "http" || link.scheme == "https") {
-			if (stage != MarkdownPhase.EXECUTION) {
-				return "";
-			}
-			var body = this.runner.reference_content(link, stage);
-			return body != "" ? this.header_fenced(title, body, "markdown") : "";
-		}
-		if (link.scheme == "task") {
-			var body = this.runner.reference_content(link, stage);
-			return body != "" ? this.header_fenced(title, body, "markdown") : "";
-		}
-		if (link.scheme != "file") {
-			return "";
-		}
-		var project = this.runner.sr_factory.project_manager.active_project;
-		var resolved_path = link.is_relative
-			? (project == null ? "" : link.abspath(project.path))
-			: link.path;
-		if (resolved_path == "") {
-			return "";
-		}
-		var found = this.runner.sr_factory.project_manager.get_file_from_active_project(resolved_path);
-		if (found == null) {
-			found = new OLLMfiles.File.new_fake(this.runner.sr_factory.project_manager, resolved_path);
-		}
-		this.runner.sr_factory.project_manager.buffer_provider.create_buffer(found);
-		GLib.MatchInfo mi;
-		if (new GLib.Regex(
-				"^[Ll](\\d+)-[Ll](\\d+)$",
-				GLib.RegexCompileFlags.OPTIMIZE | GLib.RegexCompileFlags.CASELESS)
-				.match(link.hash, 0, out mi)) {
-			return this.header_file(title, found, stage,
-				int.parse(mi.fetch(1)), int.parse(mi.fetch(2)));
-		}
-		return this.header_file(title, found, stage);
-	}
-
-	/**
-	 * Resolved reference block for this task: loop references; for each,
-	 * get content via link_content(). When there are no references, returns "".
+	 * Resolved reference block for this task: ResolveLink.resolve per link.
+	 * When there are no references, returns "".
 	 * When there are references, returns "## Reference Contents" plus each block.
 	 */
 	internal string reference_contents(MarkdownPhase stage)
 	{
-		string[] parts = {};
+		var res = new ResolveLink (this.runner, this, stage);
+		var parts = "";
 		foreach (var link in this.references) {
-			GLib.debug("reference_contents: resolving link scheme=%s path=%s href=%s hash=%s",
+			GLib.debug (
+				"reference_contents: resolving link scheme=%s path=%s href=%s hash=%s",
 				link.scheme, link.path, link.href, link.hash);
-			var block = this.link_content(link, stage);
-			if (block != "") {
-				parts += block;
-			}
+			parts += res.resolve (link);
 		}
 		foreach (var link in this.shared_references) {
-			var block = this.link_content(link, stage);
-			if (block != "") {
-				parts += block;
-			}
+			parts += res.resolve (link);
 		}
-		if (parts.length == 0) {
+		if (parts == "") {
 			return "";
 		}
-		return "## Reference Contents\n\n" + string.joinv("", parts);
+		return "## Reference Contents\n\n" + parts;
 	}
 
 	public void build_exec_runs()

@@ -36,6 +36,7 @@ occoder_src = files([
   'Task/Step.vala',     # Task: Step → Details
   'Task/Details.vala',  # Task: Details → ResultParser, Tool
   'Task/ValidateLink.vala',  # after Details (uses Details; Details delegates link validation)
+  'Task/ResolveLink.vala',
   'Task/Tool.vala',     # Task: Tool → Details
   'Task/WriteChange.vala',  # after Tool.vala
   'Task/List.vala',     # Task: List → Step, Details
