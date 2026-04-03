@@ -17,7 +17,7 @@
 - **Private helpers are not automatically an improvement** — they are often **bloat**, hide the real flow, and scatter logic. Default to **changing existing methods** and **inlining** at the call site.
 - **Readability via extraction is the user’s decision**, not the implementer’s default. Do not introduce helpers “for clarity” unless the user wants that refactor.
 
-## Required shape (match `docs/plans/done/6.6-DONE-*.md` and `6.8-fixing-large-restore.md`)
+## Required shape (match `docs/plans/done/6.6-DONE-*.md` and `docs/plans/done/6.8-DONE-fixing-large-restore.md`)
 
 1. **Title** — `# N.N Title`
 2. **`Status:`** — proposed | done | rejected
@@ -73,4 +73,4 @@ When implemented: move or copy to **`docs/plans/done/`**, prefix filename with *
 
 - **`.cursor/rules/CODING_STANDARDS.md`** — checklist for plans + Vala/style rules
 - **`.cursor/rules/plan-implementation-workflow.mdc`** — implement only approved scope; update plan on blockers
-- **`6.9-debugging-performance.md`** — nested thinking / history replay perf: current status and next steps (see **`6.8-fixing-large-restore.md`** for parser work)
+- **`docs/plans/done/6.9-DONE-debugging-performance.md`** — nested thinking / history replay perf (see **`docs/plans/done/6.8-DONE-fixing-large-restore.md`** for parser work)
