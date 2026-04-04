@@ -744,8 +744,9 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Run all Tool exec runs (tool if needed, then LLM). Breaks on has_task_complete();
-	 * then runs post-exec synthesis. Summaries and canonical document from post-exec.
+	 * Run all Tool exec runs (tool if needed, then LLM) in order — every run in
+	 * {@link exec_runs}. Then post-exec synthesis when there is more than one run.
+	 * Summaries and canonical document from post-exec when applicable.
 	 */
 	public async void run_exec() throws GLib.Error
 	{
@@ -756,12 +757,6 @@ public class Details : OLLMchat.Agent.Base
 				"Running Tools for Task " + task_name + " — Tool call " +
 				(i + 1).to_string()));
 			yield ex.run();
-			if (ex.has_task_complete()) {
-				this.add_message(new OLLMchat.Message("ui",
-					"Tool evaluation indicated that **We have enough " +
-					"information to complete task**."));
-				break;
-			}
 		}
 		// Multi-run: post-exec summarizes combined tool runs (write_file runs are included inside each run).
 		// Single run: no synthesis pass — copy that run's executor output.
@@ -790,9 +785,6 @@ public class Details : OLLMchat.Agent.Base
 		for (var i = 0; i < this.exec_runs.size; i++) {
 			var ex = this.exec_runs.get(i);
 			run_blocks += ex.document.to_markdown();
-			if (ex.has_task_complete()) {
-				break;
-			}
 		}
 		tpl.fill(6,
 			"task_definition", this.to_markdown(MarkdownPhase.POST_EXEC),

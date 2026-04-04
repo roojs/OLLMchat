@@ -89,24 +89,6 @@ namespace OLLMcoder.Task
 			}
 		}
 
-		/**
-		 * True when the tail of this run's executor output says the task
-		 * is complete — no further tool calls in this task. Call only after
-		 * exec_extract set this.document.
-		 */
-		public bool has_task_complete()
-		{
-			if (this.document == null) {
-				return false;
-			}
-			var chunks = this.document.to_markdown().strip().split("\n\n");
-			var tail = this.document.to_markdown().strip();
-			if (chunks.length >= 2) {
-				tail = chunks[chunks.length - 2] + "\n\n" + chunks[chunks.length - 1];
-			}
-			return tail.down().contains("no further tool calls needed");
-		}
-
 		/** Tool call details for this run: tool call + result. Uses this.tool_run_result; build with parent.header_fenced/header_raw. Empty when no tool_call. */
 		internal string tool_call_details()
 		{
@@ -199,8 +181,6 @@ namespace OLLMcoder.Task
 				}
 			}
 			var executor_input = tool_output + reference_content + exam_content;
-			this.add_message(new OLLMchat.Message("ui", 
-				"Tool run finished. Reviewing Tool Output"));
 			var response_text = "";
 			var last_issues = "";
 			for (var try_count = 0; try_count < 5; try_count++) {

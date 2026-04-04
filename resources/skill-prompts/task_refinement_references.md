@@ -16,7 +16,7 @@ You are a **refiner**. Your **only** job is to **organize** the task list: outpu
 
 ## Links from prior task output (Detail)
 
-If this task references a **completed** prior task (`task://…`), **Detail** may contain markdown links. **Extract** them into **Shared references** / **Examination references** in your refined **## Task** list using the **skill-first** rules and **Balance shared vs examination** above — when **Refinement** says all shared or all examination, follow that; otherwise apply the default balance (not all into shared by default). Formats: `[Title](path/from/project/root)`, `[Title](liboccoder/File.vala#ast_path)`; code anchors = full **AST** path — see **Link types**. Use file paths and `task://` links that resolve in this project (**project-relative** or full filesystem path — **not** a stray leading `/` on a repo-only segment).
+If this task references a **completed** prior task (`task://…`), **Detail** may contain markdown links. **Extract** them into **Shared references** / **Examination references** in your refined **## Task** list using the **skill-first** rules and **Balance shared vs examination** above — when **Refinement** says all shared or all examination, follow that; otherwise apply the default balance (not all into shared by default). Formats: `[Title](path/from/project/root)`, `[Title](liboccoder/File.vala#ast_path)`; code anchors = full **AST** path — see **Link types**. Use file paths and `task://` links that resolve in this project (**project-relative** or full filesystem path — **not** a stray **`/`** on a repo-only segment; **`/.cursor/...`** is filesystem root, not **`.cursor`** in the project).
 
 - **Shared references** — only what **every** run needs, **unless** the skill says otherwise (see **Balance shared vs examination**).
 - **Examination references** — per-run targets when splitting; one link per examination run where applicable (parent plan **§ Reference refinement → runner**), **unless** the skill says to use only **Shared references** or only **Examination references**.
@@ -130,7 +130,7 @@ In refined **output**, place links in **Shared references** / **Examination refe
 
 ### Do
 
-- **Do** — Use `[Title](target)` markdown links in **Shared references** / **Examination references**.
+- **Do** — Use `[Title](target)` markdown links in **Shared references** / **Examination references** (when those lines appear): **only** links on those lines — space-separated, as in **Expected output examples** — so precursor content loads at execution.
 - **Do** — Use **project-relative** paths (**no** leading `/`) or **full** filesystem paths from `/` for files and file sections.
 - **Do** — Form **markdown** `#anchor` on **file** paths: lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen.
 - **Do** — **File** links — title = file **base name**; path = project-relative or full filesystem path; linked files supply precursor content at execution.
@@ -145,7 +145,10 @@ In refined **output**, place links in **Shared references** / **Examination refe
 
 ### Don't
 
-- **Don't** — Start a project path with **`/`** unless it is a **real** filesystem absolute path.
+- **Don't** — Put **plain text**, prose, notes, bare paths, or backticked filenames **without** `[Title](target)` in **Shared references** or **Examination references** — **links only**, no sentences or unlinked path lists.
+- **Don't** — Output a **`References`** field in refined **`## Task`** — **References** is task-creation **input**; refined **`## Task`** uses **Shared references** / **Examination references** only (see **Output format**).
+- **Don't** — Put **directory** paths in **Shared references** or **Examination references** — **forbidden**. Links must target **files** (optional `#…` fragment), **`task://…`** outputs, or resolvable **URLs** — not folders. If many files matter, link **specific files** (or multiple examination links); do not reference a directory as precursor content.
+- **Don't** — Start a project path with **`/`** unless it is a **real** absolute path from the **OS** root (e.g. **`/home/you/workspace/repo/lib/Foo.vala`**). **`/`** is **not** the project root — it is the **filesystem** root. **`/.cursor/...`**, **`/liboccoder/...`**, **`/src/...`** for repo files are **wrong** (they point at **`/.cursor`**, **`/liboccoder`** on disk, not **`.cursor`**, **`liboccoder`** under the project). Use **project-relative** paths with **no** leading slash.
 - **Don't** — Paste file bodies into **## Task** — only links; contents load from those links at execution.
 - **Don't** — Use plain symbol-only anchors for code when the runner expects full **AST** paths.
 - **Don't** — Treat a **`#L<num>-L<num>`** fragment as a **markdown heading slug** or **AST** path — that shape is **line-range** only (see **Do** above).

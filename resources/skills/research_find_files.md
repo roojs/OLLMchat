@@ -89,20 +89,19 @@ You receive **run_command** output (and any **References** if present) in **Tool
 - **Answer What is needed** — say what matched (files, lines, or “nothing found”) and how it relates to the question.
 - **Use correct file links** — **project-relative** paths (**no** leading `/`, e.g. `liboccoder/Foo.vala`) or a **real** filesystem absolute path; normalize paths using **project root** / workspace from the precursor when command output is cwd-relative or abbreviated.
 - **Say when commands failed or were empty** — note errors, missing files, or insufficient output so follow-up work is not misled.
-- **End with `no further tool calls needed`** on its own **last** line when this run’s output **fully** answers **What is needed** with no guesswork; **omit** that line when results are partial or more search is clearly needed (see execution prompt rules).
 
 ### Don'ts
 
 - **Do not run tools** — do not emit **`run_command`** or ask for more shell runs here; you only interpret output already in **Tool Output and/or Reference information**.
 - **Do not paste long logs** — summarize hits and use **markdown links** instead of dumping command output.
-- **Do not** use a leading **`/`** on a project path unless it is a **full** OS path — **`/liboccoder/...`** resolves from the filesystem root, not the repo.
+- **Do not** use a leading **`/`** on a project path unless it is a **full** OS absolute path. **`/`** is filesystem root, not project root — **`/.cursor/...`**, **`/liboccoder/...`** are **wrong** for repo files (they resolve to **`/.cursor`**, **`/liboccoder`** on disk). Use **`.cursor/...`**, **`liboccoder/...`** with **no** leading slash.
 - **Do not** add extra **`##`** sections or fenced deliverables unless **What is needed** explicitly asks — default is **`## Result summary`** only.
 - **Do not** pad with process narration or background that does not serve **What is needed**.
 
 **## Result summary** (required) — **one short paragraph** (two at most if there are distinct groups of hits). State:
 
 - **What matched** **What is needed** — file paths and, for grep-style output, that the listed lines/snippets address the question.
-- **File links in this summary** — follow the same path rules as task reference links: **do not** start a project path with **`/`** unless it is a **full filesystem path** from the OS root (e.g. **`/home/user/project/lib/Foo.vala`**). **Do** use **project-relative** paths with **no** leading slash (e.g. **`liboccoder/Skill/Runner.vala`**). Tool output often shows paths **relative to the command’s working directory** or abbreviated; combine that with **Project** / **workspace** / **project root** from the precursor so links are unambiguous — normalize to project-relative from the root you were given, not a fake **`/lib/...`** that looks like the filesystem root.
+- **File links in this summary** — follow the same path rules as task reference links: **do not** start a project path with **`/`** unless it is a **full filesystem path** from the OS root (e.g. **`/home/user/project/lib/Foo.vala`**). **`/.cursor/...`**, **`/lib/...`** without a real home prefix are **wrong** — use **`.cursor/...`**, **`lib/...`** project-relative. Tool output often shows paths **relative to the command’s working directory** or abbreviated; combine that with **Project** / **workspace** / **project root** from the precursor so links are unambiguous — normalize to project-relative from the root you were given, not a fake absolute under **`/`**.
 - Use **markdown file links** `[label](path/to/file)` (project-relative) or `[label](/full/filesystem/path/to/file)` when you truly have an absolute path; add `#anchor` only when the output gives a stable line or you can point to a known section. Do **not** paste long command logs — summarize and link.
 - If commands failed, errored, or returned nothing useful, say so and what is missing.
-- If the output is **enough** to answer **What is needed** with no guesswork, end the full markdown with **`no further tool calls needed`** on its own **last** line (see execution prompt rules). If more searches would be needed, **omit** that line and note the gap in **## Result summary**.
+- If results are partial or **What is needed** is not fully addressed, say so clearly in **## Result summary** (what is missing, what further search would help).

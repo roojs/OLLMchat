@@ -69,7 +69,7 @@ Use **Path 1** or **Path 2**, not both.
 
 ### Don't
 
-- **Don't** — Start a project path with **`/`** unless it is a real filesystem absolute path.
+- **Don't** — Start a project path with **`/`** unless it is a **real** OS-root absolute path. **`/`** is filesystem root, not project root — **`/.cursor/...`**, **`/liboccoder/...`** for in-repo files are **wrong**. Use **`.cursor/...`**, **`liboccoder/...`** with **no** leading slash.
 - **Don't** — Paste long file bodies into your answer — link instead.
 - **Don't** — Use `#fragments` with mistaken `--` between word groups.
 - **Don't** — Paste the actual body of files or other content — use links; the Runner will inject contents when needed.

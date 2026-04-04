@@ -76,15 +76,23 @@ namespace OLLMchatGtk
 			this.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) { hexpand = true });
 
 			this.action_button = new Gtk.Button.with_label("Send");
+			this.action_button.add_css_class("suggested-action");
 			this.action_button.clicked.connect(this.on_button_clicked);
 			this.append(this.action_button);
 		}
 
-		/** Call when streaming state changes; updates Send/Stop button label. */
+		/** Call when streaming state changes; updates Send/Stop label and button style (primary vs destructive). */
 		public void update_action_button_state(bool streaming)
 		{
 			this.is_streaming = streaming;
 			this.action_button.label = streaming ? "Stop" : "Send";
+			this.action_button.remove_css_class("suggested-action");
+			this.action_button.remove_css_class("destructive-action");
+			if (streaming) {
+				this.action_button.add_css_class("destructive-action");
+			} else {
+				this.action_button.add_css_class("suggested-action");
+			}
 		}
 
 		private void on_button_clicked()
