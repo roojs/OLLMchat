@@ -1,6 +1,6 @@
 ---
 name: research_find_files
-description: Use when you need to list directories, find files by name or glob, or search for plain-text keywords in files (find/grep/ls style). Prefer analyze_codebase for semantic “where is this implemented?” code search; use this skill for path listing, filename patterns, and simple content matches.
+description: Use when you need to list directories, find files by name or glob, or search for plain-text keywords in files (find/grep/ls style). Prefer analyze_codebase for semantic “where is this implemented?” code search; use this skill for path listing, filename patterns, and simple content matches. For content search inside a git repo, prefer git grep (respects .gitignore, skips .git, fast on tracked tree).
 tools: run_command
 ---
 
@@ -16,14 +16,15 @@ tools: run_command
 - **Keep scope narrow** — prefer a subdirectory, `-maxdepth`, `--include` / `-name`, or a specific path over searching the whole repo in one shot.
 - **Cap noisy output** — pipe to `head -n 80` (or similar) when breadth is unknown so results stay usable.
 - **Use `working_dir`** when the whole run should start in one directory — especially an **absolute path** outside the project (read-only lookup is fine); you can also use absolute paths inside **`command`**.
-- **Split work across multiple tool calls** when it helps (e.g. one **`find`** for filenames, one **`grep`** for content) instead of one enormous pipeline — unless one command is clearly enough.
-- **Use scoped `grep`** — give a subdirectory or `--include` / `--exclude-dir` (e.g. skip **`node_modules`**) so you do not recurse blindly from the repo root.
+- **Split work across multiple tool calls** when it helps (e.g. one **`find`** for filenames, one **`git grep`** / **`grep`** for content) instead of one enormous pipeline — unless one command is clearly enough.
+- **Prefer `git grep` for text search inside a git work tree** — it searches the tracked tree from the repo root, honors **`.gitignore`**, and avoids scanning **`.git`** / typical junk dirs; scope with a path after **`--`** (see examples below). Use plain **`grep -r`** only when you are **not** in a git repo, need ignored/build-only paths, or must match **untracked-only** content (then consider **`git grep --untracked`** or **`git grep --no-index`** as appropriate).
+- **If you use plain `grep`, keep it scoped** — subdirectory, **`--include`**, or **`--exclude-dir`** (e.g. skip **`node_modules`**) so you do not recurse blindly from the repo root.
 
 ### Don'ts
 
 - **Do not fill in References** — leave **References** as **—** or **(none)**; put intent only in **What is needed** and in **`run_command`** arguments.
 - **Do not set `network`** or **`allow_write`** on **`run_command`** — this skill is read-only research; those flags are unnecessary and **trigger extra user permission** prompts.
-- **Do not run huge unbounded searches** when a smaller directory or pattern would answer **What is needed** — avoid blasting **`node_modules`**, **`.git`**, and build output; restrict paths and use **`grep`** with **`--exclude-dir`** (or search only under **`src/`**, etc.) instead of unscoped **`grep -r`** from the repo root.
+- **Do not run huge unbounded searches** when a smaller directory or pattern would answer **What is needed** — avoid blasting **`node_modules`**, **`.git`**, and build output; prefer scoped **`git grep`** (or restrict paths and use **`grep`** with **`--exclude-dir`**, or search only under **`src/`**, etc.) instead of unscoped **`grep -r`** from the repo root.
 
 ### Tool: run_command (options worth using)
 
@@ -48,11 +49,14 @@ tools: run_command
 
 - `ls -la` — current dir; `ls -la liboccoder/Task/` — specific path.
 
-**Searching file contents**
+**Searching file contents (prefer `git grep` in a repo)**
 
-- `grep -rIin "pattern" liboccoder/` — recursive, line numbers, binary-ignore, case-insensitive (drop **i** when case matters).
-- `grep -rIin --include="*.vala" "pattern" .` — limit by extension.
-- `grep -rIin --exclude-dir=node_modules --exclude-dir=.git "pattern" liboccoder/` — recurse but skip heavy dirs (add more **`--exclude-dir`** as needed).
+- `git grep -nI "pattern" -- liboccoder/` — line numbers, skip binary-like files; limit to **`liboccoder/`** (path after **`--`**).
+- `git grep -nIi "pattern" -- liboccoder/` — same, case-insensitive (drop **`i`** when case matters).
+- `git grep -nI "pattern" -- '*.vala'` — limit by pathspec (all **`*.vala`** from repo root); add a directory: **`-- 'liboccoder/**/*.vala'`** if you need a subtree glob.
+- `git grep -nI "pattern" -- lib/foo.vala` — single file.
+- `git grep -nI --untracked "pattern" -- src/` — include **untracked** files in addition to tracked (still respects ignore rules unless you add **`--no-exclude-standard`**).
+- **Fallback: plain `grep`** — `grep -rIin --include="*.vala" "pattern" liboccoder/` when not using git, or searching paths git ignores; still scope the path and use **`--exclude-dir`** as needed.
 
 ### Example refinement output (research_find_files)
 
@@ -72,8 +76,10 @@ For this skill, leave **References** as **—**; use **## Tool Calls** only. Exa
 ```
 
 ```json
-{ "name": "run_command", "arguments": { "command": "grep -rIn \"exec_extract\" liboccoder/Task --include=\"*.vala\" 2>/dev/null | head -80" } }
+{ "name": "run_command", "arguments": { "command": "git grep -nI \"exec_extract\" -- liboccoder/Task/ 2>/dev/null | head -80" } }
 ```
+
+Narrow by extension when needed: **`git grep -nI \"pattern\" -- '*.vala'`** or **`git grep -nI \"pattern\" -- 'liboccoder/Task/**/*.vala'`** (quote pathspecs so the shell does not expand them early).
 
 Do **not** add file paths or URLs under **References** unless a different instruction requires them — for **research_find_files**, keep **References** as **—**.
 

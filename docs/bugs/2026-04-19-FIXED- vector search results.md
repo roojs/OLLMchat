@@ -1,6 +1,6 @@
 # Vector search results — fix plan (first effort)
 
-**Status:** planning  
+**Status:** FIXED
 **Area:** FAISS / vector search / `libocvector` (and callers)
 
 ## Problem (short)

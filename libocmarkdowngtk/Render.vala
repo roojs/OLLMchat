@@ -191,11 +191,6 @@ namespace MarkdownGtk
 			if (!tv.get_iter_at_location(out iter, buf_x, buf_y)) {
 				return null;
 			}
-			var buf = tv.get_buffer();
-			var link_tag = buf.get_tag_table().lookup("link");
-			if (link_tag == null || !iter.has_tag(link_tag)) {
-				return null;
-			}
 			var tags = iter.get_tags();
 			if (tags == null || tags.length() < 1) {
 				return null;
@@ -585,19 +580,18 @@ namespace MarkdownGtk
 		{
 			if (!is_start) {
 				this.current_state.close_state();
-				this.current_state.close_state();
 				return;
 			}
-			var link_tag = this.current_buffer.get_tag_table().lookup("link");
-			if (link_tag == null) {
-				link_tag = this.current_buffer.create_tag("link", null);
-				link_tag.foreground = "blue";
-				link_tag.underline = Pango.Underline.SINGLE;
-			}
+			/* One tag per link: appearance + href/title on the same Gtk.TextTag.
+			 * Previously: shared "link" tag + inner style-N with href — add_text only applied
+			 * the inner tag, so "link" never sat on the text (plain look, tag_at_iter failed). */
+			var buf = this.current_buffer;
+			var link_tag = buf.create_tag("link-%u".printf(State.tag_counter++), null);
+			link_tag.foreground = "blue";
+			link_tag.underline = Pango.Underline.SINGLE;
+			link_tag.set_data<string>("href", href);
+			link_tag.set_data<string>("title", title);
 			this.current_state.add_state(link_tag);
-			var inner = this.current_state.add_state();
-			inner.style.set_data<string>("href", href);
-			inner.style.set_data<string>("title", title);
 		}
 		
 		/**

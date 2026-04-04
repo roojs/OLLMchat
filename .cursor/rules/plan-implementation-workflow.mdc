@@ -24,4 +24,4 @@ Applies when implementing **feature or refactor work** from `docs/plans/*`, tick
 
 ## Relation to bug fixes
 
-For **bug fixes**, follow `.cursor/rules/bug-fix-process.md` (debug → understand → propose → approval → apply). This rule adds the **revert + plan update + approval** loop when **planned implementation** hits design gaps.
+For **bug fixes**, follow **`docs/bug-fix-process.md`** (debug → understand → propose → approval → apply). This rule adds the **revert + plan update + approval** loop when **planned implementation** hits design gaps.
