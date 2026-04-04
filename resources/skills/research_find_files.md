@@ -1,6 +1,6 @@
 ---
 name: research_find_files
-description: Use when you need to list directories, find files by name or glob, or search for plain-text keywords in files (find/grep/ls style). Prefer analyze_codebase for semantic “where is this implemented?” code search; use this skill for path listing, filename patterns, and simple content matches. For content search inside a git repo, prefer git grep (respects .gitignore, skips .git, fast on tracked tree).
+description: Use when you need to list directories, find files by name or glob, or search file contents for exact text (shell-style find/ls/grep). Prefer analyze_codebase for semantic “where is this implemented?” code search instead of this skill.
 tools: run_command
 ---
 
@@ -8,16 +8,17 @@ tools: run_command
 
 **Purpose of this skill:** Run shell commands that **list** paths or **search** filenames and file contents. The executor only **interprets** command output — refinement must emit **## Tool Calls** with one or more **`run_command`** invocations so those commands run first.
 
-**What is needed** should state what to locate (e.g. “all `*.vala` under `liboccoder/`”, “files whose name contains `Runner`”, “lines containing `exec_extract` in `ResultParser.vala`”). Turn that into concrete **`run_command`** calls.
+**What is needed** should state what to locate (e.g. “all `*.vala` under `liboccoder/`”, “files whose name contains `Runner`”, “lines containing `exec_extract` in `ResultParser.vala`”). Turn that into concrete **`run_command`** calls — in-repo, prefer **`git ls-files`** / **`git grep`**; outside the project or without git, use **`find`** / plain **`grep`**.
 
 ### Do's
 
 - **Emit `## Tool Calls`** — one or more fenced JSON **`run_command`** blocks; that is the main refinement output for this skill.
-- **Keep scope narrow** — prefer a subdirectory, `-maxdepth`, `--include` / `-name`, or a specific path over searching the whole repo in one shot.
+- **Keep scope narrow** — in a repo, use a **path prefix** on **`git ls-files`** or **`git grep`** (after **`--`**) or a tight pathspec; outside git or the project, use **`find`** with **`-maxdepth`**, **`-name`**, etc., instead of scanning everything in one shot.
 - **Cap noisy output** — pipe to `head -n 80` (or similar) when breadth is unknown so results stay usable.
 - **Use `working_dir`** when the whole run should start in one directory — especially an **absolute path** outside the project (read-only lookup is fine); you can also use absolute paths inside **`command`**.
-- **Split work across multiple tool calls** when it helps (e.g. one **`find`** for filenames, one **`git grep`** / **`grep`** for content) instead of one enormous pipeline — unless one command is clearly enough.
-- **Prefer `git grep` for text search inside a git work tree** — it searches the tracked tree from the repo root, honors **`.gitignore`**, and avoids scanning **`.git`** / typical junk dirs; scope with a path after **`--`** (see examples below). Use plain **`grep -r`** only when you are **not** in a git repo, need ignored/build-only paths, or must match **untracked-only** content (then consider **`git grep --untracked`** or **`git grep --no-index`** as appropriate).
+- **Split work across multiple tool calls** when it helps (e.g. one **`git ls-files`** / **`git grep`** pass for file paths, one for content) instead of one enormous pipeline — unless one command is clearly enough.
+- **Prefer `git ls-files --exclude-standard` (often `| grep …`) to list project files** — enumerates tracked paths from the repo root, honors standard ignore rules, and avoids walking **`.git`** and junk trees; filter with **`grep`** on the path string (substring or regex), or pass a **directory prefix** / pathspec to **`git ls-files`** to narrow first. Use **`find`** (or **`fd`**) when **`working_dir`** is **outside** the repo, the tree is **not** a git checkout, or you need **mtime** / filesystem-only queries **`git ls-files`** does not cover.
+- **Prefer `git grep` for text search inside a git work tree** — same benefits as above; scope with a path after **`--`** (see examples). Use plain **`grep -r`** when you are **not** in a git repo, **`working_dir`** is outside the project, you need ignored/build-only paths, or **untracked-only** content (then consider **`git grep --untracked`** or **`git grep --no-index`** as appropriate).
 - **If you use plain `grep`, keep it scoped** — subdirectory, **`--include`**, or **`--exclude-dir`** (e.g. skip **`node_modules`**) so you do not recurse blindly from the repo root.
 
 ### Don'ts
@@ -31,19 +32,27 @@ tools: run_command
 - **command** (required): a single shell command string (run via `/bin/sh -c`).
 - **working_dir** (optional): directory used as the **current working directory** for this run.
   - **Omitted or empty:** cwd is the **project root** when a project is open, otherwise the user’s **home** directory — **not** arbitrary paths outside the project unless you set **working_dir** or use absolute paths in **command**.
-  - **Absolute path:** use this to run **inside** any directory (including **outside the repo**), e.g. `"/home/user/other-clone"` — then use relative paths in **command** (`find . …`, `grep -r … .`) from that root.
+  - **Absolute path:** use this to run **inside** any directory (including **outside the repo**), e.g. `"/home/user/other-clone"` — then use **`find`**, plain **`grep -r`**, **`ls`**, etc. on that tree (**`git ls-files`** / **`git grep`** apply to the **git** root when cwd is the project; for arbitrary directories outside the project, **`find`** / **`grep`** are the right tools).
   - **Relative (non-empty):** normalized **under `$HOME`**, not under the project (special case: the string **`playground`** maps to `$HOME/playground`).
   - Prefer **`working_dir`** + short **command** over embedding `cd /path && …` when the whole run should start in one folder; either style can work.
   - **Looking outside the project** is allowed: set **`working_dir`** to an absolute path outside the repo, or use absolute paths in **`command`** — that is normal read-only research and does **not** require **`network`** or **`allow_write`**.
 
 ### Command patterns (examples — adapt paths and patterns to **What is needed**)
 
-**Finding files (name / tree)**
+**Finding project files (inside a git repo — prefer over `find`)**
 
-- `find . -maxdepth 3 -name "*.vala"` — files by extension, limited depth.
+- `git ls-files --exclude-standard | grep '\.vala$'` — tracked paths whose names end with **`.vala`** (adjust the **`grep`** pattern for partial names, case, etc.).
+- `git ls-files --exclude-standard | grep -i 'runner'` — path contains **`runner`** (case-insensitive).
+- `git ls-files --exclude-standard liboccoder/Task/` — only under **`liboccoder/Task/`**; combine with **`| grep '\.vala$'`** when you need extension filtering.
+- `git ls-files --exclude-standard -- 'liboccoder/Task/*.vala'` — pathspec (shell may need quoting so glob is left to Git).
+- **`git ls-files`** lists **tracked** files; for **untracked** names use **`git ls-files -o --exclude-standard`** (optional **`--exclude-standard`** still drops ignored noise) or fall back to **`find`** for a non-git directory.
+
+**Finding files outside the project or without git (`find` / `fd`)**
+
+- `find . -maxdepth 3 -name "*.vala"` — by extension, limited depth.
 - `find . -name "*UserHandler*"` — partial filename.
-- `find . -mtime -1` — recently modified (adjust as needed).
-- If **`fd`** is available: `fd -e vala . liboccoder` — often shorter than **find**.
+- `find . -mtime -1` — recently modified (**`git ls-files`** has no mtime; use this when you need it).
+- If **`fd`** is available: `fd -e vala . liboccoder` — often shorter than **`find`**.
 
 **Listing directories**
 
@@ -72,7 +81,7 @@ For this skill, leave **References** as **—**; use **## Tool Calls** only. Exa
 ## Tool Calls
 
 ```json
-{ "name": "run_command", "arguments": { "command": "find liboccoder/Task -maxdepth 2 -name \"*.vala\" 2>/dev/null | head -100" } }
+{ "name": "run_command", "arguments": { "command": "git ls-files --exclude-standard liboccoder/Task/ | grep '\\.vala$' 2>/dev/null | head -100" } }
 ```
 
 ```json

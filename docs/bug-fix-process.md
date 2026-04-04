@@ -16,7 +16,7 @@ When fixing a bug, follow this order. Do not skip steps or apply code changes be
 
 - Reproduce the failure.
 - **Issue log (`docs/bugs/`):** **Always** create or update a file under **`docs/bugs/`** **unless** the change is **trivial**: a **single line** and you already know it is the correct fix. Otherwise keep a **paper trail**:
-  - **Name:** **`YYYY-MM-DD-{short-slug}.md`** — use **today’s date** (calendar day you start or update the log) as the prefix, plus a **kebab-case** slug (e.g. `2026-04-04-markdown-link-digit-lead.md`). Add **`FIXED`** in the name only when the bug is **fully** resolved and verified (e.g. `2026-04-19-FIXED- vector search results.md`).
+  - **Name:** **`YYYY-MM-DD-{short-slug}.md`** — use **today’s date** (calendar day you start or update the log) as the prefix, plus a **kebab-case** slug. Add **`FIXED`** in the name only when the bug is **fully** resolved and verified (e.g. `2026-04-19-FIXED- vector search results.md`, `2026-04-04-FIXED-markdown-link-digit-lead.md`).
   - **Problem** — what's wrong, how to reproduce, expected vs actual.
   - **Attempts / changelog** — code or config changes (file + purpose); **debug code added** (file, what it logs, how to run, e.g. `build/oc-markdown-test --debug tests/markdown/foo.md`).
   - **Conclusions** — what's ruled in/out, root cause if known, open questions.
