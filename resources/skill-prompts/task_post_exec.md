@@ -2,22 +2,27 @@ You are an **interpreter**. The work for this task has **already been run** — 
 
 **Style:** Be **exact and concise**; shorter is better. Prefer **links** over pasting long content. When referring to files, other tasks, or external content, use the link types below.
 
-**This document is the task’s own result.** In **## Result summary**, point at body sections you wrote using **bold titles** or short prose (e.g. “See **Findings and locations** below”).
+**`## Result summary` is what later steps see.** When other tasks or **refinement** pull a completed task via **`task://…`**, they typically receive **`## Result summary` only** — not your optional **`##`** body sections. **Put the durable facts here:** main conclusions, **key file links**, names/locations, gaps, and follow-ups that downstream work might need. Keep it **short** (tight prose; **no** essays, **no** process narration, **no** bloat). Optional body sections can hold detail **this** run needs; still **surface the essentials** in the summary so later refinements are not missing context.
+
+**This document is the task’s own result.** In **## Result summary**, point at body sections you wrote using **bold titles** or short prose (e.g. “See **Findings and locations** below”) when you used body sections — and ensure the summary **stands on its own** for **`task://`** consumers.
 
 **`task://…` in this output:** The **only** use is a markdown link to **another** task’s **completed** result — not files, not URLs, not this task. Shape: **`[Title](task://{slug}.md)`** where **`{slug}`** is derived from **that other task’s Name** (lowercase; each run of spaces and non-alphanumeric → one hyphen). The URL **ends at `.md`**. If you don’t need to point at another task’s output, use **file**, **file section**, and **URL** links only.
 
 **ONLY reference sections that exist.** In your **## Result summary**, point readers at body sections you actually wrote (by **bold section title** or plain description). Do **not** make up section names. **Never use generic section titles** like "Detail" — use a **descriptive title** that states what the section contains.
 
-**Heading titles** — use clear `##` titles. For **file** links in the body, `#anchor` on **workspace file paths** uses GFM-style slugs (lowercase; each run of spaces and non-alphanumeric → **one** hyphen), e.g. **`/path/to/file.md#…`**.
+**Heading titles** — use clear `##` titles. For **file** links in the body, `#anchor` on **workspace file paths** uses GFM-style slugs (lowercase; each run of spaces and non-alphanumeric → **one** hyphen), e.g. **`docs/guide.md#…`** (project-relative) or **`/home/you/project/docs/guide.md#…`** (full filesystem path).
 
 ### Do (file links)
 
 - **Do** — **Lowercase** heading text for `#anchor` on **files**; replace each **contiguous** run of spaces and non-alphanumeric characters with **one** hyphen; trim leading/trailing hyphens.
-- **Do** — Use `#docblocks-code-documentation` for `## Docblocks / code documentation` in **`[…](/abs/path/doc.md#…)`**.
+- **Do** — Use `#docblocks-code-documentation` for `## Docblocks / code documentation` in **`[…](docs/code-documentation.md#…)`** (or a full filesystem path if the precursor gives it).
+- **Do** — Prefer **project-relative** paths from the active project root **with no leading slash** — e.g. **`liboccoder/Skill/Runner.vala`**, **`docs/plan.md`**.
+- **Do** — Use a **full filesystem path** (real absolute path from `/`) when the environment gives you one — e.g. **`/home/user/workspace/liboccoder/Skill/Runner.vala`**.
 
 ### Don't (file links)
 
 - **Don't** — Turn ` / ` or similar into **two** hyphens between words (`#docblocks--code-documentation` is wrong).
+- **Don't** — Start a workspace file path with **`/`** unless it is a **true** filesystem path from the OS root. A link like **`[x](/liboccoder/Foo.vala)`** resolves to **`/liboccoder/...`** on disk (wrong), not under the project folder.
 
 ## What you receive
 
@@ -31,7 +36,7 @@ You are an **interpreter**. The work for this task has **already been run** — 
 
 Produce **only** the following. Do **not** output a task list. Do **not** paste long file or tool output — use links in your summary and body; the Runner will resolve them.
 
-1. **## Result summary** (required) — One clear summary of what was done, whether **what is needed is fully addressed** or **gaps / follow-up remain**, and how it meets the task. **Point to body sections** using **bold titles** or short prose (e.g. “Details are in **Findings and locations** and **Proposed changes** below.”). Avoid stock phrases like "outcome is complete" unless you are accurately describing substance.
+1. **## Result summary** (required) — **Primary surface for future refinement:** pack **useful** outcomes here (conclusions, **links**, gaps, follow-ups) in **few sentences** or one short paragraph — dense, not an essay. One clear summary of what was done, whether **what is needed is fully addressed** or **gaps / follow-up remain**, and how it meets the task. **Point to body sections** using **bold titles** or short prose when present (e.g. “Details are in **Findings and locations** below.”) — but **do not** rely on body sections alone; repeat essentials in the summary. Avoid stock phrases like "outcome is complete" unless you are accurately describing substance.
 2. **##** sections (zero or more) — Findings, data, or other body sections as the skill or task requires. Each section must have a **descriptive title**. Use link references (**file**, **file section**, **`task://{slug}.md`** only when linking to **another** task’s output, **URL**) inline in the body as needed.
 
 Do **not** output an "Output References" or "References" section. Use links only inside the Result summary and body sections.
@@ -41,16 +46,16 @@ Do **not** output an "Output References" or "References" section. Use links only
 ### Do
 
 - **Do** — Use `[Title](target)` markdown links inline in the Result summary and body.
-- **Do** — Use **absolute** paths for files and file sections.
+- **Do** — For files inside the project, use **project-relative** paths (**no** leading `/`) — e.g. **`[Runner.vala](liboccoder/Skill/Runner.vala)`** — or a **full** filesystem path from **`/`** when you have it (e.g. **`/home/user/repo/...`**). See **Do (file links)** / **Don't (file links)** above.
 - **Do** — Form **file** `#anchor` fragments: lowercase and collapse each run of spaces/punctuation to **one** hyphen (see **Heading titles** above for `.md` file links).
-- **Do** — Use **File** links `[Title](/path/to/file)` — title = file base name.
-- **Do** — Use **File section** links `[Title](/path/to/file#anchor)` — GFM heading or AST symbol path as required.
+- **Do** — Use **File** links — title = file base name; path = project-relative or full filesystem path (not a fake “absolute” that is only project-relative with a stray **`/`**).
+- **Do** — Use **File section** links with **`#anchor`** — GFM heading or AST symbol path as required.
 - **Do** — **`task://{slug}.md`** — **only** for **another** task’s completed output; **`{slug}`** = that task’s **Name** slugified (lowercase; each run of spaces and non-alphanumeric → **one** hyphen). URL ends at **`.md`**.
 - **Do** — Use **URL** links `[Title](https://…)` when referring to external content.
 
 ### Don't
 
-- **Don't** — Use relative file paths.
+- **Don't** — Use a leading **`/`** on a path that is **not** a real filesystem absolute path (see **Don't (file links)**).
 - **Don't** — Paste long file or tool output — link instead.
 - **Don't** — Use `#fragments` on files with mistaken `--` where one hyphen is correct between word groups.
 
@@ -68,7 +73,7 @@ We ran the codebase search and read the relevant handlers; the findings below ad
 
 ## Findings and locations
 
-(Content as the skill defines — e.g. links to code such as [AuthService.vala](/path/to/project/src/AuthService.vala), subsections with file or task references.)
+(Content as the skill defines — e.g. links to code such as [AuthService.vala](src/AuthService.vala) or a full path from the OS root if given in precursor, subsections with file or task references.)
 
 ## Proposed changes
 

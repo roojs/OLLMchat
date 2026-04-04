@@ -16,7 +16,7 @@ You are a **refiner**. Your **only** job is to **organize** the task list: outpu
 
 ## Links from prior task output (Detail)
 
-If this task references a **completed** prior task (`task://…`), **Detail** may contain markdown links. **Extract** them into **Shared references** / **Examination references** in your refined **## Task** list using the **skill-first** rules and **Balance shared vs examination** above — when **Refinement** says all shared or all examination, follow that; otherwise apply the default balance (not all into shared by default). Formats: `[Title](/abs/path)`, `[Title](/path/file#ast_path)`; code anchors = full **AST** path — see **Link types**. Use file paths and `task://` links that resolve in this project.
+If this task references a **completed** prior task (`task://…`), **Detail** may contain markdown links. **Extract** them into **Shared references** / **Examination references** in your refined **## Task** list using the **skill-first** rules and **Balance shared vs examination** above — when **Refinement** says all shared or all examination, follow that; otherwise apply the default balance (not all into shared by default). Formats: `[Title](path/from/project/root)`, `[Title](liboccoder/File.vala#ast_path)`; code anchors = full **AST** path — see **Link types**. Use file paths and `task://` links that resolve in this project (**project-relative** or full filesystem path — **not** a stray leading `/` on a repo-only segment).
 
 - **Shared references** — only what **every** run needs, **unless** the skill says otherwise (see **Balance shared vs examination**).
 - **Examination references** — per-run targets when splitting; one link per examination run where applicable (parent plan **§ Reference refinement → runner**), **unless** the skill says to use only **Shared references** or only **Examination references**.
@@ -58,7 +58,7 @@ One execution; everything the executor needs sits under **Shared references**.
 - **What is needed** Compare error handling in the two modules.
 - **Skill** analyze_code
 - **Expected output** Short comparison across both files: differences in error handling and call patterns.
-- **Shared references** [Handler](/abs/proj/src/ErrorHandler.vala) [Call site](/abs/proj/src/Main.vala)
+- **Shared references** [Handler](src/ErrorHandler.vala) [Call site](src/Main.vala)
 
 ```
 
@@ -72,7 +72,7 @@ When the task is scoped to **one** file or artifact to inspect and nothing is ne
 - **What is needed** Review the migration script for idempotency issues.
 - **Skill** analyze_code
 - **Expected output** List of idempotency risks and concrete line references for this script only.
-- **Examination references** [Migrate](/abs/proj/scripts/migrate_users.sql)
+- **Examination references** [Migrate](scripts/migrate_users.sql)
 
 ```
 
@@ -100,8 +100,8 @@ Cross-run context (fixtures, shared modules) under **Shared references**; one li
 - **What is needed** Analyze each failing test file separately against the shared harness.
 - **Skill** analyze_code
 - **Expected output** For the examination target this run: failures, assertions, and how they relate to the shared harness (this run only).
-- **Shared references** [Fixture setup](/abs/proj/tests/fixture.vala) [Test helpers](/abs/proj/tests/TestHelpers.vala)
-- **Examination references** [Test A](/abs/proj/tests/test_a.vala) [Test B](/abs/proj/tests/test_b.vala)
+- **Shared references** [Fixture setup](tests/fixture.vala) [Test helpers](tests/TestHelpers.vala)
+- **Examination references** [Test A](tests/test_a.vala) [Test B](tests/test_b.vala)
 
 ```
 
@@ -115,7 +115,7 @@ When a task **references another task's output**, the link target is **not** the
 
 - **Do** — **Lowercase** the **Name**; replace each **maximal contiguous** run of spaces and non-alphanumeric characters with **one** hyphen; trim leading/trailing hyphens.
 - **Do** — Use **`task://{slug}.md` only** for task output (e.g. "Analyze Current Structure" → `task://analyze-current-structure.md`); the link label can be any readable text. The URL must end at **`.md`**.
-- **Do** — For **file** section links, use `/path/to/doc.md#…`: lowercase the heading; each **stretch** of spaces *and* punctuation → **one** hyphen between word runs.
+- **Do** — For **file** section links, use `docs/guide.md#…` (project-relative) or a full filesystem path; lowercase the heading; each **stretch** of spaces *and* punctuation → **one** hyphen between word runs.
 - **Do** — Use `#docblocks-code-documentation` for `## Docblocks / code documentation`.
 
 ### Don't
@@ -131,21 +131,21 @@ In refined **output**, place links in **Shared references** / **Examination refe
 ### Do
 
 - **Do** — Use `[Title](target)` markdown links in **Shared references** / **Examination references**.
-- **Do** — Use **absolute** paths for files and file sections.
+- **Do** — Use **project-relative** paths (**no** leading `/`) or **full** filesystem paths from `/` for files and file sections.
 - **Do** — Form **markdown** `#anchor` on **file** paths: lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen.
-- **Do** — **File** links `[Title](/path/to/file)` — title = file **base name**; path = absolute; linked files supply precursor content at execution.
-- **Do** — **File section** links (`/path#fragment`) when the executor needs only part of a file; the Runner injects that slice. Three fragment styles (do not mix in one link):
-  - **GFM heading** — `[Title](/path/doc.md#my-section)` (slug from heading text).
-  - **AST path** (code) — `[Sym](/path/File.vala#Namespace-Class-methodName)` (full AST fragment). Example: `[task_creation_prompt](/abs/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`.
-  - **Line range** — **only** **`#L<start>-L<end>`** (both numbers **`L`‑prefixed**, e.g. **`/path/File.vala#L12-L30`**). **1-based inclusive**. **Unsupported:** **`#L12`** alone, **`#L12-30`** (second number without **`L`**), **`#-L1`**, or any other shape — use **`#L12-L12`** for a single line.
+- **Do** — **File** links — title = file **base name**; path = project-relative or full filesystem path; linked files supply precursor content at execution.
+- **Do** — **File section** links (`path#fragment`) when the executor needs only part of a file; the Runner injects that slice. Three fragment styles (do not mix in one link):
+  - **GFM heading** — `[Title](docs/doc.md#my-section)` (slug from heading text).
+  - **AST path** (code) — `[Sym](liboccoder/File.vala#Namespace-Class-methodName)` (full AST fragment). Example: `[task_creation_prompt](liboccoder/Skill/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`.
+  - **Line range** — **only** **`#L<start>-L<end>`** (both numbers **`L`‑prefixed**, e.g. **`liboccoder/File.vala#L12-L30`**). **1-based inclusive**. **Unsupported:** **`#L12`** alone, **`#L12-30`** (second number without **`L`**), **`#-L1`**, or any other shape — use **`#L12-L12`** for a single line.
 - **Do** — Prefer **line-range** or **AST** over whole-file links when **Task reference contents** shows **This has been abbreviated** for a long file — narrow each link to what that run needs (**Shared references** vs **Examination references** per skill rules).
-- **Do** — To **examine** a long file without one huge precursor: use **multiple examination references** — **one link per chunk**, each with **`#L<first>-L<last>`** (e.g. ~100–200 lines per chunk: `#L1-L180`, `#L181-L360`, …), **or** **AST** links (`/path/File.vala#Namespace-Class-method`) to target symbols instead of long line ranges.
+- **Do** — To **examine** a long file without one huge precursor: use **multiple examination references** — **one link per chunk**, each with **`#L<first>-L<last>`** (e.g. ~100–200 lines per chunk: `#L1-L180`, `#L181-L360`, …), **or** **AST** links (`liboccoder/File.vala#Namespace-Class-method`) to target symbols instead of long line ranges.
 - **Do** — Link **task output** for **completed** tasks only (they have a ##### Result summary block): **`[Research 1 Results](task://research-1.md)`** — stop at **`.md`**.
 - **Do** — Prefer file paths and `task://` links that resolve in this project.
 
 ### Don't
 
-- **Don't** — Use **relative** paths.
+- **Don't** — Start a project path with **`/`** unless it is a **real** filesystem absolute path.
 - **Don't** — Paste file bodies into **## Task** — only links; contents load from those links at execution.
 - **Don't** — Use plain symbol-only anchors for code when the runner expects full **AST** paths.
 - **Don't** — Treat a **`#L<num>-L<num>`** fragment as a **markdown heading slug** or **AST** path — that shape is **line-range** only (see **Do** above).
