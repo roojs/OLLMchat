@@ -138,10 +138,15 @@ namespace Markdown
 				}
 				// if we have had a match, gone pase and ended up with none
 				// we can return it.
-				if (matched_type != FormatType.LINK && matched_type != FormatType.NONE) {
+				if (matched_type != FormatType.LINK && matched_type != FormatType.NONE && matched_type != FormatType.INVALID) {
 					return max_match_length;
 				}
-				break; /// we did not get a match..
+				/* INVALID / NONE: still building a longer key (e.g. "[" → "[1" → "[1."); do not return
+				 * or break — last matched_type can stay INVALID from "[" until a longer sequence hits. */
+				if (matched_type == FormatType.NONE || matched_type == FormatType.INVALID) {
+					continue;
+				}
+				break; /// LINK lead set; extended with a char that ends this match
 			}
 
 			// Reached end of chunk (no more characters to eat)
