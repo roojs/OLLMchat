@@ -55,7 +55,7 @@ The Runner runs **one** tool per block, assigns an **id** itself, and passes res
 
 **Encourage multiple tool calls** — Output as many fenced blocks as needed; the Runner runs them all and passes every result to the skill. Prefer several focused tool calls over one broad one (e.g. multiple codebase_search queries with different focuses).
 
-- **File content:** Put file and section needs in **Shared references** as markdown links (project-relative or full filesystem paths — see **Link types**); the Runner injects at execution. For a narrow slice of a file, use a **file section** link (`#anchor`), not a separate read step.
+- **File content:** Put file and section needs in **Shared references** as markdown links (project-relative or full filesystem paths — see **Link types**); the Runner injects at execution. For a narrow slice of a file, use a **file section** link (`#anchor`), not a separate read step. **Do not** link **directories** in **Shared references** — only **files** (see **Link types** → **Don't**).
 - **Codebase search / research:** Use **multiple queries**; issue several tool calls and combine results. Only add file or file-section links to **Shared references** when that content is **relevant** to the task — not merely because search returned a path.
 
 The Runner executes one tool call per fenced code block. Each block must contain a single JSON object with **name** (required) and **arguments** (optional object). Output one fenced code block per tool call in **## Tool Calls**. The Runner assigns an id to each call and passes results to the skill.
@@ -71,6 +71,11 @@ Your output will be read as markdown. If you include content that should **not**
 ## Output format
 
 Produce **## Task** (required). When the skill uses tools, also **## Tool Calls**.
+
+### Do / Don't — `## Task` vs `## Tool Calls`
+
+- **Do** — Always include a full **`## Task`** section: **What is needed**, **Skill**, **Expected output**, and **Shared references** when applicable (see **Refinement**). Put it **before** **`## Tool Calls`** when both are present.
+- **Don't** — Forget **`## Task`** because you focused on tooling — outputting **only** fenced **`## Tool Calls`** without **`## Task`** is invalid; the refined task metadata and shared links are required even when tool JSON is the main work.
 
 **Task list item format:** Each list line is **Key** value — bold key, space, value; **no** colon after the key.
 
@@ -147,7 +152,7 @@ In refined **output**, put markdown links in **Shared references**. **References
 
 ### Do
 
-- **Do** — Use `[Title](target)` markdown links in **Shared references**.
+- **Do** — Use `[Title](target)` markdown links in **Shared references** (when that line appears): **only** links on that line — space-separated, as in **Expected output examples** — so the Runner resolves precursor content at execution.
 - **Do** — Use **project-relative** file paths (**no** leading `/`) or **full** filesystem paths from `/` for files and file sections.
 - **Do** — Form **markdown** `#anchor` on **file** paths: lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen.
 - **Do** — **File** links — title = file **base name**; path = project-relative or full filesystem path (not **`/lib/...`** unless that path really exists from the OS root).
@@ -161,7 +166,10 @@ In refined **output**, put markdown links in **Shared references**. **References
 
 ### Don't
 
-- **Don't** — Start a project path with **`/`** unless it is a **real** filesystem absolute path.
+- **Don't** — Put **plain text**, prose, notes, bare paths, or backticked filenames **without** `[Title](target)` in **Shared references** — **links only**, no freeform sentences or path lists.
+- **Don't** — Output a **`References`** field in refined **`## Task`** — **References** is coarse-task **input**; refined output uses **Shared references** only (see **Output format**).
+- **Don't** — Put **directory** paths in **Shared references** — **forbidden**. Links must target **files** (optional `#…` fragment), **`task://…`** outputs, or resolvable **URLs** — not folders (e.g. no `src/components/` as a link target). If the executor needs a whole area, link **concrete files** or rely on **## Tool Calls** / discovery; never use a directory as a reference.
+- **Don't** — Start a project path with **`/`** unless it is a **real** absolute path from the **OS** root (e.g. **`/home/you/workspace/repo/lib/Foo.vala`**). **`/`** is **not** the project root — it is the **filesystem** root. Paths like **`/.cursor/rules/foo.md`**, **`/liboccoder/Foo.vala`**, **`/src/main.vala`** for files inside the repo are **wrong**: they resolve to **`/.cursor`**, **`/liboccoder`**, **`/src`** on disk, which are not your project. **Valid:** **`.cursor/rules/foo.md`**, **`liboccoder/Foo.vala`** (no leading slash).
 - **Don't** — Paste file bodies into **## Task**.
 - **Don't** — Leave URL links if the skill cannot fetch them.
 - **Don't** — Use plain symbol-only anchors for code when the runner expects full **AST** paths.

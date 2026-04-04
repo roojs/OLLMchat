@@ -603,7 +603,7 @@ public class ResultParser : Object
 	 * Content we expect (task_execution.md):
 	 * {{{
 	 * ## Result summary
-	 * (Substance + whether needs are met; optional final line: no further tool calls needed)
+	 * (Substance + whether needs are met; gaps or follow-up in prose as needed)
 	 * }}}
 	 *
 	 * @param task the task to add the synthetic run to

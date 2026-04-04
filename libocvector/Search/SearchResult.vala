@@ -127,9 +127,23 @@ namespace OLLMvector.Search
 		{
 			var file = this.file();
 			var snippet = this.code_snippet(max_snippet_lines);
+			
+			var parts = snippet.split("\n");
+			// Byte cap + drop incomplete tail only when parts.length > 1: 
+			// a single overlong line (no \n) skips this block and is not capped here.
+			if (max_snippet_lines > 0 && parts.length > 1 
+					&& snippet.length > 80 * max_snippet_lines) {
+				snippet = snippet.substring(0, 80 * max_snippet_lines);
+				parts = snippet.split("\n");
+				// parts.length < 2: no newline in the cut window — keep raw substring (may end mid-line).
+				snippet = parts.length < 2 ? snippet : 
+					string.joinv("\n", parts[0:parts.length-1]); // last complete line
+			}
 			var line_count = this.metadata.end_line - this.metadata.start_line + 1;
-			var more_lines = (max_snippet_lines != -1 && line_count > max_snippet_lines)
-				? "... (" + (line_count - max_snippet_lines).to_string() + " more lines)\n"
+			// more_lines uses parts.length from the post-cut split; 
+			// after joinv(..., parts[0:length-1]) the fence can show fewer lines than parts.length.
+			var more_lines = (line_count > parts.length)
+				? "... (" + (line_count - parts.length).to_string() + " more lines)\n"
 				: "";
 			return "#### Result (distance: " + "%.4f".printf(this.distance) + ")\n\n"
 				+ "- **File** " + file.path + "\n"

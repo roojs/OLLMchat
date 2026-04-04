@@ -33,32 +33,16 @@ Produce **only** the following. Do **not** output a task list. Do **not** paste 
 
 Do **not** output an "Output References" or "References" section. Use links only inside the Result summary and body sections.
 
-1. **`## Result summary`** (required) — **Primary carry-forward for `task://` / refinement:** include **useful** substance (conclusions, **links**, gaps) in **few sentences** or one paragraph — dense, not an essay. One clear summary of what was found or produced and whether **what was needed is fully addressed** or **gaps / follow-up work remain** (describe in your own words). **Aim for a single paragraph** when that suffices; only use more length or structure here if **Skill definition** asks for it. If the skill adds body sections, **do not** hide essentials only there — **repeat key points** in the summary. When referring to the plan, standards, code, or other content, **always use link references** (see Reference link types below). In this section, **do not** claim the task is finished using stock phrases like "outcome is complete", "sufficient information", or "nothing more to do" — those are **not** read by the Runner (see **Completion signal** below). **Put all follow-up/gap statements here; do not create a separate follow-up section.**
-2. **Body section(s)** — **Only if** **Skill definition** explicitly requires more than **## Result summary**. Use the **exact** section titles and structure it describes. Each section must have a **descriptive title** that states what it contains — never use a generic title like "Detail". Use subsections only where the skill specifies them. Use link references (file, file section, task output, URL) inline as needed. If the skill does **not** ask for extra body sections, output **## Result summary** only (plus completion signal when appropriate).
+1. **`## Result summary`** (required) — **Primary carry-forward for `task://` / refinement:** include **useful** substance (conclusions, **links**, gaps) in **few sentences** or one paragraph — dense, not an essay. One clear summary of what was found or produced and whether **what was needed is fully addressed** or **gaps / follow-up work remain** (describe in your own words). **Aim for a single paragraph** when that suffices; only use more length or structure here if **Skill definition** asks for it. If the skill adds body sections, **do not** hide essentials only there — **repeat key points** in the summary. When referring to the plan, standards, code, or other content, **always use link references** (see Reference link types below). **Put all follow-up/gap statements here; do not create a separate follow-up section.**
+2. **Body section(s)** — **Only if** **Skill definition** explicitly requires more than **## Result summary**. Use the **exact** section titles and structure it describes. Each section must have a **descriptive title** that states what it contains — never use a generic title like "Detail". Use subsections only where the skill specifies them. Use link references (file, file section, task output, URL) inline as needed. If the skill does **not** ask for extra body sections, output **## Result summary** only.
 3. **Skill output** (fenced file / artifact) — **Only if** **Skill definition** explicitly requires a fenced deliverable (e.g. `findings.md`, code). Place it where the skill says (usually after body sections). Use **filename** in the first line or info string as the skill requires. **Never** add a fenced skill output block because it “seems useful” or matches a different task type.
 
-Your output may **suggest** that other things should be done; that is fine. This process does **not** produce tasks — it only produces what **Skill definition** requires (summary, optional body, optional fenced output), so that task creation continuation can act on the information. If you find yourself listing tasks or next steps, fold that into **## Result summary** (e.g. gaps remain, follow-up suggested) without using a fake “done” phrase; do not output a task list.
+Your output may **suggest** that other things should be done; that is fine. This process does **not** produce tasks — it only produces what **Skill definition** requires (summary, optional body, optional fenced output), so that task creation continuation can act on the information. If you find yourself listing tasks or next steps, fold that into **## Result summary** (e.g. gaps remain, follow-up suggested); do not output a task list.
 
-## Completion signal (Runner-detected): `no further tool calls needed`
+### Do / Don't (shape and substance)
 
-**`no further tool calls needed`** is a **strict completion signal** for the Runner. Emit it **only** when **this run’s inputs** (tool output and reference content you were given) **successfully** contain enough information to satisfy **What is needed** and the skill’s expected output — with **no guesswork, no filling gaps from assumptions**, and no reliance on content that failed to load or was missing.
-
-The Runner **only** looks at the **tail** of your full markdown (roughly the last two paragraphs) for this **exact** substring, **case-insensitive**: `no further tool calls needed`. No other wording counts — not "complete", "done", "sufficient", "outcome is complete", "we have enough information", etc.
-
-### Do
-
-- **Do** — When you are **certain** — from what you **received** in this run, with no guesswork — that **What is needed** and the skill’s expected output are fully met and **no further tool calls** would add value **for a correct, complete answer**, put **no further tool calls needed** on its own line after every other section and fenced block (the **very end** of your answer). Do **not** substitute "complete", "done", or any other phrase — only that exact line is detected.
-- **Do** — If the result is partial, uncertain, or more tools could materially help, **omit** that line entirely and explain what is missing or weak in **## Result summary**.
-- **Do** — Keep all follow-up recommendations, missing inputs, and uncertainty notes inside **## Result summary**. This keeps the completion decision and gaps in one place for the Runner and avoids split/contradictory status.
+- **Do** — Keep follow-up recommendations, missing inputs, and uncertainty notes inside **## Result summary** — one place for gaps and conclusions.
 - **Do** — Before writing body sections or fenced skill output, re-read **Skill definition** and output **only** what it asks for, with the wording and structure it implies.
-
-### Don't
-
-- **Don't** — Write `no further tool calls needed` if tool output was empty, erroneous, truncated in a way that blocks the answer, or if you **did not** actually receive enough material to answer.
-- **Don't** — Write it to mean “I’m done interpreting” when **more searches or further tool runs** would still be required. Deciding whether to schedule more tools is **not** your job here; your job is **only** to emit this phrase when the information **already delivered to you** is sufficient. If you are missing information or only have a partial picture, **omit** it and state gaps in **## Result summary** instead.
-- **Don't** — Write it when you are unsure, when you assumed missing facts, or when another search or tool run could improve the answer.
-- **Don't** — Treat phrases like "complete", "sufficient information", or "no more work" as the signal — they are **ignored** for automation; only the exact substring above is used.
-- **Don't** — Bury the signal in the middle of a long paragraph — put it **on its own final line** so it appears in the tail the Runner scans.
 - **Don't** — Add separate sections such as `## Follow-up needed`, `## Next steps`, or similar. Follow-up belongs in **## Result summary** only.
 - **Don't** — Add body sections, subsections, or fenced **skill output** that **Skill definition** does not require — including generic sections like “Findings”, “Analysis”, or a placeholder `findings.md` fence.
 - **Don't** — Guess the skill’s expected output from task name, tools used, or habit; **Skill definition** is the only source of truth.
@@ -78,7 +62,7 @@ The Runner **only** looks at the **tail** of your full markdown (roughly the las
 
 ### Don't
 
-- **Don't** — Start a project path with **`/`** unless it is a real filesystem absolute path — **`/liboccoder/...`** is **`/liboccoder`** on disk, not the project folder.
+- **Don't** — Start a project path with **`/`** unless it is a **real** OS-root path (e.g. **`/home/you/repo/lib/Foo.vala`**). **`/`** is filesystem root, not project root — **`/.cursor/...`**, **`/liboccoder/...`**, **`/src/...`** for repo files are **wrong** (**`/.cursor`** on disk is not the project’s **`.cursor`** directory). Use **`.cursor/...`**, **`liboccoder/...`** with **no** leading slash.
 - **Don't** — Paste long file bodies into your answer — link instead.
 - **Don't** — Use `#fragments` with mistaken `--` between word groups.
 - **Don't** — Paste the actual body of files or other content — use links; the Runner will inject contents when needed.
@@ -87,19 +71,13 @@ The Runner **only** looks at the **tail** of your full markdown (roughly the las
 
 Below are two shapes. Follow the same structure. In **## Result summary** (and in any body sections **if Skill definition requires them**), refer to files and sections with **markdown links** (see Reference link types above), not bare backticked filenames. These examples assume **Skill definition** asks for **## Result summary** only (no extra body sections, no fenced skill output); if your skill requires more, add **only** what it specifies.
 
-### Example A — sufficient input; emit completion signal
-
-Use when this run’s input fully satisfies **What is needed** and the skill’s expected output.
+### Example A — input fully answers **What is needed**
 
 ## Result summary
 
 We located the relevant handler in [AuthService.js](src/AuthService.js#namespace-authservice-method-validate) and confirmed the login flow against [LoginFlow.md](docs/LoginFlow.md#L23-L55); this addresses the stated need for this task.
 
-**no further tool calls needed**
-
-### Example B — partial or uncertain; omit completion signal
-
-Use when information is missing, weak, or another tool run could materially improve the answer. **Do not** emit **`no further tool calls needed`**. State gaps in **## Result summary**.
+### Example B — partial answer; state gaps in **## Result summary**
 
 ## Result summary
 

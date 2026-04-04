@@ -109,10 +109,12 @@ When a task **references another task's output**, the link target is **not** the
 - **Do** — Use **File section** links with **`#anchor`** — GFM-style heading anchors or code symbol anchors as required.
 - **Do** — Link **task output** only for **completed** tasks: **`[…](task://slug.md)`**; put the consumer task in a **later** section than the producer.
 - **Do** — Use **URL** links `[Title](https://…)` only when the task's skill can fetch web content.
+- **Do** — Add **file** and **file section** links in **References** only for paths you **know** exist — from context (open/recent files, project description, user prompt), or from a **completed** task’s **Result summary** that names or discovers the file. Wrong or unresolvable links **fail validation**; the task list is **rejected** and you must **fix and resubmit** — not optional hints for the executor.
 
 ### Don't
 
-- **Don't** — Start a project path with **`/`** unless it is a real filesystem absolute path (see **task_creation_initial** / **task_post_exec** link rules).
+- **Don't** — Make up **file**, **URL**, or **`task://`** links to things that **might** exist but are **not** known (guessed paths, assumed filenames). If a path is not confirmed, **omit** the link and add a **research** task to locate it; do not fabricate references.
+- **Don't** — Start a project path with **`/`** unless it is a **real** OS-root absolute path. **`/`** means filesystem root, not project root — **`/.cursor/...`**, **`/liboccoder/...`** for in-repo files are **invalid** (wrong location on disk). Use **`.cursor/...`**, **`liboccoder/...`** with **no** leading slash (see **task_creation_initial** / **task_post_exec**).
 - **Don't** — Paste file bodies into the task list.
 - **Don't** — Add URL references when the task cannot fetch URLs.
 - **Don't** — Include the actual body of files or other precursor content in the task list — only links; the Runner will inject the contents when running each task.

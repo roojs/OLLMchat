@@ -143,9 +143,12 @@ So if you name a task **"Analyze Current Structure"**, later tasks must refer to
 - **Do** — Use **File section** links `[Title](path/to/file#anchor)` — **GFM** heading anchors for markdown; **AST** paths for code symbols (method/class) so the Runner injects that symbol; title = readable section or symbol label.
 - **Do** — Give producer tasks a **Name** when a later task needs them; link with **`[…](task://research-1.md)`** only; put the consumer in a **later** task section than the producer.
 - **Do** — Use **URL** links `[Title](https://…)` (http/https) when the task needs external content.
+- **Do** — Add **file** and **file section** links in **References** only when you **know** the path exists — from **precursor information** (open/recent files, project description, user message), or from a **`task://`** output you place in this same task list. Wrong or unresolvable links **fail validation**; the task list is **rejected** and you are **asked to produce it again** — the system does **not** treat bad paths as hints for the executor to work around.
 
 ### Don't
 
+- **Don't** — Make up **file**, **URL**, or **`task://`** links to things that **might** exist but are **not** known (guessed paths, “probably” modules, invented anchors). If you are not sure a path exists, **omit** it from References and add a **research** task to find it first; do not fabricate links.
+- **Don't** — Start a project file path with **`/`** unless it is a **full** OS-root absolute path (e.g. **`/home/you/repo/lib/Foo.vala`**). **`/`** means filesystem root, not project root — **`/.cursor/rules/foo.md`**, **`/liboccoder/Foo.vala`** are **invalid** for in-repo files (they point at **`/.cursor`**, **`/liboccoder`** on disk). **Valid:** **`.cursor/rules/foo.md`**, **`liboccoder/Foo.vala`** (no leading slash).
 - **Don't** — Use **relative** paths for files.
 - **Don't** — Paste file bodies or long text into the task list — only links; the Runner injects content.
 - **Don't** — Use `#anchors` with **double hyphens** where punctuation and spaces should have collapsed to **one** hyphen between words (see **Task reference naming**).

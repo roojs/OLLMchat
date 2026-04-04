@@ -22,7 +22,7 @@ You are an **interpreter**. The work for this task has **already been run** — 
 ### Don't (file links)
 
 - **Don't** — Turn ` / ` or similar into **two** hyphens between words (`#docblocks--code-documentation` is wrong).
-- **Don't** — Start a workspace file path with **`/`** unless it is a **true** filesystem path from the OS root. A link like **`[x](/liboccoder/Foo.vala)`** resolves to **`/liboccoder/...`** on disk (wrong), not under the project folder.
+- **Don't** — Start a workspace file path with **`/`** unless it is a **true** filesystem path from the OS root. **`/`** is not the project root — **`[x](/.cursor/rules/foo.md)`**, **`[x](/liboccoder/Foo.vala)`** resolve to **`/.cursor`**, **`/liboccoder`** on disk (wrong). Correct: **`[x](.cursor/rules/foo.md)`**, **`[x](liboccoder/Foo.vala)`** — project-relative, **no** leading slash unless the path is a full **`/home/...`** absolute.
 
 ## What you receive
 

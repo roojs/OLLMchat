@@ -109,7 +109,7 @@ Each **`Tool.run()`** (see `liboccoder/Task/Tool.vala`):
 3. Builds **executor** user content: tool output + reference contents.
 4. Sends **`task_execution.md`** with skill **Execution** body and retry issues if needed (up to **5** tries).
 
-Executor output is parsed into per-run **`summary`** and **`document`**. The loop can **stop early** if the executor output indicates completion (`has_task_complete()` — phrase such as “no further tool calls needed” in the tail).
+Executor output is parsed into per-run **`summary`** and **`document`**. **`run_exec()`** runs **every** execution run in **`exec_runs`** in order (no early stop based on model text).
 
 ---
 
@@ -234,15 +234,18 @@ The original **Conductor / skills agent** vision (skill runner as a chat agent, 
 
 		public async void run_exec() throws GLib.Error
 		{
-			// ...
 			for (var i = 0; i < this.exec_runs.size; i++) {
 				var ex = this.exec_runs.get(i);
 				yield ex.run();
-				if (ex.has_task_complete()) {
-					break;
-				}
 			}
-			yield this.run_post_exec();
+			if (this.exec_runs.size > 1) {
+				yield this.run_post_exec();
+				this.exec_done = true;
+				return;
+			}
+			var last = this.exec_runs.get(this.exec_runs.size - 1);
+			this.post_summary = last.summary;
+			this.out_doc = last.document;
 			this.exec_done = true;
 		}
 ```
