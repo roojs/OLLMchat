@@ -23,7 +23,7 @@ From "What is needed", the skill's **Refinement** instructions, and **Task refer
 
 ## Links from prior task output (Detail)
 
-If this task references a **completed** prior task (`task://…`), **Detail** may contain markdown links. **Extract** them into **Shared references** **output**. Formats: `[Title](/abs/path)`, `[Title](/path/file#ast_path)`; code anchors = full **AST** path. Follow **Refinement** for which links matter.
+If this task references a **completed** prior task (`task://…`), **Detail** may contain markdown links. **Extract** them into **Shared references** **output**. Formats: `[Title](src/File.vala)` (project-relative), `[Title](liboccoder/File.vala#ast_path)`; code anchors = full **AST** path. Follow **Refinement** for which links matter.
 
 **URLs:** If **Refinement** or Detail gives HTTP(S) URLs and this skill has **web_fetch** (or similar), add **Tool Calls** to fetch them and include the URLs under **Shared references** if the skill needs them. If there is **no** fetch tool, do not leave bare URL links that cannot be resolved.
 
@@ -55,7 +55,7 @@ The Runner runs **one** tool per block, assigns an **id** itself, and passes res
 
 **Encourage multiple tool calls** — Output as many fenced blocks as needed; the Runner runs them all and passes every result to the skill. Prefer several focused tool calls over one broad one (e.g. multiple codebase_search queries with different focuses).
 
-- **File content:** Put file and section needs in **Shared references** as markdown links (absolute paths); the Runner injects at execution. For a narrow slice of a file, use a **file section** link (`#anchor`), not a separate read step.
+- **File content:** Put file and section needs in **Shared references** as markdown links (project-relative or full filesystem paths — see **Link types**); the Runner injects at execution. For a narrow slice of a file, use a **file section** link (`#anchor`), not a separate read step.
 - **Codebase search / research:** Use **multiple queries**; issue several tool calls and combine results. Only add file or file-section links to **Shared references** when that content is **relevant** to the task — not merely because search returned a path.
 
 The Runner executes one tool call per fenced code block. Each block must contain a single JSON object with **name** (required) and **arguments** (optional object). Output one fenced code block per tool call in **## Tool Calls**. The Runner assigns an id to each call and passes results to the skill.
@@ -97,7 +97,7 @@ Illustrative only — use real paths and queries from the coarse task and **Task
 - **What is needed** Find all call sites of the logger and summarize usage.
 - **Skill** analyze_codebase
 - **Expected output** Bullet list of files and line ranges using the logger, with brief notes.
-- **Shared references** [Logger](/abs/proj/src/Log.vala) [Main](/abs/proj/src/Main.vala)
+- **Shared references** [Logger](src/Log.vala) [Main](src/Main.vala)
 
 ## Tool Calls
 
@@ -112,7 +112,7 @@ Illustrative only — use real paths and queries from the coarse task and **Task
 - **What is needed** Compare failing tests against shared fixtures and search for assertion patterns.
 - **Skill** analyze_codebase
 - **Expected output** For each problem test: failures, assertions, and relation to shared helpers.
-- **Shared references** [Fixture](/abs/proj/tests/fixture.vala) [Helpers](/abs/proj/tests/Helpers.vala) [Test A](/abs/proj/tests/a.vala) [Test B](/abs/proj/tests/b.vala)
+- **Shared references** [Fixture](tests/fixture.vala) [Helpers](tests/Helpers.vala) [Test A](tests/a.vala) [Test B](tests/b.vala)
 
 ## Tool Calls
 
@@ -132,7 +132,7 @@ When a task **references another task's output**, the link target is **not** the
 
 - **Do** — **Lowercase** the **Name**; replace each **maximal contiguous** run of spaces and non-alphanumeric characters with **one** hyphen; trim leading/trailing hyphens.
 - **Do** — Use **`task://{slug}.md` only** for task output; the link label can be any readable text. The URL must end at **`.md`**.
-- **Do** — For **file** section links, use `/path/to/doc.md#…`: lowercase the heading; each **stretch** of spaces *and* punctuation → **one** hyphen between word runs.
+- **Do** — For **file** section links, use `docs/guide.md#…` (project-relative) or a full filesystem path; lowercase the heading; each **stretch** of spaces *and* punctuation → **one** hyphen between word runs.
 - **Do** — Use `#docblocks-code-documentation` for `## Docblocks / code documentation`.
 
 ### Don't
@@ -148,20 +148,20 @@ In refined **output**, put markdown links in **Shared references**. **References
 ### Do
 
 - **Do** — Use `[Title](target)` markdown links in **Shared references**.
-- **Do** — Use **absolute** paths for files and file sections.
+- **Do** — Use **project-relative** file paths (**no** leading `/`) or **full** filesystem paths from `/` for files and file sections.
 - **Do** — Form **markdown** `#anchor` on **file** paths: lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen.
-- **Do** — **File** links `[Title](/path/to/file)` — title = file **base name**; path = absolute.
-- **Do** — **File section** links (`/path#fragment`) when the executor needs only part of a file; the Runner injects that slice from **Shared references**. Three fragment styles (do not mix in one link):
-  - **GFM heading** — `[Title](/path/doc.md#my-section)` (slug from heading text).
-  - **AST path** (code) — `[Sym](/path/File.vala#Namespace-Class-methodName)` (full AST fragment).
-  - **Line range** — **only** **`#L<start>-L<end>`** (both numbers **`L`‑prefixed**, e.g. **`/path/File.vala#L12-L30`**). **1-based inclusive**. **Unsupported:** **`#L12`** alone, **`#L12-30`** (second number without **`L`**), **`#-L1`**, or any other shape — use **`#L12-L12`** for a single line.
+- **Do** — **File** links — title = file **base name**; path = project-relative or full filesystem path (not **`/lib/...`** unless that path really exists from the OS root).
+- **Do** — **File section** links (`path#fragment`) when the executor needs only part of a file; the Runner injects that slice from **Shared references**. Three fragment styles (do not mix in one link):
+  - **GFM heading** — `[Title](docs/doc.md#my-section)` (slug from heading text).
+  - **AST path** (code) — `[Sym](liboccoder/File.vala#Namespace-Class-methodName)` (full AST fragment).
+  - **Line range** — **only** **`#L<start>-L<end>`** (both numbers **`L`‑prefixed**, e.g. **`liboccoder/File.vala#L12-L30`**). **1-based inclusive**. **Unsupported:** **`#L12`** alone, **`#L12-30`** (second number without **`L`**), **`#-L1`**, or any other shape — use **`#L12-L12`** for a single line.
 - **Do** — Prefer **line-range** or **AST** over pasting huge paths when **Refinement** shows **This has been abbreviated** for a long file — narrow the link to what the executor needs.
 - **Do** — **task://** for **completed** tasks only — stop at **`.md`**.
 - **Do** — **URL** links `[Title](https://…)` only when the skill has a fetch tool; schedule **Tool Calls** as needed.
 
 ### Don't
 
-- **Don't** — Use **relative** paths.
+- **Don't** — Start a project path with **`/`** unless it is a **real** filesystem absolute path.
 - **Don't** — Paste file bodies into **## Task**.
 - **Don't** — Leave URL links if the skill cannot fetch them.
 - **Don't** — Use plain symbol-only anchors for code when the runner expects full **AST** paths.

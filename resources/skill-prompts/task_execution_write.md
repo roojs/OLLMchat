@@ -49,7 +49,7 @@ When you cannot produce a valid **Change details** block, your answer has **only
 
 The precursor did not include `ApiContract.vala`; editing `AuthService.vala` without the contract would be guesswork.
 
-**Recommendations:** Add [`ApiContract.vala`](/path/to/ApiContract.vala) to this task's References and re-run, or refine the task to run a discovery step that locates the contract module first.
+**Recommendations:** Add [`ApiContract.vala`](liboccoder/ApiContract.vala) to this task's References and re-run, or refine the task to run a discovery step that locates the contract module first.
 
 **no changes needed**
 
@@ -60,16 +60,16 @@ Use **Path 1** or **Path 2**, not both.
 ### Do
 
 - **Do** — Use `[Title](target)` links.
-- **Do** — Use **absolute** paths for files.
+- **Do** — Use **project-relative** paths (**no** leading `/`) or **full** filesystem paths from `/` for files.
 - **Do** — Form markdown `#anchor` fragments: lowercase and collapse each run of spaces/punctuation to **one** hyphen.
-- **Do** — Use **File** links `[Title](/path/to/file)` — title = file base name.
-- **Do** — Use **File section** links `[Title](/path/to/file#anchor)` — GFM heading or AST symbol as required.
+- **Do** — Use **File** links — title = file base name; path = project-relative or full filesystem path.
+- **Do** — Use **File section** links with **`#anchor`** — GFM heading or AST symbol as required.
 - **Do** — Use **Task output** links **`[Task Name Results](task://taskname.md)`** — URL ends at **`.md`**.
 - **Do** — Use **URL** links `[Title](https://…)` when referring to external content.
 
 ### Don't
 
-- **Don't** — Use relative paths.
+- **Don't** — Start a project path with **`/`** unless it is a real filesystem absolute path.
 - **Don't** — Paste long file bodies into your answer — link instead.
 - **Don't** — Use `#fragments` with mistaken `--` between word groups.
 - **Don't** — Paste the actual body of files or other content — use links; the Runner will inject contents when needed.
@@ -151,7 +151,7 @@ Run `meson setup build && meson compile -C build`.
 ```markdown
 ## Result summary
 
-Replaced the deprecated helper in [Utils.vala](/path/to/Utils.vala) with the new API.
+Replaced the deprecated helper in [Utils.vala](libfoo/Utils.vala) with the new API.
 
 ## Change details
 

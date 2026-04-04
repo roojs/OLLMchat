@@ -82,7 +82,7 @@ When a task **references another task's output**, the link target is **not** the
 
 - **Do** — **Lowercase** the **Name**, replace each **maximal contiguous** run of spaces and non-alphanumeric characters with **one** hyphen, trim leading/trailing hyphens.
 - **Do** — Use **`task://{slug}.md`** for task output; stop at **`.md`**.
-- **Do** — For **file** section links (`/path/to/doc.md#…`): lowercase the heading; each **stretch** of spaces *and* punctuation becomes **one** hyphen between word runs.
+- **Do** — For **file** section links (`docs/guide.md#…` or a full filesystem path): lowercase the heading; each **stretch** of spaces *and* punctuation becomes **one** hyphen between word runs.
 - **Do** — Use `#docblocks-code-documentation` for `## Docblocks / code documentation`.
 
 ### Don't
@@ -103,16 +103,16 @@ When a task **references another task's output**, the link target is **not** the
 ### Do
 
 - **Do** — Use `[Title](target)` markdown links only.
-- **Do** — Use **absolute** paths for files and file sections.
-- **Do** — Form `#anchor` on **file** paths only (`/path/to/file.md#…`): lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen (no `--` from ` / ` between words).
-- **Do** — Use **File** links `[Title](/path/to/file)` with title = file base name.
-- **Do** — Use **File section** links `[Title](/path/to/file#anchor)` — GFM-style heading anchors or code symbol anchors as required.
+- **Do** — Use **project-relative** file paths (**no** leading `/`) or **full** filesystem paths from `/`.
+- **Do** — Form `#anchor` on **file** paths only (`docs/file.md#…`): lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen (no `--` from ` / ` between words).
+- **Do** — Use **File** links with title = file base name.
+- **Do** — Use **File section** links with **`#anchor`** — GFM-style heading anchors or code symbol anchors as required.
 - **Do** — Link **task output** only for **completed** tasks: **`[…](task://slug.md)`**; put the consumer task in a **later** section than the producer.
 - **Do** — Use **URL** links `[Title](https://…)` only when the task's skill can fetch web content.
 
 ### Don't
 
-- **Don't** — Use relative paths.
+- **Don't** — Start a project path with **`/`** unless it is a real filesystem absolute path (see **task_creation_initial** / **task_post_exec** link rules).
 - **Don't** — Paste file bodies into the task list.
 - **Don't** — Add URL references when the task cannot fetch URLs.
 - **Don't** — Include the actual body of files or other precursor content in the task list — only links; the Runner will inject the contents when running each task.
@@ -137,7 +137,7 @@ The following illustrates the **exact format** the parser expects. Output **only
 - **Name** Research 1
 - **What is needed** *(e.g. find where X is implemented.)*
 - **Skill** *(name from catalog.)*
-- **References** [Settings.jsx](/abs/path/to/Settings.jsx)
+- **References** [Settings.jsx](src/Settings.jsx)
 - **Expected output** *(e.g. findings document.)*
 
 - **Name** Research 2
