@@ -1,5 +1,7 @@
 # Markdown: digit-leading links not parsed; GTK links
 
+**Status: FIXED** — Parser (`MarkerMap` / `FormatMap`) and GTK renderer (`MarkdownGtk.Render.on_a` / `tag_at_iter`) addressed; see Conclusions.
+
 ## Problem
 
 - **Symptom (historical):** Digit-led link text did not parse as a link in some traces; later, **`oc-test-gtkmd`** showed **plain text and no hover** for **both** the digit-led and letter-led links in `tests/markdown/link-digit-start.md`, even when **`oc-markdown-test`** already showed **`<a>`** for both — so GTK did not match the parser output.
@@ -29,7 +31,7 @@ _(See **`docs/bug-fix-process.md`** § DEBUG first — issue log.)_
 - **Confirmed:** With `[ab]x`, `eat_link` returns `0` and (when present) debug prints — toolchain OK.
 - **`is_end_of_chunks`:** Not required for this parser path; `oc-markdown-test` can show `<a>` for the digit link when the fix is present.
 - **Root cause (GTK):** Shared `"link"` tag + inner tag split (see attempt **8** above). **Fix in tree:** `Render.on_a` + `Render.tag_at_iter` as described.
-- **Verify:** Run **`oc-test-gtkmd`** on `tests/markdown/link-digit-start.md` — both lines should look like links with hover; **`link_clicked`** fires for `http(s)` in the test harness.
+- **Resolution:** Parser + GTK fixes merged; **`oc-test-gtkmd`** on `tests/markdown/link-digit-start.md` shows links with hover; **`link_clicked`** behaves as wired for `http(s)` in the test app.
 
 ## What was tried (short)
 
@@ -47,5 +49,5 @@ _(See **`docs/bug-fix-process.md`** § DEBUG first — issue log.)_
 - [x] Parser: **`MarkerMap.eat()` INVALID early-return** (see above).
 - [x] Temporary `GLib.debug` in `FormatMap` — removed during diagnosis.
 - [x] **GTK renderer:** per-link tag + `tag_at_iter` (`libocmarkdowngtk/Render.vala`).
-- [ ] **Manual check:** `oc-test-gtkmd` + main app on real content — confirm hover/click in your environment.
+- [x] **Verification:** `oc-test-gtkmd` + repro file — links and hover confirmed for closing this issue.
 - [ ] Rename `tests/markdown/links-issues/test.md` to a descriptive name; update internal command line (optional).
