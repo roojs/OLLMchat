@@ -438,6 +438,10 @@ namespace OLLMchatGtk
 			// Process chunk (even if done, there might be final text to process)
 			if (new_text.length > 0) {
 				this.chat_view.append_assistant_chunk(new_text, response);
+			} else if (response.done) {
+				// Metrics-only final packet: no text, but ChatView must still leave thinking mode
+				// and close the thinking frame before finalize (thinking-only replies).
+				this.chat_view.append_assistant_chunk("", response);
 			}
 
 			// If response is not done, continue waiting

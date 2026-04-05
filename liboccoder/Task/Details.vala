@@ -429,7 +429,8 @@ public class Details : OLLMchat.Agent.Base
 		this.add_message(new OLLMchat.Message("ui",
 			OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Refining " +
 				this.task_data.get("name").to_markdown().strip() + " with " +
-				this.session.model_usage.display_name_with_size(),
+				(this.session.model_usage.model != "" ?
+					this.session.model_usage.display_name_with_size() : "Unknown model"),
 					  this.to_markdown(MarkdownPhase.COARSE))));
 		yield this.fill_model();
 		// Refiner must not have tools; the model must only output text (Skill call + Tool Calls as text).
@@ -445,7 +446,9 @@ public class Details : OLLMchat.Agent.Base
 			this.code_blocks.clear();
 			var r = new ResolveLink (this.runner, this, MarkdownPhase.REFINEMENT);
 			yield r.preload_links (this.references);
-			this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response…"));
+			this.add_message(new OLLMchat.Message("ui-waiting",
+				"waiting for " + (this.session.model_usage.model != "" ?
+				this.session.model_usage.display_name_with_size() : "Unknown model") + " to reply"));
 			var tpl = this.refinement_prompt();
 			this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
 			this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
@@ -815,12 +818,11 @@ public class Details : OLLMchat.Agent.Base
 			var tpl = this.post_exec_prompt(response_text, last_issues);
 			var task_name = this.task_data.get("name").to_markdown().strip();
 			var model_label = this.session.model_usage.model != "" ?
-				this.session.model_usage.display_name_with_size() : "";
-			var model_part = model_label != "" ? " with " + model_label : "";
+				this.session.model_usage.display_name_with_size() : "Unknown model";
 			this.add_message(new OLLMchat.Message("ui",
 				OLLMchat.Message.fenced(
 					"markdown.oc-frame-info.collapsed Summarizing Tool outputs for " +
-					task_name + model_part,
+					task_name + " with " + model_label,
 					tpl.filled_user)));
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.filled_system));
@@ -828,9 +830,7 @@ public class Details : OLLMchat.Agent.Base
 			this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
 			this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
 			this.add_message(new OLLMchat.Message("ui-waiting",
-				model_label != "" ?
-					"Waiting for response from " + model_label :
-					"Waiting for response"));
+				"waiting for " + model_label + " to reply"));
 			var response = yield this.chat_call.send(messages, null);
 			response_text = response != null ? response.message.content : "";
 			// Ensure any literal {task_link_base} in model output is replaced so links validate

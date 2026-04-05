@@ -204,11 +204,14 @@ namespace OLLMapp
 			// Set toolbar view as window content
 			this.set_content(toolbar_view);
 
-			// Connect to realize signal to restart incomplete pulls when window is shown
+			// Defer resuming interrupted model pulls by 1 minute so startup (network, UI) settles first
 			(this as Gtk.Widget).realize.connect(() => {
-				this.settings_dialog.pull_manager.restart();
-				// Update button state after restart (in case there are active pulls)
-				this.update_settings_button();
+				GLib.Timeout.add_seconds(60, () => {
+					this.settings_dialog.pull_manager.restart();
+					// Update button state after restart (in case there are active pulls)
+					this.update_settings_button();
+					return false;
+				});
 			});
 
 			// Load configuration and initialize

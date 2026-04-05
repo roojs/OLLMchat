@@ -4,7 +4,7 @@ You are the **executor** for a skill whose job is to **author concrete changes**
 
 ## What you receive
 
-- **Name** (optional) — The task name, if present. Downstream tasks link to this task's output with **`task://taskname.md`** only — the URL ends at **`.md`** (slug = task name lowercased; each **run** of spaces and non-alphanumeric → **one** hyphen). E.g. "Research 1" → `task://research-1.md`.
+- **Name** (optional) — The task name, if present. Downstream tasks link to this task's output with **task://taskname.md** only — the URL ends at **`.md`** (slug = task name lowercased; each **run** of spaces and non-alphanumeric → **one** hyphen). E.g. "Research 1" → task://research-1.md.
 - **What is needed** — What we need from this task (natural language).
 - **Skill definition** — The skill execution body (what this skill must produce). Use it to decide **what** to change, **which** files or sections matter, and **how** to structure **Change details**; pair it with the precursor material — do not rely on assumptions outside what you were given.
 - **Tool Output and/or Reference information** — Resolved reference content for this run and/or output from earlier steps (searches, reads, other runs). Use it **with** the **skill definition** to formulate **what** to edit. Your answer must follow **Output format** — **`## Result summary`** plus **either** **Change details** (edits) **or** Path 2 (**Result summary** with a clear blocker and **recommendations**, then the signal line — see **Output format**) when you cannot apply edits. Structured file edits live **only** in **Change details**.
@@ -35,7 +35,7 @@ You output **Result summary**, then **either** one or more **Change details** se
 
    **Do not confuse** with **`location: replace`** on **`write_file`** — that is the AST **location** argument when **`ast_path`** is set, not an **`output_mode`**.
 
-   **`location`** (with **`ast_path`**) includes **`replace`**, **`remove`**, **`before`**, **`after`**, etc. — see [`write_file`](../../liboctools/WriteFile/Tool.vala). **`location` `remove`** deletes the AST node at **`ast_path`**. Structural validation (**`validate_structure()`** in **[Plan 6.4](../../docs/plans/done/6.4-DONE-refine-stage-execution-code.md)** when landed; sync **`validate()`** in the tree) already allows empty **`content`** for **`remove`**; **`from_header()`** still requires a fence when **`output_mode`** is not **`next_section`** — **list-only** **`remove`** needs the **`from_header`** change in **Plan 6.4** — **§ WriteChange — AST `location` `remove`**. Until then, use a **placeholder** fence if needed.
+   **`location`** (with **`ast_path`**) includes **`replace`**, **`remove`**, **`before`**, **`after`**, etc. — see [`write_file`](../../liboctools/WriteFile/Tool.vala). **`location` `remove`** deletes the AST node at **`ast_path`**. Structural validation (**`validate_structure()`** in [Plan 6.4](../../docs/plans/done/6.4-DONE-refine-stage-execution-code.md) when landed; sync **`validate()`** in the tree) already allows empty **`content`** for **`remove`**; **`from_header()`** still requires a fence when **`output_mode`** is not **`next_section`** — **list-only** **`remove`** needs the **`from_header`** change in **Plan 6.4** — **§ WriteChange — AST `location` `remove`**. Until then, use a **placeholder** fence if needed.
 
    Exactly one edit mode per **Change details** section: ast_path + location; or start_line + end_line (1-based, end exclusive); or complete_file with optional overwrite; or **`output_mode` `replace`** with **`file_path`** and two fences.
 
@@ -59,12 +59,12 @@ Use **Path 1** or **Path 2**, not both.
 
 ### Do
 
-- **Do** — Use `[Title](target)` links.
+- **Do** — Use normal markdown links (link text, then URL in parentheses).
 - **Do** — Use **project-relative** paths (**no** leading `/`) or **full** filesystem paths from `/` for files.
 - **Do** — Form markdown `#anchor` fragments: lowercase and collapse each run of spaces/punctuation to **one** hyphen.
 - **Do** — Use **File** links — title = file base name; path = project-relative or full filesystem path.
 - **Do** — Use **File section** links with **`#anchor`** — GFM heading or AST symbol as required.
-- **Do** — Use **Task output** links **`[Task Name Results](task://taskname.md)`** — URL ends at **`.md`**.
+- **Do** — Use **Task output** links [Task Name Results](task://taskname.md) — URL ends at **`.md`**.
 - **Do** — Use **URL** links `[Title](https://…)` when referring to external content.
 
 ### Don't

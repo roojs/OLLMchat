@@ -180,9 +180,12 @@ public class ResolveLink : GLib.Object
 	 */
 	public async void preload_file (Markdown.Document.Format link)
 	{
-		var project = this.project_manager.active_project;
+		link.resolve (this.project_manager.active_project.path);
+		if (link.scheme == "file" && link.is_dir (this.project_manager.active_project.path)) {
+			return;
+		}
 		var resolved_path = link.is_relative
-			? link.abspath (project.path)
+			? link.abspath (this.project_manager.active_project.path)
 			: link.path;
 		var found = this.project_manager.get_file_from_active_project (resolved_path);
 		if (found == null) {
@@ -240,14 +243,17 @@ public class ResolveLink : GLib.Object
 			if (link.scheme != "file") {
 				continue;
 			}
+			link.resolve (this.project_manager.active_project.path);
+			if (link.is_dir (this.project_manager.active_project.path)) {
+				continue;
+			}
 			yield this.preload_file (link);
 			GLib.MatchInfo mi_lr;
 			if (link.hash == "" || this.line_regex ().match (link.hash, 0, out mi_lr)) {
 				continue;
 			}
-			var project = this.project_manager.active_project;
 			var resolved_path = link.is_relative
-				? link.abspath (project.path)
+				? link.abspath (this.project_manager.active_project.path)
 				: link.path;
 			var found = this.project_manager.get_file_from_active_project (resolved_path);
 			if (found == null) {
@@ -268,9 +274,12 @@ public class ResolveLink : GLib.Object
 	 */
 	string file (Markdown.Document.Format link)
 	{
-		var project = this.project_manager.active_project;
+		link.resolve (this.project_manager.active_project.path);
+		if (link.scheme == "file" && link.is_dir (this.project_manager.active_project.path)) {
+			return "";
+		}
 		var resolved_path = link.is_relative
-			? link.abspath (project.path)
+			? link.abspath (this.project_manager.active_project.path)
 			: link.path;
 		var found = this.project_manager.get_file_from_active_project (resolved_path);
 		if (found == null) {

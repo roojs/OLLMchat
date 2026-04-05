@@ -131,6 +131,11 @@
     --frame-text-emphasis: var(--bs-danger-text-emphasis);
 }
 
+/*
+ * collapsed-on-done: same collapse control as .collapsed, but body starts expanded and folds when the
+ * code block finishes (used for streaming thinking). Parsed in RenderSourceView (behavioral class).
+ */
+
 /* Thinking frames: muted italic text for markdown body */
 .oc-frame.thinking .oc-markdown-text {
     color: #666;

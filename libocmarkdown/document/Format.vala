@@ -59,6 +59,99 @@ namespace Markdown.Document
 		}
 
 		/**
+		 * Correct a file link path when the model used a leading slash so it was parsed
+		 * as absolute from the filesystem root. Only mutates {{{path}}} and {{{href}}} when
+		 * a file or directory exists at the corrected path under {{{project_root}}}.
+		 *
+		 * @param project_root active project root directory
+		 */
+		public void resolve (string project_root)
+		{
+			if (this.scheme != "file" || this.path == "" || project_root == "") {
+				return;
+			}
+			var raw = this.path;
+			var gf = GLib.File.new_for_path (raw);
+			// Target already exists as written (no rewrite).
+			if (gf.query_exists ()) {
+				return;
+			}
+			// Absolute path already under project; joining again would be wrong.
+			if (GLib.Path.is_absolute (raw) && (raw == project_root || raw.has_prefix (project_root + "/"))) {
+				return;
+			}
+			// Strip-from-root heuristic only for paths that look like /foo (not relative).
+			if (!raw.has_prefix ("/")) {
+				return;
+			}
+			var candidate = GLib.Path.build_filename (project_root, raw.substring (1));
+			// Keep fix inside project: allow project_root itself, else require
+			// project_root + "/" so "/tmp" does not prefix-match "/tmp2/...".
+			if (candidate != project_root && !candidate.has_prefix (project_root + "/")) {
+				return;
+			}
+			var cf = GLib.File.new_for_path (candidate);
+			// Corrected path must exist before we rewrite link fields.
+			if (!cf.query_exists ()) {
+				return;
+			}
+			this.path = candidate;
+			this.href = this.path + (this.hash != "" ? "#" + this.hash : "");
+			this.is_relative = false;
+		}
+
+		/**
+		 * True if this `file:` link resolves to an existing directory on disk
+		 * (path resolved from [[project_root]] for relative links). If the path looks
+		 * like a mistaken absolute-from-root project path, checks the same path under
+		 * [[project_root]].
+		 */
+		public bool is_dir (string project_root)
+		{
+			if (this.scheme != "file") {
+				return false;
+			}
+			var rp = this.is_relative ? this.abspath (project_root) : this.path;
+			if (rp == "") {
+				return false;
+			}
+			var gf = GLib.File.new_for_path (rp);
+			// First probe: directory exactly at rp (as given or relative-resolved).
+			if (gf.query_exists ()
+				&& gf.query_file_type (GLib.FileQueryInfoFlags.NONE) == GLib.FileType.DIRECTORY) {
+				return true;
+			}
+			// Second probe: mistaken absolute-from-root (/lib/...) → under project_root.
+			if (!GLib.Path.is_absolute (rp)) {
+				return false;
+			}
+			if (!rp.has_prefix ("/")) {
+				return false;
+			}
+			if (project_root == "") {
+				return false;
+			}
+			// Already under project: strip fix does not apply (first probe said not a dir).
+			if (rp == project_root || rp.has_prefix (project_root + "/")) {
+				return false;
+			}
+			var candidate = GLib.Path.build_filename (project_root, rp.substring (1));
+			// Same under-project guard as resolve(); see resolve() for why.
+			if (candidate != project_root && !candidate.has_prefix (project_root + "/")) {
+				return false;
+			}
+			var cf = GLib.File.new_for_path (candidate);
+			if (!cf.query_exists ()) {
+				return false;
+			}
+			// Exists but is a file: not a directory target.
+			if (cf.query_file_type (GLib.FileQueryInfoFlags.NONE) != GLib.FileType.DIRECTORY) {
+				return false;
+			}
+			return true;
+		}
+
+		/**
 		 * File link as a relative target: [[scheme]] `file`, [[path]], [[href]] = path + `#` + [[hash]],
 		 * and [[is_relative]] true (caller passes a path suitable for markdown-relative links).
 		 */

@@ -287,7 +287,8 @@ namespace OLLMtools.RunCommand
 			}
 			
 			this.agent.add_message(new OLLMchat.Message("ui", 
-				OLLMchat.Message.fenced("text.oc-frame-info ", "$ " + this.command)));
+				OLLMchat.Message.fenced("text.oc-frame-info.collapsed Execuiting command in sandbox",
+					 "$ " + this.command)));
 			
 			// Execute the tool async
 			try {
@@ -337,10 +338,13 @@ namespace OLLMtools.RunCommand
 				// FIXME - not sure this is a great idea - we will be bumping the context up soon
 				// with ollama create tricks
 				output = this.truncate_output(output, 100);
+				if (output.strip() == "") {
+					output = "No output received from command";
+				}
 				
 				// Send output as second message via message_created
 				this.agent.add_message(new OLLMchat.Message("ui",
-					 OLLMchat.Message.fenced("text.oc-frame-success ", output)));
+					 OLLMchat.Message.fenced("text.oc-frame-success.collapsed Execution results", output)));
 				
 				// Return output to LLM
 				return output;
@@ -448,12 +452,17 @@ namespace OLLMtools.RunCommand
 				}
 				output_content += "Exit code: " + exit_status.to_string() + "\n";
 			}
+			if (output_content.strip() == "") {
+				output_content = "No output received from command";
+			}
 			 
 			
 		// Send output as second message (danger when command failed, success when exit 0)
-			var frame_class = exit_status != 0 ? "text.oc-frame-danger " : "text.oc-frame-success ";
+			var frame_header = exit_status != 0
+				? "text.oc-frame-danger.collapsed Execution results (Command Failed)"
+				: "text.oc-frame-success.collapsed Execution results";
 			this.agent.add_message(new OLLMchat.Message("ui", 
-				OLLMchat.Message.fenced(frame_class, output_content)));
+				OLLMchat.Message.fenced(frame_header, output_content)));
 				
 			// FUTURE: Streaming support - clear current message when done
 			// this.current_tool_message = null;
@@ -473,6 +482,9 @@ namespace OLLMtools.RunCommand
 			}
 			 */
 			// Return merged raw output to LLM (already truncated)
+			if (stdout_output.strip() == "" && stderr_output.strip() == "" && exit_status == 0) {
+				return "No output received from command";
+			}
 			return stdout_output;
 		}
 		

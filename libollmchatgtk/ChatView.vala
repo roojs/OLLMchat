@@ -192,6 +192,12 @@ namespace OLLMchatGtk
 				this.process_new_chunk(new_text, response);
 			}
 
+			// Final packet is often metrics-only (new_text empty, done=true). We still need to leave
+			// thinking mode when the model emitted only thinking and no content chunk followed.
+			if (response.done && this.is_assistant_message && this.content_state == ContentState.THINKING) {
+				this.process_new_chunk_direct("", false);
+			}
+
 			this.scroll_to_bottom();
 		}
 
@@ -440,7 +446,7 @@ namespace OLLMchatGtk
 					// Initialize renderer if needed (creates TextView on first block)
 					this.renderer.start();
 					if (is_thinking) {
-						this.renderer.on_code_block(true, "markdown.oc-frame-info.thinking Thinking...");
+						this.renderer.on_code_block(true, "markdown.oc-frame-info.thinking.collapsed-on-done Thinking...");
 						this.thinking_frame = this.renderer.childview;
 						this.last_chunk_start = 0;
 						return;
@@ -526,40 +532,19 @@ namespace OLLMchatGtk
 			this.is_assistant_message = false;
 			this.last_chunk_start = 0;
 			this.content_state = ContentState.NONE;
+			this.is_thinking = false;
 		}
 		
 		/**
-		 * Finalizes the current assistant message.
-		 * 
-		 * Ensures the final chunk is rendered and resets tracking state.
-		 * 
-		 * For streaming responses, performance metrics are now stored as "ui" messages
-		 * in the messages array (see Session.finalize_streaming()). For backward compatibility,
-		 * this method still displays metrics from response if provided, but metrics should
-		 * already be in the messages array for history loading.
-		 * 
+		 * Finalizes the current assistant message after streaming (or when aborting to waiting UI).
+		 * Delegates to {@link finalize_assistant_message_direct}. The optional response is unused;
+		 * token/duration lines are added as separate "ui" messages in Session.finalize_streaming().
+		 *
 		 * @since 1.0
 		 */
 		public void finalize_assistant_message(OLLMchat.Response.Chat? response = null)
 		{
-			if (!this.is_assistant_message) {
-				return;
-			}
-
-			// End current block if we're in one
-			if (this.content_state != ContentState.NONE) {
-				this.end_block_direct(this.is_thinking);
-			}
-
-			// Note: Performance metrics are now stored as "ui" messages in Session.finalize_streaming()
-			// and displayed via the message_created signal flow (ChatWidget.on_message_created()),
-			// so we don't need to display them here anymore.
-			// (Trailing newline already added by end_block_direct when content_state was set)
-
-			// Reset state
-			this.is_assistant_message = false;
-			this.last_chunk_start = 0;
-			this.content_state = ContentState.NONE;
+			this.finalize_assistant_message_direct();
 		}
 
 		/**
