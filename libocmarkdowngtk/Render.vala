@@ -767,18 +767,28 @@ namespace MarkdownGtk
 			
 			// Code block started - clear old textview/buffer/states
 			// During the code block, all text goes to sourceview, not textview
+			if (this.current_textview != null && this.box != null) {
+				Gtk.TextBuffer buf = this.current_textview.buffer;
+				Gtk.TextIter start_i;
+				Gtk.TextIter end_i;
+				buf.get_start_iter(out start_i);
+				buf.get_end_iter(out end_i);
+				if (buf.get_text(start_i, end_i, false).strip() == "") {
+					this.box.remove(this.current_textview);
+				}
+			}
 			this.current_textview = null;
 			this.current_buffer = null;
 			this.top_state = null;
 			this.current_state = null;
-			
+
 			// Create new source_view_handler for the code block FIRST
 			// (so it appears before the textview that will be created after)
 			this.childview = new RenderSourceView(this, lang);
-			
+
 			// Keep handler in array so it doesn't go out of scope
 			this.source_view_handlers.add(this.childview);
-			
+
 			// Create new textview and states immediately (ready for text after code block)
 			// This will be added to the box AFTER the sourceview, which is correct
 			this.create_textview();
