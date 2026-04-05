@@ -90,7 +90,8 @@ namespace OLLMchat.Response
 		/**
 		 * Generates a summary string with performance metrics.
 		 *
-		 * @return Summary string in format "Total Duration: X.XXs | Tokens In: X Out: X | X.XX t/s"
+		 * @return Summary string in format "Total Duration: X.XXs | Tokens In: X Out: X | X.XX t/s".
+		 *         Session.finalize_streaming appends " | " plus display_name_with_size(), or "Unknown model" if model name is empty.
 		 *         Returns "Response completed (metrics not available)" if eval_duration is 0 (no metrics available)
 		 */
 		public string get_summary()

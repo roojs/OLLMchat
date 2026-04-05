@@ -147,6 +147,10 @@ Don't forget to close the code block with the closing ``` tag. If you don't clos
 		{
 			return Json.gobject_deserialize(typeof(Request), parameters_node) as OLLMchat.Tool.RequestBase;
 		}
+
+		// Intentionally no execute() override like ReadFile/RunCommand: task skills apply edits via
+		// write_file (and related paths), not edit_mode, so the skills agent does not need a fenced
+		// "markdown path" wrapper for this tool's activation text.
 	}
 }
 

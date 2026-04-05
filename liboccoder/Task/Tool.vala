@@ -192,15 +192,15 @@ namespace OLLMcoder.Task
 				this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
 				var model_label = this.session.model_usage.model != "" ?
-					this.session.model_usage.display_name_with_size() : "";
-				var model_part = model_label != "" ? " with " + model_label : "";
+					this.session.model_usage.display_name_with_size() : "Unknown model";
 				// Show user message sent to LLM so user can see what's going on (system is fixed, omit).
 				// Use markdown.oc-frame-info so the executor prompt is rendered as markdown, not plain text.
 				this.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced(
-						"markdown.oc-frame-info.collapsed Reviewing Tool Output" + model_part,
+						"markdown.oc-frame-info.collapsed Reviewing Tool Output with " + model_label,
 					 tpl.filled_user)));
-				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
+				this.add_message(new OLLMchat.Message("ui-waiting",
+					"waiting for " + model_label + " to reply"));
 				try {
 					var response = yield this.chat_call.send(messages, null);
 					response_text = (response != null) ? response.message.content : "";

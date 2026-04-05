@@ -39,8 +39,11 @@ namespace MarkdownGtk
 		private Gtk.Button expand_button;
 		private Gtk.Button copy_button;
 		private Gtk.Button new_chat_button;
-		private Gtk.Revealer body_revealer;  // wraps body; when .collapsed style, toggles visibility
-		private Gtk.Button collapse_toggle_button;  // before title: expand/collapse body when .collapsed
+		private Gtk.Revealer body_revealer;  // wraps body; when .collapsed / .collapsed-on-done, toggles visibility
+		private Gtk.Button collapse_toggle_button;  // before title: expand/collapse body when .collapsed or .collapsed-on-done
+		
+		/** When true, end_code_block() collapses the body (thinking frames: expand while streaming, then fold). */
+		private bool collapse_on_done = false;
 		
 		// Phase 2: nested markdown (stack + view-source toggle)
 		private Gtk.Stack stack;
@@ -91,8 +94,9 @@ namespace MarkdownGtk
 			this.code_language = language.down();
 			string[] frame_theme_classes = lang_parts.length > 1 ?
 				 lang_parts[1:lang_parts.length] : new string[0];
-			bool is_user_frame = "oc-frame-user" in frame_theme_classes;
-			bool has_collapsed_style = "collapsed" in frame_theme_classes;
+			var is_user_frame = "oc-frame-user" in frame_theme_classes;
+			var has_collapsed_style = "collapsed" in frame_theme_classes;
+			this.collapse_on_done = "collapsed-on-done" in frame_theme_classes;
 			// Title: use description when present; for oc-frame blocks without description use fallback (never show raw "text.oc-frame-...")
 			var header_text = (description != "") ? description :
 				(frame_theme_classes.length > 0 ? "Content" : ((language != "") ? language : "code"));
@@ -151,13 +155,13 @@ namespace MarkdownGtk
 			
 			// When .collapsed: button before title toggles body (list-add = expand, go-up = collapse)
 			this.collapse_toggle_button = new Gtk.Button() {
-				icon_name = "go-next-symbolic",
-				tooltip_text = "Expand",
+				icon_name = this.collapse_on_done ? "go-up-symbolic" : "go-next-symbolic",
+				tooltip_text = this.collapse_on_done ? "Collapse" : "Expand",
 				hexpand = false,
 				margin_end = 4,
 				can_focus = false,
 				focus_on_click = false,
-				visible = has_collapsed_style
+				visible = has_collapsed_style || this.collapse_on_done
 			};
 			this.collapse_toggle_button.clicked.connect(() => {
 				if (this.body_revealer.reveal_child) {
@@ -179,8 +183,9 @@ namespace MarkdownGtk
 					// Use the stack's visible child so we measure the widget that will be shown (and realized)
 					Gtk.Widget widget = this.stack.visible_child;
 					if (widget == null) {
-						widget = (this.code_language == "markdown") ?
-							 (Gtk.Widget) this.rendered_box : (Gtk.Widget) this.source_view;
+						widget = (this.code_language == "markdown")
+							? (Gtk.Widget) this.rendered_box
+							: (Gtk.Widget) this.source_view;
 					}
 					return this.resize_widget_callback(widget, ResizeMode.REVEAL_BODY);
 				});
@@ -191,7 +196,7 @@ namespace MarkdownGtk
 				hexpand = false,
 				halign = Gtk.Align.START,
 				valign = Gtk.Align.END,
-				margin_start = has_collapsed_style ?  0  : 4,
+				margin_start = (has_collapsed_style || this.collapse_on_done) ? 0 : 4,
 				margin_top = 4,
 				margin_bottom = 10,
 				ellipsize = Pango.EllipsizeMode.END,
@@ -369,7 +374,7 @@ namespace MarkdownGtk
 				this.stack.visible_child_name = "source";
 			}
 			
-			// Wrap body in Revealer so .collapsed style can hide/show it with animation
+			// Wrap body in Revealer so .collapsed / .collapsed-on-done can hide/show it with animation
 			this.body_revealer = new Gtk.Revealer() {
 				reveal_child = !has_collapsed_style,
 				hexpand = true,
@@ -672,9 +677,18 @@ namespace MarkdownGtk
 				return false;
 			});
 			
-			// Clean up
-		
-			this.code_language = "";
+			if (this.collapse_on_done) {
+				GLib.Timeout.add(350, () => {
+					this.body_revealer.reveal_child = false;
+					this.collapse_toggle_button.icon_name = "go-next-symbolic";
+					this.collapse_toggle_button.tooltip_text = "Expand";
+					this.view_source_toggle.visible = false;
+					this.copy_button.visible = false;
+					return false;
+				});
+			}
+			
+			// Clean up (keep code_language for header toggles on this widget)
 			this.code_content = new StringBuilder();
 		}
 		

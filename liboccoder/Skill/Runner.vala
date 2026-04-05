@@ -58,7 +58,8 @@ namespace OLLMcoder.Skill
 		public bool in_replay { get; set; default = false; }
 
 		// Filled by ResolveLink.preload_http; read by ResolveLink.resolve (http). Dedupe skips refetch (no clear).
-		internal Gee.HashMap<string, string> http_cache { get; default = new Gee.HashMap<string, string>(); }
+		internal Gee.HashMap<string, string> http_cache
+			 { get; default = new Gee.HashMap<string, string>(); }
 
 		/**
 		 * Emitted during replay before each logical step. Arguments: step name and
@@ -185,11 +186,9 @@ namespace OLLMcoder.Skill
 					messages.add(new OLLMchat.Message("system", tpl.filled_system));
 					messages.add(new OLLMchat.Message("user", tpl.filled_user));
 					// Same wording as Session.send; always emit so retries still show wait after UI frames clear it.
-					var model_label = this.session.model_usage.model != "" ?
-						this.session.model_usage.display_name_with_size() : "";
-					var wait_label = model_label != "" ?
-						"waiting for " + model_label + " to reply" : "waiting for a reply";
-					this.add_message(new OLLMchat.Message("ui-waiting", wait_label));
+					this.add_message(new OLLMchat.Message("ui-waiting",
+						"waiting for " + (this.session.model_usage.model != "" ?
+						this.session.model_usage.display_name_with_size() : "Unknown model") + " to reply"));
 					var response_obj = yield this.chat_call.send(messages, cancellable);
 					var response = response_obj != null ? response_obj.message.content : "";
 					this.replay_step("task_list_parse", response);
@@ -276,7 +275,9 @@ namespace OLLMcoder.Skill
 					this.add_message(new OLLMchat.Message("ui", "Task list complete (no more steps)."));
 					break;
 				}
-				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
+				this.add_message(new OLLMchat.Message("ui-waiting",
+					"waiting for " + (this.session.model_usage.model != "" ?
+					this.session.model_usage.display_name_with_size() : "Unknown model") + " to reply"));
 				yield this.pending.refine(cancellable);
 				var step_done = yield this.pending.run_step_until_approval();
 				if (step_done) {
@@ -298,7 +299,9 @@ namespace OLLMcoder.Skill
 					this.writer_approval = true;
 				}
 				// Refine the (new) first step before run_step; after run_task_list_iteration the list was replaced and the new first step was not refined yet.
-				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
+				this.add_message(new OLLMchat.Message("ui-waiting",
+					"waiting for " + (this.session.model_usage.model != "" ?
+					this.session.model_usage.display_name_with_size() : "Unknown model") + " to reply"));
 				yield this.pending.refine(cancellable);
 				step_done = yield this.pending.run_step();
 				if (step_done) {
@@ -383,17 +386,17 @@ namespace OLLMcoder.Skill
 					this.add_message(new OLLMchat.Message("ui",
 						"Trying again (attempt %d/5). Sending revised task list to LLM with issues feedback.".printf(try_count + 1)));
 				}
-				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
-				var model_part = model_label != "" ? " with " + model_label : "";
-				var title = try_count > 0 ? "Sending revised task list to LLM" + model_part : 
-					"Reviewing and updating task list" + model_part;
+				var model_label = this.session.model_usage.model != "" ?
+					this.session.model_usage.display_name_with_size() : "Unknown model";
 				// Show user message only in UI (same as Task.Tool executor); system prompt must not appear in chat.
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-					"markdown.oc-frame-info.collapsed " + title,
+					"markdown.oc-frame-info.collapsed " + (try_count > 0 ?
+					"Sending revised task list to LLM" : "Reviewing and updating task list") + " with " + model_label,
 					tpl.filled_user)));
 				this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
-				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
+				this.add_message(new OLLMchat.Message("ui-waiting",
+					"waiting for " + model_label + " to reply"));
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));

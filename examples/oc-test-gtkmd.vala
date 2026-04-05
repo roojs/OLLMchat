@@ -363,7 +363,7 @@ Examples:
 			this.md_renderer.end_block();
 			this.md_renderer.start();
 			if (think != "") {
-				this.md_renderer.on_code_block(true, "markdown.oc-frame-info.thinking oc-test-gtkmd");
+				this.md_renderer.on_code_block(true, "markdown.oc-frame-info.thinking.collapsed-on-done oc-test-gtkmd");
 				assert(this.md_renderer.childview != null);
 				this.md_renderer.childview.add_code_text(think);
 				this.md_renderer.on_code_block(false, "");
@@ -395,7 +395,7 @@ Examples:
 
 	private void render_thinking(bool stream, int stream_delay_sec)
 	{
-		this.md_renderer.on_code_block(true, "markdown.oc-frame-info.thinking oc-test-gtkmd");
+		this.md_renderer.on_code_block(true, "markdown.oc-frame-info.thinking.collapsed-on-done oc-test-gtkmd");
 		if (stream) {
 			this.start_streaming_thinking(this.file_markdown, stream_delay_sec);
 			return;

@@ -17,6 +17,9 @@ namespace OLLMcoder.Task
 /**
  * Reference-link validation for task references (used from [[ResultParser]] and similar).
  *
+ * Directory paths are invalid only in **REFINEMENT** (executor-bound references must be files).
+ * LIST and executor/post-exec output do not reject folder links here.
+ *
  * @param runner graph for task refs, project, user request headings
  * @param details task being validated (slug, step index, output document)
  * @param stage markdown phase (LIST, REFINEMENT, POST_EXEC, …)
@@ -158,6 +161,7 @@ public class ValidateLink : GLib.Object
 				"\": file references require an active project.";
 			return;
 		}
+		link.resolve (project.path);
 		var resolved_path = link.path;
 		if (link.is_relative) {
 			resolved_path = link.abspath (project.path);
@@ -175,14 +179,15 @@ public class ValidateLink : GLib.Object
 				resolved_path.has_suffix ("/") ?
 					resolved_path.substring (0, resolved_path.length - 1) :
 					resolved_path)) {
+			/* Refined **References** / shared links must be files. Task list (LIST) and result summaries are not checked here. */
 			switch (this.stage) {
 				case MarkdownPhase.REFINEMENT:
-				case MarkdownPhase.EXECUTION:
-				case MarkdownPhase.POST_EXEC:
 					this.issues += "\n" + "Invalid reference target \"" + link.href +
 						"\": path is a directory; use a file path, not a folder.";
 					return;
 				case MarkdownPhase.LIST:
+				case MarkdownPhase.EXECUTION:
+				case MarkdownPhase.POST_EXEC:
 				default:
 					return;
 			}
@@ -208,12 +213,12 @@ public class ValidateLink : GLib.Object
 		}
 		switch (this.stage) {
 			case MarkdownPhase.REFINEMENT:
-			case MarkdownPhase.EXECUTION:
-			case MarkdownPhase.POST_EXEC:
 				this.issues += "\n" + "Invalid reference target \"" + link.href +
 					"\": path is a directory; use a file path, not a folder.";
 				return;
 			case MarkdownPhase.LIST:
+			case MarkdownPhase.EXECUTION:
+			case MarkdownPhase.POST_EXEC:
 			default:
 				return;
 		}

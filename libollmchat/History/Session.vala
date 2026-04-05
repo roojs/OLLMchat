@@ -273,8 +273,10 @@ namespace OLLMchat.History
 			// Create a "ui" message with performance metrics summary (for history display)
 			// This will be stored in messages array and displayed when loading history
 			// Summary is now always meaningful (never empty), so always create the UI message
-			var summary = response.get_summary();
-			var metrics_msg = new Message("ui", summary);
+			
+			var metrics_msg = new Message("ui", response.get_summary() + " | " + (
+				this.model_usage.model != "" ?
+				this.model_usage.display_name_with_size() : "Unknown model"));
 			this.messages.add(metrics_msg);
 			// Relay to Manager for UI (metrics should be displayed)
 			this.manager.message_added(metrics_msg, this);
@@ -671,10 +673,9 @@ namespace OLLMchat.History
 				Message.fenced("text.oc-frame-primary.oc-frame-user You said:", message.content));
 			this.messages.add(ui_msg);
 			this.manager.message_added(ui_msg, this);
-			// Emit ui-waiting so UI shows animated "waiting for pretty model to reply..." (not added to messages; transient)
-			var model_label = this.model_usage.model != "" ? this.model_usage.display_name_with_size() : "";
-			var wait_label = model_label != "" ? "waiting for " + model_label + " to reply" : "waiting for a reply";
-			this.manager.message_added(new Message("ui-waiting", wait_label), this);
+			// Emit ui-waiting so UI shows animated "waiting for … to reply..." (not added to messages; transient)
+			this.manager.message_added(new Message("ui-waiting",
+				"waiting for " + (this.model_usage.model != "" ? this.model_usage.display_name_with_size() : "Unknown model") + " to reply"), this);
 			// Note: display_info notification not needed here - user-sent messages don't affect reply count
 			
 			// Continue to agent processing below (user message is passed to agent, not added here)

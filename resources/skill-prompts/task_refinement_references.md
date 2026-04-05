@@ -16,7 +16,7 @@ You are a **refiner**. Your **only** job is to **organize** the task list: outpu
 
 ## Links from prior task output (Detail)
 
-If this task references a **completed** prior task (`task://…`), **Detail** may contain markdown links. **Extract** them into **Shared references** / **Examination references** in your refined **## Task** list using the **skill-first** rules and **Balance shared vs examination** above — when **Refinement** says all shared or all examination, follow that; otherwise apply the default balance (not all into shared by default). Formats: `[Title](path/from/project/root)`, `[Title](liboccoder/File.vala#ast_path)`; code anchors = full **AST** path — see **Link types**. Use file paths and `task://` links that resolve in this project (**project-relative** or full filesystem path — **not** a stray **`/`** on a repo-only segment; **`/.cursor/...`** is filesystem root, not **`.cursor`** in the project).
+If this task references a **completed** prior task (task://…), **Detail** may contain markdown links. **Extract** them into **Shared references** / **Examination references** in your refined **## Task** list using the **skill-first** rules and **Balance shared vs examination** above — when **Refinement** says all shared or all examination, follow that; otherwise apply the default balance (not all into shared by default). Formats: `[Title](path/from/project/root)`, `[Title](liboccoder/File.vala#ast_path)`; code anchors = full **AST** path — see **Link types**. Use file paths and **task://** links that resolve in this project (**project-relative** or full filesystem path — **not** a stray **`/`** on a repo-only segment; **`/.cursor/...`** is filesystem root, not **`.cursor`** in the project).
 
 - **Shared references** — only what **every** run needs, **unless** the skill says otherwise (see **Balance shared vs examination**).
 - **Examination references** — per-run targets when splitting; one link per examination run where applicable (parent plan **§ Reference refinement → runner**), **unless** the skill says to use only **Shared references** or only **Examination references**.
@@ -114,7 +114,7 @@ When a task **references another task's output**, the link target is **not** the
 ### Do
 
 - **Do** — **Lowercase** the **Name**; replace each **maximal contiguous** run of spaces and non-alphanumeric characters with **one** hyphen; trim leading/trailing hyphens.
-- **Do** — Use **`task://{slug}.md` only** for task output (e.g. "Analyze Current Structure" → `task://analyze-current-structure.md`); the link label can be any readable text. The URL must end at **`.md`**.
+- **Do** — Use **task://{slug}.md** only for task output (e.g. "Analyze Current Structure" → task://analyze-current-structure.md); the link label can be any readable text. The URL must end at **`.md`**.
 - **Do** — For **file** section links, use `docs/guide.md#…` (project-relative) or a full filesystem path; lowercase the heading; each **stretch** of spaces *and* punctuation → **one** hyphen between word runs.
 - **Do** — Use `#docblocks-code-documentation` for `## Docblocks / code documentation`.
 
@@ -140,8 +140,8 @@ In refined **output**, place links in **Shared references** / **Examination refe
   - **Line range** — **only** **`#L<start>-L<end>`** (both numbers **`L`‑prefixed**, e.g. **`liboccoder/File.vala#L12-L30`**). **1-based inclusive**. **Unsupported:** **`#L12`** alone, **`#L12-30`** (second number without **`L`**), **`#-L1`**, or any other shape — use **`#L12-L12`** for a single line.
 - **Do** — Prefer **line-range** or **AST** over whole-file links when **Task reference contents** shows **This has been abbreviated** for a long file — narrow each link to what that run needs (**Shared references** vs **Examination references** per skill rules).
 - **Do** — To **examine** a long file without one huge precursor: use **multiple examination references** — **one link per chunk**, each with **`#L<first>-L<last>`** (e.g. ~100–200 lines per chunk: `#L1-L180`, `#L181-L360`, …), **or** **AST** links (`liboccoder/File.vala#Namespace-Class-method`) to target symbols instead of long line ranges.
-- **Do** — Link **task output** for **completed** tasks only (they have a ##### Result summary block): **`[Research 1 Results](task://research-1.md)`** — stop at **`.md`**.
-- **Do** — Prefer file paths and `task://` links that resolve in this project.
+- **Do** — Link **task output** for **completed** tasks only (they have a ##### Result summary block): [Research 1 Results](task://research-1.md) — stop at **`.md`**.
+- **Do** — Prefer file paths and **task://** links that resolve in this project.
 
 ### Don't
 
