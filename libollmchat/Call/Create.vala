@@ -122,9 +122,10 @@ namespace OLLMchat.Call
 			this.streaming_response = new Response.Create(connection);
 		}
 
-		protected override void process_streaming_chunk(Response.Chunk chunk)
+		protected override bool process_streaming_chunk(Response.Chunk chunk)
 		{
 			this.progress_chunk(chunk);
+			return true;
 		}
 
 		/**
