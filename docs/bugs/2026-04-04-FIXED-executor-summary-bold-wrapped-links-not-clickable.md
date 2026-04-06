@@ -1,5 +1,7 @@
 # Executor Result summary: “links” plain in UI — `**[text]**(url)` not valid markdown
 
+**Status: FIXED**
+
 ## Problem
 
 - **Symptom:** Near the end of a skill run, **## Result summary** text listed documents with what looked like markdown links, but in the chat UI they **did not render as clickable links** (no link styling / activation).
