@@ -757,8 +757,10 @@ public class Details : OLLMchat.Agent.Base
 		for (var i = 0; i < this.exec_runs.size; i++) {
 			var ex = this.exec_runs.get(i);
 			this.add_message(new OLLMchat.Message("ui",
-				"Running Tools for Task " + task_name + " — Tool call " +
-				(i + 1).to_string()));
+				(ex.exam_reference != null
+					? "Examining " + ex.exam_reference.path
+					: "Executing task: " + task_name)
+				+ " (" + (i + 1).to_string() + " of " + this.exec_runs.size.to_string() + ")"));
 			yield ex.run();
 		}
 		// Multi-run: post-exec summarizes combined tool runs (write_file runs are included inside each run).

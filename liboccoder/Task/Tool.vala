@@ -238,7 +238,19 @@ namespace OLLMcoder.Task
 						continue;
 					}
 					foreach (var w in this.writes) {
-						yield w.exec (this);
+						this.add_message(new OLLMchat.Message("ui",
+							"Writing to File `" + w.file_path + "`"));
+						yield w.exec(this);
+						if (this.tool_run_result.has_prefix("ERROR:")) {
+							this.add_message(new OLLMchat.Message("ui",
+								OLLMchat.Message.fenced("text.oc-frame-danger.collapsed Execution results",
+									this.tool_run_result)));
+							this.parent.issues += "\nwrite_file failed: " + this.tool_run_result;
+							throw new GLib.IOError.FAILED("write_file failed: " + this.tool_run_result);
+						}
+						this.add_message(new OLLMchat.Message("ui",
+							OLLMchat.Message.fenced("text.oc-frame-success.collapsed Execution results",
+								this.tool_run_result)));
 					}
 					if (this.parent.skill.tools.contains ("write_file")) {
 						var summary_only = new Markdown.Document.Render ();

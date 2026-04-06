@@ -1,5 +1,7 @@
 # Task list UI: second task shows “Skill_docsbase” instead of “Skill analyze_docsbase”
 
+**Status: FIXED**
+
 ## Problem
 
 - **Symptom:** When viewing a skill-runner session in the chat/history UI, the second task’s skill line appears like **Skill_docsbase** (or equivalent), instead of the catalog skill **analyze_docsbase** with a normal **Skill** label.
