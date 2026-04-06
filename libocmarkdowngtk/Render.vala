@@ -796,11 +796,13 @@ namespace MarkdownGtk
 			
 			// Code block started - clear old textview/buffer/states
 			// Streaming: before appending the frame + create_textview(), drop at most
-			// one extra whitespace-only Gtk.TextView (get_prev_sibling) then the
-			// current placeholder if whitespace-only. Do not remove views after the frame.
+			// two whitespace-only Gtk.TextViews walking get_prev_sibling from current,
+			// then the current placeholder if whitespace-only. Do not remove views after the frame.
 			// During the code block, all text goes to sourceview, not textview
 			if (this.current_textview != null && this.box != null) {
 				Gtk.Widget? prev_w = this.current_textview.get_prev_sibling();
+				this.remove_empty(prev_w as Gtk.TextView);
+				prev_w = prev_w == null ? null : prev_w.get_prev_sibling();
 				this.remove_empty(prev_w as Gtk.TextView);
 				this.remove_empty(this.current_textview);
 			}

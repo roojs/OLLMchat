@@ -278,7 +278,12 @@ namespace Markdown
 						continue;
 					}
 					// At line start - check for closing fence
+					var peek_fence_pos = chunk_pos;
 					var fence_result = this.blockmap.peekFencedEnd(chunk, ref chunk_pos, this.current_block, is_end_of_chunks);
+					// peekFencedEnd may advance chunk_pos past list-indent (fence_open longer than ```); keep TEXT slice in sync
+					if (chunk_pos != peek_fence_pos) {
+						text_start_pos = chunk_pos;
+					}
 					if (this.blockmap.handle_fence_result(fence_result, ref chunk_pos, chunk)) {
 						assert(str == "" && text_start_pos == chunk_pos);
 						return;

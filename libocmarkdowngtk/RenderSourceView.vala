@@ -544,11 +544,11 @@ namespace MarkdownGtk
 					this.scrolled_window.set_size_request(-1, target_height);
 					this.scrolled_window.vexpand = false; // Prevent expansion in collapsed state
 					
-					// Show/hide expand button based on content size (for INITIAL and FINAL modes)
+					// Show/hide expand button based on content size (for INITIAL and FINAL modes).
+					// Header collapse chevron visible => .collapsed or .collapsed-on-done — never show inner pan-down.
 					if ((mode == ResizeMode.INITIAL || mode == ResizeMode.FINAL) && this.expand_button != null) {
-						if (natural_height > 0 && natural_height <= max_height) {
-							this.expand_button.visible = false;
-						} else {
+						this.expand_button.visible = false;
+						if (!this.collapse_toggle_button.visible && (natural_height <= 0 || natural_height > max_height)) {
 							this.expand_button.visible = true;
 						}
 					}
