@@ -246,6 +246,35 @@ namespace MarkdownGtk
 				this.default_state.copy_style_to(new_state);
 			}
 		}
+
+		/**
+		 * Removes a markdown TextView from this.box when its buffer has no visible
+		 * text: either zero characters or only whitespace (e.g. newlines between
+		 * fences). No-op if tv or this.box is null.
+		 *
+		 * @param tv the TextView to remove when empty
+		 */
+		private void remove_empty(Gtk.TextView? tv)
+		{
+			if (tv == null) {
+				return;
+			}
+			if (this.box == null) {
+				return;
+			}
+			Gtk.TextBuffer buf = tv.buffer;
+			if (buf.get_char_count() == 0) {
+				this.box.remove(tv);
+				return;
+			}
+			Gtk.TextIter start_i;
+			Gtk.TextIter end_i;
+			buf.get_start_iter(out start_i);
+			buf.get_end_iter(out end_i);
+			if (buf.get_text(start_i, end_i, false).strip() == "") {
+				this.box.remove(tv);
+			}
+		}
 		
 		/**
 		 * Starts/initializes the renderer for a new block.
@@ -766,16 +795,14 @@ namespace MarkdownGtk
 			}
 			
 			// Code block started - clear old textview/buffer/states
+			// Streaming: before appending the frame + create_textview(), drop at most
+			// one extra whitespace-only Gtk.TextView (get_prev_sibling) then the
+			// current placeholder if whitespace-only. Do not remove views after the frame.
 			// During the code block, all text goes to sourceview, not textview
 			if (this.current_textview != null && this.box != null) {
-				Gtk.TextBuffer buf = this.current_textview.buffer;
-				Gtk.TextIter start_i;
-				Gtk.TextIter end_i;
-				buf.get_start_iter(out start_i);
-				buf.get_end_iter(out end_i);
-				if (buf.get_text(start_i, end_i, false).strip() == "") {
-					this.box.remove(this.current_textview);
-				}
+				Gtk.Widget? prev_w = this.current_textview.get_prev_sibling();
+				this.remove_empty(prev_w as Gtk.TextView);
+				this.remove_empty(this.current_textview);
 			}
 			this.current_textview = null;
 			this.current_buffer = null;

@@ -74,11 +74,13 @@ namespace OLLMcoder.Task
 
 		public Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
+			// Json-glib / GObject use hyphenated names here (see libollmchat History Session.vala).
 			switch (property_name) {
 				case "output_mode":
 				case "output-mode":
 				case "issues":
 				case "project_manager":
+				case "project-manager":
 				case "document":
 					return null;
 				default:

@@ -52,6 +52,7 @@ Your output may **suggest** that other things should be done; that is fine. This
 
 ### Do
 
+- **Do** — Use markdown links only for **concrete paths** the Runner can resolve: **files** (optional `#anchor`) in **## Result summary** and in any **body sections** Skill definition requires; **directories** (folder paths) **only** in **## Result summary** when pointing at a single folder is the right precursor — **not** in body sections, and **not** instead of linking **specific files** when those are what matter.
 - **Do** — Use normal markdown links (link text, then URL in parentheses).
 - **Do** — Use **project-relative** paths for files under the project (**no** leading **`/`**, e.g. **`lib/foo.vala`**) or a **full** filesystem path from **`/`** when the precursor gives it.
 - **Do** — Form markdown `#anchor` fragments: lowercase and collapse each run of spaces/punctuation to **one** hyphen.
@@ -63,6 +64,7 @@ Your output may **suggest** that other things should be done; that is fine. This
 
 ### Don't
 
+- **Don't** — Use markdown links for **glob, wildcard, or pattern paths** (e.g. `lib/foo/*.vala`, `src/**/*.ts`, `**/*.vala`) — those targets are **not** resolvable. Name **concrete files** (or one **directory** in **## Result summary** only), or describe a set in prose **without** linking a pattern.
 - **Don't** — Put bold markers between the link label and the URL (for example bold, then label in brackets, then bold again, then parentheses) — that is invalid; the label’s closing bracket must be immediately followed by the opening parenthesis of the URL. Write a normal [title](url) link, or bold inside the label only: [**title**](url).
 - **Don't** — **Paraphrase or rewrite** link targets from tool output because they look odd — prefer **exact copy** of the tool’s `(target)` over your own reconstruction.
 - **Don't** — Start a project path with **`/`** unless it is a **real** OS-root path (e.g. **`/home/you/repo/lib/Foo.vala`**). **`/`** is filesystem root, not project root — **`/.cursor/...`**, **`/liboccoder/...`**, **`/src/...`** for repo files are **wrong** (**`/.cursor`** on disk is not the project’s **`.cursor`** directory). Use **`.cursor/...`**, **`liboccoder/...`** with **no** leading slash.

@@ -45,6 +45,7 @@ Do **not** output an "Output References" or "References" section. Use links only
 
 ### Do
 
+- **Do** — Use markdown links for **files** (optional `#anchor`) in **## Result summary** and in **`##`** body sections. Use **directory** (folder) links **only** in **## Result summary** when a single folder is the right pointer — **not** in body sections; do **not** use directory links **instead of** concrete **file** links when specific files are what matter.
 - **Do** — Use normal markdown links inline in the Result summary and body.
 - **Do** — For files inside the project, use **project-relative** paths (**no** leading `/`) — e.g. [Runner.vala](liboccoder/Skill/Runner.vala) — or a **full** filesystem path from **`/`** when you have it (e.g. **`/home/user/repo/...`**). See **Do (file links)** / **Don't (file links)** above.
 - **Do** — Form **file** `#anchor` fragments: lowercase and collapse each run of spaces/punctuation to **one** hyphen (see **Heading titles** above for `.md` file links).
@@ -56,6 +57,7 @@ Do **not** output an "Output References" or "References" section. Use links only
 
 ### Don't
 
+- **Don't** — Use markdown links for **glob, wildcard, or pattern paths** (e.g. `lib/foo/*.vala`, `**/*.vala`) — not resolvable. Link **concrete files** or **one directory** in **## Result summary** only, or describe the set in prose.
 - **Don't** — **Rewrite** link targets from tool output to match a preferred style — **exact copy** of the tool’s `(target)` over a hand-rolled path or anchor.
 - **Don't** — Use a leading **`/`** on a path that is **not** a real filesystem absolute path (see **Don't (file links)**).
 - **Don't** — Paste long file or tool output — link instead.

@@ -59,6 +59,7 @@ Use **Path 1** or **Path 2**, not both.
 
 ### Do
 
+- **Do** — Use **file** links in **## Result summary** and elsewhere in this output as needed; **directory** links **only** in **## Result summary** (not for glob patterns — see **Don't**).
 - **Do** — Use normal markdown links (link text, then URL in parentheses).
 - **Do** — Use **project-relative** paths (**no** leading `/`) or **full** filesystem paths from `/` for files.
 - **Do** — Form markdown `#anchor` fragments: lowercase and collapse each run of spaces/punctuation to **one** hyphen.
@@ -69,6 +70,7 @@ Use **Path 1** or **Path 2**, not both.
 
 ### Don't
 
+- **Don't** — Use markdown links for **glob or wildcard paths** (e.g. `src/**/*.vala`, `lib/foo/*.vala`) — not resolvable.
 - **Don't** — Start a project path with **`/`** unless it is a **real** OS-root absolute path. **`/`** is filesystem root, not project root — **`/.cursor/...`**, **`/liboccoder/...`** for in-repo files are **wrong**. Use **`.cursor/...`**, **`liboccoder/...`** with **no** leading slash.
 - **Don't** — Paste long file bodies into your answer — link instead.
 - **Don't** — Use `#fragments` with mistaken `--` between word groups.
