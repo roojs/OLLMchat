@@ -572,20 +572,11 @@ namespace OLLMchat.Call
 		}
 
 
-		protected override bool process_streaming_chunk(Response.Chunk stream_chunk)
+		protected override void process_streaming_chunk(Response.Chunk stream_chunk)
 		{
 			var response = (Response.Chat) this.streaming_response;
 
-			var token = response.addChunk(stream_chunk);
-			if (token != "") {
-				response.back_tokens.insert(0, token);
-				if (response.back_tokens.size > 100) {
-					response.back_tokens.remove_at(response.back_tokens.size - 1);
-				}
-				if (!response.check_back_token()) {
-					return false;
-				}
-			}
+			response.addChunk(stream_chunk);
 
 			// Emit stream_start signal on first chunk
 			if (response.is_first_chunk) {
@@ -605,7 +596,7 @@ namespace OLLMchat.Call
 			if (response.new_thinking.length == 0 && 
 				response.new_content.length == 0 && 
 				!response.done) {
-				return true;
+				return;
 			}
 			
 			// Determine if this chunk is thinking content
@@ -619,7 +610,6 @@ namespace OLLMchat.Call
 			if (this.agent != null) {
 				this.agent.handle_stream_chunk(new_text, is_thinking, response);
 			}
-			return true;
 		}
 
 	}

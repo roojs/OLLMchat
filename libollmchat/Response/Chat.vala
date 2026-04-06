@@ -69,9 +69,6 @@ namespace OLLMchat.Response
 		public string new_content { get; set; default = ""; }
 		public string new_thinking { get; set; default = ""; }
 
-		/** Newest streaming delta at index 0; used by {@link check_back_token}. Max 100 entries. Not serialized to JSON. */
-		public Gee.ArrayList<string> back_tokens { get; set; default = new Gee.ArrayList<string>(); }
-
 		// Computed properties (hidden from serialization/deserialization)
 		public double total_duration_s {
 			get { return (double)this.total_duration / 1e9; }
@@ -125,57 +122,6 @@ namespace OLLMchat.Response
 			this.message = new Message("assistant", "");
 		}
 
-		public bool check_back_token()
-		{
-			if (this.back_tokens.size < 10) {
-				return true;
-			}
-
-			var t0 = this.back_tokens.get(0);
-			this.back_tokens.set(0, "");
-
-			int[] matches = { 0 };
-
-			for (int i = 0; i < 4; i++) {
-				int pos = this.back_tokens.index_of(t0);
-
-				if (pos < 0 || pos + 5 > this.back_tokens.size) {
-					foreach (int m in matches) {
-						this.back_tokens.set(m, t0);
-					}
-					return true;
-				}
-
-				matches += pos;
-
-				if (matches.length > 2) {
-					int n = matches.length;
-					int dist = matches[n - 1] - matches[n - 2];
-					if (dist != matches[n - 2] - matches[n - 3] || dist <= 5) {
-						matches.resize(matches.length - 1);
-						continue;
-					}
-				}
-			}
-
-			foreach (int m in matches) {
-				this.back_tokens.set(m, t0);
-			}
-
-			var str = this.back_tokens.to_array();
-
-			foreach (int match in matches) {
-				if (match == 0) {
-					continue;
-				}
-				if (string.joinv(" ", str[match:match + 5]) != string.joinv(" ", str[0:5])) {
-					return true;
-				}
-			}
-
-			return false;
-		}
-
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			switch (property_name) {
@@ -183,8 +129,7 @@ namespace OLLMchat.Response
 				case "eval_duration_s":
 				case "tokens_per_second":
 				case "call":
-				case "back-tokens":
-					// Exclude computed properties, call (circular), streaming loop state
+					// Exclude computed properties and call (circular reference) from serialization
 					return null;
 				case "choices":
 					if (this.choices.size == 0) {
