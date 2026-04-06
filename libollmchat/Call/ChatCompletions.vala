@@ -349,7 +349,18 @@ namespace OLLMchat.Call
 				if (chunk == null) {
 					continue;
 				}
-				resp.addChunk(chunk);
+				var token = resp.addChunk(chunk);
+				if (token == "") {
+					continue;
+				}
+				resp.back_tokens.insert(0, token);
+				if (resp.back_tokens.size > 100) {
+					resp.back_tokens.remove_at(resp.back_tokens.size - 1);
+				}
+				if (!resp.check_back_token()) {
+					throw new OllmError.FAILED(
+						"Streaming stopped: output repeated; possible infinite generation loop.");
+				}
 			}
 
 			if (!resp.done) {
