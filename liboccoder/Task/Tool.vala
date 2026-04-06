@@ -208,7 +208,7 @@ namespace OLLMcoder.Task
 					last_issues = e.message;
 					if (try_count < 4) {
 						this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-							"text.oc-frame-warning.collapsed Executor try %d failed".printf(try_count + 1),
+							"text.oc-frame-danger.collapsed There were issues with the LLM output — asking it to retry (%d/4)".printf(try_count + 1),
 							last_issues)));
 						continue;
 					}
@@ -232,7 +232,7 @@ namespace OLLMcoder.Task
 						last_issues = validate_issues.strip ();
 						if (try_count < 4) {
 							this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-								"text.oc-frame-warning.collapsed Executor try %d".printf(try_count + 1),
+								"text.oc-frame-danger.collapsed There were issues with the LLM output — asking it to retry (%d/4)".printf(try_count + 1),
 								last_issues)));
 						}
 						continue;
@@ -252,7 +252,7 @@ namespace OLLMcoder.Task
 				last_issues = parser.issues.strip();
 				if (try_count < 4) {
 					this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-						"text.oc-frame-warning.collapsed Executor try %d".printf(try_count + 1),
+						"text.oc-frame-danger.collapsed There were issues with the LLM output — asking it to retry (%d/4)".printf(try_count + 1),
 						last_issues)));
 				}
 			}
