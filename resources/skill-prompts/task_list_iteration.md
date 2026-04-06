@@ -104,6 +104,7 @@ When a task **references another task's output**, the link target is **not** the
 
 ### Do
 
+- **Do** — Use `[Title](target)` markdown links only for **concrete files** (optional `#anchor`), **task://…**, and **URLs** in **References** — **not** directory-only links (those belong in **## Result summary** of executed tasks, not in task **References**).
 - **Do** — Use `[Title](target)` markdown links only.
 - **Do** — Use **project-relative** file paths (**no** leading `/`) or **full** filesystem paths from `/`.
 - **Do** — Form `#anchor` on **file** paths only (`docs/file.md#…`): lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen (no `--` from ` / ` between words).
@@ -120,6 +121,7 @@ When a task **references another task's output**, the link target is **not** the
 - **Don't** — Paste file bodies into the task list.
 - **Don't** — Add URL references when the task cannot fetch URLs.
 - **Don't** — Include the actual body of files or other precursor content in the task list — only links; the Runner will inject the contents when running each task.
+- **Don't** — Use **directory** links or **glob/wildcard** link targets in **References** (e.g. `lib/*.vala`, `**/*.ts`) — not resolvable; link **specific files** or describe the set in prose.
 
 ## Strict format (required for parsing)
 

@@ -577,15 +577,6 @@ namespace OLLMchat.Call
 			var response = (Response.Chat) this.streaming_response;
 
 			var token = response.addChunk(stream_chunk);
-			if (token != "") {
-				response.back_tokens.insert(0, token);
-				if (response.back_tokens.size > 100) {
-					response.back_tokens.remove_at(response.back_tokens.size - 1);
-				}
-				if (!response.check_back_token()) {
-					return false;
-				}
-			}
 
 			// Emit stream_start signal on first chunk
 			if (response.is_first_chunk) {
@@ -618,6 +609,17 @@ namespace OLLMchat.Call
 			// If Chat has agent reference, also call agent method directly
 			if (this.agent != null) {
 				this.agent.handle_stream_chunk(new_text, is_thinking, response);
+			}
+
+			if (token == "") {
+				return true;
+			}
+			response.back_tokens.insert(0, token);
+			if (response.back_tokens.size > 100) {
+				response.back_tokens.remove_at(response.back_tokens.size - 1);
+			}
+			if (!response.check_back_token()) {
+				return false;
 			}
 			return true;
 		}
