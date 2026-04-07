@@ -148,6 +148,13 @@ namespace OLLMchat.History
 				return;
 			}
 
+			try {
+				this.ensure_agent_handler();
+			} catch (GLib.Error e) {
+				GLib.warning("restore_messages: %s", e.message);
+				return;
+			}
+
 			for (int i = 0; i < this.messages.size - 1; i++) {
 				if (cancellable.is_cancelled() || this.manager.session != this) {
 					return;
@@ -156,6 +163,7 @@ namespace OLLMchat.History
 					continue;
 				}
 				this.manager.message_added(this.messages[i], this);
+				this.agent.on_replay(this.messages[i]);
 				GLib.Timeout.add(100, () => {
 					this.restore_messages.callback();
 					return false;
@@ -175,6 +183,7 @@ namespace OLLMchat.History
 			if (!this.is_running ||
 				(last_msg.role != "content-stream" && last_msg.role != "think-stream")) {
 				this.manager.message_added(last_msg, this);
+				this.agent.on_replay(last_msg);
 				return;
 			}
 

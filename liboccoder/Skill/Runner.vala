@@ -57,6 +57,48 @@ namespace OLLMcoder.Skill
 		 */
 		public bool in_replay { get; set; default = false; }
 
+		/**
+		 * Replay cursor: which PhaseEnum the transcript is driving for on_replay.
+		 * NONE only until the first wire agent-stage message is applied.
+		 */
+		private OLLMcoder.Task.PhaseEnum replay_phase { get; set; default = OLLMcoder.Task.PhaseEnum.NONE; }
+
+		/**
+		 * When false (default): hydrate task graph from the transcript; rely on
+		 * existing task_dir files on disk.
+		 * When true: also mirror task-list markdown writes during replay (behaviour
+		 * TBC — see on_replay sketch agent-issues placeholders).
+		 */
+		public bool replay_as_new { get; set; default = false; }
+
+		/**
+		 * Index into pending.steps for the step being refined / executed / post_exec'd
+		 * in transcript order. Invariant: 0 <= replay_step_pos < pending.steps.size
+		 * whenever pending.steps is non-empty. Reset to 0 when a step moves to
+		 * completed, or when iteration replaces pending (parse_task_list_iteration).
+		 * Initial task-list parse replay does not need explicit reset (defaults are 0).
+		 */
+		private int replay_step_pos { get; set; default = 0; }
+
+		/**
+		 * Index into pending.steps[replay_step_pos].children (each Details) for
+		 * REFINEMENT, EXECUTION, EXEC_VALIDATE, POST_EXEC. Invariant:
+		 * 0 <= replay_details_pos < current_step.children.size. Advance only while
+		 * below children.size - 1 on successful refinement issues; after a step or
+		 * list change, clamp or reset using the new children.size.
+		 */
+		private int replay_details_pos { get; set; default = 0; }
+
+		/**
+		 * Index into exec_runs on pending.steps[replay_step_pos].children[replay_details_pos]
+		 * during EXECUTION / EXEC_VALIDATE. Invariant:
+		 * 0 <= replay_tool_pos < current_details.exec_runs.size. Advance within
+		 * that bound on validate success; when past the last run for this Details,
+		 * coordinate replay_details_pos / replay_tool_pos with live run_exec using
+		 * children.size and exec_runs.size.
+		 */
+		private int replay_tool_pos { get; set; default = 0; }
+
 		// Filled by ResolveLink.preload_http; read by ResolveLink.resolve (http). Dedupe skips refetch (no clear).
 		internal Gee.HashMap<string, string> http_cache
 			 { get; default = new Gee.HashMap<string, string>(); }
@@ -260,9 +302,8 @@ namespace OLLMcoder.Skill
 			} catch (GLib.Error e) {
 				GLib.printerr("Replay failed: %s\n", e.message);
 				Process.exit(1);
-			} finally {
-				this.in_replay = false;
-			}
+			} 
+			this.in_replay = false;
 		}
 
 		/**
@@ -363,8 +404,8 @@ namespace OLLMcoder.Skill
 			var tpl = PromptTemplate.template("task_list_iteration.md");
 			tpl.system_fill(1, "skill_catalog", this.sr_factory.skill_manager.to_markdown());
 			tpl.fill(6,
-				"completed_task_list", this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.REFINE_COMPLETED),
-				"outstanding_task_list", existing_proposed.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST),
+				"completed_task_list", this.completed.to_markdown(OLLMcoder.Task.PhaseEnum.REFINE_COMPLETED),
+				"outstanding_task_list", existing_proposed.to_markdown(OLLMcoder.Task.PhaseEnum.LIST),
 				"previous_proposed_task_list", previous_proposed_md == "" ? "" :
 					tpl.header_raw("Proposed (your last response — had issues)", previous_proposed_md),
 				"environment", tpl.header_raw("Environment", this.env()),
@@ -435,7 +476,7 @@ namespace OLLMcoder.Skill
 				this.pending.goals_summary_md = existing_proposed.goals_summary_md;
 				this.pending.write("task_list_latest.md", response);
 				this.pending.write("task_list_completed.md",
-					this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST));
+					this.completed.to_markdown(OLLMcoder.Task.PhaseEnum.LIST));
 				return;
 			}
 			if (cancellable != null) {
@@ -444,6 +485,179 @@ namespace OLLMcoder.Skill
 			this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 				"text.oc-frame-danger.collapsed Task list iteration: could not get valid task list after 5 tries",
 				parser.issues != "" ? parser.issues.strip() : "")));
+		}
+
+		/**
+		 * Apply one stored transcript message during GTK session restore. Dispatches on
+		 * replay_phase and message role; uses ResultParser on content-stream where live
+		 * code would have used the LLM response string.
+		 */
+		public override void on_replay(OLLMchat.Message m)
+		{
+			if (!this.session.can_replay) {
+				return;
+			}
+
+			switch (this.replay_phase) {
+			case OLLMcoder.Task.PhaseEnum.NONE:
+				switch (m.role) {
+				case "agent-stage":
+					// Bootstrap: first wire stages only. Iteration step move is under EXEC_VALIDATE.
+					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
+					break;
+				default:
+					break;
+				}
+				break;
+
+			case OLLMcoder.Task.PhaseEnum.LIST:
+				switch (m.role) {
+				case "content-stream":
+					this.pending = new OLLMcoder.Task.List(this);
+					var p0 = new OLLMcoder.Task.ResultParser(this, m.content);
+					p0.parse_task_list();
+					break;
+				case "agent-stage":
+					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
+					break;
+				case "agent-issues":
+					// this.pending.write("task_list.md", TBC);
+					break;
+				default:
+					break;
+				}
+				break;
+
+			case OLLMcoder.Task.PhaseEnum.TASK_LIST_ITERATION:
+				switch (m.role) {
+				case "content-stream":
+					this.pending = new OLLMcoder.Task.List(this);
+					var p1 = new OLLMcoder.Task.ResultParser(this, m.content);
+					p1.parse_task_list_iteration();
+					this.replay_step_pos = 0;
+					this.replay_details_pos = 0;
+					this.replay_tool_pos = 0;
+					break;
+				case "agent-stage":
+					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
+					break;
+				case "agent-issues":
+					// this.pending.write("task_list_latest.md", TBC);
+					// this.pending.write("task_list_completed.md", TBC);
+					break;
+				default:
+					break;
+				}
+				break;
+
+			case OLLMcoder.Task.PhaseEnum.REFINEMENT:
+				switch (m.role) {
+				case "content-stream":
+					var pr = new OLLMcoder.Task.ResultParser(this, m.content);
+					var st_r = this.pending.steps.get(this.replay_step_pos);
+					pr.extract_refinement(st_r.children.get(this.replay_details_pos));
+					break;
+				case "agent-stage":
+					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
+					break;
+				case "agent-issues":
+					if (m.content != "") {
+						break;
+					}
+					var st_ri = this.pending.steps.get(this.replay_step_pos);
+					if (this.replay_details_pos >= st_ri.children.size - 1) {
+						break;
+					}
+					this.replay_details_pos++;
+					break;
+				default:
+					break;
+				}
+				break;
+
+			case OLLMcoder.Task.PhaseEnum.POST_EXEC:
+				switch (m.role) {
+				case "content-stream":
+					var pp = new OLLMcoder.Task.ResultParser(this, m.content);
+					var st_p = this.pending.steps.get(this.replay_step_pos);
+					pp.exec_post_extract(st_p.children.get(this.replay_details_pos));
+					break;
+				case "agent-stage":
+					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
+					break;
+				case "agent-issues":
+					// Align with Details.run_post_exec when issues are empty (live).
+					break;
+				default:
+					break;
+				}
+				break;
+
+			case OLLMcoder.Task.PhaseEnum.EXECUTION:
+				switch (m.role) {
+				case "content-stream":
+					var st_e = this.pending.steps.get(this.replay_step_pos);
+					var d_exec = st_e.children.get(this.replay_details_pos);
+					var px = new OLLMcoder.Task.ResultParser(this, m.content);
+					px.exec_extract(d_exec.exec_runs.get(this.replay_tool_pos));
+					break;
+				case "agent-stage":
+					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
+					// from_string: exec → EXECUTION, exec_validate → EXEC_VALIDATE.
+					break;
+				case "agent-issues":
+					// Outcome only; next replay_phase comes from the next agent-stage.
+					break;
+				default:
+					break;
+				}
+				break;
+
+			case OLLMcoder.Task.PhaseEnum.EXEC_VALIDATE:
+				switch (m.role) {
+				case "agent-stage":
+					var new_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
+					if (new_phase != OLLMcoder.Task.PhaseEnum.TASK_LIST_ITERATION || this.pending.steps.size == 0) {
+						this.replay_phase = new_phase;
+						break;
+					}
+					// Same pending → completed move as List.run_step* (List.vala ~218–223).
+					var step = this.pending.steps.get(this.replay_step_pos);
+					this.completed.steps.add(step);
+					step.list = this.completed;
+					foreach (var t in step.children) {
+						this.completed.slugs.set(t.slug(), t);
+					}
+					this.pending.steps.remove_at(this.replay_step_pos);
+					this.replay_step_pos = 0;
+					this.replay_details_pos = 0;
+					this.replay_tool_pos = 0;
+					this.replay_phase = new_phase;
+					break;
+				case "agent-issues":
+					if (m.content != "") {
+						break;
+					}
+					var st_v = this.pending.steps.get(this.replay_step_pos);
+					var det_v = st_v.children.get(this.replay_details_pos);
+					if (this.replay_tool_pos < det_v.exec_runs.size - 1) {
+						this.replay_tool_pos++;
+						break;
+					}
+					this.replay_tool_pos = 0;
+					if (this.replay_details_pos < st_v.children.size - 1) {
+						this.replay_details_pos++;
+					}
+					// Else: finished last run of last task in step — transcript's next agent-stage matches live.
+					// Stay on EXEC_VALIDATE until the next agent-stage; do not set NONE here.
+					break;
+				default:
+					break;
+				}
+				break;
+			default:
+				break;
+			}
 		}
 	}
 }

@@ -155,7 +155,7 @@ namespace OLLMcoder.Task
 			foreach (var link in this.references) {
 				load_list.add(link);
 			}
-			var res = new ResolveLink (this.parent.runner, this.parent, MarkdownPhase.EXECUTION);
+			var res = new ResolveLink (this.parent.runner, this.parent, PhaseEnum.EXECUTION);
 			yield res.preload_links(load_list);
 			var reference_content = "";
 			if (this.references.size > 0) {

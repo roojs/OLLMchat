@@ -284,4 +284,4 @@ The original **Conductor / skills agent** vision (skill runner as a chat agent, 
 		}
 ```
 
-Task reference validation branches on **`MarkdownPhase`** in **`Details.validate_link_task()`** (same file, private method following **`validate_link()`**).
+Task reference validation branches on **`PhaseEnum`** in **`Details.validate_link_task()`** (same file, private method following **`validate_link()`**).

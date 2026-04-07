@@ -33,6 +33,7 @@ occoder_src = files([
   'Skill/Manager.vala',
   'Skill/Factory.vala',
   'Skill/Runner.vala',
+  'Task/PhaseEnum.vala',  # Task: PhaseEnum (no other Task deps)
   'Task/Step.vala',     # Task: Step → Details
   'Task/Details.vala',  # Task: Details → ResultParser, Tool
   'Task/ValidateLink.vala',  # after Details (uses Details; Details delegates link validation)

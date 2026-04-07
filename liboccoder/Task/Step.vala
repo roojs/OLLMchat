@@ -102,7 +102,7 @@ public class Step : Object
 	 * Markdown for this step's tasks only (no section header). Caller uses
 	 * completed or pending list; no filtering (list identity implies context).
 	 */
-	public string to_markdown(MarkdownPhase phase)
+	public string to_markdown(PhaseEnum phase)
 	{
 		var step_out = "";
 		foreach (var t in this.children) {

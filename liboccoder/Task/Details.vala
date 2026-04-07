@@ -14,16 +14,6 @@
 namespace OLLMcoder.Task
 {
 
-public enum MarkdownPhase
-{
-	COARSE,
-	REFINEMENT,
-	LIST,
-	REFINE_COMPLETED,
-	EXECUTION,
-	POST_EXEC
-}
-
 /**
  * One task in the plan. Built from task list output; updated from
  * refinement output.
@@ -400,14 +390,14 @@ public class Details : OLLMchat.Agent.Base
 				? "task_refinement.md"
 				: "task_refinement_references.md");
 		tpl.system_fill(0);
-		var completed_md = this.runner.completed.to_markdown(MarkdownPhase.REFINE_COMPLETED);
+		var completed_md = this.runner.completed.to_markdown(PhaseEnum.REFINE_COMPLETED);
 		tpl.fill(8,
 			"issues", tpl.header_raw("Issues with the current call", this.result_parser.issues),
-			"task_data", tpl.header_raw("Task", this.to_markdown(MarkdownPhase.REFINEMENT)),
+			"task_data", tpl.header_raw("Task", this.to_markdown(PhaseEnum.REFINEMENT)),
 			"environment", this.runner.env(),
 			"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
 				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
-			"task_reference_contents", this.reference_contents(MarkdownPhase.REFINEMENT),
+			"task_reference_contents", this.reference_contents(PhaseEnum.REFINEMENT),
 			"skill_details", this.skill.refine,
 			"tool_instructions", this.tool_instructions(this.skill),
 			"completed_task_list", (completed_md == "" ? "" :
@@ -431,7 +421,7 @@ public class Details : OLLMchat.Agent.Base
 				this.task_data.get("name").to_markdown().strip() + " with " +
 				(this.session.model_usage.model != "" ?
 					this.session.model_usage.display_name_with_size() : "Unknown model"),
-					  this.to_markdown(MarkdownPhase.COARSE))));
+					  this.to_markdown(PhaseEnum.COARSE))));
 		yield this.fill_model();
 		// Refiner must not have tools; the model must only output text (Skill call + Tool Calls as text).
 		this.chat_call.tools.clear();
@@ -444,7 +434,7 @@ public class Details : OLLMchat.Agent.Base
 			// to echo them and producing combined output that fails to parse).
 			this.tools.clear();
 			this.code_blocks.clear();
-			var r = new ResolveLink (this.runner, this, MarkdownPhase.REFINEMENT);
+			var r = new ResolveLink (this.runner, this, PhaseEnum.REFINEMENT);
 			yield r.preload_links (this.references);
 			this.add_message(new OLLMchat.Message("ui-waiting",
 				"waiting for " + (this.session.model_usage.model != "" ?
@@ -542,7 +532,7 @@ public class Details : OLLMchat.Agent.Base
 	 * EXECUTION, POST_EXEC)
 	 * @return markdown string for this phase
 	 */
-	public string to_markdown(MarkdownPhase phase)
+	public string to_markdown(PhaseEnum phase)
 	{
 		string[] order = {
 			"name",
@@ -562,13 +552,13 @@ public class Details : OLLMchat.Agent.Base
 				case "references":
 				case "shared references":
 				case "examination references":
-					if (phase == MarkdownPhase.REFINE_COMPLETED) {
+					if (phase == PhaseEnum.REFINE_COMPLETED) {
 						continue;
 					}
 					break;
 				case "output":
-					if ((phase != MarkdownPhase.LIST &&
-							phase != MarkdownPhase.REFINE_COMPLETED)
+					if ((phase != PhaseEnum.LIST &&
+							phase != PhaseEnum.REFINE_COMPLETED)
 							|| !this.exec_done) {
 						continue;
 					}
@@ -605,7 +595,7 @@ public class Details : OLLMchat.Agent.Base
 			ret += "- **" + key.substring(0, 1).up() + key.substring(1) + "** "
 				+ block.to_markdown() + "\n";
 		}
-		if (phase == MarkdownPhase.REFINE_COMPLETED || phase == MarkdownPhase.POST_EXEC ||
+		if (phase == PhaseEnum.REFINE_COMPLETED || phase == PhaseEnum.POST_EXEC ||
 				this.tools.size == 0) {
 			return ret;
 		}
@@ -655,13 +645,13 @@ public class Details : OLLMchat.Agent.Base
 	 * @param end **-1** with **start == -1** = head / refinement preview; else 1-based end line (**#L…**)
 	 * @return fenced block with line + content
 	 */
-	internal string header_file(string line, OLLMfiles.File file, MarkdownPhase stage,
+	internal string header_file(string line, OLLMfiles.File file, PhaseEnum stage,
 		int start = -1, int end = -1)
 	{
-		var content = stage == MarkdownPhase.REFINEMENT
+		var content = stage == PhaseEnum.REFINEMENT
 			? file.contents(int.max(start, 1), start == -1 ? 20 : int.min(end, start + 29))
 			: file.contents(int.max(-1, start), start == -1 ? -1 : end);
-		if (stage == MarkdownPhase.REFINEMENT
+		if (stage == PhaseEnum.REFINEMENT
 				&& (
 					(start == -1 && file.line_count() > 20)
 					|| (start != -1 && end > start + 29)
@@ -704,7 +694,7 @@ public class Details : OLLMchat.Agent.Base
 	 * When there are no references, returns "".
 	 * When there are references, returns "## Reference Contents" plus each block.
 	 */
-	internal string reference_contents(MarkdownPhase stage)
+	internal string reference_contents(PhaseEnum stage)
 	{
 		var res = new ResolveLink (this.runner, this, stage);
 		var parts = "";
@@ -796,7 +786,7 @@ public class Details : OLLMchat.Agent.Base
 			run_blocks += ex.document.to_markdown();
 		}
 		tpl.fill(6,
-			"task_definition", this.to_markdown(MarkdownPhase.POST_EXEC),
+			"task_definition", this.to_markdown(PhaseEnum.POST_EXEC),
 			"skill_name", this.skill.header.get("name"),
 			"skill_execute_body", this.skill.execute,
 			"tool_runs_combined", string.joinv("\n\n---\n\n", run_blocks),
