@@ -18,6 +18,20 @@
 
 namespace OLLMcoder.List
 {
+	private class ChangeQueue : GLib.Object
+	{
+		public uint position;
+		public uint removed;
+		public uint added;
+		
+		public ChangeQueue(uint position, uint removed, uint added)
+		{
+			this.position = position;
+			this.removed = removed;
+			this.added = added;
+		}
+	}
+	
 	/**
 	 * A sorted and filtered list model for any type of object.
 	 * 
@@ -34,11 +48,13 @@ namespace OLLMcoder.List
 		private GLib.ListModel source_model;
 		private Gtk.Filter filter;
 		private Gtk.Sorter sorter;
-		private Gee.ArrayList<Object> sorted_items;
 		private ulong source_changed_id;
 		private ulong filter_changed_id;
+		private Gee.ArrayList<Object> sorted_items;
 		private Gee.ArrayList<Object> got_list;
 		private Gee.ArrayList<Object> pre_update;
+		private Gee.ArrayList<ChangeQueue> change_queue { 
+				get; set; default = new Gee.ArrayList<ChangeQueue>(); }
 		
 		/**
 		 * Constructor.
@@ -157,8 +173,24 @@ namespace OLLMcoder.List
 			this.rebuild();
 		}
 		
+		private void run_queue()
+		{
+			if (this.change_queue.size == 0) {
+				return;
+			}
+			var c = this.change_queue.get(0);
+			this.items_changed(c.position, c.removed, c.added);
+			this.change_queue.remove_at(0);
+			GLib.Idle.add(() => {
+				this.run_queue();
+				return false;
+			});
+		}
+		
 		private void rebuild()
 		{
+			this.change_queue.clear();
+			
 			// Save current state for comparison
 			this.pre_update.clear();
 			this.pre_update.add_all(this.sorted_items);
@@ -205,18 +237,36 @@ namespace OLLMcoder.List
 				
 				// Check if item at position i changed
 				if (pre_item == null || sorted_item == null) {
-					// Either added or removed
-					this.items_changed(i, pre_item != null ? 1 : 0, sorted_item != null ? 1 : 0);
+					this.change_queue.add(new ChangeQueue(i,
+						pre_item != null ? 1 : 0,
+						sorted_item != null ? 1 : 0));
 					continue;
 				}
 				
 				// Both exist, check if item moved using index_of
 				int pre_index_in_sorted = this.sorted_items.index_of(pre_item);
-				if (pre_index_in_sorted != (int)i) {
-					// Item moved
-					this.items_changed(i, 1, 1);
+				if (pre_index_in_sorted == (int)i) {
+					continue;
 				}
+				if (this.change_queue.size == 0) {
+					this.change_queue.add(new ChangeQueue(i, 1, 1));
+					continue;
+				}
+				var last = this.change_queue.get(this.change_queue.size - 1);
+				if (last.added > 20) {
+					this.change_queue.add(new ChangeQueue(i, 1, 1));
+					continue;
+				}
+				if (last.removed == last.added && last.removed >= 1
+					&& i == last.position + last.removed) {
+					last.removed++;
+					last.added++;
+					continue;
+				}
+				this.change_queue.add(new ChangeQueue(i, 1, 1));
 			}
+			
+			this.run_queue();
 		}
 	}
 }
