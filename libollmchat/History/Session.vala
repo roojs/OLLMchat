@@ -476,6 +476,7 @@ namespace OLLMchat.History
 				case "total-tokens":
 				case "duration-seconds":
 				case "project-path":
+				case "can-replay":
 					return default_serialize_property(property_name, value, pspec);
 				
 				case "messages":

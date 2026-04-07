@@ -158,6 +158,11 @@ namespace OLLMchat.History
 		 * Stored in DB and in session JSON; lets the UI restore the active project.
 		 */
 		public string project_path { get; set; default = ""; }
+
+		/**
+		 * True when the session transcript includes replay markers (e.g. role agent-stage); gates Runner.replay.
+		 */
+		public bool can_replay { get; set; default = false; }
 		
 		// Agent handler reference - set when session is created or AgentHandler is changed
 		public OLLMchat.Agent.Base? agent { get; set; }
@@ -361,6 +366,9 @@ namespace OLLMchat.History
 			// Add message to session.messages array
 		
 			this.messages.add(message);
+			if (!this.can_replay && message.role == "agent-stage") {
+				this.can_replay = true;
+			}
 			
 			// Notify display_info when message count changes (affects reply count in UI)
 			this.notify_property("display_info");

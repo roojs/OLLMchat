@@ -140,7 +140,7 @@ namespace OLLMcoder.Task
 			yield this.fill_model();
 			this.chat_call.tools.clear();
 			var tool_output = "";
-			if (this.tool_call != null) {
+			if (this.tool_call != null && !this.parent.runner.in_replay) {
 				var tool_impl = this.parent.runner.session.manager.tools.get(
 						this.tool_call.function.name) as OLLMchat.Tool.BaseTool;
 				this.tool_run_result = yield tool_impl.execute(this.chat(), this.tool_call, true);
@@ -189,8 +189,10 @@ namespace OLLMcoder.Task
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
-				this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
-				this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				if (!this.parent.runner.in_replay) {
+					this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
+					this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				}
 				var model_label = this.session.model_usage.model != "" ?
 					this.session.model_usage.display_name_with_size() : "Unknown model";
 				// Show user message sent to LLM so user can see what's going on (system is fixed, omit).

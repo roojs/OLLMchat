@@ -35,43 +35,50 @@ namespace OLLMchat.History
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
 		/** Session project path; from JSON top-level (or DB when loading via placeholder). */
 		public string project_path { get; set; default = ""; }
-		
+
+		/**
+		 * True after load when the transcript contains replay markers; also persisted as can-replay in JSON when present.
+		 */
+		public bool can_replay { get; set; default = false; }
+
 		public bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			if (property_name == "project-path") {
-				this.project_path = property_node.get_string() ?? "";
-				value = Value(typeof(string));
-				value.set_string(this.project_path);
-				return true;
+			switch (property_name) {
+				case "project-path":
+				case "can-replay":
+					return default_deserialize_property(property_name, out value, pspec, property_node);
+				case "messages":
+					this.messages.clear();
+					var array = property_node.get_array();
+					Message? last_msg = null;
+					for (uint i = 0; i < array.get_length(); i++) {
+						var element_node = array.get_element(i);
+						var msg = Json.gobject_deserialize(typeof(Message), element_node) as Message;
+						if (msg == null) {
+							continue;
+						}
+						// If previous was user-sent and current is not the "You said:" ui frame, add the ui message (migrate old session format).
+						if (last_msg != null && last_msg.role == "user-sent"
+							&& (msg.role != "ui" || !msg.content.contains("oc-frame-user You said:"))) {
+							this.messages.add(new Message("ui",
+								Message.fenced("text.oc-frame-primary.oc-frame-user You said:", last_msg.content)));
+						}
+						this.messages.add(msg);
+						if (!this.can_replay && msg.role == "agent-stage") {
+							this.can_replay = true;
+						}
+						last_msg = msg;
+					}
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.messages);
+					return true;
+				default:
+					// Same as pre–can-replay tree: do not default_deserialize; Json-GLib handles other keys elsewhere.
+					value = Value(pspec.value_type);
+					return true;
 			}
-			if (property_name != "messages") {
-				value = Value(pspec.value_type);
-				return true;
-			}
-			
-			this.messages.clear();
-			var array = property_node.get_array();
-			Message? last_msg = null;
-			for (uint i = 0; i < array.get_length(); i++) {
-				var element_node = array.get_element(i);
-				var msg = Json.gobject_deserialize(typeof(Message), element_node) as Message;
-				if (msg == null) {
-					continue;
-				}
-				// If previous was user-sent and current is not the "You said:" ui frame, add the ui message (migrate old session format).
-				if (last_msg != null && last_msg.role == "user-sent"
-					&& (msg.role != "ui" || !msg.content.contains("oc-frame-user You said:"))) {
-					this.messages.add(new Message("ui",
-						Message.fenced("text.oc-frame-primary.oc-frame-user You said:", last_msg.content)));
-				}
-				this.messages.add(msg);
-				last_msg = msg;
-			}
-			value = Value(typeof(Gee.ArrayList));
-			value.set_object(this.messages);
-			return true;
 		}
-		
+
 		public Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			return null;

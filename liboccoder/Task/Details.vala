@@ -450,8 +450,10 @@ public class Details : OLLMchat.Agent.Base
 				"waiting for " + (this.session.model_usage.model != "" ?
 				this.session.model_usage.display_name_with_size() : "Unknown model") + " to reply"));
 			var tpl = this.refinement_prompt();
-			this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
-			this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+			if (!this.runner.in_replay) {
+				this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
+				this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+			}
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.filled_system));
 			messages.add(new OLLMchat.Message("user", tpl.filled_user));
@@ -831,8 +833,10 @@ public class Details : OLLMchat.Agent.Base
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.filled_system));
 			messages.add(new OLLMchat.Message("user", tpl.filled_user));
-			this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
-			this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+			if (!this.runner.in_replay) {
+				this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
+				this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+			}
 			this.add_message(new OLLMchat.Message("ui-waiting",
 				"waiting for " + model_label + " to reply"));
 			this.add_message(new OLLMchat.Message("agent-stage", "post_exec"));

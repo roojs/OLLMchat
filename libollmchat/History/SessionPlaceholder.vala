@@ -142,6 +142,7 @@ namespace OLLMchat.History
 			
 			// c) Assign messages from JSON (migration applied during deserialization in SessionJson). project_path already set from DB in initializer.
 			real_session.messages = json_session.messages;
+			real_session.can_replay = json_session.can_replay;
 			
 			// d) Find the index of this placeholder in manager.sessions
 			uint index;
