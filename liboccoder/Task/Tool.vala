@@ -201,11 +201,13 @@ namespace OLLMcoder.Task
 					 tpl.filled_user)));
 				this.add_message(new OLLMchat.Message("ui-waiting",
 					"waiting for " + model_label + " to reply"));
+				this.add_message(new OLLMchat.Message("agent-stage", "exec"));
 				try {
 					var response = yield this.chat_call.send(messages, null);
 					response_text = (response != null) ? response.message.content : "";
 				} catch (GLib.Error e) {
 					last_issues = e.message;
+					this.add_message(new OLLMchat.Message("agent-issues", last_issues));
 					if (try_count < 4) {
 						this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 							"text.oc-frame-danger.collapsed There were issues with the LLM output — asking it to retry (%d/4)".printf(try_count + 1),
@@ -221,15 +223,19 @@ namespace OLLMcoder.Task
 					((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(parser.issues);
 				}
 				if (exec_ok) {
+					this.add_message(new OLLMchat.Message("agent-issues", ""));
+					this.add_message(new OLLMchat.Message("agent-stage", "exec_validate"));
 					var validate_issues = "";
 					foreach (var w in this.writes) {
 						yield w.validate ();
+						validate_issues += w.issues.length > 0 && validate_issues.length > 0 ? "\n" : "";
 						validate_issues += w.issues;
 					}
-					if (validate_issues.strip () != "") {
+					this.add_message(new OLLMchat.Message("agent-issues", validate_issues));
+					if (validate_issues != "") {
 						this.parent.runner.replay_step("exec_validate_issues",
-							response_text + "\n\nValidate issues:\n" + validate_issues.strip ());
-						last_issues = validate_issues.strip ();
+							response_text + "\n\nValidate issues:\n" + validate_issues);
+						last_issues = validate_issues;
 						if (try_count < 4) {
 							this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 								"text.oc-frame-danger.collapsed There were issues with the LLM output — asking it to retry (%d/4)".printf(try_count + 1),
@@ -243,7 +249,8 @@ namespace OLLMcoder.Task
 						yield w.exec(this);
 						if (this.tool_run_result.has_prefix("ERROR:")) {
 							this.add_message(new OLLMchat.Message("ui",
-								OLLMchat.Message.fenced("text.oc-frame-danger.collapsed Execution results",
+								OLLMchat.Message.fenced(
+									"text.oc-frame-danger.collapsed Execution results",
 									this.tool_run_result)));
 							this.parent.issues += "\nwrite_file failed: " + this.tool_run_result;
 							throw new GLib.IOError.FAILED("write_file failed: " + this.tool_run_result);
@@ -259,6 +266,7 @@ namespace OLLMcoder.Task
 					}
 					return;
 				}
+				this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
 				this.parent.runner.replay_step("exec_parse_issues",
 					response_text + "\n\nParse issues:\n" + parser.issues);
 				last_issues = parser.issues.strip();
