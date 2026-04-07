@@ -459,6 +459,7 @@ public class Details : OLLMchat.Agent.Base
 			var response_text = "";
 			for (var attempt = 0; attempt < 3; attempt++) {
 				try {
+					this.add_message(new OLLMchat.Message("agent-stage", "refinement"));
 					var response = yield this.chat_call.send(messages, cancellable);
 					response_text = response != null ? response.message.content : "";
 					break;
@@ -475,6 +476,7 @@ public class Details : OLLMchat.Agent.Base
 			}
 			this.result_parser = new ResultParser(this.runner, response_text);
 			this.result_parser.extract_refinement(this);
+			this.add_message(new OLLMchat.Message("agent-issues", this.result_parser.issues));
 			var task_name = this.task_data.get("name").to_markdown().strip();
 			if (this.runner.in_replay) {
 				((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(this.result_parser.issues);
@@ -833,6 +835,7 @@ public class Details : OLLMchat.Agent.Base
 			this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
 			this.add_message(new OLLMchat.Message("ui-waiting",
 				"waiting for " + model_label + " to reply"));
+			this.add_message(new OLLMchat.Message("agent-stage", "post_exec"));
 			var response = yield this.chat_call.send(messages, null);
 			response_text = response != null ? response.message.content : "";
 			// Ensure any literal {task_link_base} in model output is replaced so links validate
@@ -842,6 +845,7 @@ public class Details : OLLMchat.Agent.Base
 			this.issues = "";
 			var parser = new ResultParser(this.runner, response_text);
 			parser.exec_post_extract(this);
+			this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
 			if (parser.issues == "") {
 				return;
 			}

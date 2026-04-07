@@ -188,13 +188,16 @@ namespace OLLMcoder.Skill
 					// Same wording as Session.send; always emit so retries still show wait after UI frames clear it.
 					this.add_message(new OLLMchat.Message("ui-waiting",
 						"waiting for " + (this.session.model_usage.model != "" ?
-						this.session.model_usage.display_name_with_size() : "Unknown model") + " to reply"));
+						this.session.model_usage.display_name_with_size() : "Unknown model")
+						 + " to reply"));
+					this.add_message(new OLLMchat.Message("agent-stage", "task_list_parse"));
 					var response_obj = yield this.chat_call.send(messages, cancellable);
 					var response = response_obj != null ? response_obj.message.content : "";
 					this.replay_step("task_list_parse", response);
 					this.pending = new OLLMcoder.Task.List(this);
 					var parser = new OLLMcoder.Task.ResultParser(this, response);
 					parser.parse_task_list();
+					this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
 					if (this.in_replay) {
 						((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(parser.issues);
 					}
@@ -400,12 +403,14 @@ namespace OLLMcoder.Skill
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				this.add_message(new OLLMchat.Message("agent-stage", "task_list_iteration"));
 				var response_obj = yield this.chat_call.send(messages, null);
 				response = response_obj != null ? response_obj.message.content : "";
 
 				this.pending = new OLLMcoder.Task.List(this);
 				parser = new OLLMcoder.Task.ResultParser(this, response);
 				parser.parse_task_list_iteration();
+				this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
 
 				if (parser.issues != "") {
 					this.replay_step("iteration_parse_issues",

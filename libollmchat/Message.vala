@@ -32,6 +32,8 @@ namespace OLLMchat
 	 * * "ui-waiting": Transient placeholder shown while waiting for response (e.g. "waiting for a reply", "Refining..."); content is the label; animated dots; cleared when content arrives
 	 * * "system": System prompts
 	 * * "project": Active project path (session metadata; not displayed, not sent to LLM)
+	 * * "agent-stage": Replay marker — stage id at stage start (not displayed, not sent to LLM)
+	 * * "agent-issues": Replay marker — issues after that stage; empty = no issues (not displayed, not sent to LLM)
 	 * * "end-stream": Stream end marker (not displayed)
 	 * * "done": Completion marker (not displayed)
 	 *
@@ -127,6 +129,12 @@ namespace OLLMchat
 						break;
 					case "project":
 						// Session metadata: active project path; not shown in UI, not sent to LLM
+						is_hidden = true;
+						is_ui_visible = false;
+						break;
+					case "agent-stage":
+					case "agent-issues":
+						// Session metadata for skill-runner replay; not shown in UI, not sent to LLM
 						is_hidden = true;
 						is_ui_visible = false;
 						break;
