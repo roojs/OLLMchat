@@ -45,7 +45,7 @@ namespace OLLMtools
 			OLLMchat.Tool.BaseTool.register_config(typeof(WriteFile.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(GoogleSearch.Tool));
 			
-			GLib.debug("OLLMtools.Registry.init_config: Registered liboctools tool config types");
+			//GLib.debug("OLLMtools.Registry.init_config: Registered liboctools tool config types");
 		}
 		
 		/**
@@ -60,7 +60,7 @@ namespace OLLMtools
 			(new EditMode.Tool(null)).setup_tool_config_default(config);
 			(new WriteFile.Tool(null)).setup_tool_config_default(config);
 			(new GoogleSearch.Tool(null)).setup_tool_config_default(config);
-			GLib.debug("OLLMtools.Registry.setup_config_defaults: Set up liboctools tool configs");
+			//GLib.debug("OLLMtools.Registry.setup_config_defaults: Set up liboctools tool configs");
 		}
 		
 		public void fill_tools(
@@ -76,15 +76,15 @@ namespace OLLMtools
 			manager.register_tool(new WriteFile.Tool(project_manager));
 			manager.register_tool(new GoogleSearch.Tool(project_manager));
 			
-			GLib.debug("OLLMtools.Registry.fill_tools: Registered %d liboctools standard tools", 
-				manager.tools.size);
+			//GLib.debug("OLLMtools.Registry.fill_tools: Registered %d liboctools standard tools", 
+			//	manager.tools.size);
 			
 			// Register wrapped tools from .tool definition files
 			var builder = new ToolBuilder(manager.tools);
 			builder.scan_and_build();
 			
-			GLib.debug("OLLMtools.Registry.fill_tools: Registered wrapped tools (total tools: %d)",
-				manager.tools.size);
+			//GLib.debug("OLLMtools.Registry.fill_tools: Registered wrapped tools (total tools: %d)",
+			//	manager.tools.size);
 		}
 	}
 }

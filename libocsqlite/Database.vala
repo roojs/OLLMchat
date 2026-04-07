@@ -161,7 +161,7 @@ namespace SQ {
 		public void backupDB()
 		{
 			if (db == null) {
-				GLib.debug("database not open = not saving");
+				//GLib.debug("database not open = not saving");
 				return;
 			}
 			
@@ -215,11 +215,11 @@ namespace SQ {
 		 */
 		public void exec(string q) 
 		{
-			GLib.debug("EXEC %s", q);
+			//GLib.debug("EXEC %s", q);
 			db_mutex.lock();
 			string errmsg;
 			if (Sqlite.OK != db.exec(q, null, out errmsg)) {
-				GLib.debug("error %s", db.errmsg());
+				//GLib.debug("error %s", db.errmsg());
 			}
 			db_mutex.unlock();
 		}

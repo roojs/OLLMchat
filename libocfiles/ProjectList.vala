@@ -99,8 +99,8 @@ namespace OLLMfiles
 			
 			// Check for duplicates by path (prevent same path with different IDs)
 			if (item.path != "" && this.path_map.has_key(item.path)) {
-				GLib.debug("ProjectList.append: Skipping duplicate path '%s' (existing id=%lld, new id=%lld)", 
-					item.path, this.path_map.get(item.path).id, item.id);
+				//GLib.debug("ProjectList.append: Skipping duplicate path '%s' (existing id=%lld, new id=%lld)", 
+				//	item.path, this.path_map.get(item.path).id, item.id);
 				return;
 			}
 			
@@ -183,12 +183,12 @@ namespace OLLMfiles
 				if (result == null) {
 					result = project;
 				}
-				GLib.debug("ProjectList.get_active_project: Found active project '%s' (count=%d)", 
-					project.path, active_count);
+				//GLib.debug("ProjectList.get_active_project: Found active project '%s' (count=%d)", 
+				//	project.path, active_count);
 			}
-			GLib.debug("ProjectList.get_active_project: Total active projects found: %d", active_count);
-			GLib.debug("ProjectList.get_active_project: Returning project '%s'", 
-				result != null ? result.path : "null");
+			//GLib.debug("ProjectList.get_active_project: Total active projects found: %d", active_count);
+			//GLib.debug("ProjectList.get_active_project: Returning project '%s'", 
+			//	result != null ? result.path : "null");
 			return result;
 		}
 		

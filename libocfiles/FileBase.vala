@@ -192,7 +192,8 @@ namespace OLLMfiles
 		 * Returns one or more lines for the project summary list.
 		 * @param indent Leading indent for this line; Folder passes indent + "  " to children.
 		 */
-		public abstract string to_summary(Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent);
+		public abstract string to_summary(
+			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent);
 		
 		/**
 		 * Last cursor line number (stored in database, default: 0).
@@ -487,8 +488,8 @@ namespace OLLMfiles
 			// Skip DB operations for fake files (id < 0 indicates not in database)
 			// id = -1: fake file (ignore), id = 0: new file (insert), id > 0: existing file (update)
 			if (this.id < 0) {
-				GLib.debug("FileBase.saveToDB: Skipping DB operation for fake file (id=%lld, path='%s')", 
-					this.id, this.path);
+				//GLib.debug("FileBase.saveToDB: Skipping DB operation for fake file (id=%lld, path='%s')", 
+				//	this.id, this.path);
 				return;
 			}
 			
@@ -497,17 +498,17 @@ namespace OLLMfiles
 			// id = 0: new file (insert), id > 0: existing file (update)
 			if (this.id == 0) {
 				// New file - insert into database
-				GLib.debug("INSERT new file path='%s'", this.path);
+				//GLib.debug("INSERT new file path='%s'", this.path);
 				this.id = sq.insert(this);
 				this.manager.file_cache.set(this.path, this);
 			} else {
 				if (new_values != null) {
 					var updated = sq.updateOld(this, new_values);
 					if (updated) {
-						GLib.debug("FileBase.saveToDB: UPDATE (changed fields only) id=%d path='%s'", (int)this.id, this.path);
+						//GLib.debug("FileBase.saveToDB: UPDATE (changed fields only) id=%d path='%s'", (int)this.id, this.path);
 					}
 				} else {
-					GLib.debug("UPDATE (all fields) id=%d path='%s'", (int)this.id, this.path);
+					//GLib.debug("UPDATE (all fields) id=%d path='%s'", (int)this.id, this.path);
 					sq.updateById(this);
 				}
 			}

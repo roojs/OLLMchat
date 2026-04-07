@@ -192,7 +192,7 @@ namespace OLLMchat.Response
 			get { return this._parameters; }
 			set {
 				this._parameters = value;
-//				GLib.debug("Model.parameters set for '%s': '%s'", this.name, value);
+//				//GLib.debug("Model.parameters set for '%s': '%s'", this.name, value);
 				// Automatically fill options from parameters when set
 				if (value != "") {
 					this.options.fill_from_model(this);
@@ -212,7 +212,7 @@ namespace OLLMchat.Response
 		 */
 		public bool is_thinking {
 			get {
-				//GLib.debug("is_thinking: %s %s", this.name, 
+				////GLib.debug("is_thinking: %s %s", this.name, 
 				//	this.capabilities.contains("thinking") ? "1" : "0");
 				return this.capabilities.contains("thinking");
 			}
@@ -224,7 +224,7 @@ namespace OLLMchat.Response
 		 */
 		public bool can_call {
 			get {
-				//GLib.debug("can_call: %s %s", this.name, 
+				////GLib.debug("can_call: %s %s", this.name, 
 				//	this.capabilities.contains("tools") ? "1" : "0");
 				return this.capabilities.contains("tools");
 			}
@@ -509,7 +509,7 @@ namespace OLLMchat.Response
 				
 				return cached_model;
 			} catch (Error e) {
-				GLib.debug("Failed to load model from cache: %s", e.message);
+				//GLib.debug("Failed to load model from cache: %s", e.message);
 				return null;
 			}
 		}
@@ -570,12 +570,12 @@ namespace OLLMchat.Response
 			
 			// Check if temp model exists using connection's cached model list (O(1) lookup)
 			if (connection.models.has_key(temp_name)) {
-				GLib.debug("Temp model '%s' already exists, reusing", temp_name);
+				//GLib.debug("Temp model '%s' already exists, reusing", temp_name);
 				return temp_name;
 			}
 			
 			// Model doesn't exist - create it
-			GLib.debug("Creating temp model '%s' with num_ctx=%d", temp_name, options.num_ctx);
+			//GLib.debug("Creating temp model '%s' with num_ctx=%d", temp_name, options.num_ctx);
 			
 			// Create the model using API fields
 			// We always use the existing template from the base model (no custom template)
@@ -588,7 +588,7 @@ namespace OLLMchat.Response
 			
 			try {
 				yield create_call.exec_create();
-				GLib.debug("Successfully created temp model '%s'", temp_name);
+				//GLib.debug("Successfully created temp model '%s'", temp_name);
 			} catch (Error e) {
 				GLib.warning("Failed to create temp model '%s': %s. Falling back to base model '%s'", temp_name, e.message, this.name);
 				// Fall back to base model on error

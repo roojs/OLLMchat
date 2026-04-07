@@ -363,19 +363,19 @@ namespace OLLMchat.Call
 		 */
 		public async Response.Chat toolsReply(Response.Chat response) throws Error
 		{
-			GLib.debug("Chat.toolsReply: Processing %d tool call(s)", response.message.tool_calls.size);
+			//GLib.debug("Chat.toolsReply: Processing %d tool call(s)", response.message.tool_calls.size);
 			
 			// Only process tool calls if response is done and has tool_calls
 			// Tool calls can be present even when content is also present
 			if (!response.done || response.message.tool_calls.size == 0) {
-				GLib.debug("Chat.toolsReply: Reply end - done=%s, tool_calls.size=%d, content.length=%zu", 
-					response.done.to_string(), 
-					response.message.tool_calls.size, 
-					response.message.content.length);
+				//GLib.debug("Chat.toolsReply: Reply end - done=%s, tool_calls.size=%d, content.length=%zu", 
+				//	response.done.to_string(), 
+				//	response.message.tool_calls.size, 
+				//	response.message.content.length);
 				return response;
 			}
 			
-			GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %s", response.message.content);
+			//GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %s", response.message.content);
 			
 			if (this.agent != null) {
 				// Agent usage (normal flow): delegate to agent handler (agent executes tools and returns messages)
@@ -477,10 +477,10 @@ namespace OLLMchat.Call
 			this.messages = messages;
 			
 			// Debug: output messages being sent
-			GLib.debug("Chat.send: Sending %d message(s):", this.messages.size);
+			//GLib.debug("Chat.send: Sending %d message(s):", this.messages.size);
 			for (int i = 0; i < this.messages.size; i++) {
 				var msg = this.messages[i];
-				//GLib.debug("  Message %d: role='%s', content='%s'%s", 
+				////GLib.debug("  Message %d: role='%s', content='%s'%s", 
 				//	i + 1, 
 				//	msg.role, 
 				//	msg.content,
@@ -536,8 +536,8 @@ namespace OLLMchat.Call
 			var request_body = this.get_request_body();
 			var message = this.connection.soup_message(this.http_method, url, request_body);
 
-			GLib.debug("Request URL: %s", url);
-			//GLib.debug("Request Body: %s", request_body);
+			//GLib.debug("Request URL: %s", url);
+			////GLib.debug("Request Body: %s", request_body);
 
 			try {
 				yield this.handle_streaming_response(message);
@@ -554,19 +554,19 @@ namespace OLLMchat.Call
 			}
 
 		// Check for tool calls and handle them recursively
-			GLib.debug("Chat.execute_streaming: done=%s, tool_calls.size=%d, content='%s'", 
-				response.done.to_string(),
-				response.message.tool_calls.size,
-				response.message.content);
+			//GLib.debug("Chat.execute_streaming: done=%s, tool_calls.size=%d, content='%s'", 
+			//	response.done.to_string(),
+			//	response.message.tool_calls.size,
+			//	response.message.content);
 			
 			if (response.done && response.message.tool_calls.size > 0) {
-				GLib.debug("Chat.execute_streaming: Calling toolsReply");
+				//GLib.debug("Chat.execute_streaming: Calling toolsReply");
 				return yield this.toolsReply(response);
 			}
 			
-			GLib.debug("Chat.execute_streaming: Not calling toolsReply - done=%s, tool_calls.size=%d",
-				response.done.to_string(),
-				response.message.tool_calls.size);
+			//GLib.debug("Chat.execute_streaming: Not calling toolsReply - done=%s, tool_calls.size=%d",
+			//	response.done.to_string(),
+			//	response.message.tool_calls.size);
 			
 			return response;
 		}

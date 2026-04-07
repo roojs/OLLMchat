@@ -207,7 +207,7 @@ namespace SQ {
 				string.joinv(",", keys) + " ) VALUES ( " + 
 				string.joinv(",", values) +   " );";
 			
-			GLib.debug("Query %s", q);
+			//GLib.debug("Query %s", q);
 			this.db.db_mutex.lock();
 			this.db.db.prepare_v2 (q, q.length, out stmt);
 			
@@ -243,9 +243,9 @@ namespace SQ {
 			}
  
 			if (Sqlite.DONE != stmt.step ()) {
-			    GLib.debug("SYmbol insert: %s", this.db.db.errmsg());
+			    //GLib.debug("SYmbol insert: %s", this.db.db.errmsg());
 			}
-			//GLib.debug("Execute %s", stmt.expanded_sql());	 
+			////GLib.debug("Execute %s", stmt.expanded_sql());	 
 			
 			stmt.reset(); //not really needed.
 			var id = this.db.db.last_insert_rowid();
@@ -254,7 +254,7 @@ namespace SQ {
 			var  newv = GLib.Value ( typeof(int64) );
 			newv.set_int64(id);
 			((Object)newer).set_property("id", newv);
-			//GLib.debug("got id=%d", (int)id);
+			////GLib.debug("got id=%d", (int)id);
 			return id;
 
 		}
@@ -292,7 +292,7 @@ namespace SQ {
 				if (old ==null || !this.compareProperty(old, newer, prop_name, value_type)) {
 					setter += (s.name +  " = $" + s.name);
 					types.set(s.name,s.ctype);
-					GLib.debug("Change: %s",s.name);
+					//GLib.debug("Change: %s",s.name);
 				}
 			}
 			if (setter.length < 1) {
@@ -397,7 +397,7 @@ namespace SQ {
 				}
 			
 			}
-			GLib.debug("Execute %s", stmt.expanded_sql());	 
+			//GLib.debug("Execute %s", stmt.expanded_sql());	 
 			if (Sqlite.DONE != stmt.step ()) {
 			    GLib.error("Update:   %s",   this.db.db.errmsg());
 			}
@@ -630,7 +630,7 @@ namespace SQ {
  		 */
 		public void selectExecute(Sqlite.Statement stmt, Gee.ArrayList<T> ret )
 		{
-			GLib.debug("Execute %s", stmt.expanded_sql());
+			//GLib.debug("Execute %s", stmt.expanded_sql());
 			
 			// Find the typekey column index once (column positions don't change between rows)
 			int typekey_index = -1;
@@ -657,10 +657,10 @@ namespace SQ {
 		 		}
 		 		
 		 		if (this.property_names != null && this.property_values != null) {
-				//	GLib.debug("new_with_properties %s", string.joinv(",", this.property_names));
+				//	//GLib.debug("new_with_properties %s", string.joinv(",", this.property_names));
 		 			row = (T) Object.new_with_properties(object_type, this.property_names, this.property_values);
 		 		} else {
-				//	GLib.debug("new %s", object_type.name());
+				//	//GLib.debug("new %s", object_type.name());
 		 			row = (T) Object.new(object_type);
 		 		}
 				this.fetchRow(stmt, row);
@@ -669,7 +669,7 @@ namespace SQ {
 			}
 			this.db.db_mutex.unlock();
 			 
-		    GLib.debug("select got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
+		    //GLib.debug("select got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
 					
 		}
 		
@@ -691,7 +691,7 @@ namespace SQ {
 			}
 			this.db.db_mutex.unlock();
 			 
-		    GLib.debug("fetchAllString got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
+		    //GLib.debug("fetchAllString got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
 			return ret;		
 		}
 		
@@ -713,7 +713,7 @@ namespace SQ {
 			}
 			this.db.db_mutex.unlock();
 			 
-		    GLib.debug("fetchAllInt64 got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
+		    //GLib.debug("fetchAllInt64 got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
 			return ret;		
 		}
 		
@@ -730,7 +730,7 @@ namespace SQ {
 		 */
 		public bool selectExecuteInto(Sqlite.Statement stmt,  T row )
 		{
-			GLib.debug("Execute INTO %s", stmt.expanded_sql());
+			//GLib.debug("Execute INTO %s", stmt.expanded_sql());
 			this.db.db_mutex.lock();
 			if (stmt.step() == Sqlite.ROW) {
 		 		this.fetchRow(stmt, row);
@@ -738,7 +738,7 @@ namespace SQ {
 		 		return true;
 		 	}
 			this.db.db_mutex.unlock();
-//		    GLib.debug("select got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
+//		    //GLib.debug("select got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
 			return false;
 			 
 
@@ -782,7 +782,7 @@ namespace SQ {
 			for (int i = 0; i < cols; i++) {
 				var col_name = stmt.column_name (i);
 				if (col_name == null) {
-					GLib.debug("Skip col %d = no column name?", i);
+					//GLib.debug("Skip col %d = no column name?", i);
 					continue;
 				}
 				
@@ -862,7 +862,7 @@ namespace SQ {
 						newv.set_boolean(stmt.column_int( pos) == 1);
 						break;
 					}
-					GLib.debug("invalid bool setting for col_name %s", col_name);
+					//GLib.debug("invalid bool setting for col_name %s", col_name);
 					return;
 					
 				case GLib.Type.INT64:
@@ -870,7 +870,7 @@ namespace SQ {
 		 				newv.set_int64( stmt.column_int64( pos) ); // we will have to let symbol sort out parent_id storage?
 		 				break;
 	 				}
-	 				GLib.debug("invalid int setting for col_name %s", col_name);
+	 				//GLib.debug("invalid int setting for col_name %s", col_name);
 					return;
  			 	case GLib.Type.ENUM:
 
@@ -882,7 +882,7 @@ namespace SQ {
 		 				newv.set_enum( val ); // we will have to let symbol sort out parent_id storage?
 		 				break;
 	 				}
-	 				GLib.debug("invalid enum setting for col_name %s", col_name);
+	 				//GLib.debug("invalid enum setting for col_name %s", col_name);
 					return;	
 					
 			 	case GLib.Type.INT:
@@ -891,7 +891,7 @@ namespace SQ {
 		 				newv.set_int( stmt.column_int(pos ) ); // we will have to let symbol sort out parent_id storage?
 		 				break;
 	 				}
-	 				GLib.debug("invalid int setting for col_name %s", col_name);
+	 				//GLib.debug("invalid int setting for col_name %s", col_name);
 					return;
 	 						
 				case GLib.Type.STRING:
@@ -900,7 +900,7 @@ namespace SQ {
 						newv.set_string(str == null? "": str);
 						break;	
 					}
-					GLib.debug("invalid string setting for col_name %s", col_name);
+					//GLib.debug("invalid string setting for col_name %s", col_name);
 					return;
 				
 				default:
@@ -927,7 +927,7 @@ namespace SQ {
 		public void deleteId(int64 id) 
 		{
 			var q= "DELETE from " + this.table + " WHERE id = $id";
-			GLib.debug("Query %s", q);
+			//GLib.debug("Query %s", q);
 			var stmt = this.selectPrepare( q );
 			stmt.bind_int64 (stmt.bind_parameter_index ("$id"), id);
 			this.db.db_mutex.lock();

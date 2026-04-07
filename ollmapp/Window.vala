@@ -226,12 +226,12 @@ namespace OLLMapp
 		{
 			// Show bootstrap dialog if no config was loaded
 			if (!this.app.config.loaded) {
-				GLib.debug("Config not loaded, showing bootstrap dialog");
+				//GLib.debug("Config not loaded, showing bootstrap dialog");
 				yield this.show_bootstrap_dialog("");
 				return;
 			}
 			
-			GLib.debug("Config loaded successfully, initializing client");
+			//GLib.debug("Config loaded successfully, initializing client");
 			var initializer = new Initialize(this);
 			initializer.reinitialize.connect(() => {
 				this.load_config_and_initialize.begin();
@@ -452,7 +452,7 @@ namespace OLLMapp
 			var sidebar_motion = new Gtk.EventControllerMotion();
 			sidebar_motion.leave.connect(() => {
 				if (this.split_view.show_sidebar && this.history_leave_ignore_timeout_id == 0) {
-					GLib.debug("Window: hiding sidebar (mouse leave)");
+					//GLib.debug("Window: hiding sidebar (mouse leave)");
 					this.history_toggle_button.active = false;
 				}
 			});
@@ -583,17 +583,17 @@ namespace OLLMapp
 					this.background_scan.scanProject(project);
 				});
 			} else {
-				GLib.debug("Background semantic search indexing disabled via --disable-indexer");
+				//GLib.debug("Background semantic search indexing disabled via --disable-indexer");
 			}
 			
-			GLib.debug("Codebase search tool initialized successfully (name: %s, active: %s)", 
-				tool.name, tool.active.to_string());
+			//GLib.debug("Codebase search tool initialized successfully (name: %s, active: %s)", 
+			//	tool.name, tool.active.to_string());
 			
 			// Phase 3: Tools are stored on Manager
 			// Add tool to Manager - it will be copied to Chat when Chat is created in Session
 			this.history_manager.tools.set(tool.name, tool);
-			GLib.debug("Codebase search tool added to Manager (total tools: %d)", 
-				this.history_manager.tools.size);
+			//GLib.debug("Codebase search tool added to Manager (total tools: %d)", 
+			//	this.history_manager.tools.size);
 		}
 		
 		/**
@@ -758,8 +758,8 @@ namespace OLLMapp
 			// Set selected index after connecting signal (triggers initial agent activation)
 			this.agent_dropdown.selected = selected_index;
 			
-			GLib.debug("setup_agent_dropdown: Dropdown configured with %u items, selected index: %u", 
-				agent_store.get_n_items(), selected_index);
+			//GLib.debug("setup_agent_dropdown: Dropdown configured with %u items, selected index: %u", 
+			//	agent_store.get_n_items(), selected_index);
 			
 			// Connect to session_activated signal to update when session changes
 			this.history_manager.session_activated.connect((session) => {

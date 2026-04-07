@@ -78,7 +78,7 @@ namespace OLLMchat.History
 		 */
 		public override async SessionBase? load() throws Error
 		{
-			GLib.debug("Converting SessionPlaceholder to Session: %s", this.to_string());
+			//GLib.debug("Converting SessionPlaceholder to Session: %s", this.to_string());
 			
 			// a) Create a new Session (Chat is created per request by AgentHandler)
 			var real_session = new Session(this.manager) {
@@ -153,7 +153,7 @@ namespace OLLMchat.History
 				// e) Replace the placeholder with the real session in manager.sessions (same index). Silent so nothing triggers (no selection jump).
 				this.manager.sessions.replace_at(index, real_session, true);
 			}
-			GLib.debug("resulting  Session: %s", real_session.to_string());
+			//GLib.debug("resulting  Session: %s", real_session.to_string());
 			
 			return real_session;
 		}

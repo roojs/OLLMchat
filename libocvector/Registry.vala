@@ -33,7 +33,7 @@ namespace OLLMvector
 			// Register only libocvector tool config types with Config2
 			OLLMchat.Tool.BaseTool.register_config(typeof(Tool.CodebaseSearchTool));
 			
-			GLib.debug("OLLMvector.Registry.init_config: Registered libocvector tool config types");
+			//GLib.debug("OLLMvector.Registry.init_config: Registered libocvector tool config types");
 		}
 		
 		public void setup_config_defaults(OLLMchat.Settings.Config2 config)
@@ -54,8 +54,8 @@ namespace OLLMvector
 			// Register CodebaseSearchTool with project_manager
 			manager.register_tool(new Tool.CodebaseSearchTool(project_manager));
 			
-			GLib.debug("OLLMvector.Registry.fill_tools: Registered CodebaseSearchTool (total tools: %d)", 
-				manager.tools.size);
+			//GLib.debug("OLLMvector.Registry.fill_tools: Registered CodebaseSearchTool (total tools: %d)", 
+			//	manager.tools.size);
 		}
 	}
 }

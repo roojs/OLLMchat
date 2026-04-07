@@ -52,13 +52,13 @@ namespace OLLMcoder
 			this.placeholder_text = "Select project";
 			
 			// Debug: Log project list state
-			GLib.debug("ProjectDropdown: manager.projects.get_n_items() = %u", this.manager.projects.get_n_items());
+			//GLib.debug("ProjectDropdown: manager.projects.get_n_items() = %u", this.manager.projects.get_n_items());
 			
 			// Use ProjectList directly as the ListModel (no copying)
 			this.set_item_model(this.manager.projects);
 			
 			// Debug: Log after setting model
-			GLib.debug("ProjectDropdown: After set_item_model, filtered_items.get_n_items() = %u", this.filtered_items.get_n_items());
+			//GLib.debug("ProjectDropdown: After set_item_model, filtered_items.get_n_items() = %u", this.filtered_items.get_n_items());
 		}
 		
 		/**
@@ -67,8 +67,8 @@ namespace OLLMcoder
 		private void set_item_model(GLib.ListModel model)
 		{
 			// Debug: Log model state
-			GLib.debug("ProjectDropdown.set_item_model: model.get_n_items() = %u, model type = %s", 
-				model.get_n_items(), model.get_type().name());
+			//GLib.debug("ProjectDropdown.set_item_model: model.get_n_items() = %u, model type = %s", 
+			//	model.get_n_items(), model.get_type().name());
 			
 			// Update string filter to work with Folder type
 			this.string_filter = new Gtk.StringFilter(
@@ -85,8 +85,8 @@ namespace OLLMcoder
 				model, this.string_filter);
 			
 			// Debug: Log filtered items
-			GLib.debug("ProjectDropdown.set_item_model: filtered_items.get_n_items() = %u", 
-				this.filtered_items.get_n_items());
+			//GLib.debug("ProjectDropdown.set_item_model: filtered_items.get_n_items() = %u", 
+			//	this.filtered_items.get_n_items());
 			
 			// Create custom sorter: sort by path_basename (derived from path)
 			var sorter = new Gtk.CustomSorter((a, b) => {
@@ -118,8 +118,8 @@ namespace OLLMcoder
 			this.list.model = this.selection;
 			
 			// Debug: Log final state
-			GLib.debug("ProjectDropdown.set_item_model: sorted_items.get_n_items() = %u, selection.model.get_n_items() = %u", 
-				sorted_items.get_n_items(), this.selection.model.get_n_items());
+			//GLib.debug("ProjectDropdown.set_item_model: sorted_items.get_n_items() = %u, selection.model.get_n_items() = %u", 
+			//	sorted_items.get_n_items(), this.selection.model.get_n_items());
 		}
 		
 		/**

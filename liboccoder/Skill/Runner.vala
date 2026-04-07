@@ -498,9 +498,27 @@ namespace OLLMcoder.Skill
 				return;
 			}
 
+			GLib.debug("session %s phase=%d role=%s step=%d detail=%d tool=%d steps=%u content_len=%u",
+				this.session.fid, (int) this.replay_phase, m.role,
+				this.replay_step_pos, this.replay_details_pos, this.replay_tool_pos,
+				this.pending.steps.size, m.content.length);
+
 			switch (this.replay_phase) {
 			case OLLMcoder.Task.PhaseEnum.NONE:
 				switch (m.role) {
+				case "user-sent":
+					try {
+						var tpl = this.task_creation_prompt(
+							m.content,
+							"",
+							"",
+							this.sr_factory.skill_manager,
+							this.sr_factory.project_manager);
+						this.user_request = tpl.user_to_document();
+					} catch (GLib.Error e) {
+						GLib.error("%s", e.message);
+					}
+					break;
 				case "agent-stage":
 					// Bootstrap: first wire stages only. Iteration step move is under EXEC_VALIDATE.
 					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
@@ -516,6 +534,8 @@ namespace OLLMcoder.Skill
 					this.pending = new OLLMcoder.Task.List(this);
 					var p0 = new OLLMcoder.Task.ResultParser(this, m.content);
 					p0.parse_task_list();
+					GLib.debug("session %s initial_plan steps=%u issues_empty=%s",
+						this.session.fid, this.pending.steps.size, (p0.issues == "").to_string());
 					break;
 				case "agent-stage":
 					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
@@ -534,6 +554,8 @@ namespace OLLMcoder.Skill
 					this.pending = new OLLMcoder.Task.List(this);
 					var p1 = new OLLMcoder.Task.ResultParser(this, m.content);
 					p1.parse_task_list_iteration();
+					GLib.debug("session %s revised_plan steps=%u issues_empty=%s",
+						this.session.fid, this.pending.steps.size, (p1.issues == "").to_string());
 					this.replay_step_pos = 0;
 					this.replay_details_pos = 0;
 					this.replay_tool_pos = 0;
@@ -558,7 +580,15 @@ namespace OLLMcoder.Skill
 					pr.extract_refinement(st_r.children.get(this.replay_details_pos));
 					break;
 				case "agent-stage":
-					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
+					var new_ref = OLLMcoder.Task.PhaseEnum.from_string(m.content);
+					// Live runs each Details from index 0 after all refinements (List.run_child foreach);
+					// refinement replay advances replay_details_pos to the last refined child — reset
+					// before the first exec transcript for this step.
+					if (new_ref == OLLMcoder.Task.PhaseEnum.EXECUTION) {
+						this.replay_details_pos = 0;
+						this.replay_tool_pos = 0;
+					}
+					this.replay_phase = new_ref;
 					break;
 				case "agent-issues":
 					if (m.content != "") {
@@ -598,6 +628,12 @@ namespace OLLMcoder.Skill
 				case "content-stream":
 					var st_e = this.pending.steps.get(this.replay_step_pos);
 					var d_exec = st_e.children.get(this.replay_details_pos);
+					if (d_exec.exec_runs.size == 0) {
+						d_exec.build_exec_runs();
+					}
+					GLib.debug("session %s replay_exec children=%u detail=%d tool=%d exec_runs=%u",
+						this.session.fid, st_e.children.size, this.replay_details_pos,
+						this.replay_tool_pos, d_exec.exec_runs.size);
 					var px = new OLLMcoder.Task.ResultParser(this, m.content);
 					px.exec_extract(d_exec.exec_runs.get(this.replay_tool_pos));
 					break;
