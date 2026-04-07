@@ -213,8 +213,8 @@ public class ResultParser : Object
 			var step = steps.get(i);
 			step.register_slugs(i);
 			foreach (var t in step.children) {
-				this.validate_task(t, MarkdownPhase.LIST);
-				var vl_list = new ValidateLink(t.runner, t, MarkdownPhase.LIST);
+				this.validate_task(t, PhaseEnum.LIST);
+				var vl_list = new ValidateLink(t.runner, t, PhaseEnum.LIST);
 				vl_list.validate_all(t.references);
 				t.issues += vl_list.issues;
 				if (t.issues != "") {
@@ -265,8 +265,8 @@ public class ResultParser : Object
 			var step = steps.get(i);
 			step.register_slugs(i);
 			foreach (var t in step.children) {
-				this.validate_task(t, MarkdownPhase.LIST);
-				var vl_list = new ValidateLink(t.runner, t, MarkdownPhase.LIST);
+				this.validate_task(t, PhaseEnum.LIST);
+				var vl_list = new ValidateLink(t.runner, t, PhaseEnum.LIST);
 				vl_list.validate_all(t.references);
 				t.issues += vl_list.issues;
 				if (t.issues != "") {
@@ -347,14 +347,14 @@ public class ResultParser : Object
 	 * @param t the task to validate (its task_data keys are checked)
 	 * @param phase markdown phase; REFINEMENT skips Name requirement
 	 */
-	public void validate_task(Details t, MarkdownPhase phase)
+	public void validate_task(Details t, PhaseEnum phase)
 	{
 		if (t.task_data.has_key("output")) {
 			this.issues += "\n" + t.issue_label() + " must not contain Output " +
 				"(tasks in the list have no results yet).";
 		}
 		foreach (var req in required_keys()) {
-			if (phase == MarkdownPhase.REFINEMENT && req == "name") {
+			if (phase == PhaseEnum.REFINEMENT && req == "name") {
 				continue;
 			}
 			if (!t.task_data.has_key(req)) {
@@ -367,7 +367,7 @@ public class ResultParser : Object
 			if (valid_keys().contains(k)) {
 				continue;
 			}
-			if (phase == MarkdownPhase.REFINEMENT &&
+			if (phase == PhaseEnum.REFINEMENT &&
 					(k == "shared references" || k == "examination references" || k == "skill call")) {
 				continue;
 			}
@@ -377,7 +377,7 @@ public class ResultParser : Object
 				"whether its content belongs in one of the valid fields; then resubmit the task list " +
 				"with only the valid fields for each task.";
 		}
-		if (phase != MarkdownPhase.REFINEMENT && !t.skill_manager.validate(t)) {
+		if (phase != PhaseEnum.REFINEMENT && !t.skill_manager.validate(t)) {
 			var skill_block = t.task_data.get("skill");
 			var skill_name = (skill_block != null) ?
 				skill_block.to_markdown().strip() : "";
@@ -500,12 +500,12 @@ public class ResultParser : Object
 			}
 			var refined_map = list_block.to_key_map(GLib.CharacterSet.a_2_z);
 			var refined_task = new Details(task.step, refined_map);
-			this.validate_task(refined_task, MarkdownPhase.REFINEMENT);
+			this.validate_task(refined_task, PhaseEnum.REFINEMENT);
 			if (this.issues != "") {
 				break;
 			}
 			task.update_props(refined_map);
-			var vl_ref = new ValidateLink(task.runner, task, MarkdownPhase.REFINEMENT);
+			var vl_ref = new ValidateLink(task.runner, task, PhaseEnum.REFINEMENT);
 			vl_ref.validate_all(task.references);
 			vl_ref.validate_all(task.shared_references);
 			vl_ref.validate_all(task.exam_references);
@@ -614,7 +614,7 @@ public class ResultParser : Object
 				return false;
 			}
 		}
-		var vl_sum = new ValidateLink (this.runner, ex.parent, MarkdownPhase.EXECUTION) {
+		var vl_sum = new ValidateLink (this.runner, ex.parent, PhaseEnum.EXECUTION) {
 			writes = ex.writes,
 			document = sum_render.document
 		};

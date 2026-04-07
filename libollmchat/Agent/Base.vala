@@ -188,6 +188,11 @@ namespace OLLMchat.Agent
 			// Relay to session (agent is always connected to session)
 			this.session.handle_tool_message(message);
 		}
+
+		/**
+		 * Optional hook: one stored message during session restore (GTK). Default no-op.
+		 */
+		public virtual void on_replay(OLLMchat.Message m) {}
 		
 		/**
 		 * Executes all tool calls and returns tool reply messages.

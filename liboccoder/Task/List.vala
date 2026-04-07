@@ -87,7 +87,7 @@ public class List : Object
 	 * LIST: all tasks with ##### Result summary when exec_done. REFINE_COMPLETED: only completed
 	 * tasks (exec_done and exec_runs non-empty), Name + ##### Result summary (raw); no References, no Tool Calls.
 	 */
-	public string to_markdown(MarkdownPhase phase)
+	public string to_markdown(PhaseEnum phase)
 	{
 		var ret = "## Tasks\n\n";
 		var section = 0;

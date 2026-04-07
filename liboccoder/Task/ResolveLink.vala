@@ -27,7 +27,7 @@ public class ResolveLink : GLib.Object
 {
 	OLLMcoder.Skill.Runner runner;
 	Details details;
-	MarkdownPhase stage;
+	PhaseEnum stage;
 
 	/**
 	 * Buffers, tree cache, and project files — same object as
@@ -38,7 +38,7 @@ public class ResolveLink : GLib.Object
 	public ResolveLink (
 			OLLMcoder.Skill.Runner runner,
 			Details details,
-			MarkdownPhase stage)
+			PhaseEnum stage)
 	{
 		this.runner = runner;
 		this.details = details;
@@ -77,7 +77,7 @@ public class ResolveLink : GLib.Object
 			? this.runner.completed.slugs.get (slug) : this.runner.pending.slugs.get (slug);
 		var doc = task.out_doc;
 		if (link.hash == "") {
-			if (this.stage == MarkdownPhase.REFINEMENT) {
+			if (this.stage == PhaseEnum.REFINEMENT) {
 				var inner = doc.headings.get ("result-summary").to_markdown_with_content ();
 				var fence = (inner.index_of ("\n```") >= 0 || inner.has_prefix ("```")) ? "~~~~" : "```";
 				var body = fence + "markdown\n" + inner + "\n" + fence + "\n";
@@ -89,7 +89,7 @@ public class ResolveLink : GLib.Object
 				"markdown");
 		}
 		var section_md = doc.headings.get (link.hash).to_markdown_with_content ();
-		if (this.stage == MarkdownPhase.REFINEMENT) {
+		if (this.stage == PhaseEnum.REFINEMENT) {
 			string[] lines = section_md.split ("\n");
 			if (lines.length <= 20) {
 				return this.details.header_fenced (
@@ -109,7 +109,7 @@ public class ResolveLink : GLib.Object
 	{
 		var block = this.runner.user_request.headings.get (link.hash);
 		var anchor_md = block.to_markdown_with_content ();
-		if (this.stage == MarkdownPhase.REFINEMENT) {
+		if (this.stage == PhaseEnum.REFINEMENT) {
 			string[] lines = anchor_md.split ("\n");
 			if (lines.length <= 20) {
 				return this.details.header_fenced (
@@ -127,11 +127,11 @@ public class ResolveLink : GLib.Object
 
 	/**
 	 * HTTP(s): markdown body from runner.http_cache (filled by [[preload_http]] using
-	 * the session web_fetch tool). Returns "" unless MarkdownPhase is EXECUTION.
+	 * the session web_fetch tool). Returns "" unless PhaseEnum is EXECUTION.
 	 */
 	string http (Markdown.Document.Format link)
 	{
-		if (this.stage != MarkdownPhase.EXECUTION) {
+		if (this.stage != PhaseEnum.EXECUTION) {
 			return "";
 		}
 		var key = link.href != "" ? link.href : link.path;
@@ -289,10 +289,10 @@ public class ResolveLink : GLib.Object
 
 		if (link.hash == "") {
 			var stage = this.stage;
-			var content = stage == MarkdownPhase.REFINEMENT
+			var content = stage == PhaseEnum.REFINEMENT
 				? found.contents (1, 20)
 				: found.contents (-1, -1);
-			if (stage == MarkdownPhase.REFINEMENT && found.line_count () > 20) {
+			if (stage == PhaseEnum.REFINEMENT && found.line_count () > 20) {
 				content += "\n\n**This has been abbreviated.** The full content has "
 					+ found.line_count ().to_string () + " lines.\n";
 			}
@@ -304,10 +304,10 @@ public class ResolveLink : GLib.Object
 			var start = int.parse (mi.fetch (1));
 			var end = int.parse (mi.fetch (2));
 			var stage = this.stage;
-			var content = stage == MarkdownPhase.REFINEMENT
+			var content = stage == PhaseEnum.REFINEMENT
 				? found.contents (int.max (start, 1), int.min (end, start + 29))
 				: found.contents (start, end);
-			if (stage == MarkdownPhase.REFINEMENT && end > start + 29) {
+			if (stage == PhaseEnum.REFINEMENT && end > start + 29) {
 				content += "\n\n**This has been abbreviated.** The full content has "
 					+ found.line_count ().to_string () + " lines.\n";
 			}
@@ -328,7 +328,7 @@ public class ResolveLink : GLib.Object
 		int start_line, end_line, comment_start;
 		tree.lookup_path (link.hash, out start_line, out end_line, out comment_start);
 		string content = found.buffer.get_text (comment_start - 1, end_line - 2);
-		if (this.stage == MarkdownPhase.REFINEMENT) {
+		if (this.stage == PhaseEnum.REFINEMENT) {
 			string[] lines = content.split ("\n");
 			if (lines.length > 29) {
 				content = string.joinv ("\n", lines[0:29])

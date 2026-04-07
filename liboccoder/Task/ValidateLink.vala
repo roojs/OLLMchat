@@ -28,7 +28,7 @@ public class ValidateLink : GLib.Object
 {
 	OLLMcoder.Skill.Runner runner;
 	Details details;
-	MarkdownPhase stage;
+	PhaseEnum stage;
 
 	/**
 	 * Change-detail sections used to resolve fragment links (hash targets).
@@ -54,7 +54,7 @@ public class ValidateLink : GLib.Object
 	public ValidateLink (
 			OLLMcoder.Skill.Runner runner,
 			Details details,
-			MarkdownPhase stage)
+			PhaseEnum stage)
 	{
 		this.runner = runner;
 		this.details = details;
@@ -94,8 +94,8 @@ public class ValidateLink : GLib.Object
 				return;
 			}
 			switch (this.stage) {
-				case MarkdownPhase.EXECUTION:
-				case MarkdownPhase.POST_EXEC:
+				case PhaseEnum.EXECUTION:
+				case PhaseEnum.POST_EXEC:
 					if (this.details.out_doc.headings.has_key (link.hash)) {
 						return;
 					}
@@ -140,11 +140,11 @@ public class ValidateLink : GLib.Object
 	void http (string href)
 	{
 		switch (this.stage) {
-			case MarkdownPhase.LIST:
-			case MarkdownPhase.EXECUTION:
-			case MarkdownPhase.POST_EXEC:
+			case PhaseEnum.LIST:
+			case PhaseEnum.EXECUTION:
+			case PhaseEnum.POST_EXEC:
 				return;
-			case MarkdownPhase.REFINEMENT:
+			case PhaseEnum.REFINEMENT:
 			default:
 				this.issues += "\n" +
 					"References must not contain http(s) URLs. Do not put URLs in References " +
@@ -181,13 +181,13 @@ public class ValidateLink : GLib.Object
 					resolved_path)) {
 			/* Refined **References** / shared links must be files. Task list (LIST) and result summaries are not checked here. */
 			switch (this.stage) {
-				case MarkdownPhase.REFINEMENT:
+				case PhaseEnum.REFINEMENT:
 					this.issues += "\n" + "Invalid reference target \"" + link.href +
 						"\": path is a directory; use a file path, not a folder.";
 					return;
-				case MarkdownPhase.LIST:
-				case MarkdownPhase.EXECUTION:
-				case MarkdownPhase.POST_EXEC:
+				case PhaseEnum.LIST:
+				case PhaseEnum.EXECUTION:
+				case PhaseEnum.POST_EXEC:
 				default:
 					return;
 			}
@@ -212,13 +212,13 @@ public class ValidateLink : GLib.Object
 			return;
 		}
 		switch (this.stage) {
-			case MarkdownPhase.REFINEMENT:
+			case PhaseEnum.REFINEMENT:
 				this.issues += "\n" + "Invalid reference target \"" + link.href +
 					"\": path is a directory; use a file path, not a folder.";
 				return;
-			case MarkdownPhase.LIST:
-			case MarkdownPhase.EXECUTION:
-			case MarkdownPhase.POST_EXEC:
+			case PhaseEnum.LIST:
+			case PhaseEnum.EXECUTION:
+			case PhaseEnum.POST_EXEC:
 			default:
 				return;
 		}
@@ -240,8 +240,8 @@ public class ValidateLink : GLib.Object
 			return;
 		}
 		switch (this.stage) {
-			case MarkdownPhase.EXECUTION:
-			case MarkdownPhase.POST_EXEC:
+			case PhaseEnum.EXECUTION:
+			case PhaseEnum.POST_EXEC:
 				if (slug == this.details.slug ()) {
 					this.issues += "\n" + "Invalid reference target \"" + link.href +
 						"\": do not use task:// links to this task in your output; " +
@@ -260,7 +260,7 @@ public class ValidateLink : GLib.Object
 						"\". Use `task://" + slug + ".md` with no suffix after `.md` for the full output.";
 				}
 				return;
-			case MarkdownPhase.REFINEMENT:
+			case PhaseEnum.REFINEMENT:
 				var completed_ref = this.runner.completed.slugs.get (slug);
 				if (completed_ref == null) {
 					this.issues += "\n" + "Invalid reference target \"" + link.href +
@@ -274,7 +274,7 @@ public class ValidateLink : GLib.Object
 						"\". Use `task://" + slug + ".md` with no suffix after `.md` for the full output.";
 				}
 				return;
-			case MarkdownPhase.LIST:
+			case PhaseEnum.LIST:
 			default:
 				Details? ref_task = null;
 				var ref_is_completed = this.runner.completed.slugs.has_key (slug);
