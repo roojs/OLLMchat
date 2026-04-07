@@ -205,7 +205,7 @@ namespace OLLMchat.History
 			// in the current setup; the previous sync (config → tool.active on load and on settings close)
 			// was not a good design. To be considered later.
 			this.tools.set(tool.name, tool);
-			GLib.debug("Manager.register_tool: Registered tool '%s'", tool.name);
+			//GLib.debug("Manager.register_tool: Registered tool '%s'", tool.name);
 		}
 		
 		/**
@@ -257,7 +257,7 @@ namespace OLLMchat.History
 		 */
 		public EmptySession create_new_session()
 		{
-			//GLib.debug("create_new_session: before - %s", this.session.to_string());
+			////GLib.debug("create_new_session: before - %s", this.session.to_string());
 			
 			// Get agent name from current session, default to "just-ask"
 			var agent_name = "just-ask";
@@ -273,7 +273,7 @@ namespace OLLMchat.History
 			}
 			empty_session.agent_name = agent_name;
 			
-			GLib.debug("create_new_session: after - %s", empty_session.to_string());
+			//GLib.debug("create_new_session: after - %s", empty_session.to_string());
 			
 			return empty_session;
 		}

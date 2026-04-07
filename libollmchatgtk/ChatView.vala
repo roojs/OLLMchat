@@ -446,7 +446,8 @@ namespace OLLMchatGtk
 					// Initialize renderer if needed (creates TextView on first block)
 					this.renderer.start();
 					if (is_thinking) {
-						this.renderer.on_code_block(true, "markdown.oc-frame-info.thinking.collapsed-on-done Thinking...");
+						this.renderer.on_code_block(true, 
+							"markdown.oc-frame-info.thinking.collapsed-on-done Thinking...");
 						this.thinking_frame = this.renderer.childview;
 						this.last_chunk_start = 0;
 						return;
@@ -560,8 +561,8 @@ namespace OLLMchatGtk
 			// Debug: Print truncated content
 			string content_preview = message.content.length > 20 ? message.content.substring(0, 20) + "..." : message.content;
 			string thinking_preview = message.thinking.length > 20 ? message.thinking.substring(0, 20) + "..." : message.thinking;
-			GLib.debug("ChatView.append_complete_assistant_message: Adding assistant message (content='%s', thinking='%s')", 
-				content_preview, thinking_preview);
+			//GLib.debug("ChatView.append_complete_assistant_message: Adding assistant message (content='%s', thinking='%s')", 
+			//	content_preview, thinking_preview);
 			
 			// Finalize any ongoing assistant message
 			if (this.is_assistant_message) {
@@ -654,7 +655,7 @@ namespace OLLMchatGtk
 		{
 			// Debug: Print truncated content
 			string content_preview = message.content.length > 20 ? message.content.substring(0, 20) + "..." : message.content;
-			GLib.debug("ChatView.append_tool_message: Adding tool message (content='%s')", content_preview);
+			//GLib.debug("ChatView.append_tool_message: Adding tool message (content='%s')", content_preview);
 			
 			// Get end position for insertion
 			var buffer = this.get_current_buffer();
@@ -666,10 +667,10 @@ namespace OLLMchatGtk
 			buffer.get_end_iter(out end_iter);
 			
 			// Create PangoRender instance and convert to Pango markup
-			GLib.debug("ChatView.append_tool_message: Input message: %s", message.content);
+			//GLib.debug("ChatView.append_tool_message: Input message: %s", message.content);
 			var renderer = new Markdown.PangoRender();
 			var pango_result = renderer.toPango(message.content);
-			GLib.debug("ChatView.append_tool_message: Pango result: %s", pango_result);
+			//GLib.debug("ChatView.append_tool_message: Pango result: %s", pango_result);
 			buffer.insert_markup(
 				ref end_iter,
 				"<span size=\"small\" color=\"#1a1a1a\">"
@@ -853,7 +854,7 @@ namespace OLLMchatGtk
 				var vadjustment = this.scrolled_window.vadjustment;
 				
 				if (vadjustment == null) {
-					GLib.debug("ChatView: scroll_to_bottom: vadjustment is null");
+					//GLib.debug("ChatView: scroll_to_bottom: vadjustment is null");
 					return false;
 				}
 				

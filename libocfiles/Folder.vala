@@ -232,13 +232,13 @@ namespace OLLMfiles
 		 */
 		public async void read_dir(int64 check_time, bool recurse = false) throws Error
 		{
-			GLib.debug("Folder.read_dir: Starting scan for path='%s', is_project=%s, check_time=%lld, recurse=%s, last_check_time=%lld", 
-				this.path, this.is_project.to_string(), check_time, recurse.to_string(), this.last_check_time);
+			//GLib.debug("Folder.read_dir: Starting scan for path='%s', is_project=%s, check_time=%lld, recurse=%s, last_check_time=%lld", 
+			//	this.path, this.is_project.to_string(), check_time, recurse.to_string(), this.last_check_time);
 			
 			// If this folder was already checked in this scan, skip it
 			if (this.last_check_time == check_time) {
-				GLib.debug("Folder.read_dir: Already checked in this scan (check_time=%lld), skipping path='%s'", 
-					check_time, this.path);
+				//GLib.debug("Folder.read_dir: Already checked in this scan (check_time=%lld), skipping path='%s'", 
+				//	check_time, this.path);
 				return;
 			}
 			
@@ -319,10 +319,10 @@ namespace OLLMfiles
 				return;
 			}
 			// Start processing folders in idle callback (non-blocking)
-			GLib.debug(
-				"read_dir subdirs deferred on idle count=%d path=%s",
-				(int)folders_to_process.size,
-				this.path);
+			//GLib.debug(
+			//	"read_dir subdirs deferred on idle count=%d path=%s",
+			//	(int)folders_to_process.size,
+			//	this.path);
 			GLib.Idle.add(() => {
 				this.process_folders(folders_to_process, check_time);
 				return false;
@@ -344,7 +344,7 @@ namespace OLLMfiles
 				if (this.is_project) {
 					this.project_files.update_from(this);
 					this.project_files.review_files.refresh();
-					GLib.debug("read_dir project recurse complete path=%s", this.path);
+					//GLib.debug("read_dir project recurse complete path=%s", this.path);
 				}
 				this.manager.scanning.unset (this.path);
 				return;
@@ -663,20 +663,20 @@ namespace OLLMfiles
 		public async void load_files_from_db()
 		{
 			if (this.id <= 0 || this.manager.db == null) {
-				GLib.debug("Folder.load_files_from_db: Skipping (id=%lld or db=null)", this.id);
+				//GLib.debug("Folder.load_files_from_db: Skipping (id=%lld or db=null)", this.id);
 				return;
 			}
 			
 			// Check if reload is needed (optimization: skip if database hasn't changed)
 			if (!this.needs_reload()) {
-				GLib.debug("Folder.load_files_from_db: Skipping reload (no changes detected) for '%s'", this.path);
+				//GLib.debug("Folder.load_files_from_db: Skipping reload (no changes detected) for '%s'", this.path);
 				return;
 			}
 			
 			// Step a: Create id => FileBase map and add self (root folder) to it
 			var id_map = new Gee.HashMap<int, FileBase>();
 			id_map.set((int)this.id, this);
-			GLib.debug("Folder.load_files_from_db: Starting for '%s' (id=%lld)", this.path, this.id);
+			//GLib.debug("Folder.load_files_from_db: Starting for '%s' (id=%lld)", this.path, this.id);
 			
 		// Step b: Load children starting from project path using while loop
 			string[] paths = { this.path };
@@ -685,12 +685,12 @@ namespace OLLMfiles
 			int iteration = 0;
 			while (paths.length > 0) {
 				iteration++;
-				GLib.debug("Folder.load_files_from_db: Iteration %d, loading %d paths", iteration, paths.length);
+				//GLib.debug("Folder.load_files_from_db: Iteration %d, loading %d paths", iteration, paths.length);
 				paths = yield this.load_children(id_map, paths, seen_ids);
-				GLib.debug("Folder.load_files_from_db: After iteration %d, id_map has %d items, next_paths=%d", iteration, id_map.size, paths.length);
+				//GLib.debug("Folder.load_files_from_db: After iteration %d, id_map has %d items, next_paths=%d", iteration, id_map.size, paths.length);
 			}
 			
-			GLib.debug("Folder.load_files_from_db: Loaded %d items total, building tree structure", id_map.size);
+			//GLib.debug("Folder.load_files_from_db: Loaded %d items total, building tree structure", id_map.size);
 			// Step c: Build the tree structure
 			// Skip the root folder itself (it's already in the tree, doesn't need to be added to a parent)
 			foreach (var file_base in id_map.values) {
