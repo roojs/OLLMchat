@@ -165,7 +165,9 @@ namespace OLLMcoder.Skill
 			if (this.session.project_path == "" && this.sr_factory.project_manager.active_project != null) {
 				this.session.project_path = this.sr_factory.project_manager.active_project.path;
 			}
-			this.session.messages.add(in_message);
+			if (!this.in_replay) {
+				this.session.messages.add(in_message);
+			}
 			this.session.is_running = true;
 			this.session.manager.agent_status_change();
 			try {
@@ -180,8 +182,10 @@ namespace OLLMcoder.Skill
 						this.sr_factory.project_manager);
 					this.user_request = tpl.user_to_document();
 					this.fill_tools(); // (clears tools)
-					this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
-					this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+					if (!this.in_replay) {
+						this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
+						this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+					}
 					var messages = new Gee.ArrayList<OLLMchat.Message>();
 					messages.add(new OLLMchat.Message("system", tpl.filled_system));
 					messages.add(new OLLMchat.Message("user", tpl.filled_user));
@@ -240,6 +244,9 @@ namespace OLLMcoder.Skill
 		 */
 		public async void replay(Gee.ArrayList<OLLMchat.Message> messages)
 		{
+			if (!this.session.can_replay) {
+				return;
+			}
 			this.in_replay = true;
 			var replay_chat = new OLLMchat.Call.ReplayChat(
 				this.chat_call.connection,
@@ -253,6 +260,8 @@ namespace OLLMcoder.Skill
 			} catch (GLib.Error e) {
 				GLib.printerr("Replay failed: %s\n", e.message);
 				Process.exit(1);
+			} finally {
+				this.in_replay = false;
 			}
 		}
 
@@ -396,8 +405,10 @@ namespace OLLMcoder.Skill
 					"markdown.oc-frame-info.collapsed " + (try_count > 0 ?
 					"Sending revised task list to LLM" : "Reviewing and updating task list") + " with " + model_label,
 					tpl.filled_user)));
-				this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
-				this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				if (!this.in_replay) {
+					this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
+					this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				}
 				this.add_message(new OLLMchat.Message("ui-waiting",
 					"waiting for " + model_label + " to reply"));
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
