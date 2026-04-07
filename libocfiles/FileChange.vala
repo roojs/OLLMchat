@@ -276,6 +276,22 @@ namespace OLLMfiles
 			// Project manager is available via file.manager
 			this.file.manager.buffer_provider.create_buffer(this.file);
 			
+			/* New file + full replacement: there is nothing to read from disk; write creates it.
+			 * (overwrite=false only applies when the file already exists.) */
+			if (write_complete_file
+				&& !GLib.FileUtils.test(this.file.path, GLib.FileTest.IS_REGULAR)) {
+				try {
+					yield this.file.buffer.write(this.replacement);
+				} catch (GLib.Error e) {
+					this.result = "Error writing file: " + e.message;
+					this.completed = true;
+					return;
+				}
+				this.result = "applied";
+				this.completed = true;
+				return;
+			}
+			
 			// Ensure buffer is loaded
 			if (!this.file.buffer.is_loaded) {
 				try {

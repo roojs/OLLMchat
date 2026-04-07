@@ -290,7 +290,7 @@ namespace OLLMtools.WriteFile
 			}
 
 			project_manager.buffer_provider.create_buffer(this.file);
-			if (!this.file.buffer.is_loaded) {
+			if (!this.file.buffer.is_loaded && !(this.complete_file && this.creating_file)) {
 				try {
 					yield this.file.buffer.read_async();
 				} catch (GLib.Error e) {
