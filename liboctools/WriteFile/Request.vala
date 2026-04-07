@@ -84,11 +84,17 @@ namespace OLLMtools.WriteFile
 			if (this.file_path.strip() == "") {
 				return "file_path is required";
 			}
-			bool has_ast = (this.ast_path.strip() != "");
-			bool has_lines = (this.start_line >= 1 && this.end_line >= this.start_line);
-			bool has_search = (this.search_text.strip() != "");
+			var has_ast = (this.ast_path.strip() != "");
+			var has_lines = (this.start_line >= 1 && this.end_line >= this.start_line);
+			var has_search = (this.search_text.strip() != "");
 			if ((has_ast ? 1 : 0) + (has_lines ? 1 : 0) + (this.complete_file ? 1 : 0) + (has_search ? 1 : 0) != 1) {
 				return "use exactly one of: ast_path, line numbers (start_line/end_line), complete_file, or search_text";
+			}
+			if (project_manager != null && this.complete_file) {
+				var norm_cf = this.normalize_file_path(this.file_path);
+				if (GLib.FileUtils.test(norm_cf, GLib.FileTest.IS_DIR)) {
+					return "file_path is a directory, not a file: " + norm_cf;
+				}
 			}
 			if (this.start_line >= 1 || this.end_line >= 1) {
 				if (this.start_line < 1 || this.end_line < this.start_line) {
@@ -110,13 +116,13 @@ namespace OLLMtools.WriteFile
 				}
 			}
 			if (project_manager != null && (has_ast || has_lines)) {
-				string norm = this.normalize_file_path(this.file_path);
+				var norm = this.normalize_file_path(this.file_path);
 				if (!GLib.FileUtils.test(norm, GLib.FileTest.IS_REGULAR)) {
 					return "file does not exist (required for ast_path / line_numbers mode)";
 				}
 			}
 			if (project_manager != null && has_search) {
-				string norm = this.normalize_file_path(this.file_path);
+				var norm = this.normalize_file_path(this.file_path);
 				if (!GLib.FileUtils.test(norm, GLib.FileTest.IS_REGULAR)) {
 					return "file does not exist (required for search_text mode)";
 				}
@@ -142,7 +148,7 @@ namespace OLLMtools.WriteFile
 				return "";
 			}
 			if (project_manager != null && has_ast) {
-				string norm = this.normalize_file_path(this.file_path);
+				var norm = this.normalize_file_path(this.file_path);
 				var file = project_manager.get_file_from_active_project(norm);
 				if (file == null) {
 					file = new OLLMfiles.File.new_fake(project_manager, norm);
