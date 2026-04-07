@@ -277,9 +277,10 @@ namespace OLLMfiles
 			this.file.manager.buffer_provider.create_buffer(this.file);
 			
 			/* New file + full replacement: there is nothing to read from disk; write creates it.
-			 * (overwrite=false only applies when the file already exists.) */
+			 * Use query_exists(), not IS_REGULAR: directories are not regular files but exist — we
+			 * must not treat them as "create new file" (overwrite=false only applies when a file exists). */
 			if (write_complete_file
-				&& !GLib.FileUtils.test(this.file.path, GLib.FileTest.IS_REGULAR)) {
+				&& !GLib.File.new_for_path(this.file.path).query_exists()) {
 				try {
 					yield this.file.buffer.write(this.replacement);
 				} catch (GLib.Error e) {
