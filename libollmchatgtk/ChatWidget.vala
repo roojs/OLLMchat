@@ -45,7 +45,7 @@ namespace OLLMchatGtk
 		private const int INPUT_AREA_PADDING = 24;
 		private bool streaming = false;
 		/** True while restoring a session from history; used to keep autoscroll disabled until restoration is done. */
-		private bool restoring_session = false;
+		internal bool restoring_session { get; private set; default = false; }
 		/** When true, ignore position changes (we are setting position programmatically). */
 		private bool locking_paned_position = false;
 

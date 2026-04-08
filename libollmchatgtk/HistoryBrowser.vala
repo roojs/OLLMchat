@@ -359,6 +359,7 @@ namespace OLLMchatGtk
 			
 			// Use Idle to defer selection, giving time for title to be set
 			Idle.add(() => {
+				GLib.debug("idle");
 				this.changing_selection = true;
 				var selection = this.list_view.model as Gtk.SingleSelection;
 				selection.selected = 0;
