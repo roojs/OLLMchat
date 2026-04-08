@@ -1,0 +1,61 @@
+=== PARSING MARKDOWN FILE: markdown/nested-backtick-fence.md ===
+=== FILE CONTENT (first 200 chars) ===
+# Four-backtick fence wrapping triple-backtick lines
+
+Outer fence should allow ``` as literal content (CommonMark: closing fence length matches open; inner ``` must not close the outer block).
+
+````
+`...
+
+=== CALLBACK TRACE ===
+START: <h1>
+  TEXT: "Four-backtick"
+  TEXT: " fence"
+  TEXT: " wrapping"
+  TEXT: " triple-backtick"
+  TEXT: " lines"
+END: <h1>
+TEXT: "
+"
+TEXT: "
+"
+START: <p>
+  TEXT: "Outer"
+  TEXT: " fence"
+  TEXT: " should"
+  TEXT: " allow"
+  TEXT: " "
+  START: <code>
+    TEXT: "` as literal content (CommonMark: closing fence length matches open; inner `"
+  END: <code>
+  TEXT: " must"
+  TEXT: " not"
+  TEXT: " close"
+  TEXT: " the"
+  TEXT: " outer"
+  TEXT: " block)."
+END: <p>
+TEXT: "
+"
+TEXT: "
+"
+START: <code_block> (lang=`)
+END: <code_block> (lang=)
+START: <p>
+  TEXT: "hello"
+END: <p>
+TEXT: "
+"
+START: <code_block> (lang=)
+  CODE_TEXT: "````"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "After block."
+  CODE_TEXT: "
+"
+  TEXT: ""
+  TEXT: ""
+END: <code_block> (lang=)
+=== END TRACE ===

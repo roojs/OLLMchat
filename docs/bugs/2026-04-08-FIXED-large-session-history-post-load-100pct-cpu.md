@@ -1,6 +1,6 @@
-# Large session history: sustained ~100% CPU after load completes
+# FIXED: Large session history — sustained ~100% CPU after load completes
 
-**Status: FIXED (direct)** — Hotspot was **`RenderSourceView.scroll_bottom`** (unbounded **`upper < 10`** retry idles). **Merged fix:** bounded retries via **`try_again`** + defer when **`!target.get_realized()`** (see **Fix applied**). Larger **scroll_pending / queue** design in this doc remains **optional** if symptoms return.
+**Status: FIXED** (for now — reopen if regressions) — Hotspot was **`RenderSourceView.scroll_bottom`** (unbounded **`upper < 10`** retry idles). **Merged fix:** bounded retries via **`try_again`** + defer when **`!target.get_realized()`** (see **Fix applied**). Larger **scroll_pending / queue** design in this doc remains **optional** if symptoms return.
 
 ## Problem
 
@@ -429,4 +429,5 @@ if (vadjustment.upper < 10.0) {
 - 2026-04-08 — **Session switch:** **`scroll_queue` + drain idle** must be **cleared / cancelled** **before** **`clear_chat()`** (and on load **error**); avoids stale **`RenderSourceView`** after new session.
 - 2026-04-08 — **Proposed code:** **`abort_scroll_drain`**, **`scroll_drain_idle` / `scroll_pending_idle`**, **`switch_to_session` + `catch`** as **Vala** blocks; trimmed architecture prose.
 - 2026-04-08 — **`ChatWidget.restoring_session`**: concrete before/after in **Restore flag**; code uses **`internal bool … { get; private set; default = false; }`**.
-- 2026-04-08 — **FIXED:** **`RenderSourceView.scroll_bottom`**: **`try_again`**, single defer for **`!get_realized()`** and **`upper < 10`**; status **FIXED (direct)**; doc updated with merged code, **Fix applied** table, conclusions; optional queue design remains future-only.
+- 2026-04-08 — **FIXED:** **`RenderSourceView.scroll_bottom`**: **`try_again`**, single defer for **`!get_realized()`** and **`upper < 10`**; doc updated with merged code, **Fix applied** table, conclusions; optional queue design remains future-only.
+- 2026-04-08 — Renamed to **`2026-04-08-FIXED-large-session-history-post-load-100pct-cpu.md`**; title **FIXED:** …; status **FIXED** (for now).
