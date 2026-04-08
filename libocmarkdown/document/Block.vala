@@ -158,9 +158,13 @@ namespace Markdown.Document
 					// inner here will never contain multiple lines (one blockquote block = one line); do not replace newlines
 					return (string.nfill((int)(this.level == 0 ? 1 : this.level), '>').replace(">", "> ")
 						+ inner).strip();
-				case FormatType.FENCED_CODE_QUOTE:
-				case FormatType.FENCED_CODE_TILD:
-					var fence = this.kind == FormatType.FENCED_CODE_QUOTE ? "```" : "~~~";
+				case FormatType.FENCE_QUOTE_3:
+				case FormatType.FENCE_QUOTE_4:
+				case FormatType.FENCE_QUOTE_5:
+				case FormatType.FENCE_TILD_3:
+				case FormatType.FENCE_TILD_4:
+				case FormatType.FENCE_TILD_5:
+					var fence = this.kind.to_fence();
 					var code = this.code_text;
 					if (code.has_suffix("\n")) {
 						code = code.substring(0, code.length - 1);

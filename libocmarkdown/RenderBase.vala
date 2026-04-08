@@ -149,8 +149,12 @@ namespace Markdown
 				case FormatType.OTHER:
 					this.on_other(is_start, s1);
 					return;
-				case FormatType.FENCED_CODE_QUOTE:
-				case FormatType.FENCED_CODE_TILD:
+				case FormatType.FENCE_QUOTE_3:
+				case FormatType.FENCE_QUOTE_4:
+				case FormatType.FENCE_QUOTE_5:
+				case FormatType.FENCE_TILD_3:
+				case FormatType.FENCE_TILD_4:
+				case FormatType.FENCE_TILD_5:
 					this.on_code_block(is_start, s1);
 					return;
 				case FormatType.TABLE:

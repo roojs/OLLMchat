@@ -180,14 +180,7 @@ The document serializer does not preserve N-backtick fence length; it always use
 
 **Impact:** Parsing / GTK rendering can be fixed without this, but **md → JSON → md** may collapse a four-tick fence to three ticks and break content that contains triple-backtick lines in the body. A full fix may store **fence length** (or opening line) on [`Block`](../../libocmarkdown/document/Block.vala) (`fence_indent` / `lang` exist; fence run length does not).
 
-**Proposed change:** add a field, e.g. `public int fence_run_length { get; set; default = 3; }`, set when parsing the opening fence (run length of `` ` `` or `~`). Emit with `string.nfill`:
-
-```vala
-					var fence_char = this.kind == FormatType.FENCED_CODE_QUOTE ? '`' : '~';
-					var fence = string.nfill(this.fence_run_length < 3 ? 3 : this.fence_run_length, fence_char);
-```
-
-Then use `fence` in place of the literals `"```"` / `"~~~"` in both the indented and non-indented branches. When round-tripping content that needs an outer fence longer than inner triple-backticks, pick `fence_run_length = max(3, inner_max_run + 1)` or persist the parsed opening length.
+**Proposed change (superseded):** use **`this.kind.to_fence()`** in [`document/Block.vala`](../../libocmarkdown/document/Block.vala) — see **[Complete proposed fix](#complete-proposed-fix)** §1 and §5.
 
 ## Automated test
 
@@ -221,7 +214,7 @@ By contrast, **list indent plus a long fence** (three spaces before four+ backti
 
 ### New `FormatType`s (`FENCE_QUOTE_4`, …) vs one `FENCED_CODE_QUOTE`
 
-**Update:** The chosen approach is documented under **[Implementation plan (rename, cap at five, range checks)](#implementation-plan-rename-cap-at-five-range-checks)** — rename to `FENCE_QUOTE_3` / `FENCE_TILD_3`, add `_4`/`_5` variants, use **HEADING-style** min/max ranges for predicates. The analysis below still applies to **edit sites** and **Tier A vs B** cost.
+**Update:** The chosen approach is the **[Complete proposed fix](#complete-proposed-fix)** section below. The analysis in this section still applies to **edit sites** and **Tier A vs B** cost.
 
 Earlier alternative: a single `FENCED_CODE_QUOTE` / `FENCED_CODE_TILD` plus variable-length **`fence_open`** only (and stored run length on `Block` for round-trip). We are **not** taking that minimal-enum path for naming clarity.
 
@@ -314,55 +307,136 @@ This addresses **Tier B** predicate sites without a separate `is_fenced_kind()` 
 
 Overall: **38** references split into **~12** in bundled `case` groups (plus Block body nuance), **~22** in predicates / conditions / map / enum / assignment / comments — the earlier “~6 switches × 4 labels” overstates the problem **where** the pattern is shared-body `case` fall-through (e.g. [`Render.vala`](../../libocmarkdown/document/Render.vala) 201–205).
 
-## Implementation plan (rename, cap at five, range checks)
+## Complete proposed fix
 
-Direction for the fix (supersedes “keep a single `FENCED_CODE_*`” where it conflicts): **explicit per-length `FormatType` names**, **full rename** of the existing pair, **contiguous enum block**, **map keys** for three–five backticks / three–five tildes, plus **`fence_open` from matched span** and **`fence_indent`** heuristic fix (see §2–§3).
+Naming: **`FENCE_QUOTE_3` … `FENCE_QUOTE_5`**, **`FENCE_TILD_3` … `FENCE_TILD_5`** (contiguous enum block). Single design: **rename** existing kinds, **add** `_4`/`_5`, **contiguous enum** (min `FENCE_QUOTE_3`, max `FENCE_TILD_5`), **map** keys for three–five ticks/tildes, **`fence_open` / `fence_indent` / `peekFencedEnd`** fixes from §2–§4, **range checks** for Tier B (like `HEADING_1`…`HEADING_6`), **explicit Tier A** `case` lists, **`to_fence()`** with **string literals** (no `string.nfill`). `FormatType` is **internal** — no persisted ordinals for this path.
 
-### Rename (breaking name change, internal-only)
-
-| Current | New |
-|---------|-----|
-| `FENCED_CODE_QUOTE` | `FENCE_QUOTE_3` |
-| `FENCED_CODE_TILD` | `FENCE_TILD_3` |
-
-Apply **project-wide** in `*.vala` (and any docs that cite the old names). **No persisted storage** of raw `FormatType` ordinals in shipped data for this path — enum is **internal** to parsing/rendering — so renumbering and renaming is acceptable (contrast with JSON that might store enum integers: we do **not** rely on that for fenced kinds).
-
-### Add capped lengths (same naming scheme)
-
-Declare **contiguously** after `FENCE_QUOTE_3` / `FENCE_TILD_3` (order: e.g. all quote lengths 3–5, then all tilde lengths 3–5, or quote/tilde pairs — pick one order and keep **min** / **max** as the ends of that block):
-
-- `FENCE_QUOTE_4`, `FENCE_QUOTE_5`
-- `FENCE_TILD_4`, `FENCE_TILD_5`
-
-Wire [`BlockMap.init`](../../libocmarkdown/BlockMap.vala) `mp[...]` for ` ``` ` … ````` and `~~~` … `~~~~~` to these values.
-
-### Tier A — explicit `switch` / `case` lists
-
-**Accepted:** large, explicit `case` blocks (one label per length) for a **clean, readable** format — no need to shrink Tier A for its own sake.
-
-### Tier B — range checks (same pattern as headings)
-
-We already use **inclusive range** on `FormatType` for headings in [`BlockMap.peek`](../../libocmarkdown/BlockMap.vala):
-
-```206:206:libocmarkdown/BlockMap.vala
-			if (matched_block >= FormatType.HEADING_1 && matched_block <= FormatType.HEADING_6) {
-```
-
-Do the same for fenced kinds once the enum block is contiguous:
+**Tier B predicate (repeat at each site, or wrap in a small `is_fence_kind(FormatType k)`):**
 
 ```vala
-if (k >= FormatType.FENCE_QUOTE_3 && k <= FormatType.FENCE_TILD_5) { ... }
+(k >= FormatType.FENCE_QUOTE_3 && k <= FormatType.FENCE_TILD_5)
 ```
 
-(Use the actual **first** and **last** members in the fenced contiguous run; adjust names if the declaration order differs.)
+Requires the six fenced members to be **contiguous** in the enum (nothing else between `FENCE_QUOTE_3` and `FENCE_TILD_5`).
 
-Replace the **10** Tier B predicate / equality sites with **one range test per site** (or two comparisons: negation via `<` / `>`).
+---
 
-### Still required (parser behavior)
+### 1. [`libocmarkdown/Parser.vala`](../../libocmarkdown/Parser.vala) — `enum FormatType`
 
-- **`fence_open`** from matched length, not `space_skip + 3` (§2).
-- **`fence_indent`** not inferred from `fence_open.length > 3` alone (§3).
-- **Test 8** expected trace after fix: [`nested-backtick-fence-expected-trace.txt`](../../tests/markdown/nested-backtick-fence-expected-trace.txt).
+Replace `FENCED_CODE_QUOTE` / `FENCED_CODE_TILD` with a **contiguous block** (example order):
+
+```vala
+		INDENTED_CODE,
+		FENCE_QUOTE_3,
+		FENCE_QUOTE_4,
+		FENCE_QUOTE_5,
+		FENCE_TILD_3,
+		FENCE_TILD_4,
+		FENCE_TILD_5,
+		BLOCKQUOTE,
+```
+
+Add **`to_fence()`** on the enum (literal fence lines — use real backtick/tilde runs in source, not `nfill`):
+
+```vala
+		public string to_fence() {
+			switch (this) {
+				case FENCE_QUOTE_3: return "```";
+				case FENCE_QUOTE_4: return "````";
+				case FENCE_QUOTE_5: return "`````";
+				case FENCE_TILD_3: return "~~~";
+				case FENCE_TILD_4: return "~~~~";
+				case FENCE_TILD_5: return "~~~~~";
+				default: assert_not_reached();
+			}
+		}
+```
+
+**Also in this file**
+
+- **`is_block()`** — add six `case` labels for fenced kinds (same fall-through as other block cases).
+- **`block_starts_new_line()`** — add six `case` labels (with existing fenced cases).
+- **`do_block()`** — replace the two fenced `case`s with **six** `case`s, each `this.renderer.on_node(block_type, is_start, lang, fence_indent);` (same body).
+- **`current_block` fenced handling** (~268, ~712) — use **`>= FormatType.FENCE_QUOTE_3 && <= FormatType.FENCE_TILD_5`** instead of two `==` checks.
+- Comments that say `FENCED_CODE_*` → new names.
+
+---
+
+### 2. [`libocmarkdown/BlockMap.vala`](../../libocmarkdown/BlockMap.vala)
+
+**`init` map** — map ` ``` ` … ````` and `~~~` … `~~~~~` to the matching `FENCE_*` enum (eight `mp[...]` lines).
+
+**`peek()`**
+
+- After `matched_block` is identified as fenced (use **range** `>= FENCE_QUOTE_3 && <= FENCE_TILD_5` instead of two `==` where appropriate).
+- **`fence_open`:** `this.fence_open = chunk.substring(chunk_pos, chunk_pos + byte_length);` (not `space_skip + 3`).
+- **`fence_indent` in `handle_block_result`:** `var fence_indent = (space_skip == 3) ? "   " : "";` and **six** `case` labels for fenced kinds.
+
+**`peekFencedEnd()`** — replace `fence_open.length > 3` branch with **`fence_open.has_prefix("   ") && at_marker.has_prefix("   ")`** (see §4).
+
+---
+
+### 3. [`libocmarkdown/RenderBase.vala`](../../libocmarkdown/RenderBase.vala)
+
+**`on_node` switch** — six `case` labels → `on_code_block(is_start, s1);` (shared body).
+
+---
+
+### 4. [`libocmarkdown/document/Render.vala`](../../libocmarkdown/document/Render.vala)
+
+- **`on_node`** — six `case`s for fenced → `on_block(...)` (same as today’s two lines).
+- **`CODE_TEXT` branch** (~229) — `if (pb.kind < FormatType.FENCE_QUOTE_3 || pb.kind > FormatType.FENCE_TILD_5) return;` (or the same range test negated with `&&` as appropriate).
+- **`on_code`** (~412–415) — today only knows `fence_char`. If this path must emit multi-length fences, add **`fence_run_length`** to the callback **or** map **`~` → `FENCE_TILD_3`**, **`` ` `` → `FENCE_QUOTE_3`** as minimal fallback until callers pass length. **Primary** fenced path is **`on_node`** from `do_block` with full `FormatType` from the map.
+
+---
+
+### 5. [`libocmarkdown/document/Block.vala`](../../libocmarkdown/document/Block.vala)
+
+**`to_md` fenced branch** — six `case` labels; body uses:
+
+```vala
+var fence = this.kind.to_fence();
+```
+
+(replaces `kind == … ? "```" : "~~~"`).
+
+---
+
+### 6. [`liboccoder/Task/ResultParser.vala`](../../liboccoder/Task/ResultParser.vala)
+
+Three **`if (block.kind != … && …)`** sites → **range** negation:  
+`if (block.kind < FormatType.FENCE_QUOTE_3 || block.kind > FormatType.FENCE_TILD_5) continue;` (or equivalent).
+
+---
+
+### 7. [`liboccoder/Task/WriteChange.vala`](../../liboccoder/Task/WriteChange.vala)
+
+Two predicate sites — same range pattern as §6.
+
+---
+
+### 8. Project-wide rename
+
+**Grep** `FENCED_CODE_QUOTE`, `FENCED_CODE_TILD` in `*.vala`, tests, and docs; update to `FENCE_*`. Any **generated** or **external** references to old names.
+
+---
+
+### 9. Tests
+
+Regenerate [`tests/markdown/nested-backtick-fence-expected-trace.txt`](../../tests/markdown/nested-backtick-fence-expected-trace.txt) after fix; run [`tests/test-markdown-parser.sh`](../../tests/test-markdown-parser.sh) Test 8 and full markdown suite.
+
+---
+
+### 10. Optional follow-ups
+
+- [`libocmarkdowngtk/Render.vala`](../../libocmarkdowngtk/Render.vala) / other renderers: only if they branch on old `FormatType` names.
+- **Document JSON:** confirm no stored raw `FormatType` integers for blocks (stated internal-only).
+
+---
+
+### Supersedes
+
+Earlier **Implementation plan** bullets and the **`string.nfill`** `to_fence` sketch — use **literals** as in §1. Tier A/B/C analysis above remains background; this section is the **action checklist**.
 
 ## Changelog
 
@@ -376,3 +450,5 @@ Replace the **10** Tier B predicate / equality sites with **one range test per s
 - 2026-04-08 — Split **bundled `case`** (low friction) vs **Tier B predicates** (**10** sites) vs **Tier C** enum/map/`on_code`; noted [`Render.vala`](../../libocmarkdown/document/Render.vala) 201–205 style is not the costly pattern.
 - 2026-04-08 — **Tier B:** documented **contiguous enum + `>=` / `<=` range** pattern for `current_block` / `kind` checks; caveats (declaration order, persistence, `is_block` / switches).
 - 2026-04-08 — **Implementation plan:** rename `FENCED_CODE_QUOTE`/`TILD` → `FENCE_QUOTE_3`/`FENCE_TILD_3`; add `_4`/`_5` variants; map cap five; Tier A explicit switches OK; Tier B ranges aligned with `HEADING_1`..`HEADING_6` style; internal enum only.
+- 2026-04-08 — **Implementation plan:** `FormatType.to_fence()` for [`document/Block.vala`](../../libocmarkdown/document/Block.vala) serialization; supersedes extra `fence_run_length` on `Block` when kind encodes length.
+- 2026-04-08 — Replaced overlapping **Implementation plan** / `to_fence` sections with one **[Complete proposed fix](#complete-proposed-fix)** checklist; **`to_fence()`** uses **string literals**, not `string.nfill`.

@@ -211,8 +211,7 @@ namespace OLLMcoder.Task
 				return;
 			}
 			var fence_block = (Markdown.Document.Block) after_list;
-			if (fence_block.kind != Markdown.FormatType.FENCED_CODE_QUOTE
-					&& fence_block.kind != Markdown.FormatType.FENCED_CODE_TILD) {
+			if (!fence_block.kind.is_fence_kind()) {
 				this.issues = "\nChange details: second block after the list must be a fenced code block.";
 				return;
 			}
@@ -239,8 +238,7 @@ namespace OLLMcoder.Task
 				return;
 			}
 			fence_block = (Markdown.Document.Block) after_list;
-			if (fence_block.kind != Markdown.FormatType.FENCED_CODE_QUOTE
-					&& fence_block.kind != Markdown.FormatType.FENCED_CODE_TILD) {
+			if (!fence_block.kind.is_fence_kind()) {
 				this.issues = "\nChange details: output_mode replace requires a second fenced code block"
 					+ " after the excerpt (replacement body).";
 				return;
