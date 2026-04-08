@@ -694,8 +694,9 @@ namespace MarkdownGtk
 		
 		/**
 		 * Scrolls to the bottom. If sw is null, scrolls the visible content (outer for markdown, source for others).
+		 * @param try_again If true, may schedule one `GLib.Idle.add` when not realized or `upper` still tiny; pass false from that idle so we do not chain further.
 		 */
-		private void scroll_bottom(Gtk.ScrolledWindow? sw = null)
+		private void scroll_bottom(Gtk.ScrolledWindow? sw = null, bool try_again = true)
 		{
 			if (!this.body_revealer.reveal_child) {
 				return;
@@ -706,13 +707,26 @@ namespace MarkdownGtk
 					? this.scrolled_window
 					: this.source_scrolled;
 			}
+			if (!target.get_realized()) {
+				if (!try_again) {
+					return;
+				}
+				GLib.Idle.add(() => {
+					this.scroll_bottom(sw, false);
+					return false;
+				});
+				return;
+			}
 			var vadjustment = target.vadjustment;
 			if (vadjustment == null) {
 				return;
 			}
 			if (vadjustment.upper < 10.0) {
+				if (!try_again) {
+					return;
+				}
 				GLib.Idle.add(() => {
-					this.scroll_bottom(target);
+					this.scroll_bottom(target, false);
 					return false;
 				});
 				return;

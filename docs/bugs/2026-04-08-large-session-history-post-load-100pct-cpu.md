@@ -1,6 +1,6 @@
 # Large session history: sustained ~100% CPU after load completes
 
-**Status: OPEN** — Hotspot identified in **`RenderSourceView.scroll_bottom`** (see **Where the issue is in code**). **No fix merged** until a design is agreed.
+**Status: FIXED (direct)** — Hotspot was **`RenderSourceView.scroll_bottom`** (unbounded **`upper < 10`** retry idles). **Merged fix:** bounded retries via **`try_again`** + defer when **`!target.get_realized()`** (see **Fix applied**). Larger **scroll_pending / queue** design in this doc remains **optional** if symptoms return.
 
 ## Problem
 
@@ -23,14 +23,16 @@ With **`GLib.debug("idle");`** at idle entry, stderr **flooded** from **`RenderS
 
 ---
 
-## Current code (what we have today)
+## Current code (`scroll_bottom` after fix)
 
 **File:** `libocmarkdowngtk/RenderSourceView.vala`
 
-### 1. `scroll_bottom` — nested scroll “wait for layout” retry
+### 1. `scroll_bottom` — at most one follow-up idle (no unbounded chain)
 
-```698:721:libocmarkdowngtk/RenderSourceView.vala
-		private void scroll_bottom(Gtk.ScrolledWindow? sw = null)
+**`try_again`** (default **`true`**) limits deferral: the idle scheduled from **`!get_realized()`** or **`upper < 10`** calls **`scroll_bottom(..., false)`**; on that second entry, **`try_again`** is false, so we **return** instead of queueing another idle. No extra fields on the class — only the parameter on the nested call.
+
+```699:735:libocmarkdowngtk/RenderSourceView.vala
+		private void scroll_bottom(Gtk.ScrolledWindow? sw = null, bool try_again = true)
 		{
 			if (!this.body_revealer.reveal_child) {
 				return;
@@ -41,13 +43,26 @@ With **`GLib.debug("idle");`** at idle entry, stderr **flooded** from **`RenderS
 					? this.scrolled_window
 					: this.source_scrolled;
 			}
+			if (!target.get_realized()) {
+				if (!try_again) {
+					return;
+				}
+				GLib.Idle.add(() => {
+					this.scroll_bottom(sw, false);
+					return false;
+				});
+				return;
+			}
 			var vadjustment = target.vadjustment;
 			if (vadjustment == null) {
 				return;
 			}
 			if (vadjustment.upper < 10.0) {
+				if (!try_again) {
+					return;
+				}
 				GLib.Idle.add(() => {
-					this.scroll_bottom(target);
+					this.scroll_bottom(target, false);
 					return false;
 				});
 				return;
@@ -56,7 +71,11 @@ With **`GLib.debug("idle");`** at idle entry, stderr **flooded** from **`RenderS
 		}
 ```
 
-**Intent:** If the `Gtk.ScrolledWindow`’s vertical range is not ready (`upper` tiny), **defer** one frame and try again, then set `value = upper` to show the bottom.
+**Intent:** Same as before — **`upper`** tiny means “layout range not meaningful yet” (heuristic, same idea as **`ChatView.scroll_to_bottom`**’s **`upper < 100`**). **Change:** do **not** reschedule forever when **`upper`** stays small or when many chunks each enqueue work; at most **one** extra idle per logical retry chain.
+
+### Historical (failure mode — pre-fix)
+
+Each **`upper < 10`** visit did **`GLib.Idle.add(() => { this.scroll_bottom(target); return false; })`** with **no** guard, so a completed idle could schedule another while **`upper`** was still **&lt; 10** → main-loop churn (and stderr flood with debug). **`add_code_text`** also schedules an idle → **`scroll_bottom()`** per chunk, amplifying traffic.
 
 ### 2. Who calls `scroll_bottom` (drivers)
 
@@ -73,7 +92,7 @@ Every streaming chunk for visible fenced content schedules **another** idle that
 
 After a fenced **`markdown`** code block ends, **resize + scroll** paths also call it (directly or after timeout):
 
-```653:668:libocmarkdowngtk/RenderSourceView.vala
+```653:670:libocmarkdowngtk/RenderSourceView.vala
 				GLib.Timeout.add(200, () => {
 					if (this.body_revealer.reveal_child) {
 						this.resize_widget_callback((Gtk.Widget) this.rendered_box, ResizeMode.INITIAL);
@@ -99,19 +118,31 @@ So: **large history** ⇒ many fenced blocks ⇒ many **`add_code_text`** chunks
 
 ---
 
-## Where the issue is in code
+## Where the issue was in code (historical)
 
-1. **`scroll_bottom` when `vadjustment.upper < 10.0` (lines 713–718)**  
-   Each call **always** schedules **a new** `GLib.Idle.add` that calls `scroll_bottom(target)` again. There is **no** “already have a pending retry” guard. So:
-   - If **`scroll_bottom` is invoked many times** before `upper` crosses 10 (e.g. many chunks × many frames), you queue **many** idles that all do the same retry.
-   - If **`upper` stays below 10** for a long time (nested layout not finished, revealer/stack, or pathological adjustment), **each** completed idle schedules **another** single-shot idle → **continuous main-loop work** and logs that repeat on the same line (what we saw with debug).
+1. **`scroll_bottom` when `vadjustment.upper < 10.0` (pre-fix)**  
+   Each call **always** scheduled **a new** `GLib.Idle.add` that called `scroll_bottom(target)` again, with **no** cap on how many times that could chain if **`upper`** stayed tiny.
 
-2. **Interaction with `add_code_text` (lines 602–606)**  
-   Every chunk schedules **one** idle → `scroll_bottom()`. That multiplies traffic into (1) for busy streams and large restores.
+2. **Interaction with `add_code_text`**  
+   Every chunk schedules **one** idle → **`scroll_bottom()`**, which **multiplied** traffic into (1) for large restores.
 
-3. **Not the root cause by itself:** `resize_widget_callback` / fence resize can be frequent but was **ruled out** as the flooding source compared to **`scroll_bottom`’s `upper < 10` branch**.
+3. **`resize_widget_callback`** was **ruled out** as the log-flood site compared to **`scroll_bottom`’s `upper < 10` branch** (instrumentation).
 
-**Secondary suspect (if anything remains after addressing the above):** `ChatView.scroll_to_bottom` — idle handler can **`return true`** while `vadjustment.upper < 100.0`, which can also spin the default idle source (`libollmchatgtk/ChatView.vala`). Revisit after `scroll_bottom` behaviour is understood and measured.
+**If symptoms return:** **`ChatView.scroll_to_bottom`** can still **`return true`** while **`vadjustment.upper < 100.0`** (`libollmchatgtk/ChatView.vala`) — separate idle-spin risk.
+
+---
+
+## Fix applied (merged)
+
+| Item | Detail |
+| ---- | ------ |
+| **File** | `libocmarkdowngtk/RenderSourceView.vala` — **`scroll_bottom(Gtk.ScrolledWindow? sw = null, bool try_again = true)`** |
+| **`!target.get_realized()`** | One **`GLib.Idle.add`** → **`scroll_bottom(sw, false)`**; second entry does **not** defer again. |
+| **`vadjustment.upper < 10.0`** | Same pattern → **`scroll_bottom(target, false)`** so **`upper`** cannot drive an **unbounded** idle chain. |
+| **Trade-off** | At most **one** follow-up idle per caller chain: if layout needs **two** frames (e.g. realize then **`upper`**), scroll may not apply until the next **`scroll_bottom`** from a new chunk/event — acceptable vs. burning CPU. |
+| **Validation** | Manual: large session / post-load — **high CPU resolved** after this change; temporary **`GLib.debug`** in **`scroll_bottom` / `add_code_text`** removed after confirmation. |
+
+**Not merged (optional architecture):** **`scroll_pending`**, **`scroll_queue`**, **`abort_scroll_drain`** sketches elsewhere in this doc — revisit only if nested-scroll behaviour still needs batching.
 
 ---
 
@@ -120,24 +151,11 @@ So: **large history** ⇒ many fenced blocks ⇒ many **`add_code_text`** chunks
 - `docs/plans/done/6.9-DONE-debugging-performance.md` — nested markdown / restore cost.
 - `docs/plans/done/6.8-DONE-fixing-large-restore.md` — parser path for large restore (distinct symptom).
 
-## Proposed design (architecture — sensible direction)
+## Proposed design (architecture — optional follow-up)
 
-**Idea:** Do **not** fight the storm inside **`scroll_bottom`** with ad-hoc caps alone. Instead, **separate “content arrived” from “scroll after layout is valid”**, and **batch** scroll work so the **“wait for layout”** path (`upper < 10` → retry **once** behind a redraw) runs in a **controlled** place — especially after **session load completes**.
+**Shipped fix:** **`scroll_bottom` `try_again`** (see **Fix applied**) — **not** this section.
 
-1. **Signal `scroll_pending(Gtk.Widget target)`** on **`MarkdownGtk.Render`**  
-   **`target`** is the **concrete widget** that needs a bottom scroll once layout is valid (e.g. the nested **`Gtk.ScrolledWindow`** **`RenderSourceView`** scrolls — pass **`this.scrolled_window`** or whatever actually owns **`vadjustment`**). Emit **`this.renderer.scroll_pending(this.scrolled_window);`** — no wrappers. Meaning: *this* scroller is pending — **not** **N**× **`Idle.add` → scroll_bottom** per chunk with no identity.
-
-2. **Relay up the tree**  
-   **`Render`** forwards the **`target`** with the signal so **`ChatView`** (or the session layer) does not guess which nested frame was last touched.
-
-3. **Queue holds targets; dedupe on the caller, not in `ChatView`**  
-   **`RenderSourceView`** (or whichever view emits **`scroll_pending`**) owns **`public bool is_scroll_queued`** (read-only outside, **`default = false`**). **Before** emitting **`scroll_pending`**, **`if (this.is_scroll_queued) return;`** then **`this.is_scroll_queued = true`**. That avoids **`scroll_queue.contains(target)`** on **`ChatView`** (no **`O(n)`** lookup, no identity questions across widget types). **`ChatView`** calls **`this.renderer.scroll_handled(target)`** after it has applied scroll (and any **`queue_allocate`** / resize step tied to that drain step) for **`target`** — **`RenderSourceView`** connects **`scroll_handled`** and clears **`is_scroll_queued`** when **`target == this.scrolled_window`**. While a **history restore** is in progress, **`scroll_pending`** **enqueues** **`target`**; use the **existing** **`ChatWidget.restoring_session`** — **do not** add **`history_loading`** on **`ChatView`** (see **Restore flag** below).
-
-4. **After load → drain queue**  
-   On **`session_restored`**: **`restoring_session`** is already cleared in **`ChatWidget`**; **`queue_allocate`** once if needed, then **drain** **`scroll_queue`** via **`run_scroll_queue`** (see mock).
-
-5. **Live streaming**  
-   When **`!this.chat_widget.restoring_session`**, **`scroll_pending(target)`** can **apply immediately** (allocate + idle) for that **`target`**, or coalesce per-frame — dedupe **`upper < 10`** with **`retry_idle`** inside **`RenderSourceView`** (see mock).
+The sketches below are **optional** if further batching is needed: **`scroll_pending`**, **`scroll_queue`**, **`run_scroll_queue`**, **`retry_idle`**, **`abort_scroll_drain`** (cancel idle sources + clear queue **before** **`clear_chat()`**). Details in **Proposed code (mock)**.
 
 ### Restore flag (existing — no duplicate property)
 
@@ -167,10 +185,10 @@ Existing assignments (**`this.restoring_session = true/false`**) stay valid; **`
 
 | Layer | Role |
 | ----- | ---- |
-| **`RenderSourceView`** | **`is_scroll_queued`** guard → **`scroll_pending`**; listen for **`scroll_handled`** to clear **`is_scroll_queued`**. |
-| **`MarkdownGtk.Render`** | **`signal void scroll_pending(Gtk.Widget target);`** and **`signal void scroll_handled(Gtk.Widget target);`** (emit **`scroll_handled`** after scroll/resize for that **`target`** is applied). |
-| **`ChatView`** | **`scroll_queue`**, **`scroll_pending`** handler → enqueue if **`chat_widget.restoring_session`**, else immediate scroll; **`run_scroll_queue`** / immediate path → **`scroll_handled(target)`**. |
-| **`ChatWidget`** | Already sets **`restoring_session`**; **`session_restored`** → **drain `scroll_queue`** via **`run_scroll_queue`** (no extra flag on **`ChatView`**). |
+| **`RenderSourceView`** | **`public bool is_scroll_queued`**; **`public`** nested **`scrolled_window`** (read access); guard → **`scroll_pending(this)`**. |
+| **`MarkdownGtk.Render`** | **`signal void scroll_pending(MarkdownGtk.RenderSourceView view);`** only — **no** helper methods on **`Render`** for scroll completion. |
+| **`ChatView`** | **`scroll_queue`**, **`scroll_pending`** handler → enqueue if **`chat_widget.restoring_session`**, else immediate scroll; **`run_scroll_queue`** / immediate path → after nested **`vadjustment`**, **`view.is_scroll_queued = false`**. |
+| **`ChatWidget`** | **`switch_to_session`** start: **cancel drain idle**, **clear `scroll_queue`**, reset **`is_scroll_queued`** on queued views — **before** **`clear_chat()`**; same on load **error**; **`session_restored`** → **drain `scroll_queue`** for the **new** session only. |
 
 **sysprof** after this shape exists: confirm main thread is quiet when idle post-load.
 
@@ -211,44 +229,26 @@ Existing assignments (**`this.restoring_session = true/false`**) stay valid; **`
 		}
 ```
 
-Whether you need **one** outer **`Idle.add`** before touching adjustments (let GTK flush layout from the last replay step) is **empirical** — start **without** extra nesting; add **at most one** pre-idle if **`upper`** is still wrong on first read.
-
-**Draining the queue:** avoid **`Idle.add(() => { Idle.add(() => { … }); })`** for every item. Prefer **one** method that processes **one** queued **`target`**, applies the adjustment, then **`GLib.Idle.add(() => run_scroll_queue())`** so each remaining item runs on a **subsequent** idle — spreads work and keeps recursion shallow.
+```vala
+// Optional: GLib.Idle.add before first vadjustment if upper still wrong — empirical.
+```
 
 ---
 
 ## Proposed code (mock — not merged)
 
-Illustrative **Vala-shaped** sketches only: **not** a drop-in patch. **Naming:** at most **two words** per identifier where practical; **emit signals directly** (`this.renderer.signal_name();`) — **no** thin `emit_*` / `request_*` wrappers.
-
-### 1. `MarkdownGtk.Render` — **`scroll_pending`** and **`scroll_handled`**
+### 1. `MarkdownGtk.Render`
 
 ```vala
-public signal void scroll_pending(Gtk.Widget target);
-public signal void scroll_handled(Gtk.Widget target);
+public signal void scroll_pending(MarkdownGtk.RenderSourceView view);
 ```
 
-Emit **`scroll_pending`** with the **widget that owns the pending scroll** (nested **`Gtk.ScrolledWindow`** is the usual **`target`**). After **`ChatView`** applies scroll (and any resize/allocate step for that step), emit **`scroll_handled(target)`** so the **caller** can clear **`is_scroll_queued`**.
-
-### 2. `RenderSourceView` — caller guard + **`scrolled_window`**
-
-**Field** (public read, private write — set/clear only here and via **`scroll_handled`**):
+### 2. `RenderSourceView`
 
 ```vala
-public bool is_scroll_queued { get; private set; default = false; }
+public bool is_scroll_queued = false;
+public Gtk.ScrolledWindow scrolled_window { get; private set; }
 ```
-
-**Connect once** (e.g. after **`this.renderer`** exists):
-
-```vala
-this.renderer.scroll_handled.connect((target) => {
-	if (target == this.scrolled_window) {
-		this.is_scroll_queued = false;
-	}
-});
-```
-
-Replace the per-chunk idle that only called **`scroll_bottom()`** with guarded emit — **no** **`scroll_queue.contains`** on **`ChatView`**:
 
 ```vala
 // Was: GLib.Idle.add(() => { this.scroll_bottom(); return false; });
@@ -256,37 +256,56 @@ if (this.is_scroll_queued) {
 	return;
 }
 this.is_scroll_queued = true;
-this.renderer.scroll_pending(this.scrolled_window);
+this.renderer.scroll_pending(this);
 ```
 
-**`scroll_bottom`** (`upper < 10`) — see **(6)** — may still exist for internal paths; must **not** schedule unbounded idles.
-
-### 3. `ChatView` — **`scroll_queue`**, **`scroll_pending`**, **`run_scroll_queue()`**
-
-**Handler** (live path: still one idle for immediate scroll; bulk path: enqueue only while **`ChatWidget.restoring_session`** — **no** **`contains`** on the list):
+### 3. `ChatView` — queue, pending idles, abort, drain
 
 ```vala
-public Gee.ArrayList<Gtk.Widget> scroll_queue = new Gee.ArrayList<Gtk.Widget>();
+public Gee.ArrayList<MarkdownGtk.RenderSourceView> scroll_queue = new Gee.ArrayList<MarkdownGtk.RenderSourceView>();
+private uint scroll_drain_idle = 0;
+private uint scroll_pending_idle = 0;
 
-this.renderer.scroll_pending.connect((target) => {
+public void abort_scroll_drain()
+{
+	if (this.scroll_drain_idle != 0) {
+		GLib.Source.remove(this.scroll_drain_idle);
+		this.scroll_drain_idle = 0;
+	}
+	if (this.scroll_pending_idle != 0) {
+		GLib.Source.remove(this.scroll_pending_idle);
+		this.scroll_pending_idle = 0;
+	}
+	foreach (var v in this.scroll_queue) {
+		v.is_scroll_queued = false;
+	}
+	this.scroll_queue.clear();
+}
+```
+
+```vala
+this.renderer.scroll_pending.connect((view) => {
 	if (this.chat_widget.restoring_session) {
-		this.scroll_queue.add(target);
+		this.scroll_queue.add(view);
 		return;
 	}
 	this.queue_allocate();
-	GLib.Idle.add(() => {
-		var sw = target as Gtk.ScrolledWindow;
-		if (sw != null) {
+	if (this.scroll_pending_idle != 0) {
+		GLib.Source.remove(this.scroll_pending_idle);
+		this.scroll_pending_idle = 0;
+	}
+	this.scroll_pending_idle = GLib.Idle.add(() => {
+		this.scroll_pending_idle = 0;
+		var sw = view.scrolled_window;
+		if (sw != null && sw.vadjustment != null) {
 			sw.vadjustment.value = sw.vadjustment.upper;
 		}
+		view.is_scroll_queued = false;
 		this.scroll_to_bottom();
-		this.renderer.scroll_handled(target);
 		return false;
 	});
 });
 ```
-
-**Drain** — **pop one**, apply scroll, **`scroll_handled`**, then **`Idle.add` → `run_scroll_queue`** until the queue is empty, then **`scroll_to_bottom`** for the outer chat.
 
 ```vala
 public void run_scroll_queue()
@@ -295,24 +314,50 @@ public void run_scroll_queue()
 		this.scroll_to_bottom();
 		return;
 	}
-	var w = this.scroll_queue.remove_at(0);
-	var sw = w as Gtk.ScrolledWindow;
-	if (sw != null) {
+	var view = this.scroll_queue.remove_at(0);
+	var sw = view.scrolled_window;
+	if (sw != null && sw.vadjustment != null) {
 		sw.vadjustment.value = sw.vadjustment.upper;
 	}
-	this.renderer.scroll_handled(w);
-	GLib.Idle.add(() => {
+	view.is_scroll_queued = false;
+	if (this.scroll_drain_idle != 0) {
+		GLib.Source.remove(this.scroll_drain_idle);
+		this.scroll_drain_idle = 0;
+	}
+	this.scroll_drain_idle = GLib.Idle.add(() => {
+		this.scroll_drain_idle = 0;
 		this.run_scroll_queue();
 		return false;
 	});
 }
 ```
 
-**Note:** **`scroll_queue`** may hold **duplicate** **`target`** pointers if something bypassed the caller guard — **`scroll_handled`** still fires per dequeue; the second dequeue clears **`is_scroll_queued`** again harmlessly. Prefer the **caller** guard so the queue stays short.
+### 4. `ChatWidget.switch_to_session`
 
-### 4. `ChatWidget` — **`session_restored`**: no double-idle by default
+```vala
+public async void switch_to_session(OLLMchat.History.SessionBase session)
+{
+	this.chat_view.abort_scroll_drain();
+	this.chat_view.finalize_assistant_message();
+	this.streaming_state(true);
+	this.clear_chat();
+	this.chat_view.scroll_enabled = false;
+	this.restoring_session = true;
 
-**`restoring_session = true`** is already set before **`yield switch_to_session`** in **`switch_to_session`** — do **not** duplicate a **`ChatView`** flag.
+	try {
+		yield this.manager.switch_to_session(session);
+	} catch (Error e) {
+		this.chat_view.abort_scroll_drain();
+		GLib.warning("Error loading session: %s", e.message);
+		this.streaming_state(false);
+		this.chat_view.scroll_enabled = true;
+		this.restoring_session = false;
+		return;
+	}
+}
+```
+
+### 5. `ChatWidget.session_restored`
 
 ```vala
 this.manager.session_restored.connect((_session) => {
@@ -323,11 +368,12 @@ this.manager.session_restored.connect((_session) => {
 });
 ```
 
-Optional **single** **`GLib.Idle.add(() => { this.chat_view.run_scroll_queue(); return false; })`** **only if** first-frame layout is still wrong without it — **not** the default **Idle → Idle** sandwich from the old mock.
+```vala
+// Optional only if first-frame layout wrong without it:
+// GLib.Idle.add(() => { this.chat_view.run_scroll_queue(); return false; });
+```
 
-Cast / widget type details unchanged — **the queue drains through **`run_scroll_queue`****, not a **foreach** inside nested idles.
-
-### 5. `RenderSourceView.scroll_bottom` — `upper < 10` (dedupe idle, two-word field)
+### 6. `RenderSourceView.scroll_bottom` (`upper < 10`)
 
 ```vala
 private bool retry_idle = false;
@@ -346,24 +392,23 @@ if (vadjustment.upper < 10.0) {
 }
 ```
 
-Combine with **(3)–(4)** so bulk work does not hammer this path during restore, or centralize nested scroll entirely from **`ChatView`** after **`scroll_pending`** + **`run_scroll_queue`**.
-
 ---
 
-## Next steps (smaller tactics — only if needed after the architecture above)
+## Next steps (only if needed)
 
-- **Dedupe** a single pending **`upper < 10`** retry per `RenderSourceView` / target as a **safety net** inside **`scroll_bottom`** while the new pipeline is rolled out.
-- **Throttle** per-chunk **`add_code_text`** scroll (newline-only or timer) for live streams if profiling still shows hot paths.
+- **`try_again`** already caps **`scroll_bottom`** retries; mock **§6 `retry_idle`** in this doc is **optional** extra hardening, not merged.
+- **Throttle** per-chunk **`add_code_text`** scroll (newline-only or timer) for live streams if profiling still shows hot paths after the fix.
 
 ## Evidence to collect
 
-- **sysprof** (main thread) after a chosen approach is prototyped.
-- Manual: large session → confirm CPU drops when idle storm is gone.
+- **sysprof** (main thread) if CPU regressions reappear.
+- Manual large-session check already **passed** for the **scroll_bottom** fix; keep as regression spot-check after related changes.
 
 ## Conclusions
 
-- **Failure mode:** Unbounded or repeated **`GLib.Idle.add`** from **`scroll_bottom`** when **`upper < 10`**, amplified by **per-chunk** idle scheduling in **`add_code_text`** during large restores.
-- **Preferred direction:** **`scroll_pending` / `scroll_handled`**, **`scroll_queue`**, **`run_scroll_queue()`** (one adjustment per idle, then re-enter). **Dedupe** with **`RenderSourceView.is_scroll_queued`** on the **caller** — **not** **`scroll_queue.contains`** on **`ChatView`**. Reuse **`ChatWidget.restoring_session`** for **`ChatView`** — **no** separate **`history_loading`**. **`session_restored`** is **not** pre-wrapped in **`Idle.add`** by **`Manager`**. **`retry_idle`** in **`scroll_bottom`** is optional safety net.
+- **Failure mode (addressed):** Unbounded **`GLib.Idle.add`** chaining inside **`scroll_bottom`** when **`vadjustment.upper < 10`** (and no cap on retries), amplified by **per-chunk** idles from **`add_code_text`** during large restores.
+- **Fix shipped:** **`try_again`** bounds retries (see **Fix applied** and **Current code**); **`!get_realized()`** uses the same single-defer pattern.
+- **Optional follow-up (not required for the reported symptom):** **`scroll_pending` / `scroll_queue` / `abort_scroll_drain`** architecture in this doc — only if profiling shows remaining nested-scroll cost. **`ChatView.scroll_to_bottom`** **`upper < 100`** retry loop remains a separate place to watch.
 
 ## Changelog
 
@@ -377,7 +422,11 @@ Combine with **(3)–(4)** so bulk work does not hammer this path during restore
 - 2026-04-08 — **Proposed code (mock):** Vala sketches — **`scroll_pending`**, **`scroll_queue`**, **`run_scroll_queue`**, **`retry_idle`** — **not merged**.
 - 2026-04-08 — Use existing **`ChatWidget.restoring_session`** (expose for **`ChatView`**) instead of a new **`history_loading`** property.
 - 2026-04-08 — Mock tightened: **short names**, **direct signal emit**, **no helper wrappers**.
-- 2026-04-08 — Design: signal carries **`target`**; **`scroll_queue`** holds widgets — not a bool-only **`scroll_queued`**.
-- 2026-04-08 — **Dedupe:** **`is_scroll_queued`** on **`RenderSourceView`** (caller); **`scroll_handled`** clears it after **`ChatView`** applies scroll — no **`contains`** on queue.
+- 2026-04-08 — Design: signal carries **`RenderSourceView`**; **`scroll_queue`** holds views — not a bool-only **`scroll_queued`**.
+- 2026-04-08 — **Dedupe:** **`public is_scroll_queued`** on **`RenderSourceView`**; **`ChatView`** assigns **`false`** after applying nested scroll — no **`Render`** helpers, no registry.
+- 2026-04-08 — **Dropped `scroll_applied` / `register_scroll_target`:** public flag + signal payload **`view`** instead.
 - 2026-04-08 — **`session_restored`** timing (**`Manager`** synchronous after **`restore_messages`**); drain via **`run_scroll_queue()`** (chain idles, no nested **`Idle`→`Idle`**); optional single pre-idle only if needed.
+- 2026-04-08 — **Session switch:** **`scroll_queue` + drain idle** must be **cleared / cancelled** **before** **`clear_chat()`** (and on load **error**); avoids stale **`RenderSourceView`** after new session.
+- 2026-04-08 — **Proposed code:** **`abort_scroll_drain`**, **`scroll_drain_idle` / `scroll_pending_idle`**, **`switch_to_session` + `catch`** as **Vala** blocks; trimmed architecture prose.
 - 2026-04-08 — **`ChatWidget.restoring_session`**: concrete before/after in **Restore flag**; code uses **`internal bool … { get; private set; default = false; }`**.
+- 2026-04-08 — **FIXED:** **`RenderSourceView.scroll_bottom`**: **`try_again`**, single defer for **`!get_realized()`** and **`upper < 10`**; status **FIXED (direct)**; doc updated with merged code, **Fix applied** table, conclusions; optional queue design remains future-only.
