@@ -53,9 +53,10 @@ MARKDOWN_TEST_LABELS=(
 	"5. Indented fenced blocks (callback trace)"
 	"6. Nested lists (callback trace)"
 	"7. oc-frame-info format (callback trace)"
+	'8. Four-backtick fence / nested ``` (callback trace)'
 )
 # Substrings that identify each test in FAILED_TESTS descriptions
-MARKDOWN_TEST_KEYS=("Formatting HTML" "Blocks callback" "Tables HTML" "Links callback" "Indented fenced" "Nested lists" "oc-frame-info format")
+MARKDOWN_TEST_KEYS=("Formatting HTML" "Blocks callback" "Tables HTML" "Links callback" "Indented fenced" "Nested lists" "oc-frame-info format" "Four-backtick fence")
 
 # Test 1: Simple formatting (bold, italic, code, etc.) → HTML
 test_formatting() {
@@ -135,6 +136,17 @@ test_oc_frame_info_format() {
 	test-match "$testname" "$actual" "$expected" "oc-frame-info format callback trace" || true
 }
 
+# Test 8: CommonMark-style outer fence with four backticks so inner triple-backtick lines stay literal
+test_nested_backtick_fence() {
+	echo '=== Test 8: Four-backtick fence / nested ``` (callback trace) ==='
+	reset_test_state
+	local testname="markdown_nested_backtick_fence"
+	local actual="$TEST_DIR/nested-backtick-fence-actual-trace.txt"
+	local expected="$MD_DATA/nested-backtick-fence-expected-trace.txt"
+	(cd "$SCRIPT_DIR" && "$OC_MARKDOWN_TEST" "markdown/nested-backtick-fence.md" 2>/dev/null) > "$actual"
+	test-match "$testname" "$actual" "$expected" "Four-backtick fence nested backticks callback trace" || true
+}
+
 # Actual/expected paths for each test (order matches MARKDOWN_TEST_LABELS)
 # Expected files define correct output; test fails if parser output does not match.
 MARKDOWN_ACTUAL_FILES=(
@@ -145,6 +157,7 @@ MARKDOWN_ACTUAL_FILES=(
 	"$TEST_DIR/indented-fenced-blocks-actual-trace.txt"
 	"$TEST_DIR/nested-lists-actual-trace.txt"
 	"$TEST_DIR/oc-frame-info-format-actual-trace.txt"
+	"$TEST_DIR/nested-backtick-fence-actual-trace.txt"
 )
 MARKDOWN_EXPECTED_FILES=(
 	"$MD_DATA/formatting-expected.html"
@@ -154,6 +167,7 @@ MARKDOWN_EXPECTED_FILES=(
 	"$MD_DATA/indented-fenced-blocks-expected-trace.txt"
 	"$MD_DATA/nested-lists-expected-trace.txt"
 	"$MD_DATA/oc-frame-info-format-expected-trace.txt"
+	"$MD_DATA/nested-backtick-fence-expected-trace.txt"
 )
 
 # Print which tests passed/failed and, if any failed, show diffs again at the end
@@ -171,9 +185,9 @@ print_markdown_results() {
 	done
 	echo ""
 	if [ "$TESTS_FAILED" -eq 0 ]; then
-		echo -e "${GREEN}Markdown parser: all 7 tests passed.${NC}"
+		echo -e "${GREEN}Markdown parser: all 8 tests passed.${NC}"
 	else
-		echo -e "${RED}Markdown parser: $TESTS_FAILED of 7 tests failed.${NC}"
+		echo -e "${RED}Markdown parser: $TESTS_FAILED of 8 tests failed.${NC}"
 		echo ""
 		echo "=== FAILURE DETAILS (diffs below) ==="
 		for i in "${!MARKDOWN_TEST_LABELS[@]}"; do
@@ -197,7 +211,7 @@ print_markdown_results() {
 
 # Main
 echo ""
-echo "=== Markdown parser test suite (7 tests) ==="
+echo "=== Markdown parser test suite (8 tests) ==="
 echo "  • Formatting:       oc-md2html on markdown/formatting.md → HTML"
 echo "  • Blocks:           oc-markdown-test on markdown/blocks.md → callback trace"
 echo "  • Tables:           oc-md2html on markdown/tables.md → HTML"
@@ -205,6 +219,7 @@ echo "  • Links:            oc-markdown-test on markdown/links.md → callback
 echo "  • Indented fenced:  oc-markdown-test on markdown/indented-fenced-blocks.md → callback trace"
 echo "  • Nested lists:    oc-markdown-test on markdown/nested-lists.md → callback trace"
 echo "  • oc-frame-info:   oc-markdown-test on markdown/oc-frame-info-format.md → callback trace"
+echo "  • Nested fence:    oc-markdown-test on markdown/nested-backtick-fence.md → callback trace"
 echo ""
 
 setup_test_env
@@ -215,6 +230,7 @@ test_links
 test_indented_fenced_blocks
 test_nested_lists
 test_oc_frame_info_format
+test_nested_backtick_fence
 print_test_summary
 print_markdown_results
 exit $([ "$TESTS_FAILED" -eq 0 ] && echo 0 || echo 1)
