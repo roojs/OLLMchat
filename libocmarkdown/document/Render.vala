@@ -199,8 +199,12 @@ namespace Markdown.Document
 					this.on_inline(is_start ? new Format(FormatType.OTHER) {
 						 tag_name = s1 } : null);
 					return;
-				case FormatType.FENCED_CODE_QUOTE:
-				case FormatType.FENCED_CODE_TILD:
+				case FormatType.FENCE_QUOTE_3:
+				case FormatType.FENCE_QUOTE_4:
+				case FormatType.FENCE_QUOTE_5:
+				case FormatType.FENCE_TILD_3:
+				case FormatType.FENCE_TILD_4:
+				case FormatType.FENCE_TILD_5:
 					this.on_block(is_start ? new Block(type) { lang = s1, fence_indent = s2 } : null);
 					return;
 				case FormatType.TABLE:
@@ -226,7 +230,7 @@ namespace Markdown.Document
 						return;
 					}
 					var pb = (Block)code_parent;
-					if (pb.kind != FormatType.FENCED_CODE_QUOTE && pb.kind != FormatType.FENCED_CODE_TILD) {
+					if (!pb.kind.is_fence_kind()) {
 						return;
 					}
 					pb.code_text += s1;
@@ -411,7 +415,9 @@ namespace Markdown.Document
 
 		public override void on_code(bool is_start, string lang, char fence_char)
 		{
-			var kind = (fence_char == '~') ? FormatType.FENCED_CODE_TILD : FormatType.FENCED_CODE_QUOTE;
+			// FIXME: Renderer only passes fence_char; we always use 3-tick/3-tilde kinds. Real fences
+			// may be 4–5 wide (Block.to_fence()); round-trip from callbacks can lose fence length.
+			var kind = (fence_char == '~') ? FormatType.FENCE_TILD_3 : FormatType.FENCE_QUOTE_3;
 			this.on_block(is_start ? new Block(kind) { lang = lang } : null);
 		}
 	}

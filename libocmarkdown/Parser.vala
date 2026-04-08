@@ -84,8 +84,12 @@ namespace Markdown
 		LINK,
 		DEFINITION_LIST,
 		INDENTED_CODE,
-		FENCED_CODE_QUOTE,
-		FENCED_CODE_TILD,
+		FENCE_QUOTE_3,
+		FENCE_QUOTE_4,
+		FENCE_QUOTE_5,
+		FENCE_TILD_3,
+		FENCE_TILD_4,
+		FENCE_TILD_5,
 		BLOCKQUOTE,
 		TABLE,
 		TABLE_ROW,
@@ -120,8 +124,12 @@ namespace Markdown
 				case FormatType.HEADING_6:
 				case FormatType.BLOCKQUOTE:
 				case FormatType.HORIZONTAL_RULE:
-				case FormatType.FENCED_CODE_QUOTE:
-				case FormatType.FENCED_CODE_TILD:
+				case FormatType.FENCE_QUOTE_3:
+				case FormatType.FENCE_QUOTE_4:
+				case FormatType.FENCE_QUOTE_5:
+				case FormatType.FENCE_TILD_3:
+				case FormatType.FENCE_TILD_4:
+				case FormatType.FENCE_TILD_5:
 				case FormatType.TABLE:
 				case FormatType.TABLE_ROW:
 				case FormatType.TABLE_HCELL:
@@ -130,6 +138,33 @@ namespace Markdown
 				default:
 					return false;
 			}
+		}
+
+		/** Opening/closing fence line for this kind (only valid for {@link is_fence_kind}). */
+		public string to_fence()
+		{
+			switch (this) {
+				case FENCE_QUOTE_3:
+					return "```";
+				case FENCE_QUOTE_4:
+					return "````";
+				case FENCE_QUOTE_5:
+					return "`````";
+				case FENCE_TILD_3:
+					return "~~~";
+				case FENCE_TILD_4:
+					return "~~~~";
+				case FENCE_TILD_5:
+					return "~~~~~";
+				default:
+					GLib.assert_not_reached();
+			}
+		}
+
+		/** True for {@link FENCE_QUOTE_3} … {@link FENCE_TILD_5} (contiguous enum range). */
+		public bool is_fence_kind()
+		{
+			return this >= FormatType.FENCE_QUOTE_3 && this <= FormatType.FENCE_TILD_5;
 		}
     }
 
@@ -265,8 +300,7 @@ namespace Markdown
 				
 				
 				// If we're in a fenced code block, check for closing fence only at line start
-				if (this.current_block == FormatType.FENCED_CODE_QUOTE
-					 || this.current_block == FormatType.FENCED_CODE_TILD) {
+				if (this.current_block.is_fence_kind()) {
 					if (!this.at_line_start) {
 						if (this.blockmap.check_fenced_newline(ref chunk_pos, chunk)) {
 							assert(str == "" && text_start_pos == chunk_pos);
@@ -709,8 +743,7 @@ namespace Markdown
 		 */
 		private void handle_line_break(ref int chunk_pos, ref string str, ref int text_start_pos)
 		{
-			if (this.current_block == FormatType.FENCED_CODE_QUOTE
-				|| this.current_block == FormatType.FENCED_CODE_TILD) {
+			if (this.current_block.is_fence_kind()) {
 				this.renderer.on_node(FormatType.CODE_TEXT, false, "\n");
 				this.at_line_start = true;
 				chunk_pos += 1;
@@ -923,7 +956,7 @@ namespace Markdown
 		 * @param is_start True to start the block, false to end it
 		 * @param block_type The block type
 		 * @param lang Language for fenced code blocks (only used when is_start is true)
-		 * @param fence_indent Leading indent for fenced code (e.g. "   "); only used when starting FENCED_CODE_QUOTE/TILD
+		 * @param fence_indent Leading indent for fenced code (e.g. "   "); only used when starting fence blocks (FENCE_QUOTE_* / FENCE_TILD_*)
 		 */
 		public void do_block(
 			bool is_start,
@@ -960,8 +993,12 @@ namespace Markdown
 				case FormatType.LIST_BLOCK:
 					this.renderer.on_node_int(FormatType.LIST_BLOCK, is_start, 0);
 					break;
-				case FormatType.FENCED_CODE_QUOTE:
-				case FormatType.FENCED_CODE_TILD:
+				case FormatType.FENCE_QUOTE_3:
+				case FormatType.FENCE_QUOTE_4:
+				case FormatType.FENCE_QUOTE_5:
+				case FormatType.FENCE_TILD_3:
+				case FormatType.FENCE_TILD_4:
+				case FormatType.FENCE_TILD_5:
 					this.renderer.on_node(block_type, is_start, lang, fence_indent);
 					break;
 				case FormatType.HORIZONTAL_RULE:

@@ -71,8 +71,8 @@ START: <p>
   TEXT: " list"
   TEXT: " (not"
   TEXT: " links):"
-  TEXT: " ["
-  TEXT: " ]"
+  TEXT: " "
+  START: <task_list> (checked=false)
   TEXT: " unchecked"
   TEXT: " and"
   TEXT: " "

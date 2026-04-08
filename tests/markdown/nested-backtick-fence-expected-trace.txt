@@ -39,23 +39,25 @@ TEXT: "
 "
 TEXT: "
 "
-START: <code_block> (lang=`)
+START: <code_block> (lang=)
+  CODE_TEXT: "```"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "hello"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "```"
+  CODE_TEXT: "
+"
 END: <code_block> (lang=)
+TEXT: "
+"
 START: <p>
-  TEXT: "hello"
+  TEXT: "After"
+  TEXT: " block."
 END: <p>
 TEXT: "
 "
-START: <code_block> (lang=)
-  CODE_TEXT: "````"
-  CODE_TEXT: "
-"
-  CODE_TEXT: "
-"
-  CODE_TEXT: "After block."
-  CODE_TEXT: "
-"
-  TEXT: ""
-  TEXT: ""
-END: <code_block> (lang=)
+TEXT: ""
+TEXT: ""
 === END TRACE ===

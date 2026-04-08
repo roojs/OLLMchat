@@ -104,10 +104,14 @@ namespace Markdown
 			// Fenced Code: ``` or ~~~ with optional language; indented case handled by skipping leading spaces before eat
 			mp["`"] = FormatType.INVALID;
 			mp["``"] = FormatType.INVALID;
-			mp["```"] = FormatType.FENCED_CODE_QUOTE;
+			mp["```"] = FormatType.FENCE_QUOTE_3;
+			mp["````"] = FormatType.FENCE_QUOTE_4;
+			mp["`````"] = FormatType.FENCE_QUOTE_5;
 			mp["~"] = FormatType.INVALID;
 			mp["~~"] = FormatType.INVALID;
-			mp["~~~"] = FormatType.FENCED_CODE_TILD;
+			mp["~~~"] = FormatType.FENCE_TILD_3;
+			mp["~~~~"] = FormatType.FENCE_TILD_4;
+			mp["~~~~~"] = FormatType.FENCE_TILD_5;
 
 			// Blockquotes: > quote text (up to 6 levels deep). ">" alone (no space) = empty blockquote line.
 			mp[">"] = FormatType.BLOCKQUOTE;
@@ -222,7 +226,7 @@ namespace Markdown
 
 			// Fenced code: only 0 or 3 spaces allowed before fence
 			if (
-				(matched_block == FormatType.FENCED_CODE_QUOTE || matched_block == FormatType.FENCED_CODE_TILD)
+				matched_block.is_fence_kind()
 				&& space_skip != 0
 				&& space_skip != 3
 			) {
@@ -230,9 +234,8 @@ namespace Markdown
 			}
 
 			// Fenced code: need newline and optional language; store whole match for matching closing fence
-			if (matched_block == FormatType.FENCED_CODE_QUOTE 
-				|| matched_block == FormatType.FENCED_CODE_TILD) {
-				this.fence_open = chunk.substring(chunk_pos, space_skip + 3);
+			if (matched_block.is_fence_kind()) {
+				this.fence_open = chunk.substring(chunk_pos, byte_length);
 				if (!chunk.contains("\n")) {
 					return -1;
 				}
@@ -401,10 +404,14 @@ namespace Markdown
 					}
 					return false;
 
-				case FormatType.FENCED_CODE_QUOTE:
-				case FormatType.FENCED_CODE_TILD:
+				case FormatType.FENCE_QUOTE_3:
+				case FormatType.FENCE_QUOTE_4:
+				case FormatType.FENCE_QUOTE_5:
+				case FormatType.FENCE_TILD_3:
+				case FormatType.FENCE_TILD_4:
+				case FormatType.FENCE_TILD_5:
 					this.parser.current_block = matched_block;
-					var fence_indent = this.fence_open.length > 3 ? "   " : "";
+					var fence_indent = (space_skip == 3) ? "   " : "";
 					this.parser.do_block(true, matched_block, block_lang, fence_indent);
 					this.parser.at_line_start = true;
 					chunk_pos = seq_pos;
@@ -479,8 +486,8 @@ namespace Markdown
 		 * line must start with the same whole match that opened the block {{{(e.g. "   ```")}}}
 		 *
 		 * @param chunk The text chunk
-		 * @param chunk_pos The position to check; may be advanced by 3 when indented content line (fence_open.length > 3 and line starts with "   ")
-		 * @param fence_type The type of fence we're looking for (FENCED_CODE_QUOTE or FENCED_CODE_TILD)
+		 * @param chunk_pos The position to check; may be advanced by 3 when indented closing line (fence_open has "   " prefix and line starts with "   ")
+		 * @param fence_type The type of fence we're looking for (FENCE_QUOTE_* or FENCE_TILD_*)
 		 * @param is_end_of_chunks If true, end of stream indicator
 		 * @return -1 if need more data, 0 if not a match, >0 byte length consumed (through newline) if match
 		 */
@@ -503,7 +510,7 @@ namespace Markdown
 
 			var at_marker = chunk.substring(chunk_pos, this.fence_open.length);
 			if (at_marker != this.fence_open) {
-				if (this.fence_open.length > 3 && at_marker.has_prefix("   ")) {
+				if (this.fence_open.has_prefix("   ") && at_marker.has_prefix("   ")) {
 					chunk_pos += 3;
 				}
 				return 0;

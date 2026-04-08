@@ -345,8 +345,7 @@ public class ResultParser : Object
 					continue;
 				}
 				var block = (Markdown.Document.Block) node;
-				if (block.kind != Markdown.FormatType.FENCED_CODE_QUOTE 
-					&& block.kind != Markdown.FormatType.FENCED_CODE_TILD) {
+				if (!block.kind.is_fence_kind()) {
 					continue;
 				}
 				last_task.code_blocks.add(block);
@@ -376,7 +375,7 @@ public class ResultParser : Object
 	 * Parses single-task refinement output.
 	 *
 	 * Expects section "Task": walk contents - List → first
-	 * ''List.to_key_map()'' → ''task.update_props(map)''; Block (FENCED_CODE)
+		 * ''List.to_key_map()'' → ''task.update_props(map)''; Block (fence kinds)
 	 * → ''task.code_blocks.add(block)''. Appends to {@link issues} on missing
 	 * section/list or task validation. Content format: **What is needed**, **Skill**,
 	 * **References**, **Expected output**, **Skill call**; optional fenced code block.
@@ -398,8 +397,7 @@ public class ResultParser : Object
 			}
 			if (node is Markdown.Document.Block) {
 				var block = (Markdown.Document.Block) node;
-				if (block.kind != Markdown.FormatType.FENCED_CODE_QUOTE 
-					&& block.kind != Markdown.FormatType.FENCED_CODE_TILD) {
+				if (!block.kind.is_fence_kind()) {
 					continue;
 				}
 				task.code_blocks.add(block);
@@ -452,8 +450,7 @@ public class ResultParser : Object
 				continue;
 			}
 			var block = (Markdown.Document.Block) node;
-			if (block.kind != Markdown.FormatType.FENCED_CODE_QUOTE
-				&& block.kind != Markdown.FormatType.FENCED_CODE_TILD) {
+			if (!block.kind.is_fence_kind()) {
 				continue;
 			}
 			var tool = new Tool(factory, this.runner.session, task, "");
