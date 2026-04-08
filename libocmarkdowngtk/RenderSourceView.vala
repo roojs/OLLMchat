@@ -491,7 +491,7 @@ namespace MarkdownGtk
 			var  for_width = this.scrolled_window.get_width();
 			if (mode == ResizeMode.REVEAL_BODY) {
 				for_width = this.body_revealer.get_allocated_width();
-				if (for_width <= 0) {
+			 	if (for_width <= 0) {
 					for_width = this.body_revealer.get_width();
 				}
 				if (for_width <= 0 && this.renderer.box != null) {
@@ -499,7 +499,6 @@ namespace MarkdownGtk
 				}
 			}
 			if (for_width <= 0) {
-				GLib.debug("resize_widget_callback mode=%d bail for_width<=0", (int) mode);
 				return true;
 			}
 			// Get preferred height of the widget for the actual width so wrap-based height is correct
@@ -548,7 +547,8 @@ namespace MarkdownGtk
 					// Header collapse chevron visible => .collapsed or .collapsed-on-done — never show inner pan-down.
 					if ((mode == ResizeMode.INITIAL || mode == ResizeMode.FINAL) && this.expand_button != null) {
 						this.expand_button.visible = false;
-						if (!this.collapse_toggle_button.visible && (natural_height <= 0 || natural_height > max_height)) {
+						if (!this.collapse_toggle_button.visible && 
+							(natural_height <= 0 || natural_height > max_height)) {
 							this.expand_button.visible = true;
 						}
 					}

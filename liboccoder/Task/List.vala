@@ -68,7 +68,7 @@ public class List : Object
 	 * @param filename e.g. "task_list.md", "task_list_latest.md", "task_list_completed.md"
 	 * @param content full body to write
 	 */
-	 
+
 	public void write(string filename, string content)
 	{
 		var path = GLib.Path.build_filename(this.runner.session.task_dir(), filename);

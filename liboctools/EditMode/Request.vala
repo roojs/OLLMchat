@@ -246,7 +246,8 @@ Don't forget to close it.
 				+ "Project file: " + (is_in_project ? "yes (auto-approved)" : "no (permission required)");
 			
 			// Send to UI using standardized format
-			this.agent.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced("text.oc-frame-success.collapsed Edit Mode Activated", ui_message)));
+			this.agent.add_message(new OLLMchat.Message("ui", 
+				OLLMchat.Message.fenced("text.oc-frame-success Edit Mode Activated", ui_message)));
 			
 			// Build LLM message - tell LLM edit mode is activated and provide instructions
 			string llm_message = "Edit mode activated for file: " + this.normalized_path + "\n\n";
