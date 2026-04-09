@@ -52,6 +52,11 @@ namespace OLLMcoder.Skill
 		public OLLMcoder.Task.List pending { get; set; }
 
 		/**
+		 * Task progress list model for the 7.14 UI; {@link OLLMcoder.Task.ProgressList} holds a weak ref to this runner.
+		 */
+		public OLLMcoder.Task.ProgressList progress { get; private set; }
+
+		/**
 		 * True when running from a replay session. When set, Details and Tool use
 		 * the runner's chat_call (ReplayChat) instead of their own.
 		 */
@@ -115,6 +120,7 @@ namespace OLLMcoder.Skill
 			base(factory, session);
 			this.completed = new OLLMcoder.Task.List(this);
 			this.pending = new OLLMcoder.Task.List(this);
+			this.progress = new OLLMcoder.Task.ProgressList(this);
 		}
 
 		/**

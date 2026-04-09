@@ -22,7 +22,7 @@ namespace OLLMcoder.Task
 	 *
 	 * @see Details
 	 */
-	public class Tool : OLLMchat.Agent.Base
+	public class Tool : OLLMchat.Agent.Base, ProgressItem
 	{
 		/** The task (Details) this tool belongs to. */
 		public weak Details parent { get; set; }
@@ -59,6 +59,31 @@ namespace OLLMcoder.Task
 		public string issues { get; set; default = ""; }
 		/** ToolCall built from name and arguments; set by parse(), used in run() when this run has a tool. */
 		public OLLMchat.Response.ToolCall? tool_call { get; set; default = null; }
+
+		private PhaseEnum status_value = PhaseEnum.NONE;
+
+		public PhaseEnum status {
+			get { return this.status_value; }
+			set {
+				if (this.status_value == value) {
+					return;
+				}
+				this.status_value = value;
+				this.notify_property("status_str");
+			}
+		}
+
+		public string title {
+			owned get {
+				return this.name != "" ? this.name : "Tool";
+			}
+		}
+
+		public string status_str {
+			owned get { return this.status.to_human(); }
+		}
+
+		public GLib.ListModel children { get; default = new GLib.ListStore(typeof(ProgressItem)); }
 
 		/**
 		 * Write operations parsed from the write executor output.

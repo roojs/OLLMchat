@@ -90,7 +90,15 @@ public enum PhaseEnum
 	/**
 	 * Post-exec validation of writes; pairs with wire ''exec_validate'' and replay validate steps.
 	 */
-	EXEC_VALIDATE;
+	EXEC_VALIDATE,
+	/**
+	 * Progress UI: task or tool row is executing (tool hook + LLM pass in flight).
+	 */
+	TOOLS_RUNNING,
+	/**
+	 * Progress UI: row finished (task or tool pass).
+	 */
+	COMPLETED;
 
 	/**
 	 * Map a persisted ''agent-stage'' message body to a phase (e.g. ''task_list_parse'' → {@link LIST}).
@@ -143,6 +151,38 @@ public enum PhaseEnum
 			return "post_exec";
 		case EXEC_VALIDATE:
 			return "exec_validate";
+		default:
+			return "";
+		}
+	}
+
+	/**
+	 * Pango markup for the progress stage column ({@link ProgressItem.status_str}).
+	 * Gtk: enable markup on the cell/renderer that binds **status-str**.
+	 */
+	public string to_human()
+	{
+		switch (this) {
+		case NONE:
+		case REFINE_COMPLETED:
+			return "";
+		case COARSE:
+			return "<b>Planning</b>";
+		case REFINEMENT:
+			return "<b>Refine</b>";
+		case LIST:
+			return "<b>Creating</b>";
+		case TASK_LIST_ITERATION:
+			return "<b>Updating</b>";
+		case EXECUTION:
+		case TOOLS_RUNNING:
+			return "<b>Executing</b>";
+		case POST_EXEC:
+			return "<b>Post review</b>";
+		case EXEC_VALIDATE:
+			return "<b>Review</b>";
+		case COMPLETED:
+			return "<span foreground=\"#808080\">✓</span>";
 		default:
 			return "";
 		}

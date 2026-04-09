@@ -36,7 +36,7 @@ namespace OLLMcoder.Task
  * Summaries and documents live on each Tool in exec_runs.
  * (ex.document).
  */
-public class Details : OLLMchat.Agent.Base
+public class Details : OLLMchat.Agent.Base, ProgressItem
 {
 	// - stored task content (exact keys only, see class doc)
 	/**
@@ -140,6 +140,29 @@ public class Details : OLLMchat.Agent.Base
 	 * REFINE_COMPLETED uses their summaries.
 	 */
 	public Gee.ArrayList<Tool> exec_runs { get; set; default = new Gee.ArrayList<Tool>(); }
+
+	private PhaseEnum status_value = PhaseEnum.NONE;
+
+	public PhaseEnum status {
+		get { return this.status_value; }
+		set {
+			if (this.status_value == value) {
+				return;
+			}
+			this.status_value = value;
+			this.notify_property("status_str");
+		}
+	}
+
+	public string title {
+		owned get { return this.slug(); }
+	}
+
+	public string status_str {
+		owned get { return this.status.to_human(); }
+	}
+
+	public GLib.ListModel children { get; default = new ToolList(); }
 
 	/**
 	 * Single markdown document after post-exec synthesis. Headings used for

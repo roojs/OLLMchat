@@ -231,15 +231,18 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Skill/Definition.vala',
     '../liboccoder/Skill/Manager.vala',
     '../liboccoder/Skill/Factory.vala',
-    '../liboccoder/Skill/Runner.vala',
     '../liboccoder/Task/PhaseEnum.vala',  # Task: PhaseEnum — before Step/Details
+    '../liboccoder/Task/ProgressItem.vala',
     '../liboccoder/Task/Step.vala',     # Task: Step → Details
     '../liboccoder/Task/Details.vala',  # Task: Details → ResultParser, Tool
     '../liboccoder/Task/ValidateLink.vala',  # after Details — match liboccoder/meson.build
     '../liboccoder/Task/ResolveLink.vala',
     '../liboccoder/Task/Tool.vala',     # Task: Tool → Details
+    '../liboccoder/Task/ToolList.vala',
     '../liboccoder/Task/WriteChange.vala',  # after Tool — match liboccoder/meson.build
     '../liboccoder/Task/List.vala',     # Task: List → Step, Details
+    '../liboccoder/Task/ProgressList.vala',
+    '../liboccoder/Skill/Runner.vala',  # after Task/ProgressList (Runner.progress) — match liboccoder/meson.build
     '../liboccoder/Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
     '../liboccoder/List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
     '../liboccoder/Approvals.vala',
