@@ -92,9 +92,17 @@ public enum PhaseEnum
 	 */
 	EXEC_VALIDATE,
 	/**
-	 * Progress UI: task or tool row is executing (tool hook + LLM pass in flight).
+	 * Progress UI: native tool hook in flight ({@link Tool.run}).
 	 */
 	TOOLS_RUNNING,
+	/**
+	 * Progress UI: same executor pass retrying after send / parse / validate failure ({@link Tool.run} loop).
+	 */
+	EXECUTION_RETRY,
+	/**
+	 * Progress UI: applying parsed write_file operations ({@link Tool.run}).
+	 */
+	EXEC_WRITE,
 	/**
 	 * Progress UI: row finished (task or tool pass).
 	 */
@@ -175,14 +183,19 @@ public enum PhaseEnum
 		case TASK_LIST_ITERATION:
 			return "<b>Updating</b>";
 		case EXECUTION:
+			return "<b>Review output</b>";
 		case TOOLS_RUNNING:
-			return "<b>Executing</b>";
+			return "<b>Running Tool</b>";
+		case EXECUTION_RETRY:
+			return "<b>Retry Review output</b>";
+		case EXEC_WRITE:
+			return "<b>Writing Files</b>";
 		case POST_EXEC:
 			return "<b>Post review</b>";
-		case EXEC_VALIDATE:
-			return "<b>Review</b>";
 		case COMPLETED:
 			return "<span foreground=\"#808080\">✓</span>";
+		case EXEC_VALIDATE:
+			// not shown in UI
 		default:
 			return "";
 		}

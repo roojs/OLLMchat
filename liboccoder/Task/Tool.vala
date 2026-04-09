@@ -70,6 +70,7 @@ namespace OLLMcoder.Task
 				}
 				this.status_value = value;
 				this.notify_property("status_str");
+				// Do not notify_property("status") — by design; bind status-str only.
 			}
 		}
 
@@ -83,6 +84,7 @@ namespace OLLMcoder.Task
 			owned get { return this.status.to_human(); }
 		}
 
+		/** Placeholder empty list — tools are leaves; avoids null checks on {@link ProgressItem.children}. */
 		public GLib.ListModel children { get; default = new GLib.ListStore(typeof(ProgressItem)); }
 
 		/**
@@ -164,15 +166,17 @@ namespace OLLMcoder.Task
 		{
 			yield this.fill_model();
 			this.chat_call.tools.clear();
+			this.status = PhaseEnum.EXECUTION;
 			var tool_output = "";
 			if (this.tool_call != null && !this.parent.runner.in_replay) {
 				var tool_impl = this.parent.runner.session.manager.tools.get(
 						this.tool_call.function.name) as OLLMchat.Tool.BaseTool;
+				this.status = PhaseEnum.TOOLS_RUNNING;
 				this.tool_run_result = yield tool_impl.execute(this.chat(), this.tool_call, true);
+				this.status = PhaseEnum.EXECUTION;
 				tool_output = this.tool_call_details();
 			}
-			 
-				
+
 			var load_list = new Gee.ArrayList<Markdown.Document.Format>();
 			if (this.exam_reference != null) {
 				load_list.add(this.exam_reference);
@@ -210,6 +214,9 @@ namespace OLLMcoder.Task
 			var last_issues = "";
 			for (var try_count = 0; try_count < 5; try_count++) {
 				this.writes.clear();
+				if (try_count > 0) {
+					this.status = PhaseEnum.EXECUTION_RETRY;
+				}
 				var tpl = this.executor_prompt(executor_input, response_text, last_issues);
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
@@ -270,6 +277,9 @@ namespace OLLMcoder.Task
 						}
 						continue;
 					}
+					if (this.writes.size > 0) {
+						this.status = PhaseEnum.EXEC_WRITE;
+					}
 					foreach (var w in this.writes) {
 						this.add_message(new OLLMchat.Message("ui",
 							"Writing to File `" + w.file_path + "`"));
@@ -291,6 +301,7 @@ namespace OLLMcoder.Task
 						summary_only.parse (this.summary.to_markdown_with_content ());
 						this.document = summary_only.document;
 					}
+					this.status = PhaseEnum.COMPLETED;
 					return;
 				}
 				this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
