@@ -32,15 +32,18 @@ occoder_src = files([
   'Skill/Definition.vala',
   'Skill/Manager.vala',
   'Skill/Factory.vala',
-  'Skill/Runner.vala',
   'Task/PhaseEnum.vala',  # Task: PhaseEnum (no other Task deps)
+  'Task/ProgressItem.vala',
   'Task/Step.vala',     # Task: Step → Details
   'Task/Details.vala',  # Task: Details → ResultParser, Tool
   'Task/ValidateLink.vala',  # after Details (uses Details; Details delegates link validation)
   'Task/ResolveLink.vala',
   'Task/Tool.vala',     # Task: Tool → Details
+  'Task/ToolList.vala',
   'Task/WriteChange.vala',  # after Tool.vala
   'Task/List.vala',     # Task: List → Step, Details
+  'Task/ProgressList.vala',
+  'Skill/Runner.vala',  # after Task/ProgressList (Runner.progress)
   'Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
   'List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
   'Approvals.vala',

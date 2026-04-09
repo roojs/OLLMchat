@@ -1,0 +1,140 @@
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+namespace OLLMcoder.Task
+{
+
+/**
+ * {@link GLib.ListModel} of {@link ProgressItem} rows: first all {@link Details} from
+ * {@link OLLMcoder.Skill.Runner.completed}, then all from ''runner.pending''. Phase 1 stores only
+ * {@link Details} instances; {@link GLib.ListModel.get_item_type} returns ''typeof(ProgressItem)''.
+ *
+ * @see OLLMfiles.ProjectList
+ */
+public class ProgressList : GLib.Object, GLib.ListModel
+{
+	/**
+	 * Owning runner; held weakly to avoid a reference cycle with {@link OLLMcoder.Skill.Runner.progress}.
+	 */
+	public weak OLLMcoder.Skill.Runner runner { get; private set; }
+
+	private Gee.ArrayList<ProgressItem> rows = new Gee.ArrayList<ProgressItem>();
+
+	public ProgressList(OLLMcoder.Skill.Runner r)
+	{
+		Object();
+		this.runner = r;
+	}
+
+	public Type get_item_type()
+	{
+		return typeof(ProgressItem);
+	}
+
+	public uint get_n_items()
+	{
+		return (uint) this.rows.size;
+	}
+
+	public Object? get_item(uint position)
+	{
+		if (position >= this.rows.size) {
+			return null;
+		}
+		return this.rows[(int) position];
+	}
+
+	/**
+	 * Resync only the uncompleted (pending) segment.
+	 */
+	public void rebuild()
+	{
+		var n0 = (uint) this.rows.size;
+		this.clear_pending(false);
+		var after_clear = (uint) this.rows.size;
+		var k = (int) n0 - (int) after_clear;
+		this.add_pending(false);
+		var n1 = (uint) this.rows.size;
+		if (k == 0 && n1 == after_clear) {
+			return;
+		}
+		this.items_changed(after_clear, (uint) k, n1 - after_clear);
+	}
+
+	public void clear_pending(bool call_changed = false)
+	{
+		var removed = 0u;
+		while (this.rows.size > 0) {
+			var d = (Details) this.rows.get(this.rows.size - 1);
+			if (d.status == PhaseEnum.COMPLETED) {
+				break;
+			}
+			this.rows.remove_at(this.rows.size - 1);
+			removed++;
+		}
+		if (removed == 0 || !call_changed) {
+			return;
+		}
+		this.items_changed((uint) this.rows.size, removed, 0);
+	}
+
+	public void add_pending(bool call_changed = false)
+	{
+		var pos = (uint) this.rows.size;
+		var added = 0u;
+		foreach (var step in this.runner.pending.steps) {
+			foreach (var d in step.children) {
+				this.rows.add(d);
+				added++;
+			}
+		}
+		if (added == 0 || !call_changed) {
+			return;
+		}
+		this.items_changed(pos, 0, added);
+	}
+
+	public void add_completed(Step step)
+	{
+		var n0 = (uint) this.rows.size;
+		this.clear_pending(false);
+		var after_clear = (uint) this.rows.size;
+		var k = (int) n0 - (int) after_clear;
+		foreach (var d in step.children) {
+			this.rows.add(d);
+		}
+		this.add_pending(false);
+		var n1 = (uint) this.rows.size;
+		if (k == 0 && n1 == after_clear) {
+			return;
+		}
+		this.items_changed(after_clear, (uint) k, n1 - after_clear);
+	}
+
+	public void clear()
+	{
+		var old_n = (uint) this.rows.size;
+		if (old_n == 0) {
+			return;
+		}
+		this.rows.clear();
+		this.items_changed(0, old_n, 0);
+	}
+}
+
+}
