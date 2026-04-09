@@ -53,7 +53,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 
 	public Object? get_item(uint position)
 	{
-		if (position >= this.rows.size) {
+		if (position >= (uint) this.rows.size) {
 			return null;
 		}
 		return this.rows[(int) position];
@@ -64,39 +64,43 @@ public class ProgressList : GLib.Object, GLib.ListModel
 	 */
 	public void rebuild()
 	{
-		var n0 = (uint) this.rows.size;
+		var n0 = this.rows.size;
 		this.clear_pending(false);
-		var after_clear = (uint) this.rows.size;
-		var k = (int) n0 - (int) after_clear;
+		var after_clear = this.rows.size;
+		var k = n0 - after_clear;
 		this.add_pending(false);
-		var n1 = (uint) this.rows.size;
+		var n1 = this.rows.size;
 		if (k == 0 && n1 == after_clear) {
 			return;
 		}
-		this.items_changed(after_clear, (uint) k, n1 - after_clear);
+		this.items_changed((uint) after_clear, (uint) k, (uint) (n1 - after_clear));
 	}
 
+	/**
+	 * Remove non-{@link PhaseEnum.COMPLETED} rows from the tail; stop at the first
+	 * {@link PhaseEnum.COMPLETED} row (nothing else).
+	 */
 	public void clear_pending(bool call_changed = false)
 	{
-		var removed = 0u;
-		while (this.rows.size > 0) {
-			var d = (Details) this.rows.get(this.rows.size - 1);
-			if (d.status == PhaseEnum.COMPLETED) {
+		var old_size = this.rows.size;
+		for (var i = old_size; i > 0; i--) {
+			var pi = this.rows.get(this.rows.size - 1);
+			if (pi.status == PhaseEnum.COMPLETED) {
 				break;
 			}
 			this.rows.remove_at(this.rows.size - 1);
-			removed++;
 		}
+		var removed = old_size - this.rows.size;
 		if (removed == 0 || !call_changed) {
 			return;
 		}
-		this.items_changed((uint) this.rows.size, removed, 0);
+		this.items_changed((uint) this.rows.size, (uint) removed, 0);
 	}
 
 	public void add_pending(bool call_changed = false)
 	{
-		var pos = (uint) this.rows.size;
-		var added = 0u;
+		var pos = this.rows.size;
+		var added = 0;
 		foreach (var step in this.runner.pending.steps) {
 			foreach (var d in step.children) {
 				this.rows.add(d);
@@ -106,34 +110,34 @@ public class ProgressList : GLib.Object, GLib.ListModel
 		if (added == 0 || !call_changed) {
 			return;
 		}
-		this.items_changed(pos, 0, added);
+		this.items_changed((uint) pos, 0, (uint) added);
 	}
 
 	public void add_completed(Step step)
 	{
-		var n0 = (uint) this.rows.size;
+		var n0 = this.rows.size;
 		this.clear_pending(false);
-		var after_clear = (uint) this.rows.size;
-		var k = (int) n0 - (int) after_clear;
+		var after_clear = this.rows.size;
+		var k = n0 - after_clear;
 		foreach (var d in step.children) {
 			this.rows.add(d);
 		}
 		this.add_pending(false);
-		var n1 = (uint) this.rows.size;
+		var n1 = this.rows.size;
 		if (k == 0 && n1 == after_clear) {
 			return;
 		}
-		this.items_changed(after_clear, (uint) k, n1 - after_clear);
+		this.items_changed((uint) after_clear, (uint) k, (uint) (n1 - after_clear));
 	}
 
 	public void clear()
 	{
-		var old_n = (uint) this.rows.size;
+		var old_n = this.rows.size;
 		if (old_n == 0) {
 			return;
 		}
 		this.rows.clear();
-		this.items_changed(0, old_n, 0);
+		this.items_changed(0, (uint) old_n, 0);
 	}
 }
 
