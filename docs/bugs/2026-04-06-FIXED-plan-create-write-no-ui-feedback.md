@@ -44,7 +44,7 @@ Original workflow: **debug → understand → propose → approval → apply**. 
 ### Planning alignment (workspace rules)
 
 - **Implement only what is approved** here (or a later explicit tweak). Do not expand scope (extra refactors, unrelated **`Tool`** / **`Details`** cleanups, or prompt/skill edits) without a separate OK.
-- If **`ERROR:`** handling collides with replay, multi-write ordering, or post-exec synthesis, **document the blocker in this bug file**, **revert** speculative code, and **stop for approval** — same spirit as **`.cursor/rules/plan-implementation-workflow.mdc`** when a design gap appears.
+- If **`ERROR:`** handling collides with replay, multi-write ordering, or post-exec synthesis, **document the blocker in this bug file**, **revert** speculative code, and **stop for approval** — same spirit as **`docs/guide-to-writing-plans.md`** (**Plan implementation workflow**) when a design gap appears.
 - **No surprise fixes:** no defensive checks that only hide failures; surface **`write_file`** errors and **abort** per §4 (**no** LLM retry on write failure).
 
 ### Root cause (what we fix)

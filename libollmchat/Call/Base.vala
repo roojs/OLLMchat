@@ -101,7 +101,7 @@ namespace OLLMchat.Call
 					break;
 			}
 
-			//GLib.debug("Request URL: %s", url);
+			GLib.debug("Request URL: %s", url);
 
 			var bytes = yield this.connection.soup.send_and_read_async(message, GLib.Priority.DEFAULT, null);
 
@@ -233,7 +233,7 @@ namespace OLLMchat.Call
 				line = data_stream.read_line(out length, this.cancellable);
 			} catch (Error e) {
 				// If reading fails, just return (fall through to default error)
-				//GLib.debug("Failed to read error response from stream: %s", e.message);
+				GLib.debug("Failed to read error response from stream: %s", e.message);
 				return;
 			}
 			
@@ -352,6 +352,7 @@ namespace OLLMchat.Call
 		private bool process_json_chunk(string chunk_str)
 		{
 			var trimmed = chunk_str.strip();
+			//GLib.debug("GOT: %s", trimmed);
 			if (trimmed == "" || !trimmed.has_suffix("}")) {
 				return true;
 			}
@@ -360,16 +361,16 @@ namespace OLLMchat.Call
 				parser.load_from_data(trimmed, -1);
 				var chunk_node = parser.get_root();
 				if (chunk_node == null || chunk_node.get_node_type() != Json.NodeType.OBJECT) {
-					//GLib.debug("Skipping non-object JSON chunk: %s", trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length));
+					GLib.debug("Skipping non-object JSON chunk: %s", trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length));
 					return true;
 				}
 				// Only log first chunk when message not yet set
 				// if (this.streaming_response.message == null) {
-				// 	//GLib.debug("First streaming response: %s", trimmed);
+				// 	GLib.debug("First streaming response: %s", trimmed);
 				// }
 				var chunk_obj = chunk_node.get_object();
 				if (chunk_obj.has_member("done") && chunk_obj.get_boolean_member("done") == true) {
-					//GLib.debug("Last streaming response: %s", trimmed);
+					GLib.debug("Last streaming response: %s", trimmed);
 				}
 				var payload_node = new Json.Node(Json.NodeType.OBJECT);
 				payload_node.set_object(chunk_obj);
@@ -387,7 +388,7 @@ namespace OLLMchat.Call
 				return this.process_streaming_chunk(stream_chunk);
 			} catch (Error e) {
 				// Log JSON parsing errors
-				//GLib.debug("Failed to parse JSON chunk: %s. Error: %s", trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length), e.message);
+				GLib.debug("Failed to parse JSON chunk: %s. Error: %s", trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length), e.message);
 				// Skip invalid JSON chunks - they might be partial or malformed
 				return true;
 			}

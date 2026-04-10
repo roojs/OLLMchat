@@ -439,6 +439,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	{
 		this.refined_done = false;
 		this.refine_error = null;
+		this.status = PhaseEnum.REFINEMENT;
 		this.add_message(new OLLMchat.Message("ui",
 			OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Refining " +
 				this.task_data.get("name").to_markdown().strip() + " with " +
@@ -482,6 +483,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 					if (attempt != 2) {
 						continue;
 					}
+					this.status = PhaseEnum.ERROR;
 					this.refine_error = new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + e.message);
 					throw this.refine_error;
 				}
@@ -499,6 +501,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			if (this.result_parser.issues == "") {
 				this.runner.replay_step("refinement_success: " + task_name, response_text);
 				this.refined_done = true;
+				this.status = PhaseEnum.REFINED;
 				if (this.resume_refined != null) {
 					this.resume_refined();
 				}
@@ -513,6 +516,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 					this.result_parser.issues.strip())));
 			}
 		}
+		this.status = PhaseEnum.ERROR;
 		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 			"text.oc-frame-danger.collapsed Refinement for \"" + 
 				this.task_data.get("name").to_markdown().strip() + "\" failed after 5 tries",
@@ -778,7 +782,12 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 					? "Examining " + ex.exam_reference.path
 					: "Executing task: " + task_name)
 				+ " (" + (i + 1).to_string() + " of " + this.exec_runs.size.to_string() + ")"));
-			yield ex.run();
+			try {
+				yield ex.run();
+			} catch (GLib.Error e) {
+				this.status = PhaseEnum.ERROR;
+				throw e;
+			}
 		}
 		// Multi-run: post-exec summarizes combined tool runs (write_file runs are included inside each run).
 		// Single run: no synthesis pass — copy that run's executor output.
@@ -874,6 +883,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 					last_issues)));
 			}
 		}
+		this.status = PhaseEnum.ERROR;
 		var task_name_fail = this.task_data.get("name").to_markdown().strip();
 		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 			"text.oc-frame-danger.collapsed Summation of tool calls failed for \"" + task_name_fail + "\"",

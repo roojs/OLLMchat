@@ -2,6 +2,25 @@
 
 Plan markdown files live in **`docs/plans/`**; completed work is archived under **`docs/plans/done/`** (see **Done / archive** below). This document is intentionally **not** named `README.md` so it is not mistaken for a generic package readme.
 
+It is the **canonical** place for: plan shape, code-proposal fences, **ordered chunk format** for large methods, and **implementation workflow** (what implementers and agents must follow). Keep this material here—do not maintain a parallel copy under **`.cursor/rules/`**.
+
+## Plan implementation workflow
+
+Applies when implementing **feature or refactor work** from **`docs/plans/*`**, tickets, or explicit user instructions.
+
+1. **Implement only what was approved** (the written plan or agreed scope). Do not expand scope silently.
+
+2. **If something blocks you** (build errors, missing fields, wrong API split, design hole):
+   - **Revert** speculative or partial code rather than piling on workarounds.
+   - **Update the plan** (or the relevant doc): what failed, what must change, options if any.
+   - **Stop and ask for explicit user approval** before continuing implementation.
+
+3. **No surprise fixes**: do not add drive-by refactors, unrelated cleanups, or “compile-only” API changes unless the user approved that change in the plan or in chat.
+
+4. **Exception**: trivial edits the user asked for in the same message (typos, formatting) are fine—still avoid unrelated code changes.
+
+**Bug fixes** follow **`docs/bug-fix-process.md`** (debug → understand → propose → approval → apply). This workflow adds the **revert + plan update + approval** loop when **planned implementation** hits design gaps.
+
 ## Audience
 
 - **Humans** skim **title, status, scope, acceptance criteria**, and **`## Concrete code proposals`** (or equivalent). Long narrative sections are **rarely read** — do not rely on them for requirements.
@@ -37,6 +56,14 @@ Optional, keep short:
 ## Code proposals section (mandatory pattern)
 
 Intro line: hunks are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
+
+### Do / don’t (keep / remove / replace / add)
+
+- **Do** put the contract in **fenced code blocks** under **Keep** / **Remove** / **Replace with** / **Add**. The implementer applies **verbatim hunks**, not a paraphrase.
+- **Don’t** replace code blocks with long prose about what to keep or replace (“delete the old loop and insert …”) **without** the matching fences.
+- **Do** use **`#### Add`** (or an **Add** chunk in the ordered format) for **pure insertions** — new lines only, nothing deleted.
+- **Don’t** use **`Remove`** with `// (nothing)` or “nothing to remove” to mean insertion. If there is nothing to delete, there is **no Remove** — use **Add** (after a **Keep** anchor when you need one).
+- **Do** keep a **one-line reason** on **Replace with** / **Add** where the format calls for it (ordered chunks); keep it short — the **fence** carries the real content.
 
 For **each** file/topic, use a **numbered** `###` heading, then **only** these subheadings above code:
 
@@ -82,6 +109,57 @@ Apply parts **in order** (Part 1, then 2, …). **`Remove`** / **`Replace with`*
 
 **Very short** methods (a few lines) may use a single **Keep** spanning the whole method if it stays readable.
 
+### Ordered chunk format for large methods
+
+Use this when a **single** fenced block would be ambiguous—typically **large or heavily edited methods**, or any region where the reader must apply edits **in sequence** through the body.
+
+**Small, one-off edits** can stay a **single** fenced `vala` block with enough surrounding context.
+
+#### Cycle (repeat top → bottom until the method or region is done)
+
+Interleave in this order:
+
+1. **Keep** — Fenced block of **unchanged** code (enough lines to anchor the next edit—usually starts or ends a stable span).
+2. Then either:
+   - **Remove** + **Replace with** — **Remove** is only for **verbatim lines to delete**. **Replace with** — *one-line reason*, then a fence of **new** code that replaces what was removed; or
+   - **Add** — *one-line reason* (e.g. **Add** — insert local state before the rest of the method), then a fence of **new** code only — use this for **pure insertions** (do **not** pair with an empty **Remove**).
+
+Then **Keep** again and repeat as needed.
+
+The **reason** sits on the **Replace with** or **Add** line **immediately above** that block’s code fence. Example: **Replace with** — Set status to REFINEMENT while refinement runs.
+
+#### Rules
+
+- Each **Keep**, **Remove**, **Replace with**, and **Add** that carries code gets its **own** fenced block.
+- Do **not** merge several logical edits into one **Replace with** / **Add** unless they are inseparable.
+- **Keep** blocks must match the **current** source so a reader can verify line-for-line before editing.
+
+You may label each block with plain **Keep** / **Remove** / **Replace with** / **Add** (as in many plans) or with the same headings as elsewhere in this guide (**`#### Keep`**, etc.)—same meaning.
+
+#### Example (one cycle — insertion after anchor)
+
+**Keep**
+
+```vala
+	void foo() {
+```
+
+**Add** — Initialize state required for the following logic.
+
+```vala
+		this.bar = 1;
+```
+
+**Keep**
+
+```vala
+	}
+```
+
+#### Reference plan (long worked example)
+
+**`docs/plans/7.14.1.3-details-vala.md`** — **Files** section: **`Details.refine`**, **`run_exec`**, **`extract_exec`**, and **`####` … `— ordered chunks`** subsections (uses **Add** for pure insertions per **Do / don’t** above).
+
 ### Implementable code belongs in fences
 
 - Anything the implementer must apply must appear as verbatim code under **`#### Remove`**, **`#### Replace with`**, **`#### Add`**, or **`#### Keep`** — **not** only in narrative bullets (“add a case for X”, “move the call after the catch”) without a matching fence.
@@ -97,6 +175,6 @@ When implemented: move or copy to **`docs/plans/done/`**, prefix filename with *
 
 ## Related
 
-- **`.cursor/rules/CODING_STANDARDS.md`** — checklist for plans + Vala/style rules
-- **`.cursor/rules/plan-implementation-workflow.mdc`** — implement only approved scope; update plan on blockers
+- **`.cursor/rules/CODING_STANDARDS.md`** — checklist for plans + Vala/style rules (also links here for plan layout)
+- **`docs/bug-fix-process.md`** — bug fix flow (contrast with **Plan implementation workflow** above)
 - **`docs/plans/done/6.9-DONE-debugging-performance.md`** — nested thinking / history replay perf (see **`docs/plans/done/6.8-DONE-fixing-large-restore.md`** for parser work)

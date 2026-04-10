@@ -177,6 +177,9 @@ namespace Markdown
 			mp.set("[1.", FormatType.LINK);
 			mp.set("[1?", FormatType.LINK);
 			mp.set("[11", FormatType.LINK);
+			mp.set("[./", FormatType.LINK); // [./some path ](some path again)
+			mp.set("[.?", FormatType.LINK); // (.curosr)
+
 
 			mp.set("[`", FormatType.INVALID);
 			mp.set("[`?", FormatType.LINK);

@@ -248,6 +248,7 @@ namespace OLLMcoder.Task
 							last_issues)));
 						continue;
 					}
+					this.status = PhaseEnum.ERROR;
 					this.parent.issues += "\n" + "Executor failed after 5 tries: " + last_issues;
 					throw e;
 				}
@@ -289,6 +290,7 @@ namespace OLLMcoder.Task
 								OLLMchat.Message.fenced(
 									"text.oc-frame-danger.collapsed Execution results",
 									this.tool_run_result)));
+							this.status = PhaseEnum.ERROR;
 							this.parent.issues += "\nwrite_file failed: " + this.tool_run_result;
 							throw new GLib.IOError.FAILED("write_file failed: " + this.tool_run_result);
 						}
@@ -314,6 +316,7 @@ namespace OLLMcoder.Task
 						last_issues)));
 				}
 			}
+			this.status = PhaseEnum.ERROR;
 			this.parent.issues += "\n" + "Executor failed after 5 tries: " + last_issues;
 			throw new GLib.IOError.INVALID_ARGUMENT("Task executor: " + last_issues);
 		}
