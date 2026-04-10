@@ -62,6 +62,11 @@ public enum PhaseEnum
 	 */
 	REFINEMENT,
 	/**
+	 * Progress UI: refinement parse succeeded; awaiting **`run_exec`** (or **`wait_refined`** resume).
+	 * Not shown in the status column — {@link to_human} returns empty (same as {@link NONE} for display).
+	 */
+	REFINED,
+	/**
 	 * Outstanding task list markdown (iteration / execution context); may include task result
 	 * output when ''exec_done''.
 	 */
@@ -112,6 +117,11 @@ public enum PhaseEnum
 	 */
 	EXEC_WRITE,
 	/**
+	 * Progress UI: retries exhausted or unrecoverable failure ({@link Tool.run},
+	 * {@link OLLMcoder.Skill.Runner.send_async}, {@link OLLMcoder.Skill.Runner.run_task_list_iteration}).
+	 */
+	ERROR,
+	/**
 	 * Progress UI: row finished (task or tool pass).
 	 */
 	COMPLETED;
@@ -145,7 +155,7 @@ public enum PhaseEnum
 	/**
 	 * Stable wire id for ''agent-stage'' messages for phases the live flow emits.
 	 *
-	 * Returns '''' for {@link NONE}, {@link COARSE}, {@link REFINE_COMPLETED}, and any value
+	 * Returns '''' for {@link NONE}, {@link COARSE}, {@link REFINED}, {@link REFINE_COMPLETED}, and any value
 	 * not listed explicitly (those stages are not sent as ''agent-stage'' bodies).
 	 *
 	 * @return id string (''exec'', ''exec_validate'', …) or empty string
@@ -180,6 +190,7 @@ public enum PhaseEnum
 	{
 		switch (this) {
 		case NONE:
+		case REFINED:
 		case REFINE_COMPLETED:
 			return "";
 		case COARSE:
@@ -204,6 +215,8 @@ public enum PhaseEnum
 			return "<b>Writing Files</b>";
 		case POST_EXEC:
 			return "<b>Post review</b>";
+		case ERROR:
+			return "<span foreground=\"#cc0000\"><b>Retry Failed</b></span>";
 		case COMPLETED:
 			return "<span foreground=\"#808080\">✓</span>";
 		case EXEC_VALIDATE:

@@ -280,6 +280,7 @@ namespace OLLMcoder.Skill
 							previous_proposal_issues)));
 					}
 				}
+				rp.status = OLLMcoder.Task.PhaseEnum.ERROR;
 				if (cancellable != null) {
 					cancellable.cancel();
 				}
@@ -510,6 +511,7 @@ namespace OLLMcoder.Skill
 				this.progress.add_pending(true);
 				return;
 			}
+			ir.status = OLLMcoder.Task.PhaseEnum.ERROR;
 			if (cancellable != null) {
 				cancellable.cancel();
 			}

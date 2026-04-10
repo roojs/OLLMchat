@@ -21,11 +21,12 @@ namespace OLLMcoder.Task
 
 /**
  * List of {@link Tool} rows for one {@link Details}. Backing store for {@link ProgressItem.children}
- * on {@link Details} once **7.14.1.3** wires the execution queue; implements {@link GLib.ListModel}.
+ * on {@link Details} once **7.14.1.3** wires the execution queue; implements {@link GLib.ListModel},
+ * {@link Gee.Iterable}, and {@link Gee.Traversable} so call sites can ''foreach'' over tools.
  *
  * @see Details.build_exec_runs
  */
-public class ToolList : GLib.Object, GLib.ListModel
+public class ToolList : GLib.Object, GLib.ListModel, Gee.Traversable<Tool>, Gee.Iterable<Tool>
 {
 	private Gee.ArrayList<Tool> items = new Gee.ArrayList<Tool>();
 
@@ -82,6 +83,16 @@ public class ToolList : GLib.Object, GLib.ListModel
 	 */
 	public int size {
 		get { return this.items.size; }
+	}
+
+	public bool foreach(Gee.ForallFunc<Tool> f)
+	{
+		return this.items.foreach(f);
+	}
+
+	public Gee.Iterator<Tool> iterator()
+	{
+		return this.items.iterator();
 	}
 
 	/**

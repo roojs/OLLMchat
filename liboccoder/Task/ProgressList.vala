@@ -95,7 +95,8 @@ public class ProgressList : GLib.Object, GLib.ListModel
 
 	/**
 	 * Remove non-{@link PhaseEnum.COMPLETED} rows from the tail; stop at the first
-	 * {@link PhaseEnum.COMPLETED} row (nothing else).
+	 * {@link PhaseEnum.COMPLETED} row. Used when replacing the pending segment (e.g. after a
+	 * successful slice); not used on fatal-error exits, so {@link PhaseEnum.ERROR} is not special-cased here.
 	 */
 	public void clear_pending(bool call_changed = false)
 	{

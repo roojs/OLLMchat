@@ -17,7 +17,7 @@ namespace OLLMtools.WriteFile
 		public override string title { get { return "Write File Tool"; } }
 		public override string example_call {
 			get {
-				return "{\"name\": \"write_file\", \"arguments\": {\"file_path\": \"src/App.vala\", \"search_text\": \"  old();\", \"content\": \"  new();\"}}";
+				return "{\"name\": \"write_file\", \"arguments\": {\"file_path\": \"src/App.vala\", \"content\": \"// implementation\", \"ast_path\": \"App-MainWindow-on_activate\", \"location\": \"replace\"}}";
 			}
 		}
 		public override string description { get {

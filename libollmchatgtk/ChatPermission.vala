@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ * Copyright (C) 2025 Alan Knowles <alan@roojs.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -110,7 +110,6 @@ namespace OLLMchatGtk
 			// Show/hide buttons based on one_time flag
 			this.deny_always_btn.visible = !one_time;
 			this.allow_always_btn.visible = !one_time;
-			this.deny_once_btn.visible = one_time;
 			// allow_once_btn is always visible
 			
 			// Show the widget
