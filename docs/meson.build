@@ -233,6 +233,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Skill/Factory.vala',
     '../liboccoder/Task/PhaseEnum.vala',  # Task: PhaseEnum — before Step/Details
     '../liboccoder/Task/ProgressItem.vala',
+    '../liboccoder/Task/ProgressRunner.vala',
     '../liboccoder/Task/Step.vala',     # Task: Step → Details
     '../liboccoder/Task/Details.vala',  # Task: Details → ResultParser, Tool
     '../liboccoder/Task/ValidateLink.vala',  # after Details — match liboccoder/meson.build

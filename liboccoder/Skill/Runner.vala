@@ -221,7 +221,14 @@ namespace OLLMcoder.Skill
 			try {
 				var previous_proposal = "";
 				var previous_proposal_issues = "";
-				for (var try_count = 0; try_count < 5; try_count++) {
+				var rp = new OLLMcoder.Task.ProgressRunner(this) {
+					in_creation = true,
+					try_max = 5,
+					try_no = 0,
+					status = OLLMcoder.Task.PhaseEnum.LIST
+				};
+				this.progress.add(rp);
+				for (; rp.try_no < rp.try_max; rp.try_no++) {
 					var tpl = this.task_creation_prompt(
 						in_message.content,
 						previous_proposal,
@@ -255,15 +262,19 @@ namespace OLLMcoder.Skill
 					}
 					if (parser.issues == "") {
 						this.pending.write("task_list.md", response);
+						rp.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
+						this.progress.clear_pending(true);
+						this.progress.add_pending(true);
 						yield this.handle_task_list(cancellable);
 						return;
 					}
+					rp.status = OLLMcoder.Task.PhaseEnum.LIST_RETRY;
 					previous_proposal = parser.proposal;
-					var try_label = "[try %d] ".printf(try_count + 1);
+					var try_label = "[try %d] ".printf((int) (rp.try_no + 1));
 					previous_proposal_issues = try_label + parser.issues.strip();
 					this.replay_step("task_list_parse_issues",
 						response + "\n\nParse issues:\n" + parser.issues);
-					if (try_count < 4) {
+					if (rp.try_no < 4) {
 						this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 							"text.oc-frame-warning.collapsed Task list had issues (retrying)",
 							previous_proposal_issues)));
@@ -321,6 +332,8 @@ namespace OLLMcoder.Skill
 		private async void handle_task_list(GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
 			this.writer_approval = false;
+			this.progress.clear_pending(true);
+			this.progress.add_pending(true);
 			var hit_max_rounds = true;
 			for (var i = 0; i < 20; i++) {
 				if (cancellable != null && cancellable.is_cancelled()) {
@@ -438,18 +451,26 @@ namespace OLLMcoder.Skill
 			var response = "";
 			var parser = new OLLMcoder.Task.ResultParser(this, "");
 
-			for (var try_count = 0; try_count < 5; try_count++) {
+			var ir = new OLLMcoder.Task.ProgressRunner(this) {
+				in_creation = false,
+				try_max = 5,
+				try_no = 0,
+				status = OLLMcoder.Task.PhaseEnum.TASK_LIST_ITERATION
+			};
+			this.progress.add(ir);
+			for (; ir.try_no < ir.try_max; ir.try_no++) {
+				this.progress.clear_pending(false);
 				var tpl = this.iteration_prompt(parser.issues, existing_proposed, response);
 				this.fill_tools(); // (clears tools)
-				if (try_count > 0) {
+				if (ir.try_no > 0) {
 					this.add_message(new OLLMchat.Message("ui",
-						"Trying again (attempt %d/5). Sending revised task list to LLM with issues feedback.".printf(try_count + 1)));
+						"Trying again (attempt %d/5). Sending revised task list to LLM with issues feedback.".printf((int) (ir.try_no + 1))));
 				}
 				var model_label = this.session.model_usage.model != "" ?
 					this.session.model_usage.display_name_with_size() : "Unknown model";
 				// Show user message only in UI (same as Task.Tool executor); system prompt must not appear in chat.
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-					"markdown.oc-frame-info.collapsed " + (try_count > 0 ?
+					"markdown.oc-frame-info.collapsed " + (ir.try_no > 0 ?
 					"Sending revised task list to LLM" : "Reviewing and updating task list") + " with " + model_label,
 					tpl.filled_user)));
 				if (!this.in_replay) {
@@ -477,12 +498,16 @@ namespace OLLMcoder.Skill
 					this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 						"text.oc-frame-warning.collapsed Task list iteration had issues",
 						parser.issues.strip())));
+					ir.status = OLLMcoder.Task.PhaseEnum.TASK_LIST_ITERATION_RETRY;
 					continue;
 				}
 				this.pending.goals_summary_md = existing_proposed.goals_summary_md;
 				this.pending.write("task_list_latest.md", response);
 				this.pending.write("task_list_completed.md",
 					this.completed.to_markdown(OLLMcoder.Task.PhaseEnum.LIST));
+				ir.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
+				this.progress.clear_pending(true);
+				this.progress.add_pending(true);
 				return;
 			}
 			if (cancellable != null) {

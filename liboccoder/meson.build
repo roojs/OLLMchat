@@ -34,6 +34,7 @@ occoder_src = files([
   'Skill/Factory.vala',
   'Task/PhaseEnum.vala',  # Task: PhaseEnum (no other Task deps)
   'Task/ProgressItem.vala',
+  'Task/ProgressRunner.vala',
   'Task/Step.vala',     # Task: Step → Details
   'Task/Details.vala',  # Task: Details → ResultParser, Tool
   'Task/ValidateLink.vala',  # after Details (uses Details; Details delegates link validation)

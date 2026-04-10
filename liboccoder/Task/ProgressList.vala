@@ -20,9 +20,10 @@ namespace OLLMcoder.Task
 {
 
 /**
- * {@link GLib.ListModel} of {@link ProgressItem} rows: first all {@link Details} from
- * {@link OLLMcoder.Skill.Runner.completed}, then all from ''runner.pending''. Phase 1 stores only
- * {@link Details} instances; {@link GLib.ListModel.get_item_type} returns ''typeof(ProgressItem)''.
+ * {@link GLib.ListModel} of {@link ProgressItem} rows: {@link Details} from completed work,
+ * zero or more {@link ProgressRunner} rows (e.g. one for task creation and one for iteration — each
+ * {@link PhaseEnum.COMPLETED} when that slice is done), pending {@link Details} from
+ * ''runner.pending''. {@link GLib.ListModel.get_item_type} returns ''typeof(ProgressItem)''.
  *
  * @see OLLMfiles.ProjectList
  */
@@ -74,6 +75,22 @@ public class ProgressList : GLib.Object, GLib.ListModel
 			return;
 		}
 		this.items_changed((uint) after_clear, (uint) k, (uint) (n1 - after_clear));
+	}
+
+	/**
+	 * Appends a {@link ProgressRunner} row supplied by {@link OLLMcoder.Skill.Runner}. Caller constructs
+	 * {@link r} and sets try fields / phase before calling. Starts with {@link clear_pending}
+	 * (no signal); then one {@link GLib.ListModel.items_changed} for tail removals (if any)
+	 * plus the new row.
+	 */
+	public void add(ProgressRunner r)
+	{
+		var old_size = this.rows.size;
+		this.clear_pending(false);
+		var after_clear = this.rows.size;
+		var removed = old_size - after_clear;
+		this.rows.add(r);
+		this.items_changed((uint) after_clear, (uint) removed, 1u);
 	}
 
 	/**

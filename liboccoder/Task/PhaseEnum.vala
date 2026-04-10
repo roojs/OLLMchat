@@ -67,6 +67,10 @@ public enum PhaseEnum
 	 */
 	LIST,
 	/**
+	 * Progress UI: task list creation retry after parse failure ({@link OLLMcoder.Skill.Runner.send_async}).
+	 */
+	LIST_RETRY,
+	/**
 	 * Completed tasks aggregate for prompts (e.g. task list iteration); not a wire ''agent-stage'' id.
 	 */
 	REFINE_COMPLETED,
@@ -87,6 +91,10 @@ public enum PhaseEnum
 	 * Revised task list from iteration; pairs with wire ''task_list_iteration''.
 	 */
 	TASK_LIST_ITERATION,
+	/**
+	 * Progress UI: task list iteration retry after parse failure ({@link OLLMcoder.Skill.Runner.run_task_list_iteration}).
+	 */
+	TASK_LIST_ITERATION_RETRY,
 	/**
 	 * Post-exec validation of writes; pairs with wire ''exec_validate'' and replay validate steps.
 	 */
@@ -180,8 +188,12 @@ public enum PhaseEnum
 			return "<b>Refine</b>";
 		case LIST:
 			return "<b>Creating</b>";
+		case LIST_RETRY:
+			return "<b>Retrying</b>";
 		case TASK_LIST_ITERATION:
-			return "<b>Updating</b>";
+			return "<b>Reviewing</b>";
+		case TASK_LIST_ITERATION_RETRY:
+			return "<b>Retrying</b>";
 		case EXECUTION:
 			return "<b>Review output</b>";
 		case TOOLS_RUNNING:
