@@ -221,6 +221,7 @@ public class List : Object
 			this.runner.completed.slugs.set(t.slug(), t);
 		}
 		this.steps.remove_at(0);
+		this.runner.progress.add_completed(step);
 		return true;
 	}
 
@@ -313,6 +314,7 @@ public class List : Object
 			this.runner.completed.slugs.set(t.slug(), t);
 		}
 		this.steps.remove_at(0);
+		this.runner.progress.add_completed(step);
 		return true;
 	}
 }
