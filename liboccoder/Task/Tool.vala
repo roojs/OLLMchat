@@ -16,7 +16,7 @@ namespace OLLMcoder.Task
 	/**
 	 * Parsed tool call (refinement) and/or one execution run.
 	 *
-	 * Refinement: run_id == ""; stored in task.tools. Use parse(), validate().
+	 * Refinement: run_id == ""; stored in task.proposed_tools. Use parse(), validate().
 	 * Execution run: run_id set; references and optionally tool_call. run() runs the tool (if any)
 	 * then the LLM executor; result in summary and document.
 	 *
@@ -35,7 +35,7 @@ namespace OLLMcoder.Task
 		/**
 		 * Shared reference links for this exec run.
 		 *
-		 * After {@link Details.build_exec_runs}, this list aliases {@link Details.shared_references}.
+		 * After {@link Details.build_run_queue}, this list aliases {@link Details.shared_references}.
 		 * Resolved bodies are inlined in {@link run} for the executor prompt.
 		 */
 		public Gee.ArrayList<Markdown.Document.Format> references {

@@ -95,12 +95,12 @@ namespace OLLMcoder.Skill
 		private int replay_details_pos { get; set; default = 0; }
 
 		/**
-		 * Index into exec_runs on pending.steps[replay_step_pos].children[replay_details_pos]
+		 * Index into {@link Details.tools} (execution queue) on pending.steps[replay_step_pos].children[replay_details_pos]
 		 * during EXECUTION / EXEC_VALIDATE. Invariant:
-		 * 0 <= replay_tool_pos < current_details.exec_runs.size. Advance within
+		 * 0 <= replay_tool_pos < current_details.tools().size. Advance within
 		 * that bound on validate success; when past the last run for this Details,
 		 * coordinate replay_details_pos / replay_tool_pos with live run_exec using
-		 * children.size and exec_runs.size.
+		 * step.children.size and details.tools().size.
 		 */
 		private int replay_tool_pos { get; set; default = 0; }
 
@@ -661,14 +661,14 @@ namespace OLLMcoder.Skill
 				case "content-stream":
 					var st_e = this.pending.steps.get(this.replay_step_pos);
 					var d_exec = st_e.children.get(this.replay_details_pos);
-					if (d_exec.exec_runs.size == 0) {
-						d_exec.build_exec_runs();
+					if (d_exec.tools().size == 0) {
+						d_exec.build_run_queue();
 					}
-					GLib.debug("session %s replay_exec children=%u detail=%d tool=%d exec_runs=%u",
+					GLib.debug("session %s replay_exec children=%u detail=%d tool=%u tools_runs=%d",
 						this.session.fid, st_e.children.size, this.replay_details_pos,
-						this.replay_tool_pos, d_exec.exec_runs.size);
+						this.replay_tool_pos, d_exec.tools().size);
 					var px = new OLLMcoder.Task.ResultParser(this, m.content);
-					px.exec_extract(d_exec.exec_runs.get(this.replay_tool_pos));
+					px.exec_extract(d_exec.tools().get_at(this.replay_tool_pos));
 					break;
 				case "agent-stage":
 					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
@@ -709,7 +709,7 @@ namespace OLLMcoder.Skill
 					}
 					var st_v = this.pending.steps.get(this.replay_step_pos);
 					var det_v = st_v.children.get(this.replay_details_pos);
-					if (this.replay_tool_pos < det_v.exec_runs.size - 1) {
+					if (this.replay_tool_pos < det_v.tools().size - 1) {
 						this.replay_tool_pos++;
 						break;
 					}

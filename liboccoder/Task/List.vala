@@ -85,7 +85,7 @@ public class List : Object
 	 * Returns only ## Tasks and task sections. Runner assembles lead content
 	 * (original prompt, goals_summary_md) when building current_task_list.
 	 * LIST: all tasks with ##### Result summary when exec_done. REFINE_COMPLETED: only completed
-	 * tasks (exec_done and exec_runs non-empty), Name + ##### Result summary (raw); no References, no Tool Calls.
+	 * tasks (exec_done and {@link Details.tools} non-empty), Name + ##### Result summary (raw); no References, no Tool Calls.
 	 */
 	public string to_markdown(PhaseEnum phase)
 	{
@@ -253,7 +253,7 @@ public class List : Object
 	private async void run_child(Details t) throws GLib.Error
 	{
 		yield t.wait_refined();
-		t.build_exec_runs();
+		t.build_run_queue();
 		yield t.run_exec();
 		t.write();
 	}

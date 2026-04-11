@@ -30,11 +30,9 @@ namespace OLLMcoder.Task
  * ListItem.to_key_map(..., a_2_z) for both; update_props(refined_map); code added
  * directly to code_blocks.
  *
- * Execution: after refinement, the runner calls build_exec_runs() then run_exec().
- * exec_runs holds one Tool per run; each Tool.run() runs the tool (if any)
- * then the LLM.
- * Summaries and documents live on each Tool in exec_runs.
- * (ex.document).
+ * Execution: after refinement, the runner calls {@link build_run_queue} then {@link run_exec}.
+ * {@link children} holds one {@link Tool} per run; each {@link Tool.run} runs the tool (if any)
+ * then the LLM. Summaries and documents live on each {@link Tool} in the execution queue.
  */
 public class Details : OLLMchat.Agent.Base, ProgressItem
 {
@@ -53,7 +51,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	public bool requires_user_approval { get; set; default = false; }
 
 	/**
-	 * True after run_exec success; exec_runs then hold summaries and documents.
+	 * True after {@link run_exec} success; {@link children} then hold summaries and documents.
 	 */
 	public bool exec_done { get; set; default = false; }
 
@@ -104,8 +102,8 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	public OLLMcoder.Skill.Definition skill { get; set; }
 
 	/**
-	 * Parser for last refine or executor response; exec_runs valid after exec_done
-	 * (from exec_runs). Initialized in ctor so issues is always available.
+	 * Parser for last refine or executor response; {@link children} valid after {@link exec_done}
+	 * (from the execution queue). Initialized in ctor so issues is always available.
 	 */
 	public ResultParser result_parser { get; set; }
 
@@ -129,17 +127,22 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 		get; set; default = new Gee.ArrayList<Markdown.Document.Block>(); }
 
 	/**
-	 * Tool instances from `## Tool Calls` section (ResultParser);
-	 * build_exec_runs() uses them for scenario 1.
+	 * Refined tool-call **proposals** ({@link ResultParser} / {@link to_markdown}). **Not** nested progress rows — see {@link children}.
 	 */
-	public Gee.ArrayList<Tool> tools { get; set; default = new Gee.ArrayList<Tool>(); }
+	public ToolList proposed_tools { get; set; default = new ToolList(); }
 
 	/**
-	 * Tool instances per execution run. Populated by build_* methods;
-	 * run_exec() runs each (tool if needed, then LLM).
-	 * REFINE_COMPLETED uses their summaries.
+	 * **Execution queue** — {@link build_run_queue} / {@link run_exec} (activity). May reuse {@link proposed_tools} rows or add exam-only / synthetic ''exec'' rows. Same property as {@link ProgressItem.children}; default instance is {@link ToolList}.
+	 *
+	 * Must stay {@link GLib.ListModel} (Vala rejects a {@link ToolList}-typed property here). Use {@link tools} or ''(ToolList) this.children'' for {@link ToolList.append}, ''foreach'', etc.
 	 */
-	public Gee.ArrayList<Tool> exec_runs { get; set; default = new Gee.ArrayList<Tool>(); }
+	public GLib.ListModel children { get; default = new ToolList(); }
+
+	/** Typed view of {@link children} — optional sugar instead of casting at every call site. */
+	public ToolList tools()
+	{
+		return (ToolList) this.children;
+	}
 
 	private PhaseEnum status_value = PhaseEnum.NONE;
 
@@ -161,8 +164,6 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	public string status_str {
 		owned get { return this.status.to_human(); }
 	}
-
-	public GLib.ListModel children { get; default = new ToolList(); }
 
 	/**
 	 * Single markdown document after post-exec synthesis. Headings used for
@@ -451,12 +452,15 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 		this.chat_call.tools.clear();
 		for (var i = 0; i < 5; i++) {
 			if (cancellable != null && cancellable.is_cancelled()) {
+				if (this.status != PhaseEnum.ERROR) {
+					this.status = PhaseEnum.STOPPED;
+				}
 				return;
 			}
 			// Clear state from any previous parse so we don't feed it back into the prompt
 			// (task_data / to_markdown would include tools and code_blocks, causing the LLM
 			// to echo them and producing combined output that fails to parse).
-			this.tools.clear();
+			this.proposed_tools.clear();
 			this.code_blocks.clear();
 			var r = new ResolveLink (this.runner, this, PhaseEnum.REFINEMENT);
 			yield r.preload_links (this.references);
@@ -483,12 +487,15 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 					if (attempt != 2) {
 						continue;
 					}
-					this.status = PhaseEnum.ERROR;
 					this.refine_error = new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + e.message);
+					this.status = PhaseEnum.ERROR;
 					throw this.refine_error;
 				}
 			}
 			if (cancellable != null && cancellable.is_cancelled()) {
+				if (this.status != PhaseEnum.ERROR) {
+					this.status = PhaseEnum.STOPPED;
+				}
 				return;
 			}
 			this.result_parser = new ResultParser(this.runner, response_text);
@@ -508,6 +515,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 				return;
 			}
 			if (i < 4) {
+				this.status = PhaseEnum.REFINEMENT_RETRY;
 				this.runner.replay_step("refinement_parse_issues: " + task_name,
 					response_text + "\n\nParse issues:\n" + this.result_parser.issues);
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
@@ -516,11 +524,11 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 					this.result_parser.issues.strip())));
 			}
 		}
-		this.status = PhaseEnum.ERROR;
 		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 			"text.oc-frame-danger.collapsed Refinement for \"" + 
 				this.task_data.get("name").to_markdown().strip() + "\" failed after 5 tries",
 			this.result_parser.issues.strip())));
+		this.status = PhaseEnum.ERROR;
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
 	}
 
@@ -623,11 +631,11 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 				+ block.to_markdown() + "\n";
 		}
 		if (phase == PhaseEnum.REFINE_COMPLETED || phase == PhaseEnum.POST_EXEC ||
-				this.tools.size == 0) {
+				this.proposed_tools.size == 0) {
 			return ret;
 		}
 		ret += "\n## Tool Calls\n\n";
-		foreach (var tool in this.tools) {
+		foreach (var tool in this.proposed_tools) {
 			var obj = new Json.Object();
 			obj.set_string_member("name", tool.name);
 			if (tool.tool_call != null && tool.tool_call.id != "") {
@@ -740,9 +748,9 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 		return "## Reference Contents\n\n" + parts;
 	}
 
-	public void build_exec_runs()
+	public void build_run_queue()
 	{
-		this.exec_runs.clear();
+		this.tools().clear();
 		var factory = (OLLMchat.Agent.Factory) this.runner.sr_factory;
 		var idx = 0;
 		if (this.exam_references.size > 0) {
@@ -750,57 +758,56 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 				var ex = new Tool(factory, this.session, this, "exam-%d".printf(idx++));
 				ex.exam_reference = exam;
 				ex.references = this.shared_references;
-				this.exec_runs.add(ex);
+				this.tools().append(ex);
 			}
 			return;
 		}
-		if (this.tools.size > 0) {
-			foreach (var ex in this.tools) {
+		if (this.proposed_tools.size > 0) {
+			foreach (var ex in this.proposed_tools) {
 				ex.id = "tool-%d".printf(idx++);
 				ex.references = this.shared_references;
-				this.exec_runs.add(ex);
+				this.tools().append(ex);
 			}
 			return;
 		}
 		var lone = new Tool(factory, this.session, this, "exec");
 		lone.references = this.shared_references;
-		this.exec_runs.add(lone);
+		this.tools().append(lone);
 	}
 
 	/**
 	 * Run all Tool exec runs (tool if needed, then LLM) in order — every run in
-	 * {@link exec_runs}. Then post-exec synthesis when there is more than one run.
+	 * the execution queue ({@link tools}). Then post-exec synthesis when there is more than one run.
 	 * Summaries and canonical document from post-exec when applicable.
 	 */
 	public async void run_exec() throws GLib.Error
 	{
+		this.status = PhaseEnum.TOOLS_RUNNING;
 		var task_name = this.task_data.get("name").to_markdown().strip();
-		for (var i = 0; i < this.exec_runs.size; i++) {
-			var ex = this.exec_runs.get(i);
+		var run_idx = 0;
+		foreach (var ex in this.tools()) {
+			run_idx++;
 			this.add_message(new OLLMchat.Message("ui",
 				(ex.exam_reference != null
 					? "Examining " + ex.exam_reference.path
 					: "Executing task: " + task_name)
-				+ " (" + (i + 1).to_string() + " of " + this.exec_runs.size.to_string() + ")"));
-			try {
-				yield ex.run();
-			} catch (GLib.Error e) {
-				this.status = PhaseEnum.ERROR;
-				throw e;
-			}
+				+ " (" + run_idx.to_string() + " of " + this.tools().size.to_string() + ")"));
+			yield ex.run();
 		}
 		// Multi-run: post-exec summarizes combined tool runs (write_file runs are included inside each run).
 		// Single run: no synthesis pass — copy that run's executor output.
-		// Invariant: build_exec_runs() leaves exec_runs.size >= 1 before run_exec().
-		if (this.exec_runs.size > 1) {
+		// Invariant: build_run_queue() leaves tools().size >= 1 before run_exec().
+		if (this.tools().size > 1) {
 			yield this.run_post_exec();
 			this.exec_done = true;
+			this.status = PhaseEnum.COMPLETED;
 			return;
 		}
-		var last = this.exec_runs.get(this.exec_runs.size - 1);
+		var last = this.tools().get_at(this.tools().size - 1);
 		this.post_summary = last.summary;
 		this.out_doc = last.document;
 		this.exec_done = true;
+		this.status = PhaseEnum.COMPLETED;
 	}
 
 	/**
@@ -813,8 +820,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_post_exec.md");
 		tpl.system_fill(0);
 		string[] run_blocks = {};
-		for (var i = 0; i < this.exec_runs.size; i++) {
-			var ex = this.exec_runs.get(i);
+		foreach (var ex in this.tools()) {
 			run_blocks += ex.document.to_markdown();
 		}
 		tpl.fill(6,

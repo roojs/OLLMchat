@@ -67,6 +67,11 @@ public enum PhaseEnum
 	 */
 	REFINED,
 	/**
+	 * Progress UI: refinement parse failed; another refinement attempt will run ({@link Details.refine} outer loop).
+	 * {@link to_human} — **Refinement Retrying** (task row shows task name in the other column).
+	 */
+	REFINEMENT_RETRY,
+	/**
 	 * Outstanding task list markdown (iteration / execution context); may include task result
 	 * output when ''exec_done''.
 	 */
@@ -124,7 +129,11 @@ public enum PhaseEnum
 	/**
 	 * Progress UI: row finished (task or tool pass).
 	 */
-	COMPLETED;
+	COMPLETED,
+	/**
+	 * Progress UI: used in {@link Details.refine} where cancellation previously cleared the row to {@link NONE}.
+	 */
+	STOPPED;
 
 	/**
 	 * Map a persisted ''agent-stage'' message body to a phase (e.g. ''task_list_parse'' → {@link LIST}).
@@ -197,6 +206,8 @@ public enum PhaseEnum
 			return "<b>Planning</b>";
 		case REFINEMENT:
 			return "<b>Refine</b>";
+		case REFINEMENT_RETRY:
+			return "<b>Refinement Retrying</b>";
 		case LIST:
 			return "<b>Creating</b>";
 		case LIST_RETRY:
@@ -219,6 +230,8 @@ public enum PhaseEnum
 			return "<span foreground=\"#cc0000\"><b>Retry Failed</b></span>";
 		case COMPLETED:
 			return "<span foreground=\"#808080\">✓</span>";
+		case STOPPED:
+			return "<span foreground=\"#808080\"><b>Stopped</b></span>";
 		case EXEC_VALIDATE:
 			// not shown in UI
 		default:

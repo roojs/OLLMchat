@@ -295,7 +295,7 @@ Examples:
 				if (parser.issues != "") {
 					this.cl.printerr("Refinement parse issues: %s\n", parser.issues);
 				}
-				stdout.printf("Tools: %d\n", (int) detail.tools.size);
+				stdout.printf("Tools: %d\n", (int) detail.proposed_tools.size);
 				stdout.printf("Code blocks: %d\n", (int) detail.code_blocks.size);
 				return;
 			}
@@ -326,12 +326,17 @@ Examples:
 				string content;
 				GLib.FileUtils.get_contents(opt_test_output, out content);
 				var parser = new OLLMcoder.Task.ResultParser(this.runner, content);
-				parser.extract_exec(detail);
+				var ex = parser.extract_exec(detail);
 				if (parser.issues != "") {
 					this.cl.printerr("Executor parse issues: %s\n", parser.issues);
 				}
-				foreach (var ex in detail.exec_runs) {
-					stdout.printf("%s", ex.summary.to_markdown_with_content());
+				if (parser.issues == "" && ex != null) {
+					detail.tools().clear();
+					detail.tools().append(ex);
+					detail.exec_done = true;
+				}
+				foreach (var run in detail.tools()) {
+					stdout.printf("%s", run.summary.to_markdown_with_content());
 				}
 				return;
 			}
@@ -357,10 +362,10 @@ Examples:
 				}
 				var detail = step.children.get(opt_task_num);
 				this.load_refinement(opt_input_refine, detail);
-				detail.build_exec_runs();
+				detail.build_run_queue();
 				yield detail.run_exec();
-				foreach (var ex in detail.exec_runs) {
-					stdout.printf("%s", ex.summary.to_markdown_with_content());
+				foreach (var run in detail.tools()) {
+					stdout.printf("%s", run.summary.to_markdown_with_content());
 					
 				}
 				return;

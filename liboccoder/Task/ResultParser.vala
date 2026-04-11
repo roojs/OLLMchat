@@ -34,8 +34,8 @@ namespace OLLMcoder.Task
  *    ''result_parser.issues'' checked.
  *  * Execution: Tool.run() receives the executor response → new ResultParser,
  *    ''exec_extract(ex)''; ex.summary (heading block) and ex.document are set. Details.run_exec() builds
- *    summaries on each Tool in exec_runs; on success Details sets ''exec_done''.
- *    ''extract_exec(Details)'' remains for legacy/test use (adds one synthetic exec run).
+ *    summaries on each Tool in Details.tools(); on success Details sets ''exec_done'' (live path).
+ *    ''extract_exec(Details)'' remains for legacy/test use (returns a synthetic run; caller applies it to {@link Details.tools}).
  *
  * @see List
  * @see Step
@@ -466,10 +466,10 @@ public class ResultParser : Object
 					" Raw block:\n\n```json\n" + block.code_text + "\n```\n\n";
 				continue;
 			}
-			task.tools.add(tool);
+			task.proposed_tools.append(tool);
 		}
 		if (task.shared_references.size == 0 && task.exam_references.size == 0
-				&& task.tools.size == 0) {
+				&& task.proposed_tools.size == 0) {
 			this.issues += "\n" + "Refinement must provide at least one of **Shared references**, " +
 				"**Examination references**, or **Tool calls** (fenced JSON under **## Tool Calls**). " +
 				"put all links in **Shared references** " +
@@ -593,9 +593,10 @@ public class ResultParser : Object
 	/**
 	 * Fills in the result summary on the task from executor response.
 	 *
-	 * Single pass: find section "Result summary" → add one synthetic exec run with that content.
-	 * If no "Result summary" section, appends to {@link issues}. No parsing of filename or other details.
-	 * Used by legacy/test paths; normal execution uses exec_extract(Tool) and exec_runs.
+	 * Single pass: find section "Result summary" → build one synthetic exec run with that content.
+	 * If no "Result summary" section, appends to {@link issues} and returns null. Does not mutate
+	 * {@link Details.tools} or set {@link Details.exec_done}; caller applies the returned {@link Tool} when appropriate.
+	 * Used by legacy/test paths; normal execution uses exec_extract(Tool) and the execution queue.
 	 *
 	 * Content we expect (task_execution.md):
 	 * {{{
@@ -603,23 +604,22 @@ public class ResultParser : Object
 	 * (Substance + whether needs are met; gaps or follow-up in prose as needed)
 	 * }}}
 	 *
-	 * @param task the task to add the synthetic run to
+	 * @param task the task (runner/session context for the synthetic {@link Tool})
+	 * @return the synthetic run, or null when the required section is missing
 	 */
-	public void extract_exec(Details task)
+	public Tool? extract_exec(Details task)
 	{
-		task.exec_runs.clear();
 		if (!this.document.headings.has_key("result-summary")) {
 			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
 				"It was missing or not found in the response. " +
 				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
-			return;
+			return null;
 		}
 		var factory = (OLLMchat.Agent.Factory) task.runner.sr_factory;
 		var ex = new Tool(factory, task.runner.session, task, "exec");
 		ex.summary = this.document.headings.get("result-summary");
 		ex.document = this.document;
-		task.exec_runs.add(ex);
-		task.exec_done = true;
+		return ex;
 	}
 }
 

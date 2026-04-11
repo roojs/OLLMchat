@@ -24,7 +24,7 @@ namespace OLLMcoder.Task
  * on {@link Details} once **7.14.1.3** wires the execution queue; implements {@link GLib.ListModel},
  * {@link Gee.Iterable}, and {@link Gee.Traversable} so call sites can ''foreach'' over tools.
  *
- * @see Details.build_exec_runs
+ * @see Details.build_run_queue
  */
 public class ToolList : GLib.Object, GLib.ListModel, Gee.Traversable<Tool>, Gee.Iterable<Tool>
 {
