@@ -33,6 +33,13 @@ namespace OLLMchatGtk
 		public ChatPermission permission_widget { get; private set; }
 		private ChatInput chat_input;
 		private ChatBar chat_bar;
+		private Gtk.Box input_column;
+		/**
+		 * Empty box directly above {@link ChatInput}; app/occoder may add
+		 * children (e.g. task progress strip). ChatWidget does not populate
+		 * this — only allocates layout.
+		 */
+		public Gtk.Box above_input { get; private set; }
 		private Gtk.Paned paned;
 		private Gtk.Box lower_box;
 		/** Height of text area (paned end child) to restore when showing after streaming. */
@@ -131,9 +138,19 @@ namespace OLLMchatGtk
 				hexpand = true,
 				vexpand = true
 			};
+			this.above_input = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = false
+			};
+			this.input_column = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = false
+			};
+			this.input_column.append(this.above_input);
+			this.input_column.append(this.chat_input);
 			this.paned.set_start_child(this.chat_view);
 			this.paned.set_resize_start_child(true);
-			this.paned.set_end_child(this.chat_input);
+			this.paned.set_end_child(this.input_column);
 			this.paned.set_resize_end_child(false);
 			this.paned.set_shrink_end_child(false);
 

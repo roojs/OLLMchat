@@ -28,6 +28,7 @@ namespace OLLMcoder.Skill
 		public string skill_name { get; private set; }
 
 		private OLLMcoder.SourceView? widget = null;
+		private OLLMcoder.Task.ProgressView? progress_view = null;
 
 		public Factory(OLLMfiles.ProjectManager project_manager,
 			 Gee.ArrayList<string> skills_directories, string skill_name = "")
@@ -55,23 +56,34 @@ namespace OLLMcoder.Skill
 			return new Runner(this, session);
 		}
 
-		/**
-		 * Gets the UI widget for this agent (same editor as Coding Assistant).
-		 *
-		 * Returns a SourceView so the Skills Agent shows the project/file editor pane
-		 * like the Coding Assistant.
-		 */
-		public override async Object? get_widget()
+		public override async void activate(GLib.Object window)
 		{
-			if (this.widget != null) {
-				return this.widget as Object;
+			var host = (OLLMchat.ChatUserInterface) window;
+			var runner = (OLLMcoder.Skill.Runner) host.session_agent();
+			if (this.widget == null) {
+				this.progress_view = new OLLMcoder.Task.ProgressView();
+				((Gtk.Box) host.above_input_widget()).append(this.progress_view);
+				this.widget = new OLLMcoder.SourceView(this.project_manager);
+				yield this.initialize_widget();
 			}
-			if (this.project_manager.db == null) {
-				return null;
+			this.progress_view.set_runner(runner);
+			var widget_id = this.name + "-widget";
+			this.widget.name = widget_id;
+			var tabs = (Adw.ViewStack) host.tab_view();
+			if (tabs.get_child_by_name(widget_id) == null) {
+				tabs.add_named(this.widget, widget_id);
 			}
-			this.widget = new OLLMcoder.SourceView(this.project_manager);
-			yield this.initialize_widget();
-			return this.widget as Object;
+			this.widget.visible = true;
+			tabs.set_visible_child_name(widget_id);
+			host.schedule_pane_update(true);
+			this.progress_view.visible = true;
+		}
+
+		public override async void deactivate(GLib.Object window)
+		{
+			var host = (OLLMchat.ChatUserInterface) window;
+			this.progress_view.visible = false;
+			host.schedule_pane_update(false);
 		}
 
 		private async void initialize_widget()

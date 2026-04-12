@@ -83,6 +83,12 @@ namespace OLLMchat.History
 		
 		// Signal emitted when an agent is activated (for UI updates)
 		public signal void agent_activated(Agent.Factory agent);
+
+		/**
+		 * Emitted when switching away from factory to a different factory,
+		 * before {@link #agent_activated} for the newly selected factory.
+		 */
+		public signal void agent_deactivated(Agent.Factory factory);
 		
 		/** Emitted when session.is_running changes; UI connects and updates send/stop button from manager.session.is_running. */
 		public signal void agent_status_change();
@@ -333,6 +339,14 @@ namespace OLLMchat.History
 					continue;
 				}
 				placeholder.reconstruct_model_usage_from_model();
+
+				if (placeholder.agent_name == "" || !this.agent_factories.has_key(placeholder.agent_name)) {
+					GLib.warning(
+						"Session fid=%s: unknown agent_name '%s', resetting to just-ask (in memory only)",
+						placeholder.fid,
+						placeholder.agent_name);
+					placeholder.agent_name = "just-ask";
+				}
 
 				this.sessions.append(placeholder);
 			}

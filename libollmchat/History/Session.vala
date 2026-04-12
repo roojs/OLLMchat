@@ -591,37 +591,29 @@ namespace OLLMchat.History
 		 */
 		public override void activate_agent(string agent_name) throws Error
 		{
-			// Save reference to old AgentHandler (if exists)
 			var old_agent = this.agent;
-			
-			// Update agent_name on session
+			var previous_agent_name = this.agent_name;
+
 			this.agent_name = agent_name;
-			
-			// Get agent from manager
+
 			var factory = this.manager.agent_factories.get(agent_name);
-			if (factory == null) {
-				GLib.critical("Agent '%s' not found in manager", agent_name);
-				throw new OllmError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
-			}
-			
-			// Create new handler from factory
+
 			var agent = factory.create_agent(this);
-			
-			// Copy chat from old agent to new agent and connect agent property
+
 			if (old_agent != null) {
-				// Copy the chat instance from old agent
 				agent.replace_chat(old_agent.chat());
-				// Connect the agent property to the new handler
 				agent.chat().agent = agent;
 			}
-			
+
+			if (previous_agent_name != agent_name && previous_agent_name != "") {
+				this.manager.agent_deactivated(
+					this.manager.agent_factories.get(previous_agent_name));
+			}
+
 			this.agent = agent;
-			
-			
-		// Trigger agent_activated signal for UI updates
-		// Manager emits this signal, which Window listens to for widget management
-		this.manager.agent_activated(factory);
-	}
+
+			this.manager.agent_activated(factory);
+		}
 	
 	/**
 	 * Handler for config.changed signal.

@@ -414,35 +414,28 @@ namespace OLLMcoder
 			return new Agent(this, session);
 		}
 		
-		/**
-		 * Gets the UI widget for this agent.
-		 * 
-		 * Creates and returns a SourceView with ProjectManager on first call,
-		 * waits for initialization to complete before returning.
-		 * Reuses the same instance on subsequent calls (lazy initialization).
-		 * 
-		 * @return The SourceView widget cast as Object, or null if database is not available
-		 */
-		public override async Object? get_widget()
+		public override async void activate(GLib.Object window)
 		{
-			// Return cached widget if already created
-			if (this.widget != null) {
-				return this.widget as Object;
+			var host = (OLLMchat.ChatUserInterface) window;
+			if (this.widget == null) {
+				this.widget = new OLLMcoder.SourceView(this.project_manager);
+				yield this.initialize_widget();
 			}
-			
-			// Database is required (migration is run by the main window at startup)
-			if (this.project_manager.db == null) {
-				return null;
+			var widget_id = this.name + "-widget";
+			this.widget.name = widget_id;
+			var tabs = (Adw.ViewStack) host.tab_view();
+			if (tabs.get_child_by_name(widget_id) == null) {
+				tabs.add_named(this.widget, widget_id);
 			}
-			
-			// Create SourceView with ProjectManager
-			this.widget = new OLLMcoder.SourceView(this.project_manager);
-			
-			// Initialize widget (load projects, restore state, apply UI state)
-			yield this.initialize_widget();
-			
-			// Return widget (cast as Object)
-			return this.widget as Object;
+			this.widget.visible = true;
+			tabs.set_visible_child_name(widget_id);
+			host.schedule_pane_update(true);
+		}
+
+		public override async void deactivate(GLib.Object window)
+		{
+			var host = (OLLMchat.ChatUserInterface) window;
+			host.schedule_pane_update(false);
 		}
 		
 		/**
