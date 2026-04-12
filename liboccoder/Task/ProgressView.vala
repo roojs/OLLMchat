@@ -58,24 +58,11 @@ namespace OLLMcoder.Task
 			});
 			title_factory.bind.connect((obj) => {
 				var li = (Gtk.ListItem) obj;
-				((Gtk.Label) li.child).set_data<GLib.Binding>(
-					"ollm-column-bind",
-					((ProgressItem) li.item).bind_property(
-						"title",
-						(Gtk.Label) li.child,
-						"label",
-						GLib.BindingFlags.SYNC_CREATE));
-			});
-			title_factory.unbind.connect((obj) => {
-				var b = ((Gtk.Label) ((Gtk.ListItem) obj).child).get_data<GLib.Binding>(
-					"ollm-column-bind");
-				if (b == null) {
-					return;
-				}
-				b.unbind();
-				((Gtk.Label) ((Gtk.ListItem) obj).child).set_data<GLib.Binding>(
-					"ollm-column-bind",
-					null);
+				((ProgressItem) li.item).bind_property(
+					"title",
+					(Gtk.Label) li.child,
+					"label",
+					GLib.BindingFlags.SYNC_CREATE);
 			});
 
 			var stage_factory = new Gtk.SignalListItemFactory();
@@ -91,24 +78,11 @@ namespace OLLMcoder.Task
 			});
 			stage_factory.bind.connect((obj) => {
 				var li = (Gtk.ListItem) obj;
-				((Gtk.Label) li.child).set_data<GLib.Binding>(
-					"ollm-column-bind",
-					((ProgressItem) li.item).bind_property(
-						"status_str",
-						(Gtk.Label) li.child,
-						"label",
-						GLib.BindingFlags.SYNC_CREATE));
-			});
-			stage_factory.unbind.connect((obj) => {
-				var b = ((Gtk.Label) ((Gtk.ListItem) obj).child).get_data<GLib.Binding>(
-					"ollm-column-bind");
-				if (b == null) {
-					return;
-				}
-				b.unbind();
-				((Gtk.Label) ((Gtk.ListItem) obj).child).set_data<GLib.Binding>(
-					"ollm-column-bind",
-					null);
+				((ProgressItem) li.item).bind_property(
+					"status_str",
+					(Gtk.Label) li.child,
+					"label",
+					GLib.BindingFlags.SYNC_CREATE);
 			});
 
 			this.column_view.append_column(new Gtk.ColumnViewColumn("Title", title_factory));
@@ -120,7 +94,8 @@ namespace OLLMcoder.Task
 				has_frame = true
 			};
 			this.scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
-			this.scrolled.set_min_content_height(48);
+			// Temporary: 2× prior strip height (48) for testing; final sizing in 7.14.4.
+			this.scrolled.set_min_content_height(96);
 			this.scrolled.set_child(this.column_view);
 			this.append(this.scrolled);
 		}
