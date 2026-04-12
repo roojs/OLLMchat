@@ -105,6 +105,7 @@ valadoc_docs = custom_target('valadoc',
     # libollmchat sources (depends on libocsqlite)
     '../libollmchat/namespace.vala',  # Namespace documentation
     '../libollmchat/ApplicationInterface.vala',
+    '../libollmchat/ChatUserInterface.vala',
     '../libollmchat/Settings/namespace.vala',  # Settings namespace documentation
     '../libollmchat/Settings/Config1.vala',
     '../libollmchat/Settings/Config2.vala',
@@ -243,6 +244,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Task/WriteChange.vala',  # after Tool — match liboccoder/meson.build
     '../liboccoder/Task/List.vala',     # Task: List → Step, Details
     '../liboccoder/Task/ProgressList.vala',
+    '../liboccoder/Task/ProgressView.vala',
     '../liboccoder/Skill/Runner.vala',  # after Task/ProgressList (Runner.progress) — match liboccoder/meson.build
     '../liboccoder/Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
     '../liboccoder/List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)

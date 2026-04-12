@@ -36,7 +36,7 @@ namespace OLLMapp
 		
 		/**
 		 * Intended visibility state for the right pane.
-		 * Use schedule_pane_update() to apply changes.
+		 * Set at the start of {@link schedule_pane_update}.
 		 */
 		public bool intended_pane_visible { get; set; default = false; }
 		
@@ -299,20 +299,21 @@ namespace OLLMapp
 		}
 		
 		/**
-		 * Schedules a visibility update using Idle.add().
-		 * 
-		 * Applies the current intended_pane_visible state.
+		 * Schedules a visibility update on the idle queue.
+		 * The idle callback applies {@link intended_pane_visible}.
+		 *
+		 * @param visible whether to show or hide the right pane
 		 */
-		public void schedule_pane_update()
+		public void schedule_pane_update(bool visible)
 		{
+			this.intended_pane_visible = visible;
 			GLib.Idle.add(() => {
-				// Apply intended state
 				if (this.intended_pane_visible) {
 					this.show_right_pane();
 				} else {
 					this.hide_right_pane();
 				}
-				return false;  // Remove from idle queue (one-time callback)
+				return false;
 			});
 		}
 		

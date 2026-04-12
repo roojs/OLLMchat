@@ -24,16 +24,15 @@ namespace OLLMapp
 	 * 
 	 * @since 1.0
 	 */
-	public class OllmchatWindow : Adw.Window
+	public class OllmchatWindow : Adw.Window, OLLMchat.ChatUserInterface
 	{
-		private OLLMchatGtk.ChatWidget chat_widget;
+		public OLLMchatGtk.ChatWidget chat_widget { get; private set; }
 		public OLLMchat.History.Manager? history_manager = null;
 		private Adw.OverlaySplitView split_view;
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
 		private Gtk.Button new_chat_button;
 		public OLLMchat.ApplicationInterface app;
-		private WindowPane? window_pane = null;
-		private Gtk.Widget? current_agent_widget = null;
+		public WindowPane window_pane { get; private set; }
 		private Gtk.DropDown agent_dropdown;
 		private Adw.HeaderBar header_bar;
 		private Gtk.ToggleButton history_toggle_button;
@@ -48,6 +47,26 @@ namespace OLLMapp
 		private VectorScanBanner vector_scan_banner;
 		public OLLMfiles.ProjectManager? project_manager { get; private set; default = null; }
 		private OLLMvector.BackgroundScan? background_scan = null;
+
+		public OLLMchat.Agent.Base? session_agent()
+		{
+			return this.history_manager.session.agent;
+		}
+
+		public GLib.Object above_input_widget()
+		{
+			return this.chat_widget.above_input;
+		}
+
+		public GLib.Object tab_view()
+		{
+			return this.window_pane.tab_view;
+		}
+
+		public void schedule_pane_update(bool visible)
+		{
+			this.window_pane.schedule_pane_update(visible);
+		}
 
 		/**
 		 * Creates a new OllmchatWindow instance.
@@ -487,8 +506,17 @@ namespace OLLMapp
 			this.window_pane.paned.set_start_child(this.chat_widget);
 			this.window_pane.paned.set_resize_start_child(true);
 			
-			// Connect to agent_activated signal to manage agent widgets
-			this.history_manager.agent_activated.connect(this.on_agent_activated);
+			// Agent UI: factories receive this window as ChatUserInterface (§3b)
+			this.history_manager.agent_activated.connect((factory) => {
+				factory.activate.begin(this, (obj, res) => {
+					factory.activate.end(res);
+				});
+			});
+			this.history_manager.agent_deactivated.connect((factory) => {
+				factory.deactivate.begin(this, (o, res) => {
+					factory.deactivate.end(res);
+				});
+			});
 			
 			// Set WindowPane as main content
 			this.split_view.content = this.window_pane;
@@ -594,79 +622,6 @@ namespace OLLMapp
 			this.history_manager.tools.set(tool.name, tool);
 			//GLib.debug("Codebase search tool added to Manager (total tools: %d)", 
 			//	this.history_manager.tools.size);
-		}
-		
-		/**
-		 * Handles agent activation signal.
-		 * 
-		 * Manages agent widgets in WindowPane.tab_view:
-		 * - Hides previous agent's widget (if any)
-		 * - Gets widget from agent via async get_widget()
-		 * - Adds widget to tab_view if not already present
-		 * - Shows widget and updates WindowPane visibility
-		 */
-		private void on_agent_activated(OLLMchat.Agent.Factory factory)
-		{
-			if (this.window_pane == null) {
-				return;
-			}
-			
-			// Hide previous agent's widget (if any)
-			if (this.current_agent_widget != null) {
-				this.current_agent_widget.visible = false;
-				this.current_agent_widget = null;
-			}
-			
-			// Get widget from factory asynchronously
-			factory.get_widget.begin((obj, res) => {
-				var widget_obj = factory.get_widget.end(res);
-				this.handle_agent_widget(factory, widget_obj);
-			});
-		}
-		
-		/**
-		 * Handles the agent widget after it's been retrieved.
-		 * 
-		 * @param factory The factory that provided the widget
-		 * @param widget_obj The widget object (may be null)
-		 */
-		private void handle_agent_widget(OLLMchat.Agent.Factory factory, Object? widget_obj)
-		{
-			if (this.window_pane == null) {
-				return;
-			}
-			
-			if (widget_obj == null) {
-				// Agent has no UI - hide pane
-				this.window_pane.intended_pane_visible = false;
-				this.window_pane.schedule_pane_update();
-				return;
-			}
-			
-			// Cast to Gtk.Widget
-			var widget = widget_obj as Gtk.Widget;
-			if (widget == null) {
-				GLib.warning("Agent %s returned non-widget object from get_widget()", factory.name);
-				this.window_pane.intended_pane_visible = false;
-				this.window_pane.schedule_pane_update();
-				return;
-			}
-			
-			// Widget ID management
-			var widget_id = factory.name + "-widget";
-			
-			// Set widget name if not already set (before calling WindowPane method)
-			if (widget.name == null || widget.name == "") {
-				widget.name = widget_id;
-			}
-			
-			// Add or show widget in WindowPane (handles showing and setting visible child)
-			widget = this.window_pane.add_or_show_agent_widget(widget, widget_id);
-			this.current_agent_widget = widget;
-			
-			// Set intended state and schedule update
-			this.window_pane.intended_pane_visible = true;
-			this.window_pane.schedule_pane_update();
 		}
 		
 		/**

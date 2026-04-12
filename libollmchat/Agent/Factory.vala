@@ -172,16 +172,21 @@ namespace OLLMchat.Agent
 		}
 		
 		/**
-		 * Gets the UI widget for this agent, if any.
+		 * Binds this factory’s UI to the application window when the user selects this agent.
 		 *
-		 * Agents with UI should override this method to return their widget.
-		 * Default implementation returns null (agents without UI).
-		 *
-		 * @return The UI widget cast as Object, or null if agent has no UI
+		 * @param window main window (ollmapp: OllmchatWindow implements OLLMchat.ChatUserInterface)
 		 */
-		public virtual async Object? get_widget()
+		public virtual async void activate(GLib.Object window)
 		{
-			return null;
+		}
+
+		/**
+		 * Hides this factory’s UI when the user switches away from this agent.
+		 *
+		 * @param window main window (ollmapp: OllmchatWindow implements OLLMchat.ChatUserInterface)
+		 */
+		public virtual async void deactivate(GLib.Object window)
+		{
 		}
 		
 		/**

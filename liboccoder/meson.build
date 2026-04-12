@@ -4,6 +4,7 @@
 valac = meson.get_compiler('vala')
 occoder_deps = [
   dependency('gtk4'),
+  dependency('libadwaita-1'),
   dependency('gtksourceview-5'),
   dependency('gee-0.8'),
   dependency('gio-2.0'),
@@ -44,6 +45,7 @@ occoder_src = files([
   'Task/WriteChange.vala',  # after Tool.vala
   'Task/List.vala',     # Task: List → Step, Details
   'Task/ProgressList.vala',
+  'Task/ProgressView.vala',
   'Skill/Runner.vala',  # after Task/ProgressList (Runner.progress)
   'Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
   'List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
@@ -83,6 +85,7 @@ occoder_base_lib = library('occoder',
     '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
     '--pkg=gtk4',
+    '--pkg=libadwaita-1',
     '--pkg=gtksourceview-5',
     '--pkg=libgit2-glib-1.0',
     '--pkg=ocfiles',
@@ -131,6 +134,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '--pkg', 'fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
     '--pkg', 'ocvector',
     '--pkg', 'gtk4',  # Required for Tool namespace
+    '--pkg', 'libadwaita-1',
     '--pkg', 'gtksourceview-5',
     '--pkg', 'gobject-2.0',
     '--pkg', 'glib-2.0',
