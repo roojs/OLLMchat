@@ -158,7 +158,9 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	}
 
 	public string title {
-		owned get { return this.slug(); }
+		owned get {
+			return this.task_data.get("name").to_markdown().strip();
+		}
 	}
 
 	public string status_str {

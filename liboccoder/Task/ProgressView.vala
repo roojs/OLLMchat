@@ -20,7 +20,9 @@ namespace OLLMcoder.Task
 {
 	/**
 	 * Read-only task progress strip: {@link Gtk.ScrolledWindow} plus
-	 * {@link Gtk.ColumnView} (title and stage columns). Built with an empty
+	 * {@link Gtk.ColumnView} (title and stage columns). Root {@link GLib.ListModel}
+	 * is wrapped in {@link Gtk.TreeListModel} so {@link ProgressItem.children}
+	 * (e.g. {@link Tool} under {@link Details}) appear nested. Built with a
 	 * placeholder model; call {@link #set_runner} to attach {@link Skill.Runner.progress}.
 	 */
 	public class ProgressView : Gtk.Box
@@ -37,7 +39,15 @@ namespace OLLMcoder.Task
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
 			var placeholder = new GLib.ListStore(typeof(ProgressItem));
-			this.progress_selection = new Gtk.SingleSelection(placeholder);
+			var tree = new Gtk.TreeListModel(placeholder, false, false,
+				(item) => {
+					var pi = (ProgressItem) item;
+					if (pi.children.get_n_items() == 0) {
+						return null;
+					}
+					return pi.children;
+				});
+			this.progress_selection = new Gtk.SingleSelection(tree);
 			this.column_view = new Gtk.ColumnView(this.progress_selection) {
 				vexpand = true,
 				hexpand = true,
@@ -48,21 +58,35 @@ namespace OLLMcoder.Task
 
 			var title_factory = new Gtk.SignalListItemFactory();
 			title_factory.setup.connect((obj) => {
-				((Gtk.ListItem) obj).set_child(new Gtk.Label("") {
+				var li = (Gtk.ListItem) obj;
+				var expander = new Gtk.TreeExpander();
+				var label = new Gtk.Label("") {
 					halign = Gtk.Align.START,
 					hexpand = true,
 					xalign = 0,
 					ellipsize = Pango.EllipsizeMode.END,
 					single_line_mode = true
-				});
+				};
+				expander.set_child(label);
+				li.set_child(expander);
 			});
 			title_factory.bind.connect((obj) => {
 				var li = (Gtk.ListItem) obj;
-				((ProgressItem) li.item).bind_property(
+				var expander = (Gtk.TreeExpander) li.child;
+				var label = (Gtk.Label) expander.child;
+				var row = (Gtk.TreeListRow) li.item;
+				expander.set_list_row(row);
+				var pi = (ProgressItem) row.get_item();
+				pi.bind_property(
 					"title",
-					(Gtk.Label) li.child,
+					label,
 					"label",
 					GLib.BindingFlags.SYNC_CREATE);
+			});
+			title_factory.unbind.connect((obj) => {
+				var li = (Gtk.ListItem) obj;
+				var expander = (Gtk.TreeExpander) li.child;
+				expander.set_list_row(null);
 			});
 
 			var stage_factory = new Gtk.SignalListItemFactory();
@@ -78,7 +102,9 @@ namespace OLLMcoder.Task
 			});
 			stage_factory.bind.connect((obj) => {
 				var li = (Gtk.ListItem) obj;
-				((ProgressItem) li.item).bind_property(
+				var row = (Gtk.TreeListRow) li.item;
+				var pi = (ProgressItem) row.get_item();
+				pi.bind_property(
 					"status_str",
 					(Gtk.Label) li.child,
 					"label",
@@ -108,7 +134,15 @@ namespace OLLMcoder.Task
 		 */
 		public void set_runner(OLLMcoder.Skill.Runner runner)
 		{
-			this.progress_selection = new Gtk.SingleSelection(runner.progress);
+			var tree = new Gtk.TreeListModel(runner.progress, false, false,
+				(item) => {
+					var pi = (ProgressItem) item;
+					if (pi.children.get_n_items() == 0) {
+						return null;
+					}
+					return pi.children;
+				});
+			this.progress_selection = new Gtk.SingleSelection(tree);
 			this.column_view.model = this.progress_selection;
 		}
 	}
