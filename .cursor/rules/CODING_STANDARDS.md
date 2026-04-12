@@ -28,6 +28,7 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **Docblocks**: Do new or modified docblocks follow the code documentation standards and use multiline form (not short one-liners)? See "Docblocks / code documentation" below.
 - **Debug time**: Does the plan avoid putting timestamps or monotonic time in `GLib.debug()` / `GLib.warning()` messages (log output already includes time)? See "Debug and Warning Statements" below.
 - **Debug output vs debug-only logic**: Does the plan avoid any gating, sampling, throttling, or “sparse debug” logic? Debug is toggled outside the app (`--debug`, log domains, etc.); use unconditional `GLib.debug()` at real boundaries only. See "Debug and Warning Statements" below.
+- **Single canonical code proposal**: Does the plan avoid **duplicate stitched-together versions**—e.g. a long **Part 1 … Part N** sequence **and** a separate full-method or full-file block that could drift, or fences that omit lines the implementer must guess? Prefer **one** mechanical form: either complete **Remove**/**Replace with** for the whole region, or **parts** that are each complete with **Keep** anchors only as local glue. See **`docs/guide-to-writing-plans.md`** — *Don’t publish duplicate stitched-together versions*.
 
 These checklist items should be copied (or referenced) at the top of new plan documents in `docs/plans/` so they can be quickly verified.
 

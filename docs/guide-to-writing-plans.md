@@ -59,6 +59,9 @@ Intro line: hunks are **Remove** / **Replace with** / **Add** from the tree; ver
 
 ### Do / don’t (keep / remove / replace / add)
 
+- **Don’t publish duplicate stitched-together versions** of the same unit of work. A plan must **not** leave implementers choosing between (a) a long chain of **Keep** / **Remove** / **Replace** parts and (b) a second, parallel “full method” or “full file” paste that could **drift** from the parts—nor require **mental assembly** of unstated lines between fences. Pick **one** canonical form:
+  - **Small change:** parts + anchors are fine if every **removed** line appears in a **Remove** fence and every **new** line appears in **Replace with** / **Add**, with **Keep** only as **local** anchors (already in this guide); or
+  - **Large replacement:** one **Remove** of the old region (method, ctor, or whole file) and one **Replace with** containing the **complete** new text—no separate “Part 1 … Part 7” that duplicates the same outcome.
 - **Do** put the contract in **fenced code blocks** under **Keep** / **Remove** / **Replace with** / **Add**. The implementer applies **verbatim hunks**, not a paraphrase.
 - **Don’t** replace code blocks with long prose about what to keep or replace (“delete the old loop and insert …”) **without** the matching fences.
 - **Do** use **`#### Add`** (or an **Add** chunk in the ordered format) for **pure insertions** — new lines only, nothing deleted.
@@ -103,7 +106,8 @@ When changing a **method that already exists**, **split it into parts** — one 
 
 Apply parts **in order** (Part 1, then 2, …). **`Remove`** / **`Replace with`** must be enough to apply mechanically; **`Keep`** is the anchor, not a duplicate of the whole function.
 
-- **Why not one big `Replace with` for the whole method?** It hides the real delta. **Parts** + **small** remove/replace preserve a clear diff.
+- **Whole-method / whole-file `Replace with`:** Prefer this when the change is **large** or when **parts** would force unstated glue between fences—see **Don’t publish duplicate stitched-together versions** above. One **Remove** + one complete **Replace with** is **not** inferior to seven parts if the parts would duplicate the same outcome or omit lines.
+- **Why use parts at all?** Small, localized diffs preserve a clear review story—but only when each part is **mechanically complete** and **not** mirrored by a second full copy elsewhere in the plan.
 - **Empty default bodies** (e.g. a virtual hook): short **Goal** text; **Remove**/**Replace with** for the old vs new **fragment** (e.g. signature + comment), not a lone **Replace with** with no **Remove**.
 - **When every line of the method changes** or the method is **new:** a single full-method **`Replace with`** (with **`Remove`** of the old method) is OK; say so in prose.
 

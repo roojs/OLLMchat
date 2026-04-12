@@ -569,6 +569,10 @@ namespace OLLMcoder.Skill
 					p0.parse_task_list();
 					GLib.debug("session %s initial_plan steps=%u issues_empty=%s",
 						this.session.fid, this.pending.steps.size, (p0.issues == "").to_string());
+					if (p0.issues == "") {
+						this.progress.clear_pending(true);
+						this.progress.add_pending(true);
+					}
 					break;
 				case "agent-stage":
 					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
@@ -592,6 +596,10 @@ namespace OLLMcoder.Skill
 					this.replay_step_pos = 0;
 					this.replay_details_pos = 0;
 					this.replay_tool_pos = 0;
+					if (p1.issues == "") {
+						this.progress.clear_pending(true);
+						this.progress.add_pending(true);
+					}
 					break;
 				case "agent-stage":
 					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
@@ -611,6 +619,7 @@ namespace OLLMcoder.Skill
 					var pr = new OLLMcoder.Task.ResultParser(this, m.content);
 					var st_r = this.pending.steps.get(this.replay_step_pos);
 					pr.extract_refinement(st_r.children.get(this.replay_details_pos));
+					this.progress.rebuild();
 					break;
 				case "agent-stage":
 					var new_ref = OLLMcoder.Task.PhaseEnum.from_string(m.content);
@@ -644,6 +653,7 @@ namespace OLLMcoder.Skill
 					var pp = new OLLMcoder.Task.ResultParser(this, m.content);
 					var st_p = this.pending.steps.get(this.replay_step_pos);
 					pp.exec_post_extract(st_p.children.get(this.replay_details_pos));
+					this.progress.rebuild();
 					break;
 				case "agent-stage":
 					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
@@ -669,6 +679,7 @@ namespace OLLMcoder.Skill
 						this.replay_tool_pos, d_exec.tools().size);
 					var px = new OLLMcoder.Task.ResultParser(this, m.content);
 					px.exec_extract(d_exec.tools().get_at(this.replay_tool_pos));
+					this.progress.rebuild();
 					break;
 				case "agent-stage":
 					this.replay_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
@@ -702,6 +713,7 @@ namespace OLLMcoder.Skill
 					this.replay_details_pos = 0;
 					this.replay_tool_pos = 0;
 					this.replay_phase = new_phase;
+					this.progress.add_completed(step);
 					break;
 				case "agent-issues":
 					if (m.content != "") {
