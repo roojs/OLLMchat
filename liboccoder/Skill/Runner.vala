@@ -570,7 +570,12 @@ namespace OLLMcoder.Skill
 					GLib.debug("session %s initial_plan steps=%u issues_empty=%s",
 						this.session.fid, this.pending.steps.size, (p0.issues == "").to_string());
 					if (p0.issues == "") {
-						this.progress.clear_pending(true);
+						this.progress.add(new OLLMcoder.Task.ProgressRunner(this) {
+							in_creation = true,
+							try_max = 5,
+							try_no = 0,
+							status = OLLMcoder.Task.PhaseEnum.COMPLETED
+						});
 						this.progress.add_pending(true);
 					}
 					break;
@@ -597,7 +602,12 @@ namespace OLLMcoder.Skill
 					this.replay_details_pos = 0;
 					this.replay_tool_pos = 0;
 					if (p1.issues == "") {
-						this.progress.clear_pending(true);
+						this.progress.add(new OLLMcoder.Task.ProgressRunner(this) {
+							in_creation = false,
+							try_max = 5,
+							try_no = 0,
+							status = OLLMcoder.Task.PhaseEnum.COMPLETED
+						});
 						this.progress.add_pending(true);
 					}
 					break;
@@ -618,7 +628,11 @@ namespace OLLMcoder.Skill
 				case "content-stream":
 					var pr = new OLLMcoder.Task.ResultParser(this, m.content);
 					var st_r = this.pending.steps.get(this.replay_step_pos);
-					pr.extract_refinement(st_r.children.get(this.replay_details_pos));
+					var d_ref = st_r.children.get(this.replay_details_pos);
+					pr.extract_refinement(d_ref);
+					if (pr.issues == "") {
+						d_ref.status = OLLMcoder.Task.PhaseEnum.REFINED;
+					}
 					this.progress.rebuild();
 					break;
 				case "agent-stage":
@@ -652,7 +666,12 @@ namespace OLLMcoder.Skill
 				case "content-stream":
 					var pp = new OLLMcoder.Task.ResultParser(this, m.content);
 					var st_p = this.pending.steps.get(this.replay_step_pos);
-					pp.exec_post_extract(st_p.children.get(this.replay_details_pos));
+					var d_post = st_p.children.get(this.replay_details_pos);
+					pp.exec_post_extract(d_post);
+					if (pp.issues == "") {
+						d_post.exec_done = true;
+						d_post.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
+					}
 					this.progress.rebuild();
 					break;
 				case "agent-stage":
@@ -678,7 +697,10 @@ namespace OLLMcoder.Skill
 						this.session.fid, st_e.children.size, this.replay_details_pos,
 						this.replay_tool_pos, d_exec.tools().size);
 					var px = new OLLMcoder.Task.ResultParser(this, m.content);
-					px.exec_extract(d_exec.tools().get_at(this.replay_tool_pos));
+					var ex_run = d_exec.tools().get_at(this.replay_tool_pos);
+					if (px.exec_extract(ex_run)) {
+						ex_run.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
+					}
 					this.progress.rebuild();
 					break;
 				case "agent-stage":

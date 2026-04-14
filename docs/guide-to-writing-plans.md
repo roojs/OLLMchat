@@ -31,6 +31,31 @@ Applies when implementing **feature or refactor work** from **`docs/plans/*`**, 
 
 - **Requests + very brief summaries only** (purpose in a short paragraph or bullets).
 - Avoid essays, “current behaviour” novels, and duplicated explanations — put the contract in **code blocks** and tables.
+- **Strongly prefer nested bullet points** over long prose. If a sentence would run past **one line** in a typical editor width, split it into sub-bullets or tighten the wording — dense paragraphs are hard to skim and easy to miss in review.
+- **Do not chain several key points in one paragraph** using **semicolons (`;`)** or **long dashes** (em dash, en dash, or hyphen used as a “second clause” separator). That pattern usually means the content should be **nested bullets** (one idea per bullet, optional sub-bullets under a parent).
+- **Prefer short sentences over paragraphs** for narrative bits: one sentence per bullet when possible, not a block of three sentences glued together.
+
+## Discussion style (emoji prefixes)
+
+For **discussion, rationale, risks, and notes** (anything that is not a mechanical **Keep** / **Remove** / **Replace** section), **prefix each paragraph or bullet group with one emoji** from the legend below so readers can scan intent quickly. The **first token** on the line should be the emoji (then a space, then the text).
+
+**Status and workstream (use liberally for backlog honesty):**
+
+| Marker | Meaning |
+| ------ | ------- |
+| **✅** | Done and verified in the codebase |
+| **⏳** | Not implemented or not matching spec — backlog (use this liberally) |
+| **🔶** | Partially done — polish or follow-up still owed |
+
+**Provenance (who said what):**
+
+| Marker | Meaning |
+| ------ | ------- |
+| **⚠️** | Specific requirement or constraint **the user added** — treat as authoritative |
+| **💩** | Suggestion **introduced by the LLM** that the **user did not ask for** — optional, confirm before building it in |
+| **ℹ️** | Reference or pointer — external doc, spec, ticket, prior plan, or file path worth opening (not a status claim) |
+
+You can combine a **status** emoji with a short sub-bullet under **⚠️** / **💩** / **ℹ️** when both apply (e.g. **⚠️** parent with **⏳** child for a user-requested item still open).
 
 ## New methods and helpers
 
