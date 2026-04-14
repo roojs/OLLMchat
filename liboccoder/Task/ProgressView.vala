@@ -39,15 +39,15 @@ namespace OLLMcoder.Task
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
 			var placeholder = new GLib.ListStore(typeof(ProgressItem));
-			var tree = new Gtk.TreeListModel(placeholder, false, false,
-				(item) => {
-					var pi = (ProgressItem) item;
-					if (pi.children.get_n_items() == 0) {
-						return null;
-					}
-					return pi.children;
-				});
-			this.progress_selection = new Gtk.SingleSelection(tree);
+			this.progress_selection = new Gtk.SingleSelection(
+				new Gtk.TreeListModel(placeholder, false, false,
+					(item) => {
+						var pi = (ProgressItem) item;
+						if (pi.children.get_n_items() == 0) {
+							return null;
+						}
+						return pi.children;
+					}));
 			this.column_view = new Gtk.ColumnView(this.progress_selection) {
 				vexpand = true,
 				hexpand = true,
@@ -120,8 +120,8 @@ namespace OLLMcoder.Task
 				has_frame = true
 			};
 			this.scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
-			// Temporary: 2× prior strip height (48) for testing; final sizing in 7.14.4.
-			this.scrolled.set_min_content_height(96);
+			// Interim: ~3× prior testing height; final sizing in 7.14.4.
+			this.scrolled.set_min_content_height(288);
 			this.scrolled.set_child(this.column_view);
 			this.append(this.scrolled);
 		}
@@ -134,15 +134,15 @@ namespace OLLMcoder.Task
 		 */
 		public void set_runner(OLLMcoder.Skill.Runner runner)
 		{
-			var tree = new Gtk.TreeListModel(runner.progress, false, false,
-				(item) => {
-					var pi = (ProgressItem) item;
-					if (pi.children.get_n_items() == 0) {
-						return null;
-					}
-					return pi.children;
-				});
-			this.progress_selection = new Gtk.SingleSelection(tree);
+			this.progress_selection = new Gtk.SingleSelection(
+				new Gtk.TreeListModel(runner.progress, false, false,
+					(item) => {
+						var pi = (ProgressItem) item;
+						if (pi.children.get_n_items() == 0) {
+							return null;
+						}
+						return pi.children;
+					}));
 			this.column_view.model = this.progress_selection;
 		}
 	}
