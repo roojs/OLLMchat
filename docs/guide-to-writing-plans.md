@@ -54,8 +54,11 @@ For **discussion, rationale, risks, and notes** (anything that is not a mechanic
 | **⚠️** | Specific requirement or constraint **the user added** — treat as authoritative |
 | **💩** | Suggestion **introduced by the LLM** that the **user did not ask for** — optional, confirm before building it in |
 | **ℹ️** | Reference or pointer — external doc, spec, ticket, prior plan, or file path worth opening (not a status claim) |
+| **👎** | Rejected for this plan or **do not implement** — out of scope, anti-pattern, or user veto (list these so implementers do not “helpfully” add them) |
 
-You can combine a **status** emoji with a short sub-bullet under **⚠️** / **💩** / **ℹ️** when both apply (e.g. **⚠️** parent with **⏳** child for a user-requested item still open).
+**✅** is **only** for **done and verified in the codebase** (see **Status** table above). **Do not** use **✅** for “user approved” a requirement — use **⚠️** for user-authored requirements.
+
+You can combine a **status** emoji with a short sub-bullet under **⚠️** / **💩** / **ℹ️** / **👎** when both apply (e.g. **⚠️** parent with **⏳** child for a user-requested item still open).
 
 ## New methods and helpers
 
