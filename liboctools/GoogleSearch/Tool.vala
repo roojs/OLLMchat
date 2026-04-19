@@ -44,7 +44,7 @@ The tool requires permission to access the Google Custom Search API.""";
 		public override string parameter_description { get {
 			return """
 @param query {string} [required] The search query string.
-@param start {int} [optional] The starting index for results (default: 1). Use this to paginate through results.""";
+@param start {integer} [optional] The starting index for results (default: 1). Use this to paginate through results.""";
 		} }
 		
 		/**
