@@ -450,7 +450,11 @@ namespace OLLMtools.RunCommand
 				if (stdout_output != "" || stderr_output != "") {
 					output_content += "\n";
 				}
-				output_content += "Exit code: " + exit_status.to_string() + "\n";
+				output_content += "Exit code: " + exit_status.to_string();
+				if (!this.network) {
+					output_content += " - Note: Networking is disabled by default. Pass \"network\": true in the run_command arguments to enable it.";
+				}
+				output_content += "\n";
 			}
 			if (output_content.strip() == "") {
 				output_content = "No output received from command";
@@ -481,11 +485,8 @@ namespace OLLMtools.RunCommand
 				merged_output += stderr_output;
 			}
 			 */
-			// Return merged raw output to LLM (already truncated)
-			if (stdout_output.strip() == "" && stderr_output.strip() == "" && exit_status == 0) {
-				return "No output received from command";
-			}
-			return stdout_output;
+			// Return same merged output as shown in UI (already truncated)
+			return output_content;
 		}
 		
 		/**
