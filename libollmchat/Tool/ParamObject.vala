@@ -104,7 +104,7 @@ namespace OLLMchat.Tool
 					return null;
 				
 				default:
-					return default_serialize_property(property_name, value, pspec);
+					return base.serialize_property(property_name, value, pspec);
 			}
 		}
 	}

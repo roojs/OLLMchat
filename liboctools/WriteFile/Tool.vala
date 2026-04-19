@@ -51,8 +51,8 @@ Location (when using ast_path):
 @param content {string} [required] Text to write or replacement body.
 @param ast_path {string} [optional] AST path (e.g. Namespace-Class-Method). Required with location when using AST mode.
 @param location {string} [optional] Required when ast_path is set. replace, replace-with-comment, before, after, remove, before-comment.
-@param start_line {int} [optional] Start line (1-based inclusive).
-@param end_line {int} [optional] End line (1-based, exclusive). Empty
+@param start_line {integer} [optional] Start line (1-based inclusive).
+@param end_line {integer} [optional] End line (1-based, exclusive). Empty
   content deletes lines in [start_line, end_line).
 @param complete_file {boolean} [optional] If true, content is full file. Default false.
 @param overwrite {boolean} [optional] If true and complete_file and file exists, overwrite. Default false.
