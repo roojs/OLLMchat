@@ -468,7 +468,11 @@ namespace OLLMtools.RunCommand
 		if (final_fail_str != "") {
 			final_fail_str += "\n";
 		}
-		final_fail_str += "Exit code: " + exit_status.to_string() + "\n";
+		final_fail_str += "Exit code: " + exit_status.to_string();
+		if (!this.allow_network) {
+			final_fail_str += " - Note: Networking is disabled by default. Pass \"network\": true in the run_command arguments to enable it.";
+		}
+		final_fail_str += "\n";
 		
 		// Debug: Output what we captured
 		GLib.debug("Bubble.read_subprocess_output: exit_status=%d, ret_str length=%zu, fail_str length=%zu", exit_status, this.ret_str.length, this.fail_str.length);
