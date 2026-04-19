@@ -32,28 +32,32 @@ namespace MarkdownGtk
 		private GtkSource.View? source_view = null;
 		private GtkSource.Buffer? source_buffer = null;
 		private string code_language = "";
-		private StringBuilder code_content = new StringBuilder();
+		private string code_text = "";
+		private bool has_widgets = false;
+		private bool has_content = false;
 		
 		// Widget references for expand/collapse functionality
-		private Gtk.ScrolledWindow scrolled_window;
-		private Gtk.Button expand_button;
+		private Gtk.ScrolledWindow? scrolled_window = null;
+		private Gtk.Button full_view_toggle;
 		private Gtk.Button copy_button;
 		private Gtk.Button new_chat_button;
-		private Gtk.Revealer body_revealer;  // wraps body; when .collapsed / .collapsed-on-done, toggles visibility
+		private Gtk.Revealer? body_revealer = null;  // wraps body; when .collapsed / .collapsed-on-done, toggles visibility
 		private Gtk.Button collapse_toggle_button;  // before title: expand/collapse body when .collapsed or .collapsed-on-done
 		
 		/** When true, end_code_block() collapses the body (thinking frames: expand while streaming, then fold). */
 		private bool collapse_on_done = false;
 		
 		// Phase 2: nested markdown (stack + view-source toggle)
-		private Gtk.Stack stack;
-		private Gtk.Box rendered_box;
+		private Gtk.Stack? stack = null;
+		private Gtk.Box? rendered_box = null;
 		private Gtk.Button view_source_toggle;
 		private bool showing_source = false;
-		private Gtk.ScrolledWindow source_scrolled;  // inner scrolled for source page; used for scroll-to-bottom
+		private Gtk.ScrolledWindow? source_scrolled = null;  // inner scrolled for source page; used for scroll-to-bottom
 		private MarkdownGtk.Render? nested_markdown_render = null;  // streamed nested renderer for ```markdown blocks
 		private ulong source_view_realize_handler = 0;
 		private ulong rendered_box_realize_handler = 0;
+		
+		private Gtk.Box container_box;
 		
 		private enum ResizeMode
 		{
@@ -72,10 +76,9 @@ namespace MarkdownGtk
 		 * @param language_id Info string after the fence (use "" for none).
 		 *        Used for syntax highlighting and frame header.
 		 */
-		public RenderSourceView(Render renderer, string language_id)
+		public RenderSourceView(Render renderer, string language_id, bool is_streaming)
 		{
 			this.renderer = renderer;
-			this.code_content = new StringBuilder();
 			
 			// Info string format: "type.oc-frame-theme" or "type.oc-frame-theme title" (e.g. markdown.oc-frame-info, text.oc-frame-primary You said:).
 			// Parse as type + optional title when we have that format (dot or space) or empty; else treat as language-free (single word = title only).
@@ -104,43 +107,6 @@ namespace MarkdownGtk
 
 
 
-			// Create buffer with language (first token only) for syntax highlighting
-			GtkSource.Buffer source_buffer;
-			if (language != "") {
-				var mapped_id = this.map_language_id(language);
-				var lang_manager = GtkSource.LanguageManager.get_default();
-				var gtk_lang = lang_manager.get_language(mapped_id);
-				if (gtk_lang != null) {
-					source_buffer = new GtkSource.Buffer.with_language(gtk_lang);
-				} else {
-					source_buffer = new GtkSource.Buffer(null);
-				}
-			} else {
-				source_buffer = new GtkSource.Buffer(null);
-			}
-
-			// Create view
-			this.source_view = new GtkSource.View() {
-				editable = false,
-				cursor_visible = false,
-				show_line_numbers = false,  // true to debug extra lines / scrollbar
-				wrap_mode = Gtk.WrapMode.WORD,
-				hexpand = true,
-				vexpand = false,
-				can_focus = false,
-				focus_on_click = false,
-				css_classes = { "code-editor" }
-			};
-			this.source_view.set_buffer(source_buffer);
-			this.source_buffer = source_buffer;
-			this.source_buffer.implicit_trailing_newline = false;
-			this.source_view.pixels_below_lines = 0;
-			// GtkSource.Gutter in gtksourceview-5 has no set_padding; was removed from API
-
-			// Set monospace font for code display using CSS
-			this.source_view.add_css_class("code-editor");
-
-
 			// Create widget structure and add to box
 			// Create header box with title on left and buttons on right (like user messages)
 			var header_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
@@ -164,23 +130,24 @@ namespace MarkdownGtk
 				visible = has_collapsed_style || this.collapse_on_done
 			};
 			this.collapse_toggle_button.clicked.connect(() => {
+				if (!this.has_widgets) {
+					this.body_widgets(true);
+					this.fill_widgets();
+				}
 				if (this.body_revealer.reveal_child) {
 					this.body_revealer.reveal_child = false;
 					this.collapse_toggle_button.icon_name = "go-next-symbolic";
 					this.collapse_toggle_button.tooltip_text = "Expand";
-					// Hide view source and copy when collapsed
 					this.view_source_toggle.visible = false;
 					this.copy_button.visible = false;
 					return;
 				}
-				// Reveal first so body is visible; then idle-add resize so widget can be realized
 				this.body_revealer.reveal_child = true;
 				this.collapse_toggle_button.icon_name = "go-up-symbolic";
 				this.collapse_toggle_button.tooltip_text = "Collapse";
 				this.view_source_toggle.visible = (this.code_language == "markdown");
 				this.copy_button.visible = true;
 				GLib.Idle.add(() => {
-					// Use the stack's visible child so we measure the widget that will be shown (and realized)
 					Gtk.Widget widget = this.stack.visible_child;
 					if (widget == null) {
 						widget = (this.code_language == "markdown")
@@ -234,11 +201,9 @@ namespace MarkdownGtk
 				this.copy_source_view_to_clipboard(this.source_buffer);
 			});
 			
-			// Track expanded state for this code block
-			bool is_expanded = false;
+			bool full_view_open = false;
 			
-			// Create Expand/Collapse button with icon (created hidden, made visible by other code)
-			var expand_button = new Gtk.Button() {
+			var full_view_toggle = new Gtk.Button() {
 				icon_name = "pan-down-symbolic",
 				tooltip_text = "Expand",
 				hexpand = false,
@@ -251,31 +216,55 @@ namespace MarkdownGtk
 				visible = false
 			};
 			
-			// Create ScrolledWindow for the SourceView
-			// Start with vexpand = true (no fixed height) - will clamp when it reaches max_height
-			this.scrolled_window = new Gtk.ScrolledWindow() {
-				hexpand = true,
-				vexpand = true,
-				margin_start = 2
-			};
-			this.scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
+			this.full_view_toggle = full_view_toggle;
 			
-			// Phase 2: always create stack (rendered + source pages) and view-source toggle
-			this.rendered_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+			full_view_toggle.clicked.connect(() => {
+				full_view_open = !full_view_open;
+				if (full_view_open) {
+					full_view_toggle.icon_name = "pan-up-symbolic";
+					full_view_toggle.tooltip_text = "Short view";
+					GLib.Idle.add(() => {
+						return this.resize_widget_callback(this.source_view, ResizeMode.EXPAND);
+					});
+				} else {
+					full_view_toggle.icon_name = "pan-down-symbolic";
+					full_view_toggle.tooltip_text = "Full view";
+					GLib.Idle.add(() => {
+						return this.resize_widget_callback(this.source_view, ResizeMode.COLLAPSE);
+					});
+				}
+			});
+			
+			// Add buttons to button box (Start new chat, then copy, view-source toggle, expand)
+			this.new_chat_button = new Gtk.Button() {
+				icon_name = "list-add-symbolic",
+				tooltip_text = "Start new chat with this",
+				hexpand = false,
+				margin_start = 5,
+				margin_end = 5,
+				can_focus = false,
+				focus_on_click = false,
+				visible = is_user_frame
+			};
+			this.new_chat_button.clicked.connect(() => {
+				this.renderer.start_new_chat_requested(this.code_text);
+			});
+			button_box.append(this.new_chat_button);
+			button_box.append(this.copy_button);
+			header_box.append(button_box);
+			
+			this.container_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
 				vexpand = false
 			};
-			this.rendered_box.add_css_class("oc-nested-markdown-content");
-			this.stack = new Gtk.Stack() { hexpand = true, vexpand = false };
-			this.stack.add_named(this.rendered_box, "rendered");
-			this.source_scrolled = new Gtk.ScrolledWindow() {
-				hexpand = true,
-				vexpand = true,
-				margin_start = 2
-			};
-			this.source_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
-			this.source_scrolled.set_child(this.source_view);
-			this.stack.add_named(this.source_scrolled, "source");
+			
+			// Add header box to container
+			this.container_box.append(header_box);
+			
+			if (is_streaming || (!has_collapsed_style && !this.collapse_on_done)) {
+				this.body_widgets(is_streaming || !this.collapse_on_done);
+				this.body_revealer.reveal_child = !has_collapsed_style;
+			}
 			
 			this.view_source_toggle = new Gtk.Button() {
 				icon_name = "object-flip-horizontal-symbolic",
@@ -298,93 +287,9 @@ namespace MarkdownGtk
 				});
 			});
 			
-			// Store expand button reference
-			this.expand_button = expand_button;
-			
-			// Connect expand/collapse button click handler
-			expand_button.clicked.connect(() => {
-				is_expanded = !is_expanded;
-				if (is_expanded) {
-					expand_button.icon_name = "pan-up-symbolic";
-					expand_button.tooltip_text = "Collapse";
-					GLib.Idle.add(() => {
-						return this.resize_widget_callback(this.source_view, ResizeMode.EXPAND);
-					});
-				} else {
-					expand_button.icon_name = "pan-down-symbolic";
-					expand_button.tooltip_text = "Expand";
-					GLib.Idle.add(() => {
-						return this.resize_widget_callback(this.source_view, ResizeMode.COLLAPSE);
-					});
-				}
-			});
-			
-			// Add buttons to button box (Start new chat, then copy, view-source toggle, expand)
-			this.new_chat_button = new Gtk.Button() {
-				icon_name = "list-add-symbolic",
-				tooltip_text = "Start new chat with this",
-				hexpand = false,
-				margin_start = 5,
-				margin_end = 5,
-				can_focus = false,
-				focus_on_click = false,
-				visible = is_user_frame
-			};
-			this.new_chat_button.clicked.connect(() => {
-				Gtk.TextIter start_iter;
-				Gtk.TextIter end_iter;
-				this.source_buffer.get_bounds(out start_iter, out end_iter);
-				var text = this.source_buffer.get_text(start_iter, end_iter, false);
-				this.renderer.start_new_chat_requested(text);
-			});
-			button_box.append(this.new_chat_button);
-			button_box.append(copy_button);
 			button_box.append(this.view_source_toggle);
-			button_box.append(expand_button);
+			button_box.append(full_view_toggle);
 			
-			// Add button box to header
-			header_box.append(button_box);
-			
-			// Create vertical container box for header and SourceView
-			var container_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-				hexpand = true,
-				vexpand = false
-			};
-			
-			// Add header box to container
-			container_box.append(header_box);
-			
-			// Set SourceView properties
-			this.source_view.hexpand = true;
-			this.source_view.vexpand = false;
-			
-			// Add stack to ScrolledWindow (stack has "rendered" and "source" pages)
-			this.scrolled_window.set_child(this.stack);
-			
-			// Show view-source toggle for markdown: only when expanded (or when frame is not collapsible)
-			// Copy button: only when expanded when frame is collapsible
-			this.copy_button.visible = !has_collapsed_style;
-			if (this.code_language == "markdown") {
-				this.view_source_toggle.visible = !has_collapsed_style;
-				this.stack.visible_child_name = "rendered";
-				this.nested_markdown_render = new MarkdownGtk.Render(this.rendered_box);
-				this.nested_markdown_render.start();
-			} else {
-				this.view_source_toggle.visible = false;
-				this.stack.visible_child_name = "source";
-			}
-			
-			// Wrap body in Revealer so .collapsed / .collapsed-on-done can hide/show it with animation
-			this.body_revealer = new Gtk.Revealer() {
-				reveal_child = !has_collapsed_style,
-				hexpand = true,
-				vexpand = false,
-				transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN,
-				transition_duration = 250
-			};
-			this.body_revealer.set_child(this.scrolled_window);
-			container_box.append(this.body_revealer);
-
 			// Wrap in Frame for visibility and styling (no label - title is in header box)
 			// Match user box structure: same margins
 			var frame = new Gtk.Frame(null) {
@@ -392,7 +297,16 @@ namespace MarkdownGtk
 				margin_bottom = 0,
 				hexpand = true
 			};
-			frame.set_child(container_box);
+			frame.set_child(this.container_box);
+			
+			// Show view-source toggle for markdown: only when expanded (or when frame is not collapsible)
+			// Copy button: only when expanded when frame is collapsible
+			this.copy_button.visible = !has_collapsed_style;
+			if (this.code_language == "markdown") {
+				this.view_source_toggle.visible = !has_collapsed_style;
+			} else {
+				this.view_source_toggle.visible = false;
+			}
 			
 			// Style the frame: .oc-frame is the only base; theme classes (when present) override its variables
 			frame.add_css_class("oc-frame");
@@ -403,7 +317,97 @@ namespace MarkdownGtk
 			// Add frame to box
 			this.renderer.box.append(frame);
 			
-			// Connect before set_visible: realize may run during show; a handler connected afterward would miss it.
+			frame.set_visible(true);
+			if (this.source_view != null) {
+				this.source_view.set_visible(true);
+			}
+		}
+		
+		private void body_widgets(bool has_content)
+		{
+			if (this.has_widgets) {
+				return;
+			}
+			this.has_content = has_content;
+
+			// GtkSource buffer + view (language = first fence token, already in this.code_language)
+			GtkSource.Buffer source_buffer;
+			if (this.code_language != "") {
+				var mapped_id = this.map_language_id(this.code_language);
+				var lang_manager = GtkSource.LanguageManager.get_default();
+				var gtk_lang = lang_manager.get_language(mapped_id);
+				if (gtk_lang != null) {
+					source_buffer = new GtkSource.Buffer.with_language(gtk_lang);
+				} else {
+					source_buffer = new GtkSource.Buffer(null);
+				}
+			} else {
+				source_buffer = new GtkSource.Buffer(null);
+			}
+
+			this.source_view = new GtkSource.View() {
+				editable = false,
+				cursor_visible = false,
+				show_line_numbers = false,
+				wrap_mode = Gtk.WrapMode.WORD,
+				hexpand = true,
+				vexpand = false,
+				can_focus = false,
+				focus_on_click = false,
+				css_classes = { "code-editor" }
+			};
+			this.source_view.set_buffer(source_buffer);
+			this.source_buffer = source_buffer;
+			this.source_buffer.implicit_trailing_newline = false;
+			this.source_view.pixels_below_lines = 0;
+			this.source_view.add_css_class("code-editor");
+
+			this.scrolled_window = new Gtk.ScrolledWindow() {
+				hexpand = true,
+				vexpand = true,
+				margin_start = 2
+			};
+			this.scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
+
+			this.rendered_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = false
+			};
+			this.rendered_box.add_css_class("oc-nested-markdown-content");
+			this.stack = new Gtk.Stack() { hexpand = true, vexpand = false };
+			this.stack.add_named(this.rendered_box, "rendered");
+			this.source_scrolled = new Gtk.ScrolledWindow() {
+				hexpand = true,
+				vexpand = true,
+				margin_start = 2
+			};
+			this.source_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
+			this.source_scrolled.set_child(this.source_view);
+			this.stack.add_named(this.source_scrolled, "source");
+
+			this.source_view.hexpand = true;
+			this.source_view.vexpand = false;
+			this.scrolled_window.set_child(this.stack);
+
+			if (this.code_language == "markdown") {
+				this.stack.visible_child_name = "rendered";
+				this.nested_markdown_render = new MarkdownGtk.Render(this.rendered_box);
+				this.nested_markdown_render.is_streaming = this.has_content;
+				this.nested_markdown_render.start();
+			} else {
+				this.stack.visible_child_name = "source";
+			}
+
+			this.body_revealer = new Gtk.Revealer() {
+				reveal_child = false,  // callers set true when the body should paint (eager path, expand click)
+				hexpand = true,
+				vexpand = false,
+				transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN,
+				transition_duration = 250
+			};
+			this.body_revealer.set_child(this.scrolled_window);
+			this.container_box.append(this.body_revealer);
+
 			this.source_view_realize_handler = this.source_view.realize.connect(() => {
 				this.source_view.disconnect(this.source_view_realize_handler);
 				this.source_view_realize_handler = 0;
@@ -424,10 +428,29 @@ namespace MarkdownGtk
 					return false;
 				});
 			});
-			
-			frame.set_visible(true);
-			// Source view will size naturally - no fixed height
-			this.source_view.set_visible(true);
+
+			this.has_widgets = true;
+		}
+		
+		private void fill_widgets()
+		{
+			Gtk.TextIter start_iter;
+			Gtk.TextIter end_iter;
+			this.source_buffer.get_bounds(out start_iter, out end_iter);
+			this.source_buffer.delete(ref start_iter, ref end_iter);
+			this.source_buffer.get_end_iter(out end_iter);
+			this.source_buffer.insert(ref end_iter, this.code_text, -1);
+
+			if (this.code_language == "markdown") {
+				this.nested_markdown_render.add(this.code_text);
+			}
+
+			var widget_to_measure = (this.code_language == "markdown")
+				? (Gtk.Widget) this.rendered_box
+				: (Gtk.Widget) this.source_view;
+			GLib.Idle.add(() => {
+				return this.resize_widget_callback(widget_to_measure, ResizeMode.INITIAL);
+			});
 		}
 		
 		/**
@@ -477,11 +500,14 @@ namespace MarkdownGtk
 		 * @param widget The widget to measure (e.g., SourceView)
 		 * @param scrolled_window The ScrolledWindow to resize
 		 * @param mode The resize mode (INITIAL, EXPAND, COLLAPSE, or FINAL)
-		 * @param expand_button Optional expand button to show/hide based on content size
+		 * @param full_view_toggle Optional full-view toggle to show/hide based on content size
 		 * @return A function suitable for use with GLib.Idle.add()
 		 */
 		private bool resize_widget_callback(Gtk.Widget widget, ResizeMode mode)
 		{
+			if (this.scrolled_window == null) {
+				return false;
+			}
 			// Check if widget is realized (e.g. hidden stack page may never be realized)
 			if (!widget.get_realized()) {
 				// REVEAL_BODY may run before layout; retry on idle. SourceView FINAL when unrealized is handled by ctor realize one-shot + INITIAL.
@@ -543,13 +569,13 @@ namespace MarkdownGtk
 					this.scrolled_window.set_size_request(-1, target_height);
 					this.scrolled_window.vexpand = false; // Prevent expansion in collapsed state
 					
-					// Show/hide expand button based on content size (for INITIAL and FINAL modes).
+					// Show/hide full-view toggle based on content size (for INITIAL and FINAL modes).
 					// Header collapse chevron visible => .collapsed or .collapsed-on-done — never show inner pan-down.
-					if ((mode == ResizeMode.INITIAL || mode == ResizeMode.FINAL) && this.expand_button != null) {
-						this.expand_button.visible = false;
+					if ((mode == ResizeMode.INITIAL || mode == ResizeMode.FINAL) && this.full_view_toggle != null) {
+						this.full_view_toggle.visible = false;
 						if (!this.collapse_toggle_button.visible && 
 							(natural_height <= 0 || natural_height > max_height)) {
-							this.expand_button.visible = true;
+							this.full_view_toggle.visible = true;
 						}
 					}
 					
@@ -572,46 +598,33 @@ namespace MarkdownGtk
 		 */
 		public void add_code_text(string text)
 		{
-			// Accumulate content
-			this.code_content.append(text);
-			
-			// Add to source buffer if it exists
-			// GtkSource insert was profiled with this block commented out — not the dominant cost (issue elsewhere).
-			if (this.source_buffer != null) {
-				Gtk.TextIter end_iter;
-				this.source_buffer.get_end_iter(out end_iter);
-				this.source_buffer.insert(ref end_iter, text, -1);
-			}
-			
-			// Stream to nested markdown renderer when this is a ```markdown block
-			// Feeds libocmarkdown Parser.add (see docs/plans/done/6.8-DONE-fixing-large-restore.md); incremental line-by-line add is the dominant cost for large thinking blocks.
-			if (this.nested_markdown_render != null) {
-				// GLib.debug(
-				// 	"nested add cum=%d chunk=%d",
-				// 	(int) this.code_content.len,
-				// 	(int) text.length
-				// );
-				this.nested_markdown_render.add(text);
-			}
-			
-			// When collapsed, skip resize and scroll (body is hidden)
-			if (!this.body_revealer.reveal_child) {
-				this.renderer.code_block_content_updated();
+			if (!this.has_content) {
+				this.code_text += text;
 				return;
 			}
-			// Scroll visible content (rendered or source) to bottom after content is added
+
+			Gtk.TextIter end_iter;
+			this.source_buffer.get_end_iter(out end_iter);
+			this.source_buffer.insert(ref end_iter, text, -1);
+
+			if (this.code_language == "markdown") {
+				this.nested_markdown_render.add(text);
+			}
+
+			if (this.body_revealer != null && !this.body_revealer.reveal_child) {
+				return;
+			}
 			GLib.Idle.add(() => {
 				this.scroll_bottom();
 				return false;
 			});
 			this.renderer.code_block_content_updated();
-			// When content grows (e.g. newline), resize the frame so it expands with streamed content
 			if (text.contains("\n")) {
 				GLib.Idle.add(() => {
-					if (!this.body_revealer.reveal_child) {
+					if (this.body_revealer != null && !this.body_revealer.reveal_child) {
 						return false;
 					}
-					var widget_to_resize = (this.nested_markdown_render != null)
+					var widget_to_resize = (this.code_language == "markdown")
 						? (Gtk.Widget) this.rendered_box
 						: (Gtk.Widget) this.source_view;
 					return this.resize_widget_callback(widget_to_resize, ResizeMode.INITIAL);
@@ -625,11 +638,12 @@ namespace MarkdownGtk
 		 */
 		public void end_code_block()
 		{
-			// Notify renderer with content and language
-			var content = this.code_content.str;
-			this.renderer.code_block_ended(content, this.code_language);
+			if (!this.has_widgets) {
+				var content = this.code_text;
+				this.renderer.code_block_ended(content, this.code_language);
+				return;
+			}
 
-			// Remove trailing newline(s) from SourceView in place (no full buffer rewrite) to avoid extra blank line / scrollbar
 			Gtk.TextIter end_iter;
 			this.source_buffer.get_end_iter(out end_iter);
 			var start_iter = end_iter;
@@ -644,10 +658,15 @@ namespace MarkdownGtk
 			if (!del_start.equal(end_iter)) {
 				this.source_buffer.delete(ref del_start, ref end_iter);
 			}
+			Gtk.TextIter s_iter;
+			Gtk.TextIter e_iter;
+			this.source_buffer.get_bounds(out s_iter, out e_iter);
+			this.code_text = this.source_buffer.get_text(s_iter, e_iter, false);
 
-			// Phase 2: when markdown block, flush the streamed nested renderer then resize and scroll to bottom
+			var content = this.code_text;
+			this.renderer.code_block_ended(content, this.code_language);
+
 			if (this.nested_markdown_render != null) {
-				// GLib.debug("nested markdown block flush len=%d", content.length);
 				this.nested_markdown_render.flush();
 				this.nested_markdown_render = null;
 				GLib.Timeout.add(200, () => {
@@ -658,25 +677,20 @@ namespace MarkdownGtk
 					return false;
 				});
 			}
-			// Finalize the sourceview - resize based on content rules
-			if (this.source_view != null) {
-				GLib.Idle.add(() => {
-					if (!this.body_revealer.reveal_child) {
-						return false;
-					}
-					var result = this.resize_widget_callback(this.source_view, ResizeMode.FINAL);
-					this.scroll_bottom(this.source_scrolled);
-					return result;
-				});
-			}
-			
-			// Emit signal to notify that code block ended (for scrolling after final resize)
-			// Use Idle to delay until after resize callback completes
+			GLib.Idle.add(() => {
+				if (!this.body_revealer.reveal_child) {
+					return false;
+				}
+				var result = this.resize_widget_callback(this.source_view, ResizeMode.FINAL);
+				this.scroll_bottom(this.source_scrolled);
+				return result;
+			});
+
 			GLib.Idle.add(() => {
 				this.renderer.code_block_content_updated();
 				return false;
 			});
-			
+
 			if (this.collapse_on_done) {
 				GLib.Timeout.add(350, () => {
 					this.body_revealer.reveal_child = false;
@@ -687,9 +701,6 @@ namespace MarkdownGtk
 					return false;
 				});
 			}
-			
-			// Clean up (keep code_language for header toggles on this widget)
-			this.code_content = new StringBuilder();
 		}
 		
 		/**
@@ -698,7 +709,7 @@ namespace MarkdownGtk
 		 */
 		private void scroll_bottom(Gtk.ScrolledWindow? sw = null, bool try_again = true)
 		{
-			if (!this.body_revealer.reveal_child) {
+			if (this.body_revealer == null || !this.body_revealer.reveal_child) {
 				return;
 			}
 			var target = sw;
@@ -706,6 +717,9 @@ namespace MarkdownGtk
 				target = (this.nested_markdown_render != null)
 					? this.scrolled_window
 					: this.source_scrolled;
+			}
+			if (target == null) {
+				return;
 			}
 			if (!target.get_realized()) {
 				if (!try_again) {

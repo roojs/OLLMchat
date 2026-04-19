@@ -222,6 +222,7 @@ namespace OLLMchatGtk
 			this.content_state = ContentState.NONE;
 			// Initialize the renderer for the new assistant message
 			this.renderer.start();
+			this.renderer.is_streaming = response.message.is_stream;
 		}
 
 		/**
@@ -587,6 +588,7 @@ namespace OLLMchatGtk
 			this.last_chunk_start = 0;
 			this.content_state = ContentState.NONE;
 			this.is_thinking = is_thinking;
+			this.renderer.is_streaming = false;
 			// Don't call renderer.start() here - let start_block_direct() handle it
 			// so default_state can be set before TextView creation
 
