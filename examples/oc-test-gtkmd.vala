@@ -298,6 +298,7 @@ Examples:
 		this.md_renderer = new MarkdownGtk.Render(this.text_view_box) {
 			scroll_to_end = this.history_messages.get_length() == 0 && stream
 		};
+		this.md_renderer.is_streaming = stream;
 		this.md_renderer.link_clicked.connect((href, link_title) => {
 			if (href.has_prefix("http://") || href.has_prefix("https://")) {
 				try {

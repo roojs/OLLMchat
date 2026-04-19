@@ -57,6 +57,8 @@ namespace MarkdownGtk
 		
 		// Configuration
 		public bool scroll_to_end { get; set; default = true; }
+		/** Set by the app after construction, before add() for each assistant feed; read at on_code_block. */
+		public bool is_streaming { get; set; }
 		
 		// Default state to restore when new textviews are created (e.g., after code blocks)
 		public State? default_state { get; set; default = null; }
@@ -815,7 +817,7 @@ namespace MarkdownGtk
 
 			// Create new source_view_handler for the code block FIRST
 			// (so it appears before the textview that will be created after)
-			this.childview = new RenderSourceView(this, lang);
+			this.childview = new RenderSourceView(this, lang, this.is_streaming);
 
 			// Keep handler in array so it doesn't go out of scope
 			this.source_view_handlers.add(this.childview);
