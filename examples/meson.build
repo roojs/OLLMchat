@@ -496,3 +496,35 @@ oc_vector_search = executable('oc-vector-search',
   install_dir: get_option('bindir')
 )
 
+# libseccomp + bwrap spike (plan 2.22.1.2): optional when libseccomp is linkable.
+# Use cc.find_library (not pkg-config dep) so Meson does not pass --pkg libseccomp to valac.
+# Vala: user-notify supervisor + bwrap; link vapi/seccomp-fd-pass.c for SCM_RIGHTS (see Seccomp.pass_unix_fd).
+cc_examples = meson.get_compiler('c')
+libseccomp_lib = cc_examples.find_library('seccomp', required: false)
+seccomp_vapi = valac.find_library('seccomp', dirs: meson.current_source_dir() / '../vapi', required: false)
+if libseccomp_lib.found() and seccomp_vapi.found()
+  executable('oc-test-seccomp-spike',
+    dependencies: [
+      dependency('gio-2.0'),
+      valac.find_library('posix'),
+      seccomp_vapi,
+      libseccomp_lib,
+    ],
+    include_directories: include_directories ('../vapi'),
+    sources: [
+      'oc-user-notif-exchange.vala',
+      'oc-test-seccomp-spike.vala',
+      '../vapi/seccomp-fd-pass.c',
+    ],
+    vala_args: [
+      '--pkg=posix',
+      '--pkg=seccomp',
+      '--vapidir', meson.current_source_dir() / '../vapi',
+      '--Xcc=-D_GNU_SOURCE',
+    ],
+    c_args: ['-D_GNU_SOURCE'],
+    install: true,
+    install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+  )
+endif
+

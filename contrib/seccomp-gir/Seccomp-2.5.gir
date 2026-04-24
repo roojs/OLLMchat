@@ -1,0 +1,804 @@
+<?xml version="1.0"?>
+<!-- This file was automatically generated from C sources - DO NOT EDIT!
+To affect the contents of this file, edit the original C definitions,
+and/or use gtk-doc annotations.  -->
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:doc="http://www.gtk.org/introspection/doc/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <package name="libseccomp"/>
+  <doc:format name="unknown"/>
+  <namespace name="Seccomp"
+             version="2.5"
+             shared-library=""
+             c:identifier-prefixes="Seccomp"
+             c:symbol-prefixes="seccomp">
+    <alias name="scmp_datum_t" c:type="scmp_datum_t">
+      <source-position filename="seccomp.h" line="101"/>
+      <type name="guint64" c:type="uint64_t"/>
+    </alias>
+    <alias name="scmp_filter_ctx" c:type="scmp_filter_ctx">
+      <source-position filename="seccomp.h" line="58"/>
+      <type name="gpointer" c:type="void*"/>
+    </alias>
+    <constant name="AUDIT_ARCH_AARCH64" value="0" c:type="AUDIT_ARCH_AARCH64">
+      <source-position filename="seccomp.h" line="149"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="AUDIT_ARCH_MIPS64" value="0" c:type="AUDIT_ARCH_MIPS64">
+      <source-position filename="seccomp.h" line="166"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="AUDIT_ARCH_MIPS64N32"
+              value="0"
+              c:type="AUDIT_ARCH_MIPS64N32">
+      <source-position filename="seccomp.h" line="170"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="AUDIT_ARCH_MIPSEL64N32"
+              value="0"
+              c:type="AUDIT_ARCH_MIPSEL64N32">
+      <source-position filename="seccomp.h" line="174"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="AUDIT_ARCH_PPC64LE" value="0" c:type="AUDIT_ARCH_PPC64LE">
+      <source-position filename="seccomp.h" line="189"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="AUDIT_ARCH_RISCV64" value="0" c:type="AUDIT_ARCH_RISCV64">
+      <source-position filename="seccomp.h" line="213"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="EM_AARCH64" value="183" c:type="EM_AARCH64">
+      <source-position filename="seccomp.h" line="147"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="EM_MIPS" value="8" c:type="EM_MIPS">
+      <source-position filename="seccomp.h" line="160"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="EM_RISCV" value="243" c:type="EM_RISCV">
+      <source-position filename="seccomp.h" line="211"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="RET_USER_NOTIF"
+              value="2143289344"
+              c:type="SECCOMP_RET_USER_NOTIF">
+      <source-position filename="seccomp.h" line="366"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <function-macro name="SCMP_A0_32"
+                    c:identifier="SCMP_A0_32"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="266"/>
+      <parameters>
+        <parameter name="x">
+        </parameter>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_A0_64"
+                    c:identifier="SCMP_A0_64"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="260"/>
+      <parameters>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_A1_32"
+                    c:identifier="SCMP_A1_32"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="277"/>
+      <parameters>
+        <parameter name="x">
+        </parameter>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_A1_64"
+                    c:identifier="SCMP_A1_64"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="271"/>
+      <parameters>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_A2_32"
+                    c:identifier="SCMP_A2_32"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="288"/>
+      <parameters>
+        <parameter name="x">
+        </parameter>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_A2_64"
+                    c:identifier="SCMP_A2_64"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="282"/>
+      <parameters>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_A3_32"
+                    c:identifier="SCMP_A3_32"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="299"/>
+      <parameters>
+        <parameter name="x">
+        </parameter>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_A3_64"
+                    c:identifier="SCMP_A3_64"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="293"/>
+      <parameters>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_A4_32"
+                    c:identifier="SCMP_A4_32"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="310"/>
+      <parameters>
+        <parameter name="x">
+        </parameter>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_A4_64"
+                    c:identifier="SCMP_A4_64"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="304"/>
+      <parameters>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_A5_32"
+                    c:identifier="SCMP_A5_32"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="321"/>
+      <parameters>
+        <parameter name="x">
+        </parameter>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_A5_64"
+                    c:identifier="SCMP_A5_64"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="315"/>
+      <parameters>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <constant name="SCMP_ACT_ALLOW" value="2147418112" c:type="SCMP_ACT_ALLOW">
+      <source-position filename="seccomp.h" line="362"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <function-macro name="SCMP_ACT_ERRNO"
+                    c:identifier="SCMP_ACT_ERRNO"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="350"/>
+      <parameters>
+        <parameter name="x">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <constant name="SCMP_ACT_KILL_PROCESS"
+              value="2147483648"
+              c:type="SCMP_ACT_KILL_PROCESS">
+      <source-position filename="seccomp.h" line="330"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="SCMP_ACT_KILL_THREAD"
+              value="0"
+              c:type="SCMP_ACT_KILL_THREAD">
+      <source-position filename="seccomp.h" line="334"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="SCMP_ACT_LOG" value="2147221504" c:type="SCMP_ACT_LOG">
+      <source-position filename="seccomp.h" line="358"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="SCMP_ACT_NOTIFY"
+              value="2143289344"
+              c:type="SCMP_ACT_NOTIFY">
+      <source-position filename="seccomp.h" line="346"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <function-macro name="SCMP_ACT_TRACE"
+                    c:identifier="SCMP_ACT_TRACE"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="354"/>
+      <parameters>
+        <parameter name="x">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <constant name="SCMP_ACT_TRAP" value="196608" c:type="SCMP_ACT_TRAP">
+      <source-position filename="seccomp.h" line="342"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="SCMP_ARCH_NATIVE" value="0" c:type="SCMP_ARCH_NATIVE">
+      <source-position filename="seccomp.h" line="120"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="SCMP_ARCH_X32" value="0" c:type="SCMP_ARCH_X32">
+      <source-position filename="seccomp.h" line="138"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <function-macro name="SCMP_CMP32"
+                    c:identifier="SCMP_CMP32"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="254"/>
+      <parameters>
+        <parameter name="x">
+        </parameter>
+        <parameter name="y">
+        </parameter>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_CMP64"
+                    c:identifier="SCMP_CMP64"
+                    introspectable="0">
+      <source-position filename="seccomp.h" line="244"/>
+      <parameters>
+        <parameter name="...">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <function-macro name="SCMP_SYS" c:identifier="SCMP_SYS" introspectable="0">
+      <source-position filename="seccomp.h" line="221"/>
+      <parameters>
+        <parameter name="x">
+        </parameter>
+      </parameters>
+    </function-macro>
+    <constant name="SCMP_VER_MAJOR" value="2" c:type="SCMP_VER_MAJOR">
+      <source-position filename="seccomp.h" line="41"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="SCMP_VER_MICRO" value="5" c:type="SCMP_VER_MICRO">
+      <source-position filename="seccomp.h" line="43"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="SCMP_VER_MINOR" value="5" c:type="SCMP_VER_MINOR">
+      <source-position filename="seccomp.h" line="42"/>
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <function name="api_get" c:identifier="seccomp_api_get">
+      <source-position filename="seccomp.h" line="422"/>
+      <return-value transfer-ownership="none">
+        <type name="guint" c:type="unsigned int"/>
+      </return-value>
+    </function>
+    <function name="api_set" c:identifier="seccomp_api_set">
+      <source-position filename="seccomp.h" line="432"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="level" transfer-ownership="none">
+          <type name="guint" c:type="unsigned int"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="arch_add" c:identifier="seccomp_arch_add">
+      <source-position filename="seccomp.h" line="531"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="arch_token" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="arch_exist" c:identifier="seccomp_arch_exist">
+      <source-position filename="seccomp.h" line="516"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="const scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="arch_token" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="arch_native" c:identifier="seccomp_arch_native">
+      <source-position filename="seccomp.h" line="502"/>
+      <return-value transfer-ownership="none">
+        <type name="guint32" c:type="uint32_t"/>
+      </return-value>
+    </function>
+    <function name="arch_remove" c:identifier="seccomp_arch_remove">
+      <source-position filename="seccomp.h" line="543"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="arch_token" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="arch_resolve_name"
+              c:identifier="seccomp_arch_resolve_name">
+      <source-position filename="seccomp.h" line="494"/>
+      <return-value transfer-ownership="none">
+        <type name="guint32" c:type="uint32_t"/>
+      </return-value>
+      <parameters>
+        <parameter name="arch_name" transfer-ownership="none">
+          <type name="utf8" c:type="const char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="attr_get" c:identifier="seccomp_attr_get">
+      <source-position filename="seccomp.h" line="567"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="const scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="attr"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <type name="gpointer" c:type="scmp_filter_attr"/>
+        </parameter>
+        <parameter name="value" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="attr_set" c:identifier="seccomp_attr_set">
+      <source-position filename="seccomp.h" line="580"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="attr"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <type name="gpointer" c:type="scmp_filter_attr"/>
+        </parameter>
+        <parameter name="value" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="export_bpf" c:identifier="seccomp_export_bpf">
+      <source-position filename="seccomp.h" line="811"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="const scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="fd" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="export_pfc" c:identifier="seccomp_export_pfc">
+      <source-position filename="seccomp.h" line="800"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="const scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="fd" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="init" c:identifier="seccomp_init">
+      <source-position filename="seccomp.h" line="443"/>
+      <return-value transfer-ownership="none">
+        <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+      </return-value>
+      <parameters>
+        <parameter name="def_action" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="load" c:identifier="seccomp_load">
+      <source-position filename="seccomp.h" line="555"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="const scmp_filter_ctx"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="merge" c:identifier="seccomp_merge">
+      <source-position filename="seccomp.h" line="484"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx_dst" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="ctx_src" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="notify_alloc" c:identifier="seccomp_notify_alloc">
+      <source-position filename="seccomp.h" line="734"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="req"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <type name="gpointer" c:type="seccomp_notif**"/>
+        </parameter>
+        <parameter name="resp"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <type name="gpointer" c:type="seccomp_notif_resp**"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="notify_fd" c:identifier="seccomp_notify_fd">
+      <source-position filename="seccomp.h" line="789"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="const scmp_filter_ctx"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="notify_free" c:identifier="seccomp_notify_free">
+      <source-position filename="seccomp.h" line="742"/>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="req"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <type name="gpointer" c:type="seccomp_notif*"/>
+        </parameter>
+        <parameter name="resp"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <type name="gpointer" c:type="seccomp_notif_resp*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="notify_id_valid" c:identifier="seccomp_notify_id_valid">
+      <source-position filename="seccomp.h" line="778"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="fd" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="id" transfer-ownership="none">
+          <type name="guint64" c:type="uint64_t"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="notify_receive" c:identifier="seccomp_notify_receive">
+      <source-position filename="seccomp.h" line="755"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="fd" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="req"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <type name="gpointer" c:type="seccomp_notif*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="notify_respond" c:identifier="seccomp_notify_respond">
+      <source-position filename="seccomp.h" line="767"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="fd" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="resp"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <type name="gpointer" c:type="seccomp_notif_resp*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="release" c:identifier="seccomp_release">
+      <source-position filename="seccomp.h" line="468"/>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="reset" c:identifier="seccomp_reset">
+      <source-position filename="seccomp.h" line="456"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="def_action" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="rule_add"
+              c:identifier="seccomp_rule_add"
+              introspectable="0">
+      <source-position filename="seccomp.h" line="662"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="action" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+        <parameter name="syscall" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="arg_cnt" transfer-ownership="none">
+          <type name="guint" c:type="unsigned int"/>
+        </parameter>
+        <parameter name="..." transfer-ownership="none">
+          <varargs/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="rule_add_array" c:identifier="seccomp_rule_add_array">
+      <source-position filename="seccomp.h" line="682"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="action" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+        <parameter name="syscall" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="arg_cnt" transfer-ownership="none">
+          <type name="guint" c:type="unsigned int"/>
+        </parameter>
+        <parameter name="arg_array"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <type name="gpointer" c:type="const scmp_arg_cmp*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="rule_add_exact"
+              c:identifier="seccomp_rule_add_exact"
+              introspectable="0">
+      <source-position filename="seccomp.h" line="701"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="action" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+        <parameter name="syscall" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="arg_cnt" transfer-ownership="none">
+          <type name="guint" c:type="unsigned int"/>
+        </parameter>
+        <parameter name="..." transfer-ownership="none">
+          <varargs/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="rule_add_exact_array"
+              c:identifier="seccomp_rule_add_exact_array">
+      <source-position filename="seccomp.h" line="719"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="action" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+        <parameter name="syscall" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="arg_cnt" transfer-ownership="none">
+          <type name="guint" c:type="unsigned int"/>
+        </parameter>
+        <parameter name="arg_array"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <type name="gpointer" c:type="const scmp_arg_cmp*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <record name="scmp_arg_cmp" c:type="scmp_arg_cmp">
+      <source-position filename="seccomp.h" line="111"/>
+      <field name="arg" writable="1">
+        <type name="guint" c:type="unsigned int"/>
+      </field>
+      <field name="op" writable="1">
+        <type name="gpointer" c:type="scmp_compare"/>
+      </field>
+      <field name="datum_a" writable="1">
+        <type name="scmp_datum_t" c:type="scmp_datum_t"/>
+      </field>
+      <field name="datum_b" writable="1">
+        <type name="scmp_datum_t" c:type="scmp_datum_t"/>
+      </field>
+    </record>
+    <record name="scmp_version" c:type="scmp_version">
+      <source-position filename="seccomp.h" line="49"/>
+      <field name="major" writable="1">
+        <type name="guint" c:type="unsigned int"/>
+      </field>
+      <field name="minor" writable="1">
+        <type name="guint" c:type="unsigned int"/>
+      </field>
+      <field name="micro" writable="1">
+        <type name="guint" c:type="unsigned int"/>
+      </field>
+    </record>
+    <function name="syscall_priority" c:identifier="seccomp_syscall_priority">
+      <source-position filename="seccomp.h" line="643"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="ctx" transfer-ownership="none">
+          <type name="scmp_filter_ctx" c:type="scmp_filter_ctx"/>
+        </parameter>
+        <parameter name="syscall" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="priority" transfer-ownership="none">
+          <type name="guint8" c:type="uint8_t"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="syscall_resolve_name"
+              c:identifier="seccomp_syscall_resolve_name">
+      <source-position filename="seccomp.h" line="629"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="name" transfer-ownership="none">
+          <type name="utf8" c:type="const char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="syscall_resolve_name_arch"
+              c:identifier="seccomp_syscall_resolve_name_arch">
+      <source-position filename="seccomp.h" line="605"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="arch_token" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+        <parameter name="name" transfer-ownership="none">
+          <type name="utf8" c:type="const char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="syscall_resolve_name_rewrite"
+              c:identifier="seccomp_syscall_resolve_name_rewrite">
+      <source-position filename="seccomp.h" line="618"/>
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="arch_token" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+        <parameter name="name" transfer-ownership="none">
+          <type name="utf8" c:type="const char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="syscall_resolve_num_arch"
+              c:identifier="seccomp_syscall_resolve_num_arch">
+      <source-position filename="seccomp.h" line="593"/>
+      <return-value transfer-ownership="full">
+        <type name="utf8" c:type="char*"/>
+      </return-value>
+      <parameters>
+        <parameter name="arch_token" transfer-ownership="none">
+          <type name="guint32" c:type="uint32_t"/>
+        </parameter>
+        <parameter name="num" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="version" c:identifier="seccomp_version">
+      <source-position filename="seccomp.h" line="396"/>
+      <return-value transfer-ownership="none" nullable="1">
+        <type name="gpointer" c:type="const scmp_version*"/>
+      </return-value>
+    </function>
+  </namespace>
+</repository>
