@@ -4,6 +4,12 @@
 # Dependencies for octools library
 valac = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
+libseccomp_lib = cc.find_library('seccomp', required: true)
+seccomp_vapi = valac.find_library(
+  'seccomp',
+  dirs: meson.current_source_dir() / '../vapi',
+  required: true,
+)
 # Find tree-sitter library (C library for parsing)
 tree_sitter_lib = dependency('tree-sitter', required: true)
 octools_deps = [
@@ -17,6 +23,8 @@ octools_deps = [
   dependency('libsoup-3.0'),
   valac.find_library('posix'),
   tree_sitter_lib,  # Tree-sitter C library (required - ReadFileSummarize uses TreeSitter API)
+  seccomp_vapi,
+  libseccomp_lib,
 ]
 
 # Source files for OLLMtools namespace
@@ -30,6 +38,7 @@ octools_src = files([
   'WriteFile/Tool.vala',
   'WriteFile/Request.vala',
   'RunCommand/Tool.vala',
+  'RunCommand/RunSeccomp.vala',
   'RunCommand/Bubble.vala',  # Must come before Request.vala so Bubble class is available
   'RunCommand/Scan.vala',  # Post-completion overlay scanner (must come before Overlay)
   'RunCommand/Overlay.vala',  # Overlay filesystem management (uses Scan)
@@ -59,12 +68,13 @@ lib_build_rpath = ':'.join([
 
 octools_base_lib = library('octools',
   dependencies: [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep],
-  sources: octools_src,
+  sources: octools_src + files(meson.current_source_dir() / '../vapi/seccomp-fd-pass.c'),
   vala_header: 'octools.h',
   vala_vapi: 'octools-meson.vapi',  # Use different name so our custom_target can use 'octools.vapi'
   build_rpath: lib_build_rpath,
   include_directories: [
     include_directories('..' / 'libollmchat'),  # For ollmchat.h header
+    include_directories('..' / 'vapi'),  # seccomp-fd-pass.h
   ],
   vala_args: [
     '--pkg=ollmchat',
@@ -73,6 +83,7 @@ octools_base_lib = library('octools',
     '--pkg=ocmarkdown',
     '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
     '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
+    '--pkg=seccomp',
     '--pkg=json-glib-1.0',
     '--pkg=gio-unix-2.0',  # Required for UnixInputStream in Bubble.vala
     # Put build directories FIRST so we use local VAPIs instead of installed ones
@@ -106,6 +117,7 @@ octools_vapi = custom_target('octools-vapi',
     '--pkg', 'libsoup-3.0',
     '--pkg', 'gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
     '--pkg', 'tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
+    '--pkg', 'seccomp',
     '--pkg', 'sqlite3',  # Required for ocsqlite.vapi (Sqlite namespace)
     '--pkg', 'ollmchat',
     '--pkg', 'ocfiles',

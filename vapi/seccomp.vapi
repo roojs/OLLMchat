@@ -175,6 +175,16 @@ namespace Seccomp {
 	 */
 	[CCode (cname = "seccomp_fd_pass_recv", cheader_filename = "seccomp-fd-pass.h")]
 	public static int receive_unix_fd (int socket_fd);
+
+	/** Thin `process_vm_readv` wrapper in seccomp-fd-pass.c (headers / `_GNU_SOURCE`). NOTIFY helpers. */
+	[CCode (cname = "seccomp_vm_readv", cheader_filename = "seccomp-fd-pass.h")]
+	public static ssize_t vm_readv (
+		int pid,
+		void* local_iov,
+		ulong liovcnt,
+		void* remote_iov,
+		ulong riovcnt,
+		ulong flags);
 }
 
 /** Linux syscalls/constants used with seccomp user-notify (no `seccomp_` prefix). */
@@ -182,9 +192,6 @@ namespace Seccomp {
 namespace SeccompLinux {
 	[CCode (cname = "prctl", cheader_filename = "sys/prctl.h")]
 	public int prctl (int option, ulong arg2 = 0, ulong arg3 = 0, ulong arg4 = 0, ulong arg5 = 0);
-
-	[CCode (cname = "process_vm_readv", cheader_filename = "sys/uio.h")]
-	public ssize_t process_vm_readv (int pid, void* local_iov, ulong liovcnt, void* remote_iov, ulong riovcnt, ulong flags = 0);
 
 	[CCode (cname = "PR_SET_NO_NEW_PRIVS", cheader_filename = "linux/prctl.h")]
 	public const int PR_SET_NO_NEW_PRIVS;

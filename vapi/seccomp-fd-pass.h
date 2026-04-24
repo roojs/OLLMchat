@@ -3,7 +3,17 @@
 #ifndef SECCOMP_FD_PASS_H
 #define SECCOMP_FD_PASS_H
 
+#include <sys/types.h>
+
 int seccomp_fd_pass_send (int socket_fd, int fd_to_pass);
 int seccomp_fd_pass_recv (int socket_fd);
+
+ssize_t seccomp_vm_readv (
+	int pid,
+	void *local_iov,
+	unsigned long liovcnt,
+	void *remote_iov,
+	unsigned long riovcnt,
+	unsigned long flags);
 
 #endif

@@ -2,12 +2,14 @@
  * POSIX SCM_RIGHTS over a connected Unix SOCK_STREAM socket.
  * Safe in a child after fork() before exec — do not use Gio there.
  */
+#define _GNU_SOURCE
 #include "seccomp-fd-pass.h"
 
 #include <errno.h>
 #include <stddef.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 #include <unistd.h>
 
 int
@@ -74,4 +76,22 @@ seccomp_fd_pass_recv (int socket_fd)
 	}
 	errno = ENOENT;
 	return -1;
+}
+
+ssize_t
+seccomp_vm_readv (
+	int pid,
+	void *local_iov,
+	unsigned long liovcnt,
+	void *remote_iov,
+	unsigned long riovcnt,
+	unsigned long flags)
+{
+	return process_vm_readv (
+		pid,
+		(struct iovec *) local_iov,
+		liovcnt,
+		(struct iovec *) remote_iov,
+		riovcnt,
+		flags);
 }
