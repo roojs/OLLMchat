@@ -47,7 +47,7 @@ class TraceeReader {
 			iov_base = (void*) (uintptr) remote_address,
 			iov_len = copy_len
 		};
-		ssize_t n = SeccompLinux.process_vm_readv ((int) tracee_pid, &local_iov, 1, &remote_iov, 1, 0);
+		ssize_t n = Seccomp.vm_readv ((int) tracee_pid, &local_iov, 1, &remote_iov, 1, 0);
 		if (n < 0) {
 			return null;
 		}

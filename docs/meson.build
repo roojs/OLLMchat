@@ -200,6 +200,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/WriteFile/Tool.vala',
     '../liboctools/WriteFile/Request.vala',
     '../liboctools/RunCommand/Tool.vala',
+    '../liboctools/RunCommand/RunSeccomp.vala',
     '../liboctools/RunCommand/Bubble.vala',  # Must come before Request.vala (Request uses Bubble)
     '../liboctools/RunCommand/Scan.vala',  # Post-completion overlay scanner (must come before Overlay)
     '../liboctools/RunCommand/Overlay.vala',  # Overlay filesystem management (uses Scan)
@@ -354,6 +355,7 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=posix',
     '--pkg=fiass',  # FAISS via vapi (used by libocvector)
     '--pkg=tree-sitter',  # Tree-sitter via vapi (used by libocvector)
+    '--pkg=seccomp',  # RunSeccomp / Bubble (liboctools)
     # Don't use --pkg for internal libraries (ocmarkdown, ocmarkdowngtk, ocsqlite, occoder, ocvector, octools)
     # - valadoc processes source files directly, so it doesn't need VAPI files.
     # Using --pkg would cause duplicate definition errors since the VAPI contains the same definitions.

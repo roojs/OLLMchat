@@ -148,28 +148,31 @@ namespace OLLMtools.RunCommand
 			
 			try {
 				var args = this.build_bubble_args(command, working_dir);
-				
 				var cmd_str = string.joinv(" ", args);
-				GLib.debug("Bubble.exec() running command: %s", cmd_str);
-				
-				GLib.Subprocess subprocess;
+				GLib.debug("running command: %s", cmd_str);
+
+				var run_seccomp = new RunSeccomp ();
 				try {
-					subprocess = new GLib.Subprocess.newv(
-						args,
-						GLib.SubprocessFlags.STDOUT_PIPE | 
+					var launcher = new GLib.SubprocessLauncher (
+						GLib.SubprocessFlags.STDOUT_PIPE |
 						GLib.SubprocessFlags.STDERR_PIPE |
-						GLib.SubprocessFlags.STDIN_INHERIT
-					);
-				} catch (GLib.Error e) {
-					throw new GLib.IOError.FAILED("Failed to create bubblewrap subprocess: " + e.message);
+						GLib.SubprocessFlags.STDIN_INHERIT);
+					run_seccomp.wire_launcher (launcher, !this.allow_network, true);
+					GLib.Subprocess subprocess;
+					try {
+						subprocess = launcher.spawnv (args);
+					} catch (GLib.Error e) {
+						throw new GLib.IOError.FAILED (
+							"Failed to create bubblewrap subprocess: " + e.message);
+					}
+					run_seccomp.finish_handshake ();
+					run_seccomp.attach_notify_loop ();
+					var output = yield this.read_subprocess_output (subprocess, run_seccomp);
+					yield this.overlay.scan.run ();
+					return output;
+				} finally {
+					run_seccomp.detach_sources ();
 				}
-				
-				var output = yield this.read_subprocess_output(subprocess);
-				
-				yield this.overlay.scan.run();
-				
-				return output;
-				
 			} finally {
 				try {
 					this.overlay.cleanup();
@@ -335,10 +338,13 @@ namespace OLLMtools.RunCommand
 	 * streams concurrently as data arrives.
 	 * 
 	 * @param subprocess The Subprocess instance to read from
+	 * @param run_seccomp NOTIFY aggregator for this run (same main loop as this async method)
 	 * @return Combined stdout + stderr output as string, with exit code appended if non-zero
 	 * @throws Error if reading fails, waiting for process fails, or I/O errors occur
 	 */
-	private async string read_subprocess_output(GLib.Subprocess subprocess) throws Error
+	private async string read_subprocess_output (
+		GLib.Subprocess subprocess,
+		RunSeccomp run_seccomp) throws Error
 	{
 		GLib.debug("read_subprocess_output: Starting to read from subprocess");
 		
@@ -453,7 +459,10 @@ namespace OLLMtools.RunCommand
 		if (stderr_open) {
 			GLib.Source.remove(stderr_watch);
 		}
-		
+
+		run_seccomp.drain_notify_readable ();
+		run_seccomp.finish_evidence_formatting ();
+
 		// Build failure string (stderr + stdout + exit code) for failure case
 		// fail_str already contains stderr, now add stdout
 		var final_fail_str = this.fail_str;
@@ -468,12 +477,24 @@ namespace OLLMtools.RunCommand
 		if (final_fail_str != "") {
 			final_fail_str += "\n";
 		}
-		final_fail_str += "Exit code: " + exit_status.to_string();
-		if (!this.allow_network) {
-			final_fail_str += " - Note: Networking is disabled by default. Pass \"network\": true in the run_command arguments to enable it.";
+		final_fail_str += "Exit code: " + exit_status.to_string ();
+		string[] appendix = {};
+		foreach (string part in new string[] {
+			run_seccomp.network,
+			run_seccomp.skipped,
+			run_seccomp.fs
+		}) {
+			string t = part.chomp ();
+			if (t == "") {
+				continue;
+			}
+			appendix += t;
+		}
+		if (appendix.length > 0) {
+			final_fail_str += "\n" + string.joinv ("\n", appendix);
 		}
 		final_fail_str += "\n";
-		
+
 		// Debug: Output what we captured
 		GLib.debug("Bubble.read_subprocess_output: exit_status=%d, ret_str length=%zu, fail_str length=%zu", exit_status, this.ret_str.length, this.fail_str.length);
 		if (this.fail_str.length > 0) {
@@ -482,9 +503,20 @@ namespace OLLMtools.RunCommand
 		
 		// Return appropriate string based on exit status
 		if (exit_status == 0) {
-			// Success: return only stdout (no exit code, no stderr)
+			if (run_seccomp.fs != "") {
+				if (this.ret_str != "") {
+					return this.ret_str + "\n" + run_seccomp.fs;
+				}
+				return run_seccomp.fs;
+			}
+			if (run_seccomp.skipped != "") {
+				if (this.ret_str != "") {
+					return this.ret_str + "\n" + run_seccomp.skipped;
+				}
+				return run_seccomp.skipped;
+			}
 			return this.ret_str;
-		} 
+		}
 		// Failure: return stderr + stdout + exit code
 		return final_fail_str;
 		
