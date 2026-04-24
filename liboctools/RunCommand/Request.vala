@@ -71,7 +71,22 @@ namespace OLLMtools.RunCommand
 			// Relative path: treat as relative to user's home directory
 			return GLib.Path.build_filename(GLib.Environment.get_home_dir(), dir);
 		}
-		
+
+		/**
+		 * Extra text for permission dialogs when bubblewrap cannot be used ({@link Bubble.can_wrap}
+		 * is false): Flatpak ({@code FLATPAK_ID}) or missing {@code bwrap} on PATH.
+		 */
+		private string bwrap_unavailable_note ()
+		{
+			if (Bubble.can_wrap ()) {
+				return "";
+			}
+			if (GLib.Environment.get_variable ("FLATPAK_ID") != null) {
+				return " (Bubblewrap is not available in Flatpak; the command will run without that sandbox.)";
+			}
+			return " (Bubblewrap is not available — install the bubblewrap package or ensure bwrap is on PATH; the command will run without bubblewrap sandboxing.)";
+		}
+
 		/**
 		 * Detects bash operators in a command string.
 		 * 
@@ -188,7 +203,8 @@ namespace OLLMtools.RunCommand
 				// Use unique identifier to bypass cache (timestamp-based)
 				this.permission_target_path = "network#" + GLib.get_real_time().to_string();
 				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command with network access: " + this.command + "?";
+				this.permission_question = "Run command with network access: " + this.command + "?"
+					+ this.bwrap_unavailable_note ();
 				return true;
 			}
 			
@@ -210,7 +226,8 @@ namespace OLLMtools.RunCommand
 				this.is_complex_command = true;
 				this.permission_target_path = this.command;
 				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command: " + this.command + "?";
+				this.permission_question = "Run command: " + this.command + "?"
+					+ this.bwrap_unavailable_note ();
 				return true;
 			}
 			
@@ -223,7 +240,8 @@ namespace OLLMtools.RunCommand
 				this.is_complex_command = true;
 				this.permission_target_path = this.command;
 				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command: " + this.command + "?";
+				this.permission_question = "Run command: " + this.command + "?"
+					+ this.bwrap_unavailable_note ();
 				return true;
 			}
 			
@@ -233,7 +251,8 @@ namespace OLLMtools.RunCommand
 				this.is_complex_command = true;
 				this.permission_target_path = this.command;
 				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command: " + this.command + "?";
+				this.permission_question = "Run command: " + this.command + "?"
+					+ this.bwrap_unavailable_note ();
 				return true;
 			}
 			
@@ -241,7 +260,8 @@ namespace OLLMtools.RunCommand
 			this.is_complex_command = false;
 			this.permission_target_path = realpath;
 			this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-			this.permission_question = "Run command: " + this.command + "?";
+			this.permission_question = "Run command: " + this.command + "?"
+				+ this.bwrap_unavailable_note ();
 			return true;
 		}
 		
