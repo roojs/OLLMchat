@@ -78,6 +78,7 @@ jobs:
             libomp-dev \
             libblas-dev \
             liblapack-dev \
+            libseccomp-dev \
             libtree-sitter-dev \
             desktop-file-utils \
             build-essential \

@@ -2,7 +2,9 @@
  * POSIX SCM_RIGHTS over a connected Unix SOCK_STREAM socket.
  * Safe in a child after fork() before exec — do not use Gio there.
  */
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include "seccomp-fd-pass.h"
 
 #include <errno.h>
