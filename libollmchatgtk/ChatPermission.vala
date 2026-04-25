@@ -98,7 +98,7 @@ namespace OLLMchatGtk
 		 * Shows the widget, waits for user response, then hides the widget.
 		 * 
 		 * @param question The permission question to display
-		 * @param one_time Whether to show only one-time buttons (Allow/Deny only)
+		 * @param one_time When true, hides "Allow Always" and "Deny Always" (see {@link OLLMchat.Tool.RequestBase.one_time_only})
 		 * @return The user's permission response
 		 * @since 1.0
 		 */

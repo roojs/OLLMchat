@@ -71,9 +71,12 @@ namespace OLLMchat.Tool
 		public OLLMchat.ChatPermission.Operation permission_operation { get; protected set; default = OLLMchat.ChatPermission.Operation.READ; }
 		
 		/**
-		 * Whether this permission request should only show "Allow" and "Deny" buttons (no "Always" options).
-		 * When true, the permission widget will only show one-time approval buttons.
-		 * Default: false (shows all buttons including "Always" options).
+		 * When true, the GTK permission widget hides "Allow Always" and "Deny Always";
+		 * "Allow" / "Deny" remain (one-shot). Use for prompts whose {@link permission_target_path}
+		 * is synthetic per run (e.g. network#timestamp) so persisted "Always" would not match
+		 * the next request. Session-scoped storage is a separate {@link ChatPermission.Provider}
+		 * concern; the widget does not add extra "for this session" buttons beyond the four
+		 * allow/deny / always row. Default false: show Always buttons for stable keys.
 		 */
 		public bool one_time_only { get; protected set; default = false; }
 		
