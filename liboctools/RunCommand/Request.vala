@@ -27,8 +27,11 @@ namespace OLLMtools.RunCommand
 		public string command { get; set; default = ""; }
 		public string working_dir { get; set; default = ""; }
 		public bool network { get; set; default = false; }
-		/** "no" | "yes" | "project" | "all". Default "project". Empty/unset normalizes to "project". */
+		/** Tool string allow_write: no, project, or colon-separated absolute roots on Unix. Parsed in execute() before permission. */
 		public string allow_write { get; set; default = "project"; }
+
+		/** Validated allow_write tokens; populated only in {@link execute} before permission. */
+		private string[] write_array = {};
 		
 		// Flag to track if this is a complex command (needs to bypass cache)
 		private bool is_complex_command = false;
@@ -208,18 +211,25 @@ namespace OLLMtools.RunCommand
 				return true;
 			}
 			
-			// Invalid: cannot be checked
-			 
-			
-			// Skip permission when using bubblewrap with active project and no write-access prompt requested.
-			// allow_write "all" requires a prompt even with project; "project"/"yes" do not.
-			var tool = (Tool) this.tool;
-			if (Bubble.can_wrap() && tool.project_manager != null && tool.project_manager.active_project != null
-				 && this.allow_write.strip().down() != "all") {
-				this.permission_question = "";
-				return false;
+			if (Bubble.can_wrap ()) {
+				var pm = ((Tool) this.tool).project_manager;
+				if (pm != null && pm.active_project != null) {
+					var head0 = this.write_array[0].down ();
+					if (head0 == "no" || head0 == "project") {
+						this.permission_question = "";
+						return false;
+					}
+					this.one_time_only = true;
+					this.permission_target_path = "allow_write_paths#" + GLib.get_real_time ().to_string ();
+					this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
+					this.permission_question = "This request asks for write permission to these folders: "
+						+ string.joinv (", ", this.write_array)
+						+ ", for this command: " + this.command + "?"
+						+ this.bwrap_unavailable_note ();
+					return true;
+				}
 			}
-			
+
 			// Check if this is a complex pattern
 			if (!this.is_simple_pattern(this.command)) {
 				// Complex pattern: always require approval
@@ -293,8 +303,35 @@ namespace OLLMtools.RunCommand
 					}
 				}
 			}
-			
-			bool need_perm = this.build_perm_question();
+
+			this.write_array = {};
+			var run_command_tool = (Tool) this.tool;
+			var project_manager = run_command_tool.project_manager;
+			var project = (project_manager != null && project_manager.active_project != null)
+				? project_manager.active_project
+				: (OLLMfiles.Folder?) null;
+			var aw_line = this.allow_write.strip ();
+			aw_line = (aw_line == "") ? ((project != null) ? "project" : "no") : aw_line;
+			var ar = aw_line.split (":");
+			for (var i = 0; i < ar.length; i++) {
+				var piece = ar[i].strip ();
+				if (i == 0 && (piece.down () == "no" || piece.down () == "project")) {
+					this.write_array += piece.down ();
+					break;
+				}
+				if (piece == "") {
+					continue;
+				}
+				if (!GLib.Path.is_absolute (piece)) {
+					return "ERROR: allow_write: path must be absolute: " + piece;
+				}
+				this.write_array += piece;
+			}
+			if (this.write_array.length < 1) {
+				return "ERROR: allow_write must contain project/no or a list of absolute paths";
+			}
+
+			bool need_perm = this.build_perm_question ();
 			if (need_perm) {
 				// For complex commands, use a unique identifier to bypass cache
 				if (this.is_complex_command) {
@@ -342,13 +379,10 @@ namespace OLLMtools.RunCommand
 			var project = (project_manager != null && project_manager.active_project != null)
 				? project_manager.active_project
 				: (OLLMfiles.Folder?) null;
-			// project: all = rw root (everywhere), yes/no = project only (ro root). non-project: all/yes = rw root (everywhere), no = ro root
-			var aw = this.allow_write.strip().down();
-			var allow_write = (project != null && aw == "all") || (project == null && (aw == "yes" || aw == "all"));
 
 			Bubble? bubble = null;
 			try {
-				bubble = new Bubble(project, this.network, allow_write);
+				bubble = new Bubble (project, this.network, this.write_array);
 				
 				// Execute command in bwrap sandbox (writes go to overlay upper directory)
 				// exec() handles overlay creation, mounting, file copying, and cleanup internally
