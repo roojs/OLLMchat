@@ -160,7 +160,7 @@ Examples:
 		project.project_files.update_from(project);
 
 		// Create Bubble instance
-		var bubble = new OLLMtools.RunCommand.Bubble(project, opt_allow_network);
+		var bubble = new OLLMtools.RunCommand.Bubble (project, opt_allow_network, new string[] { "project" });
 
 		// Execute command
 		stdout.printf("Executing command in sandbox: %s\n", command);

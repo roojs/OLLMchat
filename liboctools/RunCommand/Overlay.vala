@@ -186,9 +186,9 @@ namespace OLLMtools.RunCommand
 		 * Note: Overlay mounting/unmounting is handled by bubblewrap, so we only
 		 * need to clean up the directory structure.
 		 * 
-		 * @throws GLib.IOError if directory removal fails
+		 * Failures are logged with GLib.warning; this method does not throw.
 		 */
-		public void cleanup() throws Error
+		public void cleanup()
 		{
 			if (this.project == null || this.overlay_map.size == 0) {
 				return;

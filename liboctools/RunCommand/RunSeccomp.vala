@@ -13,11 +13,13 @@ namespace OLLMtools.RunCommand
 	 * Seccomp user-notify setup and aggregation for a single bubblewrap run.
 	 *
 	 * Installs NOTIFY rules in the spawn child (before exec into bwrap), passes the
-	 * notify fd to the parent, and records socket/connect/openat events on the parent
+	 * notify fd to the parent, and records socket/connect/fs events on the parent
 	 * main context. Evidence strings are produced for tool output when NOTIFY succeeds.
 	 */
 	public class RunSeccomp : GLib.Object
 	{
+		private const int AT_FDCWD = -100;
+
 		/**
 		 * Fixed child fd for the sync socket end (must not collide with stdio 0–2).
 		 */
@@ -34,18 +36,30 @@ namespace OLLMtools.RunCommand
 		int nr_socket = -1;
 		int nr_connect = -1;
 		int nr_openat = -1;
+		int nr_unlink = -1;
+		int nr_unlinkat = -1;
+		int nr_rename = -1;
+		int nr_renameat2 = -1;
 		int count_socket = 0;
 		int count_connect = 0;
-		string[] openat_paths = {};
 
-		static bool child_want_network;
-		static bool child_want_fs;
+		Gee.HashMap<string, bool> file_writes = new Gee.HashMap<string, bool> ();
+		/** Sandbox profile for this run; set at construction, must outlive this object. */
+		public unowned Bubble bubble { get; private set; }
 
-		public RunSeccomp ()
+		/**
+		 * @param sandbox_bubble Profile for the same bubblewrap run; used for #wire_launcher and policy checks.
+		 */
+		public RunSeccomp (Bubble sandbox_bubble)
 		{
+			this.bubble = sandbox_bubble;
 			this.nr_socket = Seccomp.syscall_resolve_name ("socket");
 			this.nr_connect = Seccomp.syscall_resolve_name ("connect");
 			this.nr_openat = Seccomp.syscall_resolve_name ("openat");
+			this.nr_unlink = Seccomp.syscall_resolve_name ("unlink");
+			this.nr_unlinkat = Seccomp.syscall_resolve_name ("unlinkat");
+			this.nr_rename = Seccomp.syscall_resolve_name ("rename");
+			this.nr_renameat2 = Seccomp.syscall_resolve_name ("renameat2");
 		}
 
 		/**
@@ -55,7 +69,7 @@ namespace OLLMtools.RunCommand
 		 * @param syscall_name syscall name understood by libseccomp
 		 * @return 0 on success, negative on failure
 		 */
-		static int add_notify (Seccomp.Filter ctx, string syscall_name)
+		int add_notify (Seccomp.Filter ctx, string syscall_name)
 		{
 			return ctx.rule_add_array (
 				Seccomp.SCMP_ACT_NOTIFY,
@@ -65,35 +79,31 @@ namespace OLLMtools.RunCommand
 		}
 
 		/**
-		 * Add NOTIFY rules for socket/connect and optionally openat.
+		 * Add NOTIFY rules: socket/connect when the sandbox has network off; fs syscalls for path evidence (this profile always on).
 		 */
-		static int add_notify_rules (Seccomp.Filter ctx, bool want_network, bool want_fs)
+		int add_notify_rules (Seccomp.Filter ctx)
 		{
-			int r;
-			if (want_network) {
-				r = RunSeccomp.add_notify (ctx, "socket");
-				if (r < 0) {
-					return r;
-				}
-				r = RunSeccomp.add_notify (ctx, "connect");
-				if (r < 0) {
-					return r;
-				}
+			int r = 0;
+			if (!this.bubble.allow_network) {
+				r = this.add_notify (ctx, "socket");
+				r = r < 0 ? r : this.add_notify (ctx, "connect");
 			}
-			if (want_fs) {
-				r = RunSeccomp.add_notify (ctx, "openat");
-				if (r < 0) {
-					return r;
-				}
-			}
-			return 0;
+			r = r < 0 ? r : this.add_notify (ctx, "openat");
+			r = r < 0 ? r : this.add_notify (ctx, "unlink");
+			r = r < 0 ? r : this.add_notify (ctx, "unlinkat");
+			r = r < 0 ? r : this.add_notify (ctx, "rename");
+			r = r < 0 ? r : this.add_notify (ctx, "renameat2");
+			return r;
 		}
 
-		static void child_seccomp_handshake ()
+		/**
+		 * Runs in the child after fork, before exec. NOTIFY rules follow #bubble.
+		 */
+		void child_seccomp_handshake ()
 		{
 			int sock = RunSeccomp.SYNC_SOCK_CHILD_FD;
 			var ctx = new Seccomp.Filter (Seccomp.SCMP_ACT_ALLOW);
-			if (RunSeccomp.add_notify_rules (ctx, RunSeccomp.child_want_network, RunSeccomp.child_want_fs) < 0) {
+			if (this.add_notify_rules (ctx) < 0) {
 				return;
 			}
 			if (SeccompLinux.prctl (SeccompLinux.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
@@ -120,11 +130,9 @@ namespace OLLMtools.RunCommand
 
 		/**
 		 * Prepare a launcher: socketpair, map child end to SYNC_SOCK_CHILD_FD, child_setup installs filter.
+		 * NOTIFY policy is read from #bubble in the child (see #child_seccomp_handshake).
 		 */
-		public void wire_launcher (
-			GLib.SubprocessLauncher launcher,
-			bool want_network_syscalls,
-			bool want_fs_syscalls)
+		public void wire_launcher (GLib.SubprocessLauncher launcher)
 		{
 			int[] sv = { 0, 0 };
 			if (Posix.socketpair (Posix.AF_UNIX, Posix.SOCK_STREAM, 0, sv) != 0) {
@@ -134,10 +142,8 @@ namespace OLLMtools.RunCommand
 			this.parent_sock = sv[0];
 			launcher.take_fd (sv[1], RunSeccomp.SYNC_SOCK_CHILD_FD);
 			Posix.close (sv[1]);
-			RunSeccomp.child_want_network = want_network_syscalls;
-			RunSeccomp.child_want_fs = want_fs_syscalls;
 			launcher.set_child_setup (() => {
-				RunSeccomp.child_seccomp_handshake ();
+				this.child_seccomp_handshake ();
 			});
 		}
 
@@ -175,28 +181,22 @@ namespace OLLMtools.RunCommand
 		}
 
 		/**
-		 * Best-effort pathname for an openat user-notify event (process_vm_readv).
+		 * Best-effort read of a C string from the traced process (process_vm_readv).
 		 *
 		 * @param ev kernel notification payload
-		 * @return path text or null
+		 * @param path_address user pointer to pathname
+		 * @return path text or empty string
 		 */
-		string? decode_openat_path (Seccomp.Notif ev)
+		string read_remote_cstring (Seccomp.Notif ev, uint64 path_address)
 		{
-			if (this.notify_fd < 0) {
-				return null;
-			}
-			if (ev.sc_data.nr != this.nr_openat) {
-				return null;
+			if (this.notify_fd < 0 || path_address == 0) {
+				return "";
 			}
 			if (Seccomp.notify_id_valid (this.notify_fd, ev.id) != 0) {
-				return null;
+				return "";
 			}
-			uint64 path_address = ev.sc_data.args[1];
-			if (path_address == 0) {
-				return null;
-			}
-			const int OPENAT_PATH_CAP = 4096;
-			var local = new uint8[OPENAT_PATH_CAP];
+			const int PATH_CAP = 4096;
+			var local = new uint8[PATH_CAP];
 			size_t copy_len = local.length - 1;
 			var local_iov = Posix.iovector () { iov_base = local, iov_len = copy_len };
 			var remote_iov = Posix.iovector () {
@@ -211,7 +211,7 @@ namespace OLLMtools.RunCommand
 				1,
 				0);
 			if (n <= 0) {
-				return null;
+				return "";
 			}
 			local[n] = 0;
 			size_t run = 0;
@@ -230,12 +230,57 @@ namespace OLLMtools.RunCommand
 				this.count_connect++;
 				return;
 			}
-			if (ev.sc_data.nr != this.nr_openat) {
+			if (this.bubble == null) {
 				return;
 			}
-			string? p = this.decode_openat_path (ev);
-			if (p != null) {
-				this.openat_paths += p;
+			if (ev.sc_data.nr == this.nr_openat) {
+				var p = this.read_remote_cstring (ev, ev.sc_data.args[1]);
+				if (p != "" && !this.bubble.can_write (p)) {
+					this.file_writes.set (p, true);
+				}
+				return;
+			}
+			if (ev.sc_data.nr == this.nr_unlink) {
+				var p = this.read_remote_cstring (ev, ev.sc_data.args[0]);
+				if (p != "" && !this.bubble.can_write (p)) {
+					this.file_writes.set (p, true);
+				}
+				return;
+			}
+			if (ev.sc_data.nr == this.nr_unlinkat) {
+				int dirfd = (int) ev.sc_data.args[0];
+				var p = this.read_remote_cstring (ev, ev.sc_data.args[1]);
+				if (p == "") {
+					return;
+				}
+				if (dirfd != AT_FDCWD && !GLib.Path.is_absolute (p)) {
+					return;
+				}
+				if (!this.bubble.can_write (p)) {
+					this.file_writes.set (p, true);
+				}
+				return;
+			}
+			if (ev.sc_data.nr == this.nr_rename) {
+				var old_path = this.read_remote_cstring (ev, ev.sc_data.args[0]);
+				var new_path = this.read_remote_cstring (ev, ev.sc_data.args[1]);
+				if (old_path != "" && !this.bubble.can_write (old_path)) {
+					this.file_writes.set (old_path, true);
+				}
+				if (new_path != "" && !this.bubble.can_write (new_path)) {
+					this.file_writes.set (new_path, true);
+				}
+				return;
+			}
+			if (ev.sc_data.nr == this.nr_renameat2) {
+				var old_path = this.read_remote_cstring (ev, ev.sc_data.args[1]);
+				var new_path = this.read_remote_cstring (ev, ev.sc_data.args[3]);
+				if (old_path != "" && !this.bubble.can_write (old_path)) {
+					this.file_writes.set (old_path, true);
+				}
+				if (new_path != "" && !this.bubble.can_write (new_path)) {
+					this.file_writes.set (new_path, true);
+				}
 			}
 		}
 
@@ -311,17 +356,14 @@ $(summary)
 To enable networking on a later run, pass \"network\": true in run_command (user approval required).
 ").chomp ();
 			}
-			if (this.openat_paths.length > 0) {
-				string paths_block = string.joinv ("\n", this.openat_paths);
-				this.fs = (@"---
-Sandbox: a write or filesystem operation targeted a path outside the directories allowed for this run.
-
-$(paths_block)
-
-To request access, add write_roots: a semicolon-separated list of absolute directory roots, e.g.
-  \"write_roots\": \"/path/to/output;/path/to/cache\"
-Avoid \"/\" or entire home unless necessary; users often reject broad paths.
-").chomp ();
+			if (this.file_writes.size > 0) {
+				var keys = this.file_writes.keys.to_array ();
+				int lim = keys.length > 50 ? 50 : keys.length;
+				var slice = keys[0:lim];
+				this.fs = ("---\n" +
+					"Sandbox: file operations were restricted because write permission was not requested for these paths (use allow_write with a PATH-style list of absolute directory roots):\n\n" +
+					string.joinv ("\n", slice) + "\n"
+					).chomp ();
 			}
 		}
 

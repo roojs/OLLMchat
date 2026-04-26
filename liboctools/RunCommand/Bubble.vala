@@ -26,7 +26,7 @@ namespace OLLMtools.RunCommand
 	 * specific project directories identified by the project's build_roots() method.
 	 * 
 	 * The sandbox configuration:
-	 * - Mounts the entire filesystem as read-only (--ro-bind / /)
+	 * - Mounts the entire filesystem as read-only (--ro-bind / /) unless write_array adds --bind roots
 	 * - Provides read-write access to project directories via overlay filesystem
 	 * - Blocks network access by default (--unshare-net, unless allow_network is true)
 	 * - Executes commands via /bin/sh -c
@@ -84,15 +84,14 @@ namespace OLLMtools.RunCommand
 		private Overlay overlay;
 		
 		/**
-		 * Network access flag (default: false).
+		 * When false, bwrap uses --unshare-net and seccomp can monitor socket syscalls; when true, network is allowed.
 		 */
-		private bool allow_network;
-		
+		public bool allow_network { get; private set; }
+
 		/**
-		 * When true (tool allow_write "yes" with project): root is --bind / / (read-write); overlay still used for project dirs.
-		 * When false: root is --ro-bind / / (read-only), only project overlay is writable.
+		 * Normalized allow_write tokens (see run_command docs): no, project, or absolute paths.
 		 */
-		private bool allow_write;
+		private string[] write_array = {};
 		
 		/** True if we created $HOME/playground on the host as a mount point for bwrap; we remove it in the exec() finally block when bwrap ends. */
 		private bool home_playground_created = false;
@@ -109,20 +108,20 @@ namespace OLLMtools.RunCommand
 		
 		/**
 		 * Constructor.
-		 * 
-		 * With project: overlay for project dirs; allow_write true = root is rw (--bind / /), false = ro (--ro-bind / /).
-		 * Without project: root is always read-only; cwd defaults to home.
-		 * 
+		 *
+		 * With project: overlay for project dirs; host / is read-only unless extra bind roots
+		 * come from write_array. Without project: root read-only; cwd defaults to home.
+		 *
 		 * @param project Project folder, or null for no-project mode
-		 * @param allow_network Whether to allow network access
-		 * @param allow_write When true, use --bind / / for root (tool allow_write "yes"); overlay still captures project dirs
+		 * @param allow_network Whether to allow network access (pass explicitly)
+		 * @param write_array Parsed allow_write tokens; never reparsed in #build_bubble_args / #can_write
 		 */
-		public Bubble(OLLMfiles.Folder? project, bool allow_network = false, bool allow_write = false) throws Error
+		public Bubble (OLLMfiles.Folder? project, bool allow_network, string[] write_array) throws Error
 		{
 			this.project = project;
 			this.allow_network = allow_network;
-			this.allow_write = allow_write;
-			this.overlay = new Overlay(project);
+			this.write_array = write_array;
+			this.overlay = new Overlay (project);
 		}
 		
 		/**
@@ -142,44 +141,65 @@ namespace OLLMtools.RunCommand
 		 * @return String containing command output (stdout + stderr, with exit code if non-zero)
 		 * @throws Error if command execution fails, subprocess creation fails, or I/O errors occur
 		 */
-		public async string exec(string command, string working_dir = "") throws Error
+		public async string exec (string command, string working_dir = "") throws Error
 		{
-			this.overlay.create();
-			
-			try {
-				var args = this.build_bubble_args(command, working_dir);
-				var cmd_str = string.joinv(" ", args);
-				GLib.debug("running command: %s", cmd_str);
+			this.overlay.create ();
+			RunSeccomp? run_seccomp = null;
+			GLib.SubprocessLauncher? launcher = null;
+			GLib.Subprocess? subprocess = null;
+			string? result = null;
+			Error? err = null;
 
-				var run_seccomp = new RunSeccomp ();
+			string[] args;
+			try {
+				args = this.build_bubble_args (command, working_dir);
+			} catch (Error e) {
+				this.overlay.cleanup ();
+				throw e;
+			}
+			try {
+				GLib.debug ("running command: %s", string.joinv (" ", args));
+				run_seccomp = new RunSeccomp (this);
+				launcher = new GLib.SubprocessLauncher (
+					GLib.SubprocessFlags.STDOUT_PIPE |
+					GLib.SubprocessFlags.STDERR_PIPE |
+					GLib.SubprocessFlags.STDIN_INHERIT);
+				run_seccomp.wire_launcher (launcher);
+			} catch (Error e) {
+				err = e;
+			}
+			if (err == null) {
+				assert (launcher != null);
+				var ln = (!) launcher;
 				try {
-					var launcher = new GLib.SubprocessLauncher (
-						GLib.SubprocessFlags.STDOUT_PIPE |
-						GLib.SubprocessFlags.STDERR_PIPE |
-						GLib.SubprocessFlags.STDIN_INHERIT);
-					run_seccomp.wire_launcher (launcher, !this.allow_network, true);
-					GLib.Subprocess subprocess;
-					try {
-						subprocess = launcher.spawnv (args);
-					} catch (GLib.Error e) {
-						throw new GLib.IOError.FAILED (
-							"Failed to create bubblewrap subprocess: " + e.message);
-					}
-					run_seccomp.finish_handshake ();
-					run_seccomp.attach_notify_loop ();
-					var output = yield this.read_subprocess_output (subprocess, run_seccomp);
-					yield this.overlay.scan.run ();
-					return output;
-				} finally {
-					run_seccomp.detach_sources ();
-				}
-			} finally {
-				try {
-					this.overlay.cleanup();
-				} catch (Error cleanup_error) {
-					GLib.warning("Failed to cleanup overlay: %s", cleanup_error.message);
+					subprocess = ln.spawnv (args);
+				} catch (GLib.Error se) {
+					err = new GLib.IOError.FAILED (
+						"Failed to create bubblewrap subprocess: " + se.message);
 				}
 			}
+			if (err == null) {
+				assert (run_seccomp != null && subprocess != null);
+				var rs = (!) run_seccomp;
+				var sp = (!) subprocess;
+				try {
+					rs.finish_handshake ();
+					rs.attach_notify_loop ();
+					result = yield this.read_subprocess_output (sp, rs);
+					yield this.overlay.scan.run ();
+				} catch (Error e) {
+					err = e;
+				}
+			}
+			if (run_seccomp != null) {
+				run_seccomp.detach_sources ();
+			}
+			this.overlay.cleanup ();
+			if (err != null) {
+				throw err;
+			}
+			assert (result != null);
+			return (owned) result;
 		}
 		
 		/**
@@ -263,15 +283,21 @@ namespace OLLMtools.RunCommand
 				args += GLib.Path.build_filename(home, "playground");
 			}
 
-			if (this.allow_write) {
+			args += "--ro-bind";
+			args += "/";
+			args += "/";
+
+			// Extra --bind pairs from validated write_array (absolute roots only after first segment rules).
+			for (var i = 0; i < this.write_array.length; i++) {
+				var root = this.write_array[i];
+				if (i == 0 && (root.down () == "no" || root.down () == "project")) {
+					break;
+				}
 				args += "--bind";
-				args += "/";
-				args += "/";
-			} else {
-				args += "--ro-bind";
-				args += "/";
-				args += "/";
+				args += root;
+				args += root;
 			}
+
 			args += "--tmpfs";
 			args += "/tmp";
 
@@ -329,6 +355,45 @@ namespace OLLMtools.RunCommand
 			
 			// Return final array
 			return args;
+		}
+
+		/**
+		 * Whether writes to @path are permitted for this sandbox profile.
+		 * Must match {@link build_bubble_args} (bind / overlay / tmpfs / dev-bind).
+		 *
+		 * @param path absolute path from NOTIFY (caller must not pass raw tool strings to re-tokenize)
+		 */
+		public bool can_write (string path)
+		{
+			if (path == "/tmp" || path.has_prefix ("/tmp/")) {
+				return true;
+			}
+			if (path == "/dev/null") {
+				return true;
+			}
+			var home = GLib.Environment.get_home_dir ();
+			var bind_play = GLib.Path.build_filename (home, "playground");
+			if (path == bind_play || path.has_prefix (bind_play + "/")) {
+				return true;
+			}
+			if (this.overlay.overlay_map.size > 0) {
+				foreach (var e in this.overlay.overlay_map.entries) {
+					var lower = e.value;
+					if (path == lower || path.has_prefix (lower + "/")) {
+						return true;
+					}
+				}
+			}
+			for (var i = 0; i < this.write_array.length; i++) {
+				var root = this.write_array[i];
+				if (i == 0 && (root.down () == "no" || root.down () == "project")) {
+					return false;
+				}
+				if (path == root || path.has_prefix (root + "/")) {
+					return true;
+				}
+			}
+			return false;
 		}
 		
 		/**
