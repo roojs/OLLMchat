@@ -791,7 +791,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			run_idx++;
 			this.add_message(new OLLMchat.Message("ui",
 				(ex.exam_reference != null
-					? "Examining " + ex.exam_reference.path
+					? "Examining " + ex.exam_reference.link_display_text()
 					: "Executing task: " + task_name)
 				+ " (" + run_idx.to_string() + " of " + this.tools().size.to_string() + ")"));
 			yield ex.run();

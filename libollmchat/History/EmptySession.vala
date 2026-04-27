@@ -95,6 +95,7 @@ namespace OLLMchat.History
 			GLib.debug("[EmptySession.send] Session added to manager.sessions");
 			
 			real_session.activate();
+			real_session.ensure_agent_handler();
 			this.manager.session_activated(real_session);
 			this.manager.agent_status_change();
 			GLib.debug("CResulting Session: %s", real_session.to_string());

@@ -517,6 +517,12 @@ namespace OLLMapp
 					factory.deactivate.end(res);
 				});
 			});
+			this.history_manager.session_restored.connect((_session) => {
+				var factory = this.history_manager.get_active_agent();
+				factory.activate.begin(this, (obj, res) => {
+					factory.activate.end(res);
+				});
+			});
 			
 			// Set WindowPane as main content
 			this.split_view.content = this.window_pane;
@@ -722,6 +728,10 @@ namespace OLLMapp
 				if (store == null) {
 					return;
 				}
+				var factory = this.history_manager.get_active_agent();
+				factory.activate.begin(this, (obj, res) => {
+					factory.activate.end(res);
+				});
 				uint agent_index = 0;
 				for (uint j = 0; j < store.get_n_items(); j++) {
 					if (((OLLMchat.Agent.Factory)store.get_item(j)).name == session.agent_name) {

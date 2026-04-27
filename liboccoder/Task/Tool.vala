@@ -74,9 +74,13 @@ namespace OLLMcoder.Task
 			}
 		}
 
+		/**
+		 * Progress tree label: {@link OLLMchat.Tool.BaseTool.title} for the tool registered on the session.
+		 */
 		public string title {
 			owned get {
-				return this.name != "" ? this.name : "Tool";
+				var key = this.name != "" ? this.name : this.tool_call.function.name;
+				return this.parent.runner.session.manager.tools.get(key).title;
 			}
 		}
 

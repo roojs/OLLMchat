@@ -140,8 +140,8 @@ namespace OLLMtools.RunCommand
 				return;
 			}
 			this.parent_sock = sv[0];
+			/* take_fd owns sv[1]; GLib closes it after spawn — do not close here or spawn sees a bad FD. */
 			launcher.take_fd (sv[1], RunSeccomp.SYNC_SOCK_CHILD_FD);
-			Posix.close (sv[1]);
 			launcher.set_child_setup (() => {
 				this.child_seccomp_handshake ();
 			});

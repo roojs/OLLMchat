@@ -190,7 +190,7 @@ You may label each block with plain **Keep** / **Remove** / **Replace with** / *
 
 #### Reference plan (long worked example)
 
-**`docs/plans/7.14.1.3-details-vala.md`** — **Files** section: **`Details.refine`**, **`run_exec`**, **`extract_exec`**, and **`####` … `— ordered chunks`** subsections (uses **Add** for pure insertions per **Do / don’t** above).
+**`docs/plans/done/7.14.1.3-DONE-details-vala.md`** — **Files** section: **`Details.refine`**, **`run_exec`**, **`extract_exec`**, and **`####` … `— ordered chunks`** subsections (uses **Add** for pure insertions per **Do / don’t** above).
 
 ### Implementable code belongs in fences
 

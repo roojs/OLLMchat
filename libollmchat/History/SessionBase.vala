@@ -460,6 +460,28 @@ namespace OLLMchat.History
 		public abstract void cancel_current_request();
 		
 		/**
+		 * Ensures the agent handler exists for {@link agent_name}.
+		 * Unknown agent_name in the registry downgrades session to just-ask.
+		 */
+		public void ensure_agent_handler()
+		{
+			if (this.agent != null) {
+				return;
+			}
+			
+			var agent_name = this.agent_name == "" ? "just-ask" : this.agent_name;
+			
+			var factory = this.manager.agent_factories.get(agent_name);
+			if (factory == null) {
+				GLib.warning("Agent '%s' not found in manager; downgrading session to just-ask", agent_name);
+				this.agent_name = "just-ask";
+				factory = this.manager.agent_factories.get("just-ask");
+			}
+			
+			this.agent = factory.create_agent(this);
+		}
+		
+		/**
 		 * Activates an agent for this session.
 		 * 
 		 * Handles agent changes by creating a new AgentHandler and copying

@@ -311,10 +311,14 @@ namespace MarkdownGtk
 		 */
 		public void end_block()
 		{
+			if (this.top_state != null) {
+				this.top_state.delete_marks_recursive();
+			}
+
 			// Clear current TextView and buffer
 			this.current_textview = null;
 			this.current_buffer = null;
-			
+
 			// Clear TopState - will be recreated in start() when buffer is ready
 			this.top_state = null;
 			this.current_state = null;
@@ -801,6 +805,10 @@ namespace MarkdownGtk
 			// three whitespace-only Gtk.TextViews walking get_prev_sibling from current,
 			// then the current placeholder if whitespace-only. Do not remove views after the frame.
 			// During the code block, all text goes to sourceview, not textview
+			if (this.top_state != null) {
+				this.top_state.delete_marks_recursive();
+			}
+
 			if (this.current_textview != null && this.box != null) {
 				Gtk.Widget? prev_w = this.current_textview.get_prev_sibling();
 				this.remove_empty(prev_w as Gtk.TextView);

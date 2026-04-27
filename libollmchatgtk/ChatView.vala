@@ -179,12 +179,12 @@ namespace OLLMchatGtk
 		public void append_assistant_chunk(string new_text, OLLMchat.Response.Chat response)
 		{
 
-			if (this.is_waiting) {
-				this.clear_waiting_indicator(response);
-			}
-
 			if (!this.is_assistant_message) {
 				this.initialize_assistant_message(response);
+			}
+
+			if (this.is_waiting) {
+				this.clear_waiting_indicator(response);
 			}
 
 			// Process the incoming new_text chunk directly
@@ -222,7 +222,7 @@ namespace OLLMchatGtk
 			this.content_state = ContentState.NONE;
 			// Initialize the renderer for the new assistant message
 			this.renderer.start();
-			this.renderer.is_streaming = response.message.is_stream;
+			this.renderer.is_streaming = response.message.is_stream || !response.done;
 		}
 
 		/**
@@ -622,10 +622,13 @@ namespace OLLMchatGtk
 			this.has_displayed_user_message = false;
 			this.scroll_enabled = true;
 			this.autoscroll_paused_by_user = false;
-			
+
+			// Remove waiting indicator while renderer still points at the same buffer (marks must be deleted before buffers are torn down)
+			this.clear_waiting_indicator();
+
 			// Clear renderer state (includes sourceview handlers)
 			this.renderer.clear();
-			
+
 			// Clear all widgets from the box
 			var children = this.text_view_box.get_first_child();
 			while (children != null) {
@@ -633,12 +636,11 @@ namespace OLLMchatGtk
 				this.text_view_box.remove(children);
 				children = next;
 			}
-			
-			// Reset state
+
+			// Reset state (indicator already cleared above)
 			this.last_chunk_start = 0;
 			this.is_assistant_message = false;
 			this.content_state = ContentState.NONE;
-			this.clear_waiting_indicator();
 		}
 
 		/**
@@ -675,7 +677,7 @@ namespace OLLMchatGtk
 			//GLib.debug("ChatView.append_tool_message: Pango result: %s", pango_result);
 			buffer.insert_markup(
 				ref end_iter,
-				"<span size=\"small\" color=\"#1a1a1a\">"
+				"<span size=\"small\">"
 					 + pango_result + "</span>\n",
 				-1
 			);
@@ -735,24 +737,31 @@ namespace OLLMchatGtk
 		}
 
 		/**
-		 * Clears the waiting indicator and resets assistant message state if needed.
-		 * 
-		 * @param response Optional ChatResponse to initialize state when clearing waiting
+		 * Clears the waiting indicator from the buffer and stops the dots timer.
+		 * Assistant/streaming state is owned by {@link initialize_assistant_message}
+		 * when {@link append_assistant_chunk} runs (after this reorder).
+		 *
+		 * @param response Reserved for callers; parameters kept for API compatibility.
 		 * @since 1.0
 		 */
-		public void clear_waiting_indicator(OLLMchat.Response.Chat? response = null)
+		public void clear_waiting_indicator(OLLMchat.Response.Chat? _response = null)
 		{
-			if (!this.is_waiting) {
-				return;
-			}
-
 			if (this.waiting_timer != 0) {
 				GLib.Source.remove(this.waiting_timer);
 				this.waiting_timer = 0;
 			}
 
+			// Must clear waiting_mark whenever it exists (is_waiting can be stale); otherwise marks
+			// leak on the buffer and GTK asserts when the TextView is destroyed.
+			if (!this.is_waiting && this.waiting_mark == null) {
+				return;
+			}
+
 			// Get position where waiting indicator starts (after "Assistant:" label)
-			var buffer = this.renderer.current_buffer;
+			Gtk.TextBuffer? buffer = this.renderer.current_buffer;
+			if (buffer == null && this.waiting_mark != null) {
+				buffer = this.waiting_mark.get_buffer();
+			}
 			if (buffer == null) {
 				this.waiting_mark = null;
 				this.is_waiting = false;
@@ -781,15 +790,6 @@ namespace OLLMchatGtk
 
 
 			this.is_waiting = false;
-			if (response == null) {
-				return;
-			}
-			
-			this.is_assistant_message = true;
-			this.last_chunk_start = 0;
-			this.is_thinking = response.is_thinking;
-			this.content_state = ContentState.NONE;
-			// With box model, no need to create marks - Render handles it
 		}
 
 		private bool update_waiting_dots()
