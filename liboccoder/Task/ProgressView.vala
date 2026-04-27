@@ -21,9 +21,10 @@ namespace OLLMcoder.Task
 	/**
 	 * Read-only task progress strip: {@link Gtk.ScrolledWindow} plus
 	 * {@link Gtk.ColumnView} (title and stage columns). Root {@link GLib.ListModel}
-	 * is wrapped in {@link Gtk.TreeListModel} so {@link ProgressItem.children}
-	 * (e.g. {@link Tool} under {@link Details}) appear nested. Built with a
-	 * placeholder model; call {@link #set_runner} to attach {@link Skill.Runner.progress}.
+	 * is wrapped in {@link Gtk.TreeListModel} with auto-expand so
+	 * {@link ProgressItem.children} (e.g. {@link Tool} under {@link Details}) stay
+	 * visible while tasks run without manual expand. Built with a placeholder model;
+	 * call {@link #set_runner} to attach {@link Skill.Runner.progress}.
 	 */
 	public class ProgressView : Gtk.Box
 	{
@@ -41,7 +42,7 @@ namespace OLLMcoder.Task
 			this.add_css_class("oc-task-progress");
 			var placeholder = new GLib.ListStore(typeof(ProgressItem));
 			this.progress_selection = new Gtk.SingleSelection(
-				new Gtk.TreeListModel(placeholder, false, false,
+				new Gtk.TreeListModel(placeholder, false, true,
 					(item) => {
 						var pi = (ProgressItem) item;
 						if (pi.children.get_n_items() == 0) {
@@ -139,7 +140,7 @@ namespace OLLMcoder.Task
 		public void set_runner(OLLMcoder.Skill.Runner runner)
 		{
 			this.progress_selection = new Gtk.SingleSelection(
-				new Gtk.TreeListModel(runner.progress, false, false,
+				new Gtk.TreeListModel(runner.progress, false, true,
 					(item) => {
 						var pi = (ProgressItem) item;
 						if (pi.children.get_n_items() == 0) {
