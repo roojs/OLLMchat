@@ -255,6 +255,7 @@ public class List : Object
 	{
 		yield t.wait_refined();
 		t.build_run_queue();
+		this.runner.progress.rebuild();
 		yield t.run_exec();
 		t.write();
 	}

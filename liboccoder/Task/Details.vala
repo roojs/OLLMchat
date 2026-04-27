@@ -846,6 +846,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	 */
 	public async void run_post_exec() throws GLib.Error
 	{
+		this.status = PhaseEnum.POST_EXEC;
 		yield this.fill_model();
 		this.chat_call.tools.clear();
 		var response_text = "";
