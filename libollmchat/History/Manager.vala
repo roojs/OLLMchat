@@ -242,6 +242,8 @@ namespace OLLMchat.History
 			this.session = loaded_session;
 			loaded_session.activate();
 
+			loaded_session.ensure_agent_handler();
+
 			this.session_activated(loaded_session);
 			this.agent_status_change();
 
@@ -289,13 +291,20 @@ namespace OLLMchat.History
 		 * 
 		 * Returns the agent based on the current session's agent_name.
 		 * The client for the agent should be obtained from the session separately.
+		 * Unknown agent_name falls back to just-ask (does not mutate session).
 		 * 
-		 * @return The active agent, or null if not found
+		 * @return The active agent factory (always non-null when just-ask is registered)
 		 */
-		public OLLMchat.Agent.Factory? get_active_agent()
+		public OLLMchat.Agent.Factory get_active_agent()
 		{
-			return this.agent_factories.get(this.session.agent_name == "" ? "just-ask"
-				 : this.session.agent_name);
+			string name = this.session.agent_name == "" ? "just-ask" : this.session.agent_name;
+			var primary = this.agent_factories.get(name);
+			if (primary != null) {
+				return primary;
+			}
+			GLib.warning("Agent.Factory missing for agent_name '%s'; using just-ask", name);
+			var fallback = this.agent_factories.get("just-ask");
+			return fallback;
 		}
 		
 		/**

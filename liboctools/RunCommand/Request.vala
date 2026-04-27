@@ -101,6 +101,12 @@ namespace OLLMtools.RunCommand
 		 */
 		protected override bool build_perm_question()
 		{
+			string cmd_preview = "";
+			if (this.command != "") {
+				int nl = this.command.index_of_char ('\n');
+				cmd_preview = nl >= 0 ? this.command.substring (0, nl).strip () : this.command.strip ();
+			}
+
 			// Handle network requests first - they always require approval (even with bubblewrap)
 			if (this.network) {
 				this.one_time_only = true;
@@ -108,7 +114,7 @@ namespace OLLMtools.RunCommand
 				this.permission_target_path = "network#" + GLib.get_real_time().to_string();
 				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
 				this.permission_question = "Confirm — Network access requested.\n\n"
-					+ "Run command with network access: " + this.command + "?"
+					+ "Run command with network access: " + cmd_preview + "?"
 					+ this.bwrap_unavailable_note ();
 				return true;
 			}
@@ -124,7 +130,7 @@ namespace OLLMtools.RunCommand
 				this.permission_question = "Confirm — Additional file write access requested.\n\n"
 					+ "This request asks for write permission to these folders: "
 					+ string.joinv (", ", this.write_array)
-					+ ", for this command: " + this.command + "?"
+					+ ", for this command: " + cmd_preview + "?"
 					+ this.bwrap_unavailable_note ();
 				return true;
 			}
@@ -140,7 +146,7 @@ namespace OLLMtools.RunCommand
 			this.one_time_only = true;
 			this.permission_target_path = this.command;
 			this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-			this.permission_question = "Confirm (sandbox unavailable):\n\nRun command: " + this.command + "?"
+			this.permission_question = "Confirm (sandbox unavailable):\n\nRun command: " + cmd_preview + "?"
 				+ this.bwrap_unavailable_note ();
 			return true;
 		}
@@ -212,9 +218,9 @@ namespace OLLMtools.RunCommand
 				}
 			}
 			
-			this.agent.add_message(new OLLMchat.Message("ui", 
-				OLLMchat.Message.fenced("text.oc-frame-info.collapsed Execuiting command in sandbox",
-					 "$ " + this.command)));
+			this.agent.add_message (new OLLMchat.Message ("ui",
+				OLLMchat.Message.fenced ("text.oc-frame-info.collapsed Running command in sandbox",
+					"$ " + this.command)));
 			
 			// Execute the tool async
 			try {

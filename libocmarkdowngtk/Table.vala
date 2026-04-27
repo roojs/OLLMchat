@@ -74,6 +74,11 @@ namespace MarkdownGtk
 			while (this.renderer.current_state != this.renderer.top_state) {
 				this.renderer.current_state.close_state();
 			}
+			// Leaving a real table cell: drop GtkTextMarks on its buffer before we orphan TopState.
+			// Otherwise gtk_text_view_set_buffer / buffer finalize hits mark_table assertion (GTK).
+			if (this.renderer.top_state != null && this.renderer.top_state != this.table_fake_top_state) {
+				this.renderer.top_state.delete_marks_recursive();
+			}
 			this.renderer.current_textview = this.table_fake_textview;
 			this.renderer.current_buffer = this.table_fake_buffer;
 			this.renderer.top_state = this.table_fake_top_state;

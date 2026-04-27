@@ -59,6 +59,22 @@ namespace Markdown.Document
 		}
 
 		/**
+		 * Best human-readable fragment for this link: first non-empty of stripped {@link path}, {@link href}, then {@link text}.
+		 */
+		public string link_display_text()
+		{
+			var p = this.path.strip();
+			if (p != "") {
+				return p;
+			}
+			var h = this.href.strip();
+			if (h != "") {
+				return h;
+			}
+			return this.text.strip();
+		}
+
+		/**
 		 * Correct a file link path when the model used a leading slash so it was parsed
 		 * as absolute from the filesystem root. Only mutates {{{path}}} and {{{href}}} when
 		 * a file or directory exists at the corrected path under {{{project_root}}}.

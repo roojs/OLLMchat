@@ -191,3 +191,10 @@
 .oc-reject {
   /* No styling currently, class exists for potential future use */
 }
+
+/* Task progress strip (ProgressView / Gtk.ColumnView): compact row vertical spacing */
+.oc-task-progress columnview cell {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+

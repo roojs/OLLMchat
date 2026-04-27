@@ -38,6 +38,7 @@ namespace OLLMcoder.Task
 		public ProgressView()
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
+			this.add_css_class("oc-task-progress");
 			var placeholder = new GLib.ListStore(typeof(ProgressItem));
 			this.progress_selection = new Gtk.SingleSelection(
 				new Gtk.TreeListModel(placeholder, false, false,
@@ -111,8 +112,11 @@ namespace OLLMcoder.Task
 					GLib.BindingFlags.SYNC_CREATE);
 			});
 
-			this.column_view.append_column(new Gtk.ColumnViewColumn("Title", title_factory));
-			this.column_view.append_column(new Gtk.ColumnViewColumn("Stage", stage_factory));
+			var title_column = new Gtk.ColumnViewColumn("Title", title_factory);
+			title_column.expand = true;
+			this.column_view.append_column(title_column);
+			var stage_column = new Gtk.ColumnViewColumn("Stage", stage_factory);
+			this.column_view.append_column(stage_column);
 
 			this.scrolled = new Gtk.ScrolledWindow() {
 				vexpand = false,

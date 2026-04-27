@@ -196,7 +196,32 @@ namespace MarkdownGtk
 			// Copy other text tag properties as needed
 			// (weight, scale, etc. can be added if needed in the future)
 		}
-		
+
+		/**
+		 * Deletes this state's subtree marks from their buffers.
+		 * Required before orphaning a TextBuffer (GTK asserts if marks remain when the btree is freed).
+		 */
+		internal void delete_marks_recursive()
+		{
+			foreach (var child in this.cn) {
+				child.delete_marks_recursive();
+			}
+			if (this.start != null) {
+				var buf = this.start.get_buffer();
+				if (buf != null) {
+					buf.delete_mark(this.start);
+				}
+				this.start = null;
+			}
+			if (this.end != null) {
+				var buf = this.end.get_buffer();
+				if (buf != null) {
+					buf.delete_mark(this.end);
+				}
+				this.end = null;
+			}
+		}
+
 	}
 }
 

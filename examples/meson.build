@@ -496,7 +496,7 @@ oc_vector_search = executable('oc-vector-search',
   install_dir: get_option('bindir')
 )
 
-# libseccomp + bwrap spike (plan 2.22.1.2): optional when libseccomp is linkable.
+# libseccomp + bwrap spike (plan docs/plans/done/2.22.1.2-DONE-seccomp-manual-vapi-and-validation.md): optional when libseccomp is linkable.
 # Use cc.find_library (not pkg-config dep) so Meson does not pass --pkg libseccomp to valac.
 # Vala: user-notify supervisor + bwrap; link vapi/seccomp-fd-pass.c for SCM_RIGHTS (see Seccomp.pass_unix_fd).
 cc_examples = meson.get_compiler('c')

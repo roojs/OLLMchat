@@ -548,38 +548,6 @@ namespace OLLMchat.History
 		}
 		
 		/**
-		 * Ensures the agent handler is set on this session.
-		 * Creates the handler from agent_name if it doesn't exist.
-		 * 
-		 * @throws Error if agent not found or handler creation fails
-		 */
-		private void ensure_agent_handler() throws Error
-		{
-			// If agent handler already exists, nothing to do
-			if (this.agent != null) {
-				return;
-			}
-			
-			// NOTE: At this point, this.model_usage must contain a valid model and connection.
-			// The model_usage.model must be non-empty and model_usage.connection must be
-			// a valid key in this.manager.config.connections. This should be ensured by
-			// calling activate_model() before ensure_agent_handler() is called.
-			
-			// Get agent name (default to "just-ask" if not set)
-			var agent_name = this.agent_name == "" ? "just-ask" : this.agent_name;
-			
-			// Get agent from manager
-			var factory = this.manager.agent_factories.get(agent_name);
-			if (factory == null) {
-				GLib.critical("Agent '%s' not found in manager", agent_name);
-				throw new OllmError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
-			}
-			
-			// Create handler from factory
-			this.agent = factory.create_agent(this);
-		}
-		
-		/**
 		 * Activates an agent for this session.
 		 * 
 		 * Handles agent changes by creating a new AgentHandler. Messages are already
