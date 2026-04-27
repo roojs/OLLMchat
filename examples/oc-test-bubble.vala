@@ -21,6 +21,76 @@ class TestBubble : TestAppBase
 	private static string? opt_project = null;
 	private static bool opt_allow_network = false;
 	private static string? opt_test_db = null;
+	/** Same grammar as run_command allow_write (colon-separated on Unix). Default project when omitted. */
+	private static string? opt_allow_write = null;
+	/** Optional: fs | no-fs | net | no-net — assert on Bubble.exec output (seccomp appendices). */
+	private static string? opt_expect = null;
+
+	/**
+	 * Build write_array for Bubble (keep in sync with Request.execute allow_write parse).
+	 */
+	static string[] bubble_write_array_from_allow_write (string spec, bool have_project) throws GLib.Error
+	{
+		string[] wa = {};
+		var aw_line = spec.strip ();
+		aw_line = (aw_line == "") ? (have_project ? "project" : "no") : aw_line;
+		var ar = aw_line.split (":");
+		for (var i = 0; i < ar.length; i++) {
+			var piece = ar[i].strip ();
+			if (i == 0 && (piece.down () == "no" || piece.down () == "project")) {
+				wa += piece.down ();
+				break;
+			}
+			if (piece == "") {
+				continue;
+			}
+			if (!GLib.Path.is_absolute (piece)) {
+				throw new GLib.IOError.INVALID_ARGUMENT (
+					"allow_write path must be absolute: " + piece);
+			}
+			wa += piece;
+		}
+		if (wa.length < 1) {
+			throw new GLib.IOError.INVALID_ARGUMENT (
+				"allow_write must be project/no or a list of absolute paths");
+		}
+		return wa;
+	}
+
+	static void assert_expect_on_output (string output, string expect, ApplicationCommandLine command_line) throws GLib.Error
+	{
+		switch (expect) {
+		case "fs":
+			if (!output.contains ("file operations were restricted")) {
+				command_line.printerr (
+					"EXPECT fs: output should contain seccomp file appendix (file operations were restricted)\n");
+				throw new GLib.IOError.FAILED ("expectation fs failed");
+			}
+			break;
+		case "no-fs":
+			if (output.contains ("file operations were restricted")) {
+				command_line.printerr ("EXPECT no-fs: unexpected seccomp file appendix in output\n");
+				throw new GLib.IOError.FAILED ("expectation no-fs failed");
+			}
+			break;
+		case "net":
+			if (!output.contains ("Sandbox: networking was disabled")) {
+				command_line.printerr (
+					"EXPECT net: output should contain seccomp network appendix\n");
+				throw new GLib.IOError.FAILED ("expectation net failed");
+			}
+			break;
+		case "no-net":
+			if (output.contains ("Sandbox: networking was disabled")) {
+				command_line.printerr ("EXPECT no-net: unexpected network appendix in output\n");
+				throw new GLib.IOError.FAILED ("expectation no-net failed");
+			}
+			break;
+		default:
+			command_line.printerr ("EXPECT: internal error unknown mode %s\n", expect);
+			throw new GLib.IOError.FAILED ("expectation internal");
+		}
+	}
 
 	protected override string help { get; set; default = """
 Usage: {ARG} --project=DIR <command>
@@ -30,11 +100,18 @@ Test tool for Bubble class (bubblewrap sandboxing).
 Arguments:
   command                    Command to execute in sandbox
 
+Options:
+  --allow-write=SPEC         Same as run_command allow_write (default project). Examples: project, no, /tmp, /tmp:/var/tmp
+  --expect=MODE              After run, assert on output: fs | no-fs | net | no-net (seccomp appendices)
+
 Examples:
   {ARG} --project=/path/to/project "ls -la"
   {ARG} --project=/path/to/project "echo hello"
   {ARG} --project=/path/to/project --allow-network "curl https://example.com"
   {ARG} --project=/path/to/project --test-db=/tmp/test.db "ls -la"
+  {ARG} --project=/path --allow-write=project --expect=no-fs "echo ok"
+  {ARG} --project=/path --allow-write=project --expect=fs "touch /etc/.oc-test-bubble-deleteme"
+  {ARG} --project=/path --expect=net "curl -s -o /dev/null --connect-timeout 2 https://example.com"
 """; }
 
 	public TestBubble()
@@ -51,6 +128,8 @@ Examples:
 		{ "project", 'p', 0, OptionArg.STRING, ref opt_project, "Project directory path", "DIR" },
 		{ "allow-network", 0, 0, OptionArg.NONE, ref opt_allow_network, "Allow network access", null },
 		{ "test-db", 0, 0, OptionArg.STRING, ref opt_test_db, "Specify test database path instead of standard database (optional, for testing only)", "PATH" },
+		{ "allow-write", 0, 0, OptionArg.STRING, ref opt_allow_write, "allow_write token list (see --help)", "SPEC" },
+		{ "expect", 0, 0, OptionArg.STRING, ref opt_expect, "Assert output: fs|no-fs|net|no-net", "MODE" },
 		{ null }
 	};
 
@@ -86,6 +165,12 @@ Examples:
 		// Check if project directory exists
 		if (!GLib.FileUtils.test(opt_project, GLib.FileTest.IS_DIR)) {
 			return "ERROR: Project directory does not exist: %s\n".printf(opt_project);
+		}
+
+		if (opt_expect != null && opt_expect != "") {
+			if (!(opt_expect == "fs" || opt_expect == "no-fs" || opt_expect == "net" || opt_expect == "no-net")) {
+				return "ERROR: --expect must be fs, no-fs, net, or no-net\n";
+			}
 		}
 
 		return null;
@@ -159,21 +244,39 @@ Examples:
 		// This is critical - Scan needs parent folders to exist in folder_map
 		project.project_files.update_from(project);
 
+		var write_spec = (opt_allow_write != null && opt_allow_write != "") ? opt_allow_write : "project";
+		string[] write_array;
+		try {
+			write_array = bubble_write_array_from_allow_write (write_spec, true);
+		} catch (GLib.Error pe) {
+			command_line.printerr ("ERROR: --allow-write: %s\n", pe.message);
+			throw pe;
+		}
+
 		// Create Bubble instance
-		var bubble = new OLLMtools.RunCommand.Bubble (project, opt_allow_network, new string[] { "project" });
+		var bubble = new OLLMtools.RunCommand.Bubble (project, opt_allow_network, write_array);
 
 		// Execute command
-		stdout.printf("Executing command in sandbox: %s\n", command);
-		stdout.printf("Project: %s\n", opt_project);
-		stdout.printf("Allow network: %s\n", opt_allow_network.to_string());
-		stdout.printf("\n--- Output ---\n");
+		stdout.printf ("Executing command in sandbox: %s\n", command);
+		stdout.printf ("Project: %s\n", opt_project);
+		stdout.printf ("Allow network: %s\n", opt_allow_network.to_string ());
+		stdout.printf ("allow_write: %s\n", write_spec);
+		if (opt_expect != null && opt_expect != "") {
+			stdout.printf ("expect: %s\n", opt_expect);
+		}
+		stdout.printf ("\n--- Output ---\n");
 
 		// Execute command
-		var output = yield bubble.exec(command);
+		var output = yield bubble.exec (command);
 
 		// Print output
-		stdout.printf("%s", output);
-		stdout.printf("\n--- End Output ---\n");
+		stdout.printf ("%s", output);
+		stdout.printf ("\n--- End Output ---\n");
+
+		if (opt_expect != null && opt_expect != "") {
+			assert_expect_on_output (output, (!) opt_expect, command_line);
+			stdout.printf ("\n--- Expect ok (%s) ---\n", opt_expect);
+		}
 
 		// Print property values for debugging
 		stdout.printf("\n--- Debug Info ---\n");

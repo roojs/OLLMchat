@@ -33,7 +33,7 @@ namespace OLLMtools.RunCommand
 		/** Validated allow_write tokens; populated only in {@link execute} before permission. */
 		private string[] write_array = {};
 		
-		// Flag to track if this is a complex command (needs to bypass cache)
+		/** When true, {@link execute} appends a unique suffix to {@link permission_target_path} so each prompt is distinct (used for non-bwrap runs). */
 		private bool is_complex_command = false;
 			
 		/**
@@ -76,8 +76,8 @@ namespace OLLMtools.RunCommand
 		}
 
 		/**
-		 * Extra text for permission dialogs when bubblewrap cannot be used ({@link Bubble.can_wrap}
-		 * is false): Flatpak ({@code FLATPAK_ID}) or missing {@code bwrap} on PATH.
+		 * Short suffix when bubblewrap cannot be used (Flatpak or bwrap missing from PATH).
+		 * Does not repeat the confirm lead-in; callers state sandbox unavailable if needed.
 		 */
 		private string bwrap_unavailable_note ()
 		{
@@ -85,117 +85,18 @@ namespace OLLMtools.RunCommand
 				return "";
 			}
 			if (GLib.Environment.get_variable ("FLATPAK_ID") != null) {
-				return " (Bubblewrap is not available in Flatpak; the command will run without that sandbox.)";
+				return " (Flatpak: bubblewrap is not used here.)";
 			}
-			return " (Bubblewrap is not available — install the bubblewrap package or ensure bwrap is on PATH; the command will run without bubblewrap sandboxing.)";
+			return " (Install bubblewrap or add bwrap to PATH to enable sandboxing.)";
 		}
 
 		/**
-		 * Detects bash operators in a command string.
-		 * 
-		 * @param cmd The command string to check
-		 * @return true if bash operators are detected
-		 */
-		private bool has_bash_operators(string cmd)
-		{
-			// Check for common bash operators/separators
-			// Note: We need to be careful not to match these inside quotes
-			// For simplicity, we'll do a basic check - this could be improved
-			// | catches both | and ||
-			// > catches both > and >>
-			// < catches both < and <<
-			// & catches &, &&, and 2>&1 (but we exclude cd commands)
-			if (cmd.contains("|") || 
-			    cmd.contains(">") || 
-			    cmd.contains("<") || 
-			    cmd.contains(";") || 
-			    (cmd.contains("&") && !cmd.has_prefix("cd "))) {
-				return true;
-			}
-			return false;
-		}
-		
-		/**
-		 * Detects if command matches simple pattern for permission caching.
-		 * 
-		 * @param cmd The command to check
-		 * @return true if it's a simple pattern
-		 */
-		private bool is_simple_pattern(string cmd)
-		{
-			// Check for bash operators first - if present, it's complex
-			if (this.has_bash_operators(cmd)) {
-				return false;
-			}
-			
-			var parts = cmd.split(" && ");
-			
-			// Single command (no &&)
-			if (parts.length == 1) {
-				return true;
-			}
-			
-			// Pattern: cd <path> && <command>
-			if (parts.length != 2) {
-				return false;
-			}
-			
-			var first = parts[0].strip();
-			
-			// First part must start with "cd "
-			if (!first.has_prefix("cd ")) {
-				return false;
-			}
-			
-			return true;
-		}
-		
-		/**
-		 * Extracts the executable command from a simple pattern.
-		 * 
-		 * @param cmd The full command
-		 * @return The command part to resolve (without cd if present)
-		 */
-		private string extract_command_for_resolution(string cmd)
-		{
-			var parts = cmd.split("&&");
-			
-			if (parts.length == 1) {
-				return parts[0].strip();
-			}
-			
-			if (parts.length == 2) {
-				// Return the part after &&
-				return parts[1].strip();
-			}
-			
-			return cmd;
-		}
-		
-		/**
-		 * Extracts the executable name from a command string.
-		 * 
-		 * @param cmd The command string
-		 * @return The executable name (first word)
-		 */
-		private string extract_executable_name(string cmd)
-		{
-			var trimmed = cmd.strip();
-			if (trimmed == "") {
-				return "";
-			}
-			
-			// Find first space or end of string
-			int space_pos = trimmed.index_of(" ");
-			if (space_pos == -1) {
-				return trimmed;
-			}
-			
-			return trimmed.substring(0, space_pos);
-		}
-		
-		/**
 		 * Sets permission_question, permission_target_path, permission_operation.
+		 *
+		 * With bubblewrap: only prompt for network access or extra allow_write host roots;
+		 * default sandboxed runs skip execute permission (seccomp / mount policy contain the run).
+		 * Without bubblewrap: prompt every command — there is no equivalent sandbox.
+		 *
 		 * @return true if permission is needed of false if it can be skipped
 		 */
 		protected override bool build_perm_question()
@@ -206,79 +107,47 @@ namespace OLLMtools.RunCommand
 				// Use unique identifier to bypass cache (timestamp-based)
 				this.permission_target_path = "network#" + GLib.get_real_time().to_string();
 				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command with network access: " + this.command + "?"
+				this.permission_question = "Confirm — Network access requested.\n\n"
+					+ "Run command with network access: " + this.command + "?"
 					+ this.bwrap_unavailable_note ();
 				return true;
-			}
-			
-			if (Bubble.can_wrap ()) {
-				var pm = ((Tool) this.tool).project_manager;
-				if (pm != null && pm.active_project != null) {
-					var head0 = this.write_array[0].down ();
-					if (head0 == "no" || head0 == "project") {
-						this.permission_question = "";
-						return false;
-					}
-					this.one_time_only = true;
-					this.permission_target_path = "allow_write_paths#" + GLib.get_real_time ().to_string ();
-					this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-					this.permission_question = "This request asks for write permission to these folders: "
-						+ string.joinv (", ", this.write_array)
-						+ ", for this command: " + this.command + "?"
-						+ this.bwrap_unavailable_note ();
-					return true;
-				}
 			}
 
-			// Check if this is a complex pattern
-			if (!this.is_simple_pattern(this.command)) {
-				// Complex pattern: always require approval
-				this.is_complex_command = true;
-				this.permission_target_path = this.command;
+			bool can = Bubble.can_wrap ();
+			string head0 = this.write_array.length > 0 ? this.write_array[0].down () : "";
+			bool default_sandbox_writes = (head0 == "no" || head0 == "project");
+
+			if (can && !default_sandbox_writes) {
+				this.one_time_only = true;
+				this.permission_target_path = "allow_write_paths#" + GLib.get_real_time ().to_string ();
 				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command: " + this.command + "?"
+				this.permission_question = "Confirm — Additional file write access requested.\n\n"
+					+ "This request asks for write permission to these folders: "
+					+ string.joinv (", ", this.write_array)
+					+ ", for this command: " + this.command + "?"
 					+ this.bwrap_unavailable_note ();
 				return true;
 			}
-			
-			// Simple pattern: extract command and resolve realpath
-			var cmd_to_resolve = this.extract_command_for_resolution(this.command);
-			var exec_name = this.extract_executable_name(cmd_to_resolve);
-			
-			if (exec_name == "") {
-				// Can't resolve - treat as complex
-				this.is_complex_command = true;
-				this.permission_target_path = this.command;
-				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command: " + this.command + "?"
-					+ this.bwrap_unavailable_note ();
-				return true;
+
+			if (can && default_sandbox_writes) {
+				this.permission_question = "";
+				this.is_complex_command = false;
+				return false;
 			}
-			
-			var realpath = GLib.Environment.find_program_in_path(exec_name) ?? "";
-			if (realpath == "") {
-				// Can't resolve - treat as complex
-				this.is_complex_command = true;
-				this.permission_target_path = this.command;
-				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command: " + this.command + "?"
-					+ this.bwrap_unavailable_note ();
-				return true;
-			}
-			
-			// Simple pattern with resolved path
-			this.is_complex_command = false;
-			this.permission_target_path = realpath;
+
+			// No bubblewrap: approve each run (no bwrap containment)
+			this.is_complex_command = true;
+			this.one_time_only = true;
+			this.permission_target_path = this.command;
 			this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-			this.permission_question = "Run command: " + this.command + "?"
+			this.permission_question = "Confirm (sandbox unavailable):\n\nRun command: " + this.command + "?"
 				+ this.bwrap_unavailable_note ();
 			return true;
 		}
 		
 		/**
-		 * Override execute() to handle complex commands differently and execute async subprocess.
-		 * For complex commands, we use a unique path that won't match cache entries,
-		 * effectively forcing a new permission request each time.
+		 * Override execute() so non-bwrap runs use a unique permission key per invocation
+		 * (see {@link is_complex_command} after {@link build_perm_question}).
 		 */
 		public override async string execute()
 		{
