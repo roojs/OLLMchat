@@ -44,16 +44,29 @@ jobs:
           
       - name: Download and install libfaiss-dev
         run: |
-          # Download libfaiss-dev .deb package from Debian repository
-          wget http://ftp.us.debian.org/debian/pool/main/f/faiss/libfaiss-dev_1.13.2-1_amd64.deb -O /tmp/libfaiss-dev.deb
-          
-          # Install the package and fix any missing dependencies
+          set -euo pipefail
+          # Ubuntu does not ship a suitable libfaiss-dev for this image; install the
+          # current Debian amd64 package. The pool filename changes when Debian
+          # bumps faiss — discover the latest libfaiss-dev_*_amd64.deb instead of a
+          # hardcoded URL.
+          POOL="https://deb.debian.org/debian/pool/main/f/faiss"
+          deb=$(curl -fsSL "$POOL/" \
+            | grep -oE 'href="libfaiss-dev_[^"]+_amd64\.deb"' \
+            | sed 's/^href="//;s/"$//' \
+            | sort -V \
+            | tail -n1)
+          if [ -z "${deb}" ]; then
+            echo "Could not find libfaiss-dev_*_amd64.deb under ${POOL}" >&2
+            exit 1
+          fi
+          echo "Using Debian package: ${deb}"
+          curl -fsSL "$POOL/${deb}" -o /tmp/libfaiss-dev.deb
           sudo apt-get install -y libfaiss1 || true
           sudo dpkg -i /tmp/libfaiss-dev.deb || sudo apt-get install -f -y
 
       - name: Install build dependencies
         run: |
-          # Enable universe repository for packages like libfaiss-dev
+          # Enable universe for GTK/Vala/doc tooling (faiss comes from Debian above)
           sudo apt-get update
           sudo apt-get install -y software-properties-common
           sudo add-apt-repository universe -y
