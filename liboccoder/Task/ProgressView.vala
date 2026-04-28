@@ -84,6 +84,11 @@ namespace OLLMcoder.Task
 					label,
 					"label",
 					GLib.BindingFlags.SYNC_CREATE);
+				pi.bind_property(
+					"tooltip_text",
+					label,
+					"tooltip-text",
+					GLib.BindingFlags.SYNC_CREATE);
 			});
 			title_factory.unbind.connect((obj) => {
 				var li = (Gtk.ListItem) obj;

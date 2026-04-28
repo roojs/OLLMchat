@@ -36,6 +36,16 @@ public interface ProgressItem : GLib.Object
 	public abstract string status_str { owned get; }
 
 	public abstract GLib.ListModel children { get; }
+
+	/**
+	 * After {@link Tool} execution, the {@link OLLMchat.Tool.RequestBase} copied from {@link OLLMchat.Tool.BaseTool.last_request} for this row; **null** if not a tool row or not yet run.
+	 */
+	public abstract OLLMchat.Tool.RequestBase? tool_request { get; set; }
+
+	/**
+	 * Tooltip for the progress title column; **""** if none.
+	 */
+	public abstract string tooltip_text { owned get; }
 }
 
 }

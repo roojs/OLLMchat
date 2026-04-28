@@ -94,7 +94,8 @@ Intro line: hunks are **Remove** / **Replace with** / **Add** from the tree; ver
 - **Don’t** replace code blocks with long prose about what to keep or replace (“delete the old loop and insert …”) **without** the matching fences.
 - **Do** use **`#### Add`** (or an **Add** chunk in the ordered format) for **pure insertions** — new lines only, nothing deleted.
 - **Don’t** use **`Remove`** with `// (nothing)` or “nothing to remove” to mean insertion. If there is nothing to delete, there is **no Remove** — use **Add** (after a **Keep** anchor when you need one).
-- **Do** keep a **one-line reason** on **Replace with** / **Add** where the format calls for it (ordered chunks); keep it short — the **fence** carries the real content.
+- **Don’t** publish a **`#### Add`** (or ordered-chunk **Add**) that is **only** a code fence. The implementer must get **mechanical context** without guessing: every **Add** must state **where** the new lines go (file, method or region, and position relative to the accompanying **`Keep`** anchor or a named line) and **what** they do (one short sentence). Put that in the **`#### Add — …`** heading suffix and/or **immediately below** **`#### Add`** as a line or bullets **before** the fence. A pointer (**see § X**) is allowed **only if** the referenced section contains the **same** verbatim fence and the same placement sentence—otherwise the **Add** block is incomplete.
+- **Do** keep that **placement + purpose** line on **Replace with** / **Add** (ordered chunks use it on the line immediately above the fence—see below); keep it short — the **fence** carries the literals.
 
 For **each** file/topic, use a **numbered** `###` heading, then **only** these subheadings above code:
 
@@ -102,7 +103,7 @@ For **each** file/topic, use a **numbered** `###` heading, then **only** these s
 | ---------- | --- |
 | **`#### Remove`** | Verbatim code to delete |
 | **`#### Replace with`** | Full replacement of the **Remove** block (or the named fragment) — not necessarily the whole file |
-| **`#### Add`** | New code only (no removal) |
+| **`#### Add`** | New code only (no removal). Must include **where** + **what** (heading suffix or line above fence)—see **Don’t** “only a code fence” in **Do / don’t**. |
 | **`#### Keep`** | **Local** unchanged lines that **anchor** the next **Remove** / **Replace with** / **Add** — e.g. the lines **immediately above** the fragment you are about to change. Break big methods into **parts** (see below); **do not** paste the **entire** method in one **`Keep`** fence (hard to scan). **`Remove`** / **`Replace with`** carry the **small** verbatim delta. |
 
 **Example** (outer fence is `~~~` so inner fences parse):
@@ -154,7 +155,7 @@ Interleave in this order:
 1. **Keep** — Fenced block of **unchanged** code (enough lines to anchor the next edit—usually starts or ends a stable span).
 2. Then either:
    - **Remove** + **Replace with** — **Remove** is only for **verbatim lines to delete**. **Replace with** — *one-line reason*, then a fence of **new** code that replaces what was removed; or
-   - **Add** — *one-line reason* (e.g. **Add** — insert local state before the rest of the method), then a fence of **new** code only — use this for **pure insertions** (do **not** pair with an empty **Remove**).
+   - **Add** — *reason* naming **where** + **what** (placement relative to the prior **Keep** and purpose—may be one line or two short lines), then a fence of **new** code only — use this for **pure insertions** (do **not** pair with an empty **Remove**). A fence **without** that reason is incomplete (**Do / don’t**).
 
 Then **Keep** again and repeat as needed.
 

@@ -167,6 +167,12 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 		owned get { return this.status.to_human(); }
 	}
 
+	public OLLMchat.Tool.RequestBase? tool_request { get; set; default = null; }
+
+	public string tooltip_text {
+		owned get { return ""; }
+	}
+
 	/**
 	 * Single markdown document after post-exec synthesis. Headings used for
 	 * {{{ task://slug.md }}} (full document) or optional fragment for one section.

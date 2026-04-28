@@ -200,6 +200,21 @@ Don't forget to close it.
 			// File is not in active project - require permission
 			return true;
 		}
+
+		public override string to_summary ()
+		{
+			if (this.file_path == "") {
+				return "";
+			}
+			var norm = this.normalize_file_path (this.file_path);
+			var creating_file = !GLib.FileUtils.test (norm, GLib.FileTest.IS_REGULAR);
+			var project_manager = ((Tool) this.tool).project_manager;
+			var is_in_project = project_manager != null
+				&& project_manager.get_file_from_active_project (norm) != null;
+			return "Edit mode activated for file: " + norm + "\n"
+				+ "File status: " + (!creating_file ? "exists" : "will be created") + "\n"
+				+ "Project file: " + (is_in_project ? "yes (auto-approved)" : "no (permission required)");
+		}
 		
 		protected override async string execute_request() throws Error
 		{
@@ -236,14 +251,8 @@ Don't forget to close it.
 				this.file              // File object (Stream can get path from file.path, project_manager from file.manager)
 			);
 			
-			// Get file status for UI message
-			var is_in_project = (this.file.id > 0);
 			this.creating_file = !GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
-			
-			// Build UI message - just the request info and permission status
-			var ui_message = "Edit mode activated for file: " + this.normalized_path + "\n"
-				+ "File status: " + (!this.creating_file ? "exists" : "will be created") + "\n"
-				+ "Project file: " + (is_in_project ? "yes (auto-approved)" : "no (permission required)");
+			var ui_message = this.to_summary ();
 			
 			// Send to UI using standardized format
 			this.agent.add_message(new OLLMchat.Message("ui", 

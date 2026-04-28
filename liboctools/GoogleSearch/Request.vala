@@ -157,6 +157,11 @@ namespace OLLMtools.GoogleSearch
 		public Request()
 		{
 		}
+
+		public override string to_summary ()
+		{
+			return this.query;
+		}
 		
 		protected override bool build_perm_question()
 		{
@@ -201,7 +206,7 @@ namespace OLLMtools.GoogleSearch
 			
 			// Send request message to UI: title "Google Search request for", query in code block
 			this.agent.add_message(new OLLMchat.Message("ui",
-				 OLLMchat.Message.fenced("text.oc-frame-info.collapsed Google Search request for", this.query)));
+				 OLLMchat.Message.fenced("text.oc-frame-info.collapsed Google Search request for", this.to_summary ())));
 			
 			// Fetch search results
 			GLib.Bytes content;
