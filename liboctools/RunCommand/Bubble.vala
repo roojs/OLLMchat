@@ -411,13 +411,9 @@ namespace OLLMtools.RunCommand
 		GLib.Subprocess subprocess,
 		RunSeccomp run_seccomp) throws Error
 	{
-		GLib.debug("read_subprocess_output: Starting to read from subprocess");
-		
 		// Get stdout and stderr streams from subprocess
 		var stdout_stream = subprocess.get_stdout_pipe();
 		var stderr_stream = subprocess.get_stderr_pipe();
-		
-		GLib.debug("read_subprocess_output: Got streams, stdout=%p, stderr=%p", stdout_stream, stderr_stream);
 		
 		// Reset accumulators for this execution
 		this.ret_str = "";
@@ -482,7 +478,6 @@ namespace OLLMtools.RunCommand
 		);
 		
 		// Wait for process to complete
-		GLib.debug("read_subprocess_output: Waiting for process to complete");
 		int exit_status = 0;
 		try {
 			yield subprocess.wait_async(null);
@@ -504,15 +499,11 @@ namespace OLLMtools.RunCommand
 			throw new GLib.IOError.FAILED("Failed to wait for process: " + e.message);
 		}
 		
-		GLib.debug("read_subprocess_output: Process completed with exit_status=%d, stdout_open=%s, stderr_open=%s", exit_status, stdout_open.to_string(), stderr_open.to_string());
-		
 		// Read any remaining data
 		if (stdout_open) {
-			GLib.debug("read_subprocess_output: Reading remaining stdout data");
 			this.read_from_channel(stdout_ch, true);
 		}
 		if (stderr_open) {
-			GLib.debug("read_subprocess_output: Reading remaining stderr data");
 			this.read_from_channel(stderr_ch, false);
 		}
 		
@@ -560,12 +551,6 @@ namespace OLLMtools.RunCommand
 		}
 		final_fail_str += "\n";
 
-		// Debug: Output what we captured
-		GLib.debug("Bubble.read_subprocess_output: exit_status=%d, ret_str length=%zu, fail_str length=%zu", exit_status, this.ret_str.length, this.fail_str.length);
-		if (this.fail_str.length > 0) {
-			GLib.debug("Bubble.read_subprocess_output: fail_str content: %s", this.fail_str);
-		}
-		
 		// Return appropriate string based on exit status
 		if (exit_status == 0) {
 			if (run_seccomp.fs != "") {
@@ -607,23 +592,19 @@ namespace OLLMtools.RunCommand
 			try {
 				status = channel.read_line(out buffer, out len, out term_pos);
 			} catch (GLib.Error e) {
-				GLib.debug("read_from_channel: Error reading from %s: %s", is_stdout ? "stdout" : "stderr", e.message);
 				return; // Error reading, stop
 			}
 			
 			if (buffer == null) {
-				GLib.debug("read_from_channel: No more data from %s", is_stdout ? "stdout" : "stderr");
 				return; // No more data
 			}
 			
 			// If status is not NORMAL, return early
 			if (status != GLib.IOStatus.NORMAL) {
-				GLib.debug("read_from_channel: Status %s from %s, stopping", status.to_string(), is_stdout ? "stdout" : "stderr");
 				return; // AGAIN, EOF, or ERROR - stop reading
 			}
 			
 			// Status is NORMAL - accumulate output
-			GLib.debug("read_from_channel: Read %zu bytes from %s: %s", len, is_stdout ? "stdout" : "stderr", buffer);
 			if (is_stdout) {
 				this.ret_str += buffer;
 				continue; // Read more

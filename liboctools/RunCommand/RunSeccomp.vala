@@ -98,6 +98,10 @@ namespace OLLMtools.RunCommand
 
 		/**
 		 * Runs in the child after fork, before exec. NOTIFY rules follow #bubble.
+		 *
+		 * Important: do not block here waiting for parent-side acknowledgement.
+		 * GLib spawn may wait for child setup to complete before returning to the
+		 * parent, so blocking in child_setup can deadlock spawn.
 		 */
 		void child_seccomp_handshake ()
 		{
@@ -121,10 +125,6 @@ namespace OLLMtools.RunCommand
 				return;
 			}
 			Posix.close (nfd);
-			var sync = new uint8[1];
-			if (Posix.read (sock, sync, 1) != 1 || sync[0] != 'S') {
-				return;
-			}
 			Posix.close (sock);
 		}
 
@@ -148,7 +148,7 @@ namespace OLLMtools.RunCommand
 		}
 
 		/**
-		 * After spawn: receive notify fd, always send sync byte so the child never blocks.
+		 * After spawn: receive notify fd from child setup.
 		 */
 		public void finish_handshake ()
 		{
@@ -159,17 +159,6 @@ namespace OLLMtools.RunCommand
 			int nfd = Seccomp.receive_unix_fd (this.parent_sock);
 			if (nfd < 0) {
 				this.skipped = "Seccomp user-notify was not set up for this run; syscall evidence is unavailable.";
-			}
-			uint8[] sync_b = { (uint8) 'S' };
-			if (Posix.write (this.parent_sock, sync_b, 1) != 1) {
-				this.skipped = "Seccomp user-notify handshake did not complete; syscall evidence is unavailable.";
-				if (nfd >= 0) {
-					Posix.close (nfd);
-				}
-				Posix.close (this.parent_sock);
-				this.parent_sock = -1;
-				this.notify_fd = -1;
-				return;
 			}
 			Posix.close (this.parent_sock);
 			this.parent_sock = -1;
