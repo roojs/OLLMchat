@@ -50,6 +50,29 @@ namespace OLLMtools.WriteFile
 			return base.normalize_file_path(in_path);
 		}
 
+		public override string to_summary ()
+		{
+			if (this.file_path.strip () == "") {
+				return "";
+			}
+			var norm = this.tool != null ? this.normalize_file_path (this.file_path) : this.file_path;
+			string[] lines = {};
+			lines += "File: " + norm;
+			if (this.ast_path.strip () != "") {
+				lines += "AST path: " + this.ast_path;
+			} else if (this.start_line >= 1 && this.end_line >= this.start_line) {
+				lines += "Lines: %d-%d".printf (this.start_line, this.end_line);
+			} else if (this.complete_file) {
+				lines += "Mode: complete file";
+			} else if (this.search_text.strip () != "") {
+				lines += "Mode: search/replace";
+			}
+			if (this.overwrite) {
+				lines += "Overwrite: yes";
+			}
+			return string.joinv ("\n", lines);
+		}
+
 		protected override bool build_perm_question()
 		{
 			if (this.file_path == "") {

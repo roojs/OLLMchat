@@ -167,6 +167,22 @@ namespace OLLMvector.Tool
 			// Codebase search is read-only and doesn't require permission prompts
 			return false;
 		}
+
+		public override string to_summary ()
+		{
+			var request_message = "Query: " + this.query;
+			if (this.language != "") {
+				request_message += "\nLanguage: " + this.language;
+			}
+			if (this.element_type != "") {
+				request_message += "\nElement Type: " + this.element_type;
+			}
+			if (this.category != "") {
+				request_message += "\nCategory: " + this.category;
+			}
+			request_message += "\nMax Results: " + this.max_results.to_string ();
+			return request_message;
+		}
 		
 		protected override async string execute_request() throws Error
 		{
@@ -188,20 +204,8 @@ namespace OLLMvector.Tool
 				this.max_results
 			);
 			
-			// Build search request message with query and options
-			var request_message = "Query: " + this.query;
-			if (this.language != "") {
-				request_message += "\nLanguage: " + this.language;
-			}
-			if (this.element_type != "") {
-				request_message += "\nElement Type: " + this.element_type;
-			}
-			if (this.category != "") {
-				request_message += "\nCategory: " + this.category;
-			}
-			request_message += "\nMax Results: " + this.max_results.to_string();
-			
 			// Send search query to UI (same format as commands)
+			var request_message = this.to_summary ();
 			this.agent.add_message(new OLLMchat.Message("ui", 
 				OLLMchat.Message.fenced("text.oc-frame-info.collapsed Code search: %s".printf(this.query), request_message)));
 			

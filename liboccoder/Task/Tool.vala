@@ -91,6 +91,14 @@ namespace OLLMcoder.Task
 		/** Placeholder empty list — tools are leaves; avoids null checks on {@link ProgressItem.children}. */
 		public GLib.ListModel children { get; default = new GLib.ListStore(typeof(ProgressItem)); }
 
+		public OLLMchat.Tool.RequestBase? tool_request { get; set; default = null; }
+
+		public string tooltip_text {
+			owned get {
+				return this.tool_request != null ? this.tool_request.to_summary () : "";
+			}
+		}
+
 		/**
 		 * Write operations parsed from the write executor output.
 		 *
@@ -177,6 +185,8 @@ namespace OLLMcoder.Task
 						this.tool_call.function.name) as OLLMchat.Tool.BaseTool;
 				this.status = PhaseEnum.TOOLS_RUNNING;
 				this.tool_run_result = yield tool_impl.execute(this.chat(), this.tool_call, true);
+				this.tool_request = tool_impl.last_request;
+				this.notify_property("tooltip_text");
 				this.status = PhaseEnum.EXECUTION;
 				tool_output = this.tool_call_details();
 			}

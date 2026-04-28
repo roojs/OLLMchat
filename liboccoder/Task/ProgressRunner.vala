@@ -55,6 +55,12 @@ public class ProgressRunner : GLib.Object, ProgressItem
 		default = new GLib.ListStore(typeof (ProgressItem));
 	}
 
+	public OLLMchat.Tool.RequestBase? tool_request { get; set; default = null; }
+
+	public string tooltip_text {
+		owned get { return ""; }
+	}
+
 	public ProgressRunner(OLLMcoder.Skill.Runner r)
 	{
 		Object();

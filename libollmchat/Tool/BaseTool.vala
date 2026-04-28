@@ -134,6 +134,8 @@ namespace OLLMchat.Tool
 		 * from a .tool definition file and should use wrapped tool execution flow.
 		 */
 		public bool is_wrapped { get; set; default = false; }
+
+		public RequestBase? last_request { get; set; default = null; }
 		
 		/**
 		 * Command template for wrapped tools.
@@ -276,7 +278,8 @@ namespace OLLMchat.Tool
 			// Register for monitoring (works for both Agent.Base and dummy agents)
 			// Interface methods have default no-op implementations
 			request.agent.register_tool_monitoring(request.request_id, request);
-			
+			this.last_request = request;
+
 			return yield request.execute();
 		}
 		

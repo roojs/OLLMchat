@@ -42,6 +42,20 @@ namespace OLLMtools.RunCommand
 		public Request()
 		{
 		}
+
+		public override string to_summary ()
+		{
+			string[] lines = {};
+			lines += "Command:";
+			lines += this.command;
+			if (this.working_dir.strip () != "") {
+				lines += "Working directory: " + this.working_dir;
+			}
+			if (this.network) {
+				lines += "Network: yes";
+			}
+			return string.joinv ("\n", lines);
+		}
 		
 		/**
 		 * Normalizes working_dir to an absolute path.

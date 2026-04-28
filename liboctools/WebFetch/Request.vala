@@ -36,6 +36,11 @@ namespace OLLMtools.WebFetch
 		public Request()
 		{
 		}
+
+		public override string to_summary ()
+		{
+			return this.url;
+		}
 		
 		protected override bool build_perm_question()
 		{
@@ -64,7 +69,7 @@ namespace OLLMtools.WebFetch
 				
 			// Send request message to UI
 			this.agent.add_message(new OLLMchat.Message("ui", 
-				OLLMchat.Message.fenced("text.oc-frame-info.collapsed request", this.url)));
+				OLLMchat.Message.fenced("text.oc-frame-info.collapsed request", this.to_summary ())));
 			
 			// Fetch URL with redirects disabled (redirects require approval)
 			Bytes content;

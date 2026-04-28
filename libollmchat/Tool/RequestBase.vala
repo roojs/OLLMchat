@@ -242,6 +242,15 @@ namespace OLLMchat.Tool
 			// Default: do nothing
 			// Tools that need message completion override this
 		}
+
+		/**
+		 * Plain-text summary for chat fences and UI tooltips. Must not call {@link execute}, {@link add_message}, or touch buffers.
+		 * Default **""** means no typed lines from deserialized fields.
+		 */
+		public virtual string to_summary ()
+		{
+			return "";
+		}
 		
 		// Note: on_message_failed() not needed - errors propagate as exceptions through send_async()
 		// Tools can handle errors in their own try/catch blocks if needed
