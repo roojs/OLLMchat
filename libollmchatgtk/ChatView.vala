@@ -54,10 +54,12 @@ namespace OLLMchatGtk
 		private bool is_thinking = false;
 		private ContentState content_state = ContentState.NONE;
 		private bool is_waiting = false;
-		private Gtk.TextMark? waiting_mark = null;
+		/** Separate row below the markdown stack — avoids Gtk.TextMark on the render buffer (see clear()). */
+		private Gtk.Widget? waiting_panel = null;
+		private Gtk.Label? waiting_line_label = null;
 		private uint waiting_timer = 0;
 		private int waiting_dots = 0;
-		private string waiting_label = "waiting for a reply";
+		private string waiting_caption = "waiting for a reply";
 		private Gee.ArrayList<Gtk.Widget> message_widgets = new Gee.ArrayList<Gtk.Widget>();
 		private bool has_displayed_user_message = false;
 		private double last_scroll_pos = 0.0;
@@ -623,7 +625,7 @@ namespace OLLMchatGtk
 			this.scroll_enabled = true;
 			this.autoscroll_paused_by_user = false;
 
-			// Remove waiting indicator while renderer still points at the same buffer (marks must be deleted before buffers are torn down)
+			// Remove waiting row before tearing down markdown widgets.
 			this.clear_waiting_indicator();
 
 			// Clear renderer state (includes sourceview handlers)
@@ -699,8 +701,7 @@ namespace OLLMchatGtk
 			// (otherwise clear_waiting_indicator will see is_waiting=true and clear it)
 			this.clear_waiting_indicator();
 
-			this.waiting_label = label;
-			// Set waiting state AFTER clearing
+			this.waiting_caption = label;
 			this.is_waiting = true;
 
 			// Finalize any ongoing assistant message
@@ -708,38 +709,39 @@ namespace OLLMchatGtk
 				this.finalize_assistant_message();
 			}
 
-			// Insert waiting indicator
-			var buffer = this.get_current_buffer();
-			if (buffer == null) {
-				return;
-			}
-			
-			Gtk.TextIter start_iter, end_iter;
-			buffer.get_start_iter(out start_iter);
-			buffer.get_end_iter(out end_iter);
-			
-			// Add blank line before waiting indicator if buffer is not empty
-			if (!start_iter.equal(end_iter)) {
-				buffer.insert(ref end_iter, "\n", -1);
-			}
-			buffer.get_end_iter(out end_iter);
-			this.waiting_mark = buffer.create_mark("waiting-indicator", end_iter, true);
-			this.waiting_dots = 0;
-			this.update_waiting_dots();
+			var line = new Gtk.Label("") {
+				use_markup = true,
+				hexpand = true,
+				halign = Gtk.Align.START,
+				xalign = 0,
+				margin_start = 2,
+				margin_top = 4,
+				margin_bottom = 2
+			};
+			var panel = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+			panel.append(line);
+			this.waiting_line_label = line;
+			this.waiting_panel = panel;
+			this.text_view_box.append(panel);
 
-			// Start timer to update dots every 1 second (2x speed)
+			this.waiting_dots = 1;
+			this.refresh_waiting_markup();
+
 			this.waiting_timer = GLib.Timeout.add_seconds(1, () => {
-				this.update_waiting_dots();
-				return true; // Continue timer
+				if (!this.is_waiting || this.waiting_line_label == null) {
+					return false;
+				}
+				this.waiting_dots = (this.waiting_dots % 6) + 1;
+				this.refresh_waiting_markup();
+				return true;
 			});
 
 			this.scroll_to_bottom();
 		}
 
 		/**
-		 * Clears the waiting indicator from the buffer and stops the dots timer.
-		 * Assistant/streaming state is owned by {@link initialize_assistant_message}
-		 * when {@link append_assistant_chunk} runs (after this reorder).
+		 * Removes the waiting row from the layout and stops the dots timer.
+		 * Does not use the markdown {@link Gtk.TextBuffer} (avoids marks on the render buffer).
 		 *
 		 * @param response Reserved for callers; parameters kept for API compatibility.
 		 * @since 1.0
@@ -751,91 +753,27 @@ namespace OLLMchatGtk
 				this.waiting_timer = 0;
 			}
 
-			// Must clear waiting_mark whenever it exists (is_waiting can be stale); otherwise marks
-			// leak on the buffer and GTK asserts when the TextView is destroyed.
-			if (!this.is_waiting && this.waiting_mark == null) {
+			if (!this.is_waiting && this.waiting_panel == null) {
 				return;
 			}
 
-			// Get position where waiting indicator starts (after "Assistant:" label)
-			Gtk.TextBuffer? buffer = this.renderer.current_buffer;
-			if (buffer == null && this.waiting_mark != null) {
-				buffer = this.waiting_mark.get_buffer();
+			if (this.waiting_panel != null) {
+				this.text_view_box.remove(this.waiting_panel);
+				this.waiting_panel = null;
 			}
-			if (buffer == null) {
-				this.waiting_mark = null;
-				this.is_waiting = false;
-				return;
-			}
-			
-			Gtk.TextIter mark_pos;
-			if (this.waiting_mark != null) {
-				buffer.get_iter_at_mark(out mark_pos, this.waiting_mark);
-			} else {
-				buffer.get_end_iter(out mark_pos);
-			}
-
-			// Delete waiting indicator content (from mark to end)
-			if (this.waiting_mark != null) {
-				Gtk.TextIter end_iter;
-				buffer.get_end_iter(out end_iter);
-				
-				if (mark_pos.get_offset() < end_iter.get_offset()) {
-					buffer.delete(ref mark_pos, ref end_iter);
-				}
-				buffer.delete_mark(this.waiting_mark);
-				this.waiting_mark = null;
-			}
+			this.waiting_line_label = null;
 			this.waiting_dots = 0;
-
-
 			this.is_waiting = false;
 		}
 
-		private bool update_waiting_dots()
+		private void refresh_waiting_markup()
 		{
-			if (this.waiting_mark == null) {
-				return false; // Stop timer
+			if (this.waiting_line_label == null) {
+				return;
 			}
-			if (!this.is_waiting) {
-				return false; // Stop timer
-			}
-
-			var buffer = this.renderer.current_buffer;
-			if (buffer == null) {
-				return false; // Stop timer if buffer is gone
-			}
-
-			// Check if mark is still valid (hasn't been deleted)
-			var mark = buffer.get_mark("waiting-indicator");
-			if (mark == null || mark != this.waiting_mark) {
-				this.waiting_mark = null;
-				return false; // Stop timer
-			}
-
-			// Update dots (cycle through 1-6)
-			this.waiting_dots = (this.waiting_dots % 6) + 1;
 			string dots = string.nfill(this.waiting_dots, '.');
-
-			// Delete old waiting text and insert new
-			Gtk.TextIter start_iter, end_iter;
-			buffer.get_iter_at_mark(out start_iter, this.waiting_mark);
-			buffer.get_end_iter(out end_iter);
-
-			if (start_iter.get_offset() < end_iter.get_offset()) {
-				buffer.delete(ref start_iter, ref end_iter);
-			}
-
-			// Insert fixed Pango markup directly (do not run through toPango; the parser
-			// can misparse the span and drop the leading "w", showing "<aiting for...").
-			string escaped_label = GLib.Markup.escape_text(this.waiting_label, -1);
-			buffer.insert_markup(
-				ref start_iter,
-				"<span color=\"green\">" + escaped_label + dots + "</span>",
-				-1
-			);
-
-			return true; // Continue timer
+			string escaped = GLib.Markup.escape_text(this.waiting_caption, -1);
+			this.waiting_line_label.set_markup("<span color=\"green\">" + escaped + dots + "</span>");
 		}
 
 		public void scroll_to_bottom()

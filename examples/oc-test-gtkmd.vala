@@ -29,7 +29,8 @@
 class TestGtkMd : TestAppBase
 {
 	private static string? opt_file = null;
-	private static int opt_stream_delay_sec = -1;
+	/** -1 = not streaming; else wait this many milliseconds before chunks (50 = 50 ms). */
+	private static int opt_stream_delay_ms = -1;
 	private static bool opt_thinking = false;
 	private static string? opt_history = null;
 
@@ -43,6 +44,10 @@ class TestGtkMd : TestAppBase
 	private Json.Array history_messages { get; set; default = new Json.Array(); }
 	private int history_msg_start { get; set; default = 0; }
 	private int msg_no { get; set; default = 0; }
+	/** Copy of argv for Reload (positional file path). */
+	private string[] saved_args = {};
+	/** Incremented on Reload to stop in-flight stream timers. */
+	private uint stream_token = 0;
 	// private Gtk.Button history_next_button;
 
 	protected override string help { get; set; default = """
@@ -54,16 +59,17 @@ Arguments:
   markdown_file              Path to a markdown file (omit if --history is set)
 
 Options:
-  -s, --stream SECS          Emulate streaming: wait SECS seconds then feed content in chunks (0 = start immediately)
+  -s, --stream MS            Emulate streaming: wait MS milliseconds before chunks (0 = immediate)
   -t, --thinking             Nested ```markdown block (RenderSourceView + nested MarkdownGtk.Render), like ChatView thinking
       --history FILE         Session JSON: replay messages from the start (ui / think-stream / content-stream) like ChatWidget
 
 Examples:
   {ARG} README.md
-  {ARG} --stream 0 tests/markdown/tables.md
-  {ARG} -s 15 -f docs/notes.md
+  {ARG} --stream 0 tests/markdown/tables.md   (Reload button ≈ ChatView.clear mid-stream)
+  {ARG} -s 50 -f docs/notes.md   (50 ms delay before streaming starts)
   {ARG} --thinking tests/markdown/repro-chatview-thinking-lines.md
   {ARG} --thinking --stream 0 tests/markdown/repro-chatview-thinking-lines.md
+  {ARG} --thinking --stream 50 tests/markdown/repro-chatview-thinking-lines.md   (50 ms then chunks)
   {ARG} --thinking tests/markdown/repro-state-stack-overflow.md
   {ARG} --thinking tests/markdown/repro-gtkmd-hang.md
   {ARG} --history ~/.local/share/ollmchat/history/2026/04/01/23-56-59.json
@@ -81,7 +87,7 @@ Examples:
 
 	private const OptionEntry[] local_options = {
 		{ "file", 'f', 0, OptionArg.STRING, ref opt_file, "Markdown file to render (alternative to positional arg)", "FILE" },
-		{ "stream", 's', 0, OptionArg.INT, ref opt_stream_delay_sec, "Seconds to wait before starting stream (0 = immediately)", "SECS" },
+		{ "stream", 's', 0, OptionArg.INT, ref opt_stream_delay_ms, "Milliseconds to wait before chunks (0 = immediate)", "MS" },
 		{ "thinking", 't', 0, OptionArg.NONE, ref opt_thinking, "Use ChatView-style markdown code block + nested MarkdownGtk.Render", null },
 		{ "history", 0, 0, OptionArg.STRING, ref opt_history, "Session JSON: replay messages from the start", "FILE" },
 		{ null }
@@ -145,6 +151,12 @@ Examples:
 
 	private void on_show_window(string[] args) throws Error
 	{
+		if (this.saved_args.length == 0 && args.length > 0) {
+			this.saved_args = new string[args.length];
+			for (int i = 0; i < args.length; i++) {
+				this.saved_args[i] = args[i];
+			}
+		}
 		if (opt_history != "") {
 			this.load_json(opt_history);
 		} else {
@@ -152,7 +164,7 @@ Examples:
 		}
 		this.window.set_title(this.window_title);
 
-		var stream = (opt_stream_delay_sec >= 0);
+		var stream = (opt_stream_delay_ms >= 0);
 		this.md_renderer.scroll_to_end = this.history_messages.get_length() == 0 && stream;
 
 		if (opt_history != "") {
@@ -175,13 +187,13 @@ Examples:
 		// this.history_next_button.sensitive = false;
 		if (opt_thinking) {
 			this.render_thinking(
-				opt_stream_delay_sec > -1,
-				opt_stream_delay_sec > -1 ? opt_stream_delay_sec : 0
+				opt_stream_delay_ms >= 0,
+				opt_stream_delay_ms >= 0 ? opt_stream_delay_ms : 0
 			);
 			return;
 		}
-		if (opt_stream_delay_sec > -1) {
-			this.start_streaming(this.file_markdown, opt_stream_delay_sec);
+		if (opt_stream_delay_ms >= 0) {
+			this.start_streaming(this.file_markdown, opt_stream_delay_ms);
 			return;
 		}
 		this.md_renderer.add(this.file_markdown);
@@ -191,6 +203,30 @@ Examples:
 			this.scrolled.queue_resize();
 			return false;
 		});
+	}
+
+	/** Same teardown order as {@link ChatView.clear} (plus {@link MarkdownGtk.Render.start} for next content). */
+	private void teardown_like_chatview()
+	{
+		this.stream_token++;
+		this.md_renderer.is_streaming = false;
+		this.md_renderer.clear();
+		Gtk.Widget? children = this.text_view_box.get_first_child();
+		while (children != null) {
+			var next = children.get_next_sibling();
+			this.text_view_box.remove(children);
+			children = next;
+		}
+		this.md_renderer.start();
+		var stream = (opt_stream_delay_ms >= 0);
+		this.md_renderer.scroll_to_end = this.history_messages.get_length() == 0 && stream;
+		this.md_renderer.is_streaming = stream;
+	}
+
+	private void reload() throws Error
+	{
+		this.teardown_like_chatview();
+		this.on_show_window(this.saved_args);
 	}
 
 	 
@@ -270,7 +306,7 @@ Examples:
 			}
 		}
 
-		var stream = (opt_stream_delay_sec >= 0);
+		var stream = (opt_stream_delay_ms >= 0);
 
 		this.window = new Gtk.Window() {
 			title = this.window_title != "" ? this.window_title : this.get_app_name(),
@@ -310,6 +346,23 @@ Examples:
 		});
 
 		var outer = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+
+		var reload_btn = new Gtk.Button.from_icon_name("view-refresh-symbolic") {
+			halign = Gtk.Align.START,
+			margin_start = 8,
+			margin_end = 8,
+			margin_top = 4,
+			tooltip_text = "Reload: ChatView.clear-style teardown then load again (repro session switch)"
+		};
+		reload_btn.clicked.connect(() => {
+			try {
+				this.reload();
+			} catch (GLib.Error e) {
+				GLib.warning("Reload failed: %s", e.message);
+			}
+		});
+		outer.append(reload_btn);
+
 		// this.history_next_button = new Gtk.Button() {
 		// 	label = "Next message",
 		// 	halign = Gtk.Align.START,
@@ -395,12 +448,13 @@ Examples:
 		});
 	}
 
-	private void render_thinking(bool stream, int stream_delay_sec)
+	private void render_thinking(bool stream, int stream_delay_ms)
 	{
+		uint tok = this.stream_token;
 		this.md_renderer.on_code_block(true, 
 			"markdown.oc-frame-info.thinking.collapsed-on-done oc-test-gtkmd");
 		if (stream) {
-			this.start_streaming_thinking(this.file_markdown, stream_delay_sec);
+			this.start_streaming_thinking(this.file_markdown, stream_delay_ms, tok);
 			return;
 		}
 		assert(this.md_renderer.childview != null);
@@ -414,11 +468,14 @@ Examples:
 		
 	}
 
-	private void start_streaming_thinking(string markdown_content, int delay_sec)
+	private void start_streaming_thinking(string markdown_content, int delay_ms, uint tok)
 	{
-		if (delay_sec > 0) {
-			GLib.Timeout.add_full(GLib.Priority.DEFAULT, (uint) (delay_sec * 1000), () => {
-				this.start_streaming_thinking(markdown_content, 0);
+		if (delay_ms > 0) {
+			GLib.Timeout.add_full(GLib.Priority.DEFAULT, (uint) delay_ms, () => {
+				if (tok != this.stream_token) {
+					return false;
+				}
+				this.start_streaming_thinking(markdown_content, 0, tok);
 				return false;
 			});
 			return;
@@ -427,6 +484,9 @@ Examples:
 		int[] pos = { 0 };
 		const uint interval_ms = 30;
 		GLib.Timeout.add(interval_ms, () => {
+			if (tok != this.stream_token) {
+				return false;
+			}
 			assert(this.md_renderer.childview != null);
 			var cc = markdown_content.char_count();
 			if (pos[0] >= cc) {
@@ -445,6 +505,9 @@ Examples:
 			this.md_renderer.childview.add_code_text(markdown_content.substring(start_byte, end_byte - start_byte));
 			pos[0] = end_ci;
 			GLib.Idle.add(() => {
+				if (tok != this.stream_token) {
+					return false;
+				}
 				var vadj = this.scrolled.vadjustment;
 				if (vadj.upper < 100.0) {
 					return true;
@@ -456,16 +519,20 @@ Examples:
 		});
 	}
 
-	private void start_streaming(string markdown_content, int delay_sec)
+	private void start_streaming(string markdown_content, int delay_ms)
 	{
-		if (delay_sec > 0) {
-			GLib.Timeout.add_full(GLib.Priority.DEFAULT, (uint) (delay_sec * 1000), () => {
+		uint tok = this.stream_token;
+		if (delay_ms > 0) {
+			GLib.Timeout.add_full(GLib.Priority.DEFAULT, (uint) delay_ms, () => {
+				if (tok != this.stream_token) {
+					return false;
+				}
 				this.start_streaming(markdown_content, 0);
 				return false;
 			});
 			return;
 		}
-		this.stream_content_chunks(markdown_content);
+		this.stream_content_chunks(markdown_content, tok);
 	}
 
 	/**
@@ -473,11 +540,14 @@ Examples:
 	 * every ~30ms. Uses character indices and {{{index_of_nth_char}}} for
 	 * UTF-8 byte offsets (see Parser.vala string conventions).
 	 */
-	private void stream_content_chunks(string markdown_content)
+	private void stream_content_chunks(string markdown_content, uint tok)
 	{
 		int[] pos = { 0 };
 		const uint interval_ms = 30;
 		GLib.Timeout.add(interval_ms, () => {
+			if (tok != this.stream_token) {
+				return false;
+			}
 			var cc = markdown_content.char_count();
 			if (pos[0] >= cc) {
 				this.md_renderer.flush();
@@ -496,6 +566,9 @@ Examples:
 			this.md_renderer.add(markdown_content.substring(start_byte, end_byte - start_byte));
 			pos[0] = end_ci;
 			GLib.Idle.add(() => {
+				if (tok != this.stream_token) {
+					return false;
+				}
 				var vadj = this.scrolled.vadjustment;
 				if (vadj.upper < 100.0) {
 					return true;

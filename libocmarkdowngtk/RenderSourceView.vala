@@ -53,7 +53,7 @@ namespace MarkdownGtk
 		private Gtk.Button view_source_toggle;
 		private bool showing_source = false;
 		private Gtk.ScrolledWindow? source_scrolled = null;  // inner scrolled for source page; used for scroll-to-bottom
-		private MarkdownGtk.Render? nested_markdown_render = null;  // streamed nested renderer for ```markdown blocks
+		internal MarkdownGtk.Render? nested_markdown_render = null;
 		private ulong source_view_realize_handler = 0;
 		private ulong rendered_box_realize_handler = 0;
 		
