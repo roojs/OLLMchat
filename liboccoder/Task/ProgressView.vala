@@ -130,7 +130,7 @@ namespace OLLMcoder.Task
 				has_frame = true
 			};
 			this.scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
-			// Interim: ~3× prior testing height; final sizing in 7.14.4.
+			// Interim: ~3× prior testing height; policy in docs/plans/done/7.14.4-DONE-chatview-integration.md.
 			this.scrolled.set_min_content_height(288);
 			this.scrolled.set_child(this.column_view);
 			this.append(this.scrolled);
