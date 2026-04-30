@@ -209,6 +209,26 @@ namespace OLLMtools.RunCommand
 			return ((string) local).substring (0, (long) run);
 		}
 
+		/**
+		 * Whether openat(2) flags imply a write side-effect on Linux (glibc seccomp arg layout).
+		 * O_RDONLY opens (locales, libc, ld.so.cache, etc.) must not be listed as “blocked writes”.
+		 */
+		bool openat_flags_imply_write (uint64 flags_u64)
+		{
+			int flags = (int) flags_u64;
+			if ((flags & Linux.O_PATH) != 0) {
+				return false;
+			}
+			int accmode = flags & Posix.O_ACCMODE;
+			if (accmode == Posix.O_WRONLY || accmode == Posix.O_RDWR) {
+				return true;
+			}
+			if ((flags & Posix.O_TRUNC) != 0 || (flags & Posix.O_APPEND) != 0) {
+				return true;
+			}
+			return false;
+		}
+
 		void on_notify_event (Seccomp.Notif ev)
 		{
 			if (ev.sc_data.nr == this.nr_socket) {
@@ -223,6 +243,9 @@ namespace OLLMtools.RunCommand
 				return;
 			}
 			if (ev.sc_data.nr == this.nr_openat) {
+				if (!this.openat_flags_imply_write (ev.sc_data.args[2])) {
+					return;
+				}
 				var p = this.read_remote_cstring (ev, ev.sc_data.args[1]);
 				if (p != "" && !this.bubble.can_write (p)) {
 					this.file_writes.set (p, true);

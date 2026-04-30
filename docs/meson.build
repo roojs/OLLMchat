@@ -356,6 +356,7 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=fiass',  # FAISS via vapi (used by libocvector)
     '--pkg=tree-sitter',  # Tree-sitter via vapi (used by libocvector)
     '--pkg=seccomp',  # RunSeccomp / Bubble (liboctools)
+    '--pkg=linux',  # RunSeccomp: Linux.O_PATH (not in Posix)
     # Don't use --pkg for internal libraries (ocmarkdown, ocmarkdowngtk, ocsqlite, occoder, ocvector, octools)
     # - valadoc processes source files directly, so it doesn't need VAPI files.
     # Using --pkg would cause duplicate definition errors since the VAPI contains the same definitions.

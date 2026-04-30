@@ -56,6 +56,7 @@ executables_info = [
   ['oc-test-cli', 'examples/oc-test-cli'],
   ['oc-test-pull', 'examples/oc-test-pull'],
   ['oc-test-fetch', 'examples/oc-test-fetch'],
+  ['oc-test-loop', 'examples/oc-test-loop'],
   ['oc-test-files', 'examples/oc-test-files'],
   ['oc-test-bubble', 'examples/oc-test-bubble'],
   ['oc-test-skill-agent', 'examples/oc-test-skill-agent'],
