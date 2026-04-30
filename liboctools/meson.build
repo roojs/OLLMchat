@@ -22,6 +22,7 @@ octools_deps = [
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
   valac.find_library('posix'),
+  valac.find_library('linux'),
   tree_sitter_lib,  # Tree-sitter C library (required - ReadFileSummarize uses TreeSitter API)
   seccomp_vapi,
   libseccomp_lib,
@@ -84,6 +85,7 @@ octools_base_lib = library('octools',
     '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
     '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=seccomp',
+    '--pkg=linux',
     '--pkg=json-glib-1.0',
     '--pkg=gio-unix-2.0',  # Required for UnixInputStream in Bubble.vala
     # Put build directories FIRST so we use local VAPIs instead of installed ones
@@ -118,6 +120,7 @@ octools_vapi = custom_target('octools-vapi',
     '--pkg', 'gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
     '--pkg', 'tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg', 'seccomp',
+    '--pkg', 'linux',  # RunSeccomp: Linux.O_PATH
     '--pkg', 'sqlite3',  # Required for ocsqlite.vapi (Sqlite namespace)
     '--pkg', 'ollmchat',
     '--pkg', 'ocfiles',

@@ -353,13 +353,18 @@ namespace OLLMchat.Call
 				if (token == "") {
 					continue;
 				}
-				resp.back_tokens.insert(0, token);
-				if (resp.back_tokens.size > 100) {
-					resp.back_tokens.remove_at(resp.back_tokens.size - 1);
-				}
-				if (!resp.check_back_token()) {
-					throw new OllmError.FAILED(
-						"Streaming stopped: output repeated; possible infinite generation loop.");
+				foreach (string w in Regex.split_simple("\\s+", token)) {
+					if (w.length == 0) {
+						continue;
+					}
+					resp.back_tokens.insert(0, w);
+					if (resp.back_tokens.size > 100) {
+						resp.back_tokens.remove_at(resp.back_tokens.size - 1);
+					}
+					if (!resp.check_back_token()) {
+						throw new OllmError.FAILED(
+							"Streaming stopped: output repeated; possible infinite generation loop.");
+					}
 				}
 			}
 

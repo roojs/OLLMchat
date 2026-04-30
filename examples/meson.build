@@ -226,6 +226,26 @@ test_web_fetch = executable('oc-test-fetch',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
+# Streaming loop detection dry-run (Response.Chat.check_back_token)
+oc_test_loop = executable('oc-test-loop',
+  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ollmchat_vapi_dep, ocmarkdown_vapi_dep],
+  sources: ['oc-test-loop.vala'],
+  link_with: [ollmchat_base_lib],
+  include_directories: include_directories('../libollmchat'),
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=ollmchat',
+    '--pkg=ocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+
 # Build vmd2html executable (Markdown to HTML converter)
 # Use declare_dependency to avoid meson auto-including ocmarkdown-meson.vapi
 vmd2html = executable('oc-md2html',

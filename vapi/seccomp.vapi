@@ -185,6 +185,7 @@ namespace Seccomp {
 		void* remote_iov,
 		ulong riovcnt,
 		ulong flags);
+
 }
 
 /** Linux syscalls/constants used with seccomp user-notify (no `seccomp_` prefix). */

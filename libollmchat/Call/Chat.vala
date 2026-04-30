@@ -614,12 +614,17 @@ namespace OLLMchat.Call
 			if (token == "") {
 				return true;
 			}
-			response.back_tokens.insert(0, token);
-			if (response.back_tokens.size > 100) {
-				response.back_tokens.remove_at(response.back_tokens.size - 1);
-			}
-			if (!response.check_back_token()) {
-				return false;
+			foreach (string w in Regex.split_simple("\\s+", token)) {
+				if (w.length == 0) {
+					continue;
+				}
+				response.back_tokens.insert(0, w);
+				if (response.back_tokens.size > 100) {
+					response.back_tokens.remove_at(response.back_tokens.size - 1);
+				}
+				if (!response.check_back_token()) {
+					return false;
+				}
 			}
 			return true;
 		}
