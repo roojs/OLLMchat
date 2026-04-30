@@ -45,20 +45,22 @@ For **discussion, rationale, risks, and notes** (anything that is not a mechanic
 | ------ | ------- |
 | **✅** | Done and verified in the codebase |
 | **⏳** | Not implemented or not matching spec — backlog (use this liberally) |
-| **🔶** | Partially done — polish or follow-up still owed |
+| **🌗** | Partially done — polish or follow-up still owed |
 
 **Provenance (who said what):**
 
 | Marker | Meaning |
 | ------ | ------- |
-| **⚠️** | Specific requirement or constraint **the user added** — treat as authoritative |
+| **🔷** | **User-specified requirement** — treat as authoritative (use this for anything the user stated as a requirement in chat or in the plan) |
 | **💩** | Suggestion **introduced by the LLM** that the **user did not ask for** — optional, confirm before building it in |
 | **ℹ️** | Reference or pointer — external doc, spec, ticket, prior plan, or file path worth opening (not a status claim) |
-| **👎** | Rejected for this plan or **do not implement** — out of scope, anti-pattern, or user veto (list these so implementers do not “helpfully” add them) |
+| **🚫** | Rejected for this plan or **do not implement** — out of scope, anti-pattern, or user veto (list these so implementers do not “helpfully” add them) |
 
-**✅** is **only** for **done and verified in the codebase** (see **Status** table above). **Do not** use **✅** for “user approved” a requirement — use **⚠️** for user-authored requirements.
+**Legacy:** older plans may still use **⚠️** for the same meaning as **🔷** (user-authored requirement). Prefer **🔷** in new and updated plans. Older plans may still use **👎** for the same meaning as **🚫** (rejected / out of scope). Prefer **🚫** in new and updated plans. Older plans may still use **🔶** for the same meaning as **🌗** (partially done). Prefer **🌗** in new and updated plans.
 
-You can combine a **status** emoji with a short sub-bullet under **⚠️** / **💩** / **ℹ️** / **👎** when both apply (e.g. **⚠️** parent with **⏳** child for a user-requested item still open).
+**✅** is **only** for **done and verified in the codebase** (see **Status** table above). **Do not** use **✅** for “user approved” a requirement — use **🔷** for user-specified requirements.
+
+You can combine a **status** emoji with a short sub-bullet under **🔷** / **💩** / **ℹ️** / **🚫** when both apply (e.g. **🔷** parent with **⏳** child for a user-requested item still open).
 
 ## New methods and helpers
 
