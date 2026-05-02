@@ -60,6 +60,9 @@ namespace OLLMcoder.Task
 		/** ToolCall built from name and arguments; set by parse(), used in run() when this run has a tool. */
 		public OLLMchat.Response.ToolCall? tool_call { get; set; default = null; }
 
+		/** Last **`Message.idx`** tied to this tool row; **-1** if unset. */
+		public int msg_idx { get; set; default = -1; }
+
 		private PhaseEnum status_value = PhaseEnum.NONE;
 
 		public PhaseEnum status {
@@ -236,8 +239,8 @@ namespace OLLMcoder.Task
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
 				if (!this.parent.runner.in_replay) {
-					this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
-					this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+					this.session.add_message(new OLLMchat.Message("system", tpl.filled_system));
+					this.session.add_message(new OLLMchat.Message("user", tpl.filled_user));
 				}
 				var model_label = this.session.model_usage.model != "" ?
 					this.session.model_usage.display_name_with_size() : "Unknown model";

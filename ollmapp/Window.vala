@@ -68,6 +68,14 @@ namespace OLLMapp
 			this.window_pane.schedule_pane_update(visible);
 		}
 
+		public void scroll_to_message(int idx)
+		{
+			if (idx < 0) {
+				return;
+			}
+			this.chat_widget.chat_view.scroll_to_idx(idx);
+		}
+
 		/**
 		 * Creates a new OllmchatWindow instance.
 		 * 

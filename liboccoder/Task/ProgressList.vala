@@ -123,6 +123,11 @@ public class ProgressList : GLib.Object, GLib.ListModel
 			foreach (var d in step.children) {
 				this.rows.add(d);
 				added++;
+				if (this.runner.session.messages.size == 0) {
+					continue;
+				}
+				d.msg_idx = this.runner.session.messages.get(
+					(int) this.runner.session.messages.size - 1).idx;
 			}
 		}
 		if (added == 0 || !call_changed) {
@@ -139,6 +144,11 @@ public class ProgressList : GLib.Object, GLib.ListModel
 		var k = n0 - after_clear;
 		foreach (var d in step.children) {
 			this.rows.add(d);
+			if (this.runner.session.messages.size == 0) {
+				continue;
+			}
+			d.msg_idx = this.runner.session.messages.get(
+				(int) this.runner.session.messages.size - 1).idx;
 		}
 		this.add_pending(false);
 		var n1 = this.rows.size;

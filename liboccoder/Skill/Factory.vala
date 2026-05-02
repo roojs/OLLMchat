@@ -29,6 +29,12 @@ namespace OLLMcoder.Skill
 
 		private OLLMcoder.SourceView? widget = null;
 		private OLLMcoder.Task.ProgressView? progress_view = null;
+		/**
+		 * Set after {@link #initialize_widget} completes its first run (including
+		 * after a caught error) so project/SourceView state loads once per
+		 * factory.
+		 */
+		private bool done_init = false;
 
 		public Factory(OLLMfiles.ProjectManager project_manager,
 			 Gee.ArrayList<string> skills_directories, string skill_name = "")
@@ -56,17 +62,29 @@ namespace OLLMcoder.Skill
 			return new Runner(this, session);
 		}
 
+		/**
+		 * Shows the Skills agent UI: progress strip, SourceView tab, and pane
+		 * sizing.
+		 *
+		 * On first activation, binds {@link Task.ProgressView} to
+		 * {@link OLLMcoder.Task.ProgressList} on the session runner before
+		 * {@link #initialize_widget} runs so session restore can update the
+		 * progress model while project state loads asynchronously.
+		 *
+		 * @param window main window implementing {@link OLLMchat.ChatUserInterface}
+		 */
 		public override async void activate(GLib.Object window)
 		{
 			var host = (OLLMchat.ChatUserInterface) window;
-			var runner = (OLLMcoder.Skill.Runner) host.session_agent();
 			if (this.widget == null) {
 				this.progress_view = new OLLMcoder.Task.ProgressView();
 				((Gtk.Box) host.above_input_widget()).append(this.progress_view);
 				this.widget = new OLLMcoder.SourceView(this.project_manager);
-				yield this.initialize_widget();
 			}
-			this.progress_view.set_runner(runner);
+			this.progress_view.set_runner(
+				(OLLMcoder.Skill.Runner) host.session_agent());
+			this.progress_view.window = host;
+			yield this.initialize_widget();
 			var widget_id = this.name + "-widget";
 			this.widget.name = widget_id;
 			var tabs = (Adw.ViewStack) host.tab_view();
@@ -86,8 +104,16 @@ namespace OLLMcoder.Skill
 			host.schedule_pane_update(false);
 		}
 
+		/**
+		 * Loads project list and active project state for the SourceView manager.
+		 * Only the first completed attempt runs the DB restore; later calls return
+		 * immediately.
+		 */
 		private async void initialize_widget()
 		{
+			if (this.done_init) {
+				return;
+			}
 			try {
 				this.widget.manager.load_projects_from_db();
 				yield this.widget.manager.restore_active_state();
@@ -95,6 +121,7 @@ namespace OLLMcoder.Skill
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to initialize Skills Agent widget: %s", e.message);
 			}
+			this.done_init = true;
 		}
 	}
 }

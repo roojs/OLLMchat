@@ -60,7 +60,8 @@ namespace OLLMchatGtk
 		private uint waiting_timer = 0;
 		private int waiting_dots = 0;
 		private string waiting_caption = "waiting for a reply";
-		private Gee.ArrayList<Gtk.Widget> message_widgets = new Gee.ArrayList<Gtk.Widget>();
+		private Gee.ArrayList<Gtk.Widget> widgets = new Gee.ArrayList<Gtk.Widget>();
+		public Gee.HashMap<int, Gtk.Widget> idx_to_widget = new Gee.HashMap<int, Gtk.Widget>();
 		private bool has_displayed_user_message = false;
 		private double last_scroll_pos = 0.0;
 		public bool scroll_enabled = true;
@@ -551,6 +552,20 @@ namespace OLLMchatGtk
 			this.finalize_assistant_message_direct();
 		}
 
+		private void register_scroll_anchor_if_needed(OLLMchat.Message message)
+		{
+			if (message.idx < 0) {
+				return;
+			}
+			var anchor = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = false,
+				height_request = 1
+			};
+			this.text_view_box.append(anchor);
+			this.idx_to_widget.set(message.idx, anchor);
+		}
+
 		/**
 		 * Appends a complete assistant message (not streaming).
 		 * Used when loading sessions from history.
@@ -580,6 +595,8 @@ namespace OLLMchatGtk
 
 			// Clear any waiting indicator
 			this.clear_waiting_indicator();
+
+			this.register_scroll_anchor_if_needed(message);
 
 			// Work directly with Message object - no Chat/Response.Chat needed
 			// Determine thinking state from message.thinking content
@@ -624,6 +641,8 @@ namespace OLLMchatGtk
 			this.has_displayed_user_message = false;
 			this.scroll_enabled = true;
 			this.autoscroll_paused_by_user = false;
+			this.idx_to_widget.clear();
+			this.widgets.clear();
 
 			// Remove waiting row before tearing down markdown widgets.
 			this.clear_waiting_indicator();
@@ -662,7 +681,9 @@ namespace OLLMchatGtk
 			// Debug: Print truncated content
 			string content_preview = message.content.length > 20 ? message.content.substring(0, 20) + "..." : message.content;
 			//GLib.debug("ChatView.append_tool_message: Adding tool message (content='%s')", content_preview);
-			
+
+			this.register_scroll_anchor_if_needed(message);
+
 			// Get end position for insertion
 			var buffer = this.get_current_buffer();
 			if (buffer == null) {
@@ -830,6 +851,51 @@ namespace OLLMchatGtk
 				return false;
 			});
 		}
+
+		public void scroll_to_idx(int idx)
+		{
+			if (!this.idx_to_widget.has_key(idx)) {
+				GLib.debug(
+					"scroll_to_idx missing idx=%d registered=%u",
+					idx,
+					this.idx_to_widget.size);
+				return;
+			}
+			GLib.debug(
+				"scroll_to_idx idx=%d widget=%s",
+				idx,
+				this.idx_to_widget.get(idx).get_type().name());
+			GLib.Idle.add(() => {
+				var w = this.idx_to_widget.get(idx);
+				Graphene.Rect b;
+				if (!w.compute_bounds(this.text_view_box, out b)) {
+					GLib.debug("scroll_to_idx idle compute_bounds failed");
+					w.grab_focus();
+					return false;
+				}
+				var vadj = this.scrolled_window.vadjustment;
+				if (vadj == null) {
+					w.grab_focus();
+					return false;
+				}
+				double y_top = b.origin.y;
+				double margin = vadj.page_size * 0.08;
+				double target = y_top - margin;
+				double lo = vadj.lower;
+				double hi = double.max(lo, vadj.upper - vadj.page_size);
+				if (target < lo) {
+					target = lo;
+				}
+				if (target > hi) {
+					target = hi;
+				}
+				this.programmatic_scroll_in_progress = true;
+				vadj.value = target;
+				GLib.debug("scroll_to_idx idle vadj.value=%f y_top=%f", target, y_top);
+				w.grab_focus();
+				return false;
+			});
+		}
 		
 		/**
 		* Copies text to the clipboard.
@@ -985,7 +1051,7 @@ namespace OLLMchatGtk
 			}
 			
 			// Track this frame for width updates
-			this.message_widgets.add(frame);
+			this.widgets.add(frame);
 			
 			// Add frame directly to renderer.box
 			this.renderer.box.append(frame);
@@ -1007,28 +1073,6 @@ namespace OLLMchatGtk
 				this.scroll_to_bottom();
 				return false; // Don't repeat
 			});
-		}
-		
-		/**
-		 * Removes a widget frame from the chat view.
-		   THIS DOES NOT APPEAR TO BE USED.. - we might need it later for 'clear' operation though?
-		 * 
-		 * @param frame The frame widget to remove
-		 * @param anchor The TextChildAnchor returned from add_widget_frame() (unused with box model)
-		 * @since 1.0
-		 */
-		public void remove_widget_frame(Gtk.Frame frame, Gtk.TextChildAnchor anchor)
-		{
-			// Remove from tracking
-			this.message_widgets.remove(frame);
-			
-			// Hide the widget first to prevent snapshot issues
-			frame.set_visible(false);
-			
-			// With box model, just remove the frame from its parent
-			if (frame.get_parent() != null) {
-				frame.unparent();
-			}
 		}
 		
 	}

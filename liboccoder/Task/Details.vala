@@ -68,6 +68,9 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	 */
 	public int step_index { get; set; default = -1; }
 
+	/** Last **`Message.idx`** tied to this task row; **-1** if unset. */
+	public int msg_idx { get; set; default = -1; }
+
 	/**
 	 * Step this task belongs to; required so Details looks up the tree (step.list.runner)
 	 * for runner, session, etc.
@@ -477,8 +480,8 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 				this.session.model_usage.display_name_with_size() : "Unknown model") + " to reply"));
 			var tpl = this.refinement_prompt();
 			if (!this.runner.in_replay) {
-				this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
-				this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				this.session.add_message(new OLLMchat.Message("system", tpl.filled_system));
+				this.session.add_message(new OLLMchat.Message("user", tpl.filled_user));
 			}
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.filled_system));
@@ -766,6 +769,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 				var ex = new Tool(factory, this.session, this, "exam-%d".printf(idx++));
 				ex.exam_reference = exam;
 				ex.references = this.shared_references;
+				ex.msg_idx = this.msg_idx;
 				this.tools().append(ex);
 			}
 			return;
@@ -774,12 +778,14 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			foreach (var ex in this.proposed_tools) {
 				ex.id = "tool-%d".printf(idx++);
 				ex.references = this.shared_references;
+				ex.msg_idx = this.msg_idx;
 				this.tools().append(ex);
 			}
 			return;
 		}
 		var lone = new Tool(factory, this.session, this, "exec");
 		lone.references = this.shared_references;
+		lone.msg_idx = this.msg_idx;
 		this.tools().append(lone);
 	}
 
@@ -871,8 +877,8 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			messages.add(new OLLMchat.Message("system", tpl.filled_system));
 			messages.add(new OLLMchat.Message("user", tpl.filled_user));
 			if (!this.runner.in_replay) {
-				this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
-				this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				this.session.add_message(new OLLMchat.Message("system", tpl.filled_system));
+				this.session.add_message(new OLLMchat.Message("user", tpl.filled_user));
 			}
 			this.add_message(new OLLMchat.Message("ui-waiting",
 				"waiting for " + model_label + " to reply"));

@@ -30,5 +30,7 @@ namespace OLLMchat
 		public abstract GLib.Object tab_view();
 		/** Right pane show/hide on idle (see ollmapp WindowPane.schedule_pane_update). */
 		public abstract void schedule_pane_update(bool visible);
+		/** Scroll/focus transcript row for session-local {@link Message.idx}. No-op if idx is negative. */
+		public abstract void scroll_to_message(int idx);
 	}
 }
