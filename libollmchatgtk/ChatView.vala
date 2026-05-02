@@ -552,20 +552,6 @@ namespace OLLMchatGtk
 			this.finalize_assistant_message_direct();
 		}
 
-		private void register_scroll_anchor_if_needed(OLLMchat.Message message)
-		{
-			if (message.idx < 0) {
-				return;
-			}
-			var anchor = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-				hexpand = true,
-				vexpand = false,
-				height_request = 1
-			};
-			this.text_view_box.append(anchor);
-			this.idx_to_widget.set(message.idx, anchor);
-		}
-
 		/**
 		 * Appends a complete assistant message (not streaming).
 		 * Used when loading sessions from history.
@@ -595,8 +581,6 @@ namespace OLLMchatGtk
 
 			// Clear any waiting indicator
 			this.clear_waiting_indicator();
-
-			this.register_scroll_anchor_if_needed(message);
 
 			// Work directly with Message object - no Chat/Response.Chat needed
 			// Determine thinking state from message.thinking content
@@ -681,9 +665,7 @@ namespace OLLMchatGtk
 			// Debug: Print truncated content
 			string content_preview = message.content.length > 20 ? message.content.substring(0, 20) + "..." : message.content;
 			//GLib.debug("ChatView.append_tool_message: Adding tool message (content='%s')", content_preview);
-
-			this.register_scroll_anchor_if_needed(message);
-
+			
 			// Get end position for insertion
 			var buffer = this.get_current_buffer();
 			if (buffer == null) {
@@ -866,33 +848,7 @@ namespace OLLMchatGtk
 				idx,
 				this.idx_to_widget.get(idx).get_type().name());
 			GLib.Idle.add(() => {
-				var w = this.idx_to_widget.get(idx);
-				Graphene.Rect b;
-				if (!w.compute_bounds(this.text_view_box, out b)) {
-					GLib.debug("scroll_to_idx idle compute_bounds failed");
-					w.grab_focus();
-					return false;
-				}
-				var vadj = this.scrolled_window.vadjustment;
-				if (vadj == null) {
-					w.grab_focus();
-					return false;
-				}
-				double y_top = b.origin.y;
-				double margin = vadj.page_size * 0.08;
-				double target = y_top - margin;
-				double lo = vadj.lower;
-				double hi = double.max(lo, vadj.upper - vadj.page_size);
-				if (target < lo) {
-					target = lo;
-				}
-				if (target > hi) {
-					target = hi;
-				}
-				this.programmatic_scroll_in_progress = true;
-				vadj.value = target;
-				GLib.debug("scroll_to_idx idle vadj.value=%f y_top=%f", target, y_top);
-				w.grab_focus();
+				this.idx_to_widget.get(idx).grab_focus();
 				return false;
 			});
 		}

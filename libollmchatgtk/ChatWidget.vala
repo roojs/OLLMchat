@@ -352,6 +352,7 @@ namespace OLLMchatGtk
 				case "ui":
 					// "You said" user block and tool/error/preview all arrive as "ui" with fenced content
 					var ui_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
+					ui_msg.idx = m.idx;
 					this.chat_view.append_complete_assistant_message(ui_msg, session);
 					break;
 				case "ui-waiting":
@@ -360,6 +361,7 @@ namespace OLLMchatGtk
 					break;
 				case "ui-warning":
 					var warning_msg = new OLLMchat.Message("assistant", "⚠️ " + m.content, m.thinking);
+					warning_msg.idx = m.idx;
 					this.chat_view.append_complete_assistant_message(warning_msg, session);
 					break;
 				case "think-stream":
@@ -371,6 +373,7 @@ namespace OLLMchatGtk
 				case "content-non-stream":
 					// Render streaming/non-streaming messages as assistant messages
 					var stream_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
+					stream_msg.idx = m.idx;
 					this.chat_view.append_complete_assistant_message(stream_msg, session);
 					break;
 				default:
