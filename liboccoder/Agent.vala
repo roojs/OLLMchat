@@ -65,12 +65,12 @@ namespace OLLMcoder
 				string system_content = this.factory.system_message(this);
 				if (system_content != "") {
 					var system_msg = new OLLMchat.Message("system", system_content);
-					this.session.messages.add(system_msg);
+					this.session.add_message(system_msg);
 					messages.add(system_msg);
 				}
 
 				var user_content = this.factory.generate_user_prompt(message.content);
-				this.session.messages.add(new OLLMchat.Message("user", user_content));
+				this.session.add_message(new OLLMchat.Message("user", user_content));
 
 				foreach (var msg in this.session.messages) {
 					if (msg.role == "user"

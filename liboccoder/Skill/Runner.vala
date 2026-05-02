@@ -214,7 +214,7 @@ namespace OLLMcoder.Skill
 				this.session.project_path = this.sr_factory.project_manager.active_project.path;
 			}
 			if (!this.in_replay) {
-				this.session.messages.add(in_message);
+				this.session.add_message(in_message);
 			}
 			this.session.is_running = true;
 			this.session.manager.agent_status_change();
@@ -225,7 +225,10 @@ namespace OLLMcoder.Skill
 					in_creation = true,
 					try_max = 5,
 					try_no = 0,
-					status = OLLMcoder.Task.PhaseEnum.LIST
+					status = OLLMcoder.Task.PhaseEnum.LIST,
+					msg_idx = !this.in_replay ? in_message.idx :
+						(this.session.messages.size > 0 ?
+							this.session.messages.get((int) this.session.messages.size - 1).idx : -1)
 				};
 				this.progress.add(rp);
 				for (; rp.try_no < rp.try_max; rp.try_no++) {
@@ -238,8 +241,8 @@ namespace OLLMcoder.Skill
 					this.user_request = tpl.user_to_document();
 					this.fill_tools(); // (clears tools)
 					if (!this.in_replay) {
-						this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
-						this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+						this.session.add_message(new OLLMchat.Message("system", tpl.filled_system));
+						this.session.add_message(new OLLMchat.Message("user", tpl.filled_user));
 					}
 					var messages = new Gee.ArrayList<OLLMchat.Message>();
 					messages.add(new OLLMchat.Message("system", tpl.filled_system));
@@ -456,7 +459,9 @@ namespace OLLMcoder.Skill
 				in_creation = false,
 				try_max = 5,
 				try_no = 0,
-				status = OLLMcoder.Task.PhaseEnum.TASK_LIST_ITERATION
+				status = OLLMcoder.Task.PhaseEnum.TASK_LIST_ITERATION,
+				msg_idx = this.session.messages.size > 0 ?
+					this.session.messages.get((int) this.session.messages.size - 1).idx : -1
 			};
 			this.progress.add(ir);
 			for (; ir.try_no < ir.try_max; ir.try_no++) {
@@ -475,8 +480,8 @@ namespace OLLMcoder.Skill
 					"Sending revised task list to LLM" : "Reviewing and updating task list") + " with " + model_label,
 					tpl.filled_user)));
 				if (!this.in_replay) {
-					this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
-					this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
+					this.session.add_message(new OLLMchat.Message("system", tpl.filled_system));
+					this.session.add_message(new OLLMchat.Message("user", tpl.filled_user));
 				}
 				this.add_message(new OLLMchat.Message("ui-waiting",
 					"waiting for " + model_label + " to reply"));
@@ -606,7 +611,8 @@ namespace OLLMcoder.Skill
 							in_creation = false,
 							try_max = 5,
 							try_no = 0,
-							status = OLLMcoder.Task.PhaseEnum.COMPLETED
+							status = OLLMcoder.Task.PhaseEnum.COMPLETED,
+							msg_idx = m.idx
 						});
 						this.progress.add_pending(true);
 					}

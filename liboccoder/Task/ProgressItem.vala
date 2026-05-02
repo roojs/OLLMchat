@@ -37,6 +37,9 @@ public interface ProgressItem : GLib.Object
 
 	public abstract GLib.ListModel children { get; }
 
+	/** Last **`Message.idx`** for this row (**continue-from** / **`scroll_to_idx`**); **-1** if unset. */
+	public abstract int msg_idx { get; set; }
+
 	/**
 	 * After {@link Tool} execution, the {@link OLLMchat.Tool.RequestBase} copied from {@link OLLMchat.Tool.BaseTool.last_request} for this row; **null** if not a tool row or not yet run.
 	 */

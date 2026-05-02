@@ -61,6 +61,8 @@ public class ProgressRunner : GLib.Object, ProgressItem
 		owned get { return ""; }
 	}
 
+	public int msg_idx { get; set; default = -1; }
+
 	public ProgressRunner(OLLMcoder.Skill.Runner r)
 	{
 		Object();

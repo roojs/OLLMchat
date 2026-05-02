@@ -166,6 +166,9 @@ namespace OLLMchat
 		public string timestamp { get; set; default = ""; }  // Format: Y-m-d H:i:s
 		public bool hidden { get; set; default = false; }
 
+		/** Session-local index in transcript order (**`messages`** array); not stored in JSON — set in **`add_message`** / each **`messages.add`**, or after wholesale **`messages`** assignment with one index **for** loop (SessionPlaceholder). */
+		public int idx { get; set; default = -1; }
+
 		public Message(string role, string content, string thinking = "")
 		{
 			this.role = role;
@@ -356,6 +359,9 @@ namespace OLLMchat
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			switch (property_name) {
+				case "idx":
+					return null;
+
 				case "include-history-info":
 					// Exclude the flag itself from serialization
 					return null;

@@ -32,6 +32,10 @@ namespace OLLMcoder.Task
 		private Gtk.ColumnView column_view;
 		private Gtk.ScrolledWindow scrolled;
 
+		public weak OLLMchat.ChatUserInterface? window;
+		private Gtk.GestureClick click_gesture;
+		private Gtk.EventControllerKey key_controller;
+
 		/**
 		 * Creates the column view with an empty placeholder list. Call
 		 * {@link #set_runner} before expecting rows.
@@ -61,6 +65,7 @@ namespace OLLMcoder.Task
 			var title_factory = new Gtk.SignalListItemFactory();
 			title_factory.setup.connect((obj) => {
 				var li = (Gtk.ListItem) obj;
+				li.activatable = false;
 				var expander = new Gtk.TreeExpander();
 				var label = new Gtk.Label("") {
 					halign = Gtk.Align.START,
@@ -98,7 +103,9 @@ namespace OLLMcoder.Task
 
 			var stage_factory = new Gtk.SignalListItemFactory();
 			stage_factory.setup.connect((obj) => {
-				((Gtk.ListItem) obj).set_child(new Gtk.Label("") {
+				var li = (Gtk.ListItem) obj;
+				li.activatable = false;
+				li.set_child(new Gtk.Label("") {
 					halign = Gtk.Align.START,
 					hexpand = true,
 					xalign = 0,
@@ -110,14 +117,15 @@ namespace OLLMcoder.Task
 			stage_factory.bind.connect((obj) => {
 				var li = (Gtk.ListItem) obj;
 				var row = (Gtk.TreeListRow) li.item;
+				var cell = (Gtk.Label) li.child;
+				cell.set_data<Gtk.TreeListRow>("progress-row", row);
 				var pi = (ProgressItem) row.get_item();
 				pi.bind_property(
 					"status_str",
-					(Gtk.Label) li.child,
+					cell,
 					"label",
 					GLib.BindingFlags.SYNC_CREATE);
 			});
-
 			var title_column = new Gtk.ColumnViewColumn("Title", title_factory);
 			title_column.expand = true;
 			this.column_view.append_column(title_column);
@@ -133,6 +141,78 @@ namespace OLLMcoder.Task
 			// Interim: ~3× prior testing height; policy in docs/plans/done/7.14.4-DONE-chatview-integration.md.
 			this.scrolled.set_min_content_height(288);
 			this.scrolled.set_child(this.column_view);
+			this.click_gesture = new Gtk.GestureClick();
+			this.column_view.add_controller(this.click_gesture);
+			this.click_gesture.released.connect((n_press, x, y) => {
+				this.column_view.grab_focus();
+				var picked = this.column_view.pick((float) x, (float) y, Gtk.PickFlags.DEFAULT);
+				if (picked == null) {
+					GLib.debug("pick miss");
+					return;
+				}
+				GLib.debug("pick type=%s", picked.get_type().name());
+				while (picked != null && !(picked is Gtk.ColumnView)) {
+					Gtk.TreeListRow? row = null;
+					var expander_hit = picked as Gtk.TreeExpander;
+					if (expander_hit != null) {
+						row = expander_hit.get_list_row();
+					}
+					if (row == null) {
+						row = ((GLib.Object) picked).get_data<Gtk.TreeListRow>("progress-row");
+					}
+					if (row == null) {
+						GLib.debug("walk type=%s progress-row=no", picked.get_type().name());
+						picked = picked.get_parent();
+						continue;
+					}
+					GLib.debug("select position=%u", row.get_position());
+					this.select_row(row.get_position());
+					break;
+				}
+				if (picked != null && picked is Gtk.ColumnView) {
+					GLib.debug("walk stopped at ColumnView without row");
+				}
+			});
+
+			this.key_controller = new Gtk.EventControllerKey();
+			this.key_controller.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+			this.column_view.add_controller(this.key_controller);
+			this.key_controller.key_pressed.connect((keyval, keycode, state) => {
+				var up = keyval == Gdk.Key.Up || keyval == Gdk.Key.KP_Up;
+				var down = keyval == Gdk.Key.Down || keyval == Gdk.Key.KP_Down;
+				if (!up && !down) {
+					return false;
+				}
+				var m = this.progress_selection.model;
+				var n = m.get_n_items();
+				var pos = this.progress_selection.selected;
+				if (up) {
+					if (pos == Gtk.INVALID_LIST_POSITION || pos == 0) {
+						return true;
+					}
+					var row = (Gtk.TreeListRow) m.get_item(pos);
+					if (row.get_depth() > 0) {
+						this.select_row(row.get_parent().get_position());
+					} else {
+						this.select_row(pos - 1);
+					}
+					return true;
+				}
+				if (pos == Gtk.INVALID_LIST_POSITION) {
+					this.select_row(0);
+					return true;
+				}
+				var row = (Gtk.TreeListRow) m.get_item(pos);
+				var pi = (ProgressItem) row.get_item();
+				if (pi.children.get_n_items() > 0) {
+					row.expanded = true;
+				}
+				if (pos + 1 < n) {
+					this.select_row(pos + 1);
+				}
+				return true;
+			});
+
 			this.append(this.scrolled);
 		}
 
@@ -154,6 +234,20 @@ namespace OLLMcoder.Task
 						return pi.children;
 					}));
 			this.column_view.model = this.progress_selection;
+		}
+
+		private void select_row(uint pos)
+		{
+			var m = this.progress_selection.model;
+			if (pos >= m.get_n_items()) {
+				return;
+			}
+			this.progress_selection.selected = pos;
+			var pi = (ProgressItem) ((Gtk.TreeListRow) m.get_item(pos)).get_item();
+			if (this.window != null) {
+				GLib.debug("select_row scroll msg_idx=%d", pi.msg_idx);
+				this.window.scroll_to_message(pi.msg_idx);
+			}
 		}
 	}
 }

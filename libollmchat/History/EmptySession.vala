@@ -78,6 +78,7 @@ namespace OLLMchat.History
 			};
 			foreach (var m in this.messages) {
 				real_session.messages.add(m);
+				m.idx = (int) real_session.messages.size - 1;
 			}
 
 			real_session.title = message.content.strip();
