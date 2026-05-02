@@ -579,7 +579,8 @@ namespace OLLMcoder.Skill
 							in_creation = true,
 							try_max = 5,
 							try_no = 0,
-							status = OLLMcoder.Task.PhaseEnum.COMPLETED
+							status = OLLMcoder.Task.PhaseEnum.COMPLETED,
+							msg_idx = m.idx
 						});
 						this.progress.add_pending(true);
 					}

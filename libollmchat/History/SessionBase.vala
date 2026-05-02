@@ -366,7 +366,6 @@ namespace OLLMchat.History
 			// Add message to session.messages array
 		
 			this.messages.add(message);
-			message.idx = (int) this.messages.size - 1;
 			if (!this.can_replay && message.role == "agent-stage") {
 				this.can_replay = true;
 			}
