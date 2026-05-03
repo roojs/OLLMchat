@@ -86,12 +86,16 @@ namespace OLLMcoder.Task
 			}
 		}
 
-		/**
-		 * Progress tree label: {@link OLLMchat.Tool.BaseTool.title} for the tool registered on the session.
-		 */
 		public string title {
 			owned get {
-				var key = this.name != "" ? this.name : this.tool_call.function.name;
+				if (this.exam_reference != null) {
+					return this.exam_reference.link_display_text();
+				}
+				string key = this.name != "" ? this.name
+					: (this.tool_call != null ? this.tool_call.function.name : "");
+				if (key == "" && this.references.size > 0) {
+					return "Examine Shared references";
+				}
 				return this.parent.runner.session.manager.tools.get(key).title;
 			}
 		}
@@ -340,12 +344,6 @@ namespace OLLMcoder.Task
 						this.document = summary_only.document;
 					}
 					this.status = PhaseEnum.COMPLETED;
-					GLib.debug(
-						"tool_row slug=%s details_msg_idx=%d tool_msg_idx=%d id=%s",
-						this.parent.slug(),
-						this.parent.msg_idx,
-						this.msg_idx,
-						this.id);
 					return;
 				}
 				this.add_message(new OLLMchat.Message("agent-issues", parser.issues));

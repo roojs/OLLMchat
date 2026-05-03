@@ -675,6 +675,10 @@ namespace OLLMcoder.Skill
 					var pp = new OLLMcoder.Task.ResultParser(this, m.content);
 					var st_p = this.pending.steps.get(this.replay_step_pos);
 					var d_post = st_p.children.get(this.replay_details_pos);
+					d_post.status = OLLMcoder.Task.PhaseEnum.POST_EXEC;
+					// Match Details.run_post_exec(): issues cleared before extract so replay does not
+					// inherit refinement/exec validation noise into parser.issues.
+					d_post.issues = "";
 					pp.exec_post_extract(d_post);
 					if (pp.issues == "") {
 						d_post.msg_idx = m.idx;
@@ -683,12 +687,6 @@ namespace OLLMcoder.Skill
 						// 	m.idx, this.replay_step_pos, this.replay_details_pos);
 						d_post.exec_done = true;
 						d_post.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
-						GLib.debug(
-							"replay_task_done slug=%s msg_idx=%d tool_idx=%d tools_n=%u",
-							d_post.slug(),
-							d_post.msg_idx,
-							d_post.tools().get_at(d_post.tools().size - 1).msg_idx,
-							(uint) d_post.tools().size);
 					}
 					this.progress.rebuild();
 					break;
@@ -711,11 +709,14 @@ namespace OLLMcoder.Skill
 					if (d_exec.tools().size == 0) {
 						d_exec.build_run_queue();
 					}
+					// Match Details.run_exec(): task row shows Running Tool, not blank (REFINED.to_human is "").
+					d_exec.status = OLLMcoder.Task.PhaseEnum.TOOLS_RUNNING;
 					// GLib.debug("session %s replay_exec children=%u detail=%d tool=%u tools_runs=%d",
 					// 	this.session.fid, st_e.children.size, this.replay_details_pos,
 					// 	this.replay_tool_pos, d_exec.tools().size);
 					var px = new OLLMcoder.Task.ResultParser(this, m.content);
 					var ex_run = d_exec.tools().get_at(this.replay_tool_pos);
+					ex_run.status = OLLMcoder.Task.PhaseEnum.EXECUTION;
 					// Replay never runs Tool.run(); hydrate Idx from this transcript message (same idx ReplayChat.send would attach).
 					ex_run.msg_idx = m.idx;
 					ex_run.notify_property("msg_idx_txt");
@@ -724,15 +725,33 @@ namespace OLLMcoder.Skill
 					// 	d_exec.slug(),
 					// 	ex_run.id,
 					// 	m.idx);
-					if (px.exec_extract(ex_run)) {
-						ex_run.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
-						GLib.debug(
-							"replay_tool_row slug=%s details_msg_idx=%d tool_msg_idx=%d id=%s",
-							d_exec.slug(),
-							d_exec.msg_idx,
-							ex_run.msg_idx,
-							ex_run.id);
+					if (!px.exec_extract(ex_run)) {
+						this.progress.rebuild();
+						break;
 					}
+					ex_run.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
+					GLib.debug(
+						"replay_tool_row slug=%s details_msg_idx=%d tool_msg_idx=%d id=%s",
+						d_exec.slug(),
+						d_exec.msg_idx,
+						ex_run.msg_idx,
+						ex_run.id);
+					if (d_exec.tools().size != 1) {
+						this.progress.rebuild();
+						break;
+					}
+					// Single-run task: no post_exec transcript — mirror Details.run_exec() after last tool.
+					var last = d_exec.tools().get_at(d_exec.tools().size - 1);
+					d_exec.post_summary = last.summary;
+					d_exec.out_doc = last.document;
+					d_exec.exec_done = true;
+					d_exec.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
+					GLib.debug(
+						"replay_task_done slug=%s msg_idx=%d tool_idx=%d tools_n=%u",
+						d_exec.slug(),
+						d_exec.msg_idx,
+						last.msg_idx,
+						(uint) d_exec.tools().size);
 					this.progress.rebuild();
 					break;
 				case "agent-stage":
