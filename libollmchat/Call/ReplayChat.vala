@@ -136,17 +136,17 @@ $(replay_issues)
 				var response = new Response.Chat(this.connection, this);
 				response.message = new Message("assistant", msg.content);
 				response.message.idx = msg.idx;
-				GLib.debug(
-					"replay send array_ix=%d msg.idx=%d role=%s len=%d",
-					idx,
-					msg.idx,
-					msg.role,
-					msg.content.length);
+				// GLib.debug(
+				// 	"replay send array_ix=%d msg.idx=%d role=%s len=%d",
+				// 	idx,
+				// 	msg.idx,
+				// 	msg.role,
+				// 	msg.content.length);
 				response.done = true;
 				return response;
 			}
-			GLib.debug("No more content messages replay_index=%d total=%d",
-				this.replay_index, (int) this.replay_messages.size);
+			// GLib.debug("No more content messages replay_index=%d total=%d",
+			// 	this.replay_index, (int) this.replay_messages.size);
 			GLib.printerr("Replay: no more content messages.\n");
 			GLib.Process.exit(1);
 		}

@@ -73,7 +73,7 @@ namespace OLLMapp
 			if (idx < 0) {
 				return;
 			}
-			GLib.debug("scroll_to_message idx=%d", idx);
+			// GLib.debug("scroll_to_message idx=%d", idx);
 			this.chat_widget.chat_view.scroll_to_idx(idx);
 		}
 

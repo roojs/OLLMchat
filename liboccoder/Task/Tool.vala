@@ -263,19 +263,18 @@ namespace OLLMcoder.Task
 					"waiting for " + model_label + " to reply"));
 				this.add_message(new OLLMchat.Message("agent-stage", "exec"));
 				try {
-					var prior_msg_idx = this.msg_idx;
 					var response = yield this.chat_call.send(messages, null);
 					response_text = (response != null) ? response.message.content : "";
 					this.msg_idx = response != null ? response.message.idx : this.msg_idx;
 					this.notify_property("msg_idx_txt");
 					/* Live runs only: replay hydrates tool Idx in Runner.on_replay EXECUTION (never calls Tool.run send). */
-					GLib.debug(
-						"======== CHANGING IDX FOR TOOL (executor send done, live) slug=%s run_id=%s prior_msg_idx=%d -> msg_idx=%d (response.message.idx=%d) ========",
-						this.parent.slug(),
-						this.id,
-						prior_msg_idx,
-						this.msg_idx,
-						response != null ? response.message.idx : -1);
+					// GLib.debug(
+					// 	"======== CHANGING IDX FOR TOOL (executor send done, live) slug=%s run_id=%s prior_msg_idx=%d -> msg_idx=%d (response.message.idx=%d) ========",
+					// 	this.parent.slug(),
+					// 	this.id,
+					// 	prior_msg_idx,
+					// 	this.msg_idx,
+					// 	response != null ? response.message.idx : -1);
 				} catch (GLib.Error e) {
 					last_issues = e.message;
 					this.add_message(new OLLMchat.Message("agent-issues", last_issues));
@@ -341,6 +340,12 @@ namespace OLLMcoder.Task
 						this.document = summary_only.document;
 					}
 					this.status = PhaseEnum.COMPLETED;
+					GLib.debug(
+						"tool_row slug=%s details_msg_idx=%d tool_msg_idx=%d id=%s",
+						this.parent.slug(),
+						this.parent.msg_idx,
+						this.msg_idx,
+						this.id);
 					return;
 				}
 				this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
