@@ -126,11 +126,39 @@ namespace OLLMcoder.Task
 					"label",
 					GLib.BindingFlags.SYNC_CREATE);
 			});
+
+			var idx_factory = new Gtk.SignalListItemFactory();
+			idx_factory.setup.connect((obj) => {
+				var li = (Gtk.ListItem) obj;
+				li.activatable = false;
+				li.set_child(new Gtk.Label("") {
+					halign = Gtk.Align.END,
+					xalign = 1,
+					single_line_mode = true,
+					width_chars = 8
+				});
+			});
+			idx_factory.bind.connect((obj) => {
+				var li = (Gtk.ListItem) obj;
+				var row = (Gtk.TreeListRow) li.item;
+				var cell = (Gtk.Label) li.child;
+				var pi = (ProgressItem) row.get_item();
+				pi.bind_property(
+					"msg_idx_txt",
+					cell,
+					"label",
+					GLib.BindingFlags.SYNC_CREATE);
+			});
+
 			var title_column = new Gtk.ColumnViewColumn("Title", title_factory);
 			title_column.expand = true;
 			this.column_view.append_column(title_column);
 			var stage_column = new Gtk.ColumnViewColumn("Stage", stage_factory);
 			this.column_view.append_column(stage_column);
+			var idx_column = new Gtk.ColumnViewColumn("Idx", idx_factory);
+			idx_column.fixed_width = 88;
+			idx_column.resizable = false;
+			this.column_view.append_column(idx_column);
 
 			this.scrolled = new Gtk.ScrolledWindow() {
 				vexpand = false,
@@ -245,7 +273,11 @@ namespace OLLMcoder.Task
 			this.progress_selection.selected = pos;
 			var pi = (ProgressItem) ((Gtk.TreeListRow) m.get_item(pos)).get_item();
 			if (this.window != null) {
-				GLib.debug("select_row scroll msg_idx=%d", pi.msg_idx);
+				GLib.debug(
+					"progress strip select row=%s msg_idx=%d title=%s",
+					pi.get_type().name(),
+					pi.msg_idx,
+					pi.title);
 				this.window.scroll_to_message(pi.msg_idx);
 			}
 		}

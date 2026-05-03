@@ -169,7 +169,8 @@ namespace OLLMchat
 		/** Unique id for this **`Message`** instance (process-wide monotonic counter); not stored in JSON — assigned in **`construct`**. Used for **`scroll_to_idx`** / **`idx_to_widget`**. */
 		public int idx { get; set; default = -1; }
 
-		private static int idx_counter = 0;
+		/** Process-wide monotonic source for {@link idx} in {@link construct}; reset to 0 before loading session JSON so transcript ids start at 0. */
+		public static int idx_counter = 0; // this is temporary for testing
 
 		construct {
 			this.idx = Message.idx_counter++;

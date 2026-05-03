@@ -71,6 +71,12 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	/** Last **`Message.idx`** tied to this task row; **-1** if unset. */
 	public int msg_idx { get; set; default = -1; }
 
+	public string msg_idx_txt {
+		owned get {
+			return this.msg_idx >= 0 ? this.msg_idx.to_string() : "—";
+		}
+	}
+
 	/**
 	 * Step this task belongs to; required so Details looks up the tree (step.list.runner)
 	 * for runner, session, etc.
@@ -493,6 +499,12 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 					this.add_message(new OLLMchat.Message("agent-stage", "refinement"));
 					var response = yield this.chat_call.send(messages, cancellable);
 					response_text = response != null ? response.message.content : "";
+					this.msg_idx = response != null ? response.message.idx : this.msg_idx;
+					this.notify_property("msg_idx_txt");
+					GLib.debug(
+						"progress detail refine slug=%s msg_idx=%d",
+						this.slug(),
+						this.msg_idx);
 					break;
 				} catch (GLib.Error e) {
 					if (attempt != 2) {
@@ -769,24 +781,35 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 				var ex = new Tool(factory, this.session, this, "exam-%d".printf(idx++));
 				ex.exam_reference = exam;
 				ex.references = this.shared_references;
-				ex.msg_idx = this.msg_idx;
 				this.tools().append(ex);
 			}
+			GLib.debug(
+				"progress tool_queue kind=exam slug=%s details.msg_idx=%d tools=%u",
+				this.slug(),
+				this.msg_idx,
+				this.tools().size);
 			return;
 		}
 		if (this.proposed_tools.size > 0) {
 			foreach (var ex in this.proposed_tools) {
 				ex.id = "tool-%d".printf(idx++);
 				ex.references = this.shared_references;
-				ex.msg_idx = this.msg_idx;
 				this.tools().append(ex);
 			}
+			GLib.debug(
+				"progress tool_queue kind=proposed slug=%s details.msg_idx=%d tools=%u",
+				this.slug(),
+				this.msg_idx,
+				this.tools().size);
 			return;
 		}
 		var lone = new Tool(factory, this.session, this, "exec");
 		lone.references = this.shared_references;
-		lone.msg_idx = this.msg_idx;
 		this.tools().append(lone);
+		GLib.debug(
+			"progress tool_queue kind=lone_exec slug=%s details.msg_idx=%d tools=1",
+			this.slug(),
+			this.msg_idx);
 	}
 
 	/**
@@ -885,6 +908,12 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			this.add_message(new OLLMchat.Message("agent-stage", "post_exec"));
 			var response = yield this.chat_call.send(messages, null);
 			response_text = response != null ? response.message.content : "";
+			this.msg_idx = response != null ? response.message.idx : this.msg_idx;
+			this.notify_property("msg_idx_txt");
+			GLib.debug(
+				"progress detail post_exec slug=%s msg_idx=%d",
+				this.slug(),
+				this.msg_idx);
 			// Ensure any literal {task_link_base} in model output is replaced so links validate
 			var task_base = "task://" + this.slug() + ".md";
 			response_text = response_text.replace("{task_link_base}", task_base);

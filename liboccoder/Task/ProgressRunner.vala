@@ -63,6 +63,12 @@ public class ProgressRunner : GLib.Object, ProgressItem
 
 	public int msg_idx { get; set; default = -1; }
 
+	public string msg_idx_txt {
+		owned get {
+			return this.msg_idx >= 0 ? this.msg_idx.to_string() : "—";
+		}
+	}
+
 	public ProgressRunner(OLLMcoder.Skill.Runner r)
 	{
 		Object();

@@ -48,6 +48,7 @@ namespace OLLMchat.History
 				case "can-replay":
 					return default_deserialize_property(property_name, out value, pspec, property_node);
 				case "messages":
+					Message.idx_counter = 0;
 					this.messages.clear();
 					var array = property_node.get_array();
 					Message? last_msg = null;
