@@ -194,7 +194,6 @@ namespace OLLMcoder.Skill
 		{
 			this.chat_call.tools.clear();
 		}
- 
 
 		/**
 		 * Entry point. Sends user request only; when finished calls
@@ -226,9 +225,7 @@ namespace OLLMcoder.Skill
 					try_max = 5,
 					try_no = 0,
 					status = OLLMcoder.Task.PhaseEnum.LIST,
-					msg_idx = !this.in_replay ? in_message.idx :
-						(this.session.messages.size > 0 ?
-							this.session.messages.get((int) this.session.messages.size - 1).idx : -1)
+					msg_idx = !this.in_replay ? in_message.idx : -1
 				};
 				this.progress.add(rp);
 				for (; rp.try_no < rp.try_max; rp.try_no++) {
@@ -308,6 +305,7 @@ namespace OLLMcoder.Skill
 		public async void replay(Gee.ArrayList<OLLMchat.Message> messages)
 		{
 			if (!this.session.can_replay) {
+				GLib.debug("replay skipped: session.can_replay is false");
 				return;
 			}
 			this.in_replay = true;
@@ -460,8 +458,7 @@ namespace OLLMcoder.Skill
 				try_max = 5,
 				try_no = 0,
 				status = OLLMcoder.Task.PhaseEnum.TASK_LIST_ITERATION,
-				msg_idx = this.session.messages.size > 0 ?
-					this.session.messages.get((int) this.session.messages.size - 1).idx : -1
+				msg_idx = -1
 			};
 			this.progress.add(ir);
 			for (; ir.try_no < ir.try_max; ir.try_no++) {
@@ -638,6 +635,10 @@ namespace OLLMcoder.Skill
 					var d_ref = st_r.children.get(this.replay_details_pos);
 					pr.extract_refinement(d_ref);
 					if (pr.issues == "") {
+						d_ref.msg_idx = m.idx;
+						d_ref.notify_property("msg_idx_txt");
+						GLib.debug("restore refinement msg_idx=%d step=%d detail=%d",
+							m.idx, this.replay_step_pos, this.replay_details_pos);
 						d_ref.status = OLLMcoder.Task.PhaseEnum.REFINED;
 					}
 					this.progress.rebuild();
@@ -676,6 +677,10 @@ namespace OLLMcoder.Skill
 					var d_post = st_p.children.get(this.replay_details_pos);
 					pp.exec_post_extract(d_post);
 					if (pp.issues == "") {
+						d_post.msg_idx = m.idx;
+						d_post.notify_property("msg_idx_txt");
+						GLib.debug("restore post_exec msg_idx=%d step=%d detail=%d",
+							m.idx, this.replay_step_pos, this.replay_details_pos);
 						d_post.exec_done = true;
 						d_post.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
 					}
@@ -705,6 +710,14 @@ namespace OLLMcoder.Skill
 						this.replay_tool_pos, d_exec.tools().size);
 					var px = new OLLMcoder.Task.ResultParser(this, m.content);
 					var ex_run = d_exec.tools().get_at(this.replay_tool_pos);
+					// Replay never runs Tool.run(); hydrate Idx from this transcript message (same idx ReplayChat.send would attach).
+					ex_run.msg_idx = m.idx;
+					ex_run.notify_property("msg_idx_txt");
+					GLib.debug(
+						"======== CHANGING IDX FOR TOOL (replay EXECUTION content-stream, not Tool.run send) slug=%s run_id=%s msg_idx=%d ========",
+						d_exec.slug(),
+						ex_run.id,
+						m.idx);
 					if (px.exec_extract(ex_run)) {
 						ex_run.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
 					}

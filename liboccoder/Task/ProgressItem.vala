@@ -26,6 +26,9 @@ namespace OLLMcoder.Task
  *
  * **children** — {@link GLib.ListModel} whose items are {@link ProgressItem} (**7.14.2**): on {@link Details} use the
  * execution {@link ToolList} (see **7.14.1.3**). On {@link Tool}, an empty {@link GLib.ListStore}.
+ *
+ * Implementors provide **msg_idx** and **msg_idx_txt**; after each assignment to **msg_idx**, callers must emit
+ * **`notify_property("msg_idx_txt")`** on that instance so the Idx column binding updates.
  */
 public interface ProgressItem : GLib.Object
 {
@@ -39,6 +42,9 @@ public interface ProgressItem : GLib.Object
 
 	/** Last **`Message.idx`** for this row (**continue-from** / **`scroll_to_idx`**); **-1** if unset. */
 	public abstract int msg_idx { get; set; }
+
+	/** Label text for the Idx column (**digits** or **—**). */
+	public abstract string msg_idx_txt { owned get; }
 
 	/**
 	 * After {@link Tool} execution, the {@link OLLMchat.Tool.RequestBase} copied from {@link OLLMchat.Tool.BaseTool.last_request} for this row; **null** if not a tool row or not yet run.

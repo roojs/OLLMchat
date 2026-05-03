@@ -60,8 +60,17 @@ namespace OLLMcoder.Task
 		/** ToolCall built from name and arguments; set by parse(), used in run() when this run has a tool. */
 		public OLLMchat.Response.ToolCall? tool_call { get; set; default = null; }
 
-		/** Last **`Message.idx`** tied to this tool row; **-1** if unset. */
+		/**
+		 * **`Message.idx`** for chat scroll: set only from the **executor** LLM **`send()`**
+		 * in **`run()`** (**-1** until then).
+		 */
 		public int msg_idx { get; set; default = -1; }
+
+		public string msg_idx_txt {
+			owned get {
+				return this.msg_idx >= 0 ? this.msg_idx.to_string() : "—";
+			}
+		}
 
 		private PhaseEnum status_value = PhaseEnum.NONE;
 
@@ -254,8 +263,19 @@ namespace OLLMcoder.Task
 					"waiting for " + model_label + " to reply"));
 				this.add_message(new OLLMchat.Message("agent-stage", "exec"));
 				try {
+					var prior_msg_idx = this.msg_idx;
 					var response = yield this.chat_call.send(messages, null);
 					response_text = (response != null) ? response.message.content : "";
+					this.msg_idx = response != null ? response.message.idx : this.msg_idx;
+					this.notify_property("msg_idx_txt");
+					/* Live runs only: replay hydrates tool Idx in Runner.on_replay EXECUTION (never calls Tool.run send). */
+					GLib.debug(
+						"======== CHANGING IDX FOR TOOL (executor send done, live) slug=%s run_id=%s prior_msg_idx=%d -> msg_idx=%d (response.message.idx=%d) ========",
+						this.parent.slug(),
+						this.id,
+						prior_msg_idx,
+						this.msg_idx,
+						response != null ? response.message.idx : -1);
 				} catch (GLib.Error e) {
 					last_issues = e.message;
 					this.add_message(new OLLMchat.Message("agent-issues", last_issues));

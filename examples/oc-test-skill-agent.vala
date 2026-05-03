@@ -37,6 +37,7 @@ class TestSkillAgentApp : TestAppBase
 	private static string? opt_replay = null;
 	private static bool opt_interactive = false;
 	private static int opt_auto = -1;
+	private static bool opt_silent = false;
 
 	/** Set by build_runner() when a mode needs project + Runner. */
 	private OLLMcoder.Skill.Runner? runner { get; set; default = null; }
@@ -58,6 +59,7 @@ Options:
   --replay FILE               Session JSON to step through (no LLM calls)
   --interactive                Replay: press Enter before each parse step
   --auto N                     Replay: run up to N parse steps then stop
+  --silent                     Replay: hide parsed content blocks; no Enter wait
 
 Examples:
   {ARG} --run prompt --project=/path/to/project --prompt \"Add a README\"
@@ -65,6 +67,7 @@ Examples:
   {ARG} --project=/path --replay=history/session.json
   {ARG} --project=/path --replay=session.json --interactive
   {ARG} --project=/path --replay=session.json --auto 3
+  {ARG} --project=/path --replay=session.json --silent
 """; }
 
 	public TestSkillAgentApp()
@@ -106,6 +109,8 @@ Examples:
 			"Replay: press Enter to run next parse step", null },
 		{ "auto", 0, 0, OptionArg.INT, ref opt_auto,
 			"Replay: run up to N parse steps then stop (for bug testing)", "N" },
+		{ "silent", 0, 0, OptionArg.NONE, ref opt_silent,
+			"Replay: omit Content being parsed blocks; no wait for Enter", null },
 		{ null }
 	};
 
@@ -545,6 +550,7 @@ Examples:
 	private async void run_replay()
 	{
 		this.load_session(opt_replay);
+		GLib.debug("replay SessionJson can_replay=%s", this.session.can_replay.to_string());
 		this.cl.printerr("Replay from %s (%d messages)\n", opt_replay, (int) this.session.messages.size);
 		var project_path = this.session.project_path != "" ? this.session.project_path : opt_project;
 		if (project_path == null || project_path == "") {
@@ -557,12 +563,23 @@ Examples:
 			this.cl.printerr("%s\n", e.message);
 			Process.exit(1);
 		}
+		/* Runner uses EmptySession from build_runner(); replay() no-ops unless can_replay is set.
+		   SessionJson computed can_replay while loading messages (agent-stage); copy it here. */
+		this.runner.session.can_replay = this.session.can_replay;
+		GLib.debug("replay runner.session.can_replay=%s", this.runner.session.can_replay.to_string());
+		if (!this.runner.session.can_replay) {
+			this.cl.printerr(
+				"Replay skipped: session has can_replay=false (no agent-stage markers in JSON?).\n");
+			Process.exit(1);
+		}
 		int[] step_count = { 0 };
 		this.runner.replay_step.connect((step, content) => {
 			this.cl.printerr("Step: %s\n", step);
-			this.cl.printerr("Content being parsed:\n---\n%s\n---\n", content);
+			if (!opt_silent) {
+				this.cl.printerr("Content being parsed:\n---\n%s\n---\n", content);
+			}
 			step_count[0]++;
-			if (opt_auto < 0 || step_count[0] <= opt_auto) {
+			if (!opt_silent && (opt_auto < 0 || step_count[0] <= opt_auto)) {
 				this.cl.printerr("Press Enter to continue...");
 				GLib.stdin.read_line();
 			}

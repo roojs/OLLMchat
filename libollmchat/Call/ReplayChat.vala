@@ -131,12 +131,17 @@ $(replay_issues)
 				if (msg.content == "") {
 					continue;
 				}
-				GLib.debug("Replay index %d role=%s content.length=%d",
-					idx, msg.role, msg.content.length);
 				this.last_return_ix = idx;
 				this.messages = messages;
 				var response = new Response.Chat(this.connection, this);
 				response.message = new Message("assistant", msg.content);
+				response.message.idx = msg.idx;
+				GLib.debug(
+					"replay send array_ix=%d msg.idx=%d role=%s len=%d",
+					idx,
+					msg.idx,
+					msg.role,
+					msg.content.length);
 				response.done = true;
 				return response;
 			}
