@@ -412,10 +412,10 @@ namespace OLLMvector {
             // All queue operations happen in the background thread context, so no mutex needed
             this.file_queue.offer (item);
             
-            GLib.debug(
-                "queued file %s (queue size %u)",
-                item.file_path,
-                this.file_queue.size);
+           // GLib.debug(
+               // "queued file %s (queue size %u)",
+             //   item.file_path,
+             //   this.file_queue.size);
 
             // Start queue processing (we're already in the background thread context)
             this.startQueue.begin ();

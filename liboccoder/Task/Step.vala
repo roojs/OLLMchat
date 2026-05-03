@@ -62,6 +62,13 @@ public class Step : Object
 	public Gee.ArrayList<Details> children { get; set; default = new Gee.ArrayList<Details>(); }
 
 	/**
+	 * Step boundary for the progress strip: {@link PhaseEnum.NONE} while the step is still in
+	 * {@link Runner.pending}; {@link PhaseEnum.COMPLETED} when the step is moved to
+	 * {@link Runner.completed} (per-task row state remains on each {@link Details#status}).
+	 */
+	public PhaseEnum status { get; set; default = PhaseEnum.NONE; }
+
+	/**
 	 * Register this step's tasks in list.slugs (and set step_index).
 	 * If slug non-empty and not in completed/pending, set and continue.
 	 * Empty or clash: set name in task_data, then slugs.set(t.slug(), t).

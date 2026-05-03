@@ -217,6 +217,7 @@ public class List : Object
 		}
 		this.runner.completed.steps.add(step);
 		step.list = this.runner.completed;
+		step.status = PhaseEnum.COMPLETED;
 		foreach (var t in step.children) {
 			this.runner.completed.slugs.set(t.slug(), t);
 		}
@@ -311,6 +312,7 @@ public class List : Object
 		}
 		this.runner.completed.steps.add(step);
 		step.list = this.runner.completed;
+		step.status = PhaseEnum.COMPLETED;
 		foreach (var t in step.children) {
 			this.runner.completed.slugs.set(t.slug(), t);
 		}

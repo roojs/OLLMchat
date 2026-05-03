@@ -90,25 +90,38 @@ public class ProgressList : GLib.Object, GLib.ListModel
 		var after_clear = this.rows.size;
 		var removed = old_size - after_clear;
 		this.rows.add(r);
+		GLib.debug(
+			"idx=%d slug=%s",
+			r.msg_idx,
+			r.in_creation ? "task-creation" : "reviewing-task-list");
 		this.items_changed((uint) after_clear, (uint) removed, 1u);
 	}
 
 	/**
-	 * Remove non-{@link PhaseEnum.COMPLETED} rows from the tail; stop at the first
-	 * {@link PhaseEnum.COMPLETED} row. Used when replacing the pending segment (e.g. after a
-	 * successful slice); not used on fatal-error exits, so {@link PhaseEnum.ERROR} is not special-cased here.
+	 * Remove {@link Details} rows whose {@link Step} is still in {@link Runner.pending}
+	 * ({@link Step#status} not {@link PhaseEnum.COMPLETED}). Keeps {@link ProgressRunner} rows and
+	 * rows for tasks whose step already moved to {@link Runner.completed}.
 	 */
 	public void clear_pending(bool call_changed = false)
 	{
 		var old_size = this.rows.size;
-		for (var i = old_size; i > 0; i--) {
-			var pi = this.rows.get(this.rows.size - 1);
-			if (pi.status == PhaseEnum.COMPLETED) {
-				break;
+		for (var i = this.rows.size - 1; i >= 0; i--) {
+			var pi = this.rows.get(i);
+			var det = pi as Details;
+			if (det == null) {
+				continue;
 			}
-			this.rows.remove_at(this.rows.size - 1);
+			if (det.step.status == PhaseEnum.COMPLETED) {
+				continue;
+			}
+			this.rows.remove_at(i);
 		}
 		var removed = old_size - this.rows.size;
+		GLib.debug(
+			"removed=%u rows_after=%u call_changed=%s",
+			(uint) removed,
+			(uint) this.rows.size,
+			call_changed.to_string());
 		if (removed == 0 || !call_changed) {
 			return;
 		}
@@ -117,11 +130,18 @@ public class ProgressList : GLib.Object, GLib.ListModel
 
 	public void add_pending(bool call_changed = false)
 	{
+		GLib.debug(
+			"call_changed=%s steps=%u rows_before=%u",
+			call_changed.to_string(),
+			this.runner.pending.steps.size,
+			(uint) this.rows.size);
+
 		var pos = this.rows.size;
 		var added = 0;
 		foreach (var step in this.runner.pending.steps) {
 			foreach (var d in step.children) {
 				this.rows.add(d);
+				GLib.debug("idx=%d slug=%s", d.msg_idx, d.slug());
 				added++;
 			}
 		}
@@ -139,6 +159,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 		var k = n0 - after_clear;
 		foreach (var d in step.children) {
 			this.rows.add(d);
+			GLib.debug("idx=%d slug=%s", d.msg_idx, d.slug());
 		}
 		this.add_pending(false);
 		var n1 = this.rows.size;

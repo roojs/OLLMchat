@@ -290,7 +290,7 @@ namespace OLLMcoder.Skill
 			} finally {
 				this.session.is_running = false;
 				this.session.manager.agent_status_change();
-				GLib.debug("Runner.send_async: is_running=false session %s", this.session.fid);
+				// GLib.debug("Runner.send_async: is_running=false session %s", this.session.fid);
 			}
 		}
 
@@ -305,7 +305,7 @@ namespace OLLMcoder.Skill
 		public async void replay(Gee.ArrayList<OLLMchat.Message> messages)
 		{
 			if (!this.session.can_replay) {
-				GLib.debug("replay skipped: session.can_replay is false");
+				// GLib.debug("replay skipped: session.can_replay is false");
 				return;
 			}
 			this.in_replay = true;
@@ -533,10 +533,10 @@ namespace OLLMcoder.Skill
 				return;
 			}
 
-			GLib.debug("session %s phase=%d role=%s step=%d detail=%d tool=%d steps=%u content_len=%u",
-				this.session.fid, (int) this.replay_phase, m.role,
-				this.replay_step_pos, this.replay_details_pos, this.replay_tool_pos,
-				this.pending.steps.size, m.content.length);
+			// GLib.debug("session %s phase=%d role=%s step=%d detail=%d tool=%d steps=%u content_len=%u",
+			// 	this.session.fid, (int) this.replay_phase, m.role,
+			// 	this.replay_step_pos, this.replay_details_pos, this.replay_tool_pos,
+			// 	this.pending.steps.size, m.content.length);
 
 			switch (this.replay_phase) {
 			case OLLMcoder.Task.PhaseEnum.NONE:
@@ -569,8 +569,8 @@ namespace OLLMcoder.Skill
 					this.pending = new OLLMcoder.Task.List(this);
 					var p0 = new OLLMcoder.Task.ResultParser(this, m.content);
 					p0.parse_task_list();
-					GLib.debug("session %s initial_plan steps=%u issues_empty=%s",
-						this.session.fid, this.pending.steps.size, (p0.issues == "").to_string());
+					// GLib.debug("session %s initial_plan steps=%u issues_empty=%s",
+					// 	this.session.fid, this.pending.steps.size, (p0.issues == "").to_string());
 					if (p0.issues == "") {
 						this.progress.add(new OLLMcoder.Task.ProgressRunner(this) {
 							in_creation = true,
@@ -599,8 +599,8 @@ namespace OLLMcoder.Skill
 					this.pending = new OLLMcoder.Task.List(this);
 					var p1 = new OLLMcoder.Task.ResultParser(this, m.content);
 					p1.parse_task_list_iteration();
-					GLib.debug("session %s revised_plan steps=%u issues_empty=%s",
-						this.session.fid, this.pending.steps.size, (p1.issues == "").to_string());
+					// GLib.debug("session %s revised_plan steps=%u issues_empty=%s",
+					// 	this.session.fid, this.pending.steps.size, (p1.issues == "").to_string());
 					this.replay_step_pos = 0;
 					this.replay_details_pos = 0;
 					this.replay_tool_pos = 0;
@@ -637,8 +637,8 @@ namespace OLLMcoder.Skill
 					if (pr.issues == "") {
 						d_ref.msg_idx = m.idx;
 						d_ref.notify_property("msg_idx_txt");
-						GLib.debug("restore refinement msg_idx=%d step=%d detail=%d",
-							m.idx, this.replay_step_pos, this.replay_details_pos);
+						// GLib.debug("restore refinement msg_idx=%d step=%d detail=%d",
+						// 	m.idx, this.replay_step_pos, this.replay_details_pos);
 						d_ref.status = OLLMcoder.Task.PhaseEnum.REFINED;
 					}
 					this.progress.rebuild();
@@ -679,10 +679,16 @@ namespace OLLMcoder.Skill
 					if (pp.issues == "") {
 						d_post.msg_idx = m.idx;
 						d_post.notify_property("msg_idx_txt");
-						GLib.debug("restore post_exec msg_idx=%d step=%d detail=%d",
-							m.idx, this.replay_step_pos, this.replay_details_pos);
+						// GLib.debug("restore post_exec msg_idx=%d step=%d detail=%d",
+						// 	m.idx, this.replay_step_pos, this.replay_details_pos);
 						d_post.exec_done = true;
 						d_post.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
+						GLib.debug(
+							"replay_task_done slug=%s msg_idx=%d tool_idx=%d tools_n=%u",
+							d_post.slug(),
+							d_post.msg_idx,
+							d_post.tools().get_at(d_post.tools().size - 1).msg_idx,
+							(uint) d_post.tools().size);
 					}
 					this.progress.rebuild();
 					break;
@@ -705,21 +711,27 @@ namespace OLLMcoder.Skill
 					if (d_exec.tools().size == 0) {
 						d_exec.build_run_queue();
 					}
-					GLib.debug("session %s replay_exec children=%u detail=%d tool=%u tools_runs=%d",
-						this.session.fid, st_e.children.size, this.replay_details_pos,
-						this.replay_tool_pos, d_exec.tools().size);
+					// GLib.debug("session %s replay_exec children=%u detail=%d tool=%u tools_runs=%d",
+					// 	this.session.fid, st_e.children.size, this.replay_details_pos,
+					// 	this.replay_tool_pos, d_exec.tools().size);
 					var px = new OLLMcoder.Task.ResultParser(this, m.content);
 					var ex_run = d_exec.tools().get_at(this.replay_tool_pos);
 					// Replay never runs Tool.run(); hydrate Idx from this transcript message (same idx ReplayChat.send would attach).
 					ex_run.msg_idx = m.idx;
 					ex_run.notify_property("msg_idx_txt");
-					GLib.debug(
-						"======== CHANGING IDX FOR TOOL (replay EXECUTION content-stream, not Tool.run send) slug=%s run_id=%s msg_idx=%d ========",
-						d_exec.slug(),
-						ex_run.id,
-						m.idx);
+					// GLib.debug(
+					// 	"======== CHANGING IDX FOR TOOL (replay EXECUTION content-stream, not Tool.run send) slug=%s run_id=%s msg_idx=%d ========",
+					// 	d_exec.slug(),
+					// 	ex_run.id,
+					// 	m.idx);
 					if (px.exec_extract(ex_run)) {
 						ex_run.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
+						GLib.debug(
+							"replay_tool_row slug=%s details_msg_idx=%d tool_msg_idx=%d id=%s",
+							d_exec.slug(),
+							d_exec.msg_idx,
+							ex_run.msg_idx,
+							ex_run.id);
 					}
 					this.progress.rebuild();
 					break;
@@ -747,6 +759,7 @@ namespace OLLMcoder.Skill
 					var step = this.pending.steps.get(this.replay_step_pos);
 					this.completed.steps.add(step);
 					step.list = this.completed;
+					step.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
 					foreach (var t in step.children) {
 						this.completed.slugs.set(t.slug(), t);
 					}
