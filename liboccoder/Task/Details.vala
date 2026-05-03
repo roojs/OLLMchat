@@ -838,12 +838,6 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			yield this.run_post_exec();
 			this.exec_done = true;
 			this.status = PhaseEnum.COMPLETED;
-			GLib.debug(
-				"slug=%s msg_idx=%d tool_idx=%d tools_n=%u",
-				this.slug(),
-				this.msg_idx,
-				this.tools().get_at(this.tools().size - 1).msg_idx,
-				(uint) this.tools().size);
 			return;
 		}
 		var last = this.tools().get_at(this.tools().size - 1);
@@ -851,12 +845,6 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 		this.out_doc = last.document;
 		this.exec_done = true;
 		this.status = PhaseEnum.COMPLETED;
-		GLib.debug(
-			"slug=%s msg_idx=%d tool_idx=%d tools_n=%u",
-			this.slug(),
-			this.msg_idx,
-			last.msg_idx,
-			(uint) this.tools().size);
 	}
 
 	/**

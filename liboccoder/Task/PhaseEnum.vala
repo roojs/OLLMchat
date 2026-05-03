@@ -131,7 +131,8 @@ public enum PhaseEnum
 	 */
 	COMPLETED,
 	/**
-	 * Progress UI: used in {@link Details.refine} where cancellation previously cleared the row to {@link NONE}.
+	 * Progress UI: user cancelled the in-flight request. Set from cancel paths when the row
+	 * would otherwise clear to {@link NONE}; never overwrites an existing {@link ERROR}.
 	 */
 	STOPPED;
 
@@ -219,7 +220,7 @@ public enum PhaseEnum
 		case EXECUTION:
 			return "<b>Review output</b>";
 		case TOOLS_RUNNING:
-			return "<b>Running Tool</b>";
+			return "<b>Running Tool(s)</b>";
 		case EXECUTION_RETRY:
 			return "<b>Retry Review output</b>";
 		case EXEC_WRITE:
