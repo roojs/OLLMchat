@@ -533,6 +533,18 @@ namespace OLLMcoder.Skill
 				return;
 			}
 
+			GLib.debug(
+				"RPLY msg phase=%s role=%s idx=%d stage_body=%s pend_steps=%u comp_steps=%u rep_step=%d rep_det=%d rep_tool=%d",
+				typeof (OLLMcoder.Task.PhaseEnum).enum_to_string ((int) this.replay_phase),
+				m.role,
+				m.idx,
+				m.role == "agent-stage" ? m.content : "",
+				this.pending.steps.size,
+				this.completed.steps.size,
+				this.replay_step_pos,
+				this.replay_details_pos,
+				this.replay_tool_pos);
+
 			// GLib.debug("session %s phase=%d role=%s step=%d detail=%d tool=%d steps=%u content_len=%u",
 			// 	this.session.fid, (int) this.replay_phase, m.role,
 			// 	this.replay_step_pos, this.replay_details_pos, this.replay_tool_pos,
@@ -596,11 +608,33 @@ namespace OLLMcoder.Skill
 			case OLLMcoder.Task.PhaseEnum.TASK_LIST_ITERATION:
 				switch (m.role) {
 				case "content-stream":
+					// Replay: task list iteration runs only after the current step is finished (live:
+					// run_step → run_task_list_iteration). Move that step to completed before replacing
+					// runner.pending — same as List.run_step* / add_completed. Transcripts may reach
+					// TASK_LIST_ITERATION from POST_EXEC or EXEC_VALIDATE without hitting the old
+					// EXEC_VALIDATE-only migrate path.
+					if (this.pending.steps.size > 0) {
+						var si = this.replay_step_pos < this.pending.steps.size ? this.replay_step_pos : 0;
+						var step_done = this.pending.steps.get(si);
+						if (step_done.is_exec_done()) {
+							this.pending.move_step_to_completed(si);
+							this.replay_step_pos = 0;
+							this.replay_details_pos = 0;
+							this.replay_tool_pos = 0;
+							GLib.debug(
+								"RPLY TLI migrate tasks=%u comp_steps_now=%u",
+								step_done.children.size,
+								this.completed.steps.size);
+						}
+					}
 					this.pending = new OLLMcoder.Task.List(this);
 					var p1 = new OLLMcoder.Task.ResultParser(this, m.content);
 					p1.parse_task_list_iteration();
-					// GLib.debug("session %s revised_plan steps=%u issues_empty=%s",
-					// 	this.session.fid, this.pending.steps.size, (p1.issues == "").to_string());
+					GLib.debug(
+						"RPLY TLI content-stream idx=%d parsed_pending_steps=%u issues_empty=%s",
+						m.idx,
+						this.pending.steps.size,
+						(p1.issues == "").to_string ());
 					this.replay_step_pos = 0;
 					this.replay_details_pos = 0;
 					this.replay_tool_pos = 0;
@@ -731,11 +765,11 @@ namespace OLLMcoder.Skill
 					}
 					ex_run.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
 					GLib.debug(
-						"replay_tool_row slug=%s details_msg_idx=%d tool_msg_idx=%d id=%s",
+						"RPLYRUN slug=%s tool_run=%s msg_idx=%d task_msg_idx=%d",
 						d_exec.slug(),
-						d_exec.msg_idx,
+						ex_run.id,
 						ex_run.msg_idx,
-						ex_run.id);
+						d_exec.msg_idx);
 					if (d_exec.tools().size != 1) {
 						this.progress.rebuild();
 						break;
@@ -747,9 +781,8 @@ namespace OLLMcoder.Skill
 					d_exec.exec_done = true;
 					d_exec.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
 					GLib.debug(
-						"replay_task_done slug=%s msg_idx=%d tool_idx=%d tools_n=%u",
+						"RPLYEND slug=%s last_tool_msg_idx=%d tool_runs=%u",
 						d_exec.slug(),
-						d_exec.msg_idx,
 						last.msg_idx,
 						(uint) d_exec.tools().size);
 					this.progress.rebuild();
@@ -769,25 +802,13 @@ namespace OLLMcoder.Skill
 			case OLLMcoder.Task.PhaseEnum.EXEC_VALIDATE:
 				switch (m.role) {
 				case "agent-stage":
+					// Pending → completed is driven by TASK_LIST_ITERATION content-stream (see above).
 					var new_phase = OLLMcoder.Task.PhaseEnum.from_string(m.content);
-					if (new_phase != OLLMcoder.Task.PhaseEnum.TASK_LIST_ITERATION || this.pending.steps.size == 0) {
-						this.replay_phase = new_phase;
-						break;
-					}
-					// Same pending → completed move as List.run_step* (List.vala ~218–223).
-					var step = this.pending.steps.get(this.replay_step_pos);
-					this.completed.steps.add(step);
-					step.list = this.completed;
-					step.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
-					foreach (var t in step.children) {
-						this.completed.slugs.set(t.slug(), t);
-					}
-					this.pending.steps.remove_at(this.replay_step_pos);
-					this.replay_step_pos = 0;
-					this.replay_details_pos = 0;
-					this.replay_tool_pos = 0;
 					this.replay_phase = new_phase;
-					this.progress.add_completed(step);
+					GLib.debug(
+						"RPLY EV agent-stage raw=%s now=%s",
+						m.content,
+						typeof (OLLMcoder.Task.PhaseEnum).enum_to_string ((int) this.replay_phase));
 					break;
 				case "agent-issues":
 					if (m.content != "") {
@@ -811,6 +832,11 @@ namespace OLLMcoder.Skill
 				}
 				break;
 			default:
+				GLib.debug(
+					"RPLY unhandled replay_phase=%s role=%s idx=%d",
+					typeof (OLLMcoder.Task.PhaseEnum).enum_to_string ((int) this.replay_phase),
+					m.role,
+					m.idx);
 				break;
 			}
 		}

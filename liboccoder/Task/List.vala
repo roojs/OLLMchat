@@ -174,6 +174,24 @@ public class List : Object
 	}
 
 	/**
+	 * Move the step at ''step_index'' from this list to {@link Runner#completed}
+	 * and refresh the progress strip ({@link ProgressList.add_completed}). Caller must
+	 * ensure the step is finished (e.g. every child {@link Details#exec_done}).
+	 */
+	public void move_step_to_completed(int step_index)
+	{
+		var step = this.steps.get(step_index);
+		this.runner.completed.steps.add(step);
+		step.list = this.runner.completed;
+		step.status = PhaseEnum.COMPLETED;
+		foreach (var t in step.children) {
+			this.runner.completed.slugs.set(t.slug(), t);
+		}
+		this.steps.remove_at(step_index);
+		this.runner.progress.add_completed(step);
+	}
+
+	/**
 	 * Run the first step only. Stops if that step has a task requiring user approval.
 	 * When the step completes (all children exec_done), move it to runner.completed
 	 * and remove from this list. Caller (Runner) should call run_task_list_iteration() when true.
@@ -202,27 +220,13 @@ public class List : Object
 				}
 			}
 		}
-		var all_done = true;
-		foreach (var t in step.children) {
-			if (!t.exec_done) {
-				all_done = false;
-				break;
-			}
-		}
-		if (!all_done) {
+		if (!step.is_exec_done()) {
 			this.runner.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 				"text.oc-frame-danger.collapsed Step did not complete",
 				"Stopping.")));
 			return false;
 		}
-		this.runner.completed.steps.add(step);
-		step.list = this.runner.completed;
-		step.status = PhaseEnum.COMPLETED;
-		foreach (var t in step.children) {
-			this.runner.completed.slugs.set(t.slug(), t);
-		}
-		this.steps.remove_at(0);
-		this.runner.progress.add_completed(step);
+		this.move_step_to_completed(0);
 		return true;
 	}
 
@@ -256,6 +260,7 @@ public class List : Object
 	{
 		yield t.wait_refined();
 		t.build_run_queue();
+		GLib.debug("RUNEXEC slug=%s idx=%d", t.slug(), t.msg_idx);
 		this.runner.progress.rebuild();
 		yield t.run_exec();
 		t.write();
@@ -297,27 +302,13 @@ public class List : Object
 				}
 			}
 		}
-		var all_done = true;
-		foreach (var t in step.children) {
-			if (!t.exec_done) {
-				all_done = false;
-				break;
-			}
-		}
-		if (!all_done) {
+		if (!step.is_exec_done()) {
 			this.runner.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 				"text.oc-frame-danger.collapsed Step did not complete",
 				"Stopping.")));
 			return false;
 		}
-		this.runner.completed.steps.add(step);
-		step.list = this.runner.completed;
-		step.status = PhaseEnum.COMPLETED;
-		foreach (var t in step.children) {
-			this.runner.completed.slugs.set(t.slug(), t);
-		}
-		this.steps.remove_at(0);
-		this.runner.progress.add_completed(step);
+		this.move_step_to_completed(0);
 		return true;
 	}
 }
