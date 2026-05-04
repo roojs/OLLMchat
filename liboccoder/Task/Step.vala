@@ -134,6 +134,20 @@ public class Step : Object
 	}
 
 	/**
+	 * Whether this step's execution is finished: every child has {@link Details#exec_done}.
+	 * Same condition {@link List.run_step} checks before {@link List.move_step_to_completed}.
+	 */
+	public bool is_exec_done()
+	{
+		foreach (var t in this.children) {
+			if (!t.exec_done) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
 	 * When ''children.size == 1'', yields until that task has finished refining.
 	 *
 	 * For ''size > 1'', {@link List.run_child} waits per task; this method
