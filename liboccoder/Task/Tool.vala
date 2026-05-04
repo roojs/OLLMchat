@@ -294,6 +294,14 @@ namespace OLLMcoder.Task
 				}
 				var parser = new ResultParser(this.parent.runner, response_text);
 				var exec_ok = parser.exec_extract(this);
+				GLib.debug(
+					"LIVEEXEC slug=%s tool_run=%s try=%u resp_len=%u ok=%s issues=%s",
+					this.parent.slug(),
+					this.id,
+					try_count,
+					response_text.length,
+					exec_ok.to_string (),
+					parser.issues);
 				if (this.parent.runner.in_replay) {
 					((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(parser.issues);
 				}
