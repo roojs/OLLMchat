@@ -131,6 +131,12 @@ public enum PhaseEnum
 	 */
 	COMPLETED,
 	/**
+	 * Step list boundary: {@link Step} has been removed from {@link Runner#pending} and appended
+	 * to {@link Runner#completed}. Unlike {@link COMPLETED}, this marks the container step only;
+	 * each task row still uses {@link Details#status} for its own stage.
+	 */
+	COMPLETED_DONE,
+	/**
 	 * Progress UI: user cancelled the in-flight request. Set from cancel paths when the row
 	 * would otherwise clear to {@link NONE}; never overwrites an existing {@link ERROR}.
 	 */
@@ -165,7 +171,8 @@ public enum PhaseEnum
 	/**
 	 * Stable wire id for ''agent-stage'' messages for phases the live flow emits.
 	 *
-	 * Returns '''' for {@link NONE}, {@link COARSE}, {@link REFINED}, {@link REFINE_COMPLETED}, and any value
+	 * Returns '''' for {@link NONE}, {@link COARSE}, {@link REFINED}, {@link REFINE_COMPLETED},
+	 * {@link COMPLETED_DONE}, and any value
 	 * not listed explicitly (those stages are not sent as ''agent-stage'' bodies).
 	 *
 	 * @return id string (''exec'', ''exec_validate'', …) or empty string
@@ -230,6 +237,7 @@ public enum PhaseEnum
 		case ERROR:
 			return "<span foreground=\"#cc0000\"><b>Retry Failed</b></span>";
 		case COMPLETED:
+		case COMPLETED_DONE:
 			return "<span foreground=\"#808080\">✓</span>";
 		case STOPPED:
 			return "<span foreground=\"#808080\"><b>Stopped</b></span>";
