@@ -139,16 +139,30 @@ public class ProgressList : GLib.Object, GLib.ListModel
 					det.slug(),
 					typeof (PhaseEnum).enum_to_string ((int) det.step.status),
 					typeof (PhaseEnum).enum_to_string ((int) det.status),
-					det.step.list == null ? "null" : (det.step.list == this.runner.pending ? "pending" : (det.step.list == this.runner.completed ? "completed" : "other")));
+					det.step.list == null
+						? "null"
+						: (det.step.list == this.runner.pending
+							? "pending"
+							: (det.step.list == this.runner.completed
+								? "completed"
+								: "other")));
 				continue;
 			}
 			GLib.debug(
-				"CLRPD drop slug=%s msg_idx=%d step_phase=%s detail_phase=%s step_list=%s",
+				"CLRPD drop slug=%s msg_idx=%d step_phase=%s detail_phase=%s step_list=%s pend_steps=%u comp_steps=%u",
 				det.slug(),
 				det.msg_idx,
 				typeof (PhaseEnum).enum_to_string ((int) det.step.status),
 				typeof (PhaseEnum).enum_to_string ((int) det.status),
-				det.step.list == null ? "null" : (det.step.list == this.runner.pending ? "pending" : (det.step.list == this.runner.completed ? "completed" : "other")));
+				det.step.list == null
+					? "null"
+					: (det.step.list == this.runner.pending
+						? "pending"
+						: (det.step.list == this.runner.completed
+							? "completed"
+							: "other")),
+				this.runner.pending.steps.size,
+				this.runner.completed.steps.size);
 			this.rows.remove_at(i);
 		}
 		var removed = old_size - this.rows.size;

@@ -631,10 +631,13 @@ namespace OLLMcoder.Skill
 					var p1 = new OLLMcoder.Task.ResultParser(this, m.content);
 					p1.parse_task_list_iteration();
 					GLib.debug(
-						"RPLY TLI content-stream idx=%d parsed_pending_steps=%u issues_empty=%s",
+						"RPLY TLI content-stream idx=%d parsed_pending_steps=%u issues_empty=%s content_len=%u issues_len=%u issues=%s",
 						m.idx,
 						this.pending.steps.size,
-						(p1.issues == "").to_string ());
+						(p1.issues == "").to_string (),
+						m.content.length,
+						p1.issues.length,
+						p1.issues);
 					this.replay_step_pos = 0;
 					this.replay_details_pos = 0;
 					this.replay_tool_pos = 0;
@@ -714,6 +717,14 @@ namespace OLLMcoder.Skill
 					// inherit refinement/exec validation noise into parser.issues.
 					d_post.issues = "";
 					pp.exec_post_extract(d_post);
+					GLib.debug(
+						"RPLYPE slug=%s step=%u detail=%u tools=%u post_issues_len=%u post_issues=%s",
+						d_post.slug(),
+						this.replay_step_pos,
+						this.replay_details_pos,
+						d_post.tools().size,
+						pp.issues.length,
+						pp.issues);
 					if (pp.issues == "") {
 						d_post.msg_idx = m.idx;
 						d_post.notify_property("msg_idx_txt");
@@ -721,6 +732,10 @@ namespace OLLMcoder.Skill
 						// 	m.idx, this.replay_step_pos, this.replay_details_pos);
 						d_post.exec_done = true;
 						d_post.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
+						if (d_post.tools().size > 1 &&
+								this.replay_details_pos < st_p.children.size - 1) {
+							this.replay_details_pos++;
+						}
 					}
 					this.progress.rebuild();
 					break;
@@ -759,7 +774,18 @@ namespace OLLMcoder.Skill
 					// 	d_exec.slug(),
 					// 	ex_run.id,
 					// 	m.idx);
-					if (!px.exec_extract(ex_run)) {
+					var exec_extract_ok = px.exec_extract(ex_run);
+					GLib.debug(
+						"RPLYRUN extract slug=%s tool_run=%s step=%u detail=%u tool_pos=%u content_len=%u ok=%s issues=%s",
+						d_exec.slug(),
+						ex_run.id,
+						this.replay_step_pos,
+						this.replay_details_pos,
+						this.replay_tool_pos,
+						m.content.length,
+						exec_extract_ok.to_string (),
+						px.issues);
+					if (!exec_extract_ok) {
 						this.progress.rebuild();
 						break;
 					}
@@ -821,11 +847,15 @@ namespace OLLMcoder.Skill
 						break;
 					}
 					this.replay_tool_pos = 0;
+					// Last tool of a multi-run task: POST_EXEC follows for this same Details
+					// (cursor advance in POST_EXEC content-stream on success). One tool per task
+					// row: next transcript child is the next Details.
+					if (det_v.tools().size > 1) {
+						break;
+					}
 					if (this.replay_details_pos < st_v.children.size - 1) {
 						this.replay_details_pos++;
 					}
-					// Else: finished last run of last task in step — transcript's next agent-stage matches live.
-					// Stay on EXEC_VALIDATE until the next agent-stage; do not set NONE here.
 					break;
 				default:
 					break;
