@@ -23,7 +23,8 @@ namespace OLLMcoder.Task
  * {@link GLib.ListModel} of {@link ProgressItem} rows: {@link Details} from completed work,
  * zero or more {@link ProgressRunner} rows (e.g. one for task creation and one for iteration — each
  * {@link PhaseEnum.COMPLETED} when that slice is done), pending {@link Details} from
- * ''runner.pending''. {@link GLib.ListModel.get_item_type} returns ''typeof(ProgressItem)''.
+ * ''runner.pending''. A {@link Step} uses {@link PhaseEnum.COMPLETED_DONE} once it lives on
+ * ''runner.completed''. {@link GLib.ListModel.get_item_type} returns ''typeof(ProgressItem)''.
  *
  * @see OLLMfiles.ProjectList
  */
@@ -116,7 +117,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 
 	/**
 	 * Remove {@link Details} rows whose {@link Step} is still in {@link Runner.pending}
-	 * ({@link Step#status} not {@link PhaseEnum.COMPLETED}). Keeps {@link ProgressRunner} rows and
+	 * ({@link Step#status} not {@link PhaseEnum.COMPLETED_DONE}). Keeps {@link ProgressRunner} rows and
 	 * rows for tasks whose step already moved to {@link Runner.completed}.
 	 */
 	public void clear_pending(bool call_changed = false)
@@ -131,7 +132,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 			if (det == null) {
 				continue;
 			}
-			if (det.step.status == PhaseEnum.COMPLETED) {
+			if (det.step.status == PhaseEnum.COMPLETED_DONE) {
 				GLib.debug(
 					"CLRPD keep idx=%d slug=%s step_phase=%s detail_phase=%s step_list=%s",
 					det.msg_idx,
@@ -188,16 +189,21 @@ public class ProgressList : GLib.Object, GLib.ListModel
 		this.items_changed((uint) pos, 0, (uint) added);
 	}
 
+	/**
+	 * Refresh the model after {@link List.move_step_to_completed}. That call sets
+	 * {@link Step#status} to {@link PhaseEnum.COMPLETED_DONE} before this runs, so
+	 * {@link clear_pending} keeps existing {@link Details} rows for the finished step
+	 * (they are not re-appended). {@link add_pending} then attaches the remaining
+	 * pending work only.
+	 *
+	 * @param step the step that was just moved; used for debug only
+	 */
 	public void add_completed(Step step)
 	{
 		var n0 = this.rows.size;
 		this.clear_pending(false);
 		var after_clear = this.rows.size;
 		var k = n0 - after_clear;
-		foreach (var d in step.children) {
-			this.rows.add(d);
-			GLib.debug("STEPDN add idx=%d slug=%s", d.msg_idx, d.slug());
-		}
 		this.add_pending(false);
 		var n1 = this.rows.size;
 		GLib.debug(

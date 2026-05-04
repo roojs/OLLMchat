@@ -183,7 +183,7 @@ public class List : Object
 		var step = this.steps.get(step_index);
 		this.runner.completed.steps.add(step);
 		step.list = this.runner.completed;
-		step.status = PhaseEnum.COMPLETED;
+		step.status = PhaseEnum.COMPLETED_DONE;
 		foreach (var t in step.children) {
 			this.runner.completed.slugs.set(t.slug(), t);
 		}

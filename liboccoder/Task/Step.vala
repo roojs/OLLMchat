@@ -63,8 +63,8 @@ public class Step : Object
 
 	/**
 	 * Step boundary for the progress strip: {@link PhaseEnum.NONE} while the step is still in
-	 * {@link Runner.pending}; {@link PhaseEnum.COMPLETED} when the step is moved to
-	 * {@link Runner.completed} (per-task row state remains on each {@link Details#status}).
+	 * {@link Runner.pending}; {@link PhaseEnum.COMPLETED_DONE} after {@link List.move_step_to_completed}
+	 * (per-task row state remains on each {@link Details#status}).
 	 */
 	public PhaseEnum status { get; set; default = PhaseEnum.NONE; }
 
