@@ -181,6 +181,13 @@ public class List : Object
 	public void move_step_to_completed(int step_index)
 	{
 		var step = this.steps.get(step_index);
+		GLib.debug(
+			"TASK LIST MOVE STEP idx=%d title=%s task_n=%u pend_steps_before=%u comp_steps_before=%u",
+			step_index,
+			step.title,
+			step.children.size,
+			this.steps.size,
+			this.runner.completed.steps.size);
 		this.runner.completed.steps.add(step);
 		step.list = this.runner.completed;
 		step.status = PhaseEnum.COMPLETED_DONE;
@@ -260,7 +267,7 @@ public class List : Object
 	{
 		yield t.wait_refined();
 		t.build_run_queue();
-		GLib.debug("RUNEXEC slug=%s idx=%d", t.slug(), t.msg_idx);
+		GLib.debug("TASK LIST RUN EXEC slug=%s idx=%d", t.slug(), t.msg_idx);
 		this.runner.progress.rebuild();
 		yield t.run_exec();
 		t.write();

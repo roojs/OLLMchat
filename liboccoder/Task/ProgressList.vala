@@ -67,7 +67,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 	public void rebuild()
 	{
 		GLib.debug(
-			"REBUILD idx_tail=%d n=%d replay=%s pend_steps=%u comp_steps=%u",
+			"PROGRESS REBUILD idx_tail=%d n=%d replay=%s pend_steps=%u comp_steps=%u",
 			this.rows.size > 0 ? this.rows.get(this.rows.size - 1).msg_idx : -1,
 			this.rows.size,
 			this.runner.in_replay.to_string (),
@@ -80,7 +80,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 		this.add_pending(false);
 		var n1 = this.rows.size;
 		GLib.debug(
-			"REBUILD before=%d drop_pending=%d after=%d idx_tail=%d replay=%s pend_steps=%u comp_steps=%u",
+			"PROGRESS REBUILD before=%d drop_pending=%d after=%d idx_tail=%d replay=%s pend_steps=%u comp_steps=%u",
 			n0,
 			k,
 			n1,
@@ -108,7 +108,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 		var removed = old_size - after_clear;
 		this.rows.add(r);
 		GLib.debug(
-			"RUNNER idx_tail=%d creation=%s clear_pending=%d",
+			"PROGRESS RUNNER ROW idx_tail=%d creation=%s clear_pending=%d",
 			r.msg_idx,
 			r.in_creation.to_string(),
 			removed);
@@ -123,7 +123,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 	public void clear_pending(bool call_changed = false)
 	{
 		GLib.debug(
-			"CLRPD idx_before=%d",
+			"PROGRESS CLEAR PENDING idx_before=%d",
 			this.rows.size > 0 ? this.rows.get(this.rows.size - 1).msg_idx : -1);
 		var old_size = this.rows.size;
 		for (var i = this.rows.size - 1; i >= 0; i--) {
@@ -134,7 +134,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 			}
 			if (det.step.status == PhaseEnum.COMPLETED_DONE) {
 				GLib.debug(
-					"CLRPD keep idx=%d slug=%s step_phase=%s detail_phase=%s step_list=%s",
+					"PROGRESS CLEAR PENDING keep idx=%d slug=%s step_phase=%s detail_phase=%s step_list=%s",
 					det.msg_idx,
 					det.slug(),
 					typeof (PhaseEnum).enum_to_string ((int) det.step.status),
@@ -149,7 +149,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 				continue;
 			}
 			GLib.debug(
-				"CLRPD drop slug=%s msg_idx=%d step_phase=%s detail_phase=%s step_list=%s pend_steps=%u comp_steps=%u",
+				"PROGRESS CLEAR PENDING drop slug=%s msg_idx=%d step_phase=%s detail_phase=%s step_list=%s pend_steps=%u comp_steps=%u detail_completed=%s orphan_list=%s",
 				det.slug(),
 				det.msg_idx,
 				typeof (PhaseEnum).enum_to_string ((int) det.step.status),
@@ -162,12 +162,16 @@ public class ProgressList : GLib.Object, GLib.ListModel
 							? "completed"
 							: "other")),
 				this.runner.pending.steps.size,
-				this.runner.completed.steps.size);
+				this.runner.completed.steps.size,
+				(det.status == PhaseEnum.COMPLETED).to_string (),
+				(det.step.list != null &&
+					det.step.list != this.runner.pending &&
+					det.step.list != this.runner.completed).to_string ());
 			this.rows.remove_at(i);
 		}
 		var removed = old_size - this.rows.size;
 		GLib.debug(
-			"CLRPD idx_after=%d removed=%d rows_now=%d emit=%s",
+			"PROGRESS CLEAR PENDING idx_after=%d removed=%d rows_now=%d emit=%s",
 			this.rows.size > 0 ? this.rows.get(this.rows.size - 1).msg_idx : -1,
 			removed,
 			this.rows.size,
@@ -185,12 +189,12 @@ public class ProgressList : GLib.Object, GLib.ListModel
 		foreach (var step in this.runner.pending.steps) {
 			foreach (var d in step.children) {
 				this.rows.add(d);
-				GLib.debug("ADDPD idx=%d slug=%s", d.msg_idx, d.slug());
+				GLib.debug("PROGRESS ADD PENDING idx=%d slug=%s", d.msg_idx, d.slug());
 				added++;
 			}
 		}
 		GLib.debug(
-			"ADDPD idx_tail=%d add=%d emit=%s replay=%s pend_steps=%u comp_steps=%u",
+			"PROGRESS ADD PENDING idx_tail=%d add=%d emit=%s replay=%s pend_steps=%u comp_steps=%u",
 			this.rows.size > 0 ? this.rows.get(this.rows.size - 1).msg_idx : -1,
 			added,
 			call_changed ? "y" : "n",
@@ -241,7 +245,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 			return;
 		}
 		this.rows.clear();
-		GLib.debug("CLRALL rows=%d", old_n);
+		GLib.debug("PROGRESS CLEAR ALL rows=%d", old_n);
 		this.items_changed(0, (uint) old_n, 0);
 	}
 }
