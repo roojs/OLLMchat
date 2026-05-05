@@ -295,7 +295,7 @@ namespace OLLMcoder.Task
 				var parser = new ResultParser(this.parent.runner, response_text);
 				var exec_ok = parser.exec_extract(this);
 				GLib.debug(
-					"LIVEEXEC slug=%s tool_run=%s try=%u resp_len=%u ok=%s issues=%s",
+					"LIVE EXECUTION EXTRACT slug=%s tool_run=%s try=%u resp_len=%u ok=%s issues=%s",
 					this.parent.slug(),
 					this.id,
 					try_count,
