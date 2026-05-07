@@ -129,9 +129,18 @@ public class ValidateLink : GLib.Object
 
 	/**
 	 * Validate every link in ''links''; appends to [[issues]] (same shape as task reference errors).
+	 * Skipped when [[Skill.Runner.in_replay]] (ReplayChat or GTK restore after Runner.on_replay sets it).
 	 */
 	public void validate_all (Gee.Iterable<Markdown.Document.Format> links)
 	{
+		if (this.details.runner.in_replay) {
+			return;
+		}
+		/* GLib.debug (
+			"VALIDATE LINK ALL stage=%s slug=%s runner_in_replay=%s",
+			typeof (PhaseEnum).enum_to_string ((int) this.stage),
+			this.details.slug (),
+			this.details.runner.in_replay.to_string ()); */
 		foreach (var link in links) {
 			this.validate (link);
 		}
