@@ -127,7 +127,7 @@ Pair with **### 1**.
 
 - **`ninja -C build`**
 - Open saved session → grep **`REPLAY POST EXEC outcome`**
-- Optional: bug doc **`REPLAY HYDRATE FLAGS`** (**`docs/bugs/2026-05-03-OPEN-task-progress-orphan-clear-pending-replay.md`** § Debug gaps)
+- Optional: bug doc **`REPLAY HYDRATE FLAGS`** (**`docs/bugs/done/2026-05-03-FIXED-task-progress-orphan-clear-pending-replay.md`** § Debug gaps)
 
 ## Changelog
 
@@ -135,3 +135,4 @@ Pair with **### 1**.
 - 2026-05-07 — **Guide shape:** Purpose / Scope / Acceptance / bullets / **Concrete code proposals** with **Part** chunks + **ValidateLink** Remove/Replace; dropped duplicate prose section.
 - 2026-05-07 — **Logging** convention: fixed **`GLib.debug`** sites per **CODING_STANDARDS**; verification logs to a single path (e.g. **`/tmp/log.txt`**).
 - 2026-05-07 — **`### 1`**: **`in_replay`** restore without **`try`/`finally`** (single exit path after guard).
+- 2026-05-07 — Bug write-up: **`docs/bugs/done/2026-05-03-FIXED-task-progress-orphan-clear-pending-replay.md`** (was OPEN).

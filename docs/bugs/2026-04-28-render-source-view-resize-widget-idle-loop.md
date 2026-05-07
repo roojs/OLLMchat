@@ -11,7 +11,7 @@
 
 While **`for_width`** stays zero or the widget stays unrealized (hidden stack page, revealer not laid out yet, etc.), the idle can fire **every main-loop iteration** → high CPU, noisy **`G_MESSAGES_DEBUG`** if anything logs per entry, and behaviour similar to **unbounded recursion** from the caller’s perspective.
 
-**Related prior fix:** **`scroll_bottom`** used to reschedule indefinitely when **`vadjustment.upper < 10`**; that was bounded with **`try_again`** (see **`docs/bugs/2026-04-08-FIXED-large-session-history-post-load-100pct-cpu.md`**). That doc noted **`resize_widget_callback`** was **not** the measured flood site next to **`upper < 10`**, but the **return-true** pattern here is the same class of bug.
+**Related prior fix:** **`scroll_bottom`** used to reschedule indefinitely when **`vadjustment.upper < 10`**; that was bounded with **`try_again`** (see **`docs/bugs/done/2026-04-08-FIXED-large-session-history-post-load-100pct-cpu.md`**). That doc noted **`resize_widget_callback`** was **not** the measured flood site next to **`upper < 10`**, but the **return-true** pattern here is the same class of bug.
 
 ## Expected
 

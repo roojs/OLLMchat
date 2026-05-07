@@ -2,7 +2,7 @@
 
 **Status: FIXED** — `user_request` is set during GTK restore in `Runner.on_replay` (`NONE` + `user-sent`). Build verified (`meson compile`). **Manual check:** open a skill-runner session that previously crashed on restore; confirm restore completes past refinement.
 
-**Related (also FIXED, same restore path):** wrong exec detail cursor — `docs/bugs/2026-04-07-FIXED-replay-execution-oob.md`; empty **`exec_runs`** before **`exec_extract`** — `docs/bugs/2026-04-07-FIXED-replay-exec-runs-empty-on-restore.md`.
+**Related (also FIXED, same restore path):** wrong exec detail cursor — `docs/bugs/done/2026-04-07-FIXED-replay-execution-oob.md`; empty **`exec_runs`** before **`exec_extract`** — `docs/bugs/done/2026-04-07-FIXED-replay-exec-runs-empty-on-restore.md`.
 
 ## Problem
 
