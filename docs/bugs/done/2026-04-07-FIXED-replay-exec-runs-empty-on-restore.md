@@ -2,7 +2,7 @@
 
 **Status: FIXED** — Replay now calls **`Details.build_exec_runs()`** when **`exec_runs`** is still empty before **`exec_extract`**, matching **`List.run_child`** (**`build_exec_runs()`** then **`run_exec()`**). Build verified (`meson compile`). **Manual check:** restore a session that reaches **exec**; no **`SIGABRT`** on first exec **`content-stream`**; debug line shows **`exec_runs`** ≥ **1**.
 
-**Related (also FIXED, same restore path):** **`user_request`** on restore — `docs/bugs/2026-04-07-FIXED-replay-refinement-oob.md`; exec detail cursor — `docs/bugs/2026-04-07-FIXED-replay-execution-oob.md`.
+**Related (also FIXED, same restore path):** **`user_request`** on restore — `docs/bugs/done/2026-04-07-FIXED-replay-refinement-oob.md`; exec detail cursor — `docs/bugs/done/2026-04-07-FIXED-replay-execution-oob.md`.
 
 ## Problem
 

@@ -39,7 +39,7 @@ Here the model placed `**` **outside** the `[…](…)` pair in a way that inser
 ## Conclusions
 
 - **Primary cause (likely):** The **LLM emitted malformed markdown** (`**[title]**(path)` instead of `[**title**](path)` or `[title](path)`). The markdown pipeline (parser + GTK) is behaving consistently with CommonMark-style expectations: **no link token** is produced, so the UI cannot show links.
-- **Ruled out (for this specific text):** A separate GTK-only regression like the digit-leading link issue (`docs/bugs/2026-04-04-FIXED-markdown-link-digit-lead.md`) — here the parser trace shows **no** `<a>` for the broken pattern.
+- **Ruled out (for this specific text):** A separate GTK-only regression like the digit-leading link issue (`docs/bugs/done/2026-04-04-FIXED-markdown-link-digit-lead.md`) — here the parser trace shows **no** `<a>` for the broken pattern.
 - **Open:** Whether **nested** `[**label**](url)` is fully styled in all GTK paths (third line in repro showed odd single TEXT blob in trace — worth a follow-up if bold+link is required in product).
 
 ## Suggested debugging approach (no code changes yet)

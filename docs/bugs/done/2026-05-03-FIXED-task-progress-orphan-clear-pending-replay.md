@@ -1,10 +1,10 @@
-# OPEN: Task progress strip — rows dropped (`step_list=other`) and stuck execution on replay
+# FIXED: Task progress strip — rows dropped (`step_list=other`) and stuck execution on replay
 
-**Status: OPEN**
+**Status: FIXED** (**2026-05-07**) · **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`** (**### 1** + **### 2**).
 
 **Related:** `Runner.on_replay`, `ProgressList.clear_pending`, `List.move_step_to_completed`, `ResultParser.exec_extract` / `parse_task_list_iteration`, `ValidateLink`.
 
-**Log prefixes (grep):** `REPLAY MESSAGE`, `REPLAY TASK ITERATION`, `REPLAY POST EXEC`, `REPLAY EXECUTION EXTRACT`, `REPLAY EXECUTION TOOL DONE`, `REPLAY EXECUTION DETAIL DONE`, `REPLAY EXEC VALIDATE STAGE`, `REPLAY UNHANDLED`, `PROGRESS REBUILD`, `PROGRESS RUNNER ROW`, `PROGRESS CLEAR PENDING`, `PROGRESS ADD PENDING`, `PROGRESS STEP DONE`, `PROGRESS CLEAR ALL`, `TASK LIST MOVE STEP`, `TASK LIST RUN EXEC`, `LIVE EXECUTION EXTRACT`.
+**Log prefixes (grep):** `REPLAY MESSAGE`, `REPLAY TASK ITERATION`, `REPLAY POST EXEC`, `REPLAY EXECUTION EXTRACT`, `REPLAY EXECUTION TOOL DONE`, `REPLAY EXECUTION DETAIL DONE`, `REPLAY EXEC VALIDATE STAGE`, `REPLAY UNHANDLED`, `PROGRESS REBUILD`, `PROGRESS RUNNER ROW`, `PROGRESS CLEAR PENDING`, `PROGRESS ADD PENDING`, `PROGRESS STEP DONE`, `PROGRESS CLEAR ALL`, `TASK LIST MOVE STEP`, `TASK LIST RUN EXEC`, `LIVE EXECUTION EXTRACT`. *(Instrumentation commented out in tree — uncomment `/* GLib.debug … */` in `Runner.vala`, `ProgressList.vala`, `List.vala`, `ValidateLink.vala`, `Tool.vala` to re-enable.)*
 
 ## Purpose (this bug doc)
 
@@ -41,11 +41,9 @@ Proves GTK restore never saw **`in_replay`** until **`Runner.on_replay`** was wr
 - **`REPLAY POST EXEC`** **`research-current-file-formats`** · **`post_issues_len=137`** · **`exec_done=false`** · **`detail_status=POST_EXEC`** — link validation filled **`parser.issues`** while hydrating from transcript.
 - **`REPLAY TASK ITERATION`** · blocking child **`research-current-file-formats`** **`exec_done=false`** · **`SWAP`** · **`issues_empty=false`** → **`PROGRESS CLEAR PENDING`** **`step_list=other`** **`orphan_list=true`** (matches **H1** chain).
 
-**Fix applied (same session):** **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`** **`### 1`** + **`### 2`** — **`in_replay`** during **`on_replay`**; **`ValidateLink.validate_all`** no-op when **`runner.in_replay`**. Re-run restore and grep **`REPLAY HYDRATE FLAGS`** (**`in_replay=true`**) and **`REPLAY POST EXEC outcome`** (**`issues_empty=true`** for env-only failures).
+**Fix:** **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`** **`### 1`** + **`### 2`** — **`in_replay`** during **`on_replay`**; **`ValidateLink.validate_all`** no-op when **`runner.in_replay`**.
 
 ## Hypotheses vs logs
-
-No single confirmed root cause — table is **hypothesis → log signal → status**.
 
 | Id | Hypothesis | Log signal | Status |
 |----|------------|------------|--------|
@@ -53,18 +51,14 @@ No single confirmed root cause — table is **hypothesis → log signal → stat
 | **H2** | Row **`detail_completed`** but **Step** on wrong list | **`detail_completed=true`** + **`orphan_list=true`** same rebuild | **Observed** |
 | **H3** | **`exec_done`** never set → feeds **H1** | **`ok=false`** · **`post_issues_len>0`** | **Confirmed** **`/tmp/log.txt`**: hydrate **`in_replay=false`** · **`VALIDATE LINK ALL`** **`runner_in_replay=false`** · **`post_issues_len=137`** → **`exec_done=false`** · **H1** · **fix: §### 1** + **§### 2** |
 
-**Next fix (hydration):** **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`** **`## Concrete code proposals`** (**### 1** then **### 2**).
-
-**If H1 remains after that:** cursor / **`move_step_to_completed`** — use **§ Debug gaps** optional lines.
-
-### Debug gaps (optional — only if H1 persists)
+### Debug gaps (optional — only if regressions)
 
 | Prefix | Place | Fields |
 |--------|-------|--------|
 | **`REPLAY HYDRATE FLAGS`** | Start **`Runner.on_replay`** after **`can_replay`** guard | **`idx`** **`can_replay`** **`in_replay`** |
 | **`REPLAY POST EXEC hydrate`** | Before **`exec_post_extract`** in **`POST_EXEC`** **`content-stream`** | **`slug`** **`runner_in_replay`** |
 
-Remove when **FIXED**.
+*(Comment blocks in source — restore to enable.)*
 
 ## Attempted fix (reverted — do not repeat)
 
@@ -74,15 +68,15 @@ Remove when **FIXED**.
 
 ## Observation (`in_replay` vs GTK)
 
-ℹ️ **`in_replay`** only set in **`Runner.replay()`**.
+ℹ️ **`in_replay`** only set in **`Runner.replay()`** before **### 1**.
 
-ℹ️ **`restore_messages`** calls **`on_replay`** without **`Runner.replay()`** → **`in_replay`** false on GTK restore.
+ℹ️ **`restore_messages`** calls **`on_replay`** without **`Runner.replay()`** → **`on_replay`** now sets **`in_replay`** for the duration of each message (**plan §### 1**).
 
-🔷 Approved implementation: **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`**.
+🔷 Implementation: **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`**.
 
 🚫 No **`SessionBase.restoring_history`**.
 
-## Debug added (2026-05-03)
+## Debug added (2026-05-03) — commented out in tree (2026-05-07)
 
 | File | Prefix |
 |------|--------|
@@ -91,19 +85,15 @@ Remove when **FIXED**.
 | `List.vala` | **`TASK LIST MOVE STEP`** |
 | `ProgressList.vala` | **`PROGRESS CLEAR PENDING drop`** (**`detail_completed`**, **`orphan_list`**) |
 
-Remove after **FIXED**.
-
-## Reproduction
+## Reproduction (historical)
 
 1. **`ninja -C build`**
 2. Multi-step session · iteration · bad refs / missing paths.
-3. Grep prefixes above.
+3. Grep prefixes above *(with debug uncommented)*.
 
 ## Follow-ups
 
-- **⏳** Re-open session with **`--debug`** · confirm **`REPLAY HYDRATE FLAGS`** **`in_replay=true`** · no **`step_list=other`** on same repro · then mark bug **FIXED** if clean
-- **⏳** If **H1** still · **§ Debug gaps**
-- **ℹ️** Related **FIXED** replay bugs · **`docs/bugs/2026-04-07-FIXED-*.md`**
+- **ℹ️** Related **FIXED** replay bugs · **`docs/bugs/done/2026-04-07-FIXED-*.md`**
 
 ## Changelog
 
@@ -113,3 +103,4 @@ Remove after **FIXED**.
 - 2026-05-07 — Reverted **`ValidateLink`** / **`restoring_history`** experiments · plan-only proposals.
 - 2026-05-07 — Hypotheses table · debug gaps · trimmed prose (**guide-to-writing-plans** style).
 - 2026-05-07 — Evidence from **`/tmp/log.txt`** (**H3**/**H1** chain) · implemented **`2026-05-07-proposed-replay-hydration-link-validation.md`** **`### 1`** **`### 2`** (**`Runner.on_replay`** **`in_replay`** save/set at start · restore at end · **`ValidateLink.validate_all`** skip when **`in_replay`**).
+- 2026-05-07 — **FIXED** · investigative **`GLib.debug`** commented out (**`/* */`**) in **`Runner`**, **`ProgressList`**, **`List`**, **`ValidateLink`**, **`Tool`** · this doc moved to **`docs/bugs/done/`**.

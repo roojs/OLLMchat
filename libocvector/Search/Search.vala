@@ -319,7 +319,7 @@ namespace OLLMvector.Search
 			var query_vector = embed_response.embeddings.get_vector(0);
 			
 			/*
-			 * Old path — id_array for IDSelector (rollback: docs/bugs/2026-04-19-vector search results.md).
+			 * Old path — id_array for IDSelector (rollback: docs/bugs/done/2026-03-19-FIXED- vector search results.md).
 			 * Debug line was GLib.debug("...Creating IDSelector with...", size, first_ids_str) using same first_ids_str as below.
 			 *
 			 * var id_array = new int64[this.filtered_vector_ids.size];

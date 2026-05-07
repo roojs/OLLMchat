@@ -2,7 +2,7 @@
 
 **Status: FIXED** — Refinement replay left `replay_details_pos` on the **last** refined child; live execution starts **`run_child`** from **`children[0]`** (`List.vala` foreach). Restore now resets **`replay_details_pos`** and **`replay_tool_pos`** to **0** when **`agent-stage`** transitions **REFINEMENT → EXECUTION** (`exec`). Build verified (`meson compile`). **Manual check:** `~/.cache/ollmchat/ollmchat.debug.log` shows first exec line with **`detail=0`** (was **`detail=2`** before fix).
 
-**Related (also FIXED, same restore path):** **`user_request`** on restore — `docs/bugs/2026-04-07-FIXED-replay-refinement-oob.md`; empty **`exec_runs`** before **`exec_extract`** — `docs/bugs/2026-04-07-FIXED-replay-exec-runs-empty-on-restore.md`.
+**Related (also FIXED, same restore path):** **`user_request`** on restore — `docs/bugs/done/2026-04-07-FIXED-replay-refinement-oob.md`; empty **`exec_runs`** before **`exec_extract`** — `docs/bugs/done/2026-04-07-FIXED-replay-exec-runs-empty-on-restore.md`.
 
 ## Problem (original)
 
@@ -29,7 +29,7 @@ Optional diagnostic: **`GLib.debug`** for **`replay_exec`** with **`children`**,
 ## Tests / automation
 
 - **`meson compile`:** succeeds.
-- After fix: debug shows **`detail=0`** at first exec **`content-stream`**. Companion fix for empty **`exec_runs`**: **`docs/bugs/2026-04-07-FIXED-replay-exec-runs-empty-on-restore.md`**.
+- After fix: debug shows **`detail=0`** at first exec **`content-stream`**. Companion fix for empty **`exec_runs`**: **`docs/bugs/done/2026-04-07-FIXED-replay-exec-runs-empty-on-restore.md`**.
 
 ## Changelog
 
