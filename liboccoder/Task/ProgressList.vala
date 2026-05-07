@@ -66,20 +66,20 @@ public class ProgressList : GLib.Object, GLib.ListModel
 	 */
 	public void rebuild()
 	{
-		GLib.debug(
+		/* GLib.debug(
 			"PROGRESS REBUILD idx_tail=%d n=%d replay=%s pend_steps=%u comp_steps=%u",
 			this.rows.size > 0 ? this.rows.get(this.rows.size - 1).msg_idx : -1,
 			this.rows.size,
 			this.runner.in_replay.to_string (),
 			this.runner.pending.steps.size,
-			this.runner.completed.steps.size);
+			this.runner.completed.steps.size); */
 		var n0 = this.rows.size;
 		this.clear_pending(false);
 		var after_clear = this.rows.size;
 		var k = n0 - after_clear;
 		this.add_pending(false);
 		var n1 = this.rows.size;
-		GLib.debug(
+		/* GLib.debug(
 			"PROGRESS REBUILD before=%d drop_pending=%d after=%d idx_tail=%d replay=%s pend_steps=%u comp_steps=%u",
 			n0,
 			k,
@@ -87,7 +87,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 			this.rows.size > 0 ? this.rows.get(this.rows.size - 1).msg_idx : -1,
 			this.runner.in_replay.to_string (),
 			this.runner.pending.steps.size,
-			this.runner.completed.steps.size);
+			this.runner.completed.steps.size); */
 		if (k == 0 && n1 == after_clear) {
 			return;
 		}
@@ -107,11 +107,11 @@ public class ProgressList : GLib.Object, GLib.ListModel
 		var after_clear = this.rows.size;
 		var removed = old_size - after_clear;
 		this.rows.add(r);
-		GLib.debug(
+		/* GLib.debug(
 			"PROGRESS RUNNER ROW idx_tail=%d creation=%s clear_pending=%d",
 			r.msg_idx,
 			r.in_creation.to_string(),
-			removed);
+			removed); */
 		this.items_changed((uint) after_clear, (uint) removed, 1u);
 	}
 
@@ -133,7 +133,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 				continue;
 			}
 			if (det.step.status == PhaseEnum.COMPLETED_DONE) {
-				GLib.debug(
+				/* GLib.debug(
 					"PROGRESS CLEAR PENDING keep idx=%d slug=%s step_phase=%s detail_phase=%s step_list=%s",
 					det.msg_idx,
 					det.slug(),
@@ -145,10 +145,10 @@ public class ProgressList : GLib.Object, GLib.ListModel
 							? "pending"
 							: (det.step.list == this.runner.completed
 								? "completed"
-								: "other")));
+								: "other"))); */
 				continue;
 			}
-			GLib.debug(
+			/* GLib.debug(
 				"PROGRESS CLEAR PENDING drop slug=%s msg_idx=%d step_phase=%s detail_phase=%s step_list=%s pend_steps=%u comp_steps=%u detail_completed=%s orphan_list=%s",
 				det.slug(),
 				det.msg_idx,
@@ -166,7 +166,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 				(det.status == PhaseEnum.COMPLETED).to_string (),
 				(det.step.list != null &&
 					det.step.list != this.runner.pending &&
-					det.step.list != this.runner.completed).to_string ());
+					det.step.list != this.runner.completed).to_string ()); */
 			this.rows.remove_at(i);
 		}
 		var removed = old_size - this.rows.size;
@@ -189,18 +189,18 @@ public class ProgressList : GLib.Object, GLib.ListModel
 		foreach (var step in this.runner.pending.steps) {
 			foreach (var d in step.children) {
 				this.rows.add(d);
-				GLib.debug("PROGRESS ADD PENDING idx=%d slug=%s", d.msg_idx, d.slug());
+				/* GLib.debug("PROGRESS ADD PENDING idx=%d slug=%s", d.msg_idx, d.slug()); */
 				added++;
 			}
 		}
-		GLib.debug(
+		/* GLib.debug(
 			"PROGRESS ADD PENDING idx_tail=%d add=%d emit=%s replay=%s pend_steps=%u comp_steps=%u",
 			this.rows.size > 0 ? this.rows.get(this.rows.size - 1).msg_idx : -1,
 			added,
 			call_changed ? "y" : "n",
 			this.runner.in_replay.to_string (),
 			this.runner.pending.steps.size,
-			this.runner.completed.steps.size);
+			this.runner.completed.steps.size); */
 		if (added == 0 || !call_changed) {
 			return;
 		}
@@ -224,14 +224,14 @@ public class ProgressList : GLib.Object, GLib.ListModel
 		var k = n0 - after_clear;
 		this.add_pending(false);
 		var n1 = this.rows.size;
-		GLib.debug(
+		/* GLib.debug(
 			"STEPDN step=%s tasks=%d drop_pending=%d rows_before=%d rows_final=%d last_task_idx=%d",
 			step.title,
 			step.children.size,
 			k,
 			n0,
 			n1,
-			step.children.size > 0 ? step.children.get(step.children.size - 1).msg_idx : -1);
+			step.children.size > 0 ? step.children.get(step.children.size - 1).msg_idx : -1); */
 		if (k == 0 && n1 == after_clear) {
 			return;
 		}
@@ -245,7 +245,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 			return;
 		}
 		this.rows.clear();
-		GLib.debug("PROGRESS CLEAR ALL rows=%d", old_n);
+		/* GLib.debug("PROGRESS CLEAR ALL rows=%d", old_n); */
 		this.items_changed(0, (uint) old_n, 0);
 	}
 }

@@ -1,134 +1,115 @@
 # OPEN: Task progress strip — rows dropped (`step_list=other`) and stuck execution on replay
 
-**Status: OPEN** — Root cause not fully fixed; **instrumentation** added to confirm hypotheses before further code changes.
+**Status: OPEN**
 
-**Related code:** `liboccoder/Skill/Runner.on_replay` (TASK_LIST_ITERATION), `liboccoder/Task/ProgressList.clear_pending`, `liboccoder/Task/List.move_step_to_completed`, `liboccoder/Task/ResultParser.exec_extract` / `parse_task_list_iteration`, `liboccoder/Task/ValidateLink`.
+**Related:** `Runner.on_replay`, `ProgressList.clear_pending`, `List.move_step_to_completed`, `ResultParser.exec_extract` / `parse_task_list_iteration`, `ValidateLink`.
 
-**Log prefixes (grep):** `REPLAY MESSAGE`, `REPLAY TASK ITERATION` (step / migrated / swap / content), `REPLAY POST EXEC`, `REPLAY EXECUTION EXTRACT`, `REPLAY EXECUTION TOOL DONE`, `REPLAY EXECUTION DETAIL DONE`, `REPLAY EXEC VALIDATE STAGE`, `REPLAY UNHANDLED`, `PROGRESS REBUILD`, `PROGRESS RUNNER ROW`, `PROGRESS CLEAR PENDING`, `PROGRESS ADD PENDING`, `PROGRESS STEP DONE`, `PROGRESS CLEAR ALL`, `TASK LIST MOVE STEP`, `TASK LIST RUN EXEC`, `LIVE EXECUTION EXTRACT`.
+**Log prefixes (grep):** `REPLAY MESSAGE`, `REPLAY TASK ITERATION`, `REPLAY POST EXEC`, `REPLAY EXECUTION EXTRACT`, `REPLAY EXECUTION TOOL DONE`, `REPLAY EXECUTION DETAIL DONE`, `REPLAY EXEC VALIDATE STAGE`, `REPLAY UNHANDLED`, `PROGRESS REBUILD`, `PROGRESS RUNNER ROW`, `PROGRESS CLEAR PENDING`, `PROGRESS ADD PENDING`, `PROGRESS STEP DONE`, `PROGRESS CLEAR ALL`, `TASK LIST MOVE STEP`, `TASK LIST RUN EXEC`, `LIVE EXECUTION EXTRACT`.
+
+## Purpose (this bug doc)
+
+- Record repro, constraints, what logs showed, what **not** to ship again.
+- Point to **one** implementation plan: **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`**.
 
 ## Problem
 
-1. **Progress strip:** After **task list iteration** and **`clear_pending` / `rebuild`**, **completed**-looking task rows **disappear** or the model shows inconsistent rows. Debug showed **`PROGRESS CLEAR PENDING drop`** with **`step_list=other`**: the **`Step`** for a **`Details`** row points at a **list** that is neither **`runner.pending`** nor **`runner.completed`** (orphan list after **`pending`** was replaced).
+- Strip rows lost after iteration / rebuild (**`step_list=other`**, orphan **`Step`**).
+- Tools stuck (**`REPLAY EXECUTION EXTRACT`** **`ok=false`**) or post-exec issues (**`post_issues_len>0`**).
 
-2. **Stuck “review” / tool row:** **`REPLAY EXECUTION EXTRACT`** … **`ok=false`** when executor output fails **`exec_extract`** (e.g. **invalid reference** to a missing path such as **`.cursor/plans/...`**). The tool run does not reach **COMPLETED** in replay for that message.
+## Constraints (author)
 
-**Expected:** Progress rows stay consistent with **pending** / **completed** **Step** lifetimes; replay matches transcript without random tree state.
-
-**Actual:** Orphan **`Step`** references when **`runner.pending`** is replaced before migrate/completed bookkeeping catches up; validation failures leave tools incomplete.
-
-## Constraints (author answers — short)
-
-- **Design:** No redesign of the overall model; fix should match existing intent (**bookkeeping bug**, not “change the design”).
-- **Iteration vs step:** If the transcript **reaches task list iteration**, that **implies the previous step (one full step) has completed** — we iterate **after each step**. Replay should line up with that (**`REPLAY TASK ITERATION STEP`** shows **`exec_done`** vs **`TASK LIST MOVE STEP`** / **`is_exec_done()`**).
-- **Replay vs live errors:** If **replay** reports validation errors that the **original run did not** have, treat that as a **replay bug** (reconstructing wrong state / order / env). In principle, **errors produced only by replay code** can be **ignored** for judging the **session** — but the **transcript** is still ground truth.
-- **Input = ground truth:** **Support what we get in**; **(2)** and **(3)** are the main **replay** health checks (step completed before iteration; replay not inventing failures the session didn’t have).
+- **Design:** Bookkeeping fix size — no redesign.
+- **Iteration:** Transcript at **task list iteration** ⇒ prior **full step** should be done (replay should match).
+- **Replay vs live:** Replay-only env errors ⇒ replay bug; transcript = ground truth.
 
 ## Evidence (logs)
 
-Captured with **`ollmchat --debug`** (see **`ApplicationInterface.debug_log`** / project logging conventions).
+**Run:** **`ollmchat --debug`** (**`ApplicationInterface.debug_log`**).
 
-**Symptoms observed:**
+**Seen:**
 
-- **`REPLAY TASK ITERATION CONTENT`** with **`issues_empty=false`** — iteration markdown fails validation (e.g. **`task://…`** references to tasks no longer in the new list).
-- **`PROGRESS CLEAR PENDING drop`** … **`step_list=other`** — **`det.step.list`** not **pending** or **completed**.
-- **`REPLAY EXECUTION EXTRACT`** … **`ok=false`** followed by **`Invalid reference target`** lines — **`exec_extract`** / link validation failure.
+- **`REPLAY TASK ITERATION CONTENT`** **`issues_empty=false`**
+- **`PROGRESS CLEAR PENDING drop`** **`step_list=other`**
+- **`REPLAY EXECUTION EXTRACT`** **`ok=false`** / **`Invalid reference target`**
 
-**Example hypothesis chain:** **`TASK_LIST_ITERATION`** assigns **`this.pending = new List`**; if **`move_step_to_completed`** did not run (**`is_exec_done()`** false) or steps are otherwise left on the **old** list, existing **`Details`** rows still reference **old** **`Step`** objects → **`clear_pending`** drops them ( **`Step.status` ≠ `COMPLETED_DONE`** and/or orphan list).
+### Capture **`/tmp/log.txt`** (2026-05-07)
 
-## Root cause (working theory — confirm with logs)
+Proves GTK restore never saw **`in_replay`** until **`Runner.on_replay`** was wrapped (**plan §### 1**):
 
-| Id | Theory | What would confirm in logs |
-|----|--------|---------------------------|
-| **Theory 1** | Task list iteration runs before replay thinks the step is done → **no** **`move_step_to_completed`** → **`pending`** list replaced anyway → orphan **Steps** → **clear pending** drops rows (**orphan_list=true**). | **`exec_done=false`** on **`REPLAY TASK ITERATION STEP`**, then **`REPLAY TASK ITERATION SWAP`**; no **`TASK LIST MOVE STEP`**; **`PROGRESS CLEAR PENDING drop`** with **`orphan_list=true`**. |
-| **Theory 2** | **`move_step_to_completed`** ran, but a drop still shows the detail as **COMPLETED** while we drop it — mismatch between **row status** and **step/list**. | **`TASK LIST MOVE STEP`** in log; **`PROGRESS CLEAR PENDING drop`** with **`detail_completed=true`**. |
-| **Theory 3** | **`exec_extract`** / **`post_exec`** validation fails on **broken links** → task/step never fully “done” in model → worse timing before iteration. | **`REPLAY EXECUTION EXTRACT`** **`ok=false`**, **`REPLAY POST EXEC`** **`post_issues_len>0`**. |
+- **`REPLAY HYDRATE FLAGS`** · **`in_replay=false`** on **every** message (sample: **`idx=0`** … **`idx=61`**).
+- **`VALIDATE LINK ALL`** · **`runner_in_replay=false`** during **`LIST`** / **`REFINEMENT`** / **`EXECUTION`**.
+- **`REPLAY POST EXEC`** **`research-current-file-formats`** · **`post_issues_len=137`** · **`exec_done=false`** · **`detail_status=POST_EXEC`** — link validation filled **`parser.issues`** while hydrating from transcript.
+- **`REPLAY TASK ITERATION`** · blocking child **`research-current-file-formats`** **`exec_done=false`** · **`SWAP`** · **`issues_empty=false`** → **`PROGRESS CLEAR PENDING`** **`step_list=other`** **`orphan_list=true`** (matches **H1** chain).
 
-Fix direction: align **Runner** replay with **(2)** — when **task list iteration** runs, the **current** step in replay should **already** be in the same “finished” state live would have had (**`move_step_to_completed`** / exec_done), so **`pending`** swap does not orphan **Steps**. Use logs to see if **`exec_done=false`** at task list iteration is **replay-only** misprediction vs transcript.
+**Fix applied (same session):** **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`** **`### 1`** + **`### 2`** — **`in_replay`** during **`on_replay`**; **`ValidateLink.validate_all`** no-op when **`runner.in_replay`**. Re-run restore and grep **`REPLAY HYDRATE FLAGS`** (**`in_replay=true`**) and **`REPLAY POST EXEC outcome`** (**`issues_empty=true`** for env-only failures).
 
-## Attempted fix (reverted)
+## Hypotheses vs logs
 
-**Idea:** On **task list iteration** parse failure (`**p1.issues != ""**`), **restore** previous **`pending`** before continuing replay.
+No single confirmed root cause — table is **hypothesis → log signal → status**.
 
-**Result:** **Worse** — transcript **continues** as if the **new** iteration applied (**refinement** / **exec** target **new** slugs) while **`pending`** was **old** → **replay cursors** and **UI** pointed at the **wrong** tasks (“random” tree).
+| Id | Hypothesis | Log signal | Status |
+|----|------------|------------|--------|
+| **H1** | Iteration swaps **`pending`** before step **`exec_done`** / **`move_step_to_completed`** → orphan rows | **`REPLAY TASK ITERATION STEP`** **`exec_done=false`** · **`blocking child`** **`exec_done=false`** · **`SWAP`** · **no** **`TASK LIST MOVE STEP`** · **`orphan_list=true`** | **Matches** captured logs — primary strip bug chain |
+| **H2** | Row **`detail_completed`** but **Step** on wrong list | **`detail_completed=true`** + **`orphan_list=true`** same rebuild | **Observed** |
+| **H3** | **`exec_done`** never set → feeds **H1** | **`ok=false`** · **`post_issues_len>0`** | **Confirmed** **`/tmp/log.txt`**: hydrate **`in_replay=false`** · **`VALIDATE LINK ALL`** **`runner_in_replay=false`** · **`post_issues_len=137`** → **`exec_done=false`** · **H1** · **fix: §### 1** + **§### 2** |
 
-**Action:** **Reverted.** Do not restore **`pending`** on failed parse without a full replay contract (or a different fix: e.g. reparent steps to **`completed`**, or adjust **`clear_pending`** only).
+**Next fix (hydration):** **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`** **`## Concrete code proposals`** (**### 1** then **### 2**).
 
-**Git:** Revert any commit that reintroduces “restore **`pending`** on task list iteration issues” in **`Runner.vala`**.
+**If H1 remains after that:** cursor / **`move_step_to_completed`** — use **§ Debug gaps** optional lines.
 
-## Proposed fix (pending): bypass link validation during replay / re-hydration
+### Debug gaps (optional — only if H1 persists)
 
-### Summary
+| Prefix | Place | Fields |
+|--------|-------|--------|
+| **`REPLAY HYDRATE FLAGS`** | Start **`Runner.on_replay`** after **`can_replay`** guard | **`idx`** **`can_replay`** **`in_replay`** |
+| **`REPLAY POST EXEC hydrate`** | Before **`exec_post_extract`** in **`POST_EXEC`** **`content-stream`** | **`slug`** **`runner_in_replay`** |
 
-Skip **`ValidateLink`** when **`OLLMcoder.Skill.Runner.in_replay`** is **`true`**, so **`ResultParser.exec_extract`** / **`exec_post_extract`** can populate **`Details`** / **`Tool`** state from transcript text **without** failing on links that depend on **current** workspace state (missing files, moved paths, **`task://`** registry timing).
+Remove when **FIXED**.
 
-### Rationale
+## Attempted fix (reverted — do not repeat)
 
-| Pro | Con / mitigation |
-|-----|-------------------|
-| Re-hydration matches the **transcript** instead of **today’s disk**; avoids replay-only failures that are not “session truth.” | Restored UI may show markdown whose links are **not** re-checked against the repo until the user acts. |
-| **`Runner`** already exposes **`in_replay`** for exactly this kind of branch (see **`Details.run_post_exec`** replay guard on **`session.add_message`**). | Narrow scoping: **live** and **continuation after restore** must still validate. |
+- **Idea:** Restore old **`pending`** on task-list-iteration parse failure.
+- **Result:** Transcript advanced but **`pending`** stayed stale → wrong tree.
+- **Git:** Do not reintroduce that **`Runner`** branch.
 
-**Why acceptable:** After restore, **refinement** and normal **live** execution paths continue to use **`ValidateLink`** unchanged. Replay is **hydration**, not the last line of defense for link correctness.
+## Observation (`in_replay` vs GTK)
 
-### Implementation (preferred)
+ℹ️ **`in_replay`** only set in **`Runner.replay()`**.
 
-**Single choke-point — `ValidateLink.validate_all`**
+ℹ️ **`restore_messages`** calls **`on_replay`** without **`Runner.replay()`** → **`in_replay`** false on GTK restore.
 
-At the start of **`validate_all`**, if **`this.details.runner.in_replay`**, **return** without iterating links (no **`validate`** calls). Optionally document on **`ValidateLink`** that replay skips link checks by design.
+🔷 Approved implementation: **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`**.
 
-**Alternative — `ResultParser`**
-
-Omit **`vl_sum.validate_all(...)`** (and any analogous **`ValidateLink`** usage in **`exec_extract`**) when **`task.runner.in_replay`**. More scattered; prefer **`ValidateLink`** unless profiling shows a reason to avoid constructing **`ValidateLink`** at all.
-
-### Evidence this addresses
-
-Log pattern: **`REPLAY POST EXEC`** … **`post_issues_len>0`** immediately adjacent to **`Invalid reference target`** **`… plan.md`** **`file does not exist (resolved from project folder)`** — validation tied to **filesystem**, not transcript integrity.
-
-### Risks (explicit)
-
-- **No** promise that replayed **`agent-issues`** content matches what a full re-parse would emit today.
-- If any feature assumed “links validated ⇒ safe to resolve,” that assumption must **not** apply to **`in_replay`** paths only.
-
-### Files to touch
-
-| File | Change |
-|------|--------|
-| **`liboccoder/Task/ValidateLink.vala`** | Early return in **`validate_all`** when **`details.runner.in_replay`** (and short docblock note). |
-
-**Verify:** **`ninja -C build`**; replay session that previously failed **`POST_EXEC`** / **`EXECUTION`** on missing **`file:`** paths; confirm **`exec_done`** / progress strip align with transcript; then continue session **live** and confirm refinement still surfaces link issues when appropriate.
+🚫 No **`SessionBase.restoring_history`**.
 
 ## Debug added (2026-05-03)
 
-**Purpose:** Confirm **theory 1–3** from one run; **no** product behavior change beyond **`GLib.debug`** (per **`.cursor/rules/CODING_STANDARDS.md`** — no throttling; message text without class/method prefix).
+| File | Prefix |
+|------|--------|
+| `Runner.vala` | **`REPLAY TASK ITERATION STEP`** |
+| `Runner.vala` | **`REPLAY TASK ITERATION SWAP`** |
+| `List.vala` | **`TASK LIST MOVE STEP`** |
+| `ProgressList.vala` | **`PROGRESS CLEAR PENDING drop`** (**`detail_completed`**, **`orphan_list`**) |
 
-| Location | Prefix | What it logs |
-|----------|--------|----------------|
-| `Runner.vala` | **`REPLAY TASK ITERATION STEP`** | **`si`**, **`exec_done`**, **`step_title`**, step task count, **`pend_steps`**, **`comp_steps`** before deciding to move the step to completed. |
-| `Runner.vala` | **`REPLAY TASK ITERATION SWAP`** | **`pend_steps`**, **`comp_steps`** immediately before **`new List`**. |
-| `List.vala` | **`TASK LIST MOVE STEP`** | **`move_step_to_completed`**: index, title, task count, **`pend_steps_before`**, **`comp_steps_before`**. |
-| `ProgressList.vala` | **`PROGRESS CLEAR PENDING drop`** | **`detail_completed`**, **`orphan_list`**. |
+Remove after **FIXED**.
 
-**Remove:** Delete these lines once the issue is **FIXED** and verified (same as other bug docs).
-
-## Reproduction / verification
+## Reproduction
 
 1. **`ninja -C build`**
-2. Reproduce: session with **multi-step** task list, **task list iteration** that can **fail validation** (bad **`task://`** refs) and/or **executor** output with **invalid file links**.
-3. Capture log; grep **`REPLAY TASK ITERATION`**, **`TASK LIST MOVE STEP`**, **`PROGRESS CLEAR PENDING`**, **`REPLAY EXECUTION EXTRACT`**, **`REPLAY POST EXEC`**.
-
-**Closing criteria:** **FIXED** doc with root cause, implementation, and manual log showing no orphan drops in the intended scenario; **or** explicit **WONTFIX** / product decision documented.
+2. Multi-step session · iteration · bad refs / missing paths.
+3. Grep prefixes above.
 
 ## Follow-ups
 
-- **Replay validation bypass:** Implement **“Proposed fix (pending): bypass link validation during replay”** above; then re-check **theory 1** (**`exec_done`** at task list iteration) on the same repro — remaining orphan drops may be bookkeeping only.
-- **Theory 1 + constraints:** If transcript has **task list iteration** but **`exec_done=false`** **after** replay validation bypass, treat as cursor / **`move_step_to_completed`** alignment (not environmental link failure).
-- **Replay-only errors:** Compare **same idx** live vs replay if disputes remain — **`exec_done`**, cursor.
-- Link **FIXED** replay bugs under **`docs/bugs/2026-04-07-FIXED-*.md`** family if cursor/multi-tool overlap.
+- **⏳** Re-open session with **`--debug`** · confirm **`REPLAY HYDRATE FLAGS`** **`in_replay=true`** · no **`step_list=other`** on same repro · then mark bug **FIXED** if clean
+- **⏳** If **H1** still · **§ Debug gaps**
+- **ℹ️** Related **FIXED** replay bugs · **`docs/bugs/2026-04-07-FIXED-*.md`**
 
 ## Changelog
 
-- 2026-05-03 — **OPEN** doc: problem, evidence, theories, reverted “restore **pending**” attempt, **debug** table, repro / follow-ups.
-- 2026-05-03 — **Constraints** section: author answers (design OK; iteration ⇒ prior step done; replay errors vs live; transcript ground truth).
-- 2026-05-03 — **Log prefixes:** short **ALL CAPS** (`REPLAY …`, `PROGRESS …`, `TASK LIST …`, `LIVE EXECUTION …`).
-- 2026-05-03 — Renamed **`REPLAY TASK ITERATION GATE`** → **`REPLAY TASK ITERATION STEP`** (avoid jargon “gate”).
-- 2026-05-03 — **Proposed fix:** bypass **`ValidateLink`** during **`in_replay`** ( **`validate_all`** choke-point); rationale (live/refinement re-validates); evidence (**`file does not exist`** on replay); risks; follow-ups updated.
+- 2026-05-03 — OPEN · constraints · debug table · repro.
+- 2026-05-03 — ALL CAPS log prefixes.
+- 2026-05-03 — **`REPLAY TASK ITERATION STEP`** rename.
+- 2026-05-07 — Reverted **`ValidateLink`** / **`restoring_history`** experiments · plan-only proposals.
+- 2026-05-07 — Hypotheses table · debug gaps · trimmed prose (**guide-to-writing-plans** style).
+- 2026-05-07 — Evidence from **`/tmp/log.txt`** (**H3**/**H1** chain) · implemented **`2026-05-07-proposed-replay-hydration-link-validation.md`** **`### 1`** **`### 2`** (**`Runner.on_replay`** **`in_replay`** save/set at start · restore at end · **`ValidateLink.validate_all`** skip when **`in_replay`**).
