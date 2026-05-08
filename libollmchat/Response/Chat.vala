@@ -48,7 +48,7 @@ namespace OLLMchat.Response
 		/** v1 non-streaming: choice messages (first mirrors {@link message}). */
 		public Gee.ArrayList<Message> choices { get; set; default = new Gee.ArrayList<Message>(); }
 		/** Owning chat call (Ollama or v1); always set for live responses. */
-		public Call.ChatInterface call { get; set; }
+		public Call.ChatBase call { get; set; }
 		
 		public new string chat_content {
 			get { return this.message.content; }
@@ -118,7 +118,7 @@ namespace OLLMchat.Response
 				this.message = new Message("assistant", "");
 		}
 
-		public Chat(Settings.Connection? connection, Call.ChatInterface call)
+		public Chat(Settings.Connection? connection, Call.ChatBase call)
 		{
 			base(connection);
 			this.call = call;

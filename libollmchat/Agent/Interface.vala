@@ -37,7 +37,7 @@ namespace OLLMchat.Agent
 		 * 
 		 * @return The chat instance
 		 */
-		public abstract Call.Chat chat();
+		public abstract Call.ChatBase chat();
 		
 		/**
 		 * Get the permission provider for tool execution.

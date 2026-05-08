@@ -7,9 +7,17 @@
  *   oc-test-loop <file>
  */
 
-class DummyChatCall : GLib.Object, OLLMchat.Call.ChatInterface {
-	public async OLLMchat.Response.Chat send_append(
-			Gee.ArrayList<OLLMchat.Message> new_messages,
+class DummyChatCall : OLLMchat.Call.ChatBase {
+	public override string model { get; set; default = "dummy"; }
+	public override OLLMchat.Call.Options options { get; set; default = new OLLMchat.Call.Options(); }
+
+	public DummyChatCall()
+	{
+		base(null);
+	}
+
+	public override async OLLMchat.Response.Chat send(
+			Gee.ArrayList<OLLMchat.Message> messages,
 			GLib.Cancellable? cancellable = null) throws GLib.Error {
 		throw new OLLMchat.OllmError.INVALID_ARGUMENT("dummy");
 	}

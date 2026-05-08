@@ -94,7 +94,7 @@ namespace OLLMchat.History
 		public signal void agent_status_change();
 
 		// Signals that relay client signals to UI (from active session)
-		public signal void chat_send(Call.Chat chat);
+		public signal void chat_send(Call.ChatBase chat);
 		public signal void stream_chunk(string new_text, bool is_thinking, Response.Chat response);
 		public signal void stream_content(string new_text, Response.Chat response);
 		public signal void stream_start();

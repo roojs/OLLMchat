@@ -53,7 +53,7 @@ namespace OLLMchat.Agent
 		 * Chat instance created in constructor and reused for all requests.
 		 * Can be updated if model, options, or other properties change.
 		 */
-		protected OLLMchat.Call.Chat chat_call;
+		protected OLLMchat.Call.ChatBase chat_call;
 		
 		// Signal handler IDs removed - agent usage now uses direct method calls
 		
@@ -70,7 +70,7 @@ namespace OLLMchat.Agent
 		/**
 		 * Signal emitted when a chat request is sent to the server.
 		 */
-		public signal void chat_send(OLLMchat.Call.Chat chat_call);
+		public signal void chat_send(OLLMchat.Call.ChatBase chat_call);
 		
 		/**
 		 * Signal emitted when streaming starts.
@@ -367,7 +367,7 @@ namespace OLLMchat.Agent
 		 * 
 		 * @return The chat instance
 		 */
-		public Call.Chat chat()
+		public Call.ChatBase chat()
 		{
 			return this.chat_call;
 		}
@@ -409,7 +409,7 @@ namespace OLLMchat.Agent
 		 * 
 		 * @param new_chat The new chat instance to use
 		 */
-		public void replace_chat(Call.Chat new_chat)
+		public void replace_chat(Call.ChatBase new_chat)
 		{
 			this.chat_call = new_chat;
 		}

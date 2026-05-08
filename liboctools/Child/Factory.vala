@@ -59,7 +59,7 @@ namespace OLLMtools.Child
 		 *
 		 * @param call The Chat call to configure tools for
 		 */
-		public override void configure_tools(OLLMchat.Call.Chat call)
+		public override void configure_tools(OLLMchat.Call.ChatBase call)
 		{
 			// Clear existing tools
 			call.tools.clear();

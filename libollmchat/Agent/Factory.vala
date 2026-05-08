@@ -213,7 +213,7 @@ namespace OLLMchat.Agent
 		 * 
 		 * @param call The Chat call to configure tools for
 		 */
-		public virtual void configure_tools(OLLMchat.Call.Chat call)
+		public virtual void configure_tools(OLLMchat.Call.ChatBase call)
 		{
 			// Default implementation: no tools added
 			// Subclasses should override to add tools from Manager to Chat
