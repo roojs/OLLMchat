@@ -1,6 +1,8 @@
-# 2026-05-07 Replay / restore: hydrate without link validation
+# FIXED: Replay / restore — hydrate without spurious link validation (`in_replay` during GTK restore)
 
-**Status:** implemented (**2026-05-07**) after **`/tmp/log.txt`** proved GTK restore had **`in_replay=false`** (**bug doc** Evidence). Original gate was **`docs/bug-fix-process.md`** approval.
+**Status: FIXED** (2026-05-07)
+
+Original investigation/plan doc lived under **`docs/plans/`**; moved here as a completed bug record per **`docs/bug-fix-process.md`**.
 
 **Pointer:** **`.cursor/rules/CODING_STANDARDS.md`** — checklist for plans; smallest change.
 
@@ -9,7 +11,7 @@
 - **In code:** Put each **`GLib.debug()`** at a **fixed, meaningful site** in the real control flow — e.g. right after the **`can_replay`** guard, immediately before **`exec_post_extract`** / **`exec_extract`**, at a **phase**/**outcome** boundary — not scattered through the function. Do **not** put class names, method names, or file/line text inside the message (the runtime already logs file and line). Follow **“Debug and Warning Statements”** in **`.cursor/rules/CODING_STANDARDS.md`** (no throttling or debug-only flags whose only job is to reduce log volume).
 - **For verification / bug evidence:** Always capture the same way to a **single path** so everyone can grep the same file — e.g. run with debug enabled and save to **`/tmp/log.txt`** (or one team path). That keeps repro logs comparable and avoids “which file was that run?”
 
-## Purpose
+## Problem
 
 - GTK **`restore_messages`** → **`on_replay`** and ReplayChat **`Runner.replay`** both parse transcript through **`ResultParser`** / **`ValidateLink`**.
 - Link checks use **current disk** → restore fails (**`post_issues_len>0`**) though transcript was valid live.
@@ -22,27 +24,25 @@
 | Skip **`ValidateLink`** only while hydrating (**`in_replay`**) | **`ProgressList`** / iteration rewrite (**unless** still broken after this) |
 | Fences below | Relaxing validation on **live** sends |
 
-## Acceptance criteria
+## Acceptance criteria (met)
 
 - **`ninja -C build`**
 - GTK restore: **`REPLAY POST EXEC outcome`** **`issues_empty=true`** when prior failure was link/env only (same repro as bug log).
 - Live continuation after restore still validates new output (**`in_replay`** false).
 
-## Current behaviour (bullets)
+## Root cause / behaviour
 
 - **`in_replay`** set **`true`** only in **`Runner.replay()`** (ReplayChat).
-- **`Session.restore_messages`** never enters **`Runner.replay()`** → **`in_replay`** stays **`false`** during GTK restore.
+- **`Session.restore_messages`** never entered **`Runner.replay()`** → **`in_replay`** stayed **`false`** during GTK restore.
 
-## Proposed behaviour (bullets)
+## Fix / implemented behaviour
 
 - Every **`on_replay`** message runs with **`in_replay`** true (**save/restore** old value).
 - **`ValidateLink.validate_all`** no-op when **`details.runner.in_replay`**.
 
-## Concrete code proposals
+## Implementation reference (order)
 
-Intro: hunks are **Keep** / **Remove** / **Replace with** / **Add** from tree — verify context before apply (**`docs/guide-to-writing-plans.md`**).
-
-🔷 **Implement in order:** **### 1** then **### 2** (GTK restore needs **`### 1`** before **`ValidateLink`** sees **`in_replay`**).
+🔷 **### 1** then **### 2** (GTK restore needs **`### 1`** before **`ValidateLink`** sees **`in_replay`**).
 
 ### 1. `liboccoder/Skill/Runner.vala` — `on_replay`
 
@@ -136,3 +136,4 @@ Pair with **### 1**.
 - 2026-05-07 — **Logging** convention: fixed **`GLib.debug`** sites per **CODING_STANDARDS**; verification logs to a single path (e.g. **`/tmp/log.txt`**).
 - 2026-05-07 — **`### 1`**: **`in_replay`** restore without **`try`/`finally`** (single exit path after guard).
 - 2026-05-07 — Bug write-up: **`docs/bugs/done/2026-05-03-FIXED-task-progress-orphan-clear-pending-replay.md`** (was OPEN).
+- 2026-05-08 — Moved from **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`** to **`docs/bugs/done/`** as completed bug record.

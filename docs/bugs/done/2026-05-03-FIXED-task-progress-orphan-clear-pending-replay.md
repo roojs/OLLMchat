@@ -1,6 +1,6 @@
 # FIXED: Task progress strip — rows dropped (`step_list=other`) and stuck execution on replay
 
-**Status: FIXED** (**2026-05-07**) · **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`** (**### 1** + **### 2**).
+**Status: FIXED** (**2026-05-07**) · **`docs/bugs/done/2026-05-07-FIXED-replay-hydration-link-validation.md`** (**### 1** + **### 2**).
 
 **Related:** `Runner.on_replay`, `ProgressList.clear_pending`, `List.move_step_to_completed`, `ResultParser.exec_extract` / `parse_task_list_iteration`, `ValidateLink`.
 
@@ -9,7 +9,7 @@
 ## Purpose (this bug doc)
 
 - Record repro, constraints, what logs showed, what **not** to ship again.
-- Point to **one** implementation plan: **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`**.
+- Point to **one** implementation plan: **`docs/bugs/done/2026-05-07-FIXED-replay-hydration-link-validation.md`**.
 
 ## Problem
 
@@ -41,7 +41,7 @@ Proves GTK restore never saw **`in_replay`** until **`Runner.on_replay`** was wr
 - **`REPLAY POST EXEC`** **`research-current-file-formats`** · **`post_issues_len=137`** · **`exec_done=false`** · **`detail_status=POST_EXEC`** — link validation filled **`parser.issues`** while hydrating from transcript.
 - **`REPLAY TASK ITERATION`** · blocking child **`research-current-file-formats`** **`exec_done=false`** · **`SWAP`** · **`issues_empty=false`** → **`PROGRESS CLEAR PENDING`** **`step_list=other`** **`orphan_list=true`** (matches **H1** chain).
 
-**Fix:** **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`** **`### 1`** + **`### 2`** — **`in_replay`** during **`on_replay`**; **`ValidateLink.validate_all`** no-op when **`runner.in_replay`**.
+**Fix:** **`docs/bugs/done/2026-05-07-FIXED-replay-hydration-link-validation.md`** **`### 1`** + **`### 2`** — **`in_replay`** during **`on_replay`**; **`ValidateLink.validate_all`** no-op when **`runner.in_replay`**.
 
 ## Hypotheses vs logs
 
@@ -72,7 +72,7 @@ Proves GTK restore never saw **`in_replay`** until **`Runner.on_replay`** was wr
 
 ℹ️ **`restore_messages`** calls **`on_replay`** without **`Runner.replay()`** → **`on_replay`** now sets **`in_replay`** for the duration of each message (**plan §### 1**).
 
-🔷 Implementation: **`docs/plans/2026-05-07-proposed-replay-hydration-link-validation.md`**.
+🔷 Implementation: **`docs/bugs/done/2026-05-07-FIXED-replay-hydration-link-validation.md`**.
 
 🚫 No **`SessionBase.restoring_history`**.
 
@@ -102,5 +102,5 @@ Proves GTK restore never saw **`in_replay`** until **`Runner.on_replay`** was wr
 - 2026-05-03 — **`REPLAY TASK ITERATION STEP`** rename.
 - 2026-05-07 — Reverted **`ValidateLink`** / **`restoring_history`** experiments · plan-only proposals.
 - 2026-05-07 — Hypotheses table · debug gaps · trimmed prose (**guide-to-writing-plans** style).
-- 2026-05-07 — Evidence from **`/tmp/log.txt`** (**H3**/**H1** chain) · implemented **`2026-05-07-proposed-replay-hydration-link-validation.md`** **`### 1`** **`### 2`** (**`Runner.on_replay`** **`in_replay`** save/set at start · restore at end · **`ValidateLink.validate_all`** skip when **`in_replay`**).
+- 2026-05-07 — Evidence from **`/tmp/log.txt`** (**H3**/**H1** chain) · implemented **`docs/bugs/done/2026-05-07-FIXED-replay-hydration-link-validation.md`** **`### 1`** **`### 2`** (**`Runner.on_replay`** **`in_replay`** save/set at start · restore at end · **`ValidateLink.validate_all`** skip when **`in_replay`**).
 - 2026-05-07 — **FIXED** · investigative **`GLib.debug`** commented out (**`/* */`**) in **`Runner`**, **`ProgressList`**, **`List`**, **`ValidateLink`**, **`Tool`** · this doc moved to **`docs/bugs/done/`**.
