@@ -1,6 +1,6 @@
-# OPEN: Crash in `ChatView.clear` — `gtk_text_view_set_buffer` / GLib assertion (`g_assertion_message_expr`)
+# FIXED: Crash in `ChatView.clear` — `gtk_text_view_set_buffer` / GLib assertion (`g_assertion_message_expr`)
 
-**Status: OPEN**
+**Status: FIXED** (2026-05-08)
 
 **Related:** `docs/plans/done/6.10-DONE-markdown-gtk-render-order-history-repro.md` (same GTK text stack / buffer invariants family).
 
@@ -12,7 +12,7 @@ Often triggered when the user chooses **“start new chat with this text”** on
 
 **Expected:** Clearing the chat tears down **`Gtk.TextView`** / **`Gtk.TextBuffer`** without GTK assertions.
 
-**Actual:** **`g_assertion_message_expr`** along **`gtk_text_view_set_buffer`** (e.g. when nested fenced markdown had been rendered inside a **`RenderSourceView`** — **`nested_markdown_render`** hypothesis; **not confirmed resolved**).
+**Actual (before fix):** **`g_assertion_message_expr`** along **`gtk_text_view_set_buffer`** (e.g. when nested fenced markdown had been rendered inside a **`RenderSourceView`**).
 
 ## Root cause
 
@@ -28,6 +28,17 @@ GTK requires **`Gtk.TextMark`** removal from a buffer before that buffer or its 
 1. **`childview = null`**
 2. **`source_view_handlers.clear()`** — finalized **`RenderSourceView`** while nested **`MarkdownGtk.Render`** could still hold **`TopState`** marks on nested buffers
 3. **`end_block()`** — **`delete_marks_recursive()`** only on the **main** render path **after** nested widgets could already be torn down.
+
+## Fix (summary)
+
+1. **`MarkdownGtk.Render.clear()`** — reorder teardown: **`on_link_leave()`**; for each **`source_view_handlers`**, **`nested_markdown_render.clear()`** then null; **`childview = null`**, **`end_block()`**, **`source_view_handlers.clear()`** (see Attempted change 1 below).
+2. **`RenderSourceView.end_code_block()`** — after **`nested_markdown_render.flush()`**, call **`nested_markdown_render.clear()`** before nulling, so marks are removed before the nested render is dropped (see Attempted change 2 below).
+
+## Verification
+
+Manual repro paths (nested fenced markdown in a frame, **start new chat with this text** / **`switch_to_session`** → **`clear_chat`**, session switches with large markdown) run without abort; stack no longer implicates **`gtk_text_view_set_buffer`** on these paths.
+
+---
 
 ## Attempted change 1 — `MarkdownGtk.Render.clear()` order
 
@@ -64,15 +75,11 @@ if (this.nested_markdown_render != null) {
 **Git:** To revert this attempt only:  
 `git checkout HEAD -- libocmarkdowngtk/RenderSourceView.vala` (or `git revert <commit>` if committed alone).
 
-Leave this doc **OPEN** until the repro above is exercised without abort.
-
-## reproduction / verification
+## reproduction / verification (checklist)
 
 1. **`ninja -C build`** relevant targets.
 2. Assistant message with a **frame** whose body uses **nested fenced markdown**; trigger **start new chat with this text** (or **`switch_to_session`** → **`clear_chat`**).
 3. Session/history switches with large markdown + tables + code blocks.
-
-Closing criteria: stable manual runs without abort; stack no longer implicates **`gtk_text_view_set_buffer`** on these paths.
 
 ## Follow-ups
 
