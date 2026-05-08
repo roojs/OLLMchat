@@ -39,19 +39,11 @@ namespace OLLMchat.Call
 	 * print(response.message.content);
 	 * }}}
 	 */
-	public class Chat : Base, ChatContentInterface, ChatInterface
+	public class Chat : ChatBase, ChatContentInterface
 	{
-		public string model { get; set; }
+		public override string model { get; set; }
 		
 		// Real properties (Phase 3: fallback logic removed)
-		/**
-		 * Stream response as it's generated.
-		 *
-		 * When true (default), the response is streamed incrementally as chunks arrive.
-		 * When false, the response is returned as a complete message after generation finishes.
-		 */
-		public bool stream { get; set; default = true; }
-		
 		/**
 		 * Format to return a response in.
 		 *
@@ -73,7 +65,7 @@ namespace OLLMchat.Call
 		 * Contains parameters such as temperature, top_p, top_k, and other model-specific
 		 * generation settings. Only serialized if it contains valid values.
 		 */
-		public Call.Options options { get; set; }
+		public override Call.Options options { get; set; }
 		
 		/**
 		 * Enable separate thinking output in addition to content.
@@ -82,7 +74,7 @@ namespace OLLMchat.Call
 		 * For supported models, this can also be set to a string ("high", "medium", "low")
 		 * to control the level of thinking detail.
 		 */
-		public bool think { get; set; default = false; }
+		public override bool think { get; set; default = false; }
 		
 		/**
 		 * Model keep-alive duration.
@@ -93,67 +85,8 @@ namespace OLLMchat.Call
 		 */
 		public string? keep_alive { get; set; }
 		
-		public Gee.HashMap<string, Tool.BaseTool>? tools { get; set; default = new Gee.HashMap<string, Tool.BaseTool>(); }
 		
-		 
 		
-		/**
-		 * Reference to the agent handler that created this chat.
-		 *
-		 * Allows tools to access the session via chat_call.agent.session.
-		 * Set by AgentHandler when creating Chat in send_message_async().
-		 *
-		 * @since 1.2.2
-		 */
-		public Agent.Base? agent { get; set; }
-
-		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
-		
-		/**
-		 * Emitted when a streaming chunk is received from the chat API.
-		 *
-		 * @param new_text The new text chunk received
-		 * @param is_thinking Whether this chunk is thinking content (true) or regular content (false)
-		 * @param response The Response object containing the streaming state
-		 * @since 1.0
-		 */
-		public signal void stream_chunk(string new_text, bool is_thinking, Response.Chat response);
-
-		/**
-		 * Emitted when the streaming response starts (first chunk received).
-		 * This signal is emitted when the first chunk of the response is processed,
-		 * indicating that the server has started sending data back.
-		 *
-		 * @since 1.0
-		 */
-		public signal void stream_start();
-
-		/**
-		 * Emitted when a tool sends a status message during execution.
-		 *
-		 * @param message The Message object from the tool (typically "ui" role)
-		 * @since 1.0
-		 */
-		public signal void tool_message(Message message);
-		
-		/**
-		 * Emitted when a tool call is detected and needs to be executed.
-		 * 
-		 * For non-agent usage: Connect to this signal to handle tool execution.
-		 * 
-		 * The handler is responsible for:
-		 * 1. Execute the tool: Get the tool from `chat.tools.get(tool_call.function.name)` and call `tool.execute(chat, tool_call)`
-		 * 2. Create tool reply message: `new Message.tool_reply(tool_call.id, tool_call.function.name, result)`
-		 * 3. Append it to return_messages: `return_messages.add(tool_reply)`
-		 * 
-		 * Chat will collect all tool reply messages and send them automatically.
-		 * 
-		 * For agent usage: This signal is not used - agent.execute_tools() is called directly by Chat.toolsReply().
-		 * 
-		 * @param tool_call The tool call that needs to be executed
-		 * @param return_messages Array to append tool reply messages to
-		 */
-		public signal void tool_call_requested(Response.ToolCall tool_call, Gee.ArrayList<Message> return_messages);
 		
 		/**
 		 * Creates a new Chat instance for sending messages to the chat API.
@@ -215,24 +148,6 @@ namespace OLLMchat.Call
 		}
 	
 		
-		/**
-		 * Adds a tool to this chat's tools map.
-		 *
-		 * Adds the tool to the tools hashmap keyed by tool name. The tool's client is set via constructor.
-		 * This method allows callers to add tools directly to Chat (not Client).
-		 *
-		 * @param tool The tool to add
-		 */
-		public void add_tool(Tool.BaseTool tool)
-		{
-			// Initialize tools HashMap if not already set
-			if (this.tools == null) {
-				this.tools = new Gee.HashMap<string, Tool.BaseTool>();
-			}
-			// Ensure tools HashMap is initialized
-			// Note: tool.client is no longer set (tools use connection directly)
-			this.tools.set(tool.name, tool);
-		}
 		// this is only called by response - not by the user
 		  
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
@@ -349,107 +264,6 @@ namespace OLLMchat.Call
 			return true;
 		}
  
-		/**
-		 * Executes tool calls from a response and continues the conversation automatically.
-		 *
-		 * This method:
-		 * 1. Adds the assistant message with tool_calls to the conversation
-		 * 2. Executes all tool calls from the response
-		 * 3. Adds tool result messages to the conversation
-		 * 4. Continues the conversation automatically until a final response is received
-		 *
-		 * @param response The Response containing tool calls
-		 * @return The final Response after tool execution and auto-reply
-		 */
-		public async Response.Chat toolsReply(Response.Chat response) throws Error
-		{
-			//GLib.debug("Chat.toolsReply: Processing %d tool call(s)", response.message.tool_calls.size);
-			
-			// Only process tool calls if response is done and has tool_calls
-			// Tool calls can be present even when content is also present
-			if (!response.done || response.message.tool_calls.size == 0) {
-				//GLib.debug("Chat.toolsReply: Reply end - done=%s, tool_calls.size=%d, content.length=%zu", 
-				//	response.done.to_string(), 
-				//	response.message.tool_calls.size, 
-				//	response.message.content.length);
-				return response;
-			}
-			
-			//GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %s", response.message.content);
-			
-			if (this.agent != null) {
-				// Agent usage (normal flow): delegate to agent handler (agent executes tools and returns messages)
-				var tool_reply_messages = yield this.agent.execute_tools(response.message.tool_calls);
-				
-				// Build messages array: assistant message with tool_calls + tool reply messages
-				var messages_to_send = new Gee.ArrayList<Message>();
-				messages_to_send.add(response.message); // Assistant message with tool_calls
-				foreach (var reply_msg in tool_reply_messages) {
-					messages_to_send.add(reply_msg); // Tool reply messages
-				}
-				
-				// Append all messages and send
-				var next_response = yield this.send_append(messages_to_send);
-				
-				// Recursively handle tool calls if the next response also has them and is done
-				if (next_response.done && 
-					next_response.message.tool_calls.size > 0) {
-					return yield this.toolsReply(next_response);
-				}
-				
-				return next_response;
-			}
-			
-			// Non-agent usage (external code using Chat directly): emit signal for each tool call
-			// Signal handler is responsible for executing tools and appending tool reply messages
-			// Our code always has agent set, so this path is only for external users
-			
-			// Build messages array: assistant message + tool replies (handler will append tool replies)
-			var messages_to_send = new Gee.ArrayList<Message>();
-			messages_to_send.add(response.message); // Assistant message with tool_calls
-			
-			// Emit signal for each tool call - handler executes tools and appends tool reply messages to messages_to_send
-			// Signal handlers run synchronously, so they can modify messages_to_send
-			foreach (var tool_call in response.message.tool_calls) {
-				this.tool_call_requested(tool_call, messages_to_send);
-			}
-			
-			// Append all messages and send (same logic as agent path)
-			var next_response = yield this.send_append(messages_to_send);
-			
-			// Recursively handle tool calls if the next response also has them and is done
-			if (next_response.done && 
-				next_response.message.tool_calls.size > 0) {
-				return yield this.toolsReply(next_response);
-			}
-			
-			return next_response;
-		}
-
-		
-		/**
-		 * Appends new messages to existing messages and sends them.
-		 * 
-		 * Convenience method for continuing conversations after tool execution.
-		 * Appends the provided messages to this.messages and then calls send().
-		 * 
-		 * @param new_messages Messages to append to existing messages
-		 * @param cancellable Optional cancellation token
-		 * @return The Response from executing the chat call
-		 * @throws Error if send fails
-		 */
-		public async Response.Chat send_append(Gee.ArrayList<Message> new_messages, GLib.Cancellable? cancellable = null) throws Error
-		{
-			// Append new messages to existing messages
-			foreach (var msg in new_messages) {
-				this.messages.add(msg);
-			}
-			
-			// Send using existing send() method; preserve this.cancellable when caller omits it
-			// so that Stop continues to work across tool rounds (toolsReply, etc.)
-			return yield this.send(this.messages, 
-				cancellable != null ? cancellable : this.cancellable);
-		}
 		
 		/**
 		 * Sends messages to the chat API.
@@ -461,7 +275,8 @@ namespace OLLMchat.Call
 		 * @param cancellable Optional cancellation token
 		 * @return The Response from executing the chat call
 		 */
-		public virtual async Response.Chat send(Gee.ArrayList<Message> messages, GLib.Cancellable? cancellable = null) throws Error
+		public override async Response.Chat send(
+			Gee.ArrayList<Message> messages, GLib.Cancellable? cancellable = null) throws Error
 		{
 			if (messages.size == 0) {
 				throw new OllmError.INVALID_ARGUMENT("Chat messages array is empty. Provide messages to send.");

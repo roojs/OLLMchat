@@ -93,7 +93,7 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 		 * so the LLM receives it in markdown reply format. Otherwise return raw content.
 		 */
 		public override async string execute(
-			OLLMchat.Call.Chat chat_call,
+			OLLMchat.Call.ChatBase chat_call,
 			OLLMchat.Response.ToolCall tool_call,
 			bool is_markdown = false)
 		{

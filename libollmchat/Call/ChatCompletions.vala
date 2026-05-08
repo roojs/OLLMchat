@@ -26,12 +26,9 @@ namespace OLLMchat.Call
 	 * {{{format}}} / {{{format_obj}}} map to JSON key {{{response_format}}}.
 	 * Non-streaming and streaming both return {@link Response.Chat}.
 	 */
-	public class ChatCompletions : Base, ChatInterface
+	public class ChatCompletions : ChatBase
 	{
-		public string model { get; set; }
-		public Gee.ArrayList<Message> messages { get; set;
-			default = new Gee.ArrayList<Message>(); }
-		public bool stream { get; set; default = true; }
+		public override string model { get; set; }
 		public int max_tokens { get; set; default = -1; }
 		public double temperature { get; set; default = -1.0; }
 		public double top_p { get; set; default = -1.0; }
@@ -44,13 +41,12 @@ namespace OLLMchat.Call
 		 * Full OpenAI response_format object when set (schema / json_object).
 		 */
 		public Json.Object? format_obj { get; set; default = null; }
-		public Call.Options options { get; set; default = new Call.Options(); }
+		public override Call.Options options { get; set; default = new Call.Options(); }
+		public string reasoning_effort { get; set; default = ""; }
 		public int seed { get; set; default = -1; }
 		public string stop { get; set; default = ""; }
 		public double presence_penalty { get; set; default = -1.0; }
 		public double frequency_penalty { get; set; default = -1.0; }
-		public Gee.HashMap<string, Tool.BaseTool>? tools { get; set;
-			default = new Gee.HashMap<string, Tool.BaseTool>(); }
 
 		public ChatCompletions(Settings.Connection connection, string model)
 		{
@@ -62,6 +58,7 @@ namespace OLLMchat.Call
 			this.is_openai = true;
 			this.url_endpoint = "v1/chat/completions";
 			this.http_method = "POST";
+			this.streaming_response = new Response.Chat(connection, this);
 		}
 
 		/**
@@ -91,6 +88,8 @@ namespace OLLMchat.Call
 			var json_node = Json.gobject_serialize(this);
 			var obj = json_node.get_object();
 			this.merge_response_format_into_object(obj);
+			obj.set_string_member("reasoning_effort",
+				this.reasoning_effort != "" ? this.reasoning_effort : (this.think ? "medium" : "none"));
 			var generator = new Json.Generator();
 			generator.set_root(json_node);
 			return generator.to_data(null);
@@ -99,6 +98,13 @@ namespace OLLMchat.Call
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			switch (property_name) {
+				case "agent":
+				case "streaming-response":
+				case "connection":
+				case "cancellable":
+				case "think":
+				case "reasoning-effort":
+					return null;
 				case "messages":
 					var arr = new Json.Array();
 					foreach (var m in this.messages) {
@@ -208,6 +214,43 @@ namespace OLLMchat.Call
 		}
 
 		/**
+		 * Sends messages to the chat-completions API and returns a unified Chat response.
+		 */
+		public override async Response.Chat send(
+			Gee.ArrayList<Message> messages,
+			GLib.Cancellable? cancellable = null) throws Error
+		{
+			if (messages.size == 0) {
+				throw new OllmError.INVALID_ARGUMENT("Chat messages array is empty. Provide messages to send.");
+			}
+			this.streaming_response = new Response.Chat(this.connection, this);
+			this.cancellable = cancellable;
+			this.messages = messages;
+
+			if (this.stream) {
+				if (this.connection == null) {
+					throw new OllmError.INVALID_ARGUMENT("Connection is null");
+				}
+				var response = yield this.exec_stream();
+				try {
+					if (response.done && response.message.tool_calls.size > 0) {
+						return yield this.toolsReply(response);
+					}
+				} catch (Error e) {
+					response.done = true;
+					throw e;
+				}
+				return response;
+			}
+
+			var response_obj = yield this.exec();
+			if (response_obj.message.tool_calls.size > 0) {
+				return yield this.toolsReply(response_obj);
+			}
+			return response_obj;
+		}
+
+		/**
 		 * Non-streaming request; response parsed into {@link Response.Chat}.
 		 *
 		 * @return v1 completion mapped into {@link Response.Chat}
@@ -253,7 +296,7 @@ namespace OLLMchat.Call
 				throw new OllmError.INVALID_ARGUMENT("Connection is null");
 			}
 
-			var resp = new Response.Chat(this.connection, this);
+			var resp = (Response.Chat) this.streaming_response;
 
 			var url = this.build_url();
 			var stream_orig = this.stream;
@@ -374,42 +417,5 @@ namespace OLLMchat.Call
 			return resp;
 		}
 
-		/**
-		 * Append messages and run one non-streaming completions request.
-		 *
-		 * Returns {@link Response.Chat} with v1 fields mapped in deserialize.
-		 * Streaming is forced off for this round so the body is a single JSON object.
-		 */
-		public async Response.Chat send_append(
-			Gee.ArrayList<Message> new_messages,
-			GLib.Cancellable? cancellable = null) throws Error
-		{
-			foreach (var msg in new_messages) {
-				this.messages.add(msg);
-			}
-			if (this.messages.size == 0) {
-				throw new OllmError.INVALID_ARGUMENT("Messages are required for chat completions");
-			}
-			this.cancellable = cancellable;
-			bool was_stream = this.stream;
-			this.stream = false;
-			try {
-				var bytes = yield this.send_request(true);
-				var root = this.parse_response(bytes);
-				if (root.get_node_type() != Json.NodeType.OBJECT) {
-					throw new OllmError.FAILED("Invalid JSON response");
-				}
-				var response_obj = Json.gobject_deserialize(typeof(Response.Chat), root) as Response.Chat;
-				if (response_obj == null) {
-					throw new OllmError.FAILED("Failed to parse response");
-				}
-				response_obj.connection = this.connection;
-				response_obj.call = this;
-				response_obj.done = true;
-				return response_obj;
-			} finally {
-				this.stream = was_stream;
-			}
-		}
 	}
 }

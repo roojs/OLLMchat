@@ -64,11 +64,11 @@ namespace OLLMchat.Tool
 	 * {{{
 	 * public class DummyAgent : Object, Agent.Interface
 	 * {
-	 *     private Call.Chat chat_call;
+	 *     private Call.ChatBase chat_call;
 	 *     private ChatPermission.Provider my_permission_provider;
 	 *     private Settings.Config2 my_config;
 	 *     
-	 *     public Call.Chat chat()
+	 *     public Call.ChatBase chat()
 	 *     {
 	 *         return this.chat_call;
 	 *     }
@@ -83,7 +83,7 @@ namespace OLLMchat.Tool
 	 *         return this.my_config;
 	 *     }
 	 *     
-	 *     public DummyAgent(Call.Chat chat_call, ChatPermission.Provider permission_provider, Settings.Config2 config)
+	 *     public DummyAgent(Call.ChatBase chat_call, ChatPermission.Provider permission_provider, Settings.Config2 config)
 	 *     {
 	 *         this.chat_call = chat_call;
 	 *         this.my_permission_provider = permission_provider;
@@ -242,7 +242,7 @@ namespace OLLMchat.Tool
 		 * @return String result or error message (prefixed with "ERROR: " for errors)
 		 */
 		public virtual async string execute(
-			Call.Chat chat_call, 
+			Call.ChatBase chat_call, 
 			Response.ToolCall tool_call, 
 			bool is_markdown = false)
 		{

@@ -118,7 +118,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		 * do not override execute — only plain-output tools fence here.
 		 */
 		public override async string execute(
-			OLLMchat.Call.Chat chat_call,
+			OLLMchat.Call.ChatBase chat_call,
 			OLLMchat.Response.ToolCall tool_call,
 			bool is_markdown = false)
 		{

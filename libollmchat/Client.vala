@@ -92,7 +92,7 @@ namespace OLLMchat
 		 * @param call The pre-prepared Chat object to execute
 		 * @return The Response from executing the chat call
 		 */
-		public async Response.Chat chat_execute(Call.Chat call) throws Error
+		public async Response.Chat chat_execute(Call.ChatBase call) throws Error
 		{
 			// Client does NOT modify messages array - use what agent prepared
 			return yield call.send(call.messages, call.cancellable);
