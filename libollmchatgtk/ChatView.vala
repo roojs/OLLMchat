@@ -884,11 +884,19 @@ namespace OLLMchatGtk
 		public void scroll_to_idx(int idx)
 		{
 			if (idx < 0 || idx > this.idx_widgets.size - 1) {
+				GLib.debug(
+					"scroll_idx skip idx=%d n=%u",
+					idx,
+					this.idx_widgets.size);
 				return;
 			}
 			GLib.Idle.add(() => {
 				var vadj = this.scrolled_window.vadjustment;
 				if (vadj.upper < 100.0) {
+					GLib.debug(
+						"scroll_idx retry upper=%.0f idx=%d",
+						vadj.upper,
+						idx);
 					return true;
 				}
 				var t = idx;
@@ -902,8 +910,22 @@ namespace OLLMchatGtk
 						 this.idx_widgets.get(--t) : null;
 				}
 				if (w == null) {
+					GLib.debug(
+						"scroll_idx fail idx=%d t=%d",
+						idx,
+						t);
 					return false;
 				}
+				GLib.debug(
+					"scroll_idx ok requested=%d used_t=%d y=%.0f w=%s %p map=%s real=%s css=%s",
+					idx,
+					t,
+					y,
+					w.get_type().name(),
+					w,
+					w.get_mapped().to_string (),
+					w.get_realized().to_string (),
+					string.joinv(" ", w.get_css_classes()));
 				var target = y - 20.0;
 				var max_val = double.max(vadj.lower, 
 					vadj.upper - vadj.page_size);
@@ -927,6 +949,12 @@ namespace OLLMchatGtk
 			this.scroll_target_highlight_widget = widget;
 			if (this.scroll_target_highlight_widget != null) {
 				this.scroll_target_highlight_widget.add_css_class("oc-chat-scroll-target-temp");
+				GLib.debug(
+					"scroll_highlight %p %s",
+					this.scroll_target_highlight_widget,
+					string.joinv(" ", this.scroll_target_highlight_widget.get_css_classes()));
+			} else {
+				GLib.debug("scroll_highlight cleared");
 			}
 		}
 		
