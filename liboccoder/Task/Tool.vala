@@ -60,15 +60,13 @@ namespace OLLMcoder.Task
 		/** ToolCall built from name and arguments; set by parse(), used in run() when this run has a tool. */
 		public OLLMchat.Response.ToolCall? tool_call { get; set; default = null; }
 
-		/**
-		 * **`Message.idx`** for chat scroll: set only from the **executor** LLM **`send()`**
-		 * in **`run()`** (**-1** until then).
-		 */
-		public int msg_idx { get; set; default = -1; }
+		public OLLMchat.Message? message { get; set; default = null; }
+
+		public ulong idx_notify_id { get; set; default = 0; }
 
 		public string msg_idx_txt {
 			owned get {
-				return this.msg_idx >= 0 ? this.msg_idx.to_string() : "—";
+				return (this.message != null && this.message.idx >= 0) ? this.message.idx.to_string() : "—";
 			}
 		}
 
@@ -269,15 +267,16 @@ namespace OLLMcoder.Task
 				try {
 					var response = yield this.chat_call.send(messages, null);
 					response_text = (response != null) ? response.message.content : "";
-					this.msg_idx = response != null ? response.message.idx : this.msg_idx;
-					this.notify_property("msg_idx_txt");
+					if (response != null) {
+						this.assign_message(response.message);
+					}
 					/* Live runs only: replay hydrates tool Idx in Runner.on_replay EXECUTION (never calls Tool.run send). */
 					// GLib.debug(
 					// 	"======== CHANGING IDX FOR TOOL (executor send done, live) slug=%s run_id=%s prior_msg_idx=%d -> msg_idx=%d (response.message.idx=%d) ========",
 					// 	this.parent.slug(),
 					// 	this.id,
 					// 	prior_msg_idx,
-					// 	this.msg_idx,
+					// 	this.message != null ? this.message.idx : -1,
 					// 	response != null ? response.message.idx : -1);
 				} catch (GLib.Error e) {
 					last_issues = e.message;

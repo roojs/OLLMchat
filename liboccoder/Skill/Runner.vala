@@ -225,8 +225,11 @@ namespace OLLMcoder.Skill
 					try_max = 5,
 					try_no = 0,
 					status = OLLMcoder.Task.PhaseEnum.LIST,
-					msg_idx = !this.in_replay ? in_message.idx : -1
 				};
+				// check might not be needed
+				if (!this.in_replay) {
+					rp.assign_message(in_message);
+				}
 				this.progress.add(rp);
 				for (; rp.try_no < rp.try_max; rp.try_no++) {
 					var tpl = this.task_creation_prompt(
@@ -458,7 +461,6 @@ namespace OLLMcoder.Skill
 				try_max = 5,
 				try_no = 0,
 				status = OLLMcoder.Task.PhaseEnum.TASK_LIST_ITERATION,
-				msg_idx = -1
 			};
 			this.progress.add(ir);
 			for (; ir.try_no < ir.try_max; ir.try_no++) {
@@ -593,13 +595,14 @@ namespace OLLMcoder.Skill
 					// GLib.debug("session %s initial_plan steps=%u issues_empty=%s",
 					// 	this.session.fid, this.pending.steps.size, (p0.issues == "").to_string());
 					if (p0.issues == "") {
-						this.progress.add(new OLLMcoder.Task.ProgressRunner(this) {
+						var pr = new OLLMcoder.Task.ProgressRunner(this) {
 							in_creation = true,
 							try_max = 5,
 							try_no = 0,
 							status = OLLMcoder.Task.PhaseEnum.COMPLETED,
-							msg_idx = m.idx
-						});
+						};
+						pr.assign_message(m);
+						this.progress.add(pr);
 						this.progress.add_pending(true);
 					}
 					break;
@@ -673,13 +676,14 @@ namespace OLLMcoder.Skill
 					this.replay_details_pos = 0;
 					this.replay_tool_pos = 0;
 					if (p1.issues == "") {
-						this.progress.add(new OLLMcoder.Task.ProgressRunner(this) {
+						var pr_it = new OLLMcoder.Task.ProgressRunner(this) {
 							in_creation = false,
 							try_max = 5,
 							try_no = 0,
 							status = OLLMcoder.Task.PhaseEnum.COMPLETED,
-							msg_idx = m.idx
-						});
+						};
+						pr_it.assign_message(m);
+						this.progress.add(pr_it);
 						this.progress.add_pending(true);
 					}
 					break;
@@ -703,8 +707,7 @@ namespace OLLMcoder.Skill
 					var d_ref = st_r.children.get(this.replay_details_pos);
 					pr.extract_refinement(d_ref);
 					if (pr.issues == "") {
-						d_ref.msg_idx = m.idx;
-						d_ref.notify_property("msg_idx_txt");
+						d_ref.assign_message(m);
 						// GLib.debug("restore refinement msg_idx=%d step=%d detail=%d",
 						// 	m.idx, this.replay_step_pos, this.replay_details_pos);
 						d_ref.status = OLLMcoder.Task.PhaseEnum.REFINED;
@@ -761,8 +764,9 @@ namespace OLLMcoder.Skill
 						pp.issues.length,
 						pp.issues); */
 					if (pp.issues == "") {
-						d_post.msg_idx = m.idx;
-						d_post.notify_property("msg_idx_txt");
+						/* Same as Details.run_post_exec: do not assign_message(post_exec) — keep refine
+						 * idx for progress scroll; revisit multi-phase anchors later. */
+						// d_post.assign_message(m);
 						// GLib.debug("restore post_exec msg_idx=%d step=%d detail=%d",
 						// 	m.idx, this.replay_step_pos, this.replay_details_pos);
 						d_post.exec_done = true;
@@ -809,8 +813,7 @@ namespace OLLMcoder.Skill
 					var ex_run = d_exec.tools().get_at(this.replay_tool_pos);
 					ex_run.status = OLLMcoder.Task.PhaseEnum.EXECUTION;
 					// Replay never runs Tool.run(); hydrate Idx from this transcript message (same idx ReplayChat.send would attach).
-					ex_run.msg_idx = m.idx;
-					ex_run.notify_property("msg_idx_txt");
+					ex_run.assign_message(m);
 					// GLib.debug(
 					// 	"======== CHANGING IDX FOR TOOL (replay EXECUTION content-stream, not Tool.run send) slug=%s run_id=%s msg_idx=%d ========",
 					// 	d_exec.slug(),

@@ -122,9 +122,7 @@ public class ProgressList : GLib.Object, GLib.ListModel
 	 */
 	public void clear_pending(bool call_changed = false)
 	{
-		GLib.debug(
-			"PROGRESS CLEAR PENDING idx_before=%d",
-			this.rows.size > 0 ? this.rows.get(this.rows.size - 1).msg_idx : -1);
+		/* GLib.debug("PROGRESS CLEAR PENDING rows_in=%u", (uint) this.rows.size); */
 		var old_size = this.rows.size;
 		for (var i = this.rows.size - 1; i >= 0; i--) {
 			var pi = this.rows.get(i);
@@ -170,12 +168,11 @@ public class ProgressList : GLib.Object, GLib.ListModel
 			this.rows.remove_at(i);
 		}
 		var removed = old_size - this.rows.size;
-		GLib.debug(
-			"PROGRESS CLEAR PENDING idx_after=%d removed=%d rows_now=%d emit=%s",
-			this.rows.size > 0 ? this.rows.get(this.rows.size - 1).msg_idx : -1,
+		/* GLib.debug(
+			"PROGRESS CLEAR PENDING removed=%d rows_now=%u emit=%s",
 			removed,
-			this.rows.size,
-			call_changed ? "y" : "n");
+			(uint) this.rows.size,
+			call_changed ? "y" : "n"); */
 		if (removed == 0 || !call_changed) {
 			return;
 		}
