@@ -198,3 +198,9 @@
   padding-bottom: 2px;
 }
 
+/* TEMP: ChatView scroll_to_idx row highlight (remove when progress scroll UX is final) */
+.oc-chat-scroll-target-temp,
+.oc-chat-scroll-target-temp text {
+  background-color: #f66;
+}
+

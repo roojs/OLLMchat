@@ -71,6 +71,9 @@ namespace OLLMchatGtk
 		/** Current thinking child frame (when streaming thinking into a framed box). */
 		private MarkdownGtk.RenderSourceView? thinking_frame = null;
 
+		/** Temporary scroll-to-row highlight; remove when trace UX is final. */
+		private Gtk.Widget? scroll_target_highlight_widget = null;
+
 		/**
 		 * Creates a new ChatView instance.
 		 * 
@@ -649,6 +652,7 @@ namespace OLLMchatGtk
 		 */
 		public void clear()
 		{
+			this.scroll_target_highlight_apply(null);
 			// Reset flags when clearing chat
 			this.has_displayed_user_message = false;
 			this.scroll_enabled = true;
@@ -905,9 +909,25 @@ namespace OLLMchatGtk
 					vadj.upper - vadj.page_size);
 				this.programmatic_scroll_in_progress = true;
 				vadj.value = target.clamp(vadj.lower, max_val);
+				this.scroll_target_highlight_apply(w);
 				w.grab_focus();
 				return false;
 			});
+		}
+
+		/** Swap temporary scroll-target highlight to {@link widget} (or clear). */
+		private void scroll_target_highlight_apply(Gtk.Widget? widget)
+		{
+			if (this.scroll_target_highlight_widget == widget) {
+				return;
+			}
+			if (this.scroll_target_highlight_widget != null) {
+				this.scroll_target_highlight_widget.remove_css_class("oc-chat-scroll-target-temp");
+			}
+			this.scroll_target_highlight_widget = widget;
+			if (this.scroll_target_highlight_widget != null) {
+				this.scroll_target_highlight_widget.add_css_class("oc-chat-scroll-target-temp");
+			}
 		}
 		
 		/**
