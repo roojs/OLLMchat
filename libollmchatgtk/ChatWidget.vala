@@ -174,7 +174,7 @@ namespace OLLMchatGtk
 				if (this.chat_view == null) {
 					return;
 				}
-				this.chat_view.append_tool_message(message);
+				message.idx = this.chat_view.append_tool_message(message);
 			});
 			this.manager.message_added.connect(this.on_message_created);
 			
@@ -352,8 +352,9 @@ namespace OLLMchatGtk
 				case "ui":
 					// "You said" user block and tool/error/preview all arrive as "ui" with fenced content
 					var ui_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
-					ui_msg.idx = m.idx;
-					this.chat_view.append_complete_assistant_message(ui_msg, session);
+					ui_msg.idx = this.chat_view.append_complete_assistant_message(ui_msg, session);
+					m.idx = ui_msg.idx;
+					GLib.debug("chat bind role=%s idx=%d msg=%p", m.role, m.idx, m);
 					break;
 				case "ui-waiting":
 					this.chat_view.show_waiting_indicator(m.content != "" ? m.content : "waiting for a reply");
@@ -361,20 +362,24 @@ namespace OLLMchatGtk
 					break;
 				case "ui-warning":
 					var warning_msg = new OLLMchat.Message("assistant", "⚠️ " + m.content, m.thinking);
-					warning_msg.idx = m.idx;
-					this.chat_view.append_complete_assistant_message(warning_msg, session);
+					warning_msg.idx = this.chat_view.append_complete_assistant_message(warning_msg, session);
+					m.idx = warning_msg.idx;
+					GLib.debug("chat bind role=%s idx=%d msg=%p", m.role, m.idx, m);
 					break;
 				case "think-stream":
 					// For think-stream, content is the thinking text
 					var stream_msg = new OLLMchat.Message("assistant", "", m.content);
-					this.chat_view.append_complete_assistant_message(stream_msg, session);
+					stream_msg.idx = this.chat_view.append_complete_assistant_message(stream_msg, session);
+					m.idx = stream_msg.idx;
+					GLib.debug("chat bind role=%s idx=%d msg=%p", m.role, m.idx, m);
 					break;
 				case "content-stream":
 				case "content-non-stream":
 					// Render streaming/non-streaming messages as assistant messages
 					var stream_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
-					stream_msg.idx = m.idx;
-					this.chat_view.append_complete_assistant_message(stream_msg, session);
+					stream_msg.idx = this.chat_view.append_complete_assistant_message(stream_msg, session);
+					m.idx = stream_msg.idx;
+					GLib.debug("chat bind role=%s idx=%d msg=%p", m.role, m.idx, m);
 					break;
 				default:
 					// Should not reach here if is_ui_visible is working correctly
@@ -457,11 +462,11 @@ namespace OLLMchatGtk
 
 			// Process chunk (even if done, there might be final text to process)
 			if (new_text.length > 0) {
-				this.chat_view.append_assistant_chunk(new_text, response);
+				response.message.idx = this.chat_view.append_assistant_chunk(new_text, response);
 			} else if (response.done) {
 				// Metrics-only final packet: no text, but ChatView must still leave thinking mode
 				// and close the thinking frame before finalize (thinking-only replies).
-				this.chat_view.append_assistant_chunk("", response);
+				response.message.idx = this.chat_view.append_assistant_chunk("", response);
 			}
 
 			// If response is not done, continue waiting
@@ -473,7 +478,7 @@ namespace OLLMchatGtk
 			// the assistant message state so statistics can be displayed in finalize_assistant_message
 			// (append_assistant_chunk safely handles empty text and won't re-initialize if already initialized)
 			if (response.message.tool_calls.size > 0 && response.message.content.length == 0) {
-				this.chat_view.append_assistant_chunk("", response);
+				response.message.idx = this.chat_view.append_assistant_chunk("", response);
 			}
 
 			// Response is done - finalize the message

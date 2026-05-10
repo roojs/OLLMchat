@@ -61,11 +61,13 @@ public class ProgressRunner : GLib.Object, ProgressItem
 		owned get { return ""; }
 	}
 
-	public int msg_idx { get; set; default = -1; }
+	public OLLMchat.Message? message { get; set; default = null; }
+
+	public ulong idx_notify_id { get; set; default = 0; }
 
 	public string msg_idx_txt {
 		owned get {
-			return this.msg_idx >= 0 ? this.msg_idx.to_string() : "—";
+			return (this.message != null && this.message.idx >= 0) ? this.message.idx.to_string() : "—";
 		}
 	}
 

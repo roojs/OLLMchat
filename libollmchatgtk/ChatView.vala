@@ -61,7 +61,7 @@ namespace OLLMchatGtk
 		private int waiting_dots = 0;
 		private string waiting_caption = "waiting for a reply";
 		private Gee.ArrayList<Gtk.Widget> widgets = new Gee.ArrayList<Gtk.Widget>();
-		public Gee.HashMap<int, Gtk.Widget> idx_to_widget = new Gee.HashMap<int, Gtk.Widget>();
+		public Gee.ArrayList<Gtk.Widget> idx_widgets = new Gee.ArrayList<Gtk.Widget>();
 		private bool has_displayed_user_message = false;
 		private double last_scroll_pos = 0.0;
 		public bool scroll_enabled = true;
@@ -179,7 +179,7 @@ namespace OLLMchatGtk
 		 * @param message The ChatContentInterface object (ChatResponse for assistant messages)
 		 * @since 1.0
 		 */
-		public void append_assistant_chunk(string new_text, OLLMchat.Response.Chat response)
+		public int append_assistant_chunk(string new_text, OLLMchat.Response.Chat response)
 		{
 
 			if (!this.is_assistant_message) {
@@ -201,7 +201,22 @@ namespace OLLMchatGtk
 				this.process_new_chunk_direct("", false);
 			}
 
+			if (response.done) {
+				if (this.renderer.current_textview != null
+					&& (this.idx_widgets.size == 0
+						|| this.idx_widgets.get(this.idx_widgets.size - 1) != this.renderer.current_textview)) {
+					this.idx_widgets.add(this.renderer.current_textview);
+				}
+				/* GLib.debug(
+					"idx_map chunk tail=%u n=%u tv=%s msg=%p (idx set after return)",
+					this.idx_widgets.size > 0 ? (uint) (this.idx_widgets.size - 1) : 0u,
+					(uint) this.idx_widgets.size,
+					this.renderer.current_textview != null ? this.renderer.current_textview.get_type().name() : "-",
+					response.message); */
+			}
+
 			this.scroll_to_bottom();
+			return this.idx_widgets.size - 1;
 		}
 
 		/**
@@ -560,7 +575,7 @@ namespace OLLMchatGtk
 		 * @param session The session that owns this message (provides client and chat)
 		 * @since 1.0
 		 */
-		public void append_complete_assistant_message(OLLMchat.Message message, OLLMchat.History.SessionBase session)
+		public int append_complete_assistant_message(OLLMchat.Message message, OLLMchat.History.SessionBase session)
 		{
 			// Debug: Print truncated content
 			string content_preview = message.content.length > 20 ? message.content.substring(0, 20) + "..." : message.content;
@@ -610,8 +625,21 @@ namespace OLLMchatGtk
 				this.process_new_chunk_direct(message.content, false);  // false = is_thinking
 			}
 
+			if (this.renderer.current_textview != null
+				&& (this.idx_widgets.size == 0
+					|| this.idx_widgets.get(this.idx_widgets.size - 1) != this.renderer.current_textview)) {
+				this.idx_widgets.add(this.renderer.current_textview);
+			}
+			/* GLib.debug(
+				"idx_map done tail=%u n=%u tv=%s msg=%p (idx set in ChatWidget after return)",
+				this.idx_widgets.size > 0 ? (uint) (this.idx_widgets.size - 1) : 0u,
+				(uint) this.idx_widgets.size,
+				this.renderer.current_textview != null ? this.renderer.current_textview.get_type().name() : "-",
+				message); */
+
 			// Finalize the message (no response needed - metrics will be in messages array as "ui" messages after Step 1b)
 			this.finalize_assistant_message_direct();
+			return this.idx_widgets.size - 1;
 		}
 
 		/**
@@ -625,7 +653,8 @@ namespace OLLMchatGtk
 			this.has_displayed_user_message = false;
 			this.scroll_enabled = true;
 			this.autoscroll_paused_by_user = false;
-			this.idx_to_widget.clear();
+			/* GLib.debug("idx_map clear n=%u", this.idx_widgets.size); */
+			this.idx_widgets.clear();
 			this.widgets.clear();
 
 			// Remove waiting row before tearing down markdown widgets.
@@ -660,7 +689,7 @@ namespace OLLMchatGtk
 		 * @param message The Message object to display
 		 * @since 1.0
 		 */
-		public void append_tool_message(OLLMchat.Message message)
+		public int append_tool_message(OLLMchat.Message message)
 		{
 			// Debug: Print truncated content
 			string content_preview = message.content.length > 20 ? message.content.substring(0, 20) + "..." : message.content;
@@ -669,7 +698,7 @@ namespace OLLMchatGtk
 			// Get end position for insertion
 			var buffer = this.get_current_buffer();
 			if (buffer == null) {
-				return;
+				return this.idx_widgets.size - 1;
 			}
 			
 			Gtk.TextIter end_iter;
@@ -686,8 +715,21 @@ namespace OLLMchatGtk
 					 + pango_result + "</span>\n",
 				-1
 			);
-			
+
+			if (this.renderer.current_textview != null
+				&& (this.idx_widgets.size == 0
+					|| this.idx_widgets.get(this.idx_widgets.size - 1) != this.renderer.current_textview)) {
+				this.idx_widgets.add(this.renderer.current_textview);
+			}
+			/* GLib.debug(
+				"idx_map tool tail=%u n=%u tv=%s msg=%p (idx set in ChatWidget after return)",
+				this.idx_widgets.size > 0 ? (uint) (this.idx_widgets.size - 1) : 0u,
+				(uint) this.idx_widgets.size,
+				this.renderer.current_textview != null ? this.renderer.current_textview.get_type().name() : "-",
+				message); */
+
 			this.scroll_to_bottom();
+			return this.idx_widgets.size - 1;
 		}
 
 		/**
@@ -834,21 +876,36 @@ namespace OLLMchatGtk
 			});
 		}
 
+		/** Scroll so row idx sits near the viewport top; if translate fails, try idx-1 … until idx-4. */
 		public void scroll_to_idx(int idx)
 		{
-			if (!this.idx_to_widget.has_key(idx)) {
-				GLib.debug(
-					"scroll_to_idx missing idx=%d registered=%u",
-					idx,
-					this.idx_to_widget.size);
+			if (idx < 0 || idx > this.idx_widgets.size - 1) {
 				return;
 			}
-			GLib.debug(
-				"scroll_to_idx idx=%d widget=%s",
-				idx,
-				this.idx_to_widget.get(idx).get_type().name());
 			GLib.Idle.add(() => {
-				this.idx_to_widget.get(idx).grab_focus();
+				var vadj = this.scrolled_window.vadjustment;
+				if (vadj.upper < 100.0) {
+					return true;
+				}
+				var t = idx;
+				var w = this.idx_widgets.get(t);
+				var dx = 0.0;
+				var y = 0.0;
+				while (t > idx - 4 && t > -1 && w != null
+						&& !w.translate_coordinates(this.text_view_box,
+							 0, 0, out dx, out y)) {
+					w = (t > idx - 3) && (t > 0) ?
+						 this.idx_widgets.get(--t) : null;
+				}
+				if (w == null) {
+					return false;
+				}
+				var target = y - 20.0;
+				var max_val = double.max(vadj.lower, 
+					vadj.upper - vadj.page_size);
+				this.programmatic_scroll_in_progress = true;
+				vadj.value = target.clamp(vadj.lower, max_val);
+				w.grab_focus();
 				return false;
 			});
 		}

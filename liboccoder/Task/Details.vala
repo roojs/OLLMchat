@@ -68,12 +68,13 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	 */
 	public int step_index { get; set; default = -1; }
 
-	/** Last **`Message.idx`** tied to this task row; **-1** if unset. */
-	public int msg_idx { get; set; default = -1; }
+	public OLLMchat.Message? message { get; set; default = null; }
+
+	public ulong idx_notify_id { get; set; default = 0; }
 
 	public string msg_idx_txt {
 		owned get {
-			return this.msg_idx >= 0 ? this.msg_idx.to_string() : "—";
+			return (this.message != null && this.message.idx >= 0) ? this.message.idx.to_string() : "—";
 		}
 	}
 
@@ -499,12 +500,13 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 					this.add_message(new OLLMchat.Message("agent-stage", "refinement"));
 					var response = yield this.chat_call.send(messages, cancellable);
 					response_text = response != null ? response.message.content : "";
-					this.msg_idx = response != null ? response.message.idx : this.msg_idx;
-					this.notify_property("msg_idx_txt");
+					if (response != null) {
+						this.assign_message(response.message);
+					}
 					// GLib.debug(
 					// 	"progress detail refine slug=%s msg_idx=%d",
 					// 	this.slug(),
-					// 	this.msg_idx);
+					// 	this.message != null ? this.message.idx : -1);
 					break;
 				} catch (GLib.Error e) {
 					if (attempt != 2) {
@@ -908,12 +910,16 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			this.add_message(new OLLMchat.Message("agent-stage", "post_exec"));
 			var response = yield this.chat_call.send(messages, null);
 			response_text = response != null ? response.message.content : "";
-			this.msg_idx = response != null ? response.message.idx : this.msg_idx;
-			this.notify_property("msg_idx_txt");
+			/* Next stage: progress Idx / scroll target — binding post_exec overwrites the row’s
+			 * message with the synthesis response, so tree click scrolled to post_exec instead of
+			 * refine. Keep refine as scroll anchor until we decide multi-anchor / phase UX.
+			 * if (response != null) {
+			 * 	this.assign_message(response.message);
+			 * } */
 			// GLib.debug(
 			// 	"progress detail post_exec slug=%s msg_idx=%d",
 			// 	this.slug(),
-			// 	this.msg_idx);
+			// 	this.message != null ? this.message.idx : -1);
 			// Ensure any literal {task_link_base} in model output is replaced so links validate
 			var task_base = "task://" + this.slug() + ".md";
 			response_text = response_text.replace("{task_link_base}", task_base);

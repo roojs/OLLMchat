@@ -166,15 +166,8 @@ namespace OLLMchat
 		public string timestamp { get; set; default = ""; }  // Format: Y-m-d H:i:s
 		public bool hidden { get; set; default = false; }
 
-		/** Unique id for this **`Message`** instance (process-wide monotonic counter); not stored in JSON — assigned in **`construct`**. Used for **`scroll_to_idx`** / **`idx_to_widget`**. */
+		/** Chat-view widget index for navigation; assigned by UI render paths, default -1 when unset. */
 		public int idx { get; set; default = -1; }
-
-		/** Process-wide monotonic source for {@link idx} in {@link construct}; reset to 0 before loading session JSON so transcript ids start at 0. */
-		public static int idx_counter = 0; // this is temporary for testing
-
-		construct {
-			this.idx = Message.idx_counter++;
-		}
 
 		public Message(string role, string content, string thinking = "")
 		{

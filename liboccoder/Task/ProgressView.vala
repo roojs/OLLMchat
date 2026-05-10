@@ -175,10 +175,10 @@ namespace OLLMcoder.Task
 				this.column_view.grab_focus();
 				var picked = this.column_view.pick((float) x, (float) y, Gtk.PickFlags.DEFAULT);
 				if (picked == null) {
-					GLib.debug("pick miss");
+					/* GLib.debug("pick miss"); */
 					return;
 				}
-				GLib.debug("pick type=%s", picked.get_type().name());
+				/* GLib.debug("pick type=%s", picked.get_type().name()); */
 				while (picked != null && !(picked is Gtk.ColumnView)) {
 					Gtk.TreeListRow? row = null;
 					var expander_hit = picked as Gtk.TreeExpander;
@@ -189,16 +189,16 @@ namespace OLLMcoder.Task
 						row = ((GLib.Object) picked).get_data<Gtk.TreeListRow>("progress-row");
 					}
 					if (row == null) {
-						GLib.debug("walk type=%s progress-row=no", picked.get_type().name());
+						/* GLib.debug("walk type=%s progress-row=no", picked.get_type().name()); */
 						picked = picked.get_parent();
 						continue;
 					}
-					GLib.debug("select position=%u", row.get_position());
+					/* GLib.debug("select position=%u", row.get_position()); */
 					this.select_row(row.get_position());
 					break;
 				}
 				if (picked != null && picked is Gtk.ColumnView) {
-					GLib.debug("walk stopped at ColumnView without row");
+					/* GLib.debug("walk stopped at ColumnView without row"); */
 				}
 			});
 
@@ -273,12 +273,14 @@ namespace OLLMcoder.Task
 			this.progress_selection.selected = pos;
 			var pi = (ProgressItem) ((Gtk.TreeListRow) m.get_item(pos)).get_item();
 			if (this.window != null) {
-				// GLib.debug(
-				// 	"progress strip select row=%s msg_idx=%d title=%s",
-				// 	pi.get_type().name(),
-				// 	pi.msg_idx,
-				// 	pi.title);
-				this.window.scroll_to_message(pi.msg_idx);
+				GLib.debug(
+					"progress strip row=%s idx=%d msg=%p title=%s",
+					pi.get_type().name(),
+					pi.message != null ? pi.message.idx : -1,
+					pi.message,
+					pi.title);
+				this.window.scroll_to_message(pi.message != null ?
+						 pi.message.idx : -1);
 			}
 		}
 	}
