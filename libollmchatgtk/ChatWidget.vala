@@ -185,6 +185,7 @@ namespace OLLMchatGtk
 				GLib.Idle.add(() => {
 					if (!this.restoring_session && session.is_running) {
 						this.chat_view.scroll_enabled = true;
+						/* GLib.debug("scroll_to_bottom_caller reason=session_activated_idle"); */
 						this.chat_view.scroll_to_bottom();
 					}
 					return false;
@@ -195,6 +196,7 @@ namespace OLLMchatGtk
 				this.restoring_session = false;
 				GLib.Idle.add(() => {
 					this.chat_view.scroll_enabled = true;
+					/* GLib.debug("scroll_to_bottom_caller reason=session_restored_idle"); */
 					this.chat_view.scroll_to_bottom();
 					return false;
 				});
@@ -226,7 +228,7 @@ namespace OLLMchatGtk
 			// Connect to notify signal to propagate default_message when property is set
 			// messy but usefull for testing.
 			this.notify["default-message"].connect(() => {
-				GLib.debug("[ChatWidget] default_message property set to '%s' (length=%d)", this.default_message, this.default_message.length);
+				/* GLib.debug("[ChatWidget] default_message property set to '%s' (length=%d)", this.default_message, this.default_message.length); */
 				if (this.chat_input != null) {
 					this.chat_input.default_message = this.default_message;
 				}
@@ -278,6 +280,7 @@ namespace OLLMchatGtk
 				if (h > want) {
 					this.paned.set_position(h - want);
 				}
+				/* GLib.debug("scroll_to_bottom_caller reason=streaming_stop_paned_idle"); */
 				this.chat_view.scroll_to_bottom();
 				return false;
 			});
@@ -358,14 +361,14 @@ namespace OLLMchatGtk
 					ui_msg.idx_first = this.chat_view.render_box.first_id;
 					m.idx_first = ui_msg.idx_first;
 					m.idx_last = ui_msg.idx_last;
-					GLib.debug(
+					/* GLib.debug(
 						"chat bind role=%s first=%d last=%d by_id_n=%d rb_first_id=%d msg=%p",
 						m.role,
 						m.idx_first,
 						m.idx_last,
 						this.chat_view.render_box.by_id.size,
 						this.chat_view.render_box.first_id,
-						m);
+						m); */
 					break;
 				case "ui-waiting":
 					this.chat_view.show_waiting_indicator(m.content != "" ? m.content : "waiting for a reply");
@@ -377,14 +380,14 @@ namespace OLLMchatGtk
 					warning_msg.idx_first = this.chat_view.render_box.first_id;
 					m.idx_first = warning_msg.idx_first;
 					m.idx_last = warning_msg.idx_last;
-					GLib.debug(
+					/* GLib.debug(
 						"chat bind role=%s first=%d last=%d by_id_n=%d rb_first_id=%d msg=%p",
 						m.role,
 						m.idx_first,
 						m.idx_last,
 						this.chat_view.render_box.by_id.size,
 						this.chat_view.render_box.first_id,
-						m);
+						m); */
 					break;
 				case "think-stream":
 					// For think-stream, content is the thinking text
@@ -393,14 +396,14 @@ namespace OLLMchatGtk
 					stream_msg.idx_first = this.chat_view.render_box.first_id;
 					m.idx_first = stream_msg.idx_first;
 					m.idx_last = stream_msg.idx_last;
-					GLib.debug(
+					/* GLib.debug(
 						"chat bind role=%s first=%d last=%d by_id_n=%d rb_first_id=%d msg=%p",
 						m.role,
 						m.idx_first,
 						m.idx_last,
 						this.chat_view.render_box.by_id.size,
 						this.chat_view.render_box.first_id,
-						m);
+						m); */
 					break;
 				case "content-stream":
 				case "content-non-stream":
@@ -410,14 +413,14 @@ namespace OLLMchatGtk
 					stream_msg.idx_first = this.chat_view.render_box.first_id;
 					m.idx_first = stream_msg.idx_first;
 					m.idx_last = stream_msg.idx_last;
-					GLib.debug(
+					/* GLib.debug(
 						"chat bind role=%s first=%d last=%d by_id_n=%d rb_first_id=%d msg=%p",
 						m.role,
 						m.idx_first,
 						m.idx_last,
 						this.chat_view.render_box.by_id.size,
 						this.chat_view.render_box.first_id,
-						m);
+						m); */
 					break;
 				default:
 					// Should not reach here if is_ui_visible is working correctly
@@ -545,7 +548,7 @@ namespace OLLMchatGtk
 				// Tools will be executed and conversation will continue automatically
 				// Keep streaming active so we can receive the final response
 				// Don't emit response_received signal yet - wait for final response after tool execution
-				GLib.debug("ChatWidget: Response has tool_calls, waiting for tool execution and continuation");
+				/* GLib.debug("ChatWidget: Response has tool_calls, waiting for tool execution and continuation"); */
 				// Don't set streaming to false yet - tools will execute and continue
 				// Don't emit response_received - this is not the final response
 				return;

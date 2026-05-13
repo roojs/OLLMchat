@@ -130,6 +130,7 @@ namespace OLLMchatGtk
 			
 			// Connect to code block content updates to scroll when sourceviews receive content
 			this.renderer.code_block_content_updated.connect(() => {
+				/* GLib.debug("scroll_to_bottom_caller reason=code_block_content_updated"); */
 				this.scroll_to_bottom();
 			});
 			this.renderer.start_new_chat_requested.connect((text) => {
@@ -161,11 +162,21 @@ namespace OLLMchatGtk
 
 			// Detect scroll position: when user scrolls back to bottom, resume autoscroll
 			this.scrolled_window.vadjustment.value_changed.connect(() => {
+				var vadj = this.scrolled_window.vadjustment;
 				if (this.programmatic_scroll_in_progress) {
+					/* GLib.debug(
+						"vadj_trace prog value=%.2f upper=%.2f page=%.2f",
+						vadj.value,
+						vadj.upper,
+						vadj.page_size); */
 					this.programmatic_scroll_in_progress = false;
 					return;
 				}
-				var vadj = this.scrolled_window.vadjustment;  // non-null: we are in its value_changed handler
+				/* GLib.debug(
+					"vadj_trace ambient value=%.2f upper=%.2f page=%.2f",
+					vadj.value,
+					vadj.upper,
+					vadj.page_size); */
 				// within a few px of bottom = "at bottom" → resume autoscroll; else pause (small scroll up = pause)
 				this.autoscroll_paused_by_user = (vadj.value < vadj.upper - vadj.page_size - 3.0);
 			});
@@ -204,14 +215,15 @@ namespace OLLMchatGtk
 			}
 
 			if (response.done) {
-				GLib.debug(
+				/* GLib.debug(
 					"idx_map chunk tail=%u n=%u tv=%s msg=%p (idx set after return)",
 					this.render_box.by_id.size > 0 ? (uint) (this.render_box.by_id.size - 1) : 0u,
 					(uint) this.render_box.by_id.size,
 					this.renderer.current_textview != null ? this.renderer.current_textview.get_type().name() : "-",
-					response.message);
+					response.message); */
 			}
 
+			/* GLib.debug("scroll_to_bottom_caller reason=append_assistant_chunk"); */
 			this.scroll_to_bottom();
 			return this.render_box.last_id;
 		}
@@ -601,10 +613,10 @@ namespace OLLMchatGtk
 
 			// Initialize assistant message state
 			this.render_box.mark();
-			GLib.debug(
+			/* GLib.debug(
 				"append_complete after mark first_id=%d by_id_n=%d",
 				this.render_box.first_id,
-				this.render_box.by_id.size);
+				this.render_box.by_id.size); */
 			this.is_assistant_message = true;
 			this.last_chunk_start = 0;
 			this.content_state = ContentState.NONE;
@@ -628,21 +640,21 @@ namespace OLLMchatGtk
 				this.process_new_chunk_direct(message.content, false);  // false = is_thinking
 			}
 
-			GLib.debug(
+			/* GLib.debug(
 				"append_complete before finalize tail=%u n=%u tv=%s msg=%p",
 				this.render_box.by_id.size > 0 ? (uint) (this.render_box.by_id.size - 1) : 0u,
 				(uint) this.render_box.by_id.size,
 				this.renderer.current_textview != null ? this.renderer.current_textview.get_type().name() : "-",
-				message);
+				message); */
 
 			// Finalize the message (no response needed - metrics will be in messages array as "ui" messages after Step 1b)
 			this.finalize_assistant_message_direct();
-			GLib.debug(
+			/* GLib.debug(
 				"append_complete return last_id=%d first_id=%d by_id_n=%d msg=%p",
 				this.render_box.last_id,
 				this.render_box.first_id,
 				this.render_box.by_id.size,
-				message);
+				message); */
 			return this.render_box.last_id;
 		}
 
@@ -657,7 +669,7 @@ namespace OLLMchatGtk
 			this.has_displayed_user_message = false;
 			this.scroll_enabled = true;
 			this.autoscroll_paused_by_user = false;
-			GLib.debug("clear by_id_n=%u", (uint) this.render_box.by_id.size);
+			/* GLib.debug("clear by_id_n=%u", (uint) this.render_box.by_id.size); */
 			this.widgets.clear();
 
 			// Remove waiting row before tearing down markdown widgets.
@@ -723,13 +735,14 @@ namespace OLLMchatGtk
 				-1
 			);
 
-			GLib.debug(
+			/* GLib.debug(
 				"idx_map tool tail=%u n=%u tv=%s msg=%p (idx set in ChatWidget after return)",
 				this.render_box.by_id.size > 0 ? (uint) (this.render_box.by_id.size - 1) : 0u,
 				(uint) this.render_box.by_id.size,
 				this.renderer.current_textview != null ? this.renderer.current_textview.get_type().name() : "-",
-				message);
+				message); */
 
+			/* GLib.debug("scroll_to_bottom_caller reason=append_tool_message"); */
 			this.scroll_to_bottom();
 			return this.render_box.last_id;
 		}
@@ -783,6 +796,7 @@ namespace OLLMchatGtk
 				return true;
 			});
 
+			/* GLib.debug("scroll_to_bottom_caller reason=show_waiting_indicator"); */
 			this.scroll_to_bottom();
 		}
 
@@ -825,8 +839,13 @@ namespace OLLMchatGtk
 
 		public void scroll_to_bottom()
 		{
+			/* GLib.debug(
+				"scroll_to_bottom enter enabled=%s paused=%s",
+				this.scroll_enabled.to_string(),
+				this.autoscroll_paused_by_user.to_string()); */
 			// Skip scrolling if disabled (e.g., when loading history) or user has scrolled up
 			if (!this.scroll_enabled || this.autoscroll_paused_by_user) {
+				/* GLib.debug("scroll_to_bottom skip early"); */
 				return;
 			}
 			
@@ -834,6 +853,7 @@ namespace OLLMchatGtk
 			GLib.Idle.add(() => {
 				// Check if scrolling is still enabled (might have been disabled during loading)
 				if (!this.scroll_enabled || this.autoscroll_paused_by_user) {
+					/* GLib.debug("scroll_to_bottom idle skip"); */
 					return false;
 				}
 				
@@ -854,6 +874,10 @@ namespace OLLMchatGtk
 				
 				// Mark as programmatic so the value_changed handler does not set autoscroll_paused_by_user
 				this.programmatic_scroll_in_progress = true;
+				/* GLib.debug(
+					"chat_vadj_assign reason=bottom_idle upper=%.2f value_before=%.2f",
+					vadjustment.upper,
+					vadjustment.value); */
 				// Set value higher than upper to force scroll to maximum
 				// This ensures we scroll to bottom even if layout hasn't fully updated
 				vadjustment.value = vadjustment.upper + 1000.0;
@@ -868,6 +892,10 @@ namespace OLLMchatGtk
 					
 					if (vadjustment != null && vadjustment.upper > 100.0) {
 						this.programmatic_scroll_in_progress = true;
+						/* GLib.debug(
+							"chat_vadj_assign reason=bottom_timeout_100ms upper=%.2f value_before=%.2f",
+							vadjustment.upper,
+							vadjustment.value); */
 						vadjustment.value = vadjustment.upper + 1000.0;
 						this.last_scroll_pos = vadjustment.upper + 1000.0;
 					}
@@ -882,19 +910,19 @@ namespace OLLMchatGtk
 		public void scroll_to_idx(int idx)
 		{
 			if (idx < 0 || idx >= this.render_box.by_id.size) {
-				GLib.debug(
+				/* GLib.debug(
 					"scroll_idx skip idx=%d n=%u",
 					idx,
-					this.render_box.by_id.size);
+					this.render_box.by_id.size); */
 				return;
 			}
 			GLib.Idle.add(() => {
 				var vadj = this.scrolled_window.vadjustment;
 				if (vadj.upper < 100.0) {
-					GLib.debug(
+					/* GLib.debug(
 						"scroll_idx retry upper=%.0f idx=%d",
 						vadj.upper,
-						idx);
+						idx); */
 					return true;
 				}
 				var t = idx;
@@ -908,13 +936,13 @@ namespace OLLMchatGtk
 						 this.render_box.by_id.get(--t) : null;
 				}
 				if (w == null) {
-					GLib.debug(
+					/* GLib.debug(
 						"scroll_idx fail idx=%d t=%d",
 						idx,
-						t);
+						t); */
 					return false;
 				}
-				GLib.debug(
+				/* GLib.debug(
 					"scroll_idx ok requested=%d used_t=%d y=%.0f w=%s %p map=%s real=%s css=%s",
 					idx,
 					t,
@@ -923,12 +951,12 @@ namespace OLLMchatGtk
 					w,
 					w.get_mapped().to_string (),
 					w.get_realized().to_string (),
-					string.joinv(" ", w.get_css_classes()));
+					string.joinv(" ", w.get_css_classes())); */
 				var target = y - 20.0;
 				var max_val = double.max(vadj.lower,
 					vadj.upper - vadj.page_size);
 				var clamped = target.clamp(vadj.lower, max_val);
-				GLib.debug(
+				/* GLib.debug(
 					"scroll_idx vadj before idx=%d lower=%.2f value=%.2f upper=%.2f page=%.2f target=%.2f max=%.2f set=%.2f",
 					idx,
 					vadj.lower,
@@ -937,25 +965,30 @@ namespace OLLMchatGtk
 					vadj.page_size,
 					target,
 					max_val,
-					clamped);
+					clamped); */
 				this.programmatic_scroll_in_progress = true;
+				/* GLib.debug(
+					"chat_vadj_assign reason=scroll_idx idx=%d set=%.2f upper=%.2f value_before=%.2f",
+					idx,
+					clamped,
+					vadj.upper,
+					vadj.value); */
 				vadj.value = clamped;
-				GLib.debug(
+				/* GLib.debug(
 					"scroll_idx vadj right_after idx=%d value=%.2f upper=%.2f",
 					idx,
 					vadj.value,
-					vadj.upper);
+					vadj.upper); */
 				GLib.Idle.add(() => {
 					var v2 = this.scrolled_window.vadjustment;
-					GLib.debug(
+					/* GLib.debug(
 						"scroll_idx vadj idle_after idx=%d value=%.2f upper=%.2f page=%.2f",
 						idx,
 						v2.value,
 						v2.upper,
-						v2.page_size);
+						v2.page_size); */
 					return false;
 				});
-				w.grab_focus();
 				return false;
 			});
 		}
@@ -1122,17 +1155,20 @@ namespace OLLMchatGtk
 			frame.set_visible(true);
 			
 			// Scroll to bottom immediately (for widgets that are already ready)
+			/* GLib.debug("scroll_to_bottom_caller reason=add_widget_frame_immediate"); */
 			this.scroll_to_bottom();
 			
 			// Also schedule delayed scrolls to catch when widget content is loaded
 			// This is especially important for SourceViews that receive content asynchronously
 			GLib.Idle.add(() => {
+				/* GLib.debug("scroll_to_bottom_caller reason=add_widget_frame_idle"); */
 				this.scroll_to_bottom();
 				return false;
 			});
 			
 			// Additional delayed scroll after a short timeout to catch late content updates
 			GLib.Timeout.add(100, () => {
+				/* GLib.debug("scroll_to_bottom_caller reason=add_widget_frame_timeout_100ms"); */
 				this.scroll_to_bottom();
 				return false; // Don't repeat
 			});

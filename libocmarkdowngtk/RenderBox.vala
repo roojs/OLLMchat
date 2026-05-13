@@ -21,8 +21,9 @@ namespace MarkdownGtk
 	/**
 	 * Vertical Gtk.Box used as the live markdown target for {@link Render}.
 	 *
-	 * Each logical row is an id label (not listed in {@link by_id}) plus one
-	 * content widget listed in {@link by_id}. The owning {@link Render} passes this box at construction; each row uses {@link appender} on this class so indices stay aligned without relying on Gtk.Box.append dispatch.
+	 * Each logical row is one content widget listed in {@link by_id}. The owning
+	 * {@link Render} passes this box at construction; each row uses {@link appender}
+	 * on this class so indices stay aligned without relying on Gtk.Box.append dispatch.
 	 */
 	public class RenderBox : Gtk.Box
 	{
@@ -45,14 +46,13 @@ namespace MarkdownGtk
 		}
 
 		/**
-		 * Append one content row: id label (text = index before child),
-		 * then child, then register child in {@link by_id}.
+		 * Append one content row: child, registered in {@link by_id}.
 		 *
 		 * @param child widget to append as the indexed row body
 		 */
 		public void appender(Gtk.Widget child)
 		{
-			base.append(new Gtk.Label(this.by_id.size.to_string()));
+			/* base.append(new Gtk.Label(this.by_id.size.to_string())); */
 			base.append(child);
 			this.by_id.add(child);
 		}
