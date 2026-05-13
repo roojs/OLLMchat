@@ -76,8 +76,8 @@ namespace OLLMapp
 			GLib.debug(
 				"scroll_msg idx=%d has=%s n=%u",
 				idx,
-				(idx >= 0 && idx < this.chat_widget.chat_view.idx_widgets.size) ? "y" : "n",
-				this.chat_widget.chat_view.idx_widgets.size);
+				(idx >= 0 && idx < this.chat_widget.chat_view.render_box.by_id.size) ? "y" : "n",
+				this.chat_widget.chat_view.render_box.by_id.size);
 			this.chat_widget.chat_view.scroll_to_idx(idx);
 		}
 

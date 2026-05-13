@@ -166,8 +166,10 @@ namespace OLLMchat
 		public string timestamp { get; set; default = ""; }  // Format: Y-m-d H:i:s
 		public bool hidden { get; set; default = false; }
 
-		/** Chat-view widget index for navigation; assigned by UI render paths, default -1 when unset. */
-		public int idx { get; set; default = -1; }
+		/** Inclusive widget-row span in the chat view when set; UI-only, not serialized. */
+		public int idx_first { get; set; default = -1; }
+
+		public int idx_last { get; set; default = -1; }
 
 		public Message(string role, string content, string thinking = "")
 		{
@@ -359,6 +361,8 @@ namespace OLLMchat
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			switch (property_name) {
+				case "idx-first":
+				case "idx-last":
 				case "idx":
 				case "include-history-info":
 					// Exclude the flag itself from serialization

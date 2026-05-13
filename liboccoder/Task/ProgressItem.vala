@@ -27,8 +27,7 @@ namespace OLLMcoder.Task
  * **children** — {@link GLib.ListModel} whose items are {@link ProgressItem} (**7.14.2**): on {@link Details} use the
  * execution {@link ToolList} (see **7.14.1.3**). On {@link Tool}, an empty {@link GLib.ListStore}.
  *
- * Implementors provide **`message`**, **`idx_notify_id`**, and **`msg_idx_txt`** (computed from **`message.idx`**).
- * Use **`assign_message`** so Idx stays in sync when **`Message.idx`** is set later (**7.14.6**).
+ * Implementors provide **`message`**, **`idx_notify_id`**, and **`msg_idx_txt`** (delegates to {@link msg_idx_to_string}). Default **`assign_message`** watches **`idx-last`** and **notify**s **`msg_idx_txt`**.
  */
 public interface ProgressItem : GLib.Object
 {
@@ -40,14 +39,26 @@ public interface ProgressItem : GLib.Object
 
 	public abstract GLib.ListModel children { get; }
 
-	/** Chat row to scroll to; **`Message.idx`** is the view widget index when set. */
+	/** Chat row to scroll to; use Message.idx_last as the scroll_to_idx row when set. */
 	public abstract OLLMchat.Message? message { get; set; }
 
-	/** Non-zero while **`assign_message`** is watching **`message.notify["idx"]`**; cleared on disconnect. */
+	/** Non-zero while `assign_message` is watching `message.notify["idx-last"]`; cleared on disconnect. */
 	public abstract ulong idx_notify_id { get; set; }
 
-	/** Label text for the Idx column (**digits** or **—**). */
-	public abstract string msg_idx_txt { owned get; }
+	/** Idx column string from `this.message` span (`first–last`, or —). */
+	public virtual string msg_idx_to_string()
+	{
+		var msg = this.message;
+		if (msg == null) {
+			return "—";
+		}
+		if (msg.idx_first >= 0 && msg.idx_last >= 0) {
+			return msg.idx_first == msg.idx_last
+				? msg.idx_first.to_string()
+				: "%d-%d".printf(msg.idx_first, msg.idx_last);
+		}
+		return "—";
+	}
 
 	/**
 	 * After {@link Tool} execution, the {@link OLLMchat.Tool.RequestBase} copied from {@link OLLMchat.Tool.BaseTool.last_request} for this row; **null** if not a tool row or not yet run.
@@ -59,23 +70,30 @@ public interface ProgressItem : GLib.Object
 	 */
 	public abstract string tooltip_text { owned get; }
 
-	/** Bind **`message`** and optionally watch **`idx`** until it is non-negative. Default implementation — implementors do not override. */
 	public void assign_message(OLLMchat.Message m)
 	{
-		GLib.debug("prog assign msg=%p idx=%d", m, m.idx);
+		GLib.debug("prog assign msg=%p first=%d last=%d", m, m.idx_first, m.idx_last);
 		if (this.message != null && this.idx_notify_id != 0) {
+			GLib.debug(
+				"prog assign rebind had_watcher old=%p old_first=%d old_last=%d new=%p new_first=%d new_last=%d",
+				this.message,
+				this.message.idx_first,
+				this.message.idx_last,
+				m,
+				m.idx_first,
+				m.idx_last);
 			this.message.disconnect(this.idx_notify_id);
 			this.idx_notify_id = 0;
 		}
 		this.message = m;
 		this.notify_property("msg_idx_txt");
-		if (m.idx >= 0) {
+		if (m.idx_first >= 0 && m.idx_last >= 0) {
 			return;
 		}
-		this.idx_notify_id = m.notify["idx"].connect(() => {
-			GLib.debug("prog idx notify msg=%p idx=%d", m, m.idx);
+		this.idx_notify_id = m.notify["idx-last"].connect(() => {
+			GLib.debug("prog idx_last notify msg=%p first=%d last=%d", m, m.idx_first, m.idx_last);
 			this.notify_property("msg_idx_txt");
-			if (m.idx >= 0 && this.idx_notify_id != 0) {
+			if (m.idx_first >= 0 && m.idx_last >= 0 && this.idx_notify_id != 0) {
 				m.disconnect(this.idx_notify_id);
 				this.idx_notify_id = 0;
 			}

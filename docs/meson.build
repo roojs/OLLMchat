@@ -282,6 +282,7 @@ valadoc_docs = custom_target('valadoc',
     # libollmchatgtk sources (depends on libollmchat, libocmarkdown, libocmarkdowngtk)
     '../libollmchatgtk/ChatWidget.vala',
     '../libollmchatgtk/ChatView.vala',
+    '../libocmarkdowngtk/RenderBox.vala',
     '../libollmchatgtk/ChatInput.vala',
     '../libollmchatgtk/ChatBar.vala',
     '../libollmchatgtk/ChatPermission.vala',

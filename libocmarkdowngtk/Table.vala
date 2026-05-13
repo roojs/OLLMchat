@@ -62,10 +62,7 @@ namespace MarkdownGtk
 				margin_bottom = 2
 			};
 			/* Column widths are set when rows are added (on_row Idle); GTK4 does not expose a signal for grid resize. */
-			if (this.renderer.box == null) {
-				return;
-			}
-			this.renderer.box.append(this.grid);
+			this.renderer.box.appender(this.grid);
 		}
 
 		private void set_renderer_to_fake()

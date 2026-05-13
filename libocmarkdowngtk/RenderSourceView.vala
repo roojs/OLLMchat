@@ -49,7 +49,7 @@ namespace MarkdownGtk
 		
 		// Phase 2: nested markdown (stack + view-source toggle)
 		private Gtk.Stack? stack = null;
-		private Gtk.Box? rendered_box = null;
+		private MarkdownGtk.RenderBox? rendered_box = null;
 		private Gtk.Button view_source_toggle;
 		private bool showing_source = false;
 		private Gtk.ScrolledWindow? source_scrolled = null;  // inner scrolled for source page; used for scroll-to-bottom
@@ -315,7 +315,7 @@ namespace MarkdownGtk
 			}
 
 			// Add frame to box
-			this.renderer.box.append(frame);
+			this.renderer.box.appender(frame);
 			
 			frame.set_visible(true);
 			if (this.source_view != null) {
@@ -369,7 +369,7 @@ namespace MarkdownGtk
 			};
 			this.scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
 
-			this.rendered_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+			this.rendered_box = new MarkdownGtk.RenderBox() {
 				hexpand = true,
 				vexpand = false
 			};
@@ -477,10 +477,6 @@ namespace MarkdownGtk
 		private int get_max_collapsed_height()
 		{
 			// Try to get height from box's parent
-			if (this.renderer.box == null) {
-				return 300; // Fallback
-			}
-			
 			var parent = this.renderer.box.get_parent();
 			if (parent == null) {
 				return 300; // Fallback
@@ -520,7 +516,7 @@ namespace MarkdownGtk
 			 	if (for_width <= 0) {
 					for_width = this.body_revealer.get_width();
 				}
-				if (for_width <= 0 && this.renderer.box != null) {
+				if (for_width <= 0) {
 					for_width = this.renderer.box.get_allocated_width();
 				}
 			}

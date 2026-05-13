@@ -174,7 +174,9 @@ namespace OLLMchatGtk
 				if (this.chat_view == null) {
 					return;
 				}
-				message.idx = this.chat_view.append_tool_message(message);
+				var tail = this.chat_view.append_tool_message(message);
+				message.idx_first = this.chat_view.render_box.first_id;
+				message.idx_last = tail;
 			});
 			this.manager.message_added.connect(this.on_message_created);
 			
@@ -352,9 +354,18 @@ namespace OLLMchatGtk
 				case "ui":
 					// "You said" user block and tool/error/preview all arrive as "ui" with fenced content
 					var ui_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
-					ui_msg.idx = this.chat_view.append_complete_assistant_message(ui_msg, session);
-					m.idx = ui_msg.idx;
-					GLib.debug("chat bind role=%s idx=%d msg=%p", m.role, m.idx, m);
+					ui_msg.idx_last = this.chat_view.append_complete_assistant_message(ui_msg, session);
+					ui_msg.idx_first = this.chat_view.render_box.first_id;
+					m.idx_first = ui_msg.idx_first;
+					m.idx_last = ui_msg.idx_last;
+					GLib.debug(
+						"chat bind role=%s first=%d last=%d by_id_n=%d rb_first_id=%d msg=%p",
+						m.role,
+						m.idx_first,
+						m.idx_last,
+						this.chat_view.render_box.by_id.size,
+						this.chat_view.render_box.first_id,
+						m);
 					break;
 				case "ui-waiting":
 					this.chat_view.show_waiting_indicator(m.content != "" ? m.content : "waiting for a reply");
@@ -362,24 +373,51 @@ namespace OLLMchatGtk
 					break;
 				case "ui-warning":
 					var warning_msg = new OLLMchat.Message("assistant", "⚠️ " + m.content, m.thinking);
-					warning_msg.idx = this.chat_view.append_complete_assistant_message(warning_msg, session);
-					m.idx = warning_msg.idx;
-					GLib.debug("chat bind role=%s idx=%d msg=%p", m.role, m.idx, m);
+					warning_msg.idx_last = this.chat_view.append_complete_assistant_message(warning_msg, session);
+					warning_msg.idx_first = this.chat_view.render_box.first_id;
+					m.idx_first = warning_msg.idx_first;
+					m.idx_last = warning_msg.idx_last;
+					GLib.debug(
+						"chat bind role=%s first=%d last=%d by_id_n=%d rb_first_id=%d msg=%p",
+						m.role,
+						m.idx_first,
+						m.idx_last,
+						this.chat_view.render_box.by_id.size,
+						this.chat_view.render_box.first_id,
+						m);
 					break;
 				case "think-stream":
 					// For think-stream, content is the thinking text
 					var stream_msg = new OLLMchat.Message("assistant", "", m.content);
-					stream_msg.idx = this.chat_view.append_complete_assistant_message(stream_msg, session);
-					m.idx = stream_msg.idx;
-					GLib.debug("chat bind role=%s idx=%d msg=%p", m.role, m.idx, m);
+					stream_msg.idx_last = this.chat_view.append_complete_assistant_message(stream_msg, session);
+					stream_msg.idx_first = this.chat_view.render_box.first_id;
+					m.idx_first = stream_msg.idx_first;
+					m.idx_last = stream_msg.idx_last;
+					GLib.debug(
+						"chat bind role=%s first=%d last=%d by_id_n=%d rb_first_id=%d msg=%p",
+						m.role,
+						m.idx_first,
+						m.idx_last,
+						this.chat_view.render_box.by_id.size,
+						this.chat_view.render_box.first_id,
+						m);
 					break;
 				case "content-stream":
 				case "content-non-stream":
 					// Render streaming/non-streaming messages as assistant messages
 					var stream_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
-					stream_msg.idx = this.chat_view.append_complete_assistant_message(stream_msg, session);
-					m.idx = stream_msg.idx;
-					GLib.debug("chat bind role=%s idx=%d msg=%p", m.role, m.idx, m);
+					stream_msg.idx_last = this.chat_view.append_complete_assistant_message(stream_msg, session);
+					stream_msg.idx_first = this.chat_view.render_box.first_id;
+					m.idx_first = stream_msg.idx_first;
+					m.idx_last = stream_msg.idx_last;
+					GLib.debug(
+						"chat bind role=%s first=%d last=%d by_id_n=%d rb_first_id=%d msg=%p",
+						m.role,
+						m.idx_first,
+						m.idx_last,
+						this.chat_view.render_box.by_id.size,
+						this.chat_view.render_box.first_id,
+						m);
 					break;
 				default:
 					// Should not reach here if is_ui_visible is working correctly
@@ -462,11 +500,19 @@ namespace OLLMchatGtk
 
 			// Process chunk (even if done, there might be final text to process)
 			if (new_text.length > 0) {
-				response.message.idx = this.chat_view.append_assistant_chunk(new_text, response);
+				{
+					var tail = this.chat_view.append_assistant_chunk(new_text, response);
+					response.message.idx_first = this.chat_view.render_box.first_id;
+					response.message.idx_last = tail;
+				}
 			} else if (response.done) {
 				// Metrics-only final packet: no text, but ChatView must still leave thinking mode
 				// and close the thinking frame before finalize (thinking-only replies).
-				response.message.idx = this.chat_view.append_assistant_chunk("", response);
+				{
+					var tail = this.chat_view.append_assistant_chunk("", response);
+					response.message.idx_first = this.chat_view.render_box.first_id;
+					response.message.idx_last = tail;
+				}
 			}
 
 			// If response is not done, continue waiting
@@ -478,11 +524,17 @@ namespace OLLMchatGtk
 			// the assistant message state so statistics can be displayed in finalize_assistant_message
 			// (append_assistant_chunk safely handles empty text and won't re-initialize if already initialized)
 			if (response.message.tool_calls.size > 0 && response.message.content.length == 0) {
-				response.message.idx = this.chat_view.append_assistant_chunk("", response);
+				{
+					var tail = this.chat_view.append_assistant_chunk("", response);
+					response.message.idx_first = this.chat_view.render_box.first_id;
+					response.message.idx_last = tail;
+				}
 			}
 
 			// Response is done - finalize the message
 			this.chat_view.finalize_assistant_message(response);
+			response.message.idx_first = this.chat_view.render_box.first_id;
+			response.message.idx_last = this.chat_view.render_box.last_id;
 			
 			// Check if this response has tool_calls - if so, tools will be executed and conversation will continue
 			// Don't stop streaming yet if tools are being executed (they will auto-continue)
