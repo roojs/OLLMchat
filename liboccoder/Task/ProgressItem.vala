@@ -39,7 +39,11 @@ public interface ProgressItem : GLib.Object
 
 	public abstract GLib.ListModel children { get; }
 
-	/** Chat row to scroll to; use Message.idx_last as the scroll_to_idx row when set. */
+	/**
+	 * Chat row span for this progress row.
+	 * Progress strip scroll uses {@link OLLMchat.Message.idx_first} when set,
+	 * otherwise {@link OLLMchat.Message.idx_last}.
+	 */
 	public abstract OLLMchat.Message? message { get; set; }
 
 	/** Non-zero while `assign_message` is watching `message.notify["idx-last"]`; cleared on disconnect. */
@@ -48,14 +52,13 @@ public interface ProgressItem : GLib.Object
 	/** Idx column string from `this.message` span (`first–last`, or —). */
 	public virtual string msg_idx_to_string()
 	{
-		var msg = this.message;
-		if (msg == null) {
+		if (this.message == null) {
 			return "—";
 		}
-		if (msg.idx_first >= 0 && msg.idx_last >= 0) {
-			return msg.idx_first == msg.idx_last
-				? msg.idx_first.to_string()
-				: "%d-%d".printf(msg.idx_first, msg.idx_last);
+		if (this.message.idx_first >= 0 && this.message.idx_last >= 0) {
+			return this.message.idx_first == this.message.idx_last
+				? this.message.idx_first.to_string()
+				: "%d-%d".printf(this.message.idx_first, this.message.idx_last);
 		}
 		return "—";
 	}
@@ -72,16 +75,16 @@ public interface ProgressItem : GLib.Object
 
 	public void assign_message(OLLMchat.Message m)
 	{
-		GLib.debug("prog assign msg=%p first=%d last=%d", m, m.idx_first, m.idx_last);
+		/* GLib.debug("prog assign msg=%p first=%d last=%d", m, m.idx_first, m.idx_last); */
 		if (this.message != null && this.idx_notify_id != 0) {
-			GLib.debug(
+			/* GLib.debug(
 				"prog assign rebind had_watcher old=%p old_first=%d old_last=%d new=%p new_first=%d new_last=%d",
 				this.message,
 				this.message.idx_first,
 				this.message.idx_last,
 				m,
 				m.idx_first,
-				m.idx_last);
+				m.idx_last); */
 			this.message.disconnect(this.idx_notify_id);
 			this.idx_notify_id = 0;
 		}
@@ -91,7 +94,7 @@ public interface ProgressItem : GLib.Object
 			return;
 		}
 		this.idx_notify_id = m.notify["idx-last"].connect(() => {
-			GLib.debug("prog idx_last notify msg=%p first=%d last=%d", m, m.idx_first, m.idx_last);
+			/* GLib.debug("prog idx_last notify msg=%p first=%d last=%d", m, m.idx_first, m.idx_last); */
 			this.notify_property("msg_idx_txt");
 			if (m.idx_first >= 0 && m.idx_last >= 0 && this.idx_notify_id != 0) {
 				m.disconnect(this.idx_notify_id);

@@ -273,14 +273,18 @@ namespace OLLMcoder.Task
 			this.progress_selection.selected = pos;
 			var pi = (ProgressItem) ((Gtk.TreeListRow) m.get_item(pos)).get_item();
 			if (this.window != null) {
-				GLib.debug(
-					"progress strip row=%s idx=%d msg=%p title=%s",
+				/* GLib.debug(
+					"progress strip row=%s scroll_idx=%d message=%p title=%s",
 					pi.get_type().name(),
-					pi.message != null ? pi.message.idx_last : -1,
+					pi.message == null ? -1
+						: (pi.message.idx_first >= 0 ? 
+							pi.message.idx_first : pi.message.idx_last),
 					pi.message,
-					pi.title);
-				this.window.scroll_to_message(pi.message != null ?
-						 pi.message.idx_last : -1);
+					pi.title); */
+				this.window.scroll_to_message(
+					pi.message == null 	? -1
+						: (pi.message.idx_first >= 0 ?
+							 pi.message.idx_first : pi.message.idx_last));
 			}
 		}
 	}
