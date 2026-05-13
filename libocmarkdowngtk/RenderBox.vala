@@ -19,14 +19,19 @@
 namespace MarkdownGtk
 {
 	/**
-	 * Vertical Gtk.Box used as the live markdown target for {@link Render}.
+	 * Vertical Gtk.Box used as the live markdown row target for {@link Render}.
 	 *
-	 * Each logical row is one content widget listed in {@link by_id}. The owning
-	 * {@link Render} passes this box at construction; each row uses {@link appender}
-	 * on this class so indices stay aligned without relying on Gtk.Box.append dispatch.
+	 * Link gestures run here; forward pointer/motion/leave via signals so each
+	 * new box instance works without holding a reference to {@link Render}.
+	 *
+	 * @see Render
 	 */
 	public class RenderBox : Gtk.Box
 	{
+		public signal void on_link_click_released(double x, double y);
+		public signal void on_link_motion(double x, double y);
+		public signal void on_link_leave();
+
 		/** Append order for scroll / id queries; updated only from {@link appender}. */
 		public Gee.ArrayList<Gtk.Widget> by_id { get; private set; default = new Gee.ArrayList<Gtk.Widget>(); }
 
@@ -43,6 +48,19 @@ namespace MarkdownGtk
 		public RenderBox()
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
+			var click_gesture = new Gtk.GestureClick();
+			click_gesture.released.connect((n_press, x, y) => {
+				this.on_link_click_released(x, y);
+			});
+			this.add_controller(click_gesture);
+			var motion = new Gtk.EventControllerMotion();
+			motion.motion.connect((x, y) => {
+				this.on_link_motion(x, y);
+			});
+			motion.leave.connect(() => {
+				this.on_link_leave();
+			});
+			this.add_controller(motion);
 		}
 
 		/**
