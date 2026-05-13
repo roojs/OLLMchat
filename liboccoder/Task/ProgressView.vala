@@ -276,11 +276,11 @@ namespace OLLMcoder.Task
 				GLib.debug(
 					"progress strip row=%s idx=%d msg=%p title=%s",
 					pi.get_type().name(),
-					pi.message != null ? pi.message.idx : -1,
+					pi.message != null ? pi.message.idx_last : -1,
 					pi.message,
 					pi.title);
 				this.window.scroll_to_message(pi.message != null ?
-						 pi.message.idx : -1);
+						 pi.message.idx_last : -1);
 			}
 		}
 	}

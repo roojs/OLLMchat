@@ -35,7 +35,7 @@ class TestGtkMd : TestAppBase
 	private static string? opt_history = null;
 
 	private Gtk.Window window;
-	private Gtk.Box text_view_box;
+	private MarkdownGtk.RenderBox text_view_box;
 	private Gtk.ScrolledWindow scrolled;
 	private MarkdownGtk.Render md_renderer;
 
@@ -314,7 +314,7 @@ Examples:
 			default_height = 500
 		};
 
-		this.text_view_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+		this.text_view_box = new MarkdownGtk.RenderBox() {
 			hexpand = true,
 			vexpand = true,
 			margin_start = 8,

@@ -51,7 +51,9 @@ namespace MarkdownGtk
 		public State? current_state { get; internal set; default = null; }
 		
 		// Properties for Gtk.Box model
-		public Gtk.Box? box { get; private set; default = null; }
+		// If link/motion controllers attach to renderer.box, re-attach when
+		// ChatView.clear() assigns a new RenderBox to renderer.box (same PR as repointing).
+		public MarkdownGtk.RenderBox box { get; set; }
 		public Gtk.TextView? current_textview { get; internal set; default = null; }
 		public Gtk.TextBuffer? current_buffer { get; internal set; default = null; }
 		
@@ -93,9 +95,9 @@ namespace MarkdownGtk
 		/**
 		 * Creates a renderer that appends content to the given box.
 		 *
-		 * @param box Gtk.Box to add TextViews to
+		 * @param box markdown row target; {@link MarkdownGtk.RenderBox.appender} is used for each row
 		 */
-		public Render(Gtk.Box box)
+		public Render(MarkdownGtk.RenderBox box)
 		{
 			base();
 			this.box = box;
@@ -232,7 +234,7 @@ namespace MarkdownGtk
 			this.current_buffer = this.current_textview.buffer;
 			
 			// Add TextView to box at bottom
-			this.box.append(this.current_textview);
+			this.box.appender(this.current_textview);
 			
 			// Create TopState now that buffer is ready (will initialize tag/marks)
 			this.top_state = new TopState(this);
@@ -252,16 +254,13 @@ namespace MarkdownGtk
 		/**
 		 * Removes a markdown TextView from this.box when its buffer has no visible
 		 * text: either zero characters or only whitespace (e.g. newlines between
-		 * fences). No-op if tv or this.box is null.
+		 * fences). No-op if tv is null.
 		 *
 		 * @param tv the TextView to remove when empty
 		 */
 		private void remove_empty(Gtk.TextView? tv)
 		{
 			if (tv == null) {
-				return;
-			}
-			if (this.box == null) {
 				return;
 			}
 			Gtk.TextBuffer buf = tv.buffer;
@@ -560,7 +559,7 @@ namespace MarkdownGtk
 			};
 			
 			// Add separator to the box
-			this.box.append(separator);
+			this.box.appender(separator);
 			
 			// Create a new textview for future text (similar to code block handling)
 			// Don't call start() as that would reset the parser state
@@ -809,7 +808,7 @@ namespace MarkdownGtk
 				this.top_state.delete_marks_recursive();
 			}
 
-			if (this.current_textview != null && this.box != null) {
+			if (this.current_textview != null) {
 				Gtk.Widget? prev_w = this.current_textview.get_prev_sibling();
 				this.remove_empty(prev_w as Gtk.TextView);
 				prev_w = prev_w == null ? null : prev_w.get_prev_sibling();

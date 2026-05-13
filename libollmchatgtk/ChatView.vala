@@ -61,7 +61,7 @@ namespace OLLMchatGtk
 		private int waiting_dots = 0;
 		private string waiting_caption = "waiting for a reply";
 		private Gee.ArrayList<Gtk.Widget> widgets = new Gee.ArrayList<Gtk.Widget>();
-		public Gee.ArrayList<Gtk.Widget> idx_widgets = new Gee.ArrayList<Gtk.Widget>();
+		public MarkdownGtk.RenderBox render_box { get; private set; }
 		private bool has_displayed_user_message = false;
 		private double last_scroll_pos = 0.0;
 		public bool scroll_enabled = true;
@@ -70,9 +70,6 @@ namespace OLLMchatGtk
 		private bool programmatic_scroll_in_progress = false;
 		/** Current thinking child frame (when streaming thinking into a framed box). */
 		private MarkdownGtk.RenderSourceView? thinking_frame = null;
-
-		/** Temporary scroll-to-row highlight; remove when trace UX is final. */
-		private Gtk.Widget? scroll_target_highlight_widget = null;
 
 		/**
 		 * Creates a new ChatView instance.
@@ -109,8 +106,10 @@ namespace OLLMchatGtk
 				margin_end = 0
 			};
 
-			// Create single Render instance for assistant messages (uses text_view_box)
-			this.renderer = new MarkdownGtk.Render(this.text_view_box) {
+			this.render_box = new MarkdownGtk.RenderBox();
+			this.text_view_box.append(this.render_box);
+			// Create single Render instance for assistant messages (uses render_box)
+			this.renderer = new MarkdownGtk.Render(this.render_box) {
 				scroll_to_end = this.scroll_enabled
 			};
 
@@ -205,21 +204,16 @@ namespace OLLMchatGtk
 			}
 
 			if (response.done) {
-				if (this.renderer.current_textview != null
-					&& (this.idx_widgets.size == 0
-						|| this.idx_widgets.get(this.idx_widgets.size - 1) != this.renderer.current_textview)) {
-					this.idx_widgets.add(this.renderer.current_textview);
-				}
-				/* GLib.debug(
+				GLib.debug(
 					"idx_map chunk tail=%u n=%u tv=%s msg=%p (idx set after return)",
-					this.idx_widgets.size > 0 ? (uint) (this.idx_widgets.size - 1) : 0u,
-					(uint) this.idx_widgets.size,
+					this.render_box.by_id.size > 0 ? (uint) (this.render_box.by_id.size - 1) : 0u,
+					(uint) this.render_box.by_id.size,
 					this.renderer.current_textview != null ? this.renderer.current_textview.get_type().name() : "-",
-					response.message); */
+					response.message);
 			}
 
 			this.scroll_to_bottom();
-			return this.idx_widgets.size - 1;
+			return this.render_box.last_id;
 		}
 
 		/**
@@ -237,6 +231,7 @@ namespace OLLMchatGtk
 
 		private void initialize_assistant_message(OLLMchat.Response.Chat response)
 		{
+			this.render_box.mark();
 			this.is_assistant_message = true;
 			this.last_chunk_start = 0;
 			this.is_thinking = response.is_thinking;
@@ -605,6 +600,11 @@ namespace OLLMchatGtk
 			bool is_thinking = message.thinking != "";
 
 			// Initialize assistant message state
+			this.render_box.mark();
+			GLib.debug(
+				"append_complete after mark first_id=%d by_id_n=%d",
+				this.render_box.first_id,
+				this.render_box.by_id.size);
 			this.is_assistant_message = true;
 			this.last_chunk_start = 0;
 			this.content_state = ContentState.NONE;
@@ -628,21 +628,22 @@ namespace OLLMchatGtk
 				this.process_new_chunk_direct(message.content, false);  // false = is_thinking
 			}
 
-			if (this.renderer.current_textview != null
-				&& (this.idx_widgets.size == 0
-					|| this.idx_widgets.get(this.idx_widgets.size - 1) != this.renderer.current_textview)) {
-				this.idx_widgets.add(this.renderer.current_textview);
-			}
-			/* GLib.debug(
-				"idx_map done tail=%u n=%u tv=%s msg=%p (idx set in ChatWidget after return)",
-				this.idx_widgets.size > 0 ? (uint) (this.idx_widgets.size - 1) : 0u,
-				(uint) this.idx_widgets.size,
+			GLib.debug(
+				"append_complete before finalize tail=%u n=%u tv=%s msg=%p",
+				this.render_box.by_id.size > 0 ? (uint) (this.render_box.by_id.size - 1) : 0u,
+				(uint) this.render_box.by_id.size,
 				this.renderer.current_textview != null ? this.renderer.current_textview.get_type().name() : "-",
-				message); */
+				message);
 
 			// Finalize the message (no response needed - metrics will be in messages array as "ui" messages after Step 1b)
 			this.finalize_assistant_message_direct();
-			return this.idx_widgets.size - 1;
+			GLib.debug(
+				"append_complete return last_id=%d first_id=%d by_id_n=%d msg=%p",
+				this.render_box.last_id,
+				this.render_box.first_id,
+				this.render_box.by_id.size,
+				message);
+			return this.render_box.last_id;
 		}
 
 		/**
@@ -652,13 +653,11 @@ namespace OLLMchatGtk
 		 */
 		public void clear()
 		{
-			this.scroll_target_highlight_apply(null);
 			// Reset flags when clearing chat
 			this.has_displayed_user_message = false;
 			this.scroll_enabled = true;
 			this.autoscroll_paused_by_user = false;
-			/* GLib.debug("idx_map clear n=%u", this.idx_widgets.size); */
-			this.idx_widgets.clear();
+			GLib.debug("clear by_id_n=%u", (uint) this.render_box.by_id.size);
 			this.widgets.clear();
 
 			// Remove waiting row before tearing down markdown widgets.
@@ -674,6 +673,10 @@ namespace OLLMchatGtk
 				this.text_view_box.remove(children);
 				children = next;
 			}
+
+			this.render_box = new MarkdownGtk.RenderBox();
+			this.text_view_box.append(this.render_box);
+			this.renderer.box = this.render_box;
 
 			// Reset state (indicator already cleared above)
 			this.last_chunk_start = 0;
@@ -702,7 +705,7 @@ namespace OLLMchatGtk
 			// Get end position for insertion
 			var buffer = this.get_current_buffer();
 			if (buffer == null) {
-				return this.idx_widgets.size - 1;
+				return this.render_box.last_id;
 			}
 			
 			Gtk.TextIter end_iter;
@@ -720,20 +723,15 @@ namespace OLLMchatGtk
 				-1
 			);
 
-			if (this.renderer.current_textview != null
-				&& (this.idx_widgets.size == 0
-					|| this.idx_widgets.get(this.idx_widgets.size - 1) != this.renderer.current_textview)) {
-				this.idx_widgets.add(this.renderer.current_textview);
-			}
-			/* GLib.debug(
+			GLib.debug(
 				"idx_map tool tail=%u n=%u tv=%s msg=%p (idx set in ChatWidget after return)",
-				this.idx_widgets.size > 0 ? (uint) (this.idx_widgets.size - 1) : 0u,
-				(uint) this.idx_widgets.size,
+				this.render_box.by_id.size > 0 ? (uint) (this.render_box.by_id.size - 1) : 0u,
+				(uint) this.render_box.by_id.size,
 				this.renderer.current_textview != null ? this.renderer.current_textview.get_type().name() : "-",
-				message); */
+				message);
 
 			this.scroll_to_bottom();
-			return this.idx_widgets.size - 1;
+			return this.render_box.last_id;
 		}
 
 		/**
@@ -883,11 +881,11 @@ namespace OLLMchatGtk
 		/** Scroll so row idx sits near the viewport top; if translate fails, try idx-1 … until idx-4. */
 		public void scroll_to_idx(int idx)
 		{
-			if (idx < 0 || idx > this.idx_widgets.size - 1) {
+			if (idx < 0 || idx >= this.render_box.by_id.size) {
 				GLib.debug(
 					"scroll_idx skip idx=%d n=%u",
 					idx,
-					this.idx_widgets.size);
+					this.render_box.by_id.size);
 				return;
 			}
 			GLib.Idle.add(() => {
@@ -900,14 +898,14 @@ namespace OLLMchatGtk
 					return true;
 				}
 				var t = idx;
-				var w = this.idx_widgets.get(t);
+				var w = this.render_box.by_id.get(t);
 				var dx = 0.0;
 				var y = 0.0;
 				while (t > idx - 4 && t > -1 && w != null
 						&& !w.translate_coordinates(this.text_view_box,
 							 0, 0, out dx, out y)) {
 					w = (t > idx - 3) && (t > 0) ?
-						 this.idx_widgets.get(--t) : null;
+						 this.render_box.by_id.get(--t) : null;
 				}
 				if (w == null) {
 					GLib.debug(
@@ -927,37 +925,41 @@ namespace OLLMchatGtk
 					w.get_realized().to_string (),
 					string.joinv(" ", w.get_css_classes()));
 				var target = y - 20.0;
-				var max_val = double.max(vadj.lower, 
+				var max_val = double.max(vadj.lower,
 					vadj.upper - vadj.page_size);
+				var clamped = target.clamp(vadj.lower, max_val);
+				GLib.debug(
+					"scroll_idx vadj before idx=%d lower=%.2f value=%.2f upper=%.2f page=%.2f target=%.2f max=%.2f set=%.2f",
+					idx,
+					vadj.lower,
+					vadj.value,
+					vadj.upper,
+					vadj.page_size,
+					target,
+					max_val,
+					clamped);
 				this.programmatic_scroll_in_progress = true;
-				vadj.value = target.clamp(vadj.lower, max_val);
-				this.scroll_target_highlight_apply(w);
+				vadj.value = clamped;
+				GLib.debug(
+					"scroll_idx vadj right_after idx=%d value=%.2f upper=%.2f",
+					idx,
+					vadj.value,
+					vadj.upper);
+				GLib.Idle.add(() => {
+					var v2 = this.scrolled_window.vadjustment;
+					GLib.debug(
+						"scroll_idx vadj idle_after idx=%d value=%.2f upper=%.2f page=%.2f",
+						idx,
+						v2.value,
+						v2.upper,
+						v2.page_size);
+					return false;
+				});
 				w.grab_focus();
 				return false;
 			});
 		}
 
-		/** Swap temporary scroll-target highlight to {@link widget} (or clear). */
-		private void scroll_target_highlight_apply(Gtk.Widget? widget)
-		{
-			if (this.scroll_target_highlight_widget == widget) {
-				return;
-			}
-			if (this.scroll_target_highlight_widget != null) {
-				this.scroll_target_highlight_widget.remove_css_class("oc-chat-scroll-target-temp");
-			}
-			this.scroll_target_highlight_widget = widget;
-			if (this.scroll_target_highlight_widget != null) {
-				this.scroll_target_highlight_widget.add_css_class("oc-chat-scroll-target-temp");
-				GLib.debug(
-					"scroll_highlight %p %s",
-					this.scroll_target_highlight_widget,
-					string.joinv(" ", this.scroll_target_highlight_widget.get_css_classes()));
-			} else {
-				GLib.debug("scroll_highlight cleared");
-			}
-		}
-		
 		/**
 		* Copies text to the clipboard.
 		* 
@@ -1115,7 +1117,7 @@ namespace OLLMchatGtk
 			this.widgets.add(frame);
 			
 			// Add frame directly to renderer.box
-			this.renderer.box.append(frame);
+			this.renderer.box.appender(frame);
 			
 			frame.set_visible(true);
 			

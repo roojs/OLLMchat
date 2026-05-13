@@ -65,9 +65,7 @@ namespace OLLMcoder.Task
 		public ulong idx_notify_id { get; set; default = 0; }
 
 		public string msg_idx_txt {
-			owned get {
-				return (this.message != null && this.message.idx >= 0) ? this.message.idx.to_string() : "—";
-			}
+			owned get { return this.msg_idx_to_string(); }
 		}
 
 		private PhaseEnum status_value = PhaseEnum.NONE;

@@ -22,6 +22,7 @@ ocmarkdowngtk_deps = [
 ]
 
 ocmarkdowngtk_src = files([
+  'RenderBox.vala',
   'Render.vala',
   'RenderSourceView.vala',
   'State.vala',

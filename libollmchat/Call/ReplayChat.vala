@@ -135,7 +135,8 @@ $(replay_issues)
 				this.messages = messages;
 				var response = new Response.Chat(this.connection, this);
 				response.message = new Message("assistant", msg.content);
-				response.message.idx = msg.idx;
+				response.message.idx_first = msg.idx_first;
+				response.message.idx_last = msg.idx_last;
 				// GLib.debug(
 				// 	"replay send array_ix=%d msg.idx=%d role=%s len=%d",
 				// 	idx,
