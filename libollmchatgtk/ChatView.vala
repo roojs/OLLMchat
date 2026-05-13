@@ -688,7 +688,11 @@ namespace OLLMchatGtk
 
 			this.render_box = new MarkdownGtk.RenderBox();
 			this.text_view_box.append(this.render_box);
+			this.renderer.disconnect_box();
 			this.renderer.box = this.render_box;
+			this.renderer.box.on_link_click_released.connect(this.renderer.on_link_click_released);
+			this.renderer.box.on_link_motion.connect(this.renderer.on_link_motion);
+			this.renderer.box.on_link_leave.connect(this.renderer.on_link_leave);
 
 			// Reset state (indicator already cleared above)
 			this.last_chunk_start = 0;

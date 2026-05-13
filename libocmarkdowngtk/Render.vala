@@ -50,9 +50,8 @@ namespace MarkdownGtk
 		public TopState? top_state { get; internal set; default = null; }
 		public State? current_state { get; internal set; default = null; }
 		
-		// Properties for Gtk.Box model
-		// If link/motion controllers attach to renderer.box, re-attach when
-		// ChatView.clear() assigns a new RenderBox to renderer.box (same PR as repointing).
+		// Link input: Gtk.GestureClick + EventControllerMotion live on {@link MarkdownGtk.RenderBox};
+		// {@link MarkdownGtk.Render} connects to {@link MarkdownGtk.RenderBox}'s link signals.
 		public MarkdownGtk.RenderBox box { get; set; }
 		public Gtk.TextView? current_textview { get; internal set; default = null; }
 		public Gtk.TextBuffer? current_buffer { get; internal set; default = null; }
@@ -101,22 +100,19 @@ namespace MarkdownGtk
 		{
 			base();
 			this.box = box;
-			var click_gesture = new Gtk.GestureClick();
-			click_gesture.released.connect((n_press, x, y) => {
-				this.on_link_click_released(x, y);
-			});
-			this.box.add_controller(click_gesture);
-			var motion = new Gtk.EventControllerMotion();
-			motion.motion.connect((x, y) => {
-				this.on_link_motion(x, y);
-			});
-			motion.leave.connect(() => {
-				this.on_link_leave();
-			});
-			this.box.add_controller(motion);
+			this.box.on_link_click_released.connect(this.on_link_click_released);
+			this.box.on_link_motion.connect(this.on_link_motion);
+			this.box.on_link_leave.connect(this.on_link_leave);
 		}
 
-		private void on_link_click_released(double x, double y)
+		public void disconnect_box()
+		{
+			this.box.on_link_click_released.disconnect(this.on_link_click_released);
+			this.box.on_link_motion.disconnect(this.on_link_motion);
+			this.box.on_link_leave.disconnect(this.on_link_leave);
+		}
+
+		public void on_link_click_released(double x, double y)
 		{
 			Gtk.TextView? view;
 			var tag = this.tag_at_iter(x, y, out view);
@@ -128,7 +124,7 @@ namespace MarkdownGtk
 			this.link_clicked(href, title);
 		}
 
-		private void on_link_motion(double x, double y)
+		public void on_link_motion(double x, double y)
 		{
 			Gtk.TextView? view;
 			var tag = this.tag_at_iter(x, y, out view);
@@ -167,7 +163,7 @@ namespace MarkdownGtk
 			}
 		}
 
-		private void on_link_leave()
+		public void on_link_leave()
 		{
 			if (this.last_link_view != null) {
 				this.last_link_view.tooltip_markup = null;
