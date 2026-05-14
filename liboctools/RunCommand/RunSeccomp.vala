@@ -43,6 +43,8 @@ namespace OLLMtools.RunCommand
 		int count_socket = 0;
 		int count_connect = 0;
 
+		public int outer_sandbox_pid { get; set; default = -1; }
+
 		Gee.HashMap<string, bool> file_writes = new Gee.HashMap<string, bool> ();
 		/** Sandbox profile for this run; set at construction, must outlive this object. */
 		public unowned Bubble bubble { get; private set; }
@@ -53,13 +55,13 @@ namespace OLLMtools.RunCommand
 		public RunSeccomp (Bubble sandbox_bubble)
 		{
 			this.bubble = sandbox_bubble;
-			this.nr_socket = Seccomp.syscall_resolve_name ("socket");
-			this.nr_connect = Seccomp.syscall_resolve_name ("connect");
-			this.nr_openat = Seccomp.syscall_resolve_name ("openat");
-			this.nr_unlink = Seccomp.syscall_resolve_name ("unlink");
-			this.nr_unlinkat = Seccomp.syscall_resolve_name ("unlinkat");
-			this.nr_rename = Seccomp.syscall_resolve_name ("rename");
-			this.nr_renameat2 = Seccomp.syscall_resolve_name ("renameat2");
+			this.nr_socket = Seccomp.syscall_resolve_name("socket");
+			this.nr_connect = Seccomp.syscall_resolve_name("connect");
+			this.nr_openat = Seccomp.syscall_resolve_name("openat");
+			this.nr_unlink = Seccomp.syscall_resolve_name("unlink");
+			this.nr_unlinkat = Seccomp.syscall_resolve_name("unlinkat");
+			this.nr_rename = Seccomp.syscall_resolve_name("rename");
+			this.nr_renameat2 = Seccomp.syscall_resolve_name("renameat2");
 		}
 
 		/**
@@ -71,9 +73,9 @@ namespace OLLMtools.RunCommand
 		 */
 		int add_notify (Seccomp.Filter ctx, string syscall_name)
 		{
-			return ctx.rule_add_array (
+			return ctx.rule_add_array(
 				Seccomp.SCMP_ACT_NOTIFY,
-				Seccomp.syscall_resolve_name (syscall_name),
+				Seccomp.syscall_resolve_name(syscall_name),
 				0,
 				null);
 		}
@@ -85,14 +87,14 @@ namespace OLLMtools.RunCommand
 		{
 			int r = 0;
 			if (!this.bubble.allow_network) {
-				r = this.add_notify (ctx, "socket");
-				r = r < 0 ? r : this.add_notify (ctx, "connect");
+				r = this.add_notify(ctx, "socket");
+				r = r < 0 ? r : this.add_notify(ctx, "connect");
 			}
-			r = r < 0 ? r : this.add_notify (ctx, "openat");
-			r = r < 0 ? r : this.add_notify (ctx, "unlink");
-			r = r < 0 ? r : this.add_notify (ctx, "unlinkat");
-			r = r < 0 ? r : this.add_notify (ctx, "rename");
-			r = r < 0 ? r : this.add_notify (ctx, "renameat2");
+			r = r < 0 ? r : this.add_notify(ctx, "openat");
+			r = r < 0 ? r : this.add_notify(ctx, "unlink");
+			r = r < 0 ? r : this.add_notify(ctx, "unlinkat");
+			r = r < 0 ? r : this.add_notify(ctx, "rename");
+			r = r < 0 ? r : this.add_notify(ctx, "renameat2");
 			return r;
 		}
 
@@ -106,26 +108,26 @@ namespace OLLMtools.RunCommand
 		void child_seccomp_handshake ()
 		{
 			int sock = RunSeccomp.SYNC_SOCK_CHILD_FD;
-			var ctx = new Seccomp.Filter (Seccomp.SCMP_ACT_ALLOW);
-			if (this.add_notify_rules (ctx) < 0) {
+			var ctx = new Seccomp.Filter(Seccomp.SCMP_ACT_ALLOW);
+			if (this.add_notify_rules(ctx) < 0) {
 				return;
 			}
-			if (SeccompLinux.prctl (SeccompLinux.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
+			if (SeccompLinux.prctl(SeccompLinux.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
 				return;
 			}
-			if (ctx.load () < 0) {
+			if (ctx.load() < 0) {
 				return;
 			}
-			int nfd = ctx.notify_fd ();
+			int nfd = ctx.notify_fd();
 			if (nfd < 0) {
 				return;
 			}
-			if (Seccomp.pass_unix_fd (sock, nfd) != 0) {
-				Posix.close (nfd);
+			if (Seccomp.pass_unix_fd(sock, nfd) != 0) {
+				Posix.close(nfd);
 				return;
 			}
-			Posix.close (nfd);
-			Posix.close (sock);
+			Posix.close(nfd);
+			Posix.close(sock);
 		}
 
 		/**
@@ -135,15 +137,15 @@ namespace OLLMtools.RunCommand
 		public void wire_launcher (GLib.SubprocessLauncher launcher)
 		{
 			int[] sv = { 0, 0 };
-			if (Posix.socketpair (Posix.AF_UNIX, Posix.SOCK_STREAM, 0, sv) != 0) {
+			if (Posix.socketpair(Posix.AF_UNIX, Posix.SOCK_STREAM, 0, sv) != 0) {
 				this.skipped = "seccomp: socketpair failed";
 				return;
 			}
 			this.parent_sock = sv[0];
 			/* take_fd owns sv[1]; GLib closes it after spawn — do not close here or spawn sees a bad FD. */
-			launcher.take_fd (sv[1], RunSeccomp.SYNC_SOCK_CHILD_FD);
-			launcher.set_child_setup (() => {
-				this.child_seccomp_handshake ();
+			launcher.take_fd(sv[1], RunSeccomp.SYNC_SOCK_CHILD_FD);
+			launcher.set_child_setup(() => {
+				this.child_seccomp_handshake();
 			});
 		}
 
@@ -156,11 +158,11 @@ namespace OLLMtools.RunCommand
 				this.skipped = "seccomp: internal error (no sync socket)";
 				return;
 			}
-			int nfd = Seccomp.receive_unix_fd (this.parent_sock);
+			int nfd = Seccomp.receive_unix_fd(this.parent_sock);
 			if (nfd < 0) {
 				this.skipped = "Seccomp user-notify was not set up for this run; syscall evidence is unavailable.";
 			}
-			Posix.close (this.parent_sock);
+			Posix.close(this.parent_sock);
 			this.parent_sock = -1;
 			if (nfd >= 0) {
 				this.notify_fd = nfd;
@@ -181,18 +183,18 @@ namespace OLLMtools.RunCommand
 			if (this.notify_fd < 0 || path_address == 0) {
 				return "";
 			}
-			if (Seccomp.notify_id_valid (this.notify_fd, ev.id) != 0) {
+			if (Seccomp.notify_id_valid(this.notify_fd, ev.id) != 0) {
 				return "";
 			}
 			const int PATH_CAP = 4096;
 			var local = new uint8[PATH_CAP];
 			size_t copy_len = local.length - 1;
-			var local_iov = Posix.iovector () { iov_base = local, iov_len = copy_len };
-			var remote_iov = Posix.iovector () {
+			var local_iov = Posix.iovector() { iov_base = local, iov_len = copy_len };
+			var remote_iov = Posix.iovector() {
 				iov_base = (void*) (uintptr) path_address,
 				iov_len = copy_len
 			};
-			ssize_t n = Seccomp.vm_readv (
+			ssize_t n = Seccomp.vm_readv(
 				(int) ev.pid,
 				&local_iov,
 				1,
@@ -206,7 +208,7 @@ namespace OLLMtools.RunCommand
 			size_t run = 0;
 			for (; run < (size_t) n && local[run] != 0; run++) {
 			}
-			return ((string) local).substring (0, (long) run);
+			return ((string) local).substring(0, (long) run);
 		}
 
 		/**
@@ -243,55 +245,63 @@ namespace OLLMtools.RunCommand
 				return;
 			}
 			if (ev.sc_data.nr == this.nr_openat) {
-				if (!this.openat_flags_imply_write (ev.sc_data.args[2])) {
+				if (!this.openat_flags_imply_write(ev.sc_data.args[2])) {
 					return;
 				}
-				var p = this.read_remote_cstring (ev, ev.sc_data.args[1]);
-				if (p != "" && !this.bubble.can_write (p)) {
-					this.file_writes.set (p, true);
+				var p = this.read_remote_cstring(ev, ev.sc_data.args[1]);
+				if (p == "") {
+					return;
+				}
+				if (GLib.Path.is_absolute(p)
+						&& (new GLib.Regex("^/proc/[0-9]+/(uid_map|gid_map|setgroups)$")).match(p)
+						&& (int64) ev.pid == this.outer_sandbox_pid) {
+					return;
+				}
+				if (!this.bubble.can_write(p)) {
+					this.file_writes.set(p, true);
 				}
 				return;
 			}
 			if (ev.sc_data.nr == this.nr_unlink) {
-				var p = this.read_remote_cstring (ev, ev.sc_data.args[0]);
-				if (p != "" && !this.bubble.can_write (p)) {
-					this.file_writes.set (p, true);
+				var p = this.read_remote_cstring(ev, ev.sc_data.args[0]);
+				if (p != "" && !this.bubble.can_write(p)) {
+					this.file_writes.set(p, true);
 				}
 				return;
 			}
 			if (ev.sc_data.nr == this.nr_unlinkat) {
 				int dirfd = (int) ev.sc_data.args[0];
-				var p = this.read_remote_cstring (ev, ev.sc_data.args[1]);
+				var p = this.read_remote_cstring(ev, ev.sc_data.args[1]);
 				if (p == "") {
 					return;
 				}
-				if (dirfd != AT_FDCWD && !GLib.Path.is_absolute (p)) {
+				if (dirfd != AT_FDCWD && !GLib.Path.is_absolute(p)) {
 					return;
 				}
-				if (!this.bubble.can_write (p)) {
-					this.file_writes.set (p, true);
+				if (!this.bubble.can_write(p)) {
+					this.file_writes.set(p, true);
 				}
 				return;
 			}
 			if (ev.sc_data.nr == this.nr_rename) {
-				var old_path = this.read_remote_cstring (ev, ev.sc_data.args[0]);
-				var new_path = this.read_remote_cstring (ev, ev.sc_data.args[1]);
-				if (old_path != "" && !this.bubble.can_write (old_path)) {
-					this.file_writes.set (old_path, true);
+				var old_path = this.read_remote_cstring(ev, ev.sc_data.args[0]);
+				var new_path = this.read_remote_cstring(ev, ev.sc_data.args[1]);
+				if (old_path != "" && !this.bubble.can_write(old_path)) {
+					this.file_writes.set(old_path, true);
 				}
-				if (new_path != "" && !this.bubble.can_write (new_path)) {
-					this.file_writes.set (new_path, true);
+				if (new_path != "" && !this.bubble.can_write(new_path)) {
+					this.file_writes.set(new_path, true);
 				}
 				return;
 			}
 			if (ev.sc_data.nr == this.nr_renameat2) {
-				var old_path = this.read_remote_cstring (ev, ev.sc_data.args[1]);
-				var new_path = this.read_remote_cstring (ev, ev.sc_data.args[3]);
-				if (old_path != "" && !this.bubble.can_write (old_path)) {
-					this.file_writes.set (old_path, true);
+				var old_path = this.read_remote_cstring(ev, ev.sc_data.args[1]);
+				var new_path = this.read_remote_cstring(ev, ev.sc_data.args[3]);
+				if (old_path != "" && !this.bubble.can_write(old_path)) {
+					this.file_writes.set(old_path, true);
 				}
-				if (new_path != "" && !this.bubble.can_write (new_path)) {
-					this.file_writes.set (new_path, true);
+				if (new_path != "" && !this.bubble.can_write(new_path)) {
+					this.file_writes.set(new_path, true);
 				}
 			}
 		}
@@ -307,25 +317,25 @@ namespace OLLMtools.RunCommand
 			for (;;) {
 				Seccomp.Notif* req_ptr;
 				Seccomp.NotifResp* resp_ptr;
-				if (Seccomp.notify_alloc (out req_ptr, out resp_ptr) != 0) {
+				if (Seccomp.notify_alloc(out req_ptr, out resp_ptr) != 0) {
 					return;
 				}
-				int r = Seccomp.notify_receive (this.notify_fd, req_ptr);
+				int r = Seccomp.notify_receive(this.notify_fd, req_ptr);
 				if (r < 0) {
-					Seccomp.notify_free (req_ptr, resp_ptr);
+					Seccomp.notify_free(req_ptr, resp_ptr);
 					if (Posix.errno == Posix.EAGAIN || Posix.errno == Posix.EWOULDBLOCK) {
 						return;
 					}
 					return;
 				}
 				Seccomp.Notif ev = *req_ptr;
-				this.on_notify_event (ev);
+				this.on_notify_event(ev);
 				resp_ptr.id = ev.id;
 				resp_ptr.val = 0;
 				resp_ptr.error = 0;
 				resp_ptr.flags = Seccomp.USER_NOTIF_FLAG_CONTINUE;
-				Seccomp.notify_respond (this.notify_fd, resp_ptr);
-				Seccomp.notify_free (req_ptr, resp_ptr);
+				Seccomp.notify_respond(this.notify_fd, resp_ptr);
+				Seccomp.notify_free(req_ptr, resp_ptr);
 			}
 		}
 
@@ -337,16 +347,16 @@ namespace OLLMtools.RunCommand
 			if (this.notify_fd < 0) {
 				return;
 			}
-			int fl = Posix.fcntl (this.notify_fd, Posix.F_GETFL, 0);
+			int fl = Posix.fcntl(this.notify_fd, Posix.F_GETFL, 0);
 			if (fl >= 0) {
-				Posix.fcntl (this.notify_fd, Posix.F_SETFL, fl | Posix.O_NONBLOCK);
+				Posix.fcntl(this.notify_fd, Posix.F_SETFL, fl | Posix.O_NONBLOCK);
 			}
-			var ch = new GLib.IOChannel.unix_new (this.notify_fd);
-			ch.set_flags (GLib.IOFlags.NONBLOCK);
-			this.unix_fd_source = ch.add_watch (
+			var ch = new GLib.IOChannel.unix_new(this.notify_fd);
+			ch.set_flags(GLib.IOFlags.NONBLOCK);
+			this.unix_fd_source = ch.add_watch(
 				GLib.IOCondition.IN | GLib.IOCondition.HUP,
 				(ch, cond) => {
-					this.drain_notify_readable ();
+					this.drain_notify_readable();
 					return true;
 				});
 		}
@@ -357,7 +367,7 @@ namespace OLLMtools.RunCommand
 		public void finish_evidence_formatting ()
 		{
 			if (this.count_socket > 0 || this.count_connect > 0) {
-				string summary = "socket (%d×), connect (%d×)".printf (
+				string summary = "socket (%d×), connect (%d×)".printf(
 					this.count_socket,
 					this.count_connect);
 				this.network = (@"---
@@ -366,16 +376,16 @@ Sandbox: networking was disabled for this run, but the command attempted network
 $(summary)
 
 To enable networking on a later run, pass \"network\": true in run_command (user approval required).
-").chomp ();
+").chomp();
 			}
 			if (this.file_writes.size > 0) {
-				var keys = this.file_writes.keys.to_array ();
+				var keys = this.file_writes.keys.to_array();
 				int lim = keys.length > 50 ? 50 : keys.length;
 				var slice = keys[0:lim];
 				this.fs = ("---\n" +
 					"Sandbox: file operations were restricted because write permission was not requested for these paths (use allow_write with a PATH-style list of absolute directory roots):\n\n" +
-					string.joinv ("\n", slice) + "\n"
-					).chomp ();
+					string.joinv("\n", slice) + "\n"
+					).chomp();
 			}
 		}
 
@@ -385,15 +395,15 @@ To enable networking on a later run, pass \"network\": true in run_command (user
 		public void detach_sources ()
 		{
 			if (this.unix_fd_source != 0) {
-				GLib.Source.remove (this.unix_fd_source);
+				GLib.Source.remove(this.unix_fd_source);
 				this.unix_fd_source = 0;
 			}
 			if (this.notify_fd >= 0) {
-				Posix.close (this.notify_fd);
+				Posix.close(this.notify_fd);
 				this.notify_fd = -1;
 			}
 			if (this.parent_sock >= 0) {
-				Posix.close (this.parent_sock);
+				Posix.close(this.parent_sock);
 				this.parent_sock = -1;
 			}
 		}

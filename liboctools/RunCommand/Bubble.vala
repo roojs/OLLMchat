@@ -116,12 +116,12 @@ namespace OLLMtools.RunCommand
 		 * @param allow_network Whether to allow network access (pass explicitly)
 		 * @param write_array Parsed allow_write tokens; never reparsed in #build_bubble_args / #can_write
 		 */
-		public Bubble (OLLMfiles.Folder? project, bool allow_network, string[] write_array) throws Error
+		public Bubble(OLLMfiles.Folder? project, bool allow_network, string[] write_array) throws Error
 		{
 			this.project = project;
 			this.allow_network = allow_network;
 			this.write_array = write_array;
-			this.overlay = new Overlay (project);
+			this.overlay = new Overlay(project);
 		}
 		
 		/**
@@ -141,65 +141,56 @@ namespace OLLMtools.RunCommand
 		 * @return String containing command output (stdout + stderr, with exit code if non-zero)
 		 * @throws Error if command execution fails, subprocess creation fails, or I/O errors occur
 		 */
-		public async string exec (string command, string working_dir = "") throws Error
+		public async string exec(string command, string working_dir = "") throws Error
 		{
-			this.overlay.create ();
-			RunSeccomp? run_seccomp = null;
-			GLib.SubprocessLauncher? launcher = null;
-			GLib.Subprocess? subprocess = null;
-			string? result = null;
-			Error? err = null;
-
+			this.overlay.create();
+			var run_seccomp = new RunSeccomp(this);
+			var launcher = new GLib.SubprocessLauncher(
+				GLib.SubprocessFlags.STDOUT_PIPE |
+				GLib.SubprocessFlags.STDERR_PIPE |
+				GLib.SubprocessFlags.STDIN_INHERIT);
+			run_seccomp.wire_launcher(launcher);
+			
+			
 			string[] args;
 			try {
-				args = this.build_bubble_args (command, working_dir);
+				args = this.build_bubble_args(command, working_dir);
 			} catch (Error e) {
-				this.overlay.cleanup ();
+				this.overlay.cleanup();
+				run_seccomp.detach_sources();
 				throw e;
 			}
+
+
+			GLib.debug("running command: %s", string.joinv(" ", args));
+			Error? err = null;
+			GLib.Subprocess? subprocess = null;
 			try {
-				GLib.debug ("running command: %s", string.joinv (" ", args));
-				run_seccomp = new RunSeccomp (this);
-				launcher = new GLib.SubprocessLauncher (
-					GLib.SubprocessFlags.STDOUT_PIPE |
-					GLib.SubprocessFlags.STDERR_PIPE |
-					GLib.SubprocessFlags.STDIN_INHERIT);
-				run_seccomp.wire_launcher (launcher);
-			} catch (Error e) {
-				err = e;
+				subprocess = launcher.spawnv(args);
+			} catch (GLib.Error se) {
+				err = new GLib.IOError.FAILED(
+					"Failed to create bubblewrap subprocess: " + se.message);
 			}
+			var result = "";
+			 
 			if (err == null) {
-				assert (launcher != null);
-				var ln = (!) launcher;
+				string? sid = subprocess.get_identifier();
+				run_seccomp.outer_sandbox_pid = sid != null ? int.parse(sid) : -1;
 				try {
-					subprocess = ln.spawnv (args);
-				} catch (GLib.Error se) {
-					err = new GLib.IOError.FAILED (
-						"Failed to create bubblewrap subprocess: " + se.message);
-				}
-			}
-			if (err == null) {
-				assert (run_seccomp != null && subprocess != null);
-				var rs = (!) run_seccomp;
-				var sp = (!) subprocess;
-				try {
-					rs.finish_handshake ();
-					rs.attach_notify_loop ();
-					result = yield this.read_subprocess_output (sp, rs);
-					yield this.overlay.scan.run ();
+					run_seccomp.finish_handshake();
+					run_seccomp.attach_notify_loop();
+					result = yield this.read_subprocess_output(subprocess, run_seccomp);
+					yield this.overlay.scan.run();
 				} catch (Error e) {
 					err = e;
 				}
 			}
-			if (run_seccomp != null) {
-				run_seccomp.detach_sources ();
-			}
-			this.overlay.cleanup ();
+			run_seccomp.detach_sources();
+			this.overlay.cleanup();
 			if (err != null) {
 				throw err;
 			}
-			assert (result != null);
-			return (owned) result;
+			return result;
 		}
 		
 		/**
@@ -290,7 +281,7 @@ namespace OLLMtools.RunCommand
 			// Extra --bind pairs from validated write_array (absolute roots only after first segment rules).
 			for (var i = 0; i < this.write_array.length; i++) {
 				var root = this.write_array[i];
-				if (i == 0 && (root.down () == "no" || root.down () == "project")) {
+				if (i == 0 && (root.down() == "no" || root.down() == "project")) {
 					break;
 				}
 				args += "--bind";
@@ -365,31 +356,31 @@ namespace OLLMtools.RunCommand
 		 */
 		public bool can_write (string path)
 		{
-			if (path == "/tmp" || path.has_prefix ("/tmp/")) {
+			if (path == "/tmp" || path.has_prefix("/tmp/")) {
 				return true;
 			}
 			if (path == "/dev/null") {
 				return true;
 			}
-			var home = GLib.Environment.get_home_dir ();
-			var bind_play = GLib.Path.build_filename (home, "playground");
-			if (path == bind_play || path.has_prefix (bind_play + "/")) {
+			var home = GLib.Environment.get_home_dir();
+			var bind_play = GLib.Path.build_filename(home, "playground");
+			if (path == bind_play || path.has_prefix(bind_play + "/")) {
 				return true;
 			}
 			if (this.overlay.overlay_map.size > 0) {
 				foreach (var e in this.overlay.overlay_map.entries) {
 					var lower = e.value;
-					if (path == lower || path.has_prefix (lower + "/")) {
+					if (path == lower || path.has_prefix(lower + "/")) {
 						return true;
 					}
 				}
 			}
 			for (var i = 0; i < this.write_array.length; i++) {
 				var root = this.write_array[i];
-				if (i == 0 && (root.down () == "no" || root.down () == "project")) {
+				if (i == 0 && (root.down() == "no" || root.down() == "project")) {
 					return false;
 				}
-				if (path == root || path.has_prefix (root + "/")) {
+				if (path == root || path.has_prefix(root + "/")) {
 					return true;
 				}
 			}
@@ -516,8 +507,8 @@ namespace OLLMtools.RunCommand
 			GLib.Source.remove(stderr_watch);
 		}
 
-		run_seccomp.drain_notify_readable ();
-		run_seccomp.finish_evidence_formatting ();
+		run_seccomp.drain_notify_readable();
+		run_seccomp.finish_evidence_formatting();
 
 		// Build failure string (stderr + stdout + exit code) for failure case
 		// fail_str already contains stderr, now add stdout
@@ -533,21 +524,21 @@ namespace OLLMtools.RunCommand
 		if (final_fail_str != "") {
 			final_fail_str += "\n";
 		}
-		final_fail_str += "Exit code: " + exit_status.to_string ();
+		final_fail_str += "Exit code: " + exit_status.to_string();
 		string[] appendix = {};
 		foreach (string part in new string[] {
 			run_seccomp.network,
 			run_seccomp.skipped,
 			run_seccomp.fs
 		}) {
-			string t = part.chomp ();
+			string t = part.chomp();
 			if (t == "") {
 				continue;
 			}
 			appendix += t;
 		}
 		if (appendix.length > 0) {
-			final_fail_str += "\n" + string.joinv ("\n", appendix);
+			final_fail_str += "\n" + string.joinv("\n", appendix);
 		}
 		final_fail_str += "\n";
 
