@@ -8,8 +8,8 @@
 
 **Related plans (context only — not a diagnosis):**
 
-- **`docs/plans/7.14.6-progress-tree-click-scroll.md`** — proposed wiring: pointer/keyboard → **`msg_idx`** → **`scroll_to_idx`** (still **Status: proposed**).
-- **`docs/plans/7.14.6-progress-chat-scroll-issues.md`** — **current canonical plan**; now pivoted to widget-index IDs owned by `ChatView` (supersedes map-registration direction).
+- **`docs/plans/done/7.14.6-DONE-progress-tree-click-scroll.md`** — archived **done**: pointer/keyboard → **`scroll_to_message`** / **`scroll_to_idx`** (see tree for **`idx_first` / `idx_last`**).
+- **`docs/plans/done/7.14.6-DONE-progress-chat-scroll-issues.md`** — archived **done**: **`ProgressItem`** **`message`** binding + **`assign_message`** (historical fences may differ from final **`idx-last`** watcher).
 
 ---
 
@@ -53,7 +53,7 @@ Aligned with **`docs/bug-fix-process.md`** § **a) DEBUG first**:
 **Explicit non-goals until root cause is known:**
 
 - Do not “fix” by adding null checks or silent fallbacks that mask missing wiring or bad indices.
-- Do not assume **`Gtk.ColumnView.activate`** is the same as “user clicked this row” without verifying (see Discussion in **`7.14.6-progress-tree-click-scroll.md`**).
+- Do not assume **`Gtk.ColumnView.activate`** is the same as “user clicked this row” without verifying (see Discussion in **`docs/plans/done/7.14.6-DONE-progress-tree-click-scroll.md`**).
 
 ---
 
@@ -80,9 +80,9 @@ Unrelated noise in same capture: **`GLib-GIO` IPv6 DNS** / **`Operation was canc
 - **Root cause (evidence-backed):** **`ChatView.idx_to_widget`** is **never populated** — no registration writes exist in **`libollmchatgtk/ChatView.vala`** (only **`clear()`**). **`scroll_to_idx`** therefore always misses once you rely on the map. Hydration logs show **`tv=GtkTextView`** alongside **`n=0`**, so the gap is **missing map insertion**, not “no widget for that message”.
 - **Ruled out (for this repro):** Broken **`msg_idx`** on click — **`idx=45`** reached **`Window.scroll_to_message`** and **`scroll_to_idx`**; **`ProgressView`** pick path ran (**`select position=3`**).
 - **Still open for other scenarios:** Live streaming (**`idx_map chunk`** / **`append_assistant_chunk`**) not excerpted here; optional **`scroll_to_idx`** viewport behaviour (**Issue 5**) remains irrelevant until the map registers a widget.
-- **Plan doc mismatch:** **`docs/plans/7.14.6-progress-chat-scroll-issues.md`** listed the registration fence as **applied**; runtime proves it is **not** in the tree — treat fence as **pending approved implementation**, not done.
+- **Plan doc mismatch (historical):** At investigation time the chat-scroll plan text and **`idx_to_widget`** registration diverged; plans are now archived under **`docs/plans/done/`** (2026-05-13) after implementation work — re-verify current tree before treating this bug as still open.
 
-**Direction update (2026-05-09):** Replace map-based lookup design with widget-index IDs returned by `ChatView` append APIs; replay/live writers set `Message.idx` from returned widget ID. See **`docs/plans/7.14.6-progress-chat-scroll-issues.md`**.
+**Direction update (2026-05-09):** Replace map-based lookup design with widget-index IDs returned by `ChatView` append APIs; replay/live writers set `Message.idx` from returned widget ID. See **`docs/plans/done/7.14.6-DONE-progress-chat-scroll-issues.md`**.
 
 **Next step (when approved to fix, not now):** Implement the widget-index plan; then re-run this repro and verify `scroll_idx` hits by list index.
 
