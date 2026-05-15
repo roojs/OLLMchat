@@ -43,8 +43,6 @@ namespace OLLMtools.RunCommand
 		int count_socket = 0;
 		int count_connect = 0;
 
-		public int outer_sandbox_pid { get; set; default = -1; }
-
 		Gee.HashMap<string, bool> file_writes = new Gee.HashMap<string, bool> ();
 		/** Sandbox profile for this run; set at construction, must outlive this object. */
 		public unowned Bubble bubble { get; private set; }
@@ -252,12 +250,21 @@ namespace OLLMtools.RunCommand
 				if (p == "") {
 					return;
 				}
-				if (GLib.Path.is_absolute(p)
-						&& (new GLib.Regex("^/proc/[0-9]+/(uid_map|gid_map|setgroups)$")).match(p)
-						&& (int64) ev.pid == this.outer_sandbox_pid) {
-					return;
+				try {
+					if ((new GLib.Regex("^(uid_map|gid_map|setgroups)$")).match(p)
+							&& GLib.FileUtils.read_link("/proc/%u/exe".printf(ev.pid)) == this.bubble.bwrap_exe) {
+						GLib.debug(
+							"ignored proc map open raw=%s pid=%u expect_exe=%s",
+							p,
+							ev.pid,
+							this.bubble.bwrap_exe);
+						return;
+					}
+				} catch (GLib.FileError e) {
+					GLib.debug("pid=%u exe unreadable: %s", ev.pid, e.message);
 				}
 				if (!this.bubble.can_write(p)) {
+					GLib.debug("blocked write path=%s pid=%u", p, ev.pid);
 					this.file_writes.set(p, true);
 				}
 				return;
