@@ -268,6 +268,8 @@ namespace OLLMvector.Indexing
 			
 			// Parse file (this will also call match_element_with_cache() after parsing)
 			yield tree.parse();
+
+			GLib.debug ("parsed path=%s elements=%d", file.path, tree.elements.size);
 			
 			if (tree.elements.size == 0) {
 				GLib.debug("No elements found in file '%s'", file.path);
@@ -314,7 +316,8 @@ namespace OLLMvector.Indexing
 			// VectorBuilder already takes config
 			var vector_builder = new VectorBuilder(
 				this.config, this.vector_db, this.sql_db);
-			
+
+			GLib.debug ("building vectors path=%s elements=%d", file.path, tree.elements.size);
 			yield vector_builder.process_file(tree);
 			
 			// After scanning completes, check if file was deleted before saving
@@ -344,12 +347,13 @@ namespace OLLMvector.Indexing
 			
 			// Save vector database after each file
 			try {
+				GLib.debug ("writing faiss index path=%s", file.path);
 				this.vector_db.save_index();
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to save vector database after indexing '%s': %s", file.path, e.message);
 			}
 			
-			GLib.debug("Completed indexing file '%s' (%d elements)", file.path, tree.elements.size);
+			GLib.debug("indexed file finished path=%s elements=%d", file.path, tree.elements.size);
 			return true;
 		}
 
