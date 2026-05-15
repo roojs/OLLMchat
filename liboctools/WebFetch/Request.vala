@@ -23,6 +23,9 @@ namespace OLLMtools.WebFetch
 	 */
 	public class Request : OLLMchat.Tool.RequestBase
 	{
+		private const string USER_AGENT =
+			"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36";
+
 		// Parameter properties
 		public string url { get; set; default = ""; }
 		/** Requested output: "markdown", "raw", or "base64". */
@@ -79,6 +82,7 @@ namespace OLLMtools.WebFetch
 				// and handle redirects manually below to require approval
 				var session = new Soup.Session();
 				message = new Soup.Message("GET", this.url);
+				message.request_headers.replace("User-Agent", USER_AGENT);
 				content = yield session.send_and_read_async(message, GLib.Priority.DEFAULT, null);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to fetch URL: " + e.message);
@@ -168,6 +172,7 @@ namespace OLLMtools.WebFetch
 		{
 			var session = new Soup.Session();
 			var message = new Soup.Message("GET", url);
+			message.request_headers.replace("User-Agent", USER_AGENT);
 			var bytes = yield session.send_and_read_async(message, GLib.Priority.DEFAULT, null);
 			
 			if (message.status_code < 200 || message.status_code >= 300) {
