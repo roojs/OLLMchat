@@ -89,6 +89,13 @@ namespace OLLMtools.RunCommand
 		public bool allow_network { get; private set; }
 
 		/**
+		 * Absolute path to the bubblewrap binary from {{{GLib.Environment.find_program_in_path("bwrap")}}}
+		 * at construction, or empty if not found. Callers should use #can_wrap before constructing
+		 * {{{Bubble}}}; same string is used as spawn argv0 and for seccomp {{{/proc/pid/exe}}} checks.
+		 */
+		public string bwrap_exe { get; private set; default = ""; }
+
+		/**
 		 * Normalized allow_write tokens (see run_command docs): no, project, or absolute paths.
 		 */
 		private string[] write_array = {};
@@ -122,6 +129,8 @@ namespace OLLMtools.RunCommand
 			this.allow_network = allow_network;
 			this.write_array = write_array;
 			this.overlay = new Overlay(project);
+			string? bp = GLib.Environment.find_program_in_path("bwrap");
+			this.bwrap_exe = bp != null ? bp : "";
 		}
 		
 		/**
@@ -174,8 +183,6 @@ namespace OLLMtools.RunCommand
 			var result = "";
 			 
 			if (err == null) {
-				string? sid = subprocess.get_identifier();
-				run_seccomp.outer_sandbox_pid = sid != null ? int.parse(sid) : -1;
 				try {
 					run_seccomp.finish_handshake();
 					run_seccomp.attach_notify_loop();
@@ -249,17 +256,11 @@ namespace OLLMtools.RunCommand
 		 */
 		private string[] build_bubble_args(string command, string working_dir = "") throws Error
 		{
-			// Find full path to bwrap executable
-			var bwrap_path = GLib.Environment.find_program_in_path("bwrap");
-			if (bwrap_path == null) {
-				throw new GLib.IOError.NOT_FOUND("bubblewrap (bwrap) not found in PATH");
-			}
-			
 			// Start with empty array and use += to build it
 			string[] args = {};
-			
+
 			// Start with: ["bwrap"]
-			args += bwrap_path;
+			args += this.bwrap_exe;
 			
 			args += "--unshare-user";
 
