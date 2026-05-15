@@ -314,7 +314,7 @@ namespace OLLMchat.Call
 		private async Response.Chat execute_non_streaming() throws Error
 		{
 			// chat_send signal emission removed - callers handle state directly after calling send()
-			
+			GLib.debug("%s", this.get_request_body());
 			var bytes = yield this.send_request(true);
 			var root = this.parse_response(bytes);
 
@@ -351,8 +351,8 @@ namespace OLLMchat.Call
 			var request_body = this.get_request_body();
 			var message = this.connection.soup_message(this.http_method, url, request_body);
 
-			//GLib.debug("Request URL: %s", url);
-			////GLib.debug("Request Body: %s", request_body);
+			GLib.debug("%s", url);
+			GLib.debug("%s", request_body);
 
 			try {
 				yield this.handle_streaming_response(message);

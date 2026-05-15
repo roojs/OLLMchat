@@ -263,6 +263,7 @@ namespace OLLMchat.Call
 			var stream_orig = this.stream;
 			this.stream = false;
 			try {
+				GLib.debug("%s", this.get_request_body());
 				var bytes = yield this.send_request(true);
 				var root = this.parse_response(bytes);
 				if (root.get_node_type() != Json.NodeType.OBJECT) {
@@ -304,6 +305,9 @@ namespace OLLMchat.Call
 			var request_body = this.get_request_body();
 			this.stream = stream_orig;
 			var soup_msg = this.connection.soup_message(this.http_method, url, request_body);
+
+			GLib.debug("%s", url);
+			GLib.debug("%s", request_body);
 
 			GLib.InputStream? input_stream = null;
 			try {

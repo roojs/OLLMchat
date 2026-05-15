@@ -26,6 +26,9 @@ namespace OLLMtools.WebFetch
 		private const string USER_AGENT =
 			"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36";
 
+		/** Beyond this many newline-separated lines, tool output is capped for the LLM and UI. */
+		private const int TOOL_BODY_MAX_LINES = 200;
+
 		// Parameter properties
 		public string url { get; set; default = ""; }
 		/** Requested output: "markdown", "raw", or "base64". */
@@ -106,7 +109,19 @@ namespace OLLMtools.WebFetch
 				
 				// Convert content based on content type and format (updates this.format to actual format used)
 				var result = this.convert_content(content, content_type);
-				
+				result = result.replace("\r\n", "\n");
+				var parts = result.split("\n");
+				if (parts.length > TOOL_BODY_MAX_LINES) {
+					result = string.joinv("\n", parts[0:TOOL_BODY_MAX_LINES]) +
+						"\n\n[Truncated: response had " + parts.length.to_string() +
+						" lines; showing the first " + TOOL_BODY_MAX_LINES.to_string() +
+						" lines only. Do not pull large page slices here (e.g. curl piped " +
+						"to head or wide ranges); that still floods context. Use run_command " +
+						"with a narrow pipeline that searches for what you need — for example " +
+						"curl -sL '" + this.url + "' | grep -E 'YourPattern' — so only matching " +
+						"lines are returned.]\n";
+				}
+
 				// Send response message to UI using result_format (markdown, html, json, text, base64)
 				var response_title = this.tool.name + " - response (" + this.result_format + ")";
 				var type_prefix = this.result_format == "base64" ? "text" : this.result_format;
