@@ -182,10 +182,10 @@ namespace OLLMfiles
 			
 			// Skip if this project is already active (avoid redundant scans)
 			if (this.active_project == project && project != null && project.is_active) {
-				//GLib.debug("ProjectManager.activate_project: Project '%s' is already active, skipping scan", project.path);
+				GLib.debug ("opening project skipped already active path=%s", project.path);
 				return;
 			}
-			
+
 			// Reset is_active for ALL other projects (ensure only one project is active)
 			foreach (var other_project in this.projects.project_map.values) {
 				if (other_project != project && other_project.is_project && other_project.is_active) {
@@ -214,6 +214,7 @@ namespace OLLMfiles
 			// Activate new project
 			this.active_project = project;
 			if (project != null && project.is_project) {
+				GLib.debug ("opening project path=%s", project.path);
  				project.is_active = true;
 				
 				if (this.db != null) {
@@ -230,12 +231,11 @@ namespace OLLMfiles
 
 				if (!this.disable_initial_scan) {
 					if (this.scanning.has_key (project.path)) {
-						////GLib.debug(
-						//	"ProjectManager.activate_project: Skipping read_dir, scan already in progress for '%s'",
-						//	project.path);
+						GLib.debug ("filesystem scan already active path=%s", project.path);
 					} else {
-						// Start async directory scan (don't await - runs in background)
+						GLib.debug ("filesystem scan queued path=%s", project.path);
 						yield project.read_dir(new DateTime.now_local().to_unix(), true);
+						GLib.debug ("filesystem scan returned path=%s", project.path);
 					}
 				}
 				this.disable_initial_scan = false;
@@ -562,7 +562,7 @@ namespace OLLMfiles
 				project.is_active = false;
 			}
 			
-			// This will set this.active_project, set is_active=true, save to DB, emit signal
+			GLib.debug ("restoring session project path=%s", project.path);
 			yield this.activate_project(project);
 			//GLib.debug("ProjectManager.restore_active_state: Completed");
 			

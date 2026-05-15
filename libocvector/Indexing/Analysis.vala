@@ -126,11 +126,14 @@ namespace OLLMvector.Indexing
 		 */
 		public async Tree analyze_tree(Tree tree) throws GLib.Error
 		{
-			
+			GLib.debug ("element analysis starting path=%s elements=%d",
+				tree.file.path, tree.elements.size);
+
 			// Process elements sequentially
 			int success_count = 0;
 			int failure_count = 0;
 			int skipped_count = 0;
+			int skipped_no_llm = 0;
 			int total_elements = tree.elements.size;
 			int element_number = 0;
 			
@@ -147,7 +150,7 @@ namespace OLLMvector.Indexing
 				
 				if (this.should_skip_llm(element)) {
 					element.description = "";
-					// Emit signal for skipped elements too
+					skipped_no_llm++;
 					this.element_analyzed(element.element_name, element_number, total_elements);
 					continue;
 				}
@@ -177,10 +180,12 @@ namespace OLLMvector.Indexing
 			GLib.debug("Processing file %s - %d elements processed, %d skipped (cached), %d succeeded, %d failed", 
 			           tree.file.path, total_elements, skipped_count, success_count, failure_count);
 			
-			GLib.debug("Complete for file %s: %d succeeded, %d failed", 
-			           tree.file.path, success_count, failure_count);
+			GLib.debug ("element analysis done path=%s elements=%d llm_ok=%d llm_fail=%d llm_skip=%d cached=%d",
+				tree.file.path, total_elements, success_count, failure_count,
+				skipped_no_llm, skipped_count);
 			
 			// Sync database to file after processing this file
+			GLib.debug ("persisting db after element analysis path=%s", tree.file.path);
 			this.sql_db.backupDB();
 			
 			return tree;

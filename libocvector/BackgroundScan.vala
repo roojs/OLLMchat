@@ -201,6 +201,8 @@ namespace OLLMvector {
             var pm = project.manager;
             GLib.Timeout.add (1000, () => {
                 if (pm.scanning.size > 0) {
+                    GLib.debug ("semantic index waiting filesystem scan active=%u",
+                        pm.scanning.size);
                     return true;
                 }
                 this.ensure_thread ();
@@ -236,6 +238,8 @@ namespace OLLMvector {
             var pm = project.manager;
             GLib.Timeout.add (1000, () => {
                 if (pm.scanning.size > 0) {
+                    GLib.debug ("semantic index waiting filesystem scan active=%u",
+                        pm.scanning.size);
                     return true;
                 }
                 this.ensure_thread ();
@@ -255,6 +259,8 @@ namespace OLLMvector {
         private void emit_scan_update (int queue_size, string current_file)
         {
             this.main_context.invoke (() => {
+                GLib.debug ("scan banner update queue_size=%d file=%s",
+                    queue_size, GLib.Path.get_basename (current_file));
                 this.scan_update (queue_size, current_file);
                 return false;
             });
@@ -358,7 +364,7 @@ namespace OLLMvector {
          * @param path The path of the project to process.
          */
         private async void queueProject (string path) {
-            GLib.debug("queueProject path=%s", path);
+            GLib.debug ("semantic index queue project path=%s", path);
 
             // Ensure worker_project_manager exists
             this.ensure_project_manager ();
@@ -444,7 +450,7 @@ namespace OLLMvector {
                 if (next_item == null) {
                     // Queue empty – emit completion signal and exit loop.
                     this.queue_processing = false;
-                    GLib.debug ("BackgroundScan: queue empty, processing complete");
+                    GLib.debug ("semantic index queue empty");
                     this.emit_scan_update (0, "");
                     break;
                 }
@@ -455,13 +461,16 @@ namespace OLLMvector {
                 // Find the project by item.project_path (O(1) lookup using path_map)
                 var project = this.worker_project_manager.projects.path_map.get (next_item.project_path);
                 if (project == null) {
-                    GLib.warning ("BackgroundScan: could not find project %s for file %s", next_item.project_path, next_item.file_path);
+                    GLib.warning ("could not find project %s for file %s",
+                        next_item.project_path, next_item.file_path);
                     continue;
                 }
 
                 // Set as active project and reload files from database (state may have changed since queued)
                 // This will automatically check needs_reload() and skip if no changes
                 yield this.set_active_project_and_load (project);
+                GLib.debug ("worker project reload done project=%s file=%s queue=%u",
+                    project.path, next_item.file_path, this.file_queue.size);
                 
                 // Ensure project_files is populated (load_files_from_db may skip update_from if needs_reload() is false)
                 project.project_files.update_from(project);
@@ -476,7 +485,8 @@ namespace OLLMvector {
                 // Emit scan_update signal at start of scan (before indexing)
                 this.emit_scan_update ((int)this.file_queue.size, next_item.file_path);
                 
-                GLib.debug ("BackgroundScan: processing file '%s' (queue size: %u)", next_item.file_path, this.file_queue.size);
+                GLib.debug ("semantic index file=%s queue=%u",
+                    next_item.file_path, this.file_queue.size);
 
                 // Lazily create/reuse the Indexer.
                 if (this.indexer == null) {
@@ -486,6 +496,7 @@ namespace OLLMvector {
                             return;
                         }
                         this.main_context.invoke (() => {
+                            GLib.debug ("persisting db on main after indexed file");
                             this.sql_db.backupDB ();
                             return false;
                         });
@@ -496,8 +507,11 @@ namespace OLLMvector {
                 try {
                     yield this.indexer.index_filebase (project_file.file, false, false);
                 } catch (GLib.Error e) {
-                    GLib.warning ("BackgroundScan: indexing error for %s – %s", next_item.file_path, e.message);
+                    GLib.warning ("semantic index error file=%s: %s",
+                        next_item.file_path, e.message);
                 }
+                GLib.debug ("worker indexed file=%s queue=%u",
+                    next_item.file_path, this.file_queue.size);
             }
         }
     }
