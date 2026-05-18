@@ -19,18 +19,20 @@
 namespace OLLMcoder.Task
 {
 	/**
-	 * Read-only task progress strip: {@link Gtk.ScrolledWindow} plus
-	 * {@link Gtk.ColumnView} (title and stage columns). Root {@link GLib.ListModel}
-	 * is wrapped in {@link Gtk.TreeListModel} with auto-expand so
-	 * {@link ProgressItem.children} (e.g. {@link Tool} under {@link Details}) stay
-	 * visible while tasks run without manual expand. Built with a placeholder model;
-	 * call {@link #set_runner} to attach {@link Skill.Runner.progress}.
+	 * Read-only task progress strip: collapse header (“Skill activity”) plus
+	 * {@link Gtk.Revealer} around {@link Gtk.ScrolledWindow} /
+	 * {@link Gtk.ColumnView}. Default collapsed; {@link #set_runner} keeps the
+	 * grid hidden when progress data binds. {@link Gtk.TreeListModel} auto-expand
+	 * applies to row children only. Call {@link #set_runner} for
+	 * {@link Skill.Runner.progress}.
 	 */
 	public class ProgressView : Gtk.Box
 	{
 		private Gtk.SingleSelection progress_selection;
 		private Gtk.ColumnView column_view;
 		private Gtk.ScrolledWindow scrolled;
+		private Gtk.Button collapse_toggle_button;
+		private Gtk.Revealer body_revealer;
 
 		public weak OLLMchat.ChatUserInterface? window;
 		private Gtk.GestureClick click_gesture;
@@ -166,9 +168,45 @@ namespace OLLMcoder.Task
 				has_frame = true
 			};
 			this.scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
-			// Interim: ~3× prior testing height; policy in docs/plans/done/7.14.4-DONE-chatview-integration.md.
 			this.scrolled.set_min_content_height(288);
 			this.scrolled.set_child(this.column_view);
+
+			var header_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				margin_start = 4,
+				margin_end = 4,
+				margin_top = 2,
+				margin_bottom = 2
+			};
+			header_box.add_css_class("oc-task-progress-header");
+			this.collapse_toggle_button = new Gtk.Button() {
+				icon_name = "go-next-symbolic",
+				tooltip_text = "Expand",
+				can_focus = false,
+				focus_on_click = false,
+				margin_end = 4
+			};
+			this.body_revealer = new Gtk.Revealer() {
+				reveal_child = false,
+				transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN
+			};
+			this.body_revealer.set_child(this.scrolled);
+			this.collapse_toggle_button.clicked.connect(() => {
+				var expand = !this.body_revealer.reveal_child;
+				this.body_revealer.reveal_child = expand;
+				this.collapse_toggle_button.icon_name = expand ?
+					"go-up-symbolic" : "go-next-symbolic";
+				this.collapse_toggle_button.tooltip_text = expand ?
+					"Collapse" : "Expand";
+			});
+			header_box.append(this.collapse_toggle_button);
+			header_box.append(new Gtk.Label("Skill activity") {
+				halign = Gtk.Align.START,
+				hexpand = true,
+				xalign = 0,
+				ellipsize = Pango.EllipsizeMode.END,
+				single_line_mode = true
+			});
+
 			this.click_gesture = new Gtk.GestureClick();
 			this.column_view.add_controller(this.click_gesture);
 			this.click_gesture.released.connect((n_press, x, y) => {
@@ -241,7 +279,8 @@ namespace OLLMcoder.Task
 				return true;
 			});
 
-			this.append(this.scrolled);
+			this.append(header_box);
+			this.append(this.body_revealer);
 		}
 
 		/**
@@ -262,6 +301,9 @@ namespace OLLMcoder.Task
 						return pi.children;
 					}));
 			this.column_view.model = this.progress_selection;
+			this.body_revealer.reveal_child = false;
+			this.collapse_toggle_button.icon_name = "go-next-symbolic";
+			this.collapse_toggle_button.tooltip_text = "Expand";
 		}
 
 		private void select_row(uint pos)

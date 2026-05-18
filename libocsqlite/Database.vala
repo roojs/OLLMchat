@@ -64,6 +64,24 @@ namespace SQ {
 		 * Timeout source for periodic save checks.
 		 */
 		private uint? save_timeout_id = null;
+
+		/**
+		 * Steps remaining before a deferred disk backup runs (reset to 5 on each
+		 * coalesced backupDB request while a timer is armed).
+		 */
+		public int countdown { get; private set; default = 0; }
+
+		/**
+		 * GLib timeout source id for the repeating backup countdown tick.
+		 * Zero when no timer is armed.
+		 */
+		public uint countdown_id { get; private set; default = 0; }
+
+		/**
+		 * Unix time of the last successful disk backup (backup_real).
+		 * Zero before any backup has completed.
+		 */
+		public int64 last_backup { get; private set; default = 0; }
 		
 		/**
 		 * Creates a new Database instance.
@@ -146,62 +164,91 @@ namespace SQ {
 		}
 		
 		/**
-		* Backs up the in-memory database to the file.
-		* 
-		* This method saves the current state of the in-memory database to
-		* the file specified in the constructor. If the database is not open,
-		* this method does nothing.
-		* 
-		* The backup is performed atomically by first writing to a temporary
-		* file (filename.new), verifying it was created successfully, then
-		* moving it into place.
-		* 
-		* After saving, the is_dirty flag is reset to false.
-		*/
+		 * Request a disk backup of the in-memory database.
+		 *
+		 * Coalesces rapid calls: if last_backup is older than 20 seconds,
+		 * backup_real runs immediately. While a countdown timer is armed,
+		 * only resets countdown. Otherwise arms a 500 ms repeating tick;
+		 * when countdown reaches zero, backup_real runs.
+		 */
 		public void backupDB()
 		{
-			if (db == null) {
-				//GLib.debug("database not open = not saving");
+			GLib.debug("disk backup requested");
+			if (new GLib.DateTime.now_local().to_unix() - this.last_backup > 20) {
+				if (this.countdown_id != 0) {
+					GLib.Source.remove(this.countdown_id);
+					this.countdown_id = 0;
+				}
+				this.countdown = -1;
+				GLib.debug("disk backup forced max age");
+				this.backup_real();
 				return;
 			}
-			
-			db_mutex.lock();
-			
+			if (this.countdown_id != 0) {
+				this.countdown = 5;
+				GLib.debug("disk backup coalesced countdown=%d", this.countdown);
+				return;
+			}
+			GLib.debug("disk backup countdown armed");
+			this.countdown_id = GLib.Timeout.add(500, () => {
+				this.countdown--;
+				if (this.countdown > 0) {
+					return true;
+				}
+				this.countdown_id = 0;
+				GLib.debug("disk backup countdown finished");
+				this.backup_real();
+				return false;
+			});
+			this.countdown = 5;
+		}
+
+		/**
+		 * Write the in-memory database to the backup file (mutex, Sqlite.Backup,
+		 * atomic rename). Updates last_backup on success.
+		 */
+		private void backup_real()
+		{
+			if (this.db == null) {
+				return;
+			}
+			GLib.debug("disk backup writing path=%s", this.filename);
+			this.db_mutex.lock();
 			try {
 				var new_filename = this.filename + ".new";
-				
-				// Backup to temporary file first
 				Sqlite.Database filedb;
 				Sqlite.Database.open(new_filename, out filedb);
-				var b = new Sqlite.Backup(filedb, "main", db, "main");
+				var b = new Sqlite.Backup(filedb, "main", this.db, "main");
 				b.step(-1);
-				
-				// Check the file was created and has size > 0
 				var new_file = GLib.File.new_for_path(new_filename);
 				GLib.FileInfo info;
 				try {
-					info = new_file.query_info(GLib.FileAttribute.STANDARD_SIZE, GLib.FileQueryInfoFlags.NONE);
+					info = new_file.query_info(
+						GLib.FileAttribute.STANDARD_SIZE,
+						GLib.FileQueryInfoFlags.NONE);
 					if (info.get_size() == 0) {
-						GLib.warning("Backup file %s was not created properly (size: 0)", new_filename);
-						// Clean up the bad file
+						GLib.warning(
+							"Backup file %s was not created properly (size: 0)",
+							new_filename);
 						GLib.FileUtils.remove(new_filename);
 						return;
 					}
 				} catch (GLib.Error e) {
-					GLib.warning("Backup file %s was not created properly: %s", new_filename, e.message);
-					// Clean up the bad file
+					GLib.warning(
+						"Backup file %s was not created properly: %s",
+						new_filename,
+						e.message);
 					GLib.FileUtils.remove(new_filename);
 					return;
 				}
-				
-				// Atomically move into place
 				GLib.FileUtils.rename(new_filename, this.filename);
-				
 				this.is_dirty = false;
+				this.last_backup = new GLib.DateTime.now_local().to_unix();
+				GLib.debug("disk backup done path=%s", this.filename);
 			} catch (GLib.Error e) {
 				GLib.warning("Error during database backup: %s", e.message);
 			} finally {
-				db_mutex.unlock();
+				this.db_mutex.unlock();
 			}
 		}
 		 
