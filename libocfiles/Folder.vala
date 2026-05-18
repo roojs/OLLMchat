@@ -232,7 +232,6 @@ namespace OLLMfiles
 		 */
 		public async void read_dir(int64 check_time, bool recurse = false) throws Error
 		{
-			GLib.debug ("filesystem scan starting path=%s", this.path);
 			//GLib.debug("Folder.read_dir: Starting scan for path='%s', is_project=%s, check_time=%lld, recurse=%s, last_check_time=%lld", 
 			//	this.path, this.is_project.to_string(), check_time, recurse.to_string(), this.last_check_time);
 			
@@ -319,8 +318,6 @@ namespace OLLMfiles
 				this.manager.scanning.unset (this.path);
 				return;
 			}
-			GLib.debug ("filesystem scan idle subdirs=%d path=%s",
-				(int) folders_to_process.size, this.path);
 			GLib.Idle.add(() => {
 				this.process_folders(folders_to_process, check_time);
 				return false;
@@ -338,20 +335,16 @@ namespace OLLMfiles
 		{
 			if (folders_to_process.size == 0) {
 				// All folders processed, do final operations
-				GLib.debug ("persisting db after filesystem scan path=%s", this.path);
 				this.manager.db.backupDB();
 				if (this.is_project) {
 					this.project_files.update_from(this);
 					this.project_files.review_files.refresh();
-					GLib.debug ("filesystem scan finished path=%s", this.path);
 				}
 				this.manager.scanning.unset (this.path);
 				return;
 			}
 			
 			var folder = folders_to_process.remove_at(0);
-			GLib.debug ("filesystem scan subdir=%s remaining=%d root=%s",
-				folder.path, folders_to_process.size, this.path);
 
 			folder.read_dir.begin(check_time, true, (obj, res) => {
 				try {
@@ -668,12 +661,9 @@ namespace OLLMfiles
 
 			// Check if reload is needed (optimization: skip if database hasn't changed)
 			if (!this.needs_reload()) {
-				GLib.debug ("project tree load skipped path=%s", this.path);
 				return;
 			}
 
-			GLib.debug ("project tree load starting path=%s", this.path);
-			
 			// Step a: Create id => FileBase map and add self (root folder) to it
 			var id_map = new Gee.HashMap<int, FileBase>();
 			id_map.set((int)this.id, this);
@@ -710,8 +700,6 @@ namespace OLLMfiles
 			
 			// Update last_db_load timestamp to current time
 			this.last_db_load = new GLib.DateTime.now_local().to_unix();
-
-			GLib.debug ("project tree load finished path=%s", this.path);
 		}
 		
 	/**
