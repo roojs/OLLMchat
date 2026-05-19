@@ -231,7 +231,9 @@ namespace OLLMcoder.Skill
 					rp.assign_message(in_message);
 				}
 				this.progress.add(rp);
+				this.progress.active_item_changed(rp);
 				for (; rp.try_no < rp.try_max; rp.try_no++) {
+					this.progress.active_item_changed(rp);
 					var tpl = this.task_creation_prompt(
 						in_message.content,
 						previous_proposal,
@@ -291,6 +293,7 @@ namespace OLLMcoder.Skill
 					"text.oc-frame-danger.collapsed Could not build valid task list after 5 tries",
 					previous_proposal_issues != "" ? previous_proposal_issues.strip() : "")));
 			} finally {
+				this.progress.active_item_changed(null);
 				this.session.is_running = false;
 				this.session.manager.agent_status_change();
 				// GLib.debug("Runner.send_async: is_running=false session %s", this.session.fid);
@@ -326,6 +329,7 @@ namespace OLLMcoder.Skill
 				Process.exit(1);
 			} 
 			this.in_replay = false;
+			this.progress.active_item_changed(null);
 		}
 
 		/**
@@ -343,6 +347,7 @@ namespace OLLMcoder.Skill
 			for (var i = 0; i < 20; i++) {
 				if (cancellable != null && cancellable.is_cancelled()) {
 					this.add_message(new OLLMchat.Message("ui", "User cancelled request"));
+					this.progress.active_item_changed(null);
 					this.session.is_running = false;
 					this.session.manager.agent_status_change();
 					return;
@@ -369,6 +374,7 @@ namespace OLLMcoder.Skill
 					var approved = yield this.request_writer_approval();
 					if (!approved) {
 						this.add_message(new OLLMchat.Message("ui", "User declined writer approval."));
+						this.progress.active_item_changed(null);
 						this.session.is_running = false;
 						this.session.manager.agent_status_change();
 						return;
@@ -394,6 +400,7 @@ namespace OLLMcoder.Skill
 			if (hit_max_rounds && this.pending.steps.size > 0) {
 				this.add_message(new OLLMchat.Message("ui", "Max rounds reached."));
 			}
+			this.progress.active_item_changed(null);
 		}
 
 		/**
@@ -463,7 +470,9 @@ namespace OLLMcoder.Skill
 				status = OLLMcoder.Task.PhaseEnum.TASK_LIST_ITERATION,
 			};
 			this.progress.add(ir);
+			this.progress.active_item_changed(ir);
 			for (; ir.try_no < ir.try_max; ir.try_no++) {
+				this.progress.active_item_changed(ir);
 				this.progress.clear_pending(false);
 				var tpl = this.iteration_prompt(parser.issues, existing_proposed, response);
 				this.fill_tools(); // (clears tools)
@@ -705,6 +714,7 @@ namespace OLLMcoder.Skill
 					var pr = new OLLMcoder.Task.ResultParser(this, m.content);
 					var st_r = this.pending.steps.get(this.replay_step_pos);
 					var d_ref = st_r.children.get(this.replay_details_pos);
+					this.progress.active_item_changed(d_ref);
 					pr.extract_refinement(d_ref);
 					if (pr.issues == "") {
 						d_ref.assign_message(m);
@@ -747,6 +757,7 @@ namespace OLLMcoder.Skill
 					var st_p = this.pending.steps.get(this.replay_step_pos);
 					var d_post = st_p.children.get(this.replay_details_pos);
 					d_post.status = OLLMcoder.Task.PhaseEnum.POST_EXEC;
+					this.progress.active_item_changed(d_post);
 					// Match Details.run_post_exec(): issues cleared before extract so replay does not
 					// inherit refinement/exec validation noise into parser.issues.
 					d_post.issues = "";
@@ -806,12 +817,14 @@ namespace OLLMcoder.Skill
 					}
 					// Match Details.run_exec(): task row shows Running Tool, not blank (REFINED.to_human is "").
 					d_exec.status = OLLMcoder.Task.PhaseEnum.TOOLS_RUNNING;
+					this.progress.active_item_changed(d_exec);
 					// GLib.debug("session %s replay_exec children=%u detail=%d tool=%u tools_runs=%d",
 					// 	this.session.fid, st_e.children.size, this.replay_details_pos,
 					// 	this.replay_tool_pos, d_exec.tools().size);
 					var px = new OLLMcoder.Task.ResultParser(this, m.content);
 					var ex_run = d_exec.tools().get_at(this.replay_tool_pos);
 					ex_run.status = OLLMcoder.Task.PhaseEnum.EXECUTION;
+					this.progress.active_item_changed(ex_run);
 					// Replay never runs Tool.run(); hydrate Idx from this transcript message (same idx ReplayChat.send would attach).
 					ex_run.assign_message(m);
 					// GLib.debug(

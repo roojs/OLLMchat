@@ -33,6 +33,7 @@ namespace OLLMcoder.Task
 		private Gtk.ScrolledWindow scrolled;
 		private Gtk.Button collapse_toggle_button;
 		private Gtk.Revealer body_revealer;
+		private Gtk.Label header_title_label;
 
 		public weak OLLMchat.ChatUserInterface? window;
 		private Gtk.GestureClick click_gesture;
@@ -178,6 +179,7 @@ namespace OLLMcoder.Task
 				margin_bottom = 2
 			};
 			header_box.add_css_class("oc-task-progress-header");
+			header_box.add_css_class("oc-frame-header");
 			this.collapse_toggle_button = new Gtk.Button() {
 				icon_name = "go-next-symbolic",
 				tooltip_text = "Expand",
@@ -199,13 +201,14 @@ namespace OLLMcoder.Task
 					"Collapse" : "Expand";
 			});
 			header_box.append(this.collapse_toggle_button);
-			header_box.append(new Gtk.Label("Skill activity") {
+			this.header_title_label = new Gtk.Label("Skill activity") {
 				halign = Gtk.Align.START,
 				hexpand = true,
 				xalign = 0,
 				ellipsize = Pango.EllipsizeMode.END,
 				single_line_mode = true
-			});
+			};
+			header_box.append(this.header_title_label);
 
 			this.click_gesture = new Gtk.GestureClick();
 			this.column_view.add_controller(this.click_gesture);
@@ -304,6 +307,11 @@ namespace OLLMcoder.Task
 			this.body_revealer.reveal_child = false;
 			this.collapse_toggle_button.icon_name = "go-next-symbolic";
 			this.collapse_toggle_button.tooltip_text = "Expand";
+			runner.progress.active_item_changed.connect((item) => {
+				this.header_title_label.label = item != null ?
+					item.title : "Skill activity";
+			});
+			this.header_title_label.label = "Skill activity";
 		}
 
 		private void select_row(uint pos)

@@ -37,6 +37,11 @@ public class ProgressList : GLib.Object, GLib.ListModel
 
 	private Gee.ArrayList<ProgressItem> rows = new Gee.ArrayList<ProgressItem>();
 
+	/**
+	 * Collapse header: active progress row, or **null** when idle.
+	 */
+	public signal void active_item_changed(ProgressItem? item);
+
 	public ProgressList(OLLMcoder.Skill.Runner r)
 	{
 		Object();
