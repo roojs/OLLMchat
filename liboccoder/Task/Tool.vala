@@ -191,11 +191,13 @@ namespace OLLMcoder.Task
 			yield this.fill_model();
 			this.chat_call.tools.clear();
 			this.status = PhaseEnum.EXECUTION;
+			this.parent.runner.progress.active_item_changed(this);
 			var tool_output = "";
 			if (this.tool_call != null && !this.parent.runner.in_replay) {
 				var tool_impl = this.parent.runner.session.manager.tools.get(
 						this.tool_call.function.name) as OLLMchat.Tool.BaseTool;
 				this.status = PhaseEnum.TOOLS_RUNNING;
+				this.parent.runner.progress.active_item_changed(this);
 				this.tool_run_result = yield tool_impl.execute(this.chat(), this.tool_call, true);
 				this.tool_request = tool_impl.last_request;
 				this.notify_property("tooltip_text");
@@ -287,6 +289,7 @@ namespace OLLMcoder.Task
 					}
 					this.status = PhaseEnum.ERROR;
 					this.parent.issues += "\n" + "Executor failed after 5 tries: " + last_issues;
+					this.parent.runner.progress.active_item_changed(null);
 					throw e;
 				}
 				var parser = new ResultParser(this.parent.runner, response_text);
@@ -337,6 +340,7 @@ namespace OLLMcoder.Task
 									this.tool_run_result)));
 							this.status = PhaseEnum.ERROR;
 							this.parent.issues += "\nwrite_file failed: " + this.tool_run_result;
+							this.parent.runner.progress.active_item_changed(null);
 							throw new GLib.IOError.FAILED("write_file failed: " + this.tool_run_result);
 						}
 						this.add_message(new OLLMchat.Message("ui",
@@ -349,6 +353,7 @@ namespace OLLMcoder.Task
 						this.document = summary_only.document;
 					}
 					this.status = PhaseEnum.COMPLETED;
+					this.parent.runner.progress.active_item_changed(null);
 					return;
 				}
 				this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
@@ -363,6 +368,7 @@ namespace OLLMcoder.Task
 			}
 			this.status = PhaseEnum.ERROR;
 			this.parent.issues += "\n" + "Executor failed after 5 tries: " + last_issues;
+			this.parent.runner.progress.active_item_changed(null);
 			throw new GLib.IOError.INVALID_ARGUMENT("Task executor: " + last_issues);
 		}
 

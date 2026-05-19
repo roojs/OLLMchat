@@ -457,6 +457,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 		this.refined_done = false;
 		this.refine_error = null;
 		this.status = PhaseEnum.REFINEMENT;
+		this.runner.progress.active_item_changed(this);
 		this.add_message(new OLLMchat.Message("ui",
 			OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Refining " +
 				this.task_data.get("name").to_markdown().strip() + " with " +
@@ -471,6 +472,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 				if (this.status != PhaseEnum.ERROR) {
 					this.status = PhaseEnum.STOPPED;
 				}
+				this.runner.progress.active_item_changed(null);
 				return;
 			}
 			// Clear state from any previous parse so we don't feed it back into the prompt
@@ -512,6 +514,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 					}
 					this.refine_error = new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + e.message);
 					this.status = PhaseEnum.ERROR;
+					this.runner.progress.active_item_changed(null);
 					throw this.refine_error;
 				}
 			}
@@ -519,6 +522,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 				if (this.status != PhaseEnum.ERROR) {
 					this.status = PhaseEnum.STOPPED;
 				}
+				this.runner.progress.active_item_changed(null);
 				return;
 			}
 			this.result_parser = new ResultParser(this.runner, response_text);
@@ -552,6 +556,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 				this.task_data.get("name").to_markdown().strip() + "\" failed after 5 tries",
 			this.result_parser.issues.strip())));
 		this.status = PhaseEnum.ERROR;
+		this.runner.progress.active_item_changed(null);
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
 	}
 
@@ -820,10 +825,12 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	public async void run_exec() throws GLib.Error
 	{
 		this.status = PhaseEnum.TOOLS_RUNNING;
+		this.runner.progress.active_item_changed(this);
 		var task_name = this.task_data.get("name").to_markdown().strip();
 		var run_idx = 0;
 		foreach (var ex in this.tools()) {
 			run_idx++;
+			this.runner.progress.active_item_changed(ex);
 			this.add_message(new OLLMchat.Message("ui",
 				(ex.exam_reference != null
 					? "Examining " + ex.exam_reference.link_display_text()
@@ -838,6 +845,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			yield this.run_post_exec();
 			this.exec_done = true;
 			this.status = PhaseEnum.COMPLETED;
+			this.runner.progress.active_item_changed(null);
 			return;
 		}
 		var last = this.tools().get_at(this.tools().size - 1);
@@ -845,6 +853,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 		this.out_doc = last.document;
 		this.exec_done = true;
 		this.status = PhaseEnum.COMPLETED;
+		this.runner.progress.active_item_changed(null);
 	}
 
 	/**
@@ -882,6 +891,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	public async void run_post_exec() throws GLib.Error
 	{
 		this.status = PhaseEnum.POST_EXEC;
+		this.runner.progress.active_item_changed(this);
 		yield this.fill_model();
 		this.chat_call.tools.clear();
 		var response_text = "";
@@ -927,6 +937,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			parser.exec_post_extract(this);
 			this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
 			if (parser.issues == "") {
+				this.runner.progress.active_item_changed(null);
 				return;
 			}
 			this.issues += "\n" + parser.issues;
@@ -942,6 +953,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 			"text.oc-frame-danger.collapsed Summation of tool calls failed for \"" + task_name_fail + "\"",
 			last_issues.strip())));
+		this.runner.progress.active_item_changed(null);
 		throw new GLib.IOError.INVALID_ARGUMENT(
 			"task_post_exec: " + last_issues);
 	}
