@@ -99,6 +99,86 @@ Intro line: hunks are **Remove** / **Replace with** / **Add** from the tree; ver
 - **Don’t** publish a **`#### Add`** (or ordered-chunk **Add**) that is **only** a code fence. The implementer must get **mechanical context** without guessing: every **Add** must state **where** the new lines go (file, method or region, and position relative to the accompanying **`Keep`** anchor or a named line) and **what** they do (one short sentence). Put that in the **`#### Add — …`** heading suffix and/or **immediately below** **`#### Add`** as a line or bullets **before** the fence. A pointer (**see § X**) is allowed **only if** the referenced section contains the **same** verbatim fence and the same placement sentence—otherwise the **Add** block is incomplete.
 - **Do** keep that **placement + purpose** line on **Replace with** / **Add** (ordered chunks use it on the line immediately above the fence—see below); keep it short — the **fence** carries the literals.
 
+### No orphan or illustrative code (outside **Concrete code proposals**)
+
+Plans are **edit specs**, not codebase tours. If a reader cannot apply a fence mechanically, the plan is wrong.
+
+- **Don’t** put **fenced code** anywhere except under **`## Concrete code proposals`** — not in Purpose, Scope, Precedent, Notes, Related, or Acceptance criteria.
+- **Don’t** paste “pattern” or “precedent” excerpts from other files (e.g. two lines from `Pressrelease_entry.php`) unless that excerpt is itself the **exact** hunk to apply, labelled **Keep** / **Remove** / **Replace with** / **Add** with anchors.
+- **Don’t** use investigation-style citations (`startLine:endLine:path` blocks, random mid-file snippets) in implementation plans. **ℹ️** Point at `path/to/file.php` and commit hash; the implementer opens the file.
+- **Don’t** split one logical edit across multiple `###` sections if that forces the reader to merge hunks mentally (e.g. “Part A adds `else`” + “Part B replaces `if` body” with a **Keep** that no longer matches after Part A). Use **one** **Remove** + **Replace with** for the whole region, or **ordered chunks** inside a **single** `###` with **Keep** anchors that still exist after each step.
+- **Do** label every `###` with: **file path**, **function/method/region name**, and **one-line intent** (e.g. `### 1. \`Foo.php\` — \`get()\` foreach: FTP XML import + Events log`).
+- **Do** make every **Keep** locatable: include the **enclosing** `function` / `foreach` / `if` line in the `###` title or the line immediately above the first **Keep** fence, plus **2–5 verbatim lines** that still exist in the tree **immediately before** the **Remove** (not lines from a different branch or after an unapplied prior hunk).
+- **Investigation / query docs** (`*-query.md`, `docs/bugs/*`) may quote existing code to explain behaviour. **Implementation plans** (`docs/plans/*.md` except query docs) must not — link to the investigation instead.
+- **Don’t** use the **next** `function` below your edit as a locator (e.g. putting `function getContent` inside **Remove**/**Replace with** when only `return true` changes). The next method is not being edited — it confuses *where* vs *what*.
+- **Don’t** use two disconnected **Keep** fences (e.g. method signature at line 200 and tail at line 260) for one one-line change. One **Keep** = contiguous lines **immediately above** the **Remove**.
+- **Do** under each `###`, before the fences, state **Why** (dependency / outcome), **Where** (function + position in plain English), and **Depends on** (other `###` in this plan, if any). The hunks alone are not enough.
+- **Don’t** use `…`, `// ...`, or “rest unchanged” inside **Keep** / **Remove** / **Replace with** fences. Every line in a fence must be **verbatim** from the tree (or the exact new lines to apply). If the anchor is long, include the real lines — do not abbreviate.
+
+**Bad (do not write plans like this):**
+
+~~~markdown
+### 2. `Pman/PressRelease/Import/EQSRelease.php` — `addRelease()` success return
+
+#### Keep
+```php
+    function addRelease($data, $force = false) 
+    {
+```
+
+#### Keep
+```php
+        $this->log('DONE', …);
+```
+
+#### Remove
+```php
+        return true;
+    }
+
+    function getContent($html)
+```
+~~~
+
+Problems: signature **Keep** is far from the edit; `…` is not real code; **Remove** includes the **next** function; no **Why** / **Where** / **Depends on**.
+
+**Good (real one-line change — same file, same edit):**
+
+~~~markdown
+### 2. `Pman/PressRelease/Import/EQSRelease.php` — `addRelease()`: return inserted row
+
+**Why:** §1 assigns `$pe = $this->addRelease($data)` and logs `$pe->id` in `writeEventLog`. Returning `true` forces a second DB lookup.
+
+**Where:** `addRelease()`, last statement before `function getContent`.
+
+**Depends on:** §1 (`get()` loop).
+
+#### Keep
+```php
+        $pe = DB_DataObject::factory('pressrelease_entry');
+        $pe->setFrom($add);
+        $pe->insert();
+        if (!empty($data['companyLogo'])) {
+            $this->addClientLogo($pe->id, $data['companyLogo']);
+        }
+
+        $this->log('DONE', 'Release Id "' . $pe->id . '"');
+
+```
+
+#### Remove
+```php
+        return true;
+```
+
+#### Replace with
+```php
+        return $pe;
+```
+~~~
+
+Reader can open `addRelease()`, find `log('DONE'`, and apply without guessing.
+
 For **each** file/topic, use a **numbered** `###` heading, then **only** these subheadings above code:
 
 | Subheading | Use |
