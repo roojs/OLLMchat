@@ -20,36 +20,67 @@ namespace OLLMcoder.Task
 {
 
 /**
- * Row surface for the task progress UI ({@link ProgressList}). **status** is {@link PhaseEnum} (reuse);
- * it **changes** as the row advances. **status_str** is **not** stored — use {@link PhaseEnum.to_human}
- * for the stage column / Gtk bindings (**Pango** markup). The **status** setter emits **notify** for **status_str** only.
+ * Row surface for the task progress UI ({@link ProgressList}).
  *
- * **children** — {@link GLib.ListModel} whose items are {@link ProgressItem} (**7.14.2**): on {@link Details} use the
- * execution {@link ToolList} (see **7.14.1.3**). On {@link Tool}, an empty {@link GLib.ListStore}.
+ * ''status'' is {@link PhaseEnum}; it changes as the row advances.
+ * ''status_str'' is not stored — use {@link PhaseEnum.to_human} for the
+ * stage column and Gtk bindings (Pango markup). The ''status'' setter
+ * emits notify for ''status_str'' only.
  *
- * Implementors provide **`message`**, **`idx_notify_id`**, and **`msg_idx_txt`** (delegates to {@link msg_idx_to_string}). Default **`assign_message`** watches **`idx-last`** and **notify**s **`msg_idx_txt`**.
+ * ''children'' is a {@link GLib.ListModel} of nested {@link ProgressItem}
+ * rows. On {@link Details}, use the execution {@link ToolList}; on
+ * {@link Tool}, an empty {@link GLib.ListStore}.
+ *
+ * Implementors supply ''message'', ''idx_notify_id'', and ''msg_idx_txt''
+ * (typically delegating to {@link msg_idx_to_string}). The default
+ * {@link assign_message} watches ''idx-last'' on the message and notifies
+ * ''msg_idx_txt'' when indices are assigned.
+ *
+ * @see ProgressList
+ * @see Details
+ * @see ProgressRunner
+ * @see Tool
  */
 public interface ProgressItem : GLib.Object
 {
+	/**
+	 * Current pipeline phase for this row; drives {@link status_str}.
+	 */
 	public abstract PhaseEnum status { get; set; }
 
+	/**
+	 * Primary label for the progress title column.
+	 */
 	public abstract string title { owned get; }
 
+	/**
+	 * Human-readable stage text from {@link PhaseEnum.to_human}; not stored.
+	 */
 	public abstract string status_str { owned get; }
 
+	/**
+	 * Nested progress rows ({@link Details} tasks or {@link Tool} runs).
+	 */
 	public abstract GLib.ListModel children { get; }
 
 	/**
 	 * Chat row span for this progress row.
-	 * Progress strip scroll uses {@link OLLMchat.Message.idx_first} when set,
-	 * otherwise {@link OLLMchat.Message.idx_last}.
+	 *
+	 * Progress strip scroll uses {@link OLLMchat.Message.idx_first} when
+	 * set, otherwise {@link OLLMchat.Message.idx_last}.
 	 */
 	public abstract OLLMchat.Message? message { get; set; }
 
-	/** Non-zero while `assign_message` is watching `message.notify["idx-last"]`; cleared on disconnect. */
+	/**
+	 * Non-zero while {@link assign_message} is watching
+	 * {{{ message.notify["idx-last"] }}}; cleared on disconnect.
+	 */
 	public abstract ulong idx_notify_id { get; set; }
 
-	/** Idx column string from `this.message` span (`first–last`, or —). */
+	/**
+	 * Idx column text from {@link msg_idx_to_string} (bound as
+	 * {{{ msg_idx_txt }}} in {@link ProgressView}).
+	 */
 	public virtual string msg_idx_to_string()
 	{
 		if (this.message == null) {
@@ -64,15 +95,28 @@ public interface ProgressItem : GLib.Object
 	}
 
 	/**
-	 * After {@link Tool} execution, the {@link OLLMchat.Tool.RequestBase} copied from {@link OLLMchat.Tool.BaseTool.last_request} for this row; **null** if not a tool row or not yet run.
+	 * After {@link Tool} execution, the {@link OLLMchat.Tool.RequestBase}
+	 * copied from {@link OLLMchat.Tool.BaseTool.last_request} for this row;
+	 * null if not a tool row or not yet run.
 	 */
 	public abstract OLLMchat.Tool.RequestBase? tool_request { get; set; }
 
 	/**
-	 * Tooltip for the progress title column; **""** if none.
+	 * Tooltip for the progress title column; empty string if none.
 	 */
 	public abstract string tooltip_text { owned get; }
 
+	/**
+	 * Attach a transcript message and refresh idx display when indices
+	 * arrive asynchronously.
+	 *
+	 * Replaces any prior watcher on the previous message. If
+	 * {{{ idx_first }}} and {{{ idx_last }}} are already set, notifies
+	 * {{{ msg_idx_txt }}} once; otherwise connects to {{{ idx-last }}} on
+	 * the message until both indices are known.
+	 *
+	 * @param m message to bind (content-stream or similar)
+	 */
 	public void assign_message(OLLMchat.Message m)
 	{
 		/* GLib.debug("prog assign msg=%p first=%d last=%d", m, m.idx_first, m.idx_last); */

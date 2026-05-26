@@ -99,22 +99,20 @@ public class ResultParser : Object
 		// Caller must set runner.pending to a fresh List before calling; we build into it.
 
 		foreach (var key in new string[] { "original-prompt", "goals-summary", "tasks" }) {
-			if (!this.document.headings.has_key(key)) {
-				this.issues += "\n" + "Top-level structure: the response must contain these ## sections:" + 
-					" Original prompt, Goals / summary, Tasks. Missing or misnamed: \"" + key + "\".";
+			if (this.document.headings.has_key(key)) {
 				continue;
 			}
+			this.issues += "\n" + "Top-level structure: the response must contain these ## sections:"
+				+ " Original prompt, Goals / summary, Tasks. Missing or misnamed: \"" + key + "\".";
 		}
 
 		foreach (var key in this.document.header_list) {
-			if (!key.has_prefix("task-section-")) {
-				continue;
+			if (key.has_prefix("task-section-")) {
+				var step = this.parse_step(this.document.headings.get(key));
+				if (step != null) {
+					this.runner.pending.steps.add(step);
+				}
 			}
-			var step = this.parse_step(this.document.headings.get(key));
-			if (step == null) {
-				continue;
-			}
-			this.runner.pending.steps.add(step);
 		}
 		if (!this.document.headings.has_key("goals-summary")) {
 			this.runner.pending = new List(this.runner);
@@ -122,20 +120,22 @@ public class ResultParser : Object
 		}
 		this.runner.pending.goals_summary_md =
 			this.document.headings.get("goals-summary").to_markdown_with_content();
+		if (this.document.headings.has_key("original-prompt")
+				&& this.runner.user_prompts.size == 0) {
+			this.runner.user_prompts.add(
+				this.document.headings.get("original-prompt").to_markdown_with_content());
+		}
 		this.runner.pending.fill_names();
-		var steps = this.runner.pending.steps;
-		for (var i = 0; i < steps.size; i++) {
-			var step = steps.get(i);
-			step.register_slugs(i);
-			foreach (var t in step.children) {
-				this.validate_task(t, PhaseEnum.LIST);
-				var vl_list = new ValidateLink(t.runner, t, PhaseEnum.LIST);
-				vl_list.validate_all(t.references);
-				t.issues += vl_list.issues;
-				if (t.issues != "") {
-					this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
-				}
+		this.runner.pending.steps.get(0).register_slugs(0);
+		foreach (var t in this.runner.pending.steps.get(0).children) {
+			this.validate_task(t, PhaseEnum.LIST);
+			var vl_list = new ValidateLink(t.runner, t, PhaseEnum.LIST);
+			vl_list.validate_all(t.references);
+			t.issues += vl_list.issues;
+			if (t.issues == "") {
+				continue;
 			}
+			this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
 		}
 		if (this.issues != "") {
 			this.runner.pending = new List(this.runner);
@@ -158,36 +158,96 @@ public class ResultParser : Object
 	{
 		this.issues = "";
 
-		if (!this.document.headings.has_key("tasks")) {
-			this.issues += "\n" + "Task list iteration response must contain ## Tasks. Missing or misnamed.";
+		foreach (var key in new string[] { "tasks" }) {
+			if (this.document.headings.has_key(key)) {
+				continue;
+			}
+			this.issues += "\n" + "Task list iteration response must contain ## Tasks."
+				+ " Missing or misnamed: \"" + key + "\".";
 			return;
 		}
 
 		// Caller must set runner.pending to a fresh List before calling; we build into it.
 		foreach (var key in this.document.header_list) {
-			if (!key.has_prefix("task-section-")) {
-				continue;
-			}
-			var step = this.parse_step(this.document.headings.get(key));
-			if (step == null) {
-				continue;
-			}
-			this.runner.pending.steps.add(step);
-		}
-		this.runner.pending.fill_names();
-		var steps = this.runner.pending.steps;
-		for (var i = 0; i < steps.size; i++) {
-			var step = steps.get(i);
-			step.register_slugs(i);
-			foreach (var t in step.children) {
-				this.validate_task(t, PhaseEnum.LIST);
-				var vl_list = new ValidateLink(t.runner, t, PhaseEnum.LIST);
-				vl_list.validate_all(t.references);
-				t.issues += vl_list.issues;
-				if (t.issues != "") {
-					this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
+			if (key.has_prefix("task-section-")) {
+				var step = this.parse_step(this.document.headings.get(key));
+				if (step != null) {
+					this.runner.pending.steps.add(step);
 				}
 			}
+		}
+		this.runner.pending.fill_names();
+		this.runner.pending.steps.get(0).register_slugs(0);
+		foreach (var t in this.runner.pending.steps.get(0).children) {
+			this.validate_task(t, PhaseEnum.LIST);
+			var vl_list = new ValidateLink(t.runner, t, PhaseEnum.LIST);
+			vl_list.validate_all(t.references);
+			t.issues += vl_list.issues;
+			if (t.issues == "") {
+				continue;
+			}
+			this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
+		}
+	}
+
+	/**
+	 * Parses task list from document when the response is continue output.
+	 * Requires ## Goals / summary and ## Tasks; ignores ## Original prompt
+	 * and ## Follow-up prompts if present. Sets runner.pending.goals_summary_md
+	 * directly (same as parse_task_list). Caller must set runner.pending to a
+	 * fresh {@link List} before calling. Caller appends the prompt-box message
+	 * to runner.user_prompts on success.
+	 *
+	 * Appends to {@link issues} on each failure. Used by Runner after session
+	 * continue. {@link Step.register_slugs} and task validation on step 0
+	 * only (same rule as {@link parse_task_list} and {@link parse_task_list_iteration}).
+	 */
+	public void parse_task_list_continue()
+	{
+		this.issues = "";
+		// Caller must set runner.pending to a fresh List before calling; we build into it.
+
+		foreach (var key in new string[] { "goals-summary", "tasks" }) {
+			if (this.document.headings.has_key(key)) {
+				continue;
+			}
+			this.issues += "\n" + "Continue response must contain ## Goals / summary"
+				+ " and ## Tasks. Missing or misnamed: \"" + key + "\".";
+		}
+
+		foreach (var key in this.document.header_list) {
+			if (key.has_prefix("task-section-")) {
+				var step = this.parse_step(this.document.headings.get(key));
+				if (step != null) {
+					this.runner.pending.steps.add(step);
+				}
+			}
+		}
+		if (!this.document.headings.has_key("goals-summary")) {
+			this.runner.pending = new List(this.runner);
+			return;
+		}
+		this.runner.pending.goals_summary_md =
+			this.document.headings.get("goals-summary").to_markdown_with_content();
+		if (this.runner.pending.goals_summary_md.strip() == "") {
+			this.issues += "\n" + "Goals / summary: revised goals must not be empty.";
+			this.runner.pending = new List(this.runner);
+			return;
+		}
+		this.runner.pending.fill_names();
+		this.runner.pending.steps.get(0).register_slugs(0);
+		foreach (var t in this.runner.pending.steps.get(0).children) {
+			this.validate_task(t, PhaseEnum.LIST);
+			var vl_list = new ValidateLink(t.runner, t, PhaseEnum.LIST);
+			vl_list.validate_all(t.references);
+			t.issues += vl_list.issues;
+			if (t.issues == "") {
+				continue;
+			}
+			this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
+		}
+		if (this.issues != "") {
+			this.runner.pending = new List(this.runner);
 		}
 	}
 

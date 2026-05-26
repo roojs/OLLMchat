@@ -132,13 +132,13 @@ namespace OLLMchat
 			};
 			call.options =  options == null ? new Call.Options() : options; 
 			// Create dummy user-sent Message with original text
-			var user_sent_msg = new Message("user-sent", text);
+			var user_sent_msg = new Message("user-sent", text.strip());
 			// message_created signal emission removed - callers handle state directly when creating messages
 			
 			// Prepare messages array for API request
 			// Agent/handler should prepare system messages - this is just for backward compatibility
 			// Add the user message
-			call.messages.add(new Message("user", text));
+			call.messages.add(new Message("user", text.strip()));
 			
 			var result = yield call.send(call.messages, cancellable);
 
