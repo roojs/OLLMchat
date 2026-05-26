@@ -52,6 +52,24 @@ namespace OLLMcoder.Skill
 		public OLLMcoder.Task.List pending { get; set; }
 
 		/**
+		 * User prompts in order: index 0 = original (## Original prompt), set once
+		 * at task creation; index 1+ = follow-up prompt-box messages. Continuation
+		 * appends in_message.content only — never replaces index 0 or earlier entries.
+		 */
+		public Gee.ArrayList<string> user_prompts {
+			get;
+			private set;
+			default = new Gee.ArrayList<string>();
+		}
+
+		/**
+		 * Prompt-box text buffered during replay for the in-flight continue turn.
+		 * Set from user-sent when user_prompts is already populated; live path uses
+		 * in_message.content in run_task_list_continue directly.
+		 */
+		private string continue_msg { get; set; default = ""; }
+
+		/**
 		 * Task progress list model for the 7.14 UI; {@link OLLMcoder.Task.ProgressList} holds a weak ref to this runner.
 		 */
 		public OLLMcoder.Task.ProgressList progress { get; private set; }
@@ -218,6 +236,10 @@ namespace OLLMcoder.Skill
 			this.session.is_running = true;
 			this.session.manager.agent_status_change();
 			try {
+				if (this.user_prompts.size > 0 && this.session.can_replay && !this.in_replay) {
+					yield this.run_task_list_continue(in_message, cancellable);
+					return;
+				}
 				var previous_proposal = "";
 				var previous_proposal_issues = "";
 				var rp = new OLLMcoder.Task.ProgressRunner(this) {
@@ -434,7 +456,16 @@ namespace OLLMcoder.Skill
 			this.sr_factory.skill_manager.scan();
 			var tpl = PromptTemplate.template("task_list_iteration.md");
 			tpl.system_fill(1, "skill_catalog", this.sr_factory.skill_manager.to_markdown());
-			tpl.fill(6,
+			tpl.fill(9,
+				"original_prompt", this.user_prompts.size > 0 ?
+					tpl.header_raw("Original prompt", this.user_prompts.get(0)) : "",
+				"follow_up_prompts", this.user_prompts.size > 1 ?
+					tpl.header_raw("Follow-up prompts so far",
+						"## Follow-up prompts\n\n"
+						+ string.joinv("\n\n",
+							this.user_prompts.to_array()[1:this.user_prompts.size])) : "",
+				"goals_summary", tpl.header_raw("Goals / summary",
+					existing_proposed.goals_summary_md),
 				"completed_task_list", this.completed.to_markdown(OLLMcoder.Task.PhaseEnum.REFINE_COMPLETED),
 				"outstanding_task_list", existing_proposed.to_markdown(OLLMcoder.Task.PhaseEnum.LIST),
 				"previous_proposed_task_list", previous_proposed_md == "" ? "" :
@@ -445,6 +476,139 @@ namespace OLLMcoder.Skill
 				"previous_proposal_issues", previous_proposal_issues == "" ? "" :
 					tpl.header_raw("Issues with the tasks", previous_proposal_issues));
 			return tpl;
+		}
+
+		/**
+		 * Build the session continue prompt (task_list_continue.md).
+		 * Uses user_prompts, completed, pending, and optional previous_proposed_md
+		 * when retrying.
+		 *
+		 * @param user_follow_up raw prompt-box message for this continue turn
+		 * @param previous_proposal_issues issues from last continue parse/validation
+		 *        (empty when not retrying)
+		 * @param previous_proposed_md raw LLM response from last continue when
+		 *        retrying; empty string when not retrying
+		 * @return filled template
+		 */
+		public PromptTemplate continue_prompt(string user_follow_up,
+			string previous_proposal_issues,
+			string previous_proposed_md) throws GLib.Error
+		{
+			this.sr_factory.skill_manager.scan();
+			var tpl = PromptTemplate.template("task_list_continue.md");
+			tpl.system_fill(1, "skill_catalog", this.sr_factory.skill_manager.to_markdown());
+			tpl.fill(9,
+				"original_prompt", this.user_prompts.size > 0 ?
+					tpl.header_raw("Original prompt", this.user_prompts.get(0)) : "",
+				"follow_up_prompts", this.user_prompts.size > 1 ?
+					tpl.header_raw("Follow-up prompts so far",
+						"## Follow-up prompts\n\n"
+						+ string.joinv("\n\n",
+							this.user_prompts.to_array()[1:this.user_prompts.size])) : "",
+				"goals_summary", tpl.header_raw("Goals / summary", this.pending.goals_summary_md),
+				"completed_task_list",
+					this.completed.to_markdown(OLLMcoder.Task.PhaseEnum.REFINE_COMPLETED),
+				"outstanding_task_list",
+					this.pending.to_markdown(OLLMcoder.Task.PhaseEnum.LIST),
+				"user_follow_up", tpl.header_fenced("This follow-up message", user_follow_up, "text"),
+				"environment", tpl.header_raw("Environment", this.env()),
+				"project_description",
+					this.sr_factory.project_manager.active_project == null ? "" :
+					this.sr_factory.project_manager.active_project.project_description(),
+				"previous_proposal_issues", previous_proposal_issues == "" ? "" :
+					tpl.header_raw("Issues with the tasks", previous_proposal_issues),
+				"previous_proposed_task_list", previous_proposed_md == "" ? "" :
+					tpl.header_raw("Proposed (your last response — had issues)", previous_proposed_md));
+			return tpl;
+		}
+
+		/**
+		 * Session continue: send follow-up to LLM, parse response into
+		 * this.pending and revised goals_summary_md. On parse/validation failure
+		 * restores this.pending = existing_proposed; uses raw LLM response as
+		 * previous_proposed for next retry. On success appends in_message to
+		 * user_prompts and runs handle_task_list.
+		 * On failure after 5 tries, cancels the given cancellable so the
+		 * whole request stops (no way to carry on).
+		 *
+		 * @param in_message user prompt-box message for this continue turn
+		 * @param cancellable optional; cancelled on unrecoverable failure
+		 */
+		public async void run_task_list_continue(
+			OLLMchat.Message in_message,
+			GLib.Cancellable? cancellable = null) throws GLib.Error
+		{
+			var existing_proposed = this.pending;
+			var response = "";
+			var parser = new OLLMcoder.Task.ResultParser(this, "");
+
+			var cont = new OLLMcoder.Task.ProgressRunner(this) {
+				in_creation = false,
+				try_max = 5,
+				try_no = 0,
+				status = OLLMcoder.Task.PhaseEnum.TASK_LIST_CONTINUE,
+			};
+			this.progress.add(cont);
+			this.progress.active_item_changed(cont);
+			for (; cont.try_no < cont.try_max; cont.try_no++) {
+				this.progress.active_item_changed(cont);
+				this.progress.clear_pending(false);
+				var tpl = this.continue_prompt(
+					in_message.content, parser.issues, response);
+				this.fill_tools(); // (clears tools)
+				if (cont.try_no > 0) {
+					this.add_message(new OLLMchat.Message("ui",
+						"Trying again (attempt %d/5). Revising task list with issues feedback.".printf((int) (cont.try_no + 1))));
+				}
+				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+					"markdown.oc-frame-info.collapsed Revising task list with "
+					+ (this.session.model_usage.model != "" ?
+					this.session.model_usage.display_name_with_size() : "Unknown model"),
+					tpl.filled_user)));
+				if (!this.in_replay) {
+					this.session.add_message(new OLLMchat.Message("system", tpl.filled_system));
+					this.session.add_message(new OLLMchat.Message("user", tpl.filled_user));
+				}
+				this.add_message(new OLLMchat.Message("ui-waiting",
+					"waiting for " + (this.session.model_usage.model != "" ?
+					this.session.model_usage.display_name_with_size() : "Unknown model") + " to reply"));
+				var messages = new Gee.ArrayList<OLLMchat.Message>();
+				messages.add(new OLLMchat.Message("system", tpl.filled_system));
+				messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				this.add_message(new OLLMchat.Message("agent-stage", "task_list_continue"));
+				var response_obj = yield this.chat_call.send(messages, cancellable);
+				response = response_obj != null ? response_obj.message.content : "";
+
+				this.pending = new OLLMcoder.Task.List(this);
+				parser = new OLLMcoder.Task.ResultParser(this, response);
+				parser.parse_task_list_continue();
+				this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
+
+				if (parser.issues != "") {
+					this.replay_step("continue_parse_issues",
+						response + "\n\nParse issues:\n" + parser.issues);
+					this.pending = existing_proposed;
+					this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+						"text.oc-frame-warning.collapsed Task list had issues",
+						parser.issues.strip())));
+					cont.status = OLLMcoder.Task.PhaseEnum.TASK_LIST_CONTINUE_RETRY;
+					continue;
+				}
+				this.user_prompts.add(in_message.content);
+				// write task list could go here - but disabled at present
+				cont.status = OLLMcoder.Task.PhaseEnum.COMPLETED;
+				this.progress.clear_pending(true);
+				this.progress.add_pending(true);
+				yield this.handle_task_list(cancellable);
+				return;
+			}
+			cont.status = OLLMcoder.Task.PhaseEnum.ERROR;
+			if (cancellable != null) {
+				cancellable.cancel();
+			}
+			this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+				"text.oc-frame-danger.collapsed Could not get valid task list after 5 tries",
+				parser.issues != "" ? parser.issues.strip() : "")));
 		}
 
 		/**
@@ -574,6 +738,10 @@ namespace OLLMcoder.Skill
 			case OLLMcoder.Task.PhaseEnum.NONE:
 				switch (m.role) {
 				case "user-sent":
+					if (this.user_prompts.size > 0) {
+						this.continue_msg = m.content;
+						break;
+					}
 					try {
 						var tpl = this.task_creation_prompt(
 							m.content,
