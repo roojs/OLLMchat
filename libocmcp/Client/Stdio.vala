@@ -39,10 +39,13 @@ namespace OLLMmcp.Client
 		{
 			string[] argv = this.build_argv();
 			try {
-				this.process = new GLib.Subprocess.newv(
-					argv,
+				var launcher = new GLib.SubprocessLauncher(
 					GLib.SubprocessFlags.STDIN_PIPE | GLib.SubprocessFlags.STDOUT_PIPE
 				);
+				foreach (var entry in this.config.env.entries) {
+					launcher.setenv(entry.key, entry.value, true);
+				}
+				this.process = launcher.spawnv(argv);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to start MCP process: " + e.message);
 			}

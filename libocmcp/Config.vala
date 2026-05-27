@@ -105,7 +105,6 @@ namespace OLLMmcp
 		{
 			switch (property_name) {
 				case "args":
-					this.args.clear();
 					if (property_node.get_node_type() == Json.NodeType.ARRAY) {
 						var arr = property_node.get_array();
 						for (var i = 0; i < arr.get_length(); i++) {
@@ -119,7 +118,6 @@ namespace OLLMmcp
 					value.set_object(this.args);
 					return true;
 				case "env":
-					this.env.clear();
 					if (property_node.get_node_type() == Json.NodeType.OBJECT) {
 						var obj = property_node.get_object();
 						obj.foreach_member((o, key, node) => {
