@@ -25,29 +25,38 @@ namespace OLLMmcp.Client
 	public class Stdio : Base
 	{
 		private OLLMmcp.Config config;
+		private unowned OLLMfiles.ProjectManager project_manager;
+		private OLLMtools.RunCommand.RunSeccomp? run_seccomp;
 		private GLib.Subprocess? process;
 		private DataInputStream? stdout_reader;
 		private DataOutputStream? stdin_writer;
 		private uint next_id = 1;
 
-		public Stdio(OLLMmcp.Config config)
+		public Stdio(OLLMmcp.Config config, OLLMfiles.ProjectManager project_manager)
 		{
 			this.config = config;
+			this.project_manager = project_manager;
 		}
 
 		public override async void connect() throws Error
 		{
-			string[] argv = this.build_argv();
+			string[] argv = this.build_spawn_argv();
+			var launcher = new GLib.SubprocessLauncher(
+				GLib.SubprocessFlags.STDIN_PIPE | GLib.SubprocessFlags.STDOUT_PIPE
+			);
+			foreach (var entry in this.config.env.entries) {
+				launcher.setenv(entry.key, entry.value, true);
+			}
+			if (this.run_seccomp != null) {
+				this.run_seccomp.wire_launcher(launcher);
+			}
 			try {
-				var launcher = new GLib.SubprocessLauncher(
-					GLib.SubprocessFlags.STDIN_PIPE | GLib.SubprocessFlags.STDOUT_PIPE
-				);
-				foreach (var entry in this.config.env.entries) {
-					launcher.setenv(entry.key, entry.value, true);
-				}
 				this.process = launcher.spawnv(argv);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to start MCP process: " + e.message);
+			}
+			if (this.run_seccomp != null) {
+				this.run_seccomp.finish_handshake();
 			}
 
 			InputStream? stdout_pipe = this.process.get_stdout_pipe();
@@ -71,6 +80,10 @@ namespace OLLMmcp.Client
 			}
 			this.stdout_reader = null;
 			this.stdin_writer = null;
+			if (this.run_seccomp != null) {
+				this.run_seccomp.detach_sources();
+				this.run_seccomp = null;
+			}
 		}
 
 		public override async Gee.ArrayList<OLLMmcp.Factory> tools() throws Error
@@ -119,62 +132,63 @@ namespace OLLMmcp.Client
 			if (call_result == null) {
 				return "";
 			}
-			return call_result.text_content();
+			string text = call_result.text_content();
+			if (this.run_seccomp == null) {
+				return text;
+			}
+			this.run_seccomp.finish_evidence_formatting();
+			if (this.run_seccomp.network != "") {
+				text += "\n\n" + this.run_seccomp.network.replace(
+					"run_command",
+					"mcp.json (server \"" + this.config.id + "\")"
+				);
+			}
+			if (this.run_seccomp.fs != "") {
+				text += "\n\n" + this.run_seccomp.fs;
+			}
+			return text;
 		}
 
-		private static bool can_use_bwrap()
+		private string[] build_spawn_argv() throws Error
 		{
 			if (GLib.Environment.get_variable("FLATPAK_ID") != null) {
-				return false;
+				if (!this.config.trust_sandbox) {
+					throw new GLib.IOError.FAILED(
+						"MCP server '" + this.config.id
+						+ "': stdio disabled inside sandbox; set trust_sandbox true in mcp.json"
+					);
+				}
+				string[] argv = {};
+				argv += this.config.command;
+				foreach (var a in this.config.args) {
+					argv += a;
+				}
+				return argv;
 			}
-			if (GLib.Environment.find_program_in_path("bwrap") == null) {
-				return false;
+			if (!OLLMtools.RunCommand.Bubble.can_wrap()) {
+				throw new GLib.IOError.FAILED(
+					"MCP server '" + this.config.id
+					+ "': bubblewrap required for stdio MCP on host"
+				);
 			}
-			return true;
-		}
-
-		private string[] build_argv()
-		{
-			if (!Stdio.can_use_bwrap()) {
-				return this.build_argv_raw();
+			OLLMfiles.Folder? project = this.project_manager.active_project;
+			string[] write_array = {};
+			if (project != null && this.config.allow_writes.size == 0) {
+				write_array += "project";
 			}
-			return this.build_argv_bwrap();
-		}
-
-		private string[] build_argv_raw()
-		{
-			string[] argv = {};
-			argv += this.config.command;
-			foreach (var a in this.config.args) {
-				argv += a;
+			if (this.config.allow_writes.size > 0) {
+				foreach (var entry in this.config.allow_writes) {
+					write_array += entry;
+				}
 			}
-			return argv;
-		}
-
-		private string[] build_argv_bwrap()
-		{
-			var bwrap_path = GLib.Environment.find_program_in_path("bwrap");
-			if (bwrap_path == null) {
-				return this.build_argv_raw();
-			}
-			string[] args = {};
-			args += bwrap_path;
-			args += "--unshare-user";
-			args += "--ro-bind";
-			args += "/";
-			args += "/";
-			args += "--tmpfs";
-			args += "/tmp";
-			args += "--ro-bind";
-			args += "/dev";
-			args += "/dev";
-			args += "--dev-bind";
-			args += "/dev/null";
-			args += "/dev/null";
-			if (!this.config.network) {
-				args += "--unshare-net";
-			}
-			args += "--";
+			var bubble = new OLLMtools.RunCommand.Bubble(
+				project,
+				this.config.network,
+				write_array
+			);
+			this.run_seccomp = new OLLMtools.RunCommand.RunSeccomp(bubble);
+			bubble.overlay.create();
+			string[] args = bubble.build_bubble_args("", "");
 			args += this.config.command;
 			foreach (var a in this.config.args) {
 				args += a;

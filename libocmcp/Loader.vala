@@ -43,7 +43,8 @@ namespace OLLMmcp
 		 */
 		public async void run(
 			OLLMchat.History.Manager manager,
-			Gee.ArrayList<Config> configs
+			Gee.ArrayList<Config> configs,
+			OLLMfiles.ProjectManager project_manager
 		)
 		{
 			foreach (var config in configs) {
@@ -52,7 +53,7 @@ namespace OLLMmcp
 				}
 				Client.Base client;
 				try {
-					client = this.registry.create_client(config);
+					client = this.registry.create_client(config, project_manager);
 				} catch (GLib.Error e) {
 					GLib.warning(
 						"MCP server '%s': %s",
