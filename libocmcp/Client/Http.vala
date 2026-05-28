@@ -44,7 +44,10 @@ namespace OLLMmcp.Client
 		private string base_url;
 		private uint next_id = 1;
 
-		public Http(OLLMmcp.Config config)
+		public Http(
+			OLLMmcp.Config config,
+			OLLMfiles.ProjectManager project_manager
+		)
 		{
 			this.config = config;
 			this.base_url = this.config.url;

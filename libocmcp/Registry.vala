@@ -48,13 +48,16 @@ namespace OLLMmcp
 		 *
 		 * @param config one element from mcp.json
 		 */
-		public Client.Base create_client(Config config) throws GLib.Error
+		public Client.Base create_client(
+			Config config,
+			OLLMfiles.ProjectManager project_manager
+		) throws GLib.Error
 		{
 			switch (config.transport) {
 				case "stdio":
-					return new Client.Stdio(config);
+					return new Client.Stdio(config, project_manager);
 				case "http":
-					return new Client.Http(config);
+					return new Client.Http(config, project_manager);
 				default:
 					throw new GLib.IOError.NOT_SUPPORTED(
 						"Unknown MCP transport '" + config.transport + "'"
@@ -67,7 +70,7 @@ namespace OLLMmcp
 		 */
 		public void fill_tools(
 			OLLMchat.History.Manager manager,
-			OLLMfiles.ProjectManager? project_manager = null
+			OLLMfiles.ProjectManager project_manager
 		)
 		{
 			var configs = OLLMmcp.Config.load();
@@ -80,6 +83,7 @@ namespace OLLMmcp
 			this.loader.run.begin(
 				manager,
 				configs,
+				project_manager,
 				(obj, res) => {
 					try {
 						this.loader.run.end(res);
