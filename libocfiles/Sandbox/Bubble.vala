@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMtools.RunCommand
+namespace OLLMfiles.Sandbox
 {
 	/**
 	 * Bubble class for executing commands in bubblewrap sandbox.

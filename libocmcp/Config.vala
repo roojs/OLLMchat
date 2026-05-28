@@ -44,7 +44,7 @@ namespace OLLMmcp
 		/** For stdio: optional environment variables. */
 		public Gee.Map<string, string> env { get; set; default = new Gee.HashMap<string, string>(); }
 
-		/** For http: server URL (e.g. "http://127.0.0.1:3000"). */
+		/** For http transport: server URL (e.g. [[http://127.0.0.1:3000]]). */
 		public string url { get; set; default = ""; }
 
 		/** When true, allow network in bwrap sandbox (omit --unshare-net). Default false. */

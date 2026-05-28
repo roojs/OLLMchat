@@ -29,6 +29,10 @@ namespace OLLMmcp
 		public string server_id { get; construct; default = ""; }
 		public Factory factory { get; construct; }
 
+		private string name_bk = "";
+		private string ex_call_bk = "";
+		private string param_desc_bk = "";
+
 		public Tool(Client.Base client, string server_id, Factory factory)
 		{
 			Object(
@@ -40,7 +44,8 @@ namespace OLLMmcp
 
 		public override string name {
 			get {
-				return "mcp:%s:%s".printf(this.server_id, this.factory.name);
+				this.name_bk = "mcp:%s:%s".printf(this.server_id, this.factory.name);
+				return this.name_bk;
 			}
 		}
 
@@ -58,7 +63,8 @@ namespace OLLMmcp
 
 		public override string example_call {
 			get {
-				return "{\"name\": \"%s\", \"arguments\": {}}".printf(this.name);
+				this.ex_call_bk = "{\"name\": \"%s\", \"arguments\": {}}".printf(this.name);
+				return this.ex_call_bk;
 			}
 		}
 
@@ -92,7 +98,8 @@ namespace OLLMmcp
 							: "")
 						+ "\n";
 				});
-				return result;
+				this.param_desc_bk = result;
+				return this.param_desc_bk;
 			}
 		}
 

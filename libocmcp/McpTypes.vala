@@ -120,11 +120,12 @@ namespace OLLMmcp
 		public string jsonrpc { get; set; default = "2.0"; }
 		public int id { get; set; }
 		public string method { get; set; default = ""; }
-		/**
-		 * Request params: any Json.Serializable (e.g. InitializeParams, CallToolParams) or Json.Object for raw.
-		 * Serialization maps to/from the "params" JSON key.
-		 */
-		public Object? params { get; set; default = null; }
+		/** Set for `initialize` only; serialized to JSON `"params"`. */
+		public InitializeParams? params_initialize { get; set; default = null; }
+		/** Set for `tools/call` only; serialized to JSON `"params"`. */
+		public CallToolParams? params_tools_call { get; set; default = null; }
+		/** Wire key `params` only — do not assign; use typed fields above. */
+		public Object? params { get; private set; default = null; }
 
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -145,33 +146,23 @@ namespace OLLMmcp
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
-			if (property_name == "params") {
-				if (this.params == null) {
-					var empty = new Json.Node(Json.NodeType.OBJECT);
-					empty.set_object(new Json.Object());
-					return empty;
+			switch (property_name) {
+			case "params_initialize":
+			case "params_tools_call":
+				return null;
+			case "params":
+				if (this.params_initialize != null) {
+					return Json.gobject_serialize(this.params_initialize);
 				}
-				if (this.params is Json.Object) {
-					var node = new Json.Node(Json.NodeType.OBJECT);
-					node.set_object((Json.Object) this.params);
-					return node;
+				if (this.params_tools_call != null) {
+					return Json.gobject_serialize(this.params_tools_call);
 				}
-				return Json.gobject_serialize(this.params);
+				var empty = new Json.Node(Json.NodeType.OBJECT);
+				empty.set_object(new Json.Object());
+				return empty;
+			default:
+				return default_serialize_property(property_name, value, pspec);
 			}
-			return default_serialize_property(property_name, value, pspec);
-		}
-
-		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
-		{
-			if (property_name == "params") {
-				this.params = (property_node.get_node_type() == Json.NodeType.OBJECT)
-					? property_node.get_object()
-				: new Json.Object();
-				value = Value(typeof(Object));
-				value.set_object(this.params);
-				return true;
-			}
-			return default_deserialize_property(property_name, out value, pspec, property_node);
 		}
 	}
 
@@ -218,7 +209,7 @@ namespace OLLMmcp
 					this.arguments = new Json.Object();
 				}
 				value = Value(typeof(Json.Object));
-				value.set_object(this.arguments);
+				value.set_boxed(this.arguments);
 				return true;
 			}
 			return default_deserialize_property(property_name, out value, pspec, property_node);
@@ -280,7 +271,10 @@ namespace OLLMmcp
 	 */
 	public class CallToolContentItem : Object, Json.Serializable
 	{
-		public string type { get; set; default = "text"; }
+		/**
+		 * MCP content kind (e.g. "text"). Stored as x_type — GObject reserves "type".
+		 */
+		public string x_type { get; set; default = "text"; }
 		public string text { get; set; default = ""; }
 
 		public unowned ParamSpec? find_property(string name)
@@ -298,6 +292,30 @@ namespace OLLMmcp
 			Value val = Value(pspec.value_type);
 			base.get_property(pspec.get_name(), ref val);
 			return val;
+		}
+
+		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
+		{
+			switch (property_name) {
+			case "x_type":
+			case "x-type":
+				return null;
+			default:
+				return default_serialize_property(property_name, value, pspec);
+			}
+		}
+
+		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		{
+			if (property_name == "type") {
+				if (property_node.get_node_type() == Json.NodeType.VALUE) {
+					this.x_type = property_node.get_string();
+				}
+				value = Value(typeof(string));
+				value.set_string(this.x_type);
+				return true;
+			}
+			return default_deserialize_property(property_name, out value, pspec, property_node);
 		}
 	}
 
@@ -355,7 +373,7 @@ namespace OLLMmcp
 		{
 			string result = "";
 			foreach (var item in this.content) {
-				if (item.type == "text" && item.text != "") {
+				if (item.x_type == "text" && item.text != "") {
 					result += item.text;
 				}
 			}

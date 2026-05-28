@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMtools.RunCommand
+namespace OLLMfiles.Sandbox
 {
 	/**
 	 * Manages overlay filesystem creation, mounting, and cleanup for isolating writes during command execution.

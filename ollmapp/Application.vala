@@ -28,6 +28,7 @@ namespace OLLMapp
 		public string data_dir { get; set; }
 		public OLLMtools.Registry tools_registry { get; set; }
 		public OLLMvector.Registry vector_registry { get; set; }
+		public OLLMmcp.Registry mcp_registry { get; set; }
 		
 		public static bool opt_debug = false;
 		public static bool opt_debug_critical = false;
@@ -64,8 +65,10 @@ namespace OLLMapp
 			// Use library-level registries to register tools
 			this.tools_registry = new OLLMtools.Registry();
 			this.vector_registry = new OLLMvector.Registry();
+			this.mcp_registry = new OLLMmcp.Registry();
 			this.tools_registry.init_config();
 			this.vector_registry.init_config();
+			this.mcp_registry.init_config();
 					
 			// Load config after registrations
 			this.config = this.load_config();
@@ -73,6 +76,7 @@ namespace OLLMapp
 			if (this.config.loaded) {
 				this.tools_registry.setup_config_defaults(this.config);
 				this.vector_registry.setup_config_defaults(this.config);
+				this.mcp_registry.setup_config_defaults(this.config);
 			}
 			
 			// Connect activate signal
