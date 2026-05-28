@@ -65,7 +65,7 @@ namespace OLLMmcp
 					? property_node.get_object()
 					: new Json.Object();
 				value = Value(typeof(Json.Object));
-				value.set_object(this.inputSchema);
+				value.set_boxed(this.inputSchema);
 				return true;
 			}
 			return default_deserialize_property(property_name, out value, pspec, property_node);

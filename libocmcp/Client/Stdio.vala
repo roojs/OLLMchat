@@ -26,7 +26,7 @@ namespace OLLMmcp.Client
 	{
 		private OLLMmcp.Config config;
 		private unowned OLLMfiles.ProjectManager project_manager;
-		private OLLMtools.RunCommand.RunSeccomp? run_seccomp;
+		private OLLMfiles.Sandbox.RunSeccomp? run_seccomp;
 		private GLib.Subprocess? process;
 		private DataInputStream? stdout_reader;
 		private DataOutputStream? stdin_writer;
@@ -75,7 +75,7 @@ namespace OLLMmcp.Client
 		public override void disconnect()
 		{
 			if (this.process != null) {
-				this.process.send_signal(GLib.SubprocessSignal.TERM);
+				this.process.send_signal(Posix.Signal.TERM);
 				this.process = null;
 			}
 			this.stdout_reader = null;
@@ -88,7 +88,10 @@ namespace OLLMmcp.Client
 
 		public override async Gee.ArrayList<OLLMmcp.Factory> tools() throws Error
 		{
-			var response = yield this.jrequest("tools/list", "{}");
+			var response = yield this.jrequest(new OLLMmcp.JsonRpcRequest() {
+				id = (int) this.next_id++,
+				method = "tools/list"
+			});
 			Json.Node? result_node = null;
 			if (response != null) {
 				var root = response.get_object();
@@ -116,8 +119,11 @@ namespace OLLMmcp.Client
 				name = name,
 				arguments = arguments
 			};
-			string params_str = Json.to_string(Json.gobject_serialize(call_params), false);
-			var response = yield this.jrequest("tools/call", params_str);
+			var response = yield this.jrequest(new OLLMmcp.JsonRpcRequest() {
+				id = (int) this.next_id++,
+				method = "tools/call",
+				params_tools_call = call_params
+			});
 			Json.Node? result_node = null;
 			if (response != null) {
 				var root = response.get_object();
@@ -165,7 +171,7 @@ namespace OLLMmcp.Client
 				}
 				return argv;
 			}
-			if (!OLLMtools.RunCommand.Bubble.can_wrap()) {
+			if (!OLLMfiles.Sandbox.Bubble.can_wrap()) {
 				throw new GLib.IOError.FAILED(
 					"MCP server '" + this.config.id
 					+ "': bubblewrap required for stdio MCP on host"
@@ -181,12 +187,12 @@ namespace OLLMmcp.Client
 					write_array += entry;
 				}
 			}
-			var bubble = new OLLMtools.RunCommand.Bubble(
+			var bubble = new OLLMfiles.Sandbox.Bubble(
 				project,
 				this.config.network,
 				write_array
 			);
-			this.run_seccomp = new OLLMtools.RunCommand.RunSeccomp(bubble);
+			this.run_seccomp = new OLLMfiles.Sandbox.RunSeccomp(bubble);
 			bubble.overlay.create();
 			string[] args = bubble.build_bubble_args("", "");
 			args += this.config.command;
@@ -198,41 +204,18 @@ namespace OLLMmcp.Client
 
 		private async void init() throws Error
 		{
-			var init_params = new OLLMmcp.InitializeParams();
-			var req = new OLLMmcp.JsonRpcRequest() {
+			yield this.jrequest(new OLLMmcp.JsonRpcRequest() {
 				id = (int) this.next_id++,
 				method = "initialize",
-				params = init_params
-			};
-			yield this.write(Json.to_string(Json.gobject_serialize(req), false));
-
-			var response = yield this.read_jresponse();
-			this.check_jerr(response);
+				params_initialize = new OLLMmcp.InitializeParams()
+			});
 
 			var notif = new OLLMmcp.InitializedNotification();
 			yield this.write(Json.to_string(Json.gobject_serialize(notif), false));
 		}
 
-		private async Json.Node? jrequest(string method, string? params_json = null) throws Error
+		private async Json.Node? jrequest(OLLMmcp.JsonRpcRequest req) throws Error
 		{
-			Json.Object? params_obj = null;
-			if (params_json != null && params_json != "") {
-				var p = new Json.Parser();
-				try {
-					p.load_from_data(params_json, -1);
-					var params_node = p.get_root();
-					if (params_node != null && params_node.get_node_type() == Json.NodeType.OBJECT) {
-						params_obj = params_node.get_object();
-					}
-				} catch (GLib.Error e) {
-					params_obj = null;
-				}
-			}
-			var req = new OLLMmcp.JsonRpcRequest() {
-				id = (int) this.next_id++,
-				method = method,
-				params = params_obj
-			};
 			yield this.write(Json.to_string(Json.gobject_serialize(req), false));
 
 			var response = yield this.read_jresponse();

@@ -40,6 +40,7 @@ namespace OLLMapp
 		private OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		private OLLMtools.Registry tools_registry { get; set; }
 		private OLLMvector.Registry vector_registry { get; set; }
+		private OLLMmcp.Registry mcp_registry { get; set; }
 		
 		protected string help { get; set; default = """
 Usage: {ARG} [OPTIONS] [QUERY]
@@ -93,14 +94,17 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			// Phase 1: Initialize tool config types (before loading config)
 			this.tools_registry = new OLLMtools.Registry();
 			this.vector_registry = new OLLMvector.Registry();
+			this.mcp_registry = new OLLMmcp.Registry();
 			this.tools_registry.init_config();
 			this.vector_registry.init_config();
+			this.mcp_registry.init_config();
 			
 			// Load config (no vector types needed for simple CLI)
 			this.config = this.load_config();
 			 
 			this.tools_registry.setup_config_defaults(this.config);
 			this.vector_registry.setup_config_defaults(this.config);
+			this.mcp_registry.setup_config_defaults(this.config);
 			 
 		}
 		
@@ -474,7 +478,8 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 		// For standard agent mode, project_manager can be null (tools will work in limited mode)
 		this.tools_registry.fill_tools(this.manager, this.project_manager);
 		this.vector_registry.fill_tools(this.manager, this.project_manager);
-				
+		this.mcp_registry.fill_tools(this.manager, this.project_manager);
+
 			// Ensure Manager's session has just-ask agent activated
 			// Manager already registers "just-ask" agent in constructor and creates EmptySession
 			// EmptySession is already activated in Manager constructor, but ensure agent_name is set
@@ -544,7 +549,8 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 		// Fill manager with tools (after project manager is set up)
 		this.tools_registry.fill_tools(this.manager, this.project_manager);
 		this.vector_registry.fill_tools(this.manager, this.project_manager);
-			
+		this.mcp_registry.fill_tools(this.manager, this.project_manager);
+
 			// Verify tool exists
 			if (!this.manager.tools.has_key(tool_name)) {
 				throw new GLib.IOError.NOT_FOUND(

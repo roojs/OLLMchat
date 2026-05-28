@@ -25,6 +25,7 @@ subdir('libocmarkdown')    # No dependencies
 subdir('libocmarkdowngtk') # Depends on libocmarkdown
 subdir('libocfiles')       # Depends on libocsqlite
 subdir('libollmchat')      # Depends on libocsqlite
+subdir('libocmcp')         # Depends on libollmchat, libocfiles
 subdir('liboctools')       # Depends on libollmchat, libocfiles
 subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
 subdir('liboccoder')       # Depends on libocsqlite, libocfiles, libocvector, libollmchat
@@ -81,7 +82,8 @@ lib_path = ':'.join([
   meson.current_build_dir() / 'libollmchat',
   meson.current_build_dir() / 'libollmchatgtk',
   meson.current_build_dir() / 'libocvector',
-  meson.current_build_dir() / 'liboctools'
+  meson.current_build_dir() / 'liboctools',
+  meson.current_build_dir() / 'libocmcp'
 ])
 
 # Create wrapper scripts in top-level build directory

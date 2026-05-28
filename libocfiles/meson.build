@@ -6,16 +6,26 @@ valac = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
 # Find tree-sitter library (C library for parsing)
 tree_sitter_lib = dependency('tree-sitter', required: true)
+libseccomp_lib = cc.find_library('seccomp', required: true)
+seccomp_vapi = valac.find_library(
+  'seccomp',
+  dirs: meson.current_source_dir() / '../vapi',
+  required: true,
+)
 ocfiles_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
+  dependency('gio-unix-2.0'),
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
   dependency('gmodule-2.0'),  # GModule for dynamic library loading
   dependency('json-glib-1.0'),  # Required for ProjectMigrate (JSON parsing)
   dependency('sqlite3'),
   valac.find_library('posix'),
+  valac.find_library('linux'),
   tree_sitter_lib,  # Tree-sitter C library (required - TreeBase uses TreeSitter API)
+  seccomp_vapi,
+  libseccomp_lib,
 ]
 
 ocfiles_src = files([
@@ -28,6 +38,10 @@ ocfiles_src = files([
   'File.vala',
   'FileAlias.vala',
   'Folder.vala',
+  'Sandbox/Scan.vala',
+  'Sandbox/Overlay.vala',
+  'Sandbox/Bubble.vala',
+  'Sandbox/RunSeccomp.vala',
   'FolderFiles.vala',
   'GitProviderBase.vala',
   'ProjectFile.vala',
@@ -53,19 +67,25 @@ lib_build_rpath = ':'.join([
 
 ocfiles_base_lib = library('ocfiles',
   dependencies: [ocfiles_deps, ocsqlite_vapi_dep],
-  sources: ocfiles_src,
+  sources: ocfiles_src + files(meson.current_source_dir() / '../vapi/seccomp-fd-pass.c'),
   vala_header: 'ocfiles.h',
   vala_vapi: 'ocfiles-meson.vapi',  # Use different name so our custom_target can use 'ocfiles.vapi'
   build_rpath: lib_build_rpath,
+  include_directories: [
+    include_directories('..' / 'vapi'),
+  ],
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=json-glib-1.0',  # Required for ProjectMigrate (JSON parsing)
     '--pkg=gmodule-2.0',  # GModule for dynamic library loading (required for TreeBase)
     '--pkg=tree-sitter',  # Tree-sitter via vapi (required for TreeBase)
     '--pkg=ocsqlite',
+    '--pkg=seccomp',
+    '--pkg=linux',
+    '--pkg=gio-unix-2.0',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
+    '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi and seccomp
     '--vapidir', '/usr/share/vala/vapi'  # System VAPI directory (last, so local takes priority)
   ],
   install: true
@@ -95,6 +115,9 @@ ocfiles_vapi = custom_target('ocfiles-vapi',
     '--pkg', 'glib-2.0',
     '--pkg', 'gio-2.0',
     '--pkg', 'gee-0.8',
+    '--pkg', 'seccomp',
+    '--pkg', 'linux',
+    '--pkg', 'gio-unix-2.0',
     '--library', 'ocfiles',
     '--header', meson.current_build_dir() / 'ocfiles.h',  # Use header from library
     '--vapi', '@OUTPUT@',
