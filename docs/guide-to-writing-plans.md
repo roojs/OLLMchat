@@ -72,7 +72,27 @@ For **discussion, rationale, risks, and notes** (anything that is not a mechanic
 - **ℹ️** / **🚫** bullets are pointers or vetoes — no **⏳** unless there is also an explicit follow-up task; then use **`🔷` `⏳`** or **`💩` `⏳`**.
 - Plan **`Status:`** line may use **⏳** alone for overall plan state (meta, not a task bullet).
 
-## New methods and helpers
+### 💩 Mark LLM-only content (mandatory in plans)
+
+When drafting or updating a plan from user chat, **separate what they said from what you invented**:
+
+- **🔷** — user stated it, or clearly approved it in the thread (requirements, constraints, names they chose).
+- **💩** — **anything you add that the user did not mention** — extra fields, heuristics, save behaviour, CLI guards, helpers, scope expansion, acceptance bullets, “still visible” lists, etc.
+- **🚫** — user said **no** or it is explicitly rejected in review (so implementers do not reintroduce it).
+
+**Rules:**
+
+- Do **not** bury **💩** ideas inside **🔷** bullets — give each its **own** **💩** line or table row so review is one glance.
+- Before finishing a plan, scan: every requirement is **🔷**, **💩**, **ℹ️**, or **🚫** — nothing unmarked that reads like a mandate.
+- **💩** does not mean “wrong” — it means **confirm before build**. User can promote **💩 → 🔷** in review.
+
+**Example:**
+
+- **🔷** Detection uses **`GET /api/version`** via **`Call.Version`**.
+- **🚫** URL shape / **`…/api/`** heuristics for detection — not part of this feature.
+- **💩** Also hide **`top_k`** in options UI (not mentioned in chat; optional).
+
+---
 
 - **Do not add new methods** unless the plan or the user **explicitly** asks for them (see **CODING_STANDARDS.md** — new methods).
 - **Private helpers are not automatically an improvement** — they are often **bloat**, hide the real flow, and scatter logic. Default to **changing existing methods** and **inlining** at the call site.
@@ -319,6 +339,12 @@ Follow **`.cursor/rules/CODING_STANDARDS.md`** — *Defensive code* and *Checkli
 ## Done / archive
 
 When implemented: move or copy to **`docs/plans/done/`**, prefix filename with **`DONE`** or **`REJECTED`**, one-line **Status: DONE** and pointer to files changed.
+
+### Sub-plans and `1.0-summary.md`
+
+- **Do not** add or edit entries in **`docs/plans/1.0-summary.md`** for in-progress sub-plans.
+- Put a **prominent blockquote at the top** of each sub-plan stating that 1.0 is **not** updated until the sub-plan is **done** and archived.
+- Update 1.0 **only** when closing a plan (optional — user may skip even then).
 
 ## Related
 

@@ -33,7 +33,8 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollmchatgtk',
-  meson.current_build_dir() / '..' / 'liboctools'
+  meson.current_build_dir() / '..' / 'liboctools',
+  meson.current_build_dir() / '..' / 'libocmcp'
 ])
 
 # Dependencies for ollmchat executable
@@ -65,7 +66,8 @@ ollmchat = executable('ollmchat',
       occoder_vapi_dep, 
       ocvector_vapi_dep, 
       ocfiles_vapi_dep, 
-      octools_vapi_dep
+      octools_vapi_dep,
+      ocmcp_vapi_dep
   ],
   sources: [
     version_vala,
@@ -128,6 +130,7 @@ ollmchat = executable('ollmchat',
     '--pkg=ocfiles',  # Required for OLLMcoder.Files.BufferProvider and OLLMcoder.Files.GitProvider
     '--pkg=ocvector',  # Use manually generated ocvector.vapi (via ocvector_vapi_dep)
     '--pkg=octools',  # Tools library
+    '--pkg=ocmcp',  # MCP loader
     '--pkg=ollmchat',  # Required for OLLMchat types (Call, Settings, History, etc.)
     '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
     '--pkg=libgit2-glib-1.0',
@@ -138,6 +141,7 @@ ollmchat = executable('ollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
     '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmcp',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',  # For ollmchat.vapi
     '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
   ],
@@ -176,7 +180,8 @@ ollmchat_cli_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocfiles',
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'liboctools',
-  meson.current_build_dir() / '..' / 'libocvector'
+  meson.current_build_dir() / '..' / 'libocvector',
+  meson.current_build_dir() / '..' / 'libocmcp'
 ])
 
 # Build ollmchat-cli executable (command-line tool for testing agent tools)
@@ -187,7 +192,8 @@ ollmchat_cli = executable('ollmchat-cli',
     ocfiles_vapi_dep,
     ollmchat_vapi_dep,
     octools_vapi_dep,
-    ocvector_vapi_dep
+    ocvector_vapi_dep,
+    ocmcp_vapi_dep
   ],
   sources: ['ollmchat-cli.vala'],
   link_with: [ollmchat_base_lib],
@@ -206,12 +212,14 @@ ollmchat_cli = executable('ollmchat-cli',
     '--pkg=ocfiles',  # Required for ProjectManager
     '--pkg=ollmchat',  # Required for Manager, Client, etc.
     '--pkg=octools',  # Tools library
+    '--pkg=ocmcp',  # MCP loader
     '--pkg=ocvector',  # For CodebaseSearchTool
     '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmcp',
     '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
     '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
   ],

@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMtools.RunCommand
+namespace OLLMfiles.Sandbox
 {
 	/**
 	 * Bubble class for executing commands in bubblewrap sandbox.
@@ -81,7 +81,7 @@ namespace OLLMtools.RunCommand
 		/**
 		 * Overlay instance (create()/scan/cleanup no-op when project is null).
 		 */
-		private Overlay overlay;
+		public Overlay overlay;
 		
 		/**
 		 * When false, bwrap uses --unshare-net and seccomp can monitor socket syscalls; when true, network is allowed.
@@ -249,12 +249,12 @@ namespace OLLMtools.RunCommand
 		 * 
 		 * The resulting array can be passed directly to GLib.Subprocess.newv().
 		 * 
-		 * @param command Command string to execute
+		 * @param command Shell command after "--" via /bin/sh -c when non-empty; when empty, only "--" is added and caller appends argv (MCP stdio).
 		 * @param working_dir Optional working directory (absolute path). If empty, defaults to first project root.
-		 * @return Array of arguments for bubblewrap command (including /bin/sh -c "command")
+		 * @return Array of arguments for bubblewrap
 		 * @throws Error if argument building fails
 		 */
-		private string[] build_bubble_args(string command, string working_dir = "") throws Error
+		public string[] build_bubble_args(string command, string working_dir = "") throws Error
 		{
 			// Start with empty array and use += to build it
 			string[] args = {};
@@ -339,13 +339,11 @@ namespace OLLMtools.RunCommand
 			
 			// Add separator: "--"
 			args += "--";
-			
-			// Add shell command: "/bin/sh", "-c", command
-			args += "/bin/sh";
-			args += "-c";
-			args += command;
-			
-			// Return final array
+			if (command != "") {
+				args += "/bin/sh";
+				args += "-c";
+				args += command;
+			}
 			return args;
 		}
 

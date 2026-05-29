@@ -106,6 +106,14 @@ public enum PhaseEnum
 	 */
 	TASK_LIST_ITERATION_RETRY,
 	/**
+	 * Session continue; pairs with wire ''task_list_continue''.
+	 */
+	TASK_LIST_CONTINUE,
+	/**
+	 * Progress UI: session continue retry after parse failure ({@link OLLMcoder.Skill.Runner.run_task_list_continue}).
+	 */
+	TASK_LIST_CONTINUE_RETRY,
+	/**
 	 * Post-exec validation of writes; pairs with wire ''exec_validate'' and replay validate steps.
 	 */
 	EXEC_VALIDATE,
@@ -155,6 +163,8 @@ public enum PhaseEnum
 			return PhaseEnum.LIST;
 		case "task_list_iteration":
 			return PhaseEnum.TASK_LIST_ITERATION;
+		case "task_list_continue":
+			return PhaseEnum.TASK_LIST_CONTINUE;
 		case "refinement":
 			return PhaseEnum.REFINEMENT;
 		case "exec":
@@ -186,6 +196,8 @@ public enum PhaseEnum
 			return "task_list_parse";
 		case TASK_LIST_ITERATION:
 			return "task_list_iteration";
+		case TASK_LIST_CONTINUE:
+			return "task_list_continue";
 		case REFINEMENT:
 			return "refinement";
 		case EXECUTION:
@@ -223,6 +235,10 @@ public enum PhaseEnum
 		case TASK_LIST_ITERATION:
 			return "<b>Reviewing</b>";
 		case TASK_LIST_ITERATION_RETRY:
+			return "<b>Retrying</b>";
+		case TASK_LIST_CONTINUE:
+			return "<b>Continuing</b>";
+		case TASK_LIST_CONTINUE_RETRY:
 			return "<b>Retrying</b>";
 		case EXECUTION:
 			return "<b>Review output</b>";

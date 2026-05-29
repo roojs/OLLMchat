@@ -448,8 +448,8 @@ namespace OLLMapp
 			var app = this.app as OllmchatApplication;
 			app.tools_registry.fill_tools(this.history_manager, this.project_manager);
 			app.vector_registry.fill_tools(this.history_manager, this.project_manager);
+			app.mcp_registry.fill_tools(this.history_manager, this.project_manager);
 
-			
 			// Register CodeAssistant agent
 			var code_assistant = new OLLMcoder.AgentFactory(this.project_manager);
 			this.history_manager.agent_factories.set(code_assistant.name, code_assistant);

@@ -176,6 +176,28 @@ namespace OLLMchat.Response
 			return false;
 		}
 
+		/**
+		 * Feed streaming delta words into {@link back_tokens} and run {@link check_back_token}.
+		 *
+		 * @return false when a repeating pattern is detected
+		 */
+		public bool detect_looping(string token)
+		{
+			foreach (string w in Regex.split_simple("\\s+", token)) {
+				if (w.length == 0) {
+					continue;
+				}
+				this.back_tokens.insert(0, w);
+				if (this.back_tokens.size > 100) {
+					this.back_tokens.remove_at(this.back_tokens.size - 1);
+				}
+				if (!this.check_back_token()) {
+					return false;
+				}
+			}
+			return true;
+		}
+
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			switch (property_name) {

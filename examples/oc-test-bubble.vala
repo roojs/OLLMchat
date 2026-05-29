@@ -179,7 +179,7 @@ Examples:
 	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
 	{
 		// Check if bubblewrap is available
-		if (!OLLMtools.RunCommand.Bubble.can_wrap()) {
+		if (!OLLMfiles.Sandbox.Bubble.can_wrap()) {
 			command_line.printerr("ERROR: bubblewrap is not available on this system.\n");
 			command_line.printerr("  - Make sure bwrap is installed and in PATH\n");
 			command_line.printerr("  - Note: bubblewrap is disabled when running inside Flatpak\n");
@@ -254,7 +254,7 @@ Examples:
 		}
 
 		// Create Bubble instance
-		var bubble = new OLLMtools.RunCommand.Bubble (project, opt_allow_network, write_array);
+		var bubble = new OLLMfiles.Sandbox.Bubble (project, opt_allow_network, write_array);
 
 		// Execute command
 		stdout.printf ("Executing command in sandbox: %s\n", command);

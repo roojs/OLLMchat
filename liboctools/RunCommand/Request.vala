@@ -95,7 +95,7 @@ namespace OLLMtools.RunCommand
 		 */
 		private string bwrap_unavailable_note ()
 		{
-			if (Bubble.can_wrap ()) {
+			if (OLLMfiles.Sandbox.Bubble.can_wrap ()) {
 				return "";
 			}
 			if (GLib.Environment.get_variable ("FLATPAK_ID") != null) {
@@ -133,7 +133,7 @@ namespace OLLMtools.RunCommand
 				return true;
 			}
 
-			bool can = Bubble.can_wrap ();
+			bool can = OLLMfiles.Sandbox.Bubble.can_wrap ();
 			string head0 = this.write_array.length > 0 ? this.write_array[0].down () : "";
 			bool default_sandbox_writes = (head0 == "no" || head0 == "project");
 
@@ -259,7 +259,7 @@ namespace OLLMtools.RunCommand
 			
 			var normalized_working_dir = this.normalize_working_dir();
 
-			if (!Bubble.can_wrap()) {
+			if (!OLLMfiles.Sandbox.Bubble.can_wrap()) {
 				return yield this.execute_with_subprocess();
 			}
 
@@ -269,9 +269,9 @@ namespace OLLMtools.RunCommand
 				? project_manager.active_project
 				: (OLLMfiles.Folder?) null;
 
-			Bubble? bubble = null;
+			OLLMfiles.Sandbox.Bubble? bubble = null;
 			try {
-				bubble = new Bubble (project, this.network, this.write_array);
+				bubble = new OLLMfiles.Sandbox.Bubble (project, this.network, this.write_array);
 				
 				// Execute command in bwrap sandbox (writes go to overlay upper directory)
 				// exec() handles overlay creation, mounting, file copying, and cleanup internally
