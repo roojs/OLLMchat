@@ -397,21 +397,39 @@ namespace OLLMchat.Call
 					continue;
 				}
 				var token = resp.addChunk(chunk);
+
+				if (resp.is_first_chunk) {
+					resp.is_first_chunk = false;
+					this.stream_start();
+					if (this.agent != null) {
+						this.agent.handle_stream_started();
+					}
+				}
+
+				if (resp.new_thinking.length == 0 &&
+					resp.new_content.length == 0 &&
+					!resp.done &&
+					token == "") {
+					continue;
+				}
+
+				if (resp.new_thinking.length > 0 ||
+					resp.new_content.length > 0 ||
+					resp.done) {
+					bool is_thinking = resp.new_thinking.length > 0;
+					string new_text = is_thinking ? resp.new_thinking : resp.new_content;
+					this.stream_chunk(new_text, is_thinking, resp);
+					if (this.agent != null) {
+						this.agent.handle_stream_chunk(new_text, is_thinking, resp);
+					}
+				}
+
 				if (token == "") {
 					continue;
 				}
-				foreach (string w in Regex.split_simple("\\s+", token)) {
-					if (w.length == 0) {
-						continue;
-					}
-					resp.back_tokens.insert(0, w);
-					if (resp.back_tokens.size > 100) {
-						resp.back_tokens.remove_at(resp.back_tokens.size - 1);
-					}
-					if (!resp.check_back_token()) {
-						throw new OllmError.FAILED(
-							"Streaming stopped: output repeated; possible infinite generation loop.");
-					}
+				if (!resp.detect_looping(token)) {
+					throw new OllmError.FAILED(
+						"Streaming stopped: output repeated; possible infinite generation loop.");
 				}
 			}
 

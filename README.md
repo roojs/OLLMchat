@@ -13,7 +13,7 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
   - Settings dialog with model search and download from Ollama
   - Code assistant agent with semantic codebase search capabilities
   - Chat history management with session browser
-  - Tool integration: ReadFile, EditMode, RunCommand, WebFetch, and CodebaseSearch (semantic search)
+  - Tool integration: ReadFile, EditMode, RunCommand, WebFetch, CodebaseSearch (semantic search), and MCP servers (Model Context Protocol)
   - Project management and file tracking
   - Permission system for secure tool access
   - Support for multiple agent types (Just Ask, Code Assistant)
@@ -26,6 +26,7 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
   - `libocvector.so` - Semantic codebase search library using vector embeddings and FAISS (no GTK dependencies)
   - `libollmchat.so` - Base library for Ollama/OpenAI API access (no GTK dependencies)
   - `liboctools.so` - Tools library for file operations and utilities (no GTK dependencies)
+  - `libocmcp.so` - MCP (Model Context Protocol) client: load servers from `~/.config/ollmchat/mcp.json`, discover tools, expose them as `mcp:{server_id}:{tool_name}` agent tools (stdio subprocess or HTTP JSON-RPC; stdio uses `OLLMfiles.Sandbox` via `libocfiles`)
   - `libollmchatgtk.so` - GTK library with chat widgets (includes GTK components)
 - **Example Tools** - Command-line utilities demonstrating library capabilities:
   - `oc-test-cli` - Test tool for LLM API calls (models, chat, streaming)
@@ -75,6 +76,7 @@ Online API documentation is available:
 Implementation plans and roadmap:
 
 - **[Implementation Plans Summary](docs/plans/1.0-summary.md)** - Overview of all planned features with status indicators
+- **[MCP server settings](docs/mcp-settings.md)** - How to configure `mcp.json` for Model Context Protocol tools
 
 ## Build Instructions
 
@@ -135,7 +137,11 @@ sudo apt install \
   bubblewrap
 ```
 
-- **bubblewrap** - Provides `bwrap` command for sandboxed command execution
+- **bubblewrap** - Provides `bwrap` command for sandboxed command execution (also used for sandboxed MCP stdio servers)
+
+### MCP servers (`libocmcp`)
+
+MCP tools are optional. See **[MCP server settings](docs/mcp-settings.md)** for `~/.config/ollmchat/mcp.json` format, stdio vs HTTP, sandbox options (`network`, `allow_write`, `trust_sandbox`), and examples.
 
 ## Building
 
@@ -168,6 +174,7 @@ This will build:
 - `libocvector.so` - Semantic codebase search library (with headers, VAPI, and GIR files)
 - `libollmchat.so` - Base library for LLM API access (with headers, VAPI, and GIR files)
 - `liboctools.so` - Tools library for file operations and utilities (with headers, VAPI, and GIR files)
+- `libocmcp.so` - MCP client library (with headers, VAPI, and GIR files)
 - `libollmchatgtk.so` - GTK library with chat widgets (with headers, VAPI, and GIR files)
 - `ollmchat` - Main application executable
 - `oc-test-cli` - Command-line test executable

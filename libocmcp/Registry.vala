@@ -21,33 +21,56 @@ namespace OLLMmcp
 	/**
 	 * Registry for MCP tools.
 	 *
-	 * Loads the MCP config file (array of Config), and in fill_tools() will
-	 * create a client per enabled Config (via transport factories) and register
-	 * ToolWrappers. Phase 2.11.1: init_config/setup_config_defaults/fill_tools
-	 * are present; fill_tools is a stub (no factories yet).
+	 * Loads mcp.json, creates clients per enabled {@link Config}, and registers
+	 * tools via {@link Loader}.
 	 */
 	public class Registry : Object
 	{
+		public Loader loader { get; private set; }
+
+		public Registry()
+		{
+			this.loader = new Loader(this);
+		}
+
 		public void init_config()
 		{
 			// No MCP tool config types in Config2 yet
-			GLib.debug("No MCP tool config types to register");
 		}
 
 		public void setup_config_defaults(OLLMchat.Settings.Config2 config)
 		{
 			// No defaults to inject for MCP in main config yet
-			GLib.debug("No MCP section in config");
 		}
 
 		/**
-		 * Load MCP config and register tools for each enabled server.
-		 * Stub for 2.11.1: no client factories yet, so does nothing (or only loads config).
-		 * Later: load file → array of Config → for each enabled Config create Client via factory → register tools.
+		 * Create a transport client for one MCP server entry.
+		 *
+		 * @param config one element from mcp.json
+		 */
+		public Client.Base create_client(
+			Config config,
+			OLLMfiles.ProjectManager project_manager
+		) throws GLib.Error
+		{
+			switch (config.transport) {
+				case "stdio":
+					return new Client.Stdio(config, project_manager);
+				case "http":
+					return new Client.Http(config, project_manager);
+				default:
+					throw new GLib.IOError.NOT_SUPPORTED(
+						"Unknown MCP transport '" + config.transport + "'"
+					);
+			}
+		}
+
+		/**
+		 * Load MCP config, connect servers, register MCP tools on manager.
 		 */
 		public void fill_tools(
 			OLLMchat.History.Manager manager,
-			OLLMfiles.ProjectManager? project_manager = null
+			OLLMfiles.ProjectManager project_manager
 		)
 		{
 			var configs = OLLMmcp.Config.load();
@@ -55,8 +78,22 @@ namespace OLLMmcp
 				GLib.debug("No MCP servers in config");
 				return;
 			}
-			// Stub: no factories yet, so we do not create clients or register tools
-			GLib.debug("Loaded %u MCP server(s), no transport factories yet (stub)", configs.size);
+			this.loader.disconnect_all();
+			var loop = new GLib.MainLoop();
+			this.loader.run.begin(
+				manager,
+				configs,
+				project_manager,
+				(obj, res) => {
+					try {
+						this.loader.run.end(res);
+					} catch (GLib.Error e) {
+						GLib.warning("MCP loader failed: %s", e.message);
+					}
+					loop.quit();
+				}
+			);
+			loop.run();
 		}
 	}
 }

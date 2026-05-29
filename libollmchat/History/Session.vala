@@ -637,10 +637,11 @@ namespace OLLMchat.History
 				return;
 			}
 			
+			var text = message.content.strip();
 			// Handle "user" message: store user-sent in history only (not displayed); display via "ui" fenced block
-			this.messages.add(new Message("user-sent", message.content));
-			var ui_msg = new Message("ui", 
-				Message.fenced("text.oc-frame-primary.oc-frame-user You said:", message.content));
+			this.messages.add(new Message("user-sent", text));
+			var ui_msg = new Message("ui",
+				Message.fenced("text.oc-frame-primary.oc-frame-user You said:", text));
 			this.messages.add(ui_msg);
 			this.manager.message_added(ui_msg, this);
 			// Emit ui-waiting so UI shows animated "waiting for … to reply..." (not added to messages; transient)
@@ -655,7 +656,7 @@ namespace OLLMchat.History
 			
 			// Session has reference to AgentHandler
 			if (this.agent != null) {
-				yield this.agent.send_async(message, cancellable);
+				yield this.agent.send_async(new Message("user", text), cancellable);
 			} else {
 				throw new OllmError.INVALID_ARGUMENT("No agent available for session");
 			}

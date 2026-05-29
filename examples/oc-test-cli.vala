@@ -282,7 +282,7 @@ Examples:
 		// Get options from config
 		
 		// Create Chat object with streaming enabled
-		var chat = new OLLMchat.Call.Chat(client.connection, default_usage.model) {
+		var chat = new OLLMchat.Call.ChatCompletions(client.connection, default_usage.model) {
 			stream = true
 		};
 		chat.options = default_usage.options == null ?  new OLLMchat.Call.Options() : default_usage.options;

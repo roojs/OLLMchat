@@ -44,11 +44,20 @@ namespace OLLMmcp
 		/** For stdio: optional environment variables. */
 		public Gee.Map<string, string> env { get; set; default = new Gee.HashMap<string, string>(); }
 
-		/** For http: server URL (e.g. "http://127.0.0.1:3000"). */
+		/** For http transport: server URL (e.g. [[http://127.0.0.1:3000]]). */
 		public string url { get; set; default = ""; }
 
 		/** When true, allow network in bwrap sandbox (omit --unshare-net). Default false. */
 		public bool network { get; set; default = false; }
+
+		/** When true and app runs inside parent sandbox (e.g. Flatpak), allow stdio MCP without nested bwrap. */
+		public bool trust_sandbox { get; set; default = false; }
+
+		/**
+		 * Extra allow_write entries from mcp.json (string split on ":" or JSON array elements).
+		 * Passed to Bubble write_array at spawn; may include "project" or absolute paths as configured.
+		 */
+		public Gee.ArrayList<string> allow_writes { get; set; default = new Gee.ArrayList<string>(); }
 
 		public Config()
 		{
@@ -105,7 +114,6 @@ namespace OLLMmcp
 		{
 			switch (property_name) {
 				case "args":
-					this.args.clear();
 					if (property_node.get_node_type() == Json.NodeType.ARRAY) {
 						var arr = property_node.get_array();
 						for (var i = 0; i < arr.get_length(); i++) {
@@ -119,7 +127,6 @@ namespace OLLMmcp
 					value.set_object(this.args);
 					return true;
 				case "env":
-					this.env.clear();
 					if (property_node.get_node_type() == Json.NodeType.OBJECT) {
 						var obj = property_node.get_object();
 						obj.foreach_member((o, key, node) => {
@@ -130,6 +137,38 @@ namespace OLLMmcp
 					}
 					value = Value(typeof(Gee.Map));
 					value.set_object(this.env);
+					return true;
+				case "allow_write":
+					var allow_node_type = property_node.get_node_type();
+					if (allow_node_type != Json.NodeType.ARRAY
+							&& allow_node_type != Json.NodeType.VALUE) {
+						value = Value(typeof(Gee.ArrayList));
+						value.set_object(this.allow_writes);
+						return true;
+					}
+					if (allow_node_type == Json.NodeType.ARRAY) {
+						var arr = property_node.get_array();
+						for (var i = 0; i < arr.get_length(); i++) {
+							var elem = arr.get_element(i);
+							if (elem.get_node_type() != Json.NodeType.VALUE) {
+								continue;
+							}
+							this.allow_writes.add(elem.get_string());
+						}
+						value = Value(typeof(Gee.ArrayList));
+						value.set_object(this.allow_writes);
+						return true;
+					}
+					var parts = property_node.get_string().split(":");
+					for (var j = 0; j < parts.length; j++) {
+						var piece = parts[j].strip();
+						if (piece == "") {
+							continue;
+						}
+						this.allow_writes.add(piece);
+					}
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.allow_writes);
 					return true;
 				default:
 					return default_deserialize_property(property_name, out value, pspec, property_node);

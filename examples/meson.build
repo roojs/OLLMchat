@@ -301,29 +301,25 @@ test_bubble = executable('oc-test-bubble',
     ocsqlite_vapi_dep,
     ocfiles_vapi_dep,
     ollmchat_vapi_dep,
-    octools_vapi_dep
   ],
   sources: ['TestAppBase.vala', 'oc-test-bubble.vala'],
   link_with: [ollmchat_base_lib],
   include_directories: [
     include_directories('../libocfiles'),
     include_directories('../libollmchat'),
-    include_directories('../liboctools')
   ],
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
     '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
+    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=gio-unix-2.0',  # Required for UnixInputStream in Bubble.vala
     '--pkg=ocfiles',
     '--pkg=ollmchat',
-    '--pkg=octools',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
     '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
   ],
   install: true,
