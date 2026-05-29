@@ -116,13 +116,12 @@ namespace OLLMchat.Agent
 				supports_thinking = usage.model_obj.is_thinking;
 			}
 			 
-			// Create Chat instance in constructor - reused for all requests
-			// Can be updated if model, options, or other properties change
-			this.chat_call = new OLLMchat.Call.Chat(this.connection, usage.model) {
+			// Chat call reused for all requests — v1 ChatCompletions (Call.Chat is explicit-use only)
+			this.chat_call = new OLLMchat.Call.ChatCompletions(this.connection, usage.model) {
 				stream = true,
-				think = supports_thinking,  // Based on model capabilities
-				options = usage.options,  // No cloning - Chat just references the Options object
-				agent = this  // Set agent reference so tools can access session
+				think = supports_thinking,
+				options = usage.options,
+				agent = this
 			};
 			
 			// Only add tools when the model supports tool calling (verified here, not at request time)
