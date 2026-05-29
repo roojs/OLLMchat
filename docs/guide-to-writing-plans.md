@@ -23,14 +23,14 @@ Applies when implementing **feature or refactor work** from **`docs/plans/*`**, 
 
 ## Audience
 
-- **Humans** skim **title, status, scope, acceptance criteria**, and **`## Concrete code proposals`** (or equivalent). Long narrative sections are **rarely read** — do not rely on them for requirements.
+- **Humans** skim **title**, **status**, **`## Purpose`**, and **`## Concrete code proposals`** (when implementing). Long narrative sections are **rarely read** — do not rely on them for requirements.
 - **Implementers** need **verbatim hunks** (**Remove** / **Replace with** / **Add** / **Keep**) and file paths.
-- **Long prose** is at best **AI/session context**; it is not a substitute for checklist items and code blocks.
+- **Long prose** is at best **AI/session context**; it is not a substitute for **code blocks** and emoji-prefixed bullets.
 
 ## Tone and length
 
 - **Requests + very brief summaries only** (purpose in a short paragraph or bullets).
-- Avoid essays, “current behaviour” novels, and duplicated explanations — put the contract in **code blocks** and tables.
+- Avoid essays, “current behaviour” novels, and duplicated explanations — put the contract in **code blocks** and nested bullets.
 - **Strongly prefer nested bullet points** over long prose. If a sentence would run past **one line** in a typical editor width, split it into sub-bullets or tighten the wording — dense paragraphs are hard to skim and easy to miss in review.
 - **Do not chain several key points in one paragraph** using **semicolons (`;`)** or **long dashes** (em dash, en dash, or hyphen used as a “second clause” separator). That pattern usually means the content should be **nested bullets** (one idea per bullet, optional sub-bullets under a parent).
 - **Prefer short sentences over paragraphs** for narrative bits: one sentence per bullet when possible, not a block of three sentences glued together.
@@ -38,6 +38,8 @@ Applies when implementing **feature or refactor work** from **`docs/plans/*`**, 
 ## Discussion style (emoji prefixes)
 
 For **discussion, rationale, risks, and notes** (anything that is not a mechanical **Keep** / **Remove** / **Replace** section), **prefix each paragraph or bullet group with one emoji** from the legend below so readers can scan intent quickly. The **first token** on the line should be the emoji (then a space, then the text).
+
+- **Do not** wrap emoji prefixes or code identifiers in bold — use plain `🔷` / `💩` / `⏳` and single backticks for paths, table/column names, and file paths (e.g. `pressrelease_webview_queue`, not `**pressrelease_webview_queue**`).
 
 **Status and workstream (use liberally for backlog honesty):**
 
@@ -60,7 +62,15 @@ For **discussion, rationale, risks, and notes** (anything that is not a mechanic
 
 **✅** is **only** for **done and verified in the codebase** (see **Status** table above). **Do not** use **✅** for “user approved” a requirement — use **🔷** for user-specified requirements.
 
-You can combine a **status** emoji with a short sub-bullet under **🔷** / **💩** / **ℹ️** / **🚫** when both apply (e.g. **🔷** parent with **⏳** child for a user-requested item still open).
+**Combining provenance + backlog:**
+
+- **⏳** means **not done yet** (todo / backlog). It is a **status**, not provenance.
+- **🚫 Do not** prefix a todo bullet with **⏳** alone — readers cannot tell whether you or the user asked for the work.
+- **Do** pair **⏳** with **🔷** or **💩** on every open work item:
+  - One line: **`🔷` `⏳`** … (you asked; not done) or **`💩` `⏳`** … (LLM inferred; not done)
+  - Or parent **`🔷`** / **`💩`** with a child bullet **`⏳`** … for the same item
+- **ℹ️** / **🚫** bullets are pointers or vetoes — no **⏳** unless there is also an explicit follow-up task; then use **`🔷` `⏳`** or **`💩` `⏳`**.
+- Plan **`Status:`** line may use **⏳** alone for overall plan state (meta, not a task bullet).
 
 ## New methods and helpers
 
@@ -73,15 +83,37 @@ You can combine a **status** emoji with a short sub-bullet under **🔷** / **�
 1. **Title** — `# N.N Title`
 2. **`Status:`** — proposed | done | rejected
 3. **Pointer** — `.cursor/rules/CODING_STANDARDS.md` **Checklist for all plans** (copy bullets or link to that section)
-4. **`## Purpose`** — 1 short paragraph or bullets (what problem, what outcome)
-5. **`## Scope`** — table: In scope | Out of scope
-6. **`## Acceptance criteria`** — bullets, testable
-7. **`## Concrete code proposals`** (or **`## Proposed code changes`**) — **main deliverable**
+4. **`## Purpose`** — nested bullets for **human planning review**: **🔷** what we are doing, **⏳** backlog, **ℹ️** pointers only — **not** a dump of **🚫** vetoes (see **LLM implementer guardrails** at end of this guide)
+5. **Topic sections** — design, schema, tasks, audit lists, etc. (emoji-prefixed bullets; **no** boilerplate sections below)
+6. **`## Concrete code proposals`** (or **`## Proposed code changes`**) — **main deliverable** when implementing (can say **⏳** deferred during planning-only passes)
 
 Optional, keep short:
 
 - **`## Current behaviour`** — bullets only
 - **`## Proposed behaviour`** — bullets only
+
+## Sections to avoid in plans
+
+**🚫 Do not add these** — they duplicate **Purpose** and are rarely maintained:
+
+- **`## Scope`** / “In scope | Out of scope” — duplicates **Purpose**; omit
+- **🚫** bullets in **`## Purpose`** or topic sections — vetoes belong in **LLM implementer guardrails** (this guide), parent plan phase boundaries, or optional **`## LLM notes`** at plan bottom — not mixed into what the human is reviewing
+- **`## Acceptance criteria`** — use **⏳** bullets in **Purpose** or **Phase N tasks** instead
+- **Markdown tables** in plan bodies — use **nested bullets** (emoji legend tables in *this guide* are fine)
+
+**🚫** Do not abbreviate names for speech-to-text (e.g. `snapshot_q`) — use the real identifier with the correct **table prefix** (e.g. **`pressrelease_snapshot_queue`**, not bare `snapshot_queue`).
+
+## Database table names (Media Outreach / Pman)
+
+When a plan adds tables or columns in **`web.MediaOutreach`**:
+
+- **🔷** New tables use the **module prefix** on the table name: **`pressrelease_*`**, **`shop_*`**, etc. (see existing SQL under **`Pman/<Module>/sql/`**).
+- **ℹ️** **`clipping_*`** / **`Pman/Clipping/`** = **legacy**, kept for **backward compatibility** — **do not** add new greenfield tables there unless the plan explicitly extends BC surfaces (e.g. a column on **`clipping_domain`**).
+- **🔷** **Press-release webview / queue work** (browser workers, Chrome/extension workers) → `pressrelease_*` tables under `Pman/PressRelease/sql/` (e.g. `pressrelease_webview_queue`, `pressrelease_webview_queue_archive`).
+- **🚫** T8237 / `pressrelease_snaphost` / `wip_leon_T8237_Screenshot_Workers` — not being implemented; dead branch. Do not plan on it; replace with webview queue work. May borrow minor ideas only.
+- **ℹ️** Legacy PascalCase clipping tables (**`Clipping`**, **`ClippingTree`**) stay as-is — do not rename for “consistency”.
+- **ℹ️** FK columns are usually **`<related_table>_id`** (e.g. **`clipping_id`**, **`clipping_domain_id`** on queue rows).
+- **ℹ️** BC column on **`clipping_domain`** for **snapshot policy** — e.g. **`use_snapshot_queue`** (`0` = inline webkit; **`> 0`** = enqueue **`work_type = screenshot`** on **`pressrelease_webview_queue`**). Domain flag names **snapshotting**; queue table names stay **generic** (html, spider, …).
 
 ## Code proposals section (mandatory pattern)
 
@@ -103,7 +135,7 @@ Intro line: hunks are **Remove** / **Replace with** / **Add** from the tree; ver
 
 Plans are **edit specs**, not codebase tours. If a reader cannot apply a fence mechanically, the plan is wrong.
 
-- **Don’t** put **fenced code** anywhere except under **`## Concrete code proposals`** — not in Purpose, Scope, Precedent, Notes, Related, or Acceptance criteria.
+- **Don’t** put **fenced code** anywhere except under **`## Concrete code proposals`** — not in Purpose, Precedent, Notes, or Related.
 - **Don’t** paste “pattern” or “precedent” excerpts from other files (e.g. two lines from `Pressrelease_entry.php`) unless that excerpt is itself the **exact** hunk to apply, labelled **Keep** / **Remove** / **Replace with** / **Add** with anchors.
 - **Don’t** use investigation-style citations (`startLine:endLine:path` blocks, random mid-file snippets) in implementation plans. **ℹ️** Point at `path/to/file.php` and commit hash; the implementer opens the file.
 - **Don’t** split one logical edit across multiple `###` sections if that forces the reader to merge hunks mentally (e.g. “Part A adds `else`” + “Part B replaces `if` body” with a **Keep** that no longer matches after Part A). Use **one** **Remove** + **Replace with** for the whole region, or **ordered chunks** inside a **single** `###` with **Keep** anchors that still exist after each step.
@@ -293,3 +325,16 @@ When implemented: move or copy to **`docs/plans/done/`**, prefix filename with *
 - **`.cursor/rules/CODING_STANDARDS.md`** — checklist for plans + Vala/style rules (also links here for plan layout)
 - **`docs/bug-fix-process.md`** — bug fix flow (contrast with **Plan implementation workflow** above)
 - **`docs/plans/done/6.9-DONE-debugging-performance.md`** — nested thinking / history replay perf (see **`docs/plans/done/6.8-DONE-fixing-large-restore.md`** for parser work)
+
+## LLM implementer guardrails (not for human planning review)
+
+**🚫 Do not** fill **`## Purpose`** (or design sections) with **out-of-scope**, **“do not implement”**, or **“that’s Phase N”** bullets. Humans use the plan to review **what we are building**; a wall of **🚫** is noise and reads like the author stalling itself.
+
+**Where guardrails live instead:**
+
+- **This guide** — workflow, sections to avoid, DB prefixes, don’t expand scope.
+- **Parent / overview plan** — phase boundaries in **Phase summary** (short), not repeated in every sub-plan.
+- **Sub-plans** — **🔷** + **⏳** + **ℹ️** only in **Purpose**; trust the parent for “Phase 2 is elsewhere”.
+- **Optional** — if a plan truly needs agent-only reminders, add **`## LLM notes`** as the **last** section (after **Concrete code proposals**). Keep it short. **Do not** duplicate the same **🚫** list in **Purpose**.
+
+**When implementing:** follow **Plan implementation workflow** above; if tempted to add a feature outside **🔷** bullets, **stop and ask** — do not “document” every temptation as **🚫** in the plan file.
