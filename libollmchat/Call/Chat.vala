@@ -429,17 +429,8 @@ namespace OLLMchat.Call
 			if (token == "") {
 				return true;
 			}
-			foreach (string w in Regex.split_simple("\\s+", token)) {
-				if (w.length == 0) {
-					continue;
-				}
-				response.back_tokens.insert(0, w);
-				if (response.back_tokens.size > 100) {
-					response.back_tokens.remove_at(response.back_tokens.size - 1);
-				}
-				if (!response.check_back_token()) {
-					return false;
-				}
+			if (!response.detect_looping(token)) {
+				return false;
 			}
 			return true;
 		}

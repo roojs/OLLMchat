@@ -113,9 +113,9 @@ namespace OLLMvector
 			const int MAX_RETRIES = 2;
 			for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
 				try {
-					var chat = new OLLMchat.Call.Chat(conn, usage.model) { 
-						stream = true, 
-						options = usage.options 
+					var chat = new OLLMchat.Call.ChatCompletions(conn, usage.model) {
+						stream = true,
+						options = usage.options
 					};
 					// Only stream analysis output to stderr when on main thread (e.g. CLI); skip when in background thread
 					var main_ctx = GLib.MainContext.default();

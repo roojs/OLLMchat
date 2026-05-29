@@ -288,6 +288,12 @@ Follow **`.cursor/rules/CODING_STANDARDS.md`** — *Defensive code* and *Checkli
 
 When implemented: move or copy to **`docs/plans/done/`**, prefix filename with **`DONE`** or **`REJECTED`**, one-line **Status: DONE** and pointer to files changed.
 
+### Sub-plans and `1.0-summary.md`
+
+- **Do not** add or edit entries in **`docs/plans/1.0-summary.md`** for in-progress sub-plans.
+- Put a **prominent blockquote at the top** of each sub-plan stating that 1.0 is **not** updated until the sub-plan is **done** and archived.
+- Update 1.0 **only** when closing a plan (optional — user may skip even then).
+
 ## Related
 
 - **`.cursor/rules/CODING_STANDARDS.md`** — checklist for plans + Vala/style rules (also links here for plan layout)
