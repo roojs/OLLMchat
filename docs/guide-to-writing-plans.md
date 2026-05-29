@@ -62,7 +62,27 @@ For **discussion, rationale, risks, and notes** (anything that is not a mechanic
 
 You can combine a **status** emoji with a short sub-bullet under **🔷** / **💩** / **ℹ️** / **🚫** when both apply (e.g. **🔷** parent with **⏳** child for a user-requested item still open).
 
-## New methods and helpers
+### 💩 Mark LLM-only content (mandatory in plans)
+
+When drafting or updating a plan from user chat, **separate what they said from what you invented**:
+
+- **🔷** — user stated it, or clearly approved it in the thread (requirements, constraints, names they chose).
+- **💩** — **anything you add that the user did not mention** — extra fields, heuristics, save behaviour, CLI guards, helpers, scope expansion, acceptance bullets, “still visible” lists, etc.
+- **🚫** — user said **no** or it is explicitly rejected in review (so implementers do not reintroduce it).
+
+**Rules:**
+
+- Do **not** bury **💩** ideas inside **🔷** bullets — give each its **own** **💩** line or table row so review is one glance.
+- Before finishing a plan, scan: every requirement is **🔷**, **💩**, **ℹ️**, or **🚫** — nothing unmarked that reads like a mandate.
+- **💩** does not mean “wrong” — it means **confirm before build**. User can promote **💩 → 🔷** in review.
+
+**Example:**
+
+- **🔷** Detection uses **`GET /api/version`** via **`Call.Version`**.
+- **🚫** URL shape / **`…/api/`** heuristics for detection — not part of this feature.
+- **💩** Also hide **`top_k`** in options UI (not mentioned in chat; optional).
+
+---
 
 - **Do not add new methods** unless the plan or the user **explicitly** asks for them (see **CODING_STANDARDS.md** — new methods).
 - **Private helpers are not automatically an improvement** — they are often **bloat**, hide the real flow, and scatter logic. Default to **changing existing methods** and **inlining** at the call site.
