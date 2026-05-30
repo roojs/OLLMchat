@@ -5,6 +5,7 @@
 build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocsqlite',
   meson.current_build_dir() / '..' / 'libocmarkdown',
+  meson.current_build_dir() / '..' / 'libollamaweb',
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   meson.current_build_dir() / '..' / 'libocfiles',
   meson.current_build_dir() / '..' / 'liboccoder',
@@ -126,6 +127,19 @@ test_html_parser_to_md = executable('oc-html2md',
   ],
   install: true,
   install_dir: get_option('bindir')
+)
+
+# libollamaweb fixture parser (offline HTML → JSON)
+test_ollamaweb = executable('oc-test-ollamaweb',
+  dependencies: [base_deps, ollamaweb_vapi_dep],
+  sources: ['oc-test-ollamaweb.vala'],
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=ollamaweb',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb'
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
 # Build test-markdown-parser executable (Markdown parser test with dummy renderer)
