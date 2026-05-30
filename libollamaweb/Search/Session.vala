@@ -80,6 +80,7 @@ namespace OllamaWeb.Search
 				return this.build_result_list(slugs);
 			}
 			this.cancel_search();
+			this.cancel_refine();
 			this.search_cancellable = new GLib.Cancellable();
 			if (cancellable != null) {
 				cancellable.cancelled.connect(() => this.search_cancellable.cancel());
@@ -93,10 +94,11 @@ namespace OllamaWeb.Search
 			string[] refine_slugs = {};
 			foreach (var hit in hits) {
 				slugs += hit.slug;
-				if (!OllamaWeb.Model.exists(this.model_dir, hit.slug)
-						|| !OllamaWeb.Model.is_refined(this.model_dir, hit.slug)) {
+				if (!OllamaWeb.Model.exists(this.model_dir, hit.slug)) {
 					hit.refined = false;
 					hit.save(this.model_dir);
+					refine_slugs += hit.slug;
+					continue;
 				}
 				if (!OllamaWeb.Model.is_refined(this.model_dir, hit.slug)) {
 					refine_slugs += hit.slug;
@@ -138,8 +140,17 @@ namespace OllamaWeb.Search
 						continue;
 					}
 					var row = this.result_rows.get(slug);
-					yield this.service.fetch_tags(row, this.enrich_cancellable);
-					row.save(this.model_dir);
+					try {
+						yield this.service.fetch_tags(row, this.enrich_cancellable);
+						row.save(this.model_dir);
+						row.notify_property("list_markup");
+					} catch (GLib.Error e) {
+						GLib.warning(
+							"ollama.com tags failed for %s: %s",
+							slug,
+							e.message
+						);
+					}
 				}
 			} finally {
 				this.enriching = false;

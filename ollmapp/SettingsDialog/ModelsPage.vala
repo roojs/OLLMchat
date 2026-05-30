@@ -502,6 +502,7 @@ namespace OLLMapp.SettingsDialog
 				try {
 					this.add_model_dialog.load.end(res);
 					this.add_model_dialog.present(this.dialog);
+					this.add_model_dialog.focus_model_search();
 				} catch (GLib.Error e) {
 					GLib.warning("Failed to load AddModelDialog: %s", e.message);
 				}

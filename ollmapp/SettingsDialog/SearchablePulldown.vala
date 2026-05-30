@@ -32,6 +32,7 @@ namespace OLLMapp.SettingsDialog
 		public Gtk.Popover popup { get; private set; }
 		public Gtk.ListView list { get; private set; }
 		private Gtk.ScrolledWindow scrolled_window;
+		private ulong list_items_changed_id;
 		
 		// Track last search text
 		private string last_search_text = "";
@@ -177,6 +178,9 @@ namespace OLLMapp.SettingsDialog
 			});
 			
 			this.scrolled_window.child = this.list;
+			this.list.notify["model"].connect(() => {
+				this.bind_list_model_items_changed();
+			});
 			
 			// Wrap scrolled window in a box that fills the popup to catch all scroll events
 			var popup_wrapper = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -351,7 +355,7 @@ namespace OLLMapp.SettingsDialog
 		/**
 		 * Set popover visibility.
 		 */
-		public void set_popup_visible(bool visible)
+		public void set_popup_visible(bool visible, bool allow_empty = false)
 		{
 			if (this.popup.visible == visible) {
 				return;
@@ -362,11 +366,10 @@ namespace OLLMapp.SettingsDialog
 				return;
 			}
 			
-			// Check if list has a model with items
 			if (this.list.model == null) {
 				return;
 			}
-			if (this.list.model.get_n_items() == 0) {
+			if (!allow_empty && this.list.model.get_n_items() == 0) {
 				return;
 			}
 			
@@ -412,6 +415,26 @@ namespace OLLMapp.SettingsDialog
 			});
 		}
 		
+		private void bind_list_model_items_changed()
+		{
+			if (this.list_items_changed_id != 0) {
+				var old = this.list.model as GLib.ListModel;
+				if (old != null) {
+					old.disconnect(this.list_items_changed_id);
+				}
+				this.list_items_changed_id = 0;
+			}
+			var lm = this.list.model as GLib.ListModel;
+			if (lm == null) {
+				return;
+			}
+			this.list_items_changed_id = lm.items_changed.connect(() => {
+				if (this.popup.visible) {
+					this.scrolled_window.vadjustment.value = this.scrolled_window.vadjustment.lower;
+				}
+			});
+		}
+
 		/**
 		 * Handle entry text changes.
 		 */
@@ -428,6 +451,9 @@ namespace OLLMapp.SettingsDialog
 			
 			// Emit signal for caller to handle filtering
 			this.search_changed(search_text);
+			if (this.popup.visible) {
+				this.scrolled_window.vadjustment.value = this.scrolled_window.vadjustment.lower;
+			}
 		}
 		
 		/**

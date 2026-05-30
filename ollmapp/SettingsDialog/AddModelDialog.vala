@@ -35,18 +35,15 @@ namespace OLLMapp.SettingsDialog
 		private Adw.ActionRow model_row;
 		private Adw.ActionRow size_row;
 		private Adw.PreferencesGroup group;
-		private OLLMchat.Settings.AvailableModels available_models;
+		private OLLMchat.Settings.SearchResults search_results;
 		private Gtk.StringList connection_list;
 		private GLib.ListStore size_list_store;
 		private Gee.ArrayList<string> connection_urls;
 		public MainDialog dialog { get; construct; }
-		private OLLMchat.Settings.AvailableModel? selected_model = null;
-		
-		// Model chain for SearchablePulldown
-		private Gtk.FilterListModel filtered_models;
+		private OllamaWeb.Model selected_model { get; set; default = new OllamaWeb.Model(); }
+
 		private Gtk.SortListModel sorted_models;
 		private Gtk.SingleSelection selection;
-		private Gtk.StringFilter model_filter;
 		private Gtk.CustomSorter model_sorter;
 		
 		/**
@@ -109,13 +106,13 @@ namespace OLLMapp.SettingsDialog
 			this.group.add(this.model_row);
 			
 			// Size row (hidden until model is selected)
-			this.size_list_store = new GLib.ListStore(typeof(OLLMchat.Settings.ModelTag));
+			this.size_list_store = new GLib.ListStore(typeof(OllamaWeb.ModelVariant));
 			this.size_dropdown = new Gtk.DropDown(this.size_list_store, null) {
 				vexpand = false,
 				valign = Gtk.Align.CENTER
 			};
 			
-			// Create factory for rendering OLLMchat.Settings.ModelTag objects
+			// Create factory for rendering OllamaWeb.ModelVariant objects
 			var size_factory = new Gtk.SignalListItemFactory();
 			size_factory.setup.connect((item) => {
 				var list_item = item as Gtk.ListItem;
@@ -134,7 +131,7 @@ namespace OLLMapp.SettingsDialog
 				if (list_item == null || list_item.item == null) {
 					return;
 				}
-				var tag = list_item.item as OLLMchat.Settings.ModelTag;
+				var tag = list_item.item as OllamaWeb.ModelVariant;
 				var label = list_item.get_data<Gtk.Label>("label");
 				
 				tag.bind_property("dropdown_markup", label, "label", BindingFlags.SYNC_CREATE);
@@ -174,17 +171,15 @@ namespace OLLMapp.SettingsDialog
 				}
 				var connection = this.dialog.app.config.connections.get(connection_url);
 				
-				// Get selected model and size
-				if (this.selected_model == null) {
-					return; // No model selected
+				if (this.selected_model.slug == "") {
+					return;
 				}
 				var model_name = this.selected_model.name;
-				
-				// Append size tag if one is selected
+
 				var size_index = this.size_dropdown.selected;
-				if (size_index != Gtk.INVALID_LIST_POSITION && 
+				if (size_index != Gtk.INVALID_LIST_POSITION &&
 				    (int)size_index < this.size_list_store.get_n_items()) {
-					var tag = this.size_list_store.get_item((uint)size_index) as OLLMchat.Settings.ModelTag;
+					var tag = this.size_list_store.get_item((uint)size_index) as OllamaWeb.ModelVariant;
 					if (tag != null) {
 						model_name = model_name + ":" + tag.name;
 					}
@@ -206,8 +201,10 @@ namespace OLLMapp.SettingsDialog
 			// Add page to dialog
 			this.add(page);
 			
-			// Create AvailableModels instance (will be loaded in load())
-			this.available_models = new OLLMchat.Settings.AvailableModels(this.dialog.app.data_dir);
+			this.search_results = new OLLMchat.Settings.SearchResults(this.dialog.app.data_dir);
+			this.closed.connect(() => {
+				this.search_results.cancel();
+			});
 		}
 		
 		/**
@@ -244,16 +241,18 @@ namespace OLLMapp.SettingsDialog
 			// Set default to 'default' connection
 			this.connection_dropdown.selected = default_index;
 		
-			try {
-				yield this.available_models.load();
-				
-				// Set up model chain: available_models -> filtered -> sorted -> selection
-				this.setup_model_chain();
-				
-				GLib.debug("Loaded %u models into AddModelDialog", this.available_models.get_n_items());
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to load available models: %s", e.message);
-			}
+			this.setup_model_chain();
+		}
+
+		/**
+		 * Focus the model search entry (call after {@link Adw.PreferencesDialog.present}).
+		 */
+		public void focus_model_search()
+		{
+			GLib.Idle.add(() => {
+				this.model_pulldown.grab_focus();
+				return false;
+			});
 		}
 		
 		/**
@@ -261,92 +260,67 @@ namespace OLLMapp.SettingsDialog
 		 */
 		private void setup_model_chain()
 		{
-			// Create string filter using name property only (not description)
-			this.model_filter = new Gtk.StringFilter(
-				new Gtk.PropertyExpression(typeof(OLLMchat.Settings.AvailableModel), null, "name")
-			) {
-				match_mode = Gtk.StringFilterMatchMode.SUBSTRING,
-				ignore_case = true
-			};
-			
-			// Create filtered model
-			this.filtered_models = new Gtk.FilterListModel(
-				this.available_models, this.model_filter);
-			
-			// Create sorter that prioritizes items starting with search term (by length, then alphabetical),
-			// then items containing search term (alphabetical)
 			this.model_sorter = new Gtk.CustomSorter((a, b) => {
 				var search_text = this.model_pulldown.get_search_text();
-				
-				// If not searching, sort alphabetically
+				var name_a = (a as OllamaWeb.Model).name.down();
+				var name_b = (b as OllamaWeb.Model).name.down();
+
 				if (search_text == "") {
-					var name_a = (a as OLLMchat.Settings.AvailableModel).name.down();
-					var name_b = (b as OLLMchat.Settings.AvailableModel).name.down();
 					if (name_a < name_b) {
 						return Gtk.Ordering.SMALLER;
-					} else if (name_a > name_b) {
+					}
+					if (name_a > name_b) {
 						return Gtk.Ordering.LARGER;
 					}
 					return Gtk.Ordering.EQUAL;
 				}
-				
+
 				var search_lower = search_text.down();
-				var name_a = (a as OLLMchat.Settings.AvailableModel).name.down();
-				var name_b = (b as OLLMchat.Settings.AvailableModel).name.down();
-				var a_starts_with = name_a.has_prefix(search_lower);
-				var b_starts_with = name_b.has_prefix(search_lower);
+				var a_starts = name_a.has_prefix(search_lower);
+				var b_starts = name_b.has_prefix(search_lower);
+				if (a_starts && b_starts) {
+					if (name_a.length != name_b.length) {
+						return name_a.length < name_b.length
+							? Gtk.Ordering.SMALLER
+							: Gtk.Ordering.LARGER;
+					}
+					if (name_a < name_b) {
+						return Gtk.Ordering.SMALLER;
+					}
+					if (name_a > name_b) {
+						return Gtk.Ordering.LARGER;
+					}
+					return Gtk.Ordering.EQUAL;
+				}
+				if (a_starts != b_starts) {
+					return a_starts ? Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+				}
+
 				var a_contains = name_a.contains(search_lower);
 				var b_contains = name_b.contains(search_lower);
-				
-				// Priority 1: Items that start with search term
-				if (a_starts_with && b_starts_with) {
-					// Both start with search term: sort by length first, then alphabetically
-					var len_a = name_a.length;
-					var len_b = name_b.length;
-					if (len_a != len_b) {
-						return len_a < len_b ? Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
-					}
-					// Same length, sort alphabetically
-					if (name_a < name_b) {
-						return Gtk.Ordering.SMALLER;
-					} else if (name_a > name_b) {
-						return Gtk.Ordering.LARGER;
-					}
-					return Gtk.Ordering.EQUAL;
-				}
-				
-				// Priority 2: One starts with, one doesn't - prioritize the one that starts with
-				if (a_starts_with != b_starts_with) {
-					return a_starts_with ? Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
-				}
-				
-				// Priority 3: Items that contain search term (but don't start with it)
 				if (a_contains && b_contains) {
-					// Both contain: sort alphabetically
 					if (name_a < name_b) {
 						return Gtk.Ordering.SMALLER;
-					} else if (name_a > name_b) {
+					}
+					if (name_a > name_b) {
 						return Gtk.Ordering.LARGER;
 					}
 					return Gtk.Ordering.EQUAL;
 				}
-				
-				// Priority 4: One contains, one doesn't - prioritize the one that contains
 				if (a_contains != b_contains) {
 					return a_contains ? Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
 				}
-				
-				// Priority 5: Neither contains - sort alphabetically
+
 				if (name_a < name_b) {
 					return Gtk.Ordering.SMALLER;
-				} else if (name_a > name_b) {
+				}
+				if (name_a > name_b) {
 					return Gtk.Ordering.LARGER;
 				}
 				return Gtk.Ordering.EQUAL;
 			});
-			
-			// Create sorted model
-			this.sorted_models = new Gtk.SortListModel(this.filtered_models, this.model_sorter);
+
+			this.sorted_models = new Gtk.SortListModel(this.search_results, this.model_sorter);
 			
 			// Create selection model
 			this.selection = new Gtk.SingleSelection(this.sorted_models) {
@@ -385,7 +359,7 @@ namespace OLLMapp.SettingsDialog
 					return;
 				}
 				
-				var model = list_item.item as OLLMchat.Settings.AvailableModel;
+				var model = list_item.item as OllamaWeb.Model;
 				var label = list_item.get_data<Gtk.Label>("label");
 				if (model == null || label == null) {
 					return;
@@ -398,50 +372,37 @@ namespace OLLMapp.SettingsDialog
 			this.model_pulldown.list.model = this.selection;
 			this.model_pulldown.list.factory = factory;
 			
-			// Connect to search_changed signal to update filter
 			this.model_pulldown.search_changed.connect((search_text) => {
-				// Update string filter search text (matches pattern from SearchableDropdown)
-				this.model_filter.search = search_text;
+				this.search_results.queue_search(search_text);
 				this.model_sorter.changed(Gtk.SorterChange.DIFFERENT);
-				
-				// Show popup if there are filtered items
-				if (search_text != "" && this.sorted_models.get_n_items() > 0) {
-					this.model_pulldown.set_popup_visible(true);
-				} else if (search_text == "") {
+				if (search_text == "") {
 					this.model_pulldown.set_popup_visible(false);
+					return;
 				}
+				this.model_pulldown.set_popup_visible(true, true);
 			});
-			
-			// Connect to item_selected signal from pulldown - only fires on actual click/Enter
-			// Don't use selection_changed as that fires on keyboard navigation too
+			this.search_results.items_changed.connect(() => {
+				if (this.model_pulldown.get_search_text() == "") {
+					return;
+				}
+				GLib.Idle.add(() => {
+					if (this.model_pulldown.get_search_text() == "") {
+						return false;
+					}
+					this.model_pulldown.set_popup_visible(true);
+					return false;
+				});
+			});
+
 			this.model_pulldown.item_selected.connect((position) => {
-				// Get the selected model from the position in the sorted model
 				if (position == Gtk.INVALID_LIST_POSITION) {
 					return;
 				}
-				
-				// Get model from sorted_models at the position passed
-				var model_from_sorted = this.sorted_models.get_item(position) as OLLMchat.Settings.AvailableModel;
-				if (model_from_sorted == null) {
+				var model = this.selection.get_item(this.selection.selected) as OllamaWeb.Model;
+				if (model == null || model.slug == "") {
 					return;
 				}
-				
-				// Get model from selection at selection.selected
-				var selection_pos = this.selection.selected;
-				var model_from_selection = (selection_pos != Gtk.INVALID_LIST_POSITION) ? 
-					this.selection.get_item(selection_pos) as OLLMchat.Settings.AvailableModel : null;
-				
-				// Debug: show the 3 model names
-				GLib.debug("model_from_sorted: %s", model_from_sorted.name);
-				GLib.debug("model_from_selection: %s", model_from_selection != null ? model_from_selection.name : "null");
-				GLib.debug("selected_model: %s", this.selected_model != null ? this.selected_model.name : "null");
-				
-				// Use model_from_selection (the correct one) for placeholder
-				if (model_from_selection != null) {
-					this.model_pulldown.placeholder_text = model_from_selection.name;
-				}
-				
-				// Update size dropdown
+				this.model_pulldown.placeholder_text = model.name;
 				this.update_size_dropdown();
 			});
 		}
@@ -453,87 +414,58 @@ namespace OLLMapp.SettingsDialog
 		{
 			var selected_pos = this.selection.selected;
 			if (selected_pos == Gtk.INVALID_LIST_POSITION) {
-				// No model selected, hide size row
-				this.selected_model = null;
+				this.selected_model.slug = "";
 				this.size_row.visible = false;
 				return;
 			}
-			
-			// Get selected model from selection model (which wraps sorted_models)
-			this.selected_model = this.selection.get_item(selected_pos) as OLLMchat.Settings.AvailableModel;
-			if (this.selected_model == null) {
-				// No model available, hide size row
+
+			this.selected_model = this.selection.get_item(selected_pos) as OllamaWeb.Model;
+			if (this.selected_model.slug == "") {
 				this.size_row.visible = false;
 				return;
 			}
-			
-			// Clear existing items
+
 			this.size_list_store.remove_all();
-			
-			// Sort tags by size (cloud tags last)
-			var sorted_tags = new Gee.ArrayList<OLLMchat.Settings.ModelTag>();
-			sorted_tags.add_all(this.selected_model.tag_objects);
+
+			var sorted_tags = new Gee.ArrayList<OllamaWeb.ModelVariant>();
+			sorted_tags.add_all(this.selected_model.tags);
 			sorted_tags.sort((a, b) => {
-				// Check if either is a cloud tag
-				var a_is_cloud = a.name.down().contains("cloud");
-				var b_is_cloud = b.name.down().contains("cloud");
-				
-				// Cloud tags go last
-				if (a_is_cloud && !b_is_cloud) {
-					return 1; // a comes after b
+				var a_cloud = a.name.down().contains("cloud");
+				var b_cloud = b.name.down().contains("cloud");
+				if (a_cloud && !b_cloud) {
+					return 1;
 				}
-				if (!a_is_cloud && b_is_cloud) {
-					return -1; // a comes before b
+				if (!a_cloud && b_cloud) {
+					return -1;
 				}
-				if (a_is_cloud && b_is_cloud) {
-					// Both cloud - sort alphabetically
-					return strcmp(a.name, b.name);
+				if (a_cloud && b_cloud) {
+					return GLib.strcmp(a.name, b.name);
 				}
-				
-				// Neither is cloud - sort by size
 				var a_size = a.parse_size_gb();
 				var b_size = b.parse_size_gb();
-				
-				// If sizes are equal, sort by name
 				if (a_size == b_size) {
-					return strcmp(a.name, b.name);
+					return GLib.strcmp(a.name, b.name);
 				}
-				
-				// Sort by size (ascending)
 				if (a_size < b_size) {
 					return -1;
 				}
 				return 1;
 			});
-			
-			// Find default tag: largest download size <= 100GB
-			OLLMchat.Settings.ModelTag? default_tag = null;
-			double best_size_gb = -1;
-			foreach (var tag_obj in sorted_tags) {
-				var size_gb = tag_obj.parse_size_gb();
-				if (size_gb >= 0 && size_gb <= 100.0 && size_gb > best_size_gb) {
-					best_size_gb = size_gb;
-					default_tag = tag_obj;
-				}
-			}
-			
-			// Populate size list with sorted OLLMchat.Settings.ModelTag objects and find default index
+
 			uint default_index = 0;
+			double best_size_gb = -1;
 			uint index = 0;
 			foreach (var tag_obj in sorted_tags) {
 				this.size_list_store.append(tag_obj);
-				// Track index of default tag if found
-				if (default_tag != null && tag_obj.name == default_tag.name) {
+				var size_gb = tag_obj.parse_size_gb();
+				if (size_gb >= 0 && size_gb <= 100.0 && size_gb > best_size_gb) {
+					best_size_gb = size_gb;
 					default_index = index;
 				}
 				index++;
 			}
-			
-			
-			// Select default tag (or first one if not found)
+
 			this.size_dropdown.selected = default_index;
-			
-			// Show size row
 			this.size_row.visible = true;
 		}
 	}

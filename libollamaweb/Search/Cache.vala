@@ -14,8 +14,6 @@ namespace OllamaWeb.Search
 	 */
 	public class Cache : Object
 	{
-		private const int64 TTL_SEC = 86400;
-
 		public class Entry : Object
 		{
 			public int64 cached_at_unix;
@@ -40,7 +38,7 @@ namespace OllamaWeb.Search
 			}
 			var entry = this.entries.get(key);
 			int64 now = GLib.get_real_time() / 1000000;
-			if (now - entry.cached_at_unix > TTL_SEC) {
+			if (now - entry.cached_at_unix > 86400) {
 				this.entries.unset(key);
 				return false;
 			}

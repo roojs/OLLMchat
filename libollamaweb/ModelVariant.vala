@@ -32,13 +32,14 @@ namespace OllamaWeb
 			var cleaned = this.size.strip().up();
 
 			if (cleaned.has_suffix("GB")) {
-				var number_str = cleaned.substring(0, cleaned.length - 2).strip();
-				return double.parse(number_str);
+				return double.parse(
+					cleaned.substring(0, cleaned.length - 2).strip()
+				);
 			}
 			if (cleaned.has_suffix("B")) {
-				var number_str = cleaned.substring(0, cleaned.length - 1).strip();
-				var bytes = double.parse(number_str);
-				return bytes / 1e9;
+				return double.parse(
+					cleaned.substring(0, cleaned.length - 1).strip()
+				) / 1e9;
 			}
 
 			return -1;
