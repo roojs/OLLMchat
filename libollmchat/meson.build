@@ -14,6 +14,7 @@ ollmchat_deps = [
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
   valac.find_library('posix'),
+  ollamaweb_vapi_dep,
 ]
 
 # Compile resources for prompt system
@@ -43,9 +44,7 @@ ollmchat_ollama_src = files([
   'Settings/Config2.vala',
   'Settings/BaseToolConfig.vala',
   'Settings/RequiresModelsInterface.vala',
-  'Settings/ModelTag.vala',
-  'Settings/AvailableModel.vala',
-  'Settings/AvailableModels.vala',
+  'Settings/SearchResults.vala',
   'OllmError.vala',  # Must come early - used by many files
   'Agent/Factory.vala',  # Must come before Client.vala (Client uses Agent.Factory)
   'Agent/Interface.vala',  # Must come before Base (Base implements Interface)
@@ -116,7 +115,8 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocsqlite',
   meson.current_build_dir() / '..' / 'libocmarkdown',
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
-  meson.current_build_dir() / '..' / 'libollmchatgtk'
+  meson.current_build_dir() / '..' / 'libollmchatgtk',
+  meson.current_build_dir() / '..' / 'libollamaweb'
 ])
 
 ollmchat_base_lib = library('ollmchat',
@@ -128,7 +128,7 @@ ollmchat_base_lib = library('ollmchat',
   # ocsqlite-meson.vapi and adding it as a source. Link manually via ocsqlite_vapi_dep link_args instead.
   build_rpath: lib_build_rpath,
   link_args: ['-lm'],  # Link math library for Math.sqrt() in Embed.vala
-  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown'],
+  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--pkg=ollamaweb', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown', '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb'],
   install: true
 )
 
@@ -155,6 +155,9 @@ ollmchat_gir = gnome.generate_gir(ollmchat_base_lib,
 # Note: We need to manually create the VAPI dependency similar to ocsqlite
 # For now, we'll use link_args to ensure the library is linked
 ollmchat_vapi_dep = declare_dependency(
-  link_args: ['-L' + meson.current_build_dir(), '-lollmchat'],
-  dependencies: [ocsqlite_vapi_dep]
+  link_args: [
+    '-L' + meson.current_build_dir(), '-lollmchat',
+    '-L' + meson.current_build_dir() / '..' / 'libollamaweb', '-lollamaweb',
+  ],
+  dependencies: [ocsqlite_vapi_dep, ollamaweb_vapi_dep]
 )

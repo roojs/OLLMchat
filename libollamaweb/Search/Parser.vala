@@ -90,7 +90,9 @@ namespace OllamaWeb.Search
 
 		private unowned Xml.Doc load_doc(string html) throws OllamaWeb.Search.Error.PARSE
 		{
-			int options = Html.ParserOption.RECOVER | Html.ParserOption.NOWARNING;
+			int options = Html.ParserOption.RECOVER
+				| Html.ParserOption.NOERROR
+				| Html.ParserOption.NOWARNING;
 			unowned Html.Doc? doc = Html.Doc.read_memory(
 				html.to_utf8(),
 				html.length,
@@ -118,12 +120,20 @@ namespace OllamaWeb.Search
 
 		private string node_content(Xml.Node* node)
 		{
-			return ((Xml.Node) node).get_content().strip();
+			var raw = ((Xml.Node) node).get_content();
+			if (raw == null) {
+				return "";
+			}
+			return raw.strip();
 		}
 
 		private string node_prop(Xml.Node* node, string name)
 		{
-			return ((Xml.Node) node).get_prop(name);
+			var val = ((Xml.Node) node).get_prop(name);
+			if (val == null) {
+				return "";
+			}
+			return val;
 		}
 
 		private unowned Xml.XPath.NodeSet? eval_on(Xml.Node* context, string expr)
@@ -258,6 +268,9 @@ namespace OllamaWeb.Search
 
 		private string? slug_href(string href_in)
 		{
+			if (href_in == null || href_in == "") {
+				return null;
+			}
 			var href = href_in;
 			int q = href.index_of_char('?');
 			if (q >= 0) {
@@ -288,6 +301,9 @@ namespace OllamaWeb.Search
 
 		private string? tag_href(string href)
 		{
+			if (href == null || href == "") {
+				return null;
+			}
 			int colon = href.last_index_of_char(':');
 			if (colon < 0 || colon >= href.length - 1) {
 				return null;
@@ -305,9 +321,9 @@ namespace OllamaWeb.Search
 			return false;
 		}
 
-		private int64 parse_count(string text)
+		private int64 parse_count(string? text)
 		{
-			if (text == "") {
+			if (text == null || text == "") {
 				return 0;
 			}
 			var clean = text.replace(",", "").strip().up();

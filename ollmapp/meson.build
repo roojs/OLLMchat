@@ -34,7 +34,8 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollmchatgtk',
   meson.current_build_dir() / '..' / 'liboctools',
-  meson.current_build_dir() / '..' / 'libocmcp'
+  meson.current_build_dir() / '..' / 'libocmcp',
+  meson.current_build_dir() / '..' / 'libollamaweb'
 ])
 
 # Dependencies for ollmchat executable
@@ -110,6 +111,7 @@ ollmchat = executable('ollmchat',
   link_with: [ollmchat_base_lib, ollmchatgtk_lib],  # Use ocvector_vapi_dep (link_args) instead of link_with to avoid ocvector-meson.vapi
   include_directories: [
     include_directories('../libollmchat'),
+    include_directories('../libollamaweb'),
     include_directories('../libollmchatgtk'),
     include_directories('../libocmarkdown'),
     include_directories('../libocmarkdowngtk'),
@@ -132,6 +134,7 @@ ollmchat = executable('ollmchat',
     '--pkg=octools',  # Tools library
     '--pkg=ocmcp',  # MCP loader
     '--pkg=ollmchat',  # Required for OLLMchat types (Call, Settings, History, etc.)
+    '--pkg=ollamaweb',
     '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
     '--pkg=libgit2-glib-1.0',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
@@ -143,6 +146,7 @@ ollmchat = executable('ollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmcp',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',  # For ollmchat.vapi
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
   ],
   install: true,
@@ -199,6 +203,7 @@ ollmchat_cli = executable('ollmchat-cli',
   link_with: [ollmchat_base_lib],
   include_directories: [
     include_directories('../libollmchat'),
+    include_directories('../libollamaweb'),
     include_directories('../libocfiles'),
     include_directories('../libocvector'),
     include_directories('../libocsqlite')

@@ -87,13 +87,15 @@ namespace OllamaWeb
 					}
 				}
 				if (pull_count > 0) {
-					string pulls_str = pull_count >= 1000000
-						? "%.1fM pulls".printf((double)pull_count / 1000000.0)
-						: pull_count >= 1000
-						? "%.1fk pulls".printf((double)pull_count / 1000.0)
-						: "%s pulls".printf(pull_count.to_string());
 					parts += "<span size=\"small\" foreground=\"grey\">%s</span>".printf(
-						GLib.Markup.escape_text(pulls_str, -1)
+						GLib.Markup.escape_text(
+							pull_count >= 1000000
+								? "%.1fM pulls".printf((double)pull_count / 1000000.0)
+								: pull_count >= 1000
+								? "%.1fk pulls".printf((double)pull_count / 1000.0)
+								: "%s pulls".printf(pull_count.to_string()),
+							-1
+						)
 					);
 				}
 				return s + "\n" + string.joinv(" ", parts);
@@ -105,8 +107,13 @@ namespace OllamaWeb
 			this.unique_sizes.clear();
 			var seen = new Gee.HashSet<string>();
 			foreach (var variant in this.tags) {
-				var dash = variant.name.index_of_char('-');
-				var size_part = dash > 0 ? variant.name.substring(0, dash) : variant.name;
+				string size_part;
+				if (variant.size != "") {
+					size_part = variant.size;
+				} else {
+					var dash = variant.name.index_of_char('-');
+					size_part = dash > 0 ? variant.name.substring(0, dash) : variant.name;
+				}
 				if (!seen.contains(size_part)) {
 					seen.add(size_part);
 					this.unique_sizes.add(size_part);

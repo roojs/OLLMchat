@@ -43,7 +43,8 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocsqlite',
   meson.current_build_dir() / '..' / 'libocmarkdown',
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
-  meson.current_build_dir() / '..' / 'libollmchat'
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollamaweb'
 ])
 
 ollmchatgtk_lib = library('ollmchatgtk',
@@ -54,6 +55,7 @@ ollmchatgtk_lib = library('ollmchatgtk',
   link_with: [ollmchat_base_lib, ocmarkdown_base_lib, ocmarkdowngtk_lib],  # Link with base libraries
   include_directories: [
     include_directories('../libollmchat'),
+    include_directories('../libollamaweb'),
     include_directories('../libocmarkdown'),
     include_directories('../libocmarkdowngtk'),
     include_directories('../libocsqlite')
@@ -64,7 +66,9 @@ ollmchatgtk_lib = library('ollmchatgtk',
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'
+    '--pkg=ollamaweb',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   ],
   install: true
 )

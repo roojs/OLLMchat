@@ -118,9 +118,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Settings/ModelUsage.vala',
     '../libollmchat/Settings/BaseToolConfig.vala',
     '../libollmchat/Settings/RequiresModelsInterface.vala',
-    '../libollmchat/Settings/ModelTag.vala',
-    '../libollmchat/Settings/AvailableModel.vala',
-    '../libollmchat/Settings/AvailableModels.vala',
+    '../libollmchat/Settings/SearchResults.vala',
     '../libollmchat/OllmError.vala',  # Must come early - used by many files
     '../libollmchat/Client.vala',
     '../libollmchat/Call/namespace.vala',  # Call namespace documentation
@@ -359,6 +357,8 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
     '--pkg=libxml-2.0',
+    '--pkg=ollamaweb',
+    '--vapidir', meson.project_build_root() / 'libollamaweb',
     '--pkg=sqlite3',
     '--pkg=gtk4',
     '--pkg=libadwaita-1',
@@ -377,7 +377,8 @@ valadoc_docs = custom_target('valadoc',
     '--directory=' + valadoc_dir,
     '@INPUT@'
   ],
-  build_by_default: true,
+  # Docs are optional; default `ninja` should only rebuild the app/libs.
+  build_by_default: false,
   install: false
 )
 
