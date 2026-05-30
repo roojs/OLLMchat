@@ -1,5 +1,34 @@
 # Test suite for file operations and markdown parser
 
+# libollamaweb HTML fixture tests (offline)
+test_ollamaweb_script = files('test-ollamaweb-parse.sh')
+oc_test_ollamaweb_exe = get_variable('test_ollamaweb', disabler())
+test('test-ollamaweb-parse',
+  find_program('bash'),
+  args: [
+    test_ollamaweb_script,
+    meson.current_build_dir() / '..'
+  ],
+  depends: [oc_test_ollamaweb_exe],
+  workdir: meson.current_source_dir(),
+  timeout: 120,
+  suite: 'ollamaweb'
+)
+
+test_ollamaweb_merge_script = files('test-ollamaweb-merge.sh')
+test('test-ollamaweb-merge',
+  find_program('bash'),
+  args: [
+    test_ollamaweb_merge_script,
+    meson.current_build_dir() / '..'
+  ],
+  depends: [oc_test_ollamaweb_exe],
+  workdir: meson.current_source_dir(),
+  timeout: 60,
+  suite: 'ollamaweb'
+)
+
+
 # Test script for oc-test-files
 test_file_ops_script = files('test-file-ops.sh')
 
