@@ -164,6 +164,32 @@ namespace OLLMapp.SettingsDialog.Rows
 				digits = 0,
 				default_value = -1.0
 			});
+
+			if (!(this.config is OLLMchat.Settings.ModelUsage)) {
+				return;
+			}
+			var mu = (OLLMchat.Settings.ModelUsage) this.config;
+			if (mu.connection == "" ||
+					!dialog.app.config.connections.has_key(mu.connection)) {
+				return;
+			}
+			var connection = dialog.app.config.connections.get(mu.connection);
+			if (connection.ollama_native == 1) {
+				return;
+			}
+
+			foreach (var row in this.rows) {
+				switch (row.pspec.get_name()) {
+					case "num_ctx":
+					case "top_k":
+					case "min_p":
+					case "typical_p":
+					case "repeat_last_n":
+					case "repeat_penalty":
+						row.visible = false;
+						break;
+				}
+			}
 		}
 
 		/**
