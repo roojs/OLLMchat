@@ -159,7 +159,8 @@ namespace OLLMapp.SettingsDialog
 			}
 
 			var dummy_config = new OLLMchat.Settings.ModelUsage() {
-				options = this.options
+				options = this.options,
+				connection = this.connection.url
 			};
 			var dummy_pspec = dummy_config.get_class().find_property("options");
 			this.options_widget = new Rows.Options(this.models_page.dialog, dummy_pspec, dummy_config);

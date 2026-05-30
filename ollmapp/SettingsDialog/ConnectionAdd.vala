@@ -210,6 +210,8 @@ namespace OLLMapp.SettingsDialog
 					connection.timeout = original_timeout;
 				}
 
+				yield connection.detect_ollama();
+
 				// Store verified connection
 				this.verified_connection = connection;
 

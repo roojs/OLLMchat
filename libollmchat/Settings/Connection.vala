@@ -65,6 +65,12 @@ namespace OLLMchat.Settings
 		 * Not saved to config - checked on dialog close.
 		 */
 		public bool is_working = true;
+
+		/**
+		 * Ollama-native API support: -1 = not checked, 0 = no, 1 = yes.
+		 * Set once by detect_ollama() while still -1.
+		 */
+		public int ollama_native { get; set; default = -1; }
 		
 		/**
 		 * HTTP session for making requests.
@@ -204,6 +210,30 @@ namespace OLLMchat.Settings
 			}
 			
 			return message;
+		}
+
+		/**
+		 * Ollama detector: GET /api/version when ollama_native is still -1.
+		 * Safe to call anytime; no-op when already set.
+		 */
+		public async void detect_ollama()
+		{
+			if (this.ollama_native != -1) {
+				return;
+			}
+
+			try {
+				var version_call = new OLLMchat.Call.Version(this);
+				yield version_call.exec_version();
+				this.ollama_native = 1;
+			} catch (Error e) {
+				GLib.debug(
+					"Connection %s: version probe failed (%s), not Ollama-native",
+					this.url,
+					e.message
+				);
+				this.ollama_native = 0;
+			}
 		}
 
 		/**

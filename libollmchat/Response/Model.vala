@@ -545,56 +545,94 @@ namespace OLLMchat.Response
 		/**
 		 * Customizes the model name based on options, creating a temporary model if needed.
 		 *
-		 * Returns the model name to use for chat operations. If num_ctx is set (not auto),
-		 * creates a temporary model variant with the specified context size. The temp model
-		 * name follows the pattern: `ollmchat-temp/{base}-ctx{N}K` where N is num_ctx in K.
+		 * When Ollama-only options must be baked into the model (num_ctx, top_k, min_p,
+		 * typical_p, repeat_last_n, repeat_penalty), returns a temp name under
+		 * ollmchat-temp/ and creates it via Call.Create if missing. Per-request v1 options
+		 * (temperature, top_p, seed, stop, presence_penalty, frequency_penalty) are not
+		 * baked here — ChatCompletions sends those on each request.
 		 *
-		 * If the temp model already exists, it is reused. If it doesn't exist, it is created
-		 * using the Ollama create API with a Modelfile containing FROM {base} and PARAMETER num_ctx.
+		 * When for_ollama is true, returns this.name immediately — native Call.Chat
+		 * sends options on each /api/chat request; baking would double-apply.
 		 *
 		 * @param connection The connection to use for API calls
-		 * @param options The options containing num_ctx setting
-		 * @return The model name to use (either base name or temp model name)
+		 * @param options Runtime options; -1 / -1.0 means unset for numeric fields
+		 * @param for_ollama When true, skip temp-model creation (native chat path)
+		 * @return The model name to use (base name or temp variant)
 		 * @throws Error if model creation fails
 		 */
-		public async string customize(Settings.Connection connection, Call.Options options) throws Error
+		public async string customize(
+			Settings.Connection connection,
+			Call.Options options,
+			bool for_ollama = false
+		) throws Error
 		{
-			// If num_ctx is not set (auto), return base model name
-			if (options.num_ctx == -1) {
+			if (for_ollama) {
 				return this.name;
 			}
-			
-			// Generate temp model name: ollmchat-temp/{base}-ctx{N}K
-			// N = num_ctx / 1024 (convert tokens to K)
-			string temp_name = "ollmchat-temp/" + this.name + "-ctx" + (options.num_ctx / 1024).to_string() + "K";
-			
-			// Check if temp model exists using connection's cached model list (O(1) lookup)
+
+			if (connection.ollama_native != 1) {
+				return this.name;
+			}
+
+			string suffix =
+				(options.num_ctx == -1 ? "" :
+					("-ctx" + (options.num_ctx / 1024).to_string() + "K")) +
+				(options.top_k == -1 ? "" :
+					("-tk" + options.top_k.to_string())) +
+				(options.min_p == -1.0 ? "" :
+					("-mp" + options.min_p.to_string().replace(".", "p"))) +
+				(options.typical_p == -1.0 ? "" :
+					("-typ" + options.typical_p.to_string().replace(".", "p"))) +
+				(options.repeat_last_n == -1 ? "" :
+					("-rln" + options.repeat_last_n.to_string())) +
+				(options.repeat_penalty == -1.0 ? "" :
+					("-rp" + options.repeat_penalty.to_string().replace(".", "p")));
+
+			if (suffix == "") {
+				return this.name;
+			}
+
+			string temp_name = "ollmchat-temp/" + this.name + suffix;
+
 			if (connection.models.has_key(temp_name)) {
-				//GLib.debug("Temp model '%s' already exists, reusing", temp_name);
 				return temp_name;
 			}
-			
-			// Model doesn't exist - create it
-			//GLib.debug("Creating temp model '%s' with num_ctx=%d", temp_name, options.num_ctx);
-			
-			// Create the model using API fields
-			// We always use the existing template from the base model (no custom template)
+
 			var create_call = new Call.Create(connection, temp_name) {
 				from = this.name
 			};
-			
-			// Set num_ctx parameter (Options object serializes automatically)
-			create_call.parameters.num_ctx = options.num_ctx;
-			
+
+			if (options.num_ctx != -1) {
+				create_call.parameters.num_ctx = options.num_ctx;
+			}
+			if (options.top_k != -1) {
+				create_call.parameters.top_k = options.top_k;
+			}
+			if (options.min_p != -1.0) {
+				create_call.parameters.min_p = options.min_p;
+			}
+			if (options.typical_p != -1.0) {
+				create_call.parameters.typical_p = options.typical_p;
+			}
+			if (options.repeat_last_n != -1) {
+				create_call.parameters.repeat_last_n = options.repeat_last_n;
+			}
+			if (options.repeat_penalty != -1.0) {
+				create_call.parameters.repeat_penalty = options.repeat_penalty;
+			}
+
 			try {
 				yield create_call.exec_create();
-				//GLib.debug("Successfully created temp model '%s'", temp_name);
 			} catch (Error e) {
-				GLib.warning("Failed to create temp model '%s': %s. Falling back to base model '%s'", temp_name, e.message, this.name);
-				// Fall back to base model on error
+				GLib.warning(
+					"Failed to create temp model '%s': %s. Falling back to base model '%s'",
+					temp_name,
+					e.message,
+					this.name
+				);
 				return this.name;
 			}
-			
+
 			return temp_name;
 		}
 		
