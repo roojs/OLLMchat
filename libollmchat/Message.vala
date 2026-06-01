@@ -455,12 +455,6 @@ namespace OLLMchat
 					value = Value(typeof(Gee.ArrayList));
 					value.set_object(this.tool_calls);
 					return true;
-				case "reasoning_content":
-				case "reasoning":
-					this.thinking = property_node.get_string();
-					value = Value(typeof(string));
-					value.set_string("");
-					return true;
 				default:
 					return default_deserialize_property(property_name, out value, pspec, property_node);
 			}
