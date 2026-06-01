@@ -30,6 +30,9 @@ class TestCliApp : Application, OLLMchat.ApplicationInterface
 	private OLLMchat.History.Manager? cli_manager;
 	private bool cli_configure_on_activate;
 	private bool cli_legacy_flag;
+	private OLLMtools.Registry tools_registry { get; set; }
+	private OLLMvector.Registry vector_registry { get; set; }
+	private OLLMmcp.Registry mcp_registry { get; set; }
 	
 	public OLLMchat.Settings.Config2 config { get; set; }
 	public string data_dir { get; set; }
@@ -59,8 +62,17 @@ class TestCliApp : Application, OLLMchat.ApplicationInterface
 			GLib.Environment.get_home_dir(), ".local", "share", "ollmchat"
 		);
 		
-		// Load config (no vector types needed for simple CLI)
+		this.tools_registry = new OLLMtools.Registry();
+		this.vector_registry = new OLLMvector.Registry();
+		this.mcp_registry = new OLLMmcp.Registry();
+		this.tools_registry.init_config();
+		this.vector_registry.init_config();
+		this.mcp_registry.init_config();
+		
 		this.config = this.load_config();
+		this.tools_registry.setup_config_defaults(this.config);
+		this.vector_registry.setup_config_defaults(this.config);
+		this.mcp_registry.setup_config_defaults(this.config);
 	}
 	
 	public OLLMchat.Settings.Config2 load_config()
@@ -414,6 +426,12 @@ with the same Manager/Session/UI-hook path for A/B comparison.
 		
 		// Manager → Session → Agent → ChatBase (ChatCompletions or Call.Chat with --legacy).
 		var manager = new OLLMchat.History.Manager(this);
+		this.tools_registry.fill_tools(manager, null);
+		this.vector_registry.fill_tools(manager, null);
+		this.mcp_registry.fill_tools(manager, null);
+		if (opt_debug) {
+			GLib.debug("registered %u tools on manager", manager.tools.size);
+		}
 		try {
 			yield manager.connection_models.refresh();
 		} catch (GLib.Error e) {

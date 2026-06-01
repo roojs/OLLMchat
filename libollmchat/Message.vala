@@ -445,7 +445,7 @@ namespace OLLMchat
 					// Vala converts tool_calls to tool-calls in JSON; v1 uses tool_calls
 					//this.tool_calls.clear();
 					var json_array = property_node.get_array();
-					GLib.debug("Message.deserialize_property: Found tool_calls array with %u elements", json_array.get_length());
+					GLib.debug("tool_calls array elements=%u", json_array.get_length());
 					for (uint i = 0; i < json_array.get_length(); i++) {
 						var element_node = json_array.get_element(i);
 						this.tool_calls.add(

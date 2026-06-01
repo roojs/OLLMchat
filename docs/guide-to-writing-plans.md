@@ -137,18 +137,39 @@ When a plan adds tables or columns in **`web.MediaOutreach`**:
 
 ## Code proposals section (mandatory pattern)
 
-Intro line: hunks are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
+Intro line: hunks are **Remove** / **Replace with** / **Add** from the tree;
+verify surrounding context before applying.
 
-### Do / don’t (keep / remove / replace / add)
+### Edit syntax contract (strict)
+
+- **Action syntax is only:** **`Remove`**, **`Replace with`**, and **`Add`**.
+- **`Keep` means unchanged context only**. It is never an edit operation.
+- If a plan can be applied without `Keep` fences, prefer that simpler form.
+- When needed, describe unchanged context in **Where** text rather than adding a
+  `Keep` code block.
+
+### Do / don’t (remove / replace / add)
 
 - **Don’t publish duplicate stitched-together versions** of the same unit of work. A plan must **not** leave implementers choosing between (a) a long chain of **Keep** / **Remove** / **Replace** parts and (b) a second, parallel “full method” or “full file” paste that could **drift** from the parts—nor require **mental assembly** of unstated lines between fences. Pick **one** canonical form:
   - **Small change:** parts + anchors are fine if every **removed** line appears in a **Remove** fence and every **new** line appears in **Replace with** / **Add**, with **Keep** only as **local** anchors (already in this guide); or
   - **Large replacement:** one **Remove** of the old region (method, ctor, or whole file) and one **Replace with** containing the **complete** new text—no separate “Part 1 … Part 7” that duplicates the same outcome.
-- **Do** put the contract in **fenced code blocks** under **Keep** / **Remove** / **Replace with** / **Add**. The implementer applies **verbatim hunks**, not a paraphrase.
+- **Do** put the contract in **fenced code blocks** under **Remove** /
+  **Replace with** / **Add**. The implementer applies **verbatim hunks**, not a
+  paraphrase.
 - **Don’t** replace code blocks with long prose about what to keep or replace (“delete the old loop and insert …”) **without** the matching fences.
 - **Do** use **`#### Add`** (or an **Add** chunk in the ordered format) for **pure insertions** — new lines only, nothing deleted.
-- **Don’t** use **`Remove`** with `// (nothing)` or “nothing to remove” to mean insertion. If there is nothing to delete, there is **no Remove** — use **Add** (after a **Keep** anchor when you need one).
-- **Don’t** publish a **`#### Add`** (or ordered-chunk **Add**) that is **only** a code fence. The implementer must get **mechanical context** without guessing: every **Add** must state **where** the new lines go (file, method or region, and position relative to the accompanying **`Keep`** anchor or a named line) and **what** they do (one short sentence). Put that in the **`#### Add — …`** heading suffix and/or **immediately below** **`#### Add`** as a line or bullets **before** the fence. A pointer (**see § X**) is allowed **only if** the referenced section contains the **same** verbatim fence and the same placement sentence—otherwise the **Add** block is incomplete.
+- **Don’t** use **`Remove`** with `// (nothing)` or “nothing to remove” to mean
+  insertion. If there is nothing to delete, there is **no Remove** — use
+  **Add**.
+- **Don’t** publish a **`#### Add`** (or ordered-chunk **Add**) that is
+  **only** a code fence. The implementer must get **mechanical context**
+  without guessing: every **Add** must state **where** the new lines go (file,
+  method or region, and position relative to a named line) and **what** they do
+  (one short sentence). Put that in the **`#### Add — …`** heading suffix
+  and/or **immediately below** **`#### Add`** as a line or bullets **before**
+  the fence. A pointer (**see § X**) is allowed **only if** the referenced
+  section contains the **same** verbatim fence and the same placement
+  sentence—otherwise the **Add** block is incomplete.
 - **Do** keep that **placement + purpose** line on **Replace with** / **Add** (ordered chunks use it on the line immediately above the fence—see below); keep it short — the **fence** carries the literals.
 
 ### No orphan or illustrative code (outside **Concrete code proposals**)
@@ -156,14 +177,22 @@ Intro line: hunks are **Remove** / **Replace with** / **Add** from the tree; ver
 Plans are **edit specs**, not codebase tours. If a reader cannot apply a fence mechanically, the plan is wrong.
 
 - **Don’t** put **fenced code** anywhere except under **`## Concrete code proposals`** — not in Purpose, Precedent, Notes, or Related.
-- **Don’t** paste “pattern” or “precedent” excerpts from other files (e.g. two lines from `Pressrelease_entry.php`) unless that excerpt is itself the **exact** hunk to apply, labelled **Keep** / **Remove** / **Replace with** / **Add** with anchors.
+- **Don’t** paste “pattern” or “precedent” excerpts from other files (e.g. two
+  lines from `Pressrelease_entry.php`) unless that excerpt is itself the
+  **exact** hunk to apply, labelled **Remove** / **Replace with** / **Add**.
 - **Don’t** use investigation-style citations (`startLine:endLine:path` blocks, random mid-file snippets) in implementation plans. **ℹ️** Point at `path/to/file.php` and commit hash; the implementer opens the file.
-- **Don’t** split one logical edit across multiple `###` sections if that forces the reader to merge hunks mentally (e.g. “Part A adds `else`” + “Part B replaces `if` body” with a **Keep** that no longer matches after Part A). Use **one** **Remove** + **Replace with** for the whole region, or **ordered chunks** inside a **single** `###` with **Keep** anchors that still exist after each step.
+- **Don’t** split one logical edit across multiple `###` sections if that
+  forces the reader to merge hunks mentally (e.g. “Part A adds `else`” + “Part
+  B replaces `if` body”). Use **one** **Remove** + **Replace with** for the
+  whole region, or **ordered chunks** inside a **single** `###`.
 - **Do** label every `###` with: **file path**, **function/method/region name**, and **one-line intent** (e.g. `### 1. \`Foo.php\` — \`get()\` foreach: FTP XML import + Events log`).
-- **Do** make every **Keep** locatable: include the **enclosing** `function` / `foreach` / `if` line in the `###` title or the line immediately above the first **Keep** fence, plus **2–5 verbatim lines** that still exist in the tree **immediately before** the **Remove** (not lines from a different branch or after an unapplied prior hunk).
+- **Do** make every edit locatable: include the **enclosing** `function` /
+  `foreach` / `if` line in the `###` title and state exact position in
+  **Where** text.
 - **Investigation / query docs** (`*-query.md`, `docs/bugs/*`) may quote existing code to explain behaviour. **Implementation plans** (`docs/plans/*.md` except query docs) must not — link to the investigation instead.
 - **Don’t** use the **next** `function` below your edit as a locator (e.g. putting `function getContent` inside **Remove**/**Replace with** when only `return true` changes). The next method is not being edited — it confuses *where* vs *what*.
-- **Don’t** use two disconnected **Keep** fences (e.g. method signature at line 200 and tail at line 260) for one one-line change. One **Keep** = contiguous lines **immediately above** the **Remove**.
+- **Don’t** use disconnected context snippets for one small change. Use one
+  tight **Remove** + **Replace with** pair and a precise **Where** line.
 - **Do** under each `###`, before the fences, state **Why** (dependency / outcome), **Where** (function + position in plain English), and **Depends on** (other `###` in this plan, if any). The hunks alone are not enough.
 - **Don’t** use `…`, `// ...`, or “rest unchanged” inside **Keep** / **Remove** / **Replace with** fences. Every line in a fence must be **verbatim** from the tree (or the exact new lines to apply). If the anchor is long, include the real lines — do not abbreviate.
 
@@ -238,7 +267,6 @@ For **each** file/topic, use a **numbered** `###` heading, then **only** these s
 | **`#### Remove`** | Verbatim code to delete |
 | **`#### Replace with`** | Full replacement of the **Remove** block (or the named fragment) — not necessarily the whole file |
 | **`#### Add`** | New code only (no removal). Must include **where** + **what** (heading suffix or line above fence)—see **Don’t** “only a code fence” in **Do / don’t**. |
-| **`#### Keep`** | **Local** unchanged lines that **anchor** the next **Remove** / **Replace with** / **Add** — e.g. the lines **immediately above** the fragment you are about to change. Break big methods into **parts** (see below); **do not** paste the **entire** method in one **`Keep`** fence (hard to scan). **`Remove`** / **`Replace with`** carry the **small** verbatim delta. |
 
 **Example** (outer fence is `~~~` so inner fences parse):
 
@@ -262,19 +290,23 @@ One **`####` heading immediately above each fenced block.** No code fence withou
 
 ### Editing existing methods (strong preference)
 
-When changing a **method that already exists**, **split it into parts** — one logical edit per subsection (e.g. **`##### Part 1 — Signature`**, **`##### Part 2 — …`**). For **each** part:
+When changing a **method that already exists**, **split it into parts** — one
+logical edit per subsection (e.g. **`##### Part 1 — Signature`**,
+**`##### Part 2 — …`**). For **each** part:
 
-- **`#### Keep`** — Only the **unchanged lines immediately above** (or beside) the edit, so the reader knows **where** in the method this hunk applies. **Not** the full method in one fence (that becomes unreadable).
-- **`#### Remove`** / **`#### Replace with`** / **`#### Add`** — The **small** verbatim fragments for **that part only**.
+- **`#### Remove`** / **`#### Replace with`** / **`#### Add`** — The **small**
+  verbatim fragments for **that part only**.
 
-Apply parts **in order** (Part 1, then 2, …). **`Remove`** / **`Replace with`** must be enough to apply mechanically; **`Keep`** is the anchor, not a duplicate of the whole function.
+Apply parts **in order** (Part 1, then 2, …). Each part must be mechanically
+applicable from **Remove/Replace with/Add** plus the section's **Where** text.
 
 - **Whole-method / whole-file `Replace with`:** Prefer this when the change is **large** or when **parts** would force unstated glue between fences—see **Don’t publish duplicate stitched-together versions** above. One **Remove** + one complete **Replace with** is **not** inferior to seven parts if the parts would duplicate the same outcome or omit lines.
 - **Why use parts at all?** Small, localized diffs preserve a clear review story—but only when each part is **mechanically complete** and **not** mirrored by a second full copy elsewhere in the plan.
 - **Empty default bodies** (e.g. a virtual hook): short **Goal** text; **Remove**/**Replace with** for the old vs new **fragment** (e.g. signature + comment), not a lone **Replace with** with no **Remove**.
 - **When every line of the method changes** or the method is **new:** a single full-method **`Replace with`** (with **`Remove`** of the old method) is OK; say so in prose.
 
-**Very short** methods (a few lines) may use a single **Keep** spanning the whole method if it stays readable.
+**Very short** methods (a few lines) may use one small **Remove** /
+**Replace with** pair without splitting into parts.
 
 ### Ordered chunk format for large methods
 

@@ -12,7 +12,8 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollmchatgtk',
   meson.current_build_dir() / '..' / 'liboctools',
-  meson.current_build_dir() / '..' / 'libocvector'
+  meson.current_build_dir() / '..' / 'libocvector',
+  meson.current_build_dir() / '..' / 'libocmcp'
 ])
 
 # libollmchat.vapi references OllamaWeb types (SearchResults)
@@ -87,10 +88,21 @@ ocmarkdown_test_deps = [
 
 # Build test-ollama executable (command-line test)
 test_ollama = executable('oc-test-cli',
-  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, octools_vapi_dep, ollamaweb_vapi_dep],
+  dependencies: [
+    test_ollama_deps,
+    ocsqlite_vapi_dep,
+    octools_vapi_dep,
+    ocvector_vapi_dep,
+    ocmcp_vapi_dep,
+    ollamaweb_vapi_dep
+  ],
   sources: ['oc-test-cli.vala'],
   link_with: [ollmchat_base_lib],  # ollmchat_base_lib already links with ocsqlite via link_args
-  include_directories: [include_directories('../libollmchat'), ollmchat_consumer_include],
+  include_directories: [
+    include_directories('../libollmchat'),
+    include_directories('../libocvector'),
+    ollmchat_consumer_include
+  ],
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
@@ -98,8 +110,13 @@ test_ollama = executable('oc-test-cli',
     '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
     '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
     '--pkg=octools',
+    '--pkg=ocvector',
+    '--pkg=ocmcp',
+    '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmcp',
     '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
   ] + ollmchat_consumer_vala_args,
   install: true,
