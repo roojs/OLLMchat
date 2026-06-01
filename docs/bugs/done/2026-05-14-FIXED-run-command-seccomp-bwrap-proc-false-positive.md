@@ -1,12 +1,12 @@
 # run_command: seccomp fs appendix lists bubblewrap namespace proc opens
 
-**Status:** OPEN (investigation complete — fix deferred to approved plan)
+**Status:** FIXED (2026-05-14)
 
 **Started:** 2026-05-14
 
 **Process:** Follow **`docs/bug-fix-process.md`**. Diagnosis below is from code inspection and syscall behavior, not from a new repro log.
 
-**Related plan (proposed fix):**
+**Related plan (fix):**
 
 - **`../plans/2.22.1.5-seccomp-fs-appendix-bwrap-namespace-setup.md`**
 
@@ -57,10 +57,10 @@ After a **`run_command`** run under bubblewrap, the tool output can append a **s
 
 - **Root cause:** seccomp fs evidence treats **all** qualifying **`openat`** events the same; **bubblewrap namespace setup** is included in the same bucket as **wrapped command** file activity.
 - **Ruled out:** `date` itself needing those paths for normal operation; the interesting syscalls are from **`bwrap`** (see plan for PID / **`exe`** attribution).
-- **Proposed fix:** implement **`../plans/2.22.1.5-seccomp-fs-appendix-bwrap-namespace-setup.md`** after explicit approval.
+- **Fix:** implemented per **`../plans/2.22.1.5-seccomp-fs-appendix-bwrap-namespace-setup.md`**; archived under **`docs/bugs/done/`**.
 
 ---
 
 ## After a verified fix (later)
 
-When fixed: rename with **`FIXED`** in the filename, move to **`docs/bugs/done/`**, note verification steps in this thread or the plan.
+Verified and archived 2026-05-14.

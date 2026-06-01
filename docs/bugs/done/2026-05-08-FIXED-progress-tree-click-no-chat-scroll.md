@@ -1,6 +1,6 @@
 # Progress tree: click row does not scroll chat to message
 
-**Status:** OPEN (investigation — no fix approved yet)
+**Status:** FIXED (2026-05-08)
 
 **Started:** 2026-05-08
 
@@ -84,10 +84,10 @@ Unrelated noise in same capture: **`GLib-GIO` IPv6 DNS** / **`Operation was canc
 
 **Direction update (2026-05-09):** Replace map-based lookup design with widget-index IDs returned by `ChatView` append APIs; replay/live writers set `Message.idx` from returned widget ID. See **`docs/plans/done/7.14.6-DONE-progress-chat-scroll-issues.md`**.
 
-**Next step (when approved to fix, not now):** Implement the widget-index plan; then re-run this repro and verify `scroll_idx` hits by list index.
+**Next step:** Verified — widget-index plan implemented; progress tree click scrolls chat to message.
 
 ---
 
 ## After a verified fix (later)
 
-When fixed: rename with **`FIXED`** in the filename, move to **`docs/bugs/done/`**, strip temporary **`GLib.debug()`** from merged code (note in log if helpful).
+Verified and archived 2026-05-08.
