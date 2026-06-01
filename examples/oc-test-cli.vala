@@ -19,18 +19,25 @@
 class TestCliApp : Application, OLLMchat.ApplicationInterface
 {
 	private static bool opt_debug = false;
+	private static bool opt_legacy = false;
 	private static string? opt_url = null;
 	private static string? opt_api_key = null;
 	private static string? opt_model = null;
 	private static string? opt_stats = null;
 	private static bool opt_list_models = false;
 	private static int opt_ctx_num = -1;
+
+	private OLLMchat.History.Manager? cli_manager;
+	private bool cli_configure_on_activate;
+	private bool cli_legacy_flag;
 	
 	public OLLMchat.Settings.Config2 config { get; set; }
 	public string data_dir { get; set; }
 	
 	const OptionEntry[] options = {
 		{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
+		{ "legacy", 0, 0, OptionArg.NONE, ref opt_legacy,
+			"Use native /api/chat (Call.Chat) instead of v1 ChatCompletions", null },
 		{ "url", 0, 0, OptionArg.STRING, ref opt_url, "Ollama server URL", "URL" },
 		{ "api-key", 0, 0, OptionArg.STRING, ref opt_api_key, "API key (optional)", "KEY" },
 		{ "model", 'm', 0, OptionArg.STRING, ref opt_model, "Model name", "MODEL" },
@@ -65,12 +72,16 @@ class TestCliApp : Application, OLLMchat.ApplicationInterface
 	{
 		// Reset static option variables at start of each command line invocation
 		opt_debug = false;
+		opt_legacy = false;
 		opt_url = null;
 		opt_api_key = null;
 		opt_model = null;
 		opt_stats = null;
 		opt_list_models = false;
 		opt_ctx_num = -1;
+		this.cli_manager = null;
+		this.cli_configure_on_activate = false;
+		this.cli_legacy_flag = false;
 		
 		string[] args = command_line.get_arguments();
 		var opt_context = new OptionContext("OLLMchat Test CLI");
@@ -129,6 +140,7 @@ Send a query to the LLM and display the response.
 
 Options:
   -d, --debug          Enable debug output
+  --legacy             Native Ollama /api/chat (Call.Chat); default is v1 ChatCompletions
   --url=URL           Ollama server URL (required if config not found)
   --api-key=KEY       API key (optional)
   -m, --model=MODEL    Model name (overrides config)
@@ -139,7 +151,12 @@ Options:
 Examples:
   $(args[0]) \"What is the capital of France?\"
   $(args[0]) --model llama2 \"Write a hello world program\"
-  $(args[0]) --debug --url http://localhost:11434/api \"Tell me a joke\"
+  $(args[0]) --debug --url http://127.0.0.1:11434/api \"Tell me a joke\"
+  $(args[0]) --legacy --debug --url http://127.0.0.1:11434/api -m MODEL \"hi\"
+
+Default (no --legacy): same hooks as the app — ChatCompletions → Agent → Session →
+Manager.stream_chunk (CLI emulates ChatWidget). --legacy uses Call.Chat (/api/chat)
+with the same Manager/Session/UI-hook path for A/B comparison.
 ";
 			command_line.printerr("%s", usage);
 			return 1;
@@ -162,12 +179,127 @@ Examples:
 		
 		return 0;
 	}
-	
+
+	/**
+	 * Emulates {@link OLLMchatGtk.ChatWidget} stream_chunk handling (no GTK):
+	 * same is_running / done gate, stdout for visible output, GLib.debug when --debug.
+	 */
+	private void cli_emulate_chat_widget_stream(
+		string new_text,
+		bool is_thinking,
+		OLLMchat.Response.Chat response,
+		OLLMchat.History.SessionBase session
+	)
+	{
+		if (!session.is_running && !response.done) {
+			// GLib.debug(
+			// 	"cli emulate ui: dropped is_running=false new_text.len=%u done=%s",
+			// 	new_text.length,
+			// 	response.done.to_string()
+			// );
+			return;
+		}
+		if (new_text.length > 0) {
+			// GLib.debug(
+			// 	"cli emulate ui: append len=%u is_thinking=%s done=%s",
+			// 	new_text.length,
+			// 	is_thinking.to_string(),
+			// 	response.done.to_string()
+			// );
+			if (is_thinking) {
+				stderr.write("[think] ".data);
+			}
+			stdout.write(new_text.data);
+			stdout.flush();
+		} else if (response.done) {
+			// GLib.debug("cli emulate ui: done packet (new_text empty)");
+		}
+	}
+
+	/**
+	 * Swaps the session agent's chat call for legacy {@link Call.Chat} or v1
+	 * {@link Call.ChatCompletions} while keeping the same Agent → Session → Manager path.
+	 */
+	private void cli_configure_chat_api(OLLMchat.History.Manager manager, bool legacy)
+	{
+		manager.session.ensure_agent_handler();
+		var agent = manager.session.agent;
+		var usage = manager.session.model_usage;
+		var connection = manager.config.connections.get(usage.connection);
+		bool supports_thinking = usage.model_obj != null && usage.model_obj.is_thinking;
+
+		OLLMchat.Call.ChatBase chat;
+		if (legacy) {
+			chat = new OLLMchat.Call.Chat(connection, usage.model) {
+				stream = true,
+				think = supports_thinking,
+				options = usage.options,
+				agent = agent
+			};
+		} else {
+			chat = new OLLMchat.Call.ChatCompletions(connection, usage.model) {
+				stream = true,
+				think = supports_thinking,
+				options = usage.options,
+				agent = agent
+			};
+		}
+
+		if (usage.model_obj == null || usage.model_obj.can_call) {
+			foreach (var entry in manager.tools.entries) {
+				chat.tools.set(entry.key, entry.value);
+			}
+			var agent_name = manager.session.agent_name == "" ?
+				"just-ask" : manager.session.agent_name;
+			var factory = manager.agent_factories.get(agent_name);
+			if (factory == null) {
+				factory = manager.agent_factories.get("just-ask");
+			}
+			factory.configure_tools(chat);
+		}
+
+		agent.replace_chat(chat);
+		// GLib.debug("cli_configure_chat_api: legacy=%s", legacy.to_string());
+	}
+
+	private void on_session_activated_configure(OLLMchat.History.SessionBase session)
+	{
+		if (!this.cli_configure_on_activate || this.cli_manager == null) {
+			return;
+		}
+		this.cli_configure_on_activate = false;
+		this.cli_manager.session_activated.disconnect(this.on_session_activated_configure);
+		this.cli_configure_chat_api(this.cli_manager, this.cli_legacy_flag);
+	}
+
+	/** Prints session message roles/lengths for comparing legacy vs v1 runs. */
+	private void cli_print_session_messages(
+		OLLMchat.History.SessionBase session,
+		string api_label
+	)
+	{
+		// stdout.printf("\n--- Session messages (%s) ---\n", api_label);
+		// stdout.printf("%-18s %7s %7s %s\n", "role", "content", "think", "preview");
+		// foreach (var m in session.messages) {
+		// 	string preview = m.content;
+		// 	if (preview.length > 72) {
+		// 		preview = preview.substring(0, 72).replace("\n", "\\n") + "...";
+		// 	} else {
+		// 		preview = preview.replace("\n", "\\n");
+		// 	}
+		// 	stdout.printf(
+		// 		"%-18s %7u %7u %s\n",
+		// 		m.role,
+		// 		m.content.length,
+		// 		m.thinking.length,
+		// 		preview
+		// 	);
+		// }
+	}
+
 	private async void run_test(string query, ApplicationCommandLine command_line) throws Error
 	{
 		// Use config from base class
-		
-		OLLMchat.Client client;
 		
 		// Shortest if first - config loaded
 		if (this.config.loaded) {
@@ -176,9 +308,8 @@ Examples:
 				!this.config.connections.has_key(model_usage.connection)) {
 				throw new GLib.IOError.NOT_FOUND("default_model not configured in config.2.json");
 			}
-			client = new OLLMchat.Client(this.config.connections.get(model_usage.connection));
 			
-			// Override model if provided (set on default_usage, not client)
+			// Override model if provided (set on default_usage)
 			// Phase 3: model is not on Client, it's on Session/Chat
 			if (opt_model != null) {
 				var default_usage = config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
@@ -247,14 +378,6 @@ Examples:
 				}
 			}
 		 
-			// Create client from usage
-			var model_usage = this.config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
-			if (model_usage == null || model_usage.connection == "" || 
-				!this.config.connections.has_key(model_usage.connection)) {
-				throw new GLib.IOError.FAILED("Failed to create client: default_model not configured");
-			}
-			client = new OLLMchat.Client(this.config.connections.get(model_usage.connection));
-			
 			// Save config since we created it
 			try {
 				this.config.save();
@@ -263,72 +386,103 @@ Examples:
 				GLib.warning("Failed to save config: %s", e.message);
 			}
 		}
+
+		// --url overrides default_model.connection (even when config loaded) for local repro
+		if (opt_url != null && opt_url.strip() != "") {
+			var url = opt_url.strip();
+			if (!this.config.connections.has_key(url)) {
+				this.config.connections.set(url, new OLLMchat.Settings.Connection() {
+					name = "CLI",
+					url = url,
+					api_key = opt_api_key ?? "",
+					is_default = true,
+					is_working = true
+				});
+			} else {
+				this.config.connections.get(url).is_working = true;
+			}
+			var usage_override = this.config.usage.get("default_model")
+				as OLLMchat.Settings.ModelUsage;
+			if (usage_override == null) {
+				throw new GLib.IOError.NOT_FOUND("default_model not configured");
+			}
+			usage_override.connection = url;
+			if (opt_model != null) {
+				usage_override.model = opt_model;
+			}
+		}
 		
-		// Create and initialize ConnectionModels for model information lookup
-		var connection_models = new OLLMchat.Settings.ConnectionModels(this.config);
-		// Refresh to load model details (needed for tool capability checks)
+		// Manager → Session → Agent → ChatBase (ChatCompletions or Call.Chat with --legacy).
+		var manager = new OLLMchat.History.Manager(this);
 		try {
-			yield connection_models.refresh();
+			yield manager.connection_models.refresh();
 		} catch (GLib.Error e) {
 			GLib.warning("Failed to refresh connection models: %s", e.message);
 		}
-		
-		// Get model from config
-		var default_usage = this.config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
-		if (default_usage == null || default_usage.model == "") {
-			throw new GLib.IOError.NOT_FOUND("default_model not configured");
+		yield manager.ensure_model_usage();
+
+		if (opt_ctx_num >= 0 && manager.session.model_usage != null) {
+			if (manager.session.model_usage.options == null) {
+				manager.session.model_usage.options = new OLLMchat.Call.Options();
+			}
+			manager.session.model_usage.options.num_ctx = opt_ctx_num;
 		}
-		
-		// Get options from config
-		
-		// Create Chat object with streaming enabled
-		var chat = new OLLMchat.Call.ChatCompletions(client.connection, default_usage.model) {
-			stream = true
-		};
-		chat.options = default_usage.options == null ?  new OLLMchat.Call.Options() : default_usage.options;
-		
-		// Override num_ctx if provided via command line
-		chat.options.num_ctx = opt_ctx_num;
-		
-		// Phase 4: Customize model
-		// Get model_obj from connection and call customize() to create temp model if needed
-		var model_obj = client.connection.models.get(default_usage.model);
-		try {
-			chat.model = yield model_obj.customize(client.connection, chat.options);
-		} catch (Error e) {
-			GLib.warning("Failed to customize model '%s': %s. Using base model.", default_usage.model, e.message);
-			// chat.model remains as the base model name
-		}
-		
-		// Connect to chat signals for streaming output
-		chat.stream_chunk.connect((new_text, is_thinking, response) => {
-			stdout.write(new_text.data);
-			stdout.flush();
+
+		// manager.stream_start.connect(() => {
+		// 	GLib.debug("cli emulate ui: manager stream_start");
+		// });
+		manager.stream_chunk.connect((new_text, is_thinking, response) => {
+			this.cli_emulate_chat_widget_stream(
+				new_text,
+				is_thinking,
+				response,
+				manager.session
+			);
 		});
-		
-		// Add ReadFile tool to Chat
-		chat.add_tool(new OLLMtools.ReadFile.Tool());
-		
+
+		this.cli_manager = manager;
+		this.cli_legacy_flag = opt_legacy;
+		if (manager.session is OLLMchat.History.EmptySession) {
+			this.cli_configure_on_activate = true;
+			manager.session_activated.connect(this.on_session_activated_configure);
+		} else {
+			this.cli_configure_chat_api(manager, opt_legacy);
+		}
+
+		// var api_label = opt_legacy ?
+		// 	"legacy /api/chat (Call.Chat)" :
+		// 	"v1 /chat/completions (ChatCompletions, app default)";
+
+		// stdout.printf("API mode: %s\n", api_label);
 		stdout.printf("Query: %s\n\n", query);
 		stdout.printf("Response:\n");
-		
-		// Add user message and execute chat
-		chat.messages.add(new OLLMchat.Message("user", query));
-		var response = yield chat.send(chat.messages, null);
-		
+
+		yield manager.send(manager.session, new OLLMchat.Message("user", query));
+
+		var content = "";
+		var thinking = "";
+		foreach (var m in manager.session.messages) {
+			if (m.role == "content-stream") {
+				content += m.content;
+			} else if (m.role == "think-stream") {
+				thinking += m.content;
+			}
+		}
+
 		stdout.printf("\n\n--- Complete Response ---\n");
-		if (response.thinking != "") {
-			stdout.printf("Thinking: %s\n", response.thinking);
+		if (thinking != "") {
+			stdout.printf("Thinking: %s\n", thinking);
 		}
-		stdout.printf("Content: %s\n", response.message.content);
-		stdout.printf("Done: %s\n", response.done.to_string());
-		if (response.done_reason != "") {
-			stdout.printf("Done Reason: %s\n", response.done_reason);
-		}
-		
-		// Handle --stats option
+		stdout.printf("Content: %s\n", content);
+
+		// this.cli_print_session_messages(manager.session, api_label);
+
 		if (opt_stats != null && opt_stats != "") {
-			this.write_stats(response, opt_stats);
+			var stats_response = new OLLMchat.Response.Chat(null, null);
+			stats_response.message = new OLLMchat.Message("assistant", content);
+			stats_response.thinking = thinking;
+			stats_response.done = true;
+			this.write_stats(stats_response, opt_stats);
 		}
 	}
 	

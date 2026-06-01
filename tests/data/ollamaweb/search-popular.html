@@ -1,0 +1,1859 @@
+
+
+
+
+
+
+
+
+
+<!doctype html>
+<html class="h-full overflow-y-scroll">
+  <head>
+    <title>Ollama</title>
+
+    <meta charset="utf-8" />
+    <meta name="description" content="Search for models on Ollama."/>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta property="og:title" content="Ollama" />
+    <meta property="og:description" content="Search for models on Ollama." />
+    <meta property="og:url" content="https://ollama.com/search" />
+    <meta property="og:image" content="https://ollama.com/public/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="628" />
+    <meta property="og:type" content="website" />
+
+    <meta name="robots" content="index, follow" />
+
+    <meta property="twitter:card" content="summary" />
+    <meta property="twitter:title" content="Ollama" />
+    <meta property="twitter:description" content="Search for models on Ollama." />
+    <meta property="twitter:site" content="ollama" />
+
+    <meta property="twitter:image:src" content="https://ollama.com/public/og-twitter.png" />
+    <meta property="twitter:image:width" content="1200" />
+    <meta property="twitter:image:height" content="628" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+    <link rel="icon" type="image/png" sizes="16x16" href="/public/icon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/public/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/public/icon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/public/icon-64x64.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/public/android-chrome-icon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/public/android-chrome-icon-512x512.png" />
+
+    
+    
+
+    <link href="/public/tailwind.css?v=e7a7acaa9e0a51676a508d24af61881f" rel="stylesheet" />
+    <link href="/public/vendor/prism/prism.css?v=e7a7acaa9e0a51676a508d24af61881f" rel="stylesheet" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Ollama",
+        "url": "https://ollama.com"
+      }
+    </script>
+
+    <script type="text/javascript">
+      function copyToClipboard(element) {
+        let commandElement = null;
+        const preElement = element.closest('pre');
+        const languageNoneElement = element.closest('.language-none');
+
+        if (preElement) {
+          commandElement = preElement.querySelector('code');
+        } else if (languageNoneElement) {
+          commandElement = languageNoneElement.querySelector('.command');
+        } else {
+          const parent = element.parentElement;
+          if (parent) {
+            commandElement = parent.querySelector('.command');
+          }
+        }
+
+        if (!commandElement) {
+          console.error('No code or command element found');
+          return;
+        }
+
+        const code = commandElement.textContent ? commandElement.textContent.trim() : commandElement.value;
+
+        navigator.clipboard
+          .writeText(code)
+          .then(() => {
+            const copyIcon = element.querySelector('.copy-icon')
+            const checkIcon = element.querySelector('.check-icon')
+
+            copyIcon.classList.add('hidden')
+            checkIcon.classList.remove('hidden')
+
+            setTimeout(() => {
+              copyIcon.classList.remove('hidden')
+              checkIcon.classList.add('hidden')
+            }, 2000)
+          })
+      }
+    </script>
+    
+    <script>
+      
+      function getIcon(url) {
+        url = url.toLowerCase();
+        if (url.includes('x.com') || url.includes('twitter.com')) return 'x';
+        if (url.includes('github.com')) return 'github';
+        if (url.includes('linkedin.com')) return 'linkedin';
+        if (url.includes('youtube.com')) return 'youtube';
+        if (url.includes('hf.co') || url.includes('huggingface.co') || url.includes('huggingface.com')) return 'hugging-face';
+        return 'default';
+      }
+
+      function setInputIcon(input) {
+        const icon = getIcon(input.value);
+        const img = input.previousElementSibling.querySelector('img');
+        img.src = `/public/social/${icon}.svg`;
+        img.alt = `${icon} icon`;
+      }
+
+      function setDisplayIcon(imgElement, url) {
+        const icon = getIcon(url);
+        imgElement.src = `/public/social/${icon}.svg`;
+        imgElement.alt = `${icon} icon`;
+      }
+    </script>
+    
+    <script src="/public/vendor/htmx/bundle.js"></script>
+  </head>
+
+  <body
+    class="
+      antialiased
+      min-h-screen
+      w-full
+      m-0
+      flex
+      flex-col
+    "
+    hx-on:keydown="
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        // Ignore key events in input fields.
+        return;
+      }
+      if ((event.metaKey && event.key === 'k') || event.key === '/') {
+        event.preventDefault();
+        const sp = htmx.find('#search') || htmx.find('#navbar-input');
+        sp.focus();
+      }
+    "
+  >
+    
+        
+<header class="sticky top-0 z-40 bg-white underline-offset-4 lg:static">
+  <nav class="flex w-full items-center justify-between px-6 py-[9px]">
+    <a href="/" class="z-50">
+      <img src="/public/ollama.png" class="w-8" alt="Ollama" />
+    </a>
+    
+    
+    <div class="hidden lg:flex xl:flex-1 items-center space-x-6 ml-6 mr-6 xl:mr-0 text-lg">
+      <a class="hover:underline focus:underline focus:outline-none focus:ring-0" href="/search">Models</a>
+      <a class="hover:underline focus:underline focus:outline-none focus:ring-0" href="/docs">Docs</a>
+      <a class="hover:underline focus:underline focus:outline-none focus:ring-0" href="/pricing">Pricing</a>
+    </div>
+
+    
+    <div class="flex-grow justify-center items-center hidden lg:flex">
+      <div class="relative w-full xl:max-w-[28rem]">
+        
+<div class="relative flex w-full appearance-none bg-black/5 border border-neutral-100 items-center rounded-full">
+<span id="searchIcon" class="pl-2 text-2xl text-neutral-500">
+  <svg class="mt-0.25 ml-1.5 h-5 w-5 fill-current" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+    <path d="m8.5 3c3.0375661 0 5.5 2.46243388 5.5 5.5 0 1.24832096-.4158777 2.3995085-1.1166416 3.3225711l4.1469717 4.1470988c.2928932.2928932.2928932.767767 0 1.0606602-.2662666.2662665-.6829303.2904726-.9765418.0726181l-.0841184-.0726181-4.1470988-4.1469717c-.9230626.7007639-2.07425014 1.1166416-3.3225711 1.1166416-3.03756612 0-5.5-2.4624339-5.5-5.5 0-3.03756612 2.46243388-5.5 5.5-5.5zm0 1.5c-2.209139 0-4 1.790861-4 4s1.790861 4 4 4 4-1.790861 4-4-1.790861-4-4-4z" />
+  </svg>
+</span>
+  <input
+    id="navbar-input"
+    name="q"
+    hx-on:input="
+      htmx.trigger('#form-input', 'update', {value: this.value});
+      document.getElementById('form-input').setAttribute('disabled', 'disabled');
+      this.removeAttribute('disabled');
+    "
+    hx-on:update="
+      this.value = event.detail.value;
+      this.setAttribute('disabled', 'disabled');
+      document.getElementById('form-input').removeAttribute('disabled');
+    "
+    type="text"
+    value=""
+    placeholder="Search models"
+    autofocus
+    autocomplete="off"
+    hx-swap="none"
+    class="resize-none rounded-full border-0 py-2.5 bg-transparent text-sm w-full placeholder:text-neutral-500 focus:outline-none focus:ring-0"
+  />
+</div>
+
+      </div>
+    </div>
+
+    
+    <div class="hidden lg:flex xl:flex-1 items-center space-x-2 justify-end ml-6 xl:ml-0">
+      
+        <a class="flex cursor-pointer items-center rounded-full bg-black/5 hover:bg-black/10 text-lg px-4 py-1.5 text-black whitespace-nowrap" href="/signin">Sign in</a>
+        <a class="flex cursor-pointer items-center rounded-full bg-neutral-800 text-lg px-4 py-1.5 text-white hover:bg-black whitespace-nowrap focus:bg-black" href="/download">Download</a>
+      
+    </div>
+    
+    
+    <div class="lg:hidden flex items-center">
+      <input type="checkbox" id="menu" class="peer hidden" />
+      <label for="menu" class="z-50 cursor-pointer peer-checked:hidden block">
+        <svg
+          class="h-8 w-8"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+          />
+        </svg>
+      </label>
+      <label for="menu" class="z-50 cursor-pointer hidden peer-checked:block fixed top-4 right-6">
+        <svg
+          class="h-8 w-8"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </label>
+      
+      <div class="fixed inset-0 bg-white z-40 hidden peer-checked:block overflow-y-auto">
+        <div class="flex flex-col space-y-5 pt-[5.5rem] text-3xl">
+          
+
+          
+          <a class="px-6" href="/search">Models</a>
+          <a class="px-6" href="/download">Download</a>
+          <a class="px-6" href="/docs">Docs</a>
+          <a class="px-6" href="/pricing">Pricing</a>
+
+          
+          <a href="/signin" class="block px-6">Sign in</a>
+          
+
+          
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+
+    
+
+    
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const formSearch = htmx.find('#form-input');
+    const navSearch = htmx.find('#navbar-input');
+    const mobileSortSelect = htmx.find('#mobile-sort-select');
+    const desktopSortSelect = htmx.find('#desktop-sort-select');
+
+    if (!formSearch || !navSearch) return;
+
+    [formSearch, navSearch].forEach(input => {
+      if (input.value) {
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    });
+
+    function updateInputStates() {
+      const isDesktop = window.innerWidth >= 1024;
+      formSearch.disabled = isDesktop;
+      navSearch.disabled = !isDesktop;
+
+      if(isDesktop) {
+        navSearch.focus();
+      } else {
+        formSearch.focus();
+      }
+    }
+
+    updateInputStates();
+
+    window.addEventListener('resize', updateInputStates);
+
+    
+    if (mobileSortSelect && desktopSortSelect) {
+      mobileSortSelect.value = desktopSortSelect.value;
+    }
+  });
+</script>
+
+<main class="mx-auto flex w-full max-w-2xl flex-col px-6 py-5 md:py-12 lg:px-8">
+  <form
+    hx-get="/search"
+    hx-target="#searchresults"
+    hx-trigger="submit, keyup changed delay:100ms from:[name=q], search"
+    hx-include="[name=q], [name=c], [name=o]"
+    hx-replace-url="true"
+  >
+  <input type="hidden" id="sort-value" name="o" value="">
+
+  <div class="flex lg:hidden justify-between space-x-2 items-center">
+    <div class="relative flex w-full appearance-none bg-black/5 border border-neutral-100 items-center rounded-full">
+      <span class="pl-4 text-neutral-400">
+        <svg class="w-[22px] h-[22px] fill-current" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <path d="m8.5 3c3.0375661 0 5.5 2.46243388 5.5 5.5 0 1.24832096-.4158777 2.3995085-1.1166416 3.3225711l4.1469717 4.1470988c.2928932.2928932.2928932.767767 0 1.0606602-.2662666.2662665-.6829303.2904726-.9765418.0726181l-.0841184-.0726181-4.1470988-4.1469717c-.9230626.7007639-2.07425014 1.1166416-3.3225711 1.1166416-3.03756612 0-5.5-2.4624339-5.5-5.5 0-3.03756612 2.46243388-5.5 5.5-5.5zm0 1.5c-2.209139 0-4 1.790861-4 4s1.790861 4 4 4 4-1.790861 4-4-1.790861-4-4-4z"/>
+        </svg>
+      </span>
+      <input
+        id="form-input"
+        name="q"
+        type="search"
+        value=""
+        class="resize-none rounded-full border-0 py-2.5 bg-transparent text-base sm:text-sm w-full placeholder:text-neutral-400 focus:outline-none focus:ring-0"
+        placeholder="Search models"
+        autofocus
+        autocomplete="off"
+        hx-on:input="
+          htmx.trigger('#navbar-input', 'update', {value: this.value});
+          document.getElementById('navbar-input').setAttribute('disabled', 'disabled');
+          this.removeAttribute('disabled');
+        "
+        hx-on:update="
+          this.value = event.detail.value;
+          this.setAttribute('disabled', 'disabled');
+          document.getElementById('navbar-input').removeAttribute('disabled');
+        "
+      />
+    </div>
+    <div class="sm:hidden block relative">
+      <select
+        id="mobile-sort-select"
+        class="absolute inset-0 w-6 px-3 py-1.5 opacity-0
+          appearance-none cursor-pointer rounded-lg
+          border border-neutral-200 bg-white text-neutral-900
+          hover:bg-neutral-50 focus:ring focus:outline-none
+          focus:ring-blue-300 focus:ring-opacity-75 focus:border-blue-400
+          sm:static sm:opacity-100 sm:min-w-[120px] sm:text-sm"
+        hx-on:change="
+          document.getElementById('sort-value').value = this.value;
+          document.getElementById('desktop-sort-select').value = this.value;
+          htmx.trigger(this.form, 'submit');
+        "
+      >
+        
+          <option value="popular" >Popular</option>
+        
+          <option value="newest" >Newest</option>
+        
+      </select>
+      <div class="w-6 px-3.5 py-1.5 rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
+        <span class="text-neutral-900 text-xs font-medium">⇅</span>
+      </div>
+    </div>
+  </div>
+    <div
+      id="searchresults"
+      class="w-full space-y-2 empty:hidden"
+      hx-on::after-swap="
+        const title = this.querySelector('[data-seo=title]');
+        const description = this.querySelector('[data-seo=description]');
+
+        if (title) {
+          document.title = title.textContent;
+        }
+        if (title && description) {
+          document.querySelector('meta[property=\'og:title\']').setAttribute('content', title.textContent);
+          document.querySelector('meta[property=\'og:description\']').setAttribute('content', description.textContent);
+
+          document.querySelector('meta[property=\'twitter:title\']').setAttribute('content', title.textContent);
+          document.querySelector('meta[property=\'twitter:description\']').setAttribute('content', description.textContent);
+
+          document.querySelector('meta[name=\'description\']').setAttribute('content', description.textContent);
+        }
+      "
+    >
+      
+<div hidden data-seo="title">Ollama</div>
+<div hidden data-seo="description">Search for models on Ollama.</div>
+
+<div class="flex justify-between mt-2">
+  
+  <fieldset class="flex flex-wrap">
+      <div class="relative inline-block mr-1.5 mb-1.5">
+        <input
+          hx-get="/search"
+          type="checkbox"
+          name="c"
+          value="cloud"
+          
+          id="cap-cloud"
+          class="peer sr-only"
+        >
+        </input>
+        <label
+          for="cap-cloud"
+          class="
+            px-3 py-1 text-sm font-medium rounded-3xl cursor-pointer text-center border border-neutral-200 text-neutral-800
+            inline-flex items-center justify-center
+            peer-checked:bg-neutral-100
+            focus:outline-none focus:ring-0 focus:ring-transparent
+            min-md:hover:bg-neutral-100
+            select-none
+          "
+        >Cloud</label>
+      </div>
+    
+      <div class="relative inline-block mr-1.5 mb-1.5">
+        <input
+          hx-get="/search"
+          type="checkbox"
+          name="c"
+          value="embedding"
+          
+          id="cap-embedding"
+          class="peer sr-only"
+        >
+        </input>
+        <label
+          for="cap-embedding"
+          class="
+            px-3 py-1 text-sm font-medium rounded-3xl cursor-pointer text-center border border-neutral-200 text-neutral-800
+            inline-flex items-center justify-center
+            peer-checked:bg-neutral-100
+            focus:outline-none focus:ring-0 focus:ring-transparent
+            min-md:hover:bg-neutral-100
+            select-none
+          "
+        >Embedding</label>
+      </div>
+    
+      <div class="relative inline-block mr-1.5 mb-1.5">
+        <input
+          hx-get="/search"
+          type="checkbox"
+          name="c"
+          value="vision"
+          
+          id="cap-vision"
+          class="peer sr-only"
+        >
+        </input>
+        <label
+          for="cap-vision"
+          class="
+            px-3 py-1 text-sm font-medium rounded-3xl cursor-pointer text-center border border-neutral-200 text-neutral-800
+            inline-flex items-center justify-center
+            peer-checked:bg-neutral-100
+            focus:outline-none focus:ring-0 focus:ring-transparent
+            min-md:hover:bg-neutral-100
+            select-none
+          "
+        >Vision</label>
+      </div>
+    
+      <div class="relative inline-block mr-1.5 mb-1.5">
+        <input
+          hx-get="/search"
+          type="checkbox"
+          name="c"
+          value="tools"
+          
+          id="cap-tools"
+          class="peer sr-only"
+        >
+        </input>
+        <label
+          for="cap-tools"
+          class="
+            px-3 py-1 text-sm font-medium rounded-3xl cursor-pointer text-center border border-neutral-200 text-neutral-800
+            inline-flex items-center justify-center
+            peer-checked:bg-neutral-100
+            focus:outline-none focus:ring-0 focus:ring-transparent
+            min-md:hover:bg-neutral-100
+            select-none
+          "
+        >Tools</label>
+      </div>
+    
+      <div class="relative inline-block mr-1.5 mb-1.5">
+        <input
+          hx-get="/search"
+          type="checkbox"
+          name="c"
+          value="thinking"
+          
+          id="cap-thinking"
+          class="peer sr-only"
+        >
+        </input>
+        <label
+          for="cap-thinking"
+          class="
+            px-3 py-1 text-sm font-medium rounded-3xl cursor-pointer text-center border border-neutral-200 text-neutral-800
+            inline-flex items-center justify-center
+            peer-checked:bg-neutral-100
+            focus:outline-none focus:ring-0 focus:ring-transparent
+            min-md:hover:bg-neutral-100
+            select-none
+          "
+        >Thinking</label>
+      </div>
+    
+  </fieldset>
+  <div class="hidden sm:block relative">
+    <select
+      id="desktop-sort-select"
+      class="absolute inset-0 w-6 px-3 py-1 opacity-0
+        appearance-none cursor-pointer rounded-lg
+        border border-neutral-200 bg-white text-neutral-900
+        hover:bg-neutral-50 focus:ring focus:outline-none
+        focus:ring-blue-300 focus:ring-opacity-75 focus:border-blue-400
+        sm:static sm:opacity-100 sm:min-w-[120px] sm:text-sm"
+      hx-on:change="
+        document.getElementById('sort-value').value = this.value;
+        document.getElementById('mobile-sort-select').value = this.value;
+        htmx.trigger(this.form, 'submit');
+      "
+    >
+      
+        <option value="popular" >Popular</option>
+      
+        <option value="newest" >Newest</option>
+      
+    </select>
+  </div>
+</div>
+
+<ul role="list" class="grid grid-cols-1">
+  
+    
+
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/kimi-k2.6" class="group w-full">
+    <div class="flex flex-col mb-1" title="kimi-k2.6">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>kimi-k2.6</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">Kimi K2.6 is an open-source, native multimodal agentic model that advances practical capabilities in long-horizon coding, coding-driven design, proactive autonomous execution, and swarm-based task orchestration.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>48.8K</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>1</span>
+            <span class="hidden sm:flex">&nbsp;Tag</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Apr 20, 2026 8:09 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>6 days ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/deepseek-v4-flash" class="group w-full">
+    <div class="flex flex-col mb-1" title="deepseek-v4-flash">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>deepseek-v4-flash</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">DeepSeek-V4-Flash is a preview of the DeepSeek-V4 series, a Mixture-of-Experts model with 284B total parameters and 13B activated, built for efficient reasoning across a 1M-token context window.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>18.3K</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>1</span>
+            <span class="hidden sm:flex">&nbsp;Tag</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Apr 24, 2026 8:29 AM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>2 days ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/qwen3.6" class="group w-full">
+    <div class="flex flex-col mb-1" title="qwen3.6">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>qwen3.6</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">Qwen3.6 delivers substantial upgrades in agentic coding and thinking preservation than previous Qwen models.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">27b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">35b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>537.9K</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>22</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Apr 22, 2026 7:02 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>4 days ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/glm-5.1" class="group w-full">
+    <div class="flex flex-col mb-1" title="glm-5.1">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>glm-5.1</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">GLM-5.1 is our next-generation flagship model for agentic engineering, with significantly stronger coding capabilities than its predecessor. It achieves state-of-the-art performance on SWE-Bench Pro and leads GLM-5 by a wide margin.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>114.9K</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>1</span>
+            <span class="hidden sm:flex">&nbsp;Tag</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Apr 7, 2026 3:00 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>2 weeks ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/medgemma" class="group w-full">
+    <div class="flex flex-col mb-1" title="medgemma">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>medgemma</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">MedGemma is a collection of Gemma 3 variants that are trained for performance on medical text and image comprehension.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+        
+        
+        
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">4b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">27b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>13.6K</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>9</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Apr 16, 2026 12:08 AM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>1 week ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/medgemma1.5" class="group w-full">
+    <div class="flex flex-col mb-1" title="medgemma1.5">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>medgemma1.5</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">MedGemma 1.5 4B is an updated version of the MedGemma 4B model.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+        
+        
+        
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">4b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>8,412</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>5</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Apr 16, 2026 12:04 AM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>1 week ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/gemma4" class="group w-full">
+    <div class="flex flex-col mb-1" title="gemma4">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>gemma4</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">Gemma 4 models are designed to deliver frontier-level performance at each size. They are well-suited for reasoning, agentic workflows, coding, and multimodal understanding.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">audio</span>
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">e2b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">e4b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">26b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">31b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>5.6M</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>29</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Apr 15, 2026 10:02 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>1 week ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/qwen3.5" class="group w-full">
+    <div class="flex flex-col mb-1" title="qwen3.5">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>qwen3.5</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">Qwen 3.5 is a family of open-source multimodal models that delivers exceptional utility and performance.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">0.8b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">2b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">4b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">9b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">27b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">35b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">122b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>7.2M</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>58</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Apr 1, 2026 11:10 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>3 weeks ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/lfm2" class="group w-full">
+    <div class="flex flex-col mb-1" title="lfm2">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>lfm2</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">LFM2 is a family of hybrid models designed for on-device deployment. LFM2-24B-A2B is the largest model in the family, scaling the architecture to 24 billion parameters while keeping inference efficient.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+        
+        
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">24b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>1.1M</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>6</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Feb 24, 2026 1:17 AM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>2 months ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/qwen3-coder-next" class="group w-full">
+    <div class="flex flex-col mb-1" title="qwen3-coder-next">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>qwen3-coder-next</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">Qwen3-Coder-Next is a coding-focused language model from Alibaba&#39;s Qwen team, optimized for agentic coding workflows and local development.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+        
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>1.1M</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>4</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Feb 6, 2026 5:23 AM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>2 months ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/glm-4.7-flash" class="group w-full">
+    <div class="flex flex-col mb-1" title="glm-4.7-flash">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>glm-4.7-flash</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">As the strongest model in the 30B class, GLM-4.7-Flash offers a new option for lightweight deployment that balances performance and efficiency.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+        
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>1.2M</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>4</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Jan 24, 2026 11:40 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>3 months ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/translategemma" class="group w-full">
+    <div class="flex flex-col mb-1" title="translategemma">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>translategemma</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">A new collection of open translation models built on Gemma 3, helping people communicate across 55 languages.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+        
+        
+        
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">4b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">12b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">27b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>1.2M</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>13</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Jan 16, 2026 8:57 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>3 months ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/lfm2.5-thinking" class="group w-full">
+    <div class="flex flex-col mb-1" title="lfm2.5-thinking">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>lfm2.5-thinking</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">LFM2.5 is a new family of hybrid models designed for on-device deployment.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+        
+        
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">1.2b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>1.1M</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>5</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Jan 20, 2026 12:41 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>3 months ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/ministral-3" class="group w-full">
+    <div class="flex flex-col mb-1" title="ministral-3">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>ministral-3</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">The Ministral 3 family is designed for edge deployment, capable of running on a wide range of hardware.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+        
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">3b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">8b</span>
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">14b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>1M</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>16</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Dec 13, 2025 1:59 AM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>4 months ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/devstral-small-2" class="group w-full">
+    <div class="flex flex-col mb-1" title="devstral-small-2">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>devstral-small-2</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">24B model that excels at using tools to explore codebases, editing multiple files and power software engineering agents.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+        
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">24b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>793.6K</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>6</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Dec 13, 2025 6:47 AM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>4 months ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/nemotron-3-super" class="group w-full">
+    <div class="flex flex-col mb-1" title="nemotron-3-super">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>nemotron-3-super</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">NVIDIA Nemotron 3 Super is a 120B open MoE model activating just 12B parameters to deliver maximum compute efficiency and accuracy for complex multi-agent applications.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">120b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>245.4K</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>7</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Mar 11, 2026 4:00 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>1 month ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/glm-ocr" class="group w-full">
+    <div class="flex flex-col mb-1" title="glm-ocr">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>glm-ocr</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">GLM-OCR is a multimodal OCR model for complex document understanding, built on the GLM-V encoder–decoder architecture.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+        
+        
+        
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>283K</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>3</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Feb 2, 2026 11:29 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>2 months ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/nemotron-cascade-2" class="group w-full">
+    <div class="flex flex-col mb-1" title="nemotron-cascade-2">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>nemotron-cascade-2</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">An open 30B MoE model from NVIDIA with 3B activated parameters that delivers strong reasoning and agentic capabilities.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">30b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>105.6K</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>3</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Mar 20, 2026 8:10 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>1 month ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/qwen3-next" class="group w-full">
+    <div class="flex flex-col mb-1" title="qwen3-next">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>qwen3-next</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">The first installment in the Qwen3-Next series with strong performance in terms of both parameter efficiency and inference speed.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+          <span x-test-size class="inline-flex my-1 items-center rounded-md bg-[#ddf4ff] px-2 py-[2px] text-xs font-medium text-blue-600 sm:text-[13px]">80b</span>
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>528.5K</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>10</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Dec 9, 2025 12:41 AM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>4 months ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/kimi-k2.5" class="group w-full">
+    <div class="flex flex-col mb-1" title="kimi-k2.5">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>kimi-k2.5</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">Kimi K2.5 is an open-source, native multimodal agentic model that seamlessly integrates vision and language understanding with advanced agentic capabilities, instant and thinking modes, as well as conversational and agentic paradigms.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>260.7K</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>1</span>
+            <span class="hidden sm:flex">&nbsp;Tag</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Jan 27, 2026 7:29 AM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>2 months ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+
+<li
+  hx-get="/search?page=2"
+  hx-trigger="revealed"
+  hx-swap="outerHTML"
+  hx-target="this"
+  hx-include="[name=c], [name=o]"
+></li>
+
+
+  
+</ul>
+
+    </div>
+  </form>
+</main>
+<style>
+  #form-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    height: 16px;
+    width: 16px;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'><line x1='18' y1='6' x2='6' y2='18'></line><line x1='6' y1='6' x2='18' y2='18'></line></svg>");
+    background-size: 16px 16px;
+    cursor: pointer;
+    margin-right: 5px;
+  }
+</style>
+
+
+    
+      
+<footer class="fixed bottom-0 left-0 right-0 z-30">
+
+  <div class="hidden min-[850px]:flex items-center justify-between px-6 py-3.5 text-xs text-neutral-500">
+    <div>© 2026 Ollama</div>
+    <div class="flex space-x-6">
+      <a href="/blog" class="hover:underline">Blog</a>
+      <a href="mailto:hello@ollama.com" class="hover:underline">Contact</a>
+    </div>
+  </div>
+
+</footer>
+
+    
+
+    
+    <span class="hidden" id="end_of_template"></span>
+  </body>
+</html>

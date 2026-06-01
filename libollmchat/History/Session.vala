@@ -651,6 +651,9 @@ namespace OLLMchat.History
 			
 			// Continue to agent processing below (user message is passed to agent, not added here)
 			
+			// Persist user turn before the model request (survives early failures / loop stop)
+			this.save_async.begin();
+
 			// User message - ensure agent handler is set (create if needed)
 			this.ensure_agent_handler();
 			

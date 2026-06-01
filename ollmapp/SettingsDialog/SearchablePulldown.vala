@@ -32,6 +32,11 @@ namespace OLLMapp.SettingsDialog
 		public Gtk.Popover popup { get; private set; }
 		public Gtk.ListView list { get; private set; }
 		private Gtk.ScrolledWindow scrolled_window;
+		private Gtk.Stack popup_stack;
+		private Gtk.Spinner search_spinner;
+
+		/** When true, popover shows a spinner instead of the (possibly empty) list. */
+		public bool search_loading { get; set; default = false; }
 		
 		// Track last search text
 		private string last_search_text = "";
@@ -177,7 +182,19 @@ namespace OLLMapp.SettingsDialog
 			});
 			
 			this.scrolled_window.child = this.list;
-			
+
+			var loading_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 8) {
+				margin_top = 16,
+				margin_bottom = 16,
+				margin_start = 16,
+				margin_end = 16,
+				halign = Gtk.Align.CENTER,
+				valign = Gtk.Align.CENTER
+			};
+			this.search_spinner = new Gtk.Spinner();
+			loading_box.append(this.search_spinner);
+			loading_box.append(new Gtk.Label("Searching ollama.com…"));
+
 			// Wrap scrolled window in a box that fills the popup to catch all scroll events
 			var popup_wrapper = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
@@ -203,8 +220,26 @@ namespace OLLMapp.SettingsDialog
 				return true;
 			});
 			popup_wrapper.add_controller(wrapper_scroll_controller);
-			
-			this.popup.child = popup_wrapper;
+
+			this.popup_stack = new Gtk.Stack() {
+				hexpand = true,
+				vexpand = true
+			};
+			this.popup_stack.add_named(loading_box, "loading");
+			this.popup_stack.add_named(popup_wrapper, "list");
+			this.popup_stack.visible_child_name = "list";
+
+			this.notify["search-loading"].connect(() => {
+				if (this.search_loading) {
+					this.popup_stack.visible_child_name = "loading";
+					this.search_spinner.start();
+				} else {
+					this.search_spinner.stop();
+					this.popup_stack.visible_child_name = "list";
+				}
+			});
+
+			this.popup.child = this.popup_stack;
 			
 			// Update arrow visibility when show_arrow changes
 			this.notify["show-arrow"].connect(() => {
@@ -351,22 +386,30 @@ namespace OLLMapp.SettingsDialog
 		/**
 		 * Set popover visibility.
 		 */
-		public void set_popup_visible(bool visible)
+		public void set_popup_visible(bool visible, bool allow_empty = false)
 		{
-			if (this.popup.visible == visible) {
-				return;
-			}
-			
 			if (!visible) {
-				this.popup.popdown();
+				if (this.popup.visible) {
+					this.popup.popdown();
+				}
+				return;
+			}
+
+			if (this.popup.visible) {
+				GLib.Idle.add(() => {
+					if (this.popup.visible && this.list.model != null && this.list.model.get_n_items() > 0) {
+						var scroll = new Gtk.ScrollInfo();
+						this.list.scroll_to(0, Gtk.ListScrollFlags.NONE, scroll);
+					}
+					return false;
+				});
 				return;
 			}
 			
-			// Check if list has a model with items
 			if (this.list.model == null) {
 				return;
 			}
-			if (this.list.model.get_n_items() == 0) {
+			if (!allow_empty && this.list.model.get_n_items() == 0) {
 				return;
 			}
 			
@@ -406,12 +449,15 @@ namespace OLLMapp.SettingsDialog
 				int target_height = available_height.clamp(200, max_height);
 				
 				this.scrolled_window.set_min_content_height(target_height);
-					this.scrolled_window.vadjustment.value = this.scrolled_window.vadjustment.lower;
+					if (this.list.model != null && this.list.model.get_n_items() > 0) {
+						var scroll = new Gtk.ScrollInfo();
+						this.list.scroll_to(0, Gtk.ListScrollFlags.NONE, scroll);
+					}
 				}
 				return false;
 			});
 		}
-		
+
 		/**
 		 * Handle entry text changes.
 		 */
@@ -428,6 +474,15 @@ namespace OLLMapp.SettingsDialog
 			
 			// Emit signal for caller to handle filtering
 			this.search_changed(search_text);
+			if (this.popup.visible) {
+				GLib.Idle.add(() => {
+					if (this.popup.visible && this.list.model != null && this.list.model.get_n_items() > 0) {
+						var scroll = new Gtk.ScrollInfo();
+						this.list.scroll_to(0, Gtk.ListScrollFlags.NONE, scroll);
+					}
+					return false;
+				});
+			}
 		}
 		
 		/**

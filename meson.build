@@ -22,6 +22,7 @@ add_project_arguments(['--target-glib=auto'], language: 'vala')
 # Build libraries in dependency order
 subdir('libocsqlite')      # No dependencies
 subdir('libocmarkdown')    # No dependencies
+subdir('libollamaweb')     # No dependencies on libollmchat (Phase 1)
 subdir('libocmarkdowngtk') # Depends on libocmarkdown
 subdir('libocfiles')       # Depends on libocsqlite
 subdir('libollmchat')      # Depends on libocsqlite
@@ -65,6 +66,7 @@ executables_info = [
   ['oc-markdown-test', 'examples/oc-markdown-test'],
   ['oc-markdown-doc-test', 'examples/oc-markdown-doc-test'],
   ['oc-html2md', 'examples/oc-html2md'],
+  ['oc-test-ollamaweb', 'examples/oc-test-ollamaweb'],
   ['oc-md2html', 'examples/oc-md2html'],
   ['oc-diff', 'examples/oc-diff'],
   ['oc-migrate-editors', 'examples/oc-migrate-editors'],
@@ -76,6 +78,7 @@ executables_info = [
 lib_path = ':'.join([
   meson.current_build_dir() / 'libocsqlite',
   meson.current_build_dir() / 'libocmarkdown',
+  meson.current_build_dir() / 'libollamaweb',
   meson.current_build_dir() / 'libocmarkdowngtk',
   meson.current_build_dir() / 'libocfiles',
   meson.current_build_dir() / 'liboccoder',

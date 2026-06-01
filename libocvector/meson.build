@@ -87,6 +87,7 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocsqlite',
   meson.current_build_dir() / '..' / 'libocfiles',
   meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollamaweb',
 ])
 
 # Build the library
@@ -101,6 +102,7 @@ ocvector_base_lib = library('ocvector',
   include_directories: [
     include_directories('.'),
     include_directories('..' / 'libollmchat'),
+    include_directories('..' / 'libollamaweb'),
     include_directories('..' / 'libocsqlite'),
     include_directories('..' / 'libocfiles'),
   ],
@@ -113,29 +115,26 @@ ocvector_base_lib = library('ocvector',
     '--pkg=tree-sitter',  # Tree-sitter via vapi
     '--pkg=ocfiles',
     '--pkg=ollmchat',
+    '--pkg=ollamaweb',
     '--pkg=ocsqlite',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   ],
   install: true
 )
 
-# Delete ocvector-meson.vapi to avoid conflicts when generating custom VAPI
-ocvector_meson_vapi_deleted = custom_target('ocvector-meson-vapi-deleted',
-  output: 'ocvector-meson-vapi-deleted.marker',
-  input: [],
-  command: [
-    find_program('sh'),
-    '-c',
-    'rm -f ' + meson.current_build_dir() / 'ocvector-meson.vapi' + ' && touch @OUTPUT@'
-  ],
-  depends: [ocvector_base_lib],  # Ensure library is built first (so meson VAPI exists to delete)
-  build_by_default: true
-)
-
-# Manually generate ocvector.vapi with correct command line order
+# Manually generate ocvector.vapi with correct --pkg order (installed as ocvector.vapi).
+#
+# Meson also emits ocvector-meson.vapi from library(). Do NOT delete that file: ninja
+# tracks it as a library output, so deleting it forces a full ocvector rebuild every run.
+#
+# The old ocvector-meson-vapi-deleted target removed it so this custom_target could add
+# --vapidir=build/libocvector without duplicate-type errors. Instead we omit that vapidir
+# here (header path is explicit below). Downstream uses --pkg=ocvector + ocvector_vapi_dep
+# (link_args), not link_with: [ocvector_base_lib], so they never pick up ocvector-meson.vapi.
 ocvector_vapi = custom_target('ocvector-vapi',
   output: 'ocvector.vapi',
   input: ocvector_src,
@@ -149,7 +148,7 @@ ocvector_vapi = custom_target('ocvector-vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir(),  # Can include now since ocvector-meson.vapi is deleted
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
@@ -160,6 +159,7 @@ ocvector_vapi = custom_target('ocvector-vapi',
     '--pkg', 'tree-sitter',  # Tree-sitter via vapi
     '--pkg', 'ocfiles',
     '--pkg', 'ollmchat',
+    '--pkg', 'ollamaweb',
     '--pkg', 'ocsqlite',
     '--pkg', 'gobject-2.0',
     '--pkg', 'glib-2.0',
@@ -169,7 +169,7 @@ ocvector_vapi = custom_target('ocvector-vapi',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
   ],
-  depends: [ocvector_base_lib, ocvector_meson_vapi_deleted],  # Ensure library is built and meson VAPI is deleted
+  depends: [ocvector_base_lib, ollamaweb_vapi],  # ollmchat.vapi needs ollamaweb.vapi
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'
