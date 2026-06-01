@@ -106,6 +106,15 @@ valadoc_docs = custom_target('valadoc',
     '../libocmarkdowngtk/State.vala',
     '../libocmarkdowngtk/TopState.vala',
     '../libocmarkdowngtk/Table.vala',
+    # libollamaweb sources (parsed directly to avoid requiring built VAPI in docs-only CI job)
+    '../libollamaweb/ModelVariant.vala',
+    '../libollamaweb/Model.vala',
+    '../libollamaweb/Search/Category.vala',
+    '../libollamaweb/Search/Parser.vala',
+    '../libollamaweb/Search/Client.vala',
+    '../libollamaweb/Search/Service.vala',
+    '../libollamaweb/Search/Cache.vala',
+    '../libollamaweb/Search/Session.vala',
     # libollmchat sources (depends on libocsqlite)
     '../libollmchat/namespace.vala',  # Namespace documentation
     '../libollmchat/ApplicationInterface.vala',
@@ -169,12 +178,6 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/ChatPermission/Dummy.vala',
     '../libollmchat/Prompt/namespace.vala',  # Prompt namespace documentation
     '../libollmchat/Prompt/Template.vala',  # Must come before libocvector PromptTemplate (extends this)
-    '../libollmchat/Agent/namespace.vala',  # Agent namespace documentation
-    '../libollmchat/Agent/Factory.vala',  # Must come before History/Manager.vala (Manager uses Agent.Factory)
-    '../libollmchat/Agent/Interface.vala',  # Must come before Base (Base implements Interface)
-    '../libollmchat/Agent/Base.vala',  # Must come after Factory (Base references Factory)
-    '../libollmchat/Agent/JustAskFactory.vala',  # Must come after Base (JustAskFactory uses Factory)
-    '../libollmchat/Agent/JustAsk.vala',  # Must come after JustAskFactory (JustAsk uses Base)
     '../libollmchat/Agent/namespace.vala',  # Agent namespace documentation
     '../libollmchat/Agent/Factory.vala',  # Must come before History/Manager.vala (Manager uses Agent.Factory)
     '../libollmchat/Agent/Interface.vala',  # Must come before Base (Base implements Interface)
@@ -357,8 +360,6 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
     '--pkg=libxml-2.0',
-    '--pkg=ollamaweb',
-    '--vapidir', meson.project_build_root() / 'libollamaweb',
     '--pkg=sqlite3',
     '--pkg=gtk4',
     '--pkg=libadwaita-1',
