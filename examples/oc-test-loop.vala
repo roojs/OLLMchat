@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
  *
  * Read a text file, split on whitespace (one streaming delta per word), and
- * run the same check_back_token logic as Call.Chat (newest-first, cap 100).
+ * run the same detect_looping logic as Call.Chat (check before prepend, cap 200).
  *
  *   oc-test-loop <file>
  */
@@ -20,17 +20,6 @@ class DummyChatCall : OLLMchat.Call.ChatBase {
 			Gee.ArrayList<OLLMchat.Message> messages,
 			GLib.Cancellable? cancellable = null) throws GLib.Error {
 		throw new OLLMchat.OllmError.INVALID_ARGUMENT("dummy");
-	}
-}
-
-static void push_delta(OLLMchat.Response.Chat r, string token)
-{
-	if (token.length == 0) {
-		return;
-	}
-	r.back_tokens.insert(0, token);
-	if (r.back_tokens.size > 100) {
-		r.back_tokens.remove_at(r.back_tokens.size - 1);
 	}
 }
 
@@ -61,8 +50,7 @@ int main(string[] args)
 		bool any_loop = false;
 		int first_loop_delta = -1;
 		for (int i = 0; i < chunks.length; i++) {
-			push_delta(r, chunks[i]);
-			if (!r.check_back_token()) {
+			if (!r.detect_looping(chunks[i])) {
 				if (!any_loop) {
 					first_loop_delta = i + 1;
 				}

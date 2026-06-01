@@ -69,7 +69,7 @@ namespace OLLMchat.Response
 		public string new_content { get; set; default = ""; }
 		public string new_thinking { get; set; default = ""; }
 
-		/** Newest streaming delta at index 0; used by {@link check_back_token}. Max 100 entries. Not serialized to JSON. */
+		/** Newest streaming delta at index 0; used by {@link check_back_token}. Max 200 entries. Not serialized to JSON. */
 		public Gee.ArrayList<string> back_tokens { get; set; default = new Gee.ArrayList<string>(); }
 
 		// Computed properties (hidden from serialization/deserialization)
@@ -132,54 +132,55 @@ namespace OLLMchat.Response
 			this.message = new Message("assistant", "");
 		}
 
-		public bool check_back_token()
+		public bool check_back_token(string token)
 		{
-			if (this.back_tokens.size < 10) {
+			// After prepend, window must hold twelve equidistant slots plus a five-word phrase.
+			if (this.back_tokens.size < 71) {
 				return true;
 			}
 
-			var t0 = this.back_tokens.get(0);
-			this.back_tokens.set(0, "");
+			// Step 1: incoming token will be the head (index 0) once prepended.
+			// Step 2: next occurrence in the current buffer — spacing in the after-prepend window.
+			var hit = this.back_tokens.index_of(token);
+			if (hit < 0) {
+				return true;
+			}
+			var dist = hit + 1;
 
-			int[] matches = { 0 };
+			// Spacing too tight for a real loop — not repeating yet.
+			if (dist <= 5) {
+				return true;
+			}
 
-			for (int i = 0; i < 4; i++) {
-				int pos = this.back_tokens.index_of(t0);
-
-				if (pos < 0 || pos + 5 > this.back_tokens.size) {
-					foreach (int m in matches) {
-						this.back_tokens.set(m, t0);
-					}
+			// Phase 1: twelve equidistant slots — same word at each (back_tokens only).
+			for (var i = 0; i < 12; i++) {
+				var pos = i * dist;
+				// Need five words from this slot once the token is prepended.
+				if (pos + 5 > this.back_tokens.size + 1) {
 					return true;
 				}
-
-				matches += pos;
-
-				if (matches.length > 2) {
-					int n = matches.length;
-					int dist = matches[n - 1] - matches[n - 2];
-					if (dist != matches[n - 2] - matches[n - 3] || dist <= 5) {
-						matches.resize(matches.length - 1);
-						continue;
-					}
-				}
-			}
-
-			foreach (int m in matches) {
-				this.back_tokens.set(m, t0);
-			}
-
-			var str = this.back_tokens.to_array();
-
-			foreach (int match in matches) {
-				if (match == 0) {
-					continue;
-				}
-				if (string.joinv(" ", str[match:match + 5]) != string.joinv(" ", str[0:5])) {
+				// Slot 0 is the incoming token; older slots are back_tokens.get(pos - 1).
+				if (i > 0 && this.back_tokens.get(pos - 1) != token) {
 					return true;
 				}
 			}
 
+			// Phase 2: five-word phrase at each slot — one array snapshot for slice + join.
+			var words = this.back_tokens.to_array();
+			var head_phrase = token + " " + string.joinv(" ", words[0:4]);
+
+			// Same twelve slots — slice range and join.
+			for (var i = 0; i < 12; i++) {
+				var pos = i * dist;
+				var phrase = (pos == 0)
+					? head_phrase
+					: string.joinv(" ", words[pos - 1:pos + 4]);
+				if (phrase != head_phrase) {
+					return true;
+				}
+			}
+
+			// Twelve equidistant word hits and twelve matching phrases — loop.
 			return false;
 		}
 
@@ -194,12 +195,13 @@ namespace OLLMchat.Response
 				if (w.length == 0) {
 					continue;
 				}
-				this.back_tokens.insert(0, w);
-				if (this.back_tokens.size > 100) {
-					this.back_tokens.remove_at(this.back_tokens.size - 1);
-				}
-				if (!this.check_back_token()) {
+				// Check before prepend — incoming word is the head for check_back_token.
+				if (!this.check_back_token(w)) {
 					return false;
+				}
+				this.back_tokens.insert(0, w);
+				if (this.back_tokens.size > 200) {
+					this.back_tokens.remove_at(this.back_tokens.size - 1);
 				}
 			}
 			return true;
