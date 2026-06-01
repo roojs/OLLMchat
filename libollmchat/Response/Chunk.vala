@@ -165,8 +165,21 @@ namespace OLLMchat.Response
 						}
 						var delta_node = choice_obj.get_member("delta");
 						var msg = Json.gobject_deserialize(typeof(Message), delta_node) as Message;
-						if (msg != null) {
-							this.choices.add(msg);
+						if (msg == null) {
+							continue;
+						}
+						this.choices.add(msg);
+						if (msg.thinking != "") {
+							continue;
+						}
+						var delta_obj = delta_node.get_object();
+						if (delta_obj.has_member("reasoning")) {
+							msg.thinking = delta_obj.get_member("reasoning").get_string();
+							continue;
+						}
+						if (delta_obj.has_member("reasoning_content")) {
+							msg.thinking = delta_obj.get_member("reasoning_content").get_string();
+							continue;
 						}
 					}
 					if (this.choices.size > 0) {
