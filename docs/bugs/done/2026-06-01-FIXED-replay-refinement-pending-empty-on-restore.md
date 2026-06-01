@@ -1,6 +1,6 @@
 # Replay: Gee assertion in `on_replay` (REFINEMENT `content-stream`) — empty `pending` on restore
 
-**Status:** Phase 1 **applied** — manual verify pending (reopen failing session).
+**Status:** FIXED (2026-06-01) — Phase 1 applied and verified on session restore
 
 **Started:** 2026-06-01
 
@@ -95,7 +95,7 @@ Intro: hunks are **Remove** / **Replace with** from the tree; verify surrounding
 			// Live: discard a failed parse so send_async retries on a clean List.
 			// Replay (GTK restore / ReplayChat): keep the parsed steps — the transcript
 			// already passed live; spurious validation issues must not wipe pending before
-			// on_replay reaches refinement / exec (docs/bugs/2026-06-01-replay-refinement-pending-empty-on-restore.md).
+			// on_replay reaches refinement / exec (docs/bugs/done/2026-06-01-FIXED-replay-refinement-pending-empty-on-restore.md).
 			this.runner.pending = new List(this.runner);
 		}
 ```

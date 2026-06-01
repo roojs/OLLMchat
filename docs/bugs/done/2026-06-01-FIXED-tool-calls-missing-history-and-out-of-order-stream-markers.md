@@ -1,6 +1,6 @@
 # Tool calls missing from history, with out-of-order stream markers
 
-**Status:** ⏳ OPEN — ✅ §1–§3 applied in tree; verify on remote `qwen3.6:latest`
+**Status:** FIXED (2026-06-01) — §1–§3 applied in tree
 
 **Started:** 2026-06-01
 

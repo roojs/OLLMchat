@@ -141,7 +141,7 @@ public class ResultParser : Object
 			// Live: discard a failed parse so send_async retries on a clean List.
 			// Replay (GTK restore / ReplayChat): keep the parsed steps — the transcript
 			// already passed live; spurious validation issues must not wipe pending before
-			// on_replay reaches refinement / exec (docs/bugs/2026-06-01-replay-refinement-pending-empty-on-restore.md).
+			// on_replay reaches refinement / exec (docs/bugs/done/2026-06-01-FIXED-replay-refinement-pending-empty-on-restore.md).
 			this.runner.pending = new List(this.runner);
 		}
 	}

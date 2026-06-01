@@ -1,6 +1,6 @@
 # v1 ChatCompletions: thinking missing from stream and session history
 
-**Status:** ⏳ OPEN — §1–§2 applied in tree; verify on remote `qwen3.6:latest`
+**Status:** FIXED (2026-06-01) — §1–§2 applied and verified on `qwen3.6:latest` via `oc-test-cli`
 
 **Started:** 2026-06-01
 
@@ -9,7 +9,7 @@
 **Related:**
 
 - ℹ️ `docs/bugs/done/2026-05-30-FIXED-chatcompletions-streaming-ui-missing.md` — prior v1 stream fix claimed `reasoning` / `reasoning_content` mapping
-- ℹ️ `docs/bugs/2026-06-01-tool-calls-missing-history-and-out-of-order-stream-markers.md` — same session family (`12-50-30.json`)
+- ℹ️ `docs/bugs/done/2026-06-01-FIXED-tool-calls-missing-history-and-out-of-order-stream-markers.md` — same session family (`12-50-30.json`)
 - ℹ️ `docs/plans/1.24.3-DONE-openai-api-chat.md` — spec: v1 delta `reasoning_content` → `Message.thinking`
 
 ---
@@ -233,4 +233,4 @@ Hunks are **Remove** / **Replace with** from the tree. Verify surrounding contex
 
 - 🔷 **`--legacy`** works because `/api/chat` uses `message.thinking` — a real property with non-null `pspec`.
 
-- ⏳ **Fix:** §1–§2 applied; verified on `qwen3.6:latest` via `oc-test-cli` (v1 shows `Thinking:` block). Move to `docs/bugs/done/` when app/history check passes.
+- ⏳ **Fix:** §1–§2 applied and verified; archived under `docs/bugs/done/`.
