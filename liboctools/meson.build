@@ -50,6 +50,7 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocsqlite',
   meson.current_build_dir() / '..' / 'libocfiles',
   meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollamaweb',
 ])
 
 octools_base_lib = library('octools',
@@ -59,10 +60,12 @@ octools_base_lib = library('octools',
   vala_vapi: 'octools-meson.vapi',  # Use different name so our custom_target can use 'octools.vapi'
   build_rpath: lib_build_rpath,
   include_directories: [
-    include_directories('..' / 'libollmchat'),  # For ollmchat.h header
+    include_directories('..' / 'libollmchat'),
+    include_directories('..' / 'libollamaweb'),
   ],
   vala_args: [
     '--pkg=ollmchat',
+    '--pkg=ollamaweb',
     '--pkg=ocfiles',
     '--pkg=ocsqlite',
     '--pkg=ocmarkdown',
@@ -74,6 +77,7 @@ octools_base_lib = library('octools',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
     '--vapidir', '/usr/share/vala/vapi'  # System VAPI directory (last, so local takes priority)
   ],
@@ -93,6 +97,7 @@ octools_vapi = custom_target('octools-vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
     '--pkg', 'posix',
@@ -102,6 +107,7 @@ octools_vapi = custom_target('octools-vapi',
     '--pkg', 'tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg', 'sqlite3',  # Required for ocsqlite.vapi (Sqlite namespace)
     '--pkg', 'ollmchat',
+    '--pkg', 'ollamaweb',
     '--pkg', 'ocfiles',
     '--pkg', 'ocmarkdown',
     '--pkg', 'ocsqlite',
@@ -114,7 +120,7 @@ octools_vapi = custom_target('octools-vapi',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
   ],
-  depends: [octools_base_lib],  # Ensure library is built first (so header exists)
+  depends: [octools_base_lib, ollamaweb_vapi],
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'

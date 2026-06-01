@@ -1,0 +1,774 @@
+
+
+
+
+
+
+
+
+
+<!doctype html>
+<html class="h-full overflow-y-scroll">
+  <head>
+    <title>gemini-3-flash-preview · Ollama</title>
+
+    <meta charset="utf-8" />
+    <meta name="description" content="Search for models on Ollama."/>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta property="og:title" content="gemini-3-flash-preview · Ollama" />
+    <meta property="og:description" content="Search for models on Ollama." />
+    <meta property="og:url" content="https://ollama.com/search" />
+    <meta property="og:image" content="https://ollama.com/public/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="628" />
+    <meta property="og:type" content="website" />
+
+    <meta name="robots" content="index, follow" />
+
+    <meta property="twitter:card" content="summary" />
+    <meta property="twitter:title" content="gemini-3-flash-preview · Ollama" />
+    <meta property="twitter:description" content="Search for models on Ollama." />
+    <meta property="twitter:site" content="ollama" />
+
+    <meta property="twitter:image:src" content="https://ollama.com/public/og-twitter.png" />
+    <meta property="twitter:image:width" content="1200" />
+    <meta property="twitter:image:height" content="628" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+    <link rel="icon" type="image/png" sizes="16x16" href="/public/icon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/public/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/public/icon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/public/icon-64x64.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/public/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/public/android-chrome-icon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/public/android-chrome-icon-512x512.png" />
+
+    
+    
+
+    <link href="/public/tailwind.css?v=e7a7acaa9e0a51676a508d24af61881f" rel="stylesheet" />
+    <link href="/public/vendor/prism/prism.css?v=e7a7acaa9e0a51676a508d24af61881f" rel="stylesheet" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Ollama",
+        "url": "https://ollama.com"
+      }
+    </script>
+
+    <script type="text/javascript">
+      function copyToClipboard(element) {
+        let commandElement = null;
+        const preElement = element.closest('pre');
+        const languageNoneElement = element.closest('.language-none');
+
+        if (preElement) {
+          commandElement = preElement.querySelector('code');
+        } else if (languageNoneElement) {
+          commandElement = languageNoneElement.querySelector('.command');
+        } else {
+          const parent = element.parentElement;
+          if (parent) {
+            commandElement = parent.querySelector('.command');
+          }
+        }
+
+        if (!commandElement) {
+          console.error('No code or command element found');
+          return;
+        }
+
+        const code = commandElement.textContent ? commandElement.textContent.trim() : commandElement.value;
+
+        navigator.clipboard
+          .writeText(code)
+          .then(() => {
+            const copyIcon = element.querySelector('.copy-icon')
+            const checkIcon = element.querySelector('.check-icon')
+
+            copyIcon.classList.add('hidden')
+            checkIcon.classList.remove('hidden')
+
+            setTimeout(() => {
+              copyIcon.classList.remove('hidden')
+              checkIcon.classList.add('hidden')
+            }, 2000)
+          })
+      }
+    </script>
+    
+    <script>
+      
+      function getIcon(url) {
+        url = url.toLowerCase();
+        if (url.includes('x.com') || url.includes('twitter.com')) return 'x';
+        if (url.includes('github.com')) return 'github';
+        if (url.includes('linkedin.com')) return 'linkedin';
+        if (url.includes('youtube.com')) return 'youtube';
+        if (url.includes('hf.co') || url.includes('huggingface.co') || url.includes('huggingface.com')) return 'hugging-face';
+        return 'default';
+      }
+
+      function setInputIcon(input) {
+        const icon = getIcon(input.value);
+        const img = input.previousElementSibling.querySelector('img');
+        img.src = `/public/social/${icon}.svg`;
+        img.alt = `${icon} icon`;
+      }
+
+      function setDisplayIcon(imgElement, url) {
+        const icon = getIcon(url);
+        imgElement.src = `/public/social/${icon}.svg`;
+        imgElement.alt = `${icon} icon`;
+      }
+    </script>
+    
+    <script src="/public/vendor/htmx/bundle.js"></script>
+  </head>
+
+  <body
+    class="
+      antialiased
+      min-h-screen
+      w-full
+      m-0
+      flex
+      flex-col
+    "
+    hx-on:keydown="
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        // Ignore key events in input fields.
+        return;
+      }
+      if ((event.metaKey && event.key === 'k') || event.key === '/') {
+        event.preventDefault();
+        const sp = htmx.find('#search') || htmx.find('#navbar-input');
+        sp.focus();
+      }
+    "
+  >
+    
+        
+<header class="sticky top-0 z-40 bg-white underline-offset-4 lg:static">
+  <nav class="flex w-full items-center justify-between px-6 py-[9px]">
+    <a href="/" class="z-50">
+      <img src="/public/ollama.png" class="w-8" alt="Ollama" />
+    </a>
+    
+    
+    <div class="hidden lg:flex xl:flex-1 items-center space-x-6 ml-6 mr-6 xl:mr-0 text-lg">
+      <a class="hover:underline focus:underline focus:outline-none focus:ring-0" href="/search">Models</a>
+      <a class="hover:underline focus:underline focus:outline-none focus:ring-0" href="/docs">Docs</a>
+      <a class="hover:underline focus:underline focus:outline-none focus:ring-0" href="/pricing">Pricing</a>
+    </div>
+
+    
+    <div class="flex-grow justify-center items-center hidden lg:flex">
+      <div class="relative w-full xl:max-w-[28rem]">
+        
+<div class="relative flex w-full appearance-none bg-black/5 border border-neutral-100 items-center rounded-full">
+<span id="searchIcon" class="pl-2 text-2xl text-neutral-500">
+  <svg class="mt-0.25 ml-1.5 h-5 w-5 fill-current" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+    <path d="m8.5 3c3.0375661 0 5.5 2.46243388 5.5 5.5 0 1.24832096-.4158777 2.3995085-1.1166416 3.3225711l4.1469717 4.1470988c.2928932.2928932.2928932.767767 0 1.0606602-.2662666.2662665-.6829303.2904726-.9765418.0726181l-.0841184-.0726181-4.1470988-4.1469717c-.9230626.7007639-2.07425014 1.1166416-3.3225711 1.1166416-3.03756612 0-5.5-2.4624339-5.5-5.5 0-3.03756612 2.46243388-5.5 5.5-5.5zm0 1.5c-2.209139 0-4 1.790861-4 4s1.790861 4 4 4 4-1.790861 4-4-1.790861-4-4-4z" />
+  </svg>
+</span>
+  <input
+    id="navbar-input"
+    name="q"
+    hx-on:input="
+      htmx.trigger('#form-input', 'update', {value: this.value});
+      document.getElementById('form-input').setAttribute('disabled', 'disabled');
+      this.removeAttribute('disabled');
+    "
+    hx-on:update="
+      this.value = event.detail.value;
+      this.setAttribute('disabled', 'disabled');
+      document.getElementById('form-input').removeAttribute('disabled');
+    "
+    type="text"
+    value="gemini-3-flash-preview"
+    placeholder="Search models"
+    autofocus
+    autocomplete="off"
+    hx-swap="none"
+    class="resize-none rounded-full border-0 py-2.5 bg-transparent text-sm w-full placeholder:text-neutral-500 focus:outline-none focus:ring-0"
+  />
+</div>
+
+      </div>
+    </div>
+
+    
+    <div class="hidden lg:flex xl:flex-1 items-center space-x-2 justify-end ml-6 xl:ml-0">
+      
+        <a class="flex cursor-pointer items-center rounded-full bg-black/5 hover:bg-black/10 text-lg px-4 py-1.5 text-black whitespace-nowrap" href="/signin">Sign in</a>
+        <a class="flex cursor-pointer items-center rounded-full bg-neutral-800 text-lg px-4 py-1.5 text-white hover:bg-black whitespace-nowrap focus:bg-black" href="/download">Download</a>
+      
+    </div>
+    
+    
+    <div class="lg:hidden flex items-center">
+      <input type="checkbox" id="menu" class="peer hidden" />
+      <label for="menu" class="z-50 cursor-pointer peer-checked:hidden block">
+        <svg
+          class="h-8 w-8"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+          />
+        </svg>
+      </label>
+      <label for="menu" class="z-50 cursor-pointer hidden peer-checked:block fixed top-4 right-6">
+        <svg
+          class="h-8 w-8"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </label>
+      
+      <div class="fixed inset-0 bg-white z-40 hidden peer-checked:block overflow-y-auto">
+        <div class="flex flex-col space-y-5 pt-[5.5rem] text-3xl">
+          
+
+          
+          <a class="px-6" href="/search">Models</a>
+          <a class="px-6" href="/download">Download</a>
+          <a class="px-6" href="/docs">Docs</a>
+          <a class="px-6" href="/pricing">Pricing</a>
+
+          
+          <a href="/signin" class="block px-6">Sign in</a>
+          
+
+          
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+
+    
+
+    
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const formSearch = htmx.find('#form-input');
+    const navSearch = htmx.find('#navbar-input');
+    const mobileSortSelect = htmx.find('#mobile-sort-select');
+    const desktopSortSelect = htmx.find('#desktop-sort-select');
+
+    if (!formSearch || !navSearch) return;
+
+    [formSearch, navSearch].forEach(input => {
+      if (input.value) {
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    });
+
+    function updateInputStates() {
+      const isDesktop = window.innerWidth >= 1024;
+      formSearch.disabled = isDesktop;
+      navSearch.disabled = !isDesktop;
+
+      if(isDesktop) {
+        navSearch.focus();
+      } else {
+        formSearch.focus();
+      }
+    }
+
+    updateInputStates();
+
+    window.addEventListener('resize', updateInputStates);
+
+    
+    if (mobileSortSelect && desktopSortSelect) {
+      mobileSortSelect.value = desktopSortSelect.value;
+    }
+  });
+</script>
+
+<main class="mx-auto flex w-full max-w-2xl flex-col px-6 py-5 md:py-12 lg:px-8">
+  <form
+    hx-get="/search"
+    hx-target="#searchresults"
+    hx-trigger="submit, keyup changed delay:100ms from:[name=q], search"
+    hx-include="[name=q], [name=c], [name=o]"
+    hx-replace-url="true"
+  >
+  <input type="hidden" id="sort-value" name="o" value="">
+
+  <div class="flex lg:hidden justify-between space-x-2 items-center">
+    <div class="relative flex w-full appearance-none bg-black/5 border border-neutral-100 items-center rounded-full">
+      <span class="pl-4 text-neutral-400">
+        <svg class="w-[22px] h-[22px] fill-current" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <path d="m8.5 3c3.0375661 0 5.5 2.46243388 5.5 5.5 0 1.24832096-.4158777 2.3995085-1.1166416 3.3225711l4.1469717 4.1470988c.2928932.2928932.2928932.767767 0 1.0606602-.2662666.2662665-.6829303.2904726-.9765418.0726181l-.0841184-.0726181-4.1470988-4.1469717c-.9230626.7007639-2.07425014 1.1166416-3.3225711 1.1166416-3.03756612 0-5.5-2.4624339-5.5-5.5 0-3.03756612 2.46243388-5.5 5.5-5.5zm0 1.5c-2.209139 0-4 1.790861-4 4s1.790861 4 4 4 4-1.790861 4-4-1.790861-4-4-4z"/>
+        </svg>
+      </span>
+      <input
+        id="form-input"
+        name="q"
+        type="search"
+        value="gemini-3-flash-preview"
+        class="resize-none rounded-full border-0 py-2.5 bg-transparent text-base sm:text-sm w-full placeholder:text-neutral-400 focus:outline-none focus:ring-0"
+        placeholder="Search models"
+        autofocus
+        autocomplete="off"
+        hx-on:input="
+          htmx.trigger('#navbar-input', 'update', {value: this.value});
+          document.getElementById('navbar-input').setAttribute('disabled', 'disabled');
+          this.removeAttribute('disabled');
+        "
+        hx-on:update="
+          this.value = event.detail.value;
+          this.setAttribute('disabled', 'disabled');
+          document.getElementById('navbar-input').removeAttribute('disabled');
+        "
+      />
+    </div>
+    <div class="sm:hidden block relative">
+      <select
+        id="mobile-sort-select"
+        class="absolute inset-0 w-6 px-3 py-1.5 opacity-0
+          appearance-none cursor-pointer rounded-lg
+          border border-neutral-200 bg-white text-neutral-900
+          hover:bg-neutral-50 focus:ring focus:outline-none
+          focus:ring-blue-300 focus:ring-opacity-75 focus:border-blue-400
+          sm:static sm:opacity-100 sm:min-w-[120px] sm:text-sm"
+        hx-on:change="
+          document.getElementById('sort-value').value = this.value;
+          document.getElementById('desktop-sort-select').value = this.value;
+          htmx.trigger(this.form, 'submit');
+        "
+      >
+        
+          <option value="popular" >Popular</option>
+        
+          <option value="newest" >Newest</option>
+        
+      </select>
+      <div class="w-6 px-3.5 py-1.5 rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
+        <span class="text-neutral-900 text-xs font-medium">⇅</span>
+      </div>
+    </div>
+  </div>
+    <div
+      id="searchresults"
+      class="w-full space-y-2 empty:hidden"
+      hx-on::after-swap="
+        const title = this.querySelector('[data-seo=title]');
+        const description = this.querySelector('[data-seo=description]');
+
+        if (title) {
+          document.title = title.textContent;
+        }
+        if (title && description) {
+          document.querySelector('meta[property=\'og:title\']').setAttribute('content', title.textContent);
+          document.querySelector('meta[property=\'og:description\']').setAttribute('content', description.textContent);
+
+          document.querySelector('meta[property=\'twitter:title\']').setAttribute('content', title.textContent);
+          document.querySelector('meta[property=\'twitter:description\']').setAttribute('content', description.textContent);
+
+          document.querySelector('meta[name=\'description\']').setAttribute('content', description.textContent);
+        }
+      "
+    >
+      
+<div hidden data-seo="title">gemini-3-flash-preview · Ollama</div>
+<div hidden data-seo="description">Search for models on Ollama.</div>
+
+<div class="flex justify-between mt-2">
+  
+  <fieldset class="flex flex-wrap">
+      <div class="relative inline-block mr-1.5 mb-1.5">
+        <input
+          hx-get="/search"
+          type="checkbox"
+          name="c"
+          value="cloud"
+          
+          id="cap-cloud"
+          class="peer sr-only"
+        >
+        </input>
+        <label
+          for="cap-cloud"
+          class="
+            px-3 py-1 text-sm font-medium rounded-3xl cursor-pointer text-center border border-neutral-200 text-neutral-800
+            inline-flex items-center justify-center
+            peer-checked:bg-neutral-100
+            focus:outline-none focus:ring-0 focus:ring-transparent
+            min-md:hover:bg-neutral-100
+            select-none
+          "
+        >Cloud</label>
+      </div>
+    
+      <div class="relative inline-block mr-1.5 mb-1.5">
+        <input
+          hx-get="/search"
+          type="checkbox"
+          name="c"
+          value="embedding"
+          
+          id="cap-embedding"
+          class="peer sr-only"
+        >
+        </input>
+        <label
+          for="cap-embedding"
+          class="
+            px-3 py-1 text-sm font-medium rounded-3xl cursor-pointer text-center border border-neutral-200 text-neutral-800
+            inline-flex items-center justify-center
+            peer-checked:bg-neutral-100
+            focus:outline-none focus:ring-0 focus:ring-transparent
+            min-md:hover:bg-neutral-100
+            select-none
+          "
+        >Embedding</label>
+      </div>
+    
+      <div class="relative inline-block mr-1.5 mb-1.5">
+        <input
+          hx-get="/search"
+          type="checkbox"
+          name="c"
+          value="vision"
+          
+          id="cap-vision"
+          class="peer sr-only"
+        >
+        </input>
+        <label
+          for="cap-vision"
+          class="
+            px-3 py-1 text-sm font-medium rounded-3xl cursor-pointer text-center border border-neutral-200 text-neutral-800
+            inline-flex items-center justify-center
+            peer-checked:bg-neutral-100
+            focus:outline-none focus:ring-0 focus:ring-transparent
+            min-md:hover:bg-neutral-100
+            select-none
+          "
+        >Vision</label>
+      </div>
+    
+      <div class="relative inline-block mr-1.5 mb-1.5">
+        <input
+          hx-get="/search"
+          type="checkbox"
+          name="c"
+          value="tools"
+          
+          id="cap-tools"
+          class="peer sr-only"
+        >
+        </input>
+        <label
+          for="cap-tools"
+          class="
+            px-3 py-1 text-sm font-medium rounded-3xl cursor-pointer text-center border border-neutral-200 text-neutral-800
+            inline-flex items-center justify-center
+            peer-checked:bg-neutral-100
+            focus:outline-none focus:ring-0 focus:ring-transparent
+            min-md:hover:bg-neutral-100
+            select-none
+          "
+        >Tools</label>
+      </div>
+    
+      <div class="relative inline-block mr-1.5 mb-1.5">
+        <input
+          hx-get="/search"
+          type="checkbox"
+          name="c"
+          value="thinking"
+          
+          id="cap-thinking"
+          class="peer sr-only"
+        >
+        </input>
+        <label
+          for="cap-thinking"
+          class="
+            px-3 py-1 text-sm font-medium rounded-3xl cursor-pointer text-center border border-neutral-200 text-neutral-800
+            inline-flex items-center justify-center
+            peer-checked:bg-neutral-100
+            focus:outline-none focus:ring-0 focus:ring-transparent
+            min-md:hover:bg-neutral-100
+            select-none
+          "
+        >Thinking</label>
+      </div>
+    
+  </fieldset>
+  <div class="hidden sm:block relative">
+    <select
+      id="desktop-sort-select"
+      class="absolute inset-0 w-6 px-3 py-1 opacity-0
+        appearance-none cursor-pointer rounded-lg
+        border border-neutral-200 bg-white text-neutral-900
+        hover:bg-neutral-50 focus:ring focus:outline-none
+        focus:ring-blue-300 focus:ring-opacity-75 focus:border-blue-400
+        sm:static sm:opacity-100 sm:min-w-[120px] sm:text-sm"
+      hx-on:change="
+        document.getElementById('sort-value').value = this.value;
+        document.getElementById('mobile-sort-select').value = this.value;
+        htmx.trigger(this.form, 'submit');
+      "
+    >
+      
+        <option value="popular" >Popular</option>
+      
+        <option value="newest" >Newest</option>
+      
+    </select>
+  </div>
+</div>
+
+<ul role="list" class="grid grid-cols-1">
+  
+    
+
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/library/gemini-3-flash-preview" class="group w-full">
+    <div class="flex flex-col mb-1" title="gemini-3-flash-preview">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>gemini-3-flash-preview</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md">Gemini 3 Flash offers frontier intelligence built for speed at a fraction of the cost.</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>141.1K</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>2</span>
+            <span class="hidden sm:flex">&nbsp;Tags</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Dec 20, 2025 8:44 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>4 months ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/zerocopia/gemini-3-flash-preview" class="group w-full">
+    <div class="flex flex-col mb-1" title="gemini-3-flash-preview">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>zerocopia/gemini-3-flash-preview</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md"></p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">vision</span>
+        
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">tools</span>
+        
+        
+          <span x-test-capability class="inline-flex my-1 items-center rounded-md bg-indigo-50 px-2 py-[2px] text-xs font-medium text-indigo-600 sm:text-[13px]">thinking</span>
+        
+        
+        
+        
+          <span class="inline-flex my-1 items-center rounded-md bg-cyan-50 px-2 py-[2px] text-xs font-medium text-cyan-500 sm:text-[13px]">cloud</span>
+        
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>3</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>1</span>
+            <span class="hidden sm:flex">&nbsp;Tag</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Apr 25, 2026 6:24 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>yesterday</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+  
+<li x-test-model class="flex items-baseline border-b border-neutral-200 py-6">
+  <a href="/karlebuldarknet/gemini-3-flash-preview" class="group w-full">
+    <div class="flex flex-col mb-1" title="gemini-3-flash-preview">
+      <h2 class="truncate text-xl font-medium underline-offset-2 group-hover:underline md:text-2xl">
+        <span x-test-search-response-title>karlebuldarknet/gemini-3-flash-preview</span>
+      </h2>
+      <p class="max-w-lg break-words text-neutral-800 text-md"></p>
+    </div>
+    <div class="flex flex-col">
+      <div class="flex flex-wrap space-x-2">
+        
+        
+        
+        
+        
+        
+        
+        
+      </div>
+      <p class="my-1 flex space-x-5 text-[13px] font-medium text-neutral-500">
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"></path>
+            </svg>
+            <span x-test-pull-count>198</span>
+            <span class="hidden sm:flex">&nbsp;Pulls</span>
+          </span>
+        
+        
+          <span class="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span x-test-tag-count>1</span>
+            <span class="hidden sm:flex">&nbsp;Tag</span>
+          </span>
+        
+        
+          <span class="flex items-center" title="Feb 21, 2026 4:40 PM UTC">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1.5 h-[14px] w-[14px] sm:h-4 sm:w-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+            </svg>
+            <span class="hidden sm:flex">Updated&nbsp;</span>
+            <span x-test-updated>2 months ago</span>
+          </span>
+        
+      </p>
+    </div>
+  </a>
+</li>
+
+
+
+
+  
+</ul>
+
+    </div>
+  </form>
+</main>
+<style>
+  #form-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    height: 16px;
+    width: 16px;
+    background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'><line x1='18' y1='6' x2='6' y2='18'></line><line x1='6' y1='6' x2='18' y2='18'></line></svg>");
+    background-size: 16px 16px;
+    cursor: pointer;
+    margin-right: 5px;
+  }
+</style>
+
+
+    
+      
+<footer class="fixed bottom-0 left-0 right-0 z-30">
+
+  <div class="hidden min-[850px]:flex items-center justify-between px-6 py-3.5 text-xs text-neutral-500">
+    <div>© 2026 Ollama</div>
+    <div class="flex space-x-6">
+      <a href="/blog" class="hover:underline">Blog</a>
+      <a href="mailto:hello@ollama.com" class="hover:underline">Contact</a>
+    </div>
+  </div>
+
+</footer>
+
+    
+
+    
+    <span class="hidden" id="end_of_template"></span>
+  </body>
+</html>

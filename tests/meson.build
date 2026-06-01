@@ -1,5 +1,34 @@
 # Test suite for file operations and markdown parser
 
+# libollamaweb HTML fixture tests (offline)
+test_ollamaweb_script = files('test-ollamaweb-parse.sh')
+oc_test_ollamaweb_exe = get_variable('test_ollamaweb', disabler())
+test('test-ollamaweb-parse',
+  find_program('bash'),
+  args: [
+    test_ollamaweb_script,
+    meson.current_build_dir() / '..'
+  ],
+  depends: [oc_test_ollamaweb_exe],
+  workdir: meson.current_source_dir(),
+  timeout: 120,
+  suite: 'ollamaweb'
+)
+
+test_ollamaweb_merge_script = files('test-ollamaweb-merge.sh')
+test('test-ollamaweb-merge',
+  find_program('bash'),
+  args: [
+    test_ollamaweb_merge_script,
+    meson.current_build_dir() / '..'
+  ],
+  depends: [oc_test_ollamaweb_exe],
+  workdir: meson.current_source_dir(),
+  timeout: 60,
+  suite: 'ollamaweb'
+)
+
+
 # Test script for oc-test-files
 test_file_ops_script = files('test-file-ops.sh')
 
@@ -65,7 +94,7 @@ foreach part : ['1', '2', '3', '4']
   )
 endforeach
 
-# Response.Chat.check_back_token — oc-test-loop; assert transcript triggers detection
+# Response.Chat.check_back_token — oc-test-loop; assert twelve equidistant repeats trigger detection
 oc_test_loop_exe = get_variable('oc_test_loop', disabler())
 oc_test_loop_bin = meson.current_build_dir() / '..' / 'examples' / 'oc-test-loop'
 test('check-back-token-test',
@@ -75,7 +104,7 @@ test('check-back-token-test',
     'set -e; "$1" "$2" | grep -q "Loop detection: YES"',
     '_',
     oc_test_loop_bin,
-    meson.current_source_dir() / 'data' / 'thinking-loop-transcript.txt',
+    meson.current_source_dir() / 'data' / 'twelve-equidistant-loop.txt',
   ],
   depends: [oc_test_loop_exe],
   suite: 'libollmchat')

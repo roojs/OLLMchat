@@ -72,7 +72,8 @@ occoder_base_lib = library('occoder',
   vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
   build_rpath: lib_build_rpath,
   include_directories: [
-    include_directories('..' / 'libollmchat'),  # For C headers (build directory) - needed for Agent.Factory
+    include_directories('..' / 'libollmchat'),
+    include_directories('..' / 'libollamaweb'),
     include_directories('..' / 'libocvector'),   # For C headers (build directory)
     include_directories('..' / 'libocfiles')     # For C headers (build directory)
   ],
@@ -90,10 +91,12 @@ occoder_base_lib = library('occoder',
     '--pkg=libgit2-glib-1.0',
     '--pkg=ocfiles',
     '--pkg=ollmchat',
+    '--pkg=ollamaweb',
     '--pkg=ocmarkdown',
     '--pkg=ocvector',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
     '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
@@ -118,6 +121,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
     '--vapidir', meson.current_build_dir(),
@@ -130,6 +134,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '--pkg', 'ocfiles',
     '--pkg', 'libsoup-3.0',  # Required for ollmchat.vapi (Soup.Message, Soup.Session)
     '--pkg', 'ollmchat',
+    '--pkg', 'ollamaweb',
     '--pkg', 'ocmarkdown',
     '--pkg', 'fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
     '--pkg', 'ocvector',
@@ -149,7 +154,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
   ],
-  depends: [occoder_base_lib, ocfiles_vapi, ollmchat_base_lib, ocmarkdown_vapi, ocvector_vapi],
+  depends: [occoder_base_lib, ocfiles_vapi, ollmchat_base_lib, ollamaweb_vapi, ocmarkdown_vapi, ocvector_vapi],
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'
