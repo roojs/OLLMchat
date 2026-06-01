@@ -671,6 +671,7 @@ namespace OLLMchatGtk
 				OLLMchat.Message.fenced("markdown.oc-frame-danger Error", error_msg));
 			this.manager.session.messages.add(error_ui_msg);
 			this.manager.message_added(error_ui_msg, this.manager.session);
+			this.manager.session.save_async.begin();
 			this.error_occurred(error_msg);
 			this.cleanup_streaming_state();
 			

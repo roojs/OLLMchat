@@ -365,12 +365,35 @@ namespace OLLMapp.SettingsDialog
 					return;
 				}
 				
-				model.bind_property("list_markup", label, "label", BindingFlags.SYNC_CREATE);
+				label.label = model.list_markup;
+				list_item.set_data<ulong>(
+					"markup_notify",
+					model.notify["list_markup"].connect(() => {
+						label.label = model.list_markup;
+					})
+				);
+			});
+			factory.unbind.connect((item) => {
+				var list_item = item as Gtk.ListItem;
+				if (list_item == null || list_item.item == null) {
+					return;
+				}
+				var model = list_item.item as OllamaWeb.Model;
+				var notify_id = list_item.get_data<ulong>("markup_notify");
+				if (model != null && notify_id != 0) {
+					model.disconnect(notify_id);
+				}
 			});
 			
 			// Set model and factory on list view
 			this.model_pulldown.list.model = this.selection;
 			this.model_pulldown.list.factory = factory;
+			this.search_results.bind_property(
+				"loading",
+				this.model_pulldown,
+				"search-loading",
+				BindingFlags.SYNC_CREATE
+			);
 			
 			this.model_pulldown.search_changed.connect((search_text) => {
 				this.search_results.queue_search(search_text);
@@ -390,6 +413,11 @@ namespace OLLMapp.SettingsDialog
 						return false;
 					}
 					this.model_pulldown.set_popup_visible(true);
+					if (this.model_pulldown.list.model != null
+					    && this.model_pulldown.list.model.get_n_items() > 0) {
+						var scroll = new Gtk.ScrollInfo();
+						this.model_pulldown.list.scroll_to(0, Gtk.ListScrollFlags.NONE, scroll);
+					}
 					return false;
 				});
 			});

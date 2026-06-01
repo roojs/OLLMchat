@@ -92,6 +92,13 @@ namespace OLLMchat.Response
 		public Gee.ArrayList<Message> choices { get; set; default = new Gee.ArrayList<Message>(); }
 
 		/**
+		 * OpenAI v1 usage object on the final stream chunk when
+		 * stream_options.include_usage is set. Also copied to
+		 * {@link prompt_eval_count} and {@link eval_count}.
+		 */
+		public Usage? usage { get; set; default = null; }
+
+		/**
 		 * Ollama chat: total request time in nanoseconds from the chunk.
 		 * Zero for APIs that do not send this field.
 		 */
@@ -135,24 +142,23 @@ namespace OLLMchat.Response
 		{
 			switch (property_name) {
 				case "usage": {
-					var usage = property_node.get_object();
-					if (usage.has_member("prompt_tokens")) {
-						this.prompt_eval_count = (int)usage.get_int_member("prompt_tokens");
+					this.usage = Json.gobject_deserialize(
+						typeof(Usage), property_node) as Usage;
+					if (this.usage != null) {
+						this.prompt_eval_count = this.usage.prompt_tokens;
+						this.eval_count = this.usage.completion_tokens;
 					}
-					if (usage.has_member("completion_tokens")) {
-						this.eval_count = (int)usage.get_int_member("completion_tokens");
-					}
-					value = Value(typeof(int));
-					value.set_int(0);
+					value = Value(typeof(Usage));
+					value.set_object(this.usage);
 					return true;
 				}
 				case "choices": {
 					var array = property_node.get_array();
 					for (var i = 0; i < array.get_length(); i++) {
 						var choice_obj = array.get_object_element(i);
-						if (choice_obj.has_member("finish_reason")) {
-							this.done_reason = choice_obj.get_string_member("finish_reason");
-							this.done = this.done_reason != "";
+						if (choice_obj.has_member("finish_reason") &&
+							choice_obj.get_member("finish_reason").get_node_type() == Json.NodeType.VALUE) {
+							this.done_reason = choice_obj.get_member("finish_reason").get_string();
 						}
 						if (!choice_obj.has_member("delta")) {
 							continue;

@@ -84,7 +84,7 @@ namespace OllamaWeb.Search
 				seen_tags.add(variant.name);
 				model.tags.add(variant);
 			}
-			model.refined = true;
+			model.refined = model.tags.size > 0;
 			model.rebuild_unique_sizes();
 		}
 
@@ -243,11 +243,21 @@ namespace OllamaWeb.Search
 				+ " | .//div[contains(@class,'col-span-2') and contains(@class,'text-neutral-500')]"
 			);
 			if (cells == null || cells.length() < 3) {
-				return null;
+				cells = this.eval_on(
+					row,
+					".//p[contains(@class,'text-neutral-500')]"
+					+ " | .//div[contains(@class,'text-neutral-500')]"
+				);
 			}
-			variant.size = this.node_content(cells.item(0));
-			variant.context = this.node_content(cells.item(1));
-			variant.input = this.node_content(cells.item(2));
+			if (cells != null && cells.length() >= 1) {
+				variant.size = this.node_content(cells.item(0));
+			}
+			if (cells != null && cells.length() >= 2) {
+				variant.context = this.node_content(cells.item(1));
+			}
+			if (cells != null && cells.length() >= 3) {
+				variant.input = this.node_content(cells.item(2));
+			}
 			return variant;
 		}
 

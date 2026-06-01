@@ -90,6 +90,14 @@ namespace OLLMchat.Call
 			this.merge_response_format_into_object(obj);
 			obj.set_string_member("reasoning_effort",
 				this.reasoning_effort != "" ? this.reasoning_effort : (this.think ? "medium" : "none"));
+			obj.set_boolean_member("stream", this.stream);
+			if (this.stream) {
+				var stream_opts = new Json.Object();
+				stream_opts.set_boolean_member("include_usage", true);
+				var stream_opts_node = new Json.Node(Json.NodeType.OBJECT);
+				stream_opts_node.set_object(stream_opts);
+				obj.set_member("stream_options", stream_opts_node);
+			}
 			var generator = new Json.Generator();
 			generator.set_root(json_node);
 			return generator.to_data(null);
@@ -263,7 +271,7 @@ namespace OLLMchat.Call
 			var stream_orig = this.stream;
 			this.stream = false;
 			try {
-				GLib.debug("%s", this.get_request_body());
+				// GLib.debug("%s", this.get_request_body());
 				var bytes = yield this.send_request(true);
 				var root = this.parse_response(bytes);
 				if (root.get_node_type() != Json.NodeType.OBJECT) {
@@ -298,6 +306,7 @@ namespace OLLMchat.Call
 			}
 
 			var resp = (Response.Chat) this.streaming_response;
+			int64 stream_start_us = GLib.get_monotonic_time();
 
 			var url = this.build_url();
 			var stream_orig = this.stream;
@@ -306,8 +315,8 @@ namespace OLLMchat.Call
 			this.stream = stream_orig;
 			var soup_msg = this.connection.soup_message(this.http_method, url, request_body);
 
-			GLib.debug("%s", url);
-			GLib.debug("%s", request_body);
+			// GLib.debug("%s", url);
+			// GLib.debug("%s", request_body);
 
 			GLib.InputStream? input_stream = null;
 			try {
@@ -394,9 +403,18 @@ namespace OLLMchat.Call
 					continue;
 				}
 				if (chunk == null) {
+					// GLib.debug("exec_stream: deserialize returned null");
 					continue;
 				}
 				var token = resp.addChunk(chunk);
+				// GLib.debug(
+				// 	"exec_stream: chunk done=%s new_content.len=%u new_thinking.len=%u token.len=%u message.content.len=%u",
+				// 	chunk.done.to_string(),
+				// 	resp.new_content.length,
+				// 	resp.new_thinking.length,
+				// 	token.length,
+				// 	resp.message != null ? resp.message.content.length : 0
+				// );
 
 				if (resp.is_first_chunk) {
 					resp.is_first_chunk = false;
@@ -406,10 +424,12 @@ namespace OLLMchat.Call
 					}
 				}
 
+				bool usage_only = chunk.prompt_eval_count > 0 || chunk.eval_count > 0;
 				if (resp.new_thinking.length == 0 &&
 					resp.new_content.length == 0 &&
 					!resp.done &&
-					token == "") {
+					token == "" &&
+					!usage_only) {
 					continue;
 				}
 
@@ -433,8 +453,14 @@ namespace OLLMchat.Call
 				}
 			}
 
-			if (!resp.done) {
-				resp.done = true;
+			int64 elapsed_us = GLib.get_monotonic_time() - stream_start_us;
+			if (resp.total_duration <= 0) {
+				resp.total_duration = elapsed_us * 1000;
+			}
+			resp.done = true;
+			this.stream_chunk("", false, resp);
+			if (this.agent != null) {
+				this.agent.handle_stream_chunk("", false, resp);
 			}
 			return resp;
 		}
