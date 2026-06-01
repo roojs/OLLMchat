@@ -271,11 +271,8 @@ namespace OLLMchat.History
 				return;
 			}
 			// Create a "done" message to signal completion (for tools like RequestEditMode)
-			// Note: The response body is in response.message (already persisted above)
-			// The "done" message is just a completion marker with no content needed
+			// Keep this as a runtime signal only; do not persist it in history.
 			var done_msg = new Message("done", "");
-			// Add to messages to trigger message_created signal (Session will skip persisting it)
-			this.messages.add(done_msg);
 			// Relay to Manager to trigger message_created signal for tools
 			this.manager.message_added(done_msg, this);
 			

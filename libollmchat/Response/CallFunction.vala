@@ -76,12 +76,33 @@ namespace OLLMchat.Response
 					return default_deserialize_property(property_name, out value, pspec, property_node);
 				
 				case "arguments":
+					// arguents are sometings json inside a string for some reason (openai on ollama)
+					this.arguments = new Json.Object();
+					value = Value(typeof(Json.Object));
 					if (property_node.get_node_type() == Json.NodeType.OBJECT) {
 						this.arguments = property_node.get_object();
-					} else {
-						this.arguments = new Json.Object();
+						value.set_boxed(this.arguments);
+						return true;
 					}
-					value = Value(typeof(Json.Object));
+					if (property_node.get_node_type() != Json.NodeType.VALUE) {
+						value.set_boxed(this.arguments);
+						return true;
+					}
+					Json.Node? parsed = null;
+					var parser = new Json.Parser();
+					try {
+						parser.load_from_data(property_node.get_string(), -1);
+						parsed = parser.get_root();
+					} catch (Error e) {
+						value.set_boxed(this.arguments);
+						return true;
+					}
+					if (parsed == null
+						|| parsed.get_node_type() != Json.NodeType.OBJECT) {
+						value.set_boxed(this.arguments);
+						return true;
+					}
+					this.arguments = parsed.get_object();
 					value.set_boxed(this.arguments);
 					return true;
 				

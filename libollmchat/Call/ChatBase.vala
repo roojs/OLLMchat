@@ -74,10 +74,12 @@ namespace OLLMchat.Call
 			}
 
 			if (this.agent != null) {
+				this.agent.add_message(response.message);
 				var tool_reply_messages = yield this.agent.execute_tools(response.message.tool_calls);
 				var messages_to_send = new Gee.ArrayList<Message>();
 				messages_to_send.add(response.message);
 				foreach (var reply_msg in tool_reply_messages) {
+					this.agent.add_message(reply_msg);
 					messages_to_send.add(reply_msg);
 				}
 				var next_response = yield this.send_append(messages_to_send);
