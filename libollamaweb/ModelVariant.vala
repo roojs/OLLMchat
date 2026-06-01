@@ -36,10 +36,10 @@ namespace OllamaWeb
 					cleaned.substring(0, cleaned.length - 2).strip()
 				);
 			}
-			if (cleaned.has_suffix("B")) {
+			if (cleaned.has_suffix("MB")) {
 				return double.parse(
-					cleaned.substring(0, cleaned.length - 1).strip()
-				) / 1e9;
+					cleaned.substring(0, cleaned.length - 2).strip()
+				) / 1000.0;
 			}
 
 			return -1;

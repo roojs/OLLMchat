@@ -35,6 +35,9 @@ namespace OLLMchat.Settings
 		private string pending_query { get; set; default = ""; }
 		private string last_queued_query { get; set; default = ""; }
 
+		/** True while debouncing or {@link OllamaWeb.Search.Session} search/refine is in flight. */
+		public bool loading { get; private set; default = false; }
+
 		public SearchResults(string data_dir)
 		{
 			Object(data_dir: data_dir);
@@ -78,10 +81,14 @@ namespace OLLMchat.Settings
 			this.pending_query = query.strip();
 			if (this.pending_query == "") {
 				this.last_queued_query = "";
+				this.loading = false;
+				this.notify_property("loading");
 				this.clear_results();
 				this.session.cancel();
 				return false;
 			}
+			this.loading = true;
+			this.notify_property("loading");
 			var kept = this.keeps_prior_results(this.pending_query);
 			if (!kept) {
 				this.clear_results();
@@ -118,6 +125,8 @@ namespace OLLMchat.Settings
 			}
 			this.pending_query = "";
 			this.last_queued_query = "";
+			this.loading = false;
+			this.notify_property("loading");
 			this.session.cancel();
 		}
 
@@ -137,27 +146,47 @@ namespace OLLMchat.Settings
 				return;
 			}
 			var our_query = this.pending_query;
-			Gee.ArrayList<OllamaWeb.Model> hits;
+			// GLib.debug("SearchResults run_search q='%s'", our_query);
 			try {
-				hits = yield this.session.search(our_query, OllamaWeb.Search.Category.NONE);
-			} catch (GLib.Error e) {
-				GLib.warning("ollama.com search failed: " + e.message);
-				return;
+				Gee.ArrayList<OllamaWeb.Model> hits;
+				try {
+					hits = yield this.session.search(our_query, OllamaWeb.Search.Category.NONE);
+				} catch (GLib.Error e) {
+					GLib.warning("ollama.com search failed: " + e.message);
+					return;
+				}
+				if (this.pending_query != our_query) {
+					return;
+				}
+				// GLib.debug(
+				// 	"SearchResults q='%s' store=%u refine_queue=%u",
+				// 	our_query,
+				// 	hits.size,
+				// 	this.session.refine_queue.size
+				// );
+				this.replace_hits(hits);
+				foreach (var row in this.store) {
+					row.notify_property("list_markup");
+				}
+				if (this.pending_query != our_query) {
+					return;
+				}
+				if (this.session.refine_queue.size == 0) {
+					return;
+				}
+				yield this.session.refine();
+				if (this.pending_query != our_query) {
+					return;
+				}
+				foreach (var row in this.store) {
+					row.notify_property("list_markup");
+				}
+			} finally {
+				if (this.pending_query == our_query || this.pending_query == "") {
+					this.loading = false;
+					this.notify_property("loading");
+				}
 			}
-			if (this.pending_query != our_query) {
-				return;
-			}
-			this.replace_hits(hits);
-			foreach (var row in this.store) {
-				row.notify_property("list_markup");
-			}
-			if (this.pending_query != our_query) {
-				return;
-			}
-			if (this.session.refine_queue.size == 0) {
-				return;
-			}
-			yield this.session.refine();
 		}
 
 		private void replace_hits(Gee.ArrayList<OllamaWeb.Model> hits)

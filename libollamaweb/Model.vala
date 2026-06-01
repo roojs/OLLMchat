@@ -105,18 +105,31 @@ namespace OllamaWeb
 		public void rebuild_unique_sizes()
 		{
 			this.unique_sizes.clear();
-			var seen = new Gee.HashSet<string>();
-			foreach (var variant in this.tags) {
-				string size_part;
-				if (variant.size != "") {
-					size_part = variant.size;
-				} else {
-					var dash = variant.name.index_of_char('-');
-					size_part = dash > 0 ? variant.name.substring(0, dash) : variant.name;
+			var tenths_gb = new Gee.TreeSet<int>((a, b) => {
+				if (a < b) {
+					return -1;
 				}
-				if (!seen.contains(size_part)) {
-					seen.add(size_part);
-					this.unique_sizes.add(size_part);
+				if (a > b) {
+					return 1;
+				}
+				return 0;
+			});
+			foreach (var variant in this.tags) {
+				var gb = variant.parse_size_gb();
+				if (gb < 0) {
+					continue;
+				}
+				if (gb < 1.0) {
+					tenths_gb.add((int) (gb * 10 + 0.5));
+				} else {
+					tenths_gb.add((int) (gb + 0.5) * 1000);
+				}
+			}
+			foreach (var key in tenths_gb) {
+				if (key >= 1000) {
+					this.unique_sizes.add("%d GB".printf(key / 1000));
+				} else {
+					this.unique_sizes.add("%.1f GB".printf(key / 10.0));
 				}
 			}
 		}
@@ -140,7 +153,8 @@ namespace OllamaWeb
 			if (!Model.exists(dir, slug)) {
 				return false;
 			}
-			return Model.load(dir, slug).refined;
+			var m = Model.load(dir, slug);
+			return m.refined && m.tags.size > 0;
 		}
 
 		public static Model load(string dir, string slug) throws GLib.Error

@@ -17,6 +17,8 @@ namespace OllamaWeb.Search
 	 */
 	public class Session : Object
 	{
+		private const uint TAG_FETCH_INTERVAL_MS = 1000;
+
 		/**
 		 * Directory of per-slug `{slug}.json` catalog files.
 		 */
@@ -77,6 +79,12 @@ namespace OllamaWeb.Search
 			if (this.cache.has_key(query, category, Session.double_search_sorts)) {
 				var slugs = this.cache.lookup(query, category, Session.double_search_sorts);
 				this.set_refine_slugs(this.pending_refine_slugs(slugs));
+				// GLib.debug(
+				// 	"ollamaweb search cache hit q='%s' slugs=%u refine_pending=%u",
+				// 	query,
+				// 	slugs.length,
+				// 	this.refine_queue.size
+				// );
 				return this.build_result_list(slugs);
 			}
 			this.cancel_search();
@@ -92,25 +100,35 @@ namespace OllamaWeb.Search
 			);
 			string[] slugs = {};
 			string[] refine_slugs = {};
+			var results = new Gee.ArrayList<OllamaWeb.Model>();
 			foreach (var hit in hits) {
 				slugs += hit.slug;
 				if (!OllamaWeb.Model.exists(this.model_dir, hit.slug)) {
 					hit.refined = false;
 					hit.save(this.model_dir);
 					refine_slugs += hit.slug;
+					results.add(hit);
 					continue;
 				}
-				if (!OllamaWeb.Model.is_refined(this.model_dir, hit.slug)) {
+				var row = this.load_row(hit.slug);
+				if (!row.refined || row.tags.size == 0) {
 					refine_slugs += hit.slug;
 				}
+				results.add(row);
 			}
 			this.cache.store(query, category, Session.double_search_sorts, slugs);
 			this.set_refine_slugs(refine_slugs);
+			// GLib.debug(
+			// 	"ollamaweb search q='%s' hits=%u refine_queue=%u",
+			// 	query,
+			// 	results.size,
+			// 	refine_slugs.length
+			// );
 			this.result_rows.clear();
-			foreach (var hit in hits) {
-				this.result_rows.set(hit.slug, hit);
+			foreach (var row in results) {
+				this.result_rows.set(row.slug, row);
 			}
-			return hits;
+			return results;
 		}
 
 		/**
@@ -133,9 +151,6 @@ namespace OllamaWeb.Search
 						break;
 					}
 					var slug = this.refine_queue.remove_at(0);
-					if (OllamaWeb.Model.is_refined(this.model_dir, slug)) {
-						continue;
-					}
 					if (!this.result_rows.has_key(slug)) {
 						continue;
 					}
@@ -150,6 +165,23 @@ namespace OllamaWeb.Search
 							slug,
 							e.message
 						);
+					}
+					if (this.refine_queue.size > 0 && !this.enrich_cancellable.is_cancelled()) {
+						var throttle_done = false;
+						uint throttle_id = GLib.Timeout.add(
+							Session.TAG_FETCH_INTERVAL_MS,
+							() => {
+								throttle_done = true;
+								return false;
+							}
+						);
+						while (!throttle_done) {
+							if (this.enrich_cancellable.is_cancelled()) {
+								GLib.Source.remove(throttle_id);
+								break;
+							}
+							yield;
+						}
 					}
 				}
 			} finally {
@@ -193,7 +225,9 @@ namespace OllamaWeb.Search
 		private OllamaWeb.Model load_row(string slug) throws GLib.Error
 		{
 			if (OllamaWeb.Model.exists(this.model_dir, slug)) {
-				return OllamaWeb.Model.load(this.model_dir, slug);
+				var row = OllamaWeb.Model.load(this.model_dir, slug);
+				row.rebuild_unique_sizes();
+				return row;
 			}
 			var stub = new OllamaWeb.Model();
 			stub.slug = slug;

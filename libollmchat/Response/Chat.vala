@@ -86,6 +86,9 @@ namespace OLLMchat.Response
 				if (this.eval_duration_s > 0) {
 					return (double)this.eval_count / this.eval_duration_s;
 				}
+				if (this.total_duration_s > 0 && this.eval_count > 0) {
+					return (double)this.eval_count / this.total_duration_s;
+				}
 				return 0.0;
 			}
 		}
@@ -99,17 +102,21 @@ namespace OLLMchat.Response
 		 */
 		public string get_summary()
 		{
-			if (this.eval_duration <= 0) {
-				// Return meaningful message when metrics aren't available
-				// This ensures users always see feedback that the response completed
-				return "Response completed (metrics not available)";
+			if (this.eval_duration > 0 || this.total_duration > 0) {
+				return "Total Duration: %.2fs | Tokens In: %d Out: %d | %.2f t/s".printf(
+					this.total_duration_s,
+					this.prompt_eval_count,
+					this.eval_count,
+					this.tokens_per_second
+				);
 			}
-			return "Total Duration: %.2fs | Tokens In: %d Out: %d | %.2f t/s".printf(
-				this.total_duration_s,
-				this.prompt_eval_count,
-				this.eval_count,
-				this.tokens_per_second
-			);
+			if (this.prompt_eval_count > 0 || this.eval_count > 0) {
+				return "Tokens In: %d Out: %d".printf(
+					this.prompt_eval_count,
+					this.eval_count
+				);
+			}
+			return "Response completed (metrics not available)";
 		}
 
 		construct

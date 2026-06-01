@@ -23,6 +23,7 @@ namespace OllamaWeb.Search
 		public async string fetch_path(string path, GLib.Cancellable? cancellable = null) throws Error, GLib.IOError, GLib.Error
 		{
 			var url = BASE_URL + path;
+			// GLib.debug("ollamaweb GET %s", url);
 			var message = new Soup.Message("GET", url);
 			message.request_headers.append("User-Agent", USER_AGENT);
 			try {

@@ -456,6 +456,7 @@ namespace OLLMchat
 					value.set_object(this.tool_calls);
 					return true;
 				case "reasoning_content":
+				case "reasoning":
 					this.thinking = property_node.get_string();
 					value = Value(typeof(string));
 					value.set_string("");
