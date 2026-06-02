@@ -1,14 +1,87 @@
 /*
  * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
  *
- * Test / debug tool for libollamaweb HTML parsing (offline fixtures).
+ * Test / debug tool for libollamaweb HTML parsing (offline fixtures) and live search.
  *
  * Usage:
  *   oc-test-ollamaweb <file.html>              — parse search page
  *   oc-test-ollamaweb --tags <file.html>       — parse tags page (slug from filename hint)
  *   oc-test-ollamaweb --merge <a.html> <b.html> — merge two search pages (double-search)
  *   oc-test-ollamaweb --write-golden <dir>     — regenerate *.expected.json in dir
+ *   oc-test-ollamaweb --live <query>           — Service.search (HTTP + parse + merge)
+ *   oc-test-ollamaweb --session <query>        — Session.search (cache, model_dir, refine queue)
+ *     [--data-dir DIR] [--refine] [--debug]
  */
+
+async void run_live_queries(
+	Gee.ArrayList<string> queries,
+	bool use_session,
+	string data_dir,
+	bool refine_after
+) throws GLib.Error
+{
+	if (use_session) {
+		var session = new OllamaWeb.Search.Session();
+		session.model_dir = data_dir;
+		GLib.debug("model_dir=%s", data_dir);
+		foreach (var query in queries) {
+			var hits = yield session.search(query, OllamaWeb.Search.Category.NONE);
+			GLib.debug(
+				"q='%s' hits=%u refine_queue=%u",
+				query,
+				hits.size,
+				session.refine_queue.size
+			);
+			GLib.stderr.printf(
+				"q='%s' hits=%u refine_queue=%u\n",
+				query,
+				hits.size,
+				session.refine_queue.size
+			);
+			if (refine_after && session.refine_queue.size > 0) {
+				yield session.refine();
+				GLib.debug("refined q='%s'", query);
+			}
+			GLib.stdout.printf("%s", OllamaWeb.Model.json_array(hits));
+		}
+		return;
+	}
+	var service = new OllamaWeb.Search.Service();
+	foreach (var query in queries) {
+		var hits = yield service.search(query, OllamaWeb.Search.Category.NONE);
+		GLib.debug("q='%s' hits=%u", query, hits.size);
+		GLib.stderr.printf("q='%s' hits=%u\n", query, hits.size);
+		GLib.stdout.printf("%s", OllamaWeb.Model.json_array(hits));
+	}
+}
+
+int run_live_mode(
+	Gee.ArrayList<string> queries,
+	bool use_session,
+	string data_dir,
+	bool refine_after
+)
+{
+	var loop = new GLib.MainLoop();
+	int exit_code = 0;
+	run_live_queries.begin(
+		queries,
+		use_session,
+		data_dir,
+		refine_after,
+		(obj, res) => {
+			try {
+				run_live_queries.end(res);
+			} catch (GLib.Error e) {
+				GLib.stderr.printf("live search failed: %s\n", e.message);
+				exit_code = 1;
+			}
+			loop.quit();
+		}
+	);
+	loop.run();
+	return exit_code;
+}
 
 int main(string[] args)
 {
@@ -16,6 +89,11 @@ int main(string[] args)
 	bool tags_mode = false;
 	bool merge_mode = false;
 	bool write_golden = false;
+	bool live_mode = false;
+	bool session_mode = false;
+	bool refine_after = false;
+	bool debug_mode = false;
+	string data_dir = "";
 	for (int i = 1; i < args.length; i++) {
 		if (args[i] == "--tags") {
 			tags_mode = true;
@@ -29,11 +107,65 @@ int main(string[] args)
 			write_golden = true;
 			continue;
 		}
+		if (args[i] == "--live") {
+			live_mode = true;
+			continue;
+		}
+		if (args[i] == "--session") {
+			session_mode = true;
+			continue;
+		}
+		if (args[i] == "--refine") {
+			refine_after = true;
+			continue;
+		}
+		if (args[i] == "--debug") {
+			debug_mode = true;
+			continue;
+		}
+		if (args[i].has_prefix("--data-dir=")) {
+			data_dir = args[i].substring(11);
+			continue;
+		}
+		if (args[i] == "--data-dir") {
+			if (i + 1 >= args.length) {
+				GLib.stderr.printf("--data-dir requires a directory path\n");
+				return 1;
+			}
+			data_dir = args[++i];
+			continue;
+		}
 		pos_args.add(args[i]);
+	}
+	if (debug_mode) {
+		GLib.Log.set_debug_enabled(true);
+		GLib.Environment.set_variable("G_MESSAGES_DEBUG", "all", true);
+	}
+	if (live_mode && session_mode) {
+		GLib.stderr.printf("--live and --session are mutually exclusive\n");
+		return 1;
+	}
+	if (live_mode || session_mode) {
+		if (pos_args.size == 0) {
+			GLib.stderr.printf(
+				"usage: oc-test-ollamaweb [--debug] --live <query>\n"
+				+ "       oc-test-ollamaweb [--debug] --session [--data-dir DIR] [--refine] <query>\n"
+			);
+			return 1;
+		}
+		if (data_dir == "") {
+			data_dir = GLib.Path.build_filename(
+				GLib.Environment.get_tmp_dir(),
+				"oc-test-ollamaweb-models"
+			);
+		}
+		return run_live_mode(pos_args, session_mode, data_dir, refine_after);
 	}
 	if (pos_args.size == 0) {
 		GLib.stderr.printf(
 			"usage: oc-test-ollamaweb [--tags] [--merge] [--write-golden] <file.html> ...\n"
+			+ "       oc-test-ollamaweb [--debug] --live <query>\n"
+			+ "       oc-test-ollamaweb [--debug] --session [--data-dir DIR] [--refine] <query>\n"
 		);
 		return 1;
 	}
