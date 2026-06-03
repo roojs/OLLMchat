@@ -20,7 +20,6 @@ namespace OLLMfilesd.Rpc
 	{
 		// --- call target (one object key per request) ---
 
-		public Projects? projects { get; private set; }
 		public Project? project { get; private set; }
 		public File? file { get; private set; }
 		public Path? path { get; private set; }
@@ -31,6 +30,7 @@ namespace OLLMfilesd.Rpc
 
 		// --- shared scalars (several kinds / verbs) ---
 
+		public string path { get; set; default = ""; }
 		public bool force { get; set; default = false; }
 		public int since_revision { get; set; default = 0; }
 		public bool confirm { get; set; default = false; }
@@ -90,17 +90,6 @@ namespace OLLMfilesd.Rpc
 			Json.Node property_node
 		) {
 			switch (property_name) {
-				case "projects":
-					if (property_node.get_node_type () != Json.NodeType.OBJECT) {
-						value = Value (typeof (Projects));
-						return false;
-					}
-					this.projects = Json.gobject_deserialize (
-						typeof (Projects), property_node
-					) as Projects;
-					value = Value (typeof (Projects));
-					value.set_object (this.projects);
-					return true;
 				case "project":
 					if (property_node.get_node_type () != Json.NodeType.OBJECT) {
 						value = Value (typeof (Project));

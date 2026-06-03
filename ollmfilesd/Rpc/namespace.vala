@@ -19,10 +19,10 @@
 /**
  * JSON-RPC wire layer for `ollmfilesd`.
  *
- * Folder layout mirrors {@link OLLMfiles} (`ProjectList`, `ProjectManager`,
- * `File`, `Folder`, `SQT/VectorMetadata`, …) as RPC-facing GObject classes
- * are added on {@link OLLMfilesd.Listen}. {@link Request.dispatch} routes
- * via `rpc_*` signals on the target.
+ * On-objects (`Daemon`, `Projects`, `Project`, …) are added on
+ * {@link OLLMfilesd.Listen}; each delegates to {@link OLLMfiles} server code.
+ * {@link Request.dispatch} routes via {@code rpc_*} signals
+ * (wire verb {@code list} → {@code rpc_list}).
  */
 namespace OLLMfilesd.Rpc
 {
