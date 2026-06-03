@@ -19,20 +19,20 @@ namespace OLLMfilesd.Rpc
 		public int code { get; set; }
 		public string message { get; set; default = ""; }
 
-		public unowned ParamSpec? find_property (string name)
+		public unowned ParamSpec? find_property(string name)
 		{
-			return this.get_class ().find_property (name);
+			return this.get_class().find_property(name);
 		}
 
-		public new void Json.Serializable.set_property (ParamSpec pspec, Value value)
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
 		{
-			base.set_property (pspec.get_name (), value);
+			base.set_property(pspec.get_name(), value);
 		}
 
-		public new Value Json.Serializable.get_property (ParamSpec pspec)
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
 		{
-			Value val = Value (pspec.value_type);
-			base.get_property (pspec.get_name (), ref val);
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
 			return val;
 		}
 	}

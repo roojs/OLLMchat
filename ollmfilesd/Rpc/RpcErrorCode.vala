@@ -16,8 +16,8 @@ namespace OLLMfilesd.Rpc
 	/**
 	 * JSON-RPC 2.0 standard and application error codes (throw/catch).
 	 *
-	 * Methods go inside the errordomain block after `;` (Vala manual).
-	 * Errordomains support static methods only — not instance methods.
+	 * Static methods only — instance methods on the caught error are not
+	 * supported in Vala 0.56 yet.
 	 */
 	public errordomain RpcErrorCode
 	{
@@ -28,11 +28,18 @@ namespace OLLMfilesd.Rpc
 		INTERNAL_ERROR = -32603,
 		NOT_IMPLEMENTED = -32000;
 
-		public static Error to_error (RpcErrorCode e)
+		public static Error to_error(RpcErrorCode e)
 		{
-			return new Error () {
+			return new Error() {
 				code = e.code,
 				message = e.message
+			};
+		}
+
+		public static Response to_response(Request request, RpcErrorCode e)
+		{
+			return new Response(request.id) {
+				error = to_error(e)
 			};
 		}
 	}

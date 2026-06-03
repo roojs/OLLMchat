@@ -20,30 +20,31 @@ namespace OLLMfilesd.Rpc
 		public int id { get; construct set; }
 		public Error? error { get; set; default = null; }
 		public GLib.Object? result { get; set; default = null; }
+		public string msg { get; set; default = ""; }
 
-		public Response (int id)
+		public Response(int id)
 		{
-			GLib.Object (id: id);
+			GLib.Object(id: id);
 		}
 
-		public unowned ParamSpec? find_property (string name)
+		public unowned ParamSpec? find_property(string name)
 		{
-			return this.get_class ().find_property (name);
+			return this.get_class().find_property(name);
 		}
 
-		public new void Json.Serializable.set_property (ParamSpec pspec, Value value)
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
 		{
-			base.set_property (pspec.get_name (), value);
+			base.set_property(pspec.get_name(), value);
 		}
 
-		public new Value Json.Serializable.get_property (ParamSpec pspec)
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
 		{
-			Value val = Value (pspec.value_type);
-			base.get_property (pspec.get_name (), ref val);
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
 			return val;
 		}
 
-		public override Json.Node serialize_property (
+		public override Json.Node serialize_property(
 			string property_name,
 			Value value,
 			ParamSpec pspec
@@ -53,14 +54,14 @@ namespace OLLMfilesd.Rpc
 					if (this.error == null) {
 						return null;
 					}
-					return Json.gobject_serialize (this.error);
+					return Json.gobject_serialize(this.error);
 				case "result":
 					if (this.result == null) {
 						return null;
 					}
-					return Json.gobject_serialize (this.result);
+					return Json.gobject_serialize(this.result);
 				default:
-					return default_serialize_property (property_name, value, pspec);
+					return default_serialize_property(property_name, value, pspec);
 			}
 		}
 	}

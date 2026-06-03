@@ -18,39 +18,39 @@ namespace OLLMfilesd.Rpc
 	{
 		public string jsonrpc { get; set; default = "2.0"; }
 		public string method { get; set; default = ""; }
-		public CallParam param { get; set; default = new CallParam (); }
+		public CallParam param { get; set; default = new CallParam(); }
 
-		public unowned ParamSpec? find_property (string name)
+		public unowned ParamSpec? find_property(string name)
 		{
-			return this.get_class ().find_property (name);
+			return this.get_class().find_property(name);
 		}
 
-		public new void Json.Serializable.set_property (ParamSpec pspec, Value value)
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
 		{
-			base.set_property (pspec.get_name (), value);
+			base.set_property(pspec.get_name(), value);
 		}
 
-		public new Value Json.Serializable.get_property (ParamSpec pspec)
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
 		{
-			Value val = Value (pspec.value_type);
-			base.get_property (pspec.get_name (), ref val);
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
 			return val;
 		}
 
-		public override Json.Node serialize_property (
+		public override Json.Node serialize_property(
 			string property_name,
 			Value value,
 			ParamSpec pspec
 		) {
 			switch (property_name) {
 				case "param":
-					return Json.gobject_serialize (this.param);
+					return Json.gobject_serialize(this.param);
 				default:
-					return default_serialize_property (property_name, value, pspec);
+					return default_serialize_property(property_name, value, pspec);
 			}
 		}
 
-		public override bool deserialize_property (
+		public override bool deserialize_property(
 			string property_name,
 			out Value value,
 			ParamSpec pspec,
@@ -58,14 +58,14 @@ namespace OLLMfilesd.Rpc
 		) {
 			switch (property_name) {
 				case "params":
-					this.param = Json.gobject_deserialize (
-						typeof (CallParam), property_node
+					this.param = Json.gobject_deserialize(
+						typeof(CallParam), property_node
 					) as CallParam;
-					value = Value (typeof (CallParam));
-					value.set_object (this.param);
+					value = Value(typeof(CallParam));
+					value.set_object(this.param);
 					return true;
 				default:
-					return default_deserialize_property (
+					return default_deserialize_property(
 						property_name, out value, pspec, property_node
 					);
 			}

@@ -66,24 +66,24 @@ namespace OLLMfilesd.Rpc
 		public bool buffer_dirty { get; set; default = false; }
 		public int64 last_known_mtime { get; set; default = 0; }
 
-		public unowned ParamSpec? find_property (string name)
+		public unowned ParamSpec? find_property(string name)
 		{
-			return this.get_class ().find_property (name);
+			return this.get_class().find_property(name);
 		}
 
-		public new void Json.Serializable.set_property (ParamSpec pspec, Value value)
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
 		{
-			base.set_property (pspec.get_name (), value);
+			base.set_property(pspec.get_name(), value);
 		}
 
-		public new Value Json.Serializable.get_property (ParamSpec pspec)
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
 		{
-			Value val = Value (pspec.value_type);
-			base.get_property (pspec.get_name (), ref val);
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
 			return val;
 		}
 
-		public override bool deserialize_property (
+		public override bool deserialize_property(
 			string property_name,
 			out Value value,
 			ParamSpec pspec,
@@ -91,51 +91,51 @@ namespace OLLMfilesd.Rpc
 		) {
 			switch (property_name) {
 				case "project":
-					if (property_node.get_node_type () != Json.NodeType.OBJECT) {
-						value = Value (typeof (Project));
+					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
+						value = Value(typeof(Project));
 						return false;
 					}
-					this.project = Json.gobject_deserialize (
-						typeof (Project), property_node
+					this.project = Json.gobject_deserialize(
+						typeof(Project), property_node
 					) as Project;
-					value = Value (typeof (Project));
-					value.set_object (this.project);
+					value = Value(typeof(Project));
+					value.set_object(this.project);
 					return true;
 				case "file":
-					if (property_node.get_node_type () != Json.NodeType.OBJECT) {
-						value = Value (typeof (File));
+					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
+						value = Value(typeof(File));
 						return false;
 					}
-					this.file = Json.gobject_deserialize (
-						typeof (File), property_node
+					this.file = Json.gobject_deserialize(
+						typeof(File), property_node
 					) as File;
-					value = Value (typeof (File));
-					value.set_object (this.file);
+					value = Value(typeof(File));
+					value.set_object(this.file);
 					return true;
 				case "path":
-					if (property_node.get_node_type () != Json.NodeType.OBJECT) {
-						value = Value (typeof (Path));
+					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
+						value = Value(typeof(Path));
 						return false;
 					}
-					this.path = Json.gobject_deserialize (
-						typeof (Path), property_node
+					this.path = Json.gobject_deserialize(
+						typeof(Path), property_node
 					) as Path;
-					value = Value (typeof (Path));
-					value.set_object (this.path);
+					value = Value(typeof(Path));
+					value.set_object(this.path);
 					return true;
 				case "vector":
-					if (property_node.get_node_type () != Json.NodeType.OBJECT) {
-						value = Value (typeof (Vector));
+					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
+						value = Value(typeof(Vector));
 						return false;
 					}
-					this.vector = Json.gobject_deserialize (
-						typeof (Vector), property_node
+					this.vector = Json.gobject_deserialize(
+						typeof(Vector), property_node
 					) as Vector;
-					value = Value (typeof (Vector));
-					value.set_object (this.vector);
+					value = Value(typeof(Vector));
+					value.set_object(this.vector);
 					return true;
 				default:
-					return default_deserialize_property (
+					return default_deserialize_property(
 						property_name, out value, pspec, property_node
 					);
 			}
