@@ -19,18 +19,15 @@
 namespace OLLMfiles
 {
 	/**
-	 * Central coordinator for all file system operations.
-	 * 
-	 * ProjectManager is the entry point for all file system operations. It manages
-	 * file cache, tracks active project and active file, provides buffer and git
-	 * providers, handles database persistence, and emits signals for state changes.
-	 * 
-	 * The file_cache provides O(1) lookup by path. Projects are folders with
-	 * is_project = true (no separate Project class). Database operations are optional
-	 * (can work without database).
+	 * V2 client {@link ProjectManager} — RPC to {@code ollmfilesd}, local UI state only.
+	 *
+	 * Filesystem, SQLite, and scan work stay on the daemon. This class keeps
+	 * {@link active_project}, {@link active_file}, signals, and thin project rows.
 	 */
 	public class ProjectManager : Object
 	{
+		public RpcClient rpc { get; private set; default = new RpcClient(); }
+
 		/**
 		 * Provider instances (default to base class with no-op implementations).
 		 */
@@ -119,25 +116,15 @@ namespace OLLMfiles
 		public bool disable_initial_scan { get; set; default = false; }
 		
 		/**
-		 * Constructor.
-		 * 
-		 * @param db Optional database instance for persistence
+		 * V2 client constructor (ignores {@code db}; persistence is on the daemon).
 		 */
 		public ProjectManager(SQ.Database? db = null)
 		{
-			this.db = db;
-			if (this.db != null) {
-				// Initialize database tables
-				FileBase.init_db(this.db);
-				FileHistory.init_db(this.db);
-			}
-			// Initialize git provider if set
+			this.db = null;
 			this.git_provider.initialize();
-			
-			// Create DeleteManager instance
 			this.delete_manager = new DeleteManager(this);
 		}
-		
+
 		
 		/**
 		 * Activate a file (deactivates previous active file).
@@ -176,73 +163,42 @@ namespace OLLMfiles
 		 */
 		public async void activate_project(Folder? project)
 		{
-			//GLib.debug("ProjectManager.activate_project: Called with project=%s (path=%s)", 
-			//	project != null ? project.get_type().name() : "null",
-			//	project != null ? project.path : "null");
-			
-			// Skip if this project is already active (avoid redundant scans)
 			if (this.active_project == project && project != null && project.is_active) {
 				GLib.debug ("opening project skipped already active path=%s", project.path);
 				return;
 			}
 
-			// Reset is_active for ALL other projects (ensure only one project is active)
+			var response = yield this.rpc.call(new Rpc.Request() {
+				method = "ProjectManager.activate_project",
+				param = new Rpc.CallParam() {
+					skip_scan = this.disable_initial_scan,
+					path = project != null ? project.path : ""
+				}
+			});
+			if (response.error != null) {
+				GLib.critical (
+					"ProjectManager.activate_project path=%s: %s",
+					project != null ? project.path : "(none)",
+					response.error.message
+				);
+				return;
+			}
+
 			foreach (var other_project in this.projects.project_map.values) {
-				if (other_project != project && other_project.is_project && other_project.is_active) {
-					//GLib.debug("ProjectManager.activate_project: Deactivating project '%s'", other_project.path);
+				if (other_project != project && other_project.is_active) {
 					other_project.is_active = false;
-					if (this.db != null) {
-						other_project.saveToDB(this.db, null, false);
-						this.db.is_dirty = true;
-					}
 				}
 			}
-			
-			// Deactivate previous active project (if different from the one being activated)
 			if (this.active_project != null && this.active_project != project) {
-				//GLib.debug("ProjectManager.activate_project: Deactivating previous active_project '%s'", this.active_project.path);
-				// Note: is_active may already be false from the loop above, but ensure it's saved
-				if (this.active_project.is_active) {
-					this.active_project.is_active = false;
-					if (this.db != null) {
-						this.active_project.saveToDB(this.db, null, false);
-						this.db.is_dirty = true;
-					}
-				}
+				this.active_project.is_active = false;
 			}
-			
-			// Activate new project
+
 			this.active_project = project;
 			if (project != null && project.is_project) {
 				GLib.debug ("opening project path=%s", project.path);
- 				project.is_active = true;
-				
-				if (this.db != null) {
-					project.saveToDB(this.db, null, false);
-					this.db.is_dirty = true;
-					
-					// Load project file tree from DB if not already loaded (for fast initial display)
-					if (project.children.items.size == 0) {
-						yield project.load_files_from_db();
-						project.project_files.update_from(project);
-						
-					}
-				}
-
-				if (!this.disable_initial_scan) {
-					if (this.scanning.has_key (project.path)) {
-						GLib.debug ("filesystem scan already active path=%s", project.path);
-					} else {
-						GLib.debug ("filesystem scan queued path=%s", project.path);
-						yield project.read_dir(new DateTime.now_local().to_unix(), true);
-						GLib.debug ("filesystem scan returned path=%s", project.path);
-					}
-				}
-				this.disable_initial_scan = false;
-				
-				
+				project.is_active = true;
 			}
-			
+			this.disable_initial_scan = false;
 			this.active_project_changed(project);
 		}
 		
@@ -303,54 +259,47 @@ namespace OLLMfiles
 		 */
 		public async void load_projects_from_db()
 		{
-			if (this.db == null) {
-				//GLib.debug("ProjectManager.load_projects_from_db: db is null, skipping");
+			var response = yield this.rpc.call(new Rpc.Request() {
+				method = "ProjectManager.load_projects_from_db",
+				param = new Rpc.CallParam()
+			});
+			if (response.error != null) {
+				GLib.critical (
+					"ProjectManager.load_projects_from_db: %s",
+					response.error.message
+				);
 				return;
 			}
-			
-			// Query database for projects
-			var query = FileBase.query(this.db, this);
-			var projects_list = new Gee.ArrayList<Folder>();
-			yield query.select_async("WHERE is_project = 1 AND delete_id = 0", projects_list);
-			
-			////GLib.debug("ProjectManager.load_projects_from_db: Found %d projects in database", projects_list.size);
-			
-			// Add to manager.projects list (ProjectList handles deduplication)
-			foreach (var project in projects_list) {
-				// Projects use property binding: path_basename for label, path for tooltip
-				// No need to manually set display_name or tooltip - they're bound directly
-				////GLib.debug("ProjectManager.load_projects_from_db: Adding project path='%s' (path_basename='%s')", 
-				//	project.path, project.path_basename);
-				this.projects.append(project);
+			foreach (var folder in (Gee.ArrayList<Folder>) response.result) {
+				folder.manager = this;
+				this.projects.append(folder);
 			}
-			
-			////GLib.debug("ProjectManager.load_projects_from_db: After append, projects.get_n_items() = %u", 
-			//	this.projects.get_n_items());
 		}
 		
 		/**
 		 * Find a Folder at the given path (e.g. subfolder of a project, or in DB).
-		 * Caller must have already verified the path is not already a project (path_map).
-		 * Checks each project's folder_map, then the database. Does not check path_map or file_cache.
+		 * Daemon is authoritative; does not use local {@link projects} / folder_map.
 		 *
 		 * @param path Normalized absolute path
 		 * @return The Folder if found, null otherwise
 		 */
-		public Folder? get_folder_at_path(string path)
+		public async Folder? get_folder_at_path(string path)
 		{
-			var folder = this.projects.get_folder_in_any_project(path);
-			if (folder != null) {
-				return folder;
-			}
-			if (this.db == null) {
+			var response = yield this.rpc.call(new Rpc.Request() {
+				method = "ProjectManager.get_folder_at_path",
+				param = new Rpc.CallParam() { path = path }
+			});
+			if (response.error != null) {
+				GLib.critical (
+					"ProjectManager.get_folder_at_path path=%s: %s",
+					path,
+					response.error.message
+				);
 				return null;
 			}
-			var query = FileBase.query(this.db, this);
-			var list = new Gee.ArrayList<FileBase>();
-			query.select(
-				"WHERE path = '%s' AND base_type = 'd' AND delete_id = 0 LIMIT 1".printf(
-					path.replace("'", "''")), list);
-			return list.size == 0 ? null : list.get(0) as Folder;
+			var folder = (Folder) response.result;
+			folder.manager = this;
+			return folder;
 		}
 
 		/**
@@ -361,21 +310,28 @@ namespace OLLMfiles
 		 * @param path Normalized absolute path to the folder
 		 * @return The Folder that is the project at that path (existing or new)
 		 */
-		public Folder create_project(string path)
+		public async Folder create_project(string path)
 		{
-			var existing = this.get_folder_at_path(path);
-			var project = existing != null
-				? existing
-				: new Folder(this) {
+			var response = yield this.rpc.call(new Rpc.Request() {
+				method = "ProjectManager.create_project",
+				param = new Rpc.CallParam() { path = path }
+			});
+			if (response.error != null) {
+				GLib.critical (
+					"ProjectManager.create_project path=%s: %s",
+					path,
+					response.error.message
+				);
+				return new Folder(this) {
 					is_project = true,
 					path = path
 				};
+			}
+			var project = (Folder) response.result;
+			project.manager = this;
 			project.is_project = true;
 			this.file_cache.set(project.path, project);
 			this.projects.append(project);
-			project.saveToDB(this.db, null, false);
-			this.db.is_dirty = true;
-		
 			return project;
 		}
 
@@ -385,16 +341,26 @@ namespace OLLMfiles
 		 *
 		 * @param project The project folder to remove
 		 */
-		public void remove_project(Folder project)
+		public async void remove_project(Folder project)
 		{
+			var response = yield this.rpc.call(new Rpc.Request() {
+				method = "ProjectManager.remove_project",
+				param = new Rpc.CallParam() { path = project.path }
+			});
+			if (response.error != null) {
+				GLib.critical (
+					"ProjectManager.remove_project path=%s: %s",
+					project.path,
+					response.error.message
+				);
+				return;
+			}
 			if (this.active_project == project) {
 				this.active_project = null;
 				this.active_project_changed(null);
 			}
 			this.projects.remove(project);
-			project.saveToDB(this.db, null, false);
-			this.db.is_dirty = true;
-		
+			project.is_project = false;
 		}
 		
 		/**

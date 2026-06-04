@@ -85,16 +85,22 @@ namespace OLLMfilesd
 			}
 		}
 
-		public void reply(Rpc.Request request, Rpc.Response response)
+		public void reply(Rpc.Request request, OLLMfiles.Rpc.Response response)
 		{
 			response.id = request.id;
 			size_t length;
 			this.write_line(Json.gobject_to_data(response, out length));
 		}
 
-		public void reply_error(Rpc.Request request, Rpc.RpcErrorCode error_code)
+		public void reply_error(
+			Rpc.Request request,
+			OLLMfiles.Rpc.RpcErrorCode error_code
+		)
 		{
-			this.reply(request, Rpc.RpcErrorCode.to_response(request, error_code));
+			this.reply(
+				request,
+				OLLMfiles.Rpc.RpcErrorCode.to_response(request, error_code)
+			);
 		}
 
 		private bool on_input_ready(GLib.IOChannel source, GLib.IOCondition condition)

@@ -11,13 +11,17 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfilesd.Rpc
+namespace OLLMfilesd
 {
-	/** JSON-RPC 2.0 error object on the wire (`code`, `message`). */
-	public class Error : GLib.Object, Json.Serializable
+	/** Server {@code Daemon.*} — {@code hello} and {@code shutdown}. */
+	public class Daemon : GLib.Object, Json.Serializable
 	{
-		public int code { get; set; }
-		public string message { get; set; default = ""; }
+		public int protocol { get; set; default = 1; }
+		public string server { get; set; default = "ollmfilesd"; }
+		public bool ready { get; set; default = true; }
+
+		public signal void rpc_hello(Rpc.Request request);
+		public signal void rpc_shutdown(Rpc.Request request);
 
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -34,6 +38,26 @@ namespace OLLMfilesd.Rpc
 			Value val = Value(pspec.value_type);
 			base.get_property(pspec.get_name(), ref val);
 			return val;
+		}
+
+		construct
+		{
+			this.rpc_hello.connect((request) => {
+				if (request.param.protocol > 0) {
+					this.protocol = request.param.protocol;
+				}
+				request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+					result = this,
+					result_type = typeof(Daemon).name()
+				});
+			});
+			this.rpc_shutdown.connect((request) => {
+				this.ready = false;
+				request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+					msg = "ok"
+				});
+				request.session.listen.stop();
+			});
 		}
 	}
 }

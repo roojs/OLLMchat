@@ -11,7 +11,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfilesd.Rpc
+namespace OLLMfiles.Rpc
 {
 	/**
 	 * JSON-RPC 2.0 standard and application error codes (throw/catch).
@@ -30,10 +30,7 @@ namespace OLLMfilesd.Rpc
 
 		public static Error to_error(RpcErrorCode e)
 		{
-			return new Error() {
-				code = e.code,
-				message = e.message
-			};
+			return new Error(e, e.message);
 		}
 
 		public static Response to_response(Request request, RpcErrorCode e)

@@ -6,25 +6,27 @@
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this library; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 /**
- * Headless file + vector service daemon (`ollmfilesd`).
- *
- * Wire: JSON-RPC 2.0 over NDJSON on a Unix stream socket.
- * Methods are `{kind}.{verb}` (e.g. `project.activate`); see
- * {@link OLLMfilesd.Rpc.Request} for dispatch; wire types in
- * {@link OLLMfiles.Rpc}.
+ * JSON-RPC wire types shared by {@link OLLMfiles.RpcClient} and {@code ollmfilesd}.
  */
-namespace OLLMfilesd
+namespace OLLMfiles.Rpc
 {
 	internal class NamespaceDoc {}
+
+	/** {@link Type.name} → GType for {@link Response.result} deserialize on the client. */
+	public static Gee.HashMap<string, Type> types;
+
+	/** Record a wire result type (see each type's {@link rpc_register}). */
+	public static void register(Type t)
+	{
+		if (types == null) {
+			types = new Gee.HashMap<string, Type>();
+		}
+		types.set(t.name(), t);
+	}
 }

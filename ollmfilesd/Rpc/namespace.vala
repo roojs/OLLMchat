@@ -6,23 +6,18 @@
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this library; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 /**
- * JSON-RPC wire layer for `ollmfilesd`.
+ * `ollmfilesd` RPC targets and dispatch.
  *
- * On-objects (`Daemon`, `Projects`, `Project`, …) are added on
+ * Wire types ({@link OLLMfiles.Rpc.Request}, {@link OLLMfiles.Rpc.Response}, …)
+ * live in `libocfiles/Rpc/`. {@link OLLMfilesd.Daemon} lives in `ollmfilesd/`.
+ * Other on-objects (`Projects`, …) are added on
  * {@link OLLMfilesd.Listen}; each delegates to {@link OLLMfiles} server code.
- * {@link Request.dispatch} routes via {@code rpc_*} signals
- * (wire verb {@code list} → {@code rpc_list}).
  */
 namespace OLLMfilesd.Rpc
 {

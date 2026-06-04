@@ -11,20 +11,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfilesd.Rpc
+namespace OLLMfiles.Rpc
 {
 	/**
 	 * Typed RPC call parameters — wire key `params`, Vala property {@link param}.
 	 */
 	public class CallParam : GLib.Object, Json.Serializable
 	{
-		// --- call target (one object key per request) ---
-
-		public Project? project { get; private set; }
-		public File? file { get; private set; }
-		public Path? path { get; private set; }
-		public Vector? vector { get; private set; }
-
 		/** Positional string arguments when wire sends a JSON array. */
 		public string[] args { get; set; default = new string[] {}; }
 
@@ -81,64 +74,6 @@ namespace OLLMfilesd.Rpc
 			Value val = Value(pspec.value_type);
 			base.get_property(pspec.get_name(), ref val);
 			return val;
-		}
-
-		public override bool deserialize_property(
-			string property_name,
-			out Value value,
-			ParamSpec pspec,
-			Json.Node property_node
-		) {
-			switch (property_name) {
-				case "project":
-					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
-						value = Value(typeof(Project));
-						return false;
-					}
-					this.project = Json.gobject_deserialize(
-						typeof(Project), property_node
-					) as Project;
-					value = Value(typeof(Project));
-					value.set_object(this.project);
-					return true;
-				case "file":
-					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
-						value = Value(typeof(File));
-						return false;
-					}
-					this.file = Json.gobject_deserialize(
-						typeof(File), property_node
-					) as File;
-					value = Value(typeof(File));
-					value.set_object(this.file);
-					return true;
-				case "path":
-					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
-						value = Value(typeof(Path));
-						return false;
-					}
-					this.path = Json.gobject_deserialize(
-						typeof(Path), property_node
-					) as Path;
-					value = Value(typeof(Path));
-					value.set_object(this.path);
-					return true;
-				case "vector":
-					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
-						value = Value(typeof(Vector));
-						return false;
-					}
-					this.vector = Json.gobject_deserialize(
-						typeof(Vector), property_node
-					) as Vector;
-					value = Value(typeof(Vector));
-					value.set_object(this.vector);
-					return true;
-				default:
-					return default_deserialize_property(
-						property_name, out value, pspec, property_node
-					);
-			}
 		}
 	}
 }

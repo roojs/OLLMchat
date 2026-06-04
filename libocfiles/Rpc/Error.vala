@@ -11,20 +11,38 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfilesd.Rpc
+namespace OLLMfiles.Rpc
 {
-	/** JSON-RPC 2.0 response (has wire `id`, plus `result` or `error`). */
-	public class Response : GLib.Object, Json.Serializable
+	/** JSON-RPC 2.0 error object on the wire (`code`, `message`). */
+	public class Error : GLib.Object, Json.Serializable
 	{
-		public string jsonrpc { get; set; default = "2.0"; }
-		public int id { get; construct set; }
-		public Error? error { get; set; default = null; }
-		public GLib.Object? result { get; set; default = null; }
-		public string msg { get; set; default = ""; }
+		public int code { get; set; }
+		public string message { get; set; default = ""; }
 
-		public Response(int id)
+		/**
+		 * @param method optional RPC method for {@link RpcErrorCode.INTERNAL_ERROR} logs
+		 * @param request_id optional request id for {@link RpcErrorCode.INTERNAL_ERROR} logs
+		 */
+		public static void rpc_register()
 		{
-			GLib.Object(id: id);
+			register(typeof(Error));
+		}
+
+		public Error(
+			RpcErrorCode code,
+			string message,
+			string method = "",
+			int request_id = 0
+		) {
+			Object(code: (int) code, message: message);
+			if (code == RpcErrorCode.INTERNAL_ERROR) {
+				GLib.critical(
+					"RpcClient: %s %s: %s",
+					method.length > 0 ? method : "(no method)",
+					request_id > 0 ? "id=" + request_id.to_string() : "",
+					message
+				);
+			}
 		}
 
 		public unowned ParamSpec? find_property(string name)
@@ -42,27 +60,6 @@ namespace OLLMfilesd.Rpc
 			Value val = Value(pspec.value_type);
 			base.get_property(pspec.get_name(), ref val);
 			return val;
-		}
-
-		public override Json.Node serialize_property(
-			string property_name,
-			Value value,
-			ParamSpec pspec
-		) {
-			switch (property_name) {
-				case "error":
-					if (this.error == null) {
-						return null;
-					}
-					return Json.gobject_serialize(this.error);
-				case "result":
-					if (this.result == null) {
-						return null;
-					}
-					return Json.gobject_serialize(this.result);
-				default:
-					return default_serialize_property(property_name, value, pspec);
-			}
 		}
 	}
 }
