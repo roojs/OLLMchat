@@ -105,6 +105,11 @@ namespace OLLMfiles
 		 * This signal is emitted when file content is written to disk and triggers background scanning.
 		 */
 		public signal void file_contents_changed(File file);
+
+		public signal void rpc_load_projects_from_db(OLLMfilesd.Rpc.Request request);
+		public signal void rpc_create_project(OLLMfilesd.Rpc.Request request);
+		public signal void rpc_remove_project(OLLMfilesd.Rpc.Request request);
+		public signal void rpc_activate_project(OLLMfilesd.Rpc.Request request);
 		
 		/**
 		 * DeleteManager instance for handling file deletions.
@@ -136,6 +141,37 @@ namespace OLLMfiles
 			
 			// Create DeleteManager instance
 			this.delete_manager = new DeleteManager(this);
+		}
+
+		construct
+		{
+			this.rpc_load_projects_from_db.connect((request) => {
+				this.load_projects_from_db.begin(request);
+			});
+			this.rpc_create_project.connect((request) => {
+				var project = this.create_project(request.param.path);
+				request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+					result = project,
+					result_type = typeof(Folder).name()
+				});
+			});
+			this.rpc_remove_project.connect((request) => {
+				this.remove_project(
+					this.projects.path_map.get(request.param.path)
+				);
+				request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+					msg = "ok"
+				});
+			});
+			this.rpc_activate_project.connect((request) => {
+				this.disable_initial_scan = request.param.skip_scan;
+				this.activate_project.begin(
+					request,
+					request.param.path.length > 0
+						? this.projects.path_map.get(request.param.path)
+						: null
+				);
+			});
 		}
 		
 		
@@ -174,15 +210,17 @@ namespace OLLMfiles
 		 * 
 		 * @param project The project folder to activate (must have is_project = true)
 		 */
-		public async void activate_project(Folder? project)
+		public async void activate_project(
+			OLLMfilesd.Rpc.Request request,
+			Folder? project
+		)
 		{
-			//GLib.debug("ProjectManager.activate_project: Called with project=%s (path=%s)", 
-			//	project != null ? project.get_type().name() : "null",
-			//	project != null ? project.path : "null");
-			
 			// Skip if this project is already active (avoid redundant scans)
 			if (this.active_project == project && project != null && project.is_active) {
 				GLib.debug ("opening project skipped already active path=%s", project.path);
+				request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+					msg = "ok"
+				});
 				return;
 			}
 
@@ -215,7 +253,7 @@ namespace OLLMfiles
 			this.active_project = project;
 			if (project != null && project.is_project) {
 				GLib.debug ("opening project path=%s", project.path);
- 				project.is_active = true;
+				project.is_active = true;
 				
 				if (this.db != null) {
 					project.saveToDB(this.db, null, false);
@@ -225,7 +263,6 @@ namespace OLLMfiles
 					if (project.children.items.size == 0) {
 						yield project.load_files_from_db();
 						project.project_files.update_from(project);
-						
 					}
 				}
 
@@ -239,11 +276,15 @@ namespace OLLMfiles
 					}
 				}
 				this.disable_initial_scan = false;
-				
-				
 			}
 			
 			this.active_project_changed(project);
+
+		
+			request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+				msg = "ok"
+			});
+		
 		}
 		
 		
@@ -301,13 +342,8 @@ namespace OLLMfiles
 		 * Queries database for all folders where is_project = 1 and loads them
 		 * into the manager.projects list.
 		 */
-		public async void load_projects_from_db()
+		public async void load_projects_from_db(OLLMfilesd.Rpc.Request request)
 		{
-			if (this.db == null) {
-				//GLib.debug("ProjectManager.load_projects_from_db: db is null, skipping");
-				return;
-			}
-			
 			// Query database for projects
 			var query = FileBase.query(this.db, this);
 			var projects_list = new Gee.ArrayList<Folder>();
@@ -323,9 +359,16 @@ namespace OLLMfiles
 				//	project.path, project.path_basename);
 				this.projects.append(project);
 			}
-			
-			////GLib.debug("ProjectManager.load_projects_from_db: After append, projects.get_n_items() = %u", 
-			//	this.projects.get_n_items());
+
+			var list = new Gee.ArrayList<GLib.Object>();
+			for (uint i = 0; i < this.projects.get_n_items(); i++) {
+				list.add(this.projects.get_item(i));
+			}
+			request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+				result = list,
+				result_type = typeof(Folder).name(),
+				is_array = true
+			});
 		}
 		
 		/**
@@ -525,53 +568,6 @@ namespace OLLMfiles
 			
 			// Manually emit new_file_added signal
 			active_project.project_files.new_file_added(real_file);
-		}
-		
-		/**
-		 * Restore active project and file from in-memory data structures.
-		 * Note: Projects are Folders with is_project = true.
-		 * This will set this.active_project and this.active_file, deactivate previous items,
-		 * update the database, and emit signals.
-		 */
-		public async void restore_active_state()
-		{
-			//GLib.debug("ProjectManager.restore_active_state: Starting");
-			// Find active project using ProjectList internal method
-			var project = this.projects.get_active_project();
-			if (project == null) {
-				//GLib.debug("ProjectManager.restore_active_state: No active project found, resetting all projects");
-				// Reset is_active for all projects if no active project found
-				// (in case multiple projects were marked active in database)
-				foreach (var other_project in this.projects.project_map.values) {
-					if (other_project.is_project && other_project.is_active) {
-						//GLib.debug("ProjectManager.restore_active_state: Resetting is_active for project '%s'", other_project.path);
-						other_project.is_active = false;
-						if (this.db != null) {
-							other_project.saveToDB(this.db, null, false);
-							this.db.is_dirty = true;
-						}
-					}
-				}
-				return;
-			}
-			
-			//GLib.debug("ProjectManager.restore_active_state: Found active project '%s'", project.path);
-			// Reset is_active to false in memory to force fresh activation
-			// activate_project() will set it back to true and save it, so no need to save here
-			if (project.is_active) {
-				project.is_active = false;
-			}
-			
-			GLib.debug ("restoring session project path=%s", project.path);
-			yield this.activate_project(project);
-			//GLib.debug("ProjectManager.restore_active_state: Completed");
-			
-			// Find active file using ProjectFiles internal method
-			var file = project.project_files.get_active_file();
-			if (file != null) {
-				// This will set this.active_file, deactivate previous, update DB, emit signal
-				this.activate_file(file);
-			}
 		}
 		
 		/**

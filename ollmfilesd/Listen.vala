@@ -20,7 +20,7 @@ namespace OLLMfilesd
 	public class Listen : GLib.Object
 	{
 		public Daemon Daemon { get; default = new Daemon(); }
-		public Rpc.Projects projects { get; default = new Rpc.Projects(); }
+		public OLLMfiles.ProjectManager ProjectManager { get; construct; }
 		public string socket_path { get; construct; }
 
 		private GLib.SocketService service { get; set; default = new GLib.SocketService(); }
