@@ -22,7 +22,8 @@ namespace OLLMfiles
 	 * {@link call} sends a {@link Rpc.Request} and yields until that
 	 * id is filled in or {@link call_timeout_seconds} elapses.
 	 * Transport and client faults return {@link Rpc.Response.error}; they
-	 * do not throw. Check {@link Rpc.Response.error} after every call.
+	 * do not throw. {@link failed} is emitted for every failed {@link call};
+	 * connect UI handlers there instead of per-caller logging.
 	 */
 	public class RpcClient : GLib.Object
 	{
@@ -42,6 +43,14 @@ namespace OLLMfiles
 		public string connect_error { get; private set; default = ""; }
 
 		public signal void notification(Rpc.Notification notif);
+
+		/**
+		 * Emitted when {@link call} completes with {@link Rpc.Response.error} set.
+		 * Transport faults, timeouts, and daemon JSON-RPC errors all use this path.
+		 * {@link call} still returns the response; callers may ignore errors when
+		 * the UI connects here (e.g. toast / dialog).
+		 */
+		public signal void failed(Rpc.Request request, Rpc.Error error);
 
 		private GLib.SocketConnection? connection;
 		private GLib.DataInputStream? input;
@@ -185,21 +194,28 @@ namespace OLLMfiles
 		/**
 		 * Runs {@link connect} then sends the request.
 		 * @param request wire request; {@link Rpc.Request.id} is set here
-		 * @return wire response; check {@link Rpc.Response.error}
+		 * @return wire response; check {@link Rpc.Response.error}, or connect
+		 *   to {@link failed} for user-visible handling
 		 */
 		public async Rpc.Response call(Rpc.Request request)
 		{
 			yield this.connect();
 			request.id = this.next_id++;
 			if (!this.connected || this.output == null) {
-				return new Rpc.Response(request.id) {
-					error = new Rpc.Error(
-						Rpc.RpcErrorCode.INTERNAL_ERROR,
-						"not connected",
-						request.method,
-						request.id
-					)
-				};
+				var error = new Rpc.Error(
+					Rpc.RpcErrorCode.INTERNAL_ERROR,
+					"not connected",
+					request.method,
+					request.id
+				);
+				GLib.warning(
+					"RpcClient: %s id=%d: %s",
+					request.method,
+					request.id,
+					error.message
+				);
+				this.failed(request, error);
+				return new Rpc.Response(request.id) { error = error };
 			}
 
 			var promise = new GLib.Promise<Rpc.Response>();
@@ -212,17 +228,37 @@ namespace OLLMfiles
 				yield this.output.flush_async(GLib.Priority.DEFAULT, null);
 			} catch (GLib.Error e) {
 				this.pending.unset(request.id);
-				return new Rpc.Response(request.id) {
-					error = new Rpc.Error(
-						Rpc.RpcErrorCode.INTERNAL_ERROR,
-						"write: " + e.message,
-						request.method,
-						request.id
-					)
-				};
+				var error = new Rpc.Error(
+					Rpc.RpcErrorCode.INTERNAL_ERROR,
+					"write: " + e.message,
+					request.method,
+					request.id
+				);
+				GLib.warning(
+					"RpcClient: %s id=%d: %s",
+					request.method,
+					request.id,
+					error.message
+				);
+				this.failed(request, error);
+				return new Rpc.Response(request.id) { error = error };
 			}
 
-			return yield this.wait_response(request.id, request.method, promise);
+			var response = yield this.wait_response(
+				request.id,
+				request.method,
+				promise
+			);
+			if (response.error != null) {
+				GLib.warning(
+					"RpcClient: %s id=%d: %s",
+					request.method,
+					request.id,
+					response.error.message
+				);
+				this.failed(request, response.error);
+			}
+			return response;
 		}
 
 		private async Rpc.Response wait_response(

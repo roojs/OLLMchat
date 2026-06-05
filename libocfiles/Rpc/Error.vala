@@ -20,8 +20,8 @@ namespace OLLMfiles.Rpc
 		public string message { get; set; default = ""; }
 
 		/**
-		 * @param method optional RPC method for {@link RpcErrorCode.INTERNAL_ERROR} logs
-		 * @param request_id optional request id for {@link RpcErrorCode.INTERNAL_ERROR} logs
+		 * @param method optional RPC method (reserved; logging is on {@link RpcClient})
+		 * @param request_id optional request id (reserved)
 		 */
 		public static void rpc_register()
 		{
@@ -35,14 +35,6 @@ namespace OLLMfiles.Rpc
 			int request_id = 0
 		) {
 			Object(code: (int) code, message: message);
-			if (code == RpcErrorCode.INTERNAL_ERROR) {
-				GLib.critical(
-					"RpcClient: %s %s: %s",
-					method.length > 0 ? method : "(no method)",
-					request_id > 0 ? "id=" + request_id.to_string() : "",
-					message
-				);
-			}
 		}
 
 		public unowned ParamSpec? find_property(string name)
