@@ -25,7 +25,7 @@ namespace OLLMfiles
 		NO_CHANGE,              // File hasn't changed on disk
 		CHANGED_HAS_UNSAVED     // File changed on disk, buffer has unsaved changes - needs warning
 	}
-	
+
 	/**
 	 * Represents a file in the project.
 	 * 
@@ -49,6 +49,11 @@ namespace OLLMfiles
 	 */
 	public class File : FileBase, Copyable
 	{
+		public static void rpc_register()
+		{
+			OLLMrpc.register("File", typeof(File));
+		}
+
 		/**
 		 * Constructor.
 		 * 
@@ -299,14 +304,15 @@ namespace OLLMfiles
 				return false;
 			}
 
-			var response = yield this.manager.rpc.call(new Rpc.Request() {
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "File.read",
-				param = new Rpc.CallParam() { path = this.path }
+				param = new OLLMfilesd.CallParam() { path = this.path }
 			});
 			if (response.error != null) {
 				return false;
 			}
 
+			// Reply: {@link File} row via {@code result_type} + {@link rpc_register}.
 			var row = response.result as File;
 			if (row != null) {
 				this.copy_from(row, {
@@ -345,9 +351,9 @@ namespace OLLMfiles
 				content = this.buffer.get_text();
 			}
 
-			this.manager.rpc.call.begin(new Rpc.Request() {
+			this.manager.rpc.call.begin(new OLLMrpc.Request() {
 				method = "File.write",
-				param = new Rpc.CallParam() {
+				param = new OLLMfilesd.CallParam() {
 					path = this.path,
 					content = content
 				}
@@ -365,9 +371,9 @@ namespace OLLMfiles
 				return FileUpdateStatus.NO_CHANGE;
 			}
 
-			var response = yield this.manager.rpc.call(new Rpc.Request() {
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "File.changed.check",
-				param = new Rpc.CallParam() {
+				param = new OLLMfilesd.CallParam() {
 					path = this.path,
 					buffer_dirty = this.buffer != null && this.buffer.is_modified,
 					last_known_mtime = this.last_modified
@@ -376,7 +382,11 @@ namespace OLLMfiles
 			if (response.error != null) {
 				return FileUpdateStatus.NO_CHANGE;
 			}
-			return (FileUpdateStatus) (int) response.result;
+			int status_code;
+			if (int.try_parse(response.msg, out status_code)) {
+				return (FileUpdateStatus) status_code;
+			}
+			return FileUpdateStatus.NO_CHANGE;
 		}
 
 		/**
@@ -394,9 +404,9 @@ namespace OLLMfiles
 				return true;
 			}
 
-			var response = yield this.manager.rpc.call(new Rpc.Request() {
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "File.register",
-				param = new Rpc.CallParam() { path = this.path }
+				param = new OLLMfilesd.CallParam() { path = this.path }
 			});
 			if (response.error != null) {
 				return false;
@@ -426,9 +436,9 @@ namespace OLLMfiles
 				return false;
 			}
 
-			var response = yield this.manager.rpc.call(new Rpc.Request() {
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "File.delete",
-				param = new Rpc.CallParam() { path = this.path }
+				param = new OLLMfilesd.CallParam() { path = this.path }
 			});
 			return response.error == null;
 		}

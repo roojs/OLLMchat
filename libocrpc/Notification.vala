@@ -11,7 +11,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfiles.Rpc
+namespace OLLMrpc
 {
 	/** JSON-RPC 2.0 notification (no `id`). Wire key `params`, Vala {@link param}. */
 	public class Notification : GLib.Object, Json.Serializable
@@ -22,7 +22,7 @@ namespace OLLMfiles.Rpc
 
 		public static void rpc_register()
 		{
-			register(typeof(Notification));
+			register("Notification", typeof(Notification));
 		}
 
 		public unowned ParamSpec? find_property(string name)
@@ -64,7 +64,7 @@ namespace OLLMfiles.Rpc
 			switch (property_name) {
 				case "params":
 					this.param = Json.gobject_deserialize(
-						typeof(CallParam), property_node
+						Request.param_type, property_node
 					) as CallParam;
 					value = Value(typeof(CallParam));
 					value.set_object(this.param);

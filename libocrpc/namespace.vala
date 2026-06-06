@@ -12,21 +12,21 @@
  */
 
 /**
- * JSON-RPC wire types shared by {@link OLLMfiles.RpcClient} and {@code ollmfilesd}.
+ * JSON-RPC wire types in {@code libocrpc} — shared by client and {@code ollmfilesd}.
  */
-namespace OLLMfiles.Rpc
+namespace OLLMrpc
 {
 	internal class NamespaceDoc {}
 
-	/** {@link Type.name} → GType for {@link Response.result} deserialize on the client. */
+	/** Wire name → GType for {@link Response.result} deserialize on the client. */
 	public static Gee.HashMap<string, Type> types;
 
-	/** Record a wire result type (see each type's {@link rpc_register}). */
-	public static void register(Type t)
+	/** Record a wire result type (see each class {@link rpc_register}). */
+	public static void register(string name, Type t)
 	{
 		if (types == null) {
 			types = new Gee.HashMap<string, Type>();
 		}
-		types.set(t.name(), t);
+		types.set(name, t);
 	}
 }

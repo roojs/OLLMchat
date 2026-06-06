@@ -17,11 +17,11 @@ namespace OLLMfiles
 	 * NDJSON JSON-RPC client for {@code ollmfilesd} on a Unix stream socket.
 	 * {@link connect} runs {@link RpcClientBoot.ensure_daemon} first.
 	 *
-	 * A background read loop dispatches {@link Rpc.Notification}
-	 * lines and resolves pending {@link Rpc.Response} entries by id.
-	 * {@link call} sends a {@link Rpc.Request} and yields until that
+	 * A background read loop dispatches {@link OLLMrpc.Notification}
+	 * lines and resolves pending {@link OLLMrpc.Response} entries by id.
+	 * {@link call} sends a {@link OLLMrpc.Request} and yields until that
 	 * id is filled in or {@link call_timeout_seconds} elapses.
-	 * Transport and client faults return {@link Rpc.Response.error}; they
+	 * Transport and client faults return {@link OLLMrpc.Response.error}; they
 	 * do not throw. {@link failed} is emitted for every failed {@link call};
 	 * connect UI handlers there instead of per-caller logging.
 	 */
@@ -31,7 +31,7 @@ namespace OLLMfiles
 		public int protocol { get; set; default = 1; }
 		public string client_name { get; set; default = "ollmchat"; }
 
-		/** Seconds to wait for a matching {@link Rpc.Response} id. */
+		/** Seconds to wait for a matching {@link OLLMrpc.Response} id. */
 		public uint call_timeout_seconds { get; set; default = 120; }
 
 		public bool connected { get; private set; default = false; }
@@ -42,23 +42,23 @@ namespace OLLMfiles
 		 */
 		public string connect_error { get; private set; default = ""; }
 
-		public signal void notification(Rpc.Notification notif);
+		public signal void notification(OLLMrpc.Notification notif);
 
 		/**
-		 * Emitted when {@link call} completes with {@link Rpc.Response.error} set.
+		 * Emitted when {@link call} completes with {@link OLLMrpc.Response.error} set.
 		 * Transport faults, timeouts, and daemon JSON-RPC errors all use this path.
 		 * {@link call} still returns the response; callers may ignore errors when
 		 * the UI connects here (e.g. toast / dialog).
 		 */
-		public signal void failed(Rpc.Request request, Rpc.Error error);
+		public signal void failed(OLLMrpc.Request request, OLLMrpc.Error error);
 
 		private GLib.SocketConnection? connection;
 		private GLib.DataInputStream? input;
 		private GLib.DataOutputStream? output;
 		private int next_id = 1;
-		private Gee.HashMap<int, GLib.Promise<Rpc.Response>> pending {
+		private Gee.HashMap<int, GLib.Promise<OLLMrpc.Response>> pending {
 			get; private set;
-			default = new Gee.HashMap<int, GLib.Promise<Rpc.Response>>();
+			default = new Gee.HashMap<int, GLib.Promise<OLLMrpc.Response>>();
 		}
 
 		static construct
@@ -130,15 +130,15 @@ namespace OLLMfiles
 			this.read_loop.begin();
 
 			var hello_id = this.next_id++;
-			var hello_request = new Rpc.Request() {
+			var hello_request = new OLLMrpc.Request() {
 				id = hello_id,
 				method = "Daemon.hello",
-				param = new Rpc.CallParam() {
+				param = new OLLMfilesd.CallParam() {
 					protocol = this.protocol,
 					client = this.client_name
 				}
 			};
-			var hello_promise = new GLib.Promise<Rpc.Response>();
+			var hello_promise = new GLib.Promise<OLLMrpc.Response>();
 			this.pending.set(hello_id, hello_promise);
 
 			size_t hello_length;
@@ -193,17 +193,17 @@ namespace OLLMfiles
 
 		/**
 		 * Runs {@link connect} then sends the request.
-		 * @param request wire request; {@link Rpc.Request.id} is set here
-		 * @return wire response; check {@link Rpc.Response.error}, or connect
+		 * @param request wire request; {@link OLLMrpc.Request.id} is set here
+		 * @return wire response; check {@link OLLMrpc.Response.error}, or connect
 		 *   to {@link failed} for user-visible handling
 		 */
-		public async Rpc.Response call(Rpc.Request request)
+		public async OLLMrpc.Response call(OLLMrpc.Request request)
 		{
 			yield this.connect();
 			request.id = this.next_id++;
 			if (!this.connected || this.output == null) {
-				var error = new Rpc.Error(
-					Rpc.RpcErrorCode.INTERNAL_ERROR,
+				var error = new OLLMrpc.Error(
+					OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 					"not connected",
 					request.method,
 					request.id
@@ -215,10 +215,10 @@ namespace OLLMfiles
 					error.message
 				);
 				this.failed(request, error);
-				return new Rpc.Response(request.id) { error = error };
+				return new OLLMrpc.Response(request.id) { error = error };
 			}
 
-			var promise = new GLib.Promise<Rpc.Response>();
+			var promise = new GLib.Promise<OLLMrpc.Response>();
 			this.pending.set(request.id, promise);
 
 			size_t length;
@@ -228,8 +228,8 @@ namespace OLLMfiles
 				yield this.output.flush_async(GLib.Priority.DEFAULT, null);
 			} catch (GLib.Error e) {
 				this.pending.unset(request.id);
-				var error = new Rpc.Error(
-					Rpc.RpcErrorCode.INTERNAL_ERROR,
+				var error = new OLLMrpc.Error(
+					OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 					"write: " + e.message,
 					request.method,
 					request.id
@@ -241,7 +241,7 @@ namespace OLLMfiles
 					error.message
 				);
 				this.failed(request, error);
-				return new Rpc.Response(request.id) { error = error };
+				return new OLLMrpc.Response(request.id) { error = error };
 			}
 
 			var response = yield this.wait_response(
@@ -261,10 +261,10 @@ namespace OLLMfiles
 			return response;
 		}
 
-		private async Rpc.Response wait_response(
+		private async OLLMrpc.Response wait_response(
 			int id,
 			string method,
-			GLib.Promise<Rpc.Response> promise
+			GLib.Promise<OLLMrpc.Response> promise
 		)
 		{
 			var cancellable = new GLib.Cancellable();
@@ -286,9 +286,9 @@ namespace OLLMfiles
 				string msg = cancellable.is_cancelled()
 					? "call timed out"
 					: e.message;
-				return new Rpc.Response(id) {
-					error = new Rpc.Error(
-						Rpc.RpcErrorCode.INTERNAL_ERROR,
+				return new OLLMrpc.Response(id) {
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 						msg,
 						method,
 						id
@@ -340,8 +340,8 @@ namespace OLLMfiles
 
 			if (!obj.has_member("id")) {
 				var notif = Json.gobject_from_data(
-					typeof(Rpc.Notification), data
-				) as Rpc.Notification;
+					typeof(OLLMrpc.Notification), data
+				) as OLLMrpc.Notification;
 				if (notif != null) {
 					this.notification(notif);
 				}
@@ -349,8 +349,8 @@ namespace OLLMfiles
 			}
 
 			var response = Json.gobject_from_data(
-				typeof(Rpc.Response), data
-			) as Rpc.Response;
+				typeof(OLLMrpc.Response), data
+			) as OLLMrpc.Response;
 			if (response == null) {
 				return;
 			}
@@ -366,7 +366,7 @@ namespace OLLMfiles
 			}
 
 			var result_node = obj.get_member("result");
-			var t = Rpc.types.get(response.result_type);
+			var t = OLLMrpc.types.get(response.result_type);
 			if (!response.is_array) {
 				response.result = Json.gobject_deserialize(t, result_node);
 				this.pending.get(response.id).resolve(response);

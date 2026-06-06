@@ -1,0 +1,71 @@
+# ollmfilesd — headless file service daemon
+#
+# BANNED: do not add ocfiles_vapi_dep, --pkg=ocfiles, or libocfiles link/vapidir here.
+# BANNED: no OLLMfiles namespace in ollmfilesd sources (use OLLMfilesd + OLLMrpc only).
+# Server types live under ollmfilesd/*.vala; shared RPC wire types use libocrpc (OLLMrpc).
+
+valac = meson.get_compiler('vala')
+
+ollmfilesd_deps = [
+  dependency('gee-0.8'),
+  dependency('gio-2.0'),
+  dependency('gio-unix-2.0'),
+  dependency('glib-2.0'),
+  dependency('gobject-2.0'),
+  dependency('gmodule-2.0'),
+  dependency('json-glib-1.0'),
+  dependency('libsoup-3.0'),
+  dependency('sqlite3'),
+  valac.find_library('posix'),
+  ocsqlite_vapi_dep,
+  ocrpc_vapi_dep,
+  ollmchat_vapi_dep,
+]
+
+ollmfilesd_src = files(
+  'CallParam.vala',
+  'FileBase.vala',
+  'File.vala',
+  'Folder.vala',
+  'ProjectManager.vala',
+  'Daemon.vala',
+  'Application.vala',
+)
+
+build_rpath = ':'.join([
+  meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocrpc',
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollamaweb',
+])
+
+executable('ollmfilesd',
+  ollmfilesd_src,
+  dependencies: ollmfilesd_deps,
+  include_directories: [
+    include_directories('../libollmchat'),
+    include_directories('../libollamaweb'),
+    include_directories('../libocsqlite'),
+    include_directories('../libocrpc'),
+  ],
+  build_rpath: build_rpath,
+  install: true,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=json-glib-1.0',
+    '--pkg=gmodule-2.0',
+    '--pkg=tree-sitter',
+    '--pkg=ocsqlite',
+    '--pkg=ocrpc',
+    '--pkg=ollmchat',
+    '--pkg=ollamaweb',
+    '--pkg=libsoup-3.0',
+    '--pkg=gio-unix-2.0',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+    '--vapidir', meson.current_source_dir() / '../vapi',
+    '--vapidir', '/usr/share/vala/vapi',
+  ],
+)

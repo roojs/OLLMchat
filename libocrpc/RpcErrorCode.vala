@@ -11,7 +11,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfiles.Rpc
+namespace OLLMrpc
 {
 	/**
 	 * JSON-RPC 2.0 standard and application error codes (throw/catch).

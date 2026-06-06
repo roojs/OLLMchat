@@ -11,31 +11,22 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfilesd
+namespace OLLMrpc
 {
 	/**
-	 * Unix socket listener — one {@link Session} per accepted connection.
-	 * Holds RPC targets (one GObject property per wire `kind`).
+	 * Unix socket listener — one {@link Connection} per accepted client.
 	 */
 	public class Listen : GLib.Object
 	{
-		public Daemon Daemon { get; default = new Daemon(); }
-		public OLLMfiles.ProjectManager ProjectManager { get; construct; }
 		public string socket_path { get; construct; }
 
 		private GLib.SocketService service { get; set; default = new GLib.SocketService(); }
 		private bool listening = false;
-		private Gee.ArrayList<Session> sessions = new Gee.ArrayList<Session>();
+		private Gee.ArrayList<Connection> connections = new Gee.ArrayList<Connection>();
 
-		public Listen(string? socket_path = null)
+		public Listen(string socket_path)
 		{
-			GLib.Object(
-				socket_path: socket_path != null ? socket_path : GLib.Path.build_filename(
-					GLib.Environment.get_user_data_dir(),
-					"ollmchat",
-					"ollmfilesd.sock"
-				)
-			);
+			GLib.Object(socket_path: socket_path);
 		}
 
 		public bool start()
@@ -78,9 +69,9 @@ namespace OLLMfilesd
 				return false;
 			}
 			this.service.incoming.connect((conn) => {
-				var session = new Session(this, conn);
-				session.start();
-				this.sessions.add(session);
+				var connection = new Connection(conn);
+				connection.start();
+				this.connections.add(connection);
 				return true;
 			});
 			this.service.start();
@@ -96,10 +87,10 @@ namespace OLLMfilesd
 			this.listening = false;
 			this.service.stop();
 			this.service = new GLib.SocketService();
-			foreach (var session in this.sessions) {
-				session.stop();
+			foreach (var connection in this.connections) {
+				connection.stop();
 			}
-			this.sessions.clear();
+			this.connections.clear();
 			if (GLib.FileUtils.test(this.socket_path, GLib.FileTest.EXISTS)) {
 				try {
 					GLib.FileUtils.unlink(this.socket_path);

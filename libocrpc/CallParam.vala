@@ -11,31 +11,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfiles.Rpc
+namespace OLLMrpc
 {
-	/** JSON-RPC 2.0 error object on the wire (`code`, `message`). */
-	public class Error : GLib.Object, Json.Serializable
+	/** Base JSON-RPC {@code params} bag (positional {@link args} + Json helpers). */
+	public class CallParam : GLib.Object, Json.Serializable
 	{
-		public int code { get; set; }
-		public string message { get; set; default = ""; }
-
-		/**
-		 * @param method optional RPC method (reserved; logging is on {@link RpcClient})
-		 * @param request_id optional request id (reserved)
-		 */
-		public static void rpc_register()
-		{
-			register(typeof(Error));
-		}
-
-		public Error(
-			RpcErrorCode code,
-			string message,
-			string method = "",
-			int request_id = 0
-		) {
-			Object(code: (int) code, message: message);
-		}
+		public string[] args { get; set; default = new string[] {}; }
 
 		public unowned ParamSpec? find_property(string name)
 		{

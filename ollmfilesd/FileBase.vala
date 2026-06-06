@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfiles
+namespace OLLMfilesd
 {
 	/**
 	 * Abstract base class providing common properties and methods for files and folders.
@@ -193,7 +193,7 @@ namespace OLLMfiles
 		 * @param indent Leading indent for this line; Folder passes indent + "  " to children.
 		 */
 		public abstract string to_summary(
-			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent);
+			Gee.HashMap<int, OLLMfilesd.SQT.VectorMetadata> keymap, string indent);
 		
 		/**
 		 * Last cursor line number (stored in database, default: 0).

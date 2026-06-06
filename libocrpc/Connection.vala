@@ -11,14 +11,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfilesd
+namespace OLLMrpc
 {
 	/**
 	 * One connected client: NDJSON read loop and RPC dispatch.
 	 */
-	public class Session : GLib.Object
+	public class Connection : GLib.Object, Session
 	{
-		public Listen listen { get; construct; }
 		public GLib.SocketConnection connection { get; construct; }
 
 		private GLib.IOChannel channel;
@@ -26,9 +25,9 @@ namespace OLLMfilesd
 		private uint input_watch_id = 0;
 		private bool running = false;
 
-		public Session(Listen listen, GLib.SocketConnection connection)
+		public Connection(GLib.SocketConnection connection)
 		{
-			GLib.Object(listen: listen, connection: connection);
+			GLib.Object(connection: connection);
 		}
 
 		public void start()
@@ -39,7 +38,7 @@ namespace OLLMfilesd
 			this.running = true;
 			try {
 				var fd = this.connection.get_socket().get_fd();
-				this.channel = GLib.IOChannel.unix_new(fd);
+				this.channel = new GLib.IOChannel.unix_new(fd);
 				this.channel.set_encoding(null);
 				this.channel.set_buffered(true);
 				this.channel_open = true;
@@ -77,7 +76,11 @@ namespace OLLMfilesd
 			}
 			size_t written;
 			try {
-				this.channel.write_chars(line + "\n", out written);
+				var payload = line;
+				if (!payload.has_suffix("\n")) {
+					payload += "\n";
+				}
+				this.channel.write_chars(payload.to_utf8(), out written);
 				this.channel.flush();
 			} catch (GLib.Error e) {
 				GLib.warning("session write error: %s", e.message);
@@ -85,22 +88,16 @@ namespace OLLMfilesd
 			}
 		}
 
-		public void reply(Rpc.Request request, OLLMfiles.Rpc.Response response)
+		public void reply(Request request, Response response)
 		{
 			response.id = request.id;
 			size_t length;
 			this.write_line(Json.gobject_to_data(response, out length));
 		}
 
-		public void reply_error(
-			Rpc.Request request,
-			OLLMfiles.Rpc.RpcErrorCode error_code
-		)
+		public void reply_error(Request request, RpcErrorCode error_code)
 		{
-			this.reply(
-				request,
-				OLLMfiles.Rpc.RpcErrorCode.to_response(request, error_code)
-			);
+			this.reply(request, RpcErrorCode.to_response(request, error_code));
 		}
 
 		private bool on_input_ready(GLib.IOChannel source, GLib.IOCondition condition)
@@ -135,11 +132,11 @@ namespace OLLMfilesd
 				return this.running;
 			}
 
-			Rpc.Request? request = null;
+			Request? request = null;
 			try {
 				request = Json.gobject_from_data(
-					typeof(Rpc.Request), line.strip()
-				) as Rpc.Request;
+					typeof(Request), line.strip()
+				) as Request;
 			} catch (GLib.Error e) {
 				GLib.warning("parse error: %s", e.message);
 				return this.running;

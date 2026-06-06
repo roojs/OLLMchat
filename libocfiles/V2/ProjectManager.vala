@@ -93,9 +93,9 @@ namespace OLLMfiles
 			}
 			this.active_file_changed(file);
 
-			this.rpc.call.begin(new Rpc.Request() {
+			this.rpc.call.begin(new OLLMrpc.Request() {
 				method = "File.activate",
-				param = new Rpc.CallParam() {
+				param = new OLLMfilesd.CallParam() {
 					path = file != null ? file.path : ""
 				}
 			}, (obj, res) => {
@@ -133,9 +133,9 @@ namespace OLLMfiles
 			this.disable_initial_scan = false;
 			this.active_project_changed(project);
 
-			this.rpc.call.begin(new Rpc.Request() {
+			this.rpc.call.begin(new OLLMrpc.Request() {
 				method = "ProjectManager.activate_project",
-				param = new Rpc.CallParam() {
+				param = new OLLMfilesd.CallParam() {
 					skip_scan = this.disable_initial_scan,
 					path = project != null ? project.path : ""
 				}
@@ -169,9 +169,9 @@ namespace OLLMfiles
 		 */
 		public async void load_projects_from_db()
 		{
-			var response = yield this.rpc.call(new Rpc.Request() {
+			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "ProjectManager.load_projects_from_db",
-				param = new Rpc.CallParam()
+				param = new OLLMfilesd.CallParam()
 			});
 			if (response.error != null) {
 				return;
@@ -191,9 +191,9 @@ namespace OLLMfiles
 		 */
 		public async Folder? get_folder_at_path(string path)
 		{
-			var response = yield this.rpc.call(new Rpc.Request() {
+			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "ProjectManager.get_folder_at_path",
-				param = new Rpc.CallParam() { path = path }
+				param = new OLLMfilesd.CallParam() { path = path }
 			});
 			if (response.error != null) {
 				return null;
@@ -213,9 +213,9 @@ namespace OLLMfiles
 		 */
 		public async Folder create_project(string path)
 		{
-			var response = yield this.rpc.call(new Rpc.Request() {
+			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "ProjectManager.create_project",
-				param = new Rpc.CallParam() { path = path }
+				param = new OLLMfilesd.CallParam() { path = path }
 			});
 			if (response.error != null) {
 				return new Folder(this) {
@@ -246,9 +246,9 @@ namespace OLLMfiles
 			this.projects.remove(project);
 			project.is_project = false;
 
-			this.rpc.call.begin(new Rpc.Request() {
+			this.rpc.call.begin(new OLLMrpc.Request() {
 				method = "ProjectManager.remove_project",
-				param = new Rpc.CallParam() { path = project.path }
+				param = new OLLMfilesd.CallParam() { path = project.path }
 			}, (obj, res) => {
 				this.rpc.call.end(res);
 			});
@@ -285,20 +285,14 @@ namespace OLLMfiles
 				return;
 			}
 
-			var response = yield this.rpc.call(new Rpc.Request() {
-				method = "File.register",
-				param = new Rpc.CallParam() { path = file_path }
-			});
-			if (response.error != null) {
+			if (!yield file.register()) {
 				return;
 			}
-
-			var real_file = (File) response.result;
-			real_file.manager = this;
-			this.file_cache.set(real_file.path, real_file);
-			this.buffer_provider.create_buffer(real_file);
+			if (file.buffer == null) {
+				this.buffer_provider.create_buffer(file);
+			}
 			this.active_project.project_files.update_from(this.active_project);
-			this.active_project.project_files.new_file_added(real_file);
+			this.active_project.project_files.new_file_added(file);
 		}
 		
 		/**
@@ -345,20 +339,7 @@ namespace OLLMfiles
 				return FileUpdateStatus.NO_CHANGE;
 			}
 
-			var response = yield this.rpc.call(new Rpc.Request() {
-				method = "File.changed.check",
-				param = new Rpc.CallParam() {
-					path = this.active_file.path,
-					buffer_dirty = this.active_file.buffer != null
-						&& this.active_file.buffer.is_modified,
-					last_known_mtime = this.active_file.last_modified
-				}
-			});
-			if (response.error != null) {
-				return FileUpdateStatus.NO_CHANGE;
-			}
-
-			return (FileUpdateStatus) (int) response.result;
+			return yield this.active_file.check_changed();
 		}
 		
 		/**
@@ -371,17 +352,7 @@ namespace OLLMfiles
 				return;
 			}
 
-			var file = this.active_file;
-			var content = file.buffer.get_text();
-			this.rpc.call.begin(new Rpc.Request() {
-				method = "File.write",
-				param = new Rpc.CallParam() {
-					path = file.path,
-					content = content
-				}
-			}, (obj, res) => {
-				this.rpc.call.end(res);
-			});
+			this.active_file.write();
 		}
 		
 		/**

@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfiles
+namespace OLLMfilesd
 {
 	/**
 	 * Central coordinator for all file system operations.
@@ -106,10 +106,10 @@ namespace OLLMfiles
 		 */
 		public signal void file_contents_changed(File file);
 
-		public signal void rpc_load_projects_from_db(OLLMfilesd.Rpc.Request request);
-		public signal void rpc_create_project(OLLMfilesd.Rpc.Request request);
-		public signal void rpc_remove_project(OLLMfilesd.Rpc.Request request);
-		public signal void rpc_activate_project(OLLMfilesd.Rpc.Request request);
+		public signal void rpc_load_projects_from_db(OLLMrpc.Request request);
+		public signal void rpc_create_project(OLLMrpc.Request request);
+		public signal void rpc_remove_project(OLLMrpc.Request request);
+		public signal void rpc_activate_project(OLLMrpc.Request request);
 		
 		/**
 		 * DeleteManager instance for handling file deletions.
@@ -149,26 +149,31 @@ namespace OLLMfiles
 				this.load_projects_from_db.begin(request);
 			});
 			this.rpc_create_project.connect((request) => {
-				var project = this.create_project(request.param.path);
-				request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+				var project = this.create_project(
+					((CallParam) request.param).path
+				);
+				request.session.reply(request, new OLLMrpc.Response(request.id) {
 					result = project,
 					result_type = typeof(Folder).name()
 				});
 			});
 			this.rpc_remove_project.connect((request) => {
 				this.remove_project(
-					this.projects.path_map.get(request.param.path)
+					this.projects.path_map.get(
+						((CallParam) request.param).path
+					)
 				);
-				request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+				request.session.reply(request, new OLLMrpc.Response(request.id) {
 					msg = "ok"
 				});
 			});
 			this.rpc_activate_project.connect((request) => {
-				this.disable_initial_scan = request.param.skip_scan;
+				var p = (CallParam) request.param;
+				this.disable_initial_scan = p.skip_scan;
 				this.activate_project.begin(
 					request,
-					request.param.path.length > 0
-						? this.projects.path_map.get(request.param.path)
+					p.path.length > 0
+						? this.projects.path_map.get(p.path)
 						: null
 				);
 			});
@@ -211,14 +216,14 @@ namespace OLLMfiles
 		 * @param project The project folder to activate (must have is_project = true)
 		 */
 		public async void activate_project(
-			OLLMfilesd.Rpc.Request request,
+			OLLMrpc.Request request,
 			Folder? project
 		)
 		{
 			// Skip if this project is already active (avoid redundant scans)
 			if (this.active_project == project && project != null && project.is_active) {
 				GLib.debug ("opening project skipped already active path=%s", project.path);
-				request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+				request.session.reply(request, new OLLMrpc.Response(request.id) {
 					msg = "ok"
 				});
 				return;
@@ -281,7 +286,7 @@ namespace OLLMfiles
 			this.active_project_changed(project);
 
 		
-			request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+			request.session.reply(request, new OLLMrpc.Response(request.id) {
 				msg = "ok"
 			});
 		
@@ -342,7 +347,7 @@ namespace OLLMfiles
 		 * Queries database for all folders where is_project = 1 and loads them
 		 * into the manager.projects list.
 		 */
-		public async void load_projects_from_db(OLLMfilesd.Rpc.Request request)
+		public async void load_projects_from_db(OLLMrpc.Request request)
 		{
 			// Query database for projects
 			var query = FileBase.query(this.db, this);
@@ -364,7 +369,7 @@ namespace OLLMfiles
 			for (uint i = 0; i < this.projects.get_n_items(); i++) {
 				list.add(this.projects.get_item(i));
 			}
-			request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+			request.session.reply(request, new OLLMrpc.Response(request.id) {
 				result = list,
 				result_type = typeof(Folder).name(),
 				is_array = true
@@ -568,62 +573,6 @@ namespace OLLMfiles
 			
 			// Manually emit new_file_added signal
 			active_project.project_files.new_file_added(real_file);
-		}
-		
-		/**
-		 * Timestamp of last backup cleanup run (Unix timestamp).
-		 * Used to ensure cleanup only runs once per day.
-		 */
-		
-		/**
-		 * Check if the active file has been modified on disk and differs from the buffer.
-		 * 
-		 * Delegates to the active file's check_updated() method.
-		 * This should be called when the window gains focus to detect external file changes.
-		 * 
-		 * @return FileUpdateStatus indicating what action should be taken
-		 */
-		public async FileUpdateStatus check_active_file_changed()
-		{
-			if (this.active_file == null) {
-				return FileUpdateStatus.NO_CHANGE;
-			}
-			
-			return yield this.active_file.check_updated();
-		}
-		
-		/**
-		 * Writes current buffer contents of active file to disk.
-		 */
-		public async void write_buffer_to_disk()
-		{
-			if (this.active_file == null || this.active_file.buffer == null) {
-				return;
-			}
-			
-			try {
-				yield this.active_file.buffer.sync_to_file();
-				//GLib.debug("Wrote buffer to disk: %s", this.active_file.path);
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to write buffer to disk %s: %s", this.active_file.path, e.message);
-			}
-		}
-		
-		/**
-		 * Reloads active file from disk into buffer, discarding unsaved changes.
-		 */
-		public async void reload_file_from_disk()
-		{
-			if (this.active_file == null || this.active_file.buffer == null) {
-				return;
-			}
-			
-			try {
-				yield this.active_file.buffer.read_async();
-				//GLib.debug("Reloaded file from disk: %s", this.active_file.path);
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to reload file from disk %s: %s", this.active_file.path, e.message);
-			}
 		}
 		
 		/**

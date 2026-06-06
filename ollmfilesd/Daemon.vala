@@ -16,12 +16,19 @@ namespace OLLMfilesd
 	/** Server {@code Daemon.*} — {@code hello} and {@code shutdown}. */
 	public class Daemon : GLib.Object, Json.Serializable
 	{
+		public OllmfilesdApplication app { get; construct; }
+
+		public Daemon(OllmfilesdApplication app)
+		{
+			GLib.Object(app: app);
+		}
+
 		public int protocol { get; set; default = 1; }
 		public string server { get; set; default = "ollmfilesd"; }
 		public bool ready { get; set; default = true; }
 
-		public signal void rpc_hello(Rpc.Request request);
-		public signal void rpc_shutdown(Rpc.Request request);
+		public signal void rpc_hello(OLLMrpc.Request request);
+		public signal void rpc_shutdown(OLLMrpc.Request request);
 
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -43,20 +50,23 @@ namespace OLLMfilesd
 		construct
 		{
 			this.rpc_hello.connect((request) => {
-				if (request.param.protocol > 0) {
-					this.protocol = request.param.protocol;
+				var p = (CallParam) request.param;
+				if (p.protocol > 0) {
+					this.protocol = p.protocol;
 				}
-				request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+				request.session.reply(request, new OLLMrpc.Response() {
 					result = this,
-					result_type = typeof(Daemon).name()
+					result_type = "Daemon"
 				});
 			});
 			this.rpc_shutdown.connect((request) => {
 				this.ready = false;
-				request.session.reply(request, new OLLMfiles.Rpc.Response(request.id) {
+				request.session.reply(request, new OLLMrpc.Response() {
 					msg = "ok"
 				});
-				request.session.listen.stop();
+				this.app.cleanup();
+				this.app.release();
+				this.app.quit();
 			});
 		}
 	}

@@ -47,6 +47,11 @@ namespace OLLMfiles
 	 */
 	public class Folder : FileBase
 	{
+		public static void rpc_register()
+		{
+			OLLMrpc.register("Folder", typeof(Folder));
+		}
+
 		/**
 		 * Constructor.
 		 * 
@@ -99,9 +104,9 @@ namespace OLLMfiles
 				return "";
 			}
 
-			var response = yield this.manager.rpc.call(new Rpc.Request() {
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "vector.project.describe",
-				param = new Rpc.CallParam() { path = this.path }
+				param = new OLLMfilesd.CallParam() { path = this.path }
 			});
 			if (response.error != null) {
 				return "";

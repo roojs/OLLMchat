@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfiles
+namespace OLLMfilesd
 {
 	/**
 	 * Represents a directory/folder in the project.
@@ -88,8 +88,8 @@ namespace OLLMfiles
 		 */
 		public string project_description()
 		{
-			var results = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
-			OLLMfiles.SQT.VectorMetadata.query(this.manager.db).select(
+			var results = new Gee.ArrayList<OLLMfilesd.SQT.VectorMetadata>();
+			OLLMfilesd.SQT.VectorMetadata.query(this.manager.db).select(
 				"WHERE file_id = " + this.id.to_string() + " AND element_type = 'project' ORDER BY id DESC",
 				results);
 			if (results.size == 0) {
@@ -115,7 +115,7 @@ namespace OLLMfiles
 		public FolderFiles children { get; set; default = new FolderFiles(); }
 		
 		public override string to_summary(
-			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, 
+			Gee.HashMap<int, OLLMfilesd.SQT.VectorMetadata> keymap, 
 			string indent)
 		{
 			var description = "";

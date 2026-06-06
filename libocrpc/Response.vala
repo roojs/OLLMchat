@@ -11,7 +11,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfiles.Rpc
+namespace OLLMrpc
 {
 	/** JSON-RPC 2.0 response (has wire `id`, plus `result` or `error`). */
 	public class Response : GLib.Object, Json.Serializable
@@ -23,7 +23,7 @@ namespace OLLMfiles.Rpc
 		public string msg { get; set; default = ""; }
 		/**
 		 * On the wire with {@link result}: {@link Type.name} for typed deserialize
-		 * ({@link OLLMfiles.RpcClient}).
+		 * ({@link OLLMfiles.RpcClient} via {@link OLLMrpc.types}).
 		 */
 		public string result_type { get; set; default = ""; }
 		/** On the wire: {@link result} is a JSON array of {@link result_type} objects. */
