@@ -385,8 +385,7 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Reloads active file from daemon via {@code File.read} into buffer.
-		 * Must await RPC — buffer update needs {@code response.result} (not fire-and-forget).
+		 * Reloads active file via {@link File.read} (daemon filebase + buffer from disk).
 		 */
 		public async void reload_file_from_disk()
 		{
@@ -394,16 +393,7 @@ namespace OLLMfiles
 				return;
 			}
 
-			var file = this.active_file;
-			var response = yield this.rpc.call(new Rpc.Request() {
-				method = "File.read",
-				param = new Rpc.CallParam() { path = file.path }
-			});
-			if (response.error != null) {
-				return;
-			}
-			// TODO: overlay filebase + content from response.result (JsonOverlay / wire type TBD)
-			// file.buffer.set_text(content);
+			yield this.active_file.read();
 		}
 		
 	}

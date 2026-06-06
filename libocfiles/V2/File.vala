@@ -32,10 +32,11 @@ namespace OLLMfiles
 	 * Files can be in multiple projects (due to softlinks/symlinks).
 	 * All alias references are tracked in ProjectManager's alias_map.
 	 * 
-	 * Constructors include File(manager) for basic construction, File.new_from_info()
-	 * for creating from FileInfo during directory scan, and File.new_fake() for files
-	 * not in database (id = -1).
-	 * 
+	 * Constructors: {@link File}(manager) for RPC-hydrated rows; {@link File.new_fake}
+	 * for paths not yet in the DB ({@code id == -1}) until {@link register}.
+	 *
+	 * Client {@link File} — buffers and Gtk helpers stay local; disk/DB via RPC.
+	 *
 	 * == Content Access ==
 	 * 
 	 * All content access methods delegate to file.buffer. Ensure buffer is created before use:
@@ -46,7 +47,7 @@ namespace OLLMfiles
 	 * var contents = yield file.buffer.read_async();
 	 * }}}
 	 */
-	public class File : FileBase
+	public class File : FileBase, Copyable
 	{
 		/**
 		 * Constructor.
@@ -58,47 +59,12 @@ namespace OLLMfiles
 			base(manager);
 			this.base_type = "f";
 		}
-		
+
 		/**
-		 * Named constructor: Create a File from FileInfo.
-		 * 
-		 * @param parent The parent Folder (required)
-		 * @param info The FileInfo object from directory enumeration
-		 * @param path The full path to the file
+		 * Named constructor: create a {@link File} from {@link GLib.FileInfo} during scan.
+		 *
+		 * Removed — use {@link read} or {@link register}.
 		 */
-		public File.new_from_info(
-			ProjectManager manager,
-			Folder? parent,
-			GLib.FileInfo info,
-			string path)
-		{
-			base(manager);
-			this.base_type = "f";
-			this.path = path;
-			if (parent != null) {
-				this.parent = parent;
-				this.parent_id = parent.id;
-			}
-			
-			// Set last_modified from FileInfo
-			var mod_time = info.get_modification_date_time();
-			if (mod_time != null) {
-				this.last_modified = mod_time.to_unix();
-			}
-			
-			// Detect and set is_text from content type
-			var  content_type = info.get_content_type();
- 			this.is_text = content_type != null && content_type != "" &&  content_type.has_prefix("text/");
-			
-			// Detect language from filename if not already set
-			if (this.language == "") {
-				this.detect_language();
-			}
-			// Treat as text if we have a code language (e.g. .php → application/x-php, not text/*)
-			if (!this.is_text && this.language != "") {
-				this.is_text = true;
-			}
-		}
 		
 		/**
 		 * Named constructor: Create a fake File object for files not in database.
@@ -165,17 +131,17 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Last cursor line number (stored in database, default: 0).
+		 * Last cursor line number (per-window; agent config — not on daemon).
 		 */
 		public int cursor_line { get; set; default = 0; }
 		
 		/**
-		 * Last cursor character offset (stored in database, default: 0).
+		 * Last cursor character offset (per-window; agent config).
 		 */
 		public int cursor_offset { get; set; default = 0; }
 		
 		/**
-		 * Last scroll position (stored in database, optional, default: 0).
+		 * Last scroll position (per-window; agent config).
 		 */
 		public int scroll_position { get; set; default = 0; }
 		
@@ -237,20 +203,7 @@ namespace OLLMfiles
 				if (this.path == "") {
 					return "text-x-generic";
 				}
-				// Use Gio.ContentType to guess content type from filename
-				string? content_type = null;
-				try {
-					var file = GLib.File.new_for_path(this.path);
-					var file_info = file.query_info(
-						GLib.FileAttribute.STANDARD_CONTENT_TYPE,
-						GLib.FileQueryInfoFlags.NONE,
-						null
-					);
-					content_type = file_info.get_content_type();
-				} catch {
-					// If we can't query, try guessing from filename
-					content_type = GLib.ContentType.guess(this.path, null, null);
-				}
+				var content_type = GLib.ContentType.guess(this.path, null, null);
 				if (content_type != null && content_type != "") {
 					// Get generic icon name from content type
 					var icon_name = GLib.ContentType.get_generic_icon_name(content_type);
@@ -263,7 +216,7 @@ namespace OLLMfiles
 				return "text-x-generic";
 			}
 			set {
-				this._icon_name = value; // as we can save it in the DB to save time..
+				this._icon_name = value;
 			}
 		}
 		
@@ -334,6 +287,151 @@ namespace OLLMfiles
 		 * Emitted when file content changes.
 		 */
 		public signal void changed();
+
+		// --- Daemon RPC ---
+
+		/**
+		 * Load filebase from daemon ({@code File.read}), then reload {@link buffer} from disk.
+		 */
+		public async bool read()
+		{
+			if (this.path.length == 0) {
+				return false;
+			}
+
+			var response = yield this.manager.rpc.call(new Rpc.Request() {
+				method = "File.read",
+				param = new Rpc.CallParam() { path = this.path }
+			});
+			if (response.error != null) {
+				return false;
+			}
+
+			var row = response.result as File;
+			if (row != null) {
+				this.copy_from(row, {
+					"buffer",
+					"parent",
+					"cursor-line",
+					"cursor-offset",
+					"scroll-position",
+					"is-unsaved",
+				});
+			}
+
+			if (this.buffer != null) {
+				this.buffer.last_read_timestamp = 0;
+				this.buffer.is_modified = false;
+				try {
+					yield this.buffer.read_async();
+				} catch (GLib.Error e) {
+					GLib.warning("File.read: buffer reload %s: %s", this.path, e.message);
+					return false;
+				}
+			}
+			return true;
+		}
+
+		/**
+		 * Write content to daemon ({@code File.write}). Fire-and-forget; scan/index on server.
+		 * Uses {@link buffer} text when {@code content} is empty.
+		 */
+		public void write(string content = "")
+		{
+			if (this.path.length == 0) {
+				return;
+			}
+			if (content == "" && this.buffer != null) {
+				content = this.buffer.get_text();
+			}
+
+			this.manager.rpc.call.begin(new Rpc.Request() {
+				method = "File.write",
+				param = new Rpc.CallParam() {
+					path = this.path,
+					content = content
+				}
+			}, (obj, res) => {
+				this.manager.rpc.call.end(res);
+			});
+		}
+
+		/**
+		 * Check disk change vs buffer ({@code File.changed.check}).
+		 */
+		public async FileUpdateStatus check_changed()
+		{
+			if (this.path.length == 0) {
+				return FileUpdateStatus.NO_CHANGE;
+			}
+
+			var response = yield this.manager.rpc.call(new Rpc.Request() {
+				method = "File.changed.check",
+				param = new Rpc.CallParam() {
+					path = this.path,
+					buffer_dirty = this.buffer != null && this.buffer.is_modified,
+					last_known_mtime = this.last_modified
+				}
+			});
+			if (response.error != null) {
+				return FileUpdateStatus.NO_CHANGE;
+			}
+			return (FileUpdateStatus) (int) response.result;
+		}
+
+		/**
+		 * Register fake file ({@code id == -1}) on daemon ({@code File.register}).
+		 *
+		 * On success, {@link Copyable.copy_from} merges {@code response.result} onto
+		 * this instance (same object for buffer/UI).
+		 */
+		public async bool register()
+		{
+			if (this.path.length == 0) {
+				return false;
+			}
+			if (this.id != -1) {
+				return true;
+			}
+
+			var response = yield this.manager.rpc.call(new Rpc.Request() {
+				method = "File.register",
+				param = new Rpc.CallParam() { path = this.path }
+			});
+			if (response.error != null) {
+				return false;
+			}
+
+			var real_file = response.result as File;
+			if (real_file != null) {
+				this.copy_from(real_file, {
+					"buffer",
+					"parent",
+					"cursor-line",
+					"cursor-offset",
+					"scroll-position",
+					"is-unsaved",
+				});
+				this.manager.file_cache.set(this.path, this);
+			}
+			return true;
+		}
+
+		/**
+		 * Delete file on daemon ({@code File.delete}).
+		 */
+		public async bool delete()
+		{
+			if (this.path.length == 0) {
+				return false;
+			}
+
+			var response = yield this.manager.rpc.call(new Rpc.Request() {
+				method = "File.delete",
+				param = new Rpc.CallParam() { path = this.path }
+			});
+			return response.error == null;
+		}
 		
 		/**
 		 * Gets file contents: either a head slice (first ''N'' lines) or a 1-based line range.
@@ -399,18 +497,9 @@ namespace OLLMfiles
 		
 		/**
 		 * Gets the currently selected text (only valid for active file).
-		 * 
-		 * Convenience method that delegates to file.buffer.get_selection().
-		 * Updates cursor position and saves to database. Requires file.buffer to be
-		 * non-null. Only works with GTK buffers (DummyFileBuffer returns empty string).
-		 * 
-		 * == Process ==
-		 * 
-		 *  1. Gets selection from buffer (updates cursor position)
-		 *  2. Updates cursor_line and cursor_offset properties
-		 *  3. Saves to database (if manager.db is available)
-		 * 
-		 * @return Selected text, or empty string if nothing is selected
+		 *
+		 * Delegates to {@link buffer}. Updates {@link cursor_line} / {@link cursor_offset}
+		 * in memory only.
 		 */
 		public string get_selected_code()
 		{
@@ -421,15 +510,8 @@ namespace OLLMfiles
 			int cursor_line, cursor_offset;
 			var selected = this.buffer.get_selection(out cursor_line, out cursor_offset);
 			
-			// Update cursor position from buffer
 			this.cursor_line = cursor_line;
 			this.cursor_offset = cursor_offset;
-			
-			// Save to database
-			if (this.manager.db != null) {
-				this.saveToDB(this.manager.db, null, false);
-				this.manager.db.is_dirty = true;
-			}
 			
 			return selected;
 		}
@@ -458,18 +540,10 @@ namespace OLLMfiles
 		
 		/**
 		 * Gets the current cursor position (line number).
-		 * 
-		 * Convenience method that delegates to file.buffer.get_cursor(). Updates
-		 * cursor_line and cursor_offset properties and saves to database. Requires
-		 * file.buffer to be non-null. Only works with GTK buffers (DummyFileBuffer
-		 * returns 0,0).
-		 * 
-		 * == Process ==
-		 * 
-		 *  1. Gets cursor position from buffer
-		 *  2. Updates cursor_line and cursor_offset properties
-		 *  3. Saves to database (if manager.db is available)
-		 * 
+		 *
+		 * Delegates to {@link buffer}. Updates {@link cursor_line} / {@link cursor_offset}
+		 * in memory only.
+		 *
 		 * @return Line number (0-based), or -1 if not available
 		 */
 		public int get_cursor_position()
@@ -484,261 +558,32 @@ namespace OLLMfiles
 			this.cursor_line = line;
 			this.cursor_offset = offset;
 			
-			// Save to database
-			if (this.manager.db != null) {
-				this.saveToDB(this.manager.db, null, false);
-				this.manager.db.is_dirty = true;
-			}
-			
 			return this.cursor_line;
 		}
-		
+
 		/**
 		 * Check if the file has been modified on disk and differs from the buffer.
-		 * 
-		 * Compares the file's modification time on disk with the buffer's last read timestamp.
-		 * If the file was modified, also checks if the content actually differs from the buffer.
-		 * Automatically reloads the file if it changed and the buffer has no unsaved changes.
-		 * 
-		 * This should be called when the window gains focus to detect external file changes.
-		 * 
-		 * @return FileUpdateStatus indicating what action should be taken:
-		 *         - NO_CHANGE: File hasn't changed on disk (or was auto-reloaded)
-		 *         - CHANGED_HAS_UNSAVED: File changed, buffer has unsaved changes - needs warning
+		 *
+		 * Removed — use {@link check_changed}.
 		 */
-		public async FileUpdateStatus check_updated()
-		{
-			// Check if buffer exists
-			if (this.buffer == null) {
-				return FileUpdateStatus.NO_CHANGE;
-			}
-			
-			// Get file modification time on disk
-			var disk_mtime = this.mtime_on_disk();
-			if (disk_mtime == 0) {
-				// File doesn't exist on disk
-				return FileUpdateStatus.NO_CHANGE;
-			}
-			
-			// Check last_read_timestamp
-			var last_read = this.buffer.last_read_timestamp;
-			
-			// If file was not modified since last read, nothing to check
-			if (disk_mtime <= last_read) {
-				return FileUpdateStatus.NO_CHANGE;
-			}
-			
-			// File was modified since last read, check if content differs
-			try {
-				// Read current buffer content
-				var buffer_content = this.buffer.get_text(0, -1);
-				
-				// Read file from disk
-				var file_obj = GLib.File.new_for_path(this.path);
-				if (!file_obj.query_exists()) {
-					return FileUpdateStatus.NO_CHANGE;
-				}
-				
-				uint8[] file_data;
-				string? etag;
-				yield file_obj.load_contents_async(null, out file_data, out etag);
-				var disk_content = (string)file_data;
-				
-				// Compare content
-				if (buffer_content == disk_content) {
-					// Content matches, no change
-					return FileUpdateStatus.NO_CHANGE;
-				}
-				
-				// File has changed on disk and differs from buffer
-				// Check if buffer has unsaved changes
-				if (this.buffer.is_modified) {
-					// Buffer has unsaved changes - needs warning
-					return FileUpdateStatus.CHANGED_HAS_UNSAVED;
-				}
-				
-				// Buffer not modified - auto-reload
-				yield this.buffer.read_async();
-				return FileUpdateStatus.NO_CHANGE;
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to check file changes for %s: %s", this.path, e.message);
-				return FileUpdateStatus.NO_CHANGE;
-			}
-			
-			return FileUpdateStatus.NO_CHANGE;
-		}
-		
+
 		/**
 		 * Approve this file and all its FileHistory items.
-		 * 
-		 * Sets is_need_approval = false and updates all FileHistory records
-		 * for this file to status = 1 (approved).
+		 *
+		 * Removed — {@code FileHistory.approve} RPC.
 		 */
-		public void approve()
-		{
-			// Approve file
-			this.is_need_approval = false;
-			this.last_change_type = "";
-			this.saveToDB(this.manager.db, null, false);
-			
-			// Approve all FileHistory items for this file using query wrapper
-			var db = this.manager.db;
-			var history_records = new Gee.ArrayList<OLLMfiles.FileHistory>();
-			try {
-				OLLMfiles.FileHistory.query(db).select(
-					"WHERE filebase_id = %lld".printf(this.id),
-					history_records
-				);
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to query FileHistory for approval: %s", e.message);
-				return;
-			}
-			
-			// Update each FileHistory record to approved status
-			foreach (var history in history_records) {
-				history.status = 1;
-				try {
-					OLLMfiles.FileHistory.query(db).updateById(history);
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to update FileHistory status: %s", e.message);
-				}
-			}
-		}
-		
+
 		/**
 		 * Whether this file is a documentation file (plain text or markdown, not code).
-		 * 
-		 * Uses is_text and language (from BufferProvider.detect_language()).
-		 * Returns true for markdown, plain text, and unknown text; false for code and structured formats.
+		 *
+		 * Removed — daemon {@code Indexer} only.
 		 */
-		public bool is_documentation()
-		{
-			if (!this.is_text) {
-				return false;
-			}
-			
-			var lang = this.language;
-			if (lang == null || lang == "") {
-				return true;
-			}
-			
-			var lang_lower = lang.down();
-			
-			switch (lang_lower) {
-				case "markdown":
-				case "txt":
-				case "text":
-				case "plaintext":
-					return true;
-				default:
-					// Code languages (vala, python, c, etc.) and structured formats (html, xml, json, yaml, css, etc.)
-					return false;
-			}
-		}
-		
+
 		/**
 		 * Revert this file to previous version from FileHistory backup.
-		 * 
-		 * Finds the most recent FileHistory record with a backup for this file
-		 * and restores the file from that backup. Before restoring, creates a new
-		 * FileHistory record with change_type="revert" to backup the rejected content
-		 * (flagged as approved). Updates the original FileHistory status to rejected (-1)
-		 * and sets is_need_approval = true.
-		 * 
-		 * @throws Error if backup file doesn't exist or restore fails
+		 *
+		 * Removed — {@code FileHistory.revert} RPC.
 		 */
-		public async void revert() throws Error
-		{
-			// Get FileHistory records for this file
-			var db = this.manager.db;
-			var history_records = new Gee.ArrayList<OLLMfiles.FileHistory>();
-			try {
-				yield OLLMfiles.FileHistory.query(db).select_async(
-					"WHERE filebase_id = %lld AND backup_path != '' ORDER BY timestamp DESC LIMIT 1".printf(this.id),
-					history_records
-				);
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.NOT_FOUND("Failed to query FileHistory for revert: %s".printf(e.message));
-			}
-			
-			if (history_records.size == 0) {
-				throw new GLib.IOError.NOT_FOUND("No backup found for file: %s".printf(this.path));
-			}
-			
-			// Get the most recent FileHistory record with backup
-			var history = history_records[0];
-			
-			// Check if backup exists
-			if (history.backup_path == "" || !GLib.FileUtils.test(history.backup_path, GLib.FileTest.EXISTS)) {
-				throw new GLib.IOError.NOT_FOUND("Backup file does not exist: %s".printf(history.backup_path));
-			}
-			
-			// Check change type - cannot revert "added" files (no backup)
-			if (history.change_type == "added") {
-				throw new GLib.IOError.INVALID_ARGUMENT("Cannot revert added files (no backup exists)");
-			}
-			
-			// Before restoring, backup the current content (the rejected content)
-			// Create a new FileHistory record with change_type="revert" to backup the rejected content
-			var now = new GLib.DateTime.now_local();
-			var revert_history = new OLLMfiles.FileHistory(
-				db,
-				this,
-				"revert",
-				now
-			);
-			
-			// Set status to approved (1) for the revert record
-			revert_history.status = 1;
-			
-			// Commit the revert history record (creates backup of current content)
-			yield revert_history.commit();
-			
-			// Copy backup file back to original path
-			var backup_file = GLib.File.new_for_path(history.backup_path);
-			var target_file = GLib.File.new_for_path(history.path);
-			
-			// Create parent directory if it doesn't exist (for deleted files)
-			var parent_dir = target_file.get_parent();
-			if (parent_dir != null && !parent_dir.query_exists()) {
-				parent_dir.make_directory_with_parents(null);
-			}
-			
-			// Copy backup to original location (overwrites existing file)
-			backup_file.copy(
-				target_file,
-				GLib.FileCopyFlags.OVERWRITE,
-				null,
-				null
-			);
-			
-			// Update File object metadata
-			this.last_modified = now.to_unix();
-		
-			// Save File object to database
-			this.saveToDB(db, null, false);
-			
-			// Reload buffer if it exists (file content changed on disk)
-			if (this.buffer != null) {
-				try {
-					yield this.buffer.read_async();
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to reload buffer after revert for %s: %s", this.path, e.message);
-				}
-			}
-			
-			// Update FileHistory status to rejected (-1) using query wrapper
-			history.status = -1;
-			try {
-				OLLMfiles.FileHistory.query(db).updateById(history);
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to update FileHistory status: %s", e.message);
-			}
-			
-			this.last_change_type = "";
-			this.is_need_approval = false;
-			this.saveToDB(db, null, false);
-		}
-		
+
 	}
 }
