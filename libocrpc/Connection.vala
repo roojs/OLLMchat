@@ -132,10 +132,25 @@ namespace OLLMrpc
 				return this.running;
 			}
 
+			var data = line.strip();
+			var parser = new Json.Parser();
+			try {
+				parser.load_from_data(data, -1);
+			} catch (GLib.Error e) {
+				GLib.warning("parse error: %s", e.message);
+				return this.running;
+			}
+			var root = parser.get_root();
+			if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
+				GLib.warning("parse error: not a JSON object");
+				return this.running;
+			}
+			var obj = root.get_object();
+
 			Request? request = null;
 			try {
-				request = Json.gobject_from_data(
-					typeof(Request), line.strip()
+				request = Json.gobject_deserialize(
+					typeof(Request), root
 				) as Request;
 			} catch (GLib.Error e) {
 				GLib.warning("parse error: %s", e.message);
@@ -146,7 +161,7 @@ namespace OLLMrpc
 			}
 
 			request.session = this;
-			request.dispatch();
+			request.dispatch(obj.get_member("params"));
 			return this.running;
 		}
 	}

@@ -64,7 +64,7 @@ namespace OLLMrpc
 			switch (property_name) {
 				case "params":
 					this.param = Json.gobject_deserialize(
-						Request.param_type, property_node
+						typeof(CallParam), property_node
 					) as CallParam;
 					value = Value(typeof(CallParam));
 					value.set_object(this.param);

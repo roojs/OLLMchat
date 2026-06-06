@@ -95,7 +95,7 @@ namespace OLLMfiles
 
 			this.rpc.call.begin(new OLLMrpc.Request() {
 				method = "File.activate",
-				param = new OLLMfilesd.CallParam() {
+				param = new OLLMfilesd.ProjectParams() {
 					path = file != null ? file.path : ""
 				}
 			}, (obj, res) => {
@@ -135,7 +135,7 @@ namespace OLLMfiles
 
 			this.rpc.call.begin(new OLLMrpc.Request() {
 				method = "ProjectManager.activate_project",
-				param = new OLLMfilesd.CallParam() {
+				param = new OLLMfilesd.ProjectParams() {
 					skip_scan = this.disable_initial_scan,
 					path = project != null ? project.path : ""
 				}
@@ -171,7 +171,7 @@ namespace OLLMfiles
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "ProjectManager.load_projects_from_db",
-				param = new OLLMfilesd.CallParam()
+				param = new OLLMfilesd.ProjectParams()
 			});
 			if (response.error != null) {
 				return;
@@ -193,7 +193,7 @@ namespace OLLMfiles
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "ProjectManager.get_folder_at_path",
-				param = new OLLMfilesd.CallParam() { path = path }
+				param = new OLLMfilesd.ProjectParams() { path = path }
 			});
 			if (response.error != null) {
 				return null;
@@ -215,7 +215,7 @@ namespace OLLMfiles
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "ProjectManager.create_project",
-				param = new OLLMfilesd.CallParam() { path = path }
+				param = new OLLMfilesd.ProjectParams() { path = path }
 			});
 			if (response.error != null) {
 				return new Folder(this) {
@@ -248,7 +248,7 @@ namespace OLLMfiles
 
 			this.rpc.call.begin(new OLLMrpc.Request() {
 				method = "ProjectManager.remove_project",
-				param = new OLLMfilesd.CallParam() { path = project.path }
+				param = new OLLMfilesd.ProjectParams() { path = project.path }
 			}, (obj, res) => {
 				this.rpc.call.end(res);
 			});

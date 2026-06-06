@@ -50,7 +50,7 @@ namespace OLLMfilesd
 		construct
 		{
 			this.rpc_hello.connect((request) => {
-				var p = (CallParam) request.param;
+				var p = (DaemonParams) request.param;
 				if (p.protocol > 0) {
 					this.protocol = p.protocol;
 				}

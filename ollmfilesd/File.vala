@@ -58,7 +58,7 @@ namespace OLLMfilesd
 		{
 			this.rpc_read.connect((request) => {
 				var file = this.manager.get_file_from_active_project(
-					((CallParam) request.param).path
+					((FileParams) request.param).path
 				);
 				var row = new File(this.manager);
 				file.copy_db_fields_to(row);
@@ -69,7 +69,7 @@ namespace OLLMfilesd
 				});
 			});
 			this.rpc_write.connect((request) => {
-				var p = (CallParam) request.param;
+				var p = (FileParams) request.param;
 				var file = this.manager.get_file_from_active_project(p.path);
 				if (file.buffer == null) {
 					this.manager.buffer_provider.create_buffer(file);
@@ -80,7 +80,7 @@ namespace OLLMfilesd
 				});
 			});
 			this.rpc_register.connect((request) => {
-				var p = (CallParam) request.param;
+				var p = (FileParams) request.param;
 				var existing = this.manager.get_file_from_active_project(p.path);
 				if (existing != null && existing.id != -1) {
 					var row = new File(this.manager);
@@ -114,7 +114,7 @@ namespace OLLMfilesd
 			});
 			this.rpc_delete.connect((request) => {
 				var file = this.manager.get_file_from_active_project(
-					((CallParam) request.param).path
+					((FileParams) request.param).path
 				);
 				this.manager.delete_manager.remove.begin(
 					file,
@@ -129,7 +129,7 @@ namespace OLLMfilesd
 				});
 			});
 			this.rpc_changed_check.connect((request) => {
-				var p = (CallParam) request.param;
+				var p = (FileParams) request.param;
 				var file = this.manager.get_file_from_active_project(p.path);
 				var status = FileUpdateStatus.NO_CHANGE;
 				if (file.mtime_on_disk() > p.last_known_mtime

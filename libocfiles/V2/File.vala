@@ -306,7 +306,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "File.read",
-				param = new OLLMfilesd.CallParam() { path = this.path }
+				param = new OLLMfilesd.FileParams() { path = this.path }
 			});
 			if (response.error != null) {
 				return false;
@@ -353,7 +353,7 @@ namespace OLLMfiles
 
 			this.manager.rpc.call.begin(new OLLMrpc.Request() {
 				method = "File.write",
-				param = new OLLMfilesd.CallParam() {
+				param = new OLLMfilesd.FileParams() {
 					path = this.path,
 					content = content
 				}
@@ -373,7 +373,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "File.changed.check",
-				param = new OLLMfilesd.CallParam() {
+				param = new OLLMfilesd.FileParams() {
 					path = this.path,
 					buffer_dirty = this.buffer != null && this.buffer.is_modified,
 					last_known_mtime = this.last_modified
@@ -406,7 +406,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "File.register",
-				param = new OLLMfilesd.CallParam() { path = this.path }
+				param = new OLLMfilesd.FileParams() { path = this.path }
 			});
 			if (response.error != null) {
 				return false;
@@ -438,7 +438,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "File.delete",
-				param = new OLLMfilesd.CallParam() { path = this.path }
+				param = new OLLMfilesd.FileParams() { path = this.path }
 			});
 			return response.error == null;
 		}

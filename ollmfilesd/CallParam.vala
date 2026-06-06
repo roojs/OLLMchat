@@ -13,28 +13,34 @@
 
 namespace OLLMfilesd
 {
-	/** ollmfilesd RPC request params (JSON-RPC {@code params}). */
-	public class CallParam : OLLMrpc.CallParam
+	/** {@code Daemon.*} request params. */
+	public class DaemonParams : OLLMrpc.CallParam
 	{
-		// --- shared scalars (several kinds / verbs) ---
-
-		public string path { get; set; default = ""; }
-		public bool force { get; set; default = false; }
-		public int since_revision { get; set; default = 0; }
-		public bool confirm { get; set; default = false; }
-
-		// --- daemon.* ---
-
 		public int protocol { get; set; default = 0; }
 		public string client { get; set; default = ""; }
+	}
 
-		// --- project.* ---
-
+	/** {@code ProjectManager.*} request params. */
+	public class ProjectParams : OLLMrpc.CallParam
+	{
+		public string path { get; set; default = ""; }
 		public bool skip_scan { get; set; default = false; }
 		public bool project_summary_only { get; set; default = false; }
+	}
 
-		// --- vector.* ---
+	/** {@code File.*} request params. */
+	public class FileParams : OLLMrpc.CallParam
+	{
+		public string path { get; set; default = ""; }
+		public string content { get; set; default = ""; }
+		public bool buffer_dirty { get; set; default = false; }
+		public int64 last_known_mtime { get; set; default = 0; }
+	}
 
+	/** {@code vector.*} request params. */
+	public class VectorParams : OLLMrpc.CallParam
+	{
+		public string path { get; set; default = ""; }
 		public string query { get; set; default = ""; }
 		public int max_results { get; set; default = 0; }
 		public string language { get; set; default = ""; }
@@ -44,11 +50,5 @@ namespace OLLMfilesd
 		public string format { get; set; default = ""; }
 		public string file_path { get; set; default = ""; }
 		public string ast_path { get; set; default = ""; }
-
-		// --- file.* ---
-
-		public string content { get; set; default = ""; }
-		public bool buffer_dirty { get; set; default = false; }
-		public int64 last_known_mtime { get; set; default = 0; }
 	}
 }

@@ -150,7 +150,7 @@ namespace OLLMfilesd
 			});
 			this.rpc_create_project.connect((request) => {
 				var project = this.create_project(
-					((CallParam) request.param).path
+					((ProjectParams) request.param).path
 				);
 				request.session.reply(request, new OLLMrpc.Response(request.id) {
 					result = project,
@@ -160,7 +160,7 @@ namespace OLLMfilesd
 			this.rpc_remove_project.connect((request) => {
 				this.remove_project(
 					this.projects.path_map.get(
-						((CallParam) request.param).path
+						((ProjectParams) request.param).path
 					)
 				);
 				request.session.reply(request, new OLLMrpc.Response(request.id) {
@@ -168,7 +168,7 @@ namespace OLLMfilesd
 				});
 			});
 			this.rpc_activate_project.connect((request) => {
-				var p = (CallParam) request.param;
+				var p = (ProjectParams) request.param;
 				this.disable_initial_scan = p.skip_scan;
 				this.activate_project.begin(
 					request,

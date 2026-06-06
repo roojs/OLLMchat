@@ -106,7 +106,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "vector.project.describe",
-				param = new OLLMfilesd.CallParam() { path = this.path }
+				param = new OLLMfilesd.VectorParams() { path = this.path }
 			});
 			if (response.error != null) {
 				return "";

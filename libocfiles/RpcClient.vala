@@ -133,7 +133,7 @@ namespace OLLMfiles
 			var hello_request = new OLLMrpc.Request() {
 				id = hello_id,
 				method = "Daemon.hello",
-				param = new OLLMfilesd.CallParam() {
+				param = new OLLMfilesd.DaemonParams() {
 					protocol = this.protocol,
 					client = this.client_name
 				}

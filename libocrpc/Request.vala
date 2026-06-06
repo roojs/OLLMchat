@@ -26,8 +26,8 @@ namespace OLLMrpc
 		/** Wire object prefix → handler singleton (server dispatch). */
 		public static Gee.HashMap<string, GLib.Object> handlers;
 
-		/** GObject type used when deserializing {@code params} objects. */
-		public static GLib.Type param_type = typeof(CallParam);
+		/** Wire object prefix → {@code params} GObject type. */
+		public static Gee.HashMap<GLib.Type, GLib.Type> param_types;
 
 		public string jsonrpc { get; set; default = "2.0"; }
 		public int id { get; set; }
@@ -38,17 +38,23 @@ namespace OLLMrpc
 		public Session session { get; set; }
 
 		/**
-		 * Register a server dispatch handler.
+		 * Register a server dispatch handler and its {@code params} type.
 		 *
 		 * @param name wire object prefix (e.g. {@code "Daemon"})
 		 * @param target live singleton with {@code rpc_*} signals
+		 * @param param_type GObject type for {@code params} objects
 		 */
-		public static void register(string name, GLib.Object target)
-		{
+		public static void register(
+			string name,
+			GLib.Object target,
+			GLib.Type param_type
+		) {
 			if (handlers == null) {
 				handlers = new Gee.HashMap<string, GLib.Object>();
+				param_types = new Gee.HashMap<GLib.Type, GLib.Type>();
 			}
 			handlers.set(name, target);
+			param_types.set(target.get_type(), param_type);
 		}
 
 		public unowned ParamSpec? find_property(string name)
@@ -76,32 +82,8 @@ namespace OLLMrpc
 		) {
 			switch (property_name) {
 				case "params":
-					if (property_node.get_node_type() == Json.NodeType.OBJECT) {
-						this.param = Json.gobject_deserialize(
-							Request.param_type, property_node
-						) as CallParam;
-						value = Value(typeof(CallParam));
-						value.set_object(this.param);
-						return true;
-					}
-					if (property_node.get_node_type() != Json.NodeType.ARRAY) {
-						this.param = new CallParam();
-						value = Value(typeof(CallParam));
-						value.set_object(this.param);
-						return true;
-					}
-					var array = property_node.get_array();
-					var items = new string[array.get_length()];
-					for (uint i = 0; i < array.get_length(); i++) {
-						var el = array.get_element(i);
-						if (el.get_node_type() != Json.NodeType.VALUE
-						 || el.get_value_type() != typeof(string)) {
-							value = Value(typeof(CallParam));
-							return false;
-						}
-						items[i] = el.get_string();
-					}
-					this.param = new CallParam() { args = items };
+					// Server typed deserialize: {@link dispatch}.
+					this.param = new CallParam();
 					value = Value(typeof(CallParam));
 					value.set_object(this.param);
 					return true;
@@ -113,7 +95,7 @@ namespace OLLMrpc
 		}
 
 		/** Route this request to the matching {@code rpc_*} signal. */
-		public void dispatch()
+		public void dispatch(Json.Node? params_node = null)
 		{
 			if (this.session == null) {
 				GLib.critical("RPC dispatch: session not set");
@@ -146,6 +128,12 @@ namespace OLLMrpc
 				return;
 			}
 			var handler = handlers.get(object_name);
+			if (params_node != null) {
+				this.param = Json.gobject_deserialize(
+					param_types.get(handler.get_type()),
+					params_node
+				) as CallParam;
+			}
 			if (GLib.Signal.lookup(
 					"rpc_" + method_name.replace(".", "_"),
 					handler.get_type()

@@ -185,12 +185,19 @@ namespace OLLMfilesd
 				}
 			}
 
-			OLLMrpc.Request.param_type = typeof(OLLMfilesd.CallParam);
-
 			this.daemon = new Daemon(this);
-			OLLMrpc.Request.register("Daemon", this.daemon);
-			OLLMrpc.Request.register("ProjectManager", this.project_manager);
-			OLLMrpc.Request.register("File", new File(this.project_manager));
+			OLLMrpc.Request.register(
+				"Daemon", this.daemon,
+				(new DaemonParams()).get_type()
+			);
+			OLLMrpc.Request.register(
+				"ProjectManager", this.project_manager,
+				(new ProjectParams()).get_type()
+			);
+			OLLMrpc.Request.register(
+				"File", new File(this.project_manager),
+				(new FileParams()).get_type()
+			);
 
 			this.listen = new OLLMrpc.Listen(this.socket_path);
 
