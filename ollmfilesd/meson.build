@@ -50,6 +50,8 @@ ollmfilesd_src = files(
   'ProjectMigrate.vala',
   'ProjectManager.vala',
   'Daemon.vala',
+  'StdioConnection.vala',
+  'Stdio.vala',
   'Application.vala',
 )
 
@@ -60,7 +62,7 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollamaweb',
 ])
 
-executable('ollmfilesd',
+ollmfilesd_bin = executable('ollmfilesd',
   ollmfilesd_src,
   dependencies: ollmfilesd_deps,
   include_directories: [

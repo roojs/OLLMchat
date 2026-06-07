@@ -11,12 +11,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMrpc
+namespace OLLMrpc.Transport
 {
-	/**
-	 * Unix socket listener — one {@link Connection} per accepted client.
-	 */
-	public class Listen : GLib.Object
+	/** Unix socket {@link Listen} — one {@link Connection} per accepted client. */
+	public class SocketListen : Listen
 	{
 		public string socket_path { get; construct; }
 
@@ -24,12 +22,12 @@ namespace OLLMrpc
 		private bool listening = false;
 		private Gee.ArrayList<Connection> connections = new Gee.ArrayList<Connection>();
 
-		public Listen(string socket_path)
+		public SocketListen(string socket_path)
 		{
 			GLib.Object(socket_path: socket_path);
 		}
 
-		public bool start()
+		public override bool start()
 		{
 			if (this.listening) {
 				return true;
@@ -79,7 +77,7 @@ namespace OLLMrpc
 			return true;
 		}
 
-		public void stop()
+		public override void stop()
 		{
 			if (!this.listening) {
 				return;

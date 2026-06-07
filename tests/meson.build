@@ -29,6 +29,21 @@ test('test-ollamaweb-merge',
 )
 
 
+# ollmfilesd RPC shell tests (socat + jq)
+test_rpc_script = files('test-rpc.sh')
+ollmfilesd_bin = get_variable('ollmfilesd_bin', disabler())
+test('test-rpc',
+  find_program('bash'),
+  args: [
+    test_rpc_script,
+    meson.current_build_dir() / '..'
+  ],
+  depends: [ollmfilesd_bin],
+  workdir: meson.current_source_dir(),
+  timeout: 60,
+  suite: 'rpc'
+)
+
 # Test script for oc-test-files
 test_file_ops_script = files('test-file-ops.sh')
 

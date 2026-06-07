@@ -14,17 +14,18 @@ ocrpc_deps = [
 
 ocrpc_src = files([
   'namespace.vala',
-  'Session.vala',
-  'Connection.vala',
-  'Listen.vala',
+  'Transport/namespace.vala',
+  'Transport/Connection.vala',
+  'Transport/Listen.vala',
+  'Transport/SocketListen.vala',
   'CallParam.vala',
   'Error.vala',
   'Notification.vala',
   'Request.vala',
   'Response.vala',
   'RpcErrorCode.vala',
-  'RpcClientBoot.vala',
-  'RpcClient.vala',
+  'ClientBoot.vala',
+  'Client.vala',
 ])
 
 ocrpc_base_lib = library('ocrpc',

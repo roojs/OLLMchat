@@ -25,7 +25,7 @@ namespace OLLMrpc
 		public string message { get; set; default = ""; }
 
 		/**
-		 * @param method optional RPC method (reserved; logging is on {@link RpcClient})
+		 * @param method optional RPC method (reserved; logging is on {@link Client})
 		 * @param request_id optional request id (reserved)
 		 */
 		public static void rpc_register()
@@ -37,7 +37,7 @@ namespace OLLMrpc
 		 * @param code JSON-RPC error number — pass {@link RpcErrorCode} constants
 		 *   (e.g. {@link RpcErrorCode.INTERNAL_ERROR})
 		 * @param message wire error message
-		 * @param method optional RPC method (reserved; logging is on {@link RpcClient})
+		 * @param method optional RPC method (reserved; logging is on {@link Client})
 		 * @param request_id optional request id (reserved)
 		 */
 		public Error(

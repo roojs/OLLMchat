@@ -64,8 +64,6 @@ namespace OLLMfilesd
 				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
 				});
-				this.app.cleanup();
-				this.app.release();
 				this.app.quit();
 			});
 		}

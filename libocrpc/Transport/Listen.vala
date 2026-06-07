@@ -11,11 +11,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMrpc
+namespace OLLMrpc.Transport
 {
-	/** Server connection that sends a {@link Response} line for a {@link Request}. */
-	public interface Session : GLib.Object
+	/** Server RPC entry — {@link SocketListen}; {@code ollmfilesd} adds {@code Stdio}. */
+	public abstract class Listen : GLib.Object
 	{
-		public abstract void reply(Request request, Response response);
+		public abstract bool start();
+		public abstract void stop();
 	}
 }

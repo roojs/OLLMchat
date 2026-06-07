@@ -15,7 +15,7 @@ namespace OLLMrpc
 {
 	/**
 	 * NDJSON JSON-RPC client for {@code ollmfilesd} on a Unix stream socket.
-	 * {@link connect} runs {@link RpcClientBoot.ensure_daemon} first.
+	 * {@link connect} runs {@link ClientBoot.ensure_daemon} first.
 	 *
 	 * A background read loop dispatches {@link Notification}
 	 * lines and resolves pending {@link Response} entries by id.
@@ -25,7 +25,7 @@ namespace OLLMrpc
 	 * do not throw. {@link failed} is emitted for every failed {@link call};
 	 * connect UI handlers there instead of per-caller logging.
 	 */
-	public class RpcClient : GLib.Object
+	public class Client : GLib.Object
 	{
 		public string socket { get; construct; }
 
@@ -36,7 +36,7 @@ namespace OLLMrpc
 
 		/**
 		 * Last {@link connect} failure (boot, socket, or hello).
-		 * Empty when {@link connected} is true. UI reads this from {@link RpcClient}.
+		 * Empty when {@link connected} is true. UI reads this from {@link Client}.
 		 */
 		public string connect_error { get; private set; default = ""; }
 
@@ -65,7 +65,7 @@ namespace OLLMrpc
 			Notification.rpc_register();
 		}
 
-		public RpcClient(string socket = "")
+		public Client(string socket = "")
 		{
 			string path = socket;
 			if (path == "") {
@@ -92,7 +92,7 @@ namespace OLLMrpc
 
 			hello_request.id = this.next_id++;
 
-			var boot = new RpcClientBoot(this.socket);
+			var boot = new ClientBoot(this.socket);
 			try {
 				yield boot.ensure_daemon();
 			} catch (GLib.IOError e) {
@@ -100,7 +100,7 @@ namespace OLLMrpc
 					? e.message
 					: "could not start or reach the filesystem daemon (ollmfilesd)";
 				GLib.critical(
-					"RpcClient: ensure_daemon %s: %s",
+					"Client: ensure_daemon %s: %s",
 					this.socket,
 					this.connect_error
 				);
@@ -115,7 +115,7 @@ namespace OLLMrpc
 			} catch (GLib.Error e) {
 				this.connect_error = e.message;
 				GLib.critical(
-					"RpcClient: connect %s: %s",
+					"Client: connect %s: %s",
 					this.socket,
 					this.connect_error
 				);
@@ -169,7 +169,7 @@ namespace OLLMrpc
 			this.connected = false;
 			foreach (var entry in this.pending.entries) {
 				entry.value.set_exception(
-					new GLib.IOError.FAILED("RpcClient: disconnected")
+					new GLib.IOError.FAILED("Client: disconnected")
 				);
 			}
 			this.pending.clear();
@@ -201,7 +201,7 @@ namespace OLLMrpc
 					request.id
 				);
 				GLib.warning(
-					"RpcClient: %s id=%d: %s",
+					"Client: %s id=%d: %s",
 					request.method,
 					request.id,
 					error.message
@@ -228,7 +228,7 @@ namespace OLLMrpc
 					request.id
 				);
 				GLib.warning(
-					"RpcClient: %s id=%d: %s",
+					"Client: %s id=%d: %s",
 					request.method,
 					request.id,
 					error.message
@@ -244,7 +244,7 @@ namespace OLLMrpc
 			);
 			if (response.error != null) {
 				GLib.warning(
-					"RpcClient: %s id=%d: %s",
+					"Client: %s id=%d: %s",
 					request.method,
 					request.id,
 					response.error.message
@@ -306,7 +306,7 @@ namespace OLLMrpc
 					}
 					this.dispatch_line(response_line.strip());
 				} catch (GLib.Error e) {
-					GLib.warning("RpcClient read error: %s", e.message);
+					GLib.warning("Client read error: %s", e.message);
 					this.disconnect();
 					return;
 				}
@@ -319,13 +319,13 @@ namespace OLLMrpc
 			try {
 				parser.load_from_data(data, -1);
 			} catch (GLib.Error e) {
-				GLib.warning("RpcClient invalid JSON: %s", e.message);
+				GLib.warning("Client invalid JSON: %s", e.message);
 				return;
 			}
 
 			var root = parser.get_root();
 			if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
-				GLib.warning("RpcClient line not a JSON object");
+				GLib.warning("Client line not a JSON object");
 				return;
 			}
 			var obj = root.get_object();
@@ -347,7 +347,7 @@ namespace OLLMrpc
 				return;
 			}
 			if (!this.pending.has_key(response.id)) {
-				GLib.warning("RpcClient unexpected response id %d", response.id);
+				GLib.warning("Client unexpected response id %d", response.id);
 				return;
 			}
 

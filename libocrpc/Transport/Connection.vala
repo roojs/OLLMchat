@@ -11,33 +11,31 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMrpc
+namespace OLLMrpc.Transport
 {
-	/**
-	 * One connected client: NDJSON read loop and RPC dispatch.
-	 */
-	public class Connection : GLib.Object, Session
+	/** One RPC client channel — NDJSON read loop and reply (Unix socket). */
+	public class Connection : GLib.Object
 	{
-		public GLib.SocketConnection connection { get; construct; }
+		public GLib.SocketConnection? stream { get; construct; default = null; }
 
-		private GLib.IOChannel channel;
-		private bool channel_open = false;
-		private uint input_watch_id = 0;
-		private bool running = false;
+		protected GLib.IOChannel? channel;
+		protected bool channel_open = false;
+		protected uint input_watch_id = 0;
+		protected bool running = false;
 
-		public Connection(GLib.SocketConnection connection)
+		public Connection(GLib.SocketConnection? stream = null)
 		{
-			GLib.Object(connection: connection);
+			GLib.Object(stream: stream);
 		}
 
-		public void start()
+		public virtual void start()
 		{
-			if (this.running) {
+			if (this.running || this.stream == null) {
 				return;
 			}
 			this.running = true;
 			try {
-				var fd = this.connection.get_socket().get_fd();
+				var fd = this.stream.get_socket().get_fd();
 				this.channel = new GLib.IOChannel.unix_new(fd);
 				this.channel.set_encoding(null);
 				this.channel.set_buffered(true);
@@ -47,12 +45,12 @@ namespace OLLMrpc
 					this.on_input_ready
 				);
 			} catch (GLib.Error e) {
-				GLib.warning("session setup failed: %s", e.message);
+				GLib.warning("connection setup failed: %s", e.message);
 				this.stop();
 			}
 		}
 
-		public void stop()
+		public virtual void stop()
 		{
 			if (!this.running) {
 				return;
@@ -63,15 +61,18 @@ namespace OLLMrpc
 				GLib.Source.remove(this.input_watch_id);
 				this.input_watch_id = 0;
 			}
-			try {
-				this.connection.close();
-			} catch (GLib.Error e) {
+			this.channel = null;
+			if (this.stream != null) {
+				try {
+					this.stream.close();
+				} catch (GLib.Error e) {
+				}
 			}
 		}
 
-		public void write_line(string line)
+		public virtual void write_line(string line)
 		{
-			if (!this.channel_open) {
+			if (!this.channel_open || this.channel == null) {
 				return;
 			}
 			size_t written;
@@ -83,29 +84,27 @@ namespace OLLMrpc
 				this.channel.write_chars(payload.to_utf8(), out written);
 				this.channel.flush();
 			} catch (GLib.Error e) {
-				GLib.warning("session write error: %s", e.message);
+				GLib.warning("connection write error: %s", e.message);
 				this.stop();
 			}
 		}
 
-		public void reply(Request request, Response response)
+		public void reply(OLLMrpc.Request request, OLLMrpc.Response response)
 		{
 			response.id = request.id;
 			size_t length;
 			this.write_line(Json.gobject_to_data(response, out length));
 		}
 
-		/**
-		 * Reply with a JSON-RPC error response.
-		 * @param error_code RPC error number — {@link RpcErrorCode} constant
-		 *   (e.g. {@link RpcErrorCode.INVALID_PARAMS})
-		 */
-		public void reply_error(Request request, int error_code)
+		public void reply_error(OLLMrpc.Request request, int error_code)
 		{
-			this.reply(request, RpcErrorCode.to_response(error_code));
+			this.reply(request, OLLMrpc.RpcErrorCode.to_response(error_code));
 		}
 
-		private bool on_input_ready(GLib.IOChannel source, GLib.IOCondition condition)
+		protected virtual bool on_input_ready(
+			GLib.IOChannel source,
+			GLib.IOCondition condition
+		)
 		{
 			if ((condition & GLib.IOCondition.HUP) != 0
 			 || (condition & GLib.IOCondition.ERR) != 0) {
@@ -123,9 +122,9 @@ namespace OLLMrpc
 			size_t length = 0;
 			GLib.IOStatus status;
 			try {
-				status = this.channel.read_line(out line, out length, null);
+				status = source.read_line(out line, out length, null);
 			} catch (GLib.Error e) {
-				GLib.warning("session read error: %s", e.message);
+				GLib.warning("connection read error: %s", e.message);
 				this.stop();
 				return false;
 			}
@@ -137,36 +136,7 @@ namespace OLLMrpc
 				return this.running;
 			}
 
-			var data = line.strip();
-			var parser = new Json.Parser();
-			try {
-				parser.load_from_data(data, -1);
-			} catch (GLib.Error e) {
-				GLib.warning("parse error: %s", e.message);
-				return this.running;
-			}
-			var root = parser.get_root();
-			if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
-				GLib.warning("parse error: not a JSON object");
-				return this.running;
-			}
-			var obj = root.get_object();
-
-			Request? request = null;
-			try {
-				request = Json.gobject_deserialize(
-					typeof(Request), root
-				) as Request;
-			} catch (GLib.Error e) {
-				GLib.warning("parse error: %s", e.message);
-				return this.running;
-			}
-			if (request == null) {
-				return this.running;
-			}
-
-			request.session = this;
-			request.dispatch(obj.get_member("params"));
+			OLLMrpc.Request.dispatch_line(line.strip(), this);
 			return this.running;
 		}
 	}

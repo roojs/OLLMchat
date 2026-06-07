@@ -23,7 +23,7 @@ namespace OLLMrpc
 		public string msg { get; set; default = ""; }
 		/**
 		 * On the wire with {@link result}: {@link Type.name} for typed deserialize
-		 * ({@link RpcClient} via {@link types}).
+		 * ({@link Client} via {@link types}).
 		 */
 		public string result_type { get; set; default = ""; }
 		/** On the wire: {@link result} is a JSON array of {@link result_type} objects. */

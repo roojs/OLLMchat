@@ -16,9 +16,9 @@ namespace OLLMrpc
 	/**
 	 * JSON-RPC 2.0 request line. Deserialize with Json.gobject_from_data.
 	 *
-	 * On the client, pass to {@link RpcClient.call}. On the server,
+	 * On the client, pass to {@link Client.call}. On the server,
 	 * {@link dispatch} routes {@code Object.method} to a registered handler's
-	 * {@code rpc_*} signal. Set {@link session} before {@link dispatch}; handlers
+	 * {@code rpc_*} signal. Set {@link connection} before {@link dispatch}; handlers
 	 * reply via {@link reply}.
 	 */
 	public class Request : GLib.Object, Json.Serializable
@@ -35,7 +35,7 @@ namespace OLLMrpc
 		public CallParam param { get; set; default = new CallParam(); }
 
 		/** Set by the server before {@link dispatch}. */
-		public Session session { get; set; }
+		public Transport.Connection connection { get; set; }
 
 		/**
 		 * Register a server dispatch handler and its {@code params} type.
@@ -94,11 +94,53 @@ namespace OLLMrpc
 			}
 		}
 
+		/**
+		 * Parse one NDJSON line and dispatch on {@code connection}.
+		 * Used by {@link Transport.Connection}.
+		 */
+		public static void dispatch_line(string data, Transport.Connection connection)
+		{
+			var line = data.strip();
+			if (line == "") {
+				return;
+			}
+
+			var parser = new Json.Parser();
+			try {
+				parser.load_from_data(line, -1);
+			} catch (GLib.Error e) {
+				GLib.warning("parse error: %s", e.message);
+				return;
+			}
+			var root = parser.get_root();
+			if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
+				GLib.warning("parse error: not a JSON object");
+				return;
+			}
+			var obj = root.get_object();
+
+			Request? request = null;
+			try {
+				request = Json.gobject_deserialize(
+					typeof(Request), root
+				) as Request;
+			} catch (GLib.Error e) {
+				GLib.warning("parse error: %s", e.message);
+				return;
+			}
+			if (request == null) {
+				return;
+			}
+
+			request.connection = connection;
+			request.dispatch(obj.get_member("params"));
+		}
+
 		/** Route this request to the matching {@code rpc_*} signal. */
 		public void dispatch(Json.Node? params_node = null)
 		{
-			if (this.session == null) {
-				GLib.critical("RPC dispatch: session not set");
+			if (this.connection == null) {
+				GLib.critical("RPC dispatch: connection not set");
 				return;
 			}
 			if (this.jsonrpc != "2.0"
@@ -153,10 +195,10 @@ namespace OLLMrpc
 			);
 		}
 
-		/** Relay a {@link Response} to {@link session} (sets wire {@code id}). */
+		/** Relay a {@link Response} to {@link connection} (sets wire {@code id}). */
 		public void reply(Response response)
 		{
-			this.session.reply(this, response);
+			this.connection.reply(this, response);
 		}
 	}
 }

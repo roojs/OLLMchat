@@ -14,13 +14,13 @@
 namespace OLLMrpc
 {
 	/**
-	 * Ensure {@code ollmfilesd} is running before {@link RpcClient.connect}.
+	 * Ensure {@code ollmfilesd} is running before {@link Client.connect}.
 	 *
 	 * Uses {@link pid} and {@link socket} paths: probe the socket, spawn or
 	 * kill-and-respawn when needed. Installing a user systemd unit is out of
 	 * scope here (global settings UI, separate from boot).
 	 */
-	public class RpcClientBoot : GLib.Object
+	public class ClientBoot : GLib.Object
 	{
 		public string socket { get; construct; }
 		public string pid { get; construct; }
@@ -48,7 +48,7 @@ namespace OLLMrpc
 
 		private int detached_pid = -1;
 
-		public RpcClientBoot(string? socket = null, string? pid = null)
+		public ClientBoot(string? socket = null, string? pid = null)
 		{
 			GLib.Object(
 				socket: socket != null ? socket : GLib.Path.build_filename(
@@ -106,7 +106,7 @@ namespace OLLMrpc
 			}
 
 			throw new GLib.IOError.FAILED(
-				"RpcClientBoot: could not start or reach the filesystem daemon"
+				"ClientBoot: could not start or reach the filesystem daemon"
 			);
 		}
 
@@ -150,7 +150,7 @@ namespace OLLMrpc
 				);
 			} catch (GLib.SpawnError e) {
 				throw new GLib.IOError.FAILED(
-					"RpcClientBoot: spawn "
+					"ClientBoot: spawn "
 						+ this.binary
 						+ ": "
 						+ e.message

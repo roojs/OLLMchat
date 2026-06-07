@@ -19,7 +19,7 @@
 namespace OLLMfilesd
 {
 	/**
-	 * Headless {@code ollmfilesd} entry point: open DB, migrate, listen, pid file.
+	 * Headless {@code ollmfilesd} entry point: open DB, migrate, RPC over socket or stdio.
 	 */
 	public class OllmfilesdApplication : GLib.Application, OLLMchat.ApplicationInterface
 	{
@@ -36,24 +36,27 @@ namespace OLLMfilesd
 
 		public ProjectManager project_manager { get; private set; }
 		private Daemon daemon { get; set; }
-		private OLLMrpc.Listen? listen;
-		private GLib.IOChannel? stdin_channel;
-		private uint stdin_watch_id = 0;
+		private OLLMrpc.Transport.Listen? listen;
 		private static weak OllmfilesdApplication? instance;
 
 		private const OptionEntry[] app_options = {
 			{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
 			{ "debug-critical", 0, 0, OptionArg.NONE, ref opt_debug_critical, "Treat critical warnings as errors", null },
-			{ "interactive", 'i', 0, OptionArg.NONE, ref opt_interactive, "Stdin/stdout JSON-RPC (no fork; socket still listens)", null },
+			{ "interactive", 'i', 0, OptionArg.NONE, ref opt_interactive, "Stdin/stdout JSON-RPC (no fork, no socket)", null },
 			{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory (DB, socket, pid)", "DIR" },
 			{ null }
 		};
 
 		public OllmfilesdApplication()
 		{
+			var app_flags = GLib.ApplicationFlags.HANDLES_COMMAND_LINE;
+			if (GLib.Environment.get_variable("OLLMFILES_IS_TEST") != null) {
+				app_flags |= GLib.ApplicationFlags.NON_UNIQUE;
+			}
+
 			Object(
 				application_id: "org.roojs.ollmfilesd",
-				flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
+				flags: app_flags
 			);
 
 			instance = this;
@@ -82,6 +85,7 @@ namespace OLLMfilesd
 
 			this.shutdown.connect(() => {
 				this.cleanup();
+				this.release();
 			});
 		}
 
@@ -97,8 +101,6 @@ namespace OLLMfilesd
 			}
 			GLib.Idle.add(() => {
 				if (instance != null) {
-					instance.cleanup();
-					instance.release();
 					instance.quit();
 				}
 				return false;
@@ -202,125 +204,21 @@ namespace OLLMfilesd
 				(new FileParams()).get_type()
 			);
 
-			this.listen = new OLLMrpc.Listen(this.socket_path);
+			if (opt_interactive) {
+				this.listen = new Stdio(this);
+			} else {
+				this.listen = new OLLMrpc.Transport.SocketListen(this.socket_path);
+			}
 
 			if (!this.listen.start()) {
 				throw new GLib.IOError.FAILED(
-					"failed to bind RPC socket at %s".printf(this.socket_path)
+					"failed to start RPC listener"
 				);
 			}
 
-			this.write_pid();
-			GLib.debug("ollmfilesd listening on %s", this.socket_path);
-
-			if (opt_interactive) {
-				GLib.stderr.printf(
-					"ollmfilesd interactive on %s\n"
-						+ "  one JSON-RPC request per line on stdin\n"
-						+ "  help — this message\n"
-						+ "  quit — exit\n",
-					this.socket_path
-				);
-				this.stdin_channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
-				this.stdin_channel.set_encoding(null);
-				this.stdin_channel.set_buffered(true);
-				this.stdin_watch_id = this.stdin_channel.add_watch(
-					GLib.IOCondition.IN | GLib.IOCondition.HUP,
-					this.on_stdin
-				);
-			}
-		}
-
-		private bool on_stdin(
-			GLib.IOChannel source,
-			GLib.IOCondition condition
-		)
-		{
-			if ((condition & GLib.IOCondition.HUP) != 0) {
-				this.cleanup();
-				this.release();
-				this.quit();
-				return false;
-			}
-
-			string? line = null;
-			size_t length = 0;
-			GLib.IOStatus status;
-			try {
-				status = source.read_line(out line, out length, null);
-			} catch (GLib.Error e) {
-				GLib.stderr.printf("stdin read error: %s\n", e.message);
-				return true;
-			}
-			if (status == GLib.IOStatus.EOF) {
-				this.cleanup();
-				this.release();
-				this.quit();
-				return false;
-			}
-			if (status != GLib.IOStatus.NORMAL || line == null) {
-				return true;
-			}
-
-			line = line.strip();
-			if (line == "") {
-				return true;
-			}
-			if (line == "help") {
-				GLib.stderr.printf(
-					"send one JSON-RPC line, e.g.\n"
-						+ "  {\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"Daemon.hello\","
-						+ "\"params\":{\"protocol\":1,\"client\":\"stdio\"}}\n"
-				);
-				return true;
-			}
-			if (line == "quit" || line == "exit") {
-				this.cleanup();
-				this.release();
-				this.quit();
-				return false;
-			}
-
-			this.send_rpc.begin(line);
-			return true;
-		}
-
-		private async void send_rpc(string line)
-		{
-			GLib.SocketConnection? conn = null;
-			try {
-				var client = new GLib.SocketClient();
-				conn = yield client.connect_async(
-					new GLib.UnixSocketAddress(this.socket_path),
-					null
-				);
-				var output = new GLib.DataOutputStream(conn.get_output_stream());
-				var input = new GLib.DataInputStream(conn.get_input_stream());
-				input.set_newline_type(GLib.DataStreamNewlineType.LF);
-
-				var payload = line;
-				if (!payload.has_suffix("\n")) {
-					payload += "\n";
-				}
-				output.put_string(payload);
-				yield output.flush_async(GLib.Priority.DEFAULT, null);
-
-				string? response = yield input.read_line_async(
-					GLib.Priority.DEFAULT,
-					null
-				);
-				if (response != null) {
-					GLib.stdout.printf("%s\n", response);
-				}
-			} catch (GLib.Error e) {
-				GLib.stderr.printf("rpc error: %s\n", e.message);
-			} finally {
-				if (conn != null) {
-					try {
-						conn.close();
-					} catch (GLib.Error e) {
-					}
-				}
+			if (!opt_interactive) {
+				this.write_pid();
+				GLib.debug("ollmfilesd listening on %s", this.socket_path);
 			}
 		}
 
@@ -381,11 +279,6 @@ namespace OLLMfilesd
 		public void cleanup()
 		{
 			this.project_manager.db.backup_real();
-			if (this.stdin_watch_id != 0) {
-				GLib.Source.remove(this.stdin_watch_id);
-				this.stdin_watch_id = 0;
-			}
-			this.stdin_channel = null;
 			if (this.listen != null) {
 				this.listen.stop();
 				this.listen = null;
