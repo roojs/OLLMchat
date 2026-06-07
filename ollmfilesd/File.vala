@@ -88,7 +88,7 @@ namespace OLLMfilesd
 					row.last_modified = existing.mtime_on_disk();
 					request.reply(new OLLMrpc.Response() {
 						result = row,
-						result_type = typeof(File).name()
+						result_type = "File"
 					});
 					return;
 				}
@@ -107,7 +107,7 @@ namespace OLLMfilesd
 						row.last_modified = real.mtime_on_disk();
 						request.reply(new OLLMrpc.Response() {
 							result = row,
-							result_type = typeof(File).name()
+							result_type = "File"
 						});
 					}
 				);
@@ -118,7 +118,7 @@ namespace OLLMfilesd
 				);
 				this.manager.delete_manager.remove.begin(
 					file,
-					GLib.DateTime.now_local(),
+					new GLib.DateTime.now_local(),
 					(obj, res) => {
 						this.manager.delete_manager.remove.end(res);
 						this.manager.delete_manager.cleanup.begin();
@@ -200,12 +200,6 @@ namespace OLLMfilesd
 				//	this.language, this.path);
 			}
 		}
-		
-		/**
-		 * Whether the file needs approval.
-		 * true = needs approval, false = approved.
-		 */
-		public bool is_need_approval { get; set; default = false; }
 		
 		public override string to_summary(Gee.HashMap<int, SQT.VectorMetadata> keymap, string indent)
 		{

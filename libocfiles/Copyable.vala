@@ -41,7 +41,7 @@ namespace OLLMfiles
 		public virtual void copy_from(GLib.Object source, string[]? except = null)
 		{
 			var target = (GLib.Object) this;
-			var target_class = target.get_class();
+			unowned var target_class = target.get_class();
 
 			foreach (unowned ParamSpec pspec in source.get_class().list_properties()) {
 				if (except != null && GLib.strv_contains(except, pspec.name)) {

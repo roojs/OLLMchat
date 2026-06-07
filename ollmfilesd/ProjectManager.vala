@@ -154,7 +154,7 @@ namespace OLLMfilesd
 					}
 					request.reply(new OLLMrpc.Response() {
 						result = list,
-						result_type = typeof(Folder).name(),
+						result_type = "Folder",
 						is_array = true
 					});
 				});
@@ -165,7 +165,7 @@ namespace OLLMfilesd
 				);
 				request.reply(new OLLMrpc.Response() {
 					result = project,
-					result_type = typeof(Folder).name()
+					result_type = "Folder"
 				});
 			});
 			this.rpc_remove_project.connect((request) => {
