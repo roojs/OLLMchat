@@ -6,6 +6,76 @@
 
 # Dependencies for ollmchat library
 valac = meson.get_compiler('vala')
+cc = meson.get_compiler('c')
+
+local_gguf_opt = get_option('local_gguf')
+local_gguf_enabled = false
+local_gguf_deps = []
+local_gguf_src = []
+local_gguf_include_dirs = []
+local_gguf_vala_args = []
+
+if not local_gguf_opt.disabled()
+  llama_dep = dependency('llama', required: false)
+  if llama_dep.found() and cc.has_header('llama.h', dependencies: llama_dep)
+    local_gguf_deps += llama_dep
+    local_gguf_enabled = true
+  else
+    dpkg_arch = run_command('dpkg-architecture', '-qDEB_HOST_MULTIARCH', check: false)
+    private_llama_dirs = []
+    private_llama_link_args = []
+    private_llama_compile_args = []
+
+    if dpkg_arch.returncode() == 0
+      multiarch = dpkg_arch.stdout().strip()
+      if multiarch != ''
+        private_llama_dir = '/usr/lib' / multiarch / 'llama'
+        private_llama_dirs += private_llama_dir
+        private_llama_link_args += '-Wl,-rpath,' + private_llama_dir
+      endif
+    endif
+
+    if cc.has_header('llama.h', required: false)
+      private_llama_compile_args = []
+    elif cc.has_header('llama.h', args: ['-I/usr/include/llama'], required: false)
+      private_llama_compile_args = ['-I/usr/include/llama']
+    endif
+
+    llama_private_lib = cc.find_library('llama',
+      dirs: private_llama_dirs,
+      required: false
+    )
+    if llama_private_lib.found() and private_llama_compile_args.length() >= 0 and (
+      cc.has_header('llama.h', args: private_llama_compile_args, required: false)
+    )
+      local_gguf_deps += declare_dependency(
+        dependencies: llama_private_lib,
+        compile_args: private_llama_compile_args,
+        link_args: private_llama_link_args
+      )
+      local_gguf_enabled = true
+    endif
+  endif
+
+  if not local_gguf_enabled and local_gguf_opt.enabled()
+    error('local_gguf=enabled requires libllama headers and library')
+  endif
+endif
+
+if local_gguf_enabled
+  local_gguf_src += files([
+    'Local/GGUFEmbeddingProbe.vala',
+    'Local/ollmchat-llama-probe.c',
+  ])
+  local_gguf_include_dirs += include_directories('Local')
+  local_gguf_vala_args += [
+    '--pkg=ollmchat-llama-probe',
+  ]
+  message('local_gguf enabled: building libllama GGUF embedding probe')
+else
+  message('local_gguf disabled: libllama GGUF embedding probe will not be built')
+endif
+
 ollmchat_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
@@ -15,7 +85,7 @@ ollmchat_deps = [
   dependency('libsoup-3.0'),
   valac.find_library('posix'),
   ollamaweb_vapi_dep,
-]
+] + local_gguf_deps
 
 resource_dirs = [
   '../resources/ollmchat-agents/code-assistant',
@@ -156,14 +226,15 @@ lib_build_rpath = ':'.join([
 
 ollmchat_base_lib = library('ollmchat',
   dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocmarkdown_vapi_dep],
-  sources: [ollmchat_ollama_src, ollmchat_resources],
+  sources: [ollmchat_ollama_src, local_gguf_src, ollmchat_resources],
   vala_header: 'ollmchat.h',
   vala_vapi: 'ollmchat.vapi',
   # Don't use link_with for ocsqlite_base_lib to prevent determine_dep_vapis() from finding
   # ocsqlite-meson.vapi and adding it as a source. Link manually via ocsqlite_vapi_dep link_args instead.
   build_rpath: lib_build_rpath,
   link_args: ['-lm'],  # Link math library for Math.sqrt() in Embed.vala
-  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--pkg=ollamaweb', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown', '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb'],
+  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--pkg=ollamaweb', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown', '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb'] + local_gguf_vala_args,
+  include_directories: local_gguf_include_dirs,
   install: true
 )
 
