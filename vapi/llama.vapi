@@ -20,7 +20,7 @@ namespace Llama
 	public class Model
 	{
 		[CCode (cname = "llama_model_load_from_file")]
-		public static Model? load_from_file(string model_path, ModelParams parameters);
+		public Model.from_file(string model_path, ModelParams parameters);
 
 		[CCode (cname = "llama_model_get_vocab")]
 		public unowned Vocab get_vocab();
@@ -34,7 +34,7 @@ namespace Llama
 	public class Context
 	{
 		[CCode (cname = "llama_init_from_model")]
-		public static Context? from_model(Model model, ContextParams parameters);
+		public Context.from_model(Model model, ContextParams parameters);
 
 		[CCode (cname = "llama_decode")]
 		public int decode(Batch batch);
@@ -69,7 +69,7 @@ namespace Llama
 	public struct ModelParams
 	{
 		[CCode (cname = "llama_model_default_params")]
-		public static ModelParams get_default();
+		public ModelParams();
 	}
 
 	[SimpleType]
@@ -83,7 +83,7 @@ namespace Llama
 		public bool embeddings;
 
 		[CCode (cname = "llama_context_default_params")]
-		public static ContextParams get_default();
+		public ContextParams();
 	}
 
 	[SimpleType]
@@ -98,7 +98,7 @@ namespace Llama
 		public int8* logits;
 
 		[CCode (cname = "llama_batch_init")]
-		public static Batch create(int token_count, int embedding_count, int sequence_count);
+		public Batch(int token_count, int embedding_count, int sequence_count);
 
 		[CCode (cname = "llama_batch_free")]
 		public void free();
