@@ -52,31 +52,25 @@ namespace OLLMchat.Local
 				backend_initialized = true;
 			}
 
-			var model_params = Llama.model_default_params();
-			unowned Llama.Model? model = Llama.model_load_from_file(this.model_path, model_params);
+			var model_params = Llama.ModelParams.get_default();
+			var model = Llama.Model.load_from_file(this.model_path, model_params);
 			if (model == null) {
 				throw new OllmError.FAILED("Failed to load GGUF model");
 			}
 
-			var ctx_params = Llama.context_default_params();
+			var ctx_params = Llama.ContextParams.get_default();
 			ctx_params.embeddings = true;
 			ctx_params.pooling_type = this.to_llama_pooling(this.pooling);
 			ctx_params.n_ctx = this.context_length > 0 ? this.context_length : 2048;
 			ctx_params.n_threads = this.threads > 0 ? this.threads : (int)GLib.get_num_processors();
 			ctx_params.n_threads_batch = ctx_params.n_threads;
 
-			unowned Llama.Context? ctx = Llama.init_from_model(model, ctx_params);
+			var ctx = Llama.Context.from_model(model, ctx_params);
 			if (ctx == null) {
-				Llama.model_free(model);
 				throw new OllmError.FAILED("Failed to create llama context");
 			}
 
-			try {
-				return this.embed_with_context(model, ctx, text, (int)ctx_params.n_ctx);
-			} finally {
-				Llama.free(ctx);
-				Llama.model_free(model);
-			}
+			return this.embed_with_context(model, ctx, text, (int)ctx_params.n_ctx);
 		}
 
 		private Response.FloatArray embed_with_context(
@@ -86,9 +80,8 @@ namespace OLLMchat.Local
 			int context_length
 		) throws Error
 		{
-			unowned Llama.Vocab vocab = Llama.model_get_vocab(model);
-			int token_count = -Llama.tokenize(
-				vocab,
+			unowned Llama.Vocab vocab = model.get_vocab();
+			int token_count = -vocab.tokenize(
 				text,
 				(int)text.length,
 				null,
@@ -104,8 +97,7 @@ namespace OLLMchat.Local
 			}
 
 			var tokens = new int[token_count];
-			token_count = Llama.tokenize(
-				vocab,
+			token_count = vocab.tokenize(
 				text,
 				(int)text.length,
 				tokens,
@@ -117,7 +109,7 @@ namespace OLLMchat.Local
 				throw new OllmError.FAILED("Failed to tokenize prompt");
 			}
 
-			var batch = Llama.batch_init(token_count, 0, 1);
+			var batch = Llama.Batch.create(token_count, 0, 1);
 			try {
 				for (int i = 0; i < token_count; i++) {
 					batch.token[i] = tokens[i];
@@ -127,22 +119,22 @@ namespace OLLMchat.Local
 					batch.logits[i] = (int8)(i == token_count - 1 ? 1 : 0);
 				}
 
-				if (Llama.decode(ctx, batch) < 0) {
+				if (ctx.decode(batch) < 0) {
 					throw new OllmError.FAILED("llama_decode failed");
 				}
 
-				unowned float* embedding = Llama.get_embeddings_seq(ctx, 0);
+				unowned float* embedding = ctx.get_embeddings_seq(0);
 				if (embedding == null) {
-					embedding = Llama.get_embeddings_ith(ctx, token_count - 1);
+					embedding = ctx.get_embeddings_ith(token_count - 1);
 				}
 				if (embedding == null) {
-					embedding = Llama.get_embeddings(ctx);
+					embedding = ctx.get_embeddings();
 				}
 				if (embedding == null) {
 					throw new OllmError.FAILED("Model did not return embeddings");
 				}
 
-				int dimension = Llama.model_n_embd(model);
+				int dimension = model.n_embd();
 				var vector = new float[dimension];
 				for (int i = 0; i < dimension; i++) {
 					vector[i] = embedding[i];
@@ -153,7 +145,7 @@ namespace OLLMchat.Local
 				result.normalize_vector_at(0);
 				return result;
 			} finally {
-				Llama.batch_free(batch);
+				batch.free();
 			}
 		}
 

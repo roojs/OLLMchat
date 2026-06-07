@@ -16,20 +16,61 @@ namespace Llama
 	}
 
 	[Compact]
-	[CCode (cname = "struct llama_model", free_function = "")]
-	public class Model {}
+	[CCode (cname = "struct llama_model", free_function = "llama_model_free")]
+	public class Model
+	{
+		[CCode (cname = "llama_model_load_from_file")]
+		public static Model? load_from_file(string model_path, ModelParams parameters);
+
+		[CCode (cname = "llama_model_get_vocab")]
+		public unowned Vocab get_vocab();
+
+		[CCode (cname = "llama_model_n_embd")]
+		public int n_embd();
+	}
 
 	[Compact]
-	[CCode (cname = "struct llama_context", free_function = "")]
-	public class Context {}
+	[CCode (cname = "struct llama_context", free_function = "llama_free")]
+	public class Context
+	{
+		[CCode (cname = "llama_init_from_model")]
+		public static Context? from_model(Model model, ContextParams parameters);
+
+		[CCode (cname = "llama_decode")]
+		public int decode(Batch batch);
+
+		[CCode (cname = "llama_get_embeddings_seq")]
+		public unowned float* get_embeddings_seq(SeqId sequence_id);
+
+		[CCode (cname = "llama_get_embeddings_ith")]
+		public unowned float* get_embeddings_ith(int index);
+
+		[CCode (cname = "llama_get_embeddings")]
+		public unowned float* get_embeddings();
+	}
 
 	[Compact]
 	[CCode (cname = "struct llama_vocab", free_function = "")]
-	public class Vocab {}
+	public class Vocab
+	{
+		[CCode (cname = "llama_tokenize")]
+		public int tokenize(
+			string text,
+			int text_length,
+			int* tokens,
+			int max_tokens,
+			bool add_special,
+			bool parse_special
+		);
+	}
 
 	[SimpleType]
 	[CCode (cname = "struct llama_model_params")]
-	public struct ModelParams {}
+	public struct ModelParams
+	{
+		[CCode (cname = "llama_model_default_params")]
+		public static ModelParams get_default();
+	}
 
 	[SimpleType]
 	[CCode (cname = "struct llama_context_params")]
@@ -40,6 +81,9 @@ namespace Llama
 		public int n_threads_batch;
 		public PoolingType pooling_type;
 		public bool embeddings;
+
+		[CCode (cname = "llama_context_default_params")]
+		public static ContextParams get_default();
 	}
 
 	[SimpleType]
@@ -52,61 +96,14 @@ namespace Llama
 		public int* n_seq_id;
 		public SeqId** seq_id;
 		public int8* logits;
+
+		[CCode (cname = "llama_batch_init")]
+		public static Batch create(int token_count, int embedding_count, int sequence_count);
+
+		[CCode (cname = "llama_batch_free")]
+		public void free();
 	}
 
 	[CCode (cname = "llama_backend_init")]
 	public static void backend_init();
-
-	[CCode (cname = "llama_model_default_params")]
-	public static ModelParams model_default_params();
-
-	[CCode (cname = "llama_context_default_params")]
-	public static ContextParams context_default_params();
-
-	[CCode (cname = "llama_model_load_from_file")]
-	public static unowned Model? model_load_from_file(string model_path, ModelParams parameters);
-
-	[CCode (cname = "llama_init_from_model")]
-	public static unowned Context? init_from_model(Model model, ContextParams parameters);
-
-	[CCode (cname = "llama_model_get_vocab")]
-	public static unowned Vocab model_get_vocab(Model model);
-
-	[CCode (cname = "llama_tokenize")]
-	public static int tokenize(
-		Vocab vocab,
-		string text,
-		int text_length,
-		int* tokens,
-		int max_tokens,
-		bool add_special,
-		bool parse_special
-	);
-
-	[CCode (cname = "llama_batch_init")]
-	public static Batch batch_init(int token_count, int embedding_count, int sequence_count);
-
-	[CCode (cname = "llama_batch_free")]
-	public static void batch_free(Batch batch);
-
-	[CCode (cname = "llama_decode")]
-	public static int decode(Context context, Batch batch);
-
-	[CCode (cname = "llama_get_embeddings_seq")]
-	public static unowned float* get_embeddings_seq(Context context, SeqId sequence_id);
-
-	[CCode (cname = "llama_get_embeddings_ith")]
-	public static unowned float* get_embeddings_ith(Context context, int index);
-
-	[CCode (cname = "llama_get_embeddings")]
-	public static unowned float* get_embeddings(Context context);
-
-	[CCode (cname = "llama_model_n_embd")]
-	public static int model_n_embd(Model model);
-
-	[CCode (cname = "llama_free")]
-	public static void free(Context context);
-
-	[CCode (cname = "llama_model_free")]
-	public static void model_free(Model model);
 }
