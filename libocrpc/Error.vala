@@ -13,7 +13,12 @@
 
 namespace OLLMrpc
 {
-	/** JSON-RPC 2.0 error object on the wire (`code`, `message`). */
+	/**
+	 * JSON-RPC 2.0 error object on the wire (`code`, `message`).
+	 *
+	 * Not {@link GLib.Error} — {@link GLib.Object} only for {@link Json.Serializable}.
+	 * {@link code} is the numeric JSON-RPC error code (a {@link RpcErrorCode} value).
+	 */
 	public class Error : GLib.Object, Json.Serializable
 	{
 		public int code { get; set; }
@@ -28,13 +33,20 @@ namespace OLLMrpc
 			register("Error", typeof(Error));
 		}
 
+		/**
+		 * @param code JSON-RPC error number — pass {@link RpcErrorCode} constants
+		 *   (e.g. {@link RpcErrorCode.INTERNAL_ERROR})
+		 * @param message wire error message
+		 * @param method optional RPC method (reserved; logging is on {@link RpcClient})
+		 * @param request_id optional request id (reserved)
+		 */
 		public Error(
-			RpcErrorCode code,
+			int code,
 			string message,
 			string method = "",
 			int request_id = 0
 		) {
-			Object(code: (int) code, message: message);
+			Object(code: code, message: message);
 		}
 
 		public unowned ParamSpec? find_property(string name)

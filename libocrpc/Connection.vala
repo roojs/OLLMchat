@@ -95,7 +95,12 @@ namespace OLLMrpc
 			this.write_line(Json.gobject_to_data(response, out length));
 		}
 
-		public void reply_error(Request request, RpcErrorCode error_code)
+		/**
+		 * Reply with a JSON-RPC error response.
+		 * @param error_code RPC error number — {@link RpcErrorCode} constant
+		 *   (e.g. {@link RpcErrorCode.INVALID_PARAMS})
+		 */
+		public void reply_error(Request request, int error_code)
 		{
 			this.reply(request, RpcErrorCode.to_response(error_code));
 		}

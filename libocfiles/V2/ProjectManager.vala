@@ -26,7 +26,10 @@ namespace OLLMfiles
 	 */
 	public class ProjectManager : Object
 	{
-		public RpcClient rpc { get; private set; default = new RpcClient(); }
+		public OLLMrpc.RpcClient rpc {
+			get; private set;
+			default = new OLLMrpc.RpcClient();
+		}
 
 		/**
 		 * Editor / tool buffers (client-only; {@link Window} sets {@code OLLMcoder.BufferProvider}).
@@ -78,7 +81,7 @@ namespace OLLMfiles
 		
 		/**
 		 * Activate a file (deactivates previous active file).
-		 * Local state + signal first; RPC is fire-and-forget ({@link RpcClient.failed}).
+		 * Local state + signal first; RPC is fire-and-forget ({@link OLLMrpc.RpcClient.failed}).
 		 *
 		 * @param file The file to activate
 		 */
@@ -105,7 +108,7 @@ namespace OLLMfiles
 		
 		/**
 		 * Activate a project (deactivates previous active project).
-		 * Local state + signal first; RPC is fire-and-forget ({@link RpcClient.failed}).
+		 * Local state + signal first; RPC is fire-and-forget ({@link OLLMrpc.RpcClient.failed}).
 		 * 
 		 * @param project The project folder to activate (must have is_project = true)
 		 */
@@ -233,7 +236,7 @@ namespace OLLMfiles
 
 		/**
 		 * Remove a project from the projects list by clearing the is_project flag.
-		 * Local state first; RPC is fire-and-forget ({@link RpcClient.failed}).
+		 * Local state first; RPC is fire-and-forget ({@link OLLMrpc.RpcClient.failed}).
 		 *
 		 * @param project The project folder to remove
 		 */
@@ -344,7 +347,7 @@ namespace OLLMfiles
 		
 		/**
 		 * Writes current buffer contents via {@code File.write}.
-		 * Scan/index queue is on the daemon. RPC errors: {@link RpcClient.failed}.
+		 * Scan/index queue is on the daemon. RPC errors: {@link OLLMrpc.RpcClient.failed}.
 		 */
 		public void write_buffer_to_disk()
 		{

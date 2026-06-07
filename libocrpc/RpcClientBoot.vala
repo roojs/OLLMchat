@@ -11,7 +11,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfiles
+namespace OLLMrpc
 {
 	/**
 	 * Ensure {@code ollmfilesd} is running before {@link RpcClient.connect}.

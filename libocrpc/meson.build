@@ -9,6 +9,7 @@ ocrpc_deps = [
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
   dependency('json-glib-1.0'),
+  valac.find_library('posix'),
 ]
 
 ocrpc_src = files([
@@ -22,6 +23,8 @@ ocrpc_src = files([
   'Request.vala',
   'Response.vala',
   'RpcErrorCode.vala',
+  'RpcClientBoot.vala',
+  'RpcClient.vala',
 ])
 
 ocrpc_base_lib = library('ocrpc',
@@ -30,7 +33,9 @@ ocrpc_base_lib = library('ocrpc',
   vala_header: 'ocrpc.h',
   vala_vapi: 'ocrpc-meson.vapi',
   vala_args: [
+    '--target-glib=auto',
     '--pkg=json-glib-1.0',
+    '--pkg=posix',
     '--vapidir', '/usr/share/vala/vapi',
   ],
   install: true,
@@ -46,6 +51,7 @@ ocrpc_vapi = custom_target('ocrpc-vapi',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', '/usr/share/vala/vapi',
     '--pkg', 'json-glib-1.0',
+    '--pkg', 'posix',
     '--pkg', 'gio-unix-2.0',
     '--pkg', 'gio-2.0',
     '--pkg', 'gobject-2.0',

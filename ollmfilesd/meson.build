@@ -31,7 +31,8 @@ ollmfilesd_src = files(
   'FileChange.vala',
   'FileBuffer.vala',
   'DummyFileBuffer.vala',
-  '../libocfiles/Copyable.vala',
+  # Symlink → ../libocfiles/Copyable.vala (listed here so meson C paths stay under ollmfilesd/)
+  'Copyable.vala',
   'FileBase.vala',
   'SQT/VectorMetadata.vala',
   'FileHistory.vala',
