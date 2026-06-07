@@ -52,20 +52,20 @@ namespace OLLMchat.Local
 				backend_initialized = true;
 			}
 
-			var model_params = Llama.ModelParams.get_default();
-			var model = Llama.Model.load_from_file(this.model_path, model_params);
+			var model_params = Llama.ModelParams();
+			var model = new Llama.Model.from_file(this.model_path, model_params);
 			if (model == null) {
 				throw new OllmError.FAILED("Failed to load GGUF model");
 			}
 
-			var ctx_params = Llama.ContextParams.get_default();
+			var ctx_params = Llama.ContextParams();
 			ctx_params.embeddings = true;
 			ctx_params.pooling_type = this.to_llama_pooling(this.pooling);
 			ctx_params.n_ctx = this.context_length > 0 ? this.context_length : 2048;
 			ctx_params.n_threads = this.threads > 0 ? this.threads : (int)GLib.get_num_processors();
 			ctx_params.n_threads_batch = ctx_params.n_threads;
 
-			var ctx = Llama.Context.from_model(model, ctx_params);
+			var ctx = new Llama.Context.from_model(model, ctx_params);
 			if (ctx == null) {
 				throw new OllmError.FAILED("Failed to create llama context");
 			}
@@ -109,7 +109,7 @@ namespace OLLMchat.Local
 				throw new OllmError.FAILED("Failed to tokenize prompt");
 			}
 
-			var batch = Llama.Batch.create(token_count, 0, 1);
+			var batch = Llama.Batch(token_count, 0, 1);
 			try {
 				for (int i = 0; i < token_count; i++) {
 					batch.token[i] = tokens[i];
