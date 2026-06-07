@@ -25,6 +25,7 @@ if not local_gguf_opt.disabled()
     private_llama_dirs = []
     private_llama_link_args = []
     private_llama_compile_args = []
+    private_llama_header_found = false
 
     if dpkg_arch.returncode() == 0
       multiarch = dpkg_arch.stdout().strip()
@@ -37,17 +38,17 @@ if not local_gguf_opt.disabled()
 
     if cc.has_header('llama.h', required: false)
       private_llama_compile_args = []
+      private_llama_header_found = true
     elif cc.has_header('llama.h', args: ['-I/usr/include/llama'], required: false)
       private_llama_compile_args = ['-I/usr/include/llama']
+      private_llama_header_found = true
     endif
 
     llama_private_lib = cc.find_library('llama',
       dirs: private_llama_dirs,
       required: false
     )
-    if llama_private_lib.found() and private_llama_compile_args.length() >= 0 and (
-      cc.has_header('llama.h', args: private_llama_compile_args, required: false)
-    )
+    if llama_private_lib.found() and private_llama_header_found
       local_gguf_deps += declare_dependency(
         dependencies: llama_private_lib,
         compile_args: private_llama_compile_args,
