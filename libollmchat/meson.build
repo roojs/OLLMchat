@@ -66,11 +66,9 @@ endif
 if local_gguf_enabled
   local_gguf_src += files([
     'Local/GGUFEmbeddingProbe.vala',
-    'Local/ollmchat-llama-probe.c',
   ])
-  local_gguf_include_dirs += include_directories('Local')
   local_gguf_vala_args += [
-    '--pkg=ollmchat-llama-probe',
+    '--pkg=llama',
   ]
   message('local_gguf enabled: building libllama GGUF embedding probe')
 else
