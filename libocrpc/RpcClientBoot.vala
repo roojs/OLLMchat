@@ -29,12 +29,6 @@ namespace OLLMrpc
 		public string binary { get; set; default = "ollmfilesd"; }
 
 		/**
-		 * When true, pass {@code --foreground} and keep the child
-		 * {@link GLib.Subprocess} (tests, gdb). When false, detached spawn.
-		 */
-		public bool foreground { get; set; default = false; }
-
-		/**
 		 * Recovery cycles (spawn, or kill + spawn) without a working socket
 		 * before {@link ensure_daemon} fails.
 		 */
@@ -52,7 +46,6 @@ namespace OLLMrpc
 		/** Connect probe timeout (seconds). */
 		public uint probe { get; set; default = 2; }
 
-		private GLib.Subprocess? foreground_process;
 		private int detached_pid = -1;
 
 		public RpcClientBoot(string? socket = null, string? pid = null)
@@ -141,30 +134,7 @@ namespace OLLMrpc
 
 		private void spawn() throws GLib.IOError
 		{
-			string[] argv;
-			if (this.foreground) {
-				argv = { this.binary, "--foreground" };
-				try {
-					this.foreground_process = new GLib.Subprocess.newv(
-						argv,
-						GLib.SubprocessFlags.STDOUT_PIPE |
-						GLib.SubprocessFlags.STDERR_PIPE
-					);
-				} catch (GLib.Error e) {
-					throw new GLib.IOError.FAILED(
-						"RpcClientBoot: spawn "
-							+ this.binary
-							+ ": "
-							+ e.message
-					);
-				}
-				this.write_pid(
-					(int) this.foreground_process.get_identifier()
-				);
-				return;
-			}
-
-			argv = { this.binary };
+			string[] argv = { this.binary };
 			int child_pid;
 			try {
 				GLib.Process.spawn_async(
@@ -187,7 +157,6 @@ namespace OLLMrpc
 				);
 			}
 			this.detached_pid = child_pid;
-			this.write_pid(child_pid);
 			GLib.ChildWatch.add(child_pid, (w_pid, status) => {
 				if (w_pid == this.detached_pid) {
 					this.detached_pid = -1;
@@ -240,33 +209,6 @@ namespace OLLMrpc
 				return daemon_pid;
 			}
 			return -1;
-		}
-
-		private void write_pid(int daemon_pid)
-		{
-			var parent = GLib.File.new_for_path(this.pid).get_parent();
-			if (parent != null && !parent.query_exists()) {
-				try {
-					parent.make_directory_with_parents(null);
-				} catch (GLib.Error e) {
-					GLib.warning(
-						"could not create pid directory: %s",
-						e.message
-					);
-					return;
-				}
-			}
-			try {
-				GLib.FileUtils.set_contents(
-					this.pid,
-					daemon_pid.to_string() + "\n"
-				);
-			} catch (GLib.FileError e) {
-				GLib.warning(
-					"could not write pid file: %s",
-					e.message
-				);
-			}
 		}
 
 		private bool pid_running(int daemon_pid)

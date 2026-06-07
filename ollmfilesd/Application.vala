@@ -28,8 +28,8 @@ namespace OLLMfilesd
 
 		public static bool opt_debug = false;
 		public static bool opt_debug_critical = false;
-		public static bool opt_foreground = false;
 		public static bool opt_interactive = false;
+		public static string? opt_data_dir = null;
 
 		private string pid_path;
 		private string socket_path;
@@ -44,8 +44,8 @@ namespace OLLMfilesd
 		private const OptionEntry[] app_options = {
 			{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
 			{ "debug-critical", 0, 0, OptionArg.NONE, ref opt_debug_critical, "Treat critical warnings as errors", null },
-			{ "foreground", 0, 0, OptionArg.NONE, ref opt_foreground, "Run in foreground (tests, gdb)", null },
-			{ "interactive", 'i', 0, OptionArg.NONE, ref opt_interactive, "Read JSON-RPC lines from stdin (implies --foreground)", null },
+			{ "interactive", 'i', 0, OptionArg.NONE, ref opt_interactive, "Stdin/stdout JSON-RPC (no fork; socket still listens)", null },
+			{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory (DB, socket, pid)", "DIR" },
 			{ null }
 		};
 
@@ -109,8 +109,8 @@ namespace OLLMfilesd
 		{
 			opt_debug = false;
 			opt_debug_critical = false;
-			opt_foreground = false;
 			opt_interactive = false;
+			opt_data_dir = null;
 
 			string[] args = command_line.get_arguments();
 			var opt_context = new OptionContext(this.get_application_id());
@@ -129,12 +129,27 @@ namespace OLLMfilesd
 				return 1;
 			}
 
-			if (opt_interactive) {
-				opt_foreground = true;
-			}
-
 			OLLMchat.debug_on = opt_debug;
 			OLLMchat.debug_critical_enabled = opt_debug_critical;
+
+			if (opt_data_dir != null) {
+				this.data_dir = opt_data_dir;
+				this.pid_path = GLib.Path.build_filename(
+					this.data_dir,
+					"ollmfilesd.pid"
+				);
+				this.socket_path = GLib.Path.build_filename(
+					this.data_dir,
+					"ollmfilesd.sock"
+				);
+			}
+
+			if (!opt_interactive) {
+				if (!this.daemonize()) {
+					command_line.printerr("error: could not daemonize\n");
+					return 1;
+				}
+			}
 
 			this.hold();
 			this.initialize.begin((obj, res) => {
@@ -156,7 +171,8 @@ namespace OLLMfilesd
 
 			this.project_manager = new ProjectManager(
 				new SQ.Database(
-					GLib.Path.build_filename(this.data_dir, "files.sqlite")
+					GLib.Path.build_filename(this.data_dir, "files.sqlite"),
+					true
 				)
 			);
 
@@ -308,6 +324,48 @@ namespace OLLMfilesd
 			}
 		}
 
+		/**
+		 * Classic double-fork daemonize. Parent exits; only the grandchild
+		 * returns. Skipped for {@link opt_interactive}.
+		 */
+		private bool daemonize()
+		{
+			Posix.pid_t pid = Posix.fork();
+			if (pid < 0) {
+				return false;
+			}
+			if (pid > 0) {
+				Posix._exit(0);
+			}
+
+			if (Posix.setsid() < 0) {
+				return false;
+			}
+
+			pid = Posix.fork();
+			if (pid < 0) {
+				return false;
+			}
+			if (pid > 0) {
+				Posix._exit(0);
+			}
+
+			Posix.chdir("/");
+			Posix.umask(0);
+
+			int null_fd = Posix.open("/dev/null", Posix.O_RDWR);
+			if (null_fd < 0) {
+				return false;
+			}
+			Posix.dup2(null_fd, Posix.STDIN_FILENO);
+			Posix.dup2(null_fd, Posix.STDOUT_FILENO);
+			Posix.dup2(null_fd, Posix.STDERR_FILENO);
+			if (null_fd > Posix.STDERR_FILENO) {
+				Posix.close(null_fd);
+			}
+			return true;
+		}
+
 		private void write_pid()
 		{
 			try {
@@ -322,6 +380,7 @@ namespace OLLMfilesd
 
 		public void cleanup()
 		{
+			this.project_manager.db.backup_real();
 			if (this.stdin_watch_id != 0) {
 				GLib.Source.remove(this.stdin_watch_id);
 				this.stdin_watch_id = 0;

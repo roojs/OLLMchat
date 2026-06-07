@@ -90,7 +90,7 @@ namespace OLLMfiles
 		 * Project-level description from vector metadata ({@code ProjectAnalysis}).
 		 *
 		 * Shipping reads SQLite in-process. Client calls
-		 * {@code vector.project.describe} on the daemon ([`2.10.4.1`](../../docs/plans/done/2.10.4.1-DONE-ollmfilesd-rpc-api.md));
+		 * {@code vector.project.describe} on the daemon ([`2.10.4.1`](../../docs/plans/2.10.4.1-ollmfilesd-rpc-api.md));
 		 * server relay not implemented yet — returns {@code ""} on error.
 		 *
 		 * Callers ({@code Skill/Runner}, {@code Task/Details}, {@code Task/Tool}) must

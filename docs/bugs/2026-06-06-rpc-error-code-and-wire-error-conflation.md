@@ -6,7 +6,7 @@
 
 **Process:** `docs/bug-fix-process.md` · **Plan format:** `docs/guide-to-writing-plans.md`
 
-**Related:** `docs/plans/done/2.10.4.1-DONE-ollmfilesd-rpc-api.md` · `docs/plans/2.10.4.3-DONE-daemon-and-rpcclient.md`
+**Related:** `docs/plans/2.10.4.1-ollmfilesd-rpc-api.md` · `docs/plans/2.10.4.3-DONE-daemon-and-rpcclient.md`
 
 ---
 
