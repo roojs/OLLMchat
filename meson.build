@@ -74,6 +74,10 @@ executables_info = [
   ['oc-vector-search', 'examples/oc-vector-search']
 ]
 
+if local_gguf_enabled
+  executables_info += [['oc-local-gguf-embed', 'examples/oc-local-gguf-embed']]
+endif
+
 # Library paths for LD_LIBRARY_PATH
 lib_path = ':'.join([
   meson.current_build_dir() / 'libocsqlite',

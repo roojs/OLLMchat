@@ -1,0 +1,6 @@
+option(
+  'local_gguf',
+  type: 'feature',
+  value: 'auto',
+  description: 'Build the local GGUF/libllama phase-1 embedding probe'
+)
