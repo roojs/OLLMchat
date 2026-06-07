@@ -29,7 +29,7 @@ test('test-ollamaweb-merge',
 )
 
 
-# ollmfilesd RPC shell tests (socat + jq)
+# ollmfilesd RPC shell tests (stdio NDJSON + jq)
 test_rpc_script = files('test-rpc.sh')
 ollmfilesd_bin = get_variable('ollmfilesd_bin', disabler())
 test('test-rpc',

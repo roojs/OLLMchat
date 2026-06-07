@@ -92,8 +92,10 @@ namespace OLLMrpc.Transport
 		public void reply(OLLMrpc.Request request, OLLMrpc.Response response)
 		{
 			response.id = request.id;
-			size_t length;
-			this.write_line(Json.gobject_to_data(response, out length));
+			var generator = new Json.Generator();
+			generator.set_pretty(false);
+			generator.set_root(Json.gobject_serialize(response));
+			this.write_line(generator.to_data(null));
 		}
 
 		public void reply_error(OLLMrpc.Request request, int error_code)

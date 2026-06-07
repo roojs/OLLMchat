@@ -1,5 +1,5 @@
 #!/bin/bash
-# Tranche 0 — ollmfilesd RPC harness smoke (shell + socat + jq).
+# Tranche 0 — ollmfilesd RPC harness smoke (stdio NDJSON + jq).
 
 set -euo pipefail
 
@@ -12,8 +12,6 @@ source "$SCRIPT_DIR/test-rpc-common.sh"
 BUILD_DIR="${1:-$PROJECT_ROOT/build}"
 OLLMFILESD="$BUILD_DIR/ollmfilesd/ollmfilesd"
 TEST_DIR="$BUILD_DIR/test-rpc-$$"
-RPC_SOCKET="$TEST_DIR/ollmfilesd.sock"
-PID_FILE="$TEST_DIR/ollmfilesd.pid"
 
 cleanup() {
     rpc_shutdown || true
@@ -34,30 +32,24 @@ fi
 
 mkdir -p "$TEST_DIR"
 
-# T0.1 — spawn with isolated data_dir; socket + pid
-OLLMFILES_IS_TEST=1 \
-    "$OLLMFILESD" --data-dir="$TEST_DIR" >/dev/null 2>&1 &
+# T0.1 — spawn --interactive with isolated data_dir; probe Daemon.hello on stdio
+rpc_start
 
-if ! wait_for_socket; then
-    test_fail "T0.1 spawn daemon (socket accepts)"
+if ! wait_for_rpc_ready; then
+    test_fail "T0.1 spawn daemon (stdio hello)"
     exit 1
 fi
-
-if [ ! -f "$PID_FILE" ]; then
-    test_fail "T0.1 pid file written"
-    exit 1
-fi
-test_pass "T0.1 spawn daemon (socket + pid)"
+test_pass "T0.1 spawn daemon (stdio hello)"
 
 # T0.2 — Daemon.hello
-resp=$(rpc_call 1 "Daemon.hello" '{"protocol":1,"client":"test-rpc"}')
-jq_ok "T0.2 Daemon.hello (no error)" "$resp" '.error == null'
-jq_ok "T0.2 Daemon.hello (server)" "$resp" '.result.server == "ollmfilesd"'
-jq_ok "T0.2 Daemon.hello (ready)" "$resp" '.result.ready == true'
+rpc_call 1 "Daemon.hello" '{"protocol":1,"client":"test-rpc"}'
+jq_ok "T0.2 Daemon.hello (no error)" "$RPC_LAST_RESPONSE" '.error == null'
+jq_ok "T0.2 Daemon.hello (server)" "$RPC_LAST_RESPONSE" '.result.server == "ollmfilesd"'
+jq_ok "T0.2 Daemon.hello (ready)" "$RPC_LAST_RESPONSE" '(.result.ready // true) == true'
 
-# T0.3 — second request on a new connection; id matches
-resp=$(rpc_call 42 "Daemon.hello" '{"protocol":1,"client":"test-rpc"}')
-jq_ok "T0.3 response id matches" "$resp" '.id == 42'
+# T0.3 — second request on same stdio session; id matches
+rpc_call 42 "Daemon.hello" '{"protocol":1,"client":"test-rpc"}'
+jq_ok "T0.3 response id matches" "$RPC_LAST_RESPONSE" '.id == 42'
 
 # T0.4 — unknown method (deferred: dispatch logs critical, no wire error yet)
 

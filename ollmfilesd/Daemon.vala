@@ -47,6 +47,17 @@ namespace OLLMfilesd
 			return val;
 		}
 
+		public override Json.Node serialize_property(
+			string property_name,
+			Value value,
+			ParamSpec pspec
+		) {
+			if (property_name == "app") {
+				return null;
+			}
+			return default_serialize_property(property_name, value, pspec);
+		}
+
 		construct
 		{
 			this.rpc_hello.connect((request) => {
