@@ -54,14 +54,14 @@ namespace OLLMfilesd
 				if (p.protocol > 0) {
 					this.protocol = p.protocol;
 				}
-				request.session.reply(request, new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					result = this,
 					result_type = "Daemon"
 				});
 			});
 			this.rpc_shutdown.connect((request) => {
 				this.ready = false;
-				request.session.reply(request, new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
 				});
 				this.app.cleanup();

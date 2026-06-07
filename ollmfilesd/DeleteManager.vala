@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfiles
+namespace OLLMfilesd
 {
 	/**
 	 * Centralizes all file deletion logic.
@@ -35,7 +35,7 @@ namespace OLLMfiles
 		/**
 		 * Signal emitted when cleanup is performed (after files are deleted).
 		 * 
-		 * OLLMfiles.SQT.VectorMetadata (in libocfiles) can listen to this signal to clean up
+		 * SQT.VectorMetadata can listen to this signal to clean up
 		 * vector metadata entries for deleted files using a bulk DELETE query.
 		 * 
 		 * Emitted by cleanup() after cleanup is complete.

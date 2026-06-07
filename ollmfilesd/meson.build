@@ -5,6 +5,7 @@
 # Server types live under ollmfilesd/*.vala; shared RPC wire types use libocrpc (OLLMrpc).
 
 valac = meson.get_compiler('vala')
+tree_sitter_lib = dependency('tree-sitter', required: true)
 
 ollmfilesd_deps = [
   dependency('gee-0.8'),
@@ -17,16 +18,35 @@ ollmfilesd_deps = [
   dependency('libsoup-3.0'),
   dependency('sqlite3'),
   valac.find_library('posix'),
+  tree_sitter_lib,
   ocsqlite_vapi_dep,
   ocrpc_vapi_dep,
   ollmchat_vapi_dep,
 ]
 
 ollmfilesd_src = files(
+  'BufferProviderBase.vala',
   'CallParam.vala',
+  'DeleteManager.vala',
+  'FileChange.vala',
+  'FileBuffer.vala',
+  'DummyFileBuffer.vala',
+  '../libocfiles/Copyable.vala',
   'FileBase.vala',
+  'SQT/VectorMetadata.vala',
+  'FileHistory.vala',
+  'FileAlias.vala',
   'File.vala',
+  'FolderFiles.vala',
+  'GitProviderBase.vala',
+  'ProjectFile.vala',
+  'ReviewFiles.vala',
+  'ProjectFiles.vala',
   'Folder.vala',
+  'ProjectList.vala',
+  'TreeBase.vala',
+  'Tree.vala',
+  'ProjectMigrate.vala',
   'ProjectManager.vala',
   'Daemon.vala',
   'Application.vala',

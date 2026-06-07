@@ -97,7 +97,7 @@ namespace OLLMrpc
 
 		public void reply_error(Request request, RpcErrorCode error_code)
 		{
-			this.reply(request, RpcErrorCode.to_response(request, error_code));
+			this.reply(request, RpcErrorCode.to_response(error_code));
 		}
 
 		private bool on_input_ready(GLib.IOChannel source, GLib.IOCondition condition)

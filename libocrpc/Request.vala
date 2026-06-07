@@ -19,7 +19,7 @@ namespace OLLMrpc
 	 * On the client, pass to {@link RpcClient.call}. On the server,
 	 * {@link dispatch} routes {@code Object.method} to a registered handler's
 	 * {@code rpc_*} signal. Set {@link session} before {@link dispatch}; handlers
-	 * reply via {@link session.reply}.
+	 * reply via {@link reply}.
 	 */
 	public class Request : GLib.Object, Json.Serializable
 	{
@@ -151,6 +151,12 @@ namespace OLLMrpc
 				"rpc_" + method_name.replace(".", "_"),
 				this
 			);
+		}
+
+		/** Relay a {@link Response} to {@link session} (sets wire {@code id}). */
+		public void reply(Response response)
+		{
+			this.session.reply(this, response);
 		}
 	}
 }

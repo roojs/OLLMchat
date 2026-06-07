@@ -17,7 +17,7 @@ namespace OLLMrpc
 	public class Response : GLib.Object, Json.Serializable
 	{
 		public string jsonrpc { get; set; default = "2.0"; }
-		public int id { get; construct set; }
+		public int id { get; set; default = 0; }
 		public Error? error { get; set; default = null; }
 		public GLib.Object? result { get; set; default = null; }
 		public string msg { get; set; default = ""; }
@@ -28,11 +28,6 @@ namespace OLLMrpc
 		public string result_type { get; set; default = ""; }
 		/** On the wire: {@link result} is a JSON array of {@link result_type} objects. */
 		public bool is_array { get; set; default = false; }
-
-		public Response(int id)
-		{
-			GLib.Object(id: id);
-		}
 
 		public unowned ParamSpec? find_property(string name)
 		{

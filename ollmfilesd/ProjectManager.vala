@@ -95,7 +95,7 @@ namespace OLLMfilesd
 		public signal void active_project_changed(Folder? project);
 		
 		/**
-		 * Emitted when file metadata changes (cursor, scroll, last_viewed, etc.).
+		 * Emitted when file metadata changes (last_viewed, etc.).
 		 * This signal is emitted for metadata-only updates that don't require background scanning.
 		 */
 		public signal void file_metadata_changed(File file);
@@ -146,13 +146,24 @@ namespace OLLMfilesd
 		construct
 		{
 			this.rpc_load_projects_from_db.connect((request) => {
-				this.load_projects_from_db.begin(request);
+				this.load_projects_from_db.begin((obj, res) => {
+					this.load_projects_from_db.end(res);
+					var list = new Gee.ArrayList<GLib.Object>();
+					for (uint i = 0; i < this.projects.get_n_items(); i++) {
+						list.add(this.projects.get_item(i));
+					}
+					request.reply(new OLLMrpc.Response() {
+						result = list,
+						result_type = typeof(Folder).name(),
+						is_array = true
+					});
+				});
 			});
 			this.rpc_create_project.connect((request) => {
 				var project = this.create_project(
 					((ProjectParams) request.param).path
 				);
-				request.session.reply(request, new OLLMrpc.Response(request.id) {
+				request.reply(new OLLMrpc.Response() {
 					result = project,
 					result_type = typeof(Folder).name()
 				});
@@ -163,7 +174,7 @@ namespace OLLMfilesd
 						((ProjectParams) request.param).path
 					)
 				);
-				request.session.reply(request, new OLLMrpc.Response(request.id) {
+				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
 				});
 			});
@@ -223,7 +234,7 @@ namespace OLLMfilesd
 			// Skip if this project is already active (avoid redundant scans)
 			if (this.active_project == project && project != null && project.is_active) {
 				GLib.debug ("opening project skipped already active path=%s", project.path);
-				request.session.reply(request, new OLLMrpc.Response(request.id) {
+				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
 				});
 				return;
@@ -286,7 +297,7 @@ namespace OLLMfilesd
 			this.active_project_changed(project);
 
 		
-			request.session.reply(request, new OLLMrpc.Response(request.id) {
+			request.reply(new OLLMrpc.Response() {
 				msg = "ok"
 			});
 		
@@ -296,7 +307,7 @@ namespace OLLMfilesd
 		/**
 		 * Notify that a file's metadata has changed (save to database and emit signal).
 		 * 
-		 * This method is used for metadata-only updates such as cursor position, scroll position,
+		 * This method is used for metadata-only updates such as
 		 * or last_viewed timestamp. It does NOT trigger background scanning.
 		 * 
 		 * @param file The file whose metadata changed
@@ -347,33 +358,17 @@ namespace OLLMfilesd
 		 * Queries database for all folders where is_project = 1 and loads them
 		 * into the manager.projects list.
 		 */
-		public async void load_projects_from_db(OLLMrpc.Request request)
+		public async void load_projects_from_db()
 		{
-			// Query database for projects
+			if (this.db == null) {
+				return;
+			}
 			var query = FileBase.query(this.db, this);
 			var projects_list = new Gee.ArrayList<Folder>();
 			yield query.select_async("WHERE is_project = 1 AND delete_id = 0", projects_list);
-			
-			////GLib.debug("ProjectManager.load_projects_from_db: Found %d projects in database", projects_list.size);
-			
-			// Add to manager.projects list (ProjectList handles deduplication)
 			foreach (var project in projects_list) {
-				// Projects use property binding: path_basename for label, path for tooltip
-				// No need to manually set display_name or tooltip - they're bound directly
-				////GLib.debug("ProjectManager.load_projects_from_db: Adding project path='%s' (path_basename='%s')", 
-				//	project.path, project.path_basename);
 				this.projects.append(project);
 			}
-
-			var list = new Gee.ArrayList<GLib.Object>();
-			for (uint i = 0; i < this.projects.get_n_items(); i++) {
-				list.add(this.projects.get_item(i));
-			}
-			request.session.reply(request, new OLLMrpc.Response(request.id) {
-				result = list,
-				result_type = typeof(Folder).name(),
-				is_array = true
-			});
 		}
 		
 		/**

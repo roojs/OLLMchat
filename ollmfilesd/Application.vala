@@ -34,7 +34,7 @@ namespace OLLMfilesd
 		private string pid_path;
 		private string socket_path;
 
-		public OLLMfilesd.ProjectManager project_manager { get; private set; }
+		public ProjectManager project_manager { get; private set; }
 		private Daemon daemon { get; set; }
 		private OLLMrpc.Listen? listen;
 		private GLib.IOChannel? stdin_channel;
@@ -154,7 +154,7 @@ namespace OLLMfilesd
 		{
 			this.ensure_data_dir();
 
-			this.project_manager = new OLLMfilesd.ProjectManager(
+			this.project_manager = new ProjectManager(
 				new SQ.Database(
 					GLib.Path.build_filename(this.data_dir, "files.sqlite")
 				)
@@ -165,24 +165,11 @@ namespace OLLMfilesd
 					this.project_manager.db.filename
 				);
 				if (!db_file.query_exists()) {
-					var migrator = new OLLMfilesd.ProjectMigrate(
-						this.project_manager
-					);
+					var migrator = new ProjectMigrate(this.project_manager);
 					yield migrator.migrate_all();
 				}
 
-				var query = OLLMfilesd.FileBase.query(
-					this.project_manager.db,
-					this.project_manager
-				);
-				var projects_list = new Gee.ArrayList<OLLMfilesd.Folder>();
-				yield query.select_async(
-					"WHERE is_project = 1 AND delete_id = 0",
-					projects_list
-				);
-				foreach (var project in projects_list) {
-					this.project_manager.projects.append(project);
-				}
+				yield this.project_manager.load_projects_from_db();
 			}
 
 			this.daemon = new Daemon(this);

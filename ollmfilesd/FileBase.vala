@@ -36,7 +36,7 @@ namespace OLLMfilesd
 	 * Fake files are used for accessing files outside the project scope.
 	 * They skip database operations in saveToDB().
 	 */
-	public abstract class FileBase : Object
+	public abstract class FileBase : Object, OLLMfiles.Copyable
 	{
 		/**
 		 * Database ID.
@@ -105,40 +105,6 @@ namespace OLLMfilesd
 		}
 		
 		/**
-		 * Icon name for binding in lists.
-		 * Returns icon_name if set, otherwise a default based on type.
-		 */
-		public virtual string icon_name {
-			get { return "folder"; }
-			set {}
-		}
- 		
-		/**
-		 * Display name for binding in lists.
-		 */
-		public string display_name { get; set; default = ""; }
-		
-		/**
-		 * Basename derived from path (for property binding).
-		 */
-		public string path_basename {
-			owned get { return GLib.Path.get_basename(this.path); }
-		}
-		
-		/**
-		 * Display text with status indicators.
-		 * Base implementation just returns display_name.
-		 */
-		public virtual string display_with_indicators {
-			get { return this.display_name; 	}
-		}
-		
-		/**
-		 * Tooltip text for binding in lists.
-		 */
-		public string tooltip { get; set; default = ""; }
-		
-		/**
 		 * Get modification time on disk (Unix timestamp).
 		 * 
 		 * @return Modification time as Unix timestamp, or 0 if unavailable
@@ -193,22 +159,7 @@ namespace OLLMfilesd
 		 * @param indent Leading indent for this line; Folder passes indent + "  " to children.
 		 */
 		public abstract string to_summary(
-			Gee.HashMap<int, OLLMfilesd.SQT.VectorMetadata> keymap, string indent);
-		
-		/**
-		 * Last cursor line number (stored in database, default: 0).
-		 */
-		public int cursor_line { get; set; default = 0; }
-		
-		/**
-		 * Last cursor character offset (stored in database, default: 0).
-		 */
-		public int cursor_offset { get; set; default = 0; }
-		
-		/**
-		 * Last scroll position (stored in database, optional, default: 0).
-		 */
-		public int scroll_position { get; set; default = 0; }
+			Gee.HashMap<int, SQT.VectorMetadata> keymap, string indent);
 		
 		/**
 		 * Whether the file needs approval.
@@ -411,47 +362,6 @@ namespace OLLMfilesd
 			return true;
 		}
 		
-		/**
-		 * Copy database-preserved fields from this object to another.
-		 * 
-		 * Used when updating from filesystem: preserves DB fields like id, is_active,
-		 * cursor positions, etc. that shouldn't be overwritten by filesystem scan.
-		 * 
-		 * == Copied Fields ==
-		 * 
-		 * Copies all database-preserved fields (excluding filesystem-derived fields):
-		 * id, is_active, last_viewed, last_modified, language,
-		 * cursor_line, cursor_offset, scroll_position, is_project, is_ignored, is_text,
-		 * is_repo, last_vector_scan.
-		 * 
-		 * Note: base_type is not copied as it's determined by object type and should match.
-		 * 
-		 * @param target The target object to copy fields to (typically the new filesystem item)
-		 */
-		public virtual void copy_db_fields_to(FileBase target)
-		{
-			// Copy database-preserved fields (excluding filesystem-derived: path, parent_id, target_path)
-			// Note: base_type is not copied as it's determined by object type and should match
-			target.id = this.id;
-			target.is_active = this.is_active;
-			target.last_viewed = this.last_viewed;
-			target.last_modified = this.last_modified;
-			
-			// Copy all database fields (now all in FileBase)
-			target.language = this.language;
-			target.cursor_line = this.cursor_line;
-			target.cursor_offset = this.cursor_offset;
-			target.scroll_position = this.scroll_position;
-			target.is_project = this.is_project;
-			target.is_ignored = this.is_ignored;
-			target.is_text = this.is_text;
-			target.is_repo = this.is_repo;
-			target.last_vector_scan = this.last_vector_scan;
-			target.delete_id = this.delete_id;
-			target.is_need_approval = this.is_need_approval;
-			target.last_change_type = this.last_change_type;
-		}
-		
 		// Static counter for tracking saveToDB calls
 		private static int64 saveToDB_call_count = 0;
 		
@@ -560,52 +470,6 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to get target info for %s: %s", target_path, e.message);
 				return null;
-			}
-		}
-		
-		/**
-		 * Display text for approval list with visual indicators.
-		 * 
-		 * Returns formatted text for display in approvals list:
-		 * - "+ filename" for new files
-		 * - "<s>filename</s>" (Pango markup strikethrough) for deleted files
-		 * - "filename" for modified files
-		 */
-		public string display_approval_text {
-			owned get {
-				switch (this.last_change_type) {
-					case "added":
-						return "+ " + this.path_basename;
-					case "deleted":
-						return "<s>" + this.path_basename + "</s>";
-					default:
-						// Modified or no change type
-						return this.path_basename;
-				}
-			}
-		}
-		
-		/**
-		 * Tooltip text for approval list with full path and change type.
-		 * 
-		 * Returns tooltip text with full path and change type:
-		 * - "Added /path/to/file" for new files
-		 * - "Modified /path/to/file" for modified files
-		 * - "Deleted /path/to/file" for deleted files
-		 */
-		public string display_approval_tooltip {
-			owned get {
-				switch (this.last_change_type) {
-					case "added":
-						return "Added " + this.path;
-					case "deleted":
-						return "Deleted " + this.path;
-					case "modified":
-						return "Modified " + this.path;
-					default:
-						// No change type or unknown
-						return this.path;
-				}
 			}
 		}
 		

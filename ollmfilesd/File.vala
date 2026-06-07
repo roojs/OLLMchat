@@ -61,9 +61,9 @@ namespace OLLMfilesd
 					((FileParams) request.param).path
 				);
 				var row = new File(this.manager);
-				file.copy_db_fields_to(row);
+				row.copy_from(file, {"manager", "buffer", "parent"});
 				row.last_modified = file.mtime_on_disk();
-				request.session.reply(request, new OLLMrpc.Response(request.id) {
+				request.reply(new OLLMrpc.Response() {
 					result = row,
 					result_type = "File"
 				});
@@ -75,7 +75,7 @@ namespace OLLMfilesd
 					this.manager.buffer_provider.create_buffer(file);
 				}
 				file.buffer.write_real.begin(p.content);
-				request.session.reply(request, new OLLMrpc.Response(request.id) {
+				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
 				});
 			});
@@ -84,9 +84,9 @@ namespace OLLMfilesd
 				var existing = this.manager.get_file_from_active_project(p.path);
 				if (existing != null && existing.id != -1) {
 					var row = new File(this.manager);
-					existing.copy_db_fields_to(row);
+					row.copy_from(existing, {"manager", "buffer", "parent"});
 					row.last_modified = existing.mtime_on_disk();
-					request.session.reply(request, new OLLMrpc.Response(request.id) {
+					request.reply(new OLLMrpc.Response() {
 						result = row,
 						result_type = typeof(File).name()
 					});
@@ -103,9 +103,9 @@ namespace OLLMfilesd
 						this.manager.convert_fake_file_to_real.end(res);
 						var real = this.manager.get_file_from_active_project(p.path);
 						var row = new File(this.manager);
-						real.copy_db_fields_to(row);
+						row.copy_from(real, {"manager", "buffer", "parent"});
 						row.last_modified = real.mtime_on_disk();
-						request.session.reply(request, new OLLMrpc.Response(request.id) {
+						request.reply(new OLLMrpc.Response() {
 							result = row,
 							result_type = typeof(File).name()
 						});
@@ -124,7 +124,7 @@ namespace OLLMfilesd
 						this.manager.delete_manager.cleanup.begin();
 					}
 				);
-				request.session.reply(request, new OLLMrpc.Response(request.id) {
+				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
 				});
 			});
@@ -136,7 +136,7 @@ namespace OLLMfilesd
 					&& p.buffer_dirty) {
 					status = FileUpdateStatus.CHANGED_HAS_UNSAVED;
 				}
-				request.session.reply(request, new OLLMrpc.Response(request.id) {
+				request.reply(new OLLMrpc.Response() {
 					msg = ((int) status).to_string()
 				});
 			});
@@ -207,7 +207,7 @@ namespace OLLMfilesd
 		 */
 		public bool is_need_approval { get; set; default = false; }
 		
-		public override string to_summary(Gee.HashMap<int, OLLMfilesd.SQT.VectorMetadata> keymap, string indent)
+		public override string to_summary(Gee.HashMap<int, SQT.VectorMetadata> keymap, string indent)
 		{
 			var type = "file";
 			var description = "";
@@ -242,9 +242,9 @@ namespace OLLMfilesd
 			
 			// Approve all FileHistory items for this file using query wrapper
 			var db = this.manager.db;
-			var history_records = new Gee.ArrayList<OLLMfilesd.FileHistory>();
+			var history_records = new Gee.ArrayList<FileHistory>();
 			try {
-				OLLMfilesd.FileHistory.query(db).select(
+				FileHistory.query(db).select(
 					"WHERE filebase_id = %lld".printf(this.id),
 					history_records
 				);
@@ -257,7 +257,7 @@ namespace OLLMfilesd
 			foreach (var history in history_records) {
 				history.status = 1;
 				try {
-					OLLMfilesd.FileHistory.query(db).updateById(history);
+					FileHistory.query(db).updateById(history);
 				} catch (GLib.Error e) {
 					GLib.warning("Failed to update FileHistory status: %s", e.message);
 				}
@@ -310,9 +310,9 @@ namespace OLLMfilesd
 		{
 			// Get FileHistory records for this file
 			var db = this.manager.db;
-			var history_records = new Gee.ArrayList<OLLMfilesd.FileHistory>();
+			var history_records = new Gee.ArrayList<FileHistory>();
 			try {
-				yield OLLMfilesd.FileHistory.query(db).select_async(
+				yield FileHistory.query(db).select_async(
 					"WHERE filebase_id = %lld AND backup_path != '' ORDER BY timestamp DESC LIMIT 1".printf(this.id),
 					history_records
 				);
@@ -340,7 +340,7 @@ namespace OLLMfilesd
 			// Before restoring, backup the current content (the rejected content)
 			// Create a new FileHistory record with change_type="revert" to backup the rejected content
 			var now = new GLib.DateTime.now_local();
-			var revert_history = new OLLMfilesd.FileHistory(
+			var revert_history = new FileHistory(
 				db,
 				this,
 				"revert",
@@ -389,7 +389,7 @@ namespace OLLMfilesd
 			// Update FileHistory status to rejected (-1) using query wrapper
 			history.status = -1;
 			try {
-				OLLMfilesd.FileHistory.query(db).updateById(history);
+				FileHistory.query(db).updateById(history);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to update FileHistory status: %s", e.message);
 			}

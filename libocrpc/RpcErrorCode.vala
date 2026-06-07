@@ -33,9 +33,9 @@ namespace OLLMrpc
 			return new Error(e, e.message);
 		}
 
-		public static Response to_response(Request request, RpcErrorCode e)
+		public static Response to_response(RpcErrorCode e)
 		{
-			return new Response(request.id) {
+			return new Response() {
 				error = to_error(e)
 			};
 		}

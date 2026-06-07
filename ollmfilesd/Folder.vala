@@ -88,8 +88,8 @@ namespace OLLMfilesd
 		 */
 		public string project_description()
 		{
-			var results = new Gee.ArrayList<OLLMfilesd.SQT.VectorMetadata>();
-			OLLMfilesd.SQT.VectorMetadata.query(this.manager.db).select(
+			var results = new Gee.ArrayList<SQT.VectorMetadata>();
+			SQT.VectorMetadata.query(this.manager.db).select(
 				"WHERE file_id = " + this.id.to_string() + " AND element_type = 'project' ORDER BY id DESC",
 				results);
 			if (results.size == 0) {
@@ -115,7 +115,7 @@ namespace OLLMfilesd
 		public FolderFiles children { get; set; default = new FolderFiles(); }
 		
 		public override string to_summary(
-			Gee.HashMap<int, OLLMfilesd.SQT.VectorMetadata> keymap, 
+			Gee.HashMap<int, SQT.VectorMetadata> keymap, 
 			string indent)
 		{
 			var description = "";
@@ -561,7 +561,9 @@ namespace OLLMfilesd
 			}
 			
 			// Same item - copy DB fields to preserve them, then update only changed fields
-			old_item.copy_db_fields_to(new_item);
+			new_item.copy_from(old_item, {
+				"manager", "path", "parent_id", "target_path", "base_type", "parent",
+			});
 			// Update last_modified from filesystem (preserve filesystem mtime, not DB value)
 			// This ensures the database reflects the actual file modification time
 			new_item.last_modified = new_item.mtime_on_disk();

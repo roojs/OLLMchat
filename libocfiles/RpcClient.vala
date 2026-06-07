@@ -215,7 +215,7 @@ namespace OLLMfiles
 					error.message
 				);
 				this.failed(request, error);
-				return new OLLMrpc.Response(request.id) { error = error };
+				return new OLLMrpc.Response() { id = request.id, error = error };
 			}
 
 			var promise = new GLib.Promise<OLLMrpc.Response>();
@@ -241,7 +241,7 @@ namespace OLLMfiles
 					error.message
 				);
 				this.failed(request, error);
-				return new OLLMrpc.Response(request.id) { error = error };
+				return new OLLMrpc.Response() { id = request.id, error = error };
 			}
 
 			var response = yield this.wait_response(
@@ -286,7 +286,8 @@ namespace OLLMfiles
 				string msg = cancellable.is_cancelled()
 					? "call timed out"
 					: e.message;
-				return new OLLMrpc.Response(id) {
+				return new OLLMrpc.Response() {
+					id = id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 						msg,

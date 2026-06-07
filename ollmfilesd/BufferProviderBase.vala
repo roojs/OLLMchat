@@ -16,13 +16,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfiles
+namespace OLLMfilesd
 {
 	/**
 	 * Base implementation for non-GTK contexts.
 	 * 
 	 * Provides a default implementation that creates DummyFileBuffer instances,
-	 * allowing libocfiles to work without GTK dependencies. Concrete implementations
+	 * allowing ollmfilesd to work without GTK dependencies. Concrete implementations
 	 * (e.g., in liboccoder) can override create_buffer() to provide GTK buffers.
 	 * 
 	
@@ -220,7 +220,6 @@ namespace OLLMfiles
 		 * 
 		 * Before creating new buffer, performs cleanup of old buffers. Keeps buffers for:
 		 * 
-		 *  * Open files (is_open == true)
 		 *  * Top 10 most recently used files (by last_viewed)
 		 * 
 		 * Sets file.buffer = null for all other files to free memory.
@@ -257,7 +256,6 @@ namespace OLLMfiles
 		 * 
 		 * Keeps buffers for:
 		 * 
-		 *  * Open files (is_open == true)
 		 *  * Top 10 most recently used files (by last_viewed)
 		 *  * The current_file being accessed (always keeps its buffer)
 		 * 
@@ -279,14 +277,14 @@ namespace OLLMfiles
 			var manager = current_file.manager;
 			var not_open_files = new Gee.ArrayList<File>();
 			
-			// Collect all files with buffers that are not open
+			// Collect cached files with buffers (except current)
 			foreach (var file_base in manager.file_cache.values) {
 				if (!(file_base is File)) {
 					continue;
 				}
 				
 				var file = (File) file_base;
-				if (file.buffer == null || file == current_file || file.is_open) {
+				if (file.buffer == null || file == current_file) {
 					continue;
 				}
 				
