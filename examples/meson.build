@@ -465,6 +465,29 @@ minimal_deps = [
   dependency('gobject-2.0'),
 ]
 
+if local_gguf_enabled
+  oc_local_gguf_embed = executable('oc-local-gguf-embed',
+    dependencies: [
+      minimal_deps,
+      ollmchat_vapi_dep,
+      ollamaweb_vapi_dep,
+    ],
+    sources: ['oc-local-gguf-embed.vala'],
+    link_with: [ollmchat_base_lib],
+    include_directories: [
+      include_directories('../libollmchat'),
+      ollmchat_consumer_include,
+    ],
+    build_rpath: build_rpath,
+    vala_args: [
+      '--pkg=ollmchat',
+      '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    ] + ollmchat_consumer_vala_args,
+    install: true,
+    install_dir: get_option('bindir')
+  )
+endif
+
 # Reproducible example: Vala "free short if" codegen bug (nested ternary use-after-free)
 oc_vala_ternary_bug = executable('oc-vala-ternary-bug',
   dependencies: minimal_deps,
