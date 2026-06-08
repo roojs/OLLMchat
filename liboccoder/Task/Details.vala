@@ -586,6 +586,15 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	}
 
 	/**
+	 * Allow Action runners to reuse Details model selection without exposing the
+	 * protected Agent.Base override directly.
+	 */
+	public async void fill_action_model()
+	{
+		yield this.fill_model();
+	}
+
+	/**
 	 * Task as markdown for a given phase. Does not add section headings
 	 * (e.g. `## Task`); caller adds header.
 	 * COARSE: creation keys. REFINEMENT/EXECUTION: task list + `## Tool Calls` when tools exist.

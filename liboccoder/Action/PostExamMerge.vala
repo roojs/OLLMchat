@@ -25,11 +25,37 @@ public class PostExamMerge : Base
 		base (task);
 	}
 
+	/**
+	 * Parse post-execution synthesis response into the task.
+	 *
+	 * Called directly by this action and indirectly through
+	 * {@link Task.ResultParser.exec_post_extract} for existing replay/live callers.
+	 */
+	public static void extract (Task.ResultParser parser, Task.Details task)
+	{
+		if (!parser.has_heading ("result-summary")) {
+			parser.add_issue ("\nPost-exec output must include ## Result summary.");
+			return;
+		}
+		task.post_summary = parser.heading ("result-summary");
+		task.out_doc = parser.parsed_document;
+		var sum_render = new Markdown.Document.Render ();
+		sum_render.parse (task.post_summary.to_markdown_with_content ());
+		var vl_sum = new Task.ValidateLink (task.runner, task, Task.PhaseEnum.POST_EXEC) {
+			document = parser.parsed_document
+		};
+		vl_sum.validate_all (sum_render.document.links);
+		task.issues += vl_sum.issues;
+		if (task.issues != "") {
+			parser.add_issue (task.issues);
+		}
+	}
+
 	public override async void run () throws GLib.Error
 	{
 		this.task.status = Task.PhaseEnum.POST_EXEC;
 		this.task.runner.progress.active_item_changed (this.task);
-		yield this.task.fill_model ();
+		yield this.task.fill_action_model ();
 		this.task.chat_call.tools.clear ();
 		var response_text = "";
 		var last_issues = "";
@@ -71,7 +97,7 @@ public class PostExamMerge : Base
 			// Before exec_post_extract: it copies task.issues into parser.issues after link checks.
 			this.task.issues = "";
 			var parser = new Task.ResultParser (this.task.runner, response_text);
-			parser.exec_post_extract (this.task);
+			PostExamMerge.extract (parser, this.task);
 			this.task.add_message (new OLLMchat.Message ("agent-issues", parser.issues));
 			if (parser.issues == "") {
 				this.task.runner.progress.active_item_changed (null);

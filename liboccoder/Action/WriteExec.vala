@@ -25,6 +25,42 @@ public class WriteExec : Base
 		base (task);
 	}
 
+	/**
+	 * Parse write executor Change details sections into the execution run.
+	 *
+	 * Called by {@link Base.extract_exec}; Result summary and link validation
+	 * remain in the shared executor parser.
+	 */
+	public static bool extract_writes (Task.ResultParser parser, Task.Tool ex)
+	{
+		ex.writes.clear ();
+		foreach (var slug in parser.header_list ()) {
+			if (slug == "result-summary") {
+				continue;
+			}
+			var hb = parser.heading (slug);
+			if (hb.parent != parser.parsed_document) {
+				continue;
+			}
+			if (!slug.has_prefix ("change-details")) {
+				parser.add_issue ("\nWrite executor: unexpected top-level section (use ## Change details or Path 2 only): \"" + slug + "\".");
+				continue;
+			}
+			var wc = new Task.WriteChange.from_header (hb, ex.parent.runner.sr_factory.project_manager);
+			if (wc.issues != "") {
+				parser.add_issue ("\n"
+					+ "Change details — " + hb.text_content ().strip () + ":"
+					+ wc.issues.strip ());
+				continue;
+			}
+			ex.writes.add (wc);
+			if (wc.output_mode.strip ().down () == "next_section") {
+				break;
+			}
+		}
+		return parser.issues == "";
+	}
+
 	public override async void run () throws GLib.Error
 	{
 		this.task.status = Task.PhaseEnum.TOOLS_RUNNING;

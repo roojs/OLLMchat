@@ -21,9 +21,9 @@ namespace OLLMcoder.Task
  * in-memory structures (List/Step/Details) and fill task properties. Validation
  * failures are accumulated in {@link issues} so the caller can retry or report.
  *
- * Constructor builds a ''Markdown.Document''; {@link parse_task_list},
- * {@link extract_refinement}, {@link extract_exec}, and {@link exec_extract} each expect specific
- * sections and populate task_list / task / issues accordingly.
+ * Constructor builds a ''Markdown.Document''; task-list and refinement parsing
+ * stays here, while execution-stage parsing is owned by the Action layer through
+ * thin compatibility wrappers.
  *
  * How it fits in the task flow:
  *
@@ -33,7 +33,7 @@ namespace OLLMcoder.Task
  *    ResultParser, ''extract_refinement(this)''; task is updated and
  *    ''result_parser.issues'' checked.
  *  * Execution: Tool.run() receives the executor response → new ResultParser,
- *    ''exec_extract(ex)''; ex.summary (heading block) and ex.document are set. Details.run_exec() builds
+ *    ''exec_extract(ex)'' delegates to Action.Base; ex.summary (heading block) and ex.document are set. Details.run_exec() builds
  *    summaries on each Tool in Details.tools(); on success Details sets ''exec_done'' (live path).
  *    ''extract_exec(Details)'' remains for legacy/test use (returns a synthetic run; caller applies it to {@link Details.tools}).
  *
@@ -82,6 +82,46 @@ public class ResultParser : Object
 		var render = new Markdown.Document.Render();
 		render.parse(response);
 		this.document = render.document;
+	}
+
+	/**
+	 * Parsed response document. Action parsers use this so ResultParser stays
+	 * responsible only for markdown construction and shared issue state.
+	 */
+	public Markdown.Document.Document parsed_document {
+		get { return this.document; }
+	}
+
+	/**
+	 * Convenience wrapper around document.headings.has_key().
+	 */
+	public bool has_heading(string key)
+	{
+		return this.document.headings.has_key(key);
+	}
+
+	/**
+	 * Convenience wrapper around document.headings.get().
+	 */
+	public Markdown.Document.Block heading(string key)
+	{
+		return this.document.headings.get(key);
+	}
+
+	/**
+	 * Heading slugs in document order.
+	 */
+	public Gee.ArrayList<string> header_list()
+	{
+		return this.document.header_list;
+	}
+
+	/**
+	 * Append a parser issue from code that owns the stage-specific extraction.
+	 */
+	public void add_issue(string issue)
+	{
+		this.issues += issue;
 	}
 
 	/**
@@ -550,81 +590,7 @@ public class ResultParser : Object
 	 */
 	public bool exec_extract (Tool ex)
 	{
-		if (!this.document.headings.has_key ("result-summary")) {
-			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
-				"It was missing or not found in the response. " +
-				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
-			return false;
-		}
-		ex.summary = this.document.headings.get ("result-summary");
-		ex.document = this.document;
-		var sum_render = new Markdown.Document.Render ();
-		sum_render.parse (ex.summary.to_markdown_with_content ());
-		if (ex.parent.skill.tools.contains ("write_file")) {
-			ex.writes.clear ();
-			foreach (var slug in this.document.header_list) {
-				if (slug == "result-summary") {
-					continue;
-				}
-				var hb = this.document.headings.get (slug);
-				if (hb.parent != this.document) {
-					continue;
-				}
-				if (!slug.has_prefix ("change-details")) {
-					this.issues += "\nWrite executor: unexpected top-level section (use ## Change details or Path 2 only): \"" + slug + "\".";
-					continue;
-				}
-				var wc = new WriteChange.from_header (hb, ex.parent.runner.sr_factory.project_manager);
-				if (wc.issues != "") {
-					this.issues += "\n"
-						+ "Change details — " + hb.text_content ().strip () + ":"
-						+ wc.issues.strip ();
-					continue;
-				}
-				ex.writes.add (wc);
-				if (wc.output_mode.strip ().down () == "next_section") {
-					break;
-				}
-			}
-			if (this.issues != "") {
-				return false;
-			}
-		}
-		var vl_sum = new ValidateLink (this.runner, ex.parent, PhaseEnum.EXECUTION) {
-			writes = ex.writes,
-			document = sum_render.document
-		};
-		vl_sum.validate_all (sum_render.document.links);
-		if (vl_sum.issues != "") {
-			this.issues += vl_sum.issues;
-			return false;
-		}
-		foreach (var link in sum_render.document.links) {
-			if (link.path != "" || link.hash == "") {
-				continue;
-			}
-			foreach (var wc in ex.writes) {
-				if (!wc.document.headings.has_key (link.hash)) {
-					continue;
-				}
-				link.up_relpath (wc.file_path.strip ());
-				break;
-			}
-		}
-		if (sum_render.document.headings.has_key ("result-summary")) {
-			ex.summary = sum_render.document.headings.get ("result-summary");
-		}
-		/* Full executor tree stays in ResultParser.this.document (Path 2 still uses this.document.to_markdown ()).
-		   ex.document still aliases this.document until Tool.run replaces ex.document with a new summary-only Document (§5.7a). */
-		if (!ex.parent.skill.tools.contains ("write_file") || ex.writes.size > 0) {
-			return true;
-		}
-		var md = this.document.to_markdown ().strip ();
-		if (md.down ().contains ("**no changes needed**")) {
-			return true;
-		}
-		this.issues += "\nWrite executor output must include a recognizable Change details section, or Path 2 (full markdown must contain **no changes needed**).";
-		return false;
+		return OLLMcoder.Action.Base.extract_exec(this, ex);
 	}
 
 	/**
@@ -636,22 +602,7 @@ public class ResultParser : Object
 	 */
 	public void exec_post_extract(Details task)
 	{
-		if (!this.document.headings.has_key("result-summary")) {
-			this.issues += "\nPost-exec output must include ## Result summary.";
-			return;
-		}
-		task.post_summary = this.document.headings.get("result-summary");
-		task.out_doc = this.document;
-		var sum_render = new Markdown.Document.Render();
-		sum_render.parse(task.post_summary.to_markdown_with_content());
-		var vl_sum = new ValidateLink (task.runner, task, PhaseEnum.POST_EXEC) {
-			document = this.document
-		};
-		vl_sum.validate_all(sum_render.document.links);
-		task.issues += vl_sum.issues;
-		if (task.issues != "") {
-			this.issues += task.issues;
-		}
+		OLLMcoder.Action.PostExamMerge.extract(this, task);
 	}
 
 	/**

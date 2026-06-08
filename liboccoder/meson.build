@@ -47,6 +47,12 @@ occoder_src = files([
   'Task/ProgressList.vala',
   'Task/ProgressView.vala',
   'Skill/Runner.vala',  # after Task/ProgressList (Runner.progress)
+  'Action/Base.vala',
+  'Action/PostExamMerge.vala',
+  'Action/ExamSequence.vala',
+  'Action/RunTools.vala',
+  'Action/RefOnly.vala',
+  'Action/WriteExec.vala',
   'Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
   'List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
   'Approvals.vala',
