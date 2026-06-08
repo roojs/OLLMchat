@@ -167,9 +167,9 @@ namespace SQ {
 		 * Request a disk backup of the in-memory database.
 		 *
 		 * Coalesces rapid calls: if last_backup is older than 20 seconds,
-		 * backup_real runs immediately. While a countdown timer is armed,
+		 * {@link backup_real} runs immediately. While a countdown timer is armed,
 		 * only resets countdown. Otherwise arms a 500 ms repeating tick;
-		 * when countdown reaches zero, backup_real runs.
+		 * when countdown reaches zero, {@link backup_real} runs.
 		 */
 		public void backupDB()
 		{
@@ -204,10 +204,10 @@ namespace SQ {
 		}
 
 		/**
-		 * Write the in-memory database to the backup file (mutex, Sqlite.Backup,
-		 * atomic rename). Updates last_backup on success.
+		 * Write the in-memory database to {@link filename} now (mutex,
+		 * Sqlite.Backup, atomic rename). Updates last_backup on success.
 		 */
-		private void backup_real()
+		public void backup_real()
 		{
 			if (this.db == null) {
 				return;

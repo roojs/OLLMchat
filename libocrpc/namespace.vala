@@ -12,9 +12,21 @@
  */
 
 /**
- * Server dispatch uses {@link OLLMrpc.Request} from {@code libocrpc}.
+ * JSON-RPC wire types in {@code libocrpc} — shared by client and {@code ollmfilesd}.
  */
-namespace OLLMfilesd
+namespace OLLMrpc
 {
-	internal class RpcNamespaceDoc {}
+	internal class NamespaceDoc {}
+
+	/** Wire name → GType for {@link Response.result} deserialize on the client. */
+	public static Gee.HashMap<string, Type> types;
+
+	/** Record a wire result type (see each class {@link rpc_register}). */
+	public static void register(string name, Type t)
+	{
+		if (types == null) {
+			types = new Gee.HashMap<string, Type>();
+		}
+		types.set(name, t);
+	}
 }
