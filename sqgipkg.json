@@ -1,0 +1,223 @@
+{
+  "name": "OLLMchat",
+  "entry": {
+    "type": "native",
+    "linux": "build-linux-x86_64/ollmapp/ollmchat",
+    "windows": "build-windows-x86_64/ollmapp/ollmchat.exe"
+  },
+  "linux": {
+    "arches": [
+      {
+        "arch": "x86_64",
+        "build_dir": "build-linux-x86_64",
+        "entry_linux": "build-linux-x86_64/ollmapp/ollmchat",
+        "deb": {
+          "download": true,
+          "packages": [
+            "libgtk-4-dev",
+            "gir1.2-gtk-4.0",
+            "libadwaita-1-dev",
+            "gir1.2-adw-1",
+            "libgtksourceview-5-dev",
+            "gir1.2-gtksource-5",
+            "libgee-0.8-dev",
+            "libglib2.0-dev",
+            "libjson-glib-dev",
+            "libsoup-3.0-dev",
+            "libxml2-dev",
+            "libsqlite3-dev",
+            "libtree-sitter-dev",
+            "libseccomp-dev",
+            "libgit2-glib-1.0-dev",
+            "libopenblas-dev",
+            "liblapack-dev",
+            "gobject-introspection",
+            "libgirepository1.0-dev"
+          ]
+        },
+        "inherit_native_projects": false,
+        "native_projects": [
+          {
+            "name": "faiss",
+            "repo": "https://github.com/facebookresearch/faiss.git",
+            "dir": ".sqgipkg/native/faiss",
+            "ref": "v1.8.0",
+            "update": true,
+            "shallow": false,
+            "build": [
+              "cmake -E rm -rf build-linux-x86_64",
+              "cmake -S . -B build-linux-x86_64 -G Ninja ${SQGI_LINUX_CMAKE_TOOLCHAIN:+-DCMAKE_TOOLCHAIN_FILE=\"$SQGI_LINUX_CMAKE_TOOLCHAIN\"} -DFAISS_ENABLE_GPU=OFF -DFAISS_ENABLE_PYTHON=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DBLA_VENDOR=OpenBLAS -DBLAS_LIBRARIES=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/openblas-pthread/libopenblas.so\" -DLAPACK_LIBRARIES=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/openblas-pthread/liblapack.so;$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/openblas-pthread/libblas.so\" -DCMAKE_CXX_FLAGS=\"-I$SQGI_LINUX_SYSROOT/usr/include/$SQGI_LINUX_TRIPLET/openblas-pthread\" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr",
+              "cmake --build build-linux-x86_64 --target faiss"
+            ],
+            "install": [
+              "DESTDIR=\"$SQGI_LINUX_SYSROOT\" cmake --install build-linux-x86_64 --prefix /usr"
+            ],
+            "stage": false
+          },
+          {
+            "name": "ollmchat",
+            "dir": ".",
+            "build": [
+              "PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --wipe --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"} || PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"}",
+              "meson compile -C \"$SQGI_LINUX_BUILD_DIR\" ./ollmapp/ollmchat:executable"
+            ],
+            "libraries": [
+              "build-linux-x86_64/libocsqlite/libocsqlite.so",
+              "build-linux-x86_64/libocmarkdown/libocmarkdown.so",
+              "build-linux-x86_64/libollamaweb/libollamaweb.so",
+              "build-linux-x86_64/libocmarkdowngtk/libocmarkdowngtk.so",
+              "build-linux-x86_64/libocfiles/libocfiles.so",
+              "build-linux-x86_64/libollmchat/libollmchat.so",
+              "build-linux-x86_64/libocmcp/libocmcp.so",
+              "build-linux-x86_64/liboctools/liboctools.so",
+              "build-linux-x86_64/libocvector/libocvector.so",
+              "build-linux-x86_64/liboccoder/liboccoder.so",
+              "build-linux-x86_64/libollmchatgtk/libollmchatgtk.so"
+            ]
+          }
+        ]
+      },
+      {
+        "arch": "aarch64",
+        "build_dir": "build-linux-aarch64",
+        "entry_linux": "build-linux-aarch64/ollmapp/ollmchat",
+        "deb": {
+          "download": true,
+          "packages": [
+            "libgtk-4-dev",
+            "gir1.2-gtk-4.0",
+            "libadwaita-1-dev",
+            "gir1.2-adw-1",
+            "libgtksourceview-5-dev",
+            "gir1.2-gtksource-5",
+            "libgee-0.8-dev",
+            "libglib2.0-dev",
+            "libjson-glib-dev",
+            "libsoup-3.0-dev",
+            "libxml2-dev",
+            "libsqlite3-dev",
+            "libtree-sitter-dev",
+            "libseccomp-dev",
+            "libgit2-glib-1.0-dev",
+            "libopenblas-dev",
+            "liblapack-dev",
+            "gobject-introspection",
+            "libgirepository1.0-dev"
+          ]
+        },
+        "inherit_native_projects": false,
+        "native_projects": [
+          {
+            "name": "faiss",
+            "repo": "https://github.com/facebookresearch/faiss.git",
+            "dir": ".sqgipkg/native/faiss",
+            "ref": "v1.8.0",
+            "update": true,
+            "shallow": false,
+            "build": [
+              "cmake -E rm -rf build-linux-aarch64",
+              "cmake -S . -B build-linux-aarch64 -G Ninja ${SQGI_LINUX_CMAKE_TOOLCHAIN:+-DCMAKE_TOOLCHAIN_FILE=\"$SQGI_LINUX_CMAKE_TOOLCHAIN\"} -DFAISS_ENABLE_GPU=OFF -DFAISS_ENABLE_PYTHON=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DBLA_VENDOR=OpenBLAS -DBLAS_LIBRARIES=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/openblas-pthread/libopenblas.so\" -DLAPACK_LIBRARIES=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/openblas-pthread/liblapack.so;$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/openblas-pthread/libblas.so\" -DCMAKE_CXX_FLAGS=\"-I$SQGI_LINUX_SYSROOT/usr/include/$SQGI_LINUX_TRIPLET/openblas-pthread\" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr",
+              "cmake --build build-linux-aarch64 --target faiss"
+            ],
+            "install": [
+              "DESTDIR=\"$SQGI_LINUX_SYSROOT\" cmake --install build-linux-aarch64 --prefix /usr"
+            ],
+            "stage": false
+          },
+          {
+            "name": "ollmchat",
+            "dir": ".",
+            "build": [
+              "PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --wipe --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"} || PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"}",
+              "meson compile -C \"$SQGI_LINUX_BUILD_DIR\" ./ollmapp/ollmchat:executable"
+            ],
+            "libraries": [
+              "build-linux-aarch64/libocsqlite/libocsqlite.so",
+              "build-linux-aarch64/libocmarkdown/libocmarkdown.so",
+              "build-linux-aarch64/libollamaweb/libollamaweb.so",
+              "build-linux-aarch64/libocmarkdowngtk/libocmarkdowngtk.so",
+              "build-linux-aarch64/libocfiles/libocfiles.so",
+              "build-linux-aarch64/libollmchat/libollmchat.so",
+              "build-linux-aarch64/libocmcp/libocmcp.so",
+              "build-linux-aarch64/liboctools/liboctools.so",
+              "build-linux-aarch64/libocvector/libocvector.so",
+              "build-linux-aarch64/liboccoder/liboccoder.so",
+              "build-linux-aarch64/libollmchatgtk/libollmchatgtk.so"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "windows": {
+    "msys2_prefix": "mingw64",
+    "gdk_backend": "win32",
+    "build_dir": "build-windows-x86_64",
+    "packages": [
+      "mingw-w64-x86_64-vala",
+      "mingw-w64-x86_64-gcc-libs",
+      "mingw-w64-x86_64-gcc-libgfortran",
+      "mingw-w64-x86_64-libwinpthread",
+      "mingw-w64-x86_64-cmake",
+      "mingw-w64-x86_64-ninja",
+      "mingw-w64-x86_64-pkgconf",
+      "mingw-w64-x86_64-gtk4",
+      "mingw-w64-x86_64-libadwaita",
+      "mingw-w64-x86_64-gtksourceview5",
+      "mingw-w64-x86_64-libgee",
+      "mingw-w64-x86_64-json-glib",
+      "mingw-w64-x86_64-libsoup3",
+      "mingw-w64-x86_64-libxml2",
+      "mingw-w64-x86_64-sqlite3",
+      "mingw-w64-x86_64-tree-sitter",
+      "mingw-w64-x86_64-libtree-sitter",
+      "mingw-w64-x86_64-libgit2-glib",
+      "mingw-w64-x86_64-openblas"
+    ],
+    "native_dependencies": [
+      {
+        "name": "faiss",
+        "repo": "https://github.com/facebookresearch/faiss.git",
+        "dir": ".sqgipkg/native/faiss",
+        "ref": "v1.8.0",
+        "update": true,
+        "shallow": false,
+        "build": [
+          "cmake -E rm -rf build-windows-x86_64",
+          "grep -q 'MinGW aligned allocation shim' faiss/impl/platform_macros.h || perl -0pi -e 's/#include <cstdio>/#include <cstdio>\\n#if defined(_WIN32) \\&\\& !defined(_MSC_VER)\\n\\/\\/ MinGW aligned allocation shim.\\n#include <cerrno>\\n#include <malloc.h>\\n#define posix_memalign(p, a, s) (((*(p)) = _aligned_malloc((s), (a))), *(p) ? 0 : errno)\\n#define posix_memalign_free _aligned_free\\n#endif/' faiss/impl/platform_macros.h",
+          "perl -0pi -e 's/#define posix_memalign_free free/#ifndef posix_memalign_free\\n#define posix_memalign_free free\\n#endif/' faiss/impl/platform_macros.h",
+          "perl -0pi -e 's/#ifndef _MSC_VER/#ifndef _WIN32/g; s/#endif \\/\\/ !_MSC_VER/#endif \\/\\/ !_WIN32/g' faiss/invlists/InvertedListsIOHook.cpp",
+          "cmake -S . -B build-windows-x86_64 -G Ninja -DCMAKE_TOOLCHAIN_FILE=\"$SQGI_WIN_CMAKE_TOOLCHAIN\" -DFAISS_ENABLE_GPU=OFF -DFAISS_ENABLE_PYTHON=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DBLA_VENDOR=OpenBLAS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\"$SQGI_WINDOWS_PREFIX\"",
+          "cmake --build build-windows-x86_64 --target faiss"
+        ],
+        "install": [
+          "DESTDIR=\"$SQGI_WINDOWS_SYSROOT\" cmake --install build-windows-x86_64 --prefix \"$SQGI_WINDOWS_PREFIX\""
+        ],
+        "stage": false
+      }
+    ],
+    "native_projects": [
+      {
+        "name": "ollmchat",
+        "dir": ".",
+        "build": [
+          "meson setup \"$SQGI_WINDOWS_BUILD_DIR\" --wipe --prefix \"$SQGI_WINDOWS_PREFIX\" --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false --cross-file \"$SQGI_MESON_CROSS_FILE\" || meson setup \"$SQGI_WINDOWS_BUILD_DIR\" --prefix \"$SQGI_WINDOWS_PREFIX\" --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false --cross-file \"$SQGI_MESON_CROSS_FILE\"",
+          "meson compile -C \"$SQGI_WINDOWS_BUILD_DIR\" ./ollmapp/ollmchat:executable"
+        ],
+        "libraries": [
+          "build-windows-x86_64/libocsqlite/libocsqlite.dll",
+          "build-windows-x86_64/libocmarkdown/libocmarkdown.dll",
+          "build-windows-x86_64/libollamaweb/libollamaweb.dll",
+          "build-windows-x86_64/libocmarkdowngtk/libocmarkdowngtk.dll",
+          "build-windows-x86_64/libocfiles/libocfiles.dll",
+          "build-windows-x86_64/libollmchat/libollmchat.dll",
+          "build-windows-x86_64/libocmcp/libocmcp.dll",
+          "build-windows-x86_64/liboctools/liboctools.dll",
+          "build-windows-x86_64/libocvector/libocvector.dll",
+          "build-windows-x86_64/liboccoder/liboccoder.dll",
+          "build-windows-x86_64/libollmchatgtk/libollmchatgtk.dll"
+        ]
+      }
+    ]
+  }
+}

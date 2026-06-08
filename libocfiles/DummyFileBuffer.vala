@@ -16,11 +16,6 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#if !G_OS_WIN32
-[CCode (cname = "strcasestr", cheader_filename = "string.h")]
-extern unowned string? strcasestr (string haystack, string needle);
-#endif
-
 namespace OLLMfiles
 {
 	/**
@@ -190,15 +185,6 @@ namespace OLLMfiles
 				return -1;
 			}
 			var tail = haystack.substring (start_index);
-#if !G_OS_WIN32
-			if (Posix.memchr ((void*) needle, 0x80, needle.length) == null) {
-				unowned string? hit = strcasestr (tail, needle);
-				if (hit == null) {
-					return -1;
-				}
-				return start_index + (int) tail.pointer_to_offset (hit);
-			}
-#endif
 			var i = tail.casefold ().index_of (needle.casefold ());
 			return i < 0 ? -1 : start_index + i;
 		}
@@ -519,4 +505,3 @@ namespace OLLMfiles
 		}
 	}
 }
-
