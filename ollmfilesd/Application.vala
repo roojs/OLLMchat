@@ -213,20 +213,25 @@ namespace OLLMfilesd
 
 			if (opt_interactive) {
 				this.listen = new Stdio(this, opt_rpc_script);
-			} else {
-				this.listen = new OLLMrpc.Transport.SocketListen(this.socket_path);
+				this.listen.start();
+				if (opt_rpc_script == "") {
+					return;
+				}
+				while (GLib.MainContext.default().pending()) {
+					GLib.MainContext.default().iteration(true);
+				}
+				this.quit();
+				return;
 			}
 
+			this.listen = new OLLMrpc.Transport.SocketListen(this.socket_path);
 			if (!this.listen.start()) {
 				throw new GLib.IOError.FAILED(
 					"failed to start RPC listener"
 				);
 			}
-
-			if (!opt_interactive) {
-				this.write_pid();
-				GLib.debug("ollmfilesd listening on %s", this.socket_path);
-			}
+			this.write_pid();
+			GLib.debug("ollmfilesd listening on %s", this.socket_path);
 		}
 
 		/**

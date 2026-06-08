@@ -47,7 +47,6 @@ namespace OLLMfilesd
 				} catch (GLib.Error e) {
 					GLib.error("%s", e.message);
 				}
-				this.app.quit();
 				return;
 			}
 
