@@ -56,7 +56,7 @@ public class PostExamMerge : Base
 		this.task.status = Task.PhaseEnum.POST_EXEC;
 		this.task.runner.progress.active_item_changed (this.task);
 		yield this.task.fill_action_model ();
-		this.task.chat_call.tools.clear ();
+		this.task.clear_action_tools ();
 		var response_text = "";
 		var last_issues = "";
 		for (var try_count = 0; try_count < 5; try_count++) {
@@ -79,7 +79,7 @@ public class PostExamMerge : Base
 			this.task.add_message (new OLLMchat.Message ("ui-waiting",
 				"waiting for " + model_label + " to reply"));
 			this.task.add_message (new OLLMchat.Message ("agent-stage", "post_exec"));
-			var response = yield this.task.chat_call.send (messages, null);
+			var response = yield this.task.send_action_messages (messages, null);
 			response_text = response != null ? response.message.content : "";
 			/* Next stage: progress Idx / scroll target — binding post_exec overwrites the row’s
 			 * message with the synthesis response, so tree click scrolled to post_exec instead of

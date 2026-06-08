@@ -140,14 +140,16 @@ octools_gir = gnome.generate_gir(octools_base_lib,
   nsversion: '1.0',
   identifier_prefix: 'OLLMtools',
   symbol_prefix: 'ollmtools',
-  link_with: [ollmchat_base_lib, ocfiles_base_lib],
+  link_with: [ollmchat_base_lib, ocfiles_base_lib, ocsqlite_base_lib, ocmarkdown_base_lib],
   dependencies: [],
   extra_args: [
     '--extra-library=ollmchat',
     '--extra-library=ocfiles',
+    '--extra-library=ocsqlite',
+    '--extra-library=ocmarkdown',
     '--accept-unprefixed'
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Json-1.0', ollmchat_gir[0], ocfiles_gir[0]],
+  includes: ['GObject-2.0', 'Gio-2.0', 'Json-1.0', ollmchat_gir[0], ocfiles_gir[0], ocsqlite_gir[0], ocmarkdown_gir[0]],
   install: true,
   fatal_warnings: false
 )
