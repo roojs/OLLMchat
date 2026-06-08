@@ -13,12 +13,13 @@
 
 namespace OLLMrpc
 {
-	/** JSON-RPC 2.0 notification (no `id`). Wire key `params`, Vala {@link param}. */
+	/** JSON-RPC 2.0 notification (no `id`). */
 	public class Notification : GLib.Object, Json.Serializable
 	{
 		public string jsonrpc { get; set; default = "2.0"; }
 		public string method { get; set; default = ""; }
-		public CallParam param { get; set; default = new CallParam(); }
+		public string object_type { get; set; default = ""; }
+		public int id { get; set; default = 0; }
 
 		public static void rpc_register()
 		{
@@ -40,40 +41,6 @@ namespace OLLMrpc
 			Value val = Value(pspec.value_type);
 			base.get_property(pspec.get_name(), ref val);
 			return val;
-		}
-
-		public override Json.Node serialize_property(
-			string property_name,
-			Value value,
-			ParamSpec pspec
-		) {
-			switch (property_name) {
-				case "param":
-					return Json.gobject_serialize(this.param);
-				default:
-					return default_serialize_property(property_name, value, pspec);
-			}
-		}
-
-		public override bool deserialize_property(
-			string property_name,
-			out Value value,
-			ParamSpec pspec,
-			Json.Node property_node
-		) {
-			switch (property_name) {
-				case "params":
-					this.param = Json.gobject_deserialize(
-						typeof(CallParam), property_node
-					) as CallParam;
-					value = Value(typeof(CallParam));
-					value.set_object(this.param);
-					return true;
-				default:
-					return default_deserialize_property(
-						property_name, out value, pspec, property_node
-					);
-			}
 		}
 	}
 }

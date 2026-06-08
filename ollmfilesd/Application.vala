@@ -30,12 +30,13 @@ namespace OLLMfilesd
 		public static bool opt_debug_critical = false;
 		public static bool opt_interactive = false;
 		public static string? opt_data_dir = null;
+		public static string opt_rpc_script = "";
 
 		private string pid_path;
 		private string socket_path;
 
 		public ProjectManager project_manager { get; private set; }
-		private Daemon daemon { get; set; }
+		public Daemon daemon { get; private set; }
 		private OLLMrpc.Transport.Listen? listen;
 		private static weak OllmfilesdApplication? instance;
 
@@ -43,6 +44,7 @@ namespace OLLMfilesd
 			{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
 			{ "debug-critical", 0, 0, OptionArg.NONE, ref opt_debug_critical, "Treat critical warnings as errors", null },
 			{ "interactive", 'i', 0, OptionArg.NONE, ref opt_interactive, "Stdin/stdout JSON-RPC (no fork, no socket)", null },
+			{ "rpc-script", 0, 0, OptionArg.FILENAME, ref opt_rpc_script, "NDJSON RPC script (implies --interactive)", "FILE" },
 			{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory (DB, socket, pid)", "DIR" },
 			{ null }
 		};
@@ -113,6 +115,7 @@ namespace OLLMfilesd
 			opt_debug_critical = false;
 			opt_interactive = false;
 			opt_data_dir = null;
+			opt_rpc_script = "";
 
 			string[] args = command_line.get_arguments();
 			var opt_context = new OptionContext(this.get_application_id());
@@ -133,6 +136,10 @@ namespace OLLMfilesd
 
 			OLLMchat.debug_on = opt_debug;
 			OLLMchat.debug_critical_enabled = opt_debug_critical;
+
+			if (opt_rpc_script != "") {
+				opt_interactive = true;
+			}
 
 			if (opt_data_dir != null) {
 				this.data_dir = opt_data_dir;
@@ -205,7 +212,7 @@ namespace OLLMfilesd
 			);
 
 			if (opt_interactive) {
-				this.listen = new Stdio(this);
+				this.listen = new Stdio(this, opt_rpc_script);
 			} else {
 				this.listen = new OLLMrpc.Transport.SocketListen(this.socket_path);
 			}

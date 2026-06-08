@@ -13,14 +13,20 @@
 
 namespace OLLMfilesd
 {
-	/** Stdin/stdout {@link OLLMrpc.Transport.Connection} ({@code --interactive}). */
+	/**
+	 * Stdin/stdout {@link OLLMrpc.Transport.Connection}
+	 * ({@code --interactive}, optional {@code --rpc-script}).
+	 */
 	public class StdioConnection : OLLMrpc.Transport.Connection
 	{
 		public OllmfilesdApplication app { get; construct; }
+		public string script_path { get; construct; default = ""; }
 
-		public StdioConnection(OllmfilesdApplication app)
-		{
-			Object(app: app);
+		public StdioConnection(
+			OllmfilesdApplication app,
+			string script_path = ""
+		) {
+			Object(app: app, script_path: script_path);
 		}
 
 		public override void start()
@@ -29,12 +35,24 @@ namespace OLLMfilesd
 				return;
 			}
 			this.running = true;
-			GLib.stderr.printf(
-				"ollmfilesd interactive (stdin/stdout JSON-RPC)\n"
-					+ "  one JSON-RPC request per line on stdin\n"
-					+ "  help — example request\n"
-					+ "  quit — exit\n"
-			);
+
+			var ready = new OLLMrpc.Notification() {
+				method = "Daemon.ready",
+				object_type = "Daemon",
+			};
+			size_t length;
+			this.write_line(Json.gobject_to_data(ready, out length));
+
+			if (this.script_path != "") {
+				try {
+					this.run_script(this.script_path);
+				} catch (GLib.Error e) {
+					GLib.error("%s", e.message);
+				}
+				this.app.quit();
+				return;
+			}
+
 			this.channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
 			this.channel.set_encoding(null);
 			this.channel.set_buffered(true);
@@ -50,13 +68,8 @@ namespace OLLMfilesd
 			if (!this.running) {
 				return;
 			}
-			this.running = false;
-			this.channel_open = false;
-			if (this.input_watch_id != 0) {
-				GLib.Source.remove(this.input_watch_id);
-				this.input_watch_id = 0;
-			}
-			this.channel = null;
+			base.stop();
+			this.app.quit();
 		}
 
 		public override void write_line(string line)
@@ -69,52 +82,38 @@ namespace OLLMfilesd
 			GLib.stdout.flush();
 		}
 
-		protected override bool on_input_ready(
-			GLib.IOChannel source,
-			GLib.IOCondition condition
-		)
+		private void run_script(string path) throws GLib.Error
 		{
-			if ((condition & GLib.IOCondition.HUP) != 0) {
-				this.app.quit();
-				return false;
-			}
+			string data;
+			GLib.FileUtils.get_contents(path, out data);
+			foreach (var raw in data.split("\n")) {
+				var line = raw.strip();
+				if (line == "") {
+					continue;
+				}
+				if (line.has_prefix("#")) {
+					continue;
+				}
+				OLLMrpc.Request? request = null;
+				try {
+					request = Json.gobject_from_data(
+						typeof(OLLMrpc.Request),
+						line,
+						-1
+					) as OLLMrpc.Request;
+				} catch (GLib.Error e) {
+					GLib.warning("parse error: %s", e.message);
+					continue;
+				}
 
-			string? line = null;
-			size_t length = 0;
-			GLib.IOStatus status;
-			try {
-				status = source.read_line(out line, out length, null);
-			} catch (GLib.Error e) {
-				GLib.stderr.printf("stdin read error: %s\n", e.message);
-				return this.running;
-			}
-			if (status == GLib.IOStatus.EOF) {
-				this.app.quit();
-				return false;
-			}
-			if (status != GLib.IOStatus.NORMAL || line == null) {
-				return this.running;
-			}
+				var parser = new Json.Parser();
+				parser.load_from_data(line, -1);
 
-			line = line.strip();
-			if (line == "") {
-				return this.running;
-			}
-			if (line == "help") {
-				GLib.stderr.printf(
-					"send one JSON-RPC line, e.g.\n"
-						+ "  {\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"Daemon.hello\","
-						+ "\"params\":{\"protocol\":1,\"client\":\"stdio\"}}\n"
+				request.connection = this;
+				request.dispatch(
+					parser.get_root().get_object().get_member("params")
 				);
-				return this.running;
 			}
-			if (line == "quit" || line == "exit") {
-				this.app.quit();
-				return false;
-			}
-
-			OLLMrpc.Request.dispatch_line(line, this);
-			return this.running;
 		}
 	}
 }

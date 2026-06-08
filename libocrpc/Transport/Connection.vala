@@ -98,6 +98,14 @@ namespace OLLMrpc.Transport
 			this.write_line(generator.to_data(null));
 		}
 
+		public void notify(OLLMrpc.Notification notification)
+		{
+			var generator = new Json.Generator();
+			generator.set_pretty(false);
+			generator.set_root(Json.gobject_serialize(notification));
+			this.write_line(generator.to_data(null));
+		}
+
 		public void reply_error(OLLMrpc.Request request, int error_code)
 		{
 			this.reply(request, OLLMrpc.RpcErrorCode.to_response(error_code));
@@ -138,7 +146,28 @@ namespace OLLMrpc.Transport
 				return this.running;
 			}
 
-			OLLMrpc.Request.dispatch_line(line.strip(), this);
+			line = line.strip();
+			if (line == "") {
+				return this.running;
+			}
+
+			OLLMrpc.Request? request = null;
+			try {
+				request = Json.gobject_from_data(
+					typeof(OLLMrpc.Request),
+					line,
+					-1
+				) as OLLMrpc.Request;
+			} catch (GLib.Error e) {
+				GLib.warning("parse error: %s", e.message);
+				return this.running;
+			}
+			if (request == null) {
+				return this.running;
+			}
+
+			request.connection = this;
+			request.dispatch();
 			return this.running;
 		}
 	}

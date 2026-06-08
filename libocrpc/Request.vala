@@ -94,48 +94,6 @@ namespace OLLMrpc
 			}
 		}
 
-		/**
-		 * Parse one NDJSON line and dispatch on {@code connection}.
-		 * Used by {@link Transport.Connection}.
-		 */
-		public static void dispatch_line(string data, Transport.Connection connection)
-		{
-			var line = data.strip();
-			if (line == "") {
-				return;
-			}
-
-			var parser = new Json.Parser();
-			try {
-				parser.load_from_data(line, -1);
-			} catch (GLib.Error e) {
-				GLib.warning("parse error: %s", e.message);
-				return;
-			}
-			var root = parser.get_root();
-			if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
-				GLib.warning("parse error: not a JSON object");
-				return;
-			}
-			var obj = root.get_object();
-
-			Request? request = null;
-			try {
-				request = Json.gobject_deserialize(
-					typeof(Request), root
-				) as Request;
-			} catch (GLib.Error e) {
-				GLib.warning("parse error: %s", e.message);
-				return;
-			}
-			if (request == null) {
-				return;
-			}
-
-			request.connection = connection;
-			request.dispatch(obj.get_member("params"));
-		}
-
 		/** Route this request to the matching {@code rpc_*} signal. */
 		public void dispatch(Json.Node? params_node = null)
 		{

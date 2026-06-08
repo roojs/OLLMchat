@@ -17,17 +17,21 @@ namespace OLLMfilesd
 	public class Stdio : OLLMrpc.Transport.Listen
 	{
 		public OllmfilesdApplication app { get; construct; }
+		public string script_path { get; construct; default = ""; }
 
 		private StdioConnection? connection;
 
-		public Stdio(OllmfilesdApplication app)
+		public Stdio(OllmfilesdApplication app, string script_path = "")
 		{
-			Object(app: app);
+			Object(app: app, script_path: script_path);
 		}
 
 		public override bool start()
 		{
-			this.connection = new StdioConnection(this.app);
+			this.connection = new StdioConnection(
+				this.app,
+				this.script_path
+			);
 			this.connection.start();
 			return true;
 		}

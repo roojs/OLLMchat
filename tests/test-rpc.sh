@@ -1,5 +1,5 @@
 #!/bin/bash
-# Tranche 0 — ollmfilesd RPC harness smoke (stdio NDJSON + jq).
+# Tranche 0 — ollmfilesd RPC harness (interactive + rpc-script file + jq).
 
 set -euo pipefail
 
@@ -12,9 +12,11 @@ source "$SCRIPT_DIR/test-rpc-common.sh"
 BUILD_DIR="${1:-$PROJECT_ROOT/build}"
 OLLMFILESD="$BUILD_DIR/ollmfilesd/ollmfilesd"
 TEST_DIR="$BUILD_DIR/test-rpc-$$"
+RPC_SCRIPT="$SCRIPT_DIR/rpc/t0.script"
+RPC_OUT="$TEST_DIR/out.ndjson"
+RPC_ERR="$TEST_DIR/ollmfilesd.stderr"
 
 cleanup() {
-    rpc_shutdown || true
     if [ "${TESTS_FAILED:-0}" -eq 0 ] && [ -d "$TEST_DIR" ]; then
         rm -rf "$TEST_DIR"
     elif [ -d "$TEST_DIR" ]; then
@@ -30,28 +32,28 @@ if [ ! -x "$OLLMFILESD" ]; then
     exit 1
 fi
 
-mkdir -p "$TEST_DIR"
-
-# T0.1 — spawn --interactive with isolated data_dir; probe Daemon.hello on stdio
-rpc_start
-
-if ! wait_for_rpc_ready; then
-    test_fail "T0.1 spawn daemon (stdio hello)"
+if [ ! -f "$RPC_SCRIPT" ]; then
+    echo -e "${RED}Error: RPC script not found at $RPC_SCRIPT${NC}" >&2
     exit 1
 fi
-test_pass "T0.1 spawn daemon (stdio hello)"
 
-# T0.2 — Daemon.hello
-rpc_call 1 "Daemon.hello" '{"protocol":1,"client":"test-rpc"}'
-jq_ok "T0.2 Daemon.hello (no error)" "$RPC_LAST_RESPONSE" '.error == null'
-jq_ok "T0.2 Daemon.hello (server)" "$RPC_LAST_RESPONSE" '.result.server == "ollmfilesd"'
-jq_ok "T0.2 Daemon.hello (ready)" "$RPC_LAST_RESPONSE" '(.result.ready // true) == true'
+mkdir -p "$TEST_DIR"
+run_rpc_script "$RPC_SCRIPT" "$RPC_OUT" "$RPC_ERR"
 
-# T0.3 — second request on same stdio session; id matches
-rpc_call 42 "Daemon.hello" '{"protocol":1,"client":"test-rpc"}'
-jq_ok "T0.3 response id matches" "$RPC_LAST_RESPONSE" '.id == 42'
+# line 1 — ready notification (Daemon.ready reference, no id)
+ready=$(rpc_line 1 "$RPC_OUT")
+jq_line_ok "T0.1 ready notification" "$ready" \
+    '.method == "Daemon.ready" and .params.object_type == "Daemon" and (.id | not)'
 
-# T0.4 — unknown method (deferred: dispatch logs critical, no wire error yet)
+# line 2 — Daemon.hello response
+resp=$(rpc_line 2 "$RPC_OUT")
+jq_line_ok "T0.2 Daemon.hello (no error)" "$resp" '.error == null'
+jq_line_ok "T0.2 Daemon.hello (server)" "$resp" '.result.server == "ollmfilesd"'
+jq_line_ok "T0.2 Daemon.hello (ready)" "$resp" '(.result.ready // true) == true'
+
+# line 3 — second request; id matches
+resp=$(rpc_line 3 "$RPC_OUT")
+jq_line_ok "T0.3 response id matches" "$resp" '.id == 42'
 
 print_test_summary
 exit "$([ "${TESTS_FAILED:-0}" -eq 0 ] && echo 0 || echo 1)"
