@@ -11,10 +11,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-/**
- * Server dispatch uses {@link OLLMrpc.Request} from {@code libocrpc}.
- */
-namespace OLLMfilesd
+/** Server listen/connection layer for {@link OLLMrpc}. */
+namespace OLLMrpc.Transport
 {
-	internal class RpcNamespaceDoc {}
+	internal class NamespaceDoc {}
 }

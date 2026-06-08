@@ -21,7 +21,8 @@
  *
  * Wire: JSON-RPC 2.0 over NDJSON on a Unix stream socket.
  * Methods are `{kind}.{verb}` (e.g. `project.activate`); see
- * {@link OLLMfilesd.Rpc.Request} for dispatch.
+ * {@link OLLMrpc.Request} for dispatch; wire types in
+ * {@link OLLMrpc}.
  */
 namespace OLLMfilesd
 {

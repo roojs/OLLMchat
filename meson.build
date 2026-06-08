@@ -21,11 +21,13 @@ add_project_arguments(['--target-glib=auto'], language: 'vala')
 
 # Build libraries in dependency order
 subdir('libocsqlite')      # No dependencies
+subdir('libocrpc')         # JSON-RPC wire types — no OLLMfiles dependency
 subdir('libocmarkdown')    # No dependencies
 subdir('libollamaweb')     # No dependencies on libollmchat (Phase 1)
 subdir('libocmarkdowngtk') # Depends on libocmarkdown
 subdir('libocfiles')       # Depends on libocsqlite
 subdir('libollmchat')      # Depends on libocsqlite
+subdir('ollmfilesd')       # Headless file daemon — depends on libocsqlite, libollmchat
 subdir('libocmcp')         # Depends on libollmchat, libocfiles
 subdir('liboctools')       # Depends on libollmchat, libocfiles
 subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
@@ -77,6 +79,7 @@ executables_info = [
 # Library paths for LD_LIBRARY_PATH
 lib_path = ':'.join([
   meson.current_build_dir() / 'libocsqlite',
+  meson.current_build_dir() / 'libocrpc',
   meson.current_build_dir() / 'libocmarkdown',
   meson.current_build_dir() / 'libollamaweb',
   meson.current_build_dir() / 'libocmarkdowngtk',

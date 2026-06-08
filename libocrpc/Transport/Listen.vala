@@ -11,10 +11,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-/**
- * Server dispatch uses {@link OLLMrpc.Request} from {@code libocrpc}.
- */
-namespace OLLMfilesd
+namespace OLLMrpc.Transport
 {
-	internal class RpcNamespaceDoc {}
+	/** Server RPC entry — {@link SocketListen}; {@code ollmfilesd} adds {@code Stdio}. */
+	public abstract class Listen : GLib.Object
+	{
+		public abstract bool start();
+		public abstract void stop();
+	}
 }

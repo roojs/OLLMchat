@@ -1,0 +1,9 @@
+# T1 — ProjectManager round-trip (__PROJECT_PATH__ substituted at test run)
+{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","params":{"protocol":1,"client":"test-rpc"}}
+{"jsonrpc":"2.0","id":2,"method":"ProjectManager.load_projects_from_db","params":{}}
+{"jsonrpc":"2.0","id":3,"method":"ProjectManager.create_project","params":{"path":"__PROJECT_PATH__"}}
+{"jsonrpc":"2.0","id":4,"method":"ProjectManager.load_projects_from_db","params":{}}
+{"jsonrpc":"2.0","id":5,"method":"ProjectManager.activate_project","params":{"path":"__PROJECT_PATH__","skip_scan":true}}
+{"jsonrpc":"2.0","id":6,"method":"ProjectManager.get_folder_at_path","params":{"path":"__PROJECT_PATH__"}}
+{"jsonrpc":"2.0","id":7,"method":"ProjectManager.remove_project","params":{"path":"__PROJECT_PATH__"}}
+{"jsonrpc":"2.0","id":99,"method":"Daemon.shutdown","params":{}}

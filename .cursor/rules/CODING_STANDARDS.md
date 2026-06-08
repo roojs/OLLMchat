@@ -25,6 +25,7 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **get_* methods**: Does the plan avoid `get_*()` method names in favour of properties or verb-less/action names (e.g. `system_message()` not `get_system_message()`)? See “Property Getters vs Get Methods” below.
 - **Method names (length)**: Does the plan use **short, concise** method names and avoid long descriptive names?
 - **New methods**: Does the plan **avoid introducing new methods** unless the user or the plan **explicitly** calls for them? Default to changing **existing** methods / call sites. Whether to extract a helper is a **user** decision, not the LLM’s — do not assume a new method is warranted.
+- **Signal handlers in `construct`**: Does the plan wire `signal.connect` handlers **inline** in the `construct` block (lambdas/closures), not via new `on_*` / `handle_*` private methods? See “Signal handlers in construct blocks” below.
 - **Docblocks**: Do new or modified docblocks follow the code documentation standards and use multiline form (not short one-liners)? See "Docblocks / code documentation" below.
 - **Debug time**: Does the plan avoid putting timestamps or monotonic time in `GLib.debug()` / `GLib.warning()` messages (log output already includes time)? See "Debug and Warning Statements" below.
 - **Debug output vs debug-only logic**: Does the plan avoid any gating, sampling, throttling, or “sparse debug” logic? Debug is toggled outside the app (`--debug`, log domains, etc.); use unconditional `GLib.debug()` at real boundaries only. See "Debug and Warning Statements" below.
@@ -1299,6 +1300,30 @@ while ((line = GLib.stdin.read_line()) != null) {
 }
 // Now we use it for joining AND we filtered it, so array is justified
 var result = string.joinv("\n", lines);
+```
+
+## Signal handlers in construct blocks
+
+**CRITICAL:** Do **not** add private methods such as `on_hello`, `on_shutdown`, or `handle_*` solely to connect GObject/RPC signals. Wire handlers **inline** in the class `construct` block with a lambda/closure. Extracting a method is the **user’s** decision, not the LLM’s — especially for short RPC `rpc_*` signal handlers that only reply on the session.
+
+**Bad:**
+```vala
+construct {
+    this.rpc_hello.connect(this.on_hello);
+}
+
+private void on_hello(Request request) {
+    request.session.reply(request, this);
+}
+```
+
+**Good:**
+```vala
+construct {
+    this.rpc_hello.connect((request) => {
+        request.session.reply(request, this);
+    });
+}
 ```
 
 ## Property Getters vs Get Methods

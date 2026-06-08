@@ -1,5 +1,9 @@
 build/
 
+# valac / cc spill outside build/
+*.o
+*.vala.c
+*.vala.h
 
 debian/auto*
 debian/debhelper*
