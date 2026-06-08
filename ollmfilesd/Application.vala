@@ -226,9 +226,7 @@ namespace OLLMfilesd
 
 			this.listen = new OLLMrpc.Transport.SocketListen(this.socket_path);
 			if (!this.listen.start()) {
-				throw new GLib.IOError.FAILED(
-					"failed to start RPC listener"
-				);
+				GLib.error("failed to start RPC listener");
 			}
 			this.write_pid();
 			GLib.debug("ollmfilesd listening on %s", this.socket_path);
@@ -284,7 +282,7 @@ namespace OLLMfilesd
 					((int) Posix.getpid()).to_string() + "\n"
 				);
 			} catch (GLib.FileError e) {
-				GLib.warning("could not write pid file: %s", e.message);
+				GLib.error("could not write pid file: %s", e.message);
 			}
 		}
 
@@ -295,12 +293,13 @@ namespace OLLMfilesd
 				this.listen.stop();
 				this.listen = null;
 			}
-			if (GLib.FileUtils.test(this.pid_path, GLib.FileTest.EXISTS)) {
-				try {
-					GLib.FileUtils.unlink(this.pid_path);
-				} catch (GLib.FileError e) {
-					GLib.warning("could not remove pid file: %s", e.message);
-				}
+			if (!GLib.FileUtils.test(this.pid_path, GLib.FileTest.EXISTS)) {
+				return;
+			}
+			try {
+				GLib.FileUtils.unlink(this.pid_path);
+			} catch (GLib.FileError e) {
+				GLib.warning("could not remove pid file: %s", e.message);
 			}
 		}
 	}
