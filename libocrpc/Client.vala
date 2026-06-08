@@ -132,11 +132,8 @@ namespace OLLMrpc
 			var hello_promise = new Gee.Promise<Response>();
 			this.pending.set(hello_id, hello_promise);
 
-			size_t hello_length;
-			var hello_line = Json.gobject_to_data(hello_request, out hello_length) + "\n";
 			try {
-				this.output.put_string(hello_line);
-				yield this.output.flush_async(GLib.Priority.DEFAULT, null);
+				yield this.write(hello_request);
 			} catch (GLib.Error e) {
 				this.pending.unset(hello_id);
 				this.connect_error = "write: " + e.message;
@@ -184,6 +181,15 @@ namespace OLLMrpc
 			}
 		}
 
+		private async void write(GLib.Object gobject) throws GLib.Error
+		{
+			var generator = new Json.Generator();
+			generator.set_pretty(false);
+			generator.set_root(Json.gobject_serialize(gobject));
+			this.output.put_string(generator.to_data(null) + "\n");
+			yield this.output.flush_async(GLib.Priority.DEFAULT, null);
+		}
+
 		/**
 		 * Send a request (caller must {@link connect} first).
 		 * @param request wire request; {@link Request.id} is set here
@@ -214,11 +220,8 @@ namespace OLLMrpc
 			var promise = new Gee.Promise<Response>();
 			this.pending.set(request.id, promise);
 
-			size_t length;
-			var line = Json.gobject_to_data(request, out length) + "\n";
 			try {
-				this.output.put_string(line);
-				yield this.output.flush_async(GLib.Priority.DEFAULT, null);
+				yield this.write(request);
 			} catch (GLib.Error e) {
 				this.pending.unset(request.id);
 				var error = new Error(

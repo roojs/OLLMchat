@@ -36,12 +36,10 @@ namespace OLLMfilesd
 			}
 			this.running = true;
 
-			var ready = new OLLMrpc.Notification() {
+			this.write(new OLLMrpc.Notification() {
 				method = "Daemon.ready",
 				object_type = "Daemon",
-			};
-			size_t length;
-			this.write_line(Json.gobject_to_data(ready, out length));
+			});
 
 			if (this.script_path != "") {
 				try {
@@ -72,13 +70,12 @@ namespace OLLMfilesd
 			this.app.quit();
 		}
 
-		public override void write_line(string line)
+		public override void write(GLib.Object gobject)
 		{
-			var payload = line;
-			if (!payload.has_suffix("\n")) {
-				payload += "\n";
-			}
-			GLib.stdout.printf("%s", payload);
+			var generator = new Json.Generator();
+			generator.set_pretty(false);
+			generator.set_root(Json.gobject_serialize(gobject));
+			GLib.stdout.printf("%s\n", generator.to_data(null));
 			GLib.stdout.flush();
 		}
 

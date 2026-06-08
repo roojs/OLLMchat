@@ -70,18 +70,20 @@ namespace OLLMrpc.Transport
 			}
 		}
 
-		public virtual void write_line(string line)
+		public virtual void write(GLib.Object gobject)
 		{
 			if (!this.channel_open || this.channel == null) {
 				return;
 			}
+			var generator = new Json.Generator();
+			generator.set_pretty(false);
+			generator.set_root(Json.gobject_serialize(gobject));
 			size_t written;
 			try {
-				var payload = line;
-				if (!payload.has_suffix("\n")) {
-					payload += "\n";
-				}
-				this.channel.write_chars(payload.to_utf8(), out written);
+				this.channel.write_chars(
+					(generator.to_data(null) + "\n").to_utf8(),
+					out written
+				);
 				this.channel.flush();
 			} catch (GLib.Error e) {
 				GLib.warning("connection write error: %s", e.message);
@@ -92,18 +94,7 @@ namespace OLLMrpc.Transport
 		public void reply(OLLMrpc.Request request, OLLMrpc.Response response)
 		{
 			response.id = request.id;
-			var generator = new Json.Generator();
-			generator.set_pretty(false);
-			generator.set_root(Json.gobject_serialize(response));
-			this.write_line(generator.to_data(null));
-		}
-
-		public void notify(OLLMrpc.Notification notification)
-		{
-			var generator = new Json.Generator();
-			generator.set_pretty(false);
-			generator.set_root(Json.gobject_serialize(notification));
-			this.write_line(generator.to_data(null));
+			this.write(response);
 		}
 
 		public void reply_error(OLLMrpc.Request request, int error_code)
