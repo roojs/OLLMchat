@@ -36,7 +36,7 @@ namespace OLLMfiles
 	 * 
 	 * == Notes ==
 	 * 
-	 * Aliases resolve symlinks completely using realpath(). Target must exist and be
+	 * Aliases resolve symlinks completely using GLib.Filename.canonicalize(). Target must exist and be
 	 * within home directory. Aliases maintain their own path (where the symlink exists)
 	 * for filesystem tracking.
 	 */
@@ -86,10 +86,9 @@ namespace OLLMfiles
 			this.parent = parent;
 			this.parent_id = parent.id;
 			
-			// Use realpath directly on this.path to completely resolve all symlinks in the chain
-			// PATH_MAX is typically 4096 on Linux systems
-			var resolved_ptr = Posix.realpath(path);
-			if (resolved_ptr == null) {
+			// Resolve aliases without relying on libc realpath(), which is not available on Windows.
+			var resolved_path = GLib.Filename.canonicalize(path);
+			if (resolved_path == null || resolved_path == "") {
 				this.points_to_id = -1;
 				return;
 			}
@@ -97,16 +96,16 @@ namespace OLLMfiles
 			// Restrict aliases to user's home directory
 			 
 			// Check if resolved path is within home directory
-			if (!resolved_ptr.has_prefix(home_dir)) {
+			if (!resolved_path.has_prefix(home_dir)) {
 				GLib.warning("FileAlias.new_from_info: Alias target '%s' is outside home directory '%s', rejecting", 
-					(string)resolved_ptr, home_dir);
+					resolved_path, home_dir);
 				this.points_to_id = -1;
 				return;
 			}
 			
-			this.target_path = resolved_ptr;
+			this.target_path = resolved_path;
 			
-			var target_info = this.get_target_info(resolved_ptr);
+			var target_info = this.get_target_info(resolved_path);
 			if (target_info == null) {
 				this.points_to_id = -1;
 				this.target_path = "";
@@ -115,10 +114,10 @@ namespace OLLMfiles
 			
 			if (target_info.get_file_type() == GLib.FileType.DIRECTORY) {
 				this.points_to = new Folder.new_from_info(
-					parent.manager, null, target_info, resolved_ptr);
+					parent.manager, null, target_info, resolved_path);
 			} else {
 				this.points_to = new File.new_from_info(
-					parent.manager, null, target_info, resolved_ptr);
+					parent.manager, null, target_info, resolved_path);
 			}
 		}
 		

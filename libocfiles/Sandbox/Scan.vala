@@ -453,7 +453,7 @@ namespace OLLMfiles.Sandbox
 				}
 				
 				GLib.debug("creating symlink '%s' -> '%s'", real_path, symlink_target);
-				Posix.symlink(symlink_target, real_path);
+				GLib.File.new_for_path(real_path).make_symbolic_link(symlink_target, null);
 				this.copy_permissions(overlay_path, real_path);
 			} catch (GLib.Error e) {
 				GLib.warning("Cannot create symlink from overlay to real path (%s -> %s): %s", 
