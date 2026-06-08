@@ -115,6 +115,7 @@ occoder_vapi = custom_target('occoder-vapi',
     valac_exe,
     '-C', '--debug',
     '--target-glib=auto',
+  ] + sqgi_vala_args + [
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_source_dir() / '../vapi',  # Source VAPIs first (fiass.vapi, tree-sitter.vapi)
     '--vapidir', meson.current_source_dir() / '../../vapi',

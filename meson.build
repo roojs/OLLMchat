@@ -19,6 +19,28 @@ add_project_arguments(['--vapidir', meson.current_source_dir() / '../vapi'], lan
 add_project_arguments(['--vapidir', meson.current_build_dir()], language: 'vala')  # Add build dir for generated VAPIs
 add_project_arguments(['--target-glib=auto'], language: 'vala')
 
+sqgi_vala_args = []
+
+linux_sysroot = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_SYSROOT"', check: false).stdout().strip()
+if linux_sysroot != ''
+  sqgi_vala_args += [
+    '--vapidir', linux_sysroot / 'usr' / 'share' / 'vala' / 'vapi',
+    '--girdir', linux_sysroot / 'usr' / 'share' / 'gir-1.0',
+  ]
+endif
+
+windows_sysroot_prefix = run_command('sh', '-c', 'printf %s "$SQGI_WINDOWS_SYSROOT_PREFIX"', check: false).stdout().strip()
+if windows_sysroot_prefix != ''
+  sqgi_vala_args += [
+    '--vapidir', windows_sysroot_prefix / 'share' / 'vala' / 'vapi',
+    '--girdir', windows_sysroot_prefix / 'share' / 'gir-1.0',
+  ]
+endif
+
+if sqgi_vala_args.length() > 0
+  add_project_arguments(sqgi_vala_args, language: 'vala')
+endif
+
 # Build libraries in dependency order
 subdir('libocsqlite')      # No dependencies
 subdir('libocmarkdown')    # No dependencies
@@ -32,8 +54,15 @@ subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
 subdir('liboccoder')       # Depends on libocsqlite, libocfiles, libocvector, libollmchat
 subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
 subdir('ollmapp')         # Primary application - depends on all libraries
-subdir('examples')          # Depends on all libraries
-subdir('tests')             # Test suite - depends on examples
+if get_option('examples')
+  subdir('examples')          # Depends on all libraries
+endif
+if get_option('tests')
+  if not get_option('examples')
+    error('The tests option requires examples=true')
+  endif
+  subdir('tests')             # Test suite - depends on examples
+endif
 
 # Create wrapper scripts in top-level build directory for easier access
 # These wrappers set up LD_LIBRARY_PATH and execute the real binaries from examples/
@@ -111,10 +140,13 @@ foreach exe_info : executables_info
   )
 endforeach
 
-subdir('docs')             # Depends on all source files
+if get_option('docs')
+  subdir('docs')             # Depends on all source files
+endif
 
-# Post-install script to update icon cache and desktop database
+# Post-install script to update icon cache and desktop database when the host
+# tools are available. Minimal CI/package builders may not install both.
 gnome.post_install(
-  gtk_update_icon_cache: true,
-  update_desktop_database: true
+  gtk_update_icon_cache: find_program('gtk-update-icon-cache', required: false).found(),
+  update_desktop_database: find_program('update-desktop-database', required: false).found()
 )
