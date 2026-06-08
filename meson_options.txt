@@ -1,0 +1,3 @@
+option('docs', type: 'boolean', value: true, description: 'Build valadoc documentation')
+option('examples', type: 'boolean', value: true, description: 'Build example and test utility executables')
+option('tests', type: 'boolean', value: true, description: 'Configure test suite')

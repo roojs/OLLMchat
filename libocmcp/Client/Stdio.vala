@@ -75,7 +75,7 @@ namespace OLLMmcp.Client
 		public override void disconnect()
 		{
 			if (this.process != null) {
-				this.process.send_signal(Posix.Signal.TERM);
+				this.process.force_exit();
 				this.process = null;
 			}
 			this.stdout_reader = null;
@@ -164,18 +164,16 @@ namespace OLLMmcp.Client
 						+ "': stdio disabled inside sandbox; set trust_sandbox true in mcp.json"
 					);
 				}
-				string[] argv = {};
-				argv += this.config.command;
-				foreach (var a in this.config.args) {
-					argv += a;
-				}
-				return argv;
+				return this.build_direct_argv();
 			}
 			if (!OLLMfiles.Sandbox.Bubble.can_wrap()) {
-				throw new GLib.IOError.FAILED(
-					"MCP server '" + this.config.id
-					+ "': bubblewrap required for stdio MCP on host"
-				);
+				if (!this.config.trust_sandbox) {
+					throw new GLib.IOError.FAILED(
+						"MCP server '" + this.config.id
+						+ "': sandboxing is unavailable; set trust_sandbox true in mcp.json"
+					);
+				}
+				return this.build_direct_argv();
 			}
 			OLLMfiles.Folder? project = this.project_manager.active_project;
 			string[] write_array = {};
@@ -200,6 +198,16 @@ namespace OLLMmcp.Client
 				args += a;
 			}
 			return args;
+		}
+
+		private string[] build_direct_argv()
+		{
+			string[] argv = {};
+			argv += this.config.command;
+			foreach (var a in this.config.args) {
+				argv += a;
+			}
+			return argv;
 		}
 
 		private async void init() throws Error
