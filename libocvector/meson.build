@@ -78,11 +78,11 @@ else
 endif
 # Meson 1.7 has no full_path() on find_library results. sqgipkg cross-builds put
 # OpenBLAS under .../openblas-pthread/, off the default linker path — prepend -L
-# when we link against libraries discovered there.
+# and -rpath-link when we link against libraries discovered there.
 ocvector_link_dirs = []
 if using_openblas_dirs
   foreach d : openblas_dirs
-    ocvector_link_dirs += ['-L' + d]
+    ocvector_link_dirs += ['-L' + d, '-Wl,-rpath-link,' + d]
   endforeach
 endif
 ocvector_link_args = ocvector_link_dirs + ocvector_link_libs
@@ -274,7 +274,7 @@ ocvector_vapi = custom_target('ocvector-vapi',
 ocvector_vapi_dep = declare_dependency(
   link_args: ['-L' + meson.current_build_dir(), '-locvector'],
   sources: [ocvector_vapi[0]],  # Include VAPI file to ensure it's built first
-  dependencies: [ocsqlite_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep]
+  dependencies: [ocsqlite_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep, ocvector_link_dep]
 )
 
 # GObject Introspection for ocvector library
