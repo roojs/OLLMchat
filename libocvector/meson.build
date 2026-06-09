@@ -60,6 +60,9 @@ lapack_openblas_lib = cc.find_library('lapack', dirs: openblas_dirs, required: f
 openblas_link_args = []
 foreach openblas_dir : openblas_dirs
   openblas_link_args += '-L' + openblas_dir
+  if linux_sysroot != ''
+    openblas_link_args += '-Wl,-rpath-link,' + openblas_dir
+  endif
 endforeach
 if blas_dep.found()
   ocvector_link_args += ['-lblas']
@@ -266,7 +269,7 @@ ocvector_vapi = custom_target('ocvector-vapi',
 # The custom_target ensures ocvector.vapi exists and is found via --pkg=ocvector, but we don't
 # include it in sources to avoid conflicts when linking with the library directly.
 ocvector_vapi_dep = declare_dependency(
-  link_args: ['-L' + meson.current_build_dir(), '-locvector'],
+  link_args: ['-L' + meson.current_build_dir(), '-locvector'] + ocvector_link_args,
   sources: [ocvector_vapi[0]],  # Include VAPI file to ensure it's built first
   dependencies: [ocsqlite_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep]
 )
