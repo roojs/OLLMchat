@@ -1,0 +1,6 @@
+# T2.5 — File.register (skip scan; file on disk only)
+{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","params":{"protocol":1,"client":"test-rpc"}}
+{"jsonrpc":"2.0","id":2,"method":"ProjectManager.create_project","params":{"path":"__PROJECT_PATH__"}}
+{"jsonrpc":"2.0","id":3,"method":"ProjectManager.activate_project","params":{"path":"__PROJECT_PATH__","skip_scan":true}}
+{"jsonrpc":"2.0","id":4,"method":"File.register","params":{"path":"__REGISTER_PATH__"}}
+{"jsonrpc":"2.0","id":99,"method":"Daemon.shutdown","params":{}}
