@@ -33,21 +33,21 @@ public class PostExamMerge : Base
 	 */
 	public static void extract (Task.ResultParser parser, Task.Details task)
 	{
-		if (!parser.has_heading ("result-summary")) {
-			parser.add_issue ("\nPost-exec output must include ## Result summary.");
+		if (!parser.document.headings.has_key ("result-summary")) {
+			parser.issues += "\nPost-exec output must include ## Result summary.";
 			return;
 		}
-		task.post_summary = parser.heading ("result-summary");
-		task.out_doc = parser.parsed_document;
+		task.post_summary = parser.document.headings.get ("result-summary");
+		task.out_doc = parser.document;
 		var sum_render = new Markdown.Document.Render ();
 		sum_render.parse (task.post_summary.to_markdown_with_content ());
 		var vl_sum = new Task.ValidateLink (task.runner, task, Task.PhaseEnum.POST_EXEC) {
-			document = parser.parsed_document
+			document = parser.document
 		};
 		vl_sum.validate_all (sum_render.document.links);
 		task.issues += vl_sum.issues;
 		if (task.issues != "") {
-			parser.add_issue (task.issues);
+			parser.issues += task.issues;
 		}
 	}
 
@@ -55,8 +55,8 @@ public class PostExamMerge : Base
 	{
 		this.task.status = Task.PhaseEnum.POST_EXEC;
 		this.task.runner.progress.active_item_changed (this.task);
-		yield this.task.fill_action_model ();
-		this.task.clear_action_tools ();
+		yield this.fill_model ();
+		this.chat_call.tools.clear ();
 		var response_text = "";
 		var last_issues = "";
 		for (var try_count = 0; try_count < 5; try_count++) {
@@ -79,7 +79,7 @@ public class PostExamMerge : Base
 			this.task.add_message (new OLLMchat.Message ("ui-waiting",
 				"waiting for " + model_label + " to reply"));
 			this.task.add_message (new OLLMchat.Message ("agent-stage", "post_exec"));
-			var response = yield this.task.send_action_messages (messages, null);
+			var response = yield this.chat_call.send (messages, null);
 			response_text = response != null ? response.message.content : "";
 			/* Next stage: progress Idx / scroll target — binding post_exec overwrites the row’s
 			 * message with the synthesis response, so tree click scrolled to post_exec instead of

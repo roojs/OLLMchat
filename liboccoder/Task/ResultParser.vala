@@ -47,7 +47,9 @@ public class ResultParser : Object
 	/**
 	 * Document built in constructor; extraction methods read from this.
 	 */
-	private Markdown.Document.Document document;
+	public Markdown.Document.Document document {
+		get; private set; default = new Markdown.Document.Document();
+	}
 
 	/**
 	 * Runner used by {@link parse_task_list} to build {@link Details}. Set in constructor.
@@ -82,46 +84,6 @@ public class ResultParser : Object
 		var render = new Markdown.Document.Render();
 		render.parse(response);
 		this.document = render.document;
-	}
-
-	/**
-	 * Parsed response document. Action parsers use this so ResultParser stays
-	 * responsible only for markdown construction and shared issue state.
-	 */
-	public Markdown.Document.Document parsed_document {
-		get { return this.document; }
-	}
-
-	/**
-	 * Convenience wrapper around document.headings.has_key().
-	 */
-	public bool has_heading(string key)
-	{
-		return this.document.headings.has_key(key);
-	}
-
-	/**
-	 * Convenience wrapper around document.headings.get().
-	 */
-	public Markdown.Document.Block heading(string key)
-	{
-		return this.document.headings.get(key);
-	}
-
-	/**
-	 * Heading slugs in document order.
-	 */
-	public Gee.ArrayList<string> header_list()
-	{
-		return this.document.header_list;
-	}
-
-	/**
-	 * Append a parser issue from code that owns the stage-specific extraction.
-	 */
-	public void add_issue(string issue)
-	{
-		this.issues += issue;
 	}
 
 	/**
@@ -590,7 +552,44 @@ public class ResultParser : Object
 	 */
 	public bool exec_extract (Tool ex)
 	{
-		return OLLMcoder.Action.Base.extract_exec(this, ex);
+		if (ex.parent.skill.tools.contains ("write_file")) {
+			return OLLMcoder.Action.WriteExec.extract (this, ex);
+		}
+		if (!this.document.headings.has_key ("result-summary")) {
+			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
+				"It was missing or not found in the response. " +
+				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
+			return false;
+		}
+		ex.summary = this.document.headings.get ("result-summary");
+		ex.document = this.document;
+		var sum_render = new Markdown.Document.Render ();
+		sum_render.parse (ex.summary.to_markdown_with_content ());
+		var vl_sum = new ValidateLink (this.runner, ex.parent, PhaseEnum.EXECUTION) {
+			writes = ex.writes,
+			document = sum_render.document
+		};
+		vl_sum.validate_all (sum_render.document.links);
+		if (vl_sum.issues != "") {
+			this.issues += vl_sum.issues;
+			return false;
+		}
+		foreach (var link in sum_render.document.links) {
+			if (link.path != "" || link.hash == "") {
+				continue;
+			}
+			foreach (var wc in ex.writes) {
+				if (!wc.document.headings.has_key (link.hash)) {
+					continue;
+				}
+				link.up_relpath (wc.file_path.strip ());
+				break;
+			}
+		}
+		if (sum_render.document.headings.has_key ("result-summary")) {
+			ex.summary = sum_render.document.headings.get ("result-summary");
+		}
+		return true;
 	}
 
 	/**

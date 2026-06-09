@@ -26,31 +26,41 @@ public class WriteExec : Base
 	}
 
 	/**
-	 * Parse write executor Change details sections into the execution run.
+	 * Parse a write executor response into the execution run.
 	 *
-	 * Called by {@link Base.extract_exec}; Result summary and link validation
-	 * remain in the shared executor parser.
+	 * Called by {@link Task.ResultParser.exec_extract} when the skill uses
+	 * {{{ write_file }}}.
 	 */
-	public static bool extract_writes (Task.ResultParser parser, Task.Tool ex)
+	public static bool extract (Task.ResultParser parser, Task.Tool ex)
 	{
+		if (!parser.document.headings.has_key ("result-summary")) {
+			parser.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
+				"It was missing or not found in the response. " +
+				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
+			return false;
+		}
+		ex.summary = parser.document.headings.get ("result-summary");
+		ex.document = parser.document;
+		var sum_render = new Markdown.Document.Render ();
+		sum_render.parse (ex.summary.to_markdown_with_content ());
 		ex.writes.clear ();
-		foreach (var slug in parser.header_list ()) {
+		foreach (var slug in parser.document.header_list) {
 			if (slug == "result-summary") {
 				continue;
 			}
-			var hb = parser.heading (slug);
-			if (hb.parent != parser.parsed_document) {
+			var hb = parser.document.headings.get (slug);
+			if (hb.parent != parser.document) {
 				continue;
 			}
 			if (!slug.has_prefix ("change-details")) {
-				parser.add_issue ("\nWrite executor: unexpected top-level section (use ## Change details or Path 2 only): \"" + slug + "\".");
+				parser.issues += "\nWrite executor: unexpected top-level section (use ## Change details or Path 2 only): \"" + slug + "\".";
 				continue;
 			}
 			var wc = new Task.WriteChange.from_header (hb, ex.parent.runner.sr_factory.project_manager);
 			if (wc.issues != "") {
-				parser.add_issue ("\n"
+				parser.issues += "\n"
 					+ "Change details — " + hb.text_content ().strip () + ":"
-					+ wc.issues.strip ());
+					+ wc.issues.strip ();
 				continue;
 			}
 			ex.writes.add (wc);
@@ -58,7 +68,41 @@ public class WriteExec : Base
 				break;
 			}
 		}
-		return parser.issues == "";
+		if (parser.issues != "") {
+			return false;
+		}
+		var vl_sum = new Task.ValidateLink (ex.parent.runner, ex.parent, Task.PhaseEnum.EXECUTION) {
+			writes = ex.writes,
+			document = sum_render.document
+		};
+		vl_sum.validate_all (sum_render.document.links);
+		if (vl_sum.issues != "") {
+			parser.issues += vl_sum.issues;
+			return false;
+		}
+		foreach (var link in sum_render.document.links) {
+			if (link.path != "" || link.hash == "") {
+				continue;
+			}
+			foreach (var wc in ex.writes) {
+				if (!wc.document.headings.has_key (link.hash)) {
+					continue;
+				}
+				link.up_relpath (wc.file_path.strip ());
+				break;
+			}
+		}
+		if (sum_render.document.headings.has_key ("result-summary")) {
+			ex.summary = sum_render.document.headings.get ("result-summary");
+		}
+		if (ex.writes.size > 0) {
+			return true;
+		}
+		if (parser.document.to_markdown ().strip ().down ().contains ("**no changes needed**")) {
+			return true;
+		}
+		parser.issues += "\nWrite executor output must include a recognizable Change details section, or Path 2 (full markdown must contain **no changes needed**).";
+		return false;
 	}
 
 	public override async void run () throws GLib.Error

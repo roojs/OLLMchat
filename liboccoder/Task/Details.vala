@@ -586,33 +586,6 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	}
 
 	/**
-	 * Allow Action runners to reuse Details model selection without exposing the
-	 * protected Agent.Base override directly.
-	 */
-	public async void fill_action_model()
-	{
-		yield this.fill_model();
-	}
-
-	/**
-	 * Clear tool definitions before an Action sends a plain chat request.
-	 */
-	public void clear_action_tools()
-	{
-		this.chat_call.tools.clear();
-	}
-
-	/**
-	 * Send action-owned messages through this task's chat call.
-	 */
-	public async OLLMchat.Response.Chat send_action_messages(
-		Gee.ArrayList<OLLMchat.Message> messages,
-		GLib.Cancellable? cancellable = null) throws GLib.Error
-	{
-		return yield this.chat_call.send(messages, cancellable);
-	}
-
-	/**
 	 * Task as markdown for a given phase. Does not add section headings
 	 * (e.g. `## Task`); caller adds header.
 	 * COARSE: creation keys. REFINEMENT/EXECUTION: task list + `## Tool Calls` when tools exist.
