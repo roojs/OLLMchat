@@ -26,8 +26,8 @@ To build the Debian packages:
 1. Install build dependencies:
    ```bash
    sudo apt-get install build-essential devscripts debhelper meson ninja-build \
-     pkg-config valac libgee-0.8-dev libglib2.0-dev libgobject-2.0-dev \
-     libgio-2.0-dev libjson-glib-dev libsoup-3.0-dev libxml2-dev libsqlite3-dev \
+     pkg-config valac libgee-0.8-dev libglib2.0-dev libjson-glib-dev \
+     libsoup-3.0-dev libxml2-dev libsqlite3-dev \
      libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev gobject-introspection \
      libgirepository1.0-dev
    ```
