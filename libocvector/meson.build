@@ -45,27 +45,27 @@ omp_dep = dependency('openmp', required: true)
 blas_dep = dependency('blas', required: false)
 lapack_dep = dependency('lapack', required: false)
 ocvector_link_args = ['-lgomp']
+linux_sysroot = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_SYSROOT"', check: false).stdout().strip()
+linux_triplet = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_TRIPLET"', check: false).stdout().strip()
+windows_sysroot_prefix = run_command('sh', '-c', 'printf %s "$SQGI_WINDOWS_SYSROOT_PREFIX"', check: false).stdout().strip()
+openblas_dirs = []
+if linux_sysroot != '' and linux_triplet != ''
+  openblas_dirs += linux_sysroot / 'usr' / 'lib' / linux_triplet / 'openblas-pthread'
+endif
+if windows_sysroot_prefix != ''
+  openblas_dirs += windows_sysroot_prefix / 'lib'
+endif
 if blas_dep.found()
   ocvector_link_args += ['-lblas']
+elif cc.find_library('openblas', dirs: openblas_dirs, required: false).found()
+  ocvector_link_args += ['-lopenblas']
 else
-  linux_sysroot = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_SYSROOT"', check: false).stdout().strip()
-  linux_triplet = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_TRIPLET"', check: false).stdout().strip()
-  windows_sysroot_prefix = run_command('sh', '-c', 'printf %s "$SQGI_WINDOWS_SYSROOT_PREFIX"', check: false).stdout().strip()
-  openblas_dirs = []
-  if linux_sysroot != '' and linux_triplet != ''
-    openblas_dirs += linux_sysroot / 'usr' / 'lib' / linux_triplet / 'openblas-pthread'
-  endif
-  if windows_sysroot_prefix != ''
-    openblas_dirs += windows_sysroot_prefix / 'lib'
-  endif
-  if cc.find_library('openblas', dirs: openblas_dirs, required: false).found()
-    ocvector_link_args += ['-lopenblas']
-  else
-    cc.find_library('blas', required: true)
-    ocvector_link_args += ['-lblas']
-  endif
+  cc.find_library('blas', required: true)
+  ocvector_link_args += ['-lblas']
 endif
 if lapack_dep.found()
+  ocvector_link_args += ['-llapack']
+elif cc.find_library('lapack', dirs: openblas_dirs, required: false).found()
   ocvector_link_args += ['-llapack']
 else
   cc.find_library('lapack', required: true)
