@@ -1,0 +1,4 @@
+usr/lib/*/liboccoder.so
+usr/share/vala/vapi/occoder.vapi
+usr/share/gir-1.0/OLLMcoder-1.0.gir
+usr/lib/*/girepository-1.0/OLLMcoder-1.0.typelib

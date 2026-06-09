@@ -161,12 +161,12 @@ octools_vapi_dep = declare_dependency(
 
 octools_gir_file = meson.current_build_dir() / 'OLLMtools-1.0.gir'
 octools_gir_fixed = meson.current_build_dir() / 'OLLMtools-1.0.fixed.gir'
-compile_gir_typelib = find_program(meson.project_source_root() / 'scripts/compile-gir-typelib.sh')
 fix_gir_dep_names = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
 custom_target('octools-typelib',
   output: 'OLLMtools-1.0.typelib',
   command: [
-    compile_gir_typelib,
+    find_program('sh'),
+    meson.project_source_root() / 'scripts/compile-gir-typelib.sh',
     octools_gir_file,
     octools_gir_fixed,
     '@OUTPUT@',

@@ -168,12 +168,12 @@ occoder_vapi = custom_target('occoder-vapi',
 
 occoder_gir_file = meson.current_build_dir() / 'OLLMcoder-1.0.gir'
 occoder_gir_fixed = meson.current_build_dir() / 'OLLMcoder-1.0.fixed.gir'
-compile_gir_typelib = find_program(meson.project_source_root() / 'scripts/compile-gir-typelib.sh')
 fix_gir_dep_names = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
 custom_target('occoder-typelib',
   output: 'OLLMcoder-1.0.typelib',
   command: [
-    compile_gir_typelib,
+    find_program('sh'),
+    meson.project_source_root() / 'scripts/compile-gir-typelib.sh',
     occoder_gir_file,
     occoder_gir_fixed,
     '@OUTPUT@',
