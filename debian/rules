@@ -7,7 +7,7 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 	dh $@
 
 override_dh_auto_configure:
-	meson setup build --prefix=/usr
+	meson setup build --prefix=/usr -Ddocs=false -Dexamples=true -Dtests=false
 
 override_dh_auto_build:
 	ninja -C build

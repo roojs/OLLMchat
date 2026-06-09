@@ -19,7 +19,13 @@ Build-Depends: debhelper-compat (= 13),
                libgtksourceview-5-dev,
                libadwaita-1-dev,
                gobject-introspection,
-               libgirepository1.0-dev
+               libgirepository1.0-dev,
+               libtree-sitter-dev,
+               libseccomp-dev,
+               libgit2-glib-1.0-dev,
+               libopenblas-dev,
+               liblapack-dev,
+               libfaiss-dev
 Standards-Version: 4.6.0
 Homepage: https://github.com/roojs/OLLMchat
 Vcs-Browser: https://github.com/roojs/OLLMchat
@@ -71,7 +77,9 @@ Description: Development files for libocmarkdowngtk
 Package: libollmchat1
 Architecture: any
 Depends: ${shlibs:Depends},
-         ${misc:Depends}
+         ${misc:Depends},
+         libocmarkdown1 (= ${binary:Version}),
+         libocmarkdowngtk1 (= ${binary:Version})
 Description: Base library for Ollama/OpenAI API access
  OLLMchat is a library and embeddable widget that provides LLM access
  and tool integration for applications.

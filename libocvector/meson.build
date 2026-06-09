@@ -44,7 +44,6 @@ omp_dep = dependency('openmp', required: true)
 # blas fall through to openblas in the SQGI sysroot.
 blas_dep = dependency('blas', required: false)
 lapack_dep = dependency('lapack', required: false)
-ocvector_link_args = ['-lgomp']
 linux_sysroot = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_SYSROOT"', check: false).stdout().strip()
 linux_triplet = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_TRIPLET"', check: false).stdout().strip()
 windows_sysroot_prefix = run_command('sh', '-c', 'printf %s "$SQGI_WINDOWS_SYSROOT_PREFIX"', check: false).stdout().strip()
@@ -57,24 +56,36 @@ if windows_sysroot_prefix != ''
 endif
 openblas_lib = cc.find_library('openblas', dirs: openblas_dirs, required: false)
 lapack_openblas_lib = cc.find_library('lapack', dirs: openblas_dirs, required: false)
+ocvector_link_libs = ['-lgomp']
+using_openblas_dirs = false
 if blas_dep.found()
-  ocvector_link_args += ['-lblas']
+  ocvector_link_libs += ['-lblas']
 elif openblas_lib.found()
-  # full_path: sqgipkg cross-builds put OpenBLAS under .../openblas-pthread/, which
-  # is not on the default linker search path — plain -lopenblas fails at link time.
-  ocvector_link_args += [openblas_lib.full_path()]
+  using_openblas_dirs = true
+  ocvector_link_libs += ['-lopenblas']
 else
-  blas_lib = cc.find_library('blas', required: true)
-  ocvector_link_args += [blas_lib.full_path()]
+  cc.find_library('blas', required: true)
+  ocvector_link_libs += ['-lblas']
 endif
 if lapack_dep.found()
-  ocvector_link_args += ['-llapack']
+  ocvector_link_libs += ['-llapack']
 elif lapack_openblas_lib.found()
-  ocvector_link_args += [lapack_openblas_lib.full_path()]
+  using_openblas_dirs = true
+  ocvector_link_libs += ['-llapack']
 else
-  lapack_lib = cc.find_library('lapack', required: true)
-  ocvector_link_args += [lapack_lib.full_path()]
+  cc.find_library('lapack', required: true)
+  ocvector_link_libs += ['-llapack']
 endif
+# Meson 1.7 has no full_path() on find_library results. sqgipkg cross-builds put
+# OpenBLAS under .../openblas-pthread/, off the default linker path — prepend -L
+# when we link against libraries discovered there.
+ocvector_link_dirs = []
+if using_openblas_dirs
+  foreach d : openblas_dirs
+    ocvector_link_dirs += ['-L' + d]
+  endforeach
+endif
+ocvector_link_args = ocvector_link_dirs + ocvector_link_libs
 ocvector_link_dep = declare_dependency(link_args: ocvector_link_args)
 # Find tree-sitter library (C library for parsing)
 # Tree-sitter provides pkg-config support, with a sysroot fallback for sqgipkg.

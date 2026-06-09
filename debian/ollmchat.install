@@ -1,1 +1,5 @@
 usr/bin/ollmchat
+usr/bin/ollmchat-cli
+usr/bin/ollmfilesd
+usr/share/applications/org.roojs.ollmchat.desktop
+usr/share/icons/hicolor/scalable/apps/org.roojs.ollmchat.svg
