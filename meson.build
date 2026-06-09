@@ -31,6 +31,11 @@ add_project_arguments(['--vapidir', meson.current_source_dir() / '../vapi'], lan
 add_project_arguments(['--vapidir', meson.current_build_dir()], language: 'vala')  # Add build dir for generated VAPIs
 add_project_arguments(['--target-glib=auto'], language: 'vala')
 
+# Vala #if G_OS_WIN32 is not set automatically when cross-compiling on Linux.
+if host_machine.system() == 'windows'
+  add_project_arguments(['--define=G_OS_WIN32'], language: 'vala')
+endif
+
 sqgi_vala_args = []
 
 linux_sysroot = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_SYSROOT"', check: false).stdout().strip()
