@@ -53,6 +53,13 @@ namespace OLLMchat.Local
 			}
 
 			var model_params = Llama.ModelParams();
+			if (Llama.supports_gpu_offload()) {
+				model_params.n_gpu_layers = -1;
+				GLib.debug("GGUFEmbeddingProbe: GPU offload available, offloading all layers");
+			} else {
+				GLib.debug("GGUFEmbeddingProbe: no GPU backend, using CPU");
+			}
+
 			var model = new Llama.Model.from_file(this.model_path, model_params);
 			if (model == null) {
 				throw new OllmError.FAILED("Failed to load GGUF model");
@@ -112,11 +119,12 @@ namespace OLLMchat.Local
 			var batch = Llama.Batch(token_count, 0, 1);
 			try {
 				for (int i = 0; i < token_count; i++) {
-					batch.token[i] = tokens[i];
-					batch.pos[i] = i;
-					batch.n_seq_id[i] = 1;
-					batch.seq_id[i][0] = 0;
-					batch.logits[i] = (int8)(i == token_count - 1 ? 1 : 0);
+					batch.token[batch.n_tokens] = tokens[i];
+					batch.pos[batch.n_tokens] = i;
+					batch.n_seq_id[batch.n_tokens] = 1;
+					batch.seq_id[batch.n_tokens][0] = 0;
+					batch.logits[batch.n_tokens] = 1;
+					batch.n_tokens++;
 				}
 
 				if (ctx.decode(batch) < 0) {

@@ -27,6 +27,9 @@ namespace Llama
 
 		[CCode (cname = "llama_model_n_embd")]
 		public int n_embd();
+
+		[CCode (cname = "llama_model_has_encoder")]
+		public bool has_encoder();
 	}
 
 	[Compact]
@@ -35,6 +38,9 @@ namespace Llama
 	{
 		[CCode (cname = "llama_init_from_model")]
 		public Context.from_model(Model model, ContextParams parameters);
+
+		[CCode (cname = "llama_encode")]
+		public int encode(Batch batch);
 
 		[CCode (cname = "llama_decode")]
 		public int decode(Batch batch);
@@ -68,6 +74,10 @@ namespace Llama
 	[CCode (cname = "struct llama_model_params")]
 	public struct ModelParams
 	{
+		public void* devices;
+		public void* tensor_buft_overrides;
+		public int n_gpu_layers;
+
 		[CCode (cname = "llama_model_default_params")]
 		public ModelParams();
 	}
@@ -106,4 +116,7 @@ namespace Llama
 
 	[CCode (cname = "llama_backend_init")]
 	public static void backend_init();
+
+	[CCode (cname = "llama_supports_gpu_offload")]
+	public static bool supports_gpu_offload();
 }
