@@ -1,3 +1,9 @@
 option('docs', type: 'boolean', value: true, description: 'Build valadoc documentation')
 option('examples', type: 'boolean', value: true, description: 'Build example and test utility executables')
 option('tests', type: 'boolean', value: true, description: 'Configure test suite')
+option('sysroot', type: 'string', value: '',
+  description: 'Linux dependency root (sqgipkg sysroot). When set, bundled libs such as FAISS are taken from here instead of the host.')
+option('windows_prefix', type: 'string', value: '',
+  description: 'Windows MinGW prefix (sqgipkg). When set, bundled libs are taken from here instead of the host.')
+option('sysroot_triplet', type: 'string', value: '',
+  description: 'GNU triplet under sysroot/usr/lib (e.g. x86_64-linux-gnu). Defaults to SQGI_LINUX_TRIPLET when sysroot is set.')
