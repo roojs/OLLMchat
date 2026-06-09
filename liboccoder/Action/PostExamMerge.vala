@@ -31,23 +31,23 @@ public class PostExamMerge : Base
 	 * Called directly by this action and indirectly through
 	 * {@link Task.ResultParser.exec_post_extract} for existing replay/live callers.
 	 */
-	public static void extract (Task.ResultParser parser, Task.Details task)
+	public void extract (Task.ResultParser parser)
 	{
 		if (!parser.document.headings.has_key ("result-summary")) {
 			parser.issues += "\nPost-exec output must include ## Result summary.";
 			return;
 		}
-		task.post_summary = parser.document.headings.get ("result-summary");
-		task.out_doc = parser.document;
+		this.task.post_summary = parser.document.headings.get ("result-summary");
+		this.task.out_doc = parser.document;
 		var sum_render = new Markdown.Document.Render ();
-		sum_render.parse (task.post_summary.to_markdown_with_content ());
-		var vl_sum = new Task.ValidateLink (task.runner, task, Task.PhaseEnum.POST_EXEC) {
+		sum_render.parse (this.task.post_summary.to_markdown_with_content ());
+		var vl_sum = new Task.ValidateLink (this.task.runner, this.task, Task.PhaseEnum.POST_EXEC) {
 			document = parser.document
 		};
 		vl_sum.validate_all (sum_render.document.links);
-		task.issues += vl_sum.issues;
-		if (task.issues != "") {
-			parser.issues += task.issues;
+		this.task.issues += vl_sum.issues;
+		if (this.task.issues != "") {
+			parser.issues += this.task.issues;
 		}
 	}
 
@@ -97,7 +97,7 @@ public class PostExamMerge : Base
 			// Before exec_post_extract: it copies task.issues into parser.issues after link checks.
 			this.task.issues = "";
 			var parser = new Task.ResultParser (this.task.runner, response_text);
-			PostExamMerge.extract (parser, this.task);
+			this.extract (parser);
 			this.task.add_message (new OLLMchat.Message ("agent-issues", parser.issues));
 			if (parser.issues == "") {
 				this.task.runner.progress.active_item_changed (null);

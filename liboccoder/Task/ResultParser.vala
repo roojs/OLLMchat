@@ -553,7 +553,7 @@ public class ResultParser : Object
 	public bool exec_extract (Tool ex)
 	{
 		if (ex.parent.skill.tools.contains ("write_file")) {
-			return OLLMcoder.Action.WriteExec.extract (this, ex);
+			return new OLLMcoder.Action.WriteExec (ex.parent).extract (this, ex);
 		}
 		if (!this.document.headings.has_key ("result-summary")) {
 			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
@@ -601,7 +601,7 @@ public class ResultParser : Object
 	 */
 	public void exec_post_extract(Details task)
 	{
-		OLLMcoder.Action.PostExamMerge.extract(this, task);
+		new OLLMcoder.Action.PostExamMerge (task).extract (this);
 	}
 
 	/**

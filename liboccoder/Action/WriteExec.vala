@@ -31,7 +31,7 @@ public class WriteExec : Base
 	 * Called by {@link Task.ResultParser.exec_extract} when the skill uses
 	 * {{{ write_file }}}.
 	 */
-	public static bool extract (Task.ResultParser parser, Task.Tool ex)
+	public bool extract (Task.ResultParser parser, Task.Tool ex)
 	{
 		if (!parser.document.headings.has_key ("result-summary")) {
 			parser.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
@@ -56,7 +56,7 @@ public class WriteExec : Base
 				parser.issues += "\nWrite executor: unexpected top-level section (use ## Change details or Path 2 only): \"" + slug + "\".";
 				continue;
 			}
-			var wc = new Task.WriteChange.from_header (hb, ex.parent.runner.sr_factory.project_manager);
+			var wc = new Task.WriteChange.from_header (hb, this.task.runner.sr_factory.project_manager);
 			if (wc.issues != "") {
 				parser.issues += "\n"
 					+ "Change details — " + hb.text_content ().strip () + ":"
@@ -71,7 +71,7 @@ public class WriteExec : Base
 		if (parser.issues != "") {
 			return false;
 		}
-		var vl_sum = new Task.ValidateLink (ex.parent.runner, ex.parent, Task.PhaseEnum.EXECUTION) {
+		var vl_sum = new Task.ValidateLink (this.task.runner, this.task, Task.PhaseEnum.EXECUTION) {
 			writes = ex.writes,
 			document = sum_render.document
 		};
