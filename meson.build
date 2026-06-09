@@ -61,7 +61,9 @@ subdir('libollamaweb')     # No dependencies on libollmchat (Phase 1)
 subdir('libocmarkdowngtk') # Depends on libocmarkdown
 subdir('libocfiles')       # Depends on libocsqlite
 subdir('libollmchat')      # Depends on libocsqlite
-subdir('ollmfilesd')       # Headless file daemon — depends on libocsqlite, libollmchat
+if host_machine.system() != 'windows'
+  subdir('ollmfilesd')     # Headless file daemon — Unix sockets + fork; not on Windows yet
+endif
 subdir('libocmcp')         # Depends on libollmchat, libocfiles
 subdir('liboctools')       # Depends on libollmchat, libocfiles
 subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
