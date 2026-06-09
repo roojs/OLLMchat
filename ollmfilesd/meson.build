@@ -73,7 +73,7 @@ ollmfilesd_bin = executable('ollmfilesd',
   ],
   build_rpath: build_rpath,
   install: true,
-  vala_args: [
+  vala_args: strcasestr_vala_args + [
     '--pkg=sqlite3',
     '--pkg=json-glib-1.0',
     '--pkg=gmodule-2.0',

@@ -19,8 +19,8 @@ namespace OLLMmcp.Client
 {
 	/**
 	 * MCP client over stdio: starts the server as a subprocess and talks
-	 * JSON-RPC over stdin/stdout (newline-delimited). Uses bwrap when
-	 * available (not in Flatpak); otherwise spawns the process directly.
+	 * JSON-RPC over stdin/stdout (newline-delimited). Uses bubblewrap when
+	 * available; otherwise requires allow_unsandboxed in mcp.json (Flatpak, Windows).
 	 */
 	public class Stdio : Base
 	{
@@ -158,22 +158,29 @@ namespace OLLMmcp.Client
 		private string[] build_spawn_argv() throws Error
 		{
 			if (GLib.Environment.get_variable("FLATPAK_ID") != null) {
-				if (!this.config.trust_sandbox) {
+				if (!this.config.allow_unsandboxed) {
 					throw new GLib.IOError.FAILED(
 						"MCP server '" + this.config.id
-						+ "': stdio disabled inside sandbox; set trust_sandbox true in mcp.json"
+						+ "': stdio disabled inside sandbox; set allow_unsandboxed true in mcp.json"
 					);
 				}
 				return this.build_direct_argv();
 			}
 			if (!OLLMfiles.Sandbox.Bubble.can_wrap()) {
-				if (!this.config.trust_sandbox) {
+#if G_OS_WIN32
+				if (!this.config.allow_unsandboxed) {
 					throw new GLib.IOError.FAILED(
 						"MCP server '" + this.config.id
-						+ "': sandboxing is unavailable; set trust_sandbox true in mcp.json"
+						+ "': sandboxing is unavailable; set allow_unsandboxed true in mcp.json"
 					);
 				}
 				return this.build_direct_argv();
+#else
+				throw new GLib.IOError.FAILED(
+					"MCP server '" + this.config.id
+					+ "': bubblewrap required for stdio MCP on host"
+				);
+#endif
 			}
 			OLLMfiles.Folder? project = this.project_manager.active_project;
 			string[] write_array = {};
