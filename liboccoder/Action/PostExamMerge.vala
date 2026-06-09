@@ -28,8 +28,7 @@ public class PostExamMerge : Base
 	/**
 	 * Parse post-execution synthesis response into the task.
 	 *
-	 * Called directly by this action and indirectly through
-	 * {@link Task.ResultParser.exec_post_extract} for existing replay/live callers.
+	 * Called directly by this action and by replay/live compatibility callers.
 	 */
 	public void extract (Task.ResultParser parser)
 	{
@@ -94,7 +93,7 @@ public class PostExamMerge : Base
 			// Ensure any literal {task_link_base} in model output is replaced so links validate
 			var task_base = "task://" + this.task.slug () + ".md";
 			response_text = response_text.replace ("{task_link_base}", task_base);
-			// Before exec_post_extract: it copies task.issues into parser.issues after link checks.
+			// Before extraction: it copies task.issues into parser.issues after link checks.
 			this.task.issues = "";
 			var parser = new Task.ResultParser (this.task.runner, response_text);
 			this.extract (parser);

@@ -933,7 +933,7 @@ namespace OLLMcoder.Skill
 						"REPLAY POST EXEC hydrate slug=%s runner_in_replay=%s",
 						d_post.slug (),
 						this.in_replay.to_string ()); */
-					pp.exec_post_extract(d_post);
+					new OLLMcoder.Action.PostExamMerge(d_post).extract(pp);
 					/* GLib.debug(
 						"REPLAY POST EXEC slug=%s step=%u detail=%u tools=%u post_issues_len=%u post_issues=%s",
 						d_post.slug(),

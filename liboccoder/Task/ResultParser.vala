@@ -593,18 +593,6 @@ public class ResultParser : Object
 	}
 
 	/**
-	 * Parse post-exec synthesis response into the task. Called by Details.run_post_exec().
-	 * Requires ## Result summary; sets post_summary and out_doc,
-	 * then validates each link in the output document.
-	 *
-	 * @param task the task to fill with post-exec summary and document
-	 */
-	public void exec_post_extract(Details task)
-	{
-		new OLLMcoder.Action.PostExamMerge (task).extract (this);
-	}
-
-	/**
 	 * Fills in the result summary on the task from executor response.
 	 *
 	 * Single pass: find section "Result summary" → build one synthetic exec run with that content.

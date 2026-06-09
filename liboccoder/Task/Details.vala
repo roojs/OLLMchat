@@ -931,10 +931,10 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			// Ensure any literal {task_link_base} in model output is replaced so links validate
 			var task_base = "task://" + this.slug() + ".md";
 			response_text = response_text.replace("{task_link_base}", task_base);
-			// Before exec_post_extract: it copies task.issues into parser.issues after link checks.
+			// Before post-exec extraction: it copies task.issues into parser.issues after link checks.
 			this.issues = "";
 			var parser = new ResultParser(this.runner, response_text);
-			parser.exec_post_extract(this);
+			new OLLMcoder.Action.PostExamMerge(this).extract(parser);
 			this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
 			if (parser.issues == "") {
 				this.runner.progress.active_item_changed(null);
