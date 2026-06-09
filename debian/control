@@ -29,6 +29,88 @@ Homepage: https://github.com/roojs/OLLMchat
 Vcs-Browser: https://github.com/roojs/OLLMchat
 Vcs-Git: https://github.com/roojs/OLLMchat.git
 
+Package: libocsqlite1
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends}
+Description: SQLite helper library for OLLMchat
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains libocsqlite.so.
+
+Package: libocsqlite-dev
+Architecture: any
+Depends: libocsqlite1 (= ${binary:Version}),
+         ${misc:Depends}
+Description: Development files for libocsqlite
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the development files for libocsqlite.
+
+Package: libocfiles1
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libocsqlite1 (= ${binary:Version})
+Description: File and project management library for OLLMchat
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains libocfiles.so.
+
+Package: libocfiles-dev
+Architecture: any
+Depends: libocfiles1 (= ${binary:Version}),
+         libocsqlite-dev (= ${binary:Version}),
+         ${misc:Depends}
+Description: Development files for libocfiles
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the development files for libocfiles.
+
+Package: libocrpc1
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends}
+Description: JSON-RPC wire library for OLLMchat
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains libocrpc.so.
+
+Package: libocrpc-dev
+Architecture: any
+Depends: libocrpc1 (= ${binary:Version}),
+         ${misc:Depends}
+Description: Development files for libocrpc
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the development files for libocrpc.
+
+Package: libollamaweb1
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends}
+Description: Ollama HTTP client library for OLLMchat
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains libollamaweb.so.
+
+Package: libollamaweb-dev
+Architecture: any
+Depends: libollamaweb1 (= ${binary:Version}),
+         ${misc:Depends}
+Description: Development files for libollamaweb
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the development files for libollamaweb.
+
 Package: libocmarkdown1
 Architecture: any
 Depends: ${shlibs:Depends},
@@ -76,32 +158,179 @@ Package: libollmchat1
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
+         libocsqlite1 (= ${binary:Version}),
          libocmarkdown1 (= ${binary:Version}),
-         libocmarkdowngtk1 (= ${binary:Version})
+         libollamaweb1 (= ${binary:Version})
 Description: Base library for Ollama/OpenAI API access
  OLLMchat is a library and embeddable widget that provides LLM access
  and tool integration for applications.
  .
- This package contains the base library for LLM API access (libollmchat.so)
- and the GTK library with chat widgets (libollmchatgtk.so).
+ This package contains libollmchat.so.
 
 Package: libollmchat-dev
 Architecture: any
 Depends: libollmchat1 (= ${binary:Version}),
+         libocsqlite-dev (= ${binary:Version}),
          libocmarkdown-dev (= ${binary:Version}),
-         libocmarkdowngtk-dev (= ${binary:Version}),
+         libollamaweb-dev (= ${binary:Version}),
          ${misc:Depends}
 Description: Development files for libollmchat
  OLLMchat is a library and embeddable widget that provides LLM access
  and tool integration for applications.
  .
- This package contains the development files for libollmchat and libollmchatgtk.
+ This package contains the development files for libollmchat.
+
+Package: libollmchatgtk1
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libollmchat1 (= ${binary:Version}),
+         libocmarkdown1 (= ${binary:Version}),
+         libocmarkdowngtk1 (= ${binary:Version})
+Description: GTK chat widget library for OLLMchat
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains libollmchatgtk.so.
+
+Package: libollmchatgtk-dev
+Architecture: any
+Depends: libollmchatgtk1 (= ${binary:Version}),
+         libollmchat-dev (= ${binary:Version}),
+         libocmarkdowngtk-dev (= ${binary:Version}),
+         ${misc:Depends}
+Description: Development files for libollmchatgtk
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the development files for libollmchatgtk.
+
+Package: liboctools1
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libollmchat1 (= ${binary:Version}),
+         libocfiles1 (= ${binary:Version}),
+         libocmarkdown1 (= ${binary:Version}),
+         libollamaweb1 (= ${binary:Version})
+Description: LLM tool implementations for OLLMchat
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains liboctools.so.
+
+Package: liboctools-dev
+Architecture: any
+Depends: liboctools1 (= ${binary:Version}),
+         libollmchat-dev (= ${binary:Version}),
+         libocfiles-dev (= ${binary:Version}),
+         libocmarkdown-dev (= ${binary:Version}),
+         libollamaweb-dev (= ${binary:Version}),
+         ${misc:Depends}
+Description: Development files for liboctools
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the development files for liboctools.
+
+Package: libocvector1
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libocsqlite1 (= ${binary:Version}),
+         libollmchat1 (= ${binary:Version}),
+         libocfiles1 (= ${binary:Version})
+Description: Vector search library for OLLMchat
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains libocvector.so.
+
+Package: libocvector-dev
+Architecture: any
+Depends: libocvector1 (= ${binary:Version}),
+         libocsqlite-dev (= ${binary:Version}),
+         libollmchat-dev (= ${binary:Version}),
+         libocfiles-dev (= ${binary:Version}),
+         ${misc:Depends}
+Description: Development files for libocvector
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the development files for libocvector.
+
+Package: liboccoder1
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libocsqlite1 (= ${binary:Version}),
+         libocfiles1 (= ${binary:Version}),
+         libocvector1 (= ${binary:Version}),
+         libollmchat1 (= ${binary:Version}),
+         libocmarkdown1 (= ${binary:Version}),
+         liboctools1 (= ${binary:Version})
+Description: Code editor and agent UI library for OLLMchat
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains liboccoder.so.
+
+Package: liboccoder-dev
+Architecture: any
+Depends: liboccoder1 (= ${binary:Version}),
+         libocsqlite-dev (= ${binary:Version}),
+         libocfiles-dev (= ${binary:Version}),
+         libocvector-dev (= ${binary:Version}),
+         libollmchat-dev (= ${binary:Version}),
+         libocmarkdown-dev (= ${binary:Version}),
+         liboctools-dev (= ${binary:Version}),
+         ${misc:Depends}
+Description: Development files for liboccoder
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the development files for liboccoder.
+
+Package: libocmcp1
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libollmchat1 (= ${binary:Version}),
+         libocfiles1 (= ${binary:Version})
+Description: MCP integration library for OLLMchat
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains libocmcp.so.
+
+Package: libocmcp-dev
+Architecture: any
+Depends: libocmcp1 (= ${binary:Version}),
+         libollmchat-dev (= ${binary:Version}),
+         libocfiles-dev (= ${binary:Version}),
+         ${misc:Depends}
+Description: Development files for libocmcp
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the development files for libocmcp.
 
 Package: ollmchat
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
-         libollmchat1 (= ${binary:Version})
+         libollmchat1 (= ${binary:Version}),
+         libollmchatgtk1 (= ${binary:Version}),
+         liboccoder1 (= ${binary:Version}),
+         liboctools1 (= ${binary:Version}),
+         libocmcp1 (= ${binary:Version}),
+         libocvector1 (= ${binary:Version}),
+         libocfiles1 (= ${binary:Version}),
+         libocrpc1 (= ${binary:Version}),
+         libocsqlite1 (= ${binary:Version}),
+         libocmarkdown1 (= ${binary:Version}),
+         libocmarkdowngtk1 (= ${binary:Version}),
+         libollamaweb1 (= ${binary:Version})
 Description: OLLMchat - LLM chat application
  OLLMchat is a library and embeddable widget that provides LLM access
  and tool integration for applications.
