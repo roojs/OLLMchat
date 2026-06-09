@@ -51,6 +51,14 @@ jobs:
               `- This issue is manually closed.`,
             ].join('\n');
 
+            const existing = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue in:title "Unapplied PR: #${pr.number}"`
+            });
+            if (existing.data.total_count > 0) {
+              core.info(`Tracking issue already exists for PR #${pr.number}`);
+              return;
+            }
+
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
