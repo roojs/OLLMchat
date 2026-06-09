@@ -10,6 +10,7 @@ project('ollmchat', 'vala', 'c', 'cpp',
 )
 
 gnome = import('gnome')
+g_ir_compiler = find_program('g-ir-compiler')
 
 valac = meson.get_compiler('vala')
 valac_exe = find_program('valac')

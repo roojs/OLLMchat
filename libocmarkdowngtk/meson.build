@@ -44,9 +44,13 @@ ocmarkdowngtk_lib = library('ocmarkdowngtk',
   sources: ocmarkdowngtk_src,
   vala_header: 'ocmarkdowngtk.h',
   vala_vapi: 'ocmarkdowngtk-meson.vapi',  # Use different name so our custom_target can use 'ocmarkdowngtk.vapi'
+  vala_gir: 'OCMarkdownGtk-1.0.gir',
   link_with: [ocmarkdown_base_lib],
   include_directories: include_directories('../libocmarkdown'),  # Include ocmarkdown headers from build directory
   build_rpath: lib_build_rpath,
+  vala_args: [
+    '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  ],
   install: true
 )
 
@@ -92,21 +96,20 @@ ocmarkdowngtk_vapi_dep = declare_dependency(
   sources: [ocmarkdowngtk_vapi[0]]  # Include VAPI file to ensure it's built first
 )
 
-# GObject Introspection for ocmarkdowngtk library
-# Note: Namespace is now MarkdownGtk (not OLLMchat.MarkdownGtk)
-ocmarkdowngtk_header_file = meson.current_build_dir() / 'ocmarkdowngtk.h'
-ocmarkdowngtk_gir = gnome.generate_gir(ocmarkdowngtk_lib,
-  namespace: 'OCMarkdownGtk',
-  nsversion: '1.0',
-  identifier_prefix: 'MarkdownGtk',
-  symbol_prefix: 'markdown_gtk',
-  sources: [ocmarkdowngtk_header_file],
-  link_with: [ocmarkdown_base_lib],
-  extra_args: [
-    '--extra-library=ocmarkdown',
-    '--accept-unprefixed'
+ocmarkdowngtk_gir_file = meson.current_build_dir() / 'OCMarkdownGtk-1.0.gir'
+custom_target('ocmarkdowngtk-typelib',
+  output: 'OCMarkdownGtk-1.0.typelib',
+  command: [
+    g_ir_compiler, ocmarkdowngtk_gir_file, '--output', '@OUTPUT@',
+    '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--includedir', '/usr/share/gir-1.0',
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', 'Gee-0.8', ocmarkdown_gir[0]],
+  depends: ocmarkdowngtk_lib,
+  build_by_default: true,
   install: true,
-  fatal_warnings: false
+  install_dir: get_option('libdir') / 'girepository-1.0',
+)
+meson.add_install_script(
+  'sh', '-c',
+  'install -Dm644 "' + ocmarkdowngtk_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OCMarkdownGtk-1.0.gir"',
 )

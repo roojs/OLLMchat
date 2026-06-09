@@ -141,6 +141,7 @@ ocfiles_base_lib = library('ocfiles',
   sources: ocfiles_src + ocfiles_extra_sources,
   vala_header: 'ocfiles.h',
   vala_vapi: 'ocfiles-meson.vapi',  # Use different name so our custom_target can use 'ocfiles.vapi'
+  vala_gir: 'OLLMfiles-1.0.gir',
   build_rpath: lib_build_rpath,
   include_directories: [
     include_directories('..' / 'vapi'),
@@ -149,7 +150,8 @@ ocfiles_base_lib = library('ocfiles',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi and seccomp
-    '--vapidir', '/usr/share/vala/vapi'  # System VAPI directory (last, so local takes priority)
+    '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
+    '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
   ],
   install: true
 )
@@ -188,19 +190,20 @@ ocfiles_vapi_dep = declare_dependency(
   dependencies: [ocsqlite_vapi_dep, ocfiles_deps]
 )
 
-# GObject Introspection for ocfiles library
-ocfiles_gir = gnome.generate_gir(ocfiles_base_lib,
-  namespace: 'OLLMfiles',
-  nsversion: '1.0',
-  identifier_prefix: 'OLLMfiles',
-  symbol_prefix: 'ollmfiles',
-  link_with: [ocsqlite_base_lib],
-  dependencies: [dependency('sqlite3')],
-  extra_args: [
-    '--extra-library=ocsqlite',
-    '--accept-unprefixed'
+ocfiles_gir_file = meson.current_build_dir() / 'OLLMfiles-1.0.gir'
+custom_target('ocfiles-typelib',
+  output: 'OLLMfiles-1.0.typelib',
+  command: [
+    g_ir_compiler, ocfiles_gir_file, '--output', '@OUTPUT@',
+    '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--includedir', '/usr/share/gir-1.0',
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', ocsqlite_gir[0]],
+  depends: ocfiles_base_lib,
+  build_by_default: true,
   install: true,
-  fatal_warnings: false
+  install_dir: get_option('libdir') / 'girepository-1.0',
+)
+meson.add_install_script(
+  'sh', '-c',
+  'install -Dm644 "' + ocfiles_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMfiles-1.0.gir"',
 )

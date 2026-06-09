@@ -159,31 +159,39 @@ ollmchat_base_lib = library('ollmchat',
   sources: [ollmchat_ollama_src, ollmchat_resources],
   vala_header: 'ollmchat.h',
   vala_vapi: 'ollmchat.vapi',
+  vala_gir: 'OLLMchat-1.0.gir',
   # Don't use link_with for ocsqlite_base_lib to prevent determine_dep_vapis() from finding
   # ocsqlite-meson.vapi and adding it as a source. Link manually via ocsqlite_vapi_dep link_args instead.
   build_rpath: lib_build_rpath,
   link_args: ['-lm'],  # Link math library for Math.sqrt() in Embed.vala
-  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--pkg=ollamaweb', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown', '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb'],
+  vala_args: [
+    '--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--pkg=ollamaweb',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+    '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  ],
   install: true
 )
 
-# GObject Introspection for base library
-# Note: GIR generation may fail if symbols aren't properly exported
-# This is optional and can be fixed later if needed
-ollmchat_gir = gnome.generate_gir(ollmchat_base_lib,
-  namespace: 'OLLMchat',
-  nsversion: '1.0',
-  identifier_prefix: 'OLLMchat',
-  symbol_prefix: 'ollmchat',
-  link_with: [ocsqlite_base_lib],
-  dependencies: [dependency('sqlite3')],
-  extra_args: [
-    '--extra-library=ocsqlite',
-    '--accept-unprefixed'
+ollmchat_gir_file = meson.current_build_dir() / 'OLLMchat-1.0.gir'
+custom_target('ollmchat-typelib',
+  output: 'OLLMchat-1.0.typelib',
+  command: [
+    g_ir_compiler, ollmchat_gir_file, '--output', '@OUTPUT@',
+    '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--includedir', '/usr/share/gir-1.0',
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Json-1.0', ocsqlite_gir[0]],
+  depends: ollmchat_base_lib,
+  build_by_default: true,
   install: true,
-  fatal_warnings: false
+  install_dir: get_option('libdir') / 'girepository-1.0',
+)
+meson.add_install_script(
+  'sh', '-c',
+  'install -Dm644 "' + ollmchat_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMchat-1.0.gir"',
 )
 
 # Create dependency for other libraries to use

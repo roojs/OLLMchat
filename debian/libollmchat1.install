@@ -18,6 +18,12 @@ usr/include/ocsqlite.h
 usr/share/gir-1.0/OLLMchat-1.0.gir
 usr/share/gir-1.0/OLLMchatGtk-1.0.gir
 usr/share/gir-1.0/OCSqlite-1.0.gir
+usr/share/gir-1.0/OLLMfiles-1.0.gir
+usr/share/gir-1.0/OLLMtools-1.0.gir
+usr/share/gir-1.0/OLLMcoder-1.0.gir
 usr/lib/*/girepository-1.0/OLLMchat-1.0.typelib
 usr/lib/*/girepository-1.0/OLLMchatGtk-1.0.typelib
 usr/lib/*/girepository-1.0/OCSqlite-1.0.typelib
+usr/lib/*/girepository-1.0/OLLMfiles-1.0.typelib
+usr/lib/*/girepository-1.0/OLLMtools-1.0.typelib
+usr/lib/*/girepository-1.0/OLLMcoder-1.0.typelib

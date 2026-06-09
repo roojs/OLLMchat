@@ -78,6 +78,7 @@ octools_base_lib = library('octools',
   sources: octools_src,
   vala_header: 'octools.h',
   vala_vapi: 'octools-meson.vapi',  # Use different name so our custom_target can use 'octools.vapi'
+  vala_gir: 'OLLMtools-1.0.gir',
   build_rpath: lib_build_rpath,
   include_directories: [
     include_directories('..' / 'libollmchat'),
@@ -99,7 +100,11 @@ octools_base_lib = library('octools',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
-    '--vapidir', '/usr/share/vala/vapi'  # System VAPI directory (last, so local takes priority)
+    '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
+    '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--girdir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
   ],
   install: true
 )
@@ -154,20 +159,30 @@ octools_vapi_dep = declare_dependency(
   dependencies: [ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, octools_deps]
 )
 
-# GObject Introspection for octools library
-octools_gir = gnome.generate_gir(octools_base_lib,
-  namespace: 'OLLMtools',
-  nsversion: '1.0',
-  identifier_prefix: 'OLLMtools',
-  symbol_prefix: 'ollmtools',
-  link_with: [ollmchat_base_lib, ocfiles_base_lib],
-  dependencies: [],
-  extra_args: [
-    '--extra-library=ollmchat',
-    '--extra-library=ocfiles',
-    '--accept-unprefixed'
+octools_gir_file = meson.current_build_dir() / 'OLLMtools-1.0.gir'
+octools_gir_fixed = meson.current_build_dir() / 'OLLMtools-1.0.fixed.gir'
+compile_gir_typelib = find_program(meson.project_source_root() / 'scripts/compile-gir-typelib.sh')
+fix_gir_dep_names = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
+custom_target('octools-typelib',
+  output: 'OLLMtools-1.0.typelib',
+  command: [
+    compile_gir_typelib,
+    octools_gir_file,
+    octools_gir_fixed,
+    '@OUTPUT@',
+    fix_gir_dep_names,
+    '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--includedir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--includedir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--includedir', '/usr/share/gir-1.0',
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Json-1.0', ollmchat_gir[0], ocfiles_gir[0]],
+  depends: octools_base_lib,
+  build_by_default: true,
   install: true,
-  fatal_warnings: false
+  install_dir: get_option('libdir') / 'girepository-1.0',
+)
+meson.add_install_script(
+  'sh', '-c',
+  'install -Dm644 "' + octools_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMtools-1.0.gir"',
 )

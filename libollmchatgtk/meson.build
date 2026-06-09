@@ -52,6 +52,7 @@ ollmchatgtk_lib = library('ollmchatgtk',
   sources: [ollmchatgtk_src],
   vala_header: 'ollmchatgtk.h',
   vala_vapi: 'ollmchatgtk.vapi',
+  vala_gir: 'OLLMchatGtk-1.0.gir',
   link_with: [ollmchat_base_lib, ocmarkdown_base_lib, ocmarkdowngtk_lib],  # Link with base libraries
   include_directories: [
     include_directories('../libollmchat'),
@@ -69,35 +70,36 @@ ollmchatgtk_lib = library('ollmchatgtk',
     '--pkg=ollamaweb',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+    '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--girdir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+    '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
   ],
   install: true
 )
 
-# GObject Introspection for GTK library
-# Identifier prefix is 'OLLMchat' because the GTK library contains symbols from
-# multiple namespaces (OLLMchatGtk, OLLMchatGtk.Tools) that all start with 'OLLMchat'
-# We include the base library GIR so the GTK library can reference base types
-# For Vala libraries, meson doesn't automatically populate the filelist with the header.
-# We need to pass the header file explicitly in the 'sources' parameter.
-# The header file is generated in the build directory by the Vala compiler.
-ollmchatgtk_header_file = meson.current_build_dir() / 'ollmchatgtk.h'
-
-ollmchatgtk_gir = gnome.generate_gir(ollmchatgtk_lib,
-  namespace: 'OLLMchatGtk',
-  nsversion: '1.0',
-  identifier_prefix: 'OLLMchat',
-  symbol_prefix: 'ollmchat',
-  sources: [ollmchatgtk_header_file],
-  link_with: [ollmchat_base_lib, ocmarkdown_base_lib, ocmarkdowngtk_lib, ocsqlite_base_lib],
-  dependencies: [dependency('sqlite3')],
-  extra_args: [
-    '--extra-library=ollmchat',
-    '--extra-library=ocmarkdown',
-    '--extra-library=ocmarkdowngtk',
-    '--extra-library=ocsqlite',
-    '--accept-unprefixed'
+ollmchatgtk_gir_file = meson.current_build_dir() / 'OLLMchatGtk-1.0.gir'
+ollmchatgtk_gir_fixed = meson.current_build_dir() / 'OLLMchatGtk-1.0.fixed.gir'
+compile_ollmchatgtk_typelib = find_program('compile-typelib.sh', dirs: meson.current_source_dir())
+custom_target('ollmchatgtk-typelib',
+  output: 'OLLMchatGtk-1.0.typelib',
+  command: [
+    compile_ollmchatgtk_typelib,
+    ollmchatgtk_gir_file,
+    ollmchatgtk_gir_fixed,
+    '@OUTPUT@',
+    '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--includedir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+    '--includedir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--includedir', '/usr/share/gir-1.0',
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', 'GtkSource-5', 'Gee-0.8', ollmchat_gir[0], ocmarkdown_gir[0], ocmarkdowngtk_gir[0], ocsqlite_gir[0]],
+  depends: ollmchatgtk_lib,
+  build_by_default: true,
   install: true,
-  fatal_warnings: false
+  install_dir: get_option('libdir') / 'girepository-1.0',
+)
+meson.add_install_script(
+  'sh', '-c',
+  'install -Dm644 "' + ollmchatgtk_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMchatGtk-1.0.gir"',
 )
