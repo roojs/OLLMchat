@@ -33,9 +33,11 @@ namespace OLLMcoder.Task
  *    ResultParser, ''extract_refinement(this)''; task is updated and
  *    ''result_parser.issues'' checked.
  *  * Execution: Tool.run() receives the executor response → new ResultParser,
- *    ''exec_extract(ex)'' delegates to Action.Base; ex.summary (heading block) and ex.document are set. Details.run_exec() builds
- *    summaries on each Tool in Details.tools(); on success Details sets ''exec_done'' (live path).
- *    ''Action.Base.extract_tool(ResultParser)'' remains for legacy/test use (returns a synthetic run; caller applies it to {@link Details.tools}).
+ *    the action extracts the tool result; ex.summary (heading block) and
+ *    ex.document are set. Details.run_exec() builds summaries on each Tool
+ *    in Details.tools(); on success Details sets ''exec_done'' (live path).
+ *    ''Action.Base.extract_tool(ResultParser)'' remains for legacy/test use
+ *    (returns a synthetic run; caller applies it to {@link Details.tools}).
  *
  * @see List
  * @see Step
@@ -72,7 +74,7 @@ public class ResultParser : Object
 
 	/**
 	 * Builds document from response (''Markdown.Document.Render''). Call
-	 * ''parse_task_list'', ''extract_refinement'', or ''exec_extract'' next.
+	 * ''parse_task_list'' or ''extract_refinement'' next.
 	 *
 	 * @param runner skill runner; used by ''parse_task_list()'' to build Details and List
 	 * @param response raw LLM markdown response (planning, refinement, or executor)
@@ -543,20 +545,6 @@ public class ResultParser : Object
 		}
 	}
 
-	/**
-	 * Parse executor response into the given Tool (exec run). Called by Tool.run().
-	 * On success sets ex.summary (heading Block) and ex.document; on failure appends to issues.
-	 *
-	 * @param ex the Tool (exec run) to fill with result summary and document
-	 * @return true on success; false on missing Result summary (issues appended)
-	 */
-	public bool exec_extract (Tool ex)
-	{
-		if (ex.parent.skill.tools.contains ("write_file")) {
-			return new OLLMcoder.Action.WriteExec (ex.parent).extract_result (this, ex);
-		}
-		return new OLLMcoder.Action.RefOnly (ex.parent).extract_result (this, ex);
-	}
 }
 
 }
