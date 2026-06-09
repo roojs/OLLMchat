@@ -345,6 +345,37 @@ namespace OLLMtools.RunCommand
 			argv = { "/bin/sh", "-c", this.command };
 #endif
 
+			string stdout_output;
+			string stderr_output;
+			int exit_status = 0;
+
+#if G_OS_WIN32
+			GLib.Subprocess subprocess;
+			try {
+				var launcher = new GLib.SubprocessLauncher (
+					GLib.SubprocessFlags.STDOUT_PIPE |
+					GLib.SubprocessFlags.STDERR_PIPE |
+					GLib.SubprocessFlags.STDIN_PIPE
+				);
+				launcher.set_cwd (work_dir);
+				subprocess = launcher.spawnv (argv);
+			} catch (GLib.Error e) {
+				throw new GLib.IOError.FAILED("Failed to create subprocess: " + e.message);
+			}
+
+			// Win32 pipe reads via read_line_async can hang; STDIN_INHERIT can block cmd.exe.
+			string? stdout_buf = null;
+			string? stderr_buf = null;
+			bool success = false;
+			try {
+				success = yield subprocess.communicate_utf8_async (null, null, out stdout_buf, out stderr_buf);
+			} catch (GLib.Error e) {
+				throw new GLib.IOError.FAILED("Failed to run command: " + e.message);
+			}
+			stdout_output = stdout_buf ?? "";
+			stderr_output = stderr_buf ?? "";
+			exit_status = success ? 0 : subprocess.get_exit_status ();
+#else
 			GLib.Subprocess subprocess;
 			try {
 				var launcher = new GLib.SubprocessLauncher (
@@ -357,27 +388,23 @@ namespace OLLMtools.RunCommand
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to create subprocess: " + e.message);
 			}
-			
-			// Read from both streams concurrently using async I/O
-			var stdout_stream = subprocess.get_stdout_pipe();
-			var stderr_stream = subprocess.get_stderr_pipe();
-			
-			// Read from both streams concurrently (accumulate output)
-			var stdout_output = yield this.read_stream_async(stdout_stream);
-			var stderr_output = yield this.read_stream_async(stderr_stream);
-			
-			// Wait for process to complete (async)
-			int exit_status = 0;
+
+			var stdout_stream = subprocess.get_stdout_pipe ();
+			var stderr_stream = subprocess.get_stderr_pipe ();
+			stdout_output = yield this.read_stream_async (stdout_stream);
+			stderr_output = yield this.read_stream_async (stderr_stream);
+
 			try {
-				if (!(yield subprocess.wait_async(null))) {
-					exit_status = subprocess.get_exit_status();
+				if (!(yield subprocess.wait_async (null))) {
+					exit_status = subprocess.get_exit_status ();
 				}
 			} catch (GLib.Error e) {
-				if (!subprocess.get_successful()) {
-					exit_status = subprocess.get_exit_status();
+				if (!subprocess.get_successful ()) {
+					exit_status = subprocess.get_exit_status ();
 				}
 				throw new GLib.IOError.FAILED("Failed to wait for process: " + e.message);
 			}
+#endif
 			
 			// Truncate outputs if they exceed max lines (50)
 			stdout_output = this.truncate_output(stdout_output, 50);
@@ -468,46 +495,40 @@ namespace OLLMtools.RunCommand
 			// Add truncation message (similar to codesearch tool format)
 			return truncated + "\n\n// ... (output truncated: showing first " + max_lines.to_string() + " of " + total_lines.to_string() + " lines, output too long) ...";
 		}
-		
+
+#if !G_OS_WIN32
 		/**
 		 * Async method to read from a stream and accumulate output.
 		 */
-		private async string read_stream_async(InputStream? stream)
+		private async string read_stream_async (InputStream? stream)
 		{
 			if (stream == null) {
 				return "";
 			}
-			
-			var data_input = new GLib.DataInputStream(stream);
+
+			var data_input = new GLib.DataInputStream (stream);
 			string output = "";
-			
+
 			try {
 				while (true) {
-					string? line = yield data_input.read_line_async(GLib.Priority.DEFAULT, null);
-					
+					string? line = yield data_input.read_line_async (GLib.Priority.DEFAULT, null);
+
 					if (line == null) {
 						break;
 					}
-					
-					// Add to output (accumulate for final message)
+
 					if (output != "") {
 						output += "\n";
 					}
 					output += line;
-					
-					// FUTURE: Streaming support - uncomment to enable real-time output
-					// if (this.current_tool_message != null) {
-					//     this.current_tool_message.content += line + "\n";
-					//     this.chat_call.client.tool_message(this.current_tool_message);
-					// }
 				}
 			} catch (GLib.Error e) {
-				// Stream closed or error - return what we have
 				return output;
 			}
-			
+
 			return output;
 		}
+#endif
 		
 		// FUTURE: Streaming support - uncomment these methods and fields to enable real-time output
 		// private OLLMchat.Message? current_tool_message = null;
