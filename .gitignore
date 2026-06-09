@@ -1,8 +1,6 @@
 build/
-build-linux-*/
-build-windows-*/
-dist-linux-*/
-dist-windows-*/
+build-*/
+dist-*/
 .sqgipkg/
 
 # valac / cc spill outside build/
