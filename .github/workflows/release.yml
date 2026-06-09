@@ -35,13 +35,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build pkg-config git file ca-certificates wget \
+            build-essential cmake ninja-build pkg-config git file ca-certificates wget curl \
             meson valac gobject-introspection devscripts debhelper \
             libglib2.0-dev libgirepository1.0-dev libffi-dev libcairo2-dev \
             libgee-0.8-dev libjson-glib-dev libsoup-3.0-dev libxml2-dev \
             libsqlite3-dev libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev \
             libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
-            libopenblas-dev liblapack-dev libfaiss-dev \
+            libopenblas-dev liblapack-dev \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user-static binfmt-support \
             mingw-w64 nsis squashfs-tools
 
@@ -63,6 +63,27 @@ jobs:
       - name: Build Windows installer
         working-directory: OLLMchat
         run: sqgipkg --target win-nsis --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
+
+      # Ubuntu 24.04 does not ship libfaiss-dev; install the current Debian amd64
+      # package (same approach as deploy-docs.yml) before the native deb build.
+      - name: Install libfaiss-dev from Debian
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y libblas-dev liblapack-dev libomp-dev
+          POOL="https://deb.debian.org/debian/pool/main/f/faiss"
+          deb=$(curl -fsSL "$POOL/" \
+            | grep -oE 'href="libfaiss-dev_[^"]+_amd64\.deb"' \
+            | sed 's/^href="//;s/"$//' \
+            | sort -V \
+            | tail -n1)
+          if [ -z "${deb}" ]; then
+            echo "Could not find libfaiss-dev_*_amd64.deb under ${POOL}" >&2
+            exit 1
+          fi
+          echo "Using Debian package: ${deb}"
+          curl -fsSL "$POOL/${deb}" -o /tmp/libfaiss-dev.deb
+          sudo apt-get install -y libfaiss1 || true
+          sudo dpkg -i /tmp/libfaiss-dev.deb || sudo apt-get install -f -y
 
       - name: Build Debian packages (amd64)
         working-directory: OLLMchat
