@@ -61,6 +61,7 @@ ocmarkdown_base_lib = library('ocmarkdown',
   sources: ocmarkdown_src,
   vala_header: 'ocmarkdown.h',
   vala_vapi: 'ocmarkdown-meson.vapi',  # Use different name so our custom_target can use 'ocmarkdown.vapi'
+  vala_gir: 'OCMarkdown-1.0.gir',
   build_rpath: lib_build_rpath,
   install: true
 )
@@ -109,14 +110,16 @@ ocmarkdown_vapi_only_dep = declare_dependency(
   sources: [ocmarkdown_vapi[0]]  # Include VAPI file to ensure it's built first, but no link_args
 )
 
-# GObject Introspection for ocmarkdown base library
-# Note: Namespace is now Markdown (not OLLMchat.Markdown)
-ocmarkdown_gir = gnome.generate_gir(ocmarkdown_base_lib,
-  namespace: 'OCMarkdown',
-  nsversion: '1.0',
-  identifier_prefix: 'Markdown',
-  symbol_prefix: 'markdown',
-  includes: ['GObject-2.0', 'Gio-2.0'],
+ocmarkdown_gir_file = meson.current_build_dir() / 'OCMarkdown-1.0.gir'
+custom_target('ocmarkdown-typelib',
+  output: 'OCMarkdown-1.0.typelib',
+  command: [g_ir_compiler, ocmarkdown_gir_file, '--output', '@OUTPUT@'],
+  depends: ocmarkdown_base_lib,
+  build_by_default: true,
   install: true,
-  fatal_warnings: false
+  install_dir: get_option('libdir') / 'girepository-1.0',
+)
+meson.add_install_script(
+  'sh', '-c',
+  'install -Dm644 "' + ocmarkdown_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OCMarkdown-1.0.gir"',
 )

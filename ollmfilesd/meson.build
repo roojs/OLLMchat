@@ -65,6 +65,7 @@ build_rpath = ':'.join([
 ollmfilesd_bin = executable('ollmfilesd',
   ollmfilesd_src,
   dependencies: ollmfilesd_deps,
+  link_with: [ollmchat_base_lib],
   include_directories: [
     include_directories('../libollmchat'),
     include_directories('../libollamaweb'),

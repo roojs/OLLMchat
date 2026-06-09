@@ -66,32 +66,26 @@ namespace OLLMapp
 				
 				var working_conn = config.working_connection();
 				if (working_conn == null) {
-					if (!(yield this.show_settings(
+					yield this.show_settings(
 						"No working connection found. Please check your connection settings.",
-						"connections"))) {
-						return false;
-					}
-					continue;  // Restart loop after settings dialog closes
+						"connections");
+					return false;
 				}
 				
 				// Found a working connection - now ensure default model is set before creating history manager
 				if (!(yield this.initialize_model(config, working_conn))) {
-					if (!(yield this.show_settings(
+					yield this.show_settings(
 						"No chat model found (only embedding models available). Please add or select a model.",
-						"models"))) {
-						return false;
-					}
-					continue;  // Restart loop after settings dialog closes
+						"models");
+					return false;
 				}
 				
 				// Ensure all required models are available (early return on failure)
 				if (!(yield this.ensure_required_models(config))) {
-					if (!(yield this.show_settings(
+					yield this.show_settings(
 						"Required models are not available. Please ensure models are downloaded.",
-						"tools"))) {
-						return false;
-					}
-					continue;  // Restart loop after settings dialog closes
+						"tools");
+					return false;
 				}
 				
 				this.window.history_manager = new OLLMchat.History.Manager(this.window.app);
@@ -110,12 +104,10 @@ namespace OLLMapp
 				} catch (GLib.Error e) {
 					GLib.warning("Initialize.vala: Model verification failed: %s. Fixing default model.", e.message);
 					if (!(yield this.initialize_model(config, working_conn))) {
-						if (!(yield this.show_settings(
+						yield this.show_settings(
 							"No chat model found (only embedding models available). Please add or select a model.",
-							"models"))) {
-							return false;
-						}
-						continue;
+							"models");
+						return false;
 					}
 				}
 				
@@ -345,7 +337,22 @@ namespace OLLMapp
 		 */
 		private async bool show_settings(string error_message, string settings_page)
 		{
-			var response = yield this.window.show_connection_error_dialog(error_message);
+			string dialog_title;
+			switch (settings_page) {
+				case "connections":
+					dialog_title = "Connection Failed";
+					break;
+				case "models":
+					dialog_title = "No Chat Model";
+					break;
+				default:
+					dialog_title = "Required Models Unavailable";
+					break;
+			}
+			var response = yield this.window.show_connection_error_dialog(
+				error_message,
+				dialog_title
+			);
 			
 			if (response != "settings") {
 				// User closed dialog without configuring - quit application

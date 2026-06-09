@@ -42,10 +42,9 @@
             "repo": "https://github.com/facebookresearch/faiss.git",
             "dir": ".sqgipkg/native/faiss",
             "ref": "v1.8.0",
-            "update": true,
+            "update": false,
             "shallow": false,
             "build": [
-              "cmake -E rm -rf build-linux-x86_64",
               "cmake -S . -B build-linux-x86_64 -G Ninja ${SQGI_LINUX_CMAKE_TOOLCHAIN:+-DCMAKE_TOOLCHAIN_FILE=\"$SQGI_LINUX_CMAKE_TOOLCHAIN\"} -DFAISS_ENABLE_GPU=OFF -DFAISS_ENABLE_PYTHON=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DBLA_VENDOR=OpenBLAS -DBLAS_LIBRARIES=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/openblas-pthread/libopenblas.so\" -DLAPACK_LIBRARIES=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/openblas-pthread/liblapack.so;$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/openblas-pthread/libblas.so\" -DCMAKE_CXX_FLAGS=\"-I$SQGI_LINUX_SYSROOT/usr/include/$SQGI_LINUX_TRIPLET/openblas-pthread\" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr",
               "cmake --build build-linux-x86_64 --target faiss"
             ],
@@ -58,7 +57,7 @@
             "name": "ollmchat",
             "dir": ".",
             "build": [
-              "PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --wipe --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"} || PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"}",
+              "PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --wipe --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false -Dsysroot=\"$SQGI_LINUX_SYSROOT\" -Dsysroot_triplet=\"$SQGI_LINUX_TRIPLET\" ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"} || PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false -Dsysroot=\"$SQGI_LINUX_SYSROOT\" -Dsysroot_triplet=\"$SQGI_LINUX_TRIPLET\" ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"}",
               "meson compile -C \"$SQGI_LINUX_BUILD_DIR\" ./ollmapp/ollmchat:executable"
             ],
             "libraries": [
@@ -112,10 +111,9 @@
             "repo": "https://github.com/facebookresearch/faiss.git",
             "dir": ".sqgipkg/native/faiss",
             "ref": "v1.8.0",
-            "update": true,
+            "update": false,
             "shallow": false,
             "build": [
-              "cmake -E rm -rf build-linux-aarch64",
               "cmake -S . -B build-linux-aarch64 -G Ninja ${SQGI_LINUX_CMAKE_TOOLCHAIN:+-DCMAKE_TOOLCHAIN_FILE=\"$SQGI_LINUX_CMAKE_TOOLCHAIN\"} -DFAISS_ENABLE_GPU=OFF -DFAISS_ENABLE_PYTHON=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DBLA_VENDOR=OpenBLAS -DBLAS_LIBRARIES=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/openblas-pthread/libopenblas.so\" -DLAPACK_LIBRARIES=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/openblas-pthread/liblapack.so;$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/openblas-pthread/libblas.so\" -DCMAKE_CXX_FLAGS=\"-I$SQGI_LINUX_SYSROOT/usr/include/$SQGI_LINUX_TRIPLET/openblas-pthread\" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr",
               "cmake --build build-linux-aarch64 --target faiss"
             ],
@@ -128,7 +126,7 @@
             "name": "ollmchat",
             "dir": ".",
             "build": [
-              "PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --wipe --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"} || PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"}",
+              "PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --wipe --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false -Dsysroot=\"$SQGI_LINUX_SYSROOT\" -Dsysroot_triplet=\"$SQGI_LINUX_TRIPLET\" ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"} || PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false -Dsysroot=\"$SQGI_LINUX_SYSROOT\" -Dsysroot_triplet=\"$SQGI_LINUX_TRIPLET\" ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"}",
               "meson compile -C \"$SQGI_LINUX_BUILD_DIR\" ./ollmapp/ollmchat:executable"
             ],
             "libraries": [
@@ -153,6 +151,16 @@
     "msys2_prefix": "mingw64",
     "gdk_backend": "win32",
     "build_dir": "build-windows-x86_64",
+    "files": [
+      "scripts/windows/ollmchat.bat=ollmchat.bat",
+      "scripts/windows/OLLMchat.ps1=OLLMchat.ps1"
+    ],
+    "files": [
+      {
+        "path": "pixmaps/scalable/apps/org.roojs.ollmchat.svg",
+        "dest": "share/icons/hicolor/scalable/apps/org.roojs.ollmchat.svg"
+      }
+    ],
     "packages": [
       "mingw-w64-x86_64-vala",
       "mingw-w64-x86_64-gcc-libs",
@@ -180,13 +188,12 @@
         "repo": "https://github.com/facebookresearch/faiss.git",
         "dir": ".sqgipkg/native/faiss",
         "ref": "v1.8.0",
-        "update": true,
+        "update": false,
         "shallow": false,
         "build": [
-          "cmake -E rm -rf build-windows-x86_64",
           "grep -q 'MinGW aligned allocation shim' faiss/impl/platform_macros.h || perl -0pi -e 's/#include <cstdio>/#include <cstdio>\\n#if defined(_WIN32) \\&\\& !defined(_MSC_VER)\\n\\/\\/ MinGW aligned allocation shim.\\n#include <cerrno>\\n#include <malloc.h>\\n#define posix_memalign(p, a, s) (((*(p)) = _aligned_malloc((s), (a))), *(p) ? 0 : errno)\\n#define posix_memalign_free _aligned_free\\n#endif/' faiss/impl/platform_macros.h",
-          "perl -0pi -e 's/#define posix_memalign_free free/#ifndef posix_memalign_free\\n#define posix_memalign_free free\\n#endif/' faiss/impl/platform_macros.h",
-          "perl -0pi -e 's/#ifndef _MSC_VER/#ifndef _WIN32/g; s/#endif \\/\\/ !_MSC_VER/#endif \\/\\/ !_WIN32/g' faiss/invlists/InvertedListsIOHook.cpp",
+          "grep -q 'ifndef posix_memalign_free' faiss/impl/platform_macros.h || perl -0pi -e 's/#define posix_memalign_free free/#ifndef posix_memalign_free\\n#define posix_memalign_free free\\n#endif/' faiss/impl/platform_macros.h",
+          "grep -q '#ifndef _WIN32' faiss/invlists/InvertedListsIOHook.cpp || perl -0pi -e 's/#ifndef _MSC_VER/#ifndef _WIN32/g; s/#endif \\/\\/ !_MSC_VER/#endif \\/\\/ !_WIN32/g' faiss/invlists/InvertedListsIOHook.cpp",
           "cmake -S . -B build-windows-x86_64 -G Ninja -DCMAKE_TOOLCHAIN_FILE=\"$SQGI_WIN_CMAKE_TOOLCHAIN\" -DFAISS_ENABLE_GPU=OFF -DFAISS_ENABLE_PYTHON=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DBLA_VENDOR=OpenBLAS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\"$SQGI_WINDOWS_PREFIX\"",
           "cmake --build build-windows-x86_64 --target faiss"
         ],
@@ -201,7 +208,7 @@
         "name": "ollmchat",
         "dir": ".",
         "build": [
-          "meson setup \"$SQGI_WINDOWS_BUILD_DIR\" --wipe --prefix \"$SQGI_WINDOWS_PREFIX\" --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false --cross-file \"$SQGI_MESON_CROSS_FILE\" || meson setup \"$SQGI_WINDOWS_BUILD_DIR\" --prefix \"$SQGI_WINDOWS_PREFIX\" --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false --cross-file \"$SQGI_MESON_CROSS_FILE\"",
+          "meson setup \"$SQGI_WINDOWS_BUILD_DIR\" --prefix \"$SQGI_WINDOWS_PREFIX\" --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false -Dwindows_prefix=\"$SQGI_WINDOWS_SYSROOT_PREFIX\" --cross-file \"$SQGI_MESON_CROSS_FILE\" || meson setup \"$SQGI_WINDOWS_BUILD_DIR\" --wipe --prefix \"$SQGI_WINDOWS_PREFIX\" --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false -Dwindows_prefix=\"$SQGI_WINDOWS_SYSROOT_PREFIX\" --cross-file \"$SQGI_MESON_CROSS_FILE\"",
           "meson compile -C \"$SQGI_WINDOWS_BUILD_DIR\" ./ollmapp/ollmchat:executable"
         ],
         "libraries": [

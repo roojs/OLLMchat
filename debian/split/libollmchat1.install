@@ -1,0 +1,3 @@
+usr/lib/*/libollmchat.so
+usr/share/gir-1.0/OLLMchat-1.0.gir
+usr/lib/*/girepository-1.0/OLLMchat-1.0.typelib

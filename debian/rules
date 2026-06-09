@@ -17,3 +17,6 @@ override_dh_auto_install:
 
 override_dh_auto_test:
 	# Tests can be run here if needed
+
+override_dh_shlibdeps:
+	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info
