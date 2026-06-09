@@ -168,7 +168,7 @@ ocfiles_vapi = custom_target('ocfiles-vapi',
     '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
     '--vapidir', meson.current_source_dir() / '../../vapi',
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
-  ] + ocfiles_vapi_gen_pkgs + strcasestr_vala_args + [
+  ] + sqgi_vala_args + ocfiles_vapi_gen_pkgs + strcasestr_vala_args + [
     '--library', 'ocfiles',
     '--header', meson.current_build_dir() / 'ocfiles.h',  # Use header from library
     '--vapi', '@OUTPUT@',

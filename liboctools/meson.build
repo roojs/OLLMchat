@@ -120,6 +120,7 @@ octools_vapi = custom_target('octools-vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
+  ] + sqgi_vala_args + [
     '--pkg', 'posix',
     '--pkg', 'json-glib-1.0',
     '--pkg', 'libsoup-3.0',

@@ -78,6 +78,7 @@ ocmarkdown_vapi = custom_target('ocmarkdown-vapi',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_source_dir() / '../../vapi',
     '--vapidir', meson.current_build_dir(),
+  ] + sqgi_vala_args + [
     '--pkg', 'posix',
     '--pkg', 'libxml-2.0',
     '--pkg', 'libsoup-3.0',

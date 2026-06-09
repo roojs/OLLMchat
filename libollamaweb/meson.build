@@ -46,6 +46,7 @@ ollamaweb_vapi = custom_target('ollamaweb-vapi',
     '--target-glib=auto',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_build_dir(),
+  ] + sqgi_vala_args + [
     '--pkg', 'posix',
     '--pkg', 'libxml-2.0',
     '--pkg', 'libsoup-3.0',

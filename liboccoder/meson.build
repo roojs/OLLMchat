@@ -115,7 +115,6 @@ occoder_vapi = custom_target('occoder-vapi',
     valac_exe,
     '-C', '--debug',
     '--target-glib=auto',
-  ] + sqgi_vala_args + [
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_source_dir() / '../vapi',  # Source VAPIs first (fiass.vapi, tree-sitter.vapi)
     '--vapidir', meson.current_source_dir() / '../../vapi',
@@ -127,6 +126,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory for libgit2-glib-1.0 (last, so local takes priority)
+  ] + sqgi_vala_args + [
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
     '--pkg', 'ocsqlite',

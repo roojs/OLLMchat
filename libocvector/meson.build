@@ -230,6 +230,7 @@ ocvector_vapi = custom_target('ocvector-vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
+  ] + sqgi_vala_args + [
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
     '--pkg', 'json-glib-1.0',

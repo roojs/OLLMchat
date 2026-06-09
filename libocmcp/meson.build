@@ -77,6 +77,7 @@ ocmcp_vapi = custom_target('ocmcp-vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', '/usr/share/vala/vapi',
+  ] + sqgi_vala_args + [
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
     '--pkg', 'json-glib-1.0',

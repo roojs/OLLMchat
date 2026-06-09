@@ -55,6 +55,7 @@ ocsqlite_vapi = custom_target('ocsqlite-vapi',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_source_dir() / '../../vapi',
     '--vapidir', meson.current_build_dir(),
+  ] + sqgi_vala_args + [
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
     '--pkg', 'gobject-2.0',
