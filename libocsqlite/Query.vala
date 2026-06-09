@@ -174,7 +174,7 @@ namespace SQ {
 		 * Inserts a new object into the database table.
 		 * 
 		 * This method inserts columns that map to writable GObject properties
-		 * on {@code newer} (except 'id'). Schema columns with no matching
+		 * on ''newer'' (except ''id''). Schema columns with no matching
 		 * property are omitted so SQLite applies column DEFAULTs. After
 		 * insertion, the object's 'id' property is set to the new row ID.
 		 * 

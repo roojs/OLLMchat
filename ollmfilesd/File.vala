@@ -35,7 +35,7 @@ namespace OLLMfilesd
 	 * Daemon {@link File} — scan, disk I/O, and {@code File.*} RPC.
 	 * Editor buffers and Gtk helpers live on {@code libocfiles/V2/File.vala}.
 	 */
-	public class File : FileBase
+	public class File : FileBase, Json.Serializable
 	{
 		/**
 		 * Constructor.
@@ -54,6 +54,43 @@ namespace OLLMfilesd
 		public signal void rpc_delete(OLLMrpc.Request request);
 		public signal void rpc_changed_check(OLLMrpc.Request request);
 
+		public unowned ParamSpec? find_property(string name)
+		{
+			return this.get_class().find_property(name);
+		}
+
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
+		{
+			base.set_property(pspec.get_name(), value);
+		}
+
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
+		{
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
+			return val;
+		}
+
+		/** Omit graph edges that recurse during json-glib wire serialize. */
+		public override Json.Node serialize_property(
+			string property_name,
+			Value value,
+			ParamSpec pspec
+		) {
+			switch (property_name) {
+				case "manager":
+				case "buffer":
+				case "parent":
+					return null;
+				default:
+					return default_serialize_property(
+						property_name,
+						value,
+						pspec
+					);
+			}
+		}
+
 		construct
 		{
 			this.rpc_read.connect((request) => {
@@ -64,6 +101,7 @@ namespace OLLMfilesd
 				row.copy_from(file, {"manager", "buffer", "parent"});
 				row.last_modified = file.mtime_on_disk();
 				request.reply(new OLLMrpc.Response() {
+					id = request.id,
 					result = row,
 					result_type = "File"
 				});
@@ -87,6 +125,7 @@ namespace OLLMfilesd
 					row.copy_from(existing, {"manager", "buffer", "parent"});
 					row.last_modified = existing.mtime_on_disk();
 					request.reply(new OLLMrpc.Response() {
+						id = request.id,
 						result = row,
 						result_type = "File"
 					});
@@ -101,11 +140,14 @@ namespace OLLMfilesd
 					p.path,
 					(obj, res) => {
 						this.manager.convert_fake_file_to_real.end(res);
-						var real = this.manager.get_file_from_active_project(p.path);
+						var real = this.manager.get_file_from_active_project(
+							p.path
+						);
 						var row = new File(this.manager);
 						row.copy_from(real, {"manager", "buffer", "parent"});
 						row.last_modified = real.mtime_on_disk();
 						request.reply(new OLLMrpc.Response() {
+							id = request.id,
 							result = row,
 							result_type = "File"
 						});

@@ -34,7 +34,12 @@ prepare_rpc_script() {
         echo "Error: RPC_PROJECT_PATH not set (call setup_rpc_fixture first)" >&2
         exit 1
     fi
-    sed "s|__PROJECT_PATH__|${RPC_PROJECT_PATH}|g" "$template" >"$dest"
+    sed \
+        -e "s|__PROJECT_PATH__|${RPC_PROJECT_PATH}|g" \
+        -e "s|__HELLO_PATH__|${RPC_PROJECT_PATH}/hello.txt|g" \
+        -e "s|__NEW_FILE_PATH__|${RPC_PROJECT_PATH}/src/new.txt|g" \
+        -e "s|__REGISTER_PATH__|${RPC_PROJECT_PATH}/pending-register.txt|g" \
+        "$template" >"$dest"
 }
 
 # Run --interactive --rpc-script; capture stdout (NDJSON) and stderr.
