@@ -323,11 +323,10 @@ namespace OLLMapp
 				var config = new OLLMchat.Settings.Config2();
 
 				var app = this.app as OllmchatApplication;
+				config.connections.set(this.bootstrap_dialog.verified_connection.url,
+					this.bootstrap_dialog.verified_connection);
 				app.tools_registry.setup_config_defaults(config);
 				app.vector_registry.setup_config_defaults(config);
-
-				config.connections.set(this.bootstrap_dialog.verified_connection.url, 
-					this.bootstrap_dialog.verified_connection);
 				
 				// Create empty ModelUsage objects for default_model and title_model
 				config.usage.set("default_model", new OLLMchat.Settings.ModelUsage() {
@@ -806,15 +805,18 @@ namespace OLLMapp
 		}
 		
 		/**
-		 * Shows a warning dialog when connection fails, with option to configure settings.
-		 * 
+		 * Shows a warning dialog when initialization fails, with option to configure settings.
+		 *
 		 * @param error_message The error message to display
+		 * @param dialog_title Alert title (e.g. connection, chat model, or required-models failure)
 		 * @return The response string ("settings" or "cancel")
 		 */
-		internal async string show_connection_error_dialog(string error_message)
-		{
+		internal async string show_connection_error_dialog(
+			string error_message,
+			string dialog_title
+		) {
 			var alert = new Adw.AlertDialog(
-				"Connection Failed",
+				dialog_title,
 				error_message + "\n\nPlease check your connection settings and try again."
 			);
 			alert.add_response("cancel", "Close");

@@ -10,6 +10,16 @@ project('ollmchat', 'vala', 'c', 'cpp',
 )
 
 gnome = import('gnome')
+fs = import('fs')
+g_ir_compiler = find_program('g-ir-compiler')
+gir_typelib_script = meson.project_source_root() / 'scripts/compile-gir-typelib.sh'
+gir_fix_sed = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
+if not fs.exists(gir_typelib_script)
+  error('GIR typelib helper missing (add to git): ' + gir_typelib_script)
+endif
+if not fs.exists(gir_fix_sed)
+  error('GIR name fix-up missing (add to git): ' + gir_fix_sed)
+endif
 
 valac = meson.get_compiler('vala')
 valac_exe = find_program('valac')
@@ -31,24 +41,26 @@ add_project_arguments(['--vapidir', meson.current_source_dir() / '../vapi'], lan
 add_project_arguments(['--vapidir', meson.current_build_dir()], language: 'vala')  # Add build dir for generated VAPIs
 add_project_arguments(['--target-glib=auto'], language: 'vala')
 
+# Vala #if G_OS_WIN32 is not set automatically when cross-compiling on Linux.
+if host_machine.system() == 'windows'
+  add_project_arguments(['--define=G_OS_WIN32'], language: 'vala')
+endif
+
+subdir('config')
+
 sqgi_vala_args = []
-
-linux_sysroot = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_SYSROOT"', check: false).stdout().strip()
-if linux_sysroot != ''
+if bundle_sysroot != ''
   sqgi_vala_args += [
-    '--vapidir', linux_sysroot / 'usr' / 'share' / 'vala' / 'vapi',
-    '--girdir', linux_sysroot / 'usr' / 'share' / 'gir-1.0',
+    '--vapidir', bundle_sysroot / 'usr' / 'share' / 'vala' / 'vapi',
+    '--girdir', bundle_sysroot / 'usr' / 'share' / 'gir-1.0',
   ]
 endif
-
-windows_sysroot_prefix = run_command('sh', '-c', 'printf %s "$SQGI_WINDOWS_SYSROOT_PREFIX"', check: false).stdout().strip()
-if windows_sysroot_prefix != ''
+if bundle_windows_prefix != ''
   sqgi_vala_args += [
-    '--vapidir', windows_sysroot_prefix / 'share' / 'vala' / 'vapi',
-    '--girdir', windows_sysroot_prefix / 'share' / 'gir-1.0',
+    '--vapidir', bundle_windows_prefix / 'share' / 'vala' / 'vapi',
+    '--girdir', bundle_windows_prefix / 'share' / 'gir-1.0',
   ]
 endif
-
 if sqgi_vala_args.length() > 0
   add_project_arguments(sqgi_vala_args, language: 'vala')
 endif

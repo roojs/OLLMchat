@@ -37,16 +37,27 @@ namespace OLLMvector.Tool
 		 */
 		public override void setup_tool_config_default(OLLMchat.Settings.Config2 config)
 		{
-			if (config.tools.has_key("codebase_search")) {
+			var default_connection = config.default_connection();
+			if (!config.tools.has_key("codebase_search")) {
+				var tool_config = new CodebaseSearchToolConfig();
+				if (default_connection != null) {
+					tool_config.setup_defaults(default_connection.url);
+				}
+				config.tools.set("codebase_search", tool_config);
 				return;
 			}
-			
-			var tool_config = new CodebaseSearchToolConfig();
-			var default_connection = config.default_connection();
-			if (default_connection != null) {
-				tool_config.setup_defaults(default_connection.url);
+			if (default_connection == null) {
+				return;
 			}
-			config.tools.set("codebase_search", tool_config);
+			var tool_config = config.tools.get("codebase_search") as CodebaseSearchToolConfig;
+			if (tool_config.embed.connection != ""
+				&& tool_config.embed.model != ""
+				&& tool_config.analysis.connection != ""
+				&& tool_config.analysis.model != "") {
+				return;
+			}
+			tool_config.setup_defaults(default_connection.url);
+			config.save();
 		}
 		
 		public override string name { get { return "codebase_search"; } }

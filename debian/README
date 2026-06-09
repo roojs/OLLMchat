@@ -3,33 +3,75 @@ Debian Package Building Instructions
 
 This directory contains the Debian packaging files for OLLMchat.
 
-Package Structure
+Packaging modes
+---------------
+
+Two layouts are maintained:
+
+### Monolithic (default)
+
+Builds a single **ollmchat** .deb containing the application, all shared
+libraries, tools, and introspection data. Use this for GitHub release
+downloads until an apt repository is available.
+
+```bash
+./debian/use-monolithic-package.sh   # already the default in git
+dpkg-buildpackage -us -uc -b
+```
+
+### Split packages (for apt repository)
+
+Builds separate runtime, -dev, tools, and doc packages. Switch to this
+when publishing to an apt repository.
+
+```bash
+./debian/use-split-packages.sh
+dpkg-buildpackage -us -uc -b
+./debian/use-monolithic-package.sh   # switch back when done
+```
+
+Canonical definitions live in `debian/monolithic/` and `debian/split/`.
+The switch scripts copy the chosen layout into the active `debian/` files.
+
+Split package layout
+--------------------
+
+When using split packages, the source builds:
+
+### Core / data libraries
+1. **libocsqlite1** / **libocsqlite-dev** — SQLite helpers (libocsqlite.so)
+2. **libocfiles1** / **libocfiles-dev** — File and project management (libocfiles.so)
+3. **libocrpc1** / **libocrpc-dev** — JSON-RPC wire types (libocrpc.so)
+4. **libollamaweb1** / **libollamaweb-dev** — Ollama HTTP client (libollamaweb.so)
+
+### Markdown libraries
+5. **libocmarkdown1** / **libocmarkdown-dev** — Markdown parsing (libocmarkdown.so)
+6. **libocmarkdowngtk1** / **libocmarkdowngtk-dev** — GTK markdown rendering (libocmarkdowngtk.so)
+
+### LLM stack libraries
+7. **libollmchat1** / **libollmchat-dev** — LLM API access (libollmchat.so)
+8. **libollmchatgtk1** / **libollmchatgtk-dev** — GTK chat widgets (libollmchatgtk.so)
+9. **liboctools1** / **liboctools-dev** — LLM tool implementations (liboctools.so)
+10. **libocvector1** / **libocvector-dev** — Vector search (libocvector.so)
+11. **liboccoder1** / **liboccoder-dev** — Code editor / agent UI (liboccoder.so)
+12. **libocmcp1** / **libocmcp-dev** — MCP integration (libocmcp.so)
+
+### Application and tools
+13. **ollmchat** — Main application and ollmfilesd daemon
+14. **ollmchat-tools** — Command-line tools (oc-md2html, oc-html2md)
+15. **ollmchat-doc** — Test executables and documentation
+
+Building packages
 -----------------
-
-The source package builds the following binary packages:
-
-1. **libocmarkdown1** - Base markdown parsing library (libocmarkdown.so)
-2. **libocmarkdown-dev** - Development files for libocmarkdown
-3. **libocmarkdowngtk1** - GTK markdown rendering library (libocmarkdowngtk.so)
-4. **libocmarkdowngtk-dev** - Development files for libocmarkdowngtk
-5. **libollmchat1** - Base LLM library (libollmchat.so), GTK widgets (libollmchatgtk.so), and SQLite library (libocsqlite.so)
-6. **libollmchat-dev** - Development files for libollmchat, libollmchatgtk, and libocsqlite
-7. **ollmchat** - Main application executable
-8. **ollmchat-tools** - Command-line tools (oc-md2html, oc-html2md)
-9. **ollmchat-doc** - Test executables (oc-test-cli, oc-markdown-test)
-
-Building Packages
-------------------
-
-To build the Debian packages:
 
 1. Install build dependencies:
    ```bash
    sudo apt-get install build-essential devscripts debhelper meson ninja-build \
-     pkg-config valac libgee-0.8-dev libglib2.0-dev libgobject-2.0-dev \
-     libgio-2.0-dev libjson-glib-dev libsoup-3.0-dev libxml2-dev libsqlite3-dev \
+     pkg-config valac libgee-0.8-dev libglib2.0-dev libjson-glib-dev \
+     libsoup-3.0-dev libxml2-dev libsqlite3-dev \
      libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev gobject-introspection \
-     libgirepository1.0-dev
+     libgirepository1.0-dev libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
+     libopenblas-dev liblapack-dev libfaiss-dev
    ```
 
 2. Build the packages:
@@ -37,14 +79,9 @@ To build the Debian packages:
    dpkg-buildpackage -us -uc -b
    ```
 
-   Or for a source package:
-   ```bash
-   dpkg-buildpackage -us -uc -S
-   ```
-
 3. The resulting .deb files will be in the parent directory.
 
-Install Locations
+Install locations
 -----------------
 
 - Libraries: /usr/lib/
@@ -54,4 +91,4 @@ Install Locations
 - Typelib files: /usr/lib/*/girepository-1.0/
 - Application: /usr/bin/ (ollmchat)
 - Tools: /usr/bin/ (oc-md2html, oc-html2md)
-- Test executables: /usr/share/doc/ollmchat/ (oc-test-*)
+- Test executables: /usr/share/doc/ollmchat/ (oc-test-*, split mode only)

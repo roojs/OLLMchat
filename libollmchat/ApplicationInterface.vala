@@ -249,28 +249,8 @@ namespace OLLMchat
 				);
 				var log_file_path = GLib.Path.build_filename(log_dir, app_id + ".debug.log");
 
-				// Try to create directory if it doesn't exist (simple recursive approach)
-				var parts = log_dir.split("/");
-				var current_path = "";
-				foreach (var part in parts) {
-					if (part == "") {
-						current_path = "/";
-						continue;
-					}
-					if (current_path == "") {
-						current_path = part;
-					} else {
-						current_path = current_path + "/" + part;
-					}
-					// Try to create directory (ignore errors if it already exists)
-					try {
-						GLib.DirUtils.create(current_path, 0755);
-					} catch (GLib.FileError e) {
-						// Ignore if directory already exists
-						if (e.code != GLib.FileError.EXIST) {
-							// For other errors, continue anyway - file open might still work
-						}
-					}
+				if (!GLib.FileUtils.test(log_dir, GLib.FileTest.IS_DIR)) {
+					GLib.DirUtils.create_with_parents(log_dir, 0755);
 				}
 
 				// Open file in write mode (truncates existing file) using FileStream (doesn't require GIO initialization)

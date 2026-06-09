@@ -1,0 +1,3 @@
+usr/lib/*/libollmchatgtk.so
+usr/share/gir-1.0/OLLMchatGtk-1.0.gir
+usr/lib/*/girepository-1.0/OLLMchatGtk-1.0.typelib

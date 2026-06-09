@@ -1,8 +1,8 @@
 name: Release
 
-# Builds Linux AppImages (x86_64 + aarch64), Debian packages (amd64), and the
-# Windows installer with sqgipkg, then publishes them as release assets for tags
-# like `v1.0.0`.
+# Builds Debian packages (amd64) first for fast feedback, then Linux AppImages
+# (x86_64 + aarch64) and the Windows installer with sqgipkg, and publishes
+# release assets for tags like `v1.0.0`.
 
 on:
   push:
@@ -25,13 +25,7 @@ jobs:
         with:
           path: OLLMchat
 
-      - name: Checkout sqgi (runtime + sqgipkg)
-        uses: actions/checkout@v4
-        with:
-          repository: supercamel/sqgi
-          path: sqgi
-
-      - name: Install build dependencies
+      - name: Install Debian build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -41,28 +35,7 @@ jobs:
             libgee-0.8-dev libjson-glib-dev libsoup-3.0-dev libxml2-dev \
             libsqlite3-dev libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev \
             libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
-            libopenblas-dev liblapack-dev \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user-static binfmt-support \
-            mingw-w64 nsis squashfs-tools
-
-      - name: Build and install sqgi
-        run: |
-          cmake -S sqgi -B sqgi/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSQ_ENABLE_JIT=ON
-          cmake --build sqgi/build
-          sudo cmake --install sqgi/build --prefix /usr/local
-          sudo ldconfig
-
-      - name: Build Linux x86_64 AppImage
-        working-directory: OLLMchat
-        run: sqgipkg --target appimage --appimage-arch x86_64 --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
-
-      - name: Build Linux aarch64 AppImage
-        working-directory: OLLMchat
-        run: sqgipkg --target appimage --appimage-arch aarch64 --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
-
-      - name: Build Windows installer
-        working-directory: OLLMchat
-        run: sqgipkg --target win-nsis --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
+            libopenblas-dev liblapack-dev
 
       # Ubuntu 24.04 does not ship libfaiss-dev; install the current Debian amd64
       # package (same approach as deploy-docs.yml) before the native deb build.
@@ -98,6 +71,37 @@ jobs:
           fi
           dpkg-buildpackage -us -uc -b
 
+      - name: Checkout sqgi (runtime + sqgipkg)
+        uses: actions/checkout@v4
+        with:
+          repository: supercamel/sqgi
+          path: sqgi
+
+      - name: Install AppImage and Windows build dependencies
+        run: |
+          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user-static binfmt-support \
+            mingw-w64 nsis squashfs-tools
+
+      - name: Build and install sqgi
+        run: |
+          cmake -S sqgi -B sqgi/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSQ_ENABLE_JIT=ON
+          cmake --build sqgi/build
+          sudo cmake --install sqgi/build --prefix /usr/local
+          sudo ldconfig
+
+      - name: Build Linux x86_64 AppImage
+        working-directory: OLLMchat
+        run: sqgipkg --target appimage --appimage-arch x86_64 --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
+
+      - name: Build Linux aarch64 AppImage
+        working-directory: OLLMchat
+        run: sqgipkg --target appimage --appimage-arch aarch64 --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
+
+      - name: Build Windows installer
+        working-directory: OLLMchat
+        run: sqgipkg --target win-nsis --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
+
       - name: Collect artifacts
         working-directory: OLLMchat
         run: |
@@ -105,7 +109,7 @@ jobs:
           cp dist-linux-x86_64/OLLMchat.AppImage artifacts/OLLMchat-x86_64.AppImage
           cp dist-linux-aarch64/OLLMchat.AppImage artifacts/OLLMchat-aarch64.AppImage
           cp dist-windows-x86_64/OLLMchat-Setup.exe artifacts/OLLMchat-Setup.exe
-          cp ../*.deb artifacts/
+          cp ../ollmchat_[0-9]*.deb artifacts/
           ls -lh artifacts
 
       - name: Upload build artifacts

@@ -70,6 +70,7 @@ occoder_base_lib = library('occoder',
   sources: occoder_src,
   vala_header: 'occoder.h',
   vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
+  vala_gir: 'OLLMcoder-1.0.gir',
   build_rpath: lib_build_rpath,
   include_directories: [
     include_directories('..' / 'libollmchat'),
@@ -102,7 +103,11 @@ occoder_base_lib = library('occoder',
     '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--vapidir', '/usr/share/vala/vapi'  # System VAPI directory for libgit2-glib-1.0 (last, so local takes priority)
+    '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory for libgit2-glib-1.0 (last, so local takes priority)
+    '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--girdir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
   ],
   install: true
 )
@@ -161,22 +166,32 @@ occoder_vapi = custom_target('occoder-vapi',
   install_dir: get_option('datadir') / 'vala' / 'vapi'
 )
 
-# GObject Introspection for occoder library
-occoder_gir = gnome.generate_gir(occoder_base_lib,
-  namespace: 'OLLMcoder',
-  nsversion: '1.0',
-  identifier_prefix: 'OLLMcoder',
-  symbol_prefix: 'ollmcoder',
-  link_with: [ocsqlite_base_lib, ocfiles_base_lib, ollmchat_base_lib],
-  dependencies: [dependency('sqlite3')],
-  extra_args: [
-    '--extra-library=ocsqlite',
-    '--extra-library=ocfiles',
-    '--accept-unprefixed'
+occoder_gir_file = meson.current_build_dir() / 'OLLMcoder-1.0.gir'
+occoder_gir_fixed = meson.current_build_dir() / 'OLLMcoder-1.0.fixed.gir'
+fix_gir_dep_names = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
+custom_target('occoder-typelib',
+  output: 'OLLMcoder-1.0.typelib',
+  command: [
+    find_program('sh'),
+    meson.project_source_root() / 'scripts/compile-gir-typelib.sh',
+    occoder_gir_file,
+    occoder_gir_fixed,
+    '@OUTPUT@',
+    fix_gir_dep_names,
+    '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--includedir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--includedir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--includedir', '/usr/share/gir-1.0',
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', ocsqlite_gir[0], ocfiles_gir[0]],  # Temporarily removed ollmchat_gir - only needed for CodebaseSearchTool
+  depends: occoder_base_lib,
+  build_by_default: true,
   install: true,
-  fatal_warnings: false
+  install_dir: get_option('libdir') / 'girepository-1.0',
+)
+meson.add_install_script(
+  'sh', '-c',
+  'install -Dm644 "' + occoder_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMcoder-1.0.gir"',
 )
 
 # Create dependency for other libraries to use

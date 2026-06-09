@@ -1,0 +1,68 @@
+name: Track unapplied PRs
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  create-unapplied-issue:
+    if: >
+      github.event.pull_request.merged == false &&
+      startsWith(github.event.pull_request.head.ref, 'cursor/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create tracking issue
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            const title = `Unapplied PR: #${pr.number} ${pr.title}`;
+
+            const body = [
+              `## Unapplied PR tracking`,
+              ``,
+              `PR: #${pr.number}`,
+              `PR URL: ${pr.html_url}`,
+              `Branch: \`${pr.head.ref}\``,
+              `Head SHA: \`${pr.head.sha}\``,
+              `Status: Not applied`,
+              ``,
+              `## Why this issue exists`,
+              ``,
+              `This GitHub repository is a mirror. Mirror updates can delete PR branches, which closes Cursor-agent PRs before the work is applied to the canonical repository.`,
+              ``,
+              `## Recovery`,
+              ``,
+              `- Use GitHub's **Restore branch** button on PR #${pr.number}, if available.`,
+              `- Or recreate the branch from the PR ref/commits.`,
+              `- Reopen or recreate a PR after the work is replayed.`,
+              ``,
+              `## Done when`,
+              ``,
+              `- The work is applied to the canonical repository, or`,
+              `- A replacement PR is merged/applied, and`,
+              `- This issue is manually closed.`,
+            ].join('\n');
+
+            const existing = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue in:title "Unapplied PR: #${pr.number}"`
+            });
+            if (existing.data.total_count > 0) {
+              core.info(`Tracking issue already exists for PR #${pr.number}`);
+              return;
+            }
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['unapplied-pr']
+            });
