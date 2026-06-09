@@ -12,7 +12,7 @@ The source package builds the following binary packages:
 2. **libocmarkdown-dev** - Development files for libocmarkdown
 3. **libocmarkdowngtk1** - GTK markdown rendering library (libocmarkdowngtk.so)
 4. **libocmarkdowngtk-dev** - Development files for libocmarkdowngtk
-5. **libollmchat1** - Base LLM library (libollmchat.so), GTK widgets (libollmchatgtk.so), and SQLite library (libocsqlite.so)
+5. **libollmchat1** - LLM stack libraries (libollmchat.so, libollmchatgtk.so, libocsqlite.so, libocfiles.so, liboctools.so, liboccoder.so, libocvector.so, libocmcp.so, libollamaweb.so, libocrpc.so) plus GIR/typelib introspection data for the packaged namespaces
 6. **libollmchat-dev** - Development files for libollmchat, libollmchatgtk, and libocsqlite
 7. **ollmchat** - Main application executable
 8. **ollmchat-tools** - Command-line tools (oc-md2html, oc-html2md)

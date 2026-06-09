@@ -37,9 +37,10 @@ ocsqlite_base_lib = library('ocsqlite',
   sources: ocsqlite_src,
   vala_header: 'ocsqlite.h',
   vala_vapi: 'ocsqlite-meson.vapi',  # Use different name so our custom_target can use 'ocsqlite.vapi'
+  vala_gir: 'OCSqlite-1.0.gir',
   vala_args: ['--pkg=sqlite3'],
   build_rpath: lib_build_rpath,
-  install: true
+  install: true,
 )
 
 # Manually generate ocsqlite.vapi with correct command line order
@@ -82,13 +83,16 @@ ocsqlite_vapi_dep = declare_dependency(
   dependencies: [dependency('sqlite3')]  # Ensure sqlite3 is linked
 )
 
-# GObject Introspection for ocsqlite library
-ocsqlite_gir = gnome.generate_gir(ocsqlite_base_lib,
-  namespace: 'OCSqlite',
-  nsversion: '1.0',
-  identifier_prefix: 'SQ',
-  symbol_prefix: 'sq',
-  includes: ['GObject-2.0', 'Gio-2.0'],
+ocsqlite_gir_file = meson.current_build_dir() / 'OCSqlite-1.0.gir'
+custom_target('ocsqlite-typelib',
+  output: 'OCSqlite-1.0.typelib',
+  command: [g_ir_compiler, ocsqlite_gir_file, '--output', '@OUTPUT@'],
+  depends: ocsqlite_base_lib,
+  build_by_default: true,
   install: true,
-  fatal_warnings: false
+  install_dir: get_option('libdir') / 'girepository-1.0',
+)
+meson.add_install_script(
+  'sh', '-c',
+  'install -Dm644 "' + ocsqlite_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OCSqlite-1.0.gir"',
 )
