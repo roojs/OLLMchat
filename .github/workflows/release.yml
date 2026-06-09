@@ -1,7 +1,8 @@
 name: Release
 
-# Builds Linux AppImages (x86_64 + aarch64) and the Windows installer with
-# sqgipkg, then publishes them as release assets for tags like `v1.0.0`.
+# Builds Linux AppImages (x86_64 + aarch64), Debian packages (amd64), and the
+# Windows installer with sqgipkg, then publishes them as release assets for tags
+# like `v1.0.0`.
 
 on:
   push:
@@ -35,12 +36,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build pkg-config git file ca-certificates wget \
-            meson valac gobject-introspection \
+            meson valac gobject-introspection devscripts debhelper \
             libglib2.0-dev libgirepository1.0-dev libffi-dev libcairo2-dev \
             libgee-0.8-dev libjson-glib-dev libsoup-3.0-dev libxml2-dev \
             libsqlite3-dev libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev \
             libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
-            libopenblas-dev liblapack-dev \
+            libopenblas-dev liblapack-dev libfaiss-dev \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user-static binfmt-support \
             mingw-w64 nsis squashfs-tools
 
@@ -63,6 +64,19 @@ jobs:
         working-directory: OLLMchat
         run: sqgipkg --target win-nsis --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
 
+      - name: Build Debian packages (amd64)
+        working-directory: OLLMchat
+        env:
+          DEBFULLNAME: GitHub Actions
+          DEBEMAIL: actions@users.noreply.github.com
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_VER="${GITHUB_REF_NAME#v}"
+            DEB_VER="$(echo "$TAG_VER" | sed 's/-/~/')"
+            dch -v "${DEB_VER}-1" -D unstable "Release ${GITHUB_REF_NAME}" --force-distribution
+          fi
+          dpkg-buildpackage -us -uc -b
+
       - name: Collect artifacts
         working-directory: OLLMchat
         run: |
@@ -70,6 +84,7 @@ jobs:
           cp dist-linux-x86_64/OLLMchat.AppImage artifacts/OLLMchat-x86_64.AppImage
           cp dist-linux-aarch64/OLLMchat.AppImage artifacts/OLLMchat-aarch64.AppImage
           cp dist-windows-x86_64/OLLMchat-Setup.exe artifacts/OLLMchat-Setup.exe
+          cp ../*.deb artifacts/
           ls -lh artifacts
 
       - name: Upload build artifacts

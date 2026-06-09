@@ -1,6 +1,13 @@
 usr/lib/*/libollmchat.so.*
 usr/lib/*/libollmchatgtk.so.*
 usr/lib/*/libocsqlite.so.*
+usr/lib/*/libocfiles.so.*
+usr/lib/*/libocmcp.so.*
+usr/lib/*/liboctools.so.*
+usr/lib/*/libocvector.so.*
+usr/lib/*/liboccoder.so.*
+usr/lib/*/libollamaweb.so.*
+usr/lib/*/libocrpc.so.*
 usr/share/vala/vapi/ollmchat.vapi
 usr/share/vala/vapi/ollmchatgtk.vapi
 usr/share/vala/vapi/ocsqlite.vapi
