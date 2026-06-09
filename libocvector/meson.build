@@ -72,6 +72,10 @@ if lapack_dep.found()
 elif lapack_openblas_lib.found()
   using_openblas_dirs = true
   ocvector_link_libs += ['-llapack']
+elif openblas_lib.found()
+  # MinGW OpenBLAS (sqgipkg Windows sysroot) ships LAPACK inside libopenblas —
+  # no separate liblapack to link.
+  using_openblas_dirs = true
 else
   cc.find_library('lapack', required: true)
   ocvector_link_libs += ['-llapack']
