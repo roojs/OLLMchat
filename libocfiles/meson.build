@@ -5,27 +5,7 @@
 valac = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
 is_windows = host_machine.system() == 'windows'
-# Find tree-sitter library (C library for parsing)
-tree_sitter_lib = dependency('tree-sitter', required: false)
-if not tree_sitter_lib.found()
-  linux_sysroot = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_SYSROOT"', check: false).stdout().strip()
-  linux_triplet = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_TRIPLET"', check: false).stdout().strip()
-  windows_sysroot_prefix = run_command('sh', '-c', 'printf %s "$SQGI_WINDOWS_SYSROOT_PREFIX"', check: false).stdout().strip()
-  tree_sitter_dirs = []
-  tree_sitter_compile_args = []
-  if linux_sysroot != '' and linux_triplet != ''
-    tree_sitter_dirs += linux_sysroot / 'usr' / 'lib' / linux_triplet
-    tree_sitter_compile_args += '-I' + linux_sysroot / 'usr' / 'include'
-  endif
-  if windows_sysroot_prefix != ''
-    tree_sitter_dirs += windows_sysroot_prefix / 'lib'
-    tree_sitter_compile_args += '-I' + windows_sysroot_prefix / 'include'
-  endif
-  tree_sitter_lib = declare_dependency(
-    dependencies: [cc.find_library('tree-sitter', dirs: tree_sitter_dirs, required: true)],
-    compile_args: tree_sitter_compile_args,
-  )
-endif
+# tree-sitter: resolved in config/meson.build
 ocfiles_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
@@ -35,7 +15,7 @@ ocfiles_deps = [
   dependency('json-glib-1.0'),  # Required for ProjectMigrate (JSON parsing)
   dependency('sqlite3'),
   valac.find_library('posix'),
-  tree_sitter_lib,  # Tree-sitter C library (required - TreeBase uses TreeSitter API)
+  tree_sitter_dep,
 ]
 
 ocfiles_vapi_pkgs = [
@@ -62,16 +42,7 @@ ocfiles_vapi_gen_pkgs = [
 ocfiles_extra_sources = []
 sandbox_src = files(['Sandbox/BubbleWindows.vala'])
 if not is_windows
-  libseccomp_lib = cc.find_library('seccomp', required: false)
-  if not libseccomp_lib.found()
-    linux_sysroot = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_SYSROOT"', check: false).stdout().strip()
-    linux_triplet = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_TRIPLET"', check: false).stdout().strip()
-    seccomp_dirs = []
-    if linux_sysroot != '' and linux_triplet != ''
-      seccomp_dirs += linux_sysroot / 'usr' / 'lib' / linux_triplet
-    endif
-    libseccomp_lib = cc.find_library('seccomp', dirs: seccomp_dirs, required: true)
-  endif
+  # libseccomp: resolved in config/meson.build
   seccomp_vapi = valac.find_library(
     'seccomp',
     dirs: meson.current_source_dir() / '../vapi',
@@ -81,7 +52,7 @@ if not is_windows
     dependency('gio-unix-2.0'),
     valac.find_library('linux'),
     seccomp_vapi,
-    libseccomp_lib,
+    libseccomp_dep,
   ]
   ocfiles_vapi_pkgs += [
     '--pkg=seccomp',

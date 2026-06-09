@@ -58,7 +58,7 @@
             "name": "ollmchat",
             "dir": ".",
             "build": [
-              "PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --wipe --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"} || PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"}",
+              "PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --wipe --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false -Dsysroot=\"$SQGI_LINUX_SYSROOT\" -Dsysroot_triplet=\"$SQGI_LINUX_TRIPLET\" ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"} || PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false -Dsysroot=\"$SQGI_LINUX_SYSROOT\" -Dsysroot_triplet=\"$SQGI_LINUX_TRIPLET\" ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"}",
               "meson compile -C \"$SQGI_LINUX_BUILD_DIR\" ./ollmapp/ollmchat:executable"
             ],
             "libraries": [
@@ -128,7 +128,7 @@
             "name": "ollmchat",
             "dir": ".",
             "build": [
-              "PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --wipe --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"} || PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"}",
+              "PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --wipe --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false -Dsysroot=\"$SQGI_LINUX_SYSROOT\" -Dsysroot_triplet=\"$SQGI_LINUX_TRIPLET\" ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"} || PKG_CONFIG_SYSROOT_DIR=\"$SQGI_LINUX_SYSROOT\" PKG_CONFIG_LIBDIR=\"$SQGI_LINUX_SYSROOT/usr/lib/$SQGI_LINUX_TRIPLET/pkgconfig:$SQGI_LINUX_SYSROOT/usr/share/pkgconfig\" meson setup \"$SQGI_LINUX_BUILD_DIR\" --prefix /usr --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false -Dsysroot=\"$SQGI_LINUX_SYSROOT\" -Dsysroot_triplet=\"$SQGI_LINUX_TRIPLET\" ${SQGI_LINUX_MESON_CROSS_FILE:+--cross-file \"$SQGI_LINUX_MESON_CROSS_FILE\"}",
               "meson compile -C \"$SQGI_LINUX_BUILD_DIR\" ./ollmapp/ollmchat:executable"
             ],
             "libraries": [
@@ -201,7 +201,7 @@
         "name": "ollmchat",
         "dir": ".",
         "build": [
-          "meson setup \"$SQGI_WINDOWS_BUILD_DIR\" --wipe --prefix \"$SQGI_WINDOWS_PREFIX\" --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false --cross-file \"$SQGI_MESON_CROSS_FILE\" || meson setup \"$SQGI_WINDOWS_BUILD_DIR\" --prefix \"$SQGI_WINDOWS_PREFIX\" --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false --cross-file \"$SQGI_MESON_CROSS_FILE\"",
+          "meson setup \"$SQGI_WINDOWS_BUILD_DIR\" --wipe --prefix \"$SQGI_WINDOWS_PREFIX\" --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false -Dwindows_prefix=\"$SQGI_WINDOWS_SYSROOT_PREFIX\" --cross-file \"$SQGI_MESON_CROSS_FILE\" || meson setup \"$SQGI_WINDOWS_BUILD_DIR\" --prefix \"$SQGI_WINDOWS_PREFIX\" --buildtype=release -Ddocs=false -Dexamples=false -Dtests=false -Dwindows_prefix=\"$SQGI_WINDOWS_SYSROOT_PREFIX\" --cross-file \"$SQGI_MESON_CROSS_FILE\"",
           "meson compile -C \"$SQGI_WINDOWS_BUILD_DIR\" ./ollmapp/ollmchat:executable"
         ],
         "libraries": [

@@ -4,27 +4,7 @@
 # Dependencies for octools library
 valac = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
-# Find tree-sitter library (C library for parsing)
-tree_sitter_lib = dependency('tree-sitter', required: false)
-if not tree_sitter_lib.found()
-  linux_sysroot = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_SYSROOT"', check: false).stdout().strip()
-  linux_triplet = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_TRIPLET"', check: false).stdout().strip()
-  windows_sysroot_prefix = run_command('sh', '-c', 'printf %s "$SQGI_WINDOWS_SYSROOT_PREFIX"', check: false).stdout().strip()
-  tree_sitter_dirs = []
-  tree_sitter_compile_args = []
-  if linux_sysroot != '' and linux_triplet != ''
-    tree_sitter_dirs += linux_sysroot / 'usr' / 'lib' / linux_triplet
-    tree_sitter_compile_args += '-I' + linux_sysroot / 'usr' / 'include'
-  endif
-  if windows_sysroot_prefix != ''
-    tree_sitter_dirs += windows_sysroot_prefix / 'lib'
-    tree_sitter_compile_args += '-I' + windows_sysroot_prefix / 'include'
-  endif
-  tree_sitter_lib = declare_dependency(
-    dependencies: [cc.find_library('tree-sitter', dirs: tree_sitter_dirs, required: true)],
-    compile_args: tree_sitter_compile_args,
-  )
-endif
+# tree-sitter: resolved in config/meson.build
 octools_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
@@ -34,7 +14,7 @@ octools_deps = [
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
   valac.find_library('posix'),
-  tree_sitter_lib,  # Tree-sitter C library (required - ReadFileSummarize uses TreeSitter API)
+  tree_sitter_dep,
 ]
 
 # Source files for OLLMtools namespace
