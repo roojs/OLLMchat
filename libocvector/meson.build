@@ -55,21 +55,25 @@ endif
 if windows_sysroot_prefix != ''
   openblas_dirs += windows_sysroot_prefix / 'lib'
 endif
+openblas_lib = cc.find_library('openblas', dirs: openblas_dirs, required: false)
+lapack_openblas_lib = cc.find_library('lapack', dirs: openblas_dirs, required: false)
 if blas_dep.found()
   ocvector_link_args += ['-lblas']
-elif cc.find_library('openblas', dirs: openblas_dirs, required: false).found()
-  ocvector_link_args += ['-lopenblas']
+elif openblas_lib.found()
+  # full_path: sqgipkg cross-builds put OpenBLAS under .../openblas-pthread/, which
+  # is not on the default linker search path — plain -lopenblas fails at link time.
+  ocvector_link_args += [openblas_lib.full_path()]
 else
-  cc.find_library('blas', required: true)
-  ocvector_link_args += ['-lblas']
+  blas_lib = cc.find_library('blas', required: true)
+  ocvector_link_args += [blas_lib.full_path()]
 endif
 if lapack_dep.found()
   ocvector_link_args += ['-llapack']
-elif cc.find_library('lapack', dirs: openblas_dirs, required: false).found()
-  ocvector_link_args += ['-llapack']
+elif lapack_openblas_lib.found()
+  ocvector_link_args += [lapack_openblas_lib.full_path()]
 else
-  cc.find_library('lapack', required: true)
-  ocvector_link_args += ['-llapack']
+  lapack_lib = cc.find_library('lapack', required: true)
+  ocvector_link_args += [lapack_lib.full_path()]
 endif
 ocvector_link_dep = declare_dependency(link_args: ocvector_link_args)
 # Find tree-sitter library (C library for parsing)
