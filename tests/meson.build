@@ -32,6 +32,7 @@ test('test-ollamaweb-merge',
 # ollmfilesd RPC shell tests (stdio NDJSON + jq)
 test_rpc_script = files('test-rpc.sh')
 test_rpc_t1_script = files('test-rpc-t1.sh')
+test_rpc_t2_script = files('test-rpc-t2.sh')
 ollmfilesd_bin = get_variable('ollmfilesd_bin', disabler())
 test('test-rpc',
   find_program('bash'),
@@ -48,6 +49,17 @@ test('test-rpc-t1',
   find_program('bash'),
   args: [
     test_rpc_t1_script,
+    meson.current_build_dir() / '..'
+  ],
+  depends: [ollmfilesd_bin],
+  workdir: meson.current_source_dir(),
+  timeout: 120,
+  suite: 'rpc'
+)
+test('test-rpc-t2',
+  find_program('bash'),
+  args: [
+    test_rpc_t2_script,
     meson.current_build_dir() / '..'
   ],
   depends: [ollmfilesd_bin],

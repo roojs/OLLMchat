@@ -189,7 +189,8 @@ namespace OLLMfilesd
 				var db_file = GLib.File.new_for_path(
 					this.project_manager.db.filename
 				);
-				if (!db_file.query_exists()) {
+				if (!db_file.query_exists()
+					&& GLib.Environment.get_variable("OLLMFILES_IS_TEST") == null) {
 					var migrator = new ProjectMigrate(this.project_manager);
 					yield migrator.migrate_all();
 				}

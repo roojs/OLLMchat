@@ -290,6 +290,7 @@ namespace OLLMfilesd
 						yield project.read_dir(new DateTime.now_local().to_unix(), true);
 						GLib.debug ("filesystem scan returned path=%s", project.path);
 					}
+					project.project_files.update_from(project);
 				}
 				this.disable_initial_scan = false;
 			}
