@@ -65,7 +65,9 @@ endif
 
 if local_gguf_enabled
   local_gguf_src += files([
+    'Local/GGUFBackend.vala',
     'Local/GGUFEmbeddingProbe.vala',
+    'Local/GGUFChatProbe.vala',
   ])
   local_gguf_vala_args += [
     '--pkg=llama',

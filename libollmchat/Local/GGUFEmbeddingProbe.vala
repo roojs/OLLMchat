@@ -26,8 +26,6 @@ namespace OLLMchat.Local
 	 */
 	public class GGUFEmbeddingProbe : Object
 	{
-		private static bool backend_initialized = false;
-
 		public string model_path { get; construct; }
 		public int context_length { get; set; default = 2048; }
 		public int threads { get; set; default = 0; }
@@ -47,35 +45,23 @@ namespace OLLMchat.Local
 				throw new OllmError.INVALID_ARGUMENT("Embedding text is required");
 			}
 
-			if (!backend_initialized) {
-				Llama.backend_init();
-				backend_initialized = true;
-			}
-
-			var model_params = Llama.ModelParams();
-			if (Llama.supports_gpu_offload()) {
-				model_params.n_gpu_layers = -1;
-				GLib.debug("GGUFEmbeddingProbe: GPU offload available, offloading all layers");
-			} else {
-				GLib.debug("GGUFEmbeddingProbe: no GPU backend, using CPU");
-			}
-
+			var model_params = GGUFBackend.model_params();
 			var model = new Llama.Model.from_file(this.model_path, model_params);
 			if (model == null) {
 				throw new OllmError.FAILED("Failed to load GGUF model");
 			}
 
 			var ctx_params = Llama.ContextParams();
-			ctx_params.embeddings = true;
-			ctx_params.pooling_type = this.to_llama_pooling(this.pooling);
-			ctx_params.n_ctx = this.context_length > 0 ? this.context_length : 2048;
+			ctx_params.n_ctx = this.context_length > 0 ? (uint)this.context_length : 2048;
 			ctx_params.n_threads = this.threads > 0 ? this.threads : (int)GLib.get_num_processors();
 			ctx_params.n_threads_batch = ctx_params.n_threads;
+			ctx_params.pooling_type = this.to_llama_pooling(this.pooling);
 
 			var ctx = new Llama.Context.from_model(model, ctx_params);
 			if (ctx == null) {
 				throw new OllmError.FAILED("Failed to create llama context");
 			}
+			Llama.set_embeddings(ctx, true);
 
 			return this.embed_with_context(model, ctx, text, (int)ctx_params.n_ctx);
 		}

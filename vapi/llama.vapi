@@ -1,8 +1,45 @@
 [CCode (cheader_filename = "llama.h", lower_case_cprefix = "llama_")]
 namespace Llama
 {
+	[CCode (cname = "LLAMA_TOKEN_NULL")]
+	public const int TOKEN_NULL;
+
+	[CCode (cname = "LLAMA_DEFAULT_SEED")]
+	public const uint DEFAULT_SEED;
+
+	[CCode (cname = "enum ggml_log_level", cprefix = "GGML_LOG_LEVEL_")]
+	public enum LogLevel
+	{
+		NONE,
+		DEBUG,
+		INFO,
+		WARN,
+		ERROR,
+		CONT
+	}
+
+	[CCode (cname = "ggml_log_callback", has_target = false)]
+	public delegate void LogCallback(LogLevel level, string text, void* user_data);
+
 	[CCode (cname = "llama_seq_id")]
 	public struct SeqId : int {}
+
+	[CCode (cname = "enum llama_context_type", cprefix = "LLAMA_CONTEXT_TYPE_")]
+	public enum ContextType
+	{
+		DEFAULT,
+		MTP
+	}
+
+	[CCode (cname = "enum llama_rope_scaling_type", cprefix = "LLAMA_ROPE_SCALING_TYPE_")]
+	public enum RopeScalingType
+	{
+		UNSPECIFIED = -1,
+		NONE,
+		LINEAR,
+		YARN,
+		LONGROPE
+	}
 
 	[CCode (cname = "enum llama_pooling_type", cprefix = "LLAMA_POOLING_TYPE_")]
 	public enum PoolingType
@@ -68,7 +105,23 @@ namespace Llama
 			bool add_special,
 			bool parse_special
 		);
+
+		[CCode (cname = "llama_token_to_piece")]
+		public int token_to_piece(
+			int token,
+			[CCode (array_length = false)] char[] buf,
+			int length,
+			int lstrip,
+			bool special
+		);
+
+		[CCode (cname = "llama_vocab_is_eog")]
+		public bool is_eog(int token);
 	}
+
+	[Compact]
+	[CCode (cname = "struct llama_sampler", free_function = "llama_sampler_free")]
+	public class Sampler {}
 
 	[SimpleType]
 	[CCode (cname = "struct llama_model_params")]
@@ -87,14 +140,23 @@ namespace Llama
 	public struct ContextParams
 	{
 		public uint n_ctx;
+		public uint n_batch;
+		public uint n_ubatch;
+		public uint n_seq_max;
+		public uint n_rs_seq;
+		public uint n_outputs_max;
 		public int n_threads;
 		public int n_threads_batch;
+		public ContextType ctx_type;
+		public RopeScalingType rope_scaling_type;
 		public PoolingType pooling_type;
-		public bool embeddings;
 
 		[CCode (cname = "llama_context_default_params")]
 		public ContextParams();
 	}
+
+	[CCode (cname = "llama_set_embeddings")]
+	public static void set_embeddings(Context ctx, bool embeddings);
 
 	[SimpleType]
 	[CCode (cname = "struct llama_batch")]
@@ -114,9 +176,40 @@ namespace Llama
 		public void free();
 	}
 
+	[SimpleType]
+	[CCode (cname = "struct llama_sampler_chain_params")]
+	public struct SamplerChainParams
+	{
+		public bool no_perf;
+
+		[CCode (cname = "llama_sampler_chain_default_params")]
+		public SamplerChainParams();
+	}
+
+	[CCode (cname = "llama_log_set")]
+	public static void log_set(LogCallback callback, void* user_data = null);
+
 	[CCode (cname = "llama_backend_init")]
 	public static void backend_init();
 
 	[CCode (cname = "llama_supports_gpu_offload")]
 	public static bool supports_gpu_offload();
+
+	[CCode (cname = "llama_sampler_chain_init")]
+	public static Sampler sampler_chain_init(SamplerChainParams parameters);
+
+	[CCode (cname = "llama_sampler_chain_add")]
+	public static void sampler_chain_add(Sampler chain, Sampler sampler);
+
+	[CCode (cname = "llama_sampler_init_greedy")]
+	public static Sampler sampler_init_greedy();
+
+	[CCode (cname = "llama_sampler_init_dist")]
+	public static Sampler sampler_init_dist(uint seed);
+
+	[CCode (cname = "llama_sampler_sample")]
+	public static int sampler_sample(Sampler sampler, Context ctx, int index);
+
+	[CCode (cname = "llama_sampler_accept")]
+	public static void sampler_accept(Sampler sampler, int token);
 }

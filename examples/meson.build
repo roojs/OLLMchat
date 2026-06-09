@@ -466,6 +466,34 @@ minimal_deps = [
 ]
 
 if local_gguf_enabled
+  oc_local_gguf_chat = executable('oc-local-gguf-chat',
+    dependencies: [
+      test_ollama_deps,
+      ocsqlite_vapi_dep,
+      ocmarkdown_vapi_dep,
+      ollmchat_vapi_dep,
+      ollamaweb_vapi_dep,
+    ],
+    sources: ['oc-local-gguf-chat.vala'],
+    link_with: [ollmchat_base_lib],
+    include_directories: [
+      include_directories('../libollmchat'),
+      ollmchat_consumer_include,
+    ],
+    build_rpath: build_rpath,
+    vala_args: [
+      '--pkg=sqlite3',
+      '--pkg=ocsqlite',
+      '--pkg=ollmchat',
+      '--pkg=ocmarkdown',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+      '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    ] + ollmchat_consumer_vala_args,
+    install: true,
+    install_dir: get_option('bindir')
+  )
+
   oc_local_gguf_embed = executable('oc-local-gguf-embed',
     dependencies: [
       test_ollama_deps,

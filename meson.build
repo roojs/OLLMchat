@@ -132,7 +132,10 @@ executables_info = [
 ]
 
 if local_gguf_enabled
-  executables_info += [['oc-local-gguf-embed', 'examples/oc-local-gguf-embed']]
+  executables_info += [
+    ['oc-local-gguf-embed', 'examples/oc-local-gguf-embed'],
+    ['oc-local-gguf-chat', 'examples/oc-local-gguf-chat'],
+  ]
 endif
 
 # Library paths for LD_LIBRARY_PATH
