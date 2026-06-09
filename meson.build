@@ -13,6 +13,18 @@ gnome = import('gnome')
 
 valac = meson.get_compiler('vala')
 valac_exe = find_program('valac')
+cc = meson.get_compiler('c')
+
+# Optional libc fast path for ASCII caseless search (DummyFileBuffer.index_of_caseless).
+have_strcasestr = cc.has_function(
+  'strcasestr',
+  args: '-D_GNU_SOURCE',
+  prefix: '#include <string.h>',
+)
+strcasestr_vala_args = []
+if have_strcasestr
+  strcasestr_vala_args += '--define=HAVE_STRCASESTR'
+endif
 
 add_project_arguments(['--vapidir', meson.current_source_dir() / 'vapi'], language: 'vala')
 add_project_arguments(['--vapidir', meson.current_source_dir() / '../vapi'], language: 'vala')

@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#if !G_OS_WIN32
+#if HAVE_STRCASESTR
 [CCode (cname = "strcasestr", cheader_filename = "string.h")]
 extern unowned string? strcasestr (string haystack, string needle);
 #endif
@@ -181,6 +181,14 @@ namespace OLLMfilesd
 			return this.lines[line];
 		}
 		
+		/**
+		 * Case-insensitive substring search for chunked file locate.
+		 *
+		 * Meson probes libc for strcasestr at configure time (--define=HAVE_STRCASESTR).
+		 * When available and the needle is plain ASCII, use strcasestr — much faster than
+		 * casefold().index_of() because it avoids allocating folded copies of the window.
+		 * Non-ASCII needles and platforms without strcasestr (e.g. MSVC) use casefold().
+		 */
 		private int index_of_caseless (string haystack, string needle, int start_index = 0)
 		{
 			if (needle.length == 0) {
@@ -190,7 +198,8 @@ namespace OLLMfilesd
 				return -1;
 			}
 			var tail = haystack.substring (start_index);
-#if !G_OS_WIN32
+#if HAVE_STRCASESTR
+			// ASCII-only needle: libc fast path (see doc comment above).
 			if (Posix.memchr ((void*) needle, 0x80, needle.length) == null) {
 				unowned string? hit = strcasestr (tail, needle);
 				if (hit == null) {

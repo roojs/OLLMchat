@@ -36,9 +36,10 @@ namespace OLLMfiles
 	 * 
 	 * == Notes ==
 	 * 
-	 * Aliases resolve symlinks completely using GLib.Filename.canonicalize(). Target must exist and be
-	 * within home directory. Aliases maintain their own path (where the symlink exists)
-	 * for filesystem tracking.
+	 * On Linux, aliases resolve symlinks completely using realpath(). On Windows,
+	 * GLib.Filename.canonicalize() is used (symlinks are not followed). Target must
+	 * exist and be within home directory. Aliases maintain their own path (where the
+	 * symlink exists) for filesystem tracking.
 	 */
 	public class FileAlias : File
 	{
@@ -85,13 +86,23 @@ namespace OLLMfiles
 			this.path = path; // Alias path
 			this.parent = parent;
 			this.parent_id = parent.id;
-			
-			// Resolve aliases without relying on libc realpath(), which is not available on Windows.
+
+			// Resolve the alias target before the home-dir check. Linux uses realpath() so
+			// symlinks pointing outside $HOME are rejected (canonicalize does not follow links).
+			// Windows has no realpath(); canonicalize() is the best available fallback there.
+#if !G_OS_WIN32
+			var resolved_path = Posix.realpath(path);
+			if (resolved_path == null) {
+				this.points_to_id = -1;
+				return;
+			}
+#else
 			var resolved_path = GLib.Filename.canonicalize(path);
 			if (resolved_path == null || resolved_path == "") {
 				this.points_to_id = -1;
 				return;
 			}
+#endif
 			
 			// Restrict aliases to user's home directory
 			 

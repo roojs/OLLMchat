@@ -141,7 +141,7 @@ sudo apt install \
 
 ### MCP servers (`libocmcp`)
 
-MCP tools are optional. See **[MCP server settings](docs/mcp-settings.md)** for `~/.config/ollmchat/mcp.json` format, stdio vs HTTP, sandbox options (`network`, `allow_write`, `trust_sandbox`), and examples.
+MCP tools are optional. See **[MCP server settings](docs/mcp-settings.md)** for `~/.config/ollmchat/mcp.json` format, stdio vs HTTP, sandbox options (`network`, `allow_write`, `allow_unsandboxed`), and examples.
 
 ## Building
 

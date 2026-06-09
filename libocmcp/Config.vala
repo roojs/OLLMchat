@@ -50,8 +50,12 @@ namespace OLLMmcp
 		/** When true, allow network in bwrap sandbox (omit --unshare-net). Default false. */
 		public bool network { get; set; default = false; }
 
-		/** When true and app runs inside parent sandbox (e.g. Flatpak), allow stdio MCP without nested bwrap. */
-		public bool trust_sandbox { get; set; default = false; }
+		/**
+		 * When true, allow stdio MCP without OLLMchat's bubblewrap layer (direct subprocess spawn).
+		 * Required on Windows and inside Flatpak; ignored when bubblewrap is used on a Linux host.
+		 * {@link network} and {@link allow_writes} do not apply on the unsandboxed path.
+		 */
+		public bool allow_unsandboxed { get; set; default = false; }
 
 		/**
 		 * Extra allow_write entries from mcp.json (string split on ":" or JSON array elements).
