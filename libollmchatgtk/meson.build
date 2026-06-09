@@ -80,14 +80,16 @@ ollmchatgtk_lib = library('ollmchatgtk',
 
 ollmchatgtk_gir_file = meson.current_build_dir() / 'OLLMchatGtk-1.0.gir'
 ollmchatgtk_gir_fixed = meson.current_build_dir() / 'OLLMchatGtk-1.0.fixed.gir'
-compile_ollmchatgtk_typelib = find_program('compile-typelib.sh', dirs: meson.current_source_dir())
+fix_gir_dep_names = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
 custom_target('ollmchatgtk-typelib',
   output: 'OLLMchatGtk-1.0.typelib',
   command: [
-    compile_ollmchatgtk_typelib,
+    find_program('sh'),
+    meson.project_source_root() / 'scripts/compile-gir-typelib.sh',
     ollmchatgtk_gir_file,
     ollmchatgtk_gir_fixed,
     '@OUTPUT@',
+    fix_gir_dep_names,
     '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--includedir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',

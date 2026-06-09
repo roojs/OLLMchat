@@ -12,8 +12,17 @@ dist-windows-*/
 
 debian/auto*
 debian/debhelper*
+debian/.debhelper/
+debian/tmp/
+debian/*.debhelper.log
+debian/*.substvars
 debian/files
+debian/*/DEBIAN/
+debian/*/usr/
 build-dir/*
+
+# stray valac output in source trees
+libocsqlite/*.c
 
 .flatpak-builder/*
 .gdb_history

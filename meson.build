@@ -10,7 +10,16 @@ project('ollmchat', 'vala', 'c', 'cpp',
 )
 
 gnome = import('gnome')
+fs = import('fs')
 g_ir_compiler = find_program('g-ir-compiler')
+gir_typelib_script = meson.project_source_root() / 'scripts/compile-gir-typelib.sh'
+gir_fix_sed = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
+if not fs.exists(gir_typelib_script)
+  error('GIR typelib helper missing (add to git): ' + gir_typelib_script)
+endif
+if not fs.exists(gir_fix_sed)
+  error('GIR name fix-up missing (add to git): ' + gir_fix_sed)
+endif
 
 valac = meson.get_compiler('vala')
 valac_exe = find_program('valac')
