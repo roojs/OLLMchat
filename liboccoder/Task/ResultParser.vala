@@ -35,7 +35,7 @@ namespace OLLMcoder.Task
  *  * Execution: Tool.run() receives the executor response → new ResultParser,
  *    ''exec_extract(ex)'' delegates to Action.Base; ex.summary (heading block) and ex.document are set. Details.run_exec() builds
  *    summaries on each Tool in Details.tools(); on success Details sets ''exec_done'' (live path).
- *    ''extract_exec(Details)'' remains for legacy/test use (returns a synthetic run; caller applies it to {@link Details.tools}).
+ *    ''Action.Base.extract_tool(ResultParser)'' remains for legacy/test use (returns a synthetic run; caller applies it to {@link Details.tools}).
  *
  * @see List
  * @see Step
@@ -72,7 +72,7 @@ public class ResultParser : Object
 
 	/**
 	 * Builds document from response (''Markdown.Document.Render''). Call
-	 * ''parse_task_list'', ''extract_refinement'', ''extract_exec'', or ''exec_extract'' next.
+	 * ''parse_task_list'', ''extract_refinement'', or ''exec_extract'' next.
 	 *
 	 * @param runner skill runner; used by ''parse_task_list()'' to build Details and List
 	 * @param response raw LLM markdown response (planning, refinement, or executor)
@@ -553,75 +553,9 @@ public class ResultParser : Object
 	public bool exec_extract (Tool ex)
 	{
 		if (ex.parent.skill.tools.contains ("write_file")) {
-			return new OLLMcoder.Action.WriteExec (ex.parent).extract (this, ex);
+			return new OLLMcoder.Action.WriteExec (ex.parent).extract_result (this, ex);
 		}
-		if (!this.document.headings.has_key ("result-summary")) {
-			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
-				"It was missing or not found in the response. " +
-				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
-			return false;
-		}
-		ex.summary = this.document.headings.get ("result-summary");
-		ex.document = this.document;
-		var sum_render = new Markdown.Document.Render ();
-		sum_render.parse (ex.summary.to_markdown_with_content ());
-		var vl_sum = new ValidateLink (this.runner, ex.parent, PhaseEnum.EXECUTION) {
-			writes = ex.writes,
-			document = sum_render.document
-		};
-		vl_sum.validate_all (sum_render.document.links);
-		if (vl_sum.issues != "") {
-			this.issues += vl_sum.issues;
-			return false;
-		}
-		foreach (var link in sum_render.document.links) {
-			if (link.path != "" || link.hash == "") {
-				continue;
-			}
-			foreach (var wc in ex.writes) {
-				if (!wc.document.headings.has_key (link.hash)) {
-					continue;
-				}
-				link.up_relpath (wc.file_path.strip ());
-				break;
-			}
-		}
-		if (sum_render.document.headings.has_key ("result-summary")) {
-			ex.summary = sum_render.document.headings.get ("result-summary");
-		}
-		return true;
-	}
-
-	/**
-	 * Fills in the result summary on the task from executor response.
-	 *
-	 * Single pass: find section "Result summary" → build one synthetic exec run with that content.
-	 * If no "Result summary" section, appends to {@link issues} and returns null. Does not mutate
-	 * {@link Details.tools} or set {@link Details.exec_done}; caller applies the returned {@link Tool} when appropriate.
-	 * Used by legacy/test paths; normal execution uses exec_extract(Tool) and the execution queue.
-	 *
-	 * Content we expect (task_execution.md):
-	 * {{{
-	 * ## Result summary
-	 * (Substance + whether needs are met; gaps or follow-up in prose as needed)
-	 * }}}
-	 *
-	 * @param task the task (runner/session context for the synthetic {@link Tool})
-	 * @return the synthetic run, or null when the required section is missing
-	 */
-	public Tool? extract_exec(Details task)
-	{
-		if (!this.document.headings.has_key("result-summary")) {
-			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
-				"It was missing or not found in the response. " +
-				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
-			return null;
-		}
-		var factory = (OLLMchat.Agent.Factory) task.runner.sr_factory;
-		var ex = new Tool(factory, task.runner.session, task, "exec");
-		ex.summary = this.document.headings.get("result-summary");
-		ex.document = this.document;
-		return ex;
+		return new OLLMcoder.Action.RefOnly (ex.parent).extract_result (this, ex);
 	}
 }
 

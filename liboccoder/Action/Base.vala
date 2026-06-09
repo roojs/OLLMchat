@@ -31,6 +31,75 @@ public abstract class Base : OLLMchat.Agent.Base
 
 	public abstract async void run () throws GLib.Error;
 
+	/**
+	 * Parse a tool executor response into the execution run.
+	 *
+	 * @param parser parsed executor response and issue accumulator
+	 * @param ex execution run to fill with summary and document
+	 * @return true when the response is valid
+	 */
+	public virtual bool extract_result (Task.ResultParser parser, Task.Tool ex)
+	{
+		if (!parser.document.headings.has_key ("result-summary")) {
+			parser.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
+				"It was missing or not found in the response. " +
+				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
+			return false;
+		}
+		ex.summary = parser.document.headings.get ("result-summary");
+		ex.document = parser.document;
+		var sum_render = new Markdown.Document.Render ();
+		sum_render.parse (ex.summary.to_markdown_with_content ());
+		var vl_sum = new Task.ValidateLink (this.task.runner, this.task, Task.PhaseEnum.EXECUTION) {
+			writes = ex.writes,
+			document = sum_render.document
+		};
+		vl_sum.validate_all (sum_render.document.links);
+		if (vl_sum.issues != "") {
+			parser.issues += vl_sum.issues;
+			return false;
+		}
+		foreach (var link in sum_render.document.links) {
+			if (link.path != "" || link.hash == "") {
+				continue;
+			}
+			foreach (var wc in ex.writes) {
+				if (!wc.document.headings.has_key (link.hash)) {
+					continue;
+				}
+				link.up_relpath (wc.file_path.strip ());
+				break;
+			}
+		}
+		if (sum_render.document.headings.has_key ("result-summary")) {
+			ex.summary = sum_render.document.headings.get ("result-summary");
+		}
+		return true;
+	}
+
+	/**
+	 * Parse an executor response into a synthetic execution run.
+	 *
+	 * Used by legacy/test paths that do not already have a queued run.
+	 *
+	 * @param parser parsed executor response and issue accumulator
+	 * @return synthetic execution run, or null when invalid
+	 */
+	public Task.Tool? extract_tool (Task.ResultParser parser)
+	{
+		if (!parser.document.headings.has_key ("result-summary")) {
+			parser.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
+				"It was missing or not found in the response. " +
+				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
+			return null;
+		}
+		var ex = new Task.Tool ((OLLMchat.Agent.Factory) this.task.runner.sr_factory,
+			this.task.runner.session, this.task, "exec");
+		ex.summary = parser.document.headings.get ("result-summary");
+		ex.document = parser.document;
+		return ex;
+	}
+
 	protected override async void fill_model ()
 	{
 		if (!this.task.skill.header.has_key ("model")) {

@@ -31,7 +31,7 @@ public class WriteExec : Base
 	 * Called by {@link Task.ResultParser.exec_extract} when the skill uses
 	 * {{{ write_file }}}.
 	 */
-	public bool extract (Task.ResultParser parser, Task.Tool ex)
+	public override bool extract_result (Task.ResultParser parser, Task.Tool ex)
 	{
 		if (!parser.document.headings.has_key ("result-summary")) {
 			parser.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
