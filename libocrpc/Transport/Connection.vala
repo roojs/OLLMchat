@@ -22,6 +22,8 @@ namespace OLLMrpc.Transport
 		protected bool channel_open = false;
 		protected uint input_watch_id = 0;
 		protected bool running = false;
+		private GLib.DataInputStream? input;
+		private GLib.DataOutputStream? output;
 
 		public Connection(GLib.SocketConnection? stream = null)
 		{
@@ -34,20 +36,10 @@ namespace OLLMrpc.Transport
 				return;
 			}
 			this.running = true;
-			try {
-				var fd = this.stream.get_socket().get_fd();
-				this.channel = new GLib.IOChannel.unix_new(fd);
-				this.channel.set_encoding(null);
-				this.channel.set_buffered(true);
-				this.channel_open = true;
-				this.input_watch_id = this.channel.add_watch(
-					GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
-					this.on_input_ready
-				);
-			} catch (GLib.Error e) {
-				GLib.warning("connection setup failed: %s", e.message);
-				this.stop();
-			}
+			this.input = new GLib.DataInputStream(this.stream.get_input_stream());
+			this.input.set_newline_type(GLib.DataStreamNewlineType.LF);
+			this.output = new GLib.DataOutputStream(this.stream.get_output_stream());
+			this.read_loop.begin();
 		}
 
 		public virtual void stop()
@@ -57,6 +49,8 @@ namespace OLLMrpc.Transport
 			}
 			this.running = false;
 			this.channel_open = false;
+			this.input = null;
+			this.output = null;
 			if (this.input_watch_id != 0) {
 				GLib.Source.remove(this.input_watch_id);
 				this.input_watch_id = 0;
@@ -72,19 +66,15 @@ namespace OLLMrpc.Transport
 
 		public virtual void write(GLib.Object gobject)
 		{
-			if (!this.channel_open || this.channel == null) {
+			if (this.output == null) {
 				return;
 			}
 			var generator = new Json.Generator();
 			generator.set_pretty(false);
 			generator.set_root(Json.gobject_serialize(gobject));
-			size_t written;
 			try {
-				this.channel.write_chars(
-					(generator.to_data(null) + "\n").to_utf8(),
-					out written
-				);
-				this.channel.flush();
+				this.output.put_string(generator.to_data(null) + "\n");
+				this.output.flush();
 			} catch (GLib.Error e) {
 				GLib.warning("connection write error: %s", e.message);
 				this.stop();
@@ -138,10 +128,36 @@ namespace OLLMrpc.Transport
 			}
 
 			line = line.strip();
-			if (line == "") {
-				return this.running;
-			}
+			this.dispatch_line(line);
+			return this.running;
+		}
 
+		private async void read_loop()
+		{
+			while (this.running && this.input != null) {
+				try {
+					var line = yield this.input.read_line_async(
+						GLib.Priority.DEFAULT,
+						null
+					);
+					if (line == null) {
+						this.stop();
+						return;
+					}
+					this.dispatch_line(line.strip());
+				} catch (GLib.Error e) {
+					GLib.warning("connection read error: %s", e.message);
+					this.stop();
+					return;
+				}
+			}
+		}
+
+		private void dispatch_line(string line)
+		{
+			if (line == "") {
+				return;
+			}
 			OLLMrpc.Request? request = null;
 			try {
 				request = Json.gobject_from_data(
@@ -151,15 +167,14 @@ namespace OLLMrpc.Transport
 				) as OLLMrpc.Request;
 			} catch (GLib.Error e) {
 				GLib.warning("parse error: %s", e.message);
-				return this.running;
+				return;
 			}
 			if (request == null) {
-				return this.running;
+				return;
 			}
 
 			request.connection = this;
 			request.dispatch();
-			return this.running;
 		}
 	}
 }

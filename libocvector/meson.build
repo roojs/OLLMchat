@@ -78,6 +78,10 @@ if lapack_dep.found()
   ocvector_link_args += ['-llapack']
 elif lapack_openblas_lib.found()
   ocvector_link_args += openblas_link_args + ['-llapack']
+elif openblas_lib.found()
+  # MSYS2 OpenBLAS provides LAPACK symbols through libopenblas without a
+  # separate liblapack import library.
+  ocvector_link_args += openblas_link_args + ['-lopenblas']
 else
   lapack_lib = cc.find_library('lapack', required: true)
   ocvector_link_args += ['-llapack']

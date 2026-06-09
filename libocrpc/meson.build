@@ -1,15 +1,29 @@
 # libocrpc — shared JSON-RPC wire types (OLLMrpc namespace)
 
 valac = meson.get_compiler('vala')
+is_windows = host_machine.system() == 'windows'
 
 ocrpc_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
-  dependency('gio-unix-2.0'),
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
   dependency('json-glib-1.0'),
   valac.find_library('posix'),
+]
+
+ocrpc_vapi_pkgs = [
+  '--pkg=json-glib-1.0',
+  '--pkg=posix',
+]
+
+ocrpc_vapi_gen_pkgs = [
+  '--pkg', 'json-glib-1.0',
+  '--pkg', 'posix',
+  '--pkg', 'gio-2.0',
+  '--pkg', 'gobject-2.0',
+  '--pkg', 'glib-2.0',
+  '--pkg', 'gee-0.8',
 ]
 
 ocrpc_src = files([
@@ -17,16 +31,22 @@ ocrpc_src = files([
   'Transport/namespace.vala',
   'Transport/Connection.vala',
   'Transport/Listen.vala',
-  'Transport/SocketListen.vala',
   'CallParam.vala',
   'Error.vala',
   'Notification.vala',
   'Request.vala',
   'Response.vala',
   'RpcErrorCode.vala',
-  'ClientBoot.vala',
-  'Client.vala',
 ])
+if not is_windows
+  ocrpc_deps += dependency('gio-unix-2.0')
+  ocrpc_vapi_gen_pkgs += ['--pkg', 'gio-unix-2.0']
+  ocrpc_src += files([
+    'Transport/SocketListen.vala',
+    'ClientBoot.vala',
+    'Client.vala',
+  ])
+endif
 
 ocrpc_base_lib = library('ocrpc',
   dependencies: ocrpc_deps,
@@ -35,10 +55,8 @@ ocrpc_base_lib = library('ocrpc',
   vala_vapi: 'ocrpc-meson.vapi',
   vala_args: [
     '--target-glib=auto',
-    '--pkg=json-glib-1.0',
-    '--pkg=posix',
     '--vapidir', '/usr/share/vala/vapi',
-  ],
+  ] + ocrpc_vapi_pkgs,
   install: true,
 )
 
@@ -51,13 +69,7 @@ ocrpc_vapi = custom_target('ocrpc-vapi',
     '--target-glib=auto',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', '/usr/share/vala/vapi',
-    '--pkg', 'json-glib-1.0',
-    '--pkg', 'posix',
-    '--pkg', 'gio-unix-2.0',
-    '--pkg', 'gio-2.0',
-    '--pkg', 'gobject-2.0',
-    '--pkg', 'glib-2.0',
-    '--pkg', 'gee-0.8',
+  ] + ocrpc_vapi_gen_pkgs + [
     '--library', 'ocrpc',
     '--header', meson.current_build_dir() / 'ocrpc.h',
     '--vapi', '@OUTPUT@',

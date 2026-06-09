@@ -30,6 +30,9 @@ add_project_arguments(['--vapidir', meson.current_source_dir() / 'vapi'], langua
 add_project_arguments(['--vapidir', meson.current_source_dir() / '../vapi'], language: 'vala')
 add_project_arguments(['--vapidir', meson.current_build_dir()], language: 'vala')  # Add build dir for generated VAPIs
 add_project_arguments(['--target-glib=auto'], language: 'vala')
+if host_machine.system() == 'windows'
+  add_project_arguments(['--define=G_OS_WIN32'], language: 'vala')
+endif
 
 sqgi_vala_args = []
 
@@ -61,7 +64,9 @@ subdir('libollamaweb')     # No dependencies on libollmchat (Phase 1)
 subdir('libocmarkdowngtk') # Depends on libocmarkdown
 subdir('libocfiles')       # Depends on libocsqlite
 subdir('libollmchat')      # Depends on libocsqlite
-subdir('ollmfilesd')       # Headless file daemon — depends on libocsqlite, libollmchat
+if host_machine.system() != 'windows'
+  subdir('ollmfilesd')       # Headless file daemon - depends on libocsqlite, libollmchat
+endif
 subdir('libocmcp')         # Depends on libollmchat, libocfiles
 subdir('liboctools')       # Depends on libollmchat, libocfiles
 subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
