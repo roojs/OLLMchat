@@ -109,7 +109,7 @@ jobs:
           cp dist-linux-x86_64/OLLMchat.AppImage artifacts/OLLMchat-x86_64.AppImage
           cp dist-linux-aarch64/OLLMchat.AppImage artifacts/OLLMchat-aarch64.AppImage
           cp dist-windows-x86_64/OLLMchat-Setup.exe artifacts/OLLMchat-Setup.exe
-          cp ../*.deb artifacts/
+          cp ../ollmchat_[0-9]*.deb artifacts/
           ls -lh artifacts
 
       - name: Upload build artifacts

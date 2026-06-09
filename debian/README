@@ -3,10 +3,40 @@ Debian Package Building Instructions
 
 This directory contains the Debian packaging files for OLLMchat.
 
-Package Structure
------------------
+Packaging modes
+---------------
 
-The source package builds the following binary packages:
+Two layouts are maintained:
+
+### Monolithic (default)
+
+Builds a single **ollmchat** .deb containing the application, all shared
+libraries, tools, and introspection data. Use this for GitHub release
+downloads until an apt repository is available.
+
+```bash
+./debian/use-monolithic-package.sh   # already the default in git
+dpkg-buildpackage -us -uc -b
+```
+
+### Split packages (for apt repository)
+
+Builds separate runtime, -dev, tools, and doc packages. Switch to this
+when publishing to an apt repository.
+
+```bash
+./debian/use-split-packages.sh
+dpkg-buildpackage -us -uc -b
+./debian/use-monolithic-package.sh   # switch back when done
+```
+
+Canonical definitions live in `debian/monolithic/` and `debian/split/`.
+The switch scripts copy the chosen layout into the active `debian/` files.
+
+Split package layout
+--------------------
+
+When using split packages, the source builds:
 
 ### Core / data libraries
 1. **libocsqlite1** / **libocsqlite-dev** — SQLite helpers (libocsqlite.so)
@@ -31,10 +61,8 @@ The source package builds the following binary packages:
 14. **ollmchat-tools** — Command-line tools (oc-md2html, oc-html2md)
 15. **ollmchat-doc** — Test executables and documentation
 
-Building Packages
+Building packages
 -----------------
-
-To build the Debian packages:
 
 1. Install build dependencies:
    ```bash
@@ -53,7 +81,7 @@ To build the Debian packages:
 
 3. The resulting .deb files will be in the parent directory.
 
-Install Locations
+Install locations
 -----------------
 
 - Libraries: /usr/lib/
@@ -63,4 +91,4 @@ Install Locations
 - Typelib files: /usr/lib/*/girepository-1.0/
 - Application: /usr/bin/ (ollmchat)
 - Tools: /usr/bin/ (oc-md2html, oc-html2md)
-- Test executables: /usr/share/doc/ollmchat/ (oc-test-*)
+- Test executables: /usr/share/doc/ollmchat/ (oc-test-*, split mode only)

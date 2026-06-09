@@ -4,7 +4,12 @@ This document provides instructions for building Debian packages for OLLMchat.
 
 ## Package Structure
 
-The source package builds the following binary packages:
+By default the build produces a single **ollmchat** all-in-one package
+(application, libraries, and tools). Split library packages are kept in
+`debian/split/` for when an apt repository is available — see
+`debian/README` for switching layouts.
+
+When building split packages, the source builds the following binary packages:
 
 ### Runtime Libraries
 - **libocmarkdown1** - Base markdown parsing library (libocmarkdown.so)
