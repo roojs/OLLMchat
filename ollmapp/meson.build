@@ -57,6 +57,50 @@ ollmchat_deps = [
   cc.find_library('m', required: false),
 ]
 
+# Windows: embed the same app icon used on Linux (pixmaps/org.roojs.ollmchat.ico).
+ollmchat_sources = [
+  version_vala,
+  'Application.vala',
+  'About.vala',
+  'Initialize.vala',
+  'Window.vala',
+  'WindowPane.vala',
+  'FileChangeBanner.vala',
+  'VectorScanBanner.vala',
+  'SettingsDialog/AddModelDialog.vala',
+  'SettingsDialog/ConnectionAdd.vala',
+  'SettingsDialog/ConnectionRow.vala',
+  'SettingsDialog/SettingsPage.vala',
+  'SettingsDialog/CheckingConnectionDialog.vala',
+  'SettingsDialog/ConnectionsPage.vala',
+  'SettingsDialog/PullStatus.vala',
+  'SettingsDialog/PullManager.vala',
+  'SettingsDialog/PullManagerThread.vala',
+  'SettingsDialog/PullManagerBanner.vala',
+  'SettingsDialog/ModelRow.vala',
+  'SettingsDialog/ModelsPage.vala',
+  'SettingsDialog/ProjectSearchFilter.vala',
+  'SettingsDialog/ProjectsPage.vala',
+  'SettingsDialog/SearchablePulldown.vala',
+  'SettingsDialog/MainDialog.vala',
+  'SettingsDialog/ToolsPage.vala',
+  'SettingsDialog/Rows/ToolRow.vala',
+  'SettingsDialog/Rows/Row.vala',
+  'SettingsDialog/Rows/Bool.vala',
+  'SettingsDialog/Rows/String.vala',
+  'SettingsDialog/Rows/Connection.vala',
+  'SettingsDialog/Rows/Model.vala',
+  'SettingsDialog/Rows/ModelUsage.vala',
+  'SettingsDialog/Rows/Options.vala',
+  'SettingsDialog/Rows/FloatRow.vala',
+  'SettingsDialog/Rows/IntRow.vala',
+  ollmchat_resources
+]
+if host_machine.system() == 'windows'
+  win_mod = import('windows')
+  ollmchat_sources += win_mod.compile_resources('ollmchat.rc')
+endif
+
 # Build ollmchat executable (primary application)
 # Include resources directly in the executable to ensure they're registered
 ollmchat = executable('ollmchat',
@@ -70,44 +114,7 @@ ollmchat = executable('ollmchat',
       octools_vapi_dep,
       ocmcp_vapi_dep
   ],
-  sources: [
-    version_vala,
-    'Application.vala',
-    'About.vala',
-    'Initialize.vala',
-    'Window.vala',
-    'WindowPane.vala',
-    'FileChangeBanner.vala',
-    'VectorScanBanner.vala',
-    'SettingsDialog/AddModelDialog.vala',
-    'SettingsDialog/ConnectionAdd.vala',
-    'SettingsDialog/ConnectionRow.vala',
-    'SettingsDialog/SettingsPage.vala',
-    'SettingsDialog/CheckingConnectionDialog.vala',
-    'SettingsDialog/ConnectionsPage.vala',
-    'SettingsDialog/PullStatus.vala',
-    'SettingsDialog/PullManager.vala',
-    'SettingsDialog/PullManagerThread.vala',
-    'SettingsDialog/PullManagerBanner.vala',
-    'SettingsDialog/ModelRow.vala',
-    'SettingsDialog/ModelsPage.vala',
-    'SettingsDialog/ProjectSearchFilter.vala',
-    'SettingsDialog/ProjectsPage.vala',
-    'SettingsDialog/SearchablePulldown.vala',
-    'SettingsDialog/MainDialog.vala',
-    'SettingsDialog/ToolsPage.vala',
-    'SettingsDialog/Rows/ToolRow.vala',
-    'SettingsDialog/Rows/Row.vala',
-    'SettingsDialog/Rows/Bool.vala',
-    'SettingsDialog/Rows/String.vala',
-    'SettingsDialog/Rows/Connection.vala',
-    'SettingsDialog/Rows/Model.vala',
-    'SettingsDialog/Rows/ModelUsage.vala',
-    'SettingsDialog/Rows/Options.vala',
-    'SettingsDialog/Rows/FloatRow.vala',
-    'SettingsDialog/Rows/IntRow.vala',
-    ollmchat_resources
-  ],
+  sources: ollmchat_sources,
   link_with: [ollmchat_base_lib, ollmchatgtk_lib],  # Use ocvector_vapi_dep (link_args) instead of link_with to avoid ocvector-meson.vapi
   include_directories: [
     include_directories('../libollmchat'),
