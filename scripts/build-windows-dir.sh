@@ -16,6 +16,8 @@
 #   wine dist-windows-x86_64/OLLMchat/OLLMchat.bat --debug
 #   wine dist-windows-x86_64/OLLMchat/OLLMchat.exe
 #
+# On native Windows, copy dist-windows-x86_64/OLLMchat/ (not build-windows-x86_64/).
+#
 # Options:
 #   --clean          Remove Windows build/dist dirs (sqgipkg --clean) and exit
 #   --sysroot-only   Only prepare the Windows cross sysroot (sqgipkg --target win-sysroot)
@@ -153,14 +155,48 @@ win_bundle_dir() {
 	printf '%s/%s' "$WIN_DIST_DIR" "OLLMchat"
 }
 
+# sqgipkg's OLLMchat.exe launcher has no icon resource; rebuild it with our .ico.
+embed_windows_launcher_icon() {
+	local bundle exe ico tmp rc res
+	bundle="$(win_bundle_dir)"
+	exe="$bundle/OLLMchat.exe"
+	ico="$ROOT/pixmaps/org.roojs.ollmchat.ico"
+
+	[[ -f "$bundle/OLLMchat.bat" ]] || return 0
+	[[ -f "$ico" ]] || die "Windows app icon not found: $ico"
+
+	need_cmd x86_64-w64-mingw32-windres
+	need_cmd x86_64-w64-mingw32-gcc
+
+	tmp="$(mktemp -d)"
+	rc="$tmp/launcher.rc"
+	res="$tmp/launcher.res"
+	cp "$ico" "$tmp/app.ico"
+	printf '1 ICON "%s"\n' "app.ico" >"$rc"
+	x86_64-w64-mingw32-windres -O coff -i "$rc" -o "$res"
+	x86_64-w64-mingw32-gcc -O2 -s -mwindows \
+		-o "$exe" "$ROOT/scripts/windows-gui-launcher.c" "$res"
+	rm -rf "$tmp"
+	log "embedded app icon in OLLMchat.exe"
+}
+
 print_run_commands() {
 	local bundle
 	bundle="$(win_bundle_dir)"
 	[[ -d "$bundle" ]] || return
 
 	printf '\n'
-	printf '  wine %s/OLLMchat.bat --debug\n' "$bundle"
-	printf '  wine %s/OLLMchat.exe\n' "$bundle"
+	printf '  Wine (from repo root):\n'
+	printf '    wine %s/OLLMchat.bat --debug\n' "$bundle"
+	printf '    wine %s/OLLMchat.exe\n' "$bundle"
+	printf '\n'
+	printf '  Native Windows — copy %s/ to the PC, then:\n' "$bundle"
+	printf '    .\\OLLMchat.bat\n'
+	printf '    .\\OLLMchat.ps1\n'
+	printf '    .\\ollmchat.bat          (alias)\n'
+	printf '    .\\OLLMchat.exe\n'
+	printf '\n'
+	printf '  Not runnable: %s/ollmapp/ (compile tree only)\n' "$WIN_BUILD_DIR"
 	printf '\n'
 }
 
@@ -238,6 +274,10 @@ fi
 
 log "target=$TARGET build_dir=$WIN_BUILD_DIR output=$WIN_DIST_DIR"
 run_sqgipkg "$SQGI_SOURCE_DIR"
+
+if [[ "$DO_SYSROOT_ONLY" -eq 0 && "$TARGET" == "win-dir" ]]; then
+	embed_windows_launcher_icon
+fi
 
 if [[ "$DO_SYSROOT_ONLY" -eq 1 ]]; then
 	log "win-sysroot ready (no application bundle staged)"

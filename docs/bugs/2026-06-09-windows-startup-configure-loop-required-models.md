@@ -186,46 +186,353 @@ Because the app uses `GApplicationFlags.HANDLES_COMMAND_LINE`, flags must be pas
 
 ---
 
-## Proposed fix (awaiting approval — not implemented)
+## Proposed fix (implemented 2026-06-09 — pending Windows/Wine verification)
 
-### A. Bootstrap ordering (`ollmapp/Window.vala`)
+Hunks are **Remove** / **Replace with** from the tree; verify surrounding context before applying.
 
-Add the verified connection to `config` **before** calling `setup_config_defaults()`, so `default_connection()` is non-null when `CodebaseSearchTool.setup_tool_config_default()` runs:
+See **`.cursor/rules/CODING_STANDARDS.md`**: no defensive null checks on config casts; no nested tab-routing heuristic in `run()` (bootstrap + repair fixes the empty-connection case); title derived from `settings_page` inside `show_settings()` only; `continue` → `return false` without redundant `if (!(yield …))` wrapper; debug log dir creation matches `libollamaweb/Model.vala` `save()`.
+
+1. Bootstrap: connection before `setup_config_defaults()` (`ollmapp/Window.vala`)
+2. Repair empty `codebase_search` embed/analysis on load (`libocvector/Tool/CodebaseSearchTool.vala`)
+3. Init loop: `return false` after `show_settings()`, not `continue` (`ollmapp/Initialize.vala`)
+4. Error dialog title from `settings_page` + `dialog_title` on `show_connection_error_dialog()` (`ollmapp/Initialize.vala`, `ollmapp/Window.vala`)
+5. Debug log dir on Windows (`libollmchat/ApplicationInterface.vala`)
+
+---
+
+### 1. `ollmapp/Window.vala` — bootstrap: connection before tool defaults
+
+**Why:** `default_connection()` must be set when `CodebaseSearchTool.setup_tool_config_default()` runs.
+
+**Where:** `show_bootstrap_dialog()`, `bootstrap_dialog.closed` handler.
+
+**Depends on:** none.
+
+#### Remove
 
 ```vala
-config.connections.set(verified_connection.url, verified_connection);
-app.tools_registry.setup_config_defaults(config);
-app.vector_registry.setup_config_defaults(config);
+				var app = this.app as OllmchatApplication;
+				app.tools_registry.setup_config_defaults(config);
+				app.vector_registry.setup_config_defaults(config);
+
+				config.connections.set(this.bootstrap_dialog.verified_connection.url, 
+					this.bootstrap_dialog.verified_connection);
 ```
 
-Alternatively (or additionally), after both are set, explicitly call `setup_defaults(verified_connection.url)` on the new `CodebaseSearchToolConfig`.
+#### Replace with
 
-### B. Repair existing broken configs (`libocvector/Tool/CodebaseSearchTool.vala`)
+```vala
+				var app = this.app as OllmchatApplication;
+				config.connections.set(this.bootstrap_dialog.verified_connection.url,
+					this.bootstrap_dialog.verified_connection);
+				app.tools_registry.setup_config_defaults(config);
+				app.vector_registry.setup_config_defaults(config);
+```
 
-In `setup_tool_config_default()`, when `codebase_search` **already exists** but `embed` or `analysis` has empty `connection` or `model`, call `setup_defaults()` using `config.default_connection().url` (or the first working connection). Save config if repaired. Fixes profiles created by the bootstrap bug without requiring manual config edit.
+---
 
-### C. Initialization loop (`ollmapp/Initialize.vala`)
+### 2. `libocvector/Tool/CodebaseSearchTool.vala` — `setup_tool_config_default()`: repair empty configs
 
-After `show_settings()` returns `true`, **do not `continue`**. `break` or `return true` from `run()` and rely solely on `reinitialize` when settings close. Ensure only one restart path (remove duplicate `load_config_and_initialize` trigger).
+**Why:** Bootstrap bug saved `codebase_search` with empty embed/analysis; early return never repairs.
 
-Optionally refactor `show_settings()` to `yield` until the settings dialog closes instead of fire-and-forget `show_dialog.begin()` + immediate return.
+**Where:** `setup_tool_config_default()`, whole method.
 
-### D. Error dialog and tab routing (`ollmapp/Window.vala`, `Initialize.vala`)
+**Depends on:** none.
 
-- Use accurate dialog titles per failure type (connection vs chat model vs required tool models).
-- When `ensure_required_models()` fails with missing connection key, open **Connections** (or a message that names the misconfigured tool).
-- When failure is missing model on server, keep **Tools** (pull UI).
+#### Remove
 
-### E. Debug log on Windows (`libollmchat/ApplicationInterface.vala`)
+```vala
+		public override void setup_tool_config_default(OLLMchat.Settings.Config2 config)
+		{
+			if (config.tools.has_key("codebase_search")) {
+				return;
+			}
+			
+			var tool_config = new CodebaseSearchToolConfig();
+			var default_connection = config.default_connection();
+			if (default_connection != null) {
+				tool_config.setup_defaults(default_connection.url);
+			}
+			config.tools.set("codebase_search", tool_config);
+		}
+```
 
-Replace `/`-split directory creation with `GLib.mkdir_with_parents()` (or equivalent) on the full `log_dir` path so `%USERPROFILE%\.cache\ollmchat\ollmchat.debug.log` opens reliably on native Windows.
+#### Replace with
 
-### F. Verification
+```vala
+		public override void setup_tool_config_default(OLLMchat.Settings.Config2 config)
+		{
+			var default_connection = config.default_connection();
+			if (!config.tools.has_key("codebase_search")) {
+				var tool_config = new CodebaseSearchToolConfig();
+				if (default_connection != null) {
+					tool_config.setup_defaults(default_connection.url);
+				}
+				config.tools.set("codebase_search", tool_config);
+				return;
+			}
+			if (default_connection == null) {
+				return;
+			}
+			var tool_config = config.tools.get("codebase_search") as CodebaseSearchToolConfig;
+			if (tool_config.embed.connection != ""
+				&& tool_config.embed.model != ""
+				&& tool_config.analysis.connection != ""
+				&& tool_config.analysis.model != "") {
+				return;
+			}
+			tool_config.setup_defaults(default_connection.url);
+			config.save();
+		}
+```
 
-1. Fresh bootstrap on Windows/Wine: confirm `config.json` has non-empty `tools.codebase_search.embed` / `.analysis`.
-2. Load an existing broken config (empty embed/analysis): confirm repair on startup.
-3. Trigger required-models error with `--debug`: confirm **Configure** opens settings and stays open until closed; init retries once after close, not immediately.
-4. Confirm debug log file is created on Windows without stderr spam.
+---
+
+### 3. `ollmapp/Initialize.vala` — `run()`: do not `continue` after settings shown
+
+**Why:** `show_settings()` returns immediately; `continue` restarts init before settings close. `reinitialize` on `closed` is the single restart path.
+
+**Where:** `run()`, each block that calls `show_settings()` then `continue`.
+
+**Depends on:** §4, §5.
+
+##### Part 1 — no working connection
+
+#### Remove
+
+```vala
+				if (working_conn == null) {
+					if (!(yield this.show_settings(
+						"No working connection found. Please check your connection settings.",
+						"connections"))) {
+						return false;
+					}
+					continue;  // Restart loop after settings dialog closes
+				}
+```
+
+#### Replace with
+
+```vala
+				if (working_conn == null) {
+					yield this.show_settings(
+						"No working connection found. Please check your connection settings.",
+						"connections");
+					return false;
+				}
+```
+
+##### Part 2 — no chat model (first `initialize_model` failure)
+
+#### Remove
+
+```vala
+				if (!(yield this.initialize_model(config, working_conn))) {
+					if (!(yield this.show_settings(
+						"No chat model found (only embedding models available). Please add or select a model.",
+						"models"))) {
+						return false;
+					}
+					continue;  // Restart loop after settings dialog closes
+				}
+```
+
+#### Replace with
+
+```vala
+				if (!(yield this.initialize_model(config, working_conn))) {
+					yield this.show_settings(
+						"No chat model found (only embedding models available). Please add or select a model.",
+						"models");
+					return false;
+				}
+```
+
+##### Part 3 — required models failure
+
+#### Remove
+
+```vala
+				if (!(yield this.ensure_required_models(config))) {
+					if (!(yield this.show_settings(
+						"Required models are not available. Please ensure models are downloaded.",
+						"tools"))) {
+						return false;
+					}
+					continue;  // Restart loop after settings dialog closes
+				}
+```
+
+#### Replace with
+
+```vala
+				if (!(yield this.ensure_required_models(config))) {
+					yield this.show_settings(
+						"Required models are not available. Please ensure models are downloaded.",
+						"tools");
+					return false;
+				}
+```
+
+##### Part 4 — `ensure_model_usage` catch path
+
+#### Remove
+
+```vala
+					if (!(yield this.initialize_model(config, working_conn))) {
+						if (!(yield this.show_settings(
+							"No chat model found (only embedding models available). Please add or select a model.",
+							"models"))) {
+							return false;
+						}
+						continue;
+					}
+```
+
+#### Replace with
+
+```vala
+					if (!(yield this.initialize_model(config, working_conn))) {
+						yield this.show_settings(
+							"No chat model found (only embedding models available). Please add or select a model.",
+							"models");
+						return false;
+					}
+```
+
+---
+
+### 4. `ollmapp/Initialize.vala` — `show_settings()`: title from `settings_page`
+
+**Why:** Accurate alert title without a third argument on every `show_settings()` call site.
+
+**Where:** `show_settings()`, start of method before `show_connection_error_dialog` call.
+
+**Depends on:** §5.
+
+#### Remove
+
+```vala
+		private async bool show_settings(string error_message, string settings_page)
+		{
+			var response = yield this.window.show_connection_error_dialog(error_message);
+```
+
+#### Replace with
+
+```vala
+		private async bool show_settings(string error_message, string settings_page)
+		{
+			string dialog_title;
+			switch (settings_page) {
+				case "connections":
+					dialog_title = "Connection Failed";
+					break;
+				case "models":
+					dialog_title = "No Chat Model";
+					break;
+				default:
+					dialog_title = "Required Models Unavailable";
+					break;
+			}
+			var response = yield this.window.show_connection_error_dialog(
+				error_message,
+				dialog_title
+			);
+```
+
+---
+
+### 5. `ollmapp/Window.vala` — `show_connection_error_dialog()`: title parameter
+
+**Why:** Caller supplies title; hardcoded **Connection Failed** is wrong for models / required-models failures.
+
+**Where:** `show_connection_error_dialog()` signature, body, and docblock.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+		/**
+		 * Shows a warning dialog when connection fails, with option to configure settings.
+		 * 
+		 * @param error_message The error message to display
+		 * @return The response string ("settings" or "cancel")
+		 */
+		internal async string show_connection_error_dialog(string error_message)
+		{
+			var alert = new Adw.AlertDialog(
+				"Connection Failed",
+				error_message + "\n\nPlease check your connection settings and try again."
+			);
+```
+
+#### Replace with
+
+```vala
+		/**
+		 * Shows a warning dialog when initialization fails, with option to configure settings.
+		 *
+		 * @param error_message The error message to display
+		 * @param dialog_title Alert title (e.g. connection, chat model, or required-models failure)
+		 * @return The response string ("settings" or "cancel")
+		 */
+		internal async string show_connection_error_dialog(
+			string error_message,
+			string dialog_title
+		) {
+			var alert = new Adw.AlertDialog(
+				dialog_title,
+				error_message + "\n\nPlease check your connection settings and try again."
+			);
+```
+
+---
+
+### 6. `libollmchat/ApplicationInterface.vala` — `debug_log()`: create log dir on Windows
+
+**Why:** `/`-split path creation fails for `C:\Users\...`; stderr spam on every log line.
+
+**Where:** `debug_log()`, lazy open of `debug_log_file`.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+				// Try to create directory if it doesn't exist (simple recursive approach)
+				var parts = log_dir.split("/");
+				var current_path = "";
+				foreach (var part in parts) {
+					if (part == "") {
+						current_path = "/";
+						continue;
+					}
+					if (current_path == "") {
+						current_path = part;
+					} else {
+						current_path = current_path + "/" + part;
+					}
+					// Try to create directory (ignore errors if it already exists)
+					try {
+						GLib.DirUtils.create(current_path, 0755);
+					} catch (GLib.FileError e) {
+						// Ignore if directory already exists
+						if (e.code != GLib.FileError.EXIST) {
+							// For other errors, continue anyway - file open might still work
+						}
+					}
+				}
+```
+
+#### Replace with
+
+```vala
+				if (!GLib.FileUtils.test(log_dir, GLib.FileTest.IS_DIR)) {
+					GLib.DirUtils.create_with_parents(log_dir, 0755);
+				}
+```
 
 ---
 
@@ -235,7 +542,7 @@ Replace `/`-split directory creation with `GLib.mkdir_with_parents()` (or equiva
 - [x] Ollama reachable and models present? **Yes** — Wine run: 47 models at `http://192.168.88.14:11434`, including `bge-m3:latest` and `qwen3:1.7b`.
 - [x] Does `ollmchat.exe --debug` work? **Yes** under Wine; stderr output captured.
 - [ ] Contents of `config.json` after bootstrap on native Windows (confirm empty embed/analysis)?
-- [ ] Native Windows debug log path — does `%USERPROFILE%\.cache\ollmchat\ollmchat.debug.log` get created after fix E?
+- [ ] Native Windows debug log path — does `%USERPROFILE%\.cache\ollmchat\ollmchat.debug.log` get created after the debug-log fix?
 
 ---
 
@@ -244,4 +551,8 @@ Replace `/`-split directory creation with `GLib.mkdir_with_parents()` (or equiva
 | Date       | Change |
 | ---------- | ------ |
 | 2026-06-09 | File created from Windows first-run report + code review of `Initialize.vala` / `Window.vala`. |
-| 2026-06-09 | Added Wine `--debug` evidence; confirmed bootstrap ordering bug (empty `codebase_search` tool config); expanded proposed fixes (A–F). |
+| 2026-06-09 | Added Wine `--debug` evidence; confirmed bootstrap ordering bug (empty `codebase_search` tool config); expanded proposed fixes. |
+| 2026-06-09 | Added verbatim **Remove** / **Replace with** code hunks to **Proposed fix**. |
+| 2026-06-09 | Revised proposed hunks for **CODING_STANDARDS** (drop defensive null/heuristic tab routing; simplify init loop and debug-log dir). |
+| 2026-06-09 | `setup_tool_config_default()` proposal: early return, `!has_key` create path first. |
+| 2026-06-09 | Approved hunks applied: `Window.vala`, `Initialize.vala`, `CodebaseSearchTool.vala`, `ApplicationInterface.vala`. `meson compile` OK. |

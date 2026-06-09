@@ -98,10 +98,14 @@ namespace OLLMtools.RunCommand
 			if (OLLMfiles.Sandbox.Bubble.can_wrap ()) {
 				return "";
 			}
+#if G_OS_WIN32
+			return " (Windows: commands run unsandboxed.)";
+#else
 			if (GLib.Environment.get_variable ("FLATPAK_ID") != null) {
 				return " (Flatpak: bubblewrap is not used here.)";
 			}
 			return " (Install bubblewrap or add bwrap to PATH to enable sandboxing.)";
+#endif
 		}
 
 		/**
@@ -232,8 +236,11 @@ namespace OLLMtools.RunCommand
 				}
 			}
 			
+			var run_status = OLLMfiles.Sandbox.Bubble.can_wrap ()
+				? "Running command in sandbox"
+				: "Running command";
 			this.agent.add_message (new OLLMchat.Message ("ui",
-				OLLMchat.Message.fenced ("text.oc-frame-info.collapsed Running command in sandbox",
+				OLLMchat.Message.fenced ("text.oc-frame-info.collapsed " + run_status,
 					"$ " + this.command)));
 			
 			// Execute the tool async
@@ -327,24 +334,26 @@ namespace OLLMtools.RunCommand
 				throw new GLib.IOError.NOT_FOUND("Working directory does not exist: " + work_dir);
 			}
 			
-			// Execute command using shell with working directory
-			// Build command with cd if needed
-			string shell_cmd = this.command;
-			if (!this.command.has_prefix("cd ")) {
-				// Prepend cd to command to set working directory
-				shell_cmd = "cd " + GLib.Shell.quote(work_dir) + " && " + this.command;
+			string[] argv;
+#if G_OS_WIN32
+			var shell = GLib.Environment.get_variable ("COMSPEC");
+			if (shell == null || shell.strip () == "") {
+				shell = "cmd.exe";
 			}
-			
-			string[] argv = { "/bin/sh", "-c", shell_cmd };
-			
+			argv = { shell, "/c", this.command };
+#else
+			argv = { "/bin/sh", "-c", this.command };
+#endif
+
 			GLib.Subprocess subprocess;
 			try {
-				subprocess = new GLib.Subprocess.newv(
-					argv,
-					GLib.SubprocessFlags.STDOUT_PIPE | 
+				var launcher = new GLib.SubprocessLauncher (
+					GLib.SubprocessFlags.STDOUT_PIPE |
 					GLib.SubprocessFlags.STDERR_PIPE |
 					GLib.SubprocessFlags.STDIN_INHERIT
 				);
+				launcher.set_cwd (work_dir);
+				subprocess = launcher.spawnv (argv);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to create subprocess: " + e.message);
 			}
