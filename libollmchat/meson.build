@@ -17,20 +17,55 @@ ollmchat_deps = [
   ollamaweb_vapi_dep,
 ]
 
-# Compile resources for prompt system
-ollmchat_resources = gnome.compile_resources(
-  'ollmchat-resources',
-  '../resources/gresources.xml',
-  source_dir: [
-	'../resources/ollmchat-agents/code-assistant',
-	'../resources',
-	'../resources/wrapped-tools',
-	'../resources/ocvector',
-	'../resources/skill-prompts',
-	'../resources/skills'
-	],
-  c_name: 'ollmchat_resources'
+resource_dirs = [
+  '../resources/ollmchat-agents/code-assistant',
+  '../resources',
+  '../resources/wrapped-tools',
+  '../resources/ocvector',
+  '../resources/skill-prompts',
+  '../resources/skills'
+]
+
+resource_source_args = []
+foreach resource_dir : resource_dirs
+  resource_source_args += ['--sourcedir', meson.current_source_dir() / resource_dir]
+endforeach
+
+# Compile resources for prompt system. Use the build-machine tool explicitly so
+# cross builds do not try to execute a target-architecture glib-compile-resources.
+glib_compile_resources = find_program('glib-compile-resources', native: true)
+ollmchat_resources_c = custom_target(
+  'ollmchat-resources_c',
+  input: '../resources/gresources.xml',
+  output: 'ollmchat-resources.c',
+  command: [
+    glib_compile_resources,
+    '@INPUT@',
+    resource_source_args,
+    '--c-name', 'ollmchat_resources',
+    '--internal',
+    '--generate-source',
+    '--target', '@OUTPUT@',
+    '--dependency-file', '@DEPFILE@'
+  ],
+  depfile: 'ollmchat-resources.c.d'
 )
+
+ollmchat_resources_h = custom_target(
+  'ollmchat-resources_h',
+  input: '../resources/gresources.xml',
+  output: 'ollmchat-resources.h',
+  command: [
+    glib_compile_resources,
+    '@INPUT@',
+    resource_source_args,
+    '--c-name', 'ollmchat_resources',
+    '--internal',
+    '--generate-header',
+    '--target', '@OUTPUT@'
+  ]
+)
+ollmchat_resources = [ollmchat_resources_c, ollmchat_resources_h]
 
 # Source files for OLLMchat namespace (needed by CodeAssistant)
 # Settings files must come first as they are used by other files

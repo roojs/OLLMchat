@@ -173,9 +173,10 @@ namespace SQ {
 		/**
 		 * Inserts a new object into the database table.
 		 * 
-		 * This method automatically extracts all properties from the object
-		 * (except 'id') and inserts them into the table. After insertion,
-		 * the object's 'id' property is set to the newly generated row ID.
+		 * This method inserts columns that map to writable GObject properties
+		 * on ''newer'' (except ''id''). Schema columns with no matching
+		 * property are omitted so SQLite applies column DEFAULTs. After
+		 * insertion, the object's 'id' property is set to the new row ID.
 		 * 
 		 * @param newer The object to insert
 		 * @return The ID of the newly inserted row
@@ -194,10 +195,13 @@ namespace SQ {
 				if (s.name == "id" ){
 					continue;
 				}
-
-				keys +=  s.name;
-				values += "$" + s.name;				
-				 
+				var prop_name = s.name.replace("_", "-");
+				Type value_type;
+				if (!this.has_property(prop_name, out value_type)) {
+					continue;
+				}
+				keys += s.name;
+				values += "$" + s.name;
 			}
 			
 			Sqlite.Statement stmt;
@@ -243,7 +247,7 @@ namespace SQ {
 			}
  
 			if (Sqlite.DONE != stmt.step ()) {
-			    //GLib.debug("SYmbol insert: %s", this.db.db.errmsg());
+				GLib.critical("Insert: %s", this.db.db.errmsg());
 			}
 			////GLib.debug("Execute %s", stmt.expanded_sql());	 
 			

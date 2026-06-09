@@ -19,8 +19,8 @@ namespace OLLMmcp.Client
 {
 	/**
 	 * MCP client over stdio: starts the server as a subprocess and talks
-	 * JSON-RPC over stdin/stdout (newline-delimited). Uses bwrap when
-	 * available (not in Flatpak); otherwise spawns the process directly.
+	 * JSON-RPC over stdin/stdout (newline-delimited). Uses bubblewrap when
+	 * available; otherwise requires allow_unsandboxed in mcp.json (Flatpak, Windows).
 	 */
 	public class Stdio : Base
 	{
@@ -75,7 +75,7 @@ namespace OLLMmcp.Client
 		public override void disconnect()
 		{
 			if (this.process != null) {
-				this.process.send_signal(Posix.Signal.TERM);
+				this.process.force_exit();
 				this.process = null;
 			}
 			this.stdout_reader = null;
@@ -158,24 +158,29 @@ namespace OLLMmcp.Client
 		private string[] build_spawn_argv() throws Error
 		{
 			if (GLib.Environment.get_variable("FLATPAK_ID") != null) {
-				if (!this.config.trust_sandbox) {
+				if (!this.config.allow_unsandboxed) {
 					throw new GLib.IOError.FAILED(
 						"MCP server '" + this.config.id
-						+ "': stdio disabled inside sandbox; set trust_sandbox true in mcp.json"
+						+ "': stdio disabled inside sandbox; set allow_unsandboxed true in mcp.json"
 					);
 				}
-				string[] argv = {};
-				argv += this.config.command;
-				foreach (var a in this.config.args) {
-					argv += a;
-				}
-				return argv;
+				return this.build_direct_argv();
 			}
 			if (!OLLMfiles.Sandbox.Bubble.can_wrap()) {
+#if G_OS_WIN32
+				if (!this.config.allow_unsandboxed) {
+					throw new GLib.IOError.FAILED(
+						"MCP server '" + this.config.id
+						+ "': sandboxing is unavailable; set allow_unsandboxed true in mcp.json"
+					);
+				}
+				return this.build_direct_argv();
+#else
 				throw new GLib.IOError.FAILED(
 					"MCP server '" + this.config.id
 					+ "': bubblewrap required for stdio MCP on host"
 				);
+#endif
 			}
 			OLLMfiles.Folder? project = this.project_manager.active_project;
 			string[] write_array = {};
@@ -200,6 +205,16 @@ namespace OLLMmcp.Client
 				args += a;
 			}
 			return args;
+		}
+
+		private string[] build_direct_argv()
+		{
+			string[] argv = {};
+			argv += this.config.command;
+			foreach (var a in this.config.args) {
+				argv += a;
+			}
+			return argv;
 		}
 
 		private async void init() throws Error

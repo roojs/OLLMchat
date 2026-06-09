@@ -64,13 +64,15 @@ After restart, tools from that server should show up with names like `mcp:filesy
 | `url` | http | `""` | http | Base URL of a running MCP HTTP server. |
 | `network` | no | `false` | stdio | If `true`, allow network inside the sandbox (see below). |
 | `allow_write` | no | (none) | stdio | Extra writable host paths (see below). |
-| `trust_sandbox` | no | `false` | stdio | Required for stdio MCP inside Flatpak/sandboxed app (see below). |
+| `allow_unsandboxed` | no | `false` | stdio | Opt in to stdio MCP without bubblewrap (see below). |
 
 ### stdio transport
 
 OLLMchat **starts** the MCP server as a subprocess and talks JSON-RPC over stdin/stdout (newline-delimited messages).
 
-On a normal Linux host (not Flatpak), the subprocess is started under **bubblewrap** with restricted filesystem and network access. You need `bwrap` installed (`bubblewrap` package).
+On a normal Linux host (not Flatpak), the subprocess is started under **bubblewrap** with restricted filesystem and network access. You need `bwrap` installed (`bubblewrap` package). On that path, `network` and `allow_write` apply; `allow_unsandboxed` is ignored.
+
+If bubblewrap is unavailable (Flatpak, Windows), stdio MCP requires `"allow_unsandboxed": true` and runs as a direct subprocess without OLLMchat's sandbox — see [Unsandboxed stdio](#unsandboxed-stdio-allow_unsandboxed).
 
 Typical pattern for Node-based MCP packages:
 
@@ -122,19 +124,34 @@ Example:
 
 Policy is fixed in config at spawn time; MCP does not show a separate permission dialog for these paths.
 
+**Note:** `allow_write` only applies when bubblewrap is used (normal Linux host). It has no effect on the unsandboxed path (Flatpak or Windows with `allow_unsandboxed`).
+
 ---
 
-## Flatpak and nested sandboxes (`trust_sandbox`)
+## Unsandboxed stdio (`allow_unsandboxed`)
 
-If OLLMchat runs inside a sandbox (e.g. Flatpak), stdio MCP cannot start another bubblewrap layer unless you opt in:
+By default, OLLMchat refuses to run stdio MCP unless it can apply its own **bubblewrap** sandbox (read-only root, optional network lockdown, project overlay, seccomp monitoring).
+
+Set `"allow_unsandboxed": true` only when bubblewrap cannot be used and you accept running the MCP server as a **direct subprocess** with no OLLMchat sandbox layer:
+
+| Environment | Default behaviour | With `"allow_unsandboxed": true` |
+|-------------|-------------------|----------------------------------|
+| Linux host (bwrap installed) | Always sandboxed; flag ignored | Still sandboxed (flag ignored) |
+| Linux host (no bwrap) | Refused | Refused |
+| Flatpak | Refused | Direct spawn (Flatpak outer sandbox only) |
+| Windows | Refused | Direct spawn (full user privileges) |
 
 ```json
-"trust_sandbox": true
+"allow_unsandboxed": true
 ```
 
-Without this, stdio MCP fails with an error that mentions `trust_sandbox` in `mcp.json`. Only set it for servers you trust, since the child process runs with fewer outer sandbox guarantees.
+On the unsandboxed path:
 
-HTTP transport is unaffected (no local spawn).
+- The MCP server can access anything OLLMchat (or the Flatpak sandbox) can access.
+- **`network` and `allow_write` do not apply** — there is no bubblewrap layer to configure.
+- Seccomp violation hints are not appended to tool output.
+
+Only enable this for servers you trust. HTTP transport is unaffected (no local spawn).
 
 ---
 
@@ -170,8 +187,8 @@ Disable a server temporarily with `"enabled": false` without removing its block.
 | Symptom | Things to check |
 |---------|------------------|
 | No MCP tools | File path `~/.config/ollmchat/mcp.json`; root must be a JSON **array**; `"enabled": true`; check app logs for parse/load warnings. |
-| stdio fails immediately | `command` on PATH; `args` correct; on host, `bwrap` installed; in Flatpak, `trust_sandbox: true`. |
-| Server needs network | `"network": true` for stdio. |
+| stdio fails immediately | `command` on PATH; `args` correct; on Linux host, `bwrap` installed; in Flatpak or on Windows, `allow_unsandboxed: true`. |
+| Server needs network | `"network": true` for stdio (bubblewrap path only). |
 | Tool call fails / empty result | Server logs; MCP `tools/call` errors appear in tool output; seccomp appendix may mention `mcp.json` and server `id`. |
 | HTTP connection fails | Server running; `url` correct; firewall. |
 

@@ -19,7 +19,7 @@ on:
       - 'examples/**/*.vala'
       - 'docs/meson.build'
       - '.github/workflows/deploy-docs.yml'
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:  # Manual rebuild on main only (see job if: guards)
 
 permissions:
   contents: read
@@ -28,6 +28,7 @@ permissions:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -117,6 +118,7 @@ jobs:
           path: build/valadoc
 
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     environment:

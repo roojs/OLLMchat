@@ -36,9 +36,10 @@ namespace OLLMfiles
 	 * 
 	 * == Notes ==
 	 * 
-	 * Aliases resolve symlinks completely using realpath(). Target must exist and be
-	 * within home directory. Aliases maintain their own path (where the symlink exists)
-	 * for filesystem tracking.
+	 * On Linux, aliases resolve symlinks completely using realpath(). On Windows,
+	 * GLib.Filename.canonicalize() is used (symlinks are not followed). Target must
+	 * exist and be within home directory. Aliases maintain their own path (where the
+	 * symlink exists) for filesystem tracking.
 	 */
 	public class FileAlias : File
 	{
@@ -85,28 +86,37 @@ namespace OLLMfiles
 			this.path = path; // Alias path
 			this.parent = parent;
 			this.parent_id = parent.id;
-			
-			// Use realpath directly on this.path to completely resolve all symlinks in the chain
-			// PATH_MAX is typically 4096 on Linux systems
-			var resolved_ptr = Posix.realpath(path);
-			if (resolved_ptr == null) {
+
+			// Resolve the alias target before the home-dir check. Linux uses realpath() so
+			// symlinks pointing outside $HOME are rejected (canonicalize does not follow links).
+			// Windows has no realpath(); canonicalize() is the best available fallback there.
+#if !G_OS_WIN32
+			var resolved_path = Posix.realpath(path);
+			if (resolved_path == null) {
 				this.points_to_id = -1;
 				return;
 			}
+#else
+			var resolved_path = GLib.Filename.canonicalize(path);
+			if (resolved_path == null || resolved_path == "") {
+				this.points_to_id = -1;
+				return;
+			}
+#endif
 			
 			// Restrict aliases to user's home directory
 			 
 			// Check if resolved path is within home directory
-			if (!resolved_ptr.has_prefix(home_dir)) {
+			if (!resolved_path.has_prefix(home_dir)) {
 				GLib.warning("FileAlias.new_from_info: Alias target '%s' is outside home directory '%s', rejecting", 
-					(string)resolved_ptr, home_dir);
+					resolved_path, home_dir);
 				this.points_to_id = -1;
 				return;
 			}
 			
-			this.target_path = resolved_ptr;
+			this.target_path = resolved_path;
 			
-			var target_info = this.get_target_info(resolved_ptr);
+			var target_info = this.get_target_info(resolved_path);
 			if (target_info == null) {
 				this.points_to_id = -1;
 				this.target_path = "";
@@ -115,10 +125,10 @@ namespace OLLMfiles
 			
 			if (target_info.get_file_type() == GLib.FileType.DIRECTORY) {
 				this.points_to = new Folder.new_from_info(
-					parent.manager, null, target_info, resolved_ptr);
+					parent.manager, null, target_info, resolved_path);
 			} else {
 				this.points_to = new File.new_from_info(
-					parent.manager, null, target_info, resolved_ptr);
+					parent.manager, null, target_info, resolved_path);
 			}
 		}
 		

@@ -1,0 +1,439 @@
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+namespace OLLMfilesd
+{
+	/**
+	 * Result of checking if a file has been updated on disk.
+	 */
+	public enum FileUpdateStatus {
+		NO_CHANGE,              // File hasn't changed on disk
+		CHANGED_HAS_UNSAVED     // File changed on disk, buffer has unsaved changes - needs warning
+	}
+
+	/**
+	 * Represents a file in the project.
+	 * 
+	 * Files can be in multiple projects (due to softlinks/symlinks).
+	 * All alias references are tracked in ProjectManager's alias_map.
+	 * 
+	 * Daemon {@link File} — scan, disk I/O, and {@code File.*} RPC.
+	 * Editor buffers and Gtk helpers live on {@code libocfiles/V2/File.vala}.
+	 */
+	public class File : FileBase, Json.Serializable
+	{
+		/**
+		 * Constructor.
+		 * 
+		 * @param manager The ProjectManager instance (required)
+		 */
+		public File(ProjectManager manager)
+		{
+			base(manager);
+			this.base_type = "f";
+		}
+
+		public signal void rpc_read(OLLMrpc.Request request);
+		public signal void rpc_write(OLLMrpc.Request request);
+		public signal void rpc_register(OLLMrpc.Request request);
+		public signal void rpc_delete(OLLMrpc.Request request);
+		public signal void rpc_changed_check(OLLMrpc.Request request);
+
+		public unowned ParamSpec? find_property(string name)
+		{
+			return this.get_class().find_property(name);
+		}
+
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
+		{
+			base.set_property(pspec.get_name(), value);
+		}
+
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
+		{
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
+			return val;
+		}
+
+		/** Omit graph edges that recurse during json-glib wire serialize. */
+		public override Json.Node serialize_property(
+			string property_name,
+			Value value,
+			ParamSpec pspec
+		) {
+			switch (property_name) {
+				case "manager":
+				case "buffer":
+				case "parent":
+					return null;
+				default:
+					return default_serialize_property(
+						property_name,
+						value,
+						pspec
+					);
+			}
+		}
+
+		construct
+		{
+			this.rpc_read.connect((request) => {
+				var file = this.manager.get_file_from_active_project(
+					((FileParams) request.param).path
+				);
+				var row = new File(this.manager);
+				row.copy_from(file, {"manager", "buffer", "parent"});
+				row.last_modified = file.mtime_on_disk();
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					result = row,
+					result_type = "File"
+				});
+			});
+			this.rpc_write.connect((request) => {
+				var p = (FileParams) request.param;
+				var file = this.manager.get_file_from_active_project(p.path);
+				if (file.buffer == null) {
+					this.manager.buffer_provider.create_buffer(file);
+				}
+				file.buffer.write_real.begin(p.content);
+				request.reply(new OLLMrpc.Response() {
+					msg = "ok"
+				});
+			});
+			this.rpc_register.connect((request) => {
+				var p = (FileParams) request.param;
+				var existing = this.manager.get_file_from_active_project(p.path);
+				if (existing != null && existing.id != -1) {
+					var row = new File(this.manager);
+					row.copy_from(existing, {"manager", "buffer", "parent"});
+					row.last_modified = existing.mtime_on_disk();
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						result = row,
+						result_type = "File"
+					});
+					return;
+				}
+				var fake = new File(this.manager) {
+					path = p.path,
+					id = -1
+				};
+				this.manager.convert_fake_file_to_real.begin(
+					fake,
+					p.path,
+					(obj, res) => {
+						this.manager.convert_fake_file_to_real.end(res);
+						var real = this.manager.get_file_from_active_project(
+							p.path
+						);
+						var row = new File(this.manager);
+						row.copy_from(real, {"manager", "buffer", "parent"});
+						row.last_modified = real.mtime_on_disk();
+						request.reply(new OLLMrpc.Response() {
+							id = request.id,
+							result = row,
+							result_type = "File"
+						});
+					}
+				);
+			});
+			this.rpc_delete.connect((request) => {
+				var file = this.manager.get_file_from_active_project(
+					((FileParams) request.param).path
+				);
+				this.manager.delete_manager.remove.begin(
+					file,
+					new GLib.DateTime.now_local(),
+					(obj, res) => {
+						this.manager.delete_manager.remove.end(res);
+						this.manager.delete_manager.cleanup.begin();
+					}
+				);
+				request.reply(new OLLMrpc.Response() {
+					msg = "ok"
+				});
+			});
+			this.rpc_changed_check.connect((request) => {
+				var p = (FileParams) request.param;
+				var file = this.manager.get_file_from_active_project(p.path);
+				var status = FileUpdateStatus.NO_CHANGE;
+				if (file.mtime_on_disk() > p.last_known_mtime
+					&& p.buffer_dirty) {
+					status = FileUpdateStatus.CHANGED_HAS_UNSAVED;
+				}
+				request.reply(new OLLMrpc.Response() {
+					msg = ((int) status).to_string()
+				});
+			});
+		}
+		
+		/**
+		 * Named constructor: Create a File from FileInfo.
+		 * 
+		 * @param parent The parent Folder (required)
+		 * @param info The FileInfo object from directory enumeration
+		 * @param path The full path to the file
+		 */
+		public File.new_from_info(
+			ProjectManager manager,
+			Folder? parent,
+			GLib.FileInfo info,
+			string path)
+		{
+			base(manager);
+			this.base_type = "f";
+			this.path = path;
+			if (parent != null) {
+				this.parent = parent;
+				this.parent_id = parent.id;
+			}
+			
+			// Set last_modified from FileInfo
+			var mod_time = info.get_modification_date_time();
+			if (mod_time != null) {
+				this.last_modified = mod_time.to_unix();
+			}
+			
+			// Detect and set is_text from content type
+			var  content_type = info.get_content_type();
+ 			this.is_text = content_type != null && content_type != "" &&  content_type.has_prefix("text/");
+			
+			// Detect language from filename if not already set
+			if (this.language == "") {
+				this.detect_language();
+			}
+			// Treat as text if we have a code language (e.g. .php → application/x-php, not text/*)
+			if (!this.is_text && this.language != "") {
+				this.is_text = true;
+			}
+		}
+		
+		/**
+		 * Detect programming language from file extension using buffer provider.
+		 * Sets the language property if a match is found.
+		 */
+		private void detect_language()
+		{
+			if (this.path == null || this.path == "") {
+				return;
+			}
+			
+			var detected = this.manager.buffer_provider.detect_language(this);
+			if (detected != "") {
+				this.language = detected;
+				//GLib.debug("File.detect_language: Detected language '%s' for file '%s'", 
+				//	this.language, this.path);
+			}
+		}
+		
+		public override string to_summary(Gee.HashMap<int, SQT.VectorMetadata> keymap, string indent)
+		{
+			var type = "file";
+			var description = "";
+			if (keymap.has_key((int)this.id)) {
+				var vm = keymap.get((int)this.id);
+				if (vm.category != "" && vm.category != "other") {
+					type = vm.category;
+				}
+				description = vm.description != "" ? ": " + vm.description : "";
+			}
+			if (type == "file" && this.language != "") {
+				type = this.language;
+			}
+			return indent + "- (" + type + ") " + GLib.Path.get_basename(this.path) + description;
+		}
+		
+		/** In-process buffer for {@code rpc_write} / {@code revert} disk paths. */
+		public FileBuffer? buffer { get; set; default = null; }
+		
+		/**
+		 * Approve this file and all its FileHistory items.
+		 * 
+		 * Sets is_need_approval = false and updates all FileHistory records
+		 * for this file to status = 1 (approved).
+		 */
+		public void approve()
+		{
+			// Approve file
+			this.is_need_approval = false;
+			this.last_change_type = "";
+			this.saveToDB(this.manager.db, null, false);
+			
+			// Approve all FileHistory items for this file using query wrapper
+			var db = this.manager.db;
+			var history_records = new Gee.ArrayList<FileHistory>();
+			try {
+				FileHistory.query(db).select(
+					"WHERE filebase_id = %lld".printf(this.id),
+					history_records
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to query FileHistory for approval: %s", e.message);
+				return;
+			}
+			
+			// Update each FileHistory record to approved status
+			foreach (var history in history_records) {
+				history.status = 1;
+				try {
+					FileHistory.query(db).updateById(history);
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to update FileHistory status: %s", e.message);
+				}
+			}
+		}
+		
+		/**
+		 * Whether this file is a documentation file (plain text or markdown, not code).
+		 * 
+		 * Uses is_text and language (from BufferProvider.detect_language()).
+		 * Returns true for markdown, plain text, and unknown text; false for code and structured formats.
+		 */
+		public bool is_documentation()
+		{
+			if (!this.is_text) {
+				return false;
+			}
+			
+			var lang = this.language;
+			if (lang == null || lang == "") {
+				return true;
+			}
+			
+			var lang_lower = lang.down();
+			
+			switch (lang_lower) {
+				case "markdown":
+				case "txt":
+				case "text":
+				case "plaintext":
+					return true;
+				default:
+					// Code languages (vala, python, c, etc.) and structured formats (html, xml, json, yaml, css, etc.)
+					return false;
+			}
+		}
+		
+		/**
+		 * Revert this file to previous version from FileHistory backup.
+		 * 
+		 * Finds the most recent FileHistory record with a backup for this file
+		 * and restores the file from that backup. Before restoring, creates a new
+		 * FileHistory record with change_type="revert" to backup the rejected content
+		 * (flagged as approved). Updates the original FileHistory status to rejected (-1)
+		 * and sets is_need_approval = true.
+		 * 
+		 * @throws Error if backup file doesn't exist or restore fails
+		 */
+		public async void revert() throws Error
+		{
+			// Get FileHistory records for this file
+			var db = this.manager.db;
+			var history_records = new Gee.ArrayList<FileHistory>();
+			try {
+				yield FileHistory.query(db).select_async(
+					"WHERE filebase_id = %lld AND backup_path != '' ORDER BY timestamp DESC LIMIT 1".printf(this.id),
+					history_records
+				);
+			} catch (GLib.Error e) {
+				throw new GLib.IOError.NOT_FOUND("Failed to query FileHistory for revert: %s".printf(e.message));
+			}
+			
+			if (history_records.size == 0) {
+				throw new GLib.IOError.NOT_FOUND("No backup found for file: %s".printf(this.path));
+			}
+			
+			// Get the most recent FileHistory record with backup
+			var history = history_records[0];
+			
+			// Check if backup exists
+			if (history.backup_path == "" || !GLib.FileUtils.test(history.backup_path, GLib.FileTest.EXISTS)) {
+				throw new GLib.IOError.NOT_FOUND("Backup file does not exist: %s".printf(history.backup_path));
+			}
+			
+			// Check change type - cannot revert "added" files (no backup)
+			if (history.change_type == "added") {
+				throw new GLib.IOError.INVALID_ARGUMENT("Cannot revert added files (no backup exists)");
+			}
+			
+			// Before restoring, backup the current content (the rejected content)
+			// Create a new FileHistory record with change_type="revert" to backup the rejected content
+			var now = new GLib.DateTime.now_local();
+			var revert_history = new FileHistory(
+				db,
+				this,
+				"revert",
+				now
+			);
+			
+			// Set status to approved (1) for the revert record
+			revert_history.status = 1;
+			
+			// Commit the revert history record (creates backup of current content)
+			yield revert_history.commit();
+			
+			// Copy backup file back to original path
+			var backup_file = GLib.File.new_for_path(history.backup_path);
+			var target_file = GLib.File.new_for_path(history.path);
+			
+			// Create parent directory if it doesn't exist (for deleted files)
+			var parent_dir = target_file.get_parent();
+			if (parent_dir != null && !parent_dir.query_exists()) {
+				parent_dir.make_directory_with_parents(null);
+			}
+			
+			// Copy backup to original location (overwrites existing file)
+			backup_file.copy(
+				target_file,
+				GLib.FileCopyFlags.OVERWRITE,
+				null,
+				null
+			);
+			
+			// Update File object metadata
+			this.last_modified = now.to_unix();
+		
+			// Save File object to database
+			this.saveToDB(db, null, false);
+			
+			// Reload buffer if it exists (file content changed on disk)
+			if (this.buffer != null) {
+				try {
+					yield this.buffer.read_async();
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to reload buffer after revert for %s: %s", this.path, e.message);
+				}
+			}
+			
+			// Update FileHistory status to rejected (-1) using query wrapper
+			history.status = -1;
+			try {
+				FileHistory.query(db).updateById(history);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to update FileHistory status: %s", e.message);
+			}
+			
+			this.last_change_type = "";
+			this.is_need_approval = false;
+			this.saveToDB(db, null, false);
+		}
+		
+	}
+}
