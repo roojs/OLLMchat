@@ -32,12 +32,22 @@ faiss_dep = declare_dependency(
 )
 cpp = meson.get_compiler('cpp')
 cpp_std_lib = cpp.find_library('stdc++', required: true)
-# FAISS uses OpenMP for parallelization
+# FAISS uses OpenMP for parallelization (configure-time check only).
 omp_dep = dependency('openmp', required: true)
-# FAISS uses BLAS for matrix operations
+# FAISS uses BLAS/LAPACK for matrix operations.
+#
+# Hacky but intentional: pkg-config blas/lapack must not go in ocvector_deps — valac
+# has no vapi for them and will fail with "Package `blas' not found". Meson would
+# normally pass dependency link flags via get_link_args(), but that API is not
+# available on our older Ubuntu/Meson toolchain (1.7), so we probe at configure
+# time and pass plain -l flags here instead. sqgipkg cross-builds without system
+# blas fall through to openblas in the SQGI sysroot.
 blas_dep = dependency('blas', required: false)
 lapack_dep = dependency('lapack', required: false)
-if not blas_dep.found()
+ocvector_link_args = ['-lgomp']
+if blas_dep.found()
+  ocvector_link_args += ['-lblas']
+else
   linux_sysroot = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_SYSROOT"', check: false).stdout().strip()
   linux_triplet = run_command('sh', '-c', 'printf %s "$SQGI_LINUX_TRIPLET"', check: false).stdout().strip()
   windows_sysroot_prefix = run_command('sh', '-c', 'printf %s "$SQGI_WINDOWS_SYSROOT_PREFIX"', check: false).stdout().strip()
@@ -48,8 +58,20 @@ if not blas_dep.found()
   if windows_sysroot_prefix != ''
     openblas_dirs += windows_sysroot_prefix / 'lib'
   endif
-  blas_dep = cc.find_library('openblas', dirs: openblas_dirs, required: true)
+  if cc.find_library('openblas', dirs: openblas_dirs, required: false).found()
+    ocvector_link_args += ['-lopenblas']
+  else
+    cc.find_library('blas', required: true)
+    ocvector_link_args += ['-lblas']
+  endif
 endif
+if lapack_dep.found()
+  ocvector_link_args += ['-llapack']
+else
+  cc.find_library('lapack', required: true)
+  ocvector_link_args += ['-llapack']
+endif
+ocvector_link_dep = declare_dependency(link_args: ocvector_link_args)
 # Find tree-sitter library (C library for parsing)
 # Tree-sitter provides pkg-config support, with a sysroot fallback for sqgipkg.
 tree_sitter_lib = dependency('tree-sitter', required: false)
@@ -89,10 +111,8 @@ ocvector_deps = [
   valac.find_library('posix'),
   faiss_dep,
   cpp_std_lib,
-  omp_dep,
-  blas_dep,
-  lapack_dep,
   tree_sitter_lib  # Tree-sitter C library (required - Tree.vala uses TreeSitter API)
+  # BLAS, LAPACK, OpenMP: ocvector_link_dep above (link-only; see comment there)
 ]
 
 # Source files for OLLMvector namespace
@@ -149,7 +169,7 @@ lib_build_rpath = ':'.join([
 
 # Build the library
 ocvector_base_lib = library('ocvector',
-  dependencies: [ocvector_deps, ocsqlite_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep],
+  dependencies: [ocvector_deps, ocvector_link_dep, ocsqlite_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep],
   sources: ocvector_src + faiss_wrapper_src,
   link_with: [ollmchat_base_lib],  # Need to link with ollmchat_base_lib because CodebaseSearchTool extends OLLMchat.Tool.BaseTool (similar to libollmchatgtk)
   vala_header: 'ocvector.h',
@@ -239,7 +259,7 @@ ocvector_vapi = custom_target('ocvector-vapi',
 ocvector_vapi_dep = declare_dependency(
   link_args: ['-L' + meson.current_build_dir(), '-locvector'],
   sources: [ocvector_vapi[0]],  # Include VAPI file to ensure it's built first
-  dependencies: [ocsqlite_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep, ocvector_deps]
+  dependencies: [ocsqlite_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep]
 )
 
 # GObject Introspection for ocvector library
