@@ -298,22 +298,22 @@ namespace OLLMchat.Response
 		 */
 		public string subtitle_markup {
 			owned get {
-				var span_fmt = "<span background=\"%s\" foreground=\"#000000\" weight=\"bold\"> %s </span>";
+				var badge_fmt = "<span background=\"%s\" foreground=\"#000000\"><span font=\"Noto Color Emoji\" weight=\"normal\">%s</span> <span weight=\"bold\">%s</span></span>";
 				var s = GLib.Markup.escape_text(this.name, -1);
 				if (this.can_call) {
-					s += " " + span_fmt.printf("#ffdd99", "🔧 tools");
+					s += " " + badge_fmt.printf("#ffdd99", "🔧", "tools");
 				}
 				if (this.is_embedding) {
-					s += " " + span_fmt.printf("#e1bee7", "🏭 embedding");
+					s += " " + badge_fmt.printf("#e1bee7", "🏭", "embedding");
 				}
 				if (this.capabilities.contains("vision")) {
-					s += " " + span_fmt.printf("#c8e6c9", "👁️ vision");
+					s += " " + badge_fmt.printf("#c8e6c9", "👁️", "vision");
 				}
 				if (this.is_thinking) {
-					s += " " + span_fmt.printf("#fff9c4", "🧠 thinking");
+					s += " " + badge_fmt.printf("#fff9c4", "🧠", "thinking");
 				}
 				if (this.capabilities.contains("cloud")) {
-					s += " " + span_fmt.printf("#e3f2fd", "☁️ cloud");
+					s += " " + badge_fmt.printf("#e3f2fd", "☁️", "cloud");
 				}
 				return s;
 			}

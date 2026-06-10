@@ -61,23 +61,23 @@ namespace OllamaWeb
 						GLib.Markup.escape_text(size, -1)
 					);
 				}
-				var span_fmt = "<span background=\"%s\" foreground=\"#000000\" weight=\"bold\" size=\"small\"> %s </span>";
+				var badge_fmt = "<span background=\"%s\" foreground=\"#000000\" size=\"small\"><span font=\"Noto Color Emoji\" weight=\"normal\">%s</span> <span weight=\"bold\">%s</span></span>";
 				foreach (var feature in this.features) {
 					switch (feature) {
 						case "embedding":
-							parts += span_fmt.printf("#e1bee7", "🏭 embedding");
+							parts += badge_fmt.printf("#e1bee7", "🏭", "embedding");
 							break;
 						case "tools":
-							parts += span_fmt.printf("#ffdd99", "🔧 tools");
+							parts += badge_fmt.printf("#ffdd99", "🔧", "tools");
 							break;
 						case "vision":
-							parts += span_fmt.printf("#c8e6c9", "👁️ vision");
+							parts += badge_fmt.printf("#c8e6c9", "👁️", "vision");
 							break;
 						case "thinking":
-							parts += span_fmt.printf("#fff9c4", "🧠 thinking");
+							parts += badge_fmt.printf("#fff9c4", "🧠", "thinking");
 							break;
 						case "cloud":
-							parts += span_fmt.printf("#e3f2fd", "☁️ cloud");
+							parts += badge_fmt.printf("#e3f2fd", "☁️", "cloud");
 							break;
 						default:
 							parts += "<span background=\"#ccffff\" size=\"small\"> %s </span>".printf(

@@ -3,6 +3,9 @@ build-*/
 dist-*/
 .sqgipkg/
 
+# Downloaded for Windows portable bundle (see scripts/build-windows-dir.sh)
+resources/fonts/NotoColorEmoji.ttf
+
 # valac / cc spill outside build/
 *.o
 *.vala.c

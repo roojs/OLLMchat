@@ -155,6 +155,45 @@ win_bundle_dir() {
 	printf '%s/%s' "$WIN_DIST_DIR" "OLLMchat"
 }
 
+NOTO_COLOR_EMOJI_URL="https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf"
+NOTO_COLOR_EMOJI_FONT="$ROOT/resources/fonts/NotoColorEmoji.ttf"
+
+# Noto Color Emoji is not in MSYS2; download once for the portable Windows bundle.
+ensure_windows_emoji_font() {
+	mkdir -p "$(dirname "$NOTO_COLOR_EMOJI_FONT")"
+	if [[ -s "$NOTO_COLOR_EMOJI_FONT" ]]; then
+		log "using emoji font $NOTO_COLOR_EMOJI_FONT"
+		return
+	fi
+
+	need_cmd curl
+	log "downloading Noto Color Emoji font"
+	curl -fsSL -o "$NOTO_COLOR_EMOJI_FONT" "$NOTO_COLOR_EMOJI_URL"
+	[[ -s "$NOTO_COLOR_EMOJI_FONT" ]] || die "failed to download emoji font"
+}
+
+# sqgipkg's OLLMchat.bat does not set FONTCONFIG_FILE; without it fontconfig
+# ignores etc/fonts and emoji fallbacks (Cantarell has no emoji glyphs).
+patch_windows_launcher_fontconfig() {
+	local bat
+	bat="$(win_bundle_dir)/OLLMchat.bat"
+	[[ -f "$bat" ]] || return 0
+	# sqgipkg writes CRLF; match with optional \r.
+	if ! grep -q 'FONTCONFIG_FILE=' "$bat"; then
+		sed -i '/^set "HERE=%~dp0"\r\?$/a\
+set "FONTCONFIG_FILE=%HERE%etc\\fonts\\fonts.conf"\r\
+set "FONTCONFIG_PATH=%HERE%etc\\fonts"\r
+' "$bat"
+		log "patched FONTCONFIG_FILE in OLLMchat.bat"
+	fi
+	if ! grep -q 'XDG_CACHE_HOME=' "$bat"; then
+		sed -i '/^set "HERE=%~dp0"\r\?$/a\
+set "XDG_CACHE_HOME=%LOCALAPPDATA%\\ollmchat"\r
+' "$bat"
+		log "patched XDG_CACHE_HOME in OLLMchat.bat"
+	fi
+}
+
 # sqgipkg's OLLMchat.exe launcher has no icon resource; rebuild it with our .ico.
 embed_windows_launcher_icon() {
 	local bundle exe ico tmp rc res
@@ -191,10 +230,10 @@ print_run_commands() {
 	printf '    wine %s/OLLMchat.exe\n' "$bundle"
 	printf '\n'
 	printf '  Native Windows — copy %s/ to the PC, then:\n' "$bundle"
-	printf '    .\\OLLMchat.bat\n'
-	printf '    .\\OLLMchat.ps1\n'
-	printf '    .\\ollmchat.bat          (alias)\n'
-	printf '    .\\OLLMchat.exe\n'
+	printf '    OLLMchat.bat --debug\n'
+	printf '    OLLMchat.exe             (GUI launcher)\n'
+	printf '  PowerShell (ExecutionPolicy Bypass — do not use .\\OLLMchat.ps1 alone):\n'
+	printf '    powershell -NoProfile -ExecutionPolicy Bypass -File OLLMchat.ps1 --debug\n'
 	printf '\n'
 	printf '  Not runnable: %s/ollmapp/ (compile tree only)\n' "$WIN_BUILD_DIR"
 	printf '\n'
@@ -265,6 +304,7 @@ warn_linux_build_dir
 ensure_host_deps
 ensure_sqgi_sources "$SQGI_SOURCE_DIR"
 ensure_sqgi_installed "$SQGI_SOURCE_DIR"
+ensure_windows_emoji_font
 
 if [[ "$DO_CLEAN" -eq 1 ]]; then
 	log "cleaning Windows packaging artifacts"
@@ -276,6 +316,7 @@ log "target=$TARGET build_dir=$WIN_BUILD_DIR output=$WIN_DIST_DIR"
 run_sqgipkg "$SQGI_SOURCE_DIR"
 
 if [[ "$DO_SYSROOT_ONLY" -eq 0 && "$TARGET" == "win-dir" ]]; then
+	patch_windows_launcher_fontconfig
 	embed_windows_launcher_icon
 fi
 
