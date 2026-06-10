@@ -29,10 +29,12 @@ namespace OLLMchat.CallLocal
 		{
 			GGUF.init();
 
-			var model_path = Path.build_filename(this.connection.url, this.model, "model.gguf");
 			var model_params = Llama.ModelParams();
 			model_params.n_gpu_layers = GGUF.n_gpu_layers;
-			var llama_model = new Llama.Model.from_file(model_path, model_params);
+			var llama_model = new Llama.Model.from_file(
+				GLib.Path.build_filename(this.connection.url, this.model, "model.gguf"),
+				model_params
+			);
 
 			var ctx_params = Llama.ContextParams();
 			if (this.config_options.num_ctx > 0) {
@@ -66,28 +68,11 @@ namespace OLLMchat.CallLocal
 		) throws Error
 		{
 			unowned Llama.Vocab vocab = model.get_vocab();
-			int token_count = -vocab.tokenize(
-				text,
-				(int)text.length,
-				null,
-				0,
-				true,
-				true
-			);
+			var tokens = vocab.tokenize(text, true, true);
 
-			var tokens = new int[token_count];
-			vocab.tokenize(
-				text,
-				(int)text.length,
-				tokens,
-				tokens.length,
-				true,
-				true
-			);
-
-			var batch = Llama.Batch(token_count, 0, 1);
+			var batch = Llama.Batch(tokens.length, 0, 1);
 			try {
-				for (int i = 0; i < token_count; i++) {
+				for (int i = 0; i < tokens.length; i++) {
 					batch.token[batch.n_tokens] = tokens[i];
 					batch.pos[batch.n_tokens] = i;
 					batch.n_seq_id[batch.n_tokens] = 1;
@@ -102,13 +87,13 @@ namespace OLLMchat.CallLocal
 
 				unowned float* embedding = ctx.get_embeddings_seq(0);
 				if (embedding == null) {
-					embedding = ctx.get_embeddings_ith(token_count - 1);
+					embedding = ctx.get_embeddings_ith(tokens.length - 1);
 				}
 				if (embedding == null) {
 					embedding = ctx.get_embeddings();
 				}
 
-				int dimension = model.n_embd();
+				var dimension = model.n_embd();
 				var vector = new float[dimension];
 				for (int i = 0; i < dimension; i++) {
 					vector[i] = embedding[i];

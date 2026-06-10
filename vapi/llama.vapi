@@ -97,23 +97,67 @@ namespace Llama
 	public class Vocab
 	{
 		[CCode (cname = "llama_tokenize")]
-		public int tokenize(
+		private int tokenize_buf(
 			string text,
 			int text_length,
-			int* tokens,
+			[CCode (array_length = false)] int* tokens,
 			int max_tokens,
 			bool add_special,
 			bool parse_special
 		);
 
-		[CCode (cname = "llama_token_to_piece")]
-		public int token_to_piece(
+		public int[] tokenize(
+			string text,
+			bool add_special = false,
+			bool parse_special = true
+		) {
+			int text_length = text.length;
+			int count = -this.tokenize_buf(
+				text,
+				text_length,
+				null,
+				0,
+				add_special,
+				parse_special
+			);
+			var result = new int[count];
+			this.tokenize_buf(
+				text,
+				text_length,
+				result,
+				result.length,
+				add_special,
+				parse_special
+			);
+			return result;
+		}
+
+		[CCode (cname = "llama_token_to_piece", array_length_type = "int32_t")]
+		private int token_to_piece_buf(
 			int token,
-			[CCode (array_length = false)] char[] buf,
-			int length,
+			char[] buf,
 			int lstrip,
 			bool special
 		);
+
+		public string token_to_piece(
+			int token,
+			int lstrip = 0,
+			bool special = true
+		) {
+			char[] buf = new char[128];
+			int len = this.token_to_piece_buf(token, buf, lstrip, special);
+			if (len < 0) {
+				buf = new char[-len];
+				len = this.token_to_piece_buf(token, buf, lstrip, special);
+			}
+			if (len < 0) {
+				len = 0;
+			}
+			var piece = new GLib.StringBuilder();
+			piece.append_len((string)buf, len);
+			return piece.str;
+		}
 
 		[CCode (cname = "llama_vocab_is_eog")]
 		public bool is_eog(int token);
