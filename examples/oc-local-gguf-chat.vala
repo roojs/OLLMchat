@@ -7,25 +7,21 @@
  * version 3 of the License, or (at your option) any later version.
  */
 
-int main(string[] args)
+async int main(string[] args)
 {
-	string model_path = "";
-	string prompt = "Hello, who are you?";
-	int max_tokens = 128;
-	int context_length = 2048;
-	int threads = 0;
+	var model_path = "";
+	var prompt = "Hello, who are you?";
+	var max_tokens = 128;
 
 	var options = new OptionEntry[] {
 		{ "model", 'm', 0, OptionArg.FILENAME, ref model_path, "Path to a GGUF chat model", "FILE" },
 		{ "prompt", 'p', 0, OptionArg.STRING, ref prompt, "Prompt text", "TEXT" },
 		{ "max-tokens", 'n', 0, OptionArg.INT, ref max_tokens, "Tokens to generate", "N" },
-		{ "ctx", 0, 0, OptionArg.INT, ref context_length, "Context length", "TOKENS" },
-		{ "threads", 0, 0, OptionArg.INT, ref threads, "Worker threads, 0 = lib default", "N" },
 		{ null }
 	};
 
 	try {
-		var opt_context = new OptionContext("- load a GGUF with libllama and print a short completion");
+		var opt_context = new OptionContext("- local CallLocal.ChatCompletions smoke test");
 		opt_context.set_help_enabled(true);
 		opt_context.add_main_entries(options, null);
 		opt_context.parse(ref args);
@@ -39,14 +35,25 @@ int main(string[] args)
 		return 1;
 	}
 
-	var probe = new OLLMchat.Local.GGUFChatProbe(model_path) {
-		context_length = context_length,
-		threads = threads
+	var model_dir = GLib.Path.get_dirname(model_path);
+	var model_name = GLib.Path.get_basename(model_path);
+	if (model_name.has_suffix(".gguf")) {
+		model_name = model_name[0:model_name.length - 5];
+	}
+
+	var conn = new OLLMchat.Settings.Connection() {
+		name = "local",
+		url = model_dir,
 	};
 
+	var call = new OLLMchat.CallLocal.ChatCompletions(conn, model_name);
+	call.stream = false;
+	call.max_tokens = max_tokens;
+	call.messages.add(new OLLMchat.Message("user", prompt));
+
 	try {
-		string completion = probe.generate(prompt, max_tokens);
-		stdout.printf("%s\n", completion);
+		var response = yield call.send(call.messages);
+		stdout.printf("%s\n", response.message.content);
 		return 0;
 	} catch (Error e) {
 		stderr.printf("Generation failed: %s\n", e.message);

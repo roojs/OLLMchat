@@ -9,8 +9,8 @@
 
 async int main(string[] args)
 {
-	string model_path = "";
-	string text = "hello from ollmchat";
+	var model_path = "";
+	var text = "hello from ollmchat";
 
 	var options = new OptionEntry[] {
 		{ "model", 'm', 0, OptionArg.FILENAME, ref model_path, "Path to a GGUF file", "FILE" },
@@ -33,8 +33,8 @@ async int main(string[] args)
 		return 1;
 	}
 
-	string model_dir = Path.get_dirname(model_path);
-	string model_name = Path.get_basename(model_path);
+	var model_dir = GLib.Path.get_dirname(model_path);
+	var model_name = GLib.Path.get_basename(model_path);
 	if (model_name.has_suffix(".gguf")) {
 		model_name = model_name[0:model_name.length - 5];
 	}
@@ -51,7 +51,7 @@ async int main(string[] args)
 		var embed = yield call.exec_embedding();
 		stdout.printf("rows=%d width=%d\n", embed.embeddings.rows, embed.embeddings.width);
 		stdout.printf("first=");
-		int limit = int.min(8, embed.embeddings.width);
+		var limit = int.min(8, embed.embeddings.width);
 		for (int i = 0; i < limit; i++) {
 			stdout.printf("%s%.6f", i == 0 ? "" : ",", embed.embeddings.data[i]);
 		}

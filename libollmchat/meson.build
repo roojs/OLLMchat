@@ -67,12 +67,12 @@ if local_gguf_enabled
   local_gguf_src += files([
     'GGUF.vala',
     'CallLocal/Embeddings.vala',
-    'Local/GGUFChatProbe.vala',
+    'CallLocal/ChatCompletions.vala',
   ])
   local_gguf_vala_args += [
     '--pkg=llama',
   ]
-  message('local_gguf enabled: building libllama GGUF embedding probe')
+  message('local_gguf enabled: building CallLocal GGUF backend')
 else
   message('local_gguf disabled: libllama GGUF embedding probe will not be built')
 endif
