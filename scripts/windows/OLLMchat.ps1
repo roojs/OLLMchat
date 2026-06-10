@@ -5,7 +5,13 @@
 
 .DESCRIPTION
     Sets up the same environment as OLLMchat.bat and runs ollmchat.exe.
-    Use this from PowerShell when you prefer not to invoke the .bat directly.
+
+    Do NOT run this file as .\OLLMchat.ps1 — default ExecutionPolicy blocks it.
+    From the portable bundle folder (same pattern as vala.win32 / Snappr):
+
+      powershell -NoProfile -ExecutionPolicy Bypass -File .\OLLMchat.ps1 --debug
+
+    Or use OLLMchat.exe (double-click; no Bypass needed).
 
     Copy dist-windows-x86_64/OLLMchat/ to Windows and run from that folder.
     The build tree (build-windows-x86_64/ollmapp/) is not runnable on its own.

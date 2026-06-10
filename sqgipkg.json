@@ -150,15 +150,21 @@
   "windows": {
     "msys2_prefix": "mingw64",
     "gdk_backend": "win32",
+    "gtk_icon_theme": "Adwaita",
     "build_dir": "build-windows-x86_64",
     "files": [
-      "scripts/windows/ollmchat.bat=ollmchat.bat",
-      "scripts/windows/OLLMchat.ps1=OLLMchat.ps1"
-    ],
-    "files": [
+      "scripts/windows/OLLMchat.ps1=OLLMchat.ps1",
       {
         "path": "pixmaps/scalable/apps/org.roojs.ollmchat.svg",
         "dest": "share/icons/hicolor/scalable/apps/org.roojs.ollmchat.svg"
+      },
+      {
+        "path": "resources/fonts/NotoColorEmoji.ttf",
+        "dest": "share/fonts/noto-emoji/NotoColorEmoji.ttf"
+      },
+      {
+        "path": "resources/windows/fonts-local.conf",
+        "dest": "etc/fonts/local.conf"
       }
     ],
     "packages": [
@@ -171,6 +177,8 @@
       "mingw-w64-x86_64-pkgconf",
       "mingw-w64-x86_64-gtk4",
       "mingw-w64-x86_64-libadwaita",
+      "mingw-w64-x86_64-adwaita-icon-theme",
+      "mingw-w64-x86_64-shared-mime-info",
       "mingw-w64-x86_64-gtksourceview5",
       "mingw-w64-x86_64-libgee",
       "mingw-w64-x86_64-json-glib",
