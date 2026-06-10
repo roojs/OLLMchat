@@ -16,7 +16,7 @@ namespace OLLMcoder.Action
 
 /**
  * Base for task execution runners (lifted from {@link Task.Details.run_exec} /
- * {@link Task.Details.run_post_exec}). Not wired in yet — see plan 7.16.1.
+ * {@link Task.Details.run_post_exec}). Extraction wired; {@link run} dispatch — plan 7.16.1b.
  */
 public abstract class Base : OLLMchat.Agent.Base
 {
