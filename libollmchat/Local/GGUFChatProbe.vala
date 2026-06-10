@@ -44,7 +44,10 @@ namespace OLLMchat.Local
 				throw new OllmError.INVALID_ARGUMENT("max_tokens must be positive");
 			}
 
-			var model_params = GGUFBackend.model_params();
+			GGUF.init();
+
+			var model_params = Llama.ModelParams();
+			model_params.n_gpu_layers = GGUF.n_gpu_layers;
 			var model = new Llama.Model.from_file(this.model_path, model_params);
 			if (model == null) {
 				throw new OllmError.FAILED("Failed to load GGUF model");

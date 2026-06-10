@@ -7,13 +7,16 @@
  * version 3 of the License, or (at your option) any later version.
  */
 
-namespace OLLMchat.Local
+namespace OLLMchat
 {
-	internal class GGUFBackend : Object
+	internal class GGUF : Object
 	{
 		private static bool initialized = false;
 
-		public static void ensure_initialized()
+		/** Set from init(); 0 = CPU only, -1 = offload all layers when GPU is available. */
+		internal static int n_gpu_layers = 0;
+
+		public static void init()
 		{
 			if (initialized) {
 				return;
@@ -21,23 +24,15 @@ namespace OLLMchat.Local
 
 			Llama.log_set(log_callback);
 			Llama.backend_init();
-			initialized = true;
-			GLib.debug("GGUFBackend: libllama ready");
-		}
 
-		public static Llama.ModelParams model_params()
-		{
-			ensure_initialized();
-
-			var model_params = Llama.ModelParams();
 			if (Llama.supports_gpu_offload()) {
-				model_params.n_gpu_layers = -1;
-				GLib.debug("GGUFBackend: GPU offload available, offloading all layers");
+				n_gpu_layers = -1;
+				GLib.debug("GGUF: GPU offload available, offloading all layers");
 			} else {
-				GLib.debug("GGUFBackend: no GPU backend, using CPU");
+				GLib.debug("GGUF: no GPU backend, using CPU");
 			}
 
-			return model_params;
+			initialized = true;
 		}
 
 		[CCode (callback = true)]
