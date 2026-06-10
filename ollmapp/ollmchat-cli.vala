@@ -404,8 +404,9 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 		
 		private async void setup_project_manager(SQ.Database db) throws Error
 		{
+			this.project_manager = new OLLMfiles.ProjectManager(db);
 			if (opt_project == "") {
-				return; // No project manager needed
+				return;
 			}
 			
 			// Verify project directory exists
@@ -413,9 +414,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 				throw new GLib.IOError.NOT_FOUND("Project directory does not exist: %s", opt_project);
 			}
 			
-			// Create ProjectManager
-			this.project_manager = new OLLMfiles.ProjectManager(db);
-			
+			 
 			// Load existing projects from database
 			yield this.project_manager.load_projects_from_db();
 			
@@ -473,9 +472,9 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			
 			// Setup manager (creates Manager with session that has just-ask agent)
 			yield this.setup_manager();
+			this.project_manager = new OLLMfiles.ProjectManager();
 		
 		// Register tools with manager (so agent has access to them)
-		// For standard agent mode, project_manager can be null (tools will work in limited mode)
 		this.tools_registry.fill_tools(this.manager, this.project_manager);
 		this.vector_registry.fill_tools(this.manager, this.project_manager);
 		this.mcp_registry.fill_tools(this.manager, this.project_manager);
@@ -537,14 +536,10 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			// Setup manager
 			yield this.setup_manager();
 			
-			// Setup project manager if needed (uses opt_project and opt_create_project from static variables)
-			if (opt_project != "") {
-				// Create database for ProjectManager
-				yield this.setup_project_manager(
-					new SQ.Database(
-						GLib.Path.build_filename(this.data_dir, "files.sqlite")
-					));
-			}
+			yield this.setup_project_manager(
+				new SQ.Database(
+					GLib.Path.build_filename(this.data_dir, "files.sqlite")
+				));
 			
 		// Fill manager with tools (after project manager is set up)
 		this.tools_registry.fill_tools(this.manager, this.project_manager);
