@@ -25,12 +25,37 @@ public class PostExamMerge : Base
 		base (task);
 	}
 
+	/**
+	 * Parse post-execution synthesis response into the task.
+	 *
+	 * Called directly by this action and by replay/live compatibility callers.
+	 */
+	public void extract (Task.ResultParser parser)
+	{
+		if (!parser.document.headings.has_key ("result-summary")) {
+			parser.issues += "\nPost-exec output must include ## Result summary.";
+			return;
+		}
+		this.task.post_summary = parser.document.headings.get ("result-summary");
+		this.task.out_doc = parser.document;
+		var sum_render = new Markdown.Document.Render ();
+		sum_render.parse (this.task.post_summary.to_markdown_with_content ());
+		var vl_sum = new Task.ValidateLink (this.task.runner, this.task, Task.PhaseEnum.POST_EXEC) {
+			document = parser.document
+		};
+		vl_sum.validate_all (sum_render.document.links);
+		this.task.issues += vl_sum.issues;
+		if (this.task.issues != "") {
+			parser.issues += this.task.issues;
+		}
+	}
+
 	public override async void run () throws GLib.Error
 	{
 		this.task.status = Task.PhaseEnum.POST_EXEC;
 		this.task.runner.progress.active_item_changed (this.task);
-		yield this.task.fill_model ();
-		this.task.chat_call.tools.clear ();
+		yield this.fill_model ();
+		this.chat_call.tools.clear ();
 		var response_text = "";
 		var last_issues = "";
 		for (var try_count = 0; try_count < 5; try_count++) {
@@ -53,7 +78,7 @@ public class PostExamMerge : Base
 			this.task.add_message (new OLLMchat.Message ("ui-waiting",
 				"waiting for " + model_label + " to reply"));
 			this.task.add_message (new OLLMchat.Message ("agent-stage", "post_exec"));
-			var response = yield this.task.chat_call.send (messages, null);
+			var response = yield this.chat_call.send (messages, null);
 			response_text = response != null ? response.message.content : "";
 			/* Next stage: progress Idx / scroll target — binding post_exec overwrites the row’s
 			 * message with the synthesis response, so tree click scrolled to post_exec instead of
@@ -68,10 +93,10 @@ public class PostExamMerge : Base
 			// Ensure any literal {task_link_base} in model output is replaced so links validate
 			var task_base = "task://" + this.task.slug () + ".md";
 			response_text = response_text.replace ("{task_link_base}", task_base);
-			// Before exec_post_extract: it copies task.issues into parser.issues after link checks.
+			// Before extraction: it copies task.issues into parser.issues after link checks.
 			this.task.issues = "";
 			var parser = new Task.ResultParser (this.task.runner, response_text);
-			parser.exec_post_extract (this.task);
+			this.extract (parser);
 			this.task.add_message (new OLLMchat.Message ("agent-issues", parser.issues));
 			if (parser.issues == "") {
 				this.task.runner.progress.active_item_changed (null);

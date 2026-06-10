@@ -933,7 +933,7 @@ namespace OLLMcoder.Skill
 						"REPLAY POST EXEC hydrate slug=%s runner_in_replay=%s",
 						d_post.slug (),
 						this.in_replay.to_string ()); */
-					pp.exec_post_extract(d_post);
+					new OLLMcoder.Action.PostExamMerge(d_post).extract(pp);
 					/* GLib.debug(
 						"REPLAY POST EXEC slug=%s step=%u detail=%u tools=%u post_issues_len=%u post_issues=%s",
 						d_post.slug(),
@@ -1005,7 +1005,9 @@ namespace OLLMcoder.Skill
 						d_exec.slug (),
 						ex_run.id,
 						this.in_replay.to_string ()); */
-					var exec_extract_ok = px.exec_extract(ex_run);
+					var extract_ok = d_exec.skill.tools.contains("write_file") ?
+						new OLLMcoder.Action.WriteExec(d_exec).extract_result(px, ex_run) :
+						new OLLMcoder.Action.RefOnly(d_exec).extract_result(px, ex_run);
 					/* GLib.debug(
 						"REPLAY EXECUTION EXTRACT slug=%s tool_run=%s step=%u detail=%u tool_pos=%u content_len=%u ok=%s issues=%s",
 						d_exec.slug(),
@@ -1014,9 +1016,9 @@ namespace OLLMcoder.Skill
 						this.replay_details_pos,
 						this.replay_tool_pos,
 						m.content.length,
-						exec_extract_ok.to_string (),
+						extract_ok.to_string (),
 						px.issues); */
-					if (!exec_extract_ok) {
+					if (!extract_ok) {
 						this.progress.rebuild();
 						break;
 					}

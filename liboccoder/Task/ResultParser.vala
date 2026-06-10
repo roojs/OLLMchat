@@ -21,9 +21,9 @@ namespace OLLMcoder.Task
  * in-memory structures (List/Step/Details) and fill task properties. Validation
  * failures are accumulated in {@link issues} so the caller can retry or report.
  *
- * Constructor builds a ''Markdown.Document''; {@link parse_task_list},
- * {@link extract_refinement}, {@link extract_exec}, and {@link exec_extract} each expect specific
- * sections and populate task_list / task / issues accordingly.
+ * Constructor builds a ''Markdown.Document''; task-list and refinement parsing
+ * stays here, while execution-stage parsing is owned by the Action layer through
+ * thin compatibility wrappers.
  *
  * How it fits in the task flow:
  *
@@ -33,9 +33,11 @@ namespace OLLMcoder.Task
  *    ResultParser, ''extract_refinement(this)''; task is updated and
  *    ''result_parser.issues'' checked.
  *  * Execution: Tool.run() receives the executor response → new ResultParser,
- *    ''exec_extract(ex)''; ex.summary (heading block) and ex.document are set. Details.run_exec() builds
- *    summaries on each Tool in Details.tools(); on success Details sets ''exec_done'' (live path).
- *    ''extract_exec(Details)'' remains for legacy/test use (returns a synthetic run; caller applies it to {@link Details.tools}).
+ *    the action extracts the tool result; ex.summary (heading block) and
+ *    ex.document are set. Details.run_exec() builds summaries on each Tool
+ *    in Details.tools(); on success Details sets ''exec_done'' (live path).
+ *    ''Action.Base.extract_tool(ResultParser)'' remains for legacy/test use
+ *    (returns a synthetic run; caller applies it to {@link Details.tools}).
  *
  * @see List
  * @see Step
@@ -47,7 +49,9 @@ public class ResultParser : Object
 	/**
 	 * Document built in constructor; extraction methods read from this.
 	 */
-	private Markdown.Document.Document document;
+	public Markdown.Document.Document document {
+		get; private set; default = new Markdown.Document.Document();
+	}
 
 	/**
 	 * Runner used by {@link parse_task_list} to build {@link Details}. Set in constructor.
@@ -70,7 +74,7 @@ public class ResultParser : Object
 
 	/**
 	 * Builds document from response (''Markdown.Document.Render''). Call
-	 * ''parse_task_list'', ''extract_refinement'', ''extract_exec'', or ''exec_extract'' next.
+	 * ''parse_task_list'' or ''extract_refinement'' next.
 	 *
 	 * @param runner skill runner; used by ''parse_task_list()'' to build Details and List
 	 * @param response raw LLM markdown response (planning, refinement, or executor)
@@ -541,150 +545,6 @@ public class ResultParser : Object
 		}
 	}
 
-	/**
-	 * Parse executor response into the given Tool (exec run). Called by Tool.run().
-	 * On success sets ex.summary (heading Block) and ex.document; on failure appends to issues.
-	 *
-	 * @param ex the Tool (exec run) to fill with result summary and document
-	 * @return true on success; false on missing Result summary (issues appended)
-	 */
-	public bool exec_extract (Tool ex)
-	{
-		if (!this.document.headings.has_key ("result-summary")) {
-			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
-				"It was missing or not found in the response. " +
-				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
-			return false;
-		}
-		ex.summary = this.document.headings.get ("result-summary");
-		ex.document = this.document;
-		var sum_render = new Markdown.Document.Render ();
-		sum_render.parse (ex.summary.to_markdown_with_content ());
-		if (ex.parent.skill.tools.contains ("write_file")) {
-			ex.writes.clear ();
-			foreach (var slug in this.document.header_list) {
-				if (slug == "result-summary") {
-					continue;
-				}
-				var hb = this.document.headings.get (slug);
-				if (hb.parent != this.document) {
-					continue;
-				}
-				if (!slug.has_prefix ("change-details")) {
-					this.issues += "\nWrite executor: unexpected top-level section (use ## Change details or Path 2 only): \"" + slug + "\".";
-					continue;
-				}
-				var wc = new WriteChange.from_header (hb, ex.parent.runner.sr_factory.project_manager);
-				if (wc.issues != "") {
-					this.issues += "\n"
-						+ "Change details — " + hb.text_content ().strip () + ":"
-						+ wc.issues.strip ();
-					continue;
-				}
-				ex.writes.add (wc);
-				if (wc.output_mode.strip ().down () == "next_section") {
-					break;
-				}
-			}
-			if (this.issues != "") {
-				return false;
-			}
-		}
-		var vl_sum = new ValidateLink (this.runner, ex.parent, PhaseEnum.EXECUTION) {
-			writes = ex.writes,
-			document = sum_render.document
-		};
-		vl_sum.validate_all (sum_render.document.links);
-		if (vl_sum.issues != "") {
-			this.issues += vl_sum.issues;
-			return false;
-		}
-		foreach (var link in sum_render.document.links) {
-			if (link.path != "" || link.hash == "") {
-				continue;
-			}
-			foreach (var wc in ex.writes) {
-				if (!wc.document.headings.has_key (link.hash)) {
-					continue;
-				}
-				link.up_relpath (wc.file_path.strip ());
-				break;
-			}
-		}
-		if (sum_render.document.headings.has_key ("result-summary")) {
-			ex.summary = sum_render.document.headings.get ("result-summary");
-		}
-		/* Full executor tree stays in ResultParser.this.document (Path 2 still uses this.document.to_markdown ()).
-		   ex.document still aliases this.document until Tool.run replaces ex.document with a new summary-only Document (§5.7a). */
-		if (!ex.parent.skill.tools.contains ("write_file") || ex.writes.size > 0) {
-			return true;
-		}
-		var md = this.document.to_markdown ().strip ();
-		if (md.down ().contains ("**no changes needed**")) {
-			return true;
-		}
-		this.issues += "\nWrite executor output must include a recognizable Change details section, or Path 2 (full markdown must contain **no changes needed**).";
-		return false;
-	}
-
-	/**
-	 * Parse post-exec synthesis response into the task. Called by Details.run_post_exec().
-	 * Requires ## Result summary; sets post_summary and out_doc,
-	 * then validates each link in the output document.
-	 *
-	 * @param task the task to fill with post-exec summary and document
-	 */
-	public void exec_post_extract(Details task)
-	{
-		if (!this.document.headings.has_key("result-summary")) {
-			this.issues += "\nPost-exec output must include ## Result summary.";
-			return;
-		}
-		task.post_summary = this.document.headings.get("result-summary");
-		task.out_doc = this.document;
-		var sum_render = new Markdown.Document.Render();
-		sum_render.parse(task.post_summary.to_markdown_with_content());
-		var vl_sum = new ValidateLink (task.runner, task, PhaseEnum.POST_EXEC) {
-			document = this.document
-		};
-		vl_sum.validate_all(sum_render.document.links);
-		task.issues += vl_sum.issues;
-		if (task.issues != "") {
-			this.issues += task.issues;
-		}
-	}
-
-	/**
-	 * Fills in the result summary on the task from executor response.
-	 *
-	 * Single pass: find section "Result summary" → build one synthetic exec run with that content.
-	 * If no "Result summary" section, appends to {@link issues} and returns null. Does not mutate
-	 * {@link Details.tools} or set {@link Details.exec_done}; caller applies the returned {@link Tool} when appropriate.
-	 * Used by legacy/test paths; normal execution uses exec_extract(Tool) and the execution queue.
-	 *
-	 * Content we expect (task_execution.md):
-	 * {{{
-	 * ## Result summary
-	 * (Substance + whether needs are met; gaps or follow-up in prose as needed)
-	 * }}}
-	 *
-	 * @param task the task (runner/session context for the synthetic {@link Tool})
-	 * @return the synthetic run, or null when the required section is missing
-	 */
-	public Tool? extract_exec(Details task)
-	{
-		if (!this.document.headings.has_key("result-summary")) {
-			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
-				"It was missing or not found in the response. " +
-				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
-			return null;
-		}
-		var factory = (OLLMchat.Agent.Factory) task.runner.sr_factory;
-		var ex = new Tool(factory, task.runner.session, task, "exec");
-		ex.summary = this.document.headings.get("result-summary");
-		ex.document = this.document;
-		return ex;
-	}
 }
 
 }

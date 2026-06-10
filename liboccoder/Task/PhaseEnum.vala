@@ -34,8 +34,9 @@ namespace OLLMcoder.Task
  *    ''exec_done'') for prompts.
  *  * ''REFINE_COMPLETED'' — completed-task markdown for iteration prompts (omits certain
  *    reference sections; see {@link Details.to_markdown}).
- *  * ''EXECUTION'' / ''POST_EXEC'' — executor LLM output vs post-exec synthesis; used in
- *    {@link ResultParser.exec_extract}, {@link ResultParser.exec_post_extract}, and matching
+ *  * ''EXECUTION'' / ''POST_EXEC'' — executor LLM output vs post-exec
+ *    synthesis; used in {@link OLLMcoder.Action.Base.extract_result},
+ *    {@link OLLMcoder.Action.PostExamMerge.extract}, and matching
  *    {@link ValidateLink} behavior.
  *
  * == Replay-only and sentinel ==
@@ -86,11 +87,13 @@ public enum PhaseEnum
 	REFINE_COMPLETED,
 	/**
 	 * Executor LLM output (''Result summary'', tool calls); {@link Tool.run} and
-	 * {@link ResultParser.exec_extract}.
+	 * {@link OLLMcoder.Action.Base.extract_result}.
 	 */
 	EXECUTION,
 	/**
-	 * Post-execution synthesis ({@link ResultParser.exec_post_extract}, {@link Details.run_post_exec}).
+	 * Post-execution synthesis
+	 * ({@link OLLMcoder.Action.PostExamMerge.extract},
+	 * {@link Details.run_post_exec}).
 	 */
 	POST_EXEC,
 	/**

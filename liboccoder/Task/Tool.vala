@@ -28,9 +28,14 @@ namespace OLLMcoder.Task
 		public weak Details parent { get; set; }
 		/** Execution run id (e.g. "tool-0", "ref-1", "exec"). Empty for refinement-only. */
 		public string id { get; set; default = ""; }
-		/** Result summary heading block from executor (Result summary section). Set by ResultParser.exec_extract(). Never store as text — always the Block. */
+		/**
+		 * Result summary heading block from executor (Result summary section).
+		 * Set by action extraction. Never store as text — always the Block.
+		 */
 		public Markdown.Document.Block? summary { get; set; default = null; }
-		/** Executor output document. Set by ResultParser.exec_extract() on success. */
+		/**
+		 * Executor output document. Set by action extraction on success.
+		 */
 		public Markdown.Document.Document? document { get; set; default = null; }
 		/**
 		 * Shared reference links for this exec run.
@@ -114,7 +119,8 @@ namespace OLLMcoder.Task
 		/**
 		 * Write operations parsed from the write executor output.
 		 *
-		 * Filled by {@link ResultParser.exec_extract} when the skill lists ``write_file``.
+		 * Filled by {@link OLLMcoder.Action.WriteExec.extract_result} when
+		 * the skill lists {{{ write_file }}}.
 		 * Cleared at the start of each executor retry in {@link run}.
 		 * Empty for normal executor paths — {@link run} still iterates without branching.
 		 */
@@ -293,7 +299,9 @@ namespace OLLMcoder.Task
 					throw e;
 				}
 				var parser = new ResultParser(this.parent.runner, response_text);
-				var exec_ok = parser.exec_extract(this);
+				var exec_ok = this.parent.skill.tools.contains("write_file") ?
+					new OLLMcoder.Action.WriteExec(this.parent).extract_result(parser, this) :
+					new OLLMcoder.Action.RefOnly(this.parent).extract_result(parser, this);
 				/* GLib.debug(
 					"LIVE EXECUTION EXTRACT slug=%s tool_run=%s try=%u resp_len=%u ok=%s issues=%s",
 					this.parent.slug(),
