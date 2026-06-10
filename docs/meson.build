@@ -259,6 +259,12 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Task/ProgressList.vala',
     '../liboccoder/Task/ProgressView.vala',
     '../liboccoder/Skill/Runner.vala',  # after Task/ProgressList (Runner.progress) — match liboccoder/meson.build
+    '../liboccoder/Action/Base.vala',
+    '../liboccoder/Action/PostExamMerge.vala',
+    '../liboccoder/Action/ExamSequence.vala',
+    '../liboccoder/Action/RunTools.vala',
+    '../liboccoder/Action/RefOnly.vala',
+    '../liboccoder/Action/WriteExec.vala',
     '../liboccoder/Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
     '../liboccoder/List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
     '../liboccoder/Approvals.vala',
