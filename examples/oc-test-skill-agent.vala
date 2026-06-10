@@ -331,7 +331,7 @@ Examples:
 				string content;
 				GLib.FileUtils.get_contents(opt_test_output, out content);
 				var parser = new OLLMcoder.Task.ResultParser(this.runner, content);
-				var ex = parser.extract_exec(detail);
+				var ex = new OLLMcoder.Action.RefOnly(detail).extract_tool(parser);
 				if (parser.issues != "") {
 					this.cl.printerr("Executor parse issues: %s\n", parser.issues);
 				}

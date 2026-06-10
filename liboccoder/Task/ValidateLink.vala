@@ -32,7 +32,8 @@ public class ValidateLink : GLib.Object
 
 	/**
 	 * Change-detail sections used to resolve fragment links (hash targets).
-	 * In exec_extract, assign the same list as the Tool's writes; may be empty.
+	 * In executor extraction, assign the same list as the Tool's writes;
+	 * may be empty.
 	 */
 	public Gee.ArrayList<WriteChange> writes {
 		get; set; default = new Gee.ArrayList<WriteChange> ();
