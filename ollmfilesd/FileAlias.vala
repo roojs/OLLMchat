@@ -132,7 +132,7 @@ namespace OLLMfilesd
 			}
 		}
 		
-		public override string to_summary(Gee.HashMap<int, SQT.VectorMetadata> keymap, string indent)
+		public override string to_summary(Gee.HashMap<int, OLLMvector2.SQT.VectorMetadata> keymap, string indent)
 		{
 			if (this.points_to != null) {
 				return this.points_to.to_summary(keymap, indent);

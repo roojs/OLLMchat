@@ -257,6 +257,32 @@ namespace OLLMvector2.SQT
 		{
 			return new SQ.Query<VectorMetadata>(db, "vector_metadata");
 		}
+
+		public string to_key()
+		{
+			return ast_path == "" ?
+				element_type + ":" + element_name :
+				ast_path;
+		}
+
+		/**
+		 * Loads existing metadata for one file as a map keyed by element identity.
+		 */
+		public static Gee.HashMap<string, VectorMetadata> to_map(
+			SQ.Database db,
+			int64 file_id
+		)
+		{
+			var mapped = new Gee.HashMap<string, VectorMetadata>();
+			var existing = new Gee.ArrayList<VectorMetadata>();
+			VectorMetadata.query(db).select(
+				"WHERE file_id = " + file_id.to_string(),
+				existing);
+			foreach (var metadata in existing) {
+				mapped.set(metadata.to_key(), metadata);
+			}
+			return mapped;
+		}
 		
 		/**
 		 * Save this VectorMetadata to the database.

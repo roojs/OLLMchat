@@ -35,8 +35,8 @@ namespace OLLMfilesd
 		/**
 		 * Signal emitted when cleanup is performed (after files are deleted).
 		 * 
-		 * SQT.VectorMetadata can listen to this signal to clean up
-		 * vector metadata entries for deleted files using a bulk DELETE query.
+		 * Emitted so listeners (and the built-in handler) can run bulk
+		 * vector metadata cleanup for deleted files.
 		 * 
 		 * Emitted by cleanup() after cleanup is complete.
 		 * This allows tools to perform bulk cleanup operations efficiently.
@@ -51,6 +51,12 @@ namespace OLLMfilesd
 		public DeleteManager(ProjectManager manager)
 		{
 			this.manager = manager;
+			this.on_cleanup.connect(() => {
+				if (this.manager.db != null) {
+					OLLMvector2.SQT.VectorMetadata.cleanup_all_deleted.begin(
+						this.manager.db);
+				}
+			});
 		}
 		
 		/**

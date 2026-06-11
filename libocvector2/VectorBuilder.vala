@@ -62,11 +62,11 @@ namespace OLLMvector2
 
 			var current_keys = new Gee.HashSet<string> ();
 			foreach (var element in elements) {
-				current_keys.add (cache_key (element));
+				current_keys.add (element.to_key ());
 			}
 
 			foreach (var element in elements) {
-				var key = cache_key (element);
+				var key = element.to_key ();
 
 				if (!cached_metadata.has_key (key)) {
 					changed_elements.add (element);
@@ -113,7 +113,7 @@ namespace OLLMvector2
 			}
 
 			foreach (var element in unchanged_elements) {
-				var key = cache_key (element);
+				var key = element.to_key ();
 				if (!cached_metadata.has_key (key)) {
 					continue;
 				}
@@ -173,11 +173,11 @@ namespace OLLMvector2
 
 			var current_keys = new Gee.HashSet<string> ();
 			foreach (var element in leaf_sections) {
-				current_keys.add (cache_key (element));
+				current_keys.add (element.to_key ());
 			}
 
 			foreach (var element in leaf_sections) {
-				var key = cache_key (element);
+				var key = element.to_key ();
 
 				if (!cached_metadata.has_key (key)) {
 					changed_elements.add (element);
@@ -313,14 +313,6 @@ namespace OLLMvector2
 				element.vector_id = start_vector_id + j;
 				element.saveToDB (this.sql_db, false);
 			}
-		}
-
-		private string cache_key (SQT.VectorMetadata element)
-		{
-			if (element.ast_path == "") {
-				return element.element_type + ":" + element.element_name;
-			}
-			return element.ast_path;
 		}
 
 		private string lines_to_string (string[] file_lines, int start_line, int end_line)

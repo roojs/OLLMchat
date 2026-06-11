@@ -22,6 +22,7 @@ ollmfilesd_deps = [
   ocsqlite_vapi_dep,
   ocrpc_vapi_dep,
   ollmchat_vapi_dep,
+  ocvector2_vapi_dep,
 ]
 
 ollmfilesd_src = files(
@@ -34,7 +35,6 @@ ollmfilesd_src = files(
   # Symlink → ../libocfiles/Copyable.vala (listed here so meson C paths stay under ollmfilesd/)
   'Copyable.vala',
   'FileBase.vala',
-  'SQT/VectorMetadata.vala',
   'FileHistory.vala',
   'FileAlias.vala',
   'File.vala',
@@ -53,6 +53,15 @@ ollmfilesd_src = files(
   'StdioConnection.vala',
   'Stdio.vala',
   'Application.vala',
+  'Vector/PromptTemplate.vala',
+  'Vector/Tree.vala',
+  'Vector/DocumentationTree.vala',
+  'Vector/Analysis.vala',
+  'Vector/DocumentationAnalysis.vala',
+  'Vector/FolderAnalysis.vala',
+  'Vector/ProjectAnalysis.vala',
+  'Vector/ImageAnalyzer.vala',
+  'Vector/Indexer.vala',
 )
 
 build_rpath = ':'.join([
@@ -60,6 +69,7 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocrpc',
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollamaweb',
+  meson.current_build_dir() / '..' / 'libocvector2',
 ])
 
 ollmfilesd_bin = executable('ollmfilesd',
@@ -71,6 +81,7 @@ ollmfilesd_bin = executable('ollmfilesd',
     include_directories('../libollamaweb'),
     include_directories('../libocsqlite'),
     include_directories('../libocrpc'),
+    include_directories('../libocvector2'),
   ],
   build_rpath: build_rpath,
   install: true,
@@ -83,12 +94,15 @@ ollmfilesd_bin = executable('ollmfilesd',
     '--pkg=ocrpc',
     '--pkg=ollmchat',
     '--pkg=ollamaweb',
+    '--pkg=fiass',
+    '--pkg=ocvector2',
     '--pkg=libsoup-3.0',
     '--pkg=gio-unix-2.0',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector2',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', '/usr/share/vala/vapi',
   ],
