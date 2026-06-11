@@ -159,7 +159,7 @@ namespace OLLMfilesd
 		 * @param indent Leading indent for this line; Folder passes indent + "  " to children.
 		 */
 		public abstract string to_summary(
-			Gee.HashMap<int, SQT.VectorMetadata> keymap, string indent);
+			Gee.HashMap<int, OLLMvector2.SQT.VectorMetadata> keymap, string indent);
 		
 		/**
 		 * Whether the file needs approval.

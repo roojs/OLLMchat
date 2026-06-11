@@ -119,7 +119,7 @@ Optional, keep short:
 - **`## Scope`** / “In scope | Out of scope” — duplicates **Purpose**; omit
 - **🚫** bullets in **`## Purpose`** or topic sections — vetoes belong in **LLM implementer guardrails** (this guide), parent plan phase boundaries, or optional **`## LLM notes`** at plan bottom — not mixed into what the human is reviewing
 - **`## Acceptance criteria`** — use **⏳** bullets in **Purpose** or **Phase N tasks** instead
-- **Markdown tables** in plan bodies — use **nested bullets** (emoji legend tables in *this guide* are fine)
+- **Markdown tables** in plan bodies — **strongly avoid**; they are hard to read in review. Use **nested bullets** instead (emoji legend tables in *this guide* are fine)
 
 **🚫** Do not abbreviate names for speech-to-text (e.g. `snapshot_q`) — use the real identifier with the correct **table prefix** (e.g. **`pressrelease_snapshot_queue`**, not bare `snapshot_queue`).
 

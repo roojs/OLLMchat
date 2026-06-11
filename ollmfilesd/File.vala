@@ -243,7 +243,7 @@ namespace OLLMfilesd
 			}
 		}
 		
-		public override string to_summary(Gee.HashMap<int, SQT.VectorMetadata> keymap, string indent)
+		public override string to_summary(Gee.HashMap<int, OLLMvector2.SQT.VectorMetadata> keymap, string indent)
 		{
 			var type = "file";
 			var description = "";

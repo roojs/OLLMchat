@@ -81,7 +81,7 @@ namespace OLLMfilesd
 		}
 		
 		public override string to_summary(
-			Gee.HashMap<int, SQT.VectorMetadata> keymap,
+			Gee.HashMap<int, OLLMvector2.SQT.VectorMetadata> keymap,
 			string indent)
 		{
 			return this.file.to_summary(keymap, indent);

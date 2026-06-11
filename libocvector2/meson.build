@@ -38,6 +38,8 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollamaweb',
 ])
 
+ocvector2_inc = include_directories('.')
+
 ocvector2_base_lib = library('ocvector2',
   dependencies: [ocvector2_deps, ocvector_link_dep, ocsqlite_vapi_dep, ollmchat_vapi_dep],
   sources: ocvector2_src + faiss_wrapper_src,
@@ -46,7 +48,7 @@ ocvector2_base_lib = library('ocvector2',
   vala_vapi: 'ocvector2-meson.vapi',
   build_rpath: lib_build_rpath,
   include_directories: [
-    include_directories('.'),
+    ocvector2_inc,
     include_directories('..' / 'libollmchat'),
     include_directories('..' / 'libollamaweb'),
     include_directories('..' / 'libocsqlite'),
@@ -107,5 +109,6 @@ ocvector2_vapi = custom_target('ocvector2-vapi',
 ocvector2_vapi_dep = declare_dependency(
   link_args: ['-L' + meson.current_build_dir(), '-locvector2'],
   sources: [ocvector2_vapi[0]],
-  dependencies: [ocsqlite_vapi_dep, ollmchat_vapi_dep, ocvector_link_dep]
+  dependencies: [ocsqlite_vapi_dep, ollmchat_vapi_dep, ocvector_link_dep],
+  include_directories: ocvector2_inc,
 )
