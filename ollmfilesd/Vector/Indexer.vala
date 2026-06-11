@@ -1,0 +1,521 @@
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+namespace OLLMfilesd.Vector
+{
+	/**
+	 * Main indexing orchestrator.
+	 * 
+	 * Integrates Tree, Analysis, and VectorBuilder components to process
+	 * files and folders for vector indexing. Implements incremental update
+	 * logic and folder-based indexing with recursion support.
+	 * 
+	 * The indexing pipeline processes files through three layers:
+	 * 1. Tree: Extracts code structure using tree-sitter
+	 * 2. Analysis: Generates one-line descriptions using LLM
+	 * 3. VectorBuilder: Converts to embeddings and stores in FAISS
+	 * 
+	 * Supports incremental indexing by checking file modification times
+	 * and skipping unchanged files (unless force=true).
+	 * 
+	 * == Usage Example ==
+	 * 
+	 * {{{
+	 * // Create indexer
+	 * var indexer = new Indexer(
+	 *     analysis_client,
+	 *     embed_client,
+	 *     vector_db,
+	 *     sql_db,
+	 *     project_manager
+	 * );
+	 * 
+	 * // Index a file or folder
+	 * yield indexer.index_filebase(file_or_folder, recurse: true, force: false);
+	 * }}}
+	 */
+	public class Indexer : OLLMvector2.VectorBase
+	{
+		private OLLMvector2.Database vector_db;
+		private SQ.Database sql_db;
+		private OLLMfilesd.ProjectManager manager;
+		
+		/**
+		 * Emitted when indexing progress is made.
+		 * 
+		 * @param current Current file number being processed (1-based)
+		 * @param total Total number of files to process
+		 * @param file_path Path of the file currently being processed
+		 * @param success true when a file was indexed and last_vector_scan was saved; listen for this to trigger sql_db.backupDB() on the main thread
+		 */
+		public signal void progress(int current, int total, string file_path, bool success);
+		
+		/**
+		 * Emitted when an element is scanned during indexing.
+		 * 
+		 * @param element_name Name of the element being scanned
+		 * @param element_number Current element number (1-based)
+		 * @param total_elements Total number of elements in the current file
+		 */
+		public signal void element_scanned(string element_name, int element_number, int total_elements);
+		
+		/**
+		 * Constructor.
+		 * 
+		 * @param config The Config2 instance containing tool configuration
+		 * @param vector_db The vector database for FAISS storage (should have filename set in constructor to auto-save)
+		 * @param sql_db The SQLite database for metadata storage
+		 * @param manager The ProjectManager for file/folder operations
+		 */
+		public Indexer(
+			OLLMchat.Settings.Config2 config,
+			OLLMvector2.Database vector_db,
+			SQ.Database sql_db,
+			OLLMfilesd.ProjectManager manager)
+		{
+			base(config);
+			this.vector_db = vector_db;
+			this.sql_db = sql_db;
+			this.manager = manager;
+		}
+		
+		/**
+		 * Index a single file.
+		 * 
+		 * Routes to documentation or code indexing pipeline based on file type.
+		 * 
+		 * @param file The file to index (must exist in database)
+		 * @param force If true, skip incremental check and force re-indexing
+		 * @return true if file was indexed, false if skipped (not modified)
+		 */
+		private async bool index_file(OLLMfilesd.File file, bool force = false) throws GLib.Error
+		{
+			// Skip ignored files
+			if (file.is_ignored) {
+				GLib.debug("Skipping file '%s' (is_ignored=true)", file.path);
+				return false;
+			}
+			
+			// Soft-deleted filebase rows stay in SQLite with delete_id set; do not index.
+			if (file.delete_id > 0) {
+				GLib.debug("Skipping file '%s' (delete_id=%lld)", file.path, file.delete_id);
+				return false;
+			}
+			
+			// Only index text files or supported binary (e.g. images)
+			if (!file.is_text) {
+				return yield this.index_image_file(file, force);
+			}
+			
+			// Route to appropriate pipeline
+			if (file.is_documentation()) {
+				return yield this.index_documentation_file(file, force);
+			}
+			return yield this.index_code_file(file, force);
+			
+		}
+		
+		/**
+		 * Indexes a documentation file using documentation pipeline.
+		 * 
+		 * Processes documentation files through DocumentationTree → DocumentationAnalysis → OLLMvector2.VectorBuilder.
+		 * Updates last_vector_scan timestamp after successful indexing.
+		 * 
+		 * @param file The documentation file to index (must exist in database)
+		 * @param force If true, skip incremental check and force re-indexing
+		 * @return true if file was indexed, false if skipped (not modified)
+		 */
+		private async bool index_documentation_file(OLLMfilesd.File file, bool force = false) throws GLib.Error
+		{
+			// Incremental check
+			if (!force) {
+				var mtime = file.mtime_on_disk();
+				if (file.last_vector_scan >= mtime && mtime > 0) {
+					GLib.debug("Skipping file '%s' (not modified since last scan)", file.path);
+					return false;
+				}
+			}
+			
+			GLib.debug("Processing documentation file '%s'", file.path);
+			
+			// Create DocumentationTree
+			var tree = new DocumentationTree(file);
+			
+			// Parse file
+			yield tree.parse();
+			
+			if (tree.elements.size == 0) {
+				GLib.debug("No elements found in documentation file '%s'", file.path);
+				
+				// After scanning completes, check if file was deleted before saving
+				var query = OLLMfilesd.FileBase.query(this.sql_db, this.manager);
+				var check_file = new Gee.ArrayList<OLLMfilesd.FileBase>();
+				yield query.select_async("WHERE id = " + file.id.to_string(), check_file);
+				
+				// Check if file was deleted during scan or no longer exists
+				if (check_file.size == 0) {
+					GLib.debug("Indexer: Skipping saveToDB for file '%s' (not found in database)", file.path);
+					return true;
+				}
+				
+				var db_file = check_file.get(0);
+				if (db_file.delete_id > 0) {
+					GLib.debug("Indexer: Skipping saveToDB for deleted file '%s' (delete_id=%lld)", 
+						file.path, db_file.delete_id);
+					return true;
+				}
+				
+				// File not deleted - proceed with normal save
+				file.last_vector_scan = new DateTime.now_local().to_unix();
+				file.saveToDB(this.sql_db, null, false);
+				return true;
+			}
+			
+			// Create DocumentationAnalysis
+			var analysis = new DocumentationAnalysis(this.config, this.sql_db);
+			
+			// Connect to element_analyzed signal and forward as element_scanned
+			analysis.element_analyzed.connect((element_name, element_number, total_elements) => {
+				this.element_scanned(element_name, element_number, total_elements);
+			});
+			
+			// Analyze tree (Level A, B, C processing)
+			tree = yield analysis.analyze_tree(tree);
+			
+			// Create OLLMvector2.VectorBuilder
+			var vector_builder = new OLLMvector2.VectorBuilder(
+				this.config, this.vector_db, this.sql_db);
+			
+			var leaf_sections = new Gee.ArrayList<OLLMvector2.SQT.VectorMetadata>();
+			foreach (var element in tree.elements) {
+				if (element.children.size == 0) {
+					leaf_sections.add(element);
+				}
+			}
+			yield vector_builder.process_documentation_elements(
+				leaf_sections,
+				OLLMvector2.SQT.VectorMetadata.to_map(
+					this.sql_db,
+					tree.file.id),
+				tree.lines,
+				GLib.Path.get_basename(tree.file.path),
+				tree.root_element != null &&
+					tree.root_element.description != "" ?
+					tree.root_element.description :
+					"");
+			
+			// After scanning completes, check if file was deleted before saving
+			var query = OLLMfilesd.FileBase.query(this.sql_db, this.manager);
+			var check_file = new Gee.ArrayList<OLLMfilesd.FileBase>();
+			yield query.select_async("WHERE id = " + file.id.to_string(), check_file);
+			
+			// Check if file was deleted during scan or no longer exists
+			if (check_file.size == 0) {
+				GLib.debug("Indexer: Skipping saveToDB for file '%s' (not found in database)", file.path);
+				return true;
+			}
+			
+			var db_file = check_file.get(0);
+			if (db_file.delete_id > 0) {
+				GLib.debug("Indexer: Skipping saveToDB for deleted file '%s' (delete_id=%lld)", 
+					file.path, db_file.delete_id);
+				return true;
+			}
+			
+			// File not deleted - proceed with normal save
+			file.last_vector_scan = new DateTime.now_local().to_unix();
+			file.saveToDB(this.sql_db, null, false);
+			
+			// Save vector database after each file
+			try {
+				this.vector_db.save_index();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to save vector database after indexing '%s': %s", file.path, e.message);
+			}
+			
+			GLib.debug("Completed indexing documentation file '%s' (%d elements)", file.path, tree.elements.size);
+			return true;
+		}
+		
+		/**
+		 * Indexes a code file using code pipeline.
+		 * 
+		 * Processes code files through Tree → Analysis → VectorBuilder pipeline.
+		 * Updates last_vector_scan timestamp after successful indexing.
+		 * 
+		 * @param file The code file to index (must exist in database)
+		 * @param force If true, skip incremental check and force re-indexing
+		 * @return true if file was indexed, false if skipped (not modified)
+		 */
+		private async bool index_code_file(OLLMfilesd.File file, bool force = false) throws GLib.Error
+		{
+			// Incremental check
+			if (!force) {
+				var mtime = file.mtime_on_disk();
+				if (file.last_vector_scan >= mtime && mtime > 0) {
+					GLib.debug("Skipping file '%s' (not modified since last scan)", file.path);
+					return false;
+				}
+			}
+			
+			GLib.debug("Processing code file '%s'", file.path);
+			
+			// Create Tree
+			var tree = new Tree(file);
+			
+			// Load existing metadata into cache before parsing
+			yield tree.load_cached_metadata(this.sql_db);
+			
+			// Parse file (this will also call match_element_with_cache() after parsing)
+			yield tree.parse();
+
+			GLib.debug ("parsed path=%s elements=%d", file.path, tree.elements.size);
+			
+			if (tree.elements.size == 0) {
+				GLib.debug("No elements found in file '%s'", file.path);
+				
+				// After scanning completes, check if file was deleted before saving
+				// Fetch filebase from database again to check current delete_id
+				var query = OLLMfilesd.FileBase.query(this.sql_db, this.manager);
+				var check_file = new Gee.ArrayList<OLLMfilesd.FileBase>();
+				yield query.select_async("WHERE id = " + file.id.to_string(), check_file);
+				
+				// Check if file was deleted during scan or no longer exists
+				if (check_file.size == 0) {
+					// File not found in database - may have been deleted, skip update
+					GLib.debug("Indexer: Skipping saveToDB for file '%s' (not found in database)", file.path);
+					return true;  // Return success but don't update database
+				}
+				
+				var db_file = check_file.get(0);
+				if (db_file.delete_id > 0) {
+					// File was deleted - skip database update
+					GLib.debug("Indexer: Skipping saveToDB for deleted file '%s' (delete_id=%lld)", 
+						file.path, db_file.delete_id);
+					return true;  // Return success but don't update database
+				}
+				
+				// File not deleted - proceed with normal save
+				file.last_vector_scan = new DateTime.now_local().to_unix();
+				file.saveToDB(this.sql_db, null, false);
+				return true;
+			}
+			
+			var analysis = new Analysis(this.config, this.sql_db);
+			
+			// Connect to element_analyzed signal and forward as element_scanned
+			analysis.element_analyzed.connect((element_name, element_number, total_elements) => {
+				this.element_scanned(element_name, element_number, total_elements);
+			});
+			
+			tree = yield analysis.analyze_tree(tree);
+			
+			// Analyze file and create file-level summary
+			tree = yield analysis.analyze_file(tree);
+			
+			// VectorBuilder already takes config
+			var vector_builder = new OLLMvector2.VectorBuilder(
+				this.config, this.vector_db, this.sql_db);
+
+			GLib.debug ("building vectors path=%s elements=%d", file.path, tree.elements.size);
+			yield vector_builder.process_elements(
+				tree.elements,
+				tree.cached_metadata,
+				tree.lines,
+				tree.file.path);
+			
+			// After scanning completes, check if file was deleted before saving
+			// Fetch filebase from database again to check current delete_id
+			var query = OLLMfilesd.FileBase.query(this.sql_db, this.manager);
+			var check_file = new Gee.ArrayList<OLLMfilesd.FileBase>();
+			yield query.select_async("WHERE id = " + file.id.to_string(), check_file);
+			
+			// Check if file was deleted during scan or no longer exists
+			if (check_file.size == 0) {
+				// File not found in database - may have been deleted, skip update
+				GLib.debug("Indexer: Skipping saveToDB for file '%s' (not found in database)", file.path);
+				return true;  // Return success but don't update database
+			}
+			
+			var db_file = check_file.get(0);
+			if (db_file.delete_id > 0) {
+				// File was deleted - skip database update
+				GLib.debug("Indexer: Skipping saveToDB for deleted file '%s' (delete_id=%lld)", 
+					file.path, db_file.delete_id);
+				return true;  // Return success but don't update database
+			}
+			
+			// File not deleted - proceed with normal save
+			file.last_vector_scan = new DateTime.now_local().to_unix();
+			file.saveToDB(this.sql_db, null, false);
+			
+			// Save vector database after each file
+			try {
+				GLib.debug ("writing faiss index path=%s", file.path);
+				this.vector_db.save_index();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to save vector database after indexing '%s': %s", file.path, e.message);
+			}
+			
+			GLib.debug("indexed file finished path=%s elements=%d", file.path, tree.elements.size);
+			return true;
+		}
+
+		private async bool index_image_file(OLLMfilesd.File file, bool force = false) throws GLib.Error
+		{
+			if (!force) {
+				var mtime = file.mtime_on_disk();
+				if (file.last_vector_scan >= mtime && mtime > 0) {
+					GLib.debug("Skipping image file '%s' (not modified since last scan)", file.path);
+					return false;
+				}
+			}
+			var analyzer = new ImageAnalyzer(this.config);
+			var description = yield analyzer.describe_image(file);
+			if (description == "") {
+				file.last_vector_scan = new DateTime.now_local().to_unix();
+				file.saveToDB(this.sql_db, null, false);
+				return true;
+			}
+			var vector_builder = new OLLMvector2.VectorBuilder(this.config, this.vector_db, this.sql_db);
+			yield vector_builder.add_single(
+				file.id, "image", GLib.Path.get_basename(file.path), description);
+			file.last_vector_scan = new DateTime.now_local().to_unix();
+			file.saveToDB(this.sql_db, null, false);
+			try {
+				this.vector_db.save_index();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to save vector database after image '%s': %s", file.path, e.message);
+			}
+			GLib.debug("Completed indexing image file '%s'", file.path);
+			return true;
+		}
+		
+		/**
+		 * Index a folder.
+		 * 
+		 * Indexes all files in the folder's project_files list. The caller should
+		 * ensure that the folder has been scanned (via read_dir) and project_files
+		 * has been updated (via update_from) before calling this method.
+		 * 
+		 * @param folder The folder to index (must exist in database and have project_files populated)
+		 * @param recurse Unused (kept for API compatibility)
+		 * @param force If true, skip incremental check and force re-indexing
+		 * @return Number of files indexed
+		 */
+		private async int index_folder(OLLMfilesd.Folder folder, bool recurse = false, bool force = false) throws GLib.Error
+		{
+			GLib.debug("Processing folder '%s'", folder.path);
+			
+			int files_indexed = 0;
+			uint n_items = folder.project_files.get_n_items();
+			GLib.debug("Folder '%s' has %u files in project_files", folder.path, n_items);
+			
+			// Index all files from ProjectFiles
+			uint current = 0;
+			foreach (var project_file in folder.project_files) {
+				current++;
+				var file = project_file.file;
+				this.progress((int)current, (int)n_items, file.path, false);
+				try {
+					if (yield this.index_file(file, force)) {
+						files_indexed++;
+						this.progress((int)current, (int)n_items, file.path, true);
+					}
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to index file '%s': %s", file.path, e.message);
+				}
+			}
+			
+			GLib.debug("Completed indexing folder '%s' (%d files indexed)", folder.path, files_indexed);
+			
+			// At end of scan: delete metadata with invalid file_ids
+			this.sql_db.exec(
+				"DELETE FROM vector_metadata " +
+				"WHERE file_id NOT IN (SELECT id FROM filebase WHERE base_type = 'f')"
+			);
+			
+			return files_indexed;
+		}
+
+		private async void index_project(OLLMfilesd.Folder root_folder, bool force) throws GLib.Error
+		{
+			var project_analysis = new ProjectAnalysis(this.config, this.sql_db, root_folder);
+			yield project_analysis.analyze_dependencies();
+			yield project_analysis.analyze();
+		}
+
+		/**
+		 * Index a file or folder.
+		 *
+		 * Processes the FileBase object through the appropriate indexing method.
+		 * Handles FileAlias by following to target.
+		 *
+		 * @param filebase The file or folder to index (must exist in database)
+		 * @param recurse If true and filebase is a folder, recursively process subfolders
+		 * @param force If true, skip incremental check and force re-indexing
+		 * @return Number of files indexed
+		 */
+		public async int index_filebase(OLLMfilesd.FileBase filebase, bool recurse = false, bool force = false) throws GLib.Error
+		{
+			if (filebase.is_alias && filebase.points_to != null) {
+				filebase = filebase.points_to;
+			}
+			
+			if (filebase is OLLMfilesd.File) {
+				var file = (OLLMfilesd.File)filebase;
+				this.progress(1, 1, file.path, false);
+				if (yield this.index_file(file, force)) {
+					this.progress(1, 1, file.path, true);
+					return 1;
+				}
+				return 0;
+			}
+			
+			if (filebase is OLLMfilesd.Folder) {
+				var folder = (OLLMfilesd.Folder)filebase;
+				int n = yield this.index_folder(folder, recurse, force);
+				yield this.index_project(folder, force);
+				return n;
+			}
+			
+			throw new GLib.IOError.INVALID_ARGUMENT("FileBase is not a file or folder: " + filebase.path);
+		}
+		
+		/**
+		 * Resets the entire vector database.
+		 * 
+		 * Deletes the FAISS vector database file, resets all file scan dates to 0,
+		 * and deletes all vector metadata entries.
+		 * 
+		 * @param vector_db_path Path to the FAISS vector database file (e.g., "codedb.faiss.vectors")
+		 */
+		public async void reset_database(string vector_db_path) throws GLib.Error
+		{
+			// Use the static VectorMetadata.reset_database method to do the actual reset
+			OLLMvector2.SQT.VectorMetadata.reset_database(this.sql_db, vector_db_path);
+			
+		// Get dimension first, then create database
+			var temp_db = new OLLMvector2.Database(this.config, vector_db_path,
+				 OLLMvector2.Database.DISABLE_INDEX);
+			var dimension = yield temp_db.embed_dimension();
+			this.vector_db = new OLLMvector2.Database(this.config, vector_db_path, dimension);
+		}
+	}
+
+}
