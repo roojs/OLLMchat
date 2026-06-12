@@ -23,14 +23,6 @@ namespace OLLMchat.CallLocal
 		 */
 		protected abstract GLib.MainContext caller_context { get; set; }
 
-		protected virtual void capture_caller_context()
-		{
-			this.caller_context = GLib.MainContext.get_thread_default();
-			if (this.caller_context == null) {
-				this.caller_context = GLib.MainContext.default();
-			}
-		}
-
 		/**
 		 * Invoke a callback on the context that started the local call.
 		 *
