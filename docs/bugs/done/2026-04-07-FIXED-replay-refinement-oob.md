@@ -16,7 +16,7 @@ On session restore, `Skill.Runner.on_replay` can abort inside `Gee.ArrayList.get
 2. **After initial task-list parse** (LIST + `content-stream`) — `steps` count and whether parser `issues` is empty (`initial_plan` in message).
 3. **After revised list parse** (TASK_LIST_ITERATION + `content-stream`) — same (`revised_plan` in message).
 
-No method/class name in the message text (see `.cursor/rules/CODING_STANDARDS.md`).
+No method/class name in the message text (see `docs/coding-standards.md`).
 
 ## How to run
 

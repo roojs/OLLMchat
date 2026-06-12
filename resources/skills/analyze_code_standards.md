@@ -18,7 +18,7 @@ From Precursor (codebase_search results), write **Result summary** only: what yo
 
 ## Result summary
 
-Searched for coding standards; found relevant docs. Key references: [Vala formatting and naming](/.cursor/rules/CODING_STANDARDS.md#formatting), [avoid temporary variables](/.cursor/rules/CODING_STANDARDS.md#avoid-temp-variables), [Style guide](/path/to/docs/style.md#formatting).
+Searched for coding standards; found relevant docs. Key references: [Vala formatting and naming](/docs/coding-standards.md#formatting), [avoid temporary variables](/docs/coding-standards.md#avoid-temp-variables), [Style guide](/path/to/docs/style.md#formatting).
 
 **Example (not enough):**
 

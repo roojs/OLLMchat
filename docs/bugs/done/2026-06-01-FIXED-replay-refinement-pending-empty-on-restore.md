@@ -4,7 +4,7 @@
 
 **Started:** 2026-06-01
 
-**Pointer:** **`.cursor/rules/CODING_STANDARDS.md`** (checklist for all plans); **`docs/guide-to-writing-plans.md`** (Keep / Remove / Replace with); **`docs/bug-fix-process.md`**.
+**Pointer:** **`docs/coding-standards.md`** (checklist for all plans); **`docs/guide-to-writing-plans.md`** (Keep / Remove / Replace with); **`docs/bug-fix-process.md`**.
 
 **Related:** **`docs/bugs/done/2026-04-07-FIXED-replay-refinement-oob.md`**, **`docs/bugs/done/2026-05-07-FIXED-replay-hydration-link-validation.md`**, **`docs/bugs/done/2026-04-07-FIXED-replay-execution-oob.md`**.
 

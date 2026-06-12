@@ -4,11 +4,11 @@
 
 Original investigation/plan doc lived under **`docs/plans/`**; moved here as a completed bug record per **`docs/bug-fix-process.md`**.
 
-**Pointer:** **`.cursor/rules/CODING_STANDARDS.md`** — checklist for plans; smallest change.
+**Pointer:** **`docs/coding-standards.md`** — checklist for plans; smallest change.
 
 ## Logging (convention for this work)
 
-- **In code:** Put each **`GLib.debug()`** at a **fixed, meaningful site** in the real control flow — e.g. right after the **`can_replay`** guard, immediately before **`exec_post_extract`** / **`exec_extract`**, at a **phase**/**outcome** boundary — not scattered through the function. Do **not** put class names, method names, or file/line text inside the message (the runtime already logs file and line). Follow **“Debug and Warning Statements”** in **`.cursor/rules/CODING_STANDARDS.md`** (no throttling or debug-only flags whose only job is to reduce log volume).
+- **In code:** Put each **`GLib.debug()`** at a **fixed, meaningful site** in the real control flow — e.g. right after the **`can_replay`** guard, immediately before **`exec_post_extract`** / **`exec_extract`**, at a **phase**/**outcome** boundary — not scattered through the function. Do **not** put class names, method names, or file/line text inside the message (the runtime already logs file and line). Follow **“Debug and Warning Statements”** in **`docs/coding-standards.md`** (no throttling or debug-only flags whose only job is to reduce log volume).
 - **For verification / bug evidence:** Always capture the same way to a **single path** so everyone can grep the same file — e.g. run with debug enabled and save to **`/tmp/log.txt`** (or one team path). That keeps repro logs comparable and avoids “which file was that run?”
 
 ## Problem

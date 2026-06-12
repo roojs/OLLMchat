@@ -62,6 +62,7 @@ ollmfilesd_src = files(
   'Vector/ProjectAnalysis.vala',
   'Vector/ImageAnalyzer.vala',
   'Vector/Indexer.vala',
+  'Vector/BackgroundScan.vala',
 )
 
 build_rpath = ':'.join([

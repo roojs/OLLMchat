@@ -1,5 +1,7 @@
 # Coding Standards
 
+Canonical Vala style and patterns for this project and related codebases. **Mandatory** for all new and modified Vala code. Also see **`docs/build-rules.md`**, **`docs/code-documentation.md`**, and **`docs/guide-to-writing-plans.md`**.
+
 ## Checklist for all plans
 
 Before marking a plan as ready to implement, make sure it answers these:

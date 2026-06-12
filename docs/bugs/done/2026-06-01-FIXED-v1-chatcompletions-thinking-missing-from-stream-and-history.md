@@ -4,7 +4,7 @@
 
 **Started:** 2026-06-01
 
-**Pointer:** `.cursor/rules/CODING_STANDARDS.md`, `docs/guide-to-writing-plans.md`, `docs/bug-fix-process.md`.
+**Pointer:** `docs/coding-standards.md`, `docs/guide-to-writing-plans.md`, `docs/bug-fix-process.md`.
 
 **Related:**
 

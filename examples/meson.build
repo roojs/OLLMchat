@@ -541,7 +541,8 @@ ocvector_resources = gnome.compile_resources(
 	'../resources/wrapped-tools',
 	'../resources/ocvector',
 	'../resources/skill-prompts',
-	'../resources/skills'
+	'../resources/skills',
+	'../resources/chat-prompts'
 	],
   c_name: 'ocvector_resources'
 )

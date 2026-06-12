@@ -29,7 +29,7 @@ Reviewed the plan against project standards and Runner API. One issue found. See
 
 ### Issues that need rectifying
 
-Step 3 describes inline dialog creation; [CODING_STANDARDS](/.cursor/rules/CODING_STANDARDS.md) recommends using the existing dialog helper.
+Step 3 describes inline dialog creation; [CODING_STANDARDS](/docs/coding-standards.md) recommends using the existing dialog helper.
 
 ### Proposed changes
 

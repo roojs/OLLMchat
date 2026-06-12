@@ -1,0 +1,30 @@
+---
+description: Mandatory project standards — coding, build, and related docs
+alwaysApply: true
+---
+
+# Mandatory project standards
+
+All work in this repository **must** follow the canonical documents below. Read the relevant file before writing or changing code — do not guess conventions.
+
+## Coding standards (mandatory)
+
+**`docs/coding-standards.md`**
+
+Vala style, patterns, and the **Checklist for all plans** at the top of that file. Applies to all new and modified Vala code.
+
+## Build rules (mandatory)
+
+**`docs/build-rules.md`**
+
+Build with `ninja -C build` via Meson/Ninja. **Never** call `valac` directly.
+
+## Related docs (mandatory when applicable)
+
+| Document | When |
+|----------|------|
+| **`docs/code-documentation.md`** | Docblocks, Valadoc markup, API comments |
+| **`docs/guide-to-writing-plans.md`** | Implementing from `docs/plans/*` or writing plans |
+| **`docs/bug-fix-process.md`** | Bug fixes (debug → understand → propose → approval → apply) |
+
+Plans in `docs/plans/` should reference **`docs/coding-standards.md`** at the top (see checklist section in that file).

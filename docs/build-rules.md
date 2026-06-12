@@ -1,5 +1,7 @@
 # Build Instructions
 
+Canonical build workflow for this project. **Mandatory** for all compilation and CI. See also **`docs/coding-standards.md`**.
+
 ## Building the Project
 
 **IMPORTANT:** Always use `ninja -C build` to build this project. Do NOT use `valac` directly - the build system handles all compilation through Meson/Ninja.

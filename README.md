@@ -78,6 +78,13 @@ Implementation plans and roadmap:
 - **[Implementation Plans Summary](docs/plans/1.0-summary.md)** - Overview of all planned features with status indicators
 - **[MCP server settings](docs/mcp-settings.md)** - How to configure `mcp.json` for Model Context Protocol tools
 
+Development standards (mandatory for all contributors and related projects):
+
+- **[Coding standards](docs/coding-standards.md)** - Vala style, patterns, and checklist for plans
+- **[Build rules](docs/build-rules.md)** - Meson/Ninja build workflow
+- **[Code documentation](docs/code-documentation.md)** - Valadoc markup for docblocks
+- **[Guide to writing plans](docs/guide-to-writing-plans.md)** - Plan layout and implementation workflow
+
 ## Build Instructions
 
 This directory contains the OLLMchat library and test applications for working with Ollama API and prompt generation.

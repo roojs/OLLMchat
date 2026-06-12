@@ -4,7 +4,7 @@
 
 **Started:** 2026-06-01
 
-**Pointer:** `.cursor/rules/CODING_STANDARDS.md` (checklist for all plans), `docs/guide-to-writing-plans.md` (code proposal format), `docs/bug-fix-process.md`.
+**Pointer:** `docs/coding-standards.md` (checklist for all plans), `docs/guide-to-writing-plans.md` (code proposal format), `docs/bug-fix-process.md`.
 
 **Related:**
 
@@ -42,7 +42,7 @@
 - 🔷 **Ollama host:** LAN server `http://192.168.88.14:11434/api` — default in `~/.config/ollmchat/config.2.json` (`connections` / `usage.default_model`). **Not** `127.0.0.1`.
 - 🔷 **Model:** `qwen3.6:latest` — same config `usage.default_model.model`. Required for real v1 `tool_calls` + string `arguments`. Local `ollama list` models (e.g. `gemma3:latest`) often emit **no** `tool_calls` or fake tool text in `content`.
 - 🔷 **CLI:** v1 default (no `--legacy`). Built binary: `./build/oc-test-cli`.
-- ℹ️ **Debug already in tree:** `ChatCompletions.exec_stream()` logs each SSE chunk and stream end (`ChatCompletions.vala` ~409, ~466). Use `--debug`; do **not** add extra `GLib.debug()` in `CallFunction` for this investigation (see `.cursor/rules/CODING_STANDARDS.md` — Debug and Warning Statements).
+- ℹ️ **Debug already in tree:** `ChatCompletions.exec_stream()` logs each SSE chunk and stream end (`ChatCompletions.vala` ~409, ~466). Use `--debug`; do **not** add extra `GLib.debug()` in `CallFunction` for this investigation (see `docs/coding-standards.md` — Debug and Warning Statements).
 
 **Reproduce §3 (from repo root):**
 
