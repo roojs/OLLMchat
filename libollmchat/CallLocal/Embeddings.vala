@@ -9,11 +9,24 @@
 
 namespace OLLMchat.CallLocal
 {
+	/**
+	 * Local GGUF implementation of embeddings calls.
+	 *
+	 * Runs model load, decode, and vector extraction on a per-call worker
+	 * thread so callers yield instead of blocking their main context.
+	 */
 	public class Embeddings : Call.Embeddings, Thread
 	{
 		public Call.Options config_options { get; private set; default = new Call.Options(); }
 		protected GLib.MainContext caller_context { get; set; default = GLib.MainContext.default(); }
 
+		/**
+		 * Create a local embeddings call for a model directory.
+		 *
+		 * @param connection local GGUF connection
+		 * @param model model directory name under the connection URL
+		 * @param config_options optional local runtime options
+		 */
 		public Embeddings(
 			Settings.Connection connection,
 			string model,
@@ -26,7 +39,13 @@ namespace OLLMchat.CallLocal
 			}
 		}
 
-		public new async Response.Embed exec_embedding() throws Error
+		/**
+		 * Execute embeddings on a short-lived worker thread.
+		 *
+		 * @return embedding response populated from local GGUF output
+		 * @throws GLib.Error when thread startup or inference fails
+		 */
+		public new async Response.Embed exec_embedding() throws GLib.Error
 		{
 			this.caller_context = GLib.MainContext.get_thread_default();
 			if (this.caller_context == null) {
@@ -98,7 +117,7 @@ namespace OLLMchat.CallLocal
 			Llama.Context ctx,
 			string text,
 			Response.FloatArray result
-		) throws Error
+		) throws GLib.Error
 		{
 			unowned Llama.Vocab vocab = model.get_vocab();
 			var tokens = vocab.tokenize(text, true, true);
