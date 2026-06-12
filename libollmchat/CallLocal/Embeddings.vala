@@ -18,7 +18,6 @@ namespace OLLMchat.CallLocal
 	public class Embeddings : Call.Embeddings, Thread
 	{
 		public Call.Options config_options { get; private set; default = new Call.Options(); }
-		protected GLib.MainContext caller_context { get; set; default = GLib.MainContext.default(); }
 
 		/**
 		 * Create a local embeddings call for a model directory.
@@ -47,11 +46,21 @@ namespace OLLMchat.CallLocal
 		 */
 		public new async Response.Embed exec_embedding() throws GLib.Error
 		{
-			this.caller_context = GLib.MainContext.get_thread_default();
-			if (this.caller_context == null) {
-				this.caller_context = GLib.MainContext.default();
+			var caller_context = GLib.MainContext.get_thread_default();
+			if (caller_context == null) {
+				caller_context = GLib.MainContext.default();
 			}
-			var embed = new Response.Embed(this.connection);
+			var connection = this.connection;
+			var model_name = this.model;
+			var model_path = GLib.Path.build_filename(
+				connection.url,
+				model_name,
+				"model.gguf"
+			);
+			var input = this.input[0:this.input.length];
+			var num_ctx = this.config_options.num_ctx;
+			var embeddings = new Response.FloatArray(0);
+			bool embeddings_ready = false;
 			GLib.SourceFunc callback = exec_embedding.callback;
 			GLib.Error? thread_error = null;
 
@@ -62,17 +71,13 @@ namespace OLLMchat.CallLocal
 					var model_params = Llama.ModelParams();
 					model_params.n_gpu_layers = GGUF.n_gpu_layers;
 					var llama_model = new Llama.Model.from_file(
-						GLib.Path.build_filename(
-							this.connection.url,
-							this.model,
-							"model.gguf"
-						),
+						model_path,
 						model_params
 					);
 
 					var ctx_params = Llama.ContextParams();
-					if (this.config_options.num_ctx > 0) {
-						ctx_params.n_ctx = (uint)this.config_options.num_ctx;
+					if (num_ctx > 0) {
+						ctx_params.n_ctx = (uint)num_ctx;
 					}
 					ctx_params.n_threads = (int)GLib.get_num_processors();
 					ctx_params.n_threads_batch = ctx_params.n_threads;
@@ -83,17 +88,18 @@ namespace OLLMchat.CallLocal
 
 					var fa = new Response.FloatArray(llama_model.n_embd());
 
-					foreach (var text in this.input) {
+					foreach (var text in input) {
 						this.embed_with_context(llama_model, ctx, text, fa);
 					}
 
-					embed.model = this.model;
-					embed.embeddings = fa;
-					embed.prompt_eval_count = this.input.length;
+					embeddings = fa;
+					embeddings_ready = true;
 				} catch (GLib.Error e) {
 					thread_error = e;
 				}
-				this.caller_context.invoke((owned) callback);
+				var source = new GLib.IdleSource();
+				source.set_callback((owned) callback);
+				source.attach(caller_context);
 				return true;
 			};
 
@@ -108,7 +114,14 @@ namespace OLLMchat.CallLocal
 			if (thread_error != null) {
 				throw thread_error;
 			}
+			if (!embeddings_ready) {
+				throw new OllmError.FAILED("Local embeddings returned no data");
+			}
 
+			var embed = new Response.Embed(connection);
+			embed.model = model_name;
+			embed.embeddings = embeddings;
+			embed.prompt_eval_count = input.length;
 			return embed;
 		}
 

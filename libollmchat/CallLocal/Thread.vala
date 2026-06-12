@@ -19,40 +19,43 @@ namespace OLLMchat.CallLocal
 	public interface Thread : GLib.Object
 	{
 		/**
-		 * Context that started the current local call.
-		 */
-		protected abstract GLib.MainContext caller_context { get; set; }
-
-		/**
 		 * Invoke a callback on the context that started the local call.
 		 *
 		 * The worker waits until the callback has run so streaming state and
 		 * UI notifications advance one token at a time on the caller thread.
 		 *
+		 * @param caller_context context that receives the callback
 		 * @param callback callback to run on the caller context
+		 * @return value returned by the callback
 		 */
-		protected virtual void invoke(
+		protected virtual bool invoke(
+			GLib.MainContext caller_context,
 			owned GLib.SourceFunc callback
 		)
 		{
 			var mutex = GLib.Mutex();
 			var cond = GLib.Cond();
 			bool done = false;
+			bool keep_source = false;
 
-			this.caller_context.invoke(() => {
-				callback();
+			var source = new GLib.IdleSource();
+			source.set_callback(() => {
+				var callback_result = callback();
 				mutex.lock();
+				keep_source = callback_result;
 				done = true;
 				cond.signal();
 				mutex.unlock();
 				return false;
 			});
+			source.attach(caller_context);
 
 			mutex.lock();
 			while (!done) {
 				cond.wait(mutex);
 			}
 			mutex.unlock();
+			return keep_source;
 		}
 	}
 }
