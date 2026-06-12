@@ -281,7 +281,7 @@ namespace OLLMchat.CallLocal
 
 				if (emit_stream) {
 					bool loop_ok = true;
-					this.invoke_on_caller_context(() => {
+					this.invoke(() => {
 						loop_ok = this.chunk_ready(resp, chunk);
 						return false;
 					});
@@ -321,7 +321,7 @@ namespace OLLMchat.CallLocal
 			}
 
 			if (emit_stream) {
-				this.invoke_on_caller_context(() => {
+				this.invoke(() => {
 					this.stream_done(resp, prompt_tokens.length, generated);
 					return false;
 				});
