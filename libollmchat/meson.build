@@ -66,6 +66,7 @@ endif
 if local_gguf_enabled
   local_gguf_src += files([
     'GGUF.vala',
+    'CallLocal/Thread.vala',
     'CallLocal/Embeddings.vala',
     'CallLocal/ChatCompletions.vala',
   ])

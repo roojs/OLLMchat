@@ -9,7 +9,7 @@
 
 namespace OLLMchat.CallLocal
 {
-	public class ChatCompletions : Call.ChatCompletions
+	public class ChatCompletions : Call.ChatCompletions, Thread
 	{
 		public Call.Options config_options { get; private set; default = new Call.Options(); }
 
@@ -72,7 +72,9 @@ namespace OLLMchat.CallLocal
 			}
 			var resp = (Response.Chat) this.streaming_response;
 			resp.call = this;
-			yield this.generate(resp, true);
+			yield this.run_on_background_thread(() => {
+				this.generate(resp, true);
+			}, this.cancellable);
 			return resp;
 		}
 
@@ -84,11 +86,13 @@ namespace OLLMchat.CallLocal
 				);
 			}
 			var resp = new Response.Chat(this.connection, this);
-			yield this.generate(resp, false);
+			yield this.run_on_background_thread(() => {
+				this.generate(resp, false);
+			}, this.cancellable);
 			return resp;
 		}
 
-		private async void generate(Response.Chat resp, bool emit_stream) throws Error
+		private void generate(Response.Chat resp, bool emit_stream) throws Error
 		{
 			GGUF.init();
 
@@ -166,32 +170,49 @@ namespace OLLMchat.CallLocal
 					model = this.model,
 					message = new Message("assistant", piece),
 				};
-				var token = resp.addChunk(chunk);
+				var token = "";
+				bool loop_ok = true;
 				generated++;
 
 				if (emit_stream) {
-					if (resp.is_first_chunk) {
-						resp.is_first_chunk = false;
-						this.stream_start();
-						if (this.agent != null) {
-							this.agent.handle_stream_started();
+					this.invoke_on_caller_context(() => {
+						token = resp.addChunk(chunk);
+						if (resp.is_first_chunk) {
+							resp.is_first_chunk = false;
+							this.stream_start();
+							if (this.agent != null) {
+								this.agent.handle_stream_started();
+							}
 						}
-					}
 
-					if (resp.new_content.length > 0) {
-						this.stream_chunk(resp.new_content, false, resp);
-						if (this.agent != null) {
-							this.agent.handle_stream_chunk(resp.new_content, false, resp);
+						if (resp.new_content.length > 0) {
+							this.stream_chunk(resp.new_content, false, resp);
+							if (this.agent != null) {
+								this.agent.handle_stream_chunk(
+									resp.new_content,
+									false,
+									resp
+								);
+							}
 						}
-					}
 
+						if (token != "" && !resp.detect_looping(token)) {
+							loop_ok = false;
+						}
+					});
+
+					if (!loop_ok) {
+						throw new OllmError.FAILED(
+							"Streaming stopped: output repeated; possible infinite generation loop."
+						);
+					}
+				} else {
+					token = resp.addChunk(chunk);
 					if (token != "" && !resp.detect_looping(token)) {
 						throw new OllmError.FAILED(
 							"Streaming stopped: output repeated; possible infinite generation loop."
 						);
 					}
-
-					yield;
 				}
 
 				var token_batch = Llama.Batch(1, 0, 1);
@@ -214,25 +235,33 @@ namespace OLLMchat.CallLocal
 				n_cur++;
 			}
 
+			if (emit_stream) {
+				this.invoke_on_caller_context(() => {
+					resp.model = this.model;
+					resp.prompt_eval_count = prompt_tokens.length;
+					resp.eval_count = generated;
+					resp.done = true;
+
+					var done_chunk = new Response.Chunk() {
+						model = this.model,
+						done = true,
+						prompt_eval_count = prompt_tokens.length,
+						eval_count = generated,
+						message = new Message("assistant", ""),
+					};
+					resp.addChunk(done_chunk);
+					this.stream_chunk("", false, resp);
+					if (this.agent != null) {
+						this.agent.handle_stream_chunk("", false, resp);
+					}
+				});
+				return;
+			}
+
 			resp.model = this.model;
 			resp.prompt_eval_count = prompt_tokens.length;
 			resp.eval_count = generated;
 			resp.done = true;
-
-			if (emit_stream) {
-				var done_chunk = new Response.Chunk() {
-					model = this.model,
-					done = true,
-					prompt_eval_count = prompt_tokens.length,
-					eval_count = generated,
-					message = new Message("assistant", ""),
-				};
-				resp.addChunk(done_chunk);
-				this.stream_chunk("", false, resp);
-				if (this.agent != null) {
-					this.agent.handle_stream_chunk("", false, resp);
-				}
-			}
 		}
 
 		private string format_messages(Gee.ArrayList<Message> messages)
