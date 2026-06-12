@@ -9,7 +9,7 @@
 
 namespace OLLMchat.CallLocal
 {
-	public class Embeddings : Call.Embeddings
+	public class Embeddings : Call.Embeddings, Thread
 	{
 		public Call.Options config_options { get; private set; default = new Call.Options(); }
 
@@ -27,37 +27,43 @@ namespace OLLMchat.CallLocal
 
 		public new async Response.Embed exec_embedding() throws Error
 		{
-			GGUF.init();
+			return (Response.Embed) yield this.run_on_background_thread_with_result(() => {
+				GGUF.init();
 
-			var model_params = Llama.ModelParams();
-			model_params.n_gpu_layers = GGUF.n_gpu_layers;
-			var llama_model = new Llama.Model.from_file(
-				GLib.Path.build_filename(this.connection.url, this.model, "model.gguf"),
-				model_params
-			);
+				var model_params = Llama.ModelParams();
+				model_params.n_gpu_layers = GGUF.n_gpu_layers;
+				var llama_model = new Llama.Model.from_file(
+					GLib.Path.build_filename(
+						this.connection.url,
+						this.model,
+						"model.gguf"
+					),
+					model_params
+				);
 
-			var ctx_params = Llama.ContextParams();
-			if (this.config_options.num_ctx > 0) {
-				ctx_params.n_ctx = (uint)this.config_options.num_ctx;
-			}
-			ctx_params.n_threads = (int)GLib.get_num_processors();
-			ctx_params.n_threads_batch = ctx_params.n_threads;
-			ctx_params.pooling_type = Llama.PoolingType.MEAN;
+				var ctx_params = Llama.ContextParams();
+				if (this.config_options.num_ctx > 0) {
+					ctx_params.n_ctx = (uint)this.config_options.num_ctx;
+				}
+				ctx_params.n_threads = (int)GLib.get_num_processors();
+				ctx_params.n_threads_batch = ctx_params.n_threads;
+				ctx_params.pooling_type = Llama.PoolingType.MEAN;
 
-			var ctx = new Llama.Context.from_model(llama_model, ctx_params);
-			Llama.set_embeddings(ctx, true);
+				var ctx = new Llama.Context.from_model(llama_model, ctx_params);
+				Llama.set_embeddings(ctx, true);
 
-			var fa = new Response.FloatArray(llama_model.n_embd());
+				var fa = new Response.FloatArray(llama_model.n_embd());
 
-			foreach (var text in this.input) {
-				this.embed_with_context(llama_model, ctx, text, fa);
-			}
+				foreach (var text in this.input) {
+					this.embed_with_context(llama_model, ctx, text, fa);
+				}
 
-			var embed = new Response.Embed(this.connection);
-			embed.model = this.model;
-			embed.embeddings = fa;
-			embed.prompt_eval_count = this.input.length;
-			return embed;
+				var embed = new Response.Embed(this.connection);
+				embed.model = this.model;
+				embed.embeddings = fa;
+				embed.prompt_eval_count = this.input.length;
+				return embed;
+			});
 		}
 
 		private void embed_with_context(
