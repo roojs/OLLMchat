@@ -28,7 +28,10 @@ namespace OLLMchat.CallLocal
 
 		public new async Response.Embed exec_embedding() throws Error
 		{
-			this.capture_caller_context();
+			this.caller_context = GLib.MainContext.get_thread_default();
+			if (this.caller_context == null) {
+				this.caller_context = GLib.MainContext.default();
+			}
 			var embed = new Response.Embed(this.connection);
 			GLib.SourceFunc callback = exec_embedding.callback;
 			GLib.Error? thread_error = null;

@@ -18,18 +18,18 @@ namespace OLLMchat.CallLocal
 		private const string USER_BEGIN = "\uFF5CUser\uFF5C";
 		private const string ASSISTANT_BEGIN = "\uFF5CAssistant\uFF5C\n";
 
-		private signal bool local_stream_chunk(
+		private signal bool chunk_ready(
 			Response.Chat resp,
 			Response.Chunk chunk
 		);
-		private signal void local_stream_done(
+		private signal void stream_done(
 			Response.Chat resp,
 			int prompt_eval_count,
 			int eval_count
 		);
 
 		construct {
-			this.local_stream_chunk.connect((resp, chunk) => {
+			this.chunk_ready.connect((resp, chunk) => {
 				var token = resp.addChunk(chunk);
 				if (resp.is_first_chunk) {
 					resp.is_first_chunk = false;
@@ -53,7 +53,7 @@ namespace OLLMchat.CallLocal
 				return token == "" || resp.detect_looping(token);
 			});
 
-			this.local_stream_done.connect((resp, prompt_eval_count, eval_count) => {
+			this.stream_done.connect((resp, prompt_eval_count, eval_count) => {
 				resp.model = this.model;
 				resp.prompt_eval_count = prompt_eval_count;
 				resp.eval_count = eval_count;
@@ -129,7 +129,10 @@ namespace OLLMchat.CallLocal
 			}
 			var resp = (Response.Chat) this.streaming_response;
 			resp.call = this;
-			this.capture_caller_context();
+			this.caller_context = GLib.MainContext.get_thread_default();
+			if (this.caller_context == null) {
+				this.caller_context = GLib.MainContext.default();
+			}
 			GLib.SourceFunc callback = exec_stream.callback;
 			GLib.Error? thread_error = null;
 
@@ -165,7 +168,10 @@ namespace OLLMchat.CallLocal
 				);
 			}
 			var resp = new Response.Chat(this.connection, this);
-			this.capture_caller_context();
+			this.caller_context = GLib.MainContext.get_thread_default();
+			if (this.caller_context == null) {
+				this.caller_context = GLib.MainContext.default();
+			}
 			GLib.SourceFunc callback = exec.callback;
 			GLib.Error? thread_error = null;
 
@@ -276,7 +282,7 @@ namespace OLLMchat.CallLocal
 				if (emit_stream) {
 					bool loop_ok = true;
 					this.invoke_on_caller_context(() => {
-						loop_ok = this.local_stream_chunk(resp, chunk);
+						loop_ok = this.chunk_ready(resp, chunk);
 						return false;
 					});
 
@@ -316,7 +322,7 @@ namespace OLLMchat.CallLocal
 
 			if (emit_stream) {
 				this.invoke_on_caller_context(() => {
-					this.local_stream_done(resp, prompt_tokens.length, generated);
+					this.stream_done(resp, prompt_tokens.length, generated);
 					return false;
 				});
 				return;
