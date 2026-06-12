@@ -9,6 +9,13 @@
 
 namespace OLLMchat.CallLocal
 {
+	/**
+	 * Local GGUF implementation of chat completions.
+	 *
+	 * Runs prompt decode and token generation on a worker thread.
+	 * Streaming tokens are marshalled back to the caller context before
+	 * flowing through the existing stream signals.
+	 */
 	public class ChatCompletions : Call.ChatCompletions, Thread
 	{
 		public Call.Options config_options { get; private set; default = new Call.Options(); }
@@ -59,14 +66,13 @@ namespace OLLMchat.CallLocal
 				resp.eval_count = eval_count;
 				resp.done = true;
 
-				var done_chunk = new Response.Chunk() {
+				resp.addChunk(new Response.Chunk() {
 					model = this.model,
 					done = true,
 					prompt_eval_count = prompt_eval_count,
 					eval_count = eval_count,
 					message = new Message("assistant", ""),
-				};
-				resp.addChunk(done_chunk);
+				});
 				this.stream_chunk("", false, resp);
 				if (this.agent != null) {
 					this.agent.handle_stream_chunk("", false, resp);
@@ -74,6 +80,13 @@ namespace OLLMchat.CallLocal
 			});
 		}
 
+		/**
+		 * Create a local chat completions call for a model directory.
+		 *
+		 * @param connection local GGUF connection
+		 * @param model model directory name under the connection URL
+		 * @param config_options optional local runtime options
+		 */
 		public ChatCompletions(
 			Settings.Connection connection,
 			string model,
@@ -86,10 +99,18 @@ namespace OLLMchat.CallLocal
 			}
 		}
 
+		/**
+		 * Send messages through the local chat completions backend.
+		 *
+		 * @param messages chat messages to send
+		 * @param cancellable optional cancellation handle for generation
+		 * @return completed chat response
+		 * @throws GLib.Error when validation, inference, or tools fail
+		 */
 		public new async Response.Chat send(
 			Gee.ArrayList<Message> messages,
 			GLib.Cancellable? cancellable = null
-		) throws Error
+		) throws GLib.Error
 		{
 			if (messages.size == 0) {
 				throw new OllmError.INVALID_ARGUMENT(
@@ -106,7 +127,7 @@ namespace OLLMchat.CallLocal
 					if (response.done && response.message.tool_calls.size > 0) {
 						return yield this.toolsReply(response);
 					}
-				} catch (Error e) {
+				} catch (GLib.Error e) {
 					response.done = true;
 					throw e;
 				}
@@ -120,7 +141,13 @@ namespace OLLMchat.CallLocal
 			return response_obj;
 		}
 
-		public new async Response.Chat exec_stream() throws Error
+		/**
+		 * Execute streaming chat generation on a worker thread.
+		 *
+		 * @return accumulated streaming chat response
+		 * @throws GLib.Error when thread startup or inference fails
+		 */
+		public new async Response.Chat exec_stream() throws GLib.Error
 		{
 			if (this.messages.size == 0) {
 				throw new OllmError.INVALID_ARGUMENT(
@@ -160,7 +187,13 @@ namespace OLLMchat.CallLocal
 			return resp;
 		}
 
-		public new async Response.Chat exec() throws Error
+		/**
+		 * Execute non-streaming chat generation on a worker thread.
+		 *
+		 * @return completed chat response
+		 * @throws GLib.Error when thread startup or inference fails
+		 */
+		public new async Response.Chat exec() throws GLib.Error
 		{
 			if (this.messages.size == 0) {
 				throw new OllmError.INVALID_ARGUMENT(
@@ -199,7 +232,7 @@ namespace OLLMchat.CallLocal
 			return resp;
 		}
 
-		private void generate(Response.Chat resp, bool emit_stream) throws Error
+		private void generate(Response.Chat resp, bool emit_stream) throws GLib.Error
 		{
 			GGUF.init();
 
@@ -272,10 +305,12 @@ namespace OLLMchat.CallLocal
 				}
 				Llama.sampler_accept(sampler, new_token);
 
-				var piece = vocab.token_to_piece(new_token);
 				var chunk = new Response.Chunk() {
 					model = this.model,
-					message = new Message("assistant", piece),
+					message = new Message(
+						"assistant",
+						vocab.token_to_piece(new_token)
+					),
 				};
 				generated++;
 

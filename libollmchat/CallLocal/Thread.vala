@@ -14,7 +14,7 @@ namespace OLLMchat.CallLocal
 	 *
 	 * Implementing classes create short-lived worker threads in the same
 	 * shape as existing scanner code: save the async callback, run a
-	 * {{{GLib.ThreadFunc}}}, then resume the caller context when complete.
+	 * {{{GLib.ThreadFunc}}}, then resume the caller context.
 	 */
 	public interface Thread : GLib.Object
 	{
