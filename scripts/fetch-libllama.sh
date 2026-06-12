@@ -34,7 +34,7 @@ download_latest_deb() {
     exit 1
   fi
 
-  echo "Downloading ${deb}"
+  echo "Downloading ${deb}" >&2
   curl -fsSL "$pool/$deb" -o "$out"
   printf '%s\n' "$out"
 }
