@@ -4,7 +4,7 @@
 
 Original investigation/plan doc lived under **`docs/plans/`**; moved here as a completed bug record per **`docs/bug-fix-process.md`**.
 
-**Pointer:** **`docs/coding-standards.md`** — checklist for plans; smallest change.
+**Pointer:** **`docs/guide-to-writing-plans.md`** — checklist for plans (Vala code: **`docs/coding-standards.md`**); smallest change.
 
 ## Logging (convention for this work)
 

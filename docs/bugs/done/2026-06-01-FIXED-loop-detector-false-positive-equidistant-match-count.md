@@ -11,7 +11,7 @@
 
 **Related:** `~/.local/share/ollmchat/history/2026/06/01/08-55-43.json`; `examples/oc-test-loop.vala`; `tests/data/thinking-loop-transcript.txt`; `tests/meson.build` (`check-back-token-test`).
 
-**Pointer:** `docs/coding-standards.md` (**Checklist for all plans**); `docs/bug-fix-process.md`; `docs/guide-to-writing-plans.md`.
+**Pointer:** `docs/guide-to-writing-plans.md` (**Checklist for plans**; Vala code: `docs/coding-standards.md`); `docs/bug-fix-process.md`; `docs/guide-to-writing-plans.md`.
 
 ---
 

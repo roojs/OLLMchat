@@ -43,7 +43,7 @@ Use these as a common set of section types; include what fits the goal.
 - **Phases** — When the work is complex, split into phases (e.g. Phase 1: X; Phase 2: Y).
 - **Related Plans** — Links to other plans this depends on or relates to.
 - **Deliverables** — What will be produced or implemented.
-- **Coding standards** — Reference project coding standards (e.g. docs/coding-standards.md) when relevant.
+- **Coding standards** — Reference **`docs/coding-standards.md`** for Vala rules; use **`docs/guide-to-writing-plans.md`** — Checklist for plans for plan structure and verification.
 
 ### Example output (write plan file — `next_section`)
 

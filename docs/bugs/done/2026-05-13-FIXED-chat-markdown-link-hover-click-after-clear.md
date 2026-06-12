@@ -2,7 +2,7 @@
 
 **Status:** FIXED (2026-05-11)
 
-ℹ️ **`docs/guide-to-writing-plans.md`** · **`docs/bug-fix-process.md`** · **`docs/coding-standards.md`** (full *Checklist for all plans* before implement).
+ℹ️ **`docs/guide-to-writing-plans.md`** · **`docs/bug-fix-process.md`** · **`docs/coding-standards.md`** (**Checklist for plans** in **`docs/guide-to-writing-plans.md`** and Vala rules in **`docs/coding-standards.md`** before implement).
 
 ## Design (signals)
 

@@ -8,6 +8,8 @@
 
 OLLMchat is a work-in-progress AI application for interacting with LLMs (Large Language Models) such as Ollama and OpenAI, featuring a full-featured chat interface with code assistant capabilities including semantic codebase search. The project is built as a modular set of reusable libraries that can be integrated into other applications, with the main application serving as a complete AI chat client. The project focuses on Vala and GTK4, with all libraries written in pure Vala.
 
+**Development status:** The core chat stack (`libollmchat`, tools, GTK UI, markdown, and in-process vector search) is mature enough for everyday use. The **skills / task-runner** pipeline in `liboccoder` is mostly working but still very early beta — useful for multi-step agent work, but expect rough edges. Active or experimental areas include the **`ollmfilesd`** file daemon with **`libocrpc`** and **`libocvector2`** (semantic indexing moving out of the UI process; wiring still in progress), **`libollamaweb`** (live Ollama.com model search — partially integrated), local **GGUF inference** via `CallLocal` (proof of concept only, optional at build time), and the **Chatter** agent (summarized history — in progress).
+
 - **Main Application (`ollmchat`)** - A complete AI chat client with:
   - Full-featured chat interface for interacting with LLMs (Ollama/OpenAI)
   - Settings dialog with model search and download from Ollama
@@ -21,13 +23,17 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
   - `libocmarkdown.so` - Markdown parsing and rendering library (no GTK dependencies)
   - `libocmarkdowngtk.so` - Markdown GTK rendering library (includes GTK components)
   - `libocsqlite.so` - SQLite query builder library (no GTK dependencies)
+  - `libocrpc.so` - JSON-RPC wire types for daemon clients (no GTK dependencies)
   - `libocfiles.so` - File and project management library (no GTK dependencies)
-  - `liboccoder.so` - Code editor and project management library (includes GTK components)
-  - `libocvector.so` - Semantic codebase search library using vector embeddings and FAISS (no GTK dependencies)
-  - `libollmchat.so` - Base library for Ollama/OpenAI API access (no GTK dependencies)
+  - `liboccoder.so` - Code editor, skills/task runner, and project management (includes GTK components)
+  - `libocvector.so` - Semantic codebase search using vector embeddings and FAISS (no GTK dependencies; in-process)
+  - `libocvector2.so` - Slimmer vector index/search for the file daemon (no `libocfiles`; used by `ollmfilesd`)
+  - `libollmchat.so` - Base library for Ollama/OpenAI API access, agents, and optional local GGUF backend (no GTK dependencies)
+  - `libollamaweb.so` - Live search and model metadata from ollama.com (no GTK dependencies)
   - `liboctools.so` - Tools library for file operations and utilities (no GTK dependencies)
   - `libocmcp.so` - MCP (Model Context Protocol) client: load servers from `~/.config/ollmchat/mcp.json`, discover tools, expose them as `mcp:{server_id}:{tool_name}` agent tools (stdio subprocess or HTTP JSON-RPC; stdio uses `OLLMfiles.Sandbox` via `libocfiles`)
   - `libollmchatgtk.so` - GTK library with chat widgets (includes GTK components)
+  - `ollmfilesd` - Headless file and semantic-index daemon (Unix; RPC over `libocrpc`, not a shared library)
 - **Example Tools** - Command-line utilities demonstrating library capabilities:
   - `oc-test-cli` - Test tool for LLM API calls (models, chat, streaming)
   - `oc-test-files` - Test tool for file operations (read/write files with line ranges, project management, buffer operations, backups)
@@ -78,16 +84,39 @@ Implementation plans and roadmap:
 - **[Implementation Plans Summary](docs/plans/1.0-summary.md)** - Overview of all planned features with status indicators
 - **[MCP server settings](docs/mcp-settings.md)** - How to configure `mcp.json` for Model Context Protocol tools
 
-Development standards (mandatory for all contributors and related projects):
+Development standards (written for AI agents; **mandatory** for agents, helpful guides for human contributors):
 
-- **[Coding standards](docs/coding-standards.md)** - Vala style, patterns, and checklist for plans
+- **[Coding standards](docs/coding-standards.md)** - Vala style and patterns
 - **[Build rules](docs/build-rules.md)** - Meson/Ninja build workflow
 - **[Code documentation](docs/code-documentation.md)** - Valadoc markup for docblocks
-- **[Guide to writing plans](docs/guide-to-writing-plans.md)** - Plan layout and implementation workflow
+- **[Guide to writing plans](docs/guide-to-writing-plans.md)** - Plan layout, checklist, and implementation workflow
+- **[Creating releases](docs/creating-releases.md)** - How tagged releases and CI packaging work
+
+## Releases
+
+**Alpha binaries** are published on GitHub: **[Releases](https://github.com/roojs/OLLMchat/releases)**. All current installable builds are pre-release quality — expect bugs and missing polish.
+
+| Format | Platforms |
+|--------|-----------|
+| **AppImage** | Linux x86_64 and aarch64 |
+| **Debian package** (`.deb`, all-in-one) | Debian/Ubuntu amd64 |
+| **Windows installer** (`.exe`) | Windows x86_64 |
+
+Download the assets attached to the latest tagged release (for example `v1.0.x-alpha`).
+
+**Debian/Ubuntu (amd64):** download the single **`ollmchat_*.deb`** all-in-one package, then:
+
+```bash
+sudo apt install ./ollmchat_*.deb
+```
+
+(`apt install` resolves system dependencies; `sudo dpkg -i ollmchat_*.deb` followed by `sudo apt install -f` also works.)
+
+To build from source instead, see below.
 
 ## Build Instructions
 
-This directory contains the OLLMchat library and test applications for working with Ollama API and prompt generation.
+This directory contains the OLLMchat library and test applications for working with Ollama API and prompt generation. Building from source is optional if you use a release binary above.
 
 ## Dependencies
 

@@ -150,7 +150,7 @@ At ~2 min/file × 130 files, background indexing alone is **hours** even after m
 
 **Status:** done (implemented in `libocsqlite/Database.vala`)
 
-**Pointer:** `docs/coding-standards.md` — **Checklist for all plans** (below); **`docs/guide-to-writing-plans.md`** — plan shape and code-proposal fences.
+**Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans** (below); **`docs/guide-to-writing-plans.md`** — plan shape and code-proposal fences.
 
 ### Coding standards checklist (this plan)
 

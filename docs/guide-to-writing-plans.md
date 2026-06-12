@@ -1,8 +1,49 @@
 # Guide to writing plans
 
+Written for **AI agents** — **mandatory** when an agent drafts, reviews, or implements from **`docs/plans/*`**. Human contributors may treat this as a helpful guide.
+
 Plan markdown files live in **`docs/plans/`**; completed work is archived under **`docs/plans/done/`** (see **Done / archive** below). This document is intentionally **not** named `README.md` so it is not mistaken for a generic package readme.
 
-It is the **canonical** place for: plan shape, code-proposal fences, **ordered chunk format** for large methods, and **implementation workflow** (what implementers and agents must follow). Coding and build standards live in **`docs/coding-standards.md`** and **`docs/build-rules.md`** — keep those in **`docs/`**, not under **`.cursor/`**.
+It is the **canonical** place for: plan shape, code-proposal fences, **ordered chunk format** for large methods, **implementation workflow**, and the **checklist for plans**. Coding and build standards live in **`docs/coding-standards.md`** and **`docs/build-rules.md`**.
+
+## Checklist for plans
+
+Copy or reference this section at the top of new plan documents in **`docs/plans/`**. Use it before marking a plan ready to implement.
+
+### Plan structure and code proposals
+
+- **Single canonical code proposal** — no duplicate stitched-together versions (e.g. Part 1…N **and** a separate full-method block that could drift). See **Code proposals section** — *Don't publish duplicate stitched-together versions*.
+- **Edit syntax** — actionable fences as **Remove** / **Replace with** / **Add** only; **Keep** is unchanged context, never an edit instruction. See **Edit syntax contract**.
+- **No orphan code** — fenced code only under **`## Concrete code proposals`**. See **No orphan or illustrative code**.
+- **New methods in plans** — do not add helpers unless the user or plan explicitly asks. See bullets under **Discussion style** below and **Method names and new methods** in **`docs/coding-standards.md`**.
+
+### Verify proposed Vala code
+
+All proposed code must follow **`docs/coding-standards.md`**. Check each item against the linked section:
+
+- **Nullable types** — [Avoiding Nullable Types](coding-standards.md#avoiding-nullable-types)
+- **Null checks** — [Defensive code and null checks](coding-standards.md#defensive-code-and-null-checks)
+- **String interpolation** — [String Interpolation](coding-standards.md#string-interpolation)
+- **Temporary variables** — [Temporary Variables](coding-standards.md#temporary-variables)
+- **Brace placement** — [Brace Placement](coding-standards.md#brace-placement)
+- **`this.` prefix** — [This Prefix](coding-standards.md#this-prefix)
+- **GLib prefix & using statements** — [GLib Namespace Prefix](coding-standards.md#glib-namespace-prefix), [Using Statements](coding-standards.md#using-statements)
+- **Property initialization** — [Property Initialization](coding-standards.md#property-initialization)
+- **Line length & breaking** — [Line Length and Breaking](coding-standards.md#line-length-and-breaking)
+- **StringBuilder usage** — [StringBuilder Usage](coding-standards.md#stringbuilder-usage)
+- **String building in loops** — [Building Strings in Loops](coding-standards.md#building-strings-in-loops)
+- **ArrayList for strings** — [ArrayList for Strings](coding-standards.md#arraylist-for-strings)
+- **Loops and nesting** — [Reducing Nesting](coding-standards.md#reducing-nesting)
+- **Character looping** — [Character Looping](coding-standards.md#character-looping)
+- **File info try/catch** — [File info and try/catch](coding-standards.md#file-info-and-trycatch)
+- **Try/catch scope** — [Try/Catch Scope](coding-standards.md#trycatch-scope)
+- **Underscore prefix** — [Underscore prefix on variables and fields](coding-standards.md#underscore-prefix-on-variables-and-fields)
+- **get_* methods** — [Property Getters vs Get Methods](coding-standards.md#property-getters-vs-get-methods)
+- **Method names (length)** — [Method names and new methods](coding-standards.md#method-names-and-new-methods)
+- **New methods** — [Method names and new methods](coding-standards.md#method-names-and-new-methods)
+- **Signal handlers in `construct`** — [Signal handlers in construct blocks](coding-standards.md#signal-handlers-in-construct-blocks)
+- **Docblocks** — [Docblocks / code documentation](coding-standards.md#docblocks--code-documentation) and **`docs/code-documentation.md`**
+- **Debug time & debug-only logic** — [Debug and Warning Statements](coding-standards.md#debug-and-warning-statements)
 
 ## Plan implementation workflow
 
@@ -94,7 +135,7 @@ When drafting or updating a plan from user chat, **separate what they said from 
 
 ---
 
-- **Do not add new methods** unless the plan or the user **explicitly** asks for them (see **CODING_STANDARDS.md** — new methods).
+- **Do not add new methods** unless the plan or the user **explicitly** asks for them (see **`docs/coding-standards.md`** — [Method names and new methods](coding-standards.md#method-names-and-new-methods)).
 - **Private helpers are not automatically an improvement** — they are often **bloat**, hide the real flow, and scatter logic. Default to **changing existing methods** and **inlining** at the call site.
 - **Readability via extraction is the user’s decision**, not the implementer’s default. Do not introduce helpers “for clarity” unless the user wants that refactor.
 
@@ -102,7 +143,7 @@ When drafting or updating a plan from user chat, **separate what they said from 
 
 1. **Title** — `# N.N Title`
 2. **`Status:`** — proposed | done | rejected
-3. **Pointer** — `docs/coding-standards.md` **Checklist for all plans** (copy bullets or link to that section)
+3. **Pointer** — **`docs/guide-to-writing-plans.md`** **Checklist for plans** (copy bullets or link to that section); proposed Vala code must follow **`docs/coding-standards.md`**
 4. **`## Purpose`** — nested bullets for **human planning review**: **🔷** what we are doing, **⏳** backlog, **ℹ️** pointers only — **not** a dump of **🚫** vetoes (see **LLM implementer guardrails** at end of this guide)
 5. **Topic sections** — design, schema, tasks, audit lists, etc. (emoji-prefixed bullets; **no** boilerplate sections below)
 6. **`## Concrete code proposals`** (or **`## Proposed code changes`**) — **main deliverable** when implementing (can say **⏳** deferred during planning-only passes)
@@ -366,7 +407,7 @@ You may label each block with plain **Keep** / **Remove** / **Replace with** / *
 
 ### Plans and defensive code
 
-Follow **`docs/coding-standards.md`** — *Defensive code* and *Checklist for all plans*: do not specify speculative guards, redundant validation, or “just in case” API surface (e.g. extra **`deserialize_property`** branches) unless there is a **real boundary** or **external contract**. Prefer the smallest change that matches the actual call paths.
+Follow **`docs/coding-standards.md`** — [Defensive code and null checks](coding-standards.md#defensive-code-and-null-checks): do not specify speculative guards, redundant validation, or “just in case” API surface (e.g. extra **`deserialize_property`** branches) unless there is a **real boundary** or **external contract**. Prefer the smallest change that matches the actual call paths.
 
 ## Done / archive
 
@@ -380,7 +421,8 @@ When implemented: move or copy to **`docs/plans/done/`**, prefix filename with *
 
 ## Related
 
-- **`docs/coding-standards.md`** — checklist for plans + Vala/style rules (also links here for plan layout)
+- **`docs/coding-standards.md`** — Vala/style rules for proposed and implemented code
+- **`docs/build-rules.md`** — Meson/Ninja build workflow
 - **`docs/bug-fix-process.md`** — bug fix flow (contrast with **Plan implementation workflow** above)
 - **`docs/plans/done/6.9-DONE-debugging-performance.md`** — nested thinking / history replay perf (see **`docs/plans/done/6.8-DONE-fixing-large-restore.md`** for parser work)
 

@@ -1,44 +1,8 @@
 # Coding Standards
 
-Canonical Vala style and patterns for this project and related codebases. **Mandatory** for all new and modified Vala code. Also see **`docs/build-rules.md`**, **`docs/code-documentation.md`**, and **`docs/guide-to-writing-plans.md`**.
+Canonical Vala style and patterns for this project and related codebases. Written for **AI agents** — **mandatory** for agents implementing or changing Vala code. Human contributors may treat this as a helpful guide. Also see **`docs/build-rules.md`** and **`docs/code-documentation.md`**.
 
-## Checklist for all plans
-
-Before marking a plan as ready to implement, make sure it answers these:
-
-- **Nullable types**: Are new APIs and properties designed to avoid nullable types where possible (using default objects/flags instead)?
-- **Null checks**: Does the plan avoid adding generic null checks, and only use them where the design explicitly requires null?
-- **Defensive code**: Does the plan avoid extra guards, redundant validation, and speculative branches unless there is **strong justification** (external contract, real boundary, unavoidable nullable return)? See **Defensive code and null checks** below.
-- **String interpolation**: Does the plan avoid `@"..."` string interpolation except for multi-line usage/help text or documentation?
-- **Temporary variables**: Does the plan avoid one-use temporaries and forbid trivial aliases (except aliasing long chains like a.b.c.d.e)?
-- **Brace placement**: Does the plan keep brace style consistent (line breaks for namespaces/classes/methods, inline for control structures)? Does it avoid one-line if/else with body (always put opening brace and body on separate lines)?
-- **`this.` prefix**: Does the plan assume/describe using `this.` for instance members in new/modified Vala code?
-- **GLib prefix & using statements**: Does the plan require fully-qualified `GLib.*` and avoid `using` imports for new code?
-- **Property initialization**: Are new properties initialized with defaults (`get; set; default =` or field defaults) instead of constructors?
-- **Line length & breaking**: Does the plan avoid long lines (method calls, concatenations, docblocks, comments) and call out breaking them for readability where relevant?
-- **StringBuilder usage**: Does the plan avoid `GLib.StringBuilder` unless building strings in loops with hundreds of iterations? Does it use `string.joinv()` for joining arrays and `+` for simple concatenation?
-- **String building in loops**: Does the plan **never** build strings in a loop (e.g. `prefix += "> "` in a for-loop)? Use built-in fill/join methods (`string.nfill()`, `replace()`, `string.joinv()`) instead.
-- **ArrayList for strings**: Does the plan avoid `Gee.ArrayList<string>` when building arrays of strings just to join them? Does it use `string[]` arrays instead? When initializing string arrays, use **`string[] name = {}`** only — do not use `var x = new string[0]` or similar.
-- **Loops and nesting**: In loops, use **`continue`** to skip cases and keep the rest of the loop body at top level; avoid **`else`** and nested `if` inside loops.
-- **Character looping**: Does the plan avoid looping through characters unless absolutely 100% no other way? Does it prefer string methods (`index_of`, `contains`, `substring`, etc.) and regex (`GLib.Regex`) instead?
-- **File info try/catch**: Does the plan use try/catch around file metadata (e.g. `query_info()`) only when file existence is unknown — not when we have just read the file or otherwise established it exists?
-- **Try/catch scope**: Does the plan keep try/catch focused on the minimal code that can throw — not blanketing large areas? Wrap only the specific call(s) that may throw; keep setup and non-throwing code outside the try block.
-- **Underscore prefix**: Does the plan avoid leading underscore (`_`) on variable, field, and property names?
-- **get_* methods**: Does the plan avoid `get_*()` method names in favour of properties or verb-less/action names (e.g. `system_message()` not `get_system_message()`)? See “Property Getters vs Get Methods” below.
-- **Method names (length)**: Does the plan use **short, concise** method names and avoid long descriptive names?
-- **New methods**: Does the plan **avoid introducing new methods** unless the user or the plan **explicitly** calls for them? Default to changing **existing** methods / call sites. Whether to extract a helper is a **user** decision, not the LLM’s — do not assume a new method is warranted.
-- **Signal handlers in `construct`**: Does the plan wire `signal.connect` handlers **inline** in the `construct` block (lambdas/closures), not via new `on_*` / `handle_*` private methods? See “Signal handlers in construct blocks” below.
-- **Docblocks**: Do new or modified docblocks follow the code documentation standards and use multiline form (not short one-liners)? See "Docblocks / code documentation" below.
-- **Debug time**: Does the plan avoid putting timestamps or monotonic time in `GLib.debug()` / `GLib.warning()` messages (log output already includes time)? See "Debug and Warning Statements" below.
-- **Debug output vs debug-only logic**: Does the plan avoid any gating, sampling, throttling, or “sparse debug” logic? Debug is toggled outside the app (`--debug`, log domains, etc.); use unconditional `GLib.debug()` at real boundaries only. See "Debug and Warning Statements" below.
-- **Single canonical code proposal**: Does the plan avoid **duplicate stitched-together versions**—e.g. a long **Part 1 … Part N** sequence **and** a separate full-method or full-file block that could drift, or fences that omit lines the implementer must guess? Prefer **one** mechanical form: either complete **Remove**/**Replace with** for the whole region, or **parts** that are each complete with **Keep** anchors only as local glue. See **`docs/guide-to-writing-plans.md`** — *Don’t publish duplicate stitched-together versions*.
-- **Edit syntax clarity**: Does the plan use actionable code fences as
-  **Remove** / **Replace with** / **Add** only, with any **Keep** usage treated
-  strictly as unchanged context (never as an edit instruction)?
-
-These checklist items should be copied (or referenced) at the top of new plan documents in `docs/plans/` so they can be quickly verified.
-
-**Plan layout and implementation workflow** (brief summaries, code hunks with **`#### Remove` / `Replace with` / `Add` / `Keep`**, **Plan implementation workflow**, **Ordered chunk format for large methods**): **`docs/guide-to-writing-plans.md`**.
+**Plans:** This file is **code standards only**. Plan structure, code-proposal fences, implementation workflow, and the **checklist for verifying plans** are in **`docs/guide-to-writing-plans.md`**.
 
 ## Docblocks / code documentation
 
