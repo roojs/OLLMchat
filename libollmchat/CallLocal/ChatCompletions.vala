@@ -31,9 +31,7 @@ namespace OLLMchat.CallLocal
 		);
 		private signal void stream_done(
 			Response.Chat resp,
-			string model_name,
-			int prompt_eval_count,
-			int eval_count,
+			Response.Chunk chunk,
 			bool emit_stream
 		);
 
@@ -66,20 +64,9 @@ namespace OLLMchat.CallLocal
 				return token == "" || resp.detect_looping(token);
 			});
 
-			this.stream_done.connect((resp, model_name, prompt_eval_count, eval_count, emit_stream) => {
-				resp.model = model_name;
-				resp.prompt_eval_count = prompt_eval_count;
-				resp.eval_count = eval_count;
-				resp.done = true;
-
+			this.stream_done.connect((resp, chunk, emit_stream) => {
+				resp.addChunk(chunk);
 				if (emit_stream) {
-					resp.addChunk(new Response.Chunk() {
-						model = model_name,
-						done = true,
-						prompt_eval_count = prompt_eval_count,
-						eval_count = eval_count,
-						message = new Message("assistant", ""),
-					});
 					this.stream_chunk("", false, resp);
 					if (this.agent != null) {
 						this.agent.handle_stream_chunk("", false, resp);
@@ -200,6 +187,9 @@ namespace OLLMchat.CallLocal
 						max_tokens,
 						num_ctx,
 						seed_value,
+						(new GLib.DateTime.now_utc()).format(
+							"%Y-%m-%dT%H:%M:%SZ"
+						),
 						cancellable,
 						true
 					);
@@ -276,6 +266,9 @@ namespace OLLMchat.CallLocal
 						max_tokens,
 						num_ctx,
 						seed_value,
+						(new GLib.DateTime.now_utc()).format(
+							"%Y-%m-%dT%H:%M:%SZ"
+						),
 						cancellable,
 						false
 					);
@@ -311,18 +304,22 @@ namespace OLLMchat.CallLocal
 			int max_tokens,
 			int num_ctx,
 			uint seed_value,
+			string created_at,
 			GLib.Cancellable? cancellable,
 			bool emit_stream
 		) throws GLib.Error
 		{
+			var total_start = GLib.get_monotonic_time();
 			GGUF.init();
 
+			var load_start = GLib.get_monotonic_time();
 			var model_params = Llama.ModelParams();
 			model_params.n_gpu_layers = GGUF.n_gpu_layers;
 			var model = new Llama.Model.from_file(
 				model_path,
 				model_params
 			);
+			var load_duration = GLib.get_monotonic_time() - load_start;
 
 			GLib.debug("formatted prompt: %s", formatted_prompt);
 
@@ -345,6 +342,7 @@ namespace OLLMchat.CallLocal
 
 			var n_cur = 0;
 
+			var prompt_eval_start = GLib.get_monotonic_time();
 			var prompt_batch = Llama.Batch(prompt_tokens.length, 0, 1);
 			try {
 				for (int i = 0; i < prompt_tokens.length; i++) {
@@ -363,8 +361,11 @@ namespace OLLMchat.CallLocal
 			} finally {
 				prompt_batch.free();
 			}
+			var prompt_eval_duration =
+				GLib.get_monotonic_time() - prompt_eval_start;
 			n_cur += prompt_tokens.length;
 
+			var eval_start = GLib.get_monotonic_time();
 			var generated = 0;
 			while (max_tokens < 0 || generated < max_tokens) {
 				if (cancellable != null && cancellable.is_cancelled()) {
@@ -413,13 +414,24 @@ namespace OLLMchat.CallLocal
 				}
 				n_cur++;
 			}
+			var eval_duration = GLib.get_monotonic_time() - eval_start;
 
 			this.invoke(caller_context, () => {
 				this.stream_done(
 					resp,
-					model_name,
-					prompt_tokens.length,
-					generated,
+					new Response.Chunk() {
+						model = model_name,
+						done = true,
+						prompt_eval_count = prompt_tokens.length,
+						eval_count = generated,
+						total_duration =
+							(GLib.get_monotonic_time() - total_start) * 1000,
+						load_duration = load_duration * 1000,
+						prompt_eval_duration = prompt_eval_duration * 1000,
+						eval_duration = eval_duration * 1000,
+						created_at = created_at,
+						message = new Message("assistant", ""),
+					},
 					emit_stream
 				);
 				return false;
