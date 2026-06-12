@@ -31,7 +31,7 @@ namespace OLLMchat.CallLocal
 		 *
 		 * @param callback callback to run on the caller context
 		 */
-		protected virtual void invoke_on_caller_context(
+		protected virtual void invoke(
 			owned GLib.SourceFunc callback
 		)
 		{
