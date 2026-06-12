@@ -19,7 +19,6 @@ namespace OLLMchat.CallLocal
 	public class ChatCompletions : Call.ChatCompletions, Thread
 	{
 		public Call.Options config_options { get; private set; default = new Call.Options(); }
-		protected GLib.MainContext caller_context { get; set; default = GLib.MainContext.default(); }
 
 		// Hard-coded DeepSeek-R1-Distill-Qwen template from Phase-1 probe.
 		private const string USER_BEGIN = "\uFF5CUser\uFF5C";
@@ -27,17 +26,24 @@ namespace OLLMchat.CallLocal
 
 		private signal bool chunk_ready(
 			Response.Chat resp,
-			Response.Chunk chunk
+			Response.Chunk chunk,
+			bool emit_stream
 		);
 		private signal void stream_done(
 			Response.Chat resp,
+			string model_name,
 			int prompt_eval_count,
-			int eval_count
+			int eval_count,
+			bool emit_stream
 		);
 
 		construct {
-			this.chunk_ready.connect((resp, chunk) => {
+			this.chunk_ready.connect((resp, chunk, emit_stream) => {
 				var token = resp.addChunk(chunk);
+				if (!emit_stream) {
+					return token == "" || resp.detect_looping(token);
+				}
+
 				if (resp.is_first_chunk) {
 					resp.is_first_chunk = false;
 					this.stream_start();
@@ -60,22 +66,24 @@ namespace OLLMchat.CallLocal
 				return token == "" || resp.detect_looping(token);
 			});
 
-			this.stream_done.connect((resp, prompt_eval_count, eval_count) => {
-				resp.model = this.model;
+			this.stream_done.connect((resp, model_name, prompt_eval_count, eval_count, emit_stream) => {
+				resp.model = model_name;
 				resp.prompt_eval_count = prompt_eval_count;
 				resp.eval_count = eval_count;
 				resp.done = true;
 
-				resp.addChunk(new Response.Chunk() {
-					model = this.model,
-					done = true,
-					prompt_eval_count = prompt_eval_count,
-					eval_count = eval_count,
-					message = new Message("assistant", ""),
-				});
-				this.stream_chunk("", false, resp);
-				if (this.agent != null) {
-					this.agent.handle_stream_chunk("", false, resp);
+				if (emit_stream) {
+					resp.addChunk(new Response.Chunk() {
+						model = model_name,
+						done = true,
+						prompt_eval_count = prompt_eval_count,
+						eval_count = eval_count,
+						message = new Message("assistant", ""),
+					});
+					this.stream_chunk("", false, resp);
+					if (this.agent != null) {
+						this.agent.handle_stream_chunk("", false, resp);
+					}
 				}
 			});
 		}
@@ -156,20 +164,51 @@ namespace OLLMchat.CallLocal
 			}
 			var resp = (Response.Chat) this.streaming_response;
 			resp.call = this;
-			this.caller_context = GLib.MainContext.get_thread_default();
-			if (this.caller_context == null) {
-				this.caller_context = GLib.MainContext.default();
+			var caller_context = GLib.MainContext.get_thread_default();
+			if (caller_context == null) {
+				caller_context = GLib.MainContext.default();
 			}
+			var connection = this.connection;
+			var model_name = this.model;
+			var model_path = GLib.Path.build_filename(
+				connection.url,
+				model_name,
+				"model.gguf"
+			);
+			var formatted_prompt = this.format_messages(this.messages);
+			var max_tokens = this.max_tokens >= 0 ?
+				this.max_tokens :
+				this.config_options.num_predict;
+			var num_ctx = this.config_options.num_ctx;
+			var seed_value = this.seed >= 0 ?
+				(uint)this.seed :
+				(this.config_options.seed >= 0 ?
+					(uint)this.config_options.seed :
+					Llama.DEFAULT_SEED);
+			var cancellable = this.cancellable;
 			GLib.SourceFunc callback = exec_stream.callback;
 			GLib.Error? thread_error = null;
 
 			owned GLib.ThreadFunc<bool> run = () => {
 				try {
-					this.generate(resp, true);
+					this.generate(
+						resp,
+						caller_context,
+						model_name,
+						model_path,
+						formatted_prompt,
+						max_tokens,
+						num_ctx,
+						seed_value,
+						cancellable,
+						true
+					);
 				} catch (GLib.Error e) {
 					thread_error = e;
 				}
-				this.caller_context.invoke((owned) callback);
+				var source = new GLib.IdleSource();
+				source.set_callback((owned) callback);
+				source.attach(caller_context);
 				return true;
 			};
 
@@ -201,20 +240,51 @@ namespace OLLMchat.CallLocal
 				);
 			}
 			var resp = new Response.Chat(this.connection, this);
-			this.caller_context = GLib.MainContext.get_thread_default();
-			if (this.caller_context == null) {
-				this.caller_context = GLib.MainContext.default();
+			var caller_context = GLib.MainContext.get_thread_default();
+			if (caller_context == null) {
+				caller_context = GLib.MainContext.default();
 			}
+			var connection = this.connection;
+			var model_name = this.model;
+			var model_path = GLib.Path.build_filename(
+				connection.url,
+				model_name,
+				"model.gguf"
+			);
+			var formatted_prompt = this.format_messages(this.messages);
+			var max_tokens = this.max_tokens >= 0 ?
+				this.max_tokens :
+				this.config_options.num_predict;
+			var num_ctx = this.config_options.num_ctx;
+			var seed_value = this.seed >= 0 ?
+				(uint)this.seed :
+				(this.config_options.seed >= 0 ?
+					(uint)this.config_options.seed :
+					Llama.DEFAULT_SEED);
+			var cancellable = this.cancellable;
 			GLib.SourceFunc callback = exec.callback;
 			GLib.Error? thread_error = null;
 
 			owned GLib.ThreadFunc<bool> run = () => {
 				try {
-					this.generate(resp, false);
+					this.generate(
+						resp,
+						caller_context,
+						model_name,
+						model_path,
+						formatted_prompt,
+						max_tokens,
+						num_ctx,
+						seed_value,
+						cancellable,
+						false
+					);
 				} catch (GLib.Error e) {
 					thread_error = e;
 				}
-				this.caller_context.invoke((owned) callback);
+				var source = new GLib.IdleSource();
+				source.set_callback((owned) callback);
+				source.attach(caller_context);
 				return true;
 			};
 
@@ -232,30 +302,36 @@ namespace OLLMchat.CallLocal
 			return resp;
 		}
 
-		private void generate(Response.Chat resp, bool emit_stream) throws GLib.Error
+		private void generate(
+			Response.Chat resp,
+			GLib.MainContext caller_context,
+			string model_name,
+			string model_path,
+			string formatted_prompt,
+			int max_tokens,
+			int num_ctx,
+			uint seed_value,
+			GLib.Cancellable? cancellable,
+			bool emit_stream
+		) throws GLib.Error
 		{
 			GGUF.init();
 
 			var model_params = Llama.ModelParams();
 			model_params.n_gpu_layers = GGUF.n_gpu_layers;
 			var model = new Llama.Model.from_file(
-				GLib.Path.build_filename(this.connection.url, this.model, "model.gguf"),
+				model_path,
 				model_params
 			);
 
-			var formatted_prompt = this.format_messages(this.messages);
 			GLib.debug("formatted prompt: %s", formatted_prompt);
 
 			unowned Llama.Vocab vocab = model.get_vocab();
 			var prompt_tokens = vocab.tokenize(formatted_prompt, false, true);
 
-			var max_tokens = this.max_tokens >= 0 ?
-				this.max_tokens :
-				this.config_options.num_predict;
-
 			var ctx_params = Llama.ContextParams();
-			if (this.config_options.num_ctx > 0) {
-				ctx_params.n_ctx = (uint)this.config_options.num_ctx;
+			if (num_ctx > 0) {
+				ctx_params.n_ctx = (uint)num_ctx;
 			}
 			ctx_params.n_batch = (uint)prompt_tokens.length;
 			ctx_params.n_threads = (int)GLib.get_num_processors();
@@ -264,11 +340,7 @@ namespace OLLMchat.CallLocal
 			var ctx = new Llama.Context.from_model(model, ctx_params);
 
 			var sampler = Llama.sampler_init_dist(
-				this.seed >= 0 ?
-					(uint)this.seed :
-					(this.config_options.seed >= 0 ?
-						(uint)this.config_options.seed :
-						Llama.DEFAULT_SEED)
+				seed_value
 			);
 
 			var n_cur = 0;
@@ -295,7 +367,7 @@ namespace OLLMchat.CallLocal
 
 			var generated = 0;
 			while (max_tokens < 0 || generated < max_tokens) {
-				if (this.cancellable != null && this.cancellable.is_cancelled()) {
+				if (cancellable != null && cancellable.is_cancelled()) {
 					break;
 				}
 
@@ -306,7 +378,7 @@ namespace OLLMchat.CallLocal
 				Llama.sampler_accept(sampler, new_token);
 
 				var chunk = new Response.Chunk() {
-					model = this.model,
+					model = model_name,
 					message = new Message(
 						"assistant",
 						vocab.token_to_piece(new_token)
@@ -314,25 +386,12 @@ namespace OLLMchat.CallLocal
 				};
 				generated++;
 
-				if (emit_stream) {
-					bool loop_ok = true;
-					this.invoke(() => {
-						loop_ok = this.chunk_ready(resp, chunk);
-						return false;
-					});
-
-					if (!loop_ok) {
-						throw new OllmError.FAILED(
-							"Streaming stopped: output repeated; possible infinite generation loop."
-						);
-					}
-				} else {
-					var token = resp.addChunk(chunk);
-					if (token != "" && !resp.detect_looping(token)) {
-						throw new OllmError.FAILED(
-							"Streaming stopped: output repeated; possible infinite generation loop."
-						);
-					}
+				if (!this.invoke(caller_context, () => {
+					return this.chunk_ready(resp, chunk, emit_stream);
+				})) {
+					throw new OllmError.FAILED(
+						"Streaming stopped: output repeated; possible infinite generation loop."
+					);
 				}
 
 				var token_batch = Llama.Batch(1, 0, 1);
@@ -355,18 +414,16 @@ namespace OLLMchat.CallLocal
 				n_cur++;
 			}
 
-			if (emit_stream) {
-				this.invoke(() => {
-					this.stream_done(resp, prompt_tokens.length, generated);
-					return false;
-				});
-				return;
-			}
-
-			resp.model = this.model;
-			resp.prompt_eval_count = prompt_tokens.length;
-			resp.eval_count = generated;
-			resp.done = true;
+			this.invoke(caller_context, () => {
+				this.stream_done(
+					resp,
+					model_name,
+					prompt_tokens.length,
+					generated,
+					emit_stream
+				);
+				return false;
+			});
 		}
 
 		private string format_messages(Gee.ArrayList<Message> messages)
