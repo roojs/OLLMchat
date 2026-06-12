@@ -12,10 +12,67 @@ namespace OLLMchat.CallLocal
 	public class ChatCompletions : Call.ChatCompletions, Thread
 	{
 		public Call.Options config_options { get; private set; default = new Call.Options(); }
+		protected GLib.MainContext caller_context { get; set; default = GLib.MainContext.default(); }
 
 		// Hard-coded DeepSeek-R1-Distill-Qwen template from Phase-1 probe.
 		private const string USER_BEGIN = "\uFF5CUser\uFF5C";
 		private const string ASSISTANT_BEGIN = "\uFF5CAssistant\uFF5C\n";
+
+		private signal bool local_stream_chunk(
+			Response.Chat resp,
+			Response.Chunk chunk
+		);
+		private signal void local_stream_done(
+			Response.Chat resp,
+			int prompt_eval_count,
+			int eval_count
+		);
+
+		construct {
+			this.local_stream_chunk.connect((resp, chunk) => {
+				var token = resp.addChunk(chunk);
+				if (resp.is_first_chunk) {
+					resp.is_first_chunk = false;
+					this.stream_start();
+					if (this.agent != null) {
+						this.agent.handle_stream_started();
+					}
+				}
+
+				if (resp.new_content.length > 0) {
+					this.stream_chunk(resp.new_content, false, resp);
+					if (this.agent != null) {
+						this.agent.handle_stream_chunk(
+							resp.new_content,
+							false,
+							resp
+						);
+					}
+				}
+
+				return token == "" || resp.detect_looping(token);
+			});
+
+			this.local_stream_done.connect((resp, prompt_eval_count, eval_count) => {
+				resp.model = this.model;
+				resp.prompt_eval_count = prompt_eval_count;
+				resp.eval_count = eval_count;
+				resp.done = true;
+
+				var done_chunk = new Response.Chunk() {
+					model = this.model,
+					done = true,
+					prompt_eval_count = prompt_eval_count,
+					eval_count = eval_count,
+					message = new Message("assistant", ""),
+				};
+				resp.addChunk(done_chunk);
+				this.stream_chunk("", false, resp);
+				if (this.agent != null) {
+					this.agent.handle_stream_chunk("", false, resp);
+				}
+			});
+		}
 
 		public ChatCompletions(
 			Settings.Connection connection,
@@ -72,9 +129,31 @@ namespace OLLMchat.CallLocal
 			}
 			var resp = (Response.Chat) this.streaming_response;
 			resp.call = this;
-			yield this.run_on_background_thread(() => {
-				this.generate(resp, true);
-			}, this.cancellable);
+			this.capture_caller_context();
+			GLib.SourceFunc callback = exec_stream.callback;
+			GLib.Error? thread_error = null;
+
+			owned GLib.ThreadFunc<bool> run = () => {
+				try {
+					this.generate(resp, true);
+				} catch (GLib.Error e) {
+					thread_error = e;
+				}
+				this.caller_context.invoke((owned) callback);
+				return true;
+			};
+
+			var background_thread = new GLib.Thread<bool>.try(
+				"local-chat-stream",
+				run
+			);
+
+			yield;
+			background_thread.join();
+
+			if (thread_error != null) {
+				throw thread_error;
+			}
 			return resp;
 		}
 
@@ -86,9 +165,31 @@ namespace OLLMchat.CallLocal
 				);
 			}
 			var resp = new Response.Chat(this.connection, this);
-			yield this.run_on_background_thread(() => {
-				this.generate(resp, false);
-			}, this.cancellable);
+			this.capture_caller_context();
+			GLib.SourceFunc callback = exec.callback;
+			GLib.Error? thread_error = null;
+
+			owned GLib.ThreadFunc<bool> run = () => {
+				try {
+					this.generate(resp, false);
+				} catch (GLib.Error e) {
+					thread_error = e;
+				}
+				this.caller_context.invoke((owned) callback);
+				return true;
+			};
+
+			var background_thread = new GLib.Thread<bool>.try(
+				"local-chat",
+				run
+			);
+
+			yield;
+			background_thread.join();
+
+			if (thread_error != null) {
+				throw thread_error;
+			}
 			return resp;
 		}
 
@@ -170,35 +271,13 @@ namespace OLLMchat.CallLocal
 					model = this.model,
 					message = new Message("assistant", piece),
 				};
-				var token = "";
-				bool loop_ok = true;
 				generated++;
 
 				if (emit_stream) {
+					bool loop_ok = true;
 					this.invoke_on_caller_context(() => {
-						token = resp.addChunk(chunk);
-						if (resp.is_first_chunk) {
-							resp.is_first_chunk = false;
-							this.stream_start();
-							if (this.agent != null) {
-								this.agent.handle_stream_started();
-							}
-						}
-
-						if (resp.new_content.length > 0) {
-							this.stream_chunk(resp.new_content, false, resp);
-							if (this.agent != null) {
-								this.agent.handle_stream_chunk(
-									resp.new_content,
-									false,
-									resp
-								);
-							}
-						}
-
-						if (token != "" && !resp.detect_looping(token)) {
-							loop_ok = false;
-						}
+						loop_ok = this.local_stream_chunk(resp, chunk);
+						return false;
 					});
 
 					if (!loop_ok) {
@@ -207,7 +286,7 @@ namespace OLLMchat.CallLocal
 						);
 					}
 				} else {
-					token = resp.addChunk(chunk);
+					var token = resp.addChunk(chunk);
 					if (token != "" && !resp.detect_looping(token)) {
 						throw new OllmError.FAILED(
 							"Streaming stopped: output repeated; possible infinite generation loop."
@@ -237,23 +316,8 @@ namespace OLLMchat.CallLocal
 
 			if (emit_stream) {
 				this.invoke_on_caller_context(() => {
-					resp.model = this.model;
-					resp.prompt_eval_count = prompt_tokens.length;
-					resp.eval_count = generated;
-					resp.done = true;
-
-					var done_chunk = new Response.Chunk() {
-						model = this.model,
-						done = true,
-						prompt_eval_count = prompt_tokens.length,
-						eval_count = generated,
-						message = new Message("assistant", ""),
-					};
-					resp.addChunk(done_chunk);
-					this.stream_chunk("", false, resp);
-					if (this.agent != null) {
-						this.agent.handle_stream_chunk("", false, resp);
-					}
+					this.local_stream_done(resp, prompt_tokens.length, generated);
+					return false;
 				});
 				return;
 			}
