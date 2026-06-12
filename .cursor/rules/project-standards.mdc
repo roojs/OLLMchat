@@ -1,17 +1,19 @@
 ---
-description: Mandatory project standards — coding, build, and related docs
+description: Mandatory standards for AI agents — coding, build, and related docs
 alwaysApply: true
 ---
 
-# Mandatory project standards
+# Mandatory project standards (AI agents)
 
-All work in this repository **must** follow the canonical documents below. Read the relevant file before writing or changing code — do not guess conventions.
+These documents are written for **AI agents**. Agents **must** follow them when working in this repository. Human contributors may use them as helpful guides.
+
+Read the relevant file before writing or changing code — do not guess conventions.
 
 ## Coding standards (mandatory)
 
 **`docs/coding-standards.md`**
 
-Vala style, patterns, and the **Checklist for all plans** at the top of that file. Applies to all new and modified Vala code.
+Vala style, patterns, and detailed rules for all new and modified Vala code. For plan checklists, see **`docs/guide-to-writing-plans.md`** — **Checklist for plans**.
 
 ## Build rules (mandatory)
 
@@ -27,4 +29,4 @@ Build with `ninja -C build` via Meson/Ninja. **Never** call `valac` directly.
 | **`docs/guide-to-writing-plans.md`** | Implementing from `docs/plans/*` or writing plans |
 | **`docs/bug-fix-process.md`** | Bug fixes (debug → understand → propose → approval → apply) |
 
-Plans in `docs/plans/` should reference **`docs/coding-standards.md`** at the top (see checklist section in that file).
+Plans in `docs/plans/` should reference **`docs/guide-to-writing-plans.md`** — **Checklist for plans** at the top.

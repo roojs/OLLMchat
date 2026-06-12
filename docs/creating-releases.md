@@ -31,10 +31,10 @@ AppImage and Windows packaging is configured in [`sqgipkg.json`](../sqgipkg.json
 | Format | Architectures | Notes |
 |--------|---------------|-------|
 | AppImage | x86_64, aarch64 | Self-contained; bundles private libraries via sqgipkg |
-| `.deb` | amd64 only | Uses system packages (OpenBLAS, FAISS, GTK, etc.); built natively on the CI runner |
+| `.deb` | amd64 only | Single **ollmchat** all-in-one package (app, libraries, tools); uses system packages (OpenBLAS, FAISS, GTK, etc.) |
 | Windows `.exe` | x86_64 | NSIS installer via sqgipkg |
 
-Debian packages split the app into several `.deb` files (libraries, app, tools, doc). Install the runtime packages together — at minimum `ollmchat` and its library dependencies.
+Release builds use the **monolithic** layout (see [`debian/README`](../debian/README)): one **`ollmchat_*.deb`** containing the application, shared libraries, and tools. Split library packages under `debian/split/` are for a future apt repository, not GitHub release downloads.
 
 ## Making a release
 
@@ -58,9 +58,7 @@ Debian packages split the app into several `.deb` files (libraries, app, tools, 
    | `OLLMchat-x86_64.AppImage` | Linux 64-bit (Intel/AMD) |
    | `OLLMchat-aarch64.AppImage` | Linux 64-bit (ARM, e.g. Raspberry Pi, Apple Silicon Linux VMs) |
    | `OLLMchat-Setup.exe` | Windows installer |
-   | `ollmchat_*.deb` | Main application (Debian/Ubuntu amd64) |
-   | `libollmchat1_*.deb`, `libocmarkdown1_*.deb`, … | Runtime libraries (Debian/Ubuntu amd64) |
-   | `ollmchat-tools_*.deb`, `ollmchat-doc_*.deb` | CLI tools and test binaries (Debian/Ubuntu amd64) |
+   | `ollmchat_*.deb` | All-in-one package (Debian/Ubuntu amd64) |
 
    Release notes are generated automatically from commits since the previous tag.
 
@@ -68,14 +66,18 @@ Debian packages split the app into several `.deb` files (libraries, app, tools, 
 
 ### Installing Debian packages from a release
 
-Download all `.deb` files from the release, then:
+Download **`ollmchat_*.deb`** from the release, then:
 
 ```bash
-sudo dpkg -i *.deb
-sudo apt-get install -f
+sudo apt install ./ollmchat_*.deb
 ```
 
-`apt-get install -f` pulls in any missing system dependencies (GTK, OpenBLAS, FAISS, and so on).
+This installs the all-in-one package and pulls in system dependencies (GTK, OpenBLAS, FAISS, and so on). Alternatively:
+
+```bash
+sudo dpkg -i ollmchat_*.deb
+sudo apt install -f
+```
 
 ## Manual builds (no release publish)
 

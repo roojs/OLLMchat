@@ -1,5 +1,7 @@
 # Code documentation (Valadoc markup)
 
+Written for **AI agents** — **mandatory** when an agent adds or changes docblocks. Human contributors may treat this as a helpful guide.
+
 This project uses [Vala’s comment markup](https://valadoc.org/markup.htm) for API documentation. Valadoc turns these comments into generated docs (e.g. for valadoc or IDE tooltips).
 
 ## Documentation comment structure

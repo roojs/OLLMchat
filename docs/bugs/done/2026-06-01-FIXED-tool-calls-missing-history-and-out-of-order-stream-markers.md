@@ -4,7 +4,7 @@
 
 **Started:** 2026-06-01
 
-**Pointer:** `docs/coding-standards.md` (checklist for all plans), `docs/guide-to-writing-plans.md` (code proposal format), `docs/bug-fix-process.md`.
+**Pointer:** `docs/guide-to-writing-plans.md` (checklist for plans; Vala code: `docs/coding-standards.md`), `docs/guide-to-writing-plans.md` (code proposal format), `docs/bug-fix-process.md`.
 
 **Related:**
 
