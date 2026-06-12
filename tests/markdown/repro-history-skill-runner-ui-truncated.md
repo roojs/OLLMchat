@@ -57,7 +57,7 @@ JavaScript - Minor
 The project includes comprehensive documentation covering architecture, development practices, and usage instructions. The main README provides an overview of the application and its features. Coding standards are documented in a dedicated file that outlines conventions for development. Build instructions are provided through meson build files and packaging information.
 
 - **General README info** — [README.md](README.md) covers project overview and basic usage. [README.packaging.md](README.packaging.md) details packaging instructions.
-- **Coding standards** — [CODING_STANDARDS.md](.cursor/rules/CODING_STANDARDS.md) contains coding conventions and style guidelines.
+- **Coding standards** — [CODING_STANDARDS.md](docs/coding-standards.md) contains coding conventions and style guidelines.
 - **Build instructions** — Build system uses Meson; root build files are [meson.build](meson.build) and [libollmchat/meson.build](libollmchat/meson.build); others in subdirectories.
 
 ### Folder Summary

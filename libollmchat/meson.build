@@ -94,7 +94,8 @@ resource_dirs = [
   '../resources/wrapped-tools',
   '../resources/ocvector',
   '../resources/skill-prompts',
-  '../resources/skills'
+  '../resources/skills',
+  '../resources/chat-prompts'
 ]
 
 resource_source_args = []
@@ -157,6 +158,10 @@ ollmchat_ollama_src = files([
   'Agent/Base.vala',  # Must come after Factory (Base references Factory)
   'Agent/JustAskFactory.vala',  # Must come after Base (JustAskFactory uses Factory)
   'Agent/JustAsk.vala',  # Must come after JustAskFactory (JustAsk uses Base)
+  'Chatter/namespace.vala',
+  'Chatter/Factory.vala',  # Must come after Agent/Factory
+  'Chatter/Agent.vala',  # Must come after Agent/Base and Chatter/Factory
+  'Chatter/Summarizer.vala',  # Must come after Chatter/Agent
   'Call/Base.vala',
   'Call/ChatBase.vala',
   'Call/Version.vala',

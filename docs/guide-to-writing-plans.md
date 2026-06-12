@@ -2,7 +2,7 @@
 
 Plan markdown files live in **`docs/plans/`**; completed work is archived under **`docs/plans/done/`** (see **Done / archive** below). This document is intentionally **not** named `README.md` so it is not mistaken for a generic package readme.
 
-It is the **canonical** place for: plan shape, code-proposal fences, **ordered chunk format** for large methods, and **implementation workflow** (what implementers and agents must follow). Keep this material here—do not maintain a parallel copy under **`.cursor/rules/`**.
+It is the **canonical** place for: plan shape, code-proposal fences, **ordered chunk format** for large methods, and **implementation workflow** (what implementers and agents must follow). Coding and build standards live in **`docs/coding-standards.md`** and **`docs/build-rules.md`** — keep those in **`docs/`**, not under **`.cursor/`**.
 
 ## Plan implementation workflow
 
@@ -102,7 +102,7 @@ When drafting or updating a plan from user chat, **separate what they said from 
 
 1. **Title** — `# N.N Title`
 2. **`Status:`** — proposed | done | rejected
-3. **Pointer** — `.cursor/rules/CODING_STANDARDS.md` **Checklist for all plans** (copy bullets or link to that section)
+3. **Pointer** — `docs/coding-standards.md` **Checklist for all plans** (copy bullets or link to that section)
 4. **`## Purpose`** — nested bullets for **human planning review**: **🔷** what we are doing, **⏳** backlog, **ℹ️** pointers only — **not** a dump of **🚫** vetoes (see **LLM implementer guardrails** at end of this guide)
 5. **Topic sections** — design, schema, tasks, audit lists, etc. (emoji-prefixed bullets; **no** boilerplate sections below)
 6. **`## Concrete code proposals`** (or **`## Proposed code changes`**) — **main deliverable** when implementing (can say **⏳** deferred during planning-only passes)
@@ -366,7 +366,7 @@ You may label each block with plain **Keep** / **Remove** / **Replace with** / *
 
 ### Plans and defensive code
 
-Follow **`.cursor/rules/CODING_STANDARDS.md`** — *Defensive code* and *Checklist for all plans*: do not specify speculative guards, redundant validation, or “just in case” API surface (e.g. extra **`deserialize_property`** branches) unless there is a **real boundary** or **external contract**. Prefer the smallest change that matches the actual call paths.
+Follow **`docs/coding-standards.md`** — *Defensive code* and *Checklist for all plans*: do not specify speculative guards, redundant validation, or “just in case” API surface (e.g. extra **`deserialize_property`** branches) unless there is a **real boundary** or **external contract**. Prefer the smallest change that matches the actual call paths.
 
 ## Done / archive
 
@@ -380,7 +380,7 @@ When implemented: move or copy to **`docs/plans/done/`**, prefix filename with *
 
 ## Related
 
-- **`.cursor/rules/CODING_STANDARDS.md`** — checklist for plans + Vala/style rules (also links here for plan layout)
+- **`docs/coding-standards.md`** — checklist for plans + Vala/style rules (also links here for plan layout)
 - **`docs/bug-fix-process.md`** — bug fix flow (contrast with **Plan implementation workflow** above)
 - **`docs/plans/done/6.9-DONE-debugging-performance.md`** — nested thinking / history replay perf (see **`docs/plans/done/6.8-DONE-fixing-large-restore.md`** for parser work)
 

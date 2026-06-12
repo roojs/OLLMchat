@@ -190,7 +190,7 @@ Because the app uses `GApplicationFlags.HANDLES_COMMAND_LINE`, flags must be pas
 
 Hunks are **Remove** / **Replace with** from the tree; verify surrounding context before applying.
 
-See **`.cursor/rules/CODING_STANDARDS.md`**: no defensive null checks on config casts; no nested tab-routing heuristic in `run()` (bootstrap + repair fixes the empty-connection case); title derived from `settings_page` inside `show_settings()` only; `continue` → `return false` without redundant `if (!(yield …))` wrapper; debug log dir creation matches `libollamaweb/Model.vala` `save()`.
+See **`docs/coding-standards.md`**: no defensive null checks on config casts; no nested tab-routing heuristic in `run()` (bootstrap + repair fixes the empty-connection case); title derived from `settings_page` inside `show_settings()` only; `continue` → `return false` without redundant `if (!(yield …))` wrapper; debug log dir creation matches `libollamaweb/Model.vala` `save()`.
 
 1. Bootstrap: connection before `setup_config_defaults()` (`ollmapp/Window.vala`)
 2. Repair empty `codebase_search` embed/analysis on load (`libocvector/Tool/CodebaseSearchTool.vala`)

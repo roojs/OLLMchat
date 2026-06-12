@@ -38,7 +38,7 @@ H1 is **confirmed** as a real, severe design/usage problem (mutex + full backup 
 
 ## Debug rules (must follow)
 
-Per **`docs/bug-fix-process.md`** and **`.cursor/rules/CODING_STANDARDS.md`** (Debug and Warning Statements):
+Per **`docs/bug-fix-process.md`** and **`docs/coding-standards.md`** (Debug and Warning Statements):
 
 - `GLib.debug()` / `GLib.warning()`: **no** class names, method names, or `[tags]` in the message (file:line is in the log).
 - **No** `GLib.get_monotonic_time()` or duration fields in messages.
@@ -150,7 +150,7 @@ At ~2 min/file × 130 files, background indexing alone is **hours** even after m
 
 **Status:** done (implemented in `libocsqlite/Database.vala`)
 
-**Pointer:** `.cursor/rules/CODING_STANDARDS.md` — **Checklist for all plans** (below); **`docs/guide-to-writing-plans.md`** — plan shape and code-proposal fences.
+**Pointer:** `docs/coding-standards.md` — **Checklist for all plans** (below); **`docs/guide-to-writing-plans.md`** — plan shape and code-proposal fences.
 
 ### Coding standards checklist (this plan)
 

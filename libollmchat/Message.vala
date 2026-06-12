@@ -34,6 +34,7 @@ namespace OLLMchat
 	 * * "project": Active project path (session metadata; not displayed, not sent to LLM)
 	 * * "agent-stage": Replay marker — stage id at stage start (not displayed, not sent to LLM)
 	 * * "agent-issues": Replay marker — issues after that stage; empty = no issues (not displayed, not sent to LLM)
+	 * * "summary": Collapsed conversation summary (UI-visible, not sent to LLM)
 	 * * "end-stream": Stream end marker (not displayed)
 	 * * "done": Completion marker (not displayed)
 	 *
@@ -137,6 +138,10 @@ namespace OLLMchat
 						// Session metadata for skill-runner replay; not shown in UI, not sent to LLM
 						is_hidden = true;
 						is_ui_visible = false;
+						break;
+					case "summary":
+						is_hidden = true;
+						is_ui_visible = true;
 						break;
 				}
 			}

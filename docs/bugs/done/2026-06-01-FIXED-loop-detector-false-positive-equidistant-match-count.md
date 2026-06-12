@@ -11,7 +11,7 @@
 
 **Related:** `~/.local/share/ollmchat/history/2026/06/01/08-55-43.json`; `examples/oc-test-loop.vala`; `tests/data/thinking-loop-transcript.txt`; `tests/meson.build` (`check-back-token-test`).
 
-**Pointer:** `.cursor/rules/CODING_STANDARDS.md` (**Checklist for all plans**); `docs/bug-fix-process.md`; `docs/guide-to-writing-plans.md`.
+**Pointer:** `docs/coding-standards.md` (**Checklist for all plans**); `docs/bug-fix-process.md`; `docs/guide-to-writing-plans.md`.
 
 ---
 
@@ -82,7 +82,7 @@ Twelve equidistant hits with spacing **`dist > 5`** (minimum **`dist == 6`**) ne
 
 ## Concrete code proposals
 
-**Vala style (`.cursor/rules/CODING_STANDARDS.md`):** no **`const`**; locals use **`var`**; inline literals; line comments at each phase.
+**Vala style (`docs/coding-standards.md`):** no **`const`**; locals use **`var`**; inline literals; line comments at each phase.
 
 **Design:** **`check_back_token(string token)`** runs **before** the token is prepended. The incoming word is the head (index 0 after insert). **`back_tokens.index_of(token)`** finds the next hit in the **current** buffer; **`dist = hit + 1`** is the spacing in the after-prepend window. Then two **`for (i = 0; i < 12; i++)`** loops: same word at **`i * dist`**, then same five-word phrase.
 
