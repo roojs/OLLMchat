@@ -236,43 +236,29 @@ namespace OLLMapp.SettingsDialog
 					if (this.list.model.get_n_items() > 0) {
 						this.search_spinner.spinning = false;
 						this.popup_stack.visible_child_name = "list";
-						GLib.debug(
-							"popover show list items=%u loading=%s",
-							this.list.model.get_n_items(),
-							this.search_loading.to_string()
-						);
 						return;
 					}
 					if (this.search_loading) {
 						this.popup_stack.visible_child_name = "loading";
 						this.search_spinner.spinning = true;
-						GLib.debug("popover show mask items=0 loading=true");
 						return;
 					}
 					this.search_spinner.spinning = false;
 					this.popup_stack.visible_child_name = "list";
-					GLib.debug("popover show list items=0 loading=false");
 				});
 			});
 
 			this.notify["search-loading"].connect(() => {
 				if (this.list.model != null && this.list.model.get_n_items() > 0) {
-					GLib.debug(
-						"popover keep list items=%u loading=%s",
-						this.list.model.get_n_items(),
-						this.search_loading.to_string()
-					);
 					return;
 				}
 				if (this.search_loading) {
 					this.popup_stack.visible_child_name = "loading";
 					this.search_spinner.spinning = true;
-					GLib.debug("popover show mask items=0 loading=true");
 					return;
 				}
 				this.search_spinner.spinning = false;
 				this.popup_stack.visible_child_name = "list";
-				GLib.debug("popover show list items=0 loading=false");
 			});
 
 			this.popup.child = this.popup_stack;
