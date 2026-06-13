@@ -20,10 +20,6 @@ namespace OLLMchat.CallLocal
 	{
 		public Call.Options config_options { get; private set; default = new Call.Options(); }
 
-		// Hard-coded DeepSeek-R1-Distill-Qwen template from Phase-1 probe.
-		private const string USER_BEGIN = "\uFF5CUser\uFF5C";
-		private const string ASSISTANT_BEGIN = "\uFF5CAssistant\uFF5C\n";
-
 		private signal bool chunk_ready(
 			Response.Chat resp,
 			Response.Chunk chunk,
@@ -162,7 +158,32 @@ namespace OLLMchat.CallLocal
 				model_name,
 				"model.gguf"
 			);
-			var formatted_prompt = this.format_messages(this.messages);
+			Llama.ChatMessage[] template_messages = {};
+			foreach (var message in this.messages) {
+				switch (message.role) {
+				case "system":
+					template_messages += Llama.ChatMessage() {
+						role = "system",
+						content = message.content,
+					};
+					continue;
+				case "user":
+				case "user-sent":
+					template_messages += Llama.ChatMessage() {
+						role = "user",
+						content = message.content,
+					};
+					continue;
+				case "assistant":
+				case "content-stream":
+				case "content-non-stream":
+					template_messages += Llama.ChatMessage() {
+						role = "assistant",
+						content = message.content,
+					};
+					continue;
+				}
+			}
 			var max_tokens = this.max_tokens >= 0 ?
 				this.max_tokens :
 				this.config_options.num_predict;
@@ -183,7 +204,7 @@ namespace OLLMchat.CallLocal
 						caller_context,
 						model_name,
 						model_path,
-						formatted_prompt,
+						template_messages,
 						max_tokens,
 						num_ctx,
 						seed_value,
@@ -241,7 +262,32 @@ namespace OLLMchat.CallLocal
 				model_name,
 				"model.gguf"
 			);
-			var formatted_prompt = this.format_messages(this.messages);
+			Llama.ChatMessage[] template_messages = {};
+			foreach (var message in this.messages) {
+				switch (message.role) {
+				case "system":
+					template_messages += Llama.ChatMessage() {
+						role = "system",
+						content = message.content,
+					};
+					continue;
+				case "user":
+				case "user-sent":
+					template_messages += Llama.ChatMessage() {
+						role = "user",
+						content = message.content,
+					};
+					continue;
+				case "assistant":
+				case "content-stream":
+				case "content-non-stream":
+					template_messages += Llama.ChatMessage() {
+						role = "assistant",
+						content = message.content,
+					};
+					continue;
+				}
+			}
 			var max_tokens = this.max_tokens >= 0 ?
 				this.max_tokens :
 				this.config_options.num_predict;
@@ -262,7 +308,7 @@ namespace OLLMchat.CallLocal
 						caller_context,
 						model_name,
 						model_path,
-						formatted_prompt,
+						template_messages,
 						max_tokens,
 						num_ctx,
 						seed_value,
@@ -300,7 +346,7 @@ namespace OLLMchat.CallLocal
 			GLib.MainContext caller_context,
 			string model_name,
 			string model_path,
-			string formatted_prompt,
+			Llama.ChatMessage[] template_messages,
 			int max_tokens,
 			int num_ctx,
 			uint seed_value,
@@ -321,6 +367,10 @@ namespace OLLMchat.CallLocal
 			);
 			var load_duration = GLib.get_monotonic_time() - load_start;
 
+			var formatted_prompt = this.format_messages(
+				model,
+				template_messages
+			);
 			GLib.debug("formatted prompt: %s", formatted_prompt);
 
 			unowned Llama.Vocab vocab = model.get_vocab();
@@ -438,24 +488,18 @@ namespace OLLMchat.CallLocal
 			});
 		}
 
-		private string format_messages(Gee.ArrayList<Message> messages)
+		private string format_messages(
+			Llama.Model model,
+			Llama.ChatMessage[] messages
+		) throws GLib.Error
 		{
-			string[] parts = {};
-			foreach (var m in messages) {
-				switch (m.role) {
-				case "user":
-				case "user-sent":
-					parts += USER_BEGIN + m.content;
-					continue;
-				case "assistant":
-				case "content-stream":
-				case "content-non-stream":
-					parts += ASSISTANT_BEGIN + m.content;
-					continue;
-				}
+			unowned string? template = model.chat_template();
+			if (template == null) {
+				throw new OllmError.FAILED(
+					"Local model does not provide a chat template"
+				);
 			}
-			parts += ASSISTANT_BEGIN;
-			return string.joinv("", parts);
+			return Llama.apply_chat_template(template, messages, true);
 		}
 	}
 }

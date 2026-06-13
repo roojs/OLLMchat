@@ -24,6 +24,14 @@ namespace Llama
 	[CCode (cname = "llama_seq_id")]
 	public struct SeqId : int {}
 
+	[SimpleType]
+	[CCode (cname = "struct llama_chat_message")]
+	public struct ChatMessage
+	{
+		public unowned string role;
+		public unowned string content;
+	}
+
 	[CCode (cname = "enum llama_context_type", cprefix = "LLAMA_CONTEXT_TYPE_")]
 	public enum ContextType
 	{
@@ -67,6 +75,9 @@ namespace Llama
 
 		[CCode (cname = "llama_model_has_encoder")]
 		public bool has_encoder();
+
+		[CCode (cname = "llama_model_chat_template")]
+		public unowned string? chat_template(string? name = null);
 	}
 
 	[Compact]
@@ -201,6 +212,47 @@ namespace Llama
 
 	[CCode (cname = "llama_set_embeddings")]
 	public static void set_embeddings(Context ctx, bool embeddings);
+
+	[CCode (cname = "llama_chat_apply_template")]
+	private static int chat_apply_template_buf(
+		string? tmpl,
+		[CCode (array_length = false)] ChatMessage[] chat,
+		size_t message_count,
+		bool add_assistant,
+		[CCode (array_length = false)] char[] buf,
+		int length
+	);
+
+	public static string apply_chat_template(
+		string tmpl,
+		ChatMessage[] chat,
+		bool add_assistant = true
+	) throws GLib.Error {
+		int size = chat_apply_template_buf(
+			tmpl,
+			chat,
+			chat.length,
+			add_assistant,
+			null,
+			0
+		);
+		if (size <= 0) {
+			throw new GLib.IOError.FAILED("llama chat template failed");
+		}
+		var buf = new char[size + 1];
+		int written = chat_apply_template_buf(
+			tmpl,
+			chat,
+			chat.length,
+			add_assistant,
+			buf,
+			buf.length
+		);
+		if (written <= 0) {
+			throw new GLib.IOError.FAILED("llama chat template failed");
+		}
+		return ((string)buf).substring(0, written);
+	}
 
 	[SimpleType]
 	[CCode (cname = "struct llama_batch")]
