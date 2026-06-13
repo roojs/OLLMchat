@@ -14,7 +14,7 @@ namespace OllamaWeb.Search
 	 */
 	public class Service : Object
 	{
-		public bool searching { get; private set; default = false; }
+		public bool searching { get; set; default = false; }
 		public bool fetching_detail { get; private set; default = false; }
 
 		public bool busy {
@@ -28,31 +28,44 @@ namespace OllamaWeb.Search
 
 		/**
 		 * Run a catalog search: popular + newest pages merged by slug.
+		 *
+		 * When {@link page} is set, fetch and parse that page only and do not
+		 * update {@link searching} (caller owns the busy span).
 		 */
 		public async Gee.ArrayList<OllamaWeb.Model> search(
 			string query,
 			Category category,
-			GLib.Cancellable? cancellable = null
+			GLib.Cancellable? cancellable = null,
+			Sort? page = null
 		) throws OllamaWeb.Search.Error, GLib.IOError, GLib.Error {
 			if (query.strip() == "") {
 				return new Gee.ArrayList<OllamaWeb.Model>();
+			}
+			if (page != null) {
+				return this.parser.parse_search(
+					yield this.client.fetch_path(
+						this.search_path(query, category, page),
+						cancellable
+					)
+				);
 			}
 			this.searching = true;
 			this.notify_property("searching");
 			this.notify_property("busy");
 			try {
-				var popular_html = yield this.client.fetch_path(
-					this.search_path(query, category, Sort.POPULAR),
-					cancellable
+				var popular_rows = yield this.search(
+					query,
+					category,
+					cancellable,
+					Sort.POPULAR
 				);
-				var newest_html = yield this.client.fetch_path(
-					this.search_path(query, category, Sort.NEWEST),
-					cancellable
+				var newest_rows = yield this.search(
+					query,
+					category,
+					cancellable,
+					Sort.NEWEST
 				);
-				return Service.merge_double_search(
-					this.parser.parse_search(popular_html),
-					this.parser.parse_search(newest_html)
-				);
+				return Service.merge_double_search(popular_rows, newest_rows);
 			} finally {
 				this.searching = false;
 				this.notify_property("searching");

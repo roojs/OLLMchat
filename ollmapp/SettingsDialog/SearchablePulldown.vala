@@ -35,9 +35,8 @@ namespace OLLMapp.SettingsDialog
 		private Gtk.Stack popup_stack;
 		private Gtk.Spinner search_spinner;
 
-		/** When true, popover shows a spinner instead of the (possibly empty) list. */
+		/** Bound from {@link OLLMchat.Settings.SearchResults.loading}: live search HTTP in flight. Mask when rows are empty. */
 		public bool search_loading { get; set; default = false; }
-		
 		// Track last search text
 		private string last_search_text = "";
 		
@@ -177,8 +176,8 @@ namespace OLLMapp.SettingsDialog
 			// Connect to activate signal - this is called when user clicks an item
 			this.list.activate.connect((position) => {
 				this.set_popup_visible(false);
-				this.entry.text = "";
 				this.item_selected(position);
+				this.entry.text = "";
 			});
 			
 			this.scrolled_window.child = this.list;
@@ -229,14 +228,51 @@ namespace OLLMapp.SettingsDialog
 			this.popup_stack.add_named(popup_wrapper, "list");
 			this.popup_stack.visible_child_name = "list";
 
+			this.list.notify["model"].connect(() => {
+				if (this.list.model == null) {
+					return;
+				}
+				this.list.model.items_changed.connect(() => {
+					if (this.list.model.get_n_items() > 0) {
+						this.search_spinner.spinning = false;
+						this.popup_stack.visible_child_name = "list";
+						GLib.debug(
+							"popover show list items=%u loading=%s",
+							this.list.model.get_n_items(),
+							this.search_loading.to_string()
+						);
+						return;
+					}
+					if (this.search_loading) {
+						this.popup_stack.visible_child_name = "loading";
+						this.search_spinner.spinning = true;
+						GLib.debug("popover show mask items=0 loading=true");
+						return;
+					}
+					this.search_spinner.spinning = false;
+					this.popup_stack.visible_child_name = "list";
+					GLib.debug("popover show list items=0 loading=false");
+				});
+			});
+
 			this.notify["search-loading"].connect(() => {
+				if (this.list.model != null && this.list.model.get_n_items() > 0) {
+					GLib.debug(
+						"popover keep list items=%u loading=%s",
+						this.list.model.get_n_items(),
+						this.search_loading.to_string()
+					);
+					return;
+				}
 				if (this.search_loading) {
 					this.popup_stack.visible_child_name = "loading";
-					this.search_spinner.start();
-				} else {
-					this.search_spinner.stop();
-					this.popup_stack.visible_child_name = "list";
+					this.search_spinner.spinning = true;
+					GLib.debug("popover show mask items=0 loading=true");
+					return;
 				}
+				this.search_spinner.spinning = false;
+				this.popup_stack.visible_child_name = "list";
+				GLib.debug("popover show list items=0 loading=false");
 			});
 
 			this.popup.child = this.popup_stack;
@@ -510,8 +546,8 @@ namespace OLLMapp.SettingsDialog
 				if (pos == Gtk.INVALID_LIST_POSITION) {
 					return true; // Consume the event
 				}
-				this.entry.text = "";
 				this.item_selected(pos);
+				this.entry.text = "";
 				return true; // Consume the event
 			}
 			

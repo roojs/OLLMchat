@@ -35,13 +35,28 @@ namespace OLLMchat.Settings
 		private string pending_query { get; set; default = ""; }
 		private string last_queued_query { get; set; default = ""; }
 
-		/** True while debouncing or {@link OllamaWeb.Search.Session} search/refine is in flight. */
+		/** True while a live search HTTP request is in flight (not during debounce). */
 		public bool loading { get; private set; default = false; }
 
 		public SearchResults(string data_dir)
 		{
 			Object(data_dir: data_dir);
 			this.session.model_dir = GLib.Path.build_filename(this.data_dir, "ollamaweb-models");
+			this.session.rows_ready.connect((rows) => {
+				if (this.pending_query == "") {
+					return;
+				}
+				this.replace_hits(rows);
+				GLib.debug(
+					"store ready q='%s' items=%u loading=%s",
+					this.pending_query,
+					this.store.size,
+					this.loading.to_string()
+				);
+				foreach (var row in this.store) {
+					row.notify_property("list_markup");
+				}
+			});
 		}
 
 		public Type get_item_type()
@@ -63,7 +78,7 @@ namespace OLLMchat.Settings
 		}
 
 		/**
-		 * Schedule a debounced search (~2 s). Empty text clears results and cancels the session.
+		 * Schedule a debounced search (~500 ms). Empty text clears results and cancels the session.
 		 *
 		 * When the user shortens the query or changes it in a non-prefix way, results are cleared
 		 * immediately. When they only extend the previous query, the current list stays until
@@ -87,16 +102,15 @@ namespace OLLMchat.Settings
 				this.session.cancel();
 				return false;
 			}
-			this.loading = true;
-			this.notify_property("loading");
 			var kept = this.keeps_prior_results(this.pending_query);
 			if (!kept) {
 				this.clear_results();
 			}
 			this.last_queued_query = this.pending_query;
 			this.session.cancel();
-			this.debounce_id = GLib.Timeout.add(2000, () => {
+			this.debounce_id = GLib.Timeout.add(500, () => {
 				this.debounce_id = 0;
+				GLib.debug("debounced q='%s'", this.pending_query);
 				this.run_search.begin();
 				return false;
 			});
@@ -147,10 +161,12 @@ namespace OLLMchat.Settings
 			}
 			var our_query = this.pending_query;
 			// GLib.debug("SearchResults run_search q='%s'", our_query);
+			this.loading = true;
+			this.notify_property("loading");
+			GLib.debug("loading=true q='%s' store=%u", our_query, this.store.size);
 			try {
-				Gee.ArrayList<OllamaWeb.Model> hits;
 				try {
-					hits = yield this.session.search(our_query, OllamaWeb.Search.Category.NONE);
+					yield this.session.search(our_query, OllamaWeb.Search.Category.NONE);
 				} catch (GLib.Error e) {
 					GLib.warning("ollama.com search failed: " + e.message);
 					return;
@@ -161,16 +177,9 @@ namespace OLLMchat.Settings
 				// GLib.debug(
 				// 	"SearchResults q='%s' store=%u refine_queue=%u",
 				// 	our_query,
-				// 	hits.size,
+				// 	this.store.size,
 				// 	this.session.refine_queue.size
 				// );
-				this.replace_hits(hits);
-				foreach (var row in this.store) {
-					row.notify_property("list_markup");
-				}
-				if (this.pending_query != our_query) {
-					return;
-				}
 				if (this.session.refine_queue.size == 0) {
 					return;
 				}
@@ -185,6 +194,11 @@ namespace OLLMchat.Settings
 				if (this.pending_query == our_query || this.pending_query == "") {
 					this.loading = false;
 					this.notify_property("loading");
+					GLib.debug(
+						"loading=false q='%s' store=%u",
+						our_query,
+						this.store.size
+					);
 				}
 			}
 		}

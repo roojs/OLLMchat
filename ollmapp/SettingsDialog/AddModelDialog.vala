@@ -402,6 +402,17 @@ namespace OLLMapp.SettingsDialog
 					this.model_pulldown.set_popup_visible(false);
 					return;
 				}
+				if (this.search_results.get_n_items() > 0) {
+					this.model_pulldown.set_popup_visible(true);
+				}
+			});
+			this.search_results.notify["loading"].connect(() => {
+				if (!this.search_results.loading) {
+					return;
+				}
+				if (this.model_pulldown.get_search_text() == "") {
+					return;
+				}
 				this.model_pulldown.set_popup_visible(true, true);
 			});
 			this.search_results.items_changed.connect(() => {
@@ -426,7 +437,8 @@ namespace OLLMapp.SettingsDialog
 				if (position == Gtk.INVALID_LIST_POSITION) {
 					return;
 				}
-				var model = this.selection.get_item(this.selection.selected) as OllamaWeb.Model;
+				this.selection.selected = position;
+				var model = this.selection.get_item(position) as OllamaWeb.Model;
 				if (model == null || model.slug == "") {
 					return;
 				}
