@@ -1,6 +1,8 @@
 # Dev/test tools built with -Dexamples=true but omitted from the monolithic
 # ollmchat package. Split packaging installs these via ollmchat-doc.install.
 usr/bin/oc-diff
+usr/bin/oc-local-gguf-chat
+usr/bin/oc-local-gguf-embed
 usr/bin/oc-vala-ternary-bug
 usr/bin/oc-vector-index
 usr/bin/oc-vector-search
