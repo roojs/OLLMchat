@@ -72,3 +72,20 @@ done
 
 echo "Installing: ${DEBS[*]}"
 sudo dpkg -i "${DEBS[@]}" || sudo apt-get install -f -y
+
+MULTIARCH="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+if [ -z "$MULTIARCH" ]; then
+  case "$ARCH" in
+    amd64) MULTIARCH="x86_64-linux-gnu" ;;
+    arm64) MULTIARCH="aarch64-linux-gnu" ;;
+    *) MULTIARCH="${ARCH}-linux-gnu" ;;
+  esac
+fi
+
+LLAMA_LIBDIR="/usr/lib/${MULTIARCH}/llama"
+LD_CONF="/etc/ld.so.conf.d/llama.conf"
+if [ ! -f "$LD_CONF" ] || ! grep -qF "$LLAMA_LIBDIR" "$LD_CONF" 2>/dev/null; then
+  echo "Registering ${LLAMA_LIBDIR} with ldconfig (libllama installs outside default search path)."
+  echo "$LLAMA_LIBDIR" | sudo tee "$LD_CONF" >/dev/null
+  sudo ldconfig
+fi

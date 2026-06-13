@@ -155,6 +155,16 @@ lib_path = ':'.join([
   meson.current_build_dir() / 'libocmcp'
 ])
 
+if local_gguf_enabled
+  dpkg_arch = run_command('dpkg-architecture', '-qDEB_HOST_MULTIARCH', check: false)
+  if dpkg_arch.returncode() == 0
+    multiarch = dpkg_arch.stdout().strip()
+    if multiarch != ''
+      lib_path = lib_path + ':/usr/lib/' + multiarch + '/llama'
+    endif
+  endif
+endif
+
 # Create wrapper scripts in top-level build directory
 foreach exe_info : executables_info
   exe_name = exe_info[0]

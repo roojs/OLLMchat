@@ -14,6 +14,7 @@ local_gguf_deps = []
 local_gguf_src = []
 local_gguf_include_dirs = []
 local_gguf_vala_args = []
+local_gguf_install_rpath = []
 
 if not local_gguf_opt.disabled()
   llama_dep = dependency('llama', required: false)
@@ -60,6 +61,16 @@ if not local_gguf_opt.disabled()
 
   if not local_gguf_enabled and local_gguf_opt.enabled()
     error('local_gguf=enabled requires libllama headers and library')
+  endif
+endif
+
+if local_gguf_enabled
+  dpkg_arch = run_command('dpkg-architecture', '-qDEB_HOST_MULTIARCH', check: false)
+  if dpkg_arch.returncode() == 0
+    multiarch = dpkg_arch.stdout().strip()
+    if multiarch != ''
+      local_gguf_install_rpath += '/usr/lib' / multiarch / 'llama'
+    endif
   endif
 endif
 
@@ -240,6 +251,7 @@ ollmchat_base_lib = library('ollmchat',
   # Don't use link_with for ocsqlite_base_lib to prevent determine_dep_vapis() from finding
   # ocsqlite-meson.vapi and adding it as a source. Link manually via ocsqlite_vapi_dep link_args instead.
   build_rpath: lib_build_rpath,
+  install_rpath: ':'.join(local_gguf_install_rpath),
   link_args: ['-lm'],  # Link math library for Math.sqrt() in Embed.vala
   vala_args: [
     '--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--pkg=ollamaweb',
