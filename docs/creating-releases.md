@@ -110,7 +110,8 @@ sqgipkg --target appimage --appimage-arch x86_64
 # Linux aarch64 AppImage
 sqgipkg --target appimage --appimage-arch aarch64
 
-# Windows installer
+# Windows installer (fetch emoji font first — gitignored, required by sqgipkg.json)
+./scripts/fetch-noto-color-emoji-font.sh
 sqgipkg --target win-nsis
 ```
 

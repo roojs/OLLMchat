@@ -155,21 +155,10 @@ win_bundle_dir() {
 	printf '%s/%s' "$WIN_DIST_DIR" "OLLMchat"
 }
 
-NOTO_COLOR_EMOJI_URL="https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf"
-NOTO_COLOR_EMOJI_FONT="$ROOT/resources/fonts/NotoColorEmoji.ttf"
+# Windows portable bundle: emoji font (gitignored; fetched before sqgipkg win-dir).
 
-# Noto Color Emoji is not in MSYS2; download once for the portable Windows bundle.
 ensure_windows_emoji_font() {
-	mkdir -p "$(dirname "$NOTO_COLOR_EMOJI_FONT")"
-	if [[ -s "$NOTO_COLOR_EMOJI_FONT" ]]; then
-		log "using emoji font $NOTO_COLOR_EMOJI_FONT"
-		return
-	fi
-
-	need_cmd curl
-	log "downloading Noto Color Emoji font"
-	curl -fsSL -o "$NOTO_COLOR_EMOJI_FONT" "$NOTO_COLOR_EMOJI_URL"
-	[[ -s "$NOTO_COLOR_EMOJI_FONT" ]] || die "failed to download emoji font"
+	"$ROOT/scripts/fetch-noto-color-emoji-font.sh"
 }
 
 # sqgipkg's OLLMchat.bat does not set FONTCONFIG_FILE; without it fontconfig

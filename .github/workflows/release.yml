@@ -107,6 +107,10 @@ jobs:
         working-directory: OLLMchat
         run: sqgipkg --target appimage --appimage-arch aarch64 --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
 
+      - name: Download Noto Color Emoji font (Windows bundle)
+        working-directory: OLLMchat
+        run: ./scripts/fetch-noto-color-emoji-font.sh
+
       - name: Build Windows installer
         working-directory: OLLMchat
         run: sqgipkg --target win-nsis --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
