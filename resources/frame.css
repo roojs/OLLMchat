@@ -131,6 +131,14 @@
     --frame-text-emphasis: var(--bs-danger-text-emphasis);
 }
 
+/* Summary theme (purple) — Chatter conversation summary frames */
+.oc-frame-summary {
+    --frame-bg: #e8e0f0;
+    --frame-border: #6f42c1;
+    --frame-shadow: rgba(111, 66, 193, 0.25);
+    --frame-text-emphasis: #432874;
+}
+
 /*
  * collapsed-on-done: same collapse control as .collapsed, but body starts expanded and folds when the
  * code block finishes (used for streaming thinking). Parsed in RenderSourceView (behavioral class).

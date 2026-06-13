@@ -422,6 +422,19 @@ namespace OLLMchatGtk
 						this.chat_view.render_box.first_id,
 						m); */
 					break;
+				case "summary":
+					var summary_body = m.content != "" ? m.content : "…";
+					var summary_msg = new OLLMchat.Message(
+						"assistant",
+						OLLMchat.Message.fenced(
+							"markdown.oc-frame-summary.collapsed Conversation summary",
+							summary_body));
+					summary_msg.idx_last = this.chat_view.append_complete_assistant_message(
+						summary_msg, session);
+					summary_msg.idx_first = this.chat_view.render_box.first_id;
+					m.idx_first = summary_msg.idx_first;
+					m.idx_last = summary_msg.idx_last;
+					break;
 				default:
 					// Should not reach here if is_ui_visible is working correctly
 					break;
