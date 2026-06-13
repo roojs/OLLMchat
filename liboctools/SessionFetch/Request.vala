@@ -60,6 +60,14 @@ namespace OLLMtools.SessionFetch
 			if (msg.role == "tool") {
 				return msg.name + "\n" + msg.content;
 			}
+			if (msg.role == "assistant" && msg.tool_calls.size > 0) {
+				var ret = "";
+				foreach (var tool_call in msg.tool_calls) {
+					ret += OLLMchat.Message.fenced(
+						"json", Json.gobject_to_data(tool_call, null));
+				}
+				return ret;
+			}
 			return msg.content;
 		}
 	}

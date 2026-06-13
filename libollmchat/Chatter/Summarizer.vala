@@ -87,7 +87,9 @@ namespace OLLMchat.Chatter
 				&& response.message.content != "") {
 				this.draft_summary.content = response.message.content;
 			}
-			this.session.manager.message_added(this.draft_summary, this.session);
+			if (response.done && this.draft_summary != null) {
+				this.session.manager.message_added(this.draft_summary, this.session);
+			}
 		}
 
 		/**
