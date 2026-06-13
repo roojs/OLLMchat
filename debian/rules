@@ -3,11 +3,16 @@
 export DH_VERBOSE = 1
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
+# debian/local-gguf is written by the packaging switch scripts:
+#   enabled  — ollmchat (requires libllama at build time)
+#   disabled — ollmchat-remote-only (no local GGUF backend)
+LOCAL_GGUF := $(shell grep -E '^(enabled|disabled)$$' debian/local-gguf 2>/dev/null || echo enabled)
+
 %:
 	dh $@
 
 override_dh_auto_configure:
-	meson setup build --prefix=/usr -Ddocs=false -Dexamples=true -Dtests=false
+	meson setup build --prefix=/usr -Ddocs=false -Dexamples=true -Dtests=false -Dlocal_gguf=$(LOCAL_GGUF)
 
 override_dh_auto_build:
 	ninja -C build

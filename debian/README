@@ -10,14 +10,56 @@ Two layouts are maintained:
 
 ### Monolithic (default)
 
-Builds a single **ollmchat** .deb containing the application, all shared
-libraries, tools, and introspection data. Use this for GitHub release
-downloads until an apt repository is available.
+Builds all-in-one `.deb` packages for GitHub release downloads until an apt
+repository is available. Two variants are published:
+
+| Package | Script | `local_gguf` | Use when |
+|---------|--------|--------------|----------|
+| **ollmchat** | `use-monolithic-package.sh` (default) | `enabled` | Local GGUF via libllama plus remote backends |
+| **ollmchat-remote-only** | `use-monolithic-remote-only-package.sh` | `disabled` | Ollama / OpenAI-compatible APIs only |
+
+The active variant is selected by the switch script, which copies the
+matching `control` and `.install` files and writes `debian/local-gguf`
+(`enabled` or `disabled`). `debian/rules` passes that to Meson as
+`-Dlocal_gguf=…`.
+
+A normal Meson build (outside Debian) uses `-Dlocal_gguf=auto` by default
+and includes libllama when it is found on the build host.
+
+**ollmchat** (with libllama):
 
 ```bash
 ./debian/use-monolithic-package.sh   # already the default in git
+# libllama-dev required; see scripts/fetch-libllama.sh on older distros
 dpkg-buildpackage -us -uc -b
 ```
+
+**ollmchat-remote-only**:
+
+```bash
+./debian/use-monolithic-remote-only-package.sh
+dpkg-buildpackage -us -uc -b
+./debian/use-monolithic-package.sh   # switch back when done
+```
+
+Build both release packages (clean rebuild between variants):
+
+```bash
+./debian/use-monolithic-package.sh
+./scripts/fetch-libllama.sh   # if libllama-dev is not in apt
+dpkg-buildpackage -us -uc -b
+rm -rf build
+./debian/use-monolithic-remote-only-package.sh
+dpkg-buildpackage -us -uc -b
+./debian/use-monolithic-package.sh
+```
+
+`ollmchat` and `ollmchat-remote-only` conflict; only one may be installed
+at a time. Both install the same `/usr/bin/ollmchat` application.
+
+GitHub release AppImages and the Windows installer use the same **remote-only**
+build (no libllama): `OLLMchat-remote-only-*.AppImage` and
+`OLLMchat-remote-only-Setup.exe`. See `docs/creating-releases.md`.
 
 ### Split packages (for apt repository)
 
@@ -30,8 +72,9 @@ dpkg-buildpackage -us -uc -b
 ./debian/use-monolithic-package.sh   # switch back when done
 ```
 
-Canonical definitions live in `debian/monolithic/` and `debian/split/`.
-The switch scripts copy the chosen layout into the active `debian/` files.
+Canonical definitions live in `debian/monolithic/`, `debian/monolithic-remote-only/`,
+and `debian/split/`. The switch scripts copy the chosen layout into the active
+`debian/` files.
 
 Split package layout
 --------------------
