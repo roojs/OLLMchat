@@ -75,15 +75,15 @@ namespace OLLMchat.Call
 
 			if (this.agent != null) {
 
-				this.agent.add_message(response.message);
+				var history_msg = new Message(
+					response.message.role, response.message.content);
+				foreach (var tool_call in response.message.tool_calls) {
+					history_msg.tool_calls.add(tool_call);
+				}
+				this.agent.add_message(history_msg);
 				var tool_reply_messages = yield this.agent.execute_tools(response.message.tool_calls);
 				var messages_to_send = new Gee.ArrayList<Message>();
-				// cheeky fix - if content is empty - we send the thinking - so model knows why it did a tool call.
-				var m = response.message.content == "" 
-					? new Message(response.message.role, response.message.thinking)
-					: response.message;
-				m.tool_calls = response.message.tool_calls;
-				messages_to_send.add(m);
+				messages_to_send.add(response.message);
 				foreach (var reply_msg in tool_reply_messages) {
 					this.agent.add_message(reply_msg);
 					messages_to_send.add(reply_msg);

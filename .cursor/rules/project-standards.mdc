@@ -3,30 +3,24 @@ description: Mandatory standards for AI agents — coding, build, and related do
 alwaysApply: true
 ---
 
-# Mandatory project standards (AI agents)
+# Mandatory project standards
 
-These documents are written for **AI agents**. Agents **must** follow them when working in this repository. Human contributors may use them as helpful guides.
+## Essential reading
 
-Read the relevant file before writing or changing code — do not guess conventions.
+You **must** read **`docs/coding-standards.md`** before writing or changing Vala code. This is not optional — do not guess conventions and do not implement until you have read it.
 
-## Coding standards (mandatory)
+Also read when the task requires it:
 
-**`docs/coding-standards.md`**
+- **`docs/build-rules.md`** — build or Meson changes
+- **`docs/code-documentation.md`** — docblocks and API comments
+- **`docs/guide-to-writing-plans.md`** — work from `docs/plans/*`
+- **`docs/bug-fix-process.md`** — bug fixes
 
-Vala style, patterns, and detailed rules for all new and modified Vala code. For plan checklists, see **`docs/guide-to-writing-plans.md`** — **Checklist for plans**.
+## Rules (every Vala change)
 
-## Build rules (mandatory)
+- **No new methods** — no helpers unless the user or plan asks; inline in the method you touch
+- **Type identifiers** — no `Type?` except external boundaries; `GLib.` prefix; no `using`
+- **Temporary variables** — no single-use locals; no property aliases; inline unless 4+ deep
+- **Build** — `ninja -C build` only; never `valac`
 
-**`docs/build-rules.md`**
-
-Build with `ninja -C build` via Meson/Ninja. **Never** call `valac` directly.
-
-## Related docs (mandatory when applicable)
-
-| Document | When |
-|----------|------|
-| **`docs/code-documentation.md`** | Docblocks, Valadoc markup, API comments |
-| **`docs/guide-to-writing-plans.md`** | Implementing from `docs/plans/*` or writing plans |
-| **`docs/bug-fix-process.md`** | Bug fixes (debug → understand → propose → approval → apply) |
-
-Plans in `docs/plans/` should reference **`docs/guide-to-writing-plans.md`** — **Checklist for plans** at the top.
+Canonical detail: **`docs/coding-standards.md`**. Plans: **`docs/guide-to-writing-plans.md`** — Checklist for plans.
