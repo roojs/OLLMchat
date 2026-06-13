@@ -47,12 +47,12 @@ namespace OLLMchat.Settings
 					return;
 				}
 				this.replace_hits(rows);
-				GLib.debug(
-					"store ready q='%s' items=%u loading=%s",
-					this.pending_query,
-					this.store.size,
-					this.loading.to_string()
-				);
+				// GLib.debug(
+				// 	"store ready q='%s' items=%u loading=%s",
+				// 	this.pending_query,
+				// 	this.store.size,
+				// 	this.loading.to_string()
+				// );
 				foreach (var row in this.store) {
 					row.notify_property("list_markup");
 				}
@@ -110,7 +110,7 @@ namespace OLLMchat.Settings
 			this.session.cancel();
 			this.debounce_id = GLib.Timeout.add(500, () => {
 				this.debounce_id = 0;
-				GLib.debug("debounced q='%s'", this.pending_query);
+				// GLib.debug("debounced q='%s'", this.pending_query);
 				this.run_search.begin();
 				return false;
 			});
@@ -163,7 +163,7 @@ namespace OLLMchat.Settings
 			// GLib.debug("SearchResults run_search q='%s'", our_query);
 			this.loading = true;
 			this.notify_property("loading");
-			GLib.debug("loading=true q='%s' store=%u", our_query, this.store.size);
+			// GLib.debug("loading=true q='%s' store=%u", our_query, this.store.size);
 			try {
 				try {
 					yield this.session.search(our_query, OllamaWeb.Search.Category.NONE);
@@ -194,11 +194,11 @@ namespace OLLMchat.Settings
 				if (this.pending_query == our_query || this.pending_query == "") {
 					this.loading = false;
 					this.notify_property("loading");
-					GLib.debug(
-						"loading=false q='%s' store=%u",
-						our_query,
-						this.store.size
-					);
+					// GLib.debug(
+					// 	"loading=false q='%s' store=%u",
+					// 	our_query,
+					// 	this.store.size
+					// );
 				}
 			}
 		}

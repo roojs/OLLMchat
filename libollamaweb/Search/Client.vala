@@ -41,12 +41,12 @@ namespace OllamaWeb.Search
 				if (message.status_code < 200 || message.status_code >= 300) {
 					throw new Error.NETWORK("HTTP " + message.status_code.to_string() + " for " + url);
 				}
-				GLib.debug(
-					"HTTP %u body_len=%u %s",
-					message.status_code,
-					(uint) bytes.get_size(),
-					url
-				);
+				// GLib.debug(
+				// 	"HTTP %u body_len=%u %s",
+				// 	message.status_code,
+				// 	(uint) bytes.get_size(),
+				// 	url
+				// );
 				return (string) bytes.get_data();
 			} catch (GLib.IOError e) {
 				if (e is GLib.IOError.CANCELLED) {

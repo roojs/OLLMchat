@@ -120,7 +120,7 @@ namespace OllamaWeb.Search
 					}
 					partial.add(this.load_row(hit.slug));
 				}
-				GLib.debug("popular ready q='%s' items=%u", query, partial.size);
+				// GLib.debug("popular ready q='%s' items=%u", query, partial.size);
 				this.rows_ready(partial);
 				var newest_hits = yield this.service.search(
 					query,
@@ -159,7 +159,7 @@ namespace OllamaWeb.Search
 				foreach (var row in results) {
 					this.result_rows.set(row.slug, row);
 				}
-				GLib.debug("merged ready q='%s' items=%u", query, results.size);
+				// GLib.debug("merged ready q='%s' items=%u", query, results.size);
 				this.rows_ready(results);
 				return results;
 			} finally {
