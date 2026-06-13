@@ -511,8 +511,7 @@ namespace OLLMfilesd.Vector
 			OLLMvector2.SQT.VectorMetadata.reset_database(this.sql_db, vector_db_path);
 			
 		// Get dimension first, then create database
-			var temp_db = new OLLMvector2.Database(this.config, vector_db_path,
-				 OLLMvector2.Database.DISABLE_INDEX);
+			var temp_db = new OLLMvector2.Database(this.config, vector_db_path, 0);
 			var dimension = yield temp_db.embed_dimension();
 			this.vector_db = new OLLMvector2.Database(this.config, vector_db_path, dimension);
 		}

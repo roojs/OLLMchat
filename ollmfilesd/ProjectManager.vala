@@ -117,6 +117,21 @@ namespace OLLMfilesd
 		public DeleteManager delete_manager { get; private set; }
 
 		/**
+		 * Path to codedb.faiss.vectors under the daemon data directory.
+		 */
+		public string vector_db_path { get; set; default = ""; }
+
+		/**
+		 * FAISS vector store for semantic indexing.
+		 */
+		public OLLMvector2.Database vector_db { get; set; }
+
+		/**
+		 * Semantic index queue; scan enqueue wired in {@link construct}.
+		 */
+		public OLLMfilesd.Vector.BackgroundScan background_scan { get; set; }
+
+		/**
 		 * When true, {@link activate_project} skips the initial directory scan (read_dir).
 		 * Off by default. Once the scan is skipped, this is set to true so it stays disabled.
 		 * Use for tests or lightweight setups that rely on DB state only.
@@ -188,9 +203,15 @@ namespace OLLMfilesd
 						: null
 				);
 			});
+			this.file_contents_changed.connect((file) => {
+				this.background_scan.scanFile(
+					file, this.active_project);
+			});
+			this.active_project_changed.connect((project) => {
+				this.background_scan.scanProject(project);
+			});
 		}
-		
-		
+
 		/**
 		 * Activate a file (deactivates previous active file).
 		 * 

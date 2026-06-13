@@ -20,8 +20,6 @@ namespace OLLMvector2
 {
 	public class Database : VectorBase
 	{
-		public const int DISABLE_INDEX = -1;
-
 		internal Index? index = null;
 		private string filename;
 
@@ -47,7 +45,7 @@ namespace OLLMvector2
 		{
 			base (config);
 			this.filename = filename;
-			if (dimension == DISABLE_INDEX) {
+			if (dimension == 0) {
 				return;
 			}
 			this.index = new Index (this.filename, dimension);
