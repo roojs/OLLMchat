@@ -26,15 +26,15 @@ On **ubuntu-24.04**, CI:
 
 AppImage and Windows packaging is configured in [`sqgipkg.json`](../sqgipkg.json). Debian packaging lives under [`debian/`](../debian/).
 
-### Debian vs AppImage
+### Debian vs AppImage / Windows
 
-| Format | Architectures | Notes |
-|--------|---------------|-------|
-| AppImage | x86_64, aarch64 | Self-contained; bundles private libraries via sqgipkg |
-| `.deb` | amd64 only | Single **ollmchat** all-in-one package (app, libraries, tools); uses system packages (OpenBLAS, FAISS, GTK, etc.) |
-| Windows `.exe` | x86_64 | NSIS installer via sqgipkg |
+| Format | Architectures | libllama | Notes |
+|--------|---------------|----------|-------|
+| AppImage | x86_64, aarch64 | No | Self-contained; remote backends only (`OLLMchat-remote-only-*.AppImage`) |
+| `.deb` | amd64 | **ollmchat**: yes · **ollmchat-remote-only**: no | See [`debian/README`](../debian/README) |
+| Windows `.exe` | x86_64 | No | NSIS installer via sqgipkg (`OLLMchat-remote-only-Setup.exe`) |
 
-Release builds use the **monolithic** layout (see [`debian/README`](../debian/README)): one **`ollmchat_*.deb`** containing the application, shared libraries, and tools. Split library packages under `debian/split/` are for a future apt repository, not GitHub release downloads.
+Release builds use the **monolithic** Debian layout (see [`debian/README`](../debian/README)): **`ollmchat_*.deb`** (with libllama) and **`ollmchat-remote-only_*.deb`**. Split library packages under `debian/split/` are for a future apt repository, not GitHub release downloads.
 
 ## Making a release
 
@@ -55,10 +55,11 @@ Release builds use the **monolithic** layout (see [`debian/README`](../debian/RE
 
    | File | Platform |
    |------|----------|
-   | `OLLMchat-x86_64.AppImage` | Linux 64-bit (Intel/AMD) |
-   | `OLLMchat-aarch64.AppImage` | Linux 64-bit (ARM, e.g. Raspberry Pi, Apple Silicon Linux VMs) |
-   | `OLLMchat-Setup.exe` | Windows installer |
-   | `ollmchat_*.deb` | All-in-one package (Debian/Ubuntu amd64) |
+   | `OLLMchat-remote-only-x86_64.AppImage` | Linux 64-bit (Intel/AMD); remote backends only |
+   | `OLLMchat-remote-only-aarch64.AppImage` | Linux 64-bit (ARM); remote backends only |
+   | `OLLMchat-remote-only-Setup.exe` | Windows installer; remote backends only |
+   | `ollmchat_*.deb` | All-in-one package with local GGUF (Debian/Ubuntu amd64) |
+   | `ollmchat-remote-only_*.deb` | All-in-one package without libllama (Debian/Ubuntu amd64) |
 
    Release notes are generated automatically from commits since the previous tag.
 
@@ -66,16 +67,24 @@ Release builds use the **monolithic** layout (see [`debian/README`](../debian/RE
 
 ### Installing Debian packages from a release
 
-Download **`ollmchat_*.deb`** from the release, then:
+Download **`ollmchat_*.deb`** (local GGUF via libllama) or **`ollmchat-remote-only_*.deb`** (remote backends only) from the release. The two packages conflict; install one or the other.
+
+With libllama:
 
 ```bash
 sudo apt install ./ollmchat_*.deb
 ```
 
-This installs the all-in-one package and pulls in system dependencies (GTK, OpenBLAS, FAISS, and so on). Alternatively:
+Remote only:
 
 ```bash
-sudo dpkg -i ollmchat_*.deb
+sudo apt install ./ollmchat-remote-only_*.deb
+```
+
+Alternatively:
+
+```bash
+sudo dpkg -i ollmchat_*.deb    # or ollmchat-remote-only_*.deb
 sudo apt install -f
 ```
 

@@ -1,0 +1,15 @@
+usr/bin/ollmchat
+usr/bin/ollmchat-cli
+usr/bin/ollmfilesd
+usr/bin/oc-md2html
+usr/bin/oc-html2md
+usr/lib/*/liboc*.so
+usr/lib/*/liboll*.so
+usr/share/applications/org.roojs.ollmchat.desktop
+usr/share/icons/hicolor/scalable/apps/org.roojs.ollmchat.svg
+usr/share/gir-1.0/OC*.gir
+usr/share/gir-1.0/OLL*.gir
+usr/lib/*/girepository-1.0/OC*.typelib
+usr/lib/*/girepository-1.0/OLL*.typelib
+usr/share/vala/vapi/oc*.vapi
+usr/share/vala/vapi/oll*.vapi

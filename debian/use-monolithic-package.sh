@@ -6,4 +6,5 @@ rm -f ./*.install
 cp monolithic/control ./control
 cp monolithic/ollmchat.install ./ollmchat.install
 cp monolithic/not-installed ./not-installed
-echo "Active packaging: monolithic (single ollmchat .deb)"
+printf '%s\n' enabled > ./local-gguf
+echo "Active packaging: monolithic (ollmchat .deb with local GGUF)"

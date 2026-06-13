@@ -23,27 +23,25 @@ Build-Depends: debhelper-compat (= 13),
                libgit2-glib-1.0-dev,
                libopenblas-dev,
                liblapack-dev,
-               libfaiss-dev,
-               libllama-dev
+               libfaiss-dev
 Standards-Version: 4.6.0
 Homepage: https://github.com/roojs/OLLMchat
 Vcs-Browser: https://github.com/roojs/OLLMchat
 Vcs-Git: https://github.com/roojs/OLLMchat.git
 
-Package: ollmchat
+Package: ollmchat-remote-only
 Architecture: any
-Conflicts: ollmchat-remote-only
+Conflicts: ollmchat
 Depends: ${shlibs:Depends},
          ${misc:Depends}
-Description: OLLMchat - LLM chat application (all-in-one, local GGUF)
+Description: OLLMchat - LLM chat application (remote backends only)
  OLLMchat is a GTK chat application with LLM access, tool integration,
  and embeddable libraries for other applications.
  .
  This all-in-one package bundles the application, shared libraries,
- GObject introspection data, and command-line tools. It is built with
- libllama for local GGUF embedding and chat in addition to Ollama,
- OpenAI-compatible HTTP APIs, and other remote backends.
+ GObject introspection data, and command-line tools. It is built
+ without libllama: use Ollama, OpenAI-compatible HTTP APIs, and other
+ remote backends only — no local GGUF inference.
  .
- For remote backends only (no local GGUF), install ollmchat-remote-only
- instead (see debian/README). Split library packages are available via
- debian/use-split-packages when an apt repository is in place.
+ For local GGUF embedding and chat via libllama, install the ollmchat
+ package instead (see debian/README).

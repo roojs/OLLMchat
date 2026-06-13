@@ -58,6 +58,10 @@ jobs:
           sudo apt-get install -y libfaiss1 || true
           sudo dpkg -i /tmp/libfaiss-dev.deb || sudo apt-get install -f -y
 
+      - name: Install libllama from Debian
+        working-directory: OLLMchat
+        run: ./scripts/fetch-libllama.sh
+
       - name: Build Debian packages (amd64)
         working-directory: OLLMchat
         env:
@@ -69,7 +73,12 @@ jobs:
             DEB_VER="$(echo "$TAG_VER" | sed 's/-/~/')"
             dch -v "${DEB_VER}-1" -D unstable "Release ${GITHUB_REF_NAME}" --force-distribution
           fi
+          ./debian/use-monolithic-package.sh
           dpkg-buildpackage -us -uc -b
+          rm -rf build
+          ./debian/use-monolithic-remote-only-package.sh
+          dpkg-buildpackage -us -uc -b
+          ./debian/use-monolithic-package.sh
 
       - name: Checkout sqgi (runtime + sqgipkg)
         uses: actions/checkout@v4
@@ -106,10 +115,11 @@ jobs:
         working-directory: OLLMchat
         run: |
           mkdir -p artifacts
-          cp dist-linux-x86_64/OLLMchat.AppImage artifacts/OLLMchat-x86_64.AppImage
-          cp dist-linux-aarch64/OLLMchat.AppImage artifacts/OLLMchat-aarch64.AppImage
-          cp dist-windows-x86_64/OLLMchat-Setup.exe artifacts/OLLMchat-Setup.exe
+          cp dist-linux-x86_64/OLLMchat.AppImage artifacts/OLLMchat-remote-only-x86_64.AppImage
+          cp dist-linux-aarch64/OLLMchat.AppImage artifacts/OLLMchat-remote-only-aarch64.AppImage
+          cp dist-windows-x86_64/OLLMchat-Setup.exe artifacts/OLLMchat-remote-only-Setup.exe
           cp ../ollmchat_[0-9]*.deb artifacts/
+          cp ../ollmchat-remote-only_[0-9]*.deb artifacts/
           ls -lh artifacts
 
       - name: Upload build artifacts
