@@ -109,7 +109,15 @@ jobs:
 
       - name: Download Noto Color Emoji font (Windows bundle)
         working-directory: OLLMchat
-        run: ./scripts/fetch-noto-color-emoji-font.sh
+        run: |
+          set -euo pipefail
+          mkdir -p resources/fonts
+          font=resources/fonts/NotoColorEmoji.ttf
+          if [[ ! -s "$font" ]]; then
+            curl -fsSL -o "$font" \
+              https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf
+          fi
+          test -s "$font"
 
       - name: Build Windows installer
         working-directory: OLLMchat
