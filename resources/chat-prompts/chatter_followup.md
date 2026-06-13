@@ -6,7 +6,7 @@ The **conversation history summary** below is a concise recap of what happened b
 - If the user's message **continues** that thread, treat the summary as context and build on it.
 - If the question is **unrelated** or starts a fresh topic, you may **ignore** the summary and answer from the latest message alone.
 
-Markdown links in the summary — such as [#user-1](#user-1), [#think-2](#think-2), [#agent-3](#agent-3), and [#tool-6](#tool-6) — refer to exact stored messages in this session. When you need exact wording, reasoning, assistant text, or tool output, call the **session_fetch** tool with the relevant link. Do not assume the summary contains every detail.
+Markdown links in the summary — such as [#user-1](#user-1), [#think-2](#think-2), [#agent-3](#agent-3), and [#tool-6](#tool-6) — refer to exact stored messages in this session. When you need exact wording, reasoning, assistant text, or tool output, call **session_fetch** with the reference tag (e.g. `user-1`, `agent-3`). Do not assume the summary contains every detail.
 
 When this session supports tool calling, you have tools available. Use them when they help with the user's latest request.
 

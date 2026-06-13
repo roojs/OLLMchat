@@ -18,54 +18,49 @@ namespace OLLMfilesd.Vector {
          */
         public signal void scan_update (int queue_size, string current_file);
 
-        private OLLMvector2.Database vector_db;
-        private SQ.Database sql_db;
         private OLLMfilesd.ProjectManager project_manager;
         private OLLMchat.Settings.Config2 config;
-        private OLLMchat.Settings.Config2 original_config;
 
         private Gee.ArrayQueue<BackgroundScanItem>? file_queue = null;
         private bool queue_processing = false;
         private Indexer? indexer = null;
 
         /**
-         * @param vector_db FAISS vector store
-         * @param sql_db SQLite metadata database
-         * @param project_manager Daemon's single ProjectManager
-         * @param git_provider Git provider for project_manager
-         * @param config Config2 for Indexer; cloned; updated on config.changed
+         * @param project_manager Daemon ProjectManager (db, vector_db_path)
+         * @param config Application config
          */
-        public BackgroundScan (OLLMvector2.Database vector_db,
-                               SQ.Database sql_db,
-                               OLLMfilesd.ProjectManager project_manager,
-                               OLLMfilesd.GitProviderBase git_provider,
+        public BackgroundScan (OLLMfilesd.ProjectManager project_manager,
                                OLLMchat.Settings.Config2 config)
         {
-            if (vector_db == null) {
-                GLib.error ("BackgroundScan: vector_db is null");
-            }
-            if (sql_db == null) {
-                GLib.error ("BackgroundScan: sql_db is null");
-            }
-            if (project_manager == null) {
-                GLib.error ("BackgroundScan: project_manager is null");
-            }
-
-            this.vector_db = vector_db;
-            this.sql_db = sql_db;
             this.project_manager = project_manager;
-            this.project_manager.git_provider = git_provider;
-
-            this.original_config = config;
-            this.config = config.clone ();
-            this.original_config.changed.connect (this.on_config_changed);
+            this.config = config;
         }
 
-        private void on_config_changed ()
+        /**
+         * Probe embed dimension and set {@link OLLMfilesd.ProjectManager.vector_db}.
+         * Uses dimension 0 when codebase_search is not configured.
+         */
+        public async void open_vector_db ()
         {
-            this.config = this.original_config.clone ();
-            this.indexer = null;
-            GLib.debug ("BackgroundScan: config changed, indexer cleared");
+            int dimension = 0;
+            try {
+                if (yield OLLMvector2.Database.check_required_models_available (
+                    this.config)) {
+                    var probe = new OLLMvector2.Database (
+                        this.config,
+                        this.project_manager.vector_db_path,
+                        0);
+                    yield probe.connection ("analysis", true);
+                    dimension = yield probe.embed_dimension ();
+                }
+            } catch (GLib.Error e) {
+                GLib.warning (
+                    "vector index: " + e.message);
+            }
+            this.project_manager.vector_db = new OLLMvector2.Database (
+                this.config,
+                this.project_manager.vector_db_path,
+                dimension);
         }
 
         /**
@@ -75,7 +70,8 @@ namespace OLLMfilesd.Vector {
          */
         public void scanProject (OLLMfilesd.Folder? project)
         {
-            if (project == null) {
+            if (project == null
+                || this.project_manager.vector_db.dimension == 0) {
                 return;
             }
 
@@ -100,7 +96,8 @@ namespace OLLMfilesd.Vector {
          */
         public void scanFile (OLLMfilesd.File file, OLLMfilesd.Folder? project)
         {
-            if (project == null) {
+            if (project == null
+                || this.project_manager.vector_db.dimension == 0) {
                 return;
             }
 
@@ -218,13 +215,16 @@ namespace OLLMfilesd.Vector {
 
                 if (this.indexer == null) {
                     this.indexer = new Indexer (
-                        this.config, this.vector_db, this.sql_db, this.project_manager);
+                        this.config,
+                        this.project_manager.vector_db,
+                        this.project_manager.db,
+                        this.project_manager);
                     this.indexer.progress.connect ((_c, _t, _p, success) => {
                         if (!success) {
                             return;
                         }
                         GLib.debug ("persisting db after indexed file");
-                        this.sql_db.backupDB ();
+                        this.project_manager.db.backupDB ();
                     });
                 }
 

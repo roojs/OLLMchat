@@ -22,7 +22,7 @@ namespace OLLMtools
 	 * Registry for all tools in liboctools.
 	 * 
 	 * Registers: ReadFile, RunCommand, WebFetch, EditMode, WriteFile, GoogleSearch,
-	 * and wrapped tools (via ToolBuilder).
+	 * SessionFetch, and wrapped tools (via ToolBuilder).
 	 */
 	public class Registry : Object
 	{
@@ -35,6 +35,7 @@ namespace OLLMtools
 			typeof(EditMode.Tool).ensure();
 			typeof(WriteFile.Tool).ensure();
 			typeof(GoogleSearch.Tool).ensure();
+			typeof(SessionFetch.Tool).ensure();
 			
 			// Register all liboctools tool config types with Config2
 			// Tools with BaseToolConfig get enabled/disabled in Settings; tools with custom config get that plus their options
@@ -44,6 +45,7 @@ namespace OLLMtools
 			OLLMchat.Tool.BaseTool.register_config(typeof(EditMode.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(WriteFile.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(GoogleSearch.Tool));
+			OLLMchat.Tool.BaseTool.register_config(typeof(SessionFetch.Tool));
 			
 			//GLib.debug("OLLMtools.Registry.init_config: Registered liboctools tool config types");
 		}
@@ -60,6 +62,7 @@ namespace OLLMtools
 			(new EditMode.Tool(null)).setup_tool_config_default(config);
 			(new WriteFile.Tool(null)).setup_tool_config_default(config);
 			(new GoogleSearch.Tool(null)).setup_tool_config_default(config);
+			(new SessionFetch.Tool()).setup_tool_config_default(config);
 			//GLib.debug("OLLMtools.Registry.setup_config_defaults: Set up liboctools tool configs");
 		}
 		
@@ -75,6 +78,7 @@ namespace OLLMtools
 			manager.register_tool(new EditMode.Tool(project_manager));
 			manager.register_tool(new WriteFile.Tool(project_manager));
 			manager.register_tool(new GoogleSearch.Tool(project_manager));
+			manager.register_tool(new SessionFetch.Tool());
 			
 			//GLib.debug("OLLMtools.Registry.fill_tools: Registered %d liboctools standard tools", 
 			//	manager.tools.size);

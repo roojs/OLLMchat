@@ -34,6 +34,8 @@ octools_src = files([
   'GoogleSearch/Tool.vala',
   'GoogleSearch/Request.vala',
   'GoogleSearch/Config.vala',
+  'SessionFetch/Tool.vala',
+  'SessionFetch/Request.vala',
   'ToolBuilder.vala',
   'Registry.vala',
   'Child/Parser.vala',

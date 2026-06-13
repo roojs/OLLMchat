@@ -198,6 +198,15 @@ namespace OLLMfilesd
 				yield this.project_manager.load_projects_from_db();
 			}
 
+			this.project_manager.vector_db_path =
+				GLib.Path.build_filename (
+					this.data_dir, "codedb.faiss.vectors");
+			this.project_manager.background_scan =
+				new OLLMfilesd.Vector.BackgroundScan (
+					this.project_manager,
+					this.config);
+			yield this.project_manager.background_scan.open_vector_db ();
+
 			this.daemon = new Daemon(this);
 			OLLMrpc.Request.register(
 				"Daemon", this.daemon,
