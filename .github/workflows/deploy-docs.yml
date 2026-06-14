@@ -19,12 +19,20 @@ on:
       - 'examples/**/*.vala'
       - 'docs/meson.build'
       - '.github/workflows/deploy-docs.yml'
-  workflow_dispatch:  # Manual rebuild on main only (see job if: guards)
+  workflow_dispatch:
+    inputs:
+      refresh_cache:
+        description: Rebuild Debian extra-package download cache from scratch
+        type: boolean
+        default: false
 
 permissions:
   contents: read
   pages: write
   id-token: write
+
+env:
+  DEB_CACHE_DIR: .ci-cache/debian-debs-amd64
 
 jobs:
   build:
@@ -34,36 +42,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install libfaiss-dev dependencies from Ubuntu
-        run: |
-          # Update package lists and install dependencies from Ubuntu repositories
-          sudo apt-get update
-          sudo apt-get install -y \
-            libblas-dev \
-            liblapack-dev \
-            libomp-dev
-          
-      - name: Download and install libfaiss-dev
-        run: |
-          set -euo pipefail
-          # Ubuntu does not ship a suitable libfaiss-dev for this image; install the
-          # current Debian amd64 package. The pool filename changes when Debian
-          # bumps faiss — discover the latest libfaiss-dev_*_amd64.deb instead of a
-          # hardcoded URL.
-          POOL="https://deb.debian.org/debian/pool/main/f/faiss"
-          deb=$(curl -fsSL "$POOL/" \
-            | grep -oE 'href="libfaiss-dev_[^"]+_amd64\.deb"' \
-            | sed 's/^href="//;s/"$//' \
-            | sort -V \
-            | tail -n1)
-          if [ -z "${deb}" ]; then
-            echo "Could not find libfaiss-dev_*_amd64.deb under ${POOL}" >&2
-            exit 1
-          fi
-          echo "Using Debian package: ${deb}"
-          curl -fsSL "$POOL/${deb}" -o /tmp/libfaiss-dev.deb
-          sudo apt-get install -y libfaiss1 || true
-          sudo dpkg -i /tmp/libfaiss-dev.deb || sudo apt-get install -f -y
+      - name: Restore Debian extra package download cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.DEB_CACHE_DIR }}
+          key: debian-extra-debs-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}
+          restore-keys: |
+            debian-extra-debs-v1-stable-
+            debian-extra-debs-v1-
+
+      - name: Install libfaiss-dev from Debian
+        env:
+          DEB_CACHE_DIR: ${{ github.workspace }}/${{ env.DEB_CACHE_DIR }}
+        run: ./scripts/ci/install-libfaiss-dev-debian.sh
 
       - name: Install build dependencies
         run: |
@@ -117,6 +108,13 @@ jobs:
         with:
           path: build/valadoc
 
+      - name: Save Debian extra package download cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.DEB_CACHE_DIR }}
+          key: debian-extra-debs-v1-${{ hashFiles('.ci-cache/debian-debs-amd64/**') }}
+
   deploy:
     if: github.ref == 'refs/heads/main'
     needs: build
@@ -128,4 +126,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-

@@ -1,0 +1,137 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      refresh_cache:
+        description: Rebuild SDK and Pixiewood/GTK caches from scratch
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  PIXIEWOOD_CACHE_PATHS: |
+    .android-tools
+    .pixiewood/bin-aarch64
+    .pixiewood/pixiewood.ini
+    .pixiewood/toolchain.cross
+    subprojects
+  PIXIEWOOD_SOURCE_HASH: ${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/AndroidPoc.vala') }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Restore Android SDK and NDK cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .android-sdk
+          key: android-sdk-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('scripts/android/install-sdk.sh') }}
+          restore-keys: |
+            android-sdk-v1-stable-
+            android-sdk-v1-
+
+      - name: Restore Pixiewood and GTK dependency cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.PIXIEWOOD_CACHE_PATHS }}
+          key: pixiewood-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ env.PIXIEWOOD_SOURCE_HASH }}
+          restore-keys: |
+            pixiewood-v1-stable-
+            pixiewood-v1-
+
+      - name: Restore Gradle cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-android-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}
+          restore-keys: |
+            gradle-android-v1-stable-
+            gradle-android-v1-
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            curl \
+            git \
+            gir1.2-appstream \
+            glslc \
+            gobject-introspection \
+            libadwaita-1-dev \
+            libglib-object-introspection-perl \
+            libglib-perl \
+            libglib2.0-dev-bin \
+            libgtk-4-dev \
+            libipc-run-perl \
+            libjson-perl \
+            libset-scalar-perl \
+            libxml-libxml-perl \
+            libxml-libxslt-perl \
+            libxml2-utils \
+            meson \
+            ninja-build \
+            openjdk-17-jdk \
+            pkg-config \
+            python3 \
+            sassc \
+            unzip \
+            valac
+
+      - name: Build chat APK
+        run: scripts/android/build-chat-poc-apk.sh
+
+      - name: Collect APK artifact
+        run: |
+          mkdir -p android-artifacts
+          cp .pixiewood/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk \
+            android-artifacts/ollmchat-android-poc-debug.apk
+          ls -lh android-artifacts
+
+      - name: Verify APK contains application and chat libraries
+        run: |
+          unzip -l android-artifacts/ollmchat-android-poc-debug.apk | \
+            grep -q 'lib/arm64-v8a/libollmchat-android-poc.so'
+          unzip -l android-artifacts/ollmchat-android-poc-debug.apk | \
+            grep -q 'lib/arm64-v8a/libollmchat.so'
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: android-artifacts/ollmchat-android-poc-debug.apk
+          archive: false
+          if-no-files-found: error
+
+      - name: Save Android SDK and NDK cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .android-sdk
+          key: android-sdk-v1-${{ hashFiles('.android-sdk/**') }}
+
+      - name: Save Pixiewood and GTK dependency cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.PIXIEWOOD_CACHE_PATHS }}
+          key: pixiewood-v1-${{ hashFiles('.pixiewood/bin-aarch64/**', '.pixiewood/pixiewood.ini', '.pixiewood/toolchain.cross', 'subprojects/**') }}
+
+      - name: Save Gradle cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-android-v1-${{ hashFiles('scripts/android/gtk-android-builder.revision') }}
