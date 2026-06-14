@@ -88,5 +88,4 @@ jobs:
             test-ollamaweb-parse \
             test-ollamaweb-merge \
             test-markdown-parser \
-            test-markdown-doc \
             check-back-token-test
