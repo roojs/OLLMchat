@@ -40,8 +40,11 @@ fi
 
 targets=(
   libocmarkdown/libocmarkdown.so
+  libocmarkdown/ocmarkdown.vapi
   libocsqlite/libocsqlite.so
+  libocsqlite/ocsqlite.vapi
   libollamaweb/libollamaweb.so
+  libollamaweb/ollamaweb.vapi
   libollmchat/libollmchat.so
 )
 

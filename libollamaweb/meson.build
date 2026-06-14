@@ -1,6 +1,7 @@
 # libollamaweb — Ollama.com search/tags HTML parsing (no libollmchat dependency)
 
 valac = meson.get_compiler('vala')
+is_android_cross = host_machine.system() == 'android'
 
 ollamaweb_deps = [
   dependency('gee-0.8'),
@@ -37,28 +38,34 @@ ollamaweb_base_lib = library('ollamaweb',
   install: true
 )
 
+ollamaweb_vapi_cmd = [
+  valac_exe,
+  '-C', '--debug',
+  '--target-glib=auto',
+  '--vapidir', meson.current_source_dir() / '../vapi',
+  '--vapidir', meson.current_build_dir(),
+]
+if is_android_cross
+  ollamaweb_vapi_cmd += ['--vapidir', gee_vapi_dir]
+endif
+ollamaweb_vapi_cmd += [
+  '--pkg', 'posix',
+  '--pkg', 'libxml-2.0',
+  '--pkg', 'libsoup-3.0',
+  '--pkg', 'json-glib-1.0',
+  '--pkg', 'gobject-2.0',
+  '--pkg', 'glib-2.0',
+  '--pkg', 'gio-2.0',
+  '--pkg', 'gee-0.8',
+  '--library', 'ollamaweb',
+  '--header', meson.current_build_dir() / 'ollamaweb.h',
+  '--vapi', '@OUTPUT@',
+  '@INPUT@',
+]
 ollamaweb_vapi = custom_target('ollamaweb-vapi',
   output: 'ollamaweb.vapi',
   input: ollamaweb_src,
-  command: [
-    valac_exe,
-    '-C', '--debug',
-    '--target-glib=auto',
-    '--vapidir', meson.current_source_dir() / '../vapi',
-    '--vapidir', meson.current_build_dir(),
-    '--pkg', 'posix',
-    '--pkg', 'libxml-2.0',
-    '--pkg', 'libsoup-3.0',
-    '--pkg', 'json-glib-1.0',
-    '--pkg', 'gobject-2.0',
-    '--pkg', 'glib-2.0',
-    '--pkg', 'gio-2.0',
-    '--pkg', 'gee-0.8',
-    '--library', 'ollamaweb',
-    '--header', meson.current_build_dir() / 'ollamaweb.h',
-    '--vapi', '@OUTPUT@',
-    '@INPUT@'
-  ],
+  command: ollamaweb_vapi_cmd,
   depends: [ollamaweb_base_lib],
   build_by_default: true,
   install: true,
