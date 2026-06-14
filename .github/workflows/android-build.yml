@@ -22,13 +22,15 @@ jobs:
     name: Build APK
     runs-on: ubuntu-24.04
     timeout-minutes: 180
-    env:
-      PIXIEWOOD_DEPS_HASH: ${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh') }}
-      PIXIEWOOD_APP_HASH: ${{ hashFiles('meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/AndroidPoc.vala') }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Compute Pixiewood cache key hashes
+        run: |
+          echo "PIXIEWOOD_DEPS_HASH=${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh') }}" >> "$GITHUB_ENV"
+          echo "PIXIEWOOD_APP_HASH=${{ hashFiles('meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/AndroidPoc.vala') }}" >> "$GITHUB_ENV"
 
       - name: Restore Android SDK and NDK cache
         uses: actions/cache/restore@v4
