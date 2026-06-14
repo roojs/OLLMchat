@@ -1,0 +1,8 @@
+[wrap-git]
+directory = libgee
+url = https://gitlab.gnome.org/GNOME/libgee.git
+revision = 0.20.6
+depth = 1
+
+[provide]
+gee-0.8 = libgee_dep

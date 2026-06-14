@@ -1,0 +1,3 @@
+# Pin sqgi for reproducible release CI builds and cache keys.
+# Bump this commit when intentionally upgrading the sqgi runtime / sqgipkg toolchain.
+7377ee01253481e193fe977b607874615ff1b56f

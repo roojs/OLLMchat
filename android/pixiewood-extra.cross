@@ -1,0 +1,38 @@
+[gee:project options]
+introspection = disabled
+gtkdoc = false
+
+[json-glib:project options]
+introspection = disabled
+gtkdoc = false
+
+[libsoup:project options]
+tests = false
+introspection = disabled
+docs = false
+brotli = disabled
+gssapi = disabled
+ntlm = disabled
+tls_check = false
+gnutls = disabled
+openssl = enabled
+
+[libxml2:project options]
+python = disabled
+
+[sqlite3:project options]
+use_threadsafe = true
+
+[libollmchat:project options]
+docs = false
+examples = false
+tests = false
+local_gguf = disabled
+android_poc = true
+
+[ollmchat:project options]
+docs = false
+examples = false
+tests = false
+local_gguf = disabled
+android_poc = true

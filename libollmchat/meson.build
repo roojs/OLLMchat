@@ -7,6 +7,8 @@
 # Dependencies for ollmchat library
 valac = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
+is_android_cross = host_machine.system() == 'android'
+ollmchat_vala_gir = is_android_cross ? disabler() : 'OLLMchat-1.0.gir'
 
 local_gguf_opt = get_option('local_gguf')
 local_gguf_enabled = false
@@ -247,7 +249,7 @@ ollmchat_base_lib = library('ollmchat',
   sources: [ollmchat_ollama_src, local_gguf_src, ollmchat_resources],
   vala_header: 'ollmchat.h',
   vala_vapi: 'ollmchat.vapi',
-  vala_gir: 'OLLMchat-1.0.gir',
+  vala_gir: ollmchat_vala_gir,
   # Don't use link_with for ocsqlite_base_lib to prevent determine_dep_vapis() from finding
   # ocsqlite-meson.vapi and adding it as a source. Link manually via ocsqlite_vapi_dep link_args instead.
   build_rpath: lib_build_rpath,
@@ -266,23 +268,25 @@ ollmchat_base_lib = library('ollmchat',
 )
 
 ollmchat_gir_file = meson.current_build_dir() / 'OLLMchat-1.0.gir'
-custom_target('ollmchat-typelib',
-  output: 'OLLMchat-1.0.typelib',
-  command: [
-    g_ir_compiler, ollmchat_gir_file, '--output', '@OUTPUT@',
-    '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--includedir', '/usr/share/gir-1.0',
-  ],
-  depends: ollmchat_base_lib,
-  build_by_default: true,
-  install: true,
-  install_dir: get_option('libdir') / 'girepository-1.0',
-)
-meson.add_install_script(
-  'sh', '-c',
-  'install -Dm644 "' + ollmchat_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMchat-1.0.gir"',
-)
+if not is_android_cross
+  custom_target('ollmchat-typelib',
+    output: 'OLLMchat-1.0.typelib',
+    command: [
+      g_ir_compiler, ollmchat_gir_file, '--output', '@OUTPUT@',
+      '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
+      '--includedir', '/usr/share/gir-1.0',
+    ],
+    depends: ollmchat_base_lib,
+    build_by_default: true,
+    install: true,
+    install_dir: get_option('libdir') / 'girepository-1.0',
+  )
+  meson.add_install_script(
+    'sh', '-c',
+    'install -Dm644 "' + ollmchat_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMchat-1.0.gir"',
+  )
+endif
 
 # Create dependency for other libraries to use
 # Note: We need to manually create the VAPI dependency similar to ocsqlite

@@ -56,8 +56,7 @@ namespace OLLMapp
 			main_box.append(intro_label);
 
 			this.url_entry = new Gtk.Entry() {
-				text = "http://10.0.2.2:11434/api",
-				placeholder_text = "http://host:11434/api"
+				placeholder_text = "http://192.168.x.x:11434/api"
 			};
 			main_box.append(this.field("Server URL", this.url_entry));
 
@@ -180,7 +179,7 @@ namespace OLLMapp
 		public AndroidPocApplication()
 		{
 			Object(
-				application_id: "org.roojs.ollmchat.AndroidPoc",
+				application_id: "org.roojs.ollmchat.androidpoc",
 				flags: GLib.ApplicationFlags.DEFAULT_FLAGS
 			);
 

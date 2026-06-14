@@ -16,27 +16,12 @@ if [ -z "$ARCH" ]; then
   esac
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 download_latest_deb() {
   local pool="$1"
   local package="$2"
-  local out="/tmp/${package}.deb"
-
-  local deb="$(
-    curl -fsSL "$pool/" \
-      | grep -oE "href=\"${package}_[^\"]+_${ARCH}\\.deb\"" \
-      | sed 's/^href="//;s/"$//' \
-      | sort -V \
-      | tail -n1
-  )"
-
-  if [ -z "$deb" ]; then
-    echo "Could not find ${package}_*_${ARCH}.deb under ${pool}" >&2
-    exit 1
-  fi
-
-  echo "Downloading ${deb}" >&2
-  curl -fsSL "$pool/$deb" -o "$out"
-  printf '%s\n' "$out"
+  "$SCRIPT_DIR/ci/debian-pool-deb.sh" "$pool" "$package" "$ARCH" "/tmp/${package}.deb"
 }
 
 has_rocm() {

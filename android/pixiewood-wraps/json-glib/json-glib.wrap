@@ -1,0 +1,8 @@
+[wrap-git]
+directory = json-glib
+url = https://gitlab.gnome.org/GNOME/json-glib.git
+revision = main
+depth = 1
+
+[provide]
+dependency_names = json-glib-1.0
