@@ -23,7 +23,7 @@ from it — do not edit `debian/changelog` by hand. Regenerate with:
   tail (with `session_fetch` hash links)
 - **Agents**: shared `OLLMchat.Agent.Summarizer` and `Agent.Base.create_summary()`
   used by both Chatter and the Coding Assistant
-- **run_command**: `run_as_root` parameter runs commands via PolicyKit (`pkexec`)
+- **run_command**: `run_as_root` parameter runs commands via `sudo` after in-app password prompt
   after explicit high-risk ChatPermission approval (Linux GTK app; no Allow Always
   shortcut)
 - **Android**: Pixiewood shell APK scaffold and remote-only chat POC target

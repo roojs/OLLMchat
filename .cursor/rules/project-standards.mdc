@@ -37,6 +37,13 @@ If you have not read **`docs/coding-standards.md`** in full during this task,
 You **must** follow **`docs/coding-standards.md`** on every Vala change. You
 **must never** ignore it or treat it as optional guidance.
 
+### After Vala edits (mandatory verification)
+
+Before finishing the task, run the **Agent compliance gate** at the end of
+**`docs/coding-standards.md`** (search changed `*.vala` for explicit local types,
+no new helpers, etc.). See also **`.cursor/rules/vala-editing-gate.mdc`**.
+Reporting "done" without running those checks is a standards violation.
+
 ### Other full documents (same rule — read all, do not grep or skim)
 
 When the task requires it, read the **full** document the same way (Read tool,

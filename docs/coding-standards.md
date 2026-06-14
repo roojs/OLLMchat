@@ -2,11 +2,15 @@
 
 Canonical Vala style and patterns for this project and related codebases. Written for **AI agents** — **mandatory** for agents implementing or changing Vala code. Human contributors may treat this as a helpful guide. Also see **`docs/build-rules.md`** and **`docs/code-documentation.md`**.
 
-**AI agents:** You **must** read this **entire** document from start to finish before writing or changing any Vala code. **Do not** read only the first sections, a summary, or excerpts from another file. **Do not** implement until you have read the **whole** document. You **must never** ignore these standards.
+**AI agents:** Do **not** read this whole file blindly. Use
+**`.cursor/rules/vala-coding-standards-router.mdc`** (and
+**`docs/coding-standards-router.md`**) — answer the scenario checklist,
+then read **every section it maps you to** (grep `section: <slug>` in this
+file and read each block in full). Partial compliance is a violation.
 
 **Plans:** This file is **code standards only**. Plan structure, code-proposal fences, implementation workflow, and the **checklist for verifying plans** are in **`docs/guide-to-writing-plans.md`**.
 
-## Docblocks / code documentation
+## Docblocks / code documentation <!-- section: docblocks -->
 
 **IMPORTANT:** Docblocks (documentation comments for classes, methods, properties, and parameters) must follow the coding documentation standards and use **multiline** form. Do **not** use short one-line docblocks when documenting behaviour, parameters, or return values.
 
@@ -45,7 +49,7 @@ Reserve single-line `/** ... */` only for trivial, self-explanatory cases where 
 
 **Literal syntax in docblocks:** Follow `docs/code-documentation.md` (Valadoc markup). Use triple braces `{{{ }}}` for code or literal snippets (e.g. URIs, ref syntax). Do not use backticks for URIs or refs — in Valadoc backticks mean block quote and can trigger parse errors. Avoid literal `{` in running text (it starts inline taglets like `{@link}`); use `{{{ }}}` or rephrase.
 
-## String Interpolation
+## String Interpolation <!-- section: string-interpolation -->
 
 **IMPORTANT:** Do NOT use `@"` string interpolation unless explicitly asked. Use normal string concatenation instead.
 
@@ -79,7 +83,40 @@ Options:
 
 ## Temporary Variables
 
-**IMPORTANT:** Always use `var` for local variables and `for` / `foreach` loop variables. Do not write explicit types on locals (`int`, `uint`, `string`, etc.). Method parameters and class fields keep explicit types. Exception: growable string arrays use `string[] name = {}` (see ArrayList for Strings).
+**CRITICAL — `var` on locals:** Always use **`var`** for local variables and
+`for` / `foreach` loop variables. **Never** write an explicit primitive or
+reference type on a local declaration.
+
+**Forbidden on locals (non-exhaustive):** `string name = …`, `int count = …`,
+`bool active = …`, `uint n = …`, `int64 x = …`, and the same for any other
+built-in type used as a local initializer or declaration without assignment.
+
+**Allowed explicit types:** method parameters, class/struct fields, properties,
+`out` parameters in method signatures, and the **one** exception below.
+
+**Exception — growable string arrays only:** `string[] name = {}` (see
+ArrayList for Strings). Do **not** extend this exception to other array types
+without user approval.
+
+**Self-check before finishing Vala edits:** search changed files for
+`^\s+(string|int|bool|uint|int64|float|double)\s+\w+\s*[=;]` inside method
+bodies. Every match on a **local** must be fixed or justified in the diff
+comment; parameters and fields are excluded.
+
+**Bad (explicit type on local — forbidden):**
+```vala
+string elevation_password = "";
+int exit_status = 0;
+bool need_perm = this.build_perm_question();
+```
+
+**Good (`var` on locals; `string[]` exception only):**
+```vala
+var elevation_password = "";
+var exit_status = 0;
+var need_perm = this.build_perm_question();
+string[] lines = {};
+```
 
 **IMPORTANT:** Avoid single-use temporary variables. If a variable is only used once, inline it directly.
 
@@ -1410,4 +1447,39 @@ private void merge_reasoning(Json.Object obj)
 obj.set_string_member("reasoning_effort",
     this.reasoning_effort != "" ? this.reasoning_effort : (this.think ? "medium" : "none"));
 ```
+
+## Agent compliance gate (mandatory before finishing Vala work)
+
+**AI agents:** Partial compliance is a violation. The sections above are not
+optional pick-and-choose guidance — **every** section applies to **every** Vala
+edit unless the task explicitly exempts one rule.
+
+### Before the first edit
+
+1. Read this entire document once (Read tool, first line to last).
+2. State in your working notes which sections apply to the task (at minimum:
+   Temporary Variables, Method names, Reducing Nesting, Signal handlers if GTK).
+
+### Before marking the task done
+
+Run these checks on **every file you changed**. Fix violations; do not hand-wave.
+
+| Check | How |
+|-------|-----|
+| **`var` on locals** | Search: `^\s+(string\|int\|bool\|uint\|int64)\s+\w+\s*[=;]` — no local matches except `string[] … = {}` |
+| **No new private methods** | Diff adds no `private`/`protected` method unless user or plan asked |
+| **No `handle_*` for signals** | Button/signal handlers inline in lambda, not new `handle_*` methods |
+| **No gratuitous `else`** | New `else` / `else if` chains restructure to early return/`continue` |
+| **Enum branches use `switch`** | Multi-value response/status checks use `switch`, not `\|\|` chains |
+| **No defensive re-checks** | No duplicate validation after a module boundary already enforced it |
+| **Debug text** | No class/method names in `GLib.debug()` / `GLib.warning()` messages |
+| **Docblocks** | New/changed APIs have multiline `/** … */` with `@param` where needed |
+
+If you skipped any row because you "already knew" the rule, **stop and run it
+anyway**. Agents repeatedly miss rules they did not verify in the diff.
+
+### Why agents fail this document
+
+Reading once without **verification** is the same as skimming. The gate above
+is part of the standard — not optional process advice.
 

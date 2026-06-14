@@ -71,7 +71,7 @@ Network Access:
 Root Access (Linux GTK app only):
 - Set `run_as_root` to `true` when the command requires root (e.g. package install, system configuration).
 - Do NOT prefix the command with `sudo`, `pkexec`, or `su` — the tool handles elevation when this flag is set.
-- The user must approve in the app, then enter their password in a system PolicyKit dialog.
+- The user must approve in the app and enter their password in the permission prompt (not saved).
 - Root runs execute outside the sandbox with full host access; `network` and `allow_write` do not restrict them.
 
 If the command fails, you should handle the error gracefully and provide a helpful error message to the user.
@@ -91,7 +91,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 @param command {string} [required] The terminal command to run.
 @param working_dir {string} [optional] The working directory where the command will be executed. Should be an absolute path. """ + working_dir_default + """
 @param network {boolean} [optional] Whether to allow network access. Defaults to false. For fetching websites or web content, use the `web_fetch` tool instead.
-@param run_as_root {boolean} [optional] Run the command as root via PolicyKit (pkexec). Linux only. Defaults to false. Do not use sudo in the command string.
+@param run_as_root {boolean} [optional] Run the command as root via sudo. Linux only. Defaults to false. Do not use sudo in the command string.
 """ + allow_write_line;
 			return this.param_desc_backing;
 		} }
