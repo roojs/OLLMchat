@@ -11,14 +11,27 @@ project('ollmchat', 'vala', 'c', 'cpp',
 
 gnome = import('gnome')
 fs = import('fs')
-g_ir_compiler = find_program('g-ir-compiler')
-gir_typelib_script = meson.project_source_root() / 'scripts/compile-gir-typelib.sh'
-gir_fix_sed = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
-if not fs.exists(gir_typelib_script)
-  error('GIR typelib helper missing (add to git): ' + gir_typelib_script)
+
+android_shell_poc = get_option('android_shell_poc')
+android_poc_opt = get_option('android_poc')
+android_cross_build = host_machine.system() == 'android' and (android_shell_poc or android_poc_opt)
+
+if android_shell_poc and android_poc_opt
+  error('android_shell_poc and android_poc are mutually exclusive')
 endif
-if not fs.exists(gir_fix_sed)
-  error('GIR name fix-up missing (add to git): ' + gir_fix_sed)
+
+if android_cross_build
+  g_ir_compiler = disabler()
+else
+  g_ir_compiler = find_program('g-ir-compiler')
+  gir_typelib_script = meson.project_source_root() / 'scripts/compile-gir-typelib.sh'
+  gir_fix_sed = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
+  if not fs.exists(gir_typelib_script)
+    error('GIR typelib helper missing (add to git): ' + gir_typelib_script)
+  endif
+  if not fs.exists(gir_fix_sed)
+    error('GIR name fix-up missing (add to git): ' + gir_fix_sed)
+  endif
 endif
 
 valac = meson.get_compiler('vala')
@@ -46,14 +59,7 @@ if host_machine.system() == 'windows'
   add_project_arguments(['--define=G_OS_WIN32'], language: 'vala')
 endif
 
-android_shell_poc = get_option('android_shell_poc')
-android_poc_opt = get_option('android_poc')
-android_cross_build = host_machine.system() == 'android' and (android_shell_poc or android_poc_opt)
 local_gguf_enabled = false
-
-if android_shell_poc and android_poc_opt
-  error('android_shell_poc and android_poc are mutually exclusive')
-endif
 
 if android_cross_build
   bundle_sysroot = ''

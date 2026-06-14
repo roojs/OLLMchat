@@ -13,7 +13,7 @@ async int main(string[] args)
 	var text = "hello from ollmchat";
 
 	var options = new OptionEntry[] {
-		{ "model", 'm', 0, OptionArg.FILENAME, ref model_path, "Path to a GGUF file", "FILE" },
+		{ "model", 'm', 0, OptionArg.FILENAME, ref model_path, "Path to model.gguf inside a model directory", "FILE" },
 		{ "text", 't', 0, OptionArg.STRING, ref text, "Text to embed", "TEXT" },
 		{ null }
 	};
@@ -33,15 +33,13 @@ async int main(string[] args)
 		return 1;
 	}
 
-	var model_dir = GLib.Path.get_dirname(model_path);
-	var model_name = GLib.Path.get_basename(model_path);
-	if (model_name.has_suffix(".gguf")) {
-		model_name = model_name[0:model_name.length - 5];
-	}
+	var model_folder = GLib.Path.get_dirname(model_path);
+	var model_name = GLib.Path.get_basename(model_folder);
+	var models_root = GLib.Path.get_dirname(model_folder);
 
 	var conn = new OLLMchat.Settings.Connection() {
 		name = "local",
-		url = model_dir,
+		url = models_root,
 	};
 
 	var call = new OLLMchat.CallLocal.Embeddings(conn, model_name);
