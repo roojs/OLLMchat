@@ -49,6 +49,8 @@
     <json-glib/>
     <nghttp2/>
     <libsoup/>
+    <openssl/>
+    <glib-networking/>
   </dependencies>
   <build target="ollmchat-android-poc">
     <configure-options>

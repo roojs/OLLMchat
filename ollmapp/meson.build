@@ -97,6 +97,16 @@ if get_option('android_poc') and host_machine.system() == 'android'
     valac.find_library('posix'),
   ]
 
+  android_poc_sources = [
+    'android/AndroidApplication.vala',
+    'android/AndroidMainWindow.vala',
+    'android/AndroidStartup.vala',
+    'android/AndroidSettingsDialog.vala',
+    'SettingsDialog/ConnectionAdd.vala',
+    'SettingsDialog/CheckingConnectionDialog.vala',
+    'SettingsDialog/ConnectionRow.vala',
+  ]
+
   android_poc = executable('ollmchat-android-poc',
     dependencies: [
       android_poc_deps,
@@ -104,7 +114,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
       ollmchat_vapi_dep,
       ollamaweb_vapi_dep
     ],
-    sources: ['AndroidPoc.vala'],
+    sources: android_poc_sources,
     link_with: [ollmchat_base_lib],
     include_directories: [
       include_directories('../libollmchat'),
@@ -115,6 +125,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
     vala_args: [
       '--pkg=gtk4',
       '--pkg=libadwaita-1',
+      '--pkg=gee-0.8',
       '--pkg=sqlite3',
       '--pkg=ocsqlite',
       '--pkg=ollmchat',
@@ -267,10 +278,19 @@ if get_option('android_poc') and host_machine.system() != 'android'
   ]
 
   android_poc_sources = [
-    'AndroidPoc.vala',
+    'android/AndroidApplication.vala',
+    'android/AndroidMainWindow.vala',
+    'android/AndroidStartup.vala',
+    'android/AndroidSettingsDialog.vala',
+    'SettingsDialog/ConnectionAdd.vala',
+    'SettingsDialog/CheckingConnectionDialog.vala',
+    'SettingsDialog/ConnectionRow.vala',
   ]
 
   android_poc_vala_args = [
+    '--pkg=gtk4',
+    '--pkg=libadwaita-1',
+    '--pkg=gee-0.8',
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
     '--pkg=ollmchat',

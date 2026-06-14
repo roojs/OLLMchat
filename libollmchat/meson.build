@@ -161,7 +161,6 @@ ollmchat_ollama_src = files([
   'Settings/Connection.vala',
   'Settings/ModelUsage.vala',
   'Settings/ConnectionModels.vala',
-  'Settings/Config1.vala',
   'Settings/Config2.vala',
   'Settings/BaseToolConfig.vala',
   'Settings/RequiresModelsInterface.vala',

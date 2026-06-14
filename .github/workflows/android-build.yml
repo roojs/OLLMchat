@@ -160,8 +160,10 @@ jobs:
             libset-scalar-perl \
             libxml-libxml-perl \
             libxml-libxslt-perl \
+            libtext-template-perl \
             libxml2-utils \
             meson \
+            nasm \
             ninja-build \
             openjdk-17-jdk \
             pkg-config \
