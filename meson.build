@@ -60,6 +60,7 @@ if host_machine.system() == 'windows'
 endif
 
 local_gguf_enabled = false
+gee_vapi_dir = meson.project_source_root() / 'subprojects/libgee-0.20.8/gee'
 
 if android_cross_build
   # GObject introspection is disabled on Android, so Meson does not attach
