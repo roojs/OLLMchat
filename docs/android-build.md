@@ -150,6 +150,21 @@ scripts/android/verify-cross-compile.sh --with-app
 That script pair matches the CI cross-configure and Vala compile path more
 closely than configure alone.
 
+### Vala / gee-0.8 on Android cross-builds
+
+Android builds disable GObject introspection, so Vala `--pkg` wiring differs
+from desktop. **Do not cargo-cult `--pkg=gee-0.8` onto every target.**
+
+| Target kind | `dependency('gee-0.8')` | `--pkg=gee-0.8` | `--vapidir …/libgee-0.20.8/gee` |
+|-------------|-------------------------|-----------------|----------------------------------|
+| `library()` / `executable()` (e.g. `libollmchat`, `ollmchat-android-poc`) | yes | **no** — Meson already passes `gee-0.8.vapi`; duplicate `--pkg` causes *Package gee-0.8 not found* or *Gee already contains definition* | no |
+| Root `add_project_arguments` on Android (`meson.build`) | n/a | **no** (same reason) | n/a |
+| `custom_target` vapi generators (`ocmarkdown-vapi`, `ocsqlite-vapi`, `ollamaweb-vapi`) | n/a | **yes** | **yes** on Android — see `gee_vapi_dir` in each lib's `meson.build` |
+
+When adding new Android Vala targets, mirror `ollmapp/meson.build` (`android_poc`
+block before the shell refactor): list `dependency('gee-0.8')` in `dependencies`
+and omit `--pkg=gee-0.8` from `vala_args`.
+
 Successful debug builds produce APKs under:
 
 ```text

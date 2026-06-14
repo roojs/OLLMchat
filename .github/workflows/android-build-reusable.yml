@@ -1,0 +1,340 @@
+name: Android build (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      refresh_cache:
+        description: Rebuild SDK and Pixiewood/GTK caches from scratch
+        type: boolean
+        default: false
+      upload_to_release:
+        description: Upload the APK to the matching GitHub Release (tag pushes only)
+        type: boolean
+        default: false
+
+env:
+  APT_CACHE_DIR: .ci-cache/apt
+  GRADLE_USER_HOME: /home/runner/.gradle
+
+jobs:
+  build-apk:
+    name: Build APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Compute Pixiewood cache key hashes
+        run: |
+          echo "PIXIEWOOD_DEPS_HASH=${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh', 'vapi/**') }}" >> "$GITHUB_ENV"
+          echo "PIXIEWOOD_APP_HASH=${{ hashFiles('meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/android/**') }}" >> "$GITHUB_ENV"
+
+      - name: Restore Android SDK and NDK cache
+        id: restore-android-sdk
+        uses: actions/cache/restore@v4
+        with:
+          path: .android-sdk
+          key: android-sdk-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('scripts/android/install-sdk.sh') }}
+          restore-keys: |
+            android-sdk-v1-stable-
+            android-sdk-v1-
+
+      - name: Restore Android tooling cache
+        id: restore-android-tools
+        uses: actions/cache/restore@v4
+        with:
+          path: .android-tools/gtk-android-builder
+          key: android-tools-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ env.PIXIEWOOD_DEPS_HASH }}
+          restore-keys: |
+            android-tools-v1-stable-
+            android-tools-v1-
+
+      - name: Restore Meson subprojects cache
+        id: restore-android-subprojects
+        uses: actions/cache/restore@v4
+        with:
+          path: subprojects
+          key: android-subprojects-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ env.PIXIEWOOD_DEPS_HASH }}
+          restore-keys: |
+            android-subprojects-v1-stable-
+            android-subprojects-v1-
+
+      - name: Restore Pixiewood compile cache
+        id: restore-pixiewood-build
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .pixiewood/bin-aarch64
+            .pixiewood/pixiewood.ini
+            .pixiewood/toolchain.cross
+          key: pixiewood-build-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
+          restore-keys: |
+            pixiewood-build-v1-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-
+
+      - name: Validate Pixiewood compile cache
+        id: validate-pixiewood-build-cache
+        run: |
+          usable=false
+          matched_key="${{ steps.restore-pixiewood-build.outputs.cache-matched-key }}"
+          min_meson="${MESON_MIN_VERSION:-1.8.0}"
+
+          version_ge() {
+            [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | tail -n1)" = "$1" ]
+          }
+
+          if [ "${{ inputs.refresh_cache }}" = "true" ]; then
+            echo "refresh_cache requested; ignoring any restored compile cache."
+            rm -rf .pixiewood/bin-aarch64
+          elif [ -n "$matched_key" ] &&
+             [[ "$matched_key" == *"$PIXIEWOOD_DEPS_HASH"* ]] &&
+             [[ "$matched_key" == *"$PIXIEWOOD_APP_HASH"* ]] &&
+             [ -f .pixiewood/bin-aarch64/build.ninja ] &&
+             [ -f .pixiewood/bin-aarch64/meson-logs/meson-log.txt ]; then
+            obj_count="$(find .pixiewood/bin-aarch64 -type f -name '*.o' 2>/dev/null | wc -l)"
+            cache_bytes="$(du -sb .pixiewood/bin-aarch64 2>/dev/null | cut -f1)"
+            meson_ver="$(grep -m1 '^Version: ' .pixiewood/bin-aarch64/meson-logs/meson-log.txt | sed 's/^Version: //')"
+            if [ "$obj_count" -ge 100 ] &&
+               [ "$cache_bytes" -ge 30000000 ] &&
+               version_ge "$meson_ver" "$min_meson"; then
+              usable=true
+              echo "Pixiewood compile cache looks usable ($obj_count object files, $(( cache_bytes / 1048576 )) MiB, Meson $meson_ver)."
+            else
+              echo "Pixiewood compile cache restored but too small or incompatible (objects=$obj_count, bytes=$cache_bytes, Meson=${meson_ver:-unknown})."
+            fi
+          elif [ -n "$matched_key" ]; then
+            echo "Pixiewood compile cache key does not match current hashes; ignoring restored tree."
+          fi
+
+          if [ "$usable" != true ] && [ -d .pixiewood/bin-aarch64 ]; then
+            echo "Discarding unusable compile cache."
+            rm -rf .pixiewood/bin-aarch64
+          fi
+
+          echo "usable=$usable" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Gradle cache
+        id: restore-gradle
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ env.GRADLE_USER_HOME }}/caches
+            ${{ env.GRADLE_USER_HOME }}/wrapper
+          key: gradle-android-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('scripts/android/gtk-android-builder.revision') }}
+          restore-keys: |
+            gradle-android-v1-stable-
+            gradle-android-v1-
+
+      - name: Restore apt package cache
+        id: restore-apt
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.APT_CACHE_DIR }}
+          key: apt-android-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('.github/workflows/android-build.yml', '.github/workflows/android-build-reusable.yml') }}
+          restore-keys: |
+            apt-android-v1-stable-
+            apt-android-v1-
+
+      - name: Install build dependencies
+        id: install-deps
+        run: |
+          mkdir -p "$APT_CACHE_DIR"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            -o Dir::Cache::archives="$PWD/$APT_CACHE_DIR" \
+            build-essential \
+            ca-certificates \
+            curl \
+            git \
+            gir1.2-appstream \
+            glslc \
+            libadwaita-1-dev \
+            libglib-object-introspection-perl \
+            libglib-perl \
+            libglib2.0-dev-bin \
+            libgtk-4-dev \
+            libipc-run-perl \
+            libjson-perl \
+            libset-scalar-perl \
+            libxml-libxml-perl \
+            libxml-libxslt-perl \
+            libtext-template-perl \
+            libxml2-utils \
+            meson \
+            nasm \
+            ninja-build \
+            openjdk-17-jdk \
+            pkg-config \
+            python3 \
+            sassc \
+            unzip \
+            valac
+          sudo rm -rf "$APT_CACHE_DIR/partial" "$APT_CACHE_DIR/lock"
+          sudo chown -R "$(whoami):$(whoami)" "$APT_CACHE_DIR"
+
+      - name: Save apt package cache
+        if: always() && steps.install-deps.outcome == 'success' && steps.restore-apt.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.APT_CACHE_DIR }}
+          key: apt-android-v1-stable-${{ hashFiles('.github/workflows/android-build.yml', '.github/workflows/android-build-reusable.yml') }}
+
+      - name: Pixiewood setup (SDK, GTK prefix, subprojects)
+        id: pixiewood-setup
+        env:
+          PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
+          PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
+        run: PIXIEWOOD_PHASE=setup scripts/android/build-chat-poc-apk.sh
+
+      - name: Detect post-setup cache targets
+        if: always()
+        id: post-setup-cache
+        run: |
+          save_android_sdk=false
+          save_android_tools=false
+          save_subprojects=false
+
+          if [ -x .android-sdk/cmdline-tools/latest/bin/sdkmanager ]; then
+            save_android_sdk=true
+          fi
+          if [ -x .android-tools/gtk-android-builder/pixiewood ]; then
+            save_android_tools=true
+          fi
+          if [ -d subprojects ] && find subprojects -type f \( -name '*.wrap' -o -name meson.build \) -print -quit | grep -q .; then
+            save_subprojects=true
+          fi
+
+          echo "android-sdk=$save_android_sdk" >> "$GITHUB_OUTPUT"
+          echo "android-tools=$save_android_tools" >> "$GITHUB_OUTPUT"
+          echo "subprojects=$save_subprojects" >> "$GITHUB_OUTPUT"
+
+      - name: Save Android SDK and NDK cache
+        if: always() && steps.post-setup-cache.outputs.android-sdk == 'true' && steps.restore-android-sdk.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .android-sdk
+          key: android-sdk-v1-stable-${{ hashFiles('scripts/android/install-sdk.sh') }}
+
+      - name: Save Android tooling cache
+        if: always() && steps.post-setup-cache.outputs.android-tools == 'true' && steps.restore-android-tools.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .android-tools/gtk-android-builder
+          key: android-tools-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}
+
+      - name: Save Meson subprojects cache
+        if: always() && steps.post-setup-cache.outputs.subprojects == 'true' && steps.restore-android-subprojects.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: subprojects
+          key: android-subprojects-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}
+
+      - name: Meson cross configure
+        id: pixiewood-configure
+        env:
+          PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
+          PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
+          PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.validate-pixiewood-build-cache.outputs.usable == 'true' && '1' || '' }}
+        run: PIXIEWOOD_PHASE=configure scripts/android/build-chat-poc-apk.sh
+
+      - name: Build chat APK
+        id: build-apk
+        env:
+          PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
+          PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
+          PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.validate-pixiewood-build-cache.outputs.usable == 'true' && '1' || '' }}
+        run: PIXIEWOOD_PHASE=build scripts/android/build-chat-poc-apk.sh
+
+      - name: Detect post-build cache targets
+        if: always()
+        id: post-build-cache
+        run: |
+          save_gradle=false
+          save_pixiewood_build=false
+
+          if [ -d "$GRADLE_USER_HOME/caches" ] && find "$GRADLE_USER_HOME/caches" -type f -print -quit | grep -q .; then
+            save_gradle=true
+          fi
+          if [ -f .pixiewood/pixiewood.ini ] &&
+             [ -f .pixiewood/toolchain.cross ] &&
+             [ -f .pixiewood/bin-aarch64/build.ninja ] &&
+             find .pixiewood/bin-aarch64 -type f \( -name '*.o' -o -name '*.so' -o -name '*.a' \) -print -quit | grep -q .; then
+            save_pixiewood_build=true
+          fi
+
+          echo "gradle=$save_gradle" >> "$GITHUB_OUTPUT"
+          echo "pixiewood-build=$save_pixiewood_build" >> "$GITHUB_OUTPUT"
+
+      - name: Save Gradle cache
+        if: always() && steps.post-build-cache.outputs.gradle == 'true' && steps.restore-gradle.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ env.GRADLE_USER_HOME }}/caches
+            ${{ env.GRADLE_USER_HOME }}/wrapper
+          key: gradle-android-v1-stable-${{ hashFiles('scripts/android/gtk-android-builder.revision') }}
+
+      - name: Save Pixiewood compile cache (stable)
+        if: always() && steps.build-apk.outcome == 'success' && steps.post-build-cache.outputs.pixiewood-build == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .pixiewood/bin-aarch64
+            .pixiewood/pixiewood.ini
+            .pixiewood/toolchain.cross
+          key: pixiewood-build-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
+
+      - name: Save Pixiewood compile cache (partial)
+        if: always() && steps.build-apk.outcome != 'success' && steps.post-build-cache.outputs.pixiewood-build == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .pixiewood/bin-aarch64
+            .pixiewood/pixiewood.ini
+            .pixiewood/toolchain.cross
+          key: pixiewood-build-v1-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-${{ github.run_id }}
+
+      - name: Collect APK artifact
+        run: |
+          mkdir -p android-artifacts
+          cp .pixiewood/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk \
+            android-artifacts/ollmchat-android-poc-debug.apk
+          ls -lh android-artifacts
+
+      - name: Verify APK contains application and chat libraries
+        run: |
+          unzip -l android-artifacts/ollmchat-android-poc-debug.apk | \
+            grep -q 'lib/arm64-v8a/libollmchat-android-poc.so'
+          unzip -l android-artifacts/ollmchat-android-poc-debug.apk | \
+            grep -q 'lib/arm64-v8a/libollmchat.so'
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ollmchat-android-apk
+          path: android-artifacts/ollmchat-android-poc-debug.apk
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload APK to GitHub Release
+        if: inputs.upload_to_release && startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          release_apk="android-artifacts/ollmchat-android-${tag}-debug.apk"
+          cp android-artifacts/ollmchat-android-poc-debug.apk "$release_apk"
+          for attempt in $(seq 1 90); do
+            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release upload "$tag" "$release_apk" \
+                --repo "$GITHUB_REPOSITORY" \
+                --clobber
+              exit 0
+            fi
+            echo "Release $tag not ready yet (attempt $attempt/90); waiting 60s..."
+            sleep 60
+          done
+          echo "Timed out waiting for GitHub Release $tag" >&2
+          exit 1
