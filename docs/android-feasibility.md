@@ -218,9 +218,9 @@ services or GGUF inference on device.
 
 ### Feasible now
 
-GitHub Actions can automatically build the existing remote-only desktop
-configuration. This validates that the no-GGUF path keeps compiling without
-requiring libllama packages.
+GitHub Actions can build the existing remote-only desktop configuration on
+demand. This validates that the no-GGUF path keeps compiling without requiring
+libllama packages.
 
 The Android shell APK can also be built locally with:
 
@@ -242,7 +242,7 @@ app-arm64-v8a-debug.apk
 app-universal-debug.apk
 ```
 
-A suitable PR workflow should:
+A suitable manual workflow should:
 
 - install the normal Linux build dependencies
 - install FAISS from Debian, matching the existing release/docs workflows
