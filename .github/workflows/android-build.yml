@@ -102,6 +102,10 @@ jobs:
             sassc \
             unzip \
             valac
+          # apt runs as root; drop transient lock/partial and hand ownership to the runner
+          # so actions/cache/save can tar the downloaded .deb archives.
+          sudo rm -rf "$APT_CACHE_DIR/partial" "$APT_CACHE_DIR/lock"
+          sudo chown -R "$(whoami):$(whoami)" "$APT_CACHE_DIR"
 
       - name: Save apt package cache
         if: always() && steps.install-deps.outcome == 'success'
