@@ -86,7 +86,13 @@ download_meson_subprojects() {
 
   rm -rf \
     "$ROOT_DIR/subprojects/libgee" \
-    "$ROOT_DIR/subprojects/gee"
+    "$ROOT_DIR/subprojects/gee" \
+    "$ROOT_DIR/subprojects/json-glib" \
+    "$ROOT_DIR/subprojects/json-glib-1.10.8" \
+    "$ROOT_DIR/subprojects/libsoup" \
+    "$ROOT_DIR/subprojects/libsoup-3.6.5" \
+    "$ROOT_DIR/subprojects/libxml2" \
+    "$ROOT_DIR/subprojects/libxml2-2.15.3"
 
   local dir
   for dir in "$ROOT_DIR/subprojects"/*/; do
@@ -95,7 +101,27 @@ download_meson_subprojects() {
     fi
   done
 
-  "$meson" subprojects download --sourcedir "$ROOT_DIR"
+  with_android_meson_path "$meson" subprojects download --sourcedir "$ROOT_DIR"
+}
+
+path_without_gi_scanners() {
+  local entry filtered=""
+  local old_ifs="$IFS"
+  IFS=':'
+  for entry in $PATH; do
+    if [ -n "$entry" ] && [ ! -x "$entry/g-ir-scanner" ]; then
+      filtered="${filtered:+$filtered:}$entry"
+    fi
+  done
+  IFS="$old_ifs"
+  printf '%s\n' "$filtered"
+}
+
+with_android_meson_path() {
+  local old_path="$PATH"
+  PATH="$(path_without_gi_scanners)"
+  "$@"
+  PATH="$old_path"
 }
 
 ensure_gtk_android_builder() {
@@ -154,7 +180,7 @@ reconfigure_pixiewood_build() {
     cross_files+=(--cross-file "$ROOT_DIR/android/pixiewood-extra.cross")
   fi
 
-  "$meson" setup --reconfigure \
+  with_android_meson_path "$meson" setup --reconfigure \
     "${cross_files[@]}" \
     --buildtype debug \
     "${configure_options[@]}" \

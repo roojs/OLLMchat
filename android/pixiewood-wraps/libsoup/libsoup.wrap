@@ -1,8 +1,9 @@
-[wrap-git]
-directory = libsoup
-url = https://gitlab.gnome.org/GNOME/libsoup.git
-revision = main
-depth = 1
+[wrap-file]
+directory = libsoup-3.6.5
+source_url = https://download.gnome.org/sources/libsoup/3.6/libsoup-3.6.5.tar.xz
+source_fallback_url = https://ftp.acc.umu.se/pub/gnome/sources/libsoup/3.6/libsoup-3.6.5.tar.xz
+source_filename = libsoup-3.6.5.tar.xz
+source_hash = 6891765aac3e949017945c3eaebd8cc8216df772456dc9f460976fbdb7ada234
 
 [provide]
 dependency_names = libsoup-3.0

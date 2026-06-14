@@ -69,7 +69,6 @@ jobs:
             git \
             gir1.2-appstream \
             glslc \
-            gobject-introspection \
             libadwaita-1-dev \
             libglib-object-introspection-perl \
             libglib-perl \
