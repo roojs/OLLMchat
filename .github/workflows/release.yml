@@ -9,6 +9,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      refresh_cache:
+        description: Rebuild sqgipkg, Meson, and Debian extra-package caches from scratch
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -19,11 +24,44 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    env:
+      SQGI_CACHE_KEY: sqgi-build-v1-${{ hashFiles('OLLMchat/scripts/release/sqgi.revision') }}
+      SQGIPKG_DEPS_CACHE_KEY: sqgipkg-deps-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/sqgipkg.json', 'OLLMchat/scripts/release/sqgi.revision') }}
+      SQGIPKG_MESON_CACHE_KEY: sqgipkg-meson-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/**/*.vala', 'OLLMchat/**/meson.build', 'OLLMchat/meson.build', 'OLLMchat/meson_options.txt', 'OLLMchat/sqgipkg.json') }}
+      DEB_CACHE_DIR: OLLMchat/.ci-cache/debian-debs-amd64
     steps:
       - name: Checkout OLLMchat
         uses: actions/checkout@v4
         with:
           path: OLLMchat
+
+      - name: Restore sqgipkg dependency cache
+        uses: actions/cache@v4
+        with:
+          path: OLLMchat/.sqgipkg
+          key: ${{ env.SQGIPKG_DEPS_CACHE_KEY }}
+          restore-keys: |
+            sqgipkg-deps-v1-stable-
+
+      - name: Restore sqgipkg Meson build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            OLLMchat/build-linux-x86_64
+            OLLMchat/build-linux-aarch64
+            OLLMchat/build-windows-x86_64
+          key: ${{ env.SQGIPKG_MESON_CACHE_KEY }}
+          restore-keys: |
+            sqgipkg-meson-v1-stable-
+
+      - name: Restore Debian extra package download cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.DEB_CACHE_DIR }}
+          key: debian-extra-debs-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}
+          restore-keys: |
+            debian-extra-debs-v1-stable-
+            debian-extra-debs-v1-
 
       - name: Install Debian build dependencies
         run: |
@@ -40,26 +78,15 @@ jobs:
       # Ubuntu 24.04 does not ship libfaiss-dev; install the current Debian amd64
       # package (same approach as deploy-docs.yml) before the native deb build.
       - name: Install libfaiss-dev from Debian
-        run: |
-          set -euo pipefail
-          sudo apt-get install -y libblas-dev liblapack-dev libomp-dev
-          POOL="https://deb.debian.org/debian/pool/main/f/faiss"
-          deb=$(curl -fsSL "$POOL/" \
-            | grep -oE 'href="libfaiss-dev_[^"]+_amd64\.deb"' \
-            | sed 's/^href="//;s/"$//' \
-            | sort -V \
-            | tail -n1)
-          if [ -z "${deb}" ]; then
-            echo "Could not find libfaiss-dev_*_amd64.deb under ${POOL}" >&2
-            exit 1
-          fi
-          echo "Using Debian package: ${deb}"
-          curl -fsSL "$POOL/${deb}" -o /tmp/libfaiss-dev.deb
-          sudo apt-get install -y libfaiss1 || true
-          sudo dpkg -i /tmp/libfaiss-dev.deb || sudo apt-get install -f -y
+        working-directory: OLLMchat
+        env:
+          DEB_CACHE_DIR: ${{ github.workspace }}/${{ env.DEB_CACHE_DIR }}
+        run: ./scripts/ci/install-libfaiss-dev-debian.sh
 
       - name: Install libllama from Debian
         working-directory: OLLMchat
+        env:
+          DEB_CACHE_DIR: ${{ github.workspace }}/${{ env.DEB_CACHE_DIR }}
         run: ./scripts/fetch-libllama.sh
 
       - name: Build Debian packages (amd64)
@@ -80,11 +107,31 @@ jobs:
           dpkg-buildpackage -us -uc -b
           ./debian/use-monolithic-package.sh
 
+      - name: Read sqgi revision
+        id: sqgi
+        working-directory: OLLMchat
+        run: |
+          rev="$(grep -v '^[[:space:]]*#' scripts/release/sqgi.revision | grep -v '^[[:space:]]*$' | head -n1 | tr -d '[:space:]')"
+          if [ -z "$rev" ]; then
+            echo "Missing sqgi revision in scripts/release/sqgi.revision" >&2
+            exit 1
+          fi
+          echo "rev=$rev" >> "$GITHUB_OUTPUT"
+
       - name: Checkout sqgi (runtime + sqgipkg)
         uses: actions/checkout@v4
         with:
           repository: supercamel/sqgi
           path: sqgi
+          ref: ${{ steps.sqgi.outputs.rev }}
+
+      - name: Restore sqgi build cache
+        uses: actions/cache@v4
+        with:
+          path: sqgi/build
+          key: ${{ env.SQGI_CACHE_KEY }}
+          restore-keys: |
+            sqgi-build-v1-
 
       - name: Install AppImage and Windows build dependencies
         run: |
@@ -152,3 +199,10 @@ jobs:
             --generate-notes \
           || gh release upload "$GITHUB_REF_NAME" artifacts/* \
             --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Save Debian extra package download cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.DEB_CACHE_DIR }}
+          key: debian-extra-debs-v1-${{ hashFiles('OLLMchat/.ci-cache/debian-debs-amd64/**') }}

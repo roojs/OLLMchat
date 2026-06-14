@@ -1,0 +1,8 @@
+[wrap-git]
+directory = libsoup
+url = https://gitlab.gnome.org/GNOME/libsoup.git
+revision = main
+depth = 1
+
+[provide]
+dependency_names = libsoup-3.0

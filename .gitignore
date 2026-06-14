@@ -2,6 +2,7 @@ build/
 build-*/
 dist-*/
 .sqgipkg/
+.ci-cache/
 .android-sdk/
 .android-tools/
 .pixiewood/

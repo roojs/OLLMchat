@@ -47,9 +47,15 @@ if host_machine.system() == 'windows'
 endif
 
 android_shell_poc = get_option('android_shell_poc')
+android_poc_opt = get_option('android_poc')
+android_cross_build = host_machine.system() == 'android' and (android_shell_poc or android_poc_opt)
 local_gguf_enabled = false
 
-if android_shell_poc
+if android_shell_poc and android_poc_opt
+  error('android_shell_poc and android_poc are mutually exclusive')
+endif
+
+if android_cross_build
   bundle_sysroot = ''
   bundle_windows_prefix = ''
 else
@@ -76,6 +82,12 @@ endif
 # Build libraries in dependency order
 if android_shell_poc
   subdir('ollmapp')         # Minimal Android APK shell target only
+elif android_poc_opt and host_machine.system() == 'android'
+  subdir('libocmarkdown')
+  subdir('libocsqlite')
+  subdir('libollamaweb')
+  subdir('libollmchat')
+  subdir('ollmapp')         # Remote-chat Android APK target
 else
   subdir('libocsqlite')      # No dependencies
   subdir('libocrpc')         # JSON-RPC wire types — no OLLMfiles dependency
@@ -125,6 +137,10 @@ exec "$EXECUTABLE" "$@"
 if android_shell_poc
   executables_info = [
     ['ollmchat-android-shell-poc', 'ollmapp/ollmchat-android-shell-poc'],
+  ]
+elif android_poc_opt and host_machine.system() == 'android'
+  executables_info = [
+    ['ollmchat-android-poc', 'ollmapp/ollmchat-android-poc'],
   ]
 else
   executables_info = [
@@ -210,13 +226,13 @@ foreach exe_info : executables_info
   )
 endforeach
 
-if get_option('docs') and not android_shell_poc
+if get_option('docs') and not android_cross_build
   subdir('docs')             # Depends on all source files
 endif
 
 # Post-install script to update icon cache and desktop database when the host
 # tools are available. Minimal CI/package builders may not install both.
-if not android_shell_poc
+if not android_cross_build
   gnome.post_install(
     gtk_update_icon_cache: find_program('gtk-update-icon-cache', required: false).found(),
     update_desktop_database: find_program('update-desktop-database', required: false).found()
