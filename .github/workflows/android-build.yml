@@ -33,6 +33,7 @@ jobs:
           echo "PIXIEWOOD_APP_HASH=${{ hashFiles('meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/AndroidPoc.vala') }}" >> "$GITHUB_ENV"
 
       - name: Restore Android SDK and NDK cache
+        id: restore-android-sdk
         uses: actions/cache/restore@v4
         with:
           path: .android-sdk
@@ -42,6 +43,7 @@ jobs:
             android-sdk-v1-
 
       - name: Restore Android tooling cache
+        id: restore-android-tools
         uses: actions/cache/restore@v4
         with:
           path: .android-tools
@@ -51,6 +53,7 @@ jobs:
             android-tools-v1-
 
       - name: Restore Meson subprojects cache
+        id: restore-android-subprojects
         uses: actions/cache/restore@v4
         with:
           path: subprojects
@@ -59,7 +62,8 @@ jobs:
             android-subprojects-v1-stable-
             android-subprojects-v1-
 
-      - name: Restore Pixiewood build tree cache
+      - name: Restore Pixiewood compile cache
+        id: restore-pixiewood-build
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -68,22 +72,24 @@ jobs:
             .pixiewood/toolchain.cross
           key: pixiewood-build-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
           restore-keys: |
+            pixiewood-build-v1-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-
             pixiewood-build-v1-${{ env.PIXIEWOOD_DEPS_HASH }}-
-            pixiewood-build-v1-stable-
             pixiewood-build-v1-
 
       - name: Restore Gradle cache
+        id: restore-gradle
         uses: actions/cache/restore@v4
         with:
           path: |
             ${{ env.GRADLE_USER_HOME }}/caches
             ${{ env.GRADLE_USER_HOME }}/wrapper
-          key: gradle-android-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}
+          key: gradle-android-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('scripts/android/gtk-android-builder.revision') }}
           restore-keys: |
             gradle-android-v1-stable-
             gradle-android-v1-
 
       - name: Restore apt package cache
+        id: restore-apt
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.APT_CACHE_DIR }}
@@ -128,7 +134,7 @@ jobs:
           sudo chown -R "$(whoami):$(whoami)" "$APT_CACHE_DIR"
 
       - name: Save apt package cache
-        if: always() && steps.install-deps.outcome == 'success'
+        if: always() && steps.install-deps.outcome == 'success' && steps.restore-apt.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ${{ env.APT_CACHE_DIR }}
@@ -138,6 +144,7 @@ jobs:
         id: pixiewood-setup
         env:
           PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
+          PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
         run: PIXIEWOOD_PHASE=setup scripts/android/build-chat-poc-apk.sh
 
       - name: Detect post-setup cache targets
@@ -163,21 +170,21 @@ jobs:
           echo "subprojects=$save_subprojects" >> "$GITHUB_OUTPUT"
 
       - name: Save Android SDK and NDK cache
-        if: always() && steps.post-setup-cache.outputs.android-sdk == 'true'
+        if: always() && steps.post-setup-cache.outputs.android-sdk == 'true' && steps.restore-android-sdk.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: .android-sdk
           key: android-sdk-v1-stable-${{ hashFiles('scripts/android/install-sdk.sh') }}
 
       - name: Save Android tooling cache
-        if: always() && steps.post-setup-cache.outputs.android-tools == 'true'
+        if: always() && steps.post-setup-cache.outputs.android-tools == 'true' && steps.restore-android-tools.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: .android-tools
           key: android-tools-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}
 
       - name: Save Meson subprojects cache
-        if: always() && steps.post-setup-cache.outputs.subprojects == 'true'
+        if: always() && steps.post-setup-cache.outputs.subprojects == 'true' && steps.restore-android-subprojects.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: subprojects
@@ -187,34 +194,16 @@ jobs:
         id: pixiewood-configure
         env:
           PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
+          PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
+          PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.restore-pixiewood-build.outputs.cache-matched-key != '' && '1' || '' }}
         run: PIXIEWOOD_PHASE=configure scripts/android/build-chat-poc-apk.sh
-
-      - name: Detect post-configure cache targets
-        if: always()
-        id: post-configure-cache
-        run: |
-          save_pixiewood_build=false
-          if [ -f .pixiewood/pixiewood.ini ] &&
-             [ -f .pixiewood/toolchain.cross ] &&
-             [ -f .pixiewood/bin-aarch64/build.ninja ]; then
-            save_pixiewood_build=true
-          fi
-          echo "pixiewood-build=$save_pixiewood_build" >> "$GITHUB_OUTPUT"
-
-      - name: Save Pixiewood build tree cache
-        if: always() && steps.post-configure-cache.outputs.pixiewood-build == 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            .pixiewood/bin-aarch64
-            .pixiewood/pixiewood.ini
-            .pixiewood/toolchain.cross
-          key: pixiewood-build-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
 
       - name: Build chat APK
         id: build-apk
         env:
           PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
+          PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
+          PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.restore-pixiewood-build.outputs.cache-matched-key != '' && '1' || '' }}
         run: PIXIEWOOD_PHASE=build scripts/android/build-chat-poc-apk.sh
 
       - name: Detect post-build cache targets
@@ -229,7 +218,8 @@ jobs:
           fi
           if [ -f .pixiewood/pixiewood.ini ] &&
              [ -f .pixiewood/toolchain.cross ] &&
-             [ -f .pixiewood/bin-aarch64/build.ninja ]; then
+             [ -f .pixiewood/bin-aarch64/build.ninja ] &&
+             find .pixiewood/bin-aarch64 -type f \( -name '*.o' -o -name '*.so' -o -name '*.a' \) -print -quit | grep -q .; then
             save_pixiewood_build=true
           fi
 
@@ -237,7 +227,7 @@ jobs:
           echo "pixiewood-build=$save_pixiewood_build" >> "$GITHUB_OUTPUT"
 
       - name: Save Gradle cache
-        if: always() && steps.post-build-cache.outputs.gradle == 'true'
+        if: always() && steps.post-build-cache.outputs.gradle == 'true' && steps.restore-gradle.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -245,7 +235,7 @@ jobs:
             ${{ env.GRADLE_USER_HOME }}/wrapper
           key: gradle-android-v1-stable-${{ hashFiles('scripts/android/gtk-android-builder.revision') }}
 
-      - name: Save Pixiewood build tree cache
+      - name: Save Pixiewood compile cache
         if: always() && steps.post-build-cache.outputs.pixiewood-build == 'true'
         uses: actions/cache/save@v4
         with:
@@ -253,7 +243,7 @@ jobs:
             .pixiewood/bin-aarch64
             .pixiewood/pixiewood.ini
             .pixiewood/toolchain.cross
-          key: pixiewood-build-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
+          key: pixiewood-build-v1-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-${{ github.run_id }}
 
       - name: Collect APK artifact
         run: |

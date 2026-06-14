@@ -194,6 +194,31 @@ run_pixiewood() {
   with_android_meson_path "$PIXIEWOOD" -C "$ROOT_DIR" "$@"
 }
 
+maybe_download_meson_subprojects() {
+  local meson="$1"
+
+  if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ]; then
+    echo "Skipping Meson subprojects download (restored from cache)."
+    return
+  fi
+
+  echo "Downloading Meson subprojects for Android wraps."
+  download_meson_subprojects "$meson"
+}
+
+maybe_reconfigure_pixiewood_build() {
+  local meson="$1"
+  shift
+
+  if [ "${PIXIEWOOD_SKIP_RECONFIGURE:-}" = "1" ] &&
+     [ -f "$PIXIEWOOD_BUILD_DIR/build.ninja" ]; then
+    echo "Skipping Pixiewood Meson reconfigure (restored compile cache)."
+    return
+  fi
+
+  reconfigure_pixiewood_build "$meson" "$@"
+}
+
 run_pixiewood_configure() {
   init_pixiewood_env
 
@@ -204,11 +229,10 @@ run_pixiewood_configure() {
       "$PIXIEWOOD_MANIFEST"
   fi
 
-  echo "Downloading Meson subprojects for Android wraps."
-  download_meson_subprojects "$MESON_FOR_ANDROID"
+  maybe_download_meson_subprojects "$MESON_FOR_ANDROID"
 
   echo "Reconfiguring Pixiewood Meson build (configure-only)."
-  reconfigure_pixiewood_build "$MESON_FOR_ANDROID" "${PIXIEWOOD_CONFIGURE_OPTIONS[@]}"
+  maybe_reconfigure_pixiewood_build "$MESON_FOR_ANDROID" "${PIXIEWOOD_CONFIGURE_OPTIONS[@]}"
 
   echo "Android cross configure succeeded for $PIXIEWOOD_BUILD_DIR"
 }
@@ -223,18 +247,16 @@ run_pixiewood_setup() {
       "$PIXIEWOOD_MANIFEST"
   fi
 
-  echo "Downloading Meson subprojects for Android wraps."
-  download_meson_subprojects "$MESON_FOR_ANDROID"
+  maybe_download_meson_subprojects "$MESON_FOR_ANDROID"
 }
 
 run_pixiewood_build() {
   init_pixiewood_env
 
-  echo "Downloading Meson subprojects for Android wraps."
-  download_meson_subprojects "$MESON_FOR_ANDROID"
+  maybe_download_meson_subprojects "$MESON_FOR_ANDROID"
 
   echo "Reconfiguring Pixiewood Meson build."
-  reconfigure_pixiewood_build "$MESON_FOR_ANDROID" "${PIXIEWOOD_CONFIGURE_OPTIONS[@]}"
+  maybe_reconfigure_pixiewood_build "$MESON_FOR_ANDROID" "${PIXIEWOOD_CONFIGURE_OPTIONS[@]}"
 
   run_pixiewood generate
   run_pixiewood build
