@@ -16,7 +16,9 @@ The practical near-term path is:
 
 1. Keep Android as an experimental investigation.
 2. Build and test the existing remote-only desktop configuration in CI.
-3. Treat GGUF/libllama as optional for mobile and disable it for early Android
+3. Maintain a stripped-down Android proof-of-concept entry point that avoids
+   the desktop window and its tool/project/vector setup.
+4. Treat GGUF/libllama as optional for mobile and disable it for early Android
    experiments.
 
 ## Current application shape
@@ -34,6 +36,50 @@ The existing release automation builds:
 
 There are no Android project files today: no Gradle project, Android manifest,
 APK/AAB packaging, Android NDK cross file, or Android GitHub Actions workflow.
+
+## Minimal Android proof of concept
+
+The repository now includes an opt-in proof-of-concept target:
+
+```bash
+meson setup build-android-poc --prefix=/usr \
+  -Dandroid_poc=true \
+  -Dlocal_gguf=disabled
+ninja -C build-android-poc ollmapp/ollmchat-android-poc
+```
+
+The target is `ollmchat-android-poc` and the source is
+`ollmapp/AndroidPoc.vala`. It intentionally does not instantiate
+`OllmchatApplication` or `OllmchatWindow`.
+
+The POC window only provides:
+
+- server URL
+- optional API key
+- model name
+- prompt text
+- response output
+
+It sends one remote-only chat request through `OLLMchat.Call.ChatCompletions`
+and does not initialize:
+
+- history/session management
+- tool registries
+- vector search
+- MCP stdio servers
+- project/file management
+- command execution
+- model pulling
+- settings pages
+
+This is the correct application surface to use for an Android package
+experiment. It keeps the first mobile target focused on "can GTK launch and can
+remote chat work?" instead of trying to port the full desktop app at once.
+
+When Meson is cross-building for `host_machine.system() == 'android'`, the POC
+target is declared with `android_exe_type: 'application'` so Android can load it
+as an application shared object. Desktop builds omit that keyword and compile
+the same POC as a normal executable for CI validation.
 
 ## GGUF / local inference
 
@@ -131,6 +177,7 @@ A suitable PR workflow should:
 - install the normal Linux build dependencies
 - install FAISS from Debian, matching the existing release/docs workflows
 - configure Meson with `-Dlocal_gguf=disabled`
+- configure Meson with `-Dandroid_poc=true`
 - compile with Ninja
 - run offline tests that do not require Ollama, local model downloads, or
   Android devices
@@ -142,25 +189,26 @@ target. A future Android CI job would need:
 
 - Android SDK and NDK setup
 - Meson with Android application target support
-- Pixiewood or equivalent packaging configuration
+- Pixiewood or equivalent packaging configuration for `ollmchat-android-poc`
 - Android builds or wraps for the required GTK/native dependencies
 - feature gating for Linux-only components
 - emulator or device smoke tests
 
 ## Recommended next steps
 
-1. Keep the initial CI focused on the remote-only Linux build.
-2. Add Meson options to disable Android-hostile subsystems independently:
+1. Keep the initial CI focused on the remote-only Linux build and POC target.
+2. Add Pixiewood or Gradle packaging around `ollmchat-android-poc`.
+3. Add Meson options to disable Android-hostile subsystems independently:
    vector search, command execution sandboxing, MCP stdio, and `ollmfilesd`.
-3. Create a tiny GTK Android proof of concept before attempting the full app.
-4. If the proof of concept works, create a minimal OLLMchat Android target that
-   only supports remote chat.
-5. Reintroduce larger desktop features only after the app launches and basic
+4. Cross-build GTK, Libadwaita, GLib, libsoup, and libollmchat dependencies
+   for Android.
+5. Create an APK/AAB workflow once the Android dependency bundle exists.
+6. Reintroduce larger desktop features only after the app launches and basic
    chat works on device.
 
 ## Verdict
 
 Remote-only/no-GGUF builds are already supported and are appropriate for CI.
 Android is technically possible, but it is a porting project rather than a
-release packaging task. The first Android milestone should be a minimal
-remote-only chat client, not the full desktop application.
+release packaging task. The first Android milestone is the minimal
+`ollmchat-android-poc` remote chat client, not the full desktop application.
