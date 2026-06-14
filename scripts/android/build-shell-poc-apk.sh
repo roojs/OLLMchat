@@ -32,10 +32,11 @@ export CC="${CC:-gcc}"
 export CXX="${CXX:-g++}"
 export CC_FOR_BUILD="${CC_FOR_BUILD:-gcc}"
 export CXX_FOR_BUILD="${CXX_FOR_BUILD:-g++}"
+MESON_FOR_ANDROID="$("$ROOT_DIR/scripts/android/ensure-meson.sh")"
 
 "$PIXIEWOOD" -C "$ROOT_DIR" prepare \
   --sdk "$ANDROID_SDK_ROOT" \
-  --meson "$(command -v meson)" \
+  --meson "$MESON_FOR_ANDROID" \
   "$PIXIEWOOD_MANIFEST"
 "$PIXIEWOOD" -C "$ROOT_DIR" generate
 "$PIXIEWOOD" -C "$ROOT_DIR" build

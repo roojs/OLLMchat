@@ -231,14 +231,16 @@ scripts/android/build-shell-poc-apk.sh
 A suitable PR workflow should:
 
 - install the normal Linux build dependencies
-- install a newer Meson package from Debian's package pool, matching the
-  out-of-band dependency approach used for FAISS
 - install FAISS from Debian, matching the existing release/docs workflows
 - configure Meson with `-Dlocal_gguf=disabled`
 - configure Meson with `-Dandroid_poc=true`
 - compile with Ninja
 - run offline tests that do not require Ollama, local model downloads, or
   Android devices
+
+Normal Linux builds should continue to work with the distro Meson shipped by
+Ubuntu 24.04. A newer Meson is only required when cross-building the Android
+application target, because that path needs `android_exe_type`.
 
 ### Not automated yet
 
@@ -247,9 +249,9 @@ enabled in this PR because it downloads/builds a large GTK Android dependency
 stack. A future Android CI job would need:
 
 - Android SDK and NDK setup through `scripts/android/install-sdk.sh`
-- Meson with Android application target support; this is available from
-  Debian's current `meson_*_all.deb` package without enabling a full testing
-  repository
+- Meson with Android application target support; `scripts/android/ensure-meson.sh`
+  downloads and extracts Debian's current `meson_*_all.deb` under
+  `.android-tools/` when the system Meson is too old
 - Pixiewood package generation through `android/pixiewood-shell-poc.xml`
 - artifact upload for generated debug APKs
 - emulator or device smoke tests

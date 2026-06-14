@@ -45,30 +45,10 @@ jobs:
             libsqlite3-dev \
             libtree-sitter-dev \
             libxml2-dev \
+            meson \
             ninja-build \
             pkg-config \
             valac
-
-      # Ubuntu 24.04 ships Meson 1.3, but Android application targets need
-      # android_exe_type support from newer Meson. Install the current Debian
-      # all-arch package without enabling a broader testing repository.
-      - name: Install Meson from Debian
-        run: |
-          set -euo pipefail
-          POOL="https://deb.debian.org/debian/pool/main/m/meson"
-          deb=$(curl -fsSL "$POOL/" \
-            | grep -oE 'href="meson_[^"]+_all\.deb"' \
-            | sed 's/^href="//;s/"$//' \
-            | sort -V \
-            | tail -n1)
-          if [ -z "${deb}" ]; then
-            echo "Could not find meson_*_all.deb under ${POOL}" >&2
-            exit 1
-          fi
-          echo "Using Debian package: ${deb}"
-          curl -fsSL "$POOL/${deb}" -o /tmp/meson.deb
-          sudo dpkg -i /tmp/meson.deb || sudo apt-get install -f -y
-          meson --version
 
       # Ubuntu 24.04 does not ship libfaiss-dev. Match the existing release and
       # documentation workflows by installing the current Debian amd64 package.
