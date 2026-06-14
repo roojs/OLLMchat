@@ -175,6 +175,8 @@ requiring libllama packages.
 A suitable PR workflow should:
 
 - install the normal Linux build dependencies
+- install a newer Meson package from Debian's package pool, matching the
+  out-of-band dependency approach used for FAISS
 - install FAISS from Debian, matching the existing release/docs workflows
 - configure Meson with `-Dlocal_gguf=disabled`
 - configure Meson with `-Dandroid_poc=true`
@@ -188,7 +190,9 @@ An Android APK/AAB workflow is not useful until the repository has an Android
 target. A future Android CI job would need:
 
 - Android SDK and NDK setup
-- Meson with Android application target support
+- Meson with Android application target support; this is available from
+  Debian's current `meson_*_all.deb` package without enabling a full testing
+  repository
 - Pixiewood or equivalent packaging configuration for `ollmchat-android-poc`
 - Android builds or wraps for the required GTK/native dependencies
 - feature gating for Linux-only components
