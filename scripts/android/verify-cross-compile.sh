@@ -49,7 +49,10 @@ targets=(
 )
 
 if [ "$WITH_APP" = true ]; then
-  targets+=(ollmchat-android-poc)
+  targets+=(
+    ollmapp/libollmchat-android-poc.so
+    ollmchat-android-poc
+  )
 fi
 
 echo "Compiling Android cross targets: ${targets[*]}" >&2
