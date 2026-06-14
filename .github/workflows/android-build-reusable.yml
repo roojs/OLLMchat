@@ -11,6 +11,10 @@ on:
         description: Upload the APK to the matching GitHub Release (tag pushes only)
         type: boolean
         default: false
+      non_blocking:
+        description: Mark the build job as success even if it fails (for optional release APK builds)
+        type: boolean
+        default: false
 
 env:
   APT_CACHE_DIR: .ci-cache/apt
@@ -21,6 +25,7 @@ jobs:
     name: Build APK
     runs-on: ubuntu-24.04
     timeout-minutes: 180
+    continue-on-error: ${{ inputs.non_blocking }}
 
     steps:
       - name: Checkout repository
