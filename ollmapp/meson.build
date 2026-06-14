@@ -122,10 +122,12 @@ if get_option('android_poc') and host_machine.system() == 'android'
       include_directories('../libocsqlite')
     ],
     build_rpath: build_rpath,
+    # Do not add --pkg=gee-0.8 here: android_poc_deps already lists
+    # dependency('gee-0.8'); Meson passes gee-0.8.vapi to valac. A duplicate
+    # --pkg breaks Android cross-builds — see docs/android-build.md.
     vala_args: [
       '--pkg=gtk4',
       '--pkg=libadwaita-1',
-      '--pkg=gee-0.8',
       '--pkg=sqlite3',
       '--pkg=ocsqlite',
       '--pkg=ollmchat',
@@ -288,9 +290,10 @@ if get_option('android_poc') and host_machine.system() != 'android'
   ]
 
   android_poc_vala_args = [
+    # Do not add --pkg=gee-0.8 — dependency('gee-0.8') in android_poc_deps
+    # is enough; see docs/android-build.md.
     '--pkg=gtk4',
     '--pkg=libadwaita-1',
-    '--pkg=gee-0.8',
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
     '--pkg=ollmchat',

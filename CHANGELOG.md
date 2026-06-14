@@ -33,7 +33,7 @@ from it — do not edit `debian/changelog` by hand. Regenerate with:
 - **Android**: Pixiewood shell APK scaffold and remote-only chat POC target
   (`ollmchat-android-poc`)
 - **CI**: manual Android APK artifact workflow; Android validation workflows are
-  manual-only
+  manual-only; tag releases also build and attach the Android debug APK
 - **Release tooling**: changelog sync/finalize scripts; GitHub Release notes rendered
   from `CHANGELOG.md`
 - **Docs**: Android feasibility notes, remote-only CI documentation, and

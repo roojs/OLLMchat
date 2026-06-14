@@ -23,6 +23,7 @@ On **ubuntu-24.04**, CI:
 5. Runs `dpkg-buildpackage` to produce **Debian packages** (amd64 only — see below).
 6. Uploads the artifacts to the workflow run.
 7. If the run was triggered by a tag push, creates or updates the matching **GitHub Release** and uploads the files as release assets.
+8. On tag pushes, also runs the **Android APK** build in parallel (via a reusable workflow). When the APK is ready, CI uploads it to the same GitHub Release. Android failures do not block desktop publishing or changelog finalization.
 
 AppImage and Windows packaging is configured in [`sqgipkg.json`](../sqgipkg.json). Debian packaging lives under [`debian/`](../debian/).
 
@@ -83,6 +84,7 @@ Manual **workflow_dispatch** runs use whatever is already in `CHANGELOG.md` (inc
    | `OLLMchat-remote-only-Setup.exe` | Windows installer; remote backends only |
    | `ollmchat_*.deb` | All-in-one package with local GGUF (Debian/Ubuntu amd64) |
    | `ollmchat-remote-only_*.deb` | All-in-one package without libllama (Debian/Ubuntu amd64) |
+   | `ollmchat-android-v*-debug.apk` | Android remote chat POC (arm64 debug APK; may appear shortly after the desktop assets) |
 
    Release notes on GitHub come from the **`[Unreleased]`** section of `CHANGELOG.md` (not from commit messages).
    After a **successful** publish, that section is promoted to a dated version entry and committed to `main`.

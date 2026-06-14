@@ -72,8 +72,12 @@ if android_cross_build
   # --pkg lines for C-library deps to library() targets. Bundled vapis under
   # vapi/ still need explicit --pkg flags at compile time.
   # gee-0.8 is omitted here: Meson already passes gee-0.8.vapi as an input to
-  # library() compiles via dependency('gee-0.8'), and --pkg=gee-0.8 would load
-  # it a second time from the build-tree vapidir.
+  # library() and executable() compiles via dependency('gee-0.8'). Adding
+  # --pkg=gee-0.8 here duplicates the vapi ("Gee already contains definition")
+  # or fails lookup ("Package gee-0.8 not found"). See docs/android-build.md
+  # (Vala / gee-0.8). Custom vapi targets are the exception — they need
+  # --vapidir subprojects/libgee-0.20.8/gee plus --pkg=gee-0.8 in their
+  # custom_target command, not on executables.
   add_project_arguments([
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
