@@ -9,6 +9,7 @@ PIXIEWOOD_ARCH="${PIXIEWOOD_ARCH:-aarch64}"
 PIXIEWOOD_BUILD_DIR="$ROOT_DIR/.pixiewood/bin-$PIXIEWOOD_ARCH"
 PIXIEWOOD="${PIXIEWOOD:-}"
 GTK_ANDROID_BUILDER_REVISION="${GTK_ANDROID_BUILDER_REVISION:-}"
+PIXIEWOOD_PHASE="${PIXIEWOOD_PHASE:-all}"
 
 read_gtk_android_builder_revision() {
   local revision_file="$ROOT_DIR/scripts/android/gtk-android-builder.revision"
@@ -39,13 +40,12 @@ install_pixiewood_extra_wraps() {
         cp -a "$wrap" "$ROOT_DIR/subprojects/"
       fi
     done
-  done
 
-  if [ -d "$extra/sqlite3/packagefiles/sqlite3" ]; then
-    mkdir -p "$ROOT_DIR/subprojects/packagefiles/sqlite3"
-    cp -a "$extra/sqlite3/packagefiles/sqlite3/"* \
-      "$ROOT_DIR/subprojects/packagefiles/sqlite3/"
-  fi
+    if [ -d "$dep_dir/packagefiles" ]; then
+      mkdir -p "$ROOT_DIR/subprojects/packagefiles"
+      cp -a "$dep_dir/packagefiles/." "$ROOT_DIR/subprojects/packagefiles/"
+    fi
+  done
 }
 
 pixiewood_prefix_has_pkg() {
@@ -83,6 +83,10 @@ download_meson_subprojects() {
   if ! compgen -G "$ROOT_DIR/subprojects/*.wrap" > /dev/null; then
     return
   fi
+
+  rm -rf \
+    "$ROOT_DIR/subprojects/libgee" \
+    "$ROOT_DIR/subprojects/gee"
 
   local dir
   for dir in "$ROOT_DIR/subprojects"/*/; do
@@ -158,38 +162,67 @@ reconfigure_pixiewood_build() {
     "$ROOT_DIR"
 }
 
-if [ ! -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ] ||
-   [ ! -d "$ANDROID_SDK_ROOT/ndk" ]; then
-  "$ROOT_DIR/scripts/android/install-sdk.sh"
-fi
+init_pixiewood_env() {
+  if [ ! -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ] ||
+     [ ! -d "$ANDROID_SDK_ROOT/ndk" ]; then
+    "$ROOT_DIR/scripts/android/install-sdk.sh"
+  fi
 
-ensure_gtk_android_builder
-install_pixiewood_extra_wraps
+  ensure_gtk_android_builder
+  install_pixiewood_extra_wraps
 
-export ANDROID_HOME="$ANDROID_SDK_ROOT"
-export ANDROID_SDK_ROOT
-export CC="${CC:-gcc}"
-export CXX="${CXX:-g++}"
-export CC_FOR_BUILD="${CC_FOR_BUILD:-gcc}"
-export CXX_FOR_BUILD="${CXX_FOR_BUILD:-g++}"
-MESON_FOR_ANDROID="$("$ROOT_DIR/scripts/android/ensure-meson.sh")"
+  export ANDROID_HOME="$ANDROID_SDK_ROOT"
+  export ANDROID_SDK_ROOT
+  export CC="${CC:-gcc}"
+  export CXX="${CXX:-g++}"
+  export CC_FOR_BUILD="${CC_FOR_BUILD:-gcc}"
+  export CXX_FOR_BUILD="${CXX_FOR_BUILD:-g++}"
+  MESON_FOR_ANDROID="$("$ROOT_DIR/scripts/android/ensure-meson.sh")"
+  mapfile -t PIXIEWOOD_CONFIGURE_OPTIONS < <(pixiewood_configure_options)
+}
 
-mapfile -t PIXIEWOOD_CONFIGURE_OPTIONS < <(pixiewood_configure_options)
+run_pixiewood_setup() {
+  init_pixiewood_env
 
-if needs_pixiewood_prepare; then
-  "$PIXIEWOOD" -C "$ROOT_DIR" prepare \
-    --sdk "$ANDROID_SDK_ROOT" \
-    --meson "$MESON_FOR_ANDROID" \
-    "$PIXIEWOOD_MANIFEST"
-fi
+  if needs_pixiewood_prepare; then
+    "$PIXIEWOOD" -C "$ROOT_DIR" prepare \
+      --sdk "$ANDROID_SDK_ROOT" \
+      --meson "$MESON_FOR_ANDROID" \
+      "$PIXIEWOOD_MANIFEST"
+  fi
 
-echo "Downloading Meson subprojects for Android wraps."
-download_meson_subprojects "$MESON_FOR_ANDROID"
+  echo "Downloading Meson subprojects for Android wraps."
+  download_meson_subprojects "$MESON_FOR_ANDROID"
+}
 
-echo "Reconfiguring Pixiewood Meson build."
-reconfigure_pixiewood_build "$MESON_FOR_ANDROID" "${PIXIEWOOD_CONFIGURE_OPTIONS[@]}"
+run_pixiewood_build() {
+  init_pixiewood_env
 
-"$PIXIEWOOD" -C "$ROOT_DIR" generate
-"$PIXIEWOOD" -C "$ROOT_DIR" build
+  echo "Downloading Meson subprojects for Android wraps."
+  download_meson_subprojects "$MESON_FOR_ANDROID"
 
-echo "Generated Android artifacts under $ROOT_DIR/.pixiewood/android/app/build/outputs"
+  echo "Reconfiguring Pixiewood Meson build."
+  reconfigure_pixiewood_build "$MESON_FOR_ANDROID" "${PIXIEWOOD_CONFIGURE_OPTIONS[@]}"
+
+  "$PIXIEWOOD" -C "$ROOT_DIR" generate
+  "$PIXIEWOOD" -C "$ROOT_DIR" build
+
+  echo "Generated Android artifacts under $ROOT_DIR/.pixiewood/android/app/build/outputs"
+}
+
+case "$PIXIEWOOD_PHASE" in
+  setup)
+    run_pixiewood_setup
+    ;;
+  build)
+    run_pixiewood_build
+    ;;
+  all)
+    run_pixiewood_setup
+    run_pixiewood_build
+    ;;
+  *)
+    echo "Unknown PIXIEWOOD_PHASE: $PIXIEWOOD_PHASE (expected setup, build, or all)" >&2
+    exit 2
+    ;;
+esac
