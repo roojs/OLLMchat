@@ -192,7 +192,12 @@ reconfigure_pixiewood_build() {
     cross_files+=(--cross-file "$ROOT_DIR/android/pixiewood-extra.cross")
   fi
 
-  with_android_meson_path "$meson" setup --reconfigure \
+  local -a setup_args=(setup)
+  if [ -f "$PIXIEWOOD_BUILD_DIR/build.ninja" ]; then
+    setup_args+=(--reconfigure)
+  fi
+
+  with_android_meson_path "$meson" "${setup_args[@]}" \
     "${cross_files[@]}" \
     --buildtype debug \
     "${configure_options[@]}" \
