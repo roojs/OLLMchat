@@ -62,6 +62,17 @@ endif
 local_gguf_enabled = false
 
 if android_cross_build
+  # GObject introspection is disabled on Android, so Meson does not attach
+  # --pkg lines for C-library deps to library() targets. Bundled vapis under
+  # vapi/ still need explicit --pkg flags at compile time.
+  add_project_arguments([
+    '--pkg=json-glib-1.0',
+    '--pkg=libsoup-3.0',
+    '--pkg=libxml-2.0',
+  ], language: 'vala')
+endif
+
+if android_cross_build
   bundle_sysroot = ''
   bundle_windows_prefix = ''
 else

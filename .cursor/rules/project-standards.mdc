@@ -5,55 +5,28 @@ alwaysApply: true
 
 # Mandatory project standards
 
-## Essential reading — non-negotiable
+## Vala code
 
-Before writing or changing **any** Vala code, you **must** read the **entire**
-**`docs/coding-standards.md`** file from start to finish. There is **no
-alternative**. Partial compliance is a violation.
+Before writing or changing **any** Vala code:
 
-### How you must read it
+1. Read **`docs/coding-standards-router.md`** in full.
+2. Follow **`.cursor/rules/vala-coding-standards-router.mdc`** (same checklist;
+   applies when `*.vala` files are in context).
+3. Read **only** the `docs/coding-standards.md` sections the router maps you to
+   (grep `section: <slug>`; read each block in full).
+4. Before finishing: read section `agent-compliance-gate` and run its checks.
 
-- Use the **Read** tool on **`docs/coding-standards.md`** and read **every
-  section**, from the first line to the last — including sections at the **end**
-  of the file (e.g. method extraction, signal handlers, debug rules).
-- Read it **before** you write, edit, or propose Vala code — not after, not
-  in parallel with the first edit.
+Do **not** read all of `docs/coding-standards.md` unless your slug set includes
+every section. Do **not** grep-or-skim sections instead of reading them whole.
+Do **not** implement until router-mandated reads are done.
 
-### What is forbidden
+## Other full documents (read entire file when task applies)
 
-Do **not**:
+| Task | Document |
+|------|----------|
+| Meson / build | `docs/build-rules.md` |
+| Docblocks (when router includes `docblocks`) | `docs/code-documentation.md` |
+| Plans in `docs/plans/*` | `docs/guide-to-writing-plans.md` |
+| Bug fixes | `docs/bug-fix-process.md` |
 
-- **Grep** or **search** the file instead of reading it.
-- **Skim** — opening sections only, “the parts that seem relevant”, or jumping
-  straight to a line number someone quoted.
-- Rely on **summaries**, **memories**, **excerpts** quoted in chat, plans, or
-  other rules — those are not substitutes for reading the source document.
-- **Guess** conventions or assume you already know this project's rules.
-- **Implement** until you have read the **whole** document in this session.
-
-If you have not read **`docs/coding-standards.md`** in full during this task,
-**stop** and read it before continuing.
-
-You **must** follow **`docs/coding-standards.md`** on every Vala change. You
-**must never** ignore it or treat it as optional guidance.
-
-### After Vala edits (mandatory verification)
-
-Before finishing the task, run the **Agent compliance gate** at the end of
-**`docs/coding-standards.md`** (search changed `*.vala` for explicit local types,
-no new helpers, etc.). See also **`.cursor/rules/vala-editing-gate.mdc`**.
-Reporting "done" without running those checks is a standards violation.
-
-### Other full documents (same rule — read all, do not grep or skim)
-
-When the task requires it, read the **full** document the same way (Read tool,
-start to finish):
-
-- **`docs/build-rules.md`** — build or Meson changes
-- **`docs/code-documentation.md`** — docblocks and API comments
-- **`docs/guide-to-writing-plans.md`** — work from `docs/plans/*`
-- **`docs/bug-fix-process.md`** — bug fixes (including propose → approval
-  before applying code)
-
-Canonical Vala style and patterns: **`docs/coding-standards.md`** (read it all).
-Plans: **`docs/guide-to-writing-plans.md`** — Checklist for plans.
+Partial compliance is a violation.

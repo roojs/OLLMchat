@@ -4,7 +4,7 @@ Written for **AI agents** — **mandatory** when an agent drafts, reviews, or im
 
 Plan markdown files live in **`docs/plans/`**; completed work is archived under **`docs/plans/done/`** (see **Done / archive** below). This document is intentionally **not** named `README.md` so it is not mistaken for a generic package readme.
 
-It is the **canonical** place for: plan shape, code-proposal fences, **ordered chunk format** for large methods, **implementation workflow**, and the **checklist for plans**. Coding and build standards live in **`docs/coding-standards.md`** and **`docs/build-rules.md`**.
+It is the **canonical** place for: plan shape, code-proposal fences, **ordered chunk format** for large methods, **implementation workflow**, and the **checklist for plans**. Coding and build standards live in **`docs/coding-standards.md`** and **`docs/build-rules.md`**. When **implementing** Vala from a plan, use **`docs/coding-standards-router.md`** to choose which coding-standards sections to read (do not read the whole file by default).
 
 ## Checklist for plans
 

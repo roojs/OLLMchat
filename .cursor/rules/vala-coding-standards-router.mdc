@@ -1,0 +1,48 @@
+---
+description: Vala coding standards — scenario checklist before editing *.vala
+globs: **/*.vala
+alwaysApply: false
+---
+
+# Vala coding standards router
+
+Canonical rules: **`docs/coding-standards.md`**. Full checklist:
+**`docs/coding-standards-router.md`** (read that file in full first).
+
+## Step 1 — Before the first Vala edit
+
+1. Read **`docs/coding-standards-router.md`** in full.
+2. **Universal:** read every section in the universal table (grep `section: <slug>`).
+3. **Scenario:** add slugs for every **yes** in the scenario table.
+4. Read each slug’s full block in `docs/coding-standards.md`.
+5. If `docblocks` is in your set, read **`docs/code-documentation.md`** in full.
+
+### Universal — read before edit, re-scan diff before done
+
+| Did your change (or will it)…? | Section slug |
+|--------------------------------|--------------|
+| Declare a **local** or **loop** variable? | `temporary-variables` — **`var` only**; not `string x =` |
+| Access instance fields/properties/methods? | `this-prefix` |
+| Add/change `if` / `else` / nested branches? | `reducing-nesting` |
+| Compare enums with `if (a \|\| b)`? | `switch-case` |
+| Add null checks or redundant guards? | `defensive-code-null-checks` |
+| Add new `private`/`protected` or `handle_*`/`is_*` method? | `method-names-new-methods` |
+
+**STOP before done if:** explicit type on a local, missing `this.`, new helper
+method, gratuitous `else`, enum `||` chain, or skipped `agent-compliance-gate`.
+
+### Scenario checklist (yes → add slug(s))
+
+See **`docs/coding-standards-router.md`** — every row in the scenario table.
+
+## Step 2 — Before marking done
+
+1. Re-read section `agent-compliance-gate`.
+2. Re-run the universal “STOP if you…” column on your diff.
+3. Search changed files:
+
+```bash
+rg '^\s+(string|int|bool|uint|int64|float|double)\s+\w+\s*[=;]' --glob '*.vala' <files>
+```
+
+Partial compliance is a violation.

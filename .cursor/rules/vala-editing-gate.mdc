@@ -1,0 +1,10 @@
+---
+description: Deprecated — use vala-coding-standards-router.mdc
+globs: **/*.vala
+alwaysApply: false
+---
+
+# Vala standards
+
+Use **`.cursor/rules/vala-coding-standards-router.mdc`** and
+**`docs/coding-standards-router.md`** instead of this file.

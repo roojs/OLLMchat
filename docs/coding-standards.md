@@ -81,7 +81,7 @@ Options:
 ";
 ```
 
-## Temporary Variables
+## Temporary Variables <!-- section: temporary-variables -->
 
 **CRITICAL — `var` on locals:** Always use **`var`** for local variables and
 `for` / `foreach` loop variables. **Never** write an explicit primitive or
@@ -203,7 +203,7 @@ this.tools_button_binding = model_usage.model_obj.bind_property(
 );
 ```
 
-## Brace Placement
+## Brace Placement <!-- section: brace-placement -->
 
 **IMPORTANT:** Use line breaks for braces in namespaces, classes, and methods. Do NOT use line breaks for braces in control structures (if, case, switch, while, for, etc.).
 
@@ -263,7 +263,7 @@ namespace MyNamespace
 }
 ```
 
-## Underscore prefix on variables and fields
+## Underscore prefix on variables and fields <!-- section: underscore-prefix -->
 
 **CRITICAL - FORBIDDEN:** Do NOT use a leading underscore (`_`) on variable names, field names, or property names. Use plain names and access with `this.` where needed.
 
@@ -283,7 +283,7 @@ private string cached_system_message = "";
 this.by_path.clear();
 ```
 
-## This Prefix
+## This Prefix <!-- section: this-prefix -->
 
 **IMPORTANT:** Always use `this.` prefix when accessing properties or calling methods on the current instance.
 
@@ -317,7 +317,7 @@ class MyClass
 }
 ```
 
-## Reducing Nesting
+## Reducing Nesting <!-- section: reducing-nesting -->
 
 **IMPORTANT:** Avoid nested code by using early returns, break/continue statements, and avoiding else clauses when possible. This improves readability and reduces cognitive complexity.
 
@@ -429,7 +429,7 @@ public int64 cleanup_orphaned_vectors(SQ.Database sql_db) throws GLib.Error
 }
 ```
 
-## GLib Namespace Prefix
+## GLib Namespace Prefix <!-- section: glib-namespace-prefix -->
 
 **IMPORTANT:** Always prefix GLib namespace classes and functions with `GLib.` prefix. Never use unqualified GLib types or functions.
 
@@ -447,7 +447,7 @@ var file = GLib.File.new_for_path(path);
 var home = GLib.Environment.get_home_dir();
 ```
 
-## File info and try/catch
+## File info and try/catch <!-- section: file-info-try-catch -->
 
 **IMPORTANT:** Use try/catch around file metadata operations (e.g. `GLib.File.query_info()`, modification time) **only when we do not know if the file exists**. If we have already successfully read the file (or otherwise established that it exists), do not wrap the subsequent `query_info()` (or similar) call in try/catch or check `query_exists()` — just call it. Let failures propagate.
 
@@ -484,7 +484,7 @@ try {
 }
 ```
 
-## Try/Catch Scope
+## Try/Catch Scope <!-- section: try-catch-scope -->
 
 **IMPORTANT:** Keep try/catch focused on the **minimal code that can throw**. Do not blanket large areas of code. Wrap only the specific call(s) that may throw; keep setup, building arguments, and non-throwing code outside the try block.
 
@@ -568,7 +568,7 @@ try {
 // ... handle parsed outside try ...
 ```
 
-## Using Statements
+## Using Statements <!-- section: using-statements -->
 
 **IMPORTANT:** Avoid using `using` statements. Use full namespace prefixes for class references instead. it is not required any information contrary to this is incorrect
 
@@ -599,7 +599,7 @@ public class MyClass
 }
 ```
 
-## Switch/Case vs If/Else If
+## Switch/Case vs If/Else If <!-- section: switch-case -->
 
 **IMPORTANT:** Use `switch/case` statements rather than long chains of `if/else if/else if` statements. This improves readability and is more efficient.
 
@@ -640,7 +640,7 @@ public string get_status_message(int status)
 }
 ```
 
-## Property Initialization
+## Property Initialization <!-- section: property-initialization -->
 
 **IMPORTANT:** Do not set default values in constructors. For simple types (int, bool, string, etc.), use direct assignment. For complex types (objects, lists, etc.), use `get; set; default =` syntax.
 
@@ -700,7 +700,7 @@ public class ChildFactory : Factory {
 }
 ```
 
-## Serializable Classes
+## Serializable Classes <!-- section: serializable-classes -->
 
 **IMPORTANT:** For serializable classes, use `get; set; default =` to initialize properties rather than creating objects in the constructor. Be careful with getter/setters to ensure proper serialization behavior.
 
@@ -727,7 +727,7 @@ public class SerializableData : GLib.Object
 }
 ```
 
-## Avoiding Nullable Types
+## Avoiding Nullable Types <!-- section: avoiding-nullable-types -->
 
 **IMPORTANT:** If possible, avoid using nullable types. Instead, create an object with a checkable value (like an `active` property defaulting to `false`) to indicate whether the object is in use.
 
@@ -773,7 +773,7 @@ public class Renderer
 
 Note: The `Table` class should have `public bool active { get; set; default = false; }` to ensure it defaults to `false`.
 
-## Defensive code and null checks
+## Defensive code and null checks <!-- section: defensive-code-null-checks -->
 
 **Defensive code (general):** Avoid branches and checks whose only purpose is to handle situations your own API and call graph should already rule out—redundant guards, duplicated validation, speculative "what if" fallbacks, silent recovery from states that indicate a programming error, empty-collection checks when the pipeline guarantees non-empty invariants, and similar patterns. They **hide bugs** and **mask broken invariants** the same way needless null checks do: execution continues in a half-valid state instead of failing at the real fault.
 
@@ -856,7 +856,7 @@ public void process_item(Item? item)
 }
 ```
 
-## Line Length and Breaking
+## Line Length and Breaking <!-- section: line-length-breaking -->
 
 **IMPORTANT:** Avoid long lines in code, docblocks, and comments. Break lines for readability.
 
@@ -900,7 +900,7 @@ this.some_method(
 );
 ```
 
-## Debug and Warning Statements
+## Debug and Warning Statements <!-- section: debug-warning-statements -->
 
 **IMPORTANT:** When using `GLib.debug()` or `GLib.warning()`, do NOT include class names, method names, or location information in the message. The runtime logs file and line automatically, so including them is redundant.
 
@@ -980,7 +980,7 @@ The debug output will automatically show the file and line number (and typically
 **Same rule for GLib.warning():** Never include class or method names (e.g. `"MyClass.method_name:"`). Use a short, user- or operator-friendly phrase; file and line are in the log. Do not add redundant timestamps to the message text.
 
 
-## Gee.HashMap Access
+## Gee.HashMap Access <!-- section: gee-hashmap-access -->
 
 **IMPORTANT:** Always use `.set()` and `.get()` methods for `Gee.HashMap` operations instead of array-style accessors (`[]`). This is more explicit and consistent with the API.
 
@@ -1010,7 +1010,7 @@ if (map.has_key(key)) {
 map.unset(key);
 ```
 
-## Gee.ArrayList Access
+## Gee.ArrayList Access <!-- section: gee-arraylist-access -->
 
 **IMPORTANT:** Always use `.set()` and `.get()` methods for `Gee.ArrayList` operations instead of array-style accessors (`[]`). This is more explicit and consistent with the API.
 
@@ -1042,7 +1042,7 @@ list.add(item);
 list.remove_at(index);
 ```
 
-## SQL Table Aliases
+## SQL Table Aliases <!-- section: sql-table-aliases -->
 
 **IMPORTANT:** Do NOT use table aliases in SQL queries. Always use full table names. This improves readability and avoids confusion.
 
@@ -1066,7 +1066,7 @@ var sql = "SELECT f.path, vm.vector_id FROM vector_metadata vm JOIN filebase f O
 var sql = "SELECT filebase.path, vector_metadata.vector_id FROM vector_metadata JOIN filebase ON vector_metadata.file_id = filebase.id";
 ```
 
-## Building Strings in Loops
+## Building Strings in Loops <!-- section: building-strings-in-loops -->
 
 **CRITICAL - FORBIDDEN:** Do NOT build strings inside a loop by repeated concatenation (e.g. `s += "x"` or `prefix += "> "` in a for-loop). Use built-in fill or join methods instead.
 
@@ -1097,7 +1097,7 @@ var prefix = string.joinv("", parts);
 ```
 Prefer `nfill` + `replace` when the repeated unit is a fixed string; use `joinv` when the parts vary.
 
-## Character Looping
+## Character Looping <!-- section: character-looping -->
 
 **CRITICAL - FORBIDDEN:** Do NOT loop through strings character by character unless there is **absolutely 100% no other way** to do it. **Always** check string methods and regex first — only use character loops when every other option has been ruled out.
 
@@ -1171,7 +1171,7 @@ for (int i = 0; i < str.length; i++) {
 var result = str.replace(" ", "");
 ```
 
-## String Array Operations
+## String Array Operations <!-- section: string-array-operations -->
 
 **IMPORTANT:** Never loop over a string array to build another string array. Use Vala's array slicing syntax with `string.joinv()` instead.
 
@@ -1191,7 +1191,7 @@ return string.joinv("\n", lines[start_line:end_line+1]);
 
 Note: Array slicing uses `[start:end]` where `end` is exclusive, so use `end_line+1` to include the end line.
 
-## StringBuilder Usage
+## StringBuilder Usage <!-- section: stringbuilder-usage -->
 
 **IMPORTANT:** Only use `GLib.StringBuilder` when frequently building and rebuilding strings in loops with **hundreds** of iterations (not tens). For general string concatenation, use normal string concatenation with `+` operator or `string.joinv()` instead. StringBuilder should only be used when there is a distinct performance advantage from avoiding repeated string allocations.
 
@@ -1250,7 +1250,7 @@ for (int i = 0; i < 1000; i++) {
 var result = builder.str;
 ```
 
-## ArrayList for Strings
+## ArrayList for Strings <!-- section: arraylist-for-strings -->
 
 **IMPORTANT:** Never use `Gee.ArrayList<string>` when building an array of strings just to join it. 
 
@@ -1328,7 +1328,7 @@ while ((line = GLib.stdin.read_line()) != null) {
 var result = string.joinv("\n", lines);
 ```
 
-## Signal handlers in construct blocks
+## Signal handlers in construct blocks <!-- section: signal-handlers-construct -->
 
 **CRITICAL:** Do **not** add private methods such as `on_hello`, `on_shutdown`, or `handle_*` solely to connect GObject/RPC signals. Wire handlers **inline** in the class `construct` block with a lambda/closure. Extracting a method is the **user’s** decision, not the LLM’s — especially for short RPC `rpc_*` signal handlers that only reply on the session.
 
@@ -1352,7 +1352,7 @@ construct {
 }
 ```
 
-## Property Getters vs Get Methods
+## Property Getters vs Get Methods <!-- section: property-getters-vs-get-methods -->
 
 **IMPORTANT:** Generally avoid `get_*()` method names. They conflict with Vala/GLib conventions (e.g. property getters expose `get_*` in C), are redundant when a verb-less or action name works (e.g. `system_message()` instead of `get_system_message()`), and encourage wasteful wrappers. Prefer: (1) **properties** with `get; private set;` or `get; set;` for simple or computed values; (2) **verb-less or action method names** for methods that build or compute something (e.g. `system_message()`, `user_prompt()`, `project_manager` property). Only use a `get_*()` name when the operation clearly requires parameters and “get” is the natural verb (e.g. `get_file_by_path(string path)`).
 
@@ -1423,7 +1423,7 @@ public class MyClass
 }
 ```
 
-## Method names and new methods
+## Method names and new methods <!-- section: method-names-new-methods -->
 
 **IMPORTANT:** Prefer **short, concise** method names. Avoid long, narrative names that restate what the file or type already implies.
 
@@ -1448,19 +1448,25 @@ obj.set_string_member("reasoning_effort",
     this.reasoning_effort != "" ? this.reasoning_effort : (this.think ? "medium" : "none"));
 ```
 
-## Agent compliance gate (mandatory before finishing Vala work)
+## Agent compliance gate (mandatory before finishing Vala work) <!-- section: agent-compliance-gate -->
 
-**AI agents:** Partial compliance is a violation. The sections above are not
-optional pick-and-choose guidance — **every** section applies to **every** Vala
-edit unless the task explicitly exempts one rule.
+**AI agents:** Partial compliance is a violation. Use
+**`docs/coding-standards-router.md`** to pick sections; read only those blocks
+here (grep `section: <slug>`). Universal slugs plus scenario matches apply to
+every task; see router.
 
 ### Before the first edit
 
-1. Read this entire document once (Read tool, first line to last).
-2. State in your working notes which sections apply to the task (at minimum:
-   Temporary Variables, Method names, Reducing Nesting, Signal handlers if GTK).
+1. Complete **`docs/coding-standards-router.md`** — universal table (question
+   per row: locals, `this.`, `else`, enums, guards, new methods) plus scenario
+   rows that apply.
+2. Read every section slug in your set (grep `section: <slug>`; full block).
+3. List the slugs you read before implementing.
 
 ### Before marking the task done
+
+Re-scan your diff against the universal **“STOP if you…”** column (especially:
+explicit type on locals, new private methods, gratuitous `else`). Then:
 
 Run these checks on **every file you changed**. Fix violations; do not hand-wave.
 
