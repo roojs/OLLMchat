@@ -5,4 +5,4 @@ revision = 0.20.6
 depth = 1
 
 [provide]
-gee-0.8 = libgee_dep
+dependency_names = gee-0.8
