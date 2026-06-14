@@ -2,6 +2,11 @@ build/
 build-*/
 dist-*/
 .sqgipkg/
+.android-sdk/
+.android-tools/
+.pixiewood/
+.buildconfig
+subprojects/
 
 # Downloaded for Windows portable bundle (see scripts/build-windows-dir.sh)
 resources/fonts/NotoColorEmoji.ttf

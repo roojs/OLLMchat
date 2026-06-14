@@ -1,0 +1,62 @@
+name: Android shell APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            curl \
+            git \
+            gir1.2-appstream \
+            glslc \
+            gobject-introspection \
+            libadwaita-1-dev \
+            libglib-object-introspection-perl \
+            libglib-perl \
+            libglib2.0-dev-bin \
+            libgtk-4-dev \
+            libipc-run-perl \
+            libjson-perl \
+            libset-scalar-perl \
+            libxml-libxml-perl \
+            libxml-libxslt-perl \
+            libxml2-utils \
+            meson \
+            ninja-build \
+            openjdk-17-jdk \
+            pkg-config \
+            sassc \
+            unzip \
+            valac
+
+      - name: Build shell APK
+        run: scripts/android/build-shell-poc-apk.sh
+
+      - name: Collect APK artifacts
+        run: |
+          mkdir -p android-artifacts
+          cp .pixiewood/android/app/build/outputs/apk/debug/*.apk android-artifacts/
+          ls -lh android-artifacts
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollmchat-android-shell-apk
+          path: android-artifacts/*.apk
+          if-no-files-found: error
