@@ -5,4 +5,4 @@ revision = 2.13.5
 depth = 1
 
 [provide]
-libxml-2.0 = libxml2_dep
+dependency_names = libxml-2.0

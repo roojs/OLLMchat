@@ -44,10 +44,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.PIXIEWOOD_CACHE_PATHS }}
-          key: pixiewood-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/AndroidPoc.vala') }}
+          key: pixiewood-chat-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/AndroidPoc.vala') }}
           restore-keys: |
-            pixiewood-v1-stable-
-            pixiewood-v1-
+            pixiewood-chat-v1-stable-
 
       - name: Restore Gradle cache
         uses: actions/cache/restore@v4
@@ -127,7 +126,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ${{ env.PIXIEWOOD_CACHE_PATHS }}
-          key: pixiewood-v1-${{ hashFiles('.pixiewood/bin-aarch64/**', '.pixiewood/pixiewood.ini', '.pixiewood/toolchain.cross', 'subprojects/**') }}
+          key: pixiewood-chat-v1-${{ hashFiles('.pixiewood/bin-aarch64/**', '.pixiewood/pixiewood.ini', '.pixiewood/toolchain.cross', 'subprojects/**') }}
 
       - name: Save Gradle cache
         if: always()

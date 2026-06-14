@@ -25,12 +25,20 @@ install_pixiewood_extra_wraps() {
     return
   fi
 
-  local dep_dir dep dest
+  mkdir -p "$ROOT_DIR/subprojects"
+
+  local dep_dir dep dest wrap
   for dep_dir in "$extra"/*/; do
     dep="$(basename "$dep_dir")"
     dest="$PIXIEWOOD_DIR/prepare/wraps/$dep"
     mkdir -p "$dest"
     cp -a "$dep_dir"/* "$dest/"
+
+    for wrap in "$dep_dir"/*.wrap; do
+      if [ -f "$wrap" ]; then
+        cp -a "$wrap" "$ROOT_DIR/subprojects/"
+      fi
+    done
   done
 
   if [ -d "$extra/sqlite3/packagefiles/sqlite3" ]; then
@@ -38,6 +46,52 @@ install_pixiewood_extra_wraps() {
     cp -a "$extra/sqlite3/packagefiles/sqlite3/"* \
       "$ROOT_DIR/subprojects/packagefiles/sqlite3/"
   fi
+}
+
+pixiewood_prefix_has_pkg() {
+  local pkg="$1"
+  find "$PIXIEWOOD_BUILD_DIR" -name "$pkg.pc" -print -quit 2>/dev/null | grep -q .
+}
+
+chat_pixiewood_prefix_ready() {
+  pixiewood_prefix_has_pkg gee-0.8 &&
+    pixiewood_prefix_has_pkg libsoup-3.0 &&
+    pixiewood_prefix_has_pkg json-glib-1.0 &&
+    pixiewood_prefix_has_pkg libxml-2.0 &&
+    pixiewood_prefix_has_pkg sqlite3
+}
+
+needs_pixiewood_prepare() {
+  if [ ! -f "$PIXIEWOOD_BUILD_DIR/build.ninja" ] ||
+     [ ! -f "$ROOT_DIR/.pixiewood/pixiewood.ini" ] ||
+     [ ! -f "$ROOT_DIR/.pixiewood/toolchain.cross" ]; then
+    return 0
+  fi
+
+  if [[ "$PIXIEWOOD_MANIFEST" == *pixiewood-chat-poc.xml ]] &&
+     ! chat_pixiewood_prefix_ready; then
+    echo "Pixiewood prefix is missing chat POC dependencies; rerunning prepare." >&2
+    return 0
+  fi
+
+  return 1
+}
+
+download_meson_subprojects() {
+  local meson="$1"
+
+  if ! compgen -G "$ROOT_DIR/subprojects/*.wrap" > /dev/null; then
+    return
+  fi
+
+  local dir
+  for dir in "$ROOT_DIR/subprojects"/*/; do
+    if [ -d "$dir" ] && [ ! -f "$dir/meson.build" ]; then
+      rm -rf "$dir"
+    fi
+  done
+
+  "$meson" subprojects download --sourcedir "$ROOT_DIR"
 }
 
 ensure_gtk_android_builder() {
@@ -122,14 +176,15 @@ MESON_FOR_ANDROID="$("$ROOT_DIR/scripts/android/ensure-meson.sh")"
 
 mapfile -t PIXIEWOOD_CONFIGURE_OPTIONS < <(pixiewood_configure_options)
 
-if [ ! -f "$PIXIEWOOD_BUILD_DIR/build.ninja" ] ||
-   [ ! -f "$ROOT_DIR/.pixiewood/pixiewood.ini" ] ||
-   [ ! -f "$ROOT_DIR/.pixiewood/toolchain.cross" ]; then
+if needs_pixiewood_prepare; then
   "$PIXIEWOOD" -C "$ROOT_DIR" prepare \
     --sdk "$ANDROID_SDK_ROOT" \
     --meson "$MESON_FOR_ANDROID" \
     "$PIXIEWOOD_MANIFEST"
 fi
+
+echo "Downloading Meson subprojects for Android wraps."
+download_meson_subprojects "$MESON_FOR_ANDROID"
 
 echo "Reconfiguring Pixiewood Meson build."
 reconfigure_pixiewood_build "$MESON_FOR_ANDROID" "${PIXIEWOOD_CONFIGURE_OPTIONS[@]}"
