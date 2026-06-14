@@ -69,7 +69,7 @@ namespace OLLMapp
 		public AndroidShellPocApplication()
 		{
 			Object(
-				application_id: "org.roojs.ollmchat.AndroidShellPoc",
+				application_id: "org.roojs.ollmchat.androidpoc",
 				flags: GLib.ApplicationFlags.DEFAULT_FLAGS
 			);
 
