@@ -28,11 +28,11 @@ jobs:
   build-android:
     name: Build Android APK
     if: startsWith(github.ref, 'refs/tags/')
-    continue-on-error: true
     uses: ./.github/workflows/android-build-reusable.yml
     with:
       refresh_cache: false
       upload_to_release: true
+      non_blocking: true
     permissions:
       contents: write
 
