@@ -99,10 +99,14 @@ namespace OLLMchatGtk
 		 * 
 		 * @param question The permission question to display
 		 * @param one_time When true, hides "Allow Always" and "Deny Always" (see {@link OLLMchat.Tool.RequestBase.one_time_only})
+		 * @param high_risk When true, styles the row as high-risk (e.g. root elevation)
 		 * @return The user's permission response
 		 * @since 1.0
 		 */
-		public async OLLMchat.ChatPermission.PermissionResponse request(string question, bool one_time = false)
+		public async OLLMchat.ChatPermission.PermissionResponse request(
+			string question,
+			bool one_time = false,
+			bool high_risk = false)
 		{
 			// Update question text
 			this.question_label.label = question;
@@ -111,6 +115,18 @@ namespace OLLMchatGtk
 			this.deny_always_btn.visible = !one_time;
 			this.allow_always_btn.visible = !one_time;
 			// allow_once_btn is always visible
+			
+			if (high_risk) {
+				this.add_css_class ("high-risk");
+				this.allow_once_btn.remove_css_class ("suggested-action");
+				this.allow_once_btn.add_css_class ("destructive-action");
+				this.allow_once_btn.label = "Allow (root)";
+			} else {
+				this.remove_css_class ("high-risk");
+				this.allow_once_btn.remove_css_class ("destructive-action");
+				this.allow_once_btn.add_css_class ("suggested-action");
+				this.allow_once_btn.label = "Allow";
+			}
 			
 			// Show the widget
 			this.set_visible(true);
@@ -127,6 +143,10 @@ namespace OLLMchatGtk
 			
 			// Hide the widget
 			this.set_visible(false);
+			this.remove_css_class ("high-risk");
+			this.allow_once_btn.remove_css_class ("destructive-action");
+			this.allow_once_btn.add_css_class ("suggested-action");
+			this.allow_once_btn.label = "Allow";
 			
 			return this.pending_response ?? OLLMchat.ChatPermission.PermissionResponse.DENY_ONCE;
 		}

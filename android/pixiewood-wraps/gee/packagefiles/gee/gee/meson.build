@@ -77,7 +77,7 @@ gee_files = files(
 )
 
 gee_name = 'gee-' + api_version
-gee_gir = 'Gee-' + api_version + '.gir'
+gee_gir = host_machine.system() == 'android' ? disabler() : 'Gee-' + api_version + '.gir'
 gee_typelib = 'Gee-' + api_version + '.typelib'
 gee_deps = [glib_dep, gobject_dep, gio_dep]
 gee_c_args = []

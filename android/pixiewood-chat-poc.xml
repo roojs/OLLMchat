@@ -47,6 +47,7 @@
     <sqlite3/>
     <gee/>
     <json-glib/>
+    <nghttp2/>
     <libsoup/>
   </dependencies>
   <build target="ollmchat-android-poc">

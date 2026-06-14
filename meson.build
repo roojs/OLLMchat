@@ -178,7 +178,7 @@ if local_gguf_enabled
     ['oc-local-gguf-chat', 'examples/oc-local-gguf-chat'],
   ]
 endif
-if get_option('android_poc')
+if get_option('android_poc') and host_machine.system() != 'android'
   executables_info += [
     ['ollmchat-android-poc', 'ollmapp/ollmchat-android-poc'],
   ]
