@@ -160,6 +160,81 @@ ollmchat = executable('ollmchat',
   install_dir: get_option('bindir')
 )
 
+if get_option('android_poc')
+  if host_machine.system() == 'android' and not meson.version().version_compare('>=1.8.0')
+    error('android_poc on Android requires Meson >= 1.8.0 for android_exe_type')
+  endif
+
+  android_poc_deps = [
+    dependency('gtk4'),
+    dependency('libadwaita-1'),
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    dependency('libsoup-3.0'),
+    valac.find_library('posix'),
+  ]
+
+  android_poc_sources = [
+    'AndroidPoc.vala',
+  ]
+
+  android_poc_vala_args = [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=ollmchat',
+    '--pkg=ollamaweb',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+  ]
+
+  if host_machine.system() == 'android'
+    android_poc = executable('ollmchat-android-poc',
+      dependencies: [
+        android_poc_deps,
+        ocsqlite_vapi_dep,
+        ollmchat_vapi_dep,
+        ollamaweb_vapi_dep
+      ],
+      sources: android_poc_sources,
+      link_with: [ollmchat_base_lib],
+      include_directories: [
+        include_directories('../libollmchat'),
+        include_directories('../libollamaweb'),
+        include_directories('../libocsqlite')
+      ],
+      build_rpath: build_rpath,
+      vala_args: android_poc_vala_args,
+      android_exe_type: 'application',
+      install: true,
+      install_dir: get_option('bindir')
+    )
+  else
+    android_poc = executable('ollmchat-android-poc',
+      dependencies: [
+        android_poc_deps,
+        ocsqlite_vapi_dep,
+        ollmchat_vapi_dep,
+        ollamaweb_vapi_dep
+      ],
+      sources: android_poc_sources,
+      link_with: [ollmchat_base_lib],
+      include_directories: [
+        include_directories('../libollmchat'),
+        include_directories('../libollamaweb'),
+        include_directories('../libocsqlite')
+      ],
+      build_rpath: build_rpath,
+      vala_args: android_poc_vala_args,
+      install: true,
+      install_dir: get_option('bindir')
+    )
+  endif
+endif
+
 # Install application icon
 install_data(
   '../pixmaps/scalable/apps/org.roojs.ollmchat.svg',

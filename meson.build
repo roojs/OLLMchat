@@ -138,6 +138,11 @@ if local_gguf_enabled
     ['oc-local-gguf-chat', 'examples/oc-local-gguf-chat'],
   ]
 endif
+if get_option('android_poc')
+  executables_info += [
+    ['ollmchat-android-poc', 'ollmapp/ollmchat-android-poc'],
+  ]
+endif
 
 # Library paths for LD_LIBRARY_PATH
 lib_path = ':'.join([
