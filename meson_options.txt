@@ -13,6 +13,12 @@ option(
   value: false,
   description: 'Build the stripped-down remote-chat Android proof-of-concept target'
 )
+option(
+  'android_shell_poc',
+  type: 'boolean',
+  value: false,
+  description: 'Build only the minimal GTK/Adwaita Android APK shell target'
+)
 option('sysroot', type: 'string', value: '',
   description: 'Linux dependency root (sqgipkg sysroot). When set, bundled libs such as FAISS are taken from here instead of the host.')
 option('windows_prefix', type: 'string', value: '',

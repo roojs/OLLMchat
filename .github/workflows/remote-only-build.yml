@@ -103,6 +103,17 @@ jobs:
       - name: Build
         run: ninja -C build
 
+      - name: Build Android shell POC target
+        run: |
+          meson setup build-android-shell \
+            --prefix=/usr \
+            -Ddocs=false \
+            -Dexamples=false \
+            -Dtests=false \
+            -Dandroid_shell_poc=true \
+            -Dlocal_gguf=disabled
+          ninja -C build-android-shell
+
       - name: Run offline tests
         run: |
           meson test -C build --no-rebuild --print-errorlogs \
