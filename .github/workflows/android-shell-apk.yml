@@ -48,15 +48,21 @@ jobs:
       - name: Build shell APK
         run: scripts/android/build-shell-poc-apk.sh
 
-      - name: Collect APK artifacts
+      - name: Collect APK artifact
         run: |
           mkdir -p android-artifacts
-          cp .pixiewood/android/app/build/outputs/apk/debug/*.apk android-artifacts/
+          cp .pixiewood/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk \
+            android-artifacts/ollmchat-android-shell-poc-debug.apk
           ls -lh android-artifacts
 
-      - name: Upload APK artifacts
-        uses: actions/upload-artifact@v4
+      - name: Verify APK contains application library
+        run: |
+          unzip -l android-artifacts/ollmchat-android-shell-poc-debug.apk | \
+            grep -q 'lib/arm64-v8a/libollmchat-android-shell-poc.so'
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
         with:
-          name: ollmchat-android-shell-apk
-          path: android-artifacts/*.apk
+          path: android-artifacts/ollmchat-android-shell-poc-debug.apk
+          archive: false
           if-no-files-found: error

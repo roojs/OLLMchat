@@ -52,7 +52,7 @@ if get_option('android_shell_poc')
       vala_args: android_shell_poc_vala_args,
       android_exe_type: 'application',
       install: true,
-      install_dir: get_option('bindir')
+      install_dir: get_option('libdir')
     )
   else
     android_shell_poc_exe = executable('ollmchat-android-shell-poc',
@@ -252,7 +252,7 @@ if get_option('android_poc')
       vala_args: android_poc_vala_args,
       android_exe_type: 'application',
       install: true,
-      install_dir: get_option('bindir')
+      install_dir: get_option('libdir')
     )
   else
     android_poc = executable('ollmchat-android-poc',
