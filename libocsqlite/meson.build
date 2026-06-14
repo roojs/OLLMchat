@@ -9,7 +9,6 @@
 # Dependencies for ocsqlite library
 valac = meson.get_compiler('vala')
 is_android_cross = host_machine.system() == 'android'
-ocsqlite_vala_gir = is_android_cross ? disabler() : 'OCSqlite-1.0.gir'
 ocsqlite_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
@@ -34,16 +33,28 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollmchatgtk'
 ])
 
-ocsqlite_base_lib = library('ocsqlite',
-  dependencies: ocsqlite_deps,
-  sources: ocsqlite_src,
-  vala_header: 'ocsqlite.h',
-  vala_vapi: 'ocsqlite-meson.vapi',  # Use different name so our custom_target can use 'ocsqlite.vapi'
-  vala_gir: ocsqlite_vala_gir,
-  vala_args: ['--pkg=sqlite3'],
-  build_rpath: lib_build_rpath,
-  install: true,
-)
+if is_android_cross
+  ocsqlite_base_lib = library('ocsqlite',
+    dependencies: ocsqlite_deps,
+    sources: ocsqlite_src,
+    vala_header: 'ocsqlite.h',
+    vala_vapi: 'ocsqlite-meson.vapi',  # Use different name so our custom_target can use 'ocsqlite.vapi'
+    vala_args: ['--pkg=sqlite3'],
+    build_rpath: lib_build_rpath,
+    install: true,
+  )
+else
+  ocsqlite_base_lib = library('ocsqlite',
+    dependencies: ocsqlite_deps,
+    sources: ocsqlite_src,
+    vala_header: 'ocsqlite.h',
+    vala_vapi: 'ocsqlite-meson.vapi',  # Use different name so our custom_target can use 'ocsqlite.vapi'
+    vala_gir: 'OCSqlite-1.0.gir',
+    vala_args: ['--pkg=sqlite3'],
+    build_rpath: lib_build_rpath,
+    install: true,
+  )
+endif
 
 # Manually generate ocsqlite.vapi with correct command line order
 # This replicates the Makefile approach and bypasses meson's determine_dep_vapis()

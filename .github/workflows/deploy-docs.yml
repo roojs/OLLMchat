@@ -52,9 +52,29 @@ jobs:
             debian-extra-debs-v1-
 
       - name: Install libfaiss-dev from Debian
+        id: install-faiss
         env:
           DEB_CACHE_DIR: ${{ github.workspace }}/${{ env.DEB_CACHE_DIR }}
         run: ./scripts/ci/install-libfaiss-dev-debian.sh
+
+      - name: Detect Debian extra package cache
+        if: always()
+        id: deb-cache
+        run: |
+          if [ -d "$DEB_CACHE_DIR" ] && find "$DEB_CACHE_DIR" -type f -name '*.deb' -print -quit | grep -q .; then
+            echo "save=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "save=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          DEB_CACHE_DIR: ${{ env.DEB_CACHE_DIR }}
+
+      - name: Save Debian extra package download cache
+        if: always() && steps.deb-cache.outputs.save == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.DEB_CACHE_DIR }}
+          key: debian-extra-debs-v1-stable-${{ hashFiles('scripts/ci/debian-pool-deb.sh', 'scripts/ci/install-libfaiss-dev-debian.sh') }}
 
       - name: Install build dependencies
         run: |
@@ -107,13 +127,6 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: build/valadoc
-
-      - name: Save Debian extra package download cache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ env.DEB_CACHE_DIR }}
-          key: debian-extra-debs-v1-${{ hashFiles('.ci-cache/debian-debs-amd64/**') }}
 
   deploy:
     if: github.ref == 'refs/heads/main'

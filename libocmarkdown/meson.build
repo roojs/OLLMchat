@@ -9,7 +9,6 @@
 # Dependencies for ocmarkdown library
 valac = meson.get_compiler('vala')
 is_android_cross = host_machine.system() == 'android'
-ocmarkdown_vala_gir = is_android_cross ? disabler() : 'OCMarkdown-1.0.gir'
 ocmarkdown_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
@@ -58,15 +57,26 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollmchatgtk'
 ])
 
-ocmarkdown_base_lib = library('ocmarkdown',
-  dependencies: ocmarkdown_deps,
-  sources: ocmarkdown_src,
-  vala_header: 'ocmarkdown.h',
-  vala_vapi: 'ocmarkdown-meson.vapi',  # Use different name so our custom_target can use 'ocmarkdown.vapi'
-  vala_gir: ocmarkdown_vala_gir,
-  build_rpath: lib_build_rpath,
-  install: true
-)
+if is_android_cross
+  ocmarkdown_base_lib = library('ocmarkdown',
+    dependencies: ocmarkdown_deps,
+    sources: ocmarkdown_src,
+    vala_header: 'ocmarkdown.h',
+    vala_vapi: 'ocmarkdown-meson.vapi',  # Use different name so our custom_target can use 'ocmarkdown.vapi'
+    build_rpath: lib_build_rpath,
+    install: true
+  )
+else
+  ocmarkdown_base_lib = library('ocmarkdown',
+    dependencies: ocmarkdown_deps,
+    sources: ocmarkdown_src,
+    vala_header: 'ocmarkdown.h',
+    vala_vapi: 'ocmarkdown-meson.vapi',  # Use different name so our custom_target can use 'ocmarkdown.vapi'
+    vala_gir: 'OCMarkdown-1.0.gir',
+    build_rpath: lib_build_rpath,
+    install: true
+  )
+endif
 
 # Manually generate ocmarkdown.vapi with correct command line order
 # This replicates the Makefile approach and bypasses meson's determine_dep_vapis()
