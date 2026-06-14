@@ -125,12 +125,14 @@ namespace OLLMchat.Call
 							msg_obj.remove_member("tool-calls");
 							var tc_arr = msg_obj.get_member("tool_calls").get_array();
 							for (int i = 0; i < m.tool_calls.size; i++) {
-								tc_arr.get_element(i).get_object()
-									.get_member("function").get_object()
-									.set_string_member(
-										"arguments",
-										Json.gobject_to_data(
-											m.tool_calls.get(i).function, null));
+								var func_obj = tc_arr.get_element(i)
+									.get_object()
+									.get_member("function").get_object();
+								func_obj.set_string_member(
+									"arguments",
+									Json.to_string(
+										func_obj.get_member("arguments"),
+										false));
 							}
 						}
 						if (m.role == "tool") {
