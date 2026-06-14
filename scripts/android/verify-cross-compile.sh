@@ -39,6 +39,7 @@ if [ ! -f "$BUILD_DIR/build.ninja" ]; then
 fi
 
 targets=(
+  subprojects/glib-networking-2.80.1/tls/openssl/libgioopenssl.so
   libocmarkdown/libocmarkdown.so
   libocmarkdown/ocmarkdown.vapi
   libocsqlite/libocsqlite.so

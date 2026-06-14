@@ -26,6 +26,10 @@ from it — do not edit `debian/changelog` by hand. Regenerate with:
 - **run_command**: `run_as_root` parameter runs commands via `sudo` after in-app password prompt
   after explicit high-risk ChatPermission approval (Linux GTK app; no Allow Always
   shortcut)
+- **Android**: chat shell under `ollmapp/android/` — `AndroidApplication` (app-private
+  Config2 storage), `AndroidMainWindow`, `AndroidStartup`, and
+  `AndroidSettingsDialog` (connections + default model); bootstrap via
+  `ConnectionAdd`; replaces the inline-form `AndroidPoc.vala` target
 - **Android**: Pixiewood shell APK scaffold and remote-only chat POC target
   (`ollmchat-android-poc`)
 - **CI**: manual Android APK artifact workflow; Android validation workflows are
@@ -34,6 +38,11 @@ from it — do not edit `debian/changelog` by hand. Regenerate with:
   from `CHANGELOG.md`
 - **Docs**: Android feasibility notes, remote-only CI documentation, and
   `docs/creating-releases.md` changelog workflow
+
+### Removed
+
+- **Config**: Config1 and legacy `config.json` migration — applications load Config2
+  from `config.2.json` only (desktop and Android)
 
 ### Changed
 

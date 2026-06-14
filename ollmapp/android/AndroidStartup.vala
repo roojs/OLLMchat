@@ -1,0 +1,255 @@
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+namespace OLLMapp
+{
+	/**
+	 * Android startup: connection check, default model, history manager.
+	 *
+	 * Android-only counterpart to ollmapp/Initialize.vala.
+	 *
+	 * @since 1.0
+	 */
+	public class AndroidStartup : Object
+	{
+		private AndroidMainWindow window;
+
+		/**
+		 * Emitted when settings close and initialization should restart.
+		 */
+		public signal void reinitialize();
+
+		public AndroidStartup(AndroidMainWindow window)
+		{
+			this.window = window;
+		}
+
+		/**
+		 * Verifies connection and default chat model, then creates history manager.
+		 *
+		 * @param config Application configuration
+		 * @return true when initialization succeeded
+		 */
+		public async bool run(OLLMchat.Settings.Config2 config)
+		{
+			while (true) {
+				var checking_dialog = new SettingsDialog.CheckingConnectionDialog(
+					this.window
+				);
+				checking_dialog.show_dialog();
+				yield config.check_connections();
+				checking_dialog.hide_dialog();
+
+				var working_conn = config.working_connection();
+				if (working_conn == null) {
+					yield this.show_settings(
+						"No working connection found. Please check your connection settings.",
+						"connections"
+					);
+					return false;
+				}
+
+				if (!(yield this.initialize_model(config, working_conn))) {
+					yield this.show_settings(
+						"No chat model found (only embedding models available). "
+						+ "Please add or select a model.",
+						"models"
+					);
+					return false;
+				}
+
+				this.window.history_manager = new OLLMchat.History.Manager(
+					this.window.app
+				);
+
+				if (this.window.history_manager.default_model_usage != null) {
+					var current_conn = config.connections.get(
+						this.window.history_manager.default_model_usage.connection
+					);
+					if (current_conn == null || !current_conn.is_working) {
+						this.window.history_manager.default_model_usage.connection =
+							working_conn.url;
+					}
+				}
+
+				try {
+					yield this.window.history_manager.ensure_model_usage();
+				} catch (GLib.Error e) {
+					GLib.warning(
+						"Initialize.vala: Model verification failed: %s. Fixing default model.",
+						e.message
+					);
+					if (!(yield this.initialize_model(config, working_conn))) {
+						yield this.show_settings(
+							"No chat model found (only embedding models available). "
+							+ "Please add or select a model.",
+							"models"
+						);
+						return false;
+					}
+				}
+
+				break;
+			}
+
+			return true;
+		}
+
+		private async bool show_settings(string error_message, string settings_page)
+		{
+			var dialog_title = "Required Models Unavailable";
+			switch (settings_page) {
+				case "connections":
+					dialog_title = "Connection Failed";
+					break;
+				case "models":
+					dialog_title = "No Chat Model";
+					break;
+			}
+
+			var alert = new Adw.AlertDialog(
+				dialog_title,
+				error_message + "\n\nPlease check your connection settings and try again."
+			);
+			alert.add_response("cancel", "Close");
+			alert.add_response("settings", "Configure");
+			alert.set_response_appearance(
+				"settings", Adw.ResponseAppearance.SUGGESTED
+			);
+			var response = yield alert.choose(this.window, null);
+
+			if (response != "settings") {
+				(this.window.app as Gtk.Application).quit();
+				return false;
+			}
+
+			ulong signal_id = 0;
+			signal_id = this.window.settings_dialog.closed.connect(() => {
+				this.window.settings_dialog.disconnect(signal_id);
+				this.reinitialize();
+			});
+
+			this.window.settings_dialog.show_dialog.begin(settings_page);
+
+			return true;
+		}
+
+		private async bool initialize_model(
+			OLLMchat.Settings.Config2 config,
+			OLLMchat.Settings.Connection working_conn
+		) {
+			var default_model = config.usage.get("default_model")
+				as OLLMchat.Settings.ModelUsage;
+
+			var temp_connection_models = new OLLMchat.Settings.ConnectionModels(
+				config
+			);
+			yield temp_connection_models.refresh();
+
+			var connection_models = temp_connection_models.connection_map.get(
+				working_conn.url
+			);
+			if (connection_models == null || connection_models.size == 0) {
+				GLib.warning(
+					"Initialize.vala: No models found for working connection '%s'",
+					working_conn.url
+				);
+				return false;
+			}
+
+			if (default_model != null && default_model.model != "") {
+				if (default_model.connection == "") {
+					default_model.connection = working_conn.url;
+				}
+				var usage = temp_connection_models.find_model(
+					default_model.connection, default_model.model
+				);
+				if (usage != null
+					&& usage.model_obj != null
+					&& usage.model_obj.is_embedding) {
+					default_model.model = "";
+				}
+			}
+
+			if (default_model != null && default_model.model != "") {
+				var conn_obj = config.connections.get(default_model.connection);
+				if (conn_obj != null
+					&& conn_obj.models.size > 0
+					&& conn_obj.models.has_key(default_model.model)) {
+					var usage = temp_connection_models.find_model(
+						default_model.connection, default_model.model
+					);
+					if (usage == null
+						|| usage.model_obj == null
+						|| !usage.model_obj.is_embedding) {
+						return true;
+					}
+					default_model.model = "";
+				} else {
+					if (yield default_model.verify_model(config)) {
+						var usage = temp_connection_models.find_model(
+							default_model.connection, default_model.model
+						);
+						if (usage == null
+							|| usage.model_obj == null
+							|| !usage.model_obj.is_embedding) {
+							return true;
+						}
+						default_model.model = "";
+					} else {
+						default_model.model = "";
+					}
+				}
+			}
+
+			OLLMchat.Settings.ModelUsage? first_chat_model = null;
+			foreach (var model_usage in connection_models.values) {
+				if (model_usage.model_obj == null
+					|| model_usage.model_obj.is_hidden
+					|| model_usage.model_obj.is_embedding) {
+					continue;
+				}
+				first_chat_model = model_usage;
+				break;
+			}
+			if (first_chat_model == null) {
+				GLib.warning(
+					"Initialize.vala: No non-embedding chat model found for connection '%s'",
+					working_conn.url
+				);
+				return false;
+			}
+
+			if (default_model == null) {
+				default_model = new OLLMchat.Settings.ModelUsage() {
+					connection = first_chat_model.connection,
+					model = first_chat_model.model,
+					options = first_chat_model.options.clone()
+				};
+				config.usage.set("default_model", default_model);
+			} else {
+				default_model.connection = first_chat_model.connection;
+				default_model.model = first_chat_model.model;
+				default_model.options = first_chat_model.options.clone();
+			}
+
+			config.save();
+			return true;
+		}
+	}
+}

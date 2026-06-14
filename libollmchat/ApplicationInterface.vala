@@ -40,8 +40,8 @@ namespace OLLMchat
 	 *
 	 * Implementations should call type registration methods (e.g.,
 	 * `OLLMvector.Database.register_config()`) directly before calling
-	 * `load_config()` if needed. The base_load_config() method handles
-	 * Config1 to Config2 migration automatically.
+	 * `load_config()` if needed. The base_load_config() method loads Config2
+	 * from ~/.config/ollmchat/config.2.json when present.
 	 *
 	 * == Example ==
 	 *
@@ -88,17 +88,10 @@ namespace OLLMchat
 		}
 		
 		/**
-		 * Base implementation that loads configuration, handling Config1 to Config2 migration.
+		 * Base implementation that loads Config2 from the standard config path.
 		 *
-		 * This method:
-		 * - Initializes Config1 and Config2 static properties
-		 * - Sets config paths
-		 * - Loads Config2 if it exists
-		 * - Migrates Config1 to Config2 if needed
-		 * - Returns loaded or default Config2 instance
-		 *
-		 * Implementations should call this from their `load_config()` method
-		 * after performing any necessary type registration.
+		 * Sets config_path to ~/.config/ollmchat/config.2.json, loads when the
+		 * file exists, otherwise returns an empty Config2 instance.
 		 *
 		 * @return The loaded Config2 instance
 		 */
@@ -107,42 +100,23 @@ namespace OLLMchat
 			var config_dir = GLib.Path.build_filename(
 				GLib.Environment.get_home_dir(), ".config", "ollmchat"
 			);
-			
-			// Create instances first to ensure static properties are initialized
-			var dummy1 = new OLLMchat.Settings.Config1();
+
 			var dummy2 = new OLLMchat.Settings.Config2();
-			
-			// Set static config_path for both Config1 and Config2
-			OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename(config_dir, "config.2.json");
-			OLLMchat.Settings.Config1.config_path = GLib.Path.build_filename(config_dir, "config.json");
-			
-			// Check for config.2.json first
-			if (GLib.FileUtils.test(OLLMchat.Settings.Config2.config_path, GLib.FileTest.EXISTS)) {
-				// Load config.2.json
-				GLib.debug("Loading config from %s", OLLMchat.Settings.Config2.config_path);
-				var config = OLLMchat.Settings.Config2.load();
-				return config;
+
+			OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename(
+				config_dir, "config.2.json"
+			);
+
+			if (GLib.FileUtils.test(
+				OLLMchat.Settings.Config2.config_path, GLib.FileTest.EXISTS
+			)) {
+				GLib.debug(
+					"Loading config from %s", OLLMchat.Settings.Config2.config_path
+				);
+				return OLLMchat.Settings.Config2.load();
 			}
-			
-			// Check for config.json and convert to config.2.json
-			if (!GLib.FileUtils.test(OLLMchat.Settings.Config1.config_path, GLib.FileTest.EXISTS)) {
-				return new OLLMchat.Settings.Config2();
-			}
-			
-			GLib.debug("Loading config.json and converting to config.2.json");
-			var config1 = OLLMchat.Settings.Config1.load();
-			if (!config1.loaded) {
-				return new OLLMchat.Settings.Config2();
-			}
-			var config = config1.toV2();
-			
-			// Save as config.2.json if conversion was successful
-			if (config.loaded) {
-				config.save();
-				GLib.debug("Saved converted config as %s", OLLMchat.Settings.Config2.config_path);
-			}
-			
-			return config;
+
+			return new OLLMchat.Settings.Config2();
 		}
 		
 		/**

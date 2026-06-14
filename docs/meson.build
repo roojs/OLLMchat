@@ -120,7 +120,6 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/ApplicationInterface.vala',
     '../libollmchat/ChatUserInterface.vala',
     '../libollmchat/Settings/namespace.vala',  # Settings namespace documentation
-    '../libollmchat/Settings/Config1.vala',
     '../libollmchat/Settings/Config2.vala',
     '../libollmchat/Settings/Connection.vala',
     '../libollmchat/Settings/ConnectionModels.vala',

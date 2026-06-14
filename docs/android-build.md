@@ -1,7 +1,7 @@
-# Android feasibility study
+# Android build
 
-This note records the current feasibility of building OLLMchat for Android and
-of adding automatic GitHub builds.
+How to build the OLLMchat Android remote chat POC locally and in GitHub Actions,
+plus background on what is implemented today versus the full desktop application.
 
 ## Summary
 
@@ -85,12 +85,70 @@ Build the debug APK locally with:
 scripts/android/build-chat-poc-apk.sh
 ```
 
-That script bootstraps the Android command-line SDK/NDK under `.android-sdk/`
-when needed, clones Pixiewood under `.android-tools/`, and runs prepare,
-generate, and build through `android/pixiewood-chat-poc.xml`. Extra Meson
-wraps and cross options for libsoup, json-glib, gee, sqlite, and related
-dependencies live under `android/pixiewood-wraps/` and
-`android/pixiewood-extra.cross`.
+`build-chat-poc-apk.sh` bootstraps the Android command-line SDK/NDK under
+`.android-sdk/` when needed, clones Pixiewood under `.android-tools/`, and runs
+prepare, generate, and build through `android/pixiewood-chat-poc.xml`. Extra
+Meson wraps and cross options for libsoup, json-glib, gee, sqlite, openssl,
+glib-networking, and related dependencies live under `android/pixiewood-wraps/`
+and `android/pixiewood-extra.cross`.
+
+### Host prerequisites
+
+Local APK builds use the same host packages as the **Android build** GitHub
+Actions workflow (`.github/workflows/android-build.yml`). On Debian/Ubuntu,
+install them once:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends \
+  build-essential \
+  ca-certificates \
+  curl \
+  git \
+  gir1.2-appstream \
+  glslc \
+  libadwaita-1-dev \
+  libglib-object-introspection-perl \
+  libglib-perl \
+  libglib2.0-dev-bin \
+  libgtk-4-dev \
+  libipc-run-perl \
+  libjson-perl \
+  libset-scalar-perl \
+  libtext-template-perl \
+  libxml-libxml-perl \
+  libxml-libxslt-perl \
+  libxml2-utils \
+  meson \
+  nasm \
+  ninja-build \
+  openjdk-17-jdk \
+  pkg-config \
+  python3 \
+  sassc \
+  unzip \
+  valac
+```
+
+**TLS / HTTPS:** Remote chat needs **glib-networking** with an **OpenSSL**
+backend. The OpenSSL Meson wrap runs a one-time `generator.sh` on the build
+host during the first configure. That step requires **`nasm`** and
+**`libtext-template-perl`**. Without them, configure fails while building the
+`openssl` subproject. After a successful run, generated files live under
+`subprojects/openssl-3.0.8/` and are reused from the subprojects cache on later
+builds.
+
+Before pushing Android Meson or wrap changes, run the local cross checks (SDK
+under `.android-sdk/` must already exist — the APK script installs it on first
+run):
+
+```bash
+scripts/android/verify-cross-configure.sh
+scripts/android/verify-cross-compile.sh --with-app
+```
+
+That script pair matches the CI cross-configure and Vala compile path more
+closely than configure alone.
 
 Successful debug builds produce APKs under:
 
@@ -229,11 +287,14 @@ It should not run on every pull request until cost and reliability are known.
 
 The job provides:
 
+- host packages listed under **Host prerequisites** above (including `nasm` and
+  `libtext-template-perl` for the OpenSSL TLS stack)
 - Android SDK and NDK setup through `scripts/android/install-sdk.sh`
 - Meson with Android application target support; `scripts/android/ensure-meson.sh`
   downloads and extracts Debian's current `meson_*_all.deb` under
   `.android-tools/` when the system Meson is too old
-- Pixiewood packaging through `android/pixiewood-chat-poc.xml`
+- Pixiewood packaging through `android/pixiewood-chat-poc.xml` (GTK stack plus
+  openssl/glib-networking for HTTPS via libsoup)
 - restore/save caching for the SDK, Pixiewood/GTK tree, and Gradle (same
   pattern as the Debian extra-package cache in `release.yml`)
 - a CI check that the APK contains `libollmchat-android-poc.so` and
@@ -269,7 +330,7 @@ application target, because that path needs `android_exe_type`.
 5. Reintroduce larger desktop features only after the app launches and basic
    chat works reliably on device.
 
-## Verdict
+## Status
 
 Remote-only/no-GGUF builds are already supported and are appropriate for CI.
 The first Android packaging milestone is complete: the remote chat POC builds a
