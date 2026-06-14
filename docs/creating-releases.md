@@ -36,22 +36,45 @@ AppImage and Windows packaging is configured in [`sqgipkg.json`](../sqgipkg.json
 
 Release builds use the **monolithic** Debian layout (see [`debian/README`](../debian/README)): **`ollmchat_*.deb`** (with libllama) and **`ollmchat-remote-only_*.deb`**. Split library packages under `debian/split/` are for a future apt repository, not GitHub release downloads.
 
+### Changelog (single source of truth)
+
+Release notes for packaging live in [`CHANGELOG.md`](../CHANGELOG.md) at the repository root.
+[`debian/changelog`](../debian/changelog) is **generated** from it — do not edit `debian/changelog` by hand.
+
+While developing, add entries under **`## [Unreleased]`** in `CHANGELOG.md`, then regenerate:
+
+```bash
+./scripts/release/sync-debian-changelog.sh
+```
+
+**Tag push (release attempt):**
+
+1. CI reads `[Unreleased]` and builds `.deb` files labelled with the tag version (e.g. `v1.2.5-alpha` → `1.2.5~alpha-1`). This happens **only in the CI workspace** — nothing is committed yet.
+2. GitHub Release notes are rendered from the same `[Unreleased]` content (via `scripts/release/render-release-notes.sh`), not from git commits.
+3. If the workflow **fails** (build error, publish error, etc.), `CHANGELOG.md` on `main` is unchanged. Fix the problem, push, and re-tag or re-run — you will not accumulate failed-release entries in the changelog history.
+4. If the workflow **succeeds** (build + GitHub Release publish), CI runs **`finalize-changelog.sh`**, which promotes `[Unreleased]` to a dated `[1.2.5-alpha]` section, clears `[Unreleased]`, regenerates `debian/changelog`, and commits to `main`.
+
+Manual **workflow_dispatch** runs use whatever is already in `CHANGELOG.md` (including `[Unreleased]`) and do **not** finalize the changelog.
+
 ## Making a release
 
 1. **Finish the release on `main`.** Merge or commit everything that should ship.
 
-2. **Choose a tag name.** Use semantic versioning with a `v` prefix. Pre-releases use a suffix such as `-alpha`, for example `v1.0.3-alpha`. Tags must match `v*` or the workflow will not run automatically.
+2. **Update `CHANGELOG.md`.** Ensure `[Unreleased]` lists everything since the last release.
 
-3. **Create and push an annotated tag:**
+3. **Choose a tag name.** Use semantic versioning with a `v` prefix. Pre-releases use a suffix such as `-alpha`, for example `v1.2.5-alpha`. Tags must match `v*` or the workflow will not run automatically.
+
+4. **Create and push the tag:**
 
    ```bash
-   git tag -a v1.0.3-alpha -m "Release 1.0.3 alpha"
-   git push origin v1.0.3-alpha
+   git tag v1.2.5-alpha;  git push origin --tags
    ```
 
-4. **Watch CI.** Open **Actions → Release** on GitHub and wait for the job to finish.
+   A lightweight tag is enough — CI triggers on the tag name. The GitHub Release **title** is the tag (e.g. `v1.2.5-alpha`); **notes** come from `CHANGELOG.md`, not from the tag or any `-m` message. You can add `-a` and `-m "…"` if you want a note in `git show v1.2.5-alpha`, but it does not affect the published release.
 
-5. **Check the release.** When the workflow succeeds, GitHub should have a release named after the tag (for example `v1.0.3-alpha`) with these assets:
+5. **Watch CI.** Open **Actions → Release** on GitHub and wait for the job to finish.
+
+6. **Check the release.** When the workflow succeeds, GitHub should have a release named after the tag (for example `v1.2.5-alpha`) with these assets:
 
    | File | Platform |
    |------|----------|
@@ -61,9 +84,8 @@ Release builds use the **monolithic** Debian layout (see [`debian/README`](../de
    | `ollmchat_*.deb` | All-in-one package with local GGUF (Debian/Ubuntu amd64) |
    | `ollmchat-remote-only_*.deb` | All-in-one package without libllama (Debian/Ubuntu amd64) |
 
-   Release notes are generated automatically from commits since the previous tag.
-
-   On tag pushes, CI also updates `debian/changelog` to match the tag (for example `v1.0.3-alpha` → `1.0.3~alpha-1`) before building the `.deb` files.
+   Release notes on GitHub come from the **`[Unreleased]`** section of `CHANGELOG.md` (not from commit messages).
+   After a **successful** publish, that section is promoted to a dated version entry and committed to `main`.
 
 ### Installing Debian packages from a release
 
@@ -95,7 +117,7 @@ To rebuild the same artifacts without creating a GitHub Release:
 1. Go to **Actions → Release → Run workflow**.
 2. Run on the branch or tag you want to test.
 
-Manual runs still upload build artifacts to the workflow run, but the **Publish release assets** step only runs for tag pushes. Manual runs use the version already in `debian/changelog`.
+Manual runs still upload build artifacts to the workflow run, but the **Publish release assets** and **Finalize changelog** steps only run for tag pushes. Manual runs sync `debian/changelog` from `CHANGELOG.md` without promoting `[Unreleased]`.
 
 ## Local packaging (optional)
 

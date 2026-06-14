@@ -104,6 +104,30 @@ jobs:
       - name: Prepare and verify Android cross configure
         run: scripts/android/verify-cross-configure.sh
 
+      - name: Build chat APK
+        run: PIXIEWOOD_PHASE=build scripts/android/build-chat-poc-apk.sh
+
+      - name: Collect APK artifact
+        run: |
+          mkdir -p android-artifacts
+          cp .pixiewood/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk \
+            android-artifacts/ollmchat-android-poc-debug.apk
+          ls -lh android-artifacts
+
+      - name: Verify APK contains application and chat libraries
+        run: |
+          unzip -l android-artifacts/ollmchat-android-poc-debug.apk | \
+            grep -q 'lib/arm64-v8a/libollmchat-android-poc.so'
+          unzip -l android-artifacts/ollmchat-android-poc-debug.apk | \
+            grep -q 'lib/arm64-v8a/libollmchat.so'
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: android-artifacts/ollmchat-android-poc-debug.apk
+          archive: false
+          if-no-files-found: error
+
       - name: Save Android SDK and NDK cache
         if: always()
         uses: actions/cache/save@v4
@@ -133,50 +157,3 @@ jobs:
         with:
           path: ${{ env.APT_CACHE_DIR }}
           key: apt-android-v1-${{ hashFiles('.github/workflows/android-build.yml', '.ci-cache/apt/**') }}
-
-      - name: Build chat APK
-        run: PIXIEWOOD_PHASE=build scripts/android/build-chat-poc-apk.sh
-
-      - name: Collect APK artifact
-        run: |
-          mkdir -p android-artifacts
-          cp .pixiewood/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk \
-            android-artifacts/ollmchat-android-poc-debug.apk
-          ls -lh android-artifacts
-
-      - name: Verify APK contains application and chat libraries
-        run: |
-          unzip -l android-artifacts/ollmchat-android-poc-debug.apk | \
-            grep -q 'lib/arm64-v8a/libollmchat-android-poc.so'
-          unzip -l android-artifacts/ollmchat-android-poc-debug.apk | \
-            grep -q 'lib/arm64-v8a/libollmchat.so'
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v7
-        with:
-          path: android-artifacts/ollmchat-android-poc-debug.apk
-          archive: false
-          if-no-files-found: error
-
-      - name: Save Android SDK and NDK cache after build
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: .android-sdk
-          key: android-sdk-v1-${{ hashFiles('.android-sdk/**') }}
-
-      - name: Save Pixiewood and GTK dependency cache after build
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ env.PIXIEWOOD_CACHE_PATHS }}
-          key: pixiewood-chat-v1-${{ hashFiles('.pixiewood/bin-aarch64/**', '.pixiewood/pixiewood.ini', '.pixiewood/toolchain.cross', 'subprojects/**') }}
-
-      - name: Save Gradle cache after build
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-android-v1-${{ hashFiles('scripts/android/gtk-android-builder.revision') }}

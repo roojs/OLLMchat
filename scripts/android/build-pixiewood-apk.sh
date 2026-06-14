@@ -84,6 +84,20 @@ download_meson_subprojects() {
     return
   fi
 
+  # Meson does not re-apply wrap-file patch_directory when the extracted tree
+  # already exists (e.g. restored from CI cache). Drop Android wrap trees so
+  # meson subprojects download extracts fresh sources with our packagefiles.
+  local wrap_dir
+  for wrap_dir in \
+    libgee-0.20.8 \
+    json-glib-1.10.8 \
+    libsoup-3.6.5 \
+    libxml2-2.15.3 \
+    sqlite-amalgamation-3530200 \
+    nghttp2-1.62.1; do
+    rm -rf "$ROOT_DIR/subprojects/$wrap_dir"
+  done
+
   with_android_meson_path "$meson" subprojects download --sourcedir "$ROOT_DIR"
 }
 

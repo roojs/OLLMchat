@@ -96,9 +96,9 @@ jobs:
           DEBEMAIL: actions@users.noreply.github.com
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            TAG_VER="${GITHUB_REF_NAME#v}"
-            DEB_VER="$(echo "$TAG_VER" | sed 's/-/~/')"
-            dch -v "${DEB_VER}-1" -D unstable "Release ${GITHUB_REF_NAME}" --force-distribution
+            ./scripts/release/sync-debian-changelog.sh --release "$GITHUB_REF_NAME"
+          else
+            ./scripts/release/sync-debian-changelog.sh
           fi
           ./debian/use-monolithic-package.sh
           dpkg-buildpackage -us -uc -b
@@ -193,12 +193,32 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          ./scripts/release/render-release-notes.sh "$GITHUB_REF_NAME" release-notes.md
           gh release create "$GITHUB_REF_NAME" artifacts/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
-            --generate-notes \
-          || gh release upload "$GITHUB_REF_NAME" artifacts/* \
-            --repo "$GITHUB_REPOSITORY" --clobber
+            --notes-file release-notes.md \
+          || {
+            gh release upload "$GITHUB_REF_NAME" artifacts/* \
+              --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --notes-file release-notes.md
+          }
+
+      - name: Finalize changelog on main
+        if: success() && startsWith(github.ref, 'refs/tags/')
+        working-directory: OLLMchat
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          ./scripts/release/finalize-changelog.sh "$GITHUB_REF_NAME"
+          git add CHANGELOG.md debian/changelog
+          git diff --staged --quiet && exit 0
+          git commit -m "Finalize changelog for $GITHUB_REF_NAME"
+          git push origin HEAD:main
 
       - name: Save Debian extra package download cache
         if: always()
