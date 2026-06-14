@@ -113,6 +113,8 @@ if get_option('android_poc') and host_machine.system() == 'android'
     ],
     build_rpath: build_rpath,
     vala_args: [
+      '--pkg=gtk4',
+      '--pkg=libadwaita-1',
       '--pkg=sqlite3',
       '--pkg=ocsqlite',
       '--pkg=ollmchat',
