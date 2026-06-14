@@ -341,10 +341,18 @@ logical edit per subsection (e.g. **`##### Part 1 — Signature`**,
 Apply parts **in order** (Part 1, then 2, …). Each part must be mechanically
 applicable from **Remove/Replace with/Add** plus the section's **Where** text.
 
-- **Whole-method / whole-file `Replace with`:** Prefer this when the change is **large** or when **parts** would force unstated glue between fences—see **Don’t publish duplicate stitched-together versions** above. One **Remove** + one complete **Replace with** is **not** inferior to seven parts if the parts would duplicate the same outcome or omit lines.
+- **Whole-method / whole-file `Replace with`:** Only for **new** methods or
+  **new** files. For **existing** methods, use **ordered chunks** (below) —
+  not one **Remove** of the whole method plus a full paste.
 - **Why use parts at all?** Small, localized diffs preserve a clear review story—but only when each part is **mechanically complete** and **not** mirrored by a second full copy elsewhere in the plan.
 - **Empty default bodies** (e.g. a virtual hook): short **Goal** text; **Remove**/**Replace with** for the old vs new **fragment** (e.g. signature + comment), not a lone **Replace with** with no **Remove**.
-- **When every line of the method changes** or the method is **new:** a single full-method **`Replace with`** (with **`Remove`** of the old method) is OK; say so in prose.
+- **When every line of the method changes** or the method is **new:** a single
+  full-method **`Replace with`** (with **`Remove`** of the old method) is OK
+  for **new** methods only. For an **existing** method, use **ordered chunks**
+  (**Keep** / **Remove** / **Replace with** / **Add**) even when most lines
+  change — reviewers must see what stays vs what changes. **Do not** write
+  "Remove entire method" with a full **Replace with** paste and no **Keep**
+  anchors.
 
 **Very short** methods (a few lines) may use one small **Remove** /
 **Replace with** pair without splitting into parts.

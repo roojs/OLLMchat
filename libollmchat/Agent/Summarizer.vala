@@ -16,17 +16,17 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMchat.Chatter
+namespace OLLMchat.Agent
 {
 	/**
-	 * Background conversation summarizer for the Chatter agent.
+	 * Background conversation summarizer for agents with summary history.
 	 *
-	 * Extends {@link OLLMchat.Agent.Base} so {@link Call.ChatCompletions}
-	 * streams through {@link handle_stream_chunk} instead of a manual signal
-	 * hook. Overrides streaming handlers to persist {{{summary}}} messages
-	 * rather than {{{content-stream}}} rows.
+	 * Shared by Chatter and Coding Assistant. Extends {@link Base} so
+	 * {@link Call.ChatCompletions} streams through {@link handle_stream_chunk}
+	 * instead of a manual signal hook. Overrides streaming handlers to persist
+	 * {{{summary}}} messages rather than {{{content-stream}}} rows.
 	 */
-	public class Summarizer : OLLMchat.Agent.Base
+	public class Summarizer : Base
 	{
 		private Message? draft_summary;
 		private bool waiting_shown;
@@ -37,9 +37,12 @@ namespace OLLMchat.Chatter
 			hash_ref_regex = new GLib.Regex("^(user|think|agent|tool)-[0-9]+$");
 		}
 
-		public Summarizer(Factory factory, History.SessionBase session)
+		/**
+		 * @param agent the main agent whose factory and session drive summarization
+		 */
+		public Summarizer(Base agent)
 		{
-			base(factory, session);
+			base(agent.factory, agent.session);
 			this.chat_call.think = false;
 			this.chat_call.tools.clear();
 		}
@@ -61,8 +64,8 @@ namespace OLLMchat.Chatter
 		/**
 		 * Stream summary text into a {{{summary}}} transcript message.
 		 *
-		 * Does not call {@link OLLMchat.Agent.Base.handle_stream_chunk} — the
-		 * default session path creates {{{content-stream}}} messages.
+		 * Does not call {@link Base.handle_stream_chunk} — the default session
+		 * path creates {{{content-stream}}} messages.
 		 */
 		public override void handle_stream_chunk(
 			string new_text,
@@ -93,21 +96,28 @@ namespace OLLMchat.Chatter
 		}
 
 		/**
-		 * Summarize the completed turn starting at turn_start.
+		 * Summarize the completed turn.
 		 *
+		 * Scans session.messages for the latest user-sent row at run time.
 		 * Builds turn-reference payload, calls the model with tools and
 		 * thinking disabled, streams into a {{{summary}}} message, and
 		 * validates hash links (one retry on failure).
 		 *
-		 * @param turn_start index of the user-sent message for this turn
 		 * @param cancellable optional cancel token for the summary request
 		 */
 		public async void run(
-			int turn_start,
 			GLib.Cancellable? cancellable = null)
 		{
+			var user_sent_index = 0;
+			for (int i = this.session.messages.size - 1; i >= 0; i--) {
+				if (this.session.messages.get(i).role == "user-sent") {
+					user_sent_index = i;
+					break;
+				}
+			}
+
 			var turn_end = this.session.messages.size;
-			if (turn_start >= turn_end) {
+			if (user_sent_index >= turn_end) {
 				return;
 			}
 
@@ -129,7 +139,7 @@ namespace OLLMchat.Chatter
 			}
 
 			var turn_references = "";
-			for (var i = turn_start; i < turn_end; i++) {
+			for (var i = user_sent_index; i < turn_end; i++) {
 				var msg = this.session.messages.get(i);
 				var n = i.to_string();
 				switch (msg.role) {
@@ -188,13 +198,16 @@ namespace OLLMchat.Chatter
 				return;
 			}
 
-			var factory = (Factory) this.factory;
 			var validation_issue = "";
 			for (var attempt = 0; attempt < 2; attempt++) {
 				this.draft_summary = null;
 				this.waiting_shown = false;
 				try {
-					var tpl = factory.load_prompt("chatter_summary.md");
+					var tpl = new Prompt.Template("chatter_summary.md") {
+						source = "resource:///",
+						base_dir = "chat-prompts"
+					};
+					tpl.load();
 					var user_text = tpl.fill(
 						"previous_summary", previous_summary,
 						"turn_references", turn_references,
