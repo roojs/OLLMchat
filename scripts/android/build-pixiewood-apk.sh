@@ -87,25 +87,8 @@ download_meson_subprojects() {
   with_android_meson_path "$meson" subprojects download --sourcedir "$ROOT_DIR"
 }
 
-path_without_gi_scanners() {
-  local entry filtered=""
-  local old_ifs="$IFS"
-  IFS=':'
-  for entry in $PATH; do
-    if [ -n "$entry" ] && [ ! -x "$entry/g-ir-scanner" ]; then
-      filtered="${filtered:+$filtered:}$entry"
-    fi
-  done
-  IFS="$old_ifs"
-  printf '%s\n' "$filtered"
-}
-
-with_android_meson_path() {
-  local old_path="$PATH"
-  PATH="$(path_without_gi_scanners)"
-  "$@"
-  PATH="$old_path"
-}
+# shellcheck source=android-meson-path.sh
+source "$ROOT_DIR/scripts/android/android-meson-path.sh"
 
 ensure_gtk_android_builder() {
   if [ -n "$PIXIEWOOD" ]; then
@@ -186,15 +169,38 @@ init_pixiewood_env() {
   export CXX="${CXX:-g++}"
   export CC_FOR_BUILD="${CC_FOR_BUILD:-gcc}"
   export CXX_FOR_BUILD="${CXX_FOR_BUILD:-g++}"
-  MESON_FOR_ANDROID="$("$ROOT_DIR/scripts/android/ensure-meson.sh")"
+  MESON_FOR_ANDROID="$ROOT_DIR/scripts/android/meson-for-pixiewood.sh"
   mapfile -t PIXIEWOOD_CONFIGURE_OPTIONS < <(pixiewood_configure_options)
+}
+
+run_pixiewood() {
+  with_android_meson_path "$PIXIEWOOD" -C "$ROOT_DIR" "$@"
+}
+
+run_pixiewood_configure() {
+  init_pixiewood_env
+
+  if needs_pixiewood_prepare; then
+    run_pixiewood prepare \
+      --sdk "$ANDROID_SDK_ROOT" \
+      --meson "$MESON_FOR_ANDROID" \
+      "$PIXIEWOOD_MANIFEST"
+  fi
+
+  echo "Downloading Meson subprojects for Android wraps."
+  download_meson_subprojects "$MESON_FOR_ANDROID"
+
+  echo "Reconfiguring Pixiewood Meson build (configure-only)."
+  reconfigure_pixiewood_build "$MESON_FOR_ANDROID" "${PIXIEWOOD_CONFIGURE_OPTIONS[@]}"
+
+  echo "Android cross configure succeeded for $PIXIEWOOD_BUILD_DIR"
 }
 
 run_pixiewood_setup() {
   init_pixiewood_env
 
   if needs_pixiewood_prepare; then
-    "$PIXIEWOOD" -C "$ROOT_DIR" prepare \
+    run_pixiewood prepare \
       --sdk "$ANDROID_SDK_ROOT" \
       --meson "$MESON_FOR_ANDROID" \
       "$PIXIEWOOD_MANIFEST"
@@ -213,13 +219,16 @@ run_pixiewood_build() {
   echo "Reconfiguring Pixiewood Meson build."
   reconfigure_pixiewood_build "$MESON_FOR_ANDROID" "${PIXIEWOOD_CONFIGURE_OPTIONS[@]}"
 
-  "$PIXIEWOOD" -C "$ROOT_DIR" generate
-  "$PIXIEWOOD" -C "$ROOT_DIR" build
+  run_pixiewood generate
+  run_pixiewood build
 
   echo "Generated Android artifacts under $ROOT_DIR/.pixiewood/android/app/build/outputs"
 }
 
 case "$PIXIEWOOD_PHASE" in
+  configure)
+    run_pixiewood_configure
+    ;;
   setup)
     run_pixiewood_setup
     ;;
@@ -231,7 +240,7 @@ case "$PIXIEWOOD_PHASE" in
     run_pixiewood_build
     ;;
   *)
-    echo "Unknown PIXIEWOOD_PHASE: $PIXIEWOOD_PHASE (expected setup, build, or all)" >&2
+    echo "Unknown PIXIEWOOD_PHASE: $PIXIEWOOD_PHASE (expected configure, setup, build, or all)" >&2
     exit 2
     ;;
 esac

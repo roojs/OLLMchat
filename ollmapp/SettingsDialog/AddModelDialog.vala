@@ -45,6 +45,7 @@ namespace OLLMapp.SettingsDialog
 		private Gtk.SortListModel sorted_models;
 		private Gtk.SingleSelection selection;
 		private Gtk.CustomSorter model_sorter;
+		private bool loading_connections = false;
 		
 		/**
 		 * The selected connection URL (set when dialog is used).
@@ -92,6 +93,7 @@ namespace OLLMapp.SettingsDialog
 				subtitle = "Select the server connection to use"
 			};
 			this.connection_row.add_suffix(this.connection_dropdown);
+			this.connection_row.set_activatable_widget(this.connection_dropdown);
 			this.group.add(this.connection_row);
 			
 			// Model row
@@ -205,6 +207,19 @@ namespace OLLMapp.SettingsDialog
 			this.closed.connect(() => {
 				this.search_results.cancel();
 			});
+			
+			this.connection_dropdown.notify["selected"].connect(() => {
+				if (this.loading_connections) {
+					return;
+				}
+				this.model_pulldown.set_popup_visible(false);
+				this.selection.selected = Gtk.INVALID_LIST_POSITION;
+				this.selected_model.slug = "";
+				this.size_row.visible = false;
+				this.model_pulldown.placeholder_text = "Search models (e.g., gemma3, qwen3)";
+			});
+			
+			this.setup_model_chain();
 		}
 		
 		/**
@@ -212,7 +227,7 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public async void load()
 		{
-		
+			this.loading_connections = true;
 			this.connection_urls.clear();
 			
 			// Create new StringList (StringList doesn't have remove_all)
@@ -222,10 +237,12 @@ namespace OLLMapp.SettingsDialog
 			int index = 0;
 			foreach (var entry in this.dialog.app.config.connections.entries) {
 				this.connection_urls.add(entry.key);
-				// Display format: "name (url)" or just "name" if name is set
-				var display_name = entry.value.name != "" ? 
-					entry.value.name + " (" + entry.key + ")" : 
-					entry.key;
+				var display_name = entry.key;
+				if (entry.value.name != ""
+				    && entry.value.name != entry.key
+				    && entry.value.name != entry.value.url) {
+					display_name = entry.value.name + " (" + entry.key + ")";
+				}
 				this.connection_list.append(display_name);
 				
 				// Track default connection index
@@ -240,8 +257,7 @@ namespace OLLMapp.SettingsDialog
 			
 			// Set default to 'default' connection
 			this.connection_dropdown.selected = default_index;
-		
-			this.setup_model_chain();
+			this.loading_connections = false;
 		}
 
 		/**
@@ -413,6 +429,15 @@ namespace OLLMapp.SettingsDialog
 				if (this.model_pulldown.get_search_text() == "") {
 					return;
 				}
+				var root = this.get_root();
+				if (root != null) {
+					var focus = root.get_focus();
+					if (focus != null
+					    && focus != this.model_pulldown
+					    && !this.model_pulldown.is_ancestor(focus)) {
+						return;
+					}
+				}
 				this.model_pulldown.set_popup_visible(true, true);
 			});
 			this.search_results.items_changed.connect(() => {
@@ -422,6 +447,15 @@ namespace OLLMapp.SettingsDialog
 				GLib.Idle.add(() => {
 					if (this.model_pulldown.get_search_text() == "") {
 						return false;
+					}
+					var root = this.get_root();
+					if (root != null) {
+						var focus = root.get_focus();
+						if (focus != null
+						    && focus != this.model_pulldown
+						    && !this.model_pulldown.is_ancestor(focus)) {
+							return false;
+						}
 					}
 					this.model_pulldown.set_popup_visible(true);
 					if (this.model_pulldown.list.model != null

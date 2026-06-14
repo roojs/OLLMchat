@@ -101,8 +101,8 @@ jobs:
             unzip \
             valac
 
-      - name: Prepare Android build environment
-        run: scripts/android/setup-chat-poc-apk.sh
+      - name: Prepare and verify Android cross configure
+        run: scripts/android/verify-cross-configure.sh
 
       - name: Save Android SDK and NDK cache
         if: always()

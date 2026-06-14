@@ -141,6 +141,15 @@
   background-color: #fffacd;
 }
 
+.permission-widget.high-risk {
+  background-color: #ffe4e1;
+  border: 2px solid #c0392b;
+}
+
+.permission-widget.high-risk text {
+  background-color: #ffe4e1;
+}
+
 /* Banner styling - matches Adwaita banner appearance */
 /* Uses libadwaita warning colors for background and text (light theme values) */
 .banner {

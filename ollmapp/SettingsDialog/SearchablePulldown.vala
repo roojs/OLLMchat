@@ -394,7 +394,12 @@ namespace OLLMapp.SettingsDialog
 				// Make arrow clickable to open popover
 				var gesture = new Gtk.GestureClick();
 				gesture.released.connect(() => {
-					this.set_popup_visible(!this.popup.visible);
+					if (this.popup.visible) {
+						this.set_popup_visible(false);
+						return;
+					}
+					this.entry.grab_focus();
+					this.set_popup_visible(true);
 				});
 				this.arrow.add_controller(gesture);
 				return;
@@ -441,10 +446,6 @@ namespace OLLMapp.SettingsDialog
 				return;
 			}
 			
-			// Ensure entry has focus before showing popup
-			if (!this.entry.has_focus) {
-				this.entry.grab_focus();
-			}
 			// Always ensure cursor is at end and no text is selected when showing popup
 			this.entry.set_position(-1);
 			this.entry.select_region(-1, -1);
