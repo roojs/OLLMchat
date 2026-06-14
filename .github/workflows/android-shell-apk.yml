@@ -2,9 +2,19 @@ name: Android shell APK
 
 on:
   workflow_dispatch:
+    inputs:
+      refresh_cache:
+        description: Rebuild SDK and Pixiewood/GTK caches from scratch
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+
+env:
+  ANDROID_SDK_CACHE_KEY: android-sdk-v1-${{ hashFiles('scripts/android/install-sdk.sh') }}
+  PIXIEWOOD_CACHE_KEY: pixiewood-gtk-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('android/pixiewood-shell-poc.xml', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh') }}
+  GRADLE_CACHE_KEY: gradle-android-v1-${{ hashFiles('scripts/android/gtk-android-builder.revision') }}
 
 jobs:
   build:
@@ -14,6 +24,37 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Restore Android SDK and NDK cache
+        uses: actions/cache@v4
+        with:
+          path: .android-sdk
+          key: ${{ env.ANDROID_SDK_CACHE_KEY }}
+          restore-keys: |
+            android-sdk-v1-
+
+      - name: Restore Pixiewood and GTK dependency cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .android-tools
+            .pixiewood/bin-aarch64
+            .pixiewood/pixiewood.ini
+            .pixiewood/toolchain.cross
+            subprojects
+          key: ${{ env.PIXIEWOOD_CACHE_KEY }}
+          restore-keys: |
+            pixiewood-gtk-v1-stable-
+
+      - name: Restore Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ env.GRADLE_CACHE_KEY }}
+          restore-keys: |
+            gradle-android-v1-
 
       - name: Install build dependencies
         run: |
@@ -41,6 +82,7 @@ jobs:
             ninja-build \
             openjdk-17-jdk \
             pkg-config \
+            python3 \
             sassc \
             unzip \
             valac
