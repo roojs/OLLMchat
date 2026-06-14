@@ -23,6 +23,10 @@ namespace OLLMcoder.Skill
 	 */
 	public class Factory : OLLMchat.Agent.Factory
 	{
+		public override string name { get; protected set; default = "skill-runner"; }
+		public override string title { get; protected set; default = "Skills Agent"; }
+		public override string long_title { get; protected set; default = "Runs multi-step skills and structured task workflows."; }
+
 		public OLLMfiles.ProjectManager project_manager { get; private set; }
 		public Manager skill_manager { get; private set; }
 		public string skill_name { get; private set; }
@@ -39,8 +43,6 @@ namespace OLLMcoder.Skill
 		public Factory(OLLMfiles.ProjectManager project_manager,
 			 Gee.ArrayList<string> skills_directories, string skill_name = "")
 		{
-			this.name = "skill-runner";
-			this.title = "Skills Agent";
 			this.project_manager = project_manager;
 			this.skill_manager = new Manager(skills_directories);
 			this.skill_name = skill_name != "" ? skill_name : "task_creator";

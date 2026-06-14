@@ -5,22 +5,48 @@ alwaysApply: true
 
 # Mandatory project standards
 
-## Essential reading
+## Essential reading — non-negotiable
 
-You **must** read **`docs/coding-standards.md`** before writing or changing Vala code. This is not optional — do not guess conventions and do not implement until you have read it.
+Before writing or changing **any** Vala code, you **must** read the **entire**
+**`docs/coding-standards.md`** file from start to finish. There is **no
+alternative**. Partial compliance is a violation.
 
-Also read when the task requires it:
+### How you must read it
+
+- Use the **Read** tool on **`docs/coding-standards.md`** and read **every
+  section**, from the first line to the last — including sections at the **end**
+  of the file (e.g. method extraction, signal handlers, debug rules).
+- Read it **before** you write, edit, or propose Vala code — not after, not
+  in parallel with the first edit.
+
+### What is forbidden
+
+Do **not**:
+
+- **Grep** or **search** the file instead of reading it.
+- **Skim** — opening sections only, “the parts that seem relevant”, or jumping
+  straight to a line number someone quoted.
+- Rely on **summaries**, **memories**, **excerpts** quoted in chat, plans, or
+  other rules — those are not substitutes for reading the source document.
+- **Guess** conventions or assume you already know this project's rules.
+- **Implement** until you have read the **whole** document in this session.
+
+If you have not read **`docs/coding-standards.md`** in full during this task,
+**stop** and read it before continuing.
+
+You **must** follow **`docs/coding-standards.md`** on every Vala change. You
+**must never** ignore it or treat it as optional guidance.
+
+### Other full documents (same rule — read all, do not grep or skim)
+
+When the task requires it, read the **full** document the same way (Read tool,
+start to finish):
 
 - **`docs/build-rules.md`** — build or Meson changes
 - **`docs/code-documentation.md`** — docblocks and API comments
 - **`docs/guide-to-writing-plans.md`** — work from `docs/plans/*`
-- **`docs/bug-fix-process.md`** — bug fixes
+- **`docs/bug-fix-process.md`** — bug fixes (including propose → approval
+  before applying code)
 
-## Rules (every Vala change)
-
-- **No new methods** — no helpers unless the user or plan asks; inline in the method you touch
-- **Type identifiers** — no `Type?` except external boundaries; `GLib.` prefix; no `using`
-- **Temporary variables** — no single-use locals; no property aliases; inline unless 4+ deep
-- **Build** — `ninja -C build` only; never `valac`
-
-Canonical detail: **`docs/coding-standards.md`**. Plans: **`docs/guide-to-writing-plans.md`** — Checklist for plans.
+Canonical Vala style and patterns: **`docs/coding-standards.md`** (read it all).
+Plans: **`docs/guide-to-writing-plans.md`** — Checklist for plans.

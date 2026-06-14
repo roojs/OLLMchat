@@ -26,6 +26,10 @@ namespace OLLMcoder
 	 */
 	public class AgentFactory : OLLMchat.Agent.Factory
 	{
+		public override string name { get; protected set; default = "code-assistant"; }
+		public override string title { get; protected set; default = "Coding Assistant"; }
+		public override string long_title { get; protected set; default = "Code-aware assistant with project context, tools, and editor integration."; }
+
 		/**
 		 * ProjectManager instance for project/file management.
 		 */
@@ -46,10 +50,7 @@ namespace OLLMcoder
 		 */
 		public AgentFactory(OLLMfiles.ProjectManager project_manager)
 		{
-			this.name = "code-assistant";
-			this.title = "Coding Assistant";
 			this.project_manager = project_manager;
-			// Set shell from environment variable, with fallback
 			this.shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash";
 		}
 		

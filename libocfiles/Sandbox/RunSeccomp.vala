@@ -232,7 +232,10 @@ namespace OLLMfiles.Sandbox
 		void on_notify_event (Seccomp.Notif ev)
 		{
 			if (ev.sc_data.nr == this.nr_socket) {
-				this.count_socket++;
+				var domain = (int) ev.sc_data.args[0];
+				if (domain == Posix.AF_INET || domain == Posix.AF_INET6) {
+					this.count_socket++;
+				}
 				return;
 			}
 			if (ev.sc_data.nr == this.nr_connect) {

@@ -462,6 +462,9 @@ namespace OLLMapp
 					
 			var skill_runner = new OLLMcoder.Skill.Factory(this.project_manager, skills_dirs, "");
 			this.history_manager.agent_factories.set(skill_runner.name, skill_runner);
+
+			this.history_manager.agent_factories.set(
+				"chatter", new OLLMchat.Chatter.Factory());
 			
 			// TODO: Clipboard feature needs proper design - see TODO.md
 			// Register clipboard metadata for file reference paste support
@@ -508,7 +511,7 @@ namespace OLLMapp
 			};
 			
 			this.chat_widget.error_occurred.connect((error) => {
-				stderr.printf("Error: %s\n", error);
+				GLib.stderr.printf("Error: %s\n", error);
 			});
 
 			// Create WindowPane to manage chat widget and agent widgets
@@ -566,7 +569,7 @@ namespace OLLMapp
 			
 			// Ensure config is loaded before proceeding
 			if (config == null || !config.loaded) {
-				string error_msg = "Config not loaded, skipping codebase search tool initialization";
+				var error_msg = "Config not loaded, skipping codebase search tool initialization";
 				GLib.warning("%s", error_msg);
 				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
 				this.tool_error_banner.revealed = true;
@@ -592,7 +595,7 @@ namespace OLLMapp
 			try {
 				yield tool.init_databases(config, this.app.data_dir);
 			} catch (GLib.Error e) {
-				string error_msg = "Failed to initialize vector database: " + e.message;
+				var error_msg = "Failed to initialize vector database: " + e.message;
 				GLib.warning("Codebase search tool disabled: %s", error_msg);
 				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
 				this.tool_error_banner.revealed = true;
@@ -657,8 +660,8 @@ namespace OLLMapp
 			var agent_store = new GLib.ListStore(typeof(OLLMchat.Agent.Factory));
 			
 			// Add all registered agents to the store and set selection during load
-			uint selected_index = 0;
-			uint i = 0;
+			var selected_index = 0;
+			var i = 0;
 			foreach (var factory in this.history_manager.agent_factories.values) {
 				agent_store.append(factory);
 				if (factory.name == this.history_manager.session.agent_name) {
@@ -687,13 +690,13 @@ namespace OLLMapp
 				if (list_item == null || list_item.item == null) {
 					return;
 				}
-				
 				var agent_factory = list_item.item as OLLMchat.Agent.Factory;
 				var label = list_item.get_data<Gtk.Label>("label");
-				
-				if (label != null && agent_factory != null) {
-					label.label = agent_factory.title;
+				if (label == null) {
+					return;
 				}
+				label.label = agent_factory.title;
+				label.tooltip_text = agent_factory.long_title;
 			});
 			
 			// Set up dropdown with agents
@@ -709,21 +712,21 @@ namespace OLLMapp
 				}
 				
 				var factory = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMchat.Agent.Factory;
+				this.agent_dropdown.tooltip_text = factory.long_title;
 				
 				// Use Manager.activate_agent() to handle agent change
 				// This routes to session.activate_agent() which handles AgentHandler creation/copying
 				// and then triggers agent_activated signal for UI updates
 				// For EmptySession (fid is empty), call session.activate_agent() directly
 				try {
-					var session = this.history_manager.session;
-					if (session.fid == null || session.fid == "") {
-						// EmptySession doesn't have a fid - call activate_agent directly
-						session.activate_agent(factory.name);
-					} else {
-						// Real session - use Manager.activate_agent() which looks up by fid
-						this.history_manager.activate_agent(session.fid, factory.name);
+					if (this.history_manager.session.fid == null
+						|| this.history_manager.session.fid == "") {
+						this.history_manager.session.activate_agent(factory.name);
+						return;
 					}
-				} catch (Error e) {
+					this.history_manager.activate_agent(
+						this.history_manager.session.fid, factory.name);
+				} catch (GLib.Error e) {
 					GLib.warning("Failed to activate agent '%s': %s", factory.name, e.message);
 				}
 			});
@@ -744,8 +747,8 @@ namespace OLLMapp
 				factory.activate.begin(this, (obj, res) => {
 					factory.activate.end(res);
 				});
-				uint agent_index = 0;
-				for (uint j = 0; j < store.get_n_items(); j++) {
+				var agent_index = 0;
+				for (var j = 0; j < store.get_n_items(); j++) {
 					if (((OLLMchat.Agent.Factory)store.get_item(j)).name == session.agent_name) {
 						agent_index = j;
 						break;
@@ -781,7 +784,7 @@ namespace OLLMapp
 		private void update_settings_button()
 		{
 			// Count active pulls
-			int active_count = 0;
+			var active_count = 0;
 			foreach (var entry in this.settings_dialog.pull_manager.models.entries) {
 				if (entry.value.active) {
 					active_count++;

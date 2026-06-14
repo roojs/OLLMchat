@@ -361,6 +361,9 @@ namespace OLLMfiles.Sandbox
 			if (path == "/dev/null") {
 				return true;
 			}
+			if (path == "/dev/tty") {
+				return true;
+			}
 			var home = GLib.Environment.get_home_dir();
 			var bind_play = GLib.Path.build_filename(home, "playground");
 			if (path == bind_play || path.has_prefix(bind_play + "/")) {
@@ -385,7 +388,7 @@ namespace OLLMfiles.Sandbox
 			}
 			return false;
 		}
-		
+
 		/**
 		 * Read stdout and stderr from subprocess and return combined output.
 	 * 

@@ -26,11 +26,9 @@ namespace OLLMchat.Chatter
 	 */
 	public class Factory : OLLMchat.Agent.Factory
 	{
-		public Factory()
-		{
-			this.name = "chatter";
-			this.title = "Chatter";
-		}
+		public override string name { get; protected set; default = "chatter"; }
+		public override string title { get; protected set; default = "Chatter"; }
+		public override string long_title { get; protected set; default = "Chat with summarized history — compact context and session recall links."; }
 
 		public override OLLMchat.Agent.Base create_agent(History.SessionBase session)
 		{

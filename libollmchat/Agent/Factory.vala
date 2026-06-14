@@ -49,12 +49,17 @@ namespace OLLMchat.Agent
 		 * The name of the agent (e.g., "code-assistant").
 		 * Used to derive the resource path.
 		 */
-		public string name { get; protected set; default = ""; }
+		public virtual string name { get; protected set; default = ""; }
 		
 		/**
 		 * Display name for UI (e.g., "Code Assistant", "Just Ask").
 		 */
-		public string title { get; protected set; default = ""; }
+		public virtual string title { get; protected set; default = ""; }
+
+		/**
+		 * Longer description for tooltips (e.g., agent dropdown hover text).
+		 */
+		public virtual string long_title { get; protected set; default = ""; }
 		
 		/**
 		 * User's shell (optional, can be set after construction).
