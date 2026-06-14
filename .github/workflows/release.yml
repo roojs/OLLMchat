@@ -1,8 +1,10 @@
-name: Release
+name: Release build
 
 # Builds Debian packages (amd64) first for fast feedback, then Linux AppImages
 # (x86_64 + aarch64) and the Windows installer with sqgipkg, and publishes
 # release assets for tags like `v1.0.0`.
+
+run-name: Release build · ${{ github.ref_name }}
 
 on:
   push:
@@ -23,11 +25,9 @@ env:
 
 jobs:
   build:
+    name: Build and publish
     runs-on: ubuntu-24.04
     env:
-      SQGI_CACHE_KEY: sqgi-build-v1-${{ hashFiles('OLLMchat/scripts/release/sqgi.revision') }}
-      SQGIPKG_DEPS_CACHE_KEY: sqgipkg-deps-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/sqgipkg.json', 'OLLMchat/scripts/release/sqgi.revision') }}
-      SQGIPKG_MESON_CACHE_KEY: sqgipkg-meson-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/**/*.vala', 'OLLMchat/**/meson.build', 'OLLMchat/meson.build', 'OLLMchat/meson_options.txt', 'OLLMchat/sqgipkg.json') }}
       DEB_CACHE_DIR: OLLMchat/.ci-cache/debian-debs-amd64
     steps:
       - name: Checkout OLLMchat
@@ -39,7 +39,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: OLLMchat/.sqgipkg
-          key: ${{ env.SQGIPKG_DEPS_CACHE_KEY }}
+          key: sqgipkg-deps-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/sqgipkg.json', 'OLLMchat/scripts/release/sqgi.revision') }}
           restore-keys: |
             sqgipkg-deps-v1-stable-
 
@@ -50,7 +50,7 @@ jobs:
             OLLMchat/build-linux-x86_64
             OLLMchat/build-linux-aarch64
             OLLMchat/build-windows-x86_64
-          key: ${{ env.SQGIPKG_MESON_CACHE_KEY }}
+          key: sqgipkg-meson-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/**/*.vala', 'OLLMchat/**/meson.build', 'OLLMchat/meson.build', 'OLLMchat/meson_options.txt', 'OLLMchat/sqgipkg.json') }}
           restore-keys: |
             sqgipkg-meson-v1-stable-
 
@@ -129,7 +129,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: sqgi/build
-          key: ${{ env.SQGI_CACHE_KEY }}
+          key: sqgi-build-v1-${{ hashFiles('OLLMchat/scripts/release/sqgi.revision') }}
           restore-keys: |
             sqgi-build-v1-
 
