@@ -210,7 +210,7 @@ foreach exe_info : executables_info
   )
 endforeach
 
-if get_option('docs')
+if get_option('docs') and not android_shell_poc
   subdir('docs')             # Depends on all source files
 endif
 

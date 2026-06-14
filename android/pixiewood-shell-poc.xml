@@ -47,10 +47,6 @@
   <build target="ollmchat-android-shell-poc">
     <configure-options>
       <option>-Dandroid_shell_poc=true</option>
-      <option>-Ddocs=false</option>
-      <option>-Dexamples=false</option>
-      <option>-Dtests=false</option>
-      <option>-Dlocal_gguf=disabled</option>
     </configure-options>
     <architectures>
       <arch>aarch64</arch>
