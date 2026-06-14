@@ -78,16 +78,37 @@ jobs:
       # Ubuntu 24.04 does not ship libfaiss-dev; install the current Debian amd64
       # package (same approach as deploy-docs.yml) before the native deb build.
       - name: Install libfaiss-dev from Debian
+        id: install-faiss
         working-directory: OLLMchat
         env:
           DEB_CACHE_DIR: ${{ github.workspace }}/${{ env.DEB_CACHE_DIR }}
         run: ./scripts/ci/install-libfaiss-dev-debian.sh
 
       - name: Install libllama from Debian
+        id: install-llama
         working-directory: OLLMchat
         env:
           DEB_CACHE_DIR: ${{ github.workspace }}/${{ env.DEB_CACHE_DIR }}
         run: ./scripts/fetch-libllama.sh
+
+      - name: Detect Debian extra package cache
+        if: always()
+        id: deb-cache
+        run: |
+          if [ -d "$DEB_CACHE_DIR" ] && find "$DEB_CACHE_DIR" -type f -name '*.deb' -print -quit | grep -q .; then
+            echo "save=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "save=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          DEB_CACHE_DIR: ${{ env.DEB_CACHE_DIR }}
+
+      - name: Save Debian extra package download cache
+        if: always() && steps.deb-cache.outputs.save == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.DEB_CACHE_DIR }}
+          key: debian-extra-debs-v1-stable-${{ hashFiles('OLLMchat/scripts/ci/debian-pool-deb.sh', 'OLLMchat/scripts/ci/install-libfaiss-dev-debian.sh', 'OLLMchat/scripts/fetch-libllama.sh') }}
 
       - name: Build Debian packages (amd64)
         working-directory: OLLMchat
@@ -219,10 +240,3 @@ jobs:
           git diff --staged --quiet && exit 0
           git commit -m "Finalize changelog for $GITHUB_REF_NAME"
           git push origin HEAD:main
-
-      - name: Save Debian extra package download cache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ env.DEB_CACHE_DIR }}
-          key: debian-extra-debs-v1-${{ hashFiles('OLLMchat/.ci-cache/debian-debs-amd64/**') }}

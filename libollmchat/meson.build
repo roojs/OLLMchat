@@ -8,7 +8,7 @@
 valac = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
 is_android_cross = host_machine.system() == 'android'
-ollmchat_vala_gir = is_android_cross ? disabler() : 'OLLMchat-1.0.gir'
+ollmchat_vala_gir = 'OLLMchat-1.0.gir'
 
 local_gguf_opt = get_option('local_gguf')
 local_gguf_enabled = false
@@ -244,28 +244,50 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollamaweb'
 ])
 
-ollmchat_base_lib = library('ollmchat',
-  dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocmarkdown_vapi_dep],
-  sources: [ollmchat_ollama_src, local_gguf_src, ollmchat_resources],
-  vala_header: 'ollmchat.h',
-  vala_vapi: 'ollmchat.vapi',
-  vala_gir: ollmchat_vala_gir,
-  # Don't use link_with for ocsqlite_base_lib to prevent determine_dep_vapis() from finding
-  # ocsqlite-meson.vapi and adding it as a source. Link manually via ocsqlite_vapi_dep link_args instead.
-  build_rpath: lib_build_rpath,
-  install_rpath: ':'.join(local_gguf_install_rpath),
-  link_args: ['-lm'],  # Link math library for Math.sqrt() in Embed.vala
-  vala_args: [
-    '--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--pkg=ollamaweb',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
-    '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
-  ] + local_gguf_vala_args,
-  include_directories: local_gguf_include_dirs,
-  install: true
-)
+if is_android_cross
+  ollmchat_base_lib = library('ollmchat',
+    dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocmarkdown_vapi_dep],
+    sources: [ollmchat_ollama_src, local_gguf_src, ollmchat_resources],
+    vala_header: 'ollmchat.h',
+    vala_vapi: 'ollmchat.vapi',
+    build_rpath: lib_build_rpath,
+    install_rpath: ':'.join(local_gguf_install_rpath),
+    link_args: ['-lm'],  # Link math library for Math.sqrt() in Embed.vala
+    vala_args: [
+      '--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--pkg=ollamaweb',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+      '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+      '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    ] + local_gguf_vala_args,
+    include_directories: local_gguf_include_dirs,
+    install: true
+  )
+else
+  ollmchat_base_lib = library('ollmchat',
+    dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocmarkdown_vapi_dep],
+    sources: [ollmchat_ollama_src, local_gguf_src, ollmchat_resources],
+    vala_header: 'ollmchat.h',
+    vala_vapi: 'ollmchat.vapi',
+    vala_gir: ollmchat_vala_gir,
+    # Don't use link_with for ocsqlite_base_lib to prevent determine_dep_vapis() from finding
+    # ocsqlite-meson.vapi and adding it as a source. Link manually via ocsqlite_vapi_dep link_args instead.
+    build_rpath: lib_build_rpath,
+    install_rpath: ':'.join(local_gguf_install_rpath),
+    link_args: ['-lm'],  # Link math library for Math.sqrt() in Embed.vala
+    vala_args: [
+      '--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--pkg=ollamaweb',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+      '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+      '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    ] + local_gguf_vala_args,
+    include_directories: local_gguf_include_dirs,
+    install: true
+  )
+endif
 
 ollmchat_gir_file = meson.current_build_dir() / 'OLLMchat-1.0.gir'
 if not is_android_cross
