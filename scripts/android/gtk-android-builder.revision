@@ -1,4 +1,4 @@
 # Pin gtk-android-builder (Pixiewood) for reproducible Android CI builds.
 # Bump this commit when intentionally upgrading the Android packaging toolchain.
-# Used by scripts/android/build-shell-poc-apk.sh and the Android shell APK workflow cache key.
+# Used by scripts/android/build-pixiewood-apk.sh and the Android APK workflow cache key.
 00b1862b6434a8778557dc3d3074f43f5fdead1b
