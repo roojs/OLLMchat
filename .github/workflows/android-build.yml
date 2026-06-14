@@ -102,12 +102,48 @@ jobs:
             unzip \
             valac
 
+      - name: Save apt package cache
+        if: always() && hashFiles('.ci-cache/apt/**') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.APT_CACHE_DIR }}
+          key: apt-android-v1-stable-${{ hashFiles('.github/workflows/android-build.yml') }}
+
       - name: Prepare and verify Android cross configure
         run: scripts/android/verify-cross-configure.sh
 
+      - name: Save Android SDK and NDK cache
+        if: always() && hashFiles('.android-sdk/**') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .android-sdk
+          key: android-sdk-v1-stable-${{ hashFiles('scripts/android/install-sdk.sh') }}
+
+      - name: Save Pixiewood and GTK dependency cache (after configure)
+        if: always() && hashFiles('.pixiewood/pixiewood.ini') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.PIXIEWOOD_CACHE_PATHS }}
+          key: pixiewood-chat-v1-stable-${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/AndroidPoc.vala') }}
+
       - name: Build chat APK
-        id: build-apk
         run: PIXIEWOOD_PHASE=build scripts/android/build-chat-poc-apk.sh
+
+      - name: Save Gradle cache
+        if: always() && hashFiles(format('{0}/caches/**', env.GRADLE_USER_HOME)) != ''
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ env.GRADLE_USER_HOME }}/caches
+            ${{ env.GRADLE_USER_HOME }}/wrapper
+          key: gradle-android-v1-stable-${{ hashFiles('scripts/android/gtk-android-builder.revision') }}
+
+      - name: Save Pixiewood and GTK dependency cache (after build)
+        if: always() && hashFiles('.pixiewood/pixiewood.ini') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.PIXIEWOOD_CACHE_PATHS }}
+          key: pixiewood-chat-v1-stable-${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/AndroidPoc.vala') }}
 
       - name: Collect APK artifact
         run: |
@@ -129,55 +165,3 @@ jobs:
           path: android-artifacts/ollmchat-android-poc-debug.apk
           archive: false
           if-no-files-found: error
-
-      - name: Detect cache save targets
-        if: always()
-        id: cache-save
-        run: |
-          save_android_sdk=false
-          save_pixiewood=false
-          save_apt=false
-
-          if [ -x .android-sdk/cmdline-tools/latest/bin/sdkmanager ]; then
-            save_android_sdk=true
-          fi
-          if [ -f .pixiewood/pixiewood.ini ] && [ -f .pixiewood/toolchain.cross ]; then
-            save_pixiewood=true
-          fi
-          if [ -d "$APT_CACHE_DIR" ] && find "$APT_CACHE_DIR" -type f -print -quit | grep -q .; then
-            save_apt=true
-          fi
-
-          echo "android-sdk=$save_android_sdk" >> "$GITHUB_OUTPUT"
-          echo "pixiewood=$save_pixiewood" >> "$GITHUB_OUTPUT"
-          echo "apt=$save_apt" >> "$GITHUB_OUTPUT"
-
-      - name: Save Android SDK and NDK cache
-        if: steps.cache-save.outputs.android-sdk == 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: .android-sdk
-          key: android-sdk-v1-stable-${{ hashFiles('scripts/android/install-sdk.sh') }}
-
-      - name: Save Pixiewood and GTK dependency cache
-        if: steps.cache-save.outputs.pixiewood == 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ env.PIXIEWOOD_CACHE_PATHS }}
-          key: pixiewood-chat-v1-stable-${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/AndroidPoc.vala') }}
-
-      - name: Save Gradle cache
-        if: steps.build-apk.outcome == 'success'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            ${{ env.GRADLE_USER_HOME }}/caches
-            ${{ env.GRADLE_USER_HOME }}/wrapper
-          key: gradle-android-v1-stable-${{ hashFiles('scripts/android/gtk-android-builder.revision') }}
-
-      - name: Save apt package cache
-        if: steps.cache-save.outputs.apt == 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ env.APT_CACHE_DIR }}
-          key: apt-android-v1-stable-${{ hashFiles('.github/workflows/android-build.yml') }}
