@@ -66,6 +66,7 @@ if android_cross_build
   # --pkg lines for C-library deps to library() targets. Bundled vapis under
   # vapi/ still need explicit --pkg flags at compile time.
   add_project_arguments([
+    '--pkg=gee-0.8',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
     '--pkg=libxml-2.0',

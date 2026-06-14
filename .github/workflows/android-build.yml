@@ -70,11 +70,50 @@ jobs:
             .pixiewood/bin-aarch64
             .pixiewood/pixiewood.ini
             .pixiewood/toolchain.cross
-          key: pixiewood-build-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
+          key: pixiewood-build-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
           restore-keys: |
             pixiewood-build-v1-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-
-            pixiewood-build-v1-${{ env.PIXIEWOOD_DEPS_HASH }}-
-            pixiewood-build-v1-
+
+      - name: Validate Pixiewood compile cache
+        id: validate-pixiewood-build-cache
+        run: |
+          usable=false
+          matched_key="${{ steps.restore-pixiewood-build.outputs.cache-matched-key }}"
+          min_meson="${MESON_MIN_VERSION:-1.8.0}"
+
+          version_ge() {
+            [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | tail -n1)" = "$1" ]
+          }
+
+          if [ "${{ inputs.refresh_cache }}" = "true" ]; then
+            echo "refresh_cache requested; ignoring any restored compile cache."
+            rm -rf .pixiewood/bin-aarch64
+          elif [ -n "$matched_key" ] &&
+             [[ "$matched_key" == *"$PIXIEWOOD_DEPS_HASH"* ]] &&
+             [[ "$matched_key" == *"$PIXIEWOOD_APP_HASH"* ]] &&
+             [ -f .pixiewood/bin-aarch64/build.ninja ] &&
+             [ -f .pixiewood/bin-aarch64/meson-logs/meson-log.txt ]; then
+            obj_count="$(find .pixiewood/bin-aarch64 -type f -name '*.o' 2>/dev/null | wc -l)"
+            cache_bytes="$(du -sb .pixiewood/bin-aarch64 2>/dev/null | cut -f1)"
+            meson_ver="$(grep -m1 '^Version: ' .pixiewood/bin-aarch64/meson-logs/meson-log.txt | sed 's/^Version: //')"
+            if [ "$obj_count" -ge 100 ] &&
+               [ "$cache_bytes" -ge 30000000 ] &&
+               version_ge "$meson_ver" "$min_meson"; then
+              usable=true
+              echo "Pixiewood compile cache looks usable ($obj_count object files, $(( cache_bytes / 1048576 )) MiB, Meson $meson_ver)."
+            else
+              echo "Pixiewood compile cache restored but too small or incompatible (objects=$obj_count, bytes=$cache_bytes, Meson=${meson_ver:-unknown})."
+            fi
+          elif [ -n "$matched_key" ]; then
+            echo "Pixiewood compile cache key does not match current hashes; ignoring restored tree."
+          fi
+
+          if [ "$usable" != true ] && [ -d .pixiewood/bin-aarch64 ]; then
+            echo "Discarding unusable compile cache."
+            rm -rf .pixiewood/bin-aarch64
+          fi
+
+          echo "usable=$usable" >> "$GITHUB_OUTPUT"
 
       - name: Restore Gradle cache
         id: restore-gradle
@@ -195,7 +234,7 @@ jobs:
         env:
           PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
           PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
-          PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.restore-pixiewood-build.outputs.cache-matched-key != '' && '1' || '' }}
+          PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.validate-pixiewood-build-cache.outputs.usable == 'true' && '1' || '' }}
         run: PIXIEWOOD_PHASE=configure scripts/android/build-chat-poc-apk.sh
 
       - name: Build chat APK
@@ -203,7 +242,7 @@ jobs:
         env:
           PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
           PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
-          PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.restore-pixiewood-build.outputs.cache-matched-key != '' && '1' || '' }}
+          PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.validate-pixiewood-build-cache.outputs.usable == 'true' && '1' || '' }}
         run: PIXIEWOOD_PHASE=build scripts/android/build-chat-poc-apk.sh
 
       - name: Detect post-build cache targets
@@ -235,8 +274,18 @@ jobs:
             ${{ env.GRADLE_USER_HOME }}/wrapper
           key: gradle-android-v1-stable-${{ hashFiles('scripts/android/gtk-android-builder.revision') }}
 
-      - name: Save Pixiewood compile cache
-        if: always() && steps.post-build-cache.outputs.pixiewood-build == 'true'
+      - name: Save Pixiewood compile cache (stable)
+        if: always() && steps.build-apk.outcome == 'success' && steps.post-build-cache.outputs.pixiewood-build == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .pixiewood/bin-aarch64
+            .pixiewood/pixiewood.ini
+            .pixiewood/toolchain.cross
+          key: pixiewood-build-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
+
+      - name: Save Pixiewood compile cache (partial)
+        if: always() && steps.build-apk.outcome != 'success' && steps.post-build-cache.outputs.pixiewood-build == 'true'
         uses: actions/cache/save@v4
         with:
           path: |
