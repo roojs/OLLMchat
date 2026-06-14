@@ -77,6 +77,21 @@ needs_pixiewood_prepare() {
   return 1
 }
 
+pixiewood_build_meson_version() {
+  local log="$PIXIEWOOD_BUILD_DIR/meson-logs/meson-log.txt"
+
+  if [ ! -f "$log" ]; then
+    return 1
+  fi
+
+  grep -m1 '^Version: ' "$log" | sed 's/^Version: //'
+}
+
+ensure_android_meson() {
+  MESON_FOR_ANDROID="$ROOT_DIR/scripts/android/meson-for-pixiewood.sh"
+  "$ROOT_DIR/scripts/android/ensure-meson.sh" >/dev/null
+}
+
 download_meson_subprojects() {
   local meson="$1"
 
@@ -186,7 +201,7 @@ init_pixiewood_env() {
   export CXX="${CXX:-g++}"
   export CC_FOR_BUILD="${CC_FOR_BUILD:-gcc}"
   export CXX_FOR_BUILD="${CXX_FOR_BUILD:-g++}"
-  MESON_FOR_ANDROID="$ROOT_DIR/scripts/android/meson-for-pixiewood.sh"
+  ensure_android_meson
   mapfile -t PIXIEWOOD_CONFIGURE_OPTIONS < <(pixiewood_configure_options)
 }
 
@@ -209,11 +224,19 @@ maybe_download_meson_subprojects() {
 maybe_reconfigure_pixiewood_build() {
   local meson="$1"
   shift
+  local current configured
 
   if [ "${PIXIEWOOD_SKIP_RECONFIGURE:-}" = "1" ] &&
      [ -f "$PIXIEWOOD_BUILD_DIR/build.ninja" ]; then
-    echo "Skipping Pixiewood Meson reconfigure (restored compile cache)."
-    return
+    current="$("$meson" --version)"
+    configured="$(pixiewood_build_meson_version || true)"
+    if [ -n "$configured" ] && [ "$configured" = "$current" ]; then
+      echo "Skipping Pixiewood Meson reconfigure (restored compile cache)."
+      return
+    fi
+    if [ -n "$configured" ]; then
+      echo "Pixiewood compile cache used Meson $configured; reconfiguring with Meson $current." >&2
+    fi
   fi
 
   reconfigure_pixiewood_build "$meson" "$@"
