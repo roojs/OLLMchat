@@ -10,10 +10,12 @@ version_ge() {
   [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | tail -n1)" = "$1" ]
 }
 
-if [ -x "$MESON_WRAPPER" ] &&
-   version_ge "$("$MESON_WRAPPER" --version)" "$MESON_MIN_VERSION"; then
-  printf '%s\n' "$MESON_WRAPPER"
-  exit 0
+if [ -x "$MESON_WRAPPER" ]; then
+  if version_ge "$("$MESON_WRAPPER" --version)" "$MESON_MIN_VERSION"; then
+    printf '%s\n' "$MESON_WRAPPER"
+    exit 0
+  fi
+  rm -rf "$MESON_TOOLS_DIR"
 fi
 
 if command -v meson >/dev/null 2>&1 &&

@@ -95,6 +95,20 @@ namespace OLLMtools.RunCommand
 		}
 
 		/**
+		 * Path to the pkexec helper (com.ollmchat.run-as-root policy; auth_self, no keep cache).
+		 * Must match the path in com.ollmchat.run-as-root.policy. Override with
+		 * OLLMCHAT_RUN_AS_ROOT_HELPER for custom prefix or uninstalled dev runs.
+		 */
+		private string run_as_root_helper_path ()
+		{
+			var from_env = GLib.Environment.get_variable ("OLLMCHAT_RUN_AS_ROOT_HELPER");
+			if (from_env != null && from_env.strip () != "") {
+				return from_env.strip ();
+			}
+			return "/usr/libexec/ollmchat/run-as-root";
+		}
+
+		/**
 		 * Short suffix when bubblewrap cannot be used (Flatpak or bwrap missing from PATH).
 		 * Does not repeat the confirm lead-in; callers state sandbox unavailable if needed.
 		 */
@@ -221,6 +235,14 @@ namespace OLLMtools.RunCommand
 #else
 			if (this.run_as_root && GLib.Environment.find_program_in_path ("pkexec") == null) {
 				return "ERROR: run_as_root requires pkexec (PolicyKit), which was not found on PATH";
+			}
+			if (this.run_as_root) {
+				var helper_path = this.run_as_root_helper_path ();
+				var helper_file = GLib.File.new_for_path (helper_path);
+				if (!helper_file.query_exists ()) {
+					return "ERROR: run_as_root helper not found (install ollmchat or set OLLMCHAT_RUN_AS_ROOT_HELPER): "
+						+ helper_path;
+				}
 			}
 #endif
 
@@ -384,6 +406,7 @@ namespace OLLMtools.RunCommand
 				var home_dir = GLib.Environment.get_home_dir ();
 				argv = {
 					"pkexec",
+					this.run_as_root_helper_path (),
 					"env",
 					"HOME=" + home_dir,
 					"/bin/sh",
