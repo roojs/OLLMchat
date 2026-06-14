@@ -1,8 +1,9 @@
-[wrap-git]
-directory = json-glib
-url = https://gitlab.gnome.org/GNOME/json-glib.git
-revision = main
-depth = 1
+[wrap-file]
+directory = json-glib-1.10.8
+source_url = https://download.gnome.org/sources/json-glib/1.10/json-glib-1.10.8.tar.xz
+source_fallback_url = https://ftp.acc.umu.se/pub/gnome/sources/json-glib/1.10/json-glib-1.10.8.tar.xz
+source_filename = json-glib-1.10.8.tar.xz
+source_hash = 55c5c141a564245b8f8fbe7698663c87a45a7333c2a2c56f06f811ab73b212dd
 
 [provide]
 dependency_names = json-glib-1.0
