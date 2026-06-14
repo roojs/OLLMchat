@@ -46,7 +46,7 @@ jobs:
         id: restore-android-tools
         uses: actions/cache/restore@v4
         with:
-          path: .android-tools
+          path: .android-tools/gtk-android-builder
           key: android-tools-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ env.PIXIEWOOD_DEPS_HASH }}
           restore-keys: |
             android-tools-v1-stable-
@@ -180,7 +180,7 @@ jobs:
         if: always() && steps.post-setup-cache.outputs.android-tools == 'true' && steps.restore-android-tools.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          path: .android-tools
+          path: .android-tools/gtk-android-builder
           key: android-tools-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}
 
       - name: Save Meson subprojects cache
