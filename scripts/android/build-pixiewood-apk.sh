@@ -84,23 +84,6 @@ download_meson_subprojects() {
     return
   fi
 
-  rm -rf \
-    "$ROOT_DIR/subprojects/libgee" \
-    "$ROOT_DIR/subprojects/gee" \
-    "$ROOT_DIR/subprojects/json-glib" \
-    "$ROOT_DIR/subprojects/json-glib-1.10.8" \
-    "$ROOT_DIR/subprojects/libsoup" \
-    "$ROOT_DIR/subprojects/libsoup-3.6.5" \
-    "$ROOT_DIR/subprojects/libxml2" \
-    "$ROOT_DIR/subprojects/libxml2-2.15.3"
-
-  local dir
-  for dir in "$ROOT_DIR/subprojects"/*/; do
-    if [ -d "$dir" ] && [ ! -f "$dir/meson.build" ]; then
-      rm -rf "$dir"
-    fi
-  done
-
   with_android_meson_path "$meson" subprojects download --sourcedir "$ROOT_DIR"
 }
 
