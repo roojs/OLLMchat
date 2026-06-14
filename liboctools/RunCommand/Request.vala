@@ -27,7 +27,9 @@ namespace OLLMtools.RunCommand
 		public string command { get; set; default = ""; }
 		public string working_dir { get; set; default = ""; }
 		public bool network { get; set; default = false; }
-		/** When true, run via pkexec on Linux after permission (outside bubblewrap). */
+		/**
+		 * When true, run via sudo on Linux after permission (outside bubblewrap).
+		 */
 		public bool run_as_root { get; set; default = false; }
 		/** Tool string allow_write: no, project, or colon-separated absolute roots on Unix. Parsed in execute() before permission. */
 		public string allow_write { get; set; default = "project"; }
@@ -95,20 +97,6 @@ namespace OLLMtools.RunCommand
 		}
 
 		/**
-		 * Path to the pkexec helper (com.ollmchat.run-as-root policy; auth_self, no keep cache).
-		 * Must match the path in com.ollmchat.run-as-root.policy. Override with
-		 * OLLMCHAT_RUN_AS_ROOT_HELPER for custom prefix or uninstalled dev runs.
-		 */
-		private string run_as_root_helper_path ()
-		{
-			var from_env = GLib.Environment.get_variable ("OLLMCHAT_RUN_AS_ROOT_HELPER");
-			if (from_env != null && from_env.strip () != "") {
-				return from_env.strip ();
-			}
-			return "/usr/libexec/ollmchat/run-as-root";
-		}
-
-		/**
 		 * Short suffix when bubblewrap cannot be used (Flatpak or bwrap missing from PATH).
 		 * Does not repeat the confirm lead-in; callers state sandbox unavailable if needed.
 		 */
@@ -151,7 +139,7 @@ namespace OLLMtools.RunCommand
 				this.permission_question = "Confirm — Run as ROOT (high risk)\n\n"
 					+ "This command will run with root privileges on your system, outside the normal sandbox.\n\n"
 					+ "WARNING: This may damage your system. Only allow this if you understand exactly what the command does. If you get it wrong, you may not be able to log in tomorrow (or worse).\n\n"
-					+ "After you click Allow, you will be asked for your password in a system dialog.\n\n"
+					+ "Enter your password below. It is used only for this command and is not saved.\n\n"
 					+ "Command: " + cmd_preview;
 				return true;
 			}
@@ -233,16 +221,8 @@ namespace OLLMtools.RunCommand
 				return "ERROR: run_as_root is not supported on Windows";
 			}
 #else
-			if (this.run_as_root && GLib.Environment.find_program_in_path ("pkexec") == null) {
-				return "ERROR: run_as_root requires pkexec (PolicyKit), which was not found on PATH";
-			}
-			if (this.run_as_root) {
-				var helper_path = this.run_as_root_helper_path ();
-				var helper_file = GLib.File.new_for_path (helper_path);
-				if (!helper_file.query_exists ()) {
-					return "ERROR: run_as_root helper not found (install ollmchat or set OLLMCHAT_RUN_AS_ROOT_HELPER): "
-						+ helper_path;
-				}
+			if (this.run_as_root && GLib.Environment.find_program_in_path ("sudo") == null) {
+				return "ERROR: run_as_root requires sudo, which was not found on PATH";
 			}
 #endif
 
@@ -287,7 +267,7 @@ namespace OLLMtools.RunCommand
 			
 			var run_status = "Running command";
 			if (this.run_as_root) {
-				run_status = "Running command as root (pkexec)";
+				run_status = "Running command as root (sudo)";
 			} else if (OLLMfiles.Sandbox.Bubble.can_wrap ()) {
 				run_status = "Running command in sandbox";
 			}
@@ -403,12 +383,9 @@ namespace OLLMtools.RunCommand
 				if (work_dir != "") {
 					shell_inner = "cd " + GLib.Shell.quote (work_dir) + " && " + shell_inner;
 				}
-				var home_dir = GLib.Environment.get_home_dir ();
 				argv = {
-					"pkexec",
-					this.run_as_root_helper_path (),
-					"env",
-					"HOME=" + home_dir,
+					"sudo",
+					"-S",
 					"/bin/sh",
 					"-c",
 					shell_inner
@@ -449,19 +426,34 @@ namespace OLLMtools.RunCommand
 			stderr_output = stderr_buf ?? "";
 			exit_status = success ? 0 : subprocess.get_exit_status ();
 #else
+			if (this.run_as_root) {
+				var klauncher = new GLib.SubprocessLauncher (GLib.SubprocessFlags.NONE);
+				var kproc = klauncher.spawnv ({"sudo", "-k"});
+				kproc.wait (null);
+			}
+
 			GLib.Subprocess subprocess;
 			try {
-				var launcher = new GLib.SubprocessLauncher (
-					GLib.SubprocessFlags.STDOUT_PIPE |
-					GLib.SubprocessFlags.STDERR_PIPE |
-					GLib.SubprocessFlags.STDIN_INHERIT
-				);
+				var flags = GLib.SubprocessFlags.STDOUT_PIPE | GLib.SubprocessFlags.STDERR_PIPE;
+				if (this.run_as_root) {
+					flags |= GLib.SubprocessFlags.STDIN_PIPE;
+				} else {
+					flags |= GLib.SubprocessFlags.STDIN_INHERIT;
+				}
+				var launcher = new GLib.SubprocessLauncher (flags);
 				if (!this.run_as_root) {
 					launcher.set_cwd (work_dir);
 				}
 				subprocess = launcher.spawnv (argv);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to create subprocess: " + e.message);
+			}
+
+			if (this.run_as_root) {
+				var stdin_stream = subprocess.get_stdin_pipe ();
+				stdin_stream.write_all ((this.elevation_password + "\n").data, null);
+				stdin_stream.close (null);
+				this.elevation_password = "";
 			}
 
 			var stdout_stream = subprocess.get_stdout_pipe ();

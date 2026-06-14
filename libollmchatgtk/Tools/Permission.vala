@@ -62,8 +62,18 @@ namespace OLLMchatGtk.Tools
 			
 			GLib.debug("OLLMchatGtk.Tools.Permission.request_user: Calling permission_widget.request");
 			var high_risk = request.permission_target_path.has_prefix ("run_as_root#");
+			var elevation_password = "";
 			var response = yield this.chat_widget.permission_widget.request (
-				request.permission_question, request.one_time_only, high_risk);
+				request.permission_question,
+				request.one_time_only,
+				high_risk,
+				out elevation_password);
+			switch (response) {
+				case OLLMchat.ChatPermission.PermissionResponse.ALLOW_ONCE:
+				case OLLMchat.ChatPermission.PermissionResponse.ALLOW_ALWAYS:
+					request.elevation_password = elevation_password;
+					break;
+			}
 			GLib.debug("OLLMchatGtk.Tools.Permission.request_user: Got response: %s", response.to_string());
 			return response;
 		}

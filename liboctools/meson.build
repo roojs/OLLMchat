@@ -5,27 +5,6 @@
 valac = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
 # tree-sitter: resolved in config/meson.build
-run_as_root_helper_install = get_option('prefix') / get_option('libexecdir') / 'ollmchat' / 'run-as-root'
-
-configure_file(
-  input: 'RunCommand/run-as-root.sh',
-  output: 'run-as-root',
-  copy: true,
-  install: true,
-  install_dir: get_option('libexecdir') / 'ollmchat',
-  install_mode: 'rwxr-xr-x',
-)
-
-configure_file(
-  input: 'RunCommand/com.ollmchat.run-as-root.policy.in',
-  output: 'com.ollmchat.run-as-root.policy',
-  configuration: {
-    'RUN_AS_ROOT_HELPER': run_as_root_helper_install,
-  },
-  install: true,
-  install_dir: get_option('datadir') / 'polkit-1' / 'actions',
-)
-
 octools_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),

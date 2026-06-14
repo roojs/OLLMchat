@@ -81,6 +81,13 @@ namespace OLLMchat.Tool
 		public bool one_time_only { get; protected set; default = false; }
 		
 		/**
+		 * Sudo password for a single root-elevated command run.
+		 * Set by the GTK permission UI when the user allows a high-risk prompt;
+		 * consumed by run_command and cleared after use. Not serialized.
+		 */
+		public string elevation_password { get; set; default = ""; }
+		
+		/**
 		 * Whether this request is from a wrapped tool.
 		 * 
 		 * When true, indicates that this request was created by a wrapped tool
@@ -121,6 +128,7 @@ namespace OLLMchat.Tool
 				case "tool":
 				case "agent":
 				case "request_id":
+				case "elevation_password":
 					value = Value(pspec.value_type);
 					return true;
 				

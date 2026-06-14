@@ -30,9 +30,13 @@ namespace OLLMchatGtk
 	public class ChatPermission : Gtk.Frame
 	{
 		private Gtk.Label question_label;
+		private Gtk.Label password_label;
+		private Gtk.PasswordEntry password_entry;
 		private Gtk.Box button_box;
 		private SourceFunc? resume_callback = null;
 		private OLLMchat.ChatPermission.PermissionResponse? pending_response = null;
+		private bool pending_high_risk = false;
+		private string pending_elevation_password = "";
 		
 		// Store button references for dynamic show/hide
 		private Gtk.Button deny_always_btn;
@@ -54,6 +58,19 @@ namespace OLLMchatGtk
 				margin_start = 12,
 				margin_end = 12,
 				margin_top = 12,
+				margin_bottom = 8
+			};
+
+			this.password_label = new Gtk.Label("Administrator password:") {
+				halign = Gtk.Align.START,
+				margin_start = 12,
+				margin_end = 12,
+				margin_bottom = 4
+			};
+			this.password_entry = new Gtk.PasswordEntry() {
+				hexpand = true,
+				margin_start = 12,
+				margin_end = 12,
 				margin_bottom = 8
 			};
 			
@@ -82,6 +99,8 @@ namespace OLLMchatGtk
 				hexpand = true
 			};
 			container.append(this.question_label);
+			container.append(this.password_label);
+			container.append(this.password_entry);
 			container.append(this.button_box);
 			
 			// Configure frame
@@ -89,6 +108,8 @@ namespace OLLMchatGtk
 			this.hexpand = true;
 			this.set_child(container);
 			this.add_css_class("permission-widget");
+			this.password_label.set_visible(false);
+			this.password_entry.set_visible(false);
 			this.set_visible(false);
 		}
 		
@@ -100,14 +121,19 @@ namespace OLLMchatGtk
 		 * @param question The permission question to display
 		 * @param one_time When true, hides "Allow Always" and "Deny Always" (see {@link OLLMchat.Tool.RequestBase.one_time_only})
 		 * @param high_risk When true, styles the row as high-risk (e.g. root elevation)
+		 * @param elevation_password Password entered for high-risk elevation (empty when denied)
 		 * @return The user's permission response
 		 * @since 1.0
 		 */
 		public async OLLMchat.ChatPermission.PermissionResponse request(
 			string question,
 			bool one_time = false,
-			bool high_risk = false)
+			bool high_risk = false,
+			out string elevation_password)
 		{
+			elevation_password = "";
+			this.pending_high_risk = high_risk;
+			this.pending_elevation_password = "";
 			// Update question text
 			this.question_label.label = question;
 			
@@ -115,13 +141,20 @@ namespace OLLMchatGtk
 			this.deny_always_btn.visible = !one_time;
 			this.allow_always_btn.visible = !one_time;
 			// allow_once_btn is always visible
+
+			this.password_label.set_visible(high_risk);
+			this.password_entry.set_visible(high_risk);
+			if (high_risk) {
+				this.password_entry.text = "";
+			}
 			
 			if (high_risk) {
 				this.add_css_class ("high-risk");
 				this.allow_once_btn.remove_css_class ("suggested-action");
 				this.allow_once_btn.add_css_class ("destructive-action");
 				this.allow_once_btn.label = "Allow (root)";
-			} else {
+			}
+			if (!high_risk) {
 				this.remove_css_class ("high-risk");
 				this.allow_once_btn.remove_css_class ("destructive-action");
 				this.allow_once_btn.add_css_class ("suggested-action");
@@ -147,6 +180,12 @@ namespace OLLMchatGtk
 			this.allow_once_btn.remove_css_class ("destructive-action");
 			this.allow_once_btn.add_css_class ("suggested-action");
 			this.allow_once_btn.label = "Allow";
+			this.password_label.set_visible(false);
+			this.password_entry.set_visible(false);
+			this.password_entry.text = "";
+			this.pending_high_risk = false;
+			elevation_password = this.pending_elevation_password;
+			this.pending_elevation_password = "";
 			
 			return this.pending_response ?? OLLMchat.ChatPermission.PermissionResponse.DENY_ONCE;
 		}
@@ -173,23 +212,26 @@ namespace OLLMchatGtk
 			}
 			
 			btn.clicked.connect(() => {
-				this.handle_button_click(response);
+				if (this.pending_high_risk) {
+					switch (response) {
+						case OLLMchat.ChatPermission.PermissionResponse.ALLOW_ONCE:
+						case OLLMchat.ChatPermission.PermissionResponse.ALLOW_ALWAYS:
+							if (this.password_entry.get_text().strip() == "") {
+								return;
+							}
+							this.pending_elevation_password = this.password_entry.get_text();
+							break;
+					}
+				}
+
+				this.pending_response = response;
+
+				if (this.resume_callback != null) {
+					this.resume_callback();
+				}
 			});
 			
 			return btn;
-		}
-		
-		/**
-		 * Handles button click and resumes the async function.
-		 */
-		private void handle_button_click(OLLMchat.ChatPermission.PermissionResponse response)
-		{
-			this.pending_response = response;
-			
-			// Resume the async function
-			if (this.resume_callback != null) {
-				this.resume_callback();
-			}
 		}
 	}
 }
