@@ -7,6 +7,9 @@ set -euo pipefail
 # (json-glib, nghttp2, libsoup, …) is missing or misconfigured. Use it after
 # changing android/pixiewood-wraps/* or meson.build before pushing.
 #
+# Configure does not compile Vala. After configure, also run:
+#   scripts/android/verify-cross-compile.sh
+#
 # Prerequisites (same as the chat POC build):
 #   - Android SDK + NDK under .android-sdk/ (scripts/android/install-sdk.sh)
 #   - Host build tools: valac, ninja, perl, JDK 17, etc.

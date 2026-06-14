@@ -65,8 +65,10 @@ if android_cross_build
   # GObject introspection is disabled on Android, so Meson does not attach
   # --pkg lines for C-library deps to library() targets. Bundled vapis under
   # vapi/ still need explicit --pkg flags at compile time.
+  # gee-0.8 is omitted here: Meson already passes gee-0.8.vapi as an input to
+  # library() compiles via dependency('gee-0.8'), and --pkg=gee-0.8 would load
+  # it a second time from the build-tree vapidir.
   add_project_arguments([
-    '--pkg=gee-0.8',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
     '--pkg=libxml-2.0',
