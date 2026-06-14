@@ -32,6 +32,7 @@ namespace OLLMchatGtk
 		private Gtk.Label question_label;
 		private Gtk.Label password_label;
 		private Gtk.PasswordEntry password_entry;
+		private Gtk.Label password_error_label;
 		private Gtk.Box button_box;
 		private SourceFunc? resume_callback = null;
 		private OLLMchat.ChatPermission.PermissionResponse? pending_response = null;
@@ -61,7 +62,7 @@ namespace OLLMchatGtk
 				margin_bottom = 8
 			};
 
-			this.password_label = new Gtk.Label("Administrator password:") {
+			this.password_label = new Gtk.Label("Your password (sudo):") {
 				halign = Gtk.Align.START,
 				margin_start = 12,
 				margin_end = 12,
@@ -71,8 +72,17 @@ namespace OLLMchatGtk
 				hexpand = true,
 				margin_start = 12,
 				margin_end = 12,
-				margin_bottom = 8
+				margin_bottom = 4
 			};
+			this.password_entry.add_css_class("elevation-password-entry");
+			this.password_error_label = new Gtk.Label("") {
+				halign = Gtk.Align.START,
+				margin_start = 12,
+				margin_end = 12,
+				margin_bottom = 8,
+				wrap = true
+			};
+			this.password_error_label.add_css_class("elevation-password-error");
 			
 			// Create button row
 			this.button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8) {
@@ -101,6 +111,7 @@ namespace OLLMchatGtk
 			container.append(this.question_label);
 			container.append(this.password_label);
 			container.append(this.password_entry);
+			container.append(this.password_error_label);
 			container.append(this.button_box);
 			
 			// Configure frame
@@ -110,7 +121,25 @@ namespace OLLMchatGtk
 			this.add_css_class("permission-widget");
 			this.password_label.set_visible(false);
 			this.password_entry.set_visible(false);
+			this.password_error_label.set_visible(false);
 			this.set_visible(false);
+
+			this.password_entry.changed.connect(() => {
+				if (this.pending_high_risk) {
+					this.allow_once_btn.sensitive = this.password_entry.get_text().strip() != "";
+				}
+				this.password_error_label.set_visible(false);
+			});
+			this.password_entry.activate.connect(() => {
+				if (!this.pending_high_risk) {
+					return;
+				}
+				if (!this.allow_once_btn.sensitive) {
+					return;
+				}
+				this.validate_elevation_and_resume.begin(
+					OLLMchat.ChatPermission.PermissionResponse.ALLOW_ONCE);
+			});
 		}
 		
 		/**
@@ -144,8 +173,11 @@ namespace OLLMchatGtk
 
 			this.password_label.set_visible(high_risk);
 			this.password_entry.set_visible(high_risk);
+			this.password_error_label.set_visible(false);
 			if (high_risk) {
 				this.password_entry.text = "";
+				this.password_error_label.label = "";
+				this.allow_once_btn.sensitive = false;
 			}
 			
 			if (high_risk) {
@@ -159,10 +191,18 @@ namespace OLLMchatGtk
 				this.allow_once_btn.remove_css_class ("destructive-action");
 				this.allow_once_btn.add_css_class ("suggested-action");
 				this.allow_once_btn.label = "Allow";
+				this.allow_once_btn.sensitive = true;
 			}
 			
 			// Show the widget
 			this.set_visible(true);
+
+			if (high_risk) {
+				GLib.Idle.add(() => {
+					this.password_entry.grab_focus();
+					return false;
+				});
+			}
 			
 			// Wait for user response using callback pattern
 			this.pending_response = null;
@@ -180,14 +220,73 @@ namespace OLLMchatGtk
 			this.allow_once_btn.remove_css_class ("destructive-action");
 			this.allow_once_btn.add_css_class ("suggested-action");
 			this.allow_once_btn.label = "Allow";
+			this.allow_once_btn.sensitive = true;
 			this.password_label.set_visible(false);
 			this.password_entry.set_visible(false);
+			this.password_error_label.set_visible(false);
+			this.password_error_label.label = "";
 			this.password_entry.text = "";
 			this.pending_high_risk = false;
 			elevation_password = this.pending_elevation_password;
 			this.pending_elevation_password = "";
 			
 			return this.pending_response ?? OLLMchat.ChatPermission.PermissionResponse.DENY_ONCE;
+		}
+
+		/**
+		 * Verifies the sudo password with {@literal sudo -S true} before resuming
+		 * the permission prompt. Wrong passwords stay in the dialog; the LLM never
+		 * sees authentication failure.
+		 */
+		private async void validate_elevation_and_resume(
+			OLLMchat.ChatPermission.PermissionResponse response)
+		{
+			this.allow_once_btn.sensitive = false;
+			this.deny_once_btn.sensitive = false;
+			this.deny_always_btn.sensitive = false;
+			this.allow_always_btn.sensitive = false;
+
+			var password = this.password_entry.get_text();
+			var ok = false;
+#if !G_OS_WIN32
+			if (GLib.Environment.find_program_in_path ("sudo") != null) {
+				try {
+					var klauncher = new GLib.SubprocessLauncher (GLib.SubprocessFlags.NONE);
+					var kproc = klauncher.spawnv ({"sudo", "-k"});
+					kproc.wait (null);
+					var flags = GLib.SubprocessFlags.STDOUT_PIPE
+						| GLib.SubprocessFlags.STDERR_PIPE
+						| GLib.SubprocessFlags.STDIN_PIPE;
+					var launcher = new GLib.SubprocessLauncher (flags);
+					var proc = launcher.spawnv ({"sudo", "-S", "true"});
+					var stdin = proc.get_stdin_pipe ();
+					stdin.write_all ((password + "\n").data, null);
+					stdin.close (null);
+					yield proc.wait_async (null);
+					ok = proc.get_successful ();
+				} catch (GLib.Error e) {
+					ok = false;
+				}
+			}
+#endif
+			this.deny_once_btn.sensitive = true;
+			this.deny_always_btn.sensitive = this.deny_always_btn.visible;
+			this.allow_always_btn.sensitive = this.allow_always_btn.visible;
+
+			if (!ok) {
+				this.password_error_label.label = "Wrong password. Try again.";
+				this.password_error_label.set_visible(true);
+				this.password_entry.text = "";
+				this.allow_once_btn.sensitive = false;
+				this.password_entry.grab_focus();
+				return;
+			}
+
+			this.pending_elevation_password = password;
+			this.pending_response = response;
+			if (this.resume_callback != null) {
+				this.resume_callback();
+			}
 		}
 		
 		/**
@@ -212,22 +311,28 @@ namespace OLLMchatGtk
 			}
 			
 			btn.clicked.connect(() => {
-				if (this.pending_high_risk) {
-					switch (response) {
-						case OLLMchat.ChatPermission.PermissionResponse.ALLOW_ONCE:
-						case OLLMchat.ChatPermission.PermissionResponse.ALLOW_ALWAYS:
+				switch (response) {
+					case OLLMchat.ChatPermission.PermissionResponse.DENY_ONCE:
+					case OLLMchat.ChatPermission.PermissionResponse.DENY_ALWAYS:
+						this.pending_response = response;
+						if (this.resume_callback != null) {
+							this.resume_callback();
+						}
+						break;
+					case OLLMchat.ChatPermission.PermissionResponse.ALLOW_ONCE:
+					case OLLMchat.ChatPermission.PermissionResponse.ALLOW_ALWAYS:
+						if (this.pending_high_risk) {
 							if (this.password_entry.get_text().strip() == "") {
 								return;
 							}
-							this.pending_elevation_password = this.password_entry.get_text();
+							this.validate_elevation_and_resume.begin (response);
 							break;
-					}
-				}
-
-				this.pending_response = response;
-
-				if (this.resume_callback != null) {
-					this.resume_callback();
+						}
+						this.pending_response = response;
+						if (this.resume_callback != null) {
+							this.resume_callback();
+						}
+						break;
 				}
 			});
 			
@@ -235,4 +340,3 @@ namespace OLLMchatGtk
 		}
 	}
 }
-
