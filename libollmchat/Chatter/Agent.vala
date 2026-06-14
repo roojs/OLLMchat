@@ -26,12 +26,9 @@ namespace OLLMchat.Chatter
 	 */
 	public class Agent : OLLMchat.Agent.Base
 	{
-		private Summarizer summarizer;
-
 		public Agent(Factory factory, History.SessionBase session)
 		{
 			base(factory, session);
-			this.summarizer = new Summarizer((Factory) factory, session);
 		}
 
 		/**
@@ -45,34 +42,16 @@ namespace OLLMchat.Chatter
 			Message message,
 			GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
-			int turn_start = 0;
-			for (int i = this.session.messages.size - 1; i >= 0; i--) {
-				if (this.session.messages.get(i).role == "user-sent") {
-					turn_start = i;
-					break;
-				}
-			}
-
 			this.session.is_running = true;
 			this.session.manager.agent_status_change();
 
 			this.session.messages.add(message);
 
-			var working = new Gee.ArrayList<Message>();
+			var since_summary = this.create_summary();
 			Message? active_summary = null;
-
-			foreach (var msg in this.session.messages) {
-				if (msg.role == "summary") {
-					working.clear();
-					active_summary = msg;
-					continue;
-				}
-				if (msg.role != "user"
-					&& msg.role != "assistant"
-					&& msg.role != "tool") {
-					continue;
-				}
-				working.add(msg);
+			if (since_summary.size > 0 && since_summary.get(0).role == "summary") {
+				active_summary = since_summary.get(0);
+				since_summary.remove_at(0);
 			}
 
 			var factory = (Factory) this.factory;
@@ -91,7 +70,7 @@ namespace OLLMchat.Chatter
 				)));
 			}
 
-			foreach (var msg in working) {
+			foreach (var msg in since_summary) {
 				outbound.add(msg);
 			}
 
@@ -103,7 +82,7 @@ namespace OLLMchat.Chatter
 				this.session.manager.agent_status_change();
 			}
 
-			this.summarizer.run.begin(turn_start, cancellable);
+			(new OLLMchat.Agent.Summarizer(this)).run.begin(cancellable);
 		}
 	}
 }

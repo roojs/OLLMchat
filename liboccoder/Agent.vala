@@ -43,7 +43,7 @@ namespace OLLMcoder
 		 * 
 		 * For CodeAssistant, this regenerates the system prompt on each call
 		 * to include current context. Overrides base implementation to build
-		 * complex system prompt with current context.o
+		 * complex system prompt with current context.
 		 * 
 		 * @param message The message object to send (the user message that was just added to session)
 		 * @param cancellable Optional cancellable for canceling the request
@@ -60,35 +60,46 @@ namespace OLLMcoder
 			this.session.is_running = true;
 			this.session.manager.agent_status_change();
 			try {
-				var messages = new Gee.ArrayList<OLLMchat.Message>();
-
-				string system_content = this.factory.system_message(this);
-				if (system_content != "") {
-					var system_msg = new OLLMchat.Message("system", system_content);
-					this.session.add_message(system_msg);
-					messages.add(system_msg);
-				}
-
 				var user_content = this.factory.generate_user_prompt(message.content);
 				this.session.add_message(new OLLMchat.Message("user", user_content));
 
-				foreach (var msg in this.session.messages) {
-					if (msg.role == "user"
-						|| msg.role == "assistant" || msg.role == "tool") {
-						messages.add(msg);
-					}
+				var since_summary = this.create_summary();
+				OLLMchat.Message? active_summary = null;
+				if (since_summary.size > 0 && since_summary.get(0).role == "summary") {
+					active_summary = since_summary.get(0);
+					since_summary.remove_at(0);
+				}
+
+				var outbound = new Gee.ArrayList<OLLMchat.Message>();
+				string system_content = this.factory.system_message(this);
+				if (active_summary != null) {
+					var tpl = new OLLMchat.Prompt.Template("coder_followup.md") {
+						source = "resource:///",
+						base_dir = "chat-prompts"
+					};
+					tpl.load();
+					system_content += "\n\n" + tpl.system_fill(
+						"conversation_summary",
+						active_summary.content);
+				}
+				if (system_content != "") {
+					outbound.add(new OLLMchat.Message("system", system_content));
+				}
+				foreach (var msg in since_summary) {
+					outbound.add(msg);
 				}
 
 				yield this.fill_model();
 
-				var response = yield this.chat_call.send(messages, cancellable);
+				yield this.chat_call.send(outbound, cancellable);
 			} finally {
 				this.session.is_running = false;
 				this.session.manager.agent_status_change();
 				GLib.debug("OLLMcoder.Agent.send_async: is_running=false session %s", this.session.fid);
 			}
+
+			(new OLLMchat.Agent.Summarizer(this)).run.begin(cancellable);
 		}
 		
 	}
 }
-

@@ -322,6 +322,39 @@ namespace OLLMchat.Agent
 		}
 
 		/**
+		 * Collect API messages since the latest summary boundary.
+		 *
+		 * Each summary message clears the collected slice. Only user,
+		 * assistant, and tool roles are kept. When a summary boundary
+		 * exists, that summary row is the first element — callers pop it
+		 * before building the outbound API request.
+		 *
+		 * @return messages since the latest summary, summary row first if any
+		 */
+		protected Gee.ArrayList<Message> create_summary()
+		{
+			Message? active_summary = null;
+			var messages = new Gee.ArrayList<Message>();
+			foreach (var msg in this.session.messages) {
+				if (msg.role == "summary") {
+					messages.clear();
+					active_summary = msg;
+					continue;
+				}
+				if (msg.role != "user"
+					&& msg.role != "assistant"
+					&& msg.role != "tool") {
+					continue;
+				}
+				messages.add(msg);
+			}
+			if (active_summary != null) {
+				messages.insert(0, active_summary);
+			}
+			return messages;
+		}
+
+		/**
 		* Sends a Message object asynchronously with streaming support.
 		* 
 		* This is the new method for sending messages. Builds full message history from

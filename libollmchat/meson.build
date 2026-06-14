@@ -168,12 +168,12 @@ ollmchat_ollama_src = files([
   'Agent/Factory.vala',  # Must come before Client.vala (Client uses Agent.Factory)
   'Agent/Interface.vala',  # Must come before Base (Base implements Interface)
   'Agent/Base.vala',  # Must come after Factory (Base references Factory)
+  'Agent/Summarizer.vala',  # Must come after Agent/Base and Agent/Factory
   'Agent/JustAskFactory.vala',  # Must come after Base (JustAskFactory uses Factory)
   'Agent/JustAsk.vala',  # Must come after JustAskFactory (JustAsk uses Base)
   'Chatter/namespace.vala',
   'Chatter/Factory.vala',  # Must come after Agent/Factory
   'Chatter/Agent.vala',  # Must come after Agent/Base and Chatter/Factory
-  'Chatter/Summarizer.vala',  # Must come after Chatter/Agent
   'Call/Base.vala',
   'Call/ChatBase.vala',
   'Call/Version.vala',
