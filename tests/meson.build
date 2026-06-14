@@ -121,7 +121,7 @@ test('test-markdown-doc',
 # Bubble tests: run sequentially (is_parallel: false) so they can share TEST_DIR/DB
 bubble_build_dir = meson.current_build_dir() / '..'
 oc_test_bubble_exe = get_variable('test_bubble', disabler())
-foreach part : ['1', '2', '3', '4']
+foreach part : ['1', '2', '3', '4', '5']
   test('test-bubble-@0@'.format(part),
     find_program('bash'),
     args: [files('test-bubble-@0@.sh'.format(part)), bubble_build_dir],

@@ -117,7 +117,27 @@ namespace OLLMchat.Call
 					var arr = new Json.Array();
 					foreach (var m in this.messages) {
 						var msg_node = Json.gobject_serialize(m);
-						m.serialize_images(msg_node.get_object());
+						var msg_obj = msg_node.get_object();
+						m.serialize_images(msg_obj);
+						if (m.tool_calls.size > 0) {
+							msg_obj.set_member(
+								"tool_calls", msg_obj.get_member("tool-calls"));
+							msg_obj.remove_member("tool-calls");
+							var tc_arr = msg_obj.get_member("tool_calls").get_array();
+							for (int i = 0; i < m.tool_calls.size; i++) {
+								tc_arr.get_element(i).get_object()
+									.get_member("function").get_object()
+									.set_string_member(
+										"arguments",
+										Json.gobject_to_data(
+											m.tool_calls.get(i).function, null));
+							}
+						}
+						if (m.role == "tool") {
+							msg_obj.set_member(
+								"tool_call_id", msg_obj.get_member("tool-call-id"));
+							msg_obj.remove_member("tool-call-id");
+						}
 						arr.add_element(msg_node);
 					}
 					var node = new Json.Node(Json.NodeType.ARRAY);
@@ -271,7 +291,7 @@ namespace OLLMchat.Call
 			var stream_orig = this.stream;
 			this.stream = false;
 			try {
-				// GLib.debug("%s", this.get_request_body());
+				GLib.debug("%s", this.get_request_body());
 				var bytes = yield this.send_request(true);
 				var root = this.parse_response(bytes);
 				if (root.get_node_type() != Json.NodeType.OBJECT) {
@@ -315,8 +335,8 @@ namespace OLLMchat.Call
 			this.stream = stream_orig;
 			var soup_msg = this.connection.soup_message(this.http_method, url, request_body);
 
-			// GLib.debug("%s", url);
-			// GLib.debug("%s", request_body);
+			GLib.debug("%s", url);
+			GLib.debug("%s", request_body);
 
 			GLib.InputStream? input_stream = null;
 			try {

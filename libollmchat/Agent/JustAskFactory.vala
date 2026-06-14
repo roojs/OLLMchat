@@ -26,15 +26,10 @@ namespace OLLMchat.Agent
 	 */
 	public class JustAskFactory : Factory
 	{
-		/**
-		 * Constructor.
-		 */
-		public JustAskFactory()
-		{
-			this.name = "just-ask";
-			this.title = "Just Ask";
-		}
-		
+		public override string name { get; protected set; default = "just-ask"; }
+		public override string title { get; protected set; default = "Just Ask"; }
+		public override string long_title { get; protected set; default = "Simple chat — sends the full conversation history every turn."; }
+
 		/**
 		 * Creates an agent instance for a specific request.
 		 */
@@ -47,4 +42,3 @@ namespace OLLMchat.Agent
 		// No need to override generate_system_prompt() or generate_user_prompt()
 	}
 }
-

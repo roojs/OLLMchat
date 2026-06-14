@@ -2,6 +2,8 @@
 
 Canonical Vala style and patterns for this project and related codebases. Written for **AI agents** — **mandatory** for agents implementing or changing Vala code. Human contributors may treat this as a helpful guide. Also see **`docs/build-rules.md`** and **`docs/code-documentation.md`**.
 
+**AI agents:** You **must** read this **entire** document from start to finish before writing or changing any Vala code. **Do not** read only the first sections, a summary, or excerpts from another file. **Do not** implement until you have read the **whole** document. You **must never** ignore these standards.
+
 **Plans:** This file is **code standards only**. Plan structure, code-proposal fences, implementation workflow, and the **checklist for verifying plans** are in **`docs/guide-to-writing-plans.md`**.
 
 ## Docblocks / code documentation
@@ -76,6 +78,8 @@ Options:
 ```
 
 ## Temporary Variables
+
+**IMPORTANT:** Always use `var` for local variables and `for` / `foreach` loop variables. Do not write explicit types on locals (`int`, `uint`, `string`, etc.). Method parameters and class fields keep explicit types. Exception: growable string arrays use `string[] name = {}` (see ArrayList for Strings).
 
 **IMPORTANT:** Avoid single-use temporary variables. If a variable is only used once, inline it directly.
 
@@ -637,6 +641,25 @@ public class MyClass
     private string name = "";
     private int count = 0;
     private bool active = false;
+}
+```
+
+**GObject subclasses — inherited properties:** To give a subclass its own default for a property declared on the parent, the parent property must be `virtual` and the subclass must use `override` with `default =`. Redeclaring the same property name without `virtual`/`override` **shadows** the parent property: code that holds a base-type reference (e.g. `OLLMchat.Agent.Factory`) or GTK `PropertyExpression` still reads the parent's empty value. Runtime values must use `construct` or the constructor only when the value is not fixed (e.g. from a parameter). See Vala manual: properties are overridable only when marked `virtual` on the parent.
+
+**Bad (shadows parent — UI sees empty `title`):**
+```vala
+public class ChildFactory : Agent.Factory {
+    public string title { get; protected set; default = "Chatter"; }
+}
+```
+
+**Good (virtual on parent, override with default on child):**
+```vala
+public class Factory : Object {
+    public virtual string title { get; protected set; default = ""; }
+}
+public class ChildFactory : Factory {
+    public override string title { get; protected set; default = "Chatter"; }
 }
 ```
 
