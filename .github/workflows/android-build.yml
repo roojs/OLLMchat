@@ -14,6 +14,7 @@ permissions:
   contents: read
 
 env:
+  APT_CACHE_DIR: .ci-cache/apt
   PIXIEWOOD_CACHE_PATHS: |
     .android-tools
     .pixiewood/bin-aarch64
@@ -59,10 +60,21 @@ jobs:
             gradle-android-v1-stable-
             gradle-android-v1-
 
+      - name: Restore apt package cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.APT_CACHE_DIR }}
+          key: apt-android-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('.github/workflows/android-build.yml') }}
+          restore-keys: |
+            apt-android-v1-stable-
+            apt-android-v1-
+
       - name: Install build dependencies
         run: |
+          mkdir -p "$APT_CACHE_DIR"
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
+            -o Dir::Cache::archives="$PWD/$APT_CACHE_DIR" \
             build-essential \
             ca-certificates \
             curl \
@@ -114,6 +126,13 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
           key: gradle-android-v1-${{ hashFiles('scripts/android/gtk-android-builder.revision') }}
+
+      - name: Save apt package cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.APT_CACHE_DIR }}
+          key: apt-android-v1-${{ hashFiles('.github/workflows/android-build.yml', '.ci-cache/apt/**') }}
 
       - name: Build chat APK
         run: PIXIEWOOD_PHASE=build scripts/android/build-chat-poc-apk.sh
