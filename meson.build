@@ -46,7 +46,15 @@ if host_machine.system() == 'windows'
   add_project_arguments(['--define=G_OS_WIN32'], language: 'vala')
 endif
 
-subdir('config')
+android_shell_poc = get_option('android_shell_poc')
+local_gguf_enabled = false
+
+if android_shell_poc
+  bundle_sysroot = ''
+  bundle_windows_prefix = ''
+else
+  subdir('config')
+endif
 
 sqgi_vala_args = []
 if bundle_sysroot != ''
@@ -66,31 +74,35 @@ if sqgi_vala_args.length() > 0
 endif
 
 # Build libraries in dependency order
-subdir('libocsqlite')      # No dependencies
-subdir('libocrpc')         # JSON-RPC wire types — no OLLMfiles dependency
-subdir('libocmarkdown')    # No dependencies
-subdir('libollamaweb')     # No dependencies on libollmchat (Phase 1)
-subdir('libocmarkdowngtk') # Depends on libocmarkdown
-subdir('libocfiles')       # Depends on libocsqlite
-subdir('libollmchat')      # Depends on libocsqlite
-subdir('libocvector2')     # Depends on libocsqlite, libollmchat (no libocfiles)
-if host_machine.system() != 'windows'
-  subdir('ollmfilesd')     # Headless file daemon — Unix sockets + fork; not on Windows yet
-endif
-subdir('libocmcp')         # Depends on libollmchat, libocfiles
-subdir('liboctools')       # Depends on libollmchat, libocfiles
-subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
-subdir('liboccoder')       # Depends on libocsqlite, libocfiles, libocvector, libollmchat
-subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
-subdir('ollmapp')         # Primary application - depends on all libraries
-if get_option('examples')
-  subdir('examples')          # Depends on all libraries
-endif
-if get_option('tests')
-  if not get_option('examples')
-    error('The tests option requires examples=true')
+if android_shell_poc
+  subdir('ollmapp')         # Minimal Android APK shell target only
+else
+  subdir('libocsqlite')      # No dependencies
+  subdir('libocrpc')         # JSON-RPC wire types — no OLLMfiles dependency
+  subdir('libocmarkdown')    # No dependencies
+  subdir('libollamaweb')     # No dependencies on libollmchat (Phase 1)
+  subdir('libocmarkdowngtk') # Depends on libocmarkdown
+  subdir('libocfiles')       # Depends on libocsqlite
+  subdir('libollmchat')      # Depends on libocsqlite
+  subdir('libocvector2')     # Depends on libocsqlite, libollmchat (no libocfiles)
+  if host_machine.system() != 'windows'
+    subdir('ollmfilesd')     # Headless file daemon — Unix sockets + fork; not on Windows yet
   endif
-  subdir('tests')             # Test suite - depends on examples
+  subdir('libocmcp')         # Depends on libollmchat, libocfiles
+  subdir('liboctools')       # Depends on libollmchat, libocfiles
+  subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
+  subdir('liboccoder')       # Depends on libocsqlite, libocfiles, libocvector, libollmchat
+  subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
+  subdir('ollmapp')         # Primary application - depends on all libraries
+  if get_option('examples')
+    subdir('examples')          # Depends on all libraries
+  endif
+  if get_option('tests')
+    if not get_option('examples')
+      error('The tests option requires examples=true')
+    endif
+    subdir('tests')             # Test suite - depends on examples
+  endif
 endif
 
 # Create wrapper scripts in top-level build directory for easier access
@@ -110,27 +122,33 @@ exec "$EXECUTABLE" "$@"
 '''
 
 # List of executables and their paths
-executables_info = [
-  ['ollmchat.bin', 'ollmapp/ollmchat'],  # Wrapper for testing ollama chat with latest code
-  ['ollmchat-cli', 'ollmapp/ollmchat-cli'],  # CLI tool for testing agent tools
-  ['oc-test-cli', 'examples/oc-test-cli'],
-  ['oc-test-pull', 'examples/oc-test-pull'],
-  ['oc-test-fetch', 'examples/oc-test-fetch'],
-  ['oc-test-loop', 'examples/oc-test-loop'],
-  ['oc-test-files', 'examples/oc-test-files'],
-  ['oc-test-bubble', 'examples/oc-test-bubble'],
-  ['oc-test-skill-agent', 'examples/oc-test-skill-agent'],
-  ['oc-test-gtkmd', 'examples/oc-test-gtkmd'],
-  ['oc-markdown-test', 'examples/oc-markdown-test'],
-  ['oc-markdown-doc-test', 'examples/oc-markdown-doc-test'],
-  ['oc-html2md', 'examples/oc-html2md'],
-  ['oc-test-ollamaweb', 'examples/oc-test-ollamaweb'],
-  ['oc-md2html', 'examples/oc-md2html'],
-  ['oc-diff', 'examples/oc-diff'],
-  ['oc-migrate-editors', 'examples/oc-migrate-editors'],
-  ['oc-vector-index', 'examples/oc-vector-index'],
-  ['oc-vector-search', 'examples/oc-vector-search']
-]
+if android_shell_poc
+  executables_info = [
+    ['ollmchat-android-shell-poc', 'ollmapp/ollmchat-android-shell-poc'],
+  ]
+else
+  executables_info = [
+    ['ollmchat.bin', 'ollmapp/ollmchat'],  # Wrapper for testing ollama chat with latest code
+    ['ollmchat-cli', 'ollmapp/ollmchat-cli'],  # CLI tool for testing agent tools
+    ['oc-test-cli', 'examples/oc-test-cli'],
+    ['oc-test-pull', 'examples/oc-test-pull'],
+    ['oc-test-fetch', 'examples/oc-test-fetch'],
+    ['oc-test-loop', 'examples/oc-test-loop'],
+    ['oc-test-files', 'examples/oc-test-files'],
+    ['oc-test-bubble', 'examples/oc-test-bubble'],
+    ['oc-test-skill-agent', 'examples/oc-test-skill-agent'],
+    ['oc-test-gtkmd', 'examples/oc-test-gtkmd'],
+    ['oc-markdown-test', 'examples/oc-markdown-test'],
+    ['oc-markdown-doc-test', 'examples/oc-markdown-doc-test'],
+    ['oc-html2md', 'examples/oc-html2md'],
+    ['oc-test-ollamaweb', 'examples/oc-test-ollamaweb'],
+    ['oc-md2html', 'examples/oc-md2html'],
+    ['oc-diff', 'examples/oc-diff'],
+    ['oc-migrate-editors', 'examples/oc-migrate-editors'],
+    ['oc-vector-index', 'examples/oc-vector-index'],
+    ['oc-vector-search', 'examples/oc-vector-search']
+  ]
+endif
 
 if local_gguf_enabled
   executables_info += [
@@ -198,7 +216,9 @@ endif
 
 # Post-install script to update icon cache and desktop database when the host
 # tools are available. Minimal CI/package builders may not install both.
-gnome.post_install(
-  gtk_update_icon_cache: find_program('gtk-update-icon-cache', required: false).found(),
-  update_desktop_database: find_program('update-desktop-database', required: false).found()
-)
+if not android_shell_poc
+  gnome.post_install(
+    gtk_update_icon_cache: find_program('gtk-update-icon-cache', required: false).found(),
+    update_desktop_database: find_program('update-desktop-database', required: false).found()
+  )
+endif

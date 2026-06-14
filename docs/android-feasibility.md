@@ -34,12 +34,54 @@ The existing release automation builds:
 - Debian packages for amd64
 - a Windows NSIS installer
 
-There are no Android project files today: no Gradle project, Android manifest,
-APK/AAB packaging, Android NDK cross file, or Android GitHub Actions workflow.
+The repository now includes a Pixiewood-based Android shell packaging path.
+Pixiewood generates the Gradle project, Android manifest, and Android NDK cross
+files under `.pixiewood/` at build time.
 
 ## Minimal Android proof of concept
 
-The repository now includes an opt-in proof-of-concept target:
+The repository includes two opt-in proof-of-concept targets.
+
+### APK shell POC
+
+The first target is `ollmchat-android-shell-poc`, implemented in
+`ollmapp/AndroidShellPoc.vala`. It uses GTK and Libadwaita, but intentionally
+does not link `libollmchat` yet. This validates that the GTK Android backend,
+Libadwaita, Meson Android application target, Pixiewood generation, Gradle, and
+debug APK packaging can work together.
+
+Build it with:
+
+```bash
+scripts/android/build-shell-poc-apk.sh
+```
+
+The script bootstraps the Android command-line SDK/NDK under `.android-sdk/`
+when needed, clones Pixiewood under `.android-tools/`, and runs:
+
+```bash
+pixiewood prepare android/pixiewood-shell-poc.xml
+pixiewood generate
+pixiewood build
+```
+
+Successful debug builds produce APKs under:
+
+```text
+.pixiewood/android/app/build/outputs/apk/debug/
+```
+
+The first validated output paths were:
+
+```text
+.pixiewood/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+.pixiewood/android/app/build/outputs/apk/debug/app-universal-debug.apk
+```
+
+### Remote chat POC
+
+The second target is `ollmchat-android-poc`, implemented in
+`ollmapp/AndroidPoc.vala`:
 
 ```bash
 meson setup build-android-poc --prefix=/usr \
@@ -81,6 +123,11 @@ target is declared with `android_exe_type: 'application'` so Android can load it
 as an application shared object. Desktop builds omit that keyword and compile
 the same POC as a normal executable for CI validation.
 
+The remote chat POC is not the APK target yet because it brings in additional
+native dependencies (`libollmchat`, libsoup, json-glib, gee, sqlite, and related
+Vala package metadata). Those dependencies are the next Android packaging layer
+after the shell APK.
+
 ## GGUF / local inference
 
 There are no references to "guff" in the repository. The matching component is
@@ -111,9 +158,10 @@ executable(
 )
 ```
 
-Tools such as Pixiewood / gtk-android-builder can generate Android packaging
-around Meson GTK applications, but this project does not currently meet all of
-the practical requirements for a successful full-app build.
+Pixiewood / gtk-android-builder can generate Android packaging around Meson GTK
+applications. In this branch, it successfully builds a Libadwaita shell APK for
+`ollmchat-android-shell-poc`; the full app still needs more feature gating and
+native dependency wrapping.
 
 ## Main Android blockers
 
@@ -141,8 +189,10 @@ chain, including at least:
 - tree-sitter
 - FAISS and OpenBLAS, unless vector search is disabled or replaced
 
-The current cross-build support targets Linux AppImage and Windows through
-sqgipkg. It does not provide an Android sysroot or dependency bundle.
+The current production cross-build support targets Linux AppImage and Windows
+through sqgipkg. The new Pixiewood shell path provides an Android GTK/
+Libadwaita dependency bundle for the shell POC, but not yet for the
+remote-chat target's extra libraries.
 
 ### Linux-specific runtime features
 
@@ -172,6 +222,12 @@ GitHub Actions can automatically build the existing remote-only desktop
 configuration. This validates that the no-GGUF path keeps compiling without
 requiring libllama packages.
 
+The Android shell APK can also be built locally with:
+
+```bash
+scripts/android/build-shell-poc-apk.sh
+```
+
 A suitable PR workflow should:
 
 - install the normal Linux build dependencies
@@ -184,35 +240,42 @@ A suitable PR workflow should:
 - run offline tests that do not require Ollama, local model downloads, or
   Android devices
 
-### Not feasible yet
+### Not automated yet
 
-An Android APK/AAB workflow is not useful until the repository has an Android
-target. A future Android CI job would need:
+An Android APK CI workflow is now plausible for the shell POC, but it is not
+enabled in this PR because it downloads/builds a large GTK Android dependency
+stack. A future Android CI job would need:
 
-- Android SDK and NDK setup
+- Android SDK and NDK setup through `scripts/android/install-sdk.sh`
 - Meson with Android application target support; this is available from
   Debian's current `meson_*_all.deb` package without enabling a full testing
   repository
-- Pixiewood or equivalent packaging configuration for `ollmchat-android-poc`
-- Android builds or wraps for the required GTK/native dependencies
-- feature gating for Linux-only components
+- Pixiewood package generation through `android/pixiewood-shell-poc.xml`
+- artifact upload for generated debug APKs
 - emulator or device smoke tests
+
+The remote-chat APK/AAB still needs:
+
+- Android packaging for `ollmchat-android-poc`
+- Android builds or wraps for libsoup, json-glib, gee, sqlite, and
+  `libollmchat`
+- feature gating for Linux-only components before moving beyond the shell
 
 ## Recommended next steps
 
-1. Keep the initial CI focused on the remote-only Linux build and POC target.
-2. Add Pixiewood or Gradle packaging around `ollmchat-android-poc`.
-3. Add Meson options to disable Android-hostile subsystems independently:
+1. Add an optional GitHub Actions job that runs the shell APK script and uploads
+   `app-arm64-v8a-debug.apk`.
+2. Add Pixiewood packaging around `ollmchat-android-poc`.
+3. Add Android wraps or subproject handling for the remote-chat dependencies.
+4. Add Meson options to disable Android-hostile subsystems independently:
    vector search, command execution sandboxing, MCP stdio, and `ollmfilesd`.
-4. Cross-build GTK, Libadwaita, GLib, libsoup, and libollmchat dependencies
-   for Android.
-5. Create an APK/AAB workflow once the Android dependency bundle exists.
-6. Reintroduce larger desktop features only after the app launches and basic
+5. Reintroduce larger desktop features only after the app launches and basic
    chat works on device.
 
 ## Verdict
 
 Remote-only/no-GGUF builds are already supported and are appropriate for CI.
-Android is technically possible, but it is a porting project rather than a
-release packaging task. The first Android milestone is the minimal
-`ollmchat-android-poc` remote chat client, not the full desktop application.
+The first Android packaging milestone is now concrete: the Libadwaita shell POC
+can build a debug APK with Pixiewood. The next milestone is moving from that
+shell to the minimal `ollmchat-android-poc` remote chat client, not the full
+desktop application.

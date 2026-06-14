@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<app xmlns="https://sp1rit.arpa/pixiewood/"
+     xmlns:meta="https://specifications.freedesktop.org/metainfo/1.0">
+  <metainfo vercalc="sem121010">
+    <meta:component type="desktop-application">
+      <meta:id>org.roojs.ollmchat.androidpoc</meta:id>
+      <meta:name>OLLMchat Android POC</meta:name>
+      <meta:summary>Minimal GTK Android packaging proof of concept</meta:summary>
+      <meta:metadata_license>CC0-1.0</meta:metadata_license>
+      <meta:project_license>LGPL-3.0-or-later</meta:project_license>
+      <meta:description>
+        <meta:p>
+          A stripped-down OLLMchat Android shell used to validate GTK Android
+          APK packaging before the remote chat stack is ported.
+        </meta:p>
+      </meta:description>
+      <meta:requires>
+        <meta:internet>always</meta:internet>
+      </meta:requires>
+      <meta:branding>
+        <meta:color type="primary" scheme_preference="light">#3584e4</meta:color>
+        <meta:color type="primary" scheme_preference="dark">#1c71d8</meta:color>
+      </meta:branding>
+      <meta:releases>
+        <meta:release version="0.1.0" date="2026-06-14"/>
+      </meta:releases>
+    </meta:component>
+  </metainfo>
+  <style>
+    <theme name="adw"/>
+    <icon type="generate">
+      <drawable
+        target="foreground"
+        type="avd"
+        path="src://android/icon-foreground.xml"/>
+      <color target="background">#ffffff</color>
+    </icon>
+  </style>
+  <dependencies>
+    <glib>
+      <patch>hack</patch>
+    </glib>
+    <fontconfig/>
+    <gtk/>
+    <libadwaita/>
+  </dependencies>
+  <build target="ollmchat-android-shell-poc">
+    <configure-options>
+      <option>-Dandroid_shell_poc=true</option>
+      <option>-Ddocs=false</option>
+      <option>-Dexamples=false</option>
+      <option>-Dtests=false</option>
+      <option>-Dlocal_gguf=disabled</option>
+    </configure-options>
+    <architectures>
+      <arch>aarch64</arch>
+    </architectures>
+  </build>
+</app>
