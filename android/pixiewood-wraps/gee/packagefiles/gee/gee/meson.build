@@ -77,7 +77,6 @@ gee_files = files(
 )
 
 gee_name = 'gee-' + api_version
-gee_gir = host_machine.system() == 'android' ? disabler() : 'Gee-' + api_version + '.gir'
 gee_typelib = 'Gee-' + api_version + '.typelib'
 gee_deps = [glib_dep, gobject_dep, gio_dep]
 gee_c_args = []
@@ -94,23 +93,54 @@ gee_c_args += meson.get_compiler('c').get_supported_arguments(
   ],
 )
 
-gee_lib = library(
-  gee_name,
-  gee_files,
-  soversion: '2.6.1',
+if host_machine.system() == 'android'
+  gee_lib = library(
+    gee_name,
+    gee_files,
+    soversion: '2.6.1',
+    version: meson.project_version(),
+    c_args: gee_c_args,
+    vala_header: 'gee.h',
+    vala_vapi: gee_name + '.vapi',
+    dependencies: [gee_deps, geeutils_dep],
+    install: true,
+    install_dir: [
+      true,
+      join_paths(get_option('includedir'), gee_name),
+      true,
+      true,
+    ],
+  )
+else
+  gee_lib = library(
+    gee_name,
+    gee_files,
+    soversion: '2.6.1',
+    version: meson.project_version(),
+    c_args: gee_c_args,
+    vala_header: 'gee.h',
+    vala_vapi: gee_name + '.vapi',
+    vala_gir: 'Gee-' + api_version + '.gir',
+    dependencies: [gee_deps, geeutils_dep],
+    install: true,
+    install_dir: [
+      true,
+      join_paths(get_option('includedir'), gee_name),
+      true,
+      true,
+    ],
+  )
+endif
+
+pkgg = import('pkgconfig')
+pkgg.generate(
+  libraries: gee_lib,
+  subdirs: gee_name,
   version: meson.project_version(),
-  c_args: gee_c_args,
-  vala_header: 'gee.h',
-  vala_vapi: gee_name + '.vapi',
-  vala_gir: gee_gir,
-  dependencies: [gee_deps, geeutils_dep],
-  install: true,
-  install_dir: [
-    true,
-    join_paths(get_option('includedir'), gee_name),
-    true,
-    true,
-  ],
+  name: 'Gee',
+  filebase: gee_name,
+  description: 'GObject collection library',
+  requires: 'gio-2.0',
 )
 
 gee_dep = declare_dependency(
@@ -118,4 +148,3 @@ gee_dep = declare_dependency(
   dependencies: gee_deps,
   include_directories: include_directories('.'),
 )
-meson.override_dependency('gee-0.8', gee_dep)

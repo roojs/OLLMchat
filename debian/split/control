@@ -1,7 +1,7 @@
 Source: ollmchat
 Section: libs
 Priority: optional
-Maintainer: OLLMchat Maintainers <ollmchat@example.com>
+Maintainer: Alan Knowles <alan@roojs.com>
 Build-Depends: debhelper-compat (= 13),
                meson,
                ninja-build,

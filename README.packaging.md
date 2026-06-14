@@ -194,15 +194,15 @@ GIR and typelib files are generated during the build. If they're missing, check 
 
 ## Updating Package Version
 
-To update the package version, edit `debian/changelog`:
+Package versions are maintained in **`CHANGELOG.md`** at the repository root.
+Regenerate `debian/changelog` after editing it:
 
 ```bash
-dch -i  # Interactive editor
-# or
-dch -v 1.0.1-1 "New upstream release"
+./scripts/release/sync-debian-changelog.sh
 ```
 
-Then rebuild the packages.
+Do **not** edit `debian/changelog` directly. See [Creating Releases](docs/creating-releases.md)
+for the release workflow (tag → CI build → finalize on success).
 
 ## Uploading to a PPA
 

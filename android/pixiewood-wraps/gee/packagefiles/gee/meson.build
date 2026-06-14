@@ -50,3 +50,4 @@ endif
 
 subdir('utils')
 subdir('gee')
+meson.override_dependency('gee-0.8', gee_dep)
