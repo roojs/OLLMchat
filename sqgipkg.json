@@ -165,6 +165,10 @@
       {
         "path": "resources/windows/fonts-local.conf",
         "dest": "etc/fonts/local.conf"
+      },
+      {
+        "path": "build-windows-x86_64/ollmfilesd/ollmfilesd.exe",
+        "dest": "ollmfilesd.exe"
       }
     ],
     "packages": [
@@ -217,10 +221,11 @@
         "dir": ".",
         "build": [
           "./scripts/release/meson-sqgipkg-setup.sh windows \"$SQGI_WINDOWS_BUILD_DIR\"",
-          "meson compile -C \"$SQGI_WINDOWS_BUILD_DIR\" ./ollmapp/ollmchat:executable"
+          "meson compile -C \"$SQGI_WINDOWS_BUILD_DIR\" ./ollmapp/ollmchat:executable ./ollmfilesd/ollmfilesd:executable"
         ],
         "libraries": [
           "build-windows-x86_64/libocsqlite/libocsqlite.dll",
+          "build-windows-x86_64/libocrpc/libocrpc.dll",
           "build-windows-x86_64/libocmarkdown/libocmarkdown.dll",
           "build-windows-x86_64/libollamaweb/libollamaweb.dll",
           "build-windows-x86_64/libocmarkdowngtk/libocmarkdowngtk.dll",
@@ -228,6 +233,7 @@
           "build-windows-x86_64/libollmchat/libollmchat.dll",
           "build-windows-x86_64/libocmcp/libocmcp.dll",
           "build-windows-x86_64/liboctools/liboctools.dll",
+          "build-windows-x86_64/libocvector2/libocvector2.dll",
           "build-windows-x86_64/libocvector/libocvector.dll",
           "build-windows-x86_64/liboccoder/liboccoder.dll",
           "build-windows-x86_64/libollmchatgtk/libollmchatgtk.dll"

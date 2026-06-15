@@ -31,9 +31,26 @@ test('test-ollamaweb-merge',
 
 # ollmfilesd RPC shell tests (stdio NDJSON + jq)
 test_rpc_script = files('test-rpc.sh')
+test_rpc_tcp_script = files('test-rpc-tcp.sh')
 test_rpc_t1_script = files('test-rpc-t1.sh')
 test_rpc_t2_script = files('test-rpc-t2.sh')
 ollmfilesd_bin = get_variable('ollmfilesd_bin', disabler())
+test_rpc_client_tcp = executable('test-rpc-client-tcp',
+  'test-rpc-client-tcp.vala',
+  dependencies: [
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    ocrpc_vapi_dep,
+  ],
+  build_rpath: meson.current_build_dir() / '..' / 'libocrpc',
+  vala_args: [
+    '--pkg=ocrpc',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  ],
+)
 test('test-rpc',
   find_program('bash'),
   args: [
@@ -41,6 +58,17 @@ test('test-rpc',
     meson.current_build_dir() / '..'
   ],
   depends: [ollmfilesd_bin],
+  workdir: meson.current_source_dir(),
+  timeout: 60,
+  suite: 'rpc'
+)
+test('test-rpc-tcp',
+  find_program('bash'),
+  args: [
+    test_rpc_tcp_script,
+    meson.current_build_dir() / '..'
+  ],
+  depends: [ollmfilesd_bin, test_rpc_client_tcp],
   workdir: meson.current_source_dir(),
   timeout: 60,
   suite: 'rpc'

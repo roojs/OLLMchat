@@ -44,6 +44,7 @@ ocrpc_src = files([
   'Transport/namespace.vala',
   'Transport/Connection.vala',
   'Transport/Listen.vala',
+  'Transport/TcpListen.vala',
   'CallParam.vala',
   'Error.vala',
   'Notification.vala',

@@ -6,11 +6,11 @@
 
 valac = meson.get_compiler('vala')
 tree_sitter_lib = dependency('tree-sitter', required: true)
+is_windows = host_machine.system() == 'windows'
 
 ollmfilesd_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
-  dependency('gio-unix-2.0'),
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
   dependency('gmodule-2.0'),
@@ -24,6 +24,11 @@ ollmfilesd_deps = [
   ollmchat_vapi_dep,
   ocvector2_vapi_dep,
 ]
+ollmfilesd_vapi_pkgs = []
+if not is_windows
+  ollmfilesd_deps += dependency('gio-unix-2.0')
+  ollmfilesd_vapi_pkgs += '--pkg=gio-unix-2.0'
+endif
 
 ollmfilesd_src = files(
   'BufferProviderBase.vala',
@@ -98,7 +103,7 @@ ollmfilesd_bin = executable('ollmfilesd',
     '--pkg=fiass',
     '--pkg=ocvector2',
     '--pkg=libsoup-3.0',
-    '--pkg=gio-unix-2.0',
+  ] + ollmfilesd_vapi_pkgs + [
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',

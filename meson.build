@@ -128,9 +128,7 @@ else
   subdir('libocfiles')       # Depends on libocsqlite
   subdir('libollmchat')      # Depends on libocsqlite
   subdir('libocvector2')     # Depends on libocsqlite, libollmchat (no libocfiles)
-  if host_machine.system() != 'windows'
-    subdir('ollmfilesd')     # Headless file daemon — Unix sockets + fork; not on Windows yet
-  endif
+  subdir('ollmfilesd')       # Headless file daemon — Unix socket on Unix, TCP on Windows
   subdir('libocmcp')         # Depends on libollmchat, libocfiles
   subdir('liboctools')       # Depends on libollmchat, libocfiles
   subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles

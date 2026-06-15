@@ -28,6 +28,7 @@ namespace OLLMrpc
 	public class Client : GLib.Object
 	{
 		public string socket { get; construct; }
+		public bool tcp { get; construct; default = false; }
 
 		/** Seconds to wait for a matching {@link Response} id. */
 		public uint call_timeout_seconds { get; set; default = 120; }
@@ -67,7 +68,8 @@ namespace OLLMrpc
 
 		public Client(string socket = "")
 		{
-			string path = socket;
+			var path = socket;
+			var use_tcp = false;
 			if (path == "") {
 				path = GLib.Path.build_filename(
 					GLib.Environment.get_user_data_dir(),
@@ -75,7 +77,11 @@ namespace OLLMrpc
 					"ollmfilesd.sock"
 				);
 			}
-			GLib.Object(socket: path);
+			if (path.has_prefix("tcp://")) {
+				use_tcp = true;
+				path = path.substring(6);
+			}
+			GLib.Object(socket: path, tcp: use_tcp);
 		}
 
 		/**
@@ -92,34 +98,54 @@ namespace OLLMrpc
 
 			hello_request.id = this.next_id++;
 
-			var boot = new ClientBoot(this.socket);
-			try {
-				yield boot.ensure_daemon();
-			} catch (GLib.IOError e) {
-				this.connect_error = e.message != ""
-					? e.message
-					: "could not start or reach the filesystem daemon (ollmfilesd)";
-				GLib.critical(
-					"Client: ensure_daemon %s: %s",
-					this.socket,
-					this.connect_error
-				);
-				return false;
-			}
-
 			var client = new GLib.SocketClient();
-			var addr = new GLib.UnixSocketAddress(this.socket);
-			try {
-				this.connection = yield client.connect_async(
-					addr, null);
-			} catch (GLib.Error e) {
-				this.connect_error = e.message;
-				GLib.critical(
-					"Client: connect %s: %s",
-					this.socket,
-					this.connect_error
-				);
-				return false;
+			if (this.tcp) {
+				try {
+					this.connection = yield client.connect_to_host_async(
+						this.socket,
+						4141,
+						null
+					);
+				} catch (GLib.Error e) {
+					this.connect_error = e.message;
+					GLib.critical(
+						"Client: connect %s: %s",
+						this.socket,
+						this.connect_error
+					);
+					return false;
+				}
+			}
+			if (!this.tcp) {
+				var boot = new ClientBoot(this.socket);
+				try {
+					yield boot.ensure_daemon();
+				} catch (GLib.IOError e) {
+					this.connect_error = e.message != ""
+						? e.message
+						: "could not start or reach the filesystem daemon (ollmfilesd)";
+					GLib.critical(
+						"Client: ensure_daemon %s: %s",
+						this.socket,
+						this.connect_error
+					);
+					return false;
+				}
+
+				try {
+					this.connection = yield client.connect_async(
+						new GLib.UnixSocketAddress(this.socket),
+						null
+					);
+				} catch (GLib.Error e) {
+					this.connect_error = e.message;
+					GLib.critical(
+						"Client: connect %s: %s",
+						this.socket,
+						this.connect_error
+					);
+					return false;
+				}
 			}
 
 			this.input = new GLib.DataInputStream(this.connection.get_input_stream());
@@ -263,7 +289,7 @@ namespace OLLMrpc
 			Gee.Promise<Response> promise
 		)
 		{
-			uint timeout_id = 0;
+			var timeout_id = 0U;
 			if (this.call_timeout_seconds > 0) {
 				timeout_id = GLib.Timeout.add_seconds(this.call_timeout_seconds, () => {
 					if (!this.pending.has_key(id)) {
