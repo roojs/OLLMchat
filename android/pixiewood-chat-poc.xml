@@ -41,7 +41,9 @@
       <patch>hack</patch>
     </glib>
     <fontconfig/>
-    <gtk/>
+    <gtk>
+      <patch>android-bugs</patch>
+    </gtk>
     <libadwaita/>
     <libxml2/>
     <sqlite3/>

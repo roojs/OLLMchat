@@ -238,15 +238,22 @@ run_pixiewood() {
 }
 
 # GIO TLS modules live under lib/.../gio/modules in jniLibs. They must be on a
-# real filesystem path (not only inside base.apk) for g_io_modules_scan_*.
-patch_pixiewood_manifest_native_libs() {
-  local manifest="$ROOT_DIR/.pixiewood/android/app/src/main/AndroidManifest.xml"
+# real filesystem path for g_io_modules_scan_*. Modern AGP rejects
+# android:extractNativeLibs in the manifest; useLegacyPackaging extracts them.
+patch_pixiewood_gradle_native_libs() {
+  local gradle="$ROOT_DIR/.pixiewood/android/app/build.gradle"
 
-  if [ ! -f "$manifest" ] || grep -q 'extractNativeLibs' "$manifest"; then
+  if [ ! -f "$gradle" ] || grep -q 'useLegacyPackaging' "$gradle"; then
     return 0
   fi
 
-  sed -i 's/<application /<application android:extractNativeLibs="true" /' "$manifest"
+  sed -i '/enableKotlin = false/a\
+\
+    packaging {\
+        jniLibs {\
+            useLegacyPackaging = true\
+        }\
+    }' "$gradle"
 }
 
 maybe_download_meson_subprojects() {
@@ -331,7 +338,7 @@ run_pixiewood_build() {
   maybe_reconfigure_pixiewood_build "$MESON_FOR_ANDROID" "${PIXIEWOOD_CONFIGURE_OPTIONS[@]}"
 
   run_pixiewood generate
-  patch_pixiewood_manifest_native_libs
+  patch_pixiewood_gradle_native_libs
   run_pixiewood build
 
   if [ "$PIXIEWOOD_STRIP_DEBUG" = "1" ]; then

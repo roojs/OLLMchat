@@ -88,9 +88,27 @@ scripts/android/build-chat-poc-apk.sh
 `build-chat-poc-apk.sh` bootstraps the Android command-line SDK/NDK under
 `.android-sdk/` when needed, clones Pixiewood under `.android-tools/`, and runs
 prepare, generate, and build through `android/pixiewood-chat-poc.xml`. Extra
-Meson wraps and cross options for libsoup, json-glib, gee, sqlite, openssl,
-glib-networking, and related dependencies live under `android/pixiewood-wraps/`
-and `android/pixiewood-extra.cross`.
+Meson wraps, GTK patches, and cross options for libsoup, json-glib, gee,
+sqlite, openssl, glib-networking, and related dependencies live under
+`android/pixiewood-wraps/` and `android/pixiewood-extra.cross`.
+
+GTK is still fetched from upstream GNOME (`gitlab.gnome.org/GNOME/gtk.git`), not
+from a fork. Android-specific fixes are stored as
+`android/pixiewood-wraps/gtk/android-bugs.patch` and applied at prepare time via
+`<patch>android-bugs</patch>` in the Pixiewood manifest. `gtk.wrap` in that
+directory pins the upstream revision the patch was written against.
+
+To refresh the patch after testing changes in a local GTK tree (for example
+`~/git/gtk`):
+
+```bash
+cd ~/git/gtk
+git fetch upstream
+git diff upstream/main..HEAD > /path/to/OLLMchat/android/pixiewood-wraps/gtk/android-bugs.patch
+```
+
+Update the `revision` in `android/pixiewood-wraps/gtk/gtk.wrap` to match the
+upstream commit the diff is based on (`git merge-base upstream/main HEAD`).
 
 ### Host prerequisites
 
@@ -143,8 +161,8 @@ cross-build bakes in `/lib/arm64-v8a/gio/modules`, which does not exist on
 device. Before any network I/O, `main()` calls
 `ollmapp_configure_android_gio_tls_modules()` (`ollmapp/android/android-gio-tls.c`)
 to set `GIO_MODULE_DIR` to the extracted native library tree. The Pixiewood build
-also sets `android:extractNativeLibs="true"` so `libgioopenssl.so` is on a real
-filesystem path GIO can scan.
+enables Gradle `packaging.jniLibs.useLegacyPackaging` so native libraries (including
+`lib/.../gio/modules`) are extracted to a real filesystem path.
 
 Before pushing Android Meson or wrap changes, run the local cross checks (SDK
 under `.android-sdk/` must already exist — the APK script installs it on first
