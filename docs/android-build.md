@@ -161,8 +161,10 @@ cross-build bakes in `/lib/arm64-v8a/gio/modules`, which does not exist on
 device. Before any network I/O, `main()` calls
 `ollmapp_configure_android_gio_tls_modules()` (`ollmapp/android/android-gio-tls.c`)
 to set `GIO_MODULE_DIR` to the extracted native library tree. The Pixiewood build
-enables Gradle `packaging.jniLibs.useLegacyPackaging` so native libraries (including
-`lib/.../gio/modules`) are extracted to a real filesystem path.
+enables Gradle `packaging.jniLibs.useLegacyPackaging` so native libraries are
+extracted to a real filesystem path, and copies the Meson install tree into
+`jniLibs` (instead of Pixiewood’s symlink) so `lib/.../gio/modules` is preserved
+in the APK.
 
 Before pushing Android Meson or wrap changes, run the local cross checks (SDK
 under `.android-sdk/` must already exist — the APK script installs it on first

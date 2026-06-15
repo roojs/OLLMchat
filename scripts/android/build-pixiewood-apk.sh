@@ -256,6 +256,40 @@ patch_pixiewood_gradle_native_libs() {
     }' "$gradle"
 }
 
+# Pixiewood generate symlinks jniLibs -> root/lib. Gradle does not reliably
+# package nested gio/modules from that symlink, so TLS modules can be omitted
+# from lib/arm64-v8a/gio/modules/ in the APK. Copy the install tree after
+# meson install and run Gradle ourselves.
+materialize_pixiewood_jni_libs() {
+  local jni="$ROOT_DIR/.pixiewood/android/app/src/main/jniLibs"
+  local root_lib="$ROOT_DIR/.pixiewood/root/lib"
+  local gio_module
+
+  if [ ! -d "$root_lib" ]; then
+    echo "Pixiewood install tree missing: $root_lib" >&2
+    exit 1
+  fi
+
+  rm -f "$jni"
+  rm -rf "$jni"
+  mkdir -p "$jni"
+  cp -a "$root_lib/." "$jni/"
+
+  gio_module="$(find "$jni" -path '*/gio/modules/libgioopenssl.so' -print -quit)"
+  if [ -z "$gio_module" ]; then
+    echo "GIO TLS module missing from materialized jniLibs (expected */gio/modules/libgioopenssl.so)" >&2
+    exit 1
+  fi
+}
+
+run_pixiewood_gradle_assemble() {
+  (
+    cd "$ROOT_DIR/.pixiewood/android"
+    export ANDROID_HOME="$ANDROID_SDK_ROOT"
+    ./gradlew --no-daemon assembleDebug
+  )
+}
+
 maybe_download_meson_subprojects() {
   local meson="$1"
 
@@ -339,7 +373,9 @@ run_pixiewood_build() {
 
   run_pixiewood generate
   patch_pixiewood_gradle_native_libs
-  run_pixiewood build
+  run_pixiewood build --skip-gradle
+  materialize_pixiewood_jni_libs
+  run_pixiewood_gradle_assemble
 
   if [ "$PIXIEWOOD_STRIP_DEBUG" = "1" ]; then
     echo "Built debug APK with native debug symbols stripped (PIXIEWOOD_STRIP_DEBUG=1)."
