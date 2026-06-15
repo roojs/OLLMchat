@@ -216,8 +216,12 @@ namespace OLLMapp
 		}
 	}
 
+	[CCode (cname = "ollmapp_configure_android_gio_tls_modules", cheader_filename = "android-gio-tls.h")]
+	private extern void configure_android_gio_tls_modules();
+
 	int main(string[] args)
 	{
+		configure_android_gio_tls_modules();
 		var app = new AndroidApplication();
 		return app.run(args);
 	}

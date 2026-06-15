@@ -10,6 +10,9 @@ PIXIEWOOD_BUILD_DIR="$ROOT_DIR/.pixiewood/bin-$PIXIEWOOD_ARCH"
 PIXIEWOOD="${PIXIEWOOD:-}"
 GTK_ANDROID_BUILDER_REVISION="${GTK_ANDROID_BUILDER_REVISION:-}"
 PIXIEWOOD_PHASE="${PIXIEWOOD_PHASE:-all}"
+# Strip native debug symbols on meson install (debug buildtype, debug Gradle APK).
+# Used for GitHub Release assets; local/manual builds leave this unset.
+PIXIEWOOD_STRIP_DEBUG="${PIXIEWOOD_STRIP_DEBUG:-}"
 
 read_gtk_android_builder_revision() {
   local revision_file="$ROOT_DIR/scripts/android/gtk-android-builder.revision"
@@ -197,9 +200,15 @@ reconfigure_pixiewood_build() {
     setup_args+=(--reconfigure)
   fi
 
+  local -a strip_args=()
+  if [ "$PIXIEWOOD_STRIP_DEBUG" = "1" ]; then
+    strip_args=(-Dstrip=true)
+  fi
+
   with_android_meson_path "$meson" "${setup_args[@]}" \
     "${cross_files[@]}" \
     --buildtype debug \
+    "${strip_args[@]}" \
     "${configure_options[@]}" \
     "$PIXIEWOOD_BUILD_DIR" \
     "$ROOT_DIR"
@@ -228,6 +237,18 @@ run_pixiewood() {
   with_android_meson_path "$PIXIEWOOD" -C "$ROOT_DIR" "$@"
 }
 
+# GIO TLS modules live under lib/.../gio/modules in jniLibs. They must be on a
+# real filesystem path (not only inside base.apk) for g_io_modules_scan_*.
+patch_pixiewood_manifest_native_libs() {
+  local manifest="$ROOT_DIR/.pixiewood/android/app/src/main/AndroidManifest.xml"
+
+  if [ ! -f "$manifest" ] || grep -q 'extractNativeLibs' "$manifest"; then
+    return 0
+  fi
+
+  sed -i 's/<application /<application android:extractNativeLibs="true" /' "$manifest"
+}
+
 maybe_download_meson_subprojects() {
   local meson="$1"
 
@@ -247,6 +268,7 @@ maybe_reconfigure_pixiewood_build() {
   local meson_min="${MESON_MIN_VERSION:-1.8.0}"
 
   if [ "${PIXIEWOOD_SKIP_RECONFIGURE:-}" = "1" ] &&
+     [ "$PIXIEWOOD_STRIP_DEBUG" != "1" ] &&
      [ -f "$PIXIEWOOD_BUILD_DIR/build.ninja" ]; then
     current="$("$meson" --version)"
     configured="$(pixiewood_build_meson_version || true)"
@@ -309,7 +331,12 @@ run_pixiewood_build() {
   maybe_reconfigure_pixiewood_build "$MESON_FOR_ANDROID" "${PIXIEWOOD_CONFIGURE_OPTIONS[@]}"
 
   run_pixiewood generate
+  patch_pixiewood_manifest_native_libs
   run_pixiewood build
+
+  if [ "$PIXIEWOOD_STRIP_DEBUG" = "1" ]; then
+    echo "Built debug APK with native debug symbols stripped (PIXIEWOOD_STRIP_DEBUG=1)."
+  fi
 
   echo "Generated Android artifacts under $ROOT_DIR/.pixiewood/android/app/build/outputs"
 }

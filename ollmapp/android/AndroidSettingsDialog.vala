@@ -48,6 +48,8 @@ namespace OLLMapp
 			Object(app: app);
 			this.parent = parent;
 			this.title = "Settings";
+			this.set_content_width(400);
+			this.set_content_height(576);
 
 			var main_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
 			this.view_stack = new Adw.ViewStack();
