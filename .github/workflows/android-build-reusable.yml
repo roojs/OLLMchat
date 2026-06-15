@@ -312,19 +312,7 @@ jobs:
           ls -lh android-artifacts
 
       - name: Verify APK contains application and chat libraries
-        run: |
-          apk_list="$(mktemp)"
-          unzip -l android-artifacts/ollmchat-android-poc-debug.apk > "$apk_list"
-          for path in \
-            lib/arm64-v8a/libollmchat-android-poc.so \
-            lib/arm64-v8a/libollmchat.so \
-            lib/arm64-v8a/gio/modules/libgioopenssl.so; do
-            if ! grep -q "$path" "$apk_list"; then
-              echo "Missing from APK: $path" >&2
-              grep -E 'lib/arm64-v8a/(libollmchat|gio/)' "$apk_list" >&2 || true
-              exit 1
-            fi
-          done
+        run: scripts/android/verify-apk.sh android-artifacts/ollmchat-android-poc-debug.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7

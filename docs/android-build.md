@@ -160,11 +160,21 @@ At runtime, GIO looks for TLS backends under `GIO_MODULE_DIR`. The Android
 cross-build bakes in `/lib/arm64-v8a/gio/modules`, which does not exist on
 device. Before any network I/O, `main()` calls
 `ollmapp_configure_android_gio_tls_modules()` (`ollmapp/android/android-gio-tls.c`)
-to set `GIO_MODULE_DIR` to the extracted native library tree. The Pixiewood build
-enables Gradle `packaging.jniLibs.useLegacyPackaging` so native libraries are
-extracted to a real filesystem path, and copies the Meson install tree into
-`jniLibs` (instead of Pixiewood’s symlink) so `lib/.../gio/modules` is preserved
-in the APK.
+to set `GIO_MODULE_DIR` to `$XDG_DATA_DIRS/gio/modules` (GTK extracts APK assets
+to `filesDir/` on startup; GIO modules are staged under
+`assets/share/gio/modules/` at build time). The Pixiewood build enables Gradle
+`packaging.jniLibs.useLegacyPackaging` so native libraries are extracted to a
+real filesystem path.
+
+After a local or CI APK build, verify packaging with:
+
+```bash
+scripts/android/verify-apk.sh
+```
+
+This checks that the chat `.so` files and `assets/share/gio/modules/libgioopenssl.so`
+are present. Android does not install nested `lib/ABI/gio/modules/*.so` from
+jniLibs, so that path must not be used for TLS modules.
 
 Before pushing Android Meson or wrap changes, run the local cross checks (SDK
 under `.android-sdk/` must already exist — the APK script installs it on first
@@ -355,7 +365,7 @@ The job provides:
 - restore/save caching for the SDK, Pixiewood/GTK tree, and Gradle (same
   pattern as the Debian extra-package cache in `release.yml`)
 - a CI check that the APK contains `libollmchat-android-poc.so`,
-  `libollmchat.so`, and `lib/arm64-v8a/gio/modules/libgioopenssl.so`
+  `libollmchat.so`, and `assets/share/gio/modules/libgioopenssl.so`
 
 The workflow does not yet run:
 
