@@ -36,3 +36,9 @@ libocsqlite/*.c
 .vscode/
 .cursorindexingignore
 .specstory/
+
+# Local/generated artifacts that should not be committed from the repo root
+/LOCAL_APPDATA_FONTCONFIG_CACHE/
+/*.deb
+/research-current-task-flow-implementation.md
+/task_list*.md
