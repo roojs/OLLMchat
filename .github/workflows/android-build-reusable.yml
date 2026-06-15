@@ -241,6 +241,7 @@ jobs:
           PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
           PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
           PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.validate-pixiewood-build-cache.outputs.usable == 'true' && '1' || '' }}
+          PIXIEWOOD_STRIP_DEBUG: ${{ inputs.upload_to_release && '1' || '' }}
         run: PIXIEWOOD_PHASE=configure scripts/android/build-chat-poc-apk.sh
 
       - name: Build chat APK
@@ -249,6 +250,9 @@ jobs:
           PIXIEWOOD_REFRESH_SUBPROJECTS: ${{ inputs.refresh_cache && '1' || '' }}
           PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD: ${{ !inputs.refresh_cache && steps.restore-android-subprojects.outputs.cache-matched-key != '' && '1' || '' }}
           PIXIEWOOD_SKIP_RECONFIGURE: ${{ !inputs.refresh_cache && steps.validate-pixiewood-build-cache.outputs.usable == 'true' && '1' || '' }}
+          # Tag releases: smaller debug APK (symbols stripped on meson install).
+          # Manual Android build workflow leaves this unset (full debug symbols).
+          PIXIEWOOD_STRIP_DEBUG: ${{ inputs.upload_to_release && '1' || '' }}
         run: PIXIEWOOD_PHASE=build scripts/android/build-chat-poc-apk.sh
 
       - name: Detect post-build cache targets
@@ -313,6 +317,8 @@ jobs:
             grep -q 'lib/arm64-v8a/libollmchat-android-poc.so'
           unzip -l android-artifacts/ollmchat-android-poc-debug.apk | \
             grep -q 'lib/arm64-v8a/libollmchat.so'
+          unzip -l android-artifacts/ollmchat-android-poc-debug.apk | \
+            grep -q 'lib/arm64-v8a/gio/modules/libgioopenssl.so'
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
@@ -329,7 +335,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"
-          release_apk="android-artifacts/ollmchat-android-${tag}-debug.apk"
+          release_apk="android-artifacts/ollmchat-android-${tag}-debug-stripped.apk"
           cp android-artifacts/ollmchat-android-poc-debug.apk "$release_apk"
           for attempt in $(seq 1 90); do
             if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then

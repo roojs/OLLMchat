@@ -64,8 +64,8 @@ gee_vapi_dir = meson.project_source_root() / 'subprojects/libgee-0.20.8/gee'
 
 if android_cross_build
   # GIO TLS for libsoup HTTPS: build OpenSSL + glib-networking GIO modules.
-  # Pixiewood copies installed lib/…/gio/modules into the APK asset tree;
-  # AndroidPoc.vala sets GIO_MODULE_DIR at startup (compile-time path is /lib/…).
+  # Pixiewood copies installed lib/…/gio/modules into the APK; main() calls
+  # ollmapp_configure_android_gio_tls_modules() before any network I/O.
   subproject('glib-networking')
 
   # GObject introspection is disabled on Android, so Meson does not attach

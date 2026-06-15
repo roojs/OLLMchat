@@ -10,7 +10,7 @@ brotli = 'disabled'
 gssapi = 'disabled'
 ntlm = 'disabled'
 # Cross builds cannot run libsoup's GIO TLS compile-time probe; runtime TLS
-# comes from glib-networking (see GIO_MODULE_DIR in AndroidPoc.vala).
+# comes from glib-networking (see ollmapp/android/android-gio-tls.c).
 tls_check = false
 sysprof = 'disabled'
 

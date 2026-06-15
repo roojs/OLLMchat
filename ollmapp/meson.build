@@ -98,6 +98,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
   ]
 
   android_poc_sources = [
+    'android/android-gio-tls.c',
     'android/AndroidApplication.vala',
     'android/AndroidMainWindow.vala',
     'android/AndroidStartup.vala',
@@ -117,6 +118,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
     sources: android_poc_sources,
     link_with: [ollmchat_base_lib],
     include_directories: [
+      include_directories('android'),
       include_directories('../libollmchat'),
       include_directories('../libollamaweb'),
       include_directories('../libocsqlite')
@@ -313,6 +315,7 @@ if get_option('android_poc') and host_machine.system() != 'android'
     sources: android_poc_sources,
     link_with: [ollmchat_base_lib],
     include_directories: [
+      include_directories('android'),
       include_directories('../libollmchat'),
       include_directories('../libollamaweb'),
       include_directories('../libocsqlite')

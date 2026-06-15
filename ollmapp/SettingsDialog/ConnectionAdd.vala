@@ -64,7 +64,7 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public ConnectionAdd()
 		{
-			this.set_content_height(400);
+			this.set_content_height(480);
 			this.set_content_width(800);
 
 			// Create preferences page
@@ -81,11 +81,24 @@ namespace OLLMapp.SettingsDialog
 				vexpand = false,
 				valign = Gtk.Align.CENTER
 			};
-			this.host_row = new Adw.ActionRow() {
-				title = "Host",
-				subtitle = "URL of the Ollama or OpenAI API server"
+			var host_suffix = new Gtk.Box(Gtk.Orientation.VERTICAL, 4) {
+				halign = Gtk.Align.END
 			};
-			this.host_row.add_suffix(this.host_entry);
+			host_suffix.append(this.host_entry);
+			host_suffix.append(new Gtk.Label(
+				"URL of the Ollama or OpenAI API server"
+			) {
+				wrap = true,
+				wrap_mode = Pango.WrapMode.WORD,
+				xalign = 1.0f,
+				justify = Gtk.Justification.RIGHT,
+				css_classes = {"dim-label"},
+				max_width_chars = 45
+			});
+			this.host_row = new Adw.ActionRow() {
+				title = "Host"
+			};
+			this.host_row.add_suffix(host_suffix);
 			this.group.add(this.host_row);
 
 			// API Key entry row
@@ -95,11 +108,25 @@ namespace OLLMapp.SettingsDialog
 				vexpand = false,
 				valign = Gtk.Align.CENTER
 			};
-			this.api_key_row = new Adw.ActionRow() {
-				title = "API Key",
-				subtitle = "(optional) only need for online services or if you serve via nginx proxy"
+			var api_key_suffix = new Gtk.Box(Gtk.Orientation.VERTICAL, 4) {
+				halign = Gtk.Align.END
 			};
-			this.api_key_row.add_suffix(this.api_key_entry);
+			api_key_suffix.append(this.api_key_entry);
+			api_key_suffix.append(new Gtk.Label(
+				"(optional) only need for online services or "
+				+ "if you serve via nginx proxy"
+			) {
+				wrap = true,
+				wrap_mode = Pango.WrapMode.WORD,
+				xalign = 1.0f,
+				justify = Gtk.Justification.RIGHT,
+				css_classes = {"dim-label"},
+				max_width_chars = 45
+			});
+			this.api_key_row = new Adw.ActionRow() {
+				title = "API Key"
+			};
+			this.api_key_row.add_suffix(api_key_suffix);
 			this.group.add(this.api_key_row);
 
 			// Add group to page

@@ -23,7 +23,7 @@ On **ubuntu-24.04**, CI:
 5. Runs `dpkg-buildpackage` to produce **Debian packages** (amd64 only — see below).
 6. Uploads the artifacts to the workflow run.
 7. If the run was triggered by a tag push, creates or updates the matching **GitHub Release** and uploads the files as release assets.
-8. On tag pushes, also runs the **Android APK** build in parallel (via a reusable workflow). When the APK is ready, CI uploads it to the same GitHub Release. Android failures do not block desktop publishing or changelog finalization.
+8. On tag pushes, also runs the **Android APK** build in parallel (via a reusable workflow). When the APK is ready, CI uploads a **debug-stripped** APK (`ollmchat-android-<tag>-debug-stripped.apk`) to the same GitHub Release — still a debug Gradle build and debug signing, but native debug symbols are stripped to reduce size. Android failures do not block desktop publishing or changelog finalization. Use the manual **Android build** workflow for a full-symbol debug APK while testing.
 
 AppImage and Windows packaging is configured in [`sqgipkg.json`](../sqgipkg.json). Debian packaging lives under [`debian/`](../debian/).
 

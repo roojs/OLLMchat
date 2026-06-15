@@ -138,6 +138,14 @@ host during the first configure. That step requires **`nasm`** and
 `subprojects/openssl-3.0.8/` and are reused from the subprojects cache on later
 builds.
 
+At runtime, GIO looks for TLS backends under `GIO_MODULE_DIR`. The Android
+cross-build bakes in `/lib/arm64-v8a/gio/modules`, which does not exist on
+device. Before any network I/O, `main()` calls
+`ollmapp_configure_android_gio_tls_modules()` (`ollmapp/android/android-gio-tls.c`)
+to set `GIO_MODULE_DIR` to the extracted native library tree. The Pixiewood build
+also sets `android:extractNativeLibs="true"` so `libgioopenssl.so` is on a real
+filesystem path GIO can scan.
+
 Before pushing Android Meson or wrap changes, run the local cross checks (SDK
 under `.android-sdk/` must already exist — the APK script installs it on first
 run):
@@ -169,6 +177,20 @@ Successful debug builds produce APKs under:
 
 ```text
 .pixiewood/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+```
+
+**Debug stripped (release tags only):** GitHub Release builds set
+`PIXIEWOOD_STRIP_DEBUG=1`, which passes `-Dstrip=true` to Meson while keeping
+`--buildtype debug`. Pixiewood strips native libraries during `meson install`
+before Gradle packages the APK. The release asset is named
+`ollmchat-android-<tag>-debug-stripped.apk`. Manual **Android build** workflow
+runs and local builds omit this flag so you keep full native debug symbols for
+testing.
+
+To reproduce the release-style APK locally:
+
+```bash
+PIXIEWOOD_STRIP_DEBUG=1 scripts/android/build-chat-poc-apk.sh
 ```
 
 For a desktop-only compile check without Pixiewood:
@@ -312,8 +334,8 @@ The job provides:
   openssl/glib-networking for HTTPS via libsoup)
 - restore/save caching for the SDK, Pixiewood/GTK tree, and Gradle (same
   pattern as the Debian extra-package cache in `release.yml`)
-- a CI check that the APK contains `libollmchat-android-poc.so` and
-  `libollmchat.so`
+- a CI check that the APK contains `libollmchat-android-poc.so`,
+  `libollmchat.so`, and `lib/arm64-v8a/gio/modules/libgioopenssl.so`
 
 The workflow does not yet run:
 
