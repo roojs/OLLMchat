@@ -77,6 +77,13 @@ namespace OLLMrpc.Transport
 			return true;
 		}
 
+		public override void broadcast(GLib.Object gobject)
+		{
+			foreach (var connection in this.connections) {
+				connection.write(gobject);
+			}
+		}
+
 		public override void stop()
 		{
 			if (!this.listening) {

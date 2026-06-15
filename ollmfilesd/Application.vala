@@ -203,6 +203,7 @@ namespace OLLMfilesd
 					this.data_dir, "codedb.faiss.vectors");
 			this.project_manager.background_scan =
 				new OLLMfilesd.Vector.BackgroundScan (
+					this,
 					this.project_manager,
 					this.config);
 			yield this.project_manager.background_scan.open_vector_db ();
@@ -293,6 +294,13 @@ namespace OLLMfilesd
 				);
 			} catch (GLib.FileError e) {
 				GLib.error("could not write pid file: %s", e.message);
+			}
+		}
+
+		public void broadcast(OLLMrpc.Notification notification)
+		{
+			if (this.listen != null) {
+				this.listen.broadcast(notification);
 			}
 		}
 
