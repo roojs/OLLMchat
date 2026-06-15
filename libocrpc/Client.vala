@@ -14,8 +14,9 @@
 namespace OLLMrpc
 {
 	/**
-	 * NDJSON JSON-RPC client for {@code ollmfilesd} on a Unix stream socket.
-	 * {@link connect} runs {@link ClientBoot.ensure_daemon} first.
+	 * NDJSON JSON-RPC client for {@code ollmfilesd}.
+	 * {@link connect} runs {@link ClientBoot.ensure_daemon} when the
+	 * platform transport needs a local daemon starter.
 	 *
 	 * A background read loop dispatches {@link Notification}
 	 * lines and resolves pending {@link Response} entries by id.
@@ -71,11 +72,7 @@ namespace OLLMrpc
 			var path = socket;
 			var use_tcp = false;
 			if (path == "") {
-				path = GLib.Path.build_filename(
-					GLib.Environment.get_user_data_dir(),
-					"ollmchat",
-					"ollmfilesd.sock"
-				);
+				path = default_client_endpoint();
 			}
 			if (path.has_prefix("tcp://")) {
 				use_tcp = true;
@@ -98,6 +95,23 @@ namespace OLLMrpc
 
 			hello_request.id = this.next_id++;
 
+			if (client_boot_required(this.tcp)) {
+				var boot = new ClientBoot(this.socket);
+				try {
+					yield boot.ensure_daemon();
+				} catch (GLib.IOError e) {
+					this.connect_error = e.message != ""
+						? e.message
+						: "could not start or reach the filesystem daemon (ollmfilesd)";
+					GLib.critical(
+						"Client: ensure_daemon %s: %s",
+						this.socket,
+						this.connect_error
+					);
+					return false;
+				}
+			}
+
 			var client = new GLib.SocketClient();
 			if (this.tcp) {
 				try {
@@ -116,27 +130,10 @@ namespace OLLMrpc
 					return false;
 				}
 			}
-			if (!this.tcp) {
-				var boot = new ClientBoot(this.socket);
-				try {
-					yield boot.ensure_daemon();
-				} catch (GLib.IOError e) {
-					this.connect_error = e.message != ""
-						? e.message
-						: "could not start or reach the filesystem daemon (ollmfilesd)";
-					GLib.critical(
-						"Client: ensure_daemon %s: %s",
-						this.socket,
-						this.connect_error
-					);
-					return false;
-				}
 
+			if (!this.tcp) {
 				try {
-					this.connection = yield client.connect_async(
-						new GLib.UnixSocketAddress(this.socket),
-						null
-					);
+					this.connection = yield connect_unix_socket(this.socket);
 				} catch (GLib.Error e) {
 					this.connect_error = e.message;
 					GLib.critical(

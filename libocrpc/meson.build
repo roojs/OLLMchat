@@ -27,7 +27,8 @@ ocrpc_vapi_gen_pkgs = [
 ]
 
 transport_socket_src = files(['Transport/SocketListenWindows.vala'])
-client_src = files(['ClientWindows.vala', 'ClientBootWindows.vala'])
+client_platform_src = files(['ClientPlatformWindows.vala'])
+client_boot_src = files(['ClientBootWindows.vala'])
 
 if not is_windows
   ocrpc_deps += dependency('gio-unix-2.0')
@@ -36,7 +37,8 @@ if not is_windows
     '--pkg', 'gio-unix-2.0',
   ]
   transport_socket_src = files(['Transport/SocketListen.vala'])
-  client_src = files(['Client.vala', 'ClientBoot.vala'])
+  client_platform_src = files(['ClientPlatform.vala'])
+  client_boot_src = files(['ClientBoot.vala'])
 endif
 
 ocrpc_src = files([
@@ -51,7 +53,8 @@ ocrpc_src = files([
   'Request.vala',
   'Response.vala',
   'RpcErrorCode.vala',
-]) + transport_socket_src + client_src
+  'Client.vala',
+]) + transport_socket_src + client_platform_src + client_boot_src
 
 ocrpc_base_lib = library('ocrpc',
   dependencies: ocrpc_deps,
