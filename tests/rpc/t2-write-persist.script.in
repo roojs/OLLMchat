@@ -1,9 +1,9 @@
-# T2.1 — File.write persistence (register, read, write; daemon flush on exit)
+# T2.1 — File.write persistence (Path A: scan; flush on shutdown)
 {"jsonrpc":"2.0","id":1,"method":"Daemon.hello","params":{"protocol":1,"client":"test-rpc"}}
 {"jsonrpc":"2.0","id":2,"method":"ProjectManager.create_project","params":{"path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":3,"method":"ProjectManager.activate_project","params":{"path":"__PROJECT_PATH__","skip_scan":true}}
-{"jsonrpc":"2.0","id":4,"method":"File.register","params":{"path":"__HELLO_PATH__"}}
-{"jsonrpc":"2.0","id":5,"method":"File.read","params":{"path":"__HELLO_PATH__"}}
-{"jsonrpc":"2.0","id":6,"method":"File.write","params":{"path":"__HELLO_PATH__","content":"written by rpc test\n"}}
-{"jsonrpc":"2.0","id":7,"method":"File.changed.check","params":{"path":"__HELLO_PATH__","buffer_dirty":false,"last_known_mtime":0}}
-{"jsonrpc":"2.0","id":8,"method":"File.activate","params":{"path":"__HELLO_PATH__"}}
+{"jsonrpc":"2.0","id":3,"method":"ProjectManager.activate_project","params":{"path":"__PROJECT_PATH__"}}
+{"jsonrpc":"2.0","id":4,"method":"File.read","params":{"path":"__HELLO_PATH__"}}
+{"jsonrpc":"2.0","id":5,"method":"File.write","params":{"path":"__HELLO_PATH__","content":"written by rpc test\n"}}
+{"jsonrpc":"2.0","id":6,"method":"File.changed.check","params":{"path":"__HELLO_PATH__","buffer_dirty":false,"last_known_mtime":0}}
+{"jsonrpc":"2.0","id":7,"method":"File.activate","params":{"path":"__HELLO_PATH__"}}
+{"jsonrpc":"2.0","id":99,"method":"Daemon.shutdown","params":{}}

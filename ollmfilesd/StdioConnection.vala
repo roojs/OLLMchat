@@ -22,6 +22,8 @@ namespace OLLMfilesd
 		public OllmfilesdApplication app { get; construct; }
 		public string script_path { get; construct; default = ""; }
 
+		private int script_awaiting_id = -1;
+
 		public StdioConnection(
 			OllmfilesdApplication app,
 			string script_path = ""
@@ -71,11 +73,30 @@ namespace OLLMfilesd
 
 		public override void write(GLib.Object gobject)
 		{
+			if (gobject is OLLMrpc.Response) {
+				var response = gobject as OLLMrpc.Response;
+				if (response.id == this.script_awaiting_id) {
+					this.script_awaiting_id = -1;
+				}
+			}
 			var generator = new Json.Generator();
 			generator.set_pretty(false);
 			generator.set_root(Json.gobject_serialize(gobject));
 			GLib.stdout.printf("%s\n", generator.to_data(null));
 			GLib.stdout.flush();
+		}
+
+		private void drain_script_request(int request_id)
+		{
+			if (request_id == 0) {
+				return;
+			}
+			this.script_awaiting_id = request_id;
+			while (this.script_awaiting_id == request_id) {
+				if (!GLib.MainContext.default().iteration(true)) {
+					break;
+				}
+			}
 		}
 
 		private void run_script(string path) throws GLib.Error
@@ -109,6 +130,7 @@ namespace OLLMfilesd
 				request.dispatch(
 					parser.get_root().get_object().get_member("params")
 				);
+				this.drain_script_request(request.id);
 			}
 		}
 	}

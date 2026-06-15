@@ -34,6 +34,26 @@ module_dir_from_path (const char *path, char **out_dir)
 }
 
 static gboolean
+try_gio_module_dir_from_xdg_data_dirs (void)
+{
+  const char *xdg_data_dirs = g_getenv ("XDG_DATA_DIRS");
+
+  if (xdg_data_dirs == NULL || xdg_data_dirs[0] == '\0')
+    return FALSE;
+
+  g_autofree char *first = g_strdup (xdg_data_dirs);
+  char *colon = strchr (first, G_SEARCHPATH_SEPARATOR);
+
+  if (colon != NULL)
+    *colon = '\0';
+
+  g_autofree char *module_dir =
+      g_build_filename (first, "gio", "modules", NULL);
+
+  return try_set_gio_module_dir (module_dir);
+}
+
+static gboolean
 find_gio_module_dir_from_maps (char **out_dir)
 {
   FILE *maps = fopen ("/proc/self/maps", "re");
@@ -73,6 +93,9 @@ ollmapp_configure_android_gio_tls_modules (void)
   Dl_info info;
 
   if (g_getenv ("GIO_MODULE_DIR") != NULL)
+    return;
+
+  if (try_gio_module_dir_from_xdg_data_dirs ())
     return;
 
   if (dladdr ((void *) ollmapp_configure_android_gio_tls_modules, &info) &&
