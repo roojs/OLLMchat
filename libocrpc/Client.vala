@@ -381,8 +381,9 @@ namespace OLLMrpc
 			}
 
 			if (response.result_type == "") {
-				this.pending.get(response.id).set_value(response);
+				var promise = this.pending.get(response.id);
 				this.pending.unset(response.id);
+				promise.set_value(response);
 				return;
 			}
 
@@ -390,8 +391,9 @@ namespace OLLMrpc
 			var t = types.get(response.result_type);
 			if (!response.is_array) {
 				response.result = Json.gobject_deserialize(t, result_node);
-				this.pending.get(response.id).set_value(response);
+				var promise = this.pending.get(response.id);
 				this.pending.unset(response.id);
+				promise.set_value(response);
 				return;
 			}
 
@@ -401,8 +403,9 @@ namespace OLLMrpc
 				list.add(Json.gobject_deserialize(t, arr.get_element(i)));
 			}
 			response.result = list;
-			this.pending.get(response.id).set_value(response);
+			var promise = this.pending.get(response.id);
 			this.pending.unset(response.id);
+			promise.set_value(response);
 		}
 	}
 }
