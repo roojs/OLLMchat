@@ -33,7 +33,7 @@ jobs:
 
       - name: Compute Pixiewood cache key hashes
         run: |
-          echo "PIXIEWOOD_DEPS_HASH=${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh', 'vapi/**') }}" >> "$GITHUB_ENV"
+          echo "PIXIEWOOD_DEPS_HASH=${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/icons/**', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/build-pixiewood-apk.sh', 'scripts/android/verify-apk.sh', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh', 'vapi/**') }}" >> "$GITHUB_ENV"
           echo "PIXIEWOOD_APP_HASH=${{ hashFiles('meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/android/**') }}" >> "$GITHUB_ENV"
 
       - name: Restore Android SDK and NDK cache
@@ -154,6 +154,7 @@ jobs:
             git \
             gir1.2-appstream \
             glslc \
+            adwaita-icon-theme \
             libadwaita-1-dev \
             libglib-object-introspection-perl \
             libglib-perl \

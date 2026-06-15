@@ -200,7 +200,9 @@ reconfigure_pixiewood_build() {
     setup_args+=(--reconfigure)
   fi
 
-  local -a strip_args=()
+  # Meson keeps the strip option across reconfigures; always set it explicitly
+  # so a prior release build cannot leave manual/debug APKs stripped.
+  local -a strip_args=(-Dstrip=false)
   if [ "$PIXIEWOOD_STRIP_DEBUG" = "1" ]; then
     strip_args=(-Dstrip=true)
   fi
@@ -278,6 +280,63 @@ install_gio_modules_to_assets() {
   fi
 }
 
+# Pixiewood only copies bin, lib, and glib schemas into APK assets. GTK UI icons
+# (header bar buttons, symbolic actions, etc.) are listed in android/icons/manifest
+# and staged from the build host's icon themes into assets/share/icons/Adwaita/.
+install_icon_themes_to_assets() {
+  local manifest="$ROOT_DIR/android/icons/manifest"
+  local index_theme="$ROOT_DIR/android/icons/Adwaita/index.theme"
+  local assets_icons="$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/icons"
+  local stage="$ROOT_DIR/.pixiewood/android-icon-stage"
+  local stage_adwaita="$stage/Adwaita"
+  local dest_relpath source_theme source_relpath src dest_file dest_dir line
+
+  if [ ! -f "$manifest" ]; then
+    echo "Android icon manifest missing: $manifest" >&2
+    exit 1
+  fi
+  if [ ! -f "$index_theme" ]; then
+    echo "Android icon index.theme missing: $index_theme" >&2
+    exit 1
+  fi
+
+  rm -rf "$stage" "$assets_icons/Adwaita"
+  mkdir -p "$stage_adwaita"
+  cp -a "$index_theme" "$stage_adwaita/"
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    [ -z "$line" ] && continue
+
+    dest_relpath="${line%%$'\t'*}"
+    line="${line#*$'\t'}"
+    source_theme="${line%%$'\t'*}"
+    source_relpath="${line#*$'\t'}"
+
+    src="/usr/share/icons/$source_theme/$source_relpath"
+    if [ ! -f "$src" ]; then
+      echo "Icon source missing: $src" >&2
+      echo "Install adwaita-icon-theme on the build host (provides Adwaita and hicolor)." >&2
+      exit 1
+    fi
+
+    dest_file="$stage_adwaita/$dest_relpath"
+    dest_dir="$(dirname "$dest_file")"
+    mkdir -p "$dest_dir"
+    ln -sf "$src" "$dest_file"
+  done < "$manifest"
+
+  mkdir -p "$assets_icons"
+  cp -rL "$stage_adwaita" "$assets_icons/"
+  rm -rf "$stage"
+
+  if [ ! -f "$assets_icons/Adwaita/symbolic/actions/sidebar-show-symbolic.svg" ]; then
+    echo "Expected icon missing after staging: sidebar-show-symbolic.svg" >&2
+    exit 1
+  fi
+}
+
 # Pixiewood generate symlinks jniLibs -> root/lib. Materialize a real copy
 # after meson install so Gradle sees a normal directory tree for top-level .so
 # files, then run Gradle ourselves.
@@ -323,6 +382,20 @@ maybe_download_meson_subprojects() {
   download_meson_subprojects "$meson"
 }
 
+pixiewood_meson_strip_enabled() {
+  local coredata="$PIXIEWOOD_BUILD_DIR/meson-private/coredata.dat"
+
+  [ -f "$coredata" ] && grep -q '^strip = true' "$coredata"
+}
+
+pixiewood_strip_setting_matches() {
+  if [ "$PIXIEWOOD_STRIP_DEBUG" = "1" ]; then
+    pixiewood_meson_strip_enabled
+  else
+    ! pixiewood_meson_strip_enabled
+  fi
+}
+
 maybe_reconfigure_pixiewood_build() {
   local meson="$1"
   shift
@@ -330,12 +403,12 @@ maybe_reconfigure_pixiewood_build() {
   local meson_min="${MESON_MIN_VERSION:-1.8.0}"
 
   if [ "${PIXIEWOOD_SKIP_RECONFIGURE:-}" = "1" ] &&
-     [ "$PIXIEWOOD_STRIP_DEBUG" != "1" ] &&
      [ -f "$PIXIEWOOD_BUILD_DIR/build.ninja" ]; then
     current="$("$meson" --version)"
     configured="$(pixiewood_build_meson_version || true)"
     root_current="$(pixiewood_root_meson_version || true)"
-    if [ -n "$configured" ] &&
+    if pixiewood_strip_setting_matches &&
+       [ -n "$configured" ] &&
        version_ge "$configured" "$meson_min" &&
        version_ge "$current" "$meson_min" &&
        [ -n "$root_current" ] &&
@@ -347,6 +420,13 @@ maybe_reconfigure_pixiewood_build() {
     fi
     if [ -n "$configured" ]; then
       echo "Pixiewood compile cache used Meson $configured; reconfiguring with Meson $current (root: ${root_current:-unknown})." >&2
+    fi
+    if ! pixiewood_strip_setting_matches; then
+      if [ "$PIXIEWOOD_STRIP_DEBUG" = "1" ]; then
+        echo "Meson strip option does not match release build; reconfiguring with -Dstrip=true." >&2
+      else
+        echo "Meson strip option does not match debug build; reconfiguring with -Dstrip=false." >&2
+      fi
     fi
   fi
 
@@ -397,6 +477,7 @@ run_pixiewood_build() {
   run_pixiewood build --skip-gradle
   materialize_pixiewood_jni_libs
   install_gio_modules_to_assets
+  install_icon_themes_to_assets
   run_pixiewood_gradle_assemble
   "$ROOT_DIR/scripts/android/verify-apk.sh"
 

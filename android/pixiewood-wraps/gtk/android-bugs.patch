@@ -70,3 +70,36 @@ index dfedba019a..ce7fe685ca 100644
  		}
  	}
  }
+diff --git a/gdk/android/gdkandroidollmchatpatch.c b/gdk/android/gdkandroidollmchatpatch.c
+new file mode 100644
+index 0000000000..e8f4a2b1c3
+--- /dev/null
++++ b/gdk/android/gdkandroidollmchatpatch.c
+@@ -0,0 +1,13 @@
++/*
++ * OLLMchat android-bugs.patch compile marker.
++ * CI/build logs should contain: gdkandroidollmchatpatch.c.o
++ * SPDX-License-Identifier: LGPL-2.1-or-later
++ */
++
++#include "config.h"
++
++static void
++gdk_android_ollmchat_patch_marker (void)
++{
++  /* Intentionally empty; presence in libgdk-android confirms the patch tree. */
++}
+
+diff --git a/gdk/android/meson.build b/gdk/android/meson.build
+index 8c3f1a2b4d..9d4e2f3a5b 100644
+--- a/gdk/android/meson.build
++++ b/gdk/android/meson.build
+@@ -17,6 +17,7 @@ gdk_android_sources = files([
+ 
+   'gdkandroidcontentfile.c',
+ 
++  'gdkandroidollmchatpatch.c',
+   'gdkandroidutils.c'
+ ])
+ 
+
