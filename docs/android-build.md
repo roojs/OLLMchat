@@ -110,6 +110,12 @@ git diff upstream/main..HEAD > /path/to/OLLMchat/android/pixiewood-wraps/gtk/and
 Update the `revision` in `android/pixiewood-wraps/gtk/gtk.wrap` to match the
 upstream commit the diff is based on (`git merge-base upstream/main HEAD`).
 
+The patch includes a compile-only marker source,
+`gdk/android/gdkandroidollmchatpatch.c`, wired into `libgdk-android`. After a
+build, grep the Meson/Ninja log for `gdkandroidollmchatpatch.c.o`. If that line
+is missing, the patched GTK tree was not used (usually stale `subprojects/gtk`
+from cache).
+
 ### Host prerequisites
 
 Local APK builds use the same host packages as the **Android build** GitHub
@@ -125,6 +131,7 @@ sudo apt-get install -y --no-install-recommends \
   git \
   gir1.2-appstream \
   glslc \
+  adwaita-icon-theme \
   libadwaita-1-dev \
   libglib-object-introspection-perl \
   libglib-perl \
@@ -166,15 +173,29 @@ to `filesDir/` on startup; GIO modules are staged under
 `packaging.jniLibs.useLegacyPackaging` so native libraries are extracted to a
 real filesystem path.
 
+**GTK icons:** Header bar and other UI widgets use symbolic icon names from the
+Adwaita icon theme (`sidebar-show-symbolic`, `list-add-symbolic`, …). Pixiewood
+only ships `bin`, `lib`, and glib schemas in APK assets, not icon themes — the
+same class of problem as Windows before `sqgipkg.json` bundled
+`adwaita-icon-theme`. The Android build reads `android/icons/manifest` (tab-separated
+list of dest path, source theme, source path), symlinks each SVG from the build
+host’s `/usr/share/icons/` into a staging tree, then copies with `cp -rL` into
+`assets/share/icons/Adwaita/` (~tens of KB, not the full theme). Add a manifest
+row when Android-shipped UI references a new `icon_name`. GTK extracts assets
+with the rest of `assets/share/` before `main()`.
+`ollmapp_configure_android_gio_tls_modules()` also sets `GTK_ICON_THEME_NAME=Adwaita`
+because Android has no gsettings default.
+
 After a local or CI APK build, verify packaging with:
 
 ```bash
 scripts/android/verify-apk.sh
 ```
 
-This checks that the chat `.so` files and `assets/share/gio/modules/libgioopenssl.so`
-are present. Android does not install nested `lib/ABI/gio/modules/*.so` from
-jniLibs, so that path must not be used for TLS modules.
+This checks that the chat `.so` files, `assets/share/gio/modules/libgioopenssl.so`,
+and every path listed in `android/icons/manifest` are present. Android does not
+install nested `lib/ABI/gio/modules/*.so` from jniLibs, so that path must not be
+used for TLS modules.
 
 Before pushing Android Meson or wrap changes, run the local cross checks (SDK
 under `.android-sdk/` must already exist — the APK script installs it on first
@@ -214,8 +235,9 @@ Successful debug builds produce APKs under:
 `--buildtype debug`. Pixiewood strips native libraries during `meson install`
 before Gradle packages the APK. The release asset is named
 `ollmchat-android-<tag>-debug-stripped.apk`. Manual **Android build** workflow
-runs and local builds omit this flag so you keep full native debug symbols for
-testing.
+runs and local builds pass `-Dstrip=false` on every reconfigure so native debug
+symbols are kept for testing (Meson otherwise retains `strip=true` from a prior
+release configure).
 
 To reproduce the release-style APK locally:
 
@@ -365,7 +387,8 @@ The job provides:
 - restore/save caching for the SDK, Pixiewood/GTK tree, and Gradle (same
   pattern as the Debian extra-package cache in `release.yml`)
 - a CI check that the APK contains `libollmchat-android-poc.so`,
-  `libollmchat.so`, and `assets/share/gio/modules/libgioopenssl.so`
+  `libollmchat.so`, `assets/share/gio/modules/libgioopenssl.so`, and curated icons
+  from `android/icons/manifest` under `assets/share/icons/Adwaita/`
 
 The workflow does not yet run:
 

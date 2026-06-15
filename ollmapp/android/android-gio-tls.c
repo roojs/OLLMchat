@@ -112,4 +112,8 @@ ollmapp_configure_android_gio_tls_modules (void)
   g_autofree char *maps_dir = NULL;
   if (find_gio_module_dir_from_maps (&maps_dir))
     try_set_gio_module_dir (maps_dir);
+
+  /* Windows sqgipkg sets gtk_icon_theme: Adwaita; Android has no gsettings. */
+  if (g_getenv ("GTK_ICON_THEME_NAME") == NULL)
+    g_setenv ("GTK_ICON_THEME_NAME", "Adwaita", TRUE);
 }

@@ -13,6 +13,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 APK="${1:-$ROOT_DIR/.pixiewood/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk}"
+MANIFEST="$ROOT_DIR/android/icons/manifest"
 
 if [ ! -f "$APK" ]; then
   echo "APK not found: $APK" >&2
@@ -28,7 +29,18 @@ required=(
   lib/arm64-v8a/libollmchat-android-poc.so
   lib/arm64-v8a/libollmchat.so
   assets/share/gio/modules/libgioopenssl.so
+  assets/share/icons/Adwaita/index.theme
 )
+
+if [ -f "$MANIFEST" ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    [ -z "$line" ] && continue
+    dest_relpath="${line%%$'\t'*}"
+    required+=("assets/share/icons/Adwaita/$dest_relpath")
+  done < "$MANIFEST"
+fi
 
 for path in "${required[@]}"; do
   if ! grep -q "$path" "$apk_list"; then
@@ -37,6 +49,8 @@ for path in "${required[@]}"; do
     grep 'lib/arm64-v8a/' "$apk_list" >&2 || true
     echo "Matching assets/gio entries:" >&2
     grep 'assets/.*gio' "$apk_list" >&2 || true
+    echo "Matching assets/icons entries:" >&2
+    grep 'assets/share/icons/' "$apk_list" >&2 || true
     exit 1
   fi
 done
