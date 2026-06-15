@@ -1,7 +1,7 @@
 // ollmfilesd/Vector/BackgroundScan.vala
 //
 // BackgroundScan – async file-index queue on the daemon MainLoop.
-// Integrates with Indexer and emits scan_update for progress (RPC in step 3).
+// Integrates with Indexer and emits event.vector.scan_update RPC notifications.
 //
 namespace OLLMfilesd.Vector {
 
@@ -10,14 +10,7 @@ namespace OLLMfilesd.Vector {
      */
     public class BackgroundScan : GLib.Object {
 
-        /**
-         * Emitted at the start of each file scan and when queue becomes empty.
-         *
-         * @param queue_size Current size of the file queue (number of files remaining).
-         * @param current_file Path of the file currently being scanned (empty string "" when queue is empty).
-         */
-        public signal void scan_update (int queue_size, string current_file);
-
+        private OllmfilesdApplication app;
         private OLLMfilesd.ProjectManager project_manager;
         private OLLMchat.Settings.Config2 config;
 
@@ -29,9 +22,11 @@ namespace OLLMfilesd.Vector {
          * @param project_manager Daemon ProjectManager (db, vector_db_path)
          * @param config Application config
          */
-        public BackgroundScan (OLLMfilesd.ProjectManager project_manager,
+        public BackgroundScan (OllmfilesdApplication app,
+                               OLLMfilesd.ProjectManager project_manager,
                                OLLMchat.Settings.Config2 config)
         {
+            this.app = app;
             this.project_manager = project_manager;
             this.config = config;
         }
@@ -119,7 +114,11 @@ namespace OLLMfilesd.Vector {
         {
             GLib.debug ("scan banner update queue_size=%d file=%s",
                 queue_size, GLib.Path.get_basename (current_file));
-            this.scan_update (queue_size, current_file);
+            this.app.broadcast (new OLLMrpc.Notification () {
+                method = "event.vector.scan_update",
+                object_type = "Vector",
+                message = "%d %s".printf (queue_size, current_file),
+            });
         }
 
         private class BackgroundScanItem {

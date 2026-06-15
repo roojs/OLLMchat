@@ -36,6 +36,13 @@ namespace OLLMfilesd
 			return true;
 		}
 
+		public override void broadcast(GLib.Object gobject)
+		{
+			if (this.connection != null) {
+				this.connection.write(gobject);
+			}
+		}
+
 		public override void stop()
 		{
 			if (this.connection != null) {
