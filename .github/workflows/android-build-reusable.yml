@@ -74,9 +74,9 @@ jobs:
             .pixiewood/bin-aarch64
             .pixiewood/pixiewood.ini
             .pixiewood/toolchain.cross
-          key: pixiewood-build-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
+          key: pixiewood-build-v2-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
           restore-keys: |
-            pixiewood-build-v1-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-
+            pixiewood-build-v2-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-
 
       - name: Validate Pixiewood compile cache
         id: validate-pixiewood-build-cache
@@ -292,7 +292,7 @@ jobs:
             .pixiewood/bin-aarch64
             .pixiewood/pixiewood.ini
             .pixiewood/toolchain.cross
-          key: pixiewood-build-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
+          key: pixiewood-build-v2-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
 
       - name: Save Pixiewood compile cache (partial)
         if: always() && steps.build-apk.outcome != 'success' && steps.post-build-cache.outputs.pixiewood-build == 'true'
@@ -302,7 +302,7 @@ jobs:
             .pixiewood/bin-aarch64
             .pixiewood/pixiewood.ini
             .pixiewood/toolchain.cross
-          key: pixiewood-build-v1-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-${{ github.run_id }}
+          key: pixiewood-build-v2-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-${{ github.run_id }}
 
       - name: Collect APK artifact
         run: |
