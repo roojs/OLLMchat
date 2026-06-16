@@ -70,11 +70,21 @@ discard_gtk_bootstrap_if_stale() {
 }
 
 discard_pixiewood_compile_if_stale() {
-  if [ -n "${CACHE_MATCHED_PIXIEWOOD_BUILD_KEY:-}" ] &&
-     { [ -n "${PIXIEWOOD_DEPS_HASH:-}" ] &&
-       ! cache_key_matches_deps_hash "$CACHE_MATCHED_PIXIEWOOD_BUILD_KEY" "$PIXIEWOOD_DEPS_HASH"; } ||
-     { [ -n "${PIXIEWOOD_APP_HASH:-}" ] &&
-       ! cache_key_matches_deps_hash "$CACHE_MATCHED_PIXIEWOOD_BUILD_KEY" "$PIXIEWOOD_APP_HASH"; }; then
+  local discard=false
+  local matched_key="${CACHE_MATCHED_PIXIEWOOD_BUILD_KEY:-}"
+
+  if [ -n "$matched_key" ]; then
+    if [ -n "${PIXIEWOOD_DEPS_HASH:-}" ] &&
+       ! cache_key_matches_deps_hash "$matched_key" "${PIXIEWOOD_DEPS_HASH}"; then
+      discard=true
+    fi
+    if [ -n "${PIXIEWOOD_APP_HASH:-}" ] &&
+       ! cache_key_matches_deps_hash "$matched_key" "${PIXIEWOOD_APP_HASH}"; then
+      discard=true
+    fi
+  fi
+
+  if [ "$discard" = true ]; then
     echo "Discarding Pixiewood compile cache (restored key predates current PIXIEWOOD_DEPS_HASH or PIXIEWOOD_APP_HASH)." >&2
     discard_pixiewood_compile_state
     return 0
