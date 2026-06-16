@@ -15,8 +15,8 @@ source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
 prepare_android_subprojects_before_meson
 
 [ -f "$MARKER" ] || { echo "patch marker missing: $MARKER" >&2; exit 1; }
-grep -q 'ollmchat-android-bugs-v1' "$MARKER" ||
-  { echo "patch marker missing ollmchat-android-bugs-v1 tag" >&2; exit 1; }
+grep -q 'ollmchat-android-bugs-v2' "$MARKER" ||
+  { echo "patch marker missing ollmchat-android-bugs-v2 tag" >&2; exit 1; }
 grep -q 'g_debug' "$MARKER" ||
   { echo "patch marker missing g_debug reference" >&2; exit 1; }
 grep -q '#include <glib.h>' "$MARKER" ||

@@ -28,6 +28,7 @@ FAST_TESTS=(
   "$REGRESSION_DIR/test-r08-stale-restored-cache-discard.sh"
   "$REGRESSION_DIR/test-r09-validate-caches-partial-env.sh"
   "$REGRESSION_DIR/test-r07-apk-runtime-patches.sh"
+  "$REGRESSION_DIR/test-r11-gio-openssl-deps.sh"
 )
 
 for script in "${FAST_TESTS[@]}"; do

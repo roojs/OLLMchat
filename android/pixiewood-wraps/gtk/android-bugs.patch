@@ -1,10 +1,29 @@
 diff --git a/gdk/android/gdkandroidpopup.c b/gdk/android/gdkandroidpopup.c
+index 67f31d0..1ac236a 100644
 --- a/gdk/android/gdkandroidpopup.c
 +++ b/gdk/android/gdkandroidpopup.c
-@@ -75,6 +75,23 @@ gdk_android_popup_present (GdkPopup       *popup,
+@@ -55,6 +55,17 @@ gdk_android_popup_present (GdkPopup       *popup,
+                                      &shadow_top,
+                                      &shadow_bottom);
+ 
++  /* Parent position from Java layout may lag behind GTK layout for nested
++   * surfaces (e.g. touch selection bubbles inside Adw dialogs). */
++  if (parent_impl->cfg.scale > 0)
++    {
++      GdkSurface *parent_surf = GDK_SURFACE (parent);
++
++      parent_surf->x = (gint) (parent_impl->cfg.x / parent_impl->cfg.scale);
++      parent_surf->y = (gint) (parent_impl->cfg.y / parent_impl->cfg.scale);
++    }
++
++
+   GdkRectangle bounds;
+   bounds.x = 0;
+   bounds.y = 0;
+@@ -74,6 +85,23 @@ gdk_android_popup_present (GdkPopup       *popup,
+                                    self->layout,
                                     GDK_SURFACE_LAYOUT_POPUP_HELPER_ROOT_OUT,
                                     &self->popup_bounds);
- 
 +  /* Keep native geometry in sync with the layout result. Child popups
 +   * (e.g. touch selection bubbles inside a dialog) consult the parent
 +   * surface position during layout, but Java only reports position
@@ -22,10 +41,78 @@ diff --git a/gdk/android/gdkandroidpopup.c b/gdk/android/gdkandroidpopup.c
 +    surface_impl->cfg.height = (gint) ceilf (self->popup_bounds.height * parent_impl->cfg.scale);
 +  }
 +
+ 
    JNIEnv *env = gdk_android_get_env ();
    if (!surface_impl->surface)
-     {
+diff --git a/gdk/android/gdkandroidruntime.c b/gdk/android/gdkandroidruntime.c
+index 39d3a64..33acbcb 100644
+--- a/gdk/android/gdkandroidruntime.c
++++ b/gdk/android/gdkandroidruntime.c
+@@ -17,8 +17,10 @@
+  * SPDX-License-Identifier: LGPL-2.1-or-later
+  */
+ 
++#include <dlfcn.h>
+ #include <glib.h>
+ #include <gmodule.h>
++#include <gio/gio.h>
+ 
+ #include <gdk/android/gdkandroid.h>
+ #include <gdk/android/gdkandroidinit-private.h>
+@@ -220,6 +222,30 @@ gdk_android_runtime_path_of_dir (JNIEnv *env, jobject dir)
+ 
+ void g_set_user_dirs (const char *first_dir_type, ...) G_GNUC_NULL_TERMINATED;
+ 
++static void
++gdk_android_preload_openssl_libs (const char *dir)
++{
++  static const char *candidates[] = {
++    "libcrypto.so",
++    "libssl.so",
++    "libcrypto.so.3",
++    "libssl.so.3",
++    NULL
++  };
++  gsize i;
++
++  if (dir == NULL || dir[0] == '\0')
++    return;
++
++  for (i = 0; candidates[i] != NULL; i++)
++    {
++      g_autofree char *path = g_build_filename (dir, candidates[i], NULL);
++
++      if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
++        dlopen (path, RTLD_NOW | RTLD_GLOBAL);
++    }
++}
++
+ static GThread *gtk_thread_s = NULL;
+ 
+ static void
+@@ -280,6 +306,20 @@ _gdk_android_application_start_runtime (JNIEnv  *env,
+                    "XDG_DATA_HOME", userdatadir,
+                    NULL);
+ 
++  /* writeResources() ran before startRuntime(); scan TLS modules while
++   * datadir is still known so HTTPS works on first libsoup use. */
++  {
++    gchar *gio_module_dir = g_build_filename (datadir, "gio", "modules", NULL);
++
++    if (g_file_test (gio_module_dir, G_FILE_TEST_IS_DIR))
++      {
++        gdk_android_preload_openssl_libs (gio_module_dir);
++        g_setenv ("GIO_MODULE_DIR", gio_module_dir, TRUE);
++        g_io_modules_scan_all_in_directory (gio_module_dir);
++      }
++    g_free (gio_module_dir);
++  }
++
+   g_free (configdir);
+   g_free (datadir);
+   g_free (userconfigdir);
 diff --git a/gdk/android/glue/java/org/gtk/android/ImContext.java b/gdk/android/glue/java/org/gtk/android/ImContext.java
+index dfedba0..f121104 100644
 --- a/gdk/android/glue/java/org/gtk/android/ImContext.java
 +++ b/gdk/android/glue/java/org/gtk/android/ImContext.java
 @@ -2,7 +2,6 @@ package org.gtk.android;
@@ -58,7 +145,23 @@ diff --git a/gdk/android/glue/java/org/gtk/android/ImContext.java b/gdk/android/
  	@Keep
  	private static void reset(View view) {
  		InputMethodManager imm = view.getContext().getSystemService(InputMethodManager.class);
-@@ -86,11 +100,10 @@ public final class ImContext {
+@@ -68,6 +82,7 @@ public final class ImContext {
+ 
+ 				ImContext.this.updatePreedit(content.toString(), b);
+ 			});
++			syncEditableFromGtk(getEditable());
+ 			return true;
+ 		}
+ 
+@@ -79,18 +94,17 @@ public final class ImContext {
+ 			Editable content = getEditable();
+ 			if (content.length() > 0)
+ 				GlibContext.blockForMain(() -> ImContext.this.commit(content.toString()));
+-			content.clear();
++			syncEditableFromGtk(getEditable());
+ 			return true;
+ 		}
+ 
  		@Override
  		public boolean commitText(CharSequence text, int newCursorPosition) {
  			logger.info("IME: commitText(\"" + text + "\", " + newCursorPosition + ")");
@@ -73,7 +176,7 @@ diff --git a/gdk/android/glue/java/org/gtk/android/ImContext.java b/gdk/android/
  			return true;
  		}
  
-@@ -98,10 +111,14 @@ public final class ImContext {
+@@ -98,10 +112,14 @@ public final class ImContext {
  		public boolean deleteSurroundingText(int leftLength, int rightLength) {
  			logger.info("IME: deleteSurroundingText(" + leftLength + ", " + rightLength + ")");
  
@@ -92,40 +195,21 @@ diff --git a/gdk/android/glue/java/org/gtk/android/ImContext.java b/gdk/android/
  		}
  	}
  }
-diff --git a/gdk/android/gdkandroidruntime.c b/gdk/android/gdkandroidruntime.c
---- a/gdk/android/gdkandroidruntime.c
-+++ b/gdk/android/gdkandroidruntime.c
-@@ -19,6 +19,7 @@
+diff --git a/gdk/android/meson.build b/gdk/android/meson.build
+index f0a57ea..11ab0c0 100644
+--- a/gdk/android/meson.build
++++ b/gdk/android/meson.build
+@@ -17,6 +17,7 @@ gdk_android_sources = files([
  
- #include <glib.h>
- #include <gmodule.h>
-+#include <gio/gio.h>
+   'gdkandroidcontentfile.c',
  
- #include <gdk/android/gdkandroid.h>
- #include <gdk/android/gdkandroidinit-private.h>
-@@ -280,6 +281,19 @@ _gdk_android_application_start_runtime (JNIEnv  *env,
-                    "XDG_DATA_HOME", userdatadir,
-                    NULL);
++  'gdkandroidollmchatpatch.c',
+   'gdkandroidutils.c'
+ ])
  
-+  /* writeResources() ran before startRuntime(); scan TLS modules while
-+   * datadir is still known so HTTPS works on first libsoup use. */
-+  {
-+    gchar *gio_module_dir = g_build_filename (datadir, "gio", "modules", NULL);
-+
-+    if (g_file_test (gio_module_dir, G_FILE_TEST_IS_DIR))
-+      {
-+        g_setenv ("GIO_MODULE_DIR", gio_module_dir, TRUE);
-+        g_io_modules_scan_all_in_directory (gio_module_dir);
-+      }
-+    g_free (gio_module_dir);
-+  }
-+
-   g_free (configdir);
-   g_free (datadir);
-   g_free (userconfigdir);
 diff --git a/gdk/android/gdkandroidollmchatpatch.c b/gdk/android/gdkandroidollmchatpatch.c
 new file mode 100644
-index 0000000000..e8f4a2b1c3
+index 0000000..1691cee
 --- /dev/null
 +++ b/gdk/android/gdkandroidollmchatpatch.c
 @@ -0,0 +1,18 @@
@@ -139,7 +223,7 @@ index 0000000000..e8f4a2b1c3
 +#include <glib.h>
 +
 +/* Survives in libgtk-4.so; verify-apk.sh greps for this tag. */
-+const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v1";
++const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v2";
 +
 +static void
 +gdk_android_ollmchat_patch_marker (void)
@@ -147,15 +231,3 @@ index 0000000000..e8f4a2b1c3
 +  /* Keep the tag referenced so release builds do not drop it. */
 +  g_debug ("%s", gdk_android_ollmchat_bugs_tag);
 +}
-
-diff --git a/gdk/android/meson.build b/gdk/android/meson.build
---- a/gdk/android/meson.build
-+++ b/gdk/android/meson.build
-@@ -17,6 +17,7 @@ gdk_android_sources = files([
- 
-   'gdkandroidcontentfile.c',
- 
-+  'gdkandroidollmchatpatch.c',
-   'gdkandroidutils.c'
- ])
- 

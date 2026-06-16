@@ -285,8 +285,10 @@ patch_pixiewood_gradle_native_libs() {
 # as gio/modules are dropped from the APK. Ship GIO TLS modules via assets
 # (extracted to filesDir/share/gio/modules by GTK on startup).
 install_gio_modules_to_assets() {
-  local src="$ROOT_DIR/.pixiewood/root/lib/arm64-v8a/gio/modules"
+  local jni_lib="$ROOT_DIR/.pixiewood/root/lib/arm64-v8a"
+  local src="$jni_lib/gio/modules"
   local dest="$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/gio/modules"
+  local lib name
 
   if [ ! -d "$src" ]; then
     echo "GIO module install tree missing: $src" >&2
@@ -301,6 +303,25 @@ install_gio_modules_to_assets() {
     echo "GIO TLS module missing from assets staging: $dest/libgioopenssl.so" >&2
     exit 1
   fi
+
+  # libgioopenssl.so is extracted to filesDir/share/gio/modules/ at runtime.
+  # Android does not add jniLibs to dlopen search for that path, so ship OpenSSL
+  # runtimes beside the GIO module (same directory dlopen uses for NEEDED libs).
+  for name in libcrypto.so libssl.so libcrypto.so.3 libssl.so.3; do
+    if [ -f "$jni_lib/$name" ]; then
+      cp -a "$jni_lib/$name" "$dest/"
+    fi
+  done
+
+  if ! compgen -G "$dest/libssl.so*" >/dev/null ||
+     ! compgen -G "$dest/libcrypto.so*" >/dev/null; then
+    echo "OpenSSL runtimes missing beside GIO TLS module in $dest" >&2
+    echo "Expected libssl.so* and libcrypto.so* from $jni_lib" >&2
+    exit 1
+  fi
+
+  printf 'ollmchat-android-bugs-v2\n' \
+    > "$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/ollmchat-android-runtime.tag"
 }
 
 # Pixiewood only copies bin, lib, and glib schemas into APK assets. GTK UI icons

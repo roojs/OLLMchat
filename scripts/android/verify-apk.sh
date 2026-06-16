@@ -29,6 +29,7 @@ required=(
   lib/arm64-v8a/libollmchat-android-poc.so
   lib/arm64-v8a/libollmchat.so
   assets/share/gio/modules/libgioopenssl.so
+  assets/share/ollmchat-android-runtime.tag
   assets/share/icons/Adwaita/index.theme
 )
 
@@ -57,11 +58,35 @@ done
 
 apk_extract="$(mktemp -d)"
 trap 'rm -f "$apk_list"; rm -rf "$apk_extract"' EXIT
-unzip -q "$APK" "lib/arm64-v8a/libgtk-4.so" "classes.dex" -d "$apk_extract"
+unzip -q "$APK" "lib/arm64-v8a/libgtk-4.so" "classes.dex" "assets/share/ollmchat-android-runtime.tag" -d "$apk_extract"
 
-if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'ollmchat-android-bugs-v1'; then
-  echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v1)." >&2
+if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'ollmchat-android-bugs-v2'; then
+  echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v2)." >&2
   echo "Pixiewood compile cache should have been discarded automatically; check pixiewood_prefix_has_patched_gtk." >&2
+  exit 1
+fi
+
+if ! grep -q 'ollmchat-android-bugs-v2' "$apk_extract/assets/share/ollmchat-android-runtime.tag"; then
+  echo "APK missing assets/share/ollmchat-android-runtime.tag (ollmchat-android-bugs-v2)." >&2
+  exit 1
+fi
+
+apk_gio_modules="$(mktemp -d)"
+trap 'rm -f "$apk_list"; rm -rf "$apk_extract" "$apk_gio_modules"' EXIT
+unzip -q "$APK" "assets/share/gio/modules/*" -d "$apk_gio_modules"
+
+if ! compgen -G "$apk_gio_modules/assets/share/gio/modules/libssl.so*" >/dev/null; then
+  echo "APK missing libssl.so beside GIO TLS module (assets/share/gio/modules/)." >&2
+  exit 1
+fi
+
+if ! compgen -G "$apk_gio_modules/assets/share/gio/modules/libcrypto.so*" >/dev/null; then
+  echo "APK missing libcrypto.so beside GIO TLS module (assets/share/gio/modules/)." >&2
+  exit 1
+fi
+
+if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'touch selection bubbles'; then
+  echo "libgtk-4.so missing nested-dialog popup geometry patch." >&2
   exit 1
 fi
 

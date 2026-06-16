@@ -28,7 +28,7 @@ GitHub Actions runs the same suite in `.github/workflows/android-build-reusable.
 | **R07** | [27588239244](https://github.com/roojs/OLLMchat/actions/runs/27588239244) (runtime) | TLS / paste / delete fixes missing from APK despite green build | `regression/test-r07-apk-runtime-patches.sh` (runs `verify-apk.sh` binary checks) |
 | **R08** | (restore-keys partial hit) | Old subprojects cache restored after `PIXIEWOOD_DEPS_HASH` change | `regression/test-r08-stale-restored-cache-discard.sh` |
 | **R09** | [27590212384](https://github.com/roojs/OLLMchat/actions/runs/27590212384) | `validate-restored-caches.sh: CACHE_MATCHED_PIXIEWOOD_BUILD_KEY: unbound variable` | `regression/test-r09-validate-caches-partial-env.sh` |
-| **R10** | [27613430785](https://github.com/roojs/OLLMchat/actions/runs/27613430785), [27613805784](https://github.com/roojs/OLLMchat/actions/runs/27613805784) | `gdkandroidollmchatpatch.c` truncated or `g_debug` undeclared | covered by extended `test-r03-gtk-patch-marker.sh` |
+| **R11** | [27614072148](https://github.com/roojs/OLLMchat/actions/runs/27614072148) (runtime) | TLS still broken: `libgioopenssl.so` cannot load `libssl` from `filesDir/share/gio/modules/` | `regression/test-r11-gio-openssl-deps.sh` + `verify-apk.sh` OpenSSL asset checks |
 
 When a **new** CI failure appears:
 
@@ -50,7 +50,7 @@ Broken `subprojects/gtk` (stub without nested wraps) is repaired by copying
 
 ### R03 — GTK patch marker
 After bootstrap, `subprojects/gtk/gdk/android/gdkandroidollmchatpatch.c` exists with
-the `ollmchat-android-bugs-v1` tag and a complete function body (truncated patch hunks
+the `ollmchat-android-bugs-v2` tag and a complete function body (truncated patch hunks
 fail compile), and `ImContext.java` contains the `deleteSurrounding` fix.
 
 ### R09 — validate caches partial env
@@ -76,8 +76,9 @@ Simulates `actions/cache` restore-keys returning a subprojects entry for an old
 ### R07 — APK runtime patches (when APK exists)
 After a local or CI build, `verify-apk.sh` checks:
 
-- `assets/share/gio/modules/libgioopenssl.so` is packaged
-- `libgtk-4.so` contains `ollmchat-android-bugs-v1` (patched GTK prefix)
+- `assets/share/gio/modules/libgioopenssl.so` is packaged with `libssl.so*` and `libcrypto.so*` beside it
+- `assets/share/ollmchat-android-runtime.tag` contains `ollmchat-android-bugs-v2`
+- `libgtk-4.so` contains `ollmchat-android-bugs-v2` and `touch selection bubbles` (popup geometry patch)
 - `classes.dex` uses `deleteSurroundingText` lambda, not `sendKeyEvent` IME deletes
 - `classes.dex` contains `syncEditableFromGtk` (IME `Editable` kept in sync for hold-backspace)
 

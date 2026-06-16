@@ -5,6 +5,33 @@
 #include <stdio.h>
 #include <string.h>
 
+static void
+preload_openssl_libs_from_dir (const char *dir)
+{
+  static const char *candidates[] = {
+    "libcrypto.so",
+    "libssl.so",
+    "libcrypto.so.3",
+    "libssl.so.3",
+    NULL
+  };
+  gsize i;
+
+  if (dir == NULL || dir[0] == '\0')
+    return;
+
+  for (i = 0; candidates[i] != NULL; i++)
+    {
+      g_autofree char *path = g_build_filename (dir, candidates[i], NULL);
+
+      if (!g_file_test (path, G_FILE_TEST_IS_REGULAR))
+        continue;
+
+      if (dlopen (path, RTLD_NOW | RTLD_GLOBAL) == NULL)
+        g_warning ("Failed to preload %s for GIO TLS: %s", path, dlerror ());
+    }
+}
+
 static gboolean
 try_set_gio_module_dir (const char *module_dir)
 {
@@ -24,6 +51,7 @@ load_gio_tls_modules_from_dir (const char *module_dir)
   if (!try_set_gio_module_dir (module_dir))
     return FALSE;
 
+  preload_openssl_libs_from_dir (module_dir);
   g_io_modules_scan_all_in_directory (module_dir);
   return g_tls_backend_get_default () != NULL;
 }
@@ -95,6 +123,20 @@ find_gio_module_dir_from_maps (char **out_dir)
   return FALSE;
 }
 
+static gboolean
+try_preload_openssl_from_native_lib_dir (void)
+{
+  Dl_info info;
+
+  if (!dladdr ((void *) ollmapp_configure_android_gio_tls_modules, &info) ||
+      info.dli_fname == NULL)
+    return FALSE;
+
+  g_autofree char *lib_dir = g_path_get_dirname (info.dli_fname);
+  preload_openssl_libs_from_dir (lib_dir);
+  return TRUE;
+}
+
 void
 ollmapp_configure_android_gio_tls_modules (void)
 {
@@ -102,6 +144,8 @@ ollmapp_configure_android_gio_tls_modules (void)
 
   if (g_tls_backend_get_default () != NULL)
     return;
+
+  try_preload_openssl_from_native_lib_dir ();
 
   if (try_gio_module_dir_from_xdg_data_dirs ())
     return;
@@ -123,7 +167,8 @@ ollmapp_configure_android_gio_tls_modules (void)
     return;
 
   g_warning ("GIO TLS backend unavailable after scanning module directories "
-             "(expected assets/share/gio/modules/libgioopenssl.so on device)");
+             "(expected assets/share/gio/modules/libgioopenssl.so with "
+             "libssl.so and libcrypto.so beside it on device)");
 
   /* Windows sqgipkg sets gtk_icon_theme: Adwaita; Android has no gsettings. */
   if (g_getenv ("GTK_ICON_THEME_NAME") == NULL)
