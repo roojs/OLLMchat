@@ -61,12 +61,17 @@ unzip -q "$APK" "lib/arm64-v8a/libgtk-4.so" "classes.dex" -d "$apk_extract"
 
 if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'ollmchat-android-bugs-v1'; then
   echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v1)." >&2
-  echo "Compile cache likely skipped rebuilding GTK; rerun with refresh_cache." >&2
+  echo "Pixiewood compile cache should have been discarded automatically; check pixiewood_prefix_has_patched_gtk." >&2
   exit 1
 fi
 
 if ! strings "$apk_extract/classes.dex" | grep -q 'lambda\$deleteSurroundingText'; then
   echo "classes.dex missing patched ImContext deleteSurroundingText handler." >&2
+  exit 1
+fi
+
+if ! strings "$apk_extract/classes.dex" | grep -q 'syncEditableFromGtk'; then
+  echo "classes.dex missing ImContext.syncEditableFromGtk (hold-backspace IME sync)." >&2
   exit 1
 fi
 

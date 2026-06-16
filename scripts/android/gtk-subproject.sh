@@ -7,9 +7,11 @@ gtk_subproject_patch_marker() {
 }
 
 gtk_subproject_patch_applied() {
-  local marker
+  local marker im_context
   marker="$(gtk_subproject_patch_marker)"
-  [ -f "$marker" ] && grep -q 'ollmchat-android-bugs-v1' "$marker"
+  im_context="$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java"
+  [ -f "$marker" ] && grep -q 'ollmchat-android-bugs-v1' "$marker" &&
+    [ -f "$im_context" ] && grep -q 'syncEditableFromGtk' "$im_context"
 }
 
 gtk_bootstrap_cache_dir() {

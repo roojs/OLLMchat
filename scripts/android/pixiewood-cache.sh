@@ -35,9 +35,25 @@ discard_pixiewood_compile_state() {
   rm -f "$ROOT_DIR/.pixiewood/toolchain.cross"
 }
 
-pixiewood_prefix_has_patched_gtk() {
+pixiewood_prefix_has_patched_gtk_object() {
   find "$ROOT_DIR/.pixiewood/bin-aarch64" \
     -name 'gdkandroidollmchatpatch*.o' -print -quit 2>/dev/null | grep -q .
+}
+
+pixiewood_prefix_libgtk_has_patch_tag() {
+  local libgtk
+  libgtk="$(
+    find "$ROOT_DIR/.pixiewood/bin-aarch64" -name 'libgtk-4.so' -print -quit 2>/dev/null
+  )"
+  [ -n "$libgtk" ] && strings "$libgtk" 2>/dev/null | grep -q 'ollmchat-android-bugs-v1'
+}
+
+pixiewood_prefix_has_patched_gtk() {
+  pixiewood_prefix_has_patched_gtk_object || return 1
+  if find "$ROOT_DIR/.pixiewood/bin-aarch64" -name 'libgtk-4.so' -print -quit 2>/dev/null | grep -q .; then
+    pixiewood_prefix_libgtk_has_patch_tag || return 1
+  fi
+  return 0
 }
 
 pixiewood_compile_cache_looks_usable() {

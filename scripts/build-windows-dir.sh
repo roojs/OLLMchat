@@ -203,7 +203,7 @@ embed_windows_launcher_icon() {
 	printf '1 ICON "%s"\n' "app.ico" >"$rc"
 	x86_64-w64-mingw32-windres -O coff -i "$rc" -o "$res"
 	x86_64-w64-mingw32-gcc -O2 -s -mwindows \
-		-o "$exe" "$ROOT/scripts/windows-gui-launcher.c" "$res"
+		-o "$exe" "$ROOT/ollmapp/windows/gui-launcher.c" "$res"
 	rm -rf "$tmp"
 	log "embedded app icon in OLLMchat.exe"
 }

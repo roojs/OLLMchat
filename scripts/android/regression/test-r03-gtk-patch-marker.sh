@@ -19,7 +19,7 @@ grep -q 'ollmchat-android-bugs-v1' "$MARKER" ||
   { echo "patch marker missing ollmchat-android-bugs-v1 tag" >&2; exit 1; }
 
 # ImContext.java and gdkandroidpopup.c hunks must be present when patch applied.
-grep -q 'deleteSurrounding' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
-  { echo "ImContext.java patch missing" >&2; exit 1; }
+grep -q 'syncEditableFromGtk' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
+  { echo "ImContext.java editable sync helper missing" >&2; exit 1; }
 
 echo "R03 gtk-patch-marker: OK"

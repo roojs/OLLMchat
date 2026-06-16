@@ -25,6 +25,7 @@ FAST_TESTS=(
   "$REGRESSION_DIR/test-r03-gtk-patch-marker.sh"
   "$REGRESSION_DIR/test-r04-stale-toolchain-discard.sh"
   "$REGRESSION_DIR/test-r05-wrap-redirects-need-gtk.sh"
+  "$REGRESSION_DIR/test-r08-stale-restored-cache-discard.sh"
   "$REGRESSION_DIR/test-r07-apk-runtime-patches.sh"
 )
 

@@ -33,7 +33,7 @@ jobs:
 
       - name: Compute Pixiewood cache key hashes
         run: |
-          echo "PIXIEWOOD_DEPS_HASH=${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/icons/**', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/build-pixiewood-apk.sh', 'scripts/android/gtk-subproject.sh', 'scripts/android/pixiewood-cache.sh', 'scripts/android/run-android-regression-tests.sh', 'scripts/android/regression/**', 'scripts/android/verify-android-ci-preflight.sh', 'scripts/android/verify-apk.sh', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh', 'vapi/**') }}" >> "$GITHUB_ENV"
+          echo "PIXIEWOOD_DEPS_HASH=${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/icons/**', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/build-pixiewood-apk.sh', 'scripts/android/gtk-subproject.sh', 'scripts/android/pixiewood-cache.sh', 'scripts/android/validate-restored-caches.sh', 'scripts/android/run-android-regression-tests.sh', 'scripts/android/regression/**', 'scripts/android/verify-android-ci-preflight.sh', 'scripts/android/verify-apk.sh', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh', 'vapi/**') }}" >> "$GITHUB_ENV"
           echo "PIXIEWOOD_APP_HASH=${{ hashFiles('meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/android/**') }}" >> "$GITHUB_ENV"
 
       - name: Restore Android SDK and NDK cache
@@ -88,60 +88,20 @@ jobs:
           restore-keys: |
             pixiewood-build-v3-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-
 
-      - name: Validate Pixiewood compile cache
+      - name: Validate restored caches
         id: validate-pixiewood-build-cache
+        env:
+          PIXIEWOOD_DEPS_HASH: ${{ env.PIXIEWOOD_DEPS_HASH }}
+          PIXIEWOOD_APP_HASH: ${{ env.PIXIEWOOD_APP_HASH }}
+          CACHE_MATCHED_SUBPROJECTS_KEY: ${{ steps.restore-android-subprojects.outputs.cache-matched-key }}
+          CACHE_MATCHED_GTK_BOOTSTRAP_KEY: ${{ steps.restore-gtk-bootstrap.outputs.cache-matched-key }}
+          CACHE_MATCHED_PIXIEWOOD_BUILD_KEY: ${{ steps.restore-pixiewood-build.outputs.cache-matched-key }}
         run: |
-          usable=false
-          matched_key="${{ steps.restore-pixiewood-build.outputs.cache-matched-key }}"
-          min_meson="${MESON_MIN_VERSION:-1.8.0}"
-
-          version_ge() {
-            [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | tail -n1)" = "$1" ]
-          }
-
           if [ "${{ inputs.refresh_cache }}" = "true" ]; then
-            echo "refresh_cache requested; ignoring any restored compile cache."
-            rm -rf .pixiewood/bin-aarch64
-          elif [ -n "$matched_key" ] &&
-             [[ "$matched_key" == *"$PIXIEWOOD_DEPS_HASH"* ]] &&
-             [[ "$matched_key" == *"$PIXIEWOOD_APP_HASH"* ]] &&
-             [ -f .pixiewood/bin-aarch64/build.ninja ] &&
-             [ -f .pixiewood/bin-aarch64/meson-logs/meson-log.txt ]; then
-            obj_count="$(find .pixiewood/bin-aarch64 -type f -name '*.o' 2>/dev/null | wc -l)"
-            cache_bytes="$(du -sb .pixiewood/bin-aarch64 2>/dev/null | cut -f1)"
-            meson_ver="$(grep -m1 '^Version: ' .pixiewood/bin-aarch64/meson-logs/meson-log.txt | sed 's/^Version: //')"
-            if [ "$obj_count" -ge 100 ] &&
-               [ "$cache_bytes" -ge 30000000 ] &&
-               version_ge "$meson_ver" "$min_meson" &&
-               find .pixiewood/bin-aarch64 -name 'gdkandroidollmchatpatch*.o' -print -quit | grep -q .; then
-              usable=true
-              echo "Pixiewood compile cache looks usable ($obj_count object files, $(( cache_bytes / 1048576 )) MiB, Meson $meson_ver, patched GTK)."
-            elif [ "$obj_count" -ge 100 ] &&
-               [ "$cache_bytes" -ge 30000000 ] &&
-               version_ge "$meson_ver" "$min_meson"; then
-              echo "Pixiewood compile cache restored but GTK android-bugs patch object is missing."
-            else
-              echo "Pixiewood compile cache restored but too small or incompatible (objects=$obj_count, bytes=$cache_bytes, Meson=${meson_ver:-unknown})."
-            fi
-          elif [ -n "$matched_key" ]; then
-            echo "Pixiewood compile cache key does not match current hashes; ignoring restored tree."
+            echo "refresh_cache workflow input set; discarding compile cache only." >&2
+            rm -rf .pixiewood/bin-aarch64 .pixiewood/pixiewood.ini .pixiewood/toolchain.cross
           fi
-
-          if [ "$usable" != true ]; then
-            echo "Discarding unusable compile cache."
-            rm -rf .pixiewood/bin-aarch64
-            rm -f .pixiewood/pixiewood.ini
-            rm -f .pixiewood/toolchain.cross
-          elif ! grep -q "^toolchain=" .pixiewood/toolchain.cross 2>/dev/null ||
-               ! test -x "$(sed -n "s/^toolchain[[:space:]]*=[[:space:]]*['\"]\\(.*\\)['\"]/\\1/p" .pixiewood/toolchain.cross | head -1)/bin/aarch64-linux-android31-clang"; then
-            echo "Pixiewood toolchain.cross is invalid; discarding compile cache state."
-            usable=false
-            rm -rf .pixiewood/bin-aarch64
-            rm -f .pixiewood/pixiewood.ini
-            rm -f .pixiewood/toolchain.cross
-          fi
-
-          echo "usable=$usable" >> "$GITHUB_OUTPUT"
+          scripts/android/validate-restored-caches.sh
 
       - name: Restore Gradle cache
         id: restore-gradle
@@ -309,7 +269,8 @@ jobs:
           if [ -f .pixiewood/pixiewood.ini ] &&
              [ -f .pixiewood/toolchain.cross ] &&
              [ -f .pixiewood/bin-aarch64/build.ninja ] &&
-             find .pixiewood/bin-aarch64 -type f \( -name '*.o' -o -name '*.so' -o -name '*.a' \) -print -quit | grep -q .; then
+             find .pixiewood/bin-aarch64 -type f \( -name '*.o' -o -name '*.so' -o -name '*.a' \) -print -quit | grep -q . &&
+             find .pixiewood/bin-aarch64 -name 'gdkandroidollmchatpatch*.o' -print -quit | grep -q .; then
             save_pixiewood_build=true
           fi
 

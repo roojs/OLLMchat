@@ -26,6 +26,7 @@ GitHub Actions runs the same suite in `.github/workflows/android-build-reusable.
 | **R05** | (same family as R02) | Meson setup before GTK tree exists | `regression/test-r05-wrap-redirects-need-gtk.sh` |
 | **R06** | (CI preflight) | Broken subprojects cache + stale toolchain + configure | `verify-android-ci-preflight.sh` (included in `--full`) |
 | **R07** | [27588239244](https://github.com/roojs/OLLMchat/actions/runs/27588239244) (runtime) | TLS / paste / delete fixes missing from APK despite green build | `regression/test-r07-apk-runtime-patches.sh` (runs `verify-apk.sh` binary checks) |
+| **R08** | (restore-keys partial hit) | Old subprojects cache restored after `PIXIEWOOD_DEPS_HASH` change | `regression/test-r08-stale-restored-cache-discard.sh` |
 
 When a **new** CI failure appears:
 
@@ -61,14 +62,38 @@ wraps until GTK is bootstrapped.
 Simulates restored CI caches (broken GTK + bad toolchain), runs `PIXIEWOOD_PHASE=setup`
 and `configure`, asserts `build.ninja` exists.
 
+### R08 — stale restored cache discard
+Simulates `actions/cache` restore-keys returning a subprojects entry for an old
+`PIXIEWOOD_DEPS_HASH`; `validate-restored-caches.sh` must remove `subprojects/gtk`.
+
 ### R07 — APK runtime patches (when APK exists)
 After a local or CI build, `verify-apk.sh` checks:
 
 - `assets/share/gio/modules/libgioopenssl.so` is packaged
 - `libgtk-4.so` contains `ollmchat-android-bugs-v1` (patched GTK prefix)
 - `classes.dex` uses `deleteSurroundingText` lambda, not `sendKeyEvent` IME deletes
+- `classes.dex` contains `syncEditableFromGtk` (IME `Editable` kept in sync for hold-backspace)
 
 Stale compile caches that skip GTK rebuild fail R07 even when setup/configure pass.
+
+---
+
+## Automatic cache invalidation (no manual clear)
+
+CI never requires `refresh_cache` for normal dependency or patch updates. Stale trees are
+discarded by configuration:
+
+| Cache | Invalidates when |
+|-------|------------------|
+| **PIXIEWOOD_DEPS_HASH** | Any file under `android/pixiewood-wraps/**`, gtk-subproject scripts, `verify-apk.sh`, etc. changes (`hashFiles` in workflow) |
+| **PIXIEWOOD_APP_HASH** | App `meson.build` / `ollmapp/android/**` changes |
+| **Compile cache key** | `pixiewood-build-v3-stable-$DEPS-$APP` — no broad restore-key prefix; wrong hash = miss |
+| **Post-restore validation** | `validate-restored-caches.sh` drops subprojects/gtk, GTK bootstrap, or compile tree when restored `cache-matched-key` lacks current hash, patch marker, or `gdkandroidollmchatpatch*.o` / `libgtk-4.so` tag |
+| **Post-build gate** | `verify-apk.sh` fails the job if shipped `libgtk-4.so` / `classes.dex` lack patch markers |
+| **Cache save** | Compile cache is not re-saved unless `gdkandroidollmchatpatch*.o` exists in the prefix |
+
+The workflow `refresh_cache` input is an emergency override only (workflow_dispatch); pushes
+use the rules above automatically.
 
 ---
 
