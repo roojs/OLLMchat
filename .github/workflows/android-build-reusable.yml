@@ -186,6 +186,9 @@ jobs:
           path: ${{ env.APT_CACHE_DIR }}
           key: apt-android-v1-stable-${{ hashFiles('.github/workflows/android-build.yml', '.github/workflows/android-build-reusable.yml') }}
 
+      - name: Test GTK subproject readiness logic
+        run: scripts/android/test-gtk-subproject-readiness.sh
+
       - name: Pixiewood setup (SDK, GTK prefix, subprojects)
         id: pixiewood-setup
         env:
