@@ -17,6 +17,10 @@ prepare_android_subprojects_before_meson
 [ -f "$MARKER" ] || { echo "patch marker missing: $MARKER" >&2; exit 1; }
 grep -q 'ollmchat-android-bugs-v1' "$MARKER" ||
   { echo "patch marker missing ollmchat-android-bugs-v1 tag" >&2; exit 1; }
+grep -q 'g_debug' "$MARKER" ||
+  { echo "patch marker missing g_debug reference" >&2; exit 1; }
+tail -1 "$MARKER" | grep -q '^}' ||
+  { echo "patch marker file truncated (missing closing brace)" >&2; exit 1; }
 
 # ImContext.java and gdkandroidpopup.c hunks must be present when patch applied.
 grep -q 'syncEditableFromGtk' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||

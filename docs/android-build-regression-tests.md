@@ -27,6 +27,8 @@ GitHub Actions runs the same suite in `.github/workflows/android-build-reusable.
 | **R06** | (CI preflight) | Broken subprojects cache + stale toolchain + configure | `verify-android-ci-preflight.sh` (included in `--full`) |
 | **R07** | [27588239244](https://github.com/roojs/OLLMchat/actions/runs/27588239244) (runtime) | TLS / paste / delete fixes missing from APK despite green build | `regression/test-r07-apk-runtime-patches.sh` (runs `verify-apk.sh` binary checks) |
 | **R08** | (restore-keys partial hit) | Old subprojects cache restored after `PIXIEWOOD_DEPS_HASH` change | `regression/test-r08-stale-restored-cache-discard.sh` |
+| **R09** | [27590212384](https://github.com/roojs/OLLMchat/actions/runs/27590212384) | `validate-restored-caches.sh: CACHE_MATCHED_PIXIEWOOD_BUILD_KEY: unbound variable` | `regression/test-r09-validate-caches-partial-env.sh` |
+| **R10** | [27613430785](https://github.com/roojs/OLLMchat/actions/runs/27613430785) | `gdkandroidollmchatpatch.c: expected function body` (truncated patch hunk) | covered by extended `test-r03-gtk-patch-marker.sh` |
 
 When a **new** CI failure appears:
 
@@ -47,8 +49,13 @@ Broken `subprojects/gtk` (stub without nested wraps) is repaired by copying
 `.pixiewood/gtk-subproject-bootstrap/`, not by failing meson wrap-redirects.
 
 ### R03 — GTK patch marker
-After bootstrap, `subprojects/gtk/gdk/android/gdkandroidollmchatpatch.c` exists and
-`ImContext.java` contains the `deleteSurrounding` fix.
+After bootstrap, `subprojects/gtk/gdk/android/gdkandroidollmchatpatch.c` exists with
+the `ollmchat-android-bugs-v1` tag and a complete function body (truncated patch hunks
+fail compile), and `ImContext.java` contains the `deleteSurrounding` fix.
+
+### R09 — validate caches partial env
+`validate-restored-caches.sh` exits cleanly when only subprojects cache env vars are
+set (no `CACHE_MATCHED_PIXIEWOOD_BUILD_KEY`).
 
 ### R04 — stale toolchain discard
 Invalid `toolchain.cross` (NDK path missing) triggers discard of ini + bin-aarch64 +
