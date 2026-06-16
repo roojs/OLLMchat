@@ -109,12 +109,29 @@ ensure_android_meson() {
   "$ROOT_DIR/scripts/android/ensure-meson.sh" >/dev/null
 }
 
+gtk_subproject_patch_marker() {
+  echo "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidollmchatpatch.c"
+}
+
+ensure_gtk_subproject_patched() {
+  local gtk_dir="$ROOT_DIR/subprojects/gtk"
+  local marker
+  marker="$(gtk_subproject_patch_marker)"
+
+  if [ -d "$gtk_dir" ] && [ ! -f "$marker" ]; then
+    echo "GTK subproject missing android-bugs patch marker; removing stale tree." >&2
+    rm -rf "$gtk_dir"
+  fi
+}
+
 download_meson_subprojects() {
   local meson="$1"
 
   if ! compgen -G "$ROOT_DIR/subprojects/*.wrap" > /dev/null; then
     return
   fi
+
+  ensure_gtk_subproject_patched
 
   # Meson does not re-apply wrap-file patch_directory when the extracted tree
   # already exists. On developer machines, drop Android wrap trees so meson
@@ -123,6 +140,7 @@ download_meson_subprojects() {
   if [ "${CI:-}" != "true" ] || [ "${PIXIEWOOD_REFRESH_SUBPROJECTS:-}" = "1" ]; then
     local wrap_dir
     for wrap_dir in \
+      gtk \
       libgee-0.20.8 \
       json-glib-1.10.8 \
       libsoup-3.6.5 \
@@ -314,17 +332,25 @@ install_icon_themes_to_assets() {
     source_theme="${line%%$'\t'*}"
     source_relpath="${line#*$'\t'}"
 
-    src="/usr/share/icons/$source_theme/$source_relpath"
+    if [ "$source_theme" = bundled ]; then
+      src="$ROOT_DIR/android/icons/Adwaita/$dest_relpath"
+    else
+      src="/usr/share/icons/$source_theme/$source_relpath"
+    fi
     if [ ! -f "$src" ]; then
       echo "Icon source missing: $src" >&2
-      echo "Install adwaita-icon-theme on the build host (provides Adwaita and hicolor)." >&2
+      if [ "$source_theme" = bundled ]; then
+        echo "Add the file under android/icons/Adwaita/ or fix android/icons/manifest." >&2
+      else
+        echo "Install adwaita-icon-theme on the build host or mark the row bundled in the manifest." >&2
+      fi
       exit 1
     fi
 
     dest_file="$stage_adwaita/$dest_relpath"
     dest_dir="$(dirname "$dest_file")"
     mkdir -p "$dest_dir"
-    ln -sf "$src" "$dest_file"
+    cp -a "$src" "$dest_file"
   done < "$manifest"
 
   mkdir -p "$assets_icons"
@@ -372,10 +398,19 @@ run_pixiewood_gradle_assemble() {
 
 maybe_download_meson_subprojects() {
   local meson="$1"
+  local gtk_marker
+  gtk_marker="$(gtk_subproject_patch_marker)"
 
-  if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ]; then
+  ensure_gtk_subproject_patched
+
+  if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ] &&
+     [ -f "$gtk_marker" ]; then
     echo "Skipping Meson subprojects download (restored from cache)."
     return
+  fi
+
+  if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ]; then
+    echo "Subprojects cache restored but GTK patch marker missing; re-downloading wraps." >&2
   fi
 
   echo "Downloading Meson subprojects for Android wraps."
