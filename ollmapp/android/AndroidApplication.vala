@@ -30,6 +30,36 @@ namespace OLLMapp
 		public OLLMchat.Settings.Config2 config { get; set; }
 		public string data_dir { get; set; }
 
+		static string app_private_files_dir ()
+		{
+			/* XDG_DATA_HOME is .../files/share (GTK asset tree). Keep app data in
+			 * .../files/ollmchat instead of under share/. */
+			return GLib.Path.get_dirname (GLib.Environment.get_user_data_dir ());
+		}
+
+		static void ensure_directory (string path) throws GLib.Error
+		{
+			var dir = GLib.File.new_for_path (path);
+
+			if (dir.query_file_type (GLib.FileQueryInfoFlags.NONE)
+			    == GLib.FileType.DIRECTORY) {
+				return;
+			}
+
+			try {
+				dir.make_directory_with_parents (null);
+			} catch (GLib.IOError e) {
+				if (e.code != GLib.IOError.EXISTS) {
+					throw e;
+				}
+				if (dir.query_file_type (GLib.FileQueryInfoFlags.NONE)
+				    != GLib.FileType.DIRECTORY) {
+					throw new GLib.IOError.EXISTS (
+						"Path exists but is not a directory: %s", path);
+				}
+			}
+		}
+
 		public AndroidApplication()
 		{
 			Object(
@@ -37,14 +67,21 @@ namespace OLLMapp
 				flags: GLib.ApplicationFlags.DEFAULT_FLAGS
 			);
 
-			this.data_dir = GLib.Path.build_filename(
-				GLib.Environment.get_user_data_dir(), "ollmchat"
-			);
+			this.data_dir = GLib.Path.build_filename (
+				app_private_files_dir (), "ollmchat");
 
 			this.config = this.load_config();
+			AndroidConnectionConfigTls.apply_to_config (this.config);
 
 			this.activate.connect(() => {
-				this.ensure_data_dir();
+				try {
+					ensure_directory (this.data_dir);
+				} catch (GLib.Error e) {
+					GLib.critical (
+						"AndroidApplication: data dir: %s", e.message);
+					return;
+				}
+
 				var window = new AndroidMainWindow(this);
 				this.add_window(window);
 				window.present();
@@ -63,13 +100,10 @@ namespace OLLMapp
 		public OLLMchat.Settings.Config2 load_config()
 		{
 			var config_dir = GLib.Path.build_filename(this.data_dir, "config");
-			var config_dir_file = GLib.File.new_for_path(config_dir);
-			if (!config_dir_file.query_exists()) {
-				try {
-					config_dir_file.make_directory_with_parents(null);
-				} catch (GLib.Error e) {
-					GLib.warning("AndroidApplication: config dir: %s", e.message);
-				}
+			try {
+				ensure_directory (config_dir);
+			} catch (GLib.Error e) {
+				GLib.warning("AndroidApplication: config dir: %s", e.message);
 			}
 
 			var dummy2 = new OLLMchat.Settings.Config2();

@@ -29,6 +29,7 @@ required=(
   lib/arm64-v8a/libollmchat-android-poc.so
   lib/arm64-v8a/libollmchat.so
   assets/share/gio/modules/libgioopenssl.so
+  assets/share/ssl/certs/ca-certificates.crt
   assets/share/ollmchat-android-runtime.tag
   assets/share/icons/Adwaita/index.theme
 )

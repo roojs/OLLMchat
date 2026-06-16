@@ -131,9 +131,7 @@ namespace OLLMapp
 			             HTTPS_TEST_URL, get_tls_backend_type_name());
 
 			var session = new Soup.Session();
-			var tls_db = session.get_tls_database();
-			GLib.message("GTK fixes POC: session tls_database=%s",
-			             tls_db != null ? "set" : "(null)");
+			AndroidConnectionTls.apply_to_session (session);
 
 			var message = new Soup.Message("GET", HTTPS_TEST_URL);
 			message.accept_certificate.connect(on_accept_certificate);

@@ -23,6 +23,7 @@ unzip -l "$APK" > "$apk_list"
 required=(
   lib/arm64-v8a/libollmchat-android-gtk-fixes-poc.so
   assets/share/gio/modules/libgioopenssl.so
+  assets/share/ssl/certs/ca-certificates.crt
   assets/share/ollmchat-android-runtime.tag
 )
 

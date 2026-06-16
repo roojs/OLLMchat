@@ -6,6 +6,7 @@
 
 # Dependencies for ollmchatgtk library
 valac = meson.get_compiler('vala')
+is_android_cross = host_machine.system() == 'android'
 ollmchatgtk_deps = [
   dependency('gtk4'),
   dependency('libadwaita-1'),
@@ -52,7 +53,7 @@ ollmchatgtk_lib = library('ollmchatgtk',
   sources: [ollmchatgtk_src],
   vala_header: 'ollmchatgtk.h',
   vala_vapi: 'ollmchatgtk.vapi',
-  vala_gir: 'OLLMchatGtk-1.0.gir',
+  vala_gir: is_android_cross ? disabler() : 'OLLMchatGtk-1.0.gir',
   link_with: [ollmchat_base_lib, ocmarkdown_base_lib, ocmarkdowngtk_lib],  # Link with base libraries
   include_directories: [
     include_directories('../libollmchat'),
@@ -80,8 +81,9 @@ ollmchatgtk_lib = library('ollmchatgtk',
 
 ollmchatgtk_gir_file = meson.current_build_dir() / 'OLLMchatGtk-1.0.gir'
 ollmchatgtk_gir_fixed = meson.current_build_dir() / 'OLLMchatGtk-1.0.fixed.gir'
-fix_gir_dep_names = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
-custom_target('ollmchatgtk-typelib',
+if not is_android_cross
+  fix_gir_dep_names = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
+  custom_target('ollmchatgtk-typelib',
   output: 'OLLMchatGtk-1.0.typelib',
   command: [
     find_program('sh'),
@@ -102,7 +104,15 @@ custom_target('ollmchatgtk-typelib',
   install: true,
   install_dir: get_option('libdir') / 'girepository-1.0',
 )
-meson.add_install_script(
-  'sh', '-c',
-  'install -Dm644 "' + ollmchatgtk_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMchatGtk-1.0.gir"',
+  meson.add_install_script(
+    'sh', '-c',
+    'install -Dm644 "' + ollmchatgtk_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMchatGtk-1.0.gir"',
+  )
+endif
+
+ollmchatgtk_vapi_dep = declare_dependency(
+  link_args: [
+    '-L' + meson.current_build_dir(), '-lollmchatgtk',
+    '-L' + meson.current_build_dir() / '..' / 'libocmarkdowngtk', '-locmarkdowngtk',
+  ],
 )

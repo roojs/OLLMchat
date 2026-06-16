@@ -47,6 +47,8 @@ namespace OLLMapp
 		 */
 		public async bool run(OLLMchat.Settings.Config2 config)
 		{
+			AndroidConnectionConfigTls.apply_to_config (config);
+
 			while (true) {
 				var checking_dialog = new SettingsDialog.CheckingConnectionDialog(
 					this.window

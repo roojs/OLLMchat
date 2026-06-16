@@ -246,12 +246,99 @@ ollmapp_android_gio_tls_backend_type_name (void)
   return tls_backend_type_name;
 }
 
+static void
+configure_ca_trust_store (void)
+{
+  const gchar * const *data_dirs;
+  gsize i;
+
+  if (g_getenv ("SSL_CERT_FILE") != NULL)
+    {
+      g_message ("OLLMchat TLS trust: SSL_CERT_FILE already %s",
+                 g_getenv ("SSL_CERT_FILE"));
+      return;
+    }
+
+  data_dirs = g_get_system_data_dirs ();
+  if (data_dirs != NULL)
+    {
+      for (i = 0; data_dirs[i] != NULL; i++)
+        {
+          g_autofree char *path =
+              g_build_filename (data_dirs[i], "ssl", "certs",
+                                "ca-certificates.crt", NULL);
+
+          if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
+            {
+              g_setenv ("SSL_CERT_FILE", path, TRUE);
+              g_message ("OLLMchat TLS trust: SSL_CERT_FILE=%s", path);
+              return;
+            }
+        }
+    }
+
+  {
+    const char *xdg_data_dirs = g_getenv ("XDG_DATA_DIRS");
+
+    if (xdg_data_dirs != NULL && xdg_data_dirs[0] != '\0')
+      {
+        g_autofree char *first = g_strdup (xdg_data_dirs);
+        char *colon = strchr (first, G_SEARCHPATH_SEPARATOR);
+
+        if (colon != NULL)
+          *colon = '\0';
+
+        g_autofree char *path =
+            g_build_filename (first, "ssl", "certs",
+                              "ca-certificates.crt", NULL);
+
+        if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
+          {
+            g_setenv ("SSL_CERT_FILE", path, TRUE);
+            g_message ("OLLMchat TLS trust: SSL_CERT_FILE=%s", path);
+            return;
+          }
+      }
+  }
+
+  g_message ("OLLMchat TLS trust: bundled CA not found under share/ssl/certs/");
+}
+
+void
+ollmapp_apply_bundled_tls_database_to_session (GObject *session)
+{
+  const char *cert_file;
+  GTlsDatabase *db;
+  GError *error = NULL;
+
+  if (session == NULL)
+    return;
+
+  cert_file = g_getenv ("SSL_CERT_FILE");
+  if (cert_file == NULL || cert_file[0] == '\0')
+    return;
+
+  db = G_TLS_DATABASE (g_tls_file_database_new (cert_file, &error));
+  if (db == NULL)
+    {
+      g_warning ("OLLMchat TLS: g_tls_file_database_new(%s): %s",
+                 cert_file, error != NULL ? error->message : "unknown");
+      g_clear_error (&error);
+      return;
+    }
+
+  g_object_set (session, "tls-database", db, NULL);
+  g_object_unref (db);
+  g_message ("OLLMchat TLS: Soup.Session tls_database=%s", cert_file);
+}
+
 gboolean
 ollmapp_configure_android_gio_tls_modules (void)
 {
   GTlsBackend *backend;
 
   enable_gio_log_domains ();
+  configure_ca_trust_store ();
   try_preload_openssl_from_native_lib_dir ();
 
   /* Path A (gdkandroidruntime.c) may have scanned modules already on the Java
@@ -333,6 +420,7 @@ ollmapp_log_tls_trust_store (void)
     "/system/etc/security/cacerts",
     NULL
   };
+  const gchar * const *data_dirs = g_get_system_data_dirs ();
   gsize i;
 
   g_message (
@@ -348,5 +436,16 @@ ollmapp_log_tls_trust_store (void)
                                      G_FILE_TEST_IS_DIR);
 
       g_message ("OLLMchat TLS trust: path %s exists=%d", path, exists);
+    }
+
+  if (data_dirs != NULL && data_dirs[0] != NULL)
+    {
+      g_autofree char *bundled =
+          g_build_filename (data_dirs[0], "ssl", "certs",
+                            "ca-certificates.crt", NULL);
+
+      g_message ("OLLMchat TLS trust: bundled %s exists=%d",
+                 bundled,
+                 g_file_test (bundled, G_FILE_TEST_IS_REGULAR));
     }
 }

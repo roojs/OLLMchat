@@ -88,6 +88,7 @@ if get_option('android_gtk_fixes_poc')
   ]
   android_gtk_fixes_poc_sources = [
     'android/android-gio-tls.c',
+    'android/AndroidConnectionTls.vala',
     'android/AndroidGtkFixesPoc.vala',
   ]
 
@@ -136,6 +137,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
   android_poc_deps = [
     dependency('gtk4'),
     dependency('libadwaita-1'),
+    dependency('gtksourceview-5'),
     dependency('gee-0.8'),
     dependency('gio-2.0'),
     dependency('glib-2.0'),
@@ -147,6 +149,10 @@ if get_option('android_poc') and host_machine.system() == 'android'
 
   android_poc_sources = [
     'android/android-gio-tls.c',
+    'android/AndroidConnectionTls.vala',
+    'android/AndroidConnectionConfigTls.vala',
+    version_vala,
+    'About.vala',
     'android/AndroidApplication.vala',
     'android/AndroidMainWindow.vala',
     'android/AndroidStartup.vala',
@@ -161,13 +167,17 @@ if get_option('android_poc') and host_machine.system() == 'android'
       android_poc_deps,
       ocsqlite_vapi_dep,
       ollmchat_vapi_dep,
+      ollmchatgtk_vapi_dep,
+      ocmarkdowngtk_vapi_dep,
       ollamaweb_vapi_dep
     ],
     sources: android_poc_sources,
-    link_with: [ollmchat_base_lib],
+    link_with: [ollmchat_base_lib, ollmchatgtk_lib],
     include_directories: [
       include_directories('android'),
       include_directories('../libollmchat'),
+      include_directories('../libollmchatgtk'),
+      include_directories('../libocmarkdowngtk'),
       include_directories('../libollamaweb'),
       include_directories('../libocsqlite')
     ],
@@ -176,15 +186,24 @@ if get_option('android_poc') and host_machine.system() == 'android'
     # dependency('gee-0.8'); Meson passes gee-0.8.vapi to valac. A duplicate
     # --pkg breaks Android cross-builds — see docs/android-build.md.
     vala_args: [
+      '--define=OLLM_ANDROID',
       '--pkg=gtk4',
       '--pkg=libadwaita-1',
+      '--pkg=gtksourceview-5',
       '--pkg=sqlite3',
       '--pkg=ocsqlite',
       '--pkg=ollmchat',
+      '--pkg=ollmchatgtk',
+      '--pkg=ocmarkdowngtk',
       '--pkg=ollamaweb',
       '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
       '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+      '--vapidir', meson.current_build_dir() / '..' / 'libollmchatgtk',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
       '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+      '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
+      '--girdir', meson.current_build_dir() / '..' / 'libollmchatgtk',
+      '--girdir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
     ],
     android_exe_type: 'application',
     install: true,

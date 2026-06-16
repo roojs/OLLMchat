@@ -226,6 +226,10 @@ namespace OLLMapp.SettingsDialog
 					api_key = api_key
 				};
 
+#if OLLM_ANDROID
+				AndroidConnectionConfigTls.apply_to_connection (connection);
+#endif
+
 				// Test connection by calling models endpoint directly with short timeout
 				var original_timeout = connection.timeout;
 				connection.timeout = 5;  // 5 seconds - connection check should be quick

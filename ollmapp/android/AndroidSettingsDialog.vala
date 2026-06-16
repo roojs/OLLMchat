@@ -226,6 +226,7 @@ namespace OLLMapp
 				name = new_name != "" ? new_name : new_url,
 				url = new_url
 			};
+			AndroidConnectionConfigTls.apply_to_connection (test_connection);
 			row.apply_config(test_connection);
 
 			try {

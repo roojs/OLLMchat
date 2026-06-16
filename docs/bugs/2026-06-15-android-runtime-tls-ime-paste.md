@@ -23,7 +23,8 @@
 | **2026-06-17 00:12** | **Local TLS WIP build** | **Pass** — `GTlsBackendOpenssl`, `ready=true` | First confirmation |
 | **2026-06-17 00:39** | **Local TLS WIP build (retest)** | **Pass** — same log pattern | Reinstalled after PR detour |
 | **2026-06-17 00:52** | **TLS WIP + HTTPS harness APK** | **Pass (cold start)** — `GTlsBackendOpenssl`, `ready=true` | Installed via `adb-install-gtk-fixes-poc.sh`; HTTPS button not tapped yet |
-| **2026-06-17 00:55** | Same APK, HTTPS to roojs.com | **Backend pass, HTTPS fail** | Logcat: TCP OK then `Unacceptable TLS certificate` — likely missing CA trust store (see §1 HTTPS) |
+| **2026-06-17 00:55** | Same APK, HTTPS to roojs.com | **Backend pass, HTTPS fail** | Logcat: `UNKNOWN_CA` — no CA bundle in APK |
+| **2026-06-17 (latest)** | **CA bundle APK** | **Pending HTTPS retest** | `assets/share/ssl/certs/ca-certificates.crt` + `SSL_CERT_FILE` init; harness installed |
 | 2026-06-17 ~00:25 | gtk `af83724` PR validation APK | **Ignore for §1** | IME/paste only; not TLS WIP |
 
 **Bottom line:** Yes — we got TLS **backend registration** working once, on the WIP build. That is **not** committed or on `gtk.wrap` yet. The fail lines in §1 are the **older baseline** (Jun 16), kept for comparison. The APK you installed for the PR check is **not** the passing TLS build.
@@ -271,7 +272,8 @@ GIO design was correct. We failed on (1) scan-before-ensure and (2) app-side XDG
 | Item | Location | Notes |
 |------|----------|-------|
 | **GLib ensure-before-scan** | `subprojects/packagefiles/glib/tls-ensure-before-scan.patch` | Production patch only (no `OLLMchat-GIO` debug). Pin via `android/pixiewood-wraps/glib/glib.wrap` @ 2.84.0. Regression: `test-r13-glib-tls-ensure-before-scan.sh`. |
-| **`android-gio-tls.c`** | `ollmapp/android/` | `after-gdk` probe + `g_get_system_data_dirs()` fallbacks |
+| **`android-gio-tls.c`** | `ollmapp/android/` | Backend probe + `SSL_CERT_FILE` → bundled `share/ssl/certs/ca-certificates.crt` |
+| **CA bundle in APK** | `build-pixiewood-apk.sh` | Copies host `/etc/ssl/certs/ca-certificates.crt` → `assets/share/ssl/certs/` |
 | **Harness HTTPS** | `AndroidGtkFixesPoc.vala` + `libsoup-3.0` in `meson.build` | Button restored; device retest pending |
 | **GTK runtime** | `android-bugs.patch` | IME/paste only — **not** TLS; managed separately |
 

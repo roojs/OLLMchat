@@ -313,6 +313,29 @@ install_gio_modules_to_assets() {
     > "$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/ollmchat-android-runtime.tag"
 }
 
+# Android native code has no /etc/ssl/certs/. Ship the build host's Debian
+# ca-certificates bundle; GTK extracts assets/share/ to filesDir/share/ before
+# main(). ollmapp_configure_android_gio_tls_modules() sets SSL_CERT_FILE.
+install_ca_certificates_to_assets() {
+  local ca_src="${CA_CERTIFICATES_SRC:-/etc/ssl/certs/ca-certificates.crt}"
+  local dest="$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/ssl/certs"
+
+  if [ ! -f "$ca_src" ]; then
+    echo "CA bundle missing on build host: $ca_src" >&2
+    echo "Install ca-certificates (e.g. apt install ca-certificates)." >&2
+    exit 1
+  fi
+
+  rm -rf "$dest"
+  mkdir -p "$dest"
+  cp -a "$ca_src" "$dest/ca-certificates.crt"
+
+  if [ ! -s "$dest/ca-certificates.crt" ]; then
+    echo "CA bundle staging failed: $dest/ca-certificates.crt" >&2
+    exit 1
+  fi
+}
+
 # Pixiewood only copies bin, lib, and glib schemas into APK assets. GTK UI icons
 # (header bar buttons, symbolic actions, etc.) are listed in android/icons/manifest
 # and staged from the build host's icon themes into assets/share/icons/Adwaita/.
@@ -525,6 +548,7 @@ run_pixiewood_build() {
   run_pixiewood build --skip-gradle
   materialize_pixiewood_jni_libs
   install_gio_modules_to_assets
+  install_ca_certificates_to_assets
   install_icon_themes_to_assets
   run_pixiewood_gradle_assemble
   verify_apk_script="${PIXIEWOOD_VERIFY_APK_SCRIPT:-$ROOT_DIR/scripts/android/verify-apk.sh}"

@@ -45,6 +45,7 @@
       <patch>android-bugs</patch>
     </gtk>
     <libadwaita/>
+    <gtksourceview/>
     <libxml2/>
     <sqlite3/>
     <gee/>

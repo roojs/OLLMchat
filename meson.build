@@ -130,9 +130,11 @@ elif android_gtk_fixes_poc
   subdir('ollmapp')         # GTK TLS/IME/paste harness only
 elif android_poc_opt and host_machine.system() == 'android'
   subdir('libocmarkdown')
+  subdir('libocmarkdowngtk')
   subdir('libocsqlite')
   subdir('libollamaweb')
   subdir('libollmchat')
+  subdir('libollmchatgtk')
   subdir('ollmapp')         # Remote-chat Android APK target
 else
   subdir('libocsqlite')      # No dependencies

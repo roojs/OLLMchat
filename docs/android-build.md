@@ -177,7 +177,9 @@ device. Before any network I/O, `main()` calls
 `ollmapp_configure_android_gio_tls_modules()` (`ollmapp/android/android-gio-tls.c`)
 to set `GIO_MODULE_DIR` to `$XDG_DATA_DIRS/gio/modules` (GTK extracts APK assets
 to `filesDir/` on startup; GIO modules are staged under
-`assets/share/gio/modules/` at build time). The Pixiewood build enables Gradle
+`assets/share/gio/modules/` at build time) and `SSL_CERT_FILE` to the extracted
+CA bundle under `assets/share/ssl/certs/ca-certificates.crt`. See
+[`docs/android-tls-solution.md`](android-tls-solution.md). The Pixiewood build enables Gradle
 `packaging.jniLibs.useLegacyPackaging` so native libraries are extracted to a
 real filesystem path.
 
