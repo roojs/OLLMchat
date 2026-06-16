@@ -94,17 +94,23 @@ namespace OLLMrpc
 			}
 		}
 
-		/** Route this request to the matching {@code rpc_*} signal. */
-		public void dispatch(Json.Node? params_node = null)
+		/**
+		 * Route this request to the matching {@code rpc_*} signal.
+		 *
+		 * @param params_node optional raw params node for server-side typed
+		 *   deserialization
+		 * @return true when a handler signal was emitted
+		 */
+		public bool dispatch(Json.Node? params_node = null)
 		{
 			if (this.connection == null) {
 				GLib.critical("RPC dispatch: connection not set");
-				return;
+				return false;
 			}
 			if (this.jsonrpc != "2.0"
 				|| this.method.length == 0) {
 				GLib.critical("RPC dispatch: invalid JSON-RPC request");
-				return;
+				return false;
 			}
 
 			var dot = this.method.index_of_char('.');
@@ -113,7 +119,7 @@ namespace OLLMrpc
 					"RPC dispatch: method must be Object.method, got '%s'",
 					this.method
 				);
-				return;
+				return false;
 			}
 
 			var object_name = this.method[0:dot];
@@ -125,7 +131,7 @@ namespace OLLMrpc
 					object_name,
 					this.method
 				);
-				return;
+				return false;
 			}
 			var handler = handlers.get(object_name);
 			if (params_node != null) {
@@ -144,13 +150,14 @@ namespace OLLMrpc
 					object_name,
 					this.method
 				);
-				return;
+				return false;
 			}
 			GLib.Signal.emit_by_name(
 				handler,
 				"rpc_" + method_name.replace(".", "_"),
 				this
 			);
+			return true;
 		}
 
 		/** Relay a {@link Response} to {@link connection} (sets wire {@code id}). */

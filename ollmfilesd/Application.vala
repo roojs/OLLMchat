@@ -29,8 +29,11 @@ namespace OLLMfilesd
 		public static bool opt_debug = false;
 		public static bool opt_debug_critical = false;
 		public static bool opt_interactive = false;
+		public static bool opt_tcp = false;
 		public static string? opt_data_dir = null;
 		public static string opt_rpc_script = "";
+		public static string opt_tcp_host = "127.0.0.1";
+		public static int opt_tcp_port = 4141;
 
 		private string pid_path;
 		private string socket_path;
@@ -45,6 +48,9 @@ namespace OLLMfilesd
 			{ "debug-critical", 0, 0, OptionArg.NONE, ref opt_debug_critical, "Treat critical warnings as errors", null },
 			{ "interactive", 'i', 0, OptionArg.NONE, ref opt_interactive, "Stdin/stdout JSON-RPC (no fork, no socket)", null },
 			{ "rpc-script", 0, 0, OptionArg.FILENAME, ref opt_rpc_script, "NDJSON RPC script (implies --interactive)", "FILE" },
+			{ "tcp", 0, 0, OptionArg.NONE, ref opt_tcp, "TCP JSON-RPC listener (foreground)", null },
+			{ "tcp-host", 0, 0, OptionArg.STRING, ref opt_tcp_host, "TCP listen host", "HOST" },
+			{ "tcp-port", 0, 0, OptionArg.INT, ref opt_tcp_port, "TCP listen port", "PORT" },
 			{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory (DB, socket, pid)", "DIR" },
 			{ null }
 		};
@@ -82,8 +88,10 @@ namespace OLLMfilesd
 
 			this.config = this.load_config();
 
+#if !G_OS_WIN32
 			Posix.signal(Posix.Signal.TERM, on_sigterm);
 			Posix.signal(Posix.Signal.INT, on_sigterm);
+#endif
 
 			this.shutdown.connect(() => {
 				this.cleanup();
@@ -114,8 +122,11 @@ namespace OLLMfilesd
 			opt_debug = false;
 			opt_debug_critical = false;
 			opt_interactive = false;
+			opt_tcp = false;
 			opt_data_dir = null;
 			opt_rpc_script = "";
+			opt_tcp_host = "127.0.0.1";
+			opt_tcp_port = 4141;
 
 			string[] args = command_line.get_arguments();
 			var opt_context = new OptionContext(this.get_application_id());
@@ -140,6 +151,18 @@ namespace OLLMfilesd
 			if (opt_rpc_script != "") {
 				opt_interactive = true;
 			}
+			if (opt_tcp_host != "127.0.0.1" || opt_tcp_port != 4141) {
+				opt_tcp = true;
+			}
+#if G_OS_WIN32
+			if (!opt_interactive) {
+				opt_tcp = true;
+			}
+#endif
+			if (opt_tcp_port <= 0 || opt_tcp_port > 65535) {
+				command_line.printerr("error: invalid TCP port\n");
+				return 1;
+			}
 
 			if (opt_data_dir != null) {
 				this.data_dir = opt_data_dir;
@@ -153,7 +176,7 @@ namespace OLLMfilesd
 				);
 			}
 
-			if (!opt_interactive) {
+			if (!opt_interactive && !opt_tcp) {
 				if (!this.daemonize()) {
 					command_line.printerr("error: could not daemonize\n");
 					return 1;
@@ -235,6 +258,22 @@ namespace OLLMfilesd
 				return;
 			}
 
+			if (opt_tcp) {
+				this.listen = new OLLMrpc.Transport.TcpListen(
+					opt_tcp_host,
+					(uint16) opt_tcp_port
+				);
+				if (!this.listen.start()) {
+					GLib.error("failed to start TCP RPC listener");
+				}
+				GLib.debug(
+					"listening on %s:%u",
+					opt_tcp_host,
+					(uint16) opt_tcp_port
+				);
+				return;
+			}
+
 			this.listen = new OLLMrpc.Transport.SocketListen(this.socket_path);
 			if (!this.listen.start()) {
 				GLib.error("failed to start RPC listener");
@@ -249,6 +288,9 @@ namespace OLLMfilesd
 		 */
 		private bool daemonize()
 		{
+#if G_OS_WIN32
+			return true;
+#else
 			Posix.pid_t pid = Posix.fork();
 			if (pid < 0) {
 				return false;
@@ -272,7 +314,7 @@ namespace OLLMfilesd
 			Posix.chdir("/");
 			Posix.umask(0);
 
-			int null_fd = Posix.open("/dev/null", Posix.O_RDWR);
+			var null_fd = Posix.open("/dev/null", Posix.O_RDWR);
 			if (null_fd < 0) {
 				return false;
 			}
@@ -283,10 +325,12 @@ namespace OLLMfilesd
 				Posix.close(null_fd);
 			}
 			return true;
+#endif
 		}
 
 		private void write_pid()
 		{
+#if !G_OS_WIN32
 			try {
 				GLib.FileUtils.set_contents(
 					this.pid_path,
@@ -295,6 +339,7 @@ namespace OLLMfilesd
 			} catch (GLib.FileError e) {
 				GLib.error("could not write pid file: %s", e.message);
 			}
+#endif
 		}
 
 		public void broadcast(OLLMrpc.Notification notification)

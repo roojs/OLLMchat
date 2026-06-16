@@ -91,7 +91,6 @@ namespace OLLMfilesd
 			if (request_id == 0) {
 				return;
 			}
-			this.script_awaiting_id = request_id;
 			while (this.script_awaiting_id == request_id) {
 				if (!GLib.MainContext.default().iteration(true)) {
 					break;
@@ -101,7 +100,7 @@ namespace OLLMfilesd
 
 		private void run_script(string path) throws GLib.Error
 		{
-			string data;
+			var data = "";
 			GLib.FileUtils.get_contents(path, out data);
 			foreach (var raw in data.split("\n")) {
 				var line = raw.strip();
@@ -126,10 +125,14 @@ namespace OLLMfilesd
 				var parser = new Json.Parser();
 				parser.load_from_data(line, -1);
 
+				this.script_awaiting_id = request.id;
 				request.connection = this;
-				request.dispatch(
-					parser.get_root().get_object().get_member("params")
-				);
+				if (!request.dispatch(
+						parser.get_root().get_object().get_member("params")
+					)) {
+					this.script_awaiting_id = -1;
+					continue;
+				}
 				this.drain_script_request(request.id);
 			}
 		}

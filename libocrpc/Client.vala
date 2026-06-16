@@ -14,8 +14,9 @@
 namespace OLLMrpc
 {
 	/**
-	 * NDJSON JSON-RPC client for {@code ollmfilesd} on a Unix stream socket.
-	 * {@link connect} runs {@link ClientBoot.ensure_daemon} first.
+	 * NDJSON JSON-RPC client for {@code ollmfilesd}.
+	 * {@link connect} runs {@link ClientBoot.ensure_daemon} when the
+	 * platform transport needs a local daemon starter.
 	 *
 	 * A background read loop dispatches {@link Notification}
 	 * lines and resolves pending {@link Response} entries by id.
@@ -28,6 +29,7 @@ namespace OLLMrpc
 	public class Client : GLib.Object
 	{
 		public string socket { get; construct; }
+		public bool tcp { get; construct; default = false; }
 
 		/** Seconds to wait for a matching {@link Response} id. */
 		public uint call_timeout_seconds { get; set; default = 120; }
@@ -67,15 +69,16 @@ namespace OLLMrpc
 
 		public Client(string socket = "")
 		{
-			string path = socket;
+			var path = socket;
+			var use_tcp = false;
 			if (path == "") {
-				path = GLib.Path.build_filename(
-					GLib.Environment.get_user_data_dir(),
-					"ollmchat",
-					"ollmfilesd.sock"
-				);
+				path = default_client_endpoint();
 			}
-			GLib.Object(socket: path);
+			if (path.has_prefix("tcp://")) {
+				use_tcp = true;
+				path = path.substring(6);
+			}
+			GLib.Object(socket: path, tcp: use_tcp);
 		}
 
 		/**
@@ -92,34 +95,54 @@ namespace OLLMrpc
 
 			hello_request.id = this.next_id++;
 
-			var boot = new ClientBoot(this.socket);
-			try {
-				yield boot.ensure_daemon();
-			} catch (GLib.IOError e) {
-				this.connect_error = e.message != ""
-					? e.message
-					: "could not start or reach the filesystem daemon (ollmfilesd)";
-				GLib.critical(
-					"Client: ensure_daemon %s: %s",
-					this.socket,
-					this.connect_error
-				);
-				return false;
+			if (client_boot_required(this.tcp)) {
+				var boot = new ClientBoot(this.socket);
+				try {
+					yield boot.ensure_daemon();
+				} catch (GLib.IOError e) {
+					this.connect_error = e.message != ""
+						? e.message
+						: "could not start or reach the filesystem daemon (ollmfilesd)";
+					GLib.critical(
+						"Client: ensure_daemon %s: %s",
+						this.socket,
+						this.connect_error
+					);
+					return false;
+				}
 			}
 
 			var client = new GLib.SocketClient();
-			var addr = new GLib.UnixSocketAddress(this.socket);
-			try {
-				this.connection = yield client.connect_async(
-					addr, null);
-			} catch (GLib.Error e) {
-				this.connect_error = e.message;
-				GLib.critical(
-					"Client: connect %s: %s",
-					this.socket,
-					this.connect_error
-				);
-				return false;
+			if (this.tcp) {
+				try {
+					this.connection = yield client.connect_to_host_async(
+						this.socket,
+						4141,
+						null
+					);
+				} catch (GLib.Error e) {
+					this.connect_error = e.message;
+					GLib.critical(
+						"Client: connect %s: %s",
+						this.socket,
+						this.connect_error
+					);
+					return false;
+				}
+			}
+
+			if (!this.tcp) {
+				try {
+					this.connection = yield connect_unix_socket(this.socket);
+				} catch (GLib.Error e) {
+					this.connect_error = e.message;
+					GLib.critical(
+						"Client: connect %s: %s",
+						this.socket,
+						this.connect_error
+					);
+					return false;
+				}
 			}
 
 			this.input = new GLib.DataInputStream(this.connection.get_input_stream());
@@ -263,7 +286,7 @@ namespace OLLMrpc
 			Gee.Promise<Response> promise
 		)
 		{
-			uint timeout_id = 0;
+			var timeout_id = 0U;
 			if (this.call_timeout_seconds > 0) {
 				timeout_id = GLib.Timeout.add_seconds(this.call_timeout_seconds, () => {
 					if (!this.pending.has_key(id)) {
@@ -355,8 +378,9 @@ namespace OLLMrpc
 			}
 
 			if (response.result_type == "") {
-				this.pending.get(response.id).set_value(response);
+				var promise = this.pending.get(response.id);
 				this.pending.unset(response.id);
+				promise.set_value(response);
 				return;
 			}
 
@@ -364,8 +388,9 @@ namespace OLLMrpc
 			var t = types.get(response.result_type);
 			if (!response.is_array) {
 				response.result = Json.gobject_deserialize(t, result_node);
-				this.pending.get(response.id).set_value(response);
+				var promise = this.pending.get(response.id);
 				this.pending.unset(response.id);
+				promise.set_value(response);
 				return;
 			}
 
@@ -375,8 +400,9 @@ namespace OLLMrpc
 				list.add(Json.gobject_deserialize(t, arr.get_element(i)));
 			}
 			response.result = list;
-			this.pending.get(response.id).set_value(response);
+			var promise = this.pending.get(response.id);
 			this.pending.unset(response.id);
+			promise.set_value(response);
 		}
 	}
 }
