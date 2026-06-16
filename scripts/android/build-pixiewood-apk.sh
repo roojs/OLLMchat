@@ -109,9 +109,10 @@ ensure_android_meson() {
   "$ROOT_DIR/scripts/android/ensure-meson.sh" >/dev/null
 }
 
-gtk_subproject_patch_marker() {
-  echo "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidollmchatpatch.c"
-}
+# shellcheck source=android-meson-path.sh
+source "$ROOT_DIR/scripts/android/android-meson-path.sh"
+# shellcheck source=gtk-subproject.sh
+source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
 
 drop_meson_subproject_trees() {
   local wrap_dir
@@ -127,37 +128,6 @@ drop_meson_subproject_trees() {
   done
 }
 
-ensure_gtk_subproject_patched() {
-  local gtk_dir="$ROOT_DIR/subprojects/gtk"
-  local marker patch
-  marker="$(gtk_subproject_patch_marker)"
-  patch="$ROOT_DIR/android/pixiewood-wraps/gtk/android-bugs.patch"
-
-  if [ -f "$marker" ]; then
-    return 0
-  fi
-
-  if [ ! -d "$gtk_dir" ] || [ ! -f "$gtk_dir/meson.build" ]; then
-    return 0
-  fi
-
-  if [ ! -f "$patch" ]; then
-    echo "android-bugs.patch missing: $patch" >&2
-    exit 1
-  fi
-
-  echo "Applying android-bugs.patch to cached GTK subproject." >&2
-  patch -p1 -d "$gtk_dir" --forward --batch -s < "$patch" || true
-
-  if [ -f "$marker" ]; then
-    return 0
-  fi
-
-  echo "Could not patch cached GTK subproject; refreshing all wrap trees." >&2
-  PIXIEWOOD_FORCE_SUBPROJECT_REFRESH=1
-  drop_meson_subproject_trees
-}
-
 download_meson_subprojects() {
   local meson="$1"
 
@@ -165,24 +135,20 @@ download_meson_subprojects() {
     return
   fi
 
-  # Meson does not re-apply wrap-file patch_directory when the extracted tree
-  # already exists. On developer machines, drop Android wrap trees so meson
-  # subprojects download extracts fresh sources with our packagefiles. In CI,
-  # keep restored subprojects so a failed run does not re-download everything.
-  # If a cached GTK tree cannot be patched in place, drop every wrap tree: other
-  # wraps redirect into subprojects/gtk/subprojects/* and break when gtk alone
-  # is removed.
   if [ "${PIXIEWOOD_FORCE_SUBPROJECT_REFRESH:-}" = "1" ] ||
      [ "${CI:-}" != "true" ] ||
      [ "${PIXIEWOOD_REFRESH_SUBPROJECTS:-}" = "1" ]; then
     drop_meson_subproject_trees
   fi
 
-  with_android_meson_path "$meson" subprojects download --sourcedir "$ROOT_DIR"
-}
+  # Root-level wrap-redirects point at gtk/subprojects/*.wrap; GTK must exist
+  # before meson subprojects download or setup can run.
+  ensure_gtk_subproject_checked_out
+  ensure_gtk_subproject_patched
 
-# shellcheck source=android-meson-path.sh
-source "$ROOT_DIR/scripts/android/android-meson-path.sh"
+  with_android_meson_path "$meson" subprojects download --sourcedir "$ROOT_DIR"
+  ensure_gtk_subproject_patched
+}
 
 ensure_gtk_android_builder() {
   if [ -n "$PIXIEWOOD" ]; then
@@ -423,56 +389,24 @@ run_pixiewood_gradle_assemble() {
   )
 }
 
-gtk_subproject_is_complete() {
-  local gtk_dir="$ROOT_DIR/subprojects/gtk"
-
-  [ -f "$gtk_dir/meson.build" ] &&
-    [ -f "$gtk_dir/subprojects/graphene.wrap" ]
-}
-
-prepare_android_subprojects_before_meson() {
-  PIXIEWOOD_FORCE_SUBPROJECT_REFRESH=0
-  ensure_gtk_subproject_patched
-
-  if [ -d "$ROOT_DIR/subprojects/gtk" ] && ! gtk_subproject_is_complete; then
-    echo "GTK subproject incomplete; removing wrap trees before prepare." >&2
-    PIXIEWOOD_FORCE_SUBPROJECT_REFRESH=1
-    drop_meson_subproject_trees
-  fi
-
-  if [ ! -f "$(gtk_subproject_patch_marker)" ] &&
-     { [ ! -d "$ROOT_DIR/subprojects/gtk" ] || ! gtk_subproject_is_complete; }; then
-    PIXIEWOOD_FORCE_SUBPROJECT_REFRESH=1
-  fi
-}
-
-needs_pixiewood_prepare_or_subprojects() {
-  if needs_pixiewood_prepare; then
-    return 0
-  fi
-  [ "${PIXIEWOOD_FORCE_SUBPROJECT_REFRESH:-}" = "1" ]
-}
-
 maybe_download_meson_subprojects() {
   local meson="$1"
 
-  ensure_gtk_subproject_patched
+  prepare_android_subprojects_before_meson
 
   if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ] &&
      [ -f "$(gtk_subproject_patch_marker)" ] &&
-     gtk_subproject_is_complete &&
-     [ "${PIXIEWOOD_FORCE_SUBPROJECT_REFRESH:-}" != "1" ]; then
+     gtk_subproject_is_complete; then
     echo "Skipping Meson subprojects download (restored from cache)."
     return
   fi
 
   if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ]; then
-    echo "Subprojects cache needs GTK patch or full refresh; re-downloading wraps." >&2
+    echo "Subprojects cache needs GTK bootstrap or patch; re-downloading wraps." >&2
   fi
 
   echo "Downloading Meson subprojects for Android wraps."
   download_meson_subprojects "$meson"
-  ensure_gtk_subproject_patched
 }
 
 pixiewood_meson_strip_enabled() {
@@ -528,15 +462,13 @@ maybe_reconfigure_pixiewood_build() {
 
 run_pixiewood_configure() {
   init_pixiewood_env
-  prepare_android_subprojects_before_meson
+  maybe_download_meson_subprojects "$MESON_FOR_ANDROID"
 
-  if needs_pixiewood_prepare_or_subprojects; then
+  if needs_pixiewood_prepare; then
     run_pixiewood prepare \
       --sdk "$ANDROID_SDK_ROOT" \
       --meson "$MESON_FOR_ANDROID" \
       "$PIXIEWOOD_MANIFEST"
-  else
-    maybe_download_meson_subprojects "$MESON_FOR_ANDROID"
   fi
 
   echo "Reconfiguring Pixiewood Meson build (configure-only)."
@@ -547,22 +479,18 @@ run_pixiewood_configure() {
 
 run_pixiewood_setup() {
   init_pixiewood_env
-  prepare_android_subprojects_before_meson
+  maybe_download_meson_subprojects "$MESON_FOR_ANDROID"
 
-  if needs_pixiewood_prepare_or_subprojects; then
+  if needs_pixiewood_prepare; then
     run_pixiewood prepare \
       --sdk "$ANDROID_SDK_ROOT" \
       --meson "$MESON_FOR_ANDROID" \
       "$PIXIEWOOD_MANIFEST"
-  else
-    maybe_download_meson_subprojects "$MESON_FOR_ANDROID"
   fi
 }
 
 run_pixiewood_build() {
   init_pixiewood_env
-  prepare_android_subprojects_before_meson
-
   maybe_download_meson_subprojects "$MESON_FOR_ANDROID"
 
   echo "Reconfiguring Pixiewood Meson build."

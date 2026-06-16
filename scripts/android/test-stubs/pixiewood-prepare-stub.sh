@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-while [ "$1" = "-C" ]; do
-  shift 2
-done
-if [ "$1" = "prepare" ]; then
-  echo "STUB: pixiewood prepare succeeded"
-  exit 0
-fi
-echo "STUB: unexpected pixiewood invocation: $*" >&2
-exit 1
+while [ "$1" = "-C" ]; do shift 2; done
+echo "pixiewood prepare must not run when compile cache is usable" >&2
+exit 99

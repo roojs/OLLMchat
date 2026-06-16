@@ -33,7 +33,7 @@ jobs:
 
       - name: Compute Pixiewood cache key hashes
         run: |
-          echo "PIXIEWOOD_DEPS_HASH=${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/icons/**', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/build-pixiewood-apk.sh', 'scripts/android/verify-apk.sh', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh', 'vapi/**') }}" >> "$GITHUB_ENV"
+          echo "PIXIEWOOD_DEPS_HASH=${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/icons/**', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/build-pixiewood-apk.sh', 'scripts/android/gtk-subproject.sh', 'scripts/android/test-gtk-subproject-readiness.sh', 'scripts/android/verify-apk.sh', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh', 'vapi/**') }}" >> "$GITHUB_ENV"
           echo "PIXIEWOOD_APP_HASH=${{ hashFiles('meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/android/**') }}" >> "$GITHUB_ENV"
 
       - name: Restore Android SDK and NDK cache
@@ -65,6 +65,16 @@ jobs:
           restore-keys: |
             android-subprojects-v1-stable-
             android-subprojects-v1-
+
+      - name: Restore GTK subproject bootstrap cache
+        id: restore-gtk-bootstrap
+        uses: actions/cache/restore@v4
+        with:
+          path: .pixiewood/gtk-subproject-bootstrap
+          key: gtk-subproject-bootstrap-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ env.PIXIEWOOD_DEPS_HASH }}
+          restore-keys: |
+            gtk-subproject-bootstrap-v1-stable-
+            gtk-subproject-bootstrap-v1-
 
       - name: Restore Pixiewood compile cache
         id: restore-pixiewood-build
@@ -203,6 +213,7 @@ jobs:
           save_android_sdk=false
           save_android_tools=false
           save_subprojects=false
+          save_gtk_bootstrap=false
 
           if [ -x .android-sdk/cmdline-tools/latest/bin/sdkmanager ]; then
             save_android_sdk=true
@@ -213,10 +224,15 @@ jobs:
           if [ -d subprojects ] && find subprojects -type f \( -name '*.wrap' -o -name meson.build \) -print -quit | grep -q .; then
             save_subprojects=true
           fi
+          if [ -f .pixiewood/gtk-subproject-bootstrap/.revision ] &&
+             [ -f .pixiewood/gtk-subproject-bootstrap/gdk/android/gdkandroidollmchatpatch.c ]; then
+            save_gtk_bootstrap=true
+          fi
 
           echo "android-sdk=$save_android_sdk" >> "$GITHUB_OUTPUT"
           echo "android-tools=$save_android_tools" >> "$GITHUB_OUTPUT"
           echo "subprojects=$save_subprojects" >> "$GITHUB_OUTPUT"
+          echo "gtk-bootstrap=$save_gtk_bootstrap" >> "$GITHUB_OUTPUT"
 
       - name: Save Android SDK and NDK cache
         if: always() && steps.post-setup-cache.outputs.android-sdk == 'true' && steps.restore-android-sdk.outputs.cache-hit != 'true'
@@ -238,6 +254,13 @@ jobs:
         with:
           path: subprojects
           key: android-subprojects-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}
+
+      - name: Save GTK subproject bootstrap cache
+        if: always() && steps.post-setup-cache.outputs.gtk-bootstrap == 'true' && steps.restore-gtk-bootstrap.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .pixiewood/gtk-subproject-bootstrap
+          key: gtk-subproject-bootstrap-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}
 
       - name: Meson cross configure
         id: pixiewood-configure
