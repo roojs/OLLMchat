@@ -32,9 +32,17 @@ namespace OLLMfilesd
 	public class FileParams : OLLMrpc.CallParam
 	{
 		public string path { get; set; default = ""; }
+		public string project_path { get; set; default = ""; }
 		public string content { get; set; default = ""; }
 		public bool buffer_dirty { get; set; default = false; }
 		public int64 last_known_mtime { get; set; default = 0; }
+	}
+
+	/** {@code Folder.*} request params (project-scoped). */
+	public class FolderParams : OLLMrpc.CallParam
+	{
+		public string project_path { get; set; default = ""; }
+		public string path { get; set; default = ""; }
 	}
 
 	/** {@code vector.*} request params. */

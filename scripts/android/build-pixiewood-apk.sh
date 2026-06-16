@@ -65,9 +65,12 @@ chat_pixiewood_prefix_ready() {
 }
 
 needs_pixiewood_prepare() {
+  ensure_pixiewood_compile_state_consistent
+
   if [ ! -f "$PIXIEWOOD_BUILD_DIR/build.ninja" ] ||
      [ ! -f "$ROOT_DIR/.pixiewood/pixiewood.ini" ] ||
-     [ ! -f "$ROOT_DIR/.pixiewood/toolchain.cross" ]; then
+     [ ! -f "$ROOT_DIR/.pixiewood/toolchain.cross" ] ||
+     ! pixiewood_toolchain_cross_valid; then
     return 0
   fi
 
@@ -113,6 +116,8 @@ ensure_android_meson() {
 source "$ROOT_DIR/scripts/android/android-meson-path.sh"
 # shellcheck source=gtk-subproject.sh
 source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
+# shellcheck source=pixiewood-cache.sh
+source "$ROOT_DIR/scripts/android/pixiewood-cache.sh"
 
 drop_meson_subproject_trees() {
   local wrap_dir
@@ -235,6 +240,7 @@ init_pixiewood_env() {
 
   ensure_gtk_android_builder
   install_pixiewood_extra_wraps
+  ensure_pixiewood_compile_state_consistent
 
   export ANDROID_HOME="$ANDROID_SDK_ROOT"
   export ANDROID_SDK_ROOT
@@ -429,8 +435,10 @@ maybe_reconfigure_pixiewood_build() {
   local current configured root_current
   local meson_min="${MESON_MIN_VERSION:-1.8.0}"
 
+  ensure_pixiewood_compile_state_consistent
+
   if [ "${PIXIEWOOD_SKIP_RECONFIGURE:-}" = "1" ] &&
-     [ -f "$PIXIEWOOD_BUILD_DIR/build.ninja" ]; then
+     pixiewood_compile_cache_looks_usable; then
     current="$("$meson" --version)"
     configured="$(pixiewood_build_meson_version || true)"
     root_current="$(pixiewood_root_meson_version || true)"

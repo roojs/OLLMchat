@@ -114,5 +114,137 @@ namespace OLLMfiles
 			return response.msg;
 		}
 
+		/**
+		 * Fetch a {@link File} already tracked under this project.
+		 *
+		 * Checks {@link ProjectManager.file_cache} first, then {@code File.fetch}
+		 * on the daemon. Does not scan disk or build a local project index.
+		 *
+		 * For a path just written to disk that is not in the index yet, use
+		 * {@link insert_file} instead.
+		 *
+		 * @param path Absolute normalized file path
+		 * @return The file, or null if not in this project
+		 */
+		public async File? fetch_file(string path)
+		{
+			if (this.manager.file_cache.has_key(path)) {
+				var cached = this.manager.file_cache.get(path);
+				if (cached is File) {
+					return (File) cached;
+				}
+			}
+
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+				method = "File.fetch",
+				param = new OLLMfilesd.FileParams() {
+					path = path,
+					project_path = this.path
+				}
+			});
+			if (response.error != null) {
+				return null;
+			}
+
+			var file = (File) response.result;
+			file.manager = this.manager;
+			this.manager.file_cache.set(path, file);
+			return file;
+		}
+
+		/**
+		 * Whether a directory path is part of this project tree.
+		 *
+		 * Used before creating a new file under {@code dir_path}. RPC-backed;
+		 * not a local {@code folder_map} lookup.
+		 *
+		 * @param dir_path Absolute normalized directory path
+		 * @return true if the directory is tracked under this project
+		 */
+		public async bool contains_folder(string dir_path)
+		{
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+				method = "Folder.contains_folder",
+				param = new OLLMfilesd.FolderParams() {
+					project_path = this.path,
+					path = dir_path
+				}
+			});
+			if (response.error != null) {
+				return false;
+			}
+			return response.msg == "true";
+		}
+
+		/**
+		 * Fetch flat file rows for this project (file dropdown snapshot).
+		 *
+		 * Returns daemon rows; the caller builds its own {@code ListStore}. Not
+		 * a live alias of daemon {@code ProjectFiles}.
+		 *
+		 * @return Files in this project for list UI
+		 */
+		public async Gee.ArrayList<File> fetch_file_list()
+		{
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+				method = "Folder.fetch_file_list",
+				param = new OLLMfilesd.FolderParams() { path = this.path }
+			});
+			if (response.error != null) {
+				return new Gee.ArrayList<File>();
+			}
+			var files = (Gee.ArrayList<File>) response.result;
+			foreach (var file in files) {
+				file.manager = this.manager;
+				this.manager.file_cache.set(file.path, file);
+			}
+			return files;
+		}
+
+		/**
+		 * Fetch files pending approval in this project.
+		 *
+		 * Snapshot for the approvals bar; daemon owns {@code is_need_approval}.
+		 *
+		 * @return Files needing approval
+		 */
+		public async Gee.ArrayList<File> fetch_pending_approvals()
+		{
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+				method = "Folder.fetch_pending_approvals",
+				param = new OLLMfilesd.FolderParams() { path = this.path }
+			});
+			if (response.error != null) {
+				return new Gee.ArrayList<File>();
+			}
+			var files = (Gee.ArrayList<File>) response.result;
+			foreach (var file in files) {
+				file.manager = this.manager;
+				this.manager.file_cache.set(file.path, file);
+			}
+			return files;
+		}
+
+		/**
+		 * Insert an on-disk file into this project's tracked index.
+		 *
+		 * The file must already exist on disk (e.g. after WriteFile). Calls
+		 * {@link File.register} on the daemon; does not write bytes locally.
+		 * Fake files ({@code id == -1}) receive a real id on success.
+		 *
+		 * @param file Client file object (often from {@link File.new_fake})
+		 * @param path Absolute normalized path (must match {@link File.path})
+		 */
+		public async void insert_file(File file, string path) throws Error
+		{
+			if (!yield file.register()) {
+				return;
+			}
+			if (file.buffer == null) {
+				this.manager.buffer_provider.create_buffer(file);
+			}
+			this.manager.file_cache.set(path, file);
+		}
+
 	}
 }

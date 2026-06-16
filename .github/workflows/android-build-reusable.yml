@@ -33,7 +33,7 @@ jobs:
 
       - name: Compute Pixiewood cache key hashes
         run: |
-          echo "PIXIEWOOD_DEPS_HASH=${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/icons/**', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/build-pixiewood-apk.sh', 'scripts/android/gtk-subproject.sh', 'scripts/android/test-gtk-subproject-readiness.sh', 'scripts/android/verify-apk.sh', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh', 'vapi/**') }}" >> "$GITHUB_ENV"
+          echo "PIXIEWOOD_DEPS_HASH=${{ hashFiles('android/pixiewood-chat-poc.xml', 'android/icon-foreground.xml', 'android/icons/**', 'android/pixiewood-extra.cross', 'android/pixiewood-wraps/**', 'scripts/android/build-pixiewood-apk.sh', 'scripts/android/gtk-subproject.sh', 'scripts/android/pixiewood-cache.sh', 'scripts/android/run-android-regression-tests.sh', 'scripts/android/regression/**', 'scripts/android/verify-android-ci-preflight.sh', 'scripts/android/verify-apk.sh', 'scripts/android/gtk-android-builder.revision', 'scripts/android/install-sdk.sh', 'scripts/android/ensure-meson.sh', 'vapi/**') }}" >> "$GITHUB_ENV"
           echo "PIXIEWOOD_APP_HASH=${{ hashFiles('meson.build', 'meson_options.txt', 'libollmchat/meson.build', 'libocsqlite/meson.build', 'libocmarkdown/meson.build', 'libollamaweb/meson.build', 'ollmapp/meson.build', 'ollmapp/android/**') }}" >> "$GITHUB_ENV"
 
       - name: Restore Android SDK and NDK cache
@@ -122,9 +122,18 @@ jobs:
             echo "Pixiewood compile cache key does not match current hashes; ignoring restored tree."
           fi
 
-          if [ "$usable" != true ] && [ -d .pixiewood/bin-aarch64 ]; then
+          if [ "$usable" != true ]; then
             echo "Discarding unusable compile cache."
             rm -rf .pixiewood/bin-aarch64
+            rm -f .pixiewood/pixiewood.ini
+            rm -f .pixiewood/toolchain.cross
+          elif ! grep -q "^toolchain=" .pixiewood/toolchain.cross 2>/dev/null ||
+               ! test -x "$(sed -n "s/^toolchain[[:space:]]*=[[:space:]]*['\"]\\(.*\\)['\"]/\\1/p" .pixiewood/toolchain.cross | head -1)/bin/aarch64-linux-android31-clang"; then
+            echo "Pixiewood toolchain.cross is invalid; discarding compile cache state."
+            usable=false
+            rm -rf .pixiewood/bin-aarch64
+            rm -f .pixiewood/pixiewood.ini
+            rm -f .pixiewood/toolchain.cross
           fi
 
           echo "usable=$usable" >> "$GITHUB_OUTPUT"
@@ -196,8 +205,8 @@ jobs:
           path: ${{ env.APT_CACHE_DIR }}
           key: apt-android-v1-stable-${{ hashFiles('.github/workflows/android-build.yml', '.github/workflows/android-build-reusable.yml') }}
 
-      - name: Test GTK subproject readiness logic
-        run: scripts/android/test-gtk-subproject-readiness.sh
+      - name: Android build regression tests
+        run: scripts/android/run-android-regression-tests.sh --full
 
       - name: Pixiewood setup (SDK, GTK prefix, subprojects)
         id: pixiewood-setup

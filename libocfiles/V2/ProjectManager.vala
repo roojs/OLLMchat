@@ -186,16 +186,18 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Find a Folder at the given path (e.g. subfolder of a project, or in DB).
-		 * Daemon is authoritative; does not use local {@link projects} / folder_map.
+		 * Fetch a {@link Folder} row at an absolute path (any project).
+		 *
+		 * Uses {@code Folder.fetch} on the daemon. For files inside a known
+		 * project, prefer {@link Folder.fetch_file} on the project row.
 		 *
 		 * @param path Normalized absolute path
-		 * @return The Folder if found, null otherwise
+		 * @return The folder row, or null if not found
 		 */
-		public async Folder? get_folder_at_path(string path)
+		public async Folder? fetch_folder(string path)
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "ProjectManager.get_folder_at_path",
+				method = "Folder.fetch",
 				param = new OLLMfilesd.ProjectParams() { path = path }
 			});
 			if (response.error != null) {
@@ -203,6 +205,7 @@ namespace OLLMfiles
 			}
 			var folder = (Folder) response.result;
 			folder.manager = this;
+			this.file_cache.set(folder.path, folder);
 			return folder;
 		}
 
@@ -258,50 +261,14 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Check if a file path is in the active project.
-		 * 
-		 * @param file_path The normalized file path to check
-		 * @return The File object if found in active project, null otherwise
-		 */
-		public File? get_file_from_active_project(string file_path)
-		{
-			if (this.active_project == null) {
-				return null;
-			}
-			
-			var project_file = this.active_project.project_files.child_map.get(file_path);
-			return (project_file == null) ? null : project_file.file;
-			
-		}
-		
-		/**
-		 * Converts a fake file (id = -1) to a real {@link File} via {@code File.register}.
+		 * Restore active project and file from saved session paths.
 		 *
-		 * Daemon creates DB row + parent folders; client hydrates local tree + buffer.
+		 * Does not read {@code ProjectFiles} or DB {@code is_active} flags.
+		 * {@code file_path} comes from agent/window config when wired.
 		 *
-		 * @param file The fake file to convert (must have id = -1)
-		 * @param file_path The normalized file path
+		 * @param file_path Optional absolute path of file to open after project
 		 */
-		public async void convert_fake_file_to_real(File file, string file_path) throws Error
-		{
-			if (this.active_project == null) {
-				return;
-			}
-
-			if (!yield file.register()) {
-				return;
-			}
-			if (file.buffer == null) {
-				this.buffer_provider.create_buffer(file);
-			}
-			this.active_project.project_files.update_from(this.active_project);
-			this.active_project.project_files.new_file_added(file);
-		}
-		
-		/**
-		 * Restore active project and file from in-memory data structures.
-		 */
-		public void restore_active_state()
+		public async void restore_active_state(string? file_path = null)
 		{
 			var project = this.projects.get_active_project();
 			if (project == null) {
@@ -320,7 +287,11 @@ namespace OLLMfiles
 			GLib.debug ("restoring session project path=%s", project.path);
 			this.activate_project(project);
 
-			var file = project.project_files.get_active_file();
+			if (file_path == null || file_path == "") {
+				return;
+			}
+
+			var file = yield project.fetch_file(file_path);
 			if (file != null) {
 				this.activate_file(file);
 			}
