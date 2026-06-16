@@ -322,3 +322,31 @@ ollmapp_configure_android_gio_tls_modules (void)
 
   return FALSE;
 }
+
+void
+ollmapp_log_tls_trust_store (void)
+{
+  static const char *candidate_paths[] = {
+    "/etc/ssl/certs/ca-certificates.crt",
+    "/etc/ssl/certs/ca-bundle.crt",
+    "/etc/ssl/cert.pem",
+    "/system/etc/security/cacerts",
+    NULL
+  };
+  gsize i;
+
+  g_message (
+      "OLLMchat TLS trust: SSL_CERT_FILE=%s SSL_CERT_DIR=%s",
+      g_getenv ("SSL_CERT_FILE") != NULL ? g_getenv ("SSL_CERT_FILE") : "(unset)",
+      g_getenv ("SSL_CERT_DIR") != NULL ? g_getenv ("SSL_CERT_DIR") : "(unset)");
+
+  for (i = 0; candidate_paths[i] != NULL; i++)
+    {
+      const char *path = candidate_paths[i];
+      gboolean exists = g_file_test (path,
+                                     G_FILE_TEST_IS_REGULAR |
+                                     G_FILE_TEST_IS_DIR);
+
+      g_message ("OLLMchat TLS trust: path %s exists=%d", path, exists);
+    }
+}

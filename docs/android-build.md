@@ -92,25 +92,37 @@ Meson wraps, GTK patches, and cross options for libsoup, json-glib, gee,
 sqlite, openssl, glib-networking, and related dependencies live under
 `android/pixiewood-wraps/` and `android/pixiewood-extra.cross`.
 
-GTK is fetched from the **roojs/gtk** fork (`https://github.com/roojs/gtk.git`).
-Android-specific fixes are committed on that fork; `android/pixiewood-wraps/gtk/gtk.wrap`
-pins the revision Meson checks out. Pixiewood manifests list plain `<gtk/>` (no
-patch step).
+GTK is still fetched from upstream GNOME (`gitlab.gnome.org/GNOME/gtk.git`), not
+from a fork at build time. Android-specific fixes are developed in the live clone
+at `~/git/gtk` (`https://github.com/roojs/gtk.git`), stored as
+`android/pixiewood-wraps/gtk/android-bugs.patch`, and applied at prepare time via
+`<patch>android-bugs</patch>` in the Pixiewood manifest. `gtk.wrap` in that
+directory pins the upstream revision the patch was written against.
 
-To land a GTK fix:
+To refresh the patch after testing changes in `~/git/gtk`:
 
 ```bash
 cd ~/git/gtk
-# edit, commit, push to github.com/roojs/gtk
-git push origin main
+git fetch upstream
+# IME and paste only — TLS runtime changes stay out of this patch for now.
+git diff upstream/main..af83724a96 -- \
+  gdk/android/gdkandroidpopup.c \
+  gdk/android/glue/java/org/gtk/android/ImContext.java \
+  gdk/android/glue/java/org/gtk/android/ToplevelActivity.java \
+  gdk/android/meson.build \
+  gdk/android/gdkandroidollmchatpatch.c \
+  gtk/gtktext.c \
+  > /path/to/OLLMchat/android/pixiewood-wraps/gtk/android-bugs.patch
 ```
 
-Then bump `revision` in `android/pixiewood-wraps/gtk/gtk.wrap` to the new commit.
+Update the `revision` in `android/pixiewood-wraps/gtk/gtk.wrap` to match the
+upstream commit the diff is based on (`git merge-base upstream/main HEAD`).
 
-The fork includes a compile-only marker source, `gdk/android/gdkandroidollmchatpatch.c`,
-wired into `libgdk-android`. After a build, grep the Meson/Ninja log for
-`gdkandroidollmchatpatch.c.o`. If that line is missing, the fork checkout was not
-used (usually stale `subprojects/gtk` from cache).
+The patch includes a compile-only marker source,
+`gdk/android/gdkandroidollmchatpatch.c`, wired into `libgdk-android`. After a
+build, grep the Meson/Ninja log for `gdkandroidollmchatpatch.c.o`. If that line
+is missing, the patched GTK tree was not used (usually stale `subprojects/gtk`
+from cache).
 
 ### Host prerequisites
 

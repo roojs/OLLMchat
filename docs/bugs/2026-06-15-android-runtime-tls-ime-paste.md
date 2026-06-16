@@ -1,18 +1,32 @@
 # Android runtime: TLS, IME hold-delete, Entry paste bubble
 
 **Opened:** 2026-06-15 · **Updated:** 2026-06-17  
-**Status:** **§1 TLS fixed locally (device-verified)**, **§2 IME fixed**, **§3 Paste fixed** — TLS fix not yet committed to gtk.wrap / glib pin  
-**Harness:** `org.roojs.ollmchat.gtkfixespoc` — **TLS-only probe** (IME/paste sections removed)
+**Status:** **§2 IME fixed**, **§3 Paste fixed**, **§1 TLS — backend works locally; GLib patch + HTTPS harness landed in tree; device HTTPS retest pending**  
+**Harness:** `org.roojs.ollmchat.gtkfixespoc` — backend status + **GET https://roojs.com/** button
 
 ### Build context
 
 | Item | Value |
 |------|-------|
-| GTK fork | `https://github.com/roojs/gtk.git` |
-| `gtk.wrap` revision | `af83724a96` (device APK may be **ahead** — see §1 local iteration) |
-| **Local debug GLib** | `~/gitlive/glib` branch `ollmchat-android-gio-debug` — **not** in `gtk.wrap` yet |
-| **APK on device (latest)** | Local build 2026-06-17 00:12 — `GTlsBackendOpenssl`, harness `ready=true` |
+| GTK | Upstream GNOME + `android-bugs.patch` (IME/paste) — **GTK wrap/patch handled separately** |
+| `gtk.wrap` revision | `3ffe53adf8` (upstream GNOME GTK) |
+| **GLib TLS patch** | `subprojects/packagefiles/glib/tls-ensure-before-scan.patch` + pin in `android/pixiewood-wraps/glib/glib.wrap` @ **2.84.0** |
+| **TLS WIP branch** | `wip/android-tls-local-2026-06-17` |
+| **TLS WIP patch dir** | `android/wip-patches/2026-06-17-tls-local-iteration/` |
 | Runtime marker | `ollmchat-android-bugs-v4` |
+
+### Device timeline (read this first)
+
+| When | What's on the phone | TLS backend | Notes |
+|------|---------------------|-------------|--------|
+| 2026-06-16 23:01 | gtk `2a9597c92e` | **Fail** — `GDummyTlsBackend` | `non-registered extension point` in logcat |
+| **2026-06-17 00:12** | **Local TLS WIP build** | **Pass** — `GTlsBackendOpenssl`, `ready=true` | First confirmation |
+| **2026-06-17 00:39** | **Local TLS WIP build (retest)** | **Pass** — same log pattern | Reinstalled after PR detour |
+| **2026-06-17 00:52** | **TLS WIP + HTTPS harness APK** | **Pass (cold start)** — `GTlsBackendOpenssl`, `ready=true` | Installed via `adb-install-gtk-fixes-poc.sh`; HTTPS button not tapped yet |
+| **2026-06-17 00:55** | Same APK, HTTPS to roojs.com | **Backend pass, HTTPS fail** | Logcat: TCP OK then `Unacceptable TLS certificate` — likely missing CA trust store (see §1 HTTPS) |
+| 2026-06-17 ~00:25 | gtk `af83724` PR validation APK | **Ignore for §1** | IME/paste only; not TLS WIP |
+
+**Bottom line:** Yes — we got TLS **backend registration** working once, on the WIP build. That is **not** committed or on `gtk.wrap` yet. The fail lines in §1 are the **older baseline** (Jun 16), kept for comparison. The APK you installed for the PR check is **not** the passing TLS build.
 
 ### How we work
 
@@ -25,7 +39,7 @@
 
 ---
 
-## 1. TLS (GIO backend) — **FIXED locally (2026-06-17)**
+## 1. TLS (GIO backend) — **works on WIP build; not shipped**
 
 ### What we are aiming for
 
@@ -35,7 +49,11 @@ Harness cold start:
 - Harness label: **`Ready: GTlsBackendOpenssl`**
 - No `non-registered extension point gio-tls-backend`, no `GIO TLS backend unavailable`
 
-HTTPS via libsoup is a **separate** check once backend registration is proven; the harness is now TLS-backend-only.
+End-to-end HTTPS (after backend is ready):
+
+- Tap **GET https://roojs.com/**
+- Label: **`HTTPS 200 OK`**
+- Logcat: `GTK fixes POC: TLS test status=200`
 
 ### Root cause (confirmed on device with debug GLib)
 
@@ -49,7 +67,15 @@ HTTPS via libsoup is a **separate** check once backend registration is proven; t
 
    **Fix:** in `main()`, call `g_tls_backend_get_default()` first; if GDK already registered OpenSSL, return success. Fall back to `GIO_MODULE_DIR`, then `g_get_system_data_dirs()`, then `g_getenv("XDG_DATA_DIRS")`.
 
-### Device evidence — **PASS** (local build, 2026-06-17 00:12)
+### Device evidence
+
+| Build | Date/time | Result |
+|-------|-----------|--------|
+| gtk `2a9597c92e` | 2026-06-16 23:01 | **Fail** |
+| TLS WIP (local) | **2026-06-17 00:12**, **00:39 retest** | **Pass** |
+| gtk `af83724` PR APK | 2026-06-17 ~00:25 | TLS not re-tested (IME/paste validation only) |
+
+**Pass logcat (2026-06-17 00:12 — TLS WIP build only):**
 
 ```
 OLLMchat-GIO: registered gio-tls-backend extension point
@@ -60,7 +86,7 @@ OLLMchat TLS [after-gdk]: ... g_get_system_data_dirs[0]=.../files/share backend=
 GTK fixes POC: TLS harness backend=GTlsBackendOpenssl ready=true
 ```
 
-Compare to **FAIL** before debug GLib (`2a9597c92e`, 2026-06-16 23:01):
+**Fail logcat (2026-06-16 23:01 — before fixes; gtk `2a9597c92e`):**
 
 ```
 Tried to implement non-registered extension point gio-tls-backend
@@ -180,27 +206,26 @@ sequenceDiagram
 
 **Core constraint:** `libgioopenssl.so` must register as the TLS backend **before** the first `g_tls_backend_get_default()` that pins dummy — but **after** GIO has registered its `gio-tls-backend` extension point (or module load fails silently).
 
-### Where we are (device evidence)
+### Where we are (summary)
 
 | Check | Result |
 |-------|--------|
-| APK packaging (`verify-gtk-fixes-apk.sh`) | **Pass** |
-| `files/share/gio/modules/libgioopenssl.so` on device | **Present** |
-| Cold-start logcat (local build, 2026-06-17 00:12) | **Pass** — `GTlsBackendOpenssl` |
-| Cold-start logcat (`2a9597c92e`, 2026-06-16 23:01) | **Fail** — extension point + dummy |
-| Harness UI | **`ready=true`** on latest local build |
+| APK packaging | **Pass** (unchanged) |
+| `libgioopenssl.so` on device | **Present** |
+| TLS backend on **WIP build** (2026-06-17 00:12) | **Pass** — `GTlsBackendOpenssl` |
+| TLS backend on **gtk.wrap `af83724`** (PR APK) | **Unknown / expect fail** until WIP lands |
+| HTTPS via libsoup button | **Harness restored** — device retest pending |
 
-**How to read the old failure:**
+**How to read the Jun 16 failure:**
 
-1. **`non-registered extension point gio-tls-backend`** — something tried to load a GIO module (`libgioopenssl.so` or `libgioenvironmentproxy.so`) when GIO’s TLS extension point was not ready yet. The module cannot hook in.
-2. **`GDummyTlsBackend`** — GIO fell back to the dummy backend (first `get_default()` won).
-3. **`GIO TLS backend unavailable after scanning...`** — from `ollmapp_configure_android_gio_tls_modules()` in `main()` (Path B): scan ran but backend is still dummy.
+1. **`non-registered extension point`** — scan before extension points existed (fixed by GLib ensure-before-scan).
+2. **`GDummyTlsBackend`** — dummy cached before OpenSSL registered.
+3. **`GIO TLS backend unavailable...`** — Path B false failure: `g_getenv("XDG_DATA_DIRS")` while GDK uses `g_set_user_dirs()`.
 
-1. **`non-registered extension point gio-tls-backend`** — scan ran before extension points existed (fixed by GLib ensure-before-scan).
-2. **`GDummyTlsBackend`** — first `get_default()` won before OpenSSL registered.
-3. **`GIO TLS backend unavailable...`** — Path B false failure: used `g_getenv("XDG_DATA_DIRS")` instead of checking backend after GDK scan.
-
-Earlier build (`8f5c1fa805`, 22:44) showed the same extension-point warning — same failure class.
+**Resume TLS work:**
+```bash
+git checkout wip/android-tls-local-2026-06-17
+```
 
 ### Debug tooling (2026-06-17 iteration)
 
@@ -209,7 +234,7 @@ Earlier build (`8f5c1fa805`, 22:44) showed the same extension-point warning — 
 | **GLib** | `OLLMchat-GIO:` logs for ensure, scan, load, default backend | `~/gitlive/glib` → copied to `subprojects/glib` for local builds |
 | **GDK runtime** | `OLLMchat GDK TLS [after-scan]` after module scan | `subprojects/gtk/gdk/android/gdkandroidruntime.c` (local, not in `gtk.wrap` yet) |
 | **App** | `OLLMchat TLS [after-gdk]` probe in `main()` | `ollmapp/android/android-gio-tls.c` |
-| **Harness** | TLS-only UI; no libsoup button | `ollmapp/android/AndroidGtkFixesPoc.vala` |
+| **Harness** | Backend status + libsoup HTTPS button | `ollmapp/android/AndroidGtkFixesPoc.vala` |
 | **Logcat** | `scripts/android/adb-gtk-fixes-logcat.sh` | filters `OLLMchat`, `GDummy`, `gio-tls-backend` |
 
 **Local rebuild (incremental, no full Pixiewood):** copy debug `subprojects/glib`, `ninja` `libgio-2.0.so` + `libgtk-4.so` + harness `.so`, stage jniLibs, `gradlew assembleDebug`. Full recipe still via `PIXIEWOOD_MANIFEST=android/pixiewood-gtk-fixes-poc.xml scripts/android/build-pixiewood-apk.sh`.
@@ -239,17 +264,25 @@ GIO design was correct. We failed on (1) scan-before-ensure and (2) app-side XDG
 - **Do not** assume `libgioopenssl.so` is missing from the APK or filesDir — it is present; verify scripts pass.
 - **Do not** call `g_tls_backend_get_default()` before a successful module scan — pins `GDummyTlsBackend` with no recovery.
 - **Do not** blame GIO for shipping `GDummyTlsBackend` — it is intentional; fix module load order instead.
-- **Do not** reintroduce the old `android-bugs.patch` workflow — fixes live in `github.com/roojs/gtk` fork.
+- **Do not** mix TLS `gdkandroidruntime.c` changes into `android-bugs.patch` — IME/paste ship via patch; TLS lands separately.
 
-### What to commit next (one gtk/glib batch)
+### Landed in tree (2026-06-17)
 
-1. **GLib** — ensure-before-scan in `giomodule.c` (+ optional `OLLMchat-GIO` debug, strip before release). Pin via `android/pixiewood-wraps/glib/` or local fork at `~/gitlive/glib`.
-2. **GTK fork** — `gdk_android_scan_gio_modules()` post-scan `get_default()` log (or remove once stable).
-3. **`android-gio-tls.c`** — keep `after-gdk` probe + `g_get_system_data_dirs()` fallbacks (in OLLMchat tree).
-4. Bump `gtk.wrap` when gdk change lands; document glib revision pin.
-5. Optional: re-add libsoup HTTPS button to harness for end-to-end check.
+| Item | Location | Notes |
+|------|----------|-------|
+| **GLib ensure-before-scan** | `subprojects/packagefiles/glib/tls-ensure-before-scan.patch` | Production patch only (no `OLLMchat-GIO` debug). Pin via `android/pixiewood-wraps/glib/glib.wrap` @ 2.84.0. Regression: `test-r13-glib-tls-ensure-before-scan.sh`. |
+| **`android-gio-tls.c`** | `ollmapp/android/` | `after-gdk` probe + `g_get_system_data_dirs()` fallbacks |
+| **Harness HTTPS** | `AndroidGtkFixesPoc.vala` + `libsoup-3.0` in `meson.build` | Button restored; device retest pending |
+| **GTK runtime** | `android-bugs.patch` | IME/paste only — **not** TLS; managed separately |
 
-**Key files:** `subprojects/glib/gio/giomodule.c`, `gdk/android/gdkandroidruntime.c`, `ollmapp/android/android-gio-tls.c`
+Local `subprojects/glib` may still carry **WIP `OLLMchat-GIO` debug** logs from iteration; the ship patch does not. Rebuild from wrap to drop debug.
+
+### Still pending
+
+1. **Device test** — rebuild/install harness APK; confirm backend pass + **HTTPS 200** on button tap.
+2. **Formal ship** — one Pixiewood rebuild with new glib wrap + app changes; update checklist below.
+
+**Key files:** `subprojects/packagefiles/glib/tls-ensure-before-scan.patch`, `ollmapp/android/android-gio-tls.c`, `ollmapp/android/AndroidGtkFixesPoc.vala`
 
 ---
 
@@ -318,9 +351,39 @@ PIXIEWOOD_MANIFEST=android/pixiewood-gtk-fixes-poc.xml \
 ./scripts/android/adb-gtk-fixes-logcat.sh --no-restart
 ```
 
-**Harness:** TLS backend probe only — shows `Ready: GTlsBackendOpenssl` or `Not ready: …` on launch.
+**Harness:** Backend status on launch + **GET https://roojs.com/** for end-to-end TLS.
 
-**Logcat (TLS):** look for `OLLMchat-GIO`, `OLLMchat GDK TLS`, `OLLMchat TLS`, `GTlsBackendOpenssl`, `GDummyTlsBackend`.
+**HTTPS test URL:** `https://roojs.com/` (not `example.com` — that host’s cert is rejected as unacceptable on Android even with a working `GTlsBackendOpenssl`).
+
+### HTTPS failure (2026-06-17 logcat, roojs.com)
+
+Backend registration **passes**; end-to-end HTTPS **fails at certificate verification**:
+
+```
+GSocketClient: TCP connection successful
+GSocketClient: Connection successful!
+GTK fixes POC: TLS test failed: Unacceptable TLS certificate
+```
+
+**Local host check (same machine as build):** `openssl s_client` to roojs.com → Let's Encrypt **E8** chain, `Verify return code: 0 (ok)`, TLS 1.2. The server cert is fine; Android is failing verification.
+
+**Likely cause:** APK has `libssl.so` + `libgioopenssl.so` but GIO/OpenSSL is **not** using a CA bundle that includes Let's Encrypt **E8**. Next harness build logs `OLLMchat TLS trust:` paths and `accept_certificate` error flags (expect `UNKNOWN_CA`).
+
+**Confirmed on device (2026-06-17 01:00, diagnostic APK):**
+
+```
+OLLMchat TLS trust: SSL_CERT_FILE=(unset) SSL_CERT_DIR=(unset)
+OLLMchat TLS trust: path /etc/ssl/certs/ca-certificates.crt exists=0
+OLLMchat TLS trust: path /system/etc/security/cacerts exists=1
+GTK fixes POC: session tls_database=set
+GSocketClient: Connection successful!
+GTK fixes POC: accept_certificate subject=CN=roojs.com issuer=C=US,O=Let's Encrypt,CN=E8 errors=0x1 (UNKNOWN_CA)
+GTK fixes POC: TLS test failed domain=g-tls-error-quark code=2 message=Unacceptable TLS certificate peer_errors=0x1 (UNKNOWN_CA)
+```
+
+Server cert is read correctly; verification fails because the **issuer is unknown** to GIO's trust store (not a bad cert on roojs.com). Android's `/system/etc/security/cacerts` exists but OpenSSL/GIO is not loading it. **Next fix:** ship a CA bundle in assets and point `SSL_CERT_FILE` (or wire `GTlsDatabase`) before HTTPS.
+
+**Logcat (TLS):** look for `OLLMchat-GIO`, `OLLMchat GDK TLS`, `OLLMchat TLS`, `GTlsBackendOpenssl`, `GDummyTlsBackend`, `GTK fixes POC: TLS test status=`.
 
 ---
 
@@ -342,6 +405,8 @@ PIXIEWOOD_MANIFEST=android/pixiewood-gtk-fixes-poc.xml \
 - [x] **IME** — hold backspace — **fixed** (`af83724a96`)
 - [x] **Paste A** — blank → release — **fixed**
 - [x] **Paste B** — drag-select → release — **fixed**
-- [x] **TLS backend** — `GTlsBackendOpenssl` on cold start — **fixed locally** (2026-06-17); commit glib+gtk pins pending
-- [ ] **TLS HTTPS** — libsoup `https://example.com/` — not re-tested since harness simplified
-- [ ] **Ship** — land GLib ensure-before-scan + app fix in pinned forks; bump wraps; one formal rebuild
+- [x] **TLS backend** — `GTlsBackendOpenssl` on cold start — **fixed locally** (2026-06-17)
+- [x] **GLib patch** — ensure-before-scan in `tls-ensure-before-scan.patch` + wrap pin — **landed in tree**
+- [x] **Harness HTTPS button** — libsoup `GET https://roojs.com/` — **restored in tree**; device retest pending
+- [ ] **TLS HTTPS** — tap button → `HTTPS 200 OK` — **fail: UNKNOWN_CA** (2026-06-17 01:00); need CA trust store
+- [ ] **Ship** — one formal Pixiewood rebuild + install with glib wrap + app changes

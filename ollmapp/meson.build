@@ -77,12 +77,14 @@ if get_option('android_gtk_fixes_poc')
     dependency('gio-2.0'),
     dependency('glib-2.0'),
     dependency('gobject-2.0'),
+    dependency('libsoup-3.0'),
   ]
   android_gtk_fixes_poc_vala_args = [
     '--pkg=gtk4',
     '--pkg=gio-2.0',
     '--pkg=glib-2.0',
     '--pkg=gobject-2.0',
+    '--pkg=libsoup-3.0',
   ]
   android_gtk_fixes_poc_sources = [
     'android/android-gio-tls.c',

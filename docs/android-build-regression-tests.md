@@ -21,7 +21,7 @@ GitHub Actions runs the same suite in `.github/workflows/android-build-reusable.
 |----|-----------|-----------------|-----------------|
 | **R01** | [27520220666](https://github.com/roojs/OLLMchat/actions/runs/27520220666) | Icon staging: `sidebar-hide-symbolic.svg` missing on build host | `regression/test-r01-bundled-android-icons.sh` |
 | **R02** | [27585547860](https://github.com/roojs/OLLMchat/actions/runs/27585547860), [27585952776](https://github.com/roojs/OLLMchat/actions/runs/27585952776), [27586582052](https://github.com/roojs/OLLMchat/actions/runs/27586582052) | `wrap-redirect …/gtk/subprojects/graphene.wrap does not exist` | `regression/test-r02-gtk-bootstrap-restore.sh` |
-| **R03** | (fork fixes not in tree) | stale GTK checkout missing roojs/gtk OLLMchat fixes | `regression/test-r03-gtk-patch-marker.sh` |
+| **R03** | (patch not in APK) | `android-bugs.patch` not applied to cached GTK | `regression/test-r03-gtk-patch-marker.sh` |
 | **R04** | [27586907940](https://github.com/roojs/OLLMchat/actions/runs/27586907940) | `Undefined constant 'toolchain'` during configure | `regression/test-r04-stale-toolchain-discard.sh` |
 | **R05** | (same family as R02) | Meson setup before GTK tree exists | `regression/test-r05-wrap-redirects-need-gtk.sh` |
 | **R06** | (CI preflight) | Broken subprojects cache + stale toolchain + configure | `verify-android-ci-preflight.sh` (included in `--full`) |
@@ -50,10 +50,10 @@ Every `bundled` row in `android/icons/manifest` has a file under `android/icons/
 Broken `subprojects/gtk` (stub without nested wraps) is repaired by copying
 `.pixiewood/gtk-subproject-bootstrap/`, not by failing meson wrap-redirects.
 
-### R03 — GTK fork marker
+### R03 — GTK patch marker
 After bootstrap, `subprojects/gtk/gdk/android/gdkandroidollmchatpatch.c` exists with
-the `ollmchat-android-bugs-v4` tag and a complete function body (truncated fork tree
-fail compile), and `ImContext.java` contains the `deleteSurrounding` fix.
+the `ollmchat-android-bugs-v4` tag and a complete function body (truncated patch tree
+fails compile), and `ImContext.java` contains the hold-delete / `syncEditableFromGtk` fix.
 
 ### R09 — validate caches partial env
 `validate-restored-caches.sh` exits cleanly when only subprojects cache env vars are

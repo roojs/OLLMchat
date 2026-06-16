@@ -5,14 +5,14 @@
     <meta:component type="desktop-application">
       <meta:id>org.roojs.ollmchat.gtkfixespoc</meta:id>
       <meta:name>GTK Android Fixes</meta:name>
-      <meta:summary>Minimal harness for GIO TLS backend registration</meta:summary>
+      <meta:summary>Harness for GIO TLS backend and libsoup HTTPS</meta:summary>
       <meta:metadata_license>CC0-1.0</meta:metadata_license>
       <meta:project_license>LGPL-3.0-or-later</meta:project_license>
       <meta:description>
         <meta:p>
           Tiny GTK Android app that probes whether libgioopenssl.so
-          registers a real GTlsBackend on device. IME and paste fixes are
-          validated separately; this APK is TLS-only.
+          registers a real GTlsBackend on device, then fetches
+          https://example.com/ via libsoup to confirm end-to-end TLS.
         </meta:p>
       </meta:description>
       <meta:requires>
@@ -42,7 +42,9 @@
       <patch>hack</patch>
     </glib>
     <fontconfig/>
-    <gtk/>
+    <gtk>
+      <patch>android-bugs</patch>
+    </gtk>
     <nghttp2/>
     <libsoup/>
     <openssl/>
