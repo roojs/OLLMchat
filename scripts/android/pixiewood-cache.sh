@@ -35,6 +35,11 @@ discard_pixiewood_compile_state() {
   rm -f "$ROOT_DIR/.pixiewood/toolchain.cross"
 }
 
+pixiewood_prefix_has_patched_gtk() {
+  find "$ROOT_DIR/.pixiewood/bin-aarch64" \
+    -name 'gdkandroidollmchatpatch*.o' -print -quit 2>/dev/null | grep -q .
+}
+
 pixiewood_compile_cache_looks_usable() {
   local build_dir="$ROOT_DIR/.pixiewood/bin-aarch64"
   local obj_count cache_bytes meson_ver meson_min="${MESON_MIN_VERSION:-1.8.0}"
@@ -42,7 +47,8 @@ pixiewood_compile_cache_looks_usable() {
   [ -f "$build_dir/build.ninja" ] &&
     [ -f "$build_dir/meson-logs/meson-log.txt" ] &&
     [ -f "$ROOT_DIR/.pixiewood/pixiewood.ini" ] &&
-    pixiewood_toolchain_cross_valid || return 1
+    pixiewood_toolchain_cross_valid &&
+    pixiewood_prefix_has_patched_gtk || return 1
 
   obj_count="$(find "$build_dir" -type f -name '*.o' 2>/dev/null | wc -l)"
   cache_bytes="$(du -sb "$build_dir" 2>/dev/null | cut -f1)"

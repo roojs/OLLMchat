@@ -1,5 +1,6 @@
 #include "android-gio-tls.h"
 
+#include <gio/gio.h>
 #include <dlfcn.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,14 +11,21 @@ try_set_gio_module_dir (const char *module_dir)
   if (module_dir == NULL || module_dir[0] == '\0')
     return FALSE;
 
-  if (g_getenv ("GIO_MODULE_DIR") != NULL)
-    return TRUE;
-
   if (!g_file_test (module_dir, G_FILE_TEST_IS_DIR))
     return FALSE;
 
   g_setenv ("GIO_MODULE_DIR", module_dir, TRUE);
   return TRUE;
+}
+
+static gboolean
+load_gio_tls_modules_from_dir (const char *module_dir)
+{
+  if (!try_set_gio_module_dir (module_dir))
+    return FALSE;
+
+  g_io_modules_scan_all_in_directory (module_dir);
+  return g_tls_backend_get_default () != NULL;
 }
 
 static gboolean
@@ -50,7 +58,7 @@ try_gio_module_dir_from_xdg_data_dirs (void)
   g_autofree char *module_dir =
       g_build_filename (first, "gio", "modules", NULL);
 
-  return try_set_gio_module_dir (module_dir);
+  return load_gio_tls_modules_from_dir (module_dir);
 }
 
 static gboolean
@@ -92,7 +100,7 @@ ollmapp_configure_android_gio_tls_modules (void)
 {
   Dl_info info;
 
-  if (g_getenv ("GIO_MODULE_DIR") != NULL)
+  if (g_tls_backend_get_default () != NULL)
     return;
 
   if (try_gio_module_dir_from_xdg_data_dirs ())
@@ -105,13 +113,17 @@ ollmapp_configure_android_gio_tls_modules (void)
       g_autofree char *module_dir =
           g_build_filename (lib_dir, "gio", "modules", NULL);
 
-      if (try_set_gio_module_dir (module_dir))
+      if (load_gio_tls_modules_from_dir (module_dir))
         return;
     }
 
   g_autofree char *maps_dir = NULL;
-  if (find_gio_module_dir_from_maps (&maps_dir))
-    try_set_gio_module_dir (maps_dir);
+  if (find_gio_module_dir_from_maps (&maps_dir) &&
+      load_gio_tls_modules_from_dir (maps_dir))
+    return;
+
+  g_warning ("GIO TLS backend unavailable after scanning module directories "
+             "(expected assets/share/gio/modules/libgioopenssl.so on device)");
 
   /* Windows sqgipkg sets gtk_icon_theme: Adwaita; Android has no gsettings. */
   if (g_getenv ("GTK_ICON_THEME_NAME") == NULL)

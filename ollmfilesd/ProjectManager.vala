@@ -394,6 +394,33 @@ namespace OLLMfilesd
 		}
 		
 		/**
+		 * Loaded project root row by absolute path.
+		 *
+		 * Checks {@link active_project} before {@link ProjectList.project_map}.
+		 * Does not query the database — use {@link get_folder_at_path} for any
+		 * folder path including subfolders and DB-only rows.
+		 *
+		 * @param project_path Project root absolute path
+		 * @return The project folder, or null if not loaded in memory
+		 */
+		public Folder? project_root(string project_path)
+		{
+			if (project_path == "") {
+				return null;
+			}
+			if (this.active_project != null
+				&& this.active_project.path == project_path) {
+				return this.active_project;
+			}
+			foreach (var entry in this.projects.project_map.entries) {
+				if (entry.value.path == project_path && entry.value.is_project) {
+					return entry.value;
+				}
+			}
+			return null;
+		}
+
+		/**
 		 * Find a Folder at the given path (e.g. subfolder of a project, or in DB).
 		 * Caller must have already verified the path is not already a project (path_map).
 		 * Checks each project's folder_map, then the database. Does not check path_map or file_cache.

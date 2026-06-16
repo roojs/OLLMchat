@@ -62,16 +62,11 @@ jq_resp_ok "T1.3 load_projects_from_db (count)" 4 "$RPC_LAST_OUT" \
     '.error == null and (.result | length) >= 1'
 jq_resp_ok "T1.4 activate_project (no error)" 5 "$RPC_LAST_OUT" '.error == null'
 
-if grep -q "no signal rpc_get_folder_at_path" "$RPC_LAST_ERR"; then
-    test_pass "T1.6 get_folder_at_path (no server handler)"
-else
-    test_fail "T1.6 get_folder_at_path (no server handler)"
-fi
-if [ -z "$(rpc_resp_by_id 6 "$RPC_LAST_OUT")" ]; then
-    test_pass "T1.6 get_folder_at_path (no wire response)"
-else
-    test_fail "T1.6 get_folder_at_path (no wire response)"
-fi
+jq_resp_ok "T1.6 Folder.fetch (no error)" 6 "$RPC_LAST_OUT" '.error == null'
+jq_resp_ok "T1.6 Folder.fetch (folder row)" 6 "$RPC_LAST_OUT" \
+    '.result["base-type"] == "d"'
+jq_resp_args_ok "T1.6 Folder.fetch (path)" 6 "$RPC_LAST_OUT" \
+    --arg p "$RPC_PROJECT_PATH" '.result.path == $p'
 
 jq_resp_ok "T1.5 remove_project (no error)" 7 "$RPC_LAST_OUT" '.error == null'
 

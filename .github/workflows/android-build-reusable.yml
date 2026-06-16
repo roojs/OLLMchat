@@ -84,9 +84,9 @@ jobs:
             .pixiewood/bin-aarch64
             .pixiewood/pixiewood.ini
             .pixiewood/toolchain.cross
-          key: pixiewood-build-v2-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
+          key: pixiewood-build-v3-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
           restore-keys: |
-            pixiewood-build-v2-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-
+            pixiewood-build-v3-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-
 
       - name: Validate Pixiewood compile cache
         id: validate-pixiewood-build-cache
@@ -112,9 +112,14 @@ jobs:
             meson_ver="$(grep -m1 '^Version: ' .pixiewood/bin-aarch64/meson-logs/meson-log.txt | sed 's/^Version: //')"
             if [ "$obj_count" -ge 100 ] &&
                [ "$cache_bytes" -ge 30000000 ] &&
-               version_ge "$meson_ver" "$min_meson"; then
+               version_ge "$meson_ver" "$min_meson" &&
+               find .pixiewood/bin-aarch64 -name 'gdkandroidollmchatpatch*.o' -print -quit | grep -q .; then
               usable=true
-              echo "Pixiewood compile cache looks usable ($obj_count object files, $(( cache_bytes / 1048576 )) MiB, Meson $meson_ver)."
+              echo "Pixiewood compile cache looks usable ($obj_count object files, $(( cache_bytes / 1048576 )) MiB, Meson $meson_ver, patched GTK)."
+            elif [ "$obj_count" -ge 100 ] &&
+               [ "$cache_bytes" -ge 30000000 ] &&
+               version_ge "$meson_ver" "$min_meson"; then
+              echo "Pixiewood compile cache restored but GTK android-bugs patch object is missing."
             else
               echo "Pixiewood compile cache restored but too small or incompatible (objects=$obj_count, bytes=$cache_bytes, Meson=${meson_ver:-unknown})."
             fi
@@ -328,7 +333,7 @@ jobs:
             .pixiewood/bin-aarch64
             .pixiewood/pixiewood.ini
             .pixiewood/toolchain.cross
-          key: pixiewood-build-v2-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
+          key: pixiewood-build-v3-stable-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}
 
       - name: Save Pixiewood compile cache (partial)
         if: always() && steps.build-apk.outcome != 'success' && steps.post-build-cache.outputs.pixiewood-build == 'true'
@@ -338,7 +343,7 @@ jobs:
             .pixiewood/bin-aarch64
             .pixiewood/pixiewood.ini
             .pixiewood/toolchain.cross
-          key: pixiewood-build-v2-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-${{ github.run_id }}
+          key: pixiewood-build-v3-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-${{ github.run_id }}
 
       - name: Collect APK artifact
         run: |

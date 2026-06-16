@@ -80,6 +80,12 @@ needs_pixiewood_prepare() {
     return 0
   fi
 
+  if [[ "$PIXIEWOOD_MANIFEST" == *pixiewood-chat-poc.xml ]] &&
+     ! pixiewood_prefix_has_patched_gtk; then
+    echo "Pixiewood prefix was built without android-bugs GTK patch; rerunning prepare." >&2
+    return 0
+  fi
+
   return 1
 }
 

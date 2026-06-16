@@ -1,5 +1,4 @@
 diff --git a/gdk/android/gdkandroidpopup.c b/gdk/android/gdkandroidpopup.c
-index 67f31d022e..51ce9dca1b 100644
 --- a/gdk/android/gdkandroidpopup.c
 +++ b/gdk/android/gdkandroidpopup.c
 @@ -75,6 +75,23 @@ gdk_android_popup_present (GdkPopup       *popup,
@@ -27,7 +26,6 @@ index 67f31d022e..51ce9dca1b 100644
    if (!surface_impl->surface)
      {
 diff --git a/gdk/android/glue/java/org/gtk/android/ImContext.java b/gdk/android/glue/java/org/gtk/android/ImContext.java
-index dfedba019a..ce7fe685ca 100644
 --- a/gdk/android/glue/java/org/gtk/android/ImContext.java
 +++ b/gdk/android/glue/java/org/gtk/android/ImContext.java
 @@ -2,7 +2,6 @@ package org.gtk.android;
@@ -70,6 +68,37 @@ index dfedba019a..ce7fe685ca 100644
  		}
  	}
  }
+diff --git a/gdk/android/gdkandroidruntime.c b/gdk/android/gdkandroidruntime.c
+--- a/gdk/android/gdkandroidruntime.c
++++ b/gdk/android/gdkandroidruntime.c
+@@ -19,6 +19,7 @@
+ 
+ #include <glib.h>
+ #include <gmodule.h>
++#include <gio/gio.h>
+ 
+ #include <gdk/android/gdkandroid.h>
+ #include <gdk/android/gdkandroidinit-private.h>
+@@ -280,6 +281,19 @@ _gdk_android_application_start_runtime (JNIEnv  *env,
+                    "XDG_DATA_HOME", userdatadir,
+                    NULL);
+ 
++  /* writeResources() ran before startRuntime(); scan TLS modules while
++   * datadir is still known so HTTPS works on first libsoup use. */
++  {
++    gchar *gio_module_dir = g_build_filename (datadir, "gio", "modules", NULL);
++
++    if (g_file_test (gio_module_dir, G_FILE_TEST_IS_DIR))
++      {
++        g_setenv ("GIO_MODULE_DIR", gio_module_dir, TRUE);
++        g_io_modules_scan_all_in_directory (gio_module_dir);
++      }
++    g_free (gio_module_dir);
++  }
++
+   g_free (configdir);
+   g_free (datadir);
+   g_free (userconfigdir);
 diff --git a/gdk/android/gdkandroidollmchatpatch.c b/gdk/android/gdkandroidollmchatpatch.c
 new file mode 100644
 index 0000000000..e8f4a2b1c3
@@ -84,14 +113,17 @@ index 0000000000..e8f4a2b1c3
 +
 +#include "config.h"
 +
++/* Survives in libgtk-4.so; verify-apk.sh greps for this tag. */
++const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v1";
++
 +static void
 +gdk_android_ollmchat_patch_marker (void)
 +{
-+  /* Intentionally empty; presence in libgdk-android confirms the patch tree. */
++  /* Keep the tag referenced so release builds do not drop it. */
++  g_debug ("%s", gdk_android_ollmchat_bugs_tag);
 +}
 
 diff --git a/gdk/android/meson.build b/gdk/android/meson.build
-index 8c3f1a2b4d..9d4e2f3a5b 100644
 --- a/gdk/android/meson.build
 +++ b/gdk/android/meson.build
 @@ -17,6 +17,7 @@ gdk_android_sources = files([
@@ -102,4 +134,3 @@ index 8c3f1a2b4d..9d4e2f3a5b 100644
    'gdkandroidutils.c'
  ])
  
-

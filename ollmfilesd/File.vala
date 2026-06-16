@@ -49,6 +49,7 @@ namespace OLLMfilesd
 		}
 
 		public signal void rpc_read(OLLMrpc.Request request);
+		public signal void rpc_fetch(OLLMrpc.Request request);
 		public signal void rpc_write(OLLMrpc.Request request);
 		public signal void rpc_register(OLLMrpc.Request request);
 		public signal void rpc_delete(OLLMrpc.Request request);
@@ -100,6 +101,40 @@ namespace OLLMfilesd
 				var row = new File(this.manager);
 				row.copy_from(file, {"manager", "buffer", "parent"});
 				row.last_modified = file.mtime_on_disk();
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					result = row,
+					result_type = "File"
+				});
+			});
+			this.rpc_fetch.connect((request) => {
+				var p = (FileParams) request.param;
+				var project = this.manager.project_root(p.project_path);
+				if (project == null) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						result_type = "File",
+						msg = "project not found"
+					});
+					return;
+				}
+				var project_file = project.project_files.child_map.get(p.path);
+				if (project_file == null) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						result_type = "File",
+						msg = "file not found"
+					});
+					return;
+				}
+				var source = project_file.file;
+				var row = new File(this.manager) {
+					last_modified = source.mtime_on_disk()
+				};
+				row.copy_from(
+					source,
+					{"manager", "buffer", "parent", "last_modified"}
+				);
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					result = row,

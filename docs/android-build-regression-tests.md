@@ -25,6 +25,7 @@ GitHub Actions runs the same suite in `.github/workflows/android-build-reusable.
 | **R04** | [27586907940](https://github.com/roojs/OLLMchat/actions/runs/27586907940) | `Undefined constant 'toolchain'` during configure | `regression/test-r04-stale-toolchain-discard.sh` |
 | **R05** | (same family as R02) | Meson setup before GTK tree exists | `regression/test-r05-wrap-redirects-need-gtk.sh` |
 | **R06** | (CI preflight) | Broken subprojects cache + stale toolchain + configure | `verify-android-ci-preflight.sh` (included in `--full`) |
+| **R07** | [27588239244](https://github.com/roojs/OLLMchat/actions/runs/27588239244) (runtime) | TLS / paste / delete fixes missing from APK despite green build | `regression/test-r07-apk-runtime-patches.sh` (runs `verify-apk.sh` binary checks) |
 
 When a **new** CI failure appears:
 
@@ -59,6 +60,15 @@ wraps until GTK is bootstrapped.
 ### R06 — CI preflight (full only)
 Simulates restored CI caches (broken GTK + bad toolchain), runs `PIXIEWOOD_PHASE=setup`
 and `configure`, asserts `build.ninja` exists.
+
+### R07 — APK runtime patches (when APK exists)
+After a local or CI build, `verify-apk.sh` checks:
+
+- `assets/share/gio/modules/libgioopenssl.so` is packaged
+- `libgtk-4.so` contains `ollmchat-android-bugs-v1` (patched GTK prefix)
+- `classes.dex` uses `deleteSurroundingText` lambda, not `sendKeyEvent` IME deletes
+
+Stale compile caches that skip GTK rebuild fail R07 even when setup/configure pass.
 
 ---
 

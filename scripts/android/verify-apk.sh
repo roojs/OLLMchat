@@ -55,4 +55,19 @@ for path in "${required[@]}"; do
   fi
 done
 
+apk_extract="$(mktemp -d)"
+trap 'rm -f "$apk_list"; rm -rf "$apk_extract"' EXIT
+unzip -q "$APK" "lib/arm64-v8a/libgtk-4.so" "classes.dex" -d "$apk_extract"
+
+if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'ollmchat-android-bugs-v1'; then
+  echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v1)." >&2
+  echo "Compile cache likely skipped rebuilding GTK; rerun with refresh_cache." >&2
+  exit 1
+fi
+
+if ! strings "$apk_extract/classes.dex" | grep -q 'lambda\$deleteSurroundingText'; then
+  echo "classes.dex missing patched ImContext deleteSurroundingText handler." >&2
+  exit 1
+fi
+
 echo "APK verify OK: $APK"

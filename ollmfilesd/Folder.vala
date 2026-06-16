@@ -53,6 +53,107 @@ namespace OLLMfilesd
 			base(manager);
 			this.base_type = "d";
 		}
+
+		public signal void rpc_fetch(OLLMrpc.Request request);
+		public signal void rpc_contains_folder(OLLMrpc.Request request);
+		public signal void rpc_fetch_file_list(OLLMrpc.Request request);
+		public signal void rpc_fetch_pending_approvals(OLLMrpc.Request request);
+
+		construct
+		{
+			this.rpc_fetch.connect((request) => {
+				var path = ((FolderParams) request.param).path;
+				var folder = this.manager.get_folder_at_path(path);
+				if (folder == null) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						result_type = "Folder",
+						msg = "folder not found"
+					});
+					return;
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					result = folder,
+					result_type = "Folder"
+				});
+			});
+			this.rpc_contains_folder.connect((request) => {
+				var p = (FolderParams) request.param;
+				var project = this.manager.project_root(p.project_path);
+				if (project == null) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						msg = "project not found"
+					});
+					return;
+				}
+				if (!project.project_files.folder_map.has_key(p.path)) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						msg = "directory not in project"
+					});
+					return;
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "true"
+				});
+			});
+			this.rpc_fetch_file_list.connect((request) => {
+				var path = ((FolderParams) request.param).path;
+				var project = this.manager.project_root(path);
+				if (project == null) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						result = new Gee.ArrayList<GLib.Object>(),
+						result_type = "File",
+						is_array = true,
+						msg = "project not found"
+					});
+					return;
+				}
+				var list = new Gee.ArrayList<GLib.Object>();
+				foreach (var project_file in project.project_files) {
+					list.add(project_file.file);
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					result = list,
+					result_type = "File",
+					is_array = true
+				});
+			});
+			this.rpc_fetch_pending_approvals.connect((request) => {
+				var path = ((FolderParams) request.param).path;
+				var project = this.manager.project_root(path);
+				if (project == null) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						result = new Gee.ArrayList<GLib.Object>(),
+						result_type = "File",
+						is_array = true,
+						msg = "project not found"
+					});
+					return;
+				}
+				project.project_files.review_files.refresh();
+				var list = new Gee.ArrayList<GLib.Object>();
+				for (uint i = 0; i < project.project_files.review_files.get_n_items(); i++) {
+					var pf = project.project_files.review_files.get_item(i)
+						as ProjectFile;
+					if (pf != null) {
+						list.add(pf.file);
+					}
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					result = list,
+					result_type = "File",
+					is_array = true
+				});
+			});
+		}
 		
 		/**
 		 * Named constructor: Create a Folder from FileInfo.

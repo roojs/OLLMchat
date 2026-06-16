@@ -244,6 +244,10 @@ namespace OLLMfilesd
 				"File", new File(this.project_manager),
 				(new FileParams()).get_type()
 			);
+			OLLMrpc.Request.register(
+				"Folder", new Folder(this.project_manager),
+				(new FolderParams()).get_type()
+			);
 
 			if (opt_interactive) {
 				this.listen = new Stdio(this, opt_rpc_script);
