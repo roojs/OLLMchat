@@ -113,15 +113,51 @@ gtk_subproject_patch_marker() {
   echo "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidollmchatpatch.c"
 }
 
+drop_meson_subproject_trees() {
+  local wrap_dir
+  for wrap_dir in \
+    gtk \
+    libgee-0.20.8 \
+    json-glib-1.10.8 \
+    libsoup-3.6.5 \
+    libxml2-2.15.3 \
+    sqlite-amalgamation-3530200 \
+    nghttp2-1.62.1; do
+    rm -rf "$ROOT_DIR/subprojects/$wrap_dir"
+  done
+}
+
 ensure_gtk_subproject_patched() {
   local gtk_dir="$ROOT_DIR/subprojects/gtk"
-  local marker
+  local marker patch
   marker="$(gtk_subproject_patch_marker)"
+  patch="$ROOT_DIR/android/pixiewood-wraps/gtk/android-bugs.patch"
 
-  if [ -d "$gtk_dir" ] && [ ! -f "$marker" ]; then
-    echo "GTK subproject missing android-bugs patch marker; removing stale tree." >&2
-    rm -rf "$gtk_dir"
+  PIXIEWOOD_FORCE_SUBPROJECT_REFRESH=0
+
+  if [ -f "$marker" ]; then
+    return 0
   fi
+
+  if [ ! -d "$gtk_dir" ] || [ ! -f "$gtk_dir/meson.build" ]; then
+    return 0
+  fi
+
+  if [ ! -f "$patch" ]; then
+    echo "android-bugs.patch missing: $patch" >&2
+    exit 1
+  fi
+
+  echo "Applying android-bugs.patch to cached GTK subproject." >&2
+  patch -p1 -d "$gtk_dir" --forward --batch -s < "$patch" || true
+
+  if [ -f "$marker" ]; then
+    return 0
+  fi
+
+  echo "Could not patch cached GTK subproject; refreshing all wrap trees." >&2
+  PIXIEWOOD_FORCE_SUBPROJECT_REFRESH=1
+  rm -rf "$gtk_dir"
 }
 
 download_meson_subprojects() {
@@ -131,24 +167,17 @@ download_meson_subprojects() {
     return
   fi
 
-  ensure_gtk_subproject_patched
-
   # Meson does not re-apply wrap-file patch_directory when the extracted tree
   # already exists. On developer machines, drop Android wrap trees so meson
   # subprojects download extracts fresh sources with our packagefiles. In CI,
   # keep restored subprojects so a failed run does not re-download everything.
-  if [ "${CI:-}" != "true" ] || [ "${PIXIEWOOD_REFRESH_SUBPROJECTS:-}" = "1" ]; then
-    local wrap_dir
-    for wrap_dir in \
-      gtk \
-      libgee-0.20.8 \
-      json-glib-1.10.8 \
-      libsoup-3.6.5 \
-      libxml2-2.15.3 \
-      sqlite-amalgamation-3530200 \
-      nghttp2-1.62.1; do
-      rm -rf "$ROOT_DIR/subprojects/$wrap_dir"
-    done
+  # If a cached GTK tree cannot be patched in place, drop every wrap tree: other
+  # wraps redirect into subprojects/gtk/subprojects/* and break when gtk alone
+  # is removed.
+  if [ "${PIXIEWOOD_FORCE_SUBPROJECT_REFRESH:-}" = "1" ] ||
+     [ "${CI:-}" != "true" ] ||
+     [ "${PIXIEWOOD_REFRESH_SUBPROJECTS:-}" = "1" ]; then
+    drop_meson_subproject_trees
   fi
 
   with_android_meson_path "$meson" subprojects download --sourcedir "$ROOT_DIR"
@@ -398,19 +427,18 @@ run_pixiewood_gradle_assemble() {
 
 maybe_download_meson_subprojects() {
   local meson="$1"
-  local gtk_marker
-  gtk_marker="$(gtk_subproject_patch_marker)"
 
   ensure_gtk_subproject_patched
 
   if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ] &&
-     [ -f "$gtk_marker" ]; then
+     [ -f "$(gtk_subproject_patch_marker)" ] &&
+     [ "${PIXIEWOOD_FORCE_SUBPROJECT_REFRESH:-}" != "1" ]; then
     echo "Skipping Meson subprojects download (restored from cache)."
     return
   fi
 
   if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ]; then
-    echo "Subprojects cache restored but GTK patch marker missing; re-downloading wraps." >&2
+    echo "Subprojects cache needs GTK patch or full refresh; re-downloading wraps." >&2
   fi
 
   echo "Downloading Meson subprojects for Android wraps."
