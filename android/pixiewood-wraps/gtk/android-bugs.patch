@@ -128,7 +128,7 @@ new file mode 100644
 index 0000000000..e8f4a2b1c3
 --- /dev/null
 +++ b/gdk/android/gdkandroidollmchatpatch.c
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,18 @@
 +/*
 + * OLLMchat android-bugs.patch compile marker.
 + * CI/build logs should contain: gdkandroidollmchatpatch.c.o
@@ -136,6 +136,7 @@ index 0000000000..e8f4a2b1c3
 + */
 +
 +#include "config.h"
++#include <glib.h>
 +
 +/* Survives in libgtk-4.so; verify-apk.sh greps for this tag. */
 +const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v1";

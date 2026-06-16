@@ -19,6 +19,8 @@ grep -q 'ollmchat-android-bugs-v1' "$MARKER" ||
   { echo "patch marker missing ollmchat-android-bugs-v1 tag" >&2; exit 1; }
 grep -q 'g_debug' "$MARKER" ||
   { echo "patch marker missing g_debug reference" >&2; exit 1; }
+grep -q '#include <glib.h>' "$MARKER" ||
+  { echo "patch marker missing glib.h include for g_debug" >&2; exit 1; }
 tail -1 "$MARKER" | grep -q '^}' ||
   { echo "patch marker file truncated (missing closing brace)" >&2; exit 1; }
 
