@@ -42,7 +42,7 @@ discard_subprojects_gtk_if_stale() {
   fi
 
   if [ -d "$gtk_dir" ] && gtk_subproject_is_complete && ! gtk_subproject_patch_applied; then
-    echo "Discarding subprojects/gtk (android-bugs.patch not fully applied)." >&2
+    echo "Discarding subprojects/gtk (roojs/gtk fork missing OLLMchat Android fixes)." >&2
     rm -rf "$gtk_dir"
   fi
 }

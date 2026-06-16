@@ -53,7 +53,7 @@ if ! gtk_subproject_is_complete; then
 fi
 
 if [ ! -f "$(gtk_subproject_patch_marker)" ]; then
-  echo "android-bugs.patch marker missing after bootstrap restore." >&2
+  echo "android GTK fork marker missing after bootstrap restore." >&2
   exit 1
 fi
 

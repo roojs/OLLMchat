@@ -60,14 +60,14 @@ apk_extract="$(mktemp -d)"
 trap 'rm -f "$apk_list"; rm -rf "$apk_extract"' EXIT
 unzip -q "$APK" "lib/arm64-v8a/libgtk-4.so" "classes.dex" "assets/share/ollmchat-android-runtime.tag" -d "$apk_extract"
 
-if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'ollmchat-android-bugs-v2'; then
-  echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v2)." >&2
+if ! grep -q 'ollmchat-android-bugs-v4' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
+  echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v4)." >&2
   echo "Pixiewood compile cache should have been discarded automatically; check pixiewood_prefix_has_patched_gtk." >&2
   exit 1
 fi
 
-if ! grep -q 'ollmchat-android-bugs-v2' "$apk_extract/assets/share/ollmchat-android-runtime.tag"; then
-  echo "APK missing assets/share/ollmchat-android-runtime.tag (ollmchat-android-bugs-v2)." >&2
+if ! grep -q 'ollmchat-android-bugs-v4' "$apk_extract/assets/share/ollmchat-android-runtime.tag"; then
+  echo "APK missing assets/share/ollmchat-android-runtime.tag (ollmchat-android-bugs-v4)." >&2
   exit 1
 fi
 
@@ -75,32 +75,36 @@ apk_gio_modules="$(mktemp -d)"
 trap 'rm -f "$apk_list"; rm -rf "$apk_extract" "$apk_gio_modules"' EXIT
 unzip -q "$APK" "assets/share/gio/modules/*" -d "$apk_gio_modules"
 
-if ! compgen -G "$apk_gio_modules/assets/share/gio/modules/libssl.so*" >/dev/null; then
-  echo "APK missing libssl.so beside GIO TLS module (assets/share/gio/modules/)." >&2
+#
+# OpenSSL runtimes (libssl.so/libcrypto.so) must not live under
+# assets/share/gio/modules/, because g_io_modules_scan_all_in_directory()
+# treats every .so there as a GIO module.
+if compgen -G "$apk_gio_modules/assets/share/gio/modules/libssl.so*" >/dev/null; then
+  echo "APK must not ship libssl.so under assets/share/gio/modules/." >&2
   exit 1
 fi
 
-if ! compgen -G "$apk_gio_modules/assets/share/gio/modules/libcrypto.so*" >/dev/null; then
-  echo "APK missing libcrypto.so beside GIO TLS module (assets/share/gio/modules/)." >&2
+if compgen -G "$apk_gio_modules/assets/share/gio/modules/libcrypto.so*" >/dev/null; then
+  echo "APK must not ship libcrypto.so under assets/share/gio/modules/." >&2
   exit 1
 fi
 
-if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'ollmchat-android-popup-v2'; then
-  echo "libgtk-4.so missing android popup patch tag (ollmchat-android-popup-v2)." >&2
+if ! grep -q 'ollmchat-android-popup-v4' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
+  echo "libgtk-4.so missing android popup patch tag (ollmchat-android-popup-v4)." >&2
   exit 1
 fi
 
-if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'ollmchat-android-tls-v2'; then
-  echo "libgtk-4.so missing android TLS preload patch tag (ollmchat-android-tls-v2)." >&2
+if ! grep -q 'ollmchat-android-tls-v4' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
+  echo "libgtk-4.so missing android TLS preload patch tag (ollmchat-android-tls-v4)." >&2
   exit 1
 fi
 
-if ! strings "$apk_extract/classes.dex" | grep -q 'lambda\$deleteSurroundingText'; then
+if ! grep -q 'lambda\$deleteSurroundingText' < <(strings "$apk_extract/classes.dex"); then
   echo "classes.dex missing patched ImContext deleteSurroundingText handler." >&2
   exit 1
 fi
 
-if ! strings "$apk_extract/classes.dex" | grep -q 'syncEditableFromGtk'; then
+if ! grep -q 'syncEditableFromGtk' < <(strings "$apk_extract/classes.dex"); then
   echo "classes.dex missing ImContext.syncEditableFromGtk (hold-backspace IME sync)." >&2
   exit 1
 fi

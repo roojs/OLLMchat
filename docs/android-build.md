@@ -92,29 +92,25 @@ Meson wraps, GTK patches, and cross options for libsoup, json-glib, gee,
 sqlite, openssl, glib-networking, and related dependencies live under
 `android/pixiewood-wraps/` and `android/pixiewood-extra.cross`.
 
-GTK is still fetched from upstream GNOME (`gitlab.gnome.org/GNOME/gtk.git`), not
-from a fork. Android-specific fixes are stored as
-`android/pixiewood-wraps/gtk/android-bugs.patch` and applied at prepare time via
-`<patch>android-bugs</patch>` in the Pixiewood manifest. `gtk.wrap` in that
-directory pins the upstream revision the patch was written against.
+GTK is fetched from the **roojs/gtk** fork (`https://github.com/roojs/gtk.git`).
+Android-specific fixes are committed on that fork; `android/pixiewood-wraps/gtk/gtk.wrap`
+pins the revision Meson checks out. Pixiewood manifests list plain `<gtk/>` (no
+patch step).
 
-To refresh the patch after testing changes in a local GTK tree (for example
-`~/git/gtk`):
+To land a GTK fix:
 
 ```bash
 cd ~/git/gtk
-git fetch upstream
-git diff upstream/main..HEAD > /path/to/OLLMchat/android/pixiewood-wraps/gtk/android-bugs.patch
+# edit, commit, push to github.com/roojs/gtk
+git push origin main
 ```
 
-Update the `revision` in `android/pixiewood-wraps/gtk/gtk.wrap` to match the
-upstream commit the diff is based on (`git merge-base upstream/main HEAD`).
+Then bump `revision` in `android/pixiewood-wraps/gtk/gtk.wrap` to the new commit.
 
-The patch includes a compile-only marker source,
-`gdk/android/gdkandroidollmchatpatch.c`, wired into `libgdk-android`. After a
-build, grep the Meson/Ninja log for `gdkandroidollmchatpatch.c.o`. If that line
-is missing, the patched GTK tree was not used (usually stale `subprojects/gtk`
-from cache).
+The fork includes a compile-only marker source, `gdk/android/gdkandroidollmchatpatch.c`,
+wired into `libgdk-android`. After a build, grep the Meson/Ninja log for
+`gdkandroidollmchatpatch.c.o`. If that line is missing, the fork checkout was not
+used (usually stale `subprojects/gtk` from cache).
 
 ### Host prerequisites
 

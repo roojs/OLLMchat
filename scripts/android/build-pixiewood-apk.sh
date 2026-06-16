@@ -82,7 +82,7 @@ needs_pixiewood_prepare() {
 
   if [[ "$PIXIEWOOD_MANIFEST" == *pixiewood-chat-poc.xml ]] &&
      ! pixiewood_prefix_has_patched_gtk; then
-    echo "Pixiewood prefix was built without android-bugs GTK patch; rerunning prepare." >&2
+    echo "Pixiewood prefix was built without OLLMchat GTK fork markers; rerunning prepare." >&2
     return 0
   fi
 
@@ -305,22 +305,11 @@ install_gio_modules_to_assets() {
   fi
 
   # libgioopenssl.so is extracted to filesDir/share/gio/modules/ at runtime.
-  # Android does not add jniLibs to dlopen search for that path, so ship OpenSSL
-  # runtimes beside the GIO module (same directory dlopen uses for NEEDED libs).
-  for name in libcrypto.so libssl.so libcrypto.so.3 libssl.so.3; do
-    if [ -f "$jni_lib/$name" ]; then
-      cp -a "$jni_lib/$name" "$dest/"
-    fi
-  done
+  # We preload libssl/libcrypto from the native library directory (lib/arm64-v8a)
+  # before GIO TLS backend initialization, so we do not ship OpenSSL runtimes
+  # beside the GIO module in assets.
 
-  if ! compgen -G "$dest/libssl.so*" >/dev/null ||
-     ! compgen -G "$dest/libcrypto.so*" >/dev/null; then
-    echo "OpenSSL runtimes missing beside GIO TLS module in $dest" >&2
-    echo "Expected libssl.so* and libcrypto.so* from $jni_lib" >&2
-    exit 1
-  fi
-
-  printf 'ollmchat-android-bugs-v2\n' \
+  printf 'ollmchat-android-bugs-v4\n' \
     > "$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/ollmchat-android-runtime.tag"
 }
 
@@ -538,7 +527,8 @@ run_pixiewood_build() {
   install_gio_modules_to_assets
   install_icon_themes_to_assets
   run_pixiewood_gradle_assemble
-  "$ROOT_DIR/scripts/android/verify-apk.sh"
+  verify_apk_script="${PIXIEWOOD_VERIFY_APK_SCRIPT:-$ROOT_DIR/scripts/android/verify-apk.sh}"
+  "$verify_apk_script"
 
   if [ "$PIXIEWOOD_STRIP_DEBUG" = "1" ]; then
     echo "Built debug APK with native debug symbols stripped (PIXIEWOOD_STRIP_DEBUG=1)."

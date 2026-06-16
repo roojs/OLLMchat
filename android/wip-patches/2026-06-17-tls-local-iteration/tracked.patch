@@ -1,0 +1,1598 @@
+diff --git a/android/pixiewood-chat-poc.xml b/android/pixiewood-chat-poc.xml
+index b3ce4fac..8f7df1ee 100644
+--- a/android/pixiewood-chat-poc.xml
++++ b/android/pixiewood-chat-poc.xml
+@@ -4,7 +4,7 @@
+   <metainfo vercalc="sem121010">
+     <meta:component type="desktop-application">
+       <meta:id>org.roojs.ollmchat.androidpoc</meta:id>
+-      <meta:name>OLLMchat Android Chat POC</meta:name>
++      <meta:name>OLLMchat</meta:name>
+       <meta:summary>Remote-only chat proof of concept for Android</meta:summary>
+       <meta:metadata_license>CC0-1.0</meta:metadata_license>
+       <meta:project_license>LGPL-3.0-or-later</meta:project_license>
+@@ -41,9 +41,7 @@
+       <patch>hack</patch>
+     </glib>
+     <fontconfig/>
+-    <gtk>
+-      <patch>android-bugs</patch>
+-    </gtk>
++    <gtk/>
+     <libadwaita/>
+     <libxml2/>
+     <sqlite3/>
+diff --git a/android/pixiewood-shell-poc.xml b/android/pixiewood-shell-poc.xml
+index ba1ea033..1dd9cf93 100644
+--- a/android/pixiewood-shell-poc.xml
++++ b/android/pixiewood-shell-poc.xml
+@@ -41,9 +41,7 @@
+       <patch>hack</patch>
+     </glib>
+     <fontconfig/>
+-    <gtk>
+-      <patch>android-bugs</patch>
+-    </gtk>
++    <gtk/>
+     <libadwaita/>
+   </dependencies>
+   <build target="ollmchat-android-shell-poc">
+diff --git a/android/pixiewood-wraps/gtk/android-bugs.patch b/android/pixiewood-wraps/gtk/android-bugs.patch
+deleted file mode 100644
+index 4adc01de..00000000
+--- a/android/pixiewood-wraps/gtk/android-bugs.patch
++++ /dev/null
+@@ -1,238 +0,0 @@
+-diff --git a/gdk/android/gdkandroidpopup.c b/gdk/android/gdkandroidpopup.c
+-index 67f31d0..1ac236a 100644
+---- a/gdk/android/gdkandroidpopup.c
+-+++ b/gdk/android/gdkandroidpopup.c
+-@@ -55,6 +55,17 @@ gdk_android_popup_present (GdkPopup       *popup,
+-                                      &shadow_top,
+-                                      &shadow_bottom);
+- 
+-+  /* Parent position from Java layout may lag behind GTK layout for nested
+-+   * surfaces (e.g. touch selection bubbles inside Adw dialogs). */
+-+  if (parent_impl->cfg.scale > 0)
+-+    {
+-+      GdkSurface *parent_surf = GDK_SURFACE (parent);
+-+
+-+      parent_surf->x = (gint) (parent_impl->cfg.x / parent_impl->cfg.scale);
+-+      parent_surf->y = (gint) (parent_impl->cfg.y / parent_impl->cfg.scale);
+-+    }
+-+
+-+
+-   GdkRectangle bounds;
+-   bounds.x = 0;
+-   bounds.y = 0;
+-@@ -74,6 +85,23 @@ gdk_android_popup_present (GdkPopup       *popup,
+-                                    self->layout,
+-                                    GDK_SURFACE_LAYOUT_POPUP_HELPER_ROOT_OUT,
+-                                    &self->popup_bounds);
+-+  /* Keep native geometry in sync with the layout result. Child popups
+-+   * (e.g. touch selection bubbles inside a dialog) consult the parent
+-+   * surface position during layout, but Java only reports position
+-+   * asynchronously via notifyLayoutPosition. */
+-+  {
+-+    GdkSurface *surface = GDK_SURFACE (self);
+-+
+-+    surface->x = self->popup_bounds.x;
+-+    surface->y = self->popup_bounds.y;
+-+    surface->width = self->popup_bounds.width;
+-+    surface->height = self->popup_bounds.height;
+-+    surface_impl->cfg.x = (gint) (self->popup_bounds.x * parent_impl->cfg.scale);
+-+    surface_impl->cfg.y = (gint) (self->popup_bounds.y * parent_impl->cfg.scale);
+-+    surface_impl->cfg.width = (gint) ceilf (self->popup_bounds.width * parent_impl->cfg.scale);
+-+    surface_impl->cfg.height = (gint) ceilf (self->popup_bounds.height * parent_impl->cfg.scale);
+-+  }
+-+
+- 
+-   JNIEnv *env = gdk_android_get_env ();
+-   if (!surface_impl->surface)
+-diff --git a/gdk/android/gdkandroidruntime.c b/gdk/android/gdkandroidruntime.c
+-index 39d3a64..33acbcb 100644
+---- a/gdk/android/gdkandroidruntime.c
+-+++ b/gdk/android/gdkandroidruntime.c
+-@@ -17,8 +17,10 @@
+-  * SPDX-License-Identifier: LGPL-2.1-or-later
+-  */
+- 
+-+#include <dlfcn.h>
+- #include <glib.h>
+- #include <gmodule.h>
+-+#include <gio/gio.h>
+- 
+- #include <gdk/android/gdkandroid.h>
+- #include <gdk/android/gdkandroidinit-private.h>
+-@@ -220,6 +222,30 @@ gdk_android_runtime_path_of_dir (JNIEnv *env, jobject dir)
+- 
+- void g_set_user_dirs (const char *first_dir_type, ...) G_GNUC_NULL_TERMINATED;
+- 
+-+static void
+-+gdk_android_preload_openssl_libs (const char *dir)
+-+{
+-+  static const char *candidates[] = {
+-+    "libcrypto.so",
+-+    "libssl.so",
+-+    "libcrypto.so.3",
+-+    "libssl.so.3",
+-+    NULL
+-+  };
+-+  gsize i;
+-+
+-+  if (dir == NULL || dir[0] == '\0')
+-+    return;
+-+
+-+  for (i = 0; candidates[i] != NULL; i++)
+-+    {
+-+      g_autofree char *path = g_build_filename (dir, candidates[i], NULL);
+-+
+-+      if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
+-+        dlopen (path, RTLD_NOW | RTLD_GLOBAL);
+-+    }
+-+}
+-+
+- static GThread *gtk_thread_s = NULL;
+- 
+- static void
+-@@ -280,6 +306,20 @@ _gdk_android_application_start_runtime (JNIEnv  *env,
+-                    "XDG_DATA_HOME", userdatadir,
+-                    NULL);
+- 
+-+  /* writeResources() ran before startRuntime(); scan TLS modules while
+-+   * datadir is still known so HTTPS works on first libsoup use. */
+-+  {
+-+    gchar *gio_module_dir = g_build_filename (datadir, "gio", "modules", NULL);
+-+
+-+    if (g_file_test (gio_module_dir, G_FILE_TEST_IS_DIR))
+-+      {
+-+        gdk_android_preload_openssl_libs (gio_module_dir);
+-+        g_setenv ("GIO_MODULE_DIR", gio_module_dir, TRUE);
+-+        g_io_modules_scan_all_in_directory (gio_module_dir);
+-+      }
+-+    g_free (gio_module_dir);
+-+  }
+-+
+-   g_free (configdir);
+-   g_free (datadir);
+-   g_free (userconfigdir);
+-diff --git a/gdk/android/glue/java/org/gtk/android/ImContext.java b/gdk/android/glue/java/org/gtk/android/ImContext.java
+-index dfedba0..f121104 100644
+---- a/gdk/android/glue/java/org/gtk/android/ImContext.java
+-+++ b/gdk/android/glue/java/org/gtk/android/ImContext.java
+-@@ -2,7 +2,6 @@ package org.gtk.android;
+- 
+- import android.text.Editable;
+- import android.text.Selection;
+--import android.view.KeyEvent;
+- import android.view.View;
+- import android.view.inputmethod.BaseInputConnection;
+- import android.view.inputmethod.InputMethodManager;
+-@@ -40,6 +39,21 @@ public final class ImContext {
+- 
+- 	public native boolean commit(String string);
+- 
+-+	private void syncEditableFromGtk(Editable content) {
+-+		if (content == null)
+-+			return;
+-+		SurroundingRetVal surrounding = GlibContext.blockForMain(this::getSurrounding);
+-+		if (surrounding == null || surrounding.text == null) {
+-+			content.clear();
+-+			return;
+-+		}
+-+		content.replace(0, content.length(), surrounding.text);
+-+		int len = content.length();
+-+		int cursor = Math.min(Math.max(surrounding.cursor_index, 0), len);
+-+		int anchor = Math.min(Math.max(surrounding.anchor_index, 0), len);
+-+		Selection.setSelection(content, anchor, cursor);
+-+	}
+-+
+- 	@Keep
+- 	private static void reset(View view) {
+- 		InputMethodManager imm = view.getContext().getSystemService(InputMethodManager.class);
+-@@ -68,6 +82,7 @@ public final class ImContext {
+- 
+- 				ImContext.this.updatePreedit(content.toString(), b);
+- 			});
+-+			syncEditableFromGtk(getEditable());
+- 			return true;
+- 		}
+- 
+-@@ -79,18 +94,17 @@ public final class ImContext {
+- 			Editable content = getEditable();
+- 			if (content.length() > 0)
+- 				GlibContext.blockForMain(() -> ImContext.this.commit(content.toString()));
+--			content.clear();
+-+			syncEditableFromGtk(getEditable());
+- 			return true;
+- 		}
+- 
+- 		@Override
+- 		public boolean commitText(CharSequence text, int newCursorPosition) {
+- 			logger.info("IME: commitText(\"" + text + "\", " + newCursorPosition + ")");
+--			super.commitText(text, newCursorPosition);
+- 
+--			Editable content = getEditable();
+--			GlibContext.blockForMain(() -> ImContext.this.commit(content.toString()));
+--			content.clear();
+-+			if (text != null && text.length() > 0)
+-+				GlibContext.blockForMain(() -> ImContext.this.commit(text.toString()));
+-+			syncEditableFromGtk(getEditable());
+- 			return true;
+- 		}
+- 
+-@@ -98,10 +112,14 @@ public final class ImContext {
+- 		public boolean deleteSurroundingText(int leftLength, int rightLength) {
+- 			logger.info("IME: deleteSurroundingText(" + leftLength + ", " + rightLength + ")");
+- 
+--			// The stock Samsung keyboard with 'Auto check spelling' enabled sends leftLength > 1.
+--			KeyEvent deleteKey = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL);
+--			for (int i = 0; i < leftLength; i++) sendKeyEvent(deleteKey);
+--			return super.deleteSurroundingText(leftLength, rightLength);
+-+			GlibContext.blockForMain(() -> {
+-+				if (leftLength > 0)
+-+					ImContext.this.deleteSurrounding(-leftLength, leftLength);
+-+				if (rightLength > 0)
+-+					ImContext.this.deleteSurrounding(0, rightLength);
+-+			});
+-+			syncEditableFromGtk(getEditable());
+-+			return true;
+- 		}
+- 	}
+- }
+-diff --git a/gdk/android/meson.build b/gdk/android/meson.build
+-index f0a57ea..11ab0c0 100644
+---- a/gdk/android/meson.build
+-+++ b/gdk/android/meson.build
+-@@ -17,6 +17,7 @@ gdk_android_sources = files([
+- 
+-   'gdkandroidcontentfile.c',
+- 
+-+  'gdkandroidollmchatpatch.c',
+-   'gdkandroidutils.c'
+- ])
+- 
+-diff --git a/gdk/android/gdkandroidollmchatpatch.c b/gdk/android/gdkandroidollmchatpatch.c
+-new file mode 100644
+-index 0000000..1691cee
+---- /dev/null
+-+++ b/gdk/android/gdkandroidollmchatpatch.c
+-@@ -0,0 +1,23 @@
+-+/*
+-+ * OLLMchat android-bugs.patch compile marker.
+-+ * CI/build logs should contain: gdkandroidollmchatpatch.c.o
+-+ * SPDX-License-Identifier: LGPL-2.1-or-later
+-+ */
+-+
+-+#include "config.h"
+-+#include <glib.h>
+-+
+-+/* Survives in libgtk-4.so; verify-apk.sh greps for these tags. */
+-+const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v2";
+-+const char gdk_android_ollmchat_popup_tag[] = "ollmchat-android-popup-v2";
+-+const char gdk_android_ollmchat_tls_tag[] = "ollmchat-android-tls-v2";
+-+
+-+static void
+-+gdk_android_ollmchat_patch_marker (void)
+-+{
+-+  /* Keep the tags referenced so release builds do not drop them. */
+-+  g_debug ("%s %s %s",
+-+           gdk_android_ollmchat_bugs_tag,
+-+           gdk_android_ollmchat_popup_tag,
+-+           gdk_android_ollmchat_tls_tag);
+-+}
+diff --git a/android/pixiewood-wraps/gtk/gtk.wrap b/android/pixiewood-wraps/gtk/gtk.wrap
+index 33676c74..bf0f52f6 100644
+--- a/android/pixiewood-wraps/gtk/gtk.wrap
++++ b/android/pixiewood-wraps/gtk/gtk.wrap
+@@ -1,7 +1,6 @@
+ [wrap-git]
+-url = https://gitlab.gnome.org/GNOME/gtk.git
+-# Pin upstream so android-bugs.patch applies reproducibly (base for roojs/gtk fork).
+-revision = 3ffe53adf8239b4de741141175fffd6460657acb
++url = https://github.com/roojs/gtk.git
++revision = af83724a960092d7e522ccd200affc196f59d2a0
+ depth = 1
+ 
+ [provide]
+diff --git a/docs/android-build-regression-tests.md b/docs/android-build-regression-tests.md
+index f579cff1..70c7fc3e 100644
+--- a/docs/android-build-regression-tests.md
++++ b/docs/android-build-regression-tests.md
+@@ -21,7 +21,7 @@ GitHub Actions runs the same suite in `.github/workflows/android-build-reusable.
+ |----|-----------|-----------------|-----------------|
+ | **R01** | [27520220666](https://github.com/roojs/OLLMchat/actions/runs/27520220666) | Icon staging: `sidebar-hide-symbolic.svg` missing on build host | `regression/test-r01-bundled-android-icons.sh` |
+ | **R02** | [27585547860](https://github.com/roojs/OLLMchat/actions/runs/27585547860), [27585952776](https://github.com/roojs/OLLMchat/actions/runs/27585952776), [27586582052](https://github.com/roojs/OLLMchat/actions/runs/27586582052) | `wrap-redirect …/gtk/subprojects/graphene.wrap does not exist` | `regression/test-r02-gtk-bootstrap-restore.sh` |
+-| **R03** | (patch not in APK) | `android-bugs.patch` not applied to cached GTK | `regression/test-r03-gtk-patch-marker.sh` |
++| **R03** | (fork fixes not in tree) | stale GTK checkout missing roojs/gtk OLLMchat fixes | `regression/test-r03-gtk-patch-marker.sh` |
+ | **R04** | [27586907940](https://github.com/roojs/OLLMchat/actions/runs/27586907940) | `Undefined constant 'toolchain'` during configure | `regression/test-r04-stale-toolchain-discard.sh` |
+ | **R05** | (same family as R02) | Meson setup before GTK tree exists | `regression/test-r05-wrap-redirects-need-gtk.sh` |
+ | **R06** | (CI preflight) | Broken subprojects cache + stale toolchain + configure | `verify-android-ci-preflight.sh` (included in `--full`) |
+@@ -50,9 +50,9 @@ Every `bundled` row in `android/icons/manifest` has a file under `android/icons/
+ Broken `subprojects/gtk` (stub without nested wraps) is repaired by copying
+ `.pixiewood/gtk-subproject-bootstrap/`, not by failing meson wrap-redirects.
+ 
+-### R03 — GTK patch marker
++### R03 — GTK fork marker
+ After bootstrap, `subprojects/gtk/gdk/android/gdkandroidollmchatpatch.c` exists with
+-the `ollmchat-android-bugs-v2` tag and a complete function body (truncated patch hunks
++the `ollmchat-android-bugs-v4` tag and a complete function body (truncated fork tree
+ fail compile), and `ImContext.java` contains the `deleteSurrounding` fix.
+ 
+ ### R09 — validate caches partial env
+diff --git a/docs/android-build.md b/docs/android-build.md
+index 2ccc4699..b7b541d9 100644
+--- a/docs/android-build.md
++++ b/docs/android-build.md
+@@ -92,29 +92,25 @@ Meson wraps, GTK patches, and cross options for libsoup, json-glib, gee,
+ sqlite, openssl, glib-networking, and related dependencies live under
+ `android/pixiewood-wraps/` and `android/pixiewood-extra.cross`.
+ 
+-GTK is still fetched from upstream GNOME (`gitlab.gnome.org/GNOME/gtk.git`), not
+-from a fork. Android-specific fixes are stored as
+-`android/pixiewood-wraps/gtk/android-bugs.patch` and applied at prepare time via
+-`<patch>android-bugs</patch>` in the Pixiewood manifest. `gtk.wrap` in that
+-directory pins the upstream revision the patch was written against.
++GTK is fetched from the **roojs/gtk** fork (`https://github.com/roojs/gtk.git`).
++Android-specific fixes are committed on that fork; `android/pixiewood-wraps/gtk/gtk.wrap`
++pins the revision Meson checks out. Pixiewood manifests list plain `<gtk/>` (no
++patch step).
+ 
+-To refresh the patch after testing changes in a local GTK tree (for example
+-`~/git/gtk`):
++To land a GTK fix:
+ 
+ ```bash
+ cd ~/git/gtk
+-git fetch upstream
+-git diff upstream/main..HEAD > /path/to/OLLMchat/android/pixiewood-wraps/gtk/android-bugs.patch
++# edit, commit, push to github.com/roojs/gtk
++git push origin main
+ ```
+ 
+-Update the `revision` in `android/pixiewood-wraps/gtk/gtk.wrap` to match the
+-upstream commit the diff is based on (`git merge-base upstream/main HEAD`).
++Then bump `revision` in `android/pixiewood-wraps/gtk/gtk.wrap` to the new commit.
+ 
+-The patch includes a compile-only marker source,
+-`gdk/android/gdkandroidollmchatpatch.c`, wired into `libgdk-android`. After a
+-build, grep the Meson/Ninja log for `gdkandroidollmchatpatch.c.o`. If that line
+-is missing, the patched GTK tree was not used (usually stale `subprojects/gtk`
+-from cache).
++The fork includes a compile-only marker source, `gdk/android/gdkandroidollmchatpatch.c`,
++wired into `libgdk-android`. After a build, grep the Meson/Ninja log for
++`gdkandroidollmchatpatch.c.o`. If that line is missing, the fork checkout was not
++used (usually stale `subprojects/gtk` from cache).
+ 
+ ### Host prerequisites
+ 
+diff --git a/docs/bugs/2026-06-15-android-runtime-tls-ime-paste.md b/docs/bugs/2026-06-15-android-runtime-tls-ime-paste.md
+index 11a7ea80..fc0ede67 100644
+--- a/docs/bugs/2026-06-15-android-runtime-tls-ime-paste.md
++++ b/docs/bugs/2026-06-15-android-runtime-tls-ime-paste.md
+@@ -1,46 +1,347 @@
+-# Android runtime: TLS, IME delete, nested-dialog paste (OPEN)
++# Android runtime: TLS, IME hold-delete, Entry paste bubble
+ 
+-**Date:** 2026-06-15  
+-**Symptom:** CI green + `verify-apk.sh` pass on run 27614072148, but on device: HTTPS/TLS
+-still unavailable, hold-backspace deletes one character only, long-press paste in nested
+-dialogs still broken.
++**Opened:** 2026-06-15 · **Updated:** 2026-06-17  
++**Status:** **§1 TLS fixed locally (device-verified)**, **§2 IME fixed**, **§3 Paste fixed** — TLS fix not yet committed to gtk.wrap / glib pin  
++**Harness:** `org.roojs.ollmchat.gtkfixespoc` — **TLS-only probe** (IME/paste sections removed)
+ 
+-## Root cause (build vs runtime)
++### Build context
+ 
+-`verify-apk.sh` only proved patch **strings** were present in `libgtk-4.so` and
+-`classes.dex`. It did **not** prove those fixes work at runtime.
++| Item | Value |
++|------|-------|
++| GTK fork | `https://github.com/roojs/gtk.git` |
++| `gtk.wrap` revision | `af83724a96` (device APK may be **ahead** — see §1 local iteration) |
++| **Local debug GLib** | `~/gitlive/glib` branch `ollmchat-android-gio-debug` — **not** in `gtk.wrap` yet |
++| **APK on device (latest)** | Local build 2026-06-17 00:12 — `GTlsBackendOpenssl`, harness `ready=true` |
++| Runtime marker | `ollmchat-android-bugs-v4` |
+ 
+-### TLS
++### How we work
+ 
+-`libgioopenssl.so` is extracted to `filesDir/share/gio/modules/`. `dlopen` of that path
+-does not resolve `libssl.so` / `libcrypto.so` from `lib/arm64-v8a/` (jniLibs). The GIO
+-module loads but the TLS backend never registers — libsoup HTTPS fails.
++1. Agent updates this doc after each build and log capture.  
++2. You test on device and report pass/fail.  
++3. Agent lands fixes for **all open bugs in one gtk batch**, then one rebuild.  
++4. Repeat.
+ 
+-**Fix:** Copy OpenSSL runtimes beside `libgioopenssl.so` in APK assets; preload with
+-`RTLD_GLOBAL` before `g_io_modules_scan_all_in_directory` in `gdkandroidruntime.c` and
+-`ollmapp/android/android-gio-tls.c`.
++**Logcat after repro:** `scripts/android/adb-gtk-fixes-logcat.sh --no-restart`
+ 
+-### IME hold-delete / paste
++---
+ 
+-Patches were present in APK artifacts but `syncEditableFromGtk` was not applied on all IME
+-paths (`setComposingText`, `finishComposingText`). Popup geometry patch did not sync
+-parent surface position before layout for nested Adw dialogs.
++## 1. TLS (GIO backend) — **FIXED locally (2026-06-17)**
+ 
+-**Fix:** android-bugs.patch v2 — broader IME sync, parent surface position in
+-`gdk_android_popup_present`, runtime tag `ollmchat-android-bugs-v2`.
++### What we are aiming for
+ 
+-## Verification
++Harness cold start:
+ 
+-After next CI build:
++- Logcat: `GTlsBackendOpenssl` (not `GDummyTlsBackend`), `supports_tls=1`
++- Harness label: **`Ready: GTlsBackendOpenssl`**
++- No `non-registered extension point gio-tls-backend`, no `GIO TLS backend unavailable`
+ 
+-1. Install APK from that run (uninstall old app first if unsure).
+-2. Check `filesDir/share/ollmchat-android-runtime.tag` contains `v2` (or grep APK).
+-3. TLS: connection check should succeed for HTTPS Ollama endpoints.
+-4. IME: hold backspace in a text field; long-press paste in a nested dialog.
++HTTPS via libsoup is a **separate** check once backend registration is proven; the harness is now TLS-backend-only.
+ 
+-## Changelog
++### Root cause (confirmed on device with debug GLib)
+ 
+-- `install_gio_modules_to_assets`: ship `libssl`/`libcrypto` beside GIO module; runtime tag file.
+-- `android-gio-tls.c`: preload OpenSSL before module scan.
+-- `android-bugs.patch`: v2 marker, runtime OpenSSL preload, parent popup sync, IME sync paths.
+-- `verify-apk.sh`: v2 tag, OpenSSL assets, popup comment string.
++**Two bugs stacked:**
++
++1. **GLib module scan order** — `g_io_modules_scan_all_in_directory()` could run before `_g_io_modules_ensure_extension_points_registered()`. `libgioopenssl.so` then failed with `Tried to implement non-registered extension point gio-tls-backend` and never registered.
++
++   **Fix:** call `_g_io_modules_ensure_extension_points_registered()` at the start of `g_io_modules_scan_all_in_directory_with_scope()` (local patch in `subprojects/glib` / `~/gitlive/glib`).
++
++2. **App fallback used wrong XDG API** — GDK sets data dirs via `g_set_user_dirs()`, which updates `g_get_system_data_dirs()` but **not** `g_getenv("XDG_DATA_DIRS")`. `android-gio-tls.c` only checked `g_getenv`, so Path B thought XDG was unset even after Path A succeeded, never called `get_default()` after GDK’s scan, and logged a false failure.
++
++   **Fix:** in `main()`, call `g_tls_backend_get_default()` first; if GDK already registered OpenSSL, return success. Fall back to `GIO_MODULE_DIR`, then `g_get_system_data_dirs()`, then `g_getenv("XDG_DATA_DIRS")`.
++
++### Device evidence — **PASS** (local build, 2026-06-17 00:12)
++
++```
++OLLMchat-GIO: registered gio-tls-backend extension point
++OLLMchat-GIO: loaded module .../libgioopenssl.so
++OLLMchat-GIO: default gio-tls-backend = openssl (GTlsBackendOpenssl)
++OLLMchat GDK TLS [after-scan]: backend=GTlsBackendOpenssl supports_tls=1
++OLLMchat TLS [after-gdk]: ... g_get_system_data_dirs[0]=.../files/share backend=GTlsBackendOpenssl supports_tls=1
++GTK fixes POC: TLS harness backend=GTlsBackendOpenssl ready=true
++```
++
++Compare to **FAIL** before debug GLib (`2a9597c92e`, 2026-06-16 23:01):
++
++```
++Tried to implement non-registered extension point gio-tls-backend
++Found default implementation dummy (GDummyTlsBackend)
++GIO TLS backend unavailable after scanning module directories
++```
++
++### What the bug actually is
++
++This is **not** a libsoup bug. On Android, HTTPS needs GIO’s pluggable TLS backend:
++
++```
++Gtk app  →  libsoup (SoupSession)  →  GIO GTlsBackend  →  libgioopenssl.so  →  libssl.so / libcrypto.so
++```
++
++GIO ships a fallback **`GDummyTlsBackend`** that cannot do real TLS. The first successful registration of a TLS backend **wins permanently** — if anything calls `g_tls_backend_get_default()` before `libgioopenssl.so` registers, you are stuck on dummy and every HTTPS call fails.
++
++Symptom on device: harness label shows something like `TLS failed: TLS support is not available` (or similar libsoup/GIO error).
++
++### Is `GDummyTlsBackend` a GIO bug?
++
++**No — it is deliberate GIO design**, not a broken TLS implementation we should patch inside GIO itself.
++
++On desktop Linux, TLS comes from a **separate loadable module** (`libgioopenssl.so`, built from **glib-networking**), not from core `libgio.so`. Core GIO ships `GDummyTlsBackend` as a **placeholder** so that:
++
++- Apps can link against GIO and compile without OpenSSL present.
++- Code can call `g_tls_backend_get_default()` and always get a non-`NULL` object.
++- If no real backend registered, operations fail with `G_TLS_ERROR_UNAVAILABLE` / *"TLS support is not available"* instead of crashing.
++
++From GNOME `gdummytlsbackend.c` (in `libgio` itself):
++
++- The dummy registers on extension point `"gio-tls-backend"` with name `"dummy"` and priority **-100** (lowest).
++- `libgioopenssl.so` registers the same extension point with **higher** priority when it loads successfully.
++- `g_tls_backend_get_default()` calls `_g_io_module_get_default()`, which picks the **best** registered implementation, or dummy if none.
++- The result is cached with `g_once_init` — **first resolution wins for the process lifetime**.
++
++So GIO is working as designed. Our problem is **Android integration**: we ship `libgioopenssl.so` inside the APK, but we are not getting it registered as the TLS backend before the dummy is cached.
++
++**Should we look at GIO?** Yes, but at **how we use the GIO module API**, not by replacing `GDummyTlsBackend`:
++
++| Layer | Responsibility |
++|-------|----------------|
++| **GIO (libgio)** | Extension point + dummy fallback + `get_default()` singleton |
++| **glib-networking** | `libgioopenssl.so` — real OpenSSL backend as a GIO module |
++| **Us (Android)** | Preload OpenSSL, set `GIO_MODULE_DIR`, load modules in the **correct order** |
++
++**The ordering GIO expects** (this is the missing piece we have been circling):
++
++1. **`_g_io_modules_ensure_extension_points_registered()`** — creates the `gio-tls-backend` extension point and registers dummy at -100. This normally runs *inside* the first `g_tls_backend_get_default()` call, not before a module scan.
++2. **`g_io_modules_scan_all_in_directory()`** — `dlopen` `libgioopenssl.so`; its init hook calls `g_io_extension_point_implement()` and registers the real backend.
++3. **`g_tls_backend_get_default()`** — should now return OpenSSL, not dummy.
++
++**What goes wrong on Android (matches our logcat):**
++
++- If we **scan before step 1**: `libgioopenssl.so` loads but extension point does not exist yet → `Tried to implement non-registered extension point gio-tls-backend` → module does not register.
++- If we **`get_default()` before step 2**: only dummy exists → singleton caches `GDummyTlsBackend` → **no recovery** even if we scan afterwards.
++
++Commit `9dfe203627` failed because of the first case. Commit `de954aebba` (scan after `g_module_open`) may still fail because we scan **without** explicitly running step 1 first, and something may still call `get_default()` before `libgioopenssl.so` registers.
++
++**Likely next fix (GIO-aware):** in `gdk_android_scan_gio_modules()`, call `_g_io_modules_ensure_extension_points_registered()` (GIO private API in `giomodule-priv.h`) **before** `g_io_modules_scan_all_in_directory()`, then only call `g_tls_backend_get_default()` after scan. Worth an upstream question/patch to GNOME if a public “ensure extension points exist” API is needed for embedded platforms.
++
++References: [GTlsBackend.get_default](https://docs.gtk.org/gio/type_func.TlsBackend.get_default.html) (returns dummy if no backend), [TLS_BACKEND_EXTENSION_POINT_NAME](https://docs.gtk.org/gio/const.TLS_BACKEND_EXTENSION_POINT_NAME.html), `gio/gdummytlsbackend.c` in GNOME glib.
++
++### How Android is supposed to work (packaging)
++
++| Piece | Where in APK | Where at runtime (after GTK extracts assets) |
++|-------|----------------|-----------------------------------------------|
++| `libgioopenssl.so` | `assets/share/gio/modules/` | `files/share/gio/modules/` |
++| `libssl.so`, `libcrypto.so` | `lib/arm64-v8a/` (jniLibs) | Same path, preloaded with `RTLD_GLOBAL` |
++| App `.so` | `lib/arm64-v8a/libollmchat-android-gtk-fixes-poc.so` | Loaded by GTK runtime |
++
++**Packaging is verified and correct** — `verify-gtk-fixes-apk.sh` / `verify-apk.sh` check:
++
++- `assets/share/gio/modules/libgioopenssl.so` present
++- `libssl.so` / `libcrypto.so` **not** under `assets/share/gio/modules/` (GIO would try to load them as modules and fail)
++- Runtime marker `ollmchat-android-bugs-v4` in APK assets
++
++On device, `run-as org.roojs.ollmchat.gtkfixespoc ls files/share/gio/modules/` shows:
++
++```
++libgioenvironmentproxy.so
++libgioopenssl.so
++```
++
++So this is a **runtime init-order / registration** problem, not missing files.
++
++### Startup sequence (two init paths — easy to get wrong)
++
++There are **two** places that try to configure TLS. Both must cooperate; either can fail the whole thing.
++
++**Path A — GTK Android runtime** (`gdk/android/gdkandroidruntime.c`), on Java main thread, before `main()`:
++
++1. Set `XDG_DATA_DIRS` → `files/share`
++2. `gdk_android_prepare_tls_modules()` — preload `libssl`/`libcrypto` from app native lib dir; set `GIO_MODULE_DIR=files/share/gio/modules` (**no scan yet**)
++3. `g_module_open(application.so)` — pulls in GTK, GIO, libsoup, etc.
++4. `gdk_android_scan_gio_modules()` — `g_io_modules_scan_all_in_directory()`
++
++**Path B — app `main()`** (`ollmapp/android/android-gio-tls.c`), on GTK thread, before `GtkApplication` starts:
++
++1. `ollmapp_configure_android_gio_tls_modules()` — if backend already non-dummy, return; else preload OpenSSL, scan module dirs (`XDG_DATA_DIRS`, maps fallback), call `g_tls_backend_get_default()`
++
++```mermaid
++sequenceDiagram
++  participant Java as ToplevelActivity
++  participant Runtime as gdkandroidruntime.c
++  participant GIO as GIO / libgioopenssl
++  participant Main as android-gio-tls.c main()
++
++  Java->>Runtime: startRuntime()
++  Runtime->>Runtime: prepare: preload ssl, set GIO_MODULE_DIR
++  Runtime->>Runtime: g_module_open(app.so)
++  Note over Runtime: libsoup/GIO may init here
++  Runtime->>GIO: scan gio/modules
++  Runtime->>Main: gtk thread → main()
++  Main->>GIO: configure fallback / get_default
++```
++
++**Core constraint:** `libgioopenssl.so` must register as the TLS backend **before** the first `g_tls_backend_get_default()` that pins dummy — but **after** GIO has registered its `gio-tls-backend` extension point (or module load fails silently).
++
++### Where we are (device evidence)
++
++| Check | Result |
++|-------|--------|
++| APK packaging (`verify-gtk-fixes-apk.sh`) | **Pass** |
++| `files/share/gio/modules/libgioopenssl.so` on device | **Present** |
++| Cold-start logcat (local build, 2026-06-17 00:12) | **Pass** — `GTlsBackendOpenssl` |
++| Cold-start logcat (`2a9597c92e`, 2026-06-16 23:01) | **Fail** — extension point + dummy |
++| Harness UI | **`ready=true`** on latest local build |
++
++**How to read the old failure:**
++
++1. **`non-registered extension point gio-tls-backend`** — something tried to load a GIO module (`libgioopenssl.so` or `libgioenvironmentproxy.so`) when GIO’s TLS extension point was not ready yet. The module cannot hook in.
++2. **`GDummyTlsBackend`** — GIO fell back to the dummy backend (first `get_default()` won).
++3. **`GIO TLS backend unavailable after scanning...`** — from `ollmapp_configure_android_gio_tls_modules()` in `main()` (Path B): scan ran but backend is still dummy.
++
++1. **`non-registered extension point gio-tls-backend`** — scan ran before extension points existed (fixed by GLib ensure-before-scan).
++2. **`GDummyTlsBackend`** — first `get_default()` won before OpenSSL registered.
++3. **`GIO TLS backend unavailable...`** — Path B false failure: used `g_getenv("XDG_DATA_DIRS")` instead of checking backend after GDK scan.
++
++Earlier build (`8f5c1fa805`, 22:44) showed the same extension-point warning — same failure class.
++
++### Debug tooling (2026-06-17 iteration)
++
++| Layer | What | Where |
++|-------|------|-------|
++| **GLib** | `OLLMchat-GIO:` logs for ensure, scan, load, default backend | `~/gitlive/glib` → copied to `subprojects/glib` for local builds |
++| **GDK runtime** | `OLLMchat GDK TLS [after-scan]` after module scan | `subprojects/gtk/gdk/android/gdkandroidruntime.c` (local, not in `gtk.wrap` yet) |
++| **App** | `OLLMchat TLS [after-gdk]` probe in `main()` | `ollmapp/android/android-gio-tls.c` |
++| **Harness** | TLS-only UI; no libsoup button | `ollmapp/android/AndroidGtkFixesPoc.vala` |
++| **Logcat** | `scripts/android/adb-gtk-fixes-logcat.sh` | filters `OLLMchat`, `GDummy`, `gio-tls-backend` |
++
++**Local rebuild (incremental, no full Pixiewood):** copy debug `subprojects/glib`, `ninja` `libgio-2.0.so` + `libgtk-4.so` + harness `.so`, stage jniLibs, `gradlew assembleDebug`. Full recipe still via `PIXIEWOOD_MANIFEST=android/pixiewood-gtk-fixes-poc.xml scripts/android/build-pixiewood-apk.sh`.
++
++### What we believe was wrong (now resolved)
++
++GIO design was correct. We failed on (1) scan-before-ensure and (2) app-side XDG/env mismatch.
++
++### Attempts so far (what we tried — not “the root cause”)
++
++| Commit / change | Intent | Device result |
++|-----------------|--------|---------------|
++| Patch era `android-bugs.patch` | Popup, IME, TLS preload scaffolding | TLS broken |
++| Stop shipping `libssl`/`libcrypto` in `gio/modules` assets | GIO was loading them as modules | Packaging fixed; TLS still broken |
++| `9dfe203627` — scan **before** `g_module_open` | Register TLS before app libs pull in GIO | **Dead end** — `non-registered extension point` |
++| `de954aebba` — scan **after** `g_module_open` | Extension point should exist after dlopen | **Still broken** — scan before ensure |
++| `android-gio-tls.c` early-return if non-dummy backend set | Avoid redundant scan in `main()` | Never triggered — never detected GDK success |
++| `android-gio-tls.c` remove early `get_default()` before scan | Don’t pin dummy from app | Partial |
++| **Local GLib** — ensure before scan + `OLLMchat-GIO` debug | Fix module registration order | **Pass** — OpenSSL registers |
++| **`android-gio-tls.c`** — `get_default()` after GDK; `g_get_system_data_dirs()` | Fix false Path B failure | **Pass** — `ready=true` |
++| **`gdkandroidruntime.c`** — log backend after scan | Confirm Path A end state | **Pass** — `GTlsBackendOpenssl` |
++
++### Do not do this (dead ends)
++
++- **Do not** put `libssl.so` / `libcrypto.so` under `assets/share/gio/modules/` — GIO treats them as loadable modules; breaks init.
++- **Do not** scan GIO modules before `_g_io_modules_ensure_extension_points_registered()` — `libgioopenssl.so` cannot register (log line above). Scanning before `g_module_open` was one way we hit this (`9dfe203627`).
++- **Do not** assume `libgioopenssl.so` is missing from the APK or filesDir — it is present; verify scripts pass.
++- **Do not** call `g_tls_backend_get_default()` before a successful module scan — pins `GDummyTlsBackend` with no recovery.
++- **Do not** blame GIO for shipping `GDummyTlsBackend` — it is intentional; fix module load order instead.
++- **Do not** reintroduce the old `android-bugs.patch` workflow — fixes live in `github.com/roojs/gtk` fork.
++
++### What to commit next (one gtk/glib batch)
++
++1. **GLib** — ensure-before-scan in `giomodule.c` (+ optional `OLLMchat-GIO` debug, strip before release). Pin via `android/pixiewood-wraps/glib/` or local fork at `~/gitlive/glib`.
++2. **GTK fork** — `gdk_android_scan_gio_modules()` post-scan `get_default()` log (or remove once stable).
++3. **`android-gio-tls.c`** — keep `after-gdk` probe + `g_get_system_data_dirs()` fallbacks (in OLLMchat tree).
++4. Bump `gtk.wrap` when gdk change lands; document glib revision pin.
++5. Optional: re-add libsoup HTTPS button to harness for end-to-end check.
++
++**Key files:** `subprojects/glib/gio/giomodule.c`, `gdk/android/gdkandroidruntime.c`, `ollmapp/android/android-gio-tls.c`
++
++---
++
++## 2. IME hold-delete — **FIXED**
++
++### What we are aiming for
++
++Hold backspace on the soft keyboard in a `Gtk.Entry` deletes continuously; app does not hang.
++
++### Where we are
++
++**Fixed** on device (`2a9597c92e`, confirmed 2026-06-16).
++
++### What fixed it (kept in `af83724a96`)
++
++- `ToplevelActivity` — `getInputType()` instead of `TYPE_NULL`
++- `ImContext.setComposingText` — GTK preedit only, no full Editable sync
++- `ImContext.finishComposingText` — skip `syncEditableFromGtk` when Editable empty after super
++- `ImContext.sendKeyEvent` — `KEYCODE_DEL` → native `deleteSurrounding`
++
++Debug logging (`OLLMchat.IME`) removed in `af83724a96`.
++
++**Key files:** `gdk/android/glue/java/org/gtk/android/ImContext.java`, `ToplevelActivity.java`
++
++---
++
++## 3. Paste bubble — **FIXED**
++
++### Desired touch UX (intentional — keep this)
++
++- **Magnifier** during hold only when the field has text (`length > 0`).
++- **Copy/paste bubble** on finger release, not at long-press recognition.
++
++### What we are aiming for
++
++Nested `Gtk.Window` → `Gtk.Entry`:
++
++| Flow | Steps | Result |
++|------|-------|--------|
++| **A** | Long-press blank field → release | Copy/paste bubble |
++| **B** | Long-press → drag to select → release | Copy/paste bubble |
++
++### Where we are
++
++**Both flows pass** on device (`2a9597c92e`, confirmed 2026-06-16).
++
++### What fixed it (kept in `af83724a96`)
++
++- `28bb73ace7` — bubble on release (`in_long_press` + click release); magnifier only if text
++- `56506721e5` — `gtk_text_drag_gesture_end` shows bubble when touch selection exists
++- `gdkandroidpopup.c` — parent bounds sync before popup layout (`23209d03e5`+)
++
++Debug logging (`OLLMchat.Paste`, `OLLMchat.Popup`) removed in `af83724a96`.
++
++**Key files:** `gtk/gtktext.c`, `gdk/android/gdkandroidpopup.c`
++
++---
++
++## Harness and commands
++
++```bash
++PIXIEWOOD_MANIFEST=android/pixiewood-gtk-fixes-poc.xml \
++  scripts/android/build-pixiewood-apk.sh
++./scripts/android/adb-install-gtk-fixes-poc.sh
++./scripts/android/adb-gtk-fixes-logcat.sh              # cold start + dump
++./scripts/android/adb-gtk-fixes-logcat.sh --no-restart
++```
++
++**Harness:** TLS backend probe only — shows `Ready: GTlsBackendOpenssl` or `Not ready: …` on launch.
++
++**Logcat (TLS):** look for `OLLMchat-GIO`, `OLLMchat GDK TLS`, `OLLMchat TLS`, `GTlsBackendOpenssl`, `GDummyTlsBackend`.
++
++---
++
++## GTK fork changelog (device results)
++
++| Commit | Area | Change | Device result |
++|--------|------|--------|---------------|
++| `23209d03e5` | TLS/popup | Fork baseline | TLS broken |
++| `9dfe203627` | TLS | Scan before `g_module_open` | **Dead end** |
++| `de954aebba` | TLS | Scan after `g_module_open` | Still broken |
++| `28bb73ace7` | Paste | Bubble on release UX | Flow A pass |
++| `56506721e5` | IME/paste | Input type, IME paths, drag-end bubble | §2 §3 **fixed** |
++| `af83724a96` | IME/paste | Remove debug logging | in `gtk.wrap` |
++
++---
++
++## Checklist
++
++- [x] **IME** — hold backspace — **fixed** (`af83724a96`)
++- [x] **Paste A** — blank → release — **fixed**
++- [x] **Paste B** — drag-select → release — **fixed**
++- [x] **TLS backend** — `GTlsBackendOpenssl` on cold start — **fixed locally** (2026-06-17); commit glib+gtk pins pending
++- [ ] **TLS HTTPS** — libsoup `https://example.com/` — not re-tested since harness simplified
++- [ ] **Ship** — land GLib ensure-before-scan + app fix in pinned forks; bump wraps; one formal rebuild
+diff --git a/meson.build b/meson.build
+index ceb51143..da9183e6 100644
+--- a/meson.build
++++ b/meson.build
+@@ -14,10 +14,23 @@ fs = import('fs')
+ 
+ android_shell_poc = get_option('android_shell_poc')
+ android_poc_opt = get_option('android_poc')
+-android_cross_build = host_machine.system() == 'android' and (android_shell_poc or android_poc_opt)
++android_gtk_fixes_poc = get_option('android_gtk_fixes_poc')
++android_cross_build = host_machine.system() == 'android' and (
++  android_shell_poc or android_poc_opt or android_gtk_fixes_poc
++)
+ 
+-if android_shell_poc and android_poc_opt
+-  error('android_shell_poc and android_poc are mutually exclusive')
++android_poc_count = 0
++if android_shell_poc
++  android_poc_count += 1
++endif
++if android_poc_opt
++  android_poc_count += 1
++endif
++if android_gtk_fixes_poc
++  android_poc_count += 1
++endif
++if android_poc_count > 1
++  error('Only one of android_shell_poc, android_poc, android_gtk_fixes_poc may be set')
+ endif
+ 
+ if android_cross_build
+@@ -113,6 +126,8 @@ endif
+ # Build libraries in dependency order
+ if android_shell_poc
+   subdir('ollmapp')         # Minimal Android APK shell target only
++elif android_gtk_fixes_poc
++  subdir('ollmapp')         # GTK TLS/IME/paste harness only
+ elif android_poc_opt and host_machine.system() == 'android'
+   subdir('libocmarkdown')
+   subdir('libocsqlite')
+@@ -167,6 +182,10 @@ if android_shell_poc
+   executables_info = [
+     ['ollmchat-android-shell-poc', 'ollmapp/ollmchat-android-shell-poc'],
+   ]
++elif android_gtk_fixes_poc
++  executables_info = [
++    ['ollmchat-android-gtk-fixes-poc', 'ollmapp/ollmchat-android-gtk-fixes-poc'],
++  ]
+ elif android_poc_opt and host_machine.system() == 'android'
+   executables_info = [
+     ['ollmchat-android-poc', 'ollmapp/ollmchat-android-poc'],
+diff --git a/meson_options.txt b/meson_options.txt
+index 79c17f79..a9b15c69 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -19,6 +19,12 @@ option(
+   value: false,
+   description: 'Build only the minimal GTK/Adwaita Android APK shell target'
+ )
++option(
++  'android_gtk_fixes_poc',
++  type: 'boolean',
++  value: false,
++  description: 'Build minimal GTK Android harness for TLS, IME, and paste fixes'
++)
+ option('sysroot', type: 'string', value: '',
+   description: 'Linux dependency root (sqgipkg sysroot). When set, bundled libs such as FAISS are taken from here instead of the host.')
+ option('windows_prefix', type: 'string', value: '',
+diff --git a/ollmapp/android/AndroidMainWindow.vala b/ollmapp/android/AndroidMainWindow.vala
+index 7d21e3ba..ccde3056 100644
+--- a/ollmapp/android/AndroidMainWindow.vala
++++ b/ollmapp/android/AndroidMainWindow.vala
+@@ -217,7 +217,7 @@ namespace OLLMapp
+ 	}
+ 
+ 	[CCode (cname = "ollmapp_configure_android_gio_tls_modules", cheader_filename = "android-gio-tls.h")]
+-	private extern void configure_android_gio_tls_modules();
++	private extern bool configure_android_gio_tls_modules();
+ 
+ 	int main(string[] args)
+ 	{
+diff --git a/ollmapp/android/android-gio-tls.c b/ollmapp/android/android-gio-tls.c
+index 5894e114..c264cd00 100644
+--- a/ollmapp/android/android-gio-tls.c
++++ b/ollmapp/android/android-gio-tls.c
+@@ -1,10 +1,57 @@
+ #include "android-gio-tls.h"
+ 
+ #include <gio/gio.h>
++#include <gio/gtlsbackend.h>
+ #include <dlfcn.h>
+ #include <stdio.h>
+ #include <string.h>
+ 
++/* Scan path in our GLib fork calls ensure_extension_points before loading modules. */
++
++static char tls_backend_type_name[128];
++
++static void
++enable_gio_log_domains (void)
++{
++  if (g_getenv ("G_MESSAGES_DEBUG") == NULL)
++    g_setenv ("G_MESSAGES_DEBUG", "GIO", TRUE);
++}
++
++static void
++remember_backend_type (GTlsBackend *backend)
++{
++  const char *type_name = backend != NULL
++      ? G_OBJECT_TYPE_NAME (backend)
++      : "(null)";
++
++  g_strlcpy (tls_backend_type_name, type_name,
++             sizeof (tls_backend_type_name));
++}
++
++static void
++log_tls_probe (const char *phase, GTlsBackend *backend)
++{
++  const char *module_dir = g_getenv ("GIO_MODULE_DIR");
++  const char *xdg_env = g_getenv ("XDG_DATA_DIRS");
++  const gchar * const *system_data_dirs = g_get_system_data_dirs ();
++  const char *system_data = (system_data_dirs != NULL &&
++                             system_data_dirs[0] != NULL)
++      ? system_data_dirs[0]
++      : "(empty)";
++  gboolean supports = backend != NULL
++      && g_tls_backend_supports_tls (backend);
++
++  g_message (
++      "OLLMchat TLS [%s]: GIO_MODULE_DIR=%s XDG_DATA_DIRS(env)=%s "
++      "g_get_system_data_dirs[0]=%s backend=%s supports_tls=%d",
++      phase,
++      module_dir != NULL ? module_dir : "(unset)",
++      xdg_env != NULL ? xdg_env : "(unset)",
++      system_data,
++      backend != NULL ? G_OBJECT_TYPE_NAME (backend) : "(null)",
++      supports);
++}
++
+ static void
+ preload_openssl_libs_from_dir (const char *dir)
+ {
+@@ -29,6 +76,8 @@ preload_openssl_libs_from_dir (const char *dir)
+ 
+       if (dlopen (path, RTLD_NOW | RTLD_GLOBAL) == NULL)
+         g_warning ("Failed to preload %s for GIO TLS: %s", path, dlerror ());
++      else
++        g_message ("OLLMchat TLS: preloaded %s", path);
+     }
+ }
+ 
+@@ -45,15 +94,34 @@ try_set_gio_module_dir (const char *module_dir)
+   return TRUE;
+ }
+ 
++static gboolean
++backend_is_real (GTlsBackend *backend)
++{
++  const char *type_name;
++
++  if (backend == NULL)
++    return FALSE;
++
++  type_name = G_OBJECT_TYPE_NAME (backend);
++  return type_name != NULL && strcmp (type_name, "GDummyTlsBackend") != 0;
++}
++
+ static gboolean
+ load_gio_tls_modules_from_dir (const char *module_dir)
+ {
++  GTlsBackend *backend;
++
+   if (!try_set_gio_module_dir (module_dir))
+     return FALSE;
+ 
+-  preload_openssl_libs_from_dir (module_dir);
++  g_message ("OLLMchat TLS: scan %s", module_dir);
+   g_io_modules_scan_all_in_directory (module_dir);
+-  return g_tls_backend_get_default () != NULL;
++
++  backend = g_tls_backend_get_default ();
++  remember_backend_type (backend);
++  log_tls_probe ("after-scan", backend);
++
++  return backend_is_real (backend);
+ }
+ 
+ static gboolean
+@@ -69,6 +137,38 @@ module_dir_from_path (const char *path, char **out_dir)
+   return TRUE;
+ }
+ 
++static gboolean
++try_gio_module_dir_from_env (void)
++{
++  const char *module_dir = g_getenv ("GIO_MODULE_DIR");
++
++  if (module_dir == NULL || module_dir[0] == '\0')
++    return FALSE;
++
++  return load_gio_tls_modules_from_dir (module_dir);
++}
++
++static gboolean
++try_gio_module_dir_from_system_data_dirs (void)
++{
++  const gchar * const *data_dirs = g_get_system_data_dirs ();
++  gsize i;
++
++  if (data_dirs == NULL)
++    return FALSE;
++
++  for (i = 0; data_dirs[i] != NULL; i++)
++    {
++      g_autofree char *module_dir =
++          g_build_filename (data_dirs[i], "gio", "modules", NULL);
++
++      if (load_gio_tls_modules_from_dir (module_dir))
++        return TRUE;
++    }
++
++  return FALSE;
++}
++
+ static gboolean
+ try_gio_module_dir_from_xdg_data_dirs (void)
+ {
+@@ -137,18 +237,57 @@ try_preload_openssl_from_native_lib_dir (void)
+   return TRUE;
+ }
+ 
+-void
+-ollmapp_configure_android_gio_tls_modules (void)
++const char *
++ollmapp_android_gio_tls_backend_type_name (void)
+ {
+-  Dl_info info;
++  if (tls_backend_type_name[0] == '\0')
++    return "(unknown)";
+ 
+-  if (g_tls_backend_get_default () != NULL)
+-    return;
++  return tls_backend_type_name;
++}
++
++gboolean
++ollmapp_configure_android_gio_tls_modules (void)
++{
++  GTlsBackend *backend;
+ 
++  enable_gio_log_domains ();
+   try_preload_openssl_from_native_lib_dir ();
+ 
++  /* Path A (gdkandroidruntime.c) may have scanned modules already on the Java
++   * main thread. Check before rescanning. */
++  backend = g_tls_backend_get_default ();
++  remember_backend_type (backend);
++  log_tls_probe ("after-gdk", backend);
++  if (backend_is_real (backend))
++    {
++      if (g_getenv ("GTK_ICON_THEME_NAME") == NULL)
++        g_setenv ("GTK_ICON_THEME_NAME", "Adwaita", TRUE);
++      return TRUE;
++    }
++
++  if (try_gio_module_dir_from_env ())
++    {
++      if (g_getenv ("GTK_ICON_THEME_NAME") == NULL)
++        g_setenv ("GTK_ICON_THEME_NAME", "Adwaita", TRUE);
++      return TRUE;
++    }
++
++  if (try_gio_module_dir_from_system_data_dirs ())
++    {
++      if (g_getenv ("GTK_ICON_THEME_NAME") == NULL)
++        g_setenv ("GTK_ICON_THEME_NAME", "Adwaita", TRUE);
++      return TRUE;
++    }
++
+   if (try_gio_module_dir_from_xdg_data_dirs ())
+-    return;
++    {
++      if (g_getenv ("GTK_ICON_THEME_NAME") == NULL)
++        g_setenv ("GTK_ICON_THEME_NAME", "Adwaita", TRUE);
++      return TRUE;
++    }
++
++  Dl_info info;
+ 
+   if (dladdr ((void *) ollmapp_configure_android_gio_tls_modules, &info) &&
+       info.dli_fname != NULL)
+@@ -158,19 +297,28 @@ ollmapp_configure_android_gio_tls_modules (void)
+           g_build_filename (lib_dir, "gio", "modules", NULL);
+ 
+       if (load_gio_tls_modules_from_dir (module_dir))
+-        return;
++        {
++          if (g_getenv ("GTK_ICON_THEME_NAME") == NULL)
++            g_setenv ("GTK_ICON_THEME_NAME", "Adwaita", TRUE);
++          return TRUE;
++        }
+     }
+ 
+   g_autofree char *maps_dir = NULL;
+   if (find_gio_module_dir_from_maps (&maps_dir) &&
+       load_gio_tls_modules_from_dir (maps_dir))
+-    return;
++    {
++      if (g_getenv ("GTK_ICON_THEME_NAME") == NULL)
++        g_setenv ("GTK_ICON_THEME_NAME", "Adwaita", TRUE);
++      return TRUE;
++    }
+ 
+   g_warning ("GIO TLS backend unavailable after scanning module directories "
+-             "(expected assets/share/gio/modules/libgioopenssl.so with "
+-             "libssl.so and libcrypto.so beside it on device)");
++             "(expected assets/share/gio/modules/libgioopenssl.so on device; "
++             "libssl/libcrypto must be preloaded from lib/arm64-v8a/)");
+ 
+-  /* Windows sqgipkg sets gtk_icon_theme: Adwaita; Android has no gsettings. */
+   if (g_getenv ("GTK_ICON_THEME_NAME") == NULL)
+     g_setenv ("GTK_ICON_THEME_NAME", "Adwaita", TRUE);
++
++  return FALSE;
+ }
+diff --git a/ollmapp/android/android-gio-tls.h b/ollmapp/android/android-gio-tls.h
+index 02272b5d..577aa948 100644
+--- a/ollmapp/android/android-gio-tls.h
++++ b/ollmapp/android/android-gio-tls.h
+@@ -4,6 +4,7 @@
+ 
+ G_BEGIN_DECLS
+ 
+-void ollmapp_configure_android_gio_tls_modules (void);
++gboolean ollmapp_configure_android_gio_tls_modules (void);
++const char *ollmapp_android_gio_tls_backend_type_name (void);
+ 
+ G_END_DECLS
+diff --git a/ollmapp/meson.build b/ollmapp/meson.build
+index 05d1e1b6..ae38f082 100644
+--- a/ollmapp/meson.build
++++ b/ollmapp/meson.build
+@@ -67,6 +67,52 @@ if get_option('android_shell_poc')
+   subdir_done()
+ endif
+ 
++if get_option('android_gtk_fixes_poc')
++  if host_machine.system() == 'android' and not meson.version().version_compare('>=1.8.0')
++    error('android_gtk_fixes_poc on Android requires Meson >= 1.8.0 for android_exe_type')
++  endif
++
++  android_gtk_fixes_poc_deps = [
++    dependency('gtk4'),
++    dependency('gio-2.0'),
++    dependency('glib-2.0'),
++    dependency('gobject-2.0'),
++  ]
++  android_gtk_fixes_poc_vala_args = [
++    '--pkg=gtk4',
++    '--pkg=gio-2.0',
++    '--pkg=glib-2.0',
++    '--pkg=gobject-2.0',
++  ]
++  android_gtk_fixes_poc_sources = [
++    'android/android-gio-tls.c',
++    'android/AndroidGtkFixesPoc.vala',
++  ]
++
++  if host_machine.system() == 'android'
++    executable('ollmchat-android-gtk-fixes-poc',
++      dependencies: android_gtk_fixes_poc_deps,
++      sources: android_gtk_fixes_poc_sources,
++      include_directories: include_directories('android'),
++      vala_args: android_gtk_fixes_poc_vala_args,
++      android_exe_type: 'application',
++      install: true,
++      install_dir: get_option('libdir')
++    )
++  else
++    executable('ollmchat-android-gtk-fixes-poc',
++      dependencies: android_gtk_fixes_poc_deps,
++      sources: android_gtk_fixes_poc_sources,
++      include_directories: include_directories('android'),
++      vala_args: android_gtk_fixes_poc_vala_args,
++      install: true,
++      install_dir: get_option('bindir')
++    )
++  endif
++
++  subdir_done()
++endif
++
+ # Build rpath for executable to find libraries in build directory
+ # This allows running executable without installing libraries
+ build_rpath = ':'.join([
+diff --git a/scripts/android/build-pixiewood-apk.sh b/scripts/android/build-pixiewood-apk.sh
+index fb6c2441..bd9af11b 100755
+--- a/scripts/android/build-pixiewood-apk.sh
++++ b/scripts/android/build-pixiewood-apk.sh
+@@ -82,7 +82,7 @@ needs_pixiewood_prepare() {
+ 
+   if [[ "$PIXIEWOOD_MANIFEST" == *pixiewood-chat-poc.xml ]] &&
+      ! pixiewood_prefix_has_patched_gtk; then
+-    echo "Pixiewood prefix was built without android-bugs GTK patch; rerunning prepare." >&2
++    echo "Pixiewood prefix was built without OLLMchat GTK fork markers; rerunning prepare." >&2
+     return 0
+   fi
+ 
+@@ -305,22 +305,11 @@ install_gio_modules_to_assets() {
+   fi
+ 
+   # libgioopenssl.so is extracted to filesDir/share/gio/modules/ at runtime.
+-  # Android does not add jniLibs to dlopen search for that path, so ship OpenSSL
+-  # runtimes beside the GIO module (same directory dlopen uses for NEEDED libs).
+-  for name in libcrypto.so libssl.so libcrypto.so.3 libssl.so.3; do
+-    if [ -f "$jni_lib/$name" ]; then
+-      cp -a "$jni_lib/$name" "$dest/"
+-    fi
+-  done
+-
+-  if ! compgen -G "$dest/libssl.so*" >/dev/null ||
+-     ! compgen -G "$dest/libcrypto.so*" >/dev/null; then
+-    echo "OpenSSL runtimes missing beside GIO TLS module in $dest" >&2
+-    echo "Expected libssl.so* and libcrypto.so* from $jni_lib" >&2
+-    exit 1
+-  fi
++  # We preload libssl/libcrypto from the native library directory (lib/arm64-v8a)
++  # before GIO TLS backend initialization, so we do not ship OpenSSL runtimes
++  # beside the GIO module in assets.
+ 
+-  printf 'ollmchat-android-bugs-v2\n' \
++  printf 'ollmchat-android-bugs-v4\n' \
+     > "$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/ollmchat-android-runtime.tag"
+ }
+ 
+@@ -538,7 +527,8 @@ run_pixiewood_build() {
+   install_gio_modules_to_assets
+   install_icon_themes_to_assets
+   run_pixiewood_gradle_assemble
+-  "$ROOT_DIR/scripts/android/verify-apk.sh"
++  verify_apk_script="${PIXIEWOOD_VERIFY_APK_SCRIPT:-$ROOT_DIR/scripts/android/verify-apk.sh}"
++  "$verify_apk_script"
+ 
+   if [ "$PIXIEWOOD_STRIP_DEBUG" = "1" ]; then
+     echo "Built debug APK with native debug symbols stripped (PIXIEWOOD_STRIP_DEBUG=1)."
+diff --git a/scripts/android/gtk-subproject.sh b/scripts/android/gtk-subproject.sh
+index 9b6f58d3..5cd4b892 100644
+--- a/scripts/android/gtk-subproject.sh
++++ b/scripts/android/gtk-subproject.sh
+@@ -1,21 +1,26 @@
+ #!/usr/bin/env bash
+-# GTK subproject bootstrap and patch helpers for Android Pixiewood builds.
++# GTK subproject bootstrap for Android Pixiewood builds (roojs/gtk fork).
+ # shellcheck shell=bash
+ 
+ gtk_subproject_patch_marker() {
+   echo "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidollmchatpatch.c"
+ }
+ 
+-gtk_subproject_patch_applied() {
+-  local marker im_context
+-  marker="$(gtk_subproject_patch_marker)"
+-  im_context="$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java"
+-  [ -f "$marker" ] && grep -q 'ollmchat-android-bugs-v2' "$marker" &&
+-    grep -q 'ollmchat-android-popup-v2' "$marker" &&
+-    grep -q 'ollmchat-android-tls-v2' "$marker" &&
++gtk_subproject_tree_has_ollmchat_fixes() {
++  local gtk_dir="$1"
++  local marker="$gtk_dir/gdk/android/gdkandroidollmchatpatch.c"
++  local im_context="$gtk_dir/gdk/android/glue/java/org/gtk/android/ImContext.java"
++
++  [ -f "$marker" ] && grep -q 'ollmchat-android-bugs-v4' "$marker" &&
++    grep -q 'ollmchat-android-popup-v4' "$marker" &&
++    grep -q 'ollmchat-android-tls-v4' "$marker" &&
+     [ -f "$im_context" ] && grep -q 'syncEditableFromGtk' "$im_context"
+ }
+ 
++gtk_subproject_patch_applied() {
++  gtk_subproject_tree_has_ollmchat_fixes "$ROOT_DIR/subprojects/gtk"
++}
++
+ gtk_bootstrap_cache_dir() {
+   echo "$ROOT_DIR/.pixiewood/gtk-subproject-bootstrap"
+ }
+@@ -43,38 +48,40 @@ gtk_subproject_wrap_revision() {
+   sed -n 's/^revision[[:space:]]*=[[:space:]]*//p' "$(gtk_wrap_file)" | head -1
+ }
+ 
+-gtk_subproject_patch_fingerprint() {
+-  sha256sum "$ROOT_DIR/android/pixiewood-wraps/gtk/android-bugs.patch" | awk '{print $1}'
++gtk_subproject_matches_wrap_revision() {
++  local gtk_dir="$ROOT_DIR/subprojects/gtk"
++  local expected actual
++
++  expected="$(gtk_subproject_wrap_revision)"
++  [ -n "$expected" ] || return 1
++  if [ -d "$gtk_dir/.git" ]; then
++    actual="$(git -C "$gtk_dir" rev-parse HEAD 2>/dev/null || true)"
++    [ "$actual" = "$expected" ] && return 0
++  fi
++  actual="$(cat "$gtk_dir/.revision" 2>/dev/null || true)"
++  [ "$actual" = "$expected" ]
+ }
+ 
+ gtk_bootstrap_cache_is_valid() {
+-  local cache expected_rev actual_rev expected_patch actual_patch
++  local cache expected_rev actual_rev
+   cache="$(gtk_bootstrap_cache_dir)"
+   expected_rev="$(gtk_subproject_wrap_revision)"
+-  expected_patch="$(gtk_subproject_patch_fingerprint)"
+ 
+   [ -n "$expected_rev" ] || return 1
+-  [ -n "$expected_patch" ] || return 1
+   actual_rev="$(cat "$cache/.revision" 2>/dev/null || true)"
+-  actual_patch="$(cat "$cache/.patch-hash" 2>/dev/null || true)"
+   [ "$actual_rev" = "$expected_rev" ] &&
+-    [ "$actual_patch" = "$expected_patch" ] &&
+     [ -f "$cache/meson.build" ] &&
+     [ -f "$cache/subprojects/graphene.wrap" ] &&
+-    [ -f "$cache/gdk/android/gdkandroidollmchatpatch.c" ] &&
+-    grep -q 'ollmchat-android-bugs-v2' "$cache/gdk/android/gdkandroidollmchatpatch.c" &&
+-    grep -q 'ollmchat-android-popup-v2' "$cache/gdk/android/gdkandroidollmchatpatch.c" &&
+-    grep -q 'ollmchat-android-tls-v2' "$cache/gdk/android/gdkandroidollmchatpatch.c"
++    gtk_subproject_tree_has_ollmchat_fixes "$cache"
+ }
+ 
+ save_gtk_subproject_bootstrap() {
+-  local gtk_dir cache revision patch_hash
++  local gtk_dir cache revision
+   gtk_dir="$ROOT_DIR/subprojects/gtk"
+   cache="$(gtk_bootstrap_cache_dir)"
+   revision="$(gtk_subproject_wrap_revision)"
+-  patch_hash="$(gtk_subproject_patch_fingerprint)"
+ 
+-  if [ -z "$patch_hash" ] ||
++  if [ -z "$revision" ] ||
+      ! gtk_subproject_is_complete ||
+      ! gtk_subproject_patch_applied; then
+     return 1
+@@ -84,7 +91,6 @@ save_gtk_subproject_bootstrap() {
+   mkdir -p "$(dirname "$cache")"
+   cp -a "$gtk_dir" "$cache"
+   printf '%s\n' "$revision" > "$cache/.revision"
+-  printf '%s\n' "$patch_hash" > "$cache/.patch-hash"
+ }
+ 
+ restore_gtk_subproject_from_bootstrap() {
+@@ -111,21 +117,32 @@ clone_gtk_subproject_from_wrap() {
+   git clone --depth 1 "$url" "$gtk_dir"
+   git -C "$gtk_dir" fetch --depth 1 origin "$revision"
+   git -C "$gtk_dir" checkout "$revision"
++  printf '%s\n' "$revision" > "$gtk_dir/.revision"
++}
++
++gtk_subproject_checkout_ready() {
++  gtk_subproject_is_complete &&
++    gtk_subproject_patch_applied &&
++    gtk_subproject_matches_wrap_revision
+ }
+ 
+ ensure_gtk_subproject_checked_out() {
+   local gtk_dir="$ROOT_DIR/subprojects/gtk"
+ 
+-  if gtk_subproject_is_complete; then
+-    if gtk_subproject_patch_applied || [ ! -f "$(gtk_subproject_patch_marker)" ]; then
+-      return 0
+-    fi
+-    echo "GTK patch marker outdated; discarding stale bootstrap cache." >&2
+-    rm -rf "$(gtk_bootstrap_cache_dir)"
++  if gtk_subproject_checkout_ready; then
+     return 0
+   fi
+ 
+-  if [ -d "$gtk_dir" ]; then
++  if gtk_subproject_is_complete &&
++     [ -f "$(gtk_subproject_patch_marker)" ] &&
++     ! gtk_subproject_patch_applied; then
++    echo "GTK fork markers outdated; discarding checkout and bootstrap cache." >&2
++    rm -rf "$gtk_dir" "$(gtk_bootstrap_cache_dir)"
++  elif gtk_subproject_is_complete &&
++       ! gtk_subproject_matches_wrap_revision; then
++    echo "GTK fork revision mismatch; discarding checkout." >&2
++    rm -rf "$gtk_dir"
++  elif [ -d "$gtk_dir" ] && ! gtk_subproject_is_complete; then
+     echo "GTK subproject incomplete; replacing it." >&2
+     rm -rf "$gtk_dir"
+   fi
+@@ -133,57 +150,23 @@ ensure_gtk_subproject_checked_out() {
+   if gtk_bootstrap_cache_is_valid; then
+     echo "Restoring GTK from bootstrap cache." >&2
+     restore_gtk_subproject_from_bootstrap
+-    if gtk_subproject_is_complete; then
++    if gtk_subproject_checkout_ready; then
+       return 0
+     fi
+-    echo "Bootstrap cache copy was incomplete; discarding cache." >&2
++    echo "Bootstrap cache copy was incomplete or stale; discarding cache." >&2
+     rm -rf "$gtk_dir" "$(gtk_bootstrap_cache_dir)"
+   fi
+ 
+   clone_gtk_subproject_from_wrap
+ 
+-  if ! gtk_subproject_is_complete; then
+-    echo "GTK checkout is still incomplete." >&2
++  if ! gtk_subproject_checkout_ready; then
++    echo "GTK fork checkout is missing OLLMchat Android fixes or wrong revision." >&2
+     exit 1
+   fi
+ }
+ 
+ ensure_gtk_subproject_patched() {
+-  local gtk_dir="$ROOT_DIR/subprojects/gtk"
+-  local marker patch
+-  marker="$(gtk_subproject_patch_marker)"
+-  patch="$ROOT_DIR/android/pixiewood-wraps/gtk/android-bugs.patch"
+-
+-  if gtk_subproject_patch_applied; then
+-    save_gtk_subproject_bootstrap || true
+-    return 0
+-  fi
+-
+   ensure_gtk_subproject_checked_out
+-
+-  if [ ! -f "$patch" ]; then
+-    echo "android-bugs.patch missing: $patch" >&2
+-    exit 1
+-  fi
+-
+-  echo "Applying android-bugs.patch to GTK subproject." >&2
+-  patch -p1 -d "$gtk_dir" --forward --batch -s < "$patch" || true
+-
+-  if gtk_subproject_patch_applied; then
+-    save_gtk_subproject_bootstrap || true
+-    return 0
+-  fi
+-
+-  echo "Could not patch GTK subproject; refreshing from bootstrap or gtk.wrap." >&2
+-  rm -rf "$gtk_dir"
+-  ensure_gtk_subproject_checked_out
+-  patch -p1 -d "$gtk_dir" --forward --batch -s < "$patch" || true
+-
+-  if ! gtk_subproject_patch_applied; then
+-    echo "android-bugs.patch did not apply after GTK refresh." >&2
+-    exit 1
+-  fi
+-
+   save_gtk_subproject_bootstrap || true
+ }
+ 
+diff --git a/scripts/android/pixiewood-cache.sh b/scripts/android/pixiewood-cache.sh
+index be28cf6f..aeaa74c5 100644
+--- a/scripts/android/pixiewood-cache.sh
++++ b/scripts/android/pixiewood-cache.sh
+@@ -45,7 +45,7 @@ pixiewood_prefix_libgtk_has_patch_tag() {
+   libgtk="$(
+     find "$ROOT_DIR/.pixiewood/bin-aarch64" -name 'libgtk-4.so' -print -quit 2>/dev/null
+   )"
+-  [ -n "$libgtk" ] && strings "$libgtk" 2>/dev/null | grep -q 'ollmchat-android-bugs-v2'
++  [ -n "$libgtk" ] && strings "$libgtk" 2>/dev/null | grep -q 'ollmchat-android-bugs-v4'
+ }
+ 
+ pixiewood_prefix_has_patched_gtk() {
+diff --git a/scripts/android/regression/test-r03-gtk-patch-marker.sh b/scripts/android/regression/test-r03-gtk-patch-marker.sh
+index 70fc05c9..b1b864f9 100755
+--- a/scripts/android/regression/test-r03-gtk-patch-marker.sh
++++ b/scripts/android/regression/test-r03-gtk-patch-marker.sh
+@@ -1,35 +1,38 @@
+ #!/usr/bin/env bash
+-# R03 — android-bugs.patch must apply; marker file proves patch is in the tree.
++# R03 — roojs/gtk fork checkout must include OLLMchat Android runtime fixes.
+ set -euo pipefail
+ 
+ ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+ export ROOT_DIR
+-PATCH="$ROOT_DIR/android/pixiewood-wraps/gtk/android-bugs.patch"
+ MARKER="$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidollmchatpatch.c"
++WRAP="$ROOT_DIR/android/pixiewood-wraps/gtk/gtk.wrap"
+ 
+ # shellcheck source=gtk-subproject.sh
+ source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
+ 
+-[ -f "$PATCH" ] || { echo "missing patch: $PATCH" >&2; exit 1; }
++grep -q 'github.com/roojs/gtk.git' "$WRAP" ||
++  { echo "gtk.wrap must point at roojs/gtk fork: $WRAP" >&2; exit 1; }
+ 
+ prepare_android_subprojects_before_meson
+ 
+-[ -f "$MARKER" ] || { echo "patch marker missing: $MARKER" >&2; exit 1; }
+-grep -q 'ollmchat-android-bugs-v2' "$MARKER" ||
+-  { echo "patch marker missing ollmchat-android-bugs-v2 tag" >&2; exit 1; }
+-grep -q 'ollmchat-android-popup-v2' "$MARKER" ||
+-  { echo "patch marker missing ollmchat-android-popup-v2 tag" >&2; exit 1; }
+-grep -q 'ollmchat-android-tls-v2' "$MARKER" ||
+-  { echo "patch marker missing ollmchat-android-tls-v2 tag" >&2; exit 1; }
++gtk_subproject_matches_wrap_revision ||
++  { echo "subprojects/gtk revision does not match gtk.wrap" >&2; exit 1; }
++
++[ -f "$MARKER" ] || { echo "fork marker missing: $MARKER" >&2; exit 1; }
++grep -q 'ollmchat-android-bugs-v4' "$MARKER" ||
++  { echo "fork marker missing ollmchat-android-bugs-v4 tag" >&2; exit 1; }
++grep -q 'ollmchat-android-popup-v4' "$MARKER" ||
++  { echo "fork marker missing ollmchat-android-popup-v4 tag" >&2; exit 1; }
++grep -q 'ollmchat-android-tls-v4' "$MARKER" ||
++  { echo "fork marker missing ollmchat-android-tls-v4 tag" >&2; exit 1; }
+ grep -q 'g_debug' "$MARKER" ||
+-  { echo "patch marker missing g_debug reference" >&2; exit 1; }
++  { echo "fork marker missing g_debug reference" >&2; exit 1; }
+ grep -q '#include <glib.h>' "$MARKER" ||
+-  { echo "patch marker missing glib.h include for g_debug" >&2; exit 1; }
++  { echo "fork marker missing glib.h include for g_debug" >&2; exit 1; }
+ tail -1 "$MARKER" | grep -q '^}' ||
+-  { echo "patch marker file truncated (missing closing brace)" >&2; exit 1; }
++  { echo "fork marker file truncated (missing closing brace)" >&2; exit 1; }
+ 
+-# ImContext.java and gdkandroidpopup.c hunks must be present when patch applied.
+ grep -q 'syncEditableFromGtk' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
+   { echo "ImContext.java editable sync helper missing" >&2; exit 1; }
+ 
+-echo "R03 gtk-patch-marker: OK"
++echo "R03 gtk-fork-marker: OK"
+diff --git a/scripts/android/regression/test-r11-gio-openssl-deps.sh b/scripts/android/regression/test-r11-gio-openssl-deps.sh
+index 472f0288..2f615c2f 100755
+--- a/scripts/android/regression/test-r11-gio-openssl-deps.sh
++++ b/scripts/android/regression/test-r11-gio-openssl-deps.sh
+@@ -1,21 +1,15 @@
+ #!/usr/bin/env bash
+-# R11 — OpenSSL runtimes must ship beside libgioopenssl.so in APK assets.
++# R11 — GIO TLS backend must preload OpenSSL from native lib dir.
+ set -euo pipefail
+ 
+ ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+ BUILD_SCRIPT="$ROOT_DIR/scripts/android/build-pixiewood-apk.sh"
+ 
+-grep -q 'libssl.so' "$BUILD_SCRIPT" ||
+-  { echo "build-pixiewood-apk.sh must copy libssl beside GIO modules" >&2; exit 1; }
+-grep -q 'libcrypto.so' "$BUILD_SCRIPT" ||
+-  { echo "build-pixiewood-apk.sh must copy libcrypto beside GIO modules" >&2; exit 1; }
+ grep -q 'ollmchat-android-runtime.tag' "$BUILD_SCRIPT" ||
+   { echo "build-pixiewood-apk.sh must write ollmchat-android-runtime.tag" >&2; exit 1; }
+ 
+-grep -q 'libssl.so' "$ROOT_DIR/scripts/android/verify-apk.sh" ||
+-  { echo "verify-apk.sh must require libssl in assets/share/gio/modules/" >&2; exit 1; }
+-grep -q 'ollmchat-android-bugs-v2' "$ROOT_DIR/scripts/android/verify-apk.sh" ||
+-  { echo "verify-apk.sh must check ollmchat-android-bugs-v2 tag" >&2; exit 1; }
++grep -q 'ollmchat-android-bugs-v4' "$ROOT_DIR/scripts/android/verify-apk.sh" ||
++  { echo "verify-apk.sh must check ollmchat-android-bugs-v4 tag" >&2; exit 1; }
+ 
+ grep -q 'RTLD_GLOBAL' "$ROOT_DIR/ollmapp/android/android-gio-tls.c" ||
+   { echo "android-gio-tls.c must preload OpenSSL with RTLD_GLOBAL" >&2; exit 1; }
+diff --git a/scripts/android/test-gtk-subproject-readiness.sh b/scripts/android/test-gtk-subproject-readiness.sh
+index 5787f1c9..d3dd48e4 100755
+--- a/scripts/android/test-gtk-subproject-readiness.sh
++++ b/scripts/android/test-gtk-subproject-readiness.sh
+@@ -53,7 +53,7 @@ if ! gtk_subproject_is_complete; then
+ fi
+ 
+ if [ ! -f "$(gtk_subproject_patch_marker)" ]; then
+-  echo "android-bugs.patch marker missing after bootstrap restore." >&2
++  echo "android GTK fork marker missing after bootstrap restore." >&2
+   exit 1
+ fi
+ 
+diff --git a/scripts/android/validate-restored-caches.sh b/scripts/android/validate-restored-caches.sh
+index 4277e62d..b4cb5411 100755
+--- a/scripts/android/validate-restored-caches.sh
++++ b/scripts/android/validate-restored-caches.sh
+@@ -42,7 +42,7 @@ discard_subprojects_gtk_if_stale() {
+   fi
+ 
+   if [ -d "$gtk_dir" ] && gtk_subproject_is_complete && ! gtk_subproject_patch_applied; then
+-    echo "Discarding subprojects/gtk (android-bugs.patch not fully applied)." >&2
++    echo "Discarding subprojects/gtk (roojs/gtk fork missing OLLMchat Android fixes)." >&2
+     rm -rf "$gtk_dir"
+   fi
+ }
+diff --git a/scripts/android/verify-apk.sh b/scripts/android/verify-apk.sh
+index 281bd106..d50c76c7 100755
+--- a/scripts/android/verify-apk.sh
++++ b/scripts/android/verify-apk.sh
+@@ -60,14 +60,14 @@ apk_extract="$(mktemp -d)"
+ trap 'rm -f "$apk_list"; rm -rf "$apk_extract"' EXIT
+ unzip -q "$APK" "lib/arm64-v8a/libgtk-4.so" "classes.dex" "assets/share/ollmchat-android-runtime.tag" -d "$apk_extract"
+ 
+-if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'ollmchat-android-bugs-v2'; then
+-  echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v2)." >&2
++if ! grep -q 'ollmchat-android-bugs-v4' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
++  echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v4)." >&2
+   echo "Pixiewood compile cache should have been discarded automatically; check pixiewood_prefix_has_patched_gtk." >&2
+   exit 1
+ fi
+ 
+-if ! grep -q 'ollmchat-android-bugs-v2' "$apk_extract/assets/share/ollmchat-android-runtime.tag"; then
+-  echo "APK missing assets/share/ollmchat-android-runtime.tag (ollmchat-android-bugs-v2)." >&2
++if ! grep -q 'ollmchat-android-bugs-v4' "$apk_extract/assets/share/ollmchat-android-runtime.tag"; then
++  echo "APK missing assets/share/ollmchat-android-runtime.tag (ollmchat-android-bugs-v4)." >&2
+   exit 1
+ fi
+ 
+@@ -75,32 +75,36 @@ apk_gio_modules="$(mktemp -d)"
+ trap 'rm -f "$apk_list"; rm -rf "$apk_extract" "$apk_gio_modules"' EXIT
+ unzip -q "$APK" "assets/share/gio/modules/*" -d "$apk_gio_modules"
+ 
+-if ! compgen -G "$apk_gio_modules/assets/share/gio/modules/libssl.so*" >/dev/null; then
+-  echo "APK missing libssl.so beside GIO TLS module (assets/share/gio/modules/)." >&2
++#
++# OpenSSL runtimes (libssl.so/libcrypto.so) must not live under
++# assets/share/gio/modules/, because g_io_modules_scan_all_in_directory()
++# treats every .so there as a GIO module.
++if compgen -G "$apk_gio_modules/assets/share/gio/modules/libssl.so*" >/dev/null; then
++  echo "APK must not ship libssl.so under assets/share/gio/modules/." >&2
+   exit 1
+ fi
+ 
+-if ! compgen -G "$apk_gio_modules/assets/share/gio/modules/libcrypto.so*" >/dev/null; then
+-  echo "APK missing libcrypto.so beside GIO TLS module (assets/share/gio/modules/)." >&2
++if compgen -G "$apk_gio_modules/assets/share/gio/modules/libcrypto.so*" >/dev/null; then
++  echo "APK must not ship libcrypto.so under assets/share/gio/modules/." >&2
+   exit 1
+ fi
+ 
+-if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'ollmchat-android-popup-v2'; then
+-  echo "libgtk-4.so missing android popup patch tag (ollmchat-android-popup-v2)." >&2
++if ! grep -q 'ollmchat-android-popup-v4' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
++  echo "libgtk-4.so missing android popup patch tag (ollmchat-android-popup-v4)." >&2
+   exit 1
+ fi
+ 
+-if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'ollmchat-android-tls-v2'; then
+-  echo "libgtk-4.so missing android TLS preload patch tag (ollmchat-android-tls-v2)." >&2
++if ! grep -q 'ollmchat-android-tls-v4' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
++  echo "libgtk-4.so missing android TLS preload patch tag (ollmchat-android-tls-v4)." >&2
+   exit 1
+ fi
+ 
+-if ! strings "$apk_extract/classes.dex" | grep -q 'lambda\$deleteSurroundingText'; then
++if ! grep -q 'lambda\$deleteSurroundingText' < <(strings "$apk_extract/classes.dex"); then
+   echo "classes.dex missing patched ImContext deleteSurroundingText handler." >&2
+   exit 1
+ fi
+ 
+-if ! strings "$apk_extract/classes.dex" | grep -q 'syncEditableFromGtk'; then
++if ! grep -q 'syncEditableFromGtk' < <(strings "$apk_extract/classes.dex"); then
+   echo "classes.dex missing ImContext.syncEditableFromGtk (hold-backspace IME sync)." >&2
+   exit 1
+ fi

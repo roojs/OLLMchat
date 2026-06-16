@@ -1,7 +1,6 @@
 [wrap-git]
-url = https://gitlab.gnome.org/GNOME/gtk.git
-# Pin upstream so android-bugs.patch applies reproducibly (base for roojs/gtk fork).
-revision = 3ffe53adf8239b4de741141175fffd6460657acb
+url = https://github.com/roojs/gtk.git
+revision = af83724a960092d7e522ccd200affc196f59d2a0
 depth = 1
 
 [provide]

@@ -14,10 +14,23 @@ fs = import('fs')
 
 android_shell_poc = get_option('android_shell_poc')
 android_poc_opt = get_option('android_poc')
-android_cross_build = host_machine.system() == 'android' and (android_shell_poc or android_poc_opt)
+android_gtk_fixes_poc = get_option('android_gtk_fixes_poc')
+android_cross_build = host_machine.system() == 'android' and (
+  android_shell_poc or android_poc_opt or android_gtk_fixes_poc
+)
 
-if android_shell_poc and android_poc_opt
-  error('android_shell_poc and android_poc are mutually exclusive')
+android_poc_count = 0
+if android_shell_poc
+  android_poc_count += 1
+endif
+if android_poc_opt
+  android_poc_count += 1
+endif
+if android_gtk_fixes_poc
+  android_poc_count += 1
+endif
+if android_poc_count > 1
+  error('Only one of android_shell_poc, android_poc, android_gtk_fixes_poc may be set')
 endif
 
 if android_cross_build
@@ -113,6 +126,8 @@ endif
 # Build libraries in dependency order
 if android_shell_poc
   subdir('ollmapp')         # Minimal Android APK shell target only
+elif android_gtk_fixes_poc
+  subdir('ollmapp')         # GTK TLS/IME/paste harness only
 elif android_poc_opt and host_machine.system() == 'android'
   subdir('libocmarkdown')
   subdir('libocsqlite')
@@ -166,6 +181,10 @@ exec "$EXECUTABLE" "$@"
 if android_shell_poc
   executables_info = [
     ['ollmchat-android-shell-poc', 'ollmapp/ollmchat-android-shell-poc'],
+  ]
+elif android_gtk_fixes_poc
+  executables_info = [
+    ['ollmchat-android-gtk-fixes-poc', 'ollmapp/ollmchat-android-gtk-fixes-poc'],
   ]
 elif android_poc_opt and host_machine.system() == 'android'
   executables_info = [

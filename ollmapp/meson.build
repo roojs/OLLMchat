@@ -67,6 +67,52 @@ if get_option('android_shell_poc')
   subdir_done()
 endif
 
+if get_option('android_gtk_fixes_poc')
+  if host_machine.system() == 'android' and not meson.version().version_compare('>=1.8.0')
+    error('android_gtk_fixes_poc on Android requires Meson >= 1.8.0 for android_exe_type')
+  endif
+
+  android_gtk_fixes_poc_deps = [
+    dependency('gtk4'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+  ]
+  android_gtk_fixes_poc_vala_args = [
+    '--pkg=gtk4',
+    '--pkg=gio-2.0',
+    '--pkg=glib-2.0',
+    '--pkg=gobject-2.0',
+  ]
+  android_gtk_fixes_poc_sources = [
+    'android/android-gio-tls.c',
+    'android/AndroidGtkFixesPoc.vala',
+  ]
+
+  if host_machine.system() == 'android'
+    executable('ollmchat-android-gtk-fixes-poc',
+      dependencies: android_gtk_fixes_poc_deps,
+      sources: android_gtk_fixes_poc_sources,
+      include_directories: include_directories('android'),
+      vala_args: android_gtk_fixes_poc_vala_args,
+      android_exe_type: 'application',
+      install: true,
+      install_dir: get_option('libdir')
+    )
+  else
+    executable('ollmchat-android-gtk-fixes-poc',
+      dependencies: android_gtk_fixes_poc_deps,
+      sources: android_gtk_fixes_poc_sources,
+      include_directories: include_directories('android'),
+      vala_args: android_gtk_fixes_poc_vala_args,
+      install: true,
+      install_dir: get_option('bindir')
+    )
+  endif
+
+  subdir_done()
+endif
+
 # Build rpath for executable to find libraries in build directory
 # This allows running executable without installing libraries
 build_rpath = ':'.join([
