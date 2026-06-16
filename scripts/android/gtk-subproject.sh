@@ -11,6 +11,8 @@ gtk_subproject_patch_applied() {
   marker="$(gtk_subproject_patch_marker)"
   im_context="$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java"
   [ -f "$marker" ] && grep -q 'ollmchat-android-bugs-v2' "$marker" &&
+    grep -q 'ollmchat-android-popup-v2' "$marker" &&
+    grep -q 'ollmchat-android-tls-v2' "$marker" &&
     [ -f "$im_context" ] && grep -q 'syncEditableFromGtk' "$im_context"
 }
 
@@ -60,7 +62,9 @@ gtk_bootstrap_cache_is_valid() {
     [ -f "$cache/meson.build" ] &&
     [ -f "$cache/subprojects/graphene.wrap" ] &&
     [ -f "$cache/gdk/android/gdkandroidollmchatpatch.c" ] &&
-    grep -q 'ollmchat-android-bugs-v2' "$cache/gdk/android/gdkandroidollmchatpatch.c"
+    grep -q 'ollmchat-android-bugs-v2' "$cache/gdk/android/gdkandroidollmchatpatch.c" &&
+    grep -q 'ollmchat-android-popup-v2' "$cache/gdk/android/gdkandroidollmchatpatch.c" &&
+    grep -q 'ollmchat-android-tls-v2' "$cache/gdk/android/gdkandroidollmchatpatch.c"
 }
 
 save_gtk_subproject_bootstrap() {

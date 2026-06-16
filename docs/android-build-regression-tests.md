@@ -28,7 +28,9 @@ GitHub Actions runs the same suite in `.github/workflows/android-build-reusable.
 | **R07** | [27588239244](https://github.com/roojs/OLLMchat/actions/runs/27588239244) (runtime) | TLS / paste / delete fixes missing from APK despite green build | `regression/test-r07-apk-runtime-patches.sh` (runs `verify-apk.sh` binary checks) |
 | **R08** | (restore-keys partial hit) | Old subprojects cache restored after `PIXIEWOOD_DEPS_HASH` change | `regression/test-r08-stale-restored-cache-discard.sh` |
 | **R09** | [27590212384](https://github.com/roojs/OLLMchat/actions/runs/27590212384) | `validate-restored-caches.sh: CACHE_MATCHED_PIXIEWOOD_BUILD_KEY: unbound variable` | `regression/test-r09-validate-caches-partial-env.sh` |
+| **R10** | [27613430785](https://github.com/roojs/OLLMchat/actions/runs/27613430785), [27613805784](https://github.com/roojs/OLLMchat/actions/runs/27613805784) | `gdkandroidollmchatpatch.c` truncated or `g_debug` undeclared | covered by extended `test-r03-gtk-patch-marker.sh` |
 | **R11** | [27614072148](https://github.com/roojs/OLLMchat/actions/runs/27614072148) (runtime) | TLS still broken: `libgioopenssl.so` cannot load `libssl` from `filesDir/share/gio/modules/` | `regression/test-r11-gio-openssl-deps.sh` + `verify-apk.sh` OpenSSL asset checks |
+| **R12** | [27615842437](https://github.com/roojs/OLLMchat/actions/runs/27615842437) | `verify-apk.sh` grepped C comment `touch selection bubbles` (not in stripped `libgtk-4.so`) | `regression/test-r12-verify-apk-libgtk-strings.sh` |
 
 When a **new** CI failure appears:
 
@@ -78,11 +80,16 @@ After a local or CI build, `verify-apk.sh` checks:
 
 - `assets/share/gio/modules/libgioopenssl.so` is packaged with `libssl.so*` and `libcrypto.so*` beside it
 - `assets/share/ollmchat-android-runtime.tag` contains `ollmchat-android-bugs-v2`
-- `libgtk-4.so` contains `ollmchat-android-bugs-v2` and `touch selection bubbles` (popup geometry patch)
+- `libgtk-4.so` contains `ollmchat-android-bugs-v2`, `ollmchat-android-popup-v2`, and `ollmchat-android-tls-v2` (patch marker string literals)
 - `classes.dex` uses `deleteSurroundingText` lambda, not `sendKeyEvent` IME deletes
 - `classes.dex` contains `syncEditableFromGtk` (IME `Editable` kept in sync for hold-backspace)
 
 Stale compile caches that skip GTK rebuild fail R07 even when setup/configure pass.
+
+### R12 — verify-apk libgtk string literals
+Every `strings … libgtk-4.so | grep` pattern in `verify-apk.sh` must appear as a C
+string literal in `gdkandroidollmchatpatch.c`. C source comments are not present in
+stripped release libraries (CI run 27615842437).
 
 ---
 

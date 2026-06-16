@@ -85,8 +85,13 @@ if ! compgen -G "$apk_gio_modules/assets/share/gio/modules/libcrypto.so*" >/dev/
   exit 1
 fi
 
-if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'touch selection bubbles'; then
-  echo "libgtk-4.so missing nested-dialog popup geometry patch." >&2
+if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'ollmchat-android-popup-v2'; then
+  echo "libgtk-4.so missing android popup patch tag (ollmchat-android-popup-v2)." >&2
+  exit 1
+fi
+
+if ! strings "$apk_extract/lib/arm64-v8a/libgtk-4.so" | grep -q 'ollmchat-android-tls-v2'; then
+  echo "libgtk-4.so missing android TLS preload patch tag (ollmchat-android-tls-v2)." >&2
   exit 1
 fi
 

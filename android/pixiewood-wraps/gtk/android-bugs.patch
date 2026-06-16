@@ -212,7 +212,7 @@ new file mode 100644
 index 0000000..1691cee
 --- /dev/null
 +++ b/gdk/android/gdkandroidollmchatpatch.c
-@@ -0,0 +1,18 @@
+@@ -0,0 +1,23 @@
 +/*
 + * OLLMchat android-bugs.patch compile marker.
 + * CI/build logs should contain: gdkandroidollmchatpatch.c.o
@@ -222,12 +222,17 @@ index 0000000..1691cee
 +#include "config.h"
 +#include <glib.h>
 +
-+/* Survives in libgtk-4.so; verify-apk.sh greps for this tag. */
++/* Survives in libgtk-4.so; verify-apk.sh greps for these tags. */
 +const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v2";
++const char gdk_android_ollmchat_popup_tag[] = "ollmchat-android-popup-v2";
++const char gdk_android_ollmchat_tls_tag[] = "ollmchat-android-tls-v2";
 +
 +static void
 +gdk_android_ollmchat_patch_marker (void)
 +{
-+  /* Keep the tag referenced so release builds do not drop it. */
-+  g_debug ("%s", gdk_android_ollmchat_bugs_tag);
++  /* Keep the tags referenced so release builds do not drop them. */
++  g_debug ("%s %s %s",
++           gdk_android_ollmchat_bugs_tag,
++           gdk_android_ollmchat_popup_tag,
++           gdk_android_ollmchat_tls_tag);
 +}
