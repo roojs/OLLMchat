@@ -36,3 +36,8 @@ libocsqlite/*.c
 .vscode/
 .cursorindexingignore
 .specstory/
+
+/LOCAL_APPDATA_FONTCONFIG_CACHE/
+/*.deb
+/research-current-task-flow-implementation.md
+/task_list*.md
