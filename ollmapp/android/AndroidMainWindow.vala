@@ -39,7 +39,6 @@ namespace OLLMapp
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
 		private AndroidBootstrapConnectionAdd? bootstrap_dialog = null;
 		private uint history_leave_ignore_timeout_id = 0;
-		private string[] agent_picker_names = {};
 		private Gtk.Label? startup_status_label = null;
 
 		/**
@@ -406,58 +405,92 @@ namespace OLLMapp
 				return;
 			}
 
-			var string_list = new Gtk.StringList (null);
-			string[] picker_names = {};
-			var selected_index = 0u;
-			var i = 0u;
-			foreach (var entry in this.history_manager.agent_factories.entries) {
-				string_list.append (entry.value.title);
-				picker_names += entry.key;
-				if (entry.key == this.history_manager.session.agent_name) {
+			var agent_store = new GLib.ListStore (typeof (OLLMchat.Agent.Factory));
+
+			var selected_index = 0;
+			var i = 0;
+			foreach (var factory in this.history_manager.agent_factories.values) {
+				agent_store.append (factory);
+				if (factory.name == this.history_manager.session.agent_name) {
 					selected_index = i;
 				}
 				i++;
 			}
-			this.agent_picker_names = picker_names;
 
-			this.agent_dropdown.model = string_list;
+			var list_factory = new Gtk.SignalListItemFactory ();
+			list_factory.setup.connect ((item) => {
+				var list_item = item as Gtk.ListItem;
+				if (list_item == null) {
+					return;
+				}
+
+				var label = new Gtk.Label ("") {
+					halign = Gtk.Align.START
+				};
+				list_item.set_data<Gtk.Label> ("label", label);
+				list_item.child = label;
+			});
+
+			list_factory.bind.connect ((item) => {
+				var list_item = item as Gtk.ListItem;
+				if (list_item == null || list_item.item == null) {
+					return;
+				}
+				var agent_factory = list_item.item as OLLMchat.Agent.Factory;
+				var label = list_item.get_data<Gtk.Label> ("label");
+				if (label == null) {
+					return;
+				}
+				label.label = agent_factory.title;
+				label.tooltip_text = agent_factory.long_title;
+			});
+
+			this.agent_dropdown.model = agent_store;
+			this.agent_dropdown.set_factory (list_factory);
+			this.agent_dropdown.set_list_factory (list_factory);
 
 			this.agent_dropdown.notify["selected"].connect (() => {
 				if (this.agent_dropdown.selected == Gtk.INVALID_LIST_POSITION) {
 					return;
 				}
-				if (this.agent_dropdown.selected >= this.agent_picker_names.length) {
-					return;
-				}
-				var agent_name = this.agent_picker_names[
-					this.agent_dropdown.selected];
+
+				var factory = (this.agent_dropdown.model as GLib.ListStore)
+					.get_item (this.agent_dropdown.selected)
+					as OLLMchat.Agent.Factory;
+				this.agent_dropdown.tooltip_text = factory.long_title;
+
 				try {
 					if (this.history_manager.session.fid == null
 					    || this.history_manager.session.fid == "") {
 						this.history_manager.session.activate_agent (
-							agent_name);
+							factory.name);
 						return;
 					}
 					this.history_manager.activate_agent (
-						this.history_manager.session.fid, agent_name);
+						this.history_manager.session.fid, factory.name);
 				} catch (GLib.Error e) {
 					GLib.warning (
 						"Failed to activate agent '%s': %s",
-						agent_name, e.message);
+						factory.name, e.message);
 				}
 			});
 
 			this.agent_dropdown.selected = selected_index;
 
 			this.history_manager.session_activated.connect ((session) => {
+				var store = this.agent_dropdown.model as GLib.ListStore;
+				if (store == null) {
+					return;
+				}
 				var factory = this.history_manager.get_active_agent ();
 				factory.activate.begin (this, (obj, res) => {
 					factory.activate.end (res);
 				});
-				var agent_index = 0u;
-				for (var j = 0; j < this.agent_picker_names.length; j++) {
-					if (this.agent_picker_names[j] == session.agent_name) {
-						agent_index = (uint) j;
+				var agent_index = 0;
+				for (var j = 0; j < store.get_n_items (); j++) {
+					if (((OLLMchat.Agent.Factory) store.get_item (j)).name
+					    == session.agent_name) {
+						agent_index = j;
 						break;
 					}
 				}

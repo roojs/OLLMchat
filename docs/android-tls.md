@@ -56,7 +56,7 @@ No `libgioopenssl.so` in assets. No `GIO_MODULE_DIR`. No `g_setenv` for TLS or C
 
 ## What not to do
 
-These approaches were tried or rejected by gtk-android-builder maintainers:
+These approaches were tried and rightly rejected by gtk-android-builder maintainers: (yeap it's LLM slop - but the tasty stuff)
 
 - Put TLS init in **GDK** (`gdk_android_scan_gio_modules`, `g_setenv("GIO_MODULE_DIR")`) — TLS is the app’s job.
 - Ship **`libgioopenssl.so`** under shared APK assets — breaks multi-arch / split APKs; use static load instead.

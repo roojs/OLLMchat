@@ -240,15 +240,22 @@ namespace OLLMchatGtk
 		{
 			this.streaming = streaming;
 			this.chat_input.visible = !streaming;
+			this.input_column.visible = !streaming;
 			this.chat_input.set_input_editable(!streaming);
 			this.chat_input.set_input_sensitive(!streaming);
 			this.chat_bar.update_action_button_state(streaming);
 
 			if (streaming) {
 				this.paned.set_cursor(new Gdk.Cursor.from_name("default", null));
-				int h = this.paned.get_allocated_height();
-				if (h > 0) {
-					int pos = this.paned.get_position();
+				GLib.Idle.add(() => {
+					if (!this.streaming) {
+						return false;
+					}
+					var h = this.paned.get_allocated_height();
+					if (h <= 0) {
+						return true;
+					}
+					var pos = this.paned.get_position();
 					this.saved_bottom_height = (int) (h - pos);
 					if (this.saved_bottom_height < this.min_bottom_size) {
 						this.saved_bottom_height = this.min_bottom_size;
@@ -259,7 +266,8 @@ namespace OLLMchatGtk
 						this.locking_paned_position = false;
 						return false;
 					});
-				}
+					return false;
+				});
 				return;
 			}
 			this.paned.set_cursor(null);
