@@ -124,8 +124,21 @@ namespace OLLMapp
 					}
 				}
 
-				// initialize_model already verified the saved model via /api/tags;
-				// skip ensure_model_usage (loads /api/show for every model on server).
+				try {
+					yield this.window.history_manager.ensure_model_usage();
+				} catch (GLib.Error e) {
+					GLib.warning(
+						"AndroidStartup: model verification failed: %s",
+						e.message);
+					if (!(yield this.initialize_model(config, working_conn))) {
+						yield this.show_settings(
+							"No chat model found (only embedding models available). "
+							+ "Please add or select a model.",
+							"models"
+						);
+						return false;
+					}
+				}
 
 				break;
 			}
@@ -185,137 +198,105 @@ namespace OLLMapp
 			var default_model = config.usage.get("default_model")
 				as OLLMchat.Settings.ModelUsage;
 
-			if (default_model != null && default_model.model != "") {
-				if (default_model.connection == "") {
-					default_model.connection = working_conn.url;
-				}
-				var name_lower = default_model.model.down ();
-				if (name_lower.contains ("embed")
-				    || name_lower.has_prefix ("bge-")) {
-					default_model.model = "";
-				} else {
-					this.window.set_startup_status (
-						"Loading model %s…".printf (
-							default_model.model));
-					if (yield this.load_one_model (
-						working_conn, default_model.model)) {
-						default_model.is_valid = true;
-						GLib.message (
-							"AndroidStartup: initialize_model ok model=%s",
-							default_model.model);
-						return true;
-					}
-					GLib.warning (
-						"AndroidStartup: saved model '%s' unavailable",
-						default_model.model);
-					default_model.model = "";
-				}
-			}
+			this.window.set_startup_status ("Loading models…");
+			var temp_connection_models = new OLLMchat.Settings.ConnectionModels(
+				config
+			);
+			yield temp_connection_models.refresh();
 
-			this.window.set_startup_status ("Fetching model list…");
-			var client = new OLLMchat.Client (working_conn);
-			Gee.ArrayList<OLLMchat.Response.Model> models_list;
-			try {
-				models_list = yield client.models ();
-			} catch (GLib.Error e) {
-				GLib.warning (
-					"AndroidStartup: model list failed: %s", e.message);
-				return false;
-			}
-
-			if (models_list.size == 0) {
-				GLib.warning (
+			var connection_models = temp_connection_models.connection_map.get(
+				working_conn.url
+			);
+			if (connection_models == null || connection_models.size == 0) {
+				GLib.warning(
 					"AndroidStartup: no models for connection '%s'",
 					working_conn.url);
 				return false;
 			}
 
-			foreach (var list_model in models_list) {
-				if (list_model.is_hidden) {
-					continue;
-				}
-				var pick_lower = list_model.name.down ();
-				if (pick_lower.contains ("embed")
-				    || pick_lower.has_prefix ("bge-")) {
-					continue;
-				}
-				this.window.set_startup_status (
-					"Loading model %s…".printf (list_model.name));
-				if (!(yield this.load_one_model (
-					working_conn, list_model.name))) {
-					continue;
-				}
-				if (default_model == null) {
-					default_model = new OLLMchat.Settings.ModelUsage () {
-						connection = working_conn.url,
-						model = list_model.name
-					};
-					config.usage.set ("default_model", default_model);
-				} else {
+			if (default_model != null && default_model.model != "") {
+				if (default_model.connection == "") {
 					default_model.connection = working_conn.url;
-					default_model.model = list_model.name;
 				}
-				default_model.is_valid = true;
-				this.window.app.persist_config (config);
-				GLib.message (
-					"AndroidStartup: initialize_model ok model=%s",
-					default_model.model);
-				return true;
+				var usage = temp_connection_models.find_model(
+					default_model.connection, default_model.model);
+				if (usage != null
+				    && usage.model_obj != null
+				    && usage.model_obj.is_embedding) {
+					default_model.model = "";
+				}
 			}
 
-			GLib.warning (
-				"AndroidStartup: no chat model for connection '%s'",
-				working_conn.url);
-			return false;
-		}
-
-		/**
-		 * Loads one model from disk cache or a single /api/show call.
-		 *
-		 * @param working_conn Connection to attach the model to
-		 * @param model_name Model name on the server
-		 * @return true when the model is in working_conn.models
-		 */
-		private async bool load_one_model (
-			OLLMchat.Settings.Connection working_conn,
-			string model_name
-		) {
-			if (working_conn.models.has_key (model_name)) {
-				working_conn.models.get (model_name).connection =
-					working_conn;
-				return true;
+			if (default_model != null && default_model.model != "") {
+				var conn_obj = config.connections.get(default_model.connection);
+				if (conn_obj != null
+				    && conn_obj.models.size > 0
+				    && conn_obj.models.has_key(default_model.model)) {
+					var usage = temp_connection_models.find_model(
+						default_model.connection, default_model.model);
+					if (usage == null
+					    || usage.model_obj == null
+					    || !usage.model_obj.is_embedding) {
+						GLib.message (
+							"AndroidStartup: initialize_model ok model=%s",
+							default_model.model);
+						return true;
+					}
+					default_model.model = "";
+				} else {
+					if (yield default_model.verify_model(config)) {
+						var usage = temp_connection_models.find_model(
+							default_model.connection, default_model.model);
+						if (usage == null
+						    || usage.model_obj == null
+						    || !usage.model_obj.is_embedding) {
+							GLib.message (
+								"AndroidStartup: initialize_model ok model=%s",
+								default_model.model);
+							return true;
+						}
+						default_model.model = "";
+					} else {
+						default_model.model = "";
+					}
+				}
 			}
 
-			var list_probe = new OLLMchat.Response.Model (working_conn) {
-				name = model_name
-			};
-			var cached_model = list_probe.load_from_cache ();
-			if (cached_model != null) {
-				cached_model.connection = working_conn;
-				working_conn.models.set (model_name, cached_model);
-				GLib.message (
-					"AndroidStartup: model cache hit %s", model_name);
-				return true;
+			OLLMchat.Settings.ModelUsage? first_chat_model = null;
+			foreach (var model_usage in connection_models.values) {
+				if (model_usage.model_obj == null
+				    || model_usage.model_obj.is_hidden
+				    || model_usage.model_obj.is_embedding) {
+					continue;
+				}
+				first_chat_model = model_usage;
+				break;
 			}
-
-			this.window.set_startup_status (
-				"Fetching model details for %s…".printf (model_name));
-			try {
-				var show_call = new OLLMchat.Call.ShowModel (
-					working_conn, model_name);
-				var detailed_model = yield show_call.exec_show ();
-				detailed_model.connection = working_conn;
-				detailed_model.save_to_cache ();
-				working_conn.models.set (model_name, detailed_model);
-				GLib.message (
-					"AndroidStartup: model fetched %s", model_name);
-				return true;
-			} catch (GLib.Error e) {
-				GLib.warning (
-					"AndroidStartup: show model %s: %s",
-					model_name, e.message);
+			if (first_chat_model == null) {
+				GLib.warning(
+					"AndroidStartup: no chat model for connection '%s'",
+					working_conn.url);
 				return false;
 			}
+
+			if (default_model == null) {
+				default_model = new OLLMchat.Settings.ModelUsage() {
+					connection = first_chat_model.connection,
+					model = first_chat_model.model,
+					options = first_chat_model.options.clone()
+				};
+				config.usage.set("default_model", default_model);
+			} else {
+				default_model.connection = first_chat_model.connection;
+				default_model.model = first_chat_model.model;
+				default_model.options = first_chat_model.options.clone();
+			}
+
+			this.window.app.persist_config (config);
+			GLib.message (
+				"AndroidStartup: initialize_model ok model=%s",
+				default_model.model);
+			return true;
 		}
 	}
 }

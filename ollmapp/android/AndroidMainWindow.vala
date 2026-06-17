@@ -316,8 +316,8 @@ namespace OLLMapp
 				return;
 			}
 
-			// Default model cached during AndroidStartup; full refresh loads
-			// /api/show for every model and blocks the UI for minutes.
+			this.set_startup_status ("Loading models…");
+			yield this.history_manager.connection_models.refresh();
 
 			if (!this.history_manager.agent_factories.has_key ("chatter")) {
 				this.history_manager.agent_factories.set (

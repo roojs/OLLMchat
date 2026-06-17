@@ -209,6 +209,31 @@ Desktop reference (read only): `ollmapp/Window.vala`, `ollmapp/Initialize.vala`
 
 ---
 
+## §5a Chat bar footer — model dropdown and tools button
+
+**Status:** **Reverted false-positive fast-startup** — restore `connection_models.refresh()` (awaiting device test)
+
+### Problem
+
+Footer `ChatBar` model dropdown and tools menu stay hidden when `connection_models` is empty.
+
+### Root cause
+
+`a939e642 sync` removed `connection_models.refresh()` and skipped `ensure_model_usage()` based on a **false-positive** “slow startup” diagnosis. That broke the chat bar; the slowness was misattributed.
+
+### Fix
+
+Reverted to pre-`sync` Android-only behaviour:
+
+- `AndroidStartup.initialize_model()` — `ConnectionModels.refresh()` (mirrors desktop `Initialize.vala`)
+- `AndroidStartup.run()` — `ensure_model_usage()` restored
+- `AndroidMainWindow.initialize_client()` — `history_manager.connection_models.refresh()` restored
+- Removed cache-first `load_one_model` / `seed_chat_bar_models` shortcuts
+
+**No `libollmchat/` changes.**
+
+---
+
 ## §4 Agent dropdown (“None”)
 
 **Status:** **OPEN** — user round 1: agent list not working (crash likely blocked `setup_agent_dropdown()`)
