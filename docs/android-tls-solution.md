@@ -4,6 +4,8 @@ Guide for HTTPS on GTK Android: what we fixed, where code belongs long-term, and
 
 **Status:** 2026-06-17 — backend registration **works**; CA trust store **in progress** (bundled PEM + runtime init).
 
+**Upstream:** [GLib !5212](https://gitlab.gnome.org/GNOME/glib/-/merge_requests/5212) submitted (`android-tls-ensure-before-scan`). GTK TLS runtime branch in progress at `~/git/gtk`.
+
 **Related:** [`docs/bugs/2026-06-15-android-runtime-tls-ime-paste.md`](bugs/2026-06-15-android-runtime-tls-ime-paste.md) (device log timeline), [`docs/android-build.md`](android-build.md) (build commands).
 
 ---
@@ -131,8 +133,8 @@ Regression: `scripts/android/regression/test-r13-glib-tls-ensure-before-scan.sh`
 
 ## Upstream contribution checklist (tomorrow+)
 
-- [ ] GLib MR: ensure extension points before module scan
-- [ ] GTK MR: TLS module init + CA trust in `gdkandroidruntime.c`
+- [x] GLib MR: ensure extension points before module scan — [!5212](https://gitlab.gnome.org/GNOME/glib/-/merge_requests/5212)
+- [ ] GTK MR: TLS module init in `gdkandroidruntime.c` (CA trust may follow separately)
 - [ ] Document Android HTTPS requirements for GTK Android porters
 - [ ] Optional: Pixiewood example manifest with `<openssl/>`, `<glib-networking/>`, CA asset note
 
