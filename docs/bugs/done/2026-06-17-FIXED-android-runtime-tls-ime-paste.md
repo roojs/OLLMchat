@@ -3,7 +3,9 @@
 **Status:** **FIXED** (2026-06-17) — closed for chat POC; CA bundle for arbitrary HTTPS hosts remains optional follow-up in [`docs/android-tls-solution.md`](../android-tls-solution.md).
 
 **Opened:** 2026-06-15 · **Closed:** 2026-06-17  
-**Harness:** `org.roojs.ollmchat.gtkfixespoc` (GTK fixes POC; chat POC uses same TLS stack)
+**Package:** `org.roojs.ollmchat.androidpoc` (chat POC — sole Android TLS target on `main`)
+
+**Note (2026-06-17):** The gtk-fixes harness (`org.roojs.ollmchat.gtkfixespoc`) and `android/wip-patches/` were removed after WIP merge. Harness commands in this log are archival.
 
 ### Build context
 
@@ -12,8 +14,7 @@
 | GTK | Upstream GNOME + `android-bugs.patch` (IME/paste) — **GTK wrap/patch handled separately** |
 | `gtk.wrap` revision | `3ffe53adf8` (upstream GNOME GTK) |
 | **GLib TLS patch** | `subprojects/packagefiles/glib/tls-ensure-before-scan.patch` + pin in `android/pixiewood-wraps/glib/glib.wrap` @ **2.84.0** |
-| **TLS WIP branch** | `wip/android-tls-local-2026-06-17` |
-| **TLS WIP patch dir** | `android/wip-patches/2026-06-17-tls-local-iteration/` |
+| **TLS WIP branch** | `wip/android-tls-local-2026-06-17` (merged to `main` 2026-06-17; wip-patches dir removed) |
 | Runtime marker | `ollmchat-android-bugs-v4` |
 
 ### Device timeline (read this first)

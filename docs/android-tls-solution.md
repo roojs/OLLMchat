@@ -2,7 +2,9 @@
 
 Guide for HTTPS on GTK Android: what we fixed, where code belongs long-term, and how to ship it in an APK.
 
-**Status:** 2026-06-17 — **TLS backend fixed and closed** for chat POC (`GTlsBackendOpenssl`, remote HTTPS works). Bundled CA trust store for arbitrary hosts (e.g. harness `GET https://roojs.com/`) is **optional follow-up**, not blocking boot/chat work.
+**Status:** 2026-06-17 — **TLS backend fixed and closed** for chat POC (`GTlsBackendOpenssl`, remote HTTPS works). Bundled CA trust store for arbitrary hosts is **optional follow-up**, not blocking boot/chat work.
+
+**Near-term direction:** migrate to static `g_io_openssl_load()` in app init (see gtk-android-builder#20); remove GDK TLS scanning from upstream GTK patches. The gtk-fixes harness target was removed from `main` (2026-06-17); use chat POC only.
 
 **Related:** [`docs/android-port-status.md`](android-port-status.md) (current focus), [`docs/bugs/done/2026-06-17-FIXED-android-runtime-tls-ime-paste.md`](bugs/done/2026-06-17-FIXED-android-runtime-tls-ime-paste.md) (closed bug), [`docs/android-build.md`](android-build.md) (build commands).
 
@@ -78,15 +80,11 @@ GDK sets `g_set_user_dirs()` → `g_get_system_data_dirs()[0]` ≈ `files/share`
 
 ---
 
-## Build (harness or full app)
+## Build (chat POC)
 
 ```bash
-# GTK fixes harness (TLS probe)
-scripts/android/build-gtk-fixes-poc-apk.sh
-./scripts/android/adb-install-gtk-fixes-poc.sh
-
-# Full OLLMchat chat POC (same TLS init + CA bundle)
 scripts/android/build-chat-poc-apk.sh
+./scripts/android/adb-install-chat-poc.sh
 ```
 
 Build host needs **`ca-certificates`** (Debian: `apt install ca-certificates`). The build copies `/etc/ssl/certs/ca-certificates.crt` into APK assets.
@@ -94,22 +92,21 @@ Build host needs **`ca-certificates`** (Debian: `apt install ca-certificates`). 
 Verify:
 
 ```bash
-scripts/android/verify-gtk-fixes-apk.sh   # harness
-scripts/android/verify-apk.sh             # chat POC
+scripts/android/verify-apk.sh
 ```
 
-Both check for `assets/share/ssl/certs/ca-certificates.crt`.
+Checks for `assets/share/ssl/certs/ca-certificates.crt` and `assets/share/gio/modules/libgioopenssl.so`.
 
 ---
 
 ## Device test
 
-1. Cold start → logcat: `GTlsBackendOpenssl`, `ready=true`
-2. Tap **GET https://roojs.com/** → **HTTPS 200 OK**
-3. Logcat: `OLLMchat TLS trust: SSL_CERT_FILE=.../files/share/ssl/certs/ca-certificates.crt`, no `UNKNOWN_CA`
+1. Cold start → logcat: `GTlsBackendOpenssl`
+2. Connection check / remote Ollama HTTPS — no `GDummyTlsBackend` or `UNKNOWN_CA`
+3. Logcat: `OLLMchat TLS` lines from `ollmapp/android/android-gio-tls.c`
 
 ```bash
-./scripts/android/adb-gtk-fixes-logcat.sh --no-restart
+adb logcat -s OLLMchat-GIO OLLMchat TLS GTK
 ```
 
 ---
@@ -122,7 +119,6 @@ Both check for `assets/share/ssl/certs/ca-certificates.crt`.
 | GLib pin | `android/pixiewood-wraps/glib/glib.wrap` @ 2.84.0 |
 | GTK Android fixes | `gdk/android/gdkandroidgio.c`, `gdk/android/gdkandroidruntime.c` (branch `android-tls` @ `~/git/gtk`) |
 | App TLS init | `ollmapp/android/android-gio-tls.c` |
-| Harness | `ollmapp/android/AndroidGtkFixesPoc.vala` |
 | Asset staging | `scripts/android/build-pixiewood-apk.sh` (`install_*_to_assets`) |
 
 Regression: `scripts/android/regression/test-r13-glib-tls-ensure-before-scan.sh`

@@ -195,8 +195,7 @@ host’s `/usr/share/icons/` into a staging tree, then copies with `cp -rL` into
 `assets/share/icons/Adwaita/` (~tens of KB, not the full theme). Add a manifest
 row when Android-shipped UI references a new `icon_name`. GTK extracts assets
 with the rest of `assets/share/` before `main()`.
-`ollmapp_configure_android_gio_tls_modules()` also sets `GTK_ICON_THEME_NAME=Adwaita`
-because Android has no gsettings default.
+`ollmapp_configure_android_gio_tls_modules()` currently sets `GTK_ICON_THEME_NAME=Adwaita` via `g_setenv` (wrong layer — see [`docs/bugs/2026-06-17-android-icon-theme-gsettings.md`](bugs/2026-06-17-android-icon-theme-gsettings.md)).
 
 After a local or CI APK build, verify packaging with:
 
