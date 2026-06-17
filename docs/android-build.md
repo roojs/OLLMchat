@@ -3,6 +3,8 @@
 How to build the OLLMchat Android remote chat POC locally and in GitHub Actions,
 plus background on what is implemented today versus the full desktop application.
 
+**Current port status:** [`docs/android-port-status.md`](android-port-status.md) — read this first for what works, what is broken, and debug commands.
+
 ## Summary
 
 Running the full application on Android is possible in principle, because GTK 4

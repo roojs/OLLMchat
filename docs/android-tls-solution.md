@@ -2,11 +2,9 @@
 
 Guide for HTTPS on GTK Android: what we fixed, where code belongs long-term, and how to ship it in an APK.
 
-**Status:** 2026-06-17 — backend registration **works**; CA trust store **in progress** (bundled PEM + runtime init).
+**Status:** 2026-06-17 — **TLS backend fixed and closed** for chat POC (`GTlsBackendOpenssl`, remote HTTPS works). Bundled CA trust store for arbitrary hosts (e.g. harness `GET https://roojs.com/`) is **optional follow-up**, not blocking boot/chat work.
 
-**Upstream:** [GLib !5212](https://gitlab.gnome.org/GNOME/glib/-/merge_requests/5212) submitted (`android-tls-ensure-before-scan`). GTK TLS runtime branch in progress at `~/git/gtk`.
-
-**Related:** [`docs/bugs/2026-06-15-android-runtime-tls-ime-paste.md`](bugs/2026-06-15-android-runtime-tls-ime-paste.md) (device log timeline), [`docs/android-build.md`](android-build.md) (build commands).
+**Related:** [`docs/android-port-status.md`](android-port-status.md) (current focus), [`docs/bugs/done/2026-06-17-FIXED-android-runtime-tls-ime-paste.md`](bugs/done/2026-06-17-FIXED-android-runtime-tls-ime-paste.md) (closed bug), [`docs/android-build.md`](android-build.md) (build commands).
 
 ---
 
@@ -122,7 +120,7 @@ Both check for `assets/share/ssl/certs/ca-certificates.crt`.
 |------|------|
 | GLib ensure-before-scan | `subprojects/packagefiles/glib/tls-ensure-before-scan.patch` |
 | GLib pin | `android/pixiewood-wraps/glib/glib.wrap` @ 2.84.0 |
-| GTK Android fixes | `android/pixiewood-wraps/gtk/android-bugs.patch` |
+| GTK Android fixes | `gdk/android/gdkandroidgio.c`, `gdk/android/gdkandroidruntime.c` (branch `android-tls` @ `~/git/gtk`) |
 | App TLS init | `ollmapp/android/android-gio-tls.c` |
 | Harness | `ollmapp/android/AndroidGtkFixesPoc.vala` |
 | Asset staging | `scripts/android/build-pixiewood-apk.sh` (`install_*_to_assets`) |

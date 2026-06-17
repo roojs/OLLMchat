@@ -109,6 +109,7 @@ namespace OLLMapp
 				break;
 			}
 
+			this.window.app.persist_config (config);
 			return true;
 		}
 

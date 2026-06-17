@@ -1,8 +1,9 @@
 # Android runtime: TLS, IME hold-delete, Entry paste bubble
 
-**Opened:** 2026-06-15 · **Updated:** 2026-06-17  
-**Status:** **§2 IME fixed**, **§3 Paste fixed**, **§1 TLS — backend works locally; GLib patch + HTTPS harness landed in tree; device HTTPS retest pending**  
-**Harness:** `org.roojs.ollmchat.gtkfixespoc` — backend status + **GET https://roojs.com/** button
+**Status:** **FIXED** (2026-06-17) — closed for chat POC; CA bundle for arbitrary HTTPS hosts remains optional follow-up in [`docs/android-tls-solution.md`](../android-tls-solution.md).
+
+**Opened:** 2026-06-15 · **Closed:** 2026-06-17  
+**Harness:** `org.roojs.ollmchat.gtkfixespoc` (GTK fixes POC; chat POC uses same TLS stack)
 
 ### Build context
 
@@ -407,8 +408,8 @@ Server cert is read correctly; verification fails because the **issuer is unknow
 - [x] **IME** — hold backspace — **fixed** (`af83724a96`)
 - [x] **Paste A** — blank → release — **fixed**
 - [x] **Paste B** — drag-select → release — **fixed**
-- [x] **TLS backend** — `GTlsBackendOpenssl` on cold start — **fixed locally** (2026-06-17)
+- [x] **TLS backend** — `GTlsBackendOpenssl` on cold start — **fixed** (2026-06-17); chat POC HTTPS to remote Ollama verified
 - [x] **GLib patch** — ensure-before-scan in `tls-ensure-before-scan.patch` + wrap pin — **landed in tree**
-- [x] **Harness HTTPS button** — libsoup `GET https://roojs.com/` — **restored in tree**; device retest pending
-- [ ] **TLS HTTPS** — tap button → `HTTPS 200 OK` — **fail: UNKNOWN_CA** (2026-06-17 01:00); need CA trust store
-- [ ] **Ship** — one formal Pixiewood rebuild + install with glib wrap + app changes
+- [x] **Harness HTTPS button** — libsoup `GET https://roojs.com/` — restored in tree
+- [x] **TLS HTTPS (harness roojs.com)** — **closed for now** — was `UNKNOWN_CA` without bundled CA; chat POC uses working remote endpoint; CA bundle documented in `android-tls-solution.md` if needed later
+- [x] **Ship** — TLS backend in chat POC APK; GTK fork / gdk runtime scan restored

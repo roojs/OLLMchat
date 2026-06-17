@@ -37,8 +37,9 @@ namespace OLLMapp
 		private Gtk.Button new_chat_button;
 		private Gtk.DropDown agent_dropdown;
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
-		private SettingsDialog.ConnectionAdd? bootstrap_dialog = null;
+		private AndroidBootstrapConnectionAdd? bootstrap_dialog = null;
 		private uint history_leave_ignore_timeout_id = 0;
+		private string[] agent_picker_names = {};
 
 		public AndroidMainWindow(AndroidApplication app)
 		{
@@ -78,9 +79,7 @@ namespace OLLMapp
 			});
 			this.header_bar.pack_start(this.new_chat_button);
 
-			this.agent_dropdown = new Gtk.DropDown(null,
-				new Gtk.PropertyExpression(typeof(OLLMchat.Agent.Factory),
-				                           null, "title")) {
+			this.agent_dropdown = new Gtk.DropDown (null, null) {
 				hexpand = false
 			};
 			this.header_bar.pack_start(this.agent_dropdown);
@@ -144,7 +143,10 @@ namespace OLLMapp
 
 		private async void load_config_and_initialize()
 		{
-			if (!this.app.config.loaded) {
+			this.app.config = this.app.load_config();
+			AndroidConnectionConfigTls.apply_to_config(this.app.config);
+
+			if (this.app.config.connections.size == 0) {
 				yield this.show_bootstrap_dialog("");
 				return;
 			}
@@ -155,14 +157,30 @@ namespace OLLMapp
 			});
 
 			if (yield startup.run(this.app.config)) {
+				this.app.config = this.app.load_config();
+				AndroidConnectionConfigTls.apply_to_config(this.app.config);
 				yield this.initialize_client(this.app.config);
+				return;
+			}
+
+			if (this.chat_widget == null) {
+				this.split_view.content = new Gtk.Label(
+					"Could not start chat. Open Settings to verify your connection and model."
+				) {
+					margin_top = 24,
+					margin_bottom = 24,
+					margin_start = 24,
+					margin_end = 24,
+					wrap = true,
+					vexpand = true,
+				};
 			}
 		}
 
 		private async void show_bootstrap_dialog(string error_message)
 		{
 			if (this.bootstrap_dialog == null) {
-				this.bootstrap_dialog = new SettingsDialog.ConnectionAdd();
+				this.bootstrap_dialog = new AndroidBootstrapConnectionAdd();
 			}
 			this.bootstrap_dialog.show_bootstrap();
 
@@ -209,7 +227,6 @@ namespace OLLMapp
 					options = new OLLMchat.Call.Options()
 				});
 
-				this.app.persist_config (config);
 				this.app.config = config;
 				this.initialize_after_bootstrap.begin(config);
 			});
@@ -237,7 +254,12 @@ namespace OLLMapp
 
 			yield this.history_manager.connection_models.refresh();
 
-			this.setup_agent_dropdown();
+			if (!this.history_manager.agent_factories.has_key ("chatter")) {
+				this.history_manager.agent_factories.set (
+					"chatter", new OLLMchat.Chatter.Factory ());
+			}
+
+			this.setup_agent_dropdown ();
 
 			this.new_chat_button.sensitive = true;
 			this.new_chat_button.visible = true;
@@ -291,6 +313,14 @@ namespace OLLMapp
 			});
 
 			this.split_view.content = this.chat_widget;
+
+			var active_factory = this.history_manager.get_active_agent ();
+			active_factory.activate.begin (this, (obj, res) => {
+				active_factory.activate.end (res);
+			});
+
+			yield this.chat_widget.switch_to_session (
+				this.history_manager.session);
 		}
 
 		private void setup_agent_dropdown()
@@ -299,85 +329,57 @@ namespace OLLMapp
 				return;
 			}
 
-			var agent_store = new GLib.ListStore(typeof(OLLMchat.Agent.Factory));
+			var string_list = new Gtk.StringList (null);
+			string[] picker_names = {};
 			var selected_index = 0u;
 			var i = 0u;
-			foreach (var factory in this.history_manager.agent_factories.values) {
-				agent_store.append(factory);
-				if (factory.name == this.history_manager.session.agent_name) {
+			foreach (var entry in this.history_manager.agent_factories.entries) {
+				string_list.append (entry.value.title);
+				picker_names += entry.key;
+				if (entry.key == this.history_manager.session.agent_name) {
 					selected_index = i;
 				}
 				i++;
 			}
+			this.agent_picker_names = picker_names;
 
-			var list_factory = new Gtk.SignalListItemFactory();
-			list_factory.setup.connect((item) => {
-				var list_item = item as Gtk.ListItem;
-				if (list_item == null) {
-					return;
-				}
-				var label = new Gtk.Label("") {
-					halign = Gtk.Align.START
-				};
-				list_item.set_data<Gtk.Label>("label", label);
-				list_item.child = label;
-			});
-			list_factory.bind.connect((item) => {
-				var list_item = item as Gtk.ListItem;
-				if (list_item == null || list_item.item == null) {
-					return;
-				}
-				var agent_factory = list_item.item as OLLMchat.Agent.Factory;
-				var label = list_item.get_data<Gtk.Label>("label");
-				if (label == null) {
-					return;
-				}
-				label.label = agent_factory.title;
-				label.tooltip_text = agent_factory.long_title;
-			});
+			this.agent_dropdown.model = string_list;
 
-			this.agent_dropdown.model = agent_store;
-			this.agent_dropdown.set_factory(list_factory);
-			this.agent_dropdown.set_list_factory(list_factory);
-
-			this.agent_dropdown.notify["selected"].connect(() => {
+			this.agent_dropdown.notify["selected"].connect (() => {
 				if (this.agent_dropdown.selected == Gtk.INVALID_LIST_POSITION) {
 					return;
 				}
-				var store = this.agent_dropdown.model as GLib.ListStore;
-				var factory = store.get_item(this.agent_dropdown.selected)
-					as OLLMchat.Agent.Factory;
-				this.agent_dropdown.tooltip_text = factory.long_title;
+				if (this.agent_dropdown.selected >= this.agent_picker_names.length) {
+					return;
+				}
+				var agent_name = this.agent_picker_names[
+					this.agent_dropdown.selected];
 				try {
 					if (this.history_manager.session.fid == null
 					    || this.history_manager.session.fid == "") {
-						this.history_manager.session.activate_agent(factory.name);
+						this.history_manager.session.activate_agent (
+							agent_name);
 						return;
 					}
-					this.history_manager.activate_agent(
-						this.history_manager.session.fid, factory.name);
+					this.history_manager.activate_agent (
+						this.history_manager.session.fid, agent_name);
 				} catch (GLib.Error e) {
-					GLib.warning(
+					GLib.warning (
 						"Failed to activate agent '%s': %s",
-						factory.name, e.message);
+						agent_name, e.message);
 				}
 			});
 
 			this.agent_dropdown.selected = selected_index;
 
-			this.history_manager.session_activated.connect((session) => {
-				var store = this.agent_dropdown.model as GLib.ListStore;
-				if (store == null) {
-					return;
-				}
-				var factory = this.history_manager.get_active_agent();
-				factory.activate.begin(this, (obj, res) => {
-					factory.activate.end(res);
+			this.history_manager.session_activated.connect ((session) => {
+				var factory = this.history_manager.get_active_agent ();
+				factory.activate.begin (this, (obj, res) => {
+					factory.activate.end (res);
 				});
 				var agent_index = 0u;
-				for (var j = 0; j < store.get_n_items(); j++) {
-					if (((OLLMchat.Agent.Factory)store.get_item(j)).name
-					    == session.agent_name) {
+				for (var j = 0; j < this.agent_picker_names.length; j++) {
+					if (this.agent_picker_names[j] == session.agent_name) {
 						agent_index = (uint) j;
 						break;
 					}

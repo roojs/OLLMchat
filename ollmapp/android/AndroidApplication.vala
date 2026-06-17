@@ -107,9 +107,10 @@ namespace OLLMapp
 		{
 			var to_save = config ?? this.config;
 			var target_dir = config_storage_dir ();
-
-			OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename (
+			var target_path = GLib.Path.build_filename (
 				target_dir, "config.2.json");
+
+			OLLMchat.Settings.Config2.config_path = target_path;
 
 			try {
 				ensure_directory (target_dir);
@@ -118,7 +119,26 @@ namespace OLLMapp
 				return;
 			}
 
-			to_save.save ();
+			var root = Json.gobject_serialize (to_save);
+			if (root == null) {
+				GLib.warning ("AndroidApplication: config serialize failed");
+				return;
+			}
+
+			var generator = new Json.Generator ();
+			generator.pretty = true;
+			generator.indent = 4;
+			generator.set_root (root);
+
+			try {
+				var json_text = generator.to_data (null);
+				GLib.FileUtils.set_contents (target_path, json_text);
+				GLib.message (
+					"AndroidApplication: saved config to %s", target_path);
+			} catch (GLib.Error e) {
+				GLib.warning (
+					"AndroidApplication: config save failed: %s", e.message);
+			}
 		}
 
 		/**
