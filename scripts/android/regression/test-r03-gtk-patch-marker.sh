@@ -38,5 +38,7 @@ grep -q 'sendKeyEvent' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/
   { echo "ImContext.java hold-delete sendKeyEvent path missing" >&2; exit 1; }
 grep -q 'in_long_press' "$ROOT_DIR/subprojects/gtk/gtk/gtktext.c" ||
   { echo "gtktext.c long-press paste bubble path missing" >&2; exit 1; }
+grep -q 'gdk_android_scan_gio_modules' "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidruntime.c" ||
+  { echo "gdkandroidruntime.c GDK TLS scan missing" >&2; exit 1; }
 
 echo "R03 gtk-patch-marker: OK"

@@ -13,7 +13,8 @@ gtk_subproject_patch_applied() {
   [ -f "$marker" ] && grep -q 'ollmchat-android-bugs-v4' "$marker" &&
     grep -q 'ollmchat-android-popup-v4' "$marker" &&
     grep -q 'ollmchat-android-tls-v4' "$marker" &&
-    [ -f "$im_context" ] && grep -q 'syncEditableFromGtk' "$im_context"
+  [ -f "$im_context" ] && grep -q 'syncEditableFromGtk' "$im_context" &&
+    grep -q 'gdk_android_scan_gio_modules' "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidruntime.c"
 }
 
 gtk_bootstrap_cache_dir() {

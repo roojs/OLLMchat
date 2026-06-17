@@ -16,13 +16,6 @@ namespace OLLMrpc
 	/**
 	 * JSON-RPC 2.0 standard and application error codes (throw/catch).
 	 *
-	 * Server control flow only — not the wire {@link Error} object.
-	 * Constants (e.g. {@link INTERNAL_ERROR}) are {@link RpcErrorCode} values;
-	 * pass them to {@link to_error} / {@link to_response} / wire {@link Error}
-	 * as `int` (Vala 0.56 types errordomain members as `int` at call sites).
-	 *
-	 * Throw on constants: `throw (RpcErrorCode) RpcErrorCode.INVALID_PARAMS;`
-	 *
 	 * Static methods only — instance methods on the caught error are not
 	 * supported in Vala 0.56 yet.
 	 */
@@ -35,23 +28,15 @@ namespace OLLMrpc
 		INTERNAL_ERROR = -32603,
 		NOT_IMPLEMENTED = -32000;
 
-		/**
-		 * Build wire {@link Error} from an RPC error number.
-		 * @param code JSON-RPC error number — {@link RpcErrorCode} constant
-		 *   (e.g. {@link INVALID_PARAMS})
-		 */
-		public static Error to_error(int code)
+		public static Error to_error(RpcErrorCode e)
 		{
-			return new Error(code, ((RpcErrorCode) code).message);
+			return new Error(e, e.message);
 		}
 
-		/**
-		 * @param code JSON-RPC error number — {@link RpcErrorCode} constant
-		 */
-		public static Response to_response(int code)
+		public static Response to_response(RpcErrorCode e)
 		{
 			return new Response() {
-				error = to_error(code)
+				error = to_error(e)
 			};
 		}
 	}

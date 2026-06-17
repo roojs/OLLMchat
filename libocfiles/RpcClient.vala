@@ -133,7 +133,7 @@ namespace OLLMfiles
 			var hello_request = new OLLMrpc.Request() {
 				id = hello_id,
 				method = "Daemon.hello",
-				param = new OLLMfilesd.DaemonParams() {
+				param = new OLLMrpc.CallParam() {
 					protocol = this.protocol,
 					client = this.client_name
 				}
@@ -215,9 +215,7 @@ namespace OLLMfiles
 					error.message
 				);
 				this.failed(request, error);
-				return new OLLMrpc.Response() { 
-					id = request.id, 
-					error = error };
+				return new OLLMrpc.Response(request.id) { error = error };
 			}
 
 			var promise = new GLib.Promise<OLLMrpc.Response>();
@@ -243,8 +241,7 @@ namespace OLLMfiles
 					error.message
 				);
 				this.failed(request, error);
-				return new OLLMrpc.Response() { 
-					id = request.id, error = error };
+				return new OLLMrpc.Response(request.id) { error = error };
 			}
 
 			var response = yield this.wait_response(
@@ -289,8 +286,7 @@ namespace OLLMfiles
 				string msg = cancellable.is_cancelled()
 					? "call timed out"
 					: e.message;
-				return new OLLMrpc.Response() {
-					id = id,
+				return new OLLMrpc.Response(id) {
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 						msg,
