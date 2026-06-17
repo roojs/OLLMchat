@@ -1,6 +1,6 @@
 # Windows first-run: "Connection Failed" / required models loop; Configure does not open settings
 
-**Status:** OPEN
+**Status:** FIXED (2026-06-09) — hunks applied in `Window.vala`, `Initialize.vala`, `CodebaseSearchTool.vala`, `ApplicationInterface.vala`; `meson compile` OK. Native Windows re-verify optional.
 
 **Started:** 2026-06-09
 

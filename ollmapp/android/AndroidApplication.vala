@@ -90,6 +90,8 @@ namespace OLLMapp
 
 		public AndroidApplication()
 		{
+			Gtk.Settings.get_default ().gtk_icon_theme_name = "Adwaita";
+
 			Object(
 				application_id: "org.roojs.ollmchat.androidpoc",
 				flags: GLib.ApplicationFlags.DEFAULT_FLAGS

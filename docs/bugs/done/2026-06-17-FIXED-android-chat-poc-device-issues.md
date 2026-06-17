@@ -1,10 +1,10 @@
-# Android chat POC — device issues (active debug loop)
+# Android chat POC — device issues (boot / startup blockers)
 
-**Status:** OPEN  
+**Status:** FIXED (2026-06-17) — boot path, config, TLS, and startup crash resolved on device (rounds 1–5). **Follow-up polish** (sidebar overlay, models settings, chat bar icons, etc.) tracked in [`docs/plans/9.0-android-poc-summary.md`](../../plans/9.0-android-poc-summary.md), not this bug log.  
 **Opened:** 2026-06-17  
 **Package:** `org.roojs.ollmchat.androidpoc`  
 **Build:** `scripts/android/build-chat-poc-apk.sh` → `scripts/android/adb-install-chat-poc.sh`  
-**Index:** [`docs/android-port-status.md`](../android-port-status.md) (short summary + commands)
+**Index:** [`docs/plans/9.0-android-poc-summary.md`](../../plans/9.0-android-poc-summary.md) (short summary + commands)
 
 ---
 
@@ -15,7 +15,7 @@
 1. **Android-only code changes** — fixes live under `ollmapp/android/`, Android meson branches, `android/icons/`, GTK fork / pixiewood wraps as needed.  
 2. **Do not edit shared / desktop code** (`ConnectionAdd`, `ChatWidget`, `Initialize`, `Window`, `libollmchatgtk/`, etc.) unless you have **explicit permission**.  
 3. **If a fix seems to require shared code** — **stop**, do not implement. Propose the change in the doc (or to the user): what file, what change, and why Android-only is not enough. Wait for approval.  
-4. **Copy patterns, don’t refactor** — mirror desktop behaviour in new Android files (see plan 9.1).
+4. **Copy patterns, don’t refactor** — mirror desktop behaviour in new Android files (see archived plan 9.1).
 
 ### Debug loop (one round)
 
@@ -419,6 +419,6 @@ Fatal signal 5 (SIGTRAP)
 
 ## Related (closed / reference)
 
-- TLS / IME / paste: [`docs/bugs/done/2026-06-17-FIXED-android-runtime-tls-ime-paste.md`](done/2026-06-17-FIXED-android-runtime-tls-ime-paste.md)  
-- TLS notes: [`docs/android-tls-solution.md`](../android-tls-solution.md)  
-- Plan: [`docs/plans/9.1-android-chat-shell.md`](../plans/9.1-android-chat-shell.md)
+- TLS / IME / paste: [`2026-06-17-FIXED-android-runtime-tls-ime-paste.md`](2026-06-17-FIXED-android-runtime-tls-ime-paste.md)  
+- TLS notes: [`docs/android-tls.md`](../../android-tls.md)  
+- Plan: [`docs/plans/9.0-android-poc-summary.md`](../../plans/9.0-android-poc-summary.md) — archived shell: [`docs/plans/done/9.1-DONE-android-chat-shell.md`](../../plans/done/9.1-DONE-android-chat-shell.md)

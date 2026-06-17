@@ -281,36 +281,13 @@ patch_pixiewood_gradle_native_libs() {
     }' "$gradle"
 }
 
-# Android only packages top-level lib/ABI/*.so from jniLibs; nested paths such
-# as gio/modules are dropped from the APK. Ship GIO TLS modules via assets
-# (extracted to filesDir/share/gio/modules by GTK on startup).
-install_gio_modules_to_assets() {
-  local jni_lib="$ROOT_DIR/.pixiewood/root/lib/arm64-v8a"
-  local src="$jni_lib/gio/modules"
-  local dest="$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/gio/modules"
-  local lib name
+# Android only packages top-level lib/ABI/*.so from jniLibs. TLS uses static
+# gioopenssl linked into the app (g_io_openssl_load); no GIO modules in assets.
+write_ollmchat_android_runtime_tag() {
+  local dest="$ROOT_DIR/.pixiewood/android/app/src/main/assets/share"
 
-  if [ ! -d "$src" ]; then
-    echo "GIO module install tree missing: $src" >&2
-    exit 1
-  fi
-
-  rm -rf "$dest"
   mkdir -p "$dest"
-  cp -a "$src/." "$dest/"
-
-  if [ ! -f "$dest/libgioopenssl.so" ]; then
-    echo "GIO TLS module missing from assets staging: $dest/libgioopenssl.so" >&2
-    exit 1
-  fi
-
-  # libgioopenssl.so is extracted to filesDir/share/gio/modules/ at runtime.
-  # We preload libssl/libcrypto from the native library directory (lib/arm64-v8a)
-  # before GIO TLS backend initialization, so we do not ship OpenSSL runtimes
-  # beside the GIO module in assets.
-
-  printf 'ollmchat-android-bugs-v4\n' \
-    > "$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/ollmchat-android-runtime.tag"
+  printf 'ollmchat-android-bugs-v5\n' > "$dest/ollmchat-android-runtime.tag"
 }
 
 # Android native code has no /etc/ssl/certs/. Ship the build host's Debian
@@ -407,7 +384,6 @@ install_icon_themes_to_assets() {
 materialize_pixiewood_jni_libs() {
   local jni="$ROOT_DIR/.pixiewood/android/app/src/main/jniLibs"
   local root_lib="$ROOT_DIR/.pixiewood/root/lib"
-  local gio_module
 
   if [ ! -d "$root_lib" ]; then
     echo "Pixiewood install tree missing: $root_lib" >&2
@@ -418,12 +394,6 @@ materialize_pixiewood_jni_libs() {
   rm -rf "$jni"
   mkdir -p "$jni"
   cp -a "$root_lib/." "$jni/"
-
-  gio_module="$(find "$jni" -path '*/gio/modules/libgioopenssl.so' -print -quit)"
-  if [ -z "$gio_module" ]; then
-    echo "GIO TLS module missing from materialized jniLibs (expected */gio/modules/libgioopenssl.so)" >&2
-    exit 1
-  fi
 }
 
 run_pixiewood_gradle_assemble() {
@@ -547,7 +517,7 @@ run_pixiewood_build() {
   patch_pixiewood_gradle_native_libs
   run_pixiewood build --skip-gradle
   materialize_pixiewood_jni_libs
-  install_gio_modules_to_assets
+  write_ollmchat_android_runtime_tag
   install_ca_certificates_to_assets
   install_icon_themes_to_assets
   run_pixiewood_gradle_assemble

@@ -88,9 +88,8 @@ Refactor `build-windows-dir.sh --wine` to call this script instead of duplicatin
 
 ### Wine limitations
 
-Wine is a smoke test, not a release gate. Known gaps (see [2026-06-09-windows-startup bug](../bugs/2026-06-09-windows-startup-configure-loop-required-models.md)):
+Wine is a smoke test, not a release gate. First-run bootstrap loop fixed 2026-06-09 ([bug doc](../bugs/done/2026-06-09-FIXED-windows-startup-configure-loop-required-models.md)). Remaining gaps:
 
-- First-run / bootstrap UX may differ from native Windows
 - Some GTK/adwaita rendering quirks
 - Use native Windows (Part 2) before tagging a release
 

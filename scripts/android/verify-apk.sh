@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Verify a built Android APK contains the chat libraries and GIO TLS modules.
+# Verify a built Android APK contains the chat libraries and bundled CA trust.
 #
-# GIO modules cannot live under lib/ABI/gio/modules/ in an APK: Android only
-# extracts top-level lib/ABI/*.so at install time. We ship TLS modules under
-# assets/share/gio/modules/; GTK extracts assets to filesDir before main().
+# TLS uses static gioopenssl (g_io_openssl_load) linked into the app — not
+# assets/share/gio/modules/libgioopenssl.so.
 #
 # Usage:
 #   scripts/android/verify-apk.sh
@@ -28,7 +27,6 @@ unzip -l "$APK" > "$apk_list"
 required=(
   lib/arm64-v8a/libollmchat-android-poc.so
   lib/arm64-v8a/libollmchat.so
-  assets/share/gio/modules/libgioopenssl.so
   assets/share/ssl/certs/ca-certificates.crt
   assets/share/ollmchat-android-runtime.tag
   assets/share/icons/Adwaita/index.theme
@@ -49,8 +47,6 @@ for path in "${required[@]}"; do
     echo "Missing from APK: $path" >&2
     echo "Matching lib/arm64-v8a entries:" >&2
     grep 'lib/arm64-v8a/' "$apk_list" >&2 || true
-    echo "Matching assets/gio entries:" >&2
-    grep 'assets/.*gio' "$apk_list" >&2 || true
     echo "Matching assets/icons entries:" >&2
     grep 'assets/share/icons/' "$apk_list" >&2 || true
     exit 1
@@ -61,42 +57,24 @@ apk_extract="$(mktemp -d)"
 trap 'rm -f "$apk_list"; rm -rf "$apk_extract"' EXIT
 unzip -q "$APK" "lib/arm64-v8a/libgtk-4.so" "classes.dex" "assets/share/ollmchat-android-runtime.tag" -d "$apk_extract"
 
-if ! grep -q 'ollmchat-android-bugs-v4' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
-  echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v4)." >&2
+if ! grep -q 'ollmchat-android-bugs-v5' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
+  echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v5)." >&2
   echo "Pixiewood compile cache should have been discarded automatically; check pixiewood_prefix_has_patched_gtk." >&2
   exit 1
 fi
 
-if ! grep -q 'ollmchat-android-bugs-v4' "$apk_extract/assets/share/ollmchat-android-runtime.tag"; then
-  echo "APK missing assets/share/ollmchat-android-runtime.tag (ollmchat-android-bugs-v4)." >&2
+if ! grep -q 'ollmchat-android-bugs-v5' "$apk_extract/assets/share/ollmchat-android-runtime.tag"; then
+  echo "APK missing assets/share/ollmchat-android-runtime.tag (ollmchat-android-bugs-v5)." >&2
   exit 1
 fi
 
-apk_gio_modules="$(mktemp -d)"
-trap 'rm -f "$apk_list"; rm -rf "$apk_extract" "$apk_gio_modules"' EXIT
-unzip -q "$APK" "assets/share/gio/modules/*" -d "$apk_gio_modules"
-
-#
-# OpenSSL runtimes (libssl.so/libcrypto.so) must not live under
-# assets/share/gio/modules/, because g_io_modules_scan_all_in_directory()
-# treats every .so there as a GIO module.
-if compgen -G "$apk_gio_modules/assets/share/gio/modules/libssl.so*" >/dev/null; then
-  echo "APK must not ship libssl.so under assets/share/gio/modules/." >&2
+if grep -q 'assets/share/gio/modules/libgioopenssl.so' "$apk_list"; then
+  echo "APK must not ship assets/share/gio/modules/libgioopenssl.so (static gioopenssl)." >&2
   exit 1
 fi
 
-if compgen -G "$apk_gio_modules/assets/share/gio/modules/libcrypto.so*" >/dev/null; then
-  echo "APK must not ship libcrypto.so under assets/share/gio/modules/." >&2
-  exit 1
-fi
-
-if ! grep -q 'ollmchat-android-popup-v4' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
-  echo "libgtk-4.so missing android popup patch tag (ollmchat-android-popup-v4)." >&2
-  exit 1
-fi
-
-if ! grep -q 'ollmchat-android-tls-v4' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
-  echo "libgtk-4.so missing android TLS preload patch tag (ollmchat-android-tls-v4)." >&2
+if ! grep -q 'ollmchat-android-popup-v5' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
+  echo "libgtk-4.so missing android popup patch tag (ollmchat-android-popup-v5)." >&2
   exit 1
 fi
 

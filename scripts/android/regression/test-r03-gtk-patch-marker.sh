@@ -19,12 +19,10 @@ grep -q 'gitlab.gnome.org/GNOME/gtk.git' "$WRAP" ||
 prepare_android_subprojects_before_meson
 
 [ -f "$MARKER" ] || { echo "patch marker missing: $MARKER" >&2; exit 1; }
-grep -q 'ollmchat-android-bugs-v4' "$MARKER" ||
-  { echo "patch marker missing ollmchat-android-bugs-v4 tag" >&2; exit 1; }
-grep -q 'ollmchat-android-popup-v4' "$MARKER" ||
-  { echo "patch marker missing ollmchat-android-popup-v4 tag" >&2; exit 1; }
-grep -q 'ollmchat-android-tls-v4' "$MARKER" ||
-  { echo "patch marker missing ollmchat-android-tls-v4 tag" >&2; exit 1; }
+grep -q 'ollmchat-android-bugs-v5' "$MARKER" ||
+  { echo "patch marker missing ollmchat-android-bugs-v5 tag" >&2; exit 1; }
+grep -q 'ollmchat-android-popup-v5' "$MARKER" ||
+  { echo "patch marker missing ollmchat-android-popup-v5 tag" >&2; exit 1; }
 grep -q 'g_debug' "$MARKER" ||
   { echo "patch marker missing g_debug reference" >&2; exit 1; }
 grep -q '#include <glib.h>' "$MARKER" ||
@@ -38,7 +36,7 @@ grep -q 'sendKeyEvent' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/
   { echo "ImContext.java hold-delete sendKeyEvent path missing" >&2; exit 1; }
 grep -q 'in_long_press' "$ROOT_DIR/subprojects/gtk/gtk/gtktext.c" ||
   { echo "gtktext.c long-press paste bubble path missing" >&2; exit 1; }
-grep -q 'gdk_android_scan_gio_modules' "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidruntime.c" ||
-  { echo "gdkandroidruntime.c GDK TLS scan missing" >&2; exit 1; }
+grep -q 'gdk_android_scan_gio_modules' "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidruntime.c" &&
+  { echo "gdkandroidruntime.c must not contain GDK TLS scan (app loads TLS)" >&2; exit 1; }
 
 echo "R03 gtk-patch-marker: OK"

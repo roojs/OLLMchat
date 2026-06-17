@@ -15,6 +15,7 @@ tls_check = false
 sysprof = 'disabled'
 
 [glib-networking:project options]
+default_library = 'static'
 gnutls = 'disabled'
 openssl = 'enabled'
 libproxy = 'disabled'

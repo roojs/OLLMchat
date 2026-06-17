@@ -1,10 +1,10 @@
 # Android: icon theme set via `g_setenv` in TLS init (wrong place)
 
-**Status:** OPEN  
+**Status:** FIXED (2026-06-17)  
 **Opened:** 2026-06-17  
 **Package:** `org.roojs.ollmchat.androidpoc` (chat POC); same pattern in any Android target using `ollmapp_configure_android_gio_tls_modules()`
 
-**Related:** [`docs/android-build.md`](../android-build.md) (GTK icons / Adwaita manifest), [`docs/android-tls-solution.md`](../android-tls-solution.md) (TLS init — unrelated to icons)
+**Related:** [`docs/android-build.md`](../../android-build.md) (GTK icons / Adwaita manifest), [`docs/android-tls.md`](../../android-tls.md) (TLS init — unrelated to icons)
 
 ---
 
@@ -54,7 +54,7 @@ This runs on every success/failure path through TLS module configuration.
 
 - **Root cause:** Convenience — `main()` already calls TLS init first, so icon theme was added there instead of proper GTK settings.
 - **Not a TLS regression** — removing `g_setenv` from `android-gio-tls.c` is safe once theme is set elsewhere.
-- **Proposed fix (pending approval):** In `AndroidApplication` (or first window setup), set `Gtk.Settings.gtk_icon_theme_name = "Adwaita"` (or equivalent). Delete all `GTK_ICON_THEME_NAME` / `g_setenv` blocks from `android-gio-tls.c`. Update `docs/android-build.md` to point at Vala startup, not TLS C init.
+- **Fix (2026-06-17):** `AndroidApplication` constructor sets `Gtk.Settings.gtk_icon_theme_name = "Adwaita"`. All `GTK_ICON_THEME_NAME` / `g_setenv` blocks removed from `android-gio-tls.c`.
 
 ---
 

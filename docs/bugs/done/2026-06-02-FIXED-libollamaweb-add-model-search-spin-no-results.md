@@ -1,6 +1,6 @@
 # Add Model live search (`libollamaweb`): spinner, no results returned
 
-**Status:** OPEN
+**Status:** FIXED (2026-06-17) — user confirmed Add Model search works; prior investigation showed libollamaweb CLI layer OK (2026-06-02).
 
 **Started:** 2026-06-02
 

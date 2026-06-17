@@ -1,6 +1,6 @@
 # Android runtime: TLS, IME hold-delete, Entry paste bubble
 
-**Status:** **FIXED** (2026-06-17) — closed for chat POC; CA bundle for arbitrary HTTPS hosts remains optional follow-up in [`docs/android-tls-solution.md`](../android-tls-solution.md).
+**Status:** **FIXED** (2026-06-17) — closed for chat POC; see [`docs/android-tls.md`](../../android-tls.md).
 
 **Opened:** 2026-06-15 · **Closed:** 2026-06-17  
 **Package:** `org.roojs.ollmchat.androidpoc` (chat POC — sole Android TLS target on `main`)
@@ -412,5 +412,5 @@ Server cert is read correctly; verification fails because the **issuer is unknow
 - [x] **TLS backend** — `GTlsBackendOpenssl` on cold start — **fixed** (2026-06-17); chat POC HTTPS to remote Ollama verified
 - [x] **GLib patch** — ensure-before-scan in `tls-ensure-before-scan.patch` + wrap pin — **landed in tree**
 - [x] **Harness HTTPS button** — libsoup `GET https://roojs.com/` — restored in tree
-- [x] **TLS HTTPS (harness roojs.com)** — **closed for now** — was `UNKNOWN_CA` without bundled CA; chat POC uses working remote endpoint; CA bundle documented in `android-tls-solution.md` if needed later
+- [x] **TLS HTTPS (harness roojs.com)** — **closed for now** — was `UNKNOWN_CA` without bundled CA; chat POC uses working remote endpoint; CA bundle documented in `android-tls.md` if needed later
 - [x] **Ship** — TLS backend in chat POC APK; GTK fork / gdk runtime scan restored

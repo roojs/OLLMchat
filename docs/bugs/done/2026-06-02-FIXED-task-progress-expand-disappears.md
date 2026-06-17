@@ -1,6 +1,6 @@
 # Task progress strip: expand causes strip to disappear
 
-**Status:** OPEN
+**Status:** FIXED (2026-06-17) — closed without reproduction; collapse header shipped in `liboccoder/Task/ProgressView.vala` (plan 7.14.14). Reopen if expand still hides the strip.
 
 **Started:** 2026-06-02
 

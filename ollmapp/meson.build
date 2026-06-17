@@ -95,6 +95,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
     dependency('gobject-2.0'),
     dependency('json-glib-1.0'),
     dependency('libsoup-3.0'),
+    dependency('gioopenssl'),
     valac.find_library('posix'),
   ]
 

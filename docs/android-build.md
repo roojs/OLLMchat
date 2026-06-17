@@ -3,7 +3,7 @@
 How to build the OLLMchat Android remote chat POC locally and in GitHub Actions,
 plus background on what is implemented today versus the full desktop application.
 
-**Current port status:** [`docs/android-port-status.md`](android-port-status.md) — read this first for what works, what is broken, and debug commands.
+**Current port status:** [`docs/plans/9.0-android-poc-summary.md`](plans/9.0-android-poc-summary.md) — read this first for what works, what is broken, and debug commands.
 
 ## Summary
 
@@ -177,11 +177,12 @@ At runtime, GIO looks for TLS backends under `GIO_MODULE_DIR`. The Android
 cross-build bakes in `/lib/arm64-v8a/gio/modules`, which does not exist on
 device. Before any network I/O, `main()` calls
 `ollmapp_configure_android_gio_tls_modules()` (`ollmapp/android/android-gio-tls.c`)
-to set `GIO_MODULE_DIR` to `$XDG_DATA_DIRS/gio/modules` (GTK extracts APK assets
-to `filesDir/` on startup; GIO modules are staged under
-`assets/share/gio/modules/` at build time) and `SSL_CERT_FILE` to the extracted
-CA bundle under `assets/share/ssl/certs/ca-certificates.crt`. See
-[`docs/android-tls-solution.md`](android-tls-solution.md). The Pixiewood build enables Gradle
+to scan GIO TLS modules under `g_get_system_data_dirs()/gio/modules` (GTK extracts APK
+assets to `filesDir/` on startup; GIO modules are staged under
+`assets/share/gio/modules/` at build time). CA trust is applied per `Soup.Session` via
+`AndroidConnectionTls` / `GTlsFileDatabase` (bundled
+`assets/share/ssl/certs/ca-certificates.crt`). See
+[`docs/android-tls.md`](android-tls.md). The Pixiewood build enables Gradle
 `packaging.jniLibs.useLegacyPackaging` so native libraries are extracted to a
 real filesystem path.
 
@@ -195,7 +196,8 @@ host’s `/usr/share/icons/` into a staging tree, then copies with `cp -rL` into
 `assets/share/icons/Adwaita/` (~tens of KB, not the full theme). Add a manifest
 row when Android-shipped UI references a new `icon_name`. GTK extracts assets
 with the rest of `assets/share/` before `main()`.
-`ollmapp_configure_android_gio_tls_modules()` currently sets `GTK_ICON_THEME_NAME=Adwaita` via `g_setenv` (wrong layer — see [`docs/bugs/2026-06-17-android-icon-theme-gsettings.md`](bugs/2026-06-17-android-icon-theme-gsettings.md)).
+`AndroidApplication` sets `Gtk.Settings.gtk_icon_theme_name = "Adwaita"` (see
+[`docs/bugs/done/2026-06-17-FIXED-android-icon-theme-gsettings.md`](bugs/done/2026-06-17-FIXED-android-icon-theme-gsettings.md)).
 
 After a local or CI APK build, verify packaging with:
 
