@@ -118,7 +118,7 @@ valadoc_docs = custom_target('valadoc',
     # libollmchat sources (depends on libocsqlite)
     '../libollmchat/namespace.vala',  # Namespace documentation
     '../libollmchat/ApplicationInterface.vala',
-    '../libollmchat/ChatUserInterface.vala',
+    '../libollmchat/ChatDesktopInterface.vala',
     '../libollmchat/Settings/namespace.vala',  # Settings namespace documentation
     '../libollmchat/Settings/Config2.vala',
     '../libollmchat/Settings/Connection.vala',
@@ -310,6 +310,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchatgtk/ChatInput.vala',
     '../libollmchatgtk/ChatBar.vala',
     '../libollmchatgtk/ChatPermission.vala',
+    '../libollmchatgtk/HistoryBrowser.vala',
     '../libollmchatgtk/HistoryBrowser.vala',
     '../libollmchatgtk/Tools/Permission.vala',
     '../libollmchatgtk/List/ModelUsageFilter.vala',

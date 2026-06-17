@@ -23,63 +23,24 @@ namespace OLLMapp
 	 *
 	 * @since 1.0
 	 */
-	public class AndroidMainWindow : Adw.ApplicationWindow
+	public class AndroidMainWindow : Adw.ApplicationWindow, ChatUserInterface
 	{
 		public AndroidApplication app { get; construct; }
 		public AndroidSettingsDialog settings_dialog { get; private set; }
-		public OLLMchat.History.Manager? history_manager { get; set; default = null; }
+		public OLLMchat.History.Manager history_manager { get; set; default = null; }
 
-		public OLLMchatGtk.ChatWidget? chat_widget { get; private set; }
+		public OLLMchatGtk.ChatWidget chat_widget { get; set; default = null; }
 
-		private Adw.OverlaySplitView split_view;
+		private Gtk.Stack view_stack;
+		private Gtk.Box chat_container;
+		private Gtk.Box startup_panel;
 		private Adw.HeaderBar header_bar;
 		private Gtk.ToggleButton history_toggle_button;
 		private Gtk.Button new_chat_button;
-		private Gtk.DropDown agent_dropdown;
+		public AgentDropdown agent_dropdown { get; set; }
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
 		private AndroidBootstrapConnectionAdd? bootstrap_dialog = null;
-		private uint history_leave_ignore_timeout_id = 0;
-		private Gtk.Label? startup_status_label = null;
-
-		/**
-		 * Updates the startup progress label shown while connecting.
-		 *
-		 * @param message Status text for the user
-		 */
-		public void set_startup_status (string message)
-		{
-			if (this.startup_status_label != null) {
-				this.startup_status_label.label = message;
-			}
-		}
-
-		private void show_startup_panel (string message)
-		{
-			this.startup_status_label = new Gtk.Label (message) {
-				margin_top = 8,
-				halign = Gtk.Align.CENTER,
-				wrap = true,
-				wrap_mode = Pango.WrapMode.WORD,
-				max_width_chars = 40,
-			};
-			var spinner = new Gtk.Spinner () {
-				halign = Gtk.Align.CENTER,
-			};
-			spinner.start ();
-			var panel = new Gtk.Box (
-				Gtk.Orientation.VERTICAL, 12) {
-				margin_top = 24,
-				margin_bottom = 24,
-				margin_start = 24,
-				margin_end = 24,
-				halign = Gtk.Align.CENTER,
-				valign = Gtk.Align.CENTER,
-				vexpand = true,
-			};
-			panel.append (spinner);
-			panel.append (this.startup_status_label);
-			this.split_view.content = panel;
-		}
+		public Gtk.Label startup_status_label;
 
 		public AndroidMainWindow(AndroidApplication app)
 		{
@@ -114,14 +75,13 @@ namespace OLLMapp
 				if (this.history_manager == null || this.chat_widget == null) {
 					return;
 				}
+				this.history_toggle_button.active = false;
 				var new_session = this.history_manager.create_new_session();
 				this.chat_widget.switch_to_session.begin(new_session);
 			});
 			this.header_bar.pack_start(this.new_chat_button);
 
-			this.agent_dropdown = new Gtk.DropDown (null, null) {
-				hexpand = false
-			};
+			this.agent_dropdown = new AgentDropdown(this);
 			this.header_bar.pack_start(this.agent_dropdown);
 
 			var settings_button = new Gtk.Button() {
@@ -137,43 +97,65 @@ namespace OLLMapp
 
 			toolbar_view.add_top_bar(this.header_bar);
 
-			this.split_view = new Adw.OverlaySplitView() {
-				show_sidebar = false
+			this.chat_container = new Gtk.Box (Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = true,
 			};
-			this.split_view.set_sidebar_width_fraction(0.85);
+			this.startup_status_label = new Gtk.Label ("Connecting…") {
+				margin_top = 8,
+				halign = Gtk.Align.CENTER,
+				wrap = true,
+				wrap_mode = Pango.WrapMode.WORD,
+				max_width_chars = 40,
+			};
+			var startup_spinner = new Gtk.Spinner () {
+				halign = Gtk.Align.CENTER,
+			};
+			startup_spinner.start ();
+			this.startup_panel = new Gtk.Box (
+				Gtk.Orientation.VERTICAL, 12) {
+				margin_top = 24,
+				margin_bottom = 24,
+				margin_start = 24,
+				margin_end = 24,
+				halign = Gtk.Align.CENTER,
+				valign = Gtk.Align.CENTER,
+				vexpand = true,
+			};
+			this.startup_panel.append (startup_spinner);
+			this.startup_panel.append (this.startup_status_label);
+
+			this.view_stack = new Gtk.Stack () {
+				hexpand = true,
+				vexpand = true,
+				transition_type = Gtk.StackTransitionType.NONE,
+				visible_child_name = "startup",
+			};
+			this.view_stack.add_named (this.startup_panel, "startup");
+			this.view_stack.add_named (this.chat_container, "chat");
 
 			this.history_toggle_button.toggled.connect(() => {
-				this.split_view.show_sidebar = this.history_toggle_button.active;
-				this.history_toggle_button.icon_name =
-					this.history_toggle_button.active
-						? "sidebar-hide-symbolic"
-						: "sidebar-show-symbolic";
-				if (this.history_toggle_button.active) {
-					if (this.history_leave_ignore_timeout_id != 0) {
-						GLib.Source.remove(this.history_leave_ignore_timeout_id);
-						this.history_leave_ignore_timeout_id = 0;
+				var showing = this.history_toggle_button.active;
+				if (showing) {
+					this.view_stack.visible_child_name = "history";
+					this.history_toggle_button.icon_name =
+						"sidebar-hide-symbolic";
+					if (this.history_browser == null) {
+						return;
 					}
-					this.history_leave_ignore_timeout_id =
-						GLib.Timeout.add_seconds(1, () => {
-							this.history_leave_ignore_timeout_id = 0;
-							return false;
-						});
-					if (this.history_browser != null) {
-						GLib.Idle.add(() => {
-							this.history_browser.scrolled_window.vadjustment.value = 0;
-							this.history_browser.search_entry.grab_focus();
-							return false;
-						});
-					}
+					GLib.Idle.add(() => {
+						this.history_browser.scrolled_window.vadjustment.value = 0;
+						this.history_browser.search_entry.grab_focus();
+						return false;
+					});
 					return;
 				}
-				if (this.history_leave_ignore_timeout_id != 0) {
-					GLib.Source.remove(this.history_leave_ignore_timeout_id);
-					this.history_leave_ignore_timeout_id = 0;
-				}
+				this.view_stack.visible_child_name = "chat";
+				this.history_toggle_button.icon_name =
+					"sidebar-show-symbolic";
 			});
 
-			toolbar_view.content = this.split_view;
+			toolbar_view.content = this.view_stack;
 			this.content = toolbar_view;
 
 			(this as Gtk.Widget).realize.connect(() => {
@@ -198,28 +180,28 @@ namespace OLLMapp
 				this.load_config_and_initialize.begin();
 			});
 
-			this.show_startup_panel ("Connecting…");
+			this.view_stack.visible_child_name = "startup";
+			this.startup_status_label.label = "Connecting…";
 
 			if (yield startup.run(this.app.config)) {
-				this.set_startup_status ("Opening chat…");
+				this.startup_status_label.label = "Opening chat…";
 				this.app.config = this.app.load_config();
 				AndroidConnectionConfigTls.apply_to_config(this.app.config);
 				yield this.initialize_client(this.app.config);
 				return;
 			}
 
-			if (this.chat_widget == null) {
-				this.split_view.content = new Gtk.Label(
-					"Could not start chat. Open Settings to verify your connection and model."
-				) {
-					margin_top = 24,
-					margin_bottom = 24,
-					margin_start = 24,
-					margin_end = 24,
-					wrap = true,
-					vexpand = true,
-				};
-			}
+			this.chat_container.append (new Gtk.Label(
+				"Could not start chat. Open Settings to verify your connection and model."
+			) {
+				margin_top = 24,
+				margin_bottom = 24,
+				margin_start = 24,
+				margin_end = 24,
+				wrap = true,
+				vexpand = true,
+			});
+			this.view_stack.visible_child_name = "chat";
 		}
 
 		private async void show_bootstrap_dialog(string error_message)
@@ -287,26 +269,26 @@ namespace OLLMapp
 				this.load_config_and_initialize.begin();
 			});
 
-			this.show_startup_panel ("Connecting…");
+			this.view_stack.visible_child_name = "startup";
+			this.startup_status_label.label = "Connecting…";
 
 			if (yield startup.run(config)) {
-				this.set_startup_status ("Opening chat…");
+				this.startup_status_label.label = "Opening chat…";
 				yield this.initialize_client(config);
 				return;
 			}
 
-			if (this.chat_widget == null) {
-				this.split_view.content = new Gtk.Label(
-					"Could not start chat. Open Settings to verify your connection and model."
-				) {
-					margin_top = 24,
-					margin_bottom = 24,
-					margin_start = 24,
-					margin_end = 24,
-					wrap = true,
-					vexpand = true,
-				};
-			}
+			this.chat_container.append (new Gtk.Label(
+				"Could not start chat. Open Settings to verify your connection and model."
+			) {
+				margin_top = 24,
+				margin_bottom = 24,
+				margin_start = 24,
+				margin_end = 24,
+				wrap = true,
+				vexpand = true,
+			});
+			this.view_stack.visible_child_name = "chat";
 		}
 
 		private async void initialize_client(OLLMchat.Settings.Config2 config)
@@ -315,187 +297,42 @@ namespace OLLMapp
 				return;
 			}
 
-			this.set_startup_status ("Loading models…");
+			this.startup_status_label.label = "Loading models…";
 			yield this.history_manager.connection_models.refresh();
 
-			if (!this.history_manager.agent_factories.has_key ("chatter")) {
-				this.history_manager.agent_factories.set (
-					"chatter", new OLLMchat.Chatter.Factory ());
-			}
+			this.register_default_agents();
 
-			this.setup_agent_dropdown ();
+			this.agent_dropdown.wire();
 
 			this.new_chat_button.sensitive = true;
 			this.new_chat_button.visible = true;
 
-			this.history_browser = new OLLMchatGtk.HistoryBrowser(this.history_manager);
-			this.split_view.sidebar = this.history_browser;
+			this.history_browser = new OLLMchatGtk.HistoryBrowser(this.history_manager) {
+				hexpand = true,
+				vexpand = true,
+			};
+			this.view_stack.add_named (this.history_browser, "history");
 			this.history_toggle_button.visible = true;
 
-			var sidebar_motion = new Gtk.EventControllerMotion();
-			sidebar_motion.leave.connect(() => {
-				if (this.split_view.show_sidebar
-				    && this.history_leave_ignore_timeout_id == 0) {
-					this.history_toggle_button.active = false;
-				}
-			});
-			this.history_browser.add_controller(sidebar_motion);
-
-			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager);
+			this.setup_chat_widget(
+				this.app as Gtk.Application,
+				GLib.Path.build_filename(this.app.data_dir, "config"));
 
 			this.history_browser.session_selected.connect((session) => {
+				this.history_toggle_button.active = false;
 				this.chat_widget.switch_to_session.begin(session);
 			});
 
-			var config_dir = GLib.Path.build_filename(this.app.data_dir, "config");
-			this.history_manager.permission_provider =
-				new OLLMchatGtk.Tools.Permission(
-					this.chat_widget,
-					config_dir) {
-					application = this.app as GLib.Application,
-				};
+			this.connect_agent_factory_signals();
 
-			this.chat_widget.error_occurred.connect((error) => {
-				GLib.stderr.printf("Error: %s\n", error);
-			});
-
-			this.history_manager.agent_activated.connect((factory) => {
-				factory.activate.begin(this, (obj, res) => {
-					factory.activate.end(res);
-				});
-			});
-			this.history_manager.agent_deactivated.connect((factory) => {
-				factory.deactivate.begin(this, (obj, res) => {
-					factory.deactivate.end(res);
-				});
-			});
-			this.history_manager.session_restored.connect((_session) => {
-				var factory = this.history_manager.get_active_agent();
-				factory.activate.begin(this, (obj, res) => {
-					factory.activate.end(res);
-				});
-			});
-
-			this.split_view.content = this.chat_widget;
-			this.startup_status_label = null;
-
-			var active_factory = this.history_manager.get_active_agent ();
-			active_factory.activate.begin (this, (obj, res) => {
-				active_factory.activate.end (res);
-			});
+			this.chat_container.append (this.chat_widget);
+			this.view_stack.visible_child_name = "chat";
 
 			GLib.message (
 				"AndroidMainWindow: initialize_client agents=%u",
 				this.history_manager.agent_factories.size);
 
-			yield this.chat_widget.switch_to_session (
-				this.history_manager.session);
-
-			GLib.Idle.add (() => {
-				if (this.history_manager != null) {
-					this.history_manager.agent_status_change ();
-				}
-				return false;
-			});
-		}
-
-		private void setup_agent_dropdown()
-		{
-			if (this.history_manager == null) {
-				return;
-			}
-
-			var agent_store = new GLib.ListStore (typeof (OLLMchat.Agent.Factory));
-
-			var selected_index = 0;
-			var i = 0;
-			foreach (var factory in this.history_manager.agent_factories.values) {
-				agent_store.append (factory);
-				if (factory.name == this.history_manager.session.agent_name) {
-					selected_index = i;
-				}
-				i++;
-			}
-
-			var list_factory = new Gtk.SignalListItemFactory ();
-			list_factory.setup.connect ((item) => {
-				var list_item = item as Gtk.ListItem;
-				if (list_item == null) {
-					return;
-				}
-
-				var label = new Gtk.Label ("") {
-					halign = Gtk.Align.START
-				};
-				list_item.set_data<Gtk.Label> ("label", label);
-				list_item.child = label;
-			});
-
-			list_factory.bind.connect ((item) => {
-				var list_item = item as Gtk.ListItem;
-				if (list_item == null || list_item.item == null) {
-					return;
-				}
-				var agent_factory = list_item.item as OLLMchat.Agent.Factory;
-				var label = list_item.get_data<Gtk.Label> ("label");
-				if (label == null) {
-					return;
-				}
-				label.label = agent_factory.title;
-				label.tooltip_text = agent_factory.long_title;
-			});
-
-			this.agent_dropdown.model = agent_store;
-			this.agent_dropdown.set_factory (list_factory);
-			this.agent_dropdown.set_list_factory (list_factory);
-
-			this.agent_dropdown.notify["selected"].connect (() => {
-				if (this.agent_dropdown.selected == Gtk.INVALID_LIST_POSITION) {
-					return;
-				}
-
-				var factory = (this.agent_dropdown.model as GLib.ListStore)
-					.get_item (this.agent_dropdown.selected)
-					as OLLMchat.Agent.Factory;
-				this.agent_dropdown.tooltip_text = factory.long_title;
-
-				try {
-					if (this.history_manager.session.fid == null
-					    || this.history_manager.session.fid == "") {
-						this.history_manager.session.activate_agent (
-							factory.name);
-						return;
-					}
-					this.history_manager.activate_agent (
-						this.history_manager.session.fid, factory.name);
-				} catch (GLib.Error e) {
-					GLib.warning (
-						"Failed to activate agent '%s': %s",
-						factory.name, e.message);
-				}
-			});
-
-			this.agent_dropdown.selected = selected_index;
-
-			this.history_manager.session_activated.connect ((session) => {
-				var store = this.agent_dropdown.model as GLib.ListStore;
-				if (store == null) {
-					return;
-				}
-				var factory = this.history_manager.get_active_agent ();
-				factory.activate.begin (this, (obj, res) => {
-					factory.activate.end (res);
-				});
-				var agent_index = 0;
-				for (var j = 0; j < store.get_n_items (); j++) {
-					if (((OLLMchat.Agent.Factory) store.get_item (j)).name
-					    == session.agent_name) {
-						agent_index = j;
-						break;
-					}
-				}
-				this.agent_dropdown.selected = agent_index;
-			});
+			yield this.activate_session_and_sync_ui();
 		}
 	}
 

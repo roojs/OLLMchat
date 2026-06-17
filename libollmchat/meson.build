@@ -157,7 +157,7 @@ ollmchat_resources = [ollmchat_resources_c, ollmchat_resources_h]
 # Settings files must come first as they are used by other files
 ollmchat_ollama_src = files([
   'ApplicationInterface.vala',
-  'ChatUserInterface.vala',
+  'ChatDesktopInterface.vala',
   'Settings/Connection.vala',
   'Settings/ModelUsage.vala',
   'Settings/ConnectionModels.vala',

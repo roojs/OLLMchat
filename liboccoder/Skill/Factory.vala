@@ -73,11 +73,11 @@ namespace OLLMcoder.Skill
 		 * {@link #initialize_widget} runs so session restore can update the
 		 * progress model while project state loads asynchronously.
 		 *
-		 * @param window main window implementing {@link OLLMchat.ChatUserInterface}
+		 * @param window main window implementing {@link OLLMchat.ChatDesktopInterface}
 		 */
 		public override async void activate(GLib.Object window)
 		{
-			var host = (OLLMchat.ChatUserInterface) window;
+			var host = (OLLMchat.ChatDesktopInterface) window;
 			if (this.widget == null) {
 				this.progress_view = new OLLMcoder.Task.ProgressView();
 				((Gtk.Box) host.above_input_widget()).append(this.progress_view);
@@ -101,7 +101,7 @@ namespace OLLMcoder.Skill
 
 		public override async void deactivate(GLib.Object window)
 		{
-			var host = (OLLMchat.ChatUserInterface) window;
+			var host = (OLLMchat.ChatDesktopInterface) window;
 			this.progress_view.visible = false;
 			host.schedule_pane_update(false);
 		}

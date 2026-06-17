@@ -24,16 +24,16 @@ namespace OLLMapp
 	 * 
 	 * @since 1.0
 	 */
-	public class OllmchatWindow : Adw.Window, OLLMchat.ChatUserInterface
+	public class OllmchatWindow : Adw.Window, OLLMapp.ChatUserInterface, OLLMchat.ChatDesktopInterface
 	{
-		public OLLMchatGtk.ChatWidget chat_widget { get; private set; }
-		public OLLMchat.History.Manager? history_manager = null;
+		public OLLMchatGtk.ChatWidget chat_widget { get; set; default = null; }
+		public OLLMchat.History.Manager history_manager { get; set; default = null; }
 		private Adw.OverlaySplitView split_view;
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
 		private Gtk.Button new_chat_button;
 		public OLLMchat.ApplicationInterface app;
 		public WindowPane window_pane { get; private set; }
-		private Gtk.DropDown agent_dropdown;
+		public AgentDropdown agent_dropdown { get; set; }
 		private Adw.HeaderBar header_bar;
 		private Gtk.ToggleButton history_toggle_button;
 		private uint history_leave_ignore_timeout_id = 0;
@@ -73,11 +73,6 @@ namespace OLLMapp
 			if (idx < 0) {
 				return;
 			}
-			/* GLib.debug(
-				"scroll_msg idx=%d has=%s n=%u",
-				idx,
-				(idx >= 0 && idx < this.chat_widget.chat_view.render_box.by_id.size) ? "y" : "n",
-				this.chat_widget.chat_view.render_box.by_id.size); */
 			this.chat_widget.chat_view.scroll_to_idx(idx);
 		}
 
@@ -136,12 +131,7 @@ namespace OLLMapp
 				this.chat_widget.switch_to_session.begin(new_session);
 			});
 			
-			// Create agent dropdown (will be set up in setup_agent_dropdown)
-			// Use expression for BaseAgent.title (will be replaced in setup_agent_dropdown)
-			this.agent_dropdown = new Gtk.DropDown(null, 
-				new Gtk.PropertyExpression(typeof(OLLMchat.Agent.Factory), null, "title")) {
-				hexpand = false
-			};
+			this.agent_dropdown = new AgentDropdown(this);
 			this.header_bar.pack_start(this.agent_dropdown);
 			
 			// Create settings button with spinner
@@ -463,17 +453,38 @@ namespace OLLMapp
 			var skill_runner = new OLLMcoder.Skill.Factory(this.project_manager, skills_dirs, "");
 			this.history_manager.agent_factories.set(skill_runner.name, skill_runner);
 
-			this.history_manager.agent_factories.set(
-				"chatter", new OLLMchat.Chatter.Factory());
-			
-			// TODO: Clipboard feature needs proper design - see TODO.md
-			// Register clipboard metadata for file reference paste support
-			// OLLMchatGtk.ClipboardManager.metadata = new OLLMcoder.ClipboardMetadata();
-			
+			this.register_default_agents();
+
 			// Set up agent dropdown now that agents are registered
-			this.setup_agent_dropdown();
-			
-			// Enable new chat button now that history manager is ready
+			this.agent_dropdown.session_selection.connect(
+				(session, agent_index) => {
+					if (session.project_path == "") {
+						return false;
+					}
+					var project = this.project_manager.projects.path_map.get(
+						session.project_path);
+					if (project == null) {
+						GLib.warning(
+							"Session project_path '%s' not found in project list",
+							session.project_path);
+						return false;
+					}
+					this.project_manager.activate_project.begin(
+						project, (obj, res) => {
+							try {
+								this.project_manager.activate_project.end(
+									res);
+							} catch (GLib.Error e) {
+								GLib.warning(
+									"Session restore: activate_project failed: %s",
+									e.message);
+							}
+							this.agent_dropdown.selected = agent_index;
+						});
+					return true;
+				});
+			this.agent_dropdown.wire();
+
 			this.new_chat_button.sensitive = true;
 			
 			// Create history browser and add to split view sidebar
@@ -499,20 +510,11 @@ namespace OLLMapp
 			});
 
 			// Create chat widget with manager
-			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager);
-			
-			// Create ChatView permission provider and set it on the manager (shared across all sessions)
-			this.history_manager.permission_provider = new OLLMchatGtk.Tools.Permission(
-				this.chat_widget,
+			this.setup_chat_widget(
+				this.app as Gtk.Application,
 				GLib.Path.build_filename(
 					GLib.Environment.get_home_dir(), ".config", "ollmchat"
-				)) {
-				application = this.app as GLib.Application,
-			};
-			
-			this.chat_widget.error_occurred.connect((error) => {
-				GLib.stderr.printf("Error: %s\n", error);
-			});
+				));
 
 			// Create WindowPane to manage chat widget and agent widgets
 			this.window_pane = new WindowPane();
@@ -521,24 +523,9 @@ namespace OLLMapp
 			this.window_pane.paned.set_start_child(this.chat_widget);
 			this.window_pane.paned.set_resize_start_child(true);
 			
-			// Agent UI: factories receive this window as ChatUserInterface (§3b)
-			this.history_manager.agent_activated.connect((factory) => {
-				factory.activate.begin(this, (obj, res) => {
-					factory.activate.end(res);
-				});
-			});
-			this.history_manager.agent_deactivated.connect((factory) => {
-				factory.deactivate.begin(this, (o, res) => {
-					factory.deactivate.end(res);
-				});
-			});
-			this.history_manager.session_restored.connect((_session) => {
-				var factory = this.history_manager.get_active_agent();
-				factory.activate.begin(this, (obj, res) => {
-					factory.activate.end(res);
-				});
-			});
-			
+			// Agent UI: factories receive this window as ChatDesktopInterface (§3b)
+			this.connect_agent_factory_signals();
+
 			// Set WindowPane as main content
 			this.split_view.content = this.window_pane;
 			
@@ -643,139 +630,6 @@ namespace OLLMapp
 			this.history_manager.tools.set(tool.name, tool);
 			//GLib.debug("Codebase search tool added to Manager (total tools: %d)", 
 			//	this.history_manager.tools.size);
-		}
-		
-		/**
-		 * Sets up the agent dropdown widget.
-		 * 
-		 * @since 1.0
-		 */
-		private void setup_agent_dropdown()
-		{
-			if (this.history_manager == null) {
-				return;
-			}
-			
-			// Create ListStore for agents
-			var agent_store = new GLib.ListStore(typeof(OLLMchat.Agent.Factory));
-			
-			// Add all registered agents to the store and set selection during load
-			var selected_index = 0;
-			var i = 0;
-			foreach (var factory in this.history_manager.agent_factories.values) {
-				agent_store.append(factory);
-				if (factory.name == this.history_manager.session.agent_name) {
-					selected_index = i;
-				}
-				i++;
-			}
-			
-			// Create factory for agent dropdown
-			var list_factory = new Gtk.SignalListItemFactory();
-			list_factory.setup.connect((item) => {
-				var list_item = item as Gtk.ListItem;
-				if (list_item == null) {
-					return;
-				}
-				
-				var label = new Gtk.Label("") {
-					halign = Gtk.Align.START
-				};
-				list_item.set_data<Gtk.Label>("label", label);
-				list_item.child = label;
-			});
-			
-			list_factory.bind.connect((item) => {
-				var list_item = item as Gtk.ListItem;
-				if (list_item == null || list_item.item == null) {
-					return;
-				}
-				var agent_factory = list_item.item as OLLMchat.Agent.Factory;
-				var label = list_item.get_data<Gtk.Label>("label");
-				if (label == null) {
-					return;
-				}
-				label.label = agent_factory.title;
-				label.tooltip_text = agent_factory.long_title;
-			});
-			
-			// Set up dropdown with agents
-			this.agent_dropdown.model = agent_store;
-			this.agent_dropdown.set_factory(list_factory);
-			this.agent_dropdown.set_list_factory(list_factory);
-			
-			// Connect selection change to activate agent via Manager (before setting selected)
-			// This ensures the signal handler is connected when we set the initial selection
-			this.agent_dropdown.notify["selected"].connect(() => {
-				if (this.agent_dropdown.selected == Gtk.INVALID_LIST_POSITION) {
-					return;
-				}
-				
-				var factory = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMchat.Agent.Factory;
-				this.agent_dropdown.tooltip_text = factory.long_title;
-				
-				// Use Manager.activate_agent() to handle agent change
-				// This routes to session.activate_agent() which handles AgentHandler creation/copying
-				// and then triggers agent_activated signal for UI updates
-				// For EmptySession (fid is empty), call session.activate_agent() directly
-				try {
-					if (this.history_manager.session.fid == null
-						|| this.history_manager.session.fid == "") {
-						this.history_manager.session.activate_agent(factory.name);
-						return;
-					}
-					this.history_manager.activate_agent(
-						this.history_manager.session.fid, factory.name);
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to activate agent '%s': %s", factory.name, e.message);
-				}
-			});
-			
-			// Set selected index after connecting signal (triggers initial agent activation)
-			this.agent_dropdown.selected = selected_index;
-			
-			//GLib.debug("setup_agent_dropdown: Dropdown configured with %u items, selected index: %u", 
-			//	agent_store.get_n_items(), selected_index);
-			
-			// Connect to session_activated signal to update when session changes
-			this.history_manager.session_activated.connect((session) => {
-				var store = this.agent_dropdown.model as GLib.ListStore;
-				if (store == null) {
-					return;
-				}
-				var factory = this.history_manager.get_active_agent();
-				factory.activate.begin(this, (obj, res) => {
-					factory.activate.end(res);
-				});
-				var agent_index = 0;
-				for (var j = 0; j < store.get_n_items(); j++) {
-					if (((OLLMchat.Agent.Factory)store.get_item(j)).name == session.agent_name) {
-						agent_index = j;
-						break;
-					}
-				}
-
-				// Restore active project from session.project_path before updating agent dropdown,
-				// so initialize_widget → restore_active_state() sees the session's project in DB.
-				if (session.project_path == "") {
-					this.agent_dropdown.selected = agent_index;
-					return;
-				}
-				var project = this.project_manager.projects.path_map.get(session.project_path);
-				if (project == null) {
-					GLib.warning("Session project_path '%s' not found in project list", session.project_path);
-					this.agent_dropdown.selected = agent_index;
-					return;
-				}
-				this.project_manager.activate_project.begin(project, (obj, res) => {
-					try {
-						this.project_manager.activate_project.end(res);
-					} catch (GLib.Error e) {
-						GLib.warning("Session restore: activate_project failed: %s", e.message);
-					}
-					this.agent_dropdown.selected = agent_index;
-				});
-			});
 		}
 		
 		/**

@@ -35,7 +35,7 @@ namespace OLLMcoder.Task
 		private Gtk.Revealer body_revealer;
 		private Gtk.Label header_title_label;
 
-		public weak OLLMchat.ChatUserInterface? window;
+		public weak OLLMchat.ChatDesktopInterface? window;
 		private Gtk.GestureClick click_gesture;
 		private Gtk.EventControllerKey key_controller;
 

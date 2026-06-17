@@ -87,7 +87,7 @@ namespace OLLMapp
 					return false;
 				}
 
-				this.window.set_startup_status ("Loading model…");
+				this.window.startup_status_label.label = "Loading model…";
 
 				if (!(yield this.initialize_model (config, working_conn))) {
 					GLib.message (
@@ -100,7 +100,7 @@ namespace OLLMapp
 					return false;
 				}
 
-				this.window.set_startup_status ("Preparing chat history…");
+				this.window.startup_status_label.label = "Preparing chat history…";
 
 				try {
 					AndroidApplication.ensure_app_data_directories (
@@ -198,7 +198,7 @@ namespace OLLMapp
 			var default_model = config.usage.get("default_model")
 				as OLLMchat.Settings.ModelUsage;
 
-			this.window.set_startup_status ("Loading models…");
+			this.window.startup_status_label.label = "Loading models…";
 			var temp_connection_models = new OLLMchat.Settings.ConnectionModels(
 				config
 			);

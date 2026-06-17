@@ -105,6 +105,8 @@ if get_option('android_poc') and host_machine.system() == 'android'
     'android/AndroidConnectionConfigTls.vala',
     version_vala,
     'About.vala',
+    'ChatUserInterface.vala',
+    'AgentDropdown.vala',
     'android/AndroidApplication.vala',
     'android/AndroidMainWindow.vala',
     'android/AndroidStartup.vala',
@@ -188,6 +190,8 @@ ollmchat_sources = [
   version_vala,
   'Application.vala',
   'About.vala',
+  'ChatUserInterface.vala',
+  'AgentDropdown.vala',
   'Initialize.vala',
   'Window.vala',
   'WindowPane.vala',
@@ -300,6 +304,9 @@ if get_option('android_poc') and host_machine.system() != 'android'
   ]
 
   android_poc_sources = [
+    'About.vala',
+    'ChatUserInterface.vala',
+    'AgentDropdown.vala',
     'android/AndroidApplication.vala',
     'android/AndroidMainWindow.vala',
     'android/AndroidStartup.vala',

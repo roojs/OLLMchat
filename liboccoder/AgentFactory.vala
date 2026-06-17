@@ -417,7 +417,7 @@ namespace OLLMcoder
 		
 		public override async void activate(GLib.Object window)
 		{
-			var host = (OLLMchat.ChatUserInterface) window;
+			var host = (OLLMchat.ChatDesktopInterface) window;
 			if (this.widget == null) {
 				this.widget = new OLLMcoder.SourceView(this.project_manager);
 				yield this.initialize_widget();
@@ -435,7 +435,7 @@ namespace OLLMcoder
 
 		public override async void deactivate(GLib.Object window)
 		{
-			var host = (OLLMchat.ChatUserInterface) window;
+			var host = (OLLMchat.ChatDesktopInterface) window;
 			host.schedule_pane_update(false);
 		}
 		

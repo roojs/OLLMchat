@@ -179,7 +179,7 @@ namespace OLLMchat.Agent
 		/**
 		 * Binds this factory’s UI to the application window when the user selects this agent.
 		 *
-		 * @param window main window (ollmapp: OllmchatWindow implements OLLMchat.ChatUserInterface)
+		 * @param window main window (ollmapp: OllmchatWindow implements OLLMchat.ChatDesktopInterface)
 		 */
 		public virtual async void activate(GLib.Object window)
 		{
@@ -188,7 +188,7 @@ namespace OLLMchat.Agent
 		/**
 		 * Hides this factory’s UI when the user switches away from this agent.
 		 *
-		 * @param window main window (ollmapp: OllmchatWindow implements OLLMchat.ChatUserInterface)
+		 * @param window main window (ollmapp: OllmchatWindow implements OLLMchat.ChatDesktopInterface)
 		 */
 		public virtual async void deactivate(GLib.Object window)
 		{
