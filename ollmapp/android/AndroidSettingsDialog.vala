@@ -25,7 +25,7 @@ namespace OLLMapp
 	 */
 	public class AndroidSettingsDialog : Adw.Dialog
 	{
-		public OLLMchat.ApplicationInterface app { get; construct; }
+		public AndroidApplication app { get; construct; }
 
 		public Gtk.Window parent;
 
@@ -42,7 +42,7 @@ namespace OLLMapp
 		private Gee.ArrayList<string> connection_urls = new Gee.ArrayList<string>();
 
 		public AndroidSettingsDialog(
-			OLLMchat.ApplicationInterface app,
+			AndroidApplication app,
 			Gtk.Window parent
 		) {
 			Object(app: app);
@@ -167,7 +167,7 @@ namespace OLLMapp
 			);
 			this.render_connections();
 			this.render_models();
-			this.app.config.save();
+			this.app.persist_config ();
 		}
 
 		private void render_connections()
@@ -255,7 +255,7 @@ namespace OLLMapp
 			row.expander.title = test_connection.name;
 			row.expander.subtitle = new_url;
 			row.clearUnverified();
-			this.app.config.save();
+			this.app.persist_config ();
 			this.render_models();
 		}
 
@@ -267,7 +267,7 @@ namespace OLLMapp
 			this.app.config.connections.unset(url);
 			this.render_connections();
 			this.render_models();
-			this.app.config.save();
+			this.app.persist_config ();
 		}
 
 		private void on_default_changed(string url, bool is_default)
@@ -408,7 +408,7 @@ namespace OLLMapp
 			this.save_all_options();
 			this.apply_config();
 			this.check_all_connections.begin();
-			this.app.config.save();
+			this.app.persist_config ();
 			this.app.config.changed();
 		}
 	}

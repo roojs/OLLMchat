@@ -21,7 +21,7 @@ namespace OLLMapp
 	/**
 	 * Android remote-chat application entry.
 	 *
-	 * Loads config from app-private storage. Does not use desktop tool registries.
+	 * Loads config from persistent storage outside the GTK asset sandbox.
 	 *
 	 * @since 1.0
 	 */
@@ -32,9 +32,16 @@ namespace OLLMapp
 
 		static string app_private_files_dir ()
 		{
-			/* XDG_DATA_HOME is .../files/share (GTK asset tree). Keep app data in
-			 * .../files/ollmchat instead of under share/. */
+			/* XDG_DATA_HOME is externalFilesDir/share (GTK asset tree, re-extracted
+			 * on APK update). App data lives beside share/, not under it. */
 			return GLib.Path.get_dirname (GLib.Environment.get_user_data_dir ());
+		}
+
+		static string config_storage_dir ()
+		{
+			/* XDG_CONFIG_HOME is externalFilesDir/etc — outside share/. */
+			return GLib.Path.build_filename (
+				GLib.Environment.get_user_config_dir (), "ollmchat");
 		}
 
 		static void ensure_directory (string path) throws GLib.Error
@@ -89,36 +96,92 @@ namespace OLLMapp
 		}
 
 		/**
-		 * Loads config from app-private paths (Config2 only).
+		 * Ensures Config2.config_path and saves to persistent storage.
 		 *
-		 * Sets Config2.config_path under {data_dir}/config/ then loads or
-		 * returns empty Config2. Does not use base_load_config() because
-		 * that hardcodes ~/.config/ollmchat.
+		 * Config lives under XDG_CONFIG_HOME (external etc/ollmchat/), not under
+		 * the GTK asset tree in share/, so it survives APK asset re-extraction.
+		 *
+		 * @param config config to save; defaults to this.config when null
+		 */
+		public void persist_config (OLLMchat.Settings.Config2? config = null)
+		{
+			var to_save = config ?? this.config;
+			var target_dir = config_storage_dir ();
+
+			OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename (
+				target_dir, "config.2.json");
+
+			try {
+				ensure_directory (target_dir);
+			} catch (GLib.Error e) {
+				GLib.warning ("AndroidApplication: config dir: %s", e.message);
+				return;
+			}
+
+			to_save.save ();
+		}
+
+		/**
+		 * Loads config from persistent storage (Config2 only).
+		 *
+		 * Sets Config2.config_path under XDG_CONFIG_HOME/ollmchat/ then loads or
+		 * returns empty Config2. Migrates from legacy {data_dir}/config/ or
+		 * share/ollmchat/config/ paths when present. Does not use
+		 * base_load_config() because that hardcodes ~/.config/ollmchat.
 		 *
 		 * @return Loaded or empty Config2 instance
 		 */
 		public OLLMchat.Settings.Config2 load_config()
 		{
-			var config_dir = GLib.Path.build_filename(this.data_dir, "config");
+			var target_dir = config_storage_dir ();
+			var target_path = GLib.Path.build_filename (
+				target_dir, "config.2.json");
+
+			if (!GLib.FileUtils.test (target_path, GLib.FileTest.EXISTS)) {
+				var legacy_paths = new string[] {
+					GLib.Path.build_filename (
+						this.data_dir, "config", "config.2.json"),
+					GLib.Path.build_filename (
+						GLib.Environment.get_user_data_dir (),
+						"ollmchat", "config", "config.2.json"),
+				};
+
+				foreach (var legacy_path in legacy_paths) {
+					if (!GLib.FileUtils.test (
+						legacy_path, GLib.FileTest.EXISTS)) {
+						continue;
+					}
+
+					try {
+						ensure_directory (target_dir);
+						GLib.File.new_for_path (legacy_path).copy (
+							GLib.File.new_for_path (target_path),
+							GLib.FileCopyFlags.NONE, null);
+						GLib.message (
+							"AndroidApplication: migrated config from %s",
+							legacy_path);
+						break;
+					} catch (GLib.Error e) {
+						GLib.warning (
+							"AndroidApplication: config migration: %s",
+							e.message);
+					}
+				}
+			}
+
 			try {
-				ensure_directory (config_dir);
+				ensure_directory (target_dir);
 			} catch (GLib.Error e) {
-				GLib.warning("AndroidApplication: config dir: %s", e.message);
+				GLib.warning ("AndroidApplication: config dir: %s", e.message);
 			}
 
-			var dummy2 = new OLLMchat.Settings.Config2();
+			OLLMchat.Settings.Config2.config_path = target_path;
 
-			OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename(
-				config_dir, "config.2.json"
-			);
-
-			if (GLib.FileUtils.test(
-				OLLMchat.Settings.Config2.config_path, GLib.FileTest.EXISTS
-			)) {
-				return OLLMchat.Settings.Config2.load();
+			if (GLib.FileUtils.test (target_path, GLib.FileTest.EXISTS)) {
+				return OLLMchat.Settings.Config2.load ();
 			}
 
-			return new OLLMchat.Settings.Config2();
+			return new OLLMchat.Settings.Config2 ();
 		}
 	}
 }

@@ -17,6 +17,7 @@ ollmchatgtk_deps = [
   dependency('gobject-2.0'),
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
+  dependency('sqlite3'),
   valac.find_library('posix'),
 ]
 
@@ -48,36 +49,67 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollamaweb'
 ])
 
-ollmchatgtk_lib = library('ollmchatgtk',
-  dependencies: [ollmchatgtk_deps],
-  sources: [ollmchatgtk_src],
-  vala_header: 'ollmchatgtk.h',
-  vala_vapi: 'ollmchatgtk.vapi',
-  vala_gir: is_android_cross ? disabler() : 'OLLMchatGtk-1.0.gir',
-  link_with: [ollmchat_base_lib, ocmarkdown_base_lib, ocmarkdowngtk_lib],  # Link with base libraries
-  include_directories: [
-    include_directories('../libollmchat'),
-    include_directories('../libollamaweb'),
-    include_directories('../libocmarkdown'),
-    include_directories('../libocmarkdowngtk'),
-    include_directories('../libocsqlite')
-  ],
-  build_rpath: lib_build_rpath,
-  # When using link_with, meson auto-includes the meson-generated VAPIs from linked libraries
-  # We only need --pkg for ocsqlite since ollmchat_base_lib doesn't link_with it (uses link_args instead)
-  vala_args: [
-    '--pkg=sqlite3',
-    '--pkg=ocsqlite',
-    '--pkg=ollamaweb',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
-    '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--girdir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
-    '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
-  ],
-  install: true
-)
+if is_android_cross
+  ollmchatgtk_lib = library('ollmchatgtk',
+    dependencies: [
+      ollmchatgtk_deps,
+      ocsqlite_vapi_dep,
+    ],
+    sources: [ollmchatgtk_src],
+    vala_header: 'ollmchatgtk.h',
+    vala_vapi: 'ollmchatgtk.vapi',
+    link_with: [ollmchat_base_lib, ocmarkdown_base_lib, ocmarkdowngtk_lib],
+    include_directories: [
+      include_directories('../libollmchat'),
+      include_directories('../libollamaweb'),
+      include_directories('../libocmarkdown'),
+      include_directories('../libocmarkdowngtk'),
+      include_directories('../libocsqlite')
+    ],
+    build_rpath: lib_build_rpath,
+    vala_args: [
+      '--pkg=gtk4',
+      '--pkg=libadwaita-1',
+      '--pkg=gtksourceview-5',
+      '--pkg=sqlite3',
+      '--pkg=ocsqlite',
+      '--pkg=ollamaweb',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    ],
+    install: true
+  )
+else
+  ollmchatgtk_lib = library('ollmchatgtk',
+    dependencies: [ollmchatgtk_deps],
+    sources: [ollmchatgtk_src],
+    vala_header: 'ollmchatgtk.h',
+    vala_vapi: 'ollmchatgtk.vapi',
+    vala_gir: 'OLLMchatGtk-1.0.gir',
+    link_with: [ollmchat_base_lib, ocmarkdown_base_lib, ocmarkdowngtk_lib],
+    include_directories: [
+      include_directories('../libollmchat'),
+      include_directories('../libollamaweb'),
+      include_directories('../libocmarkdown'),
+      include_directories('../libocmarkdowngtk'),
+      include_directories('../libocsqlite')
+    ],
+    build_rpath: lib_build_rpath,
+    vala_args: [
+      '--pkg=sqlite3',
+      '--pkg=ocsqlite',
+      '--pkg=ollamaweb',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+      '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
+      '--girdir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+      '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
+    ],
+    install: true
+  )
+endif
 
 ollmchatgtk_gir_file = meson.current_build_dir() / 'OLLMchatGtk-1.0.gir'
 ollmchatgtk_gir_fixed = meson.current_build_dir() / 'OLLMchatGtk-1.0.fixed.gir'

@@ -25,7 +25,7 @@ namespace OLLMapp
 	 */
 	public class AndroidMainWindow : Adw.ApplicationWindow
 	{
-		public OLLMchat.ApplicationInterface app { get; construct; }
+		public AndroidApplication app { get; construct; }
 		public AndroidSettingsDialog settings_dialog { get; private set; }
 		public OLLMchat.History.Manager? history_manager { get; set; default = null; }
 
@@ -209,7 +209,7 @@ namespace OLLMapp
 					options = new OLLMchat.Call.Options()
 				});
 
-				config.save();
+				this.app.persist_config (config);
 				this.app.config = config;
 				this.initialize_after_bootstrap.begin(config);
 			});

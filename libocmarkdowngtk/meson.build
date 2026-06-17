@@ -40,20 +40,38 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollmchatgtk'
 ])
 
-ocmarkdowngtk_lib = library('ocmarkdowngtk',
-  dependencies: ocmarkdowngtk_deps,
-  sources: ocmarkdowngtk_src,
-  vala_header: 'ocmarkdowngtk.h',
-  vala_vapi: 'ocmarkdowngtk-meson.vapi',
-  vala_gir: is_android_cross ? disabler() : 'OCMarkdownGtk-1.0.gir',
-  link_with: [ocmarkdown_base_lib],
-  include_directories: include_directories('../libocmarkdown'),  # Include ocmarkdown headers from build directory
-  build_rpath: lib_build_rpath,
-  vala_args: [
-    '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
-  ],
-  install: true
-)
+if is_android_cross
+  ocmarkdowngtk_lib = library('ocmarkdowngtk',
+    dependencies: ocmarkdowngtk_deps,
+    sources: ocmarkdowngtk_src,
+    vala_header: 'ocmarkdowngtk.h',
+    vala_vapi: 'ocmarkdowngtk-meson.vapi',
+    link_with: [ocmarkdown_base_lib],
+    include_directories: include_directories('../libocmarkdown'),
+    build_rpath: lib_build_rpath,
+    vala_args: [
+      '--pkg=gtk4',
+      '--pkg=gtksourceview-5',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    ],
+    install: true
+  )
+else
+  ocmarkdowngtk_lib = library('ocmarkdowngtk',
+    dependencies: ocmarkdowngtk_deps,
+    sources: ocmarkdowngtk_src,
+    vala_header: 'ocmarkdowngtk.h',
+    vala_vapi: 'ocmarkdowngtk-meson.vapi',
+    vala_gir: 'OCMarkdownGtk-1.0.gir',
+    link_with: [ocmarkdown_base_lib],
+    include_directories: include_directories('../libocmarkdown'),
+    build_rpath: lib_build_rpath,
+    vala_args: [
+      '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    ],
+    install: true
+  )
+endif
 
 # Manually generate ocmarkdowngtk.vapi with correct command line order
 # --vapidir and --pkg flags come before source files, ensuring packages load first
@@ -111,8 +129,8 @@ if not is_android_cross
   install: true,
   install_dir: get_option('libdir') / 'girepository-1.0',
 )
-meson.add_install_script(
-  'sh', '-c',
-  'install -Dm644 "' + ocmarkdowngtk_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OCMarkdownGtk-1.0.gir"',
-)
+  meson.add_install_script(
+    'sh', '-c',
+    'install -Dm644 "' + ocmarkdowngtk_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OCMarkdownGtk-1.0.gir"',
+  )
 endif

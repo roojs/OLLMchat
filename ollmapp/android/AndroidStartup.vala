@@ -250,7 +250,7 @@ namespace OLLMapp
 				default_model.options = first_chat_model.options.clone();
 			}
 
-			config.save();
+			this.window.app.persist_config (config);
 			return true;
 		}
 	}
