@@ -129,11 +129,27 @@ namespace OLLMchat.History
 			
 			// Create directory if it doesn't exist
 			var dir = GLib.File.new_for_path(this.history_dir);
-			if (!dir.query_exists()) {
+			if (dir.query_file_type (GLib.FileQueryInfoFlags.NONE)
+			    != GLib.FileType.DIRECTORY) {
 				try {
-					dir.make_directory_with_parents(null);
+					dir.make_directory_with_parents (null);
+				} catch (GLib.IOError e) {
+					if (e.code != GLib.IOError.EXISTS) {
+						GLib.error (
+							"Manager: failed to create history directory %s: %s",
+							this.history_dir, e.message);
+					}
+					if (dir.query_file_type (GLib.FileQueryInfoFlags.NONE)
+					    != GLib.FileType.DIRECTORY) {
+						GLib.error (
+							"Manager: failed to create history directory %s: "
+							+ "Path exists but is not a directory",
+							this.history_dir);
+					}
 				} catch (GLib.Error e) {
-					GLib.error("Manager: failed to create history directory %s: %s", this.history_dir, e.message);
+					GLib.error (
+						"Manager: failed to create history directory %s: %s",
+						this.history_dir, e.message);
 				}
 			}
 			

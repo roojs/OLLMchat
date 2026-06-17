@@ -67,6 +67,27 @@ namespace OLLMapp
 			}
 		}
 
+		/**
+		 * Ensures app data, history, config, and model-cache directories exist.
+		 *
+		 * Uses EXISTS-tolerant creation so History.Manager does not abort when
+		 * a concurrent mkdir races (Manager uses query_exists + make_directory).
+		 *
+		 * @param data_dir Application data directory ({@link data_dir})
+		 */
+		public static void ensure_app_data_directories (string data_dir)
+			throws GLib.Error
+		{
+			ensure_directory (data_dir);
+			ensure_directory (
+				GLib.Path.build_filename (data_dir, "history"));
+			ensure_directory (
+				GLib.Path.build_filename (data_dir, "config"));
+			ensure_directory (GLib.Path.build_filename (
+				GLib.Environment.get_user_data_dir (),
+				"ollmchat", "models"));
+		}
+
 		public AndroidApplication()
 		{
 			Object(
@@ -77,12 +98,14 @@ namespace OLLMapp
 			this.data_dir = GLib.Path.build_filename (
 				app_private_files_dir (), "ollmchat");
 
-			this.config = this.load_config();
+			/* Config loads on window realize when XDG paths are ready. */
+			this.config = new OLLMchat.Settings.Config2 ();
 			AndroidConnectionConfigTls.apply_to_config (this.config);
 
 			this.activate.connect(() => {
 				try {
-					ensure_directory (this.data_dir);
+					AndroidApplication.ensure_app_data_directories (
+						this.data_dir);
 				} catch (GLib.Error e) {
 					GLib.critical (
 						"AndroidApplication: data dir: %s", e.message);
@@ -198,9 +221,16 @@ namespace OLLMapp
 			OLLMchat.Settings.Config2.config_path = target_path;
 
 			if (GLib.FileUtils.test (target_path, GLib.FileTest.EXISTS)) {
-				return OLLMchat.Settings.Config2.load ();
+				var loaded = OLLMchat.Settings.Config2.load ();
+				GLib.message (
+					"AndroidApplication: load_config path=%s connections=%u",
+					target_path, loaded.connections.size);
+				return loaded;
 			}
 
+			GLib.message (
+				"AndroidApplication: load_config path=%s connections=0 (no file)",
+				target_path);
 			return new OLLMchat.Settings.Config2 ();
 		}
 	}

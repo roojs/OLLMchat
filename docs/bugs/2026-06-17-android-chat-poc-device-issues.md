@@ -55,19 +55,25 @@ adb shell cat /storage/emulated/0/Android/data/org.roojs.ollmchat.androidpoc/fil
 | When | APK / tree | Result | Notes |
 |------|------------|--------|-------|
 | 2026-06-17 | Chat POC (pre-fix batch) | **Fail** — multiple § open | `config.2.json` on disk with connection + api-key; user still sees bootstrap and blank UI |
-| — | *Awaiting round 2* | — | User feedback recorded above; agent applies **all open §** (see **Next loop fixes**), builds, installs, then user re-tests |
+| 2026-06-17 ~10:20 | Round 1 — loop fixes (all open §) | **Partial pass** | User: config boot OK; chat UI broken; agent list broken; About header OK but dialog logo missing; **crash** at 10:24:29 |
+| 2026-06-17 ~10:28 | Round 2 — history dir crash + About logo | **Partial pass** | User: no crash; §2 pass; §6b About logo pass; §3/§4/§5 still broken; brief “config not working” flash on first start |
+| 2026-06-17 ~10:35 | Round 3 — network retry + chat layout | **Partial fail** | User: top bar + “Connecting…” forever; agents/chat never load; **crash after a while**. Logcat: same `Manager.vala:136 history: File exists` despite round 2 mkdir workaround; startup stuck in full `ConnectionModels.refresh()` |
+| 2026-06-17 ~10:45 | Round 4 — Manager mkdir + fast model init | **Partial pass** | User: **chat finally loads** after long “Connecting…”; no crash. Model load slow; no progress feedback; user suspects cache broken |
+| 2026-06-17 ~11:00 | Round 5 — cache-first boot + progress UI | **Awaiting user test** | Cache-first saved model; spinner + status labels; **fix `Model.load_from_cache` `query_exists()` bug** (cache files on disk but never read on Android). Logcat: `model cache hit llama3.1:70b` ~1s boot. |
 
 ---
 
 ## Checklist (section status)
 
 - [x] **§1 Config write** — file on disk verified via adb  
-- [ ] **§2 Config load / skip bootstrap** — user reports bootstrap every restart  
-- [ ] **§3 Startup → chat shell** — blank main area after save/restart  
-- [ ] **§4 Agent dropdown** — shows “None”  
-- [ ] **§5 Chat input / send bar** — missing when shell appears  
-- [ ] **§6 About icon** — broken in header  
-- [ ] **§7 Default model in saved JSON** — `model` still empty after save  
+- [x] **§2 Config load / skip bootstrap** — user round 1: boots with config in place  
+- [x] **§3 Startup → chat shell** — user round 4: loads after long wait  
+- [ ] **§4 Agent dropdown** — user round 4: confirm after round 5  
+- [ ] **§5 Chat input / send bar** — user round 4: confirm after round 5  
+- [x] **§6 About header icon** — user round 1: header About button OK  
+- [x] **§6b About dialog logo** — user round 2: logo fixed  
+- [x] **§7 Default model in saved JSON** — user round 4: `llama3.1:70b` in config  
+- [x] **§8 Crash on startup** — user round 4: no crash  
 
 ---
 
@@ -127,7 +133,7 @@ Logcat string in APK: `AndroidApplication: saved config to …`
 
 ## §2 Config load / skip bootstrap on restart
 
-**Status:** **OPEN** — user reports app **always asks to fill in connection again** despite §1 file on disk
+**Status:** **PASS** (user round 1 — boots with config, no bootstrap)
 
 ### Desired result
 
@@ -137,14 +143,7 @@ Gate in code: `if (this.app.config.connections.size == 0)` → bootstrap, else s
 
 ### Actual (user report)
 
-Bootstrap connection dialog appears on every launch even after successful save.
-
-### Hypotheses (unverified)
-
-1. `load_config()` returns empty `connections` — wrong `XDG_CONFIG_HOME` at load time, deserialize failure, or read error (check logcat for `Failed to load config`).  
-2. **Early load in `AndroidApplication()` constructor** (before GDK sets Android XDG dirs) leaves stale empty `app.config`; secondary bug if something reads config before `load_config_and_initialize()`.  
-3. User testing an **older APK** without `etc/ollmchat` path (file exists from newer build, app binary is old).  
-4. Bootstrap shown for a **different reason** (e.g. startup failure then re-enter bootstrap — needs logcat).
+Round 1: **boots with config in place** — no bootstrap on restart.
 
 ### What we tried
 
@@ -152,13 +151,12 @@ Bootstrap connection dialog appears on every launch even after successful save.
 |------|--------|--------|
 | 1 | Gate on `connections.size == 0` instead of `config.loaded` | **Unknown** — not confirmed on device after install |
 | 2 | Migration from legacy `share/ollmchat/config/` paths | **Unknown** |
-| — | *No log lines yet for connection count at load* | — |
+| 3 | Defer `load_config()` from constructor; load on window realize only | **Round 1** — logcat shows `connections=1` on cold start; no `connections=0 showing bootstrap` line |
+| 4 | Log `load_config` path + `connections.size` | **Round 1** — `load_config path=…/etc/ollmchat/config.2.json connections=1` |
 
-### Next step (this batch)
+### Next step
 
-- Add `GLib.message` in `load_config()`: path, file exists, `connections.size` after load.  
-- Remove or defer constructor `load_config()` if XDG not ready (Android-only).  
-- Cold-start logcat + user confirms bootstrap yes/no.
+User cold-start test (round 1): bootstrap yes/no?
 
 ### Code
 
@@ -175,9 +173,11 @@ Bootstrap connection dialog appears on every launch even after successful save.
 
 After config load (or bootstrap), `AndroidStartup.run()` succeeds → `initialize_client()` mounts `HistoryBrowser` + `ChatWidget` in `split_view.content`.
 
-### Actual
+### Actual (user report)
 
-Header bar visible; **main area empty** (no history, no chat). Sometimes after bootstrap save in same session; also on restart.
+Round 2: no crash; chat output, input, and bottom buttons still absent. Brief “config not working” flash on first cold start; OK on second restart.
+
+Logcat: `run failed no working connection` — DNS `No address associated with hostname` before network ready; `initialize_client()` never ran.
 
 ### Hypotheses
 
@@ -190,14 +190,17 @@ Header bar visible; **main area empty** (no history, no chat). Sometimes after b
 | Step | Change | Result |
 |------|--------|--------|
 | 1 | Wire `ChatWidget` + `HistoryBrowser` in `initialize_client()` | **Not reached** on device if startup fails |
-| 2 | Error label on reload path when `startup.run()` fails | **Partial** — only on reload, not post-bootstrap |
-| — | Startup failure logging | **Not implemented** |
+| 2 | Error label on reload path when `startup.run()` fails | **Partial** — reload path only |
+| 3 | Error label in `initialize_after_bootstrap()` when startup fails | **Round 1** — landed; user test pending |
+| 4 | Log at each `AndroidStartup.run()` exit | **Round 1** — landed; logcat shows `run connections=1`; no ok/fail line yet at capture |
+| 5 | `persist_config()` in bootstrap `closed` before startup | **Round 1** — landed; user test pending |
+| 6 | Round 2: `ensure_app_data_directories()` before `History.Manager` | **Pass** — user round 2: no crash |
+| 7 | Round 3: connection retry (5×, 1.5s) for cold-start DNS | **Round 3** — user test pending |
+| 8 | Round 3: “Connecting…” label during startup | **Round 3** — user test pending |
 
-### Next step (this batch)
+### Next step
 
-- `persist_config()` immediately after bootstrap verify (mirror desktop `config.save()`).  
-- Same error label in `initialize_after_bootstrap()` when startup fails.  
-- Log at each `AndroidStartup.run()` exit: working connection, model name, return reason.
+User test: main area chat shell vs blank vs error label?
 
 ### Code
 
@@ -208,15 +211,15 @@ Desktop reference (read only): `ollmapp/Window.vala`, `ollmapp/Initialize.vala`
 
 ## §4 Agent dropdown (“None”)
 
-**Status:** **OPEN** (likely **downstream of §3**)
+**Status:** **OPEN** — user round 1: agent list not working (crash likely blocked `setup_agent_dropdown()`)
 
 ### Desired result
 
 Header dropdown lists **Just Ask** and **Chatter** (minimum); selection matches active session agent.
 
-### Actual
+### Actual (user report)
 
-Dropdown shows **“None”** or empty.
+Agent list / dropdown not working.
 
 ### Cause (code)
 
@@ -241,7 +244,7 @@ Fix §3 first; re-test. If dropdown still wrong with chat visible, debug `Histor
 
 ## §5 Chat input / send bar missing
 
-**Status:** **OPEN** (likely **downstream of §3**, possible secondary bug)
+**Status:** **OPEN** — user round 1: chat output, input, and bottom buttons not working
 
 ### Desired result
 
@@ -260,8 +263,8 @@ No input, no send control — blank chat region.
 
 | Step | Change | Result |
 |------|--------|--------|
-| 1 | `switch_to_session` + `active_factory.activate` in `initialize_client()` | **Not verified** |
-| 2 | Shared `ChatWidget` idle fix for `streaming_state` | **Reverted** — do not change shared code without approval |
+| 1 | `switch_to_session` + `active_factory.activate` in `initialize_client()` | **Not verified** — startup often failed before init |
+| 2 | Round 3: post-layout `agent_status_change` after `switch_to_session` | **Round 3** — unhide chat input when paned layout ready |
 
 ### Next step
 
@@ -273,27 +276,19 @@ Fix §3; if input still missing with chat visible, Android-only post-layout call
 
 ---
 
-## §6 About icon (header)
+## §6 About header icon
 
-**Status:** **OPEN**
+**Status:** **PASS** (user round 1)
 
 ### Desired result
 
 About button in header shows Adwaita `help-about-symbolic` icon; tap opens About window.
 
-### Actual
-
-Broken / missing icon (user report).
-
 ### What we tried
 
 | Step | Change | Result |
 |------|--------|--------|
-| 1 | Added `help-about-symbolic.svg` to `android/icons/manifest` | **Unknown** — may not be in installed APK assets; needs `strings`/asset verify on built APK |
-
-### Next step
-
-After next build: verify icon in APK assets; confirm GTK icon theme loads symbolic from asset tree. Re-extract assets if stale install.
+| 1 | Added `help-about-symbolic.svg` to `android/icons/manifest` | **Pass** — user round 1 |
 
 ### Code
 
@@ -301,9 +296,25 @@ After next build: verify icon in APK assets; confirm GTK icon theme loads symbol
 
 ---
 
-## §7 Default model empty in saved JSON
+## §6b About dialog logo
 
-**Status:** **OPEN**
+**Status:** **PASS** (user round 2)
+
+### What we tried
+
+| Step | Change | Result |
+|------|--------|--------|
+| 1 | Bundle `scalable/apps/org.roojs.ollmchat.svg` in Adwaita icon set + `index.theme` | **Pass** — user round 2 |
+
+### Code
+
+`android/icons/manifest`, `android/icons/Adwaita/index.theme`, `pixmaps/scalable/apps/org.roojs.ollmchat.svg`
+
+---
+
+## §7 Default model in saved JSON
+
+**Status:** **Likely fixed** — round 1 logcat showed `initialize_model ok model=llama3.1:70b` + `saved config` before crash; user to confirm JSON
 
 ### Desired result
 
@@ -311,26 +322,19 @@ After first successful boot, `usage.default_model.model` is a non-empty chat mod
 
 ### Actual
 
-Connection saved; **`model`: ""** in file (device 2026-06-17).
-
-### Hypotheses
-
-1. Persist happened before `AndroidStartup.initialize_model()` completed.  
-2. Bootstrap path does not call `persist_config()` immediately (desktop saves right after verify).  
-3. `initialize_model()` fails silently → startup aborts (§3) before model written.
+Pre-round-1 file had empty model; round 1 logcat picked `llama3.1:70b` and persisted before crash.
 
 ### What we tried
 
 | Step | Change | Result |
 |------|--------|--------|
-| 1 | `initialize_model()` auto-picks first non-embedding model | **Not confirmed** — empty model still on disk |
-| 2 | `persist_config()` at end of `AndroidStartup.run()` | **Partial** — connection in file, model not |
+| 1 | `initialize_model()` auto-picks first non-embedding model | **Round 1 log** — `initialize_model ok model=llama3.1:70b` |
+| 2 | `persist_config()` at end of `AndroidStartup.run()` | **Partial** — runs after Manager (crash blocked full boot) |
+| 3 | `persist_config()` in bootstrap `closed` + startup logging | **Round 1** — landed |
 
-### Next step (this batch)
+### Next step
 
-- Persist right after bootstrap verify.  
-- Log model name when `initialize_model()` succeeds.  
-- Re-check JSON after successful cold start.
+User: re-check `config.2.json` after round 2 boot without crash.
 
 ### Code
 
@@ -339,28 +343,52 @@ Connection saved; **`model`: ""** in file (device 2026-06-17).
 
 ---
 
-## Next loop fixes (agent: apply all open § → doc → build → install)
+## §8 Crash on startup (History.Manager)
 
-Each round should attempt **every open §** below (and any other § still marked OPEN in this doc). After apply: move items into each § **What we tried**, add a **Device timeline** row, then replace this list for the following round.
+**Status:** **OPEN** (user round 3 — crash returns)
 
-- **§2** — Log `load_config` path, exists, `connections.size`; defer constructor load if needed  
-- **§3, §7** — `persist_config()` in bootstrap `closed` handler (before `initialize_after_bootstrap`)  
-- **§3** — Error label when `initialize_after_bootstrap` → startup fails  
-- **§3, §7** — Log `AndroidStartup.run()` failure reason (connection / model / verify)  
-- **§4, §5** — Android-only fixes if startup path is unblocked; if still purely downstream of §3, note that in the doc after §3 is fixed  
-- **§6** — Verify icon in APK assets; fix manifest / asset path if missing  
-- **§5 (secondary)** — Post-layout callback in `AndroidMainWindow` if input still hidden after §3 passes  
+### Root cause (round 3 logcat)
+
+```
+Manager.vala:136: failed to create history directory …/history: File exists
+Fatal signal 5 (SIGTRAP)
+```
+
+`query_exists()` returned false while directory already existed; `make_directory_with_parents()` → `G_IO_ERROR_EXISTS` → `GLib.error()` abort. Round 2 `ensure_app_data_directories()` could not prevent this because Manager still used broken mkdir logic.
+
+### What we tried
+
+| Step | Change | Result |
+|------|--------|--------|
+| 1 | `AndroidApplication.ensure_app_data_directories()` — EXISTS-tolerant mkdir | **Partial** — user round 2 no crash; round 3 crash returns |
+| 2 | **Shared** `History.Manager` — `query_file_type` + EXISTS-tolerant mkdir (mirror `AndroidApplication.ensure_directory`) | **Round 4** — landed |
+
+### Code
+
+`libollmchat/History/Manager.vala` — constructor mkdir  
+`ollmapp/android/AndroidApplication.vala` — `ensure_app_data_directories()`  
+`ollmapp/android/AndroidStartup.vala` — call before `new History.Manager()`
+
+---
+
+## Next loop fixes (after user reports round 4)
+
+- **§3/§4/§5** — If still broken, capture logcat for `run ok`, `initialize_client agents=`  
+- **§7** — Confirm saved JSON has model name  
+- **§8** — Confirm no `Manager.vala` / SIGTRAP in logcat
 
 ---
 
 ## Pass criteria (Phase 3)
 
-- [ ] §2 Cold start → no bootstrap when config file has connections  
+- [x] §2 Cold start → no bootstrap when config file has connections  
 - [ ] §3 Main area shows chat shell (not blank)  
 - [ ] §4 Agent dropdown shows agent names  
 - [ ] §5 Input + send visible and usable  
-- [ ] §6 About icon visible  
+- [x] §6 About header icon visible  
+- [x] §6b About dialog logo visible  
 - [ ] §7 Saved JSON has non-empty `default_model.model` after first good boot  
+- [ ] §8 No crash during startup  
 
 ---
 

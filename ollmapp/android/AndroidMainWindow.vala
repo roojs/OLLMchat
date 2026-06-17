@@ -40,6 +40,47 @@ namespace OLLMapp
 		private AndroidBootstrapConnectionAdd? bootstrap_dialog = null;
 		private uint history_leave_ignore_timeout_id = 0;
 		private string[] agent_picker_names = {};
+		private Gtk.Label? startup_status_label = null;
+
+		/**
+		 * Updates the startup progress label shown while connecting.
+		 *
+		 * @param message Status text for the user
+		 */
+		public void set_startup_status (string message)
+		{
+			if (this.startup_status_label != null) {
+				this.startup_status_label.label = message;
+			}
+		}
+
+		private void show_startup_panel (string message)
+		{
+			this.startup_status_label = new Gtk.Label (message) {
+				margin_top = 8,
+				halign = Gtk.Align.CENTER,
+				wrap = true,
+				wrap_mode = Pango.WrapMode.WORD,
+				max_width_chars = 40,
+			};
+			var spinner = new Gtk.Spinner () {
+				halign = Gtk.Align.CENTER,
+			};
+			spinner.start ();
+			var panel = new Gtk.Box (
+				Gtk.Orientation.VERTICAL, 12) {
+				margin_top = 24,
+				margin_bottom = 24,
+				margin_start = 24,
+				margin_end = 24,
+				halign = Gtk.Align.CENTER,
+				valign = Gtk.Align.CENTER,
+				vexpand = true,
+			};
+			panel.append (spinner);
+			panel.append (this.startup_status_label);
+			this.split_view.content = panel;
+		}
 
 		public AndroidMainWindow(AndroidApplication app)
 		{
@@ -147,6 +188,8 @@ namespace OLLMapp
 			AndroidConnectionConfigTls.apply_to_config(this.app.config);
 
 			if (this.app.config.connections.size == 0) {
+				GLib.message (
+					"AndroidMainWindow: connections=0 showing bootstrap");
 				yield this.show_bootstrap_dialog("");
 				return;
 			}
@@ -156,7 +199,10 @@ namespace OLLMapp
 				this.load_config_and_initialize.begin();
 			});
 
+			this.show_startup_panel ("Connecting…");
+
 			if (yield startup.run(this.app.config)) {
+				this.set_startup_status ("Opening chat…");
 				this.app.config = this.app.load_config();
 				AndroidConnectionConfigTls.apply_to_config(this.app.config);
 				yield this.initialize_client(this.app.config);
@@ -228,6 +274,7 @@ namespace OLLMapp
 				});
 
 				this.app.config = config;
+				this.app.persist_config (config);
 				this.initialize_after_bootstrap.begin(config);
 			});
 
@@ -241,8 +288,25 @@ namespace OLLMapp
 				this.load_config_and_initialize.begin();
 			});
 
+			this.show_startup_panel ("Connecting…");
+
 			if (yield startup.run(config)) {
+				this.set_startup_status ("Opening chat…");
 				yield this.initialize_client(config);
+				return;
+			}
+
+			if (this.chat_widget == null) {
+				this.split_view.content = new Gtk.Label(
+					"Could not start chat. Open Settings to verify your connection and model."
+				) {
+					margin_top = 24,
+					margin_bottom = 24,
+					margin_start = 24,
+					margin_end = 24,
+					wrap = true,
+					vexpand = true,
+				};
 			}
 		}
 
@@ -252,7 +316,8 @@ namespace OLLMapp
 				return;
 			}
 
-			yield this.history_manager.connection_models.refresh();
+			// Default model cached during AndroidStartup; full refresh loads
+			// /api/show for every model and blocks the UI for minutes.
 
 			if (!this.history_manager.agent_factories.has_key ("chatter")) {
 				this.history_manager.agent_factories.set (
@@ -313,14 +378,26 @@ namespace OLLMapp
 			});
 
 			this.split_view.content = this.chat_widget;
+			this.startup_status_label = null;
 
 			var active_factory = this.history_manager.get_active_agent ();
 			active_factory.activate.begin (this, (obj, res) => {
 				active_factory.activate.end (res);
 			});
 
+			GLib.message (
+				"AndroidMainWindow: initialize_client agents=%u",
+				this.history_manager.agent_factories.size);
+
 			yield this.chat_widget.switch_to_session (
 				this.history_manager.session);
+
+			GLib.Idle.add (() => {
+				if (this.history_manager != null) {
+					this.history_manager.agent_status_change ();
+				}
+				return false;
+			});
 		}
 
 		private void setup_agent_dropdown()

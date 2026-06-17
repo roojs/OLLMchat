@@ -464,12 +464,21 @@ namespace OLLMchat.Response
 				"models"
 			);
 			// Ensure cache directory exists
-			var dir = File.new_for_path(cache_dir);
-			if (!dir.query_exists()) {
+			var dir = GLib.File.new_for_path (cache_dir);
+			if (dir.query_file_type (GLib.FileQueryInfoFlags.NONE)
+			    != GLib.FileType.DIRECTORY) {
 				try {
-					dir.make_directory_with_parents();
-				} catch (Error e) {
-					GLib.warning("Failed to create cache directory: %s", e.message);
+					dir.make_directory_with_parents (null);
+				} catch (GLib.IOError e) {
+					if (e.code != GLib.IOError.EXISTS) {
+						GLib.warning (
+							"Failed to create cache directory: %s",
+							e.message);
+					}
+				} catch (GLib.Error e) {
+					GLib.warning (
+						"Failed to create cache directory: %s",
+						e.message);
 				}
 			}
 			return Path.build_filename(cache_dir, safe_name + ".json");
@@ -487,29 +496,35 @@ namespace OLLMchat.Response
 			}
 			
 			var cache_path = this.get_cache_path();
-			var cache_file = File.new_for_path(cache_path);
-			
-			if (!cache_file.query_exists()) {
+
+			if (!GLib.FileUtils.test (
+				cache_path, GLib.FileTest.EXISTS)) {
 				return null;
 			}
-			
+
 			try {
 				string contents;
-				if (!GLib.FileUtils.get_contents(cache_path, out contents)) {
+				if (!GLib.FileUtils.get_contents (cache_path, out contents)) {
 					return null;
 				}
-				
-				var cached_model = Json.gobject_from_data(typeof(Model), contents, -1) as Model;
+
+				var cached_model = Json.gobject_from_data (
+					typeof (Model), contents, -1) as Model;
 				if (cached_model == null) {
+					GLib.warning (
+						"Failed to load model from cache: %s",
+						cache_path);
 					return null;
 				}
-				
+
 				// Set connection on cached model
 				cached_model.connection = this.connection;
-				
+
 				return cached_model;
-			} catch (Error e) {
-				//GLib.debug("Failed to load model from cache: %s", e.message);
+			} catch (GLib.Error e) {
+				GLib.warning (
+					"Failed to load model from cache: %s",
+					e.message);
 				return null;
 			}
 		}
