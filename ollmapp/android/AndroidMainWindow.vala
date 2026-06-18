@@ -45,6 +45,13 @@ namespace OLLMapp
 		public AndroidMainWindow(AndroidApplication app)
 		{
 			Object(application: app, app: app);
+			AndroidTouchDebug.try_enable_from_storage ();
+			if (OLLMchat.ApplicationInterface.debug_on) {
+				GLib.Log.set_default_handler ((dom, lvl, msg) => {
+					OLLMchat.ApplicationInterface.debug_log (
+						"androidpoc", dom, lvl, msg);
+				});
+			}
 			this.title = "OLLMchat";
 			this.set_default_size(420, 720);
 
@@ -155,7 +162,6 @@ namespace OLLMapp
 					"sidebar-show-symbolic";
 			});
 
-			toolbar_view.content = this.view_stack;
 			if (AndroidTouchDebug.enabled) {
 				var touch_hud = new Gtk.Label ("") {
 					halign = Gtk.Align.FILL,
