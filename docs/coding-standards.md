@@ -681,7 +681,7 @@ public class MyClass
 }
 ```
 
-**GObject subclasses — inherited properties:** To give a subclass its own default for a property declared on the parent, the parent property must be `virtual` and the subclass must use `override` with `default =`. Redeclaring the same property name without `virtual`/`override` **shadows** the parent property: code that holds a base-type reference (e.g. `OLLMchat.Agent.Factory`) or GTK `PropertyExpression` still reads the parent's empty value. Runtime values must use `construct` or the constructor only when the value is not fixed (e.g. from a parameter). See Vala manual: properties are overridable only when marked `virtual` on the parent.
+**GObject subclasses — inherited properties:** To give a subclass its own default for a property declared on the parent, the parent property must be `virtual` and the subclass must use `override` with `default =`. Redeclaring the same property name without `virtual`/`override` **shadows** the parent property: code that holds a base-type reference (e.g. `OLLMchat.Agent.Factory`) or GTK `PropertyExpression` still reads the parent's empty value. Runtime values that are not fixed defaults belong in the **public constructor body** after `Object (...)` (see [GObject construct blocks](#gobject-construct-blocks)). See Vala manual: properties are overridable only when marked `virtual` on the parent.
 
 **Bad (shadows parent — UI sees empty `title`):**
 ```vala
@@ -699,6 +699,43 @@ public class ChildFactory : Factory {
     public override string title { get; protected set; default = "Chatter"; }
 }
 ```
+
+## GObject construct blocks <!-- section: gobject-construct-blocks -->
+
+**IMPORTANT:** Do **not** add a separate Vala `construct { }` block for ordinary instance setup. Put that code in the **public constructor body** after `Object (...)` (or after the chained `base (...)` call).
+
+**Bad (pointless separate `construct` block — timestamp / path setup):**
+```vala
+public Overlay (FileVerification verification) {
+    Object (verification: verification);
+}
+
+construct {
+    var now = new GLib.DateTime.now_local();
+    this.overlay_dir = GLib.Path.build_filename(
+        GLib.Environment.get_user_cache_dir(), "ollmchat", "overlay-" + …);
+}
+```
+
+**Good (same logic in the public constructor):**
+```vala
+public Overlay (FileVerification verification) {
+    Object (verification: verification);
+
+    var now = new GLib.DateTime.now_local();
+    this.overlay_dir = GLib.Path.build_filename(
+        GLib.Environment.get_user_cache_dir(), "ollmchat", "overlay-" + …);
+}
+```
+
+**When a `construct` block *is* justified:**
+
+1. **Signal wiring** — inline `connect` handlers; see [Signal handlers in construct blocks](#signal-handlers-in-construct-blocks).
+2. **Must run after `{ get; construct; }` properties** from an object initializer on the same `new` expression, and that setup cannot live in the public constructor because those properties are not set until after the constructor returns.
+
+Do not split one initialization story across public constructor + `construct` block unless case (2) applies. If the public constructor already receives every required value (e.g. sole `Object (verification: verification)` and the rest is computed locally), keep **all** setup in the constructor body.
+
+**Async method + child `GLib.Object`:** From an `async` method, do **not** use object-initializer syntax on `new Child (...) { prop = … }`. Construct the child with the sole ctor/`Object (...)` arg, assign other properties on the next lines, and mark the block with `// avoid async vala ctor bug`.
 
 ## Serializable Classes <!-- section: serializable-classes -->
 

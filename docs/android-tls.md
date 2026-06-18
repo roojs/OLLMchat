@@ -4,7 +4,7 @@ How HTTPS works in the OLLMchat Android chat POC (`org.roojs.ollmchat.androidpoc
 
 **Status:** Working on arm64 (2026-06-17). Remote Ollama over HTTPS verified on device.
 
-**See also:** [`docs/android-build.md`](android-build.md) (build commands), [`docs/plans/9.2-android-tls-migration.md`](plans/9.2-android-tls-migration.md) (migration notes).
+**See also:** [`docs/android-build.md`](android-build.md) (build commands), [`docs/plans/done/9.2-DONE-android-tls-migration.md`](plans/done/9.2-DONE-android-tls-migration.md) (migration notes).
 
 ---
 

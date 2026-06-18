@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMfiles.Sandbox
+namespace OLLMbwrap
 {
 	/**
 	 * Bubble class for executing commands in bubblewrap sandbox.
@@ -43,7 +43,7 @@ namespace OLLMfiles.Sandbox
 	 * go to the overlay upper directory and are copied back to the live system after
 	 * command execution completes.
 	 */
-	public class Bubble
+	public class Bubble : GLib.Object
 	{
 		/**
 		 * Check if bubblewrap can be used for sandboxing.
@@ -74,35 +74,42 @@ namespace OLLMfiles.Sandbox
 		}
 		
 		/**
-		 * Project folder object (is_project = true), or null when no project (read-only or writable home only).
+		 * Project root path; empty means no-project mode (overlay create/cleanup no-op).
 		 */
-		private OLLMfiles.Folder? project;
-		
-		/**
-		 * Overlay instance (create()/scan/cleanup no-op when project is null).
-		 */
-		public Overlay overlay;
-		
-		/**
-		 * When false, bwrap uses --unshare-net and seccomp can monitor socket syscalls; when true, network is allowed.
-		 */
-		public bool allow_network { get; private set; }
+		public string project_path { get; construct; default = ""; }
 
 		/**
-		 * Absolute path to the bubblewrap binary from {{{GLib.Environment.find_program_in_path("bwrap")}}}
-		 * at construction, or empty if not found. Callers should use #can_wrap before constructing
-		 * {{{Bubble}}}; same string is used as spawn argv0 and for seccomp {{{/proc/pid/exe}}} checks.
+		 * When false, bwrap uses --unshare-net and seccomp can monitor socket syscalls.
+		 */
+		public bool allow_network { get; construct; default = false; }
+
+		/**
+		 * Parsed allow_write tokens: no, project, or absolute paths.
+		 */
+		public string[] write_tokens { get; construct; default = {}; }
+
+		/**
+		 * Writable project root paths for overlay subdirectories.
+		 */
+		public Gee.HashMap<string, string> write_roots {
+			get; construct; default = new Gee.HashMap<string, string> ();
+		}
+
+		public FileVerification verification { get; construct; }
+
+		/**
+		 * Overlay for this run; created in ctor, profile synced before {@link exec}
+		 * and {@link build_bubble_args}.
+		 */
+		public Overlay overlay { get; private set; }
+
+		/**
+		 * Absolute path to the bubblewrap binary, or empty if not found.
+		 *
+		 * Callers should use {@link can_wrap} before constructing {@link Bubble}.
 		 */
 		public string bwrap_exe { get; private set; default = ""; }
 
-		/**
-		 * Normalized allow_write tokens (see run_command docs): no, project, or absolute paths.
-		 */
-		private string[] write_array = {};
-		
-		/** True if we created $HOME/playground on the host as a mount point for bwrap; we remove it in the exec() finally block when bwrap ends. */
-		private bool home_playground_created = false;
-		
 		/**
 		 * Accumulator for stdout output (for success case).
 		 */
@@ -114,23 +121,15 @@ namespace OLLMfiles.Sandbox
 		public string fail_str { get; private set; default = ""; }
 		
 		/**
-		 * Constructor.
-		 *
-		 * With project: overlay for project dirs; host / is read-only unless extra bind roots
-		 * come from write_array. Without project: root read-only; cwd defaults to home.
-		 *
-		 * @param project Project folder, or null for no-project mode
-		 * @param allow_network Whether to allow network access (pass explicitly)
-		 * @param write_array Parsed allow_write tokens; never reparsed in #build_bubble_args / #can_write
+		 * @param verification Non-null apply hook wired into {@link Overlay} / {@link Scan}
 		 */
-		public Bubble(OLLMfiles.Folder? project, bool allow_network, string[] write_array) throws Error
+		public Bubble (FileVerification verification)
 		{
-			this.project = project;
-			this.allow_network = allow_network;
-			this.write_array = write_array;
-			this.overlay = new Overlay(project);
+			Object (verification: verification);
+
 			string? bp = GLib.Environment.find_program_in_path("bwrap");
 			this.bwrap_exe = bp != null ? bp : "";
+			this.overlay = new Overlay (this.verification);
 		}
 		
 		/**
@@ -152,6 +151,8 @@ namespace OLLMfiles.Sandbox
 		 */
 		public async string exec(string command, string working_dir = "") throws Error
 		{
+			this.overlay.project_path = this.project_path;
+			this.overlay.write_roots = this.write_roots;
 			this.overlay.create();
 			var run_seccomp = new RunSeccomp(this);
 			var launcher = new GLib.SubprocessLauncher(
@@ -256,6 +257,9 @@ namespace OLLMfiles.Sandbox
 		 */
 		public string[] build_bubble_args(string command, string working_dir = "") throws Error
 		{
+			this.overlay.project_path = this.project_path;
+			this.overlay.write_roots = this.write_roots;
+
 			// Start with empty array and use += to build it
 			string[] args = {};
 
@@ -266,7 +270,7 @@ namespace OLLMfiles.Sandbox
 
 			var home = GLib.Environment.get_home_dir();
 
-			if (this.project != null) {
+			if (this.project_path != "") {
 				// Project mode: mount playground before ro-bind
 				args += "--dir";
 				args += GLib.Path.build_filename(home, "playground");
@@ -280,8 +284,8 @@ namespace OLLMfiles.Sandbox
 			args += "/";
 
 			// Extra --bind pairs from validated write_array (absolute roots only after first segment rules).
-			for (var i = 0; i < this.write_array.length; i++) {
-				var root = this.write_array[i];
+			for (var i = 0; i < this.write_tokens.length; i++) {
+				var root = this.write_tokens[i];
 				if (i == 0 && (root.down() == "no" || root.down() == "project")) {
 					break;
 				}
@@ -377,8 +381,8 @@ namespace OLLMfiles.Sandbox
 					}
 				}
 			}
-			for (var i = 0; i < this.write_array.length; i++) {
-				var root = this.write_array[i];
+			for (var i = 0; i < this.write_tokens.length; i++) {
+				var root = this.write_tokens[i];
 				if (i == 0 && (root.down() == "no" || root.down() == "project")) {
 					return false;
 				}

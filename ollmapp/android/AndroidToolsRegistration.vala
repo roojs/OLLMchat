@@ -26,8 +26,9 @@ namespace OLLMapp
 	 * RPC and Android can share {@link OLLMtools.Registry} with a name-list subset
 	 * (build all tools, register only what the platform needs).
 	 *
-	 * Compiles {@link OLLMtools.WebFetch} and {@link OLLMtools.SessionFetch} into
-	 * the Android executable only; other liboctools tools are not linked on device.
+	 * Compiles {@link OLLMtools.WebFetch}, {@link OLLMtools.SessionFetch}, and
+	 * {@link OLLMtools.GoogleSearch} into the Android executable only; other
+	 * liboctools tools are not linked on device.
 	 *
 	 * @since 1.0
 	 */
@@ -40,8 +41,10 @@ namespace OLLMapp
 		{
 			typeof(OLLMtools.WebFetch.Tool).ensure();
 			typeof(OLLMtools.SessionFetch.Tool).ensure();
+			typeof(OLLMtools.GoogleSearch.Tool).ensure();
 			OLLMchat.Tool.BaseTool.register_config(typeof(OLLMtools.WebFetch.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(OLLMtools.SessionFetch.Tool));
+			OLLMchat.Tool.BaseTool.register_config(typeof(OLLMtools.GoogleSearch.Tool));
 		}
 
 		/**
@@ -53,10 +56,14 @@ namespace OLLMapp
 		{
 			(new OLLMtools.WebFetch.Tool(null)).setup_tool_config_default(config);
 			(new OLLMtools.SessionFetch.Tool()).setup_tool_config_default(config);
+			(new OLLMtools.GoogleSearch.Tool(null)).setup_tool_config_default(config);
 		}
 
 		/**
-		 * Register web_fetch and session_fetch on the history manager.
+		 * Register web_fetch, session_fetch, and google_search on the history manager.
+		 *
+		 * Also registers {@code web_search} as an alias for {@code google_search}
+		 * (same as desktop {@code resources/wrapped-tools/WebSearch.tool}).
 		 *
 		 * @param manager History manager for the active chat session
 		 */
@@ -64,6 +71,9 @@ namespace OLLMapp
 		{
 			manager.register_tool(new OLLMtools.WebFetch.Tool(null));
 			manager.register_tool(new OLLMtools.SessionFetch.Tool());
+			var google_search = new OLLMtools.GoogleSearch.Tool(null);
+			manager.register_tool(google_search);
+			manager.tools.set("web_search", google_search);
 		}
 	}
 }

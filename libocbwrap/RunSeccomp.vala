@@ -7,7 +7,7 @@
  * version 3 of the License, or (at your option) any later version.
  */
 
-namespace OLLMfiles.Sandbox
+namespace OLLMbwrap
 {
 	/**
 	 * Seccomp user-notify setup and aggregation for a single bubblewrap run.

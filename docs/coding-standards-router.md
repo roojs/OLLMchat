@@ -44,7 +44,7 @@ Answer each question for your task. **Yes** → add the section slug(s).
 | Add or change docblocks, `@param`, or API comments? | `docblocks` — also read **`docs/code-documentation.md`** in full |
 | Build error messages, UI labels, or concatenate strings (not `@"""` tool help)? | `string-interpolation`, `line-length-breaking` |
 | Add new classes, methods, or namespaces? | `brace-placement` |
-| Add or rename fields, properties, or constructor defaults? | `underscore-prefix`, `property-initialization` |
+| Add or rename fields, properties, or constructor defaults? | `underscore-prefix`, `property-initialization`, `gobject-construct-blocks` |
 | Use `GLib.Path`, `GLib.File`, `GLib.Environment`, or other GLib types? | `glib-namespace-prefix` |
 | Call `query_info`, `query_exists`, or other file metadata? | `file-info-try-catch` |
 | Add or change `try` / `catch` blocks? | `try-catch-scope` |
@@ -89,7 +89,8 @@ is authoritative. Hints below are for humans only.
 | `using-statements` | 571 |
 | `switch-case` | 602 |
 | `property-initialization` | 643 |
-| `serializable-classes` | 703 |
+| `gobject-construct-blocks` | 703 |
+| `serializable-classes` | 730 |
 | `avoiding-nullable-types` | 730 |
 | `defensive-code-null-checks` | 776 |
 | `line-length-breaking` | 859 |
