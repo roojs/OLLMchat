@@ -51,7 +51,7 @@ namespace OLLMapp
 			this.settings_dialog = new AndroidSettingsDialog(this.app, this);
 			this.settings_dialog.closed.connect(() => {
 				if (this.chat_widget != null) {
-					this.chat_widget.update_models.begin();
+					this.chat_widget.chat_bar.sync_models.begin();
 				}
 			});
 
@@ -156,6 +156,25 @@ namespace OLLMapp
 			});
 
 			toolbar_view.content = this.view_stack;
+			if (AndroidTouchDebug.enabled) {
+				var touch_hud = new Gtk.Label ("") {
+					halign = Gtk.Align.FILL,
+					valign = Gtk.Align.END,
+					margin_bottom = 8,
+					margin_start = 8,
+					margin_end = 8,
+					wrap = true,
+					selectable = true,
+					css_classes = { "dim-label" },
+				};
+				var content_overlay = new Gtk.Overlay ();
+				content_overlay.set_child (this.view_stack);
+				content_overlay.add_overlay (touch_hud);
+				toolbar_view.content = content_overlay;
+				new AndroidTouchDebug (this, touch_hud);
+			} else {
+				toolbar_view.content = this.view_stack;
+			}
 			this.content = toolbar_view;
 
 			(this as Gtk.Widget).realize.connect(() => {
@@ -167,6 +186,7 @@ namespace OLLMapp
 		{
 			this.app.config = this.app.load_config();
 			AndroidConnectionConfigTls.apply_to_config(this.app.config);
+			AndroidToolsRegistration.setup_config_defaults(this.app.config);
 
 			if (this.app.config.connections.size == 0) {
 				GLib.message (
@@ -255,6 +275,7 @@ namespace OLLMapp
 				});
 
 				this.app.config = config;
+				AndroidToolsRegistration.setup_config_defaults(config);
 				this.app.persist_config (config);
 				this.initialize_after_bootstrap.begin(config);
 			});
@@ -341,6 +362,14 @@ namespace OLLMapp
 
 	int main(string[] args)
 	{
+		AndroidTouchDebug.parse_args (args);
+		if (OLLMchat.ApplicationInterface.debug_on) {
+			GLib.Log.set_default_handler ((dom, lvl, msg) => {
+				OLLMchat.ApplicationInterface.debug_log (
+					"androidpoc", dom, lvl, msg);
+			});
+		}
+
 		configure_android_gio_tls_modules();
 		var app = new AndroidApplication();
 		return app.run(args);

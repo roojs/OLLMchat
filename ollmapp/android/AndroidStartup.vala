@@ -114,6 +114,9 @@ namespace OLLMapp
 					this.window.app
 				);
 
+				AndroidToolsRegistration.fill_tools(
+					this.window.history_manager);
+
 				if (this.window.history_manager.default_model_usage != null) {
 					var current_conn = config.connections.get(
 						this.window.history_manager.default_model_usage.connection

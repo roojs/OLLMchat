@@ -37,7 +37,8 @@ namespace OLLMchatGtk
 		private Binding? tools_button_binding = null;
 		private bool is_tool_list_loaded = false;
 		private Gtk.Box? tools_popover_box = null;
-		private OLLMchatGtk.List.ModelUsageFactory factory;
+		private OLLMchatGtk.List.ModelUsageFactory button_factory;
+		private OLLMchatGtk.List.ModelUsageFactory list_factory;
 
 		/** Emitted when the user clicks Send (caller gets text from ChatInput and sends). */
 		public signal void send_requested();
@@ -58,13 +59,12 @@ namespace OLLMchatGtk
 				visible = false,
 				hexpand = false
 			};
-			this.model_dropdown = new Gtk.DropDown(null,
-				new Gtk.PropertyExpression(typeof(OLLMchat.Response.Model), null, "name_with_size")) {
+			this.model_dropdown = new Gtk.DropDown(null, null) {
 				visible = false,
 				hexpand = false
 			};
 			this.tools_menu_button = new Gtk.MenuButton() {
-				icon_name = "document-properties",
+				icon_name = "document-properties-symbolic",
 				tooltip_text = "Manage Tool Availability",
 				visible = false,
 				hexpand = false
@@ -81,8 +81,8 @@ namespace OLLMchatGtk
 			this.append(this.action_button);
 		}
 
-		/** Call when streaming state changes; updates Send/Stop label and button style (primary vs destructive). */
-		public void update_action_button_state(bool streaming)
+		/** Call when streaming state changes; updates Send/Stop label and button style. */
+		public void sync_streaming(bool streaming)
 		{
 			this.is_streaming = streaming;
 			this.action_button.label = streaming ? "Stop" : "Send";
@@ -104,9 +104,9 @@ namespace OLLMchatGtk
 			}
 		}
 
-		private void update_model_widgets_visibility()
+		private void sync_visibility()
 		{
-			bool has_models = this.manager.connection_models.get_n_items() > 0;
+			var has_models = this.manager.connection_models.get_n_items() > 0;
 			this.model_dropdown.visible = has_models;
 			this.model_loading_label.visible = has_models && this.is_loading_models;
 			if (!has_models) {
@@ -121,11 +121,11 @@ namespace OLLMchatGtk
 			this.tools_menu_button.visible = model_usage.model_obj.can_call;
 		}
 
-		public void setup_model_dropdown()
+		public void init_models()
 		{
 			var connection_models = this.manager.connection_models;
 			connection_models.items_changed.connect((position, removed, added) => {
-				this.update_model_widgets_visibility();
+				this.sync_visibility();
 			});
 
 			this.sorted_models = new OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage>(
@@ -135,45 +135,86 @@ namespace OLLMchatGtk
 					return !((OLLMchat.Settings.ModelUsage)item).model.has_prefix("ollmchat-temp/");
 				})
 			);
-			this.factory = new OLLMchatGtk.List.ModelUsageFactory();
+			this.button_factory = new OLLMchatGtk.List.ModelUsageFactory(22);
+			this.list_factory = new OLLMchatGtk.List.ModelUsageFactory();
 			this.model_dropdown.model = this.sorted_models;
-			this.model_dropdown.set_factory(this.factory.factory);
-			this.model_dropdown.set_list_factory(this.factory.factory);
+			this.model_dropdown.set_factory(this.button_factory.factory);
+			this.model_dropdown.set_list_factory(this.list_factory.factory);
+
+			var popup = this.model_dropdown.get_first_child()?.get_next_sibling() as Gtk.Popover;
+			if (popup != null) {
+				popup.show.connect(() => {
+					var root = this.get_root();
+					if (root == null) {
+						return;
+					}
+					var width = root.get_width() - 32;
+					Idle.add(() => {
+						popup.set_size_request(width, -1);
+						return false;
+					});
+				});
+			}
 
 			this.model_dropdown.notify["selected"].connect(() => {
-				if (this.is_loading_models) return;
-				if (this.model_dropdown.selected != Gtk.INVALID_LIST_POSITION) {
-					var model_usage = this.sorted_models.get_item_typed(this.model_dropdown.selected);
-					if (model_usage == null || model_usage.model_obj == null) return;
-					this.manager.session.activate_model(model_usage);
-					var def = this.manager.default_model_usage;
-					def.connection = model_usage.connection;
-					def.model = model_usage.model;
-					def.options = model_usage.options.clone();
-					this.manager.config.save();
-					this.update_model_widgets_visibility();
-					if (this.manager.connection_models.get_n_items() == 0) return;
-					if (this.tools_button_binding != null) this.tools_button_binding.unbind();
-					this.tools_button_binding = model_usage.model_obj.bind_property(
-						"can-call", this.tools_menu_button, "visible", BindingFlags.SYNC_CREATE);
+				if (this.is_loading_models) {
+					return;
 				}
+				if (this.model_dropdown.selected == Gtk.INVALID_LIST_POSITION) {
+					return;
+				}
+
+				var model_usage = this.sorted_models.get_item_typed(
+					this.model_dropdown.selected);
+				if (model_usage == null || model_usage.model_obj == null) {
+					return;
+				}
+
+				this.manager.session.activate_model(model_usage);
+				this.manager.default_model_usage.connection = model_usage.connection;
+				this.manager.default_model_usage.model = model_usage.model;
+				this.manager.default_model_usage.options = model_usage.options.clone();
+				this.manager.config.save();
+				this.sync_visibility();
+
+				if (this.manager.connection_models.get_n_items() == 0) {
+					return;
+				}
+				if (this.tools_button_binding != null) {
+					this.tools_button_binding.unbind();
+				}
+				this.tools_button_binding = model_usage.model_obj.bind_property(
+					"can-call",
+					this.tools_menu_button,
+					"visible",
+					BindingFlags.SYNC_CREATE);
 			});
 
-			this.setup_tools_menu_button();
+			this.init_tools();
 			this.manager.session_activated.connect((session) => {
-				if (this.manager.connection_models.get_n_items() == 0) return;
-				Idle.add(() => { this.update_models.begin(); return false; });
+				if (this.manager.connection_models.get_n_items() == 0) {
+					return;
+				}
+				Idle.add(() => {
+					this.sync_models.begin();
+					return false;
+				});
 			});
 			if (this.manager.connection_models.get_n_items() > 0) {
-				Idle.add(() => { this.update_models.begin(); return false; });
+				Idle.add(() => {
+					this.sync_models.begin();
+					return false;
+				});
 			}
 		}
 
-		public void setup_tools_menu_button()
+		private void init_tools()
 		{
 			var popover = new Gtk.Popover();
 			popover.show.connect(() => {
-				if (this.is_tool_list_loaded) return;
+				if (this.is_tool_list_loaded) {
+					return;
+				}
 				this.tools_popover_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
 					margin_start = 10, margin_end = 10, margin_top = 10, margin_bottom = 10
 				};
@@ -190,20 +231,29 @@ namespace OLLMchatGtk
 			this.tools_menu_button.popover = popover;
 		}
 
-		public async void update_models()
+		public async void sync_models()
 		{
-			if (this.manager.session != null) {
-				uint position = this.sorted_models.find_position(this.manager.session.model_usage);
-				if (position != Gtk.INVALID_LIST_POSITION) {
-					this.model_dropdown.selected = position;
-				}
-				if (this.tools_button_binding != null) this.tools_button_binding.unbind();
-				if (this.manager.session.model_usage.model_obj != null) {
-					this.tools_button_binding = this.manager.session.model_usage.model_obj.bind_property(
-						"can-call", this.tools_menu_button, "visible", BindingFlags.SYNC_CREATE);
-				}
-				this.update_model_widgets_visibility();
+			if (this.manager.session == null) {
+				return;
 			}
+
+			var position = this.sorted_models.find_position(
+				this.manager.session.model_usage);
+			if (position != Gtk.INVALID_LIST_POSITION) {
+				this.model_dropdown.selected = position;
+			}
+			if (this.tools_button_binding != null) {
+				this.tools_button_binding.unbind();
+			}
+			if (this.manager.session.model_usage.model_obj != null) {
+				this.tools_button_binding =
+					this.manager.session.model_usage.model_obj.bind_property(
+						"can-call",
+						this.tools_menu_button,
+						"visible",
+						BindingFlags.SYNC_CREATE);
+			}
+			this.sync_visibility();
 		}
 	}
 }

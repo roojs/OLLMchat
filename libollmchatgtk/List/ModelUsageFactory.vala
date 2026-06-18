@@ -37,6 +37,11 @@ namespace OLLMchatGtk.List
 	public class ModelUsageFactory : GLib.Object
 	{
 		/**
+		 * When &gt; 0, caps label width and ellipsizes (-1 = no cap).
+		 */
+		public int max_chars { get; construct; default = -1; }
+
+		/**
 		 * The Gtk.SignalListItemFactory instance.
 		 * Use this property to access the factory for dropdowns and list views.
 		 */
@@ -44,9 +49,12 @@ namespace OLLMchatGtk.List
 		
 		/**
 		 * Constructor.
+		 *
+		 * @param max_chars Label width cap in characters; -1 = no cap
 		 */
-		public ModelUsageFactory()
+		public ModelUsageFactory(int max_chars = -1)
 		{
+			Object(max_chars: max_chars);
 			this.factory = new Gtk.SignalListItemFactory();
 			
 			// Setup: Create widgets when list item is created
@@ -62,11 +70,11 @@ namespace OLLMchatGtk.List
 				};
 
 				// Icons for capabilities
-				var tools_icon = new Gtk.Image.from_icon_name("document-properties") {
+				var tools_icon = new Gtk.Image.from_icon_name("document-properties-symbolic") {
 					visible = false,
 					tooltip_text = "Supports tool calling"
 				};
-				var thinking_icon = new Gtk.Image.from_icon_name("weather-fog") {
+				var thinking_icon = new Gtk.Image.from_icon_name("weather-fog-symbolic") {
 					visible = false,
 					tooltip_text = "Supports thinking output"
 				};
@@ -74,8 +82,13 @@ namespace OLLMchatGtk.List
 				// Model name label (with size)
 				var name_label = new Gtk.Label("") {
 					hexpand = true,
-					halign = Gtk.Align.START
+					halign = Gtk.Align.START,
+					xalign = 0
 				};
+				if (this.max_chars > 0) {
+					name_label.ellipsize = Pango.EllipsizeMode.END;
+					name_label.max_width_chars = this.max_chars;
+				}
 
 				box.append(tools_icon);
 				box.append(thinking_icon);
@@ -111,7 +124,9 @@ namespace OLLMchatGtk.List
 				}
 
 				// Update label and icon visibility based on model_obj capabilities
-				name_label.label = model_usage.display_name_with_size();
+				var display_name = model_usage.display_name_with_size();
+				name_label.label = display_name;
+				name_label.tooltip_text = display_name;
 				if (model_usage.model_obj != null) {
 					tools_icon.visible = model_usage.model_obj.can_call;
 					thinking_icon.visible = model_usage.model_obj.is_thinking;
@@ -142,9 +157,9 @@ namespace OLLMchatGtk.List
 				}
 				if (name_label != null) {
 					name_label.label = "";
+					name_label.tooltip_text = null;
 				}
 			});
 		}
 	}
 }
-

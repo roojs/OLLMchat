@@ -100,7 +100,7 @@ namespace OLLMapp
 			
 			// Update model list when settings dialog closes
 			this.settings_dialog.closed.connect(() => {
-				this.chat_widget.update_models.begin();
+				this.chat_widget.chat_bar.sync_models.begin();
 			});
 
 			// Create toolbar view to manage header bar and content

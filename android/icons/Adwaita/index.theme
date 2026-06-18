@@ -5,7 +5,7 @@ Example=folder
 Inherits=hicolor
 Hidden=true
 
-Directories=symbolic/actions,symbolic/categories,scalable/apps,
+Directories=symbolic/actions,symbolic/categories,symbolic/status,scalable/apps,
 
 [symbolic/actions]
 Context=Actions
@@ -16,6 +16,13 @@ MaxSize=512
 
 [symbolic/categories]
 Context=Categories
+Size=16
+Type=Scalable
+MinSize=1
+MaxSize=512
+
+[symbolic/status]
+Context=Status
 Size=16
 Type=Scalable
 MinSize=1

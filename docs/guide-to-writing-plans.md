@@ -58,7 +58,9 @@ Applies when implementing **feature or refactor work** from **`docs/plans/*`**, 
 
 3. **No surprise fixes**: do not add drive-by refactors, unrelated cleanups, or “compile-only” API changes unless the user approved that change in the plan or in chat.
 
-4. **Exception**: trivial edits the user asked for in the same message (typos, formatting) are fine—still avoid unrelated code changes.
+4. **Plan status honesty**: after implementing, mark work **✔️** (agent done) — **not** **✅**. Only the user promotes items to **✅**. Do not delete backlog bullets or shrink **Suggested order** until the user confirms.
+
+5. **Exception**: trivial edits the user asked for in the same message (typos, formatting) are fine—still avoid unrelated code changes.
 
 **Bug fixes** follow **`docs/bug-fix-process.md`** (debug → understand → propose → approval → apply). This workflow adds the **revert + plan update + approval** loop when **planned implementation** hits design gaps.
 
@@ -86,9 +88,10 @@ For **discussion, rationale, risks, and notes** (anything that is not a mechanic
 
 | Marker | Meaning |
 | ------ | ------- |
-| **✅** | Done and verified in the codebase |
+| **✅** | **User confirmed done** — only after the user approves or verifies on device (green check) |
+| **✔️** | **Agent implemented** — code landed or agent claims it works; **not** user-approved yet (grey check) |
 | **⏳** | Not implemented or not matching spec — backlog (use this liberally) |
-| **🌗** | Partially done — polish or follow-up still owed |
+| **🌗** | Partially done — polish or follow-up still owed (legacy; prefer **✔️** + **⏳** for agent vs backlog) |
 
 **Provenance (who said what):**
 
@@ -101,7 +104,13 @@ For **discussion, rationale, risks, and notes** (anything that is not a mechanic
 
 **Legacy:** older plans may still use **⚠️** for the same meaning as **🔷** (user-authored requirement). Prefer **🔷** in new and updated plans. Older plans may still use **👎** for the same meaning as **🚫** (rejected / out of scope). Prefer **🚫** in new and updated plans. Older plans may still use **🔶** for the same meaning as **🌗** (partially done). Prefer **🌗** in new and updated plans.
 
-**✅** is **only** for **done and verified in the codebase** (see **Status** table above). **Do not** use **✅** for “user approved” a requirement — use **🔷** for user-specified requirements.
+**✅** vs **✔️** (mandatory — do not confuse them):
+
+- **✔️** — agent implemented or agent believes it is fixed; user has **not** confirmed yet.
+- **✅** — user explicitly confirmed done (device test, manual verify, or “that’s done” in chat). **Do not** promote **✔️ → ✅** yourself.
+- **Do not** mark backlog items **✅**, remove them from **Backlog**, or rewrite **Suggested order** to skip work the user has not signed off. **Do not invent completion** — if unsure, leave **⏳**.
+
+**✅** is **not** for “user approved” a *requirement* — use **🔷** for user-specified requirements. **✅** is only for *completed work* the user verified.
 
 **Combining provenance + backlog:**
 

@@ -140,7 +140,7 @@ namespace OLLMchatGtk
 		/**
 		 * Sets the streaming state, updating input state (editable/sensitive).
 		 * Original also set action_button.label to "Stop"/"Send"; caller must call
-		 * ChatBar.update_action_button_state(streaming) to update the button label.
+		 * ChatBar.sync_streaming(streaming) to update the button label.
 		 */
 		public void set_streaming(bool streaming)
 		{

@@ -31,8 +31,8 @@ namespace OLLMchatGtk
 	{
 		public ChatView chat_view { get; private set; }
 		public ChatPermission permission_widget { get; private set; }
+		public ChatBar chat_bar { get; private set; }
 		private ChatInput chat_input;
-		private ChatBar chat_bar;
 		private Gtk.Box input_column;
 		/**
 		 * Empty box directly above {@link ChatInput}; app/occoder may add
@@ -223,7 +223,7 @@ namespace OLLMchatGtk
 				});
 			});
 
-			this.chat_bar.setup_model_dropdown();
+			this.chat_bar.init_models();
 
 			// Connect to notify signal to propagate default_message when property is set
 			// messy but usefull for testing.
@@ -243,7 +243,7 @@ namespace OLLMchatGtk
 			this.input_column.visible = !streaming;
 			this.chat_input.set_input_editable(!streaming);
 			this.chat_input.set_input_sensitive(!streaming);
-			this.chat_bar.update_action_button_state(streaming);
+			this.chat_bar.sync_streaming(streaming);
 
 			if (streaming) {
 				this.paned.set_cursor(new Gdk.Cursor.from_name("default", null));
@@ -718,18 +718,6 @@ namespace OLLMchatGtk
 			this.manager.session.cancel_current_request();
 			this.chat_view.finalize_assistant_message();
 			// Unhide + Send button are driven only by agent_status_change (cancel_current_request emits it)
-		}
-
-		/**
-		 * Updates the model list in the dropdown.
-		 * 
-		 * Called when settings change to refresh the available models.
-		 * 
-		 * @since 1.0
-		 */
-		public async void update_models()
-		{
-			yield this.chat_bar.update_models();
 		}
 
 	}

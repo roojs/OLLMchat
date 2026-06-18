@@ -1425,7 +1425,17 @@ public class MyClass
 
 ## Method names and new methods <!-- section: method-names-new-methods -->
 
-**IMPORTANT:** Prefer **short, concise** method names. Avoid long, narrative names that restate what the file or type already implies.
+**IMPORTANT:** Prefer **short, concise** method and **property** names. Avoid long, narrative names that restate what the file or type already implies. Rule of thumb: **one word ideal, two okay, three risky, four you messed up** — context in the class name should carry the rest.
+
+**Bad (four words; type already says “model usage” and “factory”):**
+```vala
+public int max_name_width_chars { get; construct; default = -1; }
+```
+
+**Better:**
+```vala
+public int max_chars { get; construct; default = -1; }
+```
 
 **IMPORTANT:** **Do not add new methods** unless the **user** or the **written plan** explicitly asks for one. Default to putting logic in an **existing** method or location the task already touches. Do **not** introduce a “helper” or `merge_*` / `build_*` method because it seems tidy — the **user** decides if extraction is appropriate.
 

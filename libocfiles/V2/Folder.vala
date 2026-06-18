@@ -28,7 +28,7 @@ namespace OLLMfiles
 	 *
 	 * On the daemon, {@code project_files} and {@link children} hold the full project
 	 * graph ({@code ollmfilesd/Folder.vala}). The client keeps neither — file lists
-	 * and path lookups are RPC at the caller ([`2.10.4.9`](../../docs/plans/2.10.4.9-v2-wiring-and-cutover.md)).
+	 * and path lookups are RPC at the caller ([`2.10.4.9`](../../docs/plans/2.10.4.9-ACTIVE-v2-caller-cutover.md)).
 	 *
 	 * == Git Integration ==
 	 *
