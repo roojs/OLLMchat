@@ -116,7 +116,7 @@ namespace OLLMapp
 					return;
 				}
 
-				var window = new AndroidMainWindow(this);
+				var window = new OllmchatWindow(this);
 				this.add_window(window);
 				window.present();
 			});

@@ -38,10 +38,10 @@ namespace OLLMapp
 			foreach (var arg in args) {
 				if (arg == "--touch-debug") {
 					AndroidTouchDebug.enabled = true;
-					OLLMchat.ApplicationInterface.debug_on = true;
+					OLLMchat.debug_on = true;
 				}
 				if (arg == "--debug") {
-					OLLMchat.ApplicationInterface.debug_on = true;
+					OLLMchat.debug_on = true;
 				}
 			}
 		}
@@ -71,7 +71,7 @@ namespace OLLMapp
 			}
 
 			AndroidTouchDebug.enabled = true;
-			OLLMchat.ApplicationInterface.debug_on = true;
+			OLLMchat.debug_on = true;
 			GLib.message ("touch-debug: enabled via %s", flag_path);
 		}
 
@@ -95,7 +95,7 @@ namespace OLLMapp
 				}
 
 				var type_name = "";
-				switch (event.type) {
+				switch (event.get_event_type ()) {
 				case Gdk.EventType.TOUCH_BEGIN:
 					type_name = "TOUCH_BEGIN";
 					break;
@@ -123,10 +123,10 @@ namespace OLLMapp
 					var widget_name = picked.get_name ();
 					if (widget_name != null && widget_name != "") {
 						pick_label = "%s:%s".printf (
-							picked.get_type_name (),
+							(picked as GLib.Object).get_type ().name (),
 							widget_name);
 					} else {
-						pick_label = picked.get_type_name ();
+						pick_label = (picked as GLib.Object).get_type ().name ();
 					}
 				}
 

@@ -21,12 +21,15 @@ namespace OLLMapp
 	/**
 	 * Android main window — chat-first shell with overlay history and modal settings.
 	 *
+	 * Same class name as desktop {@link OllmchatWindow} ({@code Window.vala}); Android
+	 * builds this file instead of the desktop window.
+	 *
 	 * @since 1.0
 	 */
-	public class AndroidMainWindow : Adw.ApplicationWindow, ChatUserInterface
+	public class OllmchatWindow : Adw.ApplicationWindow, ChatUserInterface
 	{
-		public AndroidApplication app { get; construct; }
-		public AndroidSettingsDialog settings_dialog { get; private set; }
+		public OLLMchat.ApplicationInterface app { get; construct; }
+		public SettingsDialog.MainDialog settings_dialog { get; private set; }
 		public OLLMchat.History.Manager history_manager { get; set; default = null; }
 
 		public OLLMchatGtk.ChatWidget chat_widget { get; set; default = null; }
@@ -42,20 +45,20 @@ namespace OLLMapp
 		private AndroidBootstrapConnectionAdd? bootstrap_dialog = null;
 		public Gtk.Label startup_status_label;
 
-		public AndroidMainWindow(AndroidApplication app)
+		public OllmchatWindow(AndroidApplication app)
 		{
 			Object(application: app, app: app);
 			AndroidTouchDebug.try_enable_from_storage ();
-			if (OLLMchat.ApplicationInterface.debug_on) {
+			if (OLLMchat.debug_on) {
 				GLib.Log.set_default_handler ((dom, lvl, msg) => {
-					OLLMchat.ApplicationInterface.debug_log (
-						"androidpoc", dom, lvl, msg);
+					GLib.stderr.printf (
+						"%s: %s\n", dom ?? "", msg);
 				});
 			}
 			this.title = "OLLMchat";
 			this.set_default_size(420, 720);
 
-			this.settings_dialog = new AndroidSettingsDialog(this.app, this);
+			this.settings_dialog = new SettingsDialog.MainDialog(this);
 			this.settings_dialog.closed.connect(() => {
 				if (this.chat_widget != null) {
 					this.chat_widget.chat_bar.sync_models.begin();
@@ -190,13 +193,13 @@ namespace OLLMapp
 
 		private async void load_config_and_initialize()
 		{
-			this.app.config = this.app.load_config();
+			this.app.config = (this.app as AndroidApplication).load_config();
 			AndroidConnectionConfigTls.apply_to_config(this.app.config);
 			AndroidToolsRegistration.setup_config_defaults(this.app.config);
 
 			if (this.app.config.connections.size == 0) {
 				GLib.message (
-					"AndroidMainWindow: connections=0 showing bootstrap");
+					"OllmchatWindow: connections=0 showing bootstrap");
 				yield this.show_bootstrap_dialog("");
 				return;
 			}
@@ -211,7 +214,7 @@ namespace OLLMapp
 
 			if (yield startup.run(this.app.config)) {
 				this.startup_status_label.label = "Opening chat…";
-				this.app.config = this.app.load_config();
+				this.app.config = (this.app as AndroidApplication).load_config();
 				AndroidConnectionConfigTls.apply_to_config(this.app.config);
 				yield this.initialize_client(this.app.config);
 				return;
@@ -282,7 +285,7 @@ namespace OLLMapp
 
 				this.app.config = config;
 				AndroidToolsRegistration.setup_config_defaults(config);
-				this.app.persist_config (config);
+				(this.app as AndroidApplication).persist_config (config);
 				this.initialize_after_bootstrap.begin(config);
 			});
 
@@ -356,7 +359,7 @@ namespace OLLMapp
 			this.view_stack.visible_child_name = "chat";
 
 			GLib.message (
-				"AndroidMainWindow: initialize_client agents=%u",
+				"OllmchatWindow: initialize_client agents=%u",
 				this.history_manager.agent_factories.size);
 
 			yield this.activate_session_and_sync_ui();
@@ -369,10 +372,10 @@ namespace OLLMapp
 	int main(string[] args)
 	{
 		AndroidTouchDebug.parse_args (args);
-		if (OLLMchat.ApplicationInterface.debug_on) {
+		if (OLLMchat.debug_on) {
 			GLib.Log.set_default_handler ((dom, lvl, msg) => {
-				OLLMchat.ApplicationInterface.debug_log (
-					"androidpoc", dom, lvl, msg);
+				GLib.stderr.printf (
+					"%s: %s\n", dom ?? "", msg);
 			});
 		}
 

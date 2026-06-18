@@ -27,14 +27,14 @@ namespace OLLMapp
 	 */
 	public class AndroidStartup : Object
 	{
-		private AndroidMainWindow window;
+		private OllmchatWindow window;
 
 		/**
 		 * Emitted when settings close and initialization should restart.
 		 */
 		public signal void reinitialize();
 
-		public AndroidStartup(AndroidMainWindow window)
+		public AndroidStartup(OllmchatWindow window)
 		{
 			this.window = window;
 		}
@@ -146,7 +146,7 @@ namespace OLLMapp
 				break;
 			}
 
-			this.window.app.persist_config (config);
+			(this.window.app as AndroidApplication).persist_config (config);
 			var default_usage = config.usage.get ("default_model")
 				as OLLMchat.Settings.ModelUsage;
 			GLib.message (
@@ -295,7 +295,7 @@ namespace OLLMapp
 				default_model.options = first_chat_model.options.clone();
 			}
 
-			this.window.app.persist_config (config);
+			(this.window.app as AndroidApplication).persist_config (config);
 			GLib.message (
 				"AndroidStartup: initialize_model ok model=%s",
 				default_model.model);

@@ -80,6 +80,34 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollamaweb'
 ])
 
+android_poc_settings_sources = []
+if get_option('android_poc')
+  android_poc_settings_sources = [
+    'SettingsDialog/SettingsPage.vala',
+    'SettingsDialog/ConnectionsPage.vala',
+    'SettingsDialog/ModelsPage.vala',
+    'SettingsDialog/ModelRow.vala',
+    'SettingsDialog/AddModelDialog.vala',
+    'SettingsDialog/SearchablePulldown.vala',
+    'SettingsDialog/PullStatus.vala',
+    'SettingsDialog/PullManager.vala',
+    'SettingsDialog/PullManagerThread.vala',
+    'SettingsDialog/PullManagerBanner.vala',
+    'SettingsDialog/Rows/Row.vala',
+    'SettingsDialog/Rows/Bool.vala',
+    'SettingsDialog/Rows/String.vala',
+    'SettingsDialog/Rows/Connection.vala',
+    'SettingsDialog/Rows/Model.vala',
+    'SettingsDialog/Rows/ModelUsage.vala',
+    'SettingsDialog/Rows/Options.vala',
+    'SettingsDialog/Rows/FloatRow.vala',
+    'SettingsDialog/Rows/IntRow.vala',
+    'SettingsDialog/ConnectionAdd.vala',
+    'SettingsDialog/CheckingConnectionDialog.vala',
+    'SettingsDialog/ConnectionRow.vala',
+  ]
+endif
+
 if get_option('android_poc') and host_machine.system() == 'android'
   if not meson.version().version_compare('>=1.8.0')
     error('android_poc on Android requires Meson >= 1.8.0 for android_exe_type')
@@ -108,10 +136,10 @@ if get_option('android_poc') and host_machine.system() == 'android'
     'ChatUserInterface.vala',
     'AgentDropdown.vala',
     'android/AndroidApplication.vala',
-    'android/AndroidMainWindow.vala',
+    'android/OllmchatWindow.vala',
+    'android/MainDialog.vala',
     'android/AndroidTouchDebug.vala',
     'android/AndroidStartup.vala',
-    'android/AndroidSettingsDialog.vala',
     'android/AndroidBootstrapConnectionAdd.vala',
     'android/AndroidToolTypes.vala',
     'android/AndroidToolsRegistration.vala',
@@ -122,10 +150,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
     'android/tools/GoogleSearch/Tool.vala',
     'android/tools/GoogleSearch/Request.vala',
     'android/tools/GoogleSearch/Config.vala',
-    'SettingsDialog/ConnectionAdd.vala',
-    'SettingsDialog/CheckingConnectionDialog.vala',
-    'SettingsDialog/ConnectionRow.vala',
-  ]
+  ] + android_poc_settings_sources
 
   android_poc = executable('ollmchat-android-poc',
     dependencies: [
@@ -305,6 +330,7 @@ if get_option('android_poc') and host_machine.system() != 'android'
   android_poc_deps = [
     dependency('gtk4'),
     dependency('libadwaita-1'),
+    dependency('gtksourceview-5'),
     dependency('gee-0.8'),
     dependency('gio-2.0'),
     dependency('glib-2.0'),
@@ -315,14 +341,18 @@ if get_option('android_poc') and host_machine.system() != 'android'
   ]
 
   android_poc_sources = [
+    'android/android-gio-tls.c',
+    'android/AndroidConnectionTls.vala',
+    'android/AndroidConnectionConfigTls.vala',
+    version_vala,
     'About.vala',
     'ChatUserInterface.vala',
     'AgentDropdown.vala',
     'android/AndroidApplication.vala',
-    'android/AndroidMainWindow.vala',
+    'android/OllmchatWindow.vala',
+    'android/MainDialog.vala',
     'android/AndroidTouchDebug.vala',
     'android/AndroidStartup.vala',
-    'android/AndroidSettingsDialog.vala',
     'android/AndroidBootstrapConnectionAdd.vala',
     'android/AndroidToolTypes.vala',
     'android/AndroidToolsRegistration.vala',
@@ -333,23 +363,24 @@ if get_option('android_poc') and host_machine.system() != 'android'
     'android/tools/GoogleSearch/Tool.vala',
     'android/tools/GoogleSearch/Request.vala',
     'android/tools/GoogleSearch/Config.vala',
-    'SettingsDialog/ConnectionAdd.vala',
-    'SettingsDialog/CheckingConnectionDialog.vala',
-    'SettingsDialog/ConnectionRow.vala',
-  ]
+  ] + android_poc_settings_sources
 
   android_poc_vala_args = [
     # Do not add --pkg=gee-0.8 — dependency('gee-0.8') in android_poc_deps
     # is enough; see docs/android-build.md.
+    '--define=OLLM_ANDROID',
     '--pkg=gtk4',
     '--pkg=libadwaita-1',
+    '--pkg=gtksourceview-5',
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
     '--pkg=ollmchat',
+    '--pkg=ollmchatgtk',
     '--pkg=ollamaweb',
     '--pkg=ocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchatgtk',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
   ]
@@ -359,14 +390,18 @@ if get_option('android_poc') and host_machine.system() != 'android'
       android_poc_deps,
       ocsqlite_vapi_dep,
       ocmarkdown_vapi_dep,
+      ocmarkdowngtk_vapi_dep,
       ollmchat_vapi_dep,
+      ollmchatgtk_vapi_dep,
       ollamaweb_vapi_dep
     ],
     sources: android_poc_sources,
-    link_with: [ollmchat_base_lib],
+    link_with: [ollmchat_base_lib, ollmchatgtk_lib],
     include_directories: [
       include_directories('android'),
       include_directories('../libollmchat'),
+      include_directories('../libollmchatgtk'),
+      include_directories('../libocmarkdowngtk'),
       include_directories('../libollamaweb'),
       include_directories('../libocsqlite')
     ],

@@ -24,7 +24,7 @@ namespace OLLMapp
 	 * Copy of {@link OLLMapp.SettingsDialog.ConnectionAdd} bootstrap behaviour
 	 * with Android-specific defaults (empty host, masked API key) and
 	 * {@link OLLMapp.SettingsDialog.CheckingConnectionDialog} during verify —
-	 * same pattern as {@link OLLMapp.AndroidSettingsDialog.show_dialog}.
+	 * same pattern as {@link OLLMapp.SettingsDialog.MainDialog.show_dialog}.
 	 *
 	 * @since 1.0
 	 */
