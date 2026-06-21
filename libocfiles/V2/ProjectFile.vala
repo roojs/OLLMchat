@@ -19,37 +19,33 @@
 namespace OLLMfiles
 {
 	/**
-	 * Wrapper around a File object for use in project file lists.
-	 * 
-	 * Used for searching on open files and files that need updating. Provides all
-	 * interfaces of FileBase but overrides display name properties. Many properties
-	 * delegate to the wrapped file (is_active, is_open, is_need_approval, is_unsaved,
-	 * display_basename, display_with_indicators).
-	 * 
-	 * ProjectFile is a wrapper for display purposes only. All file operations should
-	 * be performed on the file property. Used in ProjectFiles collection for project
-	 * file lists.
+	 * Display wrapper for one {@link File} row in {@link ProjectFiles}.
+	 *
+	 * V2 client: {@link ProjectFiles.refresh} builds rows from
+	 * {@link Folder.fetch_file_list} RPC. This class is for list binding only
+	 * (open-file dropdown, search UI). File operations use {@link File} RPC
+	 * methods, not this wrapper.
 	 */
 	public class ProjectFile : FileBase
 	{
 		/**
-		 * The wrapped File object.
+		 * The wrapped {@link File} object.
 		 */
 		public File file { get; private set; }
-		
+
 		/**
 		 * The project folder this file belongs to.
 		 */
 		public Folder project { get; private set; }
-		
+
 		/**
 		 * Whether the wrapped file is active.
 		 */
 		public bool is_active {
 			get { return this.file.is_active; }
-			set {   }
+			set { }
 		}
-		
+
 		/**
 		 * Whether the wrapped file is open.
 		 */
@@ -57,23 +53,23 @@ namespace OLLMfiles
 			get { return this.file.is_open; }
 			set { }
 		}
-		
+
 		/**
 		 * Whether the wrapped file needs approval.
 		 */
 		public bool is_need_approval {
 			get { return this.file.is_need_approval; }
-			set {   }
+			set { }
 		}
-		
+
 		/**
 		 * Whether the wrapped file has unsaved changes.
 		 */
 		public bool is_unsaved {
 			get { return this.file.is_unsaved; }
-			set {   }
+			set { }
 		}
-		
+
 		/**
 		 * Whether the file was opened in the last 24 hours (recent).
 		 */
@@ -88,101 +84,83 @@ namespace OLLMfiles
 				return last_viewed >= one_day_ago;
 			}
 		}
-		
+
+		/**
+		 * Vector summary line for agent context ({@link File.to_summary}).
+		 *
+		 * @param keymap Vector metadata keyed by file id
+		 * @param indent Line prefix for nested lists
+		 * @return Summary text for this row
+		 */
 		public override string to_summary(
 			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap,
 			string indent)
 		{
 			return this.file.to_summary(keymap, indent);
 		}
-		
-		/**
-		 * Relative path from project root when file is accessed through a symlink.
-		 * If empty (default), the file is not inside a symlink and display_relpath
-		 * will calculate the path normally.
-		 */
-		public string relpath { get; set; default = ""; }
-		
+
 		/**
 		 * Constructor.
-		 * 
-		 * @param manager The ProjectManager instance (required)
-		 * @param file The File object to wrap
+		 *
+		 * @param manager The {@link ProjectManager} instance (required)
+		 * @param file The {@link File} to wrap
 		 * @param project The project folder this file belongs to
-		 * @param path Optional path (defaults to "" which will use file.path)
-		 * @param relpath Optional relative path when file is accessed through a symlink (defaults to "")
 		 */
-		public ProjectFile(ProjectManager manager, File file, Folder project, string path = "", string relpath = "")
+		public ProjectFile(ProjectManager manager, File file, Folder project)
 		{
 			base(manager);
 			this.file = file;
-			this.project= project;
+			this.project = project;
 			this.base_type = "pf";
-			this.relpath = relpath;
-			if (path == "") {
-				this.path = file.path;
-			} else {
-				this.path = path;
-			}
-			
-			// Watch file.last_viewed to notify display_css when is_recent changes
+			this.path = file.path;
+
 			this.file.notify["last-viewed"].connect(() => {
 				this.notify_property("display-css");
 			});
 		}
-		
+
 		/**
-		 * Display name with path - shows relative path from project root.
+		 * Display name with path — basename plus grey relative path from project root.
 		 */
 		public string display_with_path {
 			owned get {
-				
-				// Calculate relative path by removing project path prefix
-				
 				return GLib.Path.get_basename(this.path) +
 					"\n<span foreground=\"grey\" size=\"small\">" +
 					GLib.Markup.escape_text(this.path.substring(this.project.path.length)) +
 					"</span>";
 			}
 		}
-		
+
 		/**
-		 * Display relative path from project root.
-		 * If relpath is set (file accessed through symlink), use that.
-		 * Otherwise, calculate from this.path by removing project path prefix.
+		 * Display relative path from project root (from {@link File.path}).
 		 */
 		public string display_relpath {
 			owned get {
-				if (this.relpath != "") {
-					return this.relpath;
-				}
-				// Calculate relative path by removing project path prefix
 				return this.path.substring(this.project.path.length);
-				
 			}
 		}
-		
+
 		/**
-		 * Display name with basename only - overridden for ProjectFile.
+		 * Display name with basename only — overridden for {@link ProjectFile}.
 		 */
 		public string display_basename {
 			owned get {
 				return this.file.display_basename;
 			}
 		}
-		
+
 		/**
-		 * Display text with status indicators - overridden for ProjectFile.
+		 * Display text with status indicators — overridden for {@link ProjectFile}.
 		 */
 		public override string display_with_indicators {
 			get {
 				return this.file.display_with_indicators;
 			}
 		}
-		
+
 		/**
-		 * CSS classes array for styling (e.g., ["oc-file-item", "oc-recent"] for recent files).
-		 * Notifies when is_recent changes (via file.last_viewed changes).
+		 * CSS classes array for styling (e.g. {@code oc-recent} for recent files).
+		 * Notifies when {@link is_recent} changes (via {@link File.last_viewed}).
 		 */
 		public string[] display_css {
 			owned get {
@@ -192,9 +170,9 @@ namespace OLLMfiles
 				return { "oc-file-item" };
 			}
 		}
-		
+
 		/**
-		 * Icon name for binding in lists - delegates to wrapped file.
+		 * Icon name for binding in lists — delegates to wrapped {@link File}.
 		 */
 		public new string icon_name {
 			get { return this.file.icon_name; }

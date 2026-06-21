@@ -78,6 +78,20 @@ namespace OLLMfiles
 		 * When true, {@link activate_project} tells the daemon to skip initial scan.
 		 */
 		public bool disable_initial_scan { get; set; default = false; }
+
+		/**
+		 * File deletion facade — {@link File.delete} RPC on the daemon.
+		 */
+		public DeleteManager delete_manager { get; private set; }
+
+		/**
+		 * Constructor.
+		 */
+		public ProjectManager()
+		{
+			Object();
+			this.delete_manager = new DeleteManager(this);
+		}
 		
 		/**
 		 * Activate a file (deactivates previous active file).
