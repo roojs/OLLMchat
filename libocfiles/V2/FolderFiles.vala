@@ -19,32 +19,33 @@
 namespace OLLMfiles
 {
 	/**
-	 * Manages files and subfolders in a folder (hierarchical tree structure).
-	 * 
-	 * Provides both list (for tree view) and hashmap (for quick lookup) access.
-	 * Implements ListModel interface using Gee.ArrayList as backing store. Uses
-	 * path-based comparison for equality. Emits items_changed signal when items are
-	 * added/removed. Used for hierarchical tree views.
+	 * Manages immediate children of one {@link Folder} (flat list for tree UI).
+	 *
+	 * V2 client: used as {@link Folder.children}. Provides list
+	 * ({@link GLib.ListModel}) and {@link child_map} (basename lookup) for one
+	 * directory level. The daemon builds the full tree via {@code read_dir};
+	 * this list is not hydrated automatically — populate via {@link append} /
+	 * {@link remove} until a {@code Folder.fetch_children} RPC lands (plan
+	 * 2.10.4.16). No {@code cleanup_deleted} on the client (daemon-only).
 	 */
 	public class FolderFiles : Object, GLib.ListModel
 	{
 		/**
-		 * Backing store: ArrayList containing files and folders (hierarchical, with children).
+		 * Backing store: files and subfolders in one directory.
 		 * Uses path-based comparison for equality checks.
 		 */
-		public Gee.ArrayList<FileBase> items { 
+		public Gee.ArrayList<FileBase> items {
 			get; set; default = new Gee.ArrayList<FileBase>((a, b) => {
 				return a.path == b.path;
 			});
 		}
-		
-		
+
 		/**
-		 * Hashmap of [name in dir] => file object for quick lookup by basename.
+		 * Hashmap of [name in dir] => {@link FileBase} for quick lookup by basename.
 		 */
 		public Gee.HashMap<string, FileBase> child_map { get; private set;
 			default = new Gee.HashMap<string, FileBase>(); }
-		
+
 		/**
 		 * Constructor.
 		 */
@@ -52,7 +53,7 @@ namespace OLLMfiles
 		{
 			Object();
 		}
-		
+
 		/**
 		 * ListModel interface implementation: Get the item type.
 		 */
@@ -60,7 +61,7 @@ namespace OLLMfiles
 		{
 			return typeof(FileBase);
 		}
-		
+
 		/**
 		 * ListModel interface implementation: Get the number of items.
 		 */
@@ -68,9 +69,12 @@ namespace OLLMfiles
 		{
 			return this.items.size;
 		}
-		
+
 		/**
 		 * ListModel interface implementation: Get item at position.
+		 *
+		 * @param position Index into the list
+		 * @return The {@link FileBase} at @position, or null if out of range
 		 */
 		public Object? get_item(uint position)
 		{
@@ -79,178 +83,115 @@ namespace OLLMfiles
 			}
 			return this.items[(int)position];
 		}
-		
+
 		/**
 		 * Append an item to the list (ListStore-compatible).
 		 * Checks for duplicates before adding.
-		 * 
-		 * @param item The FileBase item to append
+		 *
+		 * @param item The {@link FileBase} item to append
 		 */
 		public void append(FileBase item)
 		{
-			// Check for duplicates
 			if (this.contains(item)) {
 				return;
 			}
-			
+
 			var position = this.items.size;
 			this.items.add(item);
-			this.child_map.set( GLib.Path.get_basename(item.path), item);
-			// Emit items_changed signal
+			this.child_map.set(GLib.Path.get_basename(item.path), item);
 			this.items_changed(position, 0, 1);
 		}
-		
+
 		/**
 		 * Find an item in the list and return its position.
-		 * 
-		 * @param item The FileBase item to find
+		 *
+		 * @param item The {@link FileBase} item to find
 		 * @param position Output parameter for the position if found
-		 * @return true if item was found, false otherwise
+		 * @return true if @item was found, false otherwise
 		 */
 		public bool find(FileBase item, out uint position)
 		{
 			var index = this.items.index_of(item);
-			if (index >= 0) {
-				position = (uint)index;
-				return true;
+			if (index < 0) {
+				position = 0;
+				return false;
 			}
-			position = 0;
-			return false;
+			position = (uint)index;
+			return true;
 		}
-	 
-		
+
 		/**
 		 * Insert an item at a specific position.
-		 * 
+		 *
 		 * @param position The position to insert at
-		 * @param item The FileBase item to insert
+		 * @param item The {@link FileBase} item to insert
 		 */
 		public void insert(uint position, FileBase item)
 		{
 			if (position > this.items.size) {
 				position = this.items.size;
 			}
-			
+
 			this.items.insert((int)position, item);
 			this.child_map.set(GLib.Path.get_basename(item.path), item);
-			
-			// Emit items_changed signal
 			this.items_changed(position, 0, 1);
 		}
-		
-		
-		
+
 		/**
 		 * Check if an item exists in the list.
-		 * 
-		 * @param item The FileBase item to check
-		 * @return true if item exists, false otherwise
+		 *
+		 * @param item The {@link FileBase} item to check
+		 * @return true if @item exists, false otherwise
 		 */
 		public bool contains(FileBase item)
 		{
 			return this.child_map.has_key(GLib.Path.get_basename(item.path));
 		}
-		
+
 		/**
 		 * Remove an item from the list by item reference.
-		 * 
-		 * @param item The FileBase item to remove
+		 *
+		 * @param item The {@link FileBase} item to remove
 		 */
 		public void remove(FileBase item)
 		{
 			var position = this.items.index_of(item);
 			if (position < 0) {
-				return; // Not found
+				return;
 			}
-			
+
 			this.remove_at((uint)position);
 		}
-		
+
 		/**
 		 * Remove an item at a specific position (ListStore-compatible).
-		 * 
+		 *
 		 * @param position The position of the item to remove
 		 */
 		public void remove_at(uint position)
 		{
 			if (position >= this.items.size) {
-				return; // Invalid position
+				return;
 			}
-			
+
 			var item = this.items[(int)position];
 			this.items.remove_at((int)position);
-			
-			// Remove from child_map based on basename
 			this.child_map.unset(GLib.Path.get_basename(item.path));
-			
-			// Emit items_changed signal
 			this.items_changed(position, 1, 0);
 		}
-		
+
 		/**
-		 * Remove all items from the list (ListStore-compatible, alias for clear).
+		 * Remove all items from the list (ListStore-compatible).
 		 */
 		public void remove_all()
 		{
 			var old_n_items = this.items.size;
 			this.items.clear();
 			this.child_map.clear();
-			
-			// Emit items_changed signal for ListModel
+
 			if (old_n_items > 0) {
 				this.items_changed(0, old_n_items, 0);
 			}
-		}
-		
-		/**
-		 * Cleanup deleted files from FolderFiles list and child_map.
-		 * 
-		 * Recursively handles cleanup: if a deleted item is a Folder, it recursively
-		 * cleans up that folder's children before removing it from this list.
-		 * 
-		 * Iterates through items and removes any FileBase where delete_id > 0.
-		 * Batches removals to minimize signal emissions.
-		 * This should be called after files are flagged as deleted (during cleanup phase).
-		 */
-		public async void cleanup_deleted()
-		{
-			var lowest_removed_index = -1;
-			var removed_count = 0;
-			
-			// Iterate backwards for safe removal (highest to lowest index)
-			for (var i = (int)this.items.size - 1; i >= 0; i--) {
-				var filebase = this.items.get(i);
-				if (filebase.delete_id == 0) {
-					continue;  // Skip non-deleted files
-				}
-				
-				// If this is a deleted folder, recursively clean up its children first
-				if (filebase is Folder) {
-					var folder = (Folder)filebase;
-					yield folder.children.cleanup_deleted();  // Recursive cleanup
-				}
-				
-				// Remove from array and child_map immediately
-				this.items.remove_at(i);
-				this.child_map.unset(GLib.Path.get_basename(filebase.path));
-				removed_count++;
-				lowest_removed_index = i;  // Track lowest index (will be last one found)
-			}
-			
-			if (removed_count == 0) {
-				return; // Nothing to remove
-			}
-			
-			// Emit single items_changed signal for the range
-			// GLib.ListModel.items_changed only supports one contiguous range per signal
-			// For sparse (non-contiguous) deletions, we emit one broad signal:
-			// "from lowest_removed_index, removed N items" 
-			// This tells UI to refresh from that position onwards
-			// Less precise than multiple signals but correct and efficient
-			this.items_changed((uint)lowest_removed_index, (uint)removed_count, 0);
-			
-			// Note: VectorMetadata cleanup happens via ProjectManager.on_cleanup signal
-			// (emitted by DeleteManager.cleanup() after all cleanup is complete)
 		}
 	}
 }

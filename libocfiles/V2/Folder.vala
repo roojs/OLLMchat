@@ -202,30 +202,6 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Fetch files pending approval in this project.
-		 *
-		 * Snapshot for the approvals bar; daemon owns {@code is_need_approval}.
-		 *
-		 * @return Files needing approval
-		 */
-		public async Gee.ArrayList<File> fetch_pending_approvals()
-		{
-			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "Folder.fetch_pending_approvals",
-				param = new OLLMfilesd.FolderParams() { path = this.path }
-			});
-			if (response.error != null) {
-				return new Gee.ArrayList<File>();
-			}
-			var files = (Gee.ArrayList<File>) response.result;
-			foreach (var file in files) {
-				file.manager = this.manager;
-				this.manager.file_cache.set(file.path, file);
-			}
-			return files;
-		}
-
-		/**
 		 * Insert an on-disk file into this project's tracked index.
 		 *
 		 * The file must already exist on disk (e.g. after WriteFile). Calls

@@ -58,12 +58,14 @@ namespace OLLMfiles
 		public signal void new_file_added(File file);
 
 		/**
+		 * Constructor.
+		 *
 		 * @param project Project folder ({@code is_project == true})
 		 */
 		public ProjectFiles(Folder project)
 		{
 			Object(project: project);
-			this.review_files = new ReviewFiles(this);
+			this.review_files = new ReviewFiles(project);
 		}
 
 		/**
@@ -88,7 +90,7 @@ namespace OLLMfiles
 				this.items_changed(0, old_n_items, new_n_items);
 			}
 
-			this.review_files.refresh();
+			yield this.review_files.refresh();
 		}
 
 		/**
@@ -134,26 +136,49 @@ namespace OLLMfiles
 			return null;
 		}
 
+		/**
+		 * Gee.Traversable interface implementation: Execute function for each item.
+		 *
+		 * @param f Function to execute for each {@link ProjectFile}
+		 * @return true if all items were processed, false if iteration stopped early
+		 */
 		public bool foreach(Gee.ForallFunc<ProjectFile> f)
 		{
 			return this.items.foreach(f);
 		}
 
+		/**
+		 * Gee.Iterable interface implementation: Get iterator over items.
+		 *
+		 * @return Iterator over {@link ProjectFile} items
+		 */
 		public Gee.Iterator<ProjectFile> iterator()
 		{
 			return this.items.iterator();
 		}
 
+		/**
+		 * ListModel interface implementation: Get the item type.
+		 */
 		public Type get_item_type()
 		{
 			return typeof(ProjectFile);
 		}
 
+		/**
+		 * ListModel interface implementation: Get the number of items.
+		 */
 		public uint get_n_items()
 		{
 			return this.items.size;
 		}
 
+		/**
+		 * ListModel interface implementation: Get item at position.
+		 *
+		 * @param position Index into the list
+		 * @return The {@link ProjectFile} at @position, or null if out of range
+		 */
 		public Object? get_item(uint position)
 		{
 			if (position >= this.items.size) {
@@ -175,6 +200,13 @@ namespace OLLMfiles
 			this.new_file_added(item.file);
 		}
 
+		/**
+		 * Find an item in the list and return its position.
+		 *
+		 * @param item The {@link ProjectFile} item to find
+		 * @param position Output parameter for the position if found
+		 * @return true if @item was found, false otherwise
+		 */
 		public bool find(ProjectFile item, out uint position)
 		{
 			var index = this.items.index_of(item);
@@ -186,6 +218,12 @@ namespace OLLMfiles
 			return true;
 		}
 
+		/**
+		 * Insert an item at a specific position.
+		 *
+		 * @param position The position to insert at
+		 * @param item The {@link ProjectFile} item to insert
+		 */
 		public void insert(uint position, ProjectFile item)
 		{
 			if (position > this.items.size) {
@@ -196,11 +234,22 @@ namespace OLLMfiles
 			this.items_changed(position, 0, 1);
 		}
 
+		/**
+		 * Check if an item exists in the list.
+		 *
+		 * @param item The {@link ProjectFile} item to check
+		 * @return true if @item exists, false otherwise
+		 */
 		public bool contains(ProjectFile item)
 		{
 			return this.items.contains(item);
 		}
 
+		/**
+		 * Remove an item from the list by item reference.
+		 *
+		 * @param item The {@link ProjectFile} item to remove
+		 */
 		public void remove(ProjectFile item)
 		{
 			var position = this.items.index_of(item);
@@ -211,6 +260,11 @@ namespace OLLMfiles
 			this.remove_at((uint)position);
 		}
 
+		/**
+		 * Remove an item at a specific position (ListStore-compatible).
+		 *
+		 * @param position The position of the item to remove
+		 */
 		public void remove_at(uint position)
 		{
 			if (position >= this.items.size) {
@@ -221,6 +275,9 @@ namespace OLLMfiles
 			this.items_changed(position, 1, 0);
 		}
 
+		/**
+		 * Remove all items from the list (ListStore-compatible).
+		 */
 		public void remove_all()
 		{
 			var old_n_items = this.items.size;
