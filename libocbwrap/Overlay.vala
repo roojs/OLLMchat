@@ -33,7 +33,7 @@ namespace OLLMbwrap
 		/**
 		 * Writable project root paths (keys) for overlay subdirectories.
 		 *
-		 * Caller fills from {@code Folder.build_roots()} or daemon policy.
+		 * Caller fills from {{{Folder.build_roots()}}} or daemon policy.
 		 */
 		public Gee.HashMap<string, string> write_roots {
 			get; set; default = new Gee.HashMap<string, string> ();
@@ -43,7 +43,7 @@ namespace OLLMbwrap
 
 		/**
 		 * Base directory for this overlay session under the user cache
-		 * ({@code ollmchat/overlay-*} under {@link GLib.Environment.get_user_cache_dir}).
+		 * ({{{ollmchat/overlay-*}}} under {@link GLib.Environment.get_user_cache_dir}).
 		 */
 		public string overlay_dir { get; private set; default = ""; }
 

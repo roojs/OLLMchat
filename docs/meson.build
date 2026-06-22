@@ -225,7 +225,15 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/Child/Request.vala',
     '../liboctools/Child/Config.vala',
     '../liboctools/Registry.vala',
-    # libocmcp sources (depends on libollmchat, libocfiles)
+    # libocbwrap sources (must come before libocmcp which uses OLLMbwrap)
+    '../libocbwrap/namespace.vala',
+    '../libocbwrap/FileVerification.vala',
+    '../libocbwrap/NoOpFileVerification.vala',
+    '../libocbwrap/Bubble.vala',
+    '../libocbwrap/Overlay.vala',
+    '../libocbwrap/RunSeccomp.vala',
+    '../libocbwrap/Scan.vala',
+    # libocmcp sources (depends on libollmchat, libocfiles, libocbwrap)
     '../libocmcp/McpTypes.vala',
     '../libocmcp/Config.vala',
     '../libocmcp/Client/Base.vala',
@@ -311,7 +319,6 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchatgtk/ChatBar.vala',
     '../libollmchatgtk/ChatPermission.vala',
     '../libollmchatgtk/HistoryBrowser.vala',
-    '../libollmchatgtk/HistoryBrowser.vala',
     '../libollmchatgtk/Tools/Permission.vala',
     '../libollmchatgtk/List/ModelUsageFilter.vala',
     '../libollmchatgtk/List/ModelUsageSort.vala',
@@ -322,6 +329,8 @@ valadoc_docs = custom_target('valadoc',
     'version_fake.vala',
     '../ollmapp/Application.vala',
     '../ollmapp/About.vala',
+    '../ollmapp/ChatUserInterface.vala',  # Must come before Window (Window implements interface)
+    '../ollmapp/AgentDropdown.vala',  # Must come before Window (Window uses AgentDropdown)
     '../ollmapp/Initialize.vala',  # Must come before Window (Window uses Initialize)
     '../ollmapp/Window.vala',
     '../ollmapp/WindowPane.vala',
