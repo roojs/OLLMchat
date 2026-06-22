@@ -76,23 +76,23 @@ namespace OLLMbwrap
 		/**
 		 * Project root path; empty means no-project mode (overlay create/cleanup no-op).
 		 */
-		public string project_path { get; construct; default = ""; }
+		public string project_path { get; set; default = ""; }
 
 		/**
 		 * When false, bwrap uses --unshare-net and seccomp can monitor socket syscalls.
 		 */
-		public bool allow_network { get; construct; default = false; }
+		public bool allow_network { get; set; default = false; }
 
 		/**
 		 * Parsed allow_write tokens: no, project, or absolute paths.
 		 */
-		public string[] write_tokens { get; construct; default = {}; }
+		public string[] write_tokens { get; set; default = {}; }
 
 		/**
 		 * Writable project root paths for overlay subdirectories.
 		 */
 		public Gee.HashMap<string, string> write_roots {
-			get; construct; default = new Gee.HashMap<string, string> ();
+			get; set; default = new Gee.HashMap<string, string> ();
 		}
 
 		public FileVerification verification { get; construct; }

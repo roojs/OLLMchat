@@ -1,4 +1,4 @@
-# Build ocmcp library (libocmcp.so) - depends on libollmchat, libocfiles
+# Build ocmcp library (libocmcp.so) - depends on libollmchat, libocfiles, libocbwrap
 
 valac = meson.get_compiler('vala')
 
@@ -31,6 +31,7 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocfiles',
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollamaweb',
+  meson.current_build_dir() / '..' / 'libocbwrap',
 ])
 
 ocmcp_base_lib = library('ocmcp',
@@ -38,6 +39,7 @@ ocmcp_base_lib = library('ocmcp',
     ocmcp_deps,
     ollmchat_vapi_dep,
     ocfiles_vapi_dep,
+    ocbwrap_vapi_dep,
   ],
   sources: ocmcp_src,
   link_with: [ollmchat_base_lib],
@@ -52,6 +54,7 @@ ocmcp_base_lib = library('ocmcp',
     '--pkg=ollmchat',
     '--pkg=ollamaweb',
     '--pkg=ocfiles',
+    '--pkg=ocbwrap',
     '--pkg=gmodule-2.0',
     '--pkg=tree-sitter',
     '--pkg=json-glib-1.0',
@@ -59,6 +62,7 @@ ocmcp_base_lib = library('ocmcp',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
     '--vapidir', meson.current_source_dir() / '../vapi',
   ],
   install: true
@@ -75,6 +79,7 @@ ocmcp_vapi = custom_target('ocmcp-vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', '/usr/share/vala/vapi',
     '--pkg', 'posix',
@@ -85,6 +90,7 @@ ocmcp_vapi = custom_target('ocmcp-vapi',
     '--pkg', 'ollmchat',
     '--pkg', 'ollamaweb',
     '--pkg', 'ocfiles',
+    '--pkg', 'ocbwrap',
     '--pkg', 'gmodule-2.0',
     '--pkg', 'tree-sitter',
     '--pkg', 'gobject-2.0',
@@ -96,7 +102,7 @@ ocmcp_vapi = custom_target('ocmcp-vapi',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
   ],
-  depends: [ocmcp_base_lib, ollamaweb_vapi],
+  depends: [ocmcp_base_lib, ollamaweb_vapi, ocbwrap_vapi],
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'
@@ -105,5 +111,5 @@ ocmcp_vapi = custom_target('ocmcp-vapi',
 ocmcp_vapi_dep = declare_dependency(
   link_args: ['-L' + meson.current_build_dir(), '-locmcp'],
   sources: [ocmcp_vapi[0]],
-  dependencies: [ollmchat_vapi_dep, ocfiles_vapi_dep]
+  dependencies: [ollmchat_vapi_dep, ocfiles_vapi_dep, ocbwrap_vapi_dep]
 )

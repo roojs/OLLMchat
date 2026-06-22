@@ -21,12 +21,28 @@ namespace OLLMmcp.Client
 	 * MCP client over stdio: starts the server as a subprocess and talks
 	 * JSON-RPC over stdin/stdout (newline-delimited). Uses bubblewrap when
 	 * available; otherwise requires allow_unsandboxed in mcp.json (Flatpak, Windows).
+	 *
+	 * == Overlay writes (known gap) ==
+	 *
+	 * Sandboxed stdio MCP is spawned inside a bwrap overlay with project write
+	 * roots (default {@code allow_writes} → {@code project}). Unlike the
+	 * {@code run_command} tool, this path does ''not'' run
+	 * {@code overlay.scan.run()} or apply changes to the live project index.
+	 *
+	 *  * {@link OLLMbwrap.RunSeccomp} only adds syscall ''evidence'' strings to tool output
+	 *  * File creates/edits/deletes inside the overlay are ''not'' merged to disk
+	 *  * On {@link disconnect}, overlay upper-layer changes are ''probably lost''
+	 *
+	 * ''TODO:'' After disconnect (or per tool call), run overlay scan +
+	 * {@code FileVerification} report-back — same pipeline as {@code run_command}
+	 * / {@code libocbwrap} — so MCP filesystem changes persist and update the
+	 * project index (RPC-backed once on {@code ollmfilesd}).
 	 */
 	public class Stdio : Base
 	{
 		private OLLMmcp.Config config;
 		private unowned OLLMfiles.ProjectManager project_manager;
-		private OLLMfiles.Sandbox.RunSeccomp? run_seccomp;
+		private OLLMbwrap.RunSeccomp? run_seccomp;
 		private GLib.Subprocess? process;
 		private DataInputStream? stdout_reader;
 		private DataOutputStream? stdin_writer;
@@ -72,6 +88,12 @@ namespace OLLMmcp.Client
 			yield this.init();
 		}
 
+		/**
+		 * Tear down the MCP subprocess.
+		 *
+		 * ''TODO:'' Run {@code bubble.overlay.scan.run()} (and cleanup) here so
+		 * overlay writes are applied before exit — see class docblock.
+		 */
 		public override void disconnect()
 		{
 			if (this.process != null) {
@@ -166,7 +188,7 @@ namespace OLLMmcp.Client
 				}
 				return this.build_direct_argv();
 			}
-			if (!OLLMfiles.Sandbox.Bubble.can_wrap()) {
+			if (!OLLMbwrap.Bubble.can_wrap()) {
 #if G_OS_WIN32
 				if (!this.config.allow_unsandboxed) {
 					throw new GLib.IOError.FAILED(
@@ -192,13 +214,22 @@ namespace OLLMmcp.Client
 					write_array += entry;
 				}
 			}
-			var bubble = new OLLMfiles.Sandbox.Bubble(
-				project,
-				this.config.network,
-				write_array
-			);
-			this.run_seccomp = new OLLMfiles.Sandbox.RunSeccomp(bubble);
-			bubble.overlay.create();
+			var project_path = "";
+			var write_roots = new Gee.HashMap<string, string>();
+			if (project != null) {
+				project_path = project.path;
+				foreach (var folder in project.build_roots()) {
+					write_roots.set(folder.path, folder.path);
+				}
+			}
+			var bubble = new OLLMbwrap.Bubble(new OLLMbwrap.NoOpFileVerification()) {
+				project_path = project_path,
+				allow_network = this.config.network,
+				write_tokens = write_array,
+				write_roots = write_roots
+			};
+			this.run_seccomp = new OLLMbwrap.RunSeccomp(bubble);
+			// TODO: scan + apply overlay changes on disconnect — see class docblock.
 			string[] args = bubble.build_bubble_args("", "");
 			args += this.config.command;
 			foreach (var a in this.config.args) {

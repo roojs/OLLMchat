@@ -1,64 +1,76 @@
 # libocbwrap — shared bwrap / overlay / seccomp / Scan (OLLMbwrap namespace)
-# Linux desktop only. No libocfiles dependency.
-#
-# Windows / Android: library not built. Callers use compile-time guards
-# (#if G_OS_LINUX) or existing can_wrap() false paths — see plan step 4.
-
-if host_machine.system() != 'linux'
-  ocbwrap_vapi_dep = disabler()
-  subdir_done()
-endif
+# Linux: full bubblewrap stack. Non-Linux: stubs under windows/.
 
 valac = meson.get_compiler('vala')
 
-ocbwrap_deps = [
+ocbwrap_common_src = files([
+  'namespace.vala',
+  'FileVerification.vala',
+  'NoOpFileVerification.vala',
+])
+
+ocbwrap_common_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
   valac.find_library('posix'),
-  dependency('gio-unix-2.0'),
-  valac.find_library('linux'),
 ]
 
-seccomp_vapi = valac.find_library(
-  'seccomp',
-  dirs: meson.current_source_dir() / '../vapi',
-  required: true,
-)
-ocbwrap_deps += [
-  seccomp_vapi,
-  libseccomp_dep,
-]
-
-ocbwrap_vapi_pkgs = [
-  '--pkg=posix',
-  '--pkg=seccomp',
-  '--pkg=linux',
-  '--pkg=gio-unix-2.0',
-]
-
-ocbwrap_vapi_gen_pkgs = [
-  '--pkg', 'posix',
-  '--pkg', 'seccomp',
-  '--pkg', 'linux',
-  '--pkg', 'gio-unix-2.0',
-  '--pkg', 'gobject-2.0',
-  '--pkg', 'glib-2.0',
-  '--pkg', 'gio-2.0',
-  '--pkg', 'gee-0.8',
-]
-
-ocbwrap_extra_sources = files(meson.current_source_dir() / '../vapi/seccomp-fd-pass.c')
-
-ocbwrap_src = files([
-  'namespace.vala',
-  'FileVerification.vala',
-  'Bubble.vala',
-  'Overlay.vala',
-  'RunSeccomp.vala',
-  'Scan.vala',
-])
+if host_machine.system() == 'linux'
+  seccomp_vapi = valac.find_library(
+    'seccomp',
+    dirs: meson.current_source_dir() / '../vapi',
+    required: true,
+  )
+  ocbwrap_deps = ocbwrap_common_deps + [
+    dependency('gio-unix-2.0'),
+    valac.find_library('linux'),
+    seccomp_vapi,
+    libseccomp_dep,
+  ]
+  ocbwrap_vapi_pkgs = [
+    '--pkg=posix',
+    '--pkg=seccomp',
+    '--pkg=linux',
+    '--pkg=gio-unix-2.0',
+  ]
+  ocbwrap_vapi_gen_pkgs = [
+    '--pkg', 'posix',
+    '--pkg', 'seccomp',
+    '--pkg', 'linux',
+    '--pkg', 'gio-unix-2.0',
+    '--pkg', 'gobject-2.0',
+    '--pkg', 'glib-2.0',
+    '--pkg', 'gio-2.0',
+    '--pkg', 'gee-0.8',
+  ]
+  ocbwrap_extra_sources = files(meson.current_source_dir() / '../vapi/seccomp-fd-pass.c')
+  ocbwrap_src = ocbwrap_common_src + files([
+    'Bubble.vala',
+    'Overlay.vala',
+    'RunSeccomp.vala',
+    'Scan.vala',
+  ])
+  ocbwrap_gir = 'OLLMbwrap-1.0.gir'
+else
+  ocbwrap_deps = ocbwrap_common_deps
+  ocbwrap_vapi_pkgs = ['--pkg=posix']
+  ocbwrap_vapi_gen_pkgs = [
+    '--pkg', 'posix',
+    '--pkg', 'gobject-2.0',
+    '--pkg', 'glib-2.0',
+    '--pkg', 'gio-2.0',
+    '--pkg', 'gee-0.8',
+  ]
+  ocbwrap_extra_sources = files()
+  ocbwrap_src = ocbwrap_common_src + files([
+    'windows/Bubble.vala',
+    'windows/Overlay.vala',
+    'windows/RunSeccomp.vala',
+  ])
+  ocbwrap_gir = disabler()
+endif
 
 lib_build_rpath = ':'.join([
   meson.current_build_dir(),
@@ -69,7 +81,7 @@ ocbwrap_base_lib = library('ocbwrap',
   sources: ocbwrap_src + ocbwrap_extra_sources,
   vala_header: 'ocbwrap.h',
   vala_vapi: 'ocbwrap-meson.vapi',
-  vala_gir: 'OLLMbwrap-1.0.gir',
+  vala_gir: ocbwrap_gir,
   build_rpath: lib_build_rpath,
   include_directories: [
     include_directories('..' / 'vapi'),
@@ -109,19 +121,21 @@ ocbwrap_vapi_dep = declare_dependency(
   dependencies: ocbwrap_deps,
 )
 
-ocbwrap_gir_file = meson.current_build_dir() / 'OLLMbwrap-1.0.gir'
-custom_target('ocbwrap-typelib',
-  output: 'OLLMbwrap-1.0.typelib',
-  command: [
-    g_ir_compiler, ocbwrap_gir_file, '--output', '@OUTPUT@',
-    '--includedir', '/usr/share/gir-1.0',
-  ],
-  depends: ocbwrap_base_lib,
-  build_by_default: true,
-  install: true,
-  install_dir: get_option('libdir') / 'girepository-1.0',
-)
-meson.add_install_script(
-  'sh', '-c',
-  'install -Dm644 "' + ocbwrap_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMbwrap-1.0.gir"',
-)
+if host_machine.system() == 'linux'
+  ocbwrap_gir_file = meson.current_build_dir() / 'OLLMbwrap-1.0.gir'
+  custom_target('ocbwrap-typelib',
+    output: 'OLLMbwrap-1.0.typelib',
+    command: [
+      g_ir_compiler, ocbwrap_gir_file, '--output', '@OUTPUT@',
+      '--includedir', '/usr/share/gir-1.0',
+    ],
+    depends: ocbwrap_base_lib,
+    build_by_default: true,
+    install: true,
+    install_dir: get_option('libdir') / 'girepository-1.0',
+  )
+  meson.add_install_script(
+    'sh', '-c',
+    'install -Dm644 "' + ocbwrap_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMbwrap-1.0.gir"',
+  )
+endif

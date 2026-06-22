@@ -16,14 +16,41 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-/**
- * Shared bubblewrap / overlay / seccomp sandbox stack (`libocbwrap`).
- *
- * Callers link this library for {@link OLLMbwrap.Bubble} and overlay scan;
- * {@link OLLMbwrap.FileVerification} apply hooks live in `ollmfilesd` or
- * `liboctools`; {@link OLLMbwrap.NoOpFileVerification} is the built-in no-op.
- */
 namespace OLLMbwrap
 {
-	internal class NamespaceDoc {}
+	/**
+	 * Windows stub seccomp aggregator — all methods are no-ops.
+	 */
+	public class RunSeccomp : GLib.Object
+	{
+		public const int SYNC_SOCK_CHILD_FD = 3;
+
+		public string network { get; private set; default = ""; }
+		public string fs { get; private set; default = ""; }
+		public string skipped {
+			get; private set; default = "seccomp is not available on Windows";
+		}
+		public unowned Bubble bubble { get; private set; }
+
+		public RunSeccomp (Bubble sandbox_bubble)
+		{
+			this.bubble = sandbox_bubble;
+		}
+
+		public void wire_launcher (GLib.SubprocessLauncher launcher)
+		{
+		}
+
+		public void finish_handshake()
+		{
+		}
+
+		public void detach_sources()
+		{
+		}
+
+		public void finish_evidence_formatting()
+		{
+		}
+	}
 }

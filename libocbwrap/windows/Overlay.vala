@@ -16,14 +16,34 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-/**
- * Shared bubblewrap / overlay / seccomp sandbox stack (`libocbwrap`).
- *
- * Callers link this library for {@link OLLMbwrap.Bubble} and overlay scan;
- * {@link OLLMbwrap.FileVerification} apply hooks live in `ollmfilesd` or
- * `liboctools`; {@link OLLMbwrap.NoOpFileVerification} is the built-in no-op.
- */
 namespace OLLMbwrap
 {
-	internal class NamespaceDoc {}
+	/**
+	 * Windows stub overlay — {@link create} and {@link cleanup} are no-ops.
+	 */
+	public class Overlay : GLib.Object
+	{
+		public string project_path { get; set; default = ""; }
+		public Gee.HashMap<string, string> write_roots {
+			get; set; default = new Gee.HashMap<string, string> ();
+		}
+		public FileVerification verification { get; construct; }
+		public string overlay_dir { get; private set; default = ""; }
+		public Gee.HashMap<string, string> overlay_map {
+			get; private set; default = new Gee.HashMap<string, string> ();
+		}
+
+		public Overlay (FileVerification verification)
+		{
+			Object (verification: verification);
+		}
+
+		public void create() throws Error
+		{
+		}
+
+		public void cleanup()
+		{
+		}
+	}
 }
