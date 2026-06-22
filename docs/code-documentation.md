@@ -84,7 +84,20 @@ As with long `@param` text, **CODING_STANDARDS** line-length guidance is not a r
 
 ## Code in comments
 
-Use triple braces for code blocks:
+Use triple braces for **literal code**, identifiers, paths, and CLI tokens — both inline
+and as blocks. Valadoc does **not** support Javadoc-style `{@code …}` (CI fails with
+`Invalid taglet in this context: code`).
+
+**Inline** (preferred for short names):
+
+```vala
+/**
+ * Defaults to {{{allow_writes}}} → {{{project}}}; see {@link OLLMbwrap.Bubble}.
+ * Daemon hooks live in {{{ollmfilesd}}} or {{{liboctools}}}.
+ */
+```
+
+**Block** (multi-line samples):
 
 ```vala
 /**
@@ -96,6 +109,17 @@ Use triple braces for code blocks:
  * }}}
  */
 ```
+
+| Markup | Valadoc | Use |
+|--------|---------|-----|
+| `{{{ token }}}` | ✅ | Literals, paths, method names, config keys |
+| `{@link Symbol}` | ✅ | Link to a Vala symbol |
+| `{@inheritDoc}` | ✅ | Copy parent docblock |
+| `{@code …}` | ❌ | **Not valid** — use `{{{ … }}}` |
+| `` `backticks` `` | block quote | Not for code — use `{{{ }}}` |
+
+Avoid bare `{` in running text (starts taglets like `{@link}`). Rephrase or wrap in
+`{{{ }}}`.
 
 ## Links
 
@@ -160,6 +184,44 @@ This matches common gtk-doc / Valadoc usage and works with `ninja docs/valadoc` 
 
 - `{@link SymbolName}` — link to another symbol.
 - `{@inheritDoc}` — copy description from parent (e.g. overridden method).
+
+**Not supported:** `{@code …}` and other Javadoc taglets. Use `{{{ … }}}` for literals
+(see **Code in comments** above).
+
+## Valadoc build (`docs/meson.build`)
+
+Generated HTML docs are built with:
+
+```bash
+ninja -C build docs/valadoc
+```
+
+CI runs the same target. Keep these in sync when you change the tree:
+
+| When you… | Also update… |
+|-----------|----------------|
+| Add/remove/rename a `.vala` in any documented library | **`docs/meson.build`** — add the same path to the `valadoc_docs` `input:` list |
+| Add a new library subdirectory | Root **`meson.build`** `subdir()` **and** a new block in **`docs/meson.build`** (dependency order) |
+| Introduce types used by later files | Put **defining** files **before** users in the valadoc list (same rule as each library's `meson.build`) |
+
+**How valadoc is wired**
+
+- Internal libraries are listed as **source files**, not `--pkg` — using VAPIs duplicates
+  definitions and breaks the build (see header comment in `docs/meson.build`).
+- External deps stay as `--pkg=…` (gtk4, seccomp, tree-sitter, etc.).
+- Linux-only sources (e.g. `libocbwrap/Bubble.vala`, not `libocbwrap/windows/*`) go in
+  the list; Windows stub trees are build-only.
+- Many library `meson.build` files repeat: *update `docs/meson.build` when sources
+  change* — follow that.
+
+**Common ordering traps** (define before use):
+
+- `ollmapp/ChatUserInterface.vala`, `AgentDropdown.vala` before `Window.vala`
+- `libocbwrap/*` before `libocmcp/*` (Stdio uses `OLLMbwrap.*`)
+- `namespace.vala` / interface files before implementations in each library
+
+After docblock or valadoc-list edits, run `ninja -C build docs/valadoc` locally —
+errors are stricter than the Vala compiler (invalid taglets, headline layout, etc.).
 
 ## Conventions in this project
 

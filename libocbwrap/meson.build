@@ -1,5 +1,9 @@
 # libocbwrap — shared bwrap / overlay / seccomp / Scan (OLLMbwrap namespace)
 # Linux: full bubblewrap stack. Non-Linux: stubs under windows/.
+#
+# NOTE: If you add/remove/change Linux .vala sources here, update docs/meson.build
+# valadoc input list (libocbwrap/* only — not libocbwrap/windows/*). See
+# docs/code-documentation.md § Valadoc build.
 
 valac = meson.get_compiler('vala')
 

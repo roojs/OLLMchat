@@ -1,4 +1,7 @@
 # Build ocmcp library (libocmcp.so) - depends on libollmchat, libocfiles, libocbwrap
+#
+# NOTE: If you add/remove/change source files here, update docs/meson.build valadoc
+# input list. libocbwrap sources must appear before libocmcp in that list.
 
 valac = meson.get_compiler('vala')
 

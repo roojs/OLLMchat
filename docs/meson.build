@@ -3,9 +3,15 @@
 #
 # IMPORTANT: When adding/removing/changing source files in any library directory,
 # you MUST update the input files list below to match. This includes:
-# - libocsqlite, libocfiles, liboccoder, libollmchat, liboctools, etc.
+# - libocsqlite, libocfiles, libocbwrap, libocmcp, liboccoder, libollmchat,
+#   liboctools, libocvector, ollmapp, etc.
 # Check the corresponding meson.build file in each library directory for the
-# current list of source files.
+# current list of source files. Many meson.build files note this explicitly.
+#
+# Markup rules for docblocks: docs/code-documentation.md
+#   - Use {{{ }}} for literals; NOT {@code …} (valadoc error)
+#   - File order: types/interfaces before users (see ChatUserInterface before Window)
+# Verify locally: ninja -C build docs/valadoc
 #
 valadoc = find_program('valadoc', required: true)
 
