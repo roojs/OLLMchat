@@ -22,7 +22,7 @@ namespace OLLMtools.CodebaseSearch
 	 * Request handler for codebase search operations.
 	 * 
 	 * Handles codebase search requests from LLM function calls. Validates
-	 * parameters, calls {@code vector.search} on {@code ollmfilesd}, and
+	 * parameters, calls {@code semantic.search} on {@code ollmfilesd}, and
 	 * returns daemon-formatted markdown for LLM consumption.
 	 * 
 	 * Supports filtering by language and element_type, and validates
@@ -207,9 +207,9 @@ namespace OLLMtools.CodebaseSearch
 				throw new GLib.IOError.FAILED("No active project. Please open a project first.");
 			}
 			
-			// Step 2: vector.search on ollmfilesd (filter, FAISS, snippets — daemon-side)
+			// Step 2: semantic.search on ollmfilesd (filter, FAISS, snippets — daemon-side)
 			var response = yield this.project_manager.rpc.call(new OLLMrpc.Request() {
-				method = "vector.search",
+				method = "semantic.search",
 				param = new OLLMfilesd.VectorParams() {
 					path = active_project.path,
 					query = this.query,

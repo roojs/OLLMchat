@@ -58,6 +58,7 @@ namespace OLLMfilesd
 		public signal void rpc_contains_folder(OLLMrpc.Request request);
 		public signal void rpc_fetch_file_list(OLLMrpc.Request request);
 		public signal void rpc_fetch_pending_approvals(OLLMrpc.Request request);
+		public signal void rpc_project_description(OLLMrpc.Request request);
 
 		construct
 		{
@@ -151,6 +152,21 @@ namespace OLLMfilesd
 					result = list,
 					result_type = "File",
 					is_array = true
+				});
+			});
+			this.rpc_project_description.connect((request) => {
+				var path = ((FolderParams) request.param).path;
+				var project = this.manager.project_root(path);
+				if (project == null) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						msg = "project not found"
+					});
+					return;
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = project.project_description()
 				});
 			});
 		}

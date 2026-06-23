@@ -68,7 +68,11 @@ jq_resp_ok "T1.6 Folder.fetch (folder row)" 6 "$RPC_LAST_OUT" \
 jq_resp_args_ok "T1.6 Folder.fetch (path)" 6 "$RPC_LAST_OUT" \
     --arg p "$RPC_PROJECT_PATH" '.result.path == $p'
 
-jq_resp_ok "T1.5 remove_project (no error)" 7 "$RPC_LAST_OUT" '.error == null'
+jq_resp_ok "T1.7 Folder.project_description (no error)" 7 "$RPC_LAST_OUT" '.error == null'
+jq_resp_ok "T1.7 Folder.project_description (msg string)" 7 "$RPC_LAST_OUT" \
+    '(.msg | type) == "string"'
+
+jq_resp_ok "T1.5 remove_project (no error)" 8 "$RPC_LAST_OUT" '.error == null'
 
 # --- Persistence (separate script runs; shutdown flushes DB) ---
 run_t1_case "$SCRIPT_DIR/rpc/t1-persist.script.in"

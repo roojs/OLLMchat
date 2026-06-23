@@ -89,9 +89,8 @@ namespace OLLMfiles
 		/**
 		 * Project-level description from vector metadata ({@code ProjectAnalysis}).
 		 *
-		 * Shipping reads SQLite in-process. Client calls
-		 * {@code vector.project.describe} on the daemon ([`2.10.4.1`](../../docs/plans/2.10.4.1-ollmfilesd-rpc-api.md));
-		 * server relay not implemented yet — returns {@code ""} on error.
+		 * Client calls {@code Folder.project_description} on the daemon
+		 * ([`2.10.4.1`](../../docs/plans/2.10.4.1-ollmfilesd-rpc-api.md)).
 		 *
 		 * Callers ({@code Skill/Runner}, {@code Task/Details}, {@code Task/Tool}) must
 		 * {@code yield} this at cutover (was synchronous on shipping {@link Folder}).
@@ -105,8 +104,8 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "vector.project.describe",
-				param = new OLLMfilesd.VectorParams() { path = this.path }
+				method = "Folder.project_description",
+				param = new OLLMfilesd.FolderParams() { path = this.path }
 			});
 			if (response.error != null) {
 				return "";
