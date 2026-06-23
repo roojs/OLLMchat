@@ -248,6 +248,10 @@ namespace OLLMfilesd
 				"Folder", new Folder(this.project_manager),
 				(new FolderParams()).get_type()
 			);
+			OLLMrpc.Request.register(
+				"Codebase", new Codebase(this.project_manager, this.config),
+				(new VectorParams()).get_type()
+			);
 
 			if (opt_interactive) {
 				this.listen = new Stdio(this, opt_rpc_script);

@@ -72,7 +72,11 @@ jq_resp_ok "T1.7 Folder.project_description (no error)" 7 "$RPC_LAST_OUT" '.erro
 jq_resp_ok "T1.7 Folder.project_description (msg string)" 7 "$RPC_LAST_OUT" \
     '(.msg | type) == "string"'
 
-jq_resp_ok "T1.5 remove_project (no error)" 8 "$RPC_LAST_OUT" '.error == null'
+jq_resp_ok "T1.8 Codebase.search (no error)" 8 "$RPC_LAST_OUT" '.error == null'
+jq_resp_ok "T1.8 Codebase.search (msg string)" 8 "$RPC_LAST_OUT" \
+    '(.msg | type) == "string"'
+
+jq_resp_ok "T1.5 remove_project (no error)" 9 "$RPC_LAST_OUT" '.error == null'
 
 # --- Persistence (separate script runs; shutdown flushes DB) ---
 run_t1_case "$SCRIPT_DIR/rpc/t1-persist.script.in"

@@ -49,6 +49,7 @@ ollmfilesd_src = files(
   'ReviewFiles.vala',
   'ProjectFiles.vala',
   'Folder.vala',
+  'Codebase.vala',
   'ProjectList.vala',
   'TreeBase.vala',
   'Tree.vala',
@@ -68,6 +69,7 @@ ollmfilesd_src = files(
   'Vector/ImageAnalyzer.vala',
   'Vector/Indexer.vala',
   'Vector/BackgroundScan.vala',
+  'Vector/SearchResult.vala',
 )
 
 build_rpath = ':'.join([
