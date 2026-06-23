@@ -21,8 +21,8 @@ namespace OLLMtools.CodebaseSearch
 	/**
 	 * Tool for semantic codebase search using vector embeddings.
 	 * 
-	 * This tool performs semantic search across the codebase using FAISS
-	 * vector similarity search. It can filter results by language and
+	 * This tool performs semantic search across the codebase using vector
+	 * similarity search on {@code ollmfilesd}. It can filter results by language and
 	 * element type (class, method, function, etc.).
 	 */
 	public class CodebaseSearchTool : OLLMchat.Tool.BaseTool
@@ -100,27 +100,9 @@ making it more effective than simple text search for finding relevant code.
 		} }
 		
 		/**
-		 * Project manager for accessing active project and database.
+		 * Project manager for accessing active project and {@link OLLMrpc.Client}.
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; private set; }
-		
-		/**
-		 * Vector database for FAISS search.
-		 * Created lazily when needed (requires async operation).
-		 */
-		public OLLMvector.Database? vector_db { get; internal set; }
-		
-		/**
-		 * Embedding client for query vectorization.
-		 * Extracted from client.config if client is not null.
-		 */
-		public OLLMchat.Client? embedding_client { get; internal set; }
-		
-		/**
-		 * Vector database file path.
-		 * Set in init_databases(), used to create the database.
-		 */
-		private string? vector_db_path = null;
 		
 		/**
 		* Constructor with nullable dependencies.
@@ -129,24 +111,19 @@ making it more effective than simple text search for finding relevant code.
 		* For Phase 2 (tool instance creation): project_manager is provided.
 		* 
 		* If project_manager is provided, init_dependencies() is called automatically.
-		* Vector database is not created in constructor (requires async operation).
-		* Call init_databases() after construction to create the vector database.
 		* 
-		* @param project_manager Project manager for accessing active project and database (nullable for Phase 1)
+		* @param project_manager Project manager for RPC to ollmfilesd (nullable for Phase 1)
 		*/
-	public CodebaseSearchTool(
-		OLLMfiles.ProjectManager? project_manager = null
-	)
-	{
-		base();
-		// If project_manager is provided, initialize dependencies immediately
-		if (project_manager != null) {
-			this.init_dependencies(project_manager);
+		public CodebaseSearchTool(
+			OLLMfiles.ProjectManager? project_manager = null
+		)
+		{
+			base();
+			// If project_manager is provided, initialize dependencies immediately
+			if (project_manager != null) {
+				this.init_dependencies(project_manager);
+			}
 		}
-		
-		// Embedding client will be extracted lazily when config is available
-		// (e.g., in init_databases or when tool is used with Manager context)
-	}
 		
 		/**
 		* Initializes tool dependencies after creation.
@@ -161,65 +138,12 @@ making it more effective than simple text search for finding relevant code.
 		*/
 		public void init_dependencies(OLLMfiles.ProjectManager project_manager)
 		{
-			// Return early if already initialized to avoid re-connecting signals
+			// Return early if already initialized
 			if (this.project_manager != null) {
 				return;
 			}
 			
 			this.project_manager = project_manager;
-			
-			// Connect to DeleteManager.on_cleanup signal for bulk VectorMetadata cleanup
-			this.project_manager.delete_manager.on_cleanup.connect(() => {
-				// Bulk cleanup: remove all vector_metadata entries for deleted files
-				if (this.project_manager.db != null) {
-					OLLMfiles.SQT.VectorMetadata.cleanup_all_deleted.begin(this.project_manager.db);
-				}
-			});
-		}
-		
-		/**
-		 * Initializes the vector database by getting dimension and creating the Database instance.
-		 * 
-		 * This method should be called after the tool is constructed and embedding_client is set.
-		 * It performs the async operation to get the embedding dimension and creates the vector_db.
-		 * 
-		 * @param config Config2 instance for database initialization
-		 * @param data_dir Data directory for vector database.
-		 * @throws GLib.Error if initialization fails
-		 */
-		public async void init_databases(OLLMchat.Settings.Config2 config, string data_dir) throws GLib.Error
-		{
-			if (this.vector_db != null) {
-				return; // Already initialized
-			}
-			
-			// Extract embedding_client from config if not already set
-			if (this.embedding_client == null) {
-				if (!config.tools.has_key("codebase_search")) {
-					throw new GLib.IOError.FAILED("codebase_search tool config not found");
-				}
-				
-				var tool_config = config.tools.get("codebase_search") as CodebaseSearchToolConfig;
-				if (tool_config.embed.connection == "" || 
-					!config.connections.has_key(tool_config.embed.connection)) {
-					throw new GLib.IOError.FAILED("codebase_search embed connection not configured");
-				}
-				
-				this.embedding_client = new OLLMchat.Client(config.connections.get(tool_config.embed.connection));
-			}
-			
-			// Set vector database path
-			this.vector_db_path = GLib.Path.build_filename(data_dir, "codedb.faiss.vectors");
-			
-			// Get dimension first, then create database
-			var temp_db = new OLLMvector.Database(config, 
-				this.vector_db_path, OLLMvector.Database.DISABLE_INDEX);
-			var dimension = yield temp_db.embed_dimension();
-			
-			// Verify analysis connection during initialization
-			yield temp_db.connection("analysis", true);
-			
-			this.vector_db = new OLLMvector.Database(config, this.vector_db_path, dimension);
 		}
 		
 		public override Type config_class() { return typeof(CodebaseSearchToolConfig); }
@@ -230,4 +154,3 @@ making it more effective than simple text search for finding relevant code.
 		}
 	}
 }
-
