@@ -290,7 +290,11 @@ namespace OLLMtools.ReadFile
 			}
 			
 			// Try to get File from active project (needed for AST path resolution)
-			this.file = project_manager.get_file_from_active_project(this.normalized_path);
+			if (project_manager.active_project != null) {
+				this.file = yield project_manager.active_project.fetch_file(
+					this.normalized_path
+				);
+			}
 			
 			// Resolve AST path if provided (only works for project files)
 			if (this.ast_path != "") {

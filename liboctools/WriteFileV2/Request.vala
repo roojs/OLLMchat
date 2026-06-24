@@ -32,7 +32,6 @@ namespace OLLMtools.WriteFile
 
 		internal string normalized_path = "";
 		internal bool creating_file = false;
-		private bool history_created = false;
 		private OLLMfiles.File? file = null;
 
 		public Request()
@@ -83,13 +82,20 @@ namespace OLLMtools.WriteFile
 			this.permission_operation = OLLMchat.ChatPermission.Operation.WRITE;
 			this.permission_question = "Write to file '" + this.normalized_path + "'?";
 			var project_manager = ((Tool) this.tool).project_manager;
-			if (project_manager.get_file_from_active_project(this.normalized_path) != null) {
+			// Check if file is already in the project index (skip permission prompt if so)
+			if (project_manager.file_cache.has_key(this.normalized_path)) {
 				this.permission_question = "";
 				return false;
 			}
+			// Check if file path is within project folder (even if file doesn't exist yet)
 			if (project_manager.active_project != null) {
+				var project_path = project_manager.active_project.path;
 				var dir_path = GLib.Path.get_dirname(this.normalized_path);
-				if (project_manager.active_project.project_files.folder_map.has_key(dir_path)) {
+				// V2: path-under-project check (shipping used project_files.folder_map)
+				if (
+					dir_path == project_path
+					|| dir_path.has_prefix(project_path + "/")
+				) {
 					this.permission_question = "";
 					return false;
 				}
@@ -149,9 +155,14 @@ namespace OLLMtools.WriteFile
 				if (!GLib.FileUtils.test(norm, GLib.FileTest.IS_REGULAR)) {
 					return "file does not exist (required for search_text mode)";
 				}
-				var file = project_manager.get_file_from_active_project(norm);
-				if (file == null) {
-					file = new OLLMfiles.File.new_fake(project_manager, norm);
+				var file = new OLLMfiles.File.new_fake(project_manager, norm);
+				if (project_manager.active_project != null) {
+					var indexed = yield project_manager.active_project.fetch_file(
+						norm
+					);
+					if (indexed != null) {
+						file = indexed;
+					}
 				}
 				project_manager.buffer_provider.create_buffer(file);
 				if (!file.buffer.is_loaded) {
@@ -172,9 +183,14 @@ namespace OLLMtools.WriteFile
 			}
 			if (project_manager != null && has_ast) {
 				var norm = this.normalize_file_path(this.file_path);
-				var file = project_manager.get_file_from_active_project(norm);
-				if (file == null) {
-					file = new OLLMfiles.File.new_fake(project_manager, norm);
+				var file = new OLLMfiles.File.new_fake(project_manager, norm);
+				if (project_manager.active_project != null) {
+					var indexed = yield project_manager.active_project.fetch_file(
+						norm
+					);
+					if (indexed != null) {
+						file = indexed;
+					}
 				}
 				project_manager.buffer_provider.create_buffer(file);
 				if (!file.buffer.is_loaded) {
@@ -196,31 +212,6 @@ namespace OLLMtools.WriteFile
 			return "";
 		}
 
-		private async void file_history() throws Error
-		{
-			if (this.history_created) {
-				return;
-			}
-			var change_type = this.creating_file ? "added" : "modified";
-			if (change_type != "added" && this.creating_file) {
-				return;
-			}
-			var project_manager = ((Tool) this.tool).project_manager;
-			try {
-				var fh = new OLLMfiles.FileHistory(
-					project_manager.db,
-					this.file,
-					change_type,
-					new GLib.DateTime.now_local()
-				);
-				yield fh.commit();
-				this.history_created = true;
-			} catch (GLib.Error e) {
-				GLib.warning("Cannot create FileHistory for write_file (%s): %s",
-					this.normalized_path, e.message);
-			}
-		}
-
 		protected override async string execute_request() throws Error
 		{
 			var err = yield this.validate();
@@ -232,7 +223,13 @@ namespace OLLMtools.WriteFile
 				throw new GLib.IOError.FAILED("ProjectManager is not available");
 			}
 			this.normalized_path = this.normalize_file_path(this.file_path);
-			this.file = project_manager.get_file_from_active_project(this.normalized_path);
+			// Try to get File from active project index
+			if (project_manager.active_project != null) {
+				this.file = yield project_manager.active_project.fetch_file(
+					this.normalized_path
+				);
+			}
+			// Create fake file if not yet tracked (register after disk write)
 			if (this.file == null) {
 				this.file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
 			}
@@ -327,7 +324,7 @@ namespace OLLMtools.WriteFile
 				}
 			}
 			var change_type = this.creating_file ? "added" : "modified";
-			yield this.file_history();
+			// V2: no client FileHistory pre-commit; daemon records on register/write
 			if (this.ast_path.strip() != "") {
 				yield change.resolve_ast_path();
 			}
@@ -340,7 +337,7 @@ namespace OLLMtools.WriteFile
 			var is_in_project = (this.file.id > 0);
 			if (!is_in_project && project_manager.active_project != null) {
 				var dir_path = GLib.Path.get_dirname(this.normalized_path);
-				if (project_manager.active_project.project_files.folder_map.has_key(dir_path)) {
+				if (yield project_manager.active_project.contains_folder(dir_path)) {
 					is_in_project = true;
 				}
 			}
@@ -348,6 +345,7 @@ namespace OLLMtools.WriteFile
 				yield this.file.buffer.sync_to_file();
 			} catch (GLib.IOError e) {
 				if (e is GLib.IOError.NOT_SUPPORTED) {
+					// DummyFileBuffer: get buffer contents and write
 					var contents = this.file.buffer.get_text();
 					yield this.file.buffer.write(contents);
 				} else {
@@ -358,25 +356,33 @@ namespace OLLMtools.WriteFile
 				OLLMchat.Message.fenced("text.oc-frame-success Write File",
 				"Successfully wrote file: " + this.normalized_path + 
 					"\nProject file: " + (is_in_project ? "yes" : "no"))));
+			// For added files: register on daemon (insert_file mutates this.file in place)
 			if (change_type == "added" && this.file.id <= 0 && is_in_project) {
-				yield project_manager.convert_fake_file_to_real(this.file, this.normalized_path);
-				this.file = project_manager.get_file_from_active_project(this.normalized_path);
-				if (this.file != null) {
-					project_manager.active_project.project_files.update_from(
-						project_manager.active_project);
+				try {
+					yield project_manager.active_project.insert_file(
+						this.file,
+						this.normalized_path
+					);
+				} catch (GLib.Error e) {
+					GLib.warning(
+						"Cannot register new file (%s): %s",
+						this.normalized_path,
+						e.message
+					);
 				}
 			}
-			yield this.file_history();
+			// Update approval flags locally; persist index state via RPC
 			this.file.is_need_approval = true;
 			this.file.last_change_type = change_type;
 			this.file.last_modified = new GLib.DateTime.now_local().to_unix();
 			if (is_in_project || this.file.id > 0) {
-				this.file.saveToDB(project_manager.db, null, false);
+				this.file.write();
 			}
-			if (is_in_project) {
-				project_manager.active_project.project_files.review_files.refresh();
+			if (is_in_project && project_manager.active_project != null) {
+				yield new OLLMfiles.ReviewFiles(
+					project_manager.active_project
+				).refresh();
 			}
-			project_manager.db.backupDB();
 			this.creating_file = false;
 			((Tool) this.tool).change_done(this.normalized_path, change);
 			var lines = this.file.buffer.get_text().split("\n");

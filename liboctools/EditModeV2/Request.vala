@@ -177,7 +177,7 @@ Don't forget to close it.
 			var project_manager = ((Tool) this.tool).project_manager;
 			
 			// Check if file is in active project (skip permission prompt if so)
-			if (project_manager.get_file_from_active_project(this.normalized_path) != null) {
+			if (project_manager.file_cache.has_key(this.normalized_path)) {
 				// File is in active project - skip permission prompt
 				// Clear permission question to indicate auto-approved
 				this.permission_question = "";
@@ -185,17 +185,21 @@ Don't forget to close it.
 				return false;
 			}
 			
-		// Check if file path is within project folder (even if file doesn't exist yet)
-		// This allows new files inside the project folder to be created without permission checks
-		if (project_manager.active_project != null) {
-			var dir_path = GLib.Path.get_dirname(this.normalized_path);
-			// Check if the directory containing the file is in the project's folder_map
-			if (project_manager.active_project.project_files.folder_map.has_key(dir_path) == true) {
-				// File is within project folder - skip permission prompt
-				this.permission_question = "";
-				return false;
+			// Check if file path is within project folder (even if file doesn't exist yet)
+			// This allows new files inside the project folder to be created without permission checks
+			if (project_manager.active_project != null) {
+				var project_path = project_manager.active_project.path;
+				var dir_path = GLib.Path.get_dirname(this.normalized_path);
+				// V2: path-under-project check (shipping used project_files.folder_map)
+				if (
+					dir_path == project_path
+					|| dir_path.has_prefix(project_path + "/")
+				) {
+					// File is within project folder - skip permission prompt
+					this.permission_question = "";
+					return false;
+				}
 			}
-		}
 			
 			// File is not in active project - require permission
 			return true;
@@ -209,8 +213,7 @@ Don't forget to close it.
 			var norm = this.normalize_file_path (this.file_path);
 			var creating_file = !GLib.FileUtils.test (norm, GLib.FileTest.IS_REGULAR);
 			var project_manager = ((Tool) this.tool).project_manager;
-			var is_in_project = project_manager != null
-				&& project_manager.get_file_from_active_project (norm) != null;
+			var is_in_project = project_manager.file_cache.has_key(norm);
 			return "Edit mode activated for file: " + norm + "\n"
 				+ "File status: " + (!creating_file ? "exists" : "will be created") + "\n"
 				+ "Project file: " + (is_in_project ? "yes (auto-approved)" : "no (permission required)");
@@ -237,7 +240,11 @@ Don't forget to close it.
 			}
 			
 			// Try to get File from active project (needed for AST path resolution)
-			this.file = project_manager.get_file_from_active_project(this.normalized_path);
+			if (project_manager.active_project != null) {
+				this.file = yield project_manager.active_project.fetch_file(
+					this.normalized_path
+				);
+			}
 			
 			// Create fake file if needed (only after AST path check, since AST doesn't work on fake files)
 			// Note: AST path resolution will be done later when code blocks are processed
