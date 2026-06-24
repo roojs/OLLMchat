@@ -339,9 +339,16 @@ namespace OLLMtools.ReadFile
 				throw new GLib.IOError.INVALID_ARGUMENT(error_msg);
 			}
 			
-			// Validate that file exists
-			if (!GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR)) {
+			this.file.manager.buffer_provider.create_buffer(this.file);
+			if ((yield this.file.exists()) != GLib.FileType.REGULAR) {
 				var error_msg = "File not found or is not a regular file: " + this.normalized_path;
+				this.agent.add_message(new OLLMchat.Message("ui", 
+					OLLMchat.Message.fenced("text.oc-frame-danger Read file Response", 
+						"Error: " + error_msg)));
+				throw new GLib.IOError.FAILED(error_msg);
+			}
+			if (!(yield this.file.read())) {
+				var error_msg = "Failed to read file: " + this.normalized_path;
 				this.agent.add_message(new OLLMchat.Message("ui", 
 					OLLMchat.Message.fenced("text.oc-frame-danger Read file Response", 
 						"Error: " + error_msg)));
@@ -388,15 +395,7 @@ namespace OLLMtools.ReadFile
 				return summary;
 			}
 			
-			// Ensure buffer exists (create if needed)
-			this.file.manager.buffer_provider.create_buffer(this.file);
-			
-			// Ensure buffer is loaded
-			if (!this.file.buffer.is_loaded) {
-				yield this.file.buffer.read_async();
-			}
-
-			// Get full content (default to entire file)
+			// Buffer loaded by File.read above
 			var  full_content = this.file.buffer.get_text();
 			var content_start_line = 1; // Track starting line number for line number formatting
 			

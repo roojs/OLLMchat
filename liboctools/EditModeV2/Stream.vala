@@ -643,8 +643,8 @@ namespace OLLMtools.EditMode
 		 * have been applied. Called by both line-based and AST-based change processing
 		 * when all changes are done, before sending the response.
 		 *
-		 * V2: FileHistory and SQLite updates live on the daemon ({@link File.register},
-		 * {@link File.write}); client refreshes {@link ReviewFiles} after RPC.
+		 * V2: {@link File.write} RPC sends buffer content; daemon records history.
+		 * Client refreshes {@link ReviewFiles} after RPC.
 		 */
 		private async void sync_and_update_metadata() throws Error
 		{
@@ -660,25 +660,7 @@ namespace OLLMtools.EditMode
 			
 			var change_type = this.request.creating_file ? "added" : "modified";
 			
-			// Sync buffer to file (all changes have been applied to buffer)
-			// For GTK buffers: use sync_to_file()
-			// For DummyFileBuffer: write buffer contents (sync_to_file() throws NOT_SUPPORTED)
-			try {
-				yield this.file.buffer.sync_to_file();
-			} catch (GLib.IOError e) {
-				if (e is GLib.IOError.NOT_SUPPORTED) {
-					// DummyFileBuffer: get buffer contents and write
-					var contents = this.file.buffer.get_text();
-					yield this.file.buffer.write(contents);
-				} else {
-					throw e;
-				}
-			}
-			
-			// Update file metadata
-			this.send_success_ui_message(is_in_project);
-			
-			// For added files: register on daemon (insert_file mutates this.file in place)
+			// For added files: register on daemon before File.write
 			if (change_type == "added" && this.file.id <= 0 && is_in_project) {
 				yield this.convert_new_file_to_real(
 					this.file.manager,
@@ -689,13 +671,16 @@ namespace OLLMtools.EditMode
 				}
 			}
 			
-			// Update approval flags locally; persist index state via RPC
+			// Update file metadata before RPC write
+			this.send_success_ui_message(is_in_project);
+			
 			this.file.is_need_approval = true;
 			this.file.last_change_type = change_type;
 			this.file.last_modified = new GLib.DateTime.now_local().to_unix();
 			
-			if (is_in_project || this.file.id > 0) {
-				this.file.write();
+			if (!(yield this.file.write())) {
+				throw new GLib.IOError.FAILED(
+					"Failed to write file via RPC: " + this.request.normalized_path);
 			}
 			
 			if (is_in_project && this.file.manager.active_project != null) {

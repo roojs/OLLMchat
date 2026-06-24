@@ -110,23 +110,20 @@ namespace OLLMtools
 					}
 					return;
 				default:
+					var content = "";
 					try {
-						GLib.File.new_for_path(overlay_path).copy(
-							GLib.File.new_for_path(real_path),
-							GLib.FileCopyFlags.OVERWRITE,
-							null,
+						var bytes = GLib.File.new_for_path(overlay_path).load_bytes(
 							null
 						);
+						content = (string) bytes.get_data();
 					} catch (GLib.Error e) {
 						GLib.warning(
-							"Cannot copy file from overlay to real path (%s -> %s): %s",
+							"Cannot read overlay file (%s): %s",
 							overlay_path,
-							real_path,
 							e.message
 						);
 						return;
 					}
-					this.copy_permissions(overlay_path, real_path);
 					var fake = new OLLMfiles.File.new_fake(this.manager, real_path);
 					try {
 						yield this.project.insert_file(fake, real_path);
@@ -136,7 +133,15 @@ namespace OLLMtools
 							real_path,
 							e.message
 						);
+						return;
 					}
+					if (!(yield fake.write(content))) {
+						GLib.warning(
+							"Cannot write new file via RPC (%s)",
+							real_path
+						);
+					}
+					this.copy_permissions(overlay_path, real_path);
 					return;
 			}
 		}
@@ -182,39 +187,31 @@ namespace OLLMtools
 					}
 					return;
 				default:
-					try {
-						GLib.File.new_for_path(overlay_path).copy(
-							GLib.File.new_for_path(real_path),
-							GLib.FileCopyFlags.OVERWRITE,
-							null,
-							null
-						);
-					} catch (GLib.Error e) {
-						GLib.warning(
-							"Cannot copy file from overlay to real path (%s -> %s): %s",
-							overlay_path,
-							real_path,
-							e.message
-						);
-						return;
-					}
-					this.copy_permissions(overlay_path, real_path);
 					var file = yield this.project.fetch_file(real_path);
 					if (file == null) {
 						return;
 					}
+					var content = "";
 					try {
 						var bytes = GLib.File.new_for_path(overlay_path).load_bytes(
 							null
 						);
-						file.write((string) bytes.get_data());
+						content = (string) bytes.get_data();
 					} catch (GLib.Error e) {
 						GLib.warning(
 							"Cannot read overlay file (%s): %s",
 							overlay_path,
 							e.message
 						);
+						return;
 					}
+					if (!(yield file.write(content))) {
+						GLib.warning(
+							"Cannot write modified file via RPC (%s)",
+							real_path
+						);
+					}
+					this.copy_permissions(overlay_path, real_path);
 					return;
 			}
 		}

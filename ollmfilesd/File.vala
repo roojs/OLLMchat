@@ -49,6 +49,7 @@ namespace OLLMfilesd
 		}
 
 		public signal void rpc_read(OLLMrpc.Request request);
+		public signal void rpc_exists(OLLMrpc.Request request);
 		public signal void rpc_fetch(OLLMrpc.Request request);
 		public signal void rpc_write(OLLMrpc.Request request);
 		public signal void rpc_register(OLLMrpc.Request request);
@@ -105,6 +106,27 @@ namespace OLLMfilesd
 					id = request.id,
 					result = row,
 					result_type = "File"
+				});
+			});
+			this.rpc_exists.connect((request) => {
+				var file_type = GLib.FileType.UNKNOWN;
+				try {
+					file_type = GLib.File.new_for_path(
+						((FileParams) request.param).path
+					).query_file_type(
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+				} catch (GLib.Error e) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						msg = ((int) GLib.FileType.UNKNOWN).to_string()
+					});
+					return;
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = ((int) file_type).to_string()
 				});
 			});
 			this.rpc_fetch.connect((request) => {

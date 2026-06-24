@@ -121,7 +121,11 @@ namespace OLLMtools.WriteFile
 			}
 			if (project_manager != null && this.complete_file) {
 				var norm_cf = this.normalize_file_path(this.file_path);
-				if (GLib.FileUtils.test(norm_cf, GLib.FileTest.IS_DIR)) {
+				var probe = new OLLMfiles.File.new_fake(
+					project_manager,
+					norm_cf
+				);
+				if ((yield probe.exists()) == GLib.FileType.DIRECTORY) {
 					return "file_path is a directory, not a file: " + norm_cf;
 				}
 			}
@@ -146,15 +150,6 @@ namespace OLLMtools.WriteFile
 			}
 			if (project_manager != null && (has_ast || has_lines)) {
 				var norm = this.normalize_file_path(this.file_path);
-				if (!GLib.FileUtils.test(norm, GLib.FileTest.IS_REGULAR)) {
-					return "file does not exist (required for ast_path / line_numbers mode)";
-				}
-			}
-			if (project_manager != null && has_search) {
-				var norm = this.normalize_file_path(this.file_path);
-				if (!GLib.FileUtils.test(norm, GLib.FileTest.IS_REGULAR)) {
-					return "file does not exist (required for search_text mode)";
-				}
 				var file = new OLLMfiles.File.new_fake(project_manager, norm);
 				if (project_manager.active_project != null) {
 					var indexed = yield project_manager.active_project.fetch_file(
@@ -165,12 +160,30 @@ namespace OLLMtools.WriteFile
 					}
 				}
 				project_manager.buffer_provider.create_buffer(file);
-				if (!file.buffer.is_loaded) {
-					try {
-						yield file.buffer.read_async();
-					} catch (GLib.Error e) {
-						return "failed to read file: " + e.message;
+				if ((yield file.exists()) != GLib.FileType.REGULAR) {
+					return "file does not exist (required for ast_path / line_numbers mode)";
+				}
+				if (!(yield file.read())) {
+					return "failed to read file";
+				}
+			}
+			if (project_manager != null && has_search) {
+				var norm = this.normalize_file_path(this.file_path);
+				var file = new OLLMfiles.File.new_fake(project_manager, norm);
+				if (project_manager.active_project != null) {
+					var indexed = yield project_manager.active_project.fetch_file(
+						norm
+					);
+					if (indexed != null) {
+						file = indexed;
 					}
+				}
+				project_manager.buffer_provider.create_buffer(file);
+				if ((yield file.exists()) != GLib.FileType.REGULAR) {
+					return "file does not exist (required for search_text mode)";
+				}
+				if (!(yield file.read())) {
+					return "failed to read file";
 				}
 				var matches = file.buffer.locate(this.search_text, true, true);
 				if (matches.size == 0) {
@@ -193,12 +206,11 @@ namespace OLLMtools.WriteFile
 					}
 				}
 				project_manager.buffer_provider.create_buffer(file);
-				if (!file.buffer.is_loaded) {
-					try {
-						yield file.buffer.read_async();
-					} catch (GLib.Error e) {
-						return "failed to read file: " + e.message;
-					}
+				if ((yield file.exists()) != GLib.FileType.REGULAR) {
+					return "failed to read file for AST validation";
+				}
+				if (!(yield file.read())) {
+					return "failed to read file for AST validation";
 				}
 				var change = new OLLMfiles.FileChange(file) {
 					ast_path = this.ast_path.strip(),
@@ -229,25 +241,22 @@ namespace OLLMtools.WriteFile
 					this.normalized_path
 				);
 			}
-			// Create fake file if not yet tracked (register after disk write)
+			// Create fake file if not yet tracked (register before File.write RPC)
 			if (this.file == null) {
 				this.file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
 			}
-			this.creating_file = !GLib.FileUtils.test(
-				this.normalized_path, GLib.FileTest.IS_REGULAR);
+			this.file.manager.buffer_provider.create_buffer(this.file);
+			this.creating_file = (yield this.file.exists()) != GLib.FileType.REGULAR;
+			if (this.creating_file) {
+				yield this.file.buffer.clear();
+			} else if (!(yield this.file.read())) {
+				throw new GLib.IOError.FAILED(
+					"Failed to read file: " + this.normalized_path);
+			}
 			if (this.search_text.strip() != "") {
 				if (this.creating_file) {
 					throw new GLib.IOError.INVALID_ARGUMENT(
 						"search_text requires an existing file");
-				}
-				project_manager.buffer_provider.create_buffer(this.file);
-				if (!this.file.buffer.is_loaded) {
-					try {
-						yield this.file.buffer.read_async();
-					} catch (GLib.Error e) {
-						throw new GLib.IOError.FAILED(
-							"Failed to read file: " + e.message);
-					}
 				}
 				var matches = this.file.buffer.locate(this.search_text, true, true);
 				if (matches.size != 1) {
@@ -315,14 +324,6 @@ namespace OLLMtools.WriteFile
 				};
 			}
 
-			project_manager.buffer_provider.create_buffer(this.file);
-			if (!this.file.buffer.is_loaded && !(this.complete_file && this.creating_file)) {
-				try {
-					yield this.file.buffer.read_async();
-				} catch (GLib.Error e) {
-					throw new GLib.IOError.FAILED("Failed to read file: " + e.message);
-				}
-			}
 			var change_type = this.creating_file ? "added" : "modified";
 			// V2: no client FileHistory pre-commit; daemon records on register/write
 			if (this.ast_path.strip() != "") {
@@ -341,22 +342,7 @@ namespace OLLMtools.WriteFile
 					is_in_project = true;
 				}
 			}
-			try {
-				yield this.file.buffer.sync_to_file();
-			} catch (GLib.IOError e) {
-				if (e is GLib.IOError.NOT_SUPPORTED) {
-					// DummyFileBuffer: get buffer contents and write
-					var contents = this.file.buffer.get_text();
-					yield this.file.buffer.write(contents);
-				} else {
-					throw e;
-				}
-			}
-			this.agent.add_message(new OLLMchat.Message("ui", 
-				OLLMchat.Message.fenced("text.oc-frame-success Write File",
-				"Successfully wrote file: " + this.normalized_path + 
-					"\nProject file: " + (is_in_project ? "yes" : "no"))));
-			// For added files: register on daemon (insert_file mutates this.file in place)
+			// For added files: register on daemon before File.write
 			if (change_type == "added" && this.file.id <= 0 && is_in_project) {
 				try {
 					yield project_manager.active_project.insert_file(
@@ -371,13 +357,18 @@ namespace OLLMtools.WriteFile
 					);
 				}
 			}
-			// Update approval flags locally; persist index state via RPC
+			// Update approval flags locally before RPC write
 			this.file.is_need_approval = true;
 			this.file.last_change_type = change_type;
 			this.file.last_modified = new GLib.DateTime.now_local().to_unix();
-			if (is_in_project || this.file.id > 0) {
-				this.file.write();
+			if (!(yield this.file.write())) {
+				throw new GLib.IOError.FAILED(
+					"Failed to write file via RPC: " + this.normalized_path);
 			}
+			this.agent.add_message(new OLLMchat.Message("ui", 
+				OLLMchat.Message.fenced("text.oc-frame-success Write File",
+				"Successfully wrote file: " + this.normalized_path + 
+					"\nProject file: " + (is_in_project ? "yes" : "no"))));
 			if (is_in_project && project_manager.active_project != null) {
 				yield new OLLMfiles.ReviewFiles(
 					project_manager.active_project

@@ -211,11 +211,10 @@ Don't forget to close it.
 				return "";
 			}
 			var norm = this.normalize_file_path (this.file_path);
-			var creating_file = !GLib.FileUtils.test (norm, GLib.FileTest.IS_REGULAR);
 			var project_manager = ((Tool) this.tool).project_manager;
 			var is_in_project = project_manager.file_cache.has_key(norm);
 			return "Edit mode activated for file: " + norm + "\n"
-				+ "File status: " + (!creating_file ? "exists" : "will be created") + "\n"
+				+ "File status: " + (is_in_project ? "exists" : "will be created or is outside index") + "\n"
 				+ "Project file: " + (is_in_project ? "yes (auto-approved)" : "no (permission required)");
 		}
 		
@@ -258,7 +257,14 @@ Don't forget to close it.
 				this.file              // File object (Stream can get path from file.path, project_manager from file.manager)
 			);
 			
-			this.creating_file = !GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
+			this.file.manager.buffer_provider.create_buffer(this.file);
+			this.creating_file = (yield this.file.exists()) != GLib.FileType.REGULAR;
+			if (this.creating_file) {
+				yield this.file.buffer.clear();
+			} else if (!(yield this.file.read())) {
+				throw new GLib.IOError.FAILED(
+					"Failed to read file: " + this.normalized_path);
+			}
 			var ui_message = this.to_summary ();
 			
 			// Send to UI using standardized format

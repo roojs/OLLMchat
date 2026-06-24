@@ -44,7 +44,10 @@ namespace OLLMfiles
 	 * if (file.buffer == null) {
 	 *     file.manager.buffer_provider.create_buffer(file);
 	 * }
-	 * var contents = yield file.buffer.read_async();
+	 * if (!(yield file.read())) {
+	 *     // not found on daemon
+	 * }
+	 * var contents = file.buffer.get_text();
 	 * }}}
 	 */
 	public class File : FileBase, Copyable
@@ -283,7 +286,10 @@ namespace OLLMfiles
 		 * if (file.buffer == null) {
 		 *     file.manager.buffer_provider.create_buffer(file);
 		 * }
-		 * var contents = yield file.buffer.read_async();
+		 * if (!(yield file.read())) {
+		 *     // not found on daemon
+		 * }
+		 * var contents = file.buffer.get_text();
 		 * }}}
 		 */
 		public FileBuffer? buffer { get; set; default = null; }
@@ -296,7 +302,42 @@ namespace OLLMfiles
 		// --- Daemon RPC ---
 
 		/**
-		 * Load filebase from daemon ({@code File.read}), then reload {@link buffer} from disk.
+		 * Daemon disk probe ({@code File.exists}).
+		 *
+		 * Distinct from index membership ({@link Folder.fetch_file}) and content
+		 * load ({@link read}). Callers use this for create-vs-modify and validate;
+		 * **🚫** do not probe existence via {@link read}.
+		 *
+		 * Wire: {@code response.msg} is {@code ((int) GLib.FileType)} as decimal
+		 * ({@link GLib.FileType.UNKNOWN} = path absent or RPC error).
+		 *
+		 * @return File type on daemon disk; {@link GLib.FileType.UNKNOWN} when absent
+		 */
+		public async GLib.FileType exists()
+		{
+			if (this.path.length == 0) {
+				return GLib.FileType.UNKNOWN;
+			}
+
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+				method = "File.exists",
+				param = new OLLMfilesd.FileParams() { path = this.path }
+			});
+			if (response.error != null || response.msg == "") {
+				return GLib.FileType.UNKNOWN;
+			}
+			int type_code;
+			if (!int.try_parse(response.msg, out type_code)) {
+				return GLib.FileType.UNKNOWN;
+			}
+			return (GLib.FileType) type_code;
+		}
+
+		/**
+		 * Load filebase + content from daemon ({@code File.read}).
+		 *
+		 * Populates {@link buffer} from {@link OLLMrpc.Response.msg} (file text).
+		 * **🚫** no local disk read on the thin client.
 		 */
 		public async bool read()
 		{
@@ -325,41 +366,60 @@ namespace OLLMfiles
 				});
 			}
 
-			if (this.buffer != null) {
-				this.buffer.last_read_timestamp = 0;
-				this.buffer.is_modified = false;
-				try {
-					yield this.buffer.read_async();
-				} catch (GLib.Error e) {
-					GLib.warning("File.read: buffer reload %s: %s", this.path, e.message);
-					return false;
+			if (this.buffer == null) {
+				this.manager.buffer_provider.create_buffer(this);
+			}
+			try {
+				yield this.buffer.clear();
+				if (response.msg != "") {
+					yield this.buffer.apply_edit(new FileChange(this) {
+						start = 1,
+						end = 1,
+						replacement = response.msg
+					});
 				}
+				this.buffer.is_modified = false;
+				this.buffer.last_read_timestamp = GLib.get_monotonic_time();
+			} catch (GLib.Error e) {
+				GLib.warning(
+					"buffer load failed %s: %s",
+					this.path,
+					e.message
+				);
+				return false;
 			}
 			return true;
 		}
 
 		/**
-		 * Write content to daemon ({@code File.write}). Fire-and-forget; scan/index on server.
+		 * Write content to daemon ({@code File.write}); scan/index on server.
 		 * Uses {@link buffer} text when {@code content} is empty.
+		 *
+		 * @return false when RPC fails or path is empty
 		 */
-		public void write(string content = "")
+		public async bool write(string content = "")
 		{
 			if (this.path.length == 0) {
-				return;
+				return false;
 			}
 			if (content == "" && this.buffer != null) {
 				content = this.buffer.get_text();
 			}
 
-			this.manager.rpc.call.begin(new OLLMrpc.Request() {
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "File.write",
 				param = new OLLMfilesd.FileParams() {
 					path = this.path,
 					content = content
 				}
-			}, (obj, res) => {
-				this.manager.rpc.call.end(res);
 			});
+			if (response.error != null) {
+				return false;
+			}
+			if (this.buffer != null) {
+				this.buffer.is_modified = false;
+			}
+			return true;
 		}
 
 		/**
@@ -459,7 +519,7 @@ namespace OLLMfiles
 		 *         }
 		 *         var all = file.contents();
 		 * }}}
-		 * Buffer must be loaded first (via read_async() or automatic loading).
+		 * Buffer must be loaded first (via {@link read} or after edits).
 		 * 
 		 * == Two modes (second parameter) ==
 		 * 

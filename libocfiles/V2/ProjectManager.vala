@@ -334,17 +334,17 @@ namespace OLLMfiles
 		 * Writes current buffer contents via {@code File.write}.
 		 * Scan/index queue is on the daemon. RPC errors: {@link OLLMrpc.Client.failed}.
 		 */
-		public void write_buffer_to_disk()
+		public async void write_buffer_to_disk()
 		{
 			if (this.active_file == null || this.active_file.buffer == null) {
 				return;
 			}
 
-			this.active_file.write();
+			yield this.active_file.write();
 		}
 		
 		/**
-		 * Reloads active file via {@link File.read} (daemon filebase + buffer from disk).
+		 * Reloads active file via {@link File.read} (daemon filebase + RPC content).
 		 */
 		public async void reload_file_from_disk()
 		{
