@@ -96,16 +96,46 @@ namespace OLLMfilesd
 		construct
 		{
 			this.rpc_read.connect((request) => {
-				var file = this.manager.get_file_from_active_project(
-					((FileParams) request.param).path
-				);
+				var path = ((FileParams) request.param).path;
+				uint8[] data;
+				string etag;
+				try {
+					GLib.File.new_for_path(path).load_contents(
+						null,
+						out data,
+						out etag
+					);
+				} catch (GLib.Error e) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							e.message
+						)
+					});
+					return;
+				}
 				var row = new File(this.manager);
-				row.copy_from(file, {"manager", "buffer", "parent"});
-				row.last_modified = file.mtime_on_disk();
+				var indexed = this.manager.get_file_from_active_project(path);
+				if (indexed != null) {
+					row.copy_from(indexed, {
+						"manager",
+						"buffer",
+						"parent"
+					});
+					row.last_modified = indexed.mtime_on_disk();
+				} else {
+					row.path = path;
+					row.id = -1;
+				}
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					result = row,
-					result_type = "File"
+					result_type = "File",
+					msg = row.is_text ? (string) data : GLib.Base64.encode(
+						data[0:data.length > 0 ? data.length - 1 : 0]
+					),
+					msg_encode = row.is_text ? 0 : 1
 				});
 			});
 			this.rpc_exists.connect((request) => {

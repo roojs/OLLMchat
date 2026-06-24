@@ -336,8 +336,14 @@ namespace OLLMfiles
 		/**
 		 * Load filebase + content from daemon ({@code File.read}).
 		 *
-		 * Populates {@link buffer} from {@link OLLMrpc.Response.msg} (file text).
-		 * **🚫** no local disk read on the thin client.
+		 * Wire: {@code result} is the {@link File} row (indexed id when in project,
+		 * else {@code id == -1}); {@code response.msg} is file content;
+		 * {@code response.msg_encode}: {@code 0} when {@code result.is_text},
+		 * {@code 1} = base64 otherwise. Populates {@link buffer} from decoded
+		 * {@code msg} — **🚫** no local disk read on thin client.
+		 *
+		 * Whether the path may be read (project vs permission-granted) is a
+		 * tool/client decision; the daemon reads {@code params.path} on disk.
 		 */
 		public async bool read()
 		{
@@ -372,10 +378,16 @@ namespace OLLMfiles
 			try {
 				yield this.buffer.clear();
 				if (response.msg != "") {
+					var replacement = response.msg;
+					if (response.msg_encode == 1) {
+						replacement = (string) GLib.Base64.decode(
+							response.msg
+						);
+					}
 					yield this.buffer.apply_edit(new FileChange(this) {
 						start = 1,
 						end = 1,
-						replacement = response.msg
+						replacement = replacement
 					});
 				}
 				this.buffer.is_modified = false;

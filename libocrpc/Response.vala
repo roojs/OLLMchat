@@ -22,6 +22,11 @@ namespace OLLMrpc
 		public GLib.Object? result { get; set; default = null; }
 		public string msg { get; set; default = ""; }
 		/**
+		 * {@code File.read} only: {@code 0} = plain UTF-8 ({@code is_text}),
+		 * {@code 1} = base64 (not {@code is_text}).
+		 */
+		public int msg_encode { get; set; default = 0; }
+		/**
 		 * On the wire with {@link result}: {@link Type.name} for typed deserialize
 		 * ({@link Client} via {@link types}).
 		 */
