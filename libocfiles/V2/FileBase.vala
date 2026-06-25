@@ -34,7 +34,7 @@ namespace OLLMfiles
 	 *
 	 *  * id = 0: new row (not yet registered)
 	 *  * id > 0: real filebase id from daemon
-	 *  * id < 0: fake file ({@link File.new_fake}) until {@link File.register}
+	 *  * id < 0: fake file ({@link File.new_fake}) until {@link File.to_real}
 	 */
 	public abstract class FileBase : Object
 	{

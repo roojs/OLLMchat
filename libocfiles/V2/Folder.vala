@@ -204,7 +204,7 @@ namespace OLLMfiles
 		 * Insert an on-disk file into this project's tracked index.
 		 *
 		 * The file must already exist on disk (e.g. after WriteFile). Calls
-		 * {@link File.register} on the daemon; does not write bytes locally.
+		 * {@link File.to_real} on the daemon; does not write bytes locally.
 		 * Fake files ({@code id == -1}) receive a real id on success.
 		 *
 		 * @param file Client file object (often from {@link File.new_fake})
@@ -212,9 +212,7 @@ namespace OLLMfiles
 		 */
 		public async void insert_file(File file, string path) throws Error
 		{
-			if (!yield file.register()) {
-				return;
-			}
+			yield file.to_real();
 			if (file.buffer == null) {
 				this.manager.buffer_provider.create_buffer(file);
 			}

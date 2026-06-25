@@ -660,20 +660,6 @@ namespace OLLMtools.EditMode
 			
 			var change_type = this.request.creating_file ? "added" : "modified";
 			
-			// For added files: register on daemon before File.write
-			if (change_type == "added" && this.file.id <= 0 && is_in_project) {
-				yield this.convert_new_file_to_real(
-					this.file.manager,
-					this.file
-				);
-				if (this.file.id > 0) {
-					is_in_project = true;
-				}
-			}
-			
-			// Update file metadata before RPC write
-			this.send_success_ui_message(is_in_project);
-			
 			this.file.is_need_approval = true;
 			this.file.last_change_type = change_type;
 			this.file.last_modified = new GLib.DateTime.now_local().to_unix();
@@ -682,6 +668,15 @@ namespace OLLMtools.EditMode
 				throw new GLib.IOError.FAILED(
 					"Failed to write file via RPC: " + this.request.normalized_path);
 			}
+			
+			if (change_type == "added" && this.file.id <= 0 && is_in_project) {
+				yield this.file.to_real();
+				if (this.file.id > 0) {
+					is_in_project = true;
+				}
+			}
+			
+			this.send_success_ui_message(is_in_project);
 			
 			if (is_in_project && this.file.manager.active_project != null) {
 				yield new OLLMfiles.ReviewFiles(
@@ -719,25 +714,6 @@ namespace OLLMtools.EditMode
 				throw new GLib.IOError.EXISTS(
 					"File already exists: " + this.request.normalized_path + ". Use overwrite=true to overwrite it.");
 			}
-		}
-		
-		/**
-		 * Register a new on-disk file on the daemon after edit-mode writes.
-		 *
-		 * V2: {@link Folder.insert_file} awaits {@link File.register} and merges
-		 * the RPC row onto the same {@link File} instance (buffer identity preserved).
-		 */
-		private async void convert_new_file_to_real(
-			OLLMfiles.ProjectManager project_manager,
-			OLLMfiles.File file) throws Error
-		{
-			if (project_manager.active_project == null) {
-				return;
-			}
-			yield project_manager.active_project.insert_file(
-				file,
-				this.request.normalized_path
-			);
 		}
 		
 		private void send_success_ui_message(bool is_in_project)

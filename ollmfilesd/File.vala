@@ -52,6 +52,7 @@ namespace OLLMfilesd
 		public signal void rpc_exists(OLLMrpc.Request request);
 		public signal void rpc_fetch(OLLMrpc.Request request);
 		public signal void rpc_write(OLLMrpc.Request request);
+		public signal void rpc_apply_permissions(OLLMrpc.Request request);
 		public signal void rpc_register(OLLMrpc.Request request);
 		public signal void rpc_delete(OLLMrpc.Request request);
 		public signal void rpc_changed_check(OLLMrpc.Request request);
@@ -195,11 +196,29 @@ namespace OLLMfilesd
 			});
 			this.rpc_write.connect((request) => {
 				var p = (FileParams) request.param;
-				var file = this.manager.get_file_from_active_project(p.path);
-				if (file.buffer == null) {
-					this.manager.buffer_provider.create_buffer(file);
+				this.write.begin(
+					p,
+					request,
+					(obj, res) => {
+						this.write.end(res);
+					}
+				);
+			});
+			this.rpc_apply_permissions.connect((request) => {
+				var p = (FileParams) request.param;
+				if (Posix.chmod(
+					p.path,
+					(Posix.mode_t) (p.unix_mode & 0777)
+				) != 0) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							GLib.strerror(Posix.errno)
+						)
+					});
+					return;
 				}
-				file.buffer.write_real.begin(p.content);
 				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
 				});
@@ -222,24 +241,28 @@ namespace OLLMfilesd
 					path = p.path,
 					id = -1
 				};
-				this.manager.convert_fake_file_to_real.begin(
-					fake,
-					p.path,
-					(obj, res) => {
-						this.manager.convert_fake_file_to_real.end(res);
-						var real = this.manager.get_file_from_active_project(
-							p.path
-						);
-						var row = new File(this.manager);
-						row.copy_from(real, {"manager", "buffer", "parent"});
-						row.last_modified = real.mtime_on_disk();
+				fake.to_real.begin((obj, res) => {
+					try {
+						fake.to_real.end(res);
+					} catch (GLib.Error e) {
 						request.reply(new OLLMrpc.Response() {
 							id = request.id,
-							result = row,
-							result_type = "File"
+							error = new OLLMrpc.Error(
+								OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+								e.message
+							)
 						});
+						return;
 					}
-				);
+					var row = new File(this.manager);
+					row.copy_from(fake, {"manager", "buffer", "parent"});
+					row.last_modified = fake.mtime_on_disk();
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						result = row,
+						result_type = "File"
+					});
+				});
 			});
 			this.rpc_delete.connect((request) => {
 				var file = this.manager.get_file_from_active_project(
@@ -269,6 +292,72 @@ namespace OLLMfilesd
 					msg = ((int) status).to_string()
 				});
 			});
+		}
+
+		private async void write(
+			FileParams p,
+			OLLMrpc.Request request
+		) {
+			try {
+				switch (p.base_type) {
+					case "d": {
+						var folder = this.manager.get_folder_at_path(p.path);
+						if (folder == null) {
+							folder = new Folder(this.manager) {
+								path = p.path,
+								id = -1
+							};
+						}
+						if (folder.id < 0) {
+							yield folder.to_real();
+						}
+						yield folder.realize(p);
+						break;
+					}
+					case "fa": {
+						var alias = this.manager.file_cache.get(
+							p.path
+						) as FileAlias;
+						if (alias == null) {
+							alias = new FileAlias(this.manager) {
+								path = p.path,
+								id = -1
+							};
+						}
+						if (alias.id < 0) {
+							yield alias.to_real(p.target);
+						}
+						yield alias.realize(p);
+						break;
+					}
+					default: {
+						var file = this.manager.get_file_from_active_project(
+							p.path
+						);
+						if (file == null) {
+							file = new File(this.manager) {
+								path = p.path,
+								id = -1
+							};
+						}
+						if (file.id < 0) {
+							yield file.to_real();
+						}
+						yield file.realize(p);
+						break;
+					}
+				}
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			request.reply(new OLLMrpc.Response() { msg = "ok" });
 		}
 		
 		/**
@@ -520,6 +609,72 @@ namespace OLLMfilesd
 			this.last_change_type = "";
 			this.is_need_approval = false;
 			this.saveToDB(db, null, false);
+		}
+
+		/**
+		 * Promote fake file ({@code id == -1}) to indexed row (DB + parent chain).
+		 * Does not touch the filesystem — call {@link realize} after.
+		 */
+		public async void to_real() throws Error
+		{
+			if (this.id != -1) {
+				return;
+			}
+			if (this.manager.active_project == null) {
+				return;
+			}
+			var found_base_folder = this.manager.active_project.project_files.find_container_of(
+				GLib.Path.get_dirname(this.path)
+			);
+			if (found_base_folder == null) {
+				return;
+			}
+			var parent_folder = yield found_base_folder.make_children(this.path);
+			if (parent_folder == null) {
+				throw new GLib.IOError.FAILED(
+					"Could not create parent folder for "
+					+ this.path
+				);
+			}
+			this.parent = parent_folder;
+			this.parent_id = parent_folder.id;
+			this.id = 0;
+			this.detect_language();
+			if (this.language != "") {
+				this.is_text = true;
+			}
+			parent_folder.children.append(this);
+			this.manager.buffer_provider.create_buffer(this);
+			if (this.manager.db != null) {
+				this.saveToDB(this.manager.db, null, false);
+			}
+			if (this.manager.db == null) {
+				this.manager.file_cache.set(this.path, this);
+			}
+			this.manager.active_project.project_files.update_from(
+				this.manager.active_project
+			);
+			this.manager.active_project.project_files.new_file_added(this);
+		}
+
+		/**
+		 * Apply {@link FileParams} on disk for an indexed file (write bytes + mode).
+		 */
+		public async void realize(FileParams p) throws Error
+		{
+			if (this.buffer == null) {
+				this.manager.buffer_provider.create_buffer(this);
+			}
+			yield this.buffer.write_real(p.content);
+			if (p.unix_mode == 0) {
+				return;
+			}
+			if (Posix.chmod(
+				this.path,
+				(Posix.mode_t) (p.unix_mode & 0777)
+			) != 0) {
+				throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
+			}
 		}
 		
 	}

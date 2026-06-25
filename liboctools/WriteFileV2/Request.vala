@@ -342,13 +342,17 @@ namespace OLLMtools.WriteFile
 					is_in_project = true;
 				}
 			}
-			// For added files: register on daemon before File.write
+			// For added files: write to disk first, then register (index)
+			this.file.is_need_approval = true;
+			this.file.last_change_type = change_type;
+			this.file.last_modified = new GLib.DateTime.now_local().to_unix();
+			if (!(yield this.file.write())) {
+				throw new GLib.IOError.FAILED(
+					"Failed to write file via RPC: " + this.normalized_path);
+			}
 			if (change_type == "added" && this.file.id <= 0 && is_in_project) {
 				try {
-					yield project_manager.active_project.insert_file(
-						this.file,
-						this.normalized_path
-					);
+					yield this.file.to_real();
 				} catch (GLib.Error e) {
 					GLib.warning(
 						"Cannot register new file (%s): %s",
@@ -356,14 +360,6 @@ namespace OLLMtools.WriteFile
 						e.message
 					);
 				}
-			}
-			// Update approval flags locally before RPC write
-			this.file.is_need_approval = true;
-			this.file.last_change_type = change_type;
-			this.file.last_modified = new GLib.DateTime.now_local().to_unix();
-			if (!(yield this.file.write())) {
-				throw new GLib.IOError.FAILED(
-					"Failed to write file via RPC: " + this.normalized_path);
 			}
 			this.agent.add_message(new OLLMchat.Message("ui", 
 				OLLMchat.Message.fenced("text.oc-frame-success Write File",

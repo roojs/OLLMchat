@@ -395,10 +395,10 @@ namespace OLLMfilesd
 		 */
 		public async void write_real(string contents) throws Error
 		{
-			// Write to file
 			yield this.write_to_disk(contents);
-			
-			// Update file metadata
+			if (this.file.id == -1) {
+				return;
+			}
 			this.update_file_metadata_after_write();
 		}
 		

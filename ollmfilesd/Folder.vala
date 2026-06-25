@@ -1151,5 +1151,63 @@ namespace OLLMfilesd
 			
 			return distinct_roots;
 		}
+
+		/**
+		 * Promote fake folder ({@code id == -1}) to indexed row.
+		 */
+		public async void to_real() throws Error
+		{
+			if (this.id != -1) {
+				return;
+			}
+			if (this.manager.active_project == null) {
+				return;
+			}
+			var parent_folder = this.manager.active_project.project_files.folder_map.get(
+				GLib.Path.get_dirname(this.path)
+			);
+			if (parent_folder == null) {
+				parent_folder = this.manager.active_project;
+			}
+			this.parent = parent_folder;
+			this.parent_id = parent_folder.id;
+			this.id = 0;
+			var file_history = new FileHistory(
+				this.manager.db,
+				this,
+				"added",
+				new GLib.DateTime.now_local()
+			);
+			yield file_history.commit();
+			parent_folder.children.append(this);
+			this.manager.active_project.project_files.folder_map.set(
+				this.path,
+				this
+			);
+			this.saveToDB(this.manager.db, null, false);
+			this.manager.file_cache.set(this.path, this);
+			this.manager.active_project.project_files.update_from(
+				this.manager.active_project
+			);
+		}
+
+		/**
+		 * Apply {@link FileParams} on disk (mkdir when missing, then mode).
+		 */
+		public async void realize(FileParams p) throws Error
+		{
+			if (!GLib.File.new_for_path(this.path).query_exists()) {
+				GLib.File.new_for_path(this.path).make_directory(null);
+			}
+			if (p.unix_mode == 0) {
+				return;
+			}
+			if (Posix.chmod(
+				this.path,
+				(Posix.mode_t) (p.unix_mode & 0777)
+			) != 0) {
+				throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
+			}
+		}
 	}
 }

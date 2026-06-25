@@ -33,7 +33,7 @@ namespace OLLMfiles
 	 * All alias references are tracked in ProjectManager's alias_map.
 	 * 
 	 * Constructors: {@link File}(manager) for RPC-hydrated rows; {@link File.new_fake}
-	 * for paths not yet in the DB ({@code id == -1}) until {@link register}.
+	 * for paths not yet in the DB ({@code id == -1}) until {@link to_real}.
 	 *
 	 * Client {@link File} — buffers and Gtk helpers stay local; disk/DB via RPC.
 	 *
@@ -404,17 +404,26 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Write content to daemon ({@code File.write}); scan/index on server.
-		 * Uses {@link buffer} text when {@code content} is empty.
+		 * Write on daemon ({@code File.write}).
+		 *
+		 * {@code base_type}: {@code f} file (default), {@code d} directory,
+		 * {@code fa} symlink. Directories and symlinks use empty {@code content};
+		 * symlinks set {@code target}. Optional {@code unix_mode} applies rwx after
+		 * the op.
 		 *
 		 * @return false when RPC fails or path is empty
 		 */
-		public async bool write(string content = "")
+		public async bool write(
+			string content = "",
+			string base_type = "f",
+			string target = "",
+			uint unix_mode = 0
+		)
 		{
 			if (this.path.length == 0) {
 				return false;
 			}
-			if (content == "" && this.buffer != null) {
+			if (content == "" && this.buffer != null && base_type == "f") {
 				content = this.buffer.get_text();
 			}
 
@@ -422,7 +431,10 @@ namespace OLLMfiles
 				method = "File.write",
 				param = new OLLMfilesd.FileParams() {
 					path = this.path,
-					content = content
+					content = content,
+					base_type = base_type,
+					target = target,
+					unix_mode = unix_mode
 				}
 			});
 			if (response.error != null) {
@@ -500,6 +512,22 @@ namespace OLLMfiles
 		}
 
 		/**
+		 * Promote fake file ({@code id == -1}) to indexed row on daemon.
+		 * Does not write disk bytes — call {@link write} first when needed.
+		 */
+		public async void to_real() throws Error
+		{
+			if (this.id != -1) {
+				return;
+			}
+			if (!(yield this.register())) {
+				throw new GLib.IOError.FAILED(
+					"Could not register file: " + this.path
+				);
+			}
+		}
+
+		/**
 		 * Delete file on daemon ({@code File.delete}).
 		 */
 		public async bool delete()
@@ -511,6 +539,28 @@ namespace OLLMfiles
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "File.delete",
 				param = new OLLMfilesd.FileParams() { path = this.path }
+			});
+			return response.error == null;
+		}
+
+		/**
+		 * Apply unix rwx permissions on daemon ({@code File.apply_permissions}).
+		 *
+		 * @param unix_mode Rwx bits ({@code 0777}) from bubble overlay
+		 * @return false when RPC fails or path is empty
+		 */
+		public async bool apply_permissions(uint unix_mode)
+		{
+			if (this.path.length == 0) {
+				return false;
+			}
+
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+				method = "File.apply_permissions",
+				param = new OLLMfilesd.FileParams() {
+					path = this.path,
+					unix_mode = unix_mode
+				}
 			});
 			return response.error == null;
 		}

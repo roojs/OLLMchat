@@ -216,5 +216,72 @@ namespace OLLMfilesd
 		{
 			throw new GLib.IOError.NOT_SUPPORTED("FileAlias.read_async() should not be called - alias files are not used in editor");
 		}
+
+		/**
+		 * Promote fake alias ({@code id == -1}) to indexed row.
+		 *
+		 * @param link_target Symlink text from overlay / RPC params
+		 */
+		public async void to_real(string link_target) throws Error
+		{
+			if (this.id != -1) {
+				return;
+			}
+			if (link_target == "") {
+				throw new GLib.IOError.INVALID_ARGUMENT("Symlink target is empty");
+			}
+			if (this.manager.active_project == null) {
+				return;
+			}
+			var parent_folder = this.manager.active_project.project_files.folder_map.get(
+				GLib.Path.get_dirname(this.path)
+			);
+			if (parent_folder == null) {
+				parent_folder = this.manager.active_project;
+			}
+			this.parent = parent_folder;
+			this.parent_id = parent_folder.id;
+			this.id = 0;
+			this.target_path = link_target;
+			var file_history = new FileHistory(
+				this.manager.db,
+				this,
+				"added",
+				new GLib.DateTime.now_local()
+			);
+			yield file_history.commit();
+			parent_folder.children.append(this);
+			this.saveToDB(this.manager.db, null, false);
+			this.manager.file_cache.set(this.path, this);
+			this.manager.active_project.project_files.update_from(
+				this.manager.active_project
+			);
+		}
+
+		/**
+		 * Apply {@link FileParams} on disk (replace symlink + mode).
+		 */
+		public async void realize(FileParams p) throws Error
+		{
+			if (p.target == "") {
+				throw new GLib.IOError.INVALID_ARGUMENT("Symlink target is empty");
+			}
+			if (GLib.FileUtils.test(this.path, GLib.FileTest.EXISTS)) {
+				GLib.FileUtils.unlink(this.path);
+			}
+			GLib.File.new_for_path(this.path).make_symbolic_link(
+				p.target,
+				null
+			);
+			if (p.unix_mode == 0) {
+				return;
+			}
+			if (Posix.chmod(
+				this.path,
+				(Posix.mode_t) (p.unix_mode & 0777)
+			) != 0) {
+				throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
+			}
+		}
 	}
 }
