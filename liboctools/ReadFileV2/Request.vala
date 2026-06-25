@@ -131,10 +131,8 @@ namespace OLLMtools.ReadFile
 				return false;
 			}
 			
-			var project_manager = ((Tool) this.tool).project_manager;
-			
-			// Get Tree instance and parse
-			var tree = project_manager.tree_factory(this.file);
+			// Parse via V2 Tree (RPC-fed content in load_file_content)
+			var tree = new OLLMfiles.Tree(this.file);
 			yield tree.parse();
 			
 			// Lookup AST path
