@@ -21,7 +21,7 @@ namespace OLLMfiles
 	/**
 	 * V2 client flat file list for one project ({@link GLib.ListModel}).
 	 *
-	 * Populated by {@link refresh} from {@link Folder.fetch_file_list} RPC.
+	 * Populated by {@link refresh} from {@link Folder.fetch_files} RPC.
 	 * Not a live mirror of daemon {@code ProjectFiles} — call {@link refresh}
 	 * after index changes (open project, write file, approvals, notifications).
 	 *
@@ -50,6 +50,26 @@ namespace OLLMfiles
 		public ReviewFiles review_files { get; private set; }
 
 		/**
+		 * Total rows matching the current {@link refresh} query (from daemon).
+		 */
+		public int total { get; private set; default = 0; }
+
+		/**
+		 * Next {@link Folder.fetch_files} offset (rows already loaded).
+		 */
+		public int offset { get; private set; default = 0; }
+
+		/**
+		 * Active dropdown filter passed to the last {@link refresh}.
+		 */
+		public string query { get; private set; default = ""; }
+
+		/**
+		 * True while a {@link Folder.fetch_files} RPC is in flight.
+		 */
+		public bool loading { get; private set; default = false; }
+
+		/**
 		 * Emitted when a new file is added to this list after {@link refresh}
 		 * or {@link append} (not used for daemon scan discovery).
 		 *
@@ -69,14 +89,24 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Reload all file rows from the daemon ({@code Folder.fetch_file_list}).
+		 * Reload file rows from the daemon ({@code Folder.fetch_files}), first page.
+		 *
+		 * @param query Dropdown filter (empty = browse all)
 		 */
-		public async void refresh()
+		public async void refresh(string query = "")
 		{
+			this.query = query;
+			this.offset = 0;
+			this.total = 0;
+
 			var old_n_items = this.items.size;
 			this.items.clear();
 
-			var files = yield this.project.fetch_file_list();
+			var files = yield this.project.fetch_files(
+				0,
+				query: query,
+				out this.total
+			);
 			foreach (var file in files) {
 				this.items.add(new ProjectFile(
 					this.project.manager,
@@ -84,6 +114,7 @@ namespace OLLMfiles
 					this.project
 				));
 			}
+			this.offset = this.items.size;
 
 			var new_n_items = this.items.size;
 			if (old_n_items > 0 || new_n_items > 0) {
@@ -91,6 +122,42 @@ namespace OLLMfiles
 			}
 
 			yield this.review_files.refresh();
+		}
+
+		/**
+		 * Append the next {@code Folder.fetch_files} page when more rows exist.
+		 */
+		public async void load_more()
+		{
+			if (this.loading) {
+				return;
+			}
+			if (this.offset >= this.total) {
+				return;
+			}
+
+			this.loading = true;
+			var files = yield this.project.fetch_files(
+				this.offset,
+				query: this.query,
+				out this.total
+			);
+			this.loading = false;
+
+			if (files.size == 0) {
+				return;
+			}
+
+			var start = this.items.size;
+			foreach (var file in files) {
+				this.items.add(new ProjectFile(
+					this.project.manager,
+					file,
+					this.project
+				));
+			}
+			this.offset = this.items.size;
+			this.items_changed(start, 0, files.size);
 		}
 
 		/**

@@ -56,7 +56,7 @@ namespace OLLMfilesd
 
 		public signal void rpc_fetch(OLLMrpc.Request request);
 		public signal void rpc_contains_folder(OLLMrpc.Request request);
-		public signal void rpc_fetch_file_list(OLLMrpc.Request request);
+		public signal void rpc_fetch_files(OLLMrpc.Request request);
 		public signal void rpc_fetch_pending_approvals(OLLMrpc.Request request);
 		public signal void rpc_project_description(OLLMrpc.Request request);
 
@@ -101,9 +101,9 @@ namespace OLLMfilesd
 					msg = "true"
 				});
 			});
-			this.rpc_fetch_file_list.connect((request) => {
-				var path = ((FolderParams) request.param).path;
-				var project = this.manager.project_root(path);
+			this.rpc_fetch_files.connect((request) => {
+				var p = (FolderParams) request.param;
+				var project = this.manager.project_root(p.path);
 				if (project == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -114,15 +114,29 @@ namespace OLLMfilesd
 					});
 					return;
 				}
+				p.limit = p.limit < 1 ? 50 : p.limit;
+				p.offset = p.offset < 0 ? 0 : p.offset;
+				var matched = project.project_files.cached_search(
+					p.query.strip().down()
+				);
 				var list = new Gee.ArrayList<GLib.Object>();
-				foreach (var project_file in project.project_files) {
-					list.add(project_file.file);
+				if (p.offset < matched.size) {
+					list.add_all(
+						matched.slice(
+							p.offset,
+							int.min(
+								p.limit,
+								matched.size - p.offset
+							)
+						)
+					);
 				}
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					result = list,
 					result_type = "File",
-					is_array = true
+					is_array = true,
+					msg = matched.size.to_string()
 				});
 			});
 			this.rpc_fetch_pending_approvals.connect((request) => {

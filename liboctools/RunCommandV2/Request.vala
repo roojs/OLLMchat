@@ -314,7 +314,7 @@ namespace OLLMtools.RunCommand
 
 			try {
 				if (project != null) {
-					yield project.fetch_file_list();
+					yield project.fetch_files();
 				}
 
 				var project_path = "";

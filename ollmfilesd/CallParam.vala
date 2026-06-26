@@ -49,6 +49,12 @@ namespace OLLMfilesd
 	{
 		public string project_path { get; set; default = ""; }
 		public string path { get; set; default = ""; }
+		/** {@link Folder.fetch_files} — skip rows (default 0). */
+		public int offset { get; set; default = 0; }
+		/** {@link Folder.fetch_files} — page size (default 50). */
+		public int limit { get; set; default = 50; }
+		/** {@link Folder.fetch_files} — dropdown filter (default browse all). */
+		public string query { get; set; default = ""; }
 	}
 
 	/** {@code vector.*} request params. */

@@ -22,7 +22,7 @@ namespace OLLMfiles
 	 * Display wrapper for one {@link File} row in {@link ProjectFiles}.
 	 *
 	 * V2 client: {@link ProjectFiles.refresh} builds rows from
-	 * {@link Folder.fetch_file_list} RPC. This class is for list binding only
+	 * {@link Folder.fetch_files} RPC. This class is for list binding only
 	 * (open-file dropdown, search UI). File operations use {@link File} RPC
 	 * methods, not this wrapper.
 	 */

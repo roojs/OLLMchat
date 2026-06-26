@@ -84,6 +84,18 @@ namespace OLLMfilesd
 		 * List of files that need approval (extracted from project_files).
 		 */
 		public ReviewFiles review_files { get; private set; }
+
+		/**
+		 * Last {@link cached_search} query ({@code " "} = cache empty).
+		 */
+		private string cached_query { get; set; default = " "; }
+
+		/**
+		 * Filtered, sorted file rows for {@link cached_query}.
+		 */
+		private Gee.ArrayList<File> cached_results { get; set;
+			default = new Gee.ArrayList<File>();
+		}
 		
 		/**
 		 * Emitted when a new file is explicitly added to the project (not during scans).
@@ -173,6 +185,8 @@ namespace OLLMfilesd
 			var position = this.items.size;
 			this.items.add(item);
 			this.child_map.set(item.file.path, item);
+			this.cached_query = " ";
+			this.cached_results.clear();
 			
 			// Emit items_changed signal
 			this.items_changed(position, 0, 1);
@@ -210,6 +224,8 @@ namespace OLLMfilesd
 			
 			this.items.insert((int)position, item);
 			this.child_map.set(item.file.path, item);
+			this.cached_query = " ";
+			this.cached_results.clear();
 			
 			// Emit items_changed signal
 			this.items_changed(position, 0, 1);
@@ -260,6 +276,8 @@ namespace OLLMfilesd
 			
 			// Remove from all_files for consistency (may not be in there, but remove if present)
 			this.all_files.unset(item.file.path);
+			this.cached_query = " ";
+			this.cached_results.clear();
 			
 			// Emit items_changed signal
 			this.items_changed(position, 1, 0);
@@ -274,6 +292,8 @@ namespace OLLMfilesd
 			this.items.clear();
 			this.child_map.clear();
 			this.folder_map.clear();
+			this.cached_query = " ";
+			this.cached_results.clear();
 			
 			// Emit items_changed signal for ListModel
 			if (old_n_items > 0) {
@@ -294,6 +314,9 @@ namespace OLLMfilesd
 		 */
 		public void update_from(Folder folder)
 		{
+			this.cached_query = " ";
+			this.cached_results.clear();
+
 			// Track scanned folders to prevent duplicate recursion
 			var scanned_folders = new Gee.HashSet<int>();
 			
@@ -677,6 +700,9 @@ namespace OLLMfilesd
 			if (removed_count == 0) {
 				return; // Nothing to remove
 			}
+
+			this.cached_query = " ";
+			this.cached_results.clear();
 			
 			// Emit single items_changed signal for the range
 			// GLib.ListModel.items_changed only supports one contiguous range per signal
@@ -688,6 +714,124 @@ namespace OLLMfilesd
 			
 			// Note: VectorMetadata cleanup happens via ProjectManager.on_cleanup signal
 			// (emitted by DeleteManager.cleanup() after all cleanup is complete)
+		}
+
+		/**
+		 * Filtered, sorted file rows for {@code Folder.fetch_files}.
+		 *
+		 * Caller must pass {@code key} already stripped and lowercased.
+		 * Results are cached per {@code key} until the main list changes.
+		 *
+		 * @param key Dropdown filter ({@code ""} = browse all)
+		 * @return Matching {@link File} rows in dropdown order
+		 */
+		public Gee.ArrayList<File> cached_search(string key)
+		{
+			if (this.cached_query == key) {
+				return this.cached_results;
+			}
+
+			if (key == "") {
+				this.cached_results.clear();
+				foreach (var project_file in this.items) {
+					this.cached_results.add(project_file.file);
+				}
+				var one_day_ago = new GLib.DateTime.now_utc().to_unix()
+					- (24 * 60 * 60);
+				this.cached_results.sort((a, b) => {
+					var a_recent = a.last_viewed >= one_day_ago
+						&& a.last_viewed > 0;
+					var b_recent = b.last_viewed >= one_day_ago
+						&& b.last_viewed > 0;
+					if (a_recent != b_recent) {
+						return a_recent ? -1 : 1;
+					}
+					if (a_recent && b_recent
+						&& a.last_viewed != b.last_viewed) {
+						return a.last_viewed > b.last_viewed ? -1 : 1;
+					}
+					return GLib.strcmp(a.path, b.path);
+				});
+				this.cached_query = "";
+				return this.cached_results;
+			}
+
+			this.cached_results.clear();
+			GLib.Regex? wildcard_regex = null;
+			if (key.contains("*") || key.contains("?")) {
+				try {
+					var escaped = key
+						.replace("\\", "\\\\")
+						.replace("^", "\\^")
+						.replace("$", "\\$")
+						.replace(".", "\\.")
+						.replace("[", "\\[")
+						.replace("]", "\\]")
+						.replace("|", "\\|")
+						.replace("(", "\\(")
+						.replace(")", "\\)")
+						.replace("{", "\\{")
+						.replace("}", "\\}")
+						.replace("+", "\\+");
+					wildcard_regex = new GLib.Regex(
+						"^" + escaped
+							.replace("?", ".")
+							.replace("*", ".*") + "$",
+						GLib.RegexCompileFlags.CASELESS
+					);
+				} catch (GLib.RegexError e) {
+					this.cached_query = key;
+					this.cached_results.clear();
+					return this.cached_results;
+				}
+			}
+			foreach (var project_file in this.items) {
+				var basename = GLib.Path.get_basename(
+					project_file.file.path
+				);
+				if (wildcard_regex != null) {
+					if (!wildcard_regex.match(basename)
+						&& !wildcard_regex.match(
+							project_file.file.path
+						)) {
+						continue;
+					}
+				}
+				if (wildcard_regex == null
+					&& !basename.down().contains(key)
+					&& !project_file.file.path.down().contains(key)) {
+					continue;
+				}
+				this.cached_results.add(project_file.file);
+			}
+			if (wildcard_regex != null) {
+				this.cached_results.sort((a, b) => {
+					return GLib.strcmp(a.path, b.path);
+				});
+				this.cached_query = key;
+				return this.cached_results;
+			}
+			this.cached_results.sort((a, b) => {
+				var a_base = GLib.Path.get_basename(a.path).down();
+				var b_base = GLib.Path.get_basename(b.path).down();
+				var a_prefix = a_base.has_prefix(key);
+				var b_prefix = b_base.has_prefix(key);
+				if (a_prefix != b_prefix) {
+					return a_prefix ? -1 : 1;
+				}
+				if (a_prefix && b_prefix) {
+					return GLib.strcmp(a_base, b_base);
+				}
+				var a_has = a_base.contains(key);
+				var b_has = b_base.contains(key);
+				if (a_has != b_has) {
+					return a_has ? -1 : 1;
+				}
+				return GLib.strcmp(a_base, b_base);
+			});
+
+			this.cached_query = key;
+			return this.cached_results;
 		}
 	}
 }
