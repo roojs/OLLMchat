@@ -292,7 +292,7 @@ namespace OLLMcoder
 			
 			// Project is already activated by restore_active_state(), just update UI
 			// Update file dropdown's project and show it (matches on_project_selected when user picks a project)
-			this.file_dropdown.project = this.manager.active_project;
+			yield this.file_dropdown.update_project(this.manager.active_project);
 			this.file_dropdown.visible = true;
 
 			// Update project dropdown placeholder only if it's different (avoid unnecessary updates)
@@ -512,7 +512,7 @@ namespace OLLMcoder
 		yield this.manager.activate_project(project);
 		
 		// Update file dropdown's project
-		this.file_dropdown.project = project;
+		yield this.file_dropdown.update_project(project);
 		
 		// Disabled: Don't set project dropdown selection programmatically
 		// this.project_dropdown.selected_project = project;

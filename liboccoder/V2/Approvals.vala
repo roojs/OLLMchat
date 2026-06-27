@@ -27,10 +27,12 @@ namespace OLLMcoder
 	 * - Next/popover button (existing functionality with task-due icon, popover on mouseover)
 	 * 
 	 * Monitors ReviewFiles and updates button visibility accordingly.
+	 * V2: owns {@link OLLMfiles.ReviewFiles} per project ({@code fetch_pending_approvals} RPC).
 	 */
 	public class Approvals : Gtk.Box
 	{
 		private OLLMfiles.ProjectManager project_manager;
+		private OLLMfiles.ReviewFiles review_files;
 		
 		// Buttons (in order: approve, reject, next)
 		private Gtk.Button approve_button;
@@ -48,7 +50,7 @@ namespace OLLMcoder
 		private uint hide_timeout_id = 0;
 		private uint cooldown_timeout_id = 0;
 		private bool in_cooldown = false;
-		private ulong? review_files_handler_id = null;
+		private ulong review_files_handler_id = 0;
 		
 		/**
 		 * Currently selected file (or null).
@@ -192,13 +194,11 @@ namespace OLLMcoder
 		private void on_active_file_changed(OLLMfiles.File? file)
 		{
 			if (file == null || this.project_manager.active_project == null) {
-				// No file active or no project: clear selection internally
 				this.clear_selection();
 				return;
 			}
-			
-			// Check if file is in ReviewFiles
-			if (this.project_manager.active_project.project_files.review_files.file_map.has_key(file.path)) {
+
+			if (this.review_files.file_map.has_key(file.path)) {
 				// File is in ReviewFiles: select it (blocks handler, no signal emitted)
 				this.select_file(file);
 				return;
@@ -212,29 +212,26 @@ namespace OLLMcoder
 		 */
 		private void activate_project(OLLMfiles.Folder? project)
 		{
-			// Clear handler first
-			if (this.review_files_handler_id != null) {
-				this.review_files_handler_id = null;
+			if (this.review_files_handler_id != 0) {
+				this.review_files.disconnect(this.review_files_handler_id);
+				this.review_files_handler_id = 0;
 			}
-			
-			// Create empty ListStore for when project is null
+
 			var empty_store = new GLib.ListStore(typeof(OLLMfiles.File));
-			
-			// Create sorted model with empty store (or project's review_files if available)
-			var source_model = project != null ?
-				project.project_files.review_files as GLib.ListModel : empty_store;
-			
-			this.sorted_model = this.create_sorted_model(source_model);
+
+			this.sorted_model = this.create_sorted_model(empty_store);
 			this.selection.model = this.sorted_model;
 			this.visible = false;
-			
+
 			if (project == null) {
 				return;
 			}
-			
-			// Connect to review_files.items_changed signal
-			this.review_files_handler_id = 
-					project.project_files.review_files.items_changed.connect(() => {
+
+			this.review_files = new OLLMfiles.ReviewFiles(project);
+			this.sorted_model = this.create_sorted_model(this.review_files);
+			this.selection.model = this.sorted_model;
+
+			this.review_files_handler_id = this.review_files.items_changed.connect(() => {
 				this.update_button_visibility();
 				
 				// Check if selected file still needs approval
@@ -246,9 +243,11 @@ namespace OLLMcoder
 					this.clear_selection();
 				}
 			});
-			
-			// Update button visibility
-			this.update_button_visibility();
+
+			this.review_files.refresh.begin((obj, res) => {
+				this.review_files.refresh.end(res);
+				this.update_button_visibility();
+			});
 		}
 		
 		/**
@@ -263,10 +262,8 @@ namespace OLLMcoder
 				this.reject_button.visible = false;
 				return;
 			}
-			
-			// Next button visibility: based on ReviewFiles countclear_selection
-			this.next_button.visible = (
-				this.project_manager.active_project.project_files.review_files.get_n_items() > 0);
+
+			this.next_button.visible = (this.review_files.get_n_items() > 0);
 			
 			// Approve and reject button visibility: both require selected file
 			this.approve_button.visible = (this.selected_file != null);
@@ -344,22 +341,18 @@ namespace OLLMcoder
 		public void select_file(OLLMfiles.File file)
 		{
 			this.blocking_selection_handler = true;
-			
+
 			if (this.project_manager.active_project == null) {
 				this.blocking_selection_handler = false;
 				return;
 			}
-			
-			// Get file from review_files (verifies it exists and gets the actual object)
-			var review_file = 
-				this.project_manager.active_project.project_files.review_files.file_map.get(
-					file.path);
-			if (review_file == null) {
+
+			if (!this.review_files.file_map.has_key(file.path)) {
 				this.blocking_selection_handler = false;
 				return;
 			}
-			
-			// Find position in sorted model using find_position
+
+			var review_file = this.review_files.file_map.get(file.path);
 			uint position = this.sorted_model.find_position(review_file);
 			if (position != Gtk.INVALID_LIST_POSITION) {
 				this.selection.selected = position;
@@ -428,14 +421,13 @@ namespace OLLMcoder
 			
 			// Approve file (handles FileHistory approval and database updates)
 			this.selected_file.approve();
-			
-			// Refresh ReviewFiles (file will be removed)
-			this.project_manager.active_project.refresh_review();
-			
-			// Re-enable buttons and update visibility
-			this.approve_button.sensitive = true;
-			this.reject_button.sensitive = true;
-			this.update_button_visibility();
+
+			this.review_files.refresh.begin((obj, res) => {
+				this.review_files.refresh.end(res);
+				this.approve_button.sensitive = true;
+				this.reject_button.sensitive = true;
+				this.update_button_visibility();
+			});
 		}
 		
 		/**
@@ -451,12 +443,14 @@ namespace OLLMcoder
 			this.selected_file.revert.begin((obj, res) => {
 				try {
 					this.selected_file.revert.end(res);
-					
-					// Refresh ReviewFiles (file may be removed or updated)
-					this.project_manager.active_project.refresh_review();
-					
-					// Re-enable buttons and update visibility
-					
+
+					this.review_files.refresh.begin((obj2, res2) => {
+						this.review_files.refresh.end(res2);
+						this.approve_button.sensitive = true;
+						this.reject_button.sensitive = true;
+						this.update_button_visibility();
+					});
+
 				} catch (GLib.Error e) {
 					GLib.warning("Failed to revert file: %s", e.message);
 					// Re-enable buttons on error
@@ -479,7 +473,7 @@ namespace OLLMcoder
 			}
 			
 			// Calculate height: min 100px, max 400px, ~30px per item
-			int calculated_height = (int)(n_items * 30);
+			var calculated_height = (int) (n_items * 30);
 			calculated_height = calculated_height < 100 ? 100 :
 				(calculated_height > 400 ? 400 : calculated_height);
 			
