@@ -87,7 +87,7 @@ public class ValidateLink : GLib.Object
 	/**
 	 * Validate one link; appends lines (each prefixed with \\n) to [[issues]].
 	 */
-	public void validate (Markdown.Document.Format link)
+	public async void validate (Markdown.Document.Format link)
 	{
 		if (link.path == "") {
 			if (this.runner.user_request != null &&
@@ -116,7 +116,7 @@ public class ValidateLink : GLib.Object
 			return;
 		}
 		if (link.path != "" && link.scheme == "file") {
-			this.file (link);
+			yield this.file (link);
 			return;
 		}
 		if (link.scheme == "task") {
@@ -132,7 +132,7 @@ public class ValidateLink : GLib.Object
 	 * Validate every link in ''links''; appends to [[issues]] (same shape as task reference errors).
 	 * Skipped when [[Skill.Runner.in_replay]] (ReplayChat or GTK restore after Runner.on_replay sets it).
 	 */
-	public void validate_all (Gee.Iterable<Markdown.Document.Format> links)
+	public async void validate_all (Gee.Iterable<Markdown.Document.Format> links)
 	{
 		if (this.details.runner.in_replay) {
 			return;
@@ -143,7 +143,7 @@ public class ValidateLink : GLib.Object
 			this.details.slug (),
 			this.details.runner.in_replay.to_string ()); */
 		foreach (var link in links) {
-			this.validate (link);
+			yield this.validate (link);
 		}
 	}
 
@@ -163,7 +163,7 @@ public class ValidateLink : GLib.Object
 		}
 	}
 
-	void file (Markdown.Document.Format link)
+	async void file (Markdown.Document.Format link)
 	{
 		var project = this.runner.sr_factory.project_manager.active_project;
 		if (project == null) {

@@ -134,7 +134,7 @@ public class ResultParser : Object
 		foreach (var t in this.runner.pending.steps.get(0).children) {
 			this.validate_task(t, PhaseEnum.LIST);
 			var vl_list = new ValidateLink(t.runner, t, PhaseEnum.LIST);
-			vl_list.validate_all(t.references);
+			yield vl_list.validate_all(t.references);
 			t.issues += vl_list.issues;
 			if (t.issues == "") {
 				continue;
@@ -189,7 +189,7 @@ public class ResultParser : Object
 		foreach (var t in this.runner.pending.steps.get(0).children) {
 			this.validate_task(t, PhaseEnum.LIST);
 			var vl_list = new ValidateLink(t.runner, t, PhaseEnum.LIST);
-			vl_list.validate_all(t.references);
+			yield vl_list.validate_all(t.references);
 			t.issues += vl_list.issues;
 			if (t.issues == "") {
 				continue;
@@ -247,7 +247,7 @@ public class ResultParser : Object
 		foreach (var t in this.runner.pending.steps.get(0).children) {
 			this.validate_task(t, PhaseEnum.LIST);
 			var vl_list = new ValidateLink(t.runner, t, PhaseEnum.LIST);
-			vl_list.validate_all(t.references);
+			yield vl_list.validate_all(t.references);
 			t.issues += vl_list.issues;
 			if (t.issues == "") {
 				continue;
@@ -487,9 +487,9 @@ public class ResultParser : Object
 			}
 			task.update_props(refined_map);
 			var vl_ref = new ValidateLink(task.runner, task, PhaseEnum.REFINEMENT);
-			vl_ref.validate_all(task.references);
-			vl_ref.validate_all(task.shared_references);
-			vl_ref.validate_all(task.exam_references);
+			yield vl_ref.validate_all(task.references);
+			yield vl_ref.validate_all(task.shared_references);
+			yield vl_ref.validate_all(task.exam_references);
 			task.issues += vl_ref.issues;
 			if (task.references.size > 0) {
 				this.issues += "\n" + "Section \"Task\": **References** must be **empty** in refined output; " +

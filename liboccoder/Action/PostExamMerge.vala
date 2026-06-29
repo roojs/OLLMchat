@@ -43,7 +43,7 @@ public class PostExamMerge : Base
 		var vl_sum = new Task.ValidateLink (this.task.runner, this.task, Task.PhaseEnum.POST_EXEC) {
 			document = parser.document
 		};
-		vl_sum.validate_all (sum_render.document.links);
+		yield vl_sum.validate_all (sum_render.document.links);
 		this.task.issues += vl_sum.issues;
 		if (this.task.issues != "") {
 			parser.issues += this.task.issues;
