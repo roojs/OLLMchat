@@ -191,7 +191,7 @@ namespace OLLMchat.Agent
 		/**
 		 * Optional hook: one stored message during session restore (GTK). Default no-op.
 		 */
-		public virtual void on_replay(OLLMchat.Message m) {}
+		public virtual async void on_replay(OLLMchat.Message m) {}
 		
 		/**
 		 * Executes all tool calls and returns tool reply messages.

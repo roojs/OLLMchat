@@ -282,7 +282,7 @@ namespace OLLMcoder.Skill
 					this.replay_step("task_list_parse", response);
 					this.pending = new OLLMcoder.Task.List(this);
 					var parser = new OLLMcoder.Task.ResultParser(this, response);
-					parser.parse_task_list();
+					yield parser.parse_task_list();
 					this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
 					if (this.in_replay) {
 						((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(parser.issues);
@@ -581,7 +581,7 @@ namespace OLLMcoder.Skill
 
 				this.pending = new OLLMcoder.Task.List(this);
 				parser = new OLLMcoder.Task.ResultParser(this, response);
-				parser.parse_task_list_continue();
+				yield parser.parse_task_list_continue();
 				this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
 
 				if (parser.issues != "") {
@@ -666,7 +666,7 @@ namespace OLLMcoder.Skill
 
 				this.pending = new OLLMcoder.Task.List(this);
 				parser = new OLLMcoder.Task.ResultParser(this, response);
-				parser.parse_task_list_iteration();
+				yield parser.parse_task_list_iteration();
 				this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
 
 				if (parser.issues != "") {
@@ -702,7 +702,7 @@ namespace OLLMcoder.Skill
 		 * replay_phase and message role; uses ResultParser on content-stream where live
 		 * code would have used the LLM response string.
 		 */
-		public override void on_replay(OLLMchat.Message m)
+		public override async void on_replay(OLLMchat.Message m)
 		{
 			if (!this.session.can_replay) {
 				return;
@@ -768,7 +768,7 @@ namespace OLLMcoder.Skill
 				case "content-stream":
 					this.pending = new OLLMcoder.Task.List(this);
 					var p0 = new OLLMcoder.Task.ResultParser(this, m.content);
-					p0.parse_task_list();
+					yield p0.parse_task_list();
 					// GLib.debug("session %s initial_plan steps=%u issues_empty=%s",
 					// 	this.session.fid, this.pending.steps.size, (p0.issues == "").to_string());
 					if (p0.issues == "") {
@@ -840,7 +840,7 @@ namespace OLLMcoder.Skill
 						this.completed.steps.size); */
 					this.pending = new OLLMcoder.Task.List(this);
 					var p1 = new OLLMcoder.Task.ResultParser(this, m.content);
-					p1.parse_task_list_iteration();
+					yield p1.parse_task_list_iteration();
 					/* GLib.debug(
 						"REPLAY TASK ITERATION CONTENT idx=%d parsed_pending_steps=%u issues_empty=%s content_len=%u issues_len=%u issues=%s",
 						m.idx,
@@ -883,7 +883,7 @@ namespace OLLMcoder.Skill
 					var st_r = this.pending.steps.get(this.replay_step_pos);
 					var d_ref = st_r.children.get(this.replay_details_pos);
 					this.progress.active_item_changed(d_ref);
-					pr.extract_refinement(d_ref);
+					yield pr.extract_refinement(d_ref);
 					if (pr.issues == "") {
 						d_ref.assign_message(m);
 						// GLib.debug("restore refinement msg_idx=%d step=%d detail=%d",
@@ -933,7 +933,8 @@ namespace OLLMcoder.Skill
 						"REPLAY POST EXEC hydrate slug=%s runner_in_replay=%s",
 						d_post.slug (),
 						this.in_replay.to_string ()); */
-					new OLLMcoder.Action.PostExamMerge(d_post).extract(pp);
+					var post_merge = new OLLMcoder.Action.PostExamMerge(d_post);
+					yield post_merge.extract(pp);
 					/* GLib.debug(
 						"REPLAY POST EXEC slug=%s step=%u detail=%u tools=%u post_issues_len=%u post_issues=%s",
 						d_post.slug(),
@@ -1005,9 +1006,14 @@ namespace OLLMcoder.Skill
 						d_exec.slug (),
 						ex_run.id,
 						this.in_replay.to_string ()); */
-					var extract_ok = d_exec.skill.tools.contains("write_file") ?
-						new OLLMcoder.Action.WriteExec(d_exec).extract_result(px, ex_run) :
-						new OLLMcoder.Action.RefOnly(d_exec).extract_result(px, ex_run);
+					var extract_ok = false;
+					if (d_exec.skill.tools.contains("write_file")) {
+						var write_exec = new OLLMcoder.Action.WriteExec(d_exec);
+						extract_ok = yield write_exec.extract_result(px, ex_run);
+					} else {
+						var ref_only = new OLLMcoder.Action.RefOnly(d_exec);
+						extract_ok = yield ref_only.extract_result(px, ex_run);
+					}
 					/* GLib.debug(
 						"REPLAY EXECUTION EXTRACT slug=%s tool_run=%s step=%u detail=%u tool_pos=%u content_len=%u ok=%s issues=%s",
 						d_exec.slug(),

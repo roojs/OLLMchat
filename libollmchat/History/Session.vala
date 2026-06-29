@@ -163,7 +163,7 @@ namespace OLLMchat.History
 					continue;
 				}
 				this.manager.message_added(this.messages[i], this);
-				this.agent.on_replay(this.messages[i]);
+				yield this.agent.on_replay(this.messages[i]);
 				GLib.Timeout.add(100, () => {
 					this.restore_messages.callback();
 					return false;
@@ -183,7 +183,7 @@ namespace OLLMchat.History
 			if (!this.is_running ||
 				(last_msg.role != "content-stream" && last_msg.role != "think-stream")) {
 				this.manager.message_added(last_msg, this);
-				this.agent.on_replay(last_msg);
+				yield this.agent.on_replay(last_msg);
 				return;
 			}
 

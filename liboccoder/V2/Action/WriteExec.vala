@@ -74,7 +74,7 @@ public class WriteExec : Base
 			writes = ex.writes,
 			document = sum_render.document
 		};
-		vl_sum.validate_all (sum_render.document.links);
+		yield vl_sum.validate_all (sum_render.document.links);
 		if (vl_sum.issues != "") {
 			parser.issues += vl_sum.issues;
 			return false;

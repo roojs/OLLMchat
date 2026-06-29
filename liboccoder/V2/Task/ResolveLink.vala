@@ -187,7 +187,7 @@ public class ResolveLink : GLib.Object
 		var resolved_path = link.is_relative
 			? link.abspath (this.project_manager.active_project.path)
 			: link.path;
-		var found = this.project_manager.get_file_from_active_project (resolved_path);
+		var found = yield this.project_manager.active_project.fetch_file (resolved_path);
 		if (found == null) {
 			found = new OLLMfiles.File.new_fake (this.project_manager, resolved_path);
 		}
@@ -255,7 +255,7 @@ public class ResolveLink : GLib.Object
 			var resolved_path = link.is_relative
 				? link.abspath (this.project_manager.active_project.path)
 				: link.path;
-			var found = this.project_manager.get_file_from_active_project (resolved_path);
+			var found = yield this.project_manager.active_project.fetch_file (resolved_path);
 			if (found == null) {
 				found = new OLLMfiles.File.new_fake (this.project_manager, resolved_path);
 			}
@@ -281,7 +281,13 @@ public class ResolveLink : GLib.Object
 		var resolved_path = link.is_relative
 			? link.abspath (this.project_manager.active_project.path)
 			: link.path;
-		var found = this.project_manager.get_file_from_active_project (resolved_path);
+		OLLMfiles.File? found = null;
+		if (this.project_manager.file_cache.has_key (resolved_path)) {
+			var cached = this.project_manager.file_cache.get (resolved_path);
+			if (cached is OLLMfiles.File) {
+				found = (OLLMfiles.File) cached;
+			}
+		}
 		if (found == null) {
 			found = new OLLMfiles.File.new_fake (this.project_manager, resolved_path);
 		}

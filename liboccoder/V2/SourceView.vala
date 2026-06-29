@@ -303,13 +303,6 @@ namespace OLLMcoder
 				this.project_dropdown.placeholder_text = expected_placeholder;
 			}
 
-			// Sync active file from project (e.g. session restore only emits active_project_changed;
-			// restore_active_state() which sets active_file only runs when widget is first created)
-			var project_active_file = this.manager.active_project.project_files.get_active_file();
-			if (project_active_file != null && this.manager.active_file != project_active_file) {
-				this.manager.activate_file(project_active_file);
-			}
-
 			// If we're switching to the same project, don't change the active file
 			if (same_project) {
 				return;
@@ -506,22 +499,18 @@ namespace OLLMcoder
 		 * 
 		 * @param project The project to open
 		 */
-	public async void open_project(OLLMfiles.Folder project)
-	{
-		// Notify manager to activate project (this will emit signal even if already active)
-		yield this.manager.activate_project(project);
-		
-		// Update file dropdown's project
-		yield this.file_dropdown.update_project(project);
-		
-		// Disabled: Don't set project dropdown selection programmatically
-		// this.project_dropdown.selected_project = project;
-		
-		// Update placeholder text with project name (use path_basename to match on_selected)
-		this.project_dropdown.placeholder_text = project.path_basename;
-			
-			// Find and trigger active file (or null if none)
-			var active_file = project.project_files.get_active_file();
+		public async void open_project(OLLMfiles.Folder project)
+		{
+			this.manager.activate_project(project);
+
+			yield this.file_dropdown.update_project(project);
+
+			this.project_dropdown.placeholder_text = project.path_basename;
+
+			var active_file = this.manager.active_file;
+			if (active_file != null && !active_file.path.has_prefix(project.path + "/")) {
+				active_file = null;
+			}
 			this.on_file_selected(active_file);
 		}
 		
@@ -1001,11 +990,7 @@ namespace OLLMcoder
 				yield this.current_file.buffer.sync_to_file();
 				this.current_file.is_unsaved = false;
 				
-				// Save state to database and force immediate save to disk
 				this.save_current_file_state();
-				if (this.manager.db != null) {
-					this.manager.db.backupDB();
-				}
 			} catch (Error e) {
 				GLib.warning("Failed to save file %s: %s", this.current_file.path, e.message);
 			}

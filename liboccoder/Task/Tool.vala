@@ -299,9 +299,14 @@ namespace OLLMcoder.Task
 					throw e;
 				}
 				var parser = new ResultParser(this.parent.runner, response_text);
-				var exec_ok = this.parent.skill.tools.contains("write_file") ?
-					new OLLMcoder.Action.WriteExec(this.parent).extract_result(parser, this) :
-					new OLLMcoder.Action.RefOnly(this.parent).extract_result(parser, this);
+				var exec_ok = false;
+				if (this.parent.skill.tools.contains("write_file")) {
+					var write_exec = new OLLMcoder.Action.WriteExec(this.parent);
+					exec_ok = yield write_exec.extract_result(parser, this);
+				} else {
+					var ref_only = new OLLMcoder.Action.RefOnly(this.parent);
+					exec_ok = yield ref_only.extract_result(parser, this);
+				}
 				/* GLib.debug(
 					"LIVE EXECUTION EXTRACT slug=%s tool_run=%s try=%u resp_len=%u ok=%s issues=%s",
 					this.parent.slug(),

@@ -526,7 +526,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 				return;
 			}
 			this.result_parser = new ResultParser(this.runner, response_text);
-			this.result_parser.extract_refinement(this);
+			yield this.result_parser.extract_refinement(this);
 			this.add_message(new OLLMchat.Message("agent-issues", this.result_parser.issues));
 			var task_name = this.task_data.get("name").to_markdown().strip();
 			if (this.runner.in_replay) {
@@ -934,7 +934,8 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			// Before post-exec extraction: it copies task.issues into parser.issues after link checks.
 			this.issues = "";
 			var parser = new ResultParser(this.runner, response_text);
-			new OLLMcoder.Action.PostExamMerge(this).extract(parser);
+			var post_merge = new OLLMcoder.Action.PostExamMerge(this);
+			yield post_merge.extract(parser);
 			this.add_message(new OLLMchat.Message("agent-issues", parser.issues));
 			if (parser.issues == "") {
 				this.runner.progress.active_item_changed(null);

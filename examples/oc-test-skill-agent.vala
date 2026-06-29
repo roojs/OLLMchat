@@ -177,7 +177,7 @@ Examples:
 					throw new GLib.IOError.INVALID_ARGUMENT("--run parse-tasklist requires --test-output FILE (task list creation LLM output)");
 				}
 				yield this.build_runner();
-				this.load_task_list(opt_test_output);
+				yield this.load_task_list(opt_test_output);
 				var list = this.runner.pending;
 				stdout.printf("Steps: %d\n", (int) list.steps.size);
 				int task_index = 0;
@@ -200,7 +200,7 @@ Examples:
 					throw new GLib.IOError.INVALID_ARGUMENT("--run refine-prompt / refine requires --input FILE (task list)");
 				}
 				yield this.build_runner();
-				this.load_task_list(opt_input);
+				yield this.load_task_list(opt_input);
 				this.runner.sr_factory.skill_manager.scan();
 				var list = this.runner.pending;
 				var skill_issues = list.validate_skills();
@@ -238,7 +238,7 @@ Examples:
 					throw new GLib.IOError.INVALID_ARGUMENT("--run iteration-prompt / iteration requires --input FILE (task list)");
 				}
 				yield this.build_runner();
-				this.load_task_list(opt_input);
+				yield this.load_task_list(opt_input);
 				var tpl = this.runner.iteration_prompt("", this.runner.pending, "");
 				if (opt_run == "iteration-prompt") {
 					stdout.printf("=== system ===\n%s\n=== user ===\n%s\n", tpl.filled_system, tpl.filled_user);
@@ -251,7 +251,7 @@ Examples:
 				var response_text = response_obj != null && response_obj.message != null ?
 					 response_obj.message.content : "";
 				var result_parser = new OLLMcoder.Task.ResultParser(this.runner, response_text);
-				result_parser.parse_task_list_iteration();
+				yield result_parser.parse_task_list_iteration();
 				if (result_parser.issues != "") {
 					this.cl.printerr("Iteration parse issues: %s\n", result_parser.issues);
 					return;
@@ -281,7 +281,7 @@ Examples:
 					throw new GLib.IOError.INVALID_ARGUMENT("--run parse-refine requires --task-list FILE (task list)");
 				}
 				yield this.build_runner();
-				this.load_task_list(opt_task_list);
+				yield this.load_task_list(opt_task_list);
 				var list = this.runner.pending;
 				if (opt_step < 0 || opt_step >= (int) list.steps.size) {
 					this.cl.printerr("Step %d out of range (0..%d).\n", opt_step, (int) list.steps.size - 1);
@@ -296,7 +296,7 @@ Examples:
 				string content;
 				GLib.FileUtils.get_contents(opt_test_output, out content);
 				var parser = new OLLMcoder.Task.ResultParser(this.runner, content);
-				parser.extract_refinement(detail);
+				yield parser.extract_refinement(detail);
 				if (parser.issues != "") {
 					this.cl.printerr("Refinement parse issues: %s\n", parser.issues);
 				}
@@ -316,7 +316,7 @@ Examples:
 					throw new GLib.IOError.INVALID_ARGUMENT("--run parse-execute requires --task-list FILE (task list)");
 				}
 				yield this.build_runner();
-				this.load_task_list(opt_task_list);
+				yield this.load_task_list(opt_task_list);
 				var list = this.runner.pending;
 				if (opt_step < 0 || opt_step >= (int) list.steps.size) {
 					this.cl.printerr("Step %d out of range (0..%d).\n", opt_step, (int) list.steps.size - 1);
@@ -354,7 +354,7 @@ Examples:
 					throw new GLib.IOError.INVALID_ARGUMENT("--run execute-prompt / execute requires --input-refine FILE (refinement output)");
 				}
 				yield this.build_runner();
-				this.load_task_list(opt_input);
+				yield this.load_task_list(opt_input);
 				var list = this.runner.pending;
 				if (opt_step < 0 || opt_step >= (int) list.steps.size) {
 					this.cl.printerr("Step %d out of range (0..%d).\n", opt_step, (int) list.steps.size - 1);
@@ -366,7 +366,7 @@ Examples:
 					throw new GLib.IOError.NOT_FOUND("Task out of range");
 				}
 				var detail = step.children.get(opt_task_num);
-				this.load_refinement(opt_input_refine, detail);
+				yield this.load_refinement(opt_input_refine, detail);
 				detail.build_run_queue();
 				yield detail.run_exec();
 				foreach (var run in detail.tools()) {
@@ -478,7 +478,7 @@ Examples:
 		});
 	}
 
-	private void load_task_list(string path) throws GLib.Error
+	private async void load_task_list(string path) throws GLib.Error
 	{
 		if (!GLib.FileUtils.test(path, GLib.FileTest.EXISTS)) {
 			this.cl.printerr("File not found: %s\n", path);
@@ -487,14 +487,14 @@ Examples:
 		string content;
 		GLib.FileUtils.get_contents(path, out content);
 		var parser = new OLLMcoder.Task.ResultParser(this.runner, content);
-		parser.parse_task_list();
+		yield parser.parse_task_list();
 		if (parser.issues != "") {
 			this.cl.printerr("Parse issues: %s\n", parser.issues);
 			throw new GLib.IOError.INVALID_ARGUMENT(parser.issues);
 		}
 	}
 
-	private void load_refinement(string path, OLLMcoder.Task.Details detail) throws GLib.Error
+	private async void load_refinement(string path, OLLMcoder.Task.Details detail) throws GLib.Error
 	{
 		if (!GLib.FileUtils.test(path, GLib.FileTest.EXISTS)) {
 			this.cl.printerr("Refinement file not found: %s\n", path);
@@ -503,7 +503,7 @@ Examples:
 		string content;
 		GLib.FileUtils.get_contents(path, out content);
 		var parser = new OLLMcoder.Task.ResultParser(this.runner, content);
-		parser.extract_refinement(detail);
+		yield parser.extract_refinement(detail);
 		if (parser.issues != "") {
 			this.cl.printerr("Refinement parse issues: %s\n", parser.issues);
 			throw new GLib.IOError.INVALID_ARGUMENT(parser.issues);

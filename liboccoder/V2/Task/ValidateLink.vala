@@ -87,7 +87,7 @@ public class ValidateLink : GLib.Object
 	/**
 	 * Validate one link; appends lines (each prefixed with \\n) to [[issues]].
 	 */
-	public void validate (Markdown.Document.Format link)
+	public async void validate (Markdown.Document.Format link)
 	{
 		if (link.path == "") {
 			if (this.runner.user_request != null &&
@@ -116,7 +116,7 @@ public class ValidateLink : GLib.Object
 			return;
 		}
 		if (link.path != "" && link.scheme == "file") {
-			this.file (link);
+			yield this.file (link);
 			return;
 		}
 		if (link.scheme == "task") {
@@ -132,18 +132,13 @@ public class ValidateLink : GLib.Object
 	 * Validate every link in ''links''; appends to [[issues]] (same shape as task reference errors).
 	 * Skipped when [[Skill.Runner.in_replay]] (ReplayChat or GTK restore after Runner.on_replay sets it).
 	 */
-	public void validate_all (Gee.Iterable<Markdown.Document.Format> links)
+	public async void validate_all (Gee.Iterable<Markdown.Document.Format> links)
 	{
 		if (this.details.runner.in_replay) {
 			return;
 		}
-		/* GLib.debug (
-			"VALIDATE LINK ALL stage=%s slug=%s runner_in_replay=%s",
-			typeof (PhaseEnum).enum_to_string ((int) this.stage),
-			this.details.slug (),
-			this.details.runner.in_replay.to_string ()); */
 		foreach (var link in links) {
-			this.validate (link);
+			yield this.validate (link);
 		}
 	}
 
@@ -163,7 +158,7 @@ public class ValidateLink : GLib.Object
 		}
 	}
 
-	void file (Markdown.Document.Format link)
+	async void file (Markdown.Document.Format link)
 	{
 		var project = this.runner.sr_factory.project_manager.active_project;
 		if (project == null) {
@@ -179,17 +174,43 @@ public class ValidateLink : GLib.Object
 		if (resolved_path == "") {
 			return;
 		}
-		if (project.project_files.child_map.has_key (
-				resolved_path.has_suffix ("/") ?
-					resolved_path.substring (0, resolved_path.length - 1) :
-					resolved_path)) {
+		var check_path = resolved_path.has_suffix ("/") ?
+			resolved_path.substring (0, resolved_path.length - 1) :
+			resolved_path;
+		var under_project = GLib.File.new_for_path (resolved_path);
+		var project_root = GLib.File.new_for_path (project.path);
+		if (link.is_relative &&
+				!under_project.has_prefix (project_root) &&
+				!under_project.equal (project_root)) {
+			this.issues += "\n" + "Invalid reference target \"" + link.href +
+				"\": path is outside project folder.";
 			return;
 		}
-		if (project.project_files.folder_map.has_key (
-				resolved_path.has_suffix ("/") ?
-					resolved_path.substring (0, resolved_path.length - 1) :
-					resolved_path)) {
-			/* Refined **References** / shared links must be files. Task list (LIST) and result summaries are not checked here. */
+		if (project.manager.file_cache.has_key (check_path)) {
+			var cached = project.manager.file_cache.get (check_path);
+			if (cached is OLLMfiles.File) {
+				return;
+			}
+			if (cached is OLLMfiles.Folder) {
+				switch (this.stage) {
+					case PhaseEnum.REFINEMENT:
+						this.issues += "\n" + "Invalid reference target \"" + link.href +
+							"\": path is a directory; use a file path, not a folder.";
+						return;
+					case PhaseEnum.LIST:
+					case PhaseEnum.EXECUTION:
+					case PhaseEnum.POST_EXEC:
+					default:
+						return;
+				}
+			}
+		}
+		var indexed = yield project.fetch_file (check_path);
+		if (indexed != null) {
+			return;
+		}
+		var is_directory = yield project.contains_folder (check_path);
+		if (is_directory) {
 			switch (this.stage) {
 				case PhaseEnum.REFINEMENT:
 					this.issues += "\n" + "Invalid reference target \"" + link.href +
@@ -202,36 +223,8 @@ public class ValidateLink : GLib.Object
 					return;
 			}
 		}
-		var under_project = GLib.File.new_for_path (resolved_path);
-		var project_root = GLib.File.new_for_path (project.path);
-		if (link.is_relative &&
-				!under_project.has_prefix (project_root) &&
-				!under_project.equal (project_root)) {
-			this.issues += "\n" + "Invalid reference target \"" + link.href +
-				"\": path is outside project folder.";
-			return;
-		}
-		var resolved_file = GLib.File.new_for_path (resolved_path);
-		if (!resolved_file.query_exists ()) {
-			this.issues += "\n" + "Invalid reference target \"" + link.href +
-				"\": file does not exist (resolved from project folder).";
-			return;
-		}
-		if (resolved_file.query_file_type (GLib.FileQueryInfoFlags.NONE) !=
-				GLib.FileType.DIRECTORY) {
-			return;
-		}
-		switch (this.stage) {
-			case PhaseEnum.REFINEMENT:
-				this.issues += "\n" + "Invalid reference target \"" + link.href +
-					"\": path is a directory; use a file path, not a folder.";
-				return;
-			case PhaseEnum.LIST:
-			case PhaseEnum.EXECUTION:
-			case PhaseEnum.POST_EXEC:
-			default:
-				return;
-		}
+		this.issues += "\n" + "Invalid reference target \"" + link.href +
+			"\": file does not exist (resolved from project folder).";
 	}
 
 	void task (Markdown.Document.Format link)
