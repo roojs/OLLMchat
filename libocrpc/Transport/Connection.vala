@@ -13,7 +13,15 @@
 
 namespace OLLMrpc.Transport
 {
-	/** One RPC client channel — NDJSON read loop and reply (Unix socket). */
+	/**
+	 * One RPC client channel — NDJSON read loop and reply (Unix socket).
+	 *
+	 * On each request line: parse {@link OLLMrpc.Request}, extract the wire
+	 * params object ({{{ "params" }}} or {{{ "param" }}}), and pass it to
+	 * {@link OLLMrpc.Request.dispatch} so typed {@link OLLMrpc.CallParam}
+	 * subclasses deserialize correctly. See {@link OLLMrpc.Request} for the
+	 * full params contract.
+	 */
 	public class Connection : GLib.Object
 	{
 		public GLib.SocketConnection? stream { get; construct; default = null; }
@@ -157,8 +165,24 @@ namespace OLLMrpc.Transport
 				return this.running;
 			}
 
+			var parser = new Json.Parser();
+			try {
+				parser.load_from_data(line, -1);
+			} catch (GLib.Error e) {
+				GLib.warning("parse error: %s", e.message);
+				return this.running;
+			}
+
+			var root_obj = parser.get_root().get_object();
+			Json.Node? params_node = null;
+			if (root_obj.has_member("params")) {
+				params_node = root_obj.get_member("params");
+			} else if (root_obj.has_member("param")) {
+				params_node = root_obj.get_member("param");
+			}
+
 			request.connection = this;
-			request.dispatch();
+			request.dispatch(params_node);
 			return this.running;
 		}
 	}

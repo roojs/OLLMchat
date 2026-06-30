@@ -12,7 +12,11 @@
  */
 
 /**
- * JSON-RPC wire types in {@code libocrpc} — shared by client and {@code ollmfilesd}.
+ * JSON-RPC wire types in {{{libocrpc}}} — shared by client and {{{ollmfilesd}}}.
+ *
+ * Request arguments use flat JSON objects (wire key usually {{{"params"}}}).
+ * Subclass {@link CallParam} with one property per field; see {@link Request}
+ * for client serialize and server typed deserialize.
  */
 namespace OLLMrpc
 {

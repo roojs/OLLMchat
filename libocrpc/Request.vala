@@ -6,6 +6,11 @@
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this library; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -14,35 +19,84 @@
 namespace OLLMrpc
 {
 	/**
-	 * JSON-RPC 2.0 request line. Deserialize with Json.gobject_from_data.
+	 * JSON-RPC 2.0 request line (one NDJSON object per call).
 	 *
-	 * On the client, pass to {@link Client.call}. On the server,
-	 * {@link dispatch} routes {@code Object.method} to a registered handler's
-	 * {@code rpc_*} signal. Set {@link connection} before {@link dispatch}; handlers
-	 * reply via {@link reply}.
+	 * On the client, build a {@link Request}, set {@link method}, assign a
+	 * typed {@link CallParam} subclass to {@link param}, then pass to
+	 * {@link Client.call}. On the server, set {@link connection}, then
+	 * {@link dispatch} routes {{{Object.method}}} to the handler's
+	 * {{{rpc_*}}} signal; handlers reply via {@link reply}.
+	 *
+	 * == Wire {{{params}}} (request arguments) ==
+	 *
+	 * JSON-RPC puts arguments in a flat object. Scripts and the API overview
+	 * use wire key {{{"params"}}}; json-glib may emit {{{"param"}}} from the
+	 * Vala property name {@link param}. Field names match GObject properties
+	 * on the handler's registered param type (see {@link register}).
+	 *
+	 * Example:
+	 *
+	 * {{{
+	 * {"method":"Folder.fetch_files","params":{"path":"/proj","offset":0,"limit":50}}
+	 * }}}
+	 *
+	 * == Client serialize ==
+	 *
+	 *  * Assign the daemon param type for the target object (e.g.
+	 *    {{{OLLMfilesd.FolderParams}}} for {{{Folder.*}}}) to {@link param}.
+	 *  * {@link Client.call} serializes with {{{Json.gobject_serialize}}};
+	 *    nested fields need no custom {@link Json.Serializable} overrides on
+	 *    the param class.
+	 *
+	 * == Server deserialize ==
+	 *
+	 *  * {@link Json.gobject_from_data} on {@link Request} alone does ''not''
+	 *    fully populate typed params when the wire key is {{{"params"}}} — see
+	 *    {@link deserialize_property}.
+	 *  * After parsing the line, pass the raw params object node to
+	 *    {@link dispatch}; it runs
+	 *    {{{Json.gobject_deserialize(param_types.get(handler), node)}}}.
+	 *  * Server transports must pass that node (from {{{"params"}}} or
+	 *    {{{"param"}}}); do not call {@link dispatch} with no node when the
+	 *    handler expects typed fields.
+	 *
+	 * @see CallParam
+	 * @see Client
+	 * @see Transport.Connection
 	 */
 	public class Request : GLib.Object, Json.Serializable
 	{
 		/** Wire object prefix → handler singleton (server dispatch). */
 		public static Gee.HashMap<string, GLib.Object> handlers;
 
-		/** Wire object prefix → {@code params} GObject type. */
+		/**
+		 * Wire object prefix → {@link GLib.Type} of the handler's param bag
+		 * (subclass of {@link CallParam}).
+		 */
 		public static Gee.HashMap<GLib.Type, GLib.Type> param_types;
 
 		public string jsonrpc { get; set; default = "2.0"; }
 		public int id { get; set; }
 		public string method { get; set; default = ""; }
+
+		/**
+		 * Typed request arguments (client → daemon).
+		 *
+		 * Client: assign the registered param type for the target object.
+		 * Server: filled by {@link dispatch} when the call site passes the
+		 * wire params node; until then may be a placeholder {@link CallParam}.
+		 */
 		public CallParam param { get; set; default = new CallParam(); }
 
 		/** Set by the server before {@link dispatch}. */
 		public Transport.Connection connection { get; set; }
 
 		/**
-		 * Register a server dispatch handler and its {@code params} type.
+		 * Register a server dispatch handler and its params {@link GLib.Type}.
 		 *
-		 * @param name wire object prefix (e.g. {@code "Daemon"})
-		 * @param target live singleton with {@code rpc_*} signals
-		 * @param param_type GObject type for {@code params} objects
+		 * @param name wire object prefix (e.g. {{{"Folder"}}})
+		 * @param target live singleton with {{{rpc_*}}} signals
+		 * @param param_type GObject type for wire params (extends {@link CallParam})
 		 */
 		public static void register(
 			string name,
@@ -82,7 +136,7 @@ namespace OLLMrpc
 		) {
 			switch (property_name) {
 				case "params":
-					// Server typed deserialize: {@link dispatch}.
+					// Placeholder only — typed fill in {@link dispatch}.
 					this.param = new CallParam();
 					value = Value(typeof(CallParam));
 					value.set_object(this.param);
@@ -95,10 +149,16 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Route this request to the matching {@code rpc_*} signal.
+		 * Route this request to the matching {{{rpc_*}}} signal.
 		 *
-		 * @param params_node optional raw params node for server-side typed
-		 *   deserialization
+		 * When @params_node is set, replaces {@link param} with
+		 * {{{Json.gobject_deserialize}}} using the type registered in
+		 * {@link register} for the handler object. Server call sites should
+		 * always pass the wire params object node when the method reads typed
+		 * fields off {@link param}.
+		 *
+		 * @param params_node raw JSON object for wire {{{"params"}}} or
+		 *   {{{"param"}}}, or null to use {@link param} as already parsed
 		 * @return true when a handler signal was emitted
 		 */
 		public bool dispatch(Json.Node? params_node = null)
@@ -160,7 +220,9 @@ namespace OLLMrpc
 			return true;
 		}
 
-		/** Relay a {@link Response} to {@link connection} (sets wire {@code id}). */
+		/**
+		 * Relay a {@link Response} to {@link connection} (sets wire {{{id}}}).
+		 */
 		public void reply(Response response)
 		{
 			this.connection.reply(this, response);

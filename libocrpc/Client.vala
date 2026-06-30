@@ -215,6 +215,10 @@ namespace OLLMrpc
 
 		/**
 		 * Send a request (caller must {@link connect} first).
+		 *
+		 * Assign a typed {@link CallParam} subclass to {@link Request.param}
+		 * before calling; see {@link Request} for wire serialize rules.
+		 *
 		 * @param request wire request; {@link Request.id} is set here
 		 * @return wire response; check {@link Response.error}, or connect
 		 *   to {@link failed} for user-visible handling
