@@ -51,7 +51,7 @@ namespace OLLMvector2.SQT
 	 * var results = query.select("SELECT * FROM vector_metadata WHERE file_id = $file_id");
 	 * }}}
 	 */
-	public class VectorMetadata : Object
+	public class VectorMetadata : Object, Json.Serializable
 	{
 		/**
 		 * ID property for database operations (PRIMARY KEY, auto-increment).
@@ -174,6 +174,42 @@ namespace OLLMvector2.SQT
 		 */
 		public VectorMetadata()
 		{
+		}
+
+		public unowned ParamSpec? find_property(string name)
+		{
+			return this.get_class().find_property(name);
+		}
+
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
+		{
+			base.set_property(pspec.get_name(), value);
+		}
+
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
+		{
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
+			return val;
+		}
+
+		/** Omit graph edges that recurse during json-glib wire serialize. */
+		public override Json.Node serialize_property(
+			string property_name,
+			Value value,
+			ParamSpec pspec
+		) {
+			switch (property_name) {
+				case "parent":
+				case "children":
+					return null;
+				default:
+					return default_serialize_property(
+						property_name,
+						value,
+						pspec
+					);
+			}
 		}
 		
 		/**

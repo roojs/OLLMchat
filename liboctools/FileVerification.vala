@@ -262,7 +262,7 @@ namespace OLLMtools
 			try {
 				yield this.manager.delete_manager.remove(
 					filebase,
-					GLib.DateTime.now()
+					new GLib.DateTime.now_local()
 				);
 			} catch (GLib.Error e) {
 				GLib.warning(

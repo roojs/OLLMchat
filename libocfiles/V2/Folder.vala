@@ -114,6 +114,38 @@ namespace OLLMfiles
 		}
 
 		/**
+		 * Distinct folders that need write access (bwrap overlay roots).
+		 *
+		 * {@code Folder.roots} on the daemon — same result as shipping
+		 * {@code build_roots()}, without local {@code project_files}.
+		 *
+		 * @return Write-root folder rows (paths are realpaths)
+		 */
+		public async Gee.ArrayList<Folder> roots()
+		{
+			if (!this.is_project || this.path.length == 0) {
+				return new Gee.ArrayList<Folder>();
+			}
+
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+				method = "Folder.roots",
+				param = new OLLMfilesd.FolderParams() { path = this.path }
+			});
+			if (response.error != null || response.result == null) {
+				return new Gee.ArrayList<Folder>();
+			}
+
+			var folders = (Gee.ArrayList<Folder>) response.result;
+			if (folders == null) {
+				return new Gee.ArrayList<Folder>();
+			}
+			foreach (var folder in folders) {
+				folder.manager = this.manager;
+			}
+			return folders;
+		}
+
+		/**
 		 * Fetch a {@link File} already tracked under this project.
 		 *
 		 * Checks {@link ProjectManager.file_cache} first, then {@code File.fetch}

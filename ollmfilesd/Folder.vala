@@ -59,6 +59,7 @@ namespace OLLMfilesd
 		public signal void rpc_fetch_files(OLLMrpc.Request request);
 		public signal void rpc_fetch_pending_approvals(OLLMrpc.Request request);
 		public signal void rpc_project_description(OLLMrpc.Request request);
+		public signal void rpc_roots(OLLMrpc.Request request);
 
 		construct
 		{
@@ -215,6 +216,46 @@ namespace OLLMfilesd
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					msg = project.project_description()
+				});
+			});
+			this.rpc_roots.connect((request) => {
+				var path = ((FolderParams) request.param).path;
+				var project = this.manager.project_root(path);
+				if (project == null) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						result = new Gee.ArrayList<GLib.Object>(),
+						result_type = "Folder",
+						is_array = true,
+						msg = "project not found"
+					});
+					return;
+				}
+				Gee.ArrayList<Folder> roots;
+				try {
+					roots = project.build_roots();
+				} catch (GLib.Error e) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							e.message
+						)
+					});
+					return;
+				}
+				var list = new Gee.ArrayList<GLib.Object>();
+				foreach (var source in roots) {
+					var row = new Folder(this.manager);
+					row.copy_from(source, {"manager", "buffer", "parent"});
+					list.add(row);
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					result = list,
+					result_type = "Folder",
+					is_array = true,
+					msg = list.size.to_string()
 				});
 			});
 		}

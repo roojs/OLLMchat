@@ -20,7 +20,9 @@ ocmcp_src = files([
   'McpTypes.vala',
   'Config.vala',
   'Client/Base.vala',
-  'Client/Stdio.vala',
+] + (get_option('v2testing')
+  ? ['Client/StdioV2.vala']
+  : ['Client/Stdio.vala']) + [
   'Client/Http.vala',
   'Factory.vala',
   'Tool.vala',

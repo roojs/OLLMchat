@@ -175,6 +175,11 @@ namespace OLLMfiles.SQT
 		public VectorMetadata()
 		{
 		}
+
+		public static void rpc_register()
+		{
+			OLLMrpc.register("VectorMetadata", typeof(VectorMetadata));
+		}
 		
 		/**
 		 * Initialize database table for vector_metadata objects.

@@ -56,6 +56,7 @@ namespace OLLMfilesd
 		public signal void rpc_register(OLLMrpc.Request request);
 		public signal void rpc_delete(OLLMrpc.Request request);
 		public signal void rpc_changed_check(OLLMrpc.Request request);
+		public signal void rpc_vector_metadata(OLLMrpc.Request request);
 
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -290,6 +291,34 @@ namespace OLLMfilesd
 				}
 				request.reply(new OLLMrpc.Response() {
 					msg = ((int) status).to_string()
+				});
+			});
+			this.rpc_vector_metadata.connect((request) => {
+				var path = ((FileParams) request.param).path;
+				var list = new Gee.ArrayList<GLib.Object>();
+				var indexed = this.manager.get_file_from_active_project(path);
+				if (
+					indexed != null
+					&& indexed.id > 0
+					&& this.manager.db != null
+				) {
+					var rows = new Gee.ArrayList<OLLMvector2.SQT.VectorMetadata>();
+					OLLMvector2.SQT.VectorMetadata.query(
+						this.manager.db
+					).select(
+						"WHERE file_id = " + indexed.id.to_string(),
+						rows
+					);
+					foreach (var row in rows) {
+						list.add(row);
+					}
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					result = list,
+					result_type = "VectorMetadata",
+					is_array = true,
+					msg = list.size.to_string()
 				});
 			});
 		}

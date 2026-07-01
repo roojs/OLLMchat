@@ -22,7 +22,7 @@ if get_option('v2testing')
   octools_src = files([
     'ReadFile/Tool.vala',
     'ReadFileV2/Request.vala',
-    'ReadFile/Summarize.vala',
+    'ReadFileV2/Summarize.vala',
     'EditMode/Tool.vala',
     'EditModeV2/Request.vala',
     'EditModeV2/Stream.vala',
