@@ -423,15 +423,16 @@ namespace OLLMfiles
 			if (this.path.length == 0) {
 				return false;
 			}
-			if (content == "" && this.buffer != null && base_type == "f") {
-				content = this.buffer.get_text();
+			var write_content = content;
+			if (write_content == "" && this.buffer != null && base_type == "f") {
+				write_content = this.buffer.get_text();
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "File.write",
 				param = new OLLMfilesd.FileParams() {
 					path = this.path,
-					content = content,
+					content = write_content,
 					base_type = base_type,
 					target = target,
 					unix_mode = unix_mode
