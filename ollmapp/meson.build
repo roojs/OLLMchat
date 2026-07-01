@@ -77,7 +77,9 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollmchatgtk',
   meson.current_build_dir() / '..' / 'liboctools',
   meson.current_build_dir() / '..' / 'libocmcp',
-  meson.current_build_dir() / '..' / 'libollamaweb'
+  meson.current_build_dir() / '..' / 'libollamaweb',
+  meson.current_build_dir() / '..' / 'libocrpc',
+  meson.current_build_dir() / '..' / 'ollmfilesd',
 ])
 
 android_poc_settings_sources = []
@@ -222,6 +224,12 @@ ollmchat_deps = [
 ]
 
 # Windows: embed the same app icon used on Linux (pixmaps/org.roojs.ollmchat.ico).
+if get_option('v2testing')
+  window_src = 'V2/Window.vala'
+else
+  window_src = 'Window.vala'
+endif
+
 ollmchat_sources = [
   version_vala,
   'Application.vala',
@@ -229,7 +237,7 @@ ollmchat_sources = [
   'ChatUserInterface.vala',
   'AgentDropdown.vala',
   'Initialize.vala',
-  'Window.vala',
+  window_src,
   'WindowPane.vala',
   'FileChangeBanner.vala',
   'VectorScanBanner.vala',
@@ -269,17 +277,58 @@ endif
 
 # Build ollmchat executable (primary application)
 # Include resources directly in the executable to ensure they're registered
+ollmchat_exe_deps = [
+  ollmchat_deps,
+  ocmarkdowngtk_vapi_dep,
+  ocsqlite_vapi_dep,
+  occoder_vapi_dep,
+  ocfiles_vapi_dep,
+  ocvector_vapi_dep,
+  octools_vapi_dep,
+  ocmcp_vapi_dep,
+]
+ollmchat_vala_args = [
+  '--pkg=ocmarkdown',
+  '--pkg=ocmarkdowngtk',
+  '--pkg=sqlite3',
+  '--pkg=ocsqlite',
+  '--pkg=gmodule-2.0',
+  '--pkg=tree-sitter',
+  '--pkg=occoder',
+  '--pkg=ocfiles',
+  '--pkg=octools',
+  '--pkg=ocmcp',
+  '--pkg=ollmchat',
+  '--pkg=ollamaweb',
+  '--pkg=ocvector',
+  '--pkg=libgit2-glib-1.0',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+  '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
+  '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocmcp',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',  # For ollmchat.vapi
+  '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+  '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
+]
+if get_option('v2testing')
+  ollmchat_exe_deps += ocrpc_vapi_dep
+  ollmchat_vala_args += [
+    '--pkg=ocrpc',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  ]
+else
+  ollmchat_vala_args += [
+    '--pkg=fiass',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
+  ]
+endif
+
 ollmchat = executable('ollmchat',
-  dependencies: [
-      ollmchat_deps, 
-      ocmarkdowngtk_vapi_dep, 
-      ocsqlite_vapi_dep, 
-      occoder_vapi_dep, 
-      ocvector_vapi_dep, 
-      ocfiles_vapi_dep, 
-      octools_vapi_dep,
-      ocmcp_vapi_dep
-  ],
+  dependencies: ollmchat_exe_deps,
   sources: ollmchat_sources,
   link_with: [ollmchat_base_lib, ollmchatgtk_lib],  # Use ocvector_vapi_dep (link_args) instead of link_with to avoid ocvector-meson.vapi
   include_directories: [
@@ -294,34 +343,7 @@ ollmchat = executable('ollmchat',
   ],
   build_rpath: build_rpath,
   # Use --pkg for VAPI access (uses manually generated VAPI files)
-  vala_args: [
-    '--pkg=ocmarkdown',
-    '--pkg=ocmarkdowngtk',
-    '--pkg=sqlite3',
-    '--pkg=ocsqlite',
-    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
-    '--pkg=occoder',
-    '--pkg=ocfiles',  # Required for OLLMcoder.Files.BufferProvider and OLLMcoder.Files.GitProvider
-    '--pkg=ocvector',  # Use manually generated ocvector.vapi (via ocvector_vapi_dep)
-    '--pkg=octools',  # Tools library
-    '--pkg=ocmcp',  # MCP loader
-    '--pkg=ollmchat',  # Required for OLLMchat types (Call, Settings, History, etc.)
-    '--pkg=ollamaweb',
-    '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
-    '--pkg=libgit2-glib-1.0',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmcp',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',  # For ollmchat.vapi
-    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
-    '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
-  ],
+  vala_args: ollmchat_vala_args,
   install: true,
   install_dir: get_option('bindir')
 )

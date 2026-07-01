@@ -65,8 +65,8 @@ namespace OLLMfiles
 		 */
 		public async void remove(FileBase filebase, GLib.DateTime timestamp) throws GLib.Error
 		{
-			switch (filebase.get_type()) {
-				case typeof(File):
+			switch (filebase.base_type) {
+				case "f":
 					var file = (File) filebase;
 					if (!yield file.delete()) {
 						throw new IOError.FAILED(
@@ -78,13 +78,16 @@ namespace OLLMfiles
 					}
 					this.manager.file_cache.unset(file.path);
 					break;
-				case typeof(Folder):
+				case "d":
+				case "da":
 					throw new IOError.NOT_SUPPORTED(
 						"Folder deletion is daemon-side only"
 					);
 				default:
 					throw new IOError.NOT_SUPPORTED(
-						"Unsupported type for client delete"
+						"Unsupported type for client delete (base_type=%s)".printf(
+							filebase.base_type
+						)
 					);
 			}
 		}

@@ -102,11 +102,18 @@ namespace OLLMfiles
 			var old_n_items = this.items.size;
 			this.items.clear();
 
-			var files = yield this.project.fetch_files(
-				0,
-				query: query,
-				out this.total
-			);
+			var response = yield this.project.fetch_files(0, 50, query);
+			if (response.error != null) {
+				return;
+			}
+			this.total = 0;
+			if (response.msg != "") {
+				this.total = int.parse(response.msg);
+			}
+			var files = response.result as Gee.ArrayList<File>;
+			if (files == null) {
+				files = new Gee.ArrayList<File>();
+			}
 			foreach (var file in files) {
 				this.items.add(new ProjectFile(
 					this.project.manager,
@@ -137,14 +144,22 @@ namespace OLLMfiles
 			}
 
 			this.loading = true;
-			var files = yield this.project.fetch_files(
+			var response = yield this.project.fetch_files(
 				this.offset,
-				query: this.query,
-				out this.total
+				50,
+				this.query
 			);
 			this.loading = false;
 
-			if (files.size == 0) {
+			if (response.error != null) {
+				return;
+			}
+			this.total = 0;
+			if (response.msg != "") {
+				this.total = int.parse(response.msg);
+			}
+			var files = response.result as Gee.ArrayList<File>;
+			if (files == null || files.size == 0) {
 				return;
 			}
 

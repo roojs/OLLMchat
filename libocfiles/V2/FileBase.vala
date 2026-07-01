@@ -92,7 +92,7 @@ namespace OLLMfiles
 		 * Reference to ProjectManager.
 		 * 
 		 */
-		public  ProjectManager manager { get; construct; }
+		public ProjectManager manager { get; set; }
 		
 		/**
 		 * Constructor.

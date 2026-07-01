@@ -178,21 +178,18 @@ namespace OLLMfiles
 		/**
 		 * Fetch a page of file rows for this project (file dropdown).
 		 *
-		 * Returns daemon metadata rows; the caller builds its own list model.
-		 * Total match count (before pagination) is in {@code Response.msg} on the
-		 * wire; exposed here as {@code total}.
+		 * Returns the daemon RPC response. Caller reads {@code result} (file page)
+		 * and {@code msg} (total match count before pagination).
 		 *
 		 * @param offset Rows to skip (default 0)
 		 * @param limit Page size (default 50)
 		 * @param query Dropdown filter (default browse all)
-		 * @param total Total matching rows (output)
-		 * @return Files in this page for list UI
+		 * @return {@link OLLMrpc.Response} — {@code result} = file page, {@code msg} = total
 		 */
-		public async Gee.ArrayList<File> fetch_files(
+		public async OLLMrpc.Response fetch_files(
 			int offset = 0,
 			int limit = 50,
 			string query = "",
-			out int total = 0,
 			string[] paths = {},
 			bool metadata_only = false
 		)
@@ -208,19 +205,14 @@ namespace OLLMfiles
 					metadata_only = metadata_only
 				}
 			});
-			total = 0;
-			if (response.error != null) {
-				return new Gee.ArrayList<File>();
+			if (response.error == null && response.result != null) {
+				var files = (Gee.ArrayList<File>) response.result;
+				foreach (var file in files) {
+					file.manager = this.manager;
+					this.manager.file_cache.set(file.path, file);
+				}
 			}
-			if (response.msg != "") {
-				total = int.parse(response.msg);
-			}
-			var files = (Gee.ArrayList<File>) response.result;
-			foreach (var file in files) {
-				file.manager = this.manager;
-				this.manager.file_cache.set(file.path, file);
-			}
-			return files;
+			return response;
 		}
 
 		/**

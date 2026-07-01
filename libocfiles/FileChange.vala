@@ -210,8 +210,6 @@ namespace OLLMfiles
 				return;
 			}
 			
-			var project_manager = this.file.manager;
-			
 			if (this.file.id <= 0) {
 				this.result = "AST path resolution requires file to be in active project";
 				this.completed = true;
@@ -219,7 +217,7 @@ namespace OLLMfiles
 				return;
 			}
 			
-			var tree = project_manager.tree_factory(this.file);
+			var tree = new Tree(this.file);
 			
 			int start, end, comment_start;
 			try {

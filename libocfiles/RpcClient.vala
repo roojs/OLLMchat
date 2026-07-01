@@ -66,6 +66,7 @@ namespace OLLMfiles
 			Daemon.rpc_register();
 			Folder.rpc_register();
 			File.rpc_register();
+			FileAlias.rpc_register();
 		}
 
 		public RpcClient(string socket = "")

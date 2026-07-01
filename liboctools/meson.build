@@ -18,33 +18,64 @@ octools_deps = [
 ]
 
 # Source files for OLLMtools namespace
-octools_src = files([
-  'ReadFile/Tool.vala',
-  'ReadFile/Request.vala',
-  'ReadFile/Summarize.vala',
-  'EditMode/Tool.vala',
-  'EditMode/Request.vala',
-  'EditMode/Stream.vala',
-  'WriteFile/Tool.vala',
-  'WriteFile/Request.vala',
-  'RunCommand/Tool.vala',
-  'RunCommand/Request.vala',
-  'WebFetch/Tool.vala',
-  'WebFetch/Request.vala',
-  'GoogleSearch/Tool.vala',
-  'GoogleSearch/Request.vala',
-  'GoogleSearch/Config.vala',
-  'SessionFetch/Tool.vala',
-  'SessionFetch/Request.vala',
-  'ToolBuilder.vala',
-  'Registry.vala',
-  'Child/Parser.vala',
-  'Child/Tool.vala',
-  'Child/Factory.vala',
-  'Child/Agent.vala',
-  'Child/Request.vala',
-  'Child/Config.vala',
-])
+if get_option('v2testing')
+  octools_src = files([
+    'ReadFile/Tool.vala',
+    'ReadFileV2/Request.vala',
+    'ReadFile/Summarize.vala',
+    'EditMode/Tool.vala',
+    'EditModeV2/Request.vala',
+    'EditModeV2/Stream.vala',
+    'WriteFile/Tool.vala',
+    'WriteFileV2/Request.vala',
+    'RunCommand/Tool.vala',
+    'RunCommandV2/Request.vala',
+    'FileVerification.vala',
+    'WebFetch/Tool.vala',
+    'WebFetch/Request.vala',
+    'GoogleSearch/Tool.vala',
+    'GoogleSearch/Request.vala',
+    'GoogleSearch/Config.vala',
+    'SessionFetch/Tool.vala',
+    'SessionFetch/Request.vala',
+    'ToolBuilder.vala',
+    'Registry.vala',
+    'Child/Parser.vala',
+    'Child/Tool.vala',
+    'Child/Factory.vala',
+    'Child/Agent.vala',
+    'Child/Request.vala',
+    'Child/Config.vala',
+  ])
+else
+  octools_src = files([
+    'ReadFile/Tool.vala',
+    'ReadFile/Request.vala',
+    'ReadFile/Summarize.vala',
+    'EditMode/Tool.vala',
+    'EditMode/Request.vala',
+    'EditMode/Stream.vala',
+    'WriteFile/Tool.vala',
+    'WriteFile/Request.vala',
+    'RunCommand/Tool.vala',
+    'RunCommand/Request.vala',
+    'WebFetch/Tool.vala',
+    'WebFetch/Request.vala',
+    'GoogleSearch/Tool.vala',
+    'GoogleSearch/Request.vala',
+    'GoogleSearch/Config.vala',
+    'SessionFetch/Tool.vala',
+    'SessionFetch/Request.vala',
+    'ToolBuilder.vala',
+    'Registry.vala',
+    'Child/Parser.vala',
+    'Child/Tool.vala',
+    'Child/Factory.vala',
+    'Child/Agent.vala',
+    'Child/Request.vala',
+    'Child/Config.vala',
+  ])
+endif
 
 # Build rpath for libraries to find each other in build directory
 lib_build_rpath = ':'.join([
@@ -53,10 +84,17 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocfiles',
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollamaweb',
+  meson.current_build_dir() / '..' / 'libocbwrap',
 ])
 
+if get_option('v2testing')
+  octools_lib_deps = [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, ocbwrap_vapi_dep]
+else
+  octools_lib_deps = [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep]
+endif
+
 octools_base_lib = library('octools',
-  dependencies: [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep],
+  dependencies: octools_lib_deps,
   sources: octools_src,
   vala_header: 'octools.h',
   vala_vapi: 'octools-meson.vapi',  # Use different name so our custom_target can use 'octools.vapi'
@@ -72,6 +110,7 @@ octools_base_lib = library('octools',
     '--pkg=ocfiles',
     '--pkg=ocsqlite',
     '--pkg=ocmarkdown',
+  ] + (get_option('v2testing') ? ['--pkg=ocbwrap'] : []) + [
     '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
     '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=json-glib-1.0',
@@ -81,6 +120,10 @@ octools_base_lib = library('octools',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
+  ] + (get_option('v2testing') ? [
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  ] : []) + [
     '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
     '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -91,6 +134,41 @@ octools_base_lib = library('octools',
   install: true
 )
 
+octools_vapi_gen_pkgs = [
+  '--pkg', 'posix',
+  '--pkg', 'json-glib-1.0',
+  '--pkg', 'libsoup-3.0',
+  '--pkg', 'gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+  '--pkg', 'tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
+  '--pkg', 'sqlite3',  # Required for ocsqlite.vapi (Sqlite namespace)
+  '--pkg', 'ollmchat',
+  '--pkg', 'ollamaweb',
+  '--pkg', 'ocfiles',
+  '--pkg', 'ocmarkdown',
+  '--pkg', 'ocsqlite',
+  '--pkg', 'gobject-2.0',
+  '--pkg', 'glib-2.0',
+  '--pkg', 'gio-2.0',
+  '--pkg', 'gee-0.8',
+]
+if get_option('v2testing')
+  octools_vapi_gen_pkgs += ['--pkg', 'ocbwrap', '--pkg', 'ocrpc']
+endif
+
+octools_vapi_vapidirs = [
+  '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
+  '--vapidir', meson.current_source_dir() / '../vapi',
+  '--vapidir', '/usr/share/vala/vapi',
+]
+if get_option('v2testing')
+  octools_vapi_vapidirs += ['--vapidir', meson.current_build_dir() / '..' / 'libocrpc']
+endif
+
 # Manually generate octools.vapi with correct command line order
 octools_vapi = custom_target('octools-vapi',
   output: 'octools.vapi',
@@ -99,29 +177,7 @@ octools_vapi = custom_target('octools-vapi',
     valac_exe,
     '-C', '--debug',
     '--target-glib=auto',
-    # Put build directories FIRST so we use local VAPIs instead of installed ones
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
-    '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
-    '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
-    '--pkg', 'posix',
-    '--pkg', 'json-glib-1.0',
-    '--pkg', 'libsoup-3.0',
-    '--pkg', 'gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg', 'tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
-    '--pkg', 'sqlite3',  # Required for ocsqlite.vapi (Sqlite namespace)
-    '--pkg', 'ollmchat',
-    '--pkg', 'ollamaweb',
-    '--pkg', 'ocfiles',
-    '--pkg', 'ocmarkdown',
-    '--pkg', 'ocsqlite',
-    '--pkg', 'gobject-2.0',
-    '--pkg', 'glib-2.0',
-    '--pkg', 'gio-2.0',
-    '--pkg', 'gee-0.8',
+  ] + octools_vapi_vapidirs + octools_vapi_gen_pkgs + [
     '--library', 'octools',
     '--header', meson.current_build_dir() / 'octools.h',  # Use header from library
     '--vapi', '@OUTPUT@',
@@ -133,12 +189,18 @@ octools_vapi = custom_target('octools-vapi',
   install_dir: get_option('datadir') / 'vala' / 'vapi'
 )
 
+if get_option('v2testing')
+  octools_vapi_dep_deps = [ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, ocbwrap_vapi_dep, octools_deps]
+else
+  octools_vapi_dep_deps = [ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, octools_deps]
+endif
+
 # Create dependency for other libraries to use
 # Use link_args instead of link_with to prevent meson from auto-including octools-meson.vapi
 octools_vapi_dep = declare_dependency(
   link_args: ['-L' + meson.current_build_dir(), '-loctools'],
   sources: [octools_vapi[0]],  # Include VAPI file to ensure it's built first
-  dependencies: [ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, octools_deps]
+  dependencies: octools_vapi_dep_deps
 )
 
 octools_gir_file = meson.current_build_dir() / 'OLLMtools-1.0.gir'

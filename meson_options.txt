@@ -25,3 +25,9 @@ option('windows_prefix', type: 'string', value: '',
   description: 'Windows MinGW prefix (sqgipkg). When set, bundled libs are taken from here instead of the host.')
 option('sysroot_triplet', type: 'string', value: '',
   description: 'GNU triplet under sysroot/usr/lib (e.g. x86_64-linux-gnu). Defaults to SQGI_LINUX_TRIPLET when sysroot is set.')
+option(
+  'v2testing',
+  type: 'boolean',
+  value: false,
+  description: 'Build app against V2 RPC libocfiles + ollmfilesd (Meson source swap only; not passed to Vala)'
+)

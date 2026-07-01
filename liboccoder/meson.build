@@ -17,46 +17,87 @@ occoder_deps = [
   valac.find_library('posix'),
 ]
 
-occoder_src = files([
-  'BufferProvider.vala',
-  # TODO: Clipboard feature needs proper design - see TODO.md
-  # 'ClipboardMetadata.vala',
-  'GitProvider.vala',
-  'GtkSourceFileBuffer.vala',  # Must come before SourceView.vala (SourceView uses GtkSourceFileBuffer)
-  'SearchableDropdown.vala',
-  'ProjectDropdown.vala',
-  'FileDropdown.vala',
-  'SourceView.vala',
-  'AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
-  'Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
-  'Skill/PromptTemplate.vala',
-  'Skill/Definition.vala',
-  'Skill/Manager.vala',
-  'Skill/Factory.vala',
-  'Task/PhaseEnum.vala',  # Task: PhaseEnum (no other Task deps)
-  'Task/ProgressItem.vala',
-  'Task/ProgressRunner.vala',
-  'Task/Step.vala',     # Task: Step → Details
-  'Task/Details.vala',  # Task: Details → ResultParser, Tool
-  'Task/ValidateLink.vala',  # after Details (uses Details; Details delegates link validation)
-  'Task/ResolveLink.vala',
-  'Task/Tool.vala',     # Task: Tool → Details
-  'Task/ToolList.vala',
-  'Task/WriteChange.vala',  # after Tool.vala
-  'Task/List.vala',     # Task: List → Step, Details
-  'Task/ProgressList.vala',
-  'Task/ProgressView.vala',
-  'Skill/Runner.vala',  # after Task/ProgressList (Runner.progress)
-  'Action/Base.vala',
-  'Action/PostExamMerge.vala',
-  'Action/ExamSequence.vala',
-  'Action/RunTools.vala',
-  'Action/RefOnly.vala',
-  'Action/WriteExec.vala',
-  'Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
-  'List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
-  'Approvals.vala',
-])
+if get_option('v2testing')
+  occoder_src = files([
+    'BufferProvider.vala',
+    'GitProvider.vala',
+    'GtkSourceFileBuffer.vala',
+    'SearchableDropdown.vala',
+    'ProjectDropdown.vala',
+    'V2/FileDropdown.vala',
+    'V2/SourceView.vala',
+    'V2/AgentFactory.vala',
+    'Agent.vala',
+    'Skill/PromptTemplate.vala',
+    'Skill/Definition.vala',
+    'Skill/Manager.vala',
+    'Skill/Factory.vala',
+    'Task/PhaseEnum.vala',
+    'Task/ProgressItem.vala',
+    'Task/ProgressRunner.vala',
+    'Task/Step.vala',
+    'Task/Details.vala',
+    'V2/Task/ValidateLink.vala',
+    'V2/Task/ResolveLink.vala',
+    'Task/Tool.vala',
+    'Task/ToolList.vala',
+    'V2/Task/WriteChange.vala',
+    'Task/List.vala',
+    'Task/ProgressList.vala',
+    'Task/ProgressView.vala',
+    'Skill/Runner.vala',
+    'Action/Base.vala',
+    'Action/PostExamMerge.vala',
+    'Action/ExamSequence.vala',
+    'Action/RunTools.vala',
+    'Action/RefOnly.vala',
+    'Action/WriteExec.vala',
+    'Task/ResultParser.vala',
+    'List/SortedList.vala',
+    'V2/Approvals.vala',
+  ])
+else
+  occoder_src = files([
+    'BufferProvider.vala',
+    # TODO: Clipboard feature needs proper design - see TODO.md
+    # 'ClipboardMetadata.vala',
+    'GitProvider.vala',
+    'GtkSourceFileBuffer.vala',  # Must come before SourceView.vala (SourceView uses GtkSourceFileBuffer)
+    'SearchableDropdown.vala',
+    'ProjectDropdown.vala',
+    'FileDropdown.vala',
+    'SourceView.vala',
+    'AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
+    'Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
+    'Skill/PromptTemplate.vala',
+    'Skill/Definition.vala',
+    'Skill/Manager.vala',
+    'Skill/Factory.vala',
+    'Task/PhaseEnum.vala',  # Task: PhaseEnum (no other Task deps)
+    'Task/ProgressItem.vala',
+    'Task/ProgressRunner.vala',
+    'Task/Step.vala',     # Task: Step → Details
+    'Task/Details.vala',  # Task: Details → ResultParser, Tool
+    'Task/ValidateLink.vala',  # after Details (uses Details; Details delegates link validation)
+    'Task/ResolveLink.vala',
+    'Task/Tool.vala',     # Task: Tool → Details
+    'Task/ToolList.vala',
+    'Task/WriteChange.vala',  # after Tool.vala
+    'Task/List.vala',     # Task: List → Step, Details
+    'Task/ProgressList.vala',
+    'Task/ProgressView.vala',
+    'Skill/Runner.vala',  # after Task/ProgressList (Runner.progress)
+    'Action/Base.vala',
+    'Action/PostExamMerge.vala',
+    'Action/ExamSequence.vala',
+    'Action/RunTools.vala',
+    'Action/RefOnly.vala',
+    'Action/WriteExec.vala',
+    'Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
+    'List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
+    'Approvals.vala',
+  ])
+endif
 
 # Build rpath for libraries to find each other in build directory
 lib_build_rpath = ':'.join([
@@ -71,8 +112,46 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'liboctools'
 ])
 
+occoder_lib_deps = [occoder_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ocvector_vapi_dep, ocmarkdown_vapi_dep]
+occoder_vala_args = [
+  '--pkg=sqlite3',
+  '--pkg=ocsqlite',
+  '--pkg=json-glib-1.0',
+  '--pkg=libsoup-3.0',
+  '--pkg=gmodule-2.0',
+  '--pkg=tree-sitter',
+  '--pkg=gtk4',
+  '--pkg=libadwaita-1',
+  '--pkg=gtksourceview-5',
+  '--pkg=libgit2-glib-1.0',
+  '--pkg=ocfiles',
+  '--pkg=ollmchat',
+  '--pkg=ollamaweb',
+  '--pkg=ocmarkdown',
+  '--pkg=ocvector',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--vapidir', '/usr/share/vala/vapi',
+  '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
+  '--girdir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
+]
+if not get_option('v2testing')
+  occoder_vala_args += ['--pkg=fiass']
+else
+  occoder_vala_args += [
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  ]
+endif
+
 occoder_base_lib = library('occoder',
-  dependencies: [occoder_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ocvector_vapi_dep, ocmarkdown_vapi_dep],
+  dependencies: occoder_lib_deps,
   sources: occoder_src,
   vala_header: 'occoder.h',
   vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
@@ -81,42 +160,57 @@ occoder_base_lib = library('occoder',
   include_directories: [
     include_directories('..' / 'libollmchat'),
     include_directories('..' / 'libollamaweb'),
-    include_directories('..' / 'libocvector'),   # For C headers (build directory)
     include_directories('..' / 'libocfiles')     # For C headers (build directory)
   ],
-  vala_args: [
-    '--pkg=sqlite3',
-    '--pkg=ocsqlite',
-    '--pkg=json-glib-1.0',
-    '--pkg=libsoup-3.0',  # Required for ollmchat.vapi (Soup.Message, Soup.Session)
-    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
-    '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
-    '--pkg=gtk4',
-    '--pkg=libadwaita-1',
-    '--pkg=gtksourceview-5',
-    '--pkg=libgit2-glib-1.0',
-    '--pkg=ocfiles',
-    '--pkg=ollmchat',
-    '--pkg=ollamaweb',
-    '--pkg=ocmarkdown',
-    '--pkg=ocvector',
-    # Put build directories FIRST so we use local VAPIs instead of installed ones
-    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory for libgit2-glib-1.0 (last, so local takes priority)
-    '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--girdir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
-  ],
+  vala_args: occoder_vala_args,
   install: true
 )
+
+occoder_vapi_gen_pkgs = [
+  '--pkg', 'posix',
+  '--pkg', 'sqlite3',
+  '--pkg', 'ocsqlite',
+  '--pkg', 'gmodule-2.0',
+  '--pkg', 'tree-sitter',
+  '--pkg', 'ocfiles',
+  '--pkg', 'libsoup-3.0',
+  '--pkg', 'ollmchat',
+  '--pkg', 'ollamaweb',
+  '--pkg', 'ocmarkdown',
+  '--pkg', 'gtk4',
+  '--pkg', 'libadwaita-1',
+  '--pkg', 'gtksourceview-5',
+  '--pkg', 'gobject-2.0',
+  '--pkg', 'glib-2.0',
+  '--pkg', 'gio-2.0',
+  '--pkg', 'json-glib-1.0',
+  '--pkg', 'gee-0.8',
+  '--pkg', 'libgit2-glib-1.0',
+  '--pkg', 'ocvector',
+]
+if not get_option('v2testing')
+  occoder_vapi_gen_pkgs += ['--pkg', 'fiass']
+else
+  occoder_vapi_gen_pkgs += ['--pkg', 'ocrpc']
+endif
+
+occoder_vapi_vapidirs = [
+  '--vapidir', meson.current_source_dir() / '../vapi',
+  '--vapidir', meson.current_source_dir() / '../../vapi',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
+  '--vapidir', meson.current_build_dir(),
+  '--vapidir', '/usr/share/vala/vapi',
+]
+if get_option('v2testing')
+  occoder_vapi_vapidirs += ['--vapidir', meson.current_build_dir() / '..' / 'libocrpc']
+endif
+
+occoder_vapi_depends = [occoder_base_lib, ocfiles_vapi, ollmchat_base_lib, ollamaweb_vapi, ocmarkdown_vapi, ocvector_vapi]
 
 # Manually generate occoder.vapi with correct command line order
 occoder_vapi = custom_target('occoder-vapi',
@@ -126,47 +220,13 @@ occoder_vapi = custom_target('occoder-vapi',
     valac_exe,
     '-C', '--debug',
     '--target-glib=auto',
-  ] + sqgi_vala_args + [
-    # Put build directories FIRST so we use local VAPIs instead of installed ones
-    '--vapidir', meson.current_source_dir() / '../vapi',  # Source VAPIs first (fiass.vapi, tree-sitter.vapi)
-    '--vapidir', meson.current_source_dir() / '../../vapi',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
-    '--vapidir', meson.current_build_dir(),
-    '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory for libgit2-glib-1.0 (last, so local takes priority)
-    '--pkg', 'posix',
-    '--pkg', 'sqlite3',
-    '--pkg', 'ocsqlite',
-    '--pkg', 'gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg', 'tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
-    '--pkg', 'ocfiles',
-    '--pkg', 'libsoup-3.0',  # Required for ollmchat.vapi (Soup.Message, Soup.Session)
-    '--pkg', 'ollmchat',
-    '--pkg', 'ollamaweb',
-    '--pkg', 'ocmarkdown',
-    '--pkg', 'fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
-    '--pkg', 'ocvector',
-    '--pkg', 'gtk4',  # Required for Tool namespace
-    '--pkg', 'libadwaita-1',
-    '--pkg', 'gtksourceview-5',
-    '--pkg', 'gobject-2.0',
-    '--pkg', 'glib-2.0',
-    '--pkg', 'gio-2.0',
-    '--pkg', 'json-glib-1.0',
-    '--pkg', 'gee-0.8',
-    '--pkg', 'gtk4',
-    '--pkg', 'gtksourceview-5',
-    '--pkg', 'libgit2-glib-1.0',
+  ] + sqgi_vala_args + occoder_vapi_vapidirs + occoder_vapi_gen_pkgs + [
     '--library', 'occoder',
-    '--header', meson.current_build_dir() / 'occoder.h',  # Use header from library
+    '--header', meson.current_build_dir() / 'occoder.h',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
   ],
-  depends: [occoder_base_lib, ocfiles_vapi, ollmchat_base_lib, ollamaweb_vapi, ocmarkdown_vapi, ocvector_vapi],
+  depends: occoder_vapi_depends,
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'
