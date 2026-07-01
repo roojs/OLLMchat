@@ -313,10 +313,6 @@ namespace OLLMtools.RunCommand
 				: (OLLMfiles.Folder?) null;
 
 			try {
-				if (project != null) {
-					yield project.fetch_files();
-				}
-
 				var project_path = "";
 				var write_roots = new Gee.HashMap<string, string>();
 				if (project != null) {

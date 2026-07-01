@@ -114,6 +114,40 @@ namespace OLLMfilesd
 					});
 					return;
 				}
+				if (p.paths.length > 0) {
+					var list = new Gee.ArrayList<GLib.Object>();
+					foreach (var lookup_path in p.paths) {
+						if (
+							!project.project_files.all_files.has_key(
+								lookup_path
+							)
+						) {
+							continue;
+						}
+						var source = project.project_files.all_files.get(
+							lookup_path
+						);
+						var row = new File(this.manager);
+						row.copy_from(
+							source,
+							{
+								"manager",
+								"buffer",
+								"parent",
+								"last_modified"
+							}
+						);
+						list.add(row);
+					}
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						result = list,
+						result_type = "File",
+						is_array = true,
+						msg = list.size.to_string()
+					});
+					return;
+				}
 				p.limit = p.limit < 1 ? 50 : p.limit;
 				p.offset = p.offset < 0 ? 0 : p.offset;
 				var matched = project.project_files.cached_search(

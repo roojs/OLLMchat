@@ -192,7 +192,9 @@ namespace OLLMfiles
 			int offset = 0,
 			int limit = 50,
 			string query = "",
-			out int total = 0
+			out int total = 0,
+			string[] paths = {},
+			bool metadata_only = false
 		)
 		{
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
@@ -201,7 +203,9 @@ namespace OLLMfiles
 					path = this.path,
 					offset = offset,
 					limit = limit,
-					query = query
+					query = query,
+					paths = paths,
+					metadata_only = metadata_only
 				}
 			});
 			total = 0;

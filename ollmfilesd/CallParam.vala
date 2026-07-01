@@ -55,6 +55,10 @@ namespace OLLMfilesd
 		public int limit { get; set; default = 50; }
 		/** {@link Folder.fetch_files} — dropdown filter (default browse all). */
 		public string query { get; set; default = ""; }
+		/** {@link Folder.fetch_files} — paths to look up (empty = dropdown paged mode). */
+		public string[] paths { get; set; default = new string[] {}; }
+		/** {@link Folder.fetch_files} — index row only; no buffer (path-filter batch). */
+		public bool metadata_only { get; set; default = false; }
 	}
 
 	/** {@code vector.*} request params. */

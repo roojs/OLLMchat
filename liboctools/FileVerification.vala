@@ -43,16 +43,22 @@ namespace OLLMtools
 			this.manager = manager;
 		}
 
-		public override GLib.FileType indexed_file_type(string real_path)
+		public override async GLib.FileType has_file(string real_path)
 		{
+			if (this.project == null) {
+				return GLib.FileType.UNKNOWN;
+			}
+			if (!this.manager.file_cache.has_key(real_path)) {
+				yield this.project.fetch_file(real_path);
+			}
 			if (!this.manager.file_cache.has_key(real_path)) {
 				return GLib.FileType.UNKNOWN;
 			}
 			var item = this.manager.file_cache.get(real_path);
-			if (item is OLLMfiles.Folder) {
+			if (item.base_type == "d") {
 				return GLib.FileType.DIRECTORY;
 			}
-			if (item.is_alias) {
+			if (item.base_type == "fa") {
 				return GLib.FileType.SYMBOLIC_LINK;
 			}
 			return GLib.FileType.REGULAR;
