@@ -230,7 +230,7 @@ namespace OLLMcoder
 				
 				return this.project_manager.active_file.contents(200);
 			}
-			File? found_file = null;
+			OLLMfiles.File? found_file = null;
 			if (this.project_manager.file_cache.has_key(file)) {
 				var cached = this.project_manager.file_cache.get(file);
 				if (cached is File) {

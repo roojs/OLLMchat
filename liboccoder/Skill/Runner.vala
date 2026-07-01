@@ -176,7 +176,7 @@ namespace OLLMcoder.Skill
 		 *        file
 		 * @return filled template
 		 */
-		public PromptTemplate task_creation_prompt(
+		public async PromptTemplate task_creation_prompt(
 			string user_prompt,
 			string previous_proposal,
 			string previous_proposal_issues,
@@ -188,12 +188,15 @@ namespace OLLMcoder.Skill
 			if (file != null) {
 				project_manager.buffer_provider.create_buffer(file);
 			}
+			var description = "";
+			if (project_manager.active_project != null) {
+				description = yield project_manager.active_project.project_description();
+			}
 			var tpl = PromptTemplate.template("task_creation_initial.md");
 			tpl.fill(7,
 				"user_prompt", tpl.header_fenced("User Prompt", user_prompt, "text"),
 				"environment", tpl.header_raw("Environment", this.env()),
-				"project_description", (project_manager.active_project == null ?
-					"" : project_manager.active_project.project_description()),
+				"project_description", description,
 				"current_file", file == null ? "" : tpl.header_file("Current File - " + file.path, file),
 				"previous_proposal", previous_proposal == "" ? "" :
 					tpl.header_raw("Previous Proposal", previous_proposal),
@@ -449,11 +452,15 @@ namespace OLLMcoder.Skill
 		 *        iteration when retrying; empty string when not
 		 * @return filled template
 		 */
-		public PromptTemplate iteration_prompt(string previous_proposal_issues,
+		public async PromptTemplate iteration_prompt(string previous_proposal_issues,
 			OLLMcoder.Task.List existing_proposed,
 			string previous_proposed_md) throws GLib.Error
 		{
 			this.sr_factory.skill_manager.scan();
+			var description = "";
+			if (this.sr_factory.project_manager.active_project != null) {
+				description = yield this.sr_factory.project_manager.active_project.project_description();
+			}
 			var tpl = PromptTemplate.template("task_list_iteration.md");
 			tpl.system_fill(1, "skill_catalog", this.sr_factory.skill_manager.to_markdown());
 			tpl.fill(9,
@@ -471,8 +478,7 @@ namespace OLLMcoder.Skill
 				"previous_proposed_task_list", previous_proposed_md == "" ? "" :
 					tpl.header_raw("Proposed (your last response — had issues)", previous_proposed_md),
 				"environment", tpl.header_raw("Environment", this.env()),
-				"project_description", this.sr_factory.project_manager.active_project == null ? "" :
-					this.sr_factory.project_manager.active_project.project_description(),
+				"project_description", description,
 				"previous_proposal_issues", previous_proposal_issues == "" ? "" :
 					tpl.header_raw("Issues with the tasks", previous_proposal_issues));
 			return tpl;
@@ -490,11 +496,15 @@ namespace OLLMcoder.Skill
 		 *        retrying; empty string when not retrying
 		 * @return filled template
 		 */
-		public PromptTemplate continue_prompt(string user_follow_up,
+		public async PromptTemplate continue_prompt(string user_follow_up,
 			string previous_proposal_issues,
 			string previous_proposed_md) throws GLib.Error
 		{
 			this.sr_factory.skill_manager.scan();
+			var description = "";
+			if (this.sr_factory.project_manager.active_project != null) {
+				description = yield this.sr_factory.project_manager.active_project.project_description();
+			}
 			var tpl = PromptTemplate.template("task_list_continue.md");
 			tpl.system_fill(1, "skill_catalog", this.sr_factory.skill_manager.to_markdown());
 			tpl.fill(9,
@@ -512,9 +522,7 @@ namespace OLLMcoder.Skill
 					this.pending.to_markdown(OLLMcoder.Task.PhaseEnum.LIST),
 				"user_follow_up", tpl.header_fenced("This follow-up message", user_follow_up, "text"),
 				"environment", tpl.header_raw("Environment", this.env()),
-				"project_description",
-					this.sr_factory.project_manager.active_project == null ? "" :
-					this.sr_factory.project_manager.active_project.project_description(),
+				"project_description", description,
 				"previous_proposal_issues", previous_proposal_issues == "" ? "" :
 					tpl.header_raw("Issues with the tasks", previous_proposal_issues),
 				"previous_proposed_task_list", previous_proposed_md == "" ? "" :
@@ -553,7 +561,7 @@ namespace OLLMcoder.Skill
 			for (; cont.try_no < cont.try_max; cont.try_no++) {
 				this.progress.active_item_changed(cont);
 				this.progress.clear_pending(false);
-				var tpl = this.continue_prompt(
+				var tpl = yield this.continue_prompt(
 					in_message.content, parser.issues, response);
 				this.fill_tools(); // (clears tools)
 				if (cont.try_no > 0) {
@@ -638,7 +646,7 @@ namespace OLLMcoder.Skill
 			for (; ir.try_no < ir.try_max; ir.try_no++) {
 				this.progress.active_item_changed(ir);
 				this.progress.clear_pending(false);
-				var tpl = this.iteration_prompt(parser.issues, existing_proposed, response);
+				var tpl = yield this.iteration_prompt(parser.issues, existing_proposed, response);
 				this.fill_tools(); // (clears tools)
 				if (ir.try_no > 0) {
 					this.add_message(new OLLMchat.Message("ui",
@@ -743,7 +751,7 @@ namespace OLLMcoder.Skill
 						break;
 					}
 					try {
-						var tpl = this.task_creation_prompt(
+						var tpl = yield this.task_creation_prompt(
 							m.content,
 							"",
 							"",

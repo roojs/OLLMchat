@@ -88,7 +88,7 @@ namespace OLLMfiles
 		 * Project-level description from vector_metadata (ProjectAnalysis). Uses this.manager.db. Caller guarantees manager.db and id are set.
 		 * When multiple project rows exist (e.g. from repeated --project-summary runs), returns the most recent (highest id).
 		 */
-		public string project_description()
+		public async string project_description()
 		{
 			var results = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
 			OLLMfiles.SQT.VectorMetadata.query(this.manager.db).select(
