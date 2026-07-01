@@ -42,6 +42,8 @@ namespace OLLMfilesd
 		public uint unix_mode { get; set; default = 0; }
 		public bool buffer_dirty { get; set; default = false; }
 		public int64 last_known_mtime { get; set; default = 0; }
+		/** {@link FileHistory.approve} / {@link FileHistory.revert} — {@code file_history.id}. */
+		public int64 id { get; set; default = 0; }
 	}
 
 	/** {@code Folder.*} request params (project-scoped). */

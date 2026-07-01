@@ -21,9 +21,8 @@ namespace OLLMfiles
 	/**
 	 * Manages files in a project that need approval (flat list for approvals UI).
 	 *
-	 * V2 client: implements {@link GLib.ListModel} over {@link File} rows where
-	 * the daemon has {@code is_need_approval == true}. Owns the
-	 * {@code Folder.fetch_pending_approvals} RPC — call {@link refresh} to
+	 * V2 client: implements {@link GLib.ListModel} over {@link FileWithHistory}
+	 * rows from {@code Folder.fetch_pending_approvals}. Call {@link refresh} to
 	 * reload the list model, or {@link fetch_pending} for the snapshot only.
 	 */
 	public class ReviewFiles : Object, GLib.ListModel
@@ -34,20 +33,20 @@ namespace OLLMfiles
 		public Folder project { get; construct; }
 
 		/**
-		 * Backing store: {@link File} objects pending approval.
+		 * Backing store: {@link FileWithHistory} rows pending approval.
 		 * Uses database id for equality checks.
 		 */
-		private Gee.ArrayList<File> items { get; set;
-			default = new Gee.ArrayList<File>((a, b) => {
+		private Gee.ArrayList<FileWithHistory> items { get; set;
+			default = new Gee.ArrayList<FileWithHistory>((a, b) => {
 				return a.id == b.id;
 			});
 		}
 
 		/**
-		 * Hashmap of file path => {@link File} object for quick lookup.
+		 * Hashmap of file path => {@link FileWithHistory} row for quick lookup.
 		 */
-		public Gee.HashMap<string, File> file_map { get; private set;
-			default = new Gee.HashMap<string, File>(); }
+		public Gee.HashMap<string, FileWithHistory> file_map { get; private set;
+			default = new Gee.HashMap<string, FileWithHistory>(); }
 
 		/**
 		 * Constructor.
@@ -64,23 +63,18 @@ namespace OLLMfiles
 		 *
 		 * Does not update this {@link GLib.ListModel} — use {@link refresh} for that.
 		 *
-		 * @return Files needing approval in {@link project}
+		 * @return Rows needing approval in {@link project}
 		 */
-		public async Gee.ArrayList<File> fetch_pending()
+		public async Gee.ArrayList<FileWithHistory> fetch_pending()
 		{
 			var response = yield this.project.manager.rpc.call(new OLLMrpc.Request() {
 				method = "Folder.fetch_pending_approvals",
 				param = new OLLMfilesd.FolderParams() { path = this.project.path }
 			});
 			if (response.error != null) {
-				return new Gee.ArrayList<File>();
+				return new Gee.ArrayList<FileWithHistory>();
 			}
-			var files = (Gee.ArrayList<File>) response.result;
-			foreach (var file in files) {
-				file.manager = this.project.manager;
-				this.project.manager.file_cache.set(file.path, file);
-			}
-			return files;
+			return (Gee.ArrayList<FileWithHistory>) response.result;
 		}
 
 		/**
@@ -112,7 +106,7 @@ namespace OLLMfiles
 		 */
 		public Type get_item_type()
 		{
-			return typeof(File);
+			return typeof(FileWithHistory);
 		}
 
 		/**
@@ -127,7 +121,7 @@ namespace OLLMfiles
 		 * ListModel interface implementation: Get item at position.
 		 *
 		 * @param position Index into the list
-		 * @return The {@link File} at @position, or null if out of range
+		 * @return The {@link FileWithHistory} at @position, or null if out of range
 		 */
 		public Object? get_item(uint position)
 		{
@@ -152,12 +146,12 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Check if a file is in the list.
+		 * Check if a row is in the list.
 		 *
-		 * @param file The {@link File} object to check
+		 * @param file The {@link FileWithHistory} row to check
 		 * @return true if @file is in the list, false otherwise
 		 */
-		public bool contains(File file)
+		public bool contains(FileWithHistory file)
 		{
 			return this.items.contains(file);
 		}
@@ -167,9 +161,9 @@ namespace OLLMfiles
 		 *
 		 * Local UI update only — prefer {@link refresh} after daemon index changes.
 		 *
-		 * @param item The {@link File} item to append
+		 * @param item The {@link FileWithHistory} item to append
 		 */
-		public void append(File item)
+		public void append(FileWithHistory item)
 		{
 			var position = this.items.size;
 			this.items.add(item);
@@ -180,9 +174,9 @@ namespace OLLMfiles
 		/**
 		 * Remove an item from the list by item reference.
 		 *
-		 * @param item The {@link File} item to remove
+		 * @param item The {@link FileWithHistory} item to remove
 		 */
-		public void remove(File item)
+		public void remove(FileWithHistory item)
 		{
 			var position = this.items.index_of(item);
 			if (position < 0) {

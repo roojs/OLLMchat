@@ -249,6 +249,11 @@ namespace OLLMfilesd
 				(new FolderParams()).get_type()
 			);
 			OLLMrpc.Request.register(
+				"FileHistory",
+				new FileHistory.for_rpc(this.project_manager),
+				(new FileParams()).get_type()
+			);
+			OLLMrpc.Request.register(
 				"Codebase", new Codebase(this.project_manager, this.config),
 				(new VectorParams()).get_type()
 			);

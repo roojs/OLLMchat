@@ -181,25 +181,32 @@ namespace OLLMfilesd
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						result = new Gee.ArrayList<GLib.Object>(),
-						result_type = "File",
+						result_type = "FileWithHistory",
 						is_array = true,
 						msg = "project not found"
 					});
 					return;
 				}
-				project.project_files.review_files.refresh();
-				var list = new Gee.ArrayList<GLib.Object>();
-				for (uint i = 0; i < project.project_files.review_files.get_n_items(); i++) {
-					var pf = project.project_files.review_files.get_item(i)
-						as ProjectFile;
-					if (pf != null) {
-						list.add(pf.file);
-					}
+				Gee.ArrayList<GLib.Object> result;
+				try {
+					result = FileWithHistory.pending(
+						this.manager,
+						project
+					);
+				} catch (GLib.Error e) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							e.message
+						)
+					});
+					return;
 				}
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					result = list,
-					result_type = "File",
+					result = result,
+					result_type = "FileWithHistory",
 					is_array = true
 				});
 			});
@@ -233,7 +240,7 @@ namespace OLLMfilesd
 				}
 				Gee.ArrayList<Folder> roots;
 				try {
-					roots = project.build_roots();
+					roots = project.roots();
 				} catch (GLib.Error e) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -1204,7 +1211,7 @@ namespace OLLMfilesd
 		 * 
 		 * @return ArrayList of Folder objects that need write access
 		 */
-		public Gee.ArrayList<Folder> build_roots() throws Error
+		public Gee.ArrayList<Folder> roots() throws Error
 		{
 			var folders = new Gee.ArrayList<Folder>();
 			

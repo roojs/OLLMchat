@@ -434,6 +434,220 @@ namespace OLLMfilesd
 			}
 		}
 		
+		private ProjectManager rpc_manager;
+
+		public signal void rpc_approve(OLLMrpc.Request request);
+		public signal void rpc_revert(OLLMrpc.Request request);
+
+		/**
+		 * Wire dispatch singleton ({@code FileHistory.approve} / {@code revert}).
+		 */
+		public FileHistory.for_rpc(ProjectManager manager)
+		{
+			Object();
+			this.rpc_manager = manager;
+			this.rpc_approve.connect((request) => {
+				var p = (FileParams) request.param;
+				var file = this.rpc_manager.get_file_from_active_project(
+					p.path
+				);
+				if (file == null) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							"file not found"
+						)
+					});
+					return;
+				}
+				var rows = new Gee.ArrayList<FileHistory>();
+				FileHistory.query(this.rpc_manager.db).select(
+					"WHERE id = %lld".printf(p.id),
+					rows
+				);
+				if (rows.size == 0) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							"history row not found"
+						)
+					});
+					return;
+				}
+				rows.get(0).approve(this.rpc_manager.db, file);
+				var row = new File(this.rpc_manager);
+				row.copy_from(file, {
+					"manager",
+					"buffer",
+					"parent"
+				});
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					result = row,
+					result_type = "File",
+					msg = "ok"
+				});
+			});
+			this.rpc_revert.connect((request) => {
+				var p = (FileParams) request.param;
+				var rows = new Gee.ArrayList<FileHistory>();
+				FileHistory.query(this.rpc_manager.db).select(
+					"WHERE id = %lld".printf(p.id),
+					rows
+				);
+				if (rows.size == 0) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							"history row not found"
+						)
+					});
+					return;
+				}
+				rows.get(0).revert.begin(
+					request,
+					this.rpc_manager,
+					(obj, res) => {
+						rows.get(0).revert.end(res);
+					}
+				);
+			});
+		}
+
+		/**
+		 * Approve pending history through this row (head) for @file.
+		 */
+		public void approve(SQ.Database db, File file)
+		{
+			var pending = new Gee.ArrayList<FileHistory>();
+			FileHistory.query(db).select(
+				"WHERE filebase_id = %lld AND status = 0 "
+				+ "AND timestamp <= %lld".printf(
+					file.id,
+					this.timestamp
+				),
+				pending
+			);
+			foreach (var row in pending) {
+				row.status = 1;
+				FileHistory.query(db).updateById(row);
+			}
+			file.is_need_approval = false;
+			file.last_change_type = "";
+			file.saveToDB(db, null, false);
+		}
+
+		/**
+		 * Revert @file from this row's backup; reply with updated {@link File} row.
+		 * Client loads buffer via {@code File.read} — no content on this response.
+		 */
+		public async void revert(
+			OLLMrpc.Request request,
+			ProjectManager manager
+		) {
+			var p = (FileParams) request.param;
+			var file = manager.get_file_from_active_project(p.path);
+			if (file == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"file not found"
+					)
+				});
+				return;
+			}
+			if (this.change_type == "added") {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"Cannot revert added files"
+					)
+				});
+				return;
+			}
+			if (this.backup_path == ""
+				|| !GLib.FileUtils.test(
+					this.backup_path,
+					GLib.FileTest.EXISTS
+				)) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"backup file does not exist"
+					)
+				});
+				return;
+			}
+			var now = new GLib.DateTime.now_local();
+			var revert_history = new FileHistory(
+				manager.db,
+				file,
+				"revert",
+				now
+			);
+			revert_history.status = 1;
+			try {
+				yield revert_history.commit();
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			var backup_file = GLib.File.new_for_path(this.backup_path);
+			var target_file = GLib.File.new_for_path(this.path);
+			var parent_dir = target_file.get_parent();
+			try {
+				if (parent_dir != null && !parent_dir.query_exists()) {
+					parent_dir.make_directory_with_parents(null);
+				}
+				backup_file.copy(
+					target_file,
+					GLib.FileCopyFlags.OVERWRITE,
+					null,
+					null
+				);
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			file.last_modified = now.to_unix();
+			file.saveToDB(manager.db, null, false);
+			this.status = -1;
+			FileHistory.query(manager.db).updateById(this);
+			file.last_change_type = "";
+			file.is_need_approval = false;
+			file.saveToDB(manager.db, null, false);
+			var row = new File(manager);
+			row.copy_from(file, {
+				"manager",
+				"buffer",
+				"parent"
+			});
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				result = row,
+				result_type = "File",
+				msg = "ok"
+			});
+		}
+		
 		/**
 		 * Initialize file_history table in database.
 		 * 
