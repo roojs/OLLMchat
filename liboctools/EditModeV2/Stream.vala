@@ -678,10 +678,8 @@ namespace OLLMtools.EditMode
 			
 			this.send_success_ui_message(is_in_project);
 			
-			if (is_in_project && this.file.manager.active_project != null) {
-				yield new OLLMfiles.ReviewFiles(
-					this.file.manager.active_project
-				).refresh();
+			if (is_in_project) {
+				yield this.file.manager.review_files.refresh();
 			}
 			
 			if (this.request.creating_file) {

@@ -45,11 +45,6 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Files pending approval (refreshed after {@link refresh}).
-		 */
-		public ReviewFiles review_files { get; private set; }
-
-		/**
 		 * Total rows matching the current {@link refresh} query (from daemon).
 		 */
 		public int total { get; private set; default = 0; }
@@ -85,7 +80,6 @@ namespace OLLMfiles
 		public ProjectFiles(Folder project)
 		{
 			Object(project: project);
-			this.review_files = new ReviewFiles(project);
 		}
 
 		/**
@@ -127,8 +121,6 @@ namespace OLLMfiles
 			if (old_n_items > 0 || new_n_items > 0) {
 				this.items_changed(0, old_n_items, new_n_items);
 			}
-
-			yield this.review_files.refresh();
 		}
 
 		/**

@@ -28,9 +28,11 @@ namespace OLLMfiles
 	public class ReviewFiles : Object, GLib.ListModel
 	{
 		/**
-		 * Project folder this list belongs to.
+		 * Emitted after {@link refresh} finishes (success or empty RPC result).
 		 */
-		public Folder project { get; construct; }
+		public signal void refreshed();
+
+		public weak ProjectManager manager { get; construct; }
 
 		/**
 		 * Backing store: {@link FileWithHistory} rows pending approval.
@@ -51,11 +53,11 @@ namespace OLLMfiles
 		/**
 		 * Constructor.
 		 *
-		 * @param project Project folder ({@code is_project == true})
+		 * @param manager Owning {@link ProjectManager}
 		 */
-		public ReviewFiles(Folder project)
+		public ReviewFiles(ProjectManager manager)
 		{
-			Object(project: project);
+			Object(manager: manager);
 		}
 
 		/**
@@ -67,9 +69,13 @@ namespace OLLMfiles
 		 */
 		public async Gee.ArrayList<FileWithHistory> fetch_pending()
 		{
-			var response = yield this.project.manager.rpc.call(new OLLMrpc.Request() {
+			var project = this.manager.active_project;
+			if (project == null) {
+				return new Gee.ArrayList<FileWithHistory>();
+			}
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "Folder.fetch_pending_approvals",
-				param = new OLLMfilesd.FolderParams() { path = this.project.path }
+				param = new OLLMfilesd.FolderParams() { path = project.path }
 			});
 			if (response.error != null) {
 				return new Gee.ArrayList<FileWithHistory>();
@@ -99,6 +105,7 @@ namespace OLLMfiles
 			if (old_n_items > 0 || new_n_items > 0) {
 				this.items_changed(0, old_n_items, new_n_items);
 			}
+			this.refreshed();
 		}
 
 		/**

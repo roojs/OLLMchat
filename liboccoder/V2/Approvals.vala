@@ -27,12 +27,11 @@ namespace OLLMcoder
 	 * - Next/popover button (existing functionality with task-due icon, popover on mouseover)
 	 * 
 	 * Monitors ReviewFiles and updates button visibility accordingly.
-	 * V2: owns {@link OLLMfiles.ReviewFiles} per project ({@code fetch_pending_approvals} RPC).
+	 * V2: binds {@link OLLMfiles.ProjectManager.review_files} ({@code fetch_pending_approvals} RPC).
 	 */
 	public class Approvals : Gtk.Box
 	{
 		private OLLMfiles.ProjectManager project_manager;
-		private OLLMfiles.ReviewFiles review_files;
 		
 		// Buttons (in order: approve, reject, next)
 		private Gtk.Button approve_button;
@@ -43,19 +42,18 @@ namespace OLLMcoder
 		private Gtk.Popover popover;
 		private Gtk.ListView list_view;
 		private Gtk.SingleSelection selection;
-		private List.SortedList<OLLMfiles.File> sorted_model;
+		private List.SortedList<OLLMfiles.FileWithHistory> sorted_model;
 		private Gtk.EventControllerMotion button_motion;
 		private Gtk.EventControllerMotion popover_motion;
 		private bool blocking_selection_handler = false;
 		private uint hide_timeout_id = 0;
 		private uint cooldown_timeout_id = 0;
 		private bool in_cooldown = false;
-		private ulong review_files_handler_id = 0;
 		
 		/**
-		 * Currently selected file (or null).
+		 * Currently selected row (or null).
 		 */
-		private OLLMfiles.File? selected_file { get; set; default = null; }
+		private OLLMfiles.FileWithHistory? selected_file { get; set; default = null; }
 		
 		/**
 		 * Emitted when a file is selected/clicked.
@@ -102,7 +100,7 @@ namespace OLLMcoder
 			this.popover.set_parent(this.next_button);
 			
 			// Create empty ListStore as initial model (will be replaced when project is available)
-			var empty_store = new GLib.ListStore(typeof(OLLMfiles.File));
+			var empty_store = new GLib.ListStore(typeof(OLLMfiles.FileWithHistory));
 			
 			// Create sorted model with empty store and sorter
 			this.sorted_model = this.create_sorted_model(empty_store);
@@ -127,6 +125,18 @@ namespace OLLMcoder
 			
 			// Connect to active_file_changed signal (internal handling)
 			this.project_manager.active_file_changed.connect(this.on_active_file_changed);
+
+			this.project_manager.review_files.refreshed.connect(() => {
+				this.update_button_visibility();
+				if (this.selected_file == null) {
+					return;
+				}
+				if (!this.project_manager.review_files.file_map.has_key(
+					this.selected_file.path
+				)) {
+					this.clear_selection();
+				}
+			});
 			
 			// Set up motion controllers on next_button
 			this.button_motion = new Gtk.EventControllerMotion();
@@ -198,7 +208,7 @@ namespace OLLMcoder
 				return;
 			}
 
-			if (this.review_files.file_map.has_key(file.path)) {
+			if (this.project_manager.review_files.file_map.has_key(file.path)) {
 				// File is in ReviewFiles: select it (blocks handler, no signal emitted)
 				this.select_file(file);
 				return;
@@ -212,14 +222,13 @@ namespace OLLMcoder
 		 */
 		private void activate_project(OLLMfiles.Folder? project)
 		{
-			if (this.review_files_handler_id != 0) {
-				this.review_files.disconnect(this.review_files_handler_id);
-				this.review_files_handler_id = 0;
-			}
+			var empty_store = new GLib.ListStore(typeof(OLLMfiles.FileWithHistory));
 
-			var empty_store = new GLib.ListStore(typeof(OLLMfiles.File));
+			var source_model = project != null ?
+				this.project_manager.review_files as GLib.ListModel :
+				empty_store;
 
-			this.sorted_model = this.create_sorted_model(empty_store);
+			this.sorted_model = this.create_sorted_model(source_model);
 			this.selection.model = this.sorted_model;
 			this.visible = false;
 
@@ -227,27 +236,7 @@ namespace OLLMcoder
 				return;
 			}
 
-			this.review_files = new OLLMfiles.ReviewFiles(project);
-			this.sorted_model = this.create_sorted_model(this.review_files);
-			this.selection.model = this.sorted_model;
-
-			this.review_files_handler_id = this.review_files.items_changed.connect(() => {
-				this.update_button_visibility();
-				
-				// Check if selected file still needs approval
-				if (this.selected_file == null) {
-					return;
-				}
-				if (!this.selected_file.is_need_approval) {
-					// Selected file no longer needs approval: clear selection internally
-					this.clear_selection();
-				}
-			});
-
-			this.review_files.refresh.begin((obj, res) => {
-				this.review_files.refresh.end(res);
-				this.update_button_visibility();
-			});
+			this.update_button_visibility();
 		}
 		
 		/**
@@ -263,24 +252,28 @@ namespace OLLMcoder
 				return;
 			}
 
-			this.next_button.visible = (this.review_files.get_n_items() > 0);
+			var review = this.project_manager.review_files;
+			this.next_button.visible = (review.get_n_items() > 0);
 			
-			// Approve and reject button visibility: both require selected file
-			this.approve_button.visible = (this.selected_file != null);
-			this.reject_button.visible = (this.selected_file != null);
+			var row_selected = (this.selected_file != null);
+			this.approve_button.visible = row_selected;
+			this.reject_button.visible = row_selected;
+			if (row_selected) {
+				this.approve_button.sensitive = true;
+				this.reject_button.sensitive = true;
+			}
 			
-			// Overall widget visibility: show if any button should be visible
 			this.visible = (this.next_button.visible || this.approve_button.visible);
 		}
 		
 		/**
 		 * Create sorted model with sorter for last_modified (descending).
 		 */
-		private OLLMcoder.List.SortedList<OLLMfiles.File> create_sorted_model(GLib.ListModel source_model)
+		private OLLMcoder.List.SortedList<OLLMfiles.FileWithHistory> create_sorted_model(GLib.ListModel source_model)
 		{
 			var sorter = new Gtk.CustomSorter((a, b) => {
-				var file_a = a as OLLMfiles.File;
-				var file_b = b as OLLMfiles.File;
+				var file_a = a as OLLMfiles.FileWithHistory;
+				var file_b = b as OLLMfiles.FileWithHistory;
 				return file_a.last_modified > file_b.last_modified ? -1 :
 					(file_a.last_modified < file_b.last_modified ? 1 : 0);
 			});
@@ -290,7 +283,9 @@ namespace OLLMcoder
 				return true;
 			});
 			
-			return new OLLMcoder.List.SortedList<OLLMfiles.File>(source_model, sorter, filter);
+			return new OLLMcoder.List.SortedList<OLLMfiles.FileWithHistory>(
+				source_model, sorter, filter
+			);
 		}
 		
 		/**
@@ -317,7 +312,7 @@ namespace OLLMcoder
 				if (list_item == null || list_item.item == null) {
 					return;
 				}
-				var file = list_item.item as OLLMfiles.File;
+				var file = list_item.item as OLLMfiles.FileWithHistory;
 				if (file == null) {
 					return;
 				}
@@ -347,12 +342,14 @@ namespace OLLMcoder
 				return;
 			}
 
-			if (!this.review_files.file_map.has_key(file.path)) {
+			if (!this.project_manager.review_files.file_map.has_key(file.path)) {
 				this.blocking_selection_handler = false;
 				return;
 			}
 
-			var review_file = this.review_files.file_map.get(file.path);
+			var review_file = this.project_manager.review_files.file_map.get(
+				file.path
+			);
 			uint position = this.sorted_model.find_position(review_file);
 			if (position != Gtk.INVALID_LIST_POSITION) {
 				this.selection.selected = position;
@@ -403,10 +400,12 @@ namespace OLLMcoder
 				this.update_button_visibility();
 				return;
 			}
-			
-			var file = this.sorted_model.get_item_typed(this.selection.selected);
-			this.selected_file = file;
-			this.file_selected(file);
+			var row = this.sorted_model.get_item_typed(this.selection.selected);
+			this.selected_file = row;
+			var file = this.project_manager.file_cache.get(row.path);
+			if (file != null) {
+				this.file_selected((OLLMfiles.File) file);
+			}
 			this.update_button_visibility();
 		}
 		
@@ -415,18 +414,16 @@ namespace OLLMcoder
 		 */
 		private void on_approve_clicked()
 		{
-			// Disable buttons during operation
 			this.approve_button.sensitive = false;
 			this.reject_button.sensitive = false;
-			
-			// Approve file (handles FileHistory approval and database updates)
-			this.selected_file.approve();
-
-			this.review_files.refresh.begin((obj, res) => {
-				this.review_files.refresh.end(res);
-				this.approve_button.sensitive = true;
-				this.reject_button.sensitive = true;
-				this.update_button_visibility();
+			var hist = new OLLMfiles.FileHistory() {
+				id = this.selected_file.approve_id,
+				path = this.selected_file.path,
+				manager = this.project_manager
+			};
+			hist.approve.begin((obj, res) => {
+				hist.approve.end(res);
+				this.project_manager.review_files.refresh.begin();
 			});
 		}
 		
@@ -435,30 +432,16 @@ namespace OLLMcoder
 		 */
 		private void on_reject_clicked()
 		{
-			// Disable buttons during operation
 			this.approve_button.sensitive = false;
 			this.reject_button.sensitive = false;
-			
-			// Revert the file (handles FileHistory revert and database updates)
-			this.selected_file.revert.begin((obj, res) => {
-				try {
-					this.selected_file.revert.end(res);
-
-					this.review_files.refresh.begin((obj2, res2) => {
-						this.review_files.refresh.end(res2);
-						this.approve_button.sensitive = true;
-						this.reject_button.sensitive = true;
-						this.update_button_visibility();
-					});
-
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to revert file: %s", e.message);
-					// Re-enable buttons on error
-				
-				}
-				this.approve_button.sensitive = true;
-				this.reject_button.sensitive = true;
-				this.update_button_visibility();
+			var hist = new OLLMfiles.FileHistory() {
+				id = this.selected_file.reject_id,
+				path = this.selected_file.path,
+				manager = this.project_manager
+			};
+			hist.revert.begin((obj, res) => {
+				hist.revert.end(res);
+				this.project_manager.review_files.refresh.begin();
 			});
 		}
 		

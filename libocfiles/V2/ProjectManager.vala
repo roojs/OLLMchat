@@ -51,6 +51,11 @@ namespace OLLMfiles
 		 * Currently active project (folder with is_project = true).
 		 */
 		public Folder? active_project { get; private set; default = null; }
+
+		/**
+		 * Pending-approval list (shared by Approvals + tools). Same instance for all projects.
+		 */
+		public ReviewFiles review_files { get; private set; }
 		
 		/**
 		 * Currently active file.
@@ -91,6 +96,7 @@ namespace OLLMfiles
 		{
 			Object();
 			this.delete_manager = new DeleteManager(this);
+			this.review_files = new ReviewFiles(this);
 		}
 		
 		/**
@@ -149,6 +155,10 @@ namespace OLLMfiles
 			}
 			this.disable_initial_scan = false;
 			this.active_project_changed(project);
+
+			if (project != null && project.is_project) {
+				this.review_files.refresh.begin();
+			}
 
 			this.rpc.call.begin(new OLLMrpc.Request() {
 				method = "ProjectManager.activate_project",

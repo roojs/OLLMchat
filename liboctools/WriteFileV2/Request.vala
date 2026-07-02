@@ -365,10 +365,8 @@ namespace OLLMtools.WriteFile
 				OLLMchat.Message.fenced("text.oc-frame-success Write File",
 				"Successfully wrote file: " + this.normalized_path + 
 					"\nProject file: " + (is_in_project ? "yes" : "no"))));
-			if (is_in_project && project_manager.active_project != null) {
-				yield new OLLMfiles.ReviewFiles(
-					project_manager.active_project
-				).refresh();
+			if (is_in_project) {
+				yield project_manager.review_files.refresh();
 			}
 			this.creating_file = false;
 			((Tool) this.tool).change_done(this.normalized_path, change);
