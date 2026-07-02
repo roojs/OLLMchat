@@ -218,7 +218,7 @@ Examples:
 					throw new GLib.IOError.NOT_FOUND("Task out of range");
 				}
 				var detail = step.children.get(opt_task_num);
-				var tpl = detail.refinement_prompt();
+				var tpl = yield detail.refinement_prompt();
 				if (opt_run != "refine") {
 					stdout.printf("=== system ===\n%s\n=== user ===\n%s\n", 
 						tpl.filled_system, tpl.filled_user);

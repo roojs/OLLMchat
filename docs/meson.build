@@ -50,6 +50,8 @@ valadoc_docs = custom_target('valadoc',
     '../libocsqlite/Database.vala',
     '../libocsqlite/Query.vala',
     '../libocsqlite/Schema.vala',
+    # libocrpc sources (OLLMrpc.register — before libocfiles/SQT/VectorMetadata.vala)
+    '../libocrpc/namespace.vala',
     # libocfiles sources (must come before liboccoder and liboctools which use it)
     '../libocfiles/namespace.vala',  # Namespace documentation
     '../libocfiles/BufferProviderBase.vala',

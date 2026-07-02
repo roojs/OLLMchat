@@ -259,7 +259,7 @@ namespace OLLMcoder.Skill
 				this.progress.active_item_changed(rp);
 				for (; rp.try_no < rp.try_max; rp.try_no++) {
 					this.progress.active_item_changed(rp);
-					var tpl = this.task_creation_prompt(
+					var tpl = yield this.task_creation_prompt(
 						in_message.content,
 						previous_proposal,
 						previous_proposal_issues,

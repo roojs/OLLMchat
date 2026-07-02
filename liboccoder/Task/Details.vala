@@ -423,8 +423,13 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 	 * Build refinement prompt template (no current_file; reference_contents
 	 * includes current file when in the task's References).
 	 */
-	public OLLMcoder.Skill.PromptTemplate refinement_prompt() throws GLib.Error
+	public async OLLMcoder.Skill.PromptTemplate refinement_prompt() throws GLib.Error
 	{
+		var project_description = "";
+		if (this.runner.sr_factory.project_manager.active_project != null) {
+			project_description = yield this.runner.sr_factory.project_manager
+				.active_project.project_description();
+		}
 		var tpl = OLLMcoder.Skill.PromptTemplate.template(
 			this.skill.tools.size > 0 && !this.skill.tools.contains("write_file")
 				? "task_refinement.md"
@@ -435,8 +440,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			"issues", tpl.header_raw("Issues with the current call", this.result_parser.issues),
 			"task_data", tpl.header_raw("Task", this.to_markdown(PhaseEnum.REFINEMENT)),
 			"environment", this.runner.env(),
-			"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
-				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
+			"project_description", project_description,
 			"task_reference_contents", this.reference_contents(PhaseEnum.REFINEMENT),
 			"skill_details", this.skill.refine,
 			"tool_instructions", this.tool_instructions(this.skill),
@@ -485,7 +489,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 			this.add_message(new OLLMchat.Message("ui-waiting",
 				"waiting for " + (this.session.model_usage.model != "" ?
 				this.session.model_usage.display_name_with_size() : "Unknown model") + " to reply"));
-			var tpl = this.refinement_prompt();
+			var tpl = yield this.refinement_prompt();
 			if (!this.runner.in_replay) {
 				this.session.add_message(new OLLMchat.Message("system", tpl.filled_system));
 				this.session.add_message(new OLLMchat.Message("user", tpl.filled_user));

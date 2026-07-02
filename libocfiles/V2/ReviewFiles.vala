@@ -65,7 +65,7 @@ namespace OLLMfiles
 		 *
 		 * Does not update this {@link GLib.ListModel} — use {@link refresh} for that.
 		 *
-		 * @return Rows needing approval in {@link project}
+		 * @return Rows needing approval in the active project
 		 */
 		public async Gee.ArrayList<FileWithHistory> fetch_pending()
 		{

@@ -251,7 +251,7 @@ namespace OLLMcoder.Task
 				if (try_count > 0) {
 					this.status = PhaseEnum.EXECUTION_RETRY;
 				}
-				var tpl = this.executor_prompt(executor_input, response_text, last_issues);
+				var tpl = yield this.executor_prompt(executor_input, response_text, last_issues);
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
@@ -412,13 +412,16 @@ namespace OLLMcoder.Task
 		 * @param previous_analysis last attempt's executor response (for retry); empty on first attempt
 		 * @param previous_issues parse/send issues from last attempt; empty on first attempt
 		 */
-		private OLLMcoder.Skill.PromptTemplate executor_prompt(
+		private async OLLMcoder.Skill.PromptTemplate executor_prompt(
 			string executor_input,
 			string previous_analysis = "",
 			string previous_issues = "") throws GLib.Error
 		{
 			var project = this.parent.runner.sr_factory.project_manager.active_project;
-			var project_description = (project == null) ? "" : project.project_description();
+			var project_description = "";
+			if (project != null) {
+				project_description = yield project.project_description();
+			}
 			var tpl = OLLMcoder.Skill.PromptTemplate.template(
 				this.parent.skill.tools.contains("write_file")
 					? "task_execution_write.md"
