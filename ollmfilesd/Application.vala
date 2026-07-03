@@ -57,10 +57,8 @@ namespace OLLMfilesd
 
 		public OllmfilesdApplication()
 		{
-			var app_flags = GLib.ApplicationFlags.HANDLES_COMMAND_LINE;
-			if (GLib.Environment.get_variable("OLLMFILES_IS_TEST") != null) {
-				app_flags |= GLib.ApplicationFlags.NON_UNIQUE;
-			}
+			var app_flags = GLib.ApplicationFlags.HANDLES_COMMAND_LINE
+				| GLib.ApplicationFlags.NON_UNIQUE;
 
 			Object(
 				application_id: "org.roojs.ollmfilesd",
@@ -177,10 +175,19 @@ namespace OLLMfilesd
 			}
 
 			if (!opt_interactive && !opt_tcp) {
+#if !G_OS_WIN32
+				if (GLib.FileUtils.test(this.pid_path, GLib.FileTest.EXISTS)) {
+					GLib.FileUtils.unlink(this.pid_path);
+				}
+				if (GLib.FileUtils.test(this.socket_path, GLib.FileTest.EXISTS)) {
+					GLib.FileUtils.unlink(this.socket_path);
+				}
+#endif
 				if (!this.daemonize()) {
 					command_line.printerr("error: could not daemonize\n");
 					return 1;
 				}
+				this.write_pid();
 			}
 
 			this.hold();
@@ -291,7 +298,6 @@ namespace OLLMfilesd
 			if (!this.listen.start()) {
 				GLib.error("failed to start RPC listener");
 			}
-			this.write_pid();
 			GLib.debug("ollmfilesd listening on %s", this.socket_path);
 		}
 
@@ -380,8 +386,54 @@ namespace OLLMfilesd
 		}
 	}
 
+	/**
+	 * @return true when a live {@code ollmfilesd} is already up. Caller exits 0 so
+	 * the client connects to the existing daemon (pid file on Linux, TCP on Windows).
+	 */
+	static bool already_running()
+	{
+#if G_OS_WIN32
+		var client = new GLib.SocketClient();
+		client.timeout = 2;
+		try {
+			var conn = client.connect_to_host("127.0.0.1", 4141, null);
+			conn.close();
+			GLib.print("ollmfilesd: already running on 127.0.0.1:4141\n");
+			return true;
+		} catch (GLib.Error e) {
+			return false;
+		}
+#else
+		var pid_path = GLib.Path.build_filename(
+			GLib.Environment.get_user_data_dir(),
+			"ollmchat",
+			"ollmfilesd.pid"
+		);
+
+		if (!GLib.FileUtils.test(pid_path, GLib.FileTest.EXISTS)) {
+			return false;
+		}
+
+		var text = "";
+		GLib.FileUtils.get_contents(pid_path, out text);
+		var daemon_pid = int.parse(text);
+		// Signal 0 does not terminate; it only checks the pid is still alive.
+		if (Posix.kill(daemon_pid, 0) != 0) {
+			return false;
+		}
+		GLib.print(
+			"ollmfilesd: already running (pid %d)\n",
+			daemon_pid
+		);
+		return true;
+#endif
+	}
+
 	int main(string[] args)
 	{
+		if (already_running()) {
+			return 0;
+		}
 		var app = new OllmfilesdApplication();
 		return app.run(args);
 	}
