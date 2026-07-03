@@ -48,7 +48,7 @@ jobs:
           path: OLLMchat
 
       - name: Restore sqgipkg dependency cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: OLLMchat/.sqgipkg
           key: sqgipkg-deps-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/sqgipkg.json', 'OLLMchat/scripts/release/sqgi.revision') }}
@@ -56,7 +56,7 @@ jobs:
             sqgipkg-deps-v1-stable-
 
       - name: Restore sqgipkg Meson build cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             OLLMchat/build-linux-x86_64
@@ -67,10 +67,11 @@ jobs:
             sqgipkg-meson-v1-stable-
 
       - name: Restore Debian extra package download cache
-        uses: actions/cache/restore@v4
+        id: restore-deb-cache
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.DEB_CACHE_DIR }}
-          key: debian-extra-debs-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}
+          key: debian-extra-debs-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/scripts/ci/debian-pool-deb.sh', 'OLLMchat/scripts/ci/install-libfaiss-dev-debian.sh', 'OLLMchat/scripts/fetch-libllama.sh') }}
           restore-keys: |
             debian-extra-debs-v1-stable-
             debian-extra-debs-v1-
@@ -116,8 +117,8 @@ jobs:
           DEB_CACHE_DIR: ${{ env.DEB_CACHE_DIR }}
 
       - name: Save Debian extra package download cache
-        if: always() && steps.deb-cache.outputs.save == 'true'
-        uses: actions/cache/save@v4
+        if: always() && steps.deb-cache.outputs.save == 'true' && steps.restore-deb-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.DEB_CACHE_DIR }}
           key: debian-extra-debs-v1-stable-${{ hashFiles('OLLMchat/scripts/ci/debian-pool-deb.sh', 'OLLMchat/scripts/ci/install-libfaiss-dev-debian.sh', 'OLLMchat/scripts/fetch-libllama.sh') }}
@@ -159,7 +160,7 @@ jobs:
           ref: ${{ steps.sqgi.outputs.rev }}
 
       - name: Restore sqgi build cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: sqgi/build
           key: sqgi-build-v1-${{ hashFiles('OLLMchat/scripts/release/sqgi.revision') }}

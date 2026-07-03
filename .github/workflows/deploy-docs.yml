@@ -43,10 +43,11 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Restore Debian extra package download cache
-        uses: actions/cache/restore@v4
+        id: restore-deb-cache
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.DEB_CACHE_DIR }}
-          key: debian-extra-debs-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}
+          key: debian-extra-debs-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('scripts/ci/debian-pool-deb.sh', 'scripts/ci/install-libfaiss-dev-debian.sh') }}
           restore-keys: |
             debian-extra-debs-v1-stable-
             debian-extra-debs-v1-
@@ -70,8 +71,8 @@ jobs:
           DEB_CACHE_DIR: ${{ env.DEB_CACHE_DIR }}
 
       - name: Save Debian extra package download cache
-        if: always() && steps.deb-cache.outputs.save == 'true'
-        uses: actions/cache/save@v4
+        if: always() && steps.deb-cache.outputs.save == 'true' && steps.restore-deb-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.DEB_CACHE_DIR }}
           key: debian-extra-debs-v1-stable-${{ hashFiles('scripts/ci/debian-pool-deb.sh', 'scripts/ci/install-libfaiss-dev-debian.sh') }}

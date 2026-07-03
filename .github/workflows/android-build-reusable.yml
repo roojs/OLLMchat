@@ -38,7 +38,7 @@ jobs:
 
       - name: Restore Android SDK and NDK cache
         id: restore-android-sdk
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .android-sdk
           key: android-sdk-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('scripts/android/install-sdk.sh') }}
@@ -48,7 +48,7 @@ jobs:
 
       - name: Restore Android tooling cache
         id: restore-android-tools
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .android-tools/gtk-android-builder
           key: android-tools-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ env.PIXIEWOOD_DEPS_HASH }}
@@ -58,7 +58,7 @@ jobs:
 
       - name: Restore Meson subprojects cache
         id: restore-android-subprojects
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: subprojects
           key: android-subprojects-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ env.PIXIEWOOD_DEPS_HASH }}
@@ -68,7 +68,7 @@ jobs:
 
       - name: Restore GTK subproject bootstrap cache
         id: restore-gtk-bootstrap
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .pixiewood/gtk-subproject-bootstrap
           key: gtk-subproject-bootstrap-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ env.PIXIEWOOD_DEPS_HASH }}
@@ -78,7 +78,7 @@ jobs:
 
       - name: Restore Pixiewood compile cache
         id: restore-pixiewood-build
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             .pixiewood/bin-aarch64
@@ -105,7 +105,7 @@ jobs:
 
       - name: Restore Gradle cache
         id: restore-gradle
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             ${{ env.GRADLE_USER_HOME }}/caches
@@ -117,7 +117,7 @@ jobs:
 
       - name: Restore apt package cache
         id: restore-apt
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.APT_CACHE_DIR }}
           key: apt-android-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('.github/workflows/android-build.yml', '.github/workflows/android-build-reusable.yml') }}
@@ -165,7 +165,7 @@ jobs:
 
       - name: Save apt package cache
         if: always() && steps.install-deps.outcome == 'success' && steps.restore-apt.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.APT_CACHE_DIR }}
           key: apt-android-v1-stable-${{ hashFiles('.github/workflows/android-build.yml', '.github/workflows/android-build-reusable.yml') }}
@@ -210,28 +210,28 @@ jobs:
 
       - name: Save Android SDK and NDK cache
         if: always() && steps.post-setup-cache.outputs.android-sdk == 'true' && steps.restore-android-sdk.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .android-sdk
           key: android-sdk-v1-stable-${{ hashFiles('scripts/android/install-sdk.sh') }}
 
       - name: Save Android tooling cache
         if: always() && steps.post-setup-cache.outputs.android-tools == 'true' && steps.restore-android-tools.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .android-tools/gtk-android-builder
           key: android-tools-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}
 
       - name: Save Meson subprojects cache
         if: always() && steps.post-setup-cache.outputs.subprojects == 'true' && steps.restore-android-subprojects.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: subprojects
           key: android-subprojects-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}
 
       - name: Save GTK subproject bootstrap cache
         if: always() && steps.post-setup-cache.outputs.gtk-bootstrap == 'true' && steps.restore-gtk-bootstrap.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .pixiewood/gtk-subproject-bootstrap
           key: gtk-subproject-bootstrap-v1-stable-${{ env.PIXIEWOOD_DEPS_HASH }}
@@ -279,7 +279,7 @@ jobs:
 
       - name: Save Gradle cache
         if: always() && steps.post-build-cache.outputs.gradle == 'true' && steps.restore-gradle.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             ${{ env.GRADLE_USER_HOME }}/caches
@@ -288,7 +288,7 @@ jobs:
 
       - name: Save Pixiewood compile cache (stable)
         if: always() && steps.build-apk.outcome == 'success' && steps.post-build-cache.outputs.pixiewood-build == 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             .pixiewood/bin-aarch64
@@ -298,7 +298,7 @@ jobs:
 
       - name: Save Pixiewood compile cache (partial)
         if: always() && steps.build-apk.outcome != 'success' && steps.post-build-cache.outputs.pixiewood-build == 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             .pixiewood/bin-aarch64
