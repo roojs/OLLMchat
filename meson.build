@@ -119,6 +119,10 @@ if sqgi_vala_args.length() > 0
   add_project_arguments(sqgi_vala_args, language: 'vala')
 endif
 
+# SONAME for client libs whose sources swap under v2testing (2.10.4.21).
+client_lib_soversion = get_option('v2testing') ? '2' : '1'
+client_lib_version = get_option('v2testing') ? '2.0.0' : '1.0.0'
+
 # Build libraries in dependency order
 if android_shell_poc
   subdir('ollmapp')         # Minimal Android APK shell target only
@@ -143,16 +147,16 @@ else
   subdir('ollmfilesd')       # Headless file daemon — Unix socket on Unix, TCP on Windows
   subdir('libocmcp')         # Depends on libollmchat, libocfiles
   subdir('liboctools')       # Depends on libollmchat, libocfiles
-  subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
-  subdir('liboccoder')       # Depends on libocsqlite, libocfiles, libocvector, libollmchat
+  subdir('libocvector')      # v2testing: stub Registry only; shipping: full lib
+  subdir('liboccoder')       # Depends on libocsqlite, libocfiles, libollmchat
   subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
   subdir('ollmapp')         # Primary application - depends on all libraries
-  if get_option('examples')
+  if get_option('examples') and not get_option('v2testing')
     subdir('examples')          # Depends on all libraries
   endif
   if get_option('tests')
-    if not get_option('examples')
-      error('The tests option requires examples=true')
+    if not get_option('examples') or get_option('v2testing')
+      error('The tests option requires examples=true and v2testing=false')
     endif
     subdir('tests')             # Test suite - depends on examples
   endif
@@ -169,6 +173,7 @@ EXECUTABLE="@EXECUTABLE_PATH@"
 
 # Set LD_LIBRARY_PATH as fallback (rpath should work, but this ensures compatibility)
 export LD_LIBRARY_PATH="@LIB_PATH@${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+@OLLMFILESD_EXPORT@
 
 # Execute the real binary with all arguments
 exec "$EXECUTABLE" "$@"
@@ -186,28 +191,34 @@ elif android_poc_opt and host_machine.system() == 'android'
 else
   executables_info = [
     ['ollmchat.bin', 'ollmapp/ollmchat'],  # Wrapper for testing ollama chat with latest code
-    ['ollmchat-cli', 'ollmapp/ollmchat-cli'],  # CLI tool for testing agent tools
-    ['oc-test-cli', 'examples/oc-test-cli'],
-    ['oc-test-pull', 'examples/oc-test-pull'],
-    ['oc-test-fetch', 'examples/oc-test-fetch'],
-    ['oc-test-loop', 'examples/oc-test-loop'],
-    ['oc-test-files', 'examples/oc-test-files'],
-    ['oc-test-bubble', 'examples/oc-test-bubble'],
-    ['oc-test-skill-agent', 'examples/oc-test-skill-agent'],
-    ['oc-test-gtkmd', 'examples/oc-test-gtkmd'],
-    ['oc-markdown-test', 'examples/oc-markdown-test'],
-    ['oc-markdown-doc-test', 'examples/oc-markdown-doc-test'],
-    ['oc-html2md', 'examples/oc-html2md'],
-    ['oc-test-ollamaweb', 'examples/oc-test-ollamaweb'],
-    ['oc-md2html', 'examples/oc-md2html'],
-    ['oc-diff', 'examples/oc-diff'],
-    ['oc-migrate-editors', 'examples/oc-migrate-editors'],
-    ['oc-vector-index', 'examples/oc-vector-index'],
-    ['oc-vector-search', 'examples/oc-vector-search']
   ]
+  if get_option('v2testing')
+    executables_info += [['ollmchat-cli', 'ollmapp/ollmchat-cli']]  # V2 only
+  endif
+  if get_option('examples') and not get_option('v2testing')
+    executables_info += [
+      ['oc-test-cli', 'examples/oc-test-cli'],
+      ['oc-test-pull', 'examples/oc-test-pull'],
+      ['oc-test-fetch', 'examples/oc-test-fetch'],
+      ['oc-test-loop', 'examples/oc-test-loop'],
+      ['oc-test-files', 'examples/oc-test-files'],
+      ['oc-test-bubble', 'examples/oc-test-bubble'],
+      ['oc-test-skill-agent', 'examples/oc-test-skill-agent'],
+      ['oc-test-gtkmd', 'examples/oc-test-gtkmd'],
+      ['oc-markdown-test', 'examples/oc-markdown-test'],
+      ['oc-markdown-doc-test', 'examples/oc-markdown-doc-test'],
+      ['oc-html2md', 'examples/oc-html2md'],
+      ['oc-test-ollamaweb', 'examples/oc-test-ollamaweb'],
+      ['oc-md2html', 'examples/oc-md2html'],
+      ['oc-diff', 'examples/oc-diff'],
+      ['oc-migrate-editors', 'examples/oc-migrate-editors'],
+      ['oc-vector-index', 'examples/oc-vector-index'],
+      ['oc-vector-search', 'examples/oc-vector-search'],
+    ]
+  endif
 endif
 
-if local_gguf_enabled
+if local_gguf_enabled and get_option('examples') and not get_option('v2testing')
   executables_info += [
     ['oc-local-gguf-embed', 'examples/oc-local-gguf-embed'],
     ['oc-local-gguf-chat', 'examples/oc-local-gguf-chat'],
@@ -245,6 +256,12 @@ if local_gguf_enabled
   endif
 endif
 
+if get_option('v2testing')
+  ollmfilesd_export = 'export OLLM_OLLMFILESD="' + meson.current_build_dir() / 'ollmfilesd' / 'ollmfilesd' + '"'
+else
+  ollmfilesd_export = ''
+endif
+
 # Create wrapper scripts in top-level build directory
 foreach exe_info : executables_info
   exe_name = exe_info[0]
@@ -252,6 +269,7 @@ foreach exe_info : executables_info
   wrapper_content = wrapper_template.replace('@EXECUTABLE@', exe_name)
   wrapper_content = wrapper_content.replace('@EXECUTABLE_PATH@', meson.current_build_dir() / exe_path)
   wrapper_content = wrapper_content.replace('@LIB_PATH@', lib_path)
+  wrapper_content = wrapper_content.replace('@OLLMFILESD_EXPORT@', ollmfilesd_export)
   
   wrapper_script = custom_target('wrapper-script-' + exe_name,
     output: exe_name,

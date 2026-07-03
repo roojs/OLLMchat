@@ -1,76 +1,10 @@
-# Build ocvector library (libocvector.so) - depends on libocsqlite, libollmchat, libocfiles
-# Provides semantic codebase search using vector embeddings and FAISS
+# Build ocvector library (libocvector.so)
+# v2testing=true: stub OLLMvector.Registry only (V2/Registry.vala)
+# v2testing=false: full semantic search (FAISS, indexing, CodebaseSearchTool)
 
-# Dependencies for ocvector library (FAISS, BLAS/LAPACK, tree-sitter: config/meson.build)
 valac = meson.get_compiler('vala')
-cpp = meson.get_compiler('cpp')
-cpp_std_lib = cpp.find_library('stdc++', required: true)
-omp_dep = dependency('openmp', required: true)
+valac_exe = find_program('valac')
 
-# Our minimal C wrapper for FAISS C++ API
-faiss_wrapper_src = files('faiss_c_wrapper.cpp')
-faiss_wrapper_hdr = files('faiss_c_wrapper.h')
-
-ocvector_deps = [
-  dependency('gee-0.8'),
-  dependency('gio-2.0'),
-  dependency('glib-2.0'),
-  dependency('gobject-2.0'),
-  dependency('gmodule-2.0'),  # GModule for dynamic library loading
-  dependency('json-glib-1.0'),
-  dependency('libsoup-3.0'),
-  dependency('sqlite3'),
-  valac.find_library('posix'),
-  faiss_dep,
-  cpp_std_lib,
-  tree_sitter_dep
-  # BLAS, LAPACK, OpenMP: ocvector_link_dep above (link-only; see comment there)
-]
-
-# Source files for OLLMvector namespace
-# Note: Files will be added as they are created in subsequent phases
-# Note: namespace.vala files are NOT included here - they're only used for valadoc documentation
-ocvector_src = files([
-  # Core components (migrated from VectorSearch/)
-  'Index.vala',      # FAISS integration
-  'Database.vala',  # Vector database with embeddings
-  
-  # Base class
-  'VectorBase.vala',  # Base class for vector operations with tool config access
-  
-  # VectorMetadata moved to libocfiles (OLLMfiles.SQT.VectorMetadata)
-  
-  # Files/ directory removed - now using libocfiles instead
-  # No need to copy Files classes - use OLLMfiles namespace from libocfiles
-  
-  # Indexing/ directory
-  'Indexing/Tree.vala',  # Tree-sitter AST parsing and VectorMetadata creation
-  'Indexing/PromptTemplate.vala',  # Prompt template class for loading and filling templates
-  'Indexing/Analysis.vala',  # Code analysis layer
-  'Indexing/VectorBuilder.vala',  # Vector generation and FAISS storage
-  'Indexing/DocumentationTree.vala',  # Documentation parsing and VectorMetadata creation
-  'Indexing/DocumentationAnalysis.vala',  # Documentation analysis layer
-  'Indexing/FolderAnalysis.vala',  # Folder analysis layer
-  'Indexing/ProjectAnalysis.vala',  # Project summary and dependency extraction
-  'Indexing/ImageAnalyzer.vala',  # Image analysis (2.20.3)
-  'Indexing/DocumentationVectorBuilder.vala',  # Documentation vector generation and FAISS storage
-  'Indexing/Indexer.vala',  # Main indexing orchestrator
-  
-  # Search/ directory
-  'Search/Search.vala',  # Vector search execution
-  'Search/SearchResult.vala',  # Search result representation
-  
-  # Tool/ directory
-  'Tool/CodebaseSearchTool.vala',
-  'Tool/CodebaseSearchToolConfig.vala',
-  'Tool/RequestCodebaseSearch.vala',
-  'Registry.vala',
-  
-  # Background scanning
-  'BackgroundScan.vala',  # Background file indexing thread
-])
-
-# Build rpath for libraries to find each other in build directory
 lib_build_rpath = ':'.join([
   meson.current_build_dir(),
   meson.current_build_dir() / '..' / 'libocsqlite',
@@ -79,28 +13,130 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollamaweb',
 ])
 
-# Build the library
-ocvector_base_lib = library('ocvector',
-  dependencies: [ocvector_deps, ocvector_link_dep, ocsqlite_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep],
-  sources: ocvector_src + faiss_wrapper_src,
-  link_with: [ollmchat_base_lib],  # Need to link with ollmchat_base_lib because CodebaseSearchTool extends OLLMchat.Tool.BaseTool (similar to libollmchatgtk)
-  vala_header: 'ocvector.h',
-  vala_vapi: 'ocvector-meson.vapi',  # Use different name so our custom_target can use 'ocvector.vapi'
-  build_rpath: lib_build_rpath,
-  include_directories: [
-    include_directories('.'),
-    include_directories('..' / 'libollmchat'),
-    include_directories('..' / 'libollamaweb'),
-    include_directories('..' / 'libocsqlite'),
-    include_directories('..' / 'libocfiles'),
-  ],
-  vala_args: [
+ocvector_include_dirs = [
+  include_directories('.'),
+  include_directories('..' / 'libollmchat'),
+  include_directories('..' / 'libollamaweb'),
+  include_directories('..' / 'libocsqlite'),
+  include_directories('..' / 'libocfiles'),
+]
+
+ocvector_vapi_vapidirs = [
+  '--vapidir', meson.current_source_dir() / '../vapi',
+  '--vapidir', meson.current_source_dir() / '../../vapi',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  '--vapidir', '/usr/share/vala/vapi',
+]
+
+if get_option('v2testing')
+  ocvector_src = files([
+    'V2/Registry.vala',
+  ])
+  ocvector_extra_src = files()
+  ocvector_lib_deps = [
+    dependency('gee-0.8'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    dependency('libsoup-3.0'),
+    valac.find_library('posix'),
+    ollmchat_vapi_dep,
+    ocfiles_vapi_dep,
+    ocrpc_vapi_dep,
+    ocsqlite_vapi_dep,
+  ]
+  ocvector_link_extra = declare_dependency()
+  ocvector_link_with = []
+  ocvector_vala_args = [
+    '--pkg=libsoup-3.0',
+    '--pkg=json-glib-1.0',
+    '--pkg=ollmchat',
+    '--pkg=ocfiles',
+    '--pkg=ocrpc',
+    '--pkg=ocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+  ]
+  ocvector_vapi_pkgs = [
+    '--pkg', 'posix',
+    '--pkg', 'sqlite3',
+    '--pkg', 'json-glib-1.0',
+    '--pkg', 'libsoup-3.0',
+    '--pkg', 'gmodule-2.0',
+    '--pkg', 'tree-sitter',
+    '--pkg', 'ocsqlite',
+    '--pkg', 'ocrpc',
+    '--pkg', 'ocfiles',
+    '--pkg', 'ollmchat',
+    '--pkg', 'ollamaweb',
+    '--pkg', 'gobject-2.0',
+    '--pkg', 'glib-2.0',
+    '--pkg', 'gio-2.0',
+    '--pkg', 'gee-0.8',
+  ]
+  ocvector_vapi_dep_extra = declare_dependency()
+else
+  cpp = meson.get_compiler('cpp')
+  cpp_std_lib = cpp.find_library('stdc++', required: true)
+  faiss_wrapper_src = files('faiss_c_wrapper.cpp')
+
+  ocvector_src = files([
+    'Index.vala',
+    'Database.vala',
+    'VectorBase.vala',
+    'Indexing/Tree.vala',
+    'Indexing/PromptTemplate.vala',
+    'Indexing/Analysis.vala',
+    'Indexing/VectorBuilder.vala',
+    'Indexing/DocumentationTree.vala',
+    'Indexing/DocumentationAnalysis.vala',
+    'Indexing/FolderAnalysis.vala',
+    'Indexing/ProjectAnalysis.vala',
+    'Indexing/ImageAnalyzer.vala',
+    'Indexing/DocumentationVectorBuilder.vala',
+    'Indexing/Indexer.vala',
+    'Search/Search.vala',
+    'Search/SearchResult.vala',
+    'Tool/CodebaseSearchTool.vala',
+    'Tool/CodebaseSearchToolConfig.vala',
+    'Tool/RequestCodebaseSearch.vala',
+    'Registry.vala',
+    'BackgroundScan.vala',
+  ])
+  ocvector_extra_src = faiss_wrapper_src
+  ocvector_lib_deps = [
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('gmodule-2.0'),
+    dependency('json-glib-1.0'),
+    dependency('libsoup-3.0'),
+    dependency('sqlite3'),
+    valac.find_library('posix'),
+    faiss_dep,
+    cpp_std_lib,
+    tree_sitter_dep,
+    ocvector_link_dep,
+    ocsqlite_vapi_dep,
+    ollmchat_vapi_dep,
+    ocfiles_vapi_dep,
+  ]
+  ocvector_link_extra = ocvector_link_dep
+  ocvector_link_with = [ollmchat_base_lib]
+  ocvector_vala_args = [
     '--pkg=sqlite3',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
-    '--pkg=gmodule-2.0',  # GModule for dynamic library loading
-    '--pkg=fiass',  # FAISS via vapi
-    '--pkg=tree-sitter',  # Tree-sitter via vapi
+    '--pkg=gmodule-2.0',
+    '--pkg=fiass',
+    '--pkg=tree-sitter',
     '--pkg=ocfiles',
     '--pkg=ollmchat',
     '--pkg=ollamaweb',
@@ -110,41 +146,15 @@ ocvector_base_lib = library('ocvector',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
-  ],
-  install: true
-)
-
-# Manually generate ocvector.vapi with correct --pkg order (installed as ocvector.vapi).
-#
-# Meson also emits ocvector-meson.vapi from library(). Do NOT delete that file: ninja
-# tracks it as a library output, so deleting it forces a full ocvector rebuild every run.
-#
-# The old ocvector-meson-vapi-deleted target removed it so this custom_target could add
-# --vapidir=build/libocvector without duplicate-type errors. Instead we omit that vapidir
-# here (header path is explicit below). Downstream uses --pkg=ocvector + ocvector_vapi_dep
-# (link_args), not link_with: [ocvector_base_lib], so they never pick up ocvector-meson.vapi.
-ocvector_vapi = custom_target('ocvector-vapi',
-  output: 'ocvector.vapi',
-  input: ocvector_src,
-  command: [
-    valac_exe,
-    '-C', '--debug',
-    '--target-glib=auto',
-    # Put build directories FIRST so we use local VAPIs instead of installed ones
-    '--vapidir', meson.current_source_dir() / '../vapi',  # Source VAPIs first (fiass.vapi, tree-sitter.vapi)
-    '--vapidir', meson.current_source_dir() / '../../vapi',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
-    '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
+  ]
+  ocvector_vapi_pkgs = [
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
     '--pkg', 'json-glib-1.0',
     '--pkg', 'libsoup-3.0',
     '--pkg', 'gmodule-2.0',
-    '--pkg', 'fiass',  # FAISS via vapi
-    '--pkg', 'tree-sitter',  # Tree-sitter via vapi
+    '--pkg', 'fiass',
+    '--pkg', 'tree-sitter',
     '--pkg', 'ocfiles',
     '--pkg', 'ollmchat',
     '--pkg', 'ollamaweb',
@@ -153,42 +163,44 @@ ocvector_vapi = custom_target('ocvector-vapi',
     '--pkg', 'glib-2.0',
     '--pkg', 'gio-2.0',
     '--pkg', 'gee-0.8',
-    '--header', meson.current_build_dir() / 'ocvector.h',  # Use header from library
+  ]
+  ocvector_vapi_dep_extra = ocvector_link_dep
+endif
+
+ocvector_base_lib = library('ocvector',
+  soversion: client_lib_soversion,
+  version: client_lib_version,
+  dependencies: ocvector_lib_deps,
+  sources: ocvector_src + ocvector_extra_src,
+  link_with: ocvector_link_with,
+  vala_header: 'ocvector.h',
+  vala_vapi: 'ocvector-meson.vapi',
+  build_rpath: lib_build_rpath,
+  include_directories: ocvector_include_dirs,
+  vala_args: ocvector_vala_args,
+  install: true
+)
+
+ocvector_vapi = custom_target('ocvector-vapi',
+  output: 'ocvector.vapi',
+  input: ocvector_src,
+  command: [
+    valac_exe,
+    '-C', '--debug',
+    '--target-glib=auto',
+  ] + ocvector_vapi_vapidirs + ocvector_vapi_pkgs + [
+    '--header', meson.current_build_dir() / 'ocvector.h',
     '--vapi', '@OUTPUT@',
-    '@INPUT@'
+    '@INPUT@',
   ],
-  depends: [ocvector_base_lib, ollamaweb_vapi],  # ollmchat.vapi needs ollamaweb.vapi
+  depends: [ocvector_base_lib, ollamaweb_vapi, ocfiles_vapi],
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'
 )
 
-# Create dependency for other libraries to use
-# Use link_args instead of link_with to prevent meson from auto-including ocvector-meson.vapi
-# Note: When targets use link_with: [ocvector_base_lib], meson will include ocvector-meson.vapi.
-# The custom_target ensures ocvector.vapi exists and is found via --pkg=ocvector, but we don't
-# include it in sources to avoid conflicts when linking with the library directly.
 ocvector_vapi_dep = declare_dependency(
   link_args: ['-L' + meson.current_build_dir(), '-locvector'],
-  sources: [ocvector_vapi[0]],  # Include VAPI file to ensure it's built first
-  dependencies: [ocsqlite_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep, ocvector_link_dep]
+  sources: [ocvector_vapi[0]],
+  dependencies: [ocfiles_vapi_dep, ollmchat_vapi_dep, ocvector_vapi_dep_extra]
 )
-
-# GObject Introspection for ocvector library
-# This will be enabled once we have source files
-# ocvector_gir = gnome.generate_gir(ocvector_base_lib,
-#   namespace: 'OLLMvector',
-#   nsversion: '1.0',
-#   identifier_prefix: 'OLLMvector',
-#   symbol_prefix: 'ocvector',
-#   link_with: [ocsqlite_base_lib, ollmchat_base_lib],
-#   dependencies: [dependency('sqlite3')],
-#   extra_args: [
-#     '--extra-library=ocsqlite',
-#     '--extra-library=ollmchat',
-#     '--accept-unprefixed'
-#   ],
-#   includes: ['GObject-2.0', 'Gio-2.0', 'Json-1.0', ocsqlite_gir[0], ollmchat_gir[0]],
-#   install: true,
-#   fatal_warnings: false
-# )

@@ -40,6 +40,8 @@ lib_build_rpath = ':'.join([
 ])
 
 ocmcp_base_lib = library('ocmcp',
+  soversion: client_lib_soversion,
+  version: client_lib_version,
   dependencies: [
     ocmcp_deps,
     ollmchat_vapi_dep,
@@ -73,6 +75,45 @@ ocmcp_base_lib = library('ocmcp',
   install: true
 )
 
+ocmcp_vapi_vapidirs = [
+  '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
+  '--vapidir', meson.current_source_dir() / '../vapi',
+  '--vapidir', '/usr/share/vala/vapi',
+]
+if get_option('v2testing')
+  ocmcp_vapi_vapidirs += ['--vapidir', meson.current_build_dir() / '..' / 'libocrpc']
+endif
+
+ocmcp_vapi_pkgs = [
+  '--pkg', 'posix',
+  '--pkg', 'sqlite3',
+  '--pkg', 'json-glib-1.0',
+  '--pkg', 'libsoup-3.0',
+  '--pkg', 'ocsqlite',
+  '--pkg', 'ollmchat',
+  '--pkg', 'ollamaweb',
+  '--pkg', 'ocfiles',
+  '--pkg', 'ocbwrap',
+  '--pkg', 'gmodule-2.0',
+  '--pkg', 'tree-sitter',
+  '--pkg', 'gobject-2.0',
+  '--pkg', 'glib-2.0',
+  '--pkg', 'gio-2.0',
+  '--pkg', 'gee-0.8',
+]
+if get_option('v2testing')
+  ocmcp_vapi_pkgs += ['--pkg', 'ocrpc']
+endif
+
+ocmcp_vapi_depends = [ocmcp_base_lib, ollamaweb_vapi, ocbwrap_vapi]
+if get_option('v2testing')
+  ocmcp_vapi_depends += [ocrpc_vapi]
+endif
+
 ocmcp_vapi = custom_target('ocmcp-vapi',
   output: 'ocmcp.vapi',
   input: ocmcp_src,
@@ -80,34 +121,13 @@ ocmcp_vapi = custom_target('ocmcp-vapi',
     valac_exe,
     '-C', '--debug',
     '--target-glib=auto',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
-    '--vapidir', meson.current_source_dir() / '../vapi',
-    '--vapidir', '/usr/share/vala/vapi',
-    '--pkg', 'posix',
-    '--pkg', 'sqlite3',
-    '--pkg', 'json-glib-1.0',
-    '--pkg', 'libsoup-3.0',
-    '--pkg', 'ocsqlite',
-    '--pkg', 'ollmchat',
-    '--pkg', 'ollamaweb',
-    '--pkg', 'ocfiles',
-    '--pkg', 'ocbwrap',
-    '--pkg', 'gmodule-2.0',
-    '--pkg', 'tree-sitter',
-    '--pkg', 'gobject-2.0',
-    '--pkg', 'glib-2.0',
-    '--pkg', 'gio-2.0',
-    '--pkg', 'gee-0.8',
+  ] + ocmcp_vapi_vapidirs + ocmcp_vapi_pkgs + [
     '--library', 'ocmcp',
     '--header', meson.current_build_dir() / 'ocmcp.h',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
   ],
-  depends: [ocmcp_base_lib, ollamaweb_vapi, ocbwrap_vapi],
+  depends: ocmcp_vapi_depends,
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'

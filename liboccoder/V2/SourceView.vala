@@ -485,8 +485,7 @@ namespace OLLMcoder
 			// Update last_viewed timestamp when file is actually opened (saved to database)
 			var now = new DateTime.now_local();
 			file.last_viewed = now.to_unix();
-			file.last_modified = file.mtime_on_disk();
-			// Save to database (metadata-only change - cursor/scroll not changed yet)
+			// V2: last_modified comes from daemon metadata — no local disk read
 			this.manager.on_file_metadata_change(file);
 			
 			// Update placeholder text with file basename

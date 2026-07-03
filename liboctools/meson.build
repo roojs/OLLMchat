@@ -94,6 +94,8 @@ else
 endif
 
 octools_base_lib = library('octools',
+  soversion: client_lib_soversion,
+  version: client_lib_version,
   dependencies: octools_lib_deps,
   sources: octools_src,
   vala_header: 'octools.h',

@@ -149,6 +149,8 @@ else
 endif
 
 ocfiles_base_lib = library('ocfiles',
+  soversion: client_lib_soversion,
+  version: client_lib_version,
   dependencies: ocfiles_lib_deps,
   sources: ocfiles_src + ocfiles_extra_sources,
   vala_header: 'ocfiles.h',

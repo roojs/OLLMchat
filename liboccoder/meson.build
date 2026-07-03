@@ -151,6 +151,8 @@ else
 endif
 
 occoder_base_lib = library('occoder',
+  soversion: client_lib_soversion,
+  version: client_lib_version,
   dependencies: occoder_lib_deps,
   sources: occoder_src,
   vala_header: 'occoder.h',

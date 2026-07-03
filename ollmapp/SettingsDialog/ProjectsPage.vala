@@ -193,7 +193,8 @@ namespace OLLMapp.SettingsDialog
 				return;
 			}
 			this.project_manager.remove_project(project);
-			this.project_manager.db.backupDB();
+			// TODO(v2): restore when app uses RPC-backed project persistence (2.10.4.22).
+			// this.project_manager.db.backupDB();
 		}
 
 		private void add_project()
@@ -217,7 +218,8 @@ namespace OLLMapp.SettingsDialog
 						return;
 					}
 					this.project_manager.create_project(normalized);
-					this.project_manager.db.backupDB();
+					// TODO(v2): restore when app uses RPC-backed project persistence (2.10.4.22).
+					// this.project_manager.db.backupDB();
 				} catch (GLib.Error e) {
 					// User cancelled or I/O error
 				}

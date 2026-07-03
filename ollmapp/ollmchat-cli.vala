@@ -402,26 +402,40 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			yield this.manager.ensure_model_usage();
 		}
 		
-		private async void setup_project_manager(SQ.Database db) throws Error
+		private async void setup_project_manager() throws Error
 		{
-			this.project_manager = new OLLMfiles.ProjectManager(db);
+			if (this.project_manager != null) {
+				return;
+			}
+			this.project_manager = new OLLMfiles.ProjectManager();
+
+			var hello = new OLLMrpc.Request() {
+				method = "Daemon.hello",
+				param = new OLLMfilesd.DaemonParams() {
+					protocol = 1,
+					client = "ollmchat-cli"
+				}
+			};
+			if (!yield this.project_manager.rpc.connect(hello)) {
+				unowned string msg = this.project_manager.rpc.connect_error;
+				if (msg == "") {
+					msg = "could not start or reach the filesystem daemon (ollmfilesd)";
+				}
+				throw new GLib.IOError.FAILED("%s", msg);
+			}
+
+			yield this.project_manager.load_projects_from_db();
+
 			if (opt_project == "") {
 				return;
 			}
-			
-			// Verify project directory exists
+
 			if (!GLib.FileUtils.test(opt_project, GLib.FileTest.IS_DIR)) {
 				throw new GLib.IOError.NOT_FOUND("Project directory does not exist: %s", opt_project);
 			}
-			
-			 
-			// Load existing projects from database
-			yield this.project_manager.load_projects_from_db();
-			
-			// Get project from database (if it exists)
+
 			var project = this.project_manager.projects.path_map.get(opt_project);
-			
-			// Error: --create-project cannot be used with existing projects
+
 			if (opt_create_project && project != null) {
 				throw new GLib.IOError.EXISTS(
 					"Project already exists: %s (id=%lld). " +
@@ -431,8 +445,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 					project.id
 				);
 			}
-			
-			// Error: Project doesn't exist and --create-project not provided
+
 			if (project == null && !opt_create_project) {
 				throw new GLib.IOError.NOT_FOUND(
 					"Project not found in database: %s\n" +
@@ -440,30 +453,13 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 					opt_project
 				);
 			}
-			
-			// Create new project if it doesn't exist
+
 			if (project == null) {
-				project = new OLLMfiles.Folder(this.project_manager);
-				project.path = opt_project;
-				project.is_project = true;
-				project.display_name = GLib.Path.get_basename(opt_project);
-				
-				// Save project to database
-				project.saveToDB(db, null, false);
-				this.project_manager.projects.append(project);
+				project = yield this.project_manager.create_project(opt_project);
 			}
-			
-			// Load existing project files from database first
-			yield project.load_files_from_db();
-			
-			// Disable background recursion for CLI (faster, but may miss some files)
-			OLLMfiles.Folder.background_recurse = false;
-			
-			// Scan directory and populate project files
-			yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
-			
-			// Activate the project so it becomes the active project
-			yield this.project_manager.activate_project(project);
+
+			this.project_manager.disable_initial_scan = true;
+			this.project_manager.activate_project(project);
 		}
 		
 		private async void run_test(string query, ApplicationCommandLine command_line) throws Error
@@ -472,8 +468,8 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			
 			// Setup manager (creates Manager with session that has just-ask agent)
 			yield this.setup_manager();
-			this.project_manager = new OLLMfiles.ProjectManager();
-		
+			yield this.setup_project_manager();
+
 		// Register tools with manager (so agent has access to them)
 		this.tools_registry.fill_tools(this.manager, this.project_manager);
 		this.vector_registry.fill_tools(this.manager, this.project_manager);
@@ -536,10 +532,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			// Setup manager
 			yield this.setup_manager();
 			
-			yield this.setup_project_manager(
-				new SQ.Database(
-					GLib.Path.build_filename(this.data_dir, "files.sqlite")
-				));
+			yield this.setup_project_manager();
 			
 		// Fill manager with tools (after project manager is set up)
 		this.tools_registry.fill_tools(this.manager, this.project_manager);

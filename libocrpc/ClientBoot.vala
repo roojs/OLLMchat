@@ -17,16 +17,14 @@ namespace OLLMrpc
 	 * Ensure {@code ollmfilesd} is running before {@link Client.connect}.
 	 *
 	 * Uses {@link pid} and {@link socket} paths: probe the socket, spawn or
-	 * kill-and-respawn when needed. Installing a user systemd unit is out of
-	 * scope here (global settings UI, separate from boot).
+		 * kill-and-respawn when needed. Set {@code OLLM_OLLMFILESD} to an absolute
+		 * path for dev/testing when the build-tree daemon should be used; otherwise
+		 * {@code ollmfilesd} is resolved on {@code PATH}.
 	 */
 	public class ClientBoot : GLib.Object
 	{
 		public string socket { get; construct; }
 		public string pid { get; construct; }
-
-		/** Executable name or path; resolved on {@code PATH} when relative. */
-		public string binary { get; set; default = "ollmfilesd"; }
 
 		/**
 		 * Recovery cycles (spawn, or kill + spawn) without a working socket
@@ -66,7 +64,7 @@ namespace OLLMrpc
 
 		/**
 		 * Block until {@link socket} accepts a connection, spawning or
-		 * kill-and-respawning {@link binary} when needed.
+		 * kill-and-respawning {@code ollmfilesd} when needed.
 		 */
 		public async void ensure_daemon() throws GLib.IOError
 		{
@@ -134,24 +132,29 @@ namespace OLLMrpc
 
 		private void spawn() throws GLib.IOError
 		{
-			string[] argv = { this.binary };
+			unowned string? from_env = GLib.Environment.get_variable("OLLM_OLLMFILESD");
+			var executable = (from_env != null && from_env != "")
+				? from_env
+				: "ollmfilesd";
 			int child_pid;
 			try {
 				GLib.Process.spawn_async(
 					null,
-					argv,
+					{ executable },
 					null,
-					GLib.SpawnFlags.SEARCH_PATH |
-					GLib.SpawnFlags.DO_NOT_REAP_CHILD |
-					GLib.SpawnFlags.STDOUT_TO_DEV_NULL |
-					GLib.SpawnFlags.STDERR_TO_DEV_NULL,
+					GLib.SpawnFlags.DO_NOT_REAP_CHILD
+						| GLib.SpawnFlags.STDOUT_TO_DEV_NULL
+						| GLib.SpawnFlags.STDERR_TO_DEV_NULL
+						| (!GLib.Path.is_absolute(executable)
+							? GLib.SpawnFlags.SEARCH_PATH
+							: 0),
 					null,
 					out child_pid
 				);
 			} catch (GLib.SpawnError e) {
 				throw new GLib.IOError.FAILED(
 					"ClientBoot: spawn "
-						+ this.binary
+						+ executable
 						+ ": "
 						+ e.message
 				);

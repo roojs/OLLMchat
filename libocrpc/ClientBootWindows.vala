@@ -11,8 +11,6 @@ namespace OLLMrpc
 		public string socket { get; construct; }
 		public string pid { get; construct; }
 
-		public string binary { get; set; default = "ollmfilesd"; }
-
 		public uint max_attempts { get; set; default = 3; }
 
 		public uint poll { get; set; default = 100; }
@@ -85,8 +83,12 @@ namespace OLLMrpc
 				host = this.socket[0:colon];
 				int.try_parse(this.socket.substring(colon + 1), out port);
 			}
+			unowned string? from_env = GLib.Environment.get_variable("OLLM_OLLMFILESD");
+			var executable = (from_env != null && from_env != "")
+				? from_env
+				: "ollmfilesd";
 			string[] argv = {
-				this.binary,
+				executable,
 				"--tcp",
 				"--tcp-host=" + host,
 				"--tcp-port=" + port.to_string()
@@ -97,17 +99,19 @@ namespace OLLMrpc
 					null,
 					argv,
 					null,
-					GLib.SpawnFlags.SEARCH_PATH |
-					GLib.SpawnFlags.DO_NOT_REAP_CHILD |
-					GLib.SpawnFlags.STDOUT_TO_DEV_NULL |
-					GLib.SpawnFlags.STDERR_TO_DEV_NULL,
+					GLib.SpawnFlags.DO_NOT_REAP_CHILD
+						| GLib.SpawnFlags.STDOUT_TO_DEV_NULL
+						| GLib.SpawnFlags.STDERR_TO_DEV_NULL
+						| (!GLib.Path.is_absolute(executable)
+							? GLib.SpawnFlags.SEARCH_PATH
+							: 0),
 					null,
 					out child_pid
 				);
 			} catch (GLib.SpawnError e) {
 				throw new GLib.IOError.FAILED(
 					"ClientBoot: spawn "
-						+ this.binary
+						+ executable
 						+ ": "
 						+ e.message
 				);

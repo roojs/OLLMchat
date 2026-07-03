@@ -110,14 +110,14 @@ namespace OLLMcoder
 			GLib.debug("AgentFactory.get_open_files: Getting recent list from file_cache for project: %s",
 				this.project_manager.active_project.path);
 			var cutoff_time = new GLib.DateTime.now_local().add_days(-1);
-			var filtered_files = new Gee.ArrayList<File>();
+			var filtered_files = new Gee.ArrayList<OLLMfiles.File>();
 			var project_prefix = this.project_manager.active_project.path + "/";
 
 			foreach (var entry in this.project_manager.file_cache.values) {
-				if (!(entry is File)) {
+				if (!(entry is OLLMfiles.File)) {
 					continue;
 				}
-				var cached_file = (File) entry;
+				var cached_file = (OLLMfiles.File) entry;
 				if (!cached_file.path.has_prefix(project_prefix)) {
 					continue;
 				}
@@ -233,8 +233,8 @@ namespace OLLMcoder
 			OLLMfiles.File? found_file = null;
 			if (this.project_manager.file_cache.has_key(file)) {
 				var cached = this.project_manager.file_cache.get(file);
-				if (cached is File) {
-					found_file = (File) cached;
+				if (cached is OLLMfiles.File) {
+					found_file = (OLLMfiles.File) cached;
 				}
 			}
 			if (found_file == null) {

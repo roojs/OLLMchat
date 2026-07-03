@@ -279,7 +279,7 @@ namespace OLLMtools
 				return;
 			}
 			yield this.manager.delete_manager.cleanup();
-			yield new OLLMfiles.ReviewFiles(this.project).refresh();
+			yield this.manager.review_files.refresh();
 		}
 	}
 }
