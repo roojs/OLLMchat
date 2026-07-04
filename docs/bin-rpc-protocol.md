@@ -13,7 +13,7 @@ The **type byte** on the wire is always a `GLib.Type` fundamental value (optiona
 A **connection** maintains two tables on its `OLLMrpc.Bin.Stream` instance:
 
 1. **Wire names** — one shared string → uint16 token map for **both** property keys (`"name"`, `"count"`, …) and object type aliases (`"TestPair"`, `"File"`, …). Tokens are learned on the wire via `TOKEN_REG_KEY` when a name is first sent.
-2. **Type aliases → GType** — registered locally via `Stream.register(alias, gtype)` before decode. Both ends register the same alias strings with matching `GLib.Type` values; call order is not significant.
+2. **Type aliases → GType** — registered locally via `Stream.register(alias, gtype)` before decode. Both ends must register every wire alias string they send or receive; each side maps that alias to its **own** local `GLib.Type` (the alias is the shared wire name — client and server need not use the same GObject class). `register()` call order is not significant.
 
 Every **property value**: name token → one-byte **type** (`GLib.Type` fundamental) → payload. When the type is `GLib.Type.OBJECT`, a **name token** (uint16) identifying the object alias follows before the nested property stream. Unknown token or unrecognized alias → protocol error.
 
@@ -27,7 +27,7 @@ bin.register ("File", typeof (OLLMfiles.V2.File));
 bin.register ("Folder", typeof (OLLMfiles.V2.Folder));
 ```
 
-Client and server each call `register()` with the **same alias strings** and matching `GLib.Type` values. Property keys do not need `register()` — they appear on the wire and enter the same name-token table via `TOKEN_REG_KEY`.
+Client and server each call `register()` for the **same wire alias strings** they exchange; each maps an alias to whatever local `GLib.Type` implements that payload on that end. Property keys do not need `register()` — they appear on the wire and enter the same name-token table via `TOKEN_REG_KEY`.
 
 JSON RPC today uses a separate, **process-wide** map via `OLLMrpc.register(name, gtype)` keyed by string names in `Response.result_type`. The two APIs coexist until bin cutover (see plan 8.1). Alias strings should match JSON wire names where both apply.
 
@@ -187,7 +187,7 @@ Wire names are limited to 255 bytes on introduction.
 
 ### `Stream.register(alias, gtype)`
 
-Maps a wire alias string to `GLib.Type` for decode. The alias must be registered on both ends before decode. Wire indices for type aliases are learned via `TOKEN_REG_TYPE` / `read_reg_gtype()`; property keys via `TOKEN_REG_KEY`.
+Maps a wire alias string to a local `GLib.Type` for decode on this connection. Both peers must register every alias they send or receive; the **alias string** is the wire contract — each end may map it to a different GObject type. Wire indices for type aliases are learned via `TOKEN_REG_TYPE` / `read_reg_gtype()`; property keys via `TOKEN_REG_KEY`.
 
 - Duplicate alias on the same stream → error.
 - `register()` call order is not significant.
@@ -198,7 +198,7 @@ Example (from `tests/rpc/bin-test.vala`):
 write_bin.register ("TestPair", typeof (TestPair));
 write_bin.register ("TestParent", typeof (TestParent));
 
-// Reader: same aliases, any order
+// Reader: same wire alias strings, any order (typeof may differ per end in production)
 read_bin.register ("TestParent", typeof (TestParent));
 read_bin.register ("TestPair", typeof (TestPair));
 ```

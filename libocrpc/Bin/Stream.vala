@@ -39,7 +39,10 @@ namespace OLLMrpc.Bin
 		/**
 		 * Register a wire alias on this connection's stream.
 		 *
-		 * Maps {@param alias} to {@param gtype} for instantiation on decode.
+		 * Maps {@param alias} to {@param gtype} for instantiation on decode on
+		 * this peer. Both ends must register every alias they send or receive;
+		 * the alias string is the shared wire name — {@param gtype} is local to
+		 * this stream and need not match the peer's type for the same alias.
 		 * The alias string shares the connection wire-name table with property
 		 * keys. Type aliases are introduced on the wire via {@link TOKEN_REG_TYPE};
 		 * property keys via {@link TOKEN_REG_KEY}. Registration order is not
