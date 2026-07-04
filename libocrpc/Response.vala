@@ -167,21 +167,8 @@ namespace OLLMrpc
 						this.bin_default_read_prop (ctx, prop, type_byte);
 						return;
 					}
-					var count = (uint) ctx.in_stream.read_byte ();
-					if ((count & 0x80) != 0) {
-						count = ((count & 0x7F) << 8)
-							| ctx.in_stream.read_byte ();
-					}
-					var list = new Gee.ArrayList<GLib.Object> ();
-					for (var i = 0u; i < count; i++) {
-						var child = (Bin.Serializable) GLib.Object.new (
-							ctx.read_gtype ()
-						);
-						child.bin_read (ctx);
-						list.add (child);
-					}
 					this.is_array = true;
-					this.result = list;
+					this.result = ctx.parse_object_array ();
 					return;
 				default:
 					this.bin_default_read_prop (ctx, prop, type_byte);

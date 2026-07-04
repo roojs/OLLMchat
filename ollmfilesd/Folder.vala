@@ -95,6 +95,7 @@ namespace OLLMfilesd
 				case "parent":
 				case "children":
 				case "project-files":
+				case "last-check-time":
 					return null;
 				default:
 					return default_serialize_property(
@@ -115,6 +116,7 @@ namespace OLLMfilesd
 				case "parent":
 				case "children":
 				case "project-files":
+				case "last-check-time":
 					return;
 				default:
 					bin_default_write_prop(ctx, prop);
@@ -133,6 +135,7 @@ namespace OLLMfilesd
 				case "parent":
 				case "children":
 				case "project-files":
+				case "last-check-time":
 					return;
 				default:
 					bin_default_read_prop(ctx, prop, type_byte);

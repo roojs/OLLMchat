@@ -128,12 +128,44 @@ namespace OLLMrpc.Bin
 
 		/**
 		 * Read one object body after its {@link GLib.Type.OBJECT} type byte.
+		 *
+		 * When {@code object_type} is set (homogeneous object arrays), skip
+		 * {@link read_gtype} and decode the property stream for that class.
+		 *
+		 * @param object_type element class when already read from an array header
 		 */
-		public Serializable parse_object () throws GLib.Error
+		public Serializable parse_object (
+			GLib.Type object_type = GLib.Type.INVALID
+		) throws GLib.Error
 		{
-			var obj = (Serializable) GLib.Object.new (this.read_gtype ());
+			var gtype = object_type != GLib.Type.INVALID
+				? object_type
+				: this.read_gtype ();
+			var obj = (Serializable) GLib.Object.new (gtype);
 			obj.bin_read (this);
 			return obj;
+		}
+
+		/**
+		 * Homogeneous object-array body after {@code 0xD0}: element class,
+		 * count, then one property stream per element.
+		 *
+		 * @return decoded elements
+		 */
+		public Gee.ArrayList<GLib.Object> parse_object_array ()
+			throws GLib.Error
+		{
+			var elem_gtype = this.read_gtype ();
+			var count = (uint) this.in_stream.read_byte ();
+			if ((count & 0x80) != 0) {
+				count = ((count & 0x7F) << 8)
+					| this.in_stream.read_byte ();
+			}
+			var list = new Gee.ArrayList<GLib.Object> ();
+			for (var i = 0u; i < count; i++) {
+				list.add (this.parse_object (elem_gtype));
+			}
+			return list;
 		}
 
 		public void write_tag (string prop_name) throws GLib.Error
