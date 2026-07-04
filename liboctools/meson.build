@@ -87,14 +87,14 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocbwrap',
 ])
 
+octools_lib_deps = [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep]
 if get_option('v2testing')
-  octools_lib_deps = [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, ocbwrap_vapi_dep]
-else
-  octools_lib_deps = [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep]
+  octools_lib_deps += [ocbwrap_vapi_dep]
 endif
 
 octools_base_lib = library(octools_lib,
   dependencies: octools_lib_deps,
+  link_with: [ollmchat_base_lib],
   sources: octools_src,
   vala_header: 'octools.h',
   vala_vapi: 'octools-meson.vapi',  # Use different name so our custom_target can use 'octools.vapi'
@@ -121,9 +121,6 @@ octools_base_lib = library(octools_lib,
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
-  ] + (get_option('v2testing') ? [
-    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-  ] : []) + [
     '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
     '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -144,6 +141,7 @@ octools_vapi_gen_pkgs = [
   '--pkg', 'ollmchat',
   '--pkg', 'ollamaweb',
   '--pkg', 'ocfiles',
+  '--pkg', 'ocrpc',
   '--pkg', 'ocmarkdown',
   '--pkg', 'ocsqlite',
   '--pkg', 'gobject-2.0',
@@ -152,12 +150,13 @@ octools_vapi_gen_pkgs = [
   '--pkg', 'gee-0.8',
 ]
 if get_option('v2testing')
-  octools_vapi_gen_pkgs += ['--pkg', 'ocbwrap', '--pkg', 'ocrpc']
+  octools_vapi_gen_pkgs += ['--pkg', 'ocbwrap']
 endif
 
 octools_vapi_vapidirs = [
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
   '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
   '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
@@ -165,9 +164,6 @@ octools_vapi_vapidirs = [
   '--vapidir', meson.current_source_dir() / '../vapi',
   '--vapidir', '/usr/share/vala/vapi',
 ]
-if get_option('v2testing')
-  octools_vapi_vapidirs += ['--vapidir', meson.current_build_dir() / '..' / 'libocrpc']
-endif
 
 # Manually generate octools.vapi with correct command line order
 octools_vapi = custom_target('octools-vapi',

@@ -50,7 +50,7 @@ if get_option('v2testing')
     ocsqlite_vapi_dep,
   ]
   ocvector_link_extra = declare_dependency()
-  ocvector_link_with = []
+  ocvector_link_with = [ollmchat_base_lib]
   ocvector_vala_args = [
     '--pkg=libsoup-3.0',
     '--pkg=json-glib-1.0',
@@ -156,6 +156,7 @@ else
     '--pkg', 'fiass',
     '--pkg', 'tree-sitter',
     '--pkg', 'ocfiles',
+    '--pkg', 'ocrpc',
     '--pkg', 'ollmchat',
     '--pkg', 'ollamaweb',
     '--pkg', 'ocsqlite',
@@ -191,7 +192,7 @@ ocvector_vapi = custom_target('ocvector-vapi',
     '--vapi', '@OUTPUT@',
     '@INPUT@',
   ],
-  depends: [ocvector_base_lib, ollamaweb_vapi, ocfiles_vapi],
+  depends: [ocvector_base_lib, ollamaweb_vapi, ocfiles_vapi, ocrpc_vapi],
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'

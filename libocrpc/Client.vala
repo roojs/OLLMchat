@@ -28,12 +28,13 @@ namespace OLLMrpc
 	}
 
 	/**
-	 * NDJSON JSON-RPC client for {@code ollmfilesd}.
+	 * Bin RPC client for {@code ollmfilesd}.
 	 * {@link connect} runs {@link ClientBoot.ensure_daemon} when the
 	 * platform transport needs a local daemon starter.
 	 *
-	 * A background read loop dispatches {@link Notification}
-	 * lines and resolves pending {@link Response} entries by id.
+	 * A socket {@link GLib.IOChannel} watch dispatches inbound
+	 * {@link Notification} lines and resolves pending {@link Response}
+	 * entries by id.
 	 * {@link call} sends a {@link Request} and yields until that
 	 * id is filled in or {@link call_timeout_seconds} elapses.
 	 * Outgoing lines are queued — one {@code flush_async} at a time on
@@ -83,6 +84,8 @@ namespace OLLMrpc
 			default = new Gee.ArrayList<PendingWrite>();
 		}
 		private bool write_draining { get; set; default = false; }
+		private GLib.IOChannel? read_channel;
+		private uint read_watch_id = 0;
 
 		static construct
 		{
@@ -180,17 +183,58 @@ namespace OLLMrpc
 			this.output = new GLib.DataOutputStream(this.connection.get_output_stream());
 			this.bin = new Bin.Stream(this.input, this.output);
 			this.connected = true;
-			this.read_loop.begin();
+			GLib.debug("socket open tcp=%s", this.tcp ? "true" : "false");
+			var fd = this.connection.get_socket().get_fd();
+			this.read_channel = new GLib.IOChannel.unix_new(fd);
+			this.read_channel.set_encoding(null);
+			this.read_channel.set_buffered(false);
+			this.read_watch_id = this.read_channel.add_watch(
+				GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
+				(source, condition) => {
+					if ((condition & GLib.IOCondition.HUP) != 0
+						|| (condition & GLib.IOCondition.ERR) != 0) {
+						GLib.debug("read watch hup or err");
+						this.disconnect();
+						return false;
+					}
+					if ((condition & GLib.IOCondition.IN) == 0) {
+						return this.connected;
+					}
+					if (!this.connected || this.bin == null) {
+						return this.connected;
+					}
+					try {
+						var msg = this.bin.parse();
+						this.dispatch_message(msg);
+					} catch (GLib.IOError e) {
+						GLib.debug("read io error: %s", e.message);
+						this.disconnect();
+						return false;
+					} catch (GLib.Error e) {
+						GLib.warning("read error: %s", e.message);
+						this.disconnect();
+						return false;
+					}
+					return this.connected;
+				}
+			);
+			GLib.debug("read watch started");
 
 			var hello_id = hello_request.id;
 			var hello_promise = new Gee.Promise<Response>();
 			this.pending.set(hello_id, hello_promise);
+			GLib.debug(
+				"hello send id=%d method=%s",
+				hello_id,
+				hello_request.method
+			);
 
 			try {
 				yield this.write(hello_request);
 			} catch (GLib.Error e) {
 				this.pending.unset(hello_id);
 				this.connect_error = "write: " + e.message;
+				GLib.debug("hello write failed: %s", e.message);
 				this.disconnect();
 				return false;
 			}
@@ -204,11 +248,16 @@ namespace OLLMrpc
 				this.connect_error = hello.error.message != ""
 					? hello.error.message
 					: "could not start or reach the filesystem daemon (ollmfilesd)";
+				GLib.debug(
+					"hello failed id=%d: %s",
+					hello_id,
+					this.connect_error
+				);
 				this.disconnect();
 				return false;
 			}
 
-			GLib.debug("connect ok");
+			GLib.debug("connect ok hello id=%d", hello_id);
 			this.connect_error = "";
 			return true;
 		}
@@ -231,6 +280,11 @@ namespace OLLMrpc
 			this.write_queue.clear();
 			this.write_draining = false;
 			this.connected = false;
+			if (this.read_watch_id != 0) {
+				GLib.Source.remove(this.read_watch_id);
+				this.read_watch_id = 0;
+			}
+			this.read_channel = null;
 			foreach (var entry in this.pending.entries) {
 				entry.value.set_exception(
 					new GLib.IOError.FAILED("Client: disconnected")
@@ -405,23 +459,6 @@ namespace OLLMrpc
 			} finally {
 				if (timeout_id != 0) {
 					GLib.Source.remove(timeout_id);
-				}
-			}
-		}
-
-		private async void read_loop()
-		{
-			while (this.connected && this.bin != null) {
-				try {
-					var msg = this.bin.parse();
-					this.dispatch_message(msg);
-				} catch (GLib.IOError e) {
-					this.disconnect();
-					return;
-				} catch (GLib.Error e) {
-					GLib.warning("read error: %s", e.message);
-					this.disconnect();
-					return;
 				}
 			}
 		}

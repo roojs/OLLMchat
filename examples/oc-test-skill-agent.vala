@@ -154,7 +154,7 @@ Examples:
 					throw new GLib.IOError.INVALID_ARGUMENT("--run prompt requires --prompt");
 				}
 				yield this.build_runner();
-				var tpl = this.runner.task_creation_prompt(opt_prompt, "", "",
+				var tpl = yield this.runner.task_creation_prompt(opt_prompt, "", "",
 					this.runner.sr_factory.skill_manager, this.runner.sr_factory.project_manager);
 				stdout.printf("=== system ===\n%s\n=== user ===\n%s\n", tpl.filled_system, tpl.filled_user);
 				return;
@@ -163,7 +163,7 @@ Examples:
 					throw new GLib.IOError.INVALID_ARGUMENT("--run prompt-run requires --prompt");
 				}
 				yield this.build_runner();
-				var tpl = this.runner.task_creation_prompt(opt_prompt, "", "",
+				var tpl = yield this.runner.task_creation_prompt(opt_prompt, "", "",
 					this.runner.sr_factory.skill_manager, this.runner.sr_factory.project_manager);
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
@@ -239,7 +239,7 @@ Examples:
 				}
 				yield this.build_runner();
 				yield this.load_task_list(opt_input);
-				var tpl = this.runner.iteration_prompt("", this.runner.pending, "");
+				var tpl = yield this.runner.iteration_prompt("", this.runner.pending, "");
 				if (opt_run == "iteration-prompt") {
 					stdout.printf("=== system ===\n%s\n=== user ===\n%s\n", tpl.filled_system, tpl.filled_user);
 					return;

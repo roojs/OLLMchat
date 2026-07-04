@@ -144,10 +144,6 @@ occoder_vala_args = [
 ]
 if not get_option('v2testing')
   occoder_vala_args += ['--pkg=fiass']
-else
-  occoder_vala_args += [
-    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-  ]
 endif
 
 occoder_base_lib = library(occoder_lib,
@@ -190,15 +186,15 @@ occoder_vapi_gen_pkgs = [
 ]
 if not get_option('v2testing')
   occoder_vapi_gen_pkgs += ['--pkg', 'fiass']
-else
-  occoder_vapi_gen_pkgs += ['--pkg', 'ocrpc']
 endif
+occoder_vapi_gen_pkgs += ['--pkg', 'ocrpc']
 
 occoder_vapi_vapidirs = [
   '--vapidir', meson.current_source_dir() / '../vapi',
   '--vapidir', meson.current_source_dir() / '../../vapi',
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
   '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
@@ -206,11 +202,8 @@ occoder_vapi_vapidirs = [
   '--vapidir', meson.current_build_dir(),
   '--vapidir', '/usr/share/vala/vapi',
 ]
-if get_option('v2testing')
-  occoder_vapi_vapidirs += ['--vapidir', meson.current_build_dir() / '..' / 'libocrpc']
-endif
 
-occoder_vapi_depends = [occoder_base_lib, ocfiles_vapi, ollmchat_base_lib, ollamaweb_vapi, ocmarkdown_vapi, ocvector_vapi]
+occoder_vapi_depends = [occoder_base_lib, ocfiles_vapi, ollmchat_base_lib, ollamaweb_vapi, ocmarkdown_vapi, ocvector_vapi, ocrpc_vapi]
 
 # Manually generate occoder.vapi with correct command line order
 occoder_vapi = custom_target('occoder-vapi',

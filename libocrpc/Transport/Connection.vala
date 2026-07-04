@@ -145,6 +145,11 @@ namespace OLLMrpc.Transport
 				return this.running;
 			}
 
+			GLib.debug(
+				"recv id=%d method=%s",
+				request.id,
+				request.method
+			);
 			request.connection = this;
 			request.dispatch(null);
 			return this.running;

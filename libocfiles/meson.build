@@ -142,11 +142,7 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocrpc',
 ])
 
-if get_option('v2testing')
-  ocfiles_lib_deps = [ocfiles_deps, ocrpc_vapi_dep, ocsqlite_vapi_dep]
-else
-  ocfiles_lib_deps = [ocfiles_deps, ocsqlite_vapi_dep]
-endif
+ocfiles_lib_deps = [ocfiles_deps, ocrpc_vapi_dep, ocsqlite_vapi_dep]
 
 ocfiles_base_lib = library(ocfiles_lib,
   dependencies: ocfiles_lib_deps,
@@ -158,7 +154,7 @@ ocfiles_base_lib = library(ocfiles_lib,
   include_directories: [
     include_directories('..' / 'vapi'),
   ],
-  vala_args: ocfiles_vapi_pkgs + (get_option('v2testing') ? ['--pkg=ocrpc'] : []) + strcasestr_vala_args + [
+  vala_args: ocfiles_vapi_pkgs + ['--pkg=ocrpc'] + strcasestr_vala_args + [
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -184,7 +180,7 @@ ocfiles_vapi = custom_target('ocfiles-vapi',
     '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
     '--vapidir', meson.current_source_dir() / '../../vapi',
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
-  ] + (get_option('v2testing') ? ['--pkg', 'ocrpc'] : []) + ocfiles_vapi_gen_pkgs + strcasestr_vala_args + [
+  ] + ['--pkg', 'ocrpc'] + ocfiles_vapi_gen_pkgs + strcasestr_vala_args + [
     '--library', ocfiles_lib,
     '--header', meson.current_build_dir() / 'ocfiles.h',  # Use header from library
     '--vapi', '@OUTPUT@',
@@ -196,11 +192,7 @@ ocfiles_vapi = custom_target('ocfiles-vapi',
   install_dir: get_option('datadir') / 'vala' / 'vapi'
 )
 
-if get_option('v2testing')
-  ocfiles_vapi_dep_deps = [ocrpc_vapi_dep, ocsqlite_vapi_dep, ocfiles_deps]
-else
-  ocfiles_vapi_dep_deps = [ocsqlite_vapi_dep, ocfiles_deps]
-endif
+ocfiles_vapi_dep_deps = [ocrpc_vapi_dep, ocsqlite_vapi_dep, ocfiles_deps]
 
 # Create dependency for other libraries to use
 # Use link_args instead of link_with to prevent meson from auto-including ocfiles-meson.vapi

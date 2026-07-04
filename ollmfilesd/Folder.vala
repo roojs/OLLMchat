@@ -94,7 +94,7 @@ namespace OLLMfilesd
 				case "manager":
 				case "parent":
 				case "children":
-				case "project_files":
+				case "project-files":
 					return null;
 				default:
 					return default_serialize_property(
@@ -114,7 +114,7 @@ namespace OLLMfilesd
 				case "manager":
 				case "parent":
 				case "children":
-				case "project_files":
+				case "project-files":
 					return;
 				default:
 					bin_default_write_prop(ctx, prop);
@@ -132,7 +132,7 @@ namespace OLLMfilesd
 				case "manager":
 				case "parent":
 				case "children":
-				case "project_files":
+				case "project-files":
 					return;
 				default:
 					bin_default_read_prop(ctx, prop, type_byte);

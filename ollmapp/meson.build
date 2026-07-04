@@ -322,6 +322,7 @@ if get_option('v2testing')
     '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
   ]
 else
+  ollmchat_exe_deps += ocrpc_vapi_dep
   ollmchat_vala_args += [
     '--pkg=fiass',
     '--vapidir', meson.current_build_dir() / '..' / 'libocvector',

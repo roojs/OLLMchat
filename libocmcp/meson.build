@@ -76,15 +76,13 @@ ocmcp_base_lib = library(ocmcp_lib,
 ocmcp_vapi_vapidirs = [
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
   '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
   '--vapidir', meson.current_source_dir() / '../vapi',
   '--vapidir', '/usr/share/vala/vapi',
 ]
-if get_option('v2testing')
-  ocmcp_vapi_vapidirs += ['--vapidir', meson.current_build_dir() / '..' / 'libocrpc']
-endif
 
 ocmcp_vapi_pkgs = [
   '--pkg', 'posix',
@@ -95,6 +93,7 @@ ocmcp_vapi_pkgs = [
   '--pkg', 'ollmchat',
   '--pkg', 'ollamaweb',
   '--pkg', 'ocfiles',
+  '--pkg', 'ocrpc',
   '--pkg', 'ocbwrap',
   '--pkg', 'gmodule-2.0',
   '--pkg', 'tree-sitter',
@@ -103,14 +102,8 @@ ocmcp_vapi_pkgs = [
   '--pkg', 'gio-2.0',
   '--pkg', 'gee-0.8',
 ]
-if get_option('v2testing')
-  ocmcp_vapi_pkgs += ['--pkg', 'ocrpc']
-endif
 
-ocmcp_vapi_depends = [ocmcp_base_lib, ollamaweb_vapi, ocbwrap_vapi]
-if get_option('v2testing')
-  ocmcp_vapi_depends += [ocrpc_vapi]
-endif
+ocmcp_vapi_depends = [ocmcp_base_lib, ollamaweb_vapi, ocbwrap_vapi, ocrpc_vapi]
 
 ocmcp_vapi = custom_target('ocmcp-vapi',
   output: 'ocmcp.vapi',
