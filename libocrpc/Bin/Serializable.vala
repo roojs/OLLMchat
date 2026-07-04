@@ -510,7 +510,8 @@ namespace OLLMrpc.Bin
 					return;
 
 				case GLib.Type.INT:
-					if (prop.value_type != GLib.Type.INT) {
+					if (prop.value_type != GLib.Type.INT
+						&& prop.value_type != GLib.Type.INT64) {
 						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
@@ -519,7 +520,12 @@ namespace OLLMrpc.Bin
 					}
 					width = ctx.in_stream.read_byte ();
 					if (width == 1) {
-						val.set_int ((int) (int8) ctx.in_stream.read_byte ());
+						var iv = (int64) (int8) ctx.in_stream.read_byte ();
+						if (prop.value_type == GLib.Type.INT64) {
+							val.set_int64 (iv);
+						} else {
+							val.set_int ((int) iv);
+						}
 						this.set_property (prop.name, val);
 						return;
 					}
@@ -530,7 +536,12 @@ namespace OLLMrpc.Bin
 							prop.name
 						);
 					}
-					val.set_int ((int) ctx.in_stream.read_int64 ());
+					var i64 = ctx.in_stream.read_int64 ();
+					if (prop.value_type == GLib.Type.INT64) {
+						val.set_int64 (i64);
+					} else {
+						val.set_int ((int) i64);
+					}
 					this.set_property (prop.name, val);
 					return;
 
@@ -560,7 +571,8 @@ namespace OLLMrpc.Bin
 					return;
 
 				case GLib.Type.UINT:
-					if (prop.value_type != GLib.Type.UINT) {
+					if (prop.value_type != GLib.Type.UINT
+						&& prop.value_type != GLib.Type.UINT64) {
 						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
@@ -569,7 +581,12 @@ namespace OLLMrpc.Bin
 					}
 					width = ctx.in_stream.read_byte ();
 					if (width == 1) {
-						val.set_uint ((uint) ctx.in_stream.read_byte ());
+						var uv = (uint64) ctx.in_stream.read_byte ();
+						if (prop.value_type == GLib.Type.UINT64) {
+							val.set_uint64 (uv);
+						} else {
+							val.set_uint ((uint) uv);
+						}
 						this.set_property (prop.name, val);
 						return;
 					}
@@ -580,7 +597,12 @@ namespace OLLMrpc.Bin
 							prop.name
 						);
 					}
-					val.set_uint ((uint) ctx.in_stream.read_uint64 ());
+					var u64 = ctx.in_stream.read_uint64 ();
+					if (prop.value_type == GLib.Type.UINT64) {
+						val.set_uint64 (u64);
+					} else {
+						val.set_uint ((uint) u64);
+					}
 					this.set_property (prop.name, val);
 					return;
 
