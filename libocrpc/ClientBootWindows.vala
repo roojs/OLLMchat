@@ -37,15 +37,12 @@ namespace OLLMrpc
 
 		public async void ensure_daemon() throws GLib.IOError
 		{
+			GLib.debug("ensure_daemon endpoint=%s", this.socket);
 			if (this.connectable()) {
 				return;
 			}
 
-			try {
-				this.spawn();
-			} catch (GLib.IOError e) {
-				throw e;
-			}
+			this.spawn();
 
 			yield this.startup();
 			if (this.connectable()) {
@@ -53,7 +50,7 @@ namespace OLLMrpc
 			}
 
 			throw new GLib.IOError.FAILED(
-				"ClientBoot: could not start or reach the filesystem daemon"
+				"could not start or reach the filesystem daemon"
 			);
 		}
 
@@ -110,12 +107,13 @@ namespace OLLMrpc
 				);
 			} catch (GLib.SpawnError e) {
 				throw new GLib.IOError.FAILED(
-					"ClientBoot: spawn "
+					"spawn "
 						+ executable
 						+ ": "
 						+ e.message
 				);
 			}
+			GLib.debug("spawned pid=%d executable=%s", child_pid, executable);
 			this.detached_pid = child_pid;
 			GLib.ChildWatch.add(child_pid, (w_pid, status) => {
 				if (w_pid == this.detached_pid) {
@@ -135,6 +133,11 @@ namespace OLLMrpc
 				}
 				yield this.pause(this.poll);
 			}
+			GLib.debug(
+				"startup timed out endpoint=%s wait=%us",
+				this.socket,
+				this.startup_wait
+			);
 		}
 
 		private async void pause(uint ms)

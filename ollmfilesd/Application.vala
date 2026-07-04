@@ -126,7 +126,7 @@ namespace OLLMfilesd
 			opt_tcp_host = "127.0.0.1";
 			opt_tcp_port = 4141;
 
-			string[] args = command_line.get_arguments();
+			var args = command_line.get_arguments();
 			var opt_context = new OptionContext(this.get_application_id());
 			opt_context.set_help_enabled(true);
 			opt_context.add_main_entries(app_options, null);
@@ -183,10 +183,6 @@ namespace OLLMfilesd
 					GLib.FileUtils.unlink(this.socket_path);
 				}
 #endif
-				if (!this.daemonize()) {
-					command_line.printerr("error: could not daemonize\n");
-					return 1;
-				}
 				this.write_pid();
 			}
 
@@ -236,7 +232,6 @@ namespace OLLMfilesd
 					this,
 					this.project_manager,
 					this.config);
-			yield this.project_manager.background_scan.open_vector_db ();
 
 			this.daemon = new Daemon(this);
 			OLLMrpc.Request.register(
@@ -268,17 +263,16 @@ namespace OLLMfilesd
 			if (opt_interactive) {
 				this.listen = new Stdio(this, opt_rpc_script);
 				this.listen.start();
-				if (opt_rpc_script == "") {
+				if (opt_rpc_script != "") {
+					while (GLib.MainContext.default().pending()) {
+						GLib.MainContext.default().iteration(true);
+					}
+					this.quit();
 					return;
 				}
-				while (GLib.MainContext.default().pending()) {
-					GLib.MainContext.default().iteration(true);
-				}
-				this.quit();
-				return;
 			}
 
-			if (opt_tcp) {
+			if (!opt_interactive && opt_tcp) {
 				this.listen = new OLLMrpc.Transport.TcpListen(
 					opt_tcp_host,
 					(uint16) opt_tcp_port
@@ -291,60 +285,19 @@ namespace OLLMfilesd
 					opt_tcp_host,
 					(uint16) opt_tcp_port
 				);
-				return;
 			}
 
-			this.listen = new OLLMrpc.Transport.SocketListen(this.socket_path);
-			if (!this.listen.start()) {
-				GLib.error("failed to start RPC listener");
-			}
-			GLib.debug("ollmfilesd listening on %s", this.socket_path);
-		}
-
-		/**
-		 * Classic double-fork daemonize. Parent exits; only the grandchild
-		 * returns. Skipped for {@link opt_interactive}.
-		 */
-		private bool daemonize()
-		{
-#if G_OS_WIN32
-			return true;
-#else
-			Posix.pid_t pid = Posix.fork();
-			if (pid < 0) {
-				return false;
-			}
-			if (pid > 0) {
-				Posix._exit(0);
+			if (!opt_interactive && !opt_tcp) {
+				this.listen = new OLLMrpc.Transport.SocketListen(
+					this.socket_path
+				);
+				if (!this.listen.start()) {
+					GLib.error("failed to start RPC listener");
+				}
+				GLib.debug("listening on %s", this.socket_path);
 			}
 
-			if (Posix.setsid() < 0) {
-				return false;
-			}
-
-			pid = Posix.fork();
-			if (pid < 0) {
-				return false;
-			}
-			if (pid > 0) {
-				Posix._exit(0);
-			}
-
-			Posix.chdir("/");
-			Posix.umask(0);
-
-			var null_fd = Posix.open("/dev/null", Posix.O_RDWR);
-			if (null_fd < 0) {
-				return false;
-			}
-			Posix.dup2(null_fd, Posix.STDIN_FILENO);
-			Posix.dup2(null_fd, Posix.STDOUT_FILENO);
-			Posix.dup2(null_fd, Posix.STDERR_FILENO);
-			if (null_fd > Posix.STDERR_FILENO) {
-				Posix.close(null_fd);
-			}
-			return true;
-#endif
+			this.project_manager.background_scan.open_vector_db.begin();
 		}
 
 		private void write_pid()
@@ -384,56 +337,137 @@ namespace OLLMfilesd
 				GLib.warning("could not remove pid file: %s", e.message);
 			}
 		}
-	}
 
-	/**
-	 * @return true when a live {@code ollmfilesd} is already up. Caller exits 0 so
-	 * the client connects to the existing daemon (pid file on Linux, TCP on Windows).
-	 */
-	static bool already_running()
-	{
+		/**
+		 * @return true when a live {@code ollmfilesd} is already up. Caller exits 0 so
+		 * the client connects to the existing daemon (pid file on Linux, TCP on Windows).
+		 */
+		public static bool is_running()
+		{
 #if G_OS_WIN32
-		var client = new GLib.SocketClient();
-		client.timeout = 2;
-		try {
-			var conn = client.connect_to_host("127.0.0.1", 4141, null);
-			conn.close();
-			GLib.print("ollmfilesd: already running on 127.0.0.1:4141\n");
-			return true;
-		} catch (GLib.Error e) {
-			return false;
-		}
+			var client = new GLib.SocketClient();
+			client.timeout = 2;
+			try {
+				var conn = client.connect_to_host("127.0.0.1", 4141, null);
+				conn.close();
+				GLib.print("ollmfilesd: already running on 127.0.0.1:4141\n");
+				return true;
+			} catch (GLib.Error e) {
+				return false;
+			}
 #else
-		var pid_path = GLib.Path.build_filename(
-			GLib.Environment.get_user_data_dir(),
-			"ollmchat",
-			"ollmfilesd.pid"
-		);
+			var pid_path = GLib.Path.build_filename(
+				GLib.Environment.get_user_data_dir(),
+				"ollmchat",
+				"ollmfilesd.pid"
+			);
 
-		if (!GLib.FileUtils.test(pid_path, GLib.FileTest.EXISTS)) {
-			return false;
+			if (!GLib.FileUtils.test(pid_path, GLib.FileTest.EXISTS)) {
+				return false;
+			}
+
+			var text = "";
+			GLib.FileUtils.get_contents(pid_path, out text);
+			var daemon_pid = int.parse(text);
+			// Signal 0 does not terminate; it only checks the pid is still alive.
+			if (Posix.kill(daemon_pid, 0) != 0) {
+				return false;
+			}
+			GLib.print(
+				"ollmfilesd: already running (pid %d)\n",
+				daemon_pid
+			);
+			return true;
+#endif
 		}
 
-		var text = "";
-		GLib.FileUtils.get_contents(pid_path, out text);
-		var daemon_pid = int.parse(text);
-		// Signal 0 does not terminate; it only checks the pid is still alive.
-		if (Posix.kill(daemon_pid, 0) != 0) {
+#if !G_OS_WIN32
+		/**
+		 * Double-fork detach, then {@code exec} a fresh process image.
+		 * GObject state must not survive {@code fork} without {@code exec}.
+		 *
+		 * @param args process argv passed to {@code execv}
+		 * @return true in the parent (caller should exit 0); does not return in
+		 *   the daemon child when {@code exec} succeeds
+		 */
+		public static bool daemonize(string[] args)
+		{
+			var pid = Posix.fork();
+			if (pid < 0) {
+				return false;
+			}
+			if (pid > 0) {
+				return true;
+			}
+
+			if (Posix.setsid() < 0) {
+				Posix._exit(1);
+			}
+
+			pid = Posix.fork();
+			if (pid < 0) {
+				Posix._exit(1);
+			}
+			if (pid > 0) {
+				Posix._exit(0);
+			}
+
+			Posix.chdir("/");
+			Posix.umask(0);
+
+			var null_fd = Posix.open("/dev/null", Posix.O_RDWR);
+			if (null_fd < 0) {
+				Posix._exit(1);
+			}
+			Posix.dup2(null_fd, Posix.STDIN_FILENO);
+			Posix.dup2(null_fd, Posix.STDOUT_FILENO);
+			Posix.dup2(null_fd, Posix.STDERR_FILENO);
+			if (null_fd > Posix.STDERR_FILENO) {
+				Posix.close(null_fd);
+			}
+
+			GLib.Environment.set_variable(
+				"OLLMFILESD_DAEMON",
+				"1",
+				true
+			);
+			Posix.execv(args[0], args);
+			Posix._exit(1);
 			return false;
 		}
-		GLib.print(
-			"ollmfilesd: already running (pid %d)\n",
-			daemon_pid
-		);
-		return true;
 #endif
 	}
 
 	int main(string[] args)
 	{
-		if (already_running()) {
+		if (OllmfilesdApplication.is_running()) {
 			return 0;
 		}
+#if !G_OS_WIN32
+		if (GLib.Environment.get_variable("OLLMFILESD_DAEMON") == null) {
+			var background = true;
+			foreach (var arg in args) {
+				if (arg == "--interactive" || arg == "-i") {
+					background = false;
+					break;
+				}
+				if (arg == "--tcp") {
+					background = false;
+					break;
+				}
+				if (arg.has_prefix("--rpc-script")) {
+					background = false;
+					break;
+				}
+			}
+			if (background) {
+				if (OllmfilesdApplication.daemonize(args)) {
+					return 0;
+				}
+				return 1;
+			}
+		}
+#endif
 		var app = new OllmfilesdApplication();
 		return app.run(args);
 	}

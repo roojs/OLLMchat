@@ -116,6 +116,12 @@ namespace OLLMrpc
 
 			hello_request.id = this.next_id++;
 
+			GLib.debug(
+				"connect begin socket=%s tcp=%s",
+				this.socket,
+				this.tcp ? "true" : "false"
+			);
+
 			if (client_boot_required(this.tcp)) {
 				var boot = new ClientBoot(this.socket);
 				try {
@@ -125,7 +131,7 @@ namespace OLLMrpc
 						? e.message
 						: "could not start or reach the filesystem daemon (ollmfilesd)";
 					GLib.critical(
-						"Client: ensure_daemon %s: %s",
+						"ensure_daemon %s: %s",
 						this.socket,
 						this.connect_error
 					);
@@ -144,7 +150,7 @@ namespace OLLMrpc
 				} catch (GLib.Error e) {
 					this.connect_error = e.message;
 					GLib.critical(
-						"Client: connect %s: %s",
+						"connect %s: %s",
 						this.socket,
 						this.connect_error
 					);
@@ -158,7 +164,7 @@ namespace OLLMrpc
 				} catch (GLib.Error e) {
 					this.connect_error = e.message;
 					GLib.critical(
-						"Client: connect %s: %s",
+						"connect %s: %s",
 						this.socket,
 						this.connect_error
 					);
@@ -198,6 +204,7 @@ namespace OLLMrpc
 				return false;
 			}
 
+			GLib.debug("connect ok");
 			this.connect_error = "";
 			return true;
 		}
@@ -260,9 +267,20 @@ namespace OLLMrpc
 					generator.set_root(
 						Json.gobject_serialize(job.payload)
 					);
-					this.output.put_string(
-						generator.to_data(null) + "\n"
-					);
+					var line = generator.to_data(null) + "\n";
+					var request = job.payload as Request;
+					if (request != null) {
+						GLib.debug(
+							"send id=%d method=%s %s",
+							request.id,
+							request.method,
+							line.strip()
+						);
+					}
+					if (request == null) {
+						GLib.debug("send %s", line.strip());
+					}
+					this.output.put_string(line);
 					yield this.output.flush_async(
 						GLib.Priority.DEFAULT,
 						null
@@ -296,7 +314,7 @@ namespace OLLMrpc
 					request.id
 				);
 				GLib.warning(
-					"Client: %s id=%d: %s",
+					"%s id=%d: %s",
 					request.method,
 					request.id,
 					error.message
@@ -320,7 +338,7 @@ namespace OLLMrpc
 					request.id
 				);
 				GLib.warning(
-					"Client: %s id=%d: %s",
+					"%s id=%d: %s",
 					request.method,
 					request.id,
 					error.message
@@ -336,7 +354,7 @@ namespace OLLMrpc
 			);
 			if (response.error != null) {
 				GLib.warning(
-					"Client: %s id=%d: %s",
+					"%s id=%d: %s",
 					request.method,
 					request.id,
 					response.error.message
@@ -398,7 +416,7 @@ namespace OLLMrpc
 					}
 					this.dispatch_line(response_line.strip());
 				} catch (GLib.Error e) {
-					GLib.warning("Client read error: %s", e.message);
+					GLib.warning("read error: %s", e.message);
 					this.disconnect();
 					return;
 				}
@@ -411,13 +429,13 @@ namespace OLLMrpc
 			try {
 				parser.load_from_data(data, -1);
 			} catch (GLib.Error e) {
-				GLib.warning("Client invalid JSON: %s", e.message);
+				GLib.warning("invalid JSON: %s", e.message);
 				return;
 			}
 
 			var root = parser.get_root();
 			if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
-				GLib.warning("Client line not a JSON object");
+				GLib.warning("line not a JSON object");
 				return;
 			}
 			var obj = root.get_object();
@@ -427,6 +445,11 @@ namespace OLLMrpc
 					typeof(Notification), data
 				) as Notification;
 				if (notif != null) {
+					GLib.debug(
+						"notification method=%s object_type=%s",
+						notif.method,
+						notif.object_type
+					);
 					this.notification(notif);
 				}
 				return;
@@ -439,8 +462,24 @@ namespace OLLMrpc
 				return;
 			}
 			if (!this.pending.has_key(response.id)) {
-				GLib.warning("Client unexpected response id %d", response.id);
+				GLib.warning("unexpected response id %d", response.id);
 				return;
+			}
+
+			if (response.error != null) {
+				GLib.debug(
+					"replied id=%d error=%s",
+					response.id,
+					response.error.message
+				);
+			}
+			if (response.error == null) {
+				GLib.debug(
+					"replied id=%d result_type=%s array=%s",
+					response.id,
+					response.result_type,
+					response.is_array ? "true" : "false"
+				);
 			}
 
 			if (response.result_type == "") {

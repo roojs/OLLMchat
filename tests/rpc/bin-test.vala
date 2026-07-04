@@ -12,14 +12,30 @@ namespace OLLMrpcTests
 		public int count { get; set; default = 0; }
 	}
 
+	public class TestParent : OLLMrpc.Bin.Object
+	{
+		public string label { get; set; default = ""; }
+		public TestPair? child { get; set; }
+	}
+
 	/**
-	 * Unsupported GObject props are omitted via default {@code bin_write_prop}
-	 * returning false (same idea as JSON skipping a field).
+	 * Transient props are omitted by overriding {@code bin_write_prop}.
 	 */
 	public class TestSkipDefault : OLLMrpc.Bin.Object
 	{
 		public string keep { get; set; default = ""; }
 		public GLib.Object? extra { get; set; }
+
+		public override void bin_write_prop (
+			Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			if (prop.name == "extra") {
+				return;
+			}
+			base.bin_write_prop (ctx, prop);
+		}
 	}
 
 	public static int main (string[] args)
@@ -30,6 +46,7 @@ namespace OLLMrpcTests
 		var write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
 		write_bin.register ("TestPair", typeof (TestPair));
 		write_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
+		write_bin.register ("TestParent", typeof (TestParent));
 
 		var original = new TestPair () {
 			name = "alpha",
@@ -55,6 +72,50 @@ namespace OLLMrpcTests
 			}
 			if (parsed.name != "alpha" || parsed.count != 42) {
 				GLib.printerr ("round-trip mismatch\n");
+				return 1;
+			}
+
+			mem = new GLib.MemoryOutputStream.resizable ();
+			out_stream = new GLib.DataOutputStream (mem);
+			write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
+			write_bin.register ("TestPair", typeof (TestPair));
+			write_bin.register ("TestParent", typeof (TestParent));
+
+			var nested_src = new TestParent () {
+				label = "parent",
+				child = new TestPair () {
+					name = "nested",
+					count = 7,
+				},
+			};
+			write_bin.write (nested_src);
+			out_stream.close ();
+
+			bytes = mem.steal_as_bytes ();
+			in_base = new GLib.MemoryInputStream.from_bytes (bytes);
+			in_stream = new GLib.DataInputStream (in_base);
+			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
+			read_bin.register ("TestPair", typeof (TestPair));
+			read_bin.register ("TestParent", typeof (TestParent));
+
+			var nested_dst = read_bin.parse () as TestParent;
+			if (nested_dst == null) {
+				GLib.printerr ("nested parse returned null\n");
+				return 1;
+			}
+			if (nested_dst.label != "parent") {
+				GLib.printerr ("nested label mismatch\n");
+				return 1;
+			}
+			if (nested_dst.child == null) {
+				GLib.printerr ("nested child is null\n");
+				return 1;
+			}
+			if (
+				nested_dst.child.name != "nested"
+				|| nested_dst.child.count != 7
+			) {
+				GLib.printerr ("nested child mismatch\n");
 				return 1;
 			}
 

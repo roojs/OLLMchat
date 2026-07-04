@@ -17,7 +17,9 @@ namespace OLLMrpc.Bin
 	 * Convenience base for {@link Serializable} GObject types.
 	 *
 	 * Subclasses can {@code override} {@link bin_write_prop} / {@link bin_read_prop}
-	 * and delegate to {@code base} for default scalar encoding.
+	 * for lists, blobs, and transient fields; {@link bin_pre} / {@link bin_post}
+	 * for inbound object hooks; delegate to {@code base} for scalars and nested
+	 * {@link Serializable} properties.
 	 */
 	public abstract class Object : GLib.Object, Serializable
 	{

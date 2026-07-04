@@ -28,13 +28,13 @@ namespace OLLMrpc.Bin
 		private Gee.HashMap<uint16, string> token_to_key =
 			new Gee.HashMap<uint16, string> ();
 
-		private Gee.HashMap<string, uint16> alias_to_token =
-			new Gee.HashMap<string, uint16> ();
-		private Gee.HashMap<uint16, string> token_to_alias =
-			new Gee.HashMap<uint16, string> ();
+		private Gee.HashMap<string, uint> alias_to_reg_id =
+			new Gee.HashMap<string, uint> ();
+		private Gee.HashMap<uint, string> reg_id_to_alias =
+			new Gee.HashMap<uint, string> ();
 
 		private uint16 next_key_id = 0;
-		private uint16 next_type_id = 0;
+		private uint next_reg_id = 0;
 
 		private Gee.HashMap<string, GLib.Type> alias_to_gtype =
 			new Gee.HashMap<string, GLib.Type> ();
@@ -42,7 +42,6 @@ namespace OLLMrpc.Bin
 			new Gee.HashMap<GLib.Type, string> ();
 
 		public const uint16 TOKEN_REG_KEY = 0xFFFF;
-		public const uint16 TOKEN_REG_TYPE = 0xFFFE;
 		public const uint16 TOKEN_END = 0xFFFD;
 
 		/**
@@ -51,10 +50,17 @@ namespace OLLMrpc.Bin
 		 * @param alias wire type name
 		 * @param gtype GObject type for that alias
 		 */
-		public void register (string alias, GLib.Type gtype)
+		public void register (string alias, GLib.Type gtype) throws GLib.Error
 		{
+			if (this.alias_to_gtype.has_key (alias)) {
+				GLib.error ("duplicate register of alias '%s'", alias);
+			}
+
+			var reg_id = this.next_reg_id++;
 			this.alias_to_gtype.set (alias, gtype);
 			this.gtype_to_alias.set (gtype, alias);
+			this.alias_to_reg_id.set (alias, reg_id);
+			this.reg_id_to_alias.set (reg_id, alias);
 		}
 
 		public Stream (
@@ -76,14 +82,51 @@ namespace OLLMrpc.Bin
 
 		public void write (Serializable obj) throws GLib.Error
 		{
-			this.write_type (obj.get_type ());
+			this.write_gtype (obj.get_type ());
 			obj.bin_write (this);
 		}
 
 		public Serializable parse () throws GLib.Error
 		{
-			GLib.Type root_type = this.read_type ();
-			var obj = (Serializable) GLib.Object.new (root_type);
+			var b = this.in_stream.read_byte ();
+			if (b == 0xFF) {
+				this.read_reg_gtype ();
+				b = this.in_stream.read_byte ();
+			}
+			if ((b & 0x80) != 0) {
+				GLib.error ("root parse does not accept object arrays");
+			}
+			if (b != (uint8) GLib.Type.OBJECT) {
+				GLib.error (
+					"expected object type byte, got 0x%02X",
+					b
+				);
+			}
+			return this.parse_object ();
+		}
+
+		/**
+		 * Read one object body after its {@link GLib.Type.OBJECT} type byte.
+		 */
+		public Serializable parse_object () throws GLib.Error
+		{
+			var reg_b = this.in_stream.read_byte ();
+			var reg_id = (uint) reg_b;
+			if ((reg_b & 0x80) != 0) {
+				var reg_b2 = this.in_stream.read_byte ();
+				reg_id = ((uint) (reg_b & 0x7F) << 8) | reg_b2;
+			}
+
+			var alias = this.reg_id_to_alias.get (reg_id);
+			if (alias == null) {
+				GLib.error ("unknown registered type id %u", reg_id);
+			}
+			var gtype = this.alias_to_gtype.get (alias);
+			if (gtype == 0) {
+				GLib.error ("Unrecognized type alias: %s", alias);
+			}
+
+			var obj = (Serializable) GLib.Object.new (gtype);
 			obj.bin_read (this);
 			return obj;
 		}
@@ -95,11 +138,11 @@ namespace OLLMrpc.Bin
 				return;
 			}
 
-			uint16 id = this.next_key_id++;
+			var id = this.next_key_id++;
 			this.out_stream.put_uint16 (TOKEN_REG_KEY);
 			this.out_stream.put_uint16 (id);
 
-			uint8 len = (uint8) uint.min (prop_name.length, 255);
+			var len = (uint8) uint.min (prop_name.length, 255);
 			this.out_stream.put_byte (len);
 			size_t written;
 			this.out_stream.write_all (((uint8[]) prop_name)[0:len], out written);
@@ -111,7 +154,7 @@ namespace OLLMrpc.Bin
 
 		internal uint16 read_tag (out string prop_name) throws GLib.Error
 		{
-			uint16 t = this.in_stream.read_uint16 ();
+			var t = this.in_stream.read_uint16 ();
 
 			if (t == TOKEN_END) {
 				prop_name = "";
@@ -123,75 +166,80 @@ namespace OLLMrpc.Bin
 				return t;
 			}
 
-			uint16 assigned_id = this.in_stream.read_uint16 ();
-			uint8 len = this.in_stream.read_byte ();
+			var assigned_id = this.in_stream.read_uint16 ();
+			var len = this.in_stream.read_byte ();
 
-			uint8[] buffer = new uint8[len + 1];
+			var buffer = new uint8[len + 1];
 			size_t read_bytes;
 			this.in_stream.read_all (buffer[0:len], out read_bytes);
 			buffer[len] = 0;
-			string name = (string) buffer;
+			prop_name = (string) buffer;
 
-			this.key_to_token.set (name, assigned_id);
-			this.token_to_key.set (assigned_id, name);
+			this.key_to_token.set (prop_name, assigned_id);
+			this.token_to_key.set (assigned_id, prop_name);
 			return this.read_tag (out prop_name);
 		}
 
-		public void write_type (GLib.Type object_type) throws GLib.Error
+		public void write_gtype (GLib.Type object_type) throws GLib.Error
 		{
-			string alias = this.gtype_to_alias.get (object_type);
+			var alias = this.gtype_to_alias.get (object_type);
 			if (alias == null) {
 				GLib.error (
 					"Unregistered class type schema: %s",
 					object_type.name ()
 				);
 			}
+			if (!this.alias_to_reg_id.has_key (alias)) {
+				GLib.error (
+					"type '%s' has no reg_id — call register() first",
+					object_type.name ()
+				);
+			}
 
-			if (this.alias_to_token.has_key (alias)) {
-				this.out_stream.put_uint16 (this.alias_to_token.get (alias));
+			this.out_stream.put_byte ((uint8) GLib.Type.OBJECT);
+			var reg_id = this.alias_to_reg_id.get (alias);
+			if (reg_id < 128) {
+				this.out_stream.put_byte ((uint8) reg_id);
 				return;
 			}
 
-			uint16 id = this.next_type_id++;
-			this.out_stream.put_uint16 (TOKEN_REG_TYPE);
-			this.out_stream.put_uint16 (id);
-
-			uint8 len = (uint8) uint.min (alias.length, 255);
-			this.out_stream.put_byte (len);
-			size_t written;
-			this.out_stream.write_all (((uint8[]) alias)[0:len], out written);
-
-			this.alias_to_token.set (alias, id);
-			this.token_to_alias.set (id, alias);
-			this.out_stream.put_uint16 (id);
+			this.out_stream.put_byte (
+				(uint8) (0x80 | ((reg_id >> 8) & 0x7F))
+			);
+			this.out_stream.put_byte ((uint8) (reg_id & 0xFF));
 		}
 
-		public GLib.Type read_type () throws GLib.Error
+		internal void read_reg_gtype () throws GLib.Error
 		{
-			uint16 t = this.in_stream.read_uint16 ();
-
-			if (t != TOKEN_REG_TYPE) {
-				string active_alias = this.token_to_alias.get (t);
-				return this.alias_to_gtype.get (active_alias);
+			var b1 = this.in_stream.read_byte ();
+			if (b1 != 0xFE) {
+				GLib.error (
+					"unexpected byte 0x%02X after 0xFF",
+					b1
+				);
 			}
 
-			uint16 assigned_id = this.in_stream.read_uint16 ();
-			uint8 len = this.in_stream.read_byte ();
+			var reg_b = this.in_stream.read_byte ();
+			var assigned_id = (uint) reg_b;
+			if ((reg_b & 0x80) != 0) {
+				var reg_b2 = this.in_stream.read_byte ();
+				assigned_id = ((uint) (reg_b & 0x7F) << 8) | reg_b2;
+			}
 
-			uint8[] buffer = new uint8[len + 1];
+			var len = this.in_stream.read_byte ();
+			var buffer = new uint8[len + 1];
 			size_t read_bytes;
 			this.in_stream.read_all (buffer[0:len], out read_bytes);
 			buffer[len] = 0;
-			string alias = (string) buffer;
+			var alias = (string) buffer;
 
-			GLib.Type gtype = this.alias_to_gtype.get (alias);
+			var gtype = this.alias_to_gtype.get (alias);
 			if (gtype == 0) {
 				GLib.error ("Unrecognized type alias: %s", alias);
 			}
 
-			this.alias_to_token.set (alias, assigned_id);
-			this.token_to_alias.set (assigned_id, alias);
-			return this.read_type ();
+			this.alias_to_reg_id.set (alias, assigned_id);
+			this.reg_id_to_alias.set (assigned_id, alias);
 		}
 	}
 }

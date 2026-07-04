@@ -68,13 +68,14 @@ namespace OLLMrpc
 		 */
 		public async void ensure_daemon() throws GLib.IOError
 		{
-			uint recovery = 0;
+			GLib.debug("ensure_daemon socket=%s", this.socket);
+			var recovery = 0U;
 			while (recovery < this.max_attempts) {
 				if (this.connectable()) {
 					return;
 				}
 
-				int daemon_pid = this.read_pid();
+				var daemon_pid = this.read_pid();
 				if (this.pid_running(daemon_pid)) {
 					this.terminate_daemon(daemon_pid);
 					yield this.pause(this.grace);
@@ -104,7 +105,7 @@ namespace OLLMrpc
 			}
 
 			throw new GLib.IOError.FAILED(
-				"ClientBoot: could not start or reach the filesystem daemon"
+				"could not start or reach the filesystem daemon"
 			);
 		}
 
@@ -136,7 +137,7 @@ namespace OLLMrpc
 			var executable = (from_env != null && from_env != "")
 				? from_env
 				: "ollmfilesd";
-			int child_pid;
+			var child_pid = 0;
 			try {
 				GLib.Process.spawn_async(
 					null,
@@ -153,12 +154,13 @@ namespace OLLMrpc
 				);
 			} catch (GLib.SpawnError e) {
 				throw new GLib.IOError.FAILED(
-					"ClientBoot: spawn "
+					"spawn "
 						+ executable
 						+ ": "
 						+ e.message
 				);
 			}
+			GLib.debug("spawned pid=%d executable=%s", child_pid, executable);
 			this.detached_pid = child_pid;
 			GLib.ChildWatch.add(child_pid, (w_pid, status) => {
 				if (w_pid == this.detached_pid) {
@@ -183,11 +185,16 @@ namespace OLLMrpc
 				}
 				yield this.pause(this.poll);
 			}
+			GLib.debug(
+				"startup timed out socket=%s wait=%us",
+				this.socket,
+				this.startup_wait
+			);
 		}
 
 		private async void pause(uint ms)
 		{
-			uint source_id = GLib.Timeout.add(ms, pause.callback);
+			var source_id = GLib.Timeout.add(ms, pause.callback);
 			yield;
 			GLib.Source.remove(source_id);
 		}
@@ -197,7 +204,7 @@ namespace OLLMrpc
 			if (!GLib.FileUtils.test(this.pid, GLib.FileTest.EXISTS)) {
 				return -1;
 			}
-			string text;
+			var text = "";
 			try {
 				GLib.FileUtils.get_contents(this.pid, out text);
 			} catch (GLib.FileError e) {
@@ -207,11 +214,11 @@ namespace OLLMrpc
 			if (text == "") {
 				return -1;
 			}
-			int daemon_pid;
-			if (int.try_parse(text, out daemon_pid)) {
-				return daemon_pid;
+			var daemon_pid = 0;
+			if (!int.try_parse(text, out daemon_pid)) {
+				return -1;
 			}
-			return -1;
+			return daemon_pid;
 		}
 
 		private bool pid_running(int daemon_pid)

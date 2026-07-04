@@ -15,6 +15,8 @@ namespace OLLMrpc
 {
 	/**
 	 * Binary wire serialization for RPC payloads (JIT keys/types, short/long encodings).
+	 *
+	 * See docs/bin-rpc-protocol.md for the wire specification.
 	 */
 	namespace Bin
 	{
