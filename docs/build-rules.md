@@ -7,7 +7,17 @@ Canonical build workflow for this project. Written for **AI agents** — **manda
 **IMPORTANT:** Always use `ninja -C build` to build this project. Do NOT use `valac` directly - the build system handles all compilation through Meson/Ninja.
 
 ### Standard Build
+
+V2 is the default (`v2testing=true`). Plain `meson setup build` builds the RPC + `ollmfilesd` app.
+
 ```bash
+ninja -C build
+```
+
+Shipping v1 (in-process libs, examples, tests):
+
+```bash
+meson setup build -Dv2testing=false
 ninja -C build
 ```
 

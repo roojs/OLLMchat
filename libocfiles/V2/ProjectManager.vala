@@ -28,7 +28,6 @@ namespace OLLMfiles
 	{
 		public OLLMrpc.Client rpc {
 			get; private set;
-			default = new OLLMrpc.Client();
 		}
 
 		/**
@@ -95,6 +94,13 @@ namespace OLLMfiles
 		public ProjectManager()
 		{
 			Object();
+			OLLMrpc.Daemon.rpc_register();
+			Folder.rpc_register();
+			File.rpc_register();
+			FileAlias.rpc_register();
+			FileWithHistory.rpc_register();
+			SQT.VectorMetadata.rpc_register();
+			this.rpc = new OLLMrpc.Client();
 			this.delete_manager = new DeleteManager(this);
 			this.review_files = new ReviewFiles(this);
 		}

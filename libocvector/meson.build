@@ -167,9 +167,7 @@ else
   ocvector_vapi_dep_extra = ocvector_link_dep
 endif
 
-ocvector_base_lib = library('ocvector',
-  soversion: client_lib_soversion,
-  version: client_lib_version,
+ocvector_base_lib = library(ocvector_lib,
   dependencies: ocvector_lib_deps,
   sources: ocvector_src + ocvector_extra_src,
   link_with: ocvector_link_with,
@@ -200,7 +198,7 @@ ocvector_vapi = custom_target('ocvector-vapi',
 )
 
 ocvector_vapi_dep = declare_dependency(
-  link_args: ['-L' + meson.current_build_dir(), '-locvector'],
+  link_args: ['-L' + meson.current_build_dir(), '-l' + ocvector_lib],
   sources: [ocvector_vapi[0]],
   dependencies: [ocfiles_vapi_dep, ollmchat_vapi_dep, ocvector_vapi_dep_extra]
 )

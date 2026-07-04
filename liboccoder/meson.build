@@ -150,9 +150,7 @@ else
   ]
 endif
 
-occoder_base_lib = library('occoder',
-  soversion: client_lib_soversion,
-  version: client_lib_version,
+occoder_base_lib = library(occoder_lib,
   dependencies: occoder_lib_deps,
   sources: occoder_src,
   vala_header: 'occoder.h',
@@ -223,7 +221,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '-C', '--debug',
     '--target-glib=auto',
   ] + sqgi_vala_args + occoder_vapi_vapidirs + occoder_vapi_gen_pkgs + [
-    '--library', 'occoder',
+    '--library', occoder_lib,
     '--header', meson.current_build_dir() / 'occoder.h',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
@@ -265,7 +263,7 @@ meson.add_install_script(
 # Create dependency for other libraries to use
 # Use link_args instead of link_with to prevent meson from auto-including occoder-meson.vapi
 occoder_vapi_dep = declare_dependency(
-  link_args: ['-L' + meson.current_build_dir(), '-loccoder'],
+  link_args: ['-L' + meson.current_build_dir(), '-l' + occoder_lib],
   sources: [occoder_vapi[0]],  # Include VAPI file to ensure it's built first
   dependencies: [ocsqlite_vapi_dep, ocfiles_vapi_dep]  # Temporarily removed ocvector_vapi_dep, ollmchat_vapi_dep - only needed for CodebaseSearchTool
 )

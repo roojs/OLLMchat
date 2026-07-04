@@ -39,9 +39,7 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocbwrap',
 ])
 
-ocmcp_base_lib = library('ocmcp',
-  soversion: client_lib_soversion,
-  version: client_lib_version,
+ocmcp_base_lib = library(ocmcp_lib,
   dependencies: [
     ocmcp_deps,
     ollmchat_vapi_dep,
@@ -122,7 +120,7 @@ ocmcp_vapi = custom_target('ocmcp-vapi',
     '-C', '--debug',
     '--target-glib=auto',
   ] + ocmcp_vapi_vapidirs + ocmcp_vapi_pkgs + [
-    '--library', 'ocmcp',
+    '--library', ocmcp_lib,
     '--header', meson.current_build_dir() / 'ocmcp.h',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
@@ -134,7 +132,7 @@ ocmcp_vapi = custom_target('ocmcp-vapi',
 )
 
 ocmcp_vapi_dep = declare_dependency(
-  link_args: ['-L' + meson.current_build_dir(), '-locmcp'],
+  link_args: ['-L' + meson.current_build_dir(), '-l' + ocmcp_lib],
   sources: [ocmcp_vapi[0]],
   dependencies: [ollmchat_vapi_dep, ocfiles_vapi_dep, ocbwrap_vapi_dep]
 )

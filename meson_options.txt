@@ -28,6 +28,6 @@ option('sysroot_triplet', type: 'string', value: '',
 option(
   'v2testing',
   type: 'boolean',
-  value: false,
-  description: 'Build app against V2 RPC libocfiles + ollmfilesd (Meson source swap only; not passed to Vala)'
+  value: true,
+  description: 'V2 RPC + ollmfilesd build (default). Use -Dv2testing=false for shipping v1.'
 )

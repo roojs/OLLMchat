@@ -13,6 +13,20 @@
 
 namespace OLLMrpc
 {
+	private class PendingWrite : GLib.Object
+	{
+		public GLib.Object payload { get; construct; }
+		public Gee.Promise<bool> done { get; construct; }
+
+		public PendingWrite(GLib.Object payload)
+		{
+			Object(
+				payload: payload,
+				done: new Gee.Promise<bool>()
+			);
+		}
+	}
+
 	/**
 	 * NDJSON JSON-RPC client for {@code ollmfilesd}.
 	 * {@link connect} runs {@link ClientBoot.ensure_daemon} when the
@@ -22,6 +36,8 @@ namespace OLLMrpc
 	 * lines and resolves pending {@link Response} entries by id.
 	 * {@link call} sends a {@link Request} and yields until that
 	 * id is filled in or {@link call_timeout_seconds} elapses.
+	 * Outgoing lines are queued — one {@code flush_async} at a time on
+	 * the shared output stream; many requests may still be in flight.
 	 * Transport and client faults return {@link Response.error}; they
 	 * do not throw. {@link failed} is emitted for every failed {@link call};
 	 * connect UI handlers there instead of per-caller logging.
@@ -60,6 +76,11 @@ namespace OLLMrpc
 			get; private set;
 			default = new Gee.HashMap<int, Gee.Promise<Response>>();
 		}
+		private Gee.ArrayList<PendingWrite> write_queue {
+			get; private set;
+			default = new Gee.ArrayList<PendingWrite>();
+		}
+		private bool write_draining { get; set; default = false; }
 
 		static construct
 		{
@@ -186,6 +207,13 @@ namespace OLLMrpc
 			if (!this.connected) {
 				return;
 			}
+			foreach (var job in this.write_queue) {
+				job.done.set_exception(
+					new GLib.IOError.FAILED("Client: disconnected")
+				);
+			}
+			this.write_queue.clear();
+			this.write_draining = false;
 			this.connected = false;
 			foreach (var entry in this.pending.entries) {
 				entry.value.set_exception(
@@ -206,11 +234,45 @@ namespace OLLMrpc
 
 		private async void write(GLib.Object gobject) throws GLib.Error
 		{
-			var generator = new Json.Generator();
-			generator.set_pretty(false);
-			generator.set_root(Json.gobject_serialize(gobject));
-			this.output.put_string(generator.to_data(null) + "\n");
-			yield this.output.flush_async(GLib.Priority.DEFAULT, null);
+			var job = new PendingWrite(gobject);
+			this.write_queue.add(job);
+			if (!this.write_draining) {
+				this.write_draining = true;
+				this.drain_writes.begin();
+			}
+			yield job.done.future.wait_async();
+		}
+
+		private async void drain_writes()
+		{
+			while (this.write_queue.size > 0) {
+				var job = this.write_queue.get(0);
+				this.write_queue.remove_at(0);
+				if (!this.connected || this.output == null) {
+					job.done.set_exception(
+						new GLib.IOError.FAILED("Client: disconnected")
+					);
+					continue;
+				}
+				try {
+					var generator = new Json.Generator();
+					generator.set_pretty(false);
+					generator.set_root(
+						Json.gobject_serialize(job.payload)
+					);
+					this.output.put_string(
+						generator.to_data(null) + "\n"
+					);
+					yield this.output.flush_async(
+						GLib.Priority.DEFAULT,
+						null
+					);
+					job.done.set_value(true);
+				} catch (GLib.Error e) {
+					job.done.set_exception(e);
+				}
+			}
+			this.write_draining = false;
 		}
 
 		/**

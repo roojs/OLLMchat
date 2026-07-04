@@ -93,9 +93,7 @@ else
   octools_lib_deps = [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep]
 endif
 
-octools_base_lib = library('octools',
-  soversion: client_lib_soversion,
-  version: client_lib_version,
+octools_base_lib = library(octools_lib,
   dependencies: octools_lib_deps,
   sources: octools_src,
   vala_header: 'octools.h',
@@ -180,7 +178,7 @@ octools_vapi = custom_target('octools-vapi',
     '-C', '--debug',
     '--target-glib=auto',
   ] + octools_vapi_vapidirs + octools_vapi_gen_pkgs + [
-    '--library', 'octools',
+    '--library', octools_lib,
     '--header', meson.current_build_dir() / 'octools.h',  # Use header from library
     '--vapi', '@OUTPUT@',
     '@INPUT@'
@@ -200,7 +198,7 @@ endif
 # Create dependency for other libraries to use
 # Use link_args instead of link_with to prevent meson from auto-including octools-meson.vapi
 octools_vapi_dep = declare_dependency(
-  link_args: ['-L' + meson.current_build_dir(), '-loctools'],
+  link_args: ['-L' + meson.current_build_dir(), '-l' + octools_lib],
   sources: [octools_vapi[0]],  # Include VAPI file to ensure it's built first
   dependencies: octools_vapi_dep_deps
 )

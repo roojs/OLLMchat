@@ -148,9 +148,7 @@ else
   ocfiles_lib_deps = [ocfiles_deps, ocsqlite_vapi_dep]
 endif
 
-ocfiles_base_lib = library('ocfiles',
-  soversion: client_lib_soversion,
-  version: client_lib_version,
+ocfiles_base_lib = library(ocfiles_lib,
   dependencies: ocfiles_lib_deps,
   sources: ocfiles_src + ocfiles_extra_sources,
   vala_header: 'ocfiles.h',
@@ -187,7 +185,7 @@ ocfiles_vapi = custom_target('ocfiles-vapi',
     '--vapidir', meson.current_source_dir() / '../../vapi',
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
   ] + (get_option('v2testing') ? ['--pkg', 'ocrpc'] : []) + ocfiles_vapi_gen_pkgs + strcasestr_vala_args + [
-    '--library', 'ocfiles',
+    '--library', ocfiles_lib,
     '--header', meson.current_build_dir() / 'ocfiles.h',  # Use header from library
     '--vapi', '@OUTPUT@',
     '@INPUT@'
@@ -207,7 +205,7 @@ endif
 # Create dependency for other libraries to use
 # Use link_args instead of link_with to prevent meson from auto-including ocfiles-meson.vapi
 ocfiles_vapi_dep = declare_dependency(
-  link_args: ['-L' + meson.current_build_dir(), '-locfiles'],
+  link_args: ['-L' + meson.current_build_dir(), '-l' + ocfiles_lib],
   sources: [ocfiles_vapi[0]],  # Include VAPI file to ensure it's built first
   dependencies: ocfiles_vapi_dep_deps
 )

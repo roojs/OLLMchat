@@ -43,11 +43,16 @@ endif
 
 ocrpc_src = files([
   'namespace.vala',
+  'Bin/namespace.vala',
+  'Bin/Object.vala',
+  'Bin/Stream.vala',
+  'Bin/Serializable.vala',
   'Transport/namespace.vala',
   'Transport/Connection.vala',
   'Transport/Listen.vala',
   'Transport/TcpListen.vala',
   'CallParam.vala',
+  'Daemon.vala',
   'Error.vala',
   'Notification.vala',
   'Request.vala',

@@ -119,9 +119,13 @@ if sqgi_vala_args.length() > 0
   add_project_arguments(sqgi_vala_args, language: 'vala')
 endif
 
-# SONAME for client libs whose sources swap under v2testing (2.10.4.21).
-client_lib_soversion = get_option('v2testing') ? '2' : '1'
-client_lib_version = get_option('v2testing') ? '2.0.0' : '1.0.0'
+# V2 client libs install as libocfiles2.so, … alongside shipping libs (2.10.4.21).
+# libocvector2.so is the daemon FAISS lib; app stub keeps libocvector.so.
+ocfiles_lib = get_option('v2testing') ? 'ocfiles2' : 'ocfiles'
+occoder_lib = get_option('v2testing') ? 'occoder2' : 'occoder'
+octools_lib = get_option('v2testing') ? 'octools2' : 'octools'
+ocmcp_lib = get_option('v2testing') ? 'ocmcp2' : 'ocmcp'
+ocvector_lib = 'ocvector'
 
 # Build libraries in dependency order
 if android_shell_poc

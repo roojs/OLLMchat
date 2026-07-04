@@ -51,6 +51,23 @@ test_rpc_client_tcp = executable('test-rpc-client-tcp',
     '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
   ],
 )
+test_rpc_bin = executable('test-rpc-bin',
+  'rpc/bin-test.vala',
+  dependencies: [
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    ocrpc_vapi_dep,
+  ],
+  build_rpath: meson.current_build_dir() / '..' / 'libocrpc',
+  vala_args: [
+    '--pkg=ocrpc',
+    '--pkg=json-glib-1.0',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  ],
+)
 test('test-rpc',
   find_program('bash'),
   args: [
@@ -72,6 +89,11 @@ test('test-rpc-tcp',
   workdir: meson.current_source_dir(),
   timeout: 60,
   suite: 'rpc'
+)
+test('test-rpc-bin',
+  test_rpc_bin,
+  suite: 'rpc',
+  timeout: 10,
 )
 test('test-rpc-t1',
   find_program('bash'),
