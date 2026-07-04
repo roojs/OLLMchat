@@ -43,6 +43,11 @@ namespace OLLMfilesd
 	 */
 	public class FileAlias : File
 	{
+		public static new void rpc_register()
+		{
+			OLLMrpc.Bin.Stream.register("FileAlias", typeof(FileAlias));
+		}
+
 		// Static field for home directory (initialized once)
 		private static string home_dir = "/dev/null"; // no access if we cant get home dir.
 		

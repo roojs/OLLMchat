@@ -14,8 +14,13 @@
 namespace OLLMfilesd
 {
 	/** Server {@code Daemon.*} — {@code hello} and {@code shutdown}. */
-	public class Daemon : GLib.Object, Json.Serializable
+	public class Daemon : GLib.Object, Json.Serializable, OLLMrpc.Bin.Serializable
 	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Bin.Stream.register("Daemon", typeof(Daemon));
+		}
+
 		public OllmfilesdApplication app { get; construct; }
 
 		public Daemon(OllmfilesdApplication app)
@@ -27,8 +32,8 @@ namespace OLLMfilesd
 		public string server { get; set; default = "ollmfilesd"; }
 		public bool ready { get; set; default = true; }
 
-		public signal void rpc_hello(OLLMrpc.Request request);
-		public signal void rpc_shutdown(OLLMrpc.Request request);
+		public signal void call_hello(OLLMrpc.Request request);
+		public signal void call_shutdown(OLLMrpc.Request request);
 
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -58,9 +63,32 @@ namespace OLLMfilesd
 			return default_serialize_property(property_name, value, pspec);
 		}
 
+		public override void bin_write_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			if (prop.name == "app") {
+				return;
+			}
+			bin_default_write_prop(ctx, prop);
+		}
+
+		public override void bin_read_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			if (prop.name == "app") {
+				return;
+			}
+			bin_default_read_prop(ctx, prop, type_byte);
+		}
+
 		construct
 		{
-			this.rpc_hello.connect((request) => {
+			this.call_hello.connect((request) => {
 				var p = (DaemonParams) request.param;
 				if (p.protocol > 0) {
 					this.protocol = p.protocol;
@@ -70,7 +98,7 @@ namespace OLLMfilesd
 					result_type = "Daemon"
 				});
 			});
-			this.rpc_shutdown.connect((request) => {
+			this.call_shutdown.connect((request) => {
 				this.ready = false;
 				request.reply(new OLLMrpc.Response() {
 					msg = "ok"

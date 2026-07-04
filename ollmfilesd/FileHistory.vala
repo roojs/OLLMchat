@@ -436,8 +436,8 @@ namespace OLLMfilesd
 		
 		private ProjectManager rpc_manager;
 
-		public signal void rpc_approve(OLLMrpc.Request request);
-		public signal void rpc_revert(OLLMrpc.Request request);
+		public signal void call_approve(OLLMrpc.Request request);
+		public signal void call_revert(OLLMrpc.Request request);
 
 		/**
 		 * Wire dispatch singleton ({@code FileHistory.approve} / {@code revert}).
@@ -446,7 +446,7 @@ namespace OLLMfilesd
 		{
 			Object();
 			this.rpc_manager = manager;
-			this.rpc_approve.connect((request) => {
+			this.call_approve.connect((request) => {
 				var p = (FileParams) request.param;
 				var file = this.rpc_manager.get_file_from_active_project(
 					p.path
@@ -490,7 +490,7 @@ namespace OLLMfilesd
 					msg = "ok"
 				});
 			});
-			this.rpc_revert.connect((request) => {
+			this.call_revert.connect((request) => {
 				var p = (FileParams) request.param;
 				var rows = new Gee.ArrayList<FileHistory>();
 				FileHistory.query(this.rpc_manager.db).select(

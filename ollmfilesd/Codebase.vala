@@ -43,11 +43,11 @@ namespace OLLMfilesd
 			GLib.Object(manager: manager, config: config);
 		}
 
-		public signal void rpc_search(OLLMrpc.Request request);
+		public signal void call_search(OLLMrpc.Request request);
 
 		construct
 		{
-			this.rpc_search.connect((request) => {
+			this.call_search.connect((request) => {
 				this.search.begin(request, (obj, res) => {
 					try {
 						this.search.end(res);

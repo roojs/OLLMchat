@@ -27,11 +27,11 @@ namespace OLLMrpc.Bin
 	/**
 	 * GObject types that read/write on a {@link Stream} session.
 	 *
-	 * Default {@link bin_write_prop} / {@link bin_read_prop} cover scalar
-	 * fundamentals, {@code string[]} ({@code GStrv}), and nested
-	 * {@link Serializable} object properties.
+	 * Override {@link bin_write_prop} / {@link bin_read_prop} to omit or
+	 * customize props; call {@link bin_default_write_prop} /
+	 * {@link bin_default_read_prop} for stock scalar encoding.
 	 *
-	 * Override for transient fields, {@code Gee.ArrayList} / list properties,
+	 * Override for {@code Gee.ArrayList} / list properties,
 	 * {@code uint8[]} (wire as blob or typed array — see docs/bin-rpc-protocol.md),
 	 * and any other non-scalar shape.
 	 *
@@ -51,13 +51,24 @@ namespace OLLMrpc.Bin
 			ctx.out_stream.put_uint16 (Stream.TOKEN_END);
 		}
 
+		public virtual void bin_write_prop (
+			Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			this.bin_default_write_prop (ctx, prop);
+		}
+
 		/**
-		 * Encode one GObject property onto the stream.
+		 * Stock scalar/object encode for one property.
+		 *
+		 * Omit overrides call this from their {@link bin_write_prop} default
+		 * branch.
 		 *
 		 * @param ctx active bin session
 		 * @param prop property metadata
 		 */
-		public virtual void bin_write_prop (
+		public virtual void bin_default_write_prop (
 			Stream ctx,
 			GLib.ParamSpec prop
 		) throws GLib.Error
@@ -304,14 +315,26 @@ namespace OLLMrpc.Bin
 		{
 		}
 
+		public virtual void bin_read_prop (
+			Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			this.bin_default_read_prop (ctx, prop, type_byte);
+		}
+
 		/**
-		 * Decode one wire property into this object.
+		 * Stock scalar/object decode for one property.
+		 *
+		 * Omit overrides call this from their {@link bin_read_prop} default
+		 * branch.
 		 *
 		 * @param ctx active bin session
 		 * @param prop property metadata
 		 * @param type_byte wire type byte ({@link GLib.Type} fundamental; bit 7 = array)
 		 */
-		public virtual void bin_read_prop (
+		public virtual void bin_default_read_prop (
 			Stream ctx,
 			GLib.ParamSpec prop,
 			uint8 type_byte

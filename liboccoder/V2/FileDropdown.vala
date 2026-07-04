@@ -277,14 +277,20 @@ namespace OLLMcoder
 				this.project_files.refresh.begin(search_text, (obj, res) => {
 					this.project_files.refresh.end(res);
 					GLib.debug(
-						"search done text=%s filtered=%u list=%u",
+						"search done text=%s filtered=%u list=%u popup_before=%s",
 						this.entry.text,
 						this.filtered_items.get_n_items(),
-						this.project_files.get_n_items()
+						this.project_files.get_n_items(),
+						this.popup.visible.to_string()
 					);
 					if (this.entry.text != ""
 						&& this.filtered_items.get_n_items() > 0) {
+						GLib.debug("search show attempt");
 						base.set_popup_visible(true);
+						GLib.debug(
+							"search show after popup=%s",
+							this.popup.visible.to_string()
+						);
 					}
 				});
 				return false;

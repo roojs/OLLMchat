@@ -22,8 +22,16 @@ namespace OLLMfilesd
 	 * Pending-approval list row ({@code Folder.fetch_pending_approvals}).
 	 * Wire / SQL row only — not a {@link FileBase} tree node.
 	 */
-	public class FileWithHistory : Object, Json.Serializable
+	public class FileWithHistory : Object, Json.Serializable, OLLMrpc.Bin.Serializable
 	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Bin.Stream.register(
+				"FileWithHistory",
+				typeof(FileWithHistory)
+			);
+		}
+
 		public int64 id { get; set; default = 0; }
 		public string path { get; set; default = ""; }
 		public string last_change_type { get; set; default = ""; }

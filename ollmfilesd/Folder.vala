@@ -35,8 +35,13 @@ namespace OLLMfilesd
 	 * Automatically discovers git repositories and checks if paths are ignored by git.
 	 * Uses manager.git_provider for git operations.
 	 */
-	public class Folder : FileBase
+	public class Folder : FileBase, OLLMrpc.Bin.Serializable
 	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Bin.Stream.register("Folder", typeof(Folder));
+		}
+
 		/**
 		 * Whether to use background (idle callback) processing for recursive folder scanning.
 		 * Default: true (use background processing for better UI responsiveness)
@@ -54,16 +59,51 @@ namespace OLLMfilesd
 			this.base_type = "d";
 		}
 
-		public signal void rpc_fetch(OLLMrpc.Request request);
-		public signal void rpc_contains_folder(OLLMrpc.Request request);
-		public signal void rpc_fetch_files(OLLMrpc.Request request);
-		public signal void rpc_fetch_pending_approvals(OLLMrpc.Request request);
-		public signal void rpc_project_description(OLLMrpc.Request request);
-		public signal void rpc_roots(OLLMrpc.Request request);
+		public signal void call_fetch(OLLMrpc.Request request);
+		public signal void call_contains_folder(OLLMrpc.Request request);
+		public signal void call_fetch_files(OLLMrpc.Request request);
+		public signal void call_fetch_pending_approvals(OLLMrpc.Request request);
+		public signal void call_project_description(OLLMrpc.Request request);
+		public signal void call_roots(OLLMrpc.Request request);
+
+		public override void bin_write_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "manager":
+				case "parent":
+				case "children":
+				case "project_files":
+					return;
+				default:
+					bin_default_write_prop(ctx, prop);
+					return;
+			}
+		}
+
+		public override void bin_read_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "manager":
+				case "parent":
+				case "children":
+				case "project_files":
+					return;
+				default:
+					bin_default_read_prop(ctx, prop, type_byte);
+					return;
+			}
+		}
 
 		construct
 		{
-			this.rpc_fetch.connect((request) => {
+			this.call_fetch.connect((request) => {
 				var path = ((FolderParams) request.param).path;
 				var folder = this.manager.get_folder_at_path(path);
 				if (folder == null) {
@@ -80,7 +120,7 @@ namespace OLLMfilesd
 					result_type = "Folder"
 				});
 			});
-			this.rpc_contains_folder.connect((request) => {
+			this.call_contains_folder.connect((request) => {
 				var p = (FolderParams) request.param;
 				var project = this.manager.project_root(p.project_path);
 				if (project == null) {
@@ -102,7 +142,7 @@ namespace OLLMfilesd
 					msg = "true"
 				});
 			});
-			this.rpc_fetch_files.connect((request) => {
+			this.call_fetch_files.connect((request) => {
 				var p = (FolderParams) request.param;
 				var project = this.manager.project_root(p.path);
 				if (project == null) {
@@ -174,7 +214,7 @@ namespace OLLMfilesd
 					msg = matched.size.to_string()
 				});
 			});
-			this.rpc_fetch_pending_approvals.connect((request) => {
+			this.call_fetch_pending_approvals.connect((request) => {
 				var path = ((FolderParams) request.param).path;
 				var project = this.manager.project_root(path);
 				if (project == null) {
@@ -210,7 +250,7 @@ namespace OLLMfilesd
 					is_array = true
 				});
 			});
-			this.rpc_project_description.connect((request) => {
+			this.call_project_description.connect((request) => {
 				var path = ((FolderParams) request.param).path;
 				var project = this.manager.project_root(path);
 				if (project == null) {
@@ -225,7 +265,7 @@ namespace OLLMfilesd
 					msg = project.project_description()
 				});
 			});
-			this.rpc_roots.connect((request) => {
+			this.call_roots.connect((request) => {
 				var path = ((FolderParams) request.param).path;
 				var project = this.manager.project_root(path);
 				if (project == null) {

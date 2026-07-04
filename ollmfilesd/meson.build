@@ -56,6 +56,7 @@ ollmfilesd_src = files(
   'Tree.vala',
   'ProjectMigrate.vala',
   'ProjectManager.vala',
+  'SQT/VectorMetadata.vala',
   'Daemon.vala',
   'StdioConnection.vala',
   'Stdio.vala',

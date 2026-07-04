@@ -106,10 +106,10 @@ namespace OLLMfilesd
 		 */
 		public signal void file_contents_changed(File file);
 
-		public signal void rpc_load_projects_from_db(OLLMrpc.Request request);
-		public signal void rpc_create_project(OLLMrpc.Request request);
-		public signal void rpc_remove_project(OLLMrpc.Request request);
-		public signal void rpc_activate_project(OLLMrpc.Request request);
+		public signal void call_load_projects_from_db(OLLMrpc.Request request);
+		public signal void call_create_project(OLLMrpc.Request request);
+		public signal void call_remove_project(OLLMrpc.Request request);
+		public signal void call_activate_project(OLLMrpc.Request request);
 		
 		/**
 		 * DeleteManager instance for handling file deletions.
@@ -161,7 +161,7 @@ namespace OLLMfilesd
 
 		construct
 		{
-			this.rpc_load_projects_from_db.connect((request) => {
+			this.call_load_projects_from_db.connect((request) => {
 				this.load_projects_from_db.begin((obj, res) => {
 					this.load_projects_from_db.end(res);
 					var list = new Gee.ArrayList<GLib.Object>();
@@ -175,7 +175,7 @@ namespace OLLMfilesd
 					});
 				});
 			});
-			this.rpc_create_project.connect((request) => {
+			this.call_create_project.connect((request) => {
 				var project = this.create_project(
 					((ProjectParams) request.param).path
 				);
@@ -184,7 +184,7 @@ namespace OLLMfilesd
 					result_type = "Folder"
 				});
 			});
-			this.rpc_remove_project.connect((request) => {
+			this.call_remove_project.connect((request) => {
 				this.remove_project(
 					this.projects.path_map.get(
 						((ProjectParams) request.param).path
@@ -194,7 +194,7 @@ namespace OLLMfilesd
 					msg = "ok"
 				});
 			});
-			this.rpc_activate_project.connect((request) => {
+			this.call_activate_project.connect((request) => {
 				var p = (ProjectParams) request.param;
 				this.disable_initial_scan = p.skip_scan;
 				this.activate_project.begin(

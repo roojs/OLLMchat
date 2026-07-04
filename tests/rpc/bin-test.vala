@@ -60,7 +60,7 @@ namespace OLLMrpcTests
 					}
 					return;
 				default:
-					base.bin_write_prop (ctx, prop);
+					bin_default_write_prop (ctx, prop);
 					return;
 			}
 		}
@@ -104,7 +104,7 @@ namespace OLLMrpcTests
 					this.set_property (prop.name, val);
 					return;
 				default:
-					base.bin_read_prop (ctx, prop, type_byte);
+					bin_default_read_prop (ctx, prop, type_byte);
 					return;
 			}
 		}

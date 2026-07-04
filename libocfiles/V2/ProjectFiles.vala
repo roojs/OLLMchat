@@ -120,6 +120,12 @@ namespace OLLMfiles
 			if (old_n_items > 0 || new_n_items > 0) {
 				this.items_changed(0, old_n_items, new_n_items);
 			}
+			GLib.debug(
+				"refresh done query=%s total=%d loaded=%u",
+				query,
+				this.total,
+				new_n_items
+			);
 		}
 
 		/**

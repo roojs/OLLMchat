@@ -233,6 +233,13 @@ namespace OLLMfilesd
 					this.project_manager,
 					this.config);
 
+			Daemon.rpc_register();
+			Folder.rpc_register();
+			File.rpc_register();
+			FileAlias.rpc_register();
+			FileWithHistory.rpc_register();
+			SQT.VectorMetadata.rpc_register();
+
 			this.daemon = new Daemon(this);
 			OLLMrpc.Request.register(
 				"Daemon", this.daemon,

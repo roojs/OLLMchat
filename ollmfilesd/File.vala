@@ -35,8 +35,13 @@ namespace OLLMfilesd
 	 * Daemon {@link File} — scan, disk I/O, and {@code File.*} RPC.
 	 * Editor buffers and Gtk helpers live on {@code libocfiles/V2/File.vala}.
 	 */
-	public class File : FileBase, Json.Serializable
+	public class File : FileBase, Json.Serializable, OLLMrpc.Bin.Serializable
 	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Bin.Stream.register("File", typeof(File));
+		}
+
 		/**
 		 * Constructor.
 		 * 
@@ -48,15 +53,15 @@ namespace OLLMfilesd
 			this.base_type = "f";
 		}
 
-		public signal void rpc_read(OLLMrpc.Request request);
-		public signal void rpc_exists(OLLMrpc.Request request);
-		public signal void rpc_fetch(OLLMrpc.Request request);
-		public signal void rpc_write(OLLMrpc.Request request);
-		public signal void rpc_apply_permissions(OLLMrpc.Request request);
-		public signal void rpc_register(OLLMrpc.Request request);
-		public signal void rpc_delete(OLLMrpc.Request request);
-		public signal void rpc_changed_check(OLLMrpc.Request request);
-		public signal void rpc_vector_metadata(OLLMrpc.Request request);
+		public signal void call_read(OLLMrpc.Request request);
+		public signal void call_exists(OLLMrpc.Request request);
+		public signal void call_fetch(OLLMrpc.Request request);
+		public signal void call_write(OLLMrpc.Request request);
+		public signal void call_apply_permissions(OLLMrpc.Request request);
+		public signal void call_register(OLLMrpc.Request request);
+		public signal void call_delete(OLLMrpc.Request request);
+		public signal void call_changed_check(OLLMrpc.Request request);
+		public signal void call_vector_metadata(OLLMrpc.Request request);
 
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -95,9 +100,42 @@ namespace OLLMfilesd
 			}
 		}
 
+		public override void bin_write_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "manager":
+				case "buffer":
+				case "parent":
+					return;
+				default:
+					bin_default_write_prop(ctx, prop);
+					return;
+			}
+		}
+
+		public override void bin_read_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "manager":
+				case "buffer":
+				case "parent":
+					return;
+				default:
+					bin_default_read_prop(ctx, prop, type_byte);
+					return;
+			}
+		}
+
 		construct
 		{
-			this.rpc_read.connect((request) => {
+			this.call_read.connect((request) => {
 				var path = ((FileParams) request.param).path;
 				uint8[] data;
 				string etag;
@@ -140,7 +178,7 @@ namespace OLLMfilesd
 					msg_encode = row.is_text ? 0 : 1
 				});
 			});
-			this.rpc_exists.connect((request) => {
+			this.call_exists.connect((request) => {
 				var file_type = GLib.FileType.UNKNOWN;
 				try {
 					file_type = GLib.File.new_for_path(
@@ -161,7 +199,7 @@ namespace OLLMfilesd
 					msg = ((int) file_type).to_string()
 				});
 			});
-			this.rpc_fetch.connect((request) => {
+			this.call_fetch.connect((request) => {
 				var p = (FileParams) request.param;
 				var project = this.manager.project_root(p.project_path);
 				if (project == null) {
@@ -195,7 +233,7 @@ namespace OLLMfilesd
 					result_type = "File"
 				});
 			});
-			this.rpc_write.connect((request) => {
+			this.call_write.connect((request) => {
 				var p = (FileParams) request.param;
 				this.write.begin(
 					p,
@@ -205,7 +243,7 @@ namespace OLLMfilesd
 					}
 				);
 			});
-			this.rpc_apply_permissions.connect((request) => {
+			this.call_apply_permissions.connect((request) => {
 				var p = (FileParams) request.param;
 				if (Posix.chmod(
 					p.path,
@@ -224,7 +262,7 @@ namespace OLLMfilesd
 					msg = "ok"
 				});
 			});
-			this.rpc_register.connect((request) => {
+			this.call_register.connect((request) => {
 				var p = (FileParams) request.param;
 				var existing = this.manager.get_file_from_active_project(p.path);
 				if (existing != null && existing.id != -1) {
@@ -265,7 +303,7 @@ namespace OLLMfilesd
 					});
 				});
 			});
-			this.rpc_delete.connect((request) => {
+			this.call_delete.connect((request) => {
 				var file = this.manager.get_file_from_active_project(
 					((FileParams) request.param).path
 				);
@@ -281,7 +319,7 @@ namespace OLLMfilesd
 					msg = "ok"
 				});
 			});
-			this.rpc_changed_check.connect((request) => {
+			this.call_changed_check.connect((request) => {
 				var p = (FileParams) request.param;
 				var file = this.manager.get_file_from_active_project(p.path);
 				var status = FileUpdateStatus.NO_CHANGE;
@@ -293,7 +331,7 @@ namespace OLLMfilesd
 					msg = ((int) status).to_string()
 				});
 			});
-			this.rpc_vector_metadata.connect((request) => {
+			this.call_vector_metadata.connect((request) => {
 				var path = ((FileParams) request.param).path;
 				var list = new Gee.ArrayList<GLib.Object>();
 				var indexed = this.manager.get_file_from_active_project(path);
@@ -302,8 +340,8 @@ namespace OLLMfilesd
 					&& indexed.id > 0
 					&& this.manager.db != null
 				) {
-					var rows = new Gee.ArrayList<OLLMvector2.SQT.VectorMetadata>();
-					OLLMvector2.SQT.VectorMetadata.query(
+					var rows = new Gee.ArrayList<SQT.VectorMetadata>();
+					SQT.VectorMetadata.query(
 						this.manager.db
 					).select(
 						"WHERE file_id = " + indexed.id.to_string(),

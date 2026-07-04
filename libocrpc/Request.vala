@@ -25,7 +25,7 @@ namespace OLLMrpc
 	 * typed {@link CallParam} subclass to {@link param}, then pass to
 	 * {@link Client.call}. On the server, set {@link connection}, then
 	 * {@link dispatch} routes {{{Object.method}}} to the handler's
-	 * {{{rpc_*}}} signal; handlers reply via {@link reply}.
+		 * {{{call_*}}} signal; handlers reply via {@link reply}.
 	 *
 	 * == Wire {{{params}}} (request arguments) ==
 	 *
@@ -95,7 +95,7 @@ namespace OLLMrpc
 		 * Register a server dispatch handler and its params {@link GLib.Type}.
 		 *
 		 * @param name wire object prefix (e.g. {{{"Folder"}}})
-		 * @param target live singleton with {{{rpc_*}}} signals
+		 * @param target live singleton with {{{call_*}}} signals
 		 * @param param_type GObject type for wire params (extends {@link CallParam})
 		 */
 		public static void register(
@@ -149,7 +149,7 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Route this request to the matching {{{rpc_*}}} signal.
+		 * Route this request to the matching {{{call_*}}} signal.
 		 *
 		 * When @params_node is set, replaces {@link param} with
 		 * {{{Json.gobject_deserialize}}} using the type registered in
@@ -201,11 +201,11 @@ namespace OLLMrpc
 				) as CallParam;
 			}
 			if (GLib.Signal.lookup(
-					"rpc_" + method_name.replace(".", "_"),
+					"call_" + method_name.replace(".", "_"),
 					handler.get_type()
 				) == 0) {
 				GLib.critical(
-					"RPC dispatch: no signal rpc_%s on %s for %s",
+					"RPC dispatch: no signal call_%s on %s for %s",
 					method_name.replace(".", "_"),
 					object_name,
 					this.method
@@ -214,7 +214,7 @@ namespace OLLMrpc
 			}
 			GLib.Signal.emit_by_name(
 				handler,
-				"rpc_" + method_name.replace(".", "_"),
+				"call_" + method_name.replace(".", "_"),
 				this
 			);
 			return true;

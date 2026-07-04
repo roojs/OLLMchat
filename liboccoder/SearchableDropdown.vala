@@ -119,6 +119,11 @@ namespace OLLMcoder
 			// Handle focus loss - close popup when entry loses focus (but don't trigger selection)
 			var focus_controller = new Gtk.EventControllerFocus();
 			focus_controller.leave.connect(() => {
+				GLib.debug(
+					"entry focus leave popup=%s entry=%s",
+					this.popup.visible.to_string(),
+					this.entry.text
+				);
 				if (this.popup.visible) {
 					this.set_popup_visible(false);
 				}
@@ -419,20 +424,36 @@ namespace OLLMcoder
 		protected void set_popup_visible(bool visible)
 		{
 			if (this.popup.visible == visible) {
+				GLib.debug(
+					"popup unchanged visible=%s filtered=%u",
+					visible.to_string(),
+					this.filtered_items.get_n_items()
+				);
 				return;
 			}
 			
 			if (visible) {
 				// Don't show if no items to display
 				if (this.filtered_items.get_n_items() == 0) {
+					GLib.debug("popup blocked no_items");
 					return;
 				}
 				
 				// Check if widget is in a toplevel window before showing popup
 				var root = this.get_root();
 				if (root == null || !(root is Gtk.Window)) {
+					GLib.debug(
+						"popup blocked no_toplevel root=%s",
+						root == null ? "null" : root.get_type().name()
+					);
 					return;
 				}
+				
+				GLib.debug(
+					"popup show filtered=%u entry=%s",
+					this.filtered_items.get_n_items(),
+					this.entry.text
+				);
 				
 				// Clear selection before showing popup (like the example)
 				this.selection.selected = Gtk.INVALID_LIST_POSITION;
@@ -456,6 +477,7 @@ namespace OLLMcoder
 					return false;
 				});
 			} else {
+				GLib.debug("popup hide");
 				this.popup.popdown();
 			}
 		}
