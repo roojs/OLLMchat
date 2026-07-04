@@ -45,11 +45,12 @@ namespace OLLMfiles
 	 *
 	 * No {@code project_files} or hydrated {@link children} on the client.
 	 */
-	public class Folder : FileBase
+	public class Folder : FileBase, OLLMrpc.Bin.Serializable
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.register("Folder", typeof(Folder));
+			OLLMrpc.Bin.Stream.register("Folder", typeof(Folder));
 		}
 
 		/**

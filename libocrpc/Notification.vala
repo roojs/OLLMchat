@@ -14,7 +14,7 @@
 namespace OLLMrpc
 {
 	/** JSON-RPC 2.0 notification (no `id`). */
-	public class Notification : GLib.Object, Json.Serializable
+	public class Notification : GLib.Object, Json.Serializable, OLLMrpc.Bin.Serializable
 	{
 		public string jsonrpc { get; set; default = "2.0"; }
 		public string method { get; set; default = ""; }
@@ -25,6 +25,10 @@ namespace OLLMrpc
 		public static void rpc_register()
 		{
 			register("Notification", typeof(Notification));
+			OLLMrpc.Bin.Stream.register(
+				"Notification",
+				typeof(Notification)
+			);
 		}
 
 		public unowned ParamSpec? find_property(string name)

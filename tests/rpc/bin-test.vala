@@ -99,7 +99,8 @@ namespace OLLMrpcTests
 						child.bin_read (ctx);
 						list.add (child);
 					}
-					val = list;
+					var val = GLib.Value (prop.value_type);
+					val.set_object (list);
 					this.set_property (prop.name, val);
 					return;
 				default:
@@ -141,9 +142,6 @@ namespace OLLMrpcTests
 		var out_stream = new GLib.DataOutputStream (mem);
 
 		var write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
-		write_bin.register ("TestPair", typeof (TestPair));
-		write_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
-		write_bin.register ("TestParent", typeof (TestParent));
 
 		var original = new TestPair () {
 			name = "alpha",
@@ -151,6 +149,15 @@ namespace OLLMrpcTests
 		};
 
 		try {
+			OLLMrpc.Bin.Stream.register ("TestPair", typeof (TestPair));
+			OLLMrpc.Bin.Stream.register (
+				"TestSkipDefault",
+				typeof (TestSkipDefault)
+			);
+			OLLMrpc.Bin.Stream.register ("TestParent", typeof (TestParent));
+			OLLMrpc.Bin.Stream.register ("TestPaths", typeof (TestPaths));
+			OLLMrpc.Bin.Stream.register ("TestListBag", typeof (TestListBag));
+
 			write_bin.write (original);
 			out_stream.close ();
 
@@ -159,8 +166,6 @@ namespace OLLMrpcTests
 			var in_stream = new GLib.DataInputStream (in_base);
 
 			var read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
-			read_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
-			read_bin.register ("TestPair", typeof (TestPair));
 
 			var parsed = read_bin.parse () as TestPair;
 			if (parsed == null) {
@@ -175,8 +180,6 @@ namespace OLLMrpcTests
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
 			write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
-			write_bin.register ("TestPair", typeof (TestPair));
-			write_bin.register ("TestParent", typeof (TestParent));
 
 			var nested_src = new TestParent () {
 				label = "parent",
@@ -192,8 +195,6 @@ namespace OLLMrpcTests
 			in_base = new GLib.MemoryInputStream.from_bytes (bytes);
 			in_stream = new GLib.DataInputStream (in_base);
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
-			read_bin.register ("TestParent", typeof (TestParent));
-			read_bin.register ("TestPair", typeof (TestPair));
 
 			var nested_dst = read_bin.parse () as TestParent;
 			if (nested_dst == null) {
@@ -219,7 +220,6 @@ namespace OLLMrpcTests
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
 			write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
-			write_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
 
 			var skip_src = new TestSkipDefault () {
 				keep = "visible",
@@ -232,7 +232,6 @@ namespace OLLMrpcTests
 			in_base = new GLib.MemoryInputStream.from_bytes (bytes);
 			in_stream = new GLib.DataInputStream (in_base);
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
-			read_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
 
 			var skip_dst = read_bin.parse () as TestSkipDefault;
 			if (skip_dst == null) {
@@ -253,7 +252,6 @@ namespace OLLMrpcTests
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
 			write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
-			write_bin.register ("TestPaths", typeof (TestPaths));
 
 			var paths_src = new TestPaths () {
 				paths = { "a", "bb", "" },
@@ -265,7 +263,6 @@ namespace OLLMrpcTests
 			in_base = new GLib.MemoryInputStream.from_bytes (bytes);
 			in_stream = new GLib.DataInputStream (in_base);
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
-			read_bin.register ("TestPaths", typeof (TestPaths));
 
 			var paths_dst = read_bin.parse () as TestPaths;
 			if (paths_dst == null) {
@@ -288,7 +285,6 @@ namespace OLLMrpcTests
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
 			write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
-			write_bin.register ("TestPair", typeof (TestPair));
 
 			var long_name = string.nfill (130, 'x');
 			var long_src = new TestPair () {
@@ -302,7 +298,6 @@ namespace OLLMrpcTests
 			in_base = new GLib.MemoryInputStream.from_bytes (bytes);
 			in_stream = new GLib.DataInputStream (in_base);
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
-			read_bin.register ("TestPair", typeof (TestPair));
 
 			var long_dst = read_bin.parse () as TestPair;
 			if (long_dst == null) {
@@ -317,7 +312,6 @@ namespace OLLMrpcTests
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
 			write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
-			write_bin.register ("TestPair", typeof (TestPair));
 
 			var huge = string.nfill (40000, 'z');
 			var huge_src = new TestPair () {
@@ -331,7 +325,6 @@ namespace OLLMrpcTests
 			in_base = new GLib.MemoryInputStream.from_bytes (bytes);
 			in_stream = new GLib.DataInputStream (in_base);
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
-			read_bin.register ("TestPair", typeof (TestPair));
 
 			var huge_dst = read_bin.parse () as TestPair;
 			if (huge_dst == null) {
@@ -340,6 +333,53 @@ namespace OLLMrpcTests
 			}
 			if (huge_dst.name != huge || huge_dst.count != 2) {
 				GLib.printerr ("huge string round-trip mismatch\n");
+				return 1;
+			}
+
+			mem = new GLib.MemoryOutputStream.resizable ();
+			out_stream = new GLib.DataOutputStream (mem);
+			write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
+
+			var list_src = new TestListBag () {
+				label = "bag",
+				items = new Gee.ArrayList<TestPair> (),
+			};
+			list_src.items.add (new TestPair () {
+				name = "one",
+				count = 1,
+			});
+			list_src.items.add (new TestPair () {
+				name = "two",
+				count = 2,
+			});
+			write_bin.write (list_src);
+			out_stream.close ();
+
+			bytes = mem.steal_as_bytes ();
+			in_base = new GLib.MemoryInputStream.from_bytes (bytes);
+			in_stream = new GLib.DataInputStream (in_base);
+			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
+
+			var list_dst = read_bin.parse () as TestListBag;
+			if (list_dst == null) {
+				GLib.printerr ("list bag parse returned null\n");
+				return 1;
+			}
+			if (list_dst.label != "bag") {
+				GLib.printerr ("list bag label mismatch\n");
+				return 1;
+			}
+			if (list_dst.items.size != 2) {
+				GLib.printerr ("list bag items size mismatch\n");
+				return 1;
+			}
+			if (
+				list_dst.items.get (0).name != "one"
+				|| list_dst.items.get (0).count != 1
+				|| list_dst.items.get (1).name != "two"
+				|| list_dst.items.get (1).count != 2
+			) {
+				GLib.printerr ("list bag element mismatch\n");
 				return 1;
 			}
 		} catch (GLib.Error e) {

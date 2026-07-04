@@ -51,7 +51,7 @@ namespace OLLMfiles.SQT
 	 * var results = query.select("SELECT * FROM vector_metadata WHERE file_id = $file_id");
 	 * }}}
 	 */
-	public class VectorMetadata : Object
+	public class VectorMetadata : Object, OLLMrpc.Bin.Serializable
 	{
 		/**
 		 * ID property for database operations (PRIMARY KEY, auto-increment).
@@ -141,7 +141,7 @@ namespace OLLMfiles.SQT
 		
 		/**
 		 * MD5 hash of element's code content for change detection.
-		 * Empty string for legacy data (before MD5 support was added).
+		 * Empty string for legacy data (before MD5 support was added).wire_alias
 		 * Stored in database for incremental analysis.
 		 */
 		public string md5_hash { get; set; default = ""; }
@@ -179,6 +179,10 @@ namespace OLLMfiles.SQT
 		public static void rpc_register()
 		{
 			OLLMrpc.register("VectorMetadata", typeof(VectorMetadata));
+			OLLMrpc.Bin.Stream.register(
+				"VectorMetadata",
+				typeof(VectorMetadata)
+			);
 		}
 		
 		/**

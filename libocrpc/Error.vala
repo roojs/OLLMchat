@@ -19,7 +19,7 @@ namespace OLLMrpc
 	 * Not {@link GLib.Error} — {@link GLib.Object} only for {@link Json.Serializable}.
 	 * {@link code} is the numeric JSON-RPC error code (a {@link RpcErrorCode} value).
 	 */
-	public class Error : GLib.Object, Json.Serializable
+	public class Error : GLib.Object, Json.Serializable, OLLMrpc.Bin.Serializable
 	{
 		public int code { get; set; }
 		public string message { get; set; default = ""; }
@@ -31,6 +31,7 @@ namespace OLLMrpc
 		public static void rpc_register()
 		{
 			register("Error", typeof(Error));
+			OLLMrpc.Bin.Stream.register("Error", typeof(Error));
 		}
 
 		/**

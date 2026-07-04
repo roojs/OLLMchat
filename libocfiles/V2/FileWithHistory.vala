@@ -22,11 +22,15 @@ namespace OLLMfiles
 	 * Pending-approval list row ({@code FileWithHistory} wire).
 	 * Popover display fields copied from {@link FileBase} — not a tree node.
 	 */
-	public class FileWithHistory : Object, Json.Serializable
+	public class FileWithHistory : Object, Json.Serializable, OLLMrpc.Bin.Serializable
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.register(
+				"FileWithHistory",
+				typeof(FileWithHistory)
+			);
+			OLLMrpc.Bin.Stream.register(
 				"FileWithHistory",
 				typeof(FileWithHistory)
 			);

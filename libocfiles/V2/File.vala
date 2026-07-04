@@ -50,11 +50,12 @@ namespace OLLMfiles
 	 * var contents = file.buffer.get_text();
 	 * }}}
 	 */
-	public class File : FileBase, Copyable
+	public class File : FileBase, Copyable, OLLMrpc.Bin.Serializable
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.register("File", typeof(File));
+			OLLMrpc.Bin.Stream.register("File", typeof(File));
 		}
 
 		/**
