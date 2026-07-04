@@ -30,10 +30,7 @@ namespace OLLMrpc.Bin
 	{
 		public virtual void bin_write (Stream ctx) throws GLib.Error
 		{
-			unowned GLib.ObjectClass obj_class = this.get_class ();
-			GLib.ParamSpec[] properties = obj_class.list_properties ();
-
-			foreach (var prop in properties) {
+			foreach (var prop in this.get_class ().list_properties ()) {
 				if (prop.name == "g-type-instance" || prop.name == "ref-count") {
 					continue;
 				}
@@ -60,17 +57,23 @@ namespace OLLMrpc.Bin
 				case GLib.Type.STRING:
 					ctx.write_tag (prop.name);
 					ctx.out_stream.put_byte ((uint8) GLib.Type.STRING);
-					var s = val.get_string () ?? "";
-					if (s.length > 65535) {
+					if ((val.get_string () ?? "").length > 65535) {
 						throw new Error.PROPERTY (
 							"Short string prop '%s' is %u bytes — use GLib.Type.BOXED for large payloads",
 							prop.name,
-							s.length
+							(val.get_string () ?? "").length
 						);
 					}
-					ctx.out_stream.put_uint16 ((uint16) s.length);
+					ctx.out_stream.put_uint16 (
+						(uint16) (val.get_string () ?? "").length
+					);
 					size_t written;
-					ctx.out_stream.write_all (((uint8[]) s)[0:s.length], out written);
+					ctx.out_stream.write_all (
+						((uint8[]) (val.get_string () ?? ""))[
+							0:(val.get_string () ?? "").length
+						],
+						out written
+					);
 					return;
 
 				case GLib.Type.BOOLEAN:
@@ -94,98 +97,93 @@ namespace OLLMrpc.Bin
 				case GLib.Type.INT:
 					ctx.write_tag (prop.name);
 					ctx.out_stream.put_byte ((uint8) GLib.Type.INT);
-					var iv = val.get_int ();
-					if (iv >= -128 && iv <= 127) {
+					if (val.get_int () >= -128 && val.get_int () <= 127) {
 						ctx.out_stream.put_byte (1);
-						ctx.out_stream.put_byte ((uint8) (int8) iv);
+						ctx.out_stream.put_byte ((uint8) (int8) val.get_int ());
 						return;
 					}
 					ctx.out_stream.put_byte (8);
-					ctx.out_stream.put_int64 (iv);
+					ctx.out_stream.put_int64 (val.get_int ());
 					return;
 
 				case GLib.Type.INT64:
 					ctx.write_tag (prop.name);
 					ctx.out_stream.put_byte ((uint8) GLib.Type.INT64);
-					var iv64 = val.get_int64 ();
-					if (iv64 >= -128 && iv64 <= 127) {
+					if (val.get_int64 () >= -128 && val.get_int64 () <= 127) {
 						ctx.out_stream.put_byte (1);
-						ctx.out_stream.put_byte ((uint8) (int8) iv64);
+						ctx.out_stream.put_byte ((uint8) (int8) val.get_int64 ());
 						return;
 					}
 					ctx.out_stream.put_byte (8);
-					ctx.out_stream.put_int64 (iv64);
+					ctx.out_stream.put_int64 (val.get_int64 ());
 					return;
 
 				case GLib.Type.UINT:
 					ctx.write_tag (prop.name);
 					ctx.out_stream.put_byte ((uint8) GLib.Type.UINT);
-					var uv = val.get_uint ();
-					if (uv <= 255) {
+					if (val.get_uint () <= 255) {
 						ctx.out_stream.put_byte (1);
-						ctx.out_stream.put_byte ((uint8) uv);
+						ctx.out_stream.put_byte ((uint8) val.get_uint ());
 						return;
 					}
 					ctx.out_stream.put_byte (8);
-					ctx.out_stream.put_uint64 (uv);
+					ctx.out_stream.put_uint64 (val.get_uint ());
 					return;
 
 				case GLib.Type.UINT64:
 					ctx.write_tag (prop.name);
 					ctx.out_stream.put_byte ((uint8) GLib.Type.UINT64);
-					var uv64 = val.get_uint64 ();
-					if (uv64 <= 255) {
+					if (val.get_uint64 () <= 255) {
 						ctx.out_stream.put_byte (1);
-						ctx.out_stream.put_byte ((uint8) uv64);
+						ctx.out_stream.put_byte ((uint8) val.get_uint64 ());
 						return;
 					}
 					ctx.out_stream.put_byte (8);
-					ctx.out_stream.put_uint64 (uv64);
+					ctx.out_stream.put_uint64 (val.get_uint64 ());
 					return;
 			}
 
 			if (prop.value_type.is_a (GLib.Type.ENUM)) {
 				ctx.write_tag (prop.name);
 				ctx.out_stream.put_byte ((uint8) GLib.Type.ENUM);
-				var enum_iv = (int64) val.get_enum ();
-				if (enum_iv >= -128 && enum_iv <= 127) {
+				if ((int64) val.get_enum () >= -128
+					&& (int64) val.get_enum () <= 127) {
 					ctx.out_stream.put_byte (1);
-					ctx.out_stream.put_byte ((uint8) (int8) enum_iv);
+					ctx.out_stream.put_byte (
+						(uint8) (int8) (int64) val.get_enum ()
+					);
 					return;
 				}
 				ctx.out_stream.put_byte (8);
-				ctx.out_stream.put_int64 (enum_iv);
+				ctx.out_stream.put_int64 ((int64) val.get_enum ());
 				return;
 			}
 			if (prop.value_type.is_a (GLib.Type.FLAGS)) {
 				ctx.write_tag (prop.name);
 				ctx.out_stream.put_byte ((uint8) GLib.Type.FLAGS);
-				var flags_uv = (uint64) val.get_flags ();
-				if (flags_uv <= 255) {
+				if ((uint64) val.get_flags () <= 255) {
 					ctx.out_stream.put_byte (1);
-					ctx.out_stream.put_byte ((uint8) flags_uv);
+					ctx.out_stream.put_byte ((uint8) (uint64) val.get_flags ());
 					return;
 				}
 				ctx.out_stream.put_byte (8);
-				ctx.out_stream.put_uint64 (flags_uv);
+				ctx.out_stream.put_uint64 ((uint64) val.get_flags ());
 				return;
 			}
 			if (prop.value_type.is_a (GLib.Type.OBJECT)) {
-				var obj = val.get_object ();
-				if (obj == null) {
+				if (val.get_object () == null) {
 					return;
 				}
-				var ser = obj as Serializable;
-				if (ser == null) {
+				if ((val.get_object () as Serializable) == null) {
 					throw new Error.PROPERTY (
 						"prop '%s': type '%s' is not Bin.Serializable",
 						prop.name,
-						obj.get_type ().name ()
+						val.get_object ().get_type ().name ()
 					);
 				}
 				ctx.write_tag (prop.name);
-				ctx.write_gtype (obj.get_type ());
-				ser.bin_write (ctx);
+				ctx.write_gtype (val.get_object ().get_type ());
+				((Serializable) val.get_object ()).bin_write (ctx);
 				return;
 			}
 
@@ -201,7 +199,7 @@ namespace OLLMrpc.Bin
 			this.bin_pre (ctx);
 
 			var prop_name = "";
-			uint16 t;
+			var t = (uint16) 0;
 
 			while ((t = ctx.read_tag (out prop_name)) != Stream.TOKEN_END) {
 				var b = ctx.in_stream.read_byte ();
@@ -210,7 +208,7 @@ namespace OLLMrpc.Bin
 					b = ctx.in_stream.read_byte ();
 				}
 
-				GLib.ParamSpec? prop = this.get_class ().find_property (prop_name);
+				var prop = this.get_class ().find_property (prop_name);
 				if (prop == null) {
 					throw new Error.PROPERTY (
 						"unknown bin property '%s'",
@@ -254,7 +252,6 @@ namespace OLLMrpc.Bin
 			uint8 type_byte
 		) throws GLib.Error
 		{
-			var base_type = (uint8) (type_byte & 0x7F);
 			if ((type_byte & 0x80) != 0) {
 				throw new Error.PROPERTY (
 					"array prop '%s' requires a bin_read_prop override",
@@ -265,7 +262,7 @@ namespace OLLMrpc.Bin
 			var val = GLib.Value (prop.value_type);
 			var width = (uint8) 0;
 
-			switch ((GLib.Type) base_type) {
+			switch ((GLib.Type) (type_byte & 0x7F)) {
 				case GLib.Type.STRING:
 					if (prop.value_type != GLib.Type.STRING) {
 						throw new Error.PROPERTY (
@@ -493,7 +490,7 @@ namespace OLLMrpc.Bin
 
 			throw new Error.PROPERTY (
 				"unsupported wire type 0x%02X on prop '%s'",
-				base_type,
+				type_byte & 0x7F,
 				prop.name
 			);
 		}
