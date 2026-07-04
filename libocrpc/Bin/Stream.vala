@@ -27,41 +27,50 @@ namespace OLLMrpc.Bin
 		internal Gee.HashMap<string, uint16> name_to_token =
 			new Gee.HashMap<string, uint16> ();
 
-		private Gee.HashMap<string, GLib.Type> alias_to_gtype =
-			new Gee.HashMap<string, GLib.Type> ();
-		private Gee.HashMap<GLib.Type, string> gtype_to_alias =
-			new Gee.HashMap<GLib.Type, string> ();
+		private static Gee.HashMap<string, GLib.Type>? alias_to_gtype;
+		private static Gee.HashMap<GLib.Type, string>? gtype_to_alias;
+
+		private static void ensure_alias_maps ()
+		{
+			if (alias_to_gtype != null) {
+				return;
+			}
+			alias_to_gtype = new Gee.HashMap<string, GLib.Type> ();
+			gtype_to_alias = new Gee.HashMap<GLib.Type, string> ();
+		}
 
 		public const uint16 TOKEN_REG_KEY = 0xFFFF;
 		public const uint16 TOKEN_REG_TYPE = 0xFFFE;
 		public const uint16 TOKEN_END = 0xFFFD;
 
 		/**
-		 * Register a wire alias on this connection's stream.
+		 * Register a wire alias process-wide (like {@link OLLMrpc.register}).
 		 *
 		 * Maps {@param alias} to {@param gtype} for instantiation on decode on
 		 * this peer. Both ends must register every alias they send or receive;
 		 * the alias string is the shared wire name — {@param gtype} is local to
-		 * this stream and need not match the peer's type for the same alias.
-		 * The alias string shares the connection wire-name table with property
-		 * keys. Type aliases are introduced on the wire via {@link TOKEN_REG_TYPE};
-		 * property keys via {@link TOKEN_REG_KEY}. Registration order is not
-		 * significant.
+		 * this process and need not match the peer's type for the same alias.
+		 * Per-connection streams still use {@link names} / {@link name_to_token}
+		 * for JIT property keys on the wire.
 		 *
 		 * @param alias wire type name
 		 * @param gtype GObject type for that alias
 		 */
-		public void register (string alias, GLib.Type gtype) throws GLib.Error
+		public static void register (
+			string alias,
+			GLib.Type gtype
+		) throws GLib.Error
 		{
-			if (this.alias_to_gtype.has_key (alias)) {
+			ensure_alias_maps ();
+			if (alias_to_gtype.has_key (alias)) {
 				throw new Error.REGISTRATION (
 					"duplicate register of alias '%s'",
 					alias
 				);
 			}
 
-			this.alias_to_gtype.set (alias, gtype);
-			this.gtype_to_alias.set (gtype, alias);
+			alias_to_gtype.set (alias, gtype);
+			gtype_to_alias.set (gtype, alias);
 		}
 
 		public Stream (
@@ -113,29 +122,9 @@ namespace OLLMrpc.Bin
 		 */
 		public Serializable parse_object () throws GLib.Error
 		{
-			var reg_b = this.in_stream.read_byte ();
-			var reg_id = (uint) reg_b;
-			if ((reg_b & 0x80) != 0) {
-				reg_id = ((uint) (reg_b & 0x7F) << 8)
-					| this.in_stream.read_byte ();
-			}
+			var element_type = this.read_gtype ();
 
-			if (reg_id >= this.names.length) {
-				throw new Error.PROTOCOL (
-					"unknown wire name token %u",
-					reg_id
-				);
-			}
-			if (this.alias_to_gtype[this.names[reg_id]] == 0) {
-				throw new Error.REGISTRATION (
-					"Unrecognized type alias: %s",
-					this.names[reg_id]
-				);
-			}
-
-			var obj = (Serializable) GLib.Object.new (
-				this.alias_to_gtype[this.names[reg_id]]
-			);
+			var obj = (Serializable) GLib.Object.new (element_type);
 			obj.bin_read (this);
 			return obj;
 		}
@@ -213,56 +202,32 @@ namespace OLLMrpc.Bin
 			return this.read_tag (out prop_name);
 		}
 
-		public void write_gtype (GLib.Type object_type) throws GLib.Error
+		public void write_gtype (
+			GLib.Type object_type,
+			uint8 type_byte = (uint8) GLib.Type.OBJECT
+		) throws GLib.Error
 		{
-			if (this.gtype_to_alias[object_type] == null) {
+			if ((type_byte & 0x7F) != (uint8) GLib.Type.OBJECT) {
+				throw new Error.PROTOCOL (
+					"write_gtype type_byte 0x%02X is not object",
+					type_byte
+				);
+			}
+
+			this.write_reg_gtype (object_type);
+
+			ensure_alias_maps ();
+
+			if (gtype_to_alias[object_type] == null) {
 				throw new Error.REGISTRATION (
 					"Unregistered class type schema: %s",
 					object_type.name ()
 				);
 			}
 
-			if (!this.name_to_token.has_key (this.gtype_to_alias[object_type])) {
-				var new_reg_id = (uint) this.names.length;
-
-				this.out_stream.put_byte (0xFF);
-				this.out_stream.put_byte (0xFE);
-				if (new_reg_id < 128) {
-					this.out_stream.put_byte ((uint8) new_reg_id);
-				} else {
-					this.out_stream.put_byte (
-						(uint8) (0x80 | ((new_reg_id >> 8) & 0x7F))
-					);
-					this.out_stream.put_byte ((uint8) (new_reg_id & 0xFF));
-				}
-
-				this.out_stream.put_byte (
-					(uint8) uint.min (
-						this.gtype_to_alias[object_type].length,
-						255
-					)
-				);
-				size_t written;
-				this.out_stream.write_all (
-					((uint8[]) this.gtype_to_alias[object_type])[
-						0:uint.min (
-							this.gtype_to_alias[object_type].length,
-							255
-						)
-					],
-					out written
-				);
-
-				this.names += this.gtype_to_alias[object_type];
-				this.name_to_token.set (
-					this.gtype_to_alias[object_type],
-					(uint16) new_reg_id
-				);
-			}
-
-			this.out_stream.put_byte ((uint8) GLib.Type.OBJECT);
+			this.out_stream.put_byte (type_byte);
 			var reg_id = (uint) this.name_to_token[
-				this.gtype_to_alias[object_type]
+				gtype_to_alias[object_type]
 			];
 			if (reg_id < 128) {
 				this.out_stream.put_byte ((uint8) reg_id);
@@ -273,6 +238,94 @@ namespace OLLMrpc.Bin
 				(uint8) (0x80 | ((reg_id >> 8) & 0x7F))
 			);
 			this.out_stream.put_byte ((uint8) (reg_id & 0xFF));
+		}
+
+		/**
+		 * Introduce a type alias on the wire ({@link TOKEN_REG_TYPE}).
+		 */
+		internal void write_reg_gtype (GLib.Type object_type) throws GLib.Error
+		{
+			ensure_alias_maps ();
+
+			if (gtype_to_alias[object_type] == null) {
+				throw new Error.REGISTRATION (
+					"Unregistered class type schema: %s",
+					object_type.name ()
+				);
+			}
+
+			if (this.name_to_token.has_key (
+				gtype_to_alias[object_type]
+			)) {
+				return;
+			}
+
+			var new_reg_id = (uint) this.names.length;
+
+			this.out_stream.put_byte (0xFF);
+			this.out_stream.put_byte (0xFE);
+			if (new_reg_id < 128) {
+				this.out_stream.put_byte ((uint8) new_reg_id);
+			} else {
+				this.out_stream.put_byte (
+					(uint8) (0x80 | ((new_reg_id >> 8) & 0x7F))
+				);
+				this.out_stream.put_byte (
+					(uint8) (new_reg_id & 0xFF)
+				);
+			}
+
+			this.out_stream.put_byte (
+				(uint8) uint.min (
+					gtype_to_alias[object_type].length,
+					255
+				)
+			);
+			size_t written;
+			this.out_stream.write_all (
+				((uint8[]) gtype_to_alias[object_type])[
+					0:uint.min (
+						gtype_to_alias[object_type].length,
+						255
+					)
+				],
+				out written
+			);
+
+			this.names += this.gtype_to_alias[object_type];
+			this.name_to_token.set (
+				gtype_to_alias[object_type],
+				(uint16) new_reg_id
+			);
+		}
+
+		/**
+		 * Read {@code reg_id} after an object type byte; return registered gtype.
+		 */
+		public GLib.Type read_gtype () throws GLib.Error
+		{
+			var reg_b = this.in_stream.read_byte ();
+			var reg_id = (uint) reg_b;
+			if ((reg_b & 0x80) != 0) {
+				reg_id = ((uint) (reg_b & 0x7F) << 8)
+					| this.in_stream.read_byte ();
+			}
+
+			if (reg_id >= this.names.length) {
+				throw new Error.PROTOCOL (
+					"unknown wire name token %u",
+					reg_id
+				);
+			}
+			ensure_alias_maps ();
+			if (alias_to_gtype[this.names[reg_id]] == 0) {
+				throw new Error.REGISTRATION (
+					"Unrecognized type alias: %s",
+					this.names[reg_id]
+				);
+			}
+
+			return alias_to_gtype[this.names[reg_id]];
 		}
 
 		internal void read_reg_gtype () throws GLib.Error

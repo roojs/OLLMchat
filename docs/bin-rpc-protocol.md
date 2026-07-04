@@ -10,28 +10,28 @@ The **type byte** on the wire is always a `GLib.Type` fundamental value (optiona
 
 ## 1. Overview
 
-A **connection** maintains two tables on its `OLLMrpc.Bin.Stream` instance:
+A **connection** maintains a per-instance **wire-name** table on its `OLLMrpc.Bin.Stream`. **Type aliases → GType** live in a **process-wide** static map (same registration model as `OLLMrpc.register` for JSON).
 
-1. **Wire names** — one shared string → uint16 token map for **both** property keys (`"name"`, `"count"`, …) and object type aliases (`"TestPair"`, `"File"`, …). Tokens are learned on the wire via `TOKEN_REG_KEY` when a name is first sent.
-2. **Type aliases → GType** — registered locally via `Stream.register(alias, gtype)` before decode. Both ends must register every wire alias string they send or receive; each side maps that alias to its **own** local `GLib.Type` (the alias is the shared wire name — client and server need not use the same GObject class). `register()` call order is not significant.
+1. **Wire names (per connection)** — string → uint16 token map for **both** property keys (`"name"`, `"count"`, …) and object type aliases (`"TestPair"`, `"File"`, …). Tokens are learned on the wire via `TOKEN_REG_KEY` when a name is first sent.
+2. **Type aliases → GType (process-wide)** — `Stream.register(alias, gtype)` static, called from each type's `rpc_register()` before any channel opens. Both ends register every wire alias string they send or receive; each maps that alias to its **own** local `GLib.Type`. `register()` call order is not significant.
 
 Every **property value**: name token → one-byte **type** (`GLib.Type` fundamental) → payload. When the type is `GLib.Type.OBJECT`, a **name token** (uint16) identifying the object alias follows before the nested property stream. Unknown token or unrecognized alias → protocol error.
 
 ### Registration vs JSON RPC
 
-Bin registration is **per connection**:
+Bin type registration is **process-wide** (static), same call sites as JSON:
 
 ```vala
-var bin = new OLLMrpc.Bin.Stream (in_stream, out_stream);
-bin.register ("File", typeof (OLLMfiles.V2.File));
-bin.register ("Folder", typeof (OLLMfiles.V2.Folder));
+// In each wire type's rpc_register() — before connect() / listen
+OLLMrpc.Bin.Stream.register ("File", typeof (OLLMfiles.V2.File));
+OLLMrpc.Bin.Stream.register ("Folder", typeof (OLLMfiles.V2.Folder));
 ```
 
-Client and server each call `register()` for the **same wire alias strings** they exchange; each maps an alias to whatever local `GLib.Type` implements that payload on that end. Property keys do not need `register()` — they appear on the wire and enter the same name-token table via `TOKEN_REG_KEY`.
+Client and server each register the **same wire alias strings**; each maps an alias to whatever local `GLib.Type` implements that payload on that end. Property keys do not need `register()` — they appear on the wire and enter the per-connection name-token table via `TOKEN_REG_KEY`.
 
-JSON RPC today uses a separate, **process-wide** map via `OLLMrpc.register(name, gtype)` keyed by string names in `Response.result_type`. The two APIs coexist until bin cutover (see plan 8.1). Alias strings should match JSON wire names where both apply.
+JSON RPC today uses **`OLLMrpc.register(name, gtype)`** for `Response.result_type` deserialize. During dual stack, each `rpc_register()` calls **both** APIs with the same alias string (see plan 8.1). Alias strings should match JSON wire names where both apply.
 
-Domain types implement `OLLMrpc.Bin.Serializable` for bin encoding. JSON `rpc_register()` does **not** register types on a `Stream` — that happens at channel setup.
+Domain types implement `OLLMrpc.Bin.Serializable` for bin encoding. **`rpc_register()`** registers JSON and bin aliases — **not** at channel setup.
 
 ---
 
@@ -185,22 +185,22 @@ Wire names are limited to 255 bytes on introduction.
 
 ## 6. Object type registration
 
-### `Stream.register(alias, gtype)`
+### `Stream.register(alias, gtype)` (static)
 
-Maps a wire alias string to a local `GLib.Type` for decode on this connection. Both peers must register every alias they send or receive; the **alias string** is the wire contract — each end may map it to a different GObject type. Wire indices for type aliases are learned via `TOKEN_REG_TYPE` / `read_reg_gtype()`; property keys via `TOKEN_REG_KEY`.
+Maps a wire alias string to a local `GLib.Type` for decode — **process-wide**, not per connection. Both peers must register every alias they send or receive; the **alias string** is the wire contract — each end may map it to a different GObject type. Per-connection wire indices for type aliases are learned via `TOKEN_REG_TYPE` / `read_reg_gtype()`; property keys via `TOKEN_REG_KEY`.
 
-- Duplicate alias on the same stream → error.
+- Duplicate alias → error.
 - `register()` call order is not significant.
 
 Example (from `tests/rpc/bin-test.vala`):
 
 ```vala
-write_bin.register ("TestPair", typeof (TestPair));
-write_bin.register ("TestParent", typeof (TestParent));
+OLLMrpc.Bin.Stream.register ("TestPair", typeof (TestPair));
+OLLMrpc.Bin.Stream.register ("TestParent", typeof (TestParent));
 
-// Reader: same wire alias strings, any order (typeof may differ per end in production)
-read_bin.register ("TestParent", typeof (TestParent));
-read_bin.register ("TestPair", typeof (TestPair));
+var write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
+var read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
+// No per-connection type registration — aliases already in the static map
 ```
 
 ### `reg_id` encoding
@@ -284,11 +284,28 @@ Vala: `name = "hi"`
 
 ```text
 40           ;; G_TYPE_STRING (64)
-00 02        ;; length 2 (uint16 BE)
+02           ;; length 2 (one byte — under 128)
 68 69        ;; "hi"
 ```
 
-Max length 65535. Longer payloads use `GLib.Type.BOXED` (`0x48`) with a uint32 length prefix (§13).
+**Length prefix** (UTF-8 byte count) — two forms only:
+
+| length | Bytes |
+| ------ | ----- |
+| under 128 | one byte, bit 7 clear — e.g. `02`, `7F` |
+| 128 or more | two bytes: `(0x80 \| (len >> 8))`, then `(len & 0xFF)` |
+
+Example — 128-byte payload:
+
+```text
+40           ;; G_TYPE_STRING
+80 80        ;; length 128 (two-byte form)
+… 128 UTF-8 bytes …
+```
+
+Applies to scalar `string` props (type byte `0x40`) and each element of `string[]`.
+
+**Large `string` props** (length greater than 32767, or whenever inline length does not fit): type byte `0x48` (`GLib.Type.BOXED`) then `uint32` BE length + UTF-8 bytes (§13) — not a third length-prefix form.
 
 ---
 
@@ -377,7 +394,7 @@ Large binary (`GLib.Type.BOXED`). Vala types use a custom `bin_write_prop` overr
 
 ## 14. Nested object
 
-Default `bin_write_prop` / `bin_read_prop` encode nested `Bin.Serializable` objects. Null object properties are omitted on write. The nested value's type must be registered on the stream (`register()`).
+Default `bin_write_prop` / `bin_read_prop` encode nested `Bin.Serializable` objects. Null object properties are omitted on write. The nested value's type must be registered via static `Stream.register()`.
 
 Single object — registered as `"Child"`, name token `1`:
 
@@ -405,11 +422,11 @@ FF FD
 
 Set bit 7 on the type byte, then a **count**, then elements.
 
-**Vala:** native arrays (`string[]`, `int[]`, …), `Gee.ArrayList<T>`, and `uint8[]` are **not** encoded by the default property walk. Override `bin_write_prop` / `bin_read_prop` on the owning type. Scalar element arrays use the layouts below; opaque byte buffers typically use §13 blob (`GLib.Type.BOXED` on the wire).
+**Vala:** native arrays (`string[]` is encoded by default on {@link Serializable}; `int[]`, …), `Gee.ArrayList<T>`, and `uint8[]` need `bin_write_prop` / `bin_read_prop` overrides on the owning type. Scalar element arrays use the layouts below; opaque byte buffers typically use §13 blob (`GLib.Type.BOXED` on the wire).
 
-### Short list (count ≤ 255)
+### Short list
 
-`uint8` element count, then each element.
+Element **count** uses the same compact prefix as §9 string lengths (under 128: one byte; 128 or more: two bytes). Then each element.
 
 **`string[]`** — `["a", "bb"]` (name token `5`):
 
@@ -417,9 +434,11 @@ Set bit 7 on the type byte, then a **count**, then elements.
 00 05        ;; name token
 C0           ;; G_TYPE_STRING (64) | array (0x80)
 02           ;; count 2
-00 01 61     ;; len 1, "a"
-00 02 62 62  ;; len 2, "bb"
+01 61        ;; length 1, "a"
+02 62 62     ;; length 2, "bb"
 ```
+
+Each element uses the §9 length prefix (not a per-element type byte).
 
 **`int[]`** — `[1, 2]`:
 
@@ -445,10 +464,6 @@ D0           ;; G_TYPE_OBJECT (80) | array (0x80)
 … child 1 property stream … FF FD
 … child 2 property stream … FF FD
 ```
-
-### Long list
-
-Same layouts, but `uint32` BE count instead of `uint8` when more than 255 elements.
 
 ### Heterogeneous array (`ANY[]`)
 

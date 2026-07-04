@@ -211,7 +211,7 @@ namespace OLLMfiles
 		 * Fetch a page of file rows for this project (file dropdown).
 		 *
 		 * Returns the daemon RPC response. Caller reads {@code result} (file page)
-		 * and {@code msg} (total match count before pagination).
+		 * and {@code msg} (total match count as decimal string).
 		 *
 		 * @param offset Rows to skip (default 0)
 		 * @param limit Page size (default 50)

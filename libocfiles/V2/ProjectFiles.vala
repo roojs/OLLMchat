@@ -98,16 +98,15 @@ namespace OLLMfiles
 
 			var response = yield this.project.fetch_files(0, 50, query);
 			if (response.error != null) {
+				GLib.debug(
+					"refresh failed query=%s error=%s",
+					query,
+					response.error.message
+				);
 				return;
 			}
-			this.total = 0;
-			if (response.msg != "") {
-				this.total = int.parse(response.msg);
-			}
-			var files = response.result as Gee.ArrayList<File>;
-			if (files == null) {
-				files = new Gee.ArrayList<File>();
-			}
+			this.total = int.parse(response.msg);
+			var files = (Gee.ArrayList<File>) response.result;
 			foreach (var file in files) {
 				this.items.add(new ProjectFile(
 					this.project.manager,
@@ -146,12 +145,9 @@ namespace OLLMfiles
 			if (response.error != null) {
 				return;
 			}
-			this.total = 0;
-			if (response.msg != "") {
-				this.total = int.parse(response.msg);
-			}
-			var files = response.result as Gee.ArrayList<File>;
-			if (files == null || files.size == 0) {
+			this.total = int.parse(response.msg);
+			var files = (Gee.ArrayList<File>) response.result;
+			if (files.size == 0) {
 				return;
 			}
 

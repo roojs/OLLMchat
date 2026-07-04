@@ -17,7 +17,8 @@ namespace OLLMrpc.Bin
 	 * GObject types that read/write on a {@link Stream} session.
 	 *
 	 * Default {@link bin_write_prop} / {@link bin_read_prop} cover scalar
-	 * fundamentals and nested {@link Serializable} object properties.
+	 * fundamentals, {@code string[]} ({@code GStrv}), and nested
+	 * {@link Serializable} object properties.
 	 *
 	 * Override for transient fields, {@code Gee.ArrayList} / list properties,
 	 * {@code uint8[]} (wire as blob or typed array — see docs/bin-rpc-protocol.md),
@@ -56,18 +57,35 @@ namespace OLLMrpc.Bin
 			switch (prop.value_type) {
 				case GLib.Type.STRING:
 					ctx.write_tag (prop.name);
-					ctx.out_stream.put_byte ((uint8) GLib.Type.STRING);
 					var s = val.get_string () != null
 						? val.get_string ()
 						: "";
-					if (s.length > 65535) {
-						throw new Error.PROPERTY (
-							"Short string prop '%s' is %u bytes — use GLib.Type.BOXED for large payloads",
-							prop.name,
-							s.length
+					if (s.length > 32767) {
+						ctx.out_stream.put_byte ((uint8) GLib.Type.BOXED);
+						ctx.out_stream.put_uint32 ((uint32) s.length);
+						size_t written;
+						ctx.out_stream.write_all (
+							((uint8[]) s)[0:s.length],
+							out written
 						);
+						return;
 					}
-					ctx.out_stream.put_uint16 ((uint16) s.length);
+					ctx.out_stream.put_byte ((uint8) GLib.Type.STRING);
+					if (s.length < 128) {
+						ctx.out_stream.put_byte ((uint8) s.length);
+						size_t written;
+						ctx.out_stream.write_all (
+							((uint8[]) s)[0:s.length],
+							out written
+						);
+						return;
+					}
+					ctx.out_stream.put_byte (
+						(uint8) (0x80 | ((s.length >> 8) & 0x7F))
+					);
+					ctx.out_stream.put_byte (
+						(uint8) (s.length & 0xFF)
+					);
 					size_t written;
 					ctx.out_stream.write_all (
 						((uint8[]) s)[0:s.length],
@@ -140,6 +158,43 @@ namespace OLLMrpc.Bin
 					ctx.out_stream.put_byte (8);
 					ctx.out_stream.put_uint64 (val.get_uint64 ());
 					return;
+			}
+
+			if (prop.value_type == typeof (string[])) {
+				var arr = (string[]) val;
+				ctx.write_tag (prop.name);
+				ctx.out_stream.put_byte (
+					(uint8) GLib.Type.STRING | 0x80
+				);
+				if (arr.length < 128) {
+					ctx.out_stream.put_byte ((uint8) arr.length);
+				} else {
+					ctx.out_stream.put_byte (
+						(uint8) (0x80 | ((arr.length >> 8) & 0x7F))
+					);
+					ctx.out_stream.put_byte (
+						(uint8) (arr.length & 0xFF)
+					);
+				}
+				foreach (var s in arr) {
+					var elem = s != null ? s : "";
+					if (elem.length < 128) {
+						ctx.out_stream.put_byte ((uint8) elem.length);
+					} else {
+						ctx.out_stream.put_byte (
+							(uint8) (0x80 | ((elem.length >> 8) & 0x7F))
+						);
+						ctx.out_stream.put_byte (
+							(uint8) (elem.length & 0xFF)
+						);
+					}
+					size_t written;
+					ctx.out_stream.write_all (
+						((uint8[]) elem)[0:elem.length],
+						out written
+					);
+				}
+				return;
 			}
 
 			if (prop.value_type.is_a (GLib.Type.ENUM)) {
@@ -251,18 +306,46 @@ namespace OLLMrpc.Bin
 			uint8 type_byte
 		) throws GLib.Error
 		{
-			if ((type_byte & 0x80) != 0) {
-				throw new Error.PROPERTY (
-					"array prop '%s' requires a bin_read_prop override",
-					prop.name
-				);
-			}
-
 			var val = GLib.Value (prop.value_type);
 			var width = (uint8) 0;
 
 			switch ((GLib.Type) (type_byte & 0x7F)) {
 				case GLib.Type.STRING:
+					if ((type_byte & 0x80) != 0) {
+						if (prop.value_type != typeof (string[])) {
+							throw new Error.PROPERTY (
+								"prop '%s' cannot decode wire string[]",
+								prop.name
+							);
+						}
+
+						var count = (uint) ctx.in_stream.read_byte ();
+						if ((count & 0x80) != 0) {
+							count = ((count & 0x7F) << 8)
+								| ctx.in_stream.read_byte ();
+						}
+						string[] arr = {};
+						for (var i = 0; i < count; i++) {
+							var elem_len = (uint) ctx.in_stream.read_byte ();
+							if ((elem_len & 0x80) != 0) {
+								elem_len = ((elem_len & 0x7F) << 8)
+									| ctx.in_stream.read_byte ();
+							}
+							var buf = new uint8[elem_len + 1];
+							size_t read_bytes;
+							ctx.in_stream.read_all (
+								buf[0:elem_len],
+								out read_bytes
+							);
+							buf[elem_len] = 0;
+							arr += (string) buf;
+						}
+
+						val = arr;
+						this.set_property (prop.name, val);
+						return;
+					}
+
 					if (prop.value_type != GLib.Type.STRING) {
 						throw new Error.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
@@ -270,12 +353,39 @@ namespace OLLMrpc.Bin
 							type_byte
 						);
 					}
-					var len = ctx.in_stream.read_uint16 ();
-					var buf = new uint8[len + 1];
-					size_t read_bytes;
-					ctx.in_stream.read_all (buf[0:len], out read_bytes);
-					buf[len] = 0;
-					val.set_string ((string) buf);
+					var str_len = (uint) ctx.in_stream.read_byte ();
+					if ((str_len & 0x80) != 0) {
+						str_len = ((str_len & 0x7F) << 8)
+							| ctx.in_stream.read_byte ();
+					}
+					var str_buf = new uint8[str_len + 1];
+					size_t str_read;
+					ctx.in_stream.read_all (
+						str_buf[0:str_len],
+						out str_read
+					);
+					str_buf[str_len] = 0;
+					val.set_string ((string) str_buf);
+					this.set_property (prop.name, val);
+					return;
+
+				case GLib.Type.BOXED:
+					if (prop.value_type != GLib.Type.STRING) {
+						throw new Error.PROPERTY (
+							"prop '%s' cannot decode wire blob 0x%02X",
+							prop.name,
+							type_byte
+						);
+					}
+					var blob_len = ctx.in_stream.read_uint32 ();
+					var blob_buf = new uint8[blob_len + 1];
+					size_t blob_read;
+					ctx.in_stream.read_all (
+						blob_buf[0:blob_len],
+						out blob_read
+					);
+					blob_buf[blob_len] = 0;
+					val.set_string ((string) blob_buf);
 					this.set_property (prop.name, val);
 					return;
 
@@ -485,6 +595,13 @@ namespace OLLMrpc.Bin
 					val.set_object (child);
 					this.set_property (prop.name, val);
 					return;
+			}
+
+			if ((type_byte & 0x80) != 0) {
+				throw new Error.PROPERTY (
+					"array prop '%s' requires a bin_read_prop override",
+					prop.name
+				);
 			}
 
 			throw new Error.PROPERTY (

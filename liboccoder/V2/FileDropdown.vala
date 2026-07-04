@@ -201,6 +201,10 @@ namespace OLLMcoder
 				
 				var project_file = list_item.item as OLLMfiles.ProjectFile;
 				if (project_file == null) {
+					GLib.debug(
+						"bind item type=%s",
+						list_item.item.get_type().name()
+					);
 					return;
 				}
 				
@@ -270,7 +274,19 @@ namespace OLLMcoder
 
 			this.search_debounce_id = GLib.Timeout.add(500, () => {
 				this.search_debounce_id = 0;
-				this.project_files.refresh.begin(search_text);
+				this.project_files.refresh.begin(search_text, (obj, res) => {
+					this.project_files.refresh.end(res);
+					GLib.debug(
+						"search done text=%s filtered=%u list=%u",
+						this.entry.text,
+						this.filtered_items.get_n_items(),
+						this.project_files.get_n_items()
+					);
+					if (this.entry.text != ""
+						&& this.filtered_items.get_n_items() > 0) {
+						base.set_popup_visible(true);
+					}
+				});
 				return false;
 			});
 
@@ -284,6 +300,14 @@ namespace OLLMcoder
 		 */
 		protected new void set_popup_visible(bool visible)
 		{
+			if (visible) {
+				GLib.debug(
+					"popup show filtered=%u list=%u entry=%s",
+					this.filtered_items.get_n_items(),
+					this.project_files.get_n_items(),
+					this.entry.text
+				);
+			}
 			if (!visible) {
 				if (this.search_debounce_id != 0) {
 					GLib.Source.remove(this.search_debounce_id);

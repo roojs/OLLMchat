@@ -108,10 +108,10 @@ namespace OLLMfilesd
 				if (project == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						result = new Gee.ArrayList<GLib.Object>(),
-						result_type = "File",
-						is_array = true,
-						msg = "project not found"
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+							"project not found"
+						)
 					});
 					return;
 				}

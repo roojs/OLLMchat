@@ -12,9 +12,10 @@ Copy or reference this section at the top of new plan documents in **`docs/plans
 
 ### Plan structure and code proposals
 
+- **Single location per topic** — concrete **Remove** / **Replace with** / **Add** fences live in the **same section** that discusses that work (e.g. **Phase 2** proposals under **Phase 2**, not repeated later). See **Code proposals — one place, not two**.
 - **Single canonical code proposal** — no duplicate stitched-together versions (e.g. Part 1…N **and** a separate full-method block that could drift). See **Code proposals section** — *Don't publish duplicate stitched-together versions*.
 - **Edit syntax** — actionable fences as **Remove** / **Replace with** / **Add** only; **Keep** is unchanged context, never an edit instruction. See **Edit syntax contract**.
-- **No orphan code** — fenced code only under **`## Concrete code proposals`**. See **No orphan or illustrative code**.
+- **No orphan code** — do **not** paste implementation fences in **Purpose**, **LLM notes**, or a second **Concrete code proposals** chapter that repeats topic sections. See **Code proposals — one place, not two**.
 - **New methods in plans** — do not add helpers unless the user or plan explicitly asks. See bullets under **Discussion style** below and **Method names and new methods** in **`docs/coding-standards.md`**.
 
 ### Verify proposed Vala code
@@ -66,8 +67,8 @@ Applies when implementing **feature or refactor work** from **`docs/plans/*`**, 
 
 ## Audience
 
-- **Humans** skim **title**, **status**, **`## Purpose`**, and **`## Concrete code proposals`** (when implementing). Long narrative sections are **rarely read** — do not rely on them for requirements.
-- **Implementers** need **verbatim hunks** (**Remove** / **Replace with** / **Add** / **Keep**) and file paths.
+- **Humans** skim **title**, **status**, **`## Purpose`**, then the **phase or topic section** they are implementing (proposals are **in that section**). Long narrative sections are **rarely read** — do not rely on them for requirements.
+- **Implementers** need **verbatim hunks** (**Remove** / **Replace with** / **Add** / **Keep**) and file paths **next to** the discussion of that change.
 - **Long prose** is at best **AI/session context**; it is not a substitute for **code blocks** and emoji-prefixed bullets.
 
 ## Tone and length
@@ -154,13 +155,14 @@ When drafting or updating a plan from user chat, **separate what they said from 
 2. **`Status:`** — proposed | done | rejected
 3. **Pointer** — **`docs/guide-to-writing-plans.md`** **Checklist for plans** (copy bullets or link to that section); proposed Vala code must follow **`docs/coding-standards.md`**
 4. **`## Purpose`** — nested bullets for **human planning review**: **🔷** what we are doing, **⏳** backlog, **ℹ️** pointers only — **not** a dump of **🚫** vetoes (see **LLM implementer guardrails** at end of this guide)
-5. **Topic sections** — design, schema, tasks, audit lists, etc. (emoji-prefixed bullets; **no** boilerplate sections below)
-6. **`## Concrete code proposals`** (or **`## Proposed code changes`**) — **main deliverable** when implementing (can say **⏳** deferred during planning-only passes)
+5. **Topic sections** — design, schema, tasks, audit lists, **and inline code proposals** for that topic (emoji-prefixed bullets; **no** boilerplate sections below)
 
 Optional, keep short:
 
 - **`## Current behaviour`** — bullets only
 - **`## Proposed behaviour`** — bullets only
+
+**🚫 Do not** add a trailing **`## Concrete code proposals`** (or **`## Proposed code changes`**) that **repeats** numbered **`###`** hunks already given under a phase or topic section. If everything is deferred, one short **⏳** line per topic is enough — no empty proposals chapter.
 
 ## Sections to avoid in plans
 
@@ -187,8 +189,24 @@ When a plan adds tables or columns in **`web.MediaOutreach`**:
 
 ## Code proposals section (mandatory pattern)
 
-Intro line: hunks are **Remove** / **Replace with** / **Add** from the tree;
+Intro line for any fenced hunk: edits are **Remove** / **Replace with** / **Add** from the tree;
 verify surrounding context before applying.
+
+### Code proposals — one place, not two
+
+**🔷** Each implementable change is documented **once**, in the section where that work is discussed (e.g. **`## Phase 2`** contains both the audit bullets **and** the **`###` + fences** for Phase 2 edits).
+
+**🚫 Do not:**
+
+- Summarize Phase 2 in a topic section, then paste the **same** **`### 3. Connection.vala`** hunks again under **`## Concrete code proposals`** at the bottom.
+- Make the reader jump between “what to do” (top) and “how to do it” (bottom) for the **same** phase.
+
+**Do:**
+
+- Use **`## Phase N`** (or **`## Topic`**) as the **only** home for that phase’s narrative **and** its **`###` file headings** + **`#### Remove`** / **`#### Replace with`** / **`#### Add`** fences.
+- For **done** work, a one-line **✔️** pointer to the tree (e.g. “see **`libocrpc/Bin/Stream.vala`**”) — **no** duplicate fence archive.
+
+A standalone **`## Concrete code proposals`** heading is **legacy**. New and updated plans should **not** use it unless the **entire** plan is a single short proposals list with **no** phase sections (rare).
 
 ### Edit syntax contract (strict)
 
@@ -222,11 +240,12 @@ verify surrounding context before applying.
   sentence—otherwise the **Add** block is incomplete.
 - **Do** keep that **placement + purpose** line on **Replace with** / **Add** (ordered chunks use it on the line immediately above the fence—see below); keep it short — the **fence** carries the literals.
 
-### No orphan or illustrative code (outside **Concrete code proposals**)
+### No orphan or illustrative code
 
 Plans are **edit specs**, not codebase tours. If a reader cannot apply a fence mechanically, the plan is wrong.
 
-- **Don’t** put **fenced code** anywhere except under **`## Concrete code proposals`** — not in Purpose, Precedent, Notes, or Related.
+- **Don’t** put **fenced implementation code** in **Purpose**, **Precedent**, **Notes**, **Related**, or **LLM notes** — put fences under the **phase/topic `###`** they belong to.
+- **Don’t** duplicate the same fence in **two** sections (topic + trailing proposals chapter). See **Code proposals — one place, not two**.
 - **Don’t** paste “pattern” or “precedent” excerpts from other files (e.g. two
   lines from `Pressrelease_entry.php`) unless that excerpt is itself the
   **exact** hunk to apply, labelled **Remove** / **Replace with** / **Add**.
@@ -452,6 +471,6 @@ When implemented: move or copy to **`docs/plans/done/`**, prefix filename with *
 - **This guide** — workflow, sections to avoid, DB prefixes, don’t expand scope.
 - **Parent / overview plan** — phase boundaries in **Phase summary** (short), not repeated in every sub-plan.
 - **Sub-plans** — **🔷** + **⏳** + **ℹ️** only in **Purpose**; trust the parent for “Phase 2 is elsewhere”.
-- **Optional** — if a plan truly needs agent-only reminders, add **`## LLM notes`** as the **last** section (after **Concrete code proposals**). Keep it short. **Do not** duplicate the same **🚫** list in **Purpose**.
+- **Optional** — if a plan truly needs agent-only reminders, add **`## LLM notes`** as the **last** section. Keep it short. **Do not** duplicate proposals or **🚫** lists from earlier phases.
 
 **When implementing:** follow **Plan implementation workflow** above; if tempted to add a feature outside **🔷** bullets, **stop and ask** — do not “document” every temptation as **🚫** in the plan file.
