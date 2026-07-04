@@ -83,28 +83,24 @@ Options:
 
 ## Null coalescing (`??`) <!-- section: null-coalescing -->
 
-**IMPORTANT:** Do **not** use Vala's `??` null-coalescing operator. Use an
-explicit null check with a ternary, or assign a default in an `if (x == null)`
-block.
+**IMPORTANT:** Do **not** use Vala's `??` null-coalescing operator. Use a
+ternary for simple default assignments.
 
 **Bad:**
 ```vala
 var s = val.get_string () ?? "";
 var api_key = opt_api_key ?? "";
 response_text = response != null ? (response.content ?? "") : "";
-```
-
-**Good (ternary):**
-```vala
-var s = val.get_string () != null ? val.get_string () : "";
-```
-
-**Good (null check then default — preferred when the expression is used many times):**
-```vala
 var s = val.get_string ();
 if (s == null) {
     s = "";
 }
+```
+
+**Good (ternary — simple default assignment):**
+```vala
+var s = val.get_string () != null ? val.get_string () : "";
+var api_key = opt_api_key != null ? opt_api_key : "";
 ```
 
 **Good (nested nullable without `??`):**

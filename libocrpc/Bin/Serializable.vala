@@ -57,10 +57,9 @@ namespace OLLMrpc.Bin
 				case GLib.Type.STRING:
 					ctx.write_tag (prop.name);
 					ctx.out_stream.put_byte ((uint8) GLib.Type.STRING);
-					var s = val.get_string ();
-					if (s == null) {
-						s = "";
-					}
+					var s = val.get_string () != null
+						? val.get_string ()
+						: "";
 					if (s.length > 65535) {
 						throw new Error.PROPERTY (
 							"Short string prop '%s' is %u bytes — use GLib.Type.BOXED for large payloads",
