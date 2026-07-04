@@ -55,15 +55,15 @@ new TestPair () { name = "alpha", count = 42 }
 **First** message (type `"TestPair"` and keys `"name"`, `"count"` not yet seen on this connection):
 
 ```text
-;; --- introduce "TestPair" (first send of this type) ---
-FF FF                    ;; TOKEN_REG_KEY
-00 00                    ;; assigned token 0
-08                       ;; name length
+;; --- introduce type "TestPair" (first send of this type) ---
+FF FE                    ;; TOKEN_REG_TYPE (0xFF then 0xFE)
+00                       ;; reg_id 0
+08                       ;; alias length
 54 65 73 74 50 61 69 72  ;; "TestPair"
 
 ;; --- root object header ---
 50                       ;; G_TYPE_OBJECT (80)
-00 00                    ;; name token 0 → "TestPair"
+00                       ;; reg_id 0 → "TestPair"
 
 ;; --- property "name" = "alpha" (first sight of "name") ---
 FF FF                    ;; TOKEN_REG_KEY
@@ -93,7 +93,7 @@ FF FD                    ;; TOKEN_END
 
 ```text
 50                       ;; G_TYPE_OBJECT (80)
-00 00                    ;; name token 0 → "TestPair"
+00                       ;; reg_id 0 → "TestPair"
 00 01                    ;; name token 1 → "name"
 40                       ;; G_TYPE_STRING (64)
 00 05
@@ -112,7 +112,7 @@ No `TOKEN_REG_KEY` blocks appear again until a new wire name is seen.
 
 ```text
 50                              ;; GLib.Type.OBJECT (80), array flag clear
-name_token    uint16            ;; wire name for object type (§5)
+reg_id                          ;; 1 byte (0–127) or 2-byte escape (§6)
 properties…                     ;; zero or more property encodings
 FF FD                           ;; TOKEN_END (uint16)
 ```
@@ -128,7 +128,7 @@ Each property:
 ```text
 name_token   uint16     ;; cached id, or TOKEN_REG_KEY introduction (§5)
 type_byte    uint8      ;; GLib.Type fundamental + optional array flag (§7)
-name_token   uint16     ;; only when base type is GLib.Type.OBJECT (0x50)
+reg_id       0–2 bytes  ;; only when base type is GLib.Type.OBJECT (0x50)
 payload      …          ;; depends on type (§8–§14)
 ```
 
@@ -136,16 +136,17 @@ The object ends with `FF FD` (`TOKEN_END`).
 
 ---
 
-## 5. Wire names and tokens (uint16)
+## 5. Wire names and tokens
 
-Property keys and object type aliases share one **name token** space per connection.
+Property keys and object type aliases share one **name index** table (`names[]` on the stream). Property keys use `TOKEN_REG_KEY` (uint16). Type aliases use `TOKEN_REG_TYPE` (`0xFF 0xFE` bytes) via `read_reg_gtype()`.
 
 | Value | Meaning |
 | ----- | ------- |
-| `0xFFFF` | `TOKEN_REG_KEY` — introduce a new wire name (property or type alias) |
+| `0xFFFF` | `TOKEN_REG_KEY` — introduce a new property key name |
+| `0xFFFE` | `TOKEN_REG_TYPE` — introduce a type alias (`0xFF` byte then `0xFE`) |
 | `0xFFFD` | `TOKEN_END` — end of property stream |
 
-**Introduction** (first time `"label"` is sent):
+### Property key introduction
 
 ```text
 FF FF           TOKEN_REG_KEY
@@ -153,17 +154,30 @@ FF FF           TOKEN_REG_KEY
 05              name length
 6C 61 62 65 6C  "label"
 00 02           reference token 2
-…               type_byte + payload follow (properties only)
+…               type_byte + payload follow
 ```
 
-For an object type header, the introduction is followed by `50` + uint16 token (not another reference token).
-
-**Cached reference** (every later use of `"label"`):
+**Cached reference**:
 
 ```text
 00 02           name token 2 only
-…               type_byte + payload (properties)
+…               type_byte + payload
 ```
+
+### Type alias introduction (`TOKEN_REG_TYPE`)
+
+First time a type is sent on a connection:
+
+```text
+FF FE           TOKEN_REG_TYPE
+00              reg_id 0 (1 or 2 byte encoding — §6)
+08              alias length
+54 65 73 …      "TestPair"
+50              G_TYPE_OBJECT follows on write
+00              reg_id 0 again
+```
+
+On read, `parse()` and `bin_read` use a single `if (b == 0xFF) read_reg_gtype()` before the type byte.
 
 Wire names are limited to 255 bytes on introduction.
 
@@ -173,7 +187,7 @@ Wire names are limited to 255 bytes on introduction.
 
 ### `Stream.register(alias, gtype)`
 
-Maps a wire alias string to `GLib.Type` for decode. The alias must be registered on both ends before decode. Wire tokens for the alias are learned via `TOKEN_REG_KEY` like any other name.
+Maps a wire alias string to `GLib.Type` for decode. The alias must be registered on both ends before decode. Wire indices for type aliases are learned via `TOKEN_REG_TYPE` / `read_reg_gtype()`; property keys via `TOKEN_REG_KEY`.
 
 - Duplicate alias on the same stream → error.
 - `register()` call order is not significant.
@@ -189,17 +203,25 @@ read_bin.register ("TestParent", typeof (TestParent));
 read_bin.register ("TestPair", typeof (TestPair));
 ```
 
+### `reg_id` encoding
+
+| id range | Bytes |
+| -------- | ----- |
+| 0–127 | one byte, bit 7 clear — e.g. `00`, `7F` |
+| ≥ 128 (rare) | two bytes: `(0x80 \| (id >> 8))`, then `(id & 0xFF)` |
+
 ### Object header on the wire
 
 ```text
 50                       ;; G_TYPE_OBJECT
-00 01                    ;; uint16 name token → looks up alias → GType
+00                       ;; reg_id → names[0] → alias → GType
 … properties …
 FF FD
 ```
 
-- `write_gtype()` emits `50` + name token for the type alias.
-- `parse_object()` reads the token, resolves alias → `GLib.Type`, then `bin_read()`.
+- `write_gtype()` emits optional `TOKEN_REG_TYPE`, then `50` + `reg_id`.
+- `parse()` optionally calls `read_reg_gtype()` once, then reads `50` + `reg_id`.
+- `parse_object()` reads `reg_id` after `0x50` was already consumed.
 
 ---
 
@@ -220,7 +242,7 @@ Always **exactly one byte** per property value. The low seven bits (when bit 7 i
 | `0x30` | `ENUM` (48) | any `enum` |
 | `0x34` | `FLAGS` (52) | any `flags` |
 | `0x48` | `BOXED` (72) | large binary blob |
-| `0x50` | `GObject` (80) | registered object — name token (uint16) follows |
+| `0x50` | `GObject` (80) | registered object — `reg_id` follows |
 
 Array examples (set bit 7):
 
@@ -473,7 +495,8 @@ Not defined in version 3.0:
 ## Quick reference
 
 ```text
-TOKEN_REG_KEY   = FFFF (uint16)   ;; introduce wire name (property or type alias)
+TOKEN_REG_KEY   = FFFF (uint16)   ;; introduce property key name
+TOKEN_REG_TYPE  = FFFE (uint16)   ;; type alias: FF FE + reg_id + alias (§5–§6)
 TOKEN_END       = FFFD (uint16)
 
 array flag = bit 7 (0x80) OR'd onto GLib.Type fundamental

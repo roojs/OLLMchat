@@ -33,6 +33,7 @@ namespace OLLMrpc.Bin
 			new Gee.HashMap<GLib.Type, string> ();
 
 		public const uint16 TOKEN_REG_KEY = 0xFFFF;
+		public const uint16 TOKEN_REG_TYPE = 0xFFFE;
 		public const uint16 TOKEN_END = 0xFFFD;
 
 		/**
@@ -40,8 +41,9 @@ namespace OLLMrpc.Bin
 		 *
 		 * Maps {@param alias} to {@param gtype} for instantiation on decode.
 		 * The alias string shares the connection wire-name table with property
-		 * keys; tokens are learned on the wire via {@link TOKEN_REG_KEY}.
-		 * Registration order is not significant.
+		 * keys. Type aliases are introduced on the wire via {@link TOKEN_REG_TYPE};
+		 * property keys via {@link TOKEN_REG_KEY}. Registration order is not
+		 * significant.
 		 *
 		 * @param alias wire type name
 		 * @param gtype GObject type for that alias
@@ -81,68 +83,47 @@ namespace OLLMrpc.Bin
 
 		public Serializable parse () throws GLib.Error
 		{
-			while (true) {
-				var b = this.in_stream.read_byte ();
-				if (b != 0xFF) {
-					if ((b & 0x80) != 0) {
-						GLib.error ("root parse does not accept object arrays");
-					}
-					if (b != (uint8) GLib.Type.OBJECT) {
-						GLib.error (
-							"expected object type byte, got 0x%02X",
-							b
-						);
-					}
-					var token = this.in_stream.read_uint16 ();
-					return this.parse_object_at_token (token);
-				}
-
-				var b2 = this.in_stream.read_byte ();
-				if (b2 != 0xFF) {
-					GLib.error (
-						"unexpected byte 0x%02X after 0xFF",
-						b2
-					);
-				}
-
-				var assigned_id = this.in_stream.read_uint16 ();
-				var len = this.in_stream.read_byte ();
-				var buffer = new uint8[len + 1];
-				size_t read_bytes;
-				this.in_stream.read_all (buffer[0:len], out read_bytes);
-				buffer[len] = 0;
-				var wire_name = (string) buffer;
-
-				this.in_stream.read_uint16 ();
-
-				if (assigned_id > this.names.length) {
-					GLib.error (
-						"wire name token %u out of sequence",
-						assigned_id
-					);
-				}
-				if (assigned_id == this.names.length) {
-					this.names += wire_name;
-				} else if (this.names[assigned_id] != wire_name) {
-					GLib.error (
-						"wire name token %u alias mismatch",
-						assigned_id
-					);
-				}
-				this.name_to_token.set (wire_name, assigned_id);
+			var b = this.in_stream.read_byte ();
+			if (b == 0xFF) {
+				this.read_reg_gtype ();
+				b = this.in_stream.read_byte ();
 			}
+			if ((b & 0x80) != 0) {
+				GLib.error ("root parse does not accept object arrays");
+			}
+			if (b != (uint8) GLib.Type.OBJECT) {
+				GLib.error (
+					"expected object type byte, got 0x%02X",
+					b
+				);
+			}
+			return this.parse_object ();
 		}
 
 		/**
 		 * Read one object body after its {@link GLib.Type.OBJECT} type byte.
-		 *
-		 * The {@code 0x50} type byte must already have been consumed by the caller
-		 * (e.g. {@link bin_read_prop} on a nested object property).
 		 */
 		public Serializable parse_object () throws GLib.Error
 		{
-			var token = this.in_stream.read_uint16 ();
-			return this.parse_object_at_token (token);
+			var reg_b = this.in_stream.read_byte ();
+			var reg_id = (uint) reg_b;
+			if ((reg_b & 0x80) != 0) {
+				var reg_b2 = this.in_stream.read_byte ();
+				reg_id = ((uint) (reg_b & 0x7F) << 8) | reg_b2;
+			}
+
+			if (reg_id >= this.names.length) {
+				GLib.error ("unknown wire name token %u", reg_id);
+			}
+			var alias = this.names[reg_id];
+			var gtype = this.alias_to_gtype[alias];
+			if (gtype == 0) {
+				GLib.error ("Unrecognized type alias: %s", alias);
+			}
+
+			var obj = (Serializable) GLib.Object.new (gtype);
+			obj.bin_read (this);
+			return obj;
 		}
 
 		public void write_tag (string prop_name) throws GLib.Error
@@ -224,41 +205,88 @@ namespace OLLMrpc.Bin
 			}
 
 			if (!this.name_to_token.has_key (alias)) {
-				var id = (uint16) this.names.length;
-				this.out_stream.put_uint16 (TOKEN_REG_KEY);
-				this.out_stream.put_uint16 (id);
+				var new_reg_id = (uint) this.names.length;
 
-				var len = (uint8) uint.min (alias.length, 255);
-				this.out_stream.put_byte (len);
+				this.out_stream.put_byte (0xFF);
+				this.out_stream.put_byte (0xFE);
+				if (new_reg_id < 128) {
+					this.out_stream.put_byte ((uint8) new_reg_id);
+				} else {
+					this.out_stream.put_byte (
+						(uint8) (0x80 | ((new_reg_id >> 8) & 0x7F))
+					);
+					this.out_stream.put_byte ((uint8) (new_reg_id & 0xFF));
+				}
+
+				var alias_len = (uint8) uint.min (alias.length, 255);
+				this.out_stream.put_byte (alias_len);
 				size_t written;
 				this.out_stream.write_all (
-					((uint8[]) alias)[0:len],
+					((uint8[]) alias)[0:alias_len],
 					out written
 				);
 
 				this.names += alias;
-				this.name_to_token.set (alias, id);
-				this.out_stream.put_uint16 (id);
+				this.name_to_token.set (alias, (uint16) new_reg_id);
 			}
 
 			this.out_stream.put_byte ((uint8) GLib.Type.OBJECT);
-			this.out_stream.put_uint16 (this.name_to_token[alias]);
+			var reg_id = (uint) this.name_to_token[alias];
+			if (reg_id < 128) {
+				this.out_stream.put_byte ((uint8) reg_id);
+				return;
+			}
+
+			this.out_stream.put_byte (
+				(uint8) (0x80 | ((reg_id >> 8) & 0x7F))
+			);
+			this.out_stream.put_byte ((uint8) (reg_id & 0xFF));
 		}
 
-		private Serializable parse_object_at_token (uint16 token) throws GLib.Error
+		internal void read_reg_gtype () throws GLib.Error
 		{
-			if (token >= this.names.length) {
-				GLib.error ("unknown wire name token %u", token);
+			var b1 = this.in_stream.read_byte ();
+			if (b1 != 0xFE) {
+				GLib.error (
+					"unexpected byte 0x%02X after 0xFF",
+					b1
+				);
 			}
-			var alias = this.names[token];
+
+			var reg_b = this.in_stream.read_byte ();
+			var assigned_id = (uint) reg_b;
+			if ((reg_b & 0x80) != 0) {
+				var reg_b2 = this.in_stream.read_byte ();
+				assigned_id = ((uint) (reg_b & 0x7F) << 8) | reg_b2;
+			}
+
+			var len = this.in_stream.read_byte ();
+			var buffer = new uint8[len + 1];
+			size_t read_bytes;
+			this.in_stream.read_all (buffer[0:len], out read_bytes);
+			buffer[len] = 0;
+			var alias = (string) buffer;
+
 			var gtype = this.alias_to_gtype[alias];
 			if (gtype == 0) {
 				GLib.error ("Unrecognized type alias: %s", alias);
 			}
 
-			var obj = (Serializable) GLib.Object.new (gtype);
-			obj.bin_read (this);
-			return obj;
+			if (assigned_id > this.names.length) {
+				GLib.error (
+					"wire name token %u out of sequence",
+					assigned_id
+				);
+			}
+			if (assigned_id == this.names.length) {
+				this.names += alias;
+			} else if (this.names[assigned_id] != alias) {
+				GLib.error (
+					"wire name token %u alias mismatch",
+					assigned_id
+				);
+			}
+			this.name_to_token.set (alias, (uint16) assigned_id);
 		}
 	}
 }

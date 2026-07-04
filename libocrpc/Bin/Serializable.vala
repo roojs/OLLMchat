@@ -205,44 +205,8 @@ namespace OLLMrpc.Bin
 
 			while ((t = ctx.read_tag (out prop_name)) != Stream.TOKEN_END) {
 				var b = ctx.in_stream.read_byte ();
-				while (b == 0xFF) {
-					var b2 = ctx.in_stream.read_byte ();
-					if (b2 != 0xFF) {
-						GLib.error (
-							"unexpected byte 0x%02X after 0xFF",
-							b2
-						);
-					}
-
-					var assigned_id = ctx.in_stream.read_uint16 ();
-					var intro_len = ctx.in_stream.read_byte ();
-					var intro_buf = new uint8[intro_len + 1];
-					size_t intro_read;
-					ctx.in_stream.read_all (
-						intro_buf[0:intro_len],
-						out intro_read
-					);
-					intro_buf[intro_len] = 0;
-					var intro_name = (string) intro_buf;
-
-					ctx.in_stream.read_uint16 ();
-
-					if (assigned_id > ctx.names.length) {
-						GLib.error (
-							"wire name token %u out of sequence",
-							assigned_id
-						);
-					}
-					if (assigned_id == ctx.names.length) {
-						ctx.names += intro_name;
-					} else if (ctx.names[assigned_id] != intro_name) {
-						GLib.error (
-							"wire name token %u alias mismatch",
-							assigned_id
-						);
-					}
-					ctx.name_to_token.set (intro_name, assigned_id);
-
+				if (b == 0xFF) {
+					ctx.read_reg_gtype ();
 					b = ctx.in_stream.read_byte ();
 				}
 
