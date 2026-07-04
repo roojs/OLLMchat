@@ -42,10 +42,15 @@ namespace OLLMrpc.Bin
 			new Gee.HashMap<GLib.Type, string> ();
 
 		public const uint16 TOKEN_REG_KEY = 0xFFFF;
+		public const uint16 TOKEN_REG_TYPE = 0xFFFE;
 		public const uint16 TOKEN_END = 0xFFFD;
 
 		/**
 		 * Register a wire alias on this connection's stream.
+		 *
+		 * Maps {@param alias} to {@param gtype} for encode/decode. Registration
+		 * order is not significant — numeric {@code reg_id}s are assigned JIT on
+		 * the wire when a type is first sent ({@link TOKEN_REG_TYPE}).
 		 *
 		 * @param alias wire type name
 		 * @param gtype GObject type for that alias
@@ -56,11 +61,8 @@ namespace OLLMrpc.Bin
 				GLib.error ("duplicate register of alias '%s'", alias);
 			}
 
-			var reg_id = this.next_reg_id++;
 			this.alias_to_gtype.set (alias, gtype);
 			this.gtype_to_alias.set (gtype, alias);
-			this.alias_to_reg_id.set (alias, reg_id);
-			this.reg_id_to_alias.set (reg_id, alias);
 		}
 
 		public Stream (
@@ -189,10 +191,29 @@ namespace OLLMrpc.Bin
 					object_type.name ()
 				);
 			}
+
 			if (!this.alias_to_reg_id.has_key (alias)) {
-				GLib.error (
-					"type '%s' has no reg_id — call register() first",
-					object_type.name ()
+				var new_reg_id = this.next_reg_id++;
+				this.alias_to_reg_id.set (alias, new_reg_id);
+				this.reg_id_to_alias.set (new_reg_id, alias);
+
+				this.out_stream.put_byte (0xFF);
+				this.out_stream.put_byte (0xFE);
+				if (new_reg_id < 128) {
+					this.out_stream.put_byte ((uint8) new_reg_id);
+				} else {
+					this.out_stream.put_byte (
+						(uint8) (0x80 | ((new_reg_id >> 8) & 0x7F))
+					);
+					this.out_stream.put_byte ((uint8) (new_reg_id & 0xFF));
+				}
+
+				var alias_len = (uint8) uint.min (alias.length, 255);
+				this.out_stream.put_byte (alias_len);
+				size_t written;
+				this.out_stream.write_all (
+					((uint8[]) alias)[0:alias_len],
+					out written
 				);
 			}
 

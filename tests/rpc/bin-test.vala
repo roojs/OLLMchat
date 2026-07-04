@@ -27,7 +27,7 @@ namespace OLLMrpcTests
 		public GLib.Object? extra { get; set; }
 
 		public override void bin_write_prop (
-			Stream ctx,
+			OLLMrpc.Bin.Stream ctx,
 			GLib.ParamSpec prop
 		) throws GLib.Error
 		{
@@ -62,8 +62,8 @@ namespace OLLMrpcTests
 			var in_stream = new GLib.DataInputStream (in_base);
 
 			var read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
-			read_bin.register ("TestPair", typeof (TestPair));
 			read_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
+			read_bin.register ("TestPair", typeof (TestPair));
 
 			var parsed = read_bin.parse () as TestPair;
 			if (parsed == null) {
@@ -95,8 +95,8 @@ namespace OLLMrpcTests
 			in_base = new GLib.MemoryInputStream.from_bytes (bytes);
 			in_stream = new GLib.DataInputStream (in_base);
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
-			read_bin.register ("TestPair", typeof (TestPair));
 			read_bin.register ("TestParent", typeof (TestParent));
+			read_bin.register ("TestPair", typeof (TestPair));
 
 			var nested_dst = read_bin.parse () as TestParent;
 			if (nested_dst == null) {

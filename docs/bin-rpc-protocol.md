@@ -13,14 +13,14 @@ The **type byte** on the wire is always a `GLib.Type` fundamental value (optiona
 A **connection** maintains three tables on its `OLLMrpc.Bin.Stream` instance:
 
 1. **Property names** — learned on the wire via `TOKEN_REG_KEY` (`"name"`, `"count"`, … → uint16 key tokens).
-2. **Object type aliases** — assigned at `Stream.register()` before any messages. Both ends call `register("TestPair", typeof(TestPair))` in the **same order**; that assigns `reg_id` 0, 1, 2… No type names are sent on the wire during normal writes.
-3. **Alias ↔ GType** — maps each registered alias string to its `GLib.Type` for instantiation on read.
+2. **Object type aliases** — registered locally via `Stream.register(alias, gtype)` before decode. Each end maps alias strings to `GLib.Type`; **registration order does not matter**.
+3. **Wire `reg_id` ↔ alias** — learned on the wire via `TOKEN_REG_TYPE` when a type is first sent. The sender assigns numeric `reg_id`s JIT; the receiver records the mapping from the introduction block.
 
-Every **property value**: key token → one-byte **type** (`GLib.Type` fundamental) → payload. When the type is `GLib.Type.OBJECT`, a **`reg_id`** follows before the nested property stream. Unknown key or unknown `reg_id` → protocol error.
+Every **property value**: key token → one-byte **type** (`GLib.Type` fundamental) → payload. When the type is `GLib.Type.OBJECT`, a **`reg_id`** follows before the nested property stream. Unknown key or unknown `reg_id` (with no prior `TOKEN_REG_TYPE` for that id) → protocol error.
 
 ### Registration vs JSON RPC
 
-Bin registration is **per connection** and uses numeric `reg_id`s:
+Bin registration is **per connection** and maps **alias → GType**:
 
 ```vala
 var bin = new OLLMrpc.Bin.Stream (in_stream, out_stream);
@@ -28,7 +28,9 @@ bin.register ("File", typeof (OLLMfiles.V2.File));
 bin.register ("Folder", typeof (OLLMfiles.V2.Folder));
 ```
 
-JSON RPC today uses a separate, **process-wide** map via `OLLMrpc.register(name, gtype)` keyed by string names in `Response.result_type`. The two APIs coexist until bin cutover (see plan 8.1). Aliases should match JSON wire names where both apply, but each `Stream` must still call `register()` in the same order on client and server.
+Client and server each call `register()` with the **same alias strings** and matching `GLib.Type` values. Call order on either side is arbitrary. Numeric `reg_id`s are **not** assigned at `register()` time — they are negotiated on the wire per connection when a type is first encoded.
+
+JSON RPC today uses a separate, **process-wide** map via `OLLMrpc.register(name, gtype)` keyed by string names in `Response.result_type`. The two APIs coexist until bin cutover (see plan 8.1). Aliases should match JSON wire names where both apply.
 
 Domain types implement `OLLMrpc.Bin.Serializable` (often by extending `OLLMrpc.Bin.Object`) for bin encoding. JSON `rpc_register()` does **not** register types on a `Stream` — that happens at channel setup.
 
@@ -51,10 +53,16 @@ Object on the wire:
 new TestPair () { name = "alpha", count = 42 }
 ```
 
-**First** message (keys `"name"` and `"count"` not yet seen on this connection):
+**First** message (keys `"name"` and `"count"` not yet seen on this connection; type `"TestPair"` not yet sent):
 
 ```text
-;; --- root object header (TestPair is reg_id 0 from register()) ---
+;; --- introduce type "TestPair" (first send on this connection) ---
+FF FE                    ;; TOKEN_REG_TYPE
+00                       ;; assigned reg_id 0
+08                       ;; alias length
+54 65 73 74 50 61 69 72  ;; "TestPair"
+
+;; --- root object header ---
 50                       ;; G_TYPE_OBJECT (80)
 00                       ;; reg_id 0 → TestPair
 
@@ -162,30 +170,43 @@ Property names are limited to 255 bytes on introduction.
 
 ### `Stream.register(alias, gtype)`
 
-Call on each `OLLMrpc.Bin.Stream` after the channel opens and **before** any `write()` or `parse()`. Client and server streams are independent objects but must register the **same aliases in the same order**.
-
-| Call order | `reg_id` | Maps to |
-| ---------- | -------- | ------- |
-| 1st `register()` | 0 | first alias + `GLib.Type` |
-| 2nd `register()` | 1 | second alias + `GLib.Type` |
-| … | … | … |
+Call on each `OLLMrpc.Bin.Stream` after the channel opens and **before** decoding messages that use those types. Each end maintains `alias → GLib.Type`. **Registration order is not significant** — only the alias string and `GType` must match on both sides.
 
 - Duplicate alias on the same stream → error.
-- `write_gtype()` looks up the object's `GLib.Type` → alias → `reg_id` and emits `0x50` + encoded `reg_id`.
-- `parse_object()` reads `reg_id` → alias → `GLib.Type`, then `GLib.Object.new(gtype)` and `bin_read()`.
-- Unregistered types or unknown `reg_id` on read → error.
+- `register()` does **not** assign wire `reg_id`s.
+- The receiver must have registered an alias before it can accept a `TOKEN_REG_TYPE` introduction for that alias.
 
-Example (from `tests/rpc/bin-test.vala`):
+### Wire `reg_id` (JIT, per connection)
+
+When a type is **first encoded** on a connection, the sender emits `TOKEN_REG_TYPE` before the `GLib.Type.OBJECT` header:
+
+```text
+FF FE                    ;; TOKEN_REG_TYPE
+reg_id                   ;; encoded as in table below (§6)
+alias_len                ;; uint8
+alias_bytes              ;; UTF-8 alias (must match a prior register() on the receiver)
+50                       ;; G_TYPE_OBJECT — follows immediately after introduction
+reg_id                   ;; same id as above
+… properties …
+FF FD
+```
+
+Later messages of the same type omit `TOKEN_REG_TYPE` and send only `50` + `reg_id`.
+
+- `write_gtype()` assigns the next local `reg_id` on first send of each alias and emits the introduction.
+- `read_reg_gtype()` (after seeing `0xFF 0xFE`) records `reg_id → alias` on the receiver.
+- `parse_object()` reads `reg_id` → alias → `GLib.Type`, then `GLib.Object.new(gtype)` and `bin_read()`.
+- Unknown `reg_id` without a prior introduction → error.
+
+Example (from `tests/rpc/bin-test.vala` — reader may register in any order):
 
 ```vala
 write_bin.register ("TestPair", typeof (TestPair));
-write_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
 write_bin.register ("TestParent", typeof (TestParent));
 
-// Reader must use the same order:
-read_bin.register ("TestPair", typeof (TestPair));
-read_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
+// Reader: same aliases, any order
 read_bin.register ("TestParent", typeof (TestParent));
+read_bin.register ("TestPair", typeof (TestPair));
 ```
 
 ### `reg_id` encoding
@@ -197,20 +218,7 @@ read_bin.register ("TestParent", typeof (TestParent));
 
 Example: reg_id `200` → `80 C8` (because `0x80 | 0` = `0x80`, low byte `0xC8`).
 
-### Runtime `reg_id` reassignment (read path only)
-
-The reader handles an optional JIT sequence when the type byte is `0xFF`:
-
-```text
-FF FE                    ;; marker: TOKEN_REG_TYPE (0xFF then 0xFE)
-reg_id                   ;; encoded as in table above
-alias_len                ;; uint8
-alias_bytes              ;; UTF-8 alias string (must already be in alias_to_gtype)
-```
-
-After this block, the reader reads the **actual** type byte. The maps `alias_to_reg_id` and `reg_id_to_alias` are updated so the given alias now uses `assigned_id`.
-
-**Writers do not emit this sequence** in the current implementation — `reg_id`s are fixed at `register()` time. The read path exists so a peer can renumber types without reconnecting. If you rely on pre-negotiated `register()` only, this block never appears.
+Alias strings are limited to 255 bytes on introduction.
 
 ---
 
@@ -485,7 +493,7 @@ Not defined in version 3.0:
 
 ```text
 TOKEN_REG_KEY   = FFFF (uint16)   ;; introduce property name
-TOKEN_REG_TYPE  = FFFE (uint16)   ;; read path: FF FE + reg_id + alias (§6)
+TOKEN_REG_TYPE  = FFFE (uint16)   ;; introduce type alias: FF FE + reg_id + alias (§6)
 TOKEN_END       = FFFD (uint16)
 
 array flag = bit 7 (0x80) OR'd onto GLib.Type fundamental
