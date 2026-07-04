@@ -17,20 +17,14 @@ namespace OLLMrpc
 	 * Ensure {@code ollmfilesd} is running before {@link Client.connect}.
 	 *
 	 * Uses {@link pid} and {@link socket} paths: probe the socket, spawn or
-		 * kill-and-respawn when needed. Set {@code OLLM_OLLMFILESD} to an absolute
-		 * path for dev/testing when the build-tree daemon should be used; otherwise
-		 * {@code ollmfilesd} is resolved on {@code PATH}.
+	 * kill-and-respawn when needed. Set {@code OLLM_OLLMFILESD} to an absolute
+	 * path for dev/testing when the build-tree daemon should be used; otherwise
+	 * {@code ollmfilesd} is resolved on {@code PATH}.
 	 */
 	public class ClientBoot : GLib.Object
 	{
 		public string socket { get; construct; }
 		public string pid { get; construct; }
-
-		/**
-		 * Recovery cycles (spawn, or kill + spawn) without a working socket
-		 * before {@link ensure_daemon} fails.
-		 */
-		public uint max_attempts { get; set; default = 3; }
 
 		/** Poll interval after spawn (milliseconds). */
 		public uint poll { get; set; default = 100; }
@@ -68,40 +62,59 @@ namespace OLLMrpc
 		 */
 		public async void ensure_daemon() throws GLib.IOError
 		{
-			GLib.debug("ensure_daemon socket=%s", this.socket);
-			var recovery = 0U;
-			while (recovery < this.max_attempts) {
-				if (this.connectable()) {
-					return;
-				}
+			var daemon_pid = this.read_pid();
+			GLib.debug(
+				"ensure_daemon socket=%s pid_file=%s pid=%d pid_running=%s "
+					+ "socket_exists=%s connectable=%s",
+				this.socket,
+				this.pid,
+				daemon_pid,
+				this.pid_running(daemon_pid) ? "true" : "false",
+				GLib.FileUtils.test(this.socket, GLib.FileTest.EXISTS)
+					? "true"
+					: "false",
+				this.connectable() ? "true" : "false"
+			);
 
-				var daemon_pid = this.read_pid();
-				if (this.pid_running(daemon_pid)) {
-					this.terminate_daemon(daemon_pid);
-					yield this.pause(this.grace);
-				}
+			if (this.connectable()) {
+				GLib.debug(
+					"ensure_daemon ready socket=%s pid=%d",
+					this.socket,
+					daemon_pid
+				);
+				return;
+			}
 
-				this.unlink_socket();
-				if (GLib.FileUtils.test(this.pid, GLib.FileTest.EXISTS)) {
-					GLib.FileUtils.unlink(this.pid);
-				}
+			if (this.pid_running(daemon_pid)) {
+				GLib.debug(
+					"ensure_daemon terminating pid=%d (socket not connectable)",
+					daemon_pid
+				);
+				this.terminate_daemon(daemon_pid);
+				yield this.pause(this.grace);
+			}
 
-				try {
-					this.spawn();
-				} catch (GLib.IOError e) {
-					recovery++;
-					if (recovery >= this.max_attempts) {
-						throw e;
-					}
-					continue;
-				}
+			this.unlink_socket();
+			if (GLib.FileUtils.test(this.pid, GLib.FileTest.EXISTS)) {
+				GLib.FileUtils.unlink(this.pid);
+			}
 
-				yield this.startup();
-				if (this.connectable()) {
-					return;
-				}
+			this.spawn();
 
-				recovery++;
+			yield this.startup();
+			daemon_pid = this.read_pid();
+			GLib.debug(
+				"ensure_daemon after startup pid=%d pid_running=%s "
+					+ "socket_exists=%s connectable=%s",
+				daemon_pid,
+				this.pid_running(daemon_pid) ? "true" : "false",
+				GLib.FileUtils.test(this.socket, GLib.FileTest.EXISTS)
+					? "true"
+					: "false",
+				this.connectable() ? "true" : "false"
+			);
+			if (this.connectable()) {
+				return;
 			}
 
 			throw new GLib.IOError.FAILED(
@@ -137,11 +150,17 @@ namespace OLLMrpc
 			var executable = (from_env != null && from_env != "")
 				? from_env
 				: "ollmfilesd";
+			// Build-tree daemon (OLLM_OLLMFILESD from meson wrapper): capture stdio on
+			// crash via daemonize --debug → ~/.cache/ollmchat/ollmfilesd.stderr.log
+			string[] argv = { executable };
+			if (from_env != null && from_env != "") {
+				argv += "--debug";
+			}
 			var child_pid = 0;
 			try {
 				GLib.Process.spawn_async(
 					null,
-					{ executable },
+					argv,
 					null,
 					GLib.SpawnFlags.DO_NOT_REAP_CHILD
 						| GLib.SpawnFlags.STDOUT_TO_DEV_NULL
@@ -160,7 +179,21 @@ namespace OLLMrpc
 						+ e.message
 				);
 			}
-			GLib.debug("spawned pid=%d executable=%s", child_pid, executable);
+			if (from_env != null && from_env != "") {
+				GLib.debug(
+					"spawned pid=%d executable=%s stderr log=%s",
+					child_pid,
+					executable,
+					GLib.Path.build_filename(
+						GLib.Environment.get_home_dir(),
+						".cache",
+						"ollmchat",
+						"ollmfilesd.stderr.log"
+					)
+				);
+			} else {
+				GLib.debug("spawned pid=%d executable=%s", child_pid, executable);
+			}
 			this.detached_pid = child_pid;
 			GLib.ChildWatch.add(child_pid, (w_pid, status) => {
 				if (w_pid == this.detached_pid) {

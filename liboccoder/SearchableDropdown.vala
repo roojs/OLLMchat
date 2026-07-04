@@ -119,14 +119,16 @@ namespace OLLMcoder
 			// Handle focus loss - close popup when entry loses focus (but don't trigger selection)
 			var focus_controller = new Gtk.EventControllerFocus();
 			focus_controller.leave.connect(() => {
-				GLib.debug(
-					"entry focus leave popup=%s entry=%s",
-					this.popup.visible.to_string(),
-					this.entry.text
-				);
-				if (this.popup.visible) {
-					this.set_popup_visible(false);
+				if (!this.popup.visible) {
+					return;
 				}
+				var focus = this.get_root()?.get_focus() as Gtk.Widget;
+				GLib.debug(
+					"entry blur entry=%s focus=%s",
+					this.entry.text,
+					focus == null ? "null" : focus.get_type().name()
+				);
+				this.set_popup_visible(false);
 			});
 			this.entry.add_controller(focus_controller);
 			
@@ -424,35 +426,25 @@ namespace OLLMcoder
 		protected void set_popup_visible(bool visible)
 		{
 			if (this.popup.visible == visible) {
-				GLib.debug(
-					"popup unchanged visible=%s filtered=%u",
-					visible.to_string(),
-					this.filtered_items.get_n_items()
-				);
 				return;
 			}
 			
 			if (visible) {
-				// Don't show if no items to display
-				if (this.filtered_items.get_n_items() == 0) {
-					GLib.debug("popup blocked no_items");
-					return;
-				}
-				
 				// Check if widget is in a toplevel window before showing popup
 				var root = this.get_root();
 				if (root == null || !(root is Gtk.Window)) {
 					GLib.debug(
-						"popup blocked no_toplevel root=%s",
+						"popup blocked root=%s",
 						root == null ? "null" : root.get_type().name()
 					);
 					return;
 				}
 				
 				GLib.debug(
-					"popup show filtered=%u entry=%s",
+					"popup show filtered=%u entry=%s entry_focus=%s",
 					this.filtered_items.get_n_items(),
-					this.entry.text
+					this.entry.text,
+					this.entry.has_focus.to_string()
 				);
 				
 				// Clear selection before showing popup (like the example)
@@ -471,13 +463,45 @@ namespace OLLMcoder
 				// Scroll to top after popup is shown (use idle to ensure layout is complete)
 				GLib.Idle.add(() => {
 					var scrolled = this.popup.child as Gtk.ScrolledWindow;
+					var scrolled_for_log = scrolled;
+					if (scrolled_for_log == null && this.popup.child is Gtk.Box) {
+						var outer = this.popup.child as Gtk.Box;
+						var wrapper = outer.get_first_child() as Gtk.Box;
+						if (wrapper != null) {
+							scrolled_for_log = wrapper.get_first_child() as Gtk.ScrolledWindow;
+						}
+						if (scrolled_for_log == null) {
+							scrolled_for_log = outer.get_first_child() as Gtk.ScrolledWindow;
+						}
+					}
+					var scroll_upper = scrolled_for_log != null
+						? scrolled_for_log.vadjustment.upper
+						: -1.0;
+					var scrolled_h = scrolled_for_log != null
+						? scrolled_for_log.get_height()
+						: -1;
+					GLib.debug(
+						"popup layout filtered=%u scroll_upper=%.0f scrolled_h=%d popup_h=%d child=%s direct=%s",
+						this.filtered_items.get_n_items(),
+						scroll_upper,
+						scrolled_h,
+						this.popup.get_height(),
+						this.popup.child == null
+							? "null"
+							: this.popup.child.get_type().name(),
+						scrolled != null ? "yes" : "no"
+					);
 					if (scrolled != null) {
 						scrolled.vadjustment.value = scrolled.vadjustment.lower;
 					}
 					return false;
 				});
 			} else {
-				GLib.debug("popup hide");
+				GLib.debug(
+					"popup hide filtered=%u entry=%s",
+					this.filtered_items.get_n_items(),
+					this.entry.text
+				);
 				this.popup.popdown();
 			}
 		}

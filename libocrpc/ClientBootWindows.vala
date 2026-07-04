@@ -11,8 +11,6 @@ namespace OLLMrpc
 		public string socket { get; construct; }
 		public string pid { get; construct; }
 
-		public uint max_attempts { get; set; default = 3; }
-
 		public uint poll { get; set; default = 100; }
 
 		public uint startup_wait { get; set; default = 5; }

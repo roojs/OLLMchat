@@ -427,8 +427,46 @@ namespace OLLMfilesd
 				Posix._exit(1);
 			}
 			Posix.dup2(null_fd, Posix.STDIN_FILENO);
-			Posix.dup2(null_fd, Posix.STDOUT_FILENO);
-			Posix.dup2(null_fd, Posix.STDERR_FILENO);
+
+			var capture_stdio = false;
+			foreach (unowned var arg in args) {
+				if (arg == "--debug" || arg == "-d") {
+					capture_stdio = true;
+					break;
+				}
+			}
+			if (capture_stdio) {
+				var log_dir = GLib.Path.build_filename(
+					GLib.Environment.get_home_dir(),
+					".cache",
+					"ollmchat"
+				);
+				if (!GLib.FileUtils.test(log_dir, GLib.FileTest.IS_DIR)) {
+					GLib.DirUtils.create_with_parents(log_dir, 0755);
+				}
+				var log_path = GLib.Path.build_filename(
+					log_dir,
+					"ollmfilesd.stderr.log"
+				);
+				var log_fd = Posix.open(
+					log_path,
+					Posix.O_WRONLY | Posix.O_CREAT | Posix.O_TRUNC,
+					0644
+				);
+				if (log_fd >= 0) {
+					Posix.dup2(null_fd, Posix.STDOUT_FILENO);
+					Posix.dup2(log_fd, Posix.STDERR_FILENO);
+					if (log_fd > Posix.STDERR_FILENO) {
+						Posix.close(log_fd);
+					}
+				} else {
+					Posix.dup2(null_fd, Posix.STDOUT_FILENO);
+					Posix.dup2(null_fd, Posix.STDERR_FILENO);
+				}
+			} else {
+				Posix.dup2(null_fd, Posix.STDOUT_FILENO);
+				Posix.dup2(null_fd, Posix.STDERR_FILENO);
+			}
 			if (null_fd > Posix.STDERR_FILENO) {
 				Posix.close(null_fd);
 			}

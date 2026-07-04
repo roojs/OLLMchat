@@ -214,6 +214,11 @@ namespace OLLMrpc
 			if (!this.connected) {
 				return;
 			}
+			GLib.debug(
+				"disconnect socket=%s pending=%u",
+				this.socket,
+				this.pending.size
+			);
 			foreach (var job in this.write_queue) {
 				job.done.set_exception(
 					new GLib.IOError.FAILED("Client: disconnected")

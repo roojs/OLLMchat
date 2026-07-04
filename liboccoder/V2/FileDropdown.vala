@@ -61,20 +61,15 @@ namespace OLLMcoder
 
 			var popup_wrapper = this.popup.child as Gtk.Box;
 			this.scrolled_window = popup_wrapper.get_first_child() as Gtk.ScrolledWindow;
-			var outer = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-				hexpand = true,
-				vexpand = true
-			};
-			popup_wrapper.unparent();
-			outer.append(popup_wrapper);
+			this.scrolled_window.vexpand = true;
+			this.scrolled_window.hexpand = true;
 			this.loading_label = new Gtk.Label("Loading…") {
 				visible = false,
 				margin_top = 4,
 				margin_bottom = 4,
 				halign = Gtk.Align.CENTER
 			};
-			outer.append(this.loading_label);
-			this.popup.child = outer;
+			popup_wrapper.append(this.loading_label);
 
 			this.scrolled_window.vadjustment.changed.connect(() => {
 				if (this.project_files.loading) {
@@ -202,7 +197,7 @@ namespace OLLMcoder
 				var project_file = list_item.item as OLLMfiles.ProjectFile;
 				if (project_file == null) {
 					GLib.debug(
-						"bind item type=%s",
+						"list bind skipped type=%s",
 						list_item.item.get_type().name()
 					);
 					return;
@@ -274,31 +269,41 @@ namespace OLLMcoder
 
 			this.search_debounce_id = GLib.Timeout.add(500, () => {
 				this.search_debounce_id = 0;
+				GLib.debug(
+					"debounce fire query=%s filtered=%u popup=%s",
+					search_text,
+					this.filtered_items.get_n_items(),
+					this.popup.visible.to_string()
+				);
+				this.set_popup_visible(true);
 				this.project_files.refresh.begin(search_text, (obj, res) => {
 					this.project_files.refresh.end(res);
 					GLib.debug(
-						"search done text=%s filtered=%u list=%u popup_before=%s",
+						"debounce refresh done entry=%s filtered=%u list=%u popup=%s",
 						this.entry.text,
 						this.filtered_items.get_n_items(),
 						this.project_files.get_n_items(),
 						this.popup.visible.to_string()
 					);
-					if (this.entry.text != ""
-						&& this.filtered_items.get_n_items() > 0) {
-						GLib.debug("search show attempt");
-						base.set_popup_visible(true);
-						GLib.debug(
-							"search show after popup=%s",
-							this.popup.visible.to_string()
-						);
+					if (this.entry.text != search_text) {
+						return;
 					}
+					GLib.Idle.add(() => {
+						var adj = this.scrolled_window.vadjustment;
+						GLib.debug(
+							"popup after refresh filtered=%u popup=%s scroll_upper=%.0f page=%.0f scrolled_h=%d popup_h=%d",
+							this.filtered_items.get_n_items(),
+							this.popup.visible.to_string(),
+							adj.upper,
+							adj.page_size,
+							this.scrolled_window.get_height(),
+							this.popup.get_height()
+						);
+						return false;
+					});
 				});
 				return false;
 			});
-
-			if (this.filtered_items.get_n_items() > 0) {
-				this.set_popup_visible(true);
-			}
 		}
 		
 		/**
@@ -308,7 +313,7 @@ namespace OLLMcoder
 		{
 			if (visible) {
 				GLib.debug(
-					"popup show filtered=%u list=%u entry=%s",
+					"file popup show filtered=%u list=%u entry=%s",
 					this.filtered_items.get_n_items(),
 					this.project_files.get_n_items(),
 					this.entry.text
@@ -321,9 +326,6 @@ namespace OLLMcoder
 				}
 				this.entry.text = "";
 				this.project_files.refresh.begin("");
-			}
-			if (visible && this.entry.text != "") {
-				this.project_files.refresh.begin(this.entry.text);
 			}
 
 			base.set_popup_visible(visible);

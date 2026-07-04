@@ -99,9 +99,10 @@ namespace OLLMfiles
 			var response = yield this.project.fetch_files(0, 50, query);
 			if (response.error != null) {
 				GLib.debug(
-					"refresh failed query=%s error=%s",
+					"refresh failed query=%s error=%s items=%u items_changed=no",
 					query,
-					response.error.message
+					response.error.message,
+					this.items.size
 				);
 				return;
 			}
@@ -118,7 +119,18 @@ namespace OLLMfiles
 
 			var new_n_items = this.items.size;
 			if (old_n_items > 0 || new_n_items > 0) {
+				GLib.debug(
+					"items_changed pos=0 removed=%u added=%u query=%s",
+					old_n_items,
+					new_n_items,
+					query
+				);
 				this.items_changed(0, old_n_items, new_n_items);
+			} else {
+				GLib.debug(
+					"items_changed skipped removed=0 added=0 query=%s",
+					query
+				);
 			}
 			GLib.debug(
 				"refresh done query=%s total=%d loaded=%u",

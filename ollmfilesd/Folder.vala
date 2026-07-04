@@ -35,7 +35,7 @@ namespace OLLMfilesd
 	 * Automatically discovers git repositories and checks if paths are ignored by git.
 	 * Uses manager.git_provider for git operations.
 	 */
-	public class Folder : FileBase, OLLMrpc.Bin.Serializable
+	public class Folder : FileBase, Json.Serializable, OLLMrpc.Bin.Serializable
 	{
 		public static void rpc_register()
 		{
@@ -65,6 +65,44 @@ namespace OLLMfilesd
 		public signal void call_fetch_pending_approvals(OLLMrpc.Request request);
 		public signal void call_project_description(OLLMrpc.Request request);
 		public signal void call_roots(OLLMrpc.Request request);
+
+		public unowned ParamSpec? find_property(string name)
+		{
+			return this.get_class().find_property(name);
+		}
+
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
+		{
+			base.set_property(pspec.get_name(), value);
+		}
+
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
+		{
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
+			return val;
+		}
+
+		/** Omit graph edges that recurse during json-glib wire serialize. */
+		public override Json.Node serialize_property(
+			string property_name,
+			Value value,
+			ParamSpec pspec
+		) {
+			switch (property_name) {
+				case "manager":
+				case "parent":
+				case "children":
+				case "project_files":
+					return null;
+				default:
+					return default_serialize_property(
+						property_name,
+						value,
+						pspec
+					);
+			}
+		}
 
 		public override void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,
