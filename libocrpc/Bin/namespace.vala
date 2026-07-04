@@ -21,5 +21,18 @@ namespace OLLMrpc
 	namespace Bin
 	{
 		internal class NamespaceDoc {}
+
+		/**
+		 * Binary wire codec failures (throw/catch).
+		 *
+		 * Not {@link GLib.Error} abort — use {@code throw new Error.*} from
+		 * {@link Stream} and {@link Serializable} encode/decode paths.
+		 */
+		public errordomain Error
+		{
+			PROTOCOL,
+			REGISTRATION,
+			PROPERTY
+		}
 	}
 }

@@ -44,7 +44,6 @@ endif
 ocrpc_src = files([
   'namespace.vala',
   'Bin/namespace.vala',
-  'Bin/Error.vala',
   'Bin/Stream.vala',
   'Bin/Serializable.vala',
   'Transport/namespace.vala',
