@@ -12,38 +12,26 @@ The **type byte** on the wire is always a `GLib.Type` fundamental value (optiona
 
 A **connection** maintains two tables on its `OLLMrpc.Bin.Stream` instance:
 
-1. **Wire names** — one shared string → uint16 token map for **both** property keys (`"name"`, `"count"`, …) and object type aliases (`"TestPair"`, `"File"`, …). Tokens are assigned either from a pre-shared catalog (`register_names()`) or learned on the wire via `TOKEN_REG_KEY`.
-2. **Type aliases → GType** — registered locally via `Stream.register(alias, gtype)` before decode. Maps alias strings to `GLib.Type` for `GLib.Object.new()` on read.
+1. **Wire names** — one shared string → uint16 token map for **both** property keys (`"name"`, `"count"`, …) and object type aliases (`"TestPair"`, `"File"`, …). Tokens are learned on the wire via `TOKEN_REG_KEY` when a name is first sent.
+2. **Type aliases → GType** — registered locally via `Stream.register(alias, gtype)` before decode. Both ends register the same alias strings with matching `GLib.Type` values; call order is not significant.
 
 Every **property value**: name token → one-byte **type** (`GLib.Type` fundamental) → payload. When the type is `GLib.Type.OBJECT`, a **name token** (uint16) identifying the object alias follows before the nested property stream. Unknown token or unrecognized alias → protocol error.
 
-### Shared name catalog
-
-Both ends load the **same** `string[]` catalog at channel setup. Index `i` in the array is wire token `i` for that string — whether it is a property name or a type alias:
-
-```vala
-const string[] WIRE_NAMES = {
-    "TestPair", "TestParent", "File", "Folder",
-    "name", "count", "label", "child",
-};
-
-var bin = new OLLMrpc.Bin.Stream (in_stream, out_stream);
-bin.register_names (WIRE_NAMES);
-bin.register ("TestPair", typeof (TestPair));
-bin.register ("File", typeof (OLLMfiles.V2.File));
-```
-
-`register()` call order is arbitrary. The catalog array order is **not** arbitrary — both peers must use the identical array so token numbers agree without wire introductions.
-
-Strings not in the catalog are still introduced with `TOKEN_REG_KEY` on first use (same format for property keys and type aliases).
-
 ### Registration vs JSON RPC
 
-Bin registration is **per connection**: `register_names()` for the shared string table, `register(alias, gtype)` for GObject types.
+Bin registration is **per connection**:
+
+```vala
+var bin = new OLLMrpc.Bin.Stream (in_stream, out_stream);
+bin.register ("File", typeof (OLLMfiles.V2.File));
+bin.register ("Folder", typeof (OLLMfiles.V2.Folder));
+```
+
+Client and server each call `register()` with the **same alias strings** and matching `GLib.Type` values. Property keys do not need `register()` — they appear on the wire and enter the same name-token table via `TOKEN_REG_KEY`.
 
 JSON RPC today uses a separate, **process-wide** map via `OLLMrpc.register(name, gtype)` keyed by string names in `Response.result_type`. The two APIs coexist until bin cutover (see plan 8.1). Alias strings should match JSON wire names where both apply.
 
-Domain types implement `OLLMrpc.Bin.Serializable` (often by extending `OLLMrpc.Bin.Object`) for bin encoding. JSON `rpc_register()` does **not** register types on a `Stream` — that happens at channel setup.
+Domain types implement `OLLMrpc.Bin.Serializable` for bin encoding. JSON `rpc_register()` does **not** register types on a `Stream` — that happens at channel setup.
 
 ---
 
@@ -52,7 +40,7 @@ Domain types implement `OLLMrpc.Bin.Serializable` (often by extending `OLLMrpc.B
 Vala type (registered as `"TestPair"`):
 
 ```vala
-public class TestPair : OLLMrpc.Bin.Object {
+public class TestPair : GLib.Object, OLLMrpc.Bin.Serializable {
     public string name { get; set; default = ""; }
     public int count { get; set; default = 0; }
 }
@@ -64,21 +52,35 @@ Object on the wire:
 new TestPair () { name = "alpha", count = 42 }
 ```
 
-**First** message with shared catalog (`TestPair` = token 0, `name` = 3, `count` = 4):
+**First** message (type `"TestPair"` and keys `"name"`, `"count"` not yet seen on this connection):
 
 ```text
-;; --- root object header (catalog already loaded on both ends) ---
+;; --- introduce "TestPair" (first send of this type) ---
+FF FF                    ;; TOKEN_REG_KEY
+00 00                    ;; assigned token 0
+08                       ;; name length
+54 65 73 74 50 61 69 72  ;; "TestPair"
+
+;; --- root object header ---
 50                       ;; G_TYPE_OBJECT (80)
 00 00                    ;; name token 0 → "TestPair"
 
-;; --- property "name" = "alpha" ---
-00 03                    ;; name token 3 → "name"
+;; --- property "name" = "alpha" (first sight of "name") ---
+FF FF                    ;; TOKEN_REG_KEY
+00 01                    ;; assigned token 1
+04                       ;; name length
+6E 61 6D 65              ;; "name"
+00 01                    ;; name token 1 (reference)
 40                       ;; type byte: G_TYPE_STRING (64)
 00 05                    ;; UTF-8 length 5
 61 6C 70 68 61           ;; "alpha"
 
 ;; --- property "count" = 42 ---
-00 04                    ;; name token 4 → "count"
+FF FF                    ;; TOKEN_REG_KEY
+00 02                    ;; assigned token 2
+05                       ;; name length
+63 6F 75 6E 74           ;; "count"
+00 02                    ;; name token 2 (reference)
 18                       ;; type byte: G_TYPE_INT (24)
 01                       ;; width: 1 byte payload
 2A                       ;; value 42
@@ -87,32 +89,22 @@ new TestPair () { name = "alpha", count = 42 }
 FF FD                    ;; TOKEN_END
 ```
 
-**Without a catalog** (first sight of type and keys on this connection), `TOKEN_REG_KEY` introductions precede cached references — same format for type aliases and property names:
-
-```text
-FF FF 00 00 08 54 65 73 74 50 61 69 72 00 00   ;; introduce "TestPair" → token 0
-50 00 00                                        ;; G_TYPE_OBJECT + token 0
-FF FF 00 03 04 6E 61 6D 65 00 03                ;; introduce "name" → token 3
-40 00 05 61 6C 70 68 61                         ;; string "alpha"
-…
-```
-
-**Second** message on the same connection (tokens already known):
+**Second** message on the same connection (names already cached):
 
 ```text
 50                       ;; G_TYPE_OBJECT (80)
 00 00                    ;; name token 0 → "TestPair"
-00 03                    ;; name token 3 → "name"
+00 01                    ;; name token 1 → "name"
 40                       ;; G_TYPE_STRING (64)
 00 05
 61 6C 70 68 61           ;; "alpha"
-00 04                    ;; name token 4 → "count"
+00 02                    ;; name token 2 → "count"
 18                       ;; G_TYPE_INT (24)
 01 2A                    ;; width 1, value 42
 FF FD                    ;; TOKEN_END
 ```
 
-No `TOKEN_REG_KEY` blocks appear when the shared catalog already covers every name on the wire.
+No `TOKEN_REG_KEY` blocks appear again until a new wire name is seen.
 
 ---
 
@@ -153,13 +145,7 @@ Property keys and object type aliases share one **name token** space per connect
 | `0xFFFF` | `TOKEN_REG_KEY` — introduce a new wire name (property or type alias) |
 | `0xFFFD` | `TOKEN_END` — end of property stream |
 
-### Pre-shared catalog (`register_names`)
-
-Both ends call `register_names(string[] names)` with the **same array**. Token `i` maps to `names[i]`. No `TOKEN_REG_KEY` block is needed on the wire for cataloged names.
-
-### JIT introduction
-
-When a name is not yet in the catalog or learned from the wire, the sender emits:
+**Introduction** (first time `"label"` is sent):
 
 ```text
 FF FF           TOKEN_REG_KEY
@@ -187,28 +173,18 @@ Wire names are limited to 255 bytes on introduction.
 
 ### `Stream.register(alias, gtype)`
 
-Maps a catalog alias string to `GLib.Type` for decode. The alias must appear in the shared name catalog or be introduced via `TOKEN_REG_KEY` before use.
+Maps a wire alias string to `GLib.Type` for decode. The alias must be registered on both ends before decode. Wire tokens for the alias are learned via `TOKEN_REG_KEY` like any other name.
 
 - Duplicate alias on the same stream → error.
-- `register()` does not assign tokens — tokens come from `register_names()` or the wire.
-
-### `Stream.register_names(names)`
-
-Pre-loads the shared string table used for **both** property keys and type aliases. Client and server must pass the **identical** `string[]` (same strings, same order).
+- `register()` call order is not significant.
 
 Example (from `tests/rpc/bin-test.vala`):
 
 ```vala
-const string[] WIRE_NAMES = {
-    "TestPair", "TestParent", "TestSkipDefault",
-    "name", "count", "label", "child", "keep",
-};
-
-write_bin.register_names (WIRE_NAMES);
 write_bin.register ("TestPair", typeof (TestPair));
+write_bin.register ("TestParent", typeof (TestParent));
 
-// Reader: same catalog; register() order arbitrary
-read_bin.register_names (WIRE_NAMES);
+// Reader: same aliases, any order
 read_bin.register ("TestParent", typeof (TestParent));
 read_bin.register ("TestPair", typeof (TestPair));
 ```

@@ -44,9 +44,9 @@ namespace OLLMrpc.Bin
 		 * Register a wire alias on this connection's stream.
 		 *
 		 * Maps {@param alias} to {@param gtype} for instantiation on decode.
-		 * {@param alias} must also appear in the shared name catalog (via
-		 * {@link register_names}) or be introduced on the wire with
-		 * {@link TOKEN_REG_KEY}.
+		 * The alias string shares the connection's wire-name token table with
+		 * property keys; tokens are learned on the wire via {@link TOKEN_REG_KEY}.
+		 * Registration order is not significant.
 		 *
 		 * @param alias wire type name
 		 * @param gtype GObject type for that alias
@@ -59,36 +59,6 @@ namespace OLLMrpc.Bin
 
 			this.alias_to_gtype.set (alias, gtype);
 			this.gtype_to_alias.set (gtype, alias);
-		}
-
-		/**
-		 * Pre-register wire names shared by both ends of a connection.
-		 *
-		 * Property keys and object type aliases use the same string → uint16
-		 * token table. Both peers load the same {@param names} array (same
-		 * strings, same order) so tokens are known without {@link TOKEN_REG_KEY}
-		 * introductions on the wire.
-		 *
-		 * @param names shared catalog — index 0 → token 0, and so on
-		 */
-		public void register_names (string[] names) throws GLib.Error
-		{
-			if (names.length > 65535) {
-				GLib.error ("name catalog exceeds uint16 token space");
-			}
-
-			for (var i = 0; i < names.length; i++) {
-				var n = names[i];
-				if (this.name_to_token.has_key (n)) {
-					GLib.error ("duplicate name '%s' in catalog", n);
-				}
-
-				var token = (uint16) i;
-				this.name_to_token.set (n, token);
-				this.token_to_name.set (token, n);
-			}
-
-			this.next_token_id = (uint16) names.length;
 		}
 
 		public Stream (
@@ -168,7 +138,17 @@ namespace OLLMrpc.Bin
 				return t;
 			}
 
-			this.read_name_intro_payload ();
+			var assigned_id = this.in_stream.read_uint16 ();
+			var len = this.in_stream.read_byte ();
+
+			var buffer = new uint8[len + 1];
+			size_t read_bytes;
+			this.in_stream.read_all (buffer[0:len], out read_bytes);
+			buffer[len] = 0;
+			prop_name = (string) buffer;
+
+			this.name_to_token.set (prop_name, assigned_id);
+			this.token_to_name.set (assigned_id, prop_name);
 			return this.read_tag (out prop_name);
 		}
 
@@ -184,6 +164,7 @@ namespace OLLMrpc.Bin
 
 			if (!this.name_to_token.has_key (alias)) {
 				this.write_name_intro (alias);
+				this.out_stream.put_uint16 (this.name_to_token.get (alias));
 			}
 
 			this.out_stream.put_byte ((uint8) GLib.Type.OBJECT);
@@ -255,6 +236,11 @@ namespace OLLMrpc.Bin
 			var obj = (Serializable) GLib.Object.new (gtype);
 			obj.bin_read (this);
 			return obj;
+		}
+
+		internal uint8 read_byte () throws GLib.Error
+		{
+			return this.read_byte_or_pending ();
 		}
 
 		private uint8 read_byte_or_pending () throws GLib.Error

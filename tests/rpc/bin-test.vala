@@ -6,47 +6,41 @@
 
 namespace OLLMrpcTests
 {
-	/** Shared wire catalog — property keys and type aliases use the same tokens. */
-	const string[] WIRE_NAMES = {
-		"TestPair",
-		"TestParent",
-		"TestSkipDefault",
-		"name",
-		"count",
-		"label",
-		"child",
-		"keep",
-	};
-
-	public class TestPair : OLLMrpc.Bin.Object
+	public class TestPair : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public string name { get; set; default = ""; }
 		public int count { get; set; default = 0; }
 	}
 
-	public class TestParent : OLLMrpc.Bin.Object
+	public class TestParent : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public string label { get; set; default = ""; }
 		public TestPair? child { get; set; }
 	}
 
 	/**
-	 * Transient props are omitted by overriding {@code bin_write_prop}.
+	 * Transient props are omitted by overriding {@code bin_write}.
 	 */
-	public class TestSkipDefault : OLLMrpc.Bin.Object
+	public class TestSkipDefault : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public string keep { get; set; default = ""; }
 		public GLib.Object? extra { get; set; }
 
-		public override void bin_write_prop (
-			OLLMrpc.Bin.Stream ctx,
-			GLib.ParamSpec prop
-		) throws GLib.Error
+		public override void bin_write (OLLMrpc.Bin.Stream ctx) throws GLib.Error
 		{
-			if (prop.name == "extra") {
-				return;
+			unowned GLib.ObjectClass obj_class = this.get_class ();
+			GLib.ParamSpec[] properties = obj_class.list_properties ();
+
+			foreach (var prop in properties) {
+				if (prop.name == "g-type-instance" || prop.name == "ref-count") {
+					continue;
+				}
+				if (prop.name == "extra") {
+					continue;
+				}
+				this.bin_write_prop (ctx, prop);
 			}
-			base.bin_write_prop (ctx, prop);
+			ctx.out_stream.put_uint16 (OLLMrpc.Bin.Stream.TOKEN_END);
 		}
 	}
 
@@ -56,7 +50,6 @@ namespace OLLMrpcTests
 		var out_stream = new GLib.DataOutputStream (mem);
 
 		var write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
-		write_bin.register_names (WIRE_NAMES);
 		write_bin.register ("TestPair", typeof (TestPair));
 		write_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
 		write_bin.register ("TestParent", typeof (TestParent));
@@ -75,7 +68,6 @@ namespace OLLMrpcTests
 			var in_stream = new GLib.DataInputStream (in_base);
 
 			var read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
-			read_bin.register_names (WIRE_NAMES);
 			read_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
 			read_bin.register ("TestPair", typeof (TestPair));
 
@@ -92,7 +84,6 @@ namespace OLLMrpcTests
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
 			write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
-			write_bin.register_names (WIRE_NAMES);
 			write_bin.register ("TestPair", typeof (TestPair));
 			write_bin.register ("TestParent", typeof (TestParent));
 
@@ -110,7 +101,6 @@ namespace OLLMrpcTests
 			in_base = new GLib.MemoryInputStream.from_bytes (bytes);
 			in_stream = new GLib.DataInputStream (in_base);
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
-			read_bin.register_names (WIRE_NAMES);
 			read_bin.register ("TestParent", typeof (TestParent));
 			read_bin.register ("TestPair", typeof (TestPair));
 
@@ -138,7 +128,6 @@ namespace OLLMrpcTests
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
 			write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
-			write_bin.register_names (WIRE_NAMES);
 			write_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
 
 			var skip_src = new TestSkipDefault () {
@@ -152,7 +141,6 @@ namespace OLLMrpcTests
 			in_base = new GLib.MemoryInputStream.from_bytes (bytes);
 			in_stream = new GLib.DataInputStream (in_base);
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
-			read_bin.register_names (WIRE_NAMES);
 			read_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
 
 			var skip_dst = read_bin.parse () as TestSkipDefault;
