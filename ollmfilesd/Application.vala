@@ -46,7 +46,7 @@ namespace OLLMfilesd
 		private const OptionEntry[] app_options = {
 			{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
 			{ "debug-critical", 0, 0, OptionArg.NONE, ref opt_debug_critical, "Treat critical warnings as errors", null },
-			{ "interactive", 'i', 0, OptionArg.NONE, ref opt_interactive, "Stdin/stdout JSON-RPC (no fork, no socket)", null },
+			{ "interactive", 'i', 0, OptionArg.NONE, ref opt_interactive, "Stdin/stdout NDJSON-RPC (no fork, no socket)", null },
 			{ "rpc-script", 0, 0, OptionArg.FILENAME, ref opt_rpc_script, "NDJSON RPC script (implies --interactive)", "FILE" },
 			{ "tcp", 0, 0, OptionArg.NONE, ref opt_tcp, "TCP JSON-RPC listener (foreground)", null },
 			{ "tcp-host", 0, 0, OptionArg.STRING, ref opt_tcp_host, "TCP listen host", "HOST" },
@@ -489,7 +489,8 @@ namespace OLLMfilesd
 
 	int main(string[] args)
 	{
-		if (OllmfilesdApplication.is_running()) {
+		if (GLib.Environment.get_variable("OLLMFILES_IS_TEST") == null
+			&& OllmfilesdApplication.is_running()) {
 			return 0;
 		}
 #if !G_OS_WIN32

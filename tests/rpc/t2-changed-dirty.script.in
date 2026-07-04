@@ -1,6 +1,6 @@
 # T2.4 — changed.check after external touch (Path A: scan)
-{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","params":{"protocol":1,"client":"test-rpc"}}
-{"jsonrpc":"2.0","id":2,"method":"ProjectManager.create_project","params":{"path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":3,"method":"ProjectManager.activate_project","params":{"path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":4,"method":"File.changed.check","params":{"path":"__HELLO_PATH__","buffer_dirty":true,"last_known_mtime":0}}
-{"jsonrpc":"2.0","id":99,"method":"Daemon.shutdown","params":{}}
+{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
+{"jsonrpc":"2.0","id":2,"method":"ProjectManager.create_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
+{"jsonrpc":"2.0","id":3,"method":"ProjectManager.activate_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
+{"jsonrpc":"2.0","id":4,"method":"File.changed.check","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__","buffer_dirty":true,"last_known_mtime":0}}
+{"jsonrpc":"2.0","id":99,"method":"Daemon.shutdown","*type":"Request","param":{"*type":"DaemonParams"}}

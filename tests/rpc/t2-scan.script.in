@@ -1,7 +1,7 @@
 # T2 Path A — activate with scan (app open-project); existing file in child_map
-{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","params":{"protocol":1,"client":"test-rpc"}}
-{"jsonrpc":"2.0","id":2,"method":"ProjectManager.create_project","params":{"path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":3,"method":"ProjectManager.activate_project","params":{"path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":4,"method":"File.read","params":{"path":"__HELLO_PATH__"}}
-{"jsonrpc":"2.0","id":5,"method":"File.write","params":{"path":"__HELLO_PATH__","content":"hello from rpc fixture\n"}}
-{"jsonrpc":"2.0","id":6,"method":"File.changed.check","params":{"path":"__HELLO_PATH__","buffer_dirty":false,"last_known_mtime":0}}
+{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
+{"jsonrpc":"2.0","id":2,"method":"ProjectManager.create_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
+{"jsonrpc":"2.0","id":3,"method":"ProjectManager.activate_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
+{"jsonrpc":"2.0","id":4,"method":"File.read","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__"}}
+{"jsonrpc":"2.0","id":5,"method":"File.write","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__","content":"hello from rpc fixture\n"}}
+{"jsonrpc":"2.0","id":6,"method":"File.changed.check","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__","buffer_dirty":false,"last_known_mtime":0}}

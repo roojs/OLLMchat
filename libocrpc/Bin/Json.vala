@@ -345,10 +345,24 @@ namespace OLLMrpc.Bin
 					ctx.out_stream.put_byte (node.get_boolean () ? 1 : 0);
 					return;
 
+				case GLib.Type.INT:
 				case GLib.Type.INT64:
+				case GLib.Type.DOUBLE:
+					var i64 = (int64) node.get_int ();
 					ctx.write_tag (name);
+					if (i64 >= int.MIN && i64 <= int.MAX) {
+						ctx.out_stream.put_byte ((uint8) GLib.Type.INT);
+						var iv = (int) i64;
+						if (iv >= -128 && iv <= 127) {
+							ctx.out_stream.put_byte (1);
+							ctx.out_stream.put_byte ((uint8) (int8) iv);
+							return;
+						}
+						ctx.out_stream.put_byte (8);
+						ctx.out_stream.put_int64 (iv);
+						return;
+					}
 					ctx.out_stream.put_byte ((uint8) GLib.Type.INT64);
-					var i64 = node.get_int ();
 					if (i64 >= -128 && i64 <= 127) {
 						ctx.out_stream.put_byte (1);
 						ctx.out_stream.put_byte ((uint8) (int8) i64);
@@ -356,19 +370,6 @@ namespace OLLMrpc.Bin
 					}
 					ctx.out_stream.put_byte (8);
 					ctx.out_stream.put_int64 (i64);
-					return;
-
-				case GLib.Type.DOUBLE:
-					ctx.write_tag (name);
-					ctx.out_stream.put_byte ((uint8) GLib.Type.INT64);
-					var dv = (int64) node.get_int ();
-					if (dv >= -128 && dv <= 127) {
-						ctx.out_stream.put_byte (1);
-						ctx.out_stream.put_byte ((uint8) (int8) dv);
-						return;
-					}
-					ctx.out_stream.put_byte (8);
-					ctx.out_stream.put_int64 (dv);
 					return;
 
 				default:

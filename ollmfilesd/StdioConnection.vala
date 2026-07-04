@@ -14,8 +14,10 @@
 namespace OLLMfilesd
 {
 	/**
-	 * Stdin/stdout {@link OLLMrpc.Transport.Connection}
-	 * ({@code --interactive}, optional {@code --rpc-script}).
+	 * Stdin/stdout {@link OLLMrpc.Transport.Connection} for debugging and tests.
+	 *
+	 * NDJSON on stdin/stdout; {@link OLLMrpc.Bin.Json} bridges each line to
+	 * the internal bin codec.
 	 */
 	public class StdioConnection : OLLMrpc.Transport.Connection
 	{
@@ -23,6 +25,7 @@ namespace OLLMfilesd
 		public string script_path { get; construct; default = ""; }
 
 		private int script_awaiting_id = -1;
+		private OLLMrpc.Bin.Json json_codec = new OLLMrpc.Bin.Json ();
 
 		public StdioConnection(
 			OllmfilesdApplication app,
@@ -87,14 +90,50 @@ namespace OLLMfilesd
 					this.script_awaiting_id = -1;
 				}
 			}
-			base.write(gobject);
+			var node = Json.gobject_serialize(gobject);
+			var gen = new Json.Generator();
+			gen.set_root(node);
+			var line = gen.to_data(null);
+			this.bin.out_stream.put_string(line);
+			this.bin.out_stream.put_byte((uint8) '\n');
+			this.bin.out_stream.flush();
+		}
+
+		protected override bool on_input_ready(
+			GLib.IOChannel source,
+			GLib.IOCondition condition
+		) {
+			if ((condition & GLib.IOCondition.HUP) != 0
+				|| (condition & GLib.IOCondition.ERR) != 0) {
+				this.stop();
+				return false;
+			}
+			if ((condition & GLib.IOCondition.IN) == 0) {
+				return this.running;
+			}
+
+			string? line = this.bin.in_stream.read_line(null);
+			if (line == null) {
+				this.stop();
+				return false;
+			}
+			line = line.strip();
+			if (line == "" || line.has_prefix("#")) {
+				return this.running;
+			}
+
+			try {
+				var request = this.request_from_json_line(line);
+				request.connection = this;
+				request.dispatch(null);
+			} catch (GLib.Error e) {
+				GLib.error("%s", e.message);
+			}
+			return this.running;
 		}
 
 		private void drain_script_request(int request_id)
 		{
-			if (request_id == 0) {
-				return;
-			}
 			while (this.script_awaiting_id == request_id) {
 				if (!GLib.MainContext.default().iteration(true)) {
 					break;
@@ -106,26 +145,13 @@ namespace OLLMfilesd
 		{
 			var data = "";
 			GLib.FileUtils.get_contents(path, out data);
-			var in_base = new GLib.MemoryInputStream.from_bytes(
-				new GLib.Bytes((uint8[]) data.to_utf8())
-			);
-			var read_bin = new OLLMrpc.Bin.Stream(
-				new GLib.DataInputStream(in_base),
-				null
-			);
-			while (true) {
-				OLLMrpc.Request? request = null;
-				try {
-					request = read_bin.parse() as OLLMrpc.Request;
-				} catch (GLib.IOError e) {
-					break;
-				} catch (GLib.Error e) {
-					GLib.warning("parse error: %s", e.message);
-					break;
+
+			foreach (var raw_line in data.split("\n")) {
+				var line = raw_line.strip();
+				if (line == "" || line.has_prefix("#")) {
+					continue;
 				}
-				if (request == null) {
-					break;
-				}
+				var request = this.request_from_json_line(line);
 				this.script_awaiting_id = request.id;
 				request.connection = this;
 				if (!request.dispatch(null)) {
@@ -134,6 +160,30 @@ namespace OLLMfilesd
 				}
 				this.drain_script_request(request.id);
 			}
+		}
+
+		private OLLMrpc.Request request_from_json_line (
+			string line
+		) throws GLib.Error
+		{
+			var parser = new Json.Parser();
+			parser.load_from_data(line);
+			var root = parser.get_root().get_object();
+
+			var mem = new GLib.MemoryOutputStream.resizable();
+			var out_stream = new GLib.DataOutputStream(mem);
+			var encode_ctx = new OLLMrpc.Bin.Stream(null, out_stream);
+			this.json_codec.write(encode_ctx, root);
+			out_stream.close();
+
+			var in_base = new GLib.MemoryInputStream.from_bytes(
+				mem.steal_as_bytes()
+			);
+			var read_ctx = new OLLMrpc.Bin.Stream(
+				new GLib.DataInputStream(in_base),
+				null
+			);
+			return (OLLMrpc.Request) read_ctx.parse();
 		}
 	}
 }

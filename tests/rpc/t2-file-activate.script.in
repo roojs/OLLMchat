@@ -1,5 +1,5 @@
 # T2A.7 — File.activate has no server handler (expect critical, no wire response)
-{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","params":{"protocol":1,"client":"test-rpc"}}
-{"jsonrpc":"2.0","id":2,"method":"ProjectManager.create_project","params":{"path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":3,"method":"ProjectManager.activate_project","params":{"path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":4,"method":"File.activate","params":{"path":"__HELLO_PATH__"}}
+{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
+{"jsonrpc":"2.0","id":2,"method":"ProjectManager.create_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
+{"jsonrpc":"2.0","id":3,"method":"ProjectManager.activate_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
+{"jsonrpc":"2.0","id":4,"method":"File.activate","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__"}}

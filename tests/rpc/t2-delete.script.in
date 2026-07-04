@@ -1,10 +1,10 @@
 # T2.6 — File.delete (Path B: skip scan + register new file)
-{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","params":{"protocol":1,"client":"test-rpc"}}
-{"jsonrpc":"2.0","id":2,"method":"ProjectManager.create_project","params":{"path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":3,"method":"ProjectManager.activate_project","params":{"path":"__PROJECT_PATH__","skip_scan":true}}
-{"jsonrpc":"2.0","id":4,"method":"File.register","params":{"path":"__REGISTER_PATH__"}}
-{"jsonrpc":"2.0","id":5,"method":"File.read","params":{"path":"__REGISTER_PATH__"}}
-{"jsonrpc":"2.0","id":6,"method":"File.write","params":{"path":"__REGISTER_PATH__","content":"delete me\n"}}
-{"jsonrpc":"2.0","id":7,"method":"File.delete","params":{"path":"__REGISTER_PATH__"}}
-{"jsonrpc":"2.0","id":8,"method":"File.activate","params":{"path":"__REGISTER_PATH__"}}
-{"jsonrpc":"2.0","id":99,"method":"Daemon.shutdown","params":{}}
+{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
+{"jsonrpc":"2.0","id":2,"method":"ProjectManager.create_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
+{"jsonrpc":"2.0","id":3,"method":"ProjectManager.activate_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__","skip_scan":true}}
+{"jsonrpc":"2.0","id":4,"method":"File.register","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__"}}
+{"jsonrpc":"2.0","id":5,"method":"File.read","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__"}}
+{"jsonrpc":"2.0","id":6,"method":"File.write","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__","content":"delete me\n"}}
+{"jsonrpc":"2.0","id":7,"method":"File.delete","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__"}}
+{"jsonrpc":"2.0","id":8,"method":"File.activate","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__"}}
+{"jsonrpc":"2.0","id":99,"method":"Daemon.shutdown","*type":"Request","param":{"*type":"DaemonParams"}}
