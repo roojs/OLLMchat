@@ -51,7 +51,10 @@ namespace OLLMrpc.Bin
 		public void register (string alias, GLib.Type gtype) throws GLib.Error
 		{
 			if (this.alias_to_gtype.has_key (alias)) {
-				GLib.error ("duplicate register of alias '%s'", alias);
+				throw new Error.REGISTRATION (
+					"duplicate register of alias '%s'",
+					alias
+				);
 			}
 
 			this.alias_to_gtype.set (alias, gtype);
@@ -89,10 +92,12 @@ namespace OLLMrpc.Bin
 				b = this.in_stream.read_byte ();
 			}
 			if ((b & 0x80) != 0) {
-				GLib.error ("root parse does not accept object arrays");
+				throw new Error.PROTOCOL (
+					"root parse does not accept object arrays"
+				);
 			}
 			if (b != (uint8) GLib.Type.OBJECT) {
-				GLib.error (
+				throw new Error.PROTOCOL (
 					"expected object type byte, got 0x%02X",
 					b
 				);
@@ -113,12 +118,18 @@ namespace OLLMrpc.Bin
 			}
 
 			if (reg_id >= this.names.length) {
-				GLib.error ("unknown wire name token %u", reg_id);
+				throw new Error.PROTOCOL (
+					"unknown wire name token %u",
+					reg_id
+				);
 			}
 			var alias = this.names[reg_id];
 			var gtype = this.alias_to_gtype[alias];
 			if (gtype == 0) {
-				GLib.error ("Unrecognized type alias: %s", alias);
+				throw new Error.REGISTRATION (
+					"Unrecognized type alias: %s",
+					alias
+				);
 			}
 
 			var obj = (Serializable) GLib.Object.new (gtype);
@@ -161,7 +172,10 @@ namespace OLLMrpc.Bin
 
 			if (t != TOKEN_REG_KEY) {
 				if (t >= this.names.length) {
-					GLib.error ("unknown wire name token %u", t);
+					throw new Error.PROTOCOL (
+						"unknown wire name token %u",
+						t
+					);
 				}
 				prop_name = this.names[t];
 				return t;
@@ -177,7 +191,7 @@ namespace OLLMrpc.Bin
 			prop_name = (string) buffer;
 
 			if (assigned_id > this.names.length) {
-				GLib.error (
+				throw new Error.PROTOCOL (
 					"wire name token %u out of sequence",
 					assigned_id
 				);
@@ -185,7 +199,7 @@ namespace OLLMrpc.Bin
 			if (assigned_id == this.names.length) {
 				this.names += prop_name;
 			} else if (this.names[assigned_id] != prop_name) {
-				GLib.error (
+				throw new Error.PROTOCOL (
 					"wire name token %u alias mismatch",
 					assigned_id
 				);
@@ -198,7 +212,7 @@ namespace OLLMrpc.Bin
 		{
 			var alias = this.gtype_to_alias[object_type];
 			if (alias == null) {
-				GLib.error (
+				throw new Error.REGISTRATION (
 					"Unregistered class type schema: %s",
 					object_type.name ()
 				);
@@ -247,7 +261,7 @@ namespace OLLMrpc.Bin
 		{
 			var b1 = this.in_stream.read_byte ();
 			if (b1 != 0xFE) {
-				GLib.error (
+				throw new Error.PROTOCOL (
 					"unexpected byte 0x%02X after 0xFF",
 					b1
 				);
@@ -269,11 +283,14 @@ namespace OLLMrpc.Bin
 
 			var gtype = this.alias_to_gtype[alias];
 			if (gtype == 0) {
-				GLib.error ("Unrecognized type alias: %s", alias);
+				throw new Error.REGISTRATION (
+					"Unrecognized type alias: %s",
+					alias
+				);
 			}
 
 			if (assigned_id > this.names.length) {
-				GLib.error (
+				throw new Error.PROTOCOL (
 					"wire name token %u out of sequence",
 					assigned_id
 				);
@@ -281,7 +298,7 @@ namespace OLLMrpc.Bin
 			if (assigned_id == this.names.length) {
 				this.names += alias;
 			} else if (this.names[assigned_id] != alias) {
-				GLib.error (
+				throw new Error.PROTOCOL (
 					"wire name token %u alias mismatch",
 					assigned_id
 				);
