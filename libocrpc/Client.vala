@@ -52,6 +52,8 @@ namespace OLLMrpc
 
 		public bool connected { get; private set; default = false; }
 
+		public Bin.Stream? bin { get; private set; }
+
 		/**
 		 * Last {@link connect} failure (boot, socket, or hello).
 		 * Empty when {@link connected} is true. UI reads this from {@link Client}.
@@ -86,6 +88,8 @@ namespace OLLMrpc
 		{
 			Error.rpc_register();
 			Notification.rpc_register();
+			Request.rpc_register();
+			Response.rpc_register();
 		}
 
 		public Client(string socket = "")
@@ -173,8 +177,8 @@ namespace OLLMrpc
 			}
 
 			this.input = new GLib.DataInputStream(this.connection.get_input_stream());
-			this.input.set_newline_type(GLib.DataStreamNewlineType.LF);
 			this.output = new GLib.DataOutputStream(this.connection.get_output_stream());
+			this.bin = new Bin.Stream(this.input, this.output);
 			this.connected = true;
 			this.read_loop.begin();
 
@@ -233,6 +237,7 @@ namespace OLLMrpc
 				);
 			}
 			this.pending.clear();
+			this.bin = null;
 			this.input = null;
 			this.output = null;
 			if (this.connection != null) {
@@ -267,25 +272,21 @@ namespace OLLMrpc
 					continue;
 				}
 				try {
-					var generator = new Json.Generator();
-					generator.set_pretty(false);
-					generator.set_root(
-						Json.gobject_serialize(job.payload)
-					);
-					var line = generator.to_data(null) + "\n";
+					var serializable = job.payload as Bin.Serializable;
+					if (serializable == null) {
+						throw new GLib.IOError.FAILED(
+							"Client: payload is not bin Serializable"
+						);
+					}
 					var request = job.payload as Request;
 					if (request != null) {
 						GLib.debug(
-							"send id=%d method=%s %s",
+							"send id=%d method=%s",
 							request.id,
-							request.method,
-							line.strip()
+							request.method
 						);
 					}
-					if (request == null) {
-						GLib.debug("send %s", line.strip());
-					}
-					this.output.put_string(line);
+					this.bin.write(serializable);
 					yield this.output.flush_async(
 						GLib.Priority.DEFAULT,
 						null
@@ -410,16 +411,13 @@ namespace OLLMrpc
 
 		private async void read_loop()
 		{
-			while (this.connected && this.input != null) {
+			while (this.connected && this.bin != null) {
 				try {
-					var response_line = yield this.input.read_line_async(
-						GLib.Priority.DEFAULT, null
-					);
-					if (response_line == null) {
-						this.disconnect();
-						return;
-					}
-					this.dispatch_line(response_line.strip());
+					var msg = this.bin.parse();
+					this.dispatch_message(msg);
+				} catch (GLib.IOError e) {
+					this.disconnect();
+					return;
 				} catch (GLib.Error e) {
 					GLib.warning("read error: %s", e.message);
 					this.disconnect();
@@ -428,91 +426,50 @@ namespace OLLMrpc
 			}
 		}
 
-		private void dispatch_line(string data)
+		private void dispatch_message(Bin.Serializable msg)
 		{
-			var parser = new Json.Parser();
-			try {
-				parser.load_from_data(data, -1);
-			} catch (GLib.Error e) {
-				GLib.warning("invalid JSON: %s", e.message);
-				return;
-			}
-
-			var root = parser.get_root();
-			if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
-				GLib.warning("line not a JSON object");
-				return;
-			}
-			var obj = root.get_object();
-
-			if (!obj.has_member("id")) {
-				var notif = Json.gobject_from_data(
-					typeof(Notification), data
-				) as Notification;
-				if (notif != null) {
-					GLib.debug(
-						"notification method=%s object_type=%s",
-						notif.method,
-						notif.object_type
+			var response = msg as Response;
+			if (response != null) {
+				if (!this.pending.has_key(response.id)) {
+					GLib.warning(
+						"unexpected response id %d",
+						response.id
 					);
-					this.notification(notif);
+					return;
 				}
-				return;
-			}
-
-			var response = Json.gobject_from_data(
-				typeof(Response), data
-			) as Response;
-			if (response == null) {
-				return;
-			}
-			if (!this.pending.has_key(response.id)) {
-				GLib.warning("unexpected response id %d", response.id);
-				return;
-			}
-
-			if (response.error != null) {
-				GLib.debug(
-					"replied id=%d error=%s",
-					response.id,
-					response.error.message
-				);
-			}
-			if (response.error == null) {
-				GLib.debug(
-					"replied id=%d result_type=%s array=%s",
-					response.id,
-					response.result_type,
-					response.is_array ? "true" : "false"
-				);
-			}
-
-			if (response.result_type == "") {
+				if (response.error != null) {
+					GLib.debug(
+						"replied id=%d error=%s",
+						response.id,
+						response.error.message
+					);
+				}
+				if (response.error == null) {
+					GLib.debug(
+						"replied id=%d result_type=%s array=%s",
+						response.id,
+						response.result_type,
+						response.is_array ? "true" : "false"
+					);
+				}
 				var promise = this.pending.get(response.id);
 				this.pending.unset(response.id);
 				promise.set_value(response);
 				return;
 			}
 
-			var result_node = obj.get_member("result");
-			var t = types.get(response.result_type);
-			if (!response.is_array) {
-				response.result = Json.gobject_deserialize(t, result_node);
-				var promise = this.pending.get(response.id);
-				this.pending.unset(response.id);
-				promise.set_value(response);
+			var notif = msg as Notification;
+			if (notif != null) {
+				GLib.debug(
+					"notification method=%s object_type=%s",
+					notif.method,
+					notif.object_type
+				);
+				this.notification(notif);
 				return;
 			}
 
-			var arr = result_node.get_array();
-			var list = new Gee.ArrayList<GLib.Object>();
-			for (uint i = 0; i < arr.get_length(); i++) {
-				list.add(Json.gobject_deserialize(t, arr.get_element(i)));
-			}
-			response.result = list;
-			var promise = this.pending.get(response.id);
-			this.pending.unset(response.id);
-			promise.set_value(response);
+			GLib.warning("unexpected wire message type");
 		}
 	}
 }

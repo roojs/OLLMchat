@@ -64,7 +64,7 @@ namespace OLLMrpc
 	 * @see Client
 	 * @see Transport.Connection
 	 */
-	public class Request : GLib.Object, Json.Serializable
+	public class Request : GLib.Object, Json.Serializable, Bin.Serializable
 	{
 		/** Wire object prefix → handler singleton (server dispatch). */
 		public static Gee.HashMap<string, GLib.Object> handlers;
@@ -90,6 +90,11 @@ namespace OLLMrpc
 
 		/** Set by the server before {@link dispatch}. */
 		public Transport.Connection connection { get; set; }
+
+		public static void rpc_register()
+		{
+			Bin.Stream.register("Request", typeof(Request));
+		}
 
 		/**
 		 * Register a server dispatch handler and its params {@link GLib.Type}.
@@ -145,6 +150,35 @@ namespace OLLMrpc
 					return default_deserialize_property(
 						property_name, out value, pspec, property_node
 					);
+			}
+		}
+
+		public override void bin_write_prop (
+			Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "connection":
+					return;
+				default:
+					this.bin_default_write_prop (ctx, prop);
+					return;
+			}
+		}
+
+		public override void bin_read_prop (
+			Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "connection":
+					return;
+				default:
+					this.bin_default_read_prop (ctx, prop, type_byte);
+					return;
 			}
 		}
 

@@ -14,17 +14,16 @@
 namespace OLLMrpc.Transport
 {
 	/**
-	 * One RPC client channel — NDJSON read loop and reply (Unix socket).
+	 * One RPC client channel — bin read/write loop (Unix socket).
 	 *
-	 * On each request line: parse {@link OLLMrpc.Request}, extract the wire
-	 * params object ({{{ "params" }}} or {{{ "param" }}}), and pass it to
-	 * {@link OLLMrpc.Request.dispatch} so typed {@link OLLMrpc.CallParam}
-	 * subclasses deserialize correctly. See {@link OLLMrpc.Request} for the
-	 * full params contract.
+	 * Each message is one root bin object ({@link OLLMrpc.Request} inbound,
+	 * {@link OLLMrpc.Response} or {@link OLLMrpc.Notification} outbound).
 	 */
 	public class Connection : GLib.Object
 	{
 		public GLib.SocketConnection? stream { get; construct; default = null; }
+
+		public Bin.Stream? bin { get; protected set; }
 
 		protected GLib.IOChannel? channel;
 		protected bool channel_open = false;
@@ -52,6 +51,13 @@ namespace OLLMrpc.Transport
 					GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
 					this.on_input_ready
 				);
+				var in_stream = new GLib.DataInputStream(
+					this.stream.get_input_stream()
+				);
+				var out_stream = new GLib.DataOutputStream(
+					this.stream.get_output_stream()
+				);
+				this.bin = new Bin.Stream(in_stream, out_stream);
 			} catch (GLib.Error e) {
 				GLib.warning("connection setup failed: %s", e.message);
 				this.stop();
@@ -65,6 +71,7 @@ namespace OLLMrpc.Transport
 			}
 			this.running = false;
 			this.channel_open = false;
+			this.bin = null;
 			if (this.input_watch_id != 0) {
 				GLib.Source.remove(this.input_watch_id);
 				this.input_watch_id = 0;
@@ -80,19 +87,17 @@ namespace OLLMrpc.Transport
 
 		public virtual void write(GLib.Object gobject)
 		{
-			if (!this.channel_open || this.channel == null) {
+			if (!this.channel_open || this.bin == null) {
 				return;
 			}
-			var generator = new Json.Generator();
-			generator.set_pretty(false);
-			generator.set_root(Json.gobject_serialize(gobject));
-			size_t written;
+			var serializable = gobject as Bin.Serializable;
+			if (serializable == null) {
+				GLib.warning("connection write: not bin Serializable");
+				return;
+			}
 			try {
-				this.channel.write_chars(
-					(generator.to_data(null) + "\n").to_utf8(),
-					out written
-				);
-				this.channel.flush();
+				this.bin.write(serializable);
+				this.bin.out_stream.flush();
 			} catch (GLib.Error e) {
 				GLib.warning("connection write error: %s", e.message);
 				this.stop();
@@ -123,66 +128,25 @@ namespace OLLMrpc.Transport
 			if ((condition & GLib.IOCondition.IN) == 0) {
 				return this.running;
 			}
-			if (!this.channel_open) {
-				return this.running;
-			}
-
-			string? line = null;
-			size_t length = 0;
-			GLib.IOStatus status;
-			try {
-				status = source.read_line(out line, out length, null);
-			} catch (GLib.Error e) {
-				GLib.warning("connection read error: %s", e.message);
-				this.stop();
-				return false;
-			}
-			if (status == GLib.IOStatus.EOF) {
-				this.stop();
-				return false;
-			}
-			if (status != GLib.IOStatus.NORMAL || line == null) {
-				return this.running;
-			}
-
-			line = line.strip();
-			if (line == "") {
+			if (!this.channel_open || this.bin == null) {
 				return this.running;
 			}
 
 			OLLMrpc.Request? request = null;
 			try {
-				request = Json.gobject_from_data(
-					typeof(OLLMrpc.Request),
-					line,
-					-1
-				) as OLLMrpc.Request;
+				request = this.bin.parse() as OLLMrpc.Request;
 			} catch (GLib.Error e) {
-				GLib.warning("parse error: %s", e.message);
-				return this.running;
+				GLib.warning("connection read error: %s", e.message);
+				this.stop();
+				return false;
 			}
 			if (request == null) {
+				GLib.warning("connection read: expected Request");
 				return this.running;
-			}
-
-			var parser = new Json.Parser();
-			try {
-				parser.load_from_data(line, -1);
-			} catch (GLib.Error e) {
-				GLib.warning("parse error: %s", e.message);
-				return this.running;
-			}
-
-			var root_obj = parser.get_root().get_object();
-			Json.Node? params_node = null;
-			if (root_obj.has_member("params")) {
-				params_node = root_obj.get_member("params");
-			} else if (root_obj.has_member("param")) {
-				params_node = root_obj.get_member("param");
 			}
 
 			request.connection = this;
-			request.dispatch(params_node);
+			request.dispatch(null);
 			return this.running;
 		}
 	}

@@ -38,6 +38,18 @@ namespace OLLMfilesd
 			}
 			this.running = true;
 
+			this.channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
+			this.channel.set_encoding(null);
+			this.channel.set_buffered(true);
+			this.channel_open = true;
+			var in_stream = new GLib.DataInputStream(
+				new GLib.UnixInputStream(Posix.STDIN_FILENO, false)
+			);
+			var out_stream = new GLib.DataOutputStream(
+				new GLib.UnixOutputStream(Posix.STDOUT_FILENO, false)
+			);
+			this.bin = new OLLMrpc.Bin.Stream(in_stream, out_stream);
+
 			this.write(new OLLMrpc.Notification() {
 				method = "Daemon.ready",
 				object_type = "Daemon",
@@ -52,10 +64,6 @@ namespace OLLMfilesd
 				return;
 			}
 
-			this.channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
-			this.channel.set_encoding(null);
-			this.channel.set_buffered(true);
-			this.channel_open = true;
 			this.input_watch_id = this.channel.add_watch(
 				GLib.IOCondition.IN | GLib.IOCondition.HUP,
 				this.on_input_ready
@@ -79,11 +87,7 @@ namespace OLLMfilesd
 					this.script_awaiting_id = -1;
 				}
 			}
-			var generator = new Json.Generator();
-			generator.set_pretty(false);
-			generator.set_root(Json.gobject_serialize(gobject));
-			GLib.stdout.printf("%s\n", generator.to_data(null));
-			GLib.stdout.flush();
+			base.write(gobject);
 		}
 
 		private void drain_script_request(int request_id)
@@ -102,34 +106,29 @@ namespace OLLMfilesd
 		{
 			var data = "";
 			GLib.FileUtils.get_contents(path, out data);
-			foreach (var raw in data.split("\n")) {
-				var line = raw.strip();
-				if (line == "") {
-					continue;
-				}
-				if (line.has_prefix("#")) {
-					continue;
-				}
+			var in_base = new GLib.MemoryInputStream.from_bytes(
+				new GLib.Bytes((uint8[]) data.to_utf8())
+			);
+			var read_bin = new OLLMrpc.Bin.Stream(
+				new GLib.DataInputStream(in_base),
+				null
+			);
+			while (true) {
 				OLLMrpc.Request? request = null;
 				try {
-					request = Json.gobject_from_data(
-						typeof(OLLMrpc.Request),
-						line,
-						-1
-					) as OLLMrpc.Request;
+					request = read_bin.parse() as OLLMrpc.Request;
+				} catch (GLib.IOError e) {
+					break;
 				} catch (GLib.Error e) {
 					GLib.warning("parse error: %s", e.message);
-					continue;
+					break;
 				}
-
-				var parser = new Json.Parser();
-				parser.load_from_data(line, -1);
-
+				if (request == null) {
+					break;
+				}
 				this.script_awaiting_id = request.id;
 				request.connection = this;
-				if (!request.dispatch(
-						parser.get_root().get_object().get_member("params")
-					)) {
+				if (!request.dispatch(null)) {
 					this.script_awaiting_id = -1;
 					continue;
 				}

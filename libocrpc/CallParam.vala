@@ -30,7 +30,7 @@ namespace OLLMrpc
 	 *
 	 * @see Request
 	 */
-	public class CallParam : GLib.Object, Json.Serializable
+	public class CallParam : GLib.Object, Json.Serializable, Bin.Serializable
 	{
 		/**
 		 * Positional arguments for legacy or generic callers.

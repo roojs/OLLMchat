@@ -31,6 +31,11 @@ namespace OLLMfilesd
 	 */
 	public class ProjectManager : Object
 	{
+		public static void rpc_register()
+		{
+			ProjectParams.rpc_register();
+		}
+
 		/**
 		 * Provider instances (default to base class with no-op implementations).
 		 */

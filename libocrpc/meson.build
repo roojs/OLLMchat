@@ -48,6 +48,7 @@ ocrpc_src = files([
   'namespace.vala',
   'Bin/Stream.vala',
   'Bin/Serializable.vala',
+  'Bin/Json.vala',
   'Transport/Connection.vala',
   'Transport/Listen.vala',
   'Transport/TcpListen.vala',

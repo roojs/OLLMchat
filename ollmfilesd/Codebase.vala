@@ -21,6 +21,11 @@ namespace OLLMfilesd
 	/** Server {@code Codebase.*} — semantic codebase search for tools. */
 	public class Codebase : GLib.Object
 	{
+		public static void rpc_register()
+		{
+			VectorParams.rpc_register();
+		}
+
 		public ProjectManager manager { get; construct; }
 		public OLLMchat.Settings.Config2 config { get; construct; }
 

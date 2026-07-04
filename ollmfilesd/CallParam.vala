@@ -16,6 +16,11 @@ namespace OLLMfilesd
 	/** {@code Daemon.*} request params. */
 	public class DaemonParams : OLLMrpc.CallParam
 	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Bin.Stream.register("DaemonParams", typeof (DaemonParams));
+		}
+
 		public int protocol { get; set; default = 0; }
 		public string client { get; set; default = ""; }
 	}
@@ -23,6 +28,11 @@ namespace OLLMfilesd
 	/** {@code ProjectManager.*} request params. */
 	public class ProjectParams : OLLMrpc.CallParam
 	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Bin.Stream.register("ProjectParams", typeof (ProjectParams));
+		}
+
 		public string path { get; set; default = ""; }
 		public bool skip_scan { get; set; default = false; }
 		public bool project_summary_only { get; set; default = false; }
@@ -31,6 +41,11 @@ namespace OLLMfilesd
 	/** {@code File.*} request params. */
 	public class FileParams : OLLMrpc.CallParam
 	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Bin.Stream.register("FileParams", typeof (FileParams));
+		}
+
 		public string path { get; set; default = ""; }
 		public string project_path { get; set; default = ""; }
 		public string content { get; set; default = ""; }
@@ -49,6 +64,11 @@ namespace OLLMfilesd
 	/** {@code Folder.*} request params (project-scoped). */
 	public class FolderParams : OLLMrpc.CallParam
 	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Bin.Stream.register("FolderParams", typeof (FolderParams));
+		}
+
 		public string project_path { get; set; default = ""; }
 		public string path { get; set; default = ""; }
 		/** {@link Folder.fetch_files} — skip rows (default 0). */
@@ -66,6 +86,11 @@ namespace OLLMfilesd
 	/** {@code vector.*} request params. */
 	public class VectorParams : OLLMrpc.CallParam
 	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Bin.Stream.register("VectorParams", typeof (VectorParams));
+		}
+
 		public string path { get; set; default = ""; }
 		public string query { get; set; default = ""; }
 		public int max_results { get; set; default = 0; }

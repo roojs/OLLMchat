@@ -13,8 +13,8 @@
 
 namespace OLLMrpc
 {
-	/** JSON-RPC 2.0 response (has wire `id`, plus `result` or `error`). */
-	public class Response : GLib.Object, Json.Serializable
+	/** Bin RPC response (wire {@link id}, plus {@link result} or {@link error}). */
+	public class Response : GLib.Object, Json.Serializable, Bin.Serializable
 	{
 		public string jsonrpc { get; set; default = "2.0"; }
 		public int id { get; set; default = 0; }
@@ -27,12 +27,16 @@ namespace OLLMrpc
 		 */
 		public int msg_encode { get; set; default = 0; }
 		/**
-		 * On the wire with {@link result}: {@link Type.name} for typed deserialize
-		 * ({@link Client} via {@link types}).
+		 * Set by handlers before reply; used when encoding empty object arrays.
 		 */
 		public string result_type { get; set; default = ""; }
-		/** On the wire: {@link result} is a JSON array of {@link result_type} objects. */
+		/** When true, {@link result} is a {@link Gee.ArrayList} on the wire. */
 		public bool is_array { get; set; default = false; }
+
+		public static void rpc_register()
+		{
+			Bin.Stream.register("Response", typeof(Response));
+		}
 
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -100,6 +104,88 @@ namespace OLLMrpc
 					return node;
 				default:
 					return default_serialize_property(property_name, value, pspec);
+			}
+		}
+
+		public override void bin_write_prop (
+			Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "result":
+					if (this.result == null) {
+						return;
+					}
+					if (!this.is_array) {
+						this.bin_default_write_prop (ctx, prop);
+						return;
+					}
+					var list = this.result as Gee.ArrayList<GLib.Object>;
+					if (list == null) {
+						GLib.error(
+							"Response: is_array but result is not Gee.ArrayList"
+						);
+					}
+					ctx.write_tag (prop.name);
+					ctx.write_gtype (
+						list.size > 0
+							? list.get (0).get_type ()
+							: types.get (this.result_type),
+						(uint8) GLib.Type.OBJECT | 0x80
+					);
+					if (list.size < 128) {
+						ctx.out_stream.put_byte ((uint8) list.size);
+					} else {
+						ctx.out_stream.put_byte (
+							(uint8) (0x80 | ((list.size >> 8) & 0x7F))
+						);
+						ctx.out_stream.put_byte (
+							(uint8) (list.size & 0xFF)
+						);
+					}
+					foreach (var child in list) {
+						((Bin.Serializable) child).bin_write (ctx);
+					}
+					return;
+				default:
+					this.bin_default_write_prop (ctx, prop);
+					return;
+			}
+		}
+
+		public override void bin_read_prop (
+			Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "result":
+					if ((type_byte & 0x80) == 0
+						|| (type_byte & 0x7F) != GLib.Type.OBJECT) {
+						this.bin_default_read_prop (ctx, prop, type_byte);
+						return;
+					}
+					var count = (uint) ctx.in_stream.read_byte ();
+					if ((count & 0x80) != 0) {
+						count = ((count & 0x7F) << 8)
+							| ctx.in_stream.read_byte ();
+					}
+					var list = new Gee.ArrayList<GLib.Object> ();
+					for (var i = 0u; i < count; i++) {
+						var child = (Bin.Serializable) GLib.Object.new (
+							ctx.read_gtype ()
+						);
+						child.bin_read (ctx);
+						list.add (child);
+					}
+					this.is_array = true;
+					this.result = list;
+					return;
+				default:
+					this.bin_default_read_prop (ctx, prop, type_byte);
+					return;
 			}
 		}
 	}

@@ -40,6 +40,7 @@ namespace OLLMfilesd
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.Stream.register("Folder", typeof(Folder));
+			FolderParams.rpc_register();
 		}
 
 		/**

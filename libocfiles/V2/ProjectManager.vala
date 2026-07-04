@@ -95,11 +95,16 @@ namespace OLLMfiles
 		{
 			Object();
 			OLLMrpc.Daemon.rpc_register();
+			OLLMfilesd.DaemonParams.rpc_register();
 			Folder.rpc_register();
 			File.rpc_register();
 			FileAlias.rpc_register();
 			FileWithHistory.rpc_register();
 			SQT.VectorMetadata.rpc_register();
+			OLLMfilesd.ProjectParams.rpc_register();
+			OLLMfilesd.FileParams.rpc_register();
+			OLLMfilesd.FolderParams.rpc_register();
+			OLLMfilesd.VectorParams.rpc_register();
 			this.rpc = new OLLMrpc.Client();
 			this.delete_manager = new DeleteManager(this);
 			this.review_files = new ReviewFiles(this);

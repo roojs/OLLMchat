@@ -234,11 +234,15 @@ namespace OLLMfilesd
 					this.config);
 
 			Daemon.rpc_register();
+			ProjectManager.rpc_register();
 			Folder.rpc_register();
 			File.rpc_register();
 			FileAlias.rpc_register();
 			FileWithHistory.rpc_register();
 			SQT.VectorMetadata.rpc_register();
+			Codebase.rpc_register();
+			OLLMrpc.Request.rpc_register();
+			OLLMrpc.Response.rpc_register();
 
 			this.daemon = new Daemon(this);
 			OLLMrpc.Request.register(
