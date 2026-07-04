@@ -26,6 +26,7 @@ Canonical rules: **`docs/coding-standards.md`**. Full checklist:
 | Add/change `if` / `else` / nested branches? | `reducing-nesting` |
 | Compare enums with `if (a \|\| b)`? | `switch-case` |
 | Add null checks or redundant guards? | `defensive-code-null-checks` |
+| Use `??` or default a nullable value? | `null-coalescing` |
 | Add new `private`/`protected` or `handle_*`/`is_*` method? | `method-names-new-methods` |
 
 **STOP before done if:** explicit type on a local, missing `this.`, new helper

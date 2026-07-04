@@ -42,7 +42,8 @@ Answer each question for your task. **Yes** → add the section slug(s).
 | Does your task…? | Read section slug(s) |
 |------------------|----------------------|
 | Add or change docblocks, `@param`, or API comments? | `docblocks` — also read **`docs/code-documentation.md`** in full |
-| Build error messages, UI labels, or concatenate strings (not `@"""` tool help)? | `string-interpolation`, `line-length-breaking` |
+| Build error messages, UI labels, or concatenate strings (not `@"""` tool help)? | `string-interpolation`, `null-coalescing`, `line-length-breaking` |
+| Use `??` or default a nullable expression? | `null-coalescing` |
 | Add new classes, methods, or namespaces? | `brace-placement` |
 | Add or rename fields, properties, or constructor defaults? | `underscore-prefix`, `property-initialization`, `gobject-construct-blocks` |
 | Use `GLib.Path`, `GLib.File`, `GLib.Environment`, or other GLib types? | `glib-namespace-prefix` |
@@ -78,7 +79,8 @@ is authoritative. Hints below are for humans only.
 |------|-------|
 | `docblocks` | 13 |
 | `string-interpolation` | 52 |
-| `temporary-variables` | 84 |
+| `null-coalescing` | 84 |
+| `temporary-variables` | 110 |
 | `brace-placement` | 206 |
 | `underscore-prefix` | 266 |
 | `this-prefix` | 286 |

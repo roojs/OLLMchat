@@ -81,6 +81,39 @@ Options:
 ";
 ```
 
+## Null coalescing (`??`) <!-- section: null-coalescing -->
+
+**IMPORTANT:** Do **not** use Vala's `??` null-coalescing operator. Use an
+explicit null check with a ternary, or assign a default in an `if (x == null)`
+block.
+
+**Bad:**
+```vala
+var s = val.get_string () ?? "";
+var api_key = opt_api_key ?? "";
+response_text = response != null ? (response.content ?? "") : "";
+```
+
+**Good (ternary):**
+```vala
+var s = val.get_string () != null ? val.get_string () : "";
+```
+
+**Good (null check then default — preferred when the expression is used many times):**
+```vala
+var s = val.get_string ();
+if (s == null) {
+    s = "";
+}
+```
+
+**Good (nested nullable without `??`):**
+```vala
+response_text = response != null
+    ? (response.content != null ? response.content : "")
+    : "";
+```
+
 ## Temporary Variables <!-- section: temporary-variables -->
 
 **CRITICAL — `var` on locals:** Always use **`var`** for local variables and
@@ -499,7 +532,9 @@ try {
     messages.add(...);
     messages.add(...);
     var response = yield this.chat_call.send(messages, null);
-    var response_text = response != null ? (response.content ?? "") : "";
+    var response_text = response != null
+        ? (response.content != null ? response.content : "")
+        : "";
     var parsed = Parser.parse(response_text);
     if (parsed.issues != "") {
         this.refine_error = new GLib.IOError.INVAL(parsed.issues);
@@ -526,7 +561,9 @@ messages.add(...);
 string response_text;
 try {
     var response = yield this.chat_call.send(messages, null);
-    response_text = response != null ? (response.content ?? "") : "";
+    response_text = response != null
+        ? (response.content != null ? response.content : "")
+        : "";
 } catch (GLib.Error e) {
     this.refine_error = e;
     this.refined_done = true;
@@ -558,7 +595,9 @@ string response_text;
 RefinementOutputParserResult parsed;
 try {
     var response = yield this.chat_call.send(messages, null);
-    response_text = response != null ? (response.content ?? "") : "";
+    response_text = response != null
+        ? (response.content != null ? response.content : "")
+        : "";
     parsed = RefinementOutputParser.parse(response_text);
 } catch (GLib.Error e) {
     this.refine_error = e;
@@ -1527,6 +1566,7 @@ Run these checks on **every file you changed**. Fix violations; do not hand-wave
 | **No defensive re-checks** | No duplicate validation after a module boundary already enforced it |
 | **Debug text** | No class/method names in `GLib.debug()` / `GLib.warning()` messages |
 | **Docblocks** | New/changed APIs have multiline `/** … */` with `@param` where needed |
+| **No `??`** | Search changed `.vala` files for `??` — use ternary or `if (x == null)` default instead |
 
 If you skipped any row because you "already knew" the rule, **stop and run it
 anyway**. Agents repeatedly miss rules they did not verify in the diff.
