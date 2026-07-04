@@ -62,7 +62,7 @@ namespace OLLMrpc.Bin
 					ctx.out_stream.put_byte ((uint8) GLib.Type.STRING);
 					var s = val.get_string () ?? "";
 					if (s.length > 65535) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"Short string prop '%s' is %u bytes — use GLib.Type.BOXED for large payloads",
 							prop.name,
 							s.length
@@ -177,7 +177,7 @@ namespace OLLMrpc.Bin
 				}
 				var ser = obj as Serializable;
 				if (ser == null) {
-					GLib.error (
+					throw new Error.PROPERTY (
 						"prop '%s': type '%s' is not Bin.Serializable",
 						prop.name,
 						obj.get_type ().name ()
@@ -189,7 +189,7 @@ namespace OLLMrpc.Bin
 				return;
 			}
 
-			GLib.error (
+			throw new Error.PROPERTY (
 				"unsupported bin prop type '%s' on '%s'",
 				prop.value_type.name (),
 				prop.name
@@ -212,7 +212,10 @@ namespace OLLMrpc.Bin
 
 				GLib.ParamSpec? prop = this.get_class ().find_property (prop_name);
 				if (prop == null) {
-					GLib.error ("unknown bin property '%s'", prop_name);
+					throw new Error.PROPERTY (
+						"unknown bin property '%s'",
+						prop_name
+					);
 				}
 				this.bin_read_prop (ctx, prop, b);
 			}
@@ -253,7 +256,7 @@ namespace OLLMrpc.Bin
 		{
 			var base_type = (uint8) (type_byte & 0x7F);
 			if ((type_byte & 0x80) != 0) {
-				GLib.error (
+				throw new Error.PROPERTY (
 					"array prop '%s' requires a bin_read_prop override",
 					prop.name
 				);
@@ -265,7 +268,7 @@ namespace OLLMrpc.Bin
 			switch ((GLib.Type) base_type) {
 				case GLib.Type.STRING:
 					if (prop.value_type != GLib.Type.STRING) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -282,7 +285,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.BOOLEAN:
 					if (prop.value_type != GLib.Type.BOOLEAN) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -294,7 +297,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.CHAR:
 					if (prop.value_type != GLib.Type.CHAR) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -306,7 +309,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.UCHAR:
 					if (prop.value_type != GLib.Type.UCHAR) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -318,7 +321,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.ENUM:
 					if (!prop.value_type.is_a (GLib.Type.ENUM)) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -331,7 +334,7 @@ namespace OLLMrpc.Bin
 						return;
 					}
 					if (width != 8) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"invalid enum integer width %u on prop '%s'",
 							width,
 							prop.name
@@ -343,7 +346,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.FLAGS:
 					if (!prop.value_type.is_a (GLib.Type.FLAGS)) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -356,7 +359,7 @@ namespace OLLMrpc.Bin
 						return;
 					}
 					if (width != 8) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"invalid flags integer width %u on prop '%s'",
 							width,
 							prop.name
@@ -368,7 +371,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.INT:
 					if (prop.value_type != GLib.Type.INT) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -381,7 +384,7 @@ namespace OLLMrpc.Bin
 						return;
 					}
 					if (width != 8) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"invalid signed integer width %u on prop '%s'",
 							width,
 							prop.name
@@ -393,7 +396,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.INT64:
 					if (prop.value_type != GLib.Type.INT64) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -406,7 +409,7 @@ namespace OLLMrpc.Bin
 						return;
 					}
 					if (width != 8) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"invalid signed integer width %u on prop '%s'",
 							width,
 							prop.name
@@ -418,7 +421,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.UINT:
 					if (prop.value_type != GLib.Type.UINT) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -431,7 +434,7 @@ namespace OLLMrpc.Bin
 						return;
 					}
 					if (width != 8) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"invalid unsigned integer width %u on prop '%s'",
 							width,
 							prop.name
@@ -443,7 +446,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.UINT64:
 					if (prop.value_type != GLib.Type.UINT64) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -456,7 +459,7 @@ namespace OLLMrpc.Bin
 						return;
 					}
 					if (width != 8) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"invalid unsigned integer width %u on prop '%s'",
 							width,
 							prop.name
@@ -468,7 +471,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.OBJECT:
 					if (!prop.value_type.is_a (GLib.Type.OBJECT)) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -476,7 +479,7 @@ namespace OLLMrpc.Bin
 					}
 					var child = ctx.parse_object ();
 					if (!child.get_type ().is_a (prop.value_type)) {
-						GLib.error (
+						throw new Error.PROPERTY (
 							"prop '%s' cannot assign '%s' to '%s'",
 							prop.name,
 							child.get_type ().name (),
@@ -488,7 +491,7 @@ namespace OLLMrpc.Bin
 					return;
 			}
 
-			GLib.error (
+			throw new Error.PROPERTY (
 				"unsupported wire type 0x%02X on prop '%s'",
 				base_type,
 				prop.name
