@@ -113,8 +113,8 @@ namespace OLLMrpc.Bin
 			var reg_b = this.in_stream.read_byte ();
 			var reg_id = (uint) reg_b;
 			if ((reg_b & 0x80) != 0) {
-				var reg_b2 = this.in_stream.read_byte ();
-				reg_id = ((uint) (reg_b & 0x7F) << 8) | reg_b2;
+				reg_id = ((uint) (reg_b & 0x7F) << 8)
+					| this.in_stream.read_byte ();
 			}
 
 			if (reg_id >= this.names.length) {
@@ -123,16 +123,16 @@ namespace OLLMrpc.Bin
 					reg_id
 				);
 			}
-			var alias = this.names[reg_id];
-			var gtype = this.alias_to_gtype[alias];
-			if (gtype == 0) {
+			if (this.alias_to_gtype[this.names[reg_id]] == 0) {
 				throw new Error.REGISTRATION (
 					"Unrecognized type alias: %s",
-					alias
+					this.names[reg_id]
 				);
 			}
 
-			var obj = (Serializable) GLib.Object.new (gtype);
+			var obj = (Serializable) GLib.Object.new (
+				this.alias_to_gtype[this.names[reg_id]]
+			);
 			obj.bin_read (this);
 			return obj;
 		}
@@ -210,15 +210,14 @@ namespace OLLMrpc.Bin
 
 		public void write_gtype (GLib.Type object_type) throws GLib.Error
 		{
-			var alias = this.gtype_to_alias[object_type];
-			if (alias == null) {
+			if (this.gtype_to_alias[object_type] == null) {
 				throw new Error.REGISTRATION (
 					"Unregistered class type schema: %s",
 					object_type.name ()
 				);
 			}
 
-			if (!this.name_to_token.has_key (alias)) {
+			if (!this.name_to_token.has_key (this.gtype_to_alias[object_type])) {
 				var new_reg_id = (uint) this.names.length;
 
 				this.out_stream.put_byte (0xFF);
@@ -232,20 +231,34 @@ namespace OLLMrpc.Bin
 					this.out_stream.put_byte ((uint8) (new_reg_id & 0xFF));
 				}
 
-				var alias_len = (uint8) uint.min (alias.length, 255);
-				this.out_stream.put_byte (alias_len);
+				this.out_stream.put_byte (
+					(uint8) uint.min (
+						this.gtype_to_alias[object_type].length,
+						255
+					)
+				);
 				size_t written;
 				this.out_stream.write_all (
-					((uint8[]) alias)[0:alias_len],
+					((uint8[]) this.gtype_to_alias[object_type])[
+						0:uint.min (
+							this.gtype_to_alias[object_type].length,
+							255
+						)
+					],
 					out written
 				);
 
-				this.names += alias;
-				this.name_to_token.set (alias, (uint16) new_reg_id);
+				this.names += this.gtype_to_alias[object_type];
+				this.name_to_token.set (
+					this.gtype_to_alias[object_type],
+					(uint16) new_reg_id
+				);
 			}
 
 			this.out_stream.put_byte ((uint8) GLib.Type.OBJECT);
-			var reg_id = (uint) this.name_to_token[alias];
+			var reg_id = (uint) this.name_to_token[
+				this.gtype_to_alias[object_type]
+			];
 			if (reg_id < 128) {
 				this.out_stream.put_byte ((uint8) reg_id);
 				return;
@@ -270,8 +283,8 @@ namespace OLLMrpc.Bin
 			var reg_b = this.in_stream.read_byte ();
 			var assigned_id = (uint) reg_b;
 			if ((reg_b & 0x80) != 0) {
-				var reg_b2 = this.in_stream.read_byte ();
-				assigned_id = ((uint) (reg_b & 0x7F) << 8) | reg_b2;
+				assigned_id = ((uint) (reg_b & 0x7F) << 8)
+					| this.in_stream.read_byte ();
 			}
 
 			var len = this.in_stream.read_byte ();
@@ -281,8 +294,7 @@ namespace OLLMrpc.Bin
 			buffer[len] = 0;
 			var alias = (string) buffer;
 
-			var gtype = this.alias_to_gtype[alias];
-			if (gtype == 0) {
+			if (this.alias_to_gtype[alias] == 0) {
 				throw new Error.REGISTRATION (
 					"Unrecognized type alias: %s",
 					alias
