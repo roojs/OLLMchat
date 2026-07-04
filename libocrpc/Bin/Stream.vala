@@ -23,19 +23,14 @@ namespace OLLMrpc.Bin
 		public GLib.DataOutputStream? out_stream { get; construct; }
 		public GLib.DataInputStream? in_stream { get; construct; }
 
-		private Gee.HashMap<string, uint16> name_to_token =
+		internal string[] names = {};
+		internal Gee.HashMap<string, uint16> name_to_token =
 			new Gee.HashMap<string, uint16> ();
-		private Gee.HashMap<uint16, string> token_to_name =
-			new Gee.HashMap<uint16, string> ();
-
-		private uint16 next_token_id = 0;
 
 		private Gee.HashMap<string, GLib.Type> alias_to_gtype =
 			new Gee.HashMap<string, GLib.Type> ();
 		private Gee.HashMap<GLib.Type, string> gtype_to_alias =
 			new Gee.HashMap<GLib.Type, string> ();
-
-		private int pending_byte = -1;
 
 		public const uint16 TOKEN_REG_KEY = 0xFFFF;
 		public const uint16 TOKEN_END = 0xFFFD;
@@ -44,8 +39,8 @@ namespace OLLMrpc.Bin
 		 * Register a wire alias on this connection's stream.
 		 *
 		 * Maps {@param alias} to {@param gtype} for instantiation on decode.
-		 * The alias string shares the connection's wire-name token table with
-		 * property keys; tokens are learned on the wire via {@link TOKEN_REG_KEY}.
+		 * The alias string shares the connection wire-name table with property
+		 * keys; tokens are learned on the wire via {@link TOKEN_REG_KEY}.
 		 * Registration order is not significant.
 		 *
 		 * @param alias wire type name
@@ -86,20 +81,56 @@ namespace OLLMrpc.Bin
 
 		public Serializable parse () throws GLib.Error
 		{
-			while (this.try_consume_name_intro ()) {
-			}
+			while (true) {
+				var b = this.in_stream.read_byte ();
+				if (b != 0xFF) {
+					if ((b & 0x80) != 0) {
+						GLib.error ("root parse does not accept object arrays");
+					}
+					if (b != (uint8) GLib.Type.OBJECT) {
+						GLib.error (
+							"expected object type byte, got 0x%02X",
+							b
+						);
+					}
+					var token = this.in_stream.read_uint16 ();
+					return this.parse_object_at_token (token);
+				}
 
-			var b = this.read_byte_or_pending ();
-			if ((b & 0x80) != 0) {
-				GLib.error ("root parse does not accept object arrays");
+				var b2 = this.in_stream.read_byte ();
+				if (b2 != 0xFF) {
+					GLib.error (
+						"unexpected byte 0x%02X after 0xFF",
+						b2
+					);
+				}
+
+				var assigned_id = this.in_stream.read_uint16 ();
+				var len = this.in_stream.read_byte ();
+				var buffer = new uint8[len + 1];
+				size_t read_bytes;
+				this.in_stream.read_all (buffer[0:len], out read_bytes);
+				buffer[len] = 0;
+				var wire_name = (string) buffer;
+
+				this.in_stream.read_uint16 ();
+
+				if (assigned_id > this.names.length) {
+					GLib.error (
+						"wire name token %u out of sequence",
+						assigned_id
+					);
+				}
+				if (assigned_id == this.names.length) {
+					this.names += wire_name;
+				} else if (this.names[assigned_id] != wire_name) {
+					GLib.error (
+						"wire name token %u alias mismatch",
+						assigned_id
+					);
+				}
+				this.name_to_token.set (wire_name, assigned_id);
 			}
-			if (b != (uint8) GLib.Type.OBJECT) {
-				GLib.error (
-					"expected object type byte, got 0x%02X",
-					b
-				);
-			}
-			return this.parse_object_after_type_byte ();
 		}
 
 		/**
@@ -110,18 +141,32 @@ namespace OLLMrpc.Bin
 		 */
 		public Serializable parse_object () throws GLib.Error
 		{
-			return this.parse_object_after_type_byte ();
+			var token = this.in_stream.read_uint16 ();
+			return this.parse_object_at_token (token);
 		}
 
 		public void write_tag (string prop_name) throws GLib.Error
 		{
 			if (this.name_to_token.has_key (prop_name)) {
-				this.out_stream.put_uint16 (this.name_to_token.get (prop_name));
+				this.out_stream.put_uint16 (this.name_to_token[prop_name]);
 				return;
 			}
 
-			this.write_name_intro (prop_name);
-			this.out_stream.put_uint16 (this.name_to_token.get (prop_name));
+			var id = (uint16) this.names.length;
+			this.out_stream.put_uint16 (TOKEN_REG_KEY);
+			this.out_stream.put_uint16 (id);
+
+			var len = (uint8) uint.min (prop_name.length, 255);
+			this.out_stream.put_byte (len);
+			size_t written;
+			this.out_stream.write_all (
+				((uint8[]) prop_name)[0:len],
+				out written
+			);
+
+			this.names += prop_name;
+			this.name_to_token.set (prop_name, id);
+			this.out_stream.put_uint16 (id);
 		}
 
 		internal uint16 read_tag (out string prop_name) throws GLib.Error
@@ -134,7 +179,10 @@ namespace OLLMrpc.Bin
 			}
 
 			if (t != TOKEN_REG_KEY) {
-				prop_name = this.token_to_name.get (t);
+				if (t >= this.names.length) {
+					GLib.error ("unknown wire name token %u", t);
+				}
+				prop_name = this.names[t];
 				return t;
 			}
 
@@ -147,14 +195,27 @@ namespace OLLMrpc.Bin
 			buffer[len] = 0;
 			prop_name = (string) buffer;
 
+			if (assigned_id > this.names.length) {
+				GLib.error (
+					"wire name token %u out of sequence",
+					assigned_id
+				);
+			}
+			if (assigned_id == this.names.length) {
+				this.names += prop_name;
+			} else if (this.names[assigned_id] != prop_name) {
+				GLib.error (
+					"wire name token %u alias mismatch",
+					assigned_id
+				);
+			}
 			this.name_to_token.set (prop_name, assigned_id);
-			this.token_to_name.set (assigned_id, prop_name);
 			return this.read_tag (out prop_name);
 		}
 
 		public void write_gtype (GLib.Type object_type) throws GLib.Error
 		{
-			var alias = this.gtype_to_alias.get (object_type);
+			var alias = this.gtype_to_alias[object_type];
 			if (alias == null) {
 				GLib.error (
 					"Unregistered class type schema: %s",
@@ -163,72 +224,34 @@ namespace OLLMrpc.Bin
 			}
 
 			if (!this.name_to_token.has_key (alias)) {
-				this.write_name_intro (alias);
-				this.out_stream.put_uint16 (this.name_to_token.get (alias));
+				var id = (uint16) this.names.length;
+				this.out_stream.put_uint16 (TOKEN_REG_KEY);
+				this.out_stream.put_uint16 (id);
+
+				var len = (uint8) uint.min (alias.length, 255);
+				this.out_stream.put_byte (len);
+				size_t written;
+				this.out_stream.write_all (
+					((uint8[]) alias)[0:len],
+					out written
+				);
+
+				this.names += alias;
+				this.name_to_token.set (alias, id);
+				this.out_stream.put_uint16 (id);
 			}
 
 			this.out_stream.put_byte ((uint8) GLib.Type.OBJECT);
-			this.out_stream.put_uint16 (this.name_to_token.get (alias));
+			this.out_stream.put_uint16 (this.name_to_token[alias]);
 		}
 
-		internal void write_name_intro (string name) throws GLib.Error
+		private Serializable parse_object_at_token (uint16 token) throws GLib.Error
 		{
-			var id = this.next_token_id++;
-			this.out_stream.put_uint16 (TOKEN_REG_KEY);
-			this.out_stream.put_uint16 (id);
-
-			var len = (uint8) uint.min (name.length, 255);
-			this.out_stream.put_byte (len);
-			size_t written;
-			this.out_stream.write_all (((uint8[]) name)[0:len], out written);
-
-			this.name_to_token.set (name, id);
-			this.token_to_name.set (id, name);
-		}
-
-		internal bool try_consume_name_intro () throws GLib.Error
-		{
-			var b1 = this.read_byte_or_pending ();
-			if (b1 != 0xFF) {
-				this.pending_byte = b1;
-				return false;
-			}
-
-			var b2 = this.in_stream.read_byte ();
-			if (b2 != 0xFF) {
-				this.pending_byte = b2;
-				return false;
-			}
-
-			this.read_name_intro_payload ();
-			return true;
-		}
-
-		internal void read_name_intro_payload () throws GLib.Error
-		{
-			var assigned_id = this.in_stream.read_uint16 ();
-			var len = this.in_stream.read_byte ();
-
-			var buffer = new uint8[len + 1];
-			size_t read_bytes;
-			this.in_stream.read_all (buffer[0:len], out read_bytes);
-			buffer[len] = 0;
-			var name = (string) buffer;
-
-			this.in_stream.read_uint16 ();
-
-			this.name_to_token.set (name, assigned_id);
-			this.token_to_name.set (assigned_id, name);
-		}
-
-		private Serializable parse_object_after_type_byte () throws GLib.Error
-		{
-			var token = this.in_stream.read_uint16 ();
-			var alias = this.token_to_name.get (token);
-			if (alias == null) {
+			if (token >= this.names.length) {
 				GLib.error ("unknown wire name token %u", token);
 			}
-			var gtype = this.alias_to_gtype.get (alias);
+			var alias = this.names[token];
+			var gtype = this.alias_to_gtype[alias];
 			if (gtype == 0) {
 				GLib.error ("Unrecognized type alias: %s", alias);
 			}
@@ -236,22 +259,6 @@ namespace OLLMrpc.Bin
 			var obj = (Serializable) GLib.Object.new (gtype);
 			obj.bin_read (this);
 			return obj;
-		}
-
-		internal uint8 read_byte () throws GLib.Error
-		{
-			return this.read_byte_or_pending ();
-		}
-
-		private uint8 read_byte_or_pending () throws GLib.Error
-		{
-			if (this.pending_byte >= 0) {
-				var b = (uint8) this.pending_byte;
-				this.pending_byte = -1;
-				return b;
-			}
-
-			return this.in_stream.read_byte ();
 		}
 	}
 }
