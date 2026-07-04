@@ -196,13 +196,15 @@ namespace OLLMrpc.Bin
 					assigned_id
 				);
 			}
-			if (assigned_id == this.names.length) {
-				this.names += prop_name;
-			} else if (this.names[assigned_id] != prop_name) {
+			if (assigned_id < this.names.length
+				&& this.names[assigned_id] != prop_name) {
 				throw new Error.PROTOCOL (
 					"wire name token %u alias mismatch",
 					assigned_id
 				);
+			}
+			if (assigned_id == this.names.length) {
+				this.names += prop_name;
 			}
 			this.name_to_token.set (prop_name, assigned_id);
 			return this.read_tag (out prop_name);
@@ -307,13 +309,15 @@ namespace OLLMrpc.Bin
 					assigned_id
 				);
 			}
-			if (assigned_id == this.names.length) {
-				this.names += alias;
-			} else if (this.names[assigned_id] != alias) {
+			if (assigned_id < this.names.length
+				&& this.names[assigned_id] != alias) {
 				throw new Error.PROTOCOL (
 					"wire name token %u alias mismatch",
 					assigned_id
 				);
+			}
+			if (assigned_id == this.names.length) {
+				this.names += alias;
 			}
 			this.name_to_token.set (alias, (uint16) assigned_id);
 		}
