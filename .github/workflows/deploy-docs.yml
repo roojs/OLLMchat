@@ -112,8 +112,9 @@ jobs:
 
       - name: Setup meson build
         run: |
-          # Setup meson build (only configures, doesn't build anything yet)
-          meson setup build --prefix=/usr
+          # Docs-only configure: tests require examples + v2testing=false (shipping),
+          # but the default v2testing=true is correct for this workflow.
+          meson setup build --prefix=/usr -Dtests=false
 
       - name: Build documentation
         run: |
