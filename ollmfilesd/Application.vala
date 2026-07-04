@@ -386,7 +386,7 @@ namespace OLLMfilesd
 		 * Double-fork detach, then {@code exec} a fresh process image.
 		 * GObject state must not survive {@code fork} without {@code exec}.
 		 *
-		 * @param args process argv passed to {@code execv}
+		 * @param args process argv passed to {@code execvp}
 		 * @return true in the parent (caller should exit 0); does not return in
 		 *   the daemon child when {@code exec} succeeds
 		 */
@@ -431,7 +431,7 @@ namespace OLLMfilesd
 				"1",
 				true
 			);
-			Posix.execv(args[0], args);
+			Posix.execvp(args[0], args);
 			Posix._exit(1);
 			return false;
 		}

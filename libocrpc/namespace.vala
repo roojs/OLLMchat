@@ -20,8 +20,6 @@
  */
 namespace OLLMrpc
 {
-	internal class NamespaceDoc {}
-
 	/** Wire name → GType for {@link Response.result} deserialize on the client. */
 	public static Gee.HashMap<string, Type> types;
 

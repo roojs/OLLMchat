@@ -493,7 +493,7 @@ Properties omitted on write:
 
 On read, any property not present on the wire keeps its GObject default (typically set by `default = …` in Vala).
 
-Writers omit transient fields by overriding `bin_write_prop`. Unsupported types throw `OLLMrpc.Bin.Error`. Readers throw on unknown keys or undecodable properties. Array-flagged type bytes (`0x80` on bit 7) require a `bin_read_prop` override on the receiving type.
+Writers omit transient fields by overriding `bin_write_prop`. Unsupported types throw `OLLMrpc.Bin.SerializableError`. Readers throw on unknown keys or undecodable properties. Array-flagged type bytes (`0x80` on bit 7) require a `bin_read_prop` override on the receiving type.
 
 ---
 

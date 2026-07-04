@@ -1,4 +1,7 @@
 # libocrpc — shared JSON-RPC wire types (OLLMrpc namespace)
+#
+# NOTE: Placeholder namespace.vala files (NamespaceDoc only) live in docs/meson.build
+# valadoc input only — not here. See docs/code-documentation.md § Valadoc build.
 
 valac = meson.get_compiler('vala')
 is_windows = host_machine.system() == 'windows'
@@ -43,10 +46,8 @@ endif
 
 ocrpc_src = files([
   'namespace.vala',
-  'Bin/namespace.vala',
   'Bin/Stream.vala',
   'Bin/Serializable.vala',
-  'Transport/namespace.vala',
   'Transport/Connection.vala',
   'Transport/Listen.vala',
   'Transport/TcpListen.vala',

@@ -13,6 +13,24 @@
 
 namespace OLLMrpc.Bin
 {
+	/** Process-wide wire alias → GType (like {@link OLLMrpc.types}). */
+	private static Gee.HashMap<string, GLib.Type> alias_to_gtype;
+
+	/** Process-wide GType → wire alias. */
+	private static Gee.HashMap<GLib.Type, string> gtype_to_alias;
+
+	/**
+	 * {@link Stream} wire / registration failures (throw/catch).
+	 *
+	 * Not {@link GLib.Error} abort — use {@code throw new StreamError.*} from
+	 * {@link Stream} encode/decode paths.
+	 */
+	public errordomain StreamError
+	{
+		PROTOCOL,
+		REGISTRATION
+	}
+
 	/**
 	 * Per-connection bin codec: I/O streams, JIT key/type maps, {{{write}}} / {{{parse}}}.
 	 *
@@ -26,11 +44,6 @@ namespace OLLMrpc.Bin
 		internal string[] names = {};
 		internal Gee.HashMap<string, uint16> name_to_token =
 			new Gee.HashMap<string, uint16> ();
-
-		private static Gee.HashMap<string, GLib.Type> alias_to_gtype =
-			new Gee.HashMap<string, GLib.Type> ();
-		private static Gee.HashMap<GLib.Type, string> gtype_to_alias =
-			new Gee.HashMap<GLib.Type, string> ();
 
 		public const uint16 TOKEN_REG_KEY = 0xFFFF;
 		public const uint16 TOKEN_REG_TYPE = 0xFFFE;
@@ -54,8 +67,12 @@ namespace OLLMrpc.Bin
 			GLib.Type gtype
 		) throws GLib.Error
 		{
+			if (alias_to_gtype == null) {
+				alias_to_gtype = new Gee.HashMap<string, GLib.Type> ();
+				gtype_to_alias = new Gee.HashMap<GLib.Type, string> ();
+			}
 			if (alias_to_gtype.has_key (alias)) {
-				throw new Error.REGISTRATION (
+				throw new StreamError.REGISTRATION (
 					"duplicate register of alias '%s'",
 					alias
 				);
@@ -96,12 +113,12 @@ namespace OLLMrpc.Bin
 				b = this.in_stream.read_byte ();
 			}
 			if ((b & 0x80) != 0) {
-				throw new Error.PROTOCOL (
+				throw new StreamError.PROTOCOL (
 					"root parse does not accept object arrays"
 				);
 			}
 			if (b != (uint8) GLib.Type.OBJECT) {
-				throw new Error.PROTOCOL (
+				throw new StreamError.PROTOCOL (
 					"expected object type byte, got 0x%02X",
 					b
 				);
@@ -156,7 +173,7 @@ namespace OLLMrpc.Bin
 
 			if (t != TOKEN_REG_KEY) {
 				if (t >= this.names.length) {
-					throw new Error.PROTOCOL (
+					throw new StreamError.PROTOCOL (
 						"unknown wire name token %u",
 						t
 					);
@@ -175,14 +192,14 @@ namespace OLLMrpc.Bin
 			prop_name = (string) buffer;
 
 			if (assigned_id > this.names.length) {
-				throw new Error.PROTOCOL (
+				throw new StreamError.PROTOCOL (
 					"wire name token %u out of sequence",
 					assigned_id
 				);
 			}
 			if (assigned_id < this.names.length
 				&& this.names[assigned_id] != prop_name) {
-				throw new Error.PROTOCOL (
+				throw new StreamError.PROTOCOL (
 					"wire name token %u alias mismatch",
 					assigned_id
 				);
@@ -200,7 +217,7 @@ namespace OLLMrpc.Bin
 		) throws GLib.Error
 		{
 			if ((type_byte & 0x7F) != (uint8) GLib.Type.OBJECT) {
-				throw new Error.PROTOCOL (
+				throw new StreamError.PROTOCOL (
 					"write_gtype type_byte 0x%02X is not object",
 					type_byte
 				);
@@ -229,7 +246,7 @@ namespace OLLMrpc.Bin
 		internal void write_reg_gtype (GLib.Type object_type) throws GLib.Error
 		{
 			if (!gtype_to_alias.has_key (object_type)) {
-				throw new Error.REGISTRATION (
+				throw new StreamError.REGISTRATION (
 					"Unregistered class type schema: %s",
 					object_type.name ()
 				);
@@ -293,13 +310,13 @@ namespace OLLMrpc.Bin
 			}
 
 			if (reg_id >= this.names.length) {
-				throw new Error.PROTOCOL (
+				throw new StreamError.PROTOCOL (
 					"unknown wire name token %u",
 					reg_id
 				);
 			}
 			if (!alias_to_gtype.has_key (this.names[reg_id])) {
-				throw new Error.REGISTRATION (
+				throw new StreamError.REGISTRATION (
 					"Unrecognized type alias: %s",
 					this.names[reg_id]
 				);
@@ -312,7 +329,7 @@ namespace OLLMrpc.Bin
 		{
 			var b1 = this.in_stream.read_byte ();
 			if (b1 != 0xFE) {
-				throw new Error.PROTOCOL (
+				throw new StreamError.PROTOCOL (
 					"unexpected byte 0x%02X after 0xFF",
 					b1
 				);
@@ -333,21 +350,21 @@ namespace OLLMrpc.Bin
 			var alias = (string) buffer;
 
 			if (!alias_to_gtype.has_key (alias)) {
-				throw new Error.REGISTRATION (
+				throw new StreamError.REGISTRATION (
 					"Unrecognized type alias: %s",
 					alias
 				);
 			}
 
 			if (assigned_id > this.names.length) {
-				throw new Error.PROTOCOL (
+				throw new StreamError.PROTOCOL (
 					"wire name token %u out of sequence",
 					assigned_id
 				);
 			}
 			if (assigned_id < this.names.length
 				&& this.names[assigned_id] != alias) {
-				throw new Error.PROTOCOL (
+				throw new StreamError.PROTOCOL (
 					"wire name token %u alias mismatch",
 					assigned_id
 				);

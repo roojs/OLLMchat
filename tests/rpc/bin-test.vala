@@ -75,13 +75,13 @@ namespace OLLMrpcTests
 				case "items":
 					if ((type_byte & 0x7F) != GLib.Type.OBJECT
 						|| (type_byte & 0x80) == 0) {
-						throw new OLLMrpc.Bin.Error.PROPERTY (
+						throw new OLLMrpc.Bin.SerializableError.PROPERTY (
 							"prop '%s' expected object array",
 							prop.name
 						);
 					}
 					if (ctx.read_gtype () != typeof (TestPair)) {
-						throw new OLLMrpc.Bin.Error.PROPERTY (
+						throw new OLLMrpc.Bin.SerializableError.PROPERTY (
 							"prop '%s' expected TestPair elements",
 							prop.name
 						);

@@ -14,6 +14,17 @@
 namespace OLLMrpc.Bin
 {
 	/**
+	 * {@link Serializable} property encode/decode failures (throw/catch).
+	 *
+	 * Not {@link GLib.Error} abort — use {@code throw new SerializableError.*}
+	 * from {@link bin_write_prop} / {@link bin_read_prop} paths.
+	 */
+	public errordomain SerializableError
+	{
+		PROPERTY
+	}
+
+	/**
 	 * GObject types that read/write on a {@link Stream} session.
 	 *
 	 * Default {@link bin_write_prop} / {@link bin_read_prop} cover scalar
@@ -229,7 +240,7 @@ namespace OLLMrpc.Bin
 					return;
 				}
 				if ((val.get_object () as Serializable) == null) {
-					throw new Error.PROPERTY (
+					throw new SerializableError.PROPERTY (
 						"prop '%s': type '%s' is not Bin.Serializable",
 						prop.name,
 						val.get_object ().get_type ().name ()
@@ -241,7 +252,7 @@ namespace OLLMrpc.Bin
 				return;
 			}
 
-			throw new Error.PROPERTY (
+			throw new SerializableError.PROPERTY (
 				"unsupported bin prop type '%s' on '%s'",
 				prop.value_type.name (),
 				prop.name
@@ -264,7 +275,7 @@ namespace OLLMrpc.Bin
 
 				var prop = this.get_class ().find_property (prop_name);
 				if (prop == null) {
-					throw new Error.PROPERTY (
+					throw new SerializableError.PROPERTY (
 						"unknown bin property '%s'",
 						prop_name
 					);
@@ -313,7 +324,7 @@ namespace OLLMrpc.Bin
 				case GLib.Type.STRING:
 					if ((type_byte & 0x80) != 0) {
 						if (prop.value_type != typeof (string[])) {
-							throw new Error.PROPERTY (
+							throw new SerializableError.PROPERTY (
 								"prop '%s' cannot decode wire string[]",
 								prop.name
 							);
@@ -347,7 +358,7 @@ namespace OLLMrpc.Bin
 					}
 
 					if (prop.value_type != GLib.Type.STRING) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -371,7 +382,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.BOXED:
 					if (prop.value_type != GLib.Type.STRING) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire blob 0x%02X",
 							prop.name,
 							type_byte
@@ -391,7 +402,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.BOOLEAN:
 					if (prop.value_type != GLib.Type.BOOLEAN) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -403,7 +414,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.CHAR:
 					if (prop.value_type != GLib.Type.CHAR) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -415,7 +426,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.UCHAR:
 					if (prop.value_type != GLib.Type.UCHAR) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -427,7 +438,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.ENUM:
 					if (!prop.value_type.is_a (GLib.Type.ENUM)) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -440,7 +451,7 @@ namespace OLLMrpc.Bin
 						return;
 					}
 					if (width != 8) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"invalid enum integer width %u on prop '%s'",
 							width,
 							prop.name
@@ -452,7 +463,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.FLAGS:
 					if (!prop.value_type.is_a (GLib.Type.FLAGS)) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -465,7 +476,7 @@ namespace OLLMrpc.Bin
 						return;
 					}
 					if (width != 8) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"invalid flags integer width %u on prop '%s'",
 							width,
 							prop.name
@@ -477,7 +488,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.INT:
 					if (prop.value_type != GLib.Type.INT) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -490,7 +501,7 @@ namespace OLLMrpc.Bin
 						return;
 					}
 					if (width != 8) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"invalid signed integer width %u on prop '%s'",
 							width,
 							prop.name
@@ -502,7 +513,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.INT64:
 					if (prop.value_type != GLib.Type.INT64) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -515,7 +526,7 @@ namespace OLLMrpc.Bin
 						return;
 					}
 					if (width != 8) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"invalid signed integer width %u on prop '%s'",
 							width,
 							prop.name
@@ -527,7 +538,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.UINT:
 					if (prop.value_type != GLib.Type.UINT) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -540,7 +551,7 @@ namespace OLLMrpc.Bin
 						return;
 					}
 					if (width != 8) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"invalid unsigned integer width %u on prop '%s'",
 							width,
 							prop.name
@@ -552,7 +563,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.UINT64:
 					if (prop.value_type != GLib.Type.UINT64) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -565,7 +576,7 @@ namespace OLLMrpc.Bin
 						return;
 					}
 					if (width != 8) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"invalid unsigned integer width %u on prop '%s'",
 							width,
 							prop.name
@@ -577,7 +588,7 @@ namespace OLLMrpc.Bin
 
 				case GLib.Type.OBJECT:
 					if (!prop.value_type.is_a (GLib.Type.OBJECT)) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot decode wire type 0x%02X",
 							prop.name,
 							type_byte
@@ -585,7 +596,7 @@ namespace OLLMrpc.Bin
 					}
 					var child = ctx.parse_object ();
 					if (!child.get_type ().is_a (prop.value_type)) {
-						throw new Error.PROPERTY (
+						throw new SerializableError.PROPERTY (
 							"prop '%s' cannot assign '%s' to '%s'",
 							prop.name,
 							child.get_type ().name (),
@@ -598,13 +609,13 @@ namespace OLLMrpc.Bin
 			}
 
 			if ((type_byte & 0x80) != 0) {
-				throw new Error.PROPERTY (
+				throw new SerializableError.PROPERTY (
 					"array prop '%s' requires a bin_read_prop override",
 					prop.name
 				);
 			}
 
-			throw new Error.PROPERTY (
+			throw new SerializableError.PROPERTY (
 				"unsupported wire type 0x%02X on prop '%s'",
 				type_byte & 0x7F,
 				prop.name
