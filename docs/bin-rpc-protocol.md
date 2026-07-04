@@ -10,27 +10,38 @@ The **type byte** on the wire is always a `GLib.Type` fundamental value (optiona
 
 ## 1. Overview
 
-A **connection** maintains three tables on its `OLLMrpc.Bin.Stream` instance:
+A **connection** maintains two tables on its `OLLMrpc.Bin.Stream` instance:
 
-1. **Property names** — learned on the wire via `TOKEN_REG_KEY` (`"name"`, `"count"`, … → uint16 key tokens).
-2. **Object type aliases** — registered locally via `Stream.register(alias, gtype)` before decode. Each end maps alias strings to `GLib.Type`; **registration order does not matter**.
-3. **Wire `reg_id` ↔ alias** — learned on the wire via `TOKEN_REG_TYPE` when a type is first sent. The sender assigns numeric `reg_id`s JIT; the receiver records the mapping from the introduction block.
+1. **Wire names** — one shared string → uint16 token map for **both** property keys (`"name"`, `"count"`, …) and object type aliases (`"TestPair"`, `"File"`, …). Tokens are assigned either from a pre-shared catalog (`register_names()`) or learned on the wire via `TOKEN_REG_KEY`.
+2. **Type aliases → GType** — registered locally via `Stream.register(alias, gtype)` before decode. Maps alias strings to `GLib.Type` for `GLib.Object.new()` on read.
 
-Every **property value**: key token → one-byte **type** (`GLib.Type` fundamental) → payload. When the type is `GLib.Type.OBJECT`, a **`reg_id`** follows before the nested property stream. Unknown key or unknown `reg_id` (with no prior `TOKEN_REG_TYPE` for that id) → protocol error.
+Every **property value**: name token → one-byte **type** (`GLib.Type` fundamental) → payload. When the type is `GLib.Type.OBJECT`, a **name token** (uint16) identifying the object alias follows before the nested property stream. Unknown token or unrecognized alias → protocol error.
+
+### Shared name catalog
+
+Both ends load the **same** `string[]` catalog at channel setup. Index `i` in the array is wire token `i` for that string — whether it is a property name or a type alias:
+
+```vala
+const string[] WIRE_NAMES = {
+    "TestPair", "TestParent", "File", "Folder",
+    "name", "count", "label", "child",
+};
+
+var bin = new OLLMrpc.Bin.Stream (in_stream, out_stream);
+bin.register_names (WIRE_NAMES);
+bin.register ("TestPair", typeof (TestPair));
+bin.register ("File", typeof (OLLMfiles.V2.File));
+```
+
+`register()` call order is arbitrary. The catalog array order is **not** arbitrary — both peers must use the identical array so token numbers agree without wire introductions.
+
+Strings not in the catalog are still introduced with `TOKEN_REG_KEY` on first use (same format for property keys and type aliases).
 
 ### Registration vs JSON RPC
 
-Bin registration is **per connection** and maps **alias → GType**:
+Bin registration is **per connection**: `register_names()` for the shared string table, `register(alias, gtype)` for GObject types.
 
-```vala
-var bin = new OLLMrpc.Bin.Stream (in_stream, out_stream);
-bin.register ("File", typeof (OLLMfiles.V2.File));
-bin.register ("Folder", typeof (OLLMfiles.V2.Folder));
-```
-
-Client and server each call `register()` with the **same alias strings** and matching `GLib.Type` values. Call order on either side is arbitrary. Numeric `reg_id`s are **not** assigned at `register()` time — they are negotiated on the wire per connection when a type is first encoded.
-
-JSON RPC today uses a separate, **process-wide** map via `OLLMrpc.register(name, gtype)` keyed by string names in `Response.result_type`. The two APIs coexist until bin cutover (see plan 8.1). Aliases should match JSON wire names where both apply.
+JSON RPC today uses a separate, **process-wide** map via `OLLMrpc.register(name, gtype)` keyed by string names in `Response.result_type`. The two APIs coexist until bin cutover (see plan 8.1). Alias strings should match JSON wire names where both apply.
 
 Domain types implement `OLLMrpc.Bin.Serializable` (often by extending `OLLMrpc.Bin.Object`) for bin encoding. JSON `rpc_register()` does **not** register types on a `Stream` — that happens at channel setup.
 
@@ -53,35 +64,21 @@ Object on the wire:
 new TestPair () { name = "alpha", count = 42 }
 ```
 
-**First** message (keys `"name"` and `"count"` not yet seen on this connection; type `"TestPair"` not yet sent):
+**First** message with shared catalog (`TestPair` = token 0, `name` = 3, `count` = 4):
 
 ```text
-;; --- introduce type "TestPair" (first send on this connection) ---
-FF FE                    ;; TOKEN_REG_TYPE
-00                       ;; assigned reg_id 0
-08                       ;; alias length
-54 65 73 74 50 61 69 72  ;; "TestPair"
-
-;; --- root object header ---
+;; --- root object header (catalog already loaded on both ends) ---
 50                       ;; G_TYPE_OBJECT (80)
-00                       ;; reg_id 0 → TestPair
+00 00                    ;; name token 0 → "TestPair"
 
-;; --- property "name" = "alpha" (first sight of key "name") ---
-FF FF                    ;; TOKEN_REG_KEY
-00 00                    ;; assigned key token 0
-04                       ;; name length
-6E 61 6D 65              ;; "name"
-00 00                    ;; key token 0 (reference)
+;; --- property "name" = "alpha" ---
+00 03                    ;; name token 3 → "name"
 40                       ;; type byte: G_TYPE_STRING (64)
 00 05                    ;; UTF-8 length 5
 61 6C 70 68 61           ;; "alpha"
 
-;; --- property "count" = 42 (first sight of key "count") ---
-FF FF                    ;; TOKEN_REG_KEY
-00 01                    ;; assigned key token 1
-05                       ;; name length
-63 6F 75 6E 74           ;; "count"
-00 01                    ;; key token 1 (reference)
+;; --- property "count" = 42 ---
+00 04                    ;; name token 4 → "count"
 18                       ;; type byte: G_TYPE_INT (24)
 01                       ;; width: 1 byte payload
 2A                       ;; value 42
@@ -90,22 +87,32 @@ FF FF                    ;; TOKEN_REG_KEY
 FF FD                    ;; TOKEN_END
 ```
 
-**Second** message of the same type on the same connection (keys and alias already cached):
+**Without a catalog** (first sight of type and keys on this connection), `TOKEN_REG_KEY` introductions precede cached references — same format for type aliases and property names:
+
+```text
+FF FF 00 00 08 54 65 73 74 50 61 69 72 00 00   ;; introduce "TestPair" → token 0
+50 00 00                                        ;; G_TYPE_OBJECT + token 0
+FF FF 00 03 04 6E 61 6D 65 00 03                ;; introduce "name" → token 3
+40 00 05 61 6C 70 68 61                         ;; string "alpha"
+…
+```
+
+**Second** message on the same connection (tokens already known):
 
 ```text
 50                       ;; G_TYPE_OBJECT (80)
-00                       ;; reg_id 0
-00 00                    ;; key token 0 → "name"
+00 00                    ;; name token 0 → "TestPair"
+00 03                    ;; name token 3 → "name"
 40                       ;; G_TYPE_STRING (64)
 00 05
 61 6C 70 68 61           ;; "alpha"
-00 01                    ;; key token 1 → "count"
+00 04                    ;; name token 4 → "count"
 18                       ;; G_TYPE_INT (24)
 01 2A                    ;; width 1, value 42
 FF FD                    ;; TOKEN_END
 ```
 
-No `TOKEN_REG_KEY` blocks appear again until a new property name is seen.
+No `TOKEN_REG_KEY` blocks appear when the shared catalog already covers every name on the wire.
 
 ---
 
@@ -113,7 +120,7 @@ No `TOKEN_REG_KEY` blocks appear again until a new property name is seen.
 
 ```text
 50                              ;; GLib.Type.OBJECT (80), array flag clear
-reg_id                          ;; 1 byte (0–127) or 2-byte escape (see §6)
+name_token    uint16            ;; wire name for object type (§5)
 properties…                     ;; zero or more property encodings
 FF FD                           ;; TOKEN_END (uint16)
 ```
@@ -127,9 +134,9 @@ A root message is **never** an object array (`0xD0` = `GLib.Type.OBJECT | 0x80`)
 Each property:
 
 ```text
-key_token    uint16     ;; cached id, or TOKEN_REG_KEY introduction (§5)
+name_token   uint16     ;; cached id, or TOKEN_REG_KEY introduction (§5)
 type_byte    uint8      ;; GLib.Type fundamental + optional array flag (§7)
-reg_id       0–2 bytes  ;; only when base type is GLib.Type.OBJECT (0x50)
+name_token   uint16     ;; only when base type is GLib.Type.OBJECT (0x50)
 payload      …          ;; depends on type (§8–§14)
 ```
 
@@ -137,88 +144,86 @@ The object ends with `FF FD` (`TOKEN_END`).
 
 ---
 
-## 5. Property key tokens (uint16)
+## 5. Wire names and tokens (uint16)
+
+Property keys and object type aliases share one **name token** space per connection.
 
 | Value | Meaning |
 | ----- | ------- |
-| `0xFFFF` | `TOKEN_REG_KEY` — introduce a new property name |
+| `0xFFFF` | `TOKEN_REG_KEY` — introduce a new wire name (property or type alias) |
 | `0xFFFD` | `TOKEN_END` — end of property stream |
 
-**Introduction** (first time `"label"` is sent):
+### Pre-shared catalog (`register_names`)
+
+Both ends call `register_names(string[] names)` with the **same array**. Token `i` maps to `names[i]`. No `TOKEN_REG_KEY` block is needed on the wire for cataloged names.
+
+### JIT introduction
+
+When a name is not yet in the catalog or learned from the wire, the sender emits:
 
 ```text
 FF FF           TOKEN_REG_KEY
-00 02           assigned id 2
+00 02           assigned token 2
 05              name length
 6C 61 62 65 6C  "label"
-00 02           reference id 2
-…               type_byte + payload follow
+00 02           reference token 2
+…               type_byte + payload follow (properties only)
 ```
 
-**Cached reference** (every later `"label"`):
+For an object type header, the introduction is followed by `50` + uint16 token (not another reference token).
+
+**Cached reference** (every later use of `"label"`):
 
 ```text
-00 02           key token 2 only
-…               type_byte + payload
+00 02           name token 2 only
+…               type_byte + payload (properties)
 ```
 
-Property names are limited to 255 bytes on introduction.
+Wire names are limited to 255 bytes on introduction.
 
 ---
 
-## 6. Object type registration and `reg_id`
+## 6. Object type registration
 
 ### `Stream.register(alias, gtype)`
 
-Call on each `OLLMrpc.Bin.Stream` after the channel opens and **before** decoding messages that use those types. Each end maintains `alias → GLib.Type`. **Registration order is not significant** — only the alias string and `GType` must match on both sides.
+Maps a catalog alias string to `GLib.Type` for decode. The alias must appear in the shared name catalog or be introduced via `TOKEN_REG_KEY` before use.
 
 - Duplicate alias on the same stream → error.
-- `register()` does **not** assign wire `reg_id`s.
-- The receiver must have registered an alias before it can accept a `TOKEN_REG_TYPE` introduction for that alias.
+- `register()` does not assign tokens — tokens come from `register_names()` or the wire.
 
-### Wire `reg_id` (JIT, per connection)
+### `Stream.register_names(names)`
 
-When a type is **first encoded** on a connection, the sender emits `TOKEN_REG_TYPE` before the `GLib.Type.OBJECT` header:
+Pre-loads the shared string table used for **both** property keys and type aliases. Client and server must pass the **identical** `string[]` (same strings, same order).
 
-```text
-FF FE                    ;; TOKEN_REG_TYPE
-reg_id                   ;; encoded as in table below (§6)
-alias_len                ;; uint8
-alias_bytes              ;; UTF-8 alias (must match a prior register() on the receiver)
-50                       ;; G_TYPE_OBJECT — follows immediately after introduction
-reg_id                   ;; same id as above
-… properties …
-FF FD
-```
-
-Later messages of the same type omit `TOKEN_REG_TYPE` and send only `50` + `reg_id`.
-
-- `write_gtype()` assigns the next local `reg_id` on first send of each alias and emits the introduction.
-- `read_reg_gtype()` (after seeing `0xFF 0xFE`) records `reg_id → alias` on the receiver.
-- `parse_object()` reads `reg_id` → alias → `GLib.Type`, then `GLib.Object.new(gtype)` and `bin_read()`.
-- Unknown `reg_id` without a prior introduction → error.
-
-Example (from `tests/rpc/bin-test.vala` — reader may register in any order):
+Example (from `tests/rpc/bin-test.vala`):
 
 ```vala
-write_bin.register ("TestPair", typeof (TestPair));
-write_bin.register ("TestParent", typeof (TestParent));
+const string[] WIRE_NAMES = {
+    "TestPair", "TestParent", "TestSkipDefault",
+    "name", "count", "label", "child", "keep",
+};
 
-// Reader: same aliases, any order
+write_bin.register_names (WIRE_NAMES);
+write_bin.register ("TestPair", typeof (TestPair));
+
+// Reader: same catalog; register() order arbitrary
+read_bin.register_names (WIRE_NAMES);
 read_bin.register ("TestParent", typeof (TestParent));
 read_bin.register ("TestPair", typeof (TestPair));
 ```
 
-### `reg_id` encoding
+### Object header on the wire
 
-| id range | Bytes |
-| -------- | ----- |
-| 0–127 | one byte, bit 7 clear — e.g. `00`, `7F` |
-| ≥ 128 (rare) | two bytes: `(0x80 \| (id >> 8))`, then `(id & 0xFF)` |
+```text
+50                       ;; G_TYPE_OBJECT
+00 01                    ;; uint16 name token → looks up alias → GType
+… properties …
+FF FD
+```
 
-Example: reg_id `200` → `80 C8` (because `0x80 | 0` = `0x80`, low byte `0xC8`).
-
-Alias strings are limited to 255 bytes on introduction.
+- `write_gtype()` emits `50` + name token for the type alias.
+- `parse_object()` reads the token, resolves alias → `GLib.Type`, then `bin_read()`.
 
 ---
 
@@ -239,7 +244,7 @@ Always **exactly one byte** per property value. The low seven bits (when bit 7 i
 | `0x30` | `ENUM` (48) | any `enum` |
 | `0x34` | `FLAGS` (52) | any `flags` |
 | `0x48` | `BOXED` (72) | large binary blob |
-| `0x50` | `GObject` (80) | registered object — `reg_id` follows |
+| `0x50` | `GObject` (80) | registered object — name token (uint16) follows |
 
 Array examples (set bit 7):
 
@@ -251,7 +256,7 @@ Array examples (set bit 7):
 | `0xD0` | `object[]` (`GObject` \| `0x80`) |
 | `0x80` | `ANY[]` (`INVALID` \| `0x80`) — each element has its own type byte |
 
-There is no two-byte type encoding. The two-byte escape applies only to **`reg_id`**, not the type byte.
+There is no two-byte type encoding.
 
 Numeric values follow the platform's GObject fundamentals (shown here for a typical GLib 2.x build). The implementation writes `(uint8) GLib.Type.*` directly.
 
@@ -266,10 +271,10 @@ Vala: `enabled = true`
 01        ;; true (false = 00)
 ```
 
-With key token prefix, a cached property looks like:
+With name token prefix, a cached property looks like:
 
 ```text
-00 03     ;; key token for "enabled"
+00 03     ;; name token for "enabled"
 14 01     ;; G_TYPE_BOOLEAN, true
 ```
 
@@ -376,25 +381,25 @@ Large binary (`GLib.Type.BOXED`). Vala types use a custom `bin_write_prop` overr
 
 Default `bin_write_prop` / `bin_read_prop` encode nested `Bin.Serializable` objects. Null object properties are omitted on write. The nested value's type must be registered on the stream (`register()`).
 
-Single object — registered as `"Child"`, reg_id `1`:
+Single object — registered as `"Child"`, name token `1`:
 
 ```text
 50           ;; G_TYPE_OBJECT (80)
-01           ;; reg_id 1
+00 01        ;; name token 1 → "Child"
 …            ;; Child property stream
 FF FD        ;; TOKEN_END
 ```
 
-Full property (cached key token `4` for `"child"`):
+Full property (name token `4` for `"child"`):
 
 ```text
-00 04        ;; key token
-50 01        ;; G_TYPE_OBJECT + reg_id 1
+00 04        ;; name token
+50 00 01     ;; G_TYPE_OBJECT + name token 1
 … child props …
 FF FD
 ```
 
-Nested encoding does **not** repeat the type byte before `reg_id` inside `write_gtype()` output — `write_gtype` emits `0x50` + `reg_id`, then `bin_write` emits the property stream.
+`write_gtype()` emits `0x50` + uint16 name token, then `bin_write()` emits the property stream.
 
 ---
 
@@ -408,10 +413,10 @@ Set bit 7 on the type byte, then a **count**, then elements.
 
 `uint8` element count, then each element.
 
-**`string[]`** — `["a", "bb"]` (cached key token `5`):
+**`string[]`** — `["a", "bb"]` (name token `5`):
 
 ```text
-00 05        ;; key token
+00 05        ;; name token
 C0           ;; G_TYPE_STRING (64) | array (0x80)
 02           ;; count 2
 00 01 61     ;; len 1, "a"
@@ -432,12 +437,12 @@ Each array element carries its own type byte and payload (same encoding as a sca
 
 ### Object array
 
-**`Child[]`** — two `Child` instances, reg_id `1`:
+**`Child[]`** — two `Child` instances, name token `1`:
 
 ```text
-… key …
+… name token …
 D0           ;; G_TYPE_OBJECT (80) | array (0x80)
-01           ;; reg_id 1
+00 01        ;; name token 1 → "Child"
 02           ;; count 2
 … child 1 property stream … FF FD
 … child 2 property stream … FF FD
@@ -470,7 +475,7 @@ Each element carries its own `type_byte` and payload.
 
 Properties omitted on write:
 
-- **Null** nested `Serializable` object references — no key token appears.
+- **Null** nested `Serializable` object references — no name token appears.
 - **Explicit skips** via `bin_write_prop` override (e.g. transient `extra` in `TestSkipDefault`).
 
 On read, any property not present on the wire keeps its GObject default (typically set by `default = …` in Vala).
@@ -485,15 +490,14 @@ Not defined in version 3.0:
 
 - `float`, `double`, `date`
 - varint / LEB128 / zigzag integers
-- raw `GType` numbers on the wire (aliases + `reg_id` only)
+- raw `GType` numbers on the wire (name tokens + `register()` aliases only)
 
 ---
 
 ## Quick reference
 
 ```text
-TOKEN_REG_KEY   = FFFF (uint16)   ;; introduce property name
-TOKEN_REG_TYPE  = FFFE (uint16)   ;; introduce type alias: FF FE + reg_id + alias (§6)
+TOKEN_REG_KEY   = FFFF (uint16)   ;; introduce wire name (property or type alias)
 TOKEN_END       = FFFD (uint16)
 
 array flag = bit 7 (0x80) OR'd onto GLib.Type fundamental

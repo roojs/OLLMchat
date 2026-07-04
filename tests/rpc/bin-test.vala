@@ -6,6 +6,18 @@
 
 namespace OLLMrpcTests
 {
+	/** Shared wire catalog — property keys and type aliases use the same tokens. */
+	const string[] WIRE_NAMES = {
+		"TestPair",
+		"TestParent",
+		"TestSkipDefault",
+		"name",
+		"count",
+		"label",
+		"child",
+		"keep",
+	};
+
 	public class TestPair : OLLMrpc.Bin.Object
 	{
 		public string name { get; set; default = ""; }
@@ -44,6 +56,7 @@ namespace OLLMrpcTests
 		var out_stream = new GLib.DataOutputStream (mem);
 
 		var write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
+		write_bin.register_names (WIRE_NAMES);
 		write_bin.register ("TestPair", typeof (TestPair));
 		write_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
 		write_bin.register ("TestParent", typeof (TestParent));
@@ -62,6 +75,7 @@ namespace OLLMrpcTests
 			var in_stream = new GLib.DataInputStream (in_base);
 
 			var read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
+			read_bin.register_names (WIRE_NAMES);
 			read_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
 			read_bin.register ("TestPair", typeof (TestPair));
 
@@ -78,6 +92,7 @@ namespace OLLMrpcTests
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
 			write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
+			write_bin.register_names (WIRE_NAMES);
 			write_bin.register ("TestPair", typeof (TestPair));
 			write_bin.register ("TestParent", typeof (TestParent));
 
@@ -95,6 +110,7 @@ namespace OLLMrpcTests
 			in_base = new GLib.MemoryInputStream.from_bytes (bytes);
 			in_stream = new GLib.DataInputStream (in_base);
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
+			read_bin.register_names (WIRE_NAMES);
 			read_bin.register ("TestParent", typeof (TestParent));
 			read_bin.register ("TestPair", typeof (TestPair));
 
@@ -122,6 +138,7 @@ namespace OLLMrpcTests
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
 			write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
+			write_bin.register_names (WIRE_NAMES);
 			write_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
 
 			var skip_src = new TestSkipDefault () {
@@ -135,6 +152,7 @@ namespace OLLMrpcTests
 			in_base = new GLib.MemoryInputStream.from_bytes (bytes);
 			in_stream = new GLib.DataInputStream (in_base);
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
+			read_bin.register_names (WIRE_NAMES);
 			read_bin.register ("TestSkipDefault", typeof (TestSkipDefault));
 
 			var skip_dst = read_bin.parse () as TestSkipDefault;

@@ -194,10 +194,6 @@ namespace OLLMrpc.Bin
 
 			while ((t = ctx.read_tag (out prop_name)) != Stream.TOKEN_END) {
 				var b = ctx.in_stream.read_byte ();
-				if (b == 0xFF) {
-					ctx.read_reg_gtype ();
-					b = ctx.in_stream.read_byte ();
-				}
 
 				GLib.ParamSpec? prop = this.get_class ().find_property (prop_name);
 				if (prop == null) {
