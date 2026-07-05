@@ -27,8 +27,8 @@ namespace OLLMapp
 		public OLLMchat.Settings.Config2 config { get; set; }
 		public string data_dir { get; set; }
 		public OLLMtools.Registry tools_registry { get; set; }
-		// TODO(v2): drop in-process vector_registry when daemon codebase search lands
-		// (2.10.4.18). v2testing builds libocvector/V2/Registry.vala (no-op stub) until then.
+		// TODO(v2): drop vector_registry when libocvector stub is removed (2.10.4.23).
+		// CodebaseSearch is registered via liboctools/Registry (daemon RPC).
 		public OLLMvector.Registry vector_registry { get; set; }
 		public OLLMmcp.Registry mcp_registry { get; set; }
 		

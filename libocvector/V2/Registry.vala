@@ -19,10 +19,11 @@
 namespace OLLMvector
 {
 	/**
-	 * V2 temporary no-op {@link Registry}.
+	 * V2 no-op {@link Registry} — codebase search lives on {@code liboctools}.
 	 *
-	 * Lets the app compile without in-process {@code libocvector} indexing.
-	 * Remove when daemon-backed codebase search is wired (**2.10.4.18**).
+	 * {@link OLLMtools.CodebaseSearch.CodebaseSearchTool} is registered by
+	 * {@link OLLMtools.Registry}. This stub remains until V1 {@code libocvector}
+	 * is removed (**2.10.4.23**).
 	 */
 	public class Registry : Object
 	{

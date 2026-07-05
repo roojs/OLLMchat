@@ -23,7 +23,7 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
   - `libocmarkdown.so` - Markdown parsing and rendering library (no GTK dependencies)
   - `libocmarkdowngtk.so` - Markdown GTK rendering library (includes GTK components)
   - `libocsqlite.so` - SQLite query builder library (no GTK dependencies)
-  - `libocrpc.so` - JSON-RPC wire types for daemon clients (no GTK dependencies)
+  - `libocrpc.so` - Binary RPC wire types for daemon clients (`OLLMrpc.Bin`; no GTK dependencies)
   - `libocfiles.so` - File and project management library (no GTK dependencies)
   - `liboccoder.so` - Code editor, skills/task runner, and project management (includes GTK components)
   - `libocvector.so` - Semantic codebase search using vector embeddings and FAISS (no GTK dependencies; in-process)
@@ -33,7 +33,7 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
   - `liboctools.so` - Tools library for file operations and utilities (no GTK dependencies)
   - `libocmcp.so` - MCP (Model Context Protocol) client: load servers from `~/.config/ollmchat/mcp.json`, discover tools, expose them as `mcp:{server_id}:{tool_name}` agent tools (stdio subprocess or HTTP JSON-RPC; stdio uses `OLLMfiles.Sandbox` via `libocfiles`)
   - `libollmchatgtk.so` - GTK library with chat widgets (includes GTK components)
-  - `ollmfilesd` - Headless file and semantic-index daemon (Unix; RPC over `libocrpc`, not a shared library)
+  - `ollmfilesd` - Headless file and semantic-index daemon (binary RPC over `libocrpc` via stdio or TCP; not a shared library)
 - **Example Tools** - Command-line utilities demonstrating library capabilities:
   - `oc-test-cli` - Test tool for LLM API calls (models, chat, streaming)
   - `oc-test-files` - Test tool for file operations (read/write files with line ranges, project management, buffer operations, backups)
@@ -83,6 +83,7 @@ Implementation plans and roadmap:
 
 - **[Implementation Plans Summary](docs/plans/1.0-summary.md)** - Overview of all planned features with status indicators
 - **[MCP server settings](docs/mcp-settings.md)** - How to configure `mcp.json` for Model Context Protocol tools
+- **[Binary RPC wire format](docs/bin-rpc-protocol.md)** - On-the-wire layout for `ollmfilesd` ↔ client (`libocrpc`)
 
 Development standards (written for AI agents; **mandatory** for agents, helpful guides for human contributors):
 
@@ -205,13 +206,16 @@ This will build:
 - `libocmarkdown.so` - Markdown parsing library (with headers, VAPI, and GIR files)
 - `libocmarkdowngtk.so` - Markdown GTK rendering library (with headers, VAPI, and GIR files)
 - `libocsqlite.so` - SQLite query builder library (with headers, VAPI, and GIR files)
+- `libocrpc.so` - Binary RPC wire library (with headers, VAPI, and GIR files)
 - `libocfiles.so` - File and project management library (with headers, VAPI, and GIR files)
+- `libocvector2.so` - Vector index/search for the file daemon (with headers, VAPI, and GIR files)
 - `liboccoder.so` - Code editor and project management library (with headers, VAPI, and GIR files)
 - `libocvector.so` - Semantic codebase search library (with headers, VAPI, and GIR files)
 - `libollmchat.so` - Base library for LLM API access (with headers, VAPI, and GIR files)
 - `liboctools.so` - Tools library for file operations and utilities (with headers, VAPI, and GIR files)
 - `libocmcp.so` - MCP client library (with headers, VAPI, and GIR files)
 - `libollmchatgtk.so` - GTK library with chat widgets (with headers, VAPI, and GIR files)
+- `ollmfilesd` - File and semantic-index daemon executable
 - `ollmchat` - Main application executable
 - `oc-test-cli` - Command-line test executable
 - `oc-markdown-test` - Markdown parser test executable
@@ -255,6 +259,18 @@ The project is organized into component directories, each with its own `meson.bu
 **SQLite Library:**
 - `libocsqlite/` - SQLite query builder (libocsqlite.so, namespace: `SQ`)
 
+**RPC Library (`libocrpc.so`):**
+- `libocrpc/` - Binary RPC wire protocol for daemon clients (libocrpc.so, namespace: `OLLMrpc`)
+  - `Bin/` - `Serializable`, `Stream`, and GObject property encoding on the wire
+  - `Transport/` - stdio and TCP connection helpers
+  - `Client.vala`, `Daemon.vala`, `Request.vala`, `Response.vala` - request/response dispatch
+  - Wire format: **[Binary RPC wire format](docs/bin-rpc-protocol.md)**
+
+**File daemon (`ollmfilesd`):**
+- `ollmfilesd/` - Headless file and semantic-index service (namespace: `OLLMfilesd`)
+  - SQLite, project scan, file I/O, and vector indexing run out-of-process
+  - UI and tools talk to it through `libocrpc` (binary protocol over stdio on Unix, TCP on Windows)
+
 **File Management Library (`libocfiles.so`):**
 - `libocfiles/` - File and project management (libocfiles.so, namespace: `OLLMfiles`)
   - Provides file tracking and project management without GTK/git dependencies
@@ -297,6 +313,10 @@ The project is organized into component directories, each with its own `meson.bu
   - Uses `libocfiles` (OLLMfiles namespace) for file tracking and project management
   - Example tool: `oc-vector-index` - Command-line tool for indexing files/folders
   - **Tree-sitter Language Support**: A script is available at `docs/tools/tree-sitter-packages.php` to generate Debian packages for tree-sitter language parsers. This script automates building Debian packages for various tree-sitter parsers from GitHub repositories, making it easy to install language support for the vector indexing system.
+
+**Vector Search Library v2 (`libocvector2.so`):**
+- `libocvector2/` - Slim FAISS index/search for `ollmfilesd` (libocvector2.so, namespace: `OLLMvector2`)
+  - No `libocfiles` dependency; used by the daemon instead of in-process `libocvector`
 
 **OLLMchat Base Library (`libollmchat.so`):**
 - `libollmchat/` - Main namespace (`OLLMchat`)
