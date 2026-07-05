@@ -18,11 +18,10 @@ namespace OLLMrpc
 	 * Client deserializes into this class. Server type is
 	 * {@code ollmfilesd/Daemon.vala} (unchanged).
 	 */
-	public class Daemon : GLib.Object, Json.Serializable, OLLMrpc.Bin.Serializable
+	public class Daemon : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public static void rpc_register()
 		{
-			register("Daemon", typeof(Daemon));
 			OLLMrpc.Bin.register("Daemon", typeof(Daemon));
 		}
 

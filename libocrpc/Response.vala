@@ -14,9 +14,8 @@
 namespace OLLMrpc
 {
 	/** Bin RPC response (wire {@link id}, plus {@link result} or {@link error}). */
-	public class Response : GLib.Object, Json.Serializable, Bin.Serializable
+	public class Response : GLib.Object, Bin.Serializable
 	{
-		public string jsonrpc { get; set; default = "2.0"; }
 		public int id { get; set; default = 0; }
 		public Error? error { get; set; default = null; }
 		public GLib.Object? result { get; set; default = null; }
@@ -41,70 +40,6 @@ namespace OLLMrpc
 		public unowned ParamSpec? find_property(string name)
 		{
 			return this.get_class().find_property(name);
-		}
-
-		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
-		{
-			base.set_property(pspec.get_name(), value);
-		}
-
-		public new Value Json.Serializable.get_property(ParamSpec pspec)
-		{
-			Value val = Value(pspec.value_type);
-			base.get_property(pspec.get_name(), ref val);
-			return val;
-		}
-
-		public override bool deserialize_property(
-			string property_name,
-			out Value value,
-			ParamSpec pspec,
-			Json.Node property_node
-		) {
-			// placeholder object
-			if (property_name == "result") {
-				value = Value(typeof(GLib.Object));
-				return true;
-			}
-			return default_deserialize_property(
-				property_name, out value, pspec, property_node
-			);
-		}
-
-		public override Json.Node serialize_property(
-			string property_name,
-			Value value,
-			ParamSpec pspec
-		) {
-			switch (property_name) {
-				case "error":
-					if (this.error == null) {
-						return null;
-					}
-					return Json.gobject_serialize(this.error);
-				case "result":
-					if (this.result == null) {
-						return null;
-					}
-					if (!this.is_array) {
-						return Json.gobject_serialize(this.result);
-					}
-					var list = this.result as Gee.ArrayList<GLib.Object>;
-					if (list == null) {
-						GLib.error(
-							"Response: is_array but result is not Gee.ArrayList"
-						);
-					}
-					var arr = new Json.Array();
-					foreach (var item in list) {
-						arr.add_element(Json.gobject_serialize(item));
-					}
-					var node = new Json.Node(Json.NodeType.ARRAY);
-					node.set_array(arr);
-					return node;
-				default:
-					return default_serialize_property(property_name, value, pspec);
-			}
 		}
 
 		public override void bin_write_prop (
@@ -161,6 +96,9 @@ namespace OLLMrpc
 						((Bin.Serializable) child).bin_write (ctx);
 					}
 					return;
+				case "result-type":
+				case "is-array":
+					return;
 				default:
 					this.bin_default_write_prop (ctx, prop);
 					return;
@@ -182,6 +120,9 @@ namespace OLLMrpc
 					}
 					this.is_array = true;
 					this.result = ctx.parse_object_array ();
+					return;
+				case "result-type":
+				case "is-array":
 					return;
 				default:
 					this.bin_default_read_prop (ctx, prop, type_byte);

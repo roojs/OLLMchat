@@ -35,20 +35,46 @@ namespace OLLMfilesd
 	 * Automatically discovers git repositories and checks if paths are ignored by git.
 	 * Uses manager.git_provider for git operations.
 	 */
-	public class Folder : FileBase, Json.Serializable, OLLMrpc.Bin.Serializable
+	public class Folder : FileBase
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Folder", typeof(Folder));
 			FolderParams.rpc_register();
 		}
-
 		/**
 		 * Whether to use background (idle callback) processing for recursive folder scanning.
 		 * Default: true (use background processing for better UI responsiveness)
 		 */
 		public static bool background_recurse { get; set; default = true; }
+
+		/**
+		 * ListStore of all files in project (used by dropdowns).
+		 */
+		public ProjectFiles project_files { get; set; default = new ProjectFiles(); }
 		
+		/**
+		 * Unix timestamp of last view (stored in database, default: 0, used for projects).
+		 */
+		public int64 last_viewed { get; set; default = 0; }
+		
+		/**
+		 * List of children (files and subfolders) - used for tree view hierarchy.
+		 * Implements ListModel interface with add/remove methods.
+		 */
+		public FolderFiles children { get; set; default = new FolderFiles(); }
+		
+		/**
+		 * Last check time for this folder (prevents re-checking during recursive scans).
+		 */
+		public int64 last_check_time { get; set; default = 0; }
+		
+		/**
+		 * Timestamp of last database load (in-memory only, not stored in database).
+		 * Used to determine if we need to reload from database.
+		 */
+		private int64 last_db_load = 0;
+
 		/**
 		 * Constructor.
 		 * 
@@ -59,6 +85,33 @@ namespace OLLMfilesd
 			base(manager);
 			this.base_type = "d";
 		}
+		/**
+		 * Named constructor: Create a Folder from FileInfo.
+		 * 
+		 * @param parent The parent Folder (required)
+		 * @param info The FileInfo object from directory enumeration
+		 * @param path The full path to the folder
+		 */
+		public Folder.new_from_info(
+			ProjectManager manager,
+			Folder? parent,
+			GLib.FileInfo info,
+			string path)
+		{
+			base(manager);
+			this.base_type = "d";
+			this.path = path;
+			if (parent != null) {
+				this.parent = parent;
+				this.parent_id = parent.id;
+			}
+			
+			// Set last_modified from FileInfo
+			var mod_time = info.get_modification_date_time();
+			if (mod_time != null) {
+				this.last_modified = mod_time.to_unix();
+			}
+		}
 
 		public signal void call_fetch(OLLMrpc.Request request);
 		public signal void call_contains_folder(OLLMrpc.Request request);
@@ -66,91 +119,6 @@ namespace OLLMfilesd
 		public signal void call_fetch_pending_approvals(OLLMrpc.Request request);
 		public signal void call_project_description(OLLMrpc.Request request);
 		public signal void call_roots(OLLMrpc.Request request);
-
-		public unowned ParamSpec? find_property(string name)
-		{
-			return this.get_class().find_property(name);
-		}
-
-		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
-		{
-			base.set_property(pspec.get_name(), value);
-		}
-
-		public new Value Json.Serializable.get_property(ParamSpec pspec)
-		{
-			Value val = Value(pspec.value_type);
-			base.get_property(pspec.get_name(), ref val);
-			return val;
-		}
-
-		/** Omit graph edges that recurse during json-glib wire serialize. */
-		public override Json.Node serialize_property(
-			string property_name,
-			Value value,
-			ParamSpec pspec
-		) {
-			switch (property_name) {
-				case "manager":
-				case "parent":
-				case "children":
-				case "project-files":
-				case "last-check-time":
-					return null;
-				default:
-					return default_serialize_property(
-						property_name,
-						value,
-						pspec
-					);
-			}
-		}
-
-		public override void bin_write_prop(
-			OLLMrpc.Bin.Stream ctx,
-			GLib.ParamSpec prop
-		) throws GLib.Error
-		{
-			switch (prop.name) {
-				case "manager":
-				case "parent":
-				case "children":
-				case "project-files":
-				case "last-check-time":
-				case "is-alias":
-				case "path-basename":
-				case "display-with-indicators":
-				case "icon-name":
-					return;
-				default:
-					bin_default_write_prop(ctx, prop);
-					return;
-			}
-		}
-
-		public override void bin_read_prop(
-			OLLMrpc.Bin.Stream ctx,
-			GLib.ParamSpec prop,
-			uint8 type_byte
-		) throws GLib.Error
-		{
-			switch (prop.name) {
-				case "manager":
-				case "parent":
-				case "children":
-				case "project-files":
-				case "last-check-time":
-				case "is-alias":
-				case "path-basename":
-				case "display-with-indicators":
-				case "icon-name":
-					return;
-				default:
-					bin_default_read_prop(ctx, prop, type_byte);
-					return;
-			}
-		}
-
 		construct
 		{
 			this.call_fetch.connect((request) => {
@@ -356,35 +324,7 @@ namespace OLLMfilesd
 				});
 			});
 		}
-		
-		/**
-		 * Named constructor: Create a Folder from FileInfo.
-		 * 
-		 * @param parent The parent Folder (required)
-		 * @param info The FileInfo object from directory enumeration
-		 * @param path The full path to the folder
-		 */
-		public Folder.new_from_info(
-			ProjectManager manager,
-			Folder? parent,
-			GLib.FileInfo info,
-			string path)
-		{
-			base(manager);
-			this.base_type = "d";
-			this.path = path;
-			if (parent != null) {
-				this.parent = parent;
-				this.parent_id = parent.id;
-			}
-			
-			// Set last_modified from FileInfo
-			var mod_time = info.get_modification_date_time();
-			if (mod_time != null) {
-				this.last_modified = mod_time.to_unix();
-			}
-		}
-		
+
 		/**
 		 * Project-level description from vector_metadata (ProjectAnalysis). Uses this.manager.db. Caller guarantees manager.db and id are set.
 		 * When multiple project rows exist (e.g. from repeated --project-summary runs), returns the most recent (highest id).
@@ -400,23 +340,6 @@ namespace OLLMfilesd
 			}
 			return results.get(0).description;
 		}
-
-		/**
-		 * ListStore of all files in project (used by dropdowns).
-		 */
-		public ProjectFiles project_files { get; set; default = new ProjectFiles(); }
-		
-		/**
-		 * Unix timestamp of last view (stored in database, default: 0, used for projects).
-		 */
-		public int64 last_viewed { get; set; default = 0; }
-		
-		/**
-		 * List of children (files and subfolders) - used for tree view hierarchy.
-		 * Implements ListModel interface with add/remove methods.
-		 */
-		public FolderFiles children { get; set; default = new FolderFiles(); }
-		
 		public override string to_summary(
 			Gee.HashMap<int, OLLMvector2.SQT.VectorMetadata> keymap, 
 			string indent)
@@ -437,14 +360,6 @@ namespace OLLMfilesd
 			}
 			return line;
 		}
-	
-		/**
-		 * Last check time for this folder (prevents re-checking during recursive scans).
-		 */
-		public int64 last_check_time { get; set; default = 0; }
-		
-		 
-		
 		/**
 		 * Check if a path is ignored by git.
 		 * 
@@ -478,7 +393,6 @@ namespace OLLMfilesd
 			// Check if path is ignored using provider
 			return this.manager.git_provider.path_is_ignored(this, relative_path);
 		}
-		
 		/**
 		 * Discover and open git repository for this folder.
 		 * Checks if folder is a git repository and opens it if found.
@@ -520,7 +434,6 @@ namespace OLLMfilesd
 			// Update is_repo based on whether repository exists
 			this.is_repo = this.manager.git_provider.repository_exists(this) ? 1 : 0;
 		}
-		
 		/**
 		 * Load children from filesystem for this folder.
 		 * Handles async file enumeration, symlink resolution, and updates Folder.children.
@@ -624,7 +537,6 @@ namespace OLLMfilesd
 			});
 
 		}
-		
 		/**
 		 * Process one folder from the queue and schedule the next one.
 		 * 
@@ -664,7 +576,6 @@ namespace OLLMfilesd
 				});
 			});
 		}
-		
 		/**
 		 * Enumerate directory contents and create FileBase objects for all items found.
 		 * 
@@ -728,7 +639,6 @@ namespace OLLMfilesd
 			
 			enumerator.close(null);
 		}
-		
 		/**
 		 * Scan directory and create FileBase objects for all items found.
 		 * 
@@ -783,7 +693,6 @@ namespace OLLMfilesd
 			
 			return new_items;
 		}
-		
 		/**
 		 * Compare a new item with old items and handle updates/inserts.
 		 * 
@@ -879,7 +788,6 @@ namespace OLLMfilesd
 			// this will not actually do anything as it's 
 			this.children.append(old_item);
 		}
-		
 		/**
 		 * Check for removed items: soft-delete in DB (delete_id) and detach from children.
 		 * 
@@ -906,13 +814,6 @@ namespace OLLMfilesd
 				this.children.remove(old_child);
 			}
 		}
-		
-		/**
-		 * Timestamp of last database load (in-memory only, not stored in database).
-		 * Used to determine if we need to reload from database.
-		 */
-		private int64 last_db_load = 0;
-		
 		/**
 		 * Check if this folder needs to be reloaded from the database.
 		 * 
@@ -946,7 +847,6 @@ namespace OLLMfilesd
 			// If max mtime in DB is greater than last_db_load, reload needed
 			return max_mtime > this.last_db_load;
 		}
-
 		/**
 		 * Load project files from database.
 		* 
@@ -1004,7 +904,6 @@ namespace OLLMfilesd
 			// Update last_db_load timestamp to current time
 			this.last_db_load = new GLib.DateTime.now_local().to_unix();
 		}
-		
 	/**
 	 * Load children using path-based queries, following symlinks via target_path.
 	 * 
@@ -1082,7 +981,6 @@ namespace OLLMfilesd
 			
 			return next_paths;
 		}
-		
 		/**
 		 * Build the tree structure for a single file_base by adding it to its parent's children.
 		 * 
@@ -1118,7 +1016,6 @@ namespace OLLMfilesd
 			// Add to parent's children (append handles duplicates)
 			parent.children.append(file_base);
 		}
-		
 		/**
 		 * Creates child folders recursively until reaching the target file path.
 		 * 
@@ -1225,7 +1122,6 @@ namespace OLLMfilesd
 			// Recursively call make_children on the newly created child folder
 			return yield child_folder.make_children(file_path);
 		}
-		
 		/**
 		 * Finds the project root folder by walking up the parent chain.
 		 * 
@@ -1242,7 +1138,6 @@ namespace OLLMfilesd
 			}
 			return null;
 		}
-		
 		/**
 		 * Clears all in-memory data for this folder to free memory.
 		 * 
@@ -1271,7 +1166,6 @@ namespace OLLMfilesd
 			// Reset last_db_load so that needs_reload() will return true on next access
 			this.last_db_load = 0;
 		}
-		
 		/**
 		 * Refresh review_files list.
 		 * 
@@ -1285,7 +1179,6 @@ namespace OLLMfilesd
 			}
 			this.project_files.review_files.refresh();
 		}
-		
 		/**
 		 * Build list of root directories that need write access for bubblewrap sandboxing.
 		 * 
@@ -1337,7 +1230,6 @@ namespace OLLMfilesd
 			
 			return distinct_roots;
 		}
-
 		/**
 		 * Promote fake folder ({@code id == -1}) to indexed row.
 		 */
@@ -1376,7 +1268,6 @@ namespace OLLMfilesd
 				this.manager.active_project
 			);
 		}
-
 		/**
 		 * Apply {@link FileParams} on disk (mkdir when missing, then mode).
 		 */
@@ -1393,6 +1284,39 @@ namespace OLLMfilesd
 				(Posix.mode_t) (p.unix_mode & 0777)
 			) != 0) {
 				throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
+			}
+		}
+
+		public override void bin_write_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "children":
+				case "project-files":
+				case "last-check-time":
+					return;
+				default:
+					base.bin_write_prop(ctx, prop);
+					return;
+			}
+		}
+
+		public override void bin_read_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "children":
+				case "project-files":
+				case "last-check-time":
+					return;
+				default:
+					base.bin_read_prop(ctx, prop, type_byte);
+					return;
 			}
 		}
 	}

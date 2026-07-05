@@ -12,23 +12,11 @@
  */
 
 /**
- * JSON-RPC wire types in {{{libocrpc}}} — shared by client and {{{ollmfilesd}}}.
+ * Bin RPC wire types in {{{libocrpc}}} — shared by client and {{{ollmfilesd}}}.
  *
- * Request arguments use flat JSON objects (wire key usually {{{"params"}}}).
- * Subclass {@link CallParam} with one property per field; see {@link Request}
- * for client serialize and server typed deserialize.
+ * Request arguments use a typed {@link CallParam} subclass on
+ * {@link Request.param}; see {@link Request} and {@link Client.call}.
  */
 namespace OLLMrpc
 {
-	/** Wire name → GType for {@link Response.result} deserialize on the client. */
-	public static Gee.HashMap<string, Type> types;
-
-	/** Record a wire result type (see each class {@link rpc_register}). */
-	public static void register(string name, Type t)
-	{
-		if (types == null) {
-			types = new Gee.HashMap<string, Type>();
-		}
-		types.set(name, t);
-	}
 }

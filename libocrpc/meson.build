@@ -1,4 +1,4 @@
-# libocrpc — shared JSON-RPC wire types (OLLMrpc namespace)
+# libocrpc — shared bin RPC wire types (OLLMrpc namespace)
 #
 # NOTE: Placeholder namespace.vala files (NamespaceDoc only) live in docs/meson.build
 # valadoc input only — not here. See docs/code-documentation.md § Valadoc build.

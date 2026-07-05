@@ -1,4 +1,4 @@
 # T0 — Daemon.hello round-trip (one NDJSON request per line)
-{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
-{"jsonrpc":"2.0","id":42,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
-{"jsonrpc":"2.0","id":999,"method":"Daemon.shutdown","*type":"Request","param":{"*type":"DaemonParams"}}
+{"id":1,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
+{"id":42,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
+{"id":999,"method":"Daemon.shutdown","*type":"Request","param":{"*type":"DaemonParams"}}

@@ -1,11 +1,11 @@
 # T1 — ProjectManager round-trip (__PROJECT_PATH__ substituted at test run)
-{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
-{"jsonrpc":"2.0","id":2,"method":"ProjectManager.load_projects_from_db","*type":"Request","param":{"*type":"ProjectParams"}}
-{"jsonrpc":"2.0","id":3,"method":"ProjectManager.create_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":4,"method":"ProjectManager.load_projects_from_db","*type":"Request","param":{"*type":"ProjectParams"}}
-{"jsonrpc":"2.0","id":5,"method":"ProjectManager.activate_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__","skip_scan":true}}
-{"jsonrpc":"2.0","id":6,"method":"Folder.fetch","*type":"Request","param":{"*type":"FolderParams","path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":7,"method":"Folder.project_description","*type":"Request","param":{"*type":"FolderParams","path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":8,"method":"Codebase.search","*type":"Request","param":{"*type":"VectorParams","path":"__PROJECT_PATH__","query":"test","max_results":5,"format":"tool"}}
-{"jsonrpc":"2.0","id":9,"method":"ProjectManager.remove_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":99,"method":"Daemon.shutdown","*type":"Request","param":{"*type":"DaemonParams"}}
+{"id":1,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
+{"id":2,"method":"ProjectManager.load_projects_from_db","*type":"Request","param":{"*type":"ProjectParams"}}
+{"id":3,"method":"ProjectManager.create_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
+{"id":4,"method":"ProjectManager.load_projects_from_db","*type":"Request","param":{"*type":"ProjectParams"}}
+{"id":5,"method":"ProjectManager.activate_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__","skip_scan":true}}
+{"id":6,"method":"Folder.fetch","*type":"Request","param":{"*type":"FolderParams","path":"__PROJECT_PATH__"}}
+{"id":7,"method":"Folder.project_description","*type":"Request","param":{"*type":"FolderParams","path":"__PROJECT_PATH__"}}
+{"id":8,"method":"Codebase.search","*type":"Request","param":{"*type":"VectorParams","path":"__PROJECT_PATH__","query":"test","max_results":5,"format":"tool"}}
+{"id":9,"method":"ProjectManager.remove_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
+{"id":99,"method":"Daemon.shutdown","*type":"Request","param":{"*type":"DaemonParams"}}

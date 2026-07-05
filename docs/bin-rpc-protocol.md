@@ -10,28 +10,54 @@ The **type byte** on the wire is always a `GLib.Type` fundamental value (optiona
 
 ## 1. Overview
 
-A **connection** maintains a per-instance **wire-name** table on its `OLLMrpc.Bin.Stream`. **Type aliases → GType** live in a **process-wide** static map (same registration model as `OLLMrpc.register` for JSON).
+A **connection** maintains a per-instance **wire-name** table on its `OLLMrpc.Bin.Stream`. **Type aliases → GType** live in a **process-wide** static map (`OLLMrpc.Bin.register`).
 
 1. **Wire names (per connection)** — string → uint16 token map for **both** property keys (`"name"`, `"count"`, …) and object type aliases (`"TestPair"`, `"File"`, …). Tokens are learned on the wire via `TOKEN_REG_KEY` when a name is first sent.
-2. **Type aliases → GType (process-wide)** — `Stream.register(alias, gtype)` static, called from each type's `rpc_register()` before any channel opens. Both ends register every wire alias string they send or receive; each maps that alias to its **own** local `GLib.Type`. `register()` call order is not significant.
+2. **Type aliases → GType (process-wide)** — `OLLMrpc.Bin.register(alias, gtype)` (namespace function in `libocrpc/Bin/Stream.vala`), called from each type's `rpc_register()` before any channel opens. Both ends register every wire alias string they send or receive; each maps that alias to its **own** local `GLib.Type`. `register()` call order is not significant.
 
 Every **property value**: name token → one-byte **type** (`GLib.Type` fundamental) → payload. When the type is `GLib.Type.OBJECT`, a **name token** (uint16) identifying the object alias follows before the nested property stream. Unknown token or unrecognized alias → protocol error.
 
-### Registration vs JSON RPC
-
-Bin type registration is **process-wide** (static), same call sites as JSON:
+### Type registration
 
 ```vala
 // In each wire type's rpc_register() — before connect() / listen
-OLLMrpc.Bin.Stream.register ("File", typeof (OLLMfiles.V2.File));
-OLLMrpc.Bin.Stream.register ("Folder", typeof (OLLMfiles.V2.Folder));
+OLLMrpc.Bin.register ("File", typeof (OLLMfiles.V2.File));
+OLLMrpc.Bin.register ("Folder", typeof (OLLMfiles.V2.Folder));
 ```
 
 Client and server each register the **same wire alias strings**; each maps an alias to whatever local `GLib.Type` implements that payload on that end. Property keys do not need `register()` — they appear on the wire and enter the per-connection name-token table via `TOKEN_REG_KEY`.
 
-JSON RPC today uses **`OLLMrpc.register(name, gtype)`** for `Response.result_type` deserialize. During dual stack, each `rpc_register()` calls **both** APIs with the same alias string (see plan 8.1). Alias strings should match JSON wire names where both apply.
+Domain types implement `OLLMrpc.Bin.Serializable` for bin encoding. **`rpc_register()`** calls **`Bin.register`** — **not** at channel setup.
 
-Domain types implement `OLLMrpc.Bin.Serializable` for bin encoding. **`rpc_register()`** registers JSON and bin aliases — **not** at channel setup.
+### General usage
+
+**Production** (`OLLMrpc.Transport.Connection`, `OLLMrpc.Client`):
+
+1. Call each wire type's **`rpc_register()`** (which calls **`Bin.register`**) before **`connect()`** / listen.
+2. Open the channel — create **one** **`Bin.Stream(in_stream, out_stream)`** for the connection lifetime.
+3. **Send:** **`bin.write(serializable)`** — writes root type header + property stream.
+4. **Receive:** **`bin.parse()`** — root type from wire; cast to **`Request`**, **`Response`**, etc.
+5. Wire-name tokens (**`names[]`**) accumulate across messages on the same connection.
+
+**Tests / memory round-trip** (`tests/rpc/bin-test.vala`):
+
+```vala
+OLLMrpc.Bin.register ("TestPair", typeof (TestPair));
+
+var mem = new GLib.MemoryOutputStream.resizable ();
+var out_stream = new GLib.DataOutputStream (mem);
+var write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
+write_bin.write (original);
+out_stream.close ();
+
+var in_stream = new GLib.DataInputStream (
+    new GLib.MemoryInputStream.from_bytes (mem.steal_as_bytes ())
+);
+var read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
+var parsed = read_bin.parse () as TestPair;
+```
+
+Pass **`null`** for the unused stream direction in memory-only tests.
 
 ---
 
@@ -185,7 +211,7 @@ Wire names are limited to 255 bytes on introduction.
 
 ## 6. Object type registration
 
-### `Stream.register(alias, gtype)` (static)
+### `Bin.register(alias, gtype)` (process-wide)
 
 Maps a wire alias string to a local `GLib.Type` for decode — **process-wide**, not per connection. Both peers must register every alias they send or receive; the **alias string** is the wire contract — each end may map it to a different GObject type. Per-connection wire indices for type aliases are learned via `TOKEN_REG_TYPE` / `read_reg_gtype()`; property keys via `TOKEN_REG_KEY`.
 
@@ -195,8 +221,8 @@ Maps a wire alias string to a local `GLib.Type` for decode — **process-wide**,
 Example (from `tests/rpc/bin-test.vala`):
 
 ```vala
-OLLMrpc.Bin.Stream.register ("TestPair", typeof (TestPair));
-OLLMrpc.Bin.Stream.register ("TestParent", typeof (TestParent));
+OLLMrpc.Bin.register ("TestPair", typeof (TestPair));
+OLLMrpc.Bin.register ("TestParent", typeof (TestParent));
 
 var write_bin = new OLLMrpc.Bin.Stream (null, out_stream);
 var read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
@@ -221,7 +247,8 @@ FF FD
 
 - `write_gtype()` emits optional `TOKEN_REG_TYPE`, then `50` + `reg_id`.
 - `parse()` optionally calls `read_reg_gtype()` once, then reads `50` + `reg_id`.
-- `parse_object()` reads `reg_id` after `0x50` was already consumed.
+- `parse_object()` reads `reg_id` after `0x50` was already consumed (or accepts a known element `GType` when decoding homogeneous object arrays — see §15).
+- `parse_object_array()` reads element `reg_id`, count, then one property stream per element via `parse_object(element_gtype)`.
 
 ---
 
@@ -382,7 +409,7 @@ Used for `uint`, `uint64`, and `flags`. The type byte reflects the property's fu
 
 ## 13. Blob
 
-Large binary (`GLib.Type.BOXED`). Vala types use a custom `bin_write_prop` override; default scalar walk does not emit blobs automatically.
+Large binary (`GLib.Type.BOXED`):
 
 ```text
 48                       ;; G_TYPE_BOXED (72)
@@ -390,11 +417,15 @@ Large binary (`GLib.Type.BOXED`). Vala types use a custom `bin_write_prop` overr
 … 1234 raw bytes …
 ```
 
+**Default codec:** scalar `string` props longer than 32767 bytes are written as `BOXED` automatically by `bin_default_write_prop` (§9). On read, `BOXED` decodes back into a `string` property.
+
+**Custom overrides:** opaque buffers (`uint8[]`, …) and other non-string blobs use the same wire layout in a `bin_write_prop` / `bin_read_prop` override on the owning type.
+
 ---
 
 ## 14. Nested object
 
-Default `bin_write_prop` / `bin_read_prop` encode nested `Bin.Serializable` objects. Null object properties are omitted on write. The nested value's type must be registered via static `Stream.register()`.
+Default `bin_write_prop` / `bin_read_prop` encode nested `Bin.Serializable` objects. Null object properties are omitted on write. The nested value's type must be registered via `Bin.register()`.
 
 Single object — registered as `"Child"`, name token `1`:
 
@@ -480,6 +511,20 @@ Rare. Type byte `0x80` only (base `0` + array flag):
 
 Each element carries its own `type_byte` and payload.
 
+### Root result arrays (`Response.result`)
+
+List **results** (`fetch_files`, …) encode as an object array on the **`result`** property of **`OLLMrpc.Response`** — not as a separate root message.
+
+**Handler metadata (not on the wire):** set **`is_array = true`** and **`result_type`** (element alias string) before reply. **`Response.bin_write_prop`** omits **`result-type`** and **`is-array`** from the encoded property stream — they exist only to drive encode. On decode, **`is_array`** is set when the **`result`** type byte is an object array (`0xD0`); **`result_type`** is not round-tripped.
+
+Wire layout matches the object-array form above (`0xD0` + element `reg_id` + count + element streams).
+
+**Empty arrays:** when **`list.size == 0`**, the encoder uses **`result_type`** to pick the element class (no sample object to infer `GType` from). **`result_type`** must be a registered alias.
+
+**Decode:** `Response.bin_read_prop` calls **`Stream.parse_object_array()`**, which returns **`Gee.ArrayList<GLib.Object>`**.
+
+See `libocrpc/Response.vala`.
+
 ---
 
 ## 16. Omitted and default-valued properties
@@ -495,6 +540,40 @@ On read, any property not present on the wire keeps its GObject default (typical
 
 Writers omit transient fields by overriding `bin_write_prop`. Unsupported types throw `OLLMrpc.Bin.SerializableError`. Readers throw on unknown keys or undecodable properties. Array-flagged type bytes (`0x80` on bit 7) require a `bin_read_prop` override on the receiving type.
 
+### Override recipes
+
+Overrides use **`switch (prop.name)`** with early **`return`** for special cases; the **`default:`** branch delegates to stock encoding:
+
+```vala
+public override void bin_write_prop (
+    OLLMrpc.Bin.Stream ctx,
+    GLib.ParamSpec prop
+) throws GLib.Error
+{
+    switch (prop.name) {
+        case "manager":
+        case "buffer":
+        case "parent":
+            return;
+        default:
+            bin_default_write_prop (ctx, prop);
+            return;
+    }
+}
+```
+
+Mirror the same prop names in **`bin_read_prop`** (ignore unknown wire keys for omitted props).
+
+| Scenario | Approach | Example |
+| -------- | -------- | ------- |
+| Graph / runtime omits | **`switch`** + early **`return`** | `ollmfilesd/File.vala` — `manager`, `buffer`, `parent` |
+| Skip unsupported prop | Override **`bin_write`** and skip the prop name, or omit in **`bin_write_prop`** | `TestSkipDefault` in `bin-test.vala` |
+| **`Gee.ArrayList<T>`** on a property | Inline encode/decode in **`case`** — **`write_gtype(T, OBJECT \| 0x80)`**, count, **`child.bin_write`** per element | `TestListBag` in `bin-test.vala` |
+| Root list **result** | Override on **`Response.bin_write_prop`** / **`bin_read_prop`**; omit **`result-type`** / **`is-array`** on write; decode via **`parse_object_array()`** | `libocrpc/Response.vala` |
+| **`string[]`** param | Default codec — no override | `CallParam.args`, `TestPaths` |
+
+**🚫** Do not call **`base.bin_write_prop`** — use **`bin_default_write_prop`** / **`bin_default_read_prop`** for the default branch.
+
 ---
 
 ## 17. Unsupported types
@@ -504,6 +583,45 @@ Not defined in version 3.0:
 - `float`, `double`, `date`
 - varint / LEB128 / zigzag integers
 - raw `GType` numbers on the wire (name tokens + `register()` aliases only)
+
+---
+
+## 18. JSON bridge (`OLLMrpc.Bin.Json`)
+
+**Purpose:** encode/decode json-glib nodes directly onto a **`Bin.Stream`** — for tests and tooling, **not** for production TCP/socket RPC.
+
+**Caller today:** **`ollmfilesd/StdioConnection`** (`--interactive`, `--rpc-script`) — NDJSON lines on stdin are converted to bin **`Request`** objects via **`Bin.Json.write`**, then handled like any other connection. Outbound responses still use **`Json.gobject_serialize`** (NDJSON line out) — inbound JSON → bin only.
+
+**No `Serializable` instances:** layout follows JSON node shape + wire type bytes only.
+
+### Meta keys (not payload properties)
+
+| Key | Meaning |
+| --- | ------- |
+| `"*type"` | Required on every object — wire alias (`"File"`, `"Request"`, …). Must be registered via **`Bin.register`**. |
+| `"*array"` | Object-array wrapper — paired with `"items"` |
+| `"items"` | Array body when `"*array"` is set |
+
+Any key starting with **`*`** is meta only and is stripped before bin encode.
+
+### JSON shapes → wire
+
+| JSON shape | Wire |
+| ---------- | ---- |
+| `{ "*type": "File", "path": "…" }` | Root or nested object |
+| `{ "*array": "File", "items": [ … ] }` | Object array (`0xD0`) |
+| `[ "a", "bb" ]` | `string[]` (`0xC0`) |
+| `[ { "*type": "File", … }, … ]` | Object array (element type from first object) |
+
+### Example (stdio script line → bin)
+
+```json
+{"*type":"Request","id":1,"method":"Folder.fetch_files","param":{"*type":"FolderParams","path":"/tmp"}}
+```
+
+`StdioConnection.request_from_json_line` calls **`json_codec.write(encode_ctx, root)`**, then **`read_ctx.parse()`** as **`Request`**.
+
+Implementation: `libocrpc/Bin/Json.vala`. Used by the stdio test harness only — not the production TCP/socket path.
 
 ---
 

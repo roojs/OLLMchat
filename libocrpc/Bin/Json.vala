@@ -413,13 +413,10 @@ namespace OLLMrpc.Bin
 							).get_object ()
 						);
 					}
-					var wrapper = new global::Json.Object ();
-					wrapper.set_string_member ("*array", element_alias);
-					wrapper.set_array_member ("items", items);
 					var out_node = new global::Json.Node (
-						global::Json.NodeType.OBJECT
+						global::Json.NodeType.ARRAY
 					);
-					out_node.set_object (wrapper);
+					out_node.set_array (items);
 					return out_node;
 				}
 				var nested_gtype = ctx.read_gtype ();

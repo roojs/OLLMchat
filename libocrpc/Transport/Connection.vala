@@ -149,7 +149,7 @@ namespace OLLMrpc.Transport
 				request.method
 			);
 			request.connection = this;
-			request.dispatch(null);
+			request.dispatch();
 			return this.running;
 		}
 	}

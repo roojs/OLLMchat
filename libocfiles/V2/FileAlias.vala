@@ -53,11 +53,10 @@ namespace OLLMfiles
 	public class FileAlias : File
 	{
 		/**
-		 * Register this type for RPC {@code result_type} deserialize.
+		 * Register this type for RPC wire decode.
 		 */
 		public static void rpc_register()
 		{
-			OLLMrpc.register("FileAlias", typeof(FileAlias));
 			OLLMrpc.Bin.register("FileAlias", typeof(FileAlias));
 		}
 

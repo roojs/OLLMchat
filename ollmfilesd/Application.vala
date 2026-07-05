@@ -243,6 +243,8 @@ namespace OLLMfilesd
 			Codebase.rpc_register();
 			OLLMrpc.Request.rpc_register();
 			OLLMrpc.Response.rpc_register();
+			OLLMrpc.Notification.rpc_register();
+			OLLMrpc.Error.rpc_register();
 
 			this.daemon = new Daemon(this);
 			OLLMrpc.Request.register(

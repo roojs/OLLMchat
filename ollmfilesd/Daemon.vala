@@ -14,7 +14,7 @@
 namespace OLLMfilesd
 {
 	/** Server {@code Daemon.*} — {@code hello} and {@code shutdown}. */
-	public class Daemon : GLib.Object, Json.Serializable, OLLMrpc.Bin.Serializable
+	public class Daemon : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public static void rpc_register()
 		{
@@ -35,34 +35,6 @@ namespace OLLMfilesd
 
 		public signal void call_hello(OLLMrpc.Request request);
 		public signal void call_shutdown(OLLMrpc.Request request);
-
-		public unowned ParamSpec? find_property(string name)
-		{
-			return this.get_class().find_property(name);
-		}
-
-		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
-		{
-			base.set_property(pspec.get_name(), value);
-		}
-
-		public new Value Json.Serializable.get_property(ParamSpec pspec)
-		{
-			Value val = Value(pspec.value_type);
-			base.get_property(pspec.get_name(), ref val);
-			return val;
-		}
-
-		public override Json.Node serialize_property(
-			string property_name,
-			Value value,
-			ParamSpec pspec
-		) {
-			if (property_name == "app") {
-				return null;
-			}
-			return default_serialize_property(property_name, value, pspec);
-		}
 
 		public override void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,

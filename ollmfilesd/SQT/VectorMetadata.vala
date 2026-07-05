@@ -29,10 +29,7 @@ namespace OLLMfilesd.SQT
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.register(
-				"VectorMetadata",
-				typeof(VectorMetadata)
-			);
+			OLLMrpc.Bin.register("VectorMetadata", typeof(VectorMetadata));
 		}
 
 		/**

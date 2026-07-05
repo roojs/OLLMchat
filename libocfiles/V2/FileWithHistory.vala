@@ -22,18 +22,11 @@ namespace OLLMfiles
 	 * Pending-approval list row ({@code FileWithHistory} wire).
 	 * Popover display fields copied from {@link FileBase} — not a tree node.
 	 */
-	public class FileWithHistory : Object, Json.Serializable, OLLMrpc.Bin.Serializable
+	public class FileWithHistory : Object, OLLMrpc.Bin.Serializable
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.register(
-				"FileWithHistory",
-				typeof(FileWithHistory)
-			);
-			OLLMrpc.Bin.register(
-				"FileWithHistory",
-				typeof(FileWithHistory)
-			);
+			OLLMrpc.Bin.register("FileWithHistory", typeof(FileWithHistory));
 		}
 
 		public int64 id { get; set; default = 0; }
@@ -72,43 +65,6 @@ namespace OLLMfiles
 					default:
 						return this.path;
 				}
-			}
-		}
-
-		public unowned ParamSpec? find_property(string name)
-		{
-			return this.get_class().find_property(name);
-		}
-
-		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
-		{
-			base.set_property(pspec.get_name(), value);
-		}
-
-		public new Value Json.Serializable.get_property(ParamSpec pspec)
-		{
-			Value val = Value(pspec.value_type);
-			base.get_property(pspec.get_name(), ref val);
-			return val;
-		}
-
-		/** Omit client-only display props on wire serialize. */
-		public override Json.Node serialize_property(
-			string property_name,
-			Value value,
-			ParamSpec pspec
-		) {
-			switch (property_name) {
-				case "path_basename":
-				case "display_approval_text":
-				case "display_approval_tooltip":
-					return null;
-				default:
-					return default_serialize_property(
-						property_name,
-						value,
-						pspec
-					);
 			}
 		}
 	}

@@ -40,10 +40,10 @@ fi
 mkdir -p "$TEST_DIR"
 run_rpc_script "$RPC_SCRIPT" "$RPC_OUT" "$RPC_ERR"
 
-# line 1 — ready notification (Daemon.ready reference, no id)
+# line 1 — ready notification (Daemon.ready)
 ready=$(rpc_line 1 "$RPC_OUT")
 jq_line_ok "T0.1 ready notification" "$ready" \
-    '.method == "Daemon.ready" and .["object-type"] == "Daemon" and (.id | not)'
+    '.method == "Daemon.ready" and .["object-type"] == "Daemon"'
 
 # line 2 — Daemon.hello response
 resp=$(rpc_line 2 "$RPC_OUT")

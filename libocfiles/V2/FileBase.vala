@@ -344,7 +344,7 @@ namespace OLLMfiles
 		public abstract string to_summary(
 			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent);
 
-		public virtual void bin_write_prop (
+		public virtual void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,
 			GLib.ParamSpec prop
 		) throws GLib.Error
@@ -354,12 +354,12 @@ namespace OLLMfiles
 				case "parent":
 					return;
 				default:
-					this.bin_default_write_prop (ctx, prop);
+					this.bin_default_write_prop(ctx, prop);
 					return;
 			}
 		}
 
-		public virtual void bin_read_prop (
+		public virtual void bin_read_prop(
 			OLLMrpc.Bin.Stream ctx,
 			GLib.ParamSpec prop,
 			uint8 type_byte
@@ -370,7 +370,7 @@ namespace OLLMfiles
 				case "parent":
 					return;
 				default:
-					this.bin_default_read_prop (ctx, prop, type_byte);
+					this.bin_default_read_prop(ctx, prop, type_byte);
 					return;
 			}
 		}

@@ -35,7 +35,7 @@ namespace OLLMfilesd
 	 * Daemon {@link File} — scan, disk I/O, and {@code File.*} RPC.
 	 * Editor buffers and Gtk helpers live on {@code libocfiles/V2/File.vala}.
 	 */
-	public class File : FileBase, Json.Serializable, OLLMrpc.Bin.Serializable
+	public class File : FileBase
 	{
 		public static void rpc_register()
 		{
@@ -64,61 +64,15 @@ namespace OLLMfilesd
 		public signal void call_changed_check(OLLMrpc.Request request);
 		public signal void call_vector_metadata(OLLMrpc.Request request);
 
-		public unowned ParamSpec? find_property(string name)
-		{
-			return this.get_class().find_property(name);
-		}
-
-		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
-		{
-			base.set_property(pspec.get_name(), value);
-		}
-
-		public new Value Json.Serializable.get_property(ParamSpec pspec)
-		{
-			Value val = Value(pspec.value_type);
-			base.get_property(pspec.get_name(), ref val);
-			return val;
-		}
-
-		/** Omit graph edges that recurse during json-glib wire serialize. */
-		public override Json.Node serialize_property(
-			string property_name,
-			Value value,
-			ParamSpec pspec
-		) {
-			switch (property_name) {
-				case "manager":
-				case "buffer":
-				case "parent":
-					return null;
-				default:
-					return default_serialize_property(
-						property_name,
-						value,
-						pspec
-					);
-			}
-		}
-
 		public override void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,
 			GLib.ParamSpec prop
 		) throws GLib.Error
 		{
-			switch (prop.name) {
-				case "manager":
-				case "buffer":
-				case "parent":
-				case "is-alias":
-				case "path-basename":
-				case "display-with-indicators":
-				case "icon-name":
-					return;
-				default:
-					bin_default_write_prop(ctx, prop);
-					return;
+			if (prop.name == "buffer") {
+				return;
 			}
+			base.bin_write_prop(ctx, prop);
 		}
 
 		public override void bin_read_prop(
@@ -127,19 +81,10 @@ namespace OLLMfilesd
 			uint8 type_byte
 		) throws GLib.Error
 		{
-			switch (prop.name) {
-				case "manager":
-				case "buffer":
-				case "parent":
-				case "is-alias":
-				case "path-basename":
-				case "display-with-indicators":
-				case "icon-name":
-					return;
-				default:
-					bin_default_read_prop(ctx, prop, type_byte);
-					return;
+			if (prop.name == "buffer") {
+				return;
 			}
+			base.bin_read_prop(ctx, prop, type_byte);
 		}
 
 		construct

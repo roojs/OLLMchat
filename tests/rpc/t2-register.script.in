@@ -1,7 +1,7 @@
 # T2 Path B — skip scan; register on-disk file then read (agent new_fake path)
-{"jsonrpc":"2.0","id":1,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
-{"jsonrpc":"2.0","id":2,"method":"ProjectManager.create_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
-{"jsonrpc":"2.0","id":3,"method":"ProjectManager.activate_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__","skip_scan":true}}
-{"jsonrpc":"2.0","id":4,"method":"File.register","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__"}}
-{"jsonrpc":"2.0","id":5,"method":"File.read","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__"}}
-{"jsonrpc":"2.0","id":99,"method":"Daemon.shutdown","*type":"Request","param":{"*type":"DaemonParams"}}
+{"id":1,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
+{"id":2,"method":"ProjectManager.create_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
+{"id":3,"method":"ProjectManager.activate_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__","skip_scan":true}}
+{"id":4,"method":"File.register","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__"}}
+{"id":5,"method":"File.read","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__"}}
+{"id":99,"method":"Daemon.shutdown","*type":"Request","param":{"*type":"DaemonParams"}}

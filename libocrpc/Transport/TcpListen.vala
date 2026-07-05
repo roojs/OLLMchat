@@ -16,9 +16,8 @@ namespace OLLMrpc.Transport
 	/**
 	 * TCP loopback {@link Listen} for platforms without Unix sockets.
 	 *
-	 * This is intentionally plain JSON-RPC over NDJSON, matching
-	 * {@link SocketListen}. It defaults to loopback; remote access needs an
-	 * authenticated transport before callers should bind a public address.
+	 * Defaults to loopback; remote access needs an authenticated transport
+	 * before callers should bind a public address.
 	 */
 	public class TcpListen : Listen
 	{

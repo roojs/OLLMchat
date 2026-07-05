@@ -49,7 +49,6 @@ namespace OLLMfiles
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.register("Folder", typeof(Folder));
 			OLLMrpc.Bin.register("Folder", typeof(Folder));
 		}
 
@@ -267,7 +266,7 @@ namespace OLLMfiles
 			this.manager.file_cache.set(path, file);
 		}
 
-		public override void bin_write_prop (
+		public override void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,
 			GLib.ParamSpec prop
 		) throws GLib.Error
@@ -277,12 +276,12 @@ namespace OLLMfiles
 				case "last-check-time":
 					return;
 				default:
-					base.bin_write_prop (ctx, prop);
+					base.bin_write_prop(ctx, prop);
 					return;
 			}
 		}
 
-		public override void bin_read_prop (
+		public override void bin_read_prop(
 			OLLMrpc.Bin.Stream ctx,
 			GLib.ParamSpec prop,
 			uint8 type_byte
@@ -293,7 +292,7 @@ namespace OLLMfiles
 				case "last-check-time":
 					return;
 				default:
-					base.bin_read_prop (ctx, prop, type_byte);
+					base.bin_read_prop(ctx, prop, type_byte);
 					return;
 			}
 		}

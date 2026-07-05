@@ -54,7 +54,6 @@ namespace OLLMfiles
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.register("File", typeof(File));
 			OLLMrpc.Bin.register("File", typeof(File));
 		}
 
@@ -743,7 +742,7 @@ namespace OLLMfiles
 		 * Removed — {@code FileHistory.revert} RPC.
 		 */
 
-		public override void bin_write_prop (
+		public override void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,
 			GLib.ParamSpec prop
 		) throws GLib.Error
@@ -751,10 +750,10 @@ namespace OLLMfiles
 			if (prop.name == "buffer") {
 				return;
 			}
-			base.bin_write_prop (ctx, prop);
+			base.bin_write_prop(ctx, prop);
 		}
 
-		public override void bin_read_prop (
+		public override void bin_read_prop(
 			OLLMrpc.Bin.Stream ctx,
 			GLib.ParamSpec prop,
 			uint8 type_byte
@@ -763,7 +762,7 @@ namespace OLLMfiles
 			if (prop.name == "buffer") {
 				return;
 			}
-			base.bin_read_prop (ctx, prop, type_byte);
+			base.bin_read_prop(ctx, prop, type_byte);
 		}
 
 	}

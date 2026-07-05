@@ -36,7 +36,7 @@ namespace OLLMfilesd
 	 * Fake files are used for accessing files outside the project scope.
 	 * They skip database operations in saveToDB().
 	 */
-	public abstract class FileBase : Object, OLLMfiles.Copyable
+	public abstract class FileBase : Object, OLLMfiles.Copyable, OLLMrpc.Bin.Serializable
 	{
 		/**
 		 * Database ID.
@@ -470,6 +470,39 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to get target info for %s: %s", target_path, e.message);
 				return null;
+			}
+		}
+
+		public virtual void bin_write_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "manager":
+				case "parent":
+				case "is-alias":
+					return;
+				default:
+					this.bin_default_write_prop(ctx, prop);
+					return;
+			}
+		}
+
+		public virtual void bin_read_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "manager":
+				case "parent":
+				case "is-alias":
+					return;
+				default:
+					this.bin_default_read_prop(ctx, prop, type_byte);
+					return;
 			}
 		}
 		

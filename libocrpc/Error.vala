@@ -14,12 +14,12 @@
 namespace OLLMrpc
 {
 	/**
-	 * JSON-RPC 2.0 error object on the wire (`code`, `message`).
+	 * Wire error object (`code`, `message`).
 	 *
-	 * Not {@link GLib.Error} — {@link GLib.Object} only for {@link Json.Serializable}.
-	 * {@link code} is the numeric JSON-RPC error code (a {@link RpcErrorCode} value).
+	 * Not {@link GLib.Error} — {@link GLib.Object} for bin encode/decode.
+	 * {@link code} is the numeric error code (a {@link RpcErrorCode} value).
 	 */
-	public class Error : GLib.Object, Json.Serializable, OLLMrpc.Bin.Serializable
+	public class Error : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public int code { get; set; }
 		public string message { get; set; default = ""; }
@@ -30,12 +30,11 @@ namespace OLLMrpc
 		 */
 		public static void rpc_register()
 		{
-			register("Error", typeof(Error));
 			OLLMrpc.Bin.register("Error", typeof(Error));
 		}
 
 		/**
-		 * @param code JSON-RPC error number — pass {@link RpcErrorCode} constants
+		 * @param code error number — pass {@link RpcErrorCode} constants
 		 *   (e.g. {@link RpcErrorCode.INTERNAL_ERROR})
 		 * @param message wire error message
 		 * @param method optional RPC method (reserved; logging is on {@link Client})
@@ -53,18 +52,6 @@ namespace OLLMrpc
 		public unowned ParamSpec? find_property(string name)
 		{
 			return this.get_class().find_property(name);
-		}
-
-		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
-		{
-			base.set_property(pspec.get_name(), value);
-		}
-
-		public new Value Json.Serializable.get_property(ParamSpec pspec)
-		{
-			Value val = Value(pspec.value_type);
-			base.get_property(pspec.get_name(), ref val);
-			return val;
 		}
 	}
 }

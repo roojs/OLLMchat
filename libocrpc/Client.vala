@@ -33,14 +33,14 @@ namespace OLLMrpc
 	 * platform transport needs a local daemon starter.
 	 *
 	 * A socket {@link GLib.IOChannel} watch dispatches inbound
-	 * {@link Notification} lines and resolves pending {@link Response}
+	 * {@link Notification} messages and resolves pending {@link Response}
 	 * entries by id.
 	 * {@link call} sends a {@link Request} and yields until that
 	 * id is filled in or {@link call_timeout_seconds} elapses.
-	 * Outgoing lines are queued — one {@code flush_async} at a time on
+	 * Outgoing messages are queued — one {@code flush_async} at a time on
 	 * the shared output stream; many requests may still be in flight.
 	 * Transport and wire faults abort via {@link GLib.error}; daemon
-	 * JSON-RPC errors return {@link Response.error} and emit {@link failed}.
+	 * RPC errors return {@link Response.error} and emit {@link failed}.
 	 * Connect UI handlers on {@link failed} for user-visible daemon errors.
 	 */
 	public class Client : GLib.Object
@@ -64,7 +64,7 @@ namespace OLLMrpc
 		public signal void notification(Notification notif);
 
 		/**
-		 * Emitted when {@link call} completes with a daemon JSON-RPC
+		 * Emitted when {@link call} completes with a daemon
 		 * {@link Response.error}. Transport and wire faults abort instead.
 		 * {@link call} still returns the response; callers may ignore errors when
 		 * the UI connects here (e.g. toast / dialog).

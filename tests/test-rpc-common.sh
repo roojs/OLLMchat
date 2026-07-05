@@ -55,7 +55,7 @@ rpc_line() {
     sed -n "${1}p" "$2"
 }
 
-# Find a JSON-RPC response line by request id (skip notifications without id).
+# Find a response line by request id (notifications have no id).
 rpc_resp_by_id() {
     local id="$1"
     local out="$2"

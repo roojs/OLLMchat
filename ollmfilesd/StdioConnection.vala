@@ -90,13 +90,36 @@ namespace OLLMfilesd
 					this.script_awaiting_id = -1;
 				}
 			}
-			var node = Json.gobject_serialize(gobject);
-			var gen = new Json.Generator();
-			gen.set_root(node);
-			var line = gen.to_data(null);
-			this.bin.out_stream.put_string(line);
-			this.bin.out_stream.put_byte((uint8) '\n');
-			this.bin.out_stream.flush();
+			var serializable = gobject as OLLMrpc.Bin.Serializable;
+			if (serializable == null) {
+				GLib.warning("stdio write: not bin Serializable");
+				return;
+			}
+			var mem = new GLib.MemoryOutputStream.resizable();
+			var encode_out = new GLib.DataOutputStream(mem);
+			var encode_ctx = new OLLMrpc.Bin.Stream(null, encode_out);
+			try {
+				encode_ctx.write(serializable);
+				encode_out.close();
+
+				var in_base = new GLib.MemoryInputStream.from_bytes(
+					mem.steal_as_bytes()
+				);
+				var read_ctx = new OLLMrpc.Bin.Stream(
+					new GLib.DataInputStream(in_base),
+					null
+				);
+				var node = this.json_codec.parse(read_ctx);
+				var gen = new Json.Generator();
+				gen.set_pretty(false);
+				gen.set_root(node);
+				var line = gen.to_data(null);
+				this.bin.out_stream.put_string(line);
+				this.bin.out_stream.put_byte((uint8) '\n');
+				this.bin.out_stream.flush();
+			} catch (GLib.Error e) {
+				GLib.error("stdio write: %s", e.message);
+			}
 		}
 
 		protected override bool on_input_ready(
@@ -125,7 +148,7 @@ namespace OLLMfilesd
 			try {
 				var request = this.request_from_json_line(line);
 				request.connection = this;
-				request.dispatch(null);
+				request.dispatch();
 			} catch (GLib.Error e) {
 				GLib.error("%s", e.message);
 			}
@@ -154,7 +177,7 @@ namespace OLLMfilesd
 				var request = this.request_from_json_line(line);
 				this.script_awaiting_id = request.id;
 				request.connection = this;
-				if (!request.dispatch(null)) {
+				if (!request.dispatch()) {
 					this.script_awaiting_id = -1;
 					continue;
 				}

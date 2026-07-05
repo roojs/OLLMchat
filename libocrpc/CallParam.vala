@@ -19,18 +19,15 @@
 namespace OLLMrpc
 {
 	/**
-	 * Base bag for JSON-RPC request arguments on {@link Request.param}.
+	 * Base bag for request arguments on {@link Request.param}.
 	 *
 	 * Daemon param types live in {{{ollmfilesd/CallParam.vala}}} and extend
 	 * this class (e.g. {{{FolderParams}}}, {{{FileParams}}}). Add a wire field
-	 * by adding a GObject property on the subclass — json-glib default
-	 * {@link Json.Serializable} serializes and deserializes it; custom
-	 * {@link Json.Serializable} overrides are not needed for ordinary
-	 * {{{string}}}, {{{bool}}}, integer, or {{{string[]}}} fields.
+	 * by adding a GObject property on the subclass.
 	 *
 	 * @see Request
 	 */
-	public class CallParam : GLib.Object, Json.Serializable, Bin.Serializable
+	public class CallParam : GLib.Object, Bin.Serializable
 	{
 		/**
 		 * Positional arguments for legacy or generic callers.
@@ -43,18 +40,6 @@ namespace OLLMrpc
 		public unowned ParamSpec? find_property(string name)
 		{
 			return this.get_class().find_property(name);
-		}
-
-		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
-		{
-			base.set_property(pspec.get_name(), value);
-		}
-
-		public new Value Json.Serializable.get_property(ParamSpec pspec)
-		{
-			Value val = Value(pspec.value_type);
-			base.get_property(pspec.get_name(), ref val);
-			return val;
 		}
 	}
 }
