@@ -14,12 +14,12 @@
 namespace OLLMrpc
 {
 	/**
-	 * Ensure {@code ollmfilesd} is running before {@link Client.connect}.
+	 * Ensure {{{ollmfilesd}}} is running before {@link Client.connect}.
 	 *
 	 * Uses {@link pid} and {@link socket} paths: probe the socket, spawn or
-	 * kill-and-respawn when needed. Set {@code OLLM_OLLMFILESD} to an absolute
+	 * kill-and-respawn when needed. Set {{{OLLM_OLLMFILESD}}} to an absolute
 	 * path for dev/testing when the build-tree daemon should be used; otherwise
-	 * {@code ollmfilesd} is resolved on {@code PATH}.
+	 * {{{ollmfilesd}}} is resolved on {{{PATH}}}.
 	 */
 	public class ClientBoot : GLib.Object
 	{
@@ -58,7 +58,7 @@ namespace OLLMrpc
 
 		/**
 		 * Block until {@link socket} accepts a connection, spawning or
-		 * kill-and-respawning {@code ollmfilesd} when needed.
+		 * kill-and-respawning {{{ollmfilesd}}} when needed.
 		 */
 		public async void ensure_daemon() throws GLib.IOError
 		{

@@ -18,7 +18,7 @@ namespace OLLMrpc
 	{
 		public string method { get; set; default = ""; }
 		public string object_type { get; set; default = ""; }
-		/** Referenced object id when {@link object_type} has one; {@code 0} for singletons. */
+		/** Referenced object id when {@link object_type} has one; {{{0}}} for singletons. */
 		public int id { get; set; default = 0; }
 		public string message { get; set; default = ""; }
 

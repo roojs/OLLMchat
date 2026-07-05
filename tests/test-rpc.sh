@@ -48,8 +48,8 @@ jq_line_ok "T0.1 ready notification" "$ready" \
 # line 2 — Daemon.hello response
 resp=$(rpc_line 2 "$RPC_OUT")
 jq_line_ok "T0.2 Daemon.hello (no error)" "$resp" '.error == null'
-jq_line_ok "T0.2 Daemon.hello (server)" "$resp" '.result.server == "ollmfilesd"'
-jq_line_ok "T0.2 Daemon.hello (ready)" "$resp" '(.result.ready // true) == true'
+jq_line_ok "T0.2 Daemon.hello (server)" "$resp" '.result[0].server == "ollmfilesd"'
+jq_line_ok "T0.2 Daemon.hello (ready)" "$resp" '(.result[0].ready // true) == true'
 
 # line 3 — second request; id matches
 resp=$(rpc_line 3 "$RPC_OUT")

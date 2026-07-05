@@ -122,10 +122,11 @@ namespace OLLMfilesd
 					row.path = path;
 					row.id = -1;
 				}
+				var result = new Gee.ArrayList<GLib.Object>();
+				result.add(row);
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					result = row,
-					result_type = "File",
+					result = result,
 					msg = row.is_text ? (string) data : GLib.Base64.encode(
 						data[0:data.length > 0 ? data.length - 1 : 0]
 					),
@@ -159,7 +160,6 @@ namespace OLLMfilesd
 				if (project == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						result_type = "File",
 						msg = "project not found"
 					});
 					return;
@@ -168,7 +168,6 @@ namespace OLLMfilesd
 				if (project_file == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						result_type = "File",
 						msg = "file not found"
 					});
 					return;
@@ -181,10 +180,11 @@ namespace OLLMfilesd
 					source,
 					{"manager", "buffer", "parent", "last_modified"}
 				);
+				var result = new Gee.ArrayList<GLib.Object>();
+				result.add(row);
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					result = row,
-					result_type = "File"
+					result = result
 				});
 			});
 			this.call_write.connect((request) => {
@@ -223,10 +223,11 @@ namespace OLLMfilesd
 					var row = new File(this.manager);
 					row.copy_from(existing, {"manager", "buffer", "parent"});
 					row.last_modified = existing.mtime_on_disk();
+					var result = new Gee.ArrayList<GLib.Object>();
+					result.add(row);
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						result = row,
-						result_type = "File"
+						result = result
 					});
 					return;
 				}
@@ -250,10 +251,11 @@ namespace OLLMfilesd
 					var row = new File(this.manager);
 					row.copy_from(fake, {"manager", "buffer", "parent"});
 					row.last_modified = fake.mtime_on_disk();
+					var result = new Gee.ArrayList<GLib.Object>();
+					result.add(row);
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						result = row,
-						result_type = "File"
+						result = result
 					});
 				});
 			});
@@ -308,8 +310,6 @@ namespace OLLMfilesd
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					result = list,
-					result_type = "VectorMetadata",
-					is_array = true,
 					msg = list.size.to_string()
 				});
 			});

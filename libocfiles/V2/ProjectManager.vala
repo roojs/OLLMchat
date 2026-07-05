@@ -19,7 +19,7 @@
 namespace OLLMfiles
 {
 	/**
-	 * V2 client {@link ProjectManager} — RPC to {@code ollmfilesd}, local UI state only.
+	 * V2 client {@link ProjectManager} — RPC to {{{ollmfilesd}}}, local UI state only.
 	 *
 	 * Filesystem, SQLite, and scan work stay on the daemon. This class keeps
 	 * {@link active_project}, {@link active_file}, signals, and thin project rows.
@@ -31,7 +31,7 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Editor / tool buffers (client-only; {@link Window} sets {@code OLLMcoder.BufferProvider}).
+		 * Editor / tool buffers (client-only; {@link Window} sets {{{OLLMcoder.BufferProvider}}}).
 		 */
 		public BufferProviderBase buffer_provider { get; set; default = new BufferProviderBase(); }
 		
@@ -186,7 +186,7 @@ namespace OLLMfiles
 		/**
 		 * Notify that a file's metadata has changed (client-local only).
 		 *
-		 * @deprecated Kept for shipping {@code SourceView} callers during cutover.
+		 * @deprecated Kept for shipping {{{SourceView}}} callers during cutover.
 		 *   Cursor, scroll, and last_viewed are per-window in-memory state on
 		 *   {@link File} — not RPC, not daemon SQLite. Callers should set those
 		 *   fields directly and drop this hook when session restore is redesigned.
@@ -223,7 +223,7 @@ namespace OLLMfiles
 		/**
 		 * Fetch a {@link Folder} row at an absolute path (any project).
 		 *
-		 * Uses {@code Folder.fetch} on the daemon. For files inside a known
+		 * Uses {{{Folder.fetch}}} on the daemon. For files inside a known
 		 * project, prefer {@link Folder.fetch_file} on the project row.
 		 *
 		 * @param path Normalized absolute path
@@ -238,7 +238,11 @@ namespace OLLMfiles
 			if (response.error != null) {
 				return null;
 			}
-			var folder = (Folder) response.result;
+			var folders = (Gee.ArrayList<Folder>) response.result;
+			if (folders.size == 0) {
+				return null;
+			}
+			var folder = (Folder) folders.get(0);
 			folder.manager = this;
 			this.file_cache.set(folder.path, folder);
 			return folder;
@@ -264,7 +268,14 @@ namespace OLLMfiles
 					path = path
 				};
 			}
-			var project = (Folder) response.result;
+			var folders = (Gee.ArrayList<Folder>) response.result;
+			if (folders.size == 0) {
+				return new Folder(this) {
+					is_project = true,
+					path = path
+				};
+			}
+			var project = (Folder) folders.get(0);
 			project.manager = this;
 			project.is_project = true;
 			this.file_cache.set(project.path, project);
@@ -298,8 +309,8 @@ namespace OLLMfiles
 		/**
 		 * Restore active project and file from saved session paths.
 		 *
-		 * Does not read {@code ProjectFiles} or DB {@code is_active} flags.
-		 * {@code file_path} comes from agent/window config when wired.
+		 * Does not read {{{ProjectFiles}}} or DB {{{is_active}}} flags.
+		 * {{{file_path}}} comes from agent/window config when wired.
 		 *
 		 * @param file_path Optional absolute path of file to open after project
 		 */
@@ -352,7 +363,7 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Writes current buffer contents via {@code File.write}.
+		 * Writes current buffer contents via {{{File.write}}}.
 		 * Scan/index queue is on the daemon. RPC errors: {@link OLLMrpc.Client.failed}.
 		 */
 		public async void write_buffer_to_disk()

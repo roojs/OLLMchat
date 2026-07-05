@@ -23,10 +23,10 @@ namespace OLLMfiles
 	 *
 	 * V2 client: used as {@link Folder.children}. Provides list
 	 * ({@link GLib.ListModel}) and {@link child_map} (basename lookup) for one
-	 * directory level. The daemon builds the full tree via {@code read_dir};
+	 * directory level. The daemon builds the full tree via {{{read_dir}}};
 	 * this list is not hydrated automatically — populate via {@link append} /
-	 * {@link remove} until a {@code Folder.fetch_children} RPC lands (plan
-	 * 2.10.4.16). No {@code cleanup_deleted} on the client (daemon-only).
+	 * {@link remove} until a {{{Folder.fetch_children}}} RPC lands (plan
+	 * 2.10.4.16). No {{{cleanup_deleted}}} on the client (daemon-only).
 	 */
 	public class FolderFiles : Object, GLib.ListModel
 	{

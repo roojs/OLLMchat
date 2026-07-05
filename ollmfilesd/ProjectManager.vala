@@ -174,9 +174,7 @@ namespace OLLMfilesd
 						list.add(this.projects.get_item(i));
 					}
 					request.reply(new OLLMrpc.Response() {
-						result = list,
-						result_type = "Folder",
-						is_array = true
+						result = list
 					});
 				});
 			});
@@ -184,9 +182,10 @@ namespace OLLMfilesd
 				var project = this.create_project(
 					((ProjectParams) request.param).path
 				);
+				var result = new Gee.ArrayList<GLib.Object>();
+				result.add(project);
 				request.reply(new OLLMrpc.Response() {
-					result = project,
-					result_type = "Folder"
+					result = result
 				});
 			});
 			this.call_remove_project.connect((request) => {

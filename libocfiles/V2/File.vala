@@ -33,7 +33,7 @@ namespace OLLMfiles
 	 * All alias references are tracked in ProjectManager's alias_map.
 	 * 
 	 * Constructors: {@link File}(manager) for RPC-hydrated rows; {@link File.new_fake}
-	 * for paths not yet in the DB ({@code id == -1}) until {@link to_real}.
+	 * for paths not yet in the DB ({{{id == -1}}}) until {@link to_real}.
 	 *
 	 * Client {@link File} — buffers and Gtk helpers stay local; disk/DB via RPC.
 	 *
@@ -302,13 +302,13 @@ namespace OLLMfiles
 		// --- Daemon RPC ---
 
 		/**
-		 * Daemon disk probe ({@code File.exists}).
+		 * Daemon disk probe ({{{File.exists}}}).
 		 *
 		 * Distinct from index membership ({@link Folder.fetch_file}) and content
 		 * load ({@link read}). Callers use this for create-vs-modify and validate;
 		 * **🚫** do not probe existence via {@link read}.
 		 *
-		 * Wire: {@code response.msg} is {@code ((int) GLib.FileType)} as decimal
+		 * Wire: {{{response.msg}}} is {{{((int) GLib.FileType)}}} as decimal
 		 * ({@link GLib.FileType.UNKNOWN} = path absent or RPC error).
 		 *
 		 * @return File type on daemon disk; {@link GLib.FileType.UNKNOWN} when absent
@@ -334,16 +334,16 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Load filebase + content from daemon ({@code File.read}).
+		 * Load filebase + content from daemon ({{{File.read}}}).
 		 *
-		 * Wire: {@code result} is the {@link File} row (indexed id when in project,
-		 * else {@code id == -1}); {@code response.msg} is file content;
-		 * {@code response.msg_encode}: {@code 0} when {@code result.is_text},
-		 * {@code 1} = base64 otherwise. Populates {@link buffer} from decoded
-		 * {@code msg} — **🚫** no local disk read on thin client.
+		 * Wire: {{{result}}} is the {@link File} row (indexed id when in project,
+		 * else {{{id == -1}}}); {{{response.msg}}} is file content;
+		 * {{{response.msg_encode}}}: {{{0}}} when {{{result.is_text}}},
+		 * {{{1}}} = base64 otherwise. Populates {@link buffer} from decoded
+		 * {{{msg}}} — **🚫** no local disk read on thin client.
 		 *
 		 * Whether the path may be read (project vs permission-granted) is a
-		 * tool/client decision; the daemon reads {@code params.path} on disk.
+		 * tool/client decision; the daemon reads {{{params.path}}} on disk.
 		 */
 		public async bool read()
 		{
@@ -359,10 +359,9 @@ namespace OLLMfiles
 				return false;
 			}
 
-			// Reply: {@link File} row via {@code result_type} + {@link rpc_register}.
-			var row = response.result as File;
-			if (row != null) {
-				this.copy_from(row, {
+			var files = (Gee.ArrayList<File>) response.result;
+			if (files.size > 0) {
+				this.copy_from((File) files.get(0), {
 					"buffer",
 					"parent",
 					"cursor-line",
@@ -404,9 +403,9 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Vector metadata rows for this file from daemon DB ({@code File.vector_metadata}).
+		 * Vector metadata rows for this file from daemon DB ({{{File.vector_metadata}}}).
 		 *
-		 * Wire: {@code result} is {@link SQT.VectorMetadata}[] keyed by {@code ast_path}
+		 * Wire: {{{result}}} is {@link SQT.VectorMetadata}[] keyed by {{{ast_path}}}
 		 * on the caller; empty when the path is not indexed or has no rows.
 		 */
 		public async Gee.ArrayList<SQT.VectorMetadata> vector_metadata()
@@ -419,20 +418,18 @@ namespace OLLMfiles
 				method = "File.vector_metadata",
 				param = new OLLMfilesd.FileParams() { path = this.path }
 			});
-			if (response.error != null || response.result == null) {
+			if (response.error != null) {
 				return new Gee.ArrayList<SQT.VectorMetadata>();
 			}
-
-			var rows = (Gee.ArrayList<SQT.VectorMetadata>) response.result;
-			return rows != null ? rows : new Gee.ArrayList<SQT.VectorMetadata>();
+			return (Gee.ArrayList<SQT.VectorMetadata>) response.result;
 		}
 
 		/**
-		 * Write on daemon ({@code File.write}).
+		 * Write on daemon ({{{File.write}}}).
 		 *
-		 * {@code base_type}: {@code f} file (default), {@code d} directory,
-		 * {@code fa} symlink. Directories and symlinks use empty {@code content};
-		 * symlinks set {@code target}. Optional {@code unix_mode} applies rwx after
+		 * {{{base_type}}}: {{{f}}} file (default), {{{d}}} directory,
+		 * {{{fa}}} symlink. Directories and symlinks use empty {{{content}}};
+		 * symlinks set {{{target}}}. Optional {{{unix_mode}}} applies rwx after
 		 * the op.
 		 *
 		 * @return false when RPC fails or path is empty
@@ -472,7 +469,7 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Check disk change vs buffer ({@code File.changed.check}).
+		 * Check disk change vs buffer ({{{File.changed.check}}}).
 		 */
 		public async FileUpdateStatus check_changed()
 		{
@@ -499,9 +496,9 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Register fake file ({@code id == -1}) on daemon ({@code File.register}).
+		 * Register fake file ({{{id == -1}}}) on daemon ({{{File.register}}}).
 		 *
-		 * On success, {@link Copyable.copy_from} merges {@code response.result} onto
+		 * On success, {@link Copyable.copy_from} merges {{{response.result}}} onto
 		 * this instance (same object for buffer/UI).
 		 */
 		public async bool register()
@@ -521,9 +518,9 @@ namespace OLLMfiles
 				return false;
 			}
 
-			var real_file = response.result as File;
-			if (real_file != null) {
-				this.copy_from(real_file, {
+			var files = (Gee.ArrayList<File>) response.result;
+			if (files.size > 0) {
+				this.copy_from((File) files.get(0), {
 					"buffer",
 					"parent",
 					"cursor-line",
@@ -537,7 +534,7 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Promote fake file ({@code id == -1}) to indexed row on daemon.
+		 * Promote fake file ({{{id == -1}}}) to indexed row on daemon.
 		 * Does not write disk bytes — call {@link write} first when needed.
 		 */
 		public async void to_real() throws Error
@@ -553,7 +550,7 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Delete file on daemon ({@code File.delete}).
+		 * Delete file on daemon ({{{File.delete}}}).
 		 */
 		public async bool delete()
 		{
@@ -569,9 +566,9 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Apply unix rwx permissions on daemon ({@code File.apply_permissions}).
+		 * Apply unix rwx permissions on daemon ({{{File.apply_permissions}}}).
 		 *
-		 * @param unix_mode Rwx bits ({@code 0777}) from bubble overlay
+		 * @param unix_mode Rwx bits ({{{0777}}}) from bubble overlay
 		 * @return false when RPC fails or path is empty
 		 */
 		public async bool apply_permissions(uint unix_mode)
@@ -727,19 +724,19 @@ namespace OLLMfiles
 		/**
 		 * Approve this file and all its FileHistory items.
 		 *
-		 * Removed — {@code FileHistory.approve} RPC.
+		 * Removed — {{{FileHistory.approve}}} RPC.
 		 */
 
 		/**
 		 * Whether this file is a documentation file (plain text or markdown, not code).
 		 *
-		 * Removed — daemon {@code Indexer} only.
+		 * Removed — daemon {{{Indexer}}} only.
 		 */
 
 		/**
 		 * Revert this file to previous version from FileHistory backup.
 		 *
-		 * Removed — {@code FileHistory.revert} RPC.
+		 * Removed — {{{FileHistory.revert}}} RPC.
 		 */
 
 		public override void bin_write_prop(

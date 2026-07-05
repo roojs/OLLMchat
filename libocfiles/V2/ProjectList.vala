@@ -24,7 +24,7 @@ namespace OLLMfiles
 	 * Holds project-root {@link Folder} rows loaded via
 	 * {@link ProjectManager.load_projects_from_db} or {@link ProjectManager.create_project}.
 	 * Subfolder lookup is **not** cached here — use
-	 * {@link ProjectManager.fetch_folder} (daemon {@code Folder.fetch} RPC).
+	 * {@link ProjectManager.fetch_folder} (daemon {{{Folder.fetch}}} RPC).
 	 */
 	public class ProjectList : Object, GLib.ListModel
 	{
@@ -152,8 +152,8 @@ namespace OLLMfiles
 		/**
 		 * Get the active project from the projects list.
 		 *
-		 * Uses in-memory {@code is_active} on project rows (client-local session
-		 * state). Does not read daemon DB {@code is_active} flags.
+		 * Uses in-memory {{{is_active}}} on project rows (client-local session
+		 * state). Does not read daemon DB {{{is_active}}} flags.
 		 *
 		 * @return The active {@link Folder} (project), or null if none is active
 		 */

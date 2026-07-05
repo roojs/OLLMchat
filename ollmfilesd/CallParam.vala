@@ -13,7 +13,7 @@
 
 namespace OLLMfilesd
 {
-	/** {@code Daemon.*} request params. */
+	/** {{{Daemon.*}}} request params. */
 	public class DaemonParams : OLLMrpc.CallParam
 	{
 		public static void rpc_register()
@@ -25,7 +25,7 @@ namespace OLLMfilesd
 		public string client { get; set; default = ""; }
 	}
 
-	/** {@code ProjectManager.*} request params. */
+	/** {{{ProjectManager.*}}} request params. */
 	public class ProjectParams : OLLMrpc.CallParam
 	{
 		public static void rpc_register()
@@ -38,7 +38,7 @@ namespace OLLMfilesd
 		public bool project_summary_only { get; set; default = false; }
 	}
 
-	/** {@code File.*} request params. */
+	/** {{{File.*}}} request params. */
 	public class FileParams : OLLMrpc.CallParam
 	{
 		public static void rpc_register()
@@ -49,19 +49,19 @@ namespace OLLMfilesd
 		public string path { get; set; default = ""; }
 		public string project_path { get; set; default = ""; }
 		public string content { get; set; default = ""; }
-		/** {@code f} file, {@code d} directory, {@code fa} symlink ({@link File.write}). */
+		/** {{{f}}} file, {{{d}}} directory, {{{fa}}} symlink ({@link File.write}). */
 		public string base_type { get; set; default = "f"; }
-		/** Symlink target when {@code base_type == "fa"} ({@code File.write}). */
+		/** Symlink target when {{{base_type == "fa"}}} ({{{File.write}}}). */
 		public string target { get; set; default = ""; }
-		/** Optional rwx ({@code 0777}) applied after the write op. */
+		/** Optional rwx ({{{0777}}}) applied after the write op. */
 		public uint unix_mode { get; set; default = 0; }
 		public bool buffer_dirty { get; set; default = false; }
 		public int64 last_known_mtime { get; set; default = 0; }
-		/** {@link FileHistory.approve} / {@link FileHistory.revert} — {@code file_history.id}. */
+		/** {@link FileHistory.approve} / {@link FileHistory.revert} — {{{file_history.id}}}. */
 		public int64 id { get; set; default = 0; }
 	}
 
-	/** {@code Folder.*} request params (project-scoped). */
+	/** {{{Folder.*}}} request params (project-scoped). */
 	public class FolderParams : OLLMrpc.CallParam
 	{
 		public static void rpc_register()
@@ -83,7 +83,7 @@ namespace OLLMfilesd
 		public bool metadata_only { get; set; default = false; }
 	}
 
-	/** {@code vector.*} request params. */
+	/** {{{vector.*}}} request params. */
 	public class VectorParams : OLLMrpc.CallParam
 	{
 		public static void rpc_register()

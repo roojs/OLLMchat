@@ -127,15 +127,15 @@ namespace OLLMfilesd
 				if (folder == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						result_type = "Folder",
 						msg = "folder not found"
 					});
 					return;
 				}
+				var result = new Gee.ArrayList<GLib.Object>();
+				result.add(folder);
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					result = folder,
-					result_type = "Folder"
+					result = result
 				});
 			});
 			this.call_contains_folder.connect((request) => {
@@ -201,8 +201,6 @@ namespace OLLMfilesd
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						result = list,
-						result_type = "File",
-						is_array = true,
 						msg = list.size.to_string()
 					});
 					return;
@@ -227,8 +225,6 @@ namespace OLLMfilesd
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					result = list,
-					result_type = "File",
-					is_array = true,
 					msg = matched.size.to_string()
 				});
 			});
@@ -238,9 +234,6 @@ namespace OLLMfilesd
 				if (project == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						result = new Gee.ArrayList<GLib.Object>(),
-						result_type = "FileWithHistory",
-						is_array = true,
 						msg = "project not found"
 					});
 					return;
@@ -263,9 +256,7 @@ namespace OLLMfilesd
 				}
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					result = result,
-					result_type = "FileWithHistory",
-					is_array = true
+					result = result
 				});
 			});
 			this.call_project_description.connect((request) => {
@@ -289,9 +280,6 @@ namespace OLLMfilesd
 				if (project == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						result = new Gee.ArrayList<GLib.Object>(),
-						result_type = "Folder",
-						is_array = true,
 						msg = "project not found"
 					});
 					return;
@@ -318,8 +306,6 @@ namespace OLLMfilesd
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					result = list,
-					result_type = "Folder",
-					is_array = true,
 					msg = list.size.to_string()
 				});
 			});

@@ -27,7 +27,7 @@ namespace OLLMcoder
 	 * - Next/popover button (existing functionality with task-due icon, popover on mouseover)
 	 * 
 	 * Monitors ReviewFiles and updates button visibility accordingly.
-	 * V2: binds {@link OLLMfiles.ProjectManager.review_files} ({@code fetch_pending_approvals} RPC).
+	 * V2: binds {@link OLLMfiles.ProjectManager.review_files} ({{{fetch_pending_approvals}}} RPC).
 	 */
 	public class Approvals : Gtk.Box
 	{

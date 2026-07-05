@@ -66,9 +66,10 @@ namespace OLLMfilesd
 				if (p.protocol > 0) {
 					this.protocol = p.protocol;
 				}
+				var result = new Gee.ArrayList<GLib.Object>();
+				result.add(this);
 				request.reply(new OLLMrpc.Response() {
-					result = this,
-					result_type = "Daemon"
+					result = result
 				});
 			});
 			this.call_shutdown.connect((request) => {

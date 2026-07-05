@@ -18,19 +18,18 @@ namespace OLLMrpc
 	{
 		public int id { get; set; default = 0; }
 		public Error? error { get; set; default = null; }
-		public GLib.Object? result { get; set; default = null; }
+		/** Object list on the wire (length 0, 1, or N). Single objects use one element. Never null. */
+		public Gee.ArrayList<GLib.Object> result {
+			get;
+			set;
+			default = new Gee.ArrayList<GLib.Object> ();
+		}
 		public string msg { get; set; default = ""; }
 		/**
-		 * {@code File.read} only: {@code 0} = plain UTF-8 ({@code is_text}),
-		 * {@code 1} = base64 (not {@code is_text}).
+		 * {{{File.read}}} only: {{{0}}} = plain UTF-8 ({{{is_text}}}),
+		 * {{{1}}} = base64 (not {{{is_text}}}).
 		 */
 		public int msg_encode { get; set; default = 0; }
-		/**
-		 * Set by handlers before reply; used when encoding empty object arrays.
-		 */
-		public string result_type { get; set; default = ""; }
-		/** When true, {@link result} is a {@link Gee.ArrayList} on the wire. */
-		public bool is_array { get; set; default = false; }
 
 		public static void rpc_register()
 		{
@@ -49,55 +48,27 @@ namespace OLLMrpc
 		{
 			switch (prop.name) {
 				case "result":
-					if (this.result == null) {
+					if (this.result.size == 0) {
 						return;
-					}
-					if (!this.is_array) {
-						this.bin_default_write_prop (ctx, prop);
-						return;
-					}
-					var list = this.result as Gee.ArrayList<GLib.Object>;
-					if (list == null) {
-						GLib.error(
-							"Response: is_array but result is not Gee.ArrayList"
-						);
 					}
 					ctx.write_tag (prop.name);
-					if (list.size == 0 && (
-						Bin.alias_to_gtype == null
-						|| !Bin.alias_to_gtype.has_key (
-							this.result_type
-						)
-					)) {
-						throw new Bin.StreamError.REGISTRATION (
-							"Unrecognized type alias: %s",
-							this.result_type
-						);
-					}
 					ctx.write_gtype (
-						list.size > 0
-							? list.get (0).get_type ()
-							: Bin.alias_to_gtype.get (
-								this.result_type
-							),
+						this.result.get (0).get_type (),
 						(uint8) GLib.Type.OBJECT | 0x80
 					);
-					if (list.size < 128) {
-						ctx.out_stream.put_byte ((uint8) list.size);
+					if (this.result.size < 128) {
+						ctx.out_stream.put_byte ((uint8) this.result.size);
 					} else {
 						ctx.out_stream.put_byte (
-							(uint8) (0x80 | ((list.size >> 8) & 0x7F))
+							(uint8) (0x80 | ((this.result.size >> 8) & 0x7F))
 						);
 						ctx.out_stream.put_byte (
-							(uint8) (list.size & 0xFF)
+							(uint8) (this.result.size & 0xFF)
 						);
 					}
-					foreach (var child in list) {
+					foreach (var child in this.result) {
 						((Bin.Serializable) child).bin_write (ctx);
 					}
-					return;
-				case "result-type":
-				case "is-array":
 					return;
 				default:
 					this.bin_default_write_prop (ctx, prop);
@@ -118,11 +89,7 @@ namespace OLLMrpc
 						this.bin_default_read_prop (ctx, prop, type_byte);
 						return;
 					}
-					this.is_array = true;
 					this.result = ctx.parse_object_array ();
-					return;
-				case "result-type":
-				case "is-array":
 					return;
 				default:
 					this.bin_default_read_prop (ctx, prop, type_byte);

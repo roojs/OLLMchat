@@ -128,9 +128,9 @@ printf 'seed\n' >"$NEW_FILE_PATH"
 run_t2_case "$SCRIPT_DIR/rpc/t2-scan.script.in"
 
 jq_resp_ok "T2A.2 File.read (no error)" 4 "$RPC_LAST_OUT" '.error == null'
-jq_resp_ok "T2A.2 File.read (id > 0)" 4 "$RPC_LAST_OUT" '(.result.id // .result["id"]) > 0'
+jq_resp_ok "T2A.2 File.read (id > 0)" 4 "$RPC_LAST_OUT" '(.result[0].id // .result[0]["id"]) > 0'
 jq_resp_args_ok "T2A.2 File.read (path)" 4 "$RPC_LAST_OUT" \
-    --arg p "$HELLO_PATH" '.result.path == $p'
+    --arg p "$HELLO_PATH" '.result[0].path == $p'
 
 jq_resp_ok "T2A.1 File.write (no error)" 5 "$RPC_LAST_OUT" '.error == null and .msg == "ok"'
 
@@ -140,7 +140,7 @@ jq_resp_ok "T2A.3 File.changed.check (NO_CHANGE)" 6 "$RPC_LAST_OUT" \
 file_content_ok "T2A.2 File.read (disk content)" "$HELLO_PATH" "hello from rpc fixture"
 
 run_t2_case "$SCRIPT_DIR/rpc/t2-file-activate.script.in"
-if grep -q "no signal rpc_activate on File" "$RPC_LAST_ERR"; then
+if grep -q "no signal call_activate on File" "$RPC_LAST_ERR"; then
     test_pass "T2A.7 File.activate (no server handler)"
 else
     test_fail "T2A.7 File.activate (no server handler)"
@@ -155,18 +155,18 @@ fi
 run_t2_case "$SCRIPT_DIR/rpc/t2-register.script.in"
 jq_resp_ok "T2B.5 File.register (no error)" 4 "$RPC_LAST_OUT" '.error == null'
 jq_resp_ok "T2B.5 File.register (id > 0)" 4 "$RPC_LAST_OUT" \
-    '(.result.id // .result["id"]) > 0'
+    '(.result[0].id // .result[0]["id"]) > 0'
 jq_resp_args_ok "T2B.5 File.register (path)" 4 "$RPC_LAST_OUT" \
-    --arg p "$REGISTER_PATH" '.result.path == $p'
+    --arg p "$REGISTER_PATH" '.result[0].path == $p'
 sqlite_count_ok "T2B.5 File.register (sqlite row)" "$RPC_DB" \
     "SELECT COUNT(*) FROM filebase WHERE delete_id = 0 AND path = '$REGISTER_PATH';" \
     "1"
 
 jq_resp_ok "T2B.5 File.read after register (no error)" 5 "$RPC_LAST_OUT" '.error == null'
 jq_resp_ok "T2B.5 File.read after register (id > 0)" 5 "$RPC_LAST_OUT" \
-    '(.result.id // .result["id"]) > 0'
+    '(.result[0].id // .result[0]["id"]) > 0'
 jq_resp_args_ok "T2B.5 File.read after register (path)" 5 "$RPC_LAST_OUT" \
-    --arg p "$REGISTER_PATH" '.result.path == $p'
+    --arg p "$REGISTER_PATH" '.result[0].path == $p'
 
 # --- Path A: changed.check with external touch ---
 touch "$HELLO_PATH"

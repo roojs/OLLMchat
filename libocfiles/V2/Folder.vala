@@ -26,24 +26,24 @@ namespace OLLMfiles
 	 * 
 	 * == Project Management ==
 	 *
-	 * On the daemon, {@code project_files} and {@link children} hold the full project
-	 * graph ({@code ollmfilesd/Folder.vala}). The client keeps neither — file lists
+	 * On the daemon, {{{project_files}}} and {@link children} hold the full project
+	 * graph ({{{ollmfilesd/Folder.vala}}}). The client keeps neither — file lists
 	 * and path lookups are RPC at the caller ([`2.10.4.9`](../../docs/plans/2.10.4.9-ACTIVE-v2-caller-cutover.md)).
 	 *
 	 * == Git Integration ==
 	 *
 	 * During filesystem scan the daemon discovers repositories and checks ignored
-	 * paths ({@code ollmfilesd/Folder.vala}). The UI process does not scan.
+	 * paths ({{{ollmfilesd/Folder.vala}}}). The UI process does not scan.
 	 *
 	 * == Client vs daemon ==
 	 *
 	 * This file is the **client** {@link Folder} (UI process). Scan, DB, and tree
-	 * build live on the daemon. Methods such as {@code read_dir} and
-	 * {@code load_files_from_db} are not compiled into the client build — see
-	 * {@code ollmfilesd/Folder.vala}. At cutover this replaces
-	 * {@code libocfiles/Folder.vala} in the app.
+	 * build live on the daemon. Methods such as {{{read_dir}}} and
+	 * {{{load_files_from_db}}} are not compiled into the client build — see
+	 * {{{ollmfilesd/Folder.vala}}}. At cutover this replaces
+	 * {{{libocfiles/Folder.vala}}} in the app.
 	 *
-	 * No {@code project_files} or hydrated {@link children} on the client.
+	 * No {{{project_files}}} or hydrated {@link children} on the client.
 	 */
 	public class Folder : FileBase
 	{
@@ -87,13 +87,13 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Project-level description from vector metadata ({@code ProjectAnalysis}).
+		 * Project-level description from vector metadata ({{{ProjectAnalysis}}}).
 		 *
-		 * Client calls {@code Folder.project_description} on the daemon
+		 * Client calls {{{Folder.project_description}}} on the daemon
 		 * ([`2.10.4.1`](../../docs/plans/2.10.4.1-ollmfilesd-rpc-api.md)).
 		 *
-		 * Callers ({@code Skill/Runner}, {@code Task/Details}, {@code Task/Tool}) must
-		 * {@code yield} this at cutover (was synchronous on shipping {@link Folder}).
+		 * Callers ({{{Skill/Runner}}}, {{{Task/Details}}}, {{{Task/Tool}}}) must
+		 * {{{yield}}} this at cutover (was synchronous on shipping {@link Folder}).
 		 *
 		 * @return description text, or empty string
 		 */
@@ -116,8 +116,8 @@ namespace OLLMfiles
 		/**
 		 * Distinct folders that need write access (bwrap overlay roots).
 		 *
-		 * {@code Folder.roots} on the daemon — same result as shipping
-		 * {@code build_roots()}, without local {@code project_files}.
+		 * {{{Folder.roots}}} on the daemon — same result as shipping
+		 * {{{build_roots()}}}, without local {{{project_files}}}.
 		 *
 		 * @return Write-root folder rows (paths are realpaths)
 		 */
@@ -131,14 +131,11 @@ namespace OLLMfiles
 				method = "Folder.roots",
 				param = new OLLMfilesd.FolderParams() { path = this.path }
 			});
-			if (response.error != null || response.result == null) {
+			if (response.error != null) {
 				return new Gee.ArrayList<Folder>();
 			}
 
 			var folders = (Gee.ArrayList<Folder>) response.result;
-			if (folders == null) {
-				return new Gee.ArrayList<Folder>();
-			}
 			foreach (var folder in folders) {
 				folder.manager = this.manager;
 			}
@@ -148,7 +145,7 @@ namespace OLLMfiles
 		/**
 		 * Fetch a {@link File} already tracked under this project.
 		 *
-		 * Checks {@link ProjectManager.file_cache} first, then {@code File.fetch}
+		 * Checks {@link ProjectManager.file_cache} first, then {{{File.fetch}}}
 		 * on the daemon. Does not scan disk or build a local project index.
 		 *
 		 * For a path just written to disk that is not in the index yet, use
@@ -177,7 +174,11 @@ namespace OLLMfiles
 				return null;
 			}
 
-			var file = (File) response.result;
+			var files = (Gee.ArrayList<File>) response.result;
+			if (files.size == 0) {
+				return null;
+			}
+			var file = (File) files.get(0);
 			file.manager = this.manager;
 			this.manager.file_cache.set(path, file);
 			return file;
@@ -186,8 +187,8 @@ namespace OLLMfiles
 		/**
 		 * Whether a directory path is part of this project tree.
 		 *
-		 * Used before creating a new file under {@code dir_path}. RPC-backed;
-		 * not a local {@code folder_map} lookup.
+		 * Used before creating a new file under {{{dir_path}}}. RPC-backed;
+		 * not a local {{{folder_map}}} lookup.
 		 *
 		 * @param dir_path Absolute normalized directory path
 		 * @return true if the directory is tracked under this project
@@ -210,13 +211,13 @@ namespace OLLMfiles
 		/**
 		 * Fetch a page of file rows for this project (file dropdown).
 		 *
-		 * Returns the daemon RPC response. Caller reads {@code result} (file page)
-		 * and {@code msg} (total match count as decimal string).
+		 * Returns the daemon RPC response. Caller reads {{{result}}} (file page)
+		 * and {{{msg}}} (total match count as decimal string).
 		 *
 		 * @param offset Rows to skip (default 0)
 		 * @param limit Page size (default 50)
 		 * @param query Dropdown filter (default browse all)
-		 * @return {@link OLLMrpc.Response} — {@code result} = file page, {@code msg} = total
+		 * @return {@link OLLMrpc.Response} — {{{result}}} = file page, {{{msg}}} = total
 		 */
 		public async OLLMrpc.Response fetch_files(
 			int offset = 0,
@@ -237,7 +238,7 @@ namespace OLLMfiles
 					metadata_only = metadata_only
 				}
 			});
-			if (response.error == null && response.result != null) {
+			if (response.error == null) {
 				var files = (Gee.ArrayList<File>) response.result;
 				foreach (var file in files) {
 					file.manager = this.manager;
@@ -252,7 +253,7 @@ namespace OLLMfiles
 		 *
 		 * The file must already exist on disk (e.g. after WriteFile). Calls
 		 * {@link File.to_real} on the daemon; does not write bytes locally.
-		 * Fake files ({@code id == -1}) receive a real id on success.
+		 * Fake files ({{{id == -1}}}) receive a real id on success.
 		 *
 		 * @param file Client file object (often from {@link File.new_fake})
 		 * @param path Absolute normalized path (must match {@link File.path})

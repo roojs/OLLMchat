@@ -32,8 +32,8 @@ namespace OLLMfiles
 	 * This file is the **client** {@link FileAlias} (UI process). Rows arrive
 	 * via RPC deserialize ({@link rpc_register}); {@link points_to} and
 	 * {@link target_path} are filled by the daemon index. Scan-time creation
-	 * ({@code new_from_info}, home-directory checks, {@code realpath}) lives on
-	 * {@code ollmfilesd/FileAlias.vala} — not compiled here.
+	 * ({{{new_from_info}}}, home-directory checks, {{{realpath}}}) lives on
+	 * {{{ollmfilesd/FileAlias.vala}}} — not compiled here.
 	 *
 	 * == Restrictions ==
 	 *
@@ -47,8 +47,8 @@ namespace OLLMfiles
 	 * == Notes ==
 	 *
 	 * Aliases maintain their own {@link path} (where the symlink exists on
-	 * disk) for filesystem tracking. {@code base_type} is {@code fa} for file
-	 * aliases and {@code da} for folder aliases on the wire.
+	 * disk) for filesystem tracking. {{{base_type}}} is {{{fa}}} for file
+	 * aliases and {{{da}}} for folder aliases on the wire.
 	 */
 	public class FileAlias : File
 	{
@@ -63,8 +63,7 @@ namespace OLLMfiles
 		/**
 		 * Constructor.
 		 *
-		 * @param manager The ProjectManager instance (required)
-		 *
+		 * @param manager The ProjectManager instance (required).
 		 * Note: {@link points_to} and {@link points_to_id} are set after
 		 * construction (RPC hydrate or daemon row merge).
 		 */
@@ -80,7 +79,7 @@ namespace OLLMfiles
 		 * Vector / agent summary line.
 		 *
 		 * When {@link points_to} is set, delegates to the target's
-		 * {@link FileBase.to_summary}; otherwise one {@code (alias)} line.
+		 * {@link FileBase.to_summary}; otherwise one {{{(alias)}}} line.
 		 *
 		 * @param keymap Vector metadata map (passed through to target)
 		 * @param indent Current indent prefix
@@ -115,7 +114,7 @@ namespace OLLMfiles
 		 *
 		 * Note: Buffer is stored via provider using set_data/get_data, so this
 		 * property is not directly accessible. Use
-		 * {@code manager.buffer_provider.has_buffer()} to check if the target
+		 * {{{manager.buffer_provider.has_buffer()}}} to check if the target
 		 * file has a buffer.
 		 */
 

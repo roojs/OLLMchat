@@ -515,13 +515,11 @@ Each element carries its own `type_byte` and payload.
 
 List **results** (`fetch_files`, …) encode as an object array on the **`result`** property of **`OLLMrpc.Response`** — not as a separate root message.
 
-**Handler metadata (not on the wire):** set **`is_array = true`** and **`result_type`** (element alias string) before reply. **`Response.bin_write_prop`** omits **`result-type`** and **`is-array`** from the encoded property stream — they exist only to drive encode. On decode, **`is_array`** is set when the **`result`** type byte is an object array (`0xD0`); **`result_type`** is not round-tripped.
+**Property type:** **`Gee.ArrayList<GLib.Object>`** — **`default = new Gee.ArrayList<GLib.Object>()`**; never null. Handlers populate **`result`** (length 0, 1, or N). Single-row RPCs use a one-element list — **🚫** no bare object on **`result`**.
 
-Wire layout matches the object-array form above (`0xD0` + element `reg_id` + count + element streams).
+**Encode:** omit **`result`** when **`result.size == 0`**. When **`size > 0`**, **`Response.bin_write_prop`** writes reg-id-first object arrays (`0xD0` + element `reg_id` + count + bodies); element **`GType`** from **`result.get(0)`**. **🚫** no **`is_array`** / **`result_type`** on handlers.
 
-**Empty arrays:** when **`list.size == 0`**, the encoder uses **`result_type`** to pick the element class (no sample object to infer `GType` from). **`result_type`** must be a registered alias.
-
-**Decode:** `Response.bin_read_prop` calls **`Stream.parse_object_array()`**, which returns **`Gee.ArrayList<GLib.Object>`**.
+**Decode:** property present → **`Stream.parse_object_array()`**; property absent → default empty list. Clients: guard **`response.error`** only — **🚫** no **`response.result == null`**; one **`(Gee.ArrayList<T>) response.result`** cast — **🚫** no **`(Gee.ArrayList<GLib.Object>)`** hop. Single-row methods use **`list.get(0)`** when **`list.size > 0`**.
 
 See `libocrpc/Response.vala`.
 

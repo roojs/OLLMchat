@@ -13,7 +13,7 @@
 
 namespace OLLMrpc.Transport
 {
-	/** Server RPC entry — {@link SocketListen}; {@code ollmfilesd} adds {@code Stdio}. */
+	/** Server RPC entry — {@link SocketListen}; {{{ollmfilesd}}} adds {{{Stdio}}}. */
 	public abstract class Listen : GLib.Object
 	{
 		public abstract bool start();

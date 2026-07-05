@@ -52,21 +52,21 @@ setup_rpc_fixture minimal-project
 run_t1_case "$SCRIPT_DIR/rpc/t1.script.in"
 
 jq_resp_ok "T1.1 load_projects_from_db (array)" 2 "$RPC_LAST_OUT" \
-    '.error == null and (.result | type) == "array"'
+    '.error == null and ((.result // []) | type) == "array"'
 jq_resp_ok "T1.2 create_project (no error)" 3 "$RPC_LAST_OUT" '.error == null'
 jq_resp_ok "T1.2 create_project (is_project)" 3 "$RPC_LAST_OUT" \
-    '.result["is-project"] == true'
+    '.result[0]["is-project"] == true'
 jq_resp_args_ok "T1.2 create_project (path)" 3 "$RPC_LAST_OUT" \
-    --arg p "$RPC_PROJECT_PATH" '.result.path == $p'
+    --arg p "$RPC_PROJECT_PATH" '.result[0].path == $p'
 jq_resp_ok "T1.3 load_projects_from_db (count)" 4 "$RPC_LAST_OUT" \
     '.error == null and (.result | length) >= 1'
 jq_resp_ok "T1.4 activate_project (no error)" 5 "$RPC_LAST_OUT" '.error == null'
 
 jq_resp_ok "T1.6 Folder.fetch (no error)" 6 "$RPC_LAST_OUT" '.error == null'
 jq_resp_ok "T1.6 Folder.fetch (folder row)" 6 "$RPC_LAST_OUT" \
-    '.result["base-type"] == "d"'
+    '.result[0]["base-type"] == "d"'
 jq_resp_args_ok "T1.6 Folder.fetch (path)" 6 "$RPC_LAST_OUT" \
-    --arg p "$RPC_PROJECT_PATH" '.result.path == $p'
+    --arg p "$RPC_PROJECT_PATH" '.result[0].path == $p'
 
 jq_resp_ok "T1.7 Folder.project_description (no error)" 7 "$RPC_LAST_OUT" '.error == null'
 jq_resp_ok "T1.7 Folder.project_description (msg string)" 7 "$RPC_LAST_OUT" \

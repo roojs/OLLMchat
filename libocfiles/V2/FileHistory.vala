@@ -19,7 +19,7 @@
 namespace OLLMfiles
 {
 	/**
-	 * V2 approve/revert RPC handle ({@code file_history.id} + path).
+	 * V2 approve/revert RPC handle ({{{file_history.id}}} + path).
 	 */
 	public class FileHistory : Object
 	{
@@ -55,11 +55,12 @@ namespace OLLMfiles
 			if (response.error != null) {
 				return;
 			}
+			var files = (Gee.ArrayList<File>) response.result;
 			var cached = this.manager.file_cache.get(this.path) as File;
-			if (cached == null && response.result is File) {
+			if (cached == null && files.size > 0) {
 				this.manager.file_cache.set(
 					this.path,
-					(File) response.result
+					(File) files.get(0)
 				);
 				cached = this.manager.file_cache.get(this.path) as File;
 			}
@@ -72,8 +73,8 @@ namespace OLLMfiles
 				return;
 			}
 			cached.manager = this.manager;
-			if (response.result is File) {
-				cached.copy_from((File) response.result, {
+			if (files.size > 0) {
+				cached.copy_from((File) files.get(0), {
 					"manager",
 					"buffer",
 					"parent"

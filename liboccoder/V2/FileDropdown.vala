@@ -22,7 +22,7 @@ namespace OLLMcoder
 	 * Searchable dropdown widget for selecting files.
 	 * 
 	 * Wraps Gtk.DropDown and adds search/filter functionality.
-	 * V2: paged {@link OLLMfiles.ProjectFiles} via {@code Folder.fetch_files} RPC.
+	 * V2: paged {@link OLLMfiles.ProjectFiles} via {{{Folder.fetch_files}}} RPC.
 	 */
 	public class FileDropdown : SearchableDropdown
 	{

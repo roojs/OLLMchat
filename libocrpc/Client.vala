@@ -28,7 +28,7 @@ namespace OLLMrpc
 	}
 
 	/**
-	 * Bin RPC client for {@code ollmfilesd}.
+	 * Bin RPC client for {{{ollmfilesd}}}.
 	 * {@link connect} runs {@link ClientBoot.ensure_daemon} when the
 	 * platform transport needs a local daemon starter.
 	 *
@@ -37,7 +37,7 @@ namespace OLLMrpc
 	 * entries by id.
 	 * {@link call} sends a {@link Request} and yields until that
 	 * id is filled in or {@link call_timeout_seconds} elapses.
-	 * Outgoing messages are queued — one {@code flush_async} at a time on
+	 * Outgoing messages are queued — one {{{flush_async}}} at a time on
 	 * the shared output stream; many requests may still be in flight.
 	 * Transport and wire faults abort via {@link GLib.error}; daemon
 	 * RPC errors return {@link Response.error} and emit {@link failed}.
@@ -110,8 +110,8 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Boot {@code ollmfilesd}, open the socket, and send {@link hello_request}
-		 * (e.g. {@code Daemon.hello} — built by the caller, not libocrpc).
+		 * Boot {{{ollmfilesd}}}, open the socket, and send {@link hello_request}
+		 * (e.g. {{{Daemon.hello}}} — built by the caller, not libocrpc).
 		 * @return false when the client cannot talk to the daemon (see {@link connect_error})
 		 */
 		public async bool connect(Request hello_request)
@@ -462,12 +462,7 @@ namespace OLLMrpc
 					);
 				}
 				if (response.error == null) {
-					GLib.debug(
-						"replied id=%d result_type=%s array=%s",
-						response.id,
-						response.result_type,
-						response.is_array ? "true" : "false"
-					);
+					GLib.debug ("replied id=%d", response.id);
 				}
 				var promise = this.pending.get(response.id);
 				this.pending.unset(response.id);

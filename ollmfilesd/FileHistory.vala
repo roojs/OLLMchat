@@ -483,10 +483,11 @@ namespace OLLMfilesd
 					"buffer",
 					"parent"
 				});
+				var result = new Gee.ArrayList<GLib.Object>();
+				result.add(row);
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					result = row,
-					result_type = "File",
+					result = result,
 					msg = "ok"
 				});
 			});
@@ -640,10 +641,11 @@ namespace OLLMfilesd
 				"buffer",
 				"parent"
 			});
+			var result = new Gee.ArrayList<GLib.Object>();
+			result.add(row);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				result = row,
-				result_type = "File",
+				result = result,
 				msg = "ok"
 			});
 		}

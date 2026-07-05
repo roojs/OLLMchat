@@ -19,10 +19,10 @@
 namespace OLLMvector
 {
 	/**
-	 * V2 no-op {@link Registry} — codebase search lives on {@code liboctools}.
+	 * V2 no-op {@link Registry} — codebase search lives on {{{liboctools}}}.
 	 *
 	 * {@link OLLMtools.CodebaseSearch.CodebaseSearchTool} is registered by
-	 * {@link OLLMtools.Registry}. This stub remains until V1 {@code libocvector}
+	 * {@link OLLMtools.Registry}. This stub remains until V1 {{{libocvector}}}
 	 * is removed (**2.10.4.23**).
 	 */
 	public class Registry : Object

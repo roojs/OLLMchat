@@ -89,7 +89,7 @@ jq_resp_ok() {
     jq_line_ok "$label" "$line" "$filter"
 }
 
-# Pass jq args after out file, e.g. --arg p "$path" '.result.path == $p'
+# Pass jq args after out file, e.g. --arg p "$path" '.result[0].path == $p'
 jq_resp_args_ok() {
     local label="$1"
     local id="$2"

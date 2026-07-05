@@ -14,9 +14,9 @@
 namespace OLLMrpc
 {
 	/**
-	 * Wire type for {@code Daemon.hello} ({@code result_type = "Daemon"}).
+	 * Wire type for {{{Daemon.hello}}} ({{{result}}} is a one-element {@link Daemon} array).
 	 * Client deserializes into this class. Server type is
-	 * {@code ollmfilesd/Daemon.vala} (unchanged).
+	 * {{{ollmfilesd/Daemon.vala}}} (unchanged).
 	 */
 	public class Daemon : GLib.Object, OLLMrpc.Bin.Serializable
 	{
