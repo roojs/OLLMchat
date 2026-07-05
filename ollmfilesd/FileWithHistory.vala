@@ -26,7 +26,7 @@ namespace OLLMfilesd
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.Stream.register(
+			OLLMrpc.Bin.register(
 				"FileWithHistory",
 				typeof(FileWithHistory)
 			);

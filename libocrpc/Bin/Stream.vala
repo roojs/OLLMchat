@@ -13,8 +13,8 @@
 
 namespace OLLMrpc.Bin
 {
-	/** Process-wide wire alias → GType (like {@link OLLMrpc.types}). */
-	internal static Gee.HashMap<string, GLib.Type> alias_to_gtype;
+	/** Process-wide wire alias → GType for bin encode/decode. */
+	public static Gee.HashMap<string, GLib.Type> alias_to_gtype;
 
 	/** Process-wide GType → wire alias. */
 	internal static Gee.HashMap<GLib.Type, string> gtype_to_alias;
@@ -22,13 +22,46 @@ namespace OLLMrpc.Bin
 	/**
 	 * {@link Stream} wire / registration failures (throw/catch).
 	 *
-	 * Not {@link GLib.Error} abort — use {@code throw new StreamError.*} from
+	 * Not {@link GLib.Error} abort — use {{{throw new StreamError.*}}} from
 	 * {@link Stream} encode/decode paths.
 	 */
 	public errordomain StreamError
 	{
 		PROTOCOL,
 		REGISTRATION
+	}
+
+	/**
+	 * Register a wire alias process-wide.
+	 *
+	 * Maps {{{alias}}} to {{{gtype}}} for instantiation on decode on
+	 * this peer. Both ends must register every alias they send or receive;
+	 * the alias string is the shared wire name — {{{gtype}}} is local to
+	 * this process and need not match the peer's type for the same alias.
+	 * Per-connection {@link Stream} instances still use {@link Stream.names}
+	 * / {@link Stream.name_to_token} for JIT property keys on the wire.
+	 *
+	 * @param alias wire type name
+	 * @param gtype GObject type for that alias
+	 */
+	public static void register (
+		string alias,
+		GLib.Type gtype
+	) throws GLib.Error
+	{
+		if (alias_to_gtype == null) {
+			alias_to_gtype = new Gee.HashMap<string, GLib.Type> ();
+			gtype_to_alias = new Gee.HashMap<GLib.Type, string> ();
+		}
+		if (alias_to_gtype.has_key (alias)) {
+			throw new StreamError.REGISTRATION (
+				"duplicate register of alias '%s'",
+				alias
+			);
+		}
+
+		alias_to_gtype.set (alias, gtype);
+		gtype_to_alias.set (gtype, alias);
 	}
 
 	/**
@@ -48,39 +81,6 @@ namespace OLLMrpc.Bin
 		public const uint16 TOKEN_REG_KEY = 0xFFFF;
 		public const uint16 TOKEN_REG_TYPE = 0xFFFE;
 		public const uint16 TOKEN_END = 0xFFFD;
-
-		/**
-		 * Register a wire alias process-wide (like {@link OLLMrpc.register}).
-		 *
-		 * Maps {@param alias} to {@param gtype} for instantiation on decode on
-		 * this peer. Both ends must register every alias they send or receive;
-		 * the alias string is the shared wire name — {@param gtype} is local to
-		 * this process and need not match the peer's type for the same alias.
-		 * Per-connection streams still use {@link names} / {@link name_to_token}
-		 * for JIT property keys on the wire.
-		 *
-		 * @param alias wire type name
-		 * @param gtype GObject type for that alias
-		 */
-		public static void register (
-			string alias,
-			GLib.Type gtype
-		) throws GLib.Error
-		{
-			if (alias_to_gtype == null) {
-				alias_to_gtype = new Gee.HashMap<string, GLib.Type> ();
-				gtype_to_alias = new Gee.HashMap<GLib.Type, string> ();
-			}
-			if (alias_to_gtype.has_key (alias)) {
-				throw new StreamError.REGISTRATION (
-					"duplicate register of alias '%s'",
-					alias
-				);
-			}
-
-			alias_to_gtype.set (alias, gtype);
-			gtype_to_alias.set (gtype, alias);
-		}
 
 		public Stream (
 			GLib.DataInputStream? in_stream,
@@ -129,7 +129,7 @@ namespace OLLMrpc.Bin
 		/**
 		 * Read one object body after its {@link GLib.Type.OBJECT} type byte.
 		 *
-		 * When {@code object_type} is set (homogeneous object arrays), skip
+		 * When {{{object_type}}} is set (homogeneous object arrays), skip
 		 * {@link read_gtype} and decode the property stream for that class.
 		 *
 		 * @param object_type element class when already read from an array header
@@ -147,7 +147,7 @@ namespace OLLMrpc.Bin
 		}
 
 		/**
-		 * Homogeneous object-array body after {@code 0xD0}: element class,
+		 * Homogeneous object-array body after {{{0xD0}}}: element class,
 		 * count, then one property stream per element.
 		 *
 		 * @return decoded elements
@@ -330,7 +330,7 @@ namespace OLLMrpc.Bin
 		}
 
 		/**
-		 * Read {@code reg_id} after an object type byte; return registered gtype.
+		 * Read {{{reg_id}}} after an object type byte; return registered gtype.
 		 */
 		public GLib.Type read_gtype () throws GLib.Error
 		{

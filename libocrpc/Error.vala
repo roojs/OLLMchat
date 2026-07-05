@@ -31,7 +31,7 @@ namespace OLLMrpc
 		public static void rpc_register()
 		{
 			register("Error", typeof(Error));
-			OLLMrpc.Bin.Stream.register("Error", typeof(Error));
+			OLLMrpc.Bin.register("Error", typeof(Error));
 		}
 
 		/**

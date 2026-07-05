@@ -39,7 +39,7 @@ namespace OLLMfilesd
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.Stream.register("Folder", typeof(Folder));
+			OLLMrpc.Bin.register("Folder", typeof(Folder));
 			FolderParams.rpc_register();
 		}
 
@@ -117,6 +117,10 @@ namespace OLLMfilesd
 				case "children":
 				case "project-files":
 				case "last-check-time":
+				case "is-alias":
+				case "path-basename":
+				case "display-with-indicators":
+				case "icon-name":
 					return;
 				default:
 					bin_default_write_prop(ctx, prop);
@@ -136,6 +140,10 @@ namespace OLLMfilesd
 				case "children":
 				case "project-files":
 				case "last-check-time":
+				case "is-alias":
+				case "path-basename":
+				case "display-with-indicators":
+				case "icon-name":
 					return;
 				default:
 					bin_default_read_prop(ctx, prop, type_byte);

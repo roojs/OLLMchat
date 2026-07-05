@@ -50,12 +50,12 @@ namespace OLLMfiles
 	 * var contents = file.buffer.get_text();
 	 * }}}
 	 */
-	public class File : FileBase, Copyable, OLLMrpc.Bin.Serializable
+	public class File : FileBase, Copyable
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.register("File", typeof(File));
-			OLLMrpc.Bin.Stream.register("File", typeof(File));
+			OLLMrpc.Bin.register("File", typeof(File));
 		}
 
 		/**
@@ -742,6 +742,29 @@ namespace OLLMfiles
 		 *
 		 * Removed — {@code FileHistory.revert} RPC.
 		 */
+
+		public override void bin_write_prop (
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			if (prop.name == "buffer") {
+				return;
+			}
+			base.bin_write_prop (ctx, prop);
+		}
+
+		public override void bin_read_prop (
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			if (prop.name == "buffer") {
+				return;
+			}
+			base.bin_read_prop (ctx, prop, type_byte);
+		}
 
 	}
 }

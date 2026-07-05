@@ -45,7 +45,7 @@ namespace OLLMfilesd
 	{
 		public static new void rpc_register()
 		{
-			OLLMrpc.Bin.Stream.register("FileAlias", typeof(FileAlias));
+			OLLMrpc.Bin.register("FileAlias", typeof(FileAlias));
 		}
 
 		// Static field for home directory (initialized once)

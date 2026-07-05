@@ -23,7 +23,7 @@ namespace OLLMrpc
 		public static void rpc_register()
 		{
 			register("Daemon", typeof(Daemon));
-			OLLMrpc.Bin.Stream.register("Daemon", typeof(Daemon));
+			OLLMrpc.Bin.register("Daemon", typeof(Daemon));
 		}
 
 		public int protocol { get; set; default = 1; }

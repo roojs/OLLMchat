@@ -149,14 +149,14 @@ namespace OLLMrpcTests
 		};
 
 		try {
-			OLLMrpc.Bin.Stream.register ("TestPair", typeof (TestPair));
-			OLLMrpc.Bin.Stream.register (
+			OLLMrpc.Bin.register ("TestPair", typeof (TestPair));
+			OLLMrpc.Bin.register (
 				"TestSkipDefault",
 				typeof (TestSkipDefault)
 			);
-			OLLMrpc.Bin.Stream.register ("TestParent", typeof (TestParent));
-			OLLMrpc.Bin.Stream.register ("TestPaths", typeof (TestPaths));
-			OLLMrpc.Bin.Stream.register ("TestListBag", typeof (TestListBag));
+			OLLMrpc.Bin.register ("TestParent", typeof (TestParent));
+			OLLMrpc.Bin.register ("TestPaths", typeof (TestPaths));
+			OLLMrpc.Bin.register ("TestListBag", typeof (TestListBag));
 
 			write_bin.write (original);
 			out_stream.close ();

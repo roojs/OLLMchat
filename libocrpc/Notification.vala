@@ -25,7 +25,7 @@ namespace OLLMrpc
 		public static void rpc_register()
 		{
 			register("Notification", typeof(Notification));
-			OLLMrpc.Bin.Stream.register(
+			OLLMrpc.Bin.register(
 				"Notification",
 				typeof(Notification)
 			);

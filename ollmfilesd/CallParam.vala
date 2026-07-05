@@ -18,7 +18,7 @@ namespace OLLMfilesd
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.Stream.register("DaemonParams", typeof (DaemonParams));
+			OLLMrpc.Bin.register("DaemonParams", typeof (DaemonParams));
 		}
 
 		public int protocol { get; set; default = 0; }
@@ -30,7 +30,7 @@ namespace OLLMfilesd
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.Stream.register("ProjectParams", typeof (ProjectParams));
+			OLLMrpc.Bin.register("ProjectParams", typeof (ProjectParams));
 		}
 
 		public string path { get; set; default = ""; }
@@ -43,7 +43,7 @@ namespace OLLMfilesd
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.Stream.register("FileParams", typeof (FileParams));
+			OLLMrpc.Bin.register("FileParams", typeof (FileParams));
 		}
 
 		public string path { get; set; default = ""; }
@@ -66,7 +66,7 @@ namespace OLLMfilesd
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.Stream.register("FolderParams", typeof (FolderParams));
+			OLLMrpc.Bin.register("FolderParams", typeof (FolderParams));
 		}
 
 		public string project_path { get; set; default = ""; }
@@ -88,7 +88,7 @@ namespace OLLMfilesd
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.Stream.register("VectorParams", typeof (VectorParams));
+			OLLMrpc.Bin.register("VectorParams", typeof (VectorParams));
 		}
 
 		public string path { get; set; default = ""; }

@@ -27,7 +27,7 @@ namespace OLLMrpc.Bin
 	 *  * `*array` + `items` on object-array wrappers
 	 *
 	 * Any key starting with `*` is meta only and is stripped before bin encode.
-	 * Type aliases must be registered via {@link Stream.register} before use.
+	 * Type aliases must be registered via {@link register} before use.
 	 */
 	public class Json : GLib.Object
 	{
@@ -35,7 +35,7 @@ namespace OLLMrpc.Bin
 		 * Encode one JSON object onto {@link ctx}.
 		 *
 		 * @param ctx bin stream to write to
-		 * @param src JSON object with a {@code *type} meta member
+		 * @param src JSON object with a {{{*type}}} meta member
 		 */
 		public void write (
 			Stream ctx,
@@ -62,7 +62,7 @@ namespace OLLMrpc.Bin
 		 * Decode one root bin object from {@link ctx} into a JSON node.
 		 *
 		 * @param ctx bin stream to read from
-		 * @return JSON object node with {@code *type} meta member
+		 * @return JSON object node with {{{*type}}} meta member
 		 */
 		public global::Json.Node parse (Stream ctx) throws GLib.Error
 		{
@@ -116,7 +116,7 @@ namespace OLLMrpc.Bin
 		 * Read one object body into a JSON object node.
 		 *
 		 * @param ctx active bin session
-		 * @param alias wire type alias for {@code *type}
+		 * @param alias wire type alias for {{{*type}}}
 		 */
 		public global::Json.Node read_object (
 			Stream ctx,

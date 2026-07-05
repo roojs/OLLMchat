@@ -16,7 +16,7 @@ namespace OLLMrpc.Bin
 	/**
 	 * {@link Serializable} property encode/decode failures (throw/catch).
 	 *
-	 * Not {@link GLib.Error} abort — use {@code throw new SerializableError.*}
+	 * Not {@link GLib.Error} abort — use {{{throw new SerializableError.*}}}
 	 * from {@link bin_write_prop} / {@link bin_read_prop} paths.
 	 */
 	public errordomain SerializableError
@@ -31,8 +31,8 @@ namespace OLLMrpc.Bin
 	 * customize props; call {@link bin_default_write_prop} /
 	 * {@link bin_default_read_prop} for stock scalar encoding.
 	 *
-	 * Override for {@code Gee.ArrayList} / list properties,
-	 * {@code uint8[]} (wire as blob or typed array — see docs/bin-rpc-protocol.md),
+	 * Override for {{{Gee.ArrayList}}} / list properties,
+	 * {{{uint8[]}}} (wire as blob or typed array — see docs/bin-rpc-protocol.md),
 	 * and any other non-scalar shape.
 	 *
 	 * Override {@link bin_pre} / {@link bin_post} for work before or after

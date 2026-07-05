@@ -58,7 +58,7 @@ namespace OLLMfiles
 		public static void rpc_register()
 		{
 			OLLMrpc.register("FileAlias", typeof(FileAlias));
-			OLLMrpc.Bin.Stream.register("FileAlias", typeof(FileAlias));
+			OLLMrpc.Bin.register("FileAlias", typeof(FileAlias));
 		}
 
 		/**

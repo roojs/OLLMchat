@@ -18,7 +18,7 @@ namespace OLLMfilesd
 	{
 		public static void rpc_register()
 		{
-			OLLMrpc.Bin.Stream.register("Daemon", typeof(Daemon));
+			OLLMrpc.Bin.register("Daemon", typeof(Daemon));
 			DaemonParams.rpc_register();
 		}
 

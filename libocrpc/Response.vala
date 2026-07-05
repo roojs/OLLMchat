@@ -35,7 +35,7 @@ namespace OLLMrpc
 
 		public static void rpc_register()
 		{
-			Bin.Stream.register("Response", typeof(Response));
+			Bin.register("Response", typeof(Response));
 		}
 
 		public unowned ParamSpec? find_property(string name)
@@ -128,10 +128,23 @@ namespace OLLMrpc
 						);
 					}
 					ctx.write_tag (prop.name);
+					if (list.size == 0 && (
+						Bin.alias_to_gtype == null
+						|| !Bin.alias_to_gtype.has_key (
+							this.result_type
+						)
+					)) {
+						throw new Bin.StreamError.REGISTRATION (
+							"Unrecognized type alias: %s",
+							this.result_type
+						);
+					}
 					ctx.write_gtype (
 						list.size > 0
 							? list.get (0).get_type ()
-							: types.get (this.result_type),
+							: Bin.alias_to_gtype.get (
+								this.result_type
+							),
 						(uint8) GLib.Type.OBJECT | 0x80
 					);
 					if (list.size < 128) {

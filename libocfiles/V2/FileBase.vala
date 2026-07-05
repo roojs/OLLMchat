@@ -36,7 +36,7 @@ namespace OLLMfiles
 	 *  * id > 0: real filebase id from daemon
 	 *  * id < 0: fake file ({@link File.new_fake}) until {@link File.to_real}
 	 */
-	public abstract class FileBase : Object
+	public abstract class FileBase : Object, OLLMrpc.Bin.Serializable
 	{
 		/**
 		 * Database ID.
@@ -95,16 +95,6 @@ namespace OLLMfiles
 		public ProjectManager manager { get; set; }
 		
 		/**
-		 * Constructor.
-		 * 
-		 * @param manager The ProjectManager instance (required)
-		 */
-		protected FileBase(ProjectManager manager)
-		{
-			Object(manager: manager);
-		}
-		
-		/**
 		 * Icon name for binding in lists.
 		 * Returns icon_name if set, otherwise a default based on type.
 		 */
@@ -156,13 +146,6 @@ namespace OLLMfiles
 		 * Programming language (optional, for files).
 		 */
 		public string language { get; set; default = ""; }
-		
-		/**
-		 * Returns one or more lines for the project summary list.
-		 * @param indent Leading indent for this line; Folder passes indent + "  " to children.
-		 */
-		public abstract string to_summary(
-			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent);
 		
 		/**
 		 * Last cursor line number (stored in database, default: 0).
@@ -340,6 +323,55 @@ namespace OLLMfiles
 						// No change type or unknown
 						return this.path;
 				}
+			}
+		}
+
+		/**
+		 * Constructor.
+		 *
+		 * @param manager The ProjectManager instance (required)
+		 */
+		protected FileBase(ProjectManager manager)
+		{
+			Object(manager: manager);
+		}
+
+		/**
+		 * Returns one or more lines for the project summary list.
+		 *
+		 * @param indent Leading indent for this line; Folder passes indent + "  " to children.
+		 */
+		public abstract string to_summary(
+			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent);
+
+		public virtual void bin_write_prop (
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "manager":
+				case "parent":
+					return;
+				default:
+					this.bin_default_write_prop (ctx, prop);
+					return;
+			}
+		}
+
+		public virtual void bin_read_prop (
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "manager":
+				case "parent":
+					return;
+				default:
+					this.bin_default_read_prop (ctx, prop, type_byte);
+					return;
 			}
 		}
 		

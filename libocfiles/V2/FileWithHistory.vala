@@ -30,7 +30,7 @@ namespace OLLMfiles
 				"FileWithHistory",
 				typeof(FileWithHistory)
 			);
-			OLLMrpc.Bin.Stream.register(
+			OLLMrpc.Bin.register(
 				"FileWithHistory",
 				typeof(FileWithHistory)
 			);

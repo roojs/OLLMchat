@@ -45,23 +45,12 @@ namespace OLLMfiles
 	 *
 	 * No {@code project_files} or hydrated {@link children} on the client.
 	 */
-	public class Folder : FileBase, OLLMrpc.Bin.Serializable
+	public class Folder : FileBase
 	{
 		public static void rpc_register()
 		{
 			OLLMrpc.register("Folder", typeof(Folder));
-			OLLMrpc.Bin.Stream.register("Folder", typeof(Folder));
-		}
-
-		/**
-		 * Constructor.
-		 * 
-		 * @param manager The ProjectManager instance (required)
-		 */
-		public Folder(ProjectManager manager)
-		{
-			base(manager);
-			this.base_type = "d";
+			OLLMrpc.Bin.register("Folder", typeof(Folder));
 		}
 
 		/**
@@ -74,7 +63,18 @@ namespace OLLMfiles
 		 * Client stub only — not hydrated here; daemon holds the real tree.
 		 */
 		public FolderFiles children { get; set; default = new FolderFiles(); }
-		
+
+		/**
+		 * Constructor.
+		 * 
+		 * @param manager The ProjectManager instance (required)
+		 */
+		public Folder(ProjectManager manager)
+		{
+			base(manager);
+			this.base_type = "d";
+		}
+
 		public override string to_summary(
 			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, 
 			string indent)
@@ -265,6 +265,37 @@ namespace OLLMfiles
 				this.manager.buffer_provider.create_buffer(file);
 			}
 			this.manager.file_cache.set(path, file);
+		}
+
+		public override void bin_write_prop (
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "children":
+				case "last-check-time":
+					return;
+				default:
+					base.bin_write_prop (ctx, prop);
+					return;
+			}
+		}
+
+		public override void bin_read_prop (
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "children":
+				case "last-check-time":
+					return;
+				default:
+					base.bin_read_prop (ctx, prop, type_byte);
+					return;
+			}
 		}
 
 	}

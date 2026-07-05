@@ -136,9 +136,7 @@ namespace OLLMrpc.Transport
 			try {
 				request = this.bin.parse() as OLLMrpc.Request;
 			} catch (GLib.Error e) {
-				GLib.warning("connection read error: %s", e.message);
-				this.stop();
-				return false;
+				GLib.error("%s", e.message);
 			}
 			if (request == null) {
 				GLib.warning("connection read: expected Request");

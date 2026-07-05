@@ -39,9 +39,9 @@ namespace OLLMrpc
 	 * id is filled in or {@link call_timeout_seconds} elapses.
 	 * Outgoing lines are queued — one {@code flush_async} at a time on
 	 * the shared output stream; many requests may still be in flight.
-	 * Transport and client faults return {@link Response.error}; they
-	 * do not throw. {@link failed} is emitted for every failed {@link call};
-	 * connect UI handlers there instead of per-caller logging.
+	 * Transport and wire faults abort via {@link GLib.error}; daemon
+	 * JSON-RPC errors return {@link Response.error} and emit {@link failed}.
+	 * Connect UI handlers on {@link failed} for user-visible daemon errors.
 	 */
 	public class Client : GLib.Object
 	{
@@ -64,8 +64,8 @@ namespace OLLMrpc
 		public signal void notification(Notification notif);
 
 		/**
-		 * Emitted when {@link call} completes with {@link Response.error} set.
-		 * Transport faults, timeouts, and daemon JSON-RPC errors all use this path.
+		 * Emitted when {@link call} completes with a daemon JSON-RPC
+		 * {@link Response.error}. Transport and wire faults abort instead.
 		 * {@link call} still returns the response; callers may ignore errors when
 		 * the UI connects here (e.g. toast / dialog).
 		 */
@@ -207,13 +207,9 @@ namespace OLLMrpc
 						var msg = this.bin.parse();
 						this.dispatch_message(msg);
 					} catch (GLib.IOError e) {
-						GLib.debug("read io error: %s", e.message);
-						this.disconnect();
-						return false;
+						GLib.error("%s", e.message);
 					} catch (GLib.Error e) {
-						GLib.warning("read error: %s", e.message);
-						this.disconnect();
-						return false;
+						GLib.error("%s", e.message);
 					}
 					return this.connected;
 				}
@@ -266,6 +262,12 @@ namespace OLLMrpc
 		{
 			if (!this.connected) {
 				return;
+			}
+			if (this.pending.size > 0) {
+				GLib.error(
+					"disconnected with %u pending RPC call(s)",
+					this.pending.size
+				);
 			}
 			GLib.debug(
 				"disconnect socket=%s pending=%u",
@@ -367,21 +369,11 @@ namespace OLLMrpc
 		{
 			request.id = this.next_id++;
 			if (!this.connected || this.output == null) {
-				var error = new Error(
-					RpcErrorCode.INTERNAL_ERROR,
-					"not connected",
+				GLib.error(
+					"%s id=%d: not connected",
 					request.method,
 					request.id
 				);
-				GLib.warning(
-					"%s id=%d: %s",
-					request.method,
-					request.id,
-					error.message
-				);
-				this.failed(request, error);
-				return new Response() { 
-					id = request.id, error = error };
 			}
 
 			var promise = new Gee.Promise<Response>();
@@ -391,20 +383,12 @@ namespace OLLMrpc
 				yield this.write(request);
 			} catch (GLib.Error e) {
 				this.pending.unset(request.id);
-				var error = new Error(
-					RpcErrorCode.INTERNAL_ERROR,
-					"write: " + e.message,
-					request.method,
-					request.id
-				);
-				GLib.warning(
-					"%s id=%d: %s",
+				GLib.error(
+					"%s id=%d: write: %s",
 					request.method,
 					request.id,
-					error.message
+					e.message
 				);
-				this.failed(request, error);
-				return new Response() { id = request.id, error = error };
 			}
 
 			var response = yield this.wait_response(
@@ -447,15 +431,12 @@ namespace OLLMrpc
 			try {
 				return yield promise.future.wait_async();
 			} catch (GLib.Error e) {
-				return new Response() {
-					id = id,
-					error = new Error(
-						RpcErrorCode.INTERNAL_ERROR,
-						e.message,
-						method,
-						id
-					)
-				};
+				GLib.error(
+					"%s id=%d: %s",
+					method,
+					id,
+					e.message
+				);
 			} finally {
 				if (timeout_id != 0) {
 					GLib.Source.remove(timeout_id);
@@ -468,11 +449,10 @@ namespace OLLMrpc
 			var response = msg as Response;
 			if (response != null) {
 				if (!this.pending.has_key(response.id)) {
-					GLib.warning(
+					GLib.error(
 						"unexpected response id %d",
 						response.id
 					);
-					return;
 				}
 				if (response.error != null) {
 					GLib.debug(
@@ -506,7 +486,7 @@ namespace OLLMrpc
 				return;
 			}
 
-			GLib.warning("unexpected wire message type");
+			GLib.error("unexpected wire message type");
 		}
 	}
 }

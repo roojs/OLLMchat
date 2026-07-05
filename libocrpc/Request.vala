@@ -93,7 +93,7 @@ namespace OLLMrpc
 
 		public static void rpc_register()
 		{
-			Bin.Stream.register("Request", typeof(Request));
+			Bin.register("Request", typeof(Request));
 		}
 
 		/**
