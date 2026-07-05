@@ -590,7 +590,7 @@ Not defined in version 3.0:
 
 **Purpose:** encode/decode json-glib nodes directly onto a **`Bin.Stream`** — for tests and tooling, **not** for production TCP/socket RPC.
 
-**Caller today:** **`ollmfilesd/StdioConnection`** (`--interactive`, `--rpc-script`) — NDJSON lines on stdin are converted to bin **`Request`** objects via **`Bin.Json.write`**, then handled like any other connection. Outbound responses still use **`Json.gobject_serialize`** (NDJSON line out) — inbound JSON → bin only.
+**Caller today:** **`ollmfilesd/StdioConnection`** (`--interactive`, `--rpc-script`) — NDJSON lines on stdin are converted to bin **`Request`** objects via **`Bin.Json.write`**, then handled like any other connection. Outbound responses use **`bin.write`** → **`Bin.Json.parse`** → NDJSON line (symmetric bridge; not used on production TCP/socket path).
 
 **No `Serializable` instances:** layout follows JSON node shape + wire type bytes only.
 
