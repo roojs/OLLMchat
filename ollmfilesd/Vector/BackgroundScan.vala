@@ -16,6 +16,7 @@ namespace OLLMfilesd.Vector {
 
         private Gee.ArrayQueue<BackgroundScanItem>? file_queue = null;
         private bool queue_processing = false;
+        private bool stop_requested = false;
         private Indexer? indexer = null;
 
         /**
@@ -34,10 +35,12 @@ namespace OLLMfilesd.Vector {
         /**
          * Probe embed dimension and set {@link OLLMfilesd.ProjectManager.vector_db}.
          * Uses dimension 0 when codebase_search is not configured.
+         * Clears cached {@link Indexer} so reopen picks up a fresh FAISS handle.
          */
         public async void open_vector_db ()
         {
-            int dimension = 0;
+            this.indexer = null;
+            var dimension = 0;
             try {
                 if (yield OLLMvector2.Database.check_required_models_available (
                     this.config)) {
@@ -56,6 +59,28 @@ namespace OLLMfilesd.Vector {
                 this.config,
                 this.project_manager.vector_db_path,
                 dimension);
+        }
+
+        /**
+         * Pause indexing after the current file finishes.
+         *
+         * Pending queue entries are preserved. The loop emits
+         * {{{event.vector.scan_update}}} with remaining queue size when idle.
+         */
+        public void stop ()
+        {
+            this.stop_requested = true;
+        }
+
+        /**
+         * Append a file to the index queue when not already queued.
+         *
+         * @param project_path Project root path
+         * @param file_path Absolute file path to index
+         */
+        public void append_file (string project_path, string file_path)
+        {
+            this.queueFile (new BackgroundScanItem (project_path, file_path));
         }
 
         /**

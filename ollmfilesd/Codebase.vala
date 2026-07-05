@@ -18,7 +18,14 @@
 
 namespace OLLMfilesd
 {
-	/** Server {@code Codebase.*} — semantic codebase search for tools. */
+	/**
+	 * Server {{{Codebase.*}}} wire handlers — vector search, per-file metadata,
+	 * debug embedding dump, and database reset.
+	 *
+	 * Registered once in {@link OllmfilesdApplication}; params are
+	 * {@link VectorParams}. See {@link OLLMrpc.Request.dispatch} for signal
+	 * routing.
+	 */
 	public class Codebase : GLib.Object
 	{
 		public static void rpc_register()
@@ -48,14 +55,80 @@ namespace OLLMfilesd
 			GLib.Object(manager: manager, config: config);
 		}
 
+		/**
+		 * {{{Codebase.search}}} — semantic vector search over the active project.
+		 *
+		 * Reply {{{msg}}} with markdown when {{{format=tool}}}, or explanatory
+		 * text when filters match nothing. {{{response.error}}} when the client
+		 * cannot know the outcome (e.g. no active project).
+		 *
+		 *  * Domain / daemon state → {{{response.error}}} or intentional {{{msg}}}
+		 *  * Client API bugs → propagate; no catch-all on this signal
+		 *  * {{{manager.db}}} and {{{vector_db}}} set after init — no null guards
+		 *
+		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
+		 */
 		public signal void call_search(OLLMrpc.Request request);
+
+		/**
+		 * {{{Codebase.file_info}}} — {@link SQT.VectorMetadata} rows for one file.
+		 *
+		 * Params: {@link VectorParams.file_path}. Reply: {{{result}}} list (empty
+		 * when the file is missing or not indexed) and {{{msg}}} row count — not an
+		 * error.
+		 *
+		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
+		 */
+		public signal void call_file_info(OLLMrpc.Request request);
+
+		/**
+		 * {{{Codebase.debug_get}}} — dump stored FAISS embedding for one AST path.
+		 *
+		 * Debug/admin only; CLI: {{{oc-vector-search --dump-vector=AST_PATH}}}.
+		 * Params: {@link VectorParams.path}, {@link VectorParams.ast_path}.
+		 * Reply: {{{msg}}} with one float per line.
+		 *
+		 *  * Domain misses → {{{response.error}}}
+		 *  * Caller must set {{{ast_path}}}; client API bugs propagate
+		 *
+		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
+		 */
+		public signal void call_debug_get(OLLMrpc.Request request);
+
+		/**
+		 * {{{Codebase.reset}}} — wipe FAISS file, vector metadata, and scan dates.
+		 *
+		 * CLI: {{{oc-vector-index --reset-database}}}. Reply {{{msg}}}: {{{ok}}}
+		 * on success. {{{response.error}}} when reset I/O fails.
+		 *
+		 *  * Domain / I/O failure → {{{response.error}}}
+		 *  * Client API bugs propagate; no catch-all on this signal
+		 *
+		 * @param request inbound RPC; {@link VectorParams} unused
+		 */
+		public signal void call_reset(OLLMrpc.Request request);
 
 		construct
 		{
-			this.call_search.connect((request) => {
-				this.search.begin(request, (obj, res) => {
+			this.call_reset.connect((request) => {
+				try {
+					OLLMvector2.SQT.VectorMetadata.reset_database(
+						this.manager.db,
+						this.manager.vector_db_path
+					);
+				} catch (GLib.Error e) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							e.message
+						)
+					});
+					return;
+				}
+				this.manager.background_scan.open_vector_db.begin((obj, res) => {
 					try {
-						this.search.end(res);
+						this.manager.background_scan.open_vector_db.end(res);
 					} catch (GLib.Error e) {
 						request.reply(new OLLMrpc.Response() {
 							id = request.id,
@@ -64,26 +137,69 @@ namespace OLLMfilesd
 								e.message
 							)
 						});
+						return;
 					}
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						msg = "ok"
+					});
+				});
+			});
+			this.call_debug_get.connect((request) => {
+				this.debug_get.begin(request, (obj, res) => {
+					this.debug_get.end(res);
+				});
+			});
+			this.call_file_info.connect((request) => {
+				var p = (VectorParams) request.param;
+				var list = new Gee.ArrayList<GLib.Object>();
+				var indexed = this.manager.get_file_from_active_project(
+					p.file_path
+				);
+				if (indexed != null && indexed.id > 0) {
+					var rows = new Gee.ArrayList<SQT.VectorMetadata>();
+					SQT.VectorMetadata.query(
+						this.manager.db
+					).select(
+						"WHERE file_id = " + indexed.id.to_string(),
+						rows
+					);
+					foreach (var row in rows) {
+						list.add(row);
+					}
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					result = list,
+					msg = list.size.to_string()
+				});
+			});
+			this.call_search.connect((request) => {
+				this.search.begin(request, (obj, res) => {
+					this.search.end(res);
 				});
 			});
 		}
 
-		private async void search(OLLMrpc.Request request) throws GLib.Error
+		/**
+		 * {{{Codebase.search}}} handler — filter {{{vector_metadata}}, run FAISS
+		 * {@link OLLMvector2.Search}, reply markdown in {@link OLLMrpc.Response.msg}.
+		 *
+		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
+		 */
+		private async void search(OLLMrpc.Request request)
 		{
 			var p = (VectorParams) request.param;
 			var project = this.manager.project_root(p.path);
 			if (project == null) {
-				throw new GLib.IOError.FAILED(
-					"No active project. Please open a project first."
-				);
-			}
-
-			if (this.manager.db == null) {
-				throw new GLib.IOError.FAILED("Database not available");
-			}
-			if (this.manager.vector_db == null) {
-				throw new GLib.IOError.FAILED("Vector database not available");
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"No active project. Please open a project first."
+					)
+				});
+				return;
 			}
 
 			if (project.project_files.get_n_items() == 0) {
@@ -224,8 +340,13 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * Format search results for LLM consumption using SearchResult.to_markdown().
-		 * Loads each result's file buffer so code snippets are populated.
+		 * Build markdown for {@link OLLMrpc.Response.msg} from FAISS hits.
+		 *
+		 * Loads each result file buffer so {@link Vector.SearchResult.to_markdown}
+		 * can include code snippets.
+		 *
+		 * @param results wrapped search hits
+		 * @return markdown body for the RPC reply
 		 */
 		private async string format_results(
 			Gee.ArrayList<Vector.SearchResult> results
@@ -251,12 +372,96 @@ namespace OLLMfilesd
 					);
 				}
 			}
-			var output = new StringBuilder();
-			output.append_printf("Found %d result(s):\n\n", results.size);
+			var output = "Found %d result(s):\n\n".printf(results.size);
 			foreach (var result in results) {
-				output.append(result.to_markdown(max_snippet_lines));
+				output += result.to_markdown(max_snippet_lines);
 			}
-			return output.str;
+			return output;
+		}
+
+		/**
+		 * {{{Codebase.debug_get}}} handler — resolve {{{ast_path}}} to
+		 * {{{vector_id}}, reconstruct from FAISS, reply one float per line in
+		 * {@link OLLMrpc.Response.msg}.
+		 *
+		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
+		 */
+		private async void debug_get(OLLMrpc.Request request)
+		{
+			var p = (VectorParams) request.param;
+			if (p.ast_path == "") {
+				GLib.error("Codebase.debug_get: ast_path is required");
+			}
+			var project = this.manager.project_root(p.path);
+			if (project == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"No active project. Please open a project first."
+					)
+				});
+				return;
+			}
+
+			if (project.project_files.get_n_items() == 0) {
+				yield project.load_files_from_db();
+			}
+
+			var file_ids = project.project_files.get_ids("");
+			if (file_ids.size == 0) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"No files found in folder"
+					)
+				});
+				return;
+			}
+
+			var rows = new Gee.ArrayList<SQT.VectorMetadata>();
+			SQT.VectorMetadata.query(this.manager.db).select(
+				"WHERE file_id IN (" + string.joinv(",", file_ids.to_array())
+					+ ") AND ast_path = '" + p.ast_path.replace("'", "''")
+					+ "' ORDER BY id DESC LIMIT 1",
+				rows
+			);
+			if (rows.size == 0) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"No vector found for AST path: " + p.ast_path
+					)
+				});
+				return;
+			}
+
+			float[] vector;
+			try {
+				vector = this.manager.vector_db.reconstruct_vector(
+					rows.get(0).vector_id
+				);
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			// Embed dimension is hundreds of floats — StringBuilder exception.
+			var output = new StringBuilder();
+			for (var i = 0; i < vector.length; i++) {
+				output.append_printf("%.9g\n", vector[i]);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				msg = output.str
+			});
 		}
 	}
 }
