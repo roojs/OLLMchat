@@ -29,8 +29,10 @@ namespace OLLMrpc
 
 	/**
 	 * Bin RPC client for {{{ollmfilesd}}}.
-	 * {@link connect} runs {@link ClientBoot.ensure_daemon} when the
-	 * platform transport needs a local daemon starter.
+	 * {@link connect} builds {@link ClientBoot} from this client's
+	 * {@link data_dir}, {@link debug}, and {@link pass_data_dir}, then runs
+	 * {@link ClientBoot.ensure_daemon} when the platform needs a local
+	 * starter (Unix, not TCP).
 	 *
 	 * A socket {@link GLib.IOChannel} watch dispatches inbound
 	 * {@link Notification} messages and resolves pending {@link Response}
@@ -47,6 +49,14 @@ namespace OLLMrpc
 	{
 		public string socket { get; construct; }
 		public bool tcp { get; construct; default = false; }
+
+		public string data_dir { get; construct; }
+
+		public string pid { get; construct; }
+
+		public bool debug { get; construct; default = true; }
+
+		public bool pass_data_dir { get; construct; default = false; }
 
 		/** Seconds to wait for a matching {@link Response} id. */
 		public uint call_timeout_seconds { get; set; default = 120; }
@@ -95,18 +105,36 @@ namespace OLLMrpc
 			Response.rpc_register();
 		}
 
-		public Client(string socket = "")
+		/**
+		 * @param data_dir Root directory for daemon DB, socket, and pid file
+		 * @param pid Basename of the pid file within {@link data_dir}
+		 *   (e.g. {{{ollmfilesd.pid}}})
+		 * @param socket Basename of the Unix socket within {@link data_dir}
+		 *   (e.g. {{{ollmfilesd.sock}}}); {@link Client.socket} property stores
+		 *   the full connect path
+		 * @param debug When true (default), {@link Client.connect} forwards to
+		 *   {@link ClientBoot} and spawn passes {{{--debug}}} to {{{ollmfilesd}}}
+		 * @param pass_data_dir When true, spawn passes {{{--data-dir=data_dir}}};
+		 *   vector test CLIs only
+		 */
+		public Client(
+			string data_dir,
+			string pid,
+			string socket,
+			bool debug = true,
+			bool pass_data_dir = false
+		)
 		{
-			var path = socket;
-			var use_tcp = false;
-			if (path == "") {
-				path = default_client_endpoint();
-			}
-			if (path.has_prefix("tcp://")) {
-				use_tcp = true;
-				path = path.substring(6);
-			}
-			GLib.Object(socket: path, tcp: use_tcp);
+			GLib.Object(
+				data_dir: data_dir,
+				pid: GLib.Path.build_filename(data_dir, pid),
+				socket: GLib.Path.build_filename(
+					data_dir,
+					socket
+				),
+				debug: debug,
+				pass_data_dir: pass_data_dir
+			);
 		}
 
 		/**
@@ -130,7 +158,13 @@ namespace OLLMrpc
 			);
 
 			if (client_boot_required(this.tcp)) {
-				var boot = new ClientBoot(this.socket);
+				var boot = new ClientBoot(
+					this.data_dir,
+					GLib.Path.get_basename(this.pid),
+					GLib.Path.get_basename(this.socket),
+					this.debug,
+					this.pass_data_dir
+				);
 				try {
 					yield boot.ensure_daemon();
 				} catch (GLib.IOError e) {

@@ -105,7 +105,15 @@ namespace OLLMfiles
 			OLLMfilesd.FileParams.rpc_register();
 			OLLMfilesd.FolderParams.rpc_register();
 			OLLMfilesd.VectorParams.rpc_register();
-			this.rpc = new OLLMrpc.Client();
+			this.rpc = new OLLMrpc.Client(
+				GLib.Path.build_filename(
+					GLib.Environment.get_user_data_dir(),
+					"ollmchat"
+				),
+				"ollmfilesd.pid",
+				"ollmfilesd.sock",
+				true
+			);
 			this.delete_manager = new DeleteManager(this);
 			this.review_files = new ReviewFiles(this);
 		}

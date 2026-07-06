@@ -19,7 +19,10 @@
 namespace OLLMfilesd
 {
 	/**
-	 * Headless {@code ollmfilesd} entry point: open DB, migrate, RPC over socket or stdio.
+	 * Headless {{{ollmfilesd}}} entry point: open DB, migrate, RPC over socket or stdio.
+	 *
+	 * {{{--data-dir=DIR}}} sets {@link data_dir} and pid/socket paths under {{{DIR}}}
+	 * ({@link command_line}). Pair with {@link OLLMrpc.ClientBoot} basenames and spawn flags.
 	 */
 	public class OllmfilesdApplication : GLib.Application, OLLMchat.ApplicationInterface
 	{

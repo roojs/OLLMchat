@@ -14,15 +14,37 @@
 namespace OLLMrpc
 {
 	/**
-	 * Ensure {{{ollmfilesd}}} is running before {@link Client.connect}.
+	 * Ensure {{{ollmfilesd}}} is running before {@link Client.connect} on Unix.
 	 *
-	 * Uses {@link pid} and {@link socket} paths: probe the socket, spawn or
-	 * kill-and-respawn when needed. Set {{{OLLM_OLLMFILESD}}} to an absolute
-	 * path for dev/testing when the build-tree daemon should be used; otherwise
-	 * {{{ollmfilesd}}} is resolved on {{{PATH}}}.
+	 * The caller supplies every path; there is no default
+	 * {{{~/.local/share/ollmchat}}} in this class. Constructor args {@link pid}
+	 * and {@link socket} are basenames within {@link data_dir}; the {@link pid}
+	 * and {@link socket} properties hold the full paths used for probe, spawn,
+	 * and kill-and-respawn.
+	 *
+	 * Parameter order after the three required strings: {@link debug}, then
+	 * {@link pass_data_dir}. {@link debug} defaults to true because in-tree
+	 * callers almost always want {{{ollmfilesd --debug}}}. {@link pass_data_dir}
+	 * defaults to false; only out-of-band vector test CLIs set it true because
+	 * standard and custom dirs share the same basename layout and spawn cannot
+	 * infer {{{--data-dir=DIR}}} from paths alone.
+	 *
+	 * Spawn argv: {@link debug} adds {{{--debug}}}; {@link pass_data_dir} adds
+	 * {{{--data-dir=data_dir}}}. Executable: {{{OLLM_OLLMFILESD}}} env when set
+	 * (meson v2testing wrappers), else {{{ollmfilesd}}} on {{{PATH}}}; env selects
+	 * the binary only and does not set debug or data-dir flags (see §5.5.4).
+	 *
+	 * Production code constructs this only from {@link Client.connect}.
+	 * Callers set paths on {@link Client} — see §5.5.6 and §5.5.7.
 	 */
 	public class ClientBoot : GLib.Object
 	{
+		public string data_dir { get; construct; }
+
+		public bool debug { get; construct; default = true; }
+
+		public bool pass_data_dir { get; construct; default = false; }
+
 		public string socket { get; construct; }
 		public string pid { get; construct; }
 
@@ -40,19 +62,32 @@ namespace OLLMrpc
 
 		private int detached_pid = -1;
 
-		public ClientBoot(string? socket = null, string? pid = null)
+		/**
+		 * @param data_dir Directory root for daemon DB, socket, and pid file
+		 * @param pid Basename of pid file within {@link data_dir}
+		 *   (e.g. {{{ollmfilesd.pid}}})
+		 * @param socket Basename of Unix socket within {@link data_dir}
+		 *   (e.g. {{{ollmfilesd.sock}}})
+		 * @param debug When true (default), spawn passes {{{--debug}}} to
+		 *   {{{ollmfilesd}}}; listed before {@link pass_data_dir} because most
+		 *   callers rely on the default
+		 * @param pass_data_dir When true, spawn passes {{{--data-dir=data_dir}}};
+		 *   default false — out-of-band vector testing only
+		 */
+		public ClientBoot(
+			string data_dir,
+			string pid,
+			string socket,
+			bool debug = true,
+			bool pass_data_dir = false
+		)
 		{
 			GLib.Object(
-				socket: socket != null ? socket : GLib.Path.build_filename(
-					GLib.Environment.get_user_data_dir(),
-					"ollmchat",
-					"ollmfilesd.sock"
-				),
-				pid: pid != null ? pid : GLib.Path.build_filename(
-					GLib.Environment.get_user_data_dir(),
-					"ollmchat",
-					"ollmfilesd.pid"
-				)
+				data_dir: data_dir,
+				pid: GLib.Path.build_filename(data_dir, pid),
+				socket: GLib.Path.build_filename(data_dir, socket),
+				debug: debug,
+				pass_data_dir: pass_data_dir
 			);
 		}
 
@@ -153,8 +188,11 @@ namespace OLLMrpc
 			// Build-tree daemon (OLLM_OLLMFILESD from meson wrapper): capture stdio on
 			// crash via daemonize --debug → ~/.cache/ollmchat/ollmfilesd.stderr.log
 			string[] argv = { executable };
-			if (from_env != null && from_env != "") {
+			if (this.debug) {
 				argv += "--debug";
+			}
+			if (this.pass_data_dir) {
+				argv += "--data-dir=%s".printf(this.data_dir);
 			}
 			var child_pid = 0;
 			try {
