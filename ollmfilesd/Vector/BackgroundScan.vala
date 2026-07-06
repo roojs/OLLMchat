@@ -16,7 +16,11 @@ namespace OLLMfilesd.Vector {
 
         private Gee.ArrayQueue<BackgroundScanItem>? file_queue = null;
         private bool queue_processing = false;
-        private bool stop_requested = false;
+        /**
+         * When true, {@link startQueue} exits after the current file; queue entries
+         * are preserved. Set by {{{Codebase.stop}}}; cleared by {{{Codebase.start}}}.
+         */
+        public bool stop_requested { get; set; default = false; }
         private Indexer? indexer = null;
 
         /**
@@ -59,28 +63,6 @@ namespace OLLMfilesd.Vector {
                 this.config,
                 this.project_manager.vector_db_path,
                 dimension);
-        }
-
-        /**
-         * Pause indexing after the current file finishes.
-         *
-         * Pending queue entries are preserved. The loop emits
-         * {{{event.vector.scan_update}}} with remaining queue size when idle.
-         */
-        public void stop ()
-        {
-            this.stop_requested = true;
-        }
-
-        /**
-         * Append a file to the index queue when not already queued.
-         *
-         * @param project_path Project root path
-         * @param file_path Absolute file path to index
-         */
-        public void append_file (string project_path, string file_path)
-        {
-            this.queueFile (new BackgroundScanItem (project_path, file_path));
         }
 
         /**
@@ -192,6 +174,12 @@ namespace OLLMfilesd.Vector {
             if (this.file_queue == null) {
                 this.file_queue = new Gee.ArrayQueue<BackgroundScanItem> ();
             }
+            foreach (var queued in this.file_queue) {
+                if (queued.project_path == item.project_path
+                    && queued.file_path == item.file_path) {
+                    return;
+                }
+            }
             this.file_queue.offer (item);
             this.startQueue.begin ();
         }
@@ -208,6 +196,16 @@ namespace OLLMfilesd.Vector {
             }
 
             while (true) {
+                if (this.stop_requested) {
+                    this.queue_processing = false;
+                    GLib.debug (
+                        "semantic index paused queue=%u",
+                        this.file_queue.size
+                    );
+                    this.emit_scan_update ((int) this.file_queue.size, "");
+                    break;
+                }
+
                 var next_item = this.file_queue.poll ();
 
                 if (next_item == null) {
@@ -260,6 +258,16 @@ namespace OLLMfilesd.Vector {
                 }
                 GLib.debug ("indexed file=%s queue=%u",
                     next_item.file_path, this.file_queue.size);
+
+                if (this.stop_requested) {
+                    this.queue_processing = false;
+                    GLib.debug (
+                        "semantic index paused queue=%u",
+                        this.file_queue.size
+                    );
+                    this.emit_scan_update ((int) this.file_queue.size, "");
+                    break;
+                }
             }
         }
     }

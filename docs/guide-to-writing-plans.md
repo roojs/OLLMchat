@@ -83,7 +83,7 @@ Applies when implementing **feature or refactor work** from **`docs/plans/*`**, 
 
 For **discussion, rationale, risks, and notes** (anything that is not a mechanical **Keep** / **Remove** / **Replace** section), **prefix each paragraph or bullet group with one emoji** from the legend below so readers can scan intent quickly. The **first token** on the line should be the emoji (then a space, then the text).
 
-- **Do not** wrap emoji prefixes or code identifiers in bold — use plain `🔷` / `💩` / `⏳` and single backticks for paths, table/column names, and file paths (e.g. `pressrelease_webview_queue`, not `**pressrelease_webview_queue**`).
+- **Do not** wrap emoji prefixes or code identifiers in bold — use plain `🔷` / `💩` / `⏳` and single backticks for paths and identifiers (e.g. `BackgroundScan`, not `**BackgroundScan**`).
 
 **Status and workstream (use liberally for backlog honesty):**
 
@@ -173,19 +173,7 @@ Optional, keep short:
 - **`## Acceptance criteria`** — use **⏳** bullets in **Purpose** or **Phase N tasks** instead
 - **Markdown tables** in plan bodies — **strongly avoid**; they are hard to read in review. Use **nested bullets** instead (emoji legend tables in *this guide* are fine)
 
-**🚫** Do not abbreviate names for speech-to-text (e.g. `snapshot_q`) — use the real identifier with the correct **table prefix** (e.g. **`pressrelease_snapshot_queue`**, not bare `snapshot_queue`).
-
-## Database table names (Media Outreach / Pman)
-
-When a plan adds tables or columns in **`web.MediaOutreach`**:
-
-- **🔷** New tables use the **module prefix** on the table name: **`pressrelease_*`**, **`shop_*`**, etc. (see existing SQL under **`Pman/<Module>/sql/`**).
-- **ℹ️** **`clipping_*`** / **`Pman/Clipping/`** = **legacy**, kept for **backward compatibility** — **do not** add new greenfield tables there unless the plan explicitly extends BC surfaces (e.g. a column on **`clipping_domain`**).
-- **🔷** **Press-release webview / queue work** (browser workers, Chrome/extension workers) → `pressrelease_*` tables under `Pman/PressRelease/sql/` (e.g. `pressrelease_webview_queue`, `pressrelease_webview_queue_archive`).
-- **🚫** T8237 / `pressrelease_snaphost` / `wip_leon_T8237_Screenshot_Workers` — not being implemented; dead branch. Do not plan on it; replace with webview queue work. May borrow minor ideas only.
-- **ℹ️** Legacy PascalCase clipping tables (**`Clipping`**, **`ClippingTree`**) stay as-is — do not rename for “consistency”.
-- **ℹ️** FK columns are usually **`<related_table>_id`** (e.g. **`clipping_id`**, **`clipping_domain_id`** on queue rows).
-- **ℹ️** BC column on **`clipping_domain`** for **snapshot policy** — e.g. **`use_snapshot_queue`** (`0` = inline webkit; **`> 0`** = enqueue **`work_type = screenshot`** on **`pressrelease_webview_queue`**). Domain flag names **snapshotting**; queue table names stay **generic** (html, spider, …).
+**🚫** Do not abbreviate names for speech-to-text (e.g. `bg_scan`) — use the real identifier (e.g. **`BackgroundScan`**, not bare **`Scan`**).
 
 ## Code proposals section (mandatory pattern)
 
@@ -247,19 +235,19 @@ Plans are **edit specs**, not codebase tours. If a reader cannot apply a fence m
 - **Don’t** put **fenced implementation code** in **Purpose**, **Precedent**, **Notes**, **Related**, or **LLM notes** — put fences under the **phase/topic `###`** they belong to.
 - **Don’t** duplicate the same fence in **two** sections (topic + trailing proposals chapter). See **Code proposals — one place, not two**.
 - **Don’t** paste “pattern” or “precedent” excerpts from other files (e.g. two
-  lines from `Pressrelease_entry.php`) unless that excerpt is itself the
+  lines from `libocrpc/Response.vala`) unless that excerpt is itself the
   **exact** hunk to apply, labelled **Remove** / **Replace with** / **Add**.
-- **Don’t** use investigation-style citations (`startLine:endLine:path` blocks, random mid-file snippets) in implementation plans. **ℹ️** Point at `path/to/file.php` and commit hash; the implementer opens the file.
+- **Don’t** use investigation-style citations (`startLine:endLine:path` blocks, random mid-file snippets) in implementation plans. **ℹ️** Point at `path/to/file.vala` and commit hash; the implementer opens the file.
 - **Don’t** split one logical edit across multiple `###` sections if that
   forces the reader to merge hunks mentally (e.g. “Part A adds `else`” + “Part
   B replaces `if` body”). Use **one** **Remove** + **Replace with** for the
   whole region, or **ordered chunks** inside a **single** `###`.
-- **Do** label every `###` with: **file path**, **function/method/region name**, and **one-line intent** (e.g. `### 1. \`Foo.php\` — \`get()\` foreach: FTP XML import + Events log`).
-- **Do** make every edit locatable: include the **enclosing** `function` /
+- **Do** label every `###` with: **file path**, **function/method/region name**, and **one-line intent** (e.g. `### 1. \`ollmfilesd/File.vala\` — \`read()\`: RPC relay + history merge`).
+- **Do** make every edit locatable: include the **enclosing** method /
   `foreach` / `if` line in the `###` title and state exact position in
   **Where** text.
 - **Investigation / query docs** (`*-query.md`, `docs/bugs/*`) may quote existing code to explain behaviour. **Implementation plans** (`docs/plans/*.md` except query docs) must not — link to the investigation instead.
-- **Don’t** use the **next** `function` below your edit as a locator (e.g. putting `function getContent` inside **Remove**/**Replace with** when only `return true` changes). The next method is not being edited — it confuses *where* vs *what*.
+- **Don’t** use the **next** method below your edit as a locator (e.g. putting `public void enqueue` inside **Remove**/**Replace with** when only one `return` changes). The next method is not being edited — it confuses *where* vs *what*.
 - **Don’t** use disconnected context snippets for one small change. Use one
   tight **Remove** + **Replace with** pair and a precise **Where** line.
 - **Do** under each `###`, before the fences, state **Why** (dependency / outcome), **Where** (function + position in plain English), and **Depends on** (other `###` in this plan, if any). The hunks alone are not enough.
@@ -268,66 +256,57 @@ Plans are **edit specs**, not codebase tours. If a reader cannot apply a fence m
 **Bad (do not write plans like this):**
 
 ~~~markdown
-### 2. `Pman/PressRelease/Import/EQSRelease.php` — `addRelease()` success return
+### 2. `ollmfilesd/Vector/BackgroundScan.vala` — `scanProject()` early exit
 
 #### Keep
-```php
-    function addRelease($data, $force = false) 
-    {
+```vala
+	public void scanProject (OLLMfilesd.Folder? project)
+	{
 ```
 
 #### Keep
-```php
-        $this->log('DONE', …);
+```vala
+		GLib.debug ("scanning …");
 ```
 
 #### Remove
-```php
-        return true;
-    }
+```vala
+		return;
+	}
 
-    function getContent($html)
+	public void enqueue (string path)
 ```
 ~~~
 
-Problems: signature **Keep** is far from the edit; `…` is not real code; **Remove** includes the **next** function; no **Why** / **Where** / **Depends on**.
+Problems: signature **Keep** is far from the edit; `…` is not real code; **Remove** includes the **next** method; no **Why** / **Where** / **Depends on**.
 
 **Good (real one-line change — same file, same edit):**
 
 ~~~markdown
-### 2. `Pman/PressRelease/Import/EQSRelease.php` — `addRelease()`: return inserted row
+### 2. `libocrpc/Response.vala` — `result`: always a list
 
-**Why:** §1 assigns `$pe = $this->addRelease($data)` and logs `$pe->id` in `writeEventLog`. Returning `true` forces a second DB lookup.
+**Why:** §1.5 handlers append to `result`; nullable `GLib.Object?` forces null checks and separate `is_array` wire flags.
 
-**Where:** `addRelease()`, last statement before `function getContent`.
+**Where:** class body — `result` property declaration.
 
-**Depends on:** §1 (`get()` loop).
-
-#### Keep
-```php
-        $pe = DB_DataObject::factory('pressrelease_entry');
-        $pe->setFrom($add);
-        $pe->insert();
-        if (!empty($data['companyLogo'])) {
-            $this->addClientLogo($pe->id, $data['companyLogo']);
-        }
-
-        $this->log('DONE', 'Release Id "' . $pe->id . '"');
-
-```
+**Depends on:** none.
 
 #### Remove
-```php
-        return true;
+```vala
+		public GLib.Object? result { get; set; default = null; }
 ```
 
 #### Replace with
-```php
-        return $pe;
+```vala
+		public Gee.ArrayList<GLib.Object> result {
+			get;
+			set;
+			default = new Gee.ArrayList<GLib.Object> ();
+		}
 ```
 ~~~
 
-Reader can open `addRelease()`, find `log('DONE'`, and apply without guessing.
+Reader can open `Response.vala`, find the `result` property, and apply without guessing.
 
 For **each** file/topic, use a **numbered** `###` heading, then **only** these subheadings above code:
 
@@ -468,7 +447,7 @@ When implemented: move or copy to **`docs/plans/done/`**, prefix filename with *
 
 **Where guardrails live instead:**
 
-- **This guide** — workflow, sections to avoid, DB prefixes, don’t expand scope.
+- **This guide** — workflow, sections to avoid, don’t expand scope.
 - **Parent / overview plan** — phase boundaries in **Phase summary** (short), not repeated in every sub-plan.
 - **Sub-plans** — **🔷** + **⏳** + **ℹ️** only in **Purpose**; trust the parent for “Phase 2 is elsewhere”.
 - **Optional** — if a plan truly needs agent-only reminders, add **`## LLM notes`** as the **last** section. Keep it short. **Do not** duplicate proposals or **🚫** lists from earlier phases.
