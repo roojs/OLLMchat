@@ -20,7 +20,7 @@ namespace OLLMfilesd
 {
 	/**
 	 * Server {{{Codebase.*}}} wire handlers — vector search, per-file metadata,
-	 * debug embedding dump, and database reset.
+	 * debug embedding dump, database reset, and background index queue control.
 	 *
 	 * Registered once in {@link OllmfilesdApplication}; params are
 	 * {@link VectorParams}. See {@link OLLMrpc.Request.dispatch} for signal
@@ -108,6 +108,24 @@ namespace OLLMfilesd
 		 */
 		public signal void call_reset(OLLMrpc.Request request);
 
+		/**
+		 * {{{Codebase.start}}} — enqueue stale files from DB and run the queue.
+		 * Clears {@link OLLMfilesd.Vector.BackgroundScan.stop_requested} from a
+		 * prior {{{Codebase.stop}}}. {{{VectorParams.path}}} must already exist
+		 * (CLI scans via {{{ProjectManager.activate_project}}} first).
+		 *
+		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
+		 */
+		public signal void call_start(OLLMrpc.Request request);
+
+		/**
+		 * {{{Codebase.stop}}} — pause indexing after the current file; queue
+		 * entries are preserved.
+		 *
+		 * @param request inbound RPC; {@link VectorParams} unused
+		 */
+		public signal void call_stop(OLLMrpc.Request request);
+
 		construct
 		{
 			this.call_reset.connect((request) => {
@@ -178,6 +196,32 @@ namespace OLLMfilesd
 				this.search.begin(request, (obj, res) => {
 					this.search.end(res);
 				});
+			});
+			this.call_stop.connect((request) => {
+				this.manager.background_scan.stop_requested = true;
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "ok"
+				});
+			});
+			this.call_start.connect((request) => {
+				var p = (VectorParams) request.param;
+				var scan = this.manager.background_scan;
+				scan.stop_requested = false;
+				scan.queueProject.begin(
+					p.path,
+					p.only_file,
+					true,
+					(obj, res) => {
+						var queued_count = scan.queueProject.end(res);
+						request.reply(new OLLMrpc.Response() {
+							id = request.id,
+							msg = queued_count > 0
+								? queued_count.to_string()
+								: "ok"
+						});
+					}
+				);
 			});
 		}
 

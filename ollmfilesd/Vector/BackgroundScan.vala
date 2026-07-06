@@ -15,7 +15,7 @@ namespace OLLMfilesd.Vector {
         private OLLMchat.Settings.Config2 config;
 
         private Gee.ArrayQueue<BackgroundScanItem>? file_queue = null;
-        private bool queue_processing = false;
+        internal bool queue_processing { get; private set; default = false; }
         /**
          * When true, {@link startQueue} exits after the current file; queue entries
          * are preserved. Set by {{{Codebase.stop}}}; cleared by {{{Codebase.start}}}.
@@ -139,7 +139,11 @@ namespace OLLMfilesd.Vector {
             }
         }
 
-        private async void queueProject (string path)
+        internal async int queueProject (
+            string path,
+            string only_file = "",
+            bool auto_start = true
+        )
         {
             GLib.debug ("semantic index queue project path=%s", path);
 
@@ -148,28 +152,70 @@ namespace OLLMfilesd.Vector {
             var project = this.project_manager.projects.path_map.get (path);
             if (project == null) {
                 GLib.warning ("could not find project %s", path);
-                return;
+                return 0;
             }
 
             yield project.load_files_from_db ();
             project.project_files.update_from (project);
 
-            int queued_count = 0;
+            var queued_count = 0;
+            if (only_file != "") {
+                var only_file_path = GLib.Path.is_absolute (only_file)
+                    ? only_file
+                    : GLib.Path.build_filename (project.path, only_file);
+                var project_file = project.project_files.child_map.get (
+                    only_file_path
+                );
+                if (project_file.file.delete_id > 0) {
+                    return 0;
+                }
+                if (project_file.file.last_vector_scan
+                    >= project_file.file.mtime_on_disk ()) {
+                    return 0;
+                }
+                this.queueFile (
+                    new BackgroundScanItem (
+                        project.path,
+                        project_file.file.path
+                    ),
+                    false
+                );
+                GLib.debug ("queued 1 files for project %s", path);
+                if (auto_start) {
+                    this.startQueue.begin ();
+                }
+                return 1;
+            }
+
             foreach (var project_file in project.project_files) {
                 if (project_file.file.delete_id > 0) {
                     continue;
                 }
-                if (project_file.file.last_vector_scan >= project_file.file.mtime_on_disk ()) {
+                if (project_file.file.last_vector_scan
+                    >= project_file.file.mtime_on_disk ()) {
                     continue;
                 }
-                this.queueFile (new BackgroundScanItem (project.path, project_file.file.path));
+                this.queueFile (
+                    new BackgroundScanItem (
+                        project.path,
+                        project_file.file.path
+                    ),
+                    false
+                );
                 queued_count++;
             }
 
             GLib.debug ("queued %d files for project %s", queued_count, path);
+            if (auto_start && queued_count > 0) {
+                this.startQueue.begin ();
+            }
+            return queued_count;
         }
 
-        private void queueFile (BackgroundScanItem item)
+        private void queueFile (
+            BackgroundScanItem item,
+            bool auto_start = true
+        )
         {
             if (this.file_queue == null) {
                 this.file_queue = new Gee.ArrayQueue<BackgroundScanItem> ();
@@ -181,10 +227,12 @@ namespace OLLMfilesd.Vector {
                 }
             }
             this.file_queue.offer (item);
-            this.startQueue.begin ();
+            if (auto_start) {
+                this.startQueue.begin ();
+            }
         }
 
-        private async void startQueue ()
+        internal async void startQueue ()
         {
             if (this.queue_processing) {
                 return;
