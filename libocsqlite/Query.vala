@@ -816,14 +816,14 @@ namespace SQ {
 				if (ps == null) {
 					this.has_prop[prop] = 0;
 					value_type = 0;
-					GLib.warning("Property '%s' not found on object, skipping", prop);
+					//GLib.warning("Property '%s' not found on object, skipping", prop);
 					return false;
 				}
 				
 				if ((ps.flags & GLib.ParamFlags.WRITABLE) == 0) {
 					this.has_prop[prop] = 0;
 					value_type = 0;
-					GLib.warning("Property '%s' is read-only, skipping", prop);
+					//GLib.warning("Property '%s' is read-only, skipping", prop);
 					return false;
 				}
 				this.has_prop[prop] = (int) ps.value_type;

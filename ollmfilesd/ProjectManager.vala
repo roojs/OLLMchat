@@ -307,26 +307,29 @@ namespace OLLMfilesd
 						project.project_files.update_from(project);
 					}
 				}
-
-				if (!this.disable_initial_scan) {
-					if (this.scanning.has_key (project.path)) {
-						GLib.debug ("filesystem scan already active path=%s", project.path);
-					} else {
-						GLib.debug ("filesystem scan queued path=%s", project.path);
-						yield project.read_dir(new DateTime.now_local().to_unix(), true);
-						GLib.debug ("filesystem scan returned path=%s", project.path);
-					}
-					project.project_files.update_from(project);
-				}
-				this.disable_initial_scan = false;
 			}
 			
 			this.active_project_changed(project);
 
-		
 			request.reply(new OLLMrpc.Response() {
 				msg = "ok"
 			});
+
+			if (project == null || !project.is_project) {
+				return;
+			}
+
+			if (!this.disable_initial_scan) {
+				if (this.scanning.has_key (project.path)) {
+					GLib.debug ("filesystem scan already active path=%s", project.path);
+				} else {
+					GLib.debug ("filesystem scan queued path=%s", project.path);
+					yield project.read_dir(new DateTime.now_local().to_unix(), true);
+					GLib.debug ("filesystem scan returned path=%s", project.path);
+				}
+				project.project_files.update_from(project);
+			}
+			this.disable_initial_scan = false;
 		
 		}
 		

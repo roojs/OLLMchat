@@ -173,30 +173,30 @@ namespace SQ {
 		 */
 		public void backupDB()
 		{
-			GLib.debug("disk backup requested");
+			//GLib.debug("disk backup requested");
 			if (new GLib.DateTime.now_local().to_unix() - this.last_backup > 20) {
 				if (this.countdown_id != 0) {
 					GLib.Source.remove(this.countdown_id);
 					this.countdown_id = 0;
 				}
 				this.countdown = -1;
-				GLib.debug("disk backup forced max age");
+				//GLib.debug("disk backup forced max age");
 				this.backup_real();
 				return;
 			}
 			if (this.countdown_id != 0) {
 				this.countdown = 5;
-				GLib.debug("disk backup coalesced countdown=%d", this.countdown);
+				//GLib.debug("disk backup coalesced countdown=%d", this.countdown);
 				return;
 			}
-			GLib.debug("disk backup countdown armed");
+			//GLib.debug("disk backup countdown armed");
 			this.countdown_id = GLib.Timeout.add(500, () => {
 				this.countdown--;
 				if (this.countdown > 0) {
 					return true;
 				}
 				this.countdown_id = 0;
-				GLib.debug("disk backup countdown finished");
+				//GLib.debug("disk backup countdown finished");
 				this.backup_real();
 				return false;
 			});
@@ -212,7 +212,7 @@ namespace SQ {
 			if (this.db == null) {
 				return;
 			}
-			GLib.debug("disk backup writing path=%s", this.filename);
+			//GLib.debug("disk backup writing path=%s", this.filename);
 			this.db_mutex.lock();
 			try {
 				var new_filename = this.filename + ".new";
@@ -244,7 +244,7 @@ namespace SQ {
 				GLib.FileUtils.rename(new_filename, this.filename);
 				this.is_dirty = false;
 				this.last_backup = new GLib.DateTime.now_local().to_unix();
-				GLib.debug("disk backup done path=%s", this.filename);
+				//GLib.debug("disk backup done path=%s", this.filename);
 			} catch (GLib.Error e) {
 				GLib.warning("Error during database backup: %s", e.message);
 			} finally {

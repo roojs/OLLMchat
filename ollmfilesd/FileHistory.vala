@@ -248,7 +248,7 @@ namespace OLLMfilesd
 			if (this.change_type == "deleted") {
 				var src = GLib.File.new_for_path(this.path);
 				if (!src.query_exists()) {
-					GLib.debug("FileHistory.create_backup: skip backup (path already absent): %s", this.path);
+					//GLib.debug("FileHistory.create_backup: skip backup (path already absent): %s", this.path);
 					return;
 				}
 			}

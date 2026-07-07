@@ -115,8 +115,8 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				// File might already be gone, or deletion failed
 				// We still need to set delete_id so system knows it's deleted
-				GLib.warning("DeleteManager.remove_file: Failed to delete file %s from filesystem: %s", 
-					filebase.path, e.message);
+				//GLib.warning("DeleteManager.remove_file: Failed to delete file %s from filesystem: %s", 
+				//	filebase.path, e.message);
 				// Continue - we'll still set delete_id
 			}
 			
