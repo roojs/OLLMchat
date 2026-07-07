@@ -19,11 +19,12 @@
 namespace OLLMfiles
 {
 	/**
-	 * Manages project list with deduplication.
-	 * 
-	 * Implements ListModel interface using Gee.ArrayList as backing store.
-	 * Provides ListStore-compatible methods that update the backing store and emit items_changed signals.
-	 * Projects are Folders with is_project = true.
+	 * V2 client project list — {@link GLib.ListModel} over known project rows.
+	 *
+	 * Holds project-root {@link Folder} rows loaded via
+	 * {@link ProjectManager.load_projects_from_db} or {@link ProjectManager.create_project}.
+	 * Subfolder lookup is **not** cached here — use
+	 * {@link ProjectManager.fetch_folder} (daemon {{{Folder.fetch}}} RPC).
 	 */
 	public class ProjectList : Object, GLib.ListModel
 	{
@@ -149,46 +150,24 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Return a Folder at the given path if it exists in any project's folder_map.
-		 * Uses the backing store (items) so we can foreach; does not use ListModel.
-		 *
-		 * @param path Normalized absolute path
-		 * @return The Folder if found in any project's folder_map, null otherwise
-		 */
-		public Folder? get_folder_in_any_project(string path)
-		{
-			foreach (var p in this.items) {
-				if (p.project_files.folder_map.has_key(path)) {
-					return p.project_files.folder_map.get(path);
-				}
-			}
-			return null;
-		}
-
-		/**
 		 * Get the active project from the projects list.
 		 *
-		 * @return The active Folder (project), or null if no project is active
+		 * Uses in-memory {{{is_active}}} on project rows (client-local session
+		 * state). Does not read daemon DB {{{is_active}}} flags.
+		 *
+		 * @return The active {@link Folder} (project), or null if none is active
 		 */
 		public Folder? get_active_project()
 		{
-			// Count how many projects have is_active = true
-			int active_count = 0;
 			Folder? result = null;
 			foreach (var project in this.items) {
 				if (!(project.is_active && project.is_project)) {
 					continue;
 				}
-				active_count++;
 				if (result == null) {
 					result = project;
 				}
-				//GLib.debug("ProjectList.get_active_project: Found active project '%s' (count=%d)", 
-				//	project.path, active_count);
 			}
-			//GLib.debug("ProjectList.get_active_project: Total active projects found: %d", active_count);
-			//GLib.debug("ProjectList.get_active_project: Returning project '%s'", 
-			//	result != null ? result.path : "null");
 			return result;
 		}
 		

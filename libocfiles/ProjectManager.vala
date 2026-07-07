@@ -19,42 +19,25 @@
 namespace OLLMfiles
 {
 	/**
-	 * Central coordinator for all file system operations.
-	 * 
-	 * ProjectManager is the entry point for all file system operations. It manages
-	 * file cache, tracks active project and active file, provides buffer and git
-	 * providers, handles database persistence, and emits signals for state changes.
-	 * 
-	 * The file_cache provides O(1) lookup by path. Projects are folders with
-	 * is_project = true (no separate Project class). Database operations are optional
-	 * (can work without database).
+	 * V2 client {@link ProjectManager} — RPC to {{{ollmfilesd}}}, local UI state only.
+	 *
+	 * Filesystem, SQLite, and scan work stay on the daemon. This class keeps
+	 * {@link active_project}, {@link active_file}, signals, and thin project rows.
 	 */
 	public class ProjectManager : Object
 	{
+		public OLLMrpc.Client rpc {
+			get; private set;
+		}
+
 		/**
-		 * Provider instances (default to base class with no-op implementations).
+		 * Editor / tool buffers (client-only; {@link Window} sets {{{OLLMcoder.BufferProvider}}}).
 		 */
 		public BufferProviderBase buffer_provider { get; set; default = new BufferProviderBase(); }
-		public GitProviderBase git_provider { get; set; default = new GitProviderBase(); }
-		
-		/**
-		 * Database instance for persistence.
-		 * Set this to enable database operations.
-		 */
-		public SQ.Database? db { get; set; default = null; }
 		
 		public Gee.HashMap<string,FileBase> file_cache {
 			get; set;
 			default = new Gee.HashMap<string,FileBase>(); 
-		}
-		
-		/**
-		 * Cache of Tree instances for AST path lookup.
-		 * Maps file path to Tree instance.
-		 */
-		public Gee.HashMap<string,Tree> tree_cache {
-			get; private set;
-			default = new Gee.HashMap<string,Tree>(); 
 		}
 		
 		/**
@@ -64,19 +47,14 @@ namespace OLLMfiles
 			default = new ProjectList(); }
 		
 		/**
-		 * Folder paths currently inside a {@link Folder.read_dir} pass (main thread only).
-		 * Callers add/remove entries; replace the map to clear.
-		 * {@link Gee.HashMap.unset} on a missing key is safe (returns false, does not throw).
-		 */
-		public Gee.HashMap<string, Folder> scanning {
-			get; set;
-			default = new Gee.HashMap<string, Folder> ();
-		}
-		
-		/**
 		 * Currently active project (folder with is_project = true).
 		 */
 		public Folder? active_project { get; private set; default = null; }
+
+		/**
+		 * Pending-approval list (shared by Approvals + tools). Same instance for all projects.
+		 */
+		public ReviewFiles review_files { get; private set; }
 		
 		/**
 		 * Currently active file.
@@ -101,198 +79,132 @@ namespace OLLMfiles
 		public signal void file_metadata_changed(File file);
 		
 		/**
-		 * Emitted when file content changes (saved, edited, etc.).
-		 * This signal is emitted when file content is written to disk and triggers background scanning.
+		 * When true, {@link activate_project} tells the daemon to skip initial scan.
 		 */
-		public signal void file_contents_changed(File file);
-		
+		public bool disable_initial_scan { get; set; default = false; }
+
 		/**
-		 * DeleteManager instance for handling file deletions.
+		 * File deletion facade — {@link File.delete} RPC on the daemon.
 		 */
 		public DeleteManager delete_manager { get; private set; }
 
 		/**
-		 * When true, {@link activate_project} skips the initial directory scan (read_dir).
-		 * Off by default. Once the scan is skipped, this is set to true so it stays disabled.
-		 * Use for tests or lightweight setups that rely on DB state only.
-		 */
-		public bool disable_initial_scan { get; set; default = false; }
-		
-		/**
 		 * Constructor.
-		 * 
-		 * @param db Optional database instance for persistence
 		 */
-		public ProjectManager(SQ.Database? db = null)
+		public ProjectManager()
 		{
-			this.db = db;
-			if (this.db != null) {
-				// Initialize database tables
-				FileBase.init_db(this.db);
-				FileHistory.init_db(this.db);
-			}
-			// Initialize git provider if set
-			this.git_provider.initialize();
-			
-			// Create DeleteManager instance
+			Object();
+			OLLMrpc.Daemon.rpc_register();
+			OLLMfilesd.DaemonParams.rpc_register();
+			Folder.rpc_register();
+			File.rpc_register();
+			FileAlias.rpc_register();
+			FileWithHistory.rpc_register();
+			SQT.VectorMetadata.rpc_register();
+			OLLMfilesd.ProjectParams.rpc_register();
+			OLLMfilesd.FileParams.rpc_register();
+			OLLMfilesd.FolderParams.rpc_register();
+			OLLMfilesd.VectorParams.rpc_register();
+			this.rpc = new OLLMrpc.Client(
+				GLib.Path.build_filename(
+					GLib.Environment.get_user_data_dir(),
+					"ollmchat"
+				),
+				"ollmfilesd.pid",
+				"ollmfilesd.sock",
+				true
+			);
 			this.delete_manager = new DeleteManager(this);
+			this.review_files = new ReviewFiles(this);
 		}
-		
 		
 		/**
 		 * Activate a file (deactivates previous active file).
-		 * 
+		 * Local state + signal first; RPC is fire-and-forget ({@link OLLMrpc.Client.failed}).
+		 *
 		 * @param file The file to activate
 		 */
 		public void activate_file(File? file)
 		{
-			// Deactivate previous active file
 			if (this.active_file != null && this.active_file != file) {
 				this.active_file.is_active = false;
-				if (this.db != null) {
-					this.active_file.saveToDB(this.db, null, false);
-					this.db.is_dirty = true;
-				}
 			}
-			
-			// Activate new file
 			this.active_file = file;
 			if (file != null) {
 				file.is_active = true;
-				if (this.db != null) {
-					file.saveToDB(this.db, null, false);
-					this.db.is_dirty = true;
-				}
 			}
-			
 			this.active_file_changed(file);
+
+			this.rpc.call.begin(new OLLMrpc.Request() {
+				method = "File.activate",
+				param = new OLLMfilesd.ProjectParams() {
+					path = file != null ? file.path : ""
+				}
+			}, (obj, res) => {
+				this.rpc.call.end(res);
+			});
 		}
 		
 		/**
 		 * Activate a project (deactivates previous active project).
-		 * Note: Projects are Folders with is_project = true.
+		 * Local state + signal first; RPC is fire-and-forget ({@link OLLMrpc.Client.failed}).
 		 * 
 		 * @param project The project folder to activate (must have is_project = true)
 		 */
-		public async void activate_project(Folder? project)
+		public void activate_project(Folder? project)
 		{
-			//GLib.debug("ProjectManager.activate_project: Called with project=%s (path=%s)", 
-			//	project != null ? project.get_type().name() : "null",
-			//	project != null ? project.path : "null");
-			
-			// Skip if this project is already active (avoid redundant scans)
 			if (this.active_project == project && project != null && project.is_active) {
 				GLib.debug ("opening project skipped already active path=%s", project.path);
 				return;
 			}
 
-			// Reset is_active for ALL other projects (ensure only one project is active)
 			foreach (var other_project in this.projects.project_map.values) {
-				if (other_project != project && other_project.is_project && other_project.is_active) {
-					//GLib.debug("ProjectManager.activate_project: Deactivating project '%s'", other_project.path);
+				if (other_project != project && other_project.is_active) {
 					other_project.is_active = false;
-					if (this.db != null) {
-						other_project.saveToDB(this.db, null, false);
-						this.db.is_dirty = true;
-					}
 				}
 			}
-			
-			// Deactivate previous active project (if different from the one being activated)
 			if (this.active_project != null && this.active_project != project) {
-				//GLib.debug("ProjectManager.activate_project: Deactivating previous active_project '%s'", this.active_project.path);
-				// Note: is_active may already be false from the loop above, but ensure it's saved
-				if (this.active_project.is_active) {
-					this.active_project.is_active = false;
-					if (this.db != null) {
-						this.active_project.saveToDB(this.db, null, false);
-						this.db.is_dirty = true;
-					}
-				}
+				this.active_project.is_active = false;
 			}
-			
-			// Activate new project
+
 			this.active_project = project;
 			if (project != null && project.is_project) {
 				GLib.debug ("opening project path=%s", project.path);
- 				project.is_active = true;
-				
-				if (this.db != null) {
-					project.saveToDB(this.db, null, false);
-					this.db.is_dirty = true;
-					
-					// Load project file tree from DB if not already loaded (for fast initial display)
-					if (project.children.items.size == 0) {
-						yield project.load_files_from_db();
-						project.project_files.update_from(project);
-						
-					}
-				}
-
-				if (!this.disable_initial_scan) {
-					if (this.scanning.has_key (project.path)) {
-						GLib.debug ("filesystem scan already active path=%s", project.path);
-					} else {
-						GLib.debug ("filesystem scan queued path=%s", project.path);
-						yield project.read_dir(new DateTime.now_local().to_unix(), true);
-						GLib.debug ("filesystem scan returned path=%s", project.path);
-					}
-				}
-				this.disable_initial_scan = false;
-				
-				
+				project.is_active = true;
 			}
-			
+			this.disable_initial_scan = false;
 			this.active_project_changed(project);
+
+			if (project != null && project.is_project) {
+				this.review_files.refresh.begin();
+			}
+
+			this.rpc.call.begin(new OLLMrpc.Request() {
+				method = "ProjectManager.activate_project",
+				param = new OLLMfilesd.ProjectParams() {
+					skip_scan = this.disable_initial_scan,
+					path = project != null ? project.path : ""
+				}
+			}, (obj, res) => {
+				this.rpc.call.end(res);
+			});
 		}
 		
 		
 		/**
-		 * Notify that a file's metadata has changed (save to database and emit signal).
-		 * 
-		 * This method is used for metadata-only updates such as cursor position, scroll position,
-		 * or last_viewed timestamp. It does NOT trigger background scanning.
-		 * 
+		 * Notify that a file's metadata has changed (client-local only).
+		 *
+		 * @deprecated Kept for shipping {{{SourceView}}} callers during cutover.
+		 *   Cursor, scroll, and last_viewed are per-window in-memory state on
+		 *   {@link File} — not RPC, not daemon SQLite. Callers should set those
+		 *   fields directly and drop this hook when session restore is redesigned.
+		 *
 		 * @param file The file whose metadata changed
 		 */
+		[Deprecated (since = "2.10.4")]
 		public void on_file_metadata_change(File file)
 		{
-			if (this.db != null) {
-				file.saveToDB(this.db, null, false);
-				this.db.is_dirty = true;
-			}
 			this.file_metadata_changed(file);
-		}
-		
-		/**
-		 * Notify that a file's content has changed (save to database and emit signal).
-		 * 
-		 * This method is used when file content is written to disk (saved, edited, etc.).
-		 * It triggers background scanning via the file_contents_changed signal.
-		 * 
-		 * @param file The file whose content changed
-		 */
-		public void on_file_contents_change(File file)
-		{
-			if (this.db != null) {
-				file.saveToDB(this.db, null, false);
-				this.db.is_dirty = true;
-			}
-			this.file_contents_changed(file);
-		}
-		
-		/**
-		 * Notify that a project's state has changed (save to database).
-		 * Note: Projects are Folders with is_project = true.
-		 * 
-		 * @param project The project folder that changed (must have is_project = true)
-		 */
-		public void notify_project_changed(Folder project)
-		{
-			if (this.db != null) {
-				project.saveToDB(this.db,null, false);
-				this.db.is_dirty = true;
-			}
 		}
 		
 		/**
@@ -303,54 +215,45 @@ namespace OLLMfiles
 		 */
 		public async void load_projects_from_db()
 		{
-			if (this.db == null) {
-				//GLib.debug("ProjectManager.load_projects_from_db: db is null, skipping");
+			var response = yield this.rpc.call(new OLLMrpc.Request() {
+				method = "ProjectManager.load_projects_from_db",
+				param = new OLLMfilesd.ProjectParams()
+			});
+			if (response.error != null) {
 				return;
 			}
-			
-			// Query database for projects
-			var query = FileBase.query(this.db, this);
-			var projects_list = new Gee.ArrayList<Folder>();
-			yield query.select_async("WHERE is_project = 1 AND delete_id = 0", projects_list);
-			
-			////GLib.debug("ProjectManager.load_projects_from_db: Found %d projects in database", projects_list.size);
-			
-			// Add to manager.projects list (ProjectList handles deduplication)
-			foreach (var project in projects_list) {
-				// Projects use property binding: path_basename for label, path for tooltip
-				// No need to manually set display_name or tooltip - they're bound directly
-				////GLib.debug("ProjectManager.load_projects_from_db: Adding project path='%s' (path_basename='%s')", 
-				//	project.path, project.path_basename);
-				this.projects.append(project);
+			foreach (var folder in (Gee.ArrayList<Folder>) response.result) {
+				folder.manager = this;
+				this.projects.append(folder);
 			}
-			
-			////GLib.debug("ProjectManager.load_projects_from_db: After append, projects.get_n_items() = %u", 
-			//	this.projects.get_n_items());
 		}
 		
 		/**
-		 * Find a Folder at the given path (e.g. subfolder of a project, or in DB).
-		 * Caller must have already verified the path is not already a project (path_map).
-		 * Checks each project's folder_map, then the database. Does not check path_map or file_cache.
+		 * Fetch a {@link Folder} row at an absolute path (any project).
+		 *
+		 * Uses {{{Folder.fetch}}} on the daemon. For files inside a known
+		 * project, prefer {@link Folder.fetch_file} on the project row.
 		 *
 		 * @param path Normalized absolute path
-		 * @return The Folder if found, null otherwise
+		 * @return The folder row, or null if not found
 		 */
-		public Folder? get_folder_at_path(string path)
+		public async Folder? fetch_folder(string path)
 		{
-			var folder = this.projects.get_folder_in_any_project(path);
-			if (folder != null) {
-				return folder;
-			}
-			if (this.db == null) {
+			var response = yield this.rpc.call(new OLLMrpc.Request() {
+				method = "Folder.fetch",
+				param = new OLLMfilesd.ProjectParams() { path = path }
+			});
+			if (response.error != null) {
 				return null;
 			}
-			var query = FileBase.query(this.db, this);
-			var list = new Gee.ArrayList<FileBase>();
-			query.select(
-				"WHERE path = '%s' AND base_type = 'd' AND delete_id = 0 LIMIT 1".printf(
-					path.replace("'", "''")), list);
-			return list.size == 0 ? null : list.get(0) as Folder;
+			var folders = (Gee.ArrayList<Folder>) response.result;
+			if (folders.size == 0) {
+				return null;
+			}
+			var folder = (Folder) folders.get(0);
+			folder.manager = this;
+			this.file_cache.set(folder.path, folder);
+			return folder;
 		}
 
 		/**
@@ -361,27 +264,36 @@ namespace OLLMfiles
 		 * @param path Normalized absolute path to the folder
 		 * @return The Folder that is the project at that path (existing or new)
 		 */
-		public Folder create_project(string path)
+		public async Folder create_project(string path)
 		{
-			var existing = this.get_folder_at_path(path);
-			var project = existing != null
-				? existing
-				: new Folder(this) {
+			var response = yield this.rpc.call(new OLLMrpc.Request() {
+				method = "ProjectManager.create_project",
+				param = new OLLMfilesd.ProjectParams() { path = path }
+			});
+			if (response.error != null) {
+				return new Folder(this) {
 					is_project = true,
 					path = path
 				};
+			}
+			var folders = (Gee.ArrayList<Folder>) response.result;
+			if (folders.size == 0) {
+				return new Folder(this) {
+					is_project = true,
+					path = path
+				};
+			}
+			var project = (Folder) folders.get(0);
+			project.manager = this;
 			project.is_project = true;
 			this.file_cache.set(project.path, project);
 			this.projects.append(project);
-			project.saveToDB(this.db, null, false);
-			this.db.is_dirty = true;
-		
 			return project;
 		}
 
 		/**
 		 * Remove a project from the projects list by clearing the is_project flag.
-		 * Does not delete any filebase or file_history data.
+		 * Local state first; RPC is fire-and-forget ({@link OLLMrpc.Client.failed}).
 		 *
 		 * @param project The project folder to remove
 		 */
@@ -392,184 +304,49 @@ namespace OLLMfiles
 				this.active_project_changed(null);
 			}
 			this.projects.remove(project);
-			project.saveToDB(this.db, null, false);
-			this.db.is_dirty = true;
-		
+			project.is_project = false;
+
+			this.rpc.call.begin(new OLLMrpc.Request() {
+				method = "ProjectManager.remove_project",
+				param = new OLLMfilesd.ProjectParams() { path = project.path }
+			}, (obj, res) => {
+				this.rpc.call.end(res);
+			});
 		}
 		
 		/**
-		 * Check if a file path is in the active project.
-		 * 
-		 * @param file_path The normalized file path to check
-		 * @return The File object if found in active project, null otherwise
+		 * Restore active project and file from saved session paths.
+		 *
+		 * Does not read {{{ProjectFiles}}} or DB {{{is_active}}} flags.
+		 * {{{file_path}}} comes from agent/window config when wired.
+		 *
+		 * @param file_path Optional absolute path of file to open after project
 		 */
-		public File? get_file_from_active_project(string file_path)
+		public async void restore_active_state(string? file_path = null)
 		{
-			if (this.active_project == null) {
-				return null;
-			}
-			
-			var project_file = this.active_project.project_files.child_map.get(file_path);
-			return (project_file == null) ? null : project_file.file;
-			
-		}
-		
-		/**
-		 * Converts a fake file (id = -1) to a real File object if it's within the active project.
-		 * 
-		 * This method:
-		 * - Checks if the file is within the active project
-		 * - Finds or creates parent folder objects in the project tree
-		 * - Queries file info from disk
-		 * - Converts the fake file to a real File object
-		 * - Saves the file to the database
-		 * - Updates the ProjectFiles list
-		 * - Emits the new_file_added signal
-		 * 
-		 * @param file The fake file to convert (must have id = -1)
-		 * @param file_path The normalized file path
-		 */
-		public async void convert_fake_file_to_real(File file, string file_path) throws Error
-		{
-			var active_project = this.active_project;
-			
-			// Early return if no active project
-			if (active_project == null) {
-				// File is outside project - keep as fake file (id = -1)
-				return;
-			}
-			
-			// Get parent directory path
-			// We may have created multiple subdirectories when creating the file,
-			// so use find_container_of to find the closest existing folder in the project
-			var parent_dir_path = GLib.Path.get_dirname(file_path);
-			var found_base_folder = active_project.project_files.find_container_of(parent_dir_path);
-			
-			// If we didn't find any parent folder in the project, the file is outside the project
-			if (found_base_folder == null) {
-				// File is outside project - keep as fake file (id = -1)
-				return;
-			}
-			
-			// Create missing child folders from found_base_folder down to parent_dir_path
-			var parent_folder = yield found_base_folder.make_children(file_path);
-			if (parent_folder == null) {
-				GLib.warning("ProjectManager.convert_fake_file_to_real: Could not create parent folder for %s", file_path);
-				return;
-			}
-			
-			// Query file info from disk
-			var gfile = GLib.File.new_for_path(file_path);
-			if (!gfile.query_exists()) {
-				GLib.warning("ProjectManager.convert_fake_file_to_real: File does not exist on disk: %s", file_path);
-				return;
-			}
-			
-			GLib.FileInfo file_info;
-			try {
-				file_info = gfile.query_info(
-					GLib.FileAttribute.STANDARD_CONTENT_TYPE + "," + GLib.FileAttribute.TIME_MODIFIED,
-					GLib.FileQueryInfoFlags.NONE,
-					null
-				);
-			} catch (GLib.Error e) {
-				GLib.warning("ProjectManager.convert_fake_file_to_real: Could not query file info for %s: %s", file_path, e.message);
-				return;
-			}
-			
-			// Convert fake file to real File object
-			// Create new File (not new_fake)
-			var real_file = new File(this) {
-				path = file_path,
-				parent = parent_folder,
-				parent_id = parent_folder.id,
-				id = 0 // New file, will be inserted on save
-			};
-			
-			// Set properties from FileInfo
-			var content_type = file_info.get_content_type();
-			real_file.is_text = content_type != null && content_type != "" && content_type.has_prefix("text/");
-			
-			var mod_time = file_info.get_modification_date_time();
-			if (mod_time != null) {
-				real_file.last_modified = mod_time.to_unix();
-			}
-			
-			// Detect language from filename using buffer provider
-			var detected_language = this.buffer_provider.detect_language(real_file);
-			if (detected_language != "") {
-				real_file.language = detected_language;
-			}
-			if (!real_file.is_text && real_file.language != "") {
-				real_file.is_text = true;
-			}
-			
-			// Add file to parent folder's children
-			parent_folder.children.append(real_file);
-			
-			// Create buffer for new file object
-			// The old buffer was associated with the fake file, so we create a new one
-			// The file was just written to disk, so the buffer will read from disk when needed
-			this.buffer_provider.create_buffer(real_file);
-			
-			// Save file to DB (gets id > 0, and adds to file_cache automatically)
-			if (this.db != null) {
-				real_file.saveToDB(this.db, null, false);
-			} else {
-				// If no DB, manually add to file_cache for immediate lookup
-				this.file_cache.set(real_file.path, real_file);
-			}
-			
-			// Update ProjectFiles list
-			active_project.project_files.update_from(active_project);
-			
-			// Manually emit new_file_added signal
-			active_project.project_files.new_file_added(real_file);
-		}
-		
-		/**
-		 * Restore active project and file from in-memory data structures.
-		 * Note: Projects are Folders with is_project = true.
-		 * This will set this.active_project and this.active_file, deactivate previous items,
-		 * update the database, and emit signals.
-		 */
-		public async void restore_active_state()
-		{
-			//GLib.debug("ProjectManager.restore_active_state: Starting");
-			// Find active project using ProjectList internal method
 			var project = this.projects.get_active_project();
 			if (project == null) {
-				//GLib.debug("ProjectManager.restore_active_state: No active project found, resetting all projects");
-				// Reset is_active for all projects if no active project found
-				// (in case multiple projects were marked active in database)
 				foreach (var other_project in this.projects.project_map.values) {
 					if (other_project.is_project && other_project.is_active) {
-						//GLib.debug("ProjectManager.restore_active_state: Resetting is_active for project '%s'", other_project.path);
 						other_project.is_active = false;
-						if (this.db != null) {
-							other_project.saveToDB(this.db, null, false);
-							this.db.is_dirty = true;
-						}
 					}
 				}
 				return;
 			}
-			
-			//GLib.debug("ProjectManager.restore_active_state: Found active project '%s'", project.path);
-			// Reset is_active to false in memory to force fresh activation
-			// activate_project() will set it back to true and save it, so no need to save here
+
 			if (project.is_active) {
 				project.is_active = false;
 			}
-			
+
 			GLib.debug ("restoring session project path=%s", project.path);
-			yield this.activate_project(project);
-			//GLib.debug("ProjectManager.restore_active_state: Completed");
-			
-			// Find active file using ProjectFiles internal method
-			var file = project.project_files.get_active_file();
+			this.activate_project(project);
+
+			if (file_path == null || file_path == "") {
+				return;
+			}
+
+			var file = yield project.fetch_file(file_path);
 			if (file != null) {
-				// This will set this.active_file, deactivate previous, update DB, emit signal
 				this.activate_file(file);
 			}
 		}
@@ -581,10 +358,7 @@ namespace OLLMfiles
 		
 		/**
 		 * Check if the active file has been modified on disk and differs from the buffer.
-		 * 
-		 * Delegates to the active file's check_updated() method.
-		 * This should be called when the window gains focus to detect external file changes.
-		 * 
+		 *
 		 * @return FileUpdateStatus indicating what action should be taken
 		 */
 		public async FileUpdateStatus check_active_file_changed()
@@ -592,64 +366,33 @@ namespace OLLMfiles
 			if (this.active_file == null) {
 				return FileUpdateStatus.NO_CHANGE;
 			}
-			
-			return yield this.active_file.check_updated();
+
+			return yield this.active_file.check_changed();
 		}
 		
 		/**
-		 * Writes current buffer contents of active file to disk.
+		 * Writes current buffer contents via {{{File.write}}}.
+		 * Scan/index queue is on the daemon. RPC errors: {@link OLLMrpc.Client.failed}.
 		 */
 		public async void write_buffer_to_disk()
 		{
 			if (this.active_file == null || this.active_file.buffer == null) {
 				return;
 			}
-			
-			try {
-				yield this.active_file.buffer.sync_to_file();
-				//GLib.debug("Wrote buffer to disk: %s", this.active_file.path);
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to write buffer to disk %s: %s", this.active_file.path, e.message);
-			}
+
+			yield this.active_file.write();
 		}
 		
 		/**
-		 * Reloads active file from disk into buffer, discarding unsaved changes.
+		 * Reloads active file via {@link File.read} (daemon filebase + RPC content).
 		 */
 		public async void reload_file_from_disk()
 		{
 			if (this.active_file == null || this.active_file.buffer == null) {
 				return;
 			}
-			
-			try {
-				yield this.active_file.buffer.read_async();
-				//GLib.debug("Reloaded file from disk: %s", this.active_file.path);
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to reload file from disk %s: %s", this.active_file.path, e.message);
-			}
-		}
-		
-		/**
-		 * Get or create a Tree instance for the given file.
-		 * 
-		 * Returns cached Tree instance if available, otherwise creates a new one
-		 * and adds it to the cache.
-		 * 
-		 * @param file The file to get/create Tree for
-		 * @return Tree instance for the file
-		 */
-		public Tree tree_factory(File file)
-		{
-			// Check cache first
-			if (this.tree_cache.has_key(file.path)) {
-				return this.tree_cache.get(file.path);
-			}
-			
-			// Create new Tree instance and cache it
-			var tree = new Tree(file);
-			this.tree_cache.set(file.path, tree);
-			return tree;
+
+			yield this.active_file.read();
 		}
 		
 	}

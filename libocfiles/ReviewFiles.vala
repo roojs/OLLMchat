@@ -20,52 +20,102 @@ namespace OLLMfiles
 {
 	/**
 	 * Manages files in a project that need approval (flat list for approvals UI).
-	 * 
-	 * Provides flat list of all files in project that need approval (is_need_approval == true).
-	 * Implements ListModel interface. Uses database ID for equality comparison.
-	 * Extracts File objects from ProjectFiles, doesn't store ProjectFiles.
+	 *
+	 * V2 client: implements {@link GLib.ListModel} over {@link FileWithHistory}
+	 * rows from {{{Folder.fetch_pending_approvals}}}. Call {@link refresh} to
+	 * reload the list model, or {@link fetch_pending} for the snapshot only.
 	 */
 	public class ReviewFiles : Object, GLib.ListModel
 	{
 		/**
-		 * The ProjectFiles collection to extract files from.
+		 * Emitted after {@link refresh} finishes (success or empty RPC result).
 		 */
-		private ProjectFiles project_files;
-		
+		public signal void refreshed();
+
+		public weak ProjectManager manager { get; construct; }
+
 		/**
-		 * Backing store: ArrayList containing File objects.
-		 * Uses database ID for equality checks.
+		 * Backing store: {@link FileWithHistory} rows pending approval.
+		 * Uses database id for equality checks.
 		 */
-		private Gee.ArrayList<File> items { get; set; 
-			default = new Gee.ArrayList<File>((a, b) => {
+		private Gee.ArrayList<FileWithHistory> items { get; set;
+			default = new Gee.ArrayList<FileWithHistory>((a, b) => {
 				return a.id == b.id;
 			});
 		}
-		
+
 		/**
-		 * Hashmap of file path => File object for quick lookup.
+		 * Hashmap of file path => {@link FileWithHistory} row for quick lookup.
 		 */
-		public Gee.HashMap<string, File> file_map { get; private set;
-			default = new Gee.HashMap<string, File>(); }
-		
+		public Gee.HashMap<string, FileWithHistory> file_map { get; private set;
+			default = new Gee.HashMap<string, FileWithHistory>(); }
+
 		/**
 		 * Constructor.
-		 * 
-		 * @param project_files The ProjectFiles collection to extract files from
+		 *
+		 * @param manager Owning {@link ProjectManager}
 		 */
-		public ReviewFiles(ProjectFiles project_files)
+		public ReviewFiles(ProjectManager manager)
 		{
-			this.project_files = project_files;
+			Object(manager: manager);
 		}
-		
+
+		/**
+		 * Fetch files pending approval from the daemon ({{{Folder.fetch_pending_approvals}}} wire).
+		 *
+		 * Does not update this {@link GLib.ListModel} — use {@link refresh} for that.
+		 *
+		 * @return Rows needing approval in the active project
+		 */
+		public async Gee.ArrayList<FileWithHistory> fetch_pending()
+		{
+			var project = this.manager.active_project;
+			if (project == null) {
+				return new Gee.ArrayList<FileWithHistory>();
+			}
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+				method = "Folder.fetch_pending_approvals",
+				param = new OLLMfilesd.FolderParams() { path = project.path }
+			});
+			if (response.error != null) {
+				return new Gee.ArrayList<FileWithHistory>();
+			}
+			return (Gee.ArrayList<FileWithHistory>) response.result;
+		}
+
+		/**
+		 * Reload pending-approval rows from the daemon into this list model.
+		 *
+		 * Replaces the full snapshot and emits {@link GLib.ListModel.items_changed}
+		 * when the row count changes.
+		 */
+		public async void refresh()
+		{
+			var old_n_items = this.items.size;
+			this.items.clear();
+			this.file_map.clear();
+
+			var files = yield this.fetch_pending();
+			foreach (var file in files) {
+				this.items.add(file);
+				this.file_map.set(file.path, file);
+			}
+
+			var new_n_items = this.items.size;
+			if (old_n_items > 0 || new_n_items > 0) {
+				this.items_changed(0, old_n_items, new_n_items);
+			}
+			this.refreshed();
+		}
+
 		/**
 		 * ListModel interface implementation: Get the item type.
 		 */
 		public Type get_item_type()
 		{
-			return typeof(File);
+			return typeof(FileWithHistory);
 		}
-		
+
 		/**
 		 * ListModel interface implementation: Get the number of items.
 		 */
@@ -73,9 +123,12 @@ namespace OLLMfiles
 		{
 			return this.items.size;
 		}
-		
+
 		/**
 		 * ListModel interface implementation: Get item at position.
+		 *
+		 * @param position Index into the list
+		 * @return The {@link FileWithHistory} at @position, or null if out of range
 		 */
 		public Object? get_item(uint position)
 		{
@@ -84,34 +137,7 @@ namespace OLLMfiles
 			}
 			return this.items.get((int)position);
 		}
-		
-		/**
-		 * Refresh the list by extracting files from project_files where is_need_approval == true.
-		 * 
-		 * Scans project_files and updates ReviewFiles:
-		 * - Extracts File objects from project_files where is_need_approval == true
-		 * - Adds files not already in ReviewFiles
-		 * - Removes files where is_need_approval == false or no longer in project_files
-		 * - Emits items_changed signal when items are added/removed (via append/remove_at)
-		 */
-		public void refresh()
-		{
-			// First loop: Add any new files from project_files that need approval
-			foreach (var project_file in this.project_files) {
-				if (project_file.file.is_need_approval && !this.file_map.has_key(project_file.file.path)) {
-					this.append(project_file.file);
-				}
-			}
-			
-			// Second loop: Remove files that no longer need approval (iterate backwards)
-			for (var i = (int)this.items.size - 1; i >= 0; i--) {
-				var file = this.items.get(i);
-				if (!file.is_need_approval) {
-					this.remove_at((uint)i);
-				}
-			}
-		}
-		
+
 		/**
 		 * Clear all items from the list.
 		 */
@@ -120,72 +146,67 @@ namespace OLLMfiles
 			var old_n_items = this.items.size;
 			this.items.clear();
 			this.file_map.clear();
-			
-			// Emit items_changed signal for ListModel
+
 			if (old_n_items > 0) {
 				this.items_changed(0, (uint)old_n_items, 0);
 			}
 		}
-		
+
 		/**
-		 * Check if a file is in the list.
-		 * 
-		 * @param file The File object to check
-		 * @return true if file is in list, false otherwise
+		 * Check if a row is in the list.
+		 *
+		 * @param file The {@link FileWithHistory} row to check
+		 * @return true if @file is in the list, false otherwise
 		 */
-		public bool contains(File file)
+		public bool contains(FileWithHistory file)
 		{
 			return this.items.contains(file);
 		}
-		
+
 		/**
 		 * Append an item to the list (ListStore-compatible).
-		 * 
-		 * @param item The File item to append
+		 *
+		 * Local UI update only — prefer {@link refresh} after daemon index changes.
+		 *
+		 * @param item The {@link FileWithHistory} item to append
 		 */
-		public void append(File item)
+		public void append(FileWithHistory item)
 		{
 			var position = this.items.size;
 			this.items.add(item);
 			this.file_map.set(item.path, item);
-			
-			// Emit items_changed signal
 			this.items_changed(position, 0, 1);
 		}
-		
+
 		/**
 		 * Remove an item from the list by item reference.
-		 * 
-		 * @param item The File item to remove
+		 *
+		 * @param item The {@link FileWithHistory} item to remove
 		 */
-		public void remove(File item)
+		public void remove(FileWithHistory item)
 		{
 			var position = this.items.index_of(item);
 			if (position < 0) {
-				return; // Not found
+				return;
 			}
-			
+
 			this.remove_at((uint)position);
 		}
-		
+
 		/**
 		 * Remove an item at a specific position (ListStore-compatible).
-		 * 
+		 *
 		 * @param position The position of the item to remove
 		 */
 		public void remove_at(uint position)
 		{
 			if (position >= this.items.size) {
-				return; // Invalid position
+				return;
 			}
-			
+
 			var item = this.items.get((int)position);
 			this.items.remove_at((int)position);
-			
-			// Remove from file_map based on file path
 			this.file_map.unset(item.path);
-			
-			// Emit items_changed signal
 			this.items_changed(position, 1, 0);
 		}
 	}

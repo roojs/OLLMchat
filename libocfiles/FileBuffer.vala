@@ -386,37 +386,21 @@ namespace OLLMfiles
 		
 		/**
 		 * Write contents to file on disk (sync buffer to file).
-		 * 
-		 * Creates backup if needed, writes to disk, and updates file metadata.
-		 * This is used when the buffer already has the contents and we just need
-		 * to sync it to the file. Unlike write(), this does not update the buffer contents.
-		 * 
+		 *
+		 * Writes to disk only. Unlike write(), this does not update the buffer contents.
+		 * Client persistence (db, scan) is via {@link File.write} RPC on the daemon.
+		 *
 		 * @param contents Contents to write
 		 * @throws Error if file cannot be written
 		 */
 		public async void write_real(string contents) throws Error
-		{
-			// Write to file
-			yield this.write_to_disk(contents);
-			
-			// Update file metadata
-			this.update_file_metadata_after_write();
-		}
-		
-		/**
-		 * Internal method: Write contents to file on disk.
-		 * 
-		 * @param contents Contents to write
-		 * @throws Error if file cannot be written
-		 */
-		protected async void write_to_disk(string contents) throws Error
 		{
 			var dirname = GLib.Path.get_dirname(this.file.path);
 			var dir_file = GLib.File.new_for_path(dirname);
 			if (!dir_file.query_exists()) {
 				dir_file.make_directory_with_parents(null);
 			}
-			
+
 			var file_obj = GLib.File.new_for_path(this.file.path);
 			var output_stream = yield file_obj.replace_async(
 				null,
@@ -425,40 +409,11 @@ namespace OLLMfiles
 				GLib.Priority.DEFAULT,
 				null
 			);
-			
-			// Write contents asynchronously
+
 			uint8[] data = contents.data;
 			size_t bytes_written;
 			yield output_stream.write_all_async(data, GLib.Priority.DEFAULT, null, out bytes_written);
-			
-			// Close stream asynchronously
 			yield output_stream.close_async(GLib.Priority.DEFAULT, null);
-		}
-		
-		/**
-		 * Internal method: Update file metadata after writing.
-		 * 
-		 * Updates last_modified, saves to database, updates last_viewed, and notifies ProjectManager
-		 * that file contents have changed (triggers background scanning).
-		 */
-		protected void update_file_metadata_after_write()
-		{
-			// Update last_modified from filesystem after writing
-			this.file.last_modified = this.file.mtime_on_disk();
-			
-			// Save to database with sync to disk
-			if (this.file.manager.db != null) {
-				this.file.saveToDB(this.file.manager.db, null, true);
-			}
-			
-			// Update last_viewed timestamp
-			this.file.last_viewed = new GLib.DateTime.now_local().to_unix();
-			
-			// Notify ProjectManager that file contents have changed (triggers background scanning)
-			this.file.manager.on_file_contents_change(this.file);
-			
-			// Keep file.changed() signal for backward compatibility (though nothing currently listens to it)
-			this.file.changed();
 		}
 	}
 }

@@ -56,7 +56,7 @@ namespace OLLMmcp.Client
 
 		public override async void connect() throws Error
 		{
-			string[] argv = this.build_spawn_argv();
+			string[] argv = yield this.build_spawn_argv();
 			var launcher = new GLib.SubprocessLauncher(
 				GLib.SubprocessFlags.STDIN_PIPE | GLib.SubprocessFlags.STDOUT_PIPE
 			);
@@ -177,7 +177,7 @@ namespace OLLMmcp.Client
 			return text;
 		}
 
-		private string[] build_spawn_argv() throws Error
+		private async string[] build_spawn_argv() throws Error
 		{
 			if (GLib.Environment.get_variable("FLATPAK_ID") != null) {
 				if (!this.config.allow_unsandboxed) {
@@ -218,7 +218,7 @@ namespace OLLMmcp.Client
 			var write_roots = new Gee.HashMap<string, string>();
 			if (project != null) {
 				project_path = project.path;
-				foreach (var folder in project.build_roots()) {
+				foreach (var folder in yield project.roots()) {
 					write_roots.set(folder.path, folder.path);
 				}
 			}

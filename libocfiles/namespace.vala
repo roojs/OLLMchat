@@ -42,9 +42,9 @@
  *  * Folder: Represents a folder/directory in the project
  *  * FileAlias: Represents an alias/symlink to a file or folder
  * 
- * === Sandbox ===
- * 
- *  * Sandbox: Bubblewrap overlay + seccomp for isolated command execution (OLLMfiles.Sandbox)
+ * === Command sandboxing ===
+ *
+ *  * Run-command sandboxing lives in libocbwrap (not libocfiles).
  * 
  * === Project Management ===
  * 

@@ -342,7 +342,10 @@ namespace OLLMcoder.Task
 				return;
 			}
 			if (has_ast) {
-				var file = project_manager.get_file_from_active_project (norm);
+				OLLMfiles.File? file = null;
+				if (project_manager.active_project != null) {
+					file = yield project_manager.active_project.fetch_file (norm);
+				}
 				if (file == null) {
 					file = new OLLMfiles.File.new_fake (project_manager, norm);
 				}
@@ -367,7 +370,10 @@ namespace OLLMcoder.Task
 				}
 				return;
 			}
-			var file = project_manager.get_file_from_active_project (norm);
+			OLLMfiles.File? file = null;
+			if (project_manager.active_project != null) {
+				file = yield project_manager.active_project.fetch_file (norm);
+			}
 			if (file == null) {
 				file = new OLLMfiles.File.new_fake (project_manager, norm);
 			}

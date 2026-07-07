@@ -107,9 +107,38 @@ namespace OLLMcoder
 				return result;
 			}
 			
-			GLib.debug("AgentFactory.get_open_files: Getting recent list from project: %s", this.project_manager.active_project.path);
-			var files = this.project_manager.active_project.project_files.get_recent_list(1);
-			GLib.debug("AgentFactory.get_open_files: get_recent_list returned %d files", files.size);
+			GLib.debug("AgentFactory.get_open_files: Getting recent list from file_cache for project: %s",
+				this.project_manager.active_project.path);
+			var cutoff_time = new GLib.DateTime.now_local().add_days(-1);
+			var filtered_files = new Gee.ArrayList<OLLMfiles.File>();
+			var project_prefix = this.project_manager.active_project.path + "/";
+
+			foreach (var entry in this.project_manager.file_cache.values) {
+				if (!(entry is OLLMfiles.File)) {
+					continue;
+				}
+				var cached_file = (OLLMfiles.File) entry;
+				if (!cached_file.path.has_prefix(project_prefix)) {
+					continue;
+				}
+				if (!cached_file.is_open || cached_file.last_modified < 1) {
+					continue;
+				}
+				if ((new GLib.DateTime.from_unix_local(cached_file.last_modified)).compare(cutoff_time) < 1) {
+					continue;
+				}
+				filtered_files.add(cached_file);
+			}
+
+			filtered_files.sort((a, b) => {
+				if (a.last_modified == b.last_modified) {
+					return 0;
+				}
+				return a.last_modified < b.last_modified ? 1 : -1;
+			});
+
+			var files = filtered_files;
+			GLib.debug("AgentFactory.get_open_files: file_cache recents returned %d files", files.size);
 			
 			// Limit to 15 most recent
 			var limited_files = files.size > 15 ? files.slice(0, 15) : files;
@@ -184,7 +213,7 @@ namespace OLLMcoder
 		 * Gets the full contents of a file.
 		 *
 		 * Content is read only via the File (buffer). Uses active file when path matches, else
-		 * get_file_from_active_project. create_buffer is always called (no-op if buffer exists).
+		 * {@link ProjectManager.file_cache}. create_buffer is always called (no-op if buffer exists).
 		 * Returns "Problem loading file contents: &lt;path&gt;" if the file is not found. No disk fallback.
 		 *
 		 * @param file The file path
@@ -201,7 +230,13 @@ namespace OLLMcoder
 				
 				return this.project_manager.active_file.contents(200);
 			}
-			var found_file = this.project_manager.get_file_from_active_project(file);
+			OLLMfiles.File? found_file = null;
+			if (this.project_manager.file_cache.has_key(file)) {
+				var cached = this.project_manager.file_cache.get(file);
+				if (cached is OLLMfiles.File) {
+					found_file = (OLLMfiles.File) cached;
+				}
+			}
 			if (found_file == null) {
 				GLib.critical("Problem loading file contents: %s", file);
 				return "Problem loading file contents: " + file;

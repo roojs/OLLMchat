@@ -224,11 +224,7 @@ ollmchat_deps = [
 ]
 
 # Windows: embed the same app icon used on Linux (pixmaps/org.roojs.ollmchat.ico).
-if get_option('v2testing')
-  window_src = 'V2/Window.vala'
-else
-  window_src = 'Window.vala'
-endif
+window_src = 'Window.vala'
 
 ollmchat_sources = [
   version_vala,
@@ -286,6 +282,7 @@ ollmchat_exe_deps = [
   ocfiles_vapi_dep,
   octools_vapi_dep,
   ocmcp_vapi_dep,
+  ocrpc_vapi_dep,
 ]
 ollmchat_vala_args = [
   '--pkg=ocmarkdown',
@@ -311,14 +308,9 @@ ollmchat_vala_args = [
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',  # For ollmchat.vapi
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
+  '--pkg=ocrpc',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
 ]
-if get_option('v2testing')
-  ollmchat_exe_deps += ocrpc_vapi_dep
-  ollmchat_vala_args += [
-    '--pkg=ocrpc',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-  ]
-endif
 
 ollmchat = executable('ollmchat',
   dependencies: ollmchat_exe_deps,
@@ -460,9 +452,8 @@ ollmchat_cli_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocmcp'
 ])
 
-# ollmchat-cli — V2 only (V1 uses shipping ProjectManager(db) / backupDB).
-if get_option('v2testing')
-  ollmchat_cli = executable('ollmchat-cli',
+# ollmchat-cli — RPC client; spawns ollmfilesd when needed.
+ollmchat_cli = executable('ollmchat-cli',
   dependencies: [
     ollmchat_cli_deps,
     ocfiles_vapi_dep,
@@ -498,4 +489,3 @@ if get_option('v2testing')
   install: true,
   install_dir: get_option('bindir')
 )
-endif

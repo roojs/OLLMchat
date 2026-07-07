@@ -187,7 +187,7 @@ public class ResolveLink : GLib.Object
 		var resolved_path = link.is_relative
 			? link.abspath (this.project_manager.active_project.path)
 			: link.path;
-		var found = this.project_manager.get_file_from_active_project (resolved_path);
+		var found = yield this.project_manager.active_project.fetch_file (resolved_path);
 		if (found == null) {
 			found = new OLLMfiles.File.new_fake (this.project_manager, resolved_path);
 		}
@@ -231,7 +231,7 @@ public class ResolveLink : GLib.Object
 	/**
 	 * Warm state for a batch of links: [[preload_http]] for http(s); for file,
 	 * [[preload_file]] then, when hash is non-empty and not a #L line-range,
-	 * tree_factory + tree.parse so [[file_ast]] can resolve AST path fragments.
+	 * {@link OLLMfiles.Tree.parse} so [[file_ast]] can resolve AST path fragments.
 	 */
 	public async void preload_links (Gee.Collection<Markdown.Document.Format> links)
 	{
@@ -255,11 +255,11 @@ public class ResolveLink : GLib.Object
 			var resolved_path = link.is_relative
 				? link.abspath (this.project_manager.active_project.path)
 				: link.path;
-			var found = this.project_manager.get_file_from_active_project (resolved_path);
+			var found = yield this.project_manager.active_project.fetch_file (resolved_path);
 			if (found == null) {
 				found = new OLLMfiles.File.new_fake (this.project_manager, resolved_path);
 			}
-			var tree = this.project_manager.tree_factory (found);
+			var tree = new OLLMfiles.Tree (found);
 			try {
 				yield tree.parse ();
 			} catch (GLib.Error e) {
@@ -281,7 +281,13 @@ public class ResolveLink : GLib.Object
 		var resolved_path = link.is_relative
 			? link.abspath (this.project_manager.active_project.path)
 			: link.path;
-		var found = this.project_manager.get_file_from_active_project (resolved_path);
+		OLLMfiles.File? found = null;
+		if (this.project_manager.file_cache.has_key (resolved_path)) {
+			var cached = this.project_manager.file_cache.get (resolved_path);
+			if (cached is OLLMfiles.File) {
+				found = (OLLMfiles.File) cached;
+			}
+		}
 		if (found == null) {
 			found = new OLLMfiles.File.new_fake (this.project_manager, resolved_path);
 		}
@@ -318,13 +324,13 @@ public class ResolveLink : GLib.Object
 	}
 
 	/**
-	 * AST path fragment: tree from tree_factory(found) must already be parsed; lookup_path
+	 * AST path fragment: {@link OLLMfiles.Tree} for {@code found} must already be parsed; lookup_path
 	 * maps link.hash to buffer offsets, then text is taken from the file buffer (refinement
 	 * may abbreviate long excerpts).
 	 */
 	string file_ast (Markdown.Document.Format link, OLLMfiles.File found)
 	{
-		var tree = this.project_manager.tree_factory (found);
+		var tree = new OLLMfiles.Tree (found);
 		int start_line, end_line, comment_start;
 		tree.lookup_path (link.hash, out start_line, out end_line, out comment_start);
 		string content = found.buffer.get_text (comment_start - 1, end_line - 2);

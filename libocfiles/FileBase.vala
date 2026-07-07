@@ -27,16 +27,16 @@ namespace OLLMfiles
 	 *  * Folder: Represents directories (can also be projects when is_project = true)
 	 *  * FileAlias: Represents symlinks/aliases to files or folders
 	 * 
+	 * Client row — {{{filebase}}} wire fields + Gtk display helpers.
+	 * DB, scan, and {{{saveToDB}}} live on the daemon ({{{ollmfilesd/FileBase.vala}}}).
+	 *
 	 * == ID Semantics ==
-	 * 
-	 *  * id = 0: New file (will be inserted into database)
-	 *  * id > 0: Existing file (will be updated in database)
-	 *  * id < 0: Fake file (not in database, skips DB operations)
-	 * 
-	 * Fake files are used for accessing files outside the project scope.
-	 * They skip database operations in saveToDB().
+	 *
+	 *  * id = 0: new row (not yet registered)
+	 *  * id > 0: real filebase id from daemon
+	 *  * id < 0: fake file ({@link File.new_fake}) until {@link File.to_real}
 	 */
-	public abstract class FileBase : Object
+	public abstract class FileBase : Object, OLLMrpc.Bin.Serializable
 	{
 		/**
 		 * Database ID.
@@ -92,17 +92,7 @@ namespace OLLMfiles
 		 * Reference to ProjectManager.
 		 * 
 		 */
-		public  ProjectManager manager { get; construct; }
-		
-		/**
-		 * Constructor.
-		 * 
-		 * @param manager The ProjectManager instance (required)
-		 */
-		protected FileBase(ProjectManager manager)
-		{
-			Object(manager: manager);
-		}
+		public ProjectManager manager { get; set; }
 		
 		/**
 		 * Icon name for binding in lists.
@@ -139,37 +129,6 @@ namespace OLLMfiles
 		public string tooltip { get; set; default = ""; }
 		
 		/**
-		 * Get modification time on disk (Unix timestamp).
-		 * 
-		 * @return Modification time as Unix timestamp, or 0 if unavailable
-		 */
-		public int64 mtime_on_disk()
-		{
-			var file = GLib.File.new_for_path(this.path);
-			if (!file.query_exists()) {
-				GLib.critical("mtime_on_disk: File does not exist '%s'", this.path);
-				return 0;
-			}
-			
-			try {
-				var info = file.query_info(
-					GLib.FileAttribute.TIME_MODIFIED,
-					GLib.FileQueryInfoFlags.NONE,
-					null
-				);
-				var date_time = info.get_modification_date_time();
-				var mtime = date_time.to_unix();
-				if (mtime < 1) {
-					GLib.critical("mtime_on_disk: Invalid mtime (%lld) for file '%s'", mtime, this.path);
-				}
-				return mtime;
-			} catch (GLib.Error e) {
-				GLib.critical("mtime_on_disk: Failed to query mtime for file '%s': %s", this.path, e.message);
-				return 0;
-			}
-		}
-		
-		/**
 		 * Base type identifier for serialization and database storage.
 		 * 
 		 * Type identifiers: "f" = File, "d" = Folder/Directory, "fa" = FileAlias (file alias),
@@ -187,13 +146,6 @@ namespace OLLMfiles
 		 * Programming language (optional, for files).
 		 */
 		public string language { get; set; default = ""; }
-		
-		/**
-		 * Returns one or more lines for the project summary list.
-		 * @param indent Leading indent for this line; Folder passes indent + "  " to children.
-		 */
-		public abstract string to_summary(
-			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent);
 		
 		/**
 		 * Last cursor line number (stored in database, default: 0).
@@ -281,288 +233,53 @@ namespace OLLMfiles
 		public int64 delete_id { get; set; default = 0; }
 		
 		/**
-		 * Initialize database table for filebase objects.
+		 * Get modification time on disk (Unix timestamp).
+		 *
+		 * Removed — daemon scan only ({{{ollmfilesd/FileBase.vala}}}).
 		 */
-		public static void init_db(SQ.Database db)
-		{
-			string errmsg;
-			var query = "CREATE TABLE IF NOT EXISTS filebase (" +
-				"id INTEGER PRIMARY KEY, " +
-				"path TEXT NOT NULL DEFAULT '', " +
-				"parent_id INT64 NOT NULL DEFAULT 0, " +
-				"base_type TEXT NOT NULL DEFAULT '', " +
-				"language TEXT, " +
-				"is_active INTEGER NOT NULL DEFAULT 0, " +
-				"cursor_line INTEGER NOT NULL DEFAULT 0, " +
-				"cursor_offset INTEGER NOT NULL DEFAULT 0, " +
-				"scroll_position INTEGER NOT NULL DEFAULT 0, " +
-				"last_viewed INT64 NOT NULL DEFAULT 0, " +
-				"last_modified INT64 NOT NULL DEFAULT 0, " +
-				"points_to_id INT64 NOT NULL DEFAULT 0, " +
-				"target_path TEXT NOT NULL DEFAULT '', " +
-				"is_project INTEGER NOT NULL DEFAULT 0, " +
-				"is_ignored INTEGER NOT NULL DEFAULT 0, " +
-				"is_text INTEGER NOT NULL DEFAULT 0, " +
-				"is_repo INTEGER NOT NULL DEFAULT -1, " +
-				"last_vector_scan INT64 NOT NULL DEFAULT 0, " +
-				"delete_id INT64 NOT NULL DEFAULT 0, " +
-				"is_need_approval INTEGER NOT NULL DEFAULT 0, " +
-				"last_change_type TEXT NOT NULL DEFAULT ''" +
-				");";
-			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
-				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
-			}
-			
-			// Migrate existing databases: add last_vector_scan column if it doesn't exist
-			var migrate_query = "ALTER TABLE filebase ADD COLUMN last_vector_scan INT64 NOT NULL DEFAULT 0";
-			if (Sqlite.OK != db.db.exec(migrate_query, null, out errmsg)) {
-				// Column might already exist, which is fine
-				if (!errmsg.contains("duplicate column name")) {
-					GLib.debug("Migration note (may be expected): %s", errmsg);
-				}
-			}
-			
-			// Migrate existing databases: add delete_id column if it doesn't exist
-			var migrate_delete_id = "ALTER TABLE filebase ADD COLUMN delete_id INT64 NOT NULL DEFAULT 0";
-			if (Sqlite.OK != db.db.exec(migrate_delete_id, null, out errmsg)) {
-				// Column might already exist, which is fine
-				if (!errmsg.contains("duplicate column name")) {
-					GLib.debug("Migration note (may be expected): %s", errmsg);
-				}
-			}
-			
-			// Migrate existing databases: add is_need_approval column if it doesn't exist
-			var migrate_is_need_approval = "ALTER TABLE filebase ADD COLUMN is_need_approval INTEGER NOT NULL DEFAULT 0";
-			if (Sqlite.OK != db.db.exec(migrate_is_need_approval, null, out errmsg)) {
-				// Column might already exist, which is fine
-				if (!errmsg.contains("duplicate column name")) {
-					GLib.debug("Migration note (may be expected): %s", errmsg);
-				}
-			}
-			
-			// Migrate existing databases: add last_change_type column if it doesn't exist
-			var migrate_last_change_type = "ALTER TABLE filebase ADD COLUMN last_change_type TEXT NOT NULL DEFAULT ''";
-			if (Sqlite.OK != db.db.exec(migrate_last_change_type, null, out errmsg)) {
-				// Column might already exist, which is fine
-				if (!errmsg.contains("duplicate column name")) {
-					GLib.debug("Migration note (may be expected): %s", errmsg);
-				}
-			}
-			
-			// Migrate existing databases: remove deprecated columns (SQLite 3.35.0+)
-			// These properties were removed/renamed and are no longer used
-			var drop_last_approved = "ALTER TABLE filebase DROP COLUMN last_approved_copy_path";
-			if (Sqlite.OK != db.db.exec(drop_last_approved, null, out errmsg)) {
-				// Column might not exist or SQLite version doesn't support DROP COLUMN - ignore
-				GLib.debug("Migration note (may be expected): %s", errmsg);
-			}
-			
-			var drop_last_scan = "ALTER TABLE filebase DROP COLUMN last_scan";
-			if (Sqlite.OK != db.db.exec(drop_last_scan, null, out errmsg)) {
-				// Column might not exist or SQLite version doesn't support DROP COLUMN - ignore
-				GLib.debug("Migration note (may be expected): %s", errmsg);
-			}
-		}
-		
+
+		/**
+		 * Initialize database table for filebase objects.
+		 *
+		 * Removed — daemon only ({{{FileBase.init_db}}} on {{{ollmfilesd}}}).
+		 */
+
 		/**
 		 * Create a query object for filebase table with typemap configured.
-		 * 
-		 * @param db The database instance
-		 * @param manager The ProjectManager instance (required for constructing objects)
-		 * @return A configured Query object ready to use
+		 *
+		 * Removed — daemon only ({{{FileBase.query}}} on {{{ollmfilesd}}}).
 		 */
-		public static SQ.Query<FileBase> query(SQ.Database db, ProjectManager manager)
-		{
-			// Set up property_names and property_values to pass manager to constructors
-			var property_names = new string[] { "manager" };
-			var property_values = new Value[] { manager };
-			var query = new SQ.Query<FileBase>.with_properties(db, "filebase", property_names, property_values);
-			query.typemap = new Gee.HashMap<string, Type>();
-			// Note: Projects are now folders with is_project = true, no separate "p" type
-			query.typemap["f"] = typeof(File);
-			query.typemap["d"] = typeof(Folder);
-			query.typemap["fa"] = typeof(FileAlias);
-			query.typemap["da"] = typeof(FileAlias);
-			query.typekey = "base_type";
-			return query;
-		}
-		
+
 		/**
 		 * Compare this FileBase with another to determine if they represent the same item.
-		 * Used to check if a newly read file from filesystem matches the DB/memory version.
-		 * 
-		 * @param other The other FileBase to compare with (typically the new filesystem item)
-		 * @return true if they represent the same item, false otherwise
+		 *
+		 * Removed — daemon {{{read_dir}}} scan only.
 		 */
-		public bool compare(FileBase other)
-		{
-			// Must have same path
-			if (this.path != other.path) {
-				return false;
-			}
-			
-			// If both have IDs, they must match (same DB record)
-			if (this.base_type != other.base_type) {
-				return false;
-			}
-			// not sure if other tests are needed.
-			
-			// Same path is sufficient if IDs aren't set
-			return true;
-		}
-		
+
 		/**
 		 * Copy database-preserved fields from this object to another.
-		 * 
-		 * Used when updating from filesystem: preserves DB fields like id, is_active,
-		 * cursor positions, etc. that shouldn't be overwritten by filesystem scan.
-		 * 
-		 * == Copied Fields ==
-		 * 
-		 * Copies all database-preserved fields (excluding filesystem-derived fields):
-		 * id, is_active, last_viewed, last_modified, language,
-		 * cursor_line, cursor_offset, scroll_position, is_project, is_ignored, is_text,
-		 * is_repo, last_vector_scan.
-		 * 
-		 * Note: base_type is not copied as it's determined by object type and should match.
-		 * 
-		 * @param target The target object to copy fields to (typically the new filesystem item)
+		 *
+		 * Removed — daemon scan only. Client uses {@link Copyable.copy_from} from RPC.
 		 */
-		public virtual void copy_db_fields_to(FileBase target)
-		{
-			// Copy database-preserved fields (excluding filesystem-derived: path, parent_id, target_path)
-			// Note: base_type is not copied as it's determined by object type and should match
-			target.id = this.id;
-			target.is_active = this.is_active;
-			target.last_viewed = this.last_viewed;
-			target.last_modified = this.last_modified;
-			
-			// Copy all database fields (now all in FileBase)
-			target.language = this.language;
-			target.cursor_line = this.cursor_line;
-			target.cursor_offset = this.cursor_offset;
-			target.scroll_position = this.scroll_position;
-			target.is_project = this.is_project;
-			target.is_ignored = this.is_ignored;
-			target.is_text = this.is_text;
-			target.is_repo = this.is_repo;
-			target.last_vector_scan = this.last_vector_scan;
-			target.delete_id = this.delete_id;
-			target.is_need_approval = this.is_need_approval;
-			target.last_change_type = this.last_change_type;
-		}
-		
-		// Static counter for tracking saveToDB calls
-		private static int64 saveToDB_call_count = 0;
-		
+
 		/**
 		 * Save filebase object to SQLite database.
-		 * 
-		 * == ID Semantics ==
-		 * 
-		 *  * id = 0: New file (inserts into database, sets this.id to new ID)
-		 *  * id > 0: Existing file (updates database record)
-		 *  * id < 0: Fake file (skips database operations, returns early)
-		 * 
-		 * == Update Modes ==
-		 * 
-		 *  * If new_values is provided and this.id > 0: Uses updateOld to only update changed fields
-		 *  * Otherwise: Performs insert (id = 0) or full update (id > 0)
-		 * 
-		 * == Best Practices ==
-		 * 
-		 *  * Set sync = false when saving multiple items to avoid frequent disk writes
-		 *  * Fake files (id < 0) automatically skip database operations
-		 *  * New files (id = 0) are automatically inserted and assigned an ID
-		 * 
-		 * @param db The database instance to save to
-		 * @param new_values Optional new values object. If provided and this.id > 0,
-		 *                   uses updateOld to only update changed fields. Otherwise
-		 *                   performs insert or full update.
-		 * @param sync If true, backup the in-memory database to disk immediately. 
-		 *              Set to false when saving multiple items to avoid frequent disk writes.
+		 *
+		 * Removed — daemon only. Client rows updated via RPC + {@link Copyable}.
 		 */
-		public void saveToDB(SQ.Database db, FileBase? new_values = null, bool sync = true)
-		{
-			//GLib.debug("saveToDB called: path='%s' id=%lld last_vector_scan=%lld", this.path, this.id, this.last_vector_scan);
-			// Skip DB operations for fake files (id < 0 indicates not in database)
-			// id = -1: fake file (ignore), id = 0: new file (insert), id > 0: existing file (update)
-			if (this.id < 0) {
-				//GLib.debug("FileBase.saveToDB: Skipping DB operation for fake file (id=%lld, path='%s')", 
-				//	this.id, this.path);
-				return;
-			}
-			
-			var sq = new SQ.Query<FileBase>(db, "filebase");
-			// At this point, id >= 0 (fake files with id < 0 already returned above)
-			// id = 0: new file (insert), id > 0: existing file (update)
-			if (this.id == 0) {
-				// New file - insert into database
-				//GLib.debug("INSERT new file path='%s'", this.path);
-				this.id = sq.insert(this);
-				this.manager.file_cache.set(this.path, this);
-			} else {
-				if (new_values != null) {
-					var updated = sq.updateOld(this, new_values);
-					if (updated) {
-						//GLib.debug("FileBase.saveToDB: UPDATE (changed fields only) id=%d path='%s'", (int)this.id, this.path);
-					}
-				} else {
-					//GLib.debug("UPDATE (all fields) id=%d path='%s'", (int)this.id, this.path);
-					sq.updateById(this);
-				}
-			}
-			// Backup in-memory database to disk only if sync is true
-			if (sync) {
-				db.backupDB();
-			}
-		}
-		
+
 		/**
 		 * Remove filebase object from SQLite database.
-		 * 
-		 * @param db The database instance
+		 *
+		 * Removed — use {@link File.delete} RPC.
 		 */
-		public void removeFromDB(SQ.Database db)
-		{
-			if (this.id <= 0) {
-				return;
-			}
-			var sq = new SQ.Query<FileBase>(db, "filebase");
-			sq.deleteId(this.id);
-			this.manager.file_cache.unset(this.path);
-		}
-		
+
 		/**
 		 * Get target info for a given path.
-		 * Only queries the path - does not resolve symlinks recursively.
-		 * 
-		 * @param target_path The path to query
-		 * @return FileInfo for the path, or null if target doesn't exist or query fails
+		 *
+		 * Removed — daemon alias scan only.
 		 */
-		public  GLib.FileInfo? get_target_info(string target_path)
-		{
-			var target_file_obj = GLib.File.new_for_path(target_path);
-			if (!target_file_obj.query_exists()) {
-				return null; // Target doesn't exist
-			}
-			
-		try {
-			return target_file_obj.query_info(
-				GLib.FileAttribute.STANDARD_TYPE + "," +
-				GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
-				GLib.FileAttribute.STANDARD_SYMLINK_TARGET + "," +
-				GLib.FileAttribute.STANDARD_CONTENT_TYPE + "," +
-				GLib.FileAttribute.TIME_MODIFIED,
-				GLib.FileQueryInfoFlags.NONE,
-				null
-			);
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to get target info for %s: %s", target_path, e.message);
-				return null;
-			}
-		}
-		
+
 		/**
 		 * Display text for approval list with visual indicators.
 		 * 
@@ -606,6 +323,55 @@ namespace OLLMfiles
 						// No change type or unknown
 						return this.path;
 				}
+			}
+		}
+
+		/**
+		 * Constructor.
+		 *
+		 * @param manager The ProjectManager instance (required)
+		 */
+		protected FileBase(ProjectManager manager)
+		{
+			Object(manager: manager);
+		}
+
+		/**
+		 * Returns one or more lines for the project summary list.
+		 *
+		 * @param indent Leading indent for this line; Folder passes indent + "  " to children.
+		 */
+		public abstract string to_summary(
+			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent);
+
+		public virtual void bin_write_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "manager":
+				case "parent":
+					return;
+				default:
+					this.bin_default_write_prop(ctx, prop);
+					return;
+			}
+		}
+
+		public virtual void bin_read_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "manager":
+				case "parent":
+					return;
+				default:
+					this.bin_default_read_prop(ctx, prop, type_byte);
+					return;
 			}
 		}
 		

@@ -29,9 +29,11 @@ if android_poc_count > 1
   error('Only one of android_shell_poc, android_poc may be set')
 endif
 
-if not get_option('v2testing')
-  error('Shipping v1 (v2testing=false) was removed. Use the default build (v2testing=true).')
-endif
+# libocvector2.so is the daemon FAISS lib; app uses liboctools/CodebaseSearch (RPC).
+ocfiles_lib = 'ocfiles'
+occoder_lib = 'occoder'
+octools_lib = 'octools'
+ocmcp_lib = 'ocmcp'
 
 if android_cross_build
   g_ir_compiler = disabler()
@@ -123,12 +125,6 @@ if sqgi_vala_args.length() > 0
   add_project_arguments(sqgi_vala_args, language: 'vala')
 endif
 
-# libocvector2.so is the daemon FAISS lib; app uses liboctools/CodebaseSearch (RPC).
-ocfiles_lib = get_option('v2testing') ? 'ocfiles2' : 'ocfiles'
-occoder_lib = get_option('v2testing') ? 'occoder2' : 'occoder'
-octools_lib = get_option('v2testing') ? 'octools2' : 'octools'
-ocmcp_lib = get_option('v2testing') ? 'ocmcp2' : 'ocmcp'
-
 # Build libraries in dependency order
 if android_shell_poc
   subdir('ollmapp')         # Minimal Android APK shell target only
@@ -142,7 +138,7 @@ elif android_poc_opt and host_machine.system() == 'android'
   subdir('ollmapp')         # Remote-chat Android APK target
 else
   subdir('libocsqlite')      # No dependencies
-  subdir('libocrpc')         # JSON-RPC wire types — no OLLMfiles dependency
+  subdir('libocrpc')         # Binary RPC wire types — no OLLMfiles dependency
   subdir('libocmarkdown')    # No dependencies
   subdir('libollamaweb')     # No dependencies on libollmchat (Phase 1)
   subdir('libocmarkdowngtk') # Depends on libocmarkdown
@@ -194,9 +190,7 @@ else
   executables_info = [
     ['ollmchat.bin', 'ollmapp/ollmchat'],  # Wrapper for testing ollama chat with latest code
   ]
-  if get_option('v2testing')
-    executables_info += [['ollmchat-cli', 'ollmapp/ollmchat-cli']]  # V2 only
-  endif
+  executables_info += [['ollmchat-cli', 'ollmapp/ollmchat-cli']]
   if get_option('examples')
     executables_info += [
       ['oc-vector-index', 'examples/oc-vector-index'],
@@ -235,11 +229,7 @@ if local_gguf_enabled
   endif
 endif
 
-if get_option('v2testing')
-  ollmfilesd_export = 'export OLLM_OLLMFILESD="' + meson.current_build_dir() / 'ollmfilesd' / 'ollmfilesd' + '"'
-else
-  ollmfilesd_export = ''
-endif
+ollmfilesd_export = 'export OLLM_OLLMFILESD="' + meson.current_build_dir() / 'ollmfilesd' / 'ollmfilesd' + '"'
 
 # Create wrapper scripts in top-level build directory
 foreach exe_info : executables_info

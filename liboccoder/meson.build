@@ -17,87 +17,44 @@ occoder_deps = [
   valac.find_library('posix'),
 ]
 
-if get_option('v2testing')
-  occoder_src = files([
-    'BufferProvider.vala',
-    'GitProvider.vala',
-    'GtkSourceFileBuffer.vala',
-    'SearchableDropdown.vala',
-    'ProjectDropdown.vala',
-    'V2/FileDropdown.vala',
-    'V2/SourceView.vala',
-    'V2/AgentFactory.vala',
-    'Agent.vala',
-    'Skill/PromptTemplate.vala',
-    'Skill/Definition.vala',
-    'Skill/Manager.vala',
-    'Skill/Factory.vala',
-    'Task/PhaseEnum.vala',
-    'Task/ProgressItem.vala',
-    'Task/ProgressRunner.vala',
-    'Task/Step.vala',
-    'Task/Details.vala',
-    'V2/Task/ValidateLink.vala',
-    'V2/Task/ResolveLink.vala',
-    'Task/Tool.vala',
-    'Task/ToolList.vala',
-    'V2/Task/WriteChange.vala',
-    'Task/List.vala',
-    'Task/ProgressList.vala',
-    'Task/ProgressView.vala',
-    'Skill/Runner.vala',
-    'Action/Base.vala',
-    'Action/PostExamMerge.vala',
-    'Action/ExamSequence.vala',
-    'Action/RunTools.vala',
-    'Action/RefOnly.vala',
-    'Action/WriteExec.vala',
-    'Task/ResultParser.vala',
-    'List/SortedList.vala',
-    'V2/Approvals.vala',
-  ])
-else
-  occoder_src = files([
-    'BufferProvider.vala',
-    # TODO: Clipboard feature needs proper design - see TODO.md
-    # 'ClipboardMetadata.vala',
-    'GitProvider.vala',
-    'GtkSourceFileBuffer.vala',  # Must come before SourceView.vala (SourceView uses GtkSourceFileBuffer)
-    'SearchableDropdown.vala',
-    'ProjectDropdown.vala',
-    'FileDropdown.vala',
-    'SourceView.vala',
-    'AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
-    'Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
-    'Skill/PromptTemplate.vala',
-    'Skill/Definition.vala',
-    'Skill/Manager.vala',
-    'Skill/Factory.vala',
-    'Task/PhaseEnum.vala',  # Task: PhaseEnum (no other Task deps)
-    'Task/ProgressItem.vala',
-    'Task/ProgressRunner.vala',
-    'Task/Step.vala',     # Task: Step → Details
-    'Task/Details.vala',  # Task: Details → ResultParser, Tool
-    'Task/ValidateLink.vala',  # after Details (uses Details; Details delegates link validation)
-    'Task/ResolveLink.vala',
-    'Task/Tool.vala',     # Task: Tool → Details
-    'Task/ToolList.vala',
-    'Task/WriteChange.vala',  # after Tool.vala
-    'Task/List.vala',     # Task: List → Step, Details
-    'Task/ProgressList.vala',
-    'Task/ProgressView.vala',
-    'Skill/Runner.vala',  # after Task/ProgressList (Runner.progress)
-    'Action/Base.vala',
-    'Action/PostExamMerge.vala',
-    'Action/ExamSequence.vala',
-    'Action/RunTools.vala',
-    'Action/RefOnly.vala',
-    'Action/WriteExec.vala',
-    'Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
-    'List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
-    'Approvals.vala',
-  ])
-endif
+occoder_src = files([
+  'BufferProvider.vala',
+  'GitProvider.vala',
+  'GtkSourceFileBuffer.vala',
+  'SearchableDropdown.vala',
+  'ProjectDropdown.vala',
+  'FileDropdown.vala',
+  'SourceView.vala',
+  'AgentFactory.vala',
+  'Agent.vala',
+  'Skill/PromptTemplate.vala',
+  'Skill/Definition.vala',
+  'Skill/Manager.vala',
+  'Skill/Factory.vala',
+  'Task/PhaseEnum.vala',
+  'Task/ProgressItem.vala',
+  'Task/ProgressRunner.vala',
+  'Task/Step.vala',
+  'Task/Details.vala',
+  'Task/ValidateLink.vala',
+  'Task/ResolveLink.vala',
+  'Task/Tool.vala',
+  'Task/ToolList.vala',
+  'Task/WriteChange.vala',
+  'Task/List.vala',
+  'Task/ProgressList.vala',
+  'Task/ProgressView.vala',
+  'Skill/Runner.vala',
+  'Action/Base.vala',
+  'Action/PostExamMerge.vala',
+  'Action/ExamSequence.vala',
+  'Action/RunTools.vala',
+  'Action/RefOnly.vala',
+  'Action/WriteExec.vala',
+  'Task/ResultParser.vala',
+  'List/SortedList.vala',
+  'Approvals.vala',
+])
 
 # Build rpath for libraries to find each other in build directory
 lib_build_rpath = ':'.join([
@@ -139,9 +96,6 @@ occoder_vala_args = [
   '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
   '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
 ]
-if not get_option('v2testing')
-  occoder_vala_args += ['--pkg=fiass']
-endif
 
 occoder_base_lib = library(occoder_lib,
   dependencies: occoder_lib_deps,

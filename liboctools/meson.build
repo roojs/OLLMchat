@@ -18,67 +18,37 @@ octools_deps = [
 ]
 
 # Source files for OLLMtools namespace
-if get_option('v2testing')
-  octools_src = files([
-    'ReadFile/Tool.vala',
-    'ReadFileV2/Request.vala',
-    'ReadFileV2/Summarize.vala',
-    'EditMode/Tool.vala',
-    'EditModeV2/Request.vala',
-    'EditModeV2/Stream.vala',
-    'WriteFile/Tool.vala',
-    'WriteFileV2/Request.vala',
-    'RunCommand/Tool.vala',
-    'RunCommandV2/Request.vala',
-    'FileVerification.vala',
-    'WebFetch/Tool.vala',
-    'WebFetch/Request.vala',
-    'GoogleSearch/Tool.vala',
-    'GoogleSearch/Request.vala',
-    'GoogleSearch/Config.vala',
-    'CodebaseSearch/Config.vala',
-    'CodebaseSearch/Tool.vala',
-    'CodebaseSearch/Request.vala',
-    'SessionFetch/Tool.vala',
-    'SessionFetch/Request.vala',
-    'ToolBuilder.vala',
-    'Registry.vala',
-    'Child/Parser.vala',
-    'Child/Tool.vala',
-    'Child/Factory.vala',
-    'Child/Agent.vala',
-    'Child/Request.vala',
-    'Child/Config.vala',
-  ])
-else
-  octools_src = files([
-    'ReadFile/Tool.vala',
-    'ReadFile/Request.vala',
-    'ReadFile/Summarize.vala',
-    'EditMode/Tool.vala',
-    'EditMode/Request.vala',
-    'EditMode/Stream.vala',
-    'WriteFile/Tool.vala',
-    'WriteFile/Request.vala',
-    'RunCommand/Tool.vala',
-    'RunCommand/Request.vala',
-    'WebFetch/Tool.vala',
-    'WebFetch/Request.vala',
-    'GoogleSearch/Tool.vala',
-    'GoogleSearch/Request.vala',
-    'GoogleSearch/Config.vala',
-    'SessionFetch/Tool.vala',
-    'SessionFetch/Request.vala',
-    'ToolBuilder.vala',
-    'Registry.vala',
-    'Child/Parser.vala',
-    'Child/Tool.vala',
-    'Child/Factory.vala',
-    'Child/Agent.vala',
-    'Child/Request.vala',
-    'Child/Config.vala',
-  ])
-endif
+octools_src = files([
+  'ReadFile/Tool.vala',
+  'ReadFile/Request.vala',
+  'ReadFile/Summarize.vala',
+  'EditMode/Tool.vala',
+  'EditMode/Request.vala',
+  'EditMode/Stream.vala',
+  'WriteFile/Tool.vala',
+  'WriteFile/Request.vala',
+  'RunCommand/Tool.vala',
+  'RunCommand/Request.vala',
+  'FileVerification.vala',
+  'WebFetch/Tool.vala',
+  'WebFetch/Request.vala',
+  'GoogleSearch/Tool.vala',
+  'GoogleSearch/Request.vala',
+  'GoogleSearch/Config.vala',
+  'CodebaseSearch/Config.vala',
+  'CodebaseSearch/Tool.vala',
+  'CodebaseSearch/Request.vala',
+  'SessionFetch/Tool.vala',
+  'SessionFetch/Request.vala',
+  'ToolBuilder.vala',
+  'Registry.vala',
+  'Child/Parser.vala',
+  'Child/Tool.vala',
+  'Child/Factory.vala',
+  'Child/Agent.vala',
+  'Child/Request.vala',
+  'Child/Config.vala',
+])
 
 # Build rpath for libraries to find each other in build directory
 lib_build_rpath = ':'.join([
@@ -90,10 +60,7 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocbwrap',
 ])
 
-octools_lib_deps = [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep]
-if get_option('v2testing')
-  octools_lib_deps += [ocbwrap_vapi_dep]
-endif
+octools_lib_deps = [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, ocbwrap_vapi_dep]
 
 octools_base_lib = library(octools_lib,
   dependencies: octools_lib_deps,
@@ -113,7 +80,7 @@ octools_base_lib = library(octools_lib,
     '--pkg=ocfiles',
     '--pkg=ocsqlite',
     '--pkg=ocmarkdown',
-  ] + (get_option('v2testing') ? ['--pkg=ocbwrap'] : []) + [
+    '--pkg=ocbwrap',
     '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
     '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=json-glib-1.0',
@@ -147,14 +114,12 @@ octools_vapi_gen_pkgs = [
   '--pkg', 'ocrpc',
   '--pkg', 'ocmarkdown',
   '--pkg', 'ocsqlite',
+  '--pkg', 'ocbwrap',
   '--pkg', 'gobject-2.0',
   '--pkg', 'glib-2.0',
   '--pkg', 'gio-2.0',
   '--pkg', 'gee-0.8',
 ]
-if get_option('v2testing')
-  octools_vapi_gen_pkgs += ['--pkg', 'ocbwrap']
-endif
 
 octools_vapi_vapidirs = [
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -188,11 +153,7 @@ octools_vapi = custom_target('octools-vapi',
   install_dir: get_option('datadir') / 'vala' / 'vapi'
 )
 
-if get_option('v2testing')
-  octools_vapi_dep_deps = [ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, ocbwrap_vapi_dep, octools_deps]
-else
-  octools_vapi_dep_deps = [ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, octools_deps]
-endif
+octools_vapi_dep_deps = [ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, ocbwrap_vapi_dep, octools_deps]
 
 # Create dependency for other libraries to use
 # Use link_args instead of link_with to prevent meson from auto-including octools-meson.vapi

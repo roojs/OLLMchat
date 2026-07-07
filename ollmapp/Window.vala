@@ -46,7 +46,6 @@ namespace OLLMapp
 		private FileChangeBanner file_change_banner;
 		private VectorScanBanner vector_scan_banner;
 		public OLLMfiles.ProjectManager? project_manager { get; private set; default = null; }
-		private OLLMvector.BackgroundScan? background_scan = null;
 
 		public OLLMchat.Agent.Base? session_agent()
 		{
@@ -377,28 +376,45 @@ namespace OLLMapp
 			// Refresh connection models after connection validation (version tests completed)
 			yield this.history_manager.connection_models.refresh();
 			
-			// Create ProjectManager first to share with tools
-			this.project_manager = new OLLMfiles.ProjectManager(
-				new SQ.Database(GLib.Path.build_filename(this.app.data_dir, "files.sqlite"))
-			);
+			this.project_manager = new OLLMfiles.ProjectManager();
 			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
-			this.project_manager.git_provider = new OLLMcoder.GitProvider();
-			
-			// Run migration if database file doesn't exist (e.g. first run or new data dir)
-			if (this.project_manager.db != null) {
-				var db_file = GLib.File.new_for_path(this.project_manager.db.filename);
-				if (!db_file.query_exists()) {
-					var migrator = new OLLMfiles.ProjectMigrate(this.project_manager);
-					yield migrator.migrate_all();
+
+			var hello = new OLLMrpc.Request() {
+				method = "Daemon.hello",
+				param = new OLLMfilesd.DaemonParams() {
+					protocol = 1,
+					client = "ollmchat"
 				}
-				// Load project list from DB so session restore and UI can resolve project_path
-				yield this.project_manager.load_projects_from_db();
+			};
+			if (!yield this.project_manager.rpc.connect(hello)) {
+				var msg = this.project_manager.rpc.connect_error;
+				if (msg == "") {
+					msg = "could not start or reach the filesystem daemon (ollmfilesd)";
+				}
+				GLib.warning("ollmchat: %s", msg);
+				this.tool_error_banner.title = "Filesystem daemon: " + msg;
+				this.tool_error_banner.revealed = true;
+				return;
 			}
-			// Cleanup old backup files and database records on startup
-			if (this.project_manager.db != null) {
-				var max_days = config.files_max_deleted_days > 0 ? config.files_max_deleted_days : 30;
-				OLLMfiles.FileHistory.cleanup_old_backups.begin(this.project_manager.db, max_days);
-			}
+
+			this.project_manager.rpc.notification.connect((notif) => {
+				if (notif.method != "event.vector.scan_update") {
+					return;
+				}
+				var space = notif.message.index_of(" ");
+				if (space < 0) {
+					return;
+				}
+				var queue_text = notif.message.substring(0, space);
+				var current_file = notif.message.substring(space + 1);
+				var queue_size = int.parse(queue_text);
+				GLib.Idle.add(() => {
+					this.vector_scan_banner.update_scan_status(queue_size, current_file);
+					return false;
+				});
+			});
+
+			yield this.project_manager.load_projects_from_db();
 			
 			// Bind file change banner button signals to project manager methods
 			this.file_change_banner.overwrite_button.clicked.connect(() => {
@@ -467,18 +483,8 @@ namespace OLLMapp
 							session.project_path);
 						return false;
 					}
-					this.project_manager.activate_project.begin(
-						project, (obj, res) => {
-							try {
-								this.project_manager.activate_project.end(
-									res);
-							} catch (GLib.Error e) {
-								GLib.warning(
-									"Session restore: activate_project failed: %s",
-									e.message);
-							}
-							this.agent_dropdown.selected = agent_index;
-						});
+					this.project_manager.activate_project(project);
+					this.agent_dropdown.selected = agent_index;
 					return true;
 				});
 			this.agent_dropdown.wire();
@@ -526,108 +532,6 @@ namespace OLLMapp
 
 			// Set WindowPane as main content
 			this.split_view.content = this.window_pane;
-			
-			// Register CodebaseSearchTool (only available when CodeAssistant agent is active)
-			// Use same ProjectManager instance as CodeAssistant
-			// Initialize codebase search tool asynchronously AFTER everything else is set up
-			// Use idle add to ensure initialization happens after the current call stack completes
-			// This ensures config is fully loaded and ready
-			GLib.Idle.add(() => {
-				this.initialize_codebase_search_tool.begin(
-					this.project_manager
-				);
-				return false; // Don't repeat
-			});
-		}
-		
-		/**
-		 * Initializes the codebase search tool asynchronously: creates vector database
-		 * and registers the tool. Config defaults and tool.active sync are done in
-		 * initialize_client() before this runs.
-		 */
-		private async void initialize_codebase_search_tool(
-			OLLMfiles.ProjectManager project_manager
-		)
-		{
-			// Get config from history manager (it has the Config2 instance)
-			var config = this.history_manager.config;
-			
-			// Ensure config is loaded before proceeding
-			if (config == null || !config.loaded) {
-				var error_msg = "Config not loaded, skipping codebase search tool initialization";
-				GLib.warning("%s", error_msg);
-				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
-				this.tool_error_banner.revealed = true;
-				return;
-			}
-			
-			// Inline enabled check
-			if (!config.tools.has_key("codebase_search")) {
-				// tool disabled
-				return;
-			}
-			var tool_config = config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
-			if (!tool_config.enabled) {
-				// tool disabled
-				return;
-			}
-			
-		// Get the tool from Manager (Phase 3: tools stored on Manager, not Client)
-		// Tool was already created with project_manager when tools were registered, so dependencies are initialized
-			var tool = this.history_manager.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchTool;
-			
-			// Initialize vector database (embedding_client will be set up lazily)
-			try {
-				yield tool.init_databases(config, this.app.data_dir);
-			} catch (GLib.Error e) {
-				var error_msg = "Failed to initialize vector database: " + e.message;
-				GLib.warning("Codebase search tool disabled: %s", error_msg);
-				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
-				this.tool_error_banner.revealed = true;
-				return;
-			}
-			
-			// Create BackgroundScan instance for background file indexing
-			// Uses the tool instance which provides embedding_client, vector_db, and project_manager.db
-			// Pass a new GitProvider instance (libgit2 is not thread-safe, each thread needs its own instance)
-			// Check if indexer is disabled via command-line option
-			if (!OllmchatApplication.opt_disable_indexer) {
-				this.background_scan = new OLLMvector.BackgroundScan(
-					tool,
-					new OLLMcoder.GitProvider(),
-					config
-				);
-				
-				// Connect to scan_update signal to update banner
-				this.background_scan.scan_update.connect((queue_size, current_file) => {
-					this.vector_scan_banner.update_scan_status(queue_size, current_file);
-				});
-				
-				// Connect to file_contents_changed signal to trigger background scanning
-				// Only connect when background_scan is available
-				// scanFile handles null project internally
-				this.project_manager.file_contents_changed.connect((file) => {
-					this.background_scan.scanFile(file, this.project_manager.active_project);
-				});
-				
-				// Connect to active_project_changed signal to trigger project scanning
-				// When project changes, scan all files in the project
-				// scanProject handles null project internally
-				this.project_manager.active_project_changed.connect((project) => {
-					this.background_scan.scanProject(project);
-				});
-			} else {
-				//GLib.debug("Background semantic search indexing disabled via --disable-indexer");
-			}
-			
-			//GLib.debug("Codebase search tool initialized successfully (name: %s, active: %s)", 
-			//	tool.name, tool.active.to_string());
-			
-			// Phase 3: Tools are stored on Manager
-			// Add tool to Manager - it will be copied to Chat when Chat is created in Session
-			this.history_manager.tools.set(tool.name, tool);
-			//GLib.debug("Codebase search tool added to Manager (total tools: %d)", 
-			//	this.history_manager.tools.size);
 		}
 		
 		/**

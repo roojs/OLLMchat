@@ -73,7 +73,7 @@ namespace OLLMtools.ReadFile
 		{
 			// Load file content using base class method
 			var code_content = yield this.load_file_content();
-			this.load_db_data();
+			yield this.load_vector_metadata();
 			
 			// Check if this is a non-code file that we should skip
 			if (this.is_unsupported_language(this.file.language)) {
@@ -111,20 +111,27 @@ namespace OLLMtools.ReadFile
 			return this.output;
 		}
 		
-		private void load_db_data()
+		private async void load_vector_metadata()
 		{
- 
-			
-			if (this.file.id <= 0 || this.file.manager.db == null) {
+			if (this.file.id <= 0) {
 				return;
 			}
-			
-			var rows = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
-			OLLMfiles.SQT.VectorMetadata.query(this.file.manager.db).select(
-				"WHERE file_id = " + this.file.id.to_string(),
-				rows
-			);
-			
+			var project = this.file.manager.active_project;
+			if (project == null) {
+				return;
+			}
+
+			var response = yield this.file.manager.rpc.call(new OLLMrpc.Request() {
+				method = "Codebase.file_info",
+				param = new OLLMfilesd.VectorParams() {
+					path = project.path,
+					file_path = this.file.path
+				}
+			});
+			if (response.error != null) {
+				return;
+			}
+			var rows = (Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>) response.result;
 			foreach (var row in rows) {
 				var ast_path = row.ast_path.strip();
 				if (ast_path == "") {

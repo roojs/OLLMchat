@@ -19,10 +19,10 @@
 namespace OLLMfiles
 {
 	/**
-	 * Tree-sitter AST path lookup class.
-	 * 
-	 * Provides fast lookup of AST paths to line numbers by parsing the file
-	 * and building hash maps of path -> line number mappings.
+	 * Tree-sitter AST path lookup (V2 thin client).
+	 *
+	 * Parses in-memory content from {@link File.read} RPC. Uses
+	 * {@link File.last_modified} for parse cache; not {{{mtime_on_disk}}}.
 	 */
 	public class Tree : TreeBase
 	{
@@ -74,8 +74,7 @@ namespace OLLMfiles
 		 */
 		public async void parse() throws GLib.Error
 		{
-			// Get current file modification time
-			var file_mtime = this.file.mtime_on_disk();
+			var file_mtime = this.file.last_modified;
 			
 			// If file hasn't changed since last parse and no reparse flag is set, skip parsing
 			if (file_mtime > 0 && file_mtime == this.last_parsed && !this.needs_reparse) {

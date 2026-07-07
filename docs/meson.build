@@ -71,35 +71,35 @@ valadoc_docs = custom_target('valadoc',
     '../libocrpc/Client.vala',
     '../libocrpc/ClientPlatform.vala',
     '../libocrpc/ClientBoot.vala',
-    # ollmfilesd param types (shared with libocfiles V2 client)
+    # ollmfilesd param types (shared with libocfiles client)
     '../ollmfilesd/CallParam.vala',
-    # libocfiles sources (V2 RPC client — must come before liboccoder and liboctools)
+    # libocfiles sources (RPC client — must come before liboccoder and liboctools)
     '../libocfiles/namespace.vala',  # Namespace documentation
     '../libocfiles/BufferProviderBase.vala',
-    '../libocfiles/V2/FileBuffer.vala',  # Must come before File.vala (File uses FileBuffer)
+    '../libocfiles/FileBuffer.vala',  # Must come before File.vala (File uses FileBuffer)
     '../libocfiles/DummyFileBuffer.vala',
     '../libocfiles/FileChange.vala',  # Must come after FileBuffer (FileBuffer uses FileChange)
-    '../libocfiles/V2/FileHistory.vala',  # Uses FileBase
-    '../libocfiles/V2/FileAlias.vala',
-    '../libocfiles/V2/FileWithHistory.vala',
+    '../libocfiles/FileHistory.vala',  # Uses FileBase
+    '../libocfiles/FileAlias.vala',
+    '../libocfiles/FileWithHistory.vala',
     '../libocfiles/GitProviderBase.vala',
     '../libocfiles/Copyable.vala',
     '../libocfiles/Diff/Patch.vala',
     '../libocfiles/Diff/PatchApplier.vala',
     '../libocfiles/Diff/Differ.vala',
     '../libocfiles/SQT/VectorMetadata.vala',  # OLLMfiles.SQT namespace
-    '../libocfiles/V2/FileBase.vala',
-    '../libocfiles/V2/File.vala',
-    '../libocfiles/V2/Folder.vala',
-    '../libocfiles/V2/FolderFiles.vala',
-    '../libocfiles/V2/ProjectFile.vala',
-    '../libocfiles/V2/ProjectFiles.vala',
-    '../libocfiles/V2/ReviewFiles.vala',  # Uses ProjectFiles
-    '../libocfiles/V2/ProjectList.vala',
-    '../libocfiles/V2/ProjectManager.vala',
-    '../libocfiles/V2/DeleteManager.vala',  # Uses ProjectManager
-    '../libocfiles/V2/TreeBase.vala',  # Tree-sitter base class
-    '../libocfiles/V2/Tree.vala',  # Tree-sitter AST path lookup class
+    '../libocfiles/FileBase.vala',
+    '../libocfiles/File.vala',
+    '../libocfiles/Folder.vala',
+    '../libocfiles/FolderFiles.vala',
+    '../libocfiles/ProjectFile.vala',
+    '../libocfiles/ProjectFiles.vala',
+    '../libocfiles/ReviewFiles.vala',  # Uses ProjectFiles
+    '../libocfiles/ProjectList.vala',
+    '../libocfiles/ProjectManager.vala',
+    '../libocfiles/DeleteManager.vala',  # Uses ProjectManager
+    '../libocfiles/TreeBase.vala',  # Tree-sitter base class
+    '../libocfiles/Tree.vala',  # Tree-sitter AST path lookup class
     # libocmarkdown sources (must come before libocmarkdowngtk)
     '../libocmarkdown/Parser.vala',
     '../libocmarkdown/TableState.vala',
@@ -225,18 +225,18 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/History/TitleGenerator.vala',
     '../libollmchat/Call/Generate.vala',
     '../libollmchat/Response/Generate.vala',
-    # liboctools sources (V2 RPC tool impls — depends on libollmchat and libocfiles)
+    # liboctools sources (RPC tool impls — depends on libollmchat and libocfiles)
     '../liboctools/ReadFile/Tool.vala',
-    '../liboctools/ReadFileV2/Request.vala',
-    '../liboctools/ReadFileV2/Summarize.vala',  # Tree-sitter based file summarizer
+    '../liboctools/ReadFile/Request.vala',
+    '../liboctools/ReadFile/Summarize.vala',  # Tree-sitter based file summarizer
     '../liboctools/EditMode/Tool.vala',
-    '../liboctools/EditModeV2/Request.vala',
-    '../liboctools/EditModeV2/Stream.vala',
+    '../liboctools/EditMode/Request.vala',
+    '../liboctools/EditMode/Stream.vala',
     '../liboctools/WriteFile/Tool.vala',
-    '../liboctools/WriteFileV2/Request.vala',
+    '../liboctools/WriteFile/Request.vala',
     '../liboctools/RunCommand/Tool.vala',
     '../liboctools/FileVerification.vala',
-    '../liboctools/RunCommandV2/Request.vala',
+    '../liboctools/RunCommand/Request.vala',
     '../liboctools/WebFetch/Tool.vala',
     '../liboctools/WebFetch/Request.vala',
     '../liboctools/GoogleSearch/Tool.vala',
@@ -267,7 +267,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocmcp/McpTypes.vala',
     '../libocmcp/Config.vala',
     '../libocmcp/Client/Base.vala',
-    '../libocmcp/Client/StdioV2.vala',
+    '../libocmcp/Client/Stdio.vala',
     '../libocmcp/Client/Http.vala',
     '../libocmcp/Factory.vala',
     '../libocmcp/Tool.vala',
@@ -281,9 +281,9 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/GtkSourceFileBuffer.vala',  # Must come before SourceView.vala (SourceView uses GtkSourceFileBuffer)
     '../liboccoder/SearchableDropdown.vala',
     '../liboccoder/ProjectDropdown.vala',
-    '../liboccoder/V2/FileDropdown.vala',
-    '../liboccoder/V2/SourceView.vala',
-    '../liboccoder/V2/AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
+    '../liboccoder/FileDropdown.vala',
+    '../liboccoder/SourceView.vala',
+    '../liboccoder/AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
     '../liboccoder/Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
     '../liboccoder/Skill/PromptTemplate.vala',
     '../liboccoder/Skill/Definition.vala',
@@ -294,11 +294,11 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Task/ProgressRunner.vala',
     '../liboccoder/Task/Step.vala',     # Task: Task → Details
     '../liboccoder/Task/Details.vala',  # Task: Details → ResultParser, Tool
-    '../liboccoder/V2/Task/ValidateLink.vala',  # after Details — match liboccoder/meson.build
-    '../liboccoder/V2/Task/ResolveLink.vala',
+    '../liboccoder/Task/ValidateLink.vala',  # after Details — match liboccoder/meson.build
+    '../liboccoder/Task/ResolveLink.vala',
     '../liboccoder/Task/Tool.vala',     # Task: Tool → Details
     '../liboccoder/Task/ToolList.vala',
-    '../liboccoder/V2/Task/WriteChange.vala',  # after Tool — match liboccoder/meson.build
+    '../liboccoder/Task/WriteChange.vala',  # after Tool — match liboccoder/meson.build
     '../liboccoder/Task/List.vala',     # Task: List → Step, Details
     '../liboccoder/Task/ProgressList.vala',
     '../liboccoder/Task/ProgressView.vala',
@@ -311,7 +311,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Action/WriteExec.vala',
     '../liboccoder/Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
     '../liboccoder/List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
-    '../liboccoder/V2/Approvals.vala',
+    '../liboccoder/Approvals.vala',
     # examples base classes
     '../examples/TestAppBase.vala',
     # libollmchatgtk sources (depends on libollmchat, libocmarkdown, libocmarkdowngtk)
@@ -335,7 +335,7 @@ valadoc_docs = custom_target('valadoc',
     '../ollmapp/ChatUserInterface.vala',  # Must come before Window (Window implements interface)
     '../ollmapp/AgentDropdown.vala',  # Must come before Window (Window uses AgentDropdown)
     '../ollmapp/Initialize.vala',  # Must come before Window (Window uses Initialize)
-    '../ollmapp/V2/Window.vala',
+    '../ollmapp/Window.vala',
     '../ollmapp/WindowPane.vala',
     '../ollmapp/FileChangeBanner.vala',
     '../ollmapp/VectorScanBanner.vala',

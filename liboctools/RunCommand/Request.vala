@@ -102,7 +102,7 @@ namespace OLLMtools.RunCommand
 		 */
 		private string bwrap_unavailable_note ()
 		{
-			if (OLLMfiles.Sandbox.Bubble.can_wrap ()) {
+			if (OLLMbwrap.Bubble.can_wrap ()) {
 				return "";
 			}
 #if G_OS_WIN32
@@ -156,7 +156,7 @@ namespace OLLMtools.RunCommand
 				return true;
 			}
 
-			bool can = OLLMfiles.Sandbox.Bubble.can_wrap ();
+			bool can = OLLMbwrap.Bubble.can_wrap ();
 			string head0 = this.write_array.length > 0 ? this.write_array[0].down () : "";
 			bool default_sandbox_writes = (head0 == "no" || head0 == "project");
 
@@ -268,7 +268,7 @@ namespace OLLMtools.RunCommand
 			var run_status = "Running command";
 			if (this.run_as_root) {
 				run_status = "Running command as root (sudo)";
-			} else if (OLLMfiles.Sandbox.Bubble.can_wrap ()) {
+			} else if (OLLMbwrap.Bubble.can_wrap ()) {
 				run_status = "Running command in sandbox";
 			}
 			this.agent.add_message (new OLLMchat.Message ("ui",
@@ -302,7 +302,7 @@ namespace OLLMtools.RunCommand
 				return yield this.execute_with_subprocess ();
 			}
 
-			if (!OLLMfiles.Sandbox.Bubble.can_wrap()) {
+			if (!OLLMbwrap.Bubble.can_wrap()) {
 				return yield this.execute_with_subprocess();
 			}
 
@@ -312,13 +312,29 @@ namespace OLLMtools.RunCommand
 				? project_manager.active_project
 				: (OLLMfiles.Folder?) null;
 
-			OLLMfiles.Sandbox.Bubble? bubble = null;
 			try {
-				bubble = new OLLMfiles.Sandbox.Bubble (project, this.network, this.write_array);
-				
-				// Execute command in bwrap sandbox (writes go to overlay upper directory)
-				// exec() handles overlay creation, mounting, file copying, and cleanup internally
-				var output = yield bubble.exec(this.command, normalized_working_dir);
+				var project_path = "";
+				var write_roots = new Gee.HashMap<string, string>();
+				if (project != null) {
+					project_path = project.path;
+					write_roots.set(project.path, project.path);
+				}
+
+				var verification = new OLLMtools.FileVerification(
+					project,
+					project_manager
+				);
+				// due to vala async ctor quirk
+				var bubble = new OLLMbwrap.Bubble(verification);
+				bubble.project_path = project_path;
+				bubble.allow_network = this.network;
+				bubble.write_tokens = this.write_array;
+				bubble.write_roots = write_roots;
+
+				var output = yield bubble.exec(
+					this.command,
+					normalized_working_dir
+				);
 				
 				// Truncate output if needed
 				// FIXME - not sure this is a great idea - we will be bumping the context up soon

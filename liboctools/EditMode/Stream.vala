@@ -37,7 +37,6 @@ namespace OLLMtools.EditMode
 		// Queue state for async change application
 		private Gee.Queue<OLLMfiles.FileChange> pending_changes = new Gee.LinkedList<OLLMfiles.FileChange>();
 		private bool processing_change = false;
-		private bool history_created = false;
 		
 		
 		public Stream(
@@ -396,13 +395,6 @@ namespace OLLMtools.EditMode
 			this.processing_change = true;
 			var change = this.pending_changes.poll();
 			
-			// Ensure file history is created on first edit (before changes for modified files)
-			yield this.create_file_history(
-				this.file.manager,
-				this.file,
-				this.request.creating_file ? "added" : "modified"
-			);
-			
 			// Wait for AST resolution if needed
 			// Since resolve_ast_path() is async, we can yield on it directly
 			// Changes in queue are not completed yet (they're added when code block closes)
@@ -506,25 +498,14 @@ namespace OLLMtools.EditMode
 			
 			if (!is_in_project && project_manager.active_project != null) {
 				var dir_path = GLib.Path.get_dirname(normalized_path);
-				if (project_manager.active_project.project_files.folder_map.has_key(dir_path)) {
+				if (yield project_manager.active_project.contains_folder(dir_path)) {
 					is_in_project = true;
 				}
 			}
 			
 			this.file.manager.buffer_provider.create_buffer(this.file);
 			
-			// Ensure file history is created on first edit (before changes for modified files)
-			try {
-				var change_type = this.request.creating_file ? "added" : "modified";
-				yield this.create_file_history(project_manager, this.file, change_type);
-			} catch (GLib.Error e) {
-				this.changes.insert(0, new OLLMfiles.FileChange.with_error(
-					this.file,
-					"Error creating file history: " + e.message
-				));
-				return;
-			}
-			
+			// V2: no client FileHistory pre-commit; daemon records on register/write
 			try {
 				this.validate_complete_file_changes();
 			} catch (GLib.Error e) {
@@ -655,51 +636,22 @@ namespace OLLMtools.EditMode
 			);
 		}
 		
-		private async void create_file_history(
-			OLLMfiles.ProjectManager project_manager,
-			OLLMfiles.File file,
-			string change_type) throws Error
-		{
-			// Check if history already created
-			if (this.history_created) {
-				return; // Already created
-			}
-			
-		// For modified files, require the file to exist so it has an ID to reference.
-		// For added files, history can be created even if the file doesn't exist yet.
-			if (change_type != "added" && this.request.creating_file) {
-				return; // File doesn't exist yet, will be called again later
-			}
-		
-		
-			try {
-				var file_history = new OLLMfiles.FileHistory(
-					project_manager.db,
-					file,
-					change_type,
-					new GLib.DateTime.now_local()
-				);
-				yield file_history.commit();
-				this.history_created = true;
-			} catch (GLib.Error e) {
-				GLib.warning("Cannot create FileHistory for edit (%s): %s", this.request.normalized_path, e.message);
-			}
-		}
-		
 		/**
 		 * Sync buffer to file and update metadata after all changes have been applied.
-		 * 
+		 *
 		 * This method syncs the buffer to file and updates metadata after all changes
-		 * have been applied. It also ensures file history is created if it wasn't
-		 * created earlier (for added files). It's called by both line-based and
-		 * AST-based change processing when all changes are done, before sending the response.
+		 * have been applied. Called by both line-based and AST-based change processing
+		 * when all changes are done, before sending the response.
+		 *
+		 * V2: {@link File.write} RPC sends buffer content; daemon records history.
+		 * Client refreshes {@link ReviewFiles} after RPC.
 		 */
 		private async void sync_and_update_metadata() throws Error
 		{
 			var is_in_project = (this.file.id > 0);
 			
 			if (!is_in_project && this.file.manager.active_project != null) {
-				if (this.file.manager.active_project.project_files.folder_map.has_key(
+				if (yield this.file.manager.active_project.contains_folder(
 					GLib.Path.get_dirname(this.request.normalized_path)
 				)) {
 					is_in_project = true;
@@ -708,53 +660,26 @@ namespace OLLMtools.EditMode
 			
 			var change_type = this.request.creating_file ? "added" : "modified";
 			
-			// Sync buffer to file (all changes have been applied to buffer)
-			// For GTK buffers: use sync_to_file()
-			// For DummyFileBuffer: write buffer contents (sync_to_file() throws NOT_SUPPORTED)
-			try {
-				yield this.file.buffer.sync_to_file();
-			} catch (GLib.IOError e) {
-				if (e is GLib.IOError.NOT_SUPPORTED) {
-					// DummyFileBuffer: get buffer contents and write
-					var contents = this.file.buffer.get_text();
-					yield this.file.buffer.write(contents);
-				} else {
-					throw e;
-				}
-			}
-			
-			// Update file metadata
-			this.send_success_ui_message(is_in_project);
-			
-			// For added files: convert fake file to real
-			if (change_type == "added" && this.file.id <= 0 && is_in_project) {
-				var file = yield this.convert_new_file_to_real(this.file.manager, this.file);
-				if (file != null) {
-					is_in_project = true;
-					this.file.manager.active_project.project_files.update_from(this.file.manager.active_project);
-				}
-			}
-			
-			// Create history if not already created (handles both modified and added)
-			// For modified: should have been created before changes
-			// For added: create here after file is created and converted to real
-			// create_file_history() checks history_created flag and file existence internally
-			yield this.create_file_history(this.file.manager, this.file, change_type);
-			
 			this.file.is_need_approval = true;
 			this.file.last_change_type = change_type;
 			this.file.last_modified = new GLib.DateTime.now_local().to_unix();
 			
-			if (is_in_project || this.file.id > 0) {
-				this.file.saveToDB(this.file.manager.db, null, false);
+			if (!(yield this.file.write())) {
+				throw new GLib.IOError.FAILED(
+					"Failed to write file via RPC: " + this.request.normalized_path);
 			}
+			
+			if (change_type == "added" && this.file.id <= 0 && is_in_project) {
+				yield this.file.to_real();
+				if (this.file.id > 0) {
+					is_in_project = true;
+				}
+			}
+			
+			this.send_success_ui_message(is_in_project);
 			
 			if (is_in_project) {
-				this.file.manager.active_project.project_files.review_files.refresh();
-			}
-			
-			if (this.file.manager.db != null) {
-				this.file.manager.db.backupDB();
+				yield this.file.manager.review_files.refresh();
 			}
 			
 			if (this.request.creating_file) {
@@ -789,14 +714,6 @@ namespace OLLMtools.EditMode
 			}
 		}
 		
-		private async OLLMfiles.File? convert_new_file_to_real(
-			OLLMfiles.ProjectManager project_manager,
-			OLLMfiles.File file) throws Error
-		{
-			yield project_manager.convert_fake_file_to_real(file, this.request.normalized_path);
-			return project_manager.get_file_from_active_project(this.request.normalized_path);
-		}
-		
 		private void send_success_ui_message(bool is_in_project)
 		{
 			GLib.debug("Successfully applied changes to file %s", this.request.normalized_path);
@@ -822,13 +739,8 @@ namespace OLLMtools.EditMode
 				throw new GLib.IOError.FAILED("ProjectManager is not available");
 			}
 			
-			var file = project_manager.get_file_from_active_project(this.request.normalized_path);
-			if (file == null) {
-				file = new OLLMfiles.File.new_fake(project_manager, this.request.normalized_path);
-			}
-			
-			file.manager.buffer_provider.create_buffer(file);
-			return file.buffer.get_line_count();
+			this.file.manager.buffer_provider.create_buffer(this.file);
+			return this.file.buffer.get_line_count();
 		}
 		
 	}

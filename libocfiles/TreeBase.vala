@@ -19,10 +19,11 @@
 namespace OLLMfiles
 {
 	/**
-	 * Base class for tree-sitter AST parsing.
-	 * 
-	 * Provides common functionality for parsing source code files using tree-sitter,
-	 * including language loading, element name/type extraction, and file content management.
+	 * Base class for tree-sitter AST parsing (V2 thin client).
+	 *
+	 * Operates on in-memory content only. Callers must load file text via
+	 * {@link File.read} RPC before {@link Tree.parse}; {@link load_file_content}
+	 * uses the populated buffer; no local disk read.
 	 */
 	public abstract class TreeBase : Object
 	{
@@ -82,29 +83,33 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Load file content and split into lines.
-		 * 
-		 * @throws Error if file cannot be read
+		 * Load file content and split into lines from RPC-populated buffer.
+		 *
+		 * Calls {@link File.read} so content comes from the daemon, not client disk.
+		 *
+		 * @throws Error if read fails or content is empty
 		 * @return File content as string
 		 */
 		protected async string load_file_content() throws GLib.Error
 		{
-			// Load file content lazily (only when needed for parsing)
-			// Use buffer.read_async() to read from disk since buffer may not be loaded
 			this.file.manager.buffer_provider.create_buffer(this.file);
-			var code_content = yield this.file.buffer.read_async();
-			if (code_content == null || code_content == "") {
-				throw new GLib.IOError.NOT_FOUND("File is empty or cannot be read: " + this.file.path);
+			if (!(yield this.file.read())) {
+				throw new GLib.IOError.NOT_FOUND(
+					"Could not load file content for parse: " + this.file.path
+				);
 			}
-			
-			// Split into lines
+			var code_content = this.file.buffer.get_text();
+			if (code_content == "") {
+				throw new GLib.IOError.NOT_FOUND(
+					"File is empty: " + this.file.path
+				);
+			}
 			this.lines = code_content.split("\n");
-			
 			return code_content;
 		}
 		
 		/**
-		 * Initialize tree-sitter parser with language for the file.
+		 * Initialize tree-sitter parser with language for the file. 
 		 * 
 		 * @throws Error if language cannot be loaded or set
 		 */
