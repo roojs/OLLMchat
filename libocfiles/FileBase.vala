@@ -352,6 +352,14 @@ namespace OLLMfiles
 			switch (prop.name) {
 				case "manager":
 				case "parent":
+				case "is-alias":
+				case "path-basename":
+				case "icon-name":
+				case "display-with-indicators":
+				case "display-approval-text":
+				case "display-approval-tooltip":
+				case "display-name":
+				case "tooltip":
 					return;
 				default:
 					this.bin_default_write_prop(ctx, prop);
@@ -368,6 +376,14 @@ namespace OLLMfiles
 			switch (prop.name) {
 				case "manager":
 				case "parent":
+				case "is-alias":
+				case "path-basename":
+				case "icon-name":
+				case "display-with-indicators":
+				case "display-approval-text":
+				case "display-approval-tooltip":
+				case "display-name":
+				case "tooltip":
 					return;
 				default:
 					this.bin_default_read_prop(ctx, prop, type_byte);

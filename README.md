@@ -35,7 +35,7 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
   - `libollmchatgtk.so` - GTK library with chat widgets (includes GTK components)
   - `ollmfilesd` - Headless file and semantic-index daemon (binary RPC over `libocrpc` via stdio or TCP; not a shared library)
 - **Example Tools** - Command-line utilities demonstrating library capabilities:
-  - `oc-test-cli` - Test tool for LLM API calls (models, chat, streaming)
+  - `ollmchat-cli` - Command-line LLM chat and agent-tool testing (models, chat, streaming, `--agent-tool`)
   - `oc-test-files` - Test tool for file operations (read/write files with line ranges, project management, buffer operations, backups)
   - `oc-markdown-test` - Markdown parser test tool (parses markdown and outputs callback trace)
   - `oc-html2md` - HTML to Markdown converter (reads HTML from stdin, outputs Markdown)
@@ -217,7 +217,7 @@ This will build:
 - `libollmchatgtk.so` - GTK library with chat widgets (with headers, VAPI, and GIR files)
 - `ollmfilesd` - File and semantic-index daemon executable
 - `ollmchat` - Main application executable
-- `oc-test-cli` - Command-line test executable
+- `ollmchat-cli` - Command-line LLM chat and agent-tool executable
 - `oc-markdown-test` - Markdown parser test executable
 - `oc-html2md` - HTML to Markdown converter (reads from stdin)
 - `oc-md2html` - Markdown to HTML converter (takes file as argument)
@@ -236,7 +236,7 @@ The executables are configured with `build_rpath` so they can find the libraries
 # Run from top-level build directory
 # Note: For testing uninstalled, use the executables directly
 ./build/ollmchat.bin
-./build/oc-test-cli --help
+./build/ollmchat-cli --help
 ./build/oc-markdown-test
 ./build/oc-html2md
 ./build/oc-md2html

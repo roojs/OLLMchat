@@ -473,7 +473,7 @@ namespace OLLMfilesd.Vector
 		 */
 		public async int index_filebase(OLLMfilesd.FileBase filebase, bool recurse = false, bool force = false) throws GLib.Error
 		{
-			if (filebase.is_alias && filebase.points_to != null) {
+			if (filebase is FileAlias && filebase.points_to != null) {
 				filebase = filebase.points_to;
 			}
 			

@@ -62,17 +62,7 @@ namespace OLLMfilesd
 		public Folder? parent { get; set; default = null; }
 		
 		/**
-		 * Whether this is an alias/symlink.
-		 * Computed property: Returns true if this is a FileAlias.
-		 */
-		public bool is_alias {
-			get {
-				return (this is FileAlias);
-			}
-		}
-		
-		/**
-		 * Reference to the FileBase object this alias points to (nullable, only set when is_alias = true).
+		 * Reference to the FileBase object this alias points to (nullable, only set for {@link FileAlias}).
 		 * This is the actual object reference, loaded from database via points_to_id.
 		 */
 		public FileBase? points_to { get; set; default = null; }
@@ -481,7 +471,6 @@ namespace OLLMfilesd
 			switch (prop.name) {
 				case "manager":
 				case "parent":
-				case "is-alias":
 					return;
 				default:
 					this.bin_default_write_prop(ctx, prop);
@@ -498,7 +487,6 @@ namespace OLLMfilesd
 			switch (prop.name) {
 				case "manager":
 				case "parent":
-				case "is-alias":
 					return;
 				default:
 					this.bin_default_read_prop(ctx, prop, type_byte);

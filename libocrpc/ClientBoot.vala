@@ -31,7 +31,7 @@ namespace OLLMrpc
 	 *
 	 * Spawn argv: {@link debug} adds {{{--debug}}}; {@link pass_data_dir} adds
 	 * {{{--data-dir=data_dir}}}. Executable: {{{OLLM_OLLMFILESD}}} env when set
-	 * (meson v2testing wrappers), else {{{ollmfilesd}}} on {{{PATH}}}; env selects
+	 * (build wrapper scripts), else {{{ollmfilesd}}} on {{{PATH}}}; env selects
 	 * the binary only and does not set debug or data-dir flags (see §5.5.4).
 	 *
 	 * Production code constructs this only from {@link Client.connect}.

@@ -722,10 +722,15 @@ namespace OLLMfiles
 			GLib.ParamSpec prop
 		) throws GLib.Error
 		{
-			if (prop.name == "buffer") {
-				return;
+			switch (prop.name) {
+				case "buffer":
+				case "display-with-path":
+				case "display-basename":
+					return;
+				default:
+					base.bin_write_prop(ctx, prop);
+					return;
 			}
-			base.bin_write_prop(ctx, prop);
 		}
 
 		public override void bin_read_prop(
@@ -734,10 +739,15 @@ namespace OLLMfiles
 			uint8 type_byte
 		) throws GLib.Error
 		{
-			if (prop.name == "buffer") {
-				return;
+			switch (prop.name) {
+				case "buffer":
+				case "display-with-path":
+				case "display-basename":
+					return;
+				default:
+					base.bin_read_prop(ctx, prop, type_byte);
+					return;
 			}
-			base.bin_read_prop(ctx, prop, type_byte);
 		}
 
 	}

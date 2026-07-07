@@ -92,45 +92,6 @@ minimal_deps = [
   dependency('gobject-2.0'),
 ]
 
-# Shipping v1 example executables — removed; only RPC vector CLIs build below.
-if false
-# Build test-ollama executable (command-line test)
-test_ollama = executable('oc-test-cli',
-  dependencies: [
-    test_ollama_deps,
-    ocsqlite_vapi_dep,
-    octools_vapi_dep,
-    ocvector_vapi_dep,
-    ocmcp_vapi_dep,
-    ollamaweb_vapi_dep
-  ],
-  sources: ['oc-test-cli.vala'],
-  link_with: [ollmchat_base_lib],  # ollmchat_base_lib already links with ocsqlite via link_args
-  include_directories: [
-    include_directories('../libollmchat'),
-    include_directories('../libocvector'),
-    ollmchat_consumer_include
-  ],
-  build_rpath: build_rpath,
-  vala_args: [
-    '--pkg=sqlite3',
-    '--pkg=ocsqlite',
-    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
-    '--pkg=octools',
-    '--pkg=ocvector',
-    '--pkg=ocmcp',
-    '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmcp',
-    '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
-  ] + ollmchat_consumer_vala_args,
-  install: true,
-  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
-)
-
 # Build test-pull executable (pull streaming test)
 test_pull = executable('oc-test-pull',
   dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ollamaweb_vapi_dep],
@@ -309,6 +270,7 @@ vmd2html = executable('oc-md2html',
   install_dir: get_option('bindir')
 )
 
+if false  # V1 oc-test-files / Sandbox / ProjectMigrate / libocvector — RPC rewrite pending
 # Build oc-test-files executable (project file scanning test)
 # Now extends TestAppBase and supports multiple file operations
 # Supports both dummy and sourceview backends (sourceview requires GTK)

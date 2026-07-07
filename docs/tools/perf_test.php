@@ -23,7 +23,7 @@ class PerformanceTest {
         $projectRoot = dirname(dirname($scriptDir));
         
         // Set paths
-        $this->cliPath = $projectRoot . '/build/oc-test-cli';
+        $this->cliPath = $projectRoot . '/build/ollmchat-cli';
         $this->perfDataDir = $projectRoot . '/build/perfdata';
         $this->summaryDir = $projectRoot . '/docs/perfdata';
         $this->query = 'tell me a short story';

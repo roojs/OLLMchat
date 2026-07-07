@@ -75,7 +75,7 @@ Package: libocrpc1
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends}
-Description: JSON-RPC wire library for OLLMchat
+Description: Binary RPC wire library for OLLMchat
  OLLMchat is a library and embeddable widget that provides LLM access
  and tool integration for applications.
  .
@@ -358,5 +358,5 @@ Description: Test executables and documentation for OLLMchat
  and tool integration for applications.
  .
  This package contains test executables and documentation:
-  - oc-test-cli: Command-line test executable
+  - ollmchat-cli: Command-line LLM chat and agent-tool executable
   - oc-markdown-test: Markdown parser test executable

@@ -70,7 +70,6 @@ namespace OLLMfilesd
 		{
 			base(manager);
 			this.base_type = "fa";
-			// is_alias is now computed (returns true for FileAlias)
 			// points_to and points_to_id must be set after construction
 		}
 		

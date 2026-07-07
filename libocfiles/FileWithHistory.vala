@@ -67,5 +67,38 @@ namespace OLLMfiles
 				}
 			}
 		}
+
+		public override void bin_write_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "path-basename":
+				case "display-approval-text":
+				case "display-approval-tooltip":
+					return;
+				default:
+					this.bin_default_write_prop(ctx, prop);
+					return;
+			}
+		}
+
+		public override void bin_read_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "path-basename":
+				case "display-approval-text":
+				case "display-approval-tooltip":
+					return;
+				default:
+					this.bin_default_read_prop(ctx, prop, type_byte);
+					return;
+			}
+		}
 	}
 }

@@ -24,7 +24,7 @@ When building split packages, the source builds the following binary packages:
 ### Application and Tools
 - **ollmchat** - Main application executable installed to `/usr/bin`
 - **ollmchat-tools** - Command-line tools (oc-md2html, oc-html2md) installed to `/usr/bin`
-- **ollmchat-doc** - Test executables (oc-test-cli, oc-markdown-test) installed to `/usr/share/doc/ollmchat`
+- **ollmchat-doc** - Test executables (ollmchat-cli, oc-markdown-test) installed to `/usr/share/doc/ollmchat`
 
 ## Prerequisites
 

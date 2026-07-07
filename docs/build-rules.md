@@ -8,13 +8,13 @@ Canonical build workflow for this project. Written for **AI agents** — **manda
 
 ### Standard Build
 
-V2 is the only supported build (`v2testing=true`, the default). Plain `meson setup build` builds the RPC + `ollmfilesd` app and vector CLI examples.
+Plain `meson setup build` builds the RPC client stack, **`ollmfilesd`**, and the GTK app.
 
 ```bash
 ninja -C build
 ```
 
-Shipping v1 (`-Dv2testing=false`) was removed; Meson fails at configure time if you pass it.
+Wrapper scripts in the build directory (e.g. `build/ollmchat.bin`) set `LD_LIBRARY_PATH` and `OLLM_OLLMFILESD` to the build-tree daemon.
 
 ### Rebuilding After Changes
 
@@ -34,4 +34,3 @@ ninja -C build
 - The build system uses Meson and Ninja
 - All Vala files are compiled through the Meson build system
 - Never call `valac` directly - always use `ninja -C build`
-

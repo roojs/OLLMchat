@@ -185,7 +185,7 @@ namespace OLLMfilesd
 			this.base_type = filebase_object.base_type;
 			
 			// Store alias target if it's an alias
-			if (filebase_object.is_alias && filebase_object.target_path != "") {
+			if (filebase_object is FileAlias && filebase_object.target_path != "") {
 				this.alias_target = filebase_object.target_path;
 			}
 		}

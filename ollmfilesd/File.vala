@@ -33,7 +33,7 @@ namespace OLLMfilesd
 	 * All alias references are tracked in ProjectManager's alias_map.
 	 * 
 	 * Daemon {@link File} — scan, disk I/O, and {@code File.*} RPC.
-	 * Editor buffers and Gtk helpers live on {@code libocfiles/V2/File.vala}.
+	 * Editor buffers and Gtk helpers live on {@code libocfiles/File.vala}.
 	 */
 	public class File : FileBase
 	{
