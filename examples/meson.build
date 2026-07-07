@@ -12,7 +12,6 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollmchatgtk',
   meson.current_build_dir() / '..' / 'liboctools',
-  meson.current_build_dir() / '..' / 'libocvector',
   meson.current_build_dir() / '..' / 'libocmcp'
 ])
 
@@ -86,6 +85,15 @@ ocmarkdown_test_deps = [
   valac.find_library('posix'),
 ]
 
+# Minimal deps for Vala repro examples (no project libs)
+minimal_deps = [
+  dependency('glib-2.0'),
+  dependency('gio-2.0'),
+  dependency('gobject-2.0'),
+]
+
+# Shipping v1 example executables — removed; only RPC vector CLIs build below.
+if false
 # Build test-ollama executable (command-line test)
 test_ollama = executable('oc-test-cli',
   dependencies: [
@@ -458,70 +466,7 @@ oc_migrate_editors = executable('oc-migrate-editors',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
-# Minimal deps for Vala repro examples (no project libs)
-minimal_deps = [
-  dependency('glib-2.0'),
-  dependency('gio-2.0'),
-  dependency('gobject-2.0'),
-]
-
-if local_gguf_enabled
-  oc_local_gguf_chat = executable('oc-local-gguf-chat',
-    dependencies: [
-      test_ollama_deps,
-      ocsqlite_vapi_dep,
-      ocmarkdown_vapi_dep,
-      ollmchat_vapi_dep,
-      ollamaweb_vapi_dep,
-    ],
-    sources: ['oc-local-gguf-chat.vala'],
-    link_with: [ollmchat_base_lib],
-    include_directories: [
-      include_directories('../libollmchat'),
-      ollmchat_consumer_include,
-    ],
-    build_rpath: build_rpath,
-    vala_args: [
-      '--pkg=sqlite3',
-      '--pkg=ocsqlite',
-      '--pkg=ollmchat',
-      '--pkg=ocmarkdown',
-      '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-      '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-      '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    ] + ollmchat_consumer_vala_args,
-    install: true,
-    install_dir: get_option('bindir')
-  )
-
-  oc_local_gguf_embed = executable('oc-local-gguf-embed',
-    dependencies: [
-      test_ollama_deps,
-      ocsqlite_vapi_dep,
-      ocmarkdown_vapi_dep,
-      ollmchat_vapi_dep,
-      ollamaweb_vapi_dep,
-    ],
-    sources: ['oc-local-gguf-embed.vala'],
-    link_with: [ollmchat_base_lib],
-    include_directories: [
-      include_directories('../libollmchat'),
-      ollmchat_consumer_include,
-    ],
-    build_rpath: build_rpath,
-    vala_args: [
-      '--pkg=sqlite3',
-      '--pkg=ocsqlite',
-      '--pkg=ollmchat',
-      '--pkg=ocmarkdown',
-      '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-      '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-      '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    ] + ollmchat_consumer_vala_args,
-    install: true,
-    install_dir: get_option('bindir')
-  )
-endif
+endif  # shipping v1 examples
 
 # Reproducible example: Vala "free short if" codegen bug (nested ternary use-after-free)
 oc_vala_ternary_bug = executable('oc-vala-ternary-bug',
@@ -531,87 +476,59 @@ oc_vala_ternary_bug = executable('oc-vala-ternary-bug',
   install_dir: get_option('bindir')
 )
 
-# Compile resources for ocvector (needed by oc-vector-index)
-ocvector_resources = gnome.compile_resources(
-  'ocvector-resources',
-  '../resources/gresources.xml',
-  source_dir: [
-	'../resources/ollmchat-agents/code-assistant',
-	'../resources',
-	'../resources/wrapped-tools',
-	'../resources/ocvector',
-	'../resources/skill-prompts',
-	'../resources/skills',
-	'../resources/chat-prompts'
-	],
-  c_name: 'ocvector_resources'
-)
-
-# Build oc-vector-index executable (FAISS test tool)
-# Note: Does NOT depend on liboccoder - uses base BufferProviderBase instead
-# This allows the indexer to work without GTK dependencies
+# Build oc-vector-index executable (RPC thin client to ollmfilesd)
 oc_vector_index = executable('oc-vector-index',
-  dependencies: [test_ollama_deps, ocvector_vapi_dep, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ollamaweb_vapi_dep],
-  link_with: [ollmchat_base_lib],  # Use ocvector_vapi_dep (link_args) instead of link_with to avoid ocvector-meson.vapi
-  sources: ['TestAppBase.vala', 'VectorAppBase.vala', 'oc-vector-index.vala', ocvector_resources],
+  dependencies: [test_ollama_deps, ocrpc_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ollamaweb_vapi_dep],
+  link_with: [ollmchat_base_lib],
+  sources: [
+    'TestAppBase.vala',
+    'oc-vector-index.vala',
+  ],
   include_directories: [
-    include_directories('../libocvector'),
     include_directories('../libollmchat'),
     ollmchat_consumer_include,
-    include_directories('../libocsqlite'),
-    include_directories('../libocfiles')
+    include_directories('../libocfiles'),
   ],
   build_rpath: build_rpath,
   vala_args: [
-    '--pkg=sqlite3',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
-    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
-    '--pkg=fiass',
     '--pkg=ollmchat',
-    '--pkg=ocvector',  # custom ocvector.vapi via ocvector_vapi_dep (not ocvector-meson.vapi)
+    '--pkg=ocrpc',
     '--pkg=ocfiles',
     '--vapidir', meson.current_source_dir() / '../vapi',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
   ] + ollmchat_consumer_vala_args,
   install: true,
   install_dir: get_option('bindir')
 )
 
-# Build oc-vector-search executable (vector search tool)
-# Note: Does NOT depend on liboccoder - uses base BufferProviderBase instead
-# This allows the search tool to work without GTK dependencies
+# Build oc-vector-search executable (RPC thin client to ollmfilesd)
 oc_vector_search = executable('oc-vector-search',
-  dependencies: [test_ollama_deps, ocvector_vapi_dep, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ollamaweb_vapi_dep],
-  link_with: [ollmchat_base_lib],  # Use ocvector_vapi_dep (link_args) instead of link_with to avoid ocvector-meson.vapi
-  sources: ['TestAppBase.vala', 'VectorAppBase.vala', 'oc-vector-search.vala'],
+  dependencies: [test_ollama_deps, ocrpc_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ollamaweb_vapi_dep],
+  link_with: [ollmchat_base_lib],
+  sources: [
+    'TestAppBase.vala',
+    'oc-vector-search.vala',
+  ],
   include_directories: [
-    include_directories('../libocvector'),
     include_directories('../libollmchat'),
     ollmchat_consumer_include,
-    include_directories('../libocsqlite'),
-    include_directories('../libocfiles')
+    include_directories('../libocfiles'),
   ],
   build_rpath: build_rpath,
   vala_args: [
-    '--pkg=sqlite3',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
-    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
-    '--pkg=fiass',
     '--pkg=ollmchat',
-    '--pkg=ocvector',  # custom ocvector.vapi via ocvector_vapi_dep (not ocvector-meson.vapi)
+    '--pkg=ocrpc',
     '--pkg=ocfiles',
     '--vapidir', meson.current_source_dir() / '../vapi',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
   ] + ollmchat_consumer_vala_args,
   install: true,
   install_dir: get_option('bindir')

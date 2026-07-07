@@ -29,6 +29,10 @@ if android_poc_count > 1
   error('Only one of android_shell_poc, android_poc may be set')
 endif
 
+if not get_option('v2testing')
+  error('Shipping v1 (v2testing=false) was removed. Use the default build (v2testing=true).')
+endif
+
 if android_cross_build
   g_ir_compiler = disabler()
 else
@@ -119,13 +123,11 @@ if sqgi_vala_args.length() > 0
   add_project_arguments(sqgi_vala_args, language: 'vala')
 endif
 
-# V2 client libs install as libocfiles2.so, … alongside shipping libs (2.10.4.21).
-# libocvector2.so is the daemon FAISS lib; app stub keeps libocvector.so.
+# libocvector2.so is the daemon FAISS lib; app uses liboctools/CodebaseSearch (RPC).
 ocfiles_lib = get_option('v2testing') ? 'ocfiles2' : 'ocfiles'
 occoder_lib = get_option('v2testing') ? 'occoder2' : 'occoder'
 octools_lib = get_option('v2testing') ? 'octools2' : 'octools'
 ocmcp_lib = get_option('v2testing') ? 'ocmcp2' : 'ocmcp'
-ocvector_lib = 'ocvector'
 
 # Build libraries in dependency order
 if android_shell_poc
@@ -151,18 +153,14 @@ else
   subdir('ollmfilesd')       # Headless file daemon — Unix socket on Unix, TCP on Windows
   subdir('libocmcp')         # Depends on libollmchat, libocfiles
   subdir('liboctools')       # Depends on libollmchat, libocfiles
-  subdir('libocvector')      # v2testing: stub Registry only; shipping: full lib
   subdir('liboccoder')       # Depends on libocsqlite, libocfiles, libollmchat
   subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
   subdir('ollmapp')         # Primary application - depends on all libraries
-  if get_option('examples') and not get_option('v2testing')
-    subdir('examples')          # Depends on all libraries
+  if get_option('examples')
+    subdir('examples')          # RPC vector CLIs and minimal repros only
   endif
   if get_option('tests')
-    if not get_option('examples') or get_option('v2testing')
-      error('The tests option requires examples=true and v2testing=false')
-    endif
-    subdir('tests')             # Test suite - depends on examples
+    subdir('tests')             # RPC tests always; legacy example tests skip if target missing
   endif
 endif
 
@@ -199,34 +197,12 @@ else
   if get_option('v2testing')
     executables_info += [['ollmchat-cli', 'ollmapp/ollmchat-cli']]  # V2 only
   endif
-  if get_option('examples') and not get_option('v2testing')
+  if get_option('examples')
     executables_info += [
-      ['oc-test-cli', 'examples/oc-test-cli'],
-      ['oc-test-pull', 'examples/oc-test-pull'],
-      ['oc-test-fetch', 'examples/oc-test-fetch'],
-      ['oc-test-loop', 'examples/oc-test-loop'],
-      ['oc-test-files', 'examples/oc-test-files'],
-      ['oc-test-bubble', 'examples/oc-test-bubble'],
-      ['oc-test-skill-agent', 'examples/oc-test-skill-agent'],
-      ['oc-test-gtkmd', 'examples/oc-test-gtkmd'],
-      ['oc-markdown-test', 'examples/oc-markdown-test'],
-      ['oc-markdown-doc-test', 'examples/oc-markdown-doc-test'],
-      ['oc-html2md', 'examples/oc-html2md'],
-      ['oc-test-ollamaweb', 'examples/oc-test-ollamaweb'],
-      ['oc-md2html', 'examples/oc-md2html'],
-      ['oc-diff', 'examples/oc-diff'],
-      ['oc-migrate-editors', 'examples/oc-migrate-editors'],
       ['oc-vector-index', 'examples/oc-vector-index'],
       ['oc-vector-search', 'examples/oc-vector-search'],
     ]
   endif
-endif
-
-if local_gguf_enabled and get_option('examples') and not get_option('v2testing')
-  executables_info += [
-    ['oc-local-gguf-embed', 'examples/oc-local-gguf-embed'],
-    ['oc-local-gguf-chat', 'examples/oc-local-gguf-chat'],
-  ]
 endif
 if get_option('android_poc') and host_machine.system() != 'android'
   executables_info += [
@@ -245,7 +221,6 @@ lib_path = ':'.join([
   meson.current_build_dir() / 'liboccoder',
   meson.current_build_dir() / 'libollmchat',
   meson.current_build_dir() / 'libollmchatgtk',
-  meson.current_build_dir() / 'libocvector',
   meson.current_build_dir() / 'liboctools',
   meson.current_build_dir() / 'libocmcp'
 ])

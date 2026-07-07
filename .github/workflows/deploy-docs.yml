@@ -112,8 +112,7 @@ jobs:
 
       - name: Setup meson build
         run: |
-          # Docs-only configure: tests require examples + v2testing=false (shipping),
-          # but the default v2testing=true is correct for this workflow.
+          # Docs-only configure: skip tests (RPC suite needs runtime fixtures).
           meson setup build --prefix=/usr -Dtests=false
 
       - name: Build documentation

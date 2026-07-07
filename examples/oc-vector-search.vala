@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-class VectorSearchApp : VectorAppBase
+class VectorSearchApp : TestAppBase
 {
 	protected static bool opt_json = false;
 	protected static string? opt_show_info = null;
@@ -30,10 +30,9 @@ class VectorSearchApp : VectorAppBase
 	protected static string? opt_dump_vector = null;
 	protected static string? opt_only_file = null;
 	protected static string? opt_data_dir = null;
-	
-	private string db_path;
-	private string vector_db_path;
-	
+
+	private OLLMrpc.Client rpc;
+
 	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS] <folder> [query]
 
@@ -59,7 +58,7 @@ Examples:
   {ARG} --dump-vector=OLLMcoder.Task-List-write libocvector
   {ARG} --only-file=liboccoder/Task/List.vala libocvector "write"
 """; }
-	
+
 	protected const OptionEntry[] local_options = {
 		{ "json", 'j', 0, OptionArg.NONE, ref opt_json, "Output results as JSON", null },
 		{ "show-info", 0, 0, OptionArg.STRING, ref opt_show_info, "List vector metadata for a file", "FILE" },
@@ -75,39 +74,30 @@ Examples:
 		{ "only-file", 0, 0, OptionArg.STRING, ref opt_only_file, "Restrict search to vectors from this file only (path relative to folder)", "FILE" },
 		{ null }
 	};
-	
+
 	protected override OptionContext app_options()
 	{
 		var opt_context = new OptionContext(this.get_app_name());
 		opt_context.add_main_entries(base_options, null);
-		
-		var app_group = new OptionGroup("oc-vector-search", "Code Vector Search Options", "Show Code Vector Search options");
+
+		var app_group = new OptionGroup(
+			"oc-vector-search",
+			"Code Vector Search Options",
+			"Show Code Vector Search options"
+		);
 		app_group.add_entries(local_options);
 		opt_context.add_group(app_group);
-		
+
 		return opt_context;
 	}
-	
+
 	public VectorSearchApp()
 	{
 		base("org.roojs.oc-vector-search");
 	}
-	
-	public override OLLMchat.Settings.Config2 load_config()
-	{
-		// Register all tool config types before loading config
-		// Use Registry to ensure GTypes are registered first
-		var registry = new OLLMvector.Registry();
-		registry.init_config();
-		
-		// Call base implementation
-		return base_load_config();
-	}
-	
+
 	protected override int command_line(ApplicationCommandLine command_line)
 	{
-		// Reset local static option variables at start of each command line invocation
-		// This must happen BEFORE parsing, not in validate_args() which is called AFTER parsing
 		opt_json = false;
 		opt_show_info = null;
 		opt_language = null;
@@ -120,19 +110,16 @@ Examples:
 		opt_dump_vector = null;
 		opt_only_file = null;
 		opt_data_dir = null;
-		
-		// Call base implementation which will parse options and call validate_args()
+
 		return base.command_line(command_line);
 	}
-	
+
 	private static string[] VALID_CATEGORIES = {
 		"plan", "documentation", "rule", "configuration", "data", "license", "changelog", "other"
 	};
-	
+
 	protected override string? validate_args(string[] remaining_args)
 	{
-		// Note: Option variables are already reset in command_line() before parsing,
-		// so they now contain the parsed values. Normalize string options to "" when unset.
 		opt_language = opt_language == null ? "" : opt_language;
 		opt_element_type = opt_element_type == null ? "" : opt_element_type;
 		opt_category = opt_category == null ? "" : opt_category;
@@ -141,31 +128,19 @@ Examples:
 		opt_dump_vector = opt_dump_vector == null ? "" : opt_dump_vector;
 		opt_only_file = opt_only_file == null ? "" : opt_only_file;
 		opt_data_dir = opt_data_dir == null ? "" : opt_data_dir;
+		opt_show_info = opt_show_info == null ? "" : opt_show_info;
 
-		// Apply data_dir from parsed options (so --data-dir is used)
 		if (opt_data_dir != "") {
-			var dir = opt_data_dir;
-			
-			this.data_dir = dir;
+			this.data_dir = opt_data_dir;
 			var data_dir_file = GLib.File.new_for_path(this.data_dir);
 			if (!data_dir_file.query_exists()) {
 				return "Error: data directory does not exist: %s\n".printf(this.data_dir);
 			}
-			var db_path_check = GLib.Path.build_filename(this.data_dir, "files.sqlite");
-			var vector_path_check = GLib.Path.build_filename(this.data_dir, "codedb.faiss.vectors");
-			var db_file = GLib.File.new_for_path(db_path_check);
-			if (!db_file.query_exists()) {
-				return "Error: database file does not exist: %s\n".printf(db_path_check);
-			}
-			var vector_file = GLib.File.new_for_path(vector_path_check);
-			if (!vector_file.query_exists()) {
-				return "Error: vector database file does not exist: %s\n".printf(vector_path_check);
-			}
 		}
-		
+
 		if (opt_category != "") {
 			var normalized = opt_category.strip().down();
-			bool valid = false;
+			var valid = false;
 			foreach (var v in VALID_CATEGORIES) {
 				if (normalized == v) {
 					valid = true;
@@ -177,94 +152,117 @@ Examples:
 					opt_category, string.joinv(", ", VALID_CATEGORIES));
 			}
 		}
-		
-		// Build paths from (possibly overridden) data_dir
-		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
-		this.vector_db_path = GLib.Path.build_filename(this.data_dir, "codedb.faiss.vectors");
-		
-		string folder_path = remaining_args.length > 1 ? remaining_args[1] : "";
-		string query = remaining_args.length > 2 ? remaining_args[2] : "";
-		
+
+		var folder_path = remaining_args.length > 1 ? remaining_args[1] : "";
+		var query = remaining_args.length > 2 ? remaining_args[2] : "";
+
 		if (folder_path == "") {
 			return help.replace("{ARG}", remaining_args[0]);
 		}
-		// When --show-info or --dump-vector is set, query is optional; otherwise required
-		if (opt_show_info == null && opt_dump_vector == "" && query == "") {
+		if (opt_show_info == "" && opt_dump_vector == "" && query == "") {
 			return help.replace("{ARG}", remaining_args[0]);
 		}
-		
+
 		return null;
 	}
-	
+
 	protected override string get_app_name()
 	{
 		return "Code Vector Search";
 	}
-	
-	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
+
+	protected override async void run_test(
+		ApplicationCommandLine command_line,
+		string[] remaining_args
+	) throws Error
 	{
-		string folder_path = remaining_args.length > 1 ? remaining_args[1] : "";
-		string query = remaining_args.length > 2 ? remaining_args[2] : "";
-		
+		var folder_path = remaining_args.length > 1 ? remaining_args[1] : "";
+		var query = remaining_args.length > 2 ? remaining_args[2] : "";
+
 		if (folder_path == "") {
 			throw new GLib.IOError.NOT_FOUND("Folder required");
 		}
-		if (opt_show_info != null) {
-			yield this.run_show_info(folder_path, opt_show_info);
-			return;
-		}
-		if (opt_dump_vector != "") {
-			yield this.run_dump_vector(folder_path, opt_dump_vector);
-			return;
-		}
-		if (query == "") {
-			throw new GLib.IOError.NOT_FOUND("Query required (or use --show-info=FILE to list metadata for a file)");
-		}
-		yield this.run_search(folder_path, query);
-	}
-	
-	private async void run_show_info(string folder_path, string file_path) throws Error
-	{
-		stdout.printf("=== Vector metadata for file ===\n\n");
-		this.ensure_data_dir();
-		
-		var sql_db = new SQ.Database(this.db_path, false);
-		OLLMfiles.SQT.VectorMetadata.initDB(sql_db);
-		var manager = new OLLMfiles.ProjectManager(sql_db);
-		
-		var file = GLib.File.new_for_path(folder_path);
-		if (!file.query_exists()) {
+
+		var folder_file = GLib.File.new_for_path(folder_path);
+		if (!folder_file.query_exists()) {
 			throw new GLib.IOError.NOT_FOUND("Folder not found: " + folder_path);
 		}
-		var abs_folder = file.get_path();
+		var abs_folder = folder_file.get_path();
 		if (abs_folder == null) {
 			throw new GLib.IOError.FAILED("Failed to get absolute path for: " + folder_path);
 		}
-		
-		var results_list = new Gee.ArrayList<OLLMfiles.FileBase>();
-		var query_obj = OLLMfiles.FileBase.query(sql_db, manager);
-		var stmt = query_obj.selectPrepare(
-				"SELECT " + string.joinv(",", query_obj.getColsExcept(null)) +
-					 " FROM filebase WHERE path = $path AND delete_id = 0");
-		stmt.bind_text(stmt.bind_parameter_index("$path"), abs_folder);
-		query_obj.selectExecute(stmt, results_list);
-		
-		OLLMfiles.Folder? search_folder = null;
-		if (results_list.size > 0 && results_list[0] is OLLMfiles.Folder) {
-			search_folder = (OLLMfiles.Folder)results_list[0];
-		} else {
-			throw new GLib.IOError.NOT_FOUND("Folder not found in database: " + abs_folder);
+
+		OLLMrpc.Daemon.rpc_register();
+		OLLMfilesd.DaemonParams.rpc_register();
+		OLLMfilesd.ProjectParams.rpc_register();
+		OLLMfilesd.VectorParams.rpc_register();
+		OLLMfiles.SQT.VectorMetadata.rpc_register();
+
+		var pass_data_dir = opt_data_dir != "";
+		this.rpc = new OLLMrpc.Client(
+			this.data_dir,
+			"ollmfilesd.pid",
+			"ollmfilesd.sock",
+			opt_debug,
+			pass_data_dir
+		);
+
+		if (!yield this.rpc.connect(new OLLMrpc.Request() {
+			method = "Daemon.hello",
+			param = new OLLMfilesd.DaemonParams() {
+				protocol = 1,
+				client = "oc-vector-search"
+			}
+		})) {
+			var msg = this.rpc.connect_error;
+			if (msg == "") {
+				msg = "could not start or reach the filesystem daemon (ollmfilesd)";
+			}
+			throw new GLib.IOError.FAILED("%s", msg);
 		}
-		
-		yield search_folder.load_files_from_db();
-		
-		// Resolve file path: absolute or relative to folder
-		string resolved_path;
-		if (GLib.Path.is_absolute(file_path)) {
-			resolved_path = file_path;
-		} else {
-			resolved_path = GLib.Path.build_filename(abs_folder, file_path);
+
+		var load_response = yield this.rpc.call(new OLLMrpc.Request() {
+			method = "ProjectManager.load_projects_from_db",
+			param = new OLLMfilesd.ProjectParams()
+		});
+		if (load_response.error != null) {
+			throw new GLib.IOError.FAILED(load_response.error.message);
 		}
+
+		var activate_response = yield this.rpc.call(new OLLMrpc.Request() {
+			method = "ProjectManager.activate_project",
+			param = new OLLMfilesd.ProjectParams() {
+				path = abs_folder,
+				skip_scan = true
+			}
+		});
+		if (activate_response.error != null) {
+			throw new GLib.IOError.FAILED(activate_response.error.message);
+		}
+
+		if (opt_show_info != "") {
+			yield this.run_show_info(abs_folder, opt_show_info);
+			return;
+		}
+		if (opt_dump_vector != "") {
+			yield this.run_dump_vector(abs_folder, opt_dump_vector);
+			return;
+		}
+		if (query == "") {
+			throw new GLib.IOError.NOT_FOUND(
+				"Query required (or use --show-info=FILE to list metadata for a file)"
+			);
+		}
+		yield this.run_search(abs_folder, query);
+	}
+
+	private async void run_show_info(string abs_folder, string file_path) throws Error
+	{
+		stdout.printf("=== Vector metadata for file ===\n\n");
+
+		var resolved_path = GLib.Path.is_absolute(file_path)
+			? file_path
+			: GLib.Path.build_filename(abs_folder, file_path);
 		try {
 			var resolved_file = GLib.File.new_for_path(resolved_path);
 			var canonical = resolved_file.resolve_relative_path(".");
@@ -272,50 +270,51 @@ Examples:
 				resolved_path = canonical.get_path() ?? resolved_path;
 			}
 		} catch (GLib.Error e) {
-			// Keep unresolved path for lookup
+			// Keep unresolved path for daemon lookup
 		}
-		
-		var file_base = search_folder.project_files.all_files.get(resolved_path);
-		if (file_base == null) {
-			// Try with folder path + file_path as stored in DB
-			foreach (var entry in search_folder.project_files.all_files.entries) {
-				if (entry.value is OLLMfiles.File && (entry.key.has_suffix(file_path) || entry.key == resolved_path)) {
-					file_base = entry.value;
-					break;
-				}
+
+		var response = yield this.rpc.call(new OLLMrpc.Request() {
+			method = "Codebase.file_info",
+			param = new OLLMfilesd.VectorParams() {
+				path = abs_folder,
+				file_path = resolved_path
 			}
+		});
+		if (response.error != null) {
+			throw new GLib.IOError.FAILED(response.error.message);
 		}
-		if (file_base == null) {
-			throw new GLib.IOError.NOT_FOUND("File not found in project: " + file_path + " (resolved: " + resolved_path + ")");
-		}
-		if (file_base is OLLMfiles.Folder) {
-			throw new GLib.IOError.NOT_FOUND("Path is a folder, not a file: " + file_path);
-		}
-		
-		var metadata_list = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
-		OLLMfiles.SQT.VectorMetadata.query(sql_db).select(
-			"WHERE file_id = " + file_base.id.to_string() + " ORDER BY start_line, id",
-			metadata_list
-		);
-		
-		stdout.printf("Folder: %s\n", search_folder.path);
-		stdout.printf("File: %s (id=%lld)\n", file_base.path, file_base.id);
+
+		var metadata_list = (Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>) response.result;
+
+		stdout.printf("Folder: %s\n", abs_folder);
+		stdout.printf("File: %s\n", resolved_path);
 		stdout.printf("Vector metadata entries: %d\n\n", metadata_list.size);
-		
+
 		if (opt_json) {
 			this.output_metadata_json(metadata_list);
 		} else {
 			this.output_metadata_text(metadata_list);
 		}
 	}
-	
+
 	private void output_metadata_text(Gee.ArrayList<OLLMfiles.SQT.VectorMetadata> metadata_list)
 	{
-		for (int i = 0; i < metadata_list.size; i++) {
+		for (var i = 0; i < metadata_list.size; i++) {
 			var m = metadata_list.get(i);
 			stdout.printf("--- Entry %d ---\n", i + 1);
-			stdout.printf("  id: %lld  vector_id: %lld  file_id: %lld\n", m.id, m.vector_id, m.file_id);
-			stdout.printf("  lines: %d-%d  type: %s  name: %s\n", m.start_line, m.end_line, m.element_type, m.element_name);
+			stdout.printf(
+				"  id: %lld  vector_id: %lld  file_id: %lld\n",
+				m.id,
+				m.vector_id,
+				m.file_id
+			);
+			stdout.printf(
+				"  lines: %d-%d  type: %s  name: %s\n",
+				m.start_line,
+				m.end_line,
+				m.element_type,
+				m.element_name
+			);
 			if (m.ast_path != "") {
 				stdout.printf("  ast_path: %s\n", m.ast_path);
 			}
@@ -328,7 +327,7 @@ Examples:
 			stdout.printf("\n");
 		}
 	}
-	
+
 	private void output_metadata_json(Gee.ArrayList<OLLMfiles.SQT.VectorMetadata> metadata_list)
 	{
 		var json_array = new Json.Array();
@@ -343,219 +342,29 @@ Examples:
 		generator.set_indent(2);
 		stdout.printf("%s\n", generator.to_data(null));
 	}
-	
-	private async void run_dump_vector(string folder_path, string ast_path) throws Error
+
+	private async void run_dump_vector(string abs_folder, string ast_path) throws Error
 	{
-		this.ensure_data_dir();
-		
-		var sql_db = new SQ.Database(this.db_path, false);
-		OLLMfiles.SQT.VectorMetadata.initDB(sql_db);
-		
-		// Get dimension and load vector DB (same as run_search)
-		if (this.config.loaded) {
-			yield this.ensure_config();
-		} else {
-			yield this.tool_config_client("embed", opt_url, opt_api_key, opt_embed_model);
-			this.save_config();
+		var response = yield this.rpc.call(new OLLMrpc.Request() {
+			method = "Codebase.debug_get",
+			param = new OLLMfilesd.VectorParams() {
+				path = abs_folder,
+				ast_path = ast_path
+			}
+		});
+		if (response.error != null) {
+			throw new GLib.IOError.FAILED(response.error.message);
 		}
-		var temp_db = new OLLMvector.Database(this.config,
-			this.vector_db_path, OLLMvector.Database.DISABLE_INDEX);
-		var dimension = yield temp_db.embed_dimension();
-		var vector_db = new OLLMvector.Database(this.config, this.vector_db_path, dimension);
-		
-		// Load folder from database (same as run_search)
-		var file = GLib.File.new_for_path(folder_path);
-		if (!file.query_exists()) {
-			throw new GLib.IOError.NOT_FOUND("Folder not found: " + folder_path);
-		}
-		var abs_path = file.get_path();
-		if (abs_path == null) {
-			throw new GLib.IOError.FAILED("Failed to get absolute path for: " + folder_path);
-		}
-		var manager = new OLLMfiles.ProjectManager(sql_db);
-		var results_list = new Gee.ArrayList<OLLMfiles.FileBase>();
-		var query_obj = OLLMfiles.FileBase.query(sql_db, manager);
-		var stmt = query_obj.selectPrepare(
-				"SELECT " + string.joinv(",", query_obj.getColsExcept(null)) +
-					 " FROM filebase WHERE path = $path AND delete_id = 0");
-		stmt.bind_text(stmt.bind_parameter_index("$path"), abs_path);
-		query_obj.selectExecute(stmt, results_list);
-		OLLMfiles.Folder? search_folder = null;
-		if (results_list.size > 0 && results_list[0] is OLLMfiles.Folder) {
-			search_folder = (OLLMfiles.Folder)results_list[0];
-		} else {
-			throw new GLib.IOError.NOT_FOUND("Folder not found in database: " + abs_path);
-		}
-		yield search_folder.load_files_from_db();
-		
-		var file_ids = search_folder.project_files.get_ids("");
-		if (file_ids.size == 0) {
-			throw new GLib.IOError.FAILED("No files found in folder");
-		}
-		
-		var rows = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
-		OLLMfiles.SQT.VectorMetadata.query(sql_db).select(
-			"WHERE file_id IN (" + string.joinv(",", file_ids.to_array()) +
-				") AND ast_path = '" + ast_path.replace("'", "''") +
-				"' ORDER BY id DESC LIMIT 1",
-			rows
-		);
-		if (rows.size == 0) {
-			throw new GLib.IOError.NOT_FOUND("No vector found for AST path: " + ast_path);
-		}
-		var vector_id = rows.get(0).vector_id;
-		
-		var vector = vector_db.reconstruct_vector(vector_id);
-		for (int i = 0; i < vector.length; i++) {
-			stdout.printf("%.9g\n", vector[i]);
+		stdout.printf("%s", response.msg);
+		if (!response.msg.has_suffix("\n")) {
+			stdout.printf("\n");
 		}
 	}
-	
-	private async void run_search(string folder_path, string query) throws Error
+
+	private async void run_search(string abs_folder, string query) throws Error
 	{
 		stdout.printf("=== Code Vector Search ===\n\n");
-		
-		GLib.debug("run_search: data_dir=%s db_path=%s vector_db_path=%s", this.data_dir, this.db_path, this.vector_db_path);
-		
-		this.ensure_data_dir();
-		
-		var sql_db = new SQ.Database(this.db_path, false);
-		OLLMfiles.SQT.VectorMetadata.initDB(sql_db);
-		GLib.debug("Using database: %s", this.db_path);
-		
-		var manager = new OLLMfiles.ProjectManager(sql_db);
-		
-		OLLMchat.Client embed_client;
-		
-		if (this.config.loaded) {
-			yield this.ensure_config();
-			embed_client = yield this.tool_config_client("embed");
-		} else {
-			// Get client and verify model (tool_config_client will check model availability and apply CLI override)
-			embed_client = yield this.tool_config_client("embed", opt_url, opt_api_key, opt_embed_model);
-			
-			// Save config after all checks are complete
-			this.save_config();
-		}
-		
-		// Get dimension first, then create database
-		var temp_db = new OLLMvector.Database(this.config, 
-			this.vector_db_path, OLLMvector.Database.DISABLE_INDEX);
-		var dimension = yield temp_db.embed_dimension();
-		var vector_db = new OLLMvector.Database(this.config, this.vector_db_path, dimension);
-		
-		GLib.debug("Using vector database: %s", this.vector_db_path);
-		
-		// Look up folder from database
-		var file = GLib.File.new_for_path(folder_path);
-		if (!file.query_exists()) {
-			throw new GLib.IOError.NOT_FOUND("Folder not found: " + folder_path);
-		}
-		
-		var abs_path = file.get_path();
-		if (abs_path == null) {
-			throw new GLib.IOError.FAILED("Failed to get absolute path for: " + folder_path);
-		}
-		
-		var results_list = new Gee.ArrayList<OLLMfiles.FileBase>();
-		var query_obj = OLLMfiles.FileBase.query(sql_db, manager);
-		var stmt = query_obj.selectPrepare(
-				"SELECT " + string.joinv(",", query_obj.getColsExcept(null)) +
-					 " FROM filebase WHERE path = $path AND delete_id = 0");
-		stmt.bind_text(stmt.bind_parameter_index("$path"), abs_path);
-		query_obj.selectExecute(stmt, results_list);
-		
-		OLLMfiles.Folder? search_folder = null;
-		if (results_list.size > 0 && results_list[0] is OLLMfiles.Folder) {
-			search_folder = (OLLMfiles.Folder)results_list[0];
-		} else {
-			throw new GLib.IOError.NOT_FOUND("Folder not found in database: " + abs_path);
-		}
-		
-		// Load files into folder's project_files
-		yield search_folder.load_files_from_db();
-		
-		// Get file IDs: either all in folder (filtered by language) or single file when --only-file is set
-		var language_filter = opt_language;
-		Gee.ArrayList<string> file_ids;
-		if (opt_only_file != "") {
-			var resolved_path = GLib.Path.is_absolute(opt_only_file) ?
-				opt_only_file : GLib.Path.build_filename(abs_path, opt_only_file);
-			var project_file = search_folder.project_files.child_map.get(resolved_path);
-			if (project_file == null) {
-				throw new GLib.IOError.NOT_FOUND("File not found in project: " + opt_only_file);
-			}
-			file_ids = new Gee.ArrayList<string>();
-			file_ids.add(project_file.file.id.to_string());
-		} else {
-			file_ids = search_folder.project_files.get_ids(language_filter);
-		}
-		
-		if (file_ids.size == 0) {
-			if (language_filter != "") {
-				throw new GLib.IOError.FAILED("No files found in folder matching language filter: " + language_filter);
-			} else {
-				throw new GLib.IOError.FAILED("No files found in folder");
-			}
-		}
-		
-		// Build filtered vector IDs
-		var filtered_vector_ids = new Gee.ArrayList<int>();
-		
-		// Build SQL query string
-		var file_id_list = string.joinv(",", file_ids.to_array());
-		var sql = "SELECT DISTINCT vector_id FROM vector_metadata WHERE file_id IN (" + file_id_list + ")";
-		
-		if (opt_element_type != "") {
-			sql = sql + " AND element_type = $element_type";
-		}
-		if (opt_category != "") {
-			sql = sql + " AND file_id IN (SELECT file_id FROM vector_metadata fvm WHERE fvm.category = $category) AND element_type IN ('document','section')";
-		}
-		
-		GLib.debug("file_id_list from get_ids: %u IDs", file_ids.size);
-		GLib.debug("Filter SQL: %s", sql);
-		
-		var vector_query = OLLMfiles.SQT.VectorMetadata.query(sql_db);
-		var vector_stmt = vector_query.selectPrepare(sql);
-		
-		if (opt_element_type != "") {
-			vector_stmt.bind_text(
-				vector_stmt.bind_parameter_index("$element_type"), opt_element_type);
-		}
-		if (opt_category != "") {
-			vector_stmt.bind_text(
-				vector_stmt.bind_parameter_index("$category"), opt_category);
-		}
-		
-		foreach (var vector_id_str in vector_query.fetchAllString(vector_stmt)) {
-			filtered_vector_ids.add((int)int64.parse(vector_id_str));
-		}
-		
-		GLib.debug("Filtered to %lld vector IDs", filtered_vector_ids.size);
-		
-		if (filtered_vector_ids.size == 0) {
-			stdout.printf("No document matches the criteria.\n");
-			return;
-		}
-		
-		// Create search instance (optional set via object initializer)
-		var search = new OLLMvector.Search.Search(
-			vector_db,
-			sql_db,
-			this.config,
-			search_folder,
-			query,
-			filtered_vector_ids
-		) {
-			max_results = (uint64)opt_max_results,
-			element_type_filter = opt_element_type,
-			category_filter = opt_category,
-			debug_ast_path = opt_debug_ast_path
-		};
-		
-		// Execute search
-		stdout.printf("Folder: %s\n", search_folder.path);
+		stdout.printf("Folder: %s\n", abs_folder);
 		stdout.printf("Query: %s\n", query);
 		if (opt_language != "" || opt_element_type != "" || opt_category != "" || opt_only_file != "") {
 			var filters = new Gee.ArrayList<string>();
@@ -574,49 +383,24 @@ Examples:
 			stdout.printf("Filters: %s\n", string.joinv(", ", filters.to_array()));
 		}
 		stdout.printf("Max results: %d\n\n", opt_max_results);
-		
-		var results = yield search.execute();
-		
-		if (results.size == 0) {
-			stdout.printf("No results found.\n");
-			return;
+
+		var response = yield this.rpc.call(new OLLMrpc.Request() {
+			method = "Codebase.search",
+			param = new OLLMfilesd.VectorParams() {
+				path = abs_folder,
+				query = query,
+				language = opt_language,
+				element_type = opt_element_type,
+				category = opt_category,
+				max_results = opt_max_results,
+				only_file = opt_only_file,
+				format = opt_json ? "json" : ""
+			}
+		});
+		if (response.error != null) {
+			throw new GLib.IOError.FAILED(response.error.message);
 		}
-		
-		// Output results
-		if (opt_json) {
-			this.output_json(results);
-		} else {
-			this.output_text(results);
-		}
-	}
-	
-	private void output_text(Gee.ArrayList<OLLMvector.Search.SearchResult> results)
-	{
-		stdout.printf("Found %d result(s):\n\n", results.size);
-		foreach (var result in results) {
-			stdout.printf("%s", result.to_markdown(opt_max_snippet_lines));
-		}
-	}
-	
-	private void output_json(Gee.ArrayList<OLLMvector.Search.SearchResult> results)
-	{
-		var json_array = new Json.Array();
-		
-		foreach (var result in results) {
-			var json_node = Json.gobject_serialize(result);
-			json_array.add_element(json_node);
-		}
-		
-		var json_root = new Json.Node(Json.NodeType.ARRAY);
-		json_root.set_array(json_array);
-		
-		var generator = new Json.Generator();
-		generator.set_root(json_root);
-		generator.set_pretty(true);
-		generator.set_indent(2);
-		
-		var json_string = generator.to_data(null);
-		stdout.printf("%s\n", json_string);
+		stdout.printf("%s\n", response.msg);
 	}
 }
 
@@ -625,4 +409,3 @@ int main(string[] args)
 	var app = new VectorSearchApp();
 	return app.run(args);
 }
-

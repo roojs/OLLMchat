@@ -53,7 +53,7 @@ else
   tree_sitter_dep = dependency('tree-sitter', required: true)
 endif
 
-# --- FAISS (libocvector) ---
+# --- FAISS (libocvector2 / ollmfilesd) ---
 if bundle_using_sysroot
   faiss_lib = cc.find_library('faiss', dirs: bundle_lib_dirs, required: true)
   faiss_dep = declare_dependency(
@@ -66,7 +66,7 @@ else
   )
 endif
 
-# --- BLAS/LAPACK link flags for libocvector (not passed through Vala deps) ---
+# --- BLAS/LAPACK link flags for libocvector2 (not passed through Vala deps) ---
 blas_dep = dependency('blas', required: false)
 lapack_dep = dependency('lapack', required: false)
 openblas_lib = cc.find_library('openblas', dirs: openblas_dirs, required: false)

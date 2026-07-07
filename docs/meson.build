@@ -312,9 +312,6 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
     '../liboccoder/List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
     '../liboccoder/V2/Approvals.vala',
-    # libocvector sources (V2 stub Registry only — search tool is liboctools/CodebaseSearch)
-    '../libocvector/namespace.vala',  # Namespace documentation
-    '../libocvector/V2/Registry.vala',
     # examples base classes
     '../examples/TestAppBase.vala',
     # libollmchatgtk sources (depends on libollmchat, libocmarkdown, libocmarkdowngtk)

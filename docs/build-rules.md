@@ -8,18 +8,13 @@ Canonical build workflow for this project. Written for **AI agents** — **manda
 
 ### Standard Build
 
-V2 is the default (`v2testing=true`). Plain `meson setup build` builds the RPC + `ollmfilesd` app.
+V2 is the only supported build (`v2testing=true`, the default). Plain `meson setup build` builds the RPC + `ollmfilesd` app and vector CLI examples.
 
 ```bash
 ninja -C build
 ```
 
-Shipping v1 (in-process libs, examples, tests):
-
-```bash
-meson setup build -Dv2testing=false
-ninja -C build
-```
+Shipping v1 (`-Dv2testing=false`) was removed; Meson fails at configure time if you pass it.
 
 ### Rebuilding After Changes
 

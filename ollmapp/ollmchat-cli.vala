@@ -39,7 +39,6 @@ namespace OLLMapp
 		private OLLMchat.History.Manager? manager { get; set; default = null; }
 		private OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		private OLLMtools.Registry tools_registry { get; set; }
-		private OLLMvector.Registry vector_registry { get; set; }
 		private OLLMmcp.Registry mcp_registry { get; set; }
 		
 		protected string help { get; set; default = """
@@ -93,17 +92,14 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			
 			// Phase 1: Initialize tool config types (before loading config)
 			this.tools_registry = new OLLMtools.Registry();
-			this.vector_registry = new OLLMvector.Registry();
 			this.mcp_registry = new OLLMmcp.Registry();
 			this.tools_registry.init_config();
-			this.vector_registry.init_config();
 			this.mcp_registry.init_config();
 			
 			// Load config (no vector types needed for simple CLI)
 			this.config = this.load_config();
 			 
 			this.tools_registry.setup_config_defaults(this.config);
-			this.vector_registry.setup_config_defaults(this.config);
 			this.mcp_registry.setup_config_defaults(this.config);
 			 
 		}
@@ -472,7 +468,6 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 
 		// Register tools with manager (so agent has access to them)
 		this.tools_registry.fill_tools(this.manager, this.project_manager);
-		this.vector_registry.fill_tools(this.manager, this.project_manager);
 		this.mcp_registry.fill_tools(this.manager, this.project_manager);
 
 			// Ensure Manager's session has just-ask agent activated
@@ -536,7 +531,6 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			
 		// Fill manager with tools (after project manager is set up)
 		this.tools_registry.fill_tools(this.manager, this.project_manager);
-		this.vector_registry.fill_tools(this.manager, this.project_manager);
 		this.mcp_registry.fill_tools(this.manager, this.project_manager);
 
 			// Verify tool exists

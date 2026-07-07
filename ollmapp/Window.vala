@@ -316,7 +316,6 @@ namespace OLLMapp
 				config.connections.set(this.bootstrap_dialog.verified_connection.url,
 					this.bootstrap_dialog.verified_connection);
 				app.tools_registry.setup_config_defaults(config);
-				app.vector_registry.setup_config_defaults(config);
 				
 				// Create empty ModelUsage objects for default_model and title_model
 				config.usage.set("default_model", new OLLMchat.Settings.ModelUsage() {
@@ -436,7 +435,6 @@ namespace OLLMapp
 			// Use library-level registries from Application to register tools
 			var app = this.app as OllmchatApplication;
 			app.tools_registry.fill_tools(this.history_manager, this.project_manager);
-			app.vector_registry.fill_tools(this.history_manager, this.project_manager);
 			app.mcp_registry.fill_tools(this.history_manager, this.project_manager);
 
 			// Register CodeAssistant agent

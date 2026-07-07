@@ -27,9 +27,6 @@ namespace OLLMapp
 		public OLLMchat.Settings.Config2 config { get; set; }
 		public string data_dir { get; set; }
 		public OLLMtools.Registry tools_registry { get; set; }
-		// TODO(v2): drop vector_registry when libocvector stub is removed (2.10.4.23).
-		// CodebaseSearch is registered via liboctools/Registry (daemon RPC).
-		public OLLMvector.Registry vector_registry { get; set; }
 		public OLLMmcp.Registry mcp_registry { get; set; }
 		
 		public static bool opt_debug = false;
@@ -66,10 +63,8 @@ namespace OLLMapp
 			// Register tool config types before loading config (Phase 1: config type registration)
 			// Use library-level registries to register tools
 			this.tools_registry = new OLLMtools.Registry();
-			this.vector_registry = new OLLMvector.Registry();
 			this.mcp_registry = new OLLMmcp.Registry();
 			this.tools_registry.init_config();
-			this.vector_registry.init_config();
 			this.mcp_registry.init_config();
 					
 			// Load config after registrations
@@ -77,7 +72,6 @@ namespace OLLMapp
 			// Ensure config contains all tool entries (fill defaults if missing)
 			if (this.config.loaded) {
 				this.tools_registry.setup_config_defaults(this.config);
-				this.vector_registry.setup_config_defaults(this.config);
 				this.mcp_registry.setup_config_defaults(this.config);
 			}
 			

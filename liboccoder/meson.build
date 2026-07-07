@@ -108,11 +108,10 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollmchatgtk',
-  meson.current_build_dir() / '..' / 'libocvector',
   meson.current_build_dir() / '..' / 'liboctools'
 ])
 
-occoder_lib_deps = [occoder_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ocvector_vapi_dep, ocmarkdown_vapi_dep]
+occoder_lib_deps = [occoder_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ocmarkdown_vapi_dep]
 occoder_vala_args = [
   '--pkg=sqlite3',
   '--pkg=ocsqlite',
@@ -128,12 +127,10 @@ occoder_vala_args = [
   '--pkg=ollmchat',
   '--pkg=ollamaweb',
   '--pkg=ocmarkdown',
-  '--pkg=ocvector',
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
   '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
-  '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
   '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
   '--vapidir', '/usr/share/vala/vapi',
@@ -182,11 +179,7 @@ occoder_vapi_gen_pkgs = [
   '--pkg', 'json-glib-1.0',
   '--pkg', 'gee-0.8',
   '--pkg', 'libgit2-glib-1.0',
-  '--pkg', 'ocvector',
 ]
-if not get_option('v2testing')
-  occoder_vapi_gen_pkgs += ['--pkg', 'fiass']
-endif
 occoder_vapi_gen_pkgs += ['--pkg', 'ocrpc']
 
 occoder_vapi_vapidirs = [
@@ -198,12 +191,11 @@ occoder_vapi_vapidirs = [
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-  '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
   '--vapidir', meson.current_build_dir(),
   '--vapidir', '/usr/share/vala/vapi',
 ]
 
-occoder_vapi_depends = [occoder_base_lib, ocfiles_vapi, ollmchat_base_lib, ollamaweb_vapi, ocmarkdown_vapi, ocvector_vapi, ocrpc_vapi]
+occoder_vapi_depends = [occoder_base_lib, ocfiles_vapi, ollmchat_base_lib, ollamaweb_vapi, ocmarkdown_vapi, ocrpc_vapi]
 
 # Manually generate occoder.vapi with correct command line order
 occoder_vapi = custom_target('occoder-vapi',

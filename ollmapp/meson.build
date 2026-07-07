@@ -270,7 +270,7 @@ ollmchat_sources = [
   'SettingsDialog/Rows/IntRow.vala',
   ollmchat_resources
 ]
-# VectorRegistry.vala removed — Application.vala uses OLLMvector.Registry directly.
+# VectorRegistry.vala removed — CodebaseSearch is registered via liboctools/Registry.
 if host_machine.system() == 'windows'
   win_mod = import('windows')
   ollmchat_sources += win_mod.compile_resources('ollmchat.rc')
@@ -284,7 +284,6 @@ ollmchat_exe_deps = [
   ocsqlite_vapi_dep,
   occoder_vapi_dep,
   ocfiles_vapi_dep,
-  ocvector_vapi_dep,
   octools_vapi_dep,
   ocmcp_vapi_dep,
 ]
@@ -301,14 +300,12 @@ ollmchat_vala_args = [
   '--pkg=ocmcp',
   '--pkg=ollmchat',
   '--pkg=ollamaweb',
-  '--pkg=ocvector',
   '--pkg=libgit2-glib-1.0',
   '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
   '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
   '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
   '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
-  '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
   '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
   '--vapidir', meson.current_build_dir() / '..' / 'libocmcp',
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',  # For ollmchat.vapi
@@ -321,25 +318,18 @@ if get_option('v2testing')
     '--pkg=ocrpc',
     '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
   ]
-else
-  ollmchat_exe_deps += ocrpc_vapi_dep
-  ollmchat_vala_args += [
-    '--pkg=fiass',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
-  ]
 endif
 
 ollmchat = executable('ollmchat',
   dependencies: ollmchat_exe_deps,
   sources: ollmchat_sources,
-  link_with: [ollmchat_base_lib, ollmchatgtk_lib],  # Use ocvector_vapi_dep (link_args) instead of link_with to avoid ocvector-meson.vapi
+  link_with: [ollmchat_base_lib, ollmchatgtk_lib],
   include_directories: [
     include_directories('../libollmchat'),
     include_directories('../libollamaweb'),
     include_directories('../libollmchatgtk'),
     include_directories('../libocmarkdown'),
     include_directories('../libocmarkdowngtk'),
-    include_directories('../libocvector'),  # For ocvector.h (included by OLLMvector.Tool.CodebaseSearchTool)
     include_directories('../libocsqlite'),  # For ocsqlite.h (transitive dependency)
     include_directories('../libocfiles')   # For ocfiles.h (transitive dependency)
   ],
@@ -467,7 +457,6 @@ ollmchat_cli_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocfiles',
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'liboctools',
-  meson.current_build_dir() / '..' / 'libocvector',
   meson.current_build_dir() / '..' / 'libocmcp'
 ])
 
@@ -479,7 +468,6 @@ if get_option('v2testing')
     ocfiles_vapi_dep,
     ollmchat_vapi_dep,
     octools_vapi_dep,
-    ocvector_vapi_dep,
     ocmcp_vapi_dep,
     ocrpc_vapi_dep,
   ],
@@ -489,7 +477,6 @@ if get_option('v2testing')
     include_directories('../libollmchat'),
     include_directories('../libollamaweb'),
     include_directories('../libocfiles'),
-    include_directories('../libocvector'),
     include_directories('../libocsqlite')
   ],
   build_rpath: ollmchat_cli_build_rpath,
@@ -501,13 +488,11 @@ if get_option('v2testing')
     '--pkg=ollmchat',
     '--pkg=octools',
     '--pkg=ocmcp',
-    '--pkg=ocvector',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmcp',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
     '--vapidir', meson.current_source_dir() / '../vapi'
   ],
   install: true,

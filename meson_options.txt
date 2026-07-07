@@ -29,5 +29,5 @@ option(
   'v2testing',
   type: 'boolean',
   value: true,
-  description: 'V2 RPC + ollmfilesd build (default). Use -Dv2testing=false for shipping v1.'
+  description: 'V2 RPC + ollmfilesd build (required; v2testing=false errors at configure time).'
 )
