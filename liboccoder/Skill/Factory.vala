@@ -117,7 +117,7 @@ namespace OLLMcoder.Skill
 				return;
 			}
 			try {
-				this.widget.manager.load_projects_from_db();
+				yield this.widget.manager.load_projects_from_db();
 				yield this.widget.manager.restore_active_state();
 				yield this.widget.apply_manager_state();
 			} catch (GLib.Error e) {

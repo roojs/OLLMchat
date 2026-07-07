@@ -45,7 +45,7 @@ namespace OLLMrpc.Transport
 				var fd = this.stream.get_socket().get_fd();
 				this.channel = new GLib.IOChannel.unix_new(fd);
 				this.channel.set_encoding(null);
-				this.channel.set_buffered(true);
+				this.channel.set_buffered(false);
 				this.channel_open = true;
 				this.input_watch_id = this.channel.add_watch(
 					GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
@@ -125,31 +125,37 @@ namespace OLLMrpc.Transport
 				this.stop();
 				return false;
 			}
-			if ((condition & GLib.IOCondition.IN) == 0) {
-				return this.running;
-			}
 			if (!this.channel_open || this.bin == null) {
 				return this.running;
 			}
-
-			OLLMrpc.Request? request = null;
-			try {
-				request = this.bin.parse() as OLLMrpc.Request;
-			} catch (GLib.Error e) {
-				GLib.error("%s", e.message);
-			}
-			if (request == null) {
-				GLib.warning("connection read: expected Request");
+			if ((condition & GLib.IOCondition.IN) == 0) {
 				return this.running;
 			}
 
-			GLib.debug(
-				"recv id=%d method=%s",
-				request.id,
-				request.method
+			do {
+				if (!this.channel_open || this.bin == null) {
+					break;
+				}
+				OLLMrpc.Request? request = null;
+				try {
+					request = this.bin.parse() as OLLMrpc.Request;
+				} catch (GLib.Error e) {
+					GLib.error("%s", e.message);
+				}
+				if (request == null) {
+					GLib.warning("connection read: expected Request");
+					break;
+				}
+				GLib.debug(
+					"recv id=%d method=%s",
+					request.id,
+					request.method
+				);
+				request.connection = this;
+				request.dispatch();
+			} while (
+				(source.get_buffer_condition() & GLib.IOCondition.IN) != 0
 			);
-			request.connection = this;
-			request.dispatch();
 			return this.running;
 		}
 	}

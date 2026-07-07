@@ -16,35 +16,32 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp.SettingsDialog
+namespace OLLMapp
 {
 	/**
-	 * Dialog that shows a spinner while checking connection.
-	 * 
-	 * Used during connection verification to provide user feedback.
-	 * 
+	 * Modal spinner with a status line (startup, connection checks, etc.).
+	 *
 	 * @since 1.0
 	 */
-	public class CheckingConnectionDialog : Adw.Dialog
+	public class BusyDialog : Adw.Dialog
 	{
 		/**
 		 * Parent window to attach the dialog to.
 		 */
 		public Gtk.Window parent { get; construct; }
-		
+
+		public Gtk.Label status_label { get; private set; }
+
 		/**
-		 * Creates a new CheckingConnectionDialog.
-		 * 
 		 * @param parent Parent window to attach the dialog to
 		 */
-		public CheckingConnectionDialog(Gtk.Window parent)
+		public BusyDialog(Gtk.Window parent)
 		{
 			Object(
-				title: "Checking Connection",
+				title: "Please wait",
 				parent: parent
 			);
-			
-			// Create content box
+
 			var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 12) {
 				margin_top = 24,
 				margin_bottom = 24,
@@ -52,7 +49,7 @@ namespace OLLMapp.SettingsDialog
 				margin_end = 24,
 				spacing = 12
 			};
-			
+
 			var spinner = new Gtk.Spinner() {
 				spinning = true,
 				halign = Gtk.Align.CENTER,
@@ -60,34 +57,16 @@ namespace OLLMapp.SettingsDialog
 				height_request = 48
 			};
 			box.append(spinner);
-			
-			var label = new Gtk.Label("Verifying connection to server...") {
-				halign = Gtk.Align.CENTER
+
+			this.status_label = new Gtk.Label("") {
+				halign = Gtk.Align.CENTER,
+				wrap = true,
+				wrap_mode = Pango.WrapMode.WORD_CHAR,
+				max_width_chars = 40
 			};
-			box.append(label);
-			
+			box.append(this.status_label);
+
 			this.set_child(box);
-		}
-		
-		/**
-		 * Shows the dialog.
-		 * 
-		 * Parent is the main OllmchatWindow - should always be valid and visible when settings are opened.
-		 */
-		public void show_dialog()
-		{
-		
-			this.present(this.parent);
-		}
-		
-		/**
-		 * Hides the dialog.
-		 * 
-		 * Hides the dialog so it can be reopened later.
-		 */
-		public void hide_dialog()
-		{
-			this.close();
 		}
 	}
 }

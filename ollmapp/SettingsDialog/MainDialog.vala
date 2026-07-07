@@ -65,7 +65,6 @@ namespace OLLMapp.SettingsDialog
 		/**
 		 * Checking connection dialog (reused for connection verification)
 		 */
-		private CheckingConnectionDialog checking_connection_dialog;
 		
 		/**
 		 * Current parent window (stored for use in check_all_connections)
@@ -204,13 +203,13 @@ namespace OLLMapp.SettingsDialog
 			// Present the main dialog immediately
 			
 			// Create and show checking connection dialog
-			var checking_connection_dialog = new CheckingConnectionDialog(this.parent);
-			checking_connection_dialog.show_dialog();
+			var busy_dialog = new BusyDialog(this.parent);
+			busy_dialog.status_label.label = "Checking connection…";
+			busy_dialog.present(this.parent);
 
 			yield this.check_all_connections();
-			
-			// Hide checking connection dialog
-			checking_connection_dialog.hide_dialog();
+
+			busy_dialog.close();
 			
 			// Load tools and configs for tools page (non-blocking)
 			this.tools_page.load_tools();

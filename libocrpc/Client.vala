@@ -75,7 +75,8 @@ namespace OLLMrpc
 
 		/**
 		 * Emitted when {@link call} completes with a daemon
-		 * {@link Response.error}. Transport and wire faults abort instead.
+		 * {@link Response.error}. Transport timeouts and disconnects surface as
+		 * {@link Response.error} and this signal; wire/protocol faults abort.
 		 * {@link call} still returns the response; callers may ignore errors when
 		 * the UI connects here (e.g. toast / dialog).
 		 */
@@ -237,14 +238,21 @@ namespace OLLMrpc
 					if (!this.connected || this.bin == null) {
 						return this.connected;
 					}
-					try {
-						var msg = this.bin.parse();
-						this.dispatch_message(msg);
-					} catch (GLib.IOError e) {
-						GLib.error("%s", e.message);
-					} catch (GLib.Error e) {
-						GLib.error("%s", e.message);
-					}
+					do {
+						if (!this.connected || this.bin == null) {
+							break;
+						}
+						try {
+							var msg = this.bin.parse();
+							this.dispatch_message(msg);
+						} catch (GLib.IOError e) {
+							GLib.error("%s", e.message);
+						} catch (GLib.Error e) {
+							GLib.error("%s", e.message);
+						}
+					} while (
+						(source.get_buffer_condition() & GLib.IOCondition.IN) != 0
+					);
 					return this.connected;
 				}
 			);
@@ -264,21 +272,35 @@ namespace OLLMrpc
 			} catch (GLib.Error e) {
 				this.pending.unset(hello_id);
 				this.connect_error = "write: " + e.message;
-				GLib.debug("hello write failed: %s", e.message);
+				GLib.critical(
+					"hello write id=%d: %s",
+					hello_id,
+					this.connect_error
+				);
 				this.disconnect();
 				return false;
 			}
 
-			var hello = yield this.wait_response(
-				hello_id,
-				hello_request.method,
-				hello_promise
-			);
+			Response hello;
+			try {
+				hello = yield this.wait_response(
+					hello_id,
+					hello_request.method,
+					hello_promise
+				);
+			} catch (GLib.Error e) {
+				this.pending.unset(hello_id);
+				this.connect_error = e.message != ""
+					? e.message
+					: "could not start or reach the filesystem daemon (ollmfilesd)";
+				this.disconnect();
+				return false;
+			}
 			if (hello.error != null) {
 				this.connect_error = hello.error.message != ""
 					? hello.error.message
 					: "could not start or reach the filesystem daemon (ollmfilesd)";
-				GLib.debug(
+				GLib.critical(
 					"hello failed id=%d: %s",
 					hello_id,
 					this.connect_error
@@ -425,11 +447,25 @@ namespace OLLMrpc
 				);
 			}
 
-			var response = yield this.wait_response(
-				request.id,
-				request.method,
-				promise
-			);
+			Response response;
+			try {
+				response = yield this.wait_response(
+					request.id,
+					request.method,
+					promise
+				);
+			} catch (GLib.Error e) {
+				this.pending.unset(request.id);
+				var transport_error = new Error(
+					(int) RpcErrorCode.INTERNAL_ERROR,
+					e.message
+				);
+				this.failed(request, transport_error);
+				return new Response() {
+					id = request.id,
+					error = transport_error
+				};
+			}
 			if (response.error != null) {
 				GLib.warning(
 					"%s id=%d: %s",
@@ -465,12 +501,13 @@ namespace OLLMrpc
 			try {
 				return yield promise.future.wait_async();
 			} catch (GLib.Error e) {
-				GLib.error(
+				GLib.critical(
 					"%s id=%d: %s",
 					method,
 					id,
 					e.message
 				);
+				throw e;
 			} finally {
 				if (timeout_id != 0) {
 					GLib.Source.remove(timeout_id);

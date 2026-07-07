@@ -46,6 +46,7 @@ namespace OLLMapp
 		private FileChangeBanner file_change_banner;
 		private VectorScanBanner vector_scan_banner;
 		public OLLMfiles.ProjectManager? project_manager { get; private set; default = null; }
+		internal BusyDialog? busy_dialog = null;
 
 		public OLLMchat.Agent.Base? session_agent()
 		{
@@ -251,6 +252,14 @@ namespace OLLMapp
 				yield this.show_bootstrap_dialog("");
 				return;
 			}
+
+			if (this.busy_dialog == null) {
+				this.busy_dialog =
+					new BusyDialog(this);
+			}
+			this.busy_dialog.status_label.label =
+				"Connecting to LLM server…";
+			this.busy_dialog.present(this);
 			
 			//GLib.debug("Config loaded successfully, initializing client");
 			var initializer = new Initialize(this);
@@ -348,6 +357,14 @@ namespace OLLMapp
 		 */
 		private async void initialize_after_bootstrap(OLLMchat.Settings.Config2 config)
 		{
+			if (this.busy_dialog == null) {
+				this.busy_dialog =
+					new BusyDialog(this);
+			}
+			this.busy_dialog.status_label.label =
+				"Connecting to LLM server…";
+			this.busy_dialog.present(this);
+
 			var initializer = new Initialize(this);
 			initializer.reinitialize.connect(() => {
 				this.load_config_and_initialize.begin();
@@ -379,6 +396,11 @@ namespace OLLMapp
 			this.project_manager = new OLLMfiles.ProjectManager();
 			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
 
+			if (this.busy_dialog != null) {
+				this.busy_dialog.status_label.label =
+					"Connecting to filesystem daemon…";
+			}
+
 			var hello = new OLLMrpc.Request() {
 				method = "Daemon.hello",
 				param = new OLLMfilesd.DaemonParams() {
@@ -387,6 +409,9 @@ namespace OLLMapp
 				}
 			};
 			if (!yield this.project_manager.rpc.connect(hello)) {
+				if (this.busy_dialog != null) {
+					this.busy_dialog.close();
+				}
 				var msg = this.project_manager.rpc.connect_error;
 				if (msg == "") {
 					msg = "could not start or reach the filesystem daemon (ollmfilesd)";
@@ -395,6 +420,11 @@ namespace OLLMapp
 				this.tool_error_banner.title = "Filesystem daemon: " + msg;
 				this.tool_error_banner.revealed = true;
 				return;
+			}
+
+			if (this.busy_dialog != null) {
+				this.busy_dialog.status_label.label =
+					"Loading workspace…";
 			}
 
 			this.project_manager.rpc.notification.connect((notif) => {
@@ -490,6 +520,10 @@ namespace OLLMapp
 			this.agent_dropdown.wire();
 
 			this.new_chat_button.sensitive = true;
+
+			if (this.busy_dialog != null) {
+				this.busy_dialog.close();
+			}
 			
 			// Create history browser and add to split view sidebar
 			this.history_browser = new OLLMchatGtk.HistoryBrowser(this.history_manager);

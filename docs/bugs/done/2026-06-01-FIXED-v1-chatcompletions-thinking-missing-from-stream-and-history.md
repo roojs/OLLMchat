@@ -10,7 +10,7 @@
 
 - ℹ️ `docs/bugs/done/2026-05-30-FIXED-chatcompletions-streaming-ui-missing.md` — prior v1 stream fix claimed `reasoning` / `reasoning_content` mapping
 - ℹ️ `docs/bugs/done/2026-06-01-FIXED-tool-calls-missing-history-and-out-of-order-stream-markers.md` — same session family (`12-50-30.json`)
-- ℹ️ `docs/plans/1.24.3-DONE-openai-api-chat.md` — spec: v1 delta `reasoning_content` → `Message.thinking`
+- ℹ️ `docs/plans/done/1.24.3-DONE-openai-api-chat.md` — spec: v1 delta `reasoning_content` → `Message.thinking`
 
 ---
 

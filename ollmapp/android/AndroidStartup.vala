@@ -55,8 +55,7 @@ namespace OLLMapp
 
 			while (true) {
 				var checking_dialog =
-					new SettingsDialog.CheckingConnectionDialog (
-						this.window);
+					new BusyDialog (this.window);
 
 				var working_conn = (OLLMchat.Settings.Connection?) null;
 				const uint MAX_CONN_ATTEMPTS = 5;
@@ -68,9 +67,11 @@ namespace OLLMapp
 							attempt);
 						GLib.Thread.usleep (1500000);
 					}
-					checking_dialog.show_dialog ();
+					checking_dialog.status_label.label =
+						"Connecting to LLM server…";
+					checking_dialog.present(this.window);
 					yield config.check_connections ();
-					checking_dialog.hide_dialog ();
+					checking_dialog.close ();
 					working_conn = config.working_connection ();
 					if (working_conn != null) {
 						break;

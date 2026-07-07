@@ -23,7 +23,7 @@ namespace OLLMapp
 	 *
 	 * Copy of {@link OLLMapp.SettingsDialog.ConnectionAdd} bootstrap behaviour
 	 * with Android-specific defaults (empty host, masked API key) and
-	 * {@link OLLMapp.SettingsDialog.CheckingConnectionDialog} during verify —
+	 * {@link OLLMapp.BusyDialog} during verify —
 	 * same pattern as {@link OLLMapp.SettingsDialog.MainDialog.show_dialog}.
 	 *
 	 * @since 1.0
@@ -191,11 +191,12 @@ namespace OLLMapp
 			this.spinner.spinning = true;
 			this.spinner.visible = true;
 
-			SettingsDialog.CheckingConnectionDialog? checking = null;
+			BusyDialog? checking = null;
 			var parent = this.get_root() as Gtk.Window;
 			if (parent != null) {
-				checking = new SettingsDialog.CheckingConnectionDialog(parent);
-				checking.show_dialog();
+				checking = new BusyDialog(parent);
+				checking.status_label.label = "Checking connection…";
+				checking.present(parent);
 			}
 
 			try {
@@ -228,7 +229,7 @@ namespace OLLMapp
 				this.error_occurred("Failed to connect: " + e.message);
 			} finally {
 				if (checking != null) {
-					checking.hide_dialog();
+					checking.close();
 				}
 				this.next_button.sensitive = true;
 				this.spinner.spinning = false;

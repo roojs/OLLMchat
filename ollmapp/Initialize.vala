@@ -58,30 +58,48 @@ namespace OLLMapp
 		{
 			// Loop until both connection and model succeed
 			while (true) {
-				// Check all connections and get first working one
-				var checking_dialog = new SettingsDialog.CheckingConnectionDialog(this.window);
-				checking_dialog.show_dialog();
+				if (this.window.busy_dialog != null) {
+					this.window.busy_dialog.status_label.label =
+						"Connecting to LLM server…";
+					this.window.busy_dialog.present(this.window);
+				}
 				yield config.check_connections();
-				checking_dialog.hide_dialog();
-				
+
 				var working_conn = config.working_connection();
 				if (working_conn == null) {
+					if (this.window.busy_dialog != null) {
+						this.window.busy_dialog.close();
+					}
 					yield this.show_settings(
 						"No working connection found. Please check your connection settings.",
 						"connections");
 					return false;
 				}
-				
+
+				if (this.window.busy_dialog != null) {
+					this.window.busy_dialog.status_label.label =
+						"Verifying models…";
+				}
 				// Found a working connection - now ensure default model is set before creating history manager
 				if (!(yield this.initialize_model(config, working_conn))) {
+					if (this.window.busy_dialog != null) {
+						this.window.busy_dialog.close();
+					}
 					yield this.show_settings(
 						"No chat model found (only embedding models available). Please add or select a model.",
 						"models");
 					return false;
 				}
-				
+
+				if (this.window.busy_dialog != null) {
+					this.window.busy_dialog.status_label.label =
+						"Checking tool models…";
+				}
 				// Ensure all required models are available (early return on failure)
 				if (!(yield this.ensure_required_models(config))) {
+					if (this.window.busy_dialog != null) {
+						this.window.busy_dialog.close();
+					}
 					yield this.show_settings(
 						"Required models are not available. Please ensure models are downloaded.",
 						"tools");
@@ -102,8 +120,13 @@ namespace OLLMapp
 				try {
 					yield this.window.history_manager.ensure_model_usage();
 				} catch (GLib.Error e) {
-					GLib.warning("Initialize.vala: Model verification failed: %s. Fixing default model.", e.message);
+					GLib.warning(
+						"Model verification failed: %s. Fixing default model.",
+						e.message);
 					if (!(yield this.initialize_model(config, working_conn))) {
+						if (this.window.busy_dialog != null) {
+							this.window.busy_dialog.close();
+						}
 						yield this.show_settings(
 							"No chat model found (only embedding models available). Please add or select a model.",
 							"models");
@@ -292,6 +315,9 @@ namespace OLLMapp
 				// Model not available - need to pull it
 				// Show settings dialog if not already shown
 				if (!this.window.settings_dialog.visible) {
+					if (this.window.busy_dialog != null) {
+						this.window.busy_dialog.close();
+					}
 					this.window.settings_dialog.show_dialog.begin("tools");
 				}
 				

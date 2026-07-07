@@ -484,9 +484,7 @@ namespace OLLMcoder
 			// FIXME = intialize first.. and shwo...
 			try {
 				// Load projects from database
-				this.widget.manager.load_projects_from_db();
-				
-				// Restore active state (sets manager.active_project and manager.active_file)
+				yield this.widget.manager.load_projects_from_db();
 				yield this.widget.manager.restore_active_state();
 				
 				// Apply UI state (opens project/file in editor)

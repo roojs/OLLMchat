@@ -122,10 +122,11 @@ namespace OLLMapp.SettingsDialog
 		{
 			AndroidConnectionConfigTls.apply_to_config(this.app.config);
 
-			var checking_dialog = new CheckingConnectionDialog(this.parent);
-			checking_dialog.show_dialog();
+			var busy_dialog = new OLLMapp.BusyDialog(this.parent);
+			busy_dialog.status_label.label = "Checking connection…";
+			busy_dialog.present(this.parent);
 			yield this.check_all_connections();
-			checking_dialog.hide_dialog();
+			busy_dialog.close();
 
 			this.progress_banner.initialize_existing_pulls();
 
