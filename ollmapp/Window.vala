@@ -44,7 +44,7 @@ namespace OLLMapp
 		private Gtk.Image settings_icon;
 		private Adw.Banner tool_error_banner;
 		private FileChangeBanner file_change_banner;
-		private VectorScanBanner vector_scan_banner;
+		private ActivityBanner activity_banner;
 		public OLLMfiles.ProjectManager? project_manager { get; private set; default = null; }
 		internal BusyDialog? busy_dialog = null;
 
@@ -171,7 +171,11 @@ namespace OLLMapp
 			this.file_change_banner = new FileChangeBanner(this);
 			
 			// Create vector scan banner (creates revealer internally)
-			this.vector_scan_banner = new VectorScanBanner();
+			this.activity_banner = new ActivityBanner();
+
+			this.activity_notification.connect((notif) => {
+				this.activity_banner.notification(notif);
+			});
 				
 			// Add header bar to toolbar view's top slot
 			toolbar_view.add_top_bar(this.header_bar);
@@ -183,7 +187,7 @@ namespace OLLMapp
 			toolbar_view.add_top_bar(this.file_change_banner.revealer);
 			
 			// Add vector scan banner below file change banner
-			toolbar_view.add_top_bar(this.vector_scan_banner.revealer);
+			toolbar_view.add_top_bar(this.activity_banner.revealer);
 
 			// Create overlay split view
 			this.split_view = new Adw.OverlaySplitView();
@@ -424,28 +428,16 @@ namespace OLLMapp
 
 			if (this.busy_dialog != null) {
 				this.busy_dialog.status_label.label =
-					"Loading workspace…";
+					"Preparing agents…";
 			}
 
 			this.project_manager.rpc.notification.connect((notif) => {
-				if (notif.method != "event.vector.scan_update") {
-					return;
-				}
-				var space = notif.message.index_of(" ");
-				if (space < 0) {
-					return;
-				}
-				var queue_text = notif.message.substring(0, space);
-				var current_file = notif.message.substring(space + 1);
-				var queue_size = int.parse(queue_text);
 				GLib.Idle.add(() => {
-					this.vector_scan_banner.update_scan_status(queue_size, current_file);
+					this.activity_notification(notif);
 					return false;
 				});
 			});
 
-			yield this.project_manager.load_projects_from_db();
-			
 			// Bind file change banner button signals to project manager methods
 			this.file_change_banner.overwrite_button.clicked.connect(() => {
 				this.file_change_banner.hide();
@@ -507,14 +499,30 @@ namespace OLLMapp
 					}
 					var project = this.project_manager.projects.path_map.get(
 						session.project_path);
-					if (project == null) {
-						GLib.warning(
-							"Session project_path '%s' not found in project list",
-							session.project_path);
-						return false;
+					if (project != null) {
+						this.project_manager.activate_project(project);
+						this.agent_dropdown.selected = agent_index;
+						return true;
 					}
-					this.project_manager.activate_project(project);
-					this.agent_dropdown.selected = agent_index;
+					this.activity_notification(new OLLMrpc.Notification() {
+						method = "client.project.load_start",
+					});
+					this.project_manager.load_projects_from_db.begin((obj, res) => {
+						this.project_manager.load_projects_from_db.end(res);
+						this.activity_notification(new OLLMrpc.Notification() {
+							method = "client.project.load_end",
+						});
+						project = this.project_manager.projects.path_map.get(
+							session.project_path);
+						if (project == null) {
+							GLib.warning(
+								"Session project_path '%s' not found in project list",
+								session.project_path);
+							return;
+						}
+						this.project_manager.activate_project(project);
+						this.agent_dropdown.selected = agent_index;
+					});
 					return true;
 				});
 			this.agent_dropdown.wire();

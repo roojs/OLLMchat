@@ -338,7 +338,7 @@ valadoc_docs = custom_target('valadoc',
     '../ollmapp/Window.vala',
     '../ollmapp/WindowPane.vala',
     '../ollmapp/FileChangeBanner.vala',
-    '../ollmapp/VectorScanBanner.vala',
+    '../ollmapp/ActivityBanner.vala',
     # ollmapp application sources (Settings UI)
     '../ollmapp/SettingsDialog/ConnectionAdd.vala',
     '../ollmapp/SettingsDialog/ConnectionRow.vala',

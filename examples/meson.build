@@ -15,10 +15,12 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocmcp'
 ])
 
-# libollmchat.vapi references OllamaWeb types (SearchResults)
+# libollmchat.vapi references OllamaWeb types (SearchResults) and OLLMrpc.Notification
 ollmchat_consumer_vala_args = [
   '--pkg=ollamaweb',
+  '--pkg=ocrpc',
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
 ]
 ollmchat_consumer_include = include_directories('../libollamaweb')
 

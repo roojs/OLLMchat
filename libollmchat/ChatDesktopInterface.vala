@@ -32,6 +32,12 @@ namespace OLLMchat
 		/** Right pane show/hide on idle (see ollmapp WindowPane.schedule_pane_update). */
 		public abstract void schedule_pane_update(bool visible);
 		/**
+		 * Daemon {{{event.*}}} or client {{{client.*}}} activity for the status bar.
+		 *
+		 * @param notif RPC-shaped notification (method + message payload)
+		 */
+		public signal void activity_notification(OLLMrpc.Notification notif);
+		/**
 		 * Scroll the transcript so the render row for index idx is visible.
 		 *
 		 * @param idx session-local render row index, or negative to no-op

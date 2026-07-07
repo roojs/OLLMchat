@@ -237,7 +237,7 @@ ollmchat_sources = [
   window_src,
   'WindowPane.vala',
   'FileChangeBanner.vala',
-  'VectorScanBanner.vala',
+  'ActivityBanner.vala',
   'SettingsDialog/AddModelDialog.vala',
   'SettingsDialog/ConnectionAdd.vala',
   'SettingsDialog/ConnectionRow.vala',

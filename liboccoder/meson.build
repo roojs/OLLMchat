@@ -68,7 +68,7 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'liboctools'
 ])
 
-occoder_lib_deps = [occoder_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ocmarkdown_vapi_dep]
+occoder_lib_deps = [occoder_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ocmarkdown_vapi_dep, ocrpc_vapi_dep]
 occoder_vala_args = [
   '--pkg=sqlite3',
   '--pkg=ocsqlite',
@@ -84,9 +84,11 @@ occoder_vala_args = [
   '--pkg=ollmchat',
   '--pkg=ollamaweb',
   '--pkg=ocmarkdown',
+  '--pkg=ocrpc',
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
   '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
   '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',

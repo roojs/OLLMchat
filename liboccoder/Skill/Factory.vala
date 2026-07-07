@@ -86,7 +86,7 @@ namespace OLLMcoder.Skill
 			this.progress_view.set_runner(
 				(OLLMcoder.Skill.Runner) host.session_agent());
 			this.progress_view.window = host;
-			yield this.initialize_widget();
+			yield this.initialize_widget(host);
 			var widget_id = this.name + "-widget";
 			this.widget.name = widget_id;
 			var tabs = (Adw.ViewStack) host.tab_view();
@@ -111,17 +111,24 @@ namespace OLLMcoder.Skill
 		 * Only the first completed attempt runs the DB restore; later calls return
 		 * immediately.
 		 */
-		private async void initialize_widget()
+		private async void initialize_widget(OLLMchat.ChatDesktopInterface host)
 		{
 			if (this.done_init) {
 				return;
 			}
+			host.activity_notification(new OLLMrpc.Notification() {
+				method = "client.project.load_start",
+			});
 			try {
 				yield this.widget.manager.load_projects_from_db();
 				yield this.widget.manager.restore_active_state();
 				yield this.widget.apply_manager_state();
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to initialize Skills Agent widget: %s", e.message);
+			} finally {
+				host.activity_notification(new OLLMrpc.Notification() {
+					method = "client.project.load_end",
+				});
 			}
 			this.done_init = true;
 		}

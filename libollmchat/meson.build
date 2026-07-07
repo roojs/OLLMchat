@@ -237,6 +237,7 @@ ollmchat_ollama_src = files([
 lib_build_rpath = ':'.join([
   meson.current_build_dir(),
   meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocrpc',
   meson.current_build_dir() / '..' / 'libocmarkdown',
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   meson.current_build_dir() / '..' / 'libollmchatgtk',
@@ -245,7 +246,7 @@ lib_build_rpath = ':'.join([
 
 if is_android_cross
   ollmchat_base_lib = library('ollmchat',
-    dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocmarkdown_vapi_dep],
+    dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocmarkdown_vapi_dep, ocrpc_vapi_dep],
     sources: [ollmchat_ollama_src, local_gguf_src, ollmchat_resources],
     vala_header: 'ollmchat.h',
     vala_vapi: 'ollmchat.vapi',
@@ -254,7 +255,9 @@ if is_android_cross
     link_args: ['-lm'],  # Link math library for Math.sqrt() in Embed.vala
     vala_args: [
       '--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--pkg=ollamaweb',
+      '--pkg=ocrpc',
       '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
       '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
       '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
       '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -265,7 +268,7 @@ if is_android_cross
   )
 else
   ollmchat_base_lib = library('ollmchat',
-    dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocmarkdown_vapi_dep],
+    dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocmarkdown_vapi_dep, ocrpc_vapi_dep],
     sources: [ollmchat_ollama_src, local_gguf_src, ollmchat_resources],
     vala_header: 'ollmchat.h',
     vala_vapi: 'ollmchat.vapi',
@@ -277,7 +280,9 @@ else
     link_args: ['-lm'],  # Link math library for Math.sqrt() in Embed.vala
     vala_args: [
       '--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--pkg=ollamaweb',
+      '--pkg=ocrpc',
       '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
       '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
       '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
       '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -317,5 +322,5 @@ ollmchat_vapi_dep = declare_dependency(
     '-L' + meson.current_build_dir(), '-lollmchat',
     '-L' + meson.current_build_dir() / '..' / 'libollamaweb', '-lollamaweb',
   ],
-  dependencies: [ocsqlite_vapi_dep, ollamaweb_vapi_dep]
+  dependencies: [ocsqlite_vapi_dep, ollamaweb_vapi_dep, ocrpc_vapi_dep]
 )

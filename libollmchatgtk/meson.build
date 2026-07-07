@@ -46,7 +46,8 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocmarkdown',
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   meson.current_build_dir() / '..' / 'libollmchat',
-  meson.current_build_dir() / '..' / 'libollamaweb'
+  meson.current_build_dir() / '..' / 'libollamaweb',
+  meson.current_build_dir() / '..' / 'libocrpc',
 ])
 
 if is_android_cross
@@ -74,7 +75,9 @@ if is_android_cross
       '--pkg=sqlite3',
       '--pkg=ocsqlite',
       '--pkg=ollamaweb',
+      '--pkg=ocrpc',
       '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
       '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
       '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     ],
@@ -100,7 +103,9 @@ else
       '--pkg=sqlite3',
       '--pkg=ocsqlite',
       '--pkg=ollamaweb',
+      '--pkg=ocrpc',
       '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
       '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
       '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
       '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',

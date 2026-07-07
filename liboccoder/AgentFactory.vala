@@ -455,7 +455,7 @@ namespace OLLMcoder
 			var host = (OLLMchat.ChatDesktopInterface) window;
 			if (this.widget == null) {
 				this.widget = new OLLMcoder.SourceView(this.project_manager);
-				yield this.initialize_widget();
+				yield this.initialize_widget(host);
 			}
 			var widget_id = this.name + "-widget";
 			this.widget.name = widget_id;
@@ -479,18 +479,21 @@ namespace OLLMcoder
 		 * 
 		 * Loads projects from database, restores active state, and applies UI state.
 		 */
-		private async void initialize_widget()
+		private async void initialize_widget(OLLMchat.ChatDesktopInterface host)
 		{
-			// FIXME = intialize first.. and shwo...
+			host.activity_notification(new OLLMrpc.Notification() {
+				method = "client.project.load_start",
+			});
 			try {
-				// Load projects from database
 				yield this.widget.manager.load_projects_from_db();
 				yield this.widget.manager.restore_active_state();
-				
-				// Apply UI state (opens project/file in editor)
 				yield this.widget.apply_manager_state();
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to initialize AgentFactory widget: %s", e.message);
+			} finally {
+				host.activity_notification(new OLLMrpc.Notification() {
+					method = "client.project.load_end",
+				});
 			}
 		}
 	}
