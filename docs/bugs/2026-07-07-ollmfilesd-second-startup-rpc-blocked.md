@@ -177,7 +177,7 @@ Avoid row-by-row merge (ID remapping pain). Full `Backup` swap is simpler than d
 
 **Goal:** Isolate filesystem scan from app/RPC noise. See **what** the scan does, **how long** each phase takes, and what debug output looks like — before implementing Option B.
 
-**Proposed CLI** (not implemented yet; add to `ollmfilesd/Application.vala`):
+**Proposed CLI** (implemented in `ollmfilesd/Application.vala`):
 
 | Flag | Purpose |
 |------|---------|
@@ -221,7 +221,7 @@ less ~/.cache/ollmchat/ollmfilesd.debug.log
 - Stale reconcile volume (DeleteManager / missing paths) without client reconnect in the mix.
 - Baseline to compare after Option B (worker thread) — same flag, same project, should complete with RPC loop free if B is correct.
 
-**Note:** User will run this **manually** first with current code only if we add minimal phase timing logs + flag; or after a small patch lands the `--scan-project` option. Until the flag exists, a rough proxy is foreground `ollmfilesd --debug -i` + RPC `activate_project` from `examples/oc-test-files.vala` — but dedicated scan mode is cleaner for timing.
+**Note:** Run **manually** with the flag below for timing baseline on real projects (e.g. `OLLMchat`).
 
 ---
 

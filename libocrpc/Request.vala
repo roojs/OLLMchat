@@ -152,10 +152,8 @@ namespace OLLMrpc
 				return false;
 			}
 			var handler = handlers.get(object_name);
-			if (GLib.Signal.lookup(
-					"call_" + method_name.replace(".", "_"),
-					handler.get_type()
-				) == 0) {
+			var signal_name = "call_" + method_name.replace(".", "_");
+			if (GLib.Signal.lookup(signal_name, handler.get_type()) == 0) {
 				GLib.critical(
 					"RPC dispatch: no signal call_%s on %s for %s",
 					method_name.replace(".", "_"),
@@ -164,11 +162,9 @@ namespace OLLMrpc
 				);
 				return false;
 			}
-			GLib.Signal.emit_by_name(
-				handler,
-				"call_" + method_name.replace(".", "_"),
-				this
-			);
+			GLib.debug("emit %s id=%d", signal_name, this.id);
+			GLib.Signal.emit_by_name(handler, signal_name, this);
+			GLib.debug("emit returned id=%d", this.id);
 			return true;
 		}
 

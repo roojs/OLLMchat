@@ -22,7 +22,8 @@ namespace OLLMfilesd
 	 * Headless {{{ollmfilesd}}} entry point: open DB, migrate, RPC over socket or stdio.
 	 *
 	 * {{{--data-dir=DIR}}} sets {@link data_dir} and pid/socket paths under {{{DIR}}}
-	 * ({@link command_line}). Pair with {@link OLLMrpc.ClientBoot} basenames and spawn flags.
+	 * ({@link command_line}). {{{--scan-project=PATH}}} runs one filesystem scan and
+	 * exits (foreground, no RPC). Pair with {@link OLLMrpc.ClientBoot} basenames and spawn flags.
 	 */
 	public class OllmfilesdApplication : GLib.Application, OLLMchat.ApplicationInterface
 	{
@@ -35,6 +36,7 @@ namespace OLLMfilesd
 		public static bool opt_tcp = false;
 		public static string? opt_data_dir = null;
 		public static string opt_rpc_script = "";
+		public static string opt_scan_project = "";
 		public static string opt_tcp_host = "127.0.0.1";
 		public static int opt_tcp_port = 4141;
 
@@ -55,6 +57,7 @@ namespace OLLMfilesd
 			{ "tcp-host", 0, 0, OptionArg.STRING, ref opt_tcp_host, "TCP listen host", "HOST" },
 			{ "tcp-port", 0, 0, OptionArg.INT, ref opt_tcp_port, "TCP listen port", "PORT" },
 			{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory (DB, socket, pid)", "DIR" },
+			{ "scan-project", 0, 0, OptionArg.FILENAME, ref opt_scan_project, "Scan project PATH and exit (no RPC)", "PATH" },
 			{ null }
 		};
 
@@ -126,6 +129,7 @@ namespace OLLMfilesd
 			opt_tcp = false;
 			opt_data_dir = null;
 			opt_rpc_script = "";
+			opt_scan_project = "";
 			opt_tcp_host = "127.0.0.1";
 			opt_tcp_port = 4141;
 
@@ -177,7 +181,7 @@ namespace OLLMfilesd
 				);
 			}
 
-			if (!opt_interactive && !opt_tcp) {
+			if (!opt_interactive && !opt_tcp && opt_scan_project == "") {
 #if !G_OS_WIN32
 				if (GLib.FileUtils.test(this.pid_path, GLib.FileTest.EXISTS)) {
 					GLib.FileUtils.unlink(this.pid_path);
@@ -225,6 +229,12 @@ namespace OLLMfilesd
 				}
 
 				yield this.project_manager.load_projects_from_db();
+			}
+
+			if (opt_scan_project != "") {
+				yield this.run_scan_project(opt_scan_project);
+				this.quit();
+				return;
 			}
 
 			this.project_manager.vector_db_path =
@@ -314,6 +324,99 @@ namespace OLLMfilesd
 			}
 
 			this.project_manager.background_scan.open_vector_db.begin();
+		}
+
+		/**
+		 * {@code --scan-project} diagnostic: resolve path, run filesystem reconcile,
+		 * log phase boundaries, then return (caller quits).
+		 *
+		 * @param folder_path CLI path (absolute or relative to cwd)
+		 */
+		private async void run_scan_project(string folder_path)
+		{
+			var scan_path = GLib.Path.is_absolute(folder_path)
+				? folder_path
+				: GLib.Path.build_filename(
+					GLib.Environment.get_current_dir(),
+					folder_path
+				);
+			try {
+				scan_path = GLib.File.new_for_path(scan_path).get_path();
+			} catch (GLib.Error e) {
+				GLib.error("scan-project: invalid path: %s", e.message);
+			}
+			if (scan_path == null
+				|| scan_path == ""
+				|| !GLib.Path.is_absolute(scan_path)
+				|| !GLib.FileUtils.test(scan_path, GLib.FileTest.IS_DIR)) {
+				GLib.error(
+					"scan-project: not a directory: %s",
+					folder_path
+				);
+			}
+			var project = this.project_manager.projects.path_map.get(scan_path);
+			if (project == null) {
+				project = this.project_manager.create_project(scan_path);
+			}
+
+			GLib.debug("scan-project start path=%s", project.path);
+			project.is_active = true;
+			if (this.project_manager.db != null) {
+				project.saveToDB(this.project_manager.db, null, false);
+				this.project_manager.db.is_dirty = true;
+				if (project.children.items.size == 0) {
+					GLib.debug(
+						"scan-project load_files_from_db path=%s",
+						project.path
+					);
+					yield project.load_files_from_db();
+					project.project_files.update_from(project);
+					GLib.debug(
+						"scan-project load_files_from_db done path=%s",
+						project.path
+					);
+				}
+			}
+
+			GLib.debug(
+				"scan-project read_dir queued path=%s",
+				project.path
+			);
+			yield project.read_dir(
+				new DateTime.now_local().to_unix(),
+				true
+			);
+			GLib.debug(
+				"scan-project read_dir root returned path=%s",
+				project.path
+			);
+
+			while (this.project_manager.scanning.size > 0) {
+				var tick = new Gee.Promise<bool>();
+				GLib.Timeout.add(50, () => {
+					tick.set_value(true);
+					return false;
+				});
+				yield tick.future.wait_async();
+			}
+			GLib.debug(
+				"scan-project read_dir subtree idle path=%s",
+				project.path
+			);
+
+			project.project_files.update_from(project);
+			GLib.debug(
+				"scan-project update_from done path=%s",
+				project.path
+			);
+			if (this.project_manager.db != null) {
+				this.project_manager.db.backupDB();
+			}
+			GLib.debug(
+				"scan done path=%s files=%u",
+				project.path,
+				project.project_files.get_n_items()
+			);
 		}
 
 		private void write_pid()
@@ -494,7 +597,15 @@ namespace OLLMfilesd
 
 	int main(string[] args)
 	{
+		var scan_only = false;
+		foreach (var arg in args) {
+			if (arg.has_prefix("--scan-project")) {
+				scan_only = true;
+				break;
+			}
+		}
 		if (GLib.Environment.get_variable("OLLMFILES_IS_TEST") == null
+			&& !scan_only
 			&& OllmfilesdApplication.is_running()) {
 			return 0;
 		}
@@ -511,6 +622,10 @@ namespace OLLMfilesd
 					break;
 				}
 				if (arg.has_prefix("--rpc-script")) {
+					background = false;
+					break;
+				}
+				if (arg.has_prefix("--scan-project")) {
 					background = false;
 					break;
 				}

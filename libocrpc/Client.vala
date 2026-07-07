@@ -6,6 +6,11 @@
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this library; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -15,14 +20,15 @@ namespace OLLMrpc
 {
 	private class PendingWrite : GLib.Object
 	{
-		public GLib.Object payload { get; construct; }
-		public Gee.Promise<bool> done { get; construct; }
+		public Request request { get; construct; }
+		public Gee.Promise<Response> promise { get; construct; }
+		public bool sent { get; set; default = false; }
 
-		public PendingWrite(GLib.Object payload)
+		public PendingWrite(Request request)
 		{
 			Object(
-				payload: payload,
-				done: new Gee.Promise<bool>()
+				request: request,
+				promise: new Gee.Promise<Response>()
 			);
 		}
 	}
@@ -35,12 +41,11 @@ namespace OLLMrpc
 	 * starter (Unix, not TCP).
 	 *
 	 * A socket {@link GLib.IOChannel} watch dispatches inbound
-	 * {@link Notification} messages and resolves pending {@link Response}
+	 * {@link Notification} messages and resolves queued {@link Response}
 	 * entries by id.
-	 * {@link call} sends a {@link Request} and yields until that
-	 * id is filled in or {@link call_timeout_seconds} elapses.
-	 * Outgoing messages are queued — one {{{flush_async}}} at a time on
-	 * the shared output stream; many requests may still be in flight.
+	 * {@link call} appends to {@link pending}; only the head entry is sent
+	 * ({@link PendingWrite.sent}) until its response is received, then the
+	 * next entry is sent.
 	 * Transport and wire faults abort via {@link GLib.error}; daemon
 	 * RPC errors return {@link Response.error} and emit {@link failed}.
 	 * Connect UI handlers on {@link failed} for user-visible daemon errors.
@@ -86,15 +91,11 @@ namespace OLLMrpc
 		private GLib.DataInputStream? input;
 		private GLib.DataOutputStream? output;
 		private int next_id = 1;
-		private Gee.HashMap<int, Gee.Promise<Response>> pending {
-			get; private set;
-			default = new Gee.HashMap<int, Gee.Promise<Response>>();
-		}
-		private Gee.ArrayList<PendingWrite> write_queue {
+		private Gee.ArrayList<PendingWrite> pending {
 			get; private set;
 			default = new Gee.ArrayList<PendingWrite>();
 		}
-		private bool write_draining { get; set; default = false; }
+		private bool sending { get; set; default = false; }
 		private GLib.IOChannel? read_channel;
 		private uint read_watch_id = 0;
 
@@ -258,38 +259,17 @@ namespace OLLMrpc
 			);
 			GLib.debug("read watch started");
 
-			var hello_id = hello_request.id;
-			var hello_promise = new Gee.Promise<Response>();
-			this.pending.set(hello_id, hello_promise);
-			GLib.debug(
-				"hello send id=%d method=%s",
-				hello_id,
-				hello_request.method
-			);
-
-			try {
-				yield this.write(hello_request);
-			} catch (GLib.Error e) {
-				this.pending.unset(hello_id);
-				this.connect_error = "write: " + e.message;
-				GLib.critical(
-					"hello write id=%d: %s",
-					hello_id,
-					this.connect_error
-				);
-				this.disconnect();
-				return false;
-			}
+			var entry = new PendingWrite(hello_request);
+			this.pending.add(entry);
+			this.send_head.begin();
 
 			Response hello;
 			try {
 				hello = yield this.wait_response(
-					hello_id,
-					hello_request.method,
-					hello_promise
+					entry,
+					hello_request.method
 				);
 			} catch (GLib.Error e) {
-				this.pending.unset(hello_id);
 				this.connect_error = e.message != ""
 					? e.message
 					: "could not start or reach the filesystem daemon (ollmfilesd)";
@@ -302,14 +282,14 @@ namespace OLLMrpc
 					: "could not start or reach the filesystem daemon (ollmfilesd)";
 				GLib.critical(
 					"hello failed id=%d: %s",
-					hello_id,
+					hello_request.id,
 					this.connect_error
 				);
 				this.disconnect();
 				return false;
 			}
 
-			GLib.debug("connect ok hello id=%d", hello_id);
+			GLib.debug("connect ok hello id=%d", hello_request.id);
 			this.connect_error = "";
 			return true;
 		}
@@ -330,21 +310,15 @@ namespace OLLMrpc
 				this.socket,
 				this.pending.size
 			);
-			foreach (var job in this.write_queue) {
-				job.done.set_exception(
-					new GLib.IOError.FAILED("Client: disconnected")
-				);
-			}
-			this.write_queue.clear();
-			this.write_draining = false;
+			this.sending = false;
 			this.connected = false;
 			if (this.read_watch_id != 0) {
 				GLib.Source.remove(this.read_watch_id);
 				this.read_watch_id = 0;
 			}
 			this.read_channel = null;
-			foreach (var entry in this.pending.entries) {
-				entry.value.set_exception(
+			foreach (var entry in this.pending) {
+				entry.promise.set_exception(
 					new GLib.IOError.FAILED("Client: disconnected")
 				);
 			}
@@ -361,54 +335,68 @@ namespace OLLMrpc
 			}
 		}
 
-		private async void write(GLib.Object gobject) throws GLib.Error
+		private async void send_head()
 		{
-			var job = new PendingWrite(gobject);
-			this.write_queue.add(job);
-			if (!this.write_draining) {
-				this.write_draining = true;
-				this.drain_writes.begin();
+			if (this.sending) {
+				return;
 			}
-			yield job.done.future.wait_async();
+			if (this.pending.size == 0) {
+				return;
+			}
+			var head = this.pending.get(0);
+			if (head.sent) {
+				return;
+			}
+			if (!this.connected || this.output == null || this.bin == null) {
+				return;
+			}
+			this.sending = true;
+			try {
+				GLib.debug(
+					"send id=%d method=%s",
+					head.request.id,
+					head.request.method
+				);
+				this.bin.write(head.request);
+				yield this.output.flush_async(
+					GLib.Priority.DEFAULT,
+					null
+				);
+				head.sent = true;
+			} catch (GLib.Error e) {
+				this.complete_pending(
+					head.request.id,
+					null,
+					e
+				);
+			}
+			this.sending = false;
+			if (this.pending.size > 0
+				&& !this.pending.get(0).sent) {
+				this.send_head.begin();
+			}
 		}
 
-		private async void drain_writes()
+		private void complete_pending(
+			int id,
+			Response? response,
+			GLib.Error? error
+		)
 		{
-			while (this.write_queue.size > 0) {
-				var job = this.write_queue.get(0);
-				this.write_queue.remove_at(0);
-				if (!this.connected || this.output == null) {
-					job.done.set_exception(
-						new GLib.IOError.FAILED("Client: disconnected")
-					);
+			for (var i = 0; i < this.pending.size; i++) {
+				if (this.pending.get(i).request.id != id) {
 					continue;
 				}
-				try {
-					var serializable = job.payload as Bin.Serializable;
-					if (serializable == null) {
-						throw new GLib.IOError.FAILED(
-							"Client: payload is not bin Serializable"
-						);
-					}
-					var request = job.payload as Request;
-					if (request != null) {
-						GLib.debug(
-							"send id=%d method=%s",
-							request.id,
-							request.method
-						);
-					}
-					this.bin.write(serializable);
-					yield this.output.flush_async(
-						GLib.Priority.DEFAULT,
-						null
-					);
-					job.done.set_value(true);
-				} catch (GLib.Error e) {
-					job.done.set_exception(e);
+				var entry = this.pending.get(i);
+				this.pending.remove_at(i);
+				if (error != null) {
+					entry.promise.set_exception(error);
+				} else {
+					entry.promise.set_value(response);
 				}
+				this.send_head.begin();
+				return;
 			}
-			this.write_draining = false;
 		}
 
 		/**
@@ -432,30 +420,14 @@ namespace OLLMrpc
 				);
 			}
 
-			var promise = new Gee.Promise<Response>();
-			this.pending.set(request.id, promise);
-
-			try {
-				yield this.write(request);
-			} catch (GLib.Error e) {
-				this.pending.unset(request.id);
-				GLib.error(
-					"%s id=%d: write: %s",
-					request.method,
-					request.id,
-					e.message
-				);
-			}
+			var entry = new PendingWrite(request);
+			this.pending.add(entry);
+			this.send_head.begin();
 
 			Response response;
 			try {
-				response = yield this.wait_response(
-					request.id,
-					request.method,
-					promise
-				);
+				response = yield this.wait_response(entry, request.method);
 			} catch (GLib.Error e) {
-				this.pending.unset(request.id);
 				var transport_error = new Error(
 					(int) RpcErrorCode.INTERNAL_ERROR,
 					e.message
@@ -479,32 +451,32 @@ namespace OLLMrpc
 		}
 
 		private async Response wait_response(
-			int id,
-			string method,
-			Gee.Promise<Response> promise
-		)
+			PendingWrite entry,
+			string method
+		) throws GLib.Error
 		{
 			var timeout_id = 0U;
 			if (this.call_timeout_seconds > 0) {
-				timeout_id = GLib.Timeout.add_seconds(this.call_timeout_seconds, () => {
-					if (!this.pending.has_key(id)) {
+				timeout_id = GLib.Timeout.add_seconds(
+					this.call_timeout_seconds,
+					() => {
+						this.complete_pending(
+							entry.request.id,
+							null,
+							new GLib.IOError.TIMED_OUT("call timed out")
+						);
 						return false;
 					}
-					this.pending.get(id).set_exception(
-						new GLib.IOError.TIMED_OUT("call timed out")
-					);
-					this.pending.unset(id);
-					return false;
-				});
+				);
 			}
 
 			try {
-				return yield promise.future.wait_async();
+				return yield entry.promise.future.wait_async();
 			} catch (GLib.Error e) {
 				GLib.critical(
 					"%s id=%d: %s",
 					method,
-					id,
+					entry.request.id,
 					e.message
 				);
 				throw e;
@@ -519,7 +491,15 @@ namespace OLLMrpc
 		{
 			var response = msg as Response;
 			if (response != null) {
-				if (!this.pending.has_key(response.id)) {
+				var found = false;
+				foreach (var entry in this.pending) {
+					if (entry.request.id != response.id) {
+						continue;
+					}
+					found = true;
+					break;
+				}
+				if (!found) {
 					GLib.error(
 						"unexpected response id %d",
 						response.id
@@ -535,9 +515,7 @@ namespace OLLMrpc
 				if (response.error == null) {
 					GLib.debug ("replied id=%d", response.id);
 				}
-				var promise = this.pending.get(response.id);
-				this.pending.unset(response.id);
-				promise.set_value(response);
+				this.complete_pending(response.id, response, null);
 				return;
 			}
 
