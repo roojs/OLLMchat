@@ -19,7 +19,7 @@
 namespace OLLMfilesd.SQT
 {
 	/**
-	 * RPC wire type for {@code File.vector_metadata}.
+	 * RPC wire type for {@code Codebase.file_info}.
 	 *
 	 * Extends {@link OLLMvector2.SQT.VectorMetadata}; bin registration and
 	 * RPC {@link query} live on this subclass only.

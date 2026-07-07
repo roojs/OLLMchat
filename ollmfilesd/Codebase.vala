@@ -379,7 +379,9 @@ namespace OLLMfilesd
 
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				msg = yield this.format_results(results)
+				msg = p.format == "json"
+					? yield this.format_results_json(results)
+					: yield this.format_results(results)
 			});
 		}
 
@@ -421,6 +423,70 @@ namespace OLLMfilesd
 				output += result.to_markdown(max_snippet_lines);
 			}
 			return output;
+		}
+
+		/**
+		 * JSON array of search hits for {@link VectorParams.format} {@code json}.
+		 */
+		private async string format_results_json(
+			Gee.ArrayList<Vector.SearchResult> results
+		)
+		{
+			if (results.size == 0) {
+				return "[]";
+			}
+			const int max_snippet_lines = 50;
+			foreach (var result in results) {
+				var file = result.file();
+				file.manager.buffer_provider.create_buffer(file);
+				if (file.buffer.is_loaded) {
+					continue;
+				}
+				try {
+					yield file.buffer.read_async();
+				} catch (GLib.Error e) {
+					GLib.debug(
+						"codebase_search json: Failed to load %s: %s",
+						file.path,
+						e.message
+					);
+				}
+			}
+			var json_array = new Json.Array();
+			foreach (var result in results) {
+				var file = result.file();
+				var meta = result.metadata;
+				var builder = new Json.Builder();
+				builder.begin_object();
+				builder.set_member_name("distance");
+				builder.add_double_value(result.distance);
+				builder.set_member_name("file");
+				builder.add_string_value(file != null ? file.path : "");
+				builder.set_member_name("element_name");
+				builder.add_string_value(meta.element_name);
+				builder.set_member_name("element_type");
+				builder.add_string_value(meta.element_type);
+				builder.set_member_name("start_line");
+				builder.add_int_value(meta.start_line);
+				builder.set_member_name("end_line");
+				builder.add_int_value(meta.end_line);
+				builder.set_member_name("ast_path");
+				builder.add_string_value(meta.ast_path);
+				builder.set_member_name("category");
+				builder.add_string_value(meta.category);
+				builder.set_member_name("description");
+				builder.add_string_value(meta.description);
+				builder.set_member_name("snippet");
+				builder.add_string_value(result.code_snippet(max_snippet_lines));
+				builder.end_object();
+				json_array.add_element(builder.get_root());
+			}
+			var root = new Json.Node.alloc().init_array(json_array);
+			var generator = new Json.Generator();
+			generator.set_root(root);
+			generator.set_pretty(true);
+			generator.set_indent(2);
+			return generator.to_data(null);
 		}
 
 		/**

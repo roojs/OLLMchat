@@ -116,8 +116,22 @@ namespace OLLMtools.ReadFile
 			if (this.file.id <= 0) {
 				return;
 			}
+			var project = this.file.manager.active_project;
+			if (project == null) {
+				return;
+			}
 
-			var rows = yield this.file.vector_metadata();
+			var response = yield this.file.manager.rpc.call(new OLLMrpc.Request() {
+				method = "Codebase.file_info",
+				param = new OLLMfilesd.VectorParams() {
+					path = project.path,
+					file_path = this.file.path
+				}
+			});
+			if (response.error != null) {
+				return;
+			}
+			var rows = (Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>) response.result;
 			foreach (var row in rows) {
 				var ast_path = row.ast_path.strip();
 				if (ast_path == "") {

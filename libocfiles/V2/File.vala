@@ -403,28 +403,6 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Vector metadata rows for this file from daemon DB ({{{File.vector_metadata}}}).
-		 *
-		 * Wire: {{{result}}} is {@link SQT.VectorMetadata}[] keyed by {{{ast_path}}}
-		 * on the caller; empty when the path is not indexed or has no rows.
-		 */
-		public async Gee.ArrayList<SQT.VectorMetadata> vector_metadata()
-		{
-			if (this.path.length == 0) {
-				return new Gee.ArrayList<SQT.VectorMetadata>();
-			}
-
-			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "File.vector_metadata",
-				param = new OLLMfilesd.FileParams() { path = this.path }
-			});
-			if (response.error != null) {
-				return new Gee.ArrayList<SQT.VectorMetadata>();
-			}
-			return (Gee.ArrayList<SQT.VectorMetadata>) response.result;
-		}
-
-		/**
 		 * Write on daemon ({{{File.write}}}).
 		 *
 		 * {{{base_type}}}: {{{f}}} file (default), {{{d}}} directory,

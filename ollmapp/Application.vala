@@ -31,12 +31,10 @@ namespace OLLMapp
 		
 		public static bool opt_debug = false;
 		public static bool opt_debug_critical = false;
-		public static bool opt_disable_indexer = false;
 		
 		private const OptionEntry[] app_options = {
 			{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
 			{ "debug-critical", 0, 0, OptionArg.NONE, ref opt_debug_critical, "Treat critical warnings as errors", null },
-			{ "disable-indexer", 0, 0, OptionArg.NONE, ref opt_disable_indexer, "Disable background semantic search indexing", null },
 			{ null }
 		};
 		
@@ -94,7 +92,6 @@ namespace OLLMapp
 			// Reset static option variables at start of each command line invocation
 			opt_debug = false;
 			opt_debug_critical = false;
-			opt_disable_indexer = false;
 			
 			string[] args = command_line.get_arguments();
 			var opt_context = new OptionContext(this.get_application_id());

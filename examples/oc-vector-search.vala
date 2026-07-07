@@ -25,8 +25,6 @@ class VectorSearchApp : TestAppBase
 	protected static string? opt_category = null;
 	protected static int opt_max_results = 3;
 	protected static int opt_max_snippet_lines = 10;
-	protected static string? opt_embed_model = null;
-	protected static string? opt_debug_ast_path = null;
 	protected static string? opt_dump_vector = null;
 	protected static string? opt_only_file = null;
 	protected static string? opt_data_dir = null;
@@ -46,17 +44,17 @@ Options:
   --show-info=FILE       List all vector metadata for the given file (path relative to folder or absolute)
 
 Examples:
-  {ARG} libocvector "database connection"
-  {ARG} --json libocvector "async function"
-  {ARG} --show-info README.md libocvector
-  {ARG} --show-info docs/guide.md libocvector
-  {ARG} --language=vala --element-type=method libocvector "parse"
-  {ARG} --category=documentation libocvector "packaging"
-  {ARG} --max-results=20 libocvector "search"
-  {ARG} --max-snippet-lines=5 libocvector "search"
-  {ARG} --data-dir=/custom/path libocvector "search"
-  {ARG} --dump-vector=OLLMcoder.Task-List-write libocvector
-  {ARG} --only-file=liboccoder/Task/List.vala libocvector "write"
+  {ARG} libocfiles "database connection"
+  {ARG} --json libocfiles "async function"
+  {ARG} --show-info README.md libocfiles
+  {ARG} --show-info docs/guide.md libocfiles
+  {ARG} --language=vala --element-type=method libocfiles "parse"
+  {ARG} --category=documentation libocfiles "packaging"
+  {ARG} --max-results=20 libocfiles "search"
+  {ARG} --max-snippet-lines=5 libocfiles "search"
+  {ARG} --data-dir=/custom/path libocfiles "search"
+  {ARG} --dump-vector=OLLMcoder.Task-List-write libocfiles
+  {ARG} --only-file=liboccoder/Task/List.vala libocfiles "write"
 """; }
 
 	protected const OptionEntry[] local_options = {
@@ -68,8 +66,6 @@ Examples:
 		{ "max-results", 'n', 0, OptionArg.INT, ref opt_max_results, "Maximum number of results (default: 3)", "N" },
 		{ "max-snippet-lines", 's', 0, OptionArg.INT, ref opt_max_snippet_lines, "Maximum lines of code snippet to display (default: 10, -1 for no limit)", "N" },
 		{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory for database files (default: ~/.local/share/ollmchat)", "DIR" },
-		{ "embed-model", 0, 0, OptionArg.STRING, ref opt_embed_model, "Embedding model name (default: bge-m3)", "MODEL" },
-		{ "debug-ast-path", 0, 0, OptionArg.STRING, ref opt_debug_ast_path, "Debug one AST path through filtering and ranking", "PATH" },
 		{ "dump-vector", 0, 0, OptionArg.STRING, ref opt_dump_vector, "Dump stored vector for AST path (one float per line, for diff)", "AST_PATH" },
 		{ "only-file", 0, 0, OptionArg.STRING, ref opt_only_file, "Restrict search to vectors from this file only (path relative to folder)", "FILE" },
 		{ null }
@@ -105,8 +101,6 @@ Examples:
 		opt_category = null;
 		opt_max_results = 3;
 		opt_max_snippet_lines = 10;
-		opt_embed_model = null;
-		opt_debug_ast_path = null;
 		opt_dump_vector = null;
 		opt_only_file = null;
 		opt_data_dir = null;
@@ -123,8 +117,6 @@ Examples:
 		opt_language = opt_language == null ? "" : opt_language;
 		opt_element_type = opt_element_type == null ? "" : opt_element_type;
 		opt_category = opt_category == null ? "" : opt_category;
-		opt_embed_model = opt_embed_model == null ? "" : opt_embed_model;
-		opt_debug_ast_path = opt_debug_ast_path == null ? "" : opt_debug_ast_path;
 		opt_dump_vector = opt_dump_vector == null ? "" : opt_dump_vector;
 		opt_only_file = opt_only_file == null ? "" : opt_only_file;
 		opt_data_dir = opt_data_dir == null ? "" : opt_data_dir;
@@ -363,26 +355,28 @@ Examples:
 
 	private async void run_search(string abs_folder, string query) throws Error
 	{
-		stdout.printf("=== Code Vector Search ===\n\n");
-		stdout.printf("Folder: %s\n", abs_folder);
-		stdout.printf("Query: %s\n", query);
-		if (opt_language != "" || opt_element_type != "" || opt_category != "" || opt_only_file != "") {
-			var filters = new Gee.ArrayList<string>();
-			if (opt_only_file != "") {
-				filters.add("only-file: " + opt_only_file);
+		if (!opt_json) {
+			stdout.printf("=== Code Vector Search ===\n\n");
+			stdout.printf("Folder: %s\n", abs_folder);
+			stdout.printf("Query: %s\n", query);
+			if (opt_language != "" || opt_element_type != "" || opt_category != "" || opt_only_file != "") {
+				var filters = new Gee.ArrayList<string>();
+				if (opt_only_file != "") {
+					filters.add("only-file: " + opt_only_file);
+				}
+				if (opt_language != "") {
+					filters.add("language: " + opt_language);
+				}
+				if (opt_element_type != "") {
+					filters.add("element-type: " + opt_element_type);
+				}
+				if (opt_category != "") {
+					filters.add("category: " + opt_category);
+				}
+				stdout.printf("Filters: %s\n", string.joinv(", ", filters.to_array()));
 			}
-			if (opt_language != "") {
-				filters.add("language: " + opt_language);
-			}
-			if (opt_element_type != "") {
-				filters.add("element-type: " + opt_element_type);
-			}
-			if (opt_category != "") {
-				filters.add("category: " + opt_category);
-			}
-			stdout.printf("Filters: %s\n", string.joinv(", ", filters.to_array()));
+			stdout.printf("Max results: %d\n\n", opt_max_results);
 		}
-		stdout.printf("Max results: %d\n\n", opt_max_results);
 
 		var response = yield this.rpc.call(new OLLMrpc.Request() {
 			method = "Codebase.search",

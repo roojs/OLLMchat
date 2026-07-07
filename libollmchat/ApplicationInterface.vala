@@ -38,9 +38,8 @@ namespace OLLMchat
 	 * Interface for OLLMchat applications that provides standardized
 	 * configuration and data directory management.
 	 *
-	 * Implementations should call type registration methods (e.g.,
-	 * `OLLMvector.Database.register_config()`) directly before calling
-	 * `load_config()` if needed. The base_load_config() method loads Config2
+	 * Implementations may register tool config types in {@link OLLMtools.Registry}
+	 * before calling `load_config()`. The base_load_config() method loads Config2
 	 * from ~/.config/ollmchat/config.2.json when present.
 	 *
 	 * == Example ==
@@ -51,10 +50,6 @@ namespace OLLMchat
 	 *     public string data_dir { get; set; default = "~/.local/share/myapp"; }
 	 *
 	 *     public Settings.Config2 load_config() {
-	 *         // Register types if needed
-	 *         OLLMvector.Database.register_config();
-	 *
-	 *         // Use base implementation
 	 *         return base_load_config();
 	 *     }
 	 * }
@@ -122,8 +117,7 @@ namespace OLLMchat
 		/**
 		 * Loads and returns the configuration.
 		 *
-		 * Implementations should call type registration methods (e.g.,
-		 * `OLLMvector.Database.register_config()`) if needed, then call
+		 * Implementations may register tool config types before calling
 		 * `base_load_config()` to perform the actual loading.
 		 *
 		 * @return The loaded Config2 instance

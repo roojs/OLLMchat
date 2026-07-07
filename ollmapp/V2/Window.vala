@@ -397,6 +397,23 @@ namespace OLLMapp
 				return;
 			}
 
+			this.project_manager.rpc.notification.connect((notif) => {
+				if (notif.method != "event.vector.scan_update") {
+					return;
+				}
+				var space = notif.message.index_of(" ");
+				if (space < 0) {
+					return;
+				}
+				var queue_text = notif.message.substring(0, space);
+				var current_file = notif.message.substring(space + 1);
+				var queue_size = int.parse(queue_text);
+				GLib.Idle.add(() => {
+					this.vector_scan_banner.update_scan_status(queue_size, current_file);
+					return false;
+				});
+			});
+
 			yield this.project_manager.load_projects_from_db();
 			
 			// Bind file change banner button signals to project manager methods
@@ -515,8 +532,6 @@ namespace OLLMapp
 
 			// Set WindowPane as main content
 			this.split_view.content = this.window_pane;
-			
-			// Codebase search tool on hold until daemon relay (2.10.4.18)
 		}
 		
 		/**

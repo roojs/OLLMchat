@@ -62,7 +62,6 @@ namespace OLLMfilesd
 		public signal void call_register(OLLMrpc.Request request);
 		public signal void call_delete(OLLMrpc.Request request);
 		public signal void call_changed_check(OLLMrpc.Request request);
-		public signal void call_vector_metadata(OLLMrpc.Request request);
 
 		public override void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,
@@ -285,32 +284,6 @@ namespace OLLMfilesd
 				}
 				request.reply(new OLLMrpc.Response() {
 					msg = ((int) status).to_string()
-				});
-			});
-			this.call_vector_metadata.connect((request) => {
-				var path = ((FileParams) request.param).path;
-				var list = new Gee.ArrayList<GLib.Object>();
-				var indexed = this.manager.get_file_from_active_project(path);
-				if (
-					indexed != null
-					&& indexed.id > 0
-					&& this.manager.db != null
-				) {
-					var rows = new Gee.ArrayList<SQT.VectorMetadata>();
-					SQT.VectorMetadata.query(
-						this.manager.db
-					).select(
-						"WHERE file_id = " + indexed.id.to_string(),
-						rows
-					);
-					foreach (var row in rows) {
-						list.add(row);
-					}
-				}
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					result = list,
-					msg = list.size.to_string()
 				});
 			});
 		}
