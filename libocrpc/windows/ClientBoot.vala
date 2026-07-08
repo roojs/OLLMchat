@@ -5,10 +5,20 @@ namespace OLLMrpc
 	 *
 	 * The process is started in foreground TCP mode. Readiness is detected by
 	 * probing the loopback endpoint instead of a pid file.
+	 *
+	 * {@link socket_name} is a {@code tcp://} URL (e.g.
+	 * {{{tcp://127.0.0.1:4141}}}); {@link socket_path} stores that value.
 	 */
 	public class ClientBoot : GLib.Object
 	{
-		public string socket { get; construct; }
+		public string data_dir { get; construct; }
+
+		public bool debug { get; construct; default = true; }
+
+		public bool pass_data_dir { get; construct; default = false; }
+
+		public string socket_path { get; construct; }
+
 		public string pid { get; construct; }
 
 		public uint poll { get; set; default = 100; }
@@ -21,21 +31,49 @@ namespace OLLMrpc
 
 		private int detached_pid = -1;
 
-		public ClientBoot(string? socket = null, string? pid = null)
+		public ClientBoot(
+			string data_dir,
+			string pid,
+			string socket_name,
+			bool debug = true,
+			bool pass_data_dir = false
+		)
 		{
-			var endpoint = socket != null ? socket : "127.0.0.1:4141";
-			if (endpoint.has_prefix("tcp://")) {
-				endpoint = endpoint.substring(6);
-			}
 			GLib.Object(
-				socket: endpoint,
-				pid: pid != null ? pid : ""
+				data_dir: data_dir,
+				pid: pid,
+				socket_path: socket_name,
+				debug: debug,
+				pass_data_dir: pass_data_dir
+			);
+		}
+
+		public async GLib.SocketConnection connect() throws GLib.Error
+		{
+			if (!this.socket_path.has_prefix("tcp://")) {
+				throw new GLib.IOError.NOT_SUPPORTED(
+					"Unix socket RPC to ollmfilesd is not available on this platform"
+				);
+			}
+			var endpoint = this.socket_path.substring(6);
+			var host = endpoint;
+			var port = 4141;
+			var colon = endpoint.last_index_of(":");
+			if (colon > 0) {
+				host = endpoint[0:colon];
+				int.try_parse(endpoint.substring(colon + 1), out port);
+			}
+			var client = new GLib.SocketClient();
+			return yield client.connect_to_host_async(
+				host,
+				port,
+				null
 			);
 		}
 
 		public async void ensure_daemon() throws GLib.IOError
 		{
-			GLib.debug("ensure_daemon endpoint=%s", this.socket);
+			GLib.debug("ensure_daemon socket_path=%s", this.socket_path);
 			if (this.connectable()) {
 				return;
 			}
@@ -54,14 +92,21 @@ namespace OLLMrpc
 
 		public bool connectable()
 		{
+			var host = this.socket_path;
+			var port = 4141;
+			if (this.socket_path.has_prefix("tcp://")) {
+				var endpoint = this.socket_path.substring(6);
+				host = endpoint;
+				var colon = endpoint.last_index_of(":");
+				if (colon > 0) {
+					host = endpoint[0:colon];
+					int.try_parse(endpoint.substring(colon + 1), out port);
+				}
+			}
 			var client = new GLib.SocketClient();
 			client.timeout = this.probe;
 			try {
-				var conn = client.connect_to_host(
-					this.socket,
-					4141,
-					null
-				);
+				var conn = client.connect_to_host(host, port, null);
 				conn.close();
 				return true;
 			} catch (GLib.Error e) {
@@ -71,12 +116,22 @@ namespace OLLMrpc
 
 		private void spawn() throws GLib.IOError
 		{
-			var host = this.socket;
+			var host = this.socket_path;
 			var port = 4141;
-			var colon = this.socket.last_index_of(":");
-			if (colon > 0) {
-				host = this.socket[0:colon];
-				int.try_parse(this.socket.substring(colon + 1), out port);
+			if (this.socket_path.has_prefix("tcp://")) {
+				var endpoint = this.socket_path.substring(6);
+				host = endpoint;
+				var colon = endpoint.last_index_of(":");
+				if (colon > 0) {
+					host = endpoint[0:colon];
+					int.try_parse(endpoint.substring(colon + 1), out port);
+				}
+			} else {
+				var colon = this.socket_path.last_index_of(":");
+				if (colon > 0) {
+					host = this.socket_path[0:colon];
+					int.try_parse(this.socket_path.substring(colon + 1), out port);
+				}
 			}
 			unowned string? from_env = GLib.Environment.get_variable("OLLM_OLLMFILESD");
 			var executable = (from_env != null && from_env != "")
@@ -132,8 +187,8 @@ namespace OLLMrpc
 				yield this.pause(this.poll);
 			}
 			GLib.debug(
-				"startup timed out endpoint=%s wait=%us",
-				this.socket,
+				"startup timed out socket_path=%s wait=%us",
+				this.socket_path,
 				this.startup_wait
 			);
 		}

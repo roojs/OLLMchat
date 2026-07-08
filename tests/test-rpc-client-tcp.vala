@@ -30,7 +30,7 @@ namespace OLLMrpcTests
 		 */
 		public async int run(string endpoint)
 		{
-			var client = new OLLMrpc.Client(endpoint);
+			var client = new OLLMrpc.Client.tcp(endpoint);
 			client.call_timeout_seconds = 5;
 			if (!yield client.connect(new OLLMrpc.Request() {
 					method = "Daemon.shutdown",

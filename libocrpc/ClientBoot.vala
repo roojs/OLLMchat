@@ -18,8 +18,8 @@ namespace OLLMrpc
 	 *
 	 * The caller supplies every path; there is no default
 	 * {{{~/.local/share/ollmchat}}} in this class. Constructor args {@link pid}
-	 * and {@link socket} are basenames within {@link data_dir}; the {@link pid}
-	 * and {@link socket} properties hold the full paths used for probe, spawn,
+	 * and {@link socket_name} are basenames within {@link data_dir}; the {@link pid}
+	 * and {@link socket_path} properties hold the full paths used for probe, spawn,
 	 * and kill-and-respawn.
 	 *
 	 * Parameter order after the three required strings: {@link debug}, then
@@ -45,7 +45,8 @@ namespace OLLMrpc
 
 		public bool pass_data_dir { get; construct; default = false; }
 
-		public string socket { get; construct; }
+		public string socket_path { get; construct; }
+
 		public string pid { get; construct; }
 
 		/** Poll interval after spawn (milliseconds). */
@@ -64,9 +65,9 @@ namespace OLLMrpc
 
 		/**
 		 * @param data_dir Directory root for daemon DB, socket, and pid file
-		 * @param pid Basename of pid file within {@link data_dir}
+		 * @param pid Basename of the pid file within {@link data_dir}
 		 *   (e.g. {{{ollmfilesd.pid}}})
-		 * @param socket Basename of Unix socket within {@link data_dir}
+		 * @param socket_name Basename of the Unix socket within {@link data_dir}
 		 *   (e.g. {{{ollmfilesd.sock}}})
 		 * @param debug When true (default), spawn passes {{{--debug}}} to
 		 *   {{{ollmfilesd}}}; listed before {@link pass_data_dir} because most
@@ -77,7 +78,7 @@ namespace OLLMrpc
 		public ClientBoot(
 			string data_dir,
 			string pid,
-			string socket,
+			string socket_name,
 			bool debug = true,
 			bool pass_data_dir = false
 		)
@@ -85,27 +86,54 @@ namespace OLLMrpc
 			GLib.Object(
 				data_dir: data_dir,
 				pid: GLib.Path.build_filename(data_dir, pid),
-				socket: GLib.Path.build_filename(data_dir, socket),
+				socket_path: GLib.Path.build_filename(
+					data_dir,
+					socket_name
+				),
 				debug: debug,
 				pass_data_dir: pass_data_dir
 			);
 		}
 
+		public async GLib.SocketConnection connect() throws GLib.Error
+		{
+			var client = new GLib.SocketClient();
+			if (this.socket_path.has_prefix("tcp://")) {
+				var endpoint = this.socket_path.substring(6);
+				var host = endpoint;
+				var port = 4141;
+				var colon = endpoint.last_index_of(":");
+				if (colon > 0) {
+					host = endpoint[0:colon];
+					int.try_parse(endpoint.substring(colon + 1), out port);
+				}
+				return yield client.connect_to_host_async(
+					host,
+					port,
+					null
+				);
+			}
+			return yield client.connect_async(
+				new GLib.UnixSocketAddress(this.socket_path),
+				null
+			);
+		}
+
 		/**
-		 * Block until {@link socket} accepts a connection, spawning or
+		 * Block until {@link socket_path} accepts a connection, spawning or
 		 * kill-and-respawning {{{ollmfilesd}}} when needed.
 		 */
 		public async void ensure_daemon() throws GLib.IOError
 		{
 			var daemon_pid = this.read_pid();
 			GLib.debug(
-				"ensure_daemon socket=%s pid_file=%s pid=%d pid_running=%s "
+				"ensure_daemon socket_path=%s pid_file=%s pid=%d pid_running=%s "
 					+ "socket_exists=%s connectable=%s",
-				this.socket,
+				this.socket_path,
 				this.pid,
 				daemon_pid,
 				this.pid_running(daemon_pid) ? "true" : "false",
-				GLib.FileUtils.test(this.socket, GLib.FileTest.EXISTS)
+				GLib.FileUtils.test(this.socket_path, GLib.FileTest.EXISTS)
 					? "true"
 					: "false",
 				this.connectable() ? "true" : "false"
@@ -113,8 +141,8 @@ namespace OLLMrpc
 
 			if (this.connectable()) {
 				GLib.debug(
-					"ensure_daemon ready socket=%s pid=%d",
-					this.socket,
+					"ensure_daemon ready socket_path=%s pid=%d",
+					this.socket_path,
 					daemon_pid
 				);
 				return;
@@ -143,7 +171,7 @@ namespace OLLMrpc
 					+ "socket_exists=%s connectable=%s",
 				daemon_pid,
 				this.pid_running(daemon_pid) ? "true" : "false",
-				GLib.FileUtils.test(this.socket, GLib.FileTest.EXISTS)
+				GLib.FileUtils.test(this.socket_path, GLib.FileTest.EXISTS)
 					? "true"
 					: "false",
 				this.connectable() ? "true" : "false"
@@ -158,18 +186,18 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * @return true when a stream connection to {@link socket} succeeds
+		 * @return true when a stream connection to {@link socket_path} succeeds
 		 */
 		public bool connectable()
 		{
-			if (!GLib.FileUtils.test(this.socket, GLib.FileTest.EXISTS)) {
+			if (!GLib.FileUtils.test(this.socket_path, GLib.FileTest.EXISTS)) {
 				return false;
 			}
 			var client = new GLib.SocketClient();
 			client.timeout = (uint) this.probe;
 			try {
 				var conn = client.connect(
-					new GLib.UnixSocketAddress(this.socket),
+					new GLib.UnixSocketAddress(this.socket_path),
 					null
 				);
 				conn.close();
@@ -257,8 +285,8 @@ namespace OLLMrpc
 				yield this.pause(this.poll);
 			}
 			GLib.debug(
-				"startup timed out socket=%s wait=%us",
-				this.socket,
+				"startup timed out socket_path=%s wait=%us",
+				this.socket_path,
 				this.startup_wait
 			);
 		}
@@ -302,10 +330,10 @@ namespace OLLMrpc
 
 		private void unlink_socket()
 		{
-			if (!GLib.FileUtils.test(this.socket, GLib.FileTest.EXISTS)) {
+			if (!GLib.FileUtils.test(this.socket_path, GLib.FileTest.EXISTS)) {
 				return;
 			}
-			GLib.FileUtils.unlink(this.socket);
+			GLib.FileUtils.unlink(this.socket_path);
 		}
 	}
 }

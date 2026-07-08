@@ -69,7 +69,6 @@ valadoc_docs = custom_target('valadoc',
     '../libocrpc/Response.vala',
     '../libocrpc/RpcErrorCode.vala',
     '../libocrpc/Client.vala',
-    '../libocrpc/ClientPlatform.vala',
     '../libocrpc/ClientBoot.vala',
     # ollmfilesd param types (shared with libocfiles client)
     '../ollmfilesd/CallParam.vala',

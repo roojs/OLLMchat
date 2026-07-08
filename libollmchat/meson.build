@@ -232,7 +232,6 @@ ollmchat_ollama_src = files([
   'Prompt/Template.vala',
 ])
 
-
 # Build rpath for libraries to find each other in build directory
 lib_build_rpath = ':'.join([
   meson.current_build_dir(),

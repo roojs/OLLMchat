@@ -5,6 +5,8 @@
 
 valac = meson.get_compiler('vala')
 is_windows = host_machine.system() == 'windows'
+is_android = host_machine.system() == 'android'
+use_unix_sockets = not is_windows and not is_android
 
 ocrpc_deps = [
   dependency('gee-0.8'),
@@ -29,22 +31,20 @@ ocrpc_vapi_gen_pkgs = [
   '--pkg', 'gee-0.8',
 ]
 
-transport_socket_src = files(['Transport/SocketListenWindows.vala'])
-client_platform_src = files(['ClientPlatformWindows.vala'])
-client_boot_src = files(['ClientBootWindows.vala'])
+transport_socket_src = files(['windows/Transport/SocketListen.vala'])
+client_boot_src = files(['windows/ClientBoot.vala'])
 
-if not is_windows
+if use_unix_sockets
   ocrpc_deps += dependency('gio-unix-2.0')
   ocrpc_vapi_pkgs += '--pkg=gio-unix-2.0'
   ocrpc_vapi_gen_pkgs += [
     '--pkg', 'gio-unix-2.0',
   ]
   transport_socket_src = files(['Transport/SocketListen.vala'])
-  client_platform_src = files(['ClientPlatform.vala'])
   client_boot_src = files(['ClientBoot.vala'])
 endif
 
-ocrpc_src = files([
+ocrpc_core_src = files([
   'namespace.vala',
   'Bin/Stream.vala',
   'Bin/Serializable.vala',
@@ -59,8 +59,9 @@ ocrpc_src = files([
   'Request.vala',
   'Response.vala',
   'RpcErrorCode.vala',
-  'Client.vala',
-]) + transport_socket_src + client_platform_src + client_boot_src
+])
+
+ocrpc_src = ocrpc_core_src + files(['Client.vala']) + transport_socket_src + client_boot_src
 
 ocrpc_base_lib = library('ocrpc',
   dependencies: ocrpc_deps,

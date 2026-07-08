@@ -1,9 +1,8 @@
 /*
- * Windows fallback for Unix-domain socket RPC listener.
+ * Windows/Android fallback for Unix-domain socket RPC listener.
  *
  * The real implementation binds a stream socket at a filesystem path via
- * gio-unix. On Windows, callers should use stdio transport or another IPC
- * path when that is wired up.
+ * gio-unix. On Windows and Android, callers should use TCP transport instead.
  */
 
 namespace OLLMrpc.Transport

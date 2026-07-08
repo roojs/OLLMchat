@@ -10,7 +10,7 @@
 
 **Related:**
 
-- [`docs/plans/2.10.4.30-startup-and-daemon-status-ui.md`](../../plans/2.10.4.30-startup-and-daemon-status-ui.md) — status UI for scan/activate (follow-up)
+- [`docs/plans/2.10.4.30-ACTIVE-startup-and-daemon-status-ui.md`](../../plans/2.10.4.30-ACTIVE-startup-and-daemon-status-ui.md) — status UI for scan/activate (follow-up)
 - [`docs/bugs/done/2026-05-15-FIXED-background-scan-ui-sluggish.md`](2026-05-15-FIXED-background-scan-ui-sluggish.md) — prior backupDB / scan jank on project open
 - [`docs/plans/done/2.10.4.22-DONE-app-rpc-daemon-startup.md`](../../plans/done/2.10.4.22-DONE-app-rpc-daemon-startup.md) — RPC boot order
 
@@ -125,7 +125,7 @@ Stale reconcile attempted to delete paths under `libocvector2/` that were **brok
 |------|--------|
 | **Option B — worker thread for scan** | Move `read_dir` reconcile off main thread (pre-RPC `BackgroundScan` pattern). Deferred; main-thread scan still runs but no longer blocks session restore. See plan references in original investigation. |
 | **Reconcile must not delete workspace source** | `faiss_c_wrapper` incident — harden `DeleteManager` / stale path handling |
-| **Scan status UI** | [`docs/plans/2.10.4.30-startup-and-daemon-status-ui.md`](../../plans/2.10.4.30-startup-and-daemon-status-ui.md) |
+| **Scan status UI** | [`docs/plans/2.10.4.30-ACTIVE-startup-and-daemon-status-ui.md`](../../plans/2.10.4.30-ACTIVE-startup-and-daemon-status-ui.md) |
 | **`--scan-project` baseline** | Run manually on `OLLMchat` for timing before Option B |
 
 ---

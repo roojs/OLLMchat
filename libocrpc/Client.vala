@@ -36,9 +36,11 @@ namespace OLLMrpc
 	/**
 	 * Bin RPC client for {{{ollmfilesd}}}.
 	 * {@link connect} builds {@link ClientBoot} from this client's
-	 * {@link data_dir}, {@link debug}, and {@link pass_data_dir}, then runs
-	 * {@link ClientBoot.ensure_daemon} when the platform needs a local
-	 * starter (Unix, not TCP).
+	 * {@link data_dir}, {@link debug}, and {@link pass_data_dir}, runs
+	 * {@link ClientBoot.ensure_daemon}, then {@link ClientBoot.connect}.
+	 * {@code tcp://} values in {@link socket_path} use TCP; otherwise a Unix
+	 * socket path is used (Unix desktop only — Windows/Android require
+	 * {@code tcp://}).
 	 *
 	 * A socket {@link GLib.IOChannel} watch dispatches inbound
 	 * {@link Notification} messages and resolves queued {@link Response}
@@ -52,8 +54,7 @@ namespace OLLMrpc
 	 */
 	public class Client : GLib.Object
 	{
-		public string socket { get; construct; }
-		public bool tcp { get; construct; default = false; }
+		public string socket_path { get; construct; }
 
 		public string data_dir { get; construct; }
 
@@ -87,7 +88,7 @@ namespace OLLMrpc
 		 */
 		public signal void failed(Request request, Error error);
 
-		private GLib.SocketConnection? connection;
+		private GLib.SocketConnection? socket;
 		private GLib.DataInputStream? input;
 		private GLib.DataOutputStream? output;
 		private int next_id = 1;
@@ -111,9 +112,9 @@ namespace OLLMrpc
 		 * @param data_dir Root directory for daemon DB, socket, and pid file
 		 * @param pid Basename of the pid file within {@link data_dir}
 		 *   (e.g. {{{ollmfilesd.pid}}})
-		 * @param socket Basename of the Unix socket within {@link data_dir}
-		 *   (e.g. {{{ollmfilesd.sock}}}); {@link Client.socket} property stores
-		 *   the full connect path
+		 * @param socket_name Basename of the Unix socket within {@link data_dir}
+		 *   (e.g. {{{ollmfilesd.sock}}}); {@link Client.socket_path} stores the
+		 *   full connect path
 		 * @param debug When true (default), {@link Client.connect} forwards to
 		 *   {@link ClientBoot} and spawn passes {{{--debug}}} to {{{ollmfilesd}}}
 		 * @param pass_data_dir When true, spawn passes {{{--data-dir=data_dir}}};
@@ -122,7 +123,7 @@ namespace OLLMrpc
 		public Client(
 			string data_dir,
 			string pid,
-			string socket,
+			string socket_name,
 			bool debug = true,
 			bool pass_data_dir = false
 		)
@@ -130,12 +131,28 @@ namespace OLLMrpc
 			GLib.Object(
 				data_dir: data_dir,
 				pid: GLib.Path.build_filename(data_dir, pid),
-				socket: GLib.Path.build_filename(
+				socket_path: GLib.Path.build_filename(
 					data_dir,
-					socket
+					socket_name
 				),
 				debug: debug,
 				pass_data_dir: pass_data_dir
+			);
+		}
+
+		/**
+		 * Connect to an already-running daemon over TCP.
+		 *
+		 * @param socket_path TCP endpoint (e.g. {{{tcp://127.0.0.1:4141}}})
+		 */
+		public Client.tcp(string socket_path)
+		{
+			GLib.Object(
+				data_dir: "",
+				pid: "",
+				socket_path: socket_path,
+				debug: false,
+				pass_data_dir: false
 			);
 		}
 
@@ -153,74 +170,47 @@ namespace OLLMrpc
 
 			hello_request.id = this.next_id++;
 
-			GLib.debug(
-				"connect begin socket=%s tcp=%s",
-				this.socket,
-				this.tcp ? "true" : "false"
+			var socket_name = this.socket_path.has_prefix("tcp://")
+				? this.socket_path
+				: GLib.Path.get_basename(this.socket_path);
+			var boot = new ClientBoot(
+				this.data_dir,
+				GLib.Path.get_basename(this.pid),
+				socket_name,
+				this.debug,
+				this.pass_data_dir
 			);
-
-			if (client_boot_required(this.tcp)) {
-				var boot = new ClientBoot(
-					this.data_dir,
-					GLib.Path.get_basename(this.pid),
-					GLib.Path.get_basename(this.socket),
-					this.debug,
-					this.pass_data_dir
+			try {
+				yield boot.ensure_daemon();
+			} catch (GLib.IOError e) {
+				this.connect_error = e.message != ""
+					? e.message
+					: "could not start or reach the filesystem daemon (ollmfilesd)";
+				GLib.critical(
+					"ensure_daemon %s: %s",
+					this.socket_path,
+					this.connect_error
 				);
-				try {
-					yield boot.ensure_daemon();
-				} catch (GLib.IOError e) {
-					this.connect_error = e.message != ""
-						? e.message
-						: "could not start or reach the filesystem daemon (ollmfilesd)";
-					GLib.critical(
-						"ensure_daemon %s: %s",
-						this.socket,
-						this.connect_error
-					);
-					return false;
-				}
+				return false;
 			}
 
-			var client = new GLib.SocketClient();
-			if (this.tcp) {
-				try {
-					this.connection = yield client.connect_to_host_async(
-						this.socket,
-						4141,
-						null
-					);
-				} catch (GLib.Error e) {
-					this.connect_error = e.message;
-					GLib.critical(
-						"connect %s: %s",
-						this.socket,
-						this.connect_error
-					);
-					return false;
-				}
+			try {
+				this.socket = yield boot.connect();
+			} catch (GLib.Error e) {
+				this.connect_error = e.message;
+				GLib.critical(
+					"connect %s: %s",
+					this.socket_path,
+					this.connect_error
+				);
+				return false;
 			}
 
-			if (!this.tcp) {
-				try {
-					this.connection = yield connect_unix_socket(this.socket);
-				} catch (GLib.Error e) {
-					this.connect_error = e.message;
-					GLib.critical(
-						"connect %s: %s",
-						this.socket,
-						this.connect_error
-					);
-					return false;
-				}
-			}
-
-			this.input = new GLib.DataInputStream(this.connection.get_input_stream());
-			this.output = new GLib.DataOutputStream(this.connection.get_output_stream());
+			this.input = new GLib.DataInputStream(this.socket.get_input_stream());
+			this.output = new GLib.DataOutputStream(this.socket.get_output_stream());
 			this.bin = new Bin.Stream(this.input, this.output);
 			this.connected = true;
-			GLib.debug("socket open tcp=%s", this.tcp ? "true" : "false");
-			var fd = this.connection.get_socket().get_fd();
+			var fd = this.socket.get_socket().get_fd();
 			this.read_channel = new GLib.IOChannel.unix_new(fd);
 			this.read_channel.set_encoding(null);
 			this.read_channel.set_buffered(false);
@@ -306,8 +296,8 @@ namespace OLLMrpc
 				);
 			}
 			GLib.debug(
-				"disconnect socket=%s pending=%u",
-				this.socket,
+				"disconnect socket_path=%s pending=%u",
+				this.socket_path,
 				this.pending.size
 			);
 			this.sending = false;
@@ -326,12 +316,12 @@ namespace OLLMrpc
 			this.bin = null;
 			this.input = null;
 			this.output = null;
-			if (this.connection != null) {
+			if (this.socket != null) {
 				try {
-					this.connection.close();
+					this.socket.close();
 				} catch (GLib.Error e) {
 				}
-				this.connection = null;
+				this.socket = null;
 			}
 		}
 

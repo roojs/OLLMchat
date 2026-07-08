@@ -132,6 +132,7 @@ elif android_poc_opt and host_machine.system() == 'android'
   subdir('libocmarkdown')
   subdir('libocmarkdowngtk')
   subdir('libocsqlite')
+  subdir('libocrpc')
   subdir('libollamaweb')
   subdir('libollmchat')
   subdir('libollmchatgtk')
