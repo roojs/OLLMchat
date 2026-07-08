@@ -131,6 +131,7 @@ namespace OLLMapp.SettingsDialog
 			this.view_stack.add_titled(this.models_page,
 				 this.models_page.page_name,
 				  this.models_page.page_title);
+			this.view_stack.get_page(this.models_page).icon_name = this.models_page.page_icon;
 			// Add action widget to action bar area (initially hidden)
 			this.action_bar_area.append(this.models_page.action_widget);
 			this.models_page.action_widget.visible = false;
@@ -140,6 +141,7 @@ namespace OLLMapp.SettingsDialog
 			this.view_stack.add_titled(this.connections_page, 
 				this.connections_page.page_name, 
 				this.connections_page.page_title);
+			this.view_stack.get_page(this.connections_page).icon_name = this.connections_page.page_icon;
 			// Add action widget to action bar area (initially hidden)
 			this.action_bar_area.append(this.connections_page.action_widget);
 			this.connections_page.action_widget.visible = false;
@@ -149,6 +151,7 @@ namespace OLLMapp.SettingsDialog
 			this.view_stack.add_titled(this.projects_page,
 				this.projects_page.page_name,
 				this.projects_page.page_title);
+			this.view_stack.get_page(this.projects_page).icon_name = this.projects_page.page_icon;
 			this.action_bar_area.append(this.projects_page.action_widget);
 			this.projects_page.action_widget.visible = false;
 
@@ -157,6 +160,7 @@ namespace OLLMapp.SettingsDialog
 			this.view_stack.add_titled(this.tools_page,
 				this.tools_page.page_name,
 				this.tools_page.page_title);
+			this.view_stack.get_page(this.tools_page).icon_name = this.tools_page.page_icon;
 			// Add action widget to action bar area (initially hidden)
 			this.action_bar_area.append(this.tools_page.action_widget);
 			this.tools_page.action_widget.visible = false;

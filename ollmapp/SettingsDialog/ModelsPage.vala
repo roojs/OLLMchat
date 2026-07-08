@@ -67,6 +67,7 @@ namespace OLLMapp.SettingsDialog
 				dialog: dialog,
 				page_name: "models",
 				page_title: "Models",
+				page_icon: "applications-engineering-symbolic",
 				orientation: Gtk.Orientation.VERTICAL,
 				spacing: 0
 			);

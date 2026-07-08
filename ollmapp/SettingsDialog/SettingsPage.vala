@@ -39,6 +39,11 @@ namespace OLLMapp.SettingsDialog
 		public string page_title { get; construct; default = ""; }
 
 		/**
+		 * ViewStack tab icon ({@link Adw.ViewSwitcherPolicy.NARROW}).
+		 */
+		public string page_icon { get; construct; default = ""; }
+
+		/**
 		 * Action widget for this page (added to action bar area by SettingsDialog).
 		 * 
 		 * Should be created in constructor. Can be an empty hidden box for pages

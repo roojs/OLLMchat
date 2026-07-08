@@ -53,6 +53,7 @@ namespace OLLMapp.SettingsDialog
 				dialog: dialog,
 				page_name: "connections",
 				page_title: "Connections",
+				page_icon: "network-server-symbolic",
 				orientation: Gtk.Orientation.VERTICAL,
 				spacing: 0
 			);

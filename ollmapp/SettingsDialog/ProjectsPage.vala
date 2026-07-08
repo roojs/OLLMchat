@@ -46,6 +46,7 @@ namespace OLLMapp.SettingsDialog
 				dialog: dialog,
 				page_name: "projects",
 				page_title: "Projects",
+				page_icon: "folder-symbolic",
 				orientation: Gtk.Orientation.VERTICAL,
 				spacing: 0
 			);

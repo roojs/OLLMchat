@@ -59,6 +59,7 @@ namespace OLLMapp.SettingsDialog
 				dialog: dialog,
 				page_name: "tools",
 				page_title: "Tools",
+				page_icon: "applications-utilities-symbolic",
 				orientation: Gtk.Orientation.VERTICAL,
 				spacing: 0
 			);

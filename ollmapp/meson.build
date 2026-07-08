@@ -95,6 +95,8 @@ if get_option('android_poc')
     'SettingsDialog/PullManager.vala',
     'SettingsDialog/PullManagerThread.vala',
     'SettingsDialog/PullManagerBanner.vala',
+    'SettingsDialog/ToolsPage.vala',
+    'SettingsDialog/Rows/ToolRow.vala',
     'SettingsDialog/Rows/Row.vala',
     'SettingsDialog/Rows/Bool.vala',
     'SettingsDialog/Rows/String.vala',

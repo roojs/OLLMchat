@@ -19,10 +19,13 @@
 namespace OLLMapp.SettingsDialog
 {
 	/**
-	 * Android settings dialog — Connections and Models tabs only.
+	 * Android settings dialog — Connections, Models, and Tools tabs.
 	 *
 	 * Same class name as desktop {@link MainDialog}; Android builds this file
 	 * instead of {@code SettingsDialog/MainDialog.vala}.
+	 *
+	 * {@link Adw.ViewSwitcherPolicy.NARROW} shows tab icons only; icons must
+	 * ship in {@code android/icons/manifest}.
 	 *
 	 * @since 1.0
 	 */
@@ -34,6 +37,7 @@ namespace OLLMapp.SettingsDialog
 
 		private ConnectionsPage connections_page;
 		private ModelsPage models_page;
+		private ToolsPage tools_page;
 		private Adw.ViewStack view_stack;
 		public Gtk.Box action_bar_area { get; private set; }
 		private SettingsPage previous_visible_child {
@@ -87,6 +91,7 @@ namespace OLLMapp.SettingsDialog
 				this.connections_page.page_name,
 				this.connections_page.page_title
 			);
+			this.view_stack.get_page(this.connections_page).icon_name = this.connections_page.page_icon;
 			this.action_bar_area.append(this.connections_page.action_widget);
 			this.connections_page.action_widget.visible = false;
 
@@ -96,8 +101,19 @@ namespace OLLMapp.SettingsDialog
 				this.models_page.page_name,
 				this.models_page.page_title
 			);
+			this.view_stack.get_page(this.models_page).icon_name = this.models_page.page_icon;
 			this.action_bar_area.append(this.models_page.action_widget);
 			this.models_page.action_widget.visible = false;
+
+			this.tools_page = new ToolsPage(this);
+			this.view_stack.add_titled(
+				this.tools_page,
+				this.tools_page.page_name,
+				this.tools_page.page_title
+			);
+			this.view_stack.get_page(this.tools_page).icon_name = this.tools_page.page_icon;
+			this.action_bar_area.append(this.tools_page.action_widget);
+			this.tools_page.action_widget.visible = false;
 
 			this.view_stack.notify["visible-child"].connect(this.on_page_changed);
 			this.on_page_changed();
@@ -138,6 +154,9 @@ namespace OLLMapp.SettingsDialog
 			}
 
 			this.connections_page.render_connections();
+
+			this.tools_page.load_tools();
+			this.tools_page.load_configs();
 
 			this.present(this.parent);
 
@@ -184,3 +203,4 @@ namespace OLLMapp.SettingsDialog
 		}
 	}
 }
+
