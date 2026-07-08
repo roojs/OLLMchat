@@ -217,6 +217,9 @@ namespace OLLMfilesd
 					true
 				)
 			);
+			this.project_manager.notification.connect((notif) => {
+				this.broadcast(notif);
+			});
 
 			if (this.project_manager.db != null) {
 				var db_file = GLib.File.new_for_path(
@@ -238,9 +241,9 @@ namespace OLLMfilesd
 			}
 
 			this.project_manager.vector_db_path =
-				GLib.Path.build_filename (
+				GLib.Path.build_filename(
 					this.data_dir, "codedb.faiss.vectors");
-			this.project_manager.background_scan =
+			this.project_manager.vector_scan =
 				new OLLMfilesd.Vector.BackgroundScan (
 					this,
 					this.project_manager,
@@ -323,7 +326,7 @@ namespace OLLMfilesd
 				GLib.debug("listening on %s", this.socket_path);
 			}
 
-			this.project_manager.background_scan.open_vector_db.begin();
+			this.project_manager.vector_scan.open_vector_db.begin();
 		}
 
 		/**

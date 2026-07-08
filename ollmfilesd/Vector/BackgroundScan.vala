@@ -1,12 +1,12 @@
 // ollmfilesd/Vector/BackgroundScan.vala
 //
-// BackgroundScan – async file-index queue on the daemon MainLoop.
-// Integrates with Indexer and emits event.vector.scan_update RPC notifications.
+// BackgroundScan – semantic (FAISS) index queue on the daemon MainLoop.
+// Separate from filesystem read_dir; emits event.vector.* RPC notifications.
 //
 namespace OLLMfilesd.Vector {
 
     /**
-     * Processes a queue of file paths to be indexed on the daemon default MainLoop.
+     * Queues and runs per-file vector indexing after filesystem scan completes.
      */
     public class BackgroundScan : GLib.Object {
 
@@ -66,11 +66,11 @@ namespace OLLMfilesd.Vector {
         }
 
         /**
-         * Enqueue all files of a project that need scanning.
+         * Enqueue all project files that need vector indexing.
          *
          * @param project The active project folder, or null to skip.
          */
-        public void scanProject (OLLMfilesd.Folder? project)
+        public void queue_project (OLLMfilesd.Folder? project)
         {
             if (project == null
                 || this.project_manager.vector_db.dimension == 0) {
@@ -79,24 +79,19 @@ namespace OLLMfilesd.Vector {
 
             var project_path = project.path;
             var pm = project.manager;
-            GLib.Timeout.add (1000, () => {
-                if (pm.scanning.size > 0) {
-                    GLib.debug ("semantic index waiting filesystem scan active=%u",
-                        pm.scanning.size);
-                    return true;
-                }
+            this.schedule_after_filesystem_scan (pm, () => {
                 this.queueProject.begin (project_path);
                 return false;
             });
         }
 
         /**
-         * Enqueue a single file for scanning (e.g. after a save).
+         * Enqueue one file for vector indexing (e.g. after a save).
          *
          * @param file The File object that was modified.
          * @param project The project folder containing this file, or null to skip.
          */
-        public void scanFile (OLLMfilesd.File file, OLLMfilesd.Folder? project)
+        public void queue_file (OLLMfilesd.File file, OLLMfilesd.Folder? project)
         {
             if (project == null
                 || this.project_manager.vector_db.dimension == 0) {
@@ -106,26 +101,50 @@ namespace OLLMfilesd.Vector {
             var file_path = file.path;
             var project_path = project.path;
             var pm = project.manager;
-            GLib.Timeout.add (1000, () => {
-                if (pm.scanning.size > 0) {
-                    GLib.debug ("semantic index waiting filesystem scan active=%u",
-                        pm.scanning.size);
-                    return true;
-                }
+            this.schedule_after_filesystem_scan (pm, () => {
                 this.queueFile (new BackgroundScanItem (project_path, file_path));
                 return false;
             });
         }
 
+        /**
+         * Run {@link run} when no {@link OLLMfilesd.ProjectManager.scanning} pass is active.
+         * Polls every 100 ms while filesystem {@link OLLMfilesd.Folder.read_dir} is in flight.
+         */
+        private void schedule_after_filesystem_scan (
+            OLLMfilesd.ProjectManager pm,
+            owned SourceFunc run
+        )
+        {
+            if (pm.scanning.size > 0) {
+                GLib.debug ("vector index waiting for filesystem scan active=%u",
+                    pm.scanning.size);
+                GLib.Timeout.add (100, () => {
+                    this.schedule_after_filesystem_scan (pm, run);
+                    return false;
+                });
+                return;
+            }
+            run ();
+        }
+
         private void emit_scan_update (int queue_size, string current_file)
         {
-            GLib.debug ("scan banner update queue_size=%d file=%s",
+            GLib.debug ("vector index progress queue_size=%d file=%s",
                 queue_size, GLib.Path.get_basename (current_file));
-            this.app.broadcast (new OLLMrpc.Notification () {
+            this.broadcast (new OLLMrpc.Notification () {
                 method = "event.vector.scan_update",
                 object_type = "Vector",
                 message = "%d %s".printf (queue_size, current_file),
             });
+        }
+
+        /**
+         * Push an out-of-band vector RPC notification to all connected clients.
+         */
+        public void broadcast (OLLMrpc.Notification notification)
+        {
+            this.app.broadcast (notification);
         }
 
         private class BackgroundScanItem {
@@ -145,7 +164,7 @@ namespace OLLMfilesd.Vector {
             bool auto_start = true
         )
         {
-            GLib.debug ("semantic index queue project path=%s", path);
+            GLib.debug ("vector index queue project path=%s", path);
 
             yield this.project_manager.load_projects_from_db ();
 
@@ -180,7 +199,7 @@ namespace OLLMfilesd.Vector {
                     ),
                     false
                 );
-                GLib.debug ("queued 1 files for project %s", path);
+                GLib.debug ("vector index queued 1 file for project %s", path);
                 if (auto_start) {
                     this.startQueue.begin ();
                 }
@@ -205,7 +224,8 @@ namespace OLLMfilesd.Vector {
                 queued_count++;
             }
 
-            GLib.debug ("queued %d files for project %s", queued_count, path);
+            GLib.debug ("vector index queued %d files for project %s",
+                queued_count, path);
             if (auto_start && queued_count > 0) {
                 this.startQueue.begin ();
             }
@@ -237,17 +257,27 @@ namespace OLLMfilesd.Vector {
             if (this.queue_processing) {
                 return;
             }
-            this.queue_processing = true;
 
             if (this.file_queue == null) {
                 this.file_queue = new Gee.ArrayQueue<BackgroundScanItem> ();
             }
 
+            if (this.file_queue.size == 0) {
+                return;
+            }
+
+            this.queue_processing = true;
+            this.broadcast (new OLLMrpc.Notification () {
+                method = "event.vector.scan_start",
+                object_type = "Vector",
+                message = "",
+            });
+
             while (true) {
                 if (this.stop_requested) {
                     this.queue_processing = false;
                     GLib.debug (
-                        "semantic index paused queue=%u",
+                        "vector index paused queue=%u",
                         this.file_queue.size
                     );
                     this.emit_scan_update ((int) this.file_queue.size, "");
@@ -258,8 +288,13 @@ namespace OLLMfilesd.Vector {
 
                 if (next_item == null) {
                     this.queue_processing = false;
-                    GLib.debug ("semantic index queue empty");
+                    GLib.debug ("vector index queue empty");
                     this.emit_scan_update (0, "");
+                    this.broadcast (new OLLMrpc.Notification () {
+                        method = "event.vector.scan_end",
+                        object_type = "Vector",
+                        message = "",
+                    });
                     break;
                 }
 
@@ -280,7 +315,7 @@ namespace OLLMfilesd.Vector {
 
                 this.emit_scan_update ((int) this.file_queue.size, next_item.file_path);
 
-                GLib.debug ("semantic index file=%s queue=%u",
+                GLib.debug ("vector index file=%s queue=%u",
                     next_item.file_path, this.file_queue.size);
 
                 if (this.indexer == null) {
@@ -301,16 +336,16 @@ namespace OLLMfilesd.Vector {
                 try {
                     yield this.indexer.index_filebase (project_file.file, false, false);
                 } catch (GLib.Error e) {
-                    GLib.warning ("semantic index error file=%s: %s",
+                    GLib.warning ("vector index error file=%s: %s",
                         next_item.file_path, e.message);
                 }
-                GLib.debug ("indexed file=%s queue=%u",
+                GLib.debug ("vector index done file=%s queue=%u",
                     next_item.file_path, this.file_queue.size);
 
                 if (this.stop_requested) {
                     this.queue_processing = false;
                     GLib.debug (
-                        "semantic index paused queue=%u",
+                        "vector index paused queue=%u",
                         this.file_queue.size
                     );
                     this.emit_scan_update ((int) this.file_queue.size, "");

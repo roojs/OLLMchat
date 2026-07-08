@@ -237,12 +237,11 @@ namespace OLLMapp.SettingsDialog
 			// Refresh models after connection checks complete
 			this.present(parent);
 
-			// Refresh ConnectionModels first, then render models page
-			var parent_window = this.parent as OllmchatWindow;
-			if (parent_window != null && parent_window.history_manager != null) {
-				yield parent_window.history_manager.connection_models.refresh();
+			if (this.parent.history_manager != null) {
+				this.models_page.connection_models =
+					this.parent.history_manager.connection_models;
+				this.models_page.render_models.begin();
 			}
-			this.models_page.render_models.begin();
 		}
 
 		/**

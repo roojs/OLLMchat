@@ -19,7 +19,7 @@
 namespace OLLMapp
 {
 	/**
-	 * Header status bar for daemon activity (project scan, vector index, etc.).
+	 * Header status bar for daemon activity (filesystem scan, vector index, etc.).
 	 *
 	 * Emit {@link notification} with {@link OLLMrpc.Notification} objects;
 	 * daemon RPC events pass through unchanged, client work uses
@@ -96,9 +96,41 @@ namespace OLLMapp
 					this.progress_bar.fraction = 0.0;
 					this.show();
 					break;
+
 				case "client.project.load_end":
 					this.hide();
 					break;
+
+				case "event.filesystem.scan_start":
+					this.label.label =
+						"Filesystem scan: %s…".printf(
+							GLib.Path.get_basename(notif.message));
+					this.show();
+					break;
+
+				case "event.filesystem.scan_end":
+					var fs_end_space = notif.message.index_of(" ");
+					if (fs_end_space < 0) {
+						return;
+					}
+					var fs_file_count = int.parse(
+						notif.message.substring(0, fs_end_space));
+					this.label.label =
+						"Filesystem scan ended — %d files".printf(
+							fs_file_count);
+					this.hide();
+					break;
+
+				case "event.vector.scan_start":
+					this.label.label = "Vector indexing…";
+					this.progress_bar.fraction = 0.0;
+					this.show();
+					break;
+
+				case "event.vector.scan_end":
+					this.hide();
+					break;
+
 				case "event.vector.scan_update":
 					var space = notif.message.index_of(" ");
 					if (space < 0) {
@@ -122,17 +154,18 @@ namespace OLLMapp
 					if (queue_size == 0) {
 						this.progress_bar.fraction = 1.0;
 						this.label.label =
-							"Indexing: %s — %d/%d".printf(
+							"Vector indexing: %s — %d/%d".printf(
 								basename, this.total_scan, this.total_scan);
 						this.hide();
 						return;
 					}
 
 					this.label.label =
-						"Indexing: %s — %d/%d".printf(
+						"Vector indexing: %s — %d/%d".printf(
 							basename, files_scanned, this.total_scan);
 					this.show();
 					break;
+
 				default:
 					break;
 			}

@@ -115,6 +115,12 @@ namespace OLLMfilesd
 		public signal void call_create_project(OLLMrpc.Request request);
 		public signal void call_remove_project(OLLMrpc.Request request);
 		public signal void call_activate_project(OLLMrpc.Request request);
+
+		/**
+		 * Out-of-band RPC notification (filesystem scan, etc.).
+		 * {@link OllmfilesdApplication} connects this to {@link OllmfilesdApplication.broadcast}.
+		 */
+		public signal void notification(OLLMrpc.Notification notif);
 		
 		/**
 		 * DeleteManager instance for handling file deletions.
@@ -132,16 +138,9 @@ namespace OLLMfilesd
 		public OLLMvector2.Database vector_db { get; set; }
 
 		/**
-		 * Semantic index queue; scan enqueue wired in {@link construct}.
+		 * Semantic (FAISS) index queue — not filesystem {@link Folder.read_dir}.
 		 */
-		public OLLMfilesd.Vector.BackgroundScan background_scan { get; set; }
-
-		/**
-		 * When true, {@link activate_project} skips the initial directory scan (read_dir).
-		 * Off by default. Once the scan is skipped, this is set to true so it stays disabled.
-		 * Use for tests or lightweight setups that rely on DB state only.
-		 */
-		public bool disable_initial_scan { get; set; default = false; }
+		public OLLMfilesd.Vector.BackgroundScan vector_scan { get; set; }
 		
 		/**
 		 * Constructor.
@@ -200,20 +199,19 @@ namespace OLLMfilesd
 			});
 			this.call_activate_project.connect((request) => {
 				var p = (ProjectParams) request.param;
-				this.disable_initial_scan = p.skip_scan;
 				this.activate_project.begin(
 					request,
 					p.path.length > 0
 						? this.projects.path_map.get(p.path)
-						: null
+						: null,
+					p.skip_scan
 				);
 			});
 			this.file_contents_changed.connect((file) => {
-				this.background_scan.scanFile(
-					file, this.active_project);
-			});
-			this.active_project_changed.connect((project) => {
-				this.background_scan.scanProject(project);
+				if (this.vector_scan != null) {
+					this.vector_scan.queue_file(
+						file, this.active_project);
+				}
 			});
 		}
 
@@ -251,10 +249,12 @@ namespace OLLMfilesd
 		 * Note: Projects are Folders with is_project = true.
 		 * 
 		 * @param project The project folder to activate (must have is_project = true)
+		 * @param skip_fs_scan When true, skip {@link Folder.read_dir} (RPC skip_scan)
 		 */
 		public async void activate_project(
 			OLLMrpc.Request request,
-			Folder? project
+			Folder? project,
+			bool skip_fs_scan = false
 		)
 		{
 			// Skip if this project is already active (avoid redundant scans)
@@ -319,18 +319,39 @@ namespace OLLMfilesd
 				return;
 			}
 
-			if (!this.disable_initial_scan) {
+			// --- Filesystem scan (read_dir): walk disk, refresh project_files ---
+			if (!skip_fs_scan) {
+				var filesystem_scanned = false;
 				if (this.scanning.has_key (project.path)) {
 					GLib.debug ("filesystem scan already active path=%s", project.path);
 				} else {
 					GLib.debug ("filesystem scan queued path=%s", project.path);
+					this.notification(new OLLMrpc.Notification() {
+						method = "event.filesystem.scan_start",
+						object_type = "Project",
+						message = project.path,
+					});
 					yield project.read_dir(new DateTime.now_local().to_unix(), true);
 					GLib.debug ("filesystem scan returned path=%s", project.path);
+					filesystem_scanned = true;
 				}
 				project.project_files.update_from(project);
+				if (filesystem_scanned) {
+					this.notification(new OLLMrpc.Notification() {
+						method = "event.filesystem.scan_end",
+						object_type = "Project",
+						message = "%u %s".printf(
+							project.project_files.get_n_items(),
+							project.path),
+					});
+				}
 			}
-			this.disable_initial_scan = false;
-		
+
+			// --- Vector scan (FAISS): semantic index queue; waits if read_dir still active ---
+			if (this.vector_scan != null) {
+				this.vector_scan.queue_project(project);
+			}
+
 		}
 		
 		

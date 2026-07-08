@@ -144,9 +144,9 @@ namespace OLLMfilesd
 					});
 					return;
 				}
-				this.manager.background_scan.open_vector_db.begin((obj, res) => {
+				this.manager.vector_scan.open_vector_db.begin((obj, res) => {
 					try {
-						this.manager.background_scan.open_vector_db.end(res);
+						this.manager.vector_scan.open_vector_db.end(res);
 					} catch (GLib.Error e) {
 						request.reply(new OLLMrpc.Response() {
 							id = request.id,
@@ -198,7 +198,7 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_stop.connect((request) => {
-				this.manager.background_scan.stop_requested = true;
+				this.manager.vector_scan.stop_requested = true;
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					msg = "ok"
@@ -206,7 +206,7 @@ namespace OLLMfilesd
 			});
 			this.call_start.connect((request) => {
 				var p = (VectorParams) request.param;
-				var scan = this.manager.background_scan;
+				var scan = this.manager.vector_scan;
 				scan.stop_requested = false;
 				scan.queueProject.begin(
 					p.path,

@@ -54,7 +54,7 @@ namespace OLLMapp.SettingsDialog
 		private Gee.HashMap<string, Gtk.Widget> section_headers = new Gee.HashMap<string, Gtk.Widget>();
 		private bool is_rendering = false;
 		private AddModelDialog? add_model_dialog = null;
-		public OLLMchat.Settings.ConnectionModels connection_models { get; private set; }
+		public OLLMchat.Settings.ConnectionModels connection_models { get; set; }
 
 		/**
 		 * Creates a new ModelsPage.
@@ -71,14 +71,9 @@ namespace OLLMapp.SettingsDialog
 				spacing: 0
 			);
 			
-			// Get ConnectionModels from parent window's history manager
-			var parent_window = this.dialog.parent as OllmchatWindow;
-			if (parent_window != null && parent_window.history_manager != null) {
-				this.connection_models = parent_window.history_manager.connection_models;
-			} else {
-				// Create a default ConnectionModels instance if parent window is not available
-				this.connection_models = new OLLMchat.Settings.ConnectionModels(this.dialog.app.config);
-			}
+			this.connection_models = new OLLMchat.Settings.ConnectionModels(
+				this.dialog.app.config
+			);
 			
 			// Create horizontal action bar (set as action_widget for SettingsDialog to manage)
 			this.action_widget = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
@@ -160,7 +155,12 @@ namespace OLLMapp.SettingsDialog
 			this.scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
 			this.append(this.scrolled_window);
 			
-			this.connection_models.items_changed.connect((position, removed, added) => {
+			this.connection_models.items_changed.connect((
+				model,
+				position,
+				removed,
+				added
+			) => {
 				this.sync_ui_from_store.begin();
 			});
 

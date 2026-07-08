@@ -99,7 +99,7 @@ namespace OLLMapp
 				tooltip_text = "Settings"
 			};
 			settings_button.clicked.connect(() => {
-				this.settings_dialog.show_dialog.begin("");
+				this.settings_dialog.show_dialog.begin();
 			});
 			this.header_bar.pack_end(settings_button);
 

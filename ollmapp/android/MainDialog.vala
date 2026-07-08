@@ -108,6 +108,9 @@ namespace OLLMapp.SettingsDialog
 		{
 			this.previous_visible_child.action_widget.visible = false;
 			var current_page = this.view_stack.get_visible_child() as SettingsPage;
+			if (current_page == null) {
+				return;
+			}
 			this.previous_visible_child = current_page;
 			current_page.action_widget.visible = true;
 			this.action_bar_area.visible = true;
@@ -116,9 +119,9 @@ namespace OLLMapp.SettingsDialog
 		/**
 		 * Shows the settings dialog and initializes pages.
 		 *
-		 * @param page_name Optional page name (e.g. "connections", "models")
+		 * @param page_name Page to open (e.g. "connections", "models"); empty for default tab
 		 */
-		public async void show_dialog(string? page_name = null)
+		public async void show_dialog(string page_name = "")
 		{
 			AndroidConnectionConfigTls.apply_to_config(this.app.config);
 
@@ -130,16 +133,19 @@ namespace OLLMapp.SettingsDialog
 
 			this.progress_banner.initialize_existing_pulls();
 
-			if (page_name != null) {
+			if (page_name != "") {
 				this.view_stack.set_visible_child_name(page_name);
 			}
+
+			this.connections_page.render_connections();
 
 			this.present(this.parent);
 
 			if (this.parent.history_manager != null) {
-				yield this.parent.history_manager.connection_models.refresh();
+				this.models_page.connection_models =
+					this.parent.history_manager.connection_models;
+				this.models_page.render_models.begin();
 			}
-			this.models_page.render_models.begin();
 		}
 
 		private void on_closed()

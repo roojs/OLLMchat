@@ -638,6 +638,8 @@ public class MyClass
 
 **IMPORTANT:** Use `switch/case` statements rather than long chains of `if/else if/else if` statements. This improves readability and is more efficient.
 
+**Blank line between cases:** When a `case` body ends with `break;`, put **one blank line** after that `break;` before the next `case` (or `default`). The first `case` after `switch (` needs no blank line above it — only after each `break;` that precedes another label.
+
 **Bad:**
 ```vala
 public string get_status_message(int status)
@@ -656,7 +658,7 @@ public string get_status_message(int status)
 }
 ```
 
-**Good:**
+**Good (prefer `switch` over long `if/else if`):**
 ```vala
 public string get_status_message(int status)
 {
@@ -672,6 +674,23 @@ public string get_status_message(int status)
         default:
             return "Unknown";
     }
+}
+```
+
+**Good (multi-statement cases — blank line after each `break;`):**
+```vala
+switch (notif.method) {
+    case "event.filesystem.scan_start":
+        this.label.label = "Filesystem scan…";
+        this.show();
+        break;
+
+    case "event.filesystem.scan_end":
+        this.hide();
+        break;
+
+    default:
+        break;
 }
 ```
 

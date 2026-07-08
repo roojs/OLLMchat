@@ -198,14 +198,7 @@ namespace OLLMapp.SettingsDialog
 			this.dialog.app.config.save();
 		}
 
-		/**
-		 * Creates UI entries from config.connections map.
-		 * 
-		 * Does initial render when page is created.
-		 * Can be called after connections are added/removed to update the UI incrementally.
-		 * Updates Remove button visibility based on number of connections.
-		 */
-		private void render_connections()
+		public void render_connections()
 		{
 			bool can_remove = this.dialog.app.config.connections.size > 1;
 
