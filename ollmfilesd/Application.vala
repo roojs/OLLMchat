@@ -22,8 +22,9 @@ namespace OLLMfilesd
 	 * Headless {{{ollmfilesd}}} entry point: open DB, migrate, RPC over socket or stdio.
 	 *
 	 * {{{--data-dir=DIR}}} sets {@link data_dir} and pid/socket paths under {{{DIR}}}
-	 * ({@link command_line}). {{{--scan-project=PATH}}} runs one filesystem scan and
-	 * exits (foreground, no RPC). Pair with {@link OLLMrpc.ClientBoot} basenames and spawn flags.
+	 * ({@link command_line}). {{{--scan-project=PATH}}} runs filesystem reconcile,
+	 * then vector indexing when an embed model is available, and exits (foreground,
+	 * no RPC). Pair with {@link OLLMrpc.ClientBoot} basenames and spawn flags.
 	 */
 	public class OllmfilesdApplication : GLib.Application, OLLMchat.ApplicationInterface
 	{
@@ -57,7 +58,7 @@ namespace OLLMfilesd
 			{ "tcp-host", 0, 0, OptionArg.STRING, ref opt_tcp_host, "TCP listen host", "HOST" },
 			{ "tcp-port", 0, 0, OptionArg.INT, ref opt_tcp_port, "TCP listen port", "PORT" },
 			{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory (DB, socket, pid)", "DIR" },
-			{ "scan-project", 0, 0, OptionArg.FILENAME, ref opt_scan_project, "Scan project PATH and exit (no RPC)", "PATH" },
+			{ "scan-project", 0, 0, OptionArg.FILENAME, ref opt_scan_project, "Filesystem then vector scan PATH and exit (no RPC)", "PATH" },
 			{ null }
 		};
 
@@ -90,6 +91,11 @@ namespace OLLMfilesd
 				"ollmfilesd.sock"
 			);
 
+			typeof(OLLMvector2.VectorToolConfig).ensure();
+			OLLMchat.Settings.Config2.register_tool_type(
+				"codebase_search",
+				typeof(OLLMvector2.VectorToolConfig)
+			);
 			this.config = this.load_config();
 
 #if !G_OS_WIN32
@@ -234,12 +240,6 @@ namespace OLLMfilesd
 				yield this.project_manager.load_projects_from_db();
 			}
 
-			if (opt_scan_project != "") {
-				yield this.run_scan_project(opt_scan_project);
-				this.quit();
-				return;
-			}
-
 			this.project_manager.vector_db_path =
 				GLib.Path.build_filename(
 					this.data_dir, "codedb.faiss.vectors");
@@ -248,6 +248,12 @@ namespace OLLMfilesd
 					this,
 					this.project_manager,
 					this.config);
+
+			if (opt_scan_project != "") {
+				yield this.run_scan_project(opt_scan_project);
+				this.quit();
+				return;
+			}
 
 			Daemon.rpc_register();
 			ProjectManager.rpc_register();
@@ -331,7 +337,8 @@ namespace OLLMfilesd
 
 		/**
 		 * {@code --scan-project} diagnostic: resolve path, run filesystem reconcile,
-		 * log phase boundaries, then return (caller quits).
+		 * wait for subtree scan, then queue and run vector indexing when an embed
+		 * model is available. Caller quits after return.
 		 *
 		 * @param folder_path CLI path (absolute or relative to cwd)
 		 */
@@ -419,6 +426,38 @@ namespace OLLMfilesd
 				"scan done path=%s files=%u",
 				project.path,
 				project.project_files.get_n_items()
+			);
+
+			yield this.project_manager.vector_scan.open_vector_db();
+			if (this.project_manager.vector_db.dimension == 0) {
+				GLib.debug(
+					"scan-project vector skip path=%s (embed unavailable)",
+					project.path
+				);
+				return;
+			}
+
+			var queued = yield this.project_manager.vector_scan.queueProject(
+				project.path,
+				"",
+				false
+			);
+			if (queued == 0) {
+				GLib.debug(
+					"scan-project vector skip path=%s (nothing to index)",
+					project.path
+				);
+				return;
+			}
+			GLib.debug(
+				"scan-project vector queue start path=%s files=%d",
+				project.path,
+				queued
+			);
+			yield this.project_manager.vector_scan.startQueue();
+			GLib.debug(
+				"scan-project vector queue done path=%s",
+				project.path
 			);
 		}
 
