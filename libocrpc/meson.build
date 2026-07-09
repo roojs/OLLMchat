@@ -14,16 +14,19 @@ ocrpc_deps = [
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
   dependency('json-glib-1.0'),
+  dependency('libsoup-3.0'),
   valac.find_library('posix'),
 ]
 
 ocrpc_vapi_pkgs = [
   '--pkg=json-glib-1.0',
+  '--pkg=libsoup-3.0',
   '--pkg=posix',
 ]
 
 ocrpc_vapi_gen_pkgs = [
   '--pkg', 'json-glib-1.0',
+  '--pkg', 'libsoup-3.0',
   '--pkg', 'posix',
   '--pkg', 'gio-2.0',
   '--pkg', 'gobject-2.0',

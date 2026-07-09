@@ -53,6 +53,16 @@ namespace OLLMrpc
 		 */
 		public CallParam param { get; set; default = new CallParam(); }
 
+		/**
+		 * HTTP client only: root JSON object {@link GLib.Type} for
+		 * {@link Response.result}. Not serialized on the bin socket.
+		 */
+		public GLib.Type result_type {
+			get;
+			set;
+			default = GLib.Type.INVALID;
+		}
+
 		/** Set by the server before {@link dispatch}. */
 		public Transport.Connection connection { get; set; }
 
@@ -93,6 +103,7 @@ namespace OLLMrpc
 		{
 			switch (prop.name) {
 				case "connection":
+				case "result_type":
 					return;
 				default:
 					this.bin_default_write_prop (ctx, prop);
@@ -108,6 +119,7 @@ namespace OLLMrpc
 		{
 			switch (prop.name) {
 				case "connection":
+				case "result_type":
 					return;
 				default:
 					this.bin_default_read_prop (ctx, prop, type_byte);

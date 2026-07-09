@@ -54,7 +54,16 @@ namespace OLLMrpc
 	 */
 	public class Client : GLib.Object
 	{
+		public enum Protocol {
+			SOCKET,
+			STDIO,
+			TCP,
+			HTTP,
+		}
+
 		public string socket_path { get; construct; }
+
+		public Protocol protocol { get; private set; }
 
 		public string data_dir { get; construct; }
 
@@ -65,13 +74,13 @@ namespace OLLMrpc
 		 * spawn passes {{{--debug}}} to {{{ollmfilesd}}}. Set in the object
 		 * initializer when not using the default.
 		 */
-		public bool debug { get; construct; default = true; }
+		public bool debug { get; set; default = true; }
 
 		/**
 		 * When true, spawn passes {{{--data-dir=data_dir}}}; vector test CLIs only.
 		 * Set in the object initializer when needed.
 		 */
-		public bool pass_data_dir { get; construct; default = false; }
+		public bool pass_data_dir { get; set; default = false; }
 
 		/** Seconds to wait for a matching {@link Response} id. */
 		public uint call_timeout_seconds { get; set; default = 120; }
@@ -108,6 +117,8 @@ namespace OLLMrpc
 		private bool sending { get; set; default = false; }
 		private GLib.IOChannel? read_channel;
 		private uint read_watch_id = 0;
+		private Soup.Session? http_session;
+		private Bin.Json http_json = new Bin.Json(Bin.Json.Mode.AUTO);
 
 		static construct
 		{
@@ -142,6 +153,20 @@ namespace OLLMrpc
 					? GLib.Path.build_filename(data_dir, socket_name)
 					: socket_name
 			);
+			if (this.socket_path.has_prefix("http://")
+				|| this.socket_path.has_prefix("https://")) {
+				this.protocol = Protocol.HTTP;
+				return;
+			}
+			if (this.socket_path.has_prefix("tcp://")) {
+				this.protocol = Protocol.TCP;
+				return;
+			}
+			if (this.socket_path == "stdio") {
+				this.protocol = Protocol.STDIO;
+				return;
+			}
+			this.protocol = Protocol.SOCKET;
 		}
 
 		/**
@@ -152,6 +177,13 @@ namespace OLLMrpc
 		public async bool connect(Request hello_request)
 		{
 			if (this.connected) {
+				this.connect_error = "";
+				return true;
+			}
+
+			if (this.protocol == Protocol.HTTP) {
+				this.http_session = new Soup.Session();
+				this.connected = true;
 				this.connect_error = "";
 				return true;
 			}
@@ -318,6 +350,39 @@ namespace OLLMrpc
 			}
 		}
 
+		private async void send_http(PendingWrite head) throws GLib.Error
+		{
+			var url = this.socket_path + head.request.method;
+			GLib.debug("id=%d url=%s", head.request.id, url);
+			var message = new Soup.Message("GET", url);
+			var bytes = yield this.http_session.send_and_read_async(
+				message, GLib.Priority.DEFAULT, null);
+			if (message.status_code < 200 || message.status_code >= 300) {
+				throw new GLib.IOError.FAILED("HTTP %u for %s", message.status_code, url);
+			}
+			if (head.request.result_type == GLib.Type.INVALID) {
+				throw new Bin.StreamError.PROTOCOL("HTTP call missing result_type");
+			}
+			var parser = new Json.Parser();
+			parser.load_from_data((string) bytes.get_data());
+			var root = parser.get_root();
+			if (root.get_node_type() != Json.NodeType.OBJECT) {
+				throw new Bin.StreamError.PROTOCOL("HTTP JSON root must be object");
+			}
+			var mem = new GLib.MemoryOutputStream.resizable();
+			var encode_ctx = new Bin.Stream(null, new GLib.DataOutputStream(mem));
+			this.http_json.json_to_bin(root.get_object(), encode_ctx, head.request.result_type);
+			encode_ctx.out_stream.close();
+			var read_ctx = new Bin.Stream(new GLib.DataInputStream(
+				new GLib.MemoryInputStream.from_bytes(mem.steal_as_bytes())), null);
+			var obj = read_ctx.parse();
+			var response = new Response() {
+				id = head.request.id,
+			};
+			response.result.add(obj);
+			this.complete_pending(head.request.id, response, null);
+		}
+
 		private async void send_head()
 		{
 			if (this.sending) {
@@ -330,28 +395,27 @@ namespace OLLMrpc
 			if (head.sent) {
 				return;
 			}
-			if (!this.connected || this.output == null || this.bin == null) {
+			if (!this.connected) {
 				return;
 			}
 			this.sending = true;
+			if (this.protocol == Protocol.HTTP) {
+				try {
+					yield this.send_http(head);
+					head.sent = true;
+				} catch (GLib.Error e) {
+					this.complete_pending(head.request.id, null, e);
+				}
+				this.sending = false;
+				return;
+			}
 			try {
-				GLib.debug(
-					"send id=%d method=%s",
-					head.request.id,
-					head.request.method
-				);
+				GLib.debug("id=%d method=%s", head.request.id, head.request.method);
 				this.bin.write(head.request);
-				yield this.output.flush_async(
-					GLib.Priority.DEFAULT,
-					null
-				);
+				yield this.output.flush_async(GLib.Priority.DEFAULT, null);
 				head.sent = true;
 			} catch (GLib.Error e) {
-				this.complete_pending(
-					head.request.id,
-					null,
-					e
-				);
+				this.complete_pending(head.request.id, null, e);
 			}
 			this.sending = false;
 			if (this.pending.size > 0
@@ -395,7 +459,7 @@ namespace OLLMrpc
 		public async Response call(Request request)
 		{
 			request.id = this.next_id++;
-			if (!this.connected || this.output == null) {
+			if (!this.connected) {
 				GLib.error(
 					"%s id=%d: not connected",
 					request.method,
