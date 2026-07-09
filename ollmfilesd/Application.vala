@@ -49,6 +49,18 @@ namespace OLLMfilesd
 		private OLLMrpc.Transport.Listen? listen;
 		private static weak OllmfilesdApplication? instance;
 
+		protected string help { get; set; default = """
+Usage: {ARG} [OPTIONS]
+
+Headless file daemon: open DB, migrate, RPC over socket or stdio.
+
+Examples:
+  {ARG}                        # fork daemon (Unix socket)
+  {ARG} --interactive          # stdin/stdout NDJSON-RPC
+  {ARG} --tcp                  # TCP JSON-RPC listener
+  {ARG} --scan-project=PATH    # filesystem + vector scan and exit
+"""; }
+
 		private const OptionEntry[] app_options = {
 			{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
 			{ "debug-critical", 0, 0, OptionArg.NONE, ref opt_debug_critical, "Treat critical warnings as errors", null },
@@ -140,6 +152,19 @@ namespace OLLMfilesd
 			opt_tcp_port = 4141;
 
 			var args = command_line.get_arguments();
+
+			if (this.check_help_arg(args)) {
+				var opt_context = new OptionContext(this.get_application_id());
+				opt_context.set_help_enabled(true);
+				opt_context.add_main_entries(app_options, null);
+				var custom_help = this.get_help_text(this.help, args[0], opt_context);
+				command_line.print(
+					"%s",
+					custom_help != null ? custom_help : opt_context.get_help(true, null)
+				);
+				return 0;
+			}
+
 			var opt_context = new OptionContext(this.get_application_id());
 			opt_context.set_help_enabled(true);
 			opt_context.add_main_entries(app_options, null);
@@ -653,6 +678,10 @@ namespace OLLMfilesd
 		if (GLib.Environment.get_variable("OLLMFILESD_DAEMON") == null) {
 			var background = true;
 			foreach (var arg in args) {
+				if (arg == "--help" || arg == "-h") {
+					background = false;
+					break;
+				}
 				if (arg == "--interactive" || arg == "-i") {
 					background = false;
 					break;
