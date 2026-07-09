@@ -40,7 +40,7 @@ namespace OLLMfilesd
 		 * Provider instances (default to base class with no-op implementations).
 		 */
 		public BufferProviderBase buffer_provider { get; set; default = new BufferProviderBase(); }
-		public GitProviderBase git_provider { get; set; default = new GitProviderBase(); }
+		public GitProviderBase git_provider { get; set; default = new GitProvider (); }
 		
 		/**
 		 * Database instance for persistence.

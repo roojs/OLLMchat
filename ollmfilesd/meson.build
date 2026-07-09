@@ -9,6 +9,7 @@ tree_sitter_lib = dependency('tree-sitter', required: true)
 is_windows = host_machine.system() == 'windows'
 
 ollmfilesd_deps = [
+  dependency('libgit2-glib-1.0'),
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
@@ -46,6 +47,7 @@ ollmfilesd_src = files(
   'File.vala',
   'FolderFiles.vala',
   'GitProviderBase.vala',
+  'GitProvider.vala',
   'ProjectFile.vala',
   'ReviewFiles.vala',
   'ProjectFiles.vala',
@@ -96,6 +98,7 @@ ollmfilesd_bin = executable('ollmfilesd',
   build_rpath: build_rpath,
   install: true,
   vala_args: strcasestr_vala_args + [
+    '--pkg=libgit2-glib-1.0',
     '--pkg=sqlite3',
     '--pkg=json-glib-1.0',
     '--pkg=gmodule-2.0',
