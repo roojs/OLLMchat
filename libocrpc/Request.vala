@@ -103,7 +103,7 @@ namespace OLLMrpc
 		{
 			switch (prop.name) {
 				case "connection":
-				case "result_type":
+				case "result-type":
 					return;
 				default:
 					this.bin_default_write_prop (ctx, prop);
@@ -119,7 +119,7 @@ namespace OLLMrpc
 		{
 			switch (prop.name) {
 				case "connection":
-				case "result_type":
+				case "result-type":
 					return;
 				default:
 					this.bin_default_read_prop (ctx, prop, type_byte);

@@ -144,14 +144,16 @@ namespace OLLMrpc
 			string socket_name
 		)
 		{
+			var full_pid = pid;
+			var full_socket = socket_name;
+			if (data_dir != "") {
+				full_pid = GLib.Path.build_filename(data_dir, pid);
+				full_socket = GLib.Path.build_filename(data_dir, socket_name);
+			}
 			GLib.Object(
 				data_dir: data_dir,
-				pid: data_dir != ""
-					? GLib.Path.build_filename(data_dir, pid)
-					: pid,
-				socket_path: data_dir != ""
-					? GLib.Path.build_filename(data_dir, socket_name)
-					: socket_name
+				pid: full_pid,
+				socket_path: full_socket
 			);
 			if (this.socket_path.has_prefix("http://")
 				|| this.socket_path.has_prefix("https://")) {
@@ -190,14 +192,16 @@ namespace OLLMrpc
 
 			hello_request.id = this.next_id++;
 
-			var boot_pid = this.data_dir != ""
-				? GLib.Path.get_basename(this.pid)
-				: this.pid;
-			var boot_socket = this.data_dir != ""
-				? (this.socket_path.has_prefix("tcp://")
-					? this.socket_path
-					: GLib.Path.get_basename(this.socket_path))
-				: this.socket_path;
+			var boot_pid = this.pid;
+			if (this.data_dir != "") {
+				boot_pid = GLib.Path.get_basename(this.pid);
+			}
+			var boot_socket = this.socket_path;
+			if (this.data_dir != "") {
+				if (!this.socket_path.has_prefix("tcp://")) {
+					boot_socket = GLib.Path.get_basename(this.socket_path);
+				}
+			}
 			var boot = new ClientBoot(
 				this.data_dir,
 				boot_pid,
@@ -244,7 +248,13 @@ namespace OLLMrpc
 				(source, condition) => {
 					if ((condition & GLib.IOCondition.HUP) != 0
 						|| (condition & GLib.IOCondition.ERR) != 0) {
-						GLib.debug("read watch hup or err");
+						GLib.warning(
+							"socket closed socket_path=%s pending=%u hup=%s err=%s",
+							this.socket_path,
+							this.pending.size,
+							((condition & GLib.IOCondition.HUP) != 0).to_string(),
+							((condition & GLib.IOCondition.ERR) != 0).to_string()
+						);
 						this.disconnect();
 						return false;
 					}
@@ -288,6 +298,14 @@ namespace OLLMrpc
 				this.connect_error = e.message != ""
 					? e.message
 					: "could not start or reach the filesystem daemon (ollmfilesd)";
+				GLib.critical(
+					"connect hello %s id=%d domain=%u code=%d: %s",
+					hello_request.method,
+					hello_request.id,
+					e.domain,
+					e.code,
+					e.message
+				);
 				this.disconnect();
 				return false;
 			}
@@ -333,6 +351,12 @@ namespace OLLMrpc
 			}
 			this.read_channel = null;
 			foreach (var entry in this.pending) {
+				GLib.warning(
+					"disconnect abort %s id=%d socket_path=%s",
+					entry.request.method,
+					entry.request.id,
+					this.socket_path
+				);
 				entry.promise.set_exception(
 					new GLib.IOError.FAILED("Client: disconnected")
 				);
@@ -404,6 +428,14 @@ namespace OLLMrpc
 					yield this.send_http(head);
 					head.sent = true;
 				} catch (GLib.Error e) {
+					GLib.critical(
+						"HTTP send %s id=%d domain=%u code=%d: %s",
+						head.request.method,
+						head.request.id,
+						e.domain,
+						e.code,
+						e.message
+					);
 					this.complete_pending(head.request.id, null, e);
 				}
 				this.sending = false;
@@ -415,6 +447,14 @@ namespace OLLMrpc
 				yield this.output.flush_async(GLib.Priority.DEFAULT, null);
 				head.sent = true;
 			} catch (GLib.Error e) {
+				GLib.critical(
+					"wire send %s id=%d domain=%u code=%d: %s",
+					head.request.method,
+					head.request.id,
+					e.domain,
+					e.code,
+					e.message
+				);
 				this.complete_pending(head.request.id, null, e);
 			}
 			this.sending = false;
@@ -437,6 +477,14 @@ namespace OLLMrpc
 				var entry = this.pending.get(i);
 				this.pending.remove_at(i);
 				if (error != null) {
+					GLib.critical(
+						"RPC failed %s id=%d domain=%u code=%d: %s",
+						entry.request.method,
+						id,
+						error.domain,
+						error.code,
+						error.message
+					);
 					entry.promise.set_exception(error);
 				} else {
 					entry.promise.set_value(response);
@@ -507,6 +555,12 @@ namespace OLLMrpc
 				timeout_id = GLib.Timeout.add_seconds(
 					this.call_timeout_seconds,
 					() => {
+						GLib.warning(
+							"call timed out %s id=%d after %u s",
+							entry.request.method,
+							entry.request.id,
+							this.call_timeout_seconds
+						);
 						this.complete_pending(
 							entry.request.id,
 							null,
@@ -521,9 +575,11 @@ namespace OLLMrpc
 				return yield entry.promise.future.wait_async();
 			} catch (GLib.Error e) {
 				GLib.critical(
-					"%s id=%d: %s",
+					"wait %s id=%d domain=%u code=%d: %s",
 					method,
 					entry.request.id,
+					e.domain,
+					e.code,
 					e.message
 				);
 				throw e;

@@ -84,14 +84,16 @@ namespace OLLMrpc
 			bool pass_data_dir = false
 		)
 		{
+			var full_pid = pid;
+			var full_socket = socket_name;
+			if (data_dir != "") {
+				full_pid = GLib.Path.build_filename(data_dir, pid);
+				full_socket = GLib.Path.build_filename(data_dir, socket_name);
+			}
 			GLib.Object(
 				data_dir: data_dir,
-				pid: data_dir != ""
-					? GLib.Path.build_filename(data_dir, pid)
-					: pid,
-				socket_path: data_dir != ""
-					? GLib.Path.build_filename(data_dir, socket_name)
-					: socket_name,
+				pid: full_pid,
+				socket_path: full_socket,
 				debug: debug,
 				pass_data_dir: pass_data_dir
 			);
