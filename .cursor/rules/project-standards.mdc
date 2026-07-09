@@ -9,7 +9,7 @@ alwaysApply: true
 
 Before writing or changing **any** Vala code:
 
-1. Read **`docs/coding-standards-router.md`** in full.
+1. Read **`docs/coding-standards-router.md`** in full (**top mistake: don't add helper methods** — inline unless user/plan names them).
 2. Follow **`.cursor/rules/vala-coding-standards-router.mdc`** (same checklist;
    applies when `*.vala` files are in context).
 3. Read **only** the `docs/coding-standards.md` sections the router maps you to

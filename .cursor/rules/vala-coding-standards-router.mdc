@@ -9,6 +9,9 @@ alwaysApply: false
 Canonical rules: **`docs/coding-standards.md`**. Full checklist:
 **`docs/coding-standards-router.md`** (read that file in full first).
 
+**Top mistake: helper methods** — inline in the method you are editing; task
+wording is not approval (`method-names-new-methods`).
+
 ## Step 1 — Before the first Vala edit
 
 1. Read **`docs/coding-standards-router.md`** in full.
@@ -27,10 +30,10 @@ Canonical rules: **`docs/coding-standards.md`**. Full checklist:
 | Compare enums with `if (a \|\| b)`? | `switch-case` |
 | Add null checks or redundant guards? | `defensive-code-null-checks` |
 | Use `??` or default a nullable value? | `null-coalescing` |
-| Add new `private`/`protected` or `handle_*`/`is_*` method? | `method-names-new-methods` |
+| Tempted to add a **helper method**? | `method-names-new-methods` — **inline** unless user/plan named it |
+| Add new `const` / named constant? | `method-names-new-methods` — use literal at use site |
 
-**STOP before done if:** explicit type on a local, missing `this.`, new helper
-method, gratuitous `else`, enum `||` chain, or skipped `agent-compliance-gate`.
+**STOP before done if:** explicit type on a local, missing `this.`, **added a helper**, **new const**, gratuitous `else`, enum `||` chain, or skipped `agent-compliance-gate`.
 
 ### Scenario checklist (yes → add slug(s))
 

@@ -2,10 +2,13 @@
 
 **AI agents:** Before editing Vala, work through this checklist. Collect every
 section slug marked **yes**, union with **universal**, then read each matching
-block in **`docs/coding-standards.md`** in full (grep `section: <slug>`).
+block in **`docs/coding-standards.md`** in full (grep `section: <slug>`). Do **not**
+read the whole file unless every section below is in your set (rare). Do **not**
+implement until required reads are done. **Top mistake: adding helper methods**
+(`ensure_*`, “extract for clarity”, DRY) — **inline** in the method you are
+already editing unless user or plan names the helper (`method-names-new-methods`).
 
-Do **not** read the whole coding-standards file unless every section below is
-in your set (rare). Do **not** implement until required reads are done.
+---
 
 **How to read a section:** Grep `section: <slug>` in `docs/coding-standards.md`,
 note the line number, then use the Read tool from that line through the line
@@ -26,7 +29,8 @@ say the task is done.
 | Add or change **`if`** / **`else`** / nested branches? | `reducing-nesting` | Added gratuitous `else` instead of early return or separate `if (!cond)` |
 | Compare **enum** or **permission response** values (`if (x == A \|\| x == B)`)? | `switch-case` | Used `\|\|` / `else if` chains instead of `switch` for discrete values |
 | Add a **null check**, empty guard, or “just in case” validation? | `defensive-code-null-checks` | Duplicated checks already enforced upstream (UI, permission, caller) |
-| Add a **new** `private` / `protected` method or `handle_*` / `is_*` helper? | `method-names-new-methods` | Introduced a helper the user or plan did not ask for |
+| Tempted to add a **helper method** (`ensure_*`, extract “for clarity”)? | `method-names-new-methods` | Added a helper the user or plan did not name — **inline instead** |
+| Add a **new named constant** (`const`)? | `method-names-new-methods` | New `const` without user/plan approval — use literal at use site |
 | Finish the task? | `agent-compliance-gate` | Skipped the verification table or the `rg` local-type search |
 
 **Temporary variables (most common miss):** if you wrote any local declaration,
@@ -107,7 +111,7 @@ is authoritative. Hints below are for humans only.
 | `arraylist-for-strings` | 1253 |
 | `signal-handlers-construct` | 1331 |
 | `property-getters-vs-get-methods` | 1355 |
-| `method-names-new-methods` | 1426 |
+| `method-names-new-methods` | 1535 |
 | `agent-compliance-gate` | 1451 |
 
 ---

@@ -38,9 +38,9 @@ namespace OLLMrpc
 	 * {@link connect} builds {@link ClientBoot} from this client's
 	 * {@link data_dir}, {@link debug}, and {@link pass_data_dir}, runs
 	 * {@link ClientBoot.ensure_daemon}, then {@link ClientBoot.connect}.
-	 * {@code tcp://} values in {@link socket_path} use TCP; otherwise a Unix
+	 * {{{tcp://}}} values in {@link socket_path} use TCP; otherwise a Unix
 	 * socket path is used (Unix desktop only — Windows/Android require
-	 * {@code tcp://}).
+	 * {{{tcp://}}}).
 	 *
 	 * A socket {@link GLib.IOChannel} watch dispatches inbound
 	 * {@link Notification} messages and resolves queued {@link Response}

@@ -331,8 +331,6 @@ namespace OLLMfilesd
 				}
 				GLib.debug("listening on %s", this.socket_path);
 			}
-
-			this.project_manager.vector_scan.open_vector_db.begin();
 		}
 
 		/**

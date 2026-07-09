@@ -2,6 +2,24 @@
 
 Canonical Vala style and patterns for this project and related codebases. Written for **AI agents** — **mandatory** for agents implementing or changing Vala code. Human contributors may treat this as a helpful guide. Also see **`docs/build-rules.md`** and **`docs/code-documentation.md`**.
 
+---
+
+## FORBIDDEN without explicit user or plan approval
+
+**AI agents:** The items below are **not** “nice to have” rules — they are **hard stops**. Users have had to repeat these many times. **Do not add them** because the change “seems cleaner”, “might be reused”, or “matches a pattern you know”.
+
+| Forbidden without approval | Instead |
+|----------------------------|---------|
+| **New methods** — `private`, `protected`, `internal`, or `public`; including `ensure_*`, `handle_*`, `build_*`, `merge_*`, wrappers, and “helpers” | Inline a few lines in the **existing** method the task already touches |
+| **New named constants** — `private const`, `public const`, `#define`-style magic names | Use the literal at the use site, or an existing constant already in the file |
+| **New fields** whose only job is to support a helper, throttle debug, or hold one-off refactor state | Use locals already in scope; extend an existing field only if the user or plan asks |
+
+**Approval means:** the **user said so in chat**, or a **written plan** names the method/constant/field. Inferring approval from the task shape (“this needs waiting logic”) is **not** approval to extract a helper.
+
+**Self-check before every commit:** `git diff` — did you add any `^\s+(private\|public\|protected\|internal).*\(` **new** method, or `const` line, that the user/plan did not name? If yes, **inline or revert** unless you already got explicit approval.
+
+---
+
 **AI agents:** Do **not** read this whole file blindly. Use
 **`.cursor/rules/vala-coding-standards-router.mdc`** (and
 **`docs/coding-standards-router.md`**) — answer the scenario checklist,
@@ -1516,6 +1534,31 @@ public class MyClass
 
 ## Method names and new methods <!-- section: method-names-new-methods -->
 
+### No new methods without approval (hard rule)
+
+**FORBIDDEN without explicit user or written-plan approval:**
+
+- Any **new** method — `private`, `protected`, `internal`, or `public`
+- “Helper”, “wrapper”, `ensure_*`, `wait_for_*`, `handle_*`, `build_*`, `merge_*`, or splitting logic “for clarity”
+- Extracting 3–10 lines into a new function because it **feels** tidier
+
+**Default:** put the logic **inline** in the existing entry point (`activate_project`, `open_vector_db`, `get_request_body`, the signal handler lambda, etc.). The **user** decides if extraction is appropriate — not the agent.
+
+**Approval is not implied** by bug-fix/debug tasks (“add wait with timeout”) — that describes **behaviour**, not permission to add `ensure_foo()`.
+
+**Bad (new helper without approval):**
+```vala
+public async void ensure_vector_db_ready () { … }
+
+// in caller:
+yield this.vector_scan.ensure_vector_db_ready ();
+```
+
+**Good (same behaviour, no new method):**
+```vala
+// inside activate_project(), before queue_project — inline wait/timeout/fatal exit
+```
+
 **IMPORTANT:** Prefer **short, concise** method and **property** names. Avoid long, narrative names that restate what the file or type already implies. Rule of thumb: **one word ideal, two okay, three risky, four you messed up** — context in the class name should carry the rest.
 
 **Bad (four words; type already says “model usage” and “factory”):**
@@ -1528,7 +1571,7 @@ public int max_name_width_chars { get; construct; default = -1; }
 public int max_chars { get; construct; default = -1; }
 ```
 
-**IMPORTANT:** **Do not add new methods** unless the **user** or the **written plan** explicitly asks for one. Default to putting logic in an **existing** method or location the task already touches. Do **not** introduce a “helper” or `merge_*` / `build_*` method because it seems tidy — the **user** decides if extraction is appropriate.
+**IMPORTANT:** **Do not add new methods** unless the **user** or the **written plan** explicitly asks for one. Default to putting logic in an **existing** method or location the task already touches. Do **not** introduce a “helper” or `merge_*` / `build_*` method because it seems tidy — the **user** decides if extraction is appropriate. See **No new methods without approval** above.
 
 **IMPORTANT:** If a change can be done by a few lines inside **`get_request_body()`**, **`serialize_property()`**, or another existing entry point, do that first. Only when the user approves a new method should you add one, and then keep the name **short**.
 
@@ -1573,8 +1616,9 @@ Run these checks on **every file you changed**. Fix violations; do not hand-wave
 
 | Check | How |
 |-------|-----|
+| **No new methods (any visibility)** | Diff adds no new `private`/`protected`/`internal`/`public` method unless **user or plan named it** — includes helpers, `ensure_*`, `handle_*`; inline instead |
+| **No new constants without approval** | Diff adds no new `const` / `private const` unless user or plan named it — use literal at use site |
 | **`var` on locals** | Search: `^\s+(string\|int\|bool\|uint\|int64)\s+\w+\s*[=;]` — no local matches except `string[] … = {}` |
-| **No new private methods** | Diff adds no `private`/`protected` method unless user or plan asked |
 | **No `handle_*` for signals** | Button/signal handlers inline in lambda, not new `handle_*` methods |
 | **No gratuitous `else`** | New `else` / `else if` chains restructure to early return/`continue` |
 | **Enum branches use `switch`** | Multi-value response/status checks use `switch`, not `\|\|` chains |

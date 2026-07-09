@@ -73,6 +73,7 @@ namespace OLLMfilesd.Vector {
         public void queue_project (OLLMfilesd.Folder? project)
         {
             if (project == null
+                || this.project_manager.vector_db == null
                 || this.project_manager.vector_db.dimension == 0) {
                 return;
             }
@@ -94,6 +95,7 @@ namespace OLLMfilesd.Vector {
         public void queue_file (OLLMfilesd.File file, OLLMfilesd.Folder? project)
         {
             if (project == null
+                || this.project_manager.vector_db == null
                 || this.project_manager.vector_db.dimension == 0) {
                 return;
             }

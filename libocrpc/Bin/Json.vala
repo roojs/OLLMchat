@@ -31,45 +31,80 @@ namespace OLLMrpc.Bin
 	 */
 	public class Json : GLib.Object
 	{
+		public enum Mode {
+			EXPLICIT,
+			AUTO,
+		}
+
+		public Mode mode { get; construct; default = Mode.EXPLICIT; }
+
+		public Json (Mode mode = Mode.EXPLICIT)
+		{
+			Object (mode: mode);
+			if (alias_to_gtype == null) {
+				alias_to_gtype = new Gee.HashMap<string, GLib.Type> ();
+				gtype_to_alias = new Gee.HashMap<GLib.Type, string> ();
+			}
+		}
+
 		/**
-		 * Encode one JSON object onto {@link ctx}.
+		 * Encode one JSON object as bin bytes on {@link bin}.
 		 *
-		 * @param ctx bin stream to write to
-		 * @param src JSON object with a {{{*type}}} meta member
+		 * @param src JSON object tree
+		 * @param bin bin stream to write into
+		 * @param type root object {@link GLib.Type} when {@link mode} is
+		 *     {@link Mode.AUTO} and {@link src} has no {{{*type}}} member;
+		 *     default {@link GLib.Type.INVALID}
 		 */
-		public void write (
-			Stream ctx,
-			global::Json.Object src
+		public void json_to_bin (
+			global::Json.Object src,
+			Stream bin,
+			GLib.Type type = GLib.Type.INVALID
 		) throws GLib.Error
 		{
-			if (!src.has_member ("*type")) {
+			if (!src.has_member ("*type")
+				&& (this.mode != Mode.AUTO || type == GLib.Type.INVALID)) {
 				throw new StreamError.PROTOCOL (
 					"JSON object missing '*type'"
 				);
 			}
+			if (!src.has_member ("*type")
+				&& !gtype_to_alias.has_key (type)) {
+				throw new StreamError.REGISTRATION (
+					"unregistered JSON type for '%s'",
+					type.name ()
+				);
+			}
+			if (!src.has_member ("*type")) {
+				bin.write_gtype (type);
+				this.json_to_bin_object (src, bin);
+				return;
+			}
+
 			var alias = src.get_string_member ("*type");
-			if (alias_to_gtype == null || !alias_to_gtype.has_key (alias)) {
+			if (!alias_to_gtype.has_key (alias)) {
 				throw new StreamError.REGISTRATION (
 					"unregistered JSON type alias '%s'",
 					alias
 				);
 			}
-			ctx.write_gtype (alias_to_gtype.get (alias));
-			this.write_object (ctx, src);
+			bin.write_gtype (alias_to_gtype.get (alias));
+			this.json_to_bin_object (src, bin);
 		}
 
 		/**
-		 * Decode one root bin object from {@link ctx} into a JSON node.
+		 * Decode bin bytes from {@link bin} into a JSON object tree.
 		 *
-		 * @param ctx bin stream to read from
-		 * @return JSON object node with {{{*type}}} meta member
+		 * @param bin bin stream to read from
+		 * @return JSON object node; {{{*type}}} meta omitted when
+		 *     {@link mode} is {@link Mode.AUTO}
 		 */
-		public global::Json.Node parse (Stream ctx) throws GLib.Error
+		public global::Json.Node bin_to_json (Stream bin) throws GLib.Error
 		{
-			var b = ctx.in_stream.read_byte ();
+			var b = bin.in_stream.read_byte ();
 			if (b == 0xFF) {
-				ctx.read_reg_gtype ();
-				b = ctx.in_stream.read_byte ();
+				bin.read_reg_gtype ();
+				b = bin.in_stream.read_byte ();
 			}
 			if ((b & 0x80) != 0) {
 				throw new StreamError.PROTOCOL (
@@ -82,61 +117,67 @@ namespace OLLMrpc.Bin
 					b
 				);
 			}
-			var gtype = ctx.read_gtype ();
+			var gtype = bin.read_gtype ();
 			if (gtype_to_alias == null || !gtype_to_alias.has_key (gtype)) {
 				throw new StreamError.REGISTRATION (
 					"unregistered JSON type for '%s'",
 					gtype.name ()
 				);
 			}
-			return this.read_object (ctx, gtype_to_alias.get (gtype));
+			return this.bin_to_json_object (bin, gtype_to_alias.get (gtype));
 		}
 
 		/**
-		 * Write one object body (properties + {@link Stream.TOKEN_END}).
+		 * Encode one object body (properties + {@link Stream.TOKEN_END}).
 		 *
-		 * @param ctx active bin session
 		 * @param src JSON property members for this object
+		 * @param bin active bin session to write into
 		 */
-		public void write_object (
-			Stream ctx,
-			global::Json.Object src
+		public void json_to_bin_object (
+			global::Json.Object src,
+			Stream bin
 		) throws GLib.Error
 		{
 			foreach (var name in src.get_members ()) {
 				if (name.has_prefix ("*")) {
 					continue;
 				}
-				this.write_member (ctx, name, src.get_member (name));
+				this.json_member_to_bin (
+					name,
+					src.get_member (name),
+					bin
+				);
 			}
-			ctx.out_stream.put_uint16 (Stream.TOKEN_END);
+			bin.out_stream.put_uint16 (Stream.TOKEN_END);
 		}
 
 		/**
-		 * Read one object body into a JSON object node.
+		 * Decode one object body into a JSON object node.
 		 *
-		 * @param ctx active bin session
-		 * @param alias wire type alias for {{{*type}}}
+		 * @param bin active bin session to read from
+		 * @param alias wire type alias for {{{*type}}} (EXPLICIT mode only)
 		 */
-		public global::Json.Node read_object (
-			Stream ctx,
+		public global::Json.Node bin_to_json_object (
+			Stream bin,
 			string alias
 		) throws GLib.Error
 		{
 			var root = new global::Json.Object ();
-			root.set_string_member ("*type", alias);
+			if (this.mode == Mode.EXPLICIT) {
+				root.set_string_member ("*type", alias);
+			}
 
 			var prop_name = "";
 			var t = (uint16) 0;
-			while ((t = ctx.read_tag (out prop_name)) != Stream.TOKEN_END) {
-				var b = ctx.in_stream.read_byte ();
+			while ((t = bin.read_tag (out prop_name)) != Stream.TOKEN_END) {
+				var b = bin.in_stream.read_byte ();
 				if (b == 0xFF) {
-					ctx.read_reg_gtype ();
-					b = ctx.in_stream.read_byte ();
+					bin.read_reg_gtype ();
+					b = bin.in_stream.read_byte ();
 				}
 				root.set_member (
 					prop_name,
-					this.read_member (ctx, b)
+					this.bin_member_to_json (bin, b)
 				);
 			}
 
@@ -145,10 +186,10 @@ namespace OLLMrpc.Bin
 			return out_node;
 		}
 
-		public void write_member (
-			Stream ctx,
+		public void json_member_to_bin (
 			string name,
-			global::Json.Node node
+			global::Json.Node node,
+			Stream bin
 		) throws GLib.Error
 		{
 			if (node.get_node_type () == global::Json.NodeType.OBJECT) {
@@ -169,19 +210,19 @@ namespace OLLMrpc.Bin
 						);
 					}
 					var items = child_obj.get_member ("items").get_array ();
-					ctx.write_tag (name);
-					ctx.write_gtype (
+					bin.write_tag (name);
+					bin.write_gtype (
 						alias_to_gtype.get (element_alias),
 						(uint8) GLib.Type.OBJECT | 0x80
 					);
 					var count = items.get_length ();
 					if (count < 128) {
-						ctx.out_stream.put_byte ((uint8) count);
+						bin.out_stream.put_byte ((uint8) count);
 					} else {
-						ctx.out_stream.put_byte (
+						bin.out_stream.put_byte (
 							(uint8) (0x80 | ((count >> 8) & 0x7F))
 						);
-						ctx.out_stream.put_byte (
+						bin.out_stream.put_byte (
 							(uint8) (count & 0xFF)
 						);
 					}
@@ -190,7 +231,7 @@ namespace OLLMrpc.Bin
 						if (!elem.has_member ("*type")) {
 							elem.set_string_member ("*type", element_alias);
 						}
-						this.write_object (ctx, elem);
+						this.json_to_bin_object (elem, bin);
 					}
 					return;
 				}
@@ -208,9 +249,9 @@ namespace OLLMrpc.Bin
 						child_alias
 					);
 				}
-				ctx.write_tag (name);
-				ctx.write_gtype (alias_to_gtype.get (child_alias));
-				this.write_object (ctx, child_obj);
+				bin.write_tag (name);
+				bin.write_gtype (alias_to_gtype.get (child_alias));
+				this.json_to_bin_object (child_obj, bin);
 				return;
 			}
 
@@ -223,17 +264,17 @@ namespace OLLMrpc.Bin
 				if (first_node.get_node_type () == global::Json.NodeType.VALUE
 					&& first_node.get_value_type () == GLib.Type.STRING) {
 					var count = items.get_length ();
-					ctx.write_tag (name);
-					ctx.out_stream.put_byte (
+					bin.write_tag (name);
+					bin.out_stream.put_byte (
 						(uint8) GLib.Type.STRING | 0x80
 					);
 					if (count < 128) {
-						ctx.out_stream.put_byte ((uint8) count);
+						bin.out_stream.put_byte ((uint8) count);
 					} else {
-						ctx.out_stream.put_byte (
+						bin.out_stream.put_byte (
 							(uint8) (0x80 | ((count >> 8) & 0x7F))
 						);
-						ctx.out_stream.put_byte (
+						bin.out_stream.put_byte (
 							(uint8) (count & 0xFF)
 						);
 					}
@@ -242,17 +283,17 @@ namespace OLLMrpc.Bin
 							? items.get_string_element (i)
 							: "";
 						if (elem.length < 128) {
-							ctx.out_stream.put_byte ((uint8) elem.length);
+							bin.out_stream.put_byte ((uint8) elem.length);
 						} else {
-							ctx.out_stream.put_byte (
+							bin.out_stream.put_byte (
 								(uint8) (0x80 | ((elem.length >> 8) & 0x7F))
 							);
-							ctx.out_stream.put_byte (
+							bin.out_stream.put_byte (
 								(uint8) (elem.length & 0xFF)
 							);
 						}
 						size_t elem_written;
-						ctx.out_stream.write_all (
+						bin.out_stream.write_all (
 							((uint8[]) elem)[0:elem.length],
 							out elem_written
 						);
@@ -274,19 +315,19 @@ namespace OLLMrpc.Bin
 						element_alias
 					);
 				}
-				ctx.write_tag (name);
-				ctx.write_gtype (
+				bin.write_tag (name);
+				bin.write_gtype (
 					alias_to_gtype.get (element_alias),
 					(uint8) GLib.Type.OBJECT | 0x80
 				);
 				var obj_count = items.get_length ();
 				if (obj_count < 128) {
-					ctx.out_stream.put_byte ((uint8) obj_count);
+					bin.out_stream.put_byte ((uint8) obj_count);
 				} else {
-					ctx.out_stream.put_byte (
+					bin.out_stream.put_byte (
 						(uint8) (0x80 | ((obj_count >> 8) & 0x7F))
 					);
-					ctx.out_stream.put_byte (
+					bin.out_stream.put_byte (
 						(uint8) (obj_count & 0xFF)
 					);
 				}
@@ -295,7 +336,7 @@ namespace OLLMrpc.Bin
 					if (!elem.has_member ("*type")) {
 						elem.set_string_member ("*type", element_alias);
 					}
-					this.write_object (ctx, elem);
+					this.json_to_bin_object (elem, bin);
 				}
 				return;
 			}
@@ -310,66 +351,66 @@ namespace OLLMrpc.Bin
 			switch (node.get_value_type ()) {
 				case GLib.Type.STRING:
 					var s = node.get_string () != null ? node.get_string () : "";
-					ctx.write_tag (name);
+					bin.write_tag (name);
 					if (s.length > 32767) {
-						ctx.out_stream.put_byte ((uint8) GLib.Type.BOXED);
-						ctx.out_stream.put_uint32 ((uint32) s.length);
+						bin.out_stream.put_byte ((uint8) GLib.Type.BOXED);
+						bin.out_stream.put_uint32 ((uint32) s.length);
 						size_t written;
-						ctx.out_stream.write_all (
+						bin.out_stream.write_all (
 							((uint8[]) s)[0:s.length],
 							out written
 						);
 						return;
 					}
-					ctx.out_stream.put_byte ((uint8) GLib.Type.STRING);
+					bin.out_stream.put_byte ((uint8) GLib.Type.STRING);
 					if (s.length < 128) {
-						ctx.out_stream.put_byte ((uint8) s.length);
+						bin.out_stream.put_byte ((uint8) s.length);
 					} else {
-						ctx.out_stream.put_byte (
+						bin.out_stream.put_byte (
 							(uint8) (0x80 | ((s.length >> 8) & 0x7F))
 						);
-						ctx.out_stream.put_byte (
+						bin.out_stream.put_byte (
 							(uint8) (s.length & 0xFF)
 						);
 					}
 					size_t written;
-					ctx.out_stream.write_all (
+					bin.out_stream.write_all (
 						((uint8[]) s)[0:s.length],
 						out written
 					);
 					return;
 
 				case GLib.Type.BOOLEAN:
-					ctx.write_tag (name);
-					ctx.out_stream.put_byte ((uint8) GLib.Type.BOOLEAN);
-					ctx.out_stream.put_byte (node.get_boolean () ? 1 : 0);
+					bin.write_tag (name);
+					bin.out_stream.put_byte ((uint8) GLib.Type.BOOLEAN);
+					bin.out_stream.put_byte (node.get_boolean () ? 1 : 0);
 					return;
 
 				case GLib.Type.INT:
 				case GLib.Type.INT64:
 				case GLib.Type.DOUBLE:
 					var i64 = (int64) node.get_int ();
-					ctx.write_tag (name);
+					bin.write_tag (name);
 					if (i64 >= int.MIN && i64 <= int.MAX) {
-						ctx.out_stream.put_byte ((uint8) GLib.Type.INT);
+						bin.out_stream.put_byte ((uint8) GLib.Type.INT);
 						var iv = (int) i64;
 						if (iv >= -128 && iv <= 127) {
-							ctx.out_stream.put_byte (1);
-							ctx.out_stream.put_byte ((uint8) (int8) iv);
+							bin.out_stream.put_byte (1);
+							bin.out_stream.put_byte ((uint8) (int8) iv);
 							return;
 						}
-						ctx.out_stream.put_byte (8);
-						ctx.out_stream.put_int64 (iv);
+						bin.out_stream.put_byte (8);
+						bin.out_stream.put_int64 (iv);
 						return;
 					}
-					ctx.out_stream.put_byte ((uint8) GLib.Type.INT64);
+					bin.out_stream.put_byte ((uint8) GLib.Type.INT64);
 					if (i64 >= -128 && i64 <= 127) {
-						ctx.out_stream.put_byte (1);
-						ctx.out_stream.put_byte ((uint8) (int8) i64);
+						bin.out_stream.put_byte (1);
+						bin.out_stream.put_byte ((uint8) (int8) i64);
 						return;
 					}
-					ctx.out_stream.put_byte (8);
-					ctx.out_stream.put_int64 (i64);
+					bin.out_stream.put_byte (8);
+					bin.out_stream.put_int64 (i64);
 					return;
 
 				default:
@@ -383,14 +424,14 @@ namespace OLLMrpc.Bin
 			);
 		}
 
-		public global::Json.Node read_member (
-			Stream ctx,
+		public global::Json.Node bin_member_to_json (
+			Stream bin,
 			uint8 type_byte
 		) throws GLib.Error
 		{
 			if ((type_byte & 0x7F) == GLib.Type.OBJECT) {
 				if ((type_byte & 0x80) != 0) {
-					var element_gtype = ctx.read_gtype ();
+					var element_gtype = bin.read_gtype ();
 					if (gtype_to_alias == null
 						|| !gtype_to_alias.has_key (element_gtype)) {
 						throw new StreamError.REGISTRATION (
@@ -399,16 +440,16 @@ namespace OLLMrpc.Bin
 						);
 					}
 					var element_alias = gtype_to_alias.get (element_gtype);
-					var count = (uint) ctx.in_stream.read_byte ();
+					var count = (uint) bin.in_stream.read_byte ();
 					if ((count & 0x80) != 0) {
 						count = ((count & 0x7F) << 8)
-							| ctx.in_stream.read_byte ();
+							| bin.in_stream.read_byte ();
 					}
 					var items = new global::Json.Array ();
 					for (var i = 0u; i < count; i++) {
 						items.add_object_element (
-							this.read_object (
-								ctx,
+							this.bin_to_json_object (
+								bin,
 								element_alias
 							).get_object ()
 						);
@@ -419,7 +460,7 @@ namespace OLLMrpc.Bin
 					out_node.set_array (items);
 					return out_node;
 				}
-				var nested_gtype = ctx.read_gtype ();
+				var nested_gtype = bin.read_gtype ();
 				if (gtype_to_alias == null
 					|| !gtype_to_alias.has_key (nested_gtype)) {
 					throw new StreamError.REGISTRATION (
@@ -427,8 +468,8 @@ namespace OLLMrpc.Bin
 						nested_gtype.name ()
 					);
 				}
-				return this.read_object (
-					ctx,
+				return this.bin_to_json_object (
+					bin,
 					gtype_to_alias.get (nested_gtype)
 				);
 			}
@@ -439,21 +480,21 @@ namespace OLLMrpc.Bin
 			switch ((GLib.Type) (type_byte & 0x7F)) {
 				case GLib.Type.STRING:
 					if ((type_byte & 0x80) != 0) {
-						var count = (uint) ctx.in_stream.read_byte ();
+						var count = (uint) bin.in_stream.read_byte ();
 						if ((count & 0x80) != 0) {
 							count = ((count & 0x7F) << 8)
-								| ctx.in_stream.read_byte ();
+								| bin.in_stream.read_byte ();
 						}
 						var json_arr = new global::Json.Array ();
 						for (var i = 0u; i < count; i++) {
-							var elem_len = (uint) ctx.in_stream.read_byte ();
+							var elem_len = (uint) bin.in_stream.read_byte ();
 							if ((elem_len & 0x80) != 0) {
 								elem_len = ((elem_len & 0x7F) << 8)
-									| ctx.in_stream.read_byte ();
+									| bin.in_stream.read_byte ();
 							}
 							var buf = new uint8[elem_len + 1];
 							size_t read_bytes;
-							ctx.in_stream.read_all (
+							bin.in_stream.read_all (
 								buf[0:elem_len],
 								out read_bytes
 							);
@@ -466,14 +507,14 @@ namespace OLLMrpc.Bin
 						arr_node.set_array (json_arr);
 						return arr_node;
 					}
-					var str_len = (uint) ctx.in_stream.read_byte ();
+					var str_len = (uint) bin.in_stream.read_byte ();
 					if ((str_len & 0x80) != 0) {
 						str_len = ((str_len & 0x7F) << 8)
-							| ctx.in_stream.read_byte ();
+							| bin.in_stream.read_byte ();
 					}
 					var str_buf = new uint8[str_len + 1];
 					size_t str_read;
-					ctx.in_stream.read_all (
+					bin.in_stream.read_all (
 						str_buf[0:str_len],
 						out str_read
 					);
@@ -482,10 +523,10 @@ namespace OLLMrpc.Bin
 					return member;
 
 				case GLib.Type.BOXED:
-					var blob_len = ctx.in_stream.read_uint32 ();
+					var blob_len = bin.in_stream.read_uint32 ();
 					var blob_buf = new uint8[blob_len + 1];
 					size_t blob_read;
-					ctx.in_stream.read_all (
+					bin.in_stream.read_all (
 						blob_buf[0:blob_len],
 						out blob_read
 					);
@@ -494,14 +535,14 @@ namespace OLLMrpc.Bin
 					return member;
 
 				case GLib.Type.BOOLEAN:
-					member.set_boolean (ctx.in_stream.read_byte () == 1);
+					member.set_boolean (bin.in_stream.read_byte () == 1);
 					return member;
 
 				case GLib.Type.ENUM:
-					width = ctx.in_stream.read_byte ();
+					width = bin.in_stream.read_byte ();
 					if (width == 1) {
 						member.set_int (
-							(int64) (int8) ctx.in_stream.read_byte ()
+							(int64) (int8) bin.in_stream.read_byte ()
 						);
 						return member;
 					}
@@ -511,15 +552,15 @@ namespace OLLMrpc.Bin
 							width
 						);
 					}
-					member.set_int (ctx.in_stream.read_int64 ());
+					member.set_int (bin.in_stream.read_int64 ());
 					return member;
 
 				case GLib.Type.INT:
 				case GLib.Type.INT64:
-					width = ctx.in_stream.read_byte ();
+					width = bin.in_stream.read_byte ();
 					if (width == 1) {
 						member.set_int (
-							(int64) (int8) ctx.in_stream.read_byte ()
+							(int64) (int8) bin.in_stream.read_byte ()
 						);
 						return member;
 					}
@@ -529,14 +570,14 @@ namespace OLLMrpc.Bin
 							width
 						);
 					}
-					member.set_int (ctx.in_stream.read_int64 ());
+					member.set_int (bin.in_stream.read_int64 ());
 					return member;
 
 				case GLib.Type.UINT:
 				case GLib.Type.UINT64:
-					width = ctx.in_stream.read_byte ();
+					width = bin.in_stream.read_byte ();
 					if (width == 1) {
-						member.set_int ((int64) ctx.in_stream.read_byte ());
+						member.set_int ((int64) bin.in_stream.read_byte ());
 						return member;
 					}
 					if (width != 8) {
@@ -545,7 +586,7 @@ namespace OLLMrpc.Bin
 							width
 						);
 					}
-					member.set_int ((int64) ctx.in_stream.read_uint64 ());
+					member.set_int ((int64) bin.in_stream.read_uint64 ());
 					return member;
 
 				default:

@@ -109,7 +109,7 @@ namespace OLLMfilesd
 					new GLib.DataInputStream(in_base),
 					null
 				);
-				var node = this.json_codec.parse(read_ctx);
+				var node = this.json_codec.bin_to_json(read_ctx);
 				var gen = new Json.Generator();
 				gen.set_pretty(false);
 				gen.set_root(node);
@@ -196,7 +196,7 @@ namespace OLLMfilesd
 			var mem = new GLib.MemoryOutputStream.resizable();
 			var out_stream = new GLib.DataOutputStream(mem);
 			var encode_ctx = new OLLMrpc.Bin.Stream(null, out_stream);
-			this.json_codec.write(encode_ctx, root);
+			this.json_codec.json_to_bin(root, encode_ctx);
 			out_stream.close();
 
 			var in_base = new GLib.MemoryInputStream.from_bytes(
