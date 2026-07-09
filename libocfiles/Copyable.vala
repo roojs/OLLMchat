@@ -40,6 +40,11 @@ namespace OLLMfiles
 		 */
 		public virtual void copy_from(GLib.Object source, string[]? except = null)
 		{
+			if (except != null && string.joinv("", except).index_of("_") >= 0) {
+				GLib.error(
+					"Copyable.copy_from: except names must be GObject property names "
+					+ "(dashes, not underscores)");
+			}
 			var target = (GLib.Object) this;
 			unowned var target_class = target.get_class();
 

@@ -4,11 +4,13 @@
 section slug marked **yes**, union with **universal**, then read each matching
 block in **`docs/coding-standards.md`** in full (grep `section: <slug>`). Do **not**
 read the whole file unless every section below is in your set (rare). Do **not**
-implement until required reads are done. **Top mistake: adding helper methods**
+implement until required reads are done. **Top mistakes: helper methods, gratuitous line-length chopping**
 (`ensure_*`, “extract for clarity”, DRY) — **inline** in the method you are
 already editing unless user or plan names the helper (`method-names-new-methods`).
+Short `if` / `||` lines stay on one line unless genuinely long (`line-length-breaking`).
 
----
+Do **not** read the whole coding-standards file unless every section below is
+in your set (rare). Do **not** implement until required reads are done.
 
 **How to read a section:** Grep `section: <slug>` in `docs/coding-standards.md`,
 note the line number, then use the Read tool from that line through the line
@@ -31,6 +33,7 @@ say the task is done.
 | Add a **null check**, empty guard, or “just in case” validation? | `defensive-code-null-checks` | Duplicated checks already enforced upstream (UI, permission, caller) |
 | Tempted to add a **helper method** (`ensure_*`, extract “for clarity”)? | `method-names-new-methods` | Added a helper the user or plan did not name — **inline instead** |
 | Add a **new named constant** (`const`)? | `method-names-new-methods` | New `const` without user/plan approval — use literal at use site |
+| Add or change **`if`** with `\|\|` / `&&` on a **short** line? | `line-length-breaking` | Split a line that fits on one line in the surrounding file |
 | Finish the task? | `agent-compliance-gate` | Skipped the verification table or the `rg` local-type search |
 
 **Temporary variables (most common miss):** if you wrote any local declaration,

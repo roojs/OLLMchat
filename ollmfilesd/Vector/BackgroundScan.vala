@@ -22,6 +22,7 @@ namespace OLLMfilesd.Vector {
          */
         public bool stop_requested { get; set; default = false; }
         private Indexer? indexer = null;
+        private string queued_project = "";
 
         /**
          * @param project_manager Daemon ProjectManager (db, vector_db_path)
@@ -34,6 +35,19 @@ namespace OLLMfilesd.Vector {
             this.app = app;
             this.project_manager = project_manager;
             this.config = config;
+
+            this.project_manager.scan_idle.connect (() => {
+                if (this.queued_project != "") {
+                    this.queueProject.begin (this.queued_project);
+                    this.queued_project = "";
+                    return;
+                }
+                if (this.file_queue != null
+                    && this.file_queue.size > 0
+                    && !this.queue_processing) {
+                    this.startQueue.begin ();
+                }
+            });
         }
 
         /**
@@ -78,23 +92,13 @@ namespace OLLMfilesd.Vector {
                 return;
             }
 
-            var project_path = project.path;
-            var pm = project.manager;
-            GLib.debug (
-                "vector index defer check path=%s scanning_active=%u",
-                project_path,
-                pm.scanning.size);
-            this.schedule_after_filesystem_scan (pm, () => {
-                var active = this.project_manager.active_project;
-                if (active == null) {
-                    return false;
-                }
-                GLib.debug (
-                    "vector index filesystem idle path=%s",
-                    active.path);
-                this.queueProject.begin (active.path);
-                return false;
-            });
+            if (project.manager.scanning.size > 0) {
+                GLib.debug ("vector index defer path=%s scanning_active=%u",
+                    project.path, project.manager.scanning.size);
+                this.queued_project = project.path;
+                return;
+            }
+            this.queueProject.begin (project.path);
         }
 
         /**
@@ -111,32 +115,12 @@ namespace OLLMfilesd.Vector {
                 return;
             }
 
-            var file_path = file.path;
-            var project_path = project.path;
-            var pm = project.manager;
-            this.schedule_after_filesystem_scan (pm, () => {
-                this.queueFile (new BackgroundScanItem (project_path, file_path));
-                return false;
-            });
-        }
-
-        /**
-         * Run {@link run} when no {@link OLLMfilesd.ProjectManager.scanning} pass is active.
-         * Polls every 100 ms while filesystem {@link OLLMfilesd.Folder.read_dir} is in flight.
-         */
-        private void schedule_after_filesystem_scan (
-            OLLMfilesd.ProjectManager pm,
-            SourceFunc run
-        )
-        {
-            if (pm.scanning.size > 0) {
-                GLib.Timeout.add (100, () => {
-                    this.schedule_after_filesystem_scan (pm, run);
-                    return false;
-                });
+            var item = new BackgroundScanItem (project.path, file.path);
+            if (project.manager.scanning.size > 0) {
+                this.queueFile (item, false);
                 return;
             }
-            run ();
+            this.queueFile (item);
         }
 
         private void emit_scan_update (int queue_size, string current_file)
@@ -199,6 +183,9 @@ namespace OLLMfilesd.Vector {
                 if (project_file.file.delete_id > 0) {
                     return 0;
                 }
+                if (project_file.file.is_ignored || !project_file.file.is_text) {
+                    return 0;
+                }
                 if (project_file.file.last_vector_scan
                     >= project_file.file.mtime_on_disk ()) {
                     return 0;
@@ -219,6 +206,9 @@ namespace OLLMfilesd.Vector {
 
             foreach (var project_file in project.project_files) {
                 if (project_file.file.delete_id > 0) {
+                    continue;
+                }
+                if (project_file.file.is_ignored || !project_file.file.is_text) {
                     continue;
                 }
                 if (project_file.file.last_vector_scan

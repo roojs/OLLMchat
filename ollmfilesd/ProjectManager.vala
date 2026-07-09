@@ -77,6 +77,11 @@ namespace OLLMfilesd
 			get; set;
 			default = new Gee.HashMap<string, Folder> ();
 		}
+
+		/**
+		 * Emitted when no folder {@link Folder.read_dir} pass is active.
+		 */
+		public signal void scan_idle ();
 		
 		/**
 		 * Currently active project (folder with is_project = true).

@@ -193,7 +193,7 @@ namespace OLLMfilesd
 								"manager",
 								"buffer",
 								"parent",
-								"last_modified"
+								"last-modified"
 							}
 						);
 						list.add(row);
@@ -383,7 +383,7 @@ namespace OLLMfilesd
 		 * Discover and open git repository for this folder.
 		 * Checks if folder is a git repository and opens it if found.
 		 */
-		private void discover_repository()
+		private void discover_repository(bool force = false)
 		{
 			// If already ignored, no need to discover repository
 			if (this.is_ignored) {
@@ -395,7 +395,10 @@ namespace OLLMfilesd
 			switch (this.is_repo) {
 				case 0:
 					// Already checked and not a repo
-					return;
+					if (!force) {
+						return;
+					}
+					break;
 				
 				case 1:
 					// Already checked and is a repo
@@ -454,7 +457,10 @@ namespace OLLMfilesd
  			}
 			
 			// Discover repository for this folder
-			this.discover_repository();
+			this.discover_repository(this.is_project);
+			// temp added - not sure if this is what we want... - 
+			// we think it might have solved an issue with projects dir's getting saved
+			this.saveToDB(this.manager.db, null, false);
 			
 			// Keep a copy of old children to detect removals
 			var old_children = new Gee.ArrayList<FileBase>();
@@ -472,12 +478,16 @@ namespace OLLMfilesd
 			}
 			yield this.read_dir_remove(new_items, old_children, check_time);
 			
-			this.manager.scanning.set (this.path, this);
+			this.manager.scanning.set(this.path, this);
 			
 			// If not recursing, do backup and return early
 			if (!recurse) {
 				this.manager.db.backupDB();
 				this.manager.scanning.unset (this.path);
+				if (this.manager.scanning.size == 0) {
+					//GLib.debug("filesystem scan idle scanning_active=0");
+					this.manager.scan_idle();
+				}
 				return;
 			}
 			
@@ -514,7 +524,11 @@ namespace OLLMfilesd
 					this.project_files.update_from(this);
 					this.project_files.review_files.refresh();
 				}
-				this.manager.scanning.unset (this.path);
+				this.manager.scanning.unset(this.path);
+				if (this.manager.scanning.size == 0) {
+					//GLib.debug("filesystem scan idle scanning_active=0");
+					this.manager.scan_idle();
+				}
 				return;
 			}
 			GLib.Idle.add(() => {
@@ -542,7 +556,11 @@ namespace OLLMfilesd
 					this.project_files.update_from(this);
 					this.project_files.review_files.refresh();
 				}
-				this.manager.scanning.unset (this.path);
+				this.manager.scanning.unset(this.path);
+				if (this.manager.scanning.size == 0) {
+					//GLib.debug("filesystem scan idle scanning_active=0");
+					this.manager.scan_idle();
+				}
 				return;
 			}
 			
@@ -614,6 +632,11 @@ namespace OLLMfilesd
 				
 				if (info.get_file_type() == GLib.FileType.DIRECTORY) {
 					var is_ignored_flag = this.check_path_ignored(cpath);
+					//GLib.debug(
+					//	"path=%s is_ignored=%s is_repo=%d",
+					//	cpath,
+					//	is_ignored_flag.to_string(),
+					//	is_ignored_flag ? -1 : this.is_repo);
 					var new_folder = new Folder.new_from_info( this.manager, this, info, cpath) {
 						is_ignored = is_ignored_flag,
 						is_repo = is_ignored_flag ? -1 : this.is_repo
@@ -760,15 +783,28 @@ namespace OLLMfilesd
 			}
 			
 			// Same item - copy DB fields to preserve them, then update only changed fields
+			//GLib.debug(
+			//	"path=%s is_ignored=%s is_repo=%d",
+			//	new_item.path,
+			//	new_item.is_ignored.to_string(),
+			//	new_item.is_repo);
 			new_item.copy_from(old_item, {
-				"manager", "path", "parent_id", 
-				"target_path", "base_type", "parent",
+				// except these...
+				"manager", "path", "parent-id",
+				"target-path", "base-type", "parent",
+				"is-ignored", "is-repo",
 			});
+			//GLib.debug(
+			//	"path=%s is_ignored=%s is_repo=%d",
+			//	new_item.path,
+			//	new_item.is_ignored.to_string(),
+			//	new_item.is_repo);
 			// Update last_modified from filesystem (preserve filesystem mtime, not DB value)
 			// This ensures the database reflects the actual file modification time
 			new_item.last_modified = new_item.mtime_on_disk();
-			// database manager has to be set other wise all this will break
 			old_item.saveToDB(this.manager.db, new_item, false);
+			old_item.is_ignored = new_item.is_ignored;
+			old_item.is_repo = new_item.is_repo;
 			
 			// Ensure it's in children list
 			// this will not actually do anything as it's 

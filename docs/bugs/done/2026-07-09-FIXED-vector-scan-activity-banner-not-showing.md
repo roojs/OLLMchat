@@ -1,6 +1,6 @@
 # Vector scan does not start / ActivityBanner shows no vector indexing
 
-**Status:** FIX APPLIED — daemon verified on main project (2026-07-09); path-capture bug fixed
+**Status:** **FIXED** — verified 2026-07-09 (embed race, path capture, filesystem gitignore / `copy_from`)
 
 **Started:** 2026-07-09
 
@@ -260,11 +260,23 @@ Same as **D** but **sleep 5** before `activate_project` (after `create_project`)
 
 **`ProjectManager.activate_project`** — before `queue_project`, `yield open_vector_db()` when unset (15 s `GLib.Timeout` then fatal exit). No background probe at daemon startup; probe runs on first activate only.
 
+| **R7** | **Gitignore / queue size** — why ~50k files queued? `is_repo=0` on root; `copy_from` clobbered `is_ignored` | Boundary debug at enumerate + `read_dir_update` | `--scan-project` | **Fixed** — root `is_repo=1`; `subprojects/` `is_ignored=1`; `project_files` 1,280; FS scan ~6 s; vector re-enabled |
+
+---
+
+## Conclusions (filesystem gitignore — R7)
+
+**Root cause:** `discover_repository()` returned early when `is_repo==0`, so the project root never re-attached git. `read_dir_update` called `copy_from` with underscore except names that did not match GObject properties (`is-ignored`), so scan-time `is_ignored=true` was overwritten from stale DB rows.
+
+**Fix:** `discover_repository(bool force)` on project folders; `copy_from` except uses dash names; `Copyable` fatals on underscore except names; preserve `is-ignored` / `is-repo` on rescan.
+
 ---
 
 ## Proposed next steps
 
-Verify in desktop app (Reproduce A): cold start → ActivityBanner shows vector indexing. Move bug log to `docs/bugs/done/` when user confirms.
+~~Verify in desktop app (Reproduce A)~~ — user confirmed scanning and notifying OK (2026-07-09). Bug closed.
+
+**Optional follow-up:** soft-delete stale `subprojects/` rows left in DB from pre-fix scans.
 
 ---
 

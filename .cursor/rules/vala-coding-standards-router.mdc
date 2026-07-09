@@ -9,8 +9,10 @@ alwaysApply: false
 Canonical rules: **`docs/coding-standards.md`**. Full checklist:
 **`docs/coding-standards-router.md`** (read that file in full first).
 
-**Top mistake: helper methods** — inline in the method you are editing; task
-wording is not approval (`method-names-new-methods`).
+**Top mistakes: helper methods, gratuitous line-length chopping** — inline in the
+method you are editing; short `if` / `||` lines stay on one line unless genuinely
+long (`line-length-breaking`). Task wording is not approval for helpers
+(`method-names-new-methods`).
 
 ## Step 1 — Before the first Vala edit
 
@@ -33,7 +35,7 @@ wording is not approval (`method-names-new-methods`).
 | Tempted to add a **helper method**? | `method-names-new-methods` — **inline** unless user/plan named it |
 | Add new `const` / named constant? | `method-names-new-methods` — use literal at use site |
 
-**STOP before done if:** explicit type on a local, missing `this.`, **added a helper**, **new const**, gratuitous `else`, enum `||` chain, or skipped `agent-compliance-gate`.
+**STOP before done if:** explicit type on a local, missing `this.`, **added a helper**, **new const**, **chopped a short line**, gratuitous `else`, enum `||` chain, or skipped `agent-compliance-gate`.
 
 ### Scenario checklist (yes → add slug(s))
 

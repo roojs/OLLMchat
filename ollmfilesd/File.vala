@@ -177,7 +177,7 @@ namespace OLLMfilesd
 				};
 				row.copy_from(
 					source,
-					{"manager", "buffer", "parent", "last_modified"}
+					{"manager", "buffer", "parent", "last-modified"}
 				);
 				var result = new Gee.ArrayList<GLib.Object>();
 				result.add(row);

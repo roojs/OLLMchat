@@ -969,6 +969,19 @@ public void process_item(Item? item)
 
 **IMPORTANT:** Avoid long lines in code, docblocks, and comments. Break lines for readability.
 
+**CRITICAL — do not chop short lines:** The **72-character** limit applies to **docblocks and comments only**, not ordinary code. Do **not** split `if` conditions, `||` / `&&` chains, or short method calls to “comply” with line length. Break **only** when a line is genuinely long (rough guide: past ~100 characters, or clearly longer than the surrounding file). **Match the file you are editing** — if nearby `if` lines are single-line, keep yours single-line.
+
+**Bad (gratuitous chop — forbidden):**
+```vala
+if (project_file.file.is_ignored
+    || !project_file.file.is_text) {
+```
+
+**Good (short line stays short; same as `ProjectFiles.vala`):**
+```vala
+if (project_file.file.is_ignored || !project_file.file.is_text) {
+```
+
 **Maximum line length:** In docblocks and comments, no line may extend past **72 characters** (including leading spaces/tab). Break after a word so the next line continues the sentence; a good rule of thumb is “break after a comma or before the next phrase” so that the first line does not go beyond roughly “… add all references,” in length.
 
 - **Code:** Break on `(` when function calls or method invocations are long; break on `+` when string concatenation creates long lines; if arguments are broken, put each argument on its own line.
@@ -1621,6 +1634,7 @@ Run these checks on **every file you changed**. Fix violations; do not hand-wave
 | **`var` on locals** | Search: `^\s+(string\|int\|bool\|uint\|int64)\s+\w+\s*[=;]` — no local matches except `string[] … = {}` |
 | **No `handle_*` for signals** | Button/signal handlers inline in lambda, not new `handle_*` methods |
 | **No gratuitous `else`** | New `else` / `else if` chains restructure to early return/`continue` |
+| **No gratuitous line breaks** | Short `if`, `\|\|`, `&&`, and calls stay on one line; match surrounding file; 72-char rule is docblocks/comments only |
 | **Enum branches use `switch`** | Multi-value response/status checks use `switch`, not `\|\|` chains |
 | **No defensive re-checks** | No duplicate validation after a module boundary already enforced it |
 | **Debug text** | No class/method names in `GLib.debug()` / `GLib.warning()` messages |
