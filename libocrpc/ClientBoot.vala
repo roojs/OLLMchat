@@ -65,11 +65,11 @@ namespace OLLMrpc
 
 		/**
 		 * @param data_dir Directory root for daemon DB, socket, and pid file.
-		 *   When empty, {@code pid} and {@code socket_name} are stored verbatim
+		 *   When empty, {@link pid} and {@link socket_name} are stored verbatim
 		 * @param pid Basename of the pid file within {@link data_dir}, or the full
-		 *   pid path when {@code data_dir} is empty
+		 *   pid path when {@link data_dir} is empty
 		 * @param socket_name Basename of the Unix socket within {@link data_dir},
-		 *   or the full connect path when {@code data_dir} is empty
+		 *   or the full connect path when {@link data_dir} is empty
 		 * @param debug When true (default), spawn passes {{{--debug}}} to
 		 *   {{{ollmfilesd}}}; listed before {@link pass_data_dir} because most
 		 *   callers rely on the default

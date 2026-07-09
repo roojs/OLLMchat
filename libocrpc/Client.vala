@@ -130,13 +130,13 @@ namespace OLLMrpc
 
 		/**
 		 * @param data_dir Root directory for daemon DB, socket, and pid file.
-		 *   When empty, {@link pid} and {@link socket_path} are set from {@code pid}
-		 *   and {@code socket_name} verbatim (e.g. a full path or
+		 *   When empty, {@link pid} and {@link socket_path} are set from {@link pid}
+		 *   and {@link socket_name} verbatim (e.g. a full path or
 		 *   {{{tcp://127.0.0.1:4141}}})
 		 * @param pid Basename of the pid file within {@link data_dir}, or the full
-		 *   pid path when {@code data_dir} is empty
+		 *   pid path when {@link data_dir} is empty
 		 * @param socket_name Basename of the Unix socket within {@link data_dir},
-		 *   or the full connect path when {@code data_dir} is empty
+		 *   or the full connect path when {@link data_dir} is empty
 		 */
 		public Client(
 			string data_dir,
