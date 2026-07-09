@@ -80,8 +80,19 @@ namespace OLLMfilesd.Vector {
 
             var project_path = project.path;
             var pm = project.manager;
+            GLib.debug (
+                "vector index defer check path=%s scanning_active=%u",
+                project_path,
+                pm.scanning.size);
             this.schedule_after_filesystem_scan (pm, () => {
-                this.queueProject.begin (project_path);
+                var active = this.project_manager.active_project;
+                if (active == null) {
+                    return false;
+                }
+                GLib.debug (
+                    "vector index filesystem idle path=%s",
+                    active.path);
+                this.queueProject.begin (active.path);
                 return false;
             });
         }
@@ -115,12 +126,10 @@ namespace OLLMfilesd.Vector {
          */
         private void schedule_after_filesystem_scan (
             OLLMfilesd.ProjectManager pm,
-            owned SourceFunc run
+            SourceFunc run
         )
         {
             if (pm.scanning.size > 0) {
-                GLib.debug ("vector index waiting for filesystem scan active=%u",
-                    pm.scanning.size);
                 GLib.Timeout.add (100, () => {
                     this.schedule_after_filesystem_scan (pm, run);
                     return false;

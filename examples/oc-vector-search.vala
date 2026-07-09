@@ -190,14 +190,14 @@ Examples:
 		OLLMfilesd.VectorParams.rpc_register();
 		OLLMfiles.SQT.VectorMetadata.rpc_register();
 
-		var pass_data_dir = opt_data_dir != "";
 		this.rpc = new OLLMrpc.Client(
 			this.data_dir,
 			"ollmfilesd.pid",
-			"ollmfilesd.sock",
-			opt_debug,
-			pass_data_dir
-		);
+			"ollmfilesd.sock"
+		) {
+			debug = opt_debug,
+			pass_data_dir = opt_data_dir != ""
+		};
 
 		if (!yield this.rpc.connect(new OLLMrpc.Request() {
 			method = "Daemon.hello",

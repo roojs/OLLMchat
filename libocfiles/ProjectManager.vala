@@ -111,8 +111,7 @@ namespace OLLMfiles
 					"ollmchat"
 				),
 				"ollmfilesd.pid",
-				"ollmfilesd.sock",
-				true
+				"ollmfilesd.sock"
 			);
 			this.delete_manager = new DeleteManager(this);
 			this.review_files = new ReviewFiles(this);

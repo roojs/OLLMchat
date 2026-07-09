@@ -64,11 +64,12 @@ namespace OLLMrpc
 		private int detached_pid = -1;
 
 		/**
-		 * @param data_dir Directory root for daemon DB, socket, and pid file
-		 * @param pid Basename of the pid file within {@link data_dir}
-		 *   (e.g. {{{ollmfilesd.pid}}})
-		 * @param socket_name Basename of the Unix socket within {@link data_dir}
-		 *   (e.g. {{{ollmfilesd.sock}}})
+		 * @param data_dir Directory root for daemon DB, socket, and pid file.
+		 *   When empty, {@code pid} and {@code socket_name} are stored verbatim
+		 * @param pid Basename of the pid file within {@link data_dir}, or the full
+		 *   pid path when {@code data_dir} is empty
+		 * @param socket_name Basename of the Unix socket within {@link data_dir},
+		 *   or the full connect path when {@code data_dir} is empty
 		 * @param debug When true (default), spawn passes {{{--debug}}} to
 		 *   {{{ollmfilesd}}}; listed before {@link pass_data_dir} because most
 		 *   callers rely on the default
@@ -85,11 +86,12 @@ namespace OLLMrpc
 		{
 			GLib.Object(
 				data_dir: data_dir,
-				pid: GLib.Path.build_filename(data_dir, pid),
-				socket_path: GLib.Path.build_filename(
-					data_dir,
-					socket_name
-				),
+				pid: data_dir != ""
+					? GLib.Path.build_filename(data_dir, pid)
+					: pid,
+				socket_path: data_dir != ""
+					? GLib.Path.build_filename(data_dir, socket_name)
+					: socket_name,
 				debug: debug,
 				pass_data_dir: pass_data_dir
 			);

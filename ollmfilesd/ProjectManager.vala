@@ -332,7 +332,10 @@ namespace OLLMfilesd
 						message = project.path,
 					});
 					yield project.read_dir(new DateTime.now_local().to_unix(), true);
-					GLib.debug ("filesystem scan returned path=%s", project.path);
+					GLib.debug (
+						"filesystem scan yield returned path=%s scanning_active=%u",
+						project.path,
+						this.scanning.size);
 					filesystem_scanned = true;
 				}
 				project.project_files.update_from(project);

@@ -1,6 +1,6 @@
 # Vector scan does not start / ActivityBanner shows no vector indexing
 
-**Status:** FIX APPLIED (2026-07-09) — pending user verification in app
+**Status:** FIX APPLIED — daemon verified on main project (2026-07-09); path-capture bug fixed
 
 **Started:** 2026-07-09
 
@@ -58,6 +58,8 @@ Each **round** is one pass through this loop. Stop when evidence is enough to co
 | **R3** | **Causal proof** — if activate waits until after probe, does vector indexing + notifications work? | Existing debug only | Reproduce **D** with **5 s delay** before `activate_project` | **100% causal** — `dimension=1024` first, then `queue project`, 2 files queued, full `event.vector.scan_start/update/end` on stdout. H4/H6 ruled out when queue runs. |
 | **R4** | **No recovery** — after probe completes on fast activate, is `queue_project` ever called again? | `activate vector queue path=` in `ProjectManager`; `probe done dimension= active=` in `open_vector_db` (replaces bare dimension log) | Fast Reproduce **D** (0.2 s delay) | **100% no recovery** — skip at activate; probe done ~1.2 s later with `active=<path>` but **zero** subsequent `queue project`. Bug is permanent for that activate. |
 | **Fix** | Yield for embed probe (15 s timeout) before `queue_project` on activate; fatal exit if probe fails | Coalesced `open_vector_db` via `open_vector_db_wait` promise | Fast Reproduce **D** post-fix | **✅** — 2 files queued, full `event.vector.*` without artificial delay |
+| **R5** | Why is main project slow before `event.vector.scan_start`? | Boundary debug: `scan yield returned scanning_active=`, `defer check`, `filesystem idle`, `scan complete` | OLLMchat activate, interactive | **Two delays:** (1) ~7 s — vector waits for `background_recurse` subtree scan (`scanning_active` 195→0); `event.filesystem.scan_end` fires at ~7 ms with 10 files while scan still running. (2) ~3 min 20 s — `queueProject` walks 54709 files to build queue. |
+| **R6** | Deferred callback path garbage (`POTFILES.skip`, `(null)`) | Remove `owned SourceFunc`; resolve path from `active_project` at callback | Same repro | **Bug fixed** — `event.vector.scan_start` on main project after ~3.5 min total |
 
 ---
 

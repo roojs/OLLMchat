@@ -535,6 +535,10 @@ namespace OLLMfilesd
 				// All folders processed, do final operations
 				this.manager.db.backupDB();
 				if (this.is_project) {
+					GLib.debug (
+						"filesystem scan complete path=%s scanning_active=%u",
+						this.path,
+						this.manager.scanning.size);
 					this.project_files.update_from(this);
 					this.project_files.review_files.refresh();
 				}

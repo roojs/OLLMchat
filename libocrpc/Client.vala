@@ -60,8 +60,17 @@ namespace OLLMrpc
 
 		public string pid { get; construct; }
 
+		/**
+		 * When true (default), {@link connect} forwards to {@link ClientBoot} and
+		 * spawn passes {{{--debug}}} to {{{ollmfilesd}}}. Set in the object
+		 * initializer when not using the default.
+		 */
 		public bool debug { get; construct; default = true; }
 
+		/**
+		 * When true, spawn passes {{{--data-dir=data_dir}}}; vector test CLIs only.
+		 * Set in the object initializer when needed.
+		 */
 		public bool pass_data_dir { get; construct; default = false; }
 
 		/** Seconds to wait for a matching {@link Response} id. */
@@ -109,50 +118,29 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * @param data_dir Root directory for daemon DB, socket, and pid file
-		 * @param pid Basename of the pid file within {@link data_dir}
-		 *   (e.g. {{{ollmfilesd.pid}}})
-		 * @param socket_name Basename of the Unix socket within {@link data_dir}
-		 *   (e.g. {{{ollmfilesd.sock}}}); {@link Client.socket_path} stores the
-		 *   full connect path
-		 * @param debug When true (default), {@link Client.connect} forwards to
-		 *   {@link ClientBoot} and spawn passes {{{--debug}}} to {{{ollmfilesd}}}
-		 * @param pass_data_dir When true, spawn passes {{{--data-dir=data_dir}}};
-		 *   vector test CLIs only
+		 * @param data_dir Root directory for daemon DB, socket, and pid file.
+		 *   When empty, {@link pid} and {@link socket_path} are set from {@code pid}
+		 *   and {@code socket_name} verbatim (e.g. a full path or
+		 *   {{{tcp://127.0.0.1:4141}}})
+		 * @param pid Basename of the pid file within {@link data_dir}, or the full
+		 *   pid path when {@code data_dir} is empty
+		 * @param socket_name Basename of the Unix socket within {@link data_dir},
+		 *   or the full connect path when {@code data_dir} is empty
 		 */
 		public Client(
 			string data_dir,
 			string pid,
-			string socket_name,
-			bool debug = true,
-			bool pass_data_dir = false
+			string socket_name
 		)
 		{
 			GLib.Object(
 				data_dir: data_dir,
-				pid: GLib.Path.build_filename(data_dir, pid),
-				socket_path: GLib.Path.build_filename(
-					data_dir,
-					socket_name
-				),
-				debug: debug,
-				pass_data_dir: pass_data_dir
-			);
-		}
-
-		/**
-		 * Connect to an already-running daemon over TCP.
-		 *
-		 * @param socket_path TCP endpoint (e.g. {{{tcp://127.0.0.1:4141}}})
-		 */
-		public Client.tcp(string socket_path)
-		{
-			GLib.Object(
-				data_dir: "",
-				pid: "",
-				socket_path: socket_path,
-				debug: false,
-				pass_data_dir: false
+				pid: data_dir != ""
+					? GLib.Path.build_filename(data_dir, pid)
+					: pid,
+				socket_path: data_dir != ""
+					? GLib.Path.build_filename(data_dir, socket_name)
+					: socket_name
 			);
 		}
 
@@ -170,13 +158,18 @@ namespace OLLMrpc
 
 			hello_request.id = this.next_id++;
 
-			var socket_name = this.socket_path.has_prefix("tcp://")
-				? this.socket_path
-				: GLib.Path.get_basename(this.socket_path);
+			var boot_pid = this.data_dir != ""
+				? GLib.Path.get_basename(this.pid)
+				: this.pid;
+			var boot_socket = this.data_dir != ""
+				? (this.socket_path.has_prefix("tcp://")
+					? this.socket_path
+					: GLib.Path.get_basename(this.socket_path))
+				: this.socket_path;
 			var boot = new ClientBoot(
 				this.data_dir,
-				GLib.Path.get_basename(this.pid),
-				socket_name,
+				boot_pid,
+				boot_socket,
 				this.debug,
 				this.pass_data_dir
 			);
