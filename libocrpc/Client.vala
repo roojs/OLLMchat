@@ -376,7 +376,33 @@ namespace OLLMrpc
 
 		private async void send_http(PendingWrite head) throws GLib.Error
 		{
+			GLib.debug("id=%d path=%s", head.request.id, head.request.method);
 			var url = this.socket_path + head.request.method;
+			var qs = "";
+			foreach (var pspec in head.request.param.get_class().list_properties()) {
+				if (pspec.name == "args") {
+					continue;
+				}
+				var val = Value(pspec.value_type);
+				head.request.param.get_property(pspec.name, ref val);
+				switch (val.type()) {
+					case GLib.Type.STRING:
+						var s = val.get_string();
+						if (s == "") {
+							continue;
+						}
+						qs += (qs == "" ? "?" : "&")
+							+ GLib.Uri.escape_string(pspec.name, null)
+							+ "=" + GLib.Uri.escape_string(s, null);
+						break;
+					case GLib.Type.INT:
+						qs += (qs == "" ? "?" : "&")
+							+ GLib.Uri.escape_string(pspec.name, null)
+							+ "=" + val.get_int().to_string();
+						break;
+				}
+			}
+			var url = this.socket_path + head.request.method + qs; 
 			GLib.debug("id=%d url=%s", head.request.id, url);
 			var message = new Soup.Message("GET", url);
 			var bytes = yield this.http_session.send_and_read_async(
@@ -390,8 +416,17 @@ namespace OLLMrpc
 			var parser = new Json.Parser();
 			parser.load_from_data((string) bytes.get_data());
 			var root = parser.get_root();
+			if (root.get_node_type() == Json.NodeType.ARRAY) {
+				var items_wrap = new Json.Object();
+				items_wrap.set_string_member("*array", "Model");
+				items_wrap.set_array_member("items", root.get_array());
+				var wrap = new Json.Object();
+				wrap.set_object_member("items", items_wrap);
+				root = new Json.Node(Json.NodeType.OBJECT);
+				root.set_object(wrap);
+			}
 			if (root.get_node_type() != Json.NodeType.OBJECT) {
-				throw new Bin.StreamError.PROTOCOL("HTTP JSON root must be object");
+				throw new Bin.StreamError.PROTOCOL("HTTP JSON root must be object or array");
 			}
 			var mem = new GLib.MemoryOutputStream.resizable();
 			var encode_ctx = new Bin.Stream(null, new GLib.DataOutputStream(mem));
