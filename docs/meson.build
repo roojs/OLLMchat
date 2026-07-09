@@ -4,7 +4,7 @@
 # IMPORTANT: When adding/removing/changing source files in any library directory,
 # you MUST update the input files list below to match. This includes:
 # - libocsqlite, libocfiles, libocbwrap, libocmcp, liboccoder, libollmchat,
-#   liboctools, libocvector, ollmapp, etc.
+#   libochf, liboctools, libocvector, ollmapp, etc.
 # Check the corresponding meson.build file in each library directory for the
 # current list of source files. Many meson.build files note this explicitly.
 #
@@ -70,6 +70,13 @@ valadoc_docs = custom_target('valadoc',
     '../libocrpc/RpcErrorCode.vala',
     '../libocrpc/Client.vala',
     '../libocrpc/ClientBoot.vala',
+    # libochf sources (Hub catalog — depends on libocrpc)
+    '../libochf/namespace.vala',
+    '../libochf/ModelFile.vala',
+    '../libochf/Model.vala',
+    '../libochf/ModelArray.vala',
+    '../libochf/Param/Search.vala',
+    '../libochf/Param/ModelDetails.vala',
     # ollmfilesd param types (shared with libocfiles client)
     '../ollmfilesd/CallParam.vala',
     # libocfiles sources (RPC client — must come before liboccoder and liboctools)

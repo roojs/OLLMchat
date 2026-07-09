@@ -1,6 +1,6 @@
 # Android chat POC — history + tool HTTPS (TLS)
 
-**Status:** OPEN — Problem 2 fix **proposed** (awaiting approval); Problem 1 still needs device debug
+**Status:** OPEN — Problem 1 (history) still needs debug. Problem 2 (`google_search` / tool TLS) **✅ FIXED** (2026-07-09). Problem 3 (screen timeout vs streaming) — investigation.
 
 **Started:** 2026-07-09
 
@@ -47,7 +47,73 @@
 
 ---
 
-## Problem 2 — `google_search` / `web_fetch` fail with unacceptable TLS certificate
+## Problem 3 — Screen timeout kills in-flight LLM stream → “Network error”
+
+**Status:** OPEN — investigation (user report, 2026-07-09)
+
+**Expected:** Long replies can finish even if the user is not touching the screen, **or** an interrupted stream fails gracefully with partial reply preserved and a clear message (not a generic network fault).
+
+**Actual:** While the assistant is streaming from the remote Ollama server, the phone screen times out / locks for inactivity. Android suspends the app or tears down the TCP connection. The libsoup SSE read fails; the UI shows **“Network error: …”** (`ChatWidget` default `GLib.IOError` branch). Feels like a broken session even though the chat is still there.
+
+**Reproduce:**
+
+1. Start a long chat turn on device (model that streams visibly).
+2. Do not touch the screen until display timeout / lock.
+3. Wait for lock (or dim); unlock after a few seconds.
+4. Observe stream abort + error banner in chat.
+
+**Architecture (what is / is not remote):**
+
+| Piece | Where it lives | Survives screen lock? |
+|-------|----------------|------------------------|
+| **Session / message history** | Local — `OLLMchat.History.Session.messages` + JSON under `files/history/` | **Yes** — session is not on the server |
+| **Partial streamed text** | Local — appended to `content-stream` / `think-stream` messages in `Session.handle_stream_chunk` | **Usually yes** — chunks already received are in `messages` |
+| **In-flight HTTP/SSE stream** | Remote — `ChatCompletions` → `connection.soup.send_async` + `read_line_async` on Ollama URL | **No** — OS drops the socket when the app is backgrounded / Doze |
+| **Resume same generation** | N/A | **Not feasible** — Ollama has no “continue this SSE from offset N”; a new request is a new completion |
+
+So: **the session is local**, but **the current reply’s network pipe is not**. On wake you still have the same session file and any tokens already streamed; you **cannot** reconnect mid-generation and pick up where the server left off.
+
+**Current error path (code):**
+
+- Stream read: `libollmchat/Call/ChatCompletions.vala` — `read_line_async` throws `GLib.IOError` when the connection drops.
+- Bubble: `Agent.Base.send_async` → `Session.send` → `ChatWidget.send_message` catch → `handle_error("Network error: …")` (`libollmchatgtk/ChatWidget.vala` ~631–662).
+- `handle_error` finalizes the assistant bubble, adds a danger UI frame, saves session, clears `is_running` — partial assistant text is kept (comment in code: “keep partial response content”).
+
+**What is ruled in / out**
+
+| Idea | Verdict |
+|------|---------|
+| “Restore remote session on wake” like a web app | **Out** — no server-side session; only local JSON |
+| Resume the **same** Ollama SSE stream after reconnect | **Out** — not in Ollama API |
+| Keep partial reply + soften error copy | **In** — UX improvement only |
+| Prevent timeout **while streaming** | **In** — Android `FLAG_KEEP_SCREEN_ON` / GTK equivalent when `session.is_running` |
+| Keep network alive with screen off (`PARTIAL_WAKE_LOCK`) | **Maybe** — OEM-dependent; permission + battery; needs spike |
+| Auto-retry full turn on wake | **Risky** — duplicate user message or double assistant reply unless carefully designed |
+| Foreground service for whole generation | **Out for POC** — heavy; Play policy |
+
+**Options (for later approval — not ranked as fix yet):**
+
+1. **🔷 Keep screen on while `session.is_running`** (Android-only) — wire `FLAG_KEEP_SCREEN_ON` on the GTK toplevel when streaming starts; clear in `cleanup_streaming_state` / `agent_status_change`. Stops timeout during active generation; battery cost if user walks away. No project uses this today (grep: no `keep_screen_on`).
+
+2. **Softer interrupt UX (shared `ChatWidget`)** — On non-cancel `GLib.IOError` during stream, if `current_stream_message` has content: finalize stream, save, show *“Reply interrupted (connection lost). Partial text kept.”* instead of generic *Network error*. Same underlying failure; less alarming.
+
+3. **💩 `PARTIAL_WAKE_LOCK` during stream** — Investigate whether holding a partial wake lock without keeping the display on preserves libsoup reads on test devices. Manifest + runtime permission; may still fail under aggressive power management.
+
+4. **🚫 Auto-resume generation on unlock** — Would require re-sending the last user turn to Ollama (new completion), not resuming SSE. Easy to duplicate content; defer unless product wants explicit “Retry” only (input already auto-fills last text on error today).
+
+5. **ℹ️ User workaround (no code)** — Tap **Stop** before locking, or increase system screen timeout during long chats.
+
+**Next (debug, when we pick this up):**
+
+- Reproduce with `adb logcat` during lock: libsoup / `GLib.IOError` code (`TIMED_OUT`, `BROKEN_PIPE`, etc.).
+- Confirm partial assistant message + session JSON after error (`adb` pull `files/history/…`).
+- Spike (1): `keep_screen_on` for one device build — does it stop the failure entirely?
+
+---
+
+## Problem 2 — `google_search` / `web_fetch` fail with unacceptable TLS certificate **✅ FIXED**
+
+**Status:** **FIXED** — user verified `google_search` on device (2026-07-09). TLS fix shipped (Tool.soup + `AndroidConnectionTls` in `fill_tools()`). Mid-test **HTTP 400** was **bad engine-id in on-device config**, not TLS — corrected in Settings → Tools.
 
 **Expected:** With Google Custom Search API key + engine ID configured in settings, a model that invokes `google_search` during an LLM turn fetches results from `https://www.googleapis.com/customsearch/v1`.
 
@@ -98,9 +164,15 @@ Same pattern in `liboctools/WebFetch/Request.vala` — so `web_fetch` is probabl
 3. Logcat: `OLLMchat TLS: Soup.Session tls_database=.../ca-certificates.crt` when tools run.
 4. Regression: connection chat + model list still works.
 
+**After fix (verified):**
+
+- TLS: `google_search` reaches Google APIs on device (no cert error).
+- HTTP 400 during bring-up: `adb` config compare showed corrupted **engine-id** on phone vs desktop; user corrected settings → search works.
+- **💩** Follow-up (optional): `SettingsDialog/Rows/String.vala` does not `.strip()` entry text (connection rows do) — can leave trailing newlines in tool API key; not blocking once engine-id is correct.
+
 ---
 
-### Proposed fix — Problem 2 (TLS on tool HTTP sessions)
+### Proposed fix — Problem 2 (TLS on tool HTTP sessions) **✔️ implemented**
 
 Implement and verify **one file at a time**. Code fences use **Remove** / **Replace with** / **Add** per `docs/guide-to-writing-plans.md`.
 
@@ -305,3 +377,6 @@ Implement and verify **one file at a time**. Code fences use **Remove** / **Repl
 |------|--------|
 | 2026-07-09 | Opened from user device report; TLS hypothesis from code review vs working connection path |
 | 2026-07-09 | Problem 2 — proposed fix documented (Tool.soup + Android `fill_tools` TLS); awaiting approval |
+| 2026-07-09 | Problem 2 — **implemented** T1–T5 per approved proposal; device verify pending |
+| 2026-07-09 | Problem 2 — **✅ user verified** on device (`google_search` working); HTTP 400 was config not TLS |
+| 2026-07-09 | Problem 3 — screen timeout interrupts SSE stream → Network error; options documented |

@@ -59,11 +59,20 @@ The tool requires permission to access the domain of the URL being fetched.""";
 		 * Optional - set to null if not available.
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
+
+		/**
+		 * HTTP session for URL fetch requests.
+		 *
+		 * On Android, the app applies bundled CA trust to this session when the
+		 * tool is registered on the history manager.
+		 */
+		public Soup.Session soup;
 		
 	public Tool(OLLMfiles.ProjectManager? project_manager = null)
 	{
 		base();
 		this.project_manager = project_manager;
+		this.soup = new Soup.Session();
 	}
 		
 		public OLLMchat.Tool.BaseTool clone()

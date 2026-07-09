@@ -6,6 +6,8 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocsqlite',
   meson.current_build_dir() / '..' / 'libocmarkdown',
   meson.current_build_dir() / '..' / 'libollamaweb',
+  meson.current_build_dir() / '..' / 'libochf',
+  meson.current_build_dir() / '..' / 'libocrpc',
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   meson.current_build_dir() / '..' / 'libocfiles',
   meson.current_build_dir() / '..' / 'liboccoder',
@@ -133,6 +135,31 @@ test_ollamaweb = executable('oc-test-ollamaweb',
     '--pkg=ollamaweb',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb'
   ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+
+# Hugging Face Hub catalog CLI (libochf + libocrpc HTTP)
+# Don't use --pkg=ochf when linking ochf_base_lib — meson includes ochf-meson.vapi automatically
+oc_hf = executable('oc-hf',
+  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ollmchat_vapi_dep, ocrpc_vapi_dep],
+  sources: ['TestAppBase.vala', 'oc-hf.vala'],
+  link_with: [ollmchat_base_lib, ochf_base_lib],
+  include_directories: [
+    include_directories('../libollmchat'),
+    include_directories('../libochf'),
+    ollmchat_consumer_include,
+  ],
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=ollmchat',
+    '--pkg=ocrpc',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  ] + ollmchat_consumer_vala_args,
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )

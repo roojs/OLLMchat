@@ -142,6 +142,7 @@ else
   subdir('libocrpc')         # Binary RPC wire types — no OLLMfiles dependency
   subdir('libocmarkdown')    # No dependencies
   subdir('libollamaweb')     # No dependencies on libollmchat (Phase 1)
+  subdir('libochf')          # Hugging Face Hub catalog — depends on libocrpc
   subdir('libocmarkdowngtk') # Depends on libocmarkdown
   subdir('libocfiles')       # Depends on libocsqlite
   subdir('libollmchat')      # Depends on libocsqlite
@@ -211,6 +212,7 @@ lib_path = ':'.join([
   meson.current_build_dir() / 'libocrpc',
   meson.current_build_dir() / 'libocmarkdown',
   meson.current_build_dir() / 'libollamaweb',
+  meson.current_build_dir() / 'libochf',
   meson.current_build_dir() / 'libocmarkdowngtk',
   meson.current_build_dir() / 'libocfiles',
   meson.current_build_dir() / 'liboccoder',

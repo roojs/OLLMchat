@@ -212,9 +212,9 @@ namespace OLLMtools.GoogleSearch
 			GLib.Bytes content;
 			Soup.Message? message = null;
 			try {
-				var session = new Soup.Session();
 				message = new Soup.Message("GET", url);
-				content = yield session.send_and_read_async(message, GLib.Priority.DEFAULT, null);
+				content = yield ((Tool) this.tool).soup.send_and_read_async(
+					message, GLib.Priority.DEFAULT, null);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to fetch search results: " + e.message);
 			}

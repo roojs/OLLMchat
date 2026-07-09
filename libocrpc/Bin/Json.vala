@@ -45,6 +45,10 @@ namespace OLLMrpc.Bin
 				alias_to_gtype = new Gee.HashMap<string, GLib.Type> ();
 				gtype_to_alias = new Gee.HashMap<GLib.Type, string> ();
 			}
+			if (!gtype_to_alias.has_key (typeof (GLib.Object))) {
+				alias_to_gtype.set ("GLib.Object", typeof (GLib.Object));
+				gtype_to_alias.set (typeof (GLib.Object), "GLib.Object");
+			}
 		}
 
 		/**
@@ -236,10 +240,16 @@ namespace OLLMrpc.Bin
 					return;
 				}
 				if (!child_obj.has_member ("*type")) {
-					throw new StreamError.PROTOCOL (
-						"member '%s' nested object missing '*type'",
-						name
-					);
+					if (this.mode != Mode.AUTO) {
+						throw new StreamError.PROTOCOL (
+							"member '%s' nested object missing '*type'",
+							name
+						);
+					}
+					bin.write_tag (name);
+					bin.write_gtype (typeof (GLib.Object));
+					this.json_to_bin_object (child_obj, bin);
+					return;
 				}
 				var child_alias = child_obj.get_string_member ("*type");
 				if (alias_to_gtype == null
@@ -302,10 +312,35 @@ namespace OLLMrpc.Bin
 				}
 				var first = items.get_object_element (0);
 				if (!first.has_member ("*type")) {
-					throw new StreamError.PROTOCOL (
-						"member '%s' object array element missing '*type'",
-						name
+					if (this.mode != Mode.AUTO) {
+						throw new StreamError.PROTOCOL (
+							"member '%s' object array element missing '*type'",
+							name
+						);
+					}
+					bin.write_tag (name);
+					bin.write_gtype (
+						typeof (GLib.Object),
+						(uint8) GLib.Type.OBJECT | 0x80
 					);
+					var obj_count = items.get_length ();
+					if (obj_count < 128) {
+						bin.out_stream.put_byte ((uint8) obj_count);
+					} else {
+						bin.out_stream.put_byte (
+							(uint8) (0x80 | ((obj_count >> 8) & 0x7F))
+						);
+						bin.out_stream.put_byte (
+							(uint8) (obj_count & 0xFF)
+						);
+					}
+					for (var i = 0u; i < obj_count; i++) {
+						this.json_to_bin_object (
+							items.get_object_element (i),
+							bin
+						);
+					}
+					return;
 				}
 				var element_alias = first.get_string_member ("*type");
 				if (alias_to_gtype == null

@@ -69,9 +69,14 @@ namespace OLLMapp
 		 */
 		public static void fill_tools(OLLMchat.History.Manager manager)
 		{
-			manager.register_tool(new OLLMtools.WebFetch.Tool(null));
+			var web_fetch = new OLLMtools.WebFetch.Tool(null);
+			AndroidConnectionTls.apply_to_session(web_fetch.soup);
+			manager.register_tool(web_fetch);
+
 			manager.register_tool(new OLLMtools.SessionFetch.Tool());
+
 			var google_search = new OLLMtools.GoogleSearch.Tool(null);
+			AndroidConnectionTls.apply_to_session(google_search.soup);
 			manager.register_tool(google_search);
 			manager.tools.set("web_search", google_search);
 		}

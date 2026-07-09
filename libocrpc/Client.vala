@@ -377,7 +377,6 @@ namespace OLLMrpc
 		private async void send_http(PendingWrite head) throws GLib.Error
 		{
 			GLib.debug("id=%d path=%s", head.request.id, head.request.method);
-			var url = this.socket_path + head.request.method;
 			var qs = "";
 			foreach (var pspec in head.request.param.get_class().list_properties()) {
 				if (pspec.name == "args") {

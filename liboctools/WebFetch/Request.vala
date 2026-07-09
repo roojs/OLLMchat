@@ -83,10 +83,10 @@ namespace OLLMtools.WebFetch
 			try {
 				// Note: libsoup 3.0 handles redirects automatically, but we check status codes
 				// and handle redirects manually below to require approval
-				var session = new Soup.Session();
 				message = new Soup.Message("GET", this.url);
 				message.request_headers.replace("User-Agent", USER_AGENT);
-				content = yield session.send_and_read_async(message, GLib.Priority.DEFAULT, null);
+				content = yield ((Tool) this.tool).soup.send_and_read_async(
+					message, GLib.Priority.DEFAULT, null);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to fetch URL: " + e.message);
 			}
@@ -186,10 +186,10 @@ namespace OLLMtools.WebFetch
 		 */
 		protected async Bytes fetch_url(string url) throws Error
 		{
-			var session = new Soup.Session();
 			var message = new Soup.Message("GET", url);
 			message.request_headers.replace("User-Agent", USER_AGENT);
-			var bytes = yield session.send_and_read_async(message, GLib.Priority.DEFAULT, null);
+			var bytes = yield ((Tool) this.tool).soup.send_and_read_async(
+				message, GLib.Priority.DEFAULT, null);
 			
 			if (message.status_code < 200 || message.status_code >= 300) {
 				throw new GLib.IOError.FAILED("HTTP error: " + message.status_code.to_string());
