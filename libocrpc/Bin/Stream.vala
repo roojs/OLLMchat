@@ -44,24 +44,24 @@ namespace OLLMrpc.Bin
 	 * @param alias wire type name
 	 * @param gtype GObject type for that alias
 	 */
-	public static void register (
+	public static void register(
 		string alias,
 		GLib.Type gtype
 	) throws GLib.Error
 	{
 		if (alias_to_gtype == null) {
-			alias_to_gtype = new Gee.HashMap<string, GLib.Type> ();
-			gtype_to_alias = new Gee.HashMap<GLib.Type, string> ();
+			alias_to_gtype = new Gee.HashMap<string, GLib.Type>();
+			gtype_to_alias = new Gee.HashMap<GLib.Type, string>();
 		}
-		if (alias_to_gtype.has_key (alias)) {
-			throw new StreamError.REGISTRATION (
+		if (alias_to_gtype.has_key(alias)) {
+			throw new StreamError.REGISTRATION(
 				"duplicate register of alias '%s'",
 				alias
 			);
 		}
 
-		alias_to_gtype.set (alias, gtype);
-		gtype_to_alias.set (gtype, alias);
+		alias_to_gtype.set(alias, gtype);
+		gtype_to_alias.set(gtype, alias);
 	}
 
 	/**
@@ -76,54 +76,50 @@ namespace OLLMrpc.Bin
 
 		internal string[] names = {};
 		internal Gee.HashMap<string, uint16> name_to_token =
-			new Gee.HashMap<string, uint16> ();
+			new Gee.HashMap<string, uint16>();
 
 		public const uint16 TOKEN_REG_KEY = 0xFFFF;
 		public const uint16 TOKEN_REG_TYPE = 0xFFFE;
 		public const uint16 TOKEN_END = 0xFFFD;
 
-		public Stream (
+		public Stream(
 			GLib.DataInputStream? in_stream,
 			GLib.DataOutputStream? out_stream
 		) {
-			GLib.Object (in_stream: in_stream, out_stream: out_stream);
+			GLib.Object(in_stream: in_stream, out_stream: out_stream);
 			if (this.out_stream != null) {
-				this.out_stream.set_byte_order (
-					GLib.DataStreamByteOrder.BIG_ENDIAN
-				);
+				this.out_stream.set_byte_order(GLib.DataStreamByteOrder.BIG_ENDIAN);
 			}
 			if (this.in_stream != null) {
-				this.in_stream.set_byte_order (
-					GLib.DataStreamByteOrder.BIG_ENDIAN
-				);
+				this.in_stream.set_byte_order(GLib.DataStreamByteOrder.BIG_ENDIAN);
 			}
 		}
 
-		public void write (Serializable obj) throws GLib.Error
+		public void write(Serializable obj) throws GLib.Error
 		{
-			this.write_gtype (obj.get_type ());
-			obj.bin_write (this);
+			this.write_gtype(obj.get_type());
+			obj.bin_write(this);
 		}
 
-		public Serializable parse () throws GLib.Error
+		public Serializable parse() throws GLib.Error
 		{
-			var b = this.in_stream.read_byte ();
+			var b = this.in_stream.read_byte();
 			if (b == 0xFF) {
-				this.read_reg_gtype ();
-				b = this.in_stream.read_byte ();
+				this.read_reg_gtype();
+				b = this.in_stream.read_byte();
 			}
 			if ((b & 0x80) != 0) {
-				throw new StreamError.PROTOCOL (
+				throw new StreamError.PROTOCOL(
 					"root parse does not accept object arrays"
 				);
 			}
 			if (b != (uint8) GLib.Type.OBJECT) {
-				throw new StreamError.PROTOCOL (
+				throw new StreamError.PROTOCOL(
 					"expected object type byte, got 0x%02X",
 					b
 				);
 			}
-			return this.parse_object ();
+			return this.parse_object();
 		}
 
 		/**
@@ -134,15 +130,13 @@ namespace OLLMrpc.Bin
 		 *
 		 * @param object_type element class when already read from an array header
 		 */
-		public Serializable parse_object (
+		public Serializable parse_object(
 			GLib.Type object_type = GLib.Type.INVALID
 		) throws GLib.Error
 		{
-			var gtype = object_type != GLib.Type.INVALID
-				? object_type
-				: this.read_gtype ();
-			var obj = (Serializable) GLib.Object.new (gtype);
-			obj.bin_read (this);
+			var gtype = object_type != GLib.Type.INVALID ? object_type : this.read_gtype();
+			var obj = (Serializable) GLib.Object.new(gtype);
+			obj.bin_read(this);
 			return obj;
 		}
 
@@ -152,51 +146,45 @@ namespace OLLMrpc.Bin
 		 *
 		 * @return decoded elements
 		 */
-		public Gee.ArrayList<GLib.Object> parse_object_array ()
+		public Gee.ArrayList<GLib.Object> parse_object_array()
 			throws GLib.Error
 		{
-			var elem_gtype = this.read_gtype ();
-			var count = (uint) this.in_stream.read_byte ();
+			var elem_gtype = this.read_gtype();
+			var count = (uint) this.in_stream.read_byte();
 			if ((count & 0x80) != 0) {
-				count = ((count & 0x7F) << 8)
-					| this.in_stream.read_byte ();
+				count = ((count & 0x7F) << 8) | this.in_stream.read_byte();
 			}
-			var list = new Gee.ArrayList<GLib.Object> ();
+			var list = new Gee.ArrayList<GLib.Object>();
 			for (var i = 0u; i < count; i++) {
-				list.add (this.parse_object (elem_gtype));
+				list.add(this.parse_object(elem_gtype));
 			}
 			return list;
 		}
 
-		public void write_tag (string prop_name) throws GLib.Error
+		public void write_tag(string prop_name) throws GLib.Error
 		{
-			if (this.name_to_token.has_key (prop_name)) {
-				this.out_stream.put_uint16 (
-					this.name_to_token.get (prop_name)
-				);
+			if (this.name_to_token.has_key(prop_name)) {
+				this.out_stream.put_uint16(this.name_to_token.get(prop_name));
 				return;
 			}
 
 			var id = (uint16) this.names.length;
-			this.out_stream.put_uint16 (TOKEN_REG_KEY);
-			this.out_stream.put_uint16 (id);
+			this.out_stream.put_uint16(TOKEN_REG_KEY);
+			this.out_stream.put_uint16(id);
 
-			var len = (uint8) uint.min (prop_name.length, 255);
-			this.out_stream.put_byte (len);
+			var len = (uint8) uint.min(prop_name.length, 255);
+			this.out_stream.put_byte(len);
 			size_t written;
-			this.out_stream.write_all (
-				((uint8[]) prop_name)[0:len],
-				out written
-			);
+			this.out_stream.write_all(((uint8[]) prop_name)[0:len], out written);
 
 			this.names += prop_name;
-			this.name_to_token.set (prop_name, id);
-			this.out_stream.put_uint16 (id);
+			this.name_to_token.set(prop_name, id);
+			this.out_stream.put_uint16(id);
 		}
 
-		internal uint16 read_tag (out string prop_name) throws GLib.Error
+		internal uint16 read_tag(out string prop_name) throws GLib.Error
 		{
-			var t = this.in_stream.read_uint16 ();
+			var t = this.in_stream.read_uint16();
 
 			if (t == TOKEN_END) {
 				prop_name = "";
@@ -205,7 +193,7 @@ namespace OLLMrpc.Bin
 
 			if (t != TOKEN_REG_KEY) {
 				if (t >= this.names.length) {
-					throw new StreamError.PROTOCOL (
+					throw new StreamError.PROTOCOL(
 						"unknown wire name token %u",
 						t
 					);
@@ -214,24 +202,23 @@ namespace OLLMrpc.Bin
 				return t;
 			}
 
-			var assigned_id = this.in_stream.read_uint16 ();
-			var len = this.in_stream.read_byte ();
+			var assigned_id = this.in_stream.read_uint16();
+			var len = this.in_stream.read_byte();
 
 			var buffer = new uint8[len + 1];
 			size_t read_bytes;
-			this.in_stream.read_all (buffer[0:len], out read_bytes);
+			this.in_stream.read_all(buffer[0:len], out read_bytes);
 			buffer[len] = 0;
 			prop_name = (string) buffer;
 
 			if (assigned_id > this.names.length) {
-				throw new StreamError.PROTOCOL (
+				throw new StreamError.PROTOCOL(
 					"wire name token %u out of sequence",
 					assigned_id
 				);
 			}
-			if (assigned_id < this.names.length
-				&& this.names[assigned_id] != prop_name) {
-				throw new StreamError.PROTOCOL (
+			if (assigned_id < this.names.length && this.names[assigned_id] != prop_name) {
+				throw new StreamError.PROTOCOL(
 					"wire name token %u alias mismatch",
 					assigned_id
 				);
@@ -239,92 +226,84 @@ namespace OLLMrpc.Bin
 			if (assigned_id == this.names.length) {
 				this.names += prop_name;
 			}
-			this.name_to_token.set (prop_name, assigned_id);
-			return this.read_tag (out prop_name);
+			this.name_to_token.set(prop_name, assigned_id);
+			return this.read_tag(out prop_name);
 		}
 
-		public void write_gtype (
+		public void write_gtype(
 			GLib.Type object_type,
 			uint8 type_byte = (uint8) GLib.Type.OBJECT
 		) throws GLib.Error
 		{
 			if ((type_byte & 0x7F) != (uint8) GLib.Type.OBJECT) {
-				throw new StreamError.PROTOCOL (
+				throw new StreamError.PROTOCOL(
 					"write_gtype type_byte 0x%02X is not object",
 					type_byte
 				);
 			}
 
-			this.write_reg_gtype (object_type);
+			this.write_reg_gtype(object_type);
 
-			this.out_stream.put_byte (type_byte);
-			var reg_id = (uint) this.name_to_token.get (
-				gtype_to_alias.get (object_type)
+			this.out_stream.put_byte(type_byte);
+			var reg_id = (uint) this.name_to_token.get(
+				gtype_to_alias.get(object_type)
 			);
 			if (reg_id < 128) {
-				this.out_stream.put_byte ((uint8) reg_id);
+				this.out_stream.put_byte((uint8) reg_id);
 				return;
 			}
 
-			this.out_stream.put_byte (
-				(uint8) (0x80 | ((reg_id >> 8) & 0x7F))
-			);
-			this.out_stream.put_byte ((uint8) (reg_id & 0xFF));
+			this.out_stream.put_byte((uint8) (0x80 | ((reg_id >> 8) & 0x7F)));
+			this.out_stream.put_byte((uint8) (reg_id & 0xFF));
 		}
 
 		/**
 		 * Introduce a type alias on the wire ({@link TOKEN_REG_TYPE}).
 		 */
-		internal void write_reg_gtype (GLib.Type object_type) throws GLib.Error
+		internal void write_reg_gtype(GLib.Type object_type) throws GLib.Error
 		{
-			if (!gtype_to_alias.has_key (object_type)) {
-				throw new StreamError.REGISTRATION (
+			if (!gtype_to_alias.has_key(object_type)) {
+				throw new StreamError.REGISTRATION(
 					"Unregistered class type schema: %s",
-					object_type.name ()
+					object_type.name()
 				);
 			}
 
-			if (this.name_to_token.has_key (
-				gtype_to_alias.get (object_type)
-			)) {
+			if (this.name_to_token.has_key(gtype_to_alias.get(object_type))) {
 				return;
 			}
 
 			var new_reg_id = (uint) this.names.length;
 
-			this.out_stream.put_byte (0xFF);
-			this.out_stream.put_byte (0xFE);
+			this.out_stream.put_byte(0xFF);
+			this.out_stream.put_byte(0xFE);
 			if (new_reg_id < 128) {
-				this.out_stream.put_byte ((uint8) new_reg_id);
+				this.out_stream.put_byte((uint8) new_reg_id);
 			} else {
-				this.out_stream.put_byte (
-					(uint8) (0x80 | ((new_reg_id >> 8) & 0x7F))
-				);
-				this.out_stream.put_byte (
-					(uint8) (new_reg_id & 0xFF)
-				);
+				this.out_stream.put_byte((uint8) (0x80 | ((new_reg_id >> 8) & 0x7F)));
+				this.out_stream.put_byte((uint8) (new_reg_id & 0xFF));
 			}
 
-			this.out_stream.put_byte (
-				(uint8) uint.min (
-					gtype_to_alias.get (object_type).length,
+			this.out_stream.put_byte(
+				(uint8) uint.min(
+					gtype_to_alias.get(object_type).length,
 					255
 				)
 			);
 			size_t written;
-			this.out_stream.write_all (
-				((uint8[]) gtype_to_alias.get (object_type))[
-					0:uint.min (
-						gtype_to_alias.get (object_type).length,
+			this.out_stream.write_all(
+				((uint8[]) gtype_to_alias.get(object_type))[
+					0:uint.min(
+						gtype_to_alias.get(object_type).length,
 						255
 					)
 				],
 				out written
 			);
 
-			this.names += gtype_to_alias.get (object_type);
-			this.name_to_token.set (
-				gtype_to_alias.get (object_type),
+			this.names += gtype_to_alias.get(object_type);
+			this.name_to_token.set(
+				gtype_to_alias.get(object_type),
 				(uint16) new_reg_id
 			);
 		}
@@ -332,71 +311,68 @@ namespace OLLMrpc.Bin
 		/**
 		 * Read {{{reg_id}}} after an object type byte; return registered gtype.
 		 */
-		public GLib.Type read_gtype () throws GLib.Error
+		public GLib.Type read_gtype() throws GLib.Error
 		{
-			var reg_b = this.in_stream.read_byte ();
+			var reg_b = this.in_stream.read_byte();
 			var reg_id = (uint) reg_b;
 			if ((reg_b & 0x80) != 0) {
-				reg_id = ((uint) (reg_b & 0x7F) << 8)
-					| this.in_stream.read_byte ();
+				reg_id = ((uint) (reg_b & 0x7F) << 8) | this.in_stream.read_byte();
 			}
 
 			if (reg_id >= this.names.length) {
-				throw new StreamError.PROTOCOL (
+				throw new StreamError.PROTOCOL(
 					"unknown wire name token %u",
 					reg_id
 				);
 			}
-			if (!alias_to_gtype.has_key (this.names[reg_id])) {
-				throw new StreamError.REGISTRATION (
+			if (!alias_to_gtype.has_key(this.names[reg_id])) {
+				throw new StreamError.REGISTRATION(
 					"Unrecognized type alias: %s",
 					this.names[reg_id]
 				);
 			}
 
-			return alias_to_gtype.get (this.names[reg_id]);
+			return alias_to_gtype.get(this.names[reg_id]);
 		}
 
-		internal void read_reg_gtype () throws GLib.Error
+		internal void read_reg_gtype() throws GLib.Error
 		{
-			var b1 = this.in_stream.read_byte ();
+			var b1 = this.in_stream.read_byte();
 			if (b1 != 0xFE) {
-				throw new StreamError.PROTOCOL (
+				throw new StreamError.PROTOCOL(
 					"unexpected byte 0x%02X after 0xFF",
 					b1
 				);
 			}
 
-			var reg_b = this.in_stream.read_byte ();
+			var reg_b = this.in_stream.read_byte();
 			var assigned_id = (uint) reg_b;
 			if ((reg_b & 0x80) != 0) {
-				assigned_id = ((uint) (reg_b & 0x7F) << 8)
-					| this.in_stream.read_byte ();
+				assigned_id = ((uint) (reg_b & 0x7F) << 8) | this.in_stream.read_byte();
 			}
 
-			var len = this.in_stream.read_byte ();
+			var len = this.in_stream.read_byte();
 			var buffer = new uint8[len + 1];
 			size_t read_bytes;
-			this.in_stream.read_all (buffer[0:len], out read_bytes);
+			this.in_stream.read_all(buffer[0:len], out read_bytes);
 			buffer[len] = 0;
 			var alias = (string) buffer;
 
-			if (!alias_to_gtype.has_key (alias)) {
-				throw new StreamError.REGISTRATION (
+			if (!alias_to_gtype.has_key(alias)) {
+				throw new StreamError.REGISTRATION(
 					"Unrecognized type alias: %s",
 					alias
 				);
 			}
 
 			if (assigned_id > this.names.length) {
-				throw new StreamError.PROTOCOL (
+				throw new StreamError.PROTOCOL(
 					"wire name token %u out of sequence",
 					assigned_id
 				);
 			}
-			if (assigned_id < this.names.length
-				&& this.names[assigned_id] != alias) {
-				throw new StreamError.PROTOCOL (
+			if (assigned_id < this.names.length && this.names[assigned_id] != alias) {
+				throw new StreamError.PROTOCOL(
 					"wire name token %u alias mismatch",
 					assigned_id
 				);
@@ -404,7 +380,7 @@ namespace OLLMrpc.Bin
 			if (assigned_id == this.names.length) {
 				this.names += alias;
 			}
-			this.name_to_token.set (alias, (uint16) assigned_id);
+			this.name_to_token.set(alias, (uint16) assigned_id);
 		}
 	}
 }
