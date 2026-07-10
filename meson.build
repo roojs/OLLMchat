@@ -195,6 +195,7 @@ else
   executables_info += [['ollmchat-cli', 'ollmapp/ollmchat-cli']]
   if get_option('examples')
     executables_info += [
+      ['oc-hf', 'examples/oc-hf'],
       ['oc-vector-index', 'examples/oc-vector-index'],
       ['oc-vector-search', 'examples/oc-vector-search'],
     ]

@@ -22,10 +22,14 @@
  * Search and model-detail metadata use {@link OLLMrpc.Client.call} against
  * {{{https://huggingface.co}}} (set {@link OLLMrpc.Client.socket_path} to that
  * base URL). Typed results are {@link Model}, {@link ModelArray}, and
- * {@link Param.Search} / {@link Param.ModelDetails} on {@link OLLMrpc.Request.param}.
+ * {@link Param.Search} on {@link OLLMrpc.Request.param}. Detail requests put
+ * the model ref in {@link OLLMrpc.Request.method} and use the default
+ * {@link OLLMrpc.CallParam} (no query string).
  *
- * Call {@link rpc_register} once before the first Hub HTTP call so wire types
- * are registered with {@link OLLMrpc.Bin}.
+ * Call {@link rpc_register} once before the first Hub HTTP call so result wire
+ * types are registered with {@link OLLMrpc.Bin}. {@link Param.Search} is not
+ * registered — it only supplies outbound query fields for
+ * {@link OLLMrpc.Client.send_http}.
  */
 namespace OLLMhf
 {
@@ -39,7 +43,5 @@ namespace OLLMhf
 		Model.rpc_register();
 		ModelFile.rpc_register();
 		ModelArray.rpc_register();
-		Param.Search.rpc_register();
-		Param.ModelDetails.rpc_register();
 	}
 }

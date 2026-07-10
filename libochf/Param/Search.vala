@@ -41,9 +41,5 @@ namespace OLLMhf.Param
 
 		/** Sort direction (default {{{-1}}} descending). */
 		public string direction { get; set; default = "-1"; }
-
-		public static void rpc_register() {
-			OLLMrpc.Bin.register("ParamSearch", typeof(Search));
-		}
 	}
 }

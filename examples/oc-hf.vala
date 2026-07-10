@@ -126,7 +126,6 @@ Examples:
 		}
 		var detail_req = new OLLMrpc.Request() {
 			method = "/api/models/" + model_ref,
-			param = new OLLMhf.Param.ModelDetails(),
 			result_type = typeof(OLLMhf.Model),
 		};
 		var detail_resp = yield rpc.call(detail_req);

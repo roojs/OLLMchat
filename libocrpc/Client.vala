@@ -376,7 +376,13 @@ namespace OLLMrpc
 
 		private async void send_http(PendingWrite head) throws GLib.Error
 		{
-			GLib.debug("id=%d path=%s", head.request.id, head.request.method);
+			GLib.debug(
+				"id=%d send path=%s param=%s result_type=%s",
+				head.request.id,
+				head.request.method,
+				head.request.param.get_type().name(),
+				head.request.result_type.name()
+			);
 			var qs = "";
 			foreach (var pspec in head.request.param.get_class().list_properties()) {
 				if (pspec.name == "args") {
@@ -401,11 +407,19 @@ namespace OLLMrpc
 						break;
 				}
 			}
-			var url = this.socket_path + head.request.method + qs; 
-			GLib.debug("id=%d url=%s", head.request.id, url);
+			var url = this.socket_path + head.request.method + qs;
+			GLib.debug("id=%d send url=%s", head.request.id, url);
 			var message = new Soup.Message("GET", url);
 			var bytes = yield this.http_session.send_and_read_async(
 				message, GLib.Priority.DEFAULT, null);
+			var body = (string) bytes.get_data();
+			GLib.debug(
+				"id=%d recv status=%u bytes=%zu",
+				head.request.id,
+				message.status_code,
+				bytes.get_size()
+			);
+			GLib.debug("id=%d recv body=%s", head.request.id, body);
 			if (message.status_code < 200 || message.status_code >= 300) {
 				throw new GLib.IOError.FAILED("HTTP %u for %s", message.status_code, url);
 			}
@@ -416,11 +430,8 @@ namespace OLLMrpc
 			parser.load_from_data((string) bytes.get_data());
 			var root = parser.get_root();
 			if (root.get_node_type() == Json.NodeType.ARRAY) {
-				var items_wrap = new Json.Object();
-				items_wrap.set_string_member("*array", "Model");
-				items_wrap.set_array_member("items", root.get_array());
 				var wrap = new Json.Object();
-				wrap.set_object_member("items", items_wrap);
+				wrap.set_array_member("items", root.get_array());
 				root = new Json.Node(Json.NodeType.OBJECT);
 				root.set_object(wrap);
 			}

@@ -23,7 +23,6 @@ ochf_src = files([
   'Model.vala',
   'ModelArray.vala',
   'Param/Search.vala',
-  'Param/ModelDetails.vala',
 ])
 
 lib_build_rpath = ':'.join([

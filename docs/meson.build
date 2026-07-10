@@ -76,7 +76,6 @@ valadoc_docs = custom_target('valadoc',
     '../libochf/Model.vala',
     '../libochf/ModelArray.vala',
     '../libochf/Param/Search.vala',
-    '../libochf/Param/ModelDetails.vala',
     # ollmfilesd param types (shared with libocfiles client)
     '../ollmfilesd/CallParam.vala',
     # libocfiles sources (RPC client — must come before liboccoder and liboctools)

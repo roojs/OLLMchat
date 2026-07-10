@@ -39,12 +39,12 @@ namespace OLLMhf
 		/**
 		 * Resolve URL for downloading this file from the Hub CDN.
 		 *
-		 * @param model_ref Hub repo id {{{author/name}}}
-		 * @param revision  Branch or commit (default {{{main}}})
-		 * @return          {{{https://huggingface.co/{model_ref}/resolve/{rev}/{filename}}}}
+		 * @param id       Hub repo id {{{author/name}}}
+		 * @param revision Branch or commit (default {{{main}}})
+		 * @return         {{{https://huggingface.co/{id}/resolve/{rev}/{filename}}}}
 		 */
-		public string to_url(string model_ref, string revision = "main") {
-			return "https://huggingface.co/" + model_ref
+		public string to_url(string id, string revision = "main") {
+			return "https://huggingface.co/" + id
 				+ "/resolve/" + revision + "/" + this.filename;
 		}
 	}

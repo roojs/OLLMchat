@@ -33,6 +33,11 @@ namespace OLLMrpc.Bin
 	{
 		public enum Mode {
 			EXPLICIT,
+			/**
+			 * Typed root encode without {{{*type}}}; JSON member names
+			 * are written as bin tags for Vala/GObject lookup (HTTP Hub):
+			 * leading {{{_}}} → {{{underscore_}}}, then {{{_}}} → {{{-}}}.
+			 */
 			AUTO,
 		}
 
@@ -196,6 +201,13 @@ namespace OLLMrpc.Bin
 			Stream bin
 		) throws GLib.Error
 		{
+			var tag_name = name;
+			if (this.mode == Mode.AUTO) {
+				if (tag_name.has_prefix ("_")) {
+					tag_name = "underscore_" + tag_name.substring (1);
+				}
+				tag_name = tag_name.replace ("_", "-");
+			}
 			if (node.get_node_type () == global::Json.NodeType.OBJECT) {
 				var child_obj = node.get_object ();
 				if (child_obj.has_member ("*array")) {
@@ -214,7 +226,7 @@ namespace OLLMrpc.Bin
 						);
 					}
 					var items = child_obj.get_member ("items").get_array ();
-					bin.write_tag (name);
+					bin.write_tag (tag_name);
 					bin.write_gtype (
 						alias_to_gtype.get (element_alias),
 						(uint8) GLib.Type.OBJECT | 0x80
@@ -246,7 +258,7 @@ namespace OLLMrpc.Bin
 							name
 						);
 					}
-					bin.write_tag (name);
+					bin.write_tag (tag_name);
 					bin.write_gtype (typeof (GLib.Object));
 					this.json_to_bin_object (child_obj, bin);
 					return;
@@ -259,7 +271,7 @@ namespace OLLMrpc.Bin
 						child_alias
 					);
 				}
-				bin.write_tag (name);
+				bin.write_tag (tag_name);
 				bin.write_gtype (alias_to_gtype.get (child_alias));
 				this.json_to_bin_object (child_obj, bin);
 				return;
@@ -274,7 +286,7 @@ namespace OLLMrpc.Bin
 				if (first_node.get_node_type () == global::Json.NodeType.VALUE
 					&& first_node.get_value_type () == GLib.Type.STRING) {
 					var count = items.get_length ();
-					bin.write_tag (name);
+					bin.write_tag (tag_name);
 					bin.out_stream.put_byte (
 						(uint8) GLib.Type.STRING | 0x80
 					);
@@ -318,7 +330,7 @@ namespace OLLMrpc.Bin
 							name
 						);
 					}
-					bin.write_tag (name);
+					bin.write_tag (tag_name);
 					bin.write_gtype (
 						typeof (GLib.Object),
 						(uint8) GLib.Type.OBJECT | 0x80
@@ -350,7 +362,7 @@ namespace OLLMrpc.Bin
 						element_alias
 					);
 				}
-				bin.write_tag (name);
+				bin.write_tag (tag_name);
 				bin.write_gtype (
 					alias_to_gtype.get (element_alias),
 					(uint8) GLib.Type.OBJECT | 0x80
@@ -386,7 +398,7 @@ namespace OLLMrpc.Bin
 			switch (node.get_value_type ()) {
 				case GLib.Type.STRING:
 					var s = node.get_string () != null ? node.get_string () : "";
-					bin.write_tag (name);
+					bin.write_tag (tag_name);
 					if (s.length > 32767) {
 						bin.out_stream.put_byte ((uint8) GLib.Type.BOXED);
 						bin.out_stream.put_uint32 ((uint32) s.length);
@@ -416,7 +428,7 @@ namespace OLLMrpc.Bin
 					return;
 
 				case GLib.Type.BOOLEAN:
-					bin.write_tag (name);
+					bin.write_tag (tag_name);
 					bin.out_stream.put_byte ((uint8) GLib.Type.BOOLEAN);
 					bin.out_stream.put_byte (node.get_boolean () ? 1 : 0);
 					return;
@@ -425,7 +437,7 @@ namespace OLLMrpc.Bin
 				case GLib.Type.INT64:
 				case GLib.Type.DOUBLE:
 					var i64 = (int64) node.get_int ();
-					bin.write_tag (name);
+					bin.write_tag (tag_name);
 					if (i64 >= int.MIN && i64 <= int.MAX) {
 						bin.out_stream.put_byte ((uint8) GLib.Type.INT);
 						var iv = (int) i64;

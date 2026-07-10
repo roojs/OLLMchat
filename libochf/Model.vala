@@ -21,15 +21,24 @@ namespace OLLMhf
 	/**
 	 * Hugging Face Hub model record (search hit or full detail).
 	 *
-	 * {@link model_ref} is the repo id {{{author/name}}} (not a numeric Hub id).
-	 * Detail responses populate {@link files} from filtered {{{.gguf}}} siblings.
+	 * {@link id} is the repo id {{{author/name}}}. Detail responses may
+	 * populate {@link files} from {{{siblings[]}}}.
 	 */
 	public class Model : GLib.Object, OLLMrpc.Bin.Serializable
 	{
-		/** Hub repo id {{{author/name}}}. */
-		public string model_ref { get; set; default = ""; }
+		/** Hub document id (JSON {{{_id}}} → {@link underscore_id}). */
+		public string underscore_id { get; set; default = ""; }
 
-		/** Repo owner segment of {@link model_ref}. */
+		/** Hub repo id {{{author/name}}}. */
+		public string id { get; set; default = ""; }
+
+		/** Hub {{{modelId}}} when present. */
+		public string modelId { get; set; default = ""; }
+
+		/** Hub {{{createdAt}}} when present. */
+		public string createdAt { get; set; default = ""; }
+
+		/** Repo owner segment of {@link id}. */
 		public string author { get; set; default = ""; }
 
 		/** Download count from Hub search/detail metadata. */
