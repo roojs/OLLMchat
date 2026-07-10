@@ -41,5 +41,8 @@ namespace OLLMhf.Param
 
 		/** Sort direction (default {{{-1}}} descending). */
 		public string direction { get; set; default = "-1"; }
+
+		/** Request full records from Hub (includes {{{author}}} on search). */
+		public bool full { get; set; default = true; }
 	}
 }

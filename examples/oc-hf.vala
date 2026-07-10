@@ -95,6 +95,7 @@ Examples:
 
 		var rpc = new OLLMrpc.Client("", "", "https://huggingface.co");
 		yield rpc.connect(new OLLMrpc.Request());
+		var json_codec = new OLLMrpc.Bin.Json(OLLMrpc.Bin.Json.Mode.AUTO);
 
 		if (opt_search != null && opt_search.strip() != "") {
 			var req = new OLLMrpc.Request() {
@@ -105,6 +106,7 @@ Examples:
 					limit = 20,
 					sort = "downloads",
 					direction = "-1",
+					full = true,
 				},
 				result_type = typeof(OLLMhf.ModelArray),
 			};
@@ -112,7 +114,20 @@ Examples:
 			var bag = (OLLMhf.ModelArray) resp.result[0];
 			var arr = new Json.Array();
 			foreach (var model in bag.items) {
-				arr.add_element(Json.gobject_serialize(model));
+				var mem = new GLib.MemoryOutputStream.resizable();
+				var encode_ctx = new OLLMrpc.Bin.Stream(
+					null,
+					new GLib.DataOutputStream(mem)
+				);
+				encode_ctx.write(model);
+				encode_ctx.out_stream.close();
+				var read_ctx = new OLLMrpc.Bin.Stream(
+					new GLib.DataInputStream(
+						new GLib.MemoryInputStream.from_bytes(mem.steal_as_bytes())
+					),
+					null
+				);
+				arr.add_element(json_codec.bin_to_json(read_ctx));
 			}
 			var root = new Json.Node(Json.NodeType.ARRAY);
 			root.set_array(arr);
@@ -130,7 +145,23 @@ Examples:
 		};
 		var detail_resp = yield rpc.call(detail_req);
 		var model = (OLLMhf.Model) detail_resp.result[0];
-		stdout.printf("%s\n", Json.to_string(Json.gobject_serialize(model), true));
+		var mem = new GLib.MemoryOutputStream.resizable();
+		var encode_ctx = new OLLMrpc.Bin.Stream(
+			null,
+			new GLib.DataOutputStream(mem)
+		);
+		encode_ctx.write(model);
+		encode_ctx.out_stream.close();
+		var read_ctx = new OLLMrpc.Bin.Stream(
+			new GLib.DataInputStream(
+				new GLib.MemoryInputStream.from_bytes(mem.steal_as_bytes())
+			),
+			null
+		);
+		stdout.printf(
+			"%s\n",
+			Json.to_string(json_codec.bin_to_json(read_ctx), true)
+		);
 	}
 }
 

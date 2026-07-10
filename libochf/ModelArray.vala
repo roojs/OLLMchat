@@ -36,6 +36,24 @@ namespace OLLMhf
 			OLLMrpc.Bin.register("ModelArray", typeof(ModelArray));
 		}
 
+		public override void bin_write_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error {
+			switch (prop.name) {
+				case "items":
+					this.bin_write_prop_array(
+						ctx,
+						prop.name,
+						typeof(Model)
+					);
+					return;
+				default:
+					this.bin_default_write_prop(ctx, prop);
+					return;
+			}
+		}
+
 		public override void bin_read_prop(
 			OLLMrpc.Bin.Stream ctx,
 			GLib.ParamSpec prop,
@@ -43,22 +61,12 @@ namespace OLLMhf
 		) throws GLib.Error {
 			switch (prop.name) {
 				case "items":
-					if ((type_byte & 0x7F) != GLib.Type.OBJECT
-						|| (type_byte & 0x80) == 0) {
-						throw new OLLMrpc.Bin.SerializableError.PROPERTY(
-							"prop '%s' expected object array", prop.name);
-					}
-					ctx.read_gtype();
-					var count = (uint) ctx.in_stream.read_byte();
-					if ((count & 0x80) != 0) {
-						count = ((count & 0x7F) << 8) | ctx.in_stream.read_byte();
-					}
-					this.items = new Gee.ArrayList<Model>();
-					for (var i = 0; i < count; i++) {
-						var child = (Model) GLib.Object.new(typeof(Model));
-						child.bin_read(ctx);
-						this.items.add(child);
-					}
+					this.items = (Gee.ArrayList<Model>) this.read_anon_array(
+						ctx,
+						prop.name,
+						type_byte,
+						typeof(Model)
+					);
 					return;
 				default:
 					this.bin_default_read_prop(ctx, prop, type_byte);

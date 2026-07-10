@@ -20,6 +20,7 @@ ochf_deps = [
 ochf_src = files([
   'namespace.vala',
   'ModelFile.vala',
+  'ModelHubTypes.vala',
   'Model.vala',
   'ModelArray.vala',
   'Param/Search.vala',
