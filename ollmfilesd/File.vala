@@ -99,13 +99,13 @@ namespace OLLMfilesd
 						out etag
 					);
 				} catch (GLib.Error e) {
-					request.reply.begin(new OLLMrpc.Response() {
+					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
 							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 							e.message
 						)
-					}, null);
+					});
 					return;
 				}
 				var row = new File(this.manager);
@@ -123,14 +123,14 @@ namespace OLLMfilesd
 				}
 				var result = new Gee.ArrayList<GLib.Object>();
 				result.add(row);
-				request.reply.begin(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					result = result,
 					msg = row.is_text ? (string) data : GLib.Base64.encode(
 						data[0:data.length > 0 ? data.length - 1 : 0]
 					),
 					msg_encode = row.is_text ? 0 : 1
-				}, null);
+				});
 			});
 			this.call_exists.connect((request) => {
 				var file_type = GLib.FileType.UNKNOWN;
@@ -142,33 +142,33 @@ namespace OLLMfilesd
 						null
 					);
 				} catch (GLib.Error e) {
-					request.reply.begin(new OLLMrpc.Response() {
+					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						msg = ((int) GLib.FileType.UNKNOWN).to_string()
-					}, null);
+					});
 					return;
 				}
-				request.reply.begin(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					msg = ((int) file_type).to_string()
-				}, null);
+				});
 			});
 			this.call_fetch.connect((request) => {
 				var p = (FileParams) request.param;
 				var project = this.manager.project_root(p.project_path);
 				if (project == null) {
-					request.reply.begin(new OLLMrpc.Response() {
+					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "project not found"
-					}, null);
+					});
 					return;
 				}
 				var project_file = project.project_files.child_map.get(p.path);
 				if (project_file == null) {
-					request.reply.begin(new OLLMrpc.Response() {
+					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "file not found"
-					}, null);
+					});
 					return;
 				}
 				var source = project_file.file;
@@ -181,10 +181,10 @@ namespace OLLMfilesd
 				);
 				var result = new Gee.ArrayList<GLib.Object>();
 				result.add(row);
-				request.reply.begin(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					result = result
-				}, null);
+				});
 			});
 			this.call_write.connect((request) => {
 				var p = (FileParams) request.param;
@@ -202,18 +202,18 @@ namespace OLLMfilesd
 					p.path,
 					(Posix.mode_t) (p.unix_mode & 0777)
 				) != 0) {
-					request.reply.begin(new OLLMrpc.Response() {
+					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
 							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 							GLib.strerror(Posix.errno)
 						)
-					}, null);
+					});
 					return;
 				}
-				request.reply.begin(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
-				}, null);
+				});
 			});
 			this.call_register.connect((request) => {
 				var p = (FileParams) request.param;
@@ -224,10 +224,10 @@ namespace OLLMfilesd
 					row.last_modified = existing.mtime_on_disk();
 					var result = new Gee.ArrayList<GLib.Object>();
 					result.add(row);
-					request.reply.begin(new OLLMrpc.Response() {
+					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						result = result
-					}, null);
+					});
 					return;
 				}
 				var fake = new File(this.manager) {
@@ -238,13 +238,13 @@ namespace OLLMfilesd
 					try {
 						fake.to_real.end(res);
 					} catch (GLib.Error e) {
-						request.reply.begin(new OLLMrpc.Response() {
+						request.reply(new OLLMrpc.Response() {
 							id = request.id,
 							error = new OLLMrpc.Error(
 								OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 								e.message
 							)
-						}, null);
+						});
 						return;
 					}
 					var row = new File(this.manager);
@@ -252,10 +252,10 @@ namespace OLLMfilesd
 					row.last_modified = fake.mtime_on_disk();
 					var result = new Gee.ArrayList<GLib.Object>();
 					result.add(row);
-					request.reply.begin(new OLLMrpc.Response() {
+					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						result = result
-					}, null);
+					});
 				});
 			});
 			this.call_delete.connect((request) => {
@@ -270,9 +270,9 @@ namespace OLLMfilesd
 						this.manager.delete_manager.cleanup.begin();
 					}
 				);
-				request.reply.begin(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
-				}, null);
+				});
 			});
 			this.call_changed_check.connect((request) => {
 				var p = (FileParams) request.param;
@@ -282,9 +282,9 @@ namespace OLLMfilesd
 					&& p.buffer_dirty) {
 					status = FileUpdateStatus.CHANGED_HAS_UNSAVED;
 				}
-				request.reply.begin(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					msg = ((int) status).to_string()
-				}, null);
+				});
 			});
 		}
 
@@ -342,7 +342,7 @@ namespace OLLMfilesd
 					}
 				}
 			} catch (GLib.Error e) {
-				yield request.reply(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
@@ -351,7 +351,7 @@ namespace OLLMfilesd
 				});
 				return;
 			}
-			yield request.reply(new OLLMrpc.Response() { msg = "ok" });
+			request.reply(new OLLMrpc.Response() { msg = "ok" });
 		}
 		
 		/**

@@ -32,6 +32,18 @@ namespace OLLMhf
 		/** Quantization label when known (e.g. {{{Q4_K_M}}}). */
 		public string quant_label { get; set; default = ""; }
 
+		/** Bytes written so far for this sibling. */
+		public int64 bytes_written { get; set; default = 0; }
+
+		/** LFS ETag from HEAD (SHA-256) for final verify. */
+		public string etag { get; set; default = ""; }
+
+		/** Incremental SHA-256 hex while streaming (resume). */
+		public string sha256_partial { get; set; default = ""; }
+
+		/** True when this sibling is fully downloaded and verified. */
+		public bool download_complete { get; set; default = false; }
+
 		public static void rpc_register() {
 			OLLMrpc.Bin.register("ModelFile", typeof(ModelFile));
 		}

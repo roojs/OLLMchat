@@ -23,6 +23,7 @@ ochf_src = files([
   'ModelHubTypes.vala',
   'Model.vala',
   'ModelArray.vala',
+  'Download.vala',
   'Param/Search.vala',
 ])
 

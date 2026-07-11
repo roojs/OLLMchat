@@ -452,13 +452,13 @@ namespace OLLMfilesd
 					p.path
 				);
 				if (file == null) {
-					request.reply.begin(new OLLMrpc.Response() {
+					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
 							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 							"file not found"
 						)
-					}, null);
+					});
 					return;
 				}
 				var rows = new Gee.ArrayList<FileHistory>();
@@ -467,13 +467,13 @@ namespace OLLMfilesd
 					rows
 				);
 				if (rows.size == 0) {
-					request.reply.begin(new OLLMrpc.Response() {
+					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
 							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 							"history row not found"
 						)
-					}, null);
+					});
 					return;
 				}
 				rows.get(0).approve(this.rpc_manager.db, file);
@@ -485,11 +485,11 @@ namespace OLLMfilesd
 				});
 				var result = new Gee.ArrayList<GLib.Object>();
 				result.add(row);
-				request.reply.begin(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					result = result,
 					msg = "ok"
-				}, null);
+				});
 			});
 			this.call_revert.connect((request) => {
 				var p = (FileParams) request.param;
@@ -499,13 +499,13 @@ namespace OLLMfilesd
 					rows
 				);
 				if (rows.size == 0) {
-					request.reply.begin(new OLLMrpc.Response() {
+					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
 							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 							"history row not found"
 						)
-					}, null);
+					});
 					return;
 				}
 				rows.get(0).revert.begin(
@@ -552,7 +552,7 @@ namespace OLLMfilesd
 			var p = (FileParams) request.param;
 			var file = manager.get_file_from_active_project(p.path);
 			if (file == null) {
-				yield request.reply(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
@@ -562,7 +562,7 @@ namespace OLLMfilesd
 				return;
 			}
 			if (this.change_type == "added") {
-				yield request.reply(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
@@ -576,7 +576,7 @@ namespace OLLMfilesd
 					this.backup_path,
 					GLib.FileTest.EXISTS
 				)) {
-				yield request.reply(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
@@ -596,7 +596,7 @@ namespace OLLMfilesd
 			try {
 				yield revert_history.commit();
 			} catch (GLib.Error e) {
-				yield request.reply(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
@@ -619,7 +619,7 @@ namespace OLLMfilesd
 					null
 				);
 			} catch (GLib.Error e) {
-				yield request.reply(new OLLMrpc.Response() {
+				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
@@ -643,7 +643,7 @@ namespace OLLMfilesd
 			});
 			var result = new Gee.ArrayList<GLib.Object>();
 			result.add(row);
-			yield request.reply(new OLLMrpc.Response() {
+			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				result = result,
 				msg = "ok"

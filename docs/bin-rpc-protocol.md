@@ -61,7 +61,7 @@ Pass **`null`** for the unused stream direction in memory-only tests.
 
 ### GObject → JSON (in-memory)
 
-**`OLLMrpc.Bin.Json.from_gobject`** — pipe-backed encode/decode. **Always** **`var node = yield bin_json.from_gobject(src);`** from **`async`** code. Do **not** hand-roll **`steal_as_bytes()`**. See **`docs/plans/done/8.2.2-DONE-proper-bin-json-streaming.md`**.
+**`OLLMrpc.Bin.Json.from_gobject`** — pipe-backed encode/decode. **Always** **`var node = yield json.from_gobject(src);`** from **`async`** code. Do **not** hand-roll **`steal_as_bytes()`**. See **`docs/plans/done/8.2.2-DONE-proper-bin-json-streaming.md`**.
 
 ---
 
@@ -621,7 +621,7 @@ Any key starting with **`*`** is meta only and is stripped before bin encode.
 {"*type":"Request","id":1,"method":"Folder.fetch_files","param":{"*type":"FolderParams","path":"/tmp"}}
 ```
 
-`StdioConnection.request_from_json_line` calls **`json_codec.write(encode_ctx, root)`**, then **`read_ctx.parse()`** as **`Request`**.
+`StdioConnection.request_from_json_line` calls **`this.json.json_to_bin(root, encode_ctx)`**, then **`read_ctx.parse()`** as **`Request`**.
 
 Implementation: `libocrpc/Bin/Json.vala`. Used by the stdio test harness only — not the production TCP/socket path.
 

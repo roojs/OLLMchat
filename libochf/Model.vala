@@ -113,6 +113,9 @@ namespace OLLMhf
 			get; set; default = new Gee.ArrayList<ModelFile>();
 		}
 
+		/** Revision used for resolve URLs during an in-progress download. */
+		public string download_revision { get; set; default = "main"; }
+
 		public static void rpc_register() {
 			OLLMrpc.Bin.register("Model", typeof(Model));
 		}

@@ -73,8 +73,10 @@ valadoc_docs = custom_target('valadoc',
     # libochf sources (Hub catalog — depends on libocrpc)
     '../libochf/namespace.vala',
     '../libochf/ModelFile.vala',
+    '../libochf/ModelHubTypes.vala',
     '../libochf/Model.vala',
     '../libochf/ModelArray.vala',
+    '../libochf/Download.vala',
     '../libochf/Param/Search.vala',
     # ollmfilesd param types (shared with libocfiles client)
     '../ollmfilesd/CallParam.vala',

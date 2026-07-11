@@ -20,25 +20,35 @@ class OcHfApp : TestAppBase
 {
 	protected static string? opt_search = null;
 	protected static string? opt_detail = null;
+	protected static string? opt_download = null;
+	protected static string? opt_file = null;
+	protected static string? opt_models_dir = null;
 
 	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS]
 
-Hugging Face Hub catalog — search and model detail (live JSON).
+Hugging Face Hub catalog — search, model detail, and GGUF download.
 
 Options:
-  --search TERM    Hub search (e.g. speculative)
-  --detail REF     Hub model ref author/name
+  --search TERM       Hub search (e.g. speculative)
+  --detail REF        Hub model ref author/name (JSON on stdout)
+  --download REF      Download GGUF siblings for model ref
+  --file NAME         Limit download to one sibling filename
+  --models-dir DIR    Install root (default ~/.local/share/ollmchat/models)
 
 Examples:
   {ARG} --search speculative
   {ARG} --detail author/some-draft-model
+  {ARG} --download author/some-draft-model --file draft-q4_k_m.gguf
   {ARG} --debug --search speculative
 """; }
 
 	protected const OptionEntry[] local_options = {
 		{ "search", 0, 0, OptionArg.STRING, ref opt_search, "Hub search term", "TERM" },
 		{ "detail", 0, 0, OptionArg.STRING, ref opt_detail, "Hub model ref (author/name)", "MODEL_REF" },
+		{ "download", 0, 0, OptionArg.STRING, ref opt_download, "Download model ref", "MODEL_REF" },
+		{ "file", 0, 0, OptionArg.STRING, ref opt_file, "Single sibling filename", "NAME" },
+		{ "models-dir", 0, 0, OptionArg.STRING, ref opt_models_dir, "Models install directory", "DIR" },
 		{ null }
 	};
 
@@ -74,14 +84,15 @@ Examples:
 
 	protected override string? validate_args(string[] remaining_args)
 	{
-		var has_search = opt_search != null && opt_search.strip() != "";
-		var has_detail = opt_detail != null && opt_detail.strip() != "";
+		var mode_count = (opt_search != null && opt_search.strip() != "" ? 1 : 0)
+			+ (opt_detail != null && opt_detail.strip() != "" ? 1 : 0)
+			+ (opt_download != null && opt_download.strip() != "" ? 1 : 0);
 
-		if (!has_search && !has_detail) {
+		if (mode_count == 0) {
 			return this.help.replace("{ARG}", remaining_args[0]);
 		}
-		if (has_search && has_detail) {
-			return "Error: use --search or --detail, not both\n";
+		if (mode_count > 1) {
+			return "Error: use only one of --search, --detail, or --download\n";
 		}
 		return null;
 	}
@@ -93,9 +104,44 @@ Examples:
 	{
 		OLLMhf.rpc_register();
 
+		if (opt_download != null && opt_download.strip() != "") {
+			var rpc = new OLLMrpc.Client("", "", "https://huggingface.co");
+			yield rpc.connect(new OLLMrpc.Request());
+			var detail_req = new OLLMrpc.Request() {
+				method = "/api/models/" + opt_download.strip(),
+				result_type = typeof(OLLMhf.Model),
+			};
+			var detail_resp = yield rpc.call(detail_req);
+			var dl = new OLLMhf.Download((OLLMhf.Model) detail_resp.result[0]);
+			if (opt_models_dir != null && opt_models_dir.strip() != "") {
+				dl.models_dir = opt_models_dir.strip();
+			}
+			if (opt_file != null && opt_file.strip() != "") {
+				dl.file_filter = { opt_file.strip() };
+			}
+			var last_report = (int64) 0;
+			dl.progress.connect((rfilename, completed, total) => {
+				if (total > 0
+					&& completed - last_report < total / 20
+					&& completed != total) {
+					return;
+				}
+				last_report = completed;
+				command_line.print(
+					"%s %lld/%lld\n",
+					rfilename,
+					completed,
+					total
+				);
+			});
+			yield dl.start();
+			command_line.print("ok %s\n", opt_download.strip());
+			return;
+		}
+
 		var rpc = new OLLMrpc.Client("", "", "https://huggingface.co");
 		yield rpc.connect(new OLLMrpc.Request());
-		var json_codec = new OLLMrpc.Bin.Json(OLLMrpc.Bin.Json.Mode.AUTO);
+		var json = new OLLMrpc.Bin.Json(OLLMrpc.Bin.Json.Mode.AUTO);
 
 		if (opt_search != null && opt_search.strip() != "") {
 			var req = new OLLMrpc.Request() {
@@ -111,10 +157,9 @@ Examples:
 				result_type = typeof(OLLMhf.ModelArray),
 			};
 			var resp = yield rpc.call(req);
-			var bag = (OLLMhf.ModelArray) resp.result[0];
 			var arr = new Json.Array();
-			foreach (var model in bag.items) {
-				var node = yield json_codec.from_gobject(model);
+			foreach (var model in ((OLLMhf.ModelArray) resp.result[0]).items) {
+				var node = json.from_gobject(model);
 				arr.add_element(node);
 			}
 			var root = new Json.Node(Json.NodeType.ARRAY);
@@ -123,17 +168,12 @@ Examples:
 			return;
 		}
 
-		var model_ref = opt_detail != null ? opt_detail.strip() : "";
-		if (model_ref == "") {
-			throw new GLib.IOError.INVALID_ARGUMENT("--detail requires a model ref");
-		}
 		var detail_req = new OLLMrpc.Request() {
-			method = "/api/models/" + model_ref,
+			method = "/api/models/" + opt_detail.strip(),
 			result_type = typeof(OLLMhf.Model),
 		};
 		var detail_resp = yield rpc.call(detail_req);
-		var model = (OLLMhf.Model) detail_resp.result[0];
-		var node = yield json_codec.from_gobject(model);
+		var node = json.from_gobject((OLLMhf.Model) detail_resp.result[0]);
 		stdout.printf(
 			"%s\n",
 			Json.to_string(node, true)

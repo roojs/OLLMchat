@@ -53,10 +53,10 @@ namespace OLLMfilesd
 			);
 			this.bin = new OLLMrpc.Bin.Stream(in_stream, out_stream);
 
-			this.write.begin(new OLLMrpc.Notification() {
+			this.write(new OLLMrpc.Notification() {
 				method = "Daemon.ready",
 				object_type = "Daemon",
-			}, null);
+			});
 
 			if (this.script_path != "") {
 				try {
@@ -82,7 +82,7 @@ namespace OLLMfilesd
 			this.app.quit();
 		}
 
-		public override async void write(GLib.Object gobject)
+		public override void write(GLib.Object gobject)
 		{
 			if (gobject is OLLMrpc.Response) {
 				var response = gobject as OLLMrpc.Response;
@@ -96,7 +96,7 @@ namespace OLLMfilesd
 				return;
 			}
 			try {
-				var node = yield this.json.from_gobject(serializable);
+				var node = this.json.from_gobject(serializable);
 				var gen = new Json.Generator();
 				gen.set_pretty(false);
 				gen.set_root(node);
