@@ -177,9 +177,9 @@ namespace OLLMfilesd
 					for (uint i = 0; i < this.projects.get_n_items(); i++) {
 						list.add(this.projects.get_item(i));
 					}
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						result = list
-					});
+					}, null);
 				});
 			});
 			this.call_create_project.connect((request) => {
@@ -188,9 +188,9 @@ namespace OLLMfilesd
 				);
 				var result = new Gee.ArrayList<GLib.Object>();
 				result.add(project);
-				request.reply(new OLLMrpc.Response() {
+				request.reply.begin(new OLLMrpc.Response() {
 					result = result
-				});
+				}, null);
 			});
 			this.call_remove_project.connect((request) => {
 				this.remove_project(
@@ -198,9 +198,9 @@ namespace OLLMfilesd
 						((ProjectParams) request.param).path
 					)
 				);
-				request.reply(new OLLMrpc.Response() {
+				request.reply.begin(new OLLMrpc.Response() {
 					msg = "ok"
-				});
+				}, null);
 			});
 			this.call_activate_project.connect((request) => {
 				var p = (ProjectParams) request.param;
@@ -265,7 +265,7 @@ namespace OLLMfilesd
 			// Skip if this project is already active (avoid redundant scans)
 			if (this.active_project == project && project != null && project.is_active) {
 				GLib.debug ("opening project skipped already active path=%s", project.path);
-				request.reply(new OLLMrpc.Response() {
+				yield request.reply(new OLLMrpc.Response() {
 					msg = "ok"
 				});
 				return;
@@ -316,7 +316,7 @@ namespace OLLMfilesd
 			
 			this.active_project_changed(project);
 
-			request.reply(new OLLMrpc.Response() {
+			yield request.reply(new OLLMrpc.Response() {
 				msg = "ok"
 			});
 

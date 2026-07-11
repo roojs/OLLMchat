@@ -19,7 +19,7 @@ namespace OLLMrpc.Transport
 		public abstract bool start();
 		public abstract void stop();
 
-		public virtual void broadcast(GLib.Object gobject)
+		public virtual async void broadcast(GLib.Object gobject)
 		{
 		}
 	}

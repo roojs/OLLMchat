@@ -183,9 +183,9 @@ namespace OLLMrpc
 		/**
 		 * Relay a {@link Response} to {@link connection} (sets wire {{{id}}}).
 		 */
-		public void reply(Response response)
+		public async void reply(Response response)
 		{
-			this.connection.reply(this, response);
+			yield this.connection.reply(this, response);
 		}
 	}
 }

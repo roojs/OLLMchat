@@ -559,5 +559,73 @@ namespace OLLMrpc.Bin
 				type_byte & 0x7F
 			);
 		}
+
+		/**
+		 * Encode {@link Serializable} on a pipe; decode to a JSON tree.
+		 *
+		 * {@link decode_bin} exists before {@link encode_bin.write}; decode runs
+		 * on a worker thread blocked on the pipe until bytes arrive.
+		 */
+		public async global::Json.Node from_gobject(
+			Serializable src
+		) throws GLib.Error
+		{
+			int[] fds = new int[2];
+			if (Posix.pipe(fds) != 0) {
+				throw new StreamError.PROTOCOL("from_gobject: pipe(2) failed");
+			}
+
+			var read_ds = new GLib.DataInputStream(
+				new GLib.UnixInputStream(fds[0], true)
+			);
+			var write_ds = new GLib.DataOutputStream(
+				new GLib.UnixOutputStream(fds[1], true)
+			);
+			var decode_bin = new Stream(read_ds, null);
+			var encode_bin = new Stream(null, write_ds);
+
+			global::Json.Node? decoded = null;
+			GLib.Error? decode_err = null;
+
+			owned GLib.ThreadFunc<bool> run = () => {
+				try {
+					decoded = this.bin_to_json(decode_bin);
+				} catch (GLib.Error e) {
+					decode_err = e;
+				}
+				return false;
+			};
+
+			var decode_thread = new GLib.Thread<bool>.try(
+				"ollmrpc-gobject-to-json",
+				run
+			);
+			if (decode_thread == null) {
+				throw new StreamError.PROTOCOL(
+					"from_gobject: decode thread failed"
+				);
+			}
+
+			try {
+				encode_bin.write(src);
+			} catch (GLib.Error e) {
+				write_ds.close();
+				decode_thread.join();
+				throw e;
+			}
+			write_ds.close();
+			decode_thread.join();
+
+			if (decode_err != null) {
+				throw decode_err;
+			}
+			if (decoded == null) {
+				throw new StreamError.PROTOCOL(
+					"from_gobject: decode returned null"
+				);
+			}
+
+			return decoded;
+		}
 	}
 }

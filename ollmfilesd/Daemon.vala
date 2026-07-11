@@ -68,15 +68,15 @@ namespace OLLMfilesd
 				}
 				var result = new Gee.ArrayList<GLib.Object>();
 				result.add(this);
-				request.reply(new OLLMrpc.Response() {
+				request.reply.begin(new OLLMrpc.Response() {
 					result = result
-				});
+				}, null);
 			});
 			this.call_shutdown.connect((request) => {
 				this.ready = false;
-				request.reply(new OLLMrpc.Response() {
+				request.reply.begin(new OLLMrpc.Response() {
 					msg = "ok"
-				});
+				}, null);
 				this.app.quit();
 			});
 		}

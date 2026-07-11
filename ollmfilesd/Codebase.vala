@@ -135,32 +135,32 @@ namespace OLLMfilesd
 						this.manager.vector_db_path
 					);
 				} catch (GLib.Error e) {
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
 							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 							e.message
 						)
-					});
+					}, null);
 					return;
 				}
 				this.manager.vector_scan.open_vector_db.begin((obj, res) => {
 					try {
 						this.manager.vector_scan.open_vector_db.end(res);
 					} catch (GLib.Error e) {
-						request.reply(new OLLMrpc.Response() {
+						request.reply.begin(new OLLMrpc.Response() {
 							id = request.id,
 							error = new OLLMrpc.Error(
 								OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 								e.message
 							)
-						});
+						}, null);
 						return;
 					}
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "ok"
-					});
+					}, null);
 				});
 			});
 			this.call_debug_get.connect((request) => {
@@ -186,11 +186,11 @@ namespace OLLMfilesd
 						list.add(row);
 					}
 				}
-				request.reply(new OLLMrpc.Response() {
+				request.reply.begin(new OLLMrpc.Response() {
 					id = request.id,
 					result = list,
 					msg = list.size.to_string()
-				});
+				}, null);
 			});
 			this.call_search.connect((request) => {
 				this.search.begin(request, (obj, res) => {
@@ -199,10 +199,10 @@ namespace OLLMfilesd
 			});
 			this.call_stop.connect((request) => {
 				this.manager.vector_scan.stop_requested = true;
-				request.reply(new OLLMrpc.Response() {
+				request.reply.begin(new OLLMrpc.Response() {
 					id = request.id,
 					msg = "ok"
-				});
+				}, null);
 			});
 			this.call_start.connect((request) => {
 				var p = (VectorParams) request.param;
@@ -214,12 +214,12 @@ namespace OLLMfilesd
 					true,
 					(obj, res) => {
 						var queued_count = scan.queueProject.end(res);
-						request.reply(new OLLMrpc.Response() {
+						request.reply.begin(new OLLMrpc.Response() {
 							id = request.id,
 							msg = queued_count > 0
 								? queued_count.to_string()
 								: "ok"
-						});
+						}, null);
 					}
 				);
 			});
@@ -236,7 +236,7 @@ namespace OLLMfilesd
 			var p = (VectorParams) request.param;
 			var project = this.manager.project_root(p.path);
 			if (project == null) {
-				request.reply(new OLLMrpc.Response() {
+				yield request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
@@ -254,7 +254,7 @@ namespace OLLMfilesd
 
 			if (file_ids.size == 0) {
 				if (p.language != "") {
-					request.reply(new OLLMrpc.Response() {
+					yield request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "No files in the project match the language filter \""
 							+ p.language + "\". "
@@ -262,7 +262,7 @@ namespace OLLMfilesd
 					});
 					return;
 				}
-				request.reply(new OLLMrpc.Response() {
+				yield request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					msg = "No files found in the project folder. Check that the project is open and has indexed files."
 				});
@@ -325,7 +325,7 @@ namespace OLLMfilesd
 
 			if (filtered_vector_ids.size == 0) {
 				if (p.category != "") {
-					request.reply(new OLLMrpc.Response() {
+					yield request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "No document matches the criteria (category=\""
 							+ p.category + "\"). "
@@ -335,7 +335,7 @@ namespace OLLMfilesd
 					});
 					return;
 				}
-				request.reply(new OLLMrpc.Response() {
+				yield request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					msg = "No document matches the criteria (current filters returned no indexed content). "
 						+ "Try the same query with fewer or different filters (e.g. omit element_type), "
@@ -377,7 +377,7 @@ namespace OLLMfilesd
 				));
 			}
 
-			request.reply(new OLLMrpc.Response() {
+			yield request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				msg = p.format == "json"
 					? yield this.format_results_json(results)
@@ -504,7 +504,7 @@ namespace OLLMfilesd
 			}
 			var project = this.manager.project_root(p.path);
 			if (project == null) {
-				request.reply(new OLLMrpc.Response() {
+				yield request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
@@ -520,7 +520,7 @@ namespace OLLMfilesd
 
 			var file_ids = project.project_files.get_ids("");
 			if (file_ids.size == 0) {
-				request.reply(new OLLMrpc.Response() {
+				yield request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
@@ -538,7 +538,7 @@ namespace OLLMfilesd
 				rows
 			);
 			if (rows.size == 0) {
-				request.reply(new OLLMrpc.Response() {
+				yield request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
@@ -554,7 +554,7 @@ namespace OLLMfilesd
 					rows.get(0).vector_id
 				);
 			} catch (GLib.Error e) {
-				request.reply(new OLLMrpc.Response() {
+				yield request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
@@ -568,7 +568,7 @@ namespace OLLMfilesd
 			for (var i = 0; i < vector.length; i++) {
 				output.append_printf("%.9g\n", vector[i]);
 			}
-			request.reply(new OLLMrpc.Response() {
+			yield request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				msg = output.str
 			});

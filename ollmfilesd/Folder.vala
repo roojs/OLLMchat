@@ -125,52 +125,52 @@ namespace OLLMfilesd
 				var path = ((FolderParams) request.param).path;
 				var folder = this.manager.get_folder_at_path(path);
 				if (folder == null) {
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "folder not found"
-					});
+					}, null);
 					return;
 				}
 				var result = new Gee.ArrayList<GLib.Object>();
 				result.add(folder);
-				request.reply(new OLLMrpc.Response() {
+				request.reply.begin(new OLLMrpc.Response() {
 					id = request.id,
 					result = result
-				});
+				}, null);
 			});
 			this.call_contains_folder.connect((request) => {
 				var p = (FolderParams) request.param;
 				var project = this.manager.project_root(p.project_path);
 				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "project not found"
-					});
+					}, null);
 					return;
 				}
 				if (!project.project_files.folder_map.has_key(p.path)) {
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "directory not in project"
-					});
+					}, null);
 					return;
 				}
-				request.reply(new OLLMrpc.Response() {
+				request.reply.begin(new OLLMrpc.Response() {
 					id = request.id,
 					msg = "true"
-				});
+				}, null);
 			});
 			this.call_fetch_files.connect((request) => {
 				var p = (FolderParams) request.param;
 				var project = this.manager.project_root(p.path);
 				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
 							OLLMrpc.RpcErrorCode.INVALID_PARAMS,
 							"project not found"
 						)
-					});
+					}, null);
 					return;
 				}
 				if (p.paths.length > 0) {
@@ -198,11 +198,11 @@ namespace OLLMfilesd
 						);
 						list.add(row);
 					}
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						id = request.id,
 						result = list,
 						msg = list.size.to_string()
-					});
+					}, null);
 					return;
 				}
 				p.limit = p.limit < 1 ? 50 : p.limit;
@@ -222,20 +222,20 @@ namespace OLLMfilesd
 						)
 					);
 				}
-				request.reply(new OLLMrpc.Response() {
+				request.reply.begin(new OLLMrpc.Response() {
 					id = request.id,
 					result = list,
 					msg = matched.size.to_string()
-				});
+				}, null);
 			});
 			this.call_fetch_pending_approvals.connect((request) => {
 				var path = ((FolderParams) request.param).path;
 				var project = this.manager.project_root(path);
 				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "project not found"
-					});
+					}, null);
 					return;
 				}
 				Gee.ArrayList<GLib.Object> result;
@@ -245,56 +245,56 @@ namespace OLLMfilesd
 						project
 					);
 				} catch (GLib.Error e) {
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
 							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 							e.message
 						)
-					});
+					}, null);
 					return;
 				}
-				request.reply(new OLLMrpc.Response() {
+				request.reply.begin(new OLLMrpc.Response() {
 					id = request.id,
 					result = result
-				});
+				}, null);
 			});
 			this.call_project_description.connect((request) => {
 				var path = ((FolderParams) request.param).path;
 				var project = this.manager.project_root(path);
 				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "project not found"
-					});
+					}, null);
 					return;
 				}
-				request.reply(new OLLMrpc.Response() {
+				request.reply.begin(new OLLMrpc.Response() {
 					id = request.id,
 					msg = project.project_description()
-				});
+				}, null);
 			});
 			this.call_roots.connect((request) => {
 				var path = ((FolderParams) request.param).path;
 				var project = this.manager.project_root(path);
 				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "project not found"
-					});
+					}, null);
 					return;
 				}
 				Gee.ArrayList<Folder> roots;
 				try {
 					roots = project.roots();
 				} catch (GLib.Error e) {
-					request.reply(new OLLMrpc.Response() {
+					request.reply.begin(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
 							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 							e.message
 						)
-					});
+					}, null);
 					return;
 				}
 				var list = new Gee.ArrayList<GLib.Object>();
@@ -303,11 +303,11 @@ namespace OLLMfilesd
 					row.copy_from(source, {"manager", "buffer", "parent"});
 					list.add(row);
 				}
-				request.reply(new OLLMrpc.Response() {
+				request.reply.begin(new OLLMrpc.Response() {
 					id = request.id,
 					result = list,
 					msg = list.size.to_string()
-				});
+				}, null);
 			});
 		}
 

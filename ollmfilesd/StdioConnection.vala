@@ -25,7 +25,7 @@ namespace OLLMfilesd
 		public string script_path { get; construct; default = ""; }
 
 		private int script_awaiting_id = -1;
-		private OLLMrpc.Bin.Json json_codec = new OLLMrpc.Bin.Json ();
+		private OLLMrpc.Bin.Json json = new OLLMrpc.Bin.Json ();
 
 		public StdioConnection(
 			OllmfilesdApplication app,
@@ -53,10 +53,10 @@ namespace OLLMfilesd
 			);
 			this.bin = new OLLMrpc.Bin.Stream(in_stream, out_stream);
 
-			this.write(new OLLMrpc.Notification() {
+			this.write.begin(new OLLMrpc.Notification() {
 				method = "Daemon.ready",
 				object_type = "Daemon",
-			});
+			}, null);
 
 			if (this.script_path != "") {
 				try {
@@ -82,7 +82,7 @@ namespace OLLMfilesd
 			this.app.quit();
 		}
 
-		public override void write(GLib.Object gobject)
+		public override async void write(GLib.Object gobject)
 		{
 			if (gobject is OLLMrpc.Response) {
 				var response = gobject as OLLMrpc.Response;
@@ -95,21 +95,8 @@ namespace OLLMfilesd
 				GLib.warning("stdio write: not bin Serializable");
 				return;
 			}
-			var mem = new GLib.MemoryOutputStream.resizable();
-			var encode_out = new GLib.DataOutputStream(mem);
-			var encode_ctx = new OLLMrpc.Bin.Stream(null, encode_out);
 			try {
-				encode_ctx.write(serializable);
-				encode_out.close();
-
-				var in_base = new GLib.MemoryInputStream.from_bytes(
-					mem.steal_as_bytes()
-				);
-				var read_ctx = new OLLMrpc.Bin.Stream(
-					new GLib.DataInputStream(in_base),
-					null
-				);
-				var node = this.json_codec.bin_to_json(read_ctx);
+				var node = yield this.json.from_gobject(serializable);
 				var gen = new Json.Generator();
 				gen.set_pretty(false);
 				gen.set_root(node);
@@ -196,7 +183,7 @@ namespace OLLMfilesd
 			var mem = new GLib.MemoryOutputStream.resizable();
 			var out_stream = new GLib.DataOutputStream(mem);
 			var encode_ctx = new OLLMrpc.Bin.Stream(null, out_stream);
-			this.json_codec.json_to_bin(root, encode_ctx);
+			this.json.json_to_bin(root, encode_ctx);
 			out_stream.close();
 
 			var in_base = new GLib.MemoryInputStream.from_bytes(

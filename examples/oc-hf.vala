@@ -114,20 +114,8 @@ Examples:
 			var bag = (OLLMhf.ModelArray) resp.result[0];
 			var arr = new Json.Array();
 			foreach (var model in bag.items) {
-				var mem = new GLib.MemoryOutputStream.resizable();
-				var encode_ctx = new OLLMrpc.Bin.Stream(
-					null,
-					new GLib.DataOutputStream(mem)
-				);
-				encode_ctx.write(model);
-				encode_ctx.out_stream.close();
-				var read_ctx = new OLLMrpc.Bin.Stream(
-					new GLib.DataInputStream(
-						new GLib.MemoryInputStream.from_bytes(mem.steal_as_bytes())
-					),
-					null
-				);
-				arr.add_element(json_codec.bin_to_json(read_ctx));
+				var node = yield json_codec.from_gobject(model);
+				arr.add_element(node);
 			}
 			var root = new Json.Node(Json.NodeType.ARRAY);
 			root.set_array(arr);
@@ -145,22 +133,10 @@ Examples:
 		};
 		var detail_resp = yield rpc.call(detail_req);
 		var model = (OLLMhf.Model) detail_resp.result[0];
-		var mem = new GLib.MemoryOutputStream.resizable();
-		var encode_ctx = new OLLMrpc.Bin.Stream(
-			null,
-			new GLib.DataOutputStream(mem)
-		);
-		encode_ctx.write(model);
-		encode_ctx.out_stream.close();
-		var read_ctx = new OLLMrpc.Bin.Stream(
-			new GLib.DataInputStream(
-				new GLib.MemoryInputStream.from_bytes(mem.steal_as_bytes())
-			),
-			null
-		);
+		var node = yield json_codec.from_gobject(model);
 		stdout.printf(
 			"%s\n",
-			Json.to_string(json_codec.bin_to_json(read_ctx), true)
+			Json.to_string(node, true)
 		);
 	}
 }

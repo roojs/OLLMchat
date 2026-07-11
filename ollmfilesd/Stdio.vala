@@ -36,10 +36,10 @@ namespace OLLMfilesd
 			return true;
 		}
 
-		public override void broadcast(GLib.Object gobject)
+		public override async void broadcast(GLib.Object gobject)
 		{
 			if (this.connection != null) {
-				this.connection.write(gobject);
+				yield this.connection.write(gobject);
 			}
 		}
 

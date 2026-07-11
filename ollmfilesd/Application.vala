@@ -249,7 +249,7 @@ Examples:
 				)
 			);
 			this.project_manager.notification.connect((notif) => {
-				this.broadcast(notif);
+				this.broadcast.begin(notif, null);
 			});
 
 			if (this.project_manager.db != null) {
@@ -498,10 +498,10 @@ Examples:
 #endif
 		}
 
-		public void broadcast(OLLMrpc.Notification notification)
+		public async void broadcast(OLLMrpc.Notification notification)
 		{
 			if (this.listen != null) {
-				this.listen.broadcast(notification);
+				yield this.listen.broadcast(notification);
 			}
 		}
 

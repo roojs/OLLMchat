@@ -72,10 +72,10 @@ namespace OLLMrpc.Transport
 			return true;
 		}
 
-		public override void broadcast(GLib.Object gobject)
+		public override async void broadcast(GLib.Object gobject)
 		{
 			foreach (var connection in this.connections) {
-				connection.write(gobject);
+				yield connection.write(gobject);
 			}
 		}
 

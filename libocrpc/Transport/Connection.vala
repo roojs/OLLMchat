@@ -90,7 +90,7 @@ namespace OLLMrpc.Transport
 			}
 		}
 
-		public virtual void write(GLib.Object gobject)
+		public virtual async void write(GLib.Object gobject)
 		{
 			if (!this.channel_open || this.bin == null) {
 				return;
@@ -109,7 +109,7 @@ namespace OLLMrpc.Transport
 			}
 		}
 
-		public void reply(OLLMrpc.Request request, OLLMrpc.Response response)
+		public async void reply(OLLMrpc.Request request, OLLMrpc.Response response)
 		{
 			response.id = request.id;
 			GLib.debug(
@@ -118,12 +118,18 @@ namespace OLLMrpc.Transport
 				request.method,
 				this
 			);
-			this.write(response);
+			yield this.write(response);
 		}
 
-		public void reply_error(OLLMrpc.Request request, int error_code)
+		public async void reply_error(
+			OLLMrpc.Request request,
+			int error_code
+		)
 		{
-			this.reply(request, OLLMrpc.RpcErrorCode.to_response(error_code));
+			yield this.reply(
+				request,
+				OLLMrpc.RpcErrorCode.to_response(error_code)
+			);
 		}
 
 		protected virtual bool on_input_ready(

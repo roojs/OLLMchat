@@ -59,6 +59,10 @@ var parsed = read_bin.parse () as TestPair;
 
 Pass **`null`** for the unused stream direction in memory-only tests.
 
+### GObject → JSON (in-memory)
+
+**`OLLMrpc.Bin.Json.from_gobject`** — pipe-backed encode/decode. **Always** **`var node = yield bin_json.from_gobject(src);`** from **`async`** code. Do **not** hand-roll **`steal_as_bytes()`**. See **`docs/plans/done/8.2.2-DONE-proper-bin-json-streaming.md`**.
+
 ---
 
 ## 2. Walkthrough: `TestPair`
