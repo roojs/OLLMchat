@@ -74,6 +74,9 @@ namespace OLLMrpc.Bin
 		public GLib.DataOutputStream? out_stream { get; construct; }
 		public GLib.DataInputStream? in_stream { get; construct; }
 
+		/** Copied from {@link Json.mode} for GObject decode on this stream. */
+		public Mode mode { get; set; default = Mode.EXPLICIT; }
+
 		internal string[] names = {};
 		internal Gee.HashMap<string, uint16> name_to_token =
 			new Gee.HashMap<string, uint16>();

@@ -21,6 +21,10 @@ namespace OLLMrpc
 		/** Referenced object id when {@link object_type} has one; {{{0}}} for singletons. */
 		public int id { get; set; default = 0; }
 		public string message { get; set; default = ""; }
+		/** Bytes completed when {@link method} carries progress (else {{{0}}}). */
+		public int64 progress_completed { get; set; default = 0; }
+		/** Bytes total when {@link method} carries progress (else {{{0}}}). */
+		public int64 progress_total { get; set; default = 0; }
 
 		public static void rpc_register()
 		{

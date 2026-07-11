@@ -255,10 +255,19 @@ namespace OLLMrpc.Bin
 
 				var prop = this.get_class().find_property(prop_name);
 				if (prop == null) {
-					throw new SerializableError.PROPERTY(
-						"unknown bin property '%s'",
-						prop_name
+					if ((ctx.mode & Mode.IGNORE_UNKNOWN) == 0) {
+						throw new SerializableError.PROPERTY(
+							"unknown bin property '%s'",
+							prop_name
+						);
+					}
+					GLib.critical(
+						"unknown bin property '%s' on %s",
+						prop_name,
+						this.get_type().name()
 					);
+					new Json().bin_member_to_json(ctx, b);
+					continue;
 				}
 				this.bin_read_prop(ctx, prop, b);
 			}

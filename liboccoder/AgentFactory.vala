@@ -481,7 +481,7 @@ namespace OLLMcoder
 		 */
 		private async void initialize_widget(OLLMchat.ChatDesktopInterface host)
 		{
-			host.activity_notification(new OLLMrpc.Notification() {
+			host.notification(new OLLMrpc.Notification() {
 				method = "client.project.load_start",
 			});
 			try {
@@ -491,7 +491,7 @@ namespace OLLMcoder
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to initialize AgentFactory widget: %s", e.message);
 			} finally {
-				host.activity_notification(new OLLMrpc.Notification() {
+				host.notification(new OLLMrpc.Notification() {
 					method = "client.project.load_end",
 				});
 			}

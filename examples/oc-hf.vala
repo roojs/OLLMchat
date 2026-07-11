@@ -120,18 +120,19 @@ Examples:
 				dl.file_filter = { opt_file.strip() };
 			}
 			var last_report = (int64) 0;
-			dl.progress.connect((rfilename, completed, total) => {
-				if (total > 0
-					&& completed - last_report < total / 20
-					&& completed != total) {
+			dl.progress.connect((notif) => {
+				if (notif.progress_total > 0
+					&& notif.progress_completed - last_report
+						< notif.progress_total / 20
+					&& notif.progress_completed != notif.progress_total) {
 					return;
 				}
-				last_report = completed;
+				last_report = notif.progress_completed;
 				command_line.print(
 					"%s %lld/%lld\n",
-					rfilename,
-					completed,
-					total
+					notif.message,
+					notif.progress_completed,
+					notif.progress_total
 				);
 			});
 			yield dl.start();
@@ -141,7 +142,7 @@ Examples:
 
 		var rpc = new OLLMrpc.Client("", "", "https://huggingface.co");
 		yield rpc.connect(new OLLMrpc.Request());
-		var json = new OLLMrpc.Bin.Json(OLLMrpc.Bin.Json.Mode.AUTO);
+		var json = new OLLMrpc.Bin.Json(OLLMrpc.Bin.Mode.AUTO);
 
 		if (opt_search != null && opt_search.strip() != "") {
 			var req = new OLLMrpc.Request() {

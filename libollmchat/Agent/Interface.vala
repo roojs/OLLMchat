@@ -67,6 +67,13 @@ namespace OLLMchat.Agent
 		 * @param message The message to add
 		 */
 		public abstract void add_message(Message message);
+
+		/**
+		 * Status-bar activity ({@link OLLMrpc.Notification.method} + payload).
+		 * Emit via {{{notification(notif)}}}; {@link Agent.Base} forwards to
+		 * {@link History.Manager.notification}.
+		 */
+		public signal void notification(OLLMrpc.Notification notif);
 		
 		/**
 		 * Register a tool request for monitoring streaming chunks and message completion.

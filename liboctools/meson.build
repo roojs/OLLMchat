@@ -40,6 +40,8 @@ octools_src = files([
   'CodebaseSearch/Request.vala',
   'SessionFetch/Tool.vala',
   'SessionFetch/Request.vala',
+  'HuggingFace/Tool.vala',
+  'HuggingFace/Request.vala',
   'ToolBuilder.vala',
   'Registry.vala',
   'Child/Parser.vala',
@@ -58,13 +60,15 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollamaweb',
   meson.current_build_dir() / '..' / 'libocbwrap',
+  meson.current_build_dir() / '..' / 'libochf',
+  meson.current_build_dir() / '..' / 'libocrpc',
 ])
 
-octools_lib_deps = [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, ocbwrap_vapi_dep]
+octools_lib_deps = [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, ocbwrap_vapi_dep, ocrpc_vapi_dep]
 
 octools_base_lib = library(octools_lib,
   dependencies: octools_lib_deps,
-  link_with: [ollmchat_base_lib],
+  link_with: [ollmchat_base_lib, ochf_base_lib],
   sources: octools_src,
   vala_header: 'octools.h',
   vala_vapi: 'octools-meson.vapi',  # Use different name so our custom_target can use 'octools.vapi'
@@ -73,6 +77,8 @@ octools_base_lib = library(octools_lib,
   include_directories: [
     include_directories('..' / 'libollmchat'),
     include_directories('..' / 'libollamaweb'),
+    include_directories('..' / 'libochf'),
+    include_directories('..' / 'libocrpc'),
   ],
   vala_args: [
     '--pkg=ollmchat',
@@ -81,6 +87,7 @@ octools_base_lib = library(octools_lib,
     '--pkg=ocsqlite',
     '--pkg=ocmarkdown',
     '--pkg=ocbwrap',
+    '--pkg=ocrpc',
     '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
     '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=json-glib-1.0',
@@ -91,6 +98,7 @@ octools_base_lib = library(octools_lib,
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
     '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
     '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -112,6 +120,7 @@ octools_vapi_gen_pkgs = [
   '--pkg', 'ollamaweb',
   '--pkg', 'ocfiles',
   '--pkg', 'ocrpc',
+  '--pkg', 'ochf',
   '--pkg', 'ocmarkdown',
   '--pkg', 'ocsqlite',
   '--pkg', 'ocbwrap',
@@ -125,6 +134,7 @@ octools_vapi_vapidirs = [
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
   '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
   '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  '--vapidir', meson.current_build_dir() / '..' / 'libochf',
   '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
@@ -147,13 +157,13 @@ octools_vapi = custom_target('octools-vapi',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
   ],
-  depends: [octools_base_lib, ollamaweb_vapi],
+  depends: [octools_base_lib, ollamaweb_vapi, ochf_vapi],
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'
 )
 
-octools_vapi_dep_deps = [ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, ocbwrap_vapi_dep, octools_deps]
+octools_vapi_dep_deps = [ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, ocbwrap_vapi_dep, ocrpc_vapi_dep, octools_deps]
 
 # Create dependency for other libraries to use
 # Use link_args instead of link_with to prevent meson from auto-including octools-meson.vapi

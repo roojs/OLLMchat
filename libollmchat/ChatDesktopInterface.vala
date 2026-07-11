@@ -36,7 +36,7 @@ namespace OLLMchat
 		 *
 		 * @param notif RPC-shaped notification (method + message payload)
 		 */
-		public signal void activity_notification(OLLMrpc.Notification notif);
+		public signal void notification(OLLMrpc.Notification notif);
 		/**
 		 * Scroll the transcript so the render row for index idx is visible.
 		 *

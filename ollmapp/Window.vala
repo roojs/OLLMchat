@@ -173,7 +173,7 @@ namespace OLLMapp
 			// Create vector scan banner (creates revealer internally)
 			this.activity_banner = new ActivityBanner();
 
-			this.activity_notification.connect((notif) => {
+			this.notification.connect((notif) => {
 				this.activity_banner.notification(notif);
 			});
 				
@@ -433,7 +433,7 @@ namespace OLLMapp
 
 			this.project_manager.rpc.notification.connect((notif) => {
 				GLib.Idle.add(() => {
-					this.activity_notification(notif);
+					this.notification(notif);
 					return false;
 				});
 			});
@@ -504,12 +504,12 @@ namespace OLLMapp
 						this.agent_dropdown.selected = agent_index;
 						return true;
 					}
-					this.activity_notification(new OLLMrpc.Notification() {
+					this.notification(new OLLMrpc.Notification() {
 						method = "client.project.load_start",
 					});
 					this.project_manager.load_projects_from_db.begin((obj, res) => {
 						this.project_manager.load_projects_from_db.end(res);
-						this.activity_notification(new OLLMrpc.Notification() {
+						this.notification(new OLLMrpc.Notification() {
 							method = "client.project.load_end",
 						});
 						project = this.project_manager.projects.path_map.get(

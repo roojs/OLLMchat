@@ -154,7 +154,16 @@ namespace OLLMtools
 			// Full wrapped tool: create new instance using clone()
 			// wrapped_tool already implements WrapInterface (checked above), which includes clone()
 			var wrapped_interface = wrapped_tool as OLLMchat.Tool.WrapInterface;
-			var new_tool = wrapped_interface.clone();
+			OLLMchat.Tool.BaseTool new_tool;
+			try {
+				new_tool = wrapped_interface.clone();
+			} catch (Error e) {
+				GLib.critical(
+					"Tool '%s' cannot be wrapped: %s",
+					parser.wrapped,
+					e.message);
+				return;
+			}
 			
 			// Set wrapped tool properties
 			new_tool.is_wrapped = true;

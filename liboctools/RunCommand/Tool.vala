@@ -108,7 +108,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 			this.project_manager = project_manager;
 		}
 		
-		public OLLMchat.Tool.BaseTool clone()
+		public OLLMchat.Tool.BaseTool clone() throws Error
 		{
 			return new Tool(this.project_manager);
 		}

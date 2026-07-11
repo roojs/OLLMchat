@@ -28,9 +28,32 @@ namespace OLLMhf
 		}
 	}
 
-	/** Hub detail {{{config}}} (often empty). */
+	/** Hub detail {{{config.tokenizer_config}}} when present. */
+	public class ModelTokenizerConfig : GLib.Object, OLLMrpc.Bin.Serializable
+	{
+		public string bos_token { get; set; default = ""; }
+		public string chat_template { get; set; default = ""; }
+		public string eos_token { get; set; default = ""; }
+		public string pad_token { get; set; default = ""; }
+		public string unk_token { get; set; default = ""; }
+
+		public static void rpc_register() {
+			OLLMrpc.Bin.register(
+				"ModelTokenizerConfig",
+				typeof(ModelTokenizerConfig)
+			);
+		}
+	}
+
+	/** Hub detail {{{config}}} (Hub API returns a short subset, not full config.json). */
 	public class ModelConfig : GLib.Object, OLLMrpc.Bin.Serializable
 	{
+		public string[] architectures { get; set; default = {}; }
+		public string model_type { get; set; default = ""; }
+		public ModelTokenizerConfig tokenizer_config {
+			get; set; default = new ModelTokenizerConfig();
+		}
+
 		public static void rpc_register() {
 			OLLMrpc.Bin.register("ModelConfig", typeof(ModelConfig));
 		}
@@ -40,10 +63,50 @@ namespace OLLMhf
 	public class ModelCardData : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public string library_name { get; set; default = ""; }
+		public string[] tags { get; set; default = {}; }
 		public string license { get; set; default = ""; }
 		public string license_link { get; set; default = ""; }
 		public string pipeline_tag { get; set; default = ""; }
+		public string[] language { get; set; default = {}; }
 		public string[] base_model { get; set; default = {}; }
+
+		public override void bin_read_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error {
+			// Hub cardData.base_model is a JSON string on some repos and a string[] on others.
+			if (prop.name == "base-model"
+				&& (type_byte & 0x7F) == GLib.Type.STRING
+				&& (type_byte & 0x80) == 0) {
+				var str_len = (uint) ctx.in_stream.read_byte();
+				if ((str_len & 0x80) != 0) {
+					str_len = ((str_len & 0x7F) << 8) | ctx.in_stream.read_byte();
+				}
+				var str_buf = new uint8[str_len + 1];
+				size_t str_read;
+				ctx.in_stream.read_all(str_buf[0:str_len], out str_read);
+				str_buf[str_len] = 0;
+				this.base_model = { (string) str_buf };
+				return;
+			}
+			// Hub cardData.language is sometimes a string and sometimes string[].
+			if (prop.name == "language"
+				&& (type_byte & 0x7F) == GLib.Type.STRING
+				&& (type_byte & 0x80) == 0) {
+				var str_len = (uint) ctx.in_stream.read_byte();
+				if ((str_len & 0x80) != 0) {
+					str_len = ((str_len & 0x7F) << 8) | ctx.in_stream.read_byte();
+				}
+				var str_buf = new uint8[str_len + 1];
+				size_t str_read;
+				ctx.in_stream.read_all(str_buf[0:str_len], out str_read);
+				str_buf[str_len] = 0;
+				this.language = { (string) str_buf };
+				return;
+			}
+			this.bin_default_read_prop(ctx, prop, type_byte);
+		}
 
 		public static void rpc_register() {
 			OLLMrpc.Bin.register("ModelCardData", typeof(ModelCardData));
@@ -73,6 +136,7 @@ namespace OLLMhf
 		public string bos_token { get; set; default = ""; }
 		public string eos_token { get; set; default = ""; }
 		public int64 totalFileSize { get; set; default = 0; }
+		public string quantize_imatrix_file { get; set; default = ""; }
 
 		public static void rpc_register() {
 			OLLMrpc.Bin.register("ModelGguf", typeof(ModelGguf));

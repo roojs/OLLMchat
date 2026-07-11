@@ -116,7 +116,7 @@ namespace OLLMcoder.Skill
 			if (this.done_init) {
 				return;
 			}
-			host.activity_notification(new OLLMrpc.Notification() {
+			host.notification(new OLLMrpc.Notification() {
 				method = "client.project.load_start",
 			});
 			try {
@@ -126,7 +126,7 @@ namespace OLLMcoder.Skill
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to initialize Skills Agent widget: %s", e.message);
 			} finally {
-				host.activity_notification(new OLLMrpc.Notification() {
+				host.notification(new OLLMrpc.Notification() {
 					method = "client.project.load_end",
 				});
 			}

@@ -254,6 +254,8 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/CodebaseSearch/Request.vala',  # Must come before Registry (Registry uses CodebaseSearch)
     '../liboctools/SessionFetch/Tool.vala',
     '../liboctools/SessionFetch/Request.vala',
+    '../liboctools/HuggingFace/Tool.vala',
+    '../liboctools/HuggingFace/Request.vala',
     '../liboctools/ToolBuilder.vala',
     '../liboctools/Child/Parser.vala',
     '../liboctools/Child/Tool.vala',

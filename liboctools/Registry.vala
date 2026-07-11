@@ -22,7 +22,7 @@ namespace OLLMtools
 	 * Registry for all tools in liboctools.
 	 * 
 	 * Registers: ReadFile, RunCommand, WebFetch, EditMode, WriteFile, GoogleSearch,
-	 * CodebaseSearch, SessionFetch, and wrapped tools (via ToolBuilder).
+	 * CodebaseSearch, SessionFetch, HuggingFace, and wrapped tools (via ToolBuilder).
 	 */
 	public class Registry : Object
 	{
@@ -37,6 +37,7 @@ namespace OLLMtools
 			typeof(GoogleSearch.Tool).ensure();
 			typeof(CodebaseSearch.CodebaseSearchTool).ensure();
 			typeof(SessionFetch.Tool).ensure();
+			typeof(HuggingFace.Tool).ensure();
 			
 			// Register all liboctools tool config types with Config2
 			// Tools with BaseToolConfig get enabled/disabled in Settings; tools with custom config get that plus their options
@@ -48,6 +49,7 @@ namespace OLLMtools
 			OLLMchat.Tool.BaseTool.register_config(typeof(GoogleSearch.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(CodebaseSearch.CodebaseSearchTool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(SessionFetch.Tool));
+			OLLMchat.Tool.BaseTool.register_config(typeof(HuggingFace.Tool));
 			
 			//GLib.debug("OLLMtools.Registry.init_config: Registered liboctools tool config types");
 		}
@@ -66,6 +68,7 @@ namespace OLLMtools
 			(new GoogleSearch.Tool(null)).setup_tool_config_default(config);
 			(new CodebaseSearch.CodebaseSearchTool(null)).setup_tool_config_default(config);
 			(new SessionFetch.Tool()).setup_tool_config_default(config);
+			(new HuggingFace.Tool(null)).setup_tool_config_default(config);
 			//GLib.debug("OLLMtools.Registry.setup_config_defaults: Set up liboctools tool configs");
 		}
 		
@@ -83,6 +86,7 @@ namespace OLLMtools
 			manager.register_tool(new GoogleSearch.Tool(project_manager));
 			manager.register_tool(new CodebaseSearch.CodebaseSearchTool(project_manager));
 			manager.register_tool(new SessionFetch.Tool());
+			manager.register_tool(new HuggingFace.Tool(project_manager));
 			
 			//GLib.debug("OLLMtools.Registry.fill_tools: Registered %d liboctools standard tools", 
 			//	manager.tools.size);

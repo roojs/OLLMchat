@@ -99,6 +99,11 @@ namespace OLLMchat.History
 		public signal void stream_content(string new_text, Response.Chat response);
 		public signal void stream_start();
 		public signal void tool_message(OLLMchat.Message message);
+
+		/**
+		 * Daemon {{{event.*}}} or client {{{client.*}}} activity for the status bar.
+		 */
+		public signal void notification(OLLMrpc.Notification notif);
 		
 		/**
 		 * Emitted when a new message is added to a session.

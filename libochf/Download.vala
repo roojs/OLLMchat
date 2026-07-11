@@ -21,8 +21,12 @@ namespace OLLMhf
 	/**
 	 * Stream one Hub model's {{{.gguf}}} siblings to the local install layout.
 	 *
-	 * Progress is client-side bytes over {@link progress}. Crash-safe state is
-	 * stored in {{{download.json}}} via {@link OLLMrpc.Bin.Json.from_gobject}.
+	 * Progress is emitted as {@link OLLMrpc.Notification} on {@link progress}
+	 * ({@link OLLMrpc.Notification.progress_completed},
+	 * {@link OLLMrpc.Notification.progress_total}, {@link OLLMrpc.Notification.message}
+	 * for the filename).
+	 * Crash-safe state is stored in {{{download.json}}} via
+	 * {@link OLLMrpc.Bin.Json.from_gobject}.
 	 */
 	public class Download : GLib.Object
 	{
@@ -33,12 +37,12 @@ namespace OLLMhf
 
 		private Soup.Session soup;
 		private OLLMrpc.Bin.Json json =
-			new OLLMrpc.Bin.Json(OLLMrpc.Bin.Json.Mode.AUTO);
+			new OLLMrpc.Bin.Json(OLLMrpc.Bin.Mode.AUTO);
 		private GLib.Cancellable? stop_cancellable;
 		private int64 last_persist_time;
 		private int64 last_persist_bytes;
 
-		public signal void progress(string rfilename, int64 completed, int64 total);
+		public signal void progress(OLLMrpc.Notification notif);
 
 		public Download(Model model) {
 			Object(model: model);
@@ -67,7 +71,6 @@ namespace OLLMhf
 				model_dir = GLib.Path.build_filename(model_dir, segment);
 			}
 			GLib.File.new_for_path(model_dir).make_directory_with_parents(null);
-			OLLMhf.rpc_register();
 			var download_path = GLib.Path.build_filename(model_dir, "download.json");
 			if (GLib.FileUtils.test(download_path, GLib.FileTest.EXISTS)) {
 				var contents = "";
@@ -82,6 +85,7 @@ namespace OLLMhf
 				var decode_ctx = new OLLMrpc.Bin.Stream(
 					new GLib.DataInputStream(new GLib.MemoryInputStream.from_bytes(
 						mem.steal_as_bytes())), null);
+				decode_ctx.mode = this.json.mode;
 				var restored = (Model) decode_ctx.parse();
 				if (restored.id == this.model.id) {
 					this.model.download_revision = restored.download_revision;
@@ -220,7 +224,13 @@ namespace OLLMhf
 				checksum.update(buf[0:n], n);
 				file.bytes_written += n;
 				file.sha256_partial = checksum.get_string();
-				this.progress(file.rfilename, file.bytes_written, file.size);
+				this.progress(new OLLMrpc.Notification() {
+					method = "event.hf.download.progress",
+					object_type = "ModelFile",
+					message = file.rfilename,
+					progress_completed = file.bytes_written,
+					progress_total = file.size,
+				});
 				var now = GLib.get_monotonic_time();
 				if (now - this.last_persist_time >= 5000000
 					|| file.bytes_written - this.last_persist_bytes >= 8 * 1024 * 1024) {

@@ -49,6 +49,7 @@ endif
 
 ocrpc_core_src = files([
   'namespace.vala',
+  'Bin/namespace.vala',
   'Bin/Stream.vala',
   'Bin/Serializable.vala',
   'Bin/Json.vala',

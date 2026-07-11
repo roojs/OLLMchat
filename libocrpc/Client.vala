@@ -118,7 +118,9 @@ namespace OLLMrpc
 		private GLib.IOChannel? read_channel;
 		private uint read_watch_id = 0;
 		private Soup.Session? http_session;
-		private Bin.Json http_json = new Bin.Json(Bin.Json.Mode.AUTO);
+		private Bin.Json http_json = new Bin.Json(
+			Bin.Mode.AUTO | Bin.Mode.IGNORE_UNKNOWN
+		);
 
 		static construct
 		{
@@ -299,12 +301,10 @@ namespace OLLMrpc
 					? e.message
 					: "could not start or reach the filesystem daemon (ollmfilesd)";
 				GLib.critical(
-					"connect hello %s id=%d domain=%u code=%d: %s",
+					"connect hello %s id=%d: %s",
 					hello_request.method,
 					hello_request.id,
-					e.domain,
-					e.code,
-					e.message
+					this.connect_error
 				);
 				this.disconnect();
 				return false;
@@ -405,6 +405,14 @@ namespace OLLMrpc
 							+ GLib.Uri.escape_string(pspec.name, null)
 							+ "=" + val.get_int().to_string();
 						break;
+					case GLib.Type.BOOLEAN:
+						if (!val.get_boolean()) {
+							continue;
+						}
+						qs += (qs == "" ? "?" : "&")
+							+ GLib.Uri.escape_string(pspec.name, null)
+							+ "=true";
+						break;
 				}
 			}
 			var url = this.socket_path + head.request.method + qs;
@@ -444,6 +452,7 @@ namespace OLLMrpc
 			encode_ctx.out_stream.close();
 			var read_ctx = new Bin.Stream(new GLib.DataInputStream(
 				new GLib.MemoryInputStream.from_bytes(mem.steal_as_bytes())), null);
+			read_ctx.mode = this.http_json.mode;
 			var obj = read_ctx.parse();
 			var response = new Response() {
 				id = head.request.id,
@@ -473,14 +482,6 @@ namespace OLLMrpc
 					yield this.send_http(head);
 					head.sent = true;
 				} catch (GLib.Error e) {
-					GLib.critical(
-						"HTTP send %s id=%d domain=%u code=%d: %s",
-						head.request.method,
-						head.request.id,
-						e.domain,
-						e.code,
-						e.message
-					);
 					this.complete_pending(head.request.id, null, e);
 				}
 				this.sending = false;
@@ -492,14 +493,6 @@ namespace OLLMrpc
 				yield this.output.flush_async(GLib.Priority.DEFAULT, null);
 				head.sent = true;
 			} catch (GLib.Error e) {
-				GLib.critical(
-					"wire send %s id=%d domain=%u code=%d: %s",
-					head.request.method,
-					head.request.id,
-					e.domain,
-					e.code,
-					e.message
-				);
 				this.complete_pending(head.request.id, null, e);
 			}
 			this.sending = false;
@@ -523,11 +516,9 @@ namespace OLLMrpc
 				this.pending.remove_at(i);
 				if (error != null) {
 					GLib.critical(
-						"RPC failed %s id=%d domain=%u code=%d: %s",
+						"RPC failed %s id=%d: %s",
 						entry.request.method,
 						id,
-						error.domain,
-						error.code,
 						error.message
 					);
 					entry.promise.set_exception(error);
@@ -618,16 +609,6 @@ namespace OLLMrpc
 
 			try {
 				return yield entry.promise.future.wait_async();
-			} catch (GLib.Error e) {
-				GLib.critical(
-					"wait %s id=%d domain=%u code=%d: %s",
-					method,
-					entry.request.id,
-					e.domain,
-					e.code,
-					e.message
-				);
-				throw e;
 			} finally {
 				if (timeout_id != 0) {
 					GLib.Source.remove(timeout_id);

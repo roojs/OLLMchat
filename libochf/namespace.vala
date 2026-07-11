@@ -43,6 +43,7 @@ namespace OLLMhf
 		Model.rpc_register();
 		ModelFile.rpc_register();
 		ModelWidgetData.rpc_register();
+		ModelTokenizerConfig.rpc_register();
 		ModelConfig.rpc_register();
 		ModelCardData.rpc_register();
 		ModelTransformersInfo.rpc_register();

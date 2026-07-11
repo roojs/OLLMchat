@@ -45,12 +45,12 @@ namespace OLLMchat.Tool
 		/**
 		 * Creates a clone of this tool with the same project_manager.
 		 *
-		 * This method is used by ToolBuilder when creating wrapped tool instances.
-		 * Tools that can be wrapped should implement this to create a new instance
-		 * with the same project_manager.
+		 * Called by {@link OLLMtools.ToolBuilder} when creating wrapped tool instances.
+		 * Tools that cannot be wrapped should throw {@link GLib.IOError.NOT_SUPPORTED}.
 		 *
-		 * @return A new tool instance with the same project_manager
+		 * @return a new tool instance
+		 * @throws Error {@link GLib.IOError.NOT_SUPPORTED} when wrapping is not allowed
 		 */
-		public abstract owned BaseTool clone();
+		public abstract owned BaseTool clone() throws Error;
 	}
 }

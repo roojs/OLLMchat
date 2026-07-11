@@ -75,7 +75,7 @@ The tool requires permission to access the domain of the URL being fetched.""";
 		this.soup = new Soup.Session();
 	}
 		
-		public OLLMchat.Tool.BaseTool clone()
+		public OLLMchat.Tool.BaseTool clone() throws Error
 		{
 			return new Tool(this.project_manager);
 		}

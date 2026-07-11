@@ -6,6 +6,11 @@
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this library; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -20,6 +25,23 @@ namespace OLLMrpc
 	 */
 	namespace Bin
 	{
-		internal class NamespaceDoc {}
+ 		/**
+		 * {@link Json} encode/decode and {@link Stream} GObject decode options.
+		 *
+		 * Combine with {@code |} (e.g. {@link AUTO} | {@link IGNORE_UNKNOWN}).
+		 */
+		[Flags]
+		public enum Mode {
+			/** Default: every object needs {{{*type}}}; nested objects need explicit aliases. */
+			EXPLICIT = 0,
+			/**
+			 * Typed root encode without {{{*type}}}; JSON member names
+			 * are written as bin tags for Vala/GObject lookup (HTTP Hub):
+			 * leading {{{_}}} → {{{underscore_}}}, then {{{_}}} → {{{-}}}.
+			 */
+			AUTO = 1 << 0,
+			/** Log {@link GLib.critical} on unknown bin properties and continue decode. */
+			IGNORE_UNKNOWN = 1 << 1,
+		}
 	}
 }

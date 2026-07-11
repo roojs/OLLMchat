@@ -134,6 +134,10 @@ namespace OLLMchat.Agent
 			}
 			this.factory.configure_tools(this.chat_call);
 			
+			this.notification.connect((notif) => {
+				this.session.manager.notification(notif);
+			});
+			
 			// Signal connections removed - agent usage now uses direct method calls from Chat
 		}
 		

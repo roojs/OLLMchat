@@ -31,16 +31,6 @@ namespace OLLMrpc.Bin
 	 */
 	public class Json : GLib.Object
 	{
-		public enum Mode {
-			EXPLICIT,
-			/**
-			 * Typed root encode without {{{*type}}}; JSON member names
-			 * are written as bin tags for Vala/GObject lookup (HTTP Hub):
-			 * leading {{{_}}} → {{{underscore_}}}, then {{{_}}} → {{{-}}}.
-			 */
-			AUTO,
-		}
-
 		public Mode mode { get; construct; default = Mode.EXPLICIT; }
 
 		public Json(Mode mode = Mode.EXPLICIT)
@@ -61,7 +51,7 @@ namespace OLLMrpc.Bin
 		 *
 		 * @param src JSON object tree
 		 * @param bin bin stream to write into
-		 * @param type root object {@link GLib.Type} when {@link mode} is
+		 * @param type root object {@link GLib.Type} when {@link mode} includes
 		 *     {@link Mode.AUTO} and {@link src} has no {{{*type}}} member;
 		 *     default {@link GLib.Type.INVALID}
 		 */
@@ -71,7 +61,7 @@ namespace OLLMrpc.Bin
 			GLib.Type type = GLib.Type.INVALID
 		) throws GLib.Error
 		{
-			if (!src.has_member("*type") && (this.mode != Mode.AUTO || type == GLib.Type.INVALID)) {
+			if (!src.has_member("*type") && ((this.mode & Mode.AUTO) == 0 || type == GLib.Type.INVALID)) {
 				throw new StreamError.PROTOCOL(
 					"JSON object missing '*type'"
 				);
@@ -104,7 +94,7 @@ namespace OLLMrpc.Bin
 		 *
 		 * @param bin bin stream to read from
 		 * @return JSON object node; {{{*type}}} meta omitted when
-		 *     {@link mode} is {@link Mode.AUTO}
+		 *     {@link mode} includes {@link Mode.AUTO}
 		 */
 		public global::Json.Node bin_to_json(Stream bin) throws GLib.Error
 		{
@@ -170,7 +160,7 @@ namespace OLLMrpc.Bin
 		) throws GLib.Error
 		{
 			var root = new global::Json.Object();
-			if (this.mode == Mode.EXPLICIT) {
+			if ((this.mode & Mode.AUTO) == 0) {
 				root.set_string_member("*type", alias);
 			}
 
@@ -200,7 +190,7 @@ namespace OLLMrpc.Bin
 				return;
 			}
 			var tag_name = name;
-			if (this.mode == Mode.AUTO) {
+			if ((this.mode & Mode.AUTO) != 0) {
 				if (tag_name.has_prefix("_")) {
 					tag_name = "underscore_" + tag_name.substring(1);
 				}
@@ -242,7 +232,7 @@ namespace OLLMrpc.Bin
 					return;
 				}
 				if (!child_obj.has_member("*type")) {
-					if (this.mode != Mode.AUTO) {
+					if ((this.mode & Mode.AUTO) == 0) {
 						throw new StreamError.PROTOCOL(
 							"member '%s' nested object missing '*type'",
 							name
@@ -297,7 +287,7 @@ namespace OLLMrpc.Bin
 				}
 				var first = items.get_object_element(0);
 				if (!first.has_member("*type")) {
-					if (this.mode != Mode.AUTO) {
+					if ((this.mode & Mode.AUTO) == 0) {
 						throw new StreamError.PROTOCOL(
 							"member '%s' object array element missing '*type'",
 							name

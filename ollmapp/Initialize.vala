@@ -107,6 +107,9 @@ namespace OLLMapp
 				}
 				
 				this.window.history_manager = new OLLMchat.History.Manager(this.window.app);
+				this.window.history_manager.notification.connect((notif) => {
+					this.window.notification(notif);
+				});
 				
 				// Update default_model_usage to use the working connection if the current one is not working
 				if (this.window.history_manager.default_model_usage != null) {
