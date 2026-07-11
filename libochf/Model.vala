@@ -65,8 +65,8 @@ namespace OLLMhf
 		/** Primary library name from Hub metadata. */
 		public string library_name { get; set; default = ""; }
 
-		/** True when the repo requires acceptance before download. */
-		public bool gated { get; set; default = false; }
+		/** Hub gating mode when present (`false`, `true`, `auto`, `manual`, or empty). */
+		public string gated { get; set; default = ""; }
 
 		/** True when the repo is private on the Hub. */
 		public bool @private { get; set; default = false; }
@@ -151,6 +151,27 @@ namespace OLLMhf
 			uint8 type_byte
 		) throws GLib.Error {
 			switch (prop.name) {
+				case "gated":
+					if ((type_byte & 0x7F) == GLib.Type.STRING
+						&& (type_byte & 0x80) == 0) {
+						var str_len = (uint) ctx.in_stream.read_byte();
+						if ((str_len & 0x80) != 0) {
+							str_len = ((str_len & 0x7F) << 8) | ctx.in_stream.read_byte();
+						}
+						var str_buf = new uint8[str_len + 1];
+						size_t str_read;
+						ctx.in_stream.read_all(str_buf[0:str_len], out str_read);
+						str_buf[str_len] = 0;
+						this.gated = (string) str_buf;
+						return;
+					}
+					if ((type_byte & 0x7F) == GLib.Type.BOOLEAN
+						&& (type_byte & 0x80) == 0) {
+						this.gated = ctx.in_stream.read_byte() == 1 ? "true" : "";
+						return;
+					}
+					this.bin_default_read_prop(ctx, prop, type_byte);
+					return;
 				case "siblings":
 					this.siblings = (Gee.ArrayList<ModelFile>) this.read_anon_array(
 						ctx,

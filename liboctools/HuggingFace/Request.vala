@@ -154,11 +154,17 @@ namespace OLLMtools.HuggingFace
 				// FIXME - we should probably cache this info - assume the
 				// llm would have fetched it before..
 				yield rpc.connect(new OLLMrpc.Request());
-				this.download_model = (OLLMhf.Model) (yield rpc.call(
-					new OLLMrpc.Request() {
-						method = "/api/models/" + this.model_ref.strip(),
-						result_type = typeof(OLLMhf.Model),
-					})).result[0];
+				var detail_resp = yield rpc.call(new OLLMrpc.Request() {
+					method = "/api/models/" + this.model_ref.strip(),
+					result_type = typeof(OLLMhf.Model),
+				});
+				if (detail_resp.error != null) {
+					throw new GLib.IOError.FAILED(detail_resp.error.message);
+				}
+				if (detail_resp.result.size == 0) {
+					throw new GLib.IOError.FAILED("empty Hub model response");
+				}
+				this.download_model = (OLLMhf.Model) detail_resp.result[0];
 			} catch (GLib.Error e) {
 				var err = "ERROR: " + e.message;
 				this.agent.add_message(new OLLMchat.Message("ui",
@@ -406,9 +412,16 @@ When looking for assets, include tactical tokens in your query parameter:
 						result_type = typeof(OLLMhf.ModelArray),
 					};
 
+					var search_resp = yield rpc.call(search_req);
+					if (search_resp.error != null) {
+						throw new GLib.IOError.FAILED(search_resp.error.message);
+					}
+					if (search_resp.result.size == 0) {
+						throw new GLib.IOError.FAILED("empty Hub search response");
+					}
+
 					var arr = new Json.Array();
-					foreach (var model in ((OLLMhf.ModelArray) (yield rpc.call(
-						search_req)).result[0]).items) {
+					foreach (var model in ((OLLMhf.ModelArray) search_resp.result[0]).items) {
 						arr.add_element(json_helper.from_gobject(model));
 					}
 					var root = new Json.Node(Json.NodeType.ARRAY);
@@ -426,11 +439,19 @@ When looking for assets, include tactical tokens in your query parameter:
 							"'model_ref' is required for detail. Refer to help for usage.");
 					}
 
+					var detail_resp = yield rpc.call(new OLLMrpc.Request() {
+						method = "/api/models/" + this.model_ref.strip(),
+						result_type = typeof(OLLMhf.Model),
+					});
+					if (detail_resp.error != null) {
+						throw new GLib.IOError.FAILED(detail_resp.error.message);
+					}
+					if (detail_resp.result.size == 0) {
+						throw new GLib.IOError.FAILED("empty Hub model response");
+					}
+
 					var detail_result = Json.to_string(json_helper.from_gobject(
-						(OLLMhf.Model) (yield rpc.call(new OLLMrpc.Request() {
-							method = "/api/models/" + this.model_ref.strip(),
-							result_type = typeof(OLLMhf.Model),
-						})).result[0]), true);
+						(OLLMhf.Model) detail_resp.result[0]), true);
 					this.agent.add_message(new OLLMchat.Message("ui",
 						OLLMchat.Message.fenced(
 							"json.oc-frame-success.collapsed Hugging Face Hub: detail",
@@ -451,11 +472,17 @@ When looking for assets, include tactical tokens in your query parameter:
 
 					OLLMhf.Model hub_model = this.download_model;
 					if (hub_model == null) {
-						hub_model = (OLLMhf.Model) (yield rpc.call(
-							new OLLMrpc.Request() {
-								method = "/api/models/" + this.model_ref.strip(),
-								result_type = typeof(OLLMhf.Model),
-							})).result[0];
+						var detail_resp = yield rpc.call(new OLLMrpc.Request() {
+							method = "/api/models/" + this.model_ref.strip(),
+							result_type = typeof(OLLMhf.Model),
+						});
+						if (detail_resp.error != null) {
+							throw new GLib.IOError.FAILED(detail_resp.error.message);
+						}
+						if (detail_resp.result.size == 0) {
+							throw new GLib.IOError.FAILED("empty Hub model response");
+						}
+						hub_model = (OLLMhf.Model) detail_resp.result[0];
 					}
 
 					var dl = new OLLMhf.Download(hub_model);
