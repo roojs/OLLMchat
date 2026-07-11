@@ -188,7 +188,9 @@ namespace OLLMbwrap
 					run_seccomp.finish_handshake();
 					run_seccomp.attach_notify_loop();
 					result = yield this.read_subprocess_output(subprocess, run_seccomp);
-					yield this.overlay.scan.run();
+					if (this.overlay.scan != null) {
+						yield this.overlay.scan.run();
+					}
 				} catch (Error e) {
 					err = e;
 				}

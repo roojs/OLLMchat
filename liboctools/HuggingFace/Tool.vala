@@ -49,7 +49,7 @@ read the help output.""";
 @param action {string} [optional] Operation to run. Refer to help for valid values and workflow.
 @param query {string} [optional] Search filter terms. Refer to help for usage and examples.
 @param model_ref {string} [optional] Hub repo path (author/name). Refer to help for usage.
-@param files {array of strings} [optional] Filenames to download. Refer to help for sharding rules.""";
+@param files {array<string>} [optional] Filenames to download (JSON array of strings, e.g. [\"model.gguf\"]). Refer to help for sharding rules.""";
 		} }
 
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }

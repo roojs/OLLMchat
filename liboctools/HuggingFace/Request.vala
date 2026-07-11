@@ -165,6 +165,12 @@ namespace OLLMtools.HuggingFace
 					throw new GLib.IOError.FAILED("empty Hub model response");
 				}
 				this.download_model = (OLLMhf.Model) detail_resp.result[0];
+				if (this.download_model.@private
+					|| (this.download_model.gated != ""
+						&& this.download_model.gated != "false")) {
+					throw new GLib.IOError.PERMISSION_DENIED(
+						"Repo is gated or private — not downloadable without Hub login.");
+				}
 			} catch (GLib.Error e) {
 				var err = "ERROR: " + e.message;
 				this.agent.add_message(new OLLMchat.Message("ui",
@@ -303,9 +309,12 @@ HOST MACHINE SPECIFICATIONS
 
 WHEN THE USER ASKS FOR A MODEL
   If the user wants to download, find, or install a GGUF from Hugging Face, you do it
-  with this tool (search → detail → download). Do NOT tell them to download manually
-  (browser, huggingface-cli, wget, etc.) or suggest steps they should run themselves.
-  The user approves downloads in-app; progress appears in the activity bar.
+  with this tool only: help → search → detail → download. Do NOT use run_command,
+  wget, curl, huggingface-cli, or any other shell or CLI to fetch Hub files — those
+  paths are wrong here and will not integrate with the app (permissions, activity bar,
+  install layout). Do NOT tell the user to download manually or run commands themselves.
+  Call action \"download\" on this tool; the user approves in-app and progress appears
+  in the activity bar.
 
 PRIMARY STRATEGY: MULTI-TOKEN PREDICTION (MTP) SPECULATIVE INFERENCE
 To maximize performance, prioritize downloading models with built-in MTP heads
@@ -333,7 +342,8 @@ PARAMETER REFERENCE
   query      {string}   Required for action \"search\". Hub search terms.
                          Include MTP/draft keywords when targeting speculative models.
   model_ref  {string}   Required for \"detail\" and \"download\". Hub repo id \"author/name\".
-  files      {string[]} Required for \"download\". Exact sibling filenames from detail output.
+  files      {array}   Required for \"download\". Array of strings — exact sibling
+                         filenames from detail output (e.g. [\"model.gguf\"]).
                          Include every shard (.gguf-split-N) when the model is split.
 
 ---
@@ -347,9 +357,12 @@ When looking for assets, include tactical tokens in your query parameter:
 2. OPERATION PIPELINE
 ---
   Step A: Call \"search\" with your target model architectural intent.
+          Search returns downloadable repos only (gated and private are omitted).
+          Call \"detail\" on a chosen model_ref for file sizes.
   Step B: Call \"detail\" using the exact \"model_ref\" repo string to fetch its file tree.
   Step C: Review file sizes under the \"siblings\" list to calculate memory compliance.
   Step D: Execute \"download\" with precise filenames in the \"files\" array.
+          Never substitute run_command or shell downloads for this step.
           You will be asked to confirm the download (file list and total size)
           before it starts. Progress appears in the activity bar.
           (Always include ALL related .gguf-split-x parts if the model is sharded).
@@ -390,7 +403,6 @@ When looking for assets, include tactical tokens in your query parameter:
 
 			var rpc = new OLLMrpc.Client("", "", "https://huggingface.co");
 			yield rpc.connect(new OLLMrpc.Request());
-			var json_helper = new OLLMrpc.Bin.Json(OLLMrpc.Bin.Mode.AUTO);
 
 			switch (act) {
 				case "search":
@@ -407,7 +419,7 @@ When looking for assets, include tactical tokens in your query parameter:
 							limit = 20,
 							sort = "downloads",
 							direction = "-1",
-							full = true,
+							full = false,
 						},
 						result_type = typeof(OLLMhf.ModelArray),
 					};
@@ -420,16 +432,36 @@ When looking for assets, include tactical tokens in your query parameter:
 						throw new GLib.IOError.FAILED("empty Hub search response");
 					}
 
-					var arr = new Json.Array();
-					foreach (var model in ((OLLMhf.ModelArray) search_resp.result[0]).items) {
-						arr.add_element(json_helper.from_gobject(model));
+					var hits = ((OLLMhf.ModelArray) search_resp.result[0]).items;
+					var search_result = "# Hugging Face search\n\n"
+						+ "Query: " + this.query.strip() + "\n\n";
+					var skipped_gated = 0;
+					var shown = 0;
+					foreach (var model in hits) {
+						if (model.@private
+							|| (model.gated != "" && model.gated != "false")) {
+							skipped_gated++;
+							continue;
+						}
+						shown++;
+						search_result += model.to_markdown(true);
 					}
-					var root = new Json.Node(Json.NodeType.ARRAY);
-					root.set_array(arr);
-					var search_result = Json.to_string(root, true);
+					if (shown == 0) {
+						if (skipped_gated > 0) {
+							search_result += "_No downloadable models in these results ("
+								+ skipped_gated.to_string()
+								+ " gated/private omitted)._\n";
+						} else {
+							search_result += "_No models matched this query._\n";
+						}
+					} else if (skipped_gated > 0) {
+						search_result += "_Omitted "
+							+ skipped_gated.to_string()
+							+ " gated/private repos (not downloadable without Hub login)._\n";
+					}
 					this.agent.add_message(new OLLMchat.Message("ui",
 						OLLMchat.Message.fenced(
-							"json.oc-frame-success.collapsed Hugging Face Hub: search results",
+							"markdown.oc-frame-success.collapsed Hugging Face Hub: search results",
 							search_result)));
 					return search_result;
 
@@ -450,11 +482,16 @@ When looking for assets, include tactical tokens in your query parameter:
 						throw new GLib.IOError.FAILED("empty Hub model response");
 					}
 
-					var detail_result = Json.to_string(json_helper.from_gobject(
-						(OLLMhf.Model) detail_resp.result[0]), true);
+					var hub_model = (OLLMhf.Model) detail_resp.result[0];
+					if (hub_model.@private
+						|| (hub_model.gated != "" && hub_model.gated != "false")) {
+						throw new GLib.IOError.PERMISSION_DENIED(
+							"Repo is gated or private — not downloadable without Hub login.");
+					}
+					var detail_result = hub_model.to_markdown();
 					this.agent.add_message(new OLLMchat.Message("ui",
 						OLLMchat.Message.fenced(
-							"json.oc-frame-success.collapsed Hugging Face Hub: detail",
+							"markdown.oc-frame-success.collapsed Hugging Face Hub: detail",
 							detail_result)));
 					return detail_result;
 
@@ -483,6 +520,11 @@ When looking for assets, include tactical tokens in your query parameter:
 							throw new GLib.IOError.FAILED("empty Hub model response");
 						}
 						hub_model = (OLLMhf.Model) detail_resp.result[0];
+					}
+					if (hub_model.@private
+						|| (hub_model.gated != "" && hub_model.gated != "false")) {
+						throw new GLib.IOError.PERMISSION_DENIED(
+							"Repo is gated or private — not downloadable without Hub login.");
 					}
 
 					var dl = new OLLMhf.Download(hub_model);

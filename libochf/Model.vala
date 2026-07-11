@@ -116,6 +116,57 @@ namespace OLLMhf
 		/** Revision used for resolve URLs during an in-progress download. */
 		public string download_revision { get; set; default = "main"; }
 
+		/**
+		 * Markdown for LLM tool output.
+		 *
+		 * @param search_hit When true, compact ## section for search results
+		 *   (filenames only). When false, full detail with GGUF size table.
+		 */
+		public string to_markdown(bool search_hit = false)
+		{
+			var hub_ref = this.id != "" ? this.id : this.modelId;
+			if (search_hit) {
+				var md = "## " + hub_ref + "\n";
+				md += "- Downloads: " + this.downloads.to_string() + "\n";
+				var gguf_count = 0;
+				foreach (var sibling in this.siblings) {
+					if (!sibling.rfilename.has_suffix(".gguf")) {
+						continue;
+					}
+					md += "- " + sibling.rfilename + "\n";
+					gguf_count++;
+				}
+				if (gguf_count == 0) {
+					md += "- (no .gguf listed)\n";
+				}
+				return md + "\n";
+			}
+			var md = "# " + hub_ref + "\n\n"
+				+ "| File | Size |\n"
+				+ "| --- | --- |\n";
+			var gguf_rows = 0;
+			foreach (var sibling in this.siblings) {
+				if (!sibling.rfilename.has_suffix(".gguf")) {
+					continue;
+				}
+				var size_text = sibling.size > 0
+					? "%.2f GB".printf(
+						(double) sibling.size / (1024.0 * 1024.0 * 1024.0))
+					: "?";
+				md += "| "
+					+ sibling.rfilename
+					+ " | "
+					+ size_text
+					+ " |\n";
+				gguf_rows++;
+			}
+			if (gguf_rows == 0) {
+				md += "| _none_ | |\n";
+			}
+			return md
+				+ "\nUse exact filenames above in download `files`.\n";
+		}
+
 		public static void rpc_register() {
 			OLLMrpc.Bin.register("Model", typeof(Model));
 		}
