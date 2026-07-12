@@ -19,7 +19,7 @@
 namespace OLLMfiles
 {
 	/**
-	 * V2 approve/revert RPC handle ({{{file_history.id}}} + path).
+	 * V2 approve/revert RPC handle (''file_history.id'' + path).
 	 */
 	public class FileHistory : Object
 	{

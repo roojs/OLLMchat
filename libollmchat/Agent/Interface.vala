@@ -70,7 +70,7 @@ namespace OLLMchat.Agent
 
 		/**
 		 * Status-bar activity ({@link OLLMrpc.Notification.method} + payload).
-		 * Emit via {{{notification(notif)}}}; {@link Agent.Base} forwards to
+		 * Emit via ''notification(notif)''; {@link Agent.Base} forwards to
 		 * {@link History.Manager.notification}.
 		 */
 		public signal void notification(OLLMrpc.Notification notif);

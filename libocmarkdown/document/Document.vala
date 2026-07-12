@@ -40,7 +40,7 @@ namespace Markdown.Document
 		 * Used for error messages so the LLM sees available sections.
 		 *
 		 * @param url document URL to use as link target, e.g. task ref
-		 * {{{task:slug.md}}} (task scheme prefix)
+		 * ''task:slug.md'' (task scheme prefix)
 		 * @return comma-separated list of (title)[url#slug] links
 		 */
 		public string header_links(string url)

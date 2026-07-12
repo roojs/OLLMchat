@@ -183,7 +183,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 
 	/**
 	 * Single markdown document after post-exec synthesis. Headings used for
-	 * task document ref {{{task:slug.md}}} (task scheme prefix) for the full
+	 * task document ref ''task:slug.md'' (task scheme prefix) for the full
 	 * document, or optional fragment for one section.
 	 * Empty until
 	 * run_post_exec finishes.

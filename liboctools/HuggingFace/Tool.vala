@@ -64,8 +64,8 @@ read the help output.""";
 		}
 
 		/**
-		 * {@link OLLMchat.Tool.WrapInterface} entry point; {{{huggingface_hub}}} is not
-		 * wrappable — {@link OLLMtools.ToolBuilder} must not clone it for a {{{.tool}}} alias.
+		 * {@link OLLMchat.Tool.WrapInterface} entry point; ''huggingface_hub'' is not
+		 * wrappable — {@link OLLMtools.ToolBuilder} must not clone it for a ''.tool'' alias.
 		 *
 		 * @throws Error always {@link GLib.IOError.NOT_SUPPORTED}
 		 */

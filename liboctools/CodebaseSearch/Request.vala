@@ -22,7 +22,7 @@ namespace OLLMtools.CodebaseSearch
 	 * Request handler for codebase search operations.
 	 * 
 	 * Handles codebase search requests from LLM function calls. Validates
-	 * parameters, calls {{{Codebase.search}}} on {{{ollmfilesd}}}, and
+	 * parameters, calls ''Codebase.search'' on ''ollmfilesd'', and
 	 * returns daemon-formatted markdown for LLM consumption.
 	 * 
 	 * Supports filtering by language and element_type, and validates

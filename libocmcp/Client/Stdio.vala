@@ -25,18 +25,18 @@ namespace OLLMmcp.Client
 	 * == Overlay writes (known gap) ==
 	 *
 	 * Sandboxed stdio MCP is spawned inside a bwrap overlay with project write
-	 * roots (default {{{allow_writes}}} → {{{project}}}). Unlike the
-	 * {{{run_command}}} tool, this path does ''not'' run
-	 * {{{overlay.scan.run()}}} or apply changes to the live project index.
+	 * roots (default ''allow_writes'' → ''project''). Unlike the
+	 * ''run_command'' tool, this path does ''not'' run
+	 * ''overlay.scan.run()'' or apply changes to the live project index.
 	 *
 	 *  * {@link OLLMbwrap.RunSeccomp} only adds syscall ''evidence'' strings to tool output
 	 *  * File creates/edits/deletes inside the overlay are ''not'' merged to disk
 	 *  * On {@link disconnect}, overlay upper-layer changes are ''probably lost''
 	 *
 	 * ''TODO:'' After disconnect (or per tool call), run overlay scan +
-	 * {@link OLLMbwrap.FileVerification} report-back — same pipeline as {{{run_command}}}
-	 * / {{{libocbwrap}}} — so MCP filesystem changes persist and update the
-	 * project index (RPC-backed once on {{{ollmfilesd}}}).
+	 * {@link OLLMbwrap.FileVerification} report-back — same pipeline as ''run_command''
+	 * / ''libocbwrap'' — so MCP filesystem changes persist and update the
+	 * project index (RPC-backed once on ''ollmfilesd'').
 	 */
 	public class Stdio : Base
 	{
@@ -91,7 +91,7 @@ namespace OLLMmcp.Client
 		/**
 		 * Tear down the MCP subprocess.
 		 *
-		 * ''TODO:'' Run {{{bubble.overlay.scan.run()}}} (and cleanup) here so
+		 * ''TODO:'' Run ''bubble.overlay.scan.run()'' (and cleanup) here so
 		 * overlay writes are applied before exit — see class docblock.
 		 */
 		public override void disconnect()

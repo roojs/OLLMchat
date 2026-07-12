@@ -101,7 +101,7 @@ namespace OLLMchat.History
 		public signal void tool_message(OLLMchat.Message message);
 
 		/**
-		 * Daemon {{{event.*}}} or client {{{client.*}}} activity for the status bar.
+		 * Daemon ''event.*'' or client ''client.*'' activity for the status bar.
 		 */
 		public signal void notification(OLLMrpc.Notification notif);
 		

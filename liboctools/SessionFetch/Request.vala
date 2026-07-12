@@ -19,7 +19,7 @@
 namespace OLLMtools.SessionFetch
 {
 	/**
-	 * Request handler for {{{session_fetch}}} tool calls.
+	 * Request handler for ''session_fetch'' tool calls.
 	 */
 	public class Request : OLLMchat.Tool.RequestBase
 	{

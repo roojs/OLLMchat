@@ -483,7 +483,7 @@ namespace Markdown
 
 		/**
 		 * Checks if we're at a closing fenced code fence. Uses fence_open so the closing
-		 * line must start with the same whole match that opened the block {{{(e.g. "   ```")}}}
+		 * line must start with the same whole match that opened the block (e.g. three backticks with optional leading spaces)
 		 *
 		 * @param chunk The text chunk
 		 * @param chunk_pos The position to check; may be advanced by 3 when indented closing line (fence_open has "   " prefix and line starts with "   ")

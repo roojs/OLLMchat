@@ -19,7 +19,7 @@ namespace OLLMtools.WriteFile
 		/**
 		 * Literal excerpt to find in an existing file when using
 		 * search/replace mode. Mutually exclusive with ast_path line
-		 * range and complete_file; use with {{{content}}} as the
+		 * range and complete_file; use with ''content'' as the
 		 * replacement. Empty when not using this mode.
 		 */
 		public string search_text { get; set; default = ""; }

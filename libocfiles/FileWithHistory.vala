@@ -19,7 +19,7 @@
 namespace OLLMfiles
 {
 	/**
-	 * Pending-approval list row ({{{FileWithHistory}}} wire).
+	 * Pending-approval list row (''FileWithHistory'' wire).
 	 * Popover display fields copied from {@link FileBase} — not a tree node.
 	 */
 	public class FileWithHistory : Object, OLLMrpc.Bin.Serializable

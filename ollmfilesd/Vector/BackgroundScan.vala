@@ -18,7 +18,7 @@ namespace OLLMfilesd.Vector {
         internal bool queue_processing { get; private set; default = false; }
         /**
          * When true, {@link startQueue} exits after the current file; queue entries
-         * are preserved. Set by {{{Codebase.stop}}}; cleared by {{{Codebase.start}}}.
+         * are preserved. Set by ''Codebase.stop''; cleared by ''Codebase.start''.
          */
         public bool stop_requested { get; set; default = false; }
         private Indexer? indexer = null;

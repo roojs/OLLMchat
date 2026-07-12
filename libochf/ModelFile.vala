@@ -19,17 +19,17 @@
 namespace OLLMhf
 {
 	/**
-	 * One file entry from Hub model {{{siblings[]}}} (typically a {{{.gguf}}}).
+	 * One file entry from Hub model ''siblings[]'' (typically a ''.gguf'').
 	 */
 	public class ModelFile : GLib.Object, OLLMrpc.Bin.Serializable
 	{
-		/** Repo-relative path (Hub {{{rfilename}}}). */
+		/** Repo-relative path (Hub ''rfilename''). */
 		public string rfilename { get; set; default = ""; }
 
-		/** File size in bytes (Hub {{{size}}} when present). */
+		/** File size in bytes (Hub ''size'' when present). */
 		public int64 size { get; set; default = 0; }
 
-		/** Quantization label when known (e.g. {{{Q4_K_M}}}). */
+		/** Quantization label when known (e.g. ''Q4_K_M''). */
 		public string quant_label { get; set; default = ""; }
 
 		/** Bytes written so far for this sibling. */
@@ -51,9 +51,9 @@ namespace OLLMhf
 		/**
 		 * Resolve URL for downloading this file from the Hub CDN.
 		 *
-		 * @param id       Hub repo id {{{author/name}}}
-		 * @param revision Branch or commit (default {{{main}}})
-		 * @return         Hub CDN URL {{{huggingface.co/MODEL_ID/resolve/REVISION/RFILENAME}}}
+		 * @param id       Hub repo id ''author/name''
+		 * @param revision Branch or commit (default ''main'')
+		 * @return         Hub CDN URL ''huggingface.co/MODEL_ID/resolve/REVISION/RFILENAME''
 		 *                 (HTTPS scheme prefix).
 		 */
 		public string to_url(string id, string revision = "main") {

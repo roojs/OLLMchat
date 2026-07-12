@@ -21,9 +21,9 @@ namespace OLLMchat.Call
 	/**
 	 * OpenAI-compatible chat completions API call.
 	 *
-	 * Uses {{{v1/chat/completions}}}. Request uses flat top-level params with
-	 * {{{Call.Options}}} as fallback (same pattern as {@link Completions}).
-	 * {{{format}}} / {{{format_obj}}} map to JSON key {{{response_format}}}.
+	 * Uses ''v1/chat/completions''. Request uses flat top-level params with
+	 * ''Call.Options'' as fallback (same pattern as {@link Completions}).
+	 * ''format'' / ''format_obj'' map to JSON key ''response_format''.
 	 * Non-streaming and streaming both return {@link Response.Chat}.
 	 */
 	public class ChatCompletions : ChatBase
@@ -33,8 +33,8 @@ namespace OLLMchat.Call
 		public double temperature { get; set; default = -1.0; }
 		public double top_p { get; set; default = -1.0; }
 		/**
-		 * Simple format hint: e.g. {{{"json"}}} maps to
-		 * {{{response_format}}} with type {{{json_object}}}.
+		 * Simple format hint: e.g. ''"json"'' maps to
+		 * ''response_format'' with type ''json_object''.
 		 */
 		public string format { get; set; default = ""; }
 		/**
@@ -62,7 +62,7 @@ namespace OLLMchat.Call
 		}
 
 		/**
-		 * Injects {{{response_format}}} from {@link format_obj} or {@link format}.
+		 * Injects ''response_format'' from {@link format_obj} or {@link format}.
 		 * Not a GObject property so {@link Json.gobject_serialize} does not emit it
 		 * by default.
 		 */

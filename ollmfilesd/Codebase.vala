@@ -19,7 +19,7 @@
 namespace OLLMfilesd
 {
 	/**
-	 * Server {{{Codebase.*}}} wire handlers — vector search, per-file metadata,
+	 * Server ''Codebase.*'' wire handlers — vector search, per-file metadata,
 	 * debug embedding dump, database reset, and background index queue control.
 	 *
 	 * Registered once in {@link OllmfilesdApplication}; params are
@@ -56,25 +56,25 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * {{{Codebase.search}}} — semantic vector search over the active project.
+		 * ''Codebase.search'' — semantic vector search over the active project.
 		 *
-		 * Reply {{{msg}}} with markdown when {{{format=tool}}}, or explanatory
-		 * text when filters match nothing. {{{response.error}}} when the client
+		 * Reply ''msg'' with markdown when ''format=tool'', or explanatory
+		 * text when filters match nothing. ''response.error'' when the client
 		 * cannot know the outcome (e.g. no active project).
 		 *
-		 *  * Domain / daemon state → {{{response.error}}} or intentional {{{msg}}}
+		 *  * Domain / daemon state → ''response.error'' or intentional ''msg''
 		 *  * Client API bugs → propagate; no catch-all on this signal
-		 *  * {{{manager.db}}} and {{{vector_db}}} set after init — no null guards
+		 *  * ''manager.db'' and ''vector_db'' set after init — no null guards
 		 *
 		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
 		 */
 		public signal void call_search(OLLMrpc.Request request);
 
 		/**
-		 * {{{Codebase.file_info}}} — {@link SQT.VectorMetadata} rows for one file.
+		 * ''Codebase.file_info'' — {@link SQT.VectorMetadata} rows for one file.
 		 *
-		 * Params: {@link VectorParams.file_path}. Reply: {{{result}}} list (empty
-		 * when the file is missing or not indexed) and {{{msg}}} row count — not an
+		 * Params: {@link VectorParams.file_path}. Reply: ''result'' list (empty
+		 * when the file is missing or not indexed) and ''msg'' row count — not an
 		 * error.
 		 *
 		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
@@ -82,26 +82,26 @@ namespace OLLMfilesd
 		public signal void call_file_info(OLLMrpc.Request request);
 
 		/**
-		 * {{{Codebase.debug_get}}} — dump stored FAISS embedding for one AST path.
+		 * ''Codebase.debug_get'' — dump stored FAISS embedding for one AST path.
 		 *
-		 * Debug/admin only; CLI: {{{oc-vector-search --dump-vector=AST_PATH}}}.
+		 * Debug/admin only; CLI: ''oc-vector-search --dump-vector=AST_PATH''.
 		 * Params: {@link VectorParams.path}, {@link VectorParams.ast_path}.
-		 * Reply: {{{msg}}} with one float per line.
+		 * Reply: ''msg'' with one float per line.
 		 *
-		 *  * Domain misses → {{{response.error}}}
-		 *  * Caller must set {{{ast_path}}}; client API bugs propagate
+		 *  * Domain misses → ''response.error''
+		 *  * Caller must set ''ast_path''; client API bugs propagate
 		 *
 		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
 		 */
 		public signal void call_debug_get(OLLMrpc.Request request);
 
 		/**
-		 * {{{Codebase.reset}}} — wipe FAISS file, vector metadata, and scan dates.
+		 * ''Codebase.reset'' — wipe FAISS file, vector metadata, and scan dates.
 		 *
-		 * CLI: {{{oc-vector-index --reset-database}}}. Reply {{{msg}}}: {{{ok}}}
-		 * on success. {{{response.error}}} when reset I/O fails.
+		 * CLI: ''oc-vector-index --reset-database''. Reply ''msg'': ''ok''
+		 * on success. ''response.error'' when reset I/O fails.
 		 *
-		 *  * Domain / I/O failure → {{{response.error}}}
+		 *  * Domain / I/O failure → ''response.error''
 		 *  * Client API bugs propagate; no catch-all on this signal
 		 *
 		 * @param request inbound RPC; {@link VectorParams} unused
@@ -109,17 +109,17 @@ namespace OLLMfilesd
 		public signal void call_reset(OLLMrpc.Request request);
 
 		/**
-		 * {{{Codebase.start}}} — enqueue stale files from DB and run the queue.
+		 * ''Codebase.start'' — enqueue stale files from DB and run the queue.
 		 * Clears {@link OLLMfilesd.Vector.BackgroundScan.stop_requested} from a
-		 * prior {{{Codebase.stop}}}. {{{VectorParams.path}}} must already exist
-		 * (CLI scans via {{{ProjectManager.activate_project}}} first).
+		 * prior ''Codebase.stop''. ''VectorParams.path'' must already exist
+		 * (CLI scans via ''ProjectManager.activate_project'' first).
 		 *
 		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
 		 */
 		public signal void call_start(OLLMrpc.Request request);
 
 		/**
-		 * {{{Codebase.stop}}} — pause indexing after the current file; queue
+		 * ''Codebase.stop'' — pause indexing after the current file; queue
 		 * entries are preserved.
 		 *
 		 * @param request inbound RPC; {@link VectorParams} unused
@@ -226,7 +226,7 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * {{{Codebase.search}}} handler — filter {{{vector_metadata}}, run FAISS
+		 * ''Codebase.search'' handler — filter ''vector_metadata'', run FAISS
 		 * {@link OLLMvector2.Search}, reply markdown in {@link OLLMrpc.Response.msg}.
 		 *
 		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
@@ -490,8 +490,8 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * {{{Codebase.debug_get}}} handler — resolve {{{ast_path}}} to
-		 * {{{vector_id}}, reconstruct from FAISS, reply one float per line in
+		 * ''Codebase.debug_get'' handler — resolve ''ast_path'' to
+		 * ''vector_id'', reconstruct from FAISS, reply one float per line in
 		 * {@link OLLMrpc.Response.msg}.
 		 *
 		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}

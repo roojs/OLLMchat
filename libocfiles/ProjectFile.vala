@@ -159,7 +159,7 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * CSS classes array for styling (e.g. {{{oc-recent}}} for recent files).
+		 * CSS classes array for styling (e.g. ''oc-recent'' for recent files).
 		 * Notifies when {@link is_recent} changes (via {@link File.last_viewed}).
 		 */
 		public string[] display_css {
