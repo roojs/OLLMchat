@@ -18,16 +18,41 @@
 
 namespace OLLMhf
 {
+	/** Hub tree row {{{lfs}}} metadata when present. */
+	public class ModelTreeLfs : GLib.Object, OLLMrpc.Bin.Serializable
+	{
+		public string oid { get; set; default = ""; }
+		public int64 size { get; set; default = 0; }
+		public int pointerSize { get; set; default = 0; }
+
+		public static void rpc_register() {
+			OLLMrpc.Bin.register("ModelTreeLfs", typeof(ModelTreeLfs));
+		}
+	}
+
 	/**
-	 * One file row from Hub {@code GET /api/models/{id}/tree/{rev}}.
+	 * One file row from Hub {{{GET /api/models/{id}/tree/{rev}}}.
 	 */
 	public class ModelTreeEntry : GLib.Object, OLLMrpc.Bin.Serializable
 	{
-		/** Repo-relative path (Hub {@code path}). */
+		/** Hub row kind: {{{file}}} or {{{directory}}} (wire {{{type}}}). */
+		public string reserved_property_type { get; set; default = ""; }
+
+		/** Git object id for the tree row. */
+		public string oid { get; set; default = ""; }
+
+		/** Repo-relative path (Hub {{{path}}}). */
 		public string path { get; set; default = ""; }
 
 		/** File size in bytes when present on the tree row. */
 		public int64 size { get; set; default = 0; }
+
+		public ModelTreeLfs lfs {
+			get; set; default = new ModelTreeLfs();
+		}
+
+		/** Xet content hash when present on the tree row. */
+		public string xetHash { get; set; default = ""; }
 
 		public static void rpc_register() {
 			OLLMrpc.Bin.register("ModelTreeEntry", typeof(ModelTreeEntry));
@@ -38,7 +63,7 @@ namespace OLLMhf
 	 * Decode-only wrapper for Hub repo tree listings.
 	 *
 	 * Hub returns a JSON array; {@link OLLMrpc.Client} wraps it as
-	 * {@code {"items": […]}} before bin decode.
+	 * {{{{"items": […]}}}} before bin decode.
 	 */
 	public class ModelTreeArray : GLib.Object, OLLMrpc.Bin.Serializable
 	{

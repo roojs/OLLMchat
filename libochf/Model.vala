@@ -168,9 +168,9 @@ namespace OLLMhf
 		}
 
 		/**
-		 * Fetch {@code GET /api/models/{id}/tree/{rev}} and fill missing sibling sizes.
+		 * Fetch {{{GET /api/models/{id}/tree/{rev}}} and fill missing sibling sizes.
 		 *
-		 * Models detail siblings often omit size; tree rows use {@code path} + size.
+		 * Models detail siblings often omit size; tree rows use {{{path}}} + size.
 		 */
 		public async void fetch_siblings(
 			OLLMrpc.Client rpc,

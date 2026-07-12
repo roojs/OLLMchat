@@ -25,8 +25,8 @@
  * {@link Param.Search} on {@link OLLMrpc.Request.param}. Detail requests put
  * the model ref in {@link OLLMrpc.Request.method} and use the default
  * {@link OLLMrpc.CallParam} (no query string). When Hub omits sibling
- * {@code size}, {@link Model.fetch_siblings} uses
- * {@code GET /api/models/{id}/tree/{rev}}.
+ * {{{size}}}, {@link Model.fetch_siblings} uses
+ * {{{GET /api/models/{id}/tree/{rev}}}.
  *
  * Call {@link rpc_register} once before the first Hub HTTP call so result wire
  * types are registered with {@link OLLMrpc.Bin}. {@link Param.Search} is not
@@ -51,6 +51,7 @@ namespace OLLMhf
 		ModelTransformersInfo.rpc_register();
 		ModelGguf.rpc_register();
 		ModelArray.rpc_register();
+		ModelTreeLfs.rpc_register();
 		ModelTreeEntry.rpc_register();
 		ModelTreeArray.rpc_register();
 	}

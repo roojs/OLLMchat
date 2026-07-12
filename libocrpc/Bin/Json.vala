@@ -28,6 +28,10 @@ namespace OLLMrpc.Bin
 	 *
 	 * Any key starting with `*` is meta only and is stripped before bin encode.
 	 * Type aliases must be registered via {@link register} before use.
+	 *
+	 * In {@link Mode.AUTO}, JSON keys starting with `_` map to
+	 * `underscore_*` GObject properties; wire names that clash with GObject
+	 * (e.g. `type`) map to `reserved_property_*` properties on decode.
 	 */
 	public class Json : GLib.Object
 	{

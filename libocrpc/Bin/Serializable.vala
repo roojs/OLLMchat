@@ -75,10 +75,14 @@ namespace OLLMrpc.Bin
 		{
 			var val = GLib.Value(prop.value_type);
 			this.get_property(prop.name, ref val);
+			var tag = prop.name;
+			if ((ctx.mode & Mode.AUTO) != 0 && tag.has_prefix("reserved_property_")) {
+				tag = tag.substring(18).replace("_", "-");
+			}
 
 			switch (prop.value_type) {
 				case GLib.Type.STRING:
-					ctx.write_tag(prop.name);
+					ctx.write_tag(tag);
 					var s = val.get_string() != null ? val.get_string() : "";
 					if (s.length > 32767) {
 						ctx.out_stream.put_byte((uint8) GLib.Type.BOXED);
@@ -101,25 +105,25 @@ namespace OLLMrpc.Bin
 					return;
 
 				case GLib.Type.BOOLEAN:
-					ctx.write_tag(prop.name);
+					ctx.write_tag(tag);
 					ctx.out_stream.put_byte((uint8) GLib.Type.BOOLEAN);
 					ctx.out_stream.put_byte(val.get_boolean() ? 1 : 0);
 					return;
 
 				case GLib.Type.CHAR:
-					ctx.write_tag(prop.name);
+					ctx.write_tag(tag);
 					ctx.out_stream.put_byte((uint8) GLib.Type.CHAR);
 					ctx.out_stream.put_byte((uint8) val.get_schar());
 					return;
 
 				case GLib.Type.UCHAR:
-					ctx.write_tag(prop.name);
+					ctx.write_tag(tag);
 					ctx.out_stream.put_byte((uint8) GLib.Type.UCHAR);
 					ctx.out_stream.put_byte((uint8) val.get_uchar());
 					return;
 
 				case GLib.Type.INT:
-					ctx.write_tag(prop.name);
+					ctx.write_tag(tag);
 					ctx.out_stream.put_byte((uint8) GLib.Type.INT);
 					if (val.get_int() >= -128 && val.get_int() <= 127) {
 						ctx.out_stream.put_byte(1);
@@ -131,7 +135,7 @@ namespace OLLMrpc.Bin
 					return;
 
 				case GLib.Type.INT64:
-					ctx.write_tag(prop.name);
+					ctx.write_tag(tag);
 					ctx.out_stream.put_byte((uint8) GLib.Type.INT64);
 					if (val.get_int64() >= -128 && val.get_int64() <= 127) {
 						ctx.out_stream.put_byte(1);
@@ -143,7 +147,7 @@ namespace OLLMrpc.Bin
 					return;
 
 				case GLib.Type.UINT:
-					ctx.write_tag(prop.name);
+					ctx.write_tag(tag);
 					ctx.out_stream.put_byte((uint8) GLib.Type.UINT);
 					if (val.get_uint() <= 255) {
 						ctx.out_stream.put_byte(1);
@@ -155,7 +159,7 @@ namespace OLLMrpc.Bin
 					return;
 
 				case GLib.Type.UINT64:
-					ctx.write_tag(prop.name);
+					ctx.write_tag(tag);
 					ctx.out_stream.put_byte((uint8) GLib.Type.UINT64);
 					if (val.get_uint64() <= 255) {
 						ctx.out_stream.put_byte(1);
@@ -169,7 +173,7 @@ namespace OLLMrpc.Bin
 
 			if (prop.value_type == typeof(string[])) {
 				var arr = (string[]) val;
-				ctx.write_tag(prop.name);
+				ctx.write_tag(tag);
 				ctx.out_stream.put_byte((uint8) GLib.Type.STRING | 0x80);
 				if (arr.length < 128) {
 					ctx.out_stream.put_byte((uint8) arr.length);
@@ -192,7 +196,7 @@ namespace OLLMrpc.Bin
 			}
 
 			if (prop.value_type.is_a(GLib.Type.ENUM)) {
-				ctx.write_tag(prop.name);
+				ctx.write_tag(tag);
 				ctx.out_stream.put_byte((uint8) GLib.Type.ENUM);
 				if ((int64) val.get_enum() >= -128 && (int64) val.get_enum() <= 127) {
 					ctx.out_stream.put_byte(1);
@@ -204,7 +208,7 @@ namespace OLLMrpc.Bin
 				return;
 			}
 			if (prop.value_type.is_a(GLib.Type.FLAGS)) {
-				ctx.write_tag(prop.name);
+				ctx.write_tag(tag);
 				ctx.out_stream.put_byte((uint8) GLib.Type.FLAGS);
 				if ((uint64) val.get_flags() <= 255) {
 					ctx.out_stream.put_byte(1);
@@ -226,7 +230,7 @@ namespace OLLMrpc.Bin
 						val.get_object().get_type().name()
 					);
 				}
-				ctx.write_tag(prop.name);
+				ctx.write_tag(tag);
 				ctx.write_gtype(val.get_object().get_type());
 				((Serializable) val.get_object()).bin_write(ctx);
 				return;
@@ -257,6 +261,11 @@ namespace OLLMrpc.Bin
 				if (prop == null && (ctx.mode & (Mode.AUTO | Mode.AUTO_STR)) != 0) {
 					prop = this.get_class().find_property(
 						prop_name.replace("-", "_")
+					);
+				}
+				if (prop == null && (ctx.mode & (Mode.AUTO | Mode.AUTO_STR)) != 0) {
+					prop = this.get_class().find_property(
+						"reserved_property_" + prop_name.replace("-", "_")
 					);
 				}
 				if (prop == null) {

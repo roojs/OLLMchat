@@ -194,10 +194,23 @@ namespace OLLMtools.HuggingFace
 			}
 
 			if (matched != this.files.size) {
-				var err = "ERROR: One or more requested files were not found in model siblings.";
-				err += "\nRepo has "
-					+ this.download_model.siblings.size.to_string()
-					+ " sibling file(s) — call detail to list exact filenames.";
+				var missing = new Gee.ArrayList<string>();
+				foreach (var req in this.files) {
+					var found = false;
+					foreach (var sibling in this.download_model.siblings) {
+						if (sibling.rfilename == req) {
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						missing.add(req);
+					}
+				}
+				var err = "ERROR: Requested file(s) not found in this repo:\n- "
+					+ string.joinv("\n- ", missing.to_array())
+					+ "\n\nAvailable files:\n\n"
+					+ this.download_model.to_markdown();
 				this.agent.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced(
 						"text.oc-frame-danger.collapsed Hugging Face Hub: download",
