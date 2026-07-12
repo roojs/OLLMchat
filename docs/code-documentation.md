@@ -124,6 +124,12 @@ them as taglet delimiters and truncates the rendered output (e.g. Hub path templ
 like `/api/models/{id}/tree/{rev}` break). Use ALL_CAPS placeholders instead
 (`MODEL_ID`, `REVISION`) or describe the shape in prose.
 
+**Do not put `//` inside `{{{ … }}}`** — valadoc treats `//` as italic markup even
+inside code literals, which breaks URL schemes (`tcp://`, `https://`, `resource://`,
+`task://`). Split the literal or describe the scheme in prose, e.g. host
+`{{{huggingface.co}}}` with an HTTPS prefix, or TCP endpoint `{{{127.0.0.1:4141}}}`
+with a `{{{tcp:}}}` prefix (two slashes after the colon).
+
 ## Links
 
 - `[[http://example.com|label]]` → link with text “label”
@@ -232,6 +238,21 @@ CI runs the same target. Keep these in sync when you change the tree:
 
 After docblock or valadoc-list edits, run `ninja -C build docs/valadoc` locally —
 errors are stricter than the Vala compiler (invalid taglets, headline layout, etc.).
+
+**Post-build grep checks** (inline literals only — ignore multi-line `{{{ }}}` code
+samples that intentionally contain `//` comments):
+
+```bash
+# Broken URL schemes (// parsed as italic inside inline literals)
+rg 'main_comment' build/valadoc/ollmchat --glob '*.html' \
+  | rg -v '<br/>' \
+  | rg 'tcp:|https:|resource:|task:'
+
+# Curly braces inside triple-brace literals in source
+rg '\{\{\{[^}]*\{' --glob '*.vala'
+```
+
+Both commands should return no matches before merging docblock changes.
 
 ## Conventions in this project
 

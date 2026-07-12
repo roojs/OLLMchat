@@ -23,15 +23,15 @@ namespace OLLMrpc.Bin
 	 *
 	 * Wire aliases live in meta keys (not payload properties):
 	 *
-	 *  * `*type` on every object (`"Request"`, `"File"`, …)
-	 *  * `*array` + `items` on object-array wrappers
+	 *  * {{{*type}}} on every object ({{{Request}}}, {{{File}}}, …)
+	 *  * {{{*array}}} + {{{items}}} on object-array wrappers
 	 *
-	 * Any key starting with `*` is meta only and is stripped before bin encode.
+	 * Any key starting with {{{*}}} is meta only and is stripped before bin encode.
 	 * Type aliases must be registered via {@link register} before use.
 	 *
-	 * In {@link Mode.AUTO}, JSON keys starting with `_` map to
-	 * `underscore_*` GObject properties; wire names that clash with GObject
-	 * (e.g. `type`) map to `reserved_property_*` properties on decode.
+	 * In {@link Mode.AUTO}, JSON keys starting with {{{_}}} map to
+	 * {{{underscore_*}}} GObject properties; wire names that clash with GObject
+	 * (e.g. {{{type}}}) map to {{{reserved_property_*}}} properties on decode.
 	 */
 	public class Json : GLib.Object
 	{

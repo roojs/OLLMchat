@@ -14,7 +14,7 @@
 namespace OLLMrpc
 {
 	/**
-	 * Wire error object (`code`, `message`).
+	 * Wire error object ({{{code}}}, {{{message}}}).
 	 *
 	 * Not {@link GLib.Error} — {@link GLib.Object} for bin encode/decode.
 	 * {@link code} is the numeric error code (a {@link RpcErrorCode} value).

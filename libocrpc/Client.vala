@@ -38,9 +38,10 @@ namespace OLLMrpc
 	 * {@link connect} builds {@link ClientBoot} from this client's
 	 * {@link data_dir}, {@link debug}, and {@link pass_data_dir}, runs
 	 * {@link ClientBoot.ensure_daemon}, then {@link ClientBoot.connect}.
-	 * {{{tcp://}}} values in {@link socket_path} use TCP; otherwise a Unix
-	 * socket path is used (Unix desktop only — Windows/Android require
-	 * {{{tcp://}}}).
+	 * A {{{tcp:}}} URL prefix (two slashes, then host:port) in
+	 * {@link socket_path} selects TCP; otherwise a Unix
+	 * socket path is used (Unix desktop only — Windows/Android require a
+	 * TCP URL prefix).
 	 *
 	 * A socket {@link GLib.IOChannel} watch dispatches inbound
 	 * {@link Notification} messages and resolves queued {@link Response}
@@ -134,7 +135,7 @@ namespace OLLMrpc
 		 * @param data_dir Root directory for daemon DB, socket, and pid file.
 		 *   When empty, {@link pid} and {@link socket_path} are set from {@link pid}
 		 *   and {@link socket_name} verbatim (e.g. a full path or
-		 *   {{{tcp://127.0.0.1:4141}}})
+		 *   TCP endpoint {{{127.0.0.1:4141}}} with the {{{tcp:}}} URL prefix)
 		 * @param pid Basename of the pid file within {@link data_dir}, or the full
 		 *   pid path when {@link data_dir} is empty
 		 * @param socket_name Basename of the Unix socket within {@link data_dir},

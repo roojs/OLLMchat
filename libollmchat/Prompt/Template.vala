@@ -20,7 +20,8 @@ namespace OLLMchat.Prompt
 {
 	/**
 	 * Base prompt template: load from resource URI or filesystem, fill placeholders.
-	 * Subclasses set source and base_dir (e.g. {{{resource:// + /ocvector}}}, or filesystem path).
+	 * Subclasses set source and base_dir (e.g. GResource URI {{{resource:}}}
+	 * plus {{{/ocvector}}}, or filesystem path).
 	 */
 	public class Template : Object
 	{
@@ -38,7 +39,8 @@ namespace OLLMchat.Prompt
 
 		/**
 		 * Returns true if the template exists and can be loaded.
-		 * For source starting with {{{"resource://"}}}, assumes always exists; otherwise checks filesystem.
+		 * For source starting with the {{{resource:}}} scheme prefix, assumes always
+		 * exists; otherwise checks filesystem.
 		 */
 		public bool exists() throws GLib.Error
 		{

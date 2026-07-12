@@ -19,7 +19,8 @@
 namespace OLLMfilesd.Vector
 {
 	/**
-	 * Prompt template that loads from ocvector GResource ({{{resource:///ocvector/...}}}).
+	 * Prompt template that loads from ocvector GResource ({{{resource:}}} scheme
+	 * plus {{{/ocvector/...}}}).
 	 */
 	public class PromptTemplate : OLLMchat.Prompt.Template
 	{
