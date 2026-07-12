@@ -31,7 +31,7 @@ namespace OLLMhf
 	}
 
 	/**
-	 * One file row from Hub {{{GET /api/models/{id}/tree/{rev}}}.
+	 * One file row from Hub {{{GET /api/models/MODEL_ID/tree/REVISION}}}.
 	 */
 	public class ModelTreeEntry : GLib.Object, OLLMrpc.Bin.Serializable
 	{
@@ -63,7 +63,7 @@ namespace OLLMhf
 	 * Decode-only wrapper for Hub repo tree listings.
 	 *
 	 * Hub returns a JSON array; {@link OLLMrpc.Client} wraps it as
-	 * {{{{"items": […]}}}} before bin decode.
+	 * a JSON object with an {{{items}}} array before bin decode.
 	 */
 	public class ModelTreeArray : GLib.Object, OLLMrpc.Bin.Serializable
 	{

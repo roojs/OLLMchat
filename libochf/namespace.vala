@@ -26,7 +26,7 @@
  * the model ref in {@link OLLMrpc.Request.method} and use the default
  * {@link OLLMrpc.CallParam} (no query string). When Hub omits sibling
  * {{{size}}}, {@link Model.fetch_siblings} uses
- * {{{GET /api/models/{id}/tree/{rev}}}.
+ * {{{GET /api/models/MODEL_ID/tree/REVISION}}}.
  *
  * Call {@link rpc_register} once before the first Hub HTTP call so result wire
  * types are registered with {@link OLLMrpc.Bin}. {@link Param.Search} is not

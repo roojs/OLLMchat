@@ -119,7 +119,10 @@ and as blocks. Valadoc does **not** support Javadoc-style `{@code …}` (CI fail
 | `` `backticks` `` | block quote | Not for code — use `{{{ }}}` |
 
 Avoid bare `{` in running text (starts taglets like `{@link}`). Rephrase or wrap in
-`{{{ }}}`.
+`{{{ }}}`. **Inside `{{{ … }}}` literals, do not use `{` or `}`** — valadoc treats
+them as taglet delimiters and truncates the rendered output (e.g. Hub path templates
+like `/api/models/{id}/tree/{rev}` break). Use ALL_CAPS placeholders instead
+(`MODEL_ID`, `REVISION`) or describe the shape in prose.
 
 ## Links
 
@@ -127,6 +130,13 @@ Avoid bare `{` in running text (starts taglets like `{@link}`). Rephrase or wrap
 - `[[http://example.com]]` → bare URL
 - `{@link SymbolName}` → link to a Vala symbol (class, method, property)
 - `{@inheritDoc}` → inherit description from parent (e.g. overridden method)
+
+**Package overview wiki (`docs/valadoc-wiki/index.valadoc`):** Valadoc does **not**
+resolve relative `[[Page.html|label]]` wiki links in the generated summary body. Use
+**full URLs** to the published GitHub Pages docs, e.g.
+`[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.html|OLLMchat]]`. Keep links
+aligned with symbols that exist in `docs/meson.build` (remove stale pages when classes
+are deleted). Sidebar navigation is generated separately and still uses relative paths.
 
 ## Tables
 

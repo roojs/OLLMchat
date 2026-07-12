@@ -34,7 +34,7 @@ namespace OLLMchat.Call
 		public double top_p { get; set; default = -1.0; }
 		/**
 		 * Simple format hint: e.g. {{{"json"}}} maps to
-		 * {{{response_format: { type: json_object }}}}.
+		 * {{{response_format}}} with type {{{json_object}}}.
 		 */
 		public string format { get; set; default = ""; }
 		/**

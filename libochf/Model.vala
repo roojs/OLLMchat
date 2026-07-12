@@ -168,7 +168,7 @@ namespace OLLMhf
 		}
 
 		/**
-		 * Fetch {{{GET /api/models/{id}/tree/{rev}}} and fill missing sibling sizes.
+		 * Fetch {{{GET /api/models/MODEL_ID/tree/REVISION}}} and fill missing sibling sizes.
 		 *
 		 * Models detail siblings often omit size; tree rows use {{{path}}} + size.
 		 */

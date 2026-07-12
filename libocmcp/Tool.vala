@@ -20,7 +20,7 @@ namespace OLLMmcp
 	/**
 	 * One MCP tool exposed to the agent as {@link OLLMchat.Tool.BaseTool}.
 	 *
-	 * Tool name is {{{mcp:{server_id}:{tool_name}}}}; execution delegates to
+	 * Tool name is {{{mcp:SERVER_ID:TOOL_NAME}}}; execution delegates to
 	 * the MCP {@link Client.Base} for this server.
 	 */
 	public class Tool : OLLMchat.Tool.BaseTool

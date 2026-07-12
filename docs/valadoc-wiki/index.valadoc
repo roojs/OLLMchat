@@ -1,77 +1,105 @@
 == OLLMchat API - Package Overview ==
 
-This documentation covers the OLLMchat application and its libraries. 
+This documentation covers the OLLMchat application and its libraries.
 
 == Application ==
 
-* libollmapp — namespace: ''[[OLLMapp.html|OLLMapp]]''. Main application: window, settings dialogs. Entry point and window management.
+* libollmapp — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMapp.html|OLLMapp]]''. Main application: window, settings dialogs. Entry point and window management.
 
-  * ''[[OLLMapp.SettingsDialog.html|SettingsDialog]]'' — ''[[OLLMapp.SettingsDialog.MainDialog.html|MainDialog]]'', ''[[OLLMapp.SettingsDialog.ConnectionsPage.html|ConnectionsPage]]'', ''[[OLLMapp.SettingsDialog.ModelsPage.html|ModelsPage]]'', ''[[OLLMapp.SettingsDialog.ProjectsPage.html|ProjectsPage]]'', ''[[OLLMapp.SettingsDialog.ToolsPage.html|ToolsPage]]''. ''[[OLLMapp.SettingsDialog.Rows.html|Rows]]'' — row widgets for settings.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMapp.SettingsDialog.html|SettingsDialog]]'' — ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMapp.SettingsDialog.MainDialog.html|MainDialog]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMapp.SettingsDialog.ConnectionsPage.html|ConnectionsPage]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMapp.SettingsDialog.ModelsPage.html|ModelsPage]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMapp.SettingsDialog.ProjectsPage.html|ProjectsPage]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMapp.SettingsDialog.ToolsPage.html|ToolsPage]]''. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMapp.SettingsDialog.Rows.html|Rows]]'' — row widgets for settings.
 
 == Core libraries ==
 
-* libollmchat — namespace: ''[[OLLMchat.html|OLLMchat]]''. LLM chat client: Ollama/OpenAI-compatible API, tool calling, streaming, history, and configuration without GTK.
+* libollmchat — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.html|OLLMchat]]''. LLM chat client: Ollama/OpenAI-compatible API, tool calling, streaming, history, and configuration without GTK.
 
-  * ''[[OLLMchat.Client.html|Client]]'' — API communication and chat entry point. ''[[OLLMchat.Message.html|Message]]'' — chat message representation.
-  * ''[[OLLMchat.Call.html|Call]]'' — API call implementations. ''[[OLLMchat.Call.Base.html|Base]]'', ''[[OLLMchat.Call.Chat.html|Chat]]'', ''[[OLLMchat.Call.Embed.html|Embed]]'', ''[[OLLMchat.Call.Models.html|Models]]'', ''[[OLLMchat.Call.Create.html|Create]]'', ''[[OLLMchat.Call.Delete.html|Delete]]'', ''[[OLLMchat.Call.Pull.html|Pull]]'', ''[[OLLMchat.Call.Version.html|Version]]''.
-  * ''[[OLLMchat.Response.html|Response]]'' — Response types for API results. ''[[OLLMchat.Response.Base.html|Base]]'', ''[[OLLMchat.Response.Chat.html|Chat]]'', ''[[OLLMchat.Response.CallFunction.html|CallFunction]]'', ''[[OLLMchat.Response.ToolCall.html|ToolCall]]''.
-  * ''[[OLLMchat.Tool.html|Tool]]'' — Function calling (tools, params, requests). ''[[OLLMchat.Tool.BaseTool.html|BaseTool]]'', ''[[OLLMchat.Tool.Function.html|Function]]'', ''[[OLLMchat.Tool.Param.html|Param]]'', ''[[OLLMchat.Tool.RequestBase.html|RequestBase]]''.
-  * ''[[OLLMchat.History.html|History]]'' — Session persistence and list. ''[[OLLMchat.History.Manager.html|Manager]]'', ''[[OLLMchat.History.Session.html|Session]]'', ''[[OLLMchat.History.SessionBase.html|SessionBase]]''.
-  * ''[[OLLMchat.Settings.html|Settings]]'' — Configuration (connections, models, usage). ''[[OLLMchat.Settings.Connection.html|Connection]]'', ''[[OLLMchat.Settings.Config1.html|Config1]]'', ''[[OLLMchat.Settings.Config2.html|Config2]]'', ''[[OLLMchat.Settings.AvailableModels.html|AvailableModels]]'', ''[[OLLMchat.Settings.ModelUsage.html|ModelUsage]]''.
-  * ''[[OLLMchat.Agent.html|Agent]]'' — Agent interface and implementations. ''[[OLLMchat.Agent.Interface.html|Interface]]'', ''[[OLLMchat.Agent.Base.html|Base]]'', ''[[OLLMchat.Agent.Factory.html|Factory]]'', ''[[OLLMchat.Agent.JustAsk.html|JustAsk]]'', ''[[OLLMchat.Agent.JustAskFactory.html|JustAskFactory]]''.
-  * ''[[OLLMchat.Prompt.html|Prompt]]'' — Prompt templates for agents. ''[[OLLMchat.Prompt.Template.html|Template]]''.
-  * ''[[OLLMchat.ChatPermission.html|ChatPermission]]'' — Permission provider for tool access. ''[[OLLMchat.ChatPermission.Provider.html|Provider]]'', ''[[OLLMchat.ChatPermission.Dummy.html|Dummy]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Client.html|Client]]'' — API communication and chat entry point. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Message.html|Message]]'' — chat message representation.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Call.html|Call]]'' — API call implementations. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Call.Base.html|Base]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Call.Chat.html|Chat]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Call.Embed.html|Embed]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Call.Models.html|Models]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Call.Create.html|Create]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Call.Delete.html|Delete]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Call.Pull.html|Pull]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Call.Version.html|Version]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Response.html|Response]]'' — Response types for API results. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Response.Base.html|Base]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Response.Chat.html|Chat]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Response.CallFunction.html|CallFunction]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Response.ToolCall.html|ToolCall]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Tool.html|Tool]]'' — Function calling (tools, params, requests). ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Tool.BaseTool.html|BaseTool]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Tool.Function.html|Function]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Tool.Param.html|Param]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Tool.RequestBase.html|RequestBase]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.History.html|History]]'' — Session persistence and list. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.History.Manager.html|Manager]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.History.Session.html|Session]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.History.SessionBase.html|SessionBase]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Settings.html|Settings]]'' — Configuration (connections, models, usage). ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Settings.Connection.html|Connection]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Settings.Config2.html|Config2]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Settings.ConnectionModels.html|ConnectionModels]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Settings.ModelUsage.html|ModelUsage]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Agent.html|Agent]]'' — Agent interface and implementations. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Agent.Interface.html|Interface]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Agent.Base.html|Base]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Agent.Factory.html|Factory]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Agent.JustAsk.html|JustAsk]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Agent.JustAskFactory.html|JustAskFactory]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Prompt.html|Prompt]]'' — Prompt templates for agents. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Prompt.Template.html|Template]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.ChatPermission.html|ChatPermission]]'' — Permission provider for tool access. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.ChatPermission.Provider.html|Provider]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.ChatPermission.Dummy.html|Dummy]]''.
 
-* liboctools — namespace: ''[[OLLMtools.html|OLLMtools]]''. Built-in tools; registered via ''[[OLLMchat.Tool.html|Tool]]'' and used by the chat/agent stack.
+* liboctools — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.html|OLLMtools]]''. Built-in tools; registered via ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.Tool.html|Tool]]'' and used by the chat/agent stack.
 
-  * ''[[OLLMtools.ReadFile.html|ReadFile]]'' — Read file contents. ''[[OLLMtools.ReadFile.Tool.html|Tool]]'', ''[[OLLMtools.ReadFile.Request.html|Request]]''.
-  * ''[[OLLMtools.WriteFile.html|WriteFile]]'' — Write file contents. ''[[OLLMtools.WriteFile.Tool.html|Tool]]'', ''[[OLLMtools.WriteFile.Request.html|Request]]''.
-  * ''[[OLLMtools.RunCommand.html|RunCommand]]'' — Run shell commands. ''[[OLLMtools.RunCommand.Tool.html|Tool]]'', ''[[OLLMtools.RunCommand.Request.html|Request]]''.
-  * ''[[OLLMtools.WebFetch.html|WebFetch]]'' — Fetch URLs. ''[[OLLMtools.WebFetch.Tool.html|Tool]]'', ''[[OLLMtools.WebFetch.Request.html|Request]]''.
-  * ''[[OLLMtools.GoogleSearch.html|GoogleSearch]]'' — Web search. ''[[OLLMtools.GoogleSearch.Tool.html|Tool]]'', ''[[OLLMtools.GoogleSearch.Config.html|Config]]''.
-  * ''[[OLLMtools.Child.html|Child]]'' — Child/sub-agent tool. ''[[OLLMtools.Child.Tool.html|Tool]]'', ''[[OLLMtools.Child.Agent.html|Agent]]'', ''[[OLLMtools.Child.Factory.html|Factory]]''.
-  * ''[[OLLMtools.EditMode.html|EditMode]]'' — Edit-in-place streaming. ''[[OLLMtools.EditMode.Tool.html|Tool]]'', ''[[OLLMtools.EditMode.Stream.html|Stream]]''.
-  * ''[[OLLMtools.Registry.html|Registry]]'' — Tool registration.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.ReadFile.html|ReadFile]]'' — Read file contents. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.ReadFile.Tool.html|Tool]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.ReadFile.Request.html|Request]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.WriteFile.html|WriteFile]]'' — Write file contents. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.WriteFile.Tool.html|Tool]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.WriteFile.Request.html|Request]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.RunCommand.html|RunCommand]]'' — Run shell commands. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.RunCommand.Tool.html|Tool]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.RunCommand.Request.html|Request]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.WebFetch.html|WebFetch]]'' — Fetch URLs. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.WebFetch.Tool.html|Tool]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.WebFetch.Request.html|Request]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.GoogleSearch.html|GoogleSearch]]'' — Web search. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.GoogleSearch.Tool.html|Tool]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.GoogleSearch.Config.html|Config]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.CodebaseSearch.html|CodebaseSearch]]'' — Semantic codebase search. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.CodebaseSearch.Tool.html|Tool]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.CodebaseSearch.Request.html|Request]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.HuggingFace.html|HuggingFace]]'' — Hugging Face model search and download. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.HuggingFace.Tool.html|Tool]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.HuggingFace.Request.html|Request]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.Child.html|Child]]'' — Child/sub-agent tool. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.Child.Tool.html|Tool]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.Child.Agent.html|Agent]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.Child.Factory.html|Factory]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.EditMode.html|EditMode]]'' — Edit-in-place streaming. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.EditMode.Tool.html|Tool]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.EditMode.Stream.html|Stream]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMtools.Registry.html|Registry]]'' — Tool registration.
 
-* libocfiles — namespace: ''[[OLLMfiles.html|OLLMfiles]]''. File and project management: buffers, files, folders, project list, tree-sitter AST paths, diff/patch.
+* libocfiles — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.html|OLLMfiles]]''. File and project management: buffers, files, folders, project list, tree-sitter AST paths, diff/patch.
 
-  * ''[[OLLMfiles.File.html|File]]'', ''[[OLLMfiles.Folder.html|Folder]]'', ''[[OLLMfiles.FileBase.html|FileBase]]'', ''[[OLLMfiles.FileBuffer.html|FileBuffer]]'', ''[[OLLMfiles.ProjectManager.html|ProjectManager]]'', ''[[OLLMfiles.ProjectFiles.html|ProjectFiles]]'', ''[[OLLMfiles.Tree.html|Tree]]'', ''[[OLLMfiles.TreeBase.html|TreeBase]]''. ''[[OLLMfiles.Diff.Patch.html|Patch]]'', ''[[OLLMfiles.Diff.Differ.html|Differ]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.File.html|File]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.Folder.html|Folder]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.FileBase.html|FileBase]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.FileBuffer.html|FileBuffer]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.ProjectManager.html|ProjectManager]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.ProjectFiles.html|ProjectFiles]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.Tree.html|Tree]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.TreeBase.html|TreeBase]]''. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.Diff.Patch.html|Patch]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.Diff.Differ.html|Differ]]''.
 
-* libollmchatgtk — namespace: ''[[OLLMchatGtk.html|OLLMchatGtk]]''. Chat widget, history browser, tool permission UI, model usage list. Application-facing GTK pieces.
+* libollmchatgtk — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.html|OLLMchatGtk]]''. Chat widget, history browser, tool permission UI, model usage list. Application-facing GTK pieces.
 
-  * ''[[OLLMchatGtk.ChatWidget.html|ChatWidget]]'' — main chat container. ''[[OLLMchatGtk.ChatView.html|ChatView]]'' — message display. ''[[OLLMchatGtk.ChatInput.html|ChatInput]]'' — input area. ''[[OLLMchatGtk.ChatBar.html|ChatBar]]'' — top bar. ''[[OLLMchatGtk.HistoryBrowser.html|HistoryBrowser]]'' — session list. ''[[OLLMchatGtk.ChatPermission.html|ChatPermission]]'' — permission UI.
-  * ''[[OLLMchatGtk.List.html|List]]'' — Model usage list/filter/sort. ''[[OLLMchatGtk.List.ModelUsageFilter.html|ModelUsageFilter]]'', ''[[OLLMchatGtk.List.ModelUsageSort.html|ModelUsageSort]]'', ''[[OLLMchatGtk.List.ModelUsageFactory.html|ModelUsageFactory]]'', ''[[OLLMchatGtk.List.SortedList.html|SortedList]]''. ''[[OLLMchatGtk.Tools.html|Tools]]'' — Tool permission UI. ''[[OLLMchatGtk.Tools.Permission.html|Permission]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.ChatWidget.html|ChatWidget]]'' — main chat container. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.ChatView.html|ChatView]]'' — message display. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.ChatInput.html|ChatInput]]'' — input area. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.ChatBar.html|ChatBar]]'' — top bar. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.HistoryBrowser.html|HistoryBrowser]]'' — session list. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.ChatPermission.html|ChatPermission]]'' — permission UI.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.List.html|List]]'' — Model usage list/filter/sort. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.List.ModelUsageFilter.html|ModelUsageFilter]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.List.ModelUsageSort.html|ModelUsageSort]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.List.ModelUsageFactory.html|ModelUsageFactory]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.List.SortedList.html|SortedList]]''. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.Tools.html|Tools]]'' — Tool permission UI. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchatGtk.Tools.Permission.html|Permission]]''.
 
-== Semantic Search ==
+== RPC and daemons ==
 
-* libocvector — namespace: ''[[OLLMvector.html|OLLMvector]]''. Vector search and codebase indexing: embeddings, FAISS, indexing pipeline, semantic search.
+* libocrpc — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.html|OLLMrpc]]''. Binary RPC wire types, HTTP client, and transport for daemon communication.
 
-  * ''[[OLLMvector.Indexing.html|Indexing]]'' — Tree-sitter, analysis, vector build, indexer. ''[[OLLMvector.Indexing.Indexer.html|Indexer]]'', ''[[OLLMvector.Indexing.VectorBuilder.html|VectorBuilder]]'', ''[[OLLMvector.Indexing.Analysis.html|Analysis]]'', ''[[OLLMvector.Indexing.Tree.html|Tree]]''.
-  * ''[[OLLMvector.Search.html|Search]]'' — Semantic search over vectors. ''[[OLLMvector.Search.Search.html|Search]]'', ''[[OLLMvector.Search.SearchResult.html|SearchResult]]''.
-  * ''[[OLLMvector.Database.html|Database]]'' — Vector DB and metadata. ''[[OLLMvector.Index.html|Index]]'' — FAISS index.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Client.html|Client]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Request.html|Request]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Response.html|Response]]''. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Bin.html|Bin]]'' — serialization. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Transport.html|Transport]]'' — socket/TCP listeners.
+
+* ollmfilesd — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfilesd.html|OLLMfilesd]]''. Headless file and semantic-index daemon (RPC over stdio or TCP).
+
+== Semantic search ==
+
+* libocfiles (vector metadata) — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.SQT.html|OLLMfiles.SQT]]''. SQLite vector metadata used by the file daemon and codebase search.
+
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfiles.SQT.VectorMetadata.html|VectorMetadata]]'' — per-chunk embedding metadata rows.
+
+== Hugging Face and Ollama web ==
+
+* libochf — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMhf.html|OLLMhf]]''. Hugging Face Hub model catalog (search, detail, GGUF download).
+
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMhf.Model.html|Model]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMhf.ModelArray.html|ModelArray]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMhf.Download.html|Download]]''. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMhf.Param.html|Param]]'' — search query params.
+
+* libollamaweb — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OllamaWeb.html|OllamaWeb]]''. Live search and model metadata from ollama.com.
+
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OllamaWeb.Search.html|Search]]'' — ''[[https://roojs.github.io/OLLMchat/ollmchat/OllamaWeb.Search.Client.html|Client]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OllamaWeb.Search.Service.html|Service]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OllamaWeb.Model.html|Model]]''.
+
+== MCP and sandboxing ==
+
+* libocmcp — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMmcp.html|OLLMmcp]]''. MCP (Model Context Protocol) client: load servers, discover tools, expose as agent tools.
+
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMmcp.Loader.html|Loader]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMmcp.Registry.html|Registry]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMmcp.Tool.html|Tool]]''. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMmcp.Client.html|Client]]'' — stdio and HTTP transports.
+
+* libocbwrap — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMbwrap.html|OLLMbwrap]]''. Bubblewrap overlay and seccomp sandboxing for tool execution.
+
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMbwrap.Bubble.html|Bubble]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMbwrap.Overlay.html|Overlay]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMbwrap.RunSeccomp.html|RunSeccomp]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMbwrap.Scan.html|Scan]]''.
 
 == Markdown parsing and rendering ==
 
-* libocmarkdown — namespace: ''[[Markdown.html|Markdown]]''. Markdown parsing and document model. Used by skills and chat rendering.
+* libocmarkdown — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/Markdown.html|Markdown]]''. Markdown parsing and document model. Used by skills and chat rendering.
 
-  * ''[[Markdown.Parser.html|Parser]]'' — Parse markdown. ''[[Markdown.RenderBase.html|RenderBase]]'' — Base renderer.
-  * ''[[Markdown.Document.html|Document]]'' — Document tree (nodes, blocks, format). ''[[Markdown.Document.Document.html|Document]]'', ''[[Markdown.Document.Block.html|Block]]'', ''[[Markdown.Document.Node.html|Node]]'', ''[[Markdown.Document.Format.html|Format]]'', ''[[Markdown.Document.List.html|List]]'', ''[[Markdown.Document.Render.html|Render]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/Markdown.Parser.html|Parser]]'' — Parse markdown. ''[[https://roojs.github.io/OLLMchat/ollmchat/Markdown.RenderBase.html|RenderBase]]'' — Base renderer.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/Markdown.Document.html|Document]]'' — Document tree (nodes, blocks, format). ''[[https://roojs.github.io/OLLMchat/ollmchat/Markdown.Document.Document.html|Document]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/Markdown.Document.Block.html|Block]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/Markdown.Document.Node.html|Node]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/Markdown.Document.Format.html|Format]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/Markdown.Document.List.html|List]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/Markdown.Document.Render.html|Render]]''.
 
-* libocmarkdowngtk — namespace: ''[[MarkdownGtk.html|MarkdownGtk]]''. GTK markdown rendering for the chat UI.
+* libocmarkdowngtk — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/MarkdownGtk.html|MarkdownGtk]]''. GTK markdown rendering for the chat UI.
 
 == Coding and Skills ==
 
-* liboccoder — namespace: ''[[OLLMcoder.html|OLLMcoder]]''. Code-editor and task/skill layer: skills, tasks, GTK source view. Skill-based task creation, refinement, and execution.
+* liboccoder — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.html|OLLMcoder]]''. Code-editor and task/skill layer: skills, tasks, GTK source view. Skill-based task creation, refinement, and execution.
 
-  * ''[[OLLMcoder.Skill.html|Skill]]'' — Skill definitions, runner, manager, templates. ''[[OLLMcoder.Skill.Runner.html|Runner]]'', ''[[OLLMcoder.Skill.Manager.html|Manager]]'', ''[[OLLMcoder.Skill.Factory.html|Factory]]'', ''[[OLLMcoder.Skill.Definition.html|Definition]]'', ''[[OLLMcoder.Skill.PromptTemplate.html|PromptTemplate]]''.
-  * ''[[OLLMcoder.Task.html|Task]]'' — Task list, details, tool runs, steps, result parsing. ''[[OLLMcoder.Task.List.html|List]]'', ''[[OLLMcoder.Task.Details.html|Details]]'', ''[[OLLMcoder.Task.Tool.html|Tool]]'', ''[[OLLMcoder.Task.Step.html|Step]]'', ''[[OLLMcoder.Task.ResultParser.html|ResultParser]]''.
-  * ''[[OLLMcoder.Agent.html|Agent]]'' — Coding agent. ''[[OLLMcoder.AgentFactory.html|AgentFactory]]'' — Factory. ''[[OLLMcoder.SourceView.html|SourceView]]'' — Code editor widget.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Skill.html|Skill]]'' — Skill definitions, runner, manager, templates. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Skill.Runner.html|Runner]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Skill.Manager.html|Manager]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Skill.Factory.html|Factory]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Skill.Definition.html|Definition]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Skill.PromptTemplate.html|PromptTemplate]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Task.html|Task]]'' — Task list, details, tool runs, steps, result parsing. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Task.List.html|List]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Task.Details.html|Details]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Task.Tool.html|Tool]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Task.Step.html|Step]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Task.ResultParser.html|ResultParser]]''.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.Agent.html|Agent]]'' — Coding agent. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.AgentFactory.html|AgentFactory]]'' — Factory. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMcoder.SourceView.html|SourceView]]'' — Code editor widget.
 
 == Database ==
 
-* libocsqlite — namespace: ''[[SQ.html|SQ]]''. SQLite wrapper. Used by libocfiles and libocvector.
+* libocsqlite — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/SQ.html|SQ]]''. SQLite wrapper. Used by libocfiles and vector metadata.
 
-  * ''[[SQ.Database.html|Database]]'' — DB connection. ''[[SQ.Query.html|Query]]'' — Prepared statements. ''[[SQ.Schema.html|Schema]]'' — Schema definition.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/SQ.Database.html|Database]]'' — DB connection. ''[[https://roojs.github.io/OLLMchat/ollmchat/SQ.Query.html|Query]]'' — Prepared statements. ''[[https://roojs.github.io/OLLMchat/ollmchat/SQ.Schema.html|Schema]]'' — Schema definition.
 
 == Reference ==
 

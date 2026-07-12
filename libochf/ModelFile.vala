@@ -53,7 +53,7 @@ namespace OLLMhf
 		 *
 		 * @param id       Hub repo id {{{author/name}}}
 		 * @param revision Branch or commit (default {{{main}}})
-		 * @return         {{{https://huggingface.co/{id}/resolve/{rev}/{rfilename}}}}
+		 * @return         Hub CDN URL: {{{https://huggingface.co/MODEL_ID/resolve/REVISION/RFILENAME}}}
 		 */
 		public string to_url(string id, string revision = "main") {
 			return "https://huggingface.co/" + id
