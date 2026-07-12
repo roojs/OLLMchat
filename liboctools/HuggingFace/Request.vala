@@ -311,78 +311,6 @@ namespace OLLMtools.HuggingFace
 				+ " GB VRAM";
 		}
 
-		private string help_text()
-		{
-			return @"
-================================================================================
-HUGGING FACE HUB ENGINE — SYSTEM OPERATIONAL MANIFEST
-================================================================================
-HOST MACHINE SPECIFICATIONS
-  • Available Memory Limit (VRAM/Unified): $(this.vram_limit_text())
-================================================================================
-
-WHEN THE USER ASKS FOR A MODEL
-  If the user wants to download, find, or install a GGUF from Hugging Face, you do it
-  with this tool only: help → search → detail → download. Do NOT use run_command,
-  wget, curl, huggingface-cli, or any other shell or CLI to fetch Hub files — those
-  paths are wrong here and will not integrate with the app (permissions, activity bar,
-  install layout). Do NOT tell the user to download manually or run commands themselves.
-  Call action \"download\" on this tool; the user approves in-app and progress appears
-  in the activity bar.
-
-PRIMARY STRATEGY: MULTI-TOKEN PREDICTION (MTP) SPECULATIVE INFERENCE
-To maximize performance, prioritize downloading models with built-in MTP heads
-(or explicit Draft-Model companions). This speeds up token generation by up to 2x
-by predicting multiple tokens per forward pass.
-
-CRITICAL HARDWARE BUDGETING RULES:
-  1. SINGLE-FILE MTP MODELS: Highly recommended. These feature integrated self-speculation
-     heads (e.g., Unsloth MTP GGUF series). They use only ~1-2% more VRAM than basic weights,
-     making them incredibly memory efficient.
-  2. TRADITIONAL DRAFT PAIRS: If downloading a separate draft model, the combined file
-     sizes of BOTH the target and draft models must fit entirely inside the Memory Limit
-     noted above, leaving a 2-4GB safety gap for context allocation.
-  3. QUANTIZATION CHOICE: Scale quantization down (e.g., Q4_K_M or IQ3 variants) to guarantee
-     the file sizes safely accommodate the host machine's memory boundaries.
-
----
-PARAMETER REFERENCE
----
-  help       {boolean}  Set true on your FIRST call only. Returns this manifest.
-  action     {string}   Required on operational calls. One of:
-                         • \"search\"  — find GGUF repos matching query
-                         • \"detail\"  — fetch file tree and sizes for one model_ref
-                         • \"download\" — fetch specific files from model_ref
-  query      {string}   Required for action \"search\". Hub search terms.
-                         Include MTP/draft keywords when targeting speculative models.
-  model_ref  {string}   Required for \"detail\" and \"download\". Hub repo id \"author/name\".
-  files      {array}   Required for \"download\". Array of strings — exact sibling
-                         filenames from detail output (e.g. [\"model.gguf\"]).
-                         Include every shard (.gguf-split-N) when the model is split.
-
----
-1. SEARCH ACTIONS FOR MTP & SPECULATION
----
-When looking for assets, include tactical tokens in your query parameter:
-  • Query for optimized MTP: {\"action\": \"search\", \"query\": \"Qwen3.5 MTP GGUF\"}
-  • Query for draft models:   {\"action\": \"search\", \"query\": \"llama draft model\"}
-
----
-2. OPERATION PIPELINE
----
-  Step A: Call \"search\" with your target model architectural intent.
-          Search returns downloadable repos only (gated and private are omitted).
-          Call \"detail\" on a chosen model_ref for file sizes.
-  Step B: Call \"detail\" using the exact \"model_ref\" repo string to fetch its file tree.
-  Step C: Review file sizes under the \"siblings\" list to calculate memory compliance.
-  Step D: Execute \"download\" with precise filenames in the \"files\" array.
-          Never substitute run_command or shell downloads for this step.
-          You will be asked to confirm the download (file list and total size)
-          before it starts. Progress appears in the activity bar.
-          (Always include ALL related .gguf-split-x parts if the model is sharded).
-================================================================================";
-		}
-
 		protected override async string execute_request() throws GLib.Error
 		{
 			var act = this.action.strip().down();
@@ -402,7 +330,12 @@ When looking for assets, include tactical tokens in your query parameter:
 					OLLMchat.Message.fenced(
 						"text.oc-frame-info.collapsed Hugging Face Hub: help",
 						this.to_summary())));
-				var help_result = this.help_text();
+				var tpl = new OLLMchat.Prompt.Template("huggingface-help.md") {
+					source = "resource:///",
+					base_dir = "tools",
+				};
+				tpl.load();
+				var help_result = tpl.fill("vram_limit", this.vram_limit_text());
 				this.agent.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced(
 						"text.oc-frame-success.collapsed Hugging Face Hub: help",
@@ -466,7 +399,10 @@ When looking for assets, include tactical tokens in your query parameter:
 								+ skipped_gated.to_string()
 								+ " gated/private omitted)._\n";
 						} else {
-							search_result += "_No models matched this query._\n";
+							search_result += "_No models matched this query. Hub search is "
+								+ "keyword-only (not fuzzy): use a shorter query such as "
+								+ "\"Gemma 4 MTP GGUF\" or remove extra words and retry. "
+								+ "See help section 1._\n";
 						}
 					} else if (skipped_gated > 0) {
 						search_result += "_Omitted "

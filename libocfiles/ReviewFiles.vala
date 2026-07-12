@@ -22,7 +22,7 @@ namespace OLLMfiles
 	 * Manages files in a project that need approval (flat list for approvals UI).
 	 *
 	 * V2 client: implements {@link GLib.ListModel} over {@link FileWithHistory}
-	 * rows from {{{Folder.fetch_pending_approvals}}}. Call {@link refresh} to
+	 * rows from ''Folder.fetch_pending_approvals''. Call {@link refresh} to
 	 * reload the list model, or {@link fetch_pending} for the snapshot only.
 	 */
 	public class ReviewFiles : Object, GLib.ListModel
@@ -61,7 +61,7 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Fetch files pending approval from the daemon ({{{Folder.fetch_pending_approvals}}} wire).
+		 * Fetch files pending approval from the daemon (''Folder.fetch_pending_approvals'' wire).
 		 *
 		 * Does not update this {@link GLib.ListModel} — use {@link refresh} for that.
 		 *

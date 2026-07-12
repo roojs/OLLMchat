@@ -21,24 +21,24 @@ namespace OLLMhf
 	/**
 	 * Hugging Face Hub model record (search hit or full detail).
 	 *
-	 * {@link id} is the repo id {{{author/name}}}. Hub {{{siblings[]}}} entries
+	 * {@link id} is the repo id ''author/name''. Hub ''siblings[]'' entries
 	 * decode into {@link ModelFile} objects on {@link siblings}.
 	 */
 	public class Model : GLib.Object, OLLMrpc.Bin.Serializable
 	{
-		/** Hub document id (JSON {{{_id}}} → {@link underscore_id}). */
+		/** Hub document id (JSON ''_id'' → {@link underscore_id}). */
 		public string underscore_id { get; set; default = ""; }
 
-		/** Hub repo id {{{author/name}}}. */
+		/** Hub repo id ''author/name''. */
 		public string id { get; set; default = ""; }
 
-		/** Hub {{{modelId}}} when present. */
+		/** Hub ''modelId'' when present. */
 		public string modelId { get; set; default = ""; }
 
-		/** Hub {{{createdAt}}} when present. */
+		/** Hub ''createdAt'' when present. */
 		public string createdAt { get; set; default = ""; }
 
-		/** Hub {{{lastModified}}} when present. */
+		/** Hub ''lastModified'' when present. */
 		public string lastModified { get; set; default = ""; }
 
 		/** Repo owner from Hub metadata. */
@@ -56,10 +56,10 @@ namespace OLLMhf
 		/** Hub trending score when present (full search). */
 		public int trendingScore { get; set; default = 0; }
 
-		/** Hub tags (e.g. {{{gguf}}}, {{{text-generation}}}). */
+		/** Hub tags (e.g. ''gguf'', ''text-generation''). */
 		public string[] tags { get; set; default = {}; }
 
-		/** Hub {{{pipeline_tag}}} when set. */
+		/** Hub ''pipeline_tag'' when set. */
 		public string pipeline_tag { get; set; default = ""; }
 
 		/** Primary library name from Hub metadata. */
@@ -74,41 +74,41 @@ namespace OLLMhf
 		/** True when the repo is disabled on the Hub. */
 		public bool disabled { get; set; default = false; }
 
-		/** Hub {{{model-index}}} when present. */
+		/** Hub ''model-index'' when present. */
 		public string model_index { get; set; default = ""; }
 
 		/** Hub storage used when present (detail). */
 		public int64 usedStorage { get; set; default = 0; }
 
-		/** Hub detail {{{widgetData[]}}}. */
+		/** Hub detail ''widgetData[]''. */
 		public Gee.ArrayList<ModelWidgetData> widgetData {
 			get; set; default = new Gee.ArrayList<ModelWidgetData>();
 		}
 
-		/** Hub detail {{{config}}}. */
+		/** Hub detail ''config''. */
 		public ModelConfig config {
 			get; set; default = new ModelConfig();
 		}
 
-		/** Hub detail {{{cardData}}}. */
+		/** Hub detail ''cardData''. */
 		public ModelCardData cardData {
 			get; set; default = new ModelCardData();
 		}
 
-		/** Hub detail {{{transformersInfo}}}. */
+		/** Hub detail ''transformersInfo''. */
 		public ModelTransformersInfo transformersInfo {
 			get; set; default = new ModelTransformersInfo();
 		}
 
-		/** Hub detail {{{gguf}}} metadata when present. */
+		/** Hub detail ''gguf'' metadata when present. */
 		public ModelGguf gguf {
 			get; set; default = new ModelGguf();
 		}
 
-		/** Hub detail {{{spaces[]}}}. */
+		/** Hub detail ''spaces[]''. */
 		public string[] spaces { get; set; default = {}; }
 
-		/** Repo files from Hub {{{siblings[]}}}. */
+		/** Repo files from Hub ''siblings[]''. */
 		public Gee.ArrayList<ModelFile> siblings {
 			get; set; default = new Gee.ArrayList<ModelFile>();
 		}
@@ -168,9 +168,9 @@ namespace OLLMhf
 		}
 
 		/**
-		 * Fetch {{{GET /api/models/{id}/tree/{rev}}} and fill missing sibling sizes.
+		 * Fetch ''GET /api/models/MODEL_ID/tree/REVISION'' and fill missing sibling sizes.
 		 *
-		 * Models detail siblings often omit size; tree rows use {{{path}}} + size.
+		 * Models detail siblings often omit size; tree rows use ''path'' + size.
 		 */
 		public async void fetch_siblings(
 			OLLMrpc.Client rpc,

@@ -120,7 +120,7 @@ namespace OLLMcoder.Task
 		 * Write operations parsed from the write executor output.
 		 *
 		 * Filled by {@link OLLMcoder.Action.WriteExec.extract_result} when
-		 * the skill lists {{{ write_file }}}.
+		 * the skill lists ''write_file''.
 		 * Cleared at the start of each executor retry in {@link run}.
 		 * Empty for normal executor paths — {@link run} still iterates without branching.
 		 */

@@ -20,7 +20,7 @@
  * Example: oc-test-gtkmd with optional markdown file path.
  *
  * Opens a window with the GTK markdown widget and renders the given
- * markdown file, or replays session JSON with {{{--history}}}.
+ * markdown file, or replays session JSON with ''--history''.
  *
  * Extends TestAppBase for standard debug options, log handling, and help.
  *
@@ -537,7 +537,7 @@ Examples:
 
 	/**
 	 * Feed body markdown in random-sized chunks (2–8 Unicode characters)
-	 * every ~30ms. Uses character indices and {{{index_of_nth_char}}} for
+	 * every ~30ms. Uses character indices and ''index_of_nth_char'' for
 	 * UTF-8 byte offsets (see Parser.vala string conventions).
 	 */
 	private void stream_content_chunks(string markdown_content, uint tok)

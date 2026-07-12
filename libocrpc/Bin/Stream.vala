@@ -22,7 +22,7 @@ namespace OLLMrpc.Bin
 	/**
 	 * {@link Stream} wire / registration failures (throw/catch).
 	 *
-	 * Not {@link GLib.Error} abort — use {{{throw new StreamError.*}}} from
+	 * Not {@link GLib.Error} abort — throw StreamError from
 	 * {@link Stream} encode/decode paths.
 	 */
 	public errordomain StreamError
@@ -34,10 +34,10 @@ namespace OLLMrpc.Bin
 	/**
 	 * Register a wire alias process-wide.
 	 *
-	 * Maps {{{alias}}} to {{{gtype}}} for instantiation on decode on
+	 * Maps wire alias to GObject type for instantiation on decode on
 	 * this peer. Both ends must register every alias they send or receive;
-	 * the alias string is the shared wire name — {{{gtype}}} is local to
-	 * this process and need not match the peer's type for the same alias.
+	 * the alias string is the shared wire name — the local GType need not match
+	 * the peer's type for the same alias.
 	 * Per-connection {@link Stream} instances still use {@link Stream.names}
 	 * / {@link Stream.name_to_token} for JIT property keys on the wire.
 	 *
@@ -65,9 +65,11 @@ namespace OLLMrpc.Bin
 	}
 
 	/**
-	 * Per-connection bin codec: I/O streams, JIT key/type maps, {{{write}}} / {{{parse}}}.
+	 * Per-connection bin codec: I/O streams, JIT key/type maps,
+	 * {@link write} / {@link parse}.
 	 *
-	 * Owned by {@link OLLMrpc.Transport.Connection} and {@link OLLMrpc.Client} as {{{bin}}}.
+	 * Owned by {@link OLLMrpc.Transport.Connection} and {@link OLLMrpc.Client}
+	 * as the bin stream property.
 	 */
 	public class Stream : GLib.Object
 	{
@@ -128,10 +130,10 @@ namespace OLLMrpc.Bin
 		/**
 		 * Read one object body after its {@link GLib.Type.OBJECT} type byte.
 		 *
-		 * When {{{object_type}}} is set (homogeneous object arrays), skip
+		 * When object_type is set (homogeneous object arrays), skip
 		 * {@link read_gtype} and decode the property stream for that class.
-		 * When wire {{{GLib.Object}}} is anonymous, decode as
-		 * {{{expected_type}}} when that type implements {@link Serializable}.
+		 * When wire {@link GLib.Object} is anonymous, decode as expected_type
+		 * when that type implements {@link Serializable}.
 		 *
 		 * @param object_type element class when already read from an array header
 		 * @param expected_type GObject property type for anonymous nested objects
@@ -156,7 +158,7 @@ namespace OLLMrpc.Bin
 		}
 
 		/**
-		 * Homogeneous object-array body after {{{0xD0}}}: element class,
+		 * Homogeneous object-array body after wire byte ''0xD0'': element class,
 		 * count, then one property stream per element.
 		 *
 		 * @return decoded elements
@@ -324,7 +326,7 @@ namespace OLLMrpc.Bin
 		}
 
 		/**
-		 * Read {{{reg_id}}} after an object type byte; return registered gtype.
+		 * Read reg_id after an object type byte; return registered gtype.
 		 */
 		public GLib.Type read_gtype() throws GLib.Error
 		{

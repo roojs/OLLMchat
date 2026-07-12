@@ -27,8 +27,8 @@ namespace OLLMfiles
 	 *  * Folder: Represents directories (can also be projects when is_project = true)
 	 *  * FileAlias: Represents symlinks/aliases to files or folders
 	 * 
-	 * Client row — {{{filebase}}} wire fields + Gtk display helpers.
-	 * DB, scan, and {{{saveToDB}}} live on the daemon ({{{ollmfilesd/FileBase.vala}}}).
+	 * Client row — ''filebase'' wire fields + Gtk display helpers.
+	 * DB, scan, and ''saveToDB'' live on the daemon (''ollmfilesd/FileBase.vala'').
 	 *
 	 * == ID Semantics ==
 	 *
@@ -235,25 +235,25 @@ namespace OLLMfiles
 		/**
 		 * Get modification time on disk (Unix timestamp).
 		 *
-		 * Removed — daemon scan only ({{{ollmfilesd/FileBase.vala}}}).
+		 * Removed — daemon scan only (''ollmfilesd/FileBase.vala'').
 		 */
 
 		/**
 		 * Initialize database table for filebase objects.
 		 *
-		 * Removed — daemon only ({{{FileBase.init_db}}} on {{{ollmfilesd}}}).
+		 * Removed — daemon only (''FileBase.init_db'' on ''ollmfilesd'').
 		 */
 
 		/**
 		 * Create a query object for filebase table with typemap configured.
 		 *
-		 * Removed — daemon only ({{{FileBase.query}}} on {{{ollmfilesd}}}).
+		 * Removed — daemon only (''FileBase.query'' on ''ollmfilesd'').
 		 */
 
 		/**
 		 * Compare this FileBase with another to determine if they represent the same item.
 		 *
-		 * Removed — daemon {{{read_dir}}} scan only.
+		 * Removed — daemon ''read_dir'' scan only.
 		 */
 
 		/**

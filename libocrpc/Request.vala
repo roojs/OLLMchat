@@ -24,8 +24,8 @@ namespace OLLMrpc
 	 * On the client, build a {@link Request}, set {@link method}, assign a
 	 * typed {@link CallParam} subclass to {@link param}, then pass to
 	 * {@link Client.call}. On the server, set {@link connection}, then
-	 * {@link dispatch} routes {{{Object.method}}} to the handler's
-	 * {{{call_*}}} signal; handlers reply via {@link reply}.
+	 * {@link dispatch} routes Object.method wire names to the handler's
+	 * call_* signal; handlers reply via {@link reply}.
 	 *
 	 * @see CallParam
 	 * @see Client
@@ -74,8 +74,8 @@ namespace OLLMrpc
 		/**
 		 * Register a server dispatch handler and its params {@link GLib.Type}.
 		 *
-		 * @param name wire object prefix (e.g. {{{"Folder"}}})
-		 * @param target live singleton with {{{call_*}}} signals
+		 * @param name wire object prefix (e.g. Folder)
+		 * @param target live singleton with call_* signals
 		 * @param param_type GObject type for wire params (extends {@link CallParam})
 		 */
 		public static void register(
@@ -128,7 +128,7 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Route this request to the matching {{{call_*}}} signal.
+		 * Route this request to the matching call_* signal.
 		 *
 		 * @return true when a handler signal was emitted
 		 */
@@ -181,7 +181,7 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Relay a {@link Response} to {@link connection} (sets wire {{{id}}}).
+		 * Relay a {@link Response} to {@link connection} (sets wire id).
 		 */
 		public void reply(Response response)
 		{

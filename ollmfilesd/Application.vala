@@ -19,10 +19,10 @@
 namespace OLLMfilesd
 {
 	/**
-	 * Headless {{{ollmfilesd}}} entry point: open DB, migrate, RPC over socket or stdio.
+	 * Headless ''ollmfilesd'' entry point: open DB, migrate, RPC over socket or stdio.
 	 *
-	 * {{{--data-dir=DIR}}} sets {@link data_dir} and pid/socket paths under {{{DIR}}}
-	 * ({@link command_line}). {{{--scan-project=PATH}}} runs filesystem reconcile,
+	 * ''--data-dir=DIR'' sets {@link data_dir} and pid/socket paths under ''DIR''
+	 * ({@link command_line}). ''--scan-project=PATH'' runs filesystem reconcile,
 	 * then vector indexing when an embed model is available, and exits (foreground,
 	 * no RPC). Pair with {@link OLLMrpc.ClientBoot} basenames and spawn flags.
 	 */

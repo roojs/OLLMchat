@@ -28,7 +28,7 @@ public class WriteExec : Base
 	/**
 	 * Parse a write executor response into the execution run.
 	 *
-	 * Called when the skill uses {{{ write_file }}}.
+	 * Called when the skill uses ''write_file''.
 	 */
 	public override async bool extract_result (Task.ResultParser parser, Task.Tool ex)
 	{

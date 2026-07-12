@@ -52,7 +52,7 @@ namespace OLLMchat.Chatter
 		}
 
 		/**
-		 * Builds the {{{environment}}} block for main-chat system prompts.
+		 * Builds the ''environment'' block for main-chat system prompts.
 		 *
 		 * Includes date, OS, shell, and workspace path when available.
 		 *

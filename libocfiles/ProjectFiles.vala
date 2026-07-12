@@ -22,10 +22,10 @@ namespace OLLMfiles
 	 * V2 client flat file list for one project ({@link GLib.ListModel}).
 	 *
 	 * Populated by {@link refresh} from {@link Folder.fetch_files} RPC.
-	 * Not a live mirror of daemon {{{ProjectFiles}}} — call {@link refresh}
+	 * Not a live mirror of daemon ''ProjectFiles'' — call {@link refresh}
 	 * after index changes (open project, write file, approvals, notifications).
 	 *
-	 * **🚫** no {{{folder_map}}}, {{{all_files}}}, or {{{update_from}}} —
+	 * **🚫** no ''folder_map'', ''all_files'', or ''update_from'' —
 	 * path lookup uses {@link get_by_path} / {@link ProjectManager.fetch_file}.
 	 */
 	public class ProjectFiles : Object, GLib.ListModel, Gee.Traversable<ProjectFile>, Gee.Iterable<ProjectFile>
@@ -75,7 +75,7 @@ namespace OLLMfiles
 		/**
 		 * Constructor.
 		 *
-		 * @param project Project folder ({{{is_project == true}}})
+		 * @param project Project folder (''is_project == true'')
 		 */
 		public ProjectFiles(Folder project)
 		{
@@ -83,7 +83,7 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Reload file rows from the daemon ({{{Folder.fetch_files}}}), first page.
+		 * Reload file rows from the daemon (''Folder.fetch_files''), first page.
 		 *
 		 * @param query Dropdown filter (empty = browse all)
 		 */
@@ -141,7 +141,7 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Append the next {{{Folder.fetch_files}}} page when more rows exist.
+		 * Append the next ''Folder.fetch_files'' page when more rows exist.
 		 */
 		public async void load_more()
 		{
@@ -381,7 +381,7 @@ namespace OLLMfiles
 		 *
 		 * @deprecated Use {@link ProjectManager.active_file} at cutover.
 		 *
-		 * @return First file with {{{is_active}}}, or null
+		 * @return First file with ''is_active'', or null
 		 */
 		[Deprecated (since = "2.10.4")]
 		public File? get_active_file()

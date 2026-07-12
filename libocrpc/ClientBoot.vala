@@ -14,24 +14,24 @@
 namespace OLLMrpc
 {
 	/**
-	 * Ensure {{{ollmfilesd}}} is running before {@link Client.connect} on Unix.
+	 * Ensure ollmfilesd is running before {@link Client.connect} on Unix.
 	 *
 	 * The caller supplies every path; there is no default
-	 * {{{~/.local/share/ollmchat}}} in this class. Constructor args {@link pid}
+	 * ~/.local/share/ollmchat path in this class. Constructor args {@link pid}
 	 * and {@link socket_name} are basenames within {@link data_dir}; the {@link pid}
 	 * and {@link socket_path} properties hold the full paths used for probe, spawn,
 	 * and kill-and-respawn.
 	 *
 	 * Parameter order after the three required strings: {@link debug}, then
 	 * {@link pass_data_dir}. {@link debug} defaults to true because in-tree
-	 * callers almost always want {{{ollmfilesd --debug}}}. {@link pass_data_dir}
+	 * callers almost always want ollmfilesd with ''--debug''. {@link pass_data_dir}
 	 * defaults to false; only out-of-band vector test CLIs set it true because
 	 * standard and custom dirs share the same basename layout and spawn cannot
-	 * infer {{{--data-dir=DIR}}} from paths alone.
+	 * infer ''--data-dir=DIR'' from paths alone.
 	 *
-	 * Spawn argv: {@link debug} adds {{{--debug}}}; {@link pass_data_dir} adds
-	 * {{{--data-dir=data_dir}}}. Executable: {{{OLLM_OLLMFILESD}}} env when set
-	 * (build wrapper scripts), else {{{ollmfilesd}}} on {{{PATH}}}; env selects
+	 * Spawn argv: {@link debug} adds ''--debug''; {@link pass_data_dir} adds
+	 * ''--data-dir=data_dir''. Executable: OLLM_OLLMFILESD env when set
+	 * (build wrapper scripts), else ollmfilesd on PATH; env selects
 	 * the binary only and does not set debug or data-dir flags (see §5.5.4).
 	 *
 	 * Production code constructs this only from {@link Client.connect}.
@@ -70,10 +70,10 @@ namespace OLLMrpc
 		 *   pid path when {@link data_dir} is empty
 		 * @param socket_name Basename of the Unix socket within {@link data_dir},
 		 *   or the full connect path when {@link data_dir} is empty
-		 * @param debug When true (default), spawn passes {{{--debug}}} to
-		 *   {{{ollmfilesd}}}; listed before {@link pass_data_dir} because most
+		 * @param debug When true (default), spawn passes ''--debug'' to
+		 *   ollmfilesd; listed before {@link pass_data_dir} because most
 		 *   callers rely on the default
-		 * @param pass_data_dir When true, spawn passes {{{--data-dir=data_dir}}};
+		 * @param pass_data_dir When true, spawn passes ''--data-dir=data_dir'';
 		 *   default false — out-of-band vector testing only
 		 */
 		public ClientBoot(
@@ -125,7 +125,7 @@ namespace OLLMrpc
 
 		/**
 		 * Block until {@link socket_path} accepts a connection, spawning or
-		 * kill-and-respawning {{{ollmfilesd}}} when needed.
+		 * kill-and-respawning ollmfilesd when needed.
 		 */
 		public async void ensure_daemon() throws GLib.IOError
 		{

@@ -20,13 +20,13 @@
  * Hugging Face Hub catalog library (`libochf`).
  *
  * Search and model-detail metadata use {@link OLLMrpc.Client.call} against
- * {{{https://huggingface.co}}} (set {@link OLLMrpc.Client.socket_path} to that
- * base URL). Typed results are {@link Model}, {@link ModelArray}, and
+ * ''huggingface.co'' (set {@link OLLMrpc.Client.socket_path} to an HTTPS URL
+ * with that host). Typed results are {@link Model}, {@link ModelArray}, and
  * {@link Param.Search} on {@link OLLMrpc.Request.param}. Detail requests put
  * the model ref in {@link OLLMrpc.Request.method} and use the default
  * {@link OLLMrpc.CallParam} (no query string). When Hub omits sibling
- * {{{size}}}, {@link Model.fetch_siblings} uses
- * {{{GET /api/models/{id}/tree/{rev}}}.
+ * ''size'', {@link Model.fetch_siblings} uses
+ * ''GET /api/models/MODEL_ID/tree/REVISION''.
  *
  * Call {@link rpc_register} once before the first Hub HTTP call so result wire
  * types are registered with {@link OLLMrpc.Bin}. {@link Param.Search} is not
@@ -36,7 +36,7 @@
 namespace OLLMhf
 {
 	/**
-	 * Register all `libochf` bin wire types with {@link OLLMrpc.Bin}.
+	 * Register all ''libochf'' bin wire types with {@link OLLMrpc.Bin}.
 	 *
 	 * Call before {@link OLLMrpc.Client.connect} when using Hub metadata over HTTP.
 	 */

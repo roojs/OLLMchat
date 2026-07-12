@@ -21,8 +21,8 @@ namespace OLLMfiles
 	/**
 	 * Client entry point for file deletion — delegates to {@link File.delete} RPC.
 	 *
-	 * V2 thin client: no local filesystem removal, {{{FileHistory}}}, or SQLite.
-	 * The daemon {{{ollmfilesd/DeleteManager}}} performs backup, disk delete,
+	 * V2 thin client: no local filesystem removal, ''FileHistory'', or SQLite.
+	 * The daemon ''ollmfilesd/DeleteManager'' performs backup, disk delete,
 	 * and index cleanup. Call {@link cleanup} after a batch of deletes to prune
 	 * {@link ProjectManager.file_cache} and emit {@link on_cleanup}.
 	 */
@@ -36,7 +36,7 @@ namespace OLLMfiles
 		/**
 		 * Emitted after {@link cleanup} completes.
 		 *
-		 * Shipping listeners used this for bulk {{{VectorMetadata}}} cleanup via
+		 * Shipping listeners used this for bulk ''VectorMetadata'' cleanup via
 		 * in-process SQLite. On V2 the daemon handles vector cleanup; keep the
 		 * signal for cutover callers that refresh UI lists after deletion.
 		 */
@@ -53,11 +53,11 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Delete a file via {{{File.delete}}} on the daemon.
+		 * Delete a file via ''File.delete'' on the daemon.
 		 *
 		 * {@link Folder} and alias rows are not supported on the client yet
-		 * (daemon scan / future {{{Folder.delete}}} RPC). {{{timestamp}}} is
-		 * ignored — the daemon records {{{FileHistory}}} with its own clock.
+		 * (daemon scan / future ''Folder.delete'' RPC). ''timestamp'' is
+		 * ignored — the daemon records ''FileHistory'' with its own clock.
 		 *
 		 * @param filebase The {@link File} to delete
 		 * @param timestamp Ignored on client (API compatibility with shipping)
@@ -95,8 +95,8 @@ namespace OLLMfiles
 		/**
 		 * Prune deleted rows from {@link ProjectManager.file_cache} and notify listeners.
 		 *
-		 * V2 client: does not walk {{{ProjectFiles}}} or {@link FolderFiles}
-		 * (no {{{cleanup_deleted}}} — callers {@link ProjectFiles.refresh} after
+		 * V2 client: does not walk ''ProjectFiles'' or {@link FolderFiles}
+		 * (no ''cleanup_deleted'' — callers {@link ProjectFiles.refresh} after
 		 * delete). Emits {@link on_cleanup} when finished.
 		 */
 		public async void cleanup()

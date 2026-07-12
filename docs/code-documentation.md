@@ -84,20 +84,18 @@ As with long `@param` text, **CODING_STANDARDS** line-length guidance is not a r
 
 ## Code in comments
 
-Use triple braces for **literal code**, identifiers, paths, and CLI tokens — both inline
-and as blocks. Valadoc does **not** support Javadoc-style `{@code …}` (CI fails with
+Valadoc markup is defined at [valadoc.org/markup.htm](https://valadoc.org/markup.htm).
+Supported inline taglets are only `{@link Symbol}` and `{@inheritDoc}`.
+Text highlighting uses `''bold''`, `//italic//`, `__underlined__`, and
+`` `block quote` `` (backticks are **not** for code).
+
+Valadoc does **not** support Javadoc `{@code …}` (CI fails with
 `Invalid taglet in this context: code`).
 
-**Inline** (preferred for short names):
+### Block code (multi-line only)
 
-```vala
-/**
- * Defaults to {{{allow_writes}}} → {{{project}}}; see {@link OLLMbwrap.Bubble}.
- * Daemon hooks live in {{{ollmfilesd}}} or {{{liboctools}}}.
- */
-```
-
-**Block** (multi-line samples):
+Official Valadoc documents `{{{ … }}}` for **block** code samples — content on
+lines between the opening and closing braces:
 
 ```vala
 /**
@@ -110,16 +108,45 @@ and as blocks. Valadoc does **not** support Javadoc-style `{@code …}` (CI fail
  */
 ```
 
+Each `{{{ … }}}` span becomes a `<pre><code>` block in HTML. **Do not embed
+`{{{token}}}` inside running prose** — even a short inline literal becomes its
+own block and breaks the sentence across multiple lines (e.g. “Override for” /
+`Gee.ArrayList` / “list properties” rendering as three stacked blocks).
+
+### Inline identifiers in prose
+
+For names, wire keys, flags, and paths **inside a sentence**, use one of:
+
+| Need | Valadoc markup | Example |
+|------|----------------|---------|
+| Vala symbol with link | `{@link Namespace.Class}` | `{@link Gee.ArrayList}` |
+| Emphasis / literal name | `''bold''` | `''*type''`, `''uint8[]''`, `''--debug''` |
+| Plain identifier | no markup | `ollmfilesd`, `call_*` signal prefix |
+
+```vala
+/**
+ * Override for {@link Gee.ArrayList} list properties and ''uint8[]'' byte
+ * arrays (wire as blob or typed array — see docs/bin-rpc-protocol.md).
+ *
+ * Wire meta key ''*type'' on every object; see {@link Mode.EXPLICIT}.
+ */
+```
+
+### Inside block `{{{ … }}}` samples
+
+When a multi-line code block needs literal `{`, `}`, or `//`, avoid valadoc
+mis-parsing by using ALL_CAPS placeholders in the **surrounding prose** instead
+of inline triple-brace URL/path fragments. Keep real syntax inside block samples
+where valadoc treats the whole block as code.
+
 | Markup | Valadoc | Use |
 |--------|---------|-----|
-| `{{{ token }}}` | ✅ | Literals, paths, method names, config keys |
+| `{{{ … }}}` on multiple lines | ✅ | Block code samples only |
+| `{{{ token }}}` inline in prose | ❌ | Renders as block `<pre>` — use `''…''` or `{@link}` |
 | `{@link Symbol}` | ✅ | Link to a Vala symbol |
 | `{@inheritDoc}` | ✅ | Copy parent docblock |
-| `{@code …}` | ❌ | **Not valid** — use `{{{ … }}}` |
-| `` `backticks` `` | block quote | Not for code — use `{{{ }}}` |
-
-Avoid bare `{` in running text (starts taglets like `{@link}`). Rephrase or wrap in
-`{{{ }}}`.
+| `{@code …}` | ❌ | **Not valid** |
+| `` `backticks` `` | block quote | **Not** for code — use `''bold''` inline |
 
 ## Links
 
@@ -127,6 +154,13 @@ Avoid bare `{` in running text (starts taglets like `{@link}`). Rephrase or wrap
 - `[[http://example.com]]` → bare URL
 - `{@link SymbolName}` → link to a Vala symbol (class, method, property)
 - `{@inheritDoc}` → inherit description from parent (e.g. overridden method)
+
+**Package overview wiki (`docs/valadoc-wiki/index.valadoc`):** Valadoc does **not**
+resolve relative `[[Page.html|label]]` wiki links in the generated summary body. Use
+**full URLs** to the published GitHub Pages docs, e.g.
+`[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.html|OLLMchat]]`. Keep links
+aligned with symbols that exist in `docs/meson.build` (remove stale pages when classes
+are deleted). Sidebar navigation is generated separately and still uses relative paths.
 
 ## Tables
 
@@ -222,6 +256,20 @@ CI runs the same target. Keep these in sync when you change the tree:
 
 After docblock or valadoc-list edits, run `ninja -C build docs/valadoc` locally —
 errors are stricter than the Vala compiler (invalid taglets, headline layout, etc.).
+
+**Post-build grep checks** (after `ninja -C build docs/valadoc`):
+
+```bash
+# Inline triple-brace in prose → fragmented <pre> blocks inside <p> (bad layout)
+rg '<p>[^<]*<pre class="main_source">' build/valadoc/ollmchat --glob '*.html' \
+  | rg -v '<br/>'
+
+# Curly braces inside inline triple-brace literals in source (truncation risk)
+rg '\{\{\{[^}]*\{' --glob '*.vala'
+```
+
+The first grep should return no matches for pages you changed. The second should
+return no matches project-wide.
 
 ## Conventions in this project
 

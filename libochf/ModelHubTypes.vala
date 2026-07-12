@@ -18,7 +18,7 @@
 
 namespace OLLMhf
 {
-	/** Hub detail {{{widgetData[]}}} entry. */
+	/** Hub detail ''widgetData[]'' entry. */
 	public class ModelWidgetData : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public string text { get; set; default = ""; }
@@ -28,7 +28,7 @@ namespace OLLMhf
 		}
 	}
 
-	/** Hub detail {{{config.tokenizer_config}}} when present. */
+	/** Hub detail ''config.tokenizer_config'' when present. */
 	public class ModelTokenizerConfig : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public string bos_token { get; set; default = ""; }
@@ -45,7 +45,7 @@ namespace OLLMhf
 		}
 	}
 
-	/** Hub detail {{{config}}} (Hub API returns a short subset, not full config.json). */
+	/** Hub detail ''config'' (Hub API returns a short subset, not full config.json). */
 	public class ModelConfig : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public string[] architectures { get; set; default = {}; }
@@ -59,7 +59,7 @@ namespace OLLMhf
 		}
 	}
 
-	/** Hub detail {{{cardData}}}. */
+	/** Hub detail ''cardData''. */
 	public class ModelCardData : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public string library_name { get; set; default = ""; }
@@ -79,7 +79,7 @@ namespace OLLMhf
 		}
 	}
 
-	/** Hub detail {{{transformersInfo}}}. */
+	/** Hub detail ''transformersInfo''. */
 	public class ModelTransformersInfo : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public string auto_model { get; set; default = ""; }
@@ -92,7 +92,7 @@ namespace OLLMhf
 		}
 	}
 
-	/** Hub detail {{{gguf}}} metadata when present. */
+	/** Hub detail ''gguf'' metadata when present. */
 	public class ModelGguf : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public int64 total { get; set; default = 0; }

@@ -43,7 +43,8 @@ namespace OLLMtools
 		 * Scans the wrapped-tools directory and builds all wrapped tools.
 		 * FIXME - later look at .config/ollmchat/wrapped-tools/
 		 *
-		 * Scans {{{resource:///wrapped-tools/}}} for *.tool files, parses each file,
+		 * Scans GResource root ''/wrapped-tools/'' (with ''resource:'' scheme
+		 * prefix) for *.tool files, parses each file,
 		 * and registers the wrapped tools with the tools hashmap.
 		 */
 		public void scan_and_build()

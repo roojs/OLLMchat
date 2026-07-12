@@ -22,7 +22,7 @@ namespace OLLMtools.CodebaseSearch
 	 * Tool for semantic codebase search using vector embeddings.
 	 * 
 	 * This tool performs semantic search across the codebase using vector
-	 * similarity search on {{{ollmfilesd}}}. It can filter results by language and
+	 * similarity search on ''ollmfilesd''. It can filter results by language and
 	 * element type (class, method, function, etc.).
 	 */
 	public class CodebaseSearchTool : OLLMchat.Tool.BaseTool

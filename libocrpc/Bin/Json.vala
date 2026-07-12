@@ -23,15 +23,15 @@ namespace OLLMrpc.Bin
 	 *
 	 * Wire aliases live in meta keys (not payload properties):
 	 *
-	 *  * `*type` on every object (`"Request"`, `"File"`, …)
-	 *  * `*array` + `items` on object-array wrappers
+	 *  * ''*type'' on every object (Request, File, …)
+	 *  * ''*array'' + items on object-array wrappers
 	 *
-	 * Any key starting with `*` is meta only and is stripped before bin encode.
+	 * Any key starting with ''*'' is meta only and is stripped before bin encode.
 	 * Type aliases must be registered via {@link register} before use.
 	 *
-	 * In {@link Mode.AUTO}, JSON keys starting with `_` map to
-	 * `underscore_*` GObject properties; wire names that clash with GObject
-	 * (e.g. `type`) map to `reserved_property_*` properties on decode.
+	 * In {@link Mode.AUTO}, JSON keys starting with ''_'' map to
+	 * underscore_* GObject properties; wire names that clash with GObject
+	 * (e.g. type) map to reserved_property_* properties on decode.
 	 */
 	public class Json : GLib.Object
 	{
@@ -56,7 +56,7 @@ namespace OLLMrpc.Bin
 		 * @param src JSON object tree
 		 * @param bin bin stream to write into
 		 * @param type root object {@link GLib.Type} when {@link mode} includes
-		 *     {@link Mode.AUTO} and {@link src} has no {{{*type}}} member;
+		 *     {@link Mode.AUTO} and {@link src} has no ''*type'' member;
 		 *     default {@link GLib.Type.INVALID}
 		 */
 		public void json_to_bin(
@@ -97,7 +97,7 @@ namespace OLLMrpc.Bin
 		 * Decode bin bytes from {@link bin} into a JSON object tree.
 		 *
 		 * @param bin bin stream to read from
-		 * @return JSON object node; {{{*type}}} meta omitted when
+		 * @return JSON object node; ''*type'' meta omitted when
 		 *     {@link mode} includes {@link Mode.AUTO}
 		 */
 		public global::Json.Node bin_to_json(Stream bin) throws GLib.Error
@@ -150,7 +150,7 @@ namespace OLLMrpc.Bin
 		 * Decode one object body into a JSON object node.
 		 *
 		 * @param bin active bin session to read from
-		 * @param alias wire type alias for {{{*type}}} (EXPLICIT mode only)
+		 * @param alias wire type alias for ''*type'' (EXPLICIT mode only)
 		 */
 		public global::Json.Node bin_to_json_object(
 			Stream bin,

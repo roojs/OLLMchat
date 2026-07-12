@@ -19,13 +19,13 @@
 namespace OLLMhf
 {
 	/**
-	 * Stream one Hub model's {{{.gguf}}} siblings to the local install layout.
+	 * Stream one Hub model's ''.gguf'' siblings to the local install layout.
 	 *
 	 * Progress is emitted as {@link OLLMrpc.Notification} on {@link progress}
 	 * ({@link OLLMrpc.Notification.progress_completed},
 	 * {@link OLLMrpc.Notification.progress_total}, {@link OLLMrpc.Notification.message}
 	 * for the filename).
-	 * Crash-safe state is stored in {{{download.json}}} via
+	 * Crash-safe state is stored in ''download.json'' via
 	 * {@link OLLMrpc.Bin.Json.from_gobject}.
 	 */
 	public class Download : GLib.Object
@@ -121,13 +121,13 @@ namespace OLLMhf
 		}
 
 		/**
-		 * Stream, verify, and persist one {{{.gguf}}} sibling when filters
+		 * Stream, verify, and persist one ''.gguf'' sibling when filters
 		 * and resume state allow it. HEAD runs only on a fresh start to
 		 * fetch the LFS ETag; resumed downloads reuse persisted state.
 		 *
 		 * @param file          sibling to download
 		 * @param model_dir     install directory for this model
-		 * @param download_path path to {{{download.json}}} progress file
+		 * @param download_path path to ''download.json'' progress file
 		 * @param active_cancel download cancellation source
 		 */
 		private async void download_sibling(

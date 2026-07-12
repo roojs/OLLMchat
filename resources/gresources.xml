@@ -40,6 +40,9 @@
     <file>chatter_followup.md</file>
     <file>coder_followup.md</file>
   </gresource>
+  <gresource prefix="/tools">
+    <file>huggingface-help.md</file>
+  </gresource>
   <gresource prefix="/skill-prompts">
     <file>task_creation_initial.md</file>
     <file>task_refinement.md</file>

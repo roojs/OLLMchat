@@ -23,14 +23,14 @@ namespace OLLMapp
 	 *
 	 * Emit {@link notification} with {@link OLLMrpc.Notification} objects;
 	 * daemon RPC events pass through unchanged, client work uses
-	 * {{{client.*}}} method names.
+	 * ''client.*'' method names.
 	 */
 	public class ActivityBanner : Gtk.Box
 	{
 		/**
 		 * Activity or daemon event.
 		 *
-		 * @param notif RPC-shaped notification ({{{method}}} + {{{message}}})
+		 * @param notif RPC-shaped notification (''method'' + ''message'')
 		 */
 		public signal void notification(OLLMrpc.Notification notif);
 
@@ -84,9 +84,9 @@ namespace OLLMapp
 		}
 
 		/**
-		 * Dispatch a daemon {{{event.*}}} or client {{{client.*}}} notification.
+		 * Dispatch a daemon ''event.*'' or client ''client.*'' notification.
 		 *
-		 * @param notif RPC-shaped notification ({{{method}}} + {{{message}}})
+		 * @param notif RPC-shaped notification (''method'' + ''message'')
 		 */
 		private void on_notification(OLLMrpc.Notification notif)
 		{

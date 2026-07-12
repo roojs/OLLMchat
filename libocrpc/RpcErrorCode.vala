@@ -24,7 +24,7 @@ namespace OLLMrpc
 	 * Server control flow only — not the wire {@link Error} object.
 	 * Constants (e.g. {@link INTERNAL_ERROR}) are {@link RpcErrorCode} values;
 	 * pass them to {@link to_error} / {@link to_response} / wire {@link Error}
-	 * as `int` (Vala 0.56 types errordomain members as `int` at call sites).
+	 * as int (Vala 0.56 types errordomain members as int at call sites).
 	 *
 	 * Static methods only — instance methods on the caught error are not
 	 * supported in Vala 0.56 yet.

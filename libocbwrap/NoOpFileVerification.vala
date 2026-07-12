@@ -23,7 +23,7 @@ namespace OLLMbwrap
 	 *
 	 * Use when {@link Bubble} or {@link Overlay} must construct but overlay
 	 * upper-layer changes are not merged (e.g. long-lived MCP stdio spawn).
-	 * Real apply hooks live in {{{ollmfilesd}}} or {{{liboctools}}}.
+	 * Real apply hooks live in ''ollmfilesd'' or ''liboctools''.
 	 */
 	public class NoOpFileVerification : GLib.Object, FileVerification
 	{

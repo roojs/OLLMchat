@@ -21,8 +21,8 @@ namespace OLLMhf
 	/**
 	 * Decode-only wrapper for Hub search results.
 	 *
-	 * Hub {{{GET /api/models}}} returns a JSON array; {@link OLLMrpc.Client}
-	 * wraps it as {{{{"items": […]}}}} before bin decode. Use
+	 * Hub ''GET /api/models'' returns a JSON array; {@link OLLMrpc.Client}
+	 * wraps it as a JSON object with an ''items'' array before bin decode. Use
 	 * {@link OLLMrpc.Request.result_type} = typeof(ModelArray) on search calls.
 	 */
 	public class ModelArray : GLib.Object, OLLMrpc.Bin.Serializable

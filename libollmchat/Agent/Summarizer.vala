@@ -24,7 +24,7 @@ namespace OLLMchat.Agent
 	 * Shared by Chatter and Coding Assistant. Extends {@link Base} so
 	 * {@link Call.ChatCompletions} streams through {@link handle_stream_chunk}
 	 * instead of a manual signal hook. Overrides streaming handlers to persist
-	 * {{{summary}}} messages rather than {{{content-stream}}} rows.
+	 * ''summary'' messages rather than ''content-stream'' rows.
 	 */
 	public class Summarizer : Base
 	{
@@ -62,10 +62,10 @@ namespace OLLMchat.Agent
 		}
 
 		/**
-		 * Stream summary text into a {{{summary}}} transcript message.
+		 * Stream summary text into a ''summary'' transcript message.
 		 *
 		 * Does not call {@link Base.handle_stream_chunk} — the default session
-		 * path creates {{{content-stream}}} messages.
+		 * path creates ''content-stream'' messages.
 		 */
 		public override void handle_stream_chunk(
 			string new_text,
@@ -100,7 +100,7 @@ namespace OLLMchat.Agent
 		 *
 		 * Scans session.messages for the latest user-sent row at run time.
 		 * Builds turn-reference payload, calls the model with tools and
-		 * thinking disabled, streams into a {{{summary}}} message, and
+		 * thinking disabled, streams into a ''summary'' message, and
 		 * validates hash links (one retry on failure).
 		 *
 		 * @param cancellable optional cancel token for the summary request

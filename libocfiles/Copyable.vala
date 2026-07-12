@@ -26,7 +26,7 @@ namespace OLLMfiles
 	 * a deserialized RPC row (or scan snapshot) onto an existing client object
 	 * without replacing it (keeps buffer/UI references).
 	 *
-	 * Pass property names in {{{except}}} to skip (e.g. {{{manager}}}, {{{buffer}}}).
+	 * Pass property names in ''except'' to skip (e.g. ''manager'', ''buffer'').
 	 *
 	 * **Not in Meson** — experiment / V2 cutover only until wired.
 	 */

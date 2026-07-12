@@ -19,30 +19,30 @@
 namespace OLLMhf.Param
 {
 	/**
-	 * Query parameters for Hub model search ({{{GET /api/models}}}).
+	 * Query parameters for Hub model search (''GET /api/models'').
 	 *
 	 * Non-empty properties become query string fields on
 	 * {@link OLLMrpc.Client.send_http}. Pair with
-	 * {{{Request.method = "/api/models"}}} and result_type typeof(ModelArray).
+	 * ''Request.method = "/api/models"'' and result_type typeof(ModelArray).
 	 */
 	public class Search : OLLMrpc.CallParam
 	{
 		/** Free-text search term. */
 		public string search { get; set; default = ""; }
 
-		/** Hub filter (default {{{gguf}}}). */
+		/** Hub filter (default ''gguf''). */
 		public string filter { get; set; default = "gguf"; }
 
 		/** Maximum hits to return (Hub cap 100). */
 		public int limit { get; set; default = 20; }
 
-		/** Sort field (default {{{downloads}}}). */
+		/** Sort field (default ''downloads''). */
 		public string sort { get; set; default = "downloads"; }
 
-		/** Sort direction (default {{{-1}}} descending). */
+		/** Sort direction (default ''-1'' descending). */
 		public string direction { get; set; default = "-1"; }
 
-		/** Request full records from Hub (includes {{{author}}} on search). */
+		/** Request full records from Hub (includes ''author'' on search). */
 		public bool full { get; set; default = true; }
 	}
 }

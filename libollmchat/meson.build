@@ -109,7 +109,8 @@ resource_dirs = [
   '../resources/ocvector',
   '../resources/skill-prompts',
   '../resources/skills',
-  '../resources/chat-prompts'
+  '../resources/chat-prompts',
+  '../resources/tools'
 ]
 
 resource_source_args = []

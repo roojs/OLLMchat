@@ -73,13 +73,13 @@ public interface ProgressItem : GLib.Object
 
 	/**
 	 * Non-zero while {@link assign_message} is watching
-	 * {{{ message.notify["idx-last"] }}}; cleared on disconnect.
+	 * ''message.notify["idx-last"]''; cleared on disconnect.
 	 */
 	public abstract ulong idx_notify_id { get; set; }
 
 	/**
 	 * Idx column text from {@link msg_idx_to_string} (bound as
-	 * {{{ msg_idx_txt }}} in {@link ProgressView}).
+	 * ''msg_idx_txt'' in {@link ProgressView}).
 	 */
 	public virtual string msg_idx_to_string()
 	{
@@ -111,8 +111,8 @@ public interface ProgressItem : GLib.Object
 	 * arrive asynchronously.
 	 *
 	 * Replaces any prior watcher on the previous message. If
-	 * {{{ idx_first }}} and {{{ idx_last }}} are already set, notifies
-	 * {{{ msg_idx_txt }}} once; otherwise connects to {{{ idx-last }}} on
+		 * ''idx_first'' and ''idx_last'' are already set, notifies
+		 * ''msg_idx_txt'' once; otherwise connects to ''idx-last'' on
 	 * the message until both indices are known.
 	 *
 	 * @param m message to bind (content-stream or similar)

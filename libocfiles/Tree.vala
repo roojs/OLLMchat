@@ -22,7 +22,7 @@ namespace OLLMfiles
 	 * Tree-sitter AST path lookup (V2 thin client).
 	 *
 	 * Parses in-memory content from {@link File.read} RPC. Uses
-	 * {@link File.last_modified} for parse cache; not {{{mtime_on_disk}}}.
+	 * {@link File.last_modified} for parse cache; not ''mtime_on_disk''.
 	 */
 	public class Tree : TreeBase
 	{

@@ -76,8 +76,8 @@ namespace Markdown.Document
 
 		/**
 		 * Correct a file link path when the model used a leading slash so it was parsed
-		 * as absolute from the filesystem root. Only mutates {{{path}}} and {{{href}}} when
-		 * a file or directory exists at the corrected path under {{{project_root}}}.
+		 * as absolute from the filesystem root. Only mutates ''path'' and ''href'' when
+		 * a file or directory exists at the corrected path under ''project_root''.
 		 *
 		 * @param project_root active project root directory
 		 */
