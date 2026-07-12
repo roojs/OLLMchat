@@ -130,15 +130,27 @@ namespace OLLMrpc.Bin
 		 *
 		 * When {{{object_type}}} is set (homogeneous object arrays), skip
 		 * {@link read_gtype} and decode the property stream for that class.
+		 * When wire {{{GLib.Object}}} is anonymous, decode as
+		 * {{{expected_type}}} when that type implements {@link Serializable}.
 		 *
 		 * @param object_type element class when already read from an array header
+		 * @param expected_type GObject property type for anonymous nested objects
 		 */
 		public Serializable parse_object(
-			GLib.Type object_type = GLib.Type.INVALID
+			GLib.Type object_type = GLib.Type.INVALID,
+			GLib.Type expected_type = GLib.Type.INVALID
 		) throws GLib.Error
 		{
-			var gtype = object_type != GLib.Type.INVALID ? object_type : this.read_gtype();
-			var obj = (Serializable) GLib.Object.new(gtype);
+			var wire_gtype = object_type != GLib.Type.INVALID
+				? object_type
+				: this.read_gtype();
+			var decode_type = wire_gtype;
+			if (wire_gtype == typeof(GLib.Object)
+				&& expected_type != GLib.Type.INVALID
+				&& expected_type.is_a(typeof(Serializable))) {
+				decode_type = expected_type;
+			}
+			var obj = (Serializable) GLib.Object.new(decode_type);
 			obj.bin_read(this);
 			return obj;
 		}

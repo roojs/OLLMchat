@@ -124,12 +124,6 @@ namespace OLLMrpc.Bin
 			return this.bin_to_json_object(bin, gtype_to_alias.get(gtype));
 		}
 
-		/**
-		 * Encode one object body (properties + {@link Stream.TOKEN_END}).
-		 *
-		 * @param src JSON property members for this object
-		 * @param bin active bin session to write into
-		 */
 		public void json_to_bin_object(
 			global::Json.Object src,
 			Stream bin

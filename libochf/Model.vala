@@ -137,7 +137,7 @@ namespace OLLMhf
 					gguf_count++;
 				}
 				if (gguf_count == 0) {
-					md += "- (no .gguf listed)\n";
+					md += "- call detail for GGUF filenames and sizes\n";
 				}
 				return md + "\n";
 			}

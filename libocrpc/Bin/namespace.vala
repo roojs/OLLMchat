@@ -28,7 +28,8 @@ namespace OLLMrpc
  		/**
 		 * {@link Json} encode/decode and {@link Stream} GObject decode options.
 		 *
-		 * Combine with {@code |} (e.g. {@link AUTO} | {@link IGNORE_UNKNOWN}).
+		 * Combine with {@code |} (e.g. {@link AUTO} | {@link IGNORE_UNKNOWN})
+		 *  (needs the flags thing as otherwise combined values are not valid).
 		 */
 		[Flags]
 		public enum Mode {
@@ -39,9 +40,15 @@ namespace OLLMrpc
 			 * are written as bin tags for Vala/GObject lookup (HTTP Hub):
 			 * leading {{{_}}} → {{{underscore_}}}, then {{{_}}} → {{{-}}}.
 			 */
-			AUTO = 1 << 0,
+			AUTO = 1,
 			/** Log {@link GLib.critical} on unknown bin properties and continue decode. */
-			IGNORE_UNKNOWN = 1 << 1,
+			IGNORE_UNKNOWN = 2,
+			/**
+			 * On decode: scalar string wire values whose GObject property is not
+			 * {@link GLib.Type.STRING} fill {{{name_str}}} when that companion
+			 * string property exists (Hub cardData variants).
+			 */
+			AUTO_STR = 4,
 		}
 	}
 }

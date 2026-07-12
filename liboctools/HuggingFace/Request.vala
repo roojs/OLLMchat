@@ -420,7 +420,7 @@ When looking for assets, include tactical tokens in your query parameter:
 							limit = 20,
 							sort = "downloads",
 							direction = "-1",
-							full = false,
+							full = true,
 						},
 						result_type = typeof(OLLMhf.ModelArray),
 					};
@@ -470,6 +470,10 @@ When looking for assets, include tactical tokens in your query parameter:
 					if (this.model_ref.strip() == "") {
 						throw new GLib.IOError.INVALID_ARGUMENT(
 							"'model_ref' is required for detail. Refer to help for usage.");
+					}
+					if (this.model_ref.strip().has_suffix(".gguf")) {
+						throw new GLib.IOError.INVALID_ARGUMENT(
+							"'model_ref' must be a Hub repo id (author/name), not a filename.");
 					}
 
 					var detail_resp = yield rpc.call(new OLLMrpc.Request() {

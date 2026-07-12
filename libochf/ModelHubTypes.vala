@@ -68,45 +68,11 @@ namespace OLLMhf
 		public string license_link { get; set; default = ""; }
 		public string pipeline_tag { get; set; default = ""; }
 		public string[] language { get; set; default = {}; }
+		public string language_str { get; set; default = ""; }
 		public string[] base_model { get; set; default = {}; }
-
-		public override void bin_read_prop(
-			OLLMrpc.Bin.Stream ctx,
-			GLib.ParamSpec prop,
-			uint8 type_byte
-		) throws GLib.Error {
-			// Hub cardData.base_model is a JSON string on some repos and a string[] on others.
-			if (prop.name == "base-model"
-				&& (type_byte & 0x7F) == GLib.Type.STRING
-				&& (type_byte & 0x80) == 0) {
-				var str_len = (uint) ctx.in_stream.read_byte();
-				if ((str_len & 0x80) != 0) {
-					str_len = ((str_len & 0x7F) << 8) | ctx.in_stream.read_byte();
-				}
-				var str_buf = new uint8[str_len + 1];
-				size_t str_read;
-				ctx.in_stream.read_all(str_buf[0:str_len], out str_read);
-				str_buf[str_len] = 0;
-				this.base_model = { (string) str_buf };
-				return;
-			}
-			// Hub cardData.language is sometimes a string and sometimes string[].
-			if (prop.name == "language"
-				&& (type_byte & 0x7F) == GLib.Type.STRING
-				&& (type_byte & 0x80) == 0) {
-				var str_len = (uint) ctx.in_stream.read_byte();
-				if ((str_len & 0x80) != 0) {
-					str_len = ((str_len & 0x7F) << 8) | ctx.in_stream.read_byte();
-				}
-				var str_buf = new uint8[str_len + 1];
-				size_t str_read;
-				ctx.in_stream.read_all(str_buf[0:str_len], out str_read);
-				str_buf[str_len] = 0;
-				this.language = { (string) str_buf };
-				return;
-			}
-			this.bin_default_read_prop(ctx, prop, type_byte);
-		}
+		public string base_model_str { get; set; default = ""; }
+		/** Hub relation kind: finetune, adapter, merge, or quantized. */
+		public string base_model_relation { get; set; default = ""; }
 
 		public static void rpc_register() {
 			OLLMrpc.Bin.register("ModelCardData", typeof(ModelCardData));

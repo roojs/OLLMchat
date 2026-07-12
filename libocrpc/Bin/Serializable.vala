@@ -254,6 +254,11 @@ namespace OLLMrpc.Bin
 				}
 
 				var prop = this.get_class().find_property(prop_name);
+				if (prop == null && (ctx.mode & (Mode.AUTO | Mode.AUTO_STR)) != 0) {
+					prop = this.get_class().find_property(
+						prop_name.replace("-", "_")
+					);
+				}
 				if (prop == null) {
 					if ((ctx.mode & Mode.IGNORE_UNKNOWN) == 0) {
 						throw new SerializableError.PROPERTY(
@@ -269,7 +274,26 @@ namespace OLLMrpc.Bin
 					new Json().bin_member_to_json(ctx, b);
 					continue;
 				}
-				this.bin_read_prop(ctx, prop, b);
+				if ((ctx.mode & Mode.AUTO_STR) == 0
+					|| (b & 0x7F) != GLib.Type.STRING
+					|| (b & 0x80) != 0
+					|| prop.value_type == GLib.Type.STRING) {
+					this.bin_read_prop(ctx, prop, b);
+					continue;
+				}
+				var str_prop = this.get_class().find_property(prop.name + "_str");
+				if (str_prop != null && str_prop.value_type == GLib.Type.STRING) {
+					this.bin_read_prop(ctx, str_prop, b);
+					continue;
+				}
+				GLib.critical(
+					"scalar string wire value on '%s' (%s) but no '%s_str' on %s",
+					prop.name,
+					prop.value_type.name(),
+					prop.name,
+					this.get_type().name()
+				);
+				new Json().bin_member_to_json(ctx, b);
 			}
 
 			this.bin_post(ctx);
@@ -682,7 +706,7 @@ namespace OLLMrpc.Bin
 							type_byte
 						);
 					}
-					var child = ctx.parse_object();
+					var child = ctx.parse_object(GLib.Type.INVALID, prop.value_type);
 					if (!child.get_type().is_a(prop.value_type)) {
 						throw new SerializableError.PROPERTY(
 							"prop '%s' cannot assign '%s' to '%s'",

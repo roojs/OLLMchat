@@ -119,7 +119,7 @@ namespace OLLMrpc
 		private uint read_watch_id = 0;
 		private Soup.Session? http_session;
 		private Bin.Json http_json = new Bin.Json(
-			Bin.Mode.AUTO | Bin.Mode.IGNORE_UNKNOWN
+			Bin.Mode.AUTO | Bin.Mode.AUTO_STR | Bin.Mode.IGNORE_UNKNOWN
 		);
 
 		static construct
@@ -485,6 +485,10 @@ namespace OLLMrpc
 					this.complete_pending(head.request.id, null, e);
 				}
 				this.sending = false;
+				if (this.pending.size > 0
+					&& !this.pending.get(0).sent) {
+					this.send_head.begin();
+				}
 				return;
 			}
 			try {
