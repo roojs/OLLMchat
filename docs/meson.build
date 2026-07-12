@@ -76,6 +76,7 @@ valadoc_docs = custom_target('valadoc',
     '../libochf/ModelHubTypes.vala',
     '../libochf/Model.vala',
     '../libochf/ModelArray.vala',
+    '../libochf/ModelTreeArray.vala',
     '../libochf/Download.vala',
     '../libochf/Param/Search.vala',
     # ollmfilesd param types (shared with libocfiles client)

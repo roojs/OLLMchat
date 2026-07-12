@@ -167,6 +167,43 @@ namespace OLLMhf
 				+ "\nUse exact filenames above in download `files`.\n";
 		}
 
+		/**
+		 * Fetch {@code GET /api/models/{id}/tree/{rev}} and fill missing sibling sizes.
+		 *
+		 * Models detail siblings often omit size; tree rows use {@code path} + size.
+		 */
+		public async void fetch_siblings(
+			OLLMrpc.Client rpc,
+			string revision = "main"
+		) throws GLib.Error
+		{
+			var tree_resp = yield rpc.call(new OLLMrpc.Request() {
+				method = "/api/models/"
+					+ (this.id != "" ? this.id : this.modelId)
+					+ "/tree/"
+					+ revision,
+				result_type = typeof(ModelTreeArray),
+			});
+			if (tree_resp.error != null) {
+				throw new GLib.IOError.FAILED(tree_resp.error.message);
+			}
+			if (tree_resp.result.size == 0) {
+				throw new GLib.IOError.FAILED("empty Hub tree response");
+			}
+			foreach (var sibling in this.siblings) {
+				if (sibling.size > 0) {
+					continue;
+				}
+				foreach (var entry in ((ModelTreeArray) tree_resp.result[0]).items) {
+					if (entry.path != sibling.rfilename) {
+						continue;
+					}
+					sibling.size = entry.size;
+					break;
+				}
+			}
+		}
+
 		public static void rpc_register() {
 			OLLMrpc.Bin.register("Model", typeof(Model));
 		}

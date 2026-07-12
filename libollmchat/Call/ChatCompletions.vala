@@ -428,20 +428,7 @@ namespace OLLMchat.Call
 					// GLib.debug("exec_stream: deserialize returned null");
 					continue;
 				}
-				GLib.debug(
-					"chunk tool_calls=%u payload=%s",
-					chunk.message.tool_calls.size,
-					payload
-				);
 				var token = resp.addChunk(chunk);
-				// GLib.debug(
-				// 	"exec_stream: chunk done=%s new_content.len=%u new_thinking.len=%u token.len=%u message.content.len=%u",
-				// 	chunk.done.to_string(),
-				// 	resp.new_content.length,
-				// 	resp.new_thinking.length,
-				// 	token.length,
-				// 	resp.message != null ? resp.message.content.length : 0
-				// );
 
 				if (resp.is_first_chunk) {
 					resp.is_first_chunk = false;
@@ -486,11 +473,11 @@ namespace OLLMchat.Call
 			}
 			resp.done = true;
 			GLib.debug(
-				"stream finished tool_calls=%u first_argument_members=%u",
-				resp.message != null ? resp.message.tool_calls.size : 0,
-				resp.message != null && resp.message.tool_calls.size > 0
-					? resp.message.tool_calls.get(0).function.arguments.get_size()
-					: 0
+				"stream finished think_total=%u content_total=%u last_think=%s done_reason=%s",
+				resp.message.thinking.length,
+				resp.message.content.length,
+				resp.is_thinking.to_string(),
+				resp.done_reason
 			);
 			this.stream_chunk("", false, resp);
 			if (this.agent != null) {

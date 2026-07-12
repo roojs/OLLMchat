@@ -215,12 +215,12 @@ namespace OLLMchatGtk
 			}
 
 			if (response.done) {
-				/* GLib.debug(
-					"idx_map chunk tail=%u n=%u tv=%s msg=%p (idx set after return)",
-					this.render_box.by_id.size > 0 ? (uint) (this.render_box.by_id.size - 1) : 0u,
-					(uint) this.render_box.by_id.size,
-					this.renderer.current_textview != null ? this.renderer.current_textview.get_type().name() : "-",
-					response.message); */
+				GLib.debug(
+					"append assistant done content_state=%u content_len=%u resp_is_thinking=%s",
+					(uint) this.content_state,
+					response.message.content.length,
+					response.is_thinking.to_string()
+				);
 			}
 
 			/* GLib.debug("scroll_to_bottom_caller reason=append_assistant_chunk"); */

@@ -174,7 +174,9 @@ Examples:
 			result_type = typeof(OLLMhf.Model),
 		};
 		var detail_resp = yield rpc.call(detail_req);
-		var node = json.from_gobject((OLLMhf.Model) detail_resp.result[0]);
+		var hub_model = (OLLMhf.Model) detail_resp.result[0];
+		yield hub_model.fetch_siblings(rpc);
+		var node = json.from_gobject(hub_model);
 		stdout.printf(
 			"%s\n",
 			Json.to_string(node, true)

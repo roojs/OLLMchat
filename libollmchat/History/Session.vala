@@ -207,10 +207,6 @@ namespace OLLMchat.History
 		 */
 		public override void handle_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
 		{
-			// Debug: refinement stream — log only new stream start
-			if (this.current_stream_message == null && (new_text.length > 0 || response.done)) {
-				GLib.debug("Session.handle_stream_chunk: new stream is_active=%s", this.is_active.to_string());
-			}
 			// If session is inactive, increment unread count
 			// This prevents inactive sessions from updating the UI with streaming output
 			if (!this.is_active) {
@@ -256,6 +252,13 @@ namespace OLLMchat.History
 		 */
 		private void finalize_streaming(Response.Chat response)
 		{
+			GLib.debug(
+				"stream finalize current_think=%s thinking_len=%u content_len=%u resp_is_thinking=%s",
+				this.current_stream_is_thinking.to_string(),
+				response.message.thinking.length,
+				response.message.content.length,
+				response.is_thinking.to_string()
+			);
 			// Create "end-stream" message to signal renderer
 			var end_stream_msg = new Message("end-stream", "");
 			this.messages.add(end_stream_msg);

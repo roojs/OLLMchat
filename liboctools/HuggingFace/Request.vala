@@ -171,6 +171,7 @@ namespace OLLMtools.HuggingFace
 					throw new GLib.IOError.PERMISSION_DENIED(
 						"Repo is gated or private — not downloadable without Hub login.");
 				}
+				yield this.download_model.fetch_siblings(rpc);
 			} catch (GLib.Error e) {
 				var err = "ERROR: " + e.message;
 				this.agent.add_message(new OLLMchat.Message("ui",
@@ -488,6 +489,7 @@ When looking for assets, include tactical tokens in your query parameter:
 						throw new GLib.IOError.PERMISSION_DENIED(
 							"Repo is gated or private — not downloadable without Hub login.");
 					}
+					yield hub_model.fetch_siblings(rpc);
 					var detail_result = hub_model.to_markdown();
 					this.agent.add_message(new OLLMchat.Message("ui",
 						OLLMchat.Message.fenced(
@@ -525,6 +527,9 @@ When looking for assets, include tactical tokens in your query parameter:
 						|| (hub_model.gated != "" && hub_model.gated != "false")) {
 						throw new GLib.IOError.PERMISSION_DENIED(
 							"Repo is gated or private — not downloadable without Hub login.");
+					}
+					if (this.download_model == null) {
+						yield hub_model.fetch_siblings(rpc);
 					}
 
 					var dl = new OLLMhf.Download(hub_model);
