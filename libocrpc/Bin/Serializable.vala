@@ -16,8 +16,8 @@ namespace OLLMrpc.Bin
 	/**
 	 * {@link Serializable} property encode/decode failures (throw/catch).
 	 *
-	 * Not {@link GLib.Error} abort — use {{{throw new SerializableError.*}}}
-	 * from {@link bin_write_prop} / {@link bin_read_prop} paths.
+	 * Not {@link GLib.Error} abort — throw SerializableError from
+	 * {@link bin_write_prop} / {@link bin_read_prop} paths.
 	 */
 	public errordomain SerializableError
 	{
@@ -31,8 +31,8 @@ namespace OLLMrpc.Bin
 	 * customize props; call {@link bin_default_write_prop} /
 	 * {@link bin_default_read_prop} for stock scalar encoding.
 	 *
-	 * Override for {{{Gee.ArrayList}}} / list properties,
-	 * {{{uint8[]}}} (wire as blob or typed array — see docs/bin-rpc-protocol.md),
+	 * Override for {@link Gee.ArrayList} list properties and ''uint8[]'' byte
+	 * arrays (wire as blob or typed array — see docs/bin-rpc-protocol.md),
 	 * and any other non-scalar shape.
 	 *
 	 * Override {@link bin_pre} / {@link bin_post} for work before or after
@@ -328,7 +328,7 @@ namespace OLLMrpc.Bin
 
 		/**
 		 * Decode a homogeneous object-array body whose wire header is anonymous
-		 * (e.g. AUTO JSON {{{GLib.Object}}}) but whose elements decode as
+		 * (e.g. AUTO JSON {@link GLib.Object}) but whose elements decode as
 		 * {@link element_type}.
 		 *
 		 * Consumes {@link Stream.read_gtype} and the element count on

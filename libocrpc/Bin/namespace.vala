@@ -33,22 +33,22 @@ namespace OLLMrpc
 		 */
 		[Flags]
 		public enum Mode {
-			/** Default: every object needs {{{*type}}}; nested objects need explicit aliases. */
+			/** Default: every object needs wire meta key ''*type''; nested objects need explicit aliases. */
 			EXPLICIT = 0,
 			/**
-			 * Typed root encode without {{{*type}}}; JSON member names
+			 * Typed root encode without ''*type''; JSON member names
 			 * are written as bin tags for Vala/GObject lookup (HTTP Hub):
-			 * leading {{{_}}} → {{{underscore_}}}, then {{{_}}} → {{{-}}};
-			 * GObject-reserved wire names (e.g. {{{type}}}) map to
-			 * {{{reserved_property_<name>}}} properties on decode and
-			 * {{{reserved_property_<name>}}} encodes as wire {{{<name>}}}.
+			 * leading ''_'' maps to ''underscore_'', then ''_'' to ''-'';
+			 * GObject-reserved wire names (e.g. ''type'') map to
+			 * reserved_property_NAME properties on decode and
+			 * reserved_property_NAME encodes as wire NAME.
 			 */
 			AUTO = 1,
 			/** Log {@link GLib.critical} on unknown bin properties and continue decode. */
 			IGNORE_UNKNOWN = 2,
 			/**
 			 * On decode: scalar string wire values whose GObject property is not
-			 * {@link GLib.Type.STRING} fill {{{name_str}}} when that companion
+			 * {@link GLib.Type.STRING} fill name_str when that companion
 			 * string property exists (Hub cardData variants).
 			 */
 			AUTO_STR = 4,

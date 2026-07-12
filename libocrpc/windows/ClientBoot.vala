@@ -1,13 +1,13 @@
 namespace OLLMrpc
 {
 	/**
-	 * Ensure the Windows TCP {{{ollmfilesd}}} endpoint is reachable.
+	 * Ensure the Windows TCP ollmfilesd endpoint is reachable.
 	 *
 	 * The process is started in foreground TCP mode. Readiness is detected by
 	 * probing the loopback endpoint instead of a pid file.
 	 *
-	 * {@link socket_name} is a TCP URL ({{{tcp:}}} prefix plus
-	 * {{{127.0.0.1:4141}}}); {@link socket_path} stores that value.
+	 * {@link socket_name} is a TCP URL (tcp prefix plus ''127.0.0.1:4141'');
+	 * {@link socket_path} stores that value.
 	 */
 	public class ClientBoot : GLib.Object
 	{

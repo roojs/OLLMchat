@@ -21,8 +21,8 @@ namespace OLLMrpc
 	/**
 	 * Base bag for request arguments on {@link Request.param}.
 	 *
-	 * Daemon param types live in {{{ollmfilesd/CallParam.vala}}} and extend
-	 * this class (e.g. {{{FolderParams}}}, {{{FileParams}}}). Add a wire field
+	 * Daemon param types live in ollmfilesd/CallParam.vala and extend
+	 * this class (e.g. FolderParams, FileParams). Add a wire field
 	 * by adding a GObject property on the subclass.
 	 *
 	 * @see Request

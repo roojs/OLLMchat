@@ -12,7 +12,7 @@
  */
 
 /**
- * Bin RPC wire types in {{{libocrpc}}} — shared by client and {{{ollmfilesd}}}.
+ * Bin RPC wire types in libocrpc — shared by client and ollmfilesd.
  *
  * Request arguments use a typed {@link CallParam} subclass on
  * {@link Request.param}; see {@link Request} and {@link Client.call}.
