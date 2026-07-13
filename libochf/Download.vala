@@ -21,15 +21,6 @@ namespace OLLMhf
 	/**
 	 * Download a Model's ''.gguf'' siblings into the local models tree.
 	 * Resume state is kept in ''download.json'' beside the files.
-	 *
-	 * {{{
-	 * var dl = new OLLMhf.Download(model);
-	 * dl.progress.connect((n) => {
-	 *     stdout.printf("%lld/%lld %s\n",
-	 *         n.progress_completed, n.progress_total, n.message);
-	 * });
-	 * yield dl.start();
-	 * }}}
 	 */
 	public class Download : GLib.Object
 	{
