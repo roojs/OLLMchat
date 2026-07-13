@@ -175,6 +175,7 @@ ollmchat_ollama_src = files([
   'Agent/JustAsk.vala',  # Must come after JustAskFactory (JustAsk uses Base)
   'Chatter/namespace.vala',
   'Chatter/Factory.vala',  # Must come after Agent/Factory
+  'Chatter/PendingMessage.vala',  # Must come before Chatter/Agent
   'Chatter/Agent.vala',  # Must come after Agent/Base and Chatter/Factory
   'Call/Base.vala',
   'Call/ChatBase.vala',

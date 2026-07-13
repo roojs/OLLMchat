@@ -221,6 +221,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Agent/JustAsk.vala',  # Must come after JustAskFactory (JustAsk uses Base)
     '../libollmchat/Chatter/namespace.vala',
     '../libollmchat/Chatter/Factory.vala',
+    '../libollmchat/Chatter/PendingMessage.vala',
     '../libollmchat/Chatter/Agent.vala',
     '../libollmchat/History/namespace.vala',  # History namespace documentation
     '../libollmchat/History/Manager.vala',

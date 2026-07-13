@@ -21,8 +21,8 @@ namespace OLLMchat.Chatter
 	/**
 	 * Chatter agent.
 	 *
-	 * Builds summarized outbound history via summary-reset scan and
-	 * triggers background summarization after each completed turn.
+	 * FIFO queue on {@link pending_messages}; {@link send_async} enqueues chat +
+	 * summarize pairs and drains the queue inline when idle.
 	 */
 	public class Agent : OLLMchat.Agent.Base
 	{
@@ -31,58 +31,52 @@ namespace OLLMchat.Chatter
 			base(factory, session);
 		}
 
+		internal Gee.ArrayList<PendingMessage> pending_messages {
+			get; private set;
+			default = new Gee.ArrayList<PendingMessage>();
+		}
+
+		internal bool pending_processing { get; set; default = false; }
+
+		internal bool summarizing { get; set; default = false; }
+
 		/**
-		 * Sends the user message with Chatter history assembly, then
-		 * starts background summarization for the completed turn.
+		 * Enqueues chat + paired summarize; drains queue when idle; waits until
+		 * both steps for this message complete.
 		 *
-		 * @param message API user message to append and send
-		 * @param cancellable optional cancel token for the main request
+		 * @param message API user message (`user-sent` / `ui` already from Session)
+		 * @param cancellable optional cancel token for the main/tool request
 		 */
 		public override async void send_async(
 			Message message,
 			GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
-			this.session.is_running = true;
-			this.session.manager.agent_status_change();
-
-			this.session.messages.add(message);
-
-			var since_summary = this.create_summary();
-			Message? active_summary = null;
-			if (since_summary.size > 0 && since_summary.get(0).role == "summary") {
-				active_summary = since_summary.get(0);
-				since_summary.remove_at(0);
+			var entry = new PendingMessage(
+				message, cancellable, true, new Gee.Promise<bool>());
+			this.pending_messages.add(entry);
+			// Paired summarize row — same done promise; enqueued before drain starts.
+			this.pending_messages.add(
+				new PendingMessage(null, null, false, entry.done));
+			// Another send_async is already draining; wait on this turn's promise.
+			if (this.pending_processing) {
+				yield entry.done.future.wait_async();
+				return;
 			}
-
-			var factory = (Factory) this.factory;
-			var outbound = new Gee.ArrayList<Message>();
-
-			if (active_summary != null) {
-				var tpl = factory.load_prompt("chatter_followup.md");
-				outbound.add(new Message("system", tpl.system_fill(
-					"conversation_summary", active_summary.content,
-					"environment", factory.build_environment(this.session)
-				)));
-			} else {
-				var tpl = factory.load_prompt("chatter_initial.md");
-				outbound.add(new Message("system", tpl.system_fill(
-					"environment", factory.build_environment(this.session)
-				)));
+			this.pending_processing = true;
+			while (this.pending_messages.size > 0) {
+				var head = this.pending_messages.remove_at(0);
+				try {
+					yield head.run(this);
+				} catch (GLib.Error e) {
+					head.done.set_exception(e);
+					// Chat failed — skip the paired summarize row already at queue head.
+					if (head.is_chat && this.pending_messages.size > 0) {
+						this.pending_messages.remove_at(0);
+					}
+				}
 			}
-
-			foreach (var msg in since_summary) {
-				outbound.add(msg);
-			}
-
-			try {
-				yield this.fill_model();
-				yield this.chat_call.send(outbound, cancellable);
-			} finally {
-				this.session.is_running = false;
-				this.session.manager.agent_status_change();
-			}
-
-			(new OLLMchat.Agent.Summarizer(this)).run.begin(cancellable);
+			this.pending_processing = false;
+			yield entry.done.future.wait_async();
 		}
 	}
 }

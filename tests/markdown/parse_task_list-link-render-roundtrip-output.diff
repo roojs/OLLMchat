@@ -1,0 +1,11 @@
+--- parse_task_list-link-render-roundtrip-output.md
++++ parse_task_list-link-render-roundtrip-output.md
+@@ -14,6 +14,8 @@
+ 
+ ## Link with comma in label (References line)
+ 
++- [ResultParser.vala - parse_task_list, parse_task_list_iteration](/home/alan/gitlive/OLLMchat/liboccoder/Task/ResultParser.vala#OLLMcoder.Task-ResultParser-parse_task_list)
++
+ ## Minimal: single problematic link
+ 
+ [parse_task_list](/home/alan/gitlive/OLLMchat/liboccoder/Task/ResultParser.vala#OLLMcoder.Task-ResultParser-parse_task_list)

@@ -306,7 +306,7 @@ namespace OLLMchat.Agent
 		 * Set chat_call.model from session; customize if model_obj is set. On customize failure,
 		 * add ui-warning message and use default model. Override in subclasses (e.g. Skill Runner).
 		 */
-		protected virtual async void fill_model()
+		public virtual async void fill_model()
 		{
 			if (this.session.model_usage.model_obj == null) {
 				this.chat_call.model = this.session.model_usage.model;
@@ -335,7 +335,7 @@ namespace OLLMchat.Agent
 		 *
 		 * @return messages since the latest summary, summary row first if any
 		 */
-		protected Gee.ArrayList<Message> create_summary()
+		public Gee.ArrayList<Message> create_summary()
 		{
 			Message? active_summary = null;
 			var messages = new Gee.ArrayList<Message>();
