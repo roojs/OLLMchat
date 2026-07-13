@@ -18,7 +18,12 @@
 
 namespace OLLMhf
 {
-	/** Search response wrapper — ''items'' holds the Model rows. */
+	/**
+	 * Wrapper for Hub search results.
+	 *
+	 * ''items'' holds the Model rows. Set ''result_type'' to typeof(ModelArray)
+	 * on the Request. See the OLLMhf namespace page for a search example.
+	 */
 	public class ModelArray : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		/** Models from the search response. */

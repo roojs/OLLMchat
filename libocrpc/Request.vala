@@ -19,8 +19,10 @@
 namespace OLLMrpc
 {
 	/**
-	 * Outbound RPC envelope. Set ''method'', a CallParam on ''param'', and
-	 * ''result_type'' when the response should decode to a known type.
+	 * Outbound RPC envelope.
+	 *
+	 * Set ''method'', a CallParam on ''param'', and ''result_type'' when the
+	 * response should decode to a known type.
 	 */
 	public class Request : GLib.Object, Bin.Serializable
 	{

@@ -19,7 +19,10 @@
 namespace OLLMhf
 {
 	/**
-	 * Hub model metadata. ''id'' is the repo path (''author/name'').
+	 * Hub model metadata from search or detail responses.
+	 *
+	 * ''id'' is the repo path (''author/name''). Usage examples are on the
+	 * OLLMhf namespace page.
 	 */
 	public class Model : GLib.Object, OLLMrpc.Bin.Serializable
 	{

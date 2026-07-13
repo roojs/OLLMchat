@@ -232,6 +232,9 @@ Generated HTML docs are built with:
 ninja -C build docs/valadoc
 ```
 
+That runs `docs/run-valadoc.sh` (valadoc, then `docs/fix-valadoc-index-links.sh`
+on `build/valadoc/ollmchat/index.htm` only).
+
 CI runs the same target. Keep these in sync when you change the tree:
 
 | When you… | Also update… |
@@ -268,10 +271,14 @@ rg '<p>[^<]*<pre class="main_source">' build/valadoc/ollmchat --glob '*.html' \
 
 # Curly braces inside inline triple-brace literals in source (truncation risk)
 rg '\{\{\{[^}]*\{' --glob '*.vala'
+
+# index.htm: internal overview links must be relative (no roojs.github.io + _blank)
+rg 'target="_blank".*roojs\.github\.io' build/valadoc/ollmchat/index.htm
 ```
 
 The first grep should return no matches for pages you changed. The second should
-return no matches project-wide.
+return no matches project-wide. The third should return no matches after a
+successful docs build.
 
 ## Conventions in this project
 

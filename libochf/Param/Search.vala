@@ -20,6 +20,9 @@ namespace OLLMhf.Param
 {
 	/**
 	 * Query bag for Hub model search.
+	 *
+	 * Non-empty properties become HTTP query fields. See the OLLMhf namespace
+	 * page for usage with ''GET /api/models''.
 	 */
 	public class Search : OLLMrpc.CallParam
 	{

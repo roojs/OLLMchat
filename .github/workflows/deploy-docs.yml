@@ -8,6 +8,8 @@ on:
       # Only trigger on changes to source files that affect documentation
       - 'libocsqlite/**/*.vala'
       - 'libocfiles/**/*.vala'
+      - 'libocrpc/**/*.vala'
+      - 'libochf/**/*.vala'
       - 'libocmarkdown/**/*.vala'
       - 'libocmarkdowngtk/**/*.vala'
       - 'libollmchat/**/*.vala'
@@ -18,6 +20,9 @@ on:
       - 'ollmapp/**/*.vala'
       - 'examples/**/*.vala'
       - 'docs/meson.build'
+      - 'docs/valadoc-wiki/**'
+      - 'docs/run-valadoc.sh'
+      - 'docs/fix-valadoc-index-links.sh'
       - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:
     inputs:

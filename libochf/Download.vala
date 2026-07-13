@@ -20,7 +20,9 @@ namespace OLLMhf
 {
 	/**
 	 * Download a Model's ''.gguf'' siblings into the local models tree.
-	 * Resume state is kept in ''download.json'' beside the files.
+	 *
+	 * Resume state is kept in ''download.json'' beside the files. See the
+	 * OLLMhf namespace page for a full download example.
 	 */
 	public class Download : GLib.Object
 	{

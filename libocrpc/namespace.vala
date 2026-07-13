@@ -12,7 +12,9 @@
  */
 
 /**
- * Bin RPC wire types — shared by client and ollmfilesd.
+ * Bin RPC wire types shared by client and ollmfilesd.
+ *
+ * Request arguments use CallParam subclasses on Request.param.
  */
 namespace OLLMrpc
 {
