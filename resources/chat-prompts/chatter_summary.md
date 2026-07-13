@@ -21,7 +21,7 @@ The next main assistant turn receives **only this summary** (plus messages after
 4. **Use markdown hash links for retrievable detail:**
    - When you would paste a long assistant reply, **thinking trace**, JSON blob, file contents, or a long list, use a link from **Allowed references** instead, e.g. `[reasoning](#think-11)`, `[full reply](#agent-12)`, or `[tool output](#tool-14)`.
    - **Only** use links listed under **Allowed references** below.
-   - Write `[#user-3](#user-3)`, not bare `#user-3`.
+   - Write `[#user-3](#user-3)`, not bare `[user-3]` or `#user-3`.
    - Do not invent link targets.
    - **Thinking links are optional in the output.** Include `[#think-N](#think-N)` only when the thinking content is **particularly valuable** — e.g. explains a non-obvious decision, resolves ambiguity, or records error diagnosis. Do not cite thinking for routine filler or when the assistant reply alone is enough.
    - When a think reference **is** warranted and the trace is long, link it in one short phrase — do not paste the full thinking block.

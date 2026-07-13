@@ -183,6 +183,9 @@ namespace Markdown
 
 			mp.set("[`", FormatType.INVALID);
 			mp.set("[`?", FormatType.LINK);
+			// Hash-prefixed link text [#user-N](#user-N) — summarizer hash refs.
+			mp.set("[#", FormatType.INVALID);
+			mp.set("[#?", FormatType.LINK);
 			mp.set("[ ]", FormatType.TASK_LIST);
 			mp.set("[x]", FormatType.TASK_LIST_DONE);
 			mp.set("[X]", FormatType.TASK_LIST_DONE);

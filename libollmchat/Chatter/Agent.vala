@@ -21,50 +21,68 @@ namespace OLLMchat.Chatter
 	/**
 	 * Chatter agent.
 	 *
-	 * Builds summarized outbound history via summary-reset scan. User messages
-	 * are FIFO-queued on {@link pending_messages}; {@link PendingMessage.run}
-	 * delivers main chat, all tool rounds, then background summarization before
-	 * the next message starts.
+	 * Builds summarized outbound history via summary-reset scan and
+	 * triggers background summarization after each completed turn.
 	 */
 	public class Agent : OLLMchat.Agent.Base
 	{
-		internal Gee.ArrayList<PendingMessage> pending_messages {
-			get; private set;
-			default = new Gee.ArrayList<PendingMessage>();
-		}
-
-		internal bool pending_processing { get; set; default = false; }
-
 		public Agent(Factory factory, History.SessionBase session)
 		{
 			base(factory, session);
 		}
 
 		/**
-		 * Enqueues the user message and waits until main chat, all tool rounds,
-		 * and background summarization for this message complete.
+		 * Sends the user message with Chatter history assembly, then
+		 * starts background summarization for the completed turn.
 		 *
-		 * @param message API user message (`user-sent` / `ui` already from Session)
-		 * @param cancellable optional cancel token for the main/tool request
+		 * @param message API user message to append and send
+		 * @param cancellable optional cancel token for the main request
 		 */
 		public override async void send_async(
 			Message message,
 			GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
-			var entry = new PendingMessage(message, cancellable);
-			this.pending_messages.add(entry);
-			if (!this.pending_processing) {
-				this.pending_processing = true;
-				var head = this.pending_messages.remove_at(0);
-				head.run.begin(this);
+			this.session.is_running = true;
+			this.session.manager.agent_status_change();
+
+			this.session.messages.add(message);
+
+			var since_summary = this.create_summary();
+			Message? active_summary = null;
+			if (since_summary.size > 0 && since_summary.get(0).role == "summary") {
+				active_summary = since_summary.get(0);
+				since_summary.remove_at(0);
 			}
-			if (this.pending_messages.size > 0) {
-				this.session.manager.message_added(
-					new Message("ui-waiting",
-						"queued — waiting for previous turn"),
-					this.session);
+
+			var factory = (Factory) this.factory;
+			var outbound = new Gee.ArrayList<Message>();
+
+			if (active_summary != null) {
+				var tpl = factory.load_prompt("chatter_followup.md");
+				outbound.add(new Message("system", tpl.system_fill(
+					"conversation_summary", active_summary.content,
+					"environment", factory.build_environment(this.session)
+				)));
+			} else {
+				var tpl = factory.load_prompt("chatter_initial.md");
+				outbound.add(new Message("system", tpl.system_fill(
+					"environment", factory.build_environment(this.session)
+				)));
 			}
-			yield entry.done.future.wait_async();
+
+			foreach (var msg in since_summary) {
+				outbound.add(msg);
+			}
+
+			try {
+				yield this.fill_model();
+				yield this.chat_call.send(outbound, cancellable);
+			} finally {
+				this.session.is_running = false;
+				this.session.manager.agent_status_change();
+			}
+
+			(new OLLMchat.Agent.Summarizer(this)).run.begin(cancellable);
 		}
 	}
 }
