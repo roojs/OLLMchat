@@ -19,30 +19,14 @@
 namespace OLLMhf
 {
 	/**
-	 * Stream one Hub model's ''.gguf'' siblings to the local install layout.
-	 *
-	 * Progress notifications report bytes completed and the current filename.
-	 * Crash-safe state is written to ''download.json'' in the model directory.
-	 *
-	 * == Example ==
+	 * Download a Model's ''.gguf'' siblings into the local models tree.
+	 * Resume state is kept in ''download.json'' beside the files.
 	 *
 	 * {{{
-	 * OLLMhf.rpc_register();
-	 * var rpc = new OLLMrpc.Client("", "", "https://huggingface.co");
-	 * yield rpc.connect(new OLLMrpc.Request());
-	 * var detail = yield rpc.call(new OLLMrpc.Request() {
-	 *     method = "/api/models/author/model-name",
-	 *     result_type = typeof(OLLMhf.Model)
-	 * });
-	 * var dl = new OLLMhf.Download((OLLMhf.Model) detail.result[0]);
-	 * dl.file_filter = { "model-q4_k_m.gguf" };
-	 * dl.progress.connect((notif) => {
-	 *     stdout.printf(
-	 *         "%s %lld/%lld\n",
-	 *         notif.message,
-	 *         notif.progress_completed,
-	 *         notif.progress_total
-	 *     );
+	 * var dl = new OLLMhf.Download(model);
+	 * dl.progress.connect((n) => {
+	 *     stdout.printf("%lld/%lld %s\n",
+	 *         n.progress_completed, n.progress_total, n.message);
 	 * });
 	 * yield dl.start();
 	 * }}}

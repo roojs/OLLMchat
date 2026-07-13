@@ -19,23 +19,7 @@
 namespace OLLMhf.Param
 {
 	/**
-	 * Query parameters for Hub model search (''GET /api/models'').
-	 *
-	 * Non-empty properties become query-string fields on the HTTP request.
-	 * Pair with method ''/api/models'' and result_type typeof(ModelArray).
-	 *
-	 * == Example ==
-	 *
-	 * {{{
-	 * param = new OLLMhf.Param.Search() {
-	 *     search = "qwen",
-	 *     filter = "gguf",
-	 *     limit = 10,
-	 *     sort = "downloads",
-	 *     direction = "-1",
-	 *     full = true
-	 * }
-	 * }}}
+	 * Query bag for Hub model search.
 	 */
 	public class Search : OLLMrpc.CallParam
 	{

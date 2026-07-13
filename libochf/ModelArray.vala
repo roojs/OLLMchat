@@ -18,25 +18,7 @@
 
 namespace OLLMhf
 {
-	/**
-	 * Decode-only wrapper for Hub search results.
-	 *
-	 * Hub returns a JSON array; Client wraps it as an object with an
-	 * ''items'' array before bin decode. Set result_type to typeof(ModelArray)
-	 * on search requests.
-	 *
-	 * == Example ==
-	 *
-	 * {{{
-	 * var resp = yield rpc.call(new OLLMrpc.Request() {
-	 *     method = "/api/models",
-	 *     param = new OLLMhf.Param.Search() { search = "gemma" },
-	 *     result_type = typeof(OLLMhf.ModelArray)
-	 * });
-	 * var hits = (OLLMhf.ModelArray) resp.result[0];
-	 * stdout.printf("%d models\n", hits.items.size);
-	 * }}}
-	 */
+	/** Search response wrapper — ''items'' holds the Model rows. */
 	public class ModelArray : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		/** Models from the search response. */

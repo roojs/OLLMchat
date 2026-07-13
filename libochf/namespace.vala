@@ -17,30 +17,10 @@
  */
 
 /**
- * Hugging Face Hub catalog library (libochf).
+ * Hugging Face Hub — search, model detail, and GGUF download.
  *
- * Search, model detail, and GGUF download against huggingface.co via
- * OLLMrpc.Client HTTP mode. Call rpc_register once before the first request.
- *
- * == Setup and search ==
- *
- * {{{
- * OLLMhf.rpc_register();
- * var rpc = new OLLMrpc.Client("", "", "https://huggingface.co");
- * yield rpc.connect(new OLLMrpc.Request());
- * var resp = yield rpc.call(new OLLMrpc.Request() {
- *     method = "/api/models",
- *     param = new OLLMhf.Param.Search() {
- *         search = "mistral",
- *         filter = "gguf",
- *         limit = 20
- *     },
- *     result_type = typeof(OLLMhf.ModelArray)
- * });
- * foreach (var model in ((OLLMhf.ModelArray) resp.result[0]).items) {
- *     stdout.printf("%s\n", model.id);
- * }
- * }}}
+ * Hub calls use OLLMrpc.Client with an HTTPS URL as the socket path.
+ * Call rpc_register() once before the first request.
  */
 namespace OLLMhf
 {
