@@ -204,8 +204,8 @@ Examples:
 			manager.buffer_provider = new OLLMfiles.BufferProviderBase();
 		}
 		
-		// Set git provider to enable gitignore checking
-		manager.git_provider = new OLLMcoder.GitProvider();
+		// git_provider defaults to GitProviderBase stub (no in-process gitignore).
+		// For gitignore-aware scans, use ollmfilesd instead.
 		
 		// Load projects from database
 		yield manager.load_projects_from_db();

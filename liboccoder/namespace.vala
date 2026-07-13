@@ -36,10 +36,6 @@
  *  * ProjectDropdown: Dropdown widget for selecting projects
  *  * SearchableDropdown: Base class for searchable dropdown widgets
  * 
- * === Git Integration ===
- * 
- *  * GitProvider: GTK implementation of git operations
- * 
  * === Code Assistant ===
  * 
  *  * CodeAssistant: Code assistant functionality

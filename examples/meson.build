@@ -73,7 +73,6 @@ occoder_test_deps = [
   dependency('gobject-2.0'),
   dependency('json-glib-1.0'),
   dependency('sqlite3'),
-  dependency('libgit2-glib-1.0'),
   valac.find_library('posix'),
 ]
 

@@ -287,7 +287,6 @@ valadoc_docs = custom_target('valadoc',
     # liboccoder sources (depends on libocsqlite and libocfiles)
     '../liboccoder/namespace.vala',  # Namespace documentation
     '../liboccoder/BufferProvider.vala',
-    '../liboccoder/GitProvider.vala',
     '../liboccoder/GtkSourceFileBuffer.vala',  # Must come before SourceView.vala (SourceView uses GtkSourceFileBuffer)
     '../liboccoder/SearchableDropdown.vala',
     '../liboccoder/ProjectDropdown.vala',
@@ -399,7 +398,6 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=gtk4',
     '--pkg=libadwaita-1',
     '--pkg=gtksourceview-5',
-    '--pkg=libgit2-glib-1.0',
     '--pkg=posix',
     '--pkg=fiass',  # FAISS via vapi (used by libocvector)
     '--pkg=tree-sitter',  # Tree-sitter via vapi (used by libocvector)

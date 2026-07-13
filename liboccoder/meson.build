@@ -13,13 +13,11 @@ occoder_deps = [
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),  # Required for ollmchat (Soup.Message, Soup.Session)
   dependency('sqlite3'),
-  dependency('libgit2-glib-1.0'),
   valac.find_library('posix'),
 ]
 
 occoder_src = files([
   'BufferProvider.vala',
-  'GitProvider.vala',
   'GtkSourceFileBuffer.vala',
   'SearchableDropdown.vala',
   'ProjectDropdown.vala',
@@ -79,7 +77,6 @@ occoder_vala_args = [
   '--pkg=gtk4',
   '--pkg=libadwaita-1',
   '--pkg=gtksourceview-5',
-  '--pkg=libgit2-glib-1.0',
   '--pkg=ocfiles',
   '--pkg=ollmchat',
   '--pkg=ollamaweb',
@@ -134,7 +131,6 @@ occoder_vapi_gen_pkgs = [
   '--pkg', 'gio-2.0',
   '--pkg', 'json-glib-1.0',
   '--pkg', 'gee-0.8',
-  '--pkg', 'libgit2-glib-1.0',
 ]
 occoder_vapi_gen_pkgs += ['--pkg', 'ocrpc']
 
