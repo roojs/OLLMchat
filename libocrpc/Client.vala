@@ -34,24 +34,54 @@ namespace OLLMrpc
 	}
 
 	/**
-	 * Bin RPC client for ollmfilesd.
-	 * {@link connect} builds {@link ClientBoot} from this client's
-	 * {@link data_dir}, {@link debug}, and {@link pass_data_dir}, runs
-	 * {@link ClientBoot.ensure_daemon}, then {@link ClientBoot.connect}.
-	 * A tcp URL prefix (two slashes, then host:port) in
-	 * {@link socket_path} selects TCP; otherwise a Unix
-	 * socket path is used (Unix desktop only — Windows/Android require a
-	 * tcp URL prefix).
+	 * Bin RPC client for ollmfilesd and HTTP JSON APIs.
 	 *
-	 * A socket {@link GLib.IOChannel} watch dispatches inbound
-	 * {@link Notification} messages and resolves queued {@link Response}
-	 * entries by id.
-	 * {@link call} appends to {@link pending}; only the head entry is sent
-	 * ({@link PendingWrite.sent}) until its response is received, then the
-	 * next entry is sent.
-	 * Transport and wire faults abort via {@link GLib.error}; daemon
-	 * RPC errors return {@link Response.error} and emit {@link failed}.
-	 * Connect UI handlers on {@link failed} for user-visible daemon errors.
+	 * Socket mode spawns or connects to ollmfilesd, then exchanges bin
+	 * Request/Response pairs. HTTP mode (socket_path is an https URL) sends
+	 * JSON REST calls — used by libochf for Hugging Face Hub.
+	 *
+	 * == ollmfilesd (Unix socket) ==
+	 *
+	 * {{{
+	 * OLLMrpc.Daemon.rpc_register();
+	 * OLLMfilesd.DaemonParams.rpc_register();
+	 * var rpc = new OLLMrpc.Client(
+	 *     GLib.Path.build_filename(
+	 *         GLib.Environment.get_user_data_dir(), "ollmchat"),
+	 *     "ollmfilesd.pid",
+	 *     "ollmfilesd.sock"
+	 * );
+	 * if (!yield rpc.connect(new OLLMrpc.Request() {
+	 *     method = "Daemon.hello",
+	 *     param = new OLLMfilesd.DaemonParams() {
+	 *         protocol = 1,
+	 *         client = "my-app"
+	 *     }
+	 * })) {
+	 *     GLib.error("%s", rpc.connect_error);
+	 * }
+	 * var resp = yield rpc.call(new OLLMrpc.Request() {
+	 *     method = "ProjectManager.load_projects_from_db",
+	 *     param = new OLLMfilesd.ProjectParams()
+	 * });
+	 * }}}
+	 *
+	 * == Hugging Face Hub (HTTPS) ==
+	 *
+	 * {{{
+	 * OLLMhf.rpc_register();
+	 * var rpc = new OLLMrpc.Client("", "", "https://huggingface.co");
+	 * yield rpc.connect(new OLLMrpc.Request());
+	 * var resp = yield rpc.call(new OLLMrpc.Request() {
+	 *     method = "/api/models",
+	 *     param = new OLLMhf.Param.Search() {
+	 *         search = "llama",
+	 *         filter = "gguf",
+	 *         limit = 10
+	 *     },
+	 *     result_type = typeof(OLLMhf.ModelArray)
+	 * });
+	 * }}}
 	 */
 	public class Client : GLib.Object
 	{

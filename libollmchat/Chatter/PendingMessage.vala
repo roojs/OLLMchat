@@ -44,9 +44,8 @@ namespace OLLMchat.Chatter
 		}
 
 		/**
-		 * Relay entry: chat deliver when {@link is_chat}, else
-		 * {@link run_summarize}. Sets {@code is_running} / {@code summarizing}
-		 * on {@link Agent} for the active phase.
+		 * Relay entry: chat deliver when is_chat, else run_summarize.
+		 * Sets ''is_running'' / ''summarizing'' on the agent for the active phase.
 		 *
 		 * @param agent the Chatter agent supplying session and chat call
 		 */

@@ -14,6 +14,9 @@
 # Verify locally: ninja -C build docs/valadoc
 #
 valadoc = find_program('valadoc', required: true)
+valadoc_runner = find_program(
+  meson.current_source_dir() / 'run-valadoc.sh'
+)
 
 # Use fake version file for valadoc (internal constant, not documented)
 
@@ -381,7 +384,8 @@ valadoc_docs = custom_target('valadoc',
   output: ['valadoc'],
   depends: [valadoc_clean],
   command: [
-    valadoc,
+    valadoc_runner,
+    valadoc_dir,
     '--package-name=ollmchat',
     '--package-version=@0@'.format(meson.project_version()),
     '--vapidir', meson.current_source_dir() / '../vapi',

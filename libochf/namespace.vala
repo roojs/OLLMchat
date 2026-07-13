@@ -17,21 +17,30 @@
  */
 
 /**
- * Hugging Face Hub catalog library (`libochf`).
+ * Hugging Face Hub catalog library (libochf).
  *
- * Search and model-detail metadata use {@link OLLMrpc.Client.call} against
- * ''huggingface.co'' (set {@link OLLMrpc.Client.socket_path} to an HTTPS URL
- * with that host). Typed results are {@link Model}, {@link ModelArray}, and
- * {@link Param.Search} on {@link OLLMrpc.Request.param}. Detail requests put
- * the model ref in {@link OLLMrpc.Request.method} and use the default
- * {@link OLLMrpc.CallParam} (no query string). When Hub omits sibling
- * ''size'', {@link Model.fetch_siblings} uses
- * ''GET /api/models/MODEL_ID/tree/REVISION''.
+ * Search, model detail, and GGUF download against huggingface.co via
+ * OLLMrpc.Client HTTP mode. Call rpc_register once before the first request.
  *
- * Call {@link rpc_register} once before the first Hub HTTP call so result wire
- * types are registered with {@link OLLMrpc.Bin}. {@link Param.Search} is not
- * registered — it only supplies outbound query fields for
- * {@link OLLMrpc.Client.send_http}.
+ * == Setup and search ==
+ *
+ * {{{
+ * OLLMhf.rpc_register();
+ * var rpc = new OLLMrpc.Client("", "", "https://huggingface.co");
+ * yield rpc.connect(new OLLMrpc.Request());
+ * var resp = yield rpc.call(new OLLMrpc.Request() {
+ *     method = "/api/models",
+ *     param = new OLLMhf.Param.Search() {
+ *         search = "mistral",
+ *         filter = "gguf",
+ *         limit = 20
+ *     },
+ *     result_type = typeof(OLLMhf.ModelArray)
+ * });
+ * foreach (var model in ((OLLMhf.ModelArray) resp.result[0]).items) {
+ *     stdout.printf("%s\n", model.id);
+ * }
+ * }}}
  */
 namespace OLLMhf
 {

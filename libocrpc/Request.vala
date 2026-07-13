@@ -21,15 +21,26 @@ namespace OLLMrpc
 	/**
 	 * Bin RPC request (one root object per call).
 	 *
-	 * On the client, build a {@link Request}, set {@link method}, assign a
-	 * typed {@link CallParam} subclass to {@link param}, then pass to
-	 * {@link Client.call}. On the server, set {@link connection}, then
-	 * {@link dispatch} routes Object.method wire names to the handler's
-	 * call_* signal; handlers reply via {@link reply}.
+	 * Set method to the wire handler name (Object.method for daemons, or a
+	 * REST path for HTTP). Attach a CallParam subclass on param and, for
+	 * typed results, set result_type before passing to Client.call.
 	 *
-	 * @see CallParam
-	 * @see Client
-	 * @see Transport.Connection
+	 * == Example ==
+	 *
+	 * {{{
+	 * var req = new OLLMrpc.Request() {
+	 *     method = "Folder.fetch_files",
+	 *     param = new OLLMfilesd.FolderParams() {
+	 *         path = "/home/user/project",
+	 *         key = ""
+	 *     },
+	 *     result_type = typeof(OLLMfilesd.FileArray)
+	 * };
+	 * var resp = yield rpc.call(req);
+	 * if (resp.error != null) {
+	 *     GLib.error("%s", resp.error.message);
+	 * }
+	 * }}}
 	 */
 	public class Request : GLib.Object, Bin.Serializable
 	{

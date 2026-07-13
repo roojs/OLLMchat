@@ -14,8 +14,20 @@
 /**
  * Bin RPC wire types in libocrpc — shared by client and ollmfilesd.
  *
- * Request arguments use a typed {@link CallParam} subclass on
- * {@link Request.param}; see {@link Request} and {@link Client.call}.
+ * Request arguments use a typed CallParam subclass on Request.param.
+ * Register wire types with Bin.register before connect/call.
+ *
+ * == Minimal client call ==
+ *
+ * {{{
+ * OLLMrpc.Daemon.rpc_register();
+ * var rpc = new OLLMrpc.Client(data_dir, "ollmfilesd.pid", "ollmfilesd.sock");
+ * yield rpc.connect(hello_request);
+ * var resp = yield rpc.call(new OLLMrpc.Request() {
+ *     method = "Daemon.hello",
+ *     param = new OLLMfilesd.DaemonParams() { protocol = 1 }
+ * });
+ * }}}
  */
 namespace OLLMrpc
 {

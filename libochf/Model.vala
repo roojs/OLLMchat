@@ -21,8 +21,22 @@ namespace OLLMhf
 	/**
 	 * Hugging Face Hub model record (search hit or full detail).
 	 *
-	 * {@link id} is the repo id ''author/name''. Hub ''siblings[]'' entries
-	 * decode into {@link ModelFile} objects on {@link siblings}.
+	 * id is the repo id ''author/name''. siblings holds ModelFile rows
+	 * from Hub metadata; call fetch_siblings when size is missing.
+	 *
+	 * == Model detail ==
+	 *
+	 * {{{
+	 * OLLMhf.rpc_register();
+	 * var rpc = new OLLMrpc.Client("", "", "https://huggingface.co");
+	 * yield rpc.connect(new OLLMrpc.Request());
+	 * var resp = yield rpc.call(new OLLMrpc.Request() {
+	 *     method = "/api/models/meta-llama/Llama-3.2-3B",
+	 *     result_type = typeof(OLLMhf.Model)
+	 * });
+	 * var model = (OLLMhf.Model) resp.result[0];
+	 * stdout.printf("%s: %lld downloads\n", model.id, model.downloads);
+	 * }}}
 	 */
 	public class Model : GLib.Object, OLLMrpc.Bin.Serializable
 	{

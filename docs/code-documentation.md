@@ -155,12 +155,14 @@ where valadoc treats the whole block as code.
 - `{@link SymbolName}` → link to a Vala symbol (class, method, property)
 - `{@inheritDoc}` → inherit description from parent (e.g. overridden method)
 
-**Package overview wiki (`docs/valadoc-wiki/index.valadoc`):** Valadoc does **not**
-resolve relative `[[Page.html|label]]` wiki links in the generated summary body. Use
-**full URLs** to the published GitHub Pages docs, e.g.
-`[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.html|OLLMchat]]`. Keep links
-aligned with symbols that exist in `docs/meson.build` (remove stale pages when classes
-are deleted). Sidebar navigation is generated separately and still uses relative paths.
+**Package overview wiki (`docs/valadoc-wiki/index.valadoc`):** Use
+**full URLs** to the published GitHub Pages docs in `[[url|label]]` links, e.g.
+`[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.html|OLLMchat]]`. Valadoc
+renders those as external links (`target="_blank"`). After `ninja docs/valadoc`,
+`docs/fix-valadoc-index-links.sh` rewrites internal links in `index.htm` only
+to same-directory relative hrefs (no new tab). Keep links aligned with symbols
+that exist in `docs/meson.build` (remove stale pages when classes are deleted).
+Sidebar navigation is generated separately and still uses relative paths.
 
 ## Tables
 
