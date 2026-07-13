@@ -18,7 +18,7 @@ else
 	BUILD_DIR="$PROJECT_ROOT/build"
 fi
 
-OC_DOC_TEST="$BUILD_DIR/oc-markdown-doc-test"
+OC_DOC_TEST="$BUILD_DIR/examples/oc-markdown-doc-test"
 MD_DATA="$SCRIPT_DIR/markdown"
 OUT_DIR="${OUT_DIR:-$BUILD_DIR/tests/markdown-doc-out}"
 
@@ -46,6 +46,8 @@ for f in markdown/*.md; do
 	case "$base" in known-fail-*) continue ;; esac
 	# verify-issue* files: one-off verification inputs; not part of regular run
 	case "$base" in verify-issue*) continue ;; esac
+	# repro-* files: gtkmd/hang debug inputs; not round-trip fixtures
+	case "$base" in repro-*) continue ;; esac
 	json_file="$OUT_DIR/$base.json"
 	roundtrip_file="$OUT_DIR/$base-roundtrip.md"
 

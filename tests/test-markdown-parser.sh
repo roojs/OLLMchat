@@ -19,8 +19,8 @@ elif [ -d "$PROJECT_ROOT/$_build_arg" ]; then
 else
 	BUILD_DIR="$PROJECT_ROOT/build"
 fi
-OC_MARKDOWN_TEST="$BUILD_DIR/oc-markdown-test"
-OC_MD2HTML="$BUILD_DIR/oc-md2html"
+OC_MARKDOWN_TEST="$BUILD_DIR/examples/oc-markdown-test"
+OC_MD2HTML="$BUILD_DIR/examples/oc-md2html"
 
 MD_DATA="$SCRIPT_DIR/markdown"
 # Use build/tests/markdown-parser-out so it works in sandbox and meson test runs

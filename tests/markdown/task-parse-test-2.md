@@ -1,16 +1,16 @@
 # Task parse test 2: failed LLM output (JSON content shape)
 
-This file replicates the content that failed to parse — the exact markdown that
-would come from parsing the "content" field of the LLM response (with \n as real newlines).
+This file replicates the content that failed to parse — the exact markdown that would come from parsing the "content" field of the LLM response (with real newline characters).
 
 To debug heading detection, run:
+
   ./build/oc-markdown-doc-test --debug tests/markdown/task-parse-test-2.md 2>&1 | head -40
 
 Expected slugs: original-prompt, goals-summary, tasks, task-section-1, task-section-2, ...
 
 ## Original prompt
 
-Our GTK markdown render now supports ` ```{language}<space>{description} ```. I want to change that to support optional CSS: ` ```{language}.{css}<space>{description}` `. It will add that CSS as a class name to the frame header.
+Our GTK markdown render now supports fenced blocks with language and description. I want to change that to support optional CSS: language plus dot plus css class on the info string. It will add that CSS as a class name to the frame header.
 
 ## Goals / summary
 

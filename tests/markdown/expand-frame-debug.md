@@ -1,11 +1,12 @@
 # Expand frame debug (oc-test-gtkmd)
 
 Use with: `oc-test-gtkmd tests/markdown/expand-frame-debug.md` (or run from build dir with path to this file).
+
 Enable debug to see resize_widget_callback logs: `G_MESSAGES_DEBUG=all oc-test-gtkmd tests/markdown/expand-frame-debug.md`.
 
 This file has code blocks with enough lines to exceed the collapsed height so the expand button appears.
+
 Click expand and check that the frame grows to show full content; use debug output to inspect for_width, natural_height, max_collapsed.
- 
 
 ## oc-frame with .collapsed (starts collapsed, use list-add to expand)
 

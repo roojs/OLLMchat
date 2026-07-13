@@ -1,6 +1,7 @@
 # oc-frame-info format (type.oc-frame-theme [title])
 
 Fenced code blocks using the info string format `type.oc-frame-theme` or `type.oc-frame-theme title`.
+
 RenderSourceView must parse these as type + theme (e.g. markdown), not as language-free text.
 
 ## Block with type.oc-frame-theme and no title

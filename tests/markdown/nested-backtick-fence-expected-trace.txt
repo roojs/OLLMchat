@@ -2,10 +2,7 @@
 === FILE CONTENT (first 200 chars) ===
 # Four-backtick fence wrapping triple-backtick lines
 
-Outer fence should allow ``` as literal content (CommonMark: closing fence length matches open; inner ``` must not close the outer block).
-
-````
-`...
+Outer fence should allow triple-backtick lines as literal content (CommonMark: closing fence length matches open; inner triple-backtick lines must...
 
 === CALLBACK TRACE ===
 START: <h1>
@@ -24,10 +21,20 @@ START: <p>
   TEXT: " fence"
   TEXT: " should"
   TEXT: " allow"
-  TEXT: " "
-  START: <code>
-    TEXT: "` as literal content (CommonMark: closing fence length matches open; inner `"
-  END: <code>
+  TEXT: " triple-backtick"
+  TEXT: " lines"
+  TEXT: " as"
+  TEXT: " literal"
+  TEXT: " content"
+  TEXT: " (CommonMark:"
+  TEXT: " closing"
+  TEXT: " fence"
+  TEXT: " length"
+  TEXT: " matches"
+  TEXT: " open;"
+  TEXT: " inner"
+  TEXT: " triple-backtick"
+  TEXT: " lines"
   TEXT: " must"
   TEXT: " not"
   TEXT: " close"
