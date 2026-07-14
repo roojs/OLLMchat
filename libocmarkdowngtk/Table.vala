@@ -21,6 +21,8 @@ namespace MarkdownGtk
 	internal class Table
 	{
 		private Render renderer;
+		private Gtk.Frame frame;
+		private Gtk.ScrolledWindow table_scrolled;
 		public Gtk.Grid grid { get; private set; }
 		private int current_row = 0;
 		private int current_cell = 0;
@@ -50,8 +52,8 @@ namespace MarkdownGtk
 			this.table_fake_top_state.initialize();
 
 			this.grid = new Gtk.Grid() {
-				hexpand = true,
-				vexpand = true,
+				hexpand = false,
+				vexpand = false,
 				column_homogeneous = false,
 				row_homogeneous = false,
 				column_spacing = 0,
@@ -61,8 +63,32 @@ namespace MarkdownGtk
 				margin_top = 2,
 				margin_bottom = 2
 			};
+			/* Viewport clips to parent width; grid may be wider and scrolls horizontally. */
+			this.table_scrolled = new Gtk.ScrolledWindow() {
+				hscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
+				vscrollbar_policy = Gtk.PolicyType.NEVER,
+				propagate_natural_width = false,
+				propagate_natural_height = true,
+				hexpand = true,
+				vexpand = false
+			};
+			this.table_scrolled.set_child(this.grid);
+			this.table_scrolled.realize.connect(() => {
+				GLib.Idle.add(() => {
+					this.build_widths_and_resize();
+					return false;
+				});
+			});
+			this.frame = new Gtk.Frame(null) {
+				margin_top = 0,
+				margin_bottom = 0,
+				hexpand = true,
+				vexpand = false
+			};
+			this.frame.add_css_class("oc-table-frame");
+			this.frame.set_child(this.table_scrolled);
 			/* Column widths are set when rows are added (on_row Idle); GTK4 does not expose a signal for grid resize. */
-			this.renderer.box.appender(this.grid);
+			this.renderer.box.appender(this.frame);
 		}
 
 		private void set_renderer_to_fake()
@@ -121,8 +147,10 @@ namespace MarkdownGtk
 		{
 			var ncols = this.num_cols > 0 ? this.num_cols : this.current_cell;
 			var container = 400;
-			if (this.grid.get_width() > 0) {
-				container = this.grid.get_width() - 50;
+			if (this.table_scrolled.get_width() > 0) {
+				container = this.table_scrolled.get_width();
+			} else if (this.renderer.box.get_width() > 0) {
+				container = this.renderer.box.get_width();
 			}
 			var min_col = (ncols < 5) ? (int)(0.10 * container) : 50;
 			var max_col = (ncols <= 5) ? (int)(0.60 * container) : 400;
@@ -135,11 +163,8 @@ namespace MarkdownGtk
 				widths.set(c, w);
 				total += w;
 			}
-			/* Scale down so total width does not overfill container */
-			var scale = (total > 0 && total > container) ? (double) container / total : 1.0;
-			var col0_w = widths.has_key(0) ? (int)(widths.get(0) * scale) : 100;
-			GLib.debug("table resize: container=%d total=%d scale=%.2f col0_width=%d", container, total, scale, col0_w);
-			this.resize(widths, scale);
+			GLib.debug("table resize: viewport=%d total=%d col0_width=%d", container, total, widths.has_key(0) ? widths.get(0) : 100);
+			this.resize(widths, 1.0);
 		}
 
 		public void on_row(bool is_start)
@@ -220,7 +245,7 @@ namespace MarkdownGtk
 				propagate_natural_height = false,
 				propagate_natural_width = false,
 				min_content_height = 0,
-				hexpand = true,
+				hexpand = false,
 				vexpand = false,
 				halign = Gtk.Align.FILL,
 				valign = Gtk.Align.FILL,
