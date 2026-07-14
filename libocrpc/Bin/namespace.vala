@@ -19,17 +19,72 @@
 namespace OLLMrpc
 {
 	/**
-	 * Binary wire serialization for RPC payloads (JIT keys/types, short/long encodings).
+	 * Binary wire serialization for RPC payloads.
 	 *
-	 * See docs/bin-rpc-protocol.md for the wire specification.
+	 * The OLLMrpc.Bin namespace encodes and decodes {@link Serializable} GObjects
+	 * on a per-connection {@link Stream}. Type aliases are process-wide
+	 * ({@link register}); property keys are JIT tokens on each Stream.
+	 * {@link Json} converts between JSON trees and bin bytes for tests and
+	 * HTTP tooling. Wire layout is documented in docs/bin-rpc-protocol.md.
+	 *
+	 * == Architecture Benefits ==
+	 *
+	 *  * GObject-native: properties map to wire fields without hand schemas
+	 *  * Compact wire: short integers, JIT key tokens, typed object headers
+	 *  * Dual use: daemon sockets and JSON bridges share one codec
+	 *  * Extensible: override prop read/write for lists and custom shapes
+	 *
+	 * == Usage Examples ==
+	 *
+	 * === Register and round-trip ===
+	 *
+	 * {{{
+	 * OLLMrpc.Bin.register("Pair", typeof(Pair));
+	 *
+	 * var mem = new GLib.MemoryOutputStream.resizable();
+	 * var out_stream = new GLib.DataOutputStream(mem);
+	 * var write_bin = new OLLMrpc.Bin.Stream(null, out_stream);
+	 * write_bin.write(new Pair() { name = "alpha", count = 42 });
+	 * out_stream.close();
+	 *
+	 * var read_bin = new OLLMrpc.Bin.Stream(
+	 *     new GLib.DataInputStream(
+	 *         new GLib.MemoryInputStream.from_bytes(mem.steal_as_bytes())),
+	 *     null);
+	 * var parsed = read_bin.parse() as Pair;
+	 * }}}
+	 *
+	 * === JSON bridge ===
+	 *
+	 * {{{
+	 * var json = new OLLMrpc.Bin.Json();
+	 * var node = json.from_gobject(pair);
+	 * }}}
+	 *
+	 * == Best Practices ==
+	 *
+	 *  1. Register every alias before connect/listen (both peers)
+	 *  2. One Stream per connection for the channel lifetime
+	 *  3. Implement Serializable; override only non-scalar props
+	 *  4. Prefer {@link Json.from_gobject} over hand-rolled memory pipes
 	 */
 	namespace Bin
 	{
- 		/**
+		/**
 		 * {@link Json} encode/decode and {@link Stream} GObject decode options.
 		 *
 		 * Combine flags with bitwise OR (e.g. {@link AUTO} | {@link IGNORE_UNKNOWN}).
 		 * Use the Flags attribute so combined values are valid.
+		 *
+		 * == Example ==
+		 *
+		 * {{{
+		 * var json = new OLLMrpc.Bin.Json(
+		 *     OLLMrpc.Bin.Mode.AUTO | OLLMrpc.Bin.Mode.IGNORE_UNKNOWN);
+		 * var stream = new OLLMrpc.Bin.Stream(in_stream, out_stream) {
+		 *     mode = OLLMrpc.Bin.Mode.AUTO
+		 * };
+		 * }}}
 		 */
 		[Flags]
 		public enum Mode {

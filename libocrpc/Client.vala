@@ -34,16 +34,58 @@ namespace OLLMrpc
 	}
 
 	/**
-	 * Talks to ollmfilesd over a Unix socket, or to an HTTPS host when
-	 * ''socket_name'' is a URL (with empty ''data_dir'').
+	 * Bin RPC client for ollmfilesd and HTTPS JSON APIs.
+	 *
+	 * Socket mode spawns or connects to ollmfilesd, then exchanges bin
+	 * {@link Request}/{@link Response} pairs. HTTP mode (''socket_name'' is an
+	 * https URL, empty ''data_dir'') sends JSON REST calls — used by libochf
+	 * for Hugging Face Hub. Register wire types before {@link connect}.
+	 *
+	 * == Basic Usage ==
 	 *
 	 * {{{
-	 * yield rpc.connect(hello_request);
+	 * OLLMrpc.Daemon.rpc_register();
+	 * OLLMfilesd.DaemonParams.rpc_register();
+	 * var rpc = new OLLMrpc.Client(
+	 *     GLib.Path.build_filename(
+	 *         GLib.Environment.get_user_data_dir(), "ollmchat"),
+	 *     "ollmfilesd.pid",
+	 *     "ollmfilesd.sock"
+	 * );
+	 * if (!yield rpc.connect(new OLLMrpc.Request() {
+	 *     method = "Daemon.hello",
+	 *     param = new OLLMfilesd.DaemonParams() {
+	 *         protocol = 1,
+	 *         client = "my-app"
+	 *     }
+	 * })) {
+	 *     GLib.error("%s", rpc.connect_error);
+	 * }
 	 * var resp = yield rpc.call(new OLLMrpc.Request() {
 	 *     method = "ProjectManager.load_projects_from_db",
 	 *     param = new OLLMfilesd.ProjectParams()
 	 * });
 	 * }}}
+	 *
+	 * == HTTPS ==
+	 *
+	 * {{{
+	 * OLLMhf.rpc_register();
+	 * var rpc = new OLLMrpc.Client("", "", "https://huggingface.co");
+	 * yield rpc.connect(new OLLMrpc.Request());
+	 * var resp = yield rpc.call(new OLLMrpc.Request() {
+	 *     method = "/api/models",
+	 *     param = new OLLMhf.Param.Search() {
+	 *         search = "llama",
+	 *         filter = "gguf",
+	 *         limit = 10
+	 *     },
+	 *     result_type = typeof(OLLMhf.ModelArray)
+	 * });
+	 * }}}
+	 *
+	 * @see Request
+	 * @see Response
 	 */
 	public class Client : GLib.Object
 	{
@@ -378,9 +420,6 @@ namespace OLLMrpc
 			);
 			var qs = "";
 			foreach (var pspec in head.request.param.get_class().list_properties()) {
-				if (pspec.name == "args") {
-					continue;
-				}
 				var val = Value(pspec.value_type);
 				head.request.param.get_property(pspec.name, ref val);
 				switch (val.type()) {

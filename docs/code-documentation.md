@@ -22,9 +22,74 @@ Use a single block per symbol: brief line, optional long description, then tagle
  */
 ```
 
-- **Brief**: First line(s) before a blank line; keep short.
-- **Long description**: After the first blank line; use full sentences and structure (lists, code, links).
+- **Brief**: First line(s) before a blank line; keep short (one sentence).
+- **Long description**: Follow the **Class and namespace overviews** rules
+  below. Taglets at the end.
 - **Taglets**: At the end; use block taglets for parameters, return value, and errors.
+
+## Class and namespace overviews (**gold standard: OLLMchat**)
+
+Match **`libollmchat/namespace.vala`** and major classes such as
+**`libollmchat/Client.vala`**, **`libollmchat/Message.vala`**,
+**`libollmchat/Tool/BaseTool.vala`**. Anything thinner is usually not good
+enough for a public namespace or entry-point class.
+
+**Namespace / major class structure:**
+
+1. **Brief** — one title sentence.
+2. **Overview paragraph** — what the type/namespace is for, and which related
+   types the reader will need (orientation, not method-by-method narration).
+3. Optional **bullets** (`== Architecture ==` / benefits) when they help.
+4. **`== Usage Examples ==`** (or `== Example ==`) with `=== … ===` subsections
+   and real `{{{ … }}}` samples people can copy.
+5. Optional **`== Best Practices ==`** numbered list.
+
+After every `== … ==` / `=== … ===` headline, put a **blank** documentation
+line before the next paragraph (valadoc requirement).
+
+**Bad (implementation essay, no examples):**
+```vala
+/**
+ * GObject types that read/write on a Stream session. Override bin_write_prop
+ * / bin_read_prop to omit or customize props; call bin_default_write_prop /
+ * bin_default_read_prop for stock scalar encoding. Override for Gee.ArrayList
+ * list properties and uint8[] …
+ */
+```
+
+**Also bad (too thin for a major API):**
+```vala
+/**
+ * Binary wire serialization for RPC payloads.
+ *
+ * See docs/bin-rpc-protocol.md for the wire specification.
+ */
+```
+
+**Good (OLLMchat-shaped — overview + titled examples):**
+```vala
+/**
+ * Binary wire codec for {@link OLLMrpc} payloads.
+ *
+ * {@link Stream} writes and parses {@link Serializable} GObjects on a
+ * connection. {@link Json} bridges JSON trees for tests and HTTP. Register
+ * every wire alias with {@link register} before connect or listen.
+ *
+ * == Usage Examples ==
+ *
+ * === Round-trip ===
+ *
+ * {{{
+ * OLLMrpc.Bin.register("Pair", typeof(Pair));
+ * write_bin.write(new Pair() { name = "alpha", count = 42 });
+ * var parsed = read_bin.parse() as Pair;
+ * }}}
+ */
+```
+
+Wire-protocol details belong in `docs/bin-rpc-protocol.md` or on the
+methods that implement them — not as a substitute for examples in the class
+header.
 
 ## Line breaks and paragraphs
 

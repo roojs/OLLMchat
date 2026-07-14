@@ -10,13 +10,16 @@ The next main assistant turn receives **only this summary** (plus messages after
 
 1. **Produce only the updated summary** — no preamble ("Here is your summary"), no markdown code fence around the whole output.
 
-2. **Keep under 250 words.** Trim the oldest, least relevant sentence first if you need space. Do not become a catalogue of hash links.
+2. **Keep under 250 words.** Trim the oldest, least relevant sentence first if you need space. Do not become a catalogue of hash links. Prefer dropping old greetings, resolved side-quests, and duplicate tool notes before dropping **sticky** lines or **candidate names** (rules 3b–3c).
 
 3. **Preserve essential state:**
    - User intent, decisions, constraints, and unresolved questions.
    - Tool calls and **primary outcomes** (what was invoked, key result in one line — not raw dumps).
    - Errors or blockers that affect the next turn.
    - IDs, counts, paths, filter values, and names the user may refer to again.
+   - **(3b) Sticky tool mandates** — If a tool reply is a help/manifest or spells out a required pipeline (e.g. “use this tool only”, “help → search → detail → download”, “do not use curl/web_fetch for Hub”), keep a **short sticky line** until that task is finished or the user abandons it. Do not rely only on a hash link for that mandate.
+   - **(3c) Candidate names** — When search/list tools return concrete options the user may pick (repos, model ids, file names, paths), keep **every name that still matches the open ask** in prose. Do not keep only a “top 2”; link the full dump (e.g. `[search results](#tool-15)`) and still list the relevant ids inline.
+   - **(3d) Active workflow** — One short line while work is unfinished, e.g. `Active: huggingface_hub (detail/download pending); prior results [#tool-15](#tool-15).`
 
 4. **Use markdown hash links for retrievable detail:**
    - When you would paste a long assistant reply, **thinking trace**, JSON blob, file contents, or a long list, use a link from **Allowed references** instead, e.g. `[reasoning](#think-11)`, `[full reply](#agent-12)`, or `[tool output](#tool-14)`.
@@ -25,6 +28,7 @@ The next main assistant turn receives **only this summary** (plus messages after
    - Do not invent link targets.
    - **Thinking links are optional in the output.** Include `[#think-N](#think-N)` only when the thinking content is **particularly valuable** — e.g. explains a non-obvious decision, resolves ambiguity, or records error diagnosis. Do not cite thinking for routine filler or when the assistant reply alone is enough.
    - When a think reference **is** warranted and the trace is long, link it in one short phrase — do not paste the full thinking block.
+   - Prefer linking **tool** outputs for full payloads; still leave sticky mandates and candidate names in prose (rules 3b–3c).
 
 5. **Merge across turns** — combine related facts (e.g. two tool calls about the same file) into one line instead of repeating.
 
@@ -40,15 +44,18 @@ The next main assistant turn receives **only this summary** (plus messages after
 
 - **Do** state what the user wanted and what was decided or left open.
 - **Do** note tool usage in shorthand: `read_file foo.vala → [outline](#tool-8)`.
+- **Do** keep sticky mandates and matching candidate ids inline when the task is still open.
 - **Do** link thinking **only when it is particularly valuable**, e.g. `chose X after [reasoning](#think-11)`.
 - **Do** replace large payloads with hash links the main agent can fetch.
-- **Do** drop older references when the summary gets crowded.
+- **Do** drop older references when the summary gets crowded (but not sticky lines or still-relevant candidate names).
 - **Do** omit greetings, thanks, politeness, and repeated clarifications.
 
 ### Don't
 
 - **Don't** cite `#think-N` for every turn that had thinking — only when the reasoning is worth recalling later.
 - **Don't** output raw JSON, stack traces, long thinking blocks, or long quoted text — link instead.
+- **Don't** collapse a multi-option tool result to one or two “popular” picks when the user has not chosen yet.
+- **Don't** replace a mandatory tool pipeline with only a hash link — keep the one-line mandate in the summary.
 - **Don't** repeat the same fact every update — summarise once.
 - **Don't** use links not in **Allowed references**.
 - **Don't** guess details that were not in the exchange.
@@ -69,6 +76,14 @@ Assistant: [long multi-paragraph explanation with code]
 User asked how sessions are saved (JSON under `history/`). User then asked for the exact `Session.vala` save method; see [save method explanation](#agent-22).
 
 **Bad output:** pasting the full assistant paragraphs or code inline.
+
+**NEW EXCHANGE (tool help + search):**
+Assistant calls `huggingface_hub` help, then search; tool returns several repos including `Mia-AiLab/Gemmable-4-12B-MTP-GGUF` and `Mia-AiLab/Gemmable-4-31B-MTP-GGUF`. User has not chosen yet.
+
+**Good output:**
+User asked to download a Gemma 4 MTP GGUF. Sticky: use `huggingface_hub` only (help → search → detail → download); do not use web_fetch/curl for Hub. Candidates include `Mia-AiLab/Gemmable-4-12B-MTP-GGUF`, `Mia-AiLab/Gemmable-4-31B-MTP-GGUF`, …; full list [search results](#tool-15). Active: awaiting user pick, then detail/download.
+
+**Bad output:** keeping only the two highest-download repos and linking the help with no inline mandate.
 
 ---
 

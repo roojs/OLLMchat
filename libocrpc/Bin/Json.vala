@@ -14,24 +14,38 @@
 namespace OLLMrpc.Bin
 {
 	/**
-	 * JSON ↔ {@link Stream} bridge for tests and tooling.
+	 * JSON ↔ bin bridge for tests, HTTP tooling, and debugging.
 	 *
-	 * Encodes json-glib nodes directly onto a {@link Stream} out_stream and
-	 * decodes wire bytes back into json-glib nodes. Property layout follows
-	 * JSON node shape and wire type bytes only — no {@link Serializable}
-	 * instances and no GObject property schema.
+	 * Encodes json-glib trees onto a {@link Stream} and decodes wire bytes
+	 * back into JSON nodes. Property layout follows the JSON shape and wire
+	 * type bytes — not a live GObject schema. Objects need meta key ''*type''
+	 * unless {@link Mode.AUTO}. Keys starting with ''*'' are meta only and
+	 * stripped before encode. Register aliases with {@link register} first.
 	 *
-	 * Wire aliases live in meta keys (not payload properties):
+	 * == Example ==
 	 *
-	 *  * ''*type'' on every object (Request, File, …)
-	 *  * ''*array'' + items on object-array wrappers
+	 * {{{
+	 * OLLMrpc.Bin.register("Pair", typeof(Pair));
+	 * var json = new OLLMrpc.Bin.Json();
+	 * var parser = new global::Json.Parser();
+	 * parser.load_from_data(
+	 *     "{\"*type\":\"Pair\",\"name\":\"a\",\"count\":1}", -1);
+	 * var mem = new GLib.MemoryOutputStream.resizable();
+	 * var bin = new OLLMrpc.Bin.Stream(
+	 *     null, new GLib.DataOutputStream(mem));
+	 * json.json_to_bin(parser.get_root().get_object(), bin);
+	 * }}}
 	 *
-	 * Any key starting with ''*'' is meta only and is stripped before bin encode.
-	 * Type aliases must be registered via {@link register} before use.
+	 * == GObject to JSON ==
 	 *
-	 * In {@link Mode.AUTO}, JSON keys starting with ''_'' map to
-	 * underscore_* GObject properties; wire names that clash with GObject
-	 * (e.g. type) map to reserved_property_* properties on decode.
+	 * {{{
+	 * var node = json.from_gobject(pair);
+	 * }}}
+	 *
+	 * Prefer {@link from_gobject} over hand-rolled memory pipes.
+	 *
+	 * @see Stream
+	 * @see Mode
 	 */
 	public class Json : GLib.Object
 	{
@@ -550,6 +564,18 @@ namespace OLLMrpc.Bin
 
 		/**
 		 * Encode {@link Serializable} to memory, then decode to a JSON tree.
+		 *
+		 * == Example ==
+		 *
+		 * {{{
+		 * var json = new OLLMrpc.Bin.Json();
+		 * var node = json.from_gobject(pair);
+		 * stdout.printf("%s\n",
+		 *     global::Json.to_string(node, true));
+		 * }}}
+		 *
+		 * @param src object to encode
+		 * @return JSON object tree for {@link src}
 		 */
 		public global::Json.Node from_gobject(
 			Serializable src

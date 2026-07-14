@@ -19,24 +19,36 @@
 namespace OLLMrpc
 {
 	/**
-	 * Base bag for request arguments on {@link Request.param}.
+	 * Base class for typed {@link Request.param} bags.
 	 *
-	 * Daemon param types live in ollmfilesd/CallParam.vala and extend
-	 * this class (e.g. FolderParams, FileParams). Add a wire field
-	 * by adding a GObject property on the subclass.
+	 * Subclass and add GObject properties for each wire field. Daemon
+	 * param types live in ollmfilesd (FolderParams, FileParams, …).
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * public class DaemonParams : OLLMrpc.CallParam {
+	 *     public int protocol { get; set; default = 0; }
+	 *     public string client { get; set; default = ""; }
+	 *
+	 *     public static void rpc_register() {
+	 *         OLLMrpc.Bin.register("DaemonParams", typeof(DaemonParams));
+	 *     }
+	 * }
+	 *
+	 * var req = new OLLMrpc.Request() {
+	 *     method = "Daemon.hello",
+	 *     param = new DaemonParams() {
+	 *         protocol = 1,
+	 *         client = "my-app"
+	 *     }
+	 * };
+	 * }}}
 	 *
 	 * @see Request
 	 */
 	public class CallParam : GLib.Object, Bin.Serializable
 	{
-		/**
-		 * Positional arguments for legacy or generic callers.
-		 *
-		 * Named object methods use properties on {@link CallParam} subclasses
-		 * instead (see {@link Request} wire examples).
-		 */
-		public string[] args { get; set; default = new string[] {}; }
-
 		public unowned ParamSpec? find_property(string name)
 		{
 			return this.get_class().find_property(name);

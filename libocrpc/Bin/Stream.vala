@@ -32,14 +32,19 @@ namespace OLLMrpc.Bin
 	}
 
 	/**
-	 * Register a wire alias process-wide.
+	 * Map a wire alias string to a local GObject type (process-wide).
 	 *
-	 * Maps wire alias to GObject type for instantiation on decode on
-	 * this peer. Both ends must register every alias they send or receive;
-	 * the alias string is the shared wire name — the local GType need not match
-	 * the peer's type for the same alias.
-	 * Per-connection {@link Stream} instances still use {@link Stream.names}
-	 * / {@link Stream.name_to_token} for JIT property keys on the wire.
+	 * Both peers register the same alias strings; each maps to its own
+	 * local type. Call before connect/listen (usually from each type's
+	 * ''rpc_register()''). Property keys do not need register — they JIT
+	 * on the connection via {@link Stream}.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * OLLMrpc.Bin.register("Pair", typeof(Pair));
+	 * OLLMrpc.Bin.register("File", typeof(OLLMfiles.V2.File));
+	 * }}}
 	 *
 	 * @param alias wire type name
 	 * @param gtype GObject type for that alias
@@ -65,11 +70,35 @@ namespace OLLMrpc.Bin
 	}
 
 	/**
-	 * Per-connection bin codec: I/O streams, JIT key/type maps,
-	 * {@link write} / {@link parse}.
+	 * Per-connection bin codec — write and parse {@link Serializable} objects.
 	 *
-	 * Owned by {@link OLLMrpc.Transport.Connection} and {@link OLLMrpc.Client}
-	 * as the bin stream property.
+	 * Owns the I/O streams and JIT property-key table for one channel.
+	 * {@link OLLMrpc.Client} and {@link OLLMrpc.Transport.Connection} keep one
+	 * Stream for the connection lifetime. Call {@link write} to send a root
+	 * object; {@link parse} to receive one.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * OLLMrpc.Bin.register("Pair", typeof(Pair));
+	 *
+	 * var mem = new GLib.MemoryOutputStream.resizable();
+	 * var out_stream = new GLib.DataOutputStream(mem);
+	 * var write_bin = new OLLMrpc.Bin.Stream(null, out_stream);
+	 * write_bin.write(new Pair() { name = "alpha", count = 42 });
+	 * out_stream.close();
+	 *
+	 * var read_bin = new OLLMrpc.Bin.Stream(
+	 *     new GLib.DataInputStream(
+	 *         new GLib.MemoryInputStream.from_bytes(mem.steal_as_bytes())),
+	 *     null);
+	 * var parsed = read_bin.parse() as Pair;
+	 * }}}
+	 *
+	 * Pass ''null'' for the unused direction in memory-only tests.
+	 *
+	 * @see Serializable
+	 * @see register
 	 */
 	public class Stream : GLib.Object
 	{

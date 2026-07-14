@@ -32,15 +32,29 @@ file and read each block in full). Partial compliance is a violation.
 
 **IMPORTANT:** Docblocks (documentation comments for classes, methods, properties, and parameters) must follow the coding documentation standards and use **multiline** form. Do **not** use short one-line docblocks when documenting behaviour, parameters, or return values.
 
-- Use full `/** ... */` blocks with a summary line, optional body (behaviour, context), and standard tags: `@param` for each parameter, `@return` for return value where relevant.
-- For classes: include purpose, main roles or usage, and `@see` when referring to related types.
+- Use full `/** ... */` blocks with a summary line, optional body, and standard tags: `@param` for each parameter, `@return` for return value where relevant.
+- **Classes / namespaces:** Match **`libollmchat`** — brief, overview paragraph naming related types, then `== Usage Examples ==` / `== Example ==` with real `{{{ … }}}` samples (see **Class and namespace overviews** in `docs/code-documentation.md`). Do **not** ship thin one-liners for major APIs, and do **not** replace examples with implementation essays (override hooks, wire layout).
 - For methods: include what the method does, when to use it, and document all parameters and return value.
 - For properties: include what the property holds and when it is set or used.
 
-**Bad (one-liner):**
+**Bad (one-liner method):**
 ```vala
 /** Add all reference_targets to the given Tool. */
 private void add_all_references_to(Tool ex)
+```
+
+**Bad (class — implementation essay, no examples):**
+```vala
+/**
+ * GObject types that read/write on a Stream. Override bin_write_prop to omit
+ * or customize props; call bin_default_write_prop for scalars. Override for
+ * Gee.ArrayList and uint8[]; override bin_pre / bin_post for decode hooks.
+ */
+```
+
+**Also bad (too thin for a major API):**
+```vala
+/** Bin RPC wire types — shared by client and ollmfilesd. */
 ```
 
 **Good (multiline with @param):**
@@ -51,6 +65,24 @@ private void add_all_references_to(Tool ex)
  * @param ex the Tool (exec run) to add references to
  */
 private void add_all_references_to(Tool ex)
+```
+
+**Good (class — OLLMchat-shaped):**
+```vala
+/**
+ * GObject that encodes/decodes on a {@link Stream}.
+ *
+ * Scalars and nested {@link Serializable} objects work by default. Override
+ * {@link bin_write_prop} / {@link bin_read_prop} for lists and non-scalars.
+ *
+ * == Example ==
+ *
+ * {{{
+ * OLLMrpc.Bin.register("Pair", typeof(Pair));
+ * write_bin.write(new Pair() { name = "alpha", count = 42 });
+ * var parsed = read_bin.parse() as Pair;
+ * }}}
+ */
 ```
 
 **Also Good (property with context):**

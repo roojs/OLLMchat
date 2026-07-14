@@ -13,7 +13,29 @@
 
 namespace OLLMrpc
 {
-	/** Bin RPC response (wire {@link id}, plus {@link result} or {@link error}). */
+	/**
+	 * Inbound RPC envelope — matching {@link Request.id}, plus result or error.
+	 *
+	 * After {@link Client.call}, check ''error'' first. Successful calls put
+	 * zero or more objects in ''result'' (never null). Scalar string payloads
+	 * may use ''msg'' / ''msg_encode'' (e.g. File.read).
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * var resp = yield rpc.call(req);
+	 * if (resp.error != null) {
+	 *     GLib.warning("%s", resp.error.message);
+	 *     return;
+	 * }
+	 * foreach (var obj in resp.result) {
+	 *     stdout.printf("%s\n", obj.get_type().name());
+	 * }
+	 * }}}
+	 *
+	 * @see Request
+	 * @see Client
+	 */
 	public class Response : GLib.Object, Bin.Serializable
 	{
 		public int id { get; set; default = 0; }

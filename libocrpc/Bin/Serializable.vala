@@ -17,7 +17,8 @@ namespace OLLMrpc.Bin
 	 * {@link Serializable} property encode/decode failures (throw/catch).
 	 *
 	 * Not {@link GLib.Error} abort — throw SerializableError from
-	 * {@link bin_write_prop} / {@link bin_read_prop} paths.
+	 * {@link Serializable.bin_write_prop} /
+	 * {@link Serializable.bin_read_prop} paths.
 	 */
 	public errordomain SerializableError
 	{
@@ -25,18 +26,47 @@ namespace OLLMrpc.Bin
 	}
 
 	/**
-	 * GObject types that read/write on a {@link Stream} session.
+	 * GObject that encodes and decodes on a {@link Stream}.
 	 *
-	 * Override {@link bin_write_prop} / {@link bin_read_prop} to omit or
-	 * customize props; call {@link bin_default_write_prop} /
-	 * {@link bin_default_read_prop} for stock scalar encoding.
+	 * Implement this on every wire type. Scalars, enums, flags, nested
+	 * Serializable objects, and ''string[]'' encode by default. Override
+	 * {@link bin_write_prop} / {@link bin_read_prop} for {@link Gee.ArrayList},
+	 * ''uint8[]'', or other non-scalars — call {@link bin_default_write_prop} /
+	 * {@link bin_default_read_prop} for the rest. Use {@link bin_pre} /
+	 * {@link bin_post} for work around inbound decode.
 	 *
-	 * Override for {@link Gee.ArrayList} list properties and ''uint8[]'' byte
-	 * arrays (wire as blob or typed array — see docs/bin-rpc-protocol.md),
-	 * and any other non-scalar shape.
+	 * == Example ==
 	 *
-	 * Override {@link bin_pre} / {@link bin_post} for work before or after
-	 * inbound property decode on this object.
+	 * {{{
+	 * public class Pair : GLib.Object, OLLMrpc.Bin.Serializable {
+	 *     public string name { get; set; default = ""; }
+	 *     public int count { get; set; default = 0; }
+	 * }
+	 *
+	 * OLLMrpc.Bin.register("Pair", typeof(Pair));
+	 * write_bin.write(new Pair() { name = "alpha", count = 42 });
+	 * var parsed = read_bin.parse() as Pair;
+	 * }}}
+	 *
+	 * == List property ==
+	 *
+	 * {{{
+	 * public override void bin_write_prop(
+	 *     OLLMrpc.Bin.Stream ctx, GLib.ParamSpec prop
+	 * ) throws GLib.Error {
+	 *     switch (prop.name) {
+	 *         case "items":
+	 *             this.bin_write_prop_array(ctx, "items", typeof(Pair));
+	 *             return;
+	 *         default:
+	 *             this.bin_default_write_prop(ctx, prop);
+	 *             return;
+	 *     }
+	 * }
+	 * }}}
+	 *
+	 * @see Stream
+	 * @see Json
 	 */
 	public interface Serializable : GLib.Object
 	{

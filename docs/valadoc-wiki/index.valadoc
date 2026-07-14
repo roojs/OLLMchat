@@ -46,9 +46,9 @@ This documentation covers the OLLMchat application and its libraries.
 
 == RPC and daemons ==
 
-* libocrpc — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.html|OLLMrpc]]''. Binary RPC wire types, HTTP client, and transport for daemon communication.
+* libocrpc — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.html|OLLMrpc]]''. Binary RPC client and wire types for ollmfilesd (Unix socket / stdio / TCP) and HTTPS JSON APIs. Overview and usage examples on the namespace page.
 
-  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Client.html|Client]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Request.html|Request]]'', ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Response.html|Response]]''. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Bin.html|Bin]]'' — serialization. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Transport.html|Transport]]'' — socket/TCP listeners.
+  * ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Client.html|Client]]'' — connect and call. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Request.html|Request]]'' / ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Response.html|Response]]'' — envelopes. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.CallParam.html|CallParam]]'' — typed params. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Bin.html|Bin]]'' — Serializable, Stream, Json. ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMrpc.Transport.html|Transport]]'' — daemon listen/connection.
 
 * ollmfilesd — namespace: ''[[https://roojs.github.io/OLLMchat/ollmchat/OLLMfilesd.html|OLLMfilesd]]''. Headless file and semantic-index daemon (RPC over stdio or TCP).
 

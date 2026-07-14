@@ -572,7 +572,7 @@ Mirror the same prop names in **`bin_read_prop`** (ignore unknown wire keys for 
 | Skip unsupported prop | Override **`bin_write`** and skip the prop name, or omit in **`bin_write_prop`** | `TestSkipDefault` in `bin-test.vala` |
 | **`Gee.ArrayList<T>`** on a property | Inline encode/decode in **`case`** — **`write_gtype(T, OBJECT \| 0x80)`**, count, **`child.bin_write`** per element | `TestListBag` in `bin-test.vala` |
 | Root list **result** | Override on **`Response.bin_write_prop`** / **`bin_read_prop`**; omit **`result-type`** / **`is-array`** on write; decode via **`parse_object_array()`** | `libocrpc/Response.vala` |
-| **`string[]`** param | Default codec — no override | `CallParam.args`, `TestPaths` |
+| **`string[]`** param | Default codec — no override | `FolderParams.paths`, `TestPaths` |
 
 **🚫** Do not call **`base.bin_write_prop`** — use **`bin_default_write_prop`** / **`bin_default_read_prop`** for the default branch.
 
