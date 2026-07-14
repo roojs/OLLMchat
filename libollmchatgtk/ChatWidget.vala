@@ -379,8 +379,17 @@ namespace OLLMchatGtk
 						m); */
 					break;
 				case "ui-waiting":
-					this.chat_view.show_waiting_indicator(m.content != "" ? m.content : "waiting for a reply");
-					this.streaming_state(true);
+				case "ui-waiting-bg":
+					GLib.debug("waiting role=%s label=%s is_running=%s streaming=%s",
+						m.role,
+						m.content,
+						this.manager.session.is_running.to_string(),
+						this.streaming.to_string());
+					this.chat_view.show_waiting_indicator(
+						m.content != "" ? m.content : "waiting for a reply");
+					if (m.role == "ui-waiting") {
+						this.streaming_state(true);
+					}
 					break;
 				case "ui-warning":
 					var warning_msg = new OLLMchat.Message("assistant", "⚠️ " + m.content, m.thinking);
@@ -431,6 +440,12 @@ namespace OLLMchatGtk
 						m); */
 					break;
 				case "summary":
+					GLib.debug("summary bound is_running=%s streaming=%s content_len=%u",
+						this.manager.session.is_running.to_string(),
+						this.streaming.to_string(),
+						m.content.length);
+					this.chat_view.clear_waiting_indicator();
+					this.streaming_state(this.manager.session.is_running);
 					var summary_body = m.content != "" ? m.content : "…";
 					var summary_msg = new OLLMchat.Message(
 						"assistant",

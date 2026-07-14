@@ -5,14 +5,27 @@ HUGGING FACE HUB TOOL
 Host memory (VRAM or unified): {vram_limit}
 ---
 
+MUST — CALL HELP WHEN YOU DO NOT HAVE THIS MANIFEST
+  On every turn that uses this tool: if this full help text is NOT already in your
+  current context (including follow-up turns after a conversation summary), call
+  {"help": true} BEFORE any search, detail, or download. A summary remnant or a
+  vague recollection of these rules is NOT enough — re-fetch help, then continue.
+  Do not skip help because you called it earlier in the session.
+
 WHEN THE USER ASKS FOR A MODEL
-  If the user wants to download, find, or install a GGUF from Hugging Face, you do it
-  with this tool only: help → search → detail → download. Do NOT use run_command,
-  wget, curl, huggingface-cli, or any other shell or CLI to fetch Hub files — those
-  paths are wrong here and will not integrate with the app (permissions, activity bar,
-  install layout). Do NOT tell the user to download manually or run commands themselves.
-  Call action "download" on this tool; the user approves in-app and progress appears
-  in the activity bar.
+  If the user wants to download, find, or install a GGUF from Hugging Face, you do
+  the Hub pipeline with this tool: help → search → detail → download. Do NOT use
+  run_command, wget, curl, huggingface-cli, or any other shell or CLI to fetch Hub
+  files — those paths are wrong here and will not integrate with the app
+  (permissions, activity bar, install layout). Do NOT tell the user to download
+  manually or run commands themselves. Call action "download" on this tool; the
+  user approves in-app and progress appears in the activity bar.
+
+  Discovery fallback: Hub search is keyword-only and often misses repos. You MAY
+  use google_search (or web_search) to find the correct Hub author/name, page
+  title, or model family spelling — then return to this tool with "detail" /
+  "download" on the verified model_ref. Do NOT use google_search to fetch GGUF
+  binaries. Do NOT use web_fetch to download model files from Hub CDN URLs.
 
 PRIMARY STRATEGY: MULTI-TOKEN PREDICTION (MTP) SPECULATIVE INFERENCE
 To maximize performance, prioritize downloading models with built-in MTP heads
@@ -32,7 +45,9 @@ CRITICAL HARDWARE BUDGETING RULES:
 ---
 PARAMETER REFERENCE
 ---
-  help       {boolean}  Set true on your FIRST call only. Returns this manifest.
+  help       {boolean}  Set true to retrieve this manifest. Call whenever this
+                         help text is not already in the current turn context
+                         (every new Hub workflow, including follow-ups).
   action     {string}   Required on operational calls. One of:
                          • "search"  — find GGUF repos matching query
                          • "detail"  — fetch file tree and sizes for one model_ref
@@ -64,6 +79,8 @@ often returns ZERO results even when matching repos exist.
     • Long synonym dumps: "specul draft unsloth llava llama …" in one query
     • Treat zero hits as "model does not exist" — the query was probably too broad
     • Invent version numbers the user did not mention
+    • Stick forever on Hub search alone when names are unclear — google_search
+      (or web_search) for author/repo discovery, then "detail" on this tool
 
 ---
 2. SEARCH EXAMPLES FOR MTP
@@ -75,6 +92,10 @@ often returns ZERO results even when matching repos exist.
 ---
 3. OPERATION PIPELINE
 ---
+  Step H: If this help text is not already in the current turn, call help:true first.
+  Step 0 (optional): If Hub "search" keeps missing the repo the user means,
+          use google_search / web_search only to discover author/name or
+          spelling, then jump to Step B with that model_ref.
   Step A: Call "search" with a SHORT keyword query (see section 1).
           Search returns downloadable repos only (gated and private are omitted).
           Call "detail" on a chosen model_ref for file sizes.

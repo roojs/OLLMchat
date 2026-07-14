@@ -29,7 +29,8 @@ namespace OLLMchat
 	 * * "tool": Tool execution results
 	 * * "ui": UI messages displayed in chat
 	 * * "ui-warning": User-friendly warning in chat (e.g. "we couldn't use that model, using default")
-	 * * "ui-waiting": Transient placeholder shown while waiting for response (e.g. "waiting for a reply", "Refining..."); content is the label; animated dots; cleared when content arrives
+	 * * "ui-waiting": Transient placeholder shown while waiting for response (e.g. "waiting for a reply", "Refining..."); content is the label; animated dots; cleared when content arrives; takes over send/stop
+	 * * "ui-waiting-bg": Background wait (e.g. summarizing); ''ui-waiting'' prefix family; same animated label; does not hide input / Stop
 	 * * "system": System prompts
 	 * * "project": Active project path (session metadata; not displayed, not sent to LLM)
 	 * * "agent-stage": Replay marker — stage id at stage start (not displayed, not sent to LLM)
@@ -116,8 +117,9 @@ namespace OLLMchat
 						is_ui_visible = true;  // User-friendly warning in chat (e.g. model fallback)
 						break;
 					case "ui-waiting":
+					case "ui-waiting-bg":
 						is_hidden = true;
-						is_ui_visible = true;  // Transient waiting/placeholder; content = label; not persisted
+						is_ui_visible = true;  // Transient wait; content = label; not persisted
 						break;
 					case "done":
 						is_done = true;

@@ -48,7 +48,7 @@ namespace OLLMchat.Agent
 		}
 
 		/**
-		 * Emit the summarizing waiting indicator once per summary attempt.
+		 * Show background summarizing wait once per attempt (ui-waiting-bg; does not block input).
 		 */
 		public override void handle_stream_started()
 		{
@@ -57,7 +57,7 @@ namespace OLLMchat.Agent
 			}
 			this.waiting_shown = true;
 			this.session.manager.message_added(
-				new Message("ui-waiting", "summarizing conversation"),
+				new Message("ui-waiting-bg", "summarizing conversation"),
 				this.session);
 		}
 
@@ -118,6 +118,8 @@ namespace OLLMchat.Agent
 
 			var turn_end = this.session.messages.size;
 			if (user_sent_index >= turn_end) {
+				GLib.debug("summarize early return no user-sent user_sent_index=%d turn_end=%d",
+					user_sent_index, turn_end);
 				return;
 			}
 
@@ -195,6 +197,7 @@ namespace OLLMchat.Agent
 			var usage = this.session.model_usage;
 			if (usage.connection == ""
 				|| !this.session.manager.config.connections.has_key(usage.connection)) {
+				GLib.debug("summarize early return no connection");
 				return;
 			}
 
@@ -227,8 +230,12 @@ namespace OLLMchat.Agent
 
 					if (this.draft_summary == null
 						|| this.draft_summary.content.strip() == "") {
+						GLib.debug("summarize after send empty draft attempt=%d",
+							attempt);
 						return;
 					}
+					GLib.debug("summarize after send draft_len=%u attempt=%d",
+						this.draft_summary.content.length, attempt);
 
 					var sum_render = new Markdown.Document.Render();
 					sum_render.parse(this.draft_summary.content);
@@ -252,10 +259,12 @@ namespace OLLMchat.Agent
 					}
 
 					if (issue == "") {
+						GLib.debug("summarize validation ok");
 						this.session.save_async.begin();
 						return;
 					}
 
+					GLib.debug("summarize validation fail: %s", issue);
 					this.session.messages.remove(this.draft_summary);
 					this.draft_summary = null;
 					validation_issue = issue;

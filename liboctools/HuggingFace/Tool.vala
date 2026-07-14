@@ -37,15 +37,16 @@ namespace OLLMtools.HuggingFace
 			return """
 Search and download GGUF files from Hugging Face Hub.
 
-You MUST call this tool with help:true before any other invocation. The help response
-contains mandatory operational guidance (VRAM budgeting, MTP model selection, and the
-full parameter reference). Do not call search, detail, or download until you have
-read the help output.""";
+You MUST call this tool with help:true before any search, detail, or download whenever
+this turn's context does not already include the full help manifest (including
+follow-up turns after a conversation summary). A summary of the rules is not enough —
+re-call help, then proceed. The help response contains mandatory operational guidance
+(VRAM budgeting, MTP model selection, and the full parameter reference).""";
 		} }
 
 		public override string parameter_description { get {
 			return """
-@param help {boolean} [required on first call] Set true to retrieve the operational manifest. You MUST call with help:true once before any search, detail, or download call.
+@param help {boolean} [required when help text is not in context] Set true to retrieve the operational manifest. Call help:true before any search, detail, or download if you do not already have the full help output in this turn (including follow-ups).
 @param action {string} [optional] Operation to run. Refer to help for valid values and workflow.
 @param query {string} [optional] Search filter terms. Refer to help for usage and examples.
 @param model_ref {string} [optional] Hub repo path (author/name). Refer to help for usage.

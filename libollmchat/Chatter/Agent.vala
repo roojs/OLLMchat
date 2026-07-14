@@ -76,7 +76,11 @@ namespace OLLMchat.Chatter
 				}
 			}
 			this.pending_processing = false;
+			GLib.debug("queue drain done pending=%d before wait",
+				this.pending_messages.size);
 			yield entry.done.future.wait_async();
+			GLib.debug("queue wait returned is_running=%s",
+				this.session.is_running.to_string());
 		}
 	}
 }

@@ -159,7 +159,7 @@ namespace OLLMchat.History
 				if (cancellable.is_cancelled() || this.manager.session != this) {
 					return;
 				}
-				if (this.messages[i].role == "ui-waiting") {
+				if (this.messages[i].role.has_prefix("ui-waiting")) {
 					continue;
 				}
 				this.manager.message_added(this.messages[i], this);
@@ -176,7 +176,7 @@ namespace OLLMchat.History
 			}
 
 			var last_msg = this.messages[this.messages.size - 1];
-			if (last_msg.role == "ui-waiting") {
+			if (last_msg.role.has_prefix("ui-waiting")) {
 				return;
 			}
 
@@ -492,7 +492,7 @@ namespace OLLMchat.History
 					// Set flag on messages for extra info and set timestamps
 					var messages_array = new Json.Array();
 					foreach (var msg in this.messages) {
-						if (msg.role == "ui-waiting") {
+						if (msg.role.has_prefix("ui-waiting")) {
 							continue;  // Transient placeholder; do not persist
 						}
 						msg.include_history_info = true;

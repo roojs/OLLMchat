@@ -51,6 +51,8 @@ namespace OLLMchat.Chatter
 		 */
 		public async void run(Agent agent) throws GLib.Error
 		{
+			GLib.debug("pending run is_chat=%s is_running=%s",
+				this.is_chat.to_string(), agent.session.is_running.to_string());
 			// Summarize row: no message/cancellable; relay to run_summarize.
 			if (!this.is_chat) {
 				agent.summarizing = true;
@@ -59,6 +61,8 @@ namespace OLLMchat.Chatter
 				} finally {
 					agent.summarizing = false;
 				}
+				GLib.debug("pending run summarize relay done is_running=%s",
+					agent.session.is_running.to_string());
 				return;
 			}
 
@@ -95,6 +99,8 @@ namespace OLLMchat.Chatter
 				agent.session.is_running = false;
 				agent.session.manager.agent_status_change();
 			}
+			GLib.debug("pending run chat deliver done is_running=%s",
+				agent.session.is_running.to_string());
 		}
 
 		/**
@@ -105,10 +111,13 @@ namespace OLLMchat.Chatter
 		public async void run_summarize(Agent agent) throws GLib.Error
 		{
 			// Own cancellable — Stop on main chat must not abort background summary.
+			GLib.debug("pending summarize before");
 			yield (new OLLMchat.Agent.Summarizer(agent)).run(
 				new GLib.Cancellable());
+			GLib.debug("pending summarize after");
 			// Turn complete — chat + summarize share this done promise.
 			this.done.set_value(true);
+			GLib.debug("pending promise set_value");
 		}
 	}
 }

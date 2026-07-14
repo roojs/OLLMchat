@@ -39,6 +39,7 @@ When fixing a bug, follow this order. Do not skip steps or apply code changes be
 
 - Propose a concrete fix that addresses the root cause, not the symptom.
 - Describe the change and where it goes. No defensive workarounds.
+- When the fix needs code edits, put **verbatim** **`#### Remove`** / **`#### Replace with`** / **`#### Add`** fences in the bug log under the topic that owns the change — same contract as **`docs/guide-to-writing-plans.md`** (**Edit syntax contract**, **Code proposals — one place, not two**). Do not leave “change X to Y” as prose only.
 
 ### d) Get approval
 
@@ -50,8 +51,39 @@ When fixing a bug, follow this order. Do not skip steps or apply code changes be
 - Implement the approved fix only.
 - Do not add extra "safety" checks or fallbacks unless they were part of the approved fix.
 
+## Bug log markup (emoji + shape)
+
+Bug logs in **`docs/bugs/`** use the **same emoji legend** as plans —
+**`docs/guide-to-writing-plans.md`** (**Discussion style (emoji prefixes)**). Do
+**not** write unmarked mandate bullets.
+
+| Marker | Use in bug logs |
+| ------ | ---------------- |
+| 🔷 | User-stated symptom, requirement, or approved fix direction |
+| 💩 | Agent-inferred hypothesis, optional debug, or proposed change not yet confirmed by the user |
+| ℹ️ | Pointers (log path, related plan, file, prior bug) |
+| 🚫 | Ruled out / do not implement |
+| ⏳ | Open work (always pair with 🔷 or 💩) |
+| ✔️ | Agent claims implemented / evidence captured — not user-verified |
+| ✅ | User verified fixed on device |
+
+**Minimum shape for a non-trivial bug log:**
+
+1. **Title** + **Status:** line (may use ⏳ alone for overall state).
+2. **Problem** — 🔷 expected vs actual; reproduction bullets.
+3. **Evidence** — nested bullets (prefer over tables); prefix with ℹ️ / ✔️ as appropriate.
+4. **Root cause** — only after evidence; mark ✔️ when confirmed from logs, not guesses.
+5. **Proposed fix** — 🔷 / 💩 clearly separated; **inline code fences** (Remove / Replace with / Add) when applying will touch Vala.
+6. **Attempts / changelog** + **Next** — ⏳ items paired with provenance.
+
+**🚫** Unmarked paragraphs that read like requirements. **🚫** Promoting ✔️ → ✅ without the user.
+
+Example status line:
+
+`**Status:** ⏳ root cause confirmed; fix proposed — await apply approval`
+
 ## Summary
 
-1. **DEBUG first** (including **`docs/bugs/YYYY-MM-DD-*.md`** unless a **one-line** fix is already certain) → 2. **Understand real issue** → 3. **Propose fix** → 4. **Get approval** → 5. **Apply only after approval**
+1. **DEBUG first** (including **`docs/bugs/YYYY-MM-DD-*.md`** unless a **one-line** fix is already certain) → 2. **Understand real issue** → 3. **Propose fix** (emoji + fences) → 4. **Get approval** → 5. **Apply only after approval**
 
 No guards or symptom-only patches that hide the real bug.
