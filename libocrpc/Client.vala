@@ -386,15 +386,12 @@ namespace OLLMrpc
 			}
 			this.read_channel = null;
 			foreach (var entry in this.pending) {
-				GLib.warning(
-					"disconnect abort %s id=%d socket_path=%s",
-					entry.request.method,
-					entry.request.id,
-					this.socket_path
-				);
-				entry.promise.set_exception(
-					new GLib.IOError.FAILED("Client: disconnected")
-				);
+				GLib.warning("disconnect abort %s id=%d socket_path=%s",
+					entry.request.method, entry.request.id, this.socket_path);
+				entry.promise.set_value(new Response() {
+					id = entry.request.id,
+					error = new Error((int) RpcErrorCode.INTERNAL_ERROR, "Client: disconnected")
+				});
 			}
 			this.pending.clear();
 			this.bin = null;
@@ -461,7 +458,8 @@ namespace OLLMrpc
 			);
 			GLib.debug("id=%d recv body=%s", head.request.id, body);
 			if (message.status_code < 200 || message.status_code >= 300) {
-				throw new GLib.IOError.FAILED("HTTP %u for %s", message.status_code, url);
+				throw new GLib.IOError.FAILED("HTTP %u for %s: %s",
+					message.status_code, url, body.strip());
 			}
 			if (head.request.result_type == GLib.Type.INVALID) {
 				throw new Bin.StreamError.PROTOCOL("HTTP call missing result_type");
@@ -551,13 +549,12 @@ namespace OLLMrpc
 				var entry = this.pending.get(i);
 				this.pending.remove_at(i);
 				if (error != null) {
-					GLib.critical(
-						"RPC failed %s id=%d: %s",
-						entry.request.method,
-						id,
-						error.message
-					);
-					entry.promise.set_exception(error);
+					GLib.critical("RPC failed %s id=%d: %s",
+						entry.request.method, id, error.message);
+					entry.promise.set_value(new Response() {
+						id = entry.request.id,
+						error = new Error((int) RpcErrorCode.INTERNAL_ERROR, error.message)
+					});
 				} else {
 					entry.promise.set_value(response);
 				}

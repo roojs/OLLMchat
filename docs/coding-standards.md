@@ -1003,6 +1003,43 @@ public void process_item(Item? item)
 
 **CRITICAL — do not chop short lines:** The **72-character** limit applies to **docblocks and comments only**, not ordinary code. Do **not** split `if` conditions, `||` / `&&` chains, or short method calls to “comply” with line length. Break **only** when a line is genuinely long (rough guide: past ~100 characters, or clearly longer than the surrounding file). **Match the file you are editing** — if nearby `if` lines are single-line, keep yours single-line.
 
+**CRITICAL — format-string calls (`throw`, error ctors, `GLib.debug` /
+`warning` / `critical`):** Keep the **format string (or literal message) on
+the same line as the call**. Do **not** break after `(` so the string sits
+alone on the next line. If the whole call is too long, put **remaining
+arguments on the following line(s)** — group them; **do not** put one
+argument per line.
+
+**Bad (string alone after `(` + one arg per line — forbidden):**
+```vala
+throw new GLib.IOError.FAILED(
+	"HTTP %u for %s: %s",
+	message.status_code,
+	url,
+	body.strip()
+);
+GLib.critical(
+	"RPC failed %s id=%d: %s",
+	entry.request.method,
+	id,
+	error.message
+);
+```
+
+**Good (fits on one line):**
+```vala
+throw new GLib.IOError.FAILED("HTTP %u for %s: %s", message.status_code, url, body.strip());
+GLib.critical("RPC failed %s id=%d: %s", entry.request.method, id, error.message);
+```
+
+**Also Good (too long — string stays with call; args grouped on next line):**
+```vala
+throw new GLib.IOError.FAILED("HTTP %u for %s: %s",
+	message.status_code, url, body.strip());
+GLib.critical("RPC failed %s id=%d: %s",
+	entry.request.method, id, error.message);
+```
+
 **Bad (gratuitous chop — forbidden):**
 ```vala
 if (project_file.file.is_ignored
@@ -1016,7 +1053,7 @@ if (project_file.file.is_ignored || !project_file.file.is_text) {
 
 **Maximum line length:** In docblocks and comments, no line may extend past **72 characters** (including leading spaces/tab). Break after a word so the next line continues the sentence; a good rule of thumb is “break after a comma or before the next phrase” so that the first line does not go beyond roughly “… add all references,” in length.
 
-- **Code:** Break on `(` when function calls or method invocations are long; break on `+` when string concatenation creates long lines; if arguments are broken, put each argument on its own line.
+- **Code:** Break on `(` when function calls or method invocations are long; break on `+` when string concatenation creates long lines; if arguments are broken, put each argument on its own line. **Exception:** format-string calls (`throw` / `GLib.IOError` / wire `Error` / `GLib.debug` / `warning` / `critical`) — see **CRITICAL — format-string calls** above: string stays on the call line; remaining args may wrap **grouped**, not one-per-line.
 - **Docblocks and comments:** Break so that no line exceeds 72 characters; prefer breaking after commas or natural phrase boundaries.
 
 **Bad:**
@@ -1666,7 +1703,7 @@ Run these checks on **every file you changed**. Fix violations; do not hand-wave
 | **`var` on locals** | Search: `^\s+(string\|int\|bool\|uint\|int64)\s+\w+\s*[=;]` — no local matches except `string[] … = {}` |
 | **No `handle_*` for signals** | Button/signal handlers inline in lambda, not new `handle_*` methods |
 | **No gratuitous `else`** | New `else` / `else if` chains restructure to early return/`continue` |
-| **No gratuitous line breaks** | Short `if`, `\|\|`, `&&`, and calls stay on one line; match surrounding file; 72-char rule is docblocks/comments only |
+| **No gratuitous line breaks** | Short `if`, `\|\|`, `&&`, and calls stay on one line; **format-string calls (`throw` / error ctor / `GLib.debug`/`warning`/`critical`): message on the call line**; if wrapping, group remaining args (not one-per-line); match surrounding file; 72-char rule is docblocks/comments only |
 | **Enum branches use `switch`** | Multi-value response/status checks use `switch`, not `\|\|` chains |
 | **No defensive re-checks** | No duplicate validation after a module boundary already enforced it |
 | **Debug text** | No class/method names in `GLib.debug()` / `GLib.warning()` messages |
