@@ -3,183 +3,83 @@
 > Pointer: `docs/bug-fix-process.md` (emoji + code fences). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ✅ A fixed · ✔️ B5+C5 applied — ⏳ await user test ·
-🚫 no Timeout / get_line_yrange retries
+**Status:** ✅ A · ✅ C · ✔️ B root cause from logs — ⏳ fix proposed, await apply
 
 **Related:**
 
-- ℹ️ Plan: [`docs/plans/1.30-chat-input-composer.md`](../plans/1.30-chat-input-composer.md)
+- ℹ️ Debug log: `~/.cache/ollmchat/ollmchat.debug.log`
 - ℹ️ Code: `libollmchatgtk/ChatInput.vala`
-- ℹ️ CSS: `resources/style.css` (`.chat-composer*`)
-- ℹ️ GTK docs: `Gtk.TextView.scroll_to_iter` / `scroll_to_mark`;
-  `GTK_TEXT_VIEW_PRIORITY_VALIDATE`
-- ℹ️ GTK issue: [ScrolledWindow + TextView max_content_height #3515](https://gitlab.gnome.org/GNOME/gtk/-/issues/3515)
-- ℹ️ Libadwaita: [Linked Controls](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html#linked-controls)
 
 ---
 
-## Problem
+## Evidence (2026-07-16 ~10:45 from debug log)
 
-### A — Compact strip top padding
+Pattern on every Enter (example **serial=8**, second Enter, `nl=2 ends_nl=1`):
 
-- 🔷 ✅ Fixed — `.chat-composer` padding top `8` → `13` (+5px gray).
-- ℹ️ Bottom gap moved to `ChatBar.margin_top` (8px).
+```
+apply  … h=62 want_min=62 upper=62 page=44 tv_h=44 sw_h=62
+after  … min=62 max=328 sw_h=62 tv_h=44 upper=62 page=44 value=0
+```
 
-### B — Expanded height / scrollbar (main bug)
+- Measure is **correct** (`h=62`, `want_min=62`).
+- ScrolledWindow grows (`sw_h=62`, `min=62`).
+- TextView stays short (`tv_h=44`, `page=44`).
+- `upper=62 > page=44` → **scrollbar** + blank band (18px) under the short TextView.
 
-- 🔷 Grow with lines until ~half chat height, then scroll; no premature
-  scrollbar; no dead blank band.
-- 🔷 **Still broken.** Enter → undersize / scrollbar / line off top;
-  **next character** corrects. Paste large text → ~**2×** height + bottom
-  dead space.
+Next character (**serial=9–10**):
 
-### C — Focus when active (requirement corrected)
+```
+apply  … tv_h=62 sw_h=66 page=44 value=14   ← still scrolled mid-fix
+after  … page=62 value=0                    ← then settles
+```
 
-- 🔷 **Compact single-line:** native Adwaita focus (accent/**orange**) was
-  always there. Leave it alone.
-- 🔷 **Expanded multiline:** never had a focus indicator — **add one**.
-- 🚫 Agent mistake: added blue `:focus-within` on the compact row →
-  **double** ring (orange + blue). That CSS is removed.
-- 🚫 Also remove Adwaita `.linked` on the compact row — it can stack a
-  second focus treatment on top of Entry’s own ring.
-- ✔️ Multiline: `.chat-composer-expanded:focus-within` uses
-  `border-color: @accent_bg_color` (same accent family as Entry).
+Same pattern at serial=17 (3rd Enter): `want_min=80` but `after` still `tv_h=62 page=62` until the following keystroke.
+
+First expand (serial=1): `h=44` for one line + trailing newline geometry — OK-ish; problem is **growth** Enters.
 
 ---
 
-## Research (2026-07-16) — not guesses
+## Root cause (from numbers)
 
-### B — why Timeouts + `get_line_yrange` failed
+✔️ **Not** “measure one line short.” `get_line_yrange` / `want_min` already match content on Enter.
 
-1. ✔️ **GTK documents that line heights are async.**
-   `gtk_text_view_scroll_to_iter` docs (GTK4):
-
-   > Line heights are computed in an **idle handler**; so this function may
-   > not have the desired effect if it’s called before the height
-   > computations. To avoid oddness, consider using
-   > **`gtk_text_view_scroll_to_mark()`** which saves a point to be scrolled
-   > to **after line validation**.
-
-   Same constraint applies to **`get_line_yrange` / iter locations**: they
-   read the **currently computed** layout. Until validation idle runs,
-   Y/height can still reflect the **previous** buffer geometry.
-
-2. ✔️ **That matches our symptom exactly.** Enter inserts `\n` → we measure
-   (even 40ms later, twice) → still short → pin `min=max=h` → scrollbar.
-   Next character triggers another change **after** validation has caught
-   up → measure correct. Double Timeout changed nothing because both passes
-   can still see the **same pre-validation** geometry.
-
-3. ✔️ **We also call `scroll_to_iter` on every `buffer.changed`.** Docs say
-   that is the unreliable API. Fighting resize + premature scroll is a known
-   class of “content jumps / blank under caret” bugs (same pattern reported
-   for growing text views elsewhere: scroll runs against stale height, then
-   leaves empty space when height catches up).
-
-4. ℹ️ **GTK #3515:** `ScrolledWindow` + `TextView` + `max_content_height` with
-   `AUTOMATIC` scrollbar often **refuses to grow** and shows scrollbars
-   early; with `NEVER` it expands but can leave cursor above blank.
-   Manual `min`/`max` pinning on top of that is fragile.
-
-5. ✔️ **Implication:** Attempt #2–#4 were measuring the **wrong layer**
-   (TextView buffer coords before validation). More delays on the same API
-   are 🚫.
-
-### C — why hand-rolled square corners fight the focus ring
-
-1. ✔️ **Libadwaita linked controls:** put class **`linked`** on the
-   **container** `Gtk.Box` (spacing 0). Officially supports linking
-   `Gtk.Entry` + `Gtk.Button` so they read as one control with theme
-   focus handling.
-
-2. ✔️ **Opaque / suggested / custom filled buttons break linked chrome**
-   (libadwaita style-classes doc). Our play uses `chat-composer-send`
-   (solid blue) — similar to `.opaque` / `.suggested-action`. So square
-   CSS alone will not get theme focus continuity; may need
-   `:focus-within` outline on the **row**, or drop custom radius hacks
-   and use `.linked` + a focus ring that we control.
-
-3. 💩 Custom `border-radius: 0` on entry right + `background-color: white`
-   on entry without preserving outline / focus-within styles can hide or
-   clip Adwaita’s outline-based focus ring.
+✔️ **Layout gap:** we set `ScrolledWindow.min_content_height` and the window’s `sw_h` updates, but `TextView` keeps the **previous** allocated height for that frame (`tv_h` lags `h`). With `valign=START` + `vexpand=false`, the TextView does not fill the taller scrolled area → blank below + `page < upper` → scrollbar. Next buffer change forces another allocate and `tv_h` catches up.
 
 ---
 
-## Attempts / changelog — FAILED paths (do not retry)
+## Proposed fix (await approval)
+
+1. When applying size, also **`text_view.set_size_request(-1, want_min)`** (or clear request when collapsing) so the child height matches the measured content in the same pass — not only the ScrolledWindow min.
+2. Keep `min_content_height = want_min`; keep `max_content_height = cap`.
+3. Optionally set `valign = FILL` + `vexpand = true` so the TextView fills the scrolled allocation if request still lags — secondary; try size-request first.
+4. Leave debug lines until user ✅.
+
+#### Replace with — size apply (both Idle sites)
+
+After computing `want_min` / `want_max`:
+
+```vala
+this.scrolled.min_content_height = want_min;
+this.scrolled.max_content_height = want_max;
+this.text_view.set_size_request(-1, want_min);
+this.scrolled.queue_resize();
+```
+
+On flip back to compact: `this.text_view.set_size_request(-1, -1);`
+
+---
+
+## Attempts (height)
 
 | # | Change | Result |
 |---|--------|--------|
-| 1 | `propagate_natural_height` + `max` only | Too tall / blank |
-| 2 | Timeout + `get_line_yrange` + pin min=max | Enter→scrollbar; key fixes |
-| 3 | Margins / ChatBar / join CSS | Polish; B unchanged |
-| 4 | Double-pass + `size_serial` | 🚫 zero difference; paste ~2× |
-| 5 | 2026-07-16 **B5+C5** Pango height; drop scroll_to_iter on change; `.linked` + `:focus-within` | ⏳ user test |
-
-**🚫 Do not try again:** longer Timeouts, N remasure passes, `size_serial`
-tweaks, or any height fix that still keys off **`get_line_yrange` /
-`scroll_to_iter` before line validation**.
-
----
-
-## Proposed next effort (research-based — await approval)
-
-### B5 — Stop trusting TextView layout coords for height; stop premature scroll
-
-**Step 1 — Revert dead machinery**
-
-Remove Timeout / `size_serial` / `get_line_yrange` pin from
-`buffer.changed` and `focus_idle`.
-
-**Step 2 — Stop `scroll_to_iter` on every change**
-
-- Remove `place_cursor` + `scroll_to_iter` from the hot `buffer.changed`
-  path (they fight validation and cause scroll-off / blank bottom).
-- If end-pinning is still needed after paste/flip: use **`scroll_to_mark`**
-  on the insert mark / end mark (GTK’s recommended API), or an idle at
-  priority **after** `GTK_TEXT_VIEW_PRIORITY_VALIDATE`
-  (`G_PRIORITY_HIGH_IDLE + 15` is validate; schedule lower priority so
-  validation finishes first — see GNOME Discourse on scroll-after-render).
-
-**Step 3 — Height from Pango (content model), not buffer Y**
-
-On buffer change / width allocate, **synchronously**:
-
-1. Build a `Pango.Layout` from `text_view.create_pango_layout(text)` (or
-   buffer text).
-2. Set width to allocated text width (scrolled width − left/right margins)
-   with wrap matching `WORD_CHAR`.
-3. `h = layout.get_pixel_size().height + top_margin + bottom_margin`
-   (and a small fudge only if measured against Entry once — document it).
-4. Cap with `expanded_max_height`.
-5. Set `min_content_height` / `max_content_height` from that **without**
-   waiting for TextView validation.
-
-**Why this is not #2–#4:** height comes from **string + font + wrap width**,
-which updates the instant `\n` is in the buffer — same moment a typed
-character would. No dependency on TextView’s idle line validation.
-
-**Debug (one line, keep until ✅):** `lines`/`pixel_h`/`h`/`width` via
-`GLib.debug` under `--debug`.
-
-### C5 — Use Adwaita `.linked` + focus-within (separate small CSS pass)
-
-1. Add `linked` to `compact_row`; remove hand-squared radius CSS that
-   fights the theme (or keep only what `.linked` does not provide).
-2. If blue send still breaks linked focus: draw
-   `.chat-composer-compact:focus-within { outline: … }` (or border) around
-   the **row**, so focus reads as one full-width control.
-3. Do **not** mix C into the height algorithm.
+| 1–6 | Various measure/pin/Idle/Pango | 🚫 failed — were fixing the wrong layer |
+| debug | log apply/after | ✔️ showed tv_h lag |
 
 ---
 
 ## Next
 
-1. 🔷 ⏳ Rebuild; test B: line1 Enter → line2 Enter should grow **without**
-   a fixing keystroke; paste should not be ~2× tall.
-2. 🔷 ⏳ Test C: compact entry focus shows a **full-width** blue outline on
-   the linked row.
-3. ✔️ B5+C5 in tree (Pango height; no `scroll_to_iter` on change;
-   `.linked` + `:focus-within`). `--debug` logs `composer pango h=…`.
-4. 🚫 No Timeout / `get_line_yrange` patches if this fails — capture pango
-   debug lines and rethink.
+1. 🔷 ⏳ Approve size-request fix above, then test Enter / paste.
+2. 💩 ⏳ Remove composer debug after ✅.
 )

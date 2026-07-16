@@ -34,6 +34,8 @@ namespace OLLMchatGtk
 		private Gtk.TextBuffer buffer;
 		private bool is_expanded = false;
 		private bool syncing = false;
+		/** Bumps so superseded height Idles do not apply a stale measure. */
+		private uint size_serial = 0;
 		/** Cap for expanded scrolled height; ChatWidget sets from chat_view allocation / 2. */
 		public int expanded_max_height { get; set; default = 0; }
 
@@ -110,6 +112,7 @@ namespace OLLMchatGtk
 			});
 			this.buffer.changed.connect(() => {
 				if (this.syncing) {
+					GLib.debug("composer buf skip syncing");
 					return;
 				}
 				Gtk.TextIter start_iter;
@@ -117,32 +120,71 @@ namespace OLLMchatGtk
 				this.buffer.get_start_iter(out start_iter);
 				this.buffer.get_end_iter(out end_iter);
 				var text = this.buffer.get_text(start_iter, end_iter, false);
+				var n_nl = text.split("\n").length - 1;
+				GLib.debug("composer buf len=%d nl=%d ends_nl=%d expanded=%d alloc_w=%d alloc_h=%d min=%d max=%d cap=%d",
+					text.length, n_nl, text.has_suffix("\n") ? 1 : 0, this.is_expanded ? 1 : 0,
+					this.scrolled.get_allocated_width(), this.scrolled.get_allocated_height(),
+					this.scrolled.min_content_height, this.scrolled.max_content_height,
+					this.expanded_max_height);
 				this.update_entry(text);
 				if (!this.is_expanded) {
 					return;
 				}
-				/* B5: height from Pango (content), not get_line_yrange (stale until validate idle). */
-				var content_width = this.scrolled.get_allocated_width() - this.text_view.left_margin - this.text_view.right_margin;
-				if (content_width <= 0) {
-					return;
-				}
-				var layout = this.text_view.create_pango_layout(text);
-				layout.set_width(content_width * Pango.SCALE);
-				layout.set_wrap(Pango.WrapMode.WORD_CHAR);
-				var layout_w = 0;
-				var layout_h = 0;
-				layout.get_pixel_size(out layout_w, out layout_h);
-				var h = layout_h + this.text_view.top_margin + this.text_view.bottom_margin;
-				GLib.debug("composer pango h=%d layout_h=%d width=%d max=%d",
-					h, layout_h, content_width, this.expanded_max_height);
-				if (this.expanded_max_height > 0 && h > this.expanded_max_height) {
-					this.scrolled.min_content_height = this.expanded_max_height;
-					this.scrolled.max_content_height = this.expanded_max_height;
-				} else {
-					this.scrolled.min_content_height = h;
-					this.scrolled.max_content_height = h;
-				}
-				this.scrolled.queue_resize();
+				/*
+				 * B6: default-priority Idle runs after GTK_TEXT_VIEW_PRIORITY_VALIDATE,
+				 * so get_line_yrange is not stale (unlike Timeout / sync measure).
+				 */
+				this.size_serial++;
+				var serial = this.size_serial;
+				GLib.debug("composer size schedule serial=%u from=buf", serial);
+				GLib.Idle.add(() => {
+					if (serial != this.size_serial) {
+						GLib.debug("composer size skip stale serial=%u now=%u", serial, this.size_serial);
+						return false;
+					}
+					if (!this.is_expanded || !this.text_view.get_mapped()) {
+						GLib.debug("composer size skip expanded=%d mapped=%d serial=%u",
+							this.is_expanded ? 1 : 0, this.text_view.get_mapped() ? 1 : 0, serial);
+						return false;
+					}
+					if (this.scrolled.get_allocated_width() <= 0) {
+						GLib.debug("composer size retry width=0 serial=%u", serial);
+						return true;
+					}
+					Gtk.TextIter size_end;
+					this.buffer.get_end_iter(out size_end);
+					var y = 0;
+					var line_h = 0;
+					this.text_view.get_line_yrange(size_end, out y, out line_h);
+					var h = y + line_h + this.text_view.top_margin + this.text_view.bottom_margin;
+					var cap = this.expanded_max_height;
+					var adj = this.scrolled.get_vadjustment();
+					var upper = (int) adj.upper;
+					var page = (int) adj.page_size;
+					var value = (int) adj.value;
+					var want_min = h;
+					var want_max = h;
+					if (cap > 0) {
+						want_min = h > cap ? cap : h;
+						want_max = cap;
+					}
+					GLib.debug("composer size apply serial=%u y=%d line_h=%d h=%d upper=%d page=%d value=%d want_min=%d want_max=%d was_min=%d was_max=%d tv_h=%d sw_h=%d",
+						serial, y, line_h, h, upper, page, value, want_min, want_max,
+						this.scrolled.min_content_height, this.scrolled.max_content_height,
+						this.text_view.get_allocated_height(), this.scrolled.get_allocated_height());
+					this.scrolled.min_content_height = want_min;
+					this.scrolled.max_content_height = want_max;
+					this.scrolled.queue_resize();
+					GLib.Idle.add(() => {
+						var adj2 = this.scrolled.get_vadjustment();
+						GLib.debug("composer size after serial=%u sw_h=%d tv_h=%d upper=%d page=%d value=%d min=%d max=%d",
+							serial, this.scrolled.get_allocated_height(), this.text_view.get_allocated_height(),
+							(int) adj2.upper, (int) adj2.page_size, (int) adj2.value,
+							this.scrolled.min_content_height, this.scrolled.max_content_height);
+						return false;
+					});
+					return false;
+				});
 			});
 
 			var compact_keys = new Gtk.EventControllerKey();
@@ -247,6 +289,7 @@ namespace OLLMchatGtk
 			}
 
 			if (want_expanded) {
+				GLib.debug("composer flip to expanded len=%d", text.length);
 				this.syncing = true;
 				Gtk.TextIter start_iter;
 				Gtk.TextIter end_iter;
@@ -263,6 +306,7 @@ namespace OLLMchatGtk
 				return;
 			}
 
+			GLib.debug("composer flip to compact len=%d", text.length);
 			this.syncing = true;
 			this.compact_entry.text = text;
 			Gtk.TextIter start_iter;
@@ -283,38 +327,70 @@ namespace OLLMchatGtk
 		{
 			if (this.is_expanded) {
 				if (!this.text_view.get_mapped()) {
+					GLib.debug("composer focus_idle wait mapped");
 					return true;
 				}
-				var content_width = this.scrolled.get_allocated_width() - this.text_view.left_margin - this.text_view.right_margin;
-				if (content_width <= 0) {
+				if (this.scrolled.get_allocated_width() <= 0) {
+					GLib.debug("composer focus_idle wait width");
 					return true;
 				}
-				Gtk.TextIter start_iter;
-				Gtk.TextIter end_iter;
-				this.buffer.get_start_iter(out start_iter);
-				this.buffer.get_end_iter(out end_iter);
-				var text = this.buffer.get_text(start_iter, end_iter, false);
-				var layout = this.text_view.create_pango_layout(text);
-				layout.set_width(content_width * Pango.SCALE);
-				layout.set_wrap(Pango.WrapMode.WORD_CHAR);
-				var layout_w = 0;
-				var layout_h = 0;
-				layout.get_pixel_size(out layout_w, out layout_h);
-				var h = layout_h + this.text_view.top_margin + this.text_view.bottom_margin;
-				GLib.debug("composer pango focus h=%d layout_h=%d width=%d max=%d",
-					h, layout_h, content_width, this.expanded_max_height);
-				if (this.expanded_max_height > 0 && h > this.expanded_max_height) {
-					this.scrolled.min_content_height = this.expanded_max_height;
-					this.scrolled.max_content_height = this.expanded_max_height;
-				} else {
-					this.scrolled.min_content_height = h;
-					this.scrolled.max_content_height = h;
-				}
-				this.scrolled.queue_resize();
 				this.text_view.grab_focus();
+				Gtk.TextIter end_iter;
+				this.buffer.get_end_iter(out end_iter);
 				this.buffer.place_cursor(end_iter);
-				/* scroll_to_mark waits for line validation — not scroll_to_iter. */
 				this.text_view.scroll_to_mark(this.buffer.get_insert(), 0.0, true, 0.0, 1.0);
+				/* B6 height after validate (expand path skips buffer.changed while syncing). */
+				this.size_serial++;
+				var serial = this.size_serial;
+				GLib.debug("composer size schedule serial=%u from=focus", serial);
+				GLib.Idle.add(() => {
+					if (serial != this.size_serial) {
+						GLib.debug("composer size skip stale serial=%u now=%u", serial, this.size_serial);
+						return false;
+					}
+					if (!this.is_expanded || !this.text_view.get_mapped()) {
+						GLib.debug("composer size skip expanded=%d mapped=%d serial=%u",
+							this.is_expanded ? 1 : 0, this.text_view.get_mapped() ? 1 : 0, serial);
+						return false;
+					}
+					if (this.scrolled.get_allocated_width() <= 0) {
+						GLib.debug("composer size retry width=0 serial=%u", serial);
+						return true;
+					}
+					Gtk.TextIter size_end;
+					this.buffer.get_end_iter(out size_end);
+					var y = 0;
+					var line_h = 0;
+					this.text_view.get_line_yrange(size_end, out y, out line_h);
+					var h = y + line_h + this.text_view.top_margin + this.text_view.bottom_margin;
+					var cap = this.expanded_max_height;
+					var adj = this.scrolled.get_vadjustment();
+					var upper = (int) adj.upper;
+					var page = (int) adj.page_size;
+					var value = (int) adj.value;
+					var want_min = h;
+					var want_max = h;
+					if (cap > 0) {
+						want_min = h > cap ? cap : h;
+						want_max = cap;
+					}
+					GLib.debug("composer size apply serial=%u y=%d line_h=%d h=%d upper=%d page=%d value=%d want_min=%d want_max=%d was_min=%d was_max=%d tv_h=%d sw_h=%d",
+						serial, y, line_h, h, upper, page, value, want_min, want_max,
+						this.scrolled.min_content_height, this.scrolled.max_content_height,
+						this.text_view.get_allocated_height(), this.scrolled.get_allocated_height());
+					this.scrolled.min_content_height = want_min;
+					this.scrolled.max_content_height = want_max;
+					this.scrolled.queue_resize();
+					GLib.Idle.add(() => {
+						var adj2 = this.scrolled.get_vadjustment();
+						GLib.debug("composer size after serial=%u sw_h=%d tv_h=%d upper=%d page=%d value=%d min=%d max=%d",
+							serial, this.scrolled.get_allocated_height(), this.text_view.get_allocated_height(),
+							(int) adj2.upper, (int) adj2.page_size, (int) adj2.value,
+							this.scrolled.min_content_height, this.scrolled.max_content_height);
+						return false;
+					});
+					return false;
+				});
 				return false;
 			}
 			if (!this.compact_entry.get_mapped()) {
