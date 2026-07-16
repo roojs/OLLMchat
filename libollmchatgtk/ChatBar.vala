@@ -138,6 +138,7 @@ namespace OLLMchatGtk
 
 			var popup = this.model_dropdown.get_first_child()?.get_next_sibling() as Gtk.Popover;
 			if (popup != null) {
+				popup.set_offset(0, 10);
 				popup.show.connect(() => {
 					var root = this.get_root();
 					if (root == null) {

@@ -27,7 +27,8 @@ namespace OLLMchatGtk
 	 * viewport allocation and scrolls via shared adjustments.
 	 *
 	 * Vertical size is exactly {@link content_height} (min = nat). Classic
-	 * vertical scrollbar when `vadjustment.upper > page_size`.
+	 * vertical scrollbar only when at {@link max_height} and
+	 * `vadjustment.upper > page_size` (hidden while the viewport still grows).
 	 *
 	 * When the child is a {@link Gtk.TextView}, {@link set_child} binds
 	 * `buffer.changed` (one Idle) to set {@link content_height} from line
@@ -94,12 +95,13 @@ namespace OLLMchatGtk
 				GLib.Idle.add(this.buffer_change);
 			});
 			this.vadjustment.changed.connect(() => {
-				var need = this.vadjustment.upper > this.vadjustment.page_size + 0.5;
+				var over_cap = this.max_height > 0 && this.content_height >= this.max_height;
+				var need = over_cap
+					&& this.vadjustment.upper > this.vadjustment.page_size + 0.5;
 				if (need == this.vbar_visible) {
 					return;
 				}
-				this.vbar_visible = need;
-				this.vscrollbar.set_child_visible(need);
+				/* child_visible only in size_allocate (GTK scrolledwindow) — map before allocate snapshots. */
 				this.queue_allocate();
 			});
 			var scroll = new Gtk.EventControllerScroll(
@@ -259,16 +261,18 @@ namespace OLLMchatGtk
 
 		public override void size_allocate(int width, int height, int baseline)
 		{
-			var need = this.vadjustment.upper > this.vadjustment.page_size + 0.5;
-			if (need != this.vbar_visible) {
-				this.vbar_visible = need;
-				this.vscrollbar.set_child_visible(need);
-			}
+			/* Under max_height the shell grows to fit — no bar until capped and still overflowing. */
+			var over_cap = this.max_height > 0 && this.content_height >= this.max_height;
+			var need = over_cap
+				&& this.vadjustment.upper > this.vadjustment.page_size + 0.5;
+			this.vbar_visible = need;
+			this.vscrollbar.set_child_visible(need);
 			var sb_w = 0;
-			if (this.vbar_visible && height > 0) {
+			if (need && height > 0) {
 				var sb_min = 0;
 				var sb_nat = 0;
-				this.vscrollbar.measure(Gtk.Orientation.HORIZONTAL, height, out sb_min, out sb_nat, null, null);
+				/* for_size=-1: GTK scrolledwindow; height-for-width warns if height < bar min (~58). */
+				this.vscrollbar.measure(Gtk.Orientation.HORIZONTAL, -1, out sb_min, out sb_nat, null, null);
 				sb_w = sb_nat;
 				if (sb_w < 1) {
 					sb_w = sb_min;
@@ -288,7 +292,7 @@ namespace OLLMchatGtk
 					this.vadjustment.value = max;
 				}
 			}
-			if (!this.vbar_visible || sb_w < 1 || height < 1) {
+			if (!need || sb_w < 1 || height < 1) {
 				return;
 			}
 			var sb_point = Graphene.Point() {
