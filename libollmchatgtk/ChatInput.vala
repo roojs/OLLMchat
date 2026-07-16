@@ -266,9 +266,7 @@ namespace OLLMchatGtk
 				this.buffer.get_end_iter(out end_iter);
 				this.buffer.place_cursor(end_iter);
 				this.text_view.scroll_to_mark(this.buffer.get_insert(), 0.0, true, 0.0, 1.0);
-				/* Expand path skipped ChatInput buffer.changed while syncing — ScrolledView
-				 * still sized on buffer.changed; re-emit so Idle can run once mapped. */
-				this.buffer.changed();
+				this.scrolled.queue_fit();
 				return false;
 			}
 			if (!this.compact_entry.get_mapped()) {

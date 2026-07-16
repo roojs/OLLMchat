@@ -169,6 +169,14 @@ namespace OLLMchatGtk
 		}
 
 		/**
+		 * Schedule {@link buffer_change} on Idle (e.g. after expand when mapped).
+		 */
+		public void queue_fit()
+		{
+			GLib.Idle.add(this.buffer_change);
+		}
+
+		/**
 		 * Idle after TextView buffer.changed: set {@link content_height} from
 		 * line yrange; request bottom pin on next allocate when caret is at end.
 		 *
@@ -185,8 +193,10 @@ namespace OLLMchatGtk
 			if (this.get_width() <= 0) {
 				return true;
 			}
+			/* Offsets survive mutation; do not hold TextIters across any call that may re-enter. */
+			var end_off = this.text_view.buffer.get_char_count();
 			Gtk.TextIter size_end;
-			this.text_view.buffer.get_end_iter(out size_end);
+			this.text_view.buffer.get_iter_at_offset(out size_end, end_off);
 			var y = 0;
 			var line_h = 0;
 			this.text_view.get_line_yrange(size_end, out y, out line_h);
@@ -198,11 +208,7 @@ namespace OLLMchatGtk
 			if (this.max_height > 0 && yrange_h > this.max_height) {
 				target = this.max_height;
 			}
-			Gtk.TextIter ins;
-			Gtk.TextIter end;
-			this.text_view.buffer.get_iter_at_mark(out ins, this.text_view.buffer.get_insert());
-			this.text_view.buffer.get_end_iter(out end);
-			this.pin_end = ins.get_offset() >= end.get_offset();
+			this.pin_end = this.text_view.buffer.cursor_position >= this.text_view.buffer.get_char_count();
 			this.content_height = target;
 			if (yrange_h <= target) {
 				this.vadjustment.value = 0;
@@ -259,7 +265,7 @@ namespace OLLMchatGtk
 				this.vscrollbar.set_child_visible(need);
 			}
 			var sb_w = 0;
-			if (this.vbar_visible) {
+			if (this.vbar_visible && height > 0) {
 				var sb_min = 0;
 				var sb_nat = 0;
 				this.vscrollbar.measure(Gtk.Orientation.HORIZONTAL, height, out sb_min, out sb_nat, null, null);
@@ -282,7 +288,7 @@ namespace OLLMchatGtk
 					this.vadjustment.value = max;
 				}
 			}
-			if (!this.vbar_visible || sb_w < 1) {
+			if (!this.vbar_visible || sb_w < 1 || height < 1) {
 				return;
 			}
 			var sb_point = Graphene.Point() {
