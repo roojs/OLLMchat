@@ -33,9 +33,17 @@
   **next character** corrects. Paste large text → ~**2×** height + bottom
   dead space.
 
-### C — Compact focus ring missing
+### C — Focus when active (requirement corrected)
 
-- 🔷 No usable focus border on the single-line entry (after flip / focus).
+- 🔷 **Compact single-line:** native Adwaita focus (accent/**orange**) was
+  always there. Leave it alone.
+- 🔷 **Expanded multiline:** never had a focus indicator — **add one**.
+- 🚫 Agent mistake: added blue `:focus-within` on the compact row →
+  **double** ring (orange + blue). That CSS is removed.
+- 🚫 Also remove Adwaita `.linked` on the compact row — it can stack a
+  second focus treatment on top of Entry’s own ring.
+- ✔️ Multiline: `.chat-composer-expanded:focus-within` uses
+  `border-color: @accent_bg_color` (same accent family as Entry).
 
 ---
 

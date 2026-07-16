@@ -55,8 +55,6 @@ namespace OLLMchatGtk
 				vexpand = false
 			};
 			this.compact_row.add_css_class("chat-composer-compact");
-			/* Adwaita linked Entry+Button; focus ring via CSS :focus-within on the row. */
-			this.compact_row.add_css_class("linked");
 			this.compact_entry = new Gtk.Entry() {
 				hexpand = true,
 				placeholder_text = "Give me a task",
