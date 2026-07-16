@@ -22,6 +22,9 @@ namespace OLLMchatGtk
 	 * Chat composer: compact single-line entry + expanded multiline TextView.
 	 * Flips visibility (does not resize one widget). ChatWidget wires send / ChatBar.
 	 *
+	 * DIAG (2026-07-16): ScrolledWindow still out. Size Idle required (sync
+	 * measure was wrong); height via text_view.set_size_request in Idle.
+	 *
 	 * @since 1.0
 	 */
 	public class ChatInput : Gtk.Box
@@ -29,14 +32,11 @@ namespace OLLMchatGtk
 		private Gtk.Box compact_row;
 		private Gtk.Entry compact_entry;
 		private Gtk.Button compact_play;
-		private Gtk.ScrolledWindow scrolled;
 		private Gtk.TextView text_view;
 		private Gtk.TextBuffer buffer;
 		private bool is_expanded = false;
 		private bool syncing = false;
-		/** Bumps so superseded height Idles do not apply a stale measure. */
-		private uint size_serial = 0;
-		/** Cap for expanded scrolled height; ChatWidget sets from chat_view allocation / 2. */
+		/** Cap for expanded height; ChatWidget sets from chat_view allocation / 2. */
 		public int expanded_max_height { get; set; default = 0; }
 
 		/** Emitted when the user submits (Ctrl+Enter or play) with the message text. */
@@ -77,21 +77,13 @@ namespace OLLMchatGtk
 			this.compact_row.append(this.compact_play);
 			this.append(this.compact_row);
 
-			this.scrolled = new Gtk.ScrolledWindow() {
-				hexpand = true,
-				vexpand = false,
-				visible = false,
-				hscrollbar_policy = Gtk.PolicyType.NEVER,
-				vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
-				propagate_natural_height = true
-			};
-			this.scrolled.add_css_class("chat-composer-expanded");
 			this.buffer = new Gtk.TextBuffer(null);
 			this.text_view = new Gtk.TextView.with_buffer(this.buffer) {
 				wrap_mode = Gtk.WrapMode.WORD_CHAR,
 				hexpand = true,
 				vexpand = false,
 				valign = Gtk.Align.START,
+				visible = false,
 				top_margin = 4,
 				bottom_margin = 4,
 				left_margin = 6,
@@ -100,8 +92,8 @@ namespace OLLMchatGtk
 			};
 			this.text_view.add_css_class("chat-composer-entry");
 			this.text_view.add_css_class("chat-input-text");
-			this.scrolled.set_child(this.text_view);
-			this.append(this.scrolled);
+			this.text_view.add_css_class("chat-composer-expanded");
+			this.append(this.text_view);
 
 			/* Mode from value (paste/type/programmatic) — not from key handlers. */
 			this.compact_entry.changed.connect(() => {
@@ -112,7 +104,6 @@ namespace OLLMchatGtk
 			});
 			this.buffer.changed.connect(() => {
 				if (this.syncing) {
-					GLib.debug("composer buf skip syncing");
 					return;
 				}
 				Gtk.TextIter start_iter;
@@ -120,69 +111,45 @@ namespace OLLMchatGtk
 				this.buffer.get_start_iter(out start_iter);
 				this.buffer.get_end_iter(out end_iter);
 				var text = this.buffer.get_text(start_iter, end_iter, false);
-				var n_nl = text.split("\n").length - 1;
-				GLib.debug("composer buf len=%d nl=%d ends_nl=%d expanded=%d alloc_w=%d alloc_h=%d min=%d max=%d cap=%d",
-					text.length, n_nl, text.has_suffix("\n") ? 1 : 0, this.is_expanded ? 1 : 0,
-					this.scrolled.get_allocated_width(), this.scrolled.get_allocated_height(),
-					this.scrolled.min_content_height, this.scrolled.max_content_height,
-					this.expanded_max_height);
 				this.update_entry(text);
 				if (!this.is_expanded) {
 					return;
 				}
-				/*
-				 * B6: default-priority Idle runs after GTK_TEXT_VIEW_PRIORITY_VALIDATE,
-				 * so get_line_yrange is not stale (unlike Timeout / sync measure).
-				 */
-				this.size_serial++;
-				var serial = this.size_serial;
-				GLib.debug("composer size schedule serial=%u from=buf", serial);
 				GLib.Idle.add(() => {
-					if (serial != this.size_serial) {
-						GLib.debug("composer size skip stale serial=%u now=%u", serial, this.size_serial);
-						return false;
-					}
 					if (!this.is_expanded || !this.text_view.get_mapped()) {
-						GLib.debug("composer size skip expanded=%d mapped=%d serial=%u",
-							this.is_expanded ? 1 : 0, this.text_view.get_mapped() ? 1 : 0, serial);
 						return false;
 					}
-					if (this.scrolled.get_allocated_width() <= 0) {
-						GLib.debug("composer size retry width=0 serial=%u", serial);
+					var for_width = this.text_view.get_allocated_width();
+					if (for_width <= 0) {
 						return true;
 					}
 					Gtk.TextIter size_end;
 					this.buffer.get_end_iter(out size_end);
+					Gtk.TextIter size_start;
+					this.buffer.get_start_iter(out size_start);
+					var cur = this.buffer.get_text(size_start, size_end, false);
+					var ends_nl = cur.has_suffix("\n");
+					var n_nl = cur.split("\n").length - 1;
 					var y = 0;
 					var line_h = 0;
 					this.text_view.get_line_yrange(size_end, out y, out line_h);
-					var h = y + line_h + this.text_view.top_margin + this.text_view.bottom_margin;
+					var yrange_h = y + line_h + this.text_view.top_margin + this.text_view.bottom_margin;
+					/* Clear height-request first — measure() floors to the old request and
+					 * blocks shrink on delete. Size from content yrange, not measure. */
+					this.text_view.set_size_request(-1, -1);
 					var cap = this.expanded_max_height;
-					var adj = this.scrolled.get_vadjustment();
-					var upper = (int) adj.upper;
-					var page = (int) adj.page_size;
-					var value = (int) adj.value;
-					var want_min = h;
-					var want_max = h;
-					if (cap > 0) {
-						want_min = h > cap ? cap : h;
-						want_max = cap;
+					var target = yrange_h;
+					if (cap > 0 && yrange_h > cap) {
+						target = cap;
 					}
-					GLib.debug("composer size apply serial=%u y=%d line_h=%d h=%d upper=%d page=%d value=%d want_min=%d want_max=%d was_min=%d was_max=%d tv_h=%d sw_h=%d",
-						serial, y, line_h, h, upper, page, value, want_min, want_max,
-						this.scrolled.min_content_height, this.scrolled.max_content_height,
-						this.text_view.get_allocated_height(), this.scrolled.get_allocated_height());
-					this.scrolled.min_content_height = want_min;
-					this.scrolled.max_content_height = want_max;
-					this.scrolled.queue_resize();
-					GLib.Idle.add(() => {
-						var adj2 = this.scrolled.get_vadjustment();
-						GLib.debug("composer size after serial=%u sw_h=%d tv_h=%d upper=%d page=%d value=%d min=%d max=%d",
-							serial, this.scrolled.get_allocated_height(), this.text_view.get_allocated_height(),
-							(int) adj2.upper, (int) adj2.page_size, (int) adj2.value,
-							this.scrolled.min_content_height, this.scrolled.max_content_height);
-						return false;
-					});
+					if (target < 1) {
+						target = 1;
+					}
+					this.text_view.set_size_request(-1, target);
+					this.text_view.queue_resize();
+					GLib.debug("composer size ends_nl=%d nl=%d for_w=%d y=%d line_h=%d yrange_h=%d target=%d cap=%d tv_h=%d",
+						ends_nl ? 1 : 0, n_nl, for_width, y, line_h, yrange_h, target, cap,
+						this.text_view.get_allocated_height());
 					return false;
 				});
 			});
@@ -289,7 +256,6 @@ namespace OLLMchatGtk
 			}
 
 			if (want_expanded) {
-				GLib.debug("composer flip to expanded len=%d", text.length);
 				this.syncing = true;
 				Gtk.TextIter start_iter;
 				Gtk.TextIter end_iter;
@@ -298,7 +264,7 @@ namespace OLLMchatGtk
 				this.buffer.delete(ref start_iter, ref end_iter);
 				this.buffer.insert(ref start_iter, text, -1);
 				this.compact_row.visible = false;
-				this.scrolled.visible = true;
+				this.text_view.visible = true;
 				this.is_expanded = true;
 				this.syncing = false;
 				this.expanded_changed(true);
@@ -306,7 +272,6 @@ namespace OLLMchatGtk
 				return;
 			}
 
-			GLib.debug("composer flip to compact len=%d", text.length);
 			this.syncing = true;
 			this.compact_entry.text = text;
 			Gtk.TextIter start_iter;
@@ -314,7 +279,8 @@ namespace OLLMchatGtk
 			this.buffer.get_start_iter(out start_iter);
 			this.buffer.get_end_iter(out end_iter);
 			this.buffer.delete(ref start_iter, ref end_iter);
-			this.scrolled.visible = false;
+			this.text_view.set_size_request(-1, -1);
+			this.text_view.visible = false;
 			this.compact_row.visible = true;
 			this.is_expanded = false;
 			this.syncing = false;
@@ -327,11 +293,9 @@ namespace OLLMchatGtk
 		{
 			if (this.is_expanded) {
 				if (!this.text_view.get_mapped()) {
-					GLib.debug("composer focus_idle wait mapped");
 					return true;
 				}
-				if (this.scrolled.get_allocated_width() <= 0) {
-					GLib.debug("composer focus_idle wait width");
+				if (this.text_view.get_allocated_width() <= 0) {
 					return true;
 				}
 				this.text_view.grab_focus();
@@ -339,56 +303,42 @@ namespace OLLMchatGtk
 				this.buffer.get_end_iter(out end_iter);
 				this.buffer.place_cursor(end_iter);
 				this.text_view.scroll_to_mark(this.buffer.get_insert(), 0.0, true, 0.0, 1.0);
-				/* B6 height after validate (expand path skips buffer.changed while syncing). */
-				this.size_serial++;
-				var serial = this.size_serial;
-				GLib.debug("composer size schedule serial=%u from=focus", serial);
+				/* Expand path skips buffer.changed while syncing — size after layout Idle. */
 				GLib.Idle.add(() => {
-					if (serial != this.size_serial) {
-						GLib.debug("composer size skip stale serial=%u now=%u", serial, this.size_serial);
-						return false;
-					}
 					if (!this.is_expanded || !this.text_view.get_mapped()) {
-						GLib.debug("composer size skip expanded=%d mapped=%d serial=%u",
-							this.is_expanded ? 1 : 0, this.text_view.get_mapped() ? 1 : 0, serial);
 						return false;
 					}
-					if (this.scrolled.get_allocated_width() <= 0) {
-						GLib.debug("composer size retry width=0 serial=%u", serial);
+					var for_width = this.text_view.get_allocated_width();
+					if (for_width <= 0) {
 						return true;
 					}
 					Gtk.TextIter size_end;
 					this.buffer.get_end_iter(out size_end);
+					Gtk.TextIter size_start;
+					this.buffer.get_start_iter(out size_start);
+					var cur = this.buffer.get_text(size_start, size_end, false);
+					var ends_nl = cur.has_suffix("\n");
+					var n_nl = cur.split("\n").length - 1;
 					var y = 0;
 					var line_h = 0;
 					this.text_view.get_line_yrange(size_end, out y, out line_h);
-					var h = y + line_h + this.text_view.top_margin + this.text_view.bottom_margin;
+					var yrange_h = y + line_h + this.text_view.top_margin + this.text_view.bottom_margin;
+					/* Clear height-request first — measure() floors to the old request and
+					 * blocks shrink on delete. Size from content yrange, not measure. */
+					this.text_view.set_size_request(-1, -1);
 					var cap = this.expanded_max_height;
-					var adj = this.scrolled.get_vadjustment();
-					var upper = (int) adj.upper;
-					var page = (int) adj.page_size;
-					var value = (int) adj.value;
-					var want_min = h;
-					var want_max = h;
-					if (cap > 0) {
-						want_min = h > cap ? cap : h;
-						want_max = cap;
+					var target = yrange_h;
+					if (cap > 0 && yrange_h > cap) {
+						target = cap;
 					}
-					GLib.debug("composer size apply serial=%u y=%d line_h=%d h=%d upper=%d page=%d value=%d want_min=%d want_max=%d was_min=%d was_max=%d tv_h=%d sw_h=%d",
-						serial, y, line_h, h, upper, page, value, want_min, want_max,
-						this.scrolled.min_content_height, this.scrolled.max_content_height,
-						this.text_view.get_allocated_height(), this.scrolled.get_allocated_height());
-					this.scrolled.min_content_height = want_min;
-					this.scrolled.max_content_height = want_max;
-					this.scrolled.queue_resize();
-					GLib.Idle.add(() => {
-						var adj2 = this.scrolled.get_vadjustment();
-						GLib.debug("composer size after serial=%u sw_h=%d tv_h=%d upper=%d page=%d value=%d min=%d max=%d",
-							serial, this.scrolled.get_allocated_height(), this.text_view.get_allocated_height(),
-							(int) adj2.upper, (int) adj2.page_size, (int) adj2.value,
-							this.scrolled.min_content_height, this.scrolled.max_content_height);
-						return false;
-					});
+					if (target < 1) {
+						target = 1;
+					}
+					this.text_view.set_size_request(-1, target);
+					this.text_view.queue_resize();
+					GLib.debug("composer size ends_nl=%d nl=%d for_w=%d y=%d line_h=%d yrange_h=%d target=%d cap=%d tv_h=%d",
+						ends_nl ? 1 : 0, n_nl, for_width, y, line_h, yrange_h, target, cap,
+						this.text_view.get_allocated_height());
 					return false;
 				});
 				return false;

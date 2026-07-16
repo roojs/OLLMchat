@@ -3,83 +3,138 @@
 > Pointer: `docs/bug-fix-process.md` (emoji + code fences). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ✅ A · ✅ C · ✔️ B root cause from logs — ⏳ fix proposed, await apply
+**Status:** ✅ A · ✅ C · ✅ B grow · ✅ size Idle · ⏳ shrink on delete ·
+🚫 ScrolledWindow still out
+
+### DIAG updates
+
+- 🔷 ✅ TextView alone — height grows.
+- 🔷 Sync size without Idle — 🚫; Idle required.
+- 🔷 Shrink on delete — `measure()` floors to current `size_request`, so
+  target never falls. ✔️ Fix: clear request (`-1,-1`), size from
+  `get_line_yrange` (+ margins), not `measure()`.
+- 🚫 ScrolledWindow not restored yet.
 
 **Related:**
 
-- ℹ️ Debug log: `~/.cache/ollmchat/ollmchat.debug.log`
-- ℹ️ Code: `libollmchatgtk/ChatInput.vala`
+- ℹ️ Log: `~/.cache/ollmchat/ollmchat.debug.log` (`--debug`)
+- ℹ️ Code: `libollmchatgtk/ChatInput.vala` — **no** ScrolledWindow (temp)
+- ℹ️ GTK source: `gtkscrolledwindow.c` measure floors to scrollbar height
+  when `AUTOMATIC`
+- ℹ️ GTK [#3515](https://gitlab.gnome.org/GNOME/gtk/-/issues/3515)
 
 ---
 
-## Evidence (2026-07-16 ~10:45 from debug log)
+## A / C
 
-Pattern on every Enter (example **serial=8**, second Enter, `nl=2 ends_nl=1`):
+- 🔷 ✅ Top gray + focus.
 
-```
-apply  … h=62 want_min=62 upper=62 page=44 tv_h=44 sw_h=62
-after  … min=62 max=328 sw_h=62 tv_h=44 upper=62 page=44 value=0
-```
+## B — evidence
 
-- Measure is **correct** (`h=62`, `want_min=62`).
-- ScrolledWindow grows (`sw_h=62`, `min=62`).
-- TextView stays short (`tv_h=44`, `page=44`).
-- `upper=62 > page=44` → **scrollbar** + blank band (18px) under the short TextView.
+### Inspector (🔷)
 
-Next character (**serial=9–10**):
+- TextView did not fill ScrolledWindow — blank under TextView.
+
+### Debug (✔️)
 
 ```
-apply  … tv_h=62 sw_h=66 page=44 value=14   ← still scrolled mid-fix
-after  … page=62 value=0                    ← then settles
+target=44 tv_h=44 upper=44 page=44 sw_h=62
 ```
 
-Same pattern at serial=17 (3rd Enter): `want_min=80` but `after` still `tv_h=62 page=62` until the following keystroke.
+### Theme A/B (🔷)
 
-First expand (serial=1): `h=44` for one line + trailing newline geometry — OK-ish; problem is **growth** Enters.
+- `GTK_THEME=Default` → **just as bad**. 🚫 Not libadwaita stylesheet.
+
+### DIAG — no ScrolledWindow (🔷 requested, ✔️ applied)
+
+- Expanded mode: `TextView` is a **direct** child of `ChatInput`.
+- Height via `text_view.set_size_request(-1, target)` only.
+- Cap still applied; **no scroll** while over cap (expected for this test).
+- Watch debug: `composer size` / `composer after` — `tv_h` vs `target`.
+- 🔷 Reverted to plain `Gtk.TextBuffer` (SourceBuffer fudge 🚫 ruled out).
 
 ---
 
-## Root cause (from numbers)
+## Root cause (provisional)
 
-✔️ **Not** “measure one line short.” `get_line_yrange` / `want_min` already match content on Enter.
-
-✔️ **Layout gap:** we set `ScrolledWindow.min_content_height` and the window’s `sw_h` updates, but `TextView` keeps the **previous** allocated height for that frame (`tv_h` lags `h`). With `valign=START` + `vexpand=false`, the TextView does not fill the taller scrolled area → blank below + `page < upper` → scrollbar. Next buffer change forces another allocate and `tv_h` catches up.
-
----
-
-## Proposed fix (await approval)
-
-1. When applying size, also **`text_view.set_size_request(-1, want_min)`** (or clear request when collapsing) so the child height matches the measured content in the same pass — not only the ScrolledWindow min.
-2. Keep `min_content_height = want_min`; keep `max_content_height = cap`.
-3. Optionally set `valign = FILL` + `vexpand = true` so the TextView fills the scrolled allocation if request still lags — secondary; try size-request first.
-4. Leave debug lines until user ✅.
-
-#### Replace with — size apply (both Idle sites)
-
-After computing `want_min` / `want_max`:
-
-```vala
-this.scrolled.min_content_height = want_min;
-this.scrolled.max_content_height = want_max;
-this.text_view.set_size_request(-1, want_min);
-this.scrolled.queue_resize();
-```
-
-On flip back to compact: `this.text_view.set_size_request(-1, -1);`
-
----
-
-## Attempts (height)
-
-| # | Change | Result |
-|---|--------|--------|
-| 1–6 | Various measure/pin/Idle/Pango | 🚫 failed — were fixing the wrong layer |
-| debug | log apply/after | ✔️ showed tv_h lag |
+- ✔️ ScrolledWindow + `AUTOMATIC` measure floors natural height to scrollbar
+  widget height → blank under TextView. Theme ruled out.
+- ⏳ Confirm TextView-alone height tracks content; then restore scroll only
+  when over cap (`NEVER` under cap / `AUTOMATIC` when capped).
 
 ---
 
 ## Next
 
-1. 🔷 ⏳ Approve size-request fix above, then test Enter / paste.
-2. 💩 ⏳ Remove composer debug after ✅.
-)
+1. 🔷 ⏳ Rebuild, Enter-per-line — does blank go away / does height track?
+2. ⏳ If yes → reintroduce ScrolledWindow with policy switch; if no → TextView
+   measure/request next.
+
+
+### TextView fudge (✔️ applied, 🚫 insufficient)
+
+- `GtkSource.Buffer` + `implicit_trailing_newline=false` +
+  `pixels_below_lines=0` — gap unchanged.
+
+### GTK measure (✔️ from source)
+
+When `vscrollbar_policy` **may be visible** (`AUTOMATIC`), measure does:
+
+```c
+minimum_req = MAX (minimum_req, min_scrollbar_height + sborder…);
+natural_req = MAX (natural_req, nat_scrollbar_height + sborder…);
+```
+
+So ScrolledWindow natural height is **floored by the scrollbar widget’s
+height** even when content is shorter and no bar is shown. That matches
+`tv_h=44` / `sw_h=62` (~one scrollbar min height).
+
+`set_size_request(-1, 44)` only raises the **minimum**; parent can still
+allocate the **natural** (~62).
+
+---
+
+## Root cause (✔️ provisional — theme ruled out; GTK measure matches numbers)
+
+- Expanded composer uses `vscrollbar_policy = AUTOMATIC` always.
+- Short content → ScrolledWindow still requests ≥ scrollbar natural height
+  → blank under TextView (`valign=START`, `vexpand=false`).
+
+---
+
+## Proposed fix (💩 — await approval)
+
+Keep scroll only when content exceeds the cap:
+
+1. While `nat_h <= cap` (or no cap): `vscrollbar_policy = NEVER`, pin
+   `min_content_height = max_content_height = nat_h` (or use
+   `set_size_request(-1, nat_h)` with NEVER so measure uses child min).
+2. When `nat_h > cap`: `vscrollbar_policy = AUTOMATIC`,
+   `min_content_height = max_content_height = cap`.
+
+Do not rely on Adwaita/theme tweaks. Keep debug until ✅.
+
+#### Replace with (size Idle — both paths; sketch)
+
+```vala
+var cap = this.expanded_max_height;
+var target = nat_h;
+if (cap > 0 && nat_h > cap) {
+	target = cap;
+	this.scrolled.vscrollbar_policy = Gtk.PolicyType.AUTOMATIC;
+} else {
+	this.scrolled.vscrollbar_policy = Gtk.PolicyType.NEVER;
+}
+this.scrolled.min_content_height = target;
+this.scrolled.max_content_height = target;
+this.scrolled.set_size_request(-1, -1);
+this.text_view.set_size_request(-1, -1);
+this.scrolled.queue_resize();
+```
+
+---
+
+## Next
+
+1. 🔷 ⏳ Approve scrollbar-policy switch → apply → rebuild → repro.
+2. ⏳ Confirm `sw_h == tv_h` in debug when under cap.
