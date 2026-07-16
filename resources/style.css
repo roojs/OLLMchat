@@ -262,6 +262,16 @@
 	background-color: #eee;
 }
 
+/*
+ * C5: Adwaita .linked on the row (Vala). Opaque blue send breaks theme focus,
+ * so draw a full-width ring on the row when entry or play is focused.
+ */
+.chat-composer-compact:focus-within {
+	outline: 2px solid #3584E4;
+	outline-offset: 2px;
+	border-radius: 6px;
+}
+
 .chat-composer-entry,
 .chat-composer-entry text,
 .chat-input-text,
@@ -272,14 +282,14 @@
 	border-radius: 6px;
 }
 
-/* Compact: square join so entry + play read as one control */
-.chat-composer-compact entry.chat-composer-entry,
-.chat-composer-compact entry.chat-composer-entry > text {
+/* Square join with custom blue send (theme .linked alone is not enough). */
+.chat-composer-compact.linked entry.chat-composer-entry,
+.chat-composer-compact.linked entry.chat-composer-entry > text {
 	border-top-right-radius: 0;
 	border-bottom-right-radius: 0;
 }
 
-.chat-composer-compact button.chat-composer-send {
+.chat-composer-compact.linked button.chat-composer-send {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
 	border-top-right-radius: 6px;

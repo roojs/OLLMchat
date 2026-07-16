@@ -3,8 +3,8 @@
 > Pointer: `docs/bug-fix-process.md` (emoji + code fences). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ✅ A fixed · ⏳ B still broken · ⏳ C focus ring open ·
-🚫 stop repeating failed height tricks · research recorded 2026-07-16
+**Status:** ✅ A fixed · ✔️ B5+C5 applied — ⏳ await user test ·
+🚫 no Timeout / get_line_yrange retries
 
 **Related:**
 
@@ -105,6 +105,7 @@
 | 2 | Timeout + `get_line_yrange` + pin min=max | Enter→scrollbar; key fixes |
 | 3 | Margins / ChatBar / join CSS | Polish; B unchanged |
 | 4 | Double-pass + `size_serial` | 🚫 zero difference; paste ~2× |
+| 5 | 2026-07-16 **B5+C5** Pango height; drop scroll_to_iter on change; `.linked` + `:focus-within` | ⏳ user test |
 
 **🚫 Do not try again:** longer Timeouts, N remasure passes, `size_serial`
 tweaks, or any height fix that still keys off **`get_line_yrange` /
@@ -165,9 +166,12 @@ character would. No dependency on TextView’s idle line validation.
 
 ## Next
 
-1. 🔷 ⏳ User approve **B5** (revert + no scroll_to_iter on change + Pango
-   height) for a test build.
-2. 🔷 ⏳ User approve **C5** (`.linked` / `:focus-within`) — can ship with
-   B5 or right after.
-3. 🚫 No more Timeout / `get_line_yrange` patches.
+1. 🔷 ⏳ Rebuild; test B: line1 Enter → line2 Enter should grow **without**
+   a fixing keystroke; paste should not be ~2× tall.
+2. 🔷 ⏳ Test C: compact entry focus shows a **full-width** blue outline on
+   the linked row.
+3. ✔️ B5+C5 in tree (Pango height; no `scroll_to_iter` on change;
+   `.linked` + `:focus-within`). `--debug` logs `composer pango h=…`.
+4. 🚫 No Timeout / `get_line_yrange` patches if this fails — capture pango
+   debug lines and rethink.
 )

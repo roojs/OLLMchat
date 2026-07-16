@@ -34,8 +34,6 @@ namespace OLLMchatGtk
 		private Gtk.TextBuffer buffer;
 		private bool is_expanded = false;
 		private bool syncing = false;
-		/** Bumps so superseded height Timeouts do not apply a short stale h. */
-		private uint size_serial = 0;
 		/** Cap for expanded scrolled height; ChatWidget sets from chat_view allocation / 2. */
 		public int expanded_max_height { get; set; default = 0; }
 
@@ -57,6 +55,8 @@ namespace OLLMchatGtk
 				vexpand = false
 			};
 			this.compact_row.add_css_class("chat-composer-compact");
+			/* Adwaita linked Entry+Button; focus ring via CSS :focus-within on the row. */
+			this.compact_row.add_css_class("linked");
 			this.compact_entry = new Gtk.Entry() {
 				hexpand = true,
 				placeholder_text = "Give me a task",
@@ -119,45 +119,32 @@ namespace OLLMchatGtk
 				this.buffer.get_start_iter(out start_iter);
 				this.buffer.get_end_iter(out end_iter);
 				var text = this.buffer.get_text(start_iter, end_iter, false);
-				this.buffer.place_cursor(end_iter);
-				this.text_view.scroll_to_iter(end_iter, 0.0, false, 0.0, 1.0);
 				this.update_entry(text);
-				/* Two delayed measures: first after Enter is often one line short. */
-				if (this.is_expanded) {
-					this.size_serial++;
-					var serial = this.size_serial;
-					var passes = 0;
-					GLib.Timeout.add(40, () => {
-						if (serial != this.size_serial) {
-							return false;
-						}
-						if (!this.is_expanded || !this.text_view.get_mapped()) {
-							return false;
-						}
-						if (this.scrolled.get_allocated_width() <= 0) {
-							return true;
-						}
-						Gtk.TextIter size_end;
-						this.buffer.get_end_iter(out size_end);
-						var y = 0;
-						var line_h = 0;
-						this.text_view.get_line_yrange(size_end, out y, out line_h);
-						var h = y + line_h + this.text_view.top_margin + this.text_view.bottom_margin;
-						GLib.debug("composer height pass=%d y=%d line_h=%d h=%d max=%d",
-							passes, y, line_h, h, this.expanded_max_height);
-						if (this.expanded_max_height > 0 && h > this.expanded_max_height) {
-							this.scrolled.min_content_height = this.expanded_max_height;
-							this.scrolled.max_content_height = this.expanded_max_height;
-						} else {
-							this.scrolled.min_content_height = h;
-							this.scrolled.max_content_height = h;
-						}
-						this.scrolled.queue_resize();
-						this.text_view.scroll_to_iter(size_end, 0.0, false, 0.0, 1.0);
-						passes++;
-						return passes < 2;
-					});
+				if (!this.is_expanded) {
+					return;
 				}
+				/* B5: height from Pango (content), not get_line_yrange (stale until validate idle). */
+				var content_width = this.scrolled.get_allocated_width() - this.text_view.left_margin - this.text_view.right_margin;
+				if (content_width <= 0) {
+					return;
+				}
+				var layout = this.text_view.create_pango_layout(text);
+				layout.set_width(content_width * Pango.SCALE);
+				layout.set_wrap(Pango.WrapMode.WORD_CHAR);
+				var layout_w = 0;
+				var layout_h = 0;
+				layout.get_pixel_size(out layout_w, out layout_h);
+				var h = layout_h + this.text_view.top_margin + this.text_view.bottom_margin;
+				GLib.debug("composer pango h=%d layout_h=%d width=%d max=%d",
+					h, layout_h, content_width, this.expanded_max_height);
+				if (this.expanded_max_height > 0 && h > this.expanded_max_height) {
+					this.scrolled.min_content_height = this.expanded_max_height;
+					this.scrolled.max_content_height = this.expanded_max_height;
+				} else {
+					this.scrolled.min_content_height = h;
+					this.scrolled.max_content_height = h;
+				}
+				this.scrolled.queue_resize();
 			});
 
 			var compact_keys = new Gtk.EventControllerKey();
@@ -300,45 +287,36 @@ namespace OLLMchatGtk
 				if (!this.text_view.get_mapped()) {
 					return true;
 				}
-				this.text_view.grab_focus();
+				var content_width = this.scrolled.get_allocated_width() - this.text_view.left_margin - this.text_view.right_margin;
+				if (content_width <= 0) {
+					return true;
+				}
+				Gtk.TextIter start_iter;
 				Gtk.TextIter end_iter;
+				this.buffer.get_start_iter(out start_iter);
 				this.buffer.get_end_iter(out end_iter);
+				var text = this.buffer.get_text(start_iter, end_iter, false);
+				var layout = this.text_view.create_pango_layout(text);
+				layout.set_width(content_width * Pango.SCALE);
+				layout.set_wrap(Pango.WrapMode.WORD_CHAR);
+				var layout_w = 0;
+				var layout_h = 0;
+				layout.get_pixel_size(out layout_w, out layout_h);
+				var h = layout_h + this.text_view.top_margin + this.text_view.bottom_margin;
+				GLib.debug("composer pango focus h=%d layout_h=%d width=%d max=%d",
+					h, layout_h, content_width, this.expanded_max_height);
+				if (this.expanded_max_height > 0 && h > this.expanded_max_height) {
+					this.scrolled.min_content_height = this.expanded_max_height;
+					this.scrolled.max_content_height = this.expanded_max_height;
+				} else {
+					this.scrolled.min_content_height = h;
+					this.scrolled.max_content_height = h;
+				}
+				this.scrolled.queue_resize();
+				this.text_view.grab_focus();
 				this.buffer.place_cursor(end_iter);
-				this.text_view.scroll_to_iter(end_iter, 0.0, false, 0.0, 1.0);
-				/* Two delayed measures: first after flip/Enter is often one line short. */
-				this.size_serial++;
-				var serial = this.size_serial;
-				var passes = 0;
-				GLib.Timeout.add(40, () => {
-					if (serial != this.size_serial) {
-						return false;
-					}
-					if (!this.is_expanded || !this.text_view.get_mapped()) {
-						return false;
-					}
-					if (this.scrolled.get_allocated_width() <= 0) {
-						return true;
-					}
-					Gtk.TextIter size_end;
-					this.buffer.get_end_iter(out size_end);
-					var y = 0;
-					var line_h = 0;
-					this.text_view.get_line_yrange(size_end, out y, out line_h);
-					var h = y + line_h + this.text_view.top_margin + this.text_view.bottom_margin;
-					GLib.debug("composer height pass=%d y=%d line_h=%d h=%d max=%d",
-						passes, y, line_h, h, this.expanded_max_height);
-					if (this.expanded_max_height > 0 && h > this.expanded_max_height) {
-						this.scrolled.min_content_height = this.expanded_max_height;
-						this.scrolled.max_content_height = this.expanded_max_height;
-					} else {
-						this.scrolled.min_content_height = h;
-						this.scrolled.max_content_height = h;
-					}
-					this.scrolled.queue_resize();
-					this.text_view.scroll_to_iter(size_end, 0.0, false, 0.0, 1.0);
-					passes++;
-					return passes < 2;
-				});
+				/* scroll_to_mark waits for line validation — not scroll_to_iter. */
+				this.text_view.scroll_to_mark(this.buffer.get_insert(), 0.0, true, 0.0, 1.0);
 				return false;
 			}
 			if (!this.compact_entry.get_mapped()) {
