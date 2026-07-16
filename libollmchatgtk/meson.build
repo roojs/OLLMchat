@@ -26,6 +26,7 @@ ollmchatgtk_src = files([
   'ChatWidget.vala',
   'ChatView.vala',
   'ChatInput.vala',
+  'ScrolledView.vala',
   'ChatBar.vala',
   'ChatPermission.vala',
   # TODO: Clipboard feature needs proper design - see TODO.md

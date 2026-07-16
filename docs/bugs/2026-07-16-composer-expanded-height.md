@@ -3,25 +3,29 @@
 > Pointer: `docs/bug-fix-process.md` (emoji + code fences). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ✅ A · ✅ C · ✅ B grow · ✅ size Idle · ⏳ shrink on delete ·
-🚫 ScrolledWindow still out
+**Status:** ✅ A · ✅ C · ✅ B height + classic scrollbar · ✔️ caret-at-end
+bottom pin applied (await user verify)
 
-### DIAG updates
+### Proposed fix — caret short of bottom → ✔️ applied
 
-- 🔷 ✅ TextView alone — height grows.
-- 🔷 Sync size without Idle — 🚫; Idle required.
-- 🔷 Shrink on delete — `measure()` floors to current `size_request`, so
-  target never falls. ✔️ Fix: clear request (`-1,-1`), size from
-  `get_line_yrange` (+ margins), not `measure()`.
-- 🚫 ScrolledWindow not restored yet.
+After size settle, if insert at end: `value = upper - page_size`.
+
+
+### Strict scrolled policy (GTK docs) — historical
+
+- 🚫 Fighting `Gtk.ScrolledWindow` measure/policy — abandoned.
+- ✔️ New: `libollmchatgtk/ScrolledView.vala` — viewport height =
+  `content_height` only; TextView scrolls via shared adjustments
+  (modelled on upstream GTK `gtkscrolledwindow.c` allocate/measure,
+  without scrollbar-min floor / NEVER content-sizing).
 
 **Related:**
 
-- ℹ️ Log: `~/.cache/ollmchat/ollmchat.debug.log` (`--debug`)
-- ℹ️ Code: `libollmchatgtk/ChatInput.vala` — **no** ScrolledWindow (temp)
-- ℹ️ GTK source: `gtkscrolledwindow.c` measure floors to scrollbar height
-  when `AUTOMATIC`
-- ℹ️ GTK [#3515](https://gitlab.gnome.org/GNOME/gtk/-/issues/3515)
+- ℹ️ Log: `~/.cache/ollmchat/ollmchat.debug.log` (`--debug`) — truncates each run
+- ✔️ Height sizing lives in `ScrolledView` when child is `TextView`
+  (`buffer.changed` → yrange → `content_height` / bottom pin).
+  `ChatWidget` sets `chat_input.scrolled.max_height`.
+- 🚫 Do **not** use `stderr.printf` — use `GLib.debug()` only
 
 ---
 
@@ -29,112 +33,92 @@
 
 - 🔷 ✅ Top gray + focus.
 
-## B — evidence
-
-### Inspector (🔷)
-
-- TextView did not fill ScrolledWindow — blank under TextView.
-
-### Debug (✔️)
+## B — height (✅ from 22:52 log once settled)
 
 ```
-target=44 tv_h=44 upper=44 page=44 sw_h=62
+composer after expect=328 sw_h=328 tv_h=328 match=1 gap=0 upper=566 page=328
 ```
 
-### Theme A/B (🔷)
-
-- `GTK_THEME=Default` → **just as bad**. 🚫 Not libadwaita stylesheet.
-
-### DIAG — no ScrolledWindow (🔷 requested, ✔️ applied)
-
-- Expanded mode: `TextView` is a **direct** child of `ChatInput`.
-- Height via `text_view.set_size_request(-1, target)` only.
-- Cap still applied; **no scroll** while over cap (expected for this test).
-- Watch debug: `composer size` / `composer after` — `tv_h` vs `target`.
-- 🔷 Reverted to plain `Gtk.TextBuffer` (SourceBuffer fudge 🚫 ruled out).
-
 ---
 
-## Root cause (provisional)
+## Scrollbar never appears (🔷) — evidence 22:52
 
-- ✔️ ScrolledWindow + `AUTOMATIC` measure floors natural height to scrollbar
-  widget height → blank under TextView. Theme ruled out.
-- ⏳ Confirm TextView-alone height tracks content; then restore scroll only
-  when over cap (`NEVER` under cap / `AUTOMATIC` when capped).
+Over cap the shell **does** enable and allocate the bar:
 
----
-
-## Next
-
-1. 🔷 ⏳ Rebuild, Enter-per-line — does blank go away / does height track?
-2. ⏳ If yes → reintroduce ScrolledWindow with policy switch; if no → TextView
-   measure/request next.
-
-
-### TextView fudge (✔️ applied, 🚫 insufficient)
-
-- `GtkSource.Buffer` + `implicit_trailing_newline=false` +
-  `pixels_below_lines=0` — gap unchanged.
-
-### GTK measure (✔️ from source)
-
-When `vscrollbar_policy` **may be visible** (`AUTOMATIC`), measure does:
-
-```c
-minimum_req = MAX (minimum_req, min_scrollbar_height + sborder…);
-natural_req = MAX (natural_req, nat_scrollbar_height + sborder…);
+```
+scrolledview vbar -> 1
+scrolledview allocate … need_bar=1 vbar=1 sb_mapped=1 sb_child_vis=1
+scrolledview allocate scrollbar sb_min=11 sb_nat=11 sb_w=11
 ```
 
-So ScrolledWindow natural height is **floored by the scrollbar widget’s
-height** even when content is shorter and no bar is shown. That matches
-`tv_h=44` / `sw_h=62` (~one scrollbar min height).
-
-`set_size_request(-1, 44)` only raises the **minimum**; parent can still
-allocate the **natural** (~62).
-
----
-
-## Root cause (✔️ provisional — theme ruled out; GTK measure matches numbers)
-
-- Expanded composer uses `vscrollbar_policy = AUTOMATIC` always.
-- Short content → ScrolledWindow still requests ≥ scrollbar natural height
-  → blank under TextView (`valign=START`, `vexpand=false`).
+- ✔️ Logic path works (`need_bar=1`, mapped, allocated 11×328).
+- ✔️ Under cap correctly flips `vbar -> 0` once `page` catches `upper`.
+- 💩 User still sees **no** scrollbar — almost certainly Adwaita
+  `overlay-indicator` opacity (fade/hover) on a non-`scrolledwindow`
+  parent (`css_name` is `scrolledview`), so the bar stays invisible.
 
 ---
 
-## Proposed fix (💩 — await approval)
+## Root cause (height — ✔️ fixed via ScrolledView)
 
-Keep scroll only when content exceeds the cap:
+1. ~~`Gtk.ScrolledWindow` measure fights~~ → ScrolledView.
+2. ~~CSS border gap=4~~ → outline.
+3. Cap path scrolls content (adj value moves) without a **visible** bar.
 
-1. While `nat_h <= cap` (or no cap): `vscrollbar_policy = NEVER`, pin
-   `min_content_height = max_content_height = nat_h` (or use
-   `set_size_request(-1, nat_h)` with NEVER so measure uses child min).
-2. When `nat_h > cap`: `vscrollbar_policy = AUTOMATIC`,
-   `min_content_height = max_content_height = cap`.
+---
 
-Do not rely on Adwaita/theme tweaks. Keep debug until ✅.
+## Proposed fix (💩 — await approval) → ✔️ applied
 
-#### Replace with (size Idle — both paths; sketch)
+Drop overlay-indicator; classic scrollbar when `upper > page`; reserve
+`sb_w` so TextView does not sit under the bar.
+
+#### Remove
 
 ```vala
-var cap = this.expanded_max_height;
-var target = nat_h;
-if (cap > 0 && nat_h > cap) {
-	target = cap;
-	this.scrolled.vscrollbar_policy = Gtk.PolicyType.AUTOMATIC;
-} else {
-	this.scrolled.vscrollbar_policy = Gtk.PolicyType.NEVER;
+this.vscrollbar.add_css_class("overlay-indicator");
+```
+
+#### Replace with (allocate — when vbar visible, shrink child)
+
+```vala
+/* if vbar_visible: measure sb_w; allocate child to width-sb_w; bar on right */
+```
+
+---
+
+## Scroll not quite at bottom with caret at end (🔷)
+
+### Evidence (✔️ 22:59 log)
+
+Over cap, caret following end settles **4px short** of max every time:
+
+```
+upper=476 page=328 value=144 max=148 short=4
+```
+
+(`short = upper - page - value`; matches `TextView.bottom_margin = 4`.)
+Manual nudge later hits true bottom: `value=148`.
+
+### Root cause (✔️)
+
+`scroll_to_mark(..., yalign=1.0)` / TextView’s own scroll-on-insert leaves
+adjustment at `upper - page - bottom_margin`, not absolute bottom. Last line
+sits a few pixels low.
+
+### Proposed fix (✔️ applied — stop asking)
+
+After size settle, if insert is at buffer end and `upper > page`, pin:
+
+```vala
+var max = this.scrolled.vadjustment.upper - this.scrolled.vadjustment.page_size;
+if (max > 0.0) {
+	this.scrolled.vadjustment.value = max;
 }
-this.scrolled.min_content_height = target;
-this.scrolled.max_content_height = target;
-this.scrolled.set_size_request(-1, -1);
-this.text_view.set_size_request(-1, -1);
-this.scrolled.queue_resize();
 ```
 
 ---
 
 ## Next
 
-1. 🔷 ⏳ Approve scrollbar-policy switch → apply → rebuild → repro.
-2. ⏳ Confirm `sw_h == tv_h` in debug when under cap.
+1. 🔷 ⏳ Paste over cap; expect `composer pin bottom` with `value == max`
+   (`short=0`).

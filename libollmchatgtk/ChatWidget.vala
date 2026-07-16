@@ -122,7 +122,7 @@ namespace OLLMchatGtk
 				this.chat_bar.action_button.visible = this.streaming || expanded;
 				var half = this.chat_view.get_allocated_height() / 2;
 				if (half > 0) {
-					this.chat_input.expanded_max_height = half;
+					this.chat_input.scrolled.max_height = half;
 				}
 			});
 
@@ -202,7 +202,7 @@ namespace OLLMchatGtk
 			this.chat_view.notify["height-request"].connect(() => {
 				var half = this.chat_view.get_allocated_height() / 2;
 				if (half > 0) {
-					this.chat_input.expanded_max_height = half;
+					this.chat_input.scrolled.max_height = half;
 				}
 			});
 

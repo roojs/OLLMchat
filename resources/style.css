@@ -289,8 +289,9 @@
 .chat-composer-expanded {
 	background-color: white;
 	border-radius: 6px;
-	/* Transparent border so focus does not shift layout. */
-	border: 2px solid transparent;
+	border: none;
+	/* Outline — does not add to allocated height (border caused gap=4). */
+	outline: 2px solid transparent;
 }
 
 /*
@@ -299,7 +300,7 @@
  * when the TextView inside is focused.
  */
 .chat-composer-expanded:focus-within {
-	border-color: @accent_bg_color;
+	outline-color: @accent_bg_color;
 }
 
 /*

@@ -22,8 +22,8 @@ namespace OLLMchatGtk
 	 * Chat composer: compact single-line entry + expanded multiline TextView.
 	 * Flips visibility (does not resize one widget). ChatWidget wires send / ChatBar.
 	 *
-	 * DIAG (2026-07-16): ScrolledWindow still out. Size Idle required (sync
-	 * measure was wrong); height via text_view.set_size_request in Idle.
+	 * Expanded height is owned by {@link scrolled} (TextView buffer.changed →
+	 * content_height, capped by {@link ScrolledView.max_height}).
 	 *
 	 * @since 1.0
 	 */
@@ -32,12 +32,11 @@ namespace OLLMchatGtk
 		private Gtk.Box compact_row;
 		private Gtk.Entry compact_entry;
 		private Gtk.Button compact_play;
+		public ScrolledView scrolled { get; private set; }
 		private Gtk.TextView text_view;
 		private Gtk.TextBuffer buffer;
 		private bool is_expanded = false;
 		private bool syncing = false;
-		/** Cap for expanded height; ChatWidget sets from chat_view allocation / 2. */
-		public int expanded_max_height { get; set; default = 0; }
 
 		/** Emitted when the user submits (Ctrl+Enter or play) with the message text. */
 		public signal void send_clicked(string text);
@@ -77,13 +76,18 @@ namespace OLLMchatGtk
 			this.compact_row.append(this.compact_play);
 			this.append(this.compact_row);
 
+			this.scrolled = new ScrolledView() {
+				hexpand = true,
+				vexpand = false,
+				visible = false
+			};
+			this.scrolled.add_css_class("chat-composer-expanded");
 			this.buffer = new Gtk.TextBuffer(null);
 			this.text_view = new Gtk.TextView.with_buffer(this.buffer) {
 				wrap_mode = Gtk.WrapMode.WORD_CHAR,
 				hexpand = true,
 				vexpand = false,
-				valign = Gtk.Align.START,
-				visible = false,
+				valign = Gtk.Align.FILL,
 				top_margin = 4,
 				bottom_margin = 4,
 				left_margin = 6,
@@ -92,8 +96,8 @@ namespace OLLMchatGtk
 			};
 			this.text_view.add_css_class("chat-composer-entry");
 			this.text_view.add_css_class("chat-input-text");
-			this.text_view.add_css_class("chat-composer-expanded");
-			this.append(this.text_view);
+			this.scrolled.set_child(this.text_view);
+			this.append(this.scrolled);
 
 			/* Mode from value (paste/type/programmatic) — not from key handlers. */
 			this.compact_entry.changed.connect(() => {
@@ -110,48 +114,7 @@ namespace OLLMchatGtk
 				Gtk.TextIter end_iter;
 				this.buffer.get_start_iter(out start_iter);
 				this.buffer.get_end_iter(out end_iter);
-				var text = this.buffer.get_text(start_iter, end_iter, false);
-				this.update_entry(text);
-				if (!this.is_expanded) {
-					return;
-				}
-				GLib.Idle.add(() => {
-					if (!this.is_expanded || !this.text_view.get_mapped()) {
-						return false;
-					}
-					var for_width = this.text_view.get_allocated_width();
-					if (for_width <= 0) {
-						return true;
-					}
-					Gtk.TextIter size_end;
-					this.buffer.get_end_iter(out size_end);
-					Gtk.TextIter size_start;
-					this.buffer.get_start_iter(out size_start);
-					var cur = this.buffer.get_text(size_start, size_end, false);
-					var ends_nl = cur.has_suffix("\n");
-					var n_nl = cur.split("\n").length - 1;
-					var y = 0;
-					var line_h = 0;
-					this.text_view.get_line_yrange(size_end, out y, out line_h);
-					var yrange_h = y + line_h + this.text_view.top_margin + this.text_view.bottom_margin;
-					/* Clear height-request first — measure() floors to the old request and
-					 * blocks shrink on delete. Size from content yrange, not measure. */
-					this.text_view.set_size_request(-1, -1);
-					var cap = this.expanded_max_height;
-					var target = yrange_h;
-					if (cap > 0 && yrange_h > cap) {
-						target = cap;
-					}
-					if (target < 1) {
-						target = 1;
-					}
-					this.text_view.set_size_request(-1, target);
-					this.text_view.queue_resize();
-					GLib.debug("composer size ends_nl=%d nl=%d for_w=%d y=%d line_h=%d yrange_h=%d target=%d cap=%d tv_h=%d",
-						ends_nl ? 1 : 0, n_nl, for_width, y, line_h, yrange_h, target, cap,
-						this.text_view.get_allocated_height());
-					return false;
-				});
+				this.update_entry(this.buffer.get_text(start_iter, end_iter, false));
 			});
 
 			var compact_keys = new Gtk.EventControllerKey();
@@ -221,13 +184,13 @@ namespace OLLMchatGtk
 			}
 
 			var want_expanded = text.contains("\n");
-			if (!want_expanded && this.compact_entry.get_allocated_width() > 0) {
+			if (!want_expanded && this.compact_entry.get_width() > 0) {
 				/* Measure only — do not assign Entry.text (fights user action / undo). */
 				var layout = this.compact_entry.create_pango_layout(text);
 				Pango.Rectangle ink;
 				Pango.Rectangle logical;
 				layout.get_pixel_extents(out ink, out logical);
-				want_expanded = logical.width > this.compact_entry.get_allocated_width();
+				want_expanded = logical.width > this.compact_entry.get_width();
 			}
 
 			if (want_expanded && this.is_expanded) {
@@ -264,7 +227,7 @@ namespace OLLMchatGtk
 				this.buffer.delete(ref start_iter, ref end_iter);
 				this.buffer.insert(ref start_iter, text, -1);
 				this.compact_row.visible = false;
-				this.text_view.visible = true;
+				this.scrolled.visible = true;
 				this.is_expanded = true;
 				this.syncing = false;
 				this.expanded_changed(true);
@@ -279,8 +242,8 @@ namespace OLLMchatGtk
 			this.buffer.get_start_iter(out start_iter);
 			this.buffer.get_end_iter(out end_iter);
 			this.buffer.delete(ref start_iter, ref end_iter);
-			this.text_view.set_size_request(-1, -1);
-			this.text_view.visible = false;
+			this.scrolled.content_height = 0;
+			this.scrolled.visible = false;
 			this.compact_row.visible = true;
 			this.is_expanded = false;
 			this.syncing = false;
@@ -295,7 +258,7 @@ namespace OLLMchatGtk
 				if (!this.text_view.get_mapped()) {
 					return true;
 				}
-				if (this.text_view.get_allocated_width() <= 0) {
+				if (this.scrolled.get_width() <= 0) {
 					return true;
 				}
 				this.text_view.grab_focus();
@@ -303,44 +266,9 @@ namespace OLLMchatGtk
 				this.buffer.get_end_iter(out end_iter);
 				this.buffer.place_cursor(end_iter);
 				this.text_view.scroll_to_mark(this.buffer.get_insert(), 0.0, true, 0.0, 1.0);
-				/* Expand path skips buffer.changed while syncing — size after layout Idle. */
-				GLib.Idle.add(() => {
-					if (!this.is_expanded || !this.text_view.get_mapped()) {
-						return false;
-					}
-					var for_width = this.text_view.get_allocated_width();
-					if (for_width <= 0) {
-						return true;
-					}
-					Gtk.TextIter size_end;
-					this.buffer.get_end_iter(out size_end);
-					Gtk.TextIter size_start;
-					this.buffer.get_start_iter(out size_start);
-					var cur = this.buffer.get_text(size_start, size_end, false);
-					var ends_nl = cur.has_suffix("\n");
-					var n_nl = cur.split("\n").length - 1;
-					var y = 0;
-					var line_h = 0;
-					this.text_view.get_line_yrange(size_end, out y, out line_h);
-					var yrange_h = y + line_h + this.text_view.top_margin + this.text_view.bottom_margin;
-					/* Clear height-request first — measure() floors to the old request and
-					 * blocks shrink on delete. Size from content yrange, not measure. */
-					this.text_view.set_size_request(-1, -1);
-					var cap = this.expanded_max_height;
-					var target = yrange_h;
-					if (cap > 0 && yrange_h > cap) {
-						target = cap;
-					}
-					if (target < 1) {
-						target = 1;
-					}
-					this.text_view.set_size_request(-1, target);
-					this.text_view.queue_resize();
-					GLib.debug("composer size ends_nl=%d nl=%d for_w=%d y=%d line_h=%d yrange_h=%d target=%d cap=%d tv_h=%d",
-						ends_nl ? 1 : 0, n_nl, for_width, y, line_h, yrange_h, target, cap,
-						this.text_view.get_allocated_height());
-					return false;
-				});
+				/* Expand path skipped ChatInput buffer.changed while syncing — ScrolledView
+				 * still sized on buffer.changed; re-emit so Idle can run once mapped. */
+				this.buffer.changed();
 				return false;
 			}
 			if (!this.compact_entry.get_mapped()) {
