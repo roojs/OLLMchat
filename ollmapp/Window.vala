@@ -574,6 +574,9 @@ namespace OLLMapp
 
 			// Set WindowPane as main content
 			this.split_view.content = this.window_pane;
+
+			/* Loading UI finished — focus composer entry (not after streaming). */
+			GLib.Idle.add(this.chat_widget.chat_input.focus_idle);
 		}
 		
 		/**

@@ -32,7 +32,7 @@ namespace OLLMchatGtk
 		public ChatView chat_view { get; private set; }
 		public ChatPermission permission_widget { get; private set; }
 		public ChatBar chat_bar { get; private set; }
-		private ChatInput chat_input;
+		public ChatInput chat_input { get; private set; }
 		private Gtk.Box input_column;
 		/**
 		 * Empty box directly above {@link ChatInput}; app/occoder may add
@@ -40,21 +40,13 @@ namespace OLLMchatGtk
 		 * this — only allocates layout.
 		 */
 		public Gtk.Box above_input { get; private set; }
-		private Gtk.Paned paned;
 		private Gtk.Box lower_box;
-		/** Height of text area (paned end child) to restore when showing after streaming. */
-		private int saved_bottom_height = 0;
 		public OLLMchat.History.Manager manager { get; private set; }
-		
+
 		private string? last_sent_text = null;
-		private int min_bottom_size = 115;
-		/** Extra pixels for input area (margins, scrollbar). */
-		private const int INPUT_AREA_PADDING = 24;
 		private bool streaming = false;
 		/** True while restoring a session from history; used to keep autoscroll disabled until restoration is done. */
 		internal bool restoring_session { get; private set; default = false; }
-		/** When true, ignore position changes (we are setting position programmatically). */
-		private bool locking_paned_position = false;
 
 		/**
 		* Default message text to display in the input field.
@@ -114,26 +106,27 @@ namespace OLLMchatGtk
 				vexpand = false
 			};
 
-			// ChatWidget assembles layout: text area in paned, ChatBar + permission in lower box
+			// ChatWidget assembles layout: chat view + lower box (composer, permission, bar)
 			this.chat_input = new ChatInput();
 			this.chat_bar = new ChatBar(this.manager);
 
 			this.chat_input.send_clicked.connect(this.on_send_clicked);
-			this.chat_input.text_length_changed.connect(
-				this.on_input_text_length_changed);
 			this.chat_bar.send_requested.connect(() => {
-				string text = this.chat_input.get_text_to_send();
-				if (text.length > 0) {
-					this.on_send_clicked(text);
+				if (this.chat_input.text().length > 0) {
+					this.on_send_clicked(this.chat_input.text());
 				}
 			});
 			this.chat_bar.stop_clicked.connect(this.on_stop_clicked);
+			this.chat_input.expanded_changed.connect((expanded) => {
+				this.chat_bar.composer_expanded = expanded;
+				this.chat_bar.action_button.visible = this.streaming || expanded;
+				var half = this.chat_view.get_allocated_height() / 2;
+				if (half > 0) {
+					this.chat_input.expanded_max_height = half;
+				}
+			});
 
-			// Layout: Box -> [ Paned(chat_view | chat_input), lower_box(permission, chat_bar) ]
-			this.paned = new Gtk.Paned(Gtk.Orientation.VERTICAL) {
-				hexpand = true,
-				vexpand = true
-			};
+			// Layout: Box -> [ chat_view, lower_box(input_column, permission, chat_bar) ]
 			this.chat_view = new ChatView(this) {
 				hexpand = true,
 				vexpand = true
@@ -148,16 +141,13 @@ namespace OLLMchatGtk
 			};
 			this.input_column.append(this.above_input);
 			this.input_column.append(this.chat_input);
-			this.paned.set_start_child(this.chat_view);
-			this.paned.set_resize_start_child(true);
-			this.paned.set_end_child(this.input_column);
-			this.paned.set_resize_end_child(false);
-			this.paned.set_shrink_end_child(false);
 
 			this.lower_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
 				vexpand = false
 			};
+			this.lower_box.add_css_class("chat-composer-strip");
+			this.lower_box.append(this.input_column);
 			this.lower_box.append(this.permission_widget);
 			this.lower_box.append(this.chat_bar);
 
@@ -165,7 +155,7 @@ namespace OLLMchatGtk
 				hexpand = true,
 				vexpand = true
 			};
-			main_box.append(this.paned);
+			main_box.append(this.chat_view);
 			main_box.append(this.lower_box);
 
 			// Connect to manager signals (which relay from active session)
@@ -209,18 +199,11 @@ namespace OLLMchatGtk
 
 			this.append(main_box);
 
-			// When streaming, prevent user from dragging the paned separator (revert to full height)
-			this.paned.notify["position"].connect(() => {
-				if (this.locking_paned_position || !this.streaming) {
-					return;
+			this.chat_view.notify["height-request"].connect(() => {
+				var half = this.chat_view.get_allocated_height() / 2;
+				if (half > 0) {
+					this.chat_input.expanded_max_height = half;
 				}
-				this.locking_paned_position = true;
-				int h = this.paned.get_allocated_height();
-				this.paned.set_position(h);
-				GLib.Idle.add(() => {
-					this.locking_paned_position = false;
-					return false;
-				});
 			});
 
 			this.chat_bar.init_models();
@@ -229,90 +212,29 @@ namespace OLLMchatGtk
 			// messy but usefull for testing.
 			this.notify["default-message"].connect(() => {
 				/* GLib.debug("[ChatWidget] default_message property set to '%s' (length=%d)", this.default_message, this.default_message.length); */
-				if (this.chat_input != null) {
-					this.chat_input.default_message = this.default_message;
-				}
+				this.chat_input.update_entry(this.default_message);
 			});
 		}
 
-		/** Updates streaming state: when running, hide text area (paned position = full + input not visible); when stopped, restore position. */
+		/** Updates streaming state: when running, hide composer column; when stopped, show it and scroll chat. */
 		private void streaming_state(bool streaming)
 		{
 			this.streaming = streaming;
 			this.chat_input.visible = !streaming;
 			this.input_column.visible = !streaming;
-			this.chat_input.set_input_editable(!streaming);
-			this.chat_input.set_input_sensitive(!streaming);
+			this.chat_input.editable(!streaming);
+			this.chat_input.sensitive = !streaming;
 			this.chat_bar.sync_streaming(streaming);
-
 			if (streaming) {
-				this.paned.set_cursor(new Gdk.Cursor.from_name("default", null));
-				GLib.Idle.add(() => {
-					if (!this.streaming) {
-						return false;
-					}
-					var h = this.paned.get_allocated_height();
-					if (h <= 0) {
-						return true;
-					}
-					var pos = this.paned.get_position();
-					this.saved_bottom_height = (int) (h - pos);
-					if (this.saved_bottom_height < this.min_bottom_size) {
-						this.saved_bottom_height = this.min_bottom_size;
-					}
-					this.locking_paned_position = true;
-					this.paned.set_position(h);
-					GLib.Idle.add(() => {
-						this.locking_paned_position = false;
-						return false;
-					});
-					return false;
-				});
 				return;
 			}
-			this.paned.set_cursor(null);
 			GLib.Idle.add(() => {
-				int h = this.paned.get_allocated_height();
-				int want_40 = (int)(h * 0.4);
-				int want_60 = (int)(h * 0.6);
-				int want = this.saved_bottom_height > 0 ? this.saved_bottom_height : want_40;
-				if (want < this.min_bottom_size) {
-					want = this.min_bottom_size;
-				}
-				if (want < want_40) {
-					want = want_40;
-				}
-				if (want > want_60) {
-					want = want_60;
-				}
-				if (h > want) {
-					this.paned.set_position(h - want);
-				}
-				/* GLib.debug("scroll_to_bottom_caller reason=streaming_stop_paned_idle"); */
+				/* GLib.debug("scroll_to_bottom_caller reason=streaming_stop_idle"); */
 				this.chat_view.scroll_to_bottom();
 				return false;
 			});
 		}
 
-		private void on_input_text_length_changed(int char_count)
-		{
-			if (this.streaming || this.locking_paned_position) {
-				return;
-			}
-			var h = this.paned.get_allocated_height();
-			if (h <= 0) {
-				return;
-			}
-			var min_input = (int)(h * 0.4);
-			var max_input = (int)(h * 0.6);
-			var content_h = this.chat_input.content_height_pixels() + INPUT_AREA_PADDING;
-			var want = content_h < min_input ? min_input : (content_h > max_input ? max_input : content_h);
-			var target_position = h - want;
-			this.locking_paned_position = true;
-			this.paned.set_position(target_position);
-			this.locking_paned_position = false;
-		}
-		
 		/**
 		* Switches to a new session, deactivating the current one and activating the new one.
 		* 
@@ -508,7 +430,7 @@ namespace OLLMchatGtk
 			yield this.switch_to_session(empty_session);
 			
 			// Set the text in the input field
-			this.chat_input.set_default_text(text);
+			this.chat_input.update_entry(text);
 		}
 
 		/**
@@ -608,7 +530,7 @@ namespace OLLMchatGtk
 			this.last_sent_text = text;
 
 			// Clear input - message will be displayed when message_created signal is received
-			this.chat_input.clear_input();
+			this.chat_input.update_entry("");
 
 			// Emit message sent signal
 			this.message_sent(text);
@@ -713,7 +635,7 @@ namespace OLLMchatGtk
 			
 			// Auto-fill the input with the last sent text so user can retry easily
 			if (this.last_sent_text != null && this.last_sent_text.length > 0) {
-				this.chat_input.set_default_text(this.last_sent_text);
+				this.chat_input.update_entry(this.last_sent_text);
 			}
 			
 			// Conversation history is preserved in session.chat

@@ -19,24 +19,22 @@
 namespace OLLMchatGtk
 {
 	/**
-	 * Chat bar widget: model dropdown, tools menu, Send/Stop button.
+	 * Chat bar widget: model dropdown and play/Stop action button.
 	 * ChatWidget creates this and places it in the lower box with the permission widget.
 	 *
 	 * @since 1.0
 	 */
 	public class ChatBar : Gtk.Box
 	{
-		private Gtk.Button action_button;
+		public Gtk.Button action_button;
 		private Gtk.DropDown model_dropdown;
 		private Gtk.Label model_loading_label;
 		private OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage> sorted_models;
 		private OLLMchat.History.Manager manager;
 		private bool is_streaming = false;
+		/** True when ChatInput is expanded; ChatWidget sets this and action_button.visible. */
+		public bool composer_expanded = false;
 		private bool is_loading_models = false;
-		private Gtk.MenuButton tools_menu_button;
-		private Binding? tools_button_binding = null;
-		private bool is_tool_list_loaded = false;
-		private Gtk.Box? tools_popover_box = null;
 		private OLLMchatGtk.List.ModelUsageFactory button_factory;
 		private OLLMchatGtk.List.ModelUsageFactory list_factory;
 
@@ -52,7 +50,8 @@ namespace OLLMchatGtk
 			this.manager = manager;
 			this.margin_start = 10;
 			this.margin_end = 10;
-			this.margin_bottom = 5;
+			this.margin_top = 8;
+			this.margin_bottom = 9;
 			this.hexpand = true;
 
 			this.model_loading_label = new Gtk.Label("Loading Model data...") {
@@ -63,45 +62,51 @@ namespace OLLMchatGtk
 				visible = false,
 				hexpand = false
 			};
-			this.tools_menu_button = new Gtk.MenuButton() {
-				icon_name = "document-properties-symbolic",
-				tooltip_text = "Manage Tool Availability",
-				visible = false,
-				hexpand = false
-			};
+			this.model_dropdown.add_css_class("chat-bar-model");
 
 			this.append(this.model_loading_label);
 			this.append(this.model_dropdown);
-			this.append(this.tools_menu_button);
 			this.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) { hexpand = true });
 
-			this.action_button = new Gtk.Button.with_label("Send");
-			this.action_button.add_css_class("suggested-action");
-			this.action_button.clicked.connect(this.on_button_clicked);
+			this.action_button = new Gtk.Button.from_icon_name("media-playback-start-symbolic") {
+				tooltip_text = "Send"
+			};
+			/* App blue #3584E4 — not suggested-action (follows desktop accent, often orange). */
+			this.action_button.add_css_class("chat-composer-send");
+			this.action_button.clicked.connect(() => {
+				if (this.is_streaming) {
+					this.stop_clicked();
+					return;
+				}
+				this.send_requested();
+			});
 			this.append(this.action_button);
+			this.action_button.visible = false;
 		}
 
-		/** Call when streaming state changes; updates Send/Stop label and button style. */
+		/** Call when streaming state changes; updates play/Stop chrome and visibility. */
 		public void sync_streaming(bool streaming)
 		{
 			this.is_streaming = streaming;
-			this.action_button.label = streaming ? "Stop" : "Send";
+			/* Use icon_name/label only — set_child breaks Adwaita button chrome. */
 			this.action_button.remove_css_class("suggested-action");
 			this.action_button.remove_css_class("destructive-action");
+			this.action_button.remove_css_class("chat-composer-send");
 			if (streaming) {
+				this.action_button.icon_name = "media-playback-stop-symbolic";
+				this.action_button.label = "Stop";
+				this.action_button.tooltip_text = "Stop";
+				/* Faded red (Adwaita destructive) — not the blue send class. */
 				this.action_button.add_css_class("destructive-action");
-			} else {
-				this.action_button.add_css_class("suggested-action");
+				this.action_button.visible = true;
+				return;
 			}
-		}
-
-		private void on_button_clicked()
-		{
-			if (this.is_streaming) {
-				this.stop_clicked();
-			} else {
-				this.send_requested();
-			}
+			this.action_button.label = null;
+			this.action_button.icon_name = "media-playback-start-symbolic";
+			this.action_button.tooltip_text = "Send";
+			/* App blue #3584E4 — not suggested-action (desktop accent is often orange). */
+			this.action_button.add_css_class("chat-composer-send");
+			this.action_button.visible = this.composer_expanded;
 		}
 
 		private void sync_visibility()
@@ -109,16 +114,6 @@ namespace OLLMchatGtk
 			var has_models = this.manager.connection_models.get_n_items() > 0;
 			this.model_dropdown.visible = has_models;
 			this.model_loading_label.visible = has_models && this.is_loading_models;
-			if (!has_models) {
-				this.tools_menu_button.visible = false;
-				return;
-			}
-			if (this.model_dropdown.selected == Gtk.INVALID_LIST_POSITION) {
-				this.tools_menu_button.visible = false;
-				return;
-			}
-			var model_usage = this.sorted_models.get_item_typed(this.model_dropdown.selected);
-			this.tools_menu_button.visible = model_usage.model_obj.can_call;
 		}
 
 		public void init_models()
@@ -176,21 +171,8 @@ namespace OLLMchatGtk
 				this.manager.default_model_usage.options = model_usage.options.clone();
 				this.manager.config.save();
 				this.sync_visibility();
-
-				if (this.manager.connection_models.get_n_items() == 0) {
-					return;
-				}
-				if (this.tools_button_binding != null) {
-					this.tools_button_binding.unbind();
-				}
-				this.tools_button_binding = model_usage.model_obj.bind_property(
-					"can-call",
-					this.tools_menu_button,
-					"visible",
-					BindingFlags.SYNC_CREATE);
 			});
 
-			this.init_tools();
 			this.manager.session_activated.connect((session) => {
 				if (this.manager.connection_models.get_n_items() == 0) {
 					return;
@@ -208,29 +190,6 @@ namespace OLLMchatGtk
 			}
 		}
 
-		private void init_tools()
-		{
-			var popover = new Gtk.Popover();
-			popover.show.connect(() => {
-				if (this.is_tool_list_loaded) {
-					return;
-				}
-				this.tools_popover_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
-					margin_start = 10, margin_end = 10, margin_top = 10, margin_bottom = 10
-				};
-				foreach (var entry in this.manager.tools.entries) {
-					var tool = entry.value;
-					if (tool.name != entry.key && !tool.is_wrapped) continue;
-					var check_button = new Gtk.CheckButton.with_label(tool.title);
-					tool.bind_property("active", check_button, "active", BindingFlags.BIDIRECTIONAL | BindingFlags.SYNC_CREATE);
-					this.tools_popover_box.append(check_button);
-				}
-				this.is_tool_list_loaded = true;
-				popover.set_child(this.tools_popover_box);
-			});
-			this.tools_menu_button.popover = popover;
-		}
-
 		public async void sync_models()
 		{
 			if (this.manager.session == null) {
@@ -241,17 +200,6 @@ namespace OLLMchatGtk
 				this.manager.session.model_usage);
 			if (position != Gtk.INVALID_LIST_POSITION) {
 				this.model_dropdown.selected = position;
-			}
-			if (this.tools_button_binding != null) {
-				this.tools_button_binding.unbind();
-			}
-			if (this.manager.session.model_usage.model_obj != null) {
-				this.tools_button_binding =
-					this.manager.session.model_usage.model_obj.bind_property(
-						"can-call",
-						this.tools_menu_button,
-						"visible",
-						BindingFlags.SYNC_CREATE);
 			}
 			this.sync_visibility();
 		}

@@ -246,3 +246,90 @@
   transform: scale(0.7);
   transform-origin: center;
 }
+
+/* 1.30 composer strip — gray band shared with footer; white entry; ~8px gap */
+.chat-composer-strip {
+	background-color: #eee;
+}
+
+.chat-composer {
+	background-color: #eee;
+	/* Bottom gap lives on ChatBar margin_top so footer controls are not flush. */
+	padding: 13px 8px 0 8px;
+}
+
+.chat-composer-compact {
+	background-color: #eee;
+}
+
+.chat-composer-entry,
+.chat-composer-entry text,
+.chat-input-text,
+.chat-input-text text {
+	background-color: white;
+	font-family: system-ui, sans-serif;
+	font-size: 1rem;
+	border-radius: 6px;
+}
+
+/* Compact: square join so entry + play read as one control */
+.chat-composer-compact entry.chat-composer-entry,
+.chat-composer-compact entry.chat-composer-entry > text {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+.chat-composer-compact button.chat-composer-send {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+	border-top-right-radius: 6px;
+	border-bottom-right-radius: 6px;
+}
+
+.chat-composer-expanded {
+	background-color: white;
+	border-radius: 6px;
+}
+
+/*
+ * Composer/footer send — pin to app blue (#3584E4, same as .oc-user-sent-frame).
+ * Do not use suggested-action: it follows org.gnome.desktop.interface accent-color
+ * (currently orange on this machine).
+ */
+button.chat-composer-send {
+	background-color: #3584E4;
+	color: white;
+	border: none;
+	box-shadow: none;
+	border-radius: 6px;
+}
+
+button.chat-composer-send:hover {
+	background-color: #1c71d8;
+	color: white;
+}
+
+button.chat-composer-send:active {
+	background-color: #1a5fb4;
+	color: white;
+}
+
+button.chat-composer-send image,
+button.chat-composer-send label {
+	color: white;
+}
+
+/* 1.30 footer — flat model dropdown structure only (no fill / no color tints) */
+.chat-bar-model > button {
+	background: none;
+	border: none;
+	box-shadow: none;
+	outline: none;
+}
+
+.chat-bar-model > button:hover,
+.chat-bar-model > button:checked,
+.chat-bar-model > button:active {
+	background: none;
+	box-shadow: none;
+}
