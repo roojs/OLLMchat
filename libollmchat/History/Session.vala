@@ -392,9 +392,13 @@ namespace OLLMchat.History
 				
 				// Save to database
 				this.saveToDB();
-				
+
 				// Save to JSON file
 				yield this.write();
+
+				// Flush session index to disk immediately so history survives
+				// app kill before SQ.Database coalesced backup runs (~2.5s).
+				this.manager.db.backup_real();
 			} catch (Error e) {
 				GLib.warning("Failed to save session: %s", e.message);
 			}

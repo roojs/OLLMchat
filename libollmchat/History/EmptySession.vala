@@ -84,6 +84,7 @@ namespace OLLMchat.History
 			
 			// Save title to database immediately
 			real_session.saveToDB();
+			this.manager.db.backup_real();
 			
 			// Replace EmptySession with real Session in manager
 			this.manager.session = real_session;

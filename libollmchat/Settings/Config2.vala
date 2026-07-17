@@ -592,9 +592,10 @@ namespace OLLMchat.Settings
 			generator.pretty = true;
 			generator.indent = 4;
 			generator.set_root(Json.gobject_serialize(this));
-			
+
 			try {
-				generator.to_file(Config2.config_path);
+				GLib.FileUtils.set_contents (
+					Config2.config_path, generator.to_data (null));
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to save config: %s", e.message);
 			}
