@@ -19,19 +19,32 @@
 namespace OLLMchatGtk
 {
 	/**
-	 * Chat composer: compact single-line entry + expanded multiline TextView.
-	 * Flips visibility (does not resize one widget). ChatWidget wires send / ChatBar.
+	 * Chat composer: one expanding TextView with play on the right when
+	 * single-line; play moves to {@link ChatBar} when text needs a second line.
 	 *
-	 * Expanded height is owned by {@link scrolled} (TextView buffer.changed →
-	 * content_height, capped by {@link ScrolledView.max_height}).
+	 * Height is owned by {@link scrolled} (TextView buffer.changed →
+	 * content_height, capped by {@link ScrolledView.max_height}). ChatWidget
+	 * wires send and footer play visibility via {@link expanded_changed}.
+	 *
+	 * == Usage Examples ==
+	 *
+	 * === Wire send and footer play ===
+	 *
+	 * {{{
+	 *   var input = new OLLMchatGtk.ChatInput();
+	 *   input.send_clicked.connect((text) => { … });
+	 *   input.expanded_changed.connect((expanded) => {
+	 *     chat_bar.composer_expanded = expanded;
+	 *     chat_bar.action_button.visible = streaming || expanded;
+	 *   });
+	 * }}}
 	 *
 	 * @since 1.0
 	 */
 	public class ChatInput : Gtk.Box
 	{
-		private Gtk.Box compact_row;
-		private Gtk.Entry compact_entry;
-		private Gtk.Button compact_play;
+		private Gtk.Button inline_play;
+		private Gtk.Label placeholder;
 		public ScrolledView scrolled { get; private set; }
 		private Gtk.TextView text_view;
 		private Gtk.TextBuffer buffer;
@@ -41,47 +54,24 @@ namespace OLLMchatGtk
 		/** Emitted when the user submits (Ctrl+Enter or play) with the message text. */
 		public signal void send_clicked(string text);
 
-		/** Emitted when compact/expanded visibility flips. */
+		/**
+		 * Emitted when compact (single-line + side play) vs expanded
+		 * (full-width; footer play) changes.
+		 */
 		public signal void expanded_changed(bool expanded);
 
 		public ChatInput()
 		{
-			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
+			Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 0);
 			hexpand = true;
 			vexpand = false;
 			this.add_css_class("chat-composer");
 
-			this.compact_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+			this.scrolled = new ScrolledView() {
 				hexpand = true,
 				vexpand = false
 			};
-			this.compact_row.add_css_class("chat-composer-compact");
-			this.compact_entry = new Gtk.Entry() {
-				hexpand = true,
-				placeholder_text = "Give me a task",
-				tooltip_text = "Ctrl+Enter to send, Enter adds new lines"
-			};
-			this.compact_entry.add_css_class("chat-composer-entry");
-			this.compact_play = new Gtk.Button.from_icon_name("media-playback-start-symbolic") {
-				tooltip_text = "Send"
-			};
-			/* App blue #3584E4 — not suggested-action (follows desktop accent, often orange). */
-			this.compact_play.add_css_class("chat-composer-send");
-			this.compact_play.clicked.connect(() => {
-				if (this.text().length > 0) {
-					this.send_clicked(this.text());
-				}
-			});
-			this.compact_row.append(this.compact_entry);
-			this.compact_row.append(this.compact_play);
-			this.append(this.compact_row);
-
-			this.scrolled = new ScrolledView() {
-				hexpand = true,
-				vexpand = false,
-				visible = false
-			};
-			this.scrolled.add_css_class("chat-composer-expanded");
+			this.scrolled.add_css_class("chat-composer-entry");
 			this.buffer = new Gtk.TextBuffer(null);
 			this.text_view = new Gtk.TextView.with_buffer(this.buffer) {
 				wrap_mode = Gtk.WrapMode.WORD_CHAR,
@@ -97,15 +87,40 @@ namespace OLLMchatGtk
 			this.text_view.add_css_class("chat-composer-entry");
 			this.text_view.add_css_class("chat-input-text");
 			this.scrolled.set_child(this.text_view);
-			this.append(this.scrolled);
 
-			/* Mode from value (paste/type/programmatic) — not from key handlers. */
-			this.compact_entry.changed.connect(() => {
-				if (this.syncing) {
-					return;
+			this.placeholder = new Gtk.Label("Give me a task") {
+				halign = Gtk.Align.START,
+				valign = Gtk.Align.CENTER,
+				margin_start = 6,
+				can_target = false
+			};
+			this.placeholder.add_css_class("dim-label");
+			this.placeholder.add_css_class("chat-composer-placeholder");
+
+			var overlay = new Gtk.Overlay() {
+				hexpand = true,
+				vexpand = false
+			};
+			overlay.set_child(this.scrolled);
+			overlay.add_overlay(this.placeholder);
+			/* Placeholder must not inflate row height above ScrolledView content. */
+			overlay.set_measure_overlay(this.placeholder, false);
+			this.append(overlay);
+
+			this.inline_play = new Gtk.Button.from_icon_name("media-playback-start-symbolic") {
+				tooltip_text = "Send",
+				valign = Gtk.Align.FILL
+			};
+			/* App blue #3584E4 — not suggested-action (follows desktop accent, often orange). */
+			this.inline_play.add_css_class("chat-composer-send");
+			this.inline_play.clicked.connect(() => {
+				if (this.text().length > 0) {
+					this.send_clicked(this.text());
 				}
-				this.update_entry(this.compact_entry.text);
 			});
+			this.append(this.inline_play);
+			this.scrolled.line_peer = this.inline_play;
+
 			this.buffer.changed.connect(() => {
 				if (this.syncing) {
 					return;
@@ -114,29 +129,40 @@ namespace OLLMchatGtk
 				Gtk.TextIter end_iter;
 				this.buffer.get_start_iter(out start_iter);
 				this.buffer.get_end_iter(out end_iter);
-				this.update_entry(this.buffer.get_text(start_iter, end_iter, false));
-			});
-
-			var compact_keys = new Gtk.EventControllerKey();
-			compact_keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-			compact_keys.key_pressed.connect((keyval, keycode, state) => {
-				if (keyval != Gdk.Key.Return && keyval != Gdk.Key.KP_Enter) {
-					return false;
-				}
-				if ((state & Gdk.ModifierType.CONTROL_MASK) != 0) {
-					if (this.text().length > 0) {
-						this.send_clicked(this.text());
+				var text = this.buffer.get_text(start_iter, end_iter, false);
+				this.placeholder.visible = this.buffer.get_char_count() == 0;
+				/* Compact vs expanded: inline below (same as update_entry). */
+				var want_expanded = text.contains("\n");
+				if (!want_expanded && this.get_width() > 0) {
+					var play_min = 0;
+					var play_nat = 0;
+					this.inline_play.measure(Gtk.Orientation.HORIZONTAL, -1,
+						out play_min, out play_nat, null, null);
+					var play_w = play_nat > 0 ? play_nat : play_min;
+					var avail = this.get_width() - play_w
+						- this.text_view.left_margin - this.text_view.right_margin;
+					if (avail > 0) {
+						var layout = this.text_view.create_pango_layout(text);
+						var text_w = 0;
+						var text_h = 0;
+						layout.get_pixel_size(out text_w, out text_h);
+						want_expanded = text_w > avail;
 					}
-					return true;
 				}
-				/* Entry cannot store \n — write the new value; mode decided in update_entry. */
-				this.update_entry(this.compact_entry.text + "\n");
-				return true;
+				if (want_expanded == this.is_expanded) {
+					return;
+				}
+				this.is_expanded = want_expanded;
+				this.inline_play.visible = !want_expanded;
+				this.remove_css_class("is-expanded");
+				if (want_expanded) {
+					this.add_css_class("is-expanded");
+				}
+				this.expanded_changed(want_expanded);
 			});
-			this.compact_entry.add_controller(compact_keys);
 
-			var expanded_keys = new Gtk.EventControllerKey();
-			expanded_keys.key_pressed.connect((keyval, keycode, state) => {
+			var keys = new Gtk.EventControllerKey();
+			keys.key_pressed.connect((keyval, keycode, state) => {
 				if (keyval != Gdk.Key.Return && keyval != Gdk.Key.KP_Enter) {
 					return false;
 				}
@@ -148,15 +174,12 @@ namespace OLLMchatGtk
 				}
 				return true;
 			});
-			this.text_view.add_controller(expanded_keys);
+			this.text_view.add_controller(keys);
 		}
 
 		/** Stripped composer text for send. */
 		public string text()
 		{
-			if (!this.is_expanded) {
-				return this.compact_entry.text.strip();
-			}
 			Gtk.TextIter start_iter;
 			Gtk.TextIter end_iter;
 			this.buffer.get_start_iter(out start_iter);
@@ -166,14 +189,14 @@ namespace OLLMchatGtk
 
 		public void editable(bool editable)
 		{
-			this.compact_entry.editable = editable;
 			this.text_view.editable = editable;
 		}
 
 		/**
-		 * Apply text; stay or flip compact/expanded from the value.
-		 * Recursion: returns if syncing; holds syncing across all widget writes.
-		 * On mode change: Idle.add({@link focus_idle}).
+		 * Apply text and sync compact/expanded chrome from the value.
+		 * Recursion: returns if syncing; holds syncing across buffer writes.
+		 * On programmatic set: Idle.add({@link focus_idle}).
+		 * Does not steal focus on typing — only this path schedules focus_idle.
 		 *
 		 * @param text Full composer text
 		 */
@@ -183,97 +206,62 @@ namespace OLLMchatGtk
 				return;
 			}
 
-			var want_expanded = text.contains("\n");
-			if (!want_expanded && this.compact_entry.get_width() > 0) {
-				/* Measure only — do not assign Entry.text (fights user action / undo). */
-				var layout = this.compact_entry.create_pango_layout(text);
-				Pango.Rectangle ink;
-				Pango.Rectangle logical;
-				layout.get_pixel_extents(out ink, out logical);
-				want_expanded = logical.width > this.compact_entry.get_width();
-			}
-
-			if (want_expanded && this.is_expanded) {
-				Gtk.TextIter cur_start;
-				Gtk.TextIter cur_end;
-				this.buffer.get_start_iter(out cur_start);
-				this.buffer.get_end_iter(out cur_end);
-				if (this.buffer.get_text(cur_start, cur_end, false) == text) {
-					return;
-				}
+			Gtk.TextIter cur_start;
+			Gtk.TextIter cur_end;
+			this.buffer.get_start_iter(out cur_start);
+			this.buffer.get_end_iter(out cur_end);
+			if (this.buffer.get_text(cur_start, cur_end, false) != text) {
 				this.syncing = true;
 				this.buffer.delete(ref cur_start, ref cur_end);
 				this.buffer.insert(ref cur_start, text, -1);
 				this.syncing = false;
-				GLib.Idle.add(this.focus_idle);
-				return;
 			}
-			if (!want_expanded && !this.is_expanded) {
-				if (this.compact_entry.text == text) {
-					return;
+			this.placeholder.visible = text.length == 0;
+
+			var want_expanded = text.contains("\n");
+			if (!want_expanded && this.get_width() > 0) {
+				var play_min = 0;
+				var play_nat = 0;
+				this.inline_play.measure(Gtk.Orientation.HORIZONTAL, -1,
+					out play_min, out play_nat, null, null);
+				var play_w = play_nat > 0 ? play_nat : play_min;
+				var avail = this.get_width() - play_w
+					- this.text_view.left_margin - this.text_view.right_margin;
+				if (avail > 0) {
+					var layout = this.text_view.create_pango_layout(text);
+					var text_w = 0;
+					var text_h = 0;
+					layout.get_pixel_size(out text_w, out text_h);
+					want_expanded = text_w > avail;
 				}
-				this.syncing = true;
-				this.compact_entry.text = text;
-				this.syncing = false;
-				return;
 			}
-
-			if (want_expanded) {
-				this.syncing = true;
-				Gtk.TextIter start_iter;
-				Gtk.TextIter end_iter;
-				this.buffer.get_start_iter(out start_iter);
-				this.buffer.get_end_iter(out end_iter);
-				this.buffer.delete(ref start_iter, ref end_iter);
-				this.buffer.insert(ref start_iter, text, -1);
-				this.compact_row.visible = false;
-				this.scrolled.visible = true;
-				this.is_expanded = true;
-				this.syncing = false;
-				this.expanded_changed(true);
-				GLib.Idle.add(this.focus_idle);
-				return;
+			if (want_expanded != this.is_expanded) {
+				this.is_expanded = want_expanded;
+				this.inline_play.visible = !want_expanded;
+				this.remove_css_class("is-expanded");
+				if (want_expanded) {
+					this.add_css_class("is-expanded");
+				}
+				this.expanded_changed(want_expanded);
 			}
-
-			this.syncing = true;
-			this.compact_entry.text = text;
-			Gtk.TextIter start_iter;
-			Gtk.TextIter end_iter;
-			this.buffer.get_start_iter(out start_iter);
-			this.buffer.get_end_iter(out end_iter);
-			this.buffer.delete(ref start_iter, ref end_iter);
-			this.scrolled.content_height = 0;
-			this.scrolled.visible = false;
-			this.compact_row.visible = true;
-			this.is_expanded = false;
-			this.syncing = false;
-			this.expanded_changed(false);
 			GLib.Idle.add(this.focus_idle);
 		}
 
-		/** Idle callback: wait until mapped, then focus active control and caret at end. */
+		/** Idle callback: wait until mapped, then focus TextView and caret at end. */
 		public bool focus_idle()
 		{
-			if (this.is_expanded) {
-				if (!this.text_view.get_mapped()) {
-					return true;
-				}
-				if (this.scrolled.get_width() <= 0) {
-					return true;
-				}
-				this.text_view.grab_focus();
-				Gtk.TextIter end_iter;
-				this.buffer.get_end_iter(out end_iter);
-				this.buffer.place_cursor(end_iter);
-				this.text_view.scroll_to_mark(this.buffer.get_insert(), 0.0, true, 0.0, 1.0);
-				this.scrolled.queue_fit();
-				return false;
-			}
-			if (!this.compact_entry.get_mapped()) {
+			if (!this.text_view.get_mapped()) {
 				return true;
 			}
-			this.compact_entry.grab_focus();
-			this.compact_entry.set_position(-1);
+			if (this.scrolled.get_width() <= 0) {
+				return true;
+			}
+			this.text_view.grab_focus();
+			Gtk.TextIter end_iter;
+			this.buffer.get_end_iter(out end_iter);
+			this.buffer.place_cursor(end_iter);
+			this.text_view.scroll_to_mark(this.buffer.get_insert(), 0.0, true, 0.0, 1.0);
+			this.scrolled.queue_fit();
 			return false;
 		}
 	}

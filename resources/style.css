@@ -258,10 +258,6 @@
 	padding: 13px 8px 0 8px;
 }
 
-.chat-composer-compact {
-	background-color: #eee;
-}
-
 .chat-composer-entry,
 .chat-composer-entry text,
 .chat-input-text,
@@ -269,38 +265,37 @@
 	background-color: white;
 	font-family: system-ui, sans-serif;
 	font-size: 1rem;
-	border-radius: 6px;
 }
 
-/* Square join entry + play (do not use .linked — it stacks a second focus ring). */
-.chat-composer-compact entry.chat-composer-entry,
-.chat-composer-compact entry.chat-composer-entry > text {
+/* White expanding field; focus ring drawn inside so it does not grow past the play button. */
+.chat-composer scrolledview.chat-composer-entry {
+	background-color: white;
+	border-radius: 6px;
+	border: none;
+	outline: 2px solid transparent;
+	outline-offset: -2px;
+}
+
+.chat-composer scrolledview.chat-composer-entry:focus-within {
+	outline-color: @accent_bg_color;
+}
+
+/* Square join TextView + play (do not use .linked — second focus ring). */
+.chat-composer:not(.is-expanded) scrolledview.chat-composer-entry {
 	border-top-right-radius: 0;
 	border-bottom-right-radius: 0;
 }
 
-.chat-composer-compact button.chat-composer-send {
+.chat-composer:not(.is-expanded) button.chat-composer-send {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
 	border-top-right-radius: 6px;
 	border-bottom-right-radius: 6px;
 }
 
-.chat-composer-expanded {
-	background-color: white;
-	border-radius: 6px;
-	border: none;
-	/* Outline — does not add to allocated height (border caused gap=4). */
-	outline: 2px solid transparent;
-}
-
-/*
- * Compact Entry keeps its native Adwaita focus (accent/orange) alone —
- * never add a second ring on the row. Multiline had none; show accent
- * when the TextView inside is focused.
- */
-.chat-composer-expanded:focus-within {
-	outline-color: @accent_bg_color;
+.chat-composer-placeholder {
+	font-family: system-ui, sans-serif;
+	font-size: 1rem;
 }
 
 /*

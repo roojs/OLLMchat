@@ -72,6 +72,12 @@ namespace OLLMchatGtk
 		/** Cap for TextView auto-height; 0 = uncapped. */
 		public int max_height { get; set; default = 0; }
 
+		/**
+		 * When set, empty / one visual line height matches this widget's
+		 * natural height (composer play button). Multi-line uses yrange.
+		 */
+		public Gtk.Widget? line_peer { get; set; default = null; }
+
 		static construct
 		{
 			set_css_name("scrolledview");
@@ -92,6 +98,13 @@ namespace OLLMchatGtk
 				if (this.text_view == null) {
 					return;
 				}
+				GLib.Idle.add(this.buffer_change);
+			});
+			this.notify["line-peer"].connect(() => {
+				GLib.Idle.add(this.buffer_change);
+			});
+			/* Empty buffer never fires changed — fit once mapped. */
+			this.map.connect(() => {
 				GLib.Idle.add(this.buffer_change);
 			});
 			this.vadjustment.changed.connect(() => {
@@ -195,19 +208,62 @@ namespace OLLMchatGtk
 			if (this.get_width() <= 0) {
 				return true;
 			}
+			var peer_h = 0;
+			if (this.line_peer != null) {
+				var peer_min = 0;
+				var peer_nat = 0;
+				this.line_peer.measure(Gtk.Orientation.VERTICAL, -1,
+					out peer_min, out peer_nat, null, null);
+				peer_h = peer_nat > 0 ? peer_nat : peer_min;
+			}
 			/* Offsets survive mutation; do not hold TextIters across any call that may re-enter. */
 			var end_off = this.text_view.buffer.get_char_count();
+			Gtk.TextIter size_start;
 			Gtk.TextIter size_end;
+			this.text_view.buffer.get_start_iter(out size_start);
 			this.text_view.buffer.get_iter_at_offset(out size_end, end_off);
+			var y0 = 0;
+			var h0 = 0;
 			var y = 0;
 			var line_h = 0;
+			this.text_view.get_line_yrange(size_start, out y0, out h0);
 			this.text_view.get_line_yrange(size_end, out y, out line_h);
-			var yrange_h = y + line_h + this.text_view.top_margin + this.text_view.bottom_margin;
+			/* Layout not ready yet — use peer height if any, else retry. */
+			if ((h0 < 1 || line_h < 1) && peer_h > 0) {
+				this.content_height = peer_h;
+				this.pin_end = false;
+				this.vadjustment.value = 0;
+				return false;
+			}
+			if (h0 < 1 || line_h < 1) {
+				return true;
+			}
+			var content_h = y + line_h;
+			/* One visual line (empty buffer is still one GTK line). */
+			var one_line = content_h <= h0;
+			if (one_line && peer_h > 0) {
+				/* Center the line in the peer-sized viewport. */
+				var extra = peer_h - content_h;
+				if (extra < 0) {
+					extra = 0;
+				}
+				var top = extra / 2;
+				this.text_view.top_margin = top;
+				this.text_view.bottom_margin = extra - top;
+			}
+			if (!one_line) {
+				this.text_view.top_margin = 4;
+				this.text_view.bottom_margin = 4;
+			}
+			var yrange_h = content_h + this.text_view.top_margin + this.text_view.bottom_margin;
 			var target = yrange_h;
+			if (one_line && peer_h > 0) {
+				target = peer_h;
+			}
 			if (target < 1) {
 				target = 1;
 			}
-			if (this.max_height > 0 && yrange_h > this.max_height) {
+			if (this.max_height > 0 && target > this.max_height) {
 				target = this.max_height;
 			}
 			this.pin_end = this.text_view.buffer.cursor_position >= this.text_view.buffer.get_char_count();
