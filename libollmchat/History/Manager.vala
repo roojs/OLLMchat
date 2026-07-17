@@ -363,6 +363,11 @@ namespace OLLMchat.History
 				if (info.get_size() == 0) {
 					continue;
 				}
+				// Check if model exists in connection_models before adding
+				if (this.connection_models.find_model_by_name(placeholder.model_usage_model) == null) {
+					// Model not found, skip this placeholder
+					continue;
+				}
 				placeholder.reconstruct_model_usage_from_model();
 
 				if (placeholder.agent_name == "" || !this.agent_factories.has_key(placeholder.agent_name)) {

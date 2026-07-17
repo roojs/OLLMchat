@@ -171,16 +171,6 @@ namespace OLLMapp.SettingsDialog
 		{
 			this.models_page.save_all_options();
 			this.connections_page.apply_config();
-			if (this.parent.history_manager != null) {
-				var usage = this.parent.history_manager.default_model_usage;
-				var default_model = this.app.config.usage.get (
-					"default_model") as OLLMchat.Settings.ModelUsage;
-				if (usage != null && default_model != null) {
-					default_model.connection = usage.connection;
-					default_model.model = usage.model;
-					default_model.options = usage.options.clone ();
-				}
-			}
 			this.check_all_connections.begin();
 			(this.app as AndroidApplication).persist_config ();
 			this.app.config.changed();

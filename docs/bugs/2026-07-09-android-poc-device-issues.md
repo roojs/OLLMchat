@@ -21,25 +21,18 @@
 
 ## Problem 1 — Chat history not recorded / not loading
 
-**Status:** ⏳ fix implemented (2026-07-17) — device verify pending
-
 **Expected:** After sending messages on device, sessions appear in the history overlay and survive `force-stop` / cold start. Selecting a past session loads its messages.
 
 **Actual (user report, 2026-07-09):** History is either **not being saved** or **not loading** on device — unclear which without log capture. Cold boot may open a fresh `EmptySession` even when prior chats existed.
 
-**Root cause (code review, 2026-07-17):**
+**Config fix (2026-07-17, branch `cursor/android-persistence-529f`):**
 
-1. **🔷** `history.db` index uses `SQ.Database` in-memory + **coalesced** `backupDB()` (up to ~2.5s). `load_sessions()` reads **only** the DB, not orphan JSON. App kill before backup → sidebar empty on restart even when JSON exists.
-2. **🔷** `OllmchatWindow.load_config_and_initialize()` reloaded config after `AndroidStartup.run()`, splitting `app.config` from `history_manager.config`. Chat bar model changes saved via `manager.config.save()`; settings close used `persist_config(app.config)` and could overwrite `default_model`.
-3. **💩** `load_sessions()` skipped placeholders when `find_model_by_name()` returned null (e.g. model list not yet in `ConnectionModels.items`), even though `reconstruct_model_usage_from_model()` handles missing models.
+- **✔️** `OllmchatWindow.load_config_and_initialize()` reloaded config after `AndroidStartup.run()`, splitting `app.config` from `history_manager.config`. Chat bar saves via `manager.config`; settings close used `persist_config(app.config)` and could overwrite `default_model`. **Fix:** remove the redundant reload (match desktop `Window.vala`).
 
-**Fix (2026-07-17, branch `cursor/android-persistence-529f`):**
+**History — still open (needs device evidence before shared-code changes):**
 
-- `Session.save_async` + `EmptySession.send`: call `db.backup_real()` after write / first `saveToDB`.
-- `OllmchatWindow`: remove post-startup config reload; `shutdown` → `backup_real()`.
-- `MainDialog.on_closed`: sync `default_model` from `history_manager` before `persist_config()`.
-- `Manager.load_sessions`: drop model-exists filter; always `reconstruct_model_usage_from_model()`.
-- `Config2.save()`: `FileUtils.set_contents` (same as Android `persist_config`).
+- **💩** `history.db` coalesced `backupDB()` (~2.5s) vs `load_sessions()` reading DB only — hypothesized, not verified on device.
+- **💩** `load_sessions()` model filter — hypothesized; do **not** change shared `Manager.vala` without approval.
 
 **Reproduce (suspected):**
 
@@ -396,4 +389,4 @@ Implement and verify **one file at a time**. Code fences use **Remove** / **Repl
 | 2026-07-09 | Problem 2 — **implemented** T1–T5 per approved proposal; device verify pending |
 | 2026-07-09 | Problem 2 — **✅ user verified** on device (`google_search` working); HTTP 400 was config not TLS |
 | 2026-07-09 | Problem 3 — screen timeout interrupts SSE stream → Network error; options documented |
-| 2026-07-17 | Problem 1 — root cause + fix implemented (`cursor/android-persistence-529f`); device verify pending |
+| 2026-07-17 | Problem 1 — config split fix only in `cursor/android-persistence-529f`; reverted speculative shared-code changes |

@@ -353,12 +353,6 @@ namespace OLLMapp
 
 			this.connect_agent_factory_signals();
 
-			(this.app as Gtk.Application).shutdown.connect(() => {
-				if (this.history_manager != null) {
-					this.history_manager.db.backup_real();
-				}
-			});
-
 			this.chat_container.append (this.chat_widget);
 			this.view_stack.visible_child_name = "chat";
 
