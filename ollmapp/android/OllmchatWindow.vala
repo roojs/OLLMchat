@@ -214,6 +214,8 @@ namespace OLLMapp
 
 			if (yield startup.run(this.app.config)) {
 				this.startup_status_label.label = "Opening chat…";
+				this.app.config = (this.app as AndroidApplication).load_config();
+				AndroidConnectionConfigTls.apply_to_config(this.app.config);
 				yield this.initialize_client(this.app.config);
 				return;
 			}

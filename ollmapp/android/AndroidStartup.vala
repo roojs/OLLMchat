@@ -114,6 +114,9 @@ namespace OLLMapp
 				this.window.history_manager = new OLLMchat.History.Manager(
 					this.window.app
 				);
+				GLib.message (
+					"AndroidStartup: history_dir=%s",
+					this.window.history_manager.history_dir);
 
 				AndroidToolsRegistration.fill_tools(
 					this.window.history_manager);

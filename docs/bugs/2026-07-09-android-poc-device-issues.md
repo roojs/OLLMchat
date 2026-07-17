@@ -25,14 +25,13 @@
 
 **Actual (user report, 2026-07-09):** History is either **not being saved** or **not loading** on device — unclear which without log capture. Cold boot may open a fresh `EmptySession` even when prior chats existed.
 
-**Config fix (2026-07-17, branch `cursor/android-persistence-529f`):**
+**Likely root cause (code review, 2026-07-17):**
 
-- **✔️** `OllmchatWindow.load_config_and_initialize()` reloaded config after `AndroidStartup.run()`, splitting `app.config` from `history_manager.config`. Chat bar saves via `manager.config`; settings close used `persist_config(app.config)` and could overwrite `default_model`. **Fix:** remove the redundant reload (match desktop `Window.vala`).
+- **🔷** `AndroidApplication` set `data_dir` in the **constructor** while `load_config()` is deferred to window **realize** because “XDG paths are ready” later. History uses `{data_dir}/history/`; config uses `XDG_CONFIG_HOME/etc/ollmchat/`. If `get_user_data_dir()` is wrong at construction time, sessions live in memory (sidebar works) but files land under a bad path and are gone after restart.
+- **💩** `history.db` coalesced `backupDB()` (~2.5s) — secondary; needs `adb` check (JSON vs DB after send).
+- **💩** Chat bar model changes call `config.save()` (`to_file`), not `persist_config()` (`set_contents`) — may affect model persistence; needs device check of `config.2.json` after dropdown change.
 
-**History — still open (needs device evidence before shared-code changes):**
-
-- **💩** `history.db` coalesced `backupDB()` (~2.5s) vs `load_sessions()` reading DB only — hypothesized, not verified on device.
-- **💩** `load_sessions()` model filter — hypothesized; do **not** change shared `Manager.vala` without approval.
+**Android fix in progress (`cursor/android-persistence-529f`):** defer `data_dir` to `activate()` (same XDG timing as config).
 
 **Reproduce (suspected):**
 
@@ -389,4 +388,3 @@ Implement and verify **one file at a time**. Code fences use **Remove** / **Repl
 | 2026-07-09 | Problem 2 — **implemented** T1–T5 per approved proposal; device verify pending |
 | 2026-07-09 | Problem 2 — **✅ user verified** on device (`google_search` working); HTTP 400 was config not TLS |
 | 2026-07-09 | Problem 3 — screen timeout interrupts SSE stream → Network error; options documented |
-| 2026-07-17 | Problem 1 — config split fix only in `cursor/android-persistence-529f`; reverted speculative shared-code changes |

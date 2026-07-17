@@ -99,14 +99,18 @@ namespace OLLMapp
 				flags: GLib.ApplicationFlags.DEFAULT_FLAGS
 			);
 
-			this.data_dir = GLib.Path.build_filename (
-				app_private_files_dir (), "ollmchat");
-
-			/* Config loads on window realize when XDG paths are ready. */
+			/* data_dir and config load when XDG paths are ready (activate / realize). */
 			this.config = new OLLMchat.Settings.Config2 ();
 			AndroidConnectionConfigTls.apply_to_config (this.config);
 
 			this.activate.connect(() => {
+				this.data_dir = GLib.Path.build_filename (
+					app_private_files_dir (), "ollmchat");
+				GLib.message (
+					"AndroidApplication: data_dir=%s user_data_dir=%s",
+					this.data_dir,
+					GLib.Environment.get_user_data_dir ());
+
 				try {
 					AndroidApplication.ensure_app_data_directories (
 						this.data_dir);
