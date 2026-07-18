@@ -3,7 +3,7 @@
 > Pointer: `docs/bug-fix-process.md` (emoji + code fences). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ✔️ fix applied (§1–§4) — ⏳ await user verify
+**Status:** FIXED (2026-07-18) — user confirmed.
 
 **Related:**
 
@@ -51,6 +51,4 @@
 
 ## Next
 
-1. 🔷 ⏳ Rebuild is done (`build/ollmapp/ollmchat`) — one Chatter turn:
-   summarizing dots, input stays open, Send without Stop.
-2. 💩 ⏳ After ✅: remove hang-debug; archive FIXED under `docs/bugs/done/`.
+_(Closed — user confirmed fixed 2026-07-18.)_

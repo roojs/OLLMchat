@@ -1,5 +1,7 @@
 # HTTP RPC pending queue stall on second call
 
+**Status:** FIXED (2026-07-18) — user confirmed.
+
 ## Problem
 
 Hub `detail` succeeds (RPC id=1, `/api/models/{repo}`) but the follow-up

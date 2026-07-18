@@ -316,6 +316,36 @@ install_ca_certificates_to_assets() {
 # Pixiewood only copies bin, lib, and glib schemas into APK assets. GTK UI icons
 # (header bar buttons, symbolic actions, etc.) are listed in android/icons/manifest
 # and staged from the build host's icon themes into assets/share/icons/Adwaita/.
+install_partial_wake_lock_java() {
+  local src="$ROOT_DIR/android/PartialWakeLock.java"
+  local dest_dir="$ROOT_DIR/.pixiewood/android/app/src/main/java/org/roojs/ollmchat/androidpoc"
+
+  if [ ! -f "$src" ]; then
+    echo "PartialWakeLock.java missing: $src" >&2
+    exit 1
+  fi
+  mkdir -p "$dest_dir"
+  rm -f "$dest_dir/KeepScreenOn.java"
+  cp -a "$src" "$dest_dir/PartialWakeLock.java"
+}
+
+# Pixiewood regenerate may omit WAKE_LOCK / reset launchMode; keep our POC defaults.
+patch_android_manifest() {
+  local manifest="$ROOT_DIR/.pixiewood/android/app/src/main/AndroidManifest.xml"
+
+  if [ ! -f "$manifest" ]; then
+    echo "AndroidManifest missing: $manifest" >&2
+    exit 1
+  fi
+  if ! grep -q 'android.permission.WAKE_LOCK' "$manifest"; then
+    sed -i '/android.permission.INTERNET/a\  <uses-permission android:name="android.permission.WAKE_LOCK"/>' "$manifest"
+  fi
+  # C5: standard stacks a new ToplevelActivity on each launcher return (full reboot feel).
+  if grep -q 'android:launchMode="standard"' "$manifest"; then
+    sed -i 's/android:launchMode="standard"/android:launchMode="singleTask"/' "$manifest"
+  fi
+}
+
 install_icon_themes_to_assets() {
   local manifest="$ROOT_DIR/android/icons/manifest"
   local index_theme="$ROOT_DIR/android/icons/Adwaita/index.theme"
@@ -520,6 +550,8 @@ run_pixiewood_build() {
   write_ollmchat_android_runtime_tag
   install_ca_certificates_to_assets
   install_icon_themes_to_assets
+  install_partial_wake_lock_java
+  patch_android_manifest
   run_pixiewood_gradle_assemble
   verify_apk_script="${PIXIEWOOD_VERIFY_APK_SCRIPT:-$ROOT_DIR/scripts/android/verify-apk.sh}"
   "$verify_apk_script"

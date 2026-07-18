@@ -3,7 +3,7 @@
 > Pointer: `docs/bug-fix-process.md` (emoji + code fences). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ✔️ applied — bar only when at `max_height` and `upper > page`
+**Status:** FIXED (2026-07-18) — bar only when at `max_height` and `upper > page`
 
 **Related:**
 

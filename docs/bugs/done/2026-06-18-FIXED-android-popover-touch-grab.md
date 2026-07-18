@@ -1,10 +1,14 @@
 # Android — popover touch grab blocks chat-bar toggles (tools + model dropdown)
 
-**Status:** OPEN — investigation  
+**Status:** FIXED (2026-07-18) — workaround: raise model/tools pulldown so near-edge dismiss works.  
 **Opened:** 2026-06-18  
 **Platform:** Android chat POC (`org.roojs.ollmchat.androidpoc`)  
 **GTK fork:** `/home/alan/git/gtk` (`main` — IME/popup work only; no GDK TLS; shipped via `android-bugs.patch`)  
-**Related:** [`docs/plans/9.0-android-poc-summary.md`](../plans/9.0-android-poc-summary.md) (chat bar backlog)
+**Related:** [`docs/plans/done/9.0-DONE-android-poc-summary.md`](../plans/done/9.0-DONE-android-poc-summary.md)
+
+### Resolution
+
+🔷 Raised the chat-bar model/tools pulldown slightly so the near-edge grab band no longer blocks close/toggle. GTK Android `input_region` / grab gap left unpatched; reopen if the workaround regresses.
 
 ---
 

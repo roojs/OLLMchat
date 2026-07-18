@@ -355,6 +355,13 @@ namespace OLLMapp
 
 			this.connect_agent_factory_signals();
 
+			this.history_manager.agent_status_change.connect(() => {
+				android_set_partial_wake_lock(
+					this, this.history_manager.session.is_running);
+			});
+			android_set_partial_wake_lock(
+				this, this.history_manager.session.is_running);
+
 			this.chat_container.append (this.chat_widget);
 			this.view_stack.visible_child_name = "chat";
 
@@ -368,6 +375,9 @@ namespace OLLMapp
 
 	[CCode (cname = "ollmapp_configure_android_gio_tls_modules", cheader_filename = "android-gio-tls.h")]
 	private extern bool configure_android_gio_tls_modules();
+
+	[CCode (cname = "ollmapp_android_set_partial_wake_lock", cheader_filename = "android-partial-wake-lock.h")]
+	private extern void android_set_partial_wake_lock(Gtk.Window window, bool enable);
 
 	int main(string[] args)
 	{

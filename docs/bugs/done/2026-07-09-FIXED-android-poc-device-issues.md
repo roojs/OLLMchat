@@ -1,6 +1,6 @@
 # Android chat POC — history + tool HTTPS (TLS)
 
-**Status:** OPEN — Problem 1 (history) **✅ FIXED** (user). Problem 2 TLS **✅ FIXED**. Problem 3 screen timeout — investigation. Problem 4 (default model not remembered) — ⏳ root cause found, fix in tree.
+**Status:** FIXED (2026-07-18) — Problems 1, 2, 4 ✅; Problem 3 deferred with POC close. Plan 9.0 DONE.
 
 **Started:** 2026-07-09
 
@@ -10,12 +10,10 @@
 
 **Related:**
 
-- [`docs/plans/9.0-android-poc-summary.md`](../plans/9.0-android-poc-summary.md) — active POC summary
+- [`docs/plans/done/9.0-DONE-android-poc-summary.md`](../plans/done/9.0-DONE-android-poc-summary.md) — POC summary (archived)
 - [`docs/android-tls.md`](../android-tls.md) — TLS backend + bundled CA (connection API calls work)
-- [`docs/bugs/done/2026-06-17-FIXED-android-runtime-tls-ime-paste.md`](done/2026-06-17-FIXED-android-runtime-tls-ime-paste.md) — prior TLS investigation
-- [`docs/bugs/2026-06-18-android-popover-touch-grab.md`](2026-06-18-android-popover-touch-grab.md) — separate UI annoyance (left open)
-
-**Still open elsewhere:** popover touch-grab near chat-bar controls — minor; not blocking this log.
+- [`docs/bugs/done/2026-06-17-FIXED-android-runtime-tls-ime-paste.md`](2026-06-17-FIXED-android-runtime-tls-ime-paste.md) — prior TLS investigation
+- [`docs/bugs/done/2026-06-18-FIXED-android-popover-touch-grab.md`](2026-06-18-FIXED-android-popover-touch-grab.md) — popover near-tap (workaround)
 
 ---
 
@@ -73,15 +71,15 @@ Same class of bug already fixed for `History.Manager` constructor and `AndroidAp
 
 ## Problem 4 — Selected model not remembered across restart
 
-**Status:** ⏳ OPEN — root cause confirmed from device logs; fix applied in tree (needs rebuild/install + verify).
+**Status:** ✅ FIXED (user, 2026-07-18)
 
 **Expected:** 🔷 Pick Qwen (or any model) in the chat-bar dropdown, force-stop / cold start → same model stays selected.
 
-**Actual:** 🔷 Always comes back as `llama3.1:70b`.
+**Actual:** 🔷 Always came back as `llama3.1:70b`.
 
 ### Evidence (2026-07-18 ~09:49, pid 27293)
 
-- ✔️ On-disk `config.2.json` still has `"model" : "llama3.1:70b"` under `usage.default_model`.
+- ✔️ On-disk `config.2.json` still had `"model" : "llama3.1:70b"` under `usage.default_model`.
 - ✔️ Cold start:
 
 ```
@@ -91,25 +89,23 @@ AndroidStartup: run ok model=llama3.1:70b
 Config2.vala:585: Failed to create config directory: …/ollmchat: File exists
 ```
 
-- ✔️ `ChatBar` **does** update `default_model_usage` and calls `config.save()` on dropdown change — persistence is not “missing a call.”
+- ✔️ `ChatBar` **does** update `default_model_usage` and calls `config.save()` on dropdown change — persistence was not “missing a call.”
 - ✔️ `Config2.save()` treated **any** mkdir error as fatal and **`return`ed before writing JSON**. On Android external storage the dir already exists; GIO still reports `File exists` after a false-negative existence check → model change never reaches disk. Startup keeps loading llama3.1.
-- ℹ️ Android startup persist path (`AndroidApplication.persist_config` → `FileUtils.set_contents`) succeeds; only the shared `Config2.save()` path used by ChatBar fails.
+- ℹ️ Android startup persist path (`AndroidApplication.persist_config` → `FileUtils.set_contents`) succeeds; only the shared `Config2.save()` path used by ChatBar was failing.
 
 ### Root cause
 
-✔️ `Config2.save()` early-returns on mkdir `File exists` instead of continuing to write. Same Android external-storage class as Problem 1.
+✔️ `Config2.save()` early-returned on mkdir `File exists` instead of writing. Same Android external-storage class as Problem 1.
 
-### Proposed fix → ✔️ applied
+### Fix → ✅ verified
 
 - `Config2.save()`: same pattern as `Session.write()` — `FileUtils.test(dir_path, EXISTS)` then bare `make_directory_with_parents` (no EXISTS special-case / early return).
-
-**Next:** ⏳ 🔷 Rebuild/install APK; select Qwen; confirm `config.2.json` updates; force-stop; confirm startup keeps Qwen.
 
 ---
 
 ## Problem 3 — Screen timeout kills in-flight LLM stream → “Network error”
 
-**Status:** OPEN — investigation (user report, 2026-07-09)
+**Status:** DEFERRED (2026-07-18) — POC 9.0 closed; reopened as **C1** in [`docs/bugs/2026-07-18-android-poc-completion.md`](../2026-07-18-android-poc-completion.md).
 
 **Expected:** Long replies can finish even if the user is not touching the screen, **or** an interrupted stream fails gracefully with partial reply preserved and a clear message (not a generic network fault).
 
@@ -441,4 +437,5 @@ Implement and verify **one file at a time**. Code fences use **Remove** / **Repl
 | 2026-07-09 | Problem 2 — **✅ user verified** on device (`google_search` working); HTTP 400 was config not TLS |
 | 2026-07-09 | Problem 3 — screen timeout interrupts SSE stream → Network error; options documented |
 | 2026-07-18 | Problem 1 — ✅ history save+load FileUtils fixes verified by user |
-| 2026-07-18 | Problem 4 — default model stuck on llama3.1; Config2.save aborts on mkdir File exists; fix applied |
+| 2026-07-18 | Problem 4 — default model stuck on llama3.1; Config2.save FileUtils mkdir pattern; **✅ user verified** |
+| 2026-07-18 | Archive FIXED — POC 9.0 closed; Problem 3 deferred |

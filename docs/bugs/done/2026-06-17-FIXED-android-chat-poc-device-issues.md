@@ -1,10 +1,10 @@
 # Android chat POC — device issues (boot / startup blockers)
 
-**Status:** FIXED (2026-06-17) — boot path, config, TLS, and startup crash resolved on device (rounds 1–5). **Follow-up polish** (sidebar overlay, models settings, chat bar icons, etc.) tracked in [`docs/plans/9.0-android-poc-summary.md`](../../plans/9.0-android-poc-summary.md), not this bug log.  
+**Status:** FIXED (2026-06-17) — boot path, config, TLS, and startup crash resolved on device (rounds 1–5). **Follow-up polish** archived in [`docs/plans/done/9.0-DONE-android-poc-summary.md`](../../plans/done/9.0-DONE-android-poc-summary.md), not this bug log.  
 **Opened:** 2026-06-17  
 **Package:** `org.roojs.ollmchat.androidpoc`  
 **Build:** `scripts/android/build-chat-poc-apk.sh` → `scripts/android/adb-install-chat-poc.sh`  
-**Index:** [`docs/plans/9.0-android-poc-summary.md`](../../plans/9.0-android-poc-summary.md) (short summary + commands)
+**Index:** [`docs/plans/done/9.0-DONE-android-poc-summary.md`](../../plans/done/9.0-DONE-android-poc-summary.md) (short summary + commands)
 
 ---
 
@@ -421,4 +421,4 @@ Fatal signal 5 (SIGTRAP)
 
 - TLS / IME / paste: [`2026-06-17-FIXED-android-runtime-tls-ime-paste.md`](2026-06-17-FIXED-android-runtime-tls-ime-paste.md)  
 - TLS notes: [`docs/android-tls.md`](../../android-tls.md)  
-- Plan: [`docs/plans/9.0-android-poc-summary.md`](../../plans/9.0-android-poc-summary.md) — archived shell: [`docs/plans/done/9.1-DONE-android-chat-shell.md`](../../plans/done/9.1-DONE-android-chat-shell.md)
+- Plan: [`docs/plans/done/9.0-DONE-android-poc-summary.md`](../../plans/done/9.0-DONE-android-poc-summary.md) — archived shell: [`docs/plans/done/9.1-DONE-android-chat-shell.md`](../../plans/done/9.1-DONE-android-chat-shell.md)

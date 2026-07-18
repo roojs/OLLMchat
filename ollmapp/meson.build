@@ -132,6 +132,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
 
   android_poc_sources = [
     'android/android-gio-tls.c',
+    'android/android-partial-wake-lock.c',
     'android/AndroidConnectionTls.vala',
     'android/AndroidConnectionConfigTls.vala',
     version_vala,
@@ -348,6 +349,7 @@ if get_option('android_poc') and host_machine.system() != 'android'
 
   android_poc_sources = [
     'android/android-gio-tls.c',
+    'android/android-partial-wake-lock.c',
     'android/AndroidConnectionTls.vala',
     'android/AndroidConnectionConfigTls.vala',
     version_vala,

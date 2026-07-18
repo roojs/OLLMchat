@@ -10,7 +10,7 @@
 - ℹ️ [`docs/plans/2.31-just-ask-summary-history.md`](../plans/2.31-just-ask-summary-history.md)
   / [`2.31.1-chatter-summary-turn-queue.md`](../plans/2.31.1-chatter-summary-turn-queue.md)
   — summarize-after-every-turn + queue
-- ℹ️ [`docs/bugs/2026-07-14-chatter-summary-hang.md`](2026-07-14-chatter-summary-hang.md)
+- ℹ️ [`docs/bugs/done/2026-07-14-FIXED-chatter-summary-hang.md`](done/2026-07-14-FIXED-chatter-summary-hang.md)
   — UI hang (separate); same summarize pipeline
 - ℹ️ Session example: `~/.local/share/ollmchat/history/2026/07/14/09-05-44.json`
   — HF download turn summarized; follow-up lost full tool reply detail and
