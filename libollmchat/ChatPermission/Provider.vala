@@ -129,7 +129,7 @@ namespace OLLMchat.ChatPermission
 			this.config_file = GLib.Path.build_filename(directory, "tool.permissions.json");
 			
 			var file = GLib.File.new_for_path(this.config_file);
-			if (!file.query_exists()) {
+			if (!GLib.FileUtils.test(file.get_path(), GLib.FileTest.EXISTS)) {
 				return; // No permissions file yet
 			}
 			
@@ -446,7 +446,7 @@ namespace OLLMchat.ChatPermission
 			}
 			
 			var file = GLib.File.new_for_path(this.config_file);
-			if (!file.query_exists()) {
+			if (!GLib.FileUtils.test(file.get_path(), GLib.FileTest.EXISTS)) {
 				return; // No permissions file yet
 			}
 			
@@ -476,7 +476,7 @@ namespace OLLMchat.ChatPermission
 			// Ensure directory exists
 			var dir_path = GLib.Path.get_dirname(this.config_file);
 			var dir = GLib.File.new_for_path(dir_path);
-			if (!dir.query_exists()) {
+			if (!GLib.FileUtils.test(dir.get_path(), GLib.FileTest.EXISTS)) {
 				try {
 					dir.make_directory_with_parents(null);
 				} catch (GLib.Error e) {

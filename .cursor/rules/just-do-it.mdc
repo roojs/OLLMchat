@@ -1,0 +1,33 @@
+---
+description: Execute clear work immediately — do not over-ask for apply approval
+alwaysApply: true
+---
+
+# Just do it
+
+When the next step is clear, **do it**. Do not end with “Want me to apply?”,
+“Shall I proceed?”, or “ready when you are” after you already know the fix.
+
+## Do immediately
+
+- User said implement / apply / fix / “let’s do X” / “yes” / “don’t ask”
+- Root cause is confirmed and the fix is a known pattern already used in-tree
+  (copy the same approach; no new design fork)
+- Trivial mechanical edits (rename, EXISTS-tolerant mkdir, wire an existing API)
+- Defaults are obvious and reversible; pick them and continue
+
+## Still ask / wait
+
+- Destructive or hard-to-undo actions (force push, `git reset --hard`, drop DB,
+  delete user data) unless the user explicitly ordered that action
+- Commits / PRs / pushes — only when the user asks (existing git rules)
+- Genuine ambiguity with materially different product outcomes
+- Bug-fix process still requires **debug → root cause → propose** for
+  non-trivial bugs; once the proposed fix is written and matches a known
+  pattern (or the user approved), **apply without a second confirmation ask**
+
+## Anti-patterns (forbidden)
+
+- “If those defaults are fine, I can implement”
+- “Want me to apply that?” after proposing a copy of an existing fix
+- Re-asking after the user already said yes / don’t ask / just do it

@@ -565,7 +565,7 @@ namespace OLLMfilesd
 			
 			// Create parent directory if it doesn't exist (for deleted files)
 			var parent_dir = target_file.get_parent();
-			if (parent_dir != null && !parent_dir.query_exists()) {
+			if (parent_dir != null && !GLib.FileUtils.test(parent_dir.get_path(), GLib.FileTest.EXISTS)) {
 				parent_dir.make_directory_with_parents(null);
 			}
 			

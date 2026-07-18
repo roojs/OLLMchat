@@ -39,7 +39,7 @@ namespace OLLMfilesd.Vector
 				return "";
 			}
 			var gfile = GLib.File.new_for_path(file.path);
-			if (!gfile.query_exists()) {
+			if (!GLib.FileUtils.test(gfile.get_path(), GLib.FileTest.EXISTS)) {
 				return "";
 			}
 			var content_type = gfile.query_info(

@@ -77,7 +77,7 @@ namespace OLLMchat
 		public void ensure_data_dir() throws GLib.Error
 		{
 			var data_dir_file = GLib.File.new_for_path(this.data_dir);
-			if (!data_dir_file.query_exists()) {
+			if (!GLib.FileUtils.test(data_dir_file.get_path(), GLib.FileTest.EXISTS)) {
 				data_dir_file.make_directory_with_parents(null);
 			}
 		}

@@ -1,6 +1,6 @@
 # Android chat POC — history + tool HTTPS (TLS)
 
-**Status:** OPEN — Problem 1 (history) still needs debug. Problem 2 (`google_search` / tool TLS) **✅ FIXED** (2026-07-09). Problem 3 (screen timeout vs streaming) — investigation.
+**Status:** OPEN — Problem 1 (history) ✔️ save + load_sessions `FileUtils` fixes installed (`lastUpdateTime=2026-07-18 09:33:37`); ⏳ user verify history overlay. Problem 2 TLS **✅ FIXED**. Problem 3 screen timeout — investigation.
 
 **Started:** 2026-07-09
 
@@ -21,29 +21,53 @@
 
 ## Problem 1 — Chat history not recorded / not loading
 
-**Expected:** After sending messages on device, sessions appear in the history overlay and survive `force-stop` / cold start. Selecting a past session loads its messages.
+**Expected:** 🔷 After sending messages on device, sessions appear in the history overlay and survive `force-stop` / cold start. Selecting a past session loads its messages.
 
-**Actual (user report, 2026-07-09):** History is either **not being saved** or **not loading** on device — unclear which without log capture. Cold boot may open a fresh `EmptySession` even when prior chats existed.
+**Actual:** 🔷 History looks empty / incomplete after cold start. ✔️ Device evidence (2026-07-18) shows this is a **JSON save** failure, not “nothing written.”
 
-**Reproduce (suspected):**
+**Reproduce:**
 
 1. Install chat POC APK; complete bootstrap (connection + model).
-2. Send at least one chat turn; open history overlay — note whether the session appears.
-3. `adb shell am force-stop org.roojs.ollmchat.androidpoc`; relaunch.
-4. Check history overlay again; inspect `files/history/` under app data dir.
+2. Send at least one chat turn (preferably a second session on the same calendar day).
+3. `adb logcat --pid=$(adb shell pidof org.roojs.ollmchat.androidpoc) | grep -E 'session save|Failed to save'`
+4. Inspect external history dir (not internal `files/`):
+   `/sdcard/Android/data/org.roojs.ollmchat.androidpoc/files/ollmchat/history/`
 
-**Code pointers:**
+### Evidence (2026-07-18)
 
-- History dir: `AndroidApplication` ensures `data_dir/history` exists.
-- Manager: `AndroidStartup` creates `OLLMchat.History.Manager`; `OllmchatWindow.initialize_client` wires `HistoryBrowser`.
-- Saves: `OLLMchat.History.Session.save_async` writes JSON under `manager.history_dir`.
-- Boot session: cold start may always create `EmptySession` — see 9.0 backlog **Session lifecycle**.
+- ℹ️ Location: `…/files/ollmchat/history/` on external storage (`XDG` beside `share/`).
+- ✔️ `history.db` has rows (21+ sessions; newest ids 22–24 from this morning). `saveToDB()` runs before JSON write, so DB metadata updates even when JSON fails.
+- ✔️ Session JSON: only the **first** save of the day often succeeds. Example: `2026/07/18/00-48-08.json` written; later fids `00-48-27`, `00-57-25` never got JSON.
+- ✔️ Existing JSONs stay stale (often only `user-sent` + `ui`) while DB `total_messages` grows (e.g. 13–14).
+- ✔️ Logcat (pid 7215), long reply / multi-turn this morning:
 
-**Next (debug):**
+```
+08:48:08 D Session.vala:412: session save
+08:48:08 D Session.vala:447: session saved
+08:48:27 D Session.vala:412: session save
+08:48:27 W Session.vala:399: Failed to save session: Failed to create directory
+  …/history/2026/07/18: … File exists
+08:57:45 W … Failed to create directory …/2026/07/18: File exists
+08:58:11 W … Failed to create directory …/2026/07/18: File exists
+```
 
-- Log `save_async` path + errors on device (`--debug` if routed).
-- `adb shell run-as … ls -la files/history/` after send + after force-stop.
-- Confirm whether sidebar lists DB rows but `switch_to_session` / `load()` fails vs no rows at all.
+Seven `Failed to save session` warnings in this run after the first successful mkdir.
+
+### Root cause
+
+✔️ `Session.write()` uses `query_exists()` then `make_directory_with_parents()`, and treats **any** mkdir error as fatal. On Android external storage, after the day directory already exists, GIO still hits mkdir and returns `File exists`; the catch in `save_async` aborts **before** writing JSON (DB row already committed).
+
+Same class of bug already fixed for `History.Manager` constructor and `AndroidApplication.ensure_directory` (EXISTS-tolerant). `Session.write()` / `task_dir()` were left on the brittle pattern.
+
+🚫 Not primarily a load-path bug: load cannot restore messages that were never written to JSON.
+
+### Proposed fix → ✔️ applied
+
+✔️ `Session.write()` / `task_dir()` use `GLib.FileUtils.test(…, EXISTS)` before mkdir. Device verify 2026-07-18 09:28: repeated `session saved`; `01-28-46.json` is 34KB / 32 messages; DB rows present.
+
+✔️ Load path still empty after cold start: `History.Manager.load_sessions()` skipped every row via `file.query_exists()` (same Android GIO lie). Fix: `FileUtils.test` there too (✔️ applied in tree).
+
+**Next:** ⏳ 🔷 Open history overlay after cold start — expect listed sessions (incl. `01-28-46`).
 
 ---
 

@@ -71,7 +71,7 @@ namespace OLLMapp
 		 * Ensures app data, history, config, and model-cache directories exist.
 		 *
 		 * Uses EXISTS-tolerant creation so History.Manager does not abort when
-		 * a concurrent mkdir races (Manager uses query_exists + make_directory).
+		 * a concurrent mkdir races (Manager uses FileUtils / query_file_type + make_directory).
 		 *
 		 * @param data_dir Application data directory ({@link data_dir})
 		 */

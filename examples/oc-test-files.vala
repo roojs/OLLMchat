@@ -398,7 +398,7 @@ $(content)
 		
 		if (opt_content_file != null && opt_content_file != "") {
 			var content_file = GLib.File.new_for_path(opt_content_file);
-			if (!content_file.query_exists()) {
+			if (!GLib.FileUtils.test(content_file.get_path(), GLib.FileTest.EXISTS)) {
 				throw new GLib.FileError.NOENT("Content file not found: " + opt_content_file);
 			}
 			uint8[] data;

@@ -109,7 +109,7 @@ namespace OLLMfilesd
 		protected async string read_async_real() throws Error
 		{
 			var file_obj = GLib.File.new_for_path(this.file.path);
-			if (!file_obj.query_exists()) {
+			if (!GLib.FileUtils.test(file_obj.get_path(), GLib.FileTest.EXISTS)) {
 				throw new GLib.FileError.NOENT("File not found: " + this.file.path);
 			}
 			
@@ -412,7 +412,7 @@ namespace OLLMfilesd
 		{
 			var dirname = GLib.Path.get_dirname(this.file.path);
 			var dir_file = GLib.File.new_for_path(dirname);
-			if (!dir_file.query_exists()) {
+			if (!GLib.FileUtils.test(dir_file.get_path(), GLib.FileTest.EXISTS)) {
 				dir_file.make_directory_with_parents(null);
 			}
 			

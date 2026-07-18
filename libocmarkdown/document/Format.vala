@@ -89,7 +89,7 @@ namespace Markdown.Document
 			var raw = this.path;
 			var gf = GLib.File.new_for_path (raw);
 			// Target already exists as written (no rewrite).
-			if (gf.query_exists ()) {
+			if (GLib.FileUtils.test(gf.get_path(), GLib.FileTest.EXISTS)) {
 				return;
 			}
 			// Absolute path already under project; joining again would be wrong.
@@ -108,7 +108,7 @@ namespace Markdown.Document
 			}
 			var cf = GLib.File.new_for_path (candidate);
 			// Corrected path must exist before we rewrite link fields.
-			if (!cf.query_exists ()) {
+			if (!GLib.FileUtils.test(cf.get_path(), GLib.FileTest.EXISTS)) {
 				return;
 			}
 			this.path = candidate;
@@ -133,7 +133,7 @@ namespace Markdown.Document
 			}
 			var gf = GLib.File.new_for_path (rp);
 			// First probe: directory exactly at rp (as given or relative-resolved).
-			if (gf.query_exists ()
+			if (GLib.FileUtils.test(gf.get_path(), GLib.FileTest.EXISTS)
 				&& gf.query_file_type (GLib.FileQueryInfoFlags.NONE) == GLib.FileType.DIRECTORY) {
 				return true;
 			}
@@ -157,7 +157,7 @@ namespace Markdown.Document
 				return false;
 			}
 			var cf = GLib.File.new_for_path (candidate);
-			if (!cf.query_exists ()) {
+			if (!GLib.FileUtils.test(cf.get_path(), GLib.FileTest.EXISTS)) {
 				return false;
 			}
 			// Exists but is a file: not a directory target.

@@ -60,7 +60,7 @@ namespace OLLMfilesd
 				GLib.Environment.get_home_dir(), ".config", "Cursor", "User", "globalStorage", "state.vscdb"
 			);
 			
-			if (!GLib.File.new_for_path(cursor_db_path).query_exists()) {
+			if (!GLib.FileUtils.test(cursor_db_path, GLib.FileTest.EXISTS)) {
 				return;
 			}
 			
@@ -165,7 +165,7 @@ namespace OLLMfilesd
 				GLib.Environment.get_home_dir(), ".config", "roobuilder", "Projects.list"
 			);
 			
-			if (!GLib.File.new_for_path(projects_list_path).query_exists()) {
+			if (!GLib.FileUtils.test(projects_list_path, GLib.FileTest.EXISTS)) {
 				return;
 			}
 			
@@ -205,7 +205,7 @@ namespace OLLMfilesd
 				GLib.Environment.get_home_dir(), ".config", "Code", "storage.json"
 			);
 			
-			if (!GLib.File.new_for_path(storage_json_path).query_exists()) {
+			if (!GLib.FileUtils.test(storage_json_path, GLib.FileTest.EXISTS)) {
 				return;
 			}
 			

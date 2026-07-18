@@ -107,7 +107,7 @@ Examples:
 		if (opt_data_dir != "") {
 			this.data_dir = opt_data_dir;
 			var data_dir_file = GLib.File.new_for_path(this.data_dir);
-			if (!data_dir_file.query_exists()) {
+			if (!GLib.FileUtils.test(data_dir_file.get_path(), GLib.FileTest.EXISTS)) {
 				return "Error: data directory does not exist: %s\n".printf(this.data_dir);
 			}
 		}
@@ -190,7 +190,7 @@ Examples:
 		stdout.printf("=== Code Vector Indexer ===\n\n");
 
 		var file = GLib.File.new_for_path(path);
-		if (!file.query_exists()) {
+		if (!GLib.FileUtils.test(file.get_path(), GLib.FileTest.EXISTS)) {
 			throw new GLib.IOError.NOT_FOUND("Path not found: " + path);
 		}
 

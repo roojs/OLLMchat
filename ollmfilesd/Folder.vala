@@ -405,7 +405,7 @@ namespace OLLMfilesd
 					if (this.manager.git_provider.repository_exists(this)) {
 						// Check if .git directory still exists
 						var git_dir = GLib.File.new_for_path(GLib.Path.build_filename(this.path, ".git"));
-						if (git_dir.query_exists()) {
+						if (GLib.FileUtils.test(git_dir.get_path(), GLib.FileTest.EXISTS)) {
 							// .git exists, we're all good
 							return;
 						}
@@ -665,7 +665,7 @@ namespace OLLMfilesd
 		private async Gee.ArrayList<FileBase> read_dir_scan() throws Error, ThreadError
 		{
 			var dir = GLib.File.new_for_path(this.path);
-			if (!dir.query_exists()) {
+			if (!GLib.FileUtils.test(dir.get_path(), GLib.FileTest.EXISTS)) {
 				throw new GLib.IOError.NOT_FOUND("Directory does not exist: " + this.path);
 			}
 			
@@ -1099,7 +1099,7 @@ namespace OLLMfilesd
 			
 			// Query folder info from disk
 			var gfile = GLib.File.new_for_path(child_path);
-			if (!gfile.query_exists()) {
+			if (!GLib.FileUtils.test(gfile.get_path(), GLib.FileTest.EXISTS)) {
 				GLib.warning("Folder.make_children: Folder does not exist on disk: %s", child_path);
 				return null;
 			}
@@ -1295,7 +1295,7 @@ namespace OLLMfilesd
 		 */
 		public async void realize(FileParams p) throws Error
 		{
-			if (!GLib.File.new_for_path(this.path).query_exists()) {
+			if (!GLib.FileUtils.test(this.path, GLib.FileTest.EXISTS)) {
 				GLib.File.new_for_path(this.path).make_directory(null);
 			}
 			if (p.unix_mode == 0) {

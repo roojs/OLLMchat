@@ -94,7 +94,7 @@ namespace OLLMvector2
 			
 			// Check if index file exists - if so, load it (dimension comes from file)
 			var index_file = GLib.File.new_for_path(this.filename);
-			if (index_file.query_exists()) {
+			if (GLib.FileUtils.test(index_file.get_path(), GLib.FileTest.EXISTS)) {
 				// Load existing index
 				Faiss.Index loaded_index;
 				if (Faiss.read_index_fname(this.filename, 0, out loaded_index) != 0) {

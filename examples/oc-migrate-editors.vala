@@ -28,7 +28,7 @@ namespace OLLMchat
 		var db_file = GLib.File.new_for_path(db_path);
 		
 		// Delete existing database if it exists
-		if (db_file.query_exists()) {
+		if (GLib.FileUtils.test(db_file.get_path(), GLib.FileTest.EXISTS)) {
 			try {
 				db_file.delete(null);
 				GLib.debug("Deleted existing database: %s", db_path);

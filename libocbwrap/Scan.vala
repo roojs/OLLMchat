@@ -79,7 +79,7 @@ namespace OLLMbwrap
 		private async void scan_dir(string overlay_path, string real_path)
 		{
 			var overlay_dir = GLib.File.new_for_path(overlay_path);
-			if (!overlay_dir.query_exists()) {
+			if (!GLib.FileUtils.test(overlay_dir.get_path(), GLib.FileTest.EXISTS)) {
 				return;
 			}
 
@@ -262,7 +262,7 @@ namespace OLLMbwrap
 		{
 			try {
 				var file = GLib.File.new_for_path(overlay_path);
-				if (!file.query_exists(null)) {
+				if (!GLib.FileUtils.test(file.get_path(), GLib.FileTest.EXISTS)) {
 					return false;
 				}
 

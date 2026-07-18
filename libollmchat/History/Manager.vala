@@ -353,12 +353,12 @@ namespace OLLMchat.History
 				if (placeholder.total_messages == 0) {
 					continue;
 				}
-				// Verify the session file exists and has content before adding
-				var file = placeholder.session_file();
-				if (!file.query_exists()) {
+				var path = GLib.Path.build_filename(
+					this.history_dir, placeholder.to_path() + ".json");
+				if (!GLib.FileUtils.test(path, GLib.FileTest.EXISTS)) {
 					continue;
 				}
-				var info = file.query_info(
+				var info = GLib.File.new_for_path(path).query_info(
 					GLib.FileAttribute.STANDARD_SIZE, GLib.FileQueryInfoFlags.NONE, null);
 				if (info.get_size() == 0) {
 					continue;

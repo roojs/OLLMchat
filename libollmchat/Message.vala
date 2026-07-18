@@ -332,7 +332,7 @@ namespace OLLMchat
 			var arr = new Json.Array();
 			foreach (var path in this.images) {
 				var file = GLib.File.new_for_path(path);
-				if (!file.query_exists()) {
+				if (!GLib.FileUtils.test(file.get_path(), GLib.FileTest.EXISTS)) {
 					continue;
 				}
 				string? content_type = null;

@@ -99,7 +99,7 @@ namespace OLLMfilesd
 				try {
 					// Load synchronously for get_text (caller should use read_async first)
 					var file_obj = GLib.File.new_for_path(this.file.path);
-					if (!file_obj.query_exists()) {
+					if (!GLib.FileUtils.test(file_obj.get_path(), GLib.FileTest.EXISTS)) {
 						return "";
 					}
 					
@@ -135,7 +135,7 @@ namespace OLLMfilesd
 				// Try to load cache
 				try {
 					var file_obj = GLib.File.new_for_path(this.file.path);
-					if (!file_obj.query_exists()) {
+					if (!GLib.FileUtils.test(file_obj.get_path(), GLib.FileTest.EXISTS)) {
 						return 0;
 					}
 					
@@ -162,7 +162,7 @@ namespace OLLMfilesd
 				// Try to load cache
 				try {
 					var file_obj = GLib.File.new_for_path(this.file.path);
-					if (!file_obj.query_exists()) {
+					if (!GLib.FileUtils.test(file_obj.get_path(), GLib.FileTest.EXISTS)) {
 						return "";
 					}
 					
@@ -275,7 +275,7 @@ namespace OLLMfilesd
 			var path_file = GLib.File.new_for_path(this.file.path);
 			GLib.FileInputStream stream;
 			try {
-				if (!path_file.query_exists()) {
+				if (!GLib.FileUtils.test(path_file.get_path(), GLib.FileTest.EXISTS)) {
 					return result;
 				}
 				stream = path_file.read(null);

@@ -125,7 +125,7 @@ namespace OLLMcoder
 		public async string read_async() throws Error
 		{
 			var file_obj = GLib.File.new_for_path(this.file.path);
-			if (!file_obj.query_exists()) {
+			if (!GLib.FileUtils.test(file_obj.get_path(), GLib.FileTest.EXISTS)) {
 				throw new GLib.FileError.NOENT("File not found: " + this.file.path);
 			}
 			

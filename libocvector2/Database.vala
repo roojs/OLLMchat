@@ -187,7 +187,7 @@ namespace OLLMvector2
 			}
 			var dim = this.index.dimension;
 			var index_file = GLib.File.new_for_path (this.filename);
-			if (index_file.query_exists ()) {
+			if (GLib.FileUtils.test(index_file.get_path(), GLib.FileTest.EXISTS)) {
 				index_file.delete ();
 			}
 			this.index = new Index (this.filename, dim);

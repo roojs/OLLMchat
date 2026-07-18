@@ -56,7 +56,7 @@ namespace OLLMchat.History
 		}
 
 		/**
-		 * Returns the session JSON file (caller can use query_exists() on it).
+		 * Returns the session JSON file (caller can use FileUtils.test on its path).
 		 */
 		public GLib.File session_file()
 		{
@@ -97,7 +97,7 @@ namespace OLLMchat.History
 			
 			// b) Load the JSON file into a SessionJson
 			var file = this.session_file();
-			if (!file.query_exists()) {
+			if (!GLib.FileUtils.test(file.get_path(), GLib.FileTest.EXISTS)) {
 				throw new GLib.FileError.NOENT("File not found: " + file.get_path());
 			}
 			var info = file.query_info(GLib.FileAttribute.STANDARD_SIZE, GLib.FileQueryInfoFlags.NONE, null);

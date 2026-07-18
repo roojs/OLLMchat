@@ -298,13 +298,13 @@ namespace OLLMchat.History
 		public override string task_dir()
 		{
 			var dir = GLib.Path.build_filename(this.manager.history_dir, this.to_path());
-			var d = GLib.File.new_for_path(dir);
-			if (!d.query_exists()) {
-				try {
-					d.make_directory_with_parents(null);
-				} catch (GLib.Error e) {
-					GLib.critical("Session.task_dir: failed to create %s: %s", dir, e.message);
-				}
+			if (GLib.FileUtils.test(dir, GLib.FileTest.EXISTS)) {
+				return dir;
+			}
+			try {
+				GLib.File.new_for_path(dir).make_directory_with_parents(null);
+			} catch (GLib.Error e) {
+				GLib.critical("%s", e.message);
 			}
 			return dir;
 		}
@@ -414,15 +414,9 @@ namespace OLLMchat.History
 		// Build full file path
 			var full_path = GLib.Path.build_filename(this.manager.history_dir, this.to_path() + ".json");
 			
-			// Ensure directory exists
 			var dir_path = GLib.Path.get_dirname(full_path);
-			var dir = GLib.File.new_for_path(dir_path);
-			if (!dir.query_exists()) {
-				try {
-					dir.make_directory_with_parents(null);
-				} catch (GLib.Error e) {
-					throw new GLib.IOError.FAILED("Failed to create directory " + dir_path + ": " + e.message);
-				}
+			if (!GLib.FileUtils.test(dir_path, GLib.FileTest.EXISTS)) {
+				GLib.File.new_for_path(dir_path).make_directory_with_parents(null);
 			}
 			
 			// Serialize to JSON

@@ -102,7 +102,7 @@ namespace OLLMfilesd
 		public int64 mtime_on_disk()
 		{
 			var file = GLib.File.new_for_path(this.path);
-			if (!file.query_exists()) {
+			if (!GLib.FileUtils.test(file.get_path(), GLib.FileTest.EXISTS)) {
 				GLib.critical("mtime_on_disk: File does not exist '%s'", this.path);
 				return 0;
 			}
@@ -443,7 +443,7 @@ namespace OLLMfilesd
 		public  GLib.FileInfo? get_target_info(string target_path)
 		{
 			var target_file_obj = GLib.File.new_for_path(target_path);
-			if (!target_file_obj.query_exists()) {
+			if (!GLib.FileUtils.test(target_file_obj.get_path(), GLib.FileTest.EXISTS)) {
 				return null; // Target doesn't exist
 			}
 			

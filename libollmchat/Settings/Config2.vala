@@ -578,7 +578,7 @@ namespace OLLMchat.Settings
 		{
 			// Ensure directory exists
 			var dir = GLib.File.new_for_path(GLib.Path.get_dirname(Config2.config_path));
-			if (!dir.query_exists()) {
+			if (!GLib.FileUtils.test(dir.get_path(), GLib.FileTest.EXISTS)) {
 				try {
 					dir.make_directory_with_parents(null);
 				} catch (GLib.Error e) {

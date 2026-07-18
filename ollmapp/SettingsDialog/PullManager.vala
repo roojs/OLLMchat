@@ -500,7 +500,7 @@ namespace OLLMapp.SettingsDialog
 		 */
 		private void load_from_file()
 		{
-			if (!GLib.File.new_for_path(this.loading_json_path).query_exists()) {
+			if (!GLib.FileUtils.test(this.loading_json_path, GLib.FileTest.EXISTS)) {
 				return;
 			}
 			

@@ -34,7 +34,7 @@ namespace OLLMrpc.Transport
 			}
 
 			var parent = GLib.File.new_for_path(this.socket_path).get_parent();
-			if (parent != null && !parent.query_exists()) {
+			if (parent != null && !GLib.FileUtils.test(parent.get_path(), GLib.FileTest.EXISTS)) {
 				try {
 					parent.make_directory_with_parents(null);
 				} catch (GLib.Error e) {

@@ -206,7 +206,7 @@ namespace OLLMtools.RunCommand
 				var home_playground = GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
 				if (normalized_working_dir != home_playground) {
 					var dir_file = GLib.File.new_for_path(normalized_working_dir);
-					if (!dir_file.query_exists()) {
+					if (!GLib.FileUtils.test(dir_file.get_path(), GLib.FileTest.EXISTS)) {
 						return "ERROR: Working directory does not exist: " + normalized_working_dir;
 					}
 					var file_type = dir_file.query_file_type(GLib.FileQueryInfoFlags.NONE, null);
@@ -375,14 +375,14 @@ namespace OLLMtools.RunCommand
 			if (work_dir == home_playground) {
 				work_dir = GLib.Path.build_filename(GLib.Environment.get_home_dir(), ".local", "share", "ollmchat", "playground");
 				var pf = GLib.File.new_for_path(work_dir);
-				if (!pf.query_exists()) {
+				if (!GLib.FileUtils.test(pf.get_path(), GLib.FileTest.EXISTS)) {
 					pf.make_directory_with_parents(null);
 				}
 			}
 			
 			// Validate directory exists (should already be validated in execute(), but double-check for safety)
 			var dir_file = GLib.File.new_for_path(work_dir);
-			if (!dir_file.query_exists()) {
+			if (!GLib.FileUtils.test(dir_file.get_path(), GLib.FileTest.EXISTS)) {
 				throw new GLib.IOError.NOT_FOUND("Working directory does not exist: " + work_dir);
 			}
 			

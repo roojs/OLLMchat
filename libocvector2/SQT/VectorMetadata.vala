@@ -515,7 +515,7 @@ namespace OLLMvector2.SQT
 		{
 			// Delete FAISS vector database file (ignore if doesn't exist)
 			var vector_db_file = GLib.File.new_for_path(vector_db_path);
-			if (vector_db_file.query_exists()) {
+			if (GLib.FileUtils.test(vector_db_file.get_path(), GLib.FileTest.EXISTS)) {
 				vector_db_file.delete();
 			}
 			

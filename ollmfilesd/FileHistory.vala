@@ -247,7 +247,7 @@ namespace OLLMfilesd
 			// File already gone (e.g. moved or deleted outside the app) — record deletion, no backup.
 			if (this.change_type == "deleted") {
 				var src = GLib.File.new_for_path(this.path);
-				if (!src.query_exists()) {
+				if (!GLib.FileUtils.test(src.get_path(), GLib.FileTest.EXISTS)) {
 					//GLib.debug("FileHistory.create_backup: skip backup (path already absent): %s", this.path);
 					return;
 				}
@@ -263,7 +263,7 @@ namespace OLLMfilesd
 				
 				// Create cache directory if it doesn't exist
 				var cache_dir_file = GLib.File.new_for_path(cache_dir);
-				if (!cache_dir_file.query_exists()) {
+				if (!GLib.FileUtils.test(cache_dir_file.get_path(), GLib.FileTest.EXISTS)) {
 					cache_dir_file.make_directory_with_parents(null);
 				}
 				
@@ -609,7 +609,7 @@ namespace OLLMfilesd
 			var target_file = GLib.File.new_for_path(this.path);
 			var parent_dir = target_file.get_parent();
 			try {
-				if (parent_dir != null && !parent_dir.query_exists()) {
+				if (parent_dir != null && !GLib.FileUtils.test(parent_dir.get_path(), GLib.FileTest.EXISTS)) {
 					parent_dir.make_directory_with_parents(null);
 				}
 				backup_file.copy(

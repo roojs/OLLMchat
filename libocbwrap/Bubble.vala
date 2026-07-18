@@ -223,7 +223,7 @@ namespace OLLMbwrap
 				"playground"
 			);
 			var playground_file = GLib.File.new_for_path(playground_path);
-			if (!playground_file.query_exists()) {
+			if (!GLib.FileUtils.test(playground_file.get_path(), GLib.FileTest.EXISTS)) {
 				playground_file.make_directory_with_parents(null);
 			}
 			return playground_path;

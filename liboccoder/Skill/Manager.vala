@@ -113,7 +113,7 @@ namespace OLLMcoder.Skill
 		private void scan_dir(string dir_path)
 		{
 			var dir = GLib.File.new_for_path(dir_path);
-			if (!dir.query_exists()) {
+			if (!GLib.FileUtils.test(dir.get_path(), GLib.FileTest.EXISTS)) {
 				return;
 			}
 			GLib.FileEnumerator enumerator;
