@@ -6,136 +6,178 @@
 
 /* -------------------------------------------------------------------
    1. Bootstrap Color Variables
-   All Bootstrap theme colors defined as CSS custom properties
-   Includes main colors, RGB values for shadows, subtle backgrounds,
-   and text emphasis colors
+   Base = solid utility; bg-subtle = ~5% of base over white;
+   text-emphasis = foreground for titles / flat header buttons
    ------------------------------------------------------------------- */
-   :root {
+:root {
     /* Primary (blue) */
     --bs-primary: #0d6efd;
     --bs-primary-rgb: 13, 110, 253;
-    --bs-primary-bg-subtle: #cfe2ff;
-    --bs-primary-text-emphasis: #0a58ca;
+    --bs-primary-bg-subtle: #f3f8ff;
+    --bs-primary-text-emphasis: #052c65;
+
+    /* Secondary (gray) */
+    --bs-secondary: #6c757d;
+    --bs-secondary-rgb: 108, 117, 125;
+    --bs-secondary-bg-subtle: #f8f8f9;
+    --bs-secondary-text-emphasis: #2b2f32;
 
     /* Success (green) */
     --bs-success: #198754;
     --bs-success-rgb: 25, 135, 84;
-    --bs-success-bg-subtle: #d1e7dd;
-    --bs-success-text-emphasis: #0f5132;
+    --bs-success-bg-subtle: #f4f9f6;
+    --bs-success-text-emphasis: #0a3622;
 
     /* Info (cyan) */
     --bs-info: #0dcaf0;
     --bs-info-rgb: 13, 202, 240;
-    --bs-info-bg-subtle: #cff4fc;
-    --bs-info-text-emphasis: #087990;
+    --bs-info-bg-subtle: #f3fcfe;
+    --bs-info-text-emphasis: #055160;
 
     /* Warning (yellow) */
     --bs-warning: #ffc107;
     --bs-warning-rgb: 255, 193, 7;
-    --bs-warning-bg-subtle: #fff3cd;
-    --bs-warning-text-emphasis: #997404;
+    --bs-warning-bg-subtle: #fffcf3;
+    --bs-warning-text-emphasis: #664d03;
 
     /* Danger (red) */
     --bs-danger: #dc3545;
     --bs-danger-rgb: 220, 53, 69;
-    --bs-danger-bg-subtle: #f8d7da;
-    --bs-danger-text-emphasis: #b02a37;
+    --bs-danger-bg-subtle: #fdf5f6;
+    --bs-danger-text-emphasis: #58151c;
+
+    /* Light */
+    --bs-light: #f8f9fa;
+    --bs-light-rgb: 248, 249, 250;
+    --bs-light-bg-subtle: #fefeff;
+    --bs-light-text-emphasis: #495057;
+
+    /* Dark */
+    --bs-dark: #212529;
+    --bs-dark-rgb: 33, 37, 41;
+    --bs-dark-bg-subtle: #f4f4f4;
+    --bs-dark-text-emphasis: #495057;
 }
 
 /* -------------------------------------------------------------------
    2. Base Frame Class (.oc-frame)
-   Contains ALL structural styling - border radius, shadows,
-   margins, padding, and child element relationships.
-   Colors are controlled by CSS variables set in theme classes below.
+   Soft fill only — no border / shadow. Header, body, and SourceView
+   share --frame-bg; titles and buttons use --frame-text-emphasis.
    ------------------------------------------------------------------- */
 
-/* Main frame styling - structure and default (code-block) look when no theme class */
 .oc-frame {
     border-radius: 8px;
-    border-width: 3px;
-    border-style: solid;
-    box-shadow: 0 2px 4px var(--frame-shadow, rgba(255, 215, 0, 0.3));
+    border-width: 0;
+    border-style: none;
+    box-shadow: none;
     margin-bottom: 8px;
 
-    /* Theme classes override these; default = code block (light yellow) */
-    background-color: var(--frame-bg, #fffacd);
-    border-color: var(--frame-border, #FFD700);
+    /* Default unthemed fence = warning soft fill */
+    background-color: var(--frame-bg, var(--bs-warning-bg-subtle));
+    color: var(--frame-text-emphasis, var(--bs-warning-text-emphasis));
 }
 
-/* Child elements inherit frame background */
 .oc-frame > box,
 .oc-frame .oc-frame-header {
     background-color: inherit;
 }
 
-/* Inner text views always white for readability */
-.oc-frame text {
-    background-color: white;
+/* Body (TextView / SourceView / nested markdown) matches frame fill */
+.oc-frame text,
+.oc-frame textview,
+.oc-frame .code-editor,
+.oc-frame .code-editor text,
+.oc-frame .source-view,
+.oc-frame .source-view text,
+.oc-frame .oc-nested-markdown-content {
+    background-color: var(--frame-bg, var(--bs-warning-bg-subtle));
 }
 
-/* Frame header label uses theme's emphasis color */
 .oc-frame .oc-frame-header label {
     color: var(--frame-text-emphasis, inherit);
     font-weight: 500;
 }
 
-/* Buttons consistently scaled */
+/* Flat header buttons: same fill as frame, no hover/active recolor */
 .oc-frame button {
     transform: scale(0.7);
     transform-origin: center;
+    background-color: var(--frame-bg, var(--bs-warning-bg-subtle));
+    color: var(--frame-text-emphasis, var(--bs-warning-text-emphasis));
+    border-width: 0;
+    border-style: none;
+    box-shadow: none;
+    outline: none;
+}
+
+.oc-frame button:hover,
+.oc-frame button:active,
+.oc-frame button:checked,
+.oc-frame button:focus,
+.oc-frame button:focus-visible {
+    background-color: var(--frame-bg, var(--bs-warning-bg-subtle));
+    color: var(--frame-text-emphasis, var(--bs-warning-text-emphasis));
+    border-width: 0;
+    box-shadow: none;
+    outline: none;
 }
 
 /* -------------------------------------------------------------------
    3. Frame Theme Classes
    Each class ONLY sets CSS variables consumed by .oc-frame
-   Add new themes by defining the same four variables
    ------------------------------------------------------------------- */
 
-/* Primary theme (blue) */
 .oc-frame-primary {
     --frame-bg: var(--bs-primary-bg-subtle);
-    --frame-border: var(--bs-primary);
-    --frame-shadow: rgba(var(--bs-primary-rgb), 0.3);
     --frame-text-emphasis: var(--bs-primary-text-emphasis);
 }
 
-/* Success theme (green) */
+/* User "You said" frames: soft primary edge on right + bottom — no solid border */
+.oc-frame-user {
+    box-shadow:
+        1px 0 0 rgba(var(--bs-primary-rgb), 0.38),
+        0 1px 0 rgba(var(--bs-primary-rgb), 0.38),
+        1px 2px 5px rgba(var(--bs-primary-rgb), 0.18);
+}
+
+.oc-frame-secondary {
+    --frame-bg: var(--bs-secondary-bg-subtle);
+    --frame-text-emphasis: var(--bs-secondary-text-emphasis);
+}
+
 .oc-frame-success {
     --frame-bg: var(--bs-success-bg-subtle);
-    --frame-border: var(--bs-success);
-    --frame-shadow: rgba(var(--bs-success-rgb), 0.3);
     --frame-text-emphasis: var(--bs-success-text-emphasis);
 }
 
-/* Info theme (cyan) */
 .oc-frame-info {
     --frame-bg: var(--bs-info-bg-subtle);
-    --frame-border: var(--bs-info);
-    --frame-shadow: rgba(var(--bs-info-rgb), 0.3);
     --frame-text-emphasis: var(--bs-info-text-emphasis);
 }
 
-/* Warning theme (yellow) */
 .oc-frame-warning {
     --frame-bg: var(--bs-warning-bg-subtle);
-    --frame-border: var(--bs-warning);
-    --frame-shadow: rgba(var(--bs-warning-rgb), 0.3);
     --frame-text-emphasis: var(--bs-warning-text-emphasis);
 }
 
-/* Danger theme (red) */
 .oc-frame-danger {
     --frame-bg: var(--bs-danger-bg-subtle);
-    --frame-border: var(--bs-danger);
-    --frame-shadow: rgba(var(--bs-danger-rgb), 0.3);
     --frame-text-emphasis: var(--bs-danger-text-emphasis);
+}
+
+.oc-frame-light {
+    --frame-bg: var(--bs-light-bg-subtle);
+    --frame-text-emphasis: var(--bs-light-text-emphasis);
+}
+
+.oc-frame-dark {
+    --frame-bg: var(--bs-dark-bg-subtle);
+    --frame-text-emphasis: var(--bs-dark-text-emphasis);
 }
 
 /* Summary theme (purple) — Chatter conversation summary frames */
 .oc-frame-summary {
-    --frame-bg: #e8e0f0;
-    --frame-border: #6f42c1;
-    --frame-shadow: rgba(111, 66, 193, 0.25);
+    --frame-bg: #f6f3f9;
     --frame-text-emphasis: #432874;
 }
 

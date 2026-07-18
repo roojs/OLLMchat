@@ -91,8 +91,8 @@ namespace OLLMapp
 			});
 			this.header_bar.pack_start(this.new_chat_button);
 
-			this.agent_dropdown = new AgentDropdown(this);
-			this.header_bar.pack_start(this.agent_dropdown);
+			this.agent_dropdown = new AndroidAgentDropdown(this);
+			this.header_bar.set_title_widget(this.agent_dropdown);
 
 			var settings_button = new Gtk.Button() {
 				icon_name = "applications-system-symbolic",

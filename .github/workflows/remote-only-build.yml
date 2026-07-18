@@ -73,7 +73,6 @@ jobs:
             -Ddocs=false \
             -Dexamples=true \
             -Dtests=true \
-            -Dandroid_poc=true \
             -Dlocal_gguf=disabled
 
       - name: Build

@@ -28,6 +28,9 @@ endif
 if android_poc_count > 1
   error('Only one of android_shell_poc, android_poc may be set')
 endif
+if android_poc_opt and host_machine.system() != 'android'
+  error('android_poc is Android cross-build only (APK); do not enable on the host')
+endif
 
 # libocvector2.so is the daemon FAISS lib; app uses liboctools/CodebaseSearch (RPC).
 ocfiles_lib = 'ocfiles'
@@ -200,11 +203,6 @@ else
       ['oc-vector-search', 'examples/oc-vector-search'],
     ]
   endif
-endif
-if get_option('android_poc') and host_machine.system() != 'android'
-  executables_info += [
-    ['ollmchat-android-poc', 'ollmapp/ollmchat-android-poc'],
-  ]
 endif
 
 # Library paths for LD_LIBRARY_PATH

@@ -56,6 +56,10 @@ namespace OLLMchatGtk
 		private bool vbar_visible = false;
 		/** After TextView fit: pin vadjustment to bottom in next size_allocate. */
 		private bool pin_end = false;
+		/** True until yrange fit succeeds after programmatic / pending layout. */
+		private bool need_fit = false;
+		/** Last TextView allocate width — wrap height must refit when this changes. */
+		private int fit_width = 0;
 
 		/** Shared with scrollable child (horizontal — usually unused). */
 		public Gtk.Adjustment hadjustment { get; private set; }
@@ -108,6 +112,9 @@ namespace OLLMchatGtk
 				GLib.Idle.add(this.buffer_change);
 			});
 			this.vadjustment.changed.connect(() => {
+				if (this.need_fit) {
+					this.buffer_change();
+				}
 				var over_cap = this.max_height > 0 && this.content_height >= this.max_height;
 				var need = over_cap
 					&& this.vadjustment.upper > this.vadjustment.page_size + 0.5;
@@ -228,21 +235,28 @@ namespace OLLMchatGtk
 			var line_h = 0;
 			this.text_view.get_line_yrange(size_start, out y0, out h0);
 			this.text_view.get_line_yrange(size_end, out y, out line_h);
-			/* Layout not ready yet — use peer height if any, else retry. */
-			if ((h0 < 1 || line_h < 1) && peer_h > 0) {
-				this.content_height = peer_h;
-				this.pin_end = false;
-				this.vadjustment.value = 0;
-				return false;
-			}
+			/* Layout not ready: peer interim; content waits for vadjustment (TextView validate). */
 			if (h0 < 1 || line_h < 1) {
+				if (peer_h > 0) {
+					this.content_height = peer_h;
+					this.pin_end = false;
+					this.vadjustment.value = 0;
+				}
+				if (end_off > 0) {
+					this.need_fit = true;
+					return false;
+				}
+				this.need_fit = false;
+				if (peer_h > 0) {
+					return false;
+				}
 				return true;
 			}
+			this.need_fit = false;
 			var content_h = y + line_h;
-			/* One visual line (empty buffer is still one GTK line). */
-			var one_line = content_h <= h0;
-			if (one_line && peer_h > 0) {
-				/* Center the line in the peer-sized viewport. */
+			/* yrange is paragraph height (GTK); peer only when content fits the play-button row. */
+			var use_peer = peer_h > 0 && content_h <= peer_h;
+			if (use_peer) {
 				var extra = peer_h - content_h;
 				if (extra < 0) {
 					extra = 0;
@@ -251,15 +265,12 @@ namespace OLLMchatGtk
 				this.text_view.top_margin = top;
 				this.text_view.bottom_margin = extra - top;
 			}
-			if (!one_line) {
+			if (!use_peer) {
 				this.text_view.top_margin = 4;
 				this.text_view.bottom_margin = 4;
 			}
 			var yrange_h = content_h + this.text_view.top_margin + this.text_view.bottom_margin;
-			var target = yrange_h;
-			if (one_line && peer_h > 0) {
-				target = peer_h;
-			}
+			var target = use_peer ? peer_h : yrange_h;
 			if (target < 1) {
 				target = 1;
 			}
@@ -340,6 +351,10 @@ namespace OLLMchatGtk
 			}
 			if (this.child_widget != null && this.child_widget.visible) {
 				this.child_widget.allocate(child_w, height, baseline, null);
+			}
+			if (this.text_view != null && child_w != this.fit_width) {
+				this.fit_width = child_w;
+				GLib.Idle.add(this.buffer_change);
 			}
 			if (this.pin_end) {
 				this.pin_end = false;

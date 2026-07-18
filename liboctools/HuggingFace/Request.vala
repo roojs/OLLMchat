@@ -126,14 +126,14 @@ namespace OLLMtools.HuggingFace
 
 			this.agent.add_message(new OLLMchat.Message("ui",
 				OLLMchat.Message.fenced(
-					"text.oc-frame-info.collapsed Hugging Face Hub: download",
+					"text.oc-frame-success.collapsed Request download",
 					this.to_summary())));
 
 			if (this.model_ref.strip() == "") {
 				var err = "ERROR: 'model_ref' is required for download. Refer to help for usage.";
 				this.agent.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced(
-						"text.oc-frame-danger.collapsed Hugging Face Hub: download",
+						"text.oc-frame-danger.collapsed Download response",
 						this.to_summary() + "\n\n" + err)));
 				return this.to_summary() + "\n\n" + err;
 			}
@@ -144,7 +144,7 @@ namespace OLLMtools.HuggingFace
 					+ "Refer to help for sharding rules.";
 				this.agent.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced(
-						"text.oc-frame-danger.collapsed Hugging Face Hub: download",
+						"text.oc-frame-danger.collapsed Download response",
 						this.to_summary() + "\n\n" + err)));
 				return this.to_summary() + "\n\n" + err;
 			}
@@ -176,7 +176,7 @@ namespace OLLMtools.HuggingFace
 				var err = "ERROR: " + e.message;
 				this.agent.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced(
-						"text.oc-frame-danger.collapsed Hugging Face Hub: download",
+						"text.oc-frame-danger.collapsed Download response",
 						this.to_summary() + "\n\n" + err)));
 				return this.to_summary() + "\n\n" + err;
 			}
@@ -213,7 +213,7 @@ namespace OLLMtools.HuggingFace
 					+ this.download_model.to_markdown();
 				this.agent.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced(
-						"text.oc-frame-danger.collapsed Hugging Face Hub: download",
+						"text.oc-frame-danger.collapsed Download response",
 						this.to_summary() + "\n\n" + err)));
 				return this.to_summary() + "\n\n" + err;
 			}
@@ -221,7 +221,7 @@ namespace OLLMtools.HuggingFace
 				var err = "ERROR: Could not determine download size for the requested files.";
 				this.agent.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced(
-						"text.oc-frame-danger.collapsed Hugging Face Hub: download",
+						"text.oc-frame-danger.collapsed Download response",
 						this.to_summary() + "\n\n" + err)));
 				return this.to_summary() + "\n\n" + err;
 			}
@@ -230,7 +230,7 @@ namespace OLLMtools.HuggingFace
 			if (result.has_prefix("ERROR:")) {
 				this.agent.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced(
-						"text.oc-frame-danger.collapsed Hugging Face Hub: download",
+						"text.oc-frame-danger.collapsed Download response",
 						this.to_summary() + "\n\n" + result)));
 			}
 			return result;
@@ -315,20 +315,26 @@ namespace OLLMtools.HuggingFace
 		{
 			var act = this.action.strip().down();
 			if (!this.help && act != "download") {
-				var frame_title = "Hugging Face Hub";
-				if (this.action.strip() != "") {
-					frame_title += ": " + this.action.strip();
+				var frame_title = "Request";
+				if (act == "search") {
+					frame_title = "Search";
+				}
+				if (act == "detail") {
+					frame_title = "Request detail";
+				}
+				if (act != "" && act != "search" && act != "detail") {
+					frame_title = "Request " + this.action.strip();
 				}
 				this.agent.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced(
-						"text.oc-frame-info.collapsed " + frame_title,
+						"text.oc-frame-success.collapsed " + frame_title,
 						this.to_summary())));
 			}
 
 			if (this.help) {
 				this.agent.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced(
-						"text.oc-frame-info.collapsed Hugging Face Hub: help",
+						"text.oc-frame-success.collapsed Request help",
 						this.to_summary())));
 				var tpl = new OLLMchat.Prompt.Template("huggingface-help.md") {
 					source = "resource:///",
@@ -338,7 +344,7 @@ namespace OLLMtools.HuggingFace
 				var help_result = tpl.fill("vram_limit", this.vram_limit_text());
 				this.agent.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced(
-						"text.oc-frame-success.collapsed Hugging Face Hub: help",
+						"text.oc-frame-success.collapsed Help response",
 						help_result)));
 				return help_result;
 			}
@@ -411,7 +417,7 @@ namespace OLLMtools.HuggingFace
 					}
 					this.agent.add_message(new OLLMchat.Message("ui",
 						OLLMchat.Message.fenced(
-							"markdown.oc-frame-success.collapsed Hugging Face Hub: search results",
+							"markdown.oc-frame-success.collapsed search results",
 							search_result)));
 					return search_result;
 
@@ -446,7 +452,7 @@ namespace OLLMtools.HuggingFace
 					var detail_result = hub_model.to_markdown();
 					this.agent.add_message(new OLLMchat.Message("ui",
 						OLLMchat.Message.fenced(
-							"markdown.oc-frame-success.collapsed Hugging Face Hub: detail",
+							"markdown.oc-frame-success.collapsed Detail response",
 							detail_result)));
 					return detail_result;
 
@@ -529,7 +535,7 @@ namespace OLLMtools.HuggingFace
 						+ "). Watch the activity bar for progress.";
 					this.agent.add_message(new OLLMchat.Message("ui",
 						OLLMchat.Message.fenced(
-							"text.oc-frame-success.collapsed Hugging Face Hub: download",
+							"text.oc-frame-success.collapsed Download response",
 							download_result)));
 					return download_result;
 

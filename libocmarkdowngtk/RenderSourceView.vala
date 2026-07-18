@@ -174,10 +174,30 @@ namespace MarkdownGtk
 			title_label.max_width_chars = -1;  // no character limit
 			header_box.append(title_label);
 			
-			// Add spacer to push buttons to the right
-			header_box.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+			// Spacer pushes action buttons right; with collapse, title+spacer click toggles body
+			var title_spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				hexpand = true
+			};
+			header_box.append(title_spacer);
+
+			var title_click = new Gtk.GestureClick();
+			title_click.set_button(1);
+			title_click.released.connect(() => {
+				if (!this.collapse_toggle_button.visible) {
+					return;
+				}
+				this.collapse_toggle_button.clicked();
 			});
+			title_label.add_controller(title_click);
+			var spacer_click = new Gtk.GestureClick();
+			spacer_click.set_button(1);
+			spacer_click.released.connect(() => {
+				if (!this.collapse_toggle_button.visible) {
+					return;
+				}
+				this.collapse_toggle_button.clicked();
+			});
+			title_spacer.add_controller(spacer_click);
 			
 			// Create horizontal box for buttons at top-right
 			var button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
@@ -289,6 +309,17 @@ namespace MarkdownGtk
 			
 			button_box.append(this.view_source_toggle);
 			button_box.append(full_view_toggle);
+
+			var pointer = new Gdk.Cursor.from_name("pointer", null);
+			if (pointer != null) {
+				this.collapse_toggle_button.set_cursor(pointer);
+				title_label.set_cursor(pointer);
+				title_spacer.set_cursor(pointer);
+				this.copy_button.set_cursor(pointer);
+				full_view_toggle.set_cursor(pointer);
+				this.new_chat_button.set_cursor(pointer);
+				this.view_source_toggle.set_cursor(pointer);
+			}
 			
 			// Wrap in Frame for visibility and styling (no label - title is in header box)
 			// Match user box structure: same margins

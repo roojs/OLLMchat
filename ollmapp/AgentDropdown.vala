@@ -73,7 +73,7 @@ namespace OLLMapp
 				if (label == null) {
 					return;
 				}
-				label.label = agent_factory.title;
+				label.label = this.row_title(agent_factory);
 				label.tooltip_text = agent_factory.long_title;
 			});
 
@@ -84,6 +84,17 @@ namespace OLLMapp
 			this.dropdown.set_list_factory(this.list_factory);
 			this.append(this.dropdown);
 			this.hexpand = false;
+		}
+
+		/**
+		 * Text shown for one agent row in the dropdown.
+		 *
+		 * @param agent_factory Agent factory for this row
+		 * @return Label string (desktop: {@link OLLMchat.Agent.Factory.title})
+		 */
+		protected virtual string row_title(OLLMchat.Agent.Factory agent_factory)
+		{
+			return agent_factory.title;
 		}
 
 		public void wire ()

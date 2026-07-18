@@ -65,6 +65,7 @@ Options:
 
 Examples:
   {ARG} README.md
+  {ARG} tests/markdown/repro-table-header.md
   {ARG} --stream 0 tests/markdown/tables.md   (Reload button ≈ ChatView.clear mid-stream)
   {ARG} -s 50 -f docs/notes.md   (50 ms delay before streaming starts)
   {ARG} --thinking tests/markdown/repro-chatview-thinking-lines.md
@@ -291,19 +292,15 @@ Examples:
 
 	private void build_window()
 	{
-		string[] css_files = { "pulldown.css", "style.css" };
+		string[] css_files = { "pulldown.css", "style.css", "frame.css" };
 		foreach (var css_file in css_files) {
 			var css_provider = new Gtk.CssProvider();
-			try {
-				css_provider.load_from_resource("/ollmchat/" + css_file);
-				Gtk.StyleContext.add_provider_for_display(
-					Gdk.Display.get_default(),
-					css_provider,
-					Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-				);
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to load %s resource: %s", css_file, e.message);
-			}
+			css_provider.load_from_resource("/ollmchat/" + css_file);
+			Gtk.StyleContext.add_provider_for_display(
+				Gdk.Display.get_default(),
+				css_provider,
+				Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+			);
 		}
 
 		var stream = (opt_stream_delay_ms >= 0);
@@ -329,6 +326,7 @@ Examples:
 			hscrollbar_policy = Gtk.PolicyType.NEVER,
 			vscrollbar_policy = Gtk.PolicyType.AUTOMATIC
 		};
+		this.scrolled.add_css_class("chat-view-text");
 		this.scrolled.set_child(this.text_view_box);
 
 		this.md_renderer = new MarkdownGtk.Render(this.text_view_box) {

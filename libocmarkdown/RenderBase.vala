@@ -228,6 +228,11 @@ namespace Markdown
 		protected virtual void on_other(bool is_start, string tag_name) {}
 		public virtual void on_code_block(bool is_start, string lang) {}
 		protected virtual void on_table(bool is_start) {}
+		/**
+		 * Mid-stream: TABLE peek is waiting for more lines (true) or abandoned/complete (false).
+		 * GTK shows “a table being created …” with chunk-tied oscillating dots while true.
+		 */
+		public virtual void on_table_pending(bool is_pending) {}
 		protected virtual void on_table_row(bool is_start) {}
 		protected virtual void on_img(string src, string title) {}
 		protected virtual void on_br() {}

@@ -79,6 +79,10 @@ namespace MarkdownGtk
 		
 		// Table: current table when inside on_table(true)..on_table(false)
 		internal Table? current_table { get; private set; default = null; }
+		/** Label shown while BlockMap waits for 3 table lines mid-stream. */
+		private Gtk.Label? table_pending_label = null;
+		/** Oscillating ellipsis phase for pending table (1..10 dots, bounce). */
+		private int table_pending_phase = 0;
 		private Gtk.TextView? last_link_view = null;
 		private string last_tooltip_markup = "";
 		/** Emitted when the user activates a link. Connect to open URL or handle app-specific navigation. */
@@ -326,6 +330,7 @@ namespace MarkdownGtk
 		 */
 		public void clear()
 		{
+			this.on_table_pending(false);
 			// Clear current sourceview handler
 			this.childview = null;
 			
@@ -365,6 +370,11 @@ namespace MarkdownGtk
 		{
 			if (!is_start) {
 				this.current_state.close_state(true);
+				/* Same half-line gap as list start / between items (~10px feel). */
+				var gap = this.current_state.add_state();
+				gap.style.scale = 0.5;
+				gap.add_text(" \n");
+				gap.close_state();
 				return;
 			}
 			
@@ -438,7 +448,13 @@ namespace MarkdownGtk
 			if (!is_start) {
 				this.current_state.close_state();
 				this.current_state.add_text("\n");
+				return;
 			}
+			/* Padding above first bullet — same half-line gap as below headers. */
+			var gap = this.current_state.add_state();
+			gap.style.scale = 0.5;
+			gap.add_text(" \n");
+			gap.close_state();
 		}
 
 		public override void on_li(bool is_start, int list_number = 0, uint space_skip = 0, int task_checked = -1)
@@ -574,6 +590,23 @@ namespace MarkdownGtk
 		public override void on_table(bool is_start)
 		{
 			if (is_start) {
+				this.on_table_pending(false);
+				/* Drop trailing spacer/parser newlines so the previous TextView does not
+				 * reserve an empty last line; table margin_top supplies the half-line gap. */
+				Gtk.TextIter end_i;
+				this.current_buffer.get_end_iter(out end_i);
+				var cut = end_i;
+				while (cut.backward_char()) {
+					var c = cut.get_char();
+					if (c != ' ' && c != '\n' && c != '\r' && c != '\t') {
+						cut.forward_char();
+						break;
+					}
+				}
+				if (cut.compare(end_i) < 0) {
+					this.current_buffer.delete(ref cut, ref end_i);
+				}
+				this.remove_empty(this.current_textview);
 				this.current_table = new Table(this);
 				return;
 			}
@@ -581,6 +614,37 @@ namespace MarkdownGtk
 			this.current_table = null;
 			// Create new textview for content after the table (like on_hr / code block)
 			this.create_textview();
+		}
+
+		public override void on_table_pending(bool is_pending)
+		{
+			if (!is_pending) {
+				if (this.table_pending_label != null) {
+					this.box.remove(this.table_pending_label);
+					this.table_pending_label = null;
+				}
+				this.table_pending_phase = 0;
+				return;
+			}
+			if (!this.is_streaming) {
+				return;
+			}
+			if (this.table_pending_label == null) {
+				this.table_pending_label = new Gtk.Label("") {
+					xalign = 0,
+					wrap = false,
+					hexpand = true,
+					ellipsize = Pango.EllipsizeMode.NONE,
+					width_chars = 45
+				};
+				this.table_pending_label.add_css_class("dim-label");
+				this.box.appender(this.table_pending_label);
+			}
+			// 10→1→10; pad to 10 chars so width stays fixed (avoids GTK “…” ellipsis jitter)
+			var bounce = new int[] { 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+			var n = bounce[this.table_pending_phase % bounce.length];
+			this.table_pending_phase++;
+			this.table_pending_label.label = "A table being created " + string.nfill(n, '.') + string.nfill(10 - n, ' ');
 		}
 
 		public override void on_table_row(bool is_start)

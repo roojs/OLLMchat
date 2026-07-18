@@ -206,13 +206,16 @@ namespace Markdown
 			// Match: byte_length from eat is relative to (chunk_pos + space_skip); revert and add space_skip so chunk_pos is unchanged
 			byte_length = space_skip + byte_length;
 
-			// ATX heading: non-empty content starting with alphanumeric or non-ASCII (emoji); include leading space in byte_length
+			// ATX heading: non-empty content starting with alphanumeric or non-ASCII (emoji); 
+			// include leading space in byte_length
 			if (matched_block >= FormatType.HEADING_1 && matched_block <= FormatType.HEADING_6) {
 				var rest_start = chunk_pos + byte_length;
 				var rest_len = (line_end != -1) ? line_end - rest_start : (int)chunk.length - rest_start;
 				var rest = rest_len > 0 ? chunk.substring(rest_start, rest_len) : "";
 				var heading_stripped = rest.strip();
-				if (heading_stripped.length == 0 || !(heading_stripped.get_char(0).isalnum() || heading_stripped.get_char(0) >= 0x80)) {
+				if (heading_stripped.length == 0 || 
+						!(heading_stripped.get_char(0).isalnum() ||
+						heading_stripped.get_char(0) >= 0x80)) {
 					if (is_end_of_chunks) {
 						return 0;
 					}
@@ -262,45 +265,57 @@ namespace Markdown
 				// Wait for first \n so we have a complete line 1 before checking
 				if (lines.length < 2) {
 					if (is_end_of_chunks) {
+						this.parser.renderer.on_table_pending(false);
 						return 0;
 					}
+					this.parser.renderer.on_table_pending(true);
 					return -1;
 				}
 				// Line 1 must start and end with | (trim for generosity)
 				if (!lines[0].strip().has_prefix("|") || !lines[0].strip().has_suffix("|")) {
+					this.parser.renderer.on_table_pending(false);
 					return 0;
 				}
 				// If we have the second line and it doesn't start with |, reject
 				if (lines[1].strip() != "" && !lines[1].strip().has_prefix("|")) {
+					this.parser.renderer.on_table_pending(false);
 					return 0;
 				}
 				if (lines.length < 3) {
 					if (is_end_of_chunks) {
+						this.parser.renderer.on_table_pending(false);
 						return 0;
 					}
+					this.parser.renderer.on_table_pending(true);
 					return -1;
 				}
 				// Then validate separator (only space, |, -, :)
 				try {
 					if (!(new GLib.Regex("^[- |:]*$").match(lines[1].strip()))) {
+						this.parser.renderer.on_table_pending(false);
 						return 0;
 					}
 				} catch (GLib.RegexError e) {
+					this.parser.renderer.on_table_pending(false);
 					return 0;
 				}
 				// Third line: not empty and must start with |
 				if (lines[2].strip() != "" && !lines[2].strip().has_prefix("|")) {
+					this.parser.renderer.on_table_pending(false);
 					return 0;
 				}
 				// Wait for third newline so we have 3 complete lines
 				if (lines.length < 4) {
 					if (is_end_of_chunks) {
+						this.parser.renderer.on_table_pending(false);
 						return 0;
 					}
+					this.parser.renderer.on_table_pending(true);
 					return -1;
 				}
 				// Line 3 must end with |
 				if (!lines[2].strip().has_suffix("|")) {
+					this.parser.renderer.on_table_pending(false);
 					return 0;
 				}
 				// byte_length = 3 lines including newlines (support multi-byte newline)

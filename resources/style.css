@@ -9,7 +9,7 @@
 }
 .chat-view-text > viewport {
 	margin-left: 10px;
-	margin-right: 5px;
+	margin-right: 10px;
 	margin-bottom: 0;
 	padding-bottom: 0;
 }
@@ -22,19 +22,25 @@
 	margin-bottom: 0;
 }
 
-/* Markdown table: borderless frame, horizontal scroll inside viewport */
-.oc-table-frame {
-  border-radius: 4px;
-  border: 1px solid #505050;
-  margin-top: 4px;
-  margin-bottom: 4px;
+/* Markdown table chrome (gap above is Vala margin_top on the box — do not set margin here).
+ * Use widget+class so we beat Adwaita `separator.horizontal` specificity. */
+box.oc-table {
+	padding: 0;
+	background-color: transparent;
+}
+separator.horizontal.oc-table-top-rule {
+	background-color: #505050;
+	min-height: 1px;
+	margin: 0;
+	padding: 0;
 }
 
 /* Table row separators: Gtk.Separator horizontal line */
-.oc-table-header-sep {
+separator.horizontal.oc-table-header-sep {
 	background-color: #666;
+	min-height: 4px;
 }
-.oc-table-body-sep {
+separator.horizontal.oc-table-body-sep {
 	background-color: #505050;
 	min-height: 2px;
 }
@@ -224,15 +230,14 @@
   padding-bottom: 2px;
 }
 
-/* Collapse header replaces ColumnView column titles (7.14.14) */
+/* Collapse header replaces ColumnView column titles (7.14.14).
+ * GTK CSS has no max-height / overflow — collapse with min-height + padding. */
 .oc-task-progress columnview header {
   min-height: 0;
-  max-height: 0;
   padding: 0;
   margin: 0;
   border-width: 0;
   opacity: 0;
-  overflow: hidden;
 }
 .oc-task-progress columnview header > * {
   min-height: 0;

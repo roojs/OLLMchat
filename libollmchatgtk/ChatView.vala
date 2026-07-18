@@ -86,16 +86,12 @@ namespace OLLMchatGtk
 			string[] css_files = { "pulldown.css", "style.css", "frame.css" };
 			foreach (var css_file in css_files) {
 				var css_provider = new Gtk.CssProvider();
-				try {
-					css_provider.load_from_resource(@"/ollmchat/$(css_file)");
-					Gtk.StyleContext.add_provider_for_display(
-						Gdk.Display.get_default(),
-						css_provider,
-						Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-					);
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to load %s resource: %s", css_file, e.message);
-				}
+				css_provider.load_from_resource("/ollmchat/" + css_file);
+				Gtk.StyleContext.add_provider_for_display(
+					Gdk.Display.get_default(),
+					css_provider,
+					Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+				);
 			}
 	
 			// Create a box for assistant message content

@@ -21,7 +21,7 @@ namespace MarkdownGtk
 	internal class Table
 	{
 		private Render renderer;
-		private Gtk.Frame frame;
+		private Gtk.Box frame;
 		private Gtk.ScrolledWindow table_scrolled;
 		public Gtk.Grid grid { get; private set; }
 		private int current_row = 0;
@@ -60,8 +60,8 @@ namespace MarkdownGtk
 				row_spacing = 0,
 				margin_start = 2,
 				margin_end = 2,
-				margin_top = 2,
-				margin_bottom = 2
+				margin_top = 0,
+				margin_bottom = 0
 			};
 			/* Viewport clips to parent width; grid may be wider and scrolls horizontally. */
 			this.table_scrolled = new Gtk.ScrolledWindow() {
@@ -79,14 +79,23 @@ namespace MarkdownGtk
 					return false;
 				});
 			});
-			this.frame = new Gtk.Frame(null) {
-				margin_top = 0,
+			/* Box + top rule (not Gtk.Frame) — Frame theme chrome left a gray box and extra padding. */
+			/* ~half line above table (heading or paragraph). Keep margin out of CSS —
+			 * gresource CSS previously set margin:0 and wiped this. */
+			this.frame = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				margin_top = 16,
 				margin_bottom = 0,
 				hexpand = true,
 				vexpand = false
 			};
-			this.frame.add_css_class("oc-table-frame");
-			this.frame.set_child(this.table_scrolled);
+			this.frame.add_css_class("oc-table");
+			var top_rule = new Gtk.Separator(Gtk.Orientation.HORIZONTAL) {
+				hexpand = true,
+				height_request = 1
+			};
+			top_rule.add_css_class("oc-table-top-rule");
+			this.frame.append(top_rule);
+			this.frame.append(this.table_scrolled);
 			/* Column widths are set when rows are added (on_row Idle); GTK4 does not expose a signal for grid resize. */
 			this.renderer.box.appender(this.frame);
 		}
@@ -172,16 +181,18 @@ namespace MarkdownGtk
 			if (is_start) {
 				this.current_cell = 0;
 				this.cells.set(this.current_row, new Gee.HashMap<int, Gtk.ScrolledWindow>());
+				/* Sep above this row (not after last row) so the frame needs no bottom border. */
+				if (this.current_row > 0 && this.num_cols > 0) {
+					var sep = new Gtk.Separator(Gtk.Orientation.HORIZONTAL) {
+						hexpand = true,
+						height_request = (this.current_row == 1) ? 4 : 2
+					};
+					sep.add_css_class(this.current_row == 1 ? "oc-table-header-sep" : "oc-table-body-sep");
+					this.grid.attach(sep, 0, this.current_row * 2 - 1, this.num_cols, 1);
+				}
 				return;
 			}
 			this.num_cols = int.max(this.num_cols, this.current_cell);
-			// Add a bottom-only separator line below this row
-			var sep = new Gtk.Separator(Gtk.Orientation.HORIZONTAL) {
-				hexpand = true,
-				height_request = (this.current_row == 0) ? 4 : 2
-			};
-			sep.add_css_class(this.current_row == 0 ? "oc-table-header-sep" : "oc-table-body-sep");
-			this.grid.attach(sep, 0, this.current_row * 2 + 1, this.current_cell, 1);
 			GLib.Idle.add(() => {
 				this.build_widths_and_resize();
 				return false;

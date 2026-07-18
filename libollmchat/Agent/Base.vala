@@ -204,7 +204,7 @@ namespace OLLMchat.Agent
 		 * tool execution flow including:
 		 * - Iterating through all tool calls
 		 * - Tool lookup and validation
-		 * - UI messages (execution start, errors)
+		 * - UI messages (errors)
 		 * - Tool execution
 		 * - Creating tool reply messages
 		 * - Error handling (creates tool_call_fail message on error, continues with next tool)
@@ -237,10 +237,6 @@ namespace OLLMchat.Agent
 				}
 				
 				var tool = this.chat_call.tools.get(tool_call.function.name);
-				
-				// Show message that tool is being executed
-				var exec_msg = new Message("ui", "Executing tool: `" + tool_call.function.name + "`");
-				this.handle_tool_message(exec_msg);
 				
 				try {
 					// Execute the tool - tool.execute() will set request.agent = chat_call.agent

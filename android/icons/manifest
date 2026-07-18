@@ -21,6 +21,12 @@ symbolic/places/folder-symbolic.svg	Adwaita	symbolic/places/folder-symbolic.svg
 symbolic/actions/view-refresh-symbolic.svg	Adwaita	symbolic/actions/view-refresh-symbolic.svg
 symbolic/actions/edit-clear-symbolic.svg	Adwaita	symbolic/actions/edit-clear-symbolic.svg
 symbolic/ui/pan-down-symbolic.svg	Adwaita	symbolic/ui/pan-down-symbolic.svg
+symbolic/ui/pan-up-symbolic.svg	Adwaita	symbolic/ui/pan-up-symbolic.svg
+symbolic/actions/object-flip-horizontal-symbolic.svg	Adwaita	symbolic/actions/object-flip-horizontal-symbolic.svg
+symbolic/mimetypes/x-office-document-symbolic.svg	Adwaita	symbolic/mimetypes/x-office-document-symbolic.svg
+symbolic/actions/edit-copy-symbolic.svg	Adwaita	symbolic/actions/edit-copy-symbolic.svg
+symbolic/actions/go-next-symbolic.svg	Adwaita	symbolic/actions/go-next-symbolic.svg
+symbolic/actions/go-up-symbolic.svg	Adwaita	symbolic/actions/go-up-symbolic.svg
 symbolic/actions/help-about-symbolic.svg	Adwaita	symbolic/actions/help-about-symbolic.svg
 symbolic/actions/document-properties-symbolic.svg	Adwaita	symbolic/actions/document-properties-symbolic.svg
 symbolic/status/weather-fog-symbolic.svg	Adwaita	symbolic/status/weather-fog-symbolic.svg

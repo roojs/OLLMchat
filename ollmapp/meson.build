@@ -139,6 +139,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
     'About.vala',
     'ChatUserInterface.vala',
     'AgentDropdown.vala',
+    'android/AndroidAgentDropdown.vala',
     'BusyDialog.vala',
     'android/AndroidApplication.vala',
     'android/OllmchatWindow.vala',
@@ -332,94 +333,6 @@ ollmchat = executable('ollmchat',
   install: true,
   install_dir: get_option('bindir')
 )
-
-if get_option('android_poc') and host_machine.system() != 'android'
-  android_poc_deps = [
-    dependency('gtk4'),
-    dependency('libadwaita-1'),
-    dependency('gtksourceview-5'),
-    dependency('gee-0.8'),
-    dependency('gio-2.0'),
-    dependency('glib-2.0'),
-    dependency('gobject-2.0'),
-    dependency('json-glib-1.0'),
-    dependency('libsoup-3.0'),
-    valac.find_library('posix'),
-  ]
-
-  android_poc_sources = [
-    'android/android-gio-tls.c',
-    'android/android-partial-wake-lock.c',
-    'android/AndroidConnectionTls.vala',
-    'android/AndroidConnectionConfigTls.vala',
-    version_vala,
-    'About.vala',
-    'ChatUserInterface.vala',
-    'AgentDropdown.vala',
-    'BusyDialog.vala',
-    'android/AndroidApplication.vala',
-    'android/OllmchatWindow.vala',
-    'android/MainDialog.vala',
-    'android/AndroidTouchDebug.vala',
-    'android/AndroidStartup.vala',
-    'android/AndroidBootstrapConnectionAdd.vala',
-    'android/AndroidToolTypes.vala',
-    'android/AndroidToolsRegistration.vala',
-    'android/tools/WebFetch/Tool.vala',
-    'android/tools/WebFetch/Request.vala',
-    'android/tools/SessionFetch/Tool.vala',
-    'android/tools/SessionFetch/Request.vala',
-    'android/tools/GoogleSearch/Tool.vala',
-    'android/tools/GoogleSearch/Request.vala',
-    'android/tools/GoogleSearch/Config.vala',
-  ] + android_poc_settings_sources
-
-  android_poc_vala_args = [
-    # Do not add --pkg=gee-0.8 — dependency('gee-0.8') in android_poc_deps
-    # is enough; see docs/android-build.md.
-    '--define=OLLM_ANDROID',
-    '--pkg=gtk4',
-    '--pkg=libadwaita-1',
-    '--pkg=gtksourceview-5',
-    '--pkg=sqlite3',
-    '--pkg=ocsqlite',
-    '--pkg=ollmchat',
-    '--pkg=ollmchatgtk',
-    '--pkg=ollamaweb',
-    '--pkg=ocmarkdown',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollmchatgtk',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-  ]
-
-  android_poc = executable('ollmchat-android-poc',
-    dependencies: [
-      android_poc_deps,
-      ocsqlite_vapi_dep,
-      ocmarkdown_vapi_dep,
-      ocmarkdowngtk_vapi_dep,
-      ollmchat_vapi_dep,
-      ollmchatgtk_vapi_dep,
-      ollamaweb_vapi_dep
-    ],
-    sources: android_poc_sources,
-    link_with: [ollmchat_base_lib, ollmchatgtk_lib],
-    include_directories: [
-      include_directories('android'),
-      include_directories('../libollmchat'),
-      include_directories('../libollmchatgtk'),
-      include_directories('../libocmarkdowngtk'),
-      include_directories('../libollamaweb'),
-      include_directories('../libocsqlite')
-    ],
-    build_rpath: build_rpath,
-    vala_args: android_poc_vala_args,
-    install: true,
-    install_dir: get_option('bindir')
-  )
-endif
 
 # Install application icon
 install_data(

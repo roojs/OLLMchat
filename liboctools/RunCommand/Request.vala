@@ -265,15 +265,18 @@ namespace OLLMtools.RunCommand
 				}
 			}
 			
-			var run_status = "Running command";
+			var nl = this.command.index_of_char('\n');
+			var run_status = "Running command (NOT IN SANDBOX)";
 			if (this.run_as_root) {
 				run_status = "Running command as root (sudo)";
-			} else if (OLLMbwrap.Bubble.can_wrap ()) {
+			}
+			if (!this.run_as_root && OLLMbwrap.Bubble.can_wrap()) {
 				run_status = "Running command in sandbox";
 			}
-			this.agent.add_message (new OLLMchat.Message ("ui",
-				OLLMchat.Message.fenced ("text.oc-frame-info.collapsed " + run_status,
-					"$ " + this.command)));
+			this.agent.add_message(new OLLMchat.Message("ui",
+				OLLMchat.Message.fenced("text.oc-frame-success.collapsed "
+					+ (nl >= 0 ? this.command.substring(0, nl).strip() : this.command.strip()),
+					run_status + "\n\n$ " + this.command)));
 			
 			// Execute the tool async
 			try {

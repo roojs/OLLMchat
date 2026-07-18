@@ -216,6 +216,7 @@ test_document_renderer = executable('oc-markdown-doc-test',
 # Build oc-test-gtkmd executable (GTK markdown widget viewer)
 # Extends TestAppBase for standard debug options and ApplicationInterface
 # Use ocmarkdowngtk_vapi_dep only (no link_with) to avoid meson auto-including ocmarkdowngtk-meson.vapi
+# CSS: libollmchat embeds gresource /ollmchat/*.css (same as ChatView).
 test_gtkmd = executable('oc-test-gtkmd',
   dependencies: [test_window_deps, ocsqlite_vapi_dep, ollmchat_vapi_dep, ollamaweb_vapi_dep, ocmarkdown_vapi_dep, ocmarkdowngtk_vapi_dep],
   sources: ['TestAppBase.vala', 'oc-test-gtkmd.vala'],

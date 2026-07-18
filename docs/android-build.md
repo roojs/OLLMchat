@@ -78,8 +78,8 @@ to port the full desktop app at once.
 
 When Meson is cross-building for `host_machine.system() == 'android'`, the POC
 target is declared with `android_exe_type: 'application'` so Android can load it
-as an application shared object. Desktop builds omit that keyword and compile
-the same POC as a normal executable for CI validation.
+as an application shared object. `-Dandroid_poc=true` is Android cross-build
+only; enabling it on the host is an error.
 
 Build the debug APK locally with:
 
@@ -256,15 +256,6 @@ To reproduce the release-style APK locally:
 
 ```bash
 PIXIEWOOD_STRIP_DEBUG=1 scripts/android/build-chat-poc-apk.sh
-```
-
-For a desktop-only compile check without Pixiewood:
-
-```bash
-meson setup build-android-poc --prefix=/usr \
-  -Dandroid_poc=true \
-  -Dlocal_gguf=disabled
-ninja -C build-android-poc ollmapp/ollmchat-android-poc
 ```
 
 ### APK shell POC (local only)

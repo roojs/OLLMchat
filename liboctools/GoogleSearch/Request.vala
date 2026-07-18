@@ -204,9 +204,12 @@ namespace OLLMtools.GoogleSearch
 				this.start
 			);
 			
-			// Send request message to UI: title "Google Search request for", query in code block
+			// Title: Google search + first line of query; body has full query (expand shows all)
+			var nl = this.query.index_of_char('\n');
 			this.agent.add_message(new OLLMchat.Message("ui",
-				 OLLMchat.Message.fenced("text.oc-frame-info.collapsed Google Search request for", this.to_summary ())));
+				OLLMchat.Message.fenced("text.oc-frame-info.collapsed Google search "
+					+ (nl >= 0 ? this.query.substring(0, nl).strip() : this.query.strip()),
+					this.query)));
 			
 			// Fetch search results
 			GLib.Bytes content;
