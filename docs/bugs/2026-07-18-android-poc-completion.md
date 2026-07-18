@@ -25,6 +25,7 @@
 - ✅ Send button — green styling with play/triangle icon
 - ✅ Remove tools selector from main viewport config
 - ✅ **C5** flip/return reboot feel — `launchMode=singleTask` (2026-07-18)
+- ✅ **C2** markdown header emoji stream hang — ATX gate allows non-ASCII (2026-07-18)
 
 ---
 
@@ -88,7 +89,7 @@
 
 ### C2 — Markdown streaming (header icons / emoji)
 
-**Status:** ⏳ 🔷 open — ✔️ narrow fix applied; awaiting device verify
+**Status:** ✅ FIXED (2026-07-18) — desktop parser repro + narrow ATX gate fix; emoji-led headings parse as `<hN>`; user ruled done after tests
 
 **Expected:** 🔷 Streaming continues smoothly when the model emits emoji or icons inside Markdown headers (`#`, `##`); those lines render as headings.
 
@@ -103,59 +104,80 @@ build/examples/oc-test-gtkmd --stream 30 tests/markdown/repro-heading-emoji.md
 
 **Evidence (2026-07-18):**
 
-- ✔️ Full-file `oc-markdown-test`: `# 🚀 …`, `## ✅ …`, `## ⚠️ …`, `### 🔧 …` → `START: <p>` with `TEXT: "#"` / `"##"` then emoji text — **not** `<hN>`
-- ✔️ Control `## Plain header (control)` → `START: <h2>` (works)
-- ✔️ Control `## Header with trailing 🚀 emoji` → heading (first char after `#` is alphanumeric)
-- ✔️ Gate in `libocmarkdown/BlockMap.vala` (~209–220): ATX match requires `heading_stripped.get_char(0).isalnum()`; on failure:
-  - `is_end_of_chunks` → `return 0` (not a heading → paragraph)
-  - else → `return -1` → `handle_block_result` stashes `leftover_chunk` and **stops processing** until flush
-- ℹ️ Introduced in `404ab34f` (“Fix #8894”) with comment “require … starting with alphanumeric”
+- ✔️ Full-file `oc-markdown-test` (before): `# 🚀 …` → `START: <p>` with literal `#`
+- ✔️ After fix: emoji-led lines → `START: <h1>` / `<h2>` / `<h3>`
+- ✔️ Gate in `libocmarkdown/BlockMap.vala`: ATX required `isalnum()`; mid-stream failure → `-1` leftover until flush
+- ℹ️ Introduced in `404ab34f` (“Fix #8894”)
 
-**Root cause:** ✔️ Mid-stream, an emoji-led ATX line (`# 🚀…`) matches `#`/`##` then fails `isalnum`, so `peek` returns **-1** forever (more chunks never make 🚀 alphanumeric). Parser holds the rest of the reply in `leftover_chunk` until end-of-stream flush — matches “waiting for a text flush”. At flush, same line is rejected as heading (`return 0`) and shown as a paragraph.
+**Root cause:** ✔️ Emoji-led ATX failed `isalnum` → mid-stream `-1` hang; at flush → paragraph.
 
-**Proposed / applied fix:** 🔷 Narrow only — in this ATX gate, treat non-ASCII (`>= 0x80`, covers emoji) like alphanumeric. No shared `is_emoji` helper, no other call sites.
+**Fix:** ✅ Narrow only — ATX gate also accepts first char `>= 0x80` (emoji). No shared helper.
 
-#### Remove
-```vala
-			// ATX heading: require non-empty stripped content starting with alphanumeric; include leading space in byte_length
-			if (matched_block >= FormatType.HEADING_1 && matched_block <= FormatType.HEADING_6) {
-				var rest_start = chunk_pos + byte_length;
-				var rest_len = (line_end != -1) ? line_end - rest_start : (int)chunk.length - rest_start;
-				var rest = rest_len > 0 ? chunk.substring(rest_start, rest_len) : "";
-				var heading_stripped = rest.strip();
-				if (heading_stripped.length == 0 || !heading_stripped.get_char(0).isalnum()) {
-```
-
-#### Replace with
-```vala
-			// ATX heading: non-empty content starting with alphanumeric or non-ASCII (emoji); include leading space in byte_length
-			if (matched_block >= FormatType.HEADING_1 && matched_block <= FormatType.HEADING_6) {
-				var rest_start = chunk_pos + byte_length;
-				var rest_len = (line_end != -1) ? line_end - rest_start : (int)chunk.length - rest_start;
-				var rest = rest_len > 0 ? chunk.substring(rest_start, rest_len) : "";
-				var heading_stripped = rest.strip();
-				if (heading_stripped.length == 0 || !(heading_stripped.get_char(0).isalnum() || heading_stripped.get_char(0) >= 0x80)) {
-```
-
-**Next:** ⏳ 🔷 Rebuild / re-run `oc-markdown-test` on repro; user verify on device stream
-
-**Emoji on bullets (smoke, 2026-07-18):** ✔️ `tests/markdown/repro-list-emoji.md` — unordered, nested, and ordered items starting with 🚀/✅/⚠️/🔧/📦/🔹 all emit proper `<li>` (no `isalnum` gate on list content; marker is `- `/`* `/`1. ` only). Not the C2 hang class. C3 (alignment/spacing) remains separate.
+**Emoji on bullets (smoke):** ✔️ `tests/markdown/repro-list-emoji.md` — not this hang class (see C3 for visual list issues).
 
 ---
 
 ### C3 — Markdown bullet points
 
-**Status:** ⏳ 🔷 open
+**Status:** ⏳ 🔷 open — ✔️ styling tweak applied (blue markers + blank line between items); awaiting visual verify
 
-**Expected:** 🔷 List items render with correct alignment, spacing, and structure.
+**Expected:** 🔷 List items with colored bullets and a bit more vertical spacing (user mock: blue `●`, airy gaps between items). Nesting structure already OK.
 
-**Actual:** 🔷 Broken list items in rendering (alignment / spacing / structural parse).
+**Actual (before):** 🔷 Black `●` / numbers, tight single-newline spacing (`oc-test-gtkmd` nested-lists screenshot).
 
-**Next:** ⏳ 🔷 Capture a failing session JSON or screenshot; narrow parser vs CSS vs widget
+**Parser:** ✔️ Structure fine — not a parse bug.
 
----
+**How lists are drawn:** ℹ️ Shared `libocmarkdowngtk/Render.vala` `on_li` — tabs + marker + tab + text. Same path desktop / Android.
 
-### C4 — Streaming table placeholder (shared, not Android-only)
+**Applied fix (2026-07-18):** 🔷 Narrow in `on_li` only (same pattern as ordered bold state / link `foreground`):
+
+#### Remove
+```vala
+			if (!is_start) {
+				this.current_state.close_state(true);
+				this.current_state.add_text("\n");
+				return;
+			}
+			// ...
+			if (list_number == 0) {
+				this.current_state.add_text("●");
+			} else {
+				string number_marker = list_number.to_string() + ".";
+				var bold_state = this.current_state.add_state();
+				bold_state.style.weight = Pango.Weight.BOLD;
+				bold_state.add_text(number_marker);
+				bold_state.close_state();
+			}
+```
+
+#### Replace with
+```vala
+			if (!is_start) {
+				this.current_state.close_state(true);
+				this.current_state.add_text("\n\n");
+				return;
+			}
+			// ...
+			if (list_number == 0) {
+				var bullet_state = this.current_state.add_state();
+				bullet_state.style.foreground = "#3584E4";
+				bullet_state.add_text("●");
+				bullet_state.close_state();
+			} else {
+				string number_marker = list_number.to_string() + ".";
+				var bold_state = this.current_state.add_state();
+				bold_state.style.weight = Pango.Weight.BOLD;
+				bold_state.style.foreground = "#3584E4";
+				bold_state.add_text(number_marker);
+				bold_state.close_state();
+			}
+```
+
+**Defaults picked:** `#3584E4`; bullet→text = two spaces (was a tab — too wide); vertical gap = `\n` + half-scale `" \n"` spacer (`pixels_below_lines` did not show on screen; full `\n\n` was too heavy). Font face unchanged.
+
+**Next:** ⏳ 🔷 Rebuild `oc-test-gtkmd` nested-lists — confirm mid gap + tighter bullet gap
+
+---### C4 — Streaming table placeholder (shared, not Android-only)
 
 **Status:** ⏳ 🔷 open
 
@@ -297,11 +319,12 @@ build/examples/oc-test-gtkmd --stream 30 tests/markdown/repro-heading-emoji.md
 
 ## Suggested order
 
-1. ⏳ 🔷 **C1** sleep / network (critical blocker) — **C5** ✅ fixed (`singleTask`)
-2. ⏳ 🔷 **C2** / **C3** / **C4** markdown stream, lists, streaming tables (blocks readable chat)
-3. ⏳ 🔷 **T1**–**T4** touch / input (mobile usability)
-4. ⏳ 🔷 **U1**–**U6** styling polish
-5. ⏳ 🔷 **W1**–**W3** / **F1** search + media (feature track; may need shared-code approval)
+1. ✅ **C2** markdown header emoji stream — FIXED
+2. ⏳ 🔷 **C1** sleep / network (critical blocker) — **C5** ✅ fixed (`singleTask`)
+3. ⏳ 🔷 **C3** / **C4** markdown lists + streaming tables (blocks readable chat)
+4. ⏳ 🔷 **T1**–**T4** touch / input (mobile usability)
+5. ⏳ 🔷 **U1**–**U6** styling polish
+6. ⏳ 🔷 **W1**–**W3** / **F1** search + media (feature track; may need shared-code approval)
 
 ---
 
@@ -320,3 +343,8 @@ build/examples/oc-test-gtkmd --stream 30 tests/markdown/repro-heading-emoji.md
 | 2026-07-18 | C2 — repro fixture `tests/markdown/repro-heading-emoji.md`; root cause: `BlockMap` ATX `isalnum` → mid-stream `-1` leftover until flush |
 | 2026-07-18 | C2 — narrow fix: ATX gate also accepts first char `>= 0x80` (emoji); no general helper |
 | 2026-07-18 | C2 adjacent — emoji on bullets OK (`repro-list-emoji.md`); not the ATX hang |
+| 2026-07-18 | C2 — ✅ user ruled done after tests |
+| 2026-07-18 | C3 — opened investigation: shared `Render.on_li` uses tabs + `●`, no `set_tabs`; likely styling vs Android metrics |
+| 2026-07-18 | C3 — user mock: blue bullets + more line spacing; applied `#3584E4` + `\n\n` between items |
+| 2026-07-18 | C3 — spacing dialed back: `\n` + `pixels_below_lines=6` (no font-face change) |
+| 2026-07-18 | C3 — `pixels_below_lines` not visible; half-scale spacer line + `"  "` after bullet |

@@ -446,6 +446,11 @@ namespace MarkdownGtk
 			if (!is_start) {
 				this.current_state.close_state(true);
 				this.current_state.add_text("\n");
+				// Half blank line (pixels_below_lines did not show; full \n\n was too heavy)
+				var gap = this.current_state.add_state();
+				gap.style.scale = 0.5;
+				gap.add_text(" \n");
+				gap.close_state();
 				return;
 			}
 
@@ -456,15 +461,19 @@ namespace MarkdownGtk
 
 			this.current_state.add_text(string.nfill(depth_index + 1, '\t'));
 			if (list_number == 0) {
-				this.current_state.add_text("●");
+				var bullet_state = this.current_state.add_state();
+				bullet_state.style.foreground = "#3584E4";
+				bullet_state.add_text("●");
+				bullet_state.close_state();
 			} else {
 				string number_marker = list_number.to_string() + ".";
 				var bold_state = this.current_state.add_state();
 				bold_state.style.weight = Pango.Weight.BOLD;
+				bold_state.style.foreground = "#3584E4";
 				bold_state.add_text(number_marker);
 				bold_state.close_state();
 			}
-			this.current_state.add_text("\t");
+			this.current_state.add_text("  ");
 			this.current_state.add_state();
 		}
 		
