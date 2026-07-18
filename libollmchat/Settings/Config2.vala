@@ -576,15 +576,9 @@ namespace OLLMchat.Settings
 		 */
 		public void save()
 		{
-			// Ensure directory exists
-			var dir = GLib.File.new_for_path(GLib.Path.get_dirname(Config2.config_path));
-			if (!GLib.FileUtils.test(dir.get_path(), GLib.FileTest.EXISTS)) {
-				try {
-					dir.make_directory_with_parents(null);
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to create config directory: %s", e.message);
-					return;
-				}
+			var dir_path = GLib.Path.get_dirname(Config2.config_path);
+			if (!GLib.FileUtils.test(dir_path, GLib.FileTest.EXISTS)) {
+				GLib.File.new_for_path(dir_path).make_directory_with_parents(null);
 			}
 
 			// Serialize Config2 object to JSON

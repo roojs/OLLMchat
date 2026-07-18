@@ -47,8 +47,9 @@ namespace OLLMchat.Prompt
 			if (this.source.has_prefix("resource://")) {
 				return true;
 			}
-			return GLib.File.new_for_uri(
-				this.source + GLib.Path.build_filename(this.base_dir, this.filename)).query_exists();
+			var path = GLib.File.new_for_uri(
+				this.source + GLib.Path.build_filename(this.base_dir, this.filename)).get_path();
+			return path != null && GLib.FileUtils.test(path, GLib.FileTest.EXISTS);
 		}
 
 		/**

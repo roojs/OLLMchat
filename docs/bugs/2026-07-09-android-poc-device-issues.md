@@ -1,6 +1,6 @@
 # Android chat POC — history + tool HTTPS (TLS)
 
-**Status:** OPEN — Problem 1 (history) ✔️ save + load_sessions `FileUtils` fixes installed (`lastUpdateTime=2026-07-18 09:33:37`); ⏳ user verify history overlay. Problem 2 TLS **✅ FIXED**. Problem 3 screen timeout — investigation.
+**Status:** OPEN — Problem 1 (history) **✅ FIXED** (user). Problem 2 TLS **✅ FIXED**. Problem 3 screen timeout — investigation. Problem 4 (default model not remembered) — ⏳ root cause found, fix in tree.
 
 **Started:** 2026-07-09
 
@@ -67,7 +67,43 @@ Same class of bug already fixed for `History.Manager` constructor and `AndroidAp
 
 ✔️ Load path still empty after cold start: `History.Manager.load_sessions()` skipped every row via `file.query_exists()` (same Android GIO lie). Fix: `FileUtils.test` there too (✔️ applied in tree).
 
-**Next:** ⏳ 🔷 Open history overlay after cold start — expect listed sessions (incl. `01-28-46`).
+**Status:** ✅ FIXED (user, 2026-07-18) — history overlay / persistence OK after FileUtils save+load fixes.
+
+---
+
+## Problem 4 — Selected model not remembered across restart
+
+**Status:** ⏳ OPEN — root cause confirmed from device logs; fix applied in tree (needs rebuild/install + verify).
+
+**Expected:** 🔷 Pick Qwen (or any model) in the chat-bar dropdown, force-stop / cold start → same model stays selected.
+
+**Actual:** 🔷 Always comes back as `llama3.1:70b`.
+
+### Evidence (2026-07-18 ~09:49, pid 27293)
+
+- ✔️ On-disk `config.2.json` still has `"model" : "llama3.1:70b"` under `usage.default_model`.
+- ✔️ Cold start:
+
+```
+AndroidStartup: initialize_model ok model=llama3.1:70b
+AndroidApplication: saved config to …/config.2.json
+AndroidStartup: run ok model=llama3.1:70b
+Config2.vala:585: Failed to create config directory: …/ollmchat: File exists
+```
+
+- ✔️ `ChatBar` **does** update `default_model_usage` and calls `config.save()` on dropdown change — persistence is not “missing a call.”
+- ✔️ `Config2.save()` treated **any** mkdir error as fatal and **`return`ed before writing JSON**. On Android external storage the dir already exists; GIO still reports `File exists` after a false-negative existence check → model change never reaches disk. Startup keeps loading llama3.1.
+- ℹ️ Android startup persist path (`AndroidApplication.persist_config` → `FileUtils.set_contents`) succeeds; only the shared `Config2.save()` path used by ChatBar fails.
+
+### Root cause
+
+✔️ `Config2.save()` early-returns on mkdir `File exists` instead of continuing to write. Same Android external-storage class as Problem 1.
+
+### Proposed fix → ✔️ applied
+
+- `Config2.save()`: same pattern as `Session.write()` — `FileUtils.test(dir_path, EXISTS)` then bare `make_directory_with_parents` (no EXISTS special-case / early return).
+
+**Next:** ⏳ 🔷 Rebuild/install APK; select Qwen; confirm `config.2.json` updates; force-stop; confirm startup keeps Qwen.
 
 ---
 
@@ -404,3 +440,5 @@ Implement and verify **one file at a time**. Code fences use **Remove** / **Repl
 | 2026-07-09 | Problem 2 — **implemented** T1–T5 per approved proposal; device verify pending |
 | 2026-07-09 | Problem 2 — **✅ user verified** on device (`google_search` working); HTTP 400 was config not TLS |
 | 2026-07-09 | Problem 3 — screen timeout interrupts SSE stream → Network error; options documented |
+| 2026-07-18 | Problem 1 — ✅ history save+load FileUtils fixes verified by user |
+| 2026-07-18 | Problem 4 — default model stuck on llama3.1; Config2.save aborts on mkdir File exists; fix applied |
