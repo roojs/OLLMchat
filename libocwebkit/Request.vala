@@ -112,7 +112,9 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 					throw new GLib.IOError.INVALID_ARGUMENT("query is required for search");
 				}
 				yield ((OLLMwebkit.Tool) this.tool).stack.primary.load(
-					"https://www.google.com/search?q=" + GLib.Uri.escape_string(this.query.strip()));
+					"https://www.google.com/search?q="
+					+ GLib.Uri.escape_string(this.query.strip())
+					+ "&hl=en");
 				return yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
 			case "whereami":
 				return yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);

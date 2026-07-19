@@ -84,6 +84,8 @@ valadoc_docs = custom_target('valadoc',
     '../libochf/Param/Search.vala',
     # libocwebkit (browser tool — depends on libollmchat)
     '../libocwebkit/namespace.vala',
+    '../libocwebkit/A11y.vala',
+    '../libocwebkit/A11yParse.vala',
     '../libocwebkit/Browser.vala',
     '../libocwebkit/BrowserStack.vala',
     '../libocwebkit/Request.vala',

@@ -126,6 +126,7 @@ Examples:
 
 	protected override async void run_test(ApplicationCommandLine command_line, string[] args) throws Error
 	{
+		GLib.Environment.set_variable("GTK_A11Y", "atspi", false);
 		if (!Gtk.init_check()) {
 			command_line.printerr("ERROR: Failed to initialize GTK (no display?)\n");
 			throw new GLib.IOError.FAILED("Failed to initialize GTK");
@@ -157,7 +158,7 @@ Examples:
 		}
 		if (opt_search != "") {
 			yield stack.primary.load(
-				"https://www.google.com/search?q=" + GLib.Uri.escape_string(opt_search));
+				"https://www.google.com/search?q=" + GLib.Uri.escape_string(opt_search) + "&hl=en");
 			command_line.print("%s\n", yield stack.primary.dump(opt_format));
 			window.close();
 			return;
@@ -192,7 +193,7 @@ Examples:
 						throw new GLib.IOError.INVALID_ARGUMENT("search needs query terms");
 					}
 					yield stack.primary.load(
-						"https://www.google.com/search?q=" + GLib.Uri.escape_string(rest));
+						"https://www.google.com/search?q=" + GLib.Uri.escape_string(rest) + "&hl=en");
 					command_line.print("%s\n", yield stack.primary.dump(opt_format));
 					break;
 

@@ -15,6 +15,7 @@ ocwebkit_deps = [
   dependency('gtk4'),
   dependency('webkitgtk-6.0'),
   dependency('libsoup-3.0'),
+  dependency('atspi-2'),
   valac.find_library('posix'),
 ]
 
@@ -55,6 +56,8 @@ ocwebkit_resources = [ocwebkit_resources_c, ocwebkit_resources_h]
 
 ocwebkit_src = files([
   'namespace.vala',
+  'A11y.vala',
+  'A11yParse.vala',
   'Browser.vala',
   'BrowserStack.vala',
   'Request.vala',
@@ -87,6 +90,7 @@ ocwebkit_base_lib = library('ocwebkit',
     '--pkg=gtk4',
     '--pkg=webkitgtk-6.0',
     '--pkg=libsoup-3.0',
+    '--pkg=atspi-2',
     '--pkg=json-glib-1.0',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -123,6 +127,7 @@ ocwebkit_vapi_cmd += [
   '--pkg', 'gtk4',
   '--pkg', 'webkitgtk-6.0',
   '--pkg', 'libsoup-3.0',
+  '--pkg', 'atspi-2',
   '--pkg', 'sqlite3',
   '--pkg', 'ocrpc',
   '--pkg', 'ocsqlite',

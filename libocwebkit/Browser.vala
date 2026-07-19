@@ -28,7 +28,8 @@ using WebKit;
  *
  * Load settle, Soup HEAD probe, freeze overlay, and site cookies follow
  * Snappr. ''#if LINUX'' / ''#if WINDOWS'' select WebKitGTK vs webview2-gtk
- * (same portability pattern as Snappr). Dump / fill / press are Phase 2.1.
+ * (same portability pattern as Snappr). Dump / fill / press delegate to
+ * {@link A11y} (Phase 2.1).
  *
  * == Example ==
  *
@@ -52,6 +53,11 @@ public class OLLMwebkit.Browser : Gtk.Box
 		private set;
 		default = new Gee.HashMap<string, string>();
 	}
+
+	/**
+	 * Platform accessibility dump / fill / press (Linux AT-SPI).
+	 */
+	public OLLMwebkit.A11y a11y { get; private set; default = new OLLMwebkit.A11y(); }
 
 	/**
 	 * Stub until Phase 4 ports Snappr Cloudflare — treat as not blocked.
@@ -97,6 +103,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 	{
 		Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0, hexpand: true, vexpand: true);
 		this.site_cookies = stack.site_cookies;
+		this.a11y.host = this;
 		this.web_view = new WebView() {
 			hexpand = true,
 			vexpand = true,
@@ -218,6 +225,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 	{
 		var load_uri = this.normalize_uri(uri);
 		GLib.Uri.parse(load_uri, GLib.UriFlags.NONE);
+		yield this.apply_site_cookies(load_uri);
 		if (this.load_wait_active
 				&& load_uri != this.normalize_uri(this.pending_load_uri)) {
 			GLib.debug("load blocked — wait already in progress");
@@ -227,21 +235,25 @@ public class OLLMwebkit.Browser : Gtk.Box
 		if (!this.load_wait_active) {
 			this.show_freeze("", "<b>Testing site…</b>");
 			this.web_view.load_uri("about:blank");
-			var probe = new Soup.Session() {
-				timeout = 10,
-				user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-			};
-			var head = new Soup.Message("HEAD", load_uri);
-			try {
-				yield probe.send_and_read_async(head, GLib.Priority.DEFAULT, null);
-			} catch (GLib.Error e) {
-				this.hide_freeze();
-				GLib.debug("site unreachable uri=%s err=%s", load_uri, e.message);
-				throw new GLib.IOError.TIMED_OUT("Site did not respond");
+			if (load_uri.has_prefix("http://") || load_uri.has_prefix("https://")) {
+				var probe = new Soup.Session() {
+					timeout = 10,
+					user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+				};
+				var head = new Soup.Message("HEAD", load_uri);
+				try {
+					yield probe.send_and_read_async(head, GLib.Priority.DEFAULT, null);
+				} catch (GLib.Error e) {
+					this.hide_freeze();
+					GLib.debug("site unreachable uri=%s err=%s", load_uri, e.message);
+					throw new GLib.IOError.TIMED_OUT("Site did not respond");
+				}
+				GLib.debug("site reachable uri=%s status=%u", load_uri, head.status_code);
+			} else {
+				GLib.debug("skip HEAD probe for non-http uri=%s", load_uri);
 			}
 			this.show_freeze("", "<b>Loading…</b>");
 			showed_load_mask = true;
-			GLib.debug("site reachable uri=%s status=%u", load_uri, head.status_code);
 		}
 		ulong settled_id = 0;
 		settled_id = this.load_settled.connect(() => {
@@ -291,6 +303,31 @@ public class OLLMwebkit.Browser : Gtk.Box
 			return GLib.Source.REMOVE;
 		});
 		yield;
+
+		var final_uri = this.web_view.get_uri() != null ? this.web_view.get_uri() : load_uri;
+		try {
+			var host = GLib.Uri.parse(final_uri, GLib.UriFlags.NONE).get_host();
+			if (host != null && host.down().contains("google.")
+					&& !load_uri.contains("setprefs")
+					&& !load_uri.contains("hl=en")) {
+				var md = yield this.a11y.dump(
+					this.current_uri,
+					this.web_view.get_title() != null ? this.web_view.get_title() : ""
+				);
+				var re = new GLib.Regex(
+					"\\(\\^press:\\d+\\): \\[[^\\]]*\\]\\((https://[^)\\s]*setprefs[^)\\s]*hl=en[^)\\s]*)\\)"
+				);
+				GLib.MatchInfo mi;
+				if (re.match(md, 0, out mi)) {
+					yield this.load(mi.fetch(1));
+				}
+			}
+		} catch (GLib.Error e) {
+			GLib.debug("google english pref skipped err=%s", e.message);
+		}
+		yield this.harvest_site_cookies(
+			this.web_view.get_uri() != null ? this.web_view.get_uri() : load_uri
+		);
 	}
 
 	private void begin_load(string load_uri, uint timeout_seconds)
@@ -669,7 +706,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 	}
 
 	/**
-	 * Return page content for ''format'' (Phase 2.1 platform a11y — not yet).
+	 * Return page content for ''format'' (a11y via {@link A11y}).
 	 *
 	 * @param format output format string
 	 * @return page dump text
@@ -679,10 +716,13 @@ public class OLLMwebkit.Browser : Gtk.Box
 	{
 		switch (format) {
 			case "a11y":
+				return yield this.a11y.dump(this.current_uri, this.web_view.get_title() != null
+					? this.web_view.get_title() : "");
+
 			case "html":
 			case "markdown":
 				throw new GLib.IOError.NOT_SUPPORTED(
-					"dump/%s via platform a11y not implemented yet (Phase 2.1)", format);
+					"dump/%s deferred (Phase 2.1 — a11y first)", format);
 
 			default:
 				throw new GLib.IOError.INVALID_ARGUMENT("Unsupported format: %s", format);
@@ -690,26 +730,24 @@ public class OLLMwebkit.Browser : Gtk.Box
 	}
 
 	/**
-	 * Apply fill map via accessibility (Phase 2.1).
+	 * Apply fill map via {@link A11y}.
 	 *
 	 * @param fields press-ref id → text
-	 * @throws GLib.Error when not implemented
+	 * @throws GLib.Error when fill fails
 	 */
 	public async void fill(Gee.HashMap<string, string> fields) throws GLib.Error
 	{
-		throw new GLib.IOError.NOT_SUPPORTED(
-			"fill via platform a11y not implemented yet (Phase 2.1)");
+		yield this.a11y.fill(fields);
 	}
 
 	/**
-	 * Activate press-ref via accessibility (Phase 2.1).
+	 * Activate press-ref via {@link A11y}.
 	 *
 	 * @param id press id from the last a11y dump
-	 * @throws GLib.Error when not implemented
+	 * @throws GLib.Error when press fails
 	 */
 	public async void press(int id) throws GLib.Error
 	{
-		throw new GLib.IOError.NOT_SUPPORTED(
-			"press via platform a11y not implemented yet (Phase 2.1)");
+		yield this.a11y.press(id);
 	}
 }
