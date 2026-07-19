@@ -60,9 +60,9 @@ public class OLLMwebkit.Browser : Gtk.Box
 	public OLLMwebkit.A11y a11y { get; private set; default = new OLLMwebkit.A11y(); }
 
 	/**
-	 * Stub until Phase 4 ports Snappr Cloudflare — treat as not blocked.
+	 * Target-site Cloudflare detection (Phase 4).
 	 */
-	public bool cloudflare_blocked { get; set; default = false; }
+	public OLLMwebkit.Cloudflare cloudflare { get; private set; }
 
 	/**
 	 * URI of the WebView (empty string when unset).
@@ -72,6 +72,11 @@ public class OLLMwebkit.Browser : Gtk.Box
 			return this.web_view.get_uri() != null ? this.web_view.get_uri() : "";
 		}
 	}
+
+	/**
+	 * URI currently awaited by {@link load} (redirects update this).
+	 */
+	public string pending_load_uri { get; private set; default = ""; }
 
 	public signal void uri_changed(string uri);
 
@@ -93,7 +98,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 	private bool page_load_cancelled = false;
 	private bool page_load_failed = false;
 	private string page_load_fail_msg = "";
-	private string pending_load_uri = "";
 	private string await_navigation_before_uri = "";
 
 	/**
@@ -108,6 +112,14 @@ public class OLLMwebkit.Browser : Gtk.Box
 			hexpand = true,
 			vexpand = true,
 		};
+		this.cloudflare = new OLLMwebkit.Cloudflare(this);
+		this.cloudflare.notify["is-blocked"].connect(() => {
+			if (!this.cloudflare.is_blocked || !this.load_wait_active) {
+				return;
+			}
+			this.page_load_timed_out = false;
+			this.load_completed();
+		});
 		this.web_view.load_changed.connect((ev) => {
 			var uri = "";
 			if (ev == LoadEvent.COMMITTED || ev == LoadEvent.FINISHED) {
@@ -115,17 +127,11 @@ public class OLLMwebkit.Browser : Gtk.Box
 				this.uri_changed(uri);
 			}
 			if (ev == LoadEvent.COMMITTED) {
-				if (uri != "" && (this.load_wait_active || this.cloudflare_blocked)) {
+				if (uri != "" && (this.load_wait_active || this.cloudflare.is_blocked)) {
 					this.pending_load_uri = uri;
 				}
 			}
 			if (ev == LoadEvent.COMMITTED && this.load_wait_active) {
-				GLib.debug(
-					"committed uri=%s is_loading=%s pending=%s",
-					uri,
-					this.web_view.is_loading.to_string(),
-					this.pending_load_uri
-				);
 				this.load_committed_at = GLib.get_monotonic_time();
 				this.stop_settle();
 				this.load_ready_probed = false;
@@ -148,10 +154,8 @@ public class OLLMwebkit.Browser : Gtk.Box
 				return false;
 			}
 			if (error is NetworkError.CANCELLED) {
-				GLib.debug("load_failed cancelled uri=%s", failing_uri);
 				return false;
 			}
-			GLib.debug("load_failed uri=%s error=%s", failing_uri, error.message);
 			if (load_event != LoadEvent.STARTED && load_event != LoadEvent.COMMITTED) {
 				return false;
 			}
@@ -228,7 +232,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 		yield this.apply_site_cookies(load_uri);
 		if (this.load_wait_active
 				&& load_uri != this.normalize_uri(this.pending_load_uri)) {
-			GLib.debug("load blocked — wait already in progress");
 			throw new GLib.IOError.FAILED("Page load wait already in progress");
 		}
 		var showed_load_mask = false;
@@ -245,12 +248,9 @@ public class OLLMwebkit.Browser : Gtk.Box
 					yield probe.send_and_read_async(head, GLib.Priority.DEFAULT, null);
 				} catch (GLib.Error e) {
 					this.hide_freeze();
-					GLib.debug("site unreachable uri=%s err=%s", load_uri, e.message);
 					throw new GLib.IOError.TIMED_OUT("Site did not respond");
 				}
-				GLib.debug("site reachable uri=%s status=%u", load_uri, head.status_code);
 			} else {
-				GLib.debug("skip HEAD probe for non-http uri=%s", load_uri);
 			}
 			this.show_freeze("", "<b>Loading…</b>");
 			showed_load_mask = true;
@@ -270,10 +270,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 				showed_load_mask = false;
 			}
 			var loaded_uri = this.web_view.get_uri() != null ? this.web_view.get_uri() : "";
-			GLib.debug(
-				"load done uri=%s final=%s is_blocked=%s",
-				load_uri, loaded_uri, this.cloudflare_blocked.to_string()
-			);
 			if (this.page_load_cancelled) {
 				this.page_load_cancelled = false;
 				throw new GLib.IOError.CANCELLED("Load cancelled");
@@ -283,10 +279,9 @@ public class OLLMwebkit.Browser : Gtk.Box
 						|| this.normalize_uri(loaded_uri) != this.pending_load_uri) {
 					throw new GLib.IOError.TIMED_OUT("Page load timed out");
 				}
-				GLib.debug("load timeout ignored uri=%s", loaded_uri);
 				this.page_load_timed_out = false;
 			}
-			if (!this.cloudflare_blocked) {
+			if (!this.cloudflare.is_blocked) {
 				yield this.await_stable_uri();
 			}
 			if (this.page_load_failed) {
@@ -323,7 +318,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 				}
 			}
 		} catch (GLib.Error e) {
-			GLib.debug("google english pref skipped err=%s", e.message);
 		}
 		yield this.harvest_site_cookies(
 			this.web_view.get_uri() != null ? this.web_view.get_uri() : load_uri
@@ -333,7 +327,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 	private void begin_load(string load_uri, uint timeout_seconds)
 	{
 		this.load_epoch++;
-		this.cloudflare_blocked = false;
+		this.cloudflare.is_blocked = false;
 		this.page_load_timed_out = false;
 		this.page_load_cancelled = false;
 		this.page_load_failed = false;
@@ -346,26 +340,15 @@ public class OLLMwebkit.Browser : Gtk.Box
 				return false;
 			}
 			this.page_load_timed_out = this.load_committed_at > 0 ? false : true;
-			GLib.debug(
-				"load timeout uri=%s committed=%s is_loading=%s",
-				load_uri,
-				(this.load_committed_at > 0).to_string(),
-				this.web_view.is_loading.to_string()
-			);
 			this.load_completed();
 			return false;
 		});
 		this.pending_load_uri = load_uri;
 		var current = this.web_view.get_uri() != null ? this.web_view.get_uri() : "";
 		if (current.strip() == load_uri.strip() && !this.web_view.is_loading) {
-			GLib.debug("load reload uri=%s", load_uri);
 			this.web_view.reload_bypass_cache();
 			return;
 		}
-		GLib.debug(
-			"load uri=%s current=%s is_loading=%s",
-			load_uri, current, this.web_view.is_loading.to_string()
-		);
 		this.web_view.load_uri(load_uri);
 	}
 
@@ -375,21 +358,17 @@ public class OLLMwebkit.Browser : Gtk.Box
 			this.load_settle_id = 0;
 			return false;
 		}
-		var uri = this.web_view.get_uri() != null ? this.web_view.get_uri() : "";
-		if (this.cloudflare_blocked) {
-			GLib.debug("settle blocked uri=%s", uri);
+		if (this.cloudflare.is_blocked) {
 			this.page_load_timed_out = false;
 			this.load_completed();
 			return false;
 		}
 		if (!this.web_view.is_loading) {
-			GLib.debug("settle idle uri=%s progress=%0.2f", uri, this.web_view.estimated_load_progress);
 			this.page_load_timed_out = false;
 			this.load_completed();
 			return false;
 		}
 		if (this.web_view.estimated_load_progress >= 1.0) {
-			GLib.debug("settle progress uri=%s", uri);
 			this.page_load_timed_out = false;
 			this.load_completed();
 			return false;
@@ -420,7 +399,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 				"probe_ready"
 			)).to_string().strip();
 		} catch (GLib.Error e) {
-			GLib.debug("readyState probe failed: %s", e.message);
 			return;
 		}
 		if (!this.load_wait_active) {
@@ -436,7 +414,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 		if (this.pending_load_uri == "" || this.normalize_uri(uri) != this.pending_load_uri) {
 			return;
 		}
-		GLib.debug("settle readyState=%s uri=%s", state, uri);
 		this.page_load_timed_out = false;
 		this.load_completed();
 	}
@@ -471,7 +448,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 	 */
 	public void cancel_load()
 	{
-		GLib.debug("cancel_load epoch=%u", this.load_epoch + 1);
 		this.load_epoch++;
 		this.web_view.stop_loading();
 		if (!this.load_wait_active) {
@@ -489,7 +465,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 		var uri = this.web_view.get_uri() != null ? this.web_view.get_uri() : "";
 		if (this.await_navigation_before_uri != "" && !this.page_load_timed_out) {
 			if (uri == this.await_navigation_before_uri) {
-				GLib.debug("load_completed ignored uri unchanged=%s", uri);
 				return;
 			}
 		}
@@ -497,10 +472,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 		this.stop_settle();
 		this.load_committed_at = 0;
 		this.load_ready_probed = false;
-		GLib.debug(
-			"load_completed uri=%s is_blocked=%s",
-			uri, this.cloudflare_blocked.to_string()
-		);
 		if (this.page_load_timeout_id != 0) {
 			GLib.Source.remove(this.page_load_timeout_id);
 			this.page_load_timeout_id = 0;
@@ -522,7 +493,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 			stable_count = uri_changed ? 0 : stable_count + 1;
 			last = uri_changed ? uri : last;
 			if (stable_count >= 2) {
-				GLib.debug("uri stable=%s", uri);
 				return;
 			}
 			GLib.Timeout.add(200, () => {
@@ -533,7 +503,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 		}
 		var final_uri = this.web_view.get_uri() != null ? this.web_view.get_uri() : "";
 		if (final_uri.strip() != "") {
-			GLib.debug("uri stable=%s", final_uri);
 		}
 	}
 
@@ -667,7 +636,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 			try {
 				yield manager.add_cookie(cookie, null);
 			} catch (GLib.Error e) {
-				GLib.debug("cookie inject failed host=%s err=%s", host, e.message);
 			}
 		}
 	}
@@ -698,10 +666,8 @@ public class OLLMwebkit.Browser : Gtk.Box
 			var host = parsed.get_host();
 			if (host != null && host.strip() != "") {
 				this.site_cookies.set(host.down(), cookie_header);
-				GLib.debug("cookie harvest host=%s", host);
 			}
 		} catch (GLib.Error e) {
-			GLib.debug("cookie harvest failed uri=%s err=%s", uri, e.message);
 		}
 	}
 

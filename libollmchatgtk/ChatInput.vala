@@ -175,6 +175,7 @@ namespace OLLMchatGtk
 		public void editable(bool editable)
 		{
 			this.text_view.editable = editable;
+			this.text_view.can_focus = editable;
 		}
 
 		/**
@@ -207,6 +208,9 @@ namespace OLLMchatGtk
 		/** Idle callback: wait until mapped, then focus TextView and caret at end. */
 		public bool focus_idle()
 		{
+			if (!this.text_view.editable || !this.text_view.can_focus) {
+				return false;
+			}
 			if (!this.text_view.get_mapped()) {
 				return true;
 			}

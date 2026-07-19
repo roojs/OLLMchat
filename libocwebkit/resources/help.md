@@ -23,12 +23,15 @@ ACTIONS (call help with topic for details)
 
 DEFAULT PAGE DUMP (format "a11y")
   # Page → URL / Title
-  ## Content — structured text; pressables as [label](^press:N)
-  ## References — (^press:N): role, label; links as [text](url)
+  ## Content — layout by screen position (same y shares a line; headings get a
+    blank line before ###). Pressables as [label](^press:N){x,y}
+  ## References — (^press:N): role, label; links as [text](url); values when
+    editable fields expose them
 
   Prefer press on a ref from the last dump over fetch with a hand-copied URL
   when the control is already listed. fill is an ARGUMENT on press, never an
   action. For format "html" / "markdown", call {"action": "help", "topic": "format"}.
+  html/markdown dump may still be unavailable — stay on a11y.
 
 TYPICAL FLOW
   help → search or fetch → read Content + References →

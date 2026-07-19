@@ -287,7 +287,7 @@ write_ollmchat_android_runtime_tag() {
   local dest="$ROOT_DIR/.pixiewood/android/app/src/main/assets/share"
 
   mkdir -p "$dest"
-  printf 'ollmchat-android-bugs-v8\n' > "$dest/ollmchat-android-runtime.tag"
+  printf 'ollmchat-android-bugs-v9\n' > "$dest/ollmchat-android-runtime.tag"
 }
 
 # Android native code has no /etc/ssl/certs/. Ship the build host's Debian

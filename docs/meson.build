@@ -82,14 +82,6 @@ valadoc_docs = custom_target('valadoc',
     '../libochf/ModelTreeArray.vala',
     '../libochf/Download.vala',
     '../libochf/Param/Search.vala',
-    # libocwebkit (browser tool — depends on libollmchat)
-    '../libocwebkit/namespace.vala',
-    '../libocwebkit/A11y.vala',
-    '../libocwebkit/A11yParse.vala',
-    '../libocwebkit/Browser.vala',
-    '../libocwebkit/BrowserStack.vala',
-    '../libocwebkit/Request.vala',
-    '../libocwebkit/Tool.vala',
     # ollmfilesd param types (shared with libocfiles client)
     '../ollmfilesd/CallParam.vala',
     # libocfiles sources (RPC client — must come before liboccoder and liboctools)
@@ -245,6 +237,15 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/History/TitleGenerator.vala',
     '../libollmchat/Call/Generate.vala',
     '../libollmchat/Response/Generate.vala',
+    # libocwebkit (browser tool — depends on libollmchat Tool.BaseTool)
+    '../libocwebkit/namespace.vala',
+    '../libocwebkit/A11y.vala',
+    '../libocwebkit/A11yParse.vala',
+    '../libocwebkit/Browser.vala',
+    '../libocwebkit/BrowserStack.vala',
+    '../libocwebkit/Cloudflare.vala',
+    '../libocwebkit/Request.vala',
+    '../libocwebkit/Tool.vala',
     # liboctools sources (RPC tool impls — depends on libollmchat and libocfiles)
     '../liboctools/ReadFile/Tool.vala',
     '../liboctools/ReadFile/Request.vala',
@@ -412,11 +413,14 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=gtk4',
     '--pkg=libadwaita-1',
     '--pkg=gtksourceview-5',
+    '--pkg=webkitgtk-6.0',  # libocwebkit
+    '--pkg=atspi-2',  # libocwebkit A11y
     '--pkg=posix',
     '--pkg=fiass',  # FAISS via vapi (used by libocvector)
     '--pkg=tree-sitter',  # Tree-sitter via vapi (used by libocvector)
     '--pkg=seccomp',  # RunSeccomp / Bubble (liboctools)
     '--pkg=linux',  # RunSeccomp: Linux.O_PATH (not in Posix)
+    '-D', 'LINUX',  # libocwebkit #if LINUX (WebKit using / WebView)
     # Don't use --pkg for internal libraries (ocmarkdown, ocmarkdowngtk, ocsqlite, occoder, ocvector, octools)
     # - valadoc processes source files directly, so it doesn't need VAPI files.
     # Using --pkg would cause duplicate definition errors since the VAPI contains the same definitions.

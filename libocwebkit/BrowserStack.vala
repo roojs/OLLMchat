@@ -21,6 +21,8 @@
  *
  * v1 uses primary only (no crawl pool). Owns construction of {@link Browser}.
  * Session {@link site_cookies} are shared with {@link Browser.primary}.
+ * Cloudflare block → {@link promote} + {@link cloudflare_blocked}; clear →
+ * {@link cloudflare_cleared}.
  *
  * == Example ==
  *
@@ -57,6 +59,18 @@ public class OLLMwebkit.BrowserStack : Gtk.Box
 	 */
 	public signal void visible_uri_changed(string uri);
 
+	/**
+	 * Primary browser hit a Cloudflare challenge.
+	 *
+	 * @param browser browser that reported the block
+	 */
+	public signal void cloudflare_blocked(OLLMwebkit.Browser browser);
+
+	/**
+	 * Cloudflare challenge cleared on the primary browser.
+	 */
+	public signal void cloudflare_cleared();
+
 	public BrowserStack()
 	{
 		Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0, hexpand: true, vexpand: true);
@@ -73,6 +87,16 @@ public class OLLMwebkit.BrowserStack : Gtk.Box
 				return;
 			}
 			this.visible_uri_changed(uri);
+		});
+		this.primary.cloudflare.notify["is-blocked"].connect(() => {
+			if (!this.primary.cloudflare.is_blocked) {
+				return;
+			}
+			this.promote();
+			this.cloudflare_blocked(this.primary);
+		});
+		this.primary.cloudflare.cleared.connect(() => {
+			this.cloudflare_cleared();
 		});
 	}
 

@@ -58,15 +58,18 @@
 
 ### Runtime
 
-- **✔️** Debug in `buffer_change` logs `content_h`, `peer_h`, `glyph_h`, `use_peer`, current `lines`.
-- **ℹ️** Desktop repro may never show `content_h > glyph_h && use_peer` — that gap is the Android case.
-- **⏳** Optional: confirm on Android APK with `--debug` / logcat after plus-fill.
+- **✔️** Probe logs `content_h`, `peer_h`, `glyph_h`, `use_peer`, `lines` (`GLib.message` → logcat `I chat.androidpoc`).
+- **✔️** 2026-07-19 APK install `lastUpdateTime=14:48:08` — empty composer: `peer_h=34 glyph_h=16`.
+- **✔️** Pre-install session (same probe string) confirmed wrap-vs-peer gap:
+  - `end_off=63 content_h=31 peer_h=34 glyph_h=16 use_peer=true → lines=1`
+  - `end_off=179 content_h=62 peer_h=34 glyph_h=16 use_peer=false → lines=2`
+- **✔️** First line is the bug: two glyph rows (`31 > 16`) still `use_peer` / `lines=1` because `31 ≤ 34`.
 
 ---
 
 ## Root cause
 
-- **✔️** Chrome band conflates **peer-row fit** (height chrome) with **visual line count**. On Android, peer taller than one text line → wrapped paragraph still `use_peer` → `lines=1`.
+- **✔️** Chrome band conflates **peer-row fit** with **visual line count**. Phone: `peer_h=34`, `glyph_h=16` — wrapped text with `content_h` between them reports `lines=1`.
 
 ---
 

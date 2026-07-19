@@ -19,8 +19,8 @@ grep -q 'gitlab.gnome.org/GNOME/gtk.git' "$WRAP" ||
 prepare_android_subprojects_before_meson
 
 [ -f "$MARKER" ] || { echo "patch marker missing: $MARKER" >&2; exit 1; }
-grep -q 'ollmchat-android-bugs-v8' "$MARKER" ||
-  { echo "patch marker missing ollmchat-android-bugs-v8 tag" >&2; exit 1; }
+grep -q 'ollmchat-android-bugs-v9' "$MARKER" ||
+  { echo "patch marker missing ollmchat-android-bugs-v9 tag" >&2; exit 1; }
 grep -q 'ollmchat-android-popup-v5' "$MARKER" ||
   { echo "patch marker missing ollmchat-android-popup-v5 tag" >&2; exit 1; }
 grep -q 'g_debug' "$MARKER" ||

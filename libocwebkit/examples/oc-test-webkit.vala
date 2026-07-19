@@ -138,6 +138,15 @@ Examples:
 		window.default_width = 960;
 		window.default_height = 720;
 		window.set_child(stack);
+		stack.cloudflare_blocked.connect((browser) => {
+			command_line.printerr(
+				"Cloudflare challenge — complete it in the window (uri=%s)\n",
+				browser.current_uri
+			);
+		});
+		stack.cloudflare_cleared.connect(() => {
+			command_line.printerr("Cloudflare cleared\n");
+		});
 		window.present();
 
 		if (opt_script == "" && opt_fetch == "" && opt_search == "") {

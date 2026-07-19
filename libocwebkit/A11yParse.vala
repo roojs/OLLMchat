@@ -17,11 +17,61 @@
  */
 
 /**
+ * One registered a11y node with window coordinates for layout emit.
+ */
+public class OLLMwebkit.A11yNode : GLib.Object
+{
+	public int x { get; set; default = 0; }
+	public int y { get; set; default = 0; }
+	public string label { get; set; default = ""; }
+	public string value { get; set; default = ""; }
+	public string display_role { get; set; default = ""; }
+	public string uri { get; set; default = ""; }
+	public int press_id { get; set; default = 0; }
+	public bool heading { get; set; default = false; }
+	public bool pressable { get; set; default = false; }
+
+	/**
+	 * Content fragment for this node (heading, pressable, or plain text).
+	 */
+	public string to_string()
+	{
+		if (this.heading) {
+			return @"### $(this.label)";
+		}
+		if (!this.pressable) {
+			return this.label;
+		}
+		if (this.value != "" && this.display_role != "link") {
+			return @"[$(this.label)](^press:$(this.press_id)){$(this.x),$(this.y)} = $(this.value)";
+		}
+		return @"[$(this.label)](^press:$(this.press_id)){$(this.x),$(this.y)}";
+	}
+
+	/**
+	 * References line for a pressable, or empty.
+	 */
+	public string to_ref()
+	{
+		if (!this.pressable) {
+			return "";
+		}
+		if (this.uri != "") {
+			return @"(^press:$(this.press_id)): [$(this.label)]($(this.uri))\n";
+		}
+		if (this.value != "") {
+			return @"(^press:$(this.press_id)): [$(this.display_role)] $(this.label) = $(this.value)\n";
+		}
+		return @"(^press:$(this.press_id)): [$(this.display_role)] $(this.label)\n";
+	}
+}
+
+/**
  * One AT-SPI tree walk that builds a11y Content / References markdown.
  *
  * Create once per document with {@link root} / {@link route}. {@link walk}
- * starts recursion; {@link walk_node} converts a node then recurses into
- * children, setting {@link content}, {@link refs}, and {@link press_routes}.
+ * registers nodes via {@link walk_node}, then {@link emit} lays out Content
+ * by window ''y'' (same row → same line, left-to-right by ''x'').
  *
  * == Example ==
  *
@@ -66,6 +116,11 @@ public class OLLMwebkit.A11yParse : GLib.Object
 	 */
 	public string refs { get; private set; default = ""; }
 
+	private Gee.ArrayList<A11yNode> nodes {
+		get;
+		set;
+		default = new Gee.ArrayList<A11yNode>();
+	}
 	private int next_press = 1;
 
 	/**
@@ -78,10 +133,17 @@ public class OLLMwebkit.A11yParse : GLib.Object
 	}
 
 	/**
-	 * Recurse from {@link root} via {@link walk_node}.
+	 * Register the tree, then emit Content / References by line.
 	 */
 	public void walk()
 	{
+		// One bottom→top pass so below-fold names fill in (no per-step jumping).
+		try {
+			this.root.scroll_to(Atspi.ScrollType.BOTTOM_EDGE);
+			this.root.scroll_to(Atspi.ScrollType.TOP_EDGE);
+		} catch (GLib.Error e) {
+		}
+
 		var name = this.root.get_name();
 		var role_name = this.root.get_role_name();
 		this.walk_node(
@@ -90,10 +152,56 @@ public class OLLMwebkit.A11yParse : GLib.Object
 			name != null ? name : "",
 			role_name != null ? role_name : ""
 		);
+		this.emit();
 	}
 
 	/**
-	 * Convert one accessible node, then recurse into children.
+	 * Lay out registered nodes: sort by ''y'' then ''x''; same ''y'' shares a line.
+	 */
+	private void emit()
+	{
+		this.nodes.sort((a, b) => {
+			if (a.y != b.y) {
+				return a.y - b.y;
+			}
+			return a.x - b.x;
+		});
+		this.content = "";
+		this.refs = "";
+		var last_y = 0;
+		var have_y = false;
+		foreach (var node in this.nodes) {
+			if (node.heading) {
+				if (this.content != "") {
+					if (!this.content.has_suffix("\n")) {
+						this.content += "\n";
+					}
+					if (!this.content.has_suffix("\n\n")) {
+						this.content += "\n";
+					}
+				}
+				this.content += node.to_string() + "\n";
+				have_y = false;
+				continue;
+			}
+			if (have_y && node.y != last_y) {
+				this.content += "\n";
+			}
+			if (have_y && node.y == last_y && this.content != "" && !this.content.has_suffix("\n")) {
+				this.content += " ";
+			}
+			this.content += node.to_string();
+			this.refs += node.to_ref();
+			last_y = node.y;
+			have_y = true;
+		}
+		if (this.content != "" && !this.content.has_suffix("\n")) {
+			this.content += "\n";
+		}
+	}
+
+	/**
+	 * Register one accessible node, then recurse into children.
 	 *
 	 * @param acc node to convert
 	 * @param node_route child-index path from the application root to ''acc''
@@ -133,23 +241,6 @@ public class OLLMwebkit.A11yParse : GLib.Object
 			}
 		}
 
-		var value = "";
-		if (has_text) {
-			var nchars = acc.get_text_iface().get_character_count();
-			if (nchars > 0) {
-				value = acc.get_text_iface().get_text(0, nchars);
-			}
-		}
-
-		var label = name;
-		if (value != "" && label.has_suffix(value)) {
-			label = label.substring(0, label.length - value.length).strip();
-		}
-		label = label == "" ? value : label;
-		label = label == "\uFFFC" ? "" : label;
-		label = string.joinv(" ", GLib.Regex.split_simple("\\s+", label)).strip();
-		value = string.joinv(" ", GLib.Regex.split_simple("\\s+", value)).strip();
-
 		var is_pressable = false;
 		switch (display_role) {
 			case "button":
@@ -179,6 +270,50 @@ public class OLLMwebkit.A11yParse : GLib.Object
 				break;
 		}
 
+		var is_heading = display_role == "heading" || role_name == "heading";
+		var is_text = false;
+		switch (display_role) {
+			case "paragraph":
+			case "text":
+			case "static text":
+				is_text = true;
+				break;
+		}
+		var child_count = acc.get_child_count();
+		var value = "";
+		if (has_text) {
+			var nchars = acc.get_text_iface().get_character_count();
+			if (nchars > 0) {
+				value = acc.get_text_iface().get_text(0, nchars);
+			}
+		}
+
+		var label = name;
+		if (label == "") {
+			var desc = acc.get_description();
+			label = desc != null ? desc : "";
+		}
+		// Editable fields often put the current value in the accessible name —
+		// strip only there. Doing it for links turns "Page 2" into "Page".
+		var editable = false;
+		switch (display_role) {
+			case "textbox":
+			case "searchbox":
+			case "entry":
+			case "password text":
+			case "combobox":
+			case "combo box":
+				editable = true;
+				break;
+		}
+		if (editable && value != "" && label.has_suffix(value)) {
+			label = label.substring(0, label.length - value.length).strip();
+		}
+		label = label == "" ? value : label;
+		label = label == "\uFFFC" ? "" : label;
+		label = string.joinv(" ", GLib.Regex.split_simple("\\s+", label)).strip();
+		value = string.joinv(" ", GLib.Regex.split_simple("\\s+", value)).strip();
+
 		var skip_emit = false;
 		switch (role_name) {
 			case "application":
@@ -199,59 +334,33 @@ public class OLLMwebkit.A11yParse : GLib.Object
 			is_pressable = false;
 		}
 
-		var child_count = acc.get_child_count();
+		if (!is_pressable && !skip_emit && !is_heading && !is_text && child_count <= 0) {
+			is_text = true;
+		}
 
-		if (is_pressable) {
-			var press_id = this.next_press;
-			this.next_press++;
-			this.press_routes.set(press_id, node_route);
+		if (is_pressable || (!skip_emit && (is_heading || is_text))) {
 			var ext = acc.get_extents(Atspi.CoordType.WINDOW);
-			this.content += "[" + label + "](^press:" + press_id.to_string() + ")";
-			this.content += "{" + ext.x.to_string() + "," + ext.y.to_string() + "}";
-			if (value != "" && display_role != "link") {
-				this.content += " = " + value;
-			}
-			this.content += "\n";
-
-			var uri = "";
-			if (display_role == "link") {
-				var hl = acc.get_hyperlink();
-				if (hl != null && hl.get_n_anchors() > 0) {
-					uri = hl.get_uri(0);
+			var node = new A11yNode() {
+				x = ext.x,
+				y = ext.y,
+				label = label,
+				value = value,
+				display_role = display_role,
+				heading = is_heading,
+				pressable = is_pressable
+			};
+			if (is_pressable) {
+				node.press_id = this.next_press;
+				this.next_press++;
+				this.press_routes.set(node.press_id, node_route);
+				if (display_role == "link") {
+					var hl = acc.get_hyperlink();
+					if (hl != null && hl.get_n_anchors() > 0) {
+						node.uri = hl.get_uri(0);
+					}
 				}
 			}
-			if (uri != "") {
-				this.refs += "(^press:" + press_id.to_string() + "): [" + label + "](" + uri + ")\n";
-			}
-			if (uri == "" && value != "") {
-				this.refs += "(^press:" + press_id.to_string() + "): [" + display_role + "] " + label + " = " + value + "\n";
-			}
-			if (uri == "" && value == "") {
-				this.refs += "(^press:" + press_id.to_string() + "): [" + display_role + "] " + label + "\n";
-			}
-		}
-		if (!is_pressable && !skip_emit) {
-			switch (display_role) {
-				case "heading":
-					this.content += "\n### " + label + "\n";
-					break;
-
-				case "paragraph":
-				case "text":
-				case "static text":
-					this.content += label + "\n";
-					break;
-
-				default:
-					if (role_name == "heading") {
-						this.content += "\n### " + label + "\n";
-						break;
-					}
-					if (child_count <= 0) {
-						this.content += label + "\n";
-					}
-					break;
-			}
+			this.nodes.add(node);
 		}
 
 		for (var j = 0; j < child_count; j++) {

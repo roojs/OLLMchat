@@ -20,9 +20,10 @@ namespace OLLMtools
 {
 	/**
 	 * Registry for all tools in liboctools.
-	 * 
+	 *
 	 * Registers: ReadFile, RunCommand, WebFetch, EditMode, WriteFile, GoogleSearch,
-	 * CodebaseSearch, SessionFetch, HuggingFace, and wrapped tools (via ToolBuilder).
+	 * CodebaseSearch, SessionFetch, HuggingFace, Browser (OLLMwebkit), and wrapped
+	 * tools (via ToolBuilder).
 	 */
 	public class Registry : Object
 	{
@@ -38,7 +39,8 @@ namespace OLLMtools
 			typeof(CodebaseSearch.CodebaseSearchTool).ensure();
 			typeof(SessionFetch.Tool).ensure();
 			typeof(HuggingFace.Tool).ensure();
-			
+			typeof(OLLMwebkit.Tool).ensure();
+
 			// Register all liboctools tool config types with Config2
 			// Tools with BaseToolConfig get enabled/disabled in Settings; tools with custom config get that plus their options
 			OLLMchat.Tool.BaseTool.register_config(typeof(ReadFile.Tool));
@@ -50,10 +52,9 @@ namespace OLLMtools
 			OLLMchat.Tool.BaseTool.register_config(typeof(CodebaseSearch.CodebaseSearchTool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(SessionFetch.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(HuggingFace.Tool));
-			
-			//GLib.debug("OLLMtools.Registry.init_config: Registered liboctools tool config types");
+			OLLMchat.Tool.BaseTool.register_config(typeof(OLLMwebkit.Tool));
 		}
-		
+
 		/**
 		 * Fill config defaults for liboctools (creates BaseToolConfig or custom config if missing).
 		 * Call only where config is loaded; do not use for syncing tool.active.
@@ -69,9 +70,9 @@ namespace OLLMtools
 			(new CodebaseSearch.CodebaseSearchTool(null)).setup_tool_config_default(config);
 			(new SessionFetch.Tool()).setup_tool_config_default(config);
 			(new HuggingFace.Tool(null)).setup_tool_config_default(config);
-			//GLib.debug("OLLMtools.Registry.setup_config_defaults: Set up liboctools tool configs");
+			(new OLLMwebkit.Tool()).setup_tool_config_default(config);
 		}
-		
+
 		public void fill_tools(
 			OLLMchat.History.Manager manager,
 			OLLMfiles.ProjectManager? project_manager = null
@@ -87,16 +88,11 @@ namespace OLLMtools
 			manager.register_tool(new CodebaseSearch.CodebaseSearchTool(project_manager));
 			manager.register_tool(new SessionFetch.Tool());
 			manager.register_tool(new HuggingFace.Tool(project_manager));
-			
-			//GLib.debug("OLLMtools.Registry.fill_tools: Registered %d liboctools standard tools", 
-			//	manager.tools.size);
-			
+			manager.register_tool(new OLLMwebkit.Tool());
+
 			// Register wrapped tools from .tool definition files
 			var builder = new ToolBuilder(manager.tools);
 			builder.scan_and_build();
-			
-			//GLib.debug("OLLMtools.Registry.fill_tools: Registered wrapped tools (total tools: %d)",
-			//	manager.tools.size);
 		}
 	}
 }

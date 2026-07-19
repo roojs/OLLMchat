@@ -60,6 +60,7 @@ ocwebkit_src = files([
   'A11yParse.vala',
   'Browser.vala',
   'BrowserStack.vala',
+  'Cloudflare.vala',
   'Request.vala',
   'Tool.vala',
 ])

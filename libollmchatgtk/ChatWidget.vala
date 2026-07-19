@@ -184,6 +184,7 @@ namespace OLLMchatGtk
 
 			this.manager.session_restored.connect((_session) => {
 				this.restoring_session = false;
+				this.streaming_state(this.manager.session.is_running);
 				GLib.Idle.add(() => {
 					this.chat_view.scroll_enabled = true;
 					/* GLib.debug("scroll_to_bottom_caller reason=session_restored_idle"); */
@@ -194,6 +195,10 @@ namespace OLLMchatGtk
 
 			// Single source for unhide footer + Stop→Send: agent_status_change (chat start/end, session switch)
 			this.manager.agent_status_change.connect(() => {
+				if (this.restoring_session) {
+					this.streaming_state(true);
+					return;
+				}
 				this.streaming_state(this.manager.session.is_running);
 			});
 
@@ -220,10 +225,17 @@ namespace OLLMchatGtk
 		private void streaming_state(bool streaming)
 		{
 			this.streaming = streaming;
-			this.chat_input.visible = !streaming;
-			this.input_column.visible = !streaming;
+			/* Drop IME focus before editable/sensitive/visible flip (Android ImContext deadlock). */
+			if (streaming) {
+				var root = this.get_root();
+				if (root != null) {
+					root.set_focus(null);
+				}
+			}
 			this.chat_input.editable(!streaming);
 			this.chat_input.sensitive = !streaming;
+			this.chat_input.visible = !streaming;
+			this.input_column.visible = !streaming;
 			this.chat_bar.sync_streaming(streaming);
 			if (streaming) {
 				return;

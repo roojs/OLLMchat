@@ -265,7 +265,7 @@ namespace OLLMchatGtk
 			this.text_view.get_iter_location(size_start, out glyph);
 			/* yrange is paragraph height (GTK); peer only when content fits the play-button row. */
 			var use_peer = peer_h > 0 && content_h <= peer_h;
-			GLib.debug(
+			GLib.message(
 				"scrolledview fit end_off=%d content_h=%d peer_h=%d glyph_h=%d use_peer=%s → lines=%d",
 				end_off, content_h, peer_h, glyph.height, use_peer.to_string(),
 				end_off == 0 ? 0 : (use_peer ? 1 : 2));

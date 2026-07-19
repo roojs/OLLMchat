@@ -625,7 +625,7 @@ index 00000000000..11111111111
 +#include <glib.h>
 +
 +/* Survives in libgtk-4.so; verify-apk.sh greps for these tags. */
-+const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v8";
++const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v9";
 +const char gdk_android_ollmchat_popup_tag[] = "ollmchat-android-popup-v5";
 +
 +static void
@@ -636,3 +636,40 @@ index 00000000000..11111111111
 +           gdk_android_ollmchat_bugs_tag,
 +           gdk_android_ollmchat_popup_tag);
 +}
+
+# --- v9: post restartInput to UI thread (IME ANR deadlock) ---
+
+--- a/gdk/android/glue/java/org/gtk/android/ImContext.java
++++ b/gdk/android/glue/java/org/gtk/android/ImContext.java
+@@ -59,8 +59,11 @@
+ 
+ 	@Keep
+ 	private static void reset(View view) {
+-		InputMethodManager imm = view.getContext().getSystemService(InputMethodManager.class);
+-		imm.restartInput(view);
++		/* Post to UI thread — same IMM vs blockForMain deadlock as setActiveImContext. */
++		view.post(() -> {
++			InputMethodManager imm = view.getContext().getSystemService(InputMethodManager.class);
++			imm.restartInput(view);
++		});
+ 	}
+ 
+ 	final class ImeConnection extends BaseInputConnection {
+--- a/gdk/android/glue/java/org/gtk/android/ToplevelActivity.java
++++ b/gdk/android/glue/java/org/gtk/android/ToplevelActivity.java
+@@ -194,8 +194,12 @@
+ 				if (activeImContext == context)
+ 					return;
+ 				activeImContext = context;
+-				InputMethodManager imm = getSystemService(InputMethodManager.class);
+-				imm.restartInput(this);
++				/* Post to UI thread: sync restartInput on the GTK thread deadlocks with
++				 * finishComposingText → blockForMain holding InputMethodManager$H. */
++				runOnUiThread(() -> {
++					InputMethodManager imm = getSystemService(InputMethodManager.class);
++					imm.restartInput(this);
++				});
+ 			}
+ 
+ 			public void reposition(int x, int y, int width, int height) {
+
