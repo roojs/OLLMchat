@@ -29,9 +29,12 @@ namespace OllamaWeb.Search
 			var by_slug = new Gee.HashMap<string, OllamaWeb.Model>();
 			unowned Xml.Doc doc = this.load_doc(html);
 			var ctxt = new Xml.XPath.Context(doc);
+			/* Pre-2026-07: li[@x-test-model]. After site drop of x-test-*: library rows. */
 			unowned Xml.XPath.NodeSet? nodes = this.eval_nodes(
 				ctxt,
-				"//*[@id='searchresults']//li[@x-test-model] | //ul[@role='list']/li[@x-test-model]"
+				"//*[@id='searchresults']//li[@x-test-model]"
+				+ " | //ul[@role='list']/li[@x-test-model]"
+				+ " | //*[@id='searchresults']//ul[@role='list']/li[.//a[starts-with(@href,'/library/')]]"
 			);
 			if (nodes == null) {
 				return new Gee.ArrayList<OllamaWeb.Model>();
@@ -173,6 +176,12 @@ namespace OllamaWeb.Search
 			}
 			model.description = this.text(anchor, ".//p[contains(@class,'text-neutral-800')]");
 			var pulls_text = this.text(anchor, ".//*[@x-test-pull-count]");
+			if (pulls_text == "") {
+				pulls_text = this.text(
+					anchor,
+					".//span[contains(normalize-space(.),'Pulls')]/preceding-sibling::span[1]"
+				);
+			}
 			model.pulls = this.parse_count(pulls_text);
 			this.row_features(anchor, model);
 			return model;
@@ -180,15 +189,19 @@ namespace OllamaWeb.Search
 
 		private void row_features(Xml.Node* anchor, OllamaWeb.Model model)
 		{
-			unowned Xml.XPath.NodeSet? caps = this.eval_on(anchor, ".//*[@x-test-capability]");
+			unowned Xml.XPath.NodeSet? caps = this.eval_on(
+				anchor,
+				".//*[@x-test-capability] | .//span[contains(@class,'bg-indigo-50')]"
+			);
 			if (caps == null) {
 				return;
 			}
 			for (int i = 0; i < caps.length(); i++) {
 				var text = this.node_content(caps.item(i));
-				if (!model.features.contains(text)) {
-					model.features.add(text);
+				if (text == "" || model.features.contains(text)) {
+					continue;
 				}
+				model.features.add(text);
 			}
 		}
 
