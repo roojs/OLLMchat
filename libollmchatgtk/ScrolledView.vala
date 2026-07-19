@@ -84,7 +84,8 @@ namespace OLLMchatGtk
 
 		/**
 		 * After TextView yrange fit: {@link content_height} updated.
-		 * ''lines'': 0 empty, 1 one visual line, 2 more than one.
+		 * ''lines'': 0 empty, 1 one visual line (yrange ≤ glyph row), 2 more than one.
+		 * Height may still use {@link line_peer} when content fits the play-button row.
 		 */
 		public signal void lines_changed(int lines);
 
@@ -265,10 +266,10 @@ namespace OLLMchatGtk
 			this.text_view.get_iter_location(size_start, out glyph);
 			/* yrange is paragraph height (GTK); peer only when content fits the play-button row. */
 			var use_peer = peer_h > 0 && content_h <= peer_h;
-			GLib.message(
-				"scrolledview fit end_off=%d content_h=%d peer_h=%d glyph_h=%d use_peer=%s → lines=%d",
-				end_off, content_h, peer_h, glyph.height, use_peer.to_string(),
-				end_off == 0 ? 0 : (use_peer ? 1 : 2));
+			var lines = 0;
+			if (end_off > 0) {
+				lines = (glyph.height > 0 && content_h > glyph.height) ? 2 : 1;
+			}
 			if (use_peer) {
 				var extra = peer_h - content_h;
 				if (extra < 0) {
@@ -296,7 +297,7 @@ namespace OLLMchatGtk
 				this.vadjustment.value = 0;
 				this.pin_end = false;
 			}
-			this.lines_changed(end_off == 0 ? 0 : (use_peer ? 1 : 2));
+			this.lines_changed(lines);
 			return false;
 		}
 
