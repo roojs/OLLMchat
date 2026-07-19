@@ -14,6 +14,7 @@ ocwebkit_deps = [
   dependency('json-glib-1.0'),
   dependency('gtk4'),
   dependency('webkitgtk-6.0'),
+  dependency('libsoup-3.0'),
   valac.find_library('posix'),
 ]
 
@@ -65,7 +66,6 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libocsqlite',
   meson.current_build_dir() / '..' / 'libocrpc',
-  meson.current_build_dir() / '..' / 'libocmarkdown',
   meson.current_build_dir() / '..' / 'libollamaweb',
 ])
 
@@ -82,14 +82,15 @@ ocwebkit_base_lib = library('ocwebkit',
     include_directories('..' / 'libollmchat'),
   ],
   vala_args: [
+    '-D', 'LINUX',
     '--pkg=ollmchat',
     '--pkg=gtk4',
     '--pkg=webkitgtk-6.0',
+    '--pkg=libsoup-3.0',
     '--pkg=json-glib-1.0',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', '/usr/share/vala/vapi',
   ],
@@ -105,7 +106,6 @@ ocwebkit_vapi_cmd = [
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
   '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-  '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   '--vapidir', '/usr/share/vala/vapi',
 ]
@@ -113,6 +113,7 @@ if is_android_cross
   ocwebkit_vapi_cmd += ['--vapidir', gee_vapi_dir]
 endif
 ocwebkit_vapi_cmd += [
+  '-D', 'LINUX',
   '--pkg', 'posix',
   '--pkg', 'json-glib-1.0',
   '--pkg', 'gobject-2.0',
@@ -121,10 +122,10 @@ ocwebkit_vapi_cmd += [
   '--pkg', 'gee-0.8',
   '--pkg', 'gtk4',
   '--pkg', 'webkitgtk-6.0',
+  '--pkg', 'libsoup-3.0',
   '--pkg', 'sqlite3',
   '--pkg', 'ocrpc',
   '--pkg', 'ocsqlite',
-  '--pkg', 'ocmarkdown',
   '--pkg', 'ollamaweb',
   '--pkg', 'ollmchat',
   '--library', 'ocwebkit',

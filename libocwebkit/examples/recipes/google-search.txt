@@ -1,0 +1,8 @@
+# Minimal Google search spike.
+# Run: build/libocwebkit/examples/oc-test-webkit --script libocwebkit/examples/recipes/google-search.txt
+#
+# After the first dump, pick a result press-ref from ## References, then
+# uncomment / adjust the press line.
+
+search Vala WebKitGTK
+# press #2

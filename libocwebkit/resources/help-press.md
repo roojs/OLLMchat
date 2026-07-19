@@ -3,7 +3,7 @@ BROWSER TOOL — action press (and argument fill)
 Activate a press-ref from the LAST a11y dump for this chat.
 
 Arguments:
-  press   {integer}  Required. Press id from [^press:N] / References.
+  press   {integer}  Required. Press id from [label](^press:N) / References.
   fill    {object}   Optional. NOT an action. Only with action "press".
                      Map of press-ref id → text to type.
                      Example: {"1": "site:example.com release notes"}

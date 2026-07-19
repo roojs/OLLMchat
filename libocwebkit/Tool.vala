@@ -47,9 +47,10 @@ page is not in context.""";
 
 	public override string parameter_description { get {
 		return """
-@param action {string} [required] One of: help, fetch, search, press, download, where. See help.
-@param topic {string} [optional] With action help: which topic page (fetch, search, press, download, where, format).
-@param url {string} [optional] For fetch, download, and search (search: Google URL including the query).
+@param action {string} [required] One of: help, fetch, search, press, download, whereami. See help.
+@param topic {string} [optional] With action help: which topic page (fetch, search, press, download, whereami, format).
+@param url {string} [optional] For fetch and download.
+@param query {string} [optional] For search: search terms (Google v1; no engine arg).
 @param press {integer} [optional] For action press: press-ref id from the last a11y dump.
 @param fill {object} [optional] For press: map of press-ref id to text, e.g. {\"1\": \"terms\"} — not an action.
 @param format {string} [optional] a11y (default), html, or markdown.""";

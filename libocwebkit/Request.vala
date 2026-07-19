@@ -24,6 +24,7 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 	public string action { get; set; default = ""; }
 	public string topic { get; set; default = ""; }
 	public string url { get; set; default = ""; }
+	public string query { get; set; default = ""; }
 	public int press { get; set; default = 0; }
 	public string format { get; set; default = "a11y"; }
 
@@ -106,12 +107,26 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 				}
 				yield ((OLLMwebkit.Tool) this.tool).stack.primary.load(this.url.strip());
 				return yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
-			case "where":
-				return yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
 			case "search":
+				if (this.query.strip() == "") {
+					throw new GLib.IOError.INVALID_ARGUMENT("query is required for search");
+				}
+				yield ((OLLMwebkit.Tool) this.tool).stack.primary.load(
+					"https://www.google.com/search?q=" + GLib.Uri.escape_string(this.query.strip()));
+				return yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
+			case "whereami":
+				return yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
 			case "press":
+				if (this.fill.size > 0) {
+					yield ((OLLMwebkit.Tool) this.tool).stack.primary.fill(this.fill);
+				}
+				if (this.press <= 0) {
+					throw new GLib.IOError.INVALID_ARGUMENT("press (integer) is required for action press");
+				}
+				yield ((OLLMwebkit.Tool) this.tool).stack.primary.press(this.press);
+				return yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
 			case "download":
-				throw new GLib.IOError.NOT_SUPPORTED("%s — Phase 3+", act);
+				throw new GLib.IOError.NOT_SUPPORTED("%s — Phase 7", act);
 			default:
 				throw new GLib.IOError.INVALID_ARGUMENT("Unknown action: %s", this.action);
 		}

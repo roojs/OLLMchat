@@ -17,9 +17,10 @@
  */
 
 /**
- * Owns the Gtk.Stack and primary {@link Browser} for one chat (Snappr BrowserStack).
+ * WebView host — primary browser in a {@link Gtk.Stack} (Snappr BrowserStack).
  *
- * v1 uses primary only (no crawl pool). Globe / Cloudflare promote use {@link promote}.
+ * v1 uses primary only (no crawl pool). Owns construction of {@link Browser}.
+ * Session {@link site_cookies} are shared with {@link Browser.primary}.
  *
  * == Example ==
  *
@@ -27,6 +28,7 @@
  * var stack = new OLLMwebkit.BrowserStack();
  * window.set_child(stack);
  * yield stack.primary.load("https://example.com/");
+ * stack.promote();
  * }}}
  */
 public class OLLMwebkit.BrowserStack : Gtk.Box
@@ -41,16 +43,37 @@ public class OLLMwebkit.BrowserStack : Gtk.Box
 	 */
 	public OLLMwebkit.Browser primary { get; private set; }
 
+	/**
+	 * Shared per-host cookies for this chat session (Snappr stack map).
+	 */
+	public Gee.HashMap<string, string> site_cookies {
+		get;
+		private set;
+		default = new Gee.HashMap<string, string>();
+	}
+
+	/**
+	 * URI of the visible browser changed (load or promote).
+	 */
+	public signal void visible_uri_changed(string uri);
+
 	public BrowserStack()
 	{
-		Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
-		this.stack = new Gtk.Stack();
-		this.stack.hexpand = true;
-		this.stack.vexpand = true;
-		this.primary = new OLLMwebkit.Browser();
+		Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0, hexpand: true, vexpand: true);
+		this.stack = new Gtk.Stack() {
+			hexpand = true,
+			vexpand = true,
+		};
+		this.append(this.stack);
+		this.primary = new OLLMwebkit.Browser(this);
 		this.stack.add_named(this.primary, "primary");
 		this.stack.visible_child = this.primary;
-		this.append(this.stack);
+		this.primary.uri_changed.connect((uri) => {
+			if (this.stack.visible_child != this.primary) {
+				return;
+			}
+			this.visible_uri_changed(uri);
+		});
 	}
 
 	/**
@@ -59,5 +82,6 @@ public class OLLMwebkit.BrowserStack : Gtk.Box
 	public void promote()
 	{
 		this.stack.visible_child = this.primary;
+		this.visible_uri_changed(this.primary.current_uri);
 	}
 }
