@@ -82,6 +82,12 @@ namespace OLLMchatGtk
 		 */
 		public Gtk.Widget? line_peer { get; set; default = null; }
 
+		/**
+		 * After TextView yrange fit: {@link content_height} updated.
+		 * ''lines'': 0 empty, 1 one visual line, 2 more than one.
+		 */
+		public signal void lines_changed(int lines);
+
 		static construct
 		{
 			set_css_name("scrolledview");
@@ -247,6 +253,7 @@ namespace OLLMchatGtk
 					return false;
 				}
 				this.need_fit = false;
+				this.lines_changed(0);
 				if (peer_h > 0) {
 					return false;
 				}
@@ -283,6 +290,7 @@ namespace OLLMchatGtk
 				this.vadjustment.value = 0;
 				this.pin_end = false;
 			}
+			this.lines_changed(end_off == 0 ? 0 : (use_peer ? 1 : 2));
 			return false;
 		}
 

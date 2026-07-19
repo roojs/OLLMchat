@@ -82,6 +82,12 @@ valadoc_docs = custom_target('valadoc',
     '../libochf/ModelTreeArray.vala',
     '../libochf/Download.vala',
     '../libochf/Param/Search.vala',
+    # libocwebkit (browser tool — depends on libollmchat)
+    '../libocwebkit/namespace.vala',
+    '../libocwebkit/Browser.vala',
+    '../libocwebkit/BrowserStack.vala',
+    '../libocwebkit/Request.vala',
+    '../libocwebkit/Tool.vala',
     # ollmfilesd param types (shared with libocfiles client)
     '../ollmfilesd/CallParam.vala',
     # libocfiles sources (RPC client — must come before liboccoder and liboctools)

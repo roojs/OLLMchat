@@ -356,10 +356,13 @@ namespace OLLMapp
 			this.connect_agent_factory_signals();
 
 			this.history_manager.agent_status_change.connect(() => {
-				android_set_partial_wake_lock(
-					this, this.history_manager.session.is_running);
+				var running = this.history_manager.session.is_running;
+				android_set_partial_wake_lock(this, running);
+				android_set_streaming_foreground(this, running);
 			});
 			android_set_partial_wake_lock(
+				this, this.history_manager.session.is_running);
+			android_set_streaming_foreground(
 				this, this.history_manager.session.is_running);
 
 			this.chat_container.append (this.chat_widget);
@@ -378,6 +381,9 @@ namespace OLLMapp
 
 	[CCode (cname = "ollmapp_android_set_partial_wake_lock", cheader_filename = "android-partial-wake-lock.h")]
 	private extern void android_set_partial_wake_lock(Gtk.Window window, bool enable);
+
+	[CCode (cname = "ollmapp_android_set_streaming_foreground", cheader_filename = "android-partial-wake-lock.h")]
+	private extern void android_set_streaming_foreground(Gtk.Window window, bool enable);
 
 	int main(string[] args)
 	{

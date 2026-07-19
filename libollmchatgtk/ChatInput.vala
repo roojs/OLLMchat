@@ -23,7 +23,8 @@ namespace OLLMchatGtk
 	 * single-line; play moves to {@link ChatBar} when text needs a second line.
 	 *
 	 * Height is owned by {@link scrolled} (TextView buffer.changed →
-	 * content_height, capped by {@link ScrolledView.max_height}). ChatWidget
+	 * content_height, capped by {@link ScrolledView.max_height}). Compact vs
+	 * expanded chrome follows {@link ScrolledView.lines_changed}. ChatWidget
 	 * wires send and footer play visibility via {@link expanded_changed}.
 	 *
 	 * == Usage Examples ==
@@ -88,7 +89,7 @@ namespace OLLMchatGtk
 			this.text_view.add_css_class("chat-input-text");
 			this.scrolled.set_child(this.text_view);
 
-			this.placeholder = new Gtk.Label("Give me a task") {
+			this.placeholder = new Gtk.Label("Give me a task (Ctrl+Enter to send)") {
 				halign = Gtk.Align.START,
 				valign = Gtk.Align.CENTER,
 				margin_start = 6,
@@ -121,44 +122,28 @@ namespace OLLMchatGtk
 			this.append(this.inline_play);
 			this.scrolled.line_peer = this.inline_play;
 
-			this.buffer.changed.connect(() => {
-				if (this.syncing) {
+			this.scrolled.lines_changed.connect((lines) => {
+				this.placeholder.visible = lines == 0;
+				if (lines == 1) {
 					return;
 				}
-				Gtk.TextIter start_iter;
-				Gtk.TextIter end_iter;
-				this.buffer.get_start_iter(out start_iter);
-				this.buffer.get_end_iter(out end_iter);
-				var text = this.buffer.get_text(start_iter, end_iter, false);
-				this.placeholder.visible = this.buffer.get_char_count() == 0;
-				/* Compact vs expanded: inline below (same as update_entry). */
-				var want_expanded = text.contains("\n");
-				if (!want_expanded && this.get_width() > 0) {
-					var play_min = 0;
-					var play_nat = 0;
-					this.inline_play.measure(Gtk.Orientation.HORIZONTAL, -1,
-						out play_min, out play_nat, null, null);
-					var play_w = play_nat > 0 ? play_nat : play_min;
-					var avail = this.get_width() - play_w
-						- this.text_view.left_margin - this.text_view.right_margin;
-					if (avail > 0) {
-						var layout = this.text_view.create_pango_layout(text);
-						var text_w = 0;
-						var text_h = 0;
-						layout.get_pixel_size(out text_w, out text_h);
-						want_expanded = text_w > avail;
-					}
-				}
-				if (want_expanded == this.is_expanded) {
+				if (lines == 0 && !this.is_expanded) {
 					return;
 				}
-				this.is_expanded = want_expanded;
-				this.inline_play.visible = !want_expanded;
-				this.remove_css_class("is-expanded");
-				if (want_expanded) {
-					this.add_css_class("is-expanded");
+				if (lines == 0) {
+					this.is_expanded = false;
+					this.inline_play.visible = true;
+					this.remove_css_class("is-expanded");
+					this.expanded_changed(false);
+					return;
 				}
-				this.expanded_changed(want_expanded);
+				if (this.is_expanded) {
+					return;
+				}
+				this.is_expanded = true;
+				this.inline_play.visible = false;
+				this.add_css_class("is-expanded");
+				this.expanded_changed(true);
 			});
 
 			var keys = new Gtk.EventControllerKey();
@@ -193,7 +178,7 @@ namespace OLLMchatGtk
 		}
 
 		/**
-		 * Apply text and sync compact/expanded chrome from the value.
+		 * Apply text; chrome/placeholder follow later {@link ScrolledView.lines_changed}.
 		 * Recursion: returns if syncing; holds syncing across buffer writes.
 		 * On programmatic set: Idle.add({@link focus_idle}).
 		 * Does not steal focus on typing — only this path schedules focus_idle.
@@ -215,34 +200,6 @@ namespace OLLMchatGtk
 				this.buffer.delete(ref cur_start, ref cur_end);
 				this.buffer.insert(ref cur_start, text, -1);
 				this.syncing = false;
-			}
-			this.placeholder.visible = text.length == 0;
-
-			var want_expanded = text.contains("\n");
-			if (!want_expanded && this.get_width() > 0) {
-				var play_min = 0;
-				var play_nat = 0;
-				this.inline_play.measure(Gtk.Orientation.HORIZONTAL, -1,
-					out play_min, out play_nat, null, null);
-				var play_w = play_nat > 0 ? play_nat : play_min;
-				var avail = this.get_width() - play_w
-					- this.text_view.left_margin - this.text_view.right_margin;
-				if (avail > 0) {
-					var layout = this.text_view.create_pango_layout(text);
-					var text_w = 0;
-					var text_h = 0;
-					layout.get_pixel_size(out text_w, out text_h);
-					want_expanded = text_w > avail;
-				}
-			}
-			if (want_expanded != this.is_expanded) {
-				this.is_expanded = want_expanded;
-				this.inline_play.visible = !want_expanded;
-				this.remove_css_class("is-expanded");
-				if (want_expanded) {
-					this.add_css_class("is-expanded");
-				}
-				this.expanded_changed(want_expanded);
 			}
 			GLib.Idle.add(this.focus_idle);
 		}

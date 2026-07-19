@@ -25,7 +25,7 @@
 - ✅ Send button — green styling with play/triangle icon
 - ✅ Remove tools selector from main viewport config
 - ✅ **C5** flip/return reboot feel — `launchMode=singleTask` (2026-07-18)
-- ✅ **C1** sleep / network mid-stream — `PARTIAL_WAKE_LOCK` (2026-07-18)
+- ⏳ **C1** sleep / network mid-stream — **dataSync FGS applied**; await device verify (2026-07-18)
 - ✅ **C2** markdown header emoji stream hang — ATX gate allows non-ASCII (2026-07-18)
 - ✅ **C3** bullet styling — blue markers + half-scale spacer gap (2026-07-18)
 - ✅ **C4** streaming table placeholder — pending label + 1–10 dots (2026-07-18)
@@ -37,15 +37,39 @@
 
 ### C1 — Sleep / network disconnect (critical blocker)
 
-**Status:** ✅ FIXED (2026-07-18) — user: restore / mid-stream flip working; no further C1 failures observed
+**Status:** ⏳ OPEN — **foreground service applied**; await device verify (wake lock alone was insufficient)
 
-**Expected:** 🔷 Long replies keep the SSE pipe alive across screen-off and brief backgrounding when flipping apps.
+**Expected:** 🔷 Long replies keep the SSE pipe alive across screen-off and brief backgrounding when flipping apps (or fail with a clear interrupt UX, not a broken-looking session).
 
-**Actual (before):** 🔷 Screen idle / lock or app flip mid-stream → network drops → SSE dies → “Network error”.
+**Actual:** 🔷 Screen idle / lock or app flip mid-stream → OS tears down the TCP socket → libsoup SSE dies → “Network error”. Partial tokens already received stay in the local session; the **in-flight generation cannot be resumed** (Ollama has no continue-SSE).
 
-**Fix:** ✅ Android `PARTIAL_WAKE_LOCK` via `agent_status_change` while `session.is_running` (Java `PartialWakeLock` + C JNI + `WAKE_LOCK` permission). Keep-screen-on was tried and reverted (does not help background). **C5** `singleTask` was a separate stack bug that had masked C1 testing.
+**Tried (insufficient alone):**
 
-**Caveats (unchanged):** ℹ️ OEM/Doze may still kill sockets under pressure; wake lock is a spike, not a guarantee. Foreground service remains a heavier fallback if needed later.
+- ✔️ Keep-screen-on while `session.is_running` — reverted (does not help background / app flip)
+- ✔️ Android `PARTIAL_WAKE_LOCK` via `agent_status_change` — OEM/Doze still drops the socket
+
+**Fix applied (await verify):**
+
+- ✔️ **Native Java** `StreamingForegroundService` + `StreamingForeground.set(Context, boolean)` (`android/*.java`)
+- ✔️ Type **`dataSync`**: `startForeground(…, FOREGROUND_SERVICE_TYPE_DATA_SYNC)` on API 34+; manifest `android:foregroundServiceType="dataSync"`
+- ✔️ JNI `ollmapp_android_set_streaming_foreground` in `android-partial-wake-lock.c` (same `JNI_OnLoad` / class loader as wake lock)
+- ✔️ Vala: `OllmchatWindow` starts/stops FGS (+ wake lock) on `agent_status_change` / `session.is_running`
+- ✔️ Build: `install_poc_java` + `patch_android_manifest` add FGS permissions, `POST_NOTIFICATIONS`, and `<service … dataSync/>`
+
+**Why FGS (not Vala):** GTK/Vala cannot host an Android `Service`. Process promotion + ongoing notification must be Java; Vala only flips JNI.
+
+**What this is not:**
+
+- 🚫 Not “resume the same SSE after disconnect”
+- 🚫 Not auto-retry of the full turn on unlock
+
+**Next for C1:**
+
+1. ⏳ 🔷 Rebuild APK; mid-stream screen-off / brief flip — expect notification “Generating reply…” and stream survival
+2. ⏳ 🔷 If OEM still kills: `adb logcat` + reconsider notification permission prompt on API 33+
+3. ⏳ 🔷 Soften error copy only after connectivity path is confirmed
+
+**Related:** ℹ️ [`docs/bugs/done/2026-07-09-FIXED-android-poc-device-issues.md`](done/2026-07-09-FIXED-android-poc-device-issues.md) § Problem 3
 
 ---
 
@@ -157,39 +181,47 @@ build/examples/oc-test-gtkmd --stream 30 tests/markdown/repro-heading-emoji.md
 
 ---
 
-### T2 — Chat view selection during scroll
+**Status:** ⏳ 🔷 gate landed; sticky-flag hygiene fixed (v7) — await re-verify of ~5–10% intermittency
 
-**Status:** ⏳ 🔷 open
+**Device verify (2026-07-19):** ✅ 🔷 Knowles `org.gtk.entrypopuptest` — scroll-without-select ~90–95%; long-press selects. 🔷 Rare false select.
 
-**Expected:** 🔷 Drag-scroll does not start text selection; selection only after a strict long-press threshold.
+**Fix applied:** ✔️ long-press gate (`android-bugs.patch` v6→**v7**). **v7 hygiene:** do not set `in_long_press` until iter resolve succeeds; clear flag on each new touch press (stops sticky flag across gestures).
 
-**Actual:** 🔷 Selection routines fire during active drag-scroll in the main text container.
+**Intermittency:** 💩 likely brief pause hitting `gtk-long-press-time`; sticky-flag path was a real but secondary bug — retest after v7.
 
-**Next:** ⏳ 🔷 Identify gesture / GtkSourceView or TextView selection path on Android
+**Next for T2:** ⏳ 🔷 Reinstall EntryPopupTest / chat POC with v7; confirm false-select rate
 
 ---
 
-### T3 — Voice input double-filling
+### T3 — Autocomplete / IME double-filling
 
-**Status:** ⏳ 🔷 open
+**Status:** ⏳ 🔷 fix applied (`android-bugs.patch` v8) — await device verify
 
-**Expected:** 🔷 Speech-to-text inserts the spoken text once.
+**Expected:** 🔷 Typing + autocomplete inserts text once; leaving the field does not re-append the buffer.
 
-**Actual:** 🔷 Intermittent double-fill / duplicated strings in the input.
+**Actual (before):** 🔷 Autocomplete then focus elsewhere can duplicate the whole string (e.g. type `this is a te` → autocomplete → leave field → full text committed again).
 
-**Next:** ⏳ 🔷 Reproduce with IME / Android speech; check insert vs commit handlers
+**Root cause:** ✔️ `ImContext.finishComposingText` called `commit(content.toString())` on the **entire** Android Editable. Android’s finish only clears composing spans; the field already holds committed text. Re-committing duplicates. `setComposingText` also pushed the full Editable into GTK preedit.
+
+**Fix:** ✔️ Commit only the composing span (or clear preedit with `updatePreedit(null)` if none). `setComposingText` updates preedit from the `text` argument only.
+
+**Test:** ⏳ 🔷 EntryPopupTest entry: type prefix → pick autocomplete → tap elsewhere / open nested dialog — no duplicate paste of the whole line.
 
 ---
 
 ### T4 — Keyboard delete with selection
 
-**Status:** ⏳ 🔷 open
+**Status:** ⏳ 🔷 delete-selection + bubble hide in v7/v8 — await device verify
 
-**Expected:** 🔷 Backspace/delete with an active selection removes the selection.
+**Expected:** 🔷 Backspace/delete with an active selection removes the selection; touch selection bubble disappears.
 
-**Actual:** 🔷 Delete removes text before the selection instead of the highlighted range.
+**Actual (before):** 🔷 Delete removed text before the selection; bubble could stay visible after IME delete.
 
-**Next:** ⏳ 🔷 Trace key handler / IME delete on Android TextView
+**Root cause:** ✔️ IME always `deleteSurrounding(-1,1)`; IME delete path skipped key-controller bubble unset.
+
+**Fix:** ✔️ `deleteBackwardOrSelection()` (v7); `gtk_text_delete_surrounding_cb` / TextView IM delete unset bubble + handles (v8).
+
+**Test:** ⏳ 🔷 Select in entry → Delete → selection gone and bubble gone.
 
 ---
 
@@ -197,21 +229,22 @@ build/examples/oc-test-gtkmd --stream 30 tests/markdown/repro-heading-emoji.md
 
 ### W1 — Migrate existing WebKit search code
 
-**Status:** ⏳ 🔷 open
+**Status:** ⏳ 🔷 Linux design in [`5.0-ACTIVE-webkit-control.md`](../plans/5.0-ACTIVE-webkit-control.md); **Windows a11y** in [`5.0.1-windows-webkit-accessibility.md`](../plans/5.0.1-windows-webkit-accessibility.md); **Android** in [`5.0.2-android-webkit-control.md`](../plans/5.0.2-android-webkit-control.md)
 
-- 🔷 Port the functional WebKit / webview search wrapper and DOM extraction utility from the other project into this repo.
+- 🔷 Browser tool uses **accessibility** fill/submit + a11y markdown dump — **not** Snappr DOM/JS SERP scrape.
+- ℹ️ 5.0 = Linux WebKitGTK spike; 5.0.1 = Windows webview2-gtk a11y; 5.0.2 = Android WebView.
 
 ### W2 — Integrate as tool replacement / alternative
 
-**Status:** ⏳ 🔷 open
+**Status:** ⏳ 🔷 open (Linux under 5.0; Android wiring under 5.0.2)
 
-- 🔷 Refactor tool execution so the migrated WebKit process is the primary web-search method (replacing API-key search).
+- 🔷 Wire `browser` tool; decide coexistence vs replacement of API `google_search` / `web_fetch`.
 
 ### W3 — Verify prompt context flow
 
-**Status:** ⏳ 🔷 open
+**Status:** ⏳ 🔷 open (tracked under 5.0 / 5.0.2)
 
-- 🔷 Search results format as Markdown context and prepend into the LLM system/user prompt pipeline before streaming.
+- 🔷 Tool replies return accessibility markdown into the normal tool-result path (no separate “prepend SERP” pipeline).
 
 ### F1 — Media upload
 
@@ -318,7 +351,7 @@ build/examples/oc-test-gtkmd --stream 30 tests/markdown/repro-heading-emoji.md
 
 ## Suggested order
 
-1. ✅ **C1** sleep / network — FIXED (`PARTIAL_WAKE_LOCK`)
+1. ⏳ 🔷 **C1** sleep / network — **FGS `dataSync` applied**; verify on device
 2. ✅ **C2** markdown header emoji stream — FIXED
 3. ✅ **C3** bullet styling — FIXED
 4. ✅ **C4** streaming table placeholder — FIXED
@@ -357,7 +390,9 @@ build/examples/oc-test-gtkmd --stream 30 tests/markdown/repro-heading-emoji.md
 | 2026-07-18 | C4 — root cause: BlockMap holds 3 table lines before any `on_table`; placeholder proposed |
 | 2026-07-18 | C4 — implemented `on_table_pending` + streaming label with chunk-tied oscillating dots |
 | 2026-07-18 | C4 — ✅ user verified fixed |
-| 2026-07-18 | C1 — ✅ user: working fine / no further failures observed |
+| 2026-07-18 | C1 — ✅ briefly marked fixed after wake-lock testing |
+| 2026-07-18 | C1 — 🔷 **reopened**: network disconnect still happens; expand recommendation → **foreground service** while `session.is_running` |
+| 2026-07-18 | C1 — ✔️ Java `StreamingForegroundService` (`dataSync`) + JNI + Vala hook + manifest/build install |
 | 2026-07-18 | U1 — 🚫 cancelled (user: input styling already done) |
 | 2026-07-18 | U2 — Android `AgentDropdown` override + `set_title_widget` (`ollmchat ` + agent) |
 | 2026-07-18 | U2 — replaced full Android copy with `AndroidAgentDropdown` + `row_title()` virtual |

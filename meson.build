@@ -149,6 +149,7 @@ else
   subdir('libocmarkdowngtk') # Depends on libocmarkdown
   subdir('libocfiles')       # Depends on libocsqlite
   subdir('libollmchat')      # Depends on libocsqlite
+  subdir('libocwebkit')      # Browser tool — depends on libollmchat + WebKitGTK
   subdir('libocvector2')     # Depends on libocsqlite, libollmchat (no libocfiles)
   subdir('libocbwrap')     # bwrap / overlay / seccomp — full on Linux, stubs elsewhere
   subdir('ollmfilesd')       # Headless file daemon — Unix socket on Unix, TCP on Windows

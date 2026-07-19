@@ -19,8 +19,8 @@ grep -q 'gitlab.gnome.org/GNOME/gtk.git' "$WRAP" ||
 prepare_android_subprojects_before_meson
 
 [ -f "$MARKER" ] || { echo "patch marker missing: $MARKER" >&2; exit 1; }
-grep -q 'ollmchat-android-bugs-v5' "$MARKER" ||
-  { echo "patch marker missing ollmchat-android-bugs-v5 tag" >&2; exit 1; }
+grep -q 'ollmchat-android-bugs-v8' "$MARKER" ||
+  { echo "patch marker missing ollmchat-android-bugs-v8 tag" >&2; exit 1; }
 grep -q 'ollmchat-android-popup-v5' "$MARKER" ||
   { echo "patch marker missing ollmchat-android-popup-v5 tag" >&2; exit 1; }
 grep -q 'g_debug' "$MARKER" ||
@@ -36,6 +36,16 @@ grep -q 'sendKeyEvent' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/
   { echo "ImContext.java hold-delete sendKeyEvent path missing" >&2; exit 1; }
 grep -q 'in_long_press' "$ROOT_DIR/subprojects/gtk/gtk/gtktext.c" ||
   { echo "gtktext.c long-press paste bubble path missing" >&2; exit 1; }
+grep -q 'Touch drag selects only after long-press' "$ROOT_DIR/subprojects/gtk/gtk/gtktextview.c" ||
+  { echo "gtktextview.c touch long-press selection gate missing" >&2; exit 1; }
+grep -q 'deleteBackwardOrSelection' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
+  { echo "ImContext.java selection-aware delete missing" >&2; exit 1; }
+grep -q 'priv->in_long_press = FALSE' "$ROOT_DIR/subprojects/gtk/gtk/gtktextview.c" ||
+  { echo "gtktextview.c sticky in_long_press clear missing" >&2; exit 1; }
+grep -q 'composing span into GTK' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
+  { echo "ImContext.java finishComposingText composing-span commit missing" >&2; exit 1; }
+grep -q 'IME delete does not go through the key controller' "$ROOT_DIR/subprojects/gtk/gtk/gtktext.c" ||
+  { echo "gtktext.c IME delete bubble hide missing" >&2; exit 1; }
 grep -q 'gdk_android_scan_gio_modules' "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidruntime.c" &&
   { echo "gdkandroidruntime.c must not contain GDK TLS scan (app loads TLS)" >&2; exit 1; }
 

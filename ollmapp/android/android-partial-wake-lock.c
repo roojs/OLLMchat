@@ -109,10 +109,65 @@ ollmapp_android_set_partial_wake_lock (GtkWindow *window, gboolean enable)
 	(*env)->DeleteLocalRef (env, activity);
 }
 
+void
+ollmapp_android_set_streaming_foreground (GtkWindow *window, gboolean enable)
+{
+	GdkSurface *surface;
+	jobject activity;
+	JNIEnv *env;
+	jclass fg_cls;
+	jmethodID set_mid;
+
+	if (window == NULL) {
+		return;
+	}
+	surface = gtk_native_get_surface (GTK_NATIVE (window));
+	if (surface == NULL || !GDK_IS_ANDROID_TOPLEVEL (surface)) {
+		return;
+	}
+	activity = gdk_android_toplevel_get_activity (GDK_ANDROID_TOPLEVEL (surface));
+	if (activity == NULL) {
+		return;
+	}
+	env = ollmapp_android_jni_env ();
+	if (env == NULL) {
+		return;
+	}
+	fg_cls = ollmapp_android_load_class (env, activity,
+		"org.roojs.ollmchat.androidpoc.StreamingForeground");
+	if (fg_cls == NULL || (*env)->ExceptionCheck (env)) {
+		(*env)->ExceptionClear (env);
+		(*env)->DeleteLocalRef (env, activity);
+		return;
+	}
+	set_mid = (*env)->GetStaticMethodID (env, fg_cls, "set",
+		"(Landroid/content/Context;Z)V");
+	if (set_mid == NULL || (*env)->ExceptionCheck (env)) {
+		(*env)->ExceptionClear (env);
+		(*env)->DeleteLocalRef (env, fg_cls);
+		(*env)->DeleteLocalRef (env, activity);
+		return;
+	}
+	(*env)->CallStaticVoidMethod (env, fg_cls, set_mid, activity,
+		enable ? JNI_TRUE : JNI_FALSE);
+	if ((*env)->ExceptionCheck (env)) {
+		(*env)->ExceptionClear (env);
+	}
+	(*env)->DeleteLocalRef (env, fg_cls);
+	(*env)->DeleteLocalRef (env, activity);
+}
+
 #else /* !__ANDROID__ */
 
 void
 ollmapp_android_set_partial_wake_lock (GtkWindow *window, gboolean enable)
+{
+	(void) window;
+	(void) enable;
+}
+
+void
+ollmapp_android_set_streaming_foreground (GtkWindow *window, gboolean enable)
 {
 	(void) window;
 	(void) enable;

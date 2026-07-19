@@ -287,7 +287,7 @@ write_ollmchat_android_runtime_tag() {
   local dest="$ROOT_DIR/.pixiewood/android/app/src/main/assets/share"
 
   mkdir -p "$dest"
-  printf 'ollmchat-android-bugs-v5\n' > "$dest/ollmchat-android-runtime.tag"
+  printf 'ollmchat-android-bugs-v8\n' > "$dest/ollmchat-android-runtime.tag"
 }
 
 # Android native code has no /etc/ssl/certs/. Ship the build host's Debian
@@ -316,20 +316,29 @@ install_ca_certificates_to_assets() {
 # Pixiewood only copies bin, lib, and glib schemas into APK assets. GTK UI icons
 # (header bar buttons, symbolic actions, etc.) are listed in android/icons/manifest
 # and staged from the build host's icon themes into assets/share/icons/Adwaita/.
-install_partial_wake_lock_java() {
-  local src="$ROOT_DIR/android/PartialWakeLock.java"
+# POC Java helpers (wake lock + streaming FGS) live under android/*.java.
+install_poc_java() {
   local dest_dir="$ROOT_DIR/.pixiewood/android/app/src/main/java/org/roojs/ollmchat/androidpoc"
+  local wake_src="$ROOT_DIR/android/PartialWakeLock.java"
+  local fg_src="$ROOT_DIR/android/StreamingForeground.java"
+  local fgs_src="$ROOT_DIR/android/StreamingForegroundService.java"
 
-  if [ ! -f "$src" ]; then
-    echo "PartialWakeLock.java missing: $src" >&2
+  if [ ! -f "$wake_src" ]; then
+    echo "PartialWakeLock.java missing: $wake_src" >&2
+    exit 1
+  fi
+  if [ ! -f "$fg_src" ] || [ ! -f "$fgs_src" ]; then
+    echo "StreamingForeground Java sources missing under android/" >&2
     exit 1
   fi
   mkdir -p "$dest_dir"
   rm -f "$dest_dir/KeepScreenOn.java"
-  cp -a "$src" "$dest_dir/PartialWakeLock.java"
+  cp -a "$wake_src" "$dest_dir/PartialWakeLock.java"
+  cp -a "$fg_src" "$dest_dir/StreamingForeground.java"
+  cp -a "$fgs_src" "$dest_dir/StreamingForegroundService.java"
 }
 
-# Pixiewood regenerate may omit WAKE_LOCK / reset launchMode; keep our POC defaults.
+# Pixiewood regenerate may omit permissions / reset launchMode; keep POC defaults.
 patch_android_manifest() {
   local manifest="$ROOT_DIR/.pixiewood/android/app/src/main/AndroidManifest.xml"
 
@@ -339,6 +348,19 @@ patch_android_manifest() {
   fi
   if ! grep -q 'android.permission.WAKE_LOCK' "$manifest"; then
     sed -i '/android.permission.INTERNET/a\  <uses-permission android:name="android.permission.WAKE_LOCK"/>' "$manifest"
+  fi
+  if ! grep -q 'android.permission.FOREGROUND_SERVICE"' "$manifest"; then
+    sed -i '/android.permission.INTERNET/a\  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>' "$manifest"
+  fi
+  if ! grep -q 'FOREGROUND_SERVICE_DATA_SYNC' "$manifest"; then
+    sed -i '/android.permission.INTERNET/a\  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>' "$manifest"
+  fi
+  if ! grep -q 'android.permission.POST_NOTIFICATIONS' "$manifest"; then
+    sed -i '/android.permission.INTERNET/a\  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>' "$manifest"
+  fi
+  # C1: dataSync FGS while streaming (Java StreamingForegroundService).
+  if ! grep -q 'StreamingForegroundService' "$manifest"; then
+    sed -i '/<\/application>/i\    <service android:name="org.roojs.ollmchat.androidpoc.StreamingForegroundService" android:exported="false" android:foregroundServiceType="dataSync"/>' "$manifest"
   fi
   # C5: standard stacks a new ToplevelActivity on each launcher return (full reboot feel).
   if grep -q 'android:launchMode="standard"' "$manifest"; then
@@ -550,7 +572,7 @@ run_pixiewood_build() {
   write_ollmchat_android_runtime_tag
   install_ca_certificates_to_assets
   install_icon_themes_to_assets
-  install_partial_wake_lock_java
+  install_poc_java
   patch_android_manifest
   run_pixiewood_gradle_assemble
   verify_apk_script="${PIXIEWOOD_VERIFY_APK_SCRIPT:-$ROOT_DIR/scripts/android/verify-apk.sh}"
