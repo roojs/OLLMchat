@@ -84,7 +84,7 @@ namespace OLLMtools.HuggingFace
 			return request_message;
 		}
 
-		protected override bool build_perm_question()
+		public override bool build_perm_question()
 		{
 			if (this.action.strip().down() != "download") {
 				return false;

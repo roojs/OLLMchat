@@ -29,7 +29,7 @@ namespace OLLMtools.SessionFetch
 		{
 		}
 
-		protected override bool build_perm_question()
+		public override bool build_perm_question()
 		{
 			return false;
 		}

@@ -214,7 +214,7 @@ namespace OLLMtools.ReadFile
 		 * @return true if permission is required (file is outside project or project_manager is null),
 		 *         false if permission is not required (file is in project or invalid parameters)
 		 */
-		protected override bool build_perm_question()
+		public override bool build_perm_question()
 		{
 			// Validate required parameter
 			if (this.file_path == "") {

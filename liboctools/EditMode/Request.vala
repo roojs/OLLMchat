@@ -159,7 +159,7 @@ Don't forget to close it.
 			return base.normalize_file_path(in_path);
 		}
 		
-		protected override bool build_perm_question()
+		public override bool build_perm_question()
 		{
 			// Validate parameters first
 			if (this.file_path == "") {

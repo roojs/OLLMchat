@@ -107,6 +107,15 @@ public class OLLMwebkit.A11yParse : GLib.Object
 	}
 
 	/**
+	 * Press-ref id → a11y label (for permission questions).
+	 */
+	public Gee.HashMap<int, string> press_labels {
+		get;
+		private set;
+		default = new Gee.HashMap<int, string>();
+	}
+
+	/**
 	 * ## Content body (no page header).
 	 */
 	public string content { get; private set; default = ""; }
@@ -353,6 +362,7 @@ public class OLLMwebkit.A11yParse : GLib.Object
 				node.press_id = this.next_press;
 				this.next_press++;
 				this.press_routes.set(node.press_id, node_route);
+				this.press_labels.set(node.press_id, label);
 				if (display_role == "link") {
 					var hl = acc.get_hyperlink();
 					if (hl != null && hl.get_n_anchors() > 0) {

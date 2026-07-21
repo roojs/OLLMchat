@@ -124,7 +124,7 @@ namespace OLLMtools.RunCommand
 		 *
 		 * @return true if permission is needed of false if it can be skipped
 		 */
-		protected override bool build_perm_question()
+		public override bool build_perm_question()
 		{
 			string cmd_preview = "";
 			if (this.command != "") {

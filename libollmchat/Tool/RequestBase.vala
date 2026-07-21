@@ -167,10 +167,12 @@ namespace OLLMchat.Tool
 		 * from their specific parameters. Sets permission_question, permission_target_path,
 		 * and permission_operation properties.
 		 *
+		 * Public so hosts (e.g. browser click downloads) can ask without full {@link execute}.
+		 *
 		 * @return true if permission is allowed or can be checked (request will call the provider; it may allow from cache or ask the user); false if the permission check can be skipped
 		 */
-		protected abstract bool build_perm_question();
-		
+		public abstract bool build_perm_question();
+
 		/**
 		 * Public method that handles permission checking before execution.
 		 *

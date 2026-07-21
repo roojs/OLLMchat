@@ -52,7 +52,7 @@ argument shapes — read help, then call with the documented parameters
 		return """
 @param action {string} [required] See help. One of: help, fetch, search, press, download, whereami.
 @param topic {string} [optional] See help. With action help: which topic page (fetch, search, press, download, whereami, format).
-@param url {string} [optional] See help. Required with action fetch (and download).
+@param url {string} [optional] See help. Required with action fetch or download.
 @param query {string} [optional] See help. Required with action search: search terms.
 @param press {integer} [optional] See help. Required with action press: press-ref id from the last a11y dump.
 @param fill {object} [optional] See help. For press: map of press-ref id to text — not an action.

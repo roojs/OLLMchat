@@ -72,7 +72,7 @@ namespace OLLMtools.WriteFile
 			return string.joinv ("\n", lines);
 		}
 
-		protected override bool build_perm_question()
+		public override bool build_perm_question()
 		{
 			if (this.file_path == "") {
 				return false;

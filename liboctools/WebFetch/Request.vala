@@ -48,7 +48,7 @@ namespace OLLMtools.WebFetch
 			return this.url;
 		}
 		
-		protected override bool build_perm_question()
+		public override bool build_perm_question()
 		{
 			// Permission check removed - web fetch does not require user approval to fetch a URL
 			return false;

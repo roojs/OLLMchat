@@ -198,6 +198,38 @@ namespace OLLMapp
 					this.hide();
 					break;
 
+				case "event.browser.download.start":
+					this.label.label =
+						"Downloading %s…".printf(GLib.Path.get_basename(notif.message));
+					this.progress_bar.fraction = 0.0;
+					this.show();
+					break;
+
+				case "event.browser.download.progress":
+					this.label.label =
+						"Downloading %s…".printf(GLib.Path.get_basename(notif.message));
+					if (notif.progress_total > 0) {
+						this.progress_bar.fraction =
+							(double) notif.progress_completed
+							/ (double) notif.progress_total;
+					} else {
+						this.progress_bar.pulse();
+					}
+					this.show();
+					break;
+
+				case "event.browser.download.end":
+					if (notif.message.contains(" error: ")) {
+						this.label.label = "Download failed: " + notif.message;
+					} else {
+						this.label.label =
+							"Download complete: %s".printf(
+								GLib.Path.get_basename(notif.message));
+						this.progress_bar.fraction = 1.0;
+					}
+					this.hide();
+					break;
+
 				default:
 					break;
 			}

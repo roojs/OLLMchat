@@ -383,13 +383,16 @@ namespace OLLMchat.ChatPermission
 			
 			switch (response) {
 				case PermissionResponse.DENY_ONCE:
-				case PermissionResponse.ALLOW_ONCE:
-					// One-time permissions - don't store (not used)
 					break;
-					
+
+				case PermissionResponse.ALLOW_ONCE:
+					if (target_path.has_prefix("browser_download#")) {
+						Provider.session.set(target_path, new_perm);
+					}
+					break;
+
 				case PermissionResponse.DENY_SESSION:
 				case PermissionResponse.ALLOW_SESSION:
-					// Store in session
 					Provider.session.set(target_path, new_perm);
 					break;
 					

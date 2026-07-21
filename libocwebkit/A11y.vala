@@ -46,6 +46,15 @@ public class OLLMwebkit.A11y : GLib.Object
 	}
 
 	/**
+	 * Press-ref id → a11y label from the last dump (permission questions).
+	 */
+	public Gee.HashMap<int, string> press_labels {
+		get;
+		private set;
+		default = new Gee.HashMap<int, string>();
+	}
+
+	/**
 	 * Host widget whose toplevel is presented before keyboard fill.
 	 */
 	public Gtk.Widget host { get; set; }
@@ -196,6 +205,7 @@ public class OLLMwebkit.A11y : GLib.Object
 		var parse = new A11yParse(walk_root, walk_route);
 		parse.walk();
 		this.press_routes = parse.press_routes;
+		this.press_labels = parse.press_labels;
 
 		if (title == "") {
 			title = walk_root.get_name() != null ? walk_root.get_name() : "";

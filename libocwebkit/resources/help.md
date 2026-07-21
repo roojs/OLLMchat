@@ -18,7 +18,7 @@ ACTIONS (call help with topic for details)
   fetch     — open a URL
   search    — Google search
   press     — activate a press-ref; optional fill object on the same call
-  download  — download a URL through this browser session
+  download  — download a URL through this browser session (saves to Downloads)
   whereami  — where am I? current page (no navigation)
 
 DEFAULT PAGE DUMP (format "a11y")

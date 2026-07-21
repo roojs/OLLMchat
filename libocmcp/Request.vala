@@ -33,7 +33,7 @@ namespace OLLMmcp
 			this.arguments = arguments;
 		}
 
-		protected override bool build_perm_question()
+		public override bool build_perm_question()
 		{
 			// Sandbox / config gates network and writes (see 2.11.5).
 			return false;

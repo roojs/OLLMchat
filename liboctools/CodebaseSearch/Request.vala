@@ -154,7 +154,7 @@ namespace OLLMtools.CodebaseSearch
 			get { return (this.tool as CodebaseSearchTool).project_manager; }
 		}
 		
-		protected override bool build_perm_question()
+		public override bool build_perm_question()
 		{
 			// Codebase search is read-only and doesn't require permission prompts
 			return false;

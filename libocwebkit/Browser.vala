@@ -78,6 +78,35 @@ public class OLLMwebkit.Browser : Gtk.Box
 	 */
 	public string pending_load_uri { get; private set; default = ""; }
 
+	/**
+	 * Set from tool requests so click downloads can ask permission and notify.
+	 */
+	public OLLMchat.Agent.Interface? agent { get; set; default = null; }
+
+	/**
+	 * Owning tool when this browser is the chat browser host (set from Request).
+	 */
+	public OLLMchat.Tool.BaseTool? tool { get; set; default = null; }
+
+	/**
+	 * URL → destination path while a WebKit download is in progress.
+	 */
+	private Gee.HashMap<string, string> downloads_inflight {
+		get;
+		set;
+		default = new Gee.HashMap<string, string>();
+	}
+
+	/**
+	 * URL → active download object (WebKit Download today; Cancel in 5.0.6).
+	 * Same map on all platforms — value type is {@link GLib.Object} so Windows/Android can store their download handles later.
+	 */
+	private Gee.HashMap<string, GLib.Object> downloads_active {
+		get;
+		set;
+		default = new Gee.HashMap<string, GLib.Object>();
+	}
+
 	public signal void uri_changed(string uri);
 
 	private signal void load_settled();
@@ -214,6 +243,23 @@ public class OLLMwebkit.Browser : Gtk.Box
 		overlay.add_overlay(this.freeze_overlay);
 		this.append(overlay);
 		this.pending_load_uri = "";
+#if LINUX
+		this.web_view.decide_policy.connect((decision, type) => {
+			if (type != PolicyDecisionType.RESPONSE) {
+				return false;
+			}
+			var response_decision = decision as ResponsePolicyDecision;
+			if (response_decision == null) {
+				return false;
+			}
+			if (response_decision.is_mime_type_supported()) {
+				return false;
+			}
+			response_decision.download();
+			return true;
+		});
+		this.web_view.get_network_session().download_started.connect(this.on_download_started);
+#endif
 	}
 
 	/**
@@ -715,5 +761,209 @@ public class OLLMwebkit.Browser : Gtk.Box
 	public async void press(int id) throws GLib.Error
 	{
 		yield this.a11y.press(id);
+	}
+
+	/**
+	 * NetworkSession download-started: dedupe, wire destination/progress/finish.
+	 *
+	 * @param download WebKit download
+	 */
+#if LINUX
+	private void on_download_started(Download download)
+	{
+		var web_req = download.get_request();
+		var url = web_req != null ? web_req.uri : "";
+		if (url == "") {
+			download.cancel();
+			return;
+		}
+		if (this.downloads_inflight.has_key(url)
+				&& this.downloads_inflight.get(url) != "") {
+			download.cancel();
+			return;
+		}
+		download.decide_destination.connect((suggested) => {
+			return this.on_decide_destination(download, suggested);
+		});
+		download.received_data.connect((len) => {
+			if (this.agent == null || !this.downloads_inflight.has_key(url)) {
+				return;
+			}
+			var path = this.downloads_inflight.get(url);
+			if (path == "") {
+				return;
+			}
+			this.agent.notification(new OLLMrpc.Notification() {
+				method = "event.browser.download.progress",
+				message = path,
+				progress_completed = (int64) download.get_received_data_length(),
+				progress_total = 0,
+			});
+		});
+		// connect_after so Browser.download()'s finished/failed handlers can read
+		// downloads_inflight before this cleanup unsets the key.
+		download.failed.connect_after((err) => {
+			var dest = "";
+			if (this.downloads_inflight.has_key(url)) {
+				dest = this.downloads_inflight.get(url);
+				this.downloads_inflight.unset(url);
+			}
+			this.downloads_active.unset(url);
+			if (dest == "") {
+				return;
+			}
+			var msg = dest + " error: " + err.message;
+			if (this.agent != null) {
+				this.agent.notification(new OLLMrpc.Notification() {
+					method = "event.browser.download.end",
+					message = msg,
+				});
+			}
+			var app = GLib.Application.get_default();
+			if (app == null) {
+				return;
+			}
+			var note = new GLib.Notification("Download failed");
+			note.set_body(msg);
+			app.send_notification(
+				"ollmchat-browser-download-%u".printf((uint) GLib.get_real_time()),
+				note);
+		});
+		download.finished.connect_after(() => {
+			var dest = "";
+			if (this.downloads_inflight.has_key(url)) {
+				dest = this.downloads_inflight.get(url);
+				this.downloads_inflight.unset(url);
+			}
+			this.downloads_active.unset(url);
+			if (dest == "") {
+				return;
+			}
+			if (this.agent != null) {
+				this.agent.notification(new OLLMrpc.Notification() {
+					method = "event.browser.download.end",
+					message = dest,
+				});
+			}
+			var app = GLib.Application.get_default();
+			if (app == null) {
+				return;
+			}
+			var note = new GLib.Notification("Download complete");
+			note.set_body(dest);
+			app.send_notification(
+				"ollmchat-browser-download-%u".printf((uint) GLib.get_real_time()),
+				note);
+		});
+	}
+
+	/**
+	 * Download decide-destination: permission, place under Downloads, start event.
+	 *
+	 * @param download WebKit download
+	 * @param suggested WebKit suggested filename (may be null/empty)
+	 * @return true (handler owns destination / cancel)
+	 */
+	private bool on_decide_destination(Download download, string? suggested)
+	{
+		var web_req = download.get_request();
+		var url = web_req != null ? web_req.uri : "";
+		var name = suggested != null && suggested != "" ? suggested : "download";
+		var dir = GLib.Environment.get_user_special_dir(GLib.UserDirectory.DOWNLOAD);
+		if (dir == null || dir == "") {
+			dir = GLib.Environment.get_home_dir();
+		}
+		var dest = GLib.Path.build_filename(dir, name);
+		if (this.agent == null || this.tool == null || url == "") {
+			download.cancel();
+			return true;
+		}
+		var req = new OLLMwebkit.Request() {
+			action = "download",
+			url = url,
+			download_display_name = GLib.Path.get_basename(dest),
+			agent = this.agent,
+			tool = this.tool,
+		};
+		if (!req.build_perm_question()) {
+			download.cancel();
+			return true;
+		}
+		this.agent.get_permission_provider().request.begin(req, (obj, res) => {
+			var allowed = false;
+			try {
+				allowed = this.agent.get_permission_provider().request.end(res);
+			} catch (GLib.Error e) {
+				allowed = false;
+			}
+			if (!allowed) {
+				download.cancel();
+				return;
+			}
+			this.downloads_inflight.set(url, dest);
+			this.downloads_active.set(url, download);
+			download.set_allow_overwrite(true);
+			download.set_destination(dest);
+			this.agent.notification(new OLLMrpc.Notification() {
+				method = "event.browser.download.start",
+				message = dest,
+			});
+		});
+		return true;
+	}
+#endif
+
+	/**
+	 * Download ''url'' via WebKit into the platform Downloads folder.
+	 *
+	 * @param url absolute http(s) URL
+	 * @return destination path, or status if already in flight
+	 * @throws GLib.Error when permission denied or WebKit fails
+	 */
+	public async string download(string url) throws GLib.Error
+	{
+		var trimmed = url.strip();
+		if (trimmed == "") {
+			throw new GLib.IOError.INVALID_ARGUMENT("url is required for download");
+		}
+		if (this.downloads_inflight.has_key(trimmed)
+				&& this.downloads_inflight.get(trimmed) != "") {
+			return "Already downloading: " + this.downloads_inflight.get(trimmed);
+		}
+#if LINUX
+		this.downloads_inflight.set(trimmed, "");
+		var dl = this.web_view.download_uri(trimmed);
+		var result_path = "";
+		var result_err = "";
+		SourceFunc resume = download.callback;
+		ulong fin_id = 0;
+		ulong fail_id = 0;
+		fin_id = dl.finished.connect(() => {
+			if (this.downloads_inflight.has_key(trimmed)) {
+				result_path = this.downloads_inflight.get(trimmed);
+			}
+			dl.disconnect(fin_id);
+			dl.disconnect(fail_id);
+			resume();
+		});
+		fail_id = dl.failed.connect((err) => {
+			result_err = err.message;
+			dl.disconnect(fin_id);
+			dl.disconnect(fail_id);
+			resume();
+		});
+		yield;
+		if (result_err != "") {
+			this.downloads_inflight.unset(trimmed);
+			throw new GLib.IOError.FAILED("%s", result_err);
+		}
+		if (result_path == "") {
+			this.downloads_inflight.unset(trimmed);
+			throw new GLib.IOError.FAILED("Download finished without destination");
+		}
+		return result_path;
+#else
+		throw new GLib.IOError.NOT_SUPPORTED("download is Linux WebKitGTK in this plan");
+#endif
 	}
 }

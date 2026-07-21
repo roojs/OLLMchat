@@ -49,7 +49,7 @@ namespace OLLMtools.Child
 		 *
 		 * @return false (no permission required)
 		 */
-		protected override bool build_perm_question()
+		public override bool build_perm_question()
 		{
 			// Agent tools don't require permission checks
 			return false;

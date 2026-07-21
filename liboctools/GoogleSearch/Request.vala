@@ -163,7 +163,7 @@ namespace OLLMtools.GoogleSearch
 			return this.query;
 		}
 		
-		protected override bool build_perm_question()
+		public override bool build_perm_question()
 		{
 			// Permission check removed - Google Search no longer requires permission
 			return false;
