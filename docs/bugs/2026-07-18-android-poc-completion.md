@@ -16,6 +16,22 @@
 
 ---
 
+### IME-3 — Spell-correct does not replace typed word
+
+**Status:** ⏳ OPEN — device-verified on EntryPopupTest; still broken; must fix for chat POC
+
+**Expected:** 🔷 Type `TAT` → tap Gboard’s `THAT` → field becomes `THAT`. Leave-field must not double-fill (IME-2).
+
+**Actual:** 🔷 Suggestion tap does not delete/replace the typed prefix; correction does not land.
+
+**Cause (partial):** ✔️ Same IME bridge as IME-2. Composing-span-only commit fixed double-fill but left suggestion rewrite broken. 💩 Editable≠GTK replace attempt on Knowles did **not** fix `TAT`→`THAT` on device.
+
+**Tried:** ✔️ Knowles `android-ime-spellcorrect-nofill` + EntryPopupTest install — **insufficient**; do not port to `android-bugs.patch` yet.
+
+**Next:** ⏳ 🔷 Log IME calls on suggestion tap; fix replace path; re-verify EntryPopupTest then ship to chat POC. Detail: [`2026-07-19-android-ime-autocomplete-nofill.md`](2026-07-19-android-ime-autocomplete-nofill.md).
+
+---
+
 ### C1 — Sleep / network disconnect (critical)
 
 **Status:** ⏳ OPEN — FGS `dataSync` applied; await device verify
@@ -30,11 +46,11 @@
 
 ---
 
-### T1 — Composer height flakiness
+### T1 — Message input height flakiness
 
 **Status:** ⏳ 🔷 still open — improved, not fully reliable (e.g. after **+** fill)
 
-**ℹ️** Prior fixes: [`done/2026-07-18-FIXED-composer-plus-no-resize.md`](done/2026-07-18-FIXED-composer-plus-no-resize.md), composer height bugs under `docs/bugs/done/` (2026-07-16). Also see [`2026-07-19-composer-lines-changed-wrap.md`](2026-07-19-composer-lines-changed-wrap.md).
+**ℹ️** Shared `libollmchatgtk` (`ScrolledView` / chat input) — **not Android-backend-specific**; exercised hard on the phone. Prior fixes: [`done/2026-07-18-FIXED-composer-plus-no-resize.md`](done/2026-07-18-FIXED-composer-plus-no-resize.md), height bugs under `docs/bugs/done/` (2026-07-16 … 2026-07-19).
 
 **Next:** ⏳ 🔷 Revisit when it bites again; not blocking other POC work.
 
@@ -42,7 +58,8 @@
 
 ### U6 — Global copy button
 
-**Status:** ⏳ 🔷 open — “Copy output” at end of completed chat cycles
+**Status:** ⏳ 🔷 open — “Copy output” at end of completed chat cycles  
+**Note:** ℹ️ General / shared product feature (not Android-specific). Parked on this tracker only because it was exercised during Android testing.
 
 ---
 
@@ -57,7 +74,8 @@ Tracked under plans, not here:
 
 ## Suggested order
 
-1. **C1** — device verify FGS
-2. **U6** — global copy
-3. **T1** — when it regresses badly
-4. **W / F1** — feature track (may need shared-code approval)
+1. **IME-3** — fix suggestion replace (`TAT`→`THAT`); then ship to chat POC
+2. **C1** — device verify FGS
+3. **U6** — global copy
+4. **T1** — when it regresses badly
+5. **W / F1** — feature track (may need shared-code approval)

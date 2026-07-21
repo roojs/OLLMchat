@@ -181,16 +181,31 @@ index dfedba0..1d2fd92 100644
  			return true;
  		}
  
- 		@Override
- 		public boolean finishComposingText() {
+		@Override
+		public boolean finishComposingText() {
 -			logger.info("IME: finishComposingText()");
 +			Editable content = getEditable();
 +			String toCommit = "";
++			boolean replaceAll = false;
 +			if (content != null) {
 +				int start = getComposingSpanStart(content);
 +				int end = getComposingSpanEnd(content);
-+				if (start >= 0 && end > start)
++				if (start >= 0 && end > start) {
++					/* Composing span into GTK (keeps focus-leave from double-filling). */
 +					toCommit = content.subSequence(start, end).toString();
++				} else {
++					/* Spell-correct / suggestion: Gboard rewrites Editable with no
++					 * composing span. Commit that text only when it differs from GTK
++					 * (focus-leave keeps texts equal → no double-fill). */
++					SurroundingRetVal surrounding =
++							GlibContext.blockForMain(ImContext.this::getSurrounding);
++					String androidText = content.toString();
++					if (surrounding == null || surrounding.text == null
++							|| !androidText.equals(surrounding.text)) {
++						toCommit = androidText;
++						replaceAll = true;
++					}
++				}
 +			}
 +
  			super.finishComposingText();
@@ -200,14 +215,38 @@ index dfedba0..1d2fd92 100644
 -				GlibContext.blockForMain(() -> ImContext.this.commit(content.toString()));
 -			content.clear();
 +			final String commit = toCommit;
++			final boolean replace = replaceAll;
 +			GlibContext.blockForMain(() -> {
-+				/* Android finishComposingText leaves text in place; only commit the
-+				 * composing span into GTK. Committing the whole Editable re-inserts
-+				 * already-committed text (autocomplete / focus-leave duplicates). */
-+				if (commit.length() > 0)
-+					ImContext.this.commit(commit);
-+				else
++				if (replace) {
 +					ImContext.this.updatePreedit(null, 0);
++					SurroundingRetVal s = ImContext.this.getSurrounding();
++					if (s != null && s.text != null && s.text.length() > 0) {
++						if (s.cursor_index != s.anchor_index) {
++							int a = Math.min(s.cursor_index, s.anchor_index);
++							int b = Math.max(s.cursor_index, s.anchor_index);
++							int n = b - a;
++							if (s.cursor_index >= s.anchor_index)
++								ImContext.this.deleteSurrounding(-n, n);
++							else
++								ImContext.this.deleteSurrounding(0, n);
++							s = ImContext.this.getSurrounding();
++						}
++						if (s != null && s.text != null && s.text.length() > 0) {
++							int left = s.cursor_index;
++							int right = s.text.length() - s.cursor_index;
++							if (left > 0)
++								ImContext.this.deleteSurrounding(-left, left);
++							if (right > 0)
++								ImContext.this.deleteSurrounding(0, right);
++						}
++					}
++					if (commit.length() > 0)
++						ImContext.this.commit(commit);
++				} else if (commit.length() > 0) {
++					ImContext.this.commit(commit);
++				} else {
++					ImContext.this.updatePreedit(null, 0);
++				}
 +			});
 +			syncEditableFromGtk(getEditable());
  			return true;
@@ -625,7 +664,7 @@ index 00000000000..11111111111
 +#include <glib.h>
 +
 +/* Survives in libgtk-4.so; verify-apk.sh greps for these tags. */
-+const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v9";
++const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v10";
 +const char gdk_android_ollmchat_popup_tag[] = "ollmchat-android-popup-v5";
 +
 +static void
