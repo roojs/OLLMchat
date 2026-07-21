@@ -206,17 +206,14 @@ namespace Markdown
 			// Match: byte_length from eat is relative to (chunk_pos + space_skip); revert and add space_skip so chunk_pos is unchanged
 			byte_length = space_skip + byte_length;
 
-			// ATX heading: non-empty content starting with alphanumeric or non-ASCII (emoji); 
-			// include leading space in byte_length
+			// ATX heading: any content until EOL; wait only when no content yet (incomplete line)
 			if (matched_block >= FormatType.HEADING_1 && matched_block <= FormatType.HEADING_6) {
 				var rest_start = chunk_pos + byte_length;
 				var rest_len = (line_end != -1) ? line_end - rest_start : (int)chunk.length - rest_start;
 				var rest = rest_len > 0 ? chunk.substring(rest_start, rest_len) : "";
 				var heading_stripped = rest.strip();
-				if (heading_stripped.length == 0 || 
-						!(heading_stripped.get_char(0).isalnum() ||
-						heading_stripped.get_char(0) >= 0x80)) {
-					if (is_end_of_chunks) {
+				if (heading_stripped.length == 0) {
+					if (is_end_of_chunks || line_end != -1) {
 						return 0;
 					}
 					return -1;
