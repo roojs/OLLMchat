@@ -226,6 +226,8 @@ namespace OLLMhf
 					message = file.rfilename,
 					progress_completed = file.bytes_written,
 					progress_total = file.size,
+					action = "cancel",
+					action_label = "Cancel",
 				});
 				var now = GLib.get_monotonic_time();
 				if (now - this.last_persist_time >= 5000000

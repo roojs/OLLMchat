@@ -493,12 +493,15 @@ namespace OLLMtools.HuggingFace
 
 					var dl = new OLLMhf.Download(hub_model);
 					dl.file_filter = this.files.to_array();
+					((OLLMtools.HuggingFace.Tool) this.tool).download = dl;
 
 					var hub_ref = this.model_ref.strip();
 					this.agent.notification(new OLLMrpc.Notification() {
 						method = "event.hf.download.start",
 						object_type = "Model",
 						message = hub_ref,
+						action = "cancel",
+						action_label = "Cancel",
 					});
 
 					int64 last_report = 0;

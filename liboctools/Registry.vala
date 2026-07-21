@@ -87,8 +87,22 @@ namespace OLLMtools
 			manager.register_tool(new GoogleSearch.Tool(project_manager));
 			manager.register_tool(new CodebaseSearch.CodebaseSearchTool(project_manager));
 			manager.register_tool(new SessionFetch.Tool());
-			manager.register_tool(new HuggingFace.Tool(project_manager));
-			manager.register_tool(new OLLMwebkit.Tool());
+			var hf_tool = new HuggingFace.Tool(project_manager);
+			manager.register_tool(hf_tool);
+			manager.notification_reply.connect((notif) => {
+				if (!notif.method.has_prefix("event.hf.download.")) {
+					return;
+				}
+				hf_tool.notification_reply(notif);
+			});
+			var browser_tool = new OLLMwebkit.Tool();
+			manager.register_tool(browser_tool);
+			manager.notification_reply.connect((notif) => {
+				if (!notif.method.has_prefix("event.browser.download.")) {
+					return;
+				}
+				browser_tool.stack.primary.notification_reply(notif);
+			});
 
 			// Register wrapped tools from .tool definition files
 			var builder = new ToolBuilder(manager.tools);

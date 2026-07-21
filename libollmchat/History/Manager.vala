@@ -104,6 +104,13 @@ namespace OLLMchat.History
 		 * Daemon ''event.*'' or client ''client.*'' activity for the status bar.
 		 */
 		public signal void notification(OLLMrpc.Notification notif);
+
+		/**
+		 * Banner action reply for in-process tools (e.g. browser Cancel).
+		 *
+		 * @param notif notification that advertised the action
+		 */
+		public signal void notification_reply(OLLMrpc.Notification notif);
 		
 		/**
 		 * Emitted when a new message is added to a session.

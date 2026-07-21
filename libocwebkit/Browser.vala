@@ -798,6 +798,8 @@ public class OLLMwebkit.Browser : Gtk.Box
 				message = path,
 				progress_completed = (int64) download.get_received_data_length(),
 				progress_total = 0,
+				action = "cancel",
+				action_label = "Cancel",
 			});
 		});
 		// connect_after so Browser.download()'s finished/failed handlers can read
@@ -907,6 +909,8 @@ public class OLLMwebkit.Browser : Gtk.Box
 			this.agent.notification(new OLLMrpc.Notification() {
 				method = "event.browser.download.start",
 				message = dest,
+				action = "cancel",
+				action_label = "Cancel",
 			});
 		});
 		return true;
@@ -964,6 +968,37 @@ public class OLLMwebkit.Browser : Gtk.Box
 		return result_path;
 #else
 		throw new GLib.IOError.NOT_SUPPORTED("download is Linux WebKitGTK in this plan");
+#endif
+	}
+
+	/**
+	 * Banner Cancel for an in-flight download (''action'' ''cancel'').
+	 *
+	 * @param notif ''event.browser.download.*'' with ''message'' = destination path
+	 */
+	public void notification_reply(OLLMrpc.Notification notif)
+	{
+#if LINUX
+		if (!notif.method.has_prefix("event.browser.download.")) {
+			return;
+		}
+		if (notif.action != "cancel") {
+			return;
+		}
+		foreach (var url in this.downloads_inflight.keys) {
+			if (this.downloads_inflight.get(url) != notif.message) {
+				continue;
+			}
+			if (!this.downloads_active.has_key(url)) {
+				return;
+			}
+			var active = this.downloads_active.get(url) as Download;
+			if (active == null) {
+				return;
+			}
+			active.cancel();
+			return;
+		}
 #endif
 	}
 }

@@ -127,11 +127,22 @@ namespace OLLMfilesd.Vector {
         {
             GLib.debug ("vector index progress queue_size=%d file=%s",
                 queue_size, GLib.Path.get_basename (current_file));
-            this.broadcast (new OLLMrpc.Notification () {
+            var notif = new OLLMrpc.Notification () {
                 method = "event.vector.scan_update",
                 object_type = "Vector",
                 message = "%d %s".printf (queue_size, current_file),
-            });
+            };
+            if (this.stop_requested) {
+                notif.action = "rpc.Codebase.start";
+                notif.action_label = "Resume";
+                this.broadcast (notif);
+                return;
+            }
+            if (queue_size > 0) {
+                notif.action = "rpc.Codebase.stop";
+                notif.action_label = "Pause";
+            }
+            this.broadcast (notif);
         }
 
         /**
@@ -272,6 +283,8 @@ namespace OLLMfilesd.Vector {
                 method = "event.vector.scan_start",
                 object_type = "Vector",
                 message = "",
+                action = "rpc.Codebase.stop",
+                action_label = "Pause",
             });
 
             while (true) {

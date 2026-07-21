@@ -185,6 +185,20 @@ namespace OLLMapp
 			this.notification.connect((notif) => {
 				this.activity_banner.notification(notif);
 			});
+			this.activity_banner.notification_reply.connect((notif) => {
+				this.history_manager.notification_reply(notif);
+				if (!notif.action.has_prefix("rpc.")) {
+					return;
+				}
+				this.project_manager.rpc.call.begin(new OLLMrpc.Request() {
+					method = notif.action.substring(4),
+					param = new OLLMfilesd.VectorParams() {
+						path = this.project_manager.active_project.path,
+					},
+				}, (obj, res) => {
+					this.project_manager.rpc.call.end(res);
+				});
+			});
 				
 			// Add header bar to toolbar view's top slot
 			toolbar_view.add_top_bar(this.header_bar);

@@ -25,6 +25,14 @@ namespace OLLMrpc
 		public int64 progress_completed { get; set; default = 0; }
 		/** Bytes total when {@link method} carries progress (else 0). */
 		public int64 progress_total { get; set; default = 0; }
+		/**
+		 * Banner action: tool verb (''cancel'') or ''rpc.'' + method (''rpc.Codebase.stop'').
+		 */
+		public string action { get; set; default = ""; }
+		/**
+		 * Banner button label (''Cancel'', ''Pause'', ''Resume''); empty = no button.
+		 */
+		public string action_label { get; set; default = ""; }
 
 		public static void rpc_register()
 		{

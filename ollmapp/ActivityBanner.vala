@@ -34,8 +34,22 @@ namespace OLLMapp
 		 */
 		public signal void notification(OLLMrpc.Notification notif);
 
+		/**
+		 * User clicked the banner action; listeners handle Cancel / Pause / Resume.
+		 *
+		 * @param notif notification that advertised ''action'' / ''action_label''
+		 */
+		public signal void notification_reply(OLLMrpc.Notification notif);
+
 		public Gtk.Label label { get; private set; }
 		public Gtk.ProgressBar progress_bar { get; private set; }
+		public Gtk.Button action_button { get; private set; }
+		/** Last notification shown (action click emits {@link notification_reply} with this). */
+		private OLLMrpc.Notification current_notification {
+			get;
+			set;
+			default = new OLLMrpc.Notification();
+		}
 		public Gtk.Revealer revealer { get; private set; }
 
 		private int total_scan = 0;
@@ -67,7 +81,17 @@ namespace OLLMapp
 				wrap_mode = Pango.WrapMode.WORD_CHAR,
 				margin_bottom = 0
 			};
-			this.append(this.label);
+			this.action_button = new Gtk.Button.with_label("") {
+				visible = false,
+				valign = Gtk.Align.CENTER,
+			};
+			var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+				hexpand = true,
+				halign = Gtk.Align.FILL,
+			};
+			row.append(this.label);
+			row.append(this.action_button);
+			this.append(row);
 
 			this.progress_bar = new Gtk.ProgressBar() {
 				show_text = false,
@@ -81,6 +105,12 @@ namespace OLLMapp
 		construct
 		{
 			this.notification.connect(this.on_notification);
+			this.action_button.clicked.connect(() => {
+				if (this.current_notification.action_label == "") {
+					return;
+				}
+				this.notification_reply(this.current_notification);
+			});
 		}
 
 		/**
@@ -90,6 +120,13 @@ namespace OLLMapp
 		 */
 		private void on_notification(OLLMrpc.Notification notif)
 		{
+			this.current_notification = notif;
+			if (notif.action_label != "") {
+				this.action_button.label = notif.action_label;
+				this.action_button.visible = true;
+			} else {
+				this.action_button.visible = false;
+			}
 			switch (notif.method) {
 				case "client.project.load_start":
 					this.label.label = "Loading project list…";
@@ -259,6 +296,8 @@ namespace OLLMapp
 			this.hide_timeout_id = GLib.Timeout.add_seconds(2, () => {
 				this.revealer.reveal_child = false;
 				this.total_scan = 0;
+				this.action_button.visible = false;
+				this.current_notification = new OLLMrpc.Notification();
 				this.hide_timeout_id = 0;
 				return false;
 			});

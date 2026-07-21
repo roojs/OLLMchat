@@ -55,6 +55,9 @@ re-call help, then proceed. The help response contains mandatory operational gui
 
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 
+		/** In-flight Hub download (banner Cancel → {@link notification_reply}). */
+		public GLib.Object download { get; set; }
+
 		public Tool(OLLMfiles.ProjectManager? project_manager = null)
 		{
 			base();
@@ -62,6 +65,22 @@ re-call help, then proceed. The help response contains mandatory operational gui
 			if (project_manager != null) {
 				OLLMhf.rpc_register();
 			}
+		}
+
+		/**
+		 * Banner Cancel for an in-flight Hub download (''action'' ''cancel'').
+		 *
+		 * @param notif ''event.hf.download.*''
+		 */
+		public void notification_reply(OLLMrpc.Notification notif)
+		{
+			if (!notif.method.has_prefix("event.hf.download.")) {
+				return;
+			}
+			if (notif.action != "cancel") {
+				return;
+			}
+			((OLLMhf.Download) this.download).stop();
 		}
 
 		/**
