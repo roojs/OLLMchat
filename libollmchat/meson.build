@@ -213,6 +213,7 @@ ollmchat_ollama_src = files([
   'Tool/RequestBase.vala',
   'Tool/BaseTool.vala',
   'Tool/WrapInterface.vala',
+  'Tool/UiWidgets.vala',
   'Tool/ParamParser.vala',
   'Tool/Param.vala',
   'Tool/ParamSimple.vala',

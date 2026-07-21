@@ -63,6 +63,15 @@ namespace OLLMapp
 				if (this.chat_widget != null) {
 					this.chat_widget.chat_bar.sync_models.begin();
 				}
+				if (this.history_manager == null) {
+					return;
+				}
+				foreach (var entry in this.app.config.tools.entries) {
+					if (!this.history_manager.tools.has_key(entry.key)) {
+						continue;
+					}
+					this.history_manager.tools.get(entry.key).active = entry.value.enabled;
+				}
 			});
 
 			var toolbar_view = new Adw.ToolbarView();

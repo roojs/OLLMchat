@@ -466,9 +466,15 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			yield this.setup_manager();
 			yield this.setup_project_manager();
 
-		// Register tools with manager (so agent has access to them)
-		this.tools_registry.fill_tools(this.manager, this.project_manager);
-		this.mcp_registry.fill_tools(this.manager, this.project_manager);
+			// Register tools with manager (so agent has access to them)
+			this.tools_registry.fill_tools(this.manager, this.project_manager);
+			this.mcp_registry.fill_tools(this.manager, this.project_manager);
+			foreach (var entry in this.config.tools.entries) {
+				if (!this.manager.tools.has_key(entry.key)) {
+					continue;
+				}
+				this.manager.tools.get(entry.key).active = entry.value.enabled;
+			}
 
 			// Ensure Manager's session has just-ask agent activated
 			// Manager already registers "just-ask" agent in constructor and creates EmptySession
@@ -529,9 +535,15 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			
 			yield this.setup_project_manager();
 			
-		// Fill manager with tools (after project manager is set up)
-		this.tools_registry.fill_tools(this.manager, this.project_manager);
-		this.mcp_registry.fill_tools(this.manager, this.project_manager);
+			// Fill manager with tools (after project manager is set up)
+			this.tools_registry.fill_tools(this.manager, this.project_manager);
+			this.mcp_registry.fill_tools(this.manager, this.project_manager);
+			foreach (var entry in this.config.tools.entries) {
+				if (!this.manager.tools.has_key(entry.key)) {
+					continue;
+				}
+				this.manager.tools.get(entry.key).active = entry.value.enabled;
+			}
 
 			// Verify tool exists
 			if (!this.manager.tools.has_key(tool_name)) {

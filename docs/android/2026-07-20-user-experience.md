@@ -45,10 +45,10 @@ Candidates for GTK Android / GLib discussion, plus a few app-wrapper workarounds
   - **Fix (brief):** Commit composing span only (not the whole Editable).
   - **Regression test:** Accept suggestion → tap elsewhere → no duplicate.
 - **IME-3** ⏳ — Spell-correct / suggestion tap does not replace the typed word.
-  - **Repro:** Type `TAT` → tap Gboard’s `THAT` → typed characters stay; suggestion cannot clear/delete them to apply the correction.
-  - **Tried (Knowles, insufficient):** On `finishComposingText`, if Editable ≠ GTK surrounding, replace GTK with Editable. Device still shows the `TAT`→`THAT` failure — do not ship that alone.
-  - **Need:** Fix the replace path in the IME bridge for the chat POC (and EntryPopupTest). Keep **IME-2** (no double-fill on leave).
-  - **Regression test:** `TAT` → tap `THAT` → field shows `THAT`; leave field → no double line.
+  - **Repro:** Type `tat` → tap Gboard’s `rat` → field stays `tat` (or only updates later).
+  - **Root cause (✔️ log):** Gboard calls `InputConnection.replaceText`; we only update the Android Editable, not GTK.
+  - **Need:** Apply `replaceText` into GTK (then sync Editable). Keep **IME-2** (no double-fill on leave).
+  - **Regression test:** `tat` → tap `rat` → field shows `rat` immediately; leave field → no double line.
 
 ## IME-4 — Backspace with a selection ✅
 

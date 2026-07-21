@@ -107,16 +107,21 @@ namespace OLLMapp
 					AndroidApplication.ensure_app_data_directories (
 						this.window.app.data_dir);
 				} catch (GLib.Error e) {
-					GLib.warning (
-						"AndroidStartup: data dirs: %s", e.message);
+					GLib.warning ("AndroidStartup: data dirs: %s", e.message);
 				}
 
 				this.window.history_manager = new OLLMchat.History.Manager(
 					this.window.app
 				);
 
-				AndroidToolsRegistration.fill_tools(
-					this.window.history_manager);
+				AndroidToolsRegistration.fill_tools(this.window.history_manager);
+				var tools = this.window.history_manager.tools;
+				foreach (var entry in config.tools.entries) {
+					if (!tools.has_key(entry.key)) {
+						continue;
+					}
+					tools.get(entry.key).active = entry.value.enabled;
+				}
 
 				if (this.window.history_manager.default_model_usage != null) {
 					var current_conn = config.connections.get(

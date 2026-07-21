@@ -1,6 +1,6 @@
 BROWSER TOOL — action search
 ---
-Open Google (v1 only) with the given search terms and return the results dump.
+Open Google with the given search terms and return the results dump.
 Under the hood this uses accessibility fill + submit on the search UI when
 needed — not a SERP scrape.
 

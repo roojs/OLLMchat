@@ -16,7 +16,7 @@ MUST — HELP WHEN MISSING
 ACTIONS (call help with topic for details)
   help      — this index, or topic page when "topic" is set
   fetch     — open a URL
-  search    — Google search (v1)
+  search    — Google search
   press     — activate a press-ref; optional fill object on the same call
   download  — download a URL through this browser session
   whereami  — where am I? current page (no navigation)

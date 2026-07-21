@@ -98,9 +98,18 @@ namespace OLLMapp
 			// Connect to PullManager signals to update settings button icon
 			this.settings_dialog.pull_manager.pulls_changed.connect(this.update_settings_button);
 			
-			// Update model list when settings dialog closes
+			// Update model list and tool enabled→active when settings dialog closes
 			this.settings_dialog.closed.connect(() => {
 				this.chat_widget.chat_bar.sync_models.begin();
+				if (this.history_manager == null) {
+					return;
+				}
+				foreach (var entry in this.app.config.tools.entries) {
+					if (!this.history_manager.tools.has_key(entry.key)) {
+						continue;
+					}
+					this.history_manager.tools.get(entry.key).active = entry.value.enabled;
+				}
 			});
 
 			// Create toolbar view to manage header bar and content
@@ -474,6 +483,12 @@ namespace OLLMapp
 			var app = this.app as OllmchatApplication;
 			app.tools_registry.fill_tools(this.history_manager, this.project_manager);
 			app.mcp_registry.fill_tools(this.history_manager, this.project_manager);
+			foreach (var entry in app.config.tools.entries) {
+				if (!this.history_manager.tools.has_key(entry.key)) {
+					continue;
+				}
+				this.history_manager.tools.get(entry.key).active = entry.value.enabled;
+			}
 
 			// Register CodeAssistant agent
 			var code_assistant = new OLLMcoder.AgentFactory(this.project_manager);
@@ -568,6 +583,39 @@ namespace OLLMapp
 			// Set chat widget as start child (left pane)
 			this.window_pane.paned.set_start_child(this.chat_widget);
 			this.window_pane.paned.set_resize_start_child(true);
+
+			foreach (var tool in this.history_manager.tools.values) {
+				var ui = tool as OLLMchat.Tool.UiWidgets;
+				if (ui == null) {
+					continue;
+				}
+				var widget_id = tool.name;
+				this.chat_widget.chat_bar.add_tool_toggle(
+					widget_id, ui.icon_name, ui.tooltip_text);
+				ui.show_view.connect(() => {
+					this.chat_widget.chat_bar.toggle_active_tool(widget_id, true);
+				});
+			}
+			this.chat_widget.chat_bar.tool_toggle.connect((tool_name, active) => {
+				if (!this.history_manager.tools.has_key(tool_name)) {
+					return;
+				}
+				var ui = this.history_manager.tools.get(tool_name) as OLLMchat.Tool.UiWidgets;
+				if (ui == null) {
+					return;
+				}
+				var view = (Gtk.Widget) ui.view_widget;
+				if (!active) {
+					this.window_pane.schedule_pane_update(false);
+					return;
+				}
+				if (this.window_pane.tab_view.get_child_by_name(tool_name) == null) {
+					this.window_pane.tab_view.add_named(view, tool_name);
+				}
+				view.visible = true;
+				this.window_pane.tab_view.set_visible_child_name(tool_name);
+				this.window_pane.schedule_pane_update(true);
+			});
 			
 			// Agent UI: factories receive this window as ChatDesktopInterface (§3b)
 			this.connect_agent_factory_signals();

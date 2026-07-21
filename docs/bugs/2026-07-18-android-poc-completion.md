@@ -24,11 +24,11 @@
 
 **Actual:** 🔷 Suggestion tap does not delete/replace the typed prefix; correction does not land.
 
-**Cause (partial):** ✔️ Same IME bridge as IME-2. Composing-span-only commit fixed double-fill but left suggestion rewrite broken. 💩 Editable≠GTK replace attempt on Knowles did **not** fix `TAT`→`THAT` on device.
+**Cause:** ✔️ Gboard calls `InputConnection.replaceText(start, end, text)`; our bridge only updates the Android Editable, so GTK still shows the typo until a later finish/sync.
 
-**Tried:** ✔️ Knowles `android-ime-spellcorrect-nofill` + EntryPopupTest install — **insufficient**; do not port to `android-bugs.patch` yet.
+**Tried:** ✔️ Knowles `finishComposingText` Editable≠GTK — late/insufficient. Debug log captured `replaceText(10,13,"rat ")` with GTK still `… tat`.
 
-**Next:** ⏳ 🔷 Log IME calls on suggestion tap; fix replace path; re-verify EntryPopupTest then ship to chat POC. Detail: [`2026-07-19-android-ime-autocomplete-nofill.md`](2026-07-19-android-ime-autocomplete-nofill.md).
+**Next:** ⏳ 🔷 Apply `replaceText` into GTK on Knowles; re-verify; then ship to chat POC. Detail: [`2026-07-19-android-ime-autocomplete-nofill.md`](2026-07-19-android-ime-autocomplete-nofill.md).
 
 ---
 

@@ -44,6 +44,22 @@ namespace OLLMchatGtk
 		/** Emitted when the user clicks Stop. */
 		public signal void stop_clicked();
 
+		/**
+		 * Horizontal strip for tool toggles (leftmost, before model dropdown).
+		 *
+		 * Application may append extra widgets; prefer {@link add_tool_toggle}
+		 * for {@link OLLMchat.Tool.UiWidgets} tools.
+		 */
+		public Gtk.Box tool_button_box { get; private set; }
+
+		/**
+		 * User toggled a tool chrome button.
+		 *
+		 * @param tool_name {@link OLLMchat.Tool.BaseTool.name}
+		 * @param active whether the toggle is on
+		 */
+		public signal void tool_toggle(string tool_name, bool active);
+
 		public ChatBar(OLLMchat.History.Manager manager)
 		{
 			Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 5);
@@ -64,6 +80,11 @@ namespace OLLMchatGtk
 			};
 			this.model_dropdown.add_css_class("chat-bar-model");
 
+			this.tool_button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5) {
+				hexpand = false,
+				vexpand = false,
+			};
+			this.append(this.tool_button_box);
 			this.append(this.model_loading_label);
 			this.append(this.model_dropdown);
 			this.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) { hexpand = true });
@@ -82,6 +103,52 @@ namespace OLLMchatGtk
 			});
 			this.append(this.action_button);
 			this.action_button.visible = false;
+		}
+
+		/**
+		 * Create and pack a tool toggle from icon + tooltip.
+		 *
+		 * @param tool_name stable id ({@link OLLMchat.Tool.BaseTool.name})
+		 * @param icon_name symbolic icon for the toggle
+		 * @param tooltip_text tooltip for the toggle
+		 */
+		public void add_tool_toggle(string tool_name, string icon_name, string tooltip_text)
+		{
+			var button = new Gtk.ToggleButton() {
+				icon_name = icon_name,
+				tooltip_text = tooltip_text,
+			};
+			button.set_data<string>("tool-name", tool_name);
+			button.toggled.connect(() => {
+				this.tool_toggle(tool_name, button.active);
+			});
+			this.tool_button_box.append(button);
+		}
+
+		/**
+		 * Set a tool toggle active without the caller holding the button.
+		 *
+		 * Used when a tool emits {@link OLLMchat.Tool.UiWidgets.show_view}.
+		 *
+		 * @param tool_name {@link OLLMchat.Tool.BaseTool.name}
+		 * @param active desired toggle state
+		 */
+		public void toggle_active_tool(string tool_name, bool active)
+		{
+			for (var child = this.tool_button_box.get_first_child(); child != null; child = child.get_next_sibling()) {
+				var button = child as Gtk.ToggleButton;
+				if (button == null) {
+					continue;
+				}
+				if (button.get_data<string>("tool-name") != tool_name) {
+					continue;
+				}
+				if (button.active == active) {
+					return;
+				}
+				button.active = active;
+				return;
+			}
 		}
 
 		/** Call when streaming state changes; updates play/Stop chrome and visibility. */

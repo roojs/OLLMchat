@@ -66,13 +66,27 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 
 	public override string to_summary()
 	{
-		switch (this.action) {
+		switch (this.action.strip().down()) {
 			case "help":
 			case "":
-				if (this.topic != "") {
-					return "help topic=" + this.topic;
+				if (this.topic.strip() != "") {
+					return "help topic=" + this.topic.strip();
 				}
 				return "help";
+
+			case "search":
+				return "search " + this.query.strip();
+
+			case "fetch":
+			case "download":
+				return this.action.strip().down() + " " + this.url.strip();
+
+			case "press":
+				return "press " + this.press.to_string();
+
+			case "whereami":
+				return "whereami";
+
 			default:
 				return "action=" + this.action;
 		}
@@ -90,47 +104,75 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 		if (fmt == "") {
 			fmt = "a11y";
 		}
+		this.agent.add_message(new OLLMchat.Message("ui",
+			OLLMchat.Message.fenced(
+				"text.oc-frame-info.collapsed browser " + this.to_summary(),
+				this.to_summary())));
+		var result = "";
 		switch (act) {
 			case "":
 			case "help":
 				var topic = this.topic.strip();
 				if (topic == "") {
-					return (string) GLib.resources_lookup_data(
+					result = (string) GLib.resources_lookup_data(
 						"/ocwebkit/help.md", GLib.ResourceLookupFlags.NONE).get_data();
+					break;
 				}
-				return (string) GLib.resources_lookup_data(
+				result = (string) GLib.resources_lookup_data(
 					"/ocwebkit/help-" + topic.down() + ".md",
 					GLib.ResourceLookupFlags.NONE).get_data();
+				break;
+
 			case "fetch":
 				if (this.url.strip() == "") {
-					throw new GLib.IOError.INVALID_ARGUMENT("url is required for fetch");
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"url is required for fetch — call {\"action\": \"help\", \"topic\": \"fetch\"} for usage");
 				}
 				yield ((OLLMwebkit.Tool) this.tool).stack.primary.load(this.url.strip());
-				return yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
+				result = yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
+				break;
+
 			case "search":
 				if (this.query.strip() == "") {
-					throw new GLib.IOError.INVALID_ARGUMENT("query is required for search");
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"query is required for search — call {\"action\": \"help\", \"topic\": \"search\"} for usage");
 				}
 				yield ((OLLMwebkit.Tool) this.tool).stack.primary.load(
 					"https://www.google.com/search?q="
 					+ GLib.Uri.escape_string(this.query.strip())
 					+ "&hl=en");
-				return yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
+				result = yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
+				break;
+
 			case "whereami":
-				return yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
+				result = yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
+				break;
+
 			case "press":
 				if (this.fill.size > 0) {
 					yield ((OLLMwebkit.Tool) this.tool).stack.primary.fill(this.fill);
 				}
 				if (this.press <= 0) {
-					throw new GLib.IOError.INVALID_ARGUMENT("press (integer) is required for action press");
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"press (integer) is required for action press — call {\"action\": \"help\", \"topic\": \"press\"} for usage");
 				}
 				yield ((OLLMwebkit.Tool) this.tool).stack.primary.press(this.press);
-				return yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
+				result = yield ((OLLMwebkit.Tool) this.tool).stack.primary.dump(fmt);
+				break;
+
 			case "download":
 				throw new GLib.IOError.NOT_SUPPORTED("%s — Phase 7", act);
+
 			default:
-				throw new GLib.IOError.INVALID_ARGUMENT("Unknown action: %s", this.action);
+				throw new GLib.IOError.INVALID_ARGUMENT(
+					"Unknown action: %s — call {\"action\": \"help\"} for the action list",
+					this.action);
 		}
+		var reply_prefix = (fmt == "markdown") ? "markdown" : "text";
+		this.agent.add_message(new OLLMchat.Message("ui",
+			OLLMchat.Message.fenced(
+				reply_prefix + ".oc-frame-success.collapsed browser reply",
+				result)));
+		return result;
 	}
 }

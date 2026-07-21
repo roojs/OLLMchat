@@ -30,6 +30,11 @@ namespace OLLMchatGtk
 	public class ChatWidget : Gtk.Box
 	{
 		public ChatView chat_view { get; private set; }
+		/**
+		 * Content stack: named {@code chat} is {@link chat_view}; tool hosts
+		 * may be added by the application (Android chat ↔ tool).
+		 */
+		public Gtk.Stack view_stack { get; private set; }
 		public ChatPermission permission_widget { get; private set; }
 		public ChatBar chat_bar { get; private set; }
 		public ChatInput chat_input { get; private set; }
@@ -151,11 +156,19 @@ namespace OLLMchatGtk
 			this.lower_box.append(this.permission_widget);
 			this.lower_box.append(this.chat_bar);
 
+			this.view_stack = new Gtk.Stack() {
+				hexpand = true,
+				vexpand = true,
+				transition_type = Gtk.StackTransitionType.NONE,
+			};
+			this.view_stack.add_named(this.chat_view, "chat");
+			this.view_stack.visible_child_name = "chat";
+
 			var main_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
 				vexpand = true
 			};
-			main_box.append(this.chat_view);
+			main_box.append(this.view_stack);
 			main_box.append(this.lower_box);
 
 			// Connect to manager signals (which relay from active session)

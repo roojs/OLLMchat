@@ -88,6 +88,15 @@ namespace OLLMchat.Call
 					this.agent.add_message(reply_msg);
 					messages_to_send.add(reply_msg);
 				}
+				this.agent.session.manager.message_added(
+					new Message(
+						"ui-waiting",
+						"waiting for "
+						+ (this.agent.session.model_usage.model != ""
+							? this.agent.session.model_usage.display_name_with_size()
+							: "Unknown model")
+						+ " to reply"),
+					this.agent.session);
 				var next_response = yield this.send_append(messages_to_send);
 				if (next_response.done &&
 					next_response.message.tool_calls.size > 0) {
