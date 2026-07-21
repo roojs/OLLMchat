@@ -73,8 +73,20 @@ add_project_arguments(['--vapidir', meson.current_build_dir()], language: 'vala'
 add_project_arguments(['--target-glib=auto'], language: 'vala')
 
 # Vala #if G_OS_WIN32 is not set automatically when cross-compiling on Linux.
+# LINUX / WINDOWS match Snappr / libocwebkit #if (WebKitGTK vs webview2-gtk).
 if host_machine.system() == 'windows'
-  add_project_arguments(['--define=G_OS_WIN32'], language: 'vala')
+  add_project_arguments(['--define=G_OS_WIN32', '--define=WINDOWS'], language: 'vala')
+elif host_machine.system() == 'linux'
+  add_project_arguments(['--define=LINUX'], language: 'vala')
+endif
+
+webview2gtk_prefix = get_option('webview2gtk_prefix')
+if host_machine.system() == 'windows' and webview2gtk_prefix != ''
+  meson.add_env(
+    'PKG_CONFIG_PATH',
+    webview2gtk_prefix / 'lib' / 'pkgconfig',
+    method: 'prepend',
+  )
 endif
 
 local_gguf_enabled = false

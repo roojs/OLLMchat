@@ -4,6 +4,7 @@
 # Dependencies for octools library
 valac = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
+is_windows = host_machine.system() == 'windows'
 # tree-sitter: resolved in config/meson.build
 octools_deps = [
   dependency('gee-0.8'),
@@ -14,11 +15,34 @@ octools_deps = [
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
   dependency('gtk4'),
-  dependency('webkitgtk-6.0'),
-  dependency('atspi-2'),
   valac.find_library('posix'),
   tree_sitter_dep,
 ]
+
+octools_webview_vala_args = []
+octools_webview_vapi_pkgs = []
+if is_windows
+  octools_deps += dependency('webview2gtk-1')
+  octools_webview_vala_args += ['--pkg=webview2gtk-1']
+  octools_webview_vapi_pkgs += ['--pkg', 'webview2gtk-1']
+  if webview2gtk_prefix != ''
+    octools_webview_vala_args += ['--vapidir', webview2gtk_prefix / 'lib']
+    octools_webview_vapi_pkgs += ['--vapidir', webview2gtk_prefix / 'lib']
+  endif
+else
+  octools_deps += [
+    dependency('webkitgtk-6.0'),
+    dependency('atspi-2'),
+  ]
+  octools_webview_vala_args += [
+    '--pkg=webkitgtk-6.0',
+    '--pkg=atspi-2',
+  ]
+  octools_webview_vapi_pkgs += [
+    '--pkg', 'webkitgtk-6.0',
+    '--pkg', 'atspi-2',
+  ]
+endif
 
 # Source files for OLLMtools namespace
 octools_src = files([
@@ -70,6 +94,37 @@ lib_build_rpath = ':'.join([
 
 octools_lib_deps = [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, ocbwrap_vapi_dep, ocrpc_vapi_dep]
 
+octools_lib_vala_args = [
+  '--pkg=ollmchat',
+  '--pkg=ollamaweb',
+  '--pkg=ocfiles',
+  '--pkg=ocsqlite',
+  '--pkg=ocmarkdown',
+  '--pkg=ocbwrap',
+  '--pkg=ocrpc',
+  '--pkg=gtk4',
+  '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+  '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
+  '--pkg=json-glib-1.0',
+  # Put build directories FIRST so we use local VAPIs instead of installed ones
+  '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocwebkit',
+  '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
+  '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
+  '--girdir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
+  '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
+] + octools_webview_vala_args
+if not is_windows
+  octools_lib_vala_args += ['--vapidir', '/usr/share/vala/vapi']
+endif
+
 octools_base_lib = library(octools_lib,
   dependencies: octools_lib_deps,
   link_with: [ollmchat_base_lib, ochf_base_lib, ocwebkit_base_lib],
@@ -85,36 +140,7 @@ octools_base_lib = library(octools_lib,
     include_directories('..' / 'libocrpc'),
     include_directories('..' / 'libocwebkit'),
   ],
-  vala_args: [
-    '--pkg=ollmchat',
-    '--pkg=ollamaweb',
-    '--pkg=ocfiles',
-    '--pkg=ocsqlite',
-    '--pkg=ocmarkdown',
-    '--pkg=ocbwrap',
-    '--pkg=ocrpc',
-    '--pkg=gtk4',
-    '--pkg=webkitgtk-6.0',
-    '--pkg=atspi-2',
-    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
-    '--pkg=json-glib-1.0',
-    # Put build directories FIRST so we use local VAPIs instead of installed ones
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocwebkit',
-    '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
-    '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
-    '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--girdir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
-  ],
+  vala_args: octools_lib_vala_args,
   install: true
 )
 
@@ -132,8 +158,6 @@ octools_vapi_gen_pkgs = [
   '--pkg', 'ochf',
   '--pkg', 'ocwebkit',
   '--pkg', 'gtk4',
-  '--pkg', 'webkitgtk-6.0',
-  '--pkg', 'atspi-2',
   '--pkg', 'ocmarkdown',
   '--pkg', 'ocsqlite',
   '--pkg', 'ocbwrap',
@@ -141,7 +165,7 @@ octools_vapi_gen_pkgs = [
   '--pkg', 'glib-2.0',
   '--pkg', 'gio-2.0',
   '--pkg', 'gee-0.8',
-]
+] + octools_webview_vapi_pkgs
 
 octools_vapi_vapidirs = [
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -154,8 +178,10 @@ octools_vapi_vapidirs = [
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
   '--vapidir', meson.current_source_dir() / '../vapi',
-  '--vapidir', '/usr/share/vala/vapi',
 ]
+if not is_windows
+  octools_vapi_vapidirs += ['--vapidir', '/usr/share/vala/vapi']
+endif
 
 # Manually generate octools.vapi with correct command line order
 octools_vapi = custom_target('octools-vapi',
