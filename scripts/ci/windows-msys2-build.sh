@@ -21,6 +21,21 @@ FAISS_REPO="${FAISS_REPO:-https://github.com/facebookresearch/faiss.git}"
 FAISS_PREFIX="${FAISS_PREFIX:-${MSYSTEM_PREFIX:-/ucrt64}}"
 BUILD_DIR="${BUILD_DIR:-build-windows}"
 
+# Vala → C on MinGW: normalize LF before valac, and wrap cc so generated
+# .c with CRLF line-continuations still compile (see mingw-cc-crlf-safe.sh).
+echo "==> normalize Vala sources to LF"
+find "${ROOT}" \( -name '*.vala' -o -name '*.vapi' \) \
+	! -path '*/webview2-gtk/*' \
+	! -path '*/.ci-*/*' \
+	! -path '*/build/*' \
+	! -path '*/build-*/*' \
+	-print0 | while IFS= read -r -d '' f; do
+	sed -i 's/\r$//' "${f}"
+done
+export MINGW_CC_REAL="${MINGW_CC_REAL:-$(command -v cc)}"
+export CC="${ROOT}/scripts/ci/mingw-cc-crlf-safe.sh"
+chmod +x "${CC}"
+
 # --- FAISS (same patches + cmake flags as sqgipkg.json windows.native_dependencies) ---
 echo "==> FAISS ${FAISS_REF} -> ${FAISS_PREFIX}"
 if [[ ! -d "${FAISS_DIR}/.git" ]]; then

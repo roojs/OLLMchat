@@ -20,6 +20,13 @@ jobs:
         shell: msys2 {0}
 
     steps:
+      # Avoid CRLF checkouts breaking Vala→C string line-continuations on MinGW.
+      - name: Git LF only
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
       - uses: actions/checkout@v5
 
       - uses: msys2/setup-msys2@v2
