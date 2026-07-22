@@ -23,8 +23,9 @@ using WebKit;
 /**
  * Target-site Cloudflare challenge detection for a {@link Browser}.
  *
- * Watches main-document responses (Snappr Rpc.Cloudflare pattern). No PMAN
- * Client, login CF, or gateway probe APIs.
+ * Linux: WebKitGTK ''decide_policy'' RESPONSE. Windows / Android: WebView
+ * ''main_document_response'' (status + Soup headers). Shared
+ * {@link check_browser_response} / ''is_blocked'' / {@link cleared}.
  *
  * == Example ==
  *
@@ -75,23 +76,50 @@ public class OLLMwebkit.Cloudflare : Object
 			if (this.check_browser_response(response.status_code, response.http_headers)) {
 				this.is_blocked = true;
 			}
-			if (was_blocked && !this.is_blocked && response.uri != "") {
-				var pending = this.browser.pending_load_uri;
-				var same_host = false;
-				if (pending != "") {
-					try {
-						var host_a = GLib.Uri.parse(response.uri, GLib.UriFlags.NONE).get_host();
-						var host_b = GLib.Uri.parse(pending, GLib.UriFlags.NONE).get_host();
-						same_host = host_a != null && host_b != null
-							&& host_a.down() == host_b.down();
-					} catch (GLib.Error e) {
-					}
-				}
-				if (same_host || response.uri == pending) {
-					this.cleared();
+			if (!was_blocked || this.is_blocked || response.uri == "") {
+				return false;
+			}
+			var pending = this.browser.pending_load_uri;
+			var same_host = false;
+			if (pending != "") {
+				try {
+					var host_a = GLib.Uri.parse(response.uri, GLib.UriFlags.NONE).get_host();
+					var host_b = GLib.Uri.parse(pending, GLib.UriFlags.NONE).get_host();
+					same_host = host_a != null && host_b != null
+						&& host_a.down() == host_b.down();
+				} catch (GLib.Error e) {
 				}
 			}
+			if (same_host || response.uri == pending) {
+				this.cleared();
+			}
 			return false;
+		});
+#else
+		this.browser.web_view.main_document_response.connect((status, headers) => {
+			var was_blocked = this.is_blocked;
+			this.is_blocked = false;
+			if (this.check_browser_response(status, headers)) {
+				this.is_blocked = true;
+			}
+			var response_uri = this.browser.web_view.get_uri();
+			if (!was_blocked || this.is_blocked || response_uri == "") {
+				return;
+			}
+			var pending = this.browser.pending_load_uri;
+			var same_host = false;
+			if (pending != "") {
+				try {
+					var host_a = GLib.Uri.parse(response_uri, GLib.UriFlags.NONE).get_host();
+					var host_b = GLib.Uri.parse(pending, GLib.UriFlags.NONE).get_host();
+					same_host = host_a != null && host_b != null
+						&& host_a.down() == host_b.down();
+				} catch (GLib.Error e) {
+				}
+			}
+			if (same_host || response_uri == pending) {
+				this.cleared();
+			}
 		});
 #endif
 	}

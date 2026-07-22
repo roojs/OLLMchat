@@ -1,5 +1,32 @@
+diff --git a/gdk/android/gdkandroidollmchatpatch.c b/gdk/android/gdkandroidollmchatpatch.c
+new file mode 100644
+index 0000000000..5edeea502c
+--- /dev/null
++++ b/gdk/android/gdkandroidollmchatpatch.c
+@@ -0,0 +1,21 @@
++/*
++ * OLLMchat android-bugs.patch compile marker.
++ * CI/build logs should contain: gdkandroidollmchatpatch.c.o
++ * SPDX-License-Identifier: LGPL-2.1-or-later
++ */
++
++#include "config.h"
++#include <glib.h>
++
++/* Survives in libgtk-4.so; verify-apk.sh greps for these tags. */
++const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v11";
++const char gdk_android_ollmchat_popup_tag[] = "ollmchat-android-popup-v5";
++
++static void
++gdk_android_ollmchat_patch_marker (void)
++{
++  /* Keep the tags referenced so release builds do not drop them. */
++  g_debug ("%s %s",
++           gdk_android_ollmchat_bugs_tag,
++           gdk_android_ollmchat_popup_tag);
++}
 diff --git a/gdk/android/gdkandroidpopup.c b/gdk/android/gdkandroidpopup.c
-index 67f31d0..9f8a3db 100644
+index 67f31d022e..9f8a3dbbf6 100644
 --- a/gdk/android/gdkandroidpopup.c
 +++ b/gdk/android/gdkandroidpopup.c
 @@ -37,11 +37,16 @@ gdk_android_popup_present (GdkPopup       *popup,
@@ -109,29 +136,32 @@ index 67f31d0..9f8a3db 100644
      }
  
 diff --git a/gdk/android/glue/java/org/gtk/android/ImContext.java b/gdk/android/glue/java/org/gtk/android/ImContext.java
-index dfedba0..1d2fd92 100644
+index dfedba019a..abcb4bb6b1 100644
 --- a/gdk/android/glue/java/org/gtk/android/ImContext.java
 +++ b/gdk/android/glue/java/org/gtk/android/ImContext.java
-@@ -10,8 +10,6 @@ import android.view.inputmethod.InputMethodManager;
+@@ -6,11 +6,11 @@ import android.view.KeyEvent;
+ import android.view.View;
+ import android.view.inputmethod.BaseInputConnection;
+ import android.view.inputmethod.InputMethodManager;
++import android.view.inputmethod.TextAttribute;
+ 
  import androidx.annotation.Keep;
  import androidx.annotation.NonNull;
- 
--import java.util.logging.Logger;
 -
+-import java.util.logging.Logger;
++import androidx.annotation.Nullable;
+ 
  public final class ImContext {
  	public static final class SurroundingRetVal {
- 		public String text;
-@@ -40,6 +38,25 @@ public final class ImContext {
+@@ -40,68 +40,209 @@ public final class ImContext {
  
  	public native boolean commit(String string);
  
-+	private void syncEditableFromGtk(Editable content, SurroundingRetVal surrounding) {
-+		if (content == null)
++	private void syncEditableFromGtk(Editable content) {
++		SurroundingRetVal surrounding = GlibContext.blockForMain(this::getSurrounding);
++		if (surrounding == null)
 +			return;
-+		if (surrounding == null || surrounding.text == null) {
-+			content.clear();
-+			return;
-+		}
++
 +		content.replace(0, content.length(), surrounding.text);
 +		int len = content.length();
 +		int cursor = Math.min(Math.max(surrounding.cursor_index, 0), len);
@@ -139,15 +169,15 @@ index dfedba0..1d2fd92 100644
 +		Selection.setSelection(content, anchor, cursor);
 +	}
 +
-+	private void syncEditableFromGtk(Editable content) {
-+		SurroundingRetVal surrounding = GlibContext.blockForMain(this::getSurrounding);
-+		syncEditableFromGtk(content, surrounding);
-+	}
-+
  	@Keep
  	private static void reset(View view) {
- 		InputMethodManager imm = view.getContext().getSystemService(InputMethodManager.class);
-@@ -47,61 +64,106 @@ public final class ImContext {
+-		InputMethodManager imm = view.getContext().getSystemService(InputMethodManager.class);
+-		imm.restartInput(view);
++		/* Post to UI thread — same IMM vs blockForMain deadlock as setActiveImContext. */
++		view.post(() -> {
++			InputMethodManager imm = view.getContext().getSystemService(InputMethodManager.class);
++			imm.restartInput(view);
++		});
  	}
  
  	final class ImeConnection extends BaseInputConnection {
@@ -181,8 +211,8 @@ index dfedba0..1d2fd92 100644
  			return true;
  		}
  
-		@Override
-		public boolean finishComposingText() {
+ 		@Override
+ 		public boolean finishComposingText() {
 -			logger.info("IME: finishComposingText()");
 +			Editable content = getEditable();
 +			String toCommit = "";
@@ -194,14 +224,16 @@ index dfedba0..1d2fd92 100644
 +					/* Composing span into GTK (keeps focus-leave from double-filling). */
 +					toCommit = content.subSequence(start, end).toString();
 +				} else {
-+					/* Spell-correct / suggestion: Gboard rewrites Editable with no
-+					 * composing span. Commit that text only when it differs from GTK
-+					 * (focus-leave keeps texts equal → no double-fill). */
++					/* Safety net only: Gboard sometimes rewrites Editable with no
++					 * composing span. Never push an empty Editable over non-empty GTK
++					 * — on IME reconnect Editable resets to "" while GTK still has text
++					 * (would blank the field). Prefer replaceText for suggestions. */
 +					SurroundingRetVal surrounding =
 +							GlibContext.blockForMain(ImContext.this::getSurrounding);
 +					String androidText = content.toString();
-+					if (surrounding == null || surrounding.text == null
-+							|| !androidText.equals(surrounding.text)) {
++					if (androidText.length() > 0
++							&& (surrounding == null || surrounding.text == null
++								|| !androidText.equals(surrounding.text))) {
 +						toCommit = androidText;
 +						replaceAll = true;
 +					}
@@ -256,12 +288,51 @@ index dfedba0..1d2fd92 100644
  		public boolean commitText(CharSequence text, int newCursorPosition) {
 -			logger.info("IME: commitText(\"" + text + "\", " + newCursorPosition + ")");
 -			super.commitText(text, newCursorPosition);
--
++			if (text.length() > 0)
++				GlibContext.blockForMain(() -> ImContext.this.commit(text.toString()));
++			syncEditableFromGtk(getEditable());
++			return true;
++		}
+ 
 -			Editable content = getEditable();
 -			GlibContext.blockForMain(() -> ImContext.this.commit(content.toString()));
 -			content.clear();
-+			if (text != null && text.length() > 0)
-+				GlibContext.blockForMain(() -> ImContext.this.commit(text.toString()));
++		@Override
++		public boolean replaceText(int start, int end, CharSequence text,
++				int newCursorPosition, @Nullable TextAttribute textAttribute) {
++			/* Spell-correct / suggestion (IME-3): Gboard rewrites a range via
++			 * replaceText. BaseInputConnection only updates the Android Editable;
++			 * mirror the range into GTK, then sync Editable from GTK. */
++			final int from = Math.min(Math.max(start, 0), Math.max(end, 0));
++			final int to = Math.max(Math.max(start, 0), Math.max(end, 0));
++			final String insert = text != null ? text.toString() : "";
++
++			GlibContext.blockForMain(() -> {
++				ImContext.this.updatePreedit(null, 0);
++				SurroundingRetVal s = ImContext.this.getSurrounding();
++				if (s == null || s.text == null)
++					return;
++
++				if (s.cursor_index != s.anchor_index) {
++					deleteBackwardOrSelection();
++					s = ImContext.this.getSurrounding();
++					if (s == null || s.text == null)
++						return;
++				}
++
++				int len = s.text.length();
++				int a = Math.min(from, len);
++				int b = Math.min(to, len);
++				int n = b - a;
++				if (n > 0) {
++					int offset = a - s.cursor_index;
++					ImContext.this.deleteSurrounding(offset, n);
++				}
++
++				if (insert.length() > 0)
++					ImContext.this.commit(insert);
++			});
++
 +			syncEditableFromGtk(getEditable());
  			return true;
  		}
@@ -286,25 +357,24 @@ index dfedba0..1d2fd92 100644
 -		public boolean deleteSurroundingText(int leftLength, int rightLength) {
 -			logger.info("IME: deleteSurroundingText(" + leftLength + ", " + rightLength + ")");
 +		public boolean sendKeyEvent(KeyEvent event) {
-+			if (event != null
-+					&& event.getKeyCode() == KeyEvent.KEYCODE_DEL
-+					&& (event.getAction() == KeyEvent.ACTION_DOWN
-+							|| event.getAction() == KeyEvent.ACTION_MULTIPLE)) {
-+				int count = event.getRepeatCount() > 0 ? event.getRepeatCount() : 1;
-+				for (int i = 0; i < count; i++) {
-+					GlibContext.blockForMain(this::deleteBackwardOrSelection);
-+				}
-+				return true;
-+			}
-+			return super.sendKeyEvent(event);
++			if (event.getKeyCode() != KeyEvent.KEYCODE_DEL)
++				return super.sendKeyEvent(event);
++			if (event.getAction() != KeyEvent.ACTION_DOWN
++					&& event.getAction() != KeyEvent.ACTION_MULTIPLE)
++				return super.sendKeyEvent(event);
++
++			int count = event.getRepeatCount() > 0 ? event.getRepeatCount() : 1;
++			for (int i = 0; i < count; i++)
++				GlibContext.blockForMain(this::deleteBackwardOrSelection);
++			return true;
 +		}
  
--			// The stock Samsung keyboard with 'Auto check spelling' enabled sends leftLength > 1.
++		@Override
++		public boolean deleteSurroundingText(int leftLength, int rightLength) {
+ 			// The stock Samsung keyboard with 'Auto check spelling' enabled sends leftLength > 1.
 -			KeyEvent deleteKey = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL);
 -			for (int i = 0; i < leftLength; i++) sendKeyEvent(deleteKey);
 -			return super.deleteSurroundingText(leftLength, rightLength);
-+		@Override
-+		public boolean deleteSurroundingText(int leftLength, int rightLength) {
 +			GlibContext.blockForMain(() -> {
 +				SurroundingRetVal surrounding = ImContext.this.getSurrounding();
 +				if (surrounding != null
@@ -322,10 +392,25 @@ index dfedba0..1d2fd92 100644
  	}
  }
 diff --git a/gdk/android/glue/java/org/gtk/android/ToplevelActivity.java b/gdk/android/glue/java/org/gtk/android/ToplevelActivity.java
-index 09889b9..4b3a329 100644
+index 09889b9c5b..81b23fd9d7 100644
 --- a/gdk/android/glue/java/org/gtk/android/ToplevelActivity.java
 +++ b/gdk/android/glue/java/org/gtk/android/ToplevelActivity.java
-@@ -283,8 +283,7 @@ public class ToplevelActivity extends Activity {
+@@ -194,8 +194,12 @@ public class ToplevelActivity extends Activity {
+ 				if (activeImContext == context)
+ 					return;
+ 				activeImContext = context;
+-				InputMethodManager imm = getSystemService(InputMethodManager.class);
+-				imm.restartInput(this);
++				/* Post to UI thread: sync restartInput on the GTK thread deadlocks with
++				 * finishComposingText → blockForMain holding InputMethodManager$H. */
++				runOnUiThread(() -> {
++					InputMethodManager imm = getSystemService(InputMethodManager.class);
++					imm.restartInput(this);
++				});
+ 			}
+ 
+ 			public void reposition(int x, int y, int width, int height) {
+@@ -283,8 +287,7 @@ public class ToplevelActivity extends Activity {
  				if (activeImContext == null)
  					return null;
  				outAttrs.contentMimeTypes = new String[] { "text/plain" };
@@ -336,7 +421,7 @@ index 09889b9..4b3a329 100644
  				return activeImContext.new ImeConnection(this);
  			}
 diff --git a/gdk/android/meson.build b/gdk/android/meson.build
-index f0a57ea..11ab0c0 100644
+index f0a57ea52c..11ab0c0ce1 100644
 --- a/gdk/android/meson.build
 +++ b/gdk/android/meson.build
 @@ -17,6 +17,7 @@ gdk_android_sources = files([
@@ -347,8 +432,99 @@ index f0a57ea..11ab0c0 100644
    'gdkandroidutils.c'
  ])
  
+diff --git a/gsk/gpu/gskgpudevice.c b/gsk/gpu/gskgpudevice.c
+index 58e087cba4..d9cc8560a3 100644
+--- a/gsk/gpu/gskgpudevice.c
++++ b/gsk/gpu/gskgpudevice.c
+@@ -314,6 +314,9 @@ gsk_gpu_device_create_atlas_image (GskGpuDevice *self,
+                                    gsize         width,
+                                    gsize         height)
+ {
++  /* Atlas images are display-wide shared resources; create them with the
++   * device (display) GL context current so all surfaces share the same owner. */
++  gsk_gpu_device_make_current (self);
+   return GSK_GPU_DEVICE_GET_CLASS (self)->create_atlas_image (self, width, height);
+ }
+ 
+diff --git a/gsk/gpu/gskgpuuploadop.c b/gsk/gpu/gskgpuuploadop.c
+index e951f198fc..59258bb8d3 100644
+--- a/gsk/gpu/gskgpuuploadop.c
++++ b/gsk/gpu/gskgpuuploadop.c
+@@ -18,6 +18,7 @@
+ #include "gdk/gdkglcontextprivate.h"
+ #include "gdk/gdktextureprivate.h"
+ #include "gsk/gskdebugprivate.h"
++#include "gskgpudeviceprivate.h"
+ 
+ static GskGpuOp *
+ gsk_gpu_upload_op_gl_command_with_area (GskGpuOp                    *op,
+@@ -31,6 +32,27 @@ gsk_gpu_upload_op_gl_command_with_area (GskGpuOp                    *op,
+   guchar *data, *pdata;
+   guint i, p, gl_format, gl_type, stride, tex_id;
+   gsize width_subsample, height_subsample, bpp;
++  gsize image_w, image_h;
++  gboolean is_shared_subupload;
++  GdkGLContext *saved_context = NULL;
++
++  image_w = gsk_gpu_image_get_width (image);
++  image_h = gsk_gpu_image_get_height (image);
++
++  /* Glyph/fill/stroke atlas textures live on the display-wide GskGLDevice and
++   * are shared across per-surface GL contexts. Sub-rectangle uploads into those
++   * images must run with the display context current — uploading from a popup
++   * surface context has crashed Adreno inside glTexSubImage2D (fault 0x10). */
++  is_shared_subupload = (area->x != 0 || area->y != 0 ||
++                         (gsize) area->width != image_w ||
++                         (gsize) area->height != image_h);
++  if (is_shared_subupload)
++    {
++      saved_context = gdk_gl_context_get_current ();
++      if (saved_context)
++        g_object_ref (saved_context);
++      gsk_gpu_device_make_current (gsk_gpu_frame_get_device (frame));
++    }
+ 
+   gdk_memory_layout_init (&layout,
+                           gsk_gpu_image_get_format (GSK_GPU_IMAGE (image)),
+@@ -103,6 +125,12 @@ gsk_gpu_upload_op_gl_command_with_area (GskGpuOp                    *op,
+ 
+   g_free (data);
+ 
++  if (saved_context)
++    {
++      gdk_gl_context_make_current (saved_context);
++      g_object_unref (saved_context);
++    }
++
+   return op->next;
+ }
+ 
+diff --git a/gtk/gtkgesturedrag.c b/gtk/gtkgesturedrag.c
+index 91d6d33c8b..cb0c7301e0 100644
+--- a/gtk/gtkgesturedrag.c
++++ b/gtk/gtkgesturedrag.c
+@@ -109,6 +109,10 @@ gtk_gesture_drag_update (GtkGesture       *gesture,
+   x = priv->last_x - priv->start_x;
+   y = priv->last_y - priv->start_y;
+ 
++  /* drag-update is for actual movement, not a stationary press. */
++  if (x == 0.0 && y == 0.0)
++    return;
++
+   g_signal_emit (gesture, signals[DRAG_UPDATE], 0, x, y);
+ }
+ 
+@@ -167,7 +171,7 @@ gtk_gesture_drag_class_init (GtkGestureDragClass *klass)
+    * @offset_x: X offset, relative to the start point
+    * @offset_y: Y offset, relative to the start point
+    *
+-   * Emitted whenever the dragging point moves.
++   * Emitted when the dragging point actually moves from the start point.
+    */
+   signals[DRAG_UPDATE] =
+     g_signal_new (I_("drag-update"),
 diff --git a/gtk/gtktext.c b/gtk/gtktext.c
-index 8bdc250..1555fb3 100644
+index 8bdc250e4e..8355172ca2 100644
 --- a/gtk/gtktext.c
 +++ b/gtk/gtktext.c
 @@ -312,6 +312,7 @@ struct _GtkTextPrivate
@@ -359,16 +535,19 @@ index 8bdc250..1555fb3 100644
    guint         enable_undo             : 1;
  };
  
-@@ -546,6 +547,8 @@ static void     gtk_text_long_press_gesture_pressed (GtkGestureLongPress      *g
+@@ -546,6 +547,11 @@ static void     gtk_text_long_press_gesture_pressed (GtkGestureLongPress      *g
                                                       double                    x,
                                                       double                    y,
                                                       GtkText                  *self);
 +static void     gtk_text_long_press_gesture_cancelled (GtkGestureLongPress    *gesture,
 +                                                       GtkText                *self);
++static void     gtk_text_show_magnifier               (GtkText                *self,
++                                                       int                      x,
++                                                       int                      y);
  static void     gtk_text_drag_gesture_update        (GtkGestureDrag           *gesture,
                                                       double                    offset_x,
                                                       double                    offset_y,
-@@ -2074,8 +2077,11 @@ gtk_text_init (GtkText *self)
+@@ -2074,8 +2080,11 @@ gtk_text_init (GtkText *self)
    gtk_gesture_single_set_touch_only (GTK_GESTURE_SINGLE (gesture), TRUE);
    g_signal_connect (gesture, "pressed",
                      G_CALLBACK (gtk_text_long_press_gesture_pressed), self);
@@ -380,23 +559,7 @@ index 8bdc250..1555fb3 100644
  
    controller = gtk_event_controller_motion_new ();
    gtk_event_controller_set_static_name (controller, "gtk-text-motion-controller");
-@@ -2957,9 +2963,13 @@ gtk_text_click_gesture_pressed (GtkGestureClick *gesture,
-                 {
-                   if (priv->selection_bubble &&
-                       gtk_widget_get_visible (priv->selection_bubble))
--                    gtk_text_selection_bubble_popup_unset (self);
-+                    {
-+                      gtk_text_selection_bubble_popup_unset (self);
-+                    }
-                   else
--                    gtk_text_selection_bubble_popup_set (self);
-+                    {
-+                      gtk_text_selection_bubble_popup_set (self);
-+                    }
-                 }
-               else if (extend_selection)
-                 {
-@@ -3055,6 +3065,19 @@ gtk_text_click_gesture_released (GtkGestureClick *gesture,
+@@ -3055,6 +3064,19 @@ gtk_text_click_gesture_released (GtkGestureClick *gesture,
    GdkEvent *event =
      gtk_event_controller_get_current_event (GTK_EVENT_CONTROLLER (gesture));
  
@@ -416,12 +579,10 @@ index 8bdc250..1555fb3 100644
    if (n_press == 1 &&
        !priv->in_drag &&
        gtk_event_treat_as_touch (event) &&
-@@ -3063,13 +3086,39 @@ gtk_text_click_gesture_released (GtkGestureClick *gesture,
+@@ -3063,13 +3085,37 @@ gtk_text_click_gesture_released (GtkGestureClick *gesture,
      gtk_im_context_activate_osk (priv->im_context, event);
  }
  
-+static void gtk_text_show_magnifier (GtkText *self, int x, int y);
-+
 +static void
 +gtk_text_long_press_gesture_cancelled (GtkGestureLongPress *gesture,
 +                                       GtkText             *self)
@@ -457,7 +618,7 @@ index 8bdc250..1555fb3 100644
    gtk_gesture_set_state (GTK_GESTURE (gesture), GTK_EVENT_SEQUENCE_CLAIMED);
  }
  
-@@ -3101,6 +3150,9 @@ gtk_text_show_magnifier (GtkText *self,
+@@ -3101,6 +3147,9 @@ gtk_text_show_magnifier (GtkText *self,
    const int text_height = gtk_widget_get_height (GTK_WIDGET (self));
    cairo_rectangle_int_t rect;
  
@@ -467,7 +628,7 @@ index 8bdc250..1555fb3 100644
    gtk_text_ensure_magnifier (self);
  
    rect.x = x;
-@@ -3352,6 +3404,10 @@ gtk_text_drag_gesture_end (GtkGestureDrag *gesture,
+@@ -3352,6 +3401,10 @@ gtk_text_drag_gesture_end (GtkGestureDrag *gesture,
    gtk_text_update_handles (self);
  
    gtk_text_update_primary_selection (self);
@@ -478,7 +639,7 @@ index 8bdc250..1555fb3 100644
  }
  
  static void
-@@ -4557,6 +4613,12 @@ gtk_text_delete_surrounding_cb (GtkIMContext *context,
+@@ -4557,6 +4610,12 @@ gtk_text_delete_surrounding_cb (GtkIMContext *context,
                                  priv->current_pos + offset + n_chars);
      }
  
@@ -492,7 +653,7 @@ index 8bdc250..1555fb3 100644
  }
  
 diff --git a/gtk/gtktextview.c b/gtk/gtktextview.c
-index fe27f48..4ed58d6 100644
+index fe27f480c8..4ed58d6aad 100644
 --- a/gtk/gtktextview.c
 +++ b/gtk/gtktextview.c
 @@ -350,6 +350,7 @@ struct _GtkTextViewPrivate
@@ -648,67 +809,3 @@ index fe27f48..4ed58d6 100644
    return TRUE;
  }
  
-diff --git a/gdk/android/gdkandroidollmchatpatch.c b/gdk/android/gdkandroidollmchatpatch.c
-new file mode 100644
-index 00000000000..11111111111
---- /dev/null
-+++ b/gdk/android/gdkandroidollmchatpatch.c
-@@ -0,0 +1,21 @@
-+/*
-+ * OLLMchat android-bugs.patch compile marker.
-+ * CI/build logs should contain: gdkandroidollmchatpatch.c.o
-+ * SPDX-License-Identifier: LGPL-2.1-or-later
-+ */
-+
-+#include "config.h"
-+#include <glib.h>
-+
-+/* Survives in libgtk-4.so; verify-apk.sh greps for these tags. */
-+const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v10";
-+const char gdk_android_ollmchat_popup_tag[] = "ollmchat-android-popup-v5";
-+
-+static void
-+gdk_android_ollmchat_patch_marker (void)
-+{
-+  /* Keep the tags referenced so release builds do not drop them. */
-+  g_debug ("%s %s",
-+           gdk_android_ollmchat_bugs_tag,
-+           gdk_android_ollmchat_popup_tag);
-+}
-
-# --- v9: post restartInput to UI thread (IME ANR deadlock) ---
-
---- a/gdk/android/glue/java/org/gtk/android/ImContext.java
-+++ b/gdk/android/glue/java/org/gtk/android/ImContext.java
-@@ -59,8 +59,11 @@
- 
- 	@Keep
- 	private static void reset(View view) {
--		InputMethodManager imm = view.getContext().getSystemService(InputMethodManager.class);
--		imm.restartInput(view);
-+		/* Post to UI thread — same IMM vs blockForMain deadlock as setActiveImContext. */
-+		view.post(() -> {
-+			InputMethodManager imm = view.getContext().getSystemService(InputMethodManager.class);
-+			imm.restartInput(view);
-+		});
- 	}
- 
- 	final class ImeConnection extends BaseInputConnection {
---- a/gdk/android/glue/java/org/gtk/android/ToplevelActivity.java
-+++ b/gdk/android/glue/java/org/gtk/android/ToplevelActivity.java
-@@ -194,8 +194,12 @@
- 				if (activeImContext == context)
- 					return;
- 				activeImContext = context;
--				InputMethodManager imm = getSystemService(InputMethodManager.class);
--				imm.restartInput(this);
-+				/* Post to UI thread: sync restartInput on the GTK thread deadlocks with
-+				 * finishComposingText → blockForMain holding InputMethodManager$H. */
-+				runOnUiThread(() -> {
-+					InputMethodManager imm = getSystemService(InputMethodManager.class);
-+					imm.restartInput(this);
-+				});
- 			}
- 
- 			public void reposition(int x, int y, int width, int height) {
-

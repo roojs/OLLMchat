@@ -357,6 +357,37 @@ namespace OLLMapp
 				this.app as Gtk.Application,
 				GLib.Path.build_filename(this.app.data_dir, "config"));
 
+			foreach (var tool in this.history_manager.tools.values) {
+				var ui = tool as OLLMchat.Tool.UiWidgets;
+				if (ui == null) {
+					continue;
+				}
+				var widget_id = tool.name;
+				this.chat_widget.chat_bar.add_tool_toggle(
+					widget_id, ui.icon_name, ui.tooltip_text);
+				ui.show_view.connect(() => {
+					this.chat_widget.chat_bar.toggle_active_tool(widget_id, true);
+				});
+			}
+			this.chat_widget.chat_bar.tool_toggle.connect((tool_name, active) => {
+				if (!active) {
+					this.chat_widget.view_stack.visible_child_name = "chat";
+					return;
+				}
+				if (!this.history_manager.tools.has_key(tool_name)) {
+					return;
+				}
+				var ui = this.history_manager.tools.get(tool_name) as OLLMchat.Tool.UiWidgets;
+				if (ui == null) {
+					return;
+				}
+				var view = (Gtk.Widget) ui.view_widget;
+				if (this.chat_widget.view_stack.get_child_by_name(tool_name) == null) {
+					this.chat_widget.view_stack.add_named(view, tool_name);
+				}
+				this.chat_widget.view_stack.visible_child_name = tool_name;
+			});
+
 			this.history_browser.session_selected.connect((session) => {
 				this.history_toggle_button.active = false;
 				this.chat_widget.switch_to_session.begin(session);

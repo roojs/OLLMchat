@@ -57,14 +57,14 @@ apk_extract="$(mktemp -d)"
 trap 'rm -f "$apk_list"; rm -rf "$apk_extract"' EXIT
 unzip -q "$APK" "lib/arm64-v8a/libgtk-4.so" "classes.dex" "assets/share/ollmchat-android-runtime.tag" -d "$apk_extract"
 
-if ! grep -q 'ollmchat-android-bugs-v9' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
-  echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v9)." >&2
+if ! grep -q 'ollmchat-android-bugs-v11' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
+  echo "libgtk-4.so missing android-bugs patch tag (ollmchat-android-bugs-v11)." >&2
   echo "Pixiewood compile cache should have been discarded automatically; check pixiewood_prefix_has_patched_gtk." >&2
   exit 1
 fi
 
-if ! grep -q 'ollmchat-android-bugs-v9' "$apk_extract/assets/share/ollmchat-android-runtime.tag"; then
-  echo "APK missing assets/share/ollmchat-android-runtime.tag (ollmchat-android-bugs-v9)." >&2
+if ! grep -q 'ollmchat-android-bugs-v11' "$apk_extract/assets/share/ollmchat-android-runtime.tag"; then
+  echo "APK missing assets/share/ollmchat-android-runtime.tag (ollmchat-android-bugs-v11)." >&2
   exit 1
 fi
 

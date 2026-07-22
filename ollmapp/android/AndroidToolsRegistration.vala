@@ -26,9 +26,9 @@ namespace OLLMapp
 	 * RPC and Android can share {@link OLLMtools.Registry} with a name-list subset
 	 * (build all tools, register only what the platform needs).
 	 *
-	 * Compiles {@link OLLMtools.WebFetch}, {@link OLLMtools.SessionFetch}, and
-	 * {@link OLLMtools.GoogleSearch} into the Android executable only; other
-	 * liboctools tools are not linked on device.
+	 * Compiles {@link OLLMtools.WebFetch}, {@link OLLMtools.SessionFetch},
+	 * {@link OLLMtools.GoogleSearch}, and {@link OLLMwebkit.Tool} into the
+	 * Android executable; other liboctools tools are not linked on device.
 	 *
 	 * @since 1.0
 	 */
@@ -42,9 +42,11 @@ namespace OLLMapp
 			typeof(OLLMtools.WebFetch.Tool).ensure();
 			typeof(OLLMtools.SessionFetch.Tool).ensure();
 			typeof(OLLMtools.GoogleSearch.Tool).ensure();
+			typeof(OLLMwebkit.Tool).ensure();
 			OLLMchat.Tool.BaseTool.register_config(typeof(OLLMtools.WebFetch.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(OLLMtools.SessionFetch.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(OLLMtools.GoogleSearch.Tool));
+			OLLMchat.Tool.BaseTool.register_config(typeof(OLLMwebkit.Tool));
 		}
 
 		/**
@@ -57,10 +59,12 @@ namespace OLLMapp
 			(new OLLMtools.WebFetch.Tool(null)).setup_tool_config_default(config);
 			(new OLLMtools.SessionFetch.Tool()).setup_tool_config_default(config);
 			(new OLLMtools.GoogleSearch.Tool(null)).setup_tool_config_default(config);
+			(new OLLMwebkit.Tool()).setup_tool_config_default(config);
 		}
 
 		/**
-		 * Register web_fetch, session_fetch, and google_search on the history manager.
+		 * Register web_fetch, session_fetch, google_search, and browser on the
+		 * history manager.
 		 *
 		 * Also registers {@code web_search} as an alias for {@code google_search}
 		 * (same as desktop {@code resources/wrapped-tools/WebSearch.tool}).
@@ -79,6 +83,15 @@ namespace OLLMapp
 			AndroidConnectionTls.apply_to_session(google_search.soup);
 			manager.register_tool(google_search);
 			manager.tools.set("web_search", google_search);
+
+			var browser_tool = new OLLMwebkit.Tool();
+			manager.register_tool(browser_tool);
+			manager.notification_reply.connect((notif) => {
+				if (!notif.method.has_prefix("event.browser.download.")) {
+					return;
+				}
+				browser_tool.stack.primary.notification_reply(notif);
+			});
 		}
 	}
 }

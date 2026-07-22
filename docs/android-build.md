@@ -104,17 +104,24 @@ directory pins the upstream revision the patch was written against.
 To refresh the patch after testing changes in `~/git/gtk`:
 
 ```bash
-cd ~/git/gtk
-git fetch upstream
-# IME and paste only — TLS runtime changes stay out of this patch for now.
-git diff upstream/main..af83724a96 -- \
-  gdk/android/gdkandroidpopup.c \
+cd ~/git/gtk-Knowles
+# Pin matches android/pixiewood-wraps/gtk/gtk.wrap revision.
+BASE=$(sed -n 's/^revision[[:space:]]*=[[:space:]]*//p' \
+  /path/to/OLLMchat/android/pixiewood-wraps/gtk/gtk.wrap)
+# IME / text / atlas fixes from android-ime — TLS runtime stays out.
+# Keep fuller nested-popup geometry from the existing android-bugs.patch
+# (popup-v5); regenerate other files from the branch tip.
+git diff "$BASE"..android-ime -- \
   gdk/android/glue/java/org/gtk/android/ImContext.java \
   gdk/android/glue/java/org/gtk/android/ToplevelActivity.java \
-  gdk/android/meson.build \
-  gdk/android/gdkandroidollmchatpatch.c \
   gtk/gtktext.c \
-  > /path/to/OLLMchat/android/pixiewood-wraps/gtk/android-bugs.patch
+  gtk/gtktextview.c \
+  gtk/gtkgesturedrag.c \
+  gsk/gpu/gskgpudevice.c \
+  gsk/gpu/gskgpuuploadop.c \
+  > /tmp/ime-core.diff
+# Reassemble with popup + meson + gdkandroidollmchatpatch.c from the prior patch,
+# bumping ollmchat-android-bugs-vN in the marker, then replace android-bugs.patch.
 ```
 
 Update the `revision` in `android/pixiewood-wraps/gtk/gtk.wrap` to match the

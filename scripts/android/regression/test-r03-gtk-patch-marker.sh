@@ -19,8 +19,8 @@ grep -q 'gitlab.gnome.org/GNOME/gtk.git' "$WRAP" ||
 prepare_android_subprojects_before_meson
 
 [ -f "$MARKER" ] || { echo "patch marker missing: $MARKER" >&2; exit 1; }
-grep -q 'ollmchat-android-bugs-v9' "$MARKER" ||
-  { echo "patch marker missing ollmchat-android-bugs-v9 tag" >&2; exit 1; }
+grep -q 'ollmchat-android-bugs-v11' "$MARKER" ||
+  { echo "patch marker missing ollmchat-android-bugs-v11 tag" >&2; exit 1; }
 grep -q 'ollmchat-android-popup-v5' "$MARKER" ||
   { echo "patch marker missing ollmchat-android-popup-v5 tag" >&2; exit 1; }
 grep -q 'g_debug' "$MARKER" ||
@@ -46,6 +46,12 @@ grep -q 'composing span into GTK' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/ja
   { echo "ImContext.java finishComposingText composing-span commit missing" >&2; exit 1; }
 grep -q 'IME delete does not go through the key controller' "$ROOT_DIR/subprojects/gtk/gtk/gtktext.c" ||
   { echo "gtktext.c IME delete bubble hide missing" >&2; exit 1; }
+grep -q 'Emitting drag-update in that case is wrong' "$ROOT_DIR/subprojects/gtk/gtk/gtkgesturedrag.c" ||
+  { echo "gtkgesturedrag.c zero-offset drag-update skip missing" >&2; exit 1; }
+grep -q 'gsk_gpu_device_make_current' "$ROOT_DIR/subprojects/gtk/gsk/gpu/gskgpudevice.c" ||
+  { echo "gskgpudevice.c display-context atlas create missing" >&2; exit 1; }
+grep -q 'gsk_gpu_device_make_current' "$ROOT_DIR/subprojects/gtk/gsk/gpu/gskgpuuploadop.c" ||
+  { echo "gskgpuuploadop.c display-context atlas upload missing" >&2; exit 1; }
 grep -q 'gdk_android_scan_gio_modules' "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidruntime.c" &&
   { echo "gdkandroidruntime.c must not contain GDK TLS scan (app loads TLS)" >&2; exit 1; }
 
