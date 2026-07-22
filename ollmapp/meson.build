@@ -128,6 +128,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
     dependency('json-glib-1.0'),
     dependency('libsoup-3.0'),
     dependency('gioopenssl'),
+    dependency('webkitgtk-android-1'),
     valac.find_library('posix'),
   ]
 
@@ -168,7 +169,6 @@ if get_option('android_poc') and host_machine.system() == 'android'
       ollmchat_vapi_dep,
       ollmchatgtk_vapi_dep,
       ollamaweb_vapi_dep,
-      ocwebkit_vapi_dep,
     ],
     sources: android_poc_sources,
     link_with: [ollmchat_base_lib, ollmchatgtk_lib, ocwebkit_base_lib],
@@ -185,6 +185,9 @@ if get_option('android_poc') and host_machine.system() == 'android'
     # Do not add --pkg=gee-0.8 here: android_poc_deps already lists
     # dependency('gee-0.8'); Meson passes gee-0.8.vapi to valac. A duplicate
     # --pkg breaks Android cross-builds — see docs/android-build.md.
+    # Do not add --pkg=ocwebkit / ocwebkit_vapi_dep: link_with already injects
+    # ocwebkit-meson.vapi (same pattern as libocwebkit/examples).
+    # Do not add --pkg=webkitgtk-android-1: android_poc_deps already lists it.
     vala_args: [
       '--define=OLLM_ANDROID',
       '--pkg=gtk4',
@@ -196,8 +199,6 @@ if get_option('android_poc') and host_machine.system() == 'android'
       '--pkg=ollmchatgtk',
       '--pkg=ollamaweb',
       '--pkg=ocmarkdown',
-      '--pkg=ocwebkit',
-      '--pkg=webkitgtk-android-1',
       '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
       '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
       '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',

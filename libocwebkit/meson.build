@@ -29,9 +29,15 @@ if is_windows
     ocwebkit_vapi_platform_pkgs += ['--vapidir', webview2gtk_prefix / 'lib']
   endif
 elif is_android_cross
+  # Subproject library already injects its generated .vapi into valac inputs
+  # for the shared library. Do not also pass --pkg=webkitgtk-android-1 there
+  # (duplicate definitions). The ocwebkit.vapi custom_target does not get that
+  # injection, so it still needs --pkg + --vapidir.
   ocwebkit_deps += dependency('webkitgtk-android-1')
-  ocwebkit_platform_vala_args += ['--pkg=webkitgtk-android-1']
-  ocwebkit_vapi_platform_pkgs += ['--pkg', 'webkitgtk-android-1']
+  ocwebkit_vapi_platform_pkgs += [
+    '--pkg', 'webkitgtk-android-1',
+    '--vapidir', meson.current_build_dir() / '..' / 'subprojects' / 'webkitgtk-android',
+  ]
 else
   ocwebkit_deps += [
     dependency('webkitgtk-6.0'),
@@ -108,6 +114,8 @@ ocwebkit_vala_args = [
   '--pkg=gtk4',
   '--pkg=libsoup-3.0',
   '--pkg=json-glib-1.0',
+  '--pkg=sqlite3',
+  '--pkg=ocsqlite',
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
   '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
@@ -147,6 +155,8 @@ if not is_windows
 endif
 if is_android_cross
   ocwebkit_vapi_cmd += ['--vapidir', gee_vapi_dir]
+  # custom_target does not inherit add_project_arguments --define=ANDROID
+  ocwebkit_vapi_cmd += ['--define=ANDROID']
 endif
 ocwebkit_vapi_cmd += [
   '--pkg', 'posix',
