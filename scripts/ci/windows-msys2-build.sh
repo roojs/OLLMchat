@@ -45,6 +45,8 @@ fi
 
 	rm -rf build-windows-x86_64
 	# Native UCRT64: no SQGI cross toolchain file.
+	# GCC 16 treats faiss pointer→long casts as errors; -fpermissive matches
+	# the looser MinGW sqgipkg historically used.
 	cmake -S . -B build-windows-x86_64 -G Ninja \
 		-DFAISS_ENABLE_GPU=OFF \
 		-DFAISS_ENABLE_PYTHON=OFF \
@@ -52,6 +54,7 @@ fi
 		-DBUILD_SHARED_LIBS=ON \
 		-DBLA_VENDOR=OpenBLAS \
 		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_CXX_FLAGS=-fpermissive \
 		-DCMAKE_INSTALL_PREFIX="${FAISS_PREFIX}"
 	cmake --build build-windows-x86_64 --target faiss
 	cmake --install build-windows-x86_64
