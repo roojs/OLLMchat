@@ -73,41 +73,50 @@ else
     'windows/Overlay.vala',
     'windows/RunSeccomp.vala',
   ])
-  ocbwrap_gir = disabler()
 endif
 
 lib_build_rpath = ':'.join([
   meson.current_build_dir(),
 ])
 
-ocbwrap_base_lib = library('ocbwrap',
-  dependencies: ocbwrap_deps,
-  sources: ocbwrap_src + ocbwrap_extra_sources,
-  vala_header: 'ocbwrap.h',
-  vala_vapi: 'ocbwrap-meson.vapi',
-  vala_gir: ocbwrap_gir,
-  build_rpath: lib_build_rpath,
-  include_directories: [
-    include_directories('..' / 'vapi'),
-  ],
-  vala_args: ocbwrap_vapi_pkgs + strcasestr_vala_args + [
-    '--vapidir', meson.current_source_dir() / '../vapi',
-    '--vapidir', '/usr/share/vala/vapi',
-  ],
-  install: true,
-)
+ocbwrap_lib_vala_args = ocbwrap_vapi_pkgs + strcasestr_vala_args + [
+  '--vapidir', meson.current_source_dir() / '../vapi',
+]
+if host_machine.system() != 'windows'
+  ocbwrap_lib_vala_args += ['--vapidir', '/usr/share/vala/vapi']
+endif
 
+# Omit vala_gir on non-Linux — MSYS2 Meson rejects vala_gir: disabler()/[].
+ocbwrap_lib_kwargs = {
+  'dependencies': ocbwrap_deps,
+  'sources': ocbwrap_src + ocbwrap_extra_sources,
+  'vala_header': 'ocbwrap.h',
+  'vala_vapi': 'ocbwrap-meson.vapi',
+  'build_rpath': lib_build_rpath,
+  'include_directories': [include_directories('..' / 'vapi')],
+  'vala_args': ocbwrap_lib_vala_args,
+  'install': true,
+}
+if host_machine.system() == 'linux'
+  ocbwrap_lib_kwargs += {'vala_gir': 'OLLMbwrap-1.0.gir'}
+endif
+
+ocbwrap_base_lib = library('ocbwrap', kwargs: ocbwrap_lib_kwargs)
+
+ocbwrap_vapi_cmd = [
+  valac_exe,
+  '-C', '--debug',
+  '--target-glib=auto',
+  '--vapidir', meson.current_build_dir(),
+  '--vapidir', meson.current_source_dir() / '../vapi',
+]
+if host_machine.system() != 'windows'
+  ocbwrap_vapi_cmd += ['--vapidir', '/usr/share/vala/vapi']
+endif
 ocbwrap_vapi = custom_target('ocbwrap-vapi',
   output: 'ocbwrap.vapi',
   input: ocbwrap_src,
-  command: [
-    valac_exe,
-    '-C', '--debug',
-    '--target-glib=auto',
-    '--vapidir', meson.current_build_dir(),
-    '--vapidir', meson.current_source_dir() / '../vapi',
-    '--vapidir', '/usr/share/vala/vapi',
-  ] + ocbwrap_vapi_gen_pkgs + strcasestr_vala_args + [
+  command: ocbwrap_vapi_cmd + ocbwrap_vapi_gen_pkgs + strcasestr_vala_args + [
     '--library', 'ocbwrap',
     '--header', meson.current_build_dir() / 'ocbwrap.h',
     '--vapi', '@OUTPUT@',

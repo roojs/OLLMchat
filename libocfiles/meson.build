@@ -77,43 +77,50 @@ lib_build_rpath = ':'.join([
 
 ocfiles_lib_deps = [ocfiles_deps, ocrpc_vapi_dep, ocsqlite_vapi_dep]
 
+ocfiles_lib_vala_args = ocfiles_vapi_pkgs + ['--pkg=ocrpc'] + strcasestr_vala_args + [
+  # Put build directories FIRST so we use local VAPIs instead of installed ones
+  '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+  '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
+  '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
+]
+if not is_windows
+  ocfiles_lib_vala_args += ['--vapidir', '/usr/share/vala/vapi']
+endif
+
 ocfiles_base_lib = library(ocfiles_lib,
   dependencies: ocfiles_lib_deps,
   sources: ocfiles_src,
   vala_header: 'ocfiles.h',
   vala_vapi: 'ocfiles-meson.vapi',  # Use different name so our custom_target can use 'ocfiles.vapi'
-  vala_gir: [],
+  # No vala_gir — MSYS2 Meson 1.11 rejects vala_gir: [] (wants str or omit).
   build_rpath: lib_build_rpath,
   include_directories: [
     include_directories('..' / 'vapi'),
   ],
-  vala_args: ocfiles_vapi_pkgs + ['--pkg=ocrpc'] + strcasestr_vala_args + [
-    # Put build directories FIRST so we use local VAPIs instead of installed ones
-    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
-    '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
-    '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
-  ],
+  vala_args: ocfiles_lib_vala_args,
   install: true
 )
 
 # Manually generate ocfiles.vapi with correct command line order
+ocfiles_vapi_cmd = [
+  valac_exe,
+  '-C', '--debug',
+  '--target-glib=auto',
+  # Put build directories FIRST so we use local VAPIs instead of installed ones
+  '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+  '--vapidir', meson.current_build_dir(),
+  '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
+  '--vapidir', meson.current_source_dir() / '../../vapi',
+]
+if not is_windows
+  ocfiles_vapi_cmd += ['--vapidir', '/usr/share/vala/vapi']
+endif
 ocfiles_vapi = custom_target('ocfiles-vapi',
   output: 'ocfiles.vapi',
   input: ocfiles_src,
-  command: [
-    valac_exe,
-    '-C', '--debug',
-    '--target-glib=auto',
-    # Put build directories FIRST so we use local VAPIs instead of installed ones
-    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir(),
-    '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
-    '--vapidir', meson.current_source_dir() / '../../vapi',
-    '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
-  ] + ['--pkg', 'ocrpc'] + ocfiles_vapi_gen_pkgs + strcasestr_vala_args + [
+  command: ocfiles_vapi_cmd + ['--pkg', 'ocrpc'] + ocfiles_vapi_gen_pkgs + strcasestr_vala_args + [
     '--library', ocfiles_lib,
     '--header', meson.current_build_dir() / 'ocfiles.h',  # Use header from library
     '--vapi', '@OUTPUT@',
