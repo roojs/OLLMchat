@@ -90,6 +90,13 @@ public class OLLMwebkit.Browser : Gtk.Box
 	public OLLMchat.Tool.BaseTool? tool { get; set; default = null; }
 
 	/**
+	 * Soup session for the pre-load HEAD reachability probe.
+	 *
+	 * On Android, the app applies bundled CA trust to this session when the
+	 * browser tool is registered on the history manager.
+	 */
+	public Soup.Session soup { get; private set; }
+	/**
 	 * URL → destination path while a WebKit download is in progress.
 	 */
 	private Gee.HashMap<string, string> downloads_inflight {
@@ -138,6 +145,10 @@ public class OLLMwebkit.Browser : Gtk.Box
 		Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0, hexpand: true, vexpand: true);
 		this.site_cookies = stack.site_cookies;
 		this.a11y.host = this;
+		this.soup = new Soup.Session() {
+			timeout = 10,
+			user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+		};
 		this.web_view = new WebView() {
 			hexpand = true,
 			vexpand = true,
@@ -286,13 +297,9 @@ public class OLLMwebkit.Browser : Gtk.Box
 			this.show_freeze("", "<b>Testing site…</b>");
 			this.web_view.load_uri("about:blank");
 			if (load_uri.has_prefix("http://") || load_uri.has_prefix("https://")) {
-				var probe = new Soup.Session() {
-					timeout = 10,
-					user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-				};
 				var head = new Soup.Message("HEAD", load_uri);
 				try {
-					yield probe.send_and_read_async(head, GLib.Priority.DEFAULT, null);
+					yield this.soup.send_and_read_async(head, GLib.Priority.DEFAULT, null);
 				} catch (GLib.Error e) {
 					this.hide_freeze();
 					throw new GLib.IOError.TIMED_OUT("Site did not respond");

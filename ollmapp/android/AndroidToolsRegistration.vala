@@ -85,6 +85,7 @@ namespace OLLMapp
 			manager.tools.set("web_search", google_search);
 
 			var browser_tool = new OLLMwebkit.Tool();
+			AndroidConnectionTls.apply_to_session(browser_tool.stack.primary.soup);
 			manager.register_tool(browser_tool);
 			manager.notification_reply.connect((notif) => {
 				if (!notif.method.has_prefix("event.browser.download.")) {
