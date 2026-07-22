@@ -31,7 +31,7 @@ namespace OLLMchatGtk
 	{
 		public ChatView chat_view { get; private set; }
 		/**
-		 * Content stack: named {@code chat} is {@link chat_view}; tool hosts
+		 * Content stack: named ''chat'' is {@link chat_view}; tool hosts
 		 * may be added by the application (Android chat ↔ tool).
 		 */
 		public Gtk.Stack view_stack { get; private set; }

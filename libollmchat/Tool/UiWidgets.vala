@@ -23,7 +23,7 @@ namespace OLLMchat.Tool
 	 *
 	 * Implemented only by tools that need UI. {@link view_widget} is
 	 * {@link GLib.Object} so {@link OLLMchat} stays GTK-free; the shell
-	 * casts to {@code Gtk.Widget}. The shell / {@code ChatBar} owns the
+	 * casts to ''Gtk.Widget''. The shell / {@link OLLMchatGtk.ChatBar} owns the
 	 * toggle button and visibility — the tool emits {@link show_view}
 	 * when the user must see the host.
 	 *
@@ -44,20 +44,20 @@ namespace OLLMchat.Tool
 	public interface UiWidgets : GLib.Object
 	{
 		/**
-		 * Icon name for the {@code ChatBar} toggle (e.g. web-browser-symbolic).
+		 * Icon name for the {@link OLLMchatGtk.ChatBar} toggle (e.g. web-browser-symbolic).
 		 */
 		public abstract string icon_name { get; }
 
 		/**
-		 * Tooltip for the {@code ChatBar} toggle.
+		 * Tooltip for the {@link OLLMchatGtk.ChatBar} toggle.
 		 */
 		public abstract string tooltip_text { get; }
 
 		/**
 		 * Host view for this tool.
 		 *
-		 * Shell casts to {@code Gtk.Widget} and parents it into the desktop
-		 * right pane or {@code ChatWidget.view_stack}.
+		 * Shell casts to ''Gtk.Widget'' and parents it into the desktop
+		 * right pane or {@link OLLMchatGtk.ChatWidget.view_stack}.
 		 */
 		public abstract GLib.Object view_widget { get; }
 
