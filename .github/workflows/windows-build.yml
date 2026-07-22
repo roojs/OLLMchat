@@ -20,7 +20,9 @@ jobs:
         shell: msys2 {0}
 
     steps:
-      # Avoid CRLF checkouts breaking Vala→C string line-continuations on MinGW.
+      # Vala @"…" → C uses "…\n" \ continuations; CRLF makes `\` not last
+      # before newline and MinGW fails with missing terminating ". Keep LF in
+      # the workflow — do not wrap Meson's CC (Windows rejects shell scripts).
       - name: Git LF only
         shell: bash
         run: |
@@ -28,6 +30,18 @@ jobs:
           git config --global core.eol lf
 
       - uses: actions/checkout@v5
+
+      - name: Strip CR from Vala sources
+        shell: bash
+        run: |
+          find . \( -name '*.vala' -o -name '*.vapi' \) \
+            ! -path './webview2-gtk/*' \
+            ! -path './.ci-*/*' \
+            ! -path './build/*' \
+            ! -path './build-*/*' \
+            -print0 | while IFS= read -r -d '' f; do
+            sed -i 's/\r$//' "$f"
+          done
 
       - uses: msys2/setup-msys2@v2
         with:

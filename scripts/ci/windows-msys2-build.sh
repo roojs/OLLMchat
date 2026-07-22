@@ -21,30 +21,6 @@ FAISS_REPO="${FAISS_REPO:-https://github.com/facebookresearch/faiss.git}"
 FAISS_PREFIX="${FAISS_PREFIX:-${MSYSTEM_PREFIX:-/ucrt64}}"
 BUILD_DIR="${BUILD_DIR:-build-windows}"
 
-# Vala → C on MinGW: normalize LF before valac, and wrap Meson's C compiler
-# so generated .c with CRLF line-continuations still compile.
-# Do not set CC= to the shell wrapper — Windows Meson rejects non-.exe
-# compilers ("binary or interpreter not executable"). Use a native file
-# with c = ['bash', wrapper] instead (FAISS/cmake keeps the real cc).
-echo "==> normalize Vala sources to LF"
-find "${ROOT}" \( -name '*.vala' -o -name '*.vapi' \) \
-	! -path '*/webview2-gtk/*' \
-	! -path '*/.ci-*/*' \
-	! -path '*/build/*' \
-	! -path '*/build-*/*' \
-	-print0 | while IFS= read -r -d '' f; do
-	sed -i 's/\r$//' "${f}"
-done
-export MINGW_CC_REAL="${MINGW_CC_REAL:-$(command -v cc)}"
-CC_WRAP="${ROOT}/scripts/ci/mingw-cc-crlf-safe.sh"
-MESON_NATIVE_CC="${ROOT}/.ci-mingw-cc-native.ini"
-BASH_BIN="$(command -v bash)"
-cat > "${MESON_NATIVE_CC}" <<EOF
-[binaries]
-c = ['${BASH_BIN}', '${CC_WRAP}']
-EOF
-echo "==> Meson native file for CRLF-safe cc: ${MESON_NATIVE_CC}"
-
 # --- FAISS (same patches + cmake flags as sqgipkg.json windows.native_dependencies) ---
 echo "==> FAISS ${FAISS_REF} -> ${FAISS_PREFIX}"
 if [[ ! -d "${FAISS_DIR}/.git" ]]; then
@@ -96,8 +72,7 @@ echo "==> build + install webview2-gtk -> ${WEBVIEW2GTK_STAGING}"
 	cd "${WEBVIEW2GTK_DIR}"
 	./scripts/vendor-webview2-sdk.sh
 	rm -rf build
-	meson setup build --prefix="${WEBVIEW2GTK_STAGING}" \
-		--native-file "${MESON_NATIVE_CC}"
+	meson setup build --prefix="${WEBVIEW2GTK_STAGING}"
 	meson compile -C build
 	meson install -C build
 )
@@ -109,7 +84,6 @@ pkg-config --modversion webview2gtk-1
 echo "==> meson setup OLLMchat (${BUILD_DIR})"
 rm -rf "${BUILD_DIR}"
 meson setup "${BUILD_DIR}" \
-	--native-file "${MESON_NATIVE_CC}" \
 	-Ddocs=false \
 	-Dexamples=false \
 	-Dtests=false \
