@@ -40,7 +40,8 @@ grep -q 'deleteBackwardOrSelection' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/
   { echo "ImContext.java selection-aware delete missing" >&2; exit 1; }
 grep -q 'priv->in_long_press = FALSE' "$ROOT_DIR/subprojects/gtk/gtk/gtktextview.c" ||
   { echo "gtktextview.c sticky in_long_press clear missing" >&2; exit 1; }
-grep -q 'composing span into GTK' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
+# Comment text is "Composing span into GTK" (capital C) in android-bugs.patch.
+grep -qi 'composing span into GTK' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
   { echo "ImContext.java finishComposingText composing-span commit missing" >&2; exit 1; }
 grep -q 'IME delete does not go through the key controller' "$ROOT_DIR/subprojects/gtk/gtk/gtktext.c" ||
   { echo "gtktext.c IME delete bubble hide missing" >&2; exit 1; }
