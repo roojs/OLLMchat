@@ -252,10 +252,10 @@ public class OLLMwebkit.A11yParse : GLib.Object
 		var ifaces = acc.get_interfaces();
 		if (ifaces != null) {
 			for (var ii = 0; ii < ifaces.length; ii++) {
-				if (ifaces[ii] == "Text") {
+				if (ifaces.index(ii) == "Text") {
 					has_text = true;
 				}
-				if (ifaces[ii] == "Action") {
+				if (ifaces.index(ii) == "Action") {
 					has_action = true;
 				}
 			}
