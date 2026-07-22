@@ -235,6 +235,11 @@ ollmchat_deps = [
 # Windows: embed the same app icon used on Linux (pixmaps/org.roojs.ollmchat.ico).
 window_src = 'Window.vala'
 
+# octools → ocwebkit .deps require webview2gtk-1; staged prefix vapi is not on default path.
+if host_machine.system() == 'windows'
+  ollmchat_deps += dependency('webview2gtk-1')
+endif
+
 ollmchat_sources = [
   version_vala,
   'Application.vala',
@@ -319,6 +324,12 @@ ollmchat_vala_args = [
   '--pkg=ocrpc',
   '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
 ]
+if host_machine.system() == 'windows'
+  ollmchat_vala_args += ['--pkg=webview2gtk-1']
+  if webview2gtk_prefix != ''
+    ollmchat_vala_args += ['--vapidir', webview2gtk_prefix / 'lib']
+  endif
+endif
 
 ollmchat = executable('ollmchat',
   dependencies: ollmchat_exe_deps,
@@ -375,6 +386,29 @@ ollmchat_cli_build_rpath = ':'.join([
 ])
 
 # ollmchat-cli — RPC client; spawns ollmfilesd when needed.
+ollmchat_cli_vala_args = [
+  '--pkg=gmodule-2.0',
+  '--pkg=tree-sitter',
+  '--pkg=ocfiles',
+  '--pkg=ocrpc',
+  '--pkg=ollmchat',
+  '--pkg=octools',
+  '--pkg=ocmcp',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+  '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+  '--vapidir', meson.current_build_dir() / '..' / 'libocmcp',
+  '--vapidir', meson.current_source_dir() / '../vapi',
+]
+if host_machine.system() == 'windows'
+  ollmchat_cli_deps += dependency('webview2gtk-1')
+  ollmchat_cli_vala_args += ['--pkg=webview2gtk-1']
+  if webview2gtk_prefix != ''
+    ollmchat_cli_vala_args += ['--vapidir', webview2gtk_prefix / 'lib']
+  endif
+endif
+
 ollmchat_cli = executable('ollmchat-cli',
   dependencies: [
     ollmchat_cli_deps,
@@ -393,21 +427,7 @@ ollmchat_cli = executable('ollmchat-cli',
     include_directories('../libocsqlite')
   ],
   build_rpath: ollmchat_cli_build_rpath,
-  vala_args: [
-    '--pkg=gmodule-2.0',
-    '--pkg=tree-sitter',
-    '--pkg=ocfiles',
-    '--pkg=ocrpc',
-    '--pkg=ollmchat',
-    '--pkg=octools',
-    '--pkg=ocmcp',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmcp',
-    '--vapidir', meson.current_source_dir() / '../vapi'
-  ],
+  vala_args: ollmchat_cli_vala_args,
   install: true,
   install_dir: get_option('bindir')
 )

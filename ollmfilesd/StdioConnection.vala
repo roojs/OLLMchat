@@ -11,6 +11,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#if G_OS_WIN32
+[CCode (cname = "_get_osfhandle", cheader_filename = "io.h")]
+extern void* _get_osfhandle(int fd);
+#endif
+
 namespace OLLMfilesd
 {
 	/**
@@ -41,16 +46,29 @@ namespace OLLMfilesd
 			}
 			this.running = true;
 
+#if G_OS_WIN32
+			this.channel = new GLib.IOChannel.win32_new_fd(Posix.STDIN_FILENO);
+#else
 			this.channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
+#endif
 			this.channel.set_encoding(null);
 			this.channel.set_buffered(true);
 			this.channel_open = true;
+#if G_OS_WIN32
+			var in_stream = new GLib.DataInputStream(
+				new GLib.Win32InputStream(_get_osfhandle(Posix.STDIN_FILENO), false)
+			);
+			var out_stream = new GLib.DataOutputStream(
+				new GLib.Win32OutputStream(_get_osfhandle(Posix.STDOUT_FILENO), false)
+			);
+#else
 			var in_stream = new GLib.DataInputStream(
 				new GLib.UnixInputStream(Posix.STDIN_FILENO, false)
 			);
 			var out_stream = new GLib.DataOutputStream(
 				new GLib.UnixOutputStream(Posix.STDOUT_FILENO, false)
 			);
+#endif
 			this.bin = new OLLMrpc.Bin.Stream(in_stream, out_stream);
 
 			this.write(new OLLMrpc.Notification() {
