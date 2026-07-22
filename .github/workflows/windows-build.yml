@@ -46,11 +46,12 @@ jobs:
             mingw-w64-ucrt-x86_64-sqlite3
             mingw-w64-ucrt-x86_64-libgit2-glib
             mingw-w64-ucrt-x86_64-gobject-introspection
-            mingw-w64-ucrt-x86_64-tree-sitter
+            mingw-w64-ucrt-x86_64-libtree-sitter
             mingw-w64-ucrt-x86_64-openblas
             mingw-w64-ucrt-x86_64-lapack
             mingw-w64-ucrt-x86_64-curl
             mingw-w64-ucrt-x86_64-cantarell-fonts
+            mingw-w64-ucrt-x86_64-cmake
 
       - name: Build webview2-gtk + OLLMchat
         run: |

@@ -16,14 +16,22 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#if ANDROID
+using AndroidAtspi;
+#elif WINDOWS
+using Win32Atspi;
+#else
+using Atspi;
+#endif
+
 /**
  * Accessibility dump / fill / press for {@link Browser}.
  *
- * Linux: AT-SPI (worker thread — main-thread AT-SPI deadlocks). Set
- * ''GTK_A11Y=atspi'' before GTK init.
- * Windows: Win32Atspi over WebView2 UIA (same API shape; runs on the
- * UI thread — COM). Tree walk lives in {@link A11yParse}. No page JavaScript.
- * Android: stubs until 5.0.2 Phase 2 (webkitgtk-android host a11y).
+ * Platform tree via ''using'' ({@link Atspi} / {@link Win32Atspi} /
+ * {@link AndroidAtspi}) — same shape as {@link A11yParse}. Linux runs the
+ * walk on a worker thread (main-thread AT-SPI deadlocks; set
+ * ''GTK_A11Y=atspi'' before GTK init). Windows / Android stay on the UI
+ * thread (COM / JNI). No page JavaScript.
  *
  * == Example ==
  *
@@ -71,9 +79,7 @@ public class OLLMwebkit.A11y : GLib.Object
 	 */
 	public async string dump(string url, string title) throws GLib.Error
 	{
-#if ANDROID
-		throw new GLib.IOError.NOT_SUPPORTED("a11y dump pending Android wire (5.0.2 Phase 2)");
-#elif WINDOWS
+#if ANDROID || WINDOWS
 		return this.dump_sync(url, title);
 #else
 		GLib.SourceFunc callback = dump.callback;
@@ -97,20 +103,17 @@ public class OLLMwebkit.A11y : GLib.Object
 	}
 
 	/**
-	 * Fill press-refs (Linux: AT-SPI focus + keyboard; Windows: ValuePattern).
+	 * Fill press-refs (set_text_contents when available, else focus + keyboard).
 	 *
 	 * @param fields press-ref id (string key) → text
 	 * @throws GLib.Error when a ref is missing or input fails
 	 */
 	public async void fill(Gee.HashMap<string, string> fields) throws GLib.Error
 	{
-#if ANDROID
-		throw new GLib.IOError.NOT_SUPPORTED("a11y fill pending Android wire (5.0.2 Phase 2)");
-#else
 		if (this.host.get_root() is Gtk.Window) {
 			((Gtk.Window) this.host.get_root()).present();
 		}
-#if WINDOWS
+#if ANDROID || WINDOWS
 		this.fill_sync(fields);
 #else
 		GLib.SourceFunc callback = fill.callback;
@@ -129,20 +132,17 @@ public class OLLMwebkit.A11y : GLib.Object
 			throw thread_error;
 		}
 #endif
-#endif
 	}
 
 	/**
-	 * Activate a press-ref (Linux AT-SPI Action / Windows UIA Invoke).
+	 * Activate a press-ref via the platform Action / Invoke path.
 	 *
 	 * @param id press id from the last dump
 	 * @throws GLib.Error when the ref is missing or action fails
 	 */
 	public async void press(int id) throws GLib.Error
 	{
-#if ANDROID
-		throw new GLib.IOError.NOT_SUPPORTED("a11y press pending Android wire (5.0.2 Phase 2)");
-#elif WINDOWS
+#if ANDROID || WINDOWS
 		this.press_sync(id);
 #else
 		GLib.SourceFunc callback = press.callback;
@@ -173,16 +173,13 @@ public class OLLMwebkit.A11y : GLib.Object
 	 */
 	private string dump_sync(string url, string title) throws GLib.Error
 	{
-#if ANDROID
-		throw new GLib.IOError.NOT_SUPPORTED("a11y dump pending Android wire (5.0.2 Phase 2)");
-#elif WINDOWS
 		if (!A11y.atspi_ready) {
-			Win32Atspi.init();
+			init();
 			A11y.atspi_ready = true;
 		}
 
-		Win32Atspi.Accessible? app = null;
-		var desktop = Win32Atspi.get_desktop(0);
+		Accessible? app = null;
+		var desktop = get_desktop(0);
 		for (var i = 0; i < desktop.get_child_count(); i++) {
 			var candidate = desktop.get_child_at_index(i);
 			if (candidate.get_process_id() != (uint) Posix.getpid()) {
@@ -192,12 +189,12 @@ public class OLLMwebkit.A11y : GLib.Object
 			break;
 		}
 		if (app == null) {
-			throw new GLib.IOError.FAILED("Win32Atspi: no application for pid %u", (uint) Posix.getpid());
+			throw new GLib.IOError.FAILED("a11y: no application for pid %u", (uint) Posix.getpid());
 		}
 
 		var walk_root = app;
 		var walk_route = new Gee.ArrayList<int>();
-		var find_acc = new Gee.ArrayList<Win32Atspi.Accessible>();
+		var find_acc = new Gee.ArrayList<Accessible>();
 		var find_route = new Gee.ArrayList<Gee.ArrayList<int>>();
 		find_acc.add(app);
 		find_route.add(walk_route);
@@ -236,68 +233,6 @@ public class OLLMwebkit.A11y : GLib.Object
 		return "# Page\n- URL: " + url + "\n- Title: " + title
 			+ "\n\n## Content\n" + parse.content
 			+ "\n## References\n" + parse.refs;
-#else
-		if (!A11y.atspi_ready) {
-			Atspi.init();
-			A11y.atspi_ready = true;
-		}
-
-		Atspi.Accessible? app = null;
-		var desktop = Atspi.get_desktop(0);
-		for (var i = 0; i < desktop.get_child_count(); i++) {
-			var candidate = desktop.get_child_at_index(i);
-			if (candidate.get_process_id() != (uint) Posix.getpid()) {
-				continue;
-			}
-			app = candidate;
-			break;
-		}
-		if (app == null) {
-			throw new GLib.IOError.FAILED("AT-SPI: no application for pid %u", (uint) Posix.getpid());
-		}
-
-		var walk_root = app;
-		var walk_route = new Gee.ArrayList<int>();
-		var find_acc = new Gee.ArrayList<Atspi.Accessible>();
-		var find_route = new Gee.ArrayList<Gee.ArrayList<int>>();
-		find_acc.add(app);
-		find_route.add(walk_route);
-		while (find_acc.size > 0) {
-			var cur = find_acc.remove_at(find_acc.size - 1);
-			var cur_route = find_route.remove_at(find_route.size - 1);
-			var role_name = cur.get_role_name();
-			if (role_name == "document text" || role_name == "document frame") {
-				walk_root = cur;
-				walk_route = cur_route;
-				break;
-			}
-			var child_count = cur.get_child_count();
-			if (child_count <= 0) {
-				continue;
-			}
-			for (var j = 0; j < child_count; j++) {
-				find_acc.add(cur.get_child_at_index(j));
-				var next_route = new Gee.ArrayList<int>();
-				foreach (var part in cur_route) {
-					next_route.add(part);
-				}
-				next_route.add(j);
-				find_route.add(next_route);
-			}
-		}
-
-		var parse = new A11yParse(walk_root, walk_route);
-		parse.walk();
-		this.press_routes = parse.press_routes;
-		this.press_labels = parse.press_labels;
-
-		if (title == "") {
-			title = walk_root.get_name() != null ? walk_root.get_name() : "";
-		}
-		return "# Page\n- URL: " + url + "\n- Title: " + title
-			+ "\n\n## Content\n" + parse.content
-			+ "\n## References\n" + parse.refs;
-#endif
 	}
 
 	/**
@@ -308,16 +243,13 @@ public class OLLMwebkit.A11y : GLib.Object
 	 */
 	private void fill_sync(Gee.HashMap<string, string> fields) throws GLib.Error
 	{
-#if ANDROID
-		throw new GLib.IOError.NOT_SUPPORTED("a11y fill pending Android wire (5.0.2 Phase 2)");
-#elif WINDOWS
 		if (!A11y.atspi_ready) {
-			Win32Atspi.init();
+			init();
 			A11y.atspi_ready = true;
 		}
 
-		Win32Atspi.Accessible? app = null;
-		var desktop = Win32Atspi.get_desktop(0);
+		Accessible? app = null;
+		var desktop = get_desktop(0);
 		for (var i = 0; i < desktop.get_child_count(); i++) {
 			var candidate = desktop.get_child_at_index(i);
 			if (candidate.get_process_id() != (uint) Posix.getpid()) {
@@ -327,69 +259,7 @@ public class OLLMwebkit.A11y : GLib.Object
 			break;
 		}
 		if (app == null) {
-			throw new GLib.IOError.FAILED("Win32Atspi: no application for pid %u", (uint) Posix.getpid());
-		}
-
-		var frame = app.get_child_at_index(0);
-		for (var ai = 0; ai < frame.get_n_actions(); ai++) {
-			if (frame.get_action_name(ai) != "default.activate") {
-				continue;
-			}
-			frame.do_action(ai);
-			break;
-		}
-		GLib.Thread.usleep(100000);
-
-		foreach (var key in fields.keys) {
-			var press_id = int.parse(key);
-			if (press_id <= 0 || !this.press_routes.has_key(press_id)) {
-				throw new GLib.IOError.INVALID_ARGUMENT("Unknown fill press-ref %s", key);
-			}
-			var acc = app;
-			foreach (var index in this.press_routes.get(press_id)) {
-				acc = acc.get_child_at_index(index);
-			}
-			if (acc.get_n_actions() > 0) {
-				acc.do_action(0);
-			}
-			acc.grab_focus();
-			if (acc.set_text_contents(fields.get(key))) {
-				continue;
-			}
-			var nchars = 0;
-			var ifaces = acc.get_interfaces();
-			if (ifaces != null) {
-				for (var ii = 0; ii < ifaces.length; ii++) {
-					if (ifaces.index(ii) != "Text") {
-						continue;
-					}
-					nchars = acc.get_text_iface().get_character_count();
-					break;
-				}
-			}
-			for (var b = 0; b < nchars + 2; b++) {
-				Win32Atspi.generate_keyboard_event(0xff08, null, Win32Atspi.KeySynthType.PRESSRELEASE);
-			}
-			Win32Atspi.generate_keyboard_event(0, fields.get(key), Win32Atspi.KeySynthType.STRING);
-		}
-#else
-		if (!A11y.atspi_ready) {
-			Atspi.init();
-			A11y.atspi_ready = true;
-		}
-
-		Atspi.Accessible? app = null;
-		var desktop = Atspi.get_desktop(0);
-		for (var i = 0; i < desktop.get_child_count(); i++) {
-			var candidate = desktop.get_child_at_index(i);
-			if (candidate.get_process_id() != (uint) Posix.getpid()) {
-				continue;
-			}
-			app = candidate;
-			break;
-		}
-		if (app == null) {
-			throw new GLib.IOError.FAILED("AT-SPI: no application for pid %u", (uint) Posix.getpid());
+			throw new GLib.IOError.FAILED("a11y: no application for pid %u", (uint) Posix.getpid());
 		}
 
 		var frame = app.get_child_at_index(0);
@@ -416,6 +286,14 @@ public class OLLMwebkit.A11y : GLib.Object
 				acc.do_action(0);
 			}
 			acc.grab_focus();
+			var filled = false;
+			try {
+				filled = acc.set_text_contents(fields.get(key));
+			} catch (GLib.Error e) {
+			}
+			if (filled) {
+				continue;
+			}
 			var nchars = 0;
 			var ifaces = acc.get_interfaces();
 			if (ifaces != null) {
@@ -428,11 +306,10 @@ public class OLLMwebkit.A11y : GLib.Object
 				}
 			}
 			for (var b = 0; b < nchars + 2; b++) {
-				Atspi.generate_keyboard_event(0xff08, null, Atspi.KeySynthType.PRESSRELEASE);
+				generate_keyboard_event(0xff08, null, KeySynthType.PRESSRELEASE);
 			}
-			Atspi.generate_keyboard_event(0, fields.get(key), Atspi.KeySynthType.STRING);
+			generate_keyboard_event(0, fields.get(key), KeySynthType.STRING);
 		}
-#endif
 	}
 
 	/**
@@ -446,16 +323,13 @@ public class OLLMwebkit.A11y : GLib.Object
 		if (!this.press_routes.has_key(id)) {
 			throw new GLib.IOError.INVALID_ARGUMENT("Unknown press-ref %d", id);
 		}
-#if ANDROID
-		throw new GLib.IOError.NOT_SUPPORTED("a11y press pending Android wire (5.0.2 Phase 2)");
-#elif WINDOWS
 		if (!A11y.atspi_ready) {
-			Win32Atspi.init();
+			init();
 			A11y.atspi_ready = true;
 		}
 
-		Win32Atspi.Accessible? app = null;
-		var desktop = Win32Atspi.get_desktop(0);
+		Accessible? app = null;
+		var desktop = get_desktop(0);
 		for (var i = 0; i < desktop.get_child_count(); i++) {
 			var candidate = desktop.get_child_at_index(i);
 			if (candidate.get_process_id() != (uint) Posix.getpid()) {
@@ -465,7 +339,7 @@ public class OLLMwebkit.A11y : GLib.Object
 			break;
 		}
 		if (app == null) {
-			throw new GLib.IOError.FAILED("Win32Atspi: no application for pid %u", (uint) Posix.getpid());
+			throw new GLib.IOError.FAILED("a11y: no application for pid %u", (uint) Posix.getpid());
 		}
 
 		var acc = app;
@@ -476,34 +350,5 @@ public class OLLMwebkit.A11y : GLib.Object
 			throw new GLib.IOError.FAILED("Press-ref %d has no a11y action", id);
 		}
 		acc.do_action(0);
-#else
-		if (!A11y.atspi_ready) {
-			Atspi.init();
-			A11y.atspi_ready = true;
-		}
-
-		Atspi.Accessible? app = null;
-		var desktop = Atspi.get_desktop(0);
-		for (var i = 0; i < desktop.get_child_count(); i++) {
-			var candidate = desktop.get_child_at_index(i);
-			if (candidate.get_process_id() != (uint) Posix.getpid()) {
-				continue;
-			}
-			app = candidate;
-			break;
-		}
-		if (app == null) {
-			throw new GLib.IOError.FAILED("AT-SPI: no application for pid %u", (uint) Posix.getpid());
-		}
-
-		var acc = app;
-		foreach (var index in this.press_routes.get(id)) {
-			acc = acc.get_child_at_index(index);
-		}
-		if (acc.get_n_actions() < 1) {
-			throw new GLib.IOError.FAILED("Press-ref %d has no AT-SPI action", id);
-		}
-		acc.do_action(0);
-#endif
 	}
 }
