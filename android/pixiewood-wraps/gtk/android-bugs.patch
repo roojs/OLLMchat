@@ -1,9 +1,9 @@
 diff --git a/gdk/android/gdkandroidollmchatpatch.c b/gdk/android/gdkandroidollmchatpatch.c
 new file mode 100644
-index 0000000000..5edeea502c
+index 0000000000..d44bde5151
 --- /dev/null
 +++ b/gdk/android/gdkandroidollmchatpatch.c
-@@ -0,0 +1,21 @@
+@@ -0,0 +1,18 @@
 +/*
 + * OLLMchat android-bugs.patch compile marker.
 + * CI/build logs should contain: gdkandroidollmchatpatch.c.o
@@ -13,130 +13,17 @@ index 0000000000..5edeea502c
 +#include "config.h"
 +#include <glib.h>
 +
-+/* Survives in libgtk-4.so; verify-apk.sh greps for these tags. */
++/* Survives in libgtk-4.so; verify-apk.sh greps for this tag. */
 +const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v11";
-+const char gdk_android_ollmchat_popup_tag[] = "ollmchat-android-popup-v5";
 +
 +static void
 +gdk_android_ollmchat_patch_marker (void)
 +{
-+  /* Keep the tags referenced so release builds do not drop them. */
-+  g_debug ("%s %s",
-+           gdk_android_ollmchat_bugs_tag,
-+           gdk_android_ollmchat_popup_tag);
++  /* Keep the tag referenced so release builds do not drop it. */
++  g_debug ("%s", gdk_android_ollmchat_bugs_tag);
 +}
-diff --git a/gdk/android/gdkandroidpopup.c b/gdk/android/gdkandroidpopup.c
-index 67f31d022e..9f8a3dbbf6 100644
---- a/gdk/android/gdkandroidpopup.c
-+++ b/gdk/android/gdkandroidpopup.c
-@@ -37,11 +37,16 @@ gdk_android_popup_present (GdkPopup       *popup,
-   GdkAndroidPopup *self = (GdkAndroidPopup *) popup;
-   GdkAndroidSurface *surface_impl = (GdkAndroidSurface *) self;
- 
--  GdkAndroidToplevel *parent = gdk_android_surface_get_toplevel (surface_impl);
--  GdkAndroidSurface *parent_impl = (GdkAndroidSurface *) parent;
--  GdkSurface *parent_surface = (GdkSurface *) parent;
-+  GdkAndroidToplevel *activity_toplevel =
-+      gdk_android_surface_get_toplevel (surface_impl);
-+  GdkAndroidSurface *activity_impl = (GdkAndroidSurface *) activity_toplevel;
-+  GdkSurface *activity_surface = (GdkSurface *) activity_toplevel;
-+
-+  GdkSurface *popup_parent_surface = gdk_popup_get_parent (popup);
-+  if (popup_parent_surface == NULL)
-+    popup_parent_surface = activity_surface;
-+  GdkAndroidSurface *popup_parent_impl = (GdkAndroidSurface *) popup_parent_surface;
- 
--  g_debug("TRACE: Android.Popup: present called %p", popup);
-   surface_impl->visible = TRUE;
- 
-   gdk_popup_layout_ref (layout);
-@@ -55,11 +60,24 @@ gdk_android_popup_present (GdkPopup       *popup,
-                                      &shadow_top,
-                                      &shadow_bottom);
- 
-+  /* Parent position from Java layout may lag behind GTK layout for nested
-+   * surfaces (e.g. touch selection bubbles inside Adw dialogs). */
-+  if (popup_parent_impl->cfg.scale > 0)
-+    {
-+      GdkSurface *parent_surf = GDK_SURFACE (popup_parent_surface);
-+
-+      parent_surf->x =
-+          (gint) (popup_parent_impl->cfg.x / popup_parent_impl->cfg.scale);
-+      parent_surf->y =
-+          (gint) (popup_parent_impl->cfg.y / popup_parent_impl->cfg.scale);
-+    }
-+
-+
-   GdkRectangle bounds;
--  bounds.x = 0;
--  bounds.y = 0;
--  bounds.width = parent_surface->width;
--  bounds.height = parent_surface->height;
-+  bounds.x = popup_parent_surface->x;
-+  bounds.y = popup_parent_surface->y;
-+  bounds.width = popup_parent_surface->width;
-+  bounds.height = popup_parent_surface->height;
- 
-   memset (&self->popup_bounds, 0, sizeof (GdkRectangle));
-   gdk_surface_layout_popup_helper (GDK_SURFACE (self),
-@@ -74,25 +92,46 @@ gdk_android_popup_present (GdkPopup       *popup,
-                                    self->layout,
-                                    GDK_SURFACE_LAYOUT_POPUP_HELPER_ROOT_OUT,
-                                    &self->popup_bounds);
-+  /* Keep native geometry in sync with the layout result. Child popups
-+   * (e.g. touch selection bubbles inside a dialog) consult the parent
-+   * surface position during layout, but Java only reports position
-+   * asynchronously via notifyLayoutPosition. */
-+  {
-+    GdkSurface *surface = GDK_SURFACE (self);
-+
-+    surface->x = self->popup_bounds.x;
-+    surface->y = self->popup_bounds.y;
-+    surface->width = self->popup_bounds.width;
-+    surface->height = self->popup_bounds.height;
-+    surface_impl->cfg.x =
-+        (gint) (self->popup_bounds.x * activity_impl->cfg.scale);
-+    surface_impl->cfg.y =
-+        (gint) (self->popup_bounds.y * activity_impl->cfg.scale);
-+    surface_impl->cfg.width =
-+        (gint) ceilf (self->popup_bounds.width * activity_impl->cfg.scale);
-+    surface_impl->cfg.height =
-+        (gint) ceilf (self->popup_bounds.height * activity_impl->cfg.scale);
-+  }
- 
-   JNIEnv *env = gdk_android_get_env ();
-   if (!surface_impl->surface)
-     {
--      jobject view = (*env)->GetObjectField (env, parent->activity, gdk_android_get_java_cache ()->toplevel.toplevel_view);
-+      jobject view = (*env)->GetObjectField (env, activity_toplevel->activity,
-+                                             gdk_android_get_java_cache ()->toplevel.toplevel_view);
-       (*env)->CallVoidMethod (env, view, gdk_android_get_java_cache ()->toplevel_view.push_popup, (jlong) self,
--                              (jint) (self->popup_bounds.x * parent_impl->cfg.scale),
--                              (jint) (self->popup_bounds.y * parent_impl->cfg.scale),
--                              (jint) ceilf (self->popup_bounds.width * parent_impl->cfg.scale),
--                              (jint) ceilf (self->popup_bounds.height * parent_impl->cfg.scale));
-+                              (jint) (self->popup_bounds.x * activity_impl->cfg.scale),
-+                              (jint) (self->popup_bounds.y * activity_impl->cfg.scale),
-+                              (jint) ceilf (self->popup_bounds.width * activity_impl->cfg.scale),
-+                              (jint) ceilf (self->popup_bounds.height * activity_impl->cfg.scale));
-       (*env)->DeleteLocalRef (env, view);
-     }
-   else
-     {
-       (*env)->CallVoidMethod (env, surface_impl->surface, gdk_android_get_java_cache ()->surface.reposition,
--                              (jint) (self->popup_bounds.x * parent_impl->cfg.scale),
--                              (jint) (self->popup_bounds.y * parent_impl->cfg.scale),
--                              (jint) ceilf (self->popup_bounds.width * parent_impl->cfg.scale),
--                              (jint) ceilf (self->popup_bounds.height * parent_impl->cfg.scale));
-+                              (jint) (self->popup_bounds.x * activity_impl->cfg.scale),
-+                              (jint) (self->popup_bounds.y * activity_impl->cfg.scale),
-+                              (jint) ceilf (self->popup_bounds.width * activity_impl->cfg.scale),
-+                              (jint) ceilf (self->popup_bounds.height * activity_impl->cfg.scale));
-       (*env)->CallVoidMethod(env, surface_impl->surface, gdk_android_get_java_cache ()->surface.set_visibility, TRUE);
-     }
- 
 diff --git a/gdk/android/glue/java/org/gtk/android/ImContext.java b/gdk/android/glue/java/org/gtk/android/ImContext.java
-index dfedba019a..abcb4bb6b1 100644
+index dfedba019a..e1f8b31531 100644
 --- a/gdk/android/glue/java/org/gtk/android/ImContext.java
 +++ b/gdk/android/glue/java/org/gtk/android/ImContext.java
 @@ -6,11 +6,11 @@ import android.view.KeyEvent;
@@ -153,7 +40,7 @@ index dfedba019a..abcb4bb6b1 100644
  
  public final class ImContext {
  	public static final class SurroundingRetVal {
-@@ -40,68 +40,209 @@ public final class ImContext {
+@@ -40,68 +40,201 @@ public final class ImContext {
  
  	public native boolean commit(String string);
  
@@ -224,16 +111,14 @@ index dfedba019a..abcb4bb6b1 100644
 +					/* Composing span into GTK (keeps focus-leave from double-filling). */
 +					toCommit = content.subSequence(start, end).toString();
 +				} else {
-+					/* Safety net only: Gboard sometimes rewrites Editable with no
-+					 * composing span. Never push an empty Editable over non-empty GTK
-+					 * — on IME reconnect Editable resets to "" while GTK still has text
-+					 * (would blank the field). Prefer replaceText for suggestions. */
-+					SurroundingRetVal surrounding =
-+							GlibContext.blockForMain(ImContext.this::getSurrounding);
++					/* Safety net: Gboard sometimes rewrites Editable with no composing span.
++					 * Never push an empty Editable over non-empty GTK (IME reconnect can
++					 * reset Editable to "" while GTK still has text). Prefer replaceText. */
++					SurroundingRetVal surrounding = GlibContext.blockForMain(ImContext.this::getSurrounding);
 +					String androidText = content.toString();
-+					if (androidText.length() > 0
-+							&& (surrounding == null || surrounding.text == null
-+								|| !androidText.equals(surrounding.text))) {
++					if (androidText.length() > 0 &&
++							(surrounding == null || surrounding.text == null ||
++							 !androidText.equals(surrounding.text))) {
 +						toCommit = androidText;
 +						replaceAll = true;
 +					}
@@ -298,11 +183,10 @@ index dfedba019a..abcb4bb6b1 100644
 -			GlibContext.blockForMain(() -> ImContext.this.commit(content.toString()));
 -			content.clear();
 +		@Override
-+		public boolean replaceText(int start, int end, CharSequence text,
-+				int newCursorPosition, @Nullable TextAttribute textAttribute) {
-+			/* Spell-correct / suggestion (IME-3): Gboard rewrites a range via
-+			 * replaceText. BaseInputConnection only updates the Android Editable;
-+			 * mirror the range into GTK, then sync Editable from GTK. */
++		public boolean replaceText(int start, int end, CharSequence text, int newCursorPosition,
++				@Nullable TextAttribute textAttribute) {
++			/* Spell-correct / suggestion: BaseInputConnection only updates the Android
++			 * Editable; mirror the range into GTK, then sync Editable from GTK. */
 +			final int from = Math.min(Math.max(start, 0), Math.max(end, 0));
 +			final int to = Math.max(Math.max(start, 0), Math.max(end, 0));
 +			final String insert = text != null ? text.toString() : "";
@@ -324,10 +208,8 @@ index dfedba019a..abcb4bb6b1 100644
 +				int a = Math.min(from, len);
 +				int b = Math.min(to, len);
 +				int n = b - a;
-+				if (n > 0) {
-+					int offset = a - s.cursor_index;
-+					ImContext.this.deleteSurrounding(offset, n);
-+				}
++				if (n > 0)
++					ImContext.this.deleteSurrounding(a - s.cursor_index, n);
 +
 +				if (insert.length() > 0)
 +					ImContext.this.commit(insert);
@@ -339,8 +221,7 @@ index dfedba019a..abcb4bb6b1 100644
  
 +		private void deleteBackwardOrSelection() {
 +			SurroundingRetVal surrounding = ImContext.this.getSurrounding();
-+			if (surrounding != null
-+					&& surrounding.cursor_index != surrounding.anchor_index) {
++			if (surrounding != null && surrounding.cursor_index != surrounding.anchor_index) {
 +				int start = Math.min(surrounding.cursor_index, surrounding.anchor_index);
 +				int end = Math.max(surrounding.cursor_index, surrounding.anchor_index);
 +				int n = end - start;
@@ -359,8 +240,7 @@ index dfedba019a..abcb4bb6b1 100644
 +		public boolean sendKeyEvent(KeyEvent event) {
 +			if (event.getKeyCode() != KeyEvent.KEYCODE_DEL)
 +				return super.sendKeyEvent(event);
-+			if (event.getAction() != KeyEvent.ACTION_DOWN
-+					&& event.getAction() != KeyEvent.ACTION_MULTIPLE)
++			if (event.getAction() != KeyEvent.ACTION_DOWN && event.getAction() != KeyEvent.ACTION_MULTIPLE)
 +				return super.sendKeyEvent(event);
 +
 +			int count = event.getRepeatCount() > 0 ? event.getRepeatCount() : 1;
@@ -377,8 +257,7 @@ index dfedba019a..abcb4bb6b1 100644
 -			return super.deleteSurroundingText(leftLength, rightLength);
 +			GlibContext.blockForMain(() -> {
 +				SurroundingRetVal surrounding = ImContext.this.getSurrounding();
-+				if (surrounding != null
-+						&& surrounding.cursor_index != surrounding.anchor_index) {
++				if (surrounding != null && surrounding.cursor_index != surrounding.anchor_index) {
 +					deleteBackwardOrSelection();
 +					return;
 +				}

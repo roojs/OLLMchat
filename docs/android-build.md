@@ -109,8 +109,6 @@ cd ~/git/gtk-Knowles
 BASE=$(sed -n 's/^revision[[:space:]]*=[[:space:]]*//p' \
   /path/to/OLLMchat/android/pixiewood-wraps/gtk/gtk.wrap)
 # IME / text / atlas fixes from android-ime — TLS runtime stays out.
-# Keep fuller nested-popup geometry from the existing android-bugs.patch
-# (popup-v5); regenerate other files from the branch tip.
 git diff "$BASE"..android-ime -- \
   gdk/android/glue/java/org/gtk/android/ImContext.java \
   gdk/android/glue/java/org/gtk/android/ToplevelActivity.java \
@@ -120,7 +118,7 @@ git diff "$BASE"..android-ime -- \
   gsk/gpu/gskgpudevice.c \
   gsk/gpu/gskgpuuploadop.c \
   > /tmp/ime-core.diff
-# Reassemble with popup + meson + gdkandroidollmchatpatch.c from the prior patch,
+# Regenerate android-bugs.patch from a clean base worktree: copy the files above, add gdkandroidollmchatpatch.c + meson.build,
 # bumping ollmchat-android-bugs-vN in the marker, then replace android-bugs.patch.
 ```
 

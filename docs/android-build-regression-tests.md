@@ -80,7 +80,7 @@ After a local or CI build, `verify-apk.sh` checks:
 
 - `assets/share/gio/modules/libgioopenssl.so` is packaged with `libssl.so*` and `libcrypto.so*` beside it
 - `assets/share/ollmchat-android-runtime.tag` contains `ollmchat-android-bugs-v2`
-- `libgtk-4.so` contains `ollmchat-android-bugs-v11` and `ollmchat-android-popup-v5` (patch marker string literals; no GDK TLS markers)
+- `libgtk-4.so` contains `ollmchat-android-bugs-v11` (patch marker string literals; no GDK TLS markers)
 - `classes.dex` uses `deleteSurroundingText` lambda, not `sendKeyEvent` IME deletes
 - `classes.dex` contains `syncEditableFromGtk` (IME `Editable` kept in sync for hold-backspace)
 

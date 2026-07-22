@@ -73,10 +73,6 @@ if grep -q 'assets/share/gio/modules/libgioopenssl.so' "$apk_list"; then
   exit 1
 fi
 
-if ! grep -q 'ollmchat-android-popup-v5' < <(strings "$apk_extract/lib/arm64-v8a/libgtk-4.so"); then
-  echo "libgtk-4.so missing android popup patch tag (ollmchat-android-popup-v5)." >&2
-  exit 1
-fi
 
 if ! grep -q 'lambda\$deleteSurroundingText' < <(strings "$apk_extract/classes.dex"); then
   echo "classes.dex missing patched ImContext deleteSurroundingText handler." >&2

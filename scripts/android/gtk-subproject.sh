@@ -11,7 +11,6 @@ gtk_subproject_patch_applied() {
   marker="$(gtk_subproject_patch_marker)"
   im_context="$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java"
   [ -f "$marker" ] && grep -q 'ollmchat-android-bugs-v11' "$marker" &&
-    grep -q 'ollmchat-android-popup-v5' "$marker" &&
   [ -f "$im_context" ] && grep -q 'syncEditableFromGtk' "$im_context" &&
     ! grep -q 'gdk_android_scan_gio_modules' "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidruntime.c"
 }
@@ -63,7 +62,6 @@ gtk_bootstrap_cache_is_valid() {
     [ -f "$cache/subprojects/graphene.wrap" ] &&
     [ -f "$cache/gdk/android/gdkandroidollmchatpatch.c" ] &&
     grep -q 'ollmchat-android-bugs-v11' "$cache/gdk/android/gdkandroidollmchatpatch.c" &&
-    grep -q 'ollmchat-android-popup-v5' "$cache/gdk/android/gdkandroidollmchatpatch.c" &&
     ! grep -q 'gdk_android_scan_gio_modules' "$cache/gdk/android/gdkandroidruntime.c"
 }
 
