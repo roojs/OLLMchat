@@ -298,7 +298,7 @@ public class OLLMwebkit.A11y : GLib.Object
 			var ifaces = acc.get_interfaces();
 			if (ifaces != null) {
 				for (var ii = 0; ii < ifaces.length; ii++) {
-					if (ifaces.index(ii) != "Text") {
+					if (ifaces[ii] != "Text") {
 						continue;
 					}
 					nchars = acc.get_text_iface().get_character_count();
