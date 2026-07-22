@@ -87,14 +87,29 @@ namespace OLLMchat.Call
 						break;
 					}
 				}
-				// Single-line format string — MinGW rejects Vala multiline @"…" in generated C.
-				GLib.printerr("Replay fatal: array index %d: live run had issues here but replay did not.\n\nContent replayed:\n---\n%s\n---\n\nLive run reported:\n%s\n",
-					this.last_return_ix, content_preview, live_reported);
+				GLib.printerr(@"Replay fatal: array index $(this.last_return_ix): live run had issues here but replay did not.
+
+Content replayed:
+---
+$(content_preview)
+---
+
+Live run reported:
+$(live_reported)
+");
 				GLib.Process.exit(1);
 			}
 			if (!this.run_issues.contains(this.last_return_ix) && replay_issues != "") {
-				GLib.printerr("Replay fatal: array index %d: live run had no issues here but replay did.\n\nContent replayed:\n---\n%s\n---\n\nReplay parse issues:\n%s\n",
-					this.last_return_ix, content_preview, replay_issues);
+				GLib.printerr(@"Replay fatal: array index $(this.last_return_ix): live run had no issues here but replay did.
+
+Content replayed:
+---
+$(content_preview)
+---
+
+Replay parse issues:
+$(replay_issues)
+");
 				GLib.Process.exit(1);
 			}
 		}
