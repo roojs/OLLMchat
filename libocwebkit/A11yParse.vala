@@ -16,6 +16,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#if ANDROID
+using AndroidAtspi;
+#elif WINDOWS
+using Win32Atspi;
+#else
+using Atspi;
+#endif
+
 /**
  * One registered a11y node with window coordinates for layout emit.
  */
@@ -67,11 +75,14 @@ public class OLLMwebkit.A11yNode : GLib.Object
 }
 
 /**
- * One AT-SPI tree walk that builds a11y Content / References markdown.
+ * One AT-SPI / Win32Atspi tree walk that builds a11y Content / References markdown.
  *
  * Create once per document with {@link root} / {@link route}. {@link walk}
  * registers nodes via {@link walk_node}, then {@link emit} lays out Content
  * by window ''y'' (same row → same line, left-to-right by ''x'').
+ *
+ * Platform ''Accessible'' comes from ''using AndroidAtspi'' / ''Win32Atspi'' /
+ * ''Atspi''.
  *
  * == Example ==
  *
@@ -86,7 +97,7 @@ public class OLLMwebkit.A11yParse : GLib.Object
 	/**
 	 * Document (or app) accessible to start from.
 	 */
-	public Atspi.Accessible root { get; construct; }
+	public Accessible root { get; construct; }
 
 	/**
 	 * Child-index path from the application root to {@link root}.
@@ -136,9 +147,9 @@ public class OLLMwebkit.A11yParse : GLib.Object
 	 * @param root document (or app) accessible to start from
 	 * @param route child-index path from the application root to ''root''
 	 */
-	public A11yParse(Atspi.Accessible root, Gee.ArrayList<int> route)
+	public A11yParse(Accessible root, Gee.ArrayList<int> route)
 	{
-		Object(root: root, route: route);
+		GLib.Object(root: root, route: route);
 	}
 
 	/**
@@ -148,8 +159,8 @@ public class OLLMwebkit.A11yParse : GLib.Object
 	{
 		// One bottom→top pass so below-fold names fill in (no per-step jumping).
 		try {
-			this.root.scroll_to(Atspi.ScrollType.BOTTOM_EDGE);
-			this.root.scroll_to(Atspi.ScrollType.TOP_EDGE);
+			this.root.scroll_to(ScrollType.BOTTOM_EDGE);
+			this.root.scroll_to(ScrollType.TOP_EDGE);
 		} catch (GLib.Error e) {
 		}
 
@@ -218,7 +229,7 @@ public class OLLMwebkit.A11yParse : GLib.Object
 	 * @param role_name AT-SPI role name (never null)
 	 */
 	private void walk_node(
-		Atspi.Accessible acc,
+		Accessible acc,
 		Gee.ArrayList<int> node_route,
 		string name,
 		string role_name
@@ -348,7 +359,7 @@ public class OLLMwebkit.A11yParse : GLib.Object
 		}
 
 		if (is_pressable || (!skip_emit && (is_heading || is_text))) {
-			var ext = acc.get_extents(Atspi.CoordType.WINDOW);
+			var ext = acc.get_extents(CoordType.WINDOW);
 			var node = new A11yNode() {
 				x = ext.x,
 				y = ext.y,

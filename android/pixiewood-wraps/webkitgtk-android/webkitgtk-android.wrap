@@ -1,0 +1,7 @@
+[wrap-git]
+url = https://github.com/roojs/webkitgtk-android.git
+revision = 0aaf986db20a8642cc7cacc91972d62abd7e28c7
+depth = 1
+
+[provide]
+dependency_names = webkitgtk-android-1

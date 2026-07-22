@@ -317,11 +317,15 @@ install_ca_certificates_to_assets() {
 # (header bar buttons, symbolic actions, etc.) are listed in android/icons/manifest
 # and staged from the build host's icon themes into assets/share/icons/Adwaita/.
 # POC Java helpers (wake lock + streaming FGS) live under android/*.java.
+# WebViewHost Java comes from the webkitgtk-android subproject (5.0.2).
 install_poc_java() {
   local dest_dir="$ROOT_DIR/.pixiewood/android/app/src/main/java/org/roojs/ollmchat/androidpoc"
+  local java_root="$ROOT_DIR/.pixiewood/android/app/src/main/java"
   local wake_src="$ROOT_DIR/android/PartialWakeLock.java"
   local fg_src="$ROOT_DIR/android/StreamingForeground.java"
   local fgs_src="$ROOT_DIR/android/StreamingForegroundService.java"
+  local wka_dir="$ROOT_DIR/subprojects/webkitgtk-android"
+  local wka_install=""
 
   if [ ! -f "$wake_src" ]; then
     echo "PartialWakeLock.java missing: $wake_src" >&2
@@ -336,6 +340,17 @@ install_poc_java() {
   cp -a "$wake_src" "$dest_dir/PartialWakeLock.java"
   cp -a "$fg_src" "$dest_dir/StreamingForeground.java"
   cp -a "$fgs_src" "$dest_dir/StreamingForegroundService.java"
+
+  if [ -x "$wka_dir/scripts/android/install-webview-java.sh" ]; then
+    wka_install="$wka_dir/scripts/android/install-webview-java.sh"
+  elif [ -x /home/alan/git/webkitgtk-android/scripts/android/install-webview-java.sh ]; then
+    wka_install=/home/alan/git/webkitgtk-android/scripts/android/install-webview-java.sh
+  fi
+  if [ -z "$wka_install" ]; then
+    echo "webkitgtk-android install-webview-java.sh missing (subproject or /home/alan/git/webkitgtk-android)" >&2
+    exit 1
+  fi
+  "$wka_install" "$java_root"
 }
 
 # Pixiewood regenerate may omit permissions / reset launchMode; keep POC defaults.

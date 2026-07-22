@@ -16,10 +16,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#if WINDOWS
+#if ANDROID
+using WebKitGtkAndroid;
+#elif WINDOWS
 using WebView2Gtk;
-#endif
-#if LINUX
+#elif LINUX
 using WebKit;
 #endif
 
@@ -27,9 +28,9 @@ using WebKit;
  * One WebView browser session (Snappr Browser host port).
  *
  * Load settle, Soup HEAD probe, freeze overlay, and site cookies follow
- * Snappr. ''#if LINUX'' / ''#if WINDOWS'' select WebKitGTK vs webview2-gtk
- * (same portability pattern as Snappr). Dump / fill / press delegate to
- * {@link A11y} (Phase 2.1).
+ * Snappr. ''#if ANDROID'' / ''WINDOWS'' / ''LINUX'' select webkitgtk-android /
+ * webview2-gtk / WebKitGTK. Dump / fill / press delegate to {@link A11y}
+ * (Linux AT-SPI / Windows Win32Atspi / Android Phase 2).
  *
  * == Example ==
  *
@@ -55,7 +56,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 	}
 
 	/**
-	 * Platform accessibility dump / fill / press (Linux AT-SPI).
+	 * Platform accessibility dump / fill / press (Linux AT-SPI / Windows Win32Atspi).
 	 */
 	public OLLMwebkit.A11y a11y { get; private set; default = new OLLMwebkit.A11y(); }
 
@@ -98,8 +99,8 @@ public class OLLMwebkit.Browser : Gtk.Box
 	}
 
 	/**
-	 * URL → active download object (WebKit Download today; Cancel in 5.0.6).
-	 * Same map on all platforms — value type is {@link GLib.Object} so Windows/Android can store their download handles later.
+	 * URL → active download (WebKitGTK / WebView2Gtk ''Download''; Cancel via banner).
+	 * Value type is {@link GLib.Object} so all platforms share the map.
 	 */
 	private Gee.HashMap<string, GLib.Object> downloads_active {
 		get;
@@ -258,8 +259,8 @@ public class OLLMwebkit.Browser : Gtk.Box
 			response_decision.download();
 			return true;
 		});
-		this.web_view.get_network_session().download_started.connect(this.on_download_started);
 #endif
+		this.web_view.get_network_session().download_started.connect(this.on_download_started);
 	}
 
 	/**
@@ -766,9 +767,10 @@ public class OLLMwebkit.Browser : Gtk.Box
 	/**
 	 * NetworkSession download-started: dedupe, wire destination/progress/finish.
 	 *
-	 * @param download WebKit download
+	 * Shared WebKitGTK-shaped ''Download'' API (Linux / Windows / Android).
+	 *
+	 * @param download platform ''Download''
 	 */
-#if LINUX
 	private void on_download_started(Download download)
 	{
 		var web_req = download.get_request();
@@ -862,8 +864,8 @@ public class OLLMwebkit.Browser : Gtk.Box
 	/**
 	 * Download decide-destination: permission, place under Downloads, start event.
 	 *
-	 * @param download WebKit download
-	 * @param suggested WebKit suggested filename (may be null/empty)
+	 * @param download platform ''Download''
+	 * @param suggested suggested filename (may be null/empty)
 	 * @return true (handler owns destination / cancel)
 	 */
 	private bool on_decide_destination(Download download, string? suggested)
@@ -915,14 +917,13 @@ public class OLLMwebkit.Browser : Gtk.Box
 		});
 		return true;
 	}
-#endif
 
 	/**
-	 * Download ''url'' via WebKit into the platform Downloads folder.
+	 * Download ''url'' into the platform Downloads folder.
 	 *
 	 * @param url absolute http(s) URL
 	 * @return destination path, or status if already in flight
-	 * @throws GLib.Error when permission denied or WebKit fails
+	 * @throws GLib.Error when permission denied or transfer fails
 	 */
 	public async string download(string url) throws GLib.Error
 	{
@@ -934,7 +935,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 				&& this.downloads_inflight.get(trimmed) != "") {
 			return "Already downloading: " + this.downloads_inflight.get(trimmed);
 		}
-#if LINUX
 		this.downloads_inflight.set(trimmed, "");
 		var dl = this.web_view.download_uri(trimmed);
 		var result_path = "";
@@ -966,9 +966,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 			throw new GLib.IOError.FAILED("Download finished without destination");
 		}
 		return result_path;
-#else
-		throw new GLib.IOError.NOT_SUPPORTED("download is Linux WebKitGTK in this plan");
-#endif
 	}
 
 	/**
@@ -978,7 +975,6 @@ public class OLLMwebkit.Browser : Gtk.Box
 	 */
 	public void notification_reply(OLLMrpc.Notification notif)
 	{
-#if LINUX
 		if (!notif.method.has_prefix("event.browser.download.")) {
 			return;
 		}
@@ -999,6 +995,5 @@ public class OLLMwebkit.Browser : Gtk.Box
 			active.cancel();
 			return;
 		}
-#endif
 	}
 }

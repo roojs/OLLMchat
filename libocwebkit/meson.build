@@ -28,6 +28,10 @@ if is_windows
     ocwebkit_platform_vala_args += ['--vapidir', webview2gtk_prefix / 'lib']
     ocwebkit_vapi_platform_pkgs += ['--vapidir', webview2gtk_prefix / 'lib']
   endif
+elif is_android_cross
+  ocwebkit_deps += dependency('webkitgtk-android-1')
+  ocwebkit_platform_vala_args += ['--pkg=webkitgtk-android-1']
+  ocwebkit_vapi_platform_pkgs += ['--pkg', 'webkitgtk-android-1']
 else
   ocwebkit_deps += [
     dependency('webkitgtk-6.0'),
@@ -180,4 +184,6 @@ ocwebkit_vapi_dep = declare_dependency(
   sources: [ocwebkit_vapi[0]],
 )
 
-subdir('examples')
+if not is_android_cross
+  subdir('examples')
+endif

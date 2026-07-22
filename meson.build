@@ -73,21 +73,19 @@ add_project_arguments(['--vapidir', meson.current_build_dir()], language: 'vala'
 add_project_arguments(['--target-glib=auto'], language: 'vala')
 
 # Vala #if G_OS_WIN32 is not set automatically when cross-compiling on Linux.
-# LINUX / WINDOWS match Snappr / libocwebkit #if (WebKitGTK vs webview2-gtk).
+# LINUX / WINDOWS / ANDROID match Snappr / libocwebkit #if (WebKitGTK vs
+# webview2-gtk vs webkitgtk-android).
 if host_machine.system() == 'windows'
   add_project_arguments(['--define=G_OS_WIN32', '--define=WINDOWS'], language: 'vala')
+elif host_machine.system() == 'android'
+  add_project_arguments(['--define=ANDROID'], language: 'vala')
 elif host_machine.system() == 'linux'
   add_project_arguments(['--define=LINUX'], language: 'vala')
 endif
 
 webview2gtk_prefix = get_option('webview2gtk_prefix')
-if host_machine.system() == 'windows' and webview2gtk_prefix != ''
-  meson.add_env(
-    'PKG_CONFIG_PATH',
-    webview2gtk_prefix / 'lib' / 'pkgconfig',
-    method: 'prepend',
-  )
-endif
+# Do not use meson.add_env here — MSYS2 Meson lacks it. Callers must export
+# PKG_CONFIG_PATH=<prefix>/lib/pkgconfig (see scripts/ci/windows-msys2-build.sh).
 
 local_gguf_enabled = false
 gee_vapi_dir = meson.project_source_root() / 'subprojects/libgee-0.20.8/gee'
@@ -150,6 +148,7 @@ elif android_poc_opt and host_machine.system() == 'android'
   subdir('libocrpc')
   subdir('libollamaweb')
   subdir('libollmchat')
+  subdir('libocwebkit')      # Browser tool — webkitgtk-android backend
   subdir('libollmchatgtk')
   subdir('ollmapp')         # Remote-chat Android APK target
 else
