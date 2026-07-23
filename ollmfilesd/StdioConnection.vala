@@ -50,12 +50,13 @@ namespace OLLMfilesd
 			this.running = true;
 
 #if G_OS_WIN32
+			// Win32 STD_*_HANDLE enums are not in the Vala bindings; hardcode the DWORD values.
 			this.channel = new GLib.IOChannel.win32_new_fd(Posix.STDIN_FILENO);
 			var in_stream = new GLib.DataInputStream(
-				new GLib.Win32InputStream(GetStdHandle(/* STD_INPUT_HANDLE */ unchecked((uint32) (-10))), false)
+				new GLib.Win32InputStream(GetStdHandle((uint32) 0xFFFFFFF6), false)
 			);
 			var out_stream = new GLib.DataOutputStream(
-				new GLib.Win32OutputStream(GetStdHandle(/* STD_OUTPUT_HANDLE */ unchecked((uint32) (-11))), false)
+				new GLib.Win32OutputStream(GetStdHandle((uint32) 0xFFFFFFF5), false)
 			);
 #else
 			this.channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
