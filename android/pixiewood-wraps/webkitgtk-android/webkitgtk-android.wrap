@@ -1,6 +1,6 @@
 [wrap-git]
 url = https://github.com/roojs/webkitgtk-android.git
-revision = a3e5f29c28e96409f3f3b009e83d641b4b181979
+revision = 31fd762d87f200f6a087f772681accc3cc58a11a
 depth = 1
 
 [provide]

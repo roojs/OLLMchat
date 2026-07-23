@@ -580,6 +580,10 @@ run_pixiewood_build() {
   echo "Reconfiguring Pixiewood Meson build."
   maybe_reconfigure_pixiewood_build "$MESON_FOR_ANDROID" "${PIXIEWOOD_CONFIGURE_OPTIONS[@]}"
 
+  # generate force_symlinks jniLibs -> root/lib; a prior materialize leaves a real
+  # directory and unlink(2) fails with EISDIR.
+  rm -rf "$ROOT_DIR/.pixiewood/android/app/src/main/jniLibs"
+
   run_pixiewood generate
   patch_pixiewood_gradle_native_libs
   run_pixiewood build --skip-gradle
