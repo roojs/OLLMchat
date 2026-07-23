@@ -12,16 +12,18 @@
 ## Fix
 
 1. On Windows, add `webview2gtk-1` dep + vapidir to `ollmapp` (app + CLI).
-2. `#if G_OS_WIN32` in `StdioConnection`: `IOChannel.win32_new_fd` for the watch channel;
-   `Win32InputStream` / `Win32OutputStream` via **`GetStdHandle`** (not `_get_osfhandle`);
-   meson `--pkg=gio-windows-2.0`.
+2. **`StdioConnection`:** use **`GLib.IOChannel`** for stdin/stdout NDJSON
+   (`unix_new` / `win32_new_fd`) — no `UnixInputStream` / `Win32InputStream`,
+   no `GetStdHandle` / `_get_osfhandle` extern. Drop `gio-unix` / `gio-windows`
+   from `ollmfilesd` meson.
 
 ## Attempts
 
-- `0bd39f69` — Win32 streams via `_get_osfhandle` as `void*`; CI: `intptr_t` → `void*` without cast.
-- `7520a70a` — `int64` + `(void*)` cast — compiles but is CRT kludge.
-- Next: replace with `GetStdHandle(STD_INPUT/OUTPUT_HANDLE)` — proper Win32 HANDLE API.
+- GIO Win32 streams + `_get_osfhandle` / `GetStdHandle` — works but wrong layer;
+  GLib has no portable stdin `GInputStream`, and this harness is text NDJSON.
+- **IOChannel** is the GLib API already used for the watch; extend it to read/write.
 
 ## Conclusions
 
-Root cause is incomplete Windows consumer wiring (same class as ocwebkit vapi defines), not the earlier CRLF issue.
+Root cause for webview2 was incomplete consumer vapidir wiring. Stdio failure was
+using Unix-only GIO streams; fix is IOChannel, not Win32 HANDLE FFI.
