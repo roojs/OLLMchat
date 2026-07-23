@@ -12,8 +12,9 @@
  */
 
 #if G_OS_WIN32
-[CCode (cname = "_get_osfhandle", cheader_filename = "io.h")]
-extern int64 _get_osfhandle(int fd);
+// Win32InputStream wants a HANDLE; GetStdHandle is the API for stdin/stdout.
+[CCode (cname = "GetStdHandle", cheader_filename = "windows.h")]
+extern void* GetStdHandle(uint32 n);
 #endif
 
 namespace OLLMfilesd
@@ -55,11 +56,12 @@ namespace OLLMfilesd
 			this.channel.set_buffered(true);
 			this.channel_open = true;
 #if G_OS_WIN32
+			// STD_INPUT_HANDLE (-10), STD_OUTPUT_HANDLE (-11)
 			var in_stream = new GLib.DataInputStream(
-				new GLib.Win32InputStream((void*) _get_osfhandle(Posix.STDIN_FILENO), false)
+				new GLib.Win32InputStream(GetStdHandle(unchecked((uint32) (-10))), false)
 			);
 			var out_stream = new GLib.DataOutputStream(
-				new GLib.Win32OutputStream((void*) _get_osfhandle(Posix.STDOUT_FILENO), false)
+				new GLib.Win32OutputStream(GetStdHandle(unchecked((uint32) (-11))), false)
 			);
 #else
 			var in_stream = new GLib.DataInputStream(
