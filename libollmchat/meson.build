@@ -296,7 +296,7 @@ else
 endif
 
 ollmchat_gir_file = meson.current_build_dir() / 'OLLMchat-1.0.gir'
-if not is_android_cross
+if g_ir_compiler.found()
   custom_target('ollmchat-typelib',
     output: 'OLLMchat-1.0.typelib',
     command: [

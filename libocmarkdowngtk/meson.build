@@ -116,7 +116,7 @@ ocmarkdowngtk_vapi_dep = declare_dependency(
 )
 
 ocmarkdowngtk_gir_file = meson.current_build_dir() / 'OCMarkdownGtk-1.0.gir'
-if not is_android_cross
+if g_ir_compiler.found()
   custom_target('ocmarkdowngtk-typelib',
   output: 'OCMarkdownGtk-1.0.typelib',
   command: [

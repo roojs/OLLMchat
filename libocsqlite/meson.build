@@ -103,7 +103,7 @@ ocsqlite_vapi_dep = declare_dependency(
 )
 
 ocsqlite_gir_file = meson.current_build_dir() / 'OCSqlite-1.0.gir'
-if not is_android_cross
+if g_ir_compiler.found()
   custom_target('ocsqlite-typelib',
     output: 'OCSqlite-1.0.typelib',
     command: [g_ir_compiler, ocsqlite_gir_file, '--output', '@OUTPUT@'],

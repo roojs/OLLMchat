@@ -129,7 +129,7 @@ ocmarkdown_vapi_only_dep = declare_dependency(
 )
 
 ocmarkdown_gir_file = meson.current_build_dir() / 'OCMarkdown-1.0.gir'
-if not is_android_cross
+if g_ir_compiler.found()
   custom_target('ocmarkdown-typelib',
     output: 'OCMarkdown-1.0.typelib',
     command: [g_ir_compiler, ocmarkdown_gir_file, '--output', '@OUTPUT@'],

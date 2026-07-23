@@ -119,7 +119,7 @@ endif
 
 ollmchatgtk_gir_file = meson.current_build_dir() / 'OLLMchatGtk-1.0.gir'
 ollmchatgtk_gir_fixed = meson.current_build_dir() / 'OLLMchatGtk-1.0.fixed.gir'
-if not is_android_cross
+if g_ir_compiler.found()
   fix_gir_dep_names = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
   custom_target('ollmchatgtk-typelib',
   output: 'OLLMchatGtk-1.0.typelib',

@@ -38,7 +38,9 @@ occoder_lib = 'occoder'
 octools_lib = 'octools'
 ocmcp_lib = 'ocmcp'
 
-if android_cross_build
+# Android + Windows: skip GIR typelibs (ocfiles has no vala_gir on Windows;
+# dependents would fail looking for OLLMfiles-1.0.gir). App does not need typelibs.
+if android_cross_build or host_machine.system() == 'windows'
   g_ir_compiler = disabler()
 else
   g_ir_compiler = find_program('g-ir-compiler')

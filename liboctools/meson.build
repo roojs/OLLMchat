@@ -215,28 +215,30 @@ octools_vapi_dep = declare_dependency(
 
 octools_gir_file = meson.current_build_dir() / 'OLLMtools-1.0.gir'
 octools_gir_fixed = meson.current_build_dir() / 'OLLMtools-1.0.fixed.gir'
-fix_gir_dep_names = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
-custom_target('octools-typelib',
-  output: 'OLLMtools-1.0.typelib',
-  command: [
-    find_program('sh'),
-    meson.project_source_root() / 'scripts/compile-gir-typelib.sh',
-    octools_gir_file,
-    octools_gir_fixed,
-    '@OUTPUT@',
-    fix_gir_dep_names,
-    '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--includedir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--includedir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--includedir', '/usr/share/gir-1.0',
-  ],
-  depends: octools_base_lib,
-  build_by_default: true,
-  install: true,
-  install_dir: get_option('libdir') / 'girepository-1.0',
-)
-meson.add_install_script(
-  'sh', '-c',
-  'install -Dm644 "' + octools_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMtools-1.0.gir"',
-)
+if g_ir_compiler.found()
+  fix_gir_dep_names = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
+  custom_target('octools-typelib',
+    output: 'OLLMtools-1.0.typelib',
+    command: [
+      find_program('sh'),
+      meson.project_source_root() / 'scripts/compile-gir-typelib.sh',
+      octools_gir_file,
+      octools_gir_fixed,
+      '@OUTPUT@',
+      fix_gir_dep_names,
+      '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--includedir', meson.current_build_dir() / '..' / 'libocfiles',
+      '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
+      '--includedir', meson.current_build_dir() / '..' / 'libollmchat',
+      '--includedir', '/usr/share/gir-1.0',
+    ],
+    depends: octools_base_lib,
+    build_by_default: true,
+    install: true,
+    install_dir: get_option('libdir') / 'girepository-1.0',
+  )
+  meson.add_install_script(
+    'sh', '-c',
+    'install -Dm644 "' + octools_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMtools-1.0.gir"',
+  )
+endif

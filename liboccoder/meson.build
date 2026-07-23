@@ -171,31 +171,33 @@ occoder_vapi = custom_target('occoder-vapi',
 
 occoder_gir_file = meson.current_build_dir() / 'OLLMcoder-1.0.gir'
 occoder_gir_fixed = meson.current_build_dir() / 'OLLMcoder-1.0.fixed.gir'
-fix_gir_dep_names = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
-custom_target('occoder-typelib',
-  output: 'OLLMcoder-1.0.typelib',
-  command: [
-    find_program('sh'),
-    meson.project_source_root() / 'scripts/compile-gir-typelib.sh',
-    occoder_gir_file,
-    occoder_gir_fixed,
-    '@OUTPUT@',
-    fix_gir_dep_names,
-    '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--includedir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--includedir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--includedir', '/usr/share/gir-1.0',
-  ],
-  depends: occoder_base_lib,
-  build_by_default: true,
-  install: true,
-  install_dir: get_option('libdir') / 'girepository-1.0',
-)
-meson.add_install_script(
-  'sh', '-c',
-  'install -Dm644 "' + occoder_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMcoder-1.0.gir"',
-)
+if g_ir_compiler.found()
+  fix_gir_dep_names = meson.project_source_root() / 'scripts/fix-gir-dep-names.sed'
+  custom_target('occoder-typelib',
+    output: 'OLLMcoder-1.0.typelib',
+    command: [
+      find_program('sh'),
+      meson.project_source_root() / 'scripts/compile-gir-typelib.sh',
+      occoder_gir_file,
+      occoder_gir_fixed,
+      '@OUTPUT@',
+      fix_gir_dep_names,
+      '--includedir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--includedir', meson.current_build_dir() / '..' / 'libocfiles',
+      '--includedir', meson.current_build_dir() / '..' / 'libocmarkdown',
+      '--includedir', meson.current_build_dir() / '..' / 'libollmchat',
+      '--includedir', '/usr/share/gir-1.0',
+    ],
+    depends: occoder_base_lib,
+    build_by_default: true,
+    install: true,
+    install_dir: get_option('libdir') / 'girepository-1.0',
+  )
+  meson.add_install_script(
+    'sh', '-c',
+    'install -Dm644 "' + occoder_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMcoder-1.0.gir"',
+  )
+endif
 
 # Create dependency for other libraries to use
 # Use link_args instead of link_with to prevent meson from auto-including occoder-meson.vapi
