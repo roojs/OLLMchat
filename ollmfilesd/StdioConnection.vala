@@ -6,11 +6,6 @@
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this library; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -21,9 +16,8 @@ namespace OLLMfilesd
 	/**
 	 * Stdin/stdout {@link OLLMrpc.Transport.Connection} for debugging and tests.
 	 *
-	 * NDJSON on stdin/stdout via {@link GLib.IOChannel} (GLib's portable fd
-	 * channel — ''unix_new'' / ''win32_new_fd''). {@link OLLMrpc.Bin.Json}
-	 * bridges each line to the internal bin codec in memory.
+	 * NDJSON on stdin/stdout; {@link OLLMrpc.Bin.Json} bridges each line to
+	 * the internal bin codec.
 	 */
 	public class StdioConnection : OLLMrpc.Transport.Connection
 	{
@@ -32,7 +26,6 @@ namespace OLLMfilesd
 
 		private int script_awaiting_id = -1;
 		private OLLMrpc.Bin.Json json = new OLLMrpc.Bin.Json ();
-		private GLib.IOChannel? stdout_channel = null;
 
 		public StdioConnection(
 			OllmfilesdApplication app,
@@ -48,18 +41,17 @@ namespace OLLMfilesd
 			}
 			this.running = true;
 
-#if G_OS_WIN32
-			this.channel = new GLib.IOChannel.win32_new_fd(Posix.STDIN_FILENO);
-			this.stdout_channel = new GLib.IOChannel.win32_new_fd(Posix.STDOUT_FILENO);
-#else
 			this.channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
-			this.stdout_channel = new GLib.IOChannel.unix_new(Posix.STDOUT_FILENO);
-#endif
 			this.channel.set_encoding(null);
 			this.channel.set_buffered(true);
-			this.stdout_channel.set_encoding(null);
-			this.stdout_channel.set_buffered(true);
 			this.channel_open = true;
+			var in_stream = new GLib.DataInputStream(
+				new GLib.UnixInputStream(Posix.STDIN_FILENO, false)
+			);
+			var out_stream = new GLib.DataOutputStream(
+				new GLib.UnixOutputStream(Posix.STDOUT_FILENO, false)
+			);
+			this.bin = new OLLMrpc.Bin.Stream(in_stream, out_stream);
 
 			this.write(new OLLMrpc.Notification() {
 				method = "Daemon.ready",
@@ -86,7 +78,6 @@ namespace OLLMfilesd
 			if (!this.running) {
 				return;
 			}
-			this.stdout_channel = null;
 			base.stop();
 			this.app.quit();
 		}
@@ -109,10 +100,10 @@ namespace OLLMfilesd
 				var gen = new Json.Generator();
 				gen.set_pretty(false);
 				gen.set_root(node);
-				var payload = gen.to_data(null) + "\n";
-				size_t written;
-				this.stdout_channel.write_chars(payload.to_utf8(), out written);
-				this.stdout_channel.flush();
+				var line = gen.to_data(null);
+				this.bin.out_stream.put_string(line);
+				this.bin.out_stream.put_byte((uint8) '\n');
+				this.bin.out_stream.flush();
 			} catch (GLib.Error e) {
 				GLib.error("stdio write: %s", e.message);
 			}
@@ -131,19 +122,12 @@ namespace OLLMfilesd
 				return this.running;
 			}
 
-			var line_buf = "";
-			size_t length;
-			size_t terminator_pos;
-			try {
-				var status = this.channel.read_line(out line_buf, out length, out terminator_pos);
-				if (status == GLib.IOStatus.EOF) {
-					this.stop();
-					return false;
-				}
-			} catch (GLib.Error e) {
-				GLib.error("%s", e.message);
+			string? line = this.bin.in_stream.read_line(null);
+			if (line == null) {
+				this.stop();
+				return false;
 			}
-			var line = line_buf.strip();
+			line = line.strip();
 			if (line == "" || line.has_prefix("#")) {
 				return this.running;
 			}

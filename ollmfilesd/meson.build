@@ -26,6 +26,10 @@ ollmfilesd_deps = [
   ocvector2_vapi_dep,
 ]
 ollmfilesd_vapi_pkgs = []
+if not is_windows
+  ollmfilesd_deps += dependency('gio-unix-2.0')
+  ollmfilesd_vapi_pkgs += '--pkg=gio-unix-2.0'
+endif
 
 ollmfilesd_src = files(
   'BufferProviderBase.vala',
@@ -80,31 +84,6 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocvector2',
 ])
 
-ollmfilesd_vala_args = strcasestr_vala_args + [
-  '--pkg=libgit2-glib-1.0',
-  '--pkg=sqlite3',
-  '--pkg=json-glib-1.0',
-  '--pkg=gmodule-2.0',
-  '--pkg=tree-sitter',
-  '--pkg=ocsqlite',
-  '--pkg=ocrpc',
-  '--pkg=ollmchat',
-  '--pkg=ollamaweb',
-  '--pkg=fiass',
-  '--pkg=ocvector2',
-  '--pkg=libsoup-3.0',
-] + ollmfilesd_vapi_pkgs + [
-  '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-  '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-  '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-  '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
-  '--vapidir', meson.current_build_dir() / '..' / 'libocvector2',
-  '--vapidir', meson.current_source_dir() / '../vapi',
-]
-if not is_windows
-  ollmfilesd_vala_args += ['--vapidir', '/usr/share/vala/vapi']
-endif
-
 ollmfilesd_bin = executable('ollmfilesd',
   ollmfilesd_src,
   dependencies: ollmfilesd_deps,
@@ -118,5 +97,26 @@ ollmfilesd_bin = executable('ollmfilesd',
   ],
   build_rpath: build_rpath,
   install: true,
-  vala_args: ollmfilesd_vala_args,
+  vala_args: strcasestr_vala_args + [
+    '--pkg=libgit2-glib-1.0',
+    '--pkg=sqlite3',
+    '--pkg=json-glib-1.0',
+    '--pkg=gmodule-2.0',
+    '--pkg=tree-sitter',
+    '--pkg=ocsqlite',
+    '--pkg=ocrpc',
+    '--pkg=ollmchat',
+    '--pkg=ollamaweb',
+    '--pkg=fiass',
+    '--pkg=ocvector2',
+    '--pkg=libsoup-3.0',
+  ] + ollmfilesd_vapi_pkgs + [
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector2',
+    '--vapidir', meson.current_source_dir() / '../vapi',
+    '--vapidir', '/usr/share/vala/vapi',
+  ],
 )
