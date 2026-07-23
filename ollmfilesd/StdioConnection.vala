@@ -11,6 +11,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#if G_OS_WIN32
+// GIO's Win32InputStream/OutputStream take a Win32 HANDLE, not a CRT fd.
+// docs.gtk.org only documents "pass a HANDLE" — not how to get stdin/stdout.
+// GetStdHandle is the Win32 API for that (not wrapped by GIO or the Vala vapi).
+[CCode (cname = "GetStdHandle", cheader_filename = "windows.h")]
+extern void* GetStdHandle(uint32 n);
+#endif
+
 namespace OLLMfilesd
 {
 	/**
@@ -41,16 +49,26 @@ namespace OLLMfilesd
 			}
 			this.running = true;
 
+#if G_OS_WIN32
+			this.channel = new GLib.IOChannel.win32_new_fd(Posix.STDIN_FILENO);
+			var in_stream = new GLib.DataInputStream(
+				new GLib.Win32InputStream(GetStdHandle(/* STD_INPUT_HANDLE */ unchecked((uint32) (-10))), false)
+			);
+			var out_stream = new GLib.DataOutputStream(
+				new GLib.Win32OutputStream(GetStdHandle(/* STD_OUTPUT_HANDLE */ unchecked((uint32) (-11))), false)
+			);
+#else
 			this.channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
-			this.channel.set_encoding(null);
-			this.channel.set_buffered(true);
-			this.channel_open = true;
 			var in_stream = new GLib.DataInputStream(
 				new GLib.UnixInputStream(Posix.STDIN_FILENO, false)
 			);
 			var out_stream = new GLib.DataOutputStream(
 				new GLib.UnixOutputStream(Posix.STDOUT_FILENO, false)
 			);
+#endif
+			this.channel.set_encoding(null);
+			this.channel.set_buffered(true);
+			this.channel_open = true;
 			this.bin = new OLLMrpc.Bin.Stream(in_stream, out_stream);
 
 			this.write(new OLLMrpc.Notification() {
