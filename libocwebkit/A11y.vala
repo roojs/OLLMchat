@@ -28,10 +28,13 @@ using Atspi;
  * Accessibility dump / fill / press for {@link Browser}.
  *
  * Platform tree via ''using'' ({@link Atspi} / {@link Win32Atspi} /
- * {@link AndroidAtspi}) — same shape as {@link A11yParse}. Linux runs the
- * walk on a worker thread (main-thread AT-SPI deadlocks; set
- * ''GTK_A11Y=atspi'' before GTK init). Windows / Android stay on the UI
- * thread (COM / JNI). No page JavaScript.
+ * {@link AndroidAtspi}) — same shape as {@link A11yParse}. Linux offsloads
+ * AT-SPI dump/fill/press to a GLib worker (main-thread AT-SPI deadlocks;
+ * set ''GTK_A11Y=atspi'' before GTK init). Windows stays on the UI thread
+ * (COM). Android yields {@link AndroidAtspi.refresh_async} first so the
+ * host walk runs on the Android UI thread without GTK sync-waiting (IME
+ * ''blockForMain'' ANR — webkitgtk-android
+ * ''2026-07-23-a11y-walk-gtk-thread-anr''). No page JavaScript.
  *
  * == Example ==
  *
@@ -79,7 +82,10 @@ public class OLLMwebkit.A11y : GLib.Object
 	 */
 	public async string dump(string url, string title) throws GLib.Error
 	{
-#if ANDROID || WINDOWS
+#if ANDROID
+		yield refresh_async();
+		return this.dump_sync(url, title);
+#elif WINDOWS
 		return this.dump_sync(url, title);
 #else
 		GLib.SourceFunc callback = dump.callback;
@@ -113,7 +119,10 @@ public class OLLMwebkit.A11y : GLib.Object
 		if (this.host.get_root() is Gtk.Window) {
 			((Gtk.Window) this.host.get_root()).present();
 		}
-#if ANDROID || WINDOWS
+#if ANDROID
+		yield refresh_async();
+		this.fill_sync(fields);
+#elif WINDOWS
 		this.fill_sync(fields);
 #else
 		GLib.SourceFunc callback = fill.callback;
@@ -142,7 +151,10 @@ public class OLLMwebkit.A11y : GLib.Object
 	 */
 	public async void press(int id) throws GLib.Error
 	{
-#if ANDROID || WINDOWS
+#if ANDROID
+		yield refresh_async();
+		this.press_sync(id);
+#elif WINDOWS
 		this.press_sync(id);
 #else
 		GLib.SourceFunc callback = press.callback;

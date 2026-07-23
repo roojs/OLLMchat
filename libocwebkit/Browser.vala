@@ -811,8 +811,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 				action_label = "Cancel",
 			});
 		});
-		// connect_after so Browser.download()'s finished/failed handlers can read
-		// downloads_inflight before this cleanup unsets the key.
+		// connect_after so inflight path is still readable if other handlers run first.
 		download.failed.connect_after((err) => {
 			var dest = "";
 			if (this.downloads_inflight.has_key(url)) {
@@ -928,9 +927,12 @@ public class OLLMwebkit.Browser : Gtk.Box
 	/**
 	 * Download ''url'' into the platform Downloads folder.
 	 *
+	 * Returns once the transfer has started (destination known). Completion and
+	 * failure after start are reported via activity notifications.
+	 *
 	 * @param url absolute http(s) URL
 	 * @return destination path, or status if already in flight
-	 * @throws GLib.Error when permission denied or transfer fails
+	 * @throws GLib.Error when permission denied or start fails
 	 */
 	public async string download(string url) throws GLib.Error
 	{
@@ -947,30 +949,46 @@ public class OLLMwebkit.Browser : Gtk.Box
 		var result_path = "";
 		var result_err = "";
 		SourceFunc resume = download.callback;
-		ulong fin_id = 0;
 		ulong fail_id = 0;
-		fin_id = dl.finished.connect(() => {
-			if (this.downloads_inflight.has_key(trimmed)) {
-				result_path = this.downloads_inflight.get(trimmed);
-			}
-			dl.disconnect(fin_id);
-			dl.disconnect(fail_id);
-			resume();
-		});
+		var poll_id = 0u;
 		fail_id = dl.failed.connect((err) => {
 			result_err = err.message;
-			dl.disconnect(fin_id);
+			if (poll_id != 0) {
+				GLib.Source.remove(poll_id);
+				poll_id = 0;
+			}
 			dl.disconnect(fail_id);
 			resume();
 		});
+		poll_id = GLib.Timeout.add(50, () => {
+			if (result_err != "") {
+				poll_id = 0;
+				return GLib.Source.REMOVE;
+			}
+			if (!this.downloads_inflight.has_key(trimmed)) {
+				return GLib.Source.CONTINUE;
+			}
+			if (this.downloads_inflight.get(trimmed) == "") {
+				return GLib.Source.CONTINUE;
+			}
+			result_path = this.downloads_inflight.get(trimmed);
+			poll_id = 0;
+			dl.disconnect(fail_id);
+			resume();
+			return GLib.Source.REMOVE;
+		});
 		yield;
+		if (poll_id != 0) {
+			GLib.Source.remove(poll_id);
+			poll_id = 0;
+		}
 		if (result_err != "") {
 			this.downloads_inflight.unset(trimmed);
 			throw new GLib.IOError.FAILED("%s", result_err);
 		}
 		if (result_path == "") {
 			this.downloads_inflight.unset(trimmed);
-			throw new GLib.IOError.FAILED("Download finished without destination");
+			throw new GLib.IOError.FAILED("Download did not start");
 		}
 		return result_path;
 	}

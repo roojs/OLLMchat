@@ -22,7 +22,6 @@
 public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 {
 	public string action { get; set; default = ""; }
-	public string topic { get; set; default = ""; }
 	public string url { get; set; default = ""; }
 
 	/**
@@ -73,13 +72,6 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 	public override string to_summary()
 	{
 		switch (this.action.strip().down()) {
-			case "help":
-			case "":
-				if (this.topic.strip() != "") {
-					return "help topic=" + this.topic.strip();
-				}
-				return "help";
-
 			case "search":
 				return "search " + this.query.strip();
 
@@ -180,23 +172,9 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 				this.to_summary())));
 		var result = "";
 		switch (act) {
-			case "":
-			case "help":
-				var topic = this.topic.strip();
-				if (topic == "") {
-					result = (string) GLib.resources_lookup_data(
-						"/ocwebkit/help.md", GLib.ResourceLookupFlags.NONE).get_data();
-					break;
-				}
-				result = (string) GLib.resources_lookup_data(
-					"/ocwebkit/help-" + topic.down() + ".md",
-					GLib.ResourceLookupFlags.NONE).get_data();
-				break;
-
 			case "fetch":
 				if (this.url.strip() == "") {
-					throw new GLib.IOError.INVALID_ARGUMENT(
-						"url is required for fetch — call {\"action\": \"help\", \"topic\": \"fetch\"} for usage");
+					throw new GLib.IOError.INVALID_ARGUMENT("url is required for fetch");
 				}
 				yield browser.load(this.url.strip());
 				result = yield browser.dump(fmt);
@@ -204,8 +182,7 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 
 			case "search":
 				if (this.query.strip() == "") {
-					throw new GLib.IOError.INVALID_ARGUMENT(
-						"query is required for search — call {\"action\": \"help\", \"topic\": \"search\"} for usage");
+					throw new GLib.IOError.INVALID_ARGUMENT("query is required for search");
 				}
 				yield browser.load(
 					"https://www.google.com/search?q="
@@ -224,7 +201,7 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 				}
 				if (this.press <= 0) {
 					throw new GLib.IOError.INVALID_ARGUMENT(
-						"press (integer) is required for action press — call {\"action\": \"help\", \"topic\": \"press\"} for usage");
+						"press (integer) is required for action press");
 				}
 				yield browser.press(this.press);
 				result = yield browser.dump(fmt);
@@ -232,15 +209,14 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 
 			case "download":
 				if (this.url.strip() == "") {
-					throw new GLib.IOError.INVALID_ARGUMENT(
-						"url is required for download — call {\"action\": \"help\", \"topic\": \"download\"} for usage");
+					throw new GLib.IOError.INVALID_ARGUMENT("url is required for download");
 				}
 				result = yield browser.download(this.url.strip());
 				break;
 
 			default:
 				throw new GLib.IOError.INVALID_ARGUMENT(
-					"Unknown action: %s — call {\"action\": \"help\"} for the action list",
+					"Unknown action: %s — expected fetch, search, press, download, or whereami",
 					this.action);
 		}
 		var reply_prefix = (fmt == "markdown") ? "markdown" : "text";

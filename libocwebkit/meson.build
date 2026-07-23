@@ -53,41 +53,6 @@ else
   ]
 endif
 
-glib_compile_resources = find_program('glib-compile-resources', native: true)
-ocwebkit_resources_c = custom_target(
-  'ocwebkit-resources_c',
-  input: 'gresources.xml',
-  output: 'ocwebkit-resources.c',
-  command: [
-    glib_compile_resources,
-    '@INPUT@',
-    '--sourcedir', meson.current_source_dir() / 'resources',
-    '--c-name', 'ocwebkit_resources',
-    '--internal',
-    '--generate-source',
-    '--target', '@OUTPUT@',
-    '--dependency-file', '@DEPFILE@',
-  ],
-  depfile: 'ocwebkit-resources.c.d',
-)
-
-ocwebkit_resources_h = custom_target(
-  'ocwebkit-resources_h',
-  input: 'gresources.xml',
-  output: 'ocwebkit-resources.h',
-  command: [
-    glib_compile_resources,
-    '@INPUT@',
-    '--sourcedir', meson.current_source_dir() / 'resources',
-    '--c-name', 'ocwebkit_resources',
-    '--internal',
-    '--generate-header',
-    '--target', '@OUTPUT@',
-  ],
-)
-
-ocwebkit_resources = [ocwebkit_resources_c, ocwebkit_resources_h]
-
 ocwebkit_src = files([
   'namespace.vala',
   'A11y.vala',
@@ -128,7 +93,7 @@ endif
 ocwebkit_base_lib = library('ocwebkit',
   dependencies: ocwebkit_lib_deps,
   link_with: [ollmchat_base_lib],
-  sources: [ocwebkit_src, ocwebkit_resources],
+  sources: ocwebkit_src,
   vala_header: 'ocwebkit.h',
   vala_vapi: 'ocwebkit-meson.vapi',
   build_rpath: lib_build_rpath,
@@ -153,10 +118,14 @@ ocwebkit_vapi_cmd = [
 if not is_windows
   ocwebkit_vapi_cmd += ['--vapidir', '/usr/share/vala/vapi']
 endif
+# custom_target does not inherit add_project_arguments --define=*
 if is_android_cross
   ocwebkit_vapi_cmd += ['--vapidir', gee_vapi_dir]
-  # custom_target does not inherit add_project_arguments --define=ANDROID
   ocwebkit_vapi_cmd += ['--define=ANDROID']
+elif is_windows
+  ocwebkit_vapi_cmd += ['--define=G_OS_WIN32', '--define=WINDOWS']
+else
+  ocwebkit_vapi_cmd += ['--define=LINUX']
 endif
 ocwebkit_vapi_cmd += [
   '--pkg', 'posix',

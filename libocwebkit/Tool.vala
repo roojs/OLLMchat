@@ -18,8 +18,6 @@
 
 /**
  * OLLMchat tool wire name ''browser'' — drives {@link BrowserStack.primary}.
- *
- * Call ''action'' ''help'' (and ''topic'') for operational pages shipped in this library’s GResource.
  */
 public class OLLMwebkit.Tool : OLLMchat.Tool.BaseTool, OLLMchat.Tool.UiWidgets
 {
@@ -33,30 +31,54 @@ public class OLLMwebkit.Tool : OLLMchat.Tool.BaseTool, OLLMchat.Tool.UiWidgets
 	public override string title { get { return "Browser"; } }
 
 	public override string example_call {
-		get { return "{\"name\": \"browser\", \"arguments\": {\"action\": \"help\"}}"; }
+		get {
+			return "{\"name\": \"browser\", \"arguments\": {\"action\": \"fetch\", \"url\": \"https://example.com\"}}";
+		}
 	}
 
 	public override string description { get {
 		return """
-Interactive web browser for this chat session (Google search, open URL, press/fill,
-download, whereami). Replaces google_search / web_fetch when those are off.
+You have control over a web browser for the lifetime of this chat session.
+Navigating (fetch, search, press) returns an accessibility output of the page.
 
-MUST call {"action": "help"} first if this overview is not already in context.
-MUST call {"action": "help", "topic": "<action>"} (e.g. topic "search" or "fetch")
-before using that action if its help page is not in context. Do not invent
-argument shapes — read help, then call with the documented parameters
-(e.g. search needs action + query; fetch needs action + url).""";
+Actions: fetch, search, press, download, whereami.
+
+Default output (format "a11y"):
+  # Page → URL / Title
+  ## Content — layout by screen position (same y shares a line). Pressables as
+    [label](^press:N){x,y}
+  ## References — (^press:N): role, label; links as [text](url); values when
+    editable fields expose them
+
+Once you have output, prefer press on a ref from that output over fetch with a
+hand-copied URL when the control is already listed. fill lets you fill form
+fields and is used alongside action press (not a separate action). Prefer
+format "a11y" (html/markdown may be unavailable).
+
+Typical flow: search or fetch → read Content + References → press (+ fill) →
+read output → repeat → download if needed.""";
 	} }
 
 	public override string parameter_description { get {
 		return """
-@param action {string} [required] See help. One of: help, fetch, search, press, download, whereami.
-@param topic {string} [optional] See help. With action help: which topic page (fetch, search, press, download, whereami, format).
-@param url {string} [optional] See help. Required with action fetch or download.
-@param query {string} [optional] See help. Required with action search: search terms.
-@param press {integer} [optional] See help. Required with action press: press-ref id from the last a11y dump.
-@param fill {object} [optional] See help. For press: map of press-ref id to text — not an action.
-@param format {string} [optional] See help. a11y (default), html, or markdown.""";
+@param action {string} [required] One of:
+  "fetch" — fetch a page (open URL, return page output).
+  "search" — Google web search (return results output).
+  "press" — press a button or link on the screen. Optional fill. Do not send url.
+    Returns the resulting page after press as output.
+  "download" — download the URL into the platform Downloads folder (this browser
+    session). Returns once the download has started (destination path). Progress
+    and completion are reported in the activity bar; if the same URL is already
+    downloading, returns that it is already in progress.
+  "whereami" — current browser state (returns page output; no navigation).
+@param url {string} [optional] Absolute http(s) URL. Required for fetch or download. Do not send with press.
+@param query {string} [optional] Required for search: search terms (not a URL).
+@param press {integer} [optional] Required for press: N from [label](^press:N) / References in the last a11y output.
+@param fill {object} [optional] Optional with action press: map of press-ref id → text
+  (e.g. {"1": "site:example.com notes"}). Keys are press-ref ids from the a11y
+  output, not HTML name attributes. Fields are typed, then the press runs; the
+  tool result is the page after the press.
+@param format {string} [optional] For fetch, search, press, whereami: "a11y" (default — Content + References; needed for press/fill), "html", or "markdown". Prefer a11y.""";
 	} }
 
 	/**
