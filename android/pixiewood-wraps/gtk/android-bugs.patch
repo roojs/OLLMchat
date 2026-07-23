@@ -271,10 +271,40 @@ index dfedba019a..e1f8b31531 100644
  	}
  }
 diff --git a/gdk/android/glue/java/org/gtk/android/ToplevelActivity.java b/gdk/android/glue/java/org/gtk/android/ToplevelActivity.java
-index 09889b9c5b..81b23fd9d7 100644
+index 09889b9c5b..9151df7754 100644
 --- a/gdk/android/glue/java/org/gtk/android/ToplevelActivity.java
 +++ b/gdk/android/glue/java/org/gtk/android/ToplevelActivity.java
-@@ -194,8 +194,12 @@ public class ToplevelActivity extends Activity {
+@@ -135,6 +135,11 @@ public class ToplevelActivity extends Activity {
+ 			}
+ 
+ 			private int queuedImeKeyboardState; // 0 not queued, 1 show keyboard, -1 hide keyboard
++			/* Defer IME hide while a finger is down so button clicks are not
++			 * cancelled mid-gesture when focus leaves the text field (IM7). */
++			private boolean pointerDown;
++			private boolean pendingImeHide;
++
+ 			@GlibContext.GtkThread
+ 			public void setImeKeyboardState(boolean state) {
+ 				boolean was_queued = queuedImeKeyboardState != 0;
+@@ -147,12 +152,15 @@ public class ToplevelActivity extends Activity {
+ 					runOnUiThread(() -> {
+ 						WindowInsetsController controller = getWindowInsetsController();
+ 						if (imeKeyboardState) {
++							pendingImeHide = false;
+ 							requestFocus();
+ 							if (controller != null)
+ 								controller.show(WindowInsets.Type.ime());
+-						 } else if (controller != null) {
++						} else if (pointerDown) {
++							pendingImeHide = true;
++						} else if (controller != null) {
+ 							controller.hide(WindowInsets.Type.ime());
+-						 }
++						}
+ 					});
+ 				});
+ 			}
+@@ -194,8 +202,12 @@ public class ToplevelActivity extends Activity {
  				if (activeImContext == context)
  					return;
  				activeImContext = context;
@@ -289,7 +319,27 @@ index 09889b9c5b..81b23fd9d7 100644
  			}
  
  			public void reposition(int x, int y, int width, int height) {
-@@ -283,8 +287,7 @@ public class ToplevelActivity extends Activity {
+@@ -213,6 +225,19 @@ public class ToplevelActivity extends Activity {
+ 				if (event == null)
+ 					return false;
+ 
++				int action = event.getActionMasked();
++				if (action == MotionEvent.ACTION_DOWN) {
++					pointerDown = true;
++				} else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
++					pointerDown = false;
++					if (pendingImeHide) {
++						pendingImeHide = false;
++						WindowInsetsController controller = getWindowInsetsController();
++						if (controller != null)
++							controller.hide(WindowInsets.Type.ime());
++					}
++				}
++
+ 				if (this != ToplevelView.this.grabbed) { // grabbed surfaces get all events,
+ 				                                         // regardless of if they are in the input
+ 				                                         // region or not.
+@@ -283,8 +308,7 @@ public class ToplevelActivity extends Activity {
  				if (activeImContext == null)
  					return null;
  				outAttrs.contentMimeTypes = new String[] { "text/plain" };
