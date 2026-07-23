@@ -12,7 +12,12 @@
 ## Fix
 
 1. On Windows, add `webview2gtk-1` dep + vapidir to `ollmapp` (app + CLI).
-2. `#if G_OS_WIN32` in `StdioConnection`: `IOChannel.win32_new_fd` + `Win32InputStream` / `Win32OutputStream` via `_get_osfhandle`; meson `--pkg=gio-windows-2.0`.
+2. `#if G_OS_WIN32` in `StdioConnection`: `IOChannel.win32_new_fd` + `Win32InputStream` / `Win32OutputStream` via `_get_osfhandle` (`int64` → `(void*)` cast; C returns `intptr_t`); meson `--pkg=gio-windows-2.0`.
+
+## Attempts
+
+- `0bd39f69` — Win32 streams; CI then failed: `assignment to 'void *' from 'intptr_t'` (no cast).
+- Next: declare `_get_osfhandle` as `int64` and cast to `void*` at the call site.
 
 ## Conclusions
 
