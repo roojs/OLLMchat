@@ -26,7 +26,10 @@ ollmfilesd_deps = [
   ocvector2_vapi_dep,
 ]
 ollmfilesd_vapi_pkgs = []
-if not is_windows
+if is_windows
+  ollmfilesd_deps += dependency('gio-windows-2.0')
+  ollmfilesd_vapi_pkgs += '--pkg=gio-windows-2.0'
+else
   ollmfilesd_deps += dependency('gio-unix-2.0')
   ollmfilesd_vapi_pkgs += '--pkg=gio-unix-2.0'
 endif

@@ -127,6 +127,15 @@ elif is_windows
 else
   ocwebkit_vapi_cmd += ['--define=LINUX']
 endif
+# custom_target valac does not inherit add_project_arguments — pass the same
+# #if defines as meson.build so Win32Atspi / WebView2Gtk (not Linux Atspi) win.
+if is_windows
+  ocwebkit_vapi_cmd += ['--define=G_OS_WIN32', '--define=WINDOWS']
+elif is_android_cross
+  ocwebkit_vapi_cmd += ['--define=ANDROID']
+else
+  ocwebkit_vapi_cmd += ['--define=LINUX']
+endif
 ocwebkit_vapi_cmd += [
   '--pkg', 'posix',
   '--pkg', 'json-glib-1.0',

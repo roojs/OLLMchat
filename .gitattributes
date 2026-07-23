@@ -1,0 +1,3 @@
+# Keep Vala/VAPI as LF so Windows checkouts do not feed CRLF into valac.
+*.vala text eol=lf
+*.vapi text eol=lf

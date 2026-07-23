@@ -3,16 +3,12 @@
 # (.github/workflows/windows-build.yml) and local MSYS2 shells.
 #
 # Expects to run under UCRT64 bash.
-# Order: FAISS (sqgipkg Windows recipe) → webview2-gtk → OLLMchat meson.
+# Order: FAISS (sqgipkg Windows recipe) → webview2gtk pacman package → OLLMchat meson.
 set -euo pipefail
 
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-WEBVIEW2GTK_DIR="${WEBVIEW2GTK_DIR:-${ROOT}/webview2-gtk}"
-WEBVIEW2GTK_REPO="${WEBVIEW2GTK_REPO:-https://github.com/roojs/webview2-gtk.git}"
-WEBVIEW2GTK_REF="${WEBVIEW2GTK_REF:-}"
-WEBVIEW2GTK_STAGING="${WEBVIEW2GTK_STAGING:-${ROOT}/.ci-webview2gtk-prefix}"
 FAISS_DIR="${FAISS_DIR:-${ROOT}/.ci-faiss/faiss}"
 FAISS_REF="${FAISS_REF:-v1.8.0}"
 FAISS_REPO="${FAISS_REPO:-https://github.com/facebookresearch/faiss.git}"
@@ -20,6 +16,12 @@ FAISS_REPO="${FAISS_REPO:-https://github.com/facebookresearch/faiss.git}"
 # without -Dwindows_prefix (that flag would also redirect tree-sitter lookup).
 FAISS_PREFIX="${FAISS_PREFIX:-${MSYSTEM_PREFIX:-/ucrt64}}"
 BUILD_DIR="${BUILD_DIR:-build-windows}"
+
+# Signed release from https://github.com/roojs/webview2-gtk — pin via env to bump.
+WEBVIEW2GTK_VERSION="${WEBVIEW2GTK_VERSION:-0.3.3}"
+WEBVIEW2GTK_PKG_URL="${WEBVIEW2GTK_PKG_URL:-https://github.com/roojs/webview2-gtk/releases/download/v${WEBVIEW2GTK_VERSION}/mingw-w64-ucrt-x86_64-webview2gtk-${WEBVIEW2GTK_VERSION}-1-any.pkg.tar.zst}"
+WEBVIEW2GTK_KEY="${ROOT}/packaging/msys2/webview2gtk-packager.gpg"
+WEBVIEW2GTK_FPR_FILE="${ROOT}/packaging/msys2/webview2gtk-packager.fpr"
 
 # --- FAISS (same patches + cmake flags as sqgipkg.json windows.native_dependencies) ---
 echo "==> FAISS ${FAISS_REF} -> ${FAISS_PREFIX}"
@@ -60,26 +62,25 @@ fi
 	cmake --install build-windows-x86_64
 )
 
-# --- webview2-gtk ---
-echo "==> webview2-gtk source: ${WEBVIEW2GTK_DIR}"
-if [[ ! -f "${WEBVIEW2GTK_DIR}/meson.build" ]]; then
-	git clone --depth 1 ${WEBVIEW2GTK_REF:+--branch "${WEBVIEW2GTK_REF}"} \
-		"${WEBVIEW2GTK_REPO}" "${WEBVIEW2GTK_DIR}"
+# --- webview2gtk (signed pacman package; key vendored — we trust this packager) ---
+if [[ ! -f "${WEBVIEW2GTK_KEY}" || ! -f "${WEBVIEW2GTK_FPR_FILE}" ]]; then
+	echo "missing vendored packager key: ${WEBVIEW2GTK_KEY} / ${WEBVIEW2GTK_FPR_FILE}" >&2
+	exit 1
+fi
+WEBVIEW2GTK_FPR="$(tr -d '[:space:]' < "${WEBVIEW2GTK_FPR_FILE}")"
+echo "==> trust webview2gtk packager key ${WEBVIEW2GTK_FPR} (from packaging/msys2/)"
+pacman-key --init 2>/dev/null || true
+if ! pacman-key --list-keys "${WEBVIEW2GTK_FPR}" &>/dev/null; then
+	pacman-key --add "${WEBVIEW2GTK_KEY}"
+	pacman-key --lsign-key "${WEBVIEW2GTK_FPR}"
 fi
 
-echo "==> build + install webview2-gtk -> ${WEBVIEW2GTK_STAGING}"
-(
-	cd "${WEBVIEW2GTK_DIR}"
-	./scripts/vendor-webview2-sdk.sh
-	rm -rf build
-	meson setup build --prefix="${WEBVIEW2GTK_STAGING}"
-	meson compile -C build
-	meson install -C build
-)
-
-export PKG_CONFIG_PATH="${WEBVIEW2GTK_STAGING}/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
-echo "==> PKG_CONFIG_PATH=${PKG_CONFIG_PATH}"
+echo "==> pacman -U webview2gtk ${WEBVIEW2GTK_VERSION}"
+pacman -U --noconfirm "${WEBVIEW2GTK_PKG_URL}"
 pkg-config --modversion webview2gtk-1
+
+# Pacman ships webview2gtk-1.vapi under $MSYSTEM_PREFIX/lib (not share/vala/vapi).
+WEBVIEW2GTK_PREFIX="${WEBVIEW2GTK_PREFIX:-${MSYSTEM_PREFIX:-/ucrt64}}"
 
 echo "==> meson setup OLLMchat (${BUILD_DIR})"
 rm -rf "${BUILD_DIR}"
@@ -88,7 +89,7 @@ meson setup "${BUILD_DIR}" \
 	-Dexamples=false \
 	-Dtests=false \
 	-Dlocal_gguf=disabled \
-	-Dwebview2gtk_prefix="${WEBVIEW2GTK_STAGING}"
+	-Dwebview2gtk_prefix="${WEBVIEW2GTK_PREFIX}"
 
 echo "==> meson compile"
 meson compile -C "${BUILD_DIR}"
