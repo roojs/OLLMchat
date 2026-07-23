@@ -131,7 +131,7 @@ namespace OLLMfilesd
 				return this.running;
 			}
 
-			string line_buf;
+			var line_buf = "";
 			size_t length;
 			size_t terminator_pos;
 			try {
