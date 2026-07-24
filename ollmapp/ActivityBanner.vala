@@ -92,6 +92,12 @@ namespace OLLMapp
 			row.append(this.label);
 			row.append(this.action_button);
 			this.append(row);
+			this.action_button.clicked.connect(() => {
+				if (this.current_notification.action_label == "") {
+					return;
+				}
+				this.notification_reply(this.current_notification);
+			});
 
 			this.progress_bar = new Gtk.ProgressBar() {
 				show_text = false,
@@ -100,17 +106,8 @@ namespace OLLMapp
 				height_request = 6
 			};
 			this.append(this.progress_bar);
-		}
 
-		construct
-		{
 			this.notification.connect(this.on_notification);
-			this.action_button.clicked.connect(() => {
-				if (this.current_notification.action_label == "") {
-					return;
-				}
-				this.notification_reply(this.current_notification);
-			});
 		}
 
 		/**

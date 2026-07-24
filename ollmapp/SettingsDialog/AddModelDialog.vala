@@ -434,7 +434,7 @@ namespace OLLMapp.SettingsDialog
 					var focus = root.get_focus();
 					if (focus != null
 					    && focus != this.model_pulldown
-					    && !this.model_pulldown.is_ancestor(focus)) {
+					    && !focus.is_ancestor(this.model_pulldown)) {
 						return;
 					}
 				}
@@ -453,7 +453,7 @@ namespace OLLMapp.SettingsDialog
 						var focus = root.get_focus();
 						if (focus != null
 						    && focus != this.model_pulldown
-						    && !this.model_pulldown.is_ancestor(focus)) {
+						    && !focus.is_ancestor(this.model_pulldown)) {
 							return false;
 						}
 					}

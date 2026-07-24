@@ -1,6 +1,6 @@
 # 2026-07-23 — Android A11y dump must use refresh_async
 
-**Status:** ✔️ applied in `libocwebkit/A11y.vala` — await device ✅
+**Status:** ✅ FIXED — user verified 2026-07-24
 
 **Related:** webkitgtk-android [`docs/bugs/2026-07-23-a11y-walk-gtk-thread-anr.md`](../../subprojects/webkitgtk-android/docs/bugs/2026-07-23-a11y-walk-gtk-thread-anr.md) (**Report for OLLMchat**)
 

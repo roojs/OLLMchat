@@ -1,6 +1,6 @@
 # 2026-07-21 — Browser tool missing UI frames + no waiting on tool-reply LLM round
 
-**Status:** ✔️ agent applied — await user ✅
+**Status:** ✅ FIXED — user verified 2026-07-24
 
 ## Problem
 

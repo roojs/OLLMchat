@@ -1,6 +1,6 @@
 # 2026-07-22 — Android browser tool fails before WebView load
 
-**Status:** ⏳ diagnosis + proposed fix (awaiting 🔷 approval)
+**Status:** ✅ FIXED — user verified 2026-07-24
 
 ## Problem
 

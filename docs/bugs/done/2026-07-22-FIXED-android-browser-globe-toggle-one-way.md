@@ -1,6 +1,6 @@
 # 2026-07-22 — Android browser globe toggle one-way
 
-**Status:** ⏳ fixing
+**Status:** ✅ FIXED — user verified 2026-07-24
 
 ## Problem
 

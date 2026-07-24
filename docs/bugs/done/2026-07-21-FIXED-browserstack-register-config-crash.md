@@ -1,6 +1,6 @@
 # 2026-07-21 — BrowserStack crash on app start (register_config)
 
-**Status:** ✔️ agent fixed — await user ✅
+**Status:** ✅ FIXED — user verified 2026-07-24
 
 ## Problem
 

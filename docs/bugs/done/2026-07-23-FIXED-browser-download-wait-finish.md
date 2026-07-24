@@ -1,6 +1,6 @@
 # Browser download waits until finish
 
-**Status:** ✔️ applied — await device ✅
+**Status:** ✅ FIXED — user verified 2026-07-24
 
 ## Problem
 

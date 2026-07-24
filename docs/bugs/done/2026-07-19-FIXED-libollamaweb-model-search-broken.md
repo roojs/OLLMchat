@@ -1,6 +1,6 @@
 # libollamaweb Add Model search broken (Desktop + Android)
 
-**Status:** ✔️ Applied — await Desktop/Android UI verify
+**Status:** ✅ FIXED — user verified 2026-07-24
 
 **Started:** 2026-07-19
 

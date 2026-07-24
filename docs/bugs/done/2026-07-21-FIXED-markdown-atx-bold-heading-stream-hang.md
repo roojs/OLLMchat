@@ -1,6 +1,6 @@
 # 2026-07-21 — Markdown stream hang on ATX heading starting with `**`
 
-**Status:** ✔️ fixed in tree — await user verify
+**Status:** ✅ FIXED — user verified 2026-07-24
 
 ## Problem
 
