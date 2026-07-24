@@ -33,11 +33,11 @@ namespace OLLMtools.SessionFetch
 		}
 		public override string description { get {
 			return """
-Retrieve stored message text from the current session by reference tag (e.g. user-12, agent-16, tool-19).""";
+Retrieve a stored session message by reference tag, or list every available tag with a one-line preview.""";
 		} }
 		public override string parameter_description { get {
 			return """
-@param reference string [required] Session reference tag such as user-12.""";
+@param reference string Tag to fetch (user-12, agent-16, tool-19, …), or "index" to list all tags.""";
 		} }
 
 		public Tool()

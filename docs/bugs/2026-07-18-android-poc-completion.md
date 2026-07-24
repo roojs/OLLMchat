@@ -18,17 +18,11 @@
 
 ### IME-3 — Spell-correct does not replace typed word
 
-**Status:** ⏳ OPEN — device-verified on EntryPopupTest; still broken; must fix for chat POC
+**Status:** 🚫 PASSED OVER — fix in Knowles GTK IME, not OLLMchat (2026-07-24)
 
-**Expected:** 🔷 Type `TAT` → tap Gboard’s `THAT` → field becomes `THAT`. Leave-field must not double-fill (IME-2).
+**Detail:** [`done/2026-07-19-CLOSED-android-ime-autocomplete-nofill.md`](done/2026-07-19-CLOSED-android-ime-autocomplete-nofill.md)
 
-**Actual:** 🔷 Suggestion tap does not delete/replace the typed prefix; correction does not land.
-
-**Cause:** ✔️ Gboard calls `InputConnection.replaceText(start, end, text)`; our bridge only updates the Android Editable, so GTK still shows the typo until a later finish/sync.
-
-**Tried:** ✔️ Knowles `finishComposingText` Editable≠GTK — late/insufficient. Debug log captured `replaceText(10,13,"rat ")` with GTK still `… tat`.
-
-**Next:** ⏳ 🔷 Apply `replaceText` into GTK on Knowles; re-verify; then ship to chat POC. Detail: [`2026-07-19-android-ime-autocomplete-nofill.md`](2026-07-19-android-ime-autocomplete-nofill.md).
+**Next:** 🚫 Do not implement in this repo; follow Knowles GTK / EntryPopupTest.
 
 ---
 
@@ -74,8 +68,8 @@ Tracked under plans, not here:
 
 ## Suggested order
 
-1. **IME-3** — fix suggestion replace (`TAT`→`THAT`); then ship to chat POC
-2. **C1** — device verify FGS
-3. **U6** — global copy
-4. **T1** — when it regresses badly
+1. **C1** — device verify FGS
+2. **U6** — global copy
+3. **T1** — when it regresses badly
+4. 🚫 **IME-3** — passed over (GTK Knowles)
 5. **W / F1** — feature track (may need shared-code approval)

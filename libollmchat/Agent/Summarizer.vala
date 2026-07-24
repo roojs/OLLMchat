@@ -96,32 +96,38 @@ namespace OLLMchat.Agent
 		}
 
 		/**
-		 * Summarize the completed turn.
+		 * Summarize the previous completed turn (not the latest).
 		 *
-		 * Scans session.messages for the latest user-sent row at run time.
-		 * Builds turn-reference payload, calls the model with tools and
-		 * thinking disabled, streams into a ''summary'' message, and
-		 * validates hash links (one retry on failure).
+		 * Keeps the latest turn raw until a newer turn finishes. Builds
+		 * turn-reference payload, calls the model with tools and thinking
+		 * disabled, streams into a ''summary'' message, and validates hash
+		 * links (one retry on failure).
 		 *
 		 * @param cancellable optional cancel token for the summary request
 		 */
 		public async void run(
 			GLib.Cancellable? cancellable = null)
 		{
-			var user_sent_index = 0;
-			for (int i = this.session.messages.size - 1; i >= 0; i--) {
-				if (this.session.messages.get(i).role == "user-sent") {
-					user_sent_index = i;
-					break;
+			/* Fold the previous completed turn only; keep the latest turn raw. */
+			var last_user_sent = -1;
+			var prev_user_sent = -1;
+			for (var i = this.session.messages.size - 1; i >= 0; i--) {
+				if (this.session.messages.get(i).role != "user-sent") {
+					continue;
 				}
+				if (last_user_sent < 0) {
+					last_user_sent = i;
+					continue;
+				}
+				prev_user_sent = i;
+				break;
 			}
-
-			var turn_end = this.session.messages.size;
-			if (user_sent_index >= turn_end) {
-				GLib.debug("summarize early return no user-sent user_sent_index=%d turn_end=%d",
-					user_sent_index, turn_end);
+			if (prev_user_sent < 0) {
+				GLib.debug("summarize skip first turn only last_user_sent=%d", last_user_sent);
 				return;
 			}
+			var user_sent_index = prev_user_sent;
+			var turn_end = last_user_sent;
 
 			var previous_summary = "";
 			foreach (var msg in this.session.messages) {

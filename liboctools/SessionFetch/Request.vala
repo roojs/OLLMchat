@@ -41,34 +41,70 @@ namespace OLLMtools.SessionFetch
 
 		protected override async string execute_request() throws GLib.Error
 		{
-			if (this.reference == "") {
-				throw new GLib.IOError.INVALID_ARGUMENT("reference parameter is required");
+			var messages = this.agent.chat().agent.session.messages;
+			if (this.reference == "index") {
+				var index_md = "";
+				for (var i = 0; i < messages.size; i++) {
+					var msg = messages.get(i);
+					var preview = msg.content.split("\n")[0];
+					if (preview.length > 100) {
+						preview = preview.substring(0, 100) + "…";
+					}
+					switch (msg.role) {
+						case "user-sent":
+						case "user":
+							index_md += "user-%d: %s\n".printf(i, preview);
+							break;
+
+						case "think-stream":
+							index_md += "think-%d: %s\n".printf(i, preview);
+							break;
+
+						case "content-stream":
+							if (msg.content.strip() == "") {
+								break;
+							}
+							index_md += "agent-%d: %s\n".printf(i, preview);
+							break;
+
+						case "assistant":
+							if (msg.tool_calls.size == 0) {
+								break;
+							}
+							index_md += "tool-%d: (tool call)\n".printf(i);
+							break;
+
+						case "tool":
+							index_md += "tool-%d: %s%s\n".printf(i,
+								msg.name != "" ? msg.name + ": " : "", preview);
+							break;
+					}
+				}
+				return index_md != "" ? index_md : "(no session messages)";
 			}
 
 			var dash = this.reference.last_index_of("-");
-			int index = -1;
-			if (dash < 0 || !int.try_parse(this.reference.substring(dash + 1), out index)) {
-				throw new GLib.IOError.INVALID_ARGUMENT("Invalid reference: " + this.reference);
+			var index = -1;
+			if (dash < 0
+			    || !int.try_parse(this.reference.substring(dash + 1), out index)
+			    || index < 0
+			    || index >= messages.size) {
+				throw new GLib.IOError.INVALID_ARGUMENT("Invalid or out-of-range reference: " + this.reference
+					+ " — call session_fetch with reference \"index\" to list available tags");
 			}
-
-			var messages = this.agent.chat().agent.session.messages;
-			if (index < 0 || index >= messages.size) {
-				throw new GLib.IOError.INVALID_ARGUMENT("Reference out of range: " + this.reference);
-			}
-
 			var msg = messages.get(index);
 			if (msg.role == "tool") {
 				return msg.name + "\n" + msg.content;
 			}
-			if (msg.role == "assistant" && msg.tool_calls.size > 0) {
-				var ret = "";
-				foreach (var tool_call in msg.tool_calls) {
-					ret += OLLMchat.Message.fenced(
-						"json", Json.gobject_to_data(tool_call, null));
-				}
-				return ret;
+			if (msg.role != "assistant" || msg.tool_calls.size == 0) {
+				return msg.content;
 			}
-			return msg.content;
+			var ret = "";
+			foreach (var tool_call in msg.tool_calls) {
+				ret += OLLMchat.Message.fenced(
+					"json", Json.gobject_to_data(tool_call, null));
+			}
+			return ret;
 		}
 	}
 }

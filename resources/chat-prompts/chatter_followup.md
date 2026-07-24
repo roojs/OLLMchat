@@ -7,6 +7,7 @@ The **conversation history summary** below is a concise recap of what happened b
 - If the question is **unrelated** or starts a fresh topic, you may **ignore** the summary and answer from the latest message alone — except you must still obey any `## Mandated (from tool replies)` section if that mandated tool task is still the topic of the latest message.
 
 Markdown links in the summary — such as [#user-1](#user-1), [#think-2](#think-2), [#agent-3](#agent-3), and [#tool-6](#tool-6) — refer to exact stored messages in this session. When you need exact wording, reasoning, assistant text, or tool output, call **session_fetch** with the reference tag (e.g. `user-1`, `agent-3`). Do not assume the summary contains every detail.
+If you do not know which tag to fetch, call **session_fetch** with reference `"index"` first — that returns every available `role-N` tag with a truncated first line.
 
 **`## Mandated (from tool replies)` is binding:**
 - If the summary has this section, treat every **MUST** / **FORBIDDEN** bullet as a hard rule, not a suggestion.
