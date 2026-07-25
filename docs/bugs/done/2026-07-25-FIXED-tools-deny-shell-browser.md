@@ -1,9 +1,9 @@
-# Model denies `run_command` / `browser` despite both being sent
+# FIXED — Model denies `run_command` / `browser` despite both being sent
 
 > Pointer: `docs/bug-fix-process.md` (emoji). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ✔️ applied — ⏳ await ✅ verify
+**Status:** ✅ FIXED — user closed 2026-07-25 (model now accepts browser + CLI)
 
 **Started:** 2026-07-25
 
@@ -132,7 +132,5 @@ Navigating (fetch, search, press) returns an accessibility output of the page.
 
 ## Next
 
-1. ⏳ 🔷 Re-test with gemma4: ask “what tools for commands / browsers?” —
-   expect `run_command` + `browser` (Chrome/Firefox wording) in the reply;
-   ask it to run a harmless `run_command` (e.g. `pwd`).
-2. ⏳ When ✅: move to `docs/bugs/done/` with `FIXED`.
+Archived to `docs/bugs/done/` as FIXED (user closed 2026-07-25 — model
+accepts browser + command line).

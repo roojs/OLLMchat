@@ -1,16 +1,16 @@
-# Chatter summarizes the last turn — lose full previous exchange
+# FIXED — Chatter summarizes the last turn — lose full previous exchange
 
 > Pointer: `docs/bug-fix-process.md` (emoji). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ✔️ applied — ⏳ await ✅ verify
+**Status:** ✅ FIXED — user closed 2026-07-25
 
 **Related:**
 
 - ℹ️ [`docs/plans/2.31-just-ask-summary-history.md`](../plans/2.31-just-ask-summary-history.md)
   / [`2.31.1-chatter-summary-turn-queue.md`](../plans/2.31.1-chatter-summary-turn-queue.md)
-- ℹ️ [`docs/bugs/done/2026-07-14-FIXED-chatter-summary-hang.md`](done/2026-07-14-FIXED-chatter-summary-hang.md)
-- ℹ️ Separate: [`2026-07-24-session-fetch-index-listing.md`](2026-07-24-session-fetch-index-listing.md)
+- ℹ️ [`docs/bugs/done/2026-07-14-FIXED-chatter-summary-hang.md`](2026-07-14-FIXED-chatter-summary-hang.md)
+- ℹ️ Separate: [`docs/bugs/done/2026-07-24-FIXED-session-fetch-index-listing.md`](2026-07-24-FIXED-session-fetch-index-listing.md)
   — `session_fetch` discoverability (not this bug)
 
 ---
@@ -43,5 +43,4 @@ skip when there is only one completed turn.
 
 ## Next
 
-1. ⏳ 🔷 Verify two-turn Chatter: turn 2 outbound includes full turn-1 rows.
-2. ⏳ When ✅: archive under `docs/bugs/done/` with `FIXED`.
+Archived to `docs/bugs/done/` as FIXED (user closed 2026-07-25).

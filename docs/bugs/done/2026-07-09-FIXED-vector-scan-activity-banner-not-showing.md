@@ -8,7 +8,7 @@
 
 **Related:**
 
-- [`docs/plans/2.10.4.30-ACTIVE-startup-and-daemon-status-ui.md`](../plans/2.10.4.30-ACTIVE-startup-and-daemon-status-ui.md) — ActivityBanner + daemon activity wiring
+- [`docs/plans/done/2.10.4.30-DONE-startup-and-daemon-status-ui.md`](../../plans/done/2.10.4.30-DONE-startup-and-daemon-status-ui.md) — ActivityBanner + daemon activity wiring
 - [`docs/plans/done/2.10.4.14-DONE-daemon-scan-update-notification.md`](../plans/done/2.10.4.14-DONE-daemon-scan-update-notification.md) — `event.vector.*` wire format
 - [`docs/plans/done/2.10.4.29-DONE-vector-cli-rpc-migration.md`](../plans/done/2.10.4.29-DONE-vector-cli-rpc-migration.md) — vector queue lives in `ollmfilesd`
 - [`docs/bugs/done/2026-05-15-FIXED-background-scan-ui-sluggish.md`](done/2026-05-15-FIXED-background-scan-ui-sluggish.md) — prior background scan behaviour (pre-RPC daemon)

@@ -1,10 +1,9 @@
-# write_file: disk ok, not indexed → empty file dropdown / no UI refresh
+# FIXED — write_file: disk ok, not indexed → empty file dropdown / no UI refresh
 
 > Pointer: `docs/bug-fix-process.md` (emoji). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ⏳ A + B + C applied; await ✅ verify (cold open during scan →
-Loading… then `total ≥ 1`)
+**Status:** ✅ FIXED — user closed 2026-07-25 (A + B + C applied)
 
 **Started:** 2026-07-25
 
@@ -25,7 +24,7 @@ code fences** count. Prose / 💩 “confirm helper” does **not**.
 | **C** SourceView pull-down on notify | ✔️ | 🔷 yes | ✔️ | `liboccoder/SourceView.vala` |
 | **C** Approvals refresh on notify | ✔️ | 🔷 yes | ✔️ | `liboccoder/Approvals.vala` |
 | 💩 invalidate on every write (not only `to_real`) | n/a | 🚫 not confirmed | 🚫 | Minimal ship remains `to_real` only |
-| **D** SourceView last-line / scroll | separate bug | separate | separate | [`2026-07-25-sourceview-open-shows-only-last-line.md`](2026-07-25-sourceview-open-shows-only-last-line.md) |
+| **D** SourceView last-line / scroll | separate | separate | separate | [`2026-07-25-FIXED-sourceview-open-shows-only-last-line.md`](2026-07-25-FIXED-sourceview-open-shows-only-last-line.md) |
 
 **Git reality check:**
 
@@ -54,7 +53,7 @@ code fences** count. Prose / 💩 “confirm helper” does **not**.
   (agent `code-assistant`, project `/home/alan/gitlive/app.RooTerm`)
 - ℹ️ **Editor open follow-on (Gtk SourceView):** after the file finally
   appeared in the pull-down, opening it showed only the last line — logged in
-  [`2026-07-25-sourceview-open-shows-only-last-line.md`](2026-07-25-sourceview-open-shows-only-last-line.md)
+  [`2026-07-25-FIXED-sourceview-open-shows-only-last-line.md`](2026-07-25-FIXED-sourceview-open-shows-only-last-line.md)
   and summarized under **Problem → D** below.
 - ℹ️ Changed-files / approvals UI: `liboccoder/Approvals.vala` +
   `ProjectManager.review_files` (`fetch_pending_approvals`)
@@ -86,7 +85,7 @@ normally** — only the last line (≈ line 16 / EOF caret) was in view; the res
 of the content felt hidden (scroll/layout). That is a **separate** editor bug,
 tracked in full here:
 
-→ [`2026-07-25-sourceview-open-shows-only-last-line.md`](2026-07-25-sourceview-open-shows-only-last-line.md)
+→ [`2026-07-25-FIXED-sourceview-open-shows-only-last-line.md`](2026-07-25-FIXED-sourceview-open-shows-only-last-line.md)
 
 ### Reproduction (observed)
 
@@ -491,7 +490,4 @@ Next to existing `review_files.refreshed` connect:
 
 ## Next
 
-1. ⏳ 🔷 Verify A/C: mkdir + write → `Project file: yes` + list + Changed-files.
-2. ⏳ 🔷 Cold open during scan → Loading… then `total ≥ 1`.
-3. ⏳ **D** → separate bug log.
-4. ⏳ When all ✅: move to `docs/bugs/done/` with `FIXED`.
+Archived to `docs/bugs/done/` as FIXED (user closed 2026-07-25).

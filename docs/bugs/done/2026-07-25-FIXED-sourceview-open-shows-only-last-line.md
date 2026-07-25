@@ -1,16 +1,16 @@
-# SourceView: open short file shows only last line (others scrolled away)
+# FIXED — SourceView: open short file shows only last line (others scrolled away)
 
 > Pointer: `docs/bug-fix-process.md` (emoji). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ✔️ applied — ⏳ await ✅ verify
+**Status:** ✅ FIXED — user closed 2026-07-25
 
 **Started:** 2026-07-25
 
 **Related:**
 
 - ℹ️ Preceding empty-list / register bugs:
-  [`2026-07-25-write-file-no-project-index-ui.md`](2026-07-25-write-file-no-project-index-ui.md)
+  [`2026-07-25-FIXED-write-file-no-project-index-ui.md`](2026-07-25-FIXED-write-file-no-project-index-ui.md)
   (after a later reopen the file finally appeared in the pull-down; this bug is
   what happened on **open**)
 - ℹ️ Editor: `liboccoder/SourceView.vala` (`open_file`,
@@ -305,5 +305,4 @@ for those messages.
 
 ## Next
 
-1. ⏳ 🔷 Re-test open of `0.1-base-plan.md` — expect top of file, not last line.
-2. ⏳ When ✅: move to `docs/bugs/done/` with `FIXED`.
+Archived to `docs/bugs/done/` as FIXED (user closed 2026-07-25).

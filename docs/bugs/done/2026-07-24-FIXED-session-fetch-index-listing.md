@@ -1,15 +1,15 @@
-# session_fetch: no index listing when the model lacks a tag
+# FIXED — session_fetch: no index listing when the model lacks a tag
 
 > Pointer: `docs/bug-fix-process.md` (emoji). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ✔️ applied — ⏳ await ✅ verify
+**Status:** ✅ FIXED — user closed 2026-07-25
 
 **Started:** 2026-07-24
 
 **Related:**
 
-- ℹ️ Retain-last-turn (separate): [`2026-07-14-chatter-summary-retain-last-turn.md`](2026-07-14-chatter-summary-retain-last-turn.md)
+- ℹ️ Retain-last-turn (separate): [`2026-07-14-FIXED-chatter-summary-retain-last-turn.md`](2026-07-14-FIXED-chatter-summary-retain-last-turn.md)
 - ℹ️ Pman.Ai already has omit/`index`/`*` → one-line listing
   (`Pman.Ai.Tool.session_fetch.js`) — **🚫** do not edit Pman.Ai; port the
   behaviour here only.
@@ -41,5 +41,4 @@ line each about `"index"`.
 
 ## Next
 
-1. ⏳ 🔷 Verify: `"index"` → listing; bad tag → short hint to use `"index"`.
-2. ⏳ When ✅: move to `docs/bugs/done/` with `FIXED`.
+Archived to `docs/bugs/done/` as FIXED (user closed 2026-07-25).
