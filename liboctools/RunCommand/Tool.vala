@@ -49,12 +49,12 @@ namespace OLLMtools.RunCommand
 		}
 		public override string description { 
 			get {
-				var intro = "Run a terminal command in the home directory (or specified working directory) and return the output.";
+				var intro = "You have command-line (shell/terminal) access. Run a terminal command in the home directory (or specified working directory) and return the output.";
 				var fs_perms = """
 File System Permissions:
 - Default working directory is home. Use allow_write with a PATH-style list of absolute directory roots to request writes outside the sandbox defaults; \"no\" or \"project\" (default) keeps the usual read-only host root with only permitted locations writable.""";
 				if (this.project_manager != null && this.project_manager.active_project != null) {
-					intro = "Run a terminal command in the project's root directory (or specified working directory) and return the output.";
+					intro = "You have command-line (shell/terminal) access. Run a terminal command in the project's root directory (or specified working directory) and return the output.";
 					fs_perms = """
 File System Permissions:
 - You have read-write access to the project directory and $HOME/playground. To write elsewhere on the host, set allow_write to a PATH-style list (\":\" on Unix) of absolute directory roots; the user is prompted. Use \"no\" or \"project\" (default) to stay within the project.""";

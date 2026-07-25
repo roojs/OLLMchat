@@ -38,7 +38,8 @@ public class OLLMwebkit.Tool : OLLMchat.Tool.BaseTool, OLLMchat.Tool.UiWidgets
 
 	public override string description { get {
 		return """
-You have control over a web browser for the lifetime of this chat session.
+You have a real web browser for this chat session (WebKit / Chromium-class —
+like Chrome or Firefox), not a fetch-only API.
 Navigating (fetch, search, press) returns an accessibility output of the page.
 
 Actions: fetch, search, press, download, whereami.
