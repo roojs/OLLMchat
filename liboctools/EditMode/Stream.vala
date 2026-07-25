@@ -648,14 +648,12 @@ namespace OLLMtools.EditMode
 		 */
 		private async void sync_and_update_metadata() throws Error
 		{
-			var is_in_project = (this.file.id > 0);
-			
-			if (!is_in_project && this.file.manager.active_project != null) {
-				if (yield this.file.manager.active_project.contains_folder(
-					GLib.Path.get_dirname(this.request.normalized_path)
-				)) {
-					is_in_project = true;
-				}
+			var dir_path = GLib.Path.get_dirname(this.request.normalized_path);
+			var is_in_project = this.file.id > 0;
+			if (!is_in_project && this.file.manager.active_project != null
+				&& (dir_path == this.file.manager.active_project.path
+					|| dir_path.has_prefix(this.file.manager.active_project.path + "/"))) {
+				is_in_project = true;
 			}
 			
 			var change_type = this.request.creating_file ? "added" : "modified";

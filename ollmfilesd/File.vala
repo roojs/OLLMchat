@@ -649,6 +649,11 @@ namespace OLLMfilesd
 				this.manager.active_project
 			);
 			this.manager.active_project.project_files.new_file_added(this);
+			this.manager.notification(new OLLMrpc.Notification() {
+				method = "event.project.invalidate_cache",
+				object_type = "Project",
+				message = this.manager.active_project.path
+			});
 		}
 
 		/**

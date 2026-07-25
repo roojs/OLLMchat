@@ -96,7 +96,9 @@ namespace OLLMfiles
 			var old_n_items = this.items.size;
 			this.items.clear();
 
+			this.loading = true;
 			var response = yield this.project.fetch_files(0, 50, query);
+			this.loading = false;
 			if (response.error != null) {
 				GLib.debug(
 					"refresh failed query=%s error=%s items=%u items_changed=no",

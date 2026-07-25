@@ -123,6 +123,18 @@ namespace OLLMcoder
 			// Hide file dropdown initially (no project selected)
 			this.file_dropdown.visible = false;
 			header_bar.append(this.file_dropdown);
+			this.manager.rpc.notification.connect((notif) => {
+				if (notif.method != "event.project.invalidate_cache") {
+					return;
+				}
+				if (this.manager.active_project == null) {
+					return;
+				}
+				if (notif.message != this.manager.active_project.path) {
+					return;
+				}
+				this.file_dropdown.refresh.begin();
+			});
 			
 			// Spacer to push save button to the right
 			var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
@@ -149,7 +161,7 @@ namespace OLLMcoder
 			
 			// Connect file_selected signal to open files
 			this.approvals.file_selected.connect((file) => {
-				this.open_file.begin(file, null);
+				this.open_file.begin(file);
 			});
 			
 			this.append(header_bar);
@@ -377,7 +389,7 @@ namespace OLLMcoder
 			this.file_dropdown.placeholder_text = "Loading..";
 
 			
-			this.open_file.begin(file, null, (obj, res) => {
+			this.open_file.begin(file, -1, (obj, res) => {
 				this.open_file.end(res);
 				// Unlock source view after file load completes
 				this.source_view.editable = true;
@@ -389,9 +401,9 @@ namespace OLLMcoder
 		 * Open/switch to a file, optionally navigate to a specific line.
 		 * 
 		 * @param file The file to open
-		 * @param line_number Optional line number to navigate to (overrides saved position)
+		 * @param line_number Line to navigate to (0-based); use -1 to restore saved cursor/scroll
 		 */
-		public async void open_file(OLLMfiles.File file, int? line_number = null)
+		public async void open_file(OLLMfiles.File file, int line_number = -1)
 		{
 			// Save current file state if switching away
 			if (this.current_file != null && this.current_file != file) {
@@ -473,14 +485,19 @@ namespace OLLMcoder
 				this.search_entry.text = "";
 			}
 			this.update_search_results();
-			
-			// Restore or set cursor position
-			if (line_number != null) {
-				this.navigate_to_line(line_number);
-			} else {
+
+			GLib.Idle.add(() => {
+				if (this.current_file != file) {
+					return false;
+				}
+				if (line_number > -1) {
+					this.navigate_to_line(line_number);
+					return false;
+				}
 				this.restore_cursor_position(file);
 				this.restore_scroll_position(file);
-			}
+				return false;
+			});
 			
 			// Update last_viewed timestamp when file is actually opened (saved to database)
 			var now = new DateTime.now_local();
@@ -523,10 +540,11 @@ namespace OLLMcoder
 			var buffer = this.source_view.buffer;
 			
 			Gtk.TextIter iter;
-			if (buffer.get_iter_at_line(out iter, line_number)) {
-				buffer.place_cursor(iter);
-				this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.5);
+			if (!buffer.get_iter_at_line(out iter, line_number)) {
+				return;
 			}
+			buffer.place_cursor(iter);
+			this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.5);
 		}
 		
 		/**
@@ -647,16 +665,18 @@ namespace OLLMcoder
 			var buffer = this.source_view.buffer;
 			
 			// Restore cursor position and scroll into view
-			if (file.cursor_line >= 0 && file.cursor_offset >= 0) {
-				// Use navigate_to_line to handle line navigation and scrolling
-				this.navigate_to_line(file.cursor_line);
-				
-				// Then adjust the offset (character position within the line)
-				Gtk.TextIter iter;
-				if (buffer.get_iter_at_line_offset(out iter, file.cursor_line, file.cursor_offset)) {
-					buffer.place_cursor(iter);
-				}
+			if (file.cursor_line < 0 || file.cursor_offset < 0) {
+				return;
 			}
+			// Use navigate_to_line to handle line navigation and scrolling
+			this.navigate_to_line(file.cursor_line);
+			
+			// Then adjust the offset (character position within the line)
+			Gtk.TextIter iter;
+			if (!buffer.get_iter_at_line_offset(out iter, file.cursor_line, file.cursor_offset)) {
+				return;
+			}
+			buffer.place_cursor(iter);
 		}
 		
 		/**
@@ -664,18 +684,19 @@ namespace OLLMcoder
 		 */
 		private void restore_scroll_position(OLLMfiles.File file)
 		{
-			if (file.scroll_position > 0) {
-				// Use Idle to restore scroll position after layout is complete
-				GLib.Idle.add(() => {
-					var buffer = this.source_view.buffer;
-					Gtk.TextIter iter;
-					if (buffer.get_iter_at_line(out iter, file.scroll_position)) {
-						// Scroll to the first visible line
-						this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.0);
-					}
-					return false; // Only run once
-				});
-			}
+			var scroll_line = file.scroll_position > 0 ? file.scroll_position : 0;
+			GLib.Idle.add(() => {
+				if (this.current_file != file) {
+					return false;
+				}
+				var buffer = this.source_view.buffer;
+				Gtk.TextIter iter;
+				if (!buffer.get_iter_at_line(out iter, scroll_line)) {
+					return false;
+				}
+				this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.0);
+				return false;
+			});
 		}
 		
 		/**

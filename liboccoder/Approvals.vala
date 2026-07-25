@@ -137,6 +137,12 @@ namespace OLLMcoder
 					this.clear_selection();
 				}
 			});
+			this.project_manager.rpc.notification.connect((notif) => {
+				if (notif.method != "event.project.invalidate_cache") {
+					return;
+				}
+				this.project_manager.review_files.refresh.begin();
+			});
 			
 			// Set up motion controllers on next_button
 			this.button_motion = new Gtk.EventControllerMotion();

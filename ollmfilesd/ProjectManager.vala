@@ -82,6 +82,23 @@ namespace OLLMfilesd
 		 * Emitted when no folder {@link Folder.read_dir} pass is active.
 		 */
 		public signal void scan_idle ();
+
+		/**
+		 * Yield until no folder {@link Folder.read_dir} pass is active.
+		 */
+		public async void wait_scan_idle()
+		{
+			if (this.scanning.size == 0) {
+				return;
+			}
+			SourceFunc resume = wait_scan_idle.callback;
+			var hid = 0UL;
+			hid = this.scan_idle.connect(() => {
+				this.disconnect(hid);
+				resume();
+			});
+			yield;
+		}
 		
 		/**
 		 * Currently active project (folder with is_project = true).

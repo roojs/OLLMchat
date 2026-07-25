@@ -335,12 +335,12 @@ namespace OLLMtools.WriteFile
 				throw new GLib.IOError.FAILED(msg);
 			}
 
-			var is_in_project = (this.file.id > 0);
-			if (!is_in_project && project_manager.active_project != null) {
-				var dir_path = GLib.Path.get_dirname(this.normalized_path);
-				if (yield project_manager.active_project.contains_folder(dir_path)) {
-					is_in_project = true;
-				}
+			var dir_path = GLib.Path.get_dirname(this.normalized_path);
+			var is_in_project = this.file.id > 0;
+			if (!is_in_project && project_manager.active_project != null
+				&& (dir_path == project_manager.active_project.path
+					|| dir_path.has_prefix(project_manager.active_project.path + "/"))) {
+				is_in_project = true;
 			}
 			// For added files: write to disk first, then register (index)
 			this.file.is_need_approval = true;
