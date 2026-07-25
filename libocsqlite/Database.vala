@@ -173,7 +173,7 @@ namespace SQ {
 		 */
 		public void backupDB()
 		{
-			//GLib.debug("disk backup requested");
+			GLib.debug("disk backup requested");
 			if (new GLib.DateTime.now_local().to_unix() - this.last_backup > 20) {
 				if (this.countdown_id != 0) {
 					GLib.Source.remove(this.countdown_id);

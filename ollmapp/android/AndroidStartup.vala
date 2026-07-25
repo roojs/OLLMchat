@@ -104,8 +104,7 @@ namespace OLLMapp
 				this.window.startup_status_label.label = "Preparing chat history…";
 
 				try {
-					AndroidApplication.ensure_app_data_directories (
-						this.window.app.data_dir);
+					AndroidApplication.ensure_app_data_directories(this.window.app.data_dir);
 				} catch (GLib.Error e) {
 					GLib.warning ("AndroidStartup: data dirs: %s", e.message);
 				}
