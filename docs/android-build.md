@@ -429,7 +429,7 @@ application target, because that path needs `android_exe_type`.
    provides `webkitgtk-android-1` (Meson subproject + `override_dependency`);
    APK Java host classes are installed via sibling
    `scripts/android/install-webview-java.sh` from `install_poc_java` in
-   `scripts/android/build-pixiewood-apk.sh` (see [`5.0.2`](plans/5.0.2-android-webkit-control.md)).
+   `scripts/android/build-pixiewood-apk.sh` (see [`5.0.2`](plans/done/5.0.2-DONE-android-webkit-control.md)).
 5. Reintroduce larger desktop features only after the app launches and basic
    chat works reliably on device.
 
