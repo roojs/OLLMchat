@@ -752,7 +752,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 	/**
 	 * Apply fill map via {@link A11y}.
 	 *
-	 * @param fields press-ref id → text
+	 * @param fields fill key (HTML ''name='' or ''id='') → text
 	 * @throws GLib.Error when fill fails
 	 */
 	public async void fill(Gee.HashMap<string, string> fields) throws GLib.Error

@@ -66,6 +66,17 @@ public class OLLMwebkit.A11y : GLib.Object
 	}
 
 	/**
+	 * HTML form ''name='' (or ''id='' when name is missing) → child-index path
+	 * from the application root (from the last dump; same path shape as
+	 * {@link press_routes} values).
+	 */
+	public Gee.HashMap<string, Gee.ArrayList<int>> html_names {
+		get;
+		private set;
+		default = new Gee.HashMap<string, Gee.ArrayList<int>>();
+	}
+
+	/**
 	 * Host widget whose toplevel is presented before keyboard fill.
 	 */
 	public Gtk.Widget host { get; set; }
@@ -109,10 +120,10 @@ public class OLLMwebkit.A11y : GLib.Object
 	}
 
 	/**
-	 * Fill press-refs (set_text_contents when available, else focus + keyboard).
+	 * Fill fields by key from the last dump (set_text_contents when available, else focus + keyboard).
 	 *
-	 * @param fields press-ref id (string key) → text
-	 * @throws GLib.Error when a ref is missing or input fails
+	 * @param fields fill key (HTML ''name='' or ''id='' from ''(^fill:KEY)'') → text
+	 * @throws GLib.Error when a key is missing or input fails
 	 */
 	public async void fill(Gee.HashMap<string, string> fields) throws GLib.Error
 	{
@@ -238,6 +249,7 @@ public class OLLMwebkit.A11y : GLib.Object
 		parse.walk();
 		this.press_routes = parse.press_routes;
 		this.press_labels = parse.press_labels;
+		this.html_names = parse.html_names;
 
 		if (title == "") {
 			title = walk_root.get_name() != null ? walk_root.get_name() : "";
@@ -250,8 +262,8 @@ public class OLLMwebkit.A11y : GLib.Object
 	/**
 	 * Worker / UI-thread body for {@link fill}.
 	 *
-	 * @param fields press-ref id → text
-	 * @throws GLib.Error when a ref is missing or input fails
+	 * @param fields fill key → text
+	 * @throws GLib.Error when a key is missing or input fails
 	 */
 	private void fill_sync(Gee.HashMap<string, string> fields) throws GLib.Error
 	{
@@ -286,12 +298,11 @@ public class OLLMwebkit.A11y : GLib.Object
 		GLib.Thread.usleep(100000);
 
 		foreach (var key in fields.keys) {
-			var press_id = int.parse(key);
-			if (press_id <= 0 || !this.press_routes.has_key(press_id)) {
-				throw new GLib.IOError.INVALID_ARGUMENT("Unknown fill press-ref %s", key);
+			if (!this.html_names.has_key(key)) {
+				throw new GLib.IOError.INVALID_ARGUMENT("Unknown fill key %s", key);
 			}
 			var acc = app;
-			foreach (var index in this.press_routes.get(press_id)) {
+			foreach (var index in this.html_names.get(key)) {
 				acc = acc.get_child_at_index(index);
 			}
 			if (acc.get_n_actions() > 0) {

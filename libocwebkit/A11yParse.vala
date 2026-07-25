@@ -36,41 +36,66 @@ public class OLLMwebkit.A11yNode : GLib.Object
 	public string display_role { get; set; default = ""; }
 	public string uri { get; set; default = ""; }
 	public int press_id { get; set; default = 0; }
+	/**
+	 * HTML ''name='' (else ''id='') for fillable fields; empty when not fillable.
+	 */
+	public string fill_key { get; set; default = ""; }
 	public bool heading { get; set; default = false; }
 	public bool pressable { get; set; default = false; }
 
 	/**
-	 * Content fragment for this node (heading, pressable, or plain text).
+	 * Content fragment for this node (heading, fillable, pressable, or plain text).
 	 */
 	public string to_string()
 	{
 		if (this.heading) {
-			return @"### $(this.label)";
+			return "### " + this.label;
+		}
+		if (this.fill_key != "") {
+			var loc = "{" + this.x.to_string() + "," + this.y.to_string() + "}";
+			var marker = "[" + this.label + "](^fill:" + this.fill_key + ")" + loc;
+			if (this.value != "" && this.display_role != "link") {
+				return marker + " = " + this.value;
+			}
+			return marker;
 		}
 		if (!this.pressable) {
 			return this.label;
 		}
+		var press_loc = "{" + this.x.to_string() + "," + this.y.to_string() + "}";
+		var press_marker = "[" + this.label + "](^press:" + this.press_id.to_string() + ")" + press_loc;
 		if (this.value != "" && this.display_role != "link") {
-			return @"[$(this.label)](^press:$(this.press_id)){$(this.x),$(this.y)} = $(this.value)";
+			return press_marker + " = " + this.value;
 		}
-		return @"[$(this.label)](^press:$(this.press_id)){$(this.x),$(this.y)}";
+		return press_marker;
 	}
 
 	/**
-	 * References line for a pressable, or empty.
+	 * References line for a fillable or pressable, or empty.
 	 */
 	public string to_ref()
 	{
+		if (this.fill_key != "") {
+			if (this.value != "") {
+				return "(^fill:" + this.fill_key + "): [" + this.display_role + "] "
+					+ this.label + " = " + this.value + "\n";
+			}
+			return "(^fill:" + this.fill_key + "): [" + this.display_role + "] "
+				+ this.label + "\n";
+		}
 		if (!this.pressable) {
 			return "";
 		}
 		if (this.uri != "") {
-			return @"(^press:$(this.press_id)): [$(this.label)]($(this.uri))\n";
+			return "(^press:" + this.press_id.to_string() + "): [" + this.label + "]("
+				+ this.uri + ")\n";
 		}
 		if (this.value != "") {
-			return @"(^press:$(this.press_id)): [$(this.display_role)] $(this.label) = $(this.value)\n";
+			return "(^press:" + this.press_id.to_string() + "): [" + this.display_role + "] "
+				+ this.label + " = " + this.value + "\n";
 		}
-		return @"(^press:$(this.press_id)): [$(this.display_role)] $(this.label)\n";
+		return "(^press:" + this.press_id.to_string() + "): [" + this.display_role + "] "
+			+ this.label + "\n";
 	}
 }
 
@@ -124,6 +149,17 @@ public class OLLMwebkit.A11yParse : GLib.Object
 		get;
 		private set;
 		default = new Gee.HashMap<int, string>();
+	}
+
+	/**
+	 * HTML form ''name='' (or ''id='' when name is missing) → child-index path
+	 * from the application root to that field (ints are successive
+	 * ''get_child_at_index'' steps; same path shape as {@link press_routes} values).
+	 */
+	public Gee.HashMap<string, Gee.ArrayList<int>> html_names {
+		get;
+		private set;
+		default = new Gee.HashMap<string, Gee.ArrayList<int>>();
 	}
 
 	/**
@@ -334,6 +370,20 @@ public class OLLMwebkit.A11yParse : GLib.Object
 		label = string.joinv(" ", GLib.Regex.split_simple("\\s+", label)).strip();
 		value = string.joinv(" ", GLib.Regex.split_simple("\\s+", value)).strip();
 
+		var fill_key = "";
+		if (editable && attrs != null) {
+			var html_name = attrs.get("name");
+			if (html_name != null && html_name != "") {
+				fill_key = html_name;
+			}
+			if (fill_key == "") {
+				var html_id = attrs.get("id");
+				if (html_id != null && html_id != "") {
+					fill_key = html_id;
+				}
+			}
+		}
+
 		var skip_emit = false;
 		switch (role_name) {
 			case "application":
@@ -354,11 +404,12 @@ public class OLLMwebkit.A11yParse : GLib.Object
 			is_pressable = false;
 		}
 
-		if (!is_pressable && !skip_emit && !is_heading && !is_text && child_count <= 0) {
+		if (!is_pressable && fill_key == "" && !skip_emit && !is_heading && !is_text && child_count <= 0) {
 			is_text = true;
 		}
 
-		if (is_pressable || (!skip_emit && (is_heading || is_text))) {
+		// Fillables use (^fill:KEY) only — not (^press:N). Prefer name, else id.
+		if (fill_key != "" || is_pressable || (!skip_emit && (is_heading || is_text))) {
 			var ext = acc.get_extents(CoordType.WINDOW);
 			var node = new A11yNode() {
 				x = ext.x,
@@ -367,9 +418,15 @@ public class OLLMwebkit.A11yParse : GLib.Object
 				value = value,
 				display_role = display_role,
 				heading = is_heading,
-				pressable = is_pressable
+				pressable = is_pressable && fill_key == "",
+				fill_key = fill_key
 			};
-			if (is_pressable) {
+			if (fill_key != "") {
+				if (!this.html_names.has_key(fill_key)) {
+					this.html_names.set(fill_key, node_route);
+				}
+			}
+			if (node.pressable) {
 				node.press_id = this.next_press;
 				this.next_press++;
 				this.press_routes.set(node.press_id, node_route);

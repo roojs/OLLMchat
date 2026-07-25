@@ -43,7 +43,7 @@ Script lines (one action each; # comments ignored):
   search <terms>
   whereami
   press #<n>
-  fill #<n>=<text>
+  fill <key>=<text>
 
 After each navigation/fill/press: settle then print page output.
 
@@ -223,12 +223,9 @@ Examples:
 				case "fill":
 					var eq = rest.index_of_char('=');
 					if (eq < 1) {
-						throw new GLib.IOError.INVALID_ARGUMENT("fill needs #<n>=<text>, got: %s", rest);
+						throw new GLib.IOError.INVALID_ARGUMENT("fill needs <key>=<text>, got: %s", rest);
 					}
 					var fill_tok = rest.substring(0, eq).strip();
-					if (fill_tok.has_prefix("#")) {
-						fill_tok = fill_tok.substring(1);
-					}
 					var fill_map = new Gee.HashMap<string, string>();
 					fill_map.set(fill_tok, rest.substring(eq + 1));
 					yield stack.primary.fill(fill_map);

@@ -46,15 +46,16 @@ Actions: fetch, search, press, download, whereami.
 
 Default output (format "a11y"):
   # Page → URL / Title
-  ## Content — layout by screen position (same y shares a line). Pressables as
-    [label](^press:N){x,y}
-  ## References — (^press:N): role, label; links as [text](url); values when
-    editable fields expose them
+  ## Content — layout by screen position (same y shares a line).
+    Fillables: [label](^fill:KEY){x,y}  (KEY = HTML name= or id=)
+    Pressables: [label](^press:N){x,y}
+  ## References — (^fill:KEY) / (^press:N): role, label; links as [text](url);
+    values when editable fields expose them
 
 Once you have output, prefer press on a ref from that output over fetch with a
 hand-copied URL when the control is already listed. fill lets you fill form
-fields and is used alongside action press (not a separate action). Prefer
-format "a11y" (html/markdown may be unavailable).
+fields by KEY from (^fill:KEY) alongside action press (not a separate action).
+Prefer format "a11y" (html/markdown may be unavailable).
 
 Typical flow: search or fetch → read Content + References → press (+ fill) →
 read output → repeat → download if needed.""";
@@ -75,10 +76,10 @@ read output → repeat → download if needed.""";
 @param url {string} [optional] Absolute http(s) URL. Required for fetch or download. Do not send with press.
 @param query {string} [optional] Required for search: search terms (not a URL).
 @param press {integer} [optional] Required for press: N from [label](^press:N) / References in the last a11y output.
-@param fill {object} [optional] Optional with action press: map of press-ref id → text
-  (e.g. {"1": "site:example.com notes"}). Keys are press-ref ids from the a11y
-  output, not HTML name attributes. Fields are typed, then the press runs; the
-  tool result is the page after the press.
+@param fill {object} [optional] Optional with action press: map of fill KEY → text
+  (e.g. {"q": "site:example.com notes"}). Keys are from (^fill:KEY) in the a11y
+  output (HTML name= attribute, or id= if name is missing) — not press-ref ids.
+  Fields are typed, then the press runs; the tool result is the page after the press.
 @param format {string} [optional] For fetch, search, press, whereami: "a11y" (default — Content + References; needed for press/fill), "html", or "markdown". Prefer a11y.""";
 	} }
 
