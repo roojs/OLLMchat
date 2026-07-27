@@ -61,7 +61,7 @@
 
 Tracked under plans, not here:
 
-- ℹ️ W1–W3: [`5.0-ACTIVE-webkit-control.md`](../plans/5.0-ACTIVE-webkit-control.md), [`5.0.1`](../plans/done/5.0.1-DONE-windows-webkit-accessibility.md), [`5.0.2`](../plans/done/5.0.2-DONE-android-webkit-control.md)
+- ℹ️ W1–W3: [`5.0-webkit-control.md`](../plans/5.0-webkit-control.md), [`5.0.1`](../plans/done/5.0.1-DONE-windows-webkit-accessibility.md), [`5.0.2`](../plans/done/5.0.2-DONE-android-webkit-control.md)
 - ⏳ 🔷 F1 — file / attachment pipeline on input
 
 ---

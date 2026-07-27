@@ -362,6 +362,7 @@ namespace OLLMfiles
 			var files = (Gee.ArrayList<File>) response.result;
 			if (files.size > 0) {
 				this.copy_from((File) files.get(0), {
+					"manager",
 					"buffer",
 					"parent",
 					"cursor-line",
@@ -499,6 +500,7 @@ namespace OLLMfiles
 			var files = (Gee.ArrayList<File>) response.result;
 			if (files.size > 0) {
 				this.copy_from((File) files.get(0), {
+					"manager",
 					"buffer",
 					"parent",
 					"cursor-line",

@@ -492,17 +492,6 @@ namespace OLLMtools.EditMode
 				return;
 			}
 			
-			var project_manager = this.file.manager;
-			var normalized_path = this.request.normalized_path;
-			var is_in_project = (this.file.id > 0);
-			
-			if (!is_in_project && project_manager.active_project != null) {
-				var dir_path = GLib.Path.get_dirname(normalized_path);
-				if (yield project_manager.active_project.contains_folder(dir_path)) {
-					is_in_project = true;
-				}
-			}
-			
 			this.file.manager.buffer_provider.create_buffer(this.file);
 			
 			// V2: no client FileHistory pre-commit; daemon records on register/write

@@ -212,9 +212,21 @@ Don't forget to close it.
 			}
 			var norm = this.normalize_file_path (this.file_path);
 			var project_manager = ((Tool) this.tool).project_manager;
-			var is_in_project = project_manager.file_cache.has_key(norm);
+			var in_index = project_manager.file_cache.has_key(norm);
+			var is_in_project = in_index;
+			if (!is_in_project && project_manager.active_project != null) {
+				var dir_path = GLib.Path.get_dirname(norm);
+				if (dir_path == project_manager.active_project.path
+					|| dir_path.has_prefix(project_manager.active_project.path + "/")) {
+					is_in_project = true;
+				}
+			}
+			var status = "will be created or is outside index";
+			if (is_in_project) {
+				status = in_index ? "exists" : "will be created";
+			}
 			return "Edit mode activated for file: " + norm + "\n"
-				+ "File status: " + (is_in_project ? "exists" : "will be created or is outside index") + "\n"
+				+ "File status: " + status + "\n"
 				+ "Project file: " + (is_in_project ? "yes (auto-approved)" : "no (permission required)");
 		}
 		

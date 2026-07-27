@@ -334,10 +334,30 @@ namespace OLLMfilesd
 								id = -1
 							};
 						}
+						var change_type = file.id < 0 ? "added" : "modified";
 						if (file.id < 0) {
 							yield file.to_real();
 						}
+						if (change_type == "modified" && this.manager.db != null) {
+							file.is_need_approval = true;
+							file.last_change_type = "modified";
+							var file_history = new FileHistory(
+								this.manager.db,
+								file,
+								"modified",
+								new GLib.DateTime.now_local()
+							);
+							yield file_history.commit();
+							file.saveToDB(this.manager.db, null, false);
+						}
 						yield file.realize(p);
+						if (change_type == "modified") {
+							this.manager.notification(new OLLMrpc.Notification() {
+								method = "event.project.invalidate_cache",
+								object_type = "Project",
+								message = this.manager.active_project.path
+							});
+						}
 						break;
 					}
 				}
@@ -640,6 +660,16 @@ namespace OLLMfilesd
 			parent_folder.children.append(this);
 			this.manager.buffer_provider.create_buffer(this);
 			if (this.manager.db != null) {
+				this.saveToDB(this.manager.db, null, false);
+				this.is_need_approval = true;
+				this.last_change_type = "added";
+				var file_history = new FileHistory(
+					this.manager.db,
+					this,
+					"added",
+					new GLib.DateTime.now_local()
+				);
+				yield file_history.commit();
 				this.saveToDB(this.manager.db, null, false);
 			}
 			if (this.manager.db == null) {
