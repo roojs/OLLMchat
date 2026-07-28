@@ -40,6 +40,9 @@
     <file>chatter_followup.md</file>
     <file>coder_followup.md</file>
   </gresource>
+  <gresource prefix="/pi-prompts">
+    <file>initial.md</file>
+  </gresource>
   <gresource prefix="/tools">
     <file>huggingface-help.md</file>
   </gresource>

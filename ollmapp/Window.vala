@@ -507,6 +507,11 @@ namespace OLLMapp
 			// Register CodeAssistant agent
 			var code_assistant = new OLLMcoder.AgentFactory(this.project_manager);
 			this.history_manager.agent_factories.set(code_assistant.name, code_assistant);
+			code_assistant.register_config(app.config, this.history_manager.tools);
+
+			var agent_pi = new OLLMcoder.AgentPi.Factory(this.project_manager);
+			this.history_manager.agent_factories.set(agent_pi.name, agent_pi);
+			agent_pi.register_config(app.config, this.history_manager.tools);
 
 			// Register SkillRunner (Conductor) agent: factory creates SkillManager from directories
 			// big FIXME - we will need t change this.
@@ -517,6 +522,7 @@ namespace OLLMapp
 					
 			var skill_runner = new OLLMcoder.Skill.Factory(this.project_manager, skills_dirs, "");
 			this.history_manager.agent_factories.set(skill_runner.name, skill_runner);
+			skill_runner.register_config(app.config, this.history_manager.tools);
 
 			this.register_default_agents();
 

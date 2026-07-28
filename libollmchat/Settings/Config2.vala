@@ -100,6 +100,16 @@ namespace OLLMchat.Settings
 		 * serialized back later when the type is registered.
 		 */
 		public Gee.Map<string, Json.Node> tools_unregistered { get; set; default = new Gee.HashMap<string, Json.Node>(); }
+
+		/**
+		 * Map of agent factory id → {@link AgentConfig}.
+		 *
+		 * Keys such as ''agent-pi'', ''just-ask''. Missing key means no
+		 * per-agent forbidden overrides.
+		 */
+		public Gee.Map<string, AgentConfig> agents {
+			get; set; default = new Gee.HashMap<string, AgentConfig>();
+		}
 		
 		/**
 		 * Static registry of key → GType for deserialization.
@@ -297,6 +307,15 @@ namespace OLLMchat.Settings
 				case "tools-unregistered":
 					// Exclude tools_unregistered from serialization - it's already included in "tools"
 					return null;
+
+				case "agents":
+					var agents_obj = new Json.Object();
+					foreach (var entry in this.agents.entries) {
+						agents_obj.set_member(entry.key, Json.gobject_serialize(entry.value));
+					}
+					var agents_node = new Json.Node(Json.NodeType.OBJECT);
+					agents_node.set_object(agents_obj);
+					return agents_node;
 					
 				case "loaded":
 					// Exclude loaded flag from serialization (it's metadata, not config data)
@@ -410,6 +429,22 @@ namespace OLLMchat.Settings
 					// Return the tools map as the value
 					value = Value(typeof(Gee.Map));
 					value.set_object(this.tools);
+					return true;
+
+				case "agents":
+					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
+						break;
+					}
+					var agents_obj = property_node.get_object();
+					agents_obj.foreach_member((object, key, node) => {
+						var agent_cfg = Json.gobject_deserialize(typeof(AgentConfig), node) as AgentConfig;
+						if (agent_cfg == null) {
+							return;
+						}
+						this.agents.set(key, agent_cfg);
+					});
+					value = Value(typeof(Gee.Map));
+					value.set_object(this.agents);
 					return true;
 			}
 			

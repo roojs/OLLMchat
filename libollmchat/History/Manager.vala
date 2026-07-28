@@ -191,6 +191,7 @@ namespace OLLMchat.History
 			// Register JustAsk agent (always available as default)
 			var just_ask_agent = new Agent.JustAskFactory();
 			this.agent_factories.set("just-ask", just_ask_agent);
+			just_ask_agent.register_config(this.config, this.tools);
 
 			this.session = new EmptySession(this);
 			//FIXME = tjos emeds removing

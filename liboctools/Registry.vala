@@ -80,9 +80,11 @@ namespace OLLMtools
 		{
 			// Register standard liboctools tools with project_manager
 			manager.register_tool(new ReadFile.Tool(project_manager));
+			manager.register_tool(new ReadFile.Read(project_manager));
 			manager.register_tool(new RunCommand.Tool(project_manager));
 			manager.register_tool(new WebFetch.Tool(project_manager));
 			manager.register_tool(new EditMode.Tool(project_manager));
+			manager.register_tool(new EditMode.Write(project_manager));
 			manager.register_tool(new WriteFile.Tool(project_manager));
 			manager.register_tool(new GoogleSearch.Tool(project_manager));
 			manager.register_tool(new CodebaseSearch.CodebaseSearchTool(project_manager));

@@ -39,8 +39,10 @@ namespace OLLMapp
 		public void register_default_agents ()
 		{
 			if (!this.history_manager.agent_factories.has_key("chatter")) {
-				this.history_manager.agent_factories.set(
-					"chatter", new OLLMchat.Chatter.Factory());
+				var chatter = new OLLMchat.Chatter.Factory();
+				this.history_manager.agent_factories.set("chatter", chatter);
+				chatter.register_config(
+					this.history_manager.config, this.history_manager.tools);
 			}
 		}
 

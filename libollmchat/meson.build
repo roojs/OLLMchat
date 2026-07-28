@@ -110,6 +110,7 @@ resource_dirs = [
   '../resources/skill-prompts',
   '../resources/skills',
   '../resources/chat-prompts',
+  '../resources/pi-prompts',
   '../resources/tools'
 ]
 
@@ -164,6 +165,7 @@ ollmchat_ollama_src = files([
   'Settings/ConnectionModels.vala',
   'Settings/Config2.vala',
   'Settings/BaseToolConfig.vala',
+  'Settings/AgentConfig.vala',
   'Settings/RequiresModelsInterface.vala',
   'Settings/SearchResults.vala',
   'OllmError.vala',  # Must come early - used by many files

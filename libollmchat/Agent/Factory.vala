@@ -208,20 +208,48 @@ namespace OLLMchat.Agent
 		}
 		
 		/**
-		 * Configures tools for the chat call.
-		 * 
-		 * Phase 3: Tools are stored on Manager, not Client. Agents should get tools
-		 * from Manager and add them to Chat via call.add_tool().
-		 * 
-		 * Default implementation does nothing. Subclasses should override to add
-		 * tools from Manager to the Chat call.
-		 * 
+		 * Builds the tool map for a chat call.
+		 *
+		 * Includes manager tools that are active and not listed in this agent's
+		 * {@link OLLMchat.Settings.AgentConfig.forbidden} list.
+		 *
 		 * @param call The Chat call to configure tools for
 		 */
 		public virtual void configure_tools(OLLMchat.Call.ChatBase call)
 		{
-			// Default implementation: no tools added
-			// Subclasses should override to add tools from Manager to Chat
+			call.tools.clear();
+			var manager_tools = call.agent.session.manager.tools;
+			var config = call.agent.session.manager.config;
+			foreach (var entry in manager_tools.entries) {
+				if (!entry.value.active) {
+					continue;
+				}
+				if (config.agents.has_key(this.name)
+						&& config.agents.get(this.name).forbidden.contains(entry.key)) {
+					continue;
+				}
+				call.tools.set(entry.key, entry.value);
+			}
+		}
+
+		/**
+		 * Seed per-agent config if missing; subclasses may assert required tools.
+		 *
+		 * Default forbids Pi-facing ''write'' / ''read''. Override to change.
+		 *
+		 * @param config application config
+		 * @param tools manager tool map (after fill_tools when asserts need them)
+		 */
+		public virtual void register_config(
+			OLLMchat.Settings.Config2 config,
+			Gee.Map<string, OLLMchat.Tool.BaseTool> tools
+		)
+		{
+			if (!config.agents.has_key(this.name)) {
+				config.agents.set(this.name, new OLLMchat.Settings.AgentConfig() {
+					forbid = "write,read"
+				});
+			}
 		}
 		
 		/**
