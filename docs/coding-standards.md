@@ -101,33 +101,48 @@ Reserve single-line `/** ... */` only for trivial, self-explanatory cases where 
 
 ## String Interpolation <!-- section: string-interpolation -->
 
-**IMPORTANT:** Do NOT use `@"` string interpolation unless explicitly asked. Use normal string concatenation instead.
+**IMPORTANT:** Do NOT use `@"` string interpolation for ordinary one-line messages
+unless explicitly asked. Use normal string concatenation with `+` instead.
 
-**Exception:** Multi-line strings for usage/help text, error messages, or documentation may use `@"""` (triple-quoted string interpolation) for better readability.
+**CRITICAL — multi-line prose / prompts / help:** Do **not** assemble a
+multi-line block by chaining `"…\n" + "…\n" + …` literal fragments. That pattern
+is forbidden for usage text, system-prompt sections, error blurbs, and similar
+prose. Use `@"""` … `"""` (triple-quoted interpolation) instead; embed dynamics
+with `$(…)`.
 
-**Bad:**
+**Exception (when `@"""` is required, not optional):** Multi-line strings for
+usage/help text, system or tool prompt sections, error messages, or documentation.
+
+**Bad (one-line `@"`):**
 ```vala
 var message = @"Error: Tool '$tool_name' not found";
 ```
 
-**Good:**
+**Good (one-line concatenation):**
 ```vala
 var message = "Error: Tool '" + tool_name + "' not found";
 ```
 
-**Also Good (exception for multi-line usage/help text):**
+**Bad (multi-line prose via `+` of `"…\n"` fragments — forbidden):**
 ```vala
-var usage = @"Usage: $(args[0]) [OPTIONS] <folder> <query>
+return "## Skills\n\n"
+	+ "The following skills provide specialized instructions.\n"
+	+ "Use the read tool when the task matches.\n\n"
+	+ "<available_skills>\n"
+	+ string.joinv("\n", blocks) + "\n"
+	+ "</available_skills>\n";
+```
 
-Search indexed codebase using semantic vector search.
+**Good (same content with `@"""`):**
+```vala
+return @"## Skills
 
-Arguments:
-  folder                 Folder path to search within (required)
-  query                  Search query text (required)
+The following skills provide specialized instructions.
+Use the read tool when the task matches.
 
-Options:
-  -d, --debug          Enable debug output
-  -j, --json           Output results as JSON
+<available_skills>
+$(string.joinv("\n", blocks))
+</available_skills>
 ";
 ```
 
@@ -1418,6 +1433,9 @@ var result = lines.str;
 ```vala
 var result = "Hello" + " " + "World";
 ```
+
+**Also Good (multi-line prose / prompts — use `@"""`, not a `+` chain of `"…\n"`):**
+see **String Interpolation**.
 
 **Also Good (reading stdin with plain string concatenation - don't build array just to join):**
 ```vala

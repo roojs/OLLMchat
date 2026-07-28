@@ -29,6 +29,8 @@ occoder_src = files([
   'AgentPi/Factory.vala',
   'AgentPi/Agent.vala',
   'AgentPi/PendingMessage.vala',
+  'AgentPi/Skill.vala',
+  'AgentPi/SkillSet.vala',
   'Skill/PromptTemplate.vala',
   'Skill/Definition.vala',
   'Skill/Manager.vala',

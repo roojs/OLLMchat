@@ -97,7 +97,7 @@ Symmetric contrast to AGENTS.md:
 | Layer | In system prompt | Full body |
 |-------|------------------|-----------|
 | **AGENTS.md** | Full text always | Already there |
-| **Skills** | Name + description + path only | Model `read`s `SKILL.md`, or `/skill:name` expands into the **user** message |
+| **Skills** | Name + description + path only | Model `read`s `SKILL.md` |
 
 Catalog shape:
 
@@ -114,8 +114,6 @@ Catalog shape:
 Plus: “Read the full skill file when the task matches… resolve relative paths against the skill directory.”
 
 Discovery: `~/.pi/agent/skills`, `.pi/skills`, `.agents/skills`, packages — Agent Skills–style `SKILL.md` (frontmatter + markdown; optional helper scripts via `bash`).
-
-**Forced load:** `/skill:name args` → harness wraps full skill content into a user message; **same tool loop** continues. Skill never becomes a host phase machine.
 
 **Soft failure:** if the model never reads the skill, it freestyles. No host retry that “skill was applied.”
 
@@ -167,9 +165,7 @@ Reuse **our** skill files (or Agent Skills `SKILL.md` dirs) without Skill.Runner
 
 1. `Skill.Manager.scan()` (or a lighter catalog scanner).
 2. Put `Manager.to_markdown()` (or XML like Pi) into JustAsk/Chatter system prompt: “available skills — use `read_file` / `session_fetch` / dedicated loader when relevant.”
-3. Full body only when:
-   - model reads the skill path, or
-   - UI/command forces inject (Pi’s `/skill:name` analogue — optional later).
+3. Full body only when the model reads the skill path.
 
 Loop stays `toolsReply`. Skills are **docs + optional scripts**, not refine/exec sections.
 
@@ -250,7 +246,7 @@ Weak scoreboard. Pi skipped host plan mode; Runner is that mode. Use Pi for **in
 ## 12. Practical takeaways
 
 1. **AGENTS.md always-inlined** — clearest import: standing project instructions without a research task. Natural slots: JustAsk/Chatter system prompt; Skill.Runner `{project_description}` / new placeholder. Prefer over hoping the planner invents a standards task.
-2. **Soft skill catalog on JustAsk/Chatter** — reuse `Skill.Manager.to_markdown()` + `read_file` (or forced inject). Same progressive-disclosure idea as Pi; stays in `toolsReply`. Does not require Runner.
+2. **Soft skill catalog on JustAsk/Chatter** — reuse `Skill.Manager.to_markdown()` + `read_file`. Same progressive-disclosure idea as Pi; stays in `toolsReply`. Does not require Runner.
 3. **Runner skills stay host-bound** — catalog + full refine/execute inject is already stricter than Pi; keep for structured/mutating work. Optionally add AGENTS.md beside the vector blurb.
 4. **Queuing** — good requirement; not the game changer.
 5. **Permissions** — keep ours.
@@ -264,7 +260,7 @@ Weak scoreboard. Pi skipped host plan mode; Runner is that mode. Use Pi for **in
 |-------|----|----------|
 | AGENTS / context files | `resource-loader.ts` `loadProjectContextFiles`; `system-prompt.ts` `<project_context>` | `Folder.project_description()` (vector); no AGENTS walk yet |
 | Skill catalog in prompt | `formatSkillsForSystemPrompt` / coding-agent `formatSkillsForPrompt` | `Skill.Manager.to_markdown()` → `{skill_catalog}` |
-| Full skill body | `read` tool or `/skill:` → user message | Runner templates: `skill.refine` / `skill.execute` |
+| Full skill body | `read` tool | Runner templates: `skill.refine` / `skill.execute` |
 | Loop | `agent-loop.ts` | `ChatBase.toolsReply` |
 | Summary / compact | coding-agent compaction | `Agent.Summarizer`, `Chatter/*` |
 
@@ -272,6 +268,6 @@ Weak scoreboard. Pi skipped host plan mode; Runner is that mode. Use Pi for **in
 
 ## 14. One-line summary
 
-**Pi:** always paste `AGENTS.md`; advertise skills as a menu and let the model (or `/skill:`) load bodies — thin host, same tool loop.  
+**Pi:** always paste `AGENTS.md`; advertise skills as a menu and let the model `read` bodies — thin host, same tool loop.  
 **Us today:** vector project blurb + (on Runner) catalog then **host-forced** skill sections; JustAsk has neither AGENTS nor soft skills.  
 **Likely borrow:** AGENTS.md injection + optional soft skill catalog on JustAsk/Chatter; keep Runner’s hard bind for conducted work.

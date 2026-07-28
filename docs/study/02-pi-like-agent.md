@@ -12,7 +12,7 @@ Status: ⏳ proposed
 - **🔷** Reuse Chatter ideas for the **turn queue** later if Phase 5 reopens as Option A (summary + `session_fetch`). Chatter itself stays light.
 - **✔️** Phase 5 **Option C**: no context hygiene for Agent Pi for now (no stand-in).
 - **🔷** Pi good bits: `AGENTS.md` inject, Agent Skills–style soft skills, model-owned `toolsReply`.
-- **🔷** Separate skill system (**`PiSkill`**) — **no** reuse of `OLLMcoder.Skill.Manager` / refine–execute skill files.
+- **🔷** Separate skill system (**`Skill`**) — **no** reuse of `OLLMcoder.Skill.Manager` / refine–execute skill files.
 - **🔷** Keep permissions / approvals.
 - **🔷** Open to renaming primary tools toward Pi names (`read` / `write` / …) with alias + reference updates.
 - **🔷** If we **copy or derive** Pi agent prompts (or other Pi source), ship **licenses** + **SBOM** attribution (Pi is MIT).
@@ -458,25 +458,27 @@ Not our refine/execute skills. Pi (Agent Skills–shaped):
 2. **Per directory** — if `SKILL.md` exists, that dir is a skill root (no recurse into it for nested skills); else recurse; some roots also allow loose `*.md`.
 3. **Parse file** — YAML frontmatter: required `description`; `name` (or parent dir name); optional `disable-model-invocation`, etc. Body = free markdown (+ scripts/refs beside it).
 4. **Catalog only in system prompt** — name, description, **absolute path** to `SKILL.md` (`<available_skills>` XML).
-5. **Full body on demand** — model uses **`read`** on that path; or user `/skill:name` expands body into the user message.
+5. **Full body on demand** — model uses **`read`** on that path.
 6. Relative paths inside the skill resolve against the **skill directory** (parent of `SKILL.md`).
 
 Our `OLLMcoder.Skill.Definition` is different: YAML + **refine** / **execute** sections, host-bound into Runner stages. **Wrong loader for Pi-like.**
 
 ---
 
-## `PiSkill` — separate from old skills
+## `Skill` — separate from old skills
 
-- **🔷** New namespace/types (name **`PiSkill`** or similar): scanner + catalog entry + prompt formatter.
-- **🔷** **No** shared `Skill.Manager`, **no** shared skill directories with Runner builtins unless we deliberately dual-publish later.
-- **🔷** Storage (proposed):
-  - user/global: e.g. `~/.local/share/ollmchat/pi-skills/` (or `.agents/skills` for interop)
-  - project: e.g. `.pi/skills/` / `.agents/skills/` under project root
+- **🔷** Types live under **`OLLMcoder.AgentPi`**: **`Skill`** (entry) + **`SkillSet`** (scan + `to_prompt`). Detail: **Phase 2**.
+- **🔷** **Wiring only in Agent Pi** (`SkillSet` in `PendingMessage` → `pi-prompts/initial.md`).
+- **🚫** No shared `Skill.Manager`, **no** shared skill directories with Runner builtins unless we deliberately dual-publish later.
+- **🔷** Storage:
+  - user/global: `~/.local/share/ollmchat/pi-skills/`
+  - project: `.pi/skills/` and `.agents/skills/` under project root
   - optional later: gresource pack of Pi-format skills (not `resources/skills/` Runner files)
-- **🔷** On system build: scan → catalog XML/markdown in prompt → instruct model to `read` / `read_file` the `location`.
-- **💩** Forced inject UI (`/skill:` analogue) — later.
+- **🔷** On system build: scan → catalog in prompt → model uses `read` on `location`.
+- **🚫** No slash-command / forced skill-inject UI — catalog + `read` only.
 - **🚫** Do not parse refine/execute or call `Skill.Manager.validate`.
-- **🚫** Do not feed PiSkill entries into task-list skill assignment.
+- **🚫** Do not feed Skill entries into task-list skill assignment.
+- **🚫** Do not wire into JustAsk / Chatter / other factories.
 
 ---
 
@@ -521,12 +523,387 @@ So: missing agents file ⇒ **omit the project-instructions block**; the harness
 - **🚫** Fake AGENTS path / `agent/` subdir / size policy (size = after Phase 9).
 - **ℹ️** Offer-to-create is **Phase 9**.
 
-### Phase 2 — `PiSkill` loader + catalog
+### Phase 2 — `Skill` loader + catalog
 
-- **🔷** `⏳` Implement `PiSkill` scan/parse (frontmatter + `SKILL.md` layout as above).
-- **🔷** `⏳` Inject catalog into system prompt; load body via read tool.
-- **🔷** Separate dirs from `OLLMcoder.Skill` paths.
-- **💩** `⏳` Interop with upstream `.agents/skills` layout.
+**Wiring scope:** **🔷** Agent Pi only (`OLLMcoder.AgentPi`).  
+**🚫** JustAsk, Chatter, Skill.Runner, `OLLMcoder.Skill.Manager`, other factories.
+
+#### Classes (under `liboccoder/AgentPi/`)
+
+| Class | Role |
+|-------|------|
+| **`Skill`** | One catalog entry: `name`, `description`, absolute `path` to `SKILL.md`, `base_dir` (parent of that file), `disable_model` (`disable-model-invocation`). |
+| **`SkillSet`** | Scanner + catalog formatter. Holds `Gee.ArrayList<Skill> items`. Methods: **`scan`**, **`to_prompt`**. |
+
+- **🔷** Namespace stays **`OLLMcoder.AgentPi`** (same as Factory) so GIR nesting and “Agent Pi only” stay obvious.
+- **🚫** Soft-skill types live only as **`OLLMcoder.AgentPi.Skill`** / **`SkillSet`** — not a new top-level package, and not inside **`OLLMcoder.Skill.*`** (Runner).
+- **🚫** No shared types with `OLLMcoder.Skill.*`.
+
+#### `Skill` — entry
+
+- **🔷** Plain `GLib.Object` data class (properties above).
+- **🔷** Named ctor / load path: **`Skill.load(string skill_md_path)`** → entry or skip (missing/empty `description`).
+- **🔷** Frontmatter (minimal YAML, same shape as Pi / Child agent files):
+  - required: `description`
+  - optional: `name` (else parent directory name), `disable-model-invocation: true`
+- **🚫** Do not parse refine/execute sections.
+- **🚫** Do not validate against Runner skill schema.
+
+#### `SkillSet` — scan + format
+
+**`scan(string project_path)`**
+
+Roots (in order; skip missing):
+
+1. `~/.local/share/ollmchat/pi-skills/`
+2. `{project}/.pi/skills/` when `project_path` non-empty
+3. `{project}/.agents/skills/` when `project_path` non-empty (interop)
+
+Walk rule:
+
+- For each root, list **immediate** child directories (skip hidden names starting with `.`).
+- If `{child}/SKILL.md` exists → `Skill.load`; otherwise ignore that child (no deep recurse).
+- Later skills with the same `name` replace earlier (project wins over global if scanned last).
+
+**`to_prompt()`**
+
+- Skip entries with `disable_model == true`.
+- Empty → `""` (omit block, like missing AGENTS).
+- Else Pi-style XML catalog:
+
+```text
+## Skills
+
+The following skills provide specialized instructions for specific tasks.
+Use the read tool to load a skill's file when the task matches its description.
+When a skill file references a relative path, resolve it against the skill directory
+(parent of SKILL.md) and use that absolute path in tool commands.
+
+<available_skills>
+  <skill>
+    <name>…</name>
+    <description>…</description>
+    <location>…/SKILL.md</location>
+  </skill>
+  …
+</available_skills>
+```
+
+#### Agent Pi wiring only
+
+| Site | Change |
+|------|--------|
+| `PendingMessage.run` | `new SkillSet()` → `scan` → pass `to_prompt()` as `"skills_md"` beside `agents_md` (no Factory wrapper). |
+| `resources/pi-prompts/initial.md` | Add `{skills_md}` after `{agents_md}`. |
+| `liboccoder/meson.build` | List `AgentPi/Skill.vala`, `AgentPi/SkillSet.vala`. |
+
+- **🚫** Do not scan/inject SkillSet from Chatter / JustAsk / Skill.Factory / Window except via Agent Pi’s own send path.
+- **🚫** No slash-command / forced skill-inject UI (catalog + `read` only).
+- **🚫** No thin `Factory.build_skills_md` — call `SkillSet` at the send site.
+
+#### Status
+
+- **✔️** Classes + Agent Pi wire applied (await user verify).
+
+Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
+
+### 2a. Add `liboccoder/AgentPi/Skill.vala` — catalog entry + load
+
+**Why:** One Agent Skills–shaped row for the prompt catalog.
+
+**Where:** new file under `AgentPi/`.
+
+**Depends on:** none.
+
+#### Add — new file `Skill` in `OLLMcoder.AgentPi`.
+
+```vala
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ */
+
+namespace OLLMcoder.AgentPi
+{
+	/**
+	 * One Pi-format soft skill (Agent Skills ''SKILL.md'' entry).
+	 *
+	 * Catalog-only for Agent Pi: name/description/path go in the system prompt;
+	 * the model loads the body with the ''read'' tool. Not an
+	 * {@link OLLMcoder.Skill.Definition}.
+	 */
+	public class Skill : GLib.Object
+	{
+		public string name { get; set; default = ""; }
+		public string description { get; set; default = ""; }
+		public string path { get; set; default = ""; }
+		public string base_dir { get; set; default = ""; }
+		public bool disable_model { get; set; default = false; }
+
+		/**
+		 * Load a skill from an absolute ''SKILL.md'' path.
+		 *
+		 * @param skill_md_path absolute path to ''SKILL.md''
+		 * @return skill, or null when description is missing
+		 */
+		public static Skill? load(string skill_md_path)
+		{
+			uint8[] raw;
+			string etag;
+			try {
+				GLib.File.new_for_path(skill_md_path).load_contents(null, out raw, out etag);
+			} catch (GLib.Error e) {
+				return null;
+			}
+			var name = "";
+			var description = "";
+			var disable_model = false;
+			var in_frontmatter = false;
+			var found_first = false;
+			foreach (var line in ((string) raw).split("\n")) {
+				var stripped = line.strip();
+				if (stripped == "---") {
+					if (!found_first) {
+						found_first = true;
+						in_frontmatter = true;
+						continue;
+					}
+					break;
+				}
+				if (!in_frontmatter) {
+					continue;
+				}
+				if (stripped == "" || stripped.has_prefix("#")) {
+					continue;
+				}
+				var colon = stripped.index_of(":");
+				if (colon < 0) {
+					continue;
+				}
+				var key = stripped.substring(0, colon).strip();
+				var value = stripped.substring(colon + 1).strip();
+				switch (key) {
+					case "name":
+						name = value;
+						break;
+					case "description":
+						description = value;
+						break;
+					case "disable-model-invocation":
+						disable_model = (value == "true");
+						break;
+				}
+			}
+			if (description.strip() == "") {
+				return null;
+			}
+			var base_dir = GLib.Path.get_dirname(skill_md_path);
+			if (name == "") {
+				name = GLib.Path.get_basename(base_dir);
+			}
+			return new Skill() {
+				name = name,
+				description = description,
+				path = skill_md_path,
+				base_dir = base_dir,
+				disable_model = disable_model
+			};
+		}
+	}
+}
+```
+
+### 2b. Add `liboccoder/AgentPi/SkillSet.vala` — scan + `to_prompt`
+
+**Why:** Own scanner for Agent Pi soft skills; format catalog XML.
+
+**Where:** new file under `AgentPi/`.
+
+**Depends on:** §2a.
+
+#### Add — new file `SkillSet` with `scan` + `to_prompt` (plan-named).
+
+```vala
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ */
+
+namespace OLLMcoder.AgentPi
+{
+	/**
+	 * Scan Pi-format skill directories and format the Agent Pi catalog.
+	 *
+	 * Roots: ''~/.local/share/ollmchat/pi-skills/'', project ''.pi/skills/'',
+	 * project ''.agents/skills/''. Used from {@link PendingMessage.run}.
+	 */
+	public class SkillSet : GLib.Object
+	{
+		public Gee.ArrayList<Skill> items {
+			get;
+			private set;
+			default = new Gee.ArrayList<Skill>();
+		}
+
+		/**
+		 * Clear and rescan global + project skill roots.
+		 *
+		 * @param project_path active project path (may be empty)
+		 */
+		public void scan(string project_path)
+		{
+			this.items.clear();
+			var by_name = new Gee.HashMap<string, Skill>();
+			string[] roots = {};
+			var global_root = GLib.Path.build_filename(
+				GLib.Environment.get_user_data_dir(), "ollmchat", "pi-skills");
+			if (GLib.FileUtils.test(global_root, GLib.FileTest.IS_DIR)) {
+				roots += global_root;
+			}
+			var project = project_path.strip();
+			if (project != "") {
+				var pi_root = GLib.Path.build_filename(project, ".pi", "skills");
+				if (GLib.FileUtils.test(pi_root, GLib.FileTest.IS_DIR)) {
+					roots += pi_root;
+				}
+				var agents_root = GLib.Path.build_filename(project, ".agents", "skills");
+				if (GLib.FileUtils.test(agents_root, GLib.FileTest.IS_DIR)) {
+					roots += agents_root;
+				}
+			}
+			foreach (var root in roots) {
+				try {
+					var enumerator = GLib.File.new_for_path(root).enumerate_children(
+						"standard::name,standard::type",
+						GLib.FileQueryInfoFlags.NONE,
+						null);
+					GLib.FileInfo? info = null;
+					while ((info = enumerator.next_file(null)) != null) {
+						var name = info.get_name();
+						if (name.has_prefix(".")) {
+							continue;
+						}
+						if (info.get_file_type() != GLib.FileType.DIRECTORY) {
+							continue;
+						}
+						var skill_md = GLib.Path.build_filename(root, name, "SKILL.md");
+						if (!GLib.FileUtils.test(skill_md, GLib.FileTest.IS_REGULAR)) {
+							continue;
+						}
+						var skill = Skill.load(skill_md);
+						if (skill != null) {
+							by_name.set(skill.name, skill);
+						}
+					}
+				} catch (GLib.Error e) {
+				}
+			}
+			foreach (var entry in by_name.entries) {
+				this.items.add(entry.value);
+			}
+		}
+
+		/**
+		 * Build the system-prompt skills block (empty when nothing visible).
+		 *
+		 * @return markdown + XML catalog, or empty string
+		 */
+		public string to_prompt()
+		{
+			string[] blocks = {};
+			foreach (var skill in this.items) {
+				if (skill.disable_model) {
+					continue;
+				}
+				blocks += @"  <skill>
+    <name>$(skill.name)</name>
+    <description>$(skill.description)</description>
+    <location>$(skill.path)</location>
+  </skill>";
+			}
+			if (blocks.length == 0) {
+				return "";
+			}
+			return @"## Skills
+
+The following skills provide specialized instructions for specific tasks.
+Use the read tool to load a skill's file when the task matches its description.
+When a skill file references a relative path, resolve it against the skill directory
+(parent of SKILL.md) and use that absolute path in tool commands.
+
+<available_skills>
+$(string.joinv("\n", blocks))
+</available_skills>
+";
+		}
+	}
+}
+```
+
+### 2c. `liboccoder/AgentPi/PendingMessage.vala` — pass `skills_md`
+
+**Why:** Only Agent Pi send path injects the catalog. Inline `SkillSet` here — do not add a Factory pass-through.
+
+**Where:** `run`, after resolving `project_path`, the `system_fill` call.
+
+**Depends on:** §2b + prompt §2d.
+
+#### Remove
+
+```vala
+			outbound.add(new OLLMchat.Message("system", tpl.system_fill(
+				"environment", factory.build_environment(agent.session),
+				"agents_md", factory.build_agents_md(project_path))));
+```
+
+#### Replace with
+
+```vala
+			var skill_set = new SkillSet();
+			skill_set.scan(project_path);
+			outbound.add(new OLLMchat.Message("system", tpl.system_fill(
+				"environment", factory.build_environment(agent.session),
+				"agents_md", factory.build_agents_md(project_path),
+				"skills_md", skill_set.to_prompt())));
+```
+
+### 2d. `resources/pi-prompts/initial.md` — `{skills_md}` slot
+
+**Where:** after `{agents_md}`.
+
+#### Remove
+
+```markdown
+{agents_md}
+---
+```
+
+#### Replace with
+
+```markdown
+{agents_md}
+{skills_md}
+---
+```
+
+### 2e. `liboccoder/meson.build` — list sources
+
+#### Add — after `AgentPi/PendingMessage.vala`.
+
+```meson
+  'AgentPi/Skill.vala',
+  'AgentPi/SkillSet.vala',
+```
+
+---
 
 ### Phase 3 — System prompt assembly
 
@@ -534,7 +911,7 @@ So: missing agents file ⇒ **omit the project-instructions block**; the harness
   - role / guidelines
   - environment (from project)
   - `AGENTS.md` block
-  - `PiSkill` catalog
+  - `Skill` catalog
   - follow-up / summary slot **only if Phase 5 Option A** (otherwise keep growing transcript + `initial.md`-style system)
 - **🔷** `⏳` `toolsReply` only control loop.
 - **💩** Default tool subset for this agent ([2.30](../plans/2.30-pretooler-tool-filtering.md)).
@@ -581,7 +958,7 @@ Study: [01 §7](01-pi-agent.md#7-context-growth-pi-compaction-vs-chatter). Chatt
 | | Option A — Chatter-style | Option B — Pi-style compaction | Option C — defer (**current**) |
 |--|--------------------------|--------------------------------|--------------------------------|
 | When | Every turn (or later: threshold) | Token threshold / explicit compact | Never for Agent Pi yet |
-| Prompt | Agent Pi–owned summary template (AGENTS / PiSkill-aware) | Structured Goal/Progress/… checkpoint (copy/derive → Phase 8) | — |
+| Prompt | Agent Pi–owned summary template (AGENTS / Skill-aware) | Structured Goal/Progress/… checkpoint (copy/derive → Phase 8) | — |
 | Model sees | System summary + recent turns | Compaction blob + recent tail | Full history until OOM/context fail |
 | Exact recall | **`session_fetch` + hash links** | Text left in checkpoint only | N/A (everything still in context) |
 | Shared code | Needs reviewed `Summarizer` flexibility **or** AgentPi-local summarizer | New compact path (cut point + reload) | Chat-only (done for Phase 0) |
@@ -635,7 +1012,7 @@ Pi never prompts. We may when **Agent Pi is selected** and a **project is active
 ## Out of this plan
 
 - **🚫** Skill.Runner / old `Skill.Manager` crossover for Pi skills.
-- **🚫** Using `resources/skills/*.md` (refine/execute) as PiSkill sources.
+- **🚫** Using `resources/skills/*.md` (refine/execute) as Skill sources.
 - **🚫** Parallel tool execution as a goal.
 - **🚫** Pi extensions / packages / TUI / RPC.
 - **ℹ️** Pi-style exact **`edit`** (old/new text in args) — later phase after current tool surface; not in this hunk set.
@@ -647,7 +1024,7 @@ Pi never prompts. We may when **Agent Pi is selected** and a **project is active
 1. Phase 0 — `AgentPi` / `agent-pi` factory (chat-only; Option C)  
 2. Phase 1 — AGENTS.md (global + home-capped parent walk + inject; omit if missing)  
 2.5. Phase 1.5 — tool rename audit/lock then apply (`read` / `write` / …)  
-3. Phase 2 — PiSkill  
+3. Phase 2 — Skill  
 4. Phase 3 — prompts (**with Phase 8** if any Pi prompt text is copied)  
 5. Phase 4 — tool rename/aliases (can start earlier if it unblocks prompts)  
 6. Phase 5 — deferred (Option C); reopen A vs B later if needed  
@@ -666,6 +1043,6 @@ Pi never prompts. We may when **Agent Pi is selected** and a **project is active
 - **ℹ️** liboccoder weight: `OLLMcoder.AgentFactory`, `OLLMcoder.Skill.Factory`.
 - **🔷** Namespace **`OLLMcoder.AgentPi`**; agent id **`agent-pi`**; title **`Agent Pi`**; `long_title` **`implementation of the Pi agent harness`**.
 - **ℹ️** Pi license: MIT — `/home/alan/git/pi/LICENSE` (and published `@earendil-works/pi-coding-agent`).
-- **🚫** Do not use `OLLMcoder.Skill.Manager` for PiSkill.
+- **🚫** Do not use `OLLMcoder.Skill.Manager` for Skill.
 - **🚫** Do not merge this agent into Skill.Runner.
 - **🚫** Do not copy Pi prompts without Phase 8 attribution.

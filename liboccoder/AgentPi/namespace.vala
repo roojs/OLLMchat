@@ -23,7 +23,8 @@
  * liboccoder UI weight (SourceView / {@link OLLMfiles.ProjectManager}).
  * Phase 0 is registration and a chat-only turn queue; context hygiene is
  * deferred (study plan Phase 5 Option C). Phase 1 injects AGENTS.md /
- * CLAUDE.md via {@link Factory.build_agents_md}. Later phases add PiSkill.
+ * CLAUDE.md via {@link Factory.build_agents_md}. Phase 2 adds {@link Skill}
+ * / {@link SkillSet} and injects the catalog from {@link PendingMessage.run}.
  *
  * == Usage Examples ==
  *

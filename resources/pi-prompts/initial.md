@@ -7,4 +7,5 @@ When this session supports tool calling, you have tools available. Use them when
 {environment}
 
 {agents_md}
+{skills_md}
 ---

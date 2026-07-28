@@ -23,7 +23,8 @@ namespace OLLMcoder.AgentPi
 	 *
  * Phase 0 is chat-only (full transcript). Context hygiene is deferred —
  * see study plan Phase 5 Option C. Phase 1 injects AGENTS.md via
- * {@link Factory.build_agents_md}.
+ * {@link Factory.build_agents_md}. Phase 2 injects the Skill catalog via
+ * {@link SkillSet} in {@link PendingMessage.run}.
  */
 	public class PendingMessage : GLib.Object
 	{
@@ -67,9 +68,12 @@ namespace OLLMcoder.AgentPi
 			if (project_path == "" && factory.project_manager.active_project != null) {
 				project_path = factory.project_manager.active_project.path;
 			}
+			var skill_set = new SkillSet();
+			skill_set.scan(project_path);
 			outbound.add(new OLLMchat.Message("system", tpl.system_fill(
 				"environment", factory.build_environment(agent.session),
-				"agents_md", factory.build_agents_md(project_path))));
+				"agents_md", factory.build_agents_md(project_path),
+				"skills_md", skill_set.to_prompt())));
 
 			foreach (var msg in agent.create_summary()) {
 				if (msg.role == "summary") {
