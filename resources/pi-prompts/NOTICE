@@ -1,0 +1,20 @@
+Derived from earendil-works/pi
+  packages/coding-agent/src/core/system-prompt.ts (default buildSystemPrompt)
+  and tool promptSnippet strings from packages/coding-agent/src/core/tools/*.ts
+  compaction section headings inspired by packages/coding-agent compaction
+  (Goal / Constraints / Progress / Decisions / Next Steps / Critical Context)
+
+License: MIT — see licenses/pi-coding-agent/LICENSE
+Inventory: licenses/README.md
+
+Adaptations for OLLMchat (not upstream verbatim):
+  - product name "Agent Pi" / OLLMchat instead of "pi"
+  - dropped pi documentation path block (no local pi docs tree)
+  - "Current working directory" is filled with the active project path (or home)
+  - tool names/snippets match Agent Pi surface
+    (read, write, bash, codebase_search, browser);
+    write is EditMode-based — not write_file;
+    bash is RunCommand-based — not run_command;
+    edit_mode/read_file/run_command/write_file forbidden
+  - compact.md adds OLLMchat hash-link / session_fetch recall rules
+    (not upstream Pi; Pi has no session_fetch)

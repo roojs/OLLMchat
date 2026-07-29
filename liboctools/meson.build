@@ -58,6 +58,7 @@ octools_src = files([
   'WriteFile/Request.vala',
   'RunCommand/Tool.vala',
   'RunCommand/Request.vala',
+  'RunCommand/Bash.vala',
   'FileVerification.vala',
   'WebFetch/Tool.vala',
   'WebFetch/Request.vala',

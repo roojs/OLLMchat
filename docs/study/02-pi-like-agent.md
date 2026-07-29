@@ -9,14 +9,15 @@ Status: ⏳ proposed
 
 - **🔷** New **liboccoder-weight** free-form coding agent: `ProjectManager`, project-required, coding prompts/UI — not a thin Chatter clone as the final product.
 - **🔷** Agent id **`agent-pi`**; Vala namespace **`OLLMcoder.AgentPi`** (GIR: nested under liboccoder’s `OLLMcoder`); human title **`Agent Pi`**; `long_title` **`implementation of the Pi agent harness`**.
-- **🔷** Reuse Chatter ideas for the **turn queue** later if Phase 5 reopens as Option A (summary + `session_fetch`). Chatter itself stays light.
-- **✔️** Phase 5 **Option C**: no context hygiene for Agent Pi for now (no stand-in).
+- **🔷** Reuse Chatter ideas for the **turn queue** later if Phase 5 lands (summary + `session_fetch`). Chatter itself stays light.
+- **🔷** Phase 5: Pi **cutoff + structured summary template**, plus **hash reference tags** and **`session_fetch`** so dropped history stays recoverable.
+- **✔️** Phase 5 wiring landed (`Summarizer` prompt props + `compact.md` + Agent Pi threshold compact).
 - **🔷** Pi good bits: `AGENTS.md` inject, Agent Skills–style soft skills, model-owned `toolsReply`.
 - **🔷** Separate skill system (**`Skill`**) — **no** reuse of `OLLMcoder.Skill.Manager` / refine–execute skill files.
 - **🔷** Keep permissions / approvals.
-- **🔷** Open to renaming primary tools toward Pi names (`read` / `write` / …) with alias + reference updates.
-- **🔷** If we **copy or derive** Pi agent prompts (or other Pi source), ship **licenses** + **SBOM** attribution (Pi is MIT).
-- **⏳** Lock factory home, tool rename policy, then implement phases.
+- **✔️** Pi-facing tool names on Agent Pi (`read` / `write` / `bash` + forbid long names). Phase 4 done for that lean scope.
+- **✔️** Phase 8 licenses inventory; Phase 3 prompt copy attributed under MIT.
+- **⏳** Lock remaining policy only where noted (e.g. Phase 7 project-summary tool); then implement remaining phases.
 
 ---
 
@@ -47,14 +48,14 @@ Status: ⏳ proposed
 **✔️ Lean:** Agent-Pi-only expose + filter. Phase **1.5**. Implement only after lock.
 
 - **✔️** Pi names via **skeleton Tool subclasses** (own `name` / `description`; same Request/exec as EditMode / ReadFile). **🚫** ToolBuilder `.tool` wraps for this.
-- **✔️** Omit `write_file` on Agent Pi via seed `forbid` (user-editable in JSON).
+- **✔️** Omit `write_file` / `edit_mode` / `read_file` / `run_command` on Agent Pi via seed `forbid` (user-editable in JSON); Pi-facing tools are `write` / `read` / `bash` (EditMode / ReadFile / RunCommand skeletons).
 - **✔️** `Config2.agents` map of `AgentConfig` — **`forbidden` only** (**✔️** class; no `mandatory`).
 - **🔷** JSON example:
 
 ```json
 "agents": {
   "agent-pi": {
-    "forbidden": [ "write_file", "huggingface_hub" ]
+    "forbidden": [ "write_file", "edit_mode", "read_file", "run_command" ]
   }
 }
 ```
@@ -229,7 +230,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 		{
 			if (!config.agents.has_key(this.name)) {
 				config.agents.set(this.name, new OLLMchat.Settings.AgentConfig() {
-					forbid = "write_file,huggingface_hub"
+					forbid = "write_file,edit_mode,read_file,run_command"
 				});
 			}
 			if (!tools.has_key("write")) {
@@ -493,10 +494,10 @@ Our `OLLMcoder.Skill.Definition` is different: YAML + **refine** / **execute** s
 - **✔️** Registered in `ollmapp/Window.vala` agent factories.
 - **🚫** Paired summarize / `followup.md` / shared `Summarizer` stand-in.
 - **🚫** RAPIR / task list / progress conductor.
-- **🚫** Context hygiene — locked **Phase 5 Option C**.
+- **🚫** Context hygiene not shipped yet — Phase 0 stays full transcript; Phase 5 design locked below (not “defer forever”).
 - **ℹ️** GIR forces nest under `OLLMcoder` (secondary top-level namespaces unsupported).
-- **ℹ️** Environment block today matches **Chatter** (date / OS / shell / workspace), not Pi (cwd line only + AGENTS/skills in system prompt — Phases 1–3).
-- **🔷** Existing-code changes (e.g. `Agent.Summarizer`) require review before apply.
+- **ℹ️** Environment: date / OS via `{environment}`; **Current working directory: `{cwd}`** where cwd is the **project path** (or home) — we pretend the shell cwd is the project.
+- **🔷** Existing-code changes require review before apply (Phase 5: `Summarizer.prompt_base_dir` / `prompt_filename` + AgentPi construct/wiring — **🚫** rewrite `chatter_summary.md`; **🚫** new Factory helper).
 
 ### Phase 1 — `AGENTS.md`
 
@@ -603,394 +604,182 @@ When a skill file references a relative path, resolve it against the skill direc
 
 #### Status
 
-- **✔️** Classes + Agent Pi wire applied (await user verify).
-
-Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
-
-### 2a. Add `liboccoder/AgentPi/Skill.vala` — catalog entry + load
-
-**Why:** One Agent Skills–shaped row for the prompt catalog.
-
-**Where:** new file under `AgentPi/`.
-
-**Depends on:** none.
-
-#### Add — new file `Skill` in `OLLMcoder.AgentPi`.
-
-```vala
-/*
- * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- */
-
-namespace OLLMcoder.AgentPi
-{
-	/**
-	 * One Pi-format soft skill (Agent Skills ''SKILL.md'' entry).
-	 *
-	 * Catalog-only for Agent Pi: name/description/path go in the system prompt;
-	 * the model loads the body with the ''read'' tool. Not an
-	 * {@link OLLMcoder.Skill.Definition}.
-	 */
-	public class Skill : GLib.Object
-	{
-		public string name { get; set; default = ""; }
-		public string description { get; set; default = ""; }
-		public string path { get; set; default = ""; }
-		public string base_dir { get; set; default = ""; }
-		public bool disable_model { get; set; default = false; }
-
-		/**
-		 * Load a skill from an absolute ''SKILL.md'' path.
-		 *
-		 * @param skill_md_path absolute path to ''SKILL.md''
-		 * @return skill, or null when description is missing
-		 */
-		public static Skill? load(string skill_md_path)
-		{
-			uint8[] raw;
-			string etag;
-			try {
-				GLib.File.new_for_path(skill_md_path).load_contents(null, out raw, out etag);
-			} catch (GLib.Error e) {
-				return null;
-			}
-			var name = "";
-			var description = "";
-			var disable_model = false;
-			var in_frontmatter = false;
-			var found_first = false;
-			foreach (var line in ((string) raw).split("\n")) {
-				var stripped = line.strip();
-				if (stripped == "---") {
-					if (!found_first) {
-						found_first = true;
-						in_frontmatter = true;
-						continue;
-					}
-					break;
-				}
-				if (!in_frontmatter) {
-					continue;
-				}
-				if (stripped == "" || stripped.has_prefix("#")) {
-					continue;
-				}
-				var colon = stripped.index_of(":");
-				if (colon < 0) {
-					continue;
-				}
-				var key = stripped.substring(0, colon).strip();
-				var value = stripped.substring(colon + 1).strip();
-				switch (key) {
-					case "name":
-						name = value;
-						break;
-					case "description":
-						description = value;
-						break;
-					case "disable-model-invocation":
-						disable_model = (value == "true");
-						break;
-				}
-			}
-			if (description.strip() == "") {
-				return null;
-			}
-			var base_dir = GLib.Path.get_dirname(skill_md_path);
-			if (name == "") {
-				name = GLib.Path.get_basename(base_dir);
-			}
-			return new Skill() {
-				name = name,
-				description = description,
-				path = skill_md_path,
-				base_dir = base_dir,
-				disable_model = disable_model
-			};
-		}
-	}
-}
-```
-
-### 2b. Add `liboccoder/AgentPi/SkillSet.vala` — scan + `to_prompt`
-
-**Why:** Own scanner for Agent Pi soft skills; format catalog XML.
-
-**Where:** new file under `AgentPi/`.
-
-**Depends on:** §2a.
-
-#### Add — new file `SkillSet` with `scan` + `to_prompt` (plan-named).
-
-```vala
-/*
- * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- */
-
-namespace OLLMcoder.AgentPi
-{
-	/**
-	 * Scan Pi-format skill directories and format the Agent Pi catalog.
-	 *
-	 * Roots: ''~/.local/share/ollmchat/pi-skills/'', project ''.pi/skills/'',
-	 * project ''.agents/skills/''. Used from {@link PendingMessage.run}.
-	 */
-	public class SkillSet : GLib.Object
-	{
-		public Gee.ArrayList<Skill> items {
-			get;
-			private set;
-			default = new Gee.ArrayList<Skill>();
-		}
-
-		/**
-		 * Clear and rescan global + project skill roots.
-		 *
-		 * @param project_path active project path (may be empty)
-		 */
-		public void scan(string project_path)
-		{
-			this.items.clear();
-			var by_name = new Gee.HashMap<string, Skill>();
-			string[] roots = {};
-			var global_root = GLib.Path.build_filename(
-				GLib.Environment.get_user_data_dir(), "ollmchat", "pi-skills");
-			if (GLib.FileUtils.test(global_root, GLib.FileTest.IS_DIR)) {
-				roots += global_root;
-			}
-			var project = project_path.strip();
-			if (project != "") {
-				var pi_root = GLib.Path.build_filename(project, ".pi", "skills");
-				if (GLib.FileUtils.test(pi_root, GLib.FileTest.IS_DIR)) {
-					roots += pi_root;
-				}
-				var agents_root = GLib.Path.build_filename(project, ".agents", "skills");
-				if (GLib.FileUtils.test(agents_root, GLib.FileTest.IS_DIR)) {
-					roots += agents_root;
-				}
-			}
-			foreach (var root in roots) {
-				try {
-					var enumerator = GLib.File.new_for_path(root).enumerate_children(
-						"standard::name,standard::type",
-						GLib.FileQueryInfoFlags.NONE,
-						null);
-					GLib.FileInfo? info = null;
-					while ((info = enumerator.next_file(null)) != null) {
-						var name = info.get_name();
-						if (name.has_prefix(".")) {
-							continue;
-						}
-						if (info.get_file_type() != GLib.FileType.DIRECTORY) {
-							continue;
-						}
-						var skill_md = GLib.Path.build_filename(root, name, "SKILL.md");
-						if (!GLib.FileUtils.test(skill_md, GLib.FileTest.IS_REGULAR)) {
-							continue;
-						}
-						var skill = Skill.load(skill_md);
-						if (skill != null) {
-							by_name.set(skill.name, skill);
-						}
-					}
-				} catch (GLib.Error e) {
-				}
-			}
-			foreach (var entry in by_name.entries) {
-				this.items.add(entry.value);
-			}
-		}
-
-		/**
-		 * Build the system-prompt skills block (empty when nothing visible).
-		 *
-		 * @return markdown + XML catalog, or empty string
-		 */
-		public string to_prompt()
-		{
-			string[] blocks = {};
-			foreach (var skill in this.items) {
-				if (skill.disable_model) {
-					continue;
-				}
-				blocks += @"  <skill>
-    <name>$(skill.name)</name>
-    <description>$(skill.description)</description>
-    <location>$(skill.path)</location>
-  </skill>";
-			}
-			if (blocks.length == 0) {
-				return "";
-			}
-			return @"## Skills
-
-The following skills provide specialized instructions for specific tasks.
-Use the read tool to load a skill's file when the task matches its description.
-When a skill file references a relative path, resolve it against the skill directory
-(parent of SKILL.md) and use that absolute path in tool commands.
-
-<available_skills>
-$(string.joinv("\n", blocks))
-</available_skills>
-";
-		}
-	}
-}
-```
-
-### 2c. `liboccoder/AgentPi/PendingMessage.vala` — pass `skills_md`
-
-**Why:** Only Agent Pi send path injects the catalog. Inline `SkillSet` here — do not add a Factory pass-through.
-
-**Where:** `run`, after resolving `project_path`, the `system_fill` call.
-
-**Depends on:** §2b + prompt §2d.
-
-#### Remove
-
-```vala
-			outbound.add(new OLLMchat.Message("system", tpl.system_fill(
-				"environment", factory.build_environment(agent.session),
-				"agents_md", factory.build_agents_md(project_path))));
-```
-
-#### Replace with
-
-```vala
-			var skill_set = new SkillSet();
-			skill_set.scan(project_path);
-			outbound.add(new OLLMchat.Message("system", tpl.system_fill(
-				"environment", factory.build_environment(agent.session),
-				"agents_md", factory.build_agents_md(project_path),
-				"skills_md", skill_set.to_prompt())));
-```
-
-### 2d. `resources/pi-prompts/initial.md` — `{skills_md}` slot
-
-**Where:** after `{agents_md}`.
-
-#### Remove
-
-```markdown
-{agents_md}
----
-```
-
-#### Replace with
-
-```markdown
-{agents_md}
-{skills_md}
----
-```
-
-### 2e. `liboccoder/meson.build` — list sources
-
-#### Add — after `AgentPi/PendingMessage.vala`.
-
-```meson
-  'AgentPi/Skill.vala',
-  'AgentPi/SkillSet.vala',
-```
+- **✔️** `liboccoder/AgentPi/Skill.vala`, `SkillSet.vala` — see sources (not reproduced here).
+- **✔️** Wire: `PendingMessage.run` scans/`to_prompt` → `{skills_md}`; `resources/pi-prompts/initial.md`; meson lists both files.
 
 ---
 
-### Phase 3 — System prompt assembly
+### Phase 3 — System prompt assembly (Pi-shaped)
 
-- **🔷** `⏳` liboccoder prompt templates for this agent:
-  - role / guidelines
-  - environment (from project)
-  - `AGENTS.md` block
-  - `Skill` catalog
-  - follow-up / summary slot **only if Phase 5 Option A** (otherwise keep growing transcript + `initial.md`-style system)
-- **🔷** `⏳` `toolsReply` only control loop.
-- **💩** Default tool subset for this agent ([2.30](../plans/2.30-pretooler-tool-filtering.md)).
+**What this is not:** inventing a new “liboccoder prompt product.” We already have `resources/pi-prompts/initial.md` + inject slots.
+
+**What Pi does:** `packages/coding-agent/src/core/system-prompt.ts` `buildSystemPrompt` — default harness text (role, available tools + one-line snippets, guidelines, cwd), then optional project context / skills. Not a separate markdown package of many templates.
+
+**What we have now:**
+
+- **✔️** `pi-prompts/initial.md` — derived from Pi `buildSystemPrompt` (MIT; see `licenses/` + `pi-prompts/NOTICE`).
+- **✔️** `{agents_md}` / `{skills_md}` / `{environment}` (date, OS) / `{cwd}` (= project path) inject (Phases 1–3).
+- **✔️** Control loop is already `toolsReply`.
+
+**Phase 3 work:**
+
+- **✔️ Locked: Option A** — copy/derive Pi’s default system-prompt wording.
+- **✔️** `licenses/README.md` lists `resources/pi-prompts/initial.md`.
+- **✔️** Pi-shaped assembly: role / tools + snippets / guidelines / cwd (filled with project path); agents + skills; no pi docs path block.
+- **✔️** Tool one-liners: `read`, `write` (EditMode), `bash` (RunCommand), `codebase_search`, `browser`. **🚫** `write_file` / `edit_mode` / `read_file` / `run_command` (forbidden on Agent Pi).
+- **🚫** Do not add `followup.md` / summary templates in Phase 3 — those land with Phase 5.
+- **🚫** Option B (write original short text, skip Phase 8) — not the path.
+- **💩** Default tool subset ([2.30](../plans/2.30-pretooler-tool-filtering.md)) — optional, not the core of Phase 3.
 
 ### Phase 4 — Tool rename / aliases
 
-- **🔷** `⏳` Lock Option A vs B (§ Tool names).
-- **🔷** `⏳` Update references (skills YAML, prompts, wrapped tools, tests) so old names do not break Runner or history replay where needed.
-- **ℹ️** Prefer aliases if rename churn on Runner is too high.
+- **✔️** Locked lean path (Agent Pi only): skeletons `read` / `write` / `bash` + seed `forbid` of long names — see **Tool names** above (Phase 1.5).
+- **✔️** Agent Pi prompt one-liners use those Pi names.
+- **🚫** Global rename of `write_file` / `run_command` / … across Skill.Runner YAML and every agent — not required; other agents keep long names.
+- **🔷** `⏳` Later (not Phase 4): Pi-style exact **`edit`** tool — still backlog under Tool names.
 
-### Phase 5 — Context hygiene (deferred — **Option C**)
+### Phase 5 — Context hygiene
 
-**✔️ Locked: Option C** — do not implement for Agent Pi until we deliberately reopen A vs B. No stand-in.
+**✔️** Implemented (agent): Summarizer `prompt_base_dir` / `prompt_filename`; `pi-prompts/compact.md`; Agent Pi threshold compact + `create_summary()` outbound. Hybrid: Pi **when/how to cut** + Pi **summary sections**, plus our **reference tags** and **history recall tool**.
 
-Same problem as Pi: long sessions drown the next LLM call. When we reopen, pick **A** or **B** and do it properly.
+Study refs (background only): [01 §7](01-pi-agent.md#7-context-growth-pi-compaction-vs-chatter); Pi `packages/coding-agent/src/core/compaction/`; hash/`session_fetch` patterns in [2.31](../plans/2.31-just-ask-summary-history.md). **🚫** Slash `/compact` — we do not support slash commands.
 
-Study: [01 §7](01-pi-agent.md#7-context-growth-pi-compaction-vs-chatter). Chatter design: [2.31](../plans/2.31-just-ask-summary-history.md). Pi source: `packages/coding-agent/src/core/compaction/`.
+#### What Agent Pi will do
 
-#### What Pi does (compaction)
+- **Trigger / cutoff:** when context token usage crosses a threshold, compact. Keep a recent tail (~Pi `keepRecentTokens`, default ~20k). Older path entries are **omitted from the next LLM context**. **🚫** Compact after every turn. **🚫** Manual slash compact.
+- **Summary blob:** one structured checkpoint (copy/derive Pi’s compaction sections → Agent Pi–owned prompt under `pi-prompts/`; Phase 8 if copying text):
+  - Goal
+  - Constraints & Preferences
+  - Progress (Done / In Progress / Blocked)
+  - Key Decisions
+  - Next Steps
+  - Critical Context
+  - Later compacts **update** prior summary (Pi `<previous-summary>` style) rather than starting from scratch; append read/modified file lists from tool ops where useful.
+- **Reference tags (required add-on):** summarizer input includes headed turn rows with hash links (`[#user-N](#user-N)`, `[#think-N](#think-N)`, `[#agent-N](#agent-N)`, `[#tool-N](#tool-N)`) and an **Allowed references** set. Checkpoint text **must cite** relevant tags so the main agent can recover detail. Validate emitted links (retry once) — same discipline as Chatter’s summarizer contract.
+- **History recall:** main agent always has **`session_fetch`** (tag like `user-1` / `tool-6`, or `"index"`) to load the **exact** stored message for anything dropped from context. Continuity = checkpoint + recent tail + on-demand fetch — **not** “hope it fit in the summary.”
+- **Model sees after compact:** system/checkpoint (with tags) + recent tail (+ current turn). Full UI history can remain; API context is cut.
+- **Prompts:** Agent Pi–owned summary template + any follow-up / tool-hint copy that tells the model to use tags + `session_fetch`. **🚫** Point Agent Pi at `chatter_summary.md` “for now.” **🚫** Ship a throwaway summary prompt we expect to delete.
+- **Code:** Reuse `OLLMchat.Agent.Summarizer`; Agent Pi sets **`prompt_base_dir`** / **`prompt_filename`** when constructing it. Threshold / assembly live in Agent Pi (see **Code plan**).
+- **ℹ️** Exact threshold / `keepRecentTokens` / whether summary is a `summary` role row vs system inject — **💩** at implement.
 
-- **Trigger:** context token usage crosses a threshold, or user `/compact` (optional custom instructions).
-- **Cut:** keep a recent tail (~`keepRecentTokens`, default ~20k); older path entries are **omitted from the next LLM context**.
-- **Replace with:** one `compactionSummary` message (structured checkpoint), then the kept recent entries.
-- **Summary shape (LLM, fixed sections):** Goal; Constraints & Preferences; Progress (Done / In Progress / Blocked); Key Decisions; Next Steps; Critical Context. Later compacts **update** a `<previous-summary>` rather than starting from scratch. Appends read/modified file lists from tool ops.
-- **Recall of dropped turns:** **none in-loop.** Old entries may still exist on the session path for UI/history, but the model does **not** get a `session_fetch`-style tool to pull exact prior tool output by id. Continuity is whatever survived in the checkpoint text + the recent tail.
-- **Cadence:** occasional / on pressure — not after every user turn.
+#### Code plan
 
-#### What we do (Chatter summarizer + references)
+Edits are **Remove** / **Replace with** / **Add** from the tree;
+verify surrounding context before applying.
 
-- **Trigger:** after **every** completed chat turn (background, paired FIFO with chat).
-- **Replace with:** a rolling `summary` role message injected into the **system** prompt on follow-ups; API messages are only **since** that summary (plus current turn).
-- **Full list to the summarizer:** `{turn_references}` — every row of the completed turn as headed sections with hash links (`[#user-N](#user-N)`, `[#think-N](#think-N)`, `[#agent-N](#agent-N)`, `[#tool-N](#tool-N)`), plus an **Allowed references** set. Summarizer must only emit links from that set (validated + one retry).
-- **Recall:** main agent calls **`session_fetch`** with a tag (`user-1`, `tool-6`, or `"index"`) to load the **exact** stored message. Summary stays short; details stay recoverable.
-- **Cadence:** continuous rolling memory — stronger for “what did that tool return?”; costs an extra LLM call per turn.
+- **🔷** Reuse `OLLMchat.Agent.Summarizer` (no second summarizer class).
+- **🔷** Template location = **`prompt_base_dir`** + **`prompt_filename`** on `Summarizer`, set when the agent constructs it — pass straight into `Prompt.Template` (no path splitting).
+- **🔷** Defaults: `chat-prompts` + `chatter_summary.md` (Chatter / Coding Assistant unchanged at call site).
+- **🔷** Agent Pi: `new Summarizer(agent) { prompt_base_dir = "pi-prompts", prompt_filename = "compact.md" }`.
+- **🔷** `⏳` Agent Pi trigger = token threshold (not every turn); assembly uses `create_summary()` — fences for PendingMessage/Agent when that slice is locked.
+- **💩** `⏳` Extra `Summarizer.run` slice options (A→B / keep-recent-tail) — only if one-turn fold under threshold is not enough.
+- **ℹ️** `session_fetch` already exists; ensure not in Agent Pi `forbidden`.
+- **🚫** `Factory.load_summary_prompt` (or any new Factory/Summarizer helper method for loading).
+- **🚫** Single combined path string that we split on `/`.
 
-#### Why the half-measure is wrong
+### 5a. `libollmchat/Agent/Summarizer.vala` — `prompt_base_dir` / `prompt_filename`
 
-- **🚫** Point Agent Pi at shared `Summarizer` + `chatter_summary.md` “for now.”
-- **🚫** Add `pi-prompts/summary.md` (or similar) that we expect to delete when “doing it properly.”
-- **🚫** Ship `followup.md` written for hash/`session_fetch` while summarization is unfinished or uses the wrong prompt.
+**✔️** Applied.
 
-#### Options when reopened
+**Where:** class body — properties near the top with the other fields.
 
-| | Option A — Chatter-style | Option B — Pi-style compaction | Option C — defer (**current**) |
-|--|--------------------------|--------------------------------|--------------------------------|
-| When | Every turn (or later: threshold) | Token threshold / explicit compact | Never for Agent Pi yet |
-| Prompt | Agent Pi–owned summary template (AGENTS / Skill-aware) | Structured Goal/Progress/… checkpoint (copy/derive → Phase 8) | — |
-| Model sees | System summary + recent turns | Compaction blob + recent tail | Full history until OOM/context fail |
-| Exact recall | **`session_fetch` + hash links** | Text left in checkpoint only | N/A (everything still in context) |
-| Shared code | Needs reviewed `Summarizer` flexibility **or** AgentPi-local summarizer | New compact path (cut point + reload) | Chat-only (done for Phase 0) |
+**Depends on:** none.
 
-- **✔️** Option C applied: no paired summarize; only `initial.md`; full transcript via `create_summary()` (skipping any stray `summary` rows).
-- **🔷** When reopening: lock A vs B before implement.
-- **🔷** If **A**: proper Agent Pi summary prompt + followup contract + `session_fetch`; any `Summarizer.vala` change is review-before-apply.
-- **🔷** If **B**: cut + checkpoint (+ Phase 8 if copying Pi prompt text).
-- **ℹ️** Lean later: **A** keeps reference list + recall; **B** matches Pi’s trigger economics.
+#### Add — immediately after `private static GLib.Regex hash_ref_regex;`.
+
+```vala
+		/**
+		 * Gresource pack for the summary template (e.g. ''chat-prompts'').
+		 */
+		public string prompt_base_dir { get; set; default = "chat-prompts"; }
+
+		/**
+		 * Summary template filename within {@link prompt_base_dir}.
+		 */
+		public string prompt_filename { get; set; default = "chatter_summary.md"; }
+```
+### 5b. `libollmchat/Agent/Summarizer.vala` — `run`: pass properties into `Prompt.Template`
+
+**✔️** Applied.
+
+**Where:** `run` — inside the `try` at the start of each validation attempt, where `Prompt.Template` is constructed and `load()`’d.
+
+**Depends on:** §5a.
+
+#### Remove
+```vala
+					var tpl = new Prompt.Template("chatter_summary.md") {
+						source = "resource:///",
+						base_dir = "chat-prompts"
+					};
+					tpl.load();
+```
+
+#### Replace with — same `Prompt.Template` construction, values from properties.
+```vala
+					var tpl = new Prompt.Template(this.prompt_filename) {
+						source = "resource:///",
+						base_dir = this.prompt_base_dir
+					};
+					tpl.load();
+```
+
+### 5c. Add `resources/pi-prompts/compact.md`
+
+**✔️** Applied (Pi section headings + hash-link / `session_fetch` rules).
+
+**Where:** new file beside `resources/pi-prompts/initial.md`.
+
+**Depends on:** Phase 8 if text is derived from Pi.
+
+- **🔷** `⏳` Sections: Goal; Constraints & Preferences; Progress; Key Decisions; Next Steps; Critical Context; update prior summary; cite only allowed `#user-N` / `#think-N` / `#agent-N` / `#tool-N`; tell model to use `session_fetch` for exact recall.
+- **💩** `⏳` Exact markdown body — draft at implement (copy/derive Pi compact prompt + Chatter reference rules); show full **Add** fence before apply.
+
+### 5d. `resources/gresources.xml` — register `compact.md`
+
+**✔️** Applied.
+
+**Where:** `<gresource prefix="/pi-prompts">` block.
+
+**Depends on:** §5c file exists.
+
+#### Add — immediately after `<file>initial.md</file>` inside the pi-prompts gresource.
+```xml
+    <file>compact.md</file>
+```
+
+### 5e. Agent Pi outbound + when to summarize
+
+**✔️** Applied in `PendingMessage`: `create_summary()` inject + threshold (`ctx - 16384`, estimate `content.length / 4`); Summarizer with `pi-prompts` / `compact.md`. Compact failure is warned, does not fail the chat turn.
+- **💩** Exact threshold / char÷4 estimate — revisit if token metering improves.
 
 ### Phase 6 — Steer / follow-up (later)
 
 - **🔷** Requirement later; not blocking Phases 0–3.
 - **ℹ️** Chatter FIFO ≠ between-tool-batch steer.
 
-### Phase 7 — Permissions
+### Phase 7 — Project-summary tool (backlog)
 
-- **🔷** Keep writer approval / file review / sandbox.
-- **🚫** No Pi “no popups.”
+- **🔷** `⏳` **Important:** tool call to fetch the vector **project summary** on demand (`Folder.project_description()`).
+- **🚫** Do not always inject that blurb into the system prompt (AGENTS.md stays the always-on contract when present).
+- **ℹ️** `codebase_search` cannot load it today (no `element_type=project`).
+- **💩** Tool name / whether it is a thin wrapper vs a `codebase_search` extension — lock at implement.
+- **ℹ️** Permissions stay ours (writer approval / sandbox) — not a Pi “no popups” workstream; no separate permissions phase.
 
-### Phase 8 — Licenses + SBOM (when copying Pi prompts)
+### Phase 8 — Licenses + inventory (required with Phase 3)
 
-Pi harness is **MIT** (Copyright Mario Zechner / Earendil — see `/home/alan/git/pi/LICENSE`). MIT requires preserving copyright + permission notice in copies/substantial portions.
+Pi harness is **MIT** (Copyright Mario Zechner — upstream `LICENSE`). MIT requires preserving copyright + permission notice in copies/substantial portions.
 
-- **🔷** `⏳` Add a **`licenses/`** (or `third_party/`) folder when we take Pi prompt text (or other Pi files), e.g.:
-  - `licenses/pi-coding-agent/LICENSE` (upstream MIT text)
-  - short `NOTICE` / README: what we copied (paths), upstream repo/ref, date
-- **🔷** `⏳` Maintain an **SBOM** entry (or small `sbom` / dependency note) listing Pi as a **source component** for those prompts — even if we do not vendor the whole package.
-- **🔷** `⏳` Mark derived prompt files in-tree (comment or adjacent `.NOTICE`) so later editors know origin.
-- **ℹ️** Original prompts we write ourselves need no Pi license file; only copied/derived content.
-- **💩** Exact SBOM format (CycloneDX JSON vs a markdown inventory under `licenses/`) — lock at implement; markdown inventory is enough for a first cut.
-- **🚫** Do not copy Pi code/prompts without the MIT notice nearby.
+**✔️ Locked with Phase 3 Option A** — copy/derive prompt text; attribution required.
+
+**✔️ Format locked:** no CycloneDX. Inventory = [`licenses/README.md`](../../licenses/README.md): project is **LGPL-3.0 except** the listed paths.
+
+- **✔️** `licenses/pi-coding-agent/LICENSE` — upstream MIT text.
+- **✔️** `licenses/README.md` — exception table + component note (bill of materials).
+- **✔️** Top-level `README.md` License section points at `licenses/`.
+- **✔️** Derived prompt listed: `resources/pi-prompts/initial.md` (+ `resources/pi-prompts/NOTICE`).
+- **🚫** Do not copy Pi code/prompts without the MIT notice nearby (`licenses/pi-coding-agent/LICENSE` + table row).
+
 
 ### Phase 9 — Offer to create `AGENTS.md` (later)
 
@@ -1021,17 +810,16 @@ Pi never prompts. We may when **Agent Pi is selected** and a **project is active
 
 ## Suggested order
 
-1. Phase 0 — `AgentPi` / `agent-pi` factory (chat-only; Option C)  
+1. Phase 0 — `AgentPi` / `agent-pi` factory (chat-only; full transcript until Phase 5)  
 2. Phase 1 — AGENTS.md (global + home-capped parent walk + inject; omit if missing)  
-2.5. Phase 1.5 — tool rename audit/lock then apply (`read` / `write` / …)  
+2.5. Phase 1.5 / Phase 4 — tool names (`read` / `write` / `bash` + forbid) — **✔️**  
 3. Phase 2 — Skill  
-4. Phase 3 — prompts (**with Phase 8** if any Pi prompt text is copied)  
-5. Phase 4 — tool rename/aliases (can start earlier if it unblocks prompts)  
-6. Phase 5 — deferred (Option C); reopen A vs B later if needed  
-7. Phase 6 — steer/follow-up when wanted  
-8. Phase 8 — `licenses/` + SBOM whenever Phase 3/5 takes upstream text  
-9. Phase 9 — offer to create `AGENTS.md` (ActivityBanner)  
-10. After Phase 9 — AGENTS inject soft-cap as a % of active model context  
+4. Phase 3 — copy/derive Pi system prompt (**update** `licenses/README.md` exception table)  
+5. Phase 5 — compact on threshold (Pi template) + reference tags + `session_fetch`  
+6. Phase 6 — steer/follow-up when wanted  
+7. Phase 7 — **project-summary tool** (on-demand `Folder.project_description()`)  
+8. Phase 9 — offer to create `AGENTS.md` (ActivityBanner)  
+9. After Phase 9 — AGENTS inject soft-cap as a % of active model context  
 
 ---
 
@@ -1042,7 +830,7 @@ Pi never prompts. We may when **Agent Pi is selected** and a **project is active
 - **ℹ️** Chatter kernel: `libollmchat/Chatter/`, [2.31](../plans/2.31-just-ask-summary-history.md).
 - **ℹ️** liboccoder weight: `OLLMcoder.AgentFactory`, `OLLMcoder.Skill.Factory`.
 - **🔷** Namespace **`OLLMcoder.AgentPi`**; agent id **`agent-pi`**; title **`Agent Pi`**; `long_title` **`implementation of the Pi agent harness`**.
-- **ℹ️** Pi license: MIT — `/home/alan/git/pi/LICENSE` (and published `@earendil-works/pi-coding-agent`).
+- **ℹ️** Pi license: MIT — vendored at [`licenses/pi-coding-agent/LICENSE`](../../licenses/pi-coding-agent/LICENSE); exception list in [`licenses/README.md`](../../licenses/README.md).
 - **🚫** Do not use `OLLMcoder.Skill.Manager` for Skill.
 - **🚫** Do not merge this agent into Skill.Runner.
-- **🚫** Do not copy Pi prompts without Phase 8 attribution.
+- **🚫** Do not copy Pi prompts without listing them in `licenses/README.md` and keeping the MIT text under `licenses/pi-coding-agent/`.

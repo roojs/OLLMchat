@@ -369,6 +369,8 @@ The project is organized into component directories, each with its own `meson.bu
 
 This project is licensed under the GNU Lesser General Public License version 3.0 (LGPL-3.0). See the [LICENSE](LICENSE) file for details.
 
+**Exceptions** (third-party / derived files, e.g. Pi MIT prompt text): see [`licenses/README.md`](licenses/README.md).
+
 
 ## Notes
 

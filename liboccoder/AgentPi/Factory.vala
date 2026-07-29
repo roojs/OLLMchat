@@ -22,8 +22,9 @@ namespace OLLMcoder.AgentPi
 	 * Factory for Agent Pi (id ''agent-pi'').
 	 *
 	 * Project-aware like other liboccoder factories. Loads templates from the
-	 * ''pi-prompts'' gresource; environment and SourceView follow coding-agent
-	 * weight. {@link Agent} uses a chat-only FIFO (no summarize until Phase 5).
+	 * ''pi-prompts'' gresource (Pi-derived system prompt). SourceView follows
+	 * coding-agent weight. {@link Agent} uses a chat FIFO; Phase 5 compaction
+	 * runs on threshold via {@link PendingMessage} (''pi-prompts/compact.md'').
 	 */
 	public class Factory : OLLMchat.Agent.Factory
 	{
@@ -61,7 +62,7 @@ namespace OLLMcoder.AgentPi
 		{
 			if (!config.agents.has_key(this.name)) {
 				config.agents.set(this.name, new OLLMchat.Settings.AgentConfig() {
-					forbid = "write_file,huggingface_hub"
+					forbid = "write_file,edit_mode,read_file,run_command"
 				});
 			}
 			if (!tools.has_key("write")) {
@@ -69,6 +70,9 @@ namespace OLLMcoder.AgentPi
 			}
 			if (!tools.has_key("read")) {
 				GLib.error("agent %s: required tool missing: read", this.name);
+			}
+			if (!tools.has_key("bash")) {
+				GLib.error("agent %s: required tool missing: bash", this.name);
 			}
 		}
 
@@ -148,7 +152,10 @@ namespace OLLMcoder.AgentPi
 			if (blocks.length == 0) {
 				return "";
 			}
-			return "## Project instructions\n\n" + string.joinv("\n\n", blocks) + "\n";
+			return "<project_context>\n\n"
+				+ "Project-specific instructions and guidelines:\n\n"
+				+ string.joinv("\n\n", blocks) + "\n\n"
+				+ "</project_context>\n";
 		}
 
 		/**
@@ -185,27 +192,15 @@ namespace OLLMcoder.AgentPi
 		}
 
 		/**
-		 * Environment block for system prompts (date, OS, shell, workspace).
+		 * Date and OS for the system prompt (project root is presented as ''{cwd}'').
 		 *
-		 * @param session session supplying project_path when set
 		 * @return markdown bullet list
 		 */
-		public string build_environment(OLLMchat.History.SessionBase session)
+		public string build_environment()
 		{
 			var ret = "- **Date** - `" + new GLib.DateTime.now_local().format("%Y-%m-%d") + "`";
 			var os_info = GLib.Environment.get_os_info("PRETTY_NAME");
 			ret += "\n- **OS** - `" + (os_info != null && os_info != "" ? os_info : this.get_os_version()) + "`";
-			var shell = this.shell != "" ? this.shell : GLib.Environment.get_variable("SHELL");
-			if (shell != null && shell != "") {
-				ret += "\n- **Shell** - `" + shell + "`";
-			}
-			if (session.project_path.strip() != "") {
-				ret += "\n- **Workspace** - `" + session.project_path.strip() + "`";
-				return ret;
-			}
-			if (this.project_manager.active_project != null) {
-				ret += "\n- **Workspace** - `" + this.project_manager.active_project.path + "`";
-			}
 			return ret;
 		}
 

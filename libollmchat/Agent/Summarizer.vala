@@ -32,6 +32,16 @@ namespace OLLMchat.Agent
 		private bool waiting_shown;
 		private static GLib.Regex hash_ref_regex;
 
+		/**
+		 * Gresource pack for the summary template (e.g. ''chat-prompts'').
+		 */
+		public string prompt_base_dir { get; set; default = "chat-prompts"; }
+
+		/**
+		 * Summary template filename within {@link prompt_base_dir}.
+		 */
+		public string prompt_filename { get; set; default = "chatter_summary.md"; }
+
 		static construct
 		{
 			hash_ref_regex = new GLib.Regex("^(user|think|agent|tool)-[0-9]+$");
@@ -212,9 +222,9 @@ namespace OLLMchat.Agent
 				this.draft_summary = null;
 				this.waiting_shown = false;
 				try {
-					var tpl = new Prompt.Template("chatter_summary.md") {
+					var tpl = new Prompt.Template(this.prompt_filename) {
 						source = "resource:///",
-						base_dir = "chat-prompts"
+						base_dir = this.prompt_base_dir
 					};
 					tpl.load();
 					var user_text = tpl.fill(

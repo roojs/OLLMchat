@@ -21,8 +21,9 @@ namespace OLLMcoder.AgentPi
 	/**
 	 * Agent Pi session agent.
 	 *
-	 * FIFO chat queue (no paired summarize — Phase 5 deferred). Requires an
-	 * active project before send.
+	 * FIFO chat queue. Context hygiene (Phase 5): outbound uses messages since
+	 * the latest summary boundary; compaction runs on token-threshold via
+	 * {@link PendingMessage}, not paired every turn.
 	 */
 	public class Agent : OLLMchat.Agent.Base
 	{

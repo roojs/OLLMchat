@@ -42,6 +42,7 @@
   </gresource>
   <gresource prefix="/pi-prompts">
     <file>initial.md</file>
+    <file>compact.md</file>
   </gresource>
   <gresource prefix="/tools">
     <file>huggingface-help.md</file>

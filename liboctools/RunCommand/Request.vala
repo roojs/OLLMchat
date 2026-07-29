@@ -517,7 +517,8 @@ namespace OLLMtools.RunCommand
 				}
 				output_content += "Exit code: " + exit_status.to_string();
 				if (!this.network) {
-					output_content += " - Note: Networking is disabled by default. Pass \"network\": true in the run_command arguments to enable it.";
+					output_content += " - Note: Networking is disabled by default. Pass \"network\": true in the "
+						+ this.tool.name + " arguments to enable it.";
 				}
 				output_content += "\n";
 			}

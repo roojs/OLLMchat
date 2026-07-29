@@ -21,9 +21,9 @@ namespace OLLMtools
 	/**
 	 * Registry for all tools in liboctools.
 	 *
-	 * Registers: ReadFile, RunCommand, WebFetch, EditMode, WriteFile, GoogleSearch,
-	 * CodebaseSearch, SessionFetch, HuggingFace, Browser (OLLMwebkit), and wrapped
-	 * tools (via ToolBuilder).
+	 * Registers: ReadFile (+ Read), RunCommand (+ Bash), WebFetch, EditMode (+ Write),
+	 * WriteFile, GoogleSearch, CodebaseSearch, SessionFetch, HuggingFace, Browser
+	 * (OLLMwebkit), and wrapped tools (via ToolBuilder).
 	 */
 	public class Registry : Object
 	{
@@ -82,6 +82,7 @@ namespace OLLMtools
 			manager.register_tool(new ReadFile.Tool(project_manager));
 			manager.register_tool(new ReadFile.Read(project_manager));
 			manager.register_tool(new RunCommand.Tool(project_manager));
+			manager.register_tool(new RunCommand.Bash(project_manager));
 			manager.register_tool(new WebFetch.Tool(project_manager));
 			manager.register_tool(new EditMode.Tool(project_manager));
 			manager.register_tool(new EditMode.Write(project_manager));
