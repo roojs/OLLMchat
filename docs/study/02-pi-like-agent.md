@@ -14,6 +14,7 @@ Status: ⏳ proposed
 - **✔️** Phase 5 wiring landed (`Summarizer` prompt props + `compact.md` + Agent Pi threshold compact).
 - **🔷** Pi good bits: `AGENTS.md` inject, Agent Skills–style soft skills, model-owned `toolsReply`.
 - **🔷** Separate skill system (**`Skill`**) — **no** reuse of `OLLMcoder.Skill.Manager` / refine–execute skill files.
+- **🔷** `⏳` Base skill pack (Phase 2.1) — curated `SKILL.md` dirs shipped with the app; not npm.
 - **🔷** Keep permissions / approvals.
 - **✔️** Pi-facing tool names on Agent Pi (`read` / `write` / `bash` + forbid long names). Phase 4 done for that lean scope.
 - **✔️** Phase 8 licenses inventory; Phase 3 prompt copy attributed under MIT.
@@ -471,10 +472,13 @@ Our `OLLMcoder.Skill.Definition` is different: YAML + **refine** / **execute** s
 - **🔷** Types live under **`OLLMcoder.AgentPi`**: **`Skill`** (entry) + **`SkillSet`** (scan + `to_prompt`). Detail: **Phase 2**.
 - **🔷** **Wiring only in Agent Pi** (`SkillSet` in `PendingMessage` → `pi-prompts/initial.md`).
 - **🚫** No shared `Skill.Manager`, **no** shared skill directories with Runner builtins unless we deliberately dual-publish later.
-- **🔷** Storage:
+- **🔷** A skill is **generic content**: `SKILL.md` (frontmatter + markdown) plus optional helper **scripts** (shell or whatever the skill documents) and assets beside it — Agent Skills–shaped, not an npm module type.
+- **ℹ️** Pi’s `pi install` / npm / git packages are only **their** distribution story for bundling skills with extensions. The skill format itself is not tied to npm or Node.
+- **🚫** Do not adopt npm / `pi install` / Node package gallery as how OLLMchat ships or discovers skills.
+- **🔷** Storage (user-editable):
   - user/global: `~/.local/share/ollmchat/pi-skills/`
   - project: `.pi/skills/` and `.agents/skills/` under project root
-  - optional later: gresource pack of Pi-format skills (not `resources/skills/` Runner files)
+- **🔷** `⏳` **Base set** — ship a small curated pack of Pi-format skills with the app (see **Phase 2.1**). Not empty-forever.
 - **🔷** On system build: scan → catalog in prompt → model uses `read` on `location`.
 - **🚫** No slash-command / forced skill-inject UI — catalog + `read` only.
 - **🚫** Do not parse refine/execute or call `Skill.Manager.validate`.
@@ -606,6 +610,17 @@ When a skill file references a relative path, resolve it against the skill direc
 
 - **✔️** `liboccoder/AgentPi/Skill.vala`, `SkillSet.vala` — see sources (not reproduced here).
 - **✔️** Wire: `PendingMessage.run` scans/`to_prompt` → `{skills_md}`; `resources/pi-prompts/initial.md`; meson lists both files.
+
+### Phase 2.1 — Base skill pack (backlog)
+
+- **🔷** `⏳` Offer a **base set** of Agent Pi skills so a fresh install is not catalog-empty.
+- **🔷** Content shape only: each skill = directory with `SKILL.md` (+ optional shell/scripts/assets the markdown points at). Language-agnostic text + scripts — **not** Node packages.
+- **🚫** npm / `pi install` / package gallery as the delivery mechanism.
+- **🔷** Ship in-tree under something like `resources/pi-skills/` (or similar) — **not** `resources/skills/` (Runner refine/execute).
+- **💩** Delivery into the scan: gresource extract / copy-on-first-use into `~/.local/share/ollmchat/pi-skills/` vs scan a read-only gresource root vs install-tree share dir — lock at implement (`SkillSet.scan` may need one more root).
+- **💩** Which skills belong in the base set (e.g. git helpers, review checklist, …) — pick a short list when implementing; prefer useful generics over Pi-npm clones.
+- **ℹ️** User/project dirs still override / add skills (same name replace rules as Phase 2).
+- **ℹ️** Third-party skills later = drop folders into those dirs (or a future non-npm share format) — not a Node registry.
 
 ---
 
@@ -802,6 +817,7 @@ Pi never prompts. We may when **Agent Pi is selected** and a **project is active
 
 - **🚫** Skill.Runner / old `Skill.Manager` crossover for Pi skills.
 - **🚫** Using `resources/skills/*.md` (refine/execute) as Skill sources.
+- **🚫** npm / `pi install` / Node package gallery as skill distribution.
 - **🚫** Parallel tool execution as a goal.
 - **🚫** Pi extensions / packages / TUI / RPC.
 - **ℹ️** Pi-style exact **`edit`** (old/new text in args) — later phase after current tool surface; not in this hunk set.
@@ -813,7 +829,8 @@ Pi never prompts. We may when **Agent Pi is selected** and a **project is active
 1. Phase 0 — `AgentPi` / `agent-pi` factory (chat-only; full transcript until Phase 5)  
 2. Phase 1 — AGENTS.md (global + home-capped parent walk + inject; omit if missing)  
 2.5. Phase 1.5 / Phase 4 — tool names (`read` / `write` / `bash` + forbid) — **✔️**  
-3. Phase 2 — Skill  
+3. Phase 2 — Skill loader + catalog — **✔️**  
+3.5. Phase 2.1 — base skill pack (`resources/pi-skills/` or equivalent; no npm)  
 4. Phase 3 — copy/derive Pi system prompt (**update** `licenses/README.md` exception table)  
 5. Phase 5 — compact on threshold (Pi template) + reference tags + `session_fetch`  
 6. Phase 6 — steer/follow-up when wanted  
