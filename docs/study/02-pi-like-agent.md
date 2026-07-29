@@ -3,7 +3,8 @@
 Status: ⏳ proposed
 
 ℹ️ Checklist: `docs/guide-to-writing-plans.md` — Checklist for plans.  
-ℹ️ Study: [01-pi-agent.md](01-pi-agent.md). Vala: `docs/coding-standards.md` via router when implementing.
+ℹ️ Study: [01-pi-agent.md](01-pi-agent.md); harness meaning: [04-pi-harness-what-it-actually-does.md](04-pi-harness-what-it-actually-does.md). Vala: `docs/coding-standards.md` via router when implementing.  
+ℹ️ Split-out plans: [06 steer/follow-up](06-steer-follow-up.md), [07 project-summary tool](07-project-summary-tool.md), [09 offer AGENTS.md](09-offer-agents-md.md); base skills [03](03-base-skills.md).
 
 ## Purpose
 
@@ -18,7 +19,7 @@ Status: ⏳ proposed
 - **🔷** Keep permissions / approvals.
 - **✔️** Pi-facing tool names on Agent Pi (`read` / `write` / `bash` + forbid long names). Phase 4 done for that lean scope.
 - **✔️** Phase 8 licenses inventory; Phase 3 prompt copy attributed under MIT.
-- **⏳** Lock remaining policy only where noted (e.g. Phase 7 project-summary tool); then implement remaining phases.
+- **⏳** Remaining backlog lives in sibling plans ([06](06-steer-follow-up.md), [07](07-project-summary-tool.md), [09](09-offer-agents-md.md), [03](03-base-skills.md)); lock policy there, then implement.
 
 ---
 
@@ -525,8 +526,8 @@ So: missing agents file ⇒ **omit the project-instructions block**; the harness
 - **✔️** If nothing found: omit inject.
 - **✔️** `Factory.build_agents_md(project_path)` + `{agents_md}` in `pi-prompts/initial.md`.
 - **ℹ️** Separate from vector `project_description()`; may show both later if wanted.
-- **🚫** Fake AGENTS path / `agent/` subdir / size policy (size = after Phase 9).
-- **ℹ️** Offer-to-create is **Phase 9**.
+- **🚫** Fake AGENTS path / `agent/` subdir / size policy (size = after [09](09-offer-agents-md.md)).
+- **ℹ️** Offer-to-create: [09](09-offer-agents-md.md).
 
 ### Phase 2 — `Skill` loader + catalog
 
@@ -614,11 +615,12 @@ When a skill file references a relative path, resolve it against the skill direc
 ### Phase 2.1 — Base skill pack (backlog)
 
 - **🔷** `⏳` Offer a **base set** of Agent Pi skills so a fresh install is not catalog-empty.
+- **ℹ️** Research / options: [03-base-skills.md](03-base-skills.md) — collections, acquisition open (vendor vs seed vs docs-only; **🚫** npm).
 - **🔷** Content shape only: each skill = directory with `SKILL.md` (+ optional shell/scripts/assets the markdown points at). Language-agnostic text + scripts — **not** Node packages.
 - **🚫** npm / `pi install` / package gallery as the delivery mechanism.
 - **🔷** Ship in-tree under something like `resources/pi-skills/` (or similar) — **not** `resources/skills/` (Runner refine/execute).
 - **💩** Delivery into the scan: gresource extract / copy-on-first-use into `~/.local/share/ollmchat/pi-skills/` vs scan a read-only gresource root vs install-tree share dir — lock at implement (`SkillSet.scan` may need one more root).
-- **💩** Which skills belong in the base set (e.g. git helpers, review checklist, …) — pick a short list when implementing; prefer useful generics over Pi-npm clones.
+- **💩** Which skills belong in the base set — lock via 03 shortlist when implementing.
 - **ℹ️** User/project dirs still override / add skills (same name replace rules as Phase 2).
 - **ℹ️** Third-party skills later = drop folders into those dirs (or a future non-npm share format) — not a Node registry.
 
@@ -768,18 +770,11 @@ verify surrounding context before applying.
 **✔️** Applied in `PendingMessage`: `create_summary()` inject + threshold (`ctx - 16384`, estimate `content.length / 4`); Summarizer with `pi-prompts` / `compact.md`. Compact failure is warned, does not fail the chat turn.
 - **💩** Exact threshold / char÷4 estimate — revisit if token metering improves.
 
-### Phase 6 — Steer / follow-up (later)
+### Phase 6 / 7 / 9 — moved
 
-- **🔷** Requirement later; not blocking Phases 0–3.
-- **ℹ️** Chatter FIFO ≠ between-tool-batch steer.
-
-### Phase 7 — Project-summary tool (backlog)
-
-- **🔷** `⏳` **Important:** tool call to fetch the vector **project summary** on demand (`Folder.project_description()`).
-- **🚫** Do not always inject that blurb into the system prompt (AGENTS.md stays the always-on contract when present).
-- **ℹ️** `codebase_search` cannot load it today (no `element_type=project`).
-- **💩** Tool name / whether it is a thin wrapper vs a `codebase_search` extension — lock at implement.
-- **ℹ️** Permissions stay ours (writer approval / sandbox) — not a Pi “no popups” workstream; no separate permissions phase.
+- **ℹ️** Steer / follow-up (agent + UI): [06](06-steer-follow-up.md).
+- **ℹ️** Project-summary tool: [07](07-project-summary-tool.md).
+- **ℹ️** Offer to create `AGENTS.md`: [09](09-offer-agents-md.md).
 
 ### Phase 8 — Licenses + inventory (required with Phase 3)
 
@@ -796,21 +791,6 @@ Pi harness is **MIT** (Copyright Mario Zechner — upstream `LICENSE`). MIT requ
 - **🚫** Do not copy Pi code/prompts without the MIT notice nearby (`licenses/pi-coding-agent/LICENSE` + table row).
 
 
-### Phase 9 — Offer to create `AGENTS.md` (later)
-
-Pi never prompts. We may when **Agent Pi is selected** and a **project is active/opened** and project-root has no `AGENTS.md` (CLAUDE-only **💩**):
-
-> This project has no AGENTS.md — create one?
-
-**Where:** [`ollmapp/ActivityBanner`](../../ollmapp/ActivityBanner.vala) — header status strip used for scan/vector/download progress ([5.0.6](../plans/done/5.0.6-DONE-activity-progress-actions.md)). Same spine: `History.Manager.notification` → banner; action via `action` / `action_label` → `notification_reply`.
-
-- **🔷** `⏳` Emit a `client.*` (or similar) notification: message = missing-AGENTS copy; `action_label` = e.g. `Create`; `action` = handler id for Agent Pi / Window.
-- **🔷** `⏳` On Create: write a starter `AGENTS.md` at **project root** (template content **💩** — short stub vs richer scaffold).
-- **🔷** Trigger when: switch **to** `agent-pi` with a project already active, **and/or** activate/open a project while Agent Pi is current. Debounce / once-per-project-per-session **💩**.
-- **💩** Dismiss without Create — banner auto-hide timeout already exists; explicit Dismiss needs a second button (banner today has **one** action) or treat hide-as-dismiss.
-- **💩** Collision with live progress (scan/index/download): don’t clobber an in-flight progress notification; queue or wait until banner idle (**💩** exact policy).
-- **ℹ️** Not a default inject — Phase 1 still omits when missing; this only offers to create a real file.
-- **🚫** Not part of Phase 1 implement.
 ---
 
 ## Out of this plan
@@ -833,16 +813,16 @@ Pi never prompts. We may when **Agent Pi is selected** and a **project is active
 3.5. Phase 2.1 — base skill pack (`resources/pi-skills/` or equivalent; no npm)  
 4. Phase 3 — copy/derive Pi system prompt (**update** `licenses/README.md` exception table)  
 5. Phase 5 — compact on threshold (Pi template) + reference tags + `session_fetch`  
-6. Phase 6 — steer/follow-up when wanted  
-7. Phase 7 — **project-summary tool** (on-demand `Folder.project_description()`)  
-8. Phase 9 — offer to create `AGENTS.md` (ActivityBanner)  
-9. After Phase 9 — AGENTS inject soft-cap as a % of active model context  
+6. [06](06-steer-follow-up.md) — steer/follow-up (6a agent, then 6b UI)  
+7. [07](07-project-summary-tool.md) — project-summary tool  
+8. [09](09-offer-agents-md.md) — offer to create `AGENTS.md`  
+9. After [09](09-offer-agents-md.md) — AGENTS inject soft-cap as a % of active model context  
 
 ---
 
 ## LLM notes
 
-- **ℹ️** Study: [01-pi-agent.md](01-pi-agent.md).
+- **ℹ️** Study: [01-pi-agent.md](01-pi-agent.md); siblings [03](03-base-skills.md), [04](04-pi-harness-what-it-actually-does.md), [06](06-steer-follow-up.md), [07](07-project-summary-tool.md), [09](09-offer-agents-md.md).
 - **ℹ️** Pi skill load: `packages/coding-agent/src/core/skills.ts` (`loadSkillFromFile`, `formatSkillsForPrompt`); docs `packages/coding-agent/docs/skills.md`.
 - **ℹ️** Chatter kernel: `libollmchat/Chatter/`, [2.31](../plans/2.31-just-ask-summary-history.md).
 - **ℹ️** liboccoder weight: `OLLMcoder.AgentFactory`, `OLLMcoder.Skill.Factory`.

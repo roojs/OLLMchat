@@ -229,6 +229,8 @@ While the agent is busy:
 
 Our Chatter FIFO is **whole turns** (chat then summarize), not between tool batches. Worth having as a requirement for JustAsk/Chatter later; not the main differentiator vs Pi’s skill/`AGENTS.md` story.
 
+**Implement plan:** [06-steer-follow-up.md](06-steer-follow-up.md) (6a agent loop, 6b UI reserved).
+
 ---
 
 ## 10. Edit path (one line)

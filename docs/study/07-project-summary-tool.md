@@ -1,0 +1,37 @@
+# 07. Project-summary tool
+
+Status: ⏳ proposed
+
+ℹ️ Checklist: `docs/guide-to-writing-plans.md` — Checklist for plans.  
+ℹ️ Parent: [02-pi-like-agent.md](02-pi-like-agent.md). Split out of former Phase 7.
+
+## Purpose
+
+- 🔷 `⏳` Tool call to fetch the vector **project summary** on demand (`Folder.project_description()`).
+- 🚫 Do not always inject that blurb into the system prompt (AGENTS.md stays the always-on contract when present).
+- ℹ️ `codebase_search` cannot load it today (no `element_type=project`).
+- 💩 Tool name / whether it is a thin wrapper vs a `codebase_search` extension — lock at implement.
+- ℹ️ Permissions stay ours (writer approval / sandbox) — not a Pi “no popups” workstream; no separate permissions phase.
+
+---
+
+## Design notes
+
+- ℹ️ AGENTS.md inject ([02 Phase 1](02-pi-like-agent.md)) is standing project **instructions**; this tool is the indexer **summary** — different payloads.
+- 💩 Whether Agent Pi exposes the tool by default beside `read` / `write` / `bash` — lock with tool-name policy in [02](02-pi-like-agent.md).
+- 🚫 Do not paste `project_description()` into `{agents_md}` or always-on system text as a substitute for this tool.
+
+---
+
+## Suggested order
+
+1. Lock tool name + registration (Agent Pi only vs shared Tool.Manager).
+2. Implement thin fetch of `Folder.project_description()`.
+3. Prompt/tool-hint copy if the model needs to know when to call it (**💩**).
+
+---
+
+## LLM notes
+
+- ℹ️ Parent backlog pointer was Phase 7 in [02](02-pi-like-agent.md); this file is canonical now.
+- 🔷 Agent id `agent-pi` / namespace `OLLMcoder.AgentPi`.
