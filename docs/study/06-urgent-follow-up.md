@@ -19,6 +19,7 @@ Status: ⏳ proposed — Phase **6a** ✔️ agent (Agent Pi only; no `libollmch
 - 🔷 **When injected** (follow-up at stop / urgent after tools): `add_message` + send to LLM together — transcript gets the row at send time, not while queued.
 - 🔷 Pending visibility (hold zone like the skills tree; optional session pending section) is **UI / possibly Manager** — Phase **6b** (or later). Do not dump queued rows into the live chat stream early (they scroll off).
 - 🔷 Split agent plumbing from UI: agent 6a can land first; composer / pending zone / upgrade need explicit approval (6b).
+- ℹ️ Mock core type ('''unlinked'''): [`libollmchat/MessageQueue.vala`](../../libollmchat/MessageQueue.vala) — **`Object, GLib.ListModel`** (SessionList-shaped: Gee.ArrayList + append/remove/… + `items_changed`); pending vs urgent via `Message.queue_urgent`. Not in meson yet.
 - ℹ️ Chatter FIFO = whole turns (chat then summarize). **≠** mid-run follow-up / urgent inject.
 - 🚫 Not Pi’s “Enter dumps everything into steer/urgent.”
 - 🚫 Not skill compliance / plan gates — see [04](04-pi-harness-what-it-actually-does.md).
