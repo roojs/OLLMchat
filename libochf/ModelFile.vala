@@ -35,7 +35,7 @@ namespace OLLMhf
 		/** Bytes written so far for this sibling. */
 		public int64 bytes_written { get; set; default = 0; }
 
-		/** LFS ETag from HEAD (SHA-256) for final verify. */
+		/** LFS SHA-256 from Hub ''X-Linked-ETag'' (not CDN ''ETag''). */
 		public string etag { get; set; default = ""; }
 
 		/** Incremental SHA-256 hex while streaming (resume). */

@@ -32,8 +32,7 @@ namespace OLLMhf
 		public string[] file_filter { get; set; default = {}; }
 
 		private Soup.Session soup;
-		private OLLMrpc.Bin.Json json =
-			new OLLMrpc.Bin.Json(OLLMrpc.Bin.Mode.AUTO);
+		private OLLMrpc.Bin.Json json = new OLLMrpc.Bin.Json(OLLMrpc.Bin.Mode.AUTO);
 		private GLib.Cancellable? stop_cancellable;
 		private int64 last_persist_time;
 		private int64 last_persist_bytes;
@@ -54,14 +53,11 @@ namespace OLLMhf
 		public async void start(GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
 			this.stop_cancellable = new GLib.Cancellable();
-			var active_cancel = cancellable != null
-				? cancellable
-				: this.stop_cancellable;
+			var active_cancel = cancellable != null ? cancellable : this.stop_cancellable;
 			var model_dir = this.models_dir;
 			if (model_dir == "") {
 				model_dir = GLib.Path.build_filename(
-					GLib.Environment.get_user_data_dir(),
-					"ollmchat", "models");
+					GLib.Environment.get_user_data_dir(), "ollmchat", "models");
 			}
 			foreach (var segment in this.model.id.split("/")) {
 				model_dir = GLib.Path.build_filename(model_dir, segment);
@@ -120,8 +116,8 @@ namespace OLLMhf
 
 		/**
 		 * Stream, verify, and persist one ''.gguf'' sibling when filters
-		 * and resume state allow it. HEAD runs only on a fresh start to
-		 * fetch the LFS ETag; resumed downloads reuse persisted state.
+		 * and resume state allow it. HEAD (no redirect) reads Hub
+		 * ''X-Linked-ETag'' (LFS SHA-256) before GET.
 		 *
 		 * @param file          sibling to download
 		 * @param model_dir     install directory for this model
@@ -146,58 +142,42 @@ namespace OLLMhf
 			}
 
 			var resolve_url = file.to_url(this.model.id, this.model.download_revision);
-			if (file.bytes_written == 0) {
-				var head_msg = new Soup.Message("HEAD", resolve_url);
-				var head_in = yield this.soup.send_async(
-					head_msg, GLib.Priority.DEFAULT, active_cancel);
-				if (head_in != null) {
-					var discard = new uint8[4096];
-					while (true) {
-						var drained = yield head_in.read_async(
-							discard, GLib.Priority.DEFAULT, active_cancel);
-						if (drained <= 0) {
-							break;
-						}
+			var head_msg = new Soup.Message("HEAD", resolve_url);
+			head_msg.set_flags(Soup.MessageFlags.NO_REDIRECT);
+			var head_in = yield this.soup.send_async(head_msg, GLib.Priority.DEFAULT, active_cancel);
+			if (head_in != null) {
+				var discard = new uint8[4096];
+				while (true) {
+					var drained = yield head_in.read_async(discard, GLib.Priority.DEFAULT, active_cancel);
+					if (drained <= 0) {
+						break;
 					}
 				}
-				var etag_raw = head_msg.response_headers.get_one("ETag");
-				if (etag_raw != null && etag_raw != "") {
-					var etag = etag_raw.strip();
-					if (etag.has_prefix("\"") && etag.has_suffix("\"")) {
-						etag = etag[1:etag.length - 1];
-					}
-					file.etag = etag;
+			}
+			// Hub 302: X-Linked-ETag is LFS SHA-256; CDN ETag after redirect is not.
+			var etag_raw = head_msg.response_headers.get_one("X-Linked-ETag");
+			if (etag_raw == null || etag_raw == "") {
+				etag_raw = head_msg.response_headers.get_one("ETag");
+			}
+			if (etag_raw != null && etag_raw != "") {
+				var etag = etag_raw.strip();
+				if (etag.has_prefix("\"") && etag.has_suffix("\"")) {
+					etag = etag[1:etag.length - 1];
 				}
+				file.etag = etag;
+			}
+			var linked_size = head_msg.response_headers.get_one("X-Linked-Size");
+			if (linked_size != null && linked_size != "") {
+				file.size = int64.parse(linked_size);
 			}
 
 			var partial_path = GLib.Path.build_filename(model_dir, file.rfilename + ".partial");
 			var dest_path = GLib.Path.build_filename(model_dir, file.rfilename);
-			var get_msg = new Soup.Message("GET", resolve_url);
-			if (file.bytes_written > 0) {
-				get_msg.request_headers.replace(
-					"Range", "bytes=%lld-".printf(file.bytes_written));
-			}
-			var input = yield this.soup.send_async(
-				get_msg, GLib.Priority.DEFAULT, active_cancel);
-			if (get_msg.status_code != 200 && get_msg.status_code != 206) {
-				throw new GLib.IOError.FAILED("HTTP %u for %s",
-					get_msg.status_code, file.rfilename);
-			}
-			if (file.size == 0) {
-				file.size = (int64) get_msg.response_headers.get_content_length();
-			}
-
-			GLib.FileOutputStream? out_stream = null;
-			if (file.bytes_written > 0) {
-				out_stream = GLib.File.new_for_path(partial_path).append_to(
-					GLib.FileCreateFlags.NONE);
-			} else {
-				out_stream = GLib.File.new_for_path(partial_path).create(
-					GLib.FileCreateFlags.REPLACE_DESTINATION);
-			}
-
 			var checksum = new GLib.Checksum(GLib.ChecksumType.SHA256);
-			if (file.bytes_written > 0
+
+			// Full .partial already on disk (e.g. prior verify used wrong
+			// CDN ETag): hash only — no Range GET from EOF.
+			if (file.size > 0 && file.bytes_written >= file.size
 				&& GLib.FileUtils.test(partial_path, GLib.FileTest.EXISTS)) {
 				var partial_in = yield GLib.File.new_for_path(partial_path).read_async(
 					GLib.Priority.DEFAULT, active_cancel);
@@ -210,41 +190,79 @@ namespace OLLMhf
 					}
 					checksum.update(hash_buf[0:hash_read], hash_read);
 				}
+			} else {
+				// Fresh or mid-file resume: GET (Range if bytes_written > 0).
+				var get_msg = new Soup.Message("GET", resolve_url);
+				if (file.bytes_written > 0) {
+					get_msg.request_headers.replace("Range", "bytes=%lld-".printf(file.bytes_written));
+				}
+				var input = yield this.soup.send_async(get_msg, GLib.Priority.DEFAULT, active_cancel);
+				if (get_msg.status_code != 200 && get_msg.status_code != 206) {
+					throw new GLib.IOError.FAILED("HTTP %u for %s", get_msg.status_code, file.rfilename);
+				}
+				if (file.size == 0) {
+					file.size = (int64) get_msg.response_headers.get_content_length();
+				}
+
+				GLib.FileOutputStream? out_stream = null;
+				if (file.bytes_written > 0) {
+					out_stream = GLib.File.new_for_path(partial_path).append_to(GLib.FileCreateFlags.NONE);
+				} else {
+					out_stream = GLib.File.new_for_path(partial_path).create(
+						GLib.FileCreateFlags.REPLACE_DESTINATION);
+				}
+
+				// Resume: seed SHA-256 from bytes already on disk, then
+				// append the Range body into the same digest.
+				if (file.bytes_written > 0
+					&& GLib.FileUtils.test(partial_path, GLib.FileTest.EXISTS)) {
+					var partial_in = yield GLib.File.new_for_path(partial_path).read_async(
+						GLib.Priority.DEFAULT, active_cancel);
+					var hash_buf = new uint8[65536];
+					while (true) {
+						var hash_read = yield partial_in.read_async(
+							hash_buf, GLib.Priority.DEFAULT, active_cancel);
+						if (hash_read <= 0) {
+							break;
+						}
+						checksum.update(hash_buf[0:hash_read], hash_read);
+					}
+				}
+
+				var buf = new uint8[65536];
+				var last_progress_us = (int64) 0;
+				while (true) {
+					var n = yield input.read_async(buf, GLib.Priority.DEFAULT, active_cancel);
+					if (n <= 0) {
+						break;
+					}
+					out_stream.write(buf[0:n]);
+					checksum.update(buf[0:n], n);
+					file.bytes_written += n;
+					var now = GLib.get_monotonic_time();
+					if (last_progress_us == 0 || now - last_progress_us >= 1000000) {
+						last_progress_us = now;
+						this.progress(new OLLMrpc.Notification() {
+							method = "event.hf.download.progress",
+							object_type = "ModelFile",
+							message = file.rfilename,
+							progress_completed = file.bytes_written,
+							progress_total = file.size,
+							action = "cancel",
+							action_label = "Cancel",
+						});
+					}
+					if (now - this.last_persist_time >= 5000000
+						|| file.bytes_written - this.last_persist_bytes >= 8 * 1024 * 1024) {
+						var node = this.json.from_gobject(this.model);
+						GLib.FileUtils.set_contents(download_path, Json.to_string(node, true));
+						this.last_persist_time = now;
+						this.last_persist_bytes = file.bytes_written;
+					}
+				}
+				out_stream.close();
 			}
 
-			var buf = new uint8[65536];
-			var last_progress_us = (int64) 0;
-			while (true) {
-				var n = yield input.read_async(buf, GLib.Priority.DEFAULT, active_cancel);
-				if (n <= 0) {
-					break;
-				}
-				out_stream.write(buf[0:n]);
-				checksum.update(buf[0:n], n);
-				file.bytes_written += n;
-				var now = GLib.get_monotonic_time();
-				if (last_progress_us == 0 || now - last_progress_us >= 1000000) {
-					last_progress_us = now;
-					this.progress(new OLLMrpc.Notification() {
-						method = "event.hf.download.progress",
-						object_type = "ModelFile",
-						message = file.rfilename,
-						progress_completed = file.bytes_written,
-						progress_total = file.size,
-						action = "cancel",
-						action_label = "Cancel",
-					});
-				}
-				if (now - this.last_persist_time >= 5000000
-					|| file.bytes_written - this.last_persist_bytes >= 8 * 1024 * 1024) {
-					var node = this.json.from_gobject(this.model);
-					var json_text = Json.to_string(node, true);
-					GLib.FileUtils.set_contents(download_path, json_text);
-					this.last_persist_time = now;
-					this.last_persist_bytes = file.bytes_written;
-				}
-			}
-			out_stream.close();
 			this.progress(new OLLMrpc.Notification() {
 				method = "event.hf.download.progress",
 				object_type = "ModelFile",
@@ -255,14 +273,15 @@ namespace OLLMhf
 				action_label = "Cancel",
 			});
 
+			// Final: digest vs Hub X-Linked-ETag, size, then .partial → final.
 			var digest = checksum.get_string();
 			file.sha256_partial = digest;
 			if (file.etag != "" && digest != file.etag) {
-				throw new GLib.IOError.FAILED("checksum mismatch for %s", file.rfilename);
+				throw new GLib.IOError.FAILED("checksum mismatch for %s: got %s expected %s",
+					file.rfilename, digest, file.etag);
 			}
 			if (file.size > 0 && file.bytes_written != file.size) {
-				throw new GLib.IOError.FAILED(
-					"size mismatch for %s: got %lld expected %lld",
+				throw new GLib.IOError.FAILED("size mismatch for %s: got %lld expected %lld",
 					file.rfilename, file.bytes_written, file.size);
 			}
 
