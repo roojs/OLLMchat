@@ -1,8 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 # Fetch libllama/libggml .debs from Debian for systems where apt is too old.
-# Installs core packages plus vulkan and blas backends. HIP (~1GB) is added only
-# when ROCm is present. Debian has no NVIDIA CUDA backend package.
+# Installs core packages plus vulkan and blas backends. Never install
+# libggml0-backend-hip on ROCm — it breaks the stack. Debian has no NVIDIA
+# CUDA backend package.
 
 GGML_POOL="https://deb.debian.org/debian/pool/main/g/ggml"
 LLAMA_POOL="https://deb.debian.org/debian/pool/main/l/llama.cpp"
@@ -39,9 +40,14 @@ PACKAGES=(
   libggml0-backend-blas
 )
 
+# HIP backend breaks ROCm installs; ensure it is never pulled in (and purge a
+# leftover from older runs of this script).
 if has_rocm; then
-  echo "ROCm detected; including HIP backend."
-  PACKAGES+=(libggml0-backend-hip)
+  echo "ROCm detected; skipping libggml0-backend-hip (breaks ROCm)."
+  if dpkg -l libggml0-backend-hip 2>/dev/null | grep -q '^ii'; then
+    echo "Removing installed libggml0-backend-hip."
+    sudo apt-get remove -y libggml0-backend-hip
+  fi
 else
   echo "No ROCm detected; skipping HIP backend."
 fi
