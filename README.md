@@ -136,20 +136,32 @@ sudo apt install \
   libgtk-4-dev \
   libgtksourceview-5-dev \
   libadwaita-1-dev \
+  libwebkitgtk-6.0-dev \
+  libatspi2.0-dev \
   libsoup-3.0-dev \
   libjson-glib-dev \
   libxml2-dev \
   libsqlite3-dev \
   libgit2-glib-1.0-dev \
+  libseccomp-dev \
   gobject-introspection \
   libgirepository1.0-dev \
   libomp-dev \
+  libblas-dev \
+  liblapack-dev \
+  libopenblas-dev \
   libfaiss-dev \
   libtree-sitter-dev \
   desktop-file-utils \
+  bubblewrap \
   build-essential \
   pkg-config
 ```
+
+- **libwebkitgtk-6.0-dev** / **libatspi2.0-dev** — Linux browser tool (`libocwebkit`; WebKitGTK + AT-SPI a11y)
+- **libseccomp-dev** — sandbox syscall reporting (`libocbwrap`)
+- **bubblewrap** — `bwrap` for sandboxed `run_command` and MCP stdio servers
+- **libblas-dev** / **liblapack-dev** / **libopenblas-dev** — required to link FAISS (`libocvector2` / semantic search). Meson accepts either OpenBLAS or the reference BLAS/LAPACK packages; install all three as above so setup does not fail if one provider is missing. A configure line `Library openblas found: NO` is fine only when `blas`/`lapack` were found instead.
 
 **For code search functionality**, you'll also need:
 
@@ -164,17 +176,6 @@ You can download these models through the settings dialog in the application, or
 ollama pull bge-m3:latest
 ollama pull qwen3-coder:30b
 ```
-
-### Runtime Dependencies
-
-**For RunCommand tool (command execution with overlay filesystem support)**, you'll also need:
-
-```bash
-sudo apt install \
-  bubblewrap
-```
-
-- **bubblewrap** - Provides `bwrap` command for sandboxed command execution (also used for sandboxed MCP stdio servers)
 
 ### MCP servers (`libocmcp`)
 

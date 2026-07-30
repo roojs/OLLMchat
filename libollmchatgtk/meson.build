@@ -137,7 +137,7 @@ if g_ir_compiler.found()
     '--includedir', meson.current_build_dir() / '..' / 'libollmchat',
     '--includedir', '/usr/share/gir-1.0',
   ],
-  depends: ollmchatgtk_lib,
+  depends: [ollmchatgtk_lib, ocfiles_base_lib] + ocfiles_gir_targets,
   build_by_default: true,
   install: true,
   install_dir: get_option('libdir') / 'girepository-1.0',
