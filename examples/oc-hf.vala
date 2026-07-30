@@ -124,19 +124,32 @@ Examples:
 			}
 			var rate_at_us = (int64) 0;
 			var rate_at_bytes = (int64) 0;
+			var rate = 0.0;
 			var rate_text = "";
+			var eta_text = "";
 			dl.progress.connect((notif) => {
 				var now = GLib.get_monotonic_time();
 				if (rate_at_us > 0 && now > rate_at_us) {
 					var delta_bytes = notif.progress_completed - rate_at_bytes;
 					var delta_sec = (now - rate_at_us) / 1000000.0;
-					if (delta_sec > 0 && delta_bytes >= 0) {
-						rate_text = GLib.format_size(
-							(uint64) (delta_bytes / delta_sec)) + "/s";
+					if (delta_sec > 0 && delta_bytes > 0) {
+						rate = delta_bytes / delta_sec;
 					}
 				}
 				rate_at_us = now;
 				rate_at_bytes = notif.progress_completed;
+				if (rate > 0) {
+					rate_text = GLib.format_size((uint64) rate) + "/s";
+					eta_text = "";
+					if (notif.progress_total > notif.progress_completed) {
+						var left_sec = (notif.progress_total
+							- notif.progress_completed) / rate;
+						eta_text = "  ~%dm".printf((int) (left_sec / 60));
+						if (left_sec >= 90 * 60) {
+							eta_text = "  ~%dh".printf((int) (left_sec / 3600));
+						}
+					}
+				}
 				var pct = 0.0;
 				if (notif.progress_total > 0) {
 					pct = 100.0 * (double) notif.progress_completed
@@ -149,14 +162,15 @@ Examples:
 				if (filled < 0) {
 					filled = 0;
 				}
-				stdout.printf("\r%s [%s%s] %5.1f%% %s / %s  %s   ",
+				stdout.printf("\r%s [%s%s] %5.1f%% %s / %s  %s%s   ",
 					notif.message,
 					string.nfill(filled, '#'),
 					string.nfill(20 - filled, '.'),
 					pct,
 					GLib.format_size(notif.progress_completed),
 					GLib.format_size(notif.progress_total),
-					rate_text);
+					rate_text,
+					eta_text);
 				stdout.flush();
 			});
 			command_line.print("download %s\n", opt_download.strip());

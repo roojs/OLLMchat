@@ -56,6 +56,7 @@ namespace OLLMapp
 		private uint hide_timeout_id = 0;
 		private int64 rate_at_us = 0;
 		private int64 rate_at_bytes = 0;
+		private double rate = 0.0;
 
 		public ActivityBanner()
 		{
@@ -120,11 +121,10 @@ namespace OLLMapp
 		private void on_notification(OLLMrpc.Notification notif)
 		{
 			this.current_notification = notif;
+			this.action_button.visible = false;
 			if (notif.action_label != "") {
 				this.action_button.label = notif.action_label;
 				this.action_button.visible = true;
-			} else {
-				this.action_button.visible = false;
 			}
 			switch (notif.method) {
 				case "client.project.load_start":
@@ -138,9 +138,8 @@ namespace OLLMapp
 					break;
 
 				case "event.filesystem.scan_start":
-					this.label.label =
-						"Filesystem scan: %s…".printf(
-							GLib.Path.get_basename(notif.message));
+					this.label.label = "Filesystem scan: %s…".printf(
+						GLib.Path.get_basename(notif.message));
 					this.show();
 					break;
 
@@ -149,11 +148,8 @@ namespace OLLMapp
 					if (fs_end_space < 0) {
 						return;
 					}
-					var fs_file_count = int.parse(
-						notif.message.substring(0, fs_end_space));
-					this.label.label =
-						"Filesystem scan ended — %d files".printf(
-							fs_file_count);
+					var fs_file_count = int.parse(notif.message.substring(0, fs_end_space));
+					this.label.label = "Filesystem scan ended — %d files".printf(fs_file_count);
 					this.hide();
 					break;
 
@@ -181,61 +177,63 @@ namespace OLLMapp
 						this.total_scan = 1;
 					}
 
-					this.progress_bar.fraction =
-						1.0 - ((double)queue_size / (double)this.total_scan);
-
+					this.progress_bar.fraction = 1.0 - ((double) queue_size / (double) this.total_scan);
 					var files_scanned = this.total_scan - queue_size;
 					var basename = GLib.Path.get_basename(current_file);
 
 					if (queue_size == 0) {
 						this.progress_bar.fraction = 1.0;
-						this.label.label =
-							"Vector indexing: %s — %d/%d".printf(
-								basename, this.total_scan, this.total_scan);
+						this.label.label = "Vector indexing: %s — %d/%d".printf(
+							basename, this.total_scan, this.total_scan);
 						this.hide();
 						return;
 					}
 
-					this.label.label =
-						"Vector indexing: %s — %d/%d".printf(
-							basename, files_scanned, this.total_scan);
+					this.label.label = "Vector indexing: %s — %d/%d".printf(
+						basename, files_scanned, this.total_scan);
 					this.show();
 					break;
 
 				case "event.hf.download.start":
 					this.rate_at_us = 0;
 					this.rate_at_bytes = 0;
-					this.label.label =
-						"Downloading %s…".printf(notif.message);
+					this.rate = 0.0;
+					this.label.label = "Downloading %s…".printf(notif.message);
 					this.progress_bar.fraction = 0.0;
 					this.show();
 					break;
 
 				case "event.hf.download.progress":
 					if (notif.progress_total > 0) {
-						this.progress_bar.fraction =
-							(double) notif.progress_completed
+						this.progress_bar.fraction = (double) notif.progress_completed
 							/ (double) notif.progress_total;
 					}
-					var rate_text = "";
 					var now = GLib.get_monotonic_time();
 					if (this.rate_at_us > 0 && now > this.rate_at_us) {
 						var delta_bytes = notif.progress_completed - this.rate_at_bytes;
 						var delta_sec = (now - this.rate_at_us) / 1000000.0;
-						if (delta_sec > 0 && delta_bytes >= 0) {
-							rate_text = "  "
-								+ GLib.format_size((uint64) (delta_bytes / delta_sec))
-								+ "/s";
+						if (delta_sec > 0 && delta_bytes > 0) {
+							this.rate = delta_bytes / delta_sec;
 						}
 					}
 					this.rate_at_us = now;
 					this.rate_at_bytes = notif.progress_completed;
-					this.label.label =
-						"Downloading %s — %s / %s%s".printf(
-							GLib.Path.get_basename(notif.message),
-							GLib.format_size(notif.progress_completed),
-							GLib.format_size(notif.progress_total),
-							rate_text);
+					var rate_text = "";
+					if (this.rate > 0) {
+						rate_text = "  " + GLib.format_size((uint64) this.rate) + "/s";
+						if (notif.progress_total > notif.progress_completed) {
+							var left_sec = (notif.progress_total - notif.progress_completed) / this.rate;
+							var eta = "  ~%dm".printf((int) (left_sec / 60));
+							if (left_sec >= 90 * 60) {
+								eta = "  ~%dh".printf((int) (left_sec / 3600));
+							}
+							rate_text += eta;
+						}
+					}
+					this.label.label = "Downloading %s — %s / %s%s".printf(
+						GLib.Path.get_basename(notif.message),
+						GLib.format_size(notif.progress_completed),
+						GLib.format_size(notif.progress_total), rate_text);
 					this.show();
 					break;
 
@@ -243,26 +241,22 @@ namespace OLLMapp
 					if (notif.message.contains(" error: ")) {
 						this.label.label = "Download failed: " + notif.message;
 					} else {
-						this.label.label =
-							"Download complete: %s".printf(notif.message);
+						this.label.label = "Download complete: %s".printf(notif.message);
 						this.progress_bar.fraction = 1.0;
 					}
 					this.hide();
 					break;
 
 				case "event.browser.download.start":
-					this.label.label =
-						"Downloading %s…".printf(GLib.Path.get_basename(notif.message));
+					this.label.label = "Downloading %s…".printf(GLib.Path.get_basename(notif.message));
 					this.progress_bar.fraction = 0.0;
 					this.show();
 					break;
 
 				case "event.browser.download.progress":
-					this.label.label =
-						"Downloading %s…".printf(GLib.Path.get_basename(notif.message));
+					this.label.label = "Downloading %s…".printf(GLib.Path.get_basename(notif.message));
 					if (notif.progress_total > 0) {
-						this.progress_bar.fraction =
-							(double) notif.progress_completed
+						this.progress_bar.fraction = (double) notif.progress_completed
 							/ (double) notif.progress_total;
 					} else {
 						this.progress_bar.pulse();
@@ -274,9 +268,8 @@ namespace OLLMapp
 					if (notif.message.contains(" error: ")) {
 						this.label.label = "Download failed: " + notif.message;
 					} else {
-						this.label.label =
-							"Download complete: %s".printf(
-								GLib.Path.get_basename(notif.message));
+						this.label.label = "Download complete: %s".printf(
+							GLib.Path.get_basename(notif.message));
 						this.progress_bar.fraction = 1.0;
 					}
 					this.hide();
