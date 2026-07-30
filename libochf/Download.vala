@@ -173,12 +173,20 @@ namespace OLLMhf
 
 			var partial_path = GLib.Path.build_filename(model_dir, file.rfilename + ".partial");
 			var dest_path = GLib.Path.build_filename(model_dir, file.rfilename);
+			// Trust on-disk .partial length over download.json — json lags
+			// writes (5s / 8MiB), so kill+resume used to Range from a stale
+			// offset and append duplicates into .partial.
+			file.bytes_written = 0;
+			if (GLib.FileUtils.test(partial_path, GLib.FileTest.EXISTS)) {
+				var info = GLib.File.new_for_path(partial_path).query_info(
+					GLib.FileAttribute.STANDARD_SIZE, GLib.FileQueryInfoFlags.NONE, null);
+				file.bytes_written = (int64) info.get_size();
+			}
 			var checksum = new GLib.Checksum(GLib.ChecksumType.SHA256);
 
 			// Full .partial already on disk (e.g. prior verify used wrong
 			// CDN ETag): hash only — no Range GET from EOF.
-			if (file.size > 0 && file.bytes_written >= file.size
-				&& GLib.FileUtils.test(partial_path, GLib.FileTest.EXISTS)) {
+			if (file.size > 0 && file.bytes_written >= file.size) {
 				var partial_in = yield GLib.File.new_for_path(partial_path).read_async(
 					GLib.Priority.DEFAULT, active_cancel);
 				var hash_buf = new uint8[65536];
@@ -208,8 +216,10 @@ namespace OLLMhf
 				if (file.bytes_written > 0) {
 					out_stream = GLib.File.new_for_path(partial_path).append_to(GLib.FileCreateFlags.NONE);
 				} else {
-					out_stream = GLib.File.new_for_path(partial_path).create(
-						GLib.FileCreateFlags.REPLACE_DESTINATION);
+					// Fresh start — replace any empty/stale .partial left by a kill
+					// during the first create() (create+REPLACE still hits EXISTS).
+					out_stream = GLib.File.new_for_path(partial_path).replace(
+						null, false, GLib.FileCreateFlags.NONE, null);
 				}
 
 				// Resume: seed SHA-256 from bytes already on disk, then
