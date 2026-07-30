@@ -54,6 +54,8 @@ namespace OLLMapp
 
 		private int total_scan = 0;
 		private uint hide_timeout_id = 0;
+		private int64 rate_at_us = 0;
+		private int64 rate_at_bytes = 0;
 
 		public ActivityBanner()
 		{
@@ -201,6 +203,8 @@ namespace OLLMapp
 					break;
 
 				case "event.hf.download.start":
+					this.rate_at_us = 0;
+					this.rate_at_bytes = 0;
 					this.label.label =
 						"Downloading %s…".printf(notif.message);
 					this.progress_bar.fraction = 0.0;
@@ -213,11 +217,25 @@ namespace OLLMapp
 							(double) notif.progress_completed
 							/ (double) notif.progress_total;
 					}
+					var rate_text = "";
+					var now = GLib.get_monotonic_time();
+					if (this.rate_at_us > 0 && now > this.rate_at_us) {
+						var delta_bytes = notif.progress_completed - this.rate_at_bytes;
+						var delta_sec = (now - this.rate_at_us) / 1000000.0;
+						if (delta_sec > 0 && delta_bytes >= 0) {
+							rate_text = "  "
+								+ GLib.format_size((uint64) (delta_bytes / delta_sec))
+								+ "/s";
+						}
+					}
+					this.rate_at_us = now;
+					this.rate_at_bytes = notif.progress_completed;
 					this.label.label =
-						"Downloading %s — %lld/%lld".printf(
+						"Downloading %s — %s / %s%s".printf(
 							GLib.Path.get_basename(notif.message),
-							notif.progress_completed,
-							notif.progress_total);
+							GLib.format_size(notif.progress_completed),
+							GLib.format_size(notif.progress_total),
+							rate_text);
 					this.show();
 					break;
 

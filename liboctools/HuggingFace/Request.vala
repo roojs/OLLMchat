@@ -504,15 +504,7 @@ namespace OLLMtools.HuggingFace
 						action_label = "Cancel",
 					});
 
-					int64 last_report = 0;
 					dl.progress.connect((notif) => {
-						if (notif.progress_total > 0
-							&& notif.progress_completed - last_report
-								< notif.progress_total / 20
-							&& notif.progress_completed != notif.progress_total) {
-							return;
-						}
-						last_report = notif.progress_completed;
 						this.agent.notification(notif);
 					});
 

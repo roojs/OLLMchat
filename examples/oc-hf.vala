@@ -122,7 +122,21 @@ Examples:
 			if (opt_file != null && opt_file.strip() != "") {
 				dl.file_filter = { opt_file.strip() };
 			}
+			var rate_at_us = (int64) 0;
+			var rate_at_bytes = (int64) 0;
+			var rate_text = "";
 			dl.progress.connect((notif) => {
+				var now = GLib.get_monotonic_time();
+				if (rate_at_us > 0 && now > rate_at_us) {
+					var delta_bytes = notif.progress_completed - rate_at_bytes;
+					var delta_sec = (now - rate_at_us) / 1000000.0;
+					if (delta_sec > 0 && delta_bytes >= 0) {
+						rate_text = GLib.format_size(
+							(uint64) (delta_bytes / delta_sec)) + "/s";
+					}
+				}
+				rate_at_us = now;
+				rate_at_bytes = notif.progress_completed;
 				var pct = 0.0;
 				if (notif.progress_total > 0) {
 					pct = 100.0 * (double) notif.progress_completed
@@ -135,13 +149,14 @@ Examples:
 				if (filled < 0) {
 					filled = 0;
 				}
-				stdout.printf("\r%s [%s%s] %5.1f%% %s / %s   ",
+				stdout.printf("\r%s [%s%s] %5.1f%% %s / %s  %s   ",
 					notif.message,
 					string.nfill(filled, '#'),
 					string.nfill(20 - filled, '.'),
 					pct,
 					GLib.format_size(notif.progress_completed),
-					GLib.format_size(notif.progress_total));
+					GLib.format_size(notif.progress_total),
+					rate_text);
 				stdout.flush();
 			});
 			command_line.print("download %s\n", opt_download.strip());
