@@ -10,7 +10,7 @@ Status: ⏳ study (not an implement plan)
 - 🔷 Answer: if Pi claims to be a **harness**, what does it actually harness — beyond context cleanup and skill-catalog injection?
 - 🔷 Clarify why that project is regarded as special when soft skills look ordinary.
 - 🔷 Compare to our **Skill.Runner** conductor (real check/balance stages) vs Pi’s thin loop.
-- 🔷 Decide whether steer/follow-up ([06](06-steer-follow-up.md)) is the missing “harness,” or whether we were looking for the wrong kind of harness.
+- 🔷 Decide whether urgent/follow-up ([06](06-urgent-follow-up.md)) is the missing “harness,” or whether we were looking for the wrong kind of harness.
 
 ---
 
@@ -20,7 +20,7 @@ Status: ⏳ study (not an implement plan)
 - ℹ️ In Pi’s vocabulary, **harness ≈ substrate around the model**: LLM call → tool args validate → run tools → optional mid-run inject → compact context → repeat. Plus hooks so *you* can add governance as extensions.
 - ℹ️ The famous bit is **refusal**: no baked-in permissions, plan mode, MCP, sub-agents, or todos. “Special” = minimal core + typed extension surface + packaging, **not** a smarter conductor than Skill.Runner.
 - 🔷 Our Agent Pi so far (AGENTS inject, skill catalog, lean tools, threshold compact) is a fair port of the **coding-agent defaults**. It is **not** a port of a hidden output-checking layer — that layer does not exist in core.
-- 🔷 Steer/follow-up ([06](06-steer-follow-up.md)) is real loop plumbing, still **not** output QA. Do **not** replace it with this study; keep it as later UX. This doc answers “why bother,” not “what to build next instead of steer.”
+- 🔷 Urgent/follow-up ([06](06-urgent-follow-up.md)) is real loop plumbing, still **not** output QA. Do **not** replace it with this study; keep it as later UX. This doc answers “why bother,” not “what to build next instead of urgent queues.”
 
 ---
 
@@ -48,7 +48,7 @@ Status: ⏳ study (not an implement plan)
 | **Tool arg validate** | Schema/parse before execute (`validateToolArguments`) | Args only, not “was the edit good” |
 | **`beforeToolCall`** | Hook can **block** a tool (extensions wire permission UI here) | Optional; empty in default CLI |
 | **`transformContext`** | Prune / reshape messages before LLM | Context hygiene |
-| **Steer / follow-up queues** | Inject user text after tool batch / when about to stop | Mid-run UX, not QA |
+| **Urgent / follow-up queues** | Inject user text after tool batch / when about to stop | Mid-run UX, not QA |
 | **Compaction** | Summarize older span; keep recent tail | Context hygiene |
 | **Four tools** | `read` / `write` / `edit` / `bash` (+ extras in CLI) | Thin mutate surface |
 | **System prompt assembly** | Role + tool one-liners + cwd + AGENTS full paste + skill menu | Prompt engineering |
@@ -103,7 +103,7 @@ None of those are “the host verifies the model did the skill correctly.”
 | Outcome for us | Fashionable / portable | Didn’t succeed as shipping agent (user) |
 
 - 🔷 Runner had **more** sense-A harnessing. Pi is regarded higher for a **different bet**: trust the model + keep the floor thin.
-- 🔷 Copying Pi’s injection/compaction does **not** recreate Runner’s checks. If we want checks again, that is **our** design (approvals we kept, or new stages) — not something waiting in [06](06-steer-follow-up.md).
+- 🔷 Copying Pi’s injection/compaction does **not** recreate Runner’s checks. If we want checks again, that is **our** design (approvals we kept, or new stages) — not something waiting in [06](06-urgent-follow-up.md).
 
 ---
 
@@ -118,20 +118,20 @@ None of those are “the host verifies the model did the skill correctly.”
 | Permissions / approvals (ours) | A — **we** add governance Pi refuses |
 | Hash tags + `session_fetch` | B+ — our stronger recall than Pi alone |
 
-Still later: [06](06-steer-follow-up.md) steer/follow-up (B), [07](07-project-summary-tool.md), [09](09-offer-agents-md.md), base skill pack ([03](03-base-skills.md)).
+Still later: [06](06-urgent-follow-up.md) urgent/follow-up (B), [07](07-project-summary-tool.md), [09](09-offer-agents-md.md), base skill pack ([03](03-base-skills.md)).
 
 ---
 
-## Steer / follow-up ([06](06-steer-follow-up.md)) — keep, don’t replace with this study
+## Urgent / follow-up ([06](06-urgent-follow-up.md)) — keep, don’t replace with this study
 
-[06](06-steer-follow-up.md) today:
+[06](06-urgent-follow-up.md) today:
 
-- Steer after current tool batch, before next LLM call (Phase 6a agent; 6b UI reserved).
-- Follow-up when the agent would otherwise stop.
-- Chatter FIFO ≠ between-tool-batch inject ([01 §9](01-pi-agent.md#9-steer--follow-up-requirement-not-the-headline)).
+- **Urgent** after current tool batch, before next LLM call (Phase 6a agent; 6b UI reserved). Pi called this **steer**.
+- **Follow-up** when the agent would otherwise stop.
+- Chatter FIFO ≠ between-tool-batch inject ([01 §9](01-pi-agent.md#9-urgent--follow-up-requirement-not-the-headline)).
 
 - 🔷 That **is** harnessing the **conversation timeline** (sense B), not verifying code/skill quality (sense A).
-- 🚫 Do not delete [06](06-steer-follow-up.md) and substitute “figure out real harness.” This study already answers: core Pi has no secret sense-A layer.
+- 🚫 Do not delete [06](06-urgent-follow-up.md) and substitute “figure out real harness.” This study already answers: core Pi has no secret sense-A layer.
 - 💩 If we want sense-A later: separate backlog (e.g. extension-like hooks, stronger tool gates, optional plan gate) — **not** rename 06.
 
 ---
@@ -150,7 +150,7 @@ Still later: [06](06-steer-follow-up.md) steer/follow-up (B), [07](07-project-su
 
 - 🔷 Are we happy Agent Pi stays **thin sense-B** + our permissions, or do we want a **sense-A** slice (plan gate, skill-must-read, post-edit check) as a later phase?
 - 💩 Port any extension *ideas* (path protect, git checkpoint) as Vala/host features without Pi’s TS extension API?
-- ℹ️ No change required to [06](06-steer-follow-up.md) wording unless we want a one-line cross-link to this study.
+- ℹ️ No change required to [06](06-urgent-follow-up.md) wording unless we want a one-line cross-link to this study.
 
 ---
 
@@ -160,4 +160,4 @@ Still later: [06](06-steer-follow-up.md) steer/follow-up (B), [07](07-project-su
 - 🔷 Emoji: **🔷** user concern / decision; **ℹ️** fact from Pi tree / prior study; **💩** optional product fork; **🚫** wrong expectation.
 - 🚫 Do not invent a Pi “output verification” phase that does not exist upstream.
 - 🚫 Do not treat soft skills as the reason Pi is special.
-- 🚫 Do not replace [06](06-steer-follow-up.md) with this file; link here for rationale only.
+- 🚫 Do not replace [06](06-urgent-follow-up.md) with this file; link here for rationale only.

@@ -4,7 +4,7 @@ Status: ⏳ proposed
 
 ℹ️ Checklist: `docs/guide-to-writing-plans.md` — Checklist for plans.  
 ℹ️ Study: [01-pi-agent.md](01-pi-agent.md); harness meaning: [04-pi-harness-what-it-actually-does.md](04-pi-harness-what-it-actually-does.md). Vala: `docs/coding-standards.md` via router when implementing.  
-ℹ️ Split-out plans: [06 steer/follow-up](06-steer-follow-up.md), [07 project-summary tool](07-project-summary-tool.md), [09 offer AGENTS.md](09-offer-agents-md.md); base skills [03](03-base-skills.md).
+ℹ️ Split-out plans: [06 urgent/follow-up](06-urgent-follow-up.md), [07 project-summary tool](07-project-summary-tool.md), [09 offer AGENTS.md](09-offer-agents-md.md); base skills [03](03-base-skills.md).
 
 ## Purpose
 
@@ -19,7 +19,7 @@ Status: ⏳ proposed
 - **🔷** Keep permissions / approvals.
 - **✔️** Pi-facing tool names on Agent Pi (`read` / `write` / `bash` + forbid long names). Phase 4 done for that lean scope.
 - **✔️** Phase 8 licenses inventory; Phase 3 prompt copy attributed under MIT.
-- **⏳** Remaining backlog lives in sibling plans ([06](06-steer-follow-up.md), [07](07-project-summary-tool.md), [09](09-offer-agents-md.md), [03](03-base-skills.md)); lock policy there, then implement.
+- **⏳** Remaining backlog lives in sibling plans ([06](06-urgent-follow-up.md), [07](07-project-summary-tool.md), [09](09-offer-agents-md.md), [03](03-base-skills.md)); lock policy there, then implement.
 
 ---
 
@@ -772,7 +772,7 @@ verify surrounding context before applying.
 
 ### Phase 6 / 7 / 9 — moved
 
-- **ℹ️** Steer / follow-up (agent + UI): [06](06-steer-follow-up.md).
+- **ℹ️** Urgent / follow-up (agent + UI): [06](06-urgent-follow-up.md).
 - **ℹ️** Project-summary tool: [07](07-project-summary-tool.md).
 - **ℹ️** Offer to create `AGENTS.md`: [09](09-offer-agents-md.md).
 
@@ -813,7 +813,7 @@ Pi harness is **MIT** (Copyright Mario Zechner — upstream `LICENSE`). MIT requ
 3.5. Phase 2.1 — base skill pack (`resources/pi-skills/` or equivalent; no npm)  
 4. Phase 3 — copy/derive Pi system prompt (**update** `licenses/README.md` exception table)  
 5. Phase 5 — compact on threshold (Pi template) + reference tags + `session_fetch`  
-6. [06](06-steer-follow-up.md) — steer/follow-up (6a agent, then 6b UI)  
+6. [06](06-urgent-follow-up.md) — urgent/follow-up (6a agent, then 6b UI)  
 7. [07](07-project-summary-tool.md) — project-summary tool  
 8. [09](09-offer-agents-md.md) — offer to create `AGENTS.md`  
 9. After [09](09-offer-agents-md.md) — AGENTS inject soft-cap as a % of active model context  
@@ -822,7 +822,7 @@ Pi harness is **MIT** (Copyright Mario Zechner — upstream `LICENSE`). MIT requ
 
 ## LLM notes
 
-- **ℹ️** Study: [01-pi-agent.md](01-pi-agent.md); siblings [03](03-base-skills.md), [04](04-pi-harness-what-it-actually-does.md), [06](06-steer-follow-up.md), [07](07-project-summary-tool.md), [09](09-offer-agents-md.md).
+- **ℹ️** Study: [01-pi-agent.md](01-pi-agent.md); siblings [03](03-base-skills.md), [04](04-pi-harness-what-it-actually-does.md), [06](06-urgent-follow-up.md), [07](07-project-summary-tool.md), [09](09-offer-agents-md.md).
 - **ℹ️** Pi skill load: `packages/coding-agent/src/core/skills.ts` (`loadSkillFromFile`, `formatSkillsForPrompt`); docs `packages/coding-agent/docs/skills.md`.
 - **ℹ️** Chatter kernel: `libollmchat/Chatter/`, [2.31](../plans/2.31-just-ask-summary-history.md).
 - **ℹ️** liboccoder weight: `OLLMcoder.AgentFactory`, `OLLMcoder.Skill.Factory`.

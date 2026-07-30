@@ -24,14 +24,14 @@ Philosophy: no built-in permission popups, plan mode, MCP, or sub-agents. Permis
 ```
 prompt(user)
   loop:
-    [optional steer inject]
+    [optional urgent inject]
     stream assistant   // system already has AGENTS.md + skill blurbs
     if toolCalls → run → continue
     else if follow-ups → inject → continue
     else stop
 ```
 
-Steer/follow-up and compaction are real (§9–§10). **AGENTS.md + skills** (§3–§6) are the interesting comparison.
+Urgent/follow-up and compaction are real (§9–§10). **AGENTS.md + skills** (§3–§6) are the interesting comparison.
 
 ---
 
@@ -216,20 +216,20 @@ Pi: no popups; sandbox the process. We: writer approval, file review, tool flags
 
 ---
 
-## 9. Steer / follow-up (requirement, not the headline)
+## 9. Urgent / follow-up (requirement, not the headline)
 
 While the agent is busy:
 
 | Action | When injected |
 |--------|----------------|
-| **Steer** (Pi: Enter) | After current tool batch, before next LLM call |
+| **Urgent** (Pi called this **steer**; Enter) | After current tool batch, before next LLM call |
 | **Follow-up** (Pi: Alt+Enter) | When the agent would otherwise stop |
 
 “First-class queues” = those lists live **inside** the agent loop and are polled each turn — not only “UI waits until idle.”
 
 Our Chatter FIFO is **whole turns** (chat then summarize), not between tool batches. Worth having as a requirement for JustAsk/Chatter later; not the main differentiator vs Pi’s skill/`AGENTS.md` story.
 
-**Implement plan:** [06-steer-follow-up.md](06-steer-follow-up.md) (6a agent loop, 6b UI reserved).
+**Implement plan:** [06-urgent-follow-up.md](06-urgent-follow-up.md) (6a agent loop, 6b UI reserved).
 
 ---
 

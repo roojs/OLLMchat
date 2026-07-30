@@ -102,6 +102,29 @@ Markdown links such as [#user-1](#user-1) or [#tool-6](#tool-6) refer to stored 
 			try {
 				yield agent.fill_model();
 				yield agent.chat().send(outbound, this.cancellable);
+				while (agent.followup_messages.size > 0) {
+					var follow_batch = new Gee.ArrayList<OLLMchat.Message>();
+					while (agent.followup_messages.size > 0) {
+						var follow = agent.followup_messages.remove_at(0);
+						agent.add_message(follow);
+						follow_batch.add(follow);
+					}
+					agent.session.manager.message_added(
+						new OLLMchat.Message(
+							"ui-waiting",
+							"waiting for "
+							+ (agent.session.model_usage.model != ""
+								? agent.session.model_usage.display_name_with_size()
+								: "Unknown model")
+							+ " to reply"),
+						agent.session);
+					var follow_response = yield agent.chat().send_append(
+						follow_batch, this.cancellable);
+					if (follow_response.done &&
+							follow_response.message.tool_calls.size > 0) {
+						yield agent.chat().toolsReply(follow_response);
+					}
+				}
 				this.done.set_value(true);
 
 				var ctx = agent.session.model_usage.options.num_ctx;
