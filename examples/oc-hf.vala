@@ -123,15 +123,30 @@ Examples:
 				dl.file_filter = { opt_file.strip() };
 			}
 			dl.progress.connect((notif) => {
-				command_line.print(
-					"%s %lld/%lld\n",
+				var pct = 0.0;
+				if (notif.progress_total > 0) {
+					pct = 100.0 * (double) notif.progress_completed
+						/ (double) notif.progress_total;
+				}
+				var filled = (int) (pct / 5.0);
+				if (filled > 20) {
+					filled = 20;
+				}
+				if (filled < 0) {
+					filled = 0;
+				}
+				stdout.printf("\r%s [%s%s] %5.1f%% %s / %s   ",
 					notif.message,
-					notif.progress_completed,
-					notif.progress_total
-				);
+					string.nfill(filled, '#'),
+					string.nfill(20 - filled, '.'),
+					pct,
+					GLib.format_size(notif.progress_completed),
+					GLib.format_size(notif.progress_total));
+				stdout.flush();
 			});
 			command_line.print("download %s\n", opt_download.strip());
 			yield dl.start();
+			stdout.printf("\n");
 			command_line.print("ok %s\n", opt_download.strip());
 			return;
 		}
