@@ -23,22 +23,24 @@ namespace OLLMchat
 	 *
 	 * Same shape as {@link History.SessionList}: Gee.ArrayList backing store,
 	 * ListStore-compatible ''append'' / ''remove'' / ''remove_at'' that emit
-	 * ''items_changed''.
+	 * ''items_changed''. Replacing {@link items} (e.g. session load) also
+	 * emits ''items_changed''.
 	 *
 	 * Temporary store only: pending vs urgent is the message ''role'' string
 	 * while queued (''"user"'' = pending / follow-up; ''"urgent"'' = urgent).
-	 * UI / callers set ''role''; this class only owns the list. Always
+	 * UI / callers set ''role''; this class only owns the list model. Always
 	 * {@link append} — {@link insert} is unsupported.
-	 *
-	 * '''Mock / unlinked:''' not in ''meson.build'' yet.
 	 *
 	 * == Usage Examples ==
 	 *
 	 * {{{
-	 *   var items = new Gee.ArrayList<Message>();  // session-owned later
+	 *   var items = new Gee.ArrayList<Message>();  // session-owned
 	 *   var q = new MessageQueue(items);
 	 *   q.append(user_msg);
 	 *   user_msg.role = "urgent";   // UI escalates
+	 *
+	 *   // Session load: swap backing list (ColumnView keeps the same model)
+	 *   q.items = loaded_session.queued_messages;
 	 *
 	 *   // Drain most recent urgent via FilterListModel, then remove from q
 	 *   var urgent = new Gtk.FilterListModel(q, new Gtk.CustomFilter((item) => {
@@ -53,14 +55,26 @@ namespace OLLMchat
 	 */
 	public class MessageQueue : Object, GLib.ListModel
 	{
+		private Gee.ArrayList<Message> items_store = new Gee.ArrayList<Message>();
+
 		/**
 		 * Backing store of queued messages (append order = enqueue time).
 		 *
-		 * Owned / persisted by the session later; passed into the constructor.
+		 * Session-owned. Replace on session load; emits ''items_changed'' for
+		 * the full old→new range.
 		 */
 		public Gee.ArrayList<Message> items {
-			get;
-			construct;
+			get {
+				return this.items_store;
+			}
+			set {
+				if (this.items_store == value) {
+					return;
+				}
+				var removed = this.items_store.size;
+				this.items_store = value;
+				this.items_changed(0, removed, value.size);
+			}
 		}
 
 		/**
@@ -68,7 +82,8 @@ namespace OLLMchat
 		 */
 		public MessageQueue(Gee.ArrayList<Message> items)
 		{
-			Object(items: items);
+			Object();
+			this.items = items;
 		}
 
 		/**

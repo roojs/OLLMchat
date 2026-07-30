@@ -26,6 +26,7 @@ ollmchatgtk_src = files([
   'ChatWidget.vala',
   'ChatView.vala',
   'ChatInput.vala',
+  'MessageQueueView.vala',
   'ScrolledView.vala',
   'ChatBar.vala',
   'ChatPermission.vala',

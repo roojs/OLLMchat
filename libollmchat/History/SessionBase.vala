@@ -139,6 +139,17 @@ namespace OLLMchat.History
 		// This list includes all message types (standard + special session types)
 		// Separate from chat.messages and used for serialization
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
+
+		/**
+		 * Mid-run follow-up / urgent messages (not yet in the transcript).
+		 *
+		 * Serialized with the session. Agent wraps this in {@link MessageQueue}.
+		 */
+		public Gee.ArrayList<Message> queued_messages {
+			get;
+			set;
+			default = new Gee.ArrayList<Message>();
+		}
 		
 		// Manager reference for getting history directory
 		// Made a construct property so it can be set via Object.new_with_properties

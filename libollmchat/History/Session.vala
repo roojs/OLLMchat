@@ -500,6 +500,20 @@ namespace OLLMchat.History
 					var node = new Json.Node(Json.NodeType.ARRAY);
 					node.set_array(messages_array);
 					return node;
+
+				case "queued-messages":
+					var queued_array = new Json.Array();
+					foreach (var msg in this.queued_messages) {
+						msg.include_history_info = true;
+						if (msg.timestamp == "") {
+							msg.timestamp = new DateTime.now_local().format("%Y-%m-%d %H:%M:%S");
+						}
+						queued_array.add_element(Json.gobject_serialize(msg));
+						msg.include_history_info = false;
+					}
+					var queued_node = new Json.Node(Json.NodeType.ARRAY);
+					queued_node.set_array(queued_array);
+					return queued_node;
 				
 				default:
 					// Return null to exclude property from serialization

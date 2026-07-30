@@ -33,6 +33,11 @@ namespace OLLMchat.History
 		public string fid { get; set; default = ""; }
 		public Gee.ArrayList<string> child_chats { get; set; default = new Gee.ArrayList<string>(); }
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
+		public Gee.ArrayList<Message> queued_messages {
+			get;
+			set;
+			default = new Gee.ArrayList<Message>();
+		}
 		/** Session project path; from JSON top-level (or DB when loading via placeholder). */
 		public string project_path { get; set; default = ""; }
 
@@ -71,6 +76,20 @@ namespace OLLMchat.History
 					}
 					value = Value(typeof(Gee.ArrayList));
 					value.set_object(this.messages);
+					return true;
+				case "queued-messages":
+					this.queued_messages.clear();
+					var queued = property_node.get_array();
+					for (uint i = 0; i < queued.get_length(); i++) {
+						var element_node = queued.get_element(i);
+						var msg = Json.gobject_deserialize(typeof(Message), element_node) as Message;
+						if (msg == null) {
+							continue;
+						}
+						this.queued_messages.add(msg);
+					}
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.queued_messages);
 					return true;
 				default:
 					// Same as pre–can-replay tree: do not default_deserialize; Json-GLib handles other keys elsewhere.

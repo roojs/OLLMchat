@@ -45,6 +45,11 @@ namespace OLLMchatGtk
 		 * this — only allocates layout.
 		 */
 		public Gtk.Box above_input { get; private set; }
+		/**
+		 * Pending mid-run queue ColumnView (shown when caller sets
+		 * ''queue.items'' / ''visible'').
+		 */
+		public MessageQueueView queue_view { get; private set; }
 		private Gtk.Box lower_box;
 		public OLLMchat.History.Manager manager { get; private set; }
 
@@ -69,6 +74,13 @@ namespace OLLMchatGtk
 		 * @since 1.0
 		 */
 		public bool show_models { get; set; default = true; }
+
+		/**
+		 * When true, keep the composer usable while the session is running
+		 * (mid-run follow-up / urgent queue). Default false = hide composer
+		 * while streaming.
+		 */
+		public bool can_queue { get; set; default = false; }
 
 		/**
 	 	* Emitted when a message is sent by the user.
@@ -140,6 +152,8 @@ namespace OLLMchatGtk
 				hexpand = true,
 				vexpand = false
 			};
+			this.queue_view = new MessageQueueView(this);
+			this.above_input.append(this.queue_view);
 			this.input_column = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
 				vexpand = false
@@ -234,21 +248,22 @@ namespace OLLMchatGtk
 			});
 		}
 
-		/** Updates streaming state: when running, hide composer column; when stopped, show it and scroll chat. */
+		/** Updates streaming state: hide composer while running unless {@link can_queue}. */
 		private void streaming_state(bool streaming)
 		{
 			this.streaming = streaming;
+			var hide_composer = streaming && !this.can_queue;
 			/* Drop IME focus before editable/sensitive/visible flip (Android ImContext deadlock). */
-			if (streaming) {
+			if (hide_composer) {
 				var root = this.get_root();
 				if (root != null) {
 					root.set_focus(null);
 				}
 			}
-			this.chat_input.editable(!streaming);
-			this.chat_input.sensitive = !streaming;
-			this.chat_input.visible = !streaming;
-			this.input_column.visible = !streaming;
+			this.chat_input.editable(!hide_composer);
+			this.chat_input.sensitive = !hide_composer;
+			this.chat_input.visible = !hide_composer;
+			this.input_column.visible = !hide_composer;
 			this.chat_bar.sync_streaming(streaming);
 			if (streaming) {
 				return;

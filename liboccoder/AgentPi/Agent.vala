@@ -21,10 +21,10 @@ namespace OLLMcoder.AgentPi
 	/**
 	 * Agent Pi session agent.
 	 *
-	 * FIFO chat queue when idle. Mid-run {@link send_async} queues
-	 * '''follow-up''' (Cursor-style default); {@link upgrade_urgent} promotes a
-	 * queued follow-up into the urgent list. Urgent drains in
-	 * {@link execute_tools}; follow-up drains in {@link PendingMessage.run}.
+	 * FIFO chat queue when idle. Mid-run {@link send_async} appends to
+	 * {@link message_queue} as follow-up (role '''user'''); callers escalate with
+	 * ''role = "urgent"''. Urgent drains in {@link execute_tools} via
+	 * FilterListModel; at stop {@link PendingMessage.run} drains the whole queue.
 	 */
 	public class Agent : OLLMchat.Agent.Base
 	{
@@ -36,19 +36,10 @@ namespace OLLMcoder.AgentPi
 		internal bool pending_processing { get; set; default = false; }
 
 		/**
-		 * Messages to inject after the next tool batch (before the next model call).
+		 * Mid-run follow-up / urgent queue (ListModel over session.queued_messages).
 		 */
-		public Gee.ArrayList<OLLMchat.Message> urgent_messages {
+		public OLLMchat.MessageQueue message_queue {
 			get; private set;
-			default = new Gee.ArrayList<OLLMchat.Message>();
-		}
-
-		/**
-		 * Messages to inject when the model would otherwise stop (no tool calls).
-		 */
-		public Gee.ArrayList<OLLMchat.Message> followup_messages {
-			get; private set;
-			default = new Gee.ArrayList<OLLMchat.Message>();
 		}
 
 		/**
@@ -58,24 +49,7 @@ namespace OLLMcoder.AgentPi
 		public Agent(Factory factory, OLLMchat.History.SessionBase session)
 		{
 			base(factory, session);
-		}
-
-		/**
-		 * Promote a queued follow-up to urgent (or queue urgent if already running).
-		 *
-		 * Moves ''message'' out of {@link followup_messages} when present, then
-		 * onto {@link urgent_messages}. If idle, starts a normal send instead.
-		 *
-		 * @param message the same Message instance previously queued as follow-up
-		 */
-		public void upgrade_urgent(OLLMchat.Message message)
-		{
-			this.followup_messages.remove(message);
-			if (!this.session.is_running) {
-				this.send_async.begin(message, null);
-				return;
-			}
-			this.urgent_messages.add(message);
+			this.message_queue = new OLLMchat.MessageQueue(session.queued_messages);
 		}
 
 		/**
@@ -91,8 +65,14 @@ namespace OLLMcoder.AgentPi
 			Gee.ArrayList<OLLMchat.Response.ToolCall> tool_calls)
 		{
 			var reply_messages = yield base.execute_tools(tool_calls);
-			while (this.urgent_messages.size > 0) {
-				reply_messages.add(this.urgent_messages.remove_at(0));
+			var urgent = new Gtk.FilterListModel(this.message_queue, new Gtk.CustomFilter((item) => {
+				return ((OLLMchat.Message) item).role == "urgent";
+			}));
+			while (urgent.get_n_items() > 0) {
+				var msg = (OLLMchat.Message) urgent.get_item(urgent.get_n_items() - 1);
+				this.message_queue.remove(msg);
+				msg.role = "user";
+				reply_messages.add(msg);
 			}
 			return reply_messages;
 		}
@@ -100,7 +80,7 @@ namespace OLLMcoder.AgentPi
 		/**
 		 * Idle: enqueue a full chat turn. Running: queue as follow-up (default).
 		 *
-		 * Mid-run UI may later call {@link upgrade_urgent} on the same Message.
+		 * Mid-run UI may escalate by setting ''message.role = "urgent"''.
 		 *
 		 * @param message API user message
 		 * @param cancellable optional cancel for the main/tool request (idle path)
@@ -119,7 +99,8 @@ namespace OLLMcoder.AgentPi
 			}
 
 			if (this.session.is_running) {
-				this.followup_messages.add(message);
+				message.role = "user";
+				this.message_queue.append(message);
 				return;
 			}
 

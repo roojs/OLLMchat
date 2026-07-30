@@ -211,6 +211,7 @@ ollmchat_ollama_src = files([
   'Call/Delete.vala',
   'Call/ShowModel.vala',
   'Message.vala',
+  'MessageQueue.vala',
   'ChatContentInterface.vala',
   'Tool/RequestBase.vala',
   'Tool/BaseTool.vala',

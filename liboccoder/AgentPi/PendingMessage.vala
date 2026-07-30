@@ -102,10 +102,12 @@ Markdown links such as [#user-1](#user-1) or [#tool-6](#tool-6) refer to stored 
 			try {
 				yield agent.fill_model();
 				yield agent.chat().send(outbound, this.cancellable);
-				while (agent.followup_messages.size > 0) {
+				while (agent.message_queue.get_n_items() > 0) {
 					var follow_batch = new Gee.ArrayList<OLLMchat.Message>();
-					while (agent.followup_messages.size > 0) {
-						var follow = agent.followup_messages.remove_at(0);
+					while (agent.message_queue.get_n_items() > 0) {
+						var follow = (OLLMchat.Message) agent.message_queue.get_item(0);
+						agent.message_queue.remove_at(0);
+						follow.role = "user";
 						agent.add_message(follow);
 						follow_batch.add(follow);
 					}
