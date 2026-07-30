@@ -122,15 +122,7 @@ Examples:
 			if (opt_file != null && opt_file.strip() != "") {
 				dl.file_filter = { opt_file.strip() };
 			}
-			var last_report_us = (int64) 0;
 			dl.progress.connect((notif) => {
-				var now = GLib.get_monotonic_time();
-				if (notif.progress_completed != notif.progress_total
-					&& last_report_us != 0
-					&& now - last_report_us < 1000000) {
-					return;
-				}
-				last_report_us = now;
 				command_line.print(
 					"%s %lld/%lld\n",
 					notif.message,

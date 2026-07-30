@@ -213,6 +213,7 @@ namespace OLLMhf
 			}
 
 			var buf = new uint8[65536];
+			var last_progress_us = (int64) 0;
 			while (true) {
 				var n = yield input.read_async(buf, GLib.Priority.DEFAULT, active_cancel);
 				if (n <= 0) {
@@ -221,17 +222,19 @@ namespace OLLMhf
 				out_stream.write(buf[0:n]);
 				checksum.update(buf[0:n], n);
 				file.bytes_written += n;
-				file.sha256_partial = checksum.get_string();
-				this.progress(new OLLMrpc.Notification() {
-					method = "event.hf.download.progress",
-					object_type = "ModelFile",
-					message = file.rfilename,
-					progress_completed = file.bytes_written,
-					progress_total = file.size,
-					action = "cancel",
-					action_label = "Cancel",
-				});
 				var now = GLib.get_monotonic_time();
+				if (last_progress_us == 0 || now - last_progress_us >= 1000000) {
+					last_progress_us = now;
+					this.progress(new OLLMrpc.Notification() {
+						method = "event.hf.download.progress",
+						object_type = "ModelFile",
+						message = file.rfilename,
+						progress_completed = file.bytes_written,
+						progress_total = file.size,
+						action = "cancel",
+						action_label = "Cancel",
+					});
+				}
 				if (now - this.last_persist_time >= 5000000
 					|| file.bytes_written - this.last_persist_bytes >= 8 * 1024 * 1024) {
 					var node = this.json.from_gobject(this.model);
@@ -242,8 +245,18 @@ namespace OLLMhf
 				}
 			}
 			out_stream.close();
+			this.progress(new OLLMrpc.Notification() {
+				method = "event.hf.download.progress",
+				object_type = "ModelFile",
+				message = file.rfilename,
+				progress_completed = file.bytes_written,
+				progress_total = file.size,
+				action = "cancel",
+				action_label = "Cancel",
+			});
 
 			var digest = checksum.get_string();
+			file.sha256_partial = digest;
 			if (file.etag != "" && digest != file.etag) {
 				throw new GLib.IOError.FAILED("checksum mismatch for %s", file.rfilename);
 			}
