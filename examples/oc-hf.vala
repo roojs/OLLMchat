@@ -112,6 +112,9 @@ Examples:
 				result_type = typeof(OLLMhf.Model),
 			};
 			var detail_resp = yield rpc.call(detail_req);
+			if (detail_resp.error != null) {
+				throw new GLib.IOError.FAILED(detail_resp.error.message);
+			}
 			var dl = new OLLMhf.Download((OLLMhf.Model) detail_resp.result[0]);
 			if (opt_models_dir != null && opt_models_dir.strip() != "") {
 				dl.models_dir = opt_models_dir.strip();
@@ -119,15 +122,15 @@ Examples:
 			if (opt_file != null && opt_file.strip() != "") {
 				dl.file_filter = { opt_file.strip() };
 			}
-			var last_report = (int64) 0;
+			var last_report_us = (int64) 0;
 			dl.progress.connect((notif) => {
-				if (notif.progress_total > 0
-					&& notif.progress_completed - last_report
-						< notif.progress_total / 20
-					&& notif.progress_completed != notif.progress_total) {
+				var now = GLib.get_monotonic_time();
+				if (notif.progress_completed != notif.progress_total
+					&& last_report_us != 0
+					&& now - last_report_us < 1000000) {
 					return;
 				}
-				last_report = notif.progress_completed;
+				last_report_us = now;
 				command_line.print(
 					"%s %lld/%lld\n",
 					notif.message,
@@ -135,6 +138,7 @@ Examples:
 					notif.progress_total
 				);
 			});
+			command_line.print("download %s\n", opt_download.strip());
 			yield dl.start();
 			command_line.print("ok %s\n", opt_download.strip());
 			return;
@@ -158,6 +162,9 @@ Examples:
 				result_type = typeof(OLLMhf.ModelArray),
 			};
 			var resp = yield rpc.call(req);
+			if (resp.error != null) {
+				throw new GLib.IOError.FAILED(resp.error.message);
+			}
 			var arr = new Json.Array();
 			foreach (var model in ((OLLMhf.ModelArray) resp.result[0]).items) {
 				var node = json.from_gobject(model);
@@ -174,6 +181,9 @@ Examples:
 			result_type = typeof(OLLMhf.Model),
 		};
 		var detail_resp = yield rpc.call(detail_req);
+		if (detail_resp.error != null) {
+			throw new GLib.IOError.FAILED(detail_resp.error.message);
+		}
 		var hub_model = (OLLMhf.Model) detail_resp.result[0];
 		yield hub_model.fetch_siblings(rpc);
 		var node = json.from_gobject(hub_model);

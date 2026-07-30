@@ -66,7 +66,9 @@ namespace OLLMhf
 			foreach (var segment in this.model.id.split("/")) {
 				model_dir = GLib.Path.build_filename(model_dir, segment);
 			}
-			GLib.File.new_for_path(model_dir).make_directory_with_parents(null);
+			if (!GLib.FileUtils.test(model_dir, GLib.FileTest.EXISTS)) {
+				GLib.File.new_for_path(model_dir).make_directory_with_parents(null);
+			}
 			var download_path = GLib.Path.build_filename(model_dir, "download.json");
 			if (GLib.FileUtils.test(download_path, GLib.FileTest.EXISTS)) {
 				var contents = "";
