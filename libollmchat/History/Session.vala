@@ -557,38 +557,42 @@ namespace OLLMchat.History
 		
 		/**
 		 * Activates an agent for this session.
-		 * 
-		 * Handles agent changes by creating a new AgentHandler. Messages are already
-		 * stored in session.messages, so the new AgentHandler will have access to
-		 * the full conversation history when building message arrays.
-		 * 
+		 *
+		 * Handles agent changes by creating a new AgentHandler. Messages are
+		 * already stored in session.messages, so the new AgentHandler will have
+		 * access to the full conversation history when building message arrays.
+		 * On failure logs {@link GLib.warning} and returns.
+		 *
 		 * @param agent_name The name of the agent to activate
-		 * @throws Error if agent not found or handler creation fails
 		 */
-		public override void activate_agent(string agent_name) throws Error
+		public override void activate_agent(string agent_name)
 		{
-			var old_agent = this.agent;
-			var previous_agent_name = this.agent_name;
+			try {
+				var old_agent = this.agent;
+				var previous_agent_name = this.agent_name;
 
-			this.agent_name = agent_name;
+				this.agent_name = agent_name;
 
-			var factory = this.manager.agent_factories.get(agent_name);
+				var factory = this.manager.agent_factories.get(agent_name);
 
-			var agent = factory.create_agent(this);
+				var agent = factory.create_agent(this);
 
-			if (old_agent != null) {
-				agent.replace_chat(old_agent.chat());
-				agent.chat().agent = agent;
+				if (old_agent != null) {
+					agent.replace_chat(old_agent.chat());
+					agent.chat().agent = agent;
+				}
+
+				if (previous_agent_name != agent_name && previous_agent_name != "") {
+					this.manager.agent_deactivated(
+						this.manager.agent_factories.get(previous_agent_name));
+				}
+
+				this.agent = agent;
+
+				this.manager.agent_activated(factory);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to activate agent '%s': %s", agent_name, e.message);
 			}
-
-			if (previous_agent_name != agent_name && previous_agent_name != "") {
-				this.manager.agent_deactivated(
-					this.manager.agent_factories.get(previous_agent_name));
-			}
-
-			this.agent = agent;
-
-			this.manager.agent_activated(factory);
 		}
 	
 	/**

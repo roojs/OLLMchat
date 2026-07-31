@@ -39,7 +39,7 @@ namespace OLLMcoder.AgentPi
 		 * Mid-run follow-up / urgent queue (ListModel over session.queued_messages).
 		 */
 		public OLLMchat.MessageQueue message_queue {
-			get; private set;
+			get; internal set;
 		}
 
 		/**

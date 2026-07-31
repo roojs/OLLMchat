@@ -494,14 +494,13 @@ namespace OLLMchat.History
 		
 		/**
 		 * Activates an agent for this session.
-		 * 
-		 * Handles agent changes by creating a new AgentHandler and copying
-		 * any necessary state from the old AgentHandler to the new one.
-		 * 
+		 *
+		 * On failure logs {@link GLib.warning} and returns — callers do not
+		 * try/catch.
+		 *
 		 * @param agent_name The name of the agent to activate
-		 * @throws Error if agent activation fails
 		 */
-		public abstract void activate_agent(string agent_name) throws Error;
+		public abstract void activate_agent(string agent_name);
 		
 		/**
 		 * Returns a string representation of the session for debugging.

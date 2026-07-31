@@ -30,10 +30,25 @@ namespace OLLMapp
 
 		private Gtk.DropDown dropdown;
 		private Gtk.SignalListItemFactory list_factory;
+		private bool block_select_signal = false;
 
 		public uint selected {
 			get { return this.dropdown.selected; }
 			set { this.dropdown.selected = value; }
+		}
+
+		/**
+		 * Programmatic selection only (restore / session sync). Blocks
+		 * {@link notify} handler — use instead of {@link selected} when
+		 * syncing UI to an existing session.
+		 *
+		 * @param index agent row index in the dropdown model
+		 */
+		public void select_only(uint index)
+		{
+			this.block_select_signal = true;
+			this.dropdown.selected = index;
+			this.block_select_signal = false;
 		}
 
 		/**
@@ -114,6 +129,9 @@ namespace OLLMapp
 			this.dropdown.model = agent_store;
 
 			this.dropdown.notify["selected"].connect(() => {
+				if (this.block_select_signal) {
+					return;
+				}
 				if (this.dropdown.selected == Gtk.INVALID_LIST_POSITION) {
 					return;
 				}
@@ -123,45 +141,44 @@ namespace OLLMapp
 					as OLLMchat.Agent.Factory;
 				this.dropdown.tooltip_text = factory.long_title;
 
-				try {
-					if (this.host.history_manager.session.fid == null
-					    || this.host.history_manager.session.fid == "") {
-						this.host.history_manager.session.activate_agent(
-							factory.name);
-						return;
-					}
-					this.host.history_manager.activate_agent(
-						this.host.history_manager.session.fid, factory.name);
-				} catch (GLib.Error e) {
-					GLib.warning(
-						"Failed to activate agent '%s': %s",
-						factory.name, e.message);
-				}
-			});
-
-			this.dropdown.selected = selected_index;
-
-			this.host.history_manager.session_activated.connect((session) => {
-				var store = this.dropdown.model as GLib.ListStore;
-				if (store == null) {
+				var session = this.host.history_manager.session;
+				if (!(session is OLLMchat.History.Session)) {
+					session.activate_agent(factory.name);
 					return;
 				}
+
+				var draft = this.host.chat_widget.chat_input.text();
+				var empty = this.host.history_manager.create_new_session();
+				empty.project_path = session.project_path;
+				this.host.chat_widget.switch_to_session.begin(empty, (obj, res) => {
+					this.host.chat_widget.switch_to_session.end(res);
+					empty.activate_agent(factory.name);
+					/* session_activated may have selected the copied
+					 * old agent_name — put the dropdown back on the pick. */
+					var agent_index = 0u;
+					var store = (GLib.ListStore) this.dropdown.model;
+					store.find(factory, out agent_index);
+					this.select_only(agent_index);
+					if (draft.length > 0) {
+						this.host.chat_widget.chat_input.update_entry(draft);
+					}
+				});
+			});
+
+			this.select_only(selected_index);
+
+			this.host.history_manager.session_activated.connect((session) => {
 				var factory = this.host.history_manager.get_active_agent();
 				factory.activate.begin(this.host, (obj, res) => {
 					factory.activate.end(res);
 				});
-				uint agent_index = 0;
-				for (uint j = 0; j < store.get_n_items(); j++) {
-					if (((OLLMchat.Agent.Factory) store.get_item(j)).name
-					    == session.agent_name) {
-						agent_index = j;
-						break;
-					}
-				}
+				var agent_index = 0u;
+				var store = (GLib.ListStore) this.dropdown.model;
+				store.find(factory, out agent_index);
 				if (this.session_selection(session, agent_index)) {
 					return;
 				}
-				this.selected = agent_index;
+				this.select_only(agent_index);
 			});
 		}
 	}

@@ -195,7 +195,7 @@ namespace OLLMchat.History
 		 * @param agent_name The name of the agent to activate
 		 * @throws Error if agent not found
 		 */
-		public override void activate_agent(string agent_name) throws Error
+		public override void activate_agent(string agent_name)
 		{
 			// Verify agent exists in manager
 			// you cant activate an agent on the placeholder

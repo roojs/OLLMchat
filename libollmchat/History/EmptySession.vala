@@ -114,14 +114,14 @@ namespace OLLMchat.History
 		
 		/**
 		 * Activates an agent for this empty session.
-		 * 
+		 *
 		 * Creates the AgentHandler for the specified agent. The handler will be
-		 * available when the session converts to a real Session.
-		 * 
+		 * available when the session converts to a real Session. On failure logs
+		 * {@link GLib.warning} and returns.
+		 *
 		 * @param agent_name The name of the agent to activate
-		 * @throws Error if agent not found or handler creation fails
 		 */
-		public override void activate_agent(string agent_name) throws Error
+		public override void activate_agent(string agent_name)
 		{
 			var old_agent = this.agent;
 
@@ -129,26 +129,30 @@ namespace OLLMchat.History
 				return;
 			}
 
-			var previous_agent_name = this.agent_name;
+			try {
+				var previous_agent_name = this.agent_name;
 
-			var agent_factory = this.manager.agent_factories.get(agent_name);
+				var agent_factory = this.manager.agent_factories.get(agent_name);
 
-			var agent = agent_factory.create_agent(this);
+				var agent = agent_factory.create_agent(this);
 
-			if (old_agent != null) {
-				GLib.debug("EmptySession.activate_agent: Replacing chat from old_agent, old_chat.model='%s'", old_agent.chat().model);
-				agent.replace_chat(old_agent.chat());
+				if (old_agent != null) {
+					GLib.debug("Replacing chat from old agent, old_chat.model='%s'", old_agent.chat().model);
+					agent.replace_chat(old_agent.chat());
+				}
+
+				if (previous_agent_name != agent_name && previous_agent_name != "") {
+					this.manager.agent_deactivated(
+						this.manager.agent_factories.get(previous_agent_name));
+				}
+
+				this.agent = agent;
+				this.agent_name = agent_name;
+
+				this.manager.agent_activated(agent_factory);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to activate agent '%s': %s", agent_name, e.message);
 			}
-
-			if (previous_agent_name != agent_name && previous_agent_name != "") {
-				this.manager.agent_deactivated(
-					this.manager.agent_factories.get(previous_agent_name));
-			}
-
-			this.agent = agent;
-			this.agent_name = agent_name;
-
-			this.manager.agent_activated(agent_factory);
 		}
 		
 		protected override void on_message_created(Message m) { }  // No-op: Messages handled by real Session after conversion

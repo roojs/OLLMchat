@@ -58,6 +58,12 @@ namespace OLLMapp
 			return this.chat_widget.above_input;
 		}
 
+		/* ChatDesktopInterface.chat_message_queue */
+		public OLLMchat.MessageQueue chat_message_queue()
+		{
+			return this.chat_widget.queue_view.queue;
+		}
+
 		public GLib.Object tab_view()
 		{
 			return this.window_pane.tab_view;
@@ -536,7 +542,7 @@ namespace OLLMapp
 						session.project_path);
 					if (project != null) {
 						this.project_manager.activate_project(project);
-						this.agent_dropdown.selected = agent_index;
+						this.agent_dropdown.select_only(agent_index);
 						return true;
 					}
 					this.notification(new OLLMrpc.Notification() {
@@ -556,7 +562,7 @@ namespace OLLMapp
 							return;
 						}
 						this.project_manager.activate_project(project);
-						this.agent_dropdown.selected = agent_index;
+						this.agent_dropdown.select_only(agent_index);
 					});
 					return true;
 				});

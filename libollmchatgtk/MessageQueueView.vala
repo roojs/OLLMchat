@@ -148,6 +148,14 @@ namespace OLLMchatGtk
 			scrolled.set_propagate_natural_height(true);
 			scrolled.set_child(this.column_view);
 			this.append(scrolled);
+			this.queue.can_queue.connect((enabled) => {
+				this.chat_widget.can_queue = enabled;
+				this.visible = enabled && this.queue.get_n_items() > 0;
+			});
+			this.queue.items_changed.connect((position, removed, added) => {
+				this.visible = this.chat_widget.can_queue
+					&& this.queue.get_n_items() > 0;
+			});
 		}
 
 		/**

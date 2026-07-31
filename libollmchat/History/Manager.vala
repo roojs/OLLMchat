@@ -405,24 +405,22 @@ namespace OLLMchat.History
 		
 		/**
 		 * Activates an agent for a session identified by fid.
-		 * 
-		 * This is the entry point for UI to change agents. UI calls this method,
-		 * which routes to session.activate_agent() to handle the agent change,
-		 * including copying chat/messages from old AgentHandler to new AgentHandler.
-		 * 
+		 *
+		 * Routes to session.activate_agent() to handle the agent change,
+		 * including copying chat/messages from old AgentHandler to new
+		 * AgentHandler. On failure logs {@link GLib.warning} and returns.
+		 *
 		 * @param fid The session identifier (file ID)
 		 * @param agent_name The name of the agent to activate
-		 * @throws Error if session not found or agent activation fails
 		 */
-		public void activate_agent(string fid, string agent_name) throws Error
+		public void activate_agent(string fid, string agent_name)
 		{
-			// Find session by fid using SessionList fid_map lookup
 			var session = this.sessions.get_by_fid(fid);
 			if (session == null) {
-				throw new OllmError.INVALID_ARGUMENT("Session with fid '%s' not found", fid);
+				GLib.warning("Failed to activate agent '%s': session fid '%s' not found",
+					agent_name, fid);
+				return;
 			}
-			
-			// Delegate to session
 			session.activate_agent(agent_name);
 		}
 		

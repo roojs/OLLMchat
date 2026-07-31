@@ -78,6 +78,14 @@ namespace OLLMchat
 		}
 
 		/**
+		 * Relay: Agent / Factory emit to toggle mid-run composer + strip.
+		 * ChatWidget connects; this class does not store the flag.
+		 *
+		 * @param enabled whether mid-run queuing is on
+		 */
+		public signal void can_queue(bool enabled);
+
+		/**
 		 * @param items session-owned list to back this model (may be empty)
 		 */
 		public MessageQueue(Gee.ArrayList<Message> items)

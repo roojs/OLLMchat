@@ -206,10 +206,10 @@ namespace OLLMcoder.AgentPi
 
 		public override async void activate(GLib.Object window)
 		{
-			var host = (OLLMchat.ChatDesktopInterface) window;
+			var ui = (OLLMchat.ChatDesktopInterface) window;
 			if (this.widget == null) {
 				this.widget = new OLLMcoder.SourceView(this.project_manager);
-				host.notification(new OLLMrpc.Notification() {
+				ui.notification(new OLLMrpc.Notification() {
 					method = "client.project.load_start",
 				});
 				try {
@@ -219,26 +219,32 @@ namespace OLLMcoder.AgentPi
 				} catch (GLib.Error e) {
 					GLib.warning("Failed to initialize Agent Pi widget: %s", e.message);
 				} finally {
-					host.notification(new OLLMrpc.Notification() {
+					ui.notification(new OLLMrpc.Notification() {
 						method = "client.project.load_end",
 					});
 				}
 			}
 			var widget_id = this.name + "-widget";
 			this.widget.name = widget_id;
-			var tabs = (Adw.ViewStack) host.tab_view();
+			var tabs = (Adw.ViewStack) ui.tab_view();
 			if (tabs.get_child_by_name(widget_id) == null) {
 				tabs.add_named(this.widget, widget_id);
 			}
 			this.widget.visible = true;
 			tabs.set_visible_child_name(widget_id);
-			host.schedule_pane_update(true);
+			ui.schedule_pane_update(true);
+			var agent = (Agent) ui.session_agent();
+			var queue = ui.chat_message_queue();
+			queue.items = agent.session.queued_messages;
+			queue.can_queue(true);
+			agent.message_queue = queue;
 		}
 
 		public override async void deactivate(GLib.Object window)
 		{
-			var host = (OLLMchat.ChatDesktopInterface) window;
-			host.schedule_pane_update(false);
+			var ui = (OLLMchat.ChatDesktopInterface) window;
+			ui.chat_message_queue().can_queue(false);
+			ui.schedule_pane_update(false);
 		}
 	}
 }
