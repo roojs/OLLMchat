@@ -187,13 +187,11 @@ namespace OLLMchat.History
 		
 		/**
 		 * Activates an agent for this placeholder session.
-		 * 
-		 * For SessionPlaceholder, this just updates the agent_name property.
-		 * The AgentHandler will be created when load() is called to convert
-		 * this placeholder to a real Session.
-		 * 
+		 *
+		 * No-op on the placeholder: agent selection is applied when
+		 * ''load()'' converts this to a real {@link Session}.
+		 *
 		 * @param agent_name The name of the agent to activate
-		 * @throws Error if agent not found
 		 */
 		public override void activate_agent(string agent_name)
 		{
