@@ -21,10 +21,11 @@ namespace OLLMcoder.AgentPi
 	/**
 	 * Scan Pi-format skill directories and format the Agent Pi catalog.
 	 *
-	 * Roots: ''~/.local/share/ollmchat/pi-skills/'', project ''.pi/skills/'',
-	 * project ''.agents/skills/''. Each root's immediate child directories that
-	 * contain ''SKILL.md'' are skills (no deep recurse). Used from
-	 * {@link PendingMessage.run}.
+	 * Order: bundled ''/pi-skills'' gresource, then
+	 * ''~/.local/share/ollmchat/pi-skills/'', project ''.pi/skills/'',
+	 * project ''.agents/skills/''. Same name later replaces earlier (user/project
+	 * override resource). Immediate child directories with ''SKILL.md'' only
+	 * (no deep recurse). Used from {@link PendingMessage.run}.
 	 */
 	public class SkillSet : GLib.Object
 	{
@@ -35,7 +36,7 @@ namespace OLLMcoder.AgentPi
 		}
 
 		/**
-		 * Clear and rescan global + project skill roots.
+		 * Clear and rescan resource pack + global + project skill roots.
 		 *
 		 * @param project_path active project path (may be empty)
 		 */
@@ -43,6 +44,25 @@ namespace OLLMcoder.AgentPi
 		{
 			this.items.clear();
 			var by_name = new Gee.HashMap<string, Skill>();
+			try {
+				var children = GLib.resources_enumerate_children(
+					"/pi-skills", GLib.ResourceLookupFlags.NONE);
+				foreach (var child in children) {
+					if (!child.has_suffix("/")) {
+						continue;
+					}
+					var dir_name = child.substring(0, child.length - 1);
+					if (dir_name.has_prefix(".")) {
+						continue;
+					}
+					var skill = Skill.load(
+						"resource:///pi-skills/" + dir_name + "/SKILL.md");
+					if (skill != null) {
+						by_name.set(skill.name, skill);
+					}
+				}
+			} catch (GLib.Error e) {
+			}
 			string[] roots = {};
 			var global_root = GLib.Path.build_filename(
 				GLib.Environment.get_user_data_dir(), "ollmchat", "pi-skills");

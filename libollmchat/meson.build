@@ -111,6 +111,7 @@ resource_dirs = [
   '../resources/skills',
   '../resources/chat-prompts',
   '../resources/pi-prompts',
+  '../resources/pi-skills',
   '../resources/tools'
 ]
 

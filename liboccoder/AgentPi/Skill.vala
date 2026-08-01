@@ -42,9 +42,12 @@ namespace OLLMcoder.AgentPi
 		public static Skill? load(string skill_md_path)
 		{
 			uint8[] raw;
-			string etag;
+			var etag = "";
 			try {
-				GLib.File.new_for_path(skill_md_path).load_contents(null, out raw, out etag);
+				var file = skill_md_path.has_prefix("resource://")
+					? GLib.File.new_for_uri(skill_md_path)
+					: GLib.File.new_for_path(skill_md_path);
+				file.load_contents(null, out raw, out etag);
 			} catch (GLib.Error e) {
 				return null;
 			}
@@ -90,9 +93,20 @@ namespace OLLMcoder.AgentPi
 			if (description.strip() == "") {
 				return null;
 			}
-			var base_dir = GLib.Path.get_dirname(skill_md_path);
+			var base_dir = "";
+			if (skill_md_path.has_prefix("resource://")) {
+				var slash = skill_md_path.last_index_of_char('/');
+				base_dir = skill_md_path.substring(0, slash);
+			} else {
+				base_dir = GLib.Path.get_dirname(skill_md_path);
+			}
 			if (name == "") {
-				name = GLib.Path.get_basename(base_dir);
+				var slash = base_dir.last_index_of_char('/');
+				if (slash >= 0) {
+					name = base_dir.substring(slash + 1);
+				} else {
+					name = base_dir;
+				}
 			}
 			return new Skill() {
 				name = name,

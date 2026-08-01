@@ -56,6 +56,9 @@ namespace OLLMtools.ReadFile
 		 */
 		protected override string normalize_file_path(string in_path)
 		{
+			if (in_path.has_prefix("resource://")) {
+				return in_path;
+			}
 			var path = base.normalize_file_path(in_path);
 			
 			// If path is already absolute, return it as-is
@@ -220,6 +223,11 @@ namespace OLLMtools.ReadFile
 			if (this.file_path == "") {
 				return false; // Invalid - no permission needed
 			}
+			if (this.file_path.has_prefix("resource://")) {
+				this.normalized_path = this.file_path;
+				this.permission_question = "";
+				return false;
+			}
 			
 			// If project_manager is null, return false - no permission needed, execute_request() will fail with error
 			var project_manager = ((Tool) this.tool).project_manager;
@@ -280,6 +288,26 @@ namespace OLLMtools.ReadFile
 		protected override async string execute_request() throws Error
 		{
 			// Use normalized_path from build_perm_question() (called first)
+			if (this.normalized_path.has_prefix("resource://") || this.file_path.has_prefix("resource://")) {
+				var uri = this.normalized_path.has_prefix("resource://")
+					? this.normalized_path : this.file_path;
+				uint8[] raw;
+				var etag = "";
+				try {
+					GLib.File.new_for_uri(uri).load_contents(null, out raw, out etag);
+				} catch (GLib.Error e) {
+					var error_msg = "Failed to read resource: " + uri;
+					this.agent.add_message(new OLLMchat.Message("ui",
+						OLLMchat.Message.fenced("text.oc-frame-danger Read file Response",
+							"Error: " + error_msg)));
+					throw new GLib.IOError.FAILED(error_msg);
+				}
+				var full_content = (string) raw;
+				var preview_content = this.get_first_lines(full_content, 10);
+				this.agent.add_message(new OLLMchat.Message("ui",
+					OLLMchat.Message.fenced("text.oc-frame-success Reading file: " + uri, preview_content)));
+				return full_content;
+			}
 			
 			// Get ProjectManager
 			var project_manager = ((Tool) this.tool).project_manager;

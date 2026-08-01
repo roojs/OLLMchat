@@ -246,6 +246,22 @@ namespace OLLMfilesd
 				return;
 			}
 
+			if (p.element_type.strip().down() == "project") {
+				var description = project.project_description();
+				if (description == "") {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						msg = "No project summary is indexed yet for this project."
+					});
+					return;
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "## Project summary\n\n" + description
+				});
+				return;
+			}
+
 			if (project.project_files.get_n_items() == 0) {
 				yield project.load_files_from_db();
 			}

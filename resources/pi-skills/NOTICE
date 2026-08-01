@@ -1,0 +1,8 @@
+Agent Pi base skills in this directory are adapted from:
+
+  https://github.com/ericgandrade/claude-superskills
+  Copyright (c) 2025 Eric Andrade
+  Licensed under the MIT License (see LICENSE in this directory).
+
+Mechanical adaptations for OLLMchat / Agent Pi (tool names, plan To-do
+progress, resource delivery) do not change the upstream copyright.

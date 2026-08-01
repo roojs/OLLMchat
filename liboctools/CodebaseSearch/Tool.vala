@@ -67,15 +67,15 @@ namespace OLLMtools.CodebaseSearch
 		}
 		public override string description { get {
 			return """
-Search the codebase using semantic vector search to find code elements that match a query.
+Search the project index using semantic vector search.
 
-This tool performs semantic search across indexed code elements in the active project.
-It can find files, classes, methods, functions, and other code elements based on their
-semantic meaning, not just exact text matches.
+By default this finds indexed source-code elements (files, classes, methods, functions,
+and similar) by meaning, not exact text match.
 
-IMPORTANT: This tool only searches source code files (e.g., .vala, .py, .js, .ts, .java, .cpp, etc.).
-It does NOT search documentation files, markdown files (.md), HTML files, CSS files, or plain text files.
-For searching documentation, use a different tool.
+It also searches indexed documentation (markdown and other text docs) when you set
+element_type to "document" or "section". Optionally narrow docs with category
+(e.g. "plan", "rule", "documentation"). Binary assets and non-indexed formats
+(e.g. typical HTML/CSS) are not covered.
 
 Use this tool when you need to:
 - Find files that contain specific functionality or topics
@@ -83,17 +83,20 @@ Use this tool when you need to:
 - Locate classes or methods by their purpose or behavior
 - Search for code patterns or design implementations
 - Discover related code elements across the codebase
+- Locate documentation (plans, rules, how-tos) via element_type "document" or "section"
+- Fetch the detailed indexed project summary with element_type "project" (mandatory when
+  starting work on a project)
 
-The search uses vector embeddings to understand the semantic meaning of code,
-making it more effective than simple text search for finding relevant code.
+When element_type is "project", the tool returns the detailed project summary for the active
+project (languages, layout, purpose). No query is needed in that mode.
 """;
 		} }
 		
 		public override string parameter_description { get {
 			return """
-@param query {string} [required] The search query text describing what code to find.
+@param query {string} [optional] Search text describing what to find. Mandatory for all searches except when element_type is "project" (omit query in that mode).
 @param language {string} [optional] Filter results by programming language (e.g., "vala", "python", "javascript").
-@param element_type {string} [optional] Filter results by element type. Code: "class", "struct", "interface", "enum_type", "enum", "function", "method", "constructor", "property", "field", "delegate", "signal", "constant", "file". Documentation: "document", "section". Note: "namespace" is not searchable.
+@param element_type {string} [optional] Filter results by element type. Code: "class", "struct", "interface", "enum_type", "enum", "function", "method", "constructor", "property", "field", "delegate", "signal", "constant", "file". Documentation: "document", "section". Project: "project" (detailed project summary; mandatory when starting work on a project). Note: "namespace" is not searchable.
 @param category {string} [optional] Filter documentation by category. Valid values: "plan", "documentation", "rule", "configuration", "data", "license", "changelog", "other". Only applies to doc elements (document/section).
 @param max_results {integer} [optional] Maximum number of results to return (default: 10).
 """;

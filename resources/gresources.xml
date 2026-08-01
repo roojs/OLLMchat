@@ -73,6 +73,23 @@
     <file>research_online_search.md</file>
     <file>research_web_page.md</file>
   </gresource>
+  <gresource prefix="/pi-skills">
+    <file>LICENSE</file>
+    <file>NOTICE</file>
+    <file>writing-plans/SKILL.md</file>
+    <file>executing-plans/SKILL.md</file>
+    <file>brainstorming/SKILL.md</file>
+    <file>senior-solution-architect/SKILL.md</file>
+    <file>agent-skill-orchestrator/SKILL.md</file>
+    <file>prompt-engineer/SKILL.md</file>
+    <file>deep-research/SKILL.md</file>
+    <file>deep-research/references/agent-topology.md</file>
+    <file>deep-research/references/evidence-ledger.md</file>
+    <file>deep-research/references/report-template.md</file>
+    <file>webpage-reader/SKILL.md</file>
+    <file>research-codebase/SKILL.md</file>
+    <file>debug-review/SKILL.md</file>
+  </gresource>
 </gresources>
 
 

@@ -58,7 +58,8 @@ namespace OLLMtools.CodebaseSearch
 			"constant",
 			"file",
 			"document",
-			"section"
+			"section",
+			"project"
 		};
 		
 		/**
@@ -178,9 +179,8 @@ namespace OLLMtools.CodebaseSearch
 		
 		protected override async string execute_request() throws Error
 		{
-			// Validate required parameter
-			if (this.query == null || this.query.strip() == "") {
-				throw new GLib.IOError.INVALID_ARGUMENT("Query parameter is required");
+			if ((this.query == null || this.query.strip() == "") && this.element_type.strip().down() != "project") {
+				throw new GLib.IOError.INVALID_ARGUMENT("Query parameter is required for searches");
 			}
 			
 			// Validate element type and category if provided
