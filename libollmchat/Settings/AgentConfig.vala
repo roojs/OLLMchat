@@ -19,11 +19,11 @@
 namespace OLLMchat.Settings
 {
 	/**
-	 * Per-agent tool availability for {@link Config2}.
+	 * Per-agent settings for {@link Config2}.
 	 *
 	 * Stored under the ''agents'' map keyed by factory id (e.g. ''agent-pi'').
-	 * ''forbidden'' is user-editable JSON. Required-tool checks live in factory
-	 * ''register_config'' (hardcoded), not on this type.
+	 * ''forbidden'' and ''skills'' are user-editable JSON. Required-tool checks
+	 * live in factory ''register_config'' (hardcoded), not on this type.
 	 *
 	 * == Usage Examples ==
 	 *
@@ -39,7 +39,10 @@ namespace OLLMchat.Settings
 	 *
 	 * {{{
 	 * "agents": {
-	 *   "agent-pi": { "forbidden": [ "write_file", "huggingface_hub" ] }
+	 *   "agent-pi": {
+	 *     "forbidden": [ "write_file", "huggingface_hub" ],
+	 *     "skills": [ "writing-plans", "executing-plans" ]
+	 *   }
 	 * }
 	 * }}}
 	 */
@@ -50,6 +53,25 @@ namespace OLLMchat.Settings
 		 */
 		[Description(nick = "Forbidden", blurb = "Tools never included for this agent")]
 		public Gee.ArrayList<string> forbidden { get; set; default = new Gee.ArrayList<string>(); }
+
+		/**
+		 * Offered Agent Pi skill names (JSON ''skills'' string array).
+		 *
+		 * Name present ⇒ included in the prompt catalog. Missing key on load
+		 * seeds the product default offer; empty array means none offered.
+		 */
+		[Description(nick = "Skills", blurb = "Offered Agent Pi skills")]
+		public Gee.ArrayList<string> skills {
+			get;
+			set;
+			default = new Gee.ArrayList<string>();
+		}
+
+		/**
+		 * True when ''skills'' was present in the loaded JSON for this agent.
+		 * Not serialized.
+		 */
+		public bool skills_from_file = false;
 
 		/**
 		 * Comma-separated tool names to forbid (fills {@link forbidden}).
@@ -112,6 +134,18 @@ namespace OLLMchat.Settings
 					node.set_array(arr);
 					return node;
 
+				case "skills":
+					var skills_arr = new Json.Array();
+					var skills_list = (Gee.ArrayList<string>) value.get_object();
+					if (skills_list != null) {
+						foreach (var s in skills_list) {
+							skills_arr.add_string_element(s);
+						}
+					}
+					var skills_node = new Json.Node(Json.NodeType.ARRAY);
+					skills_node.set_array(skills_arr);
+					return skills_node;
+
 				default:
 					return default_serialize_property(property_name, value, pspec);
 			}
@@ -133,6 +167,23 @@ namespace OLLMchat.Settings
 					}
 					value = Value(typeof(Gee.ArrayList));
 					value.set_object(this.forbidden);
+					return true;
+
+				case "skills":
+					this.skills_from_file = true;
+					this.skills.clear();
+					if (property_node.get_node_type() == Json.NodeType.ARRAY) {
+						var skills_arr = property_node.get_array();
+						for (var i = 0; i < skills_arr.get_length(); i++) {
+							var elem = skills_arr.get_element(i);
+							if (elem.get_node_type() != Json.NodeType.VALUE) {
+								continue;
+							}
+							this.skills.add(elem.get_string());
+						}
+					}
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.skills);
 					return true;
 
 				default:

@@ -65,6 +65,21 @@ namespace OLLMcoder.AgentPi
 					forbid = "write_file,edit_mode,read_file,run_command"
 				});
 			}
+			var agent_cfg = config.agents.get(this.name);
+			if (!agent_cfg.skills_from_file) {
+				agent_cfg.skills.clear();
+				agent_cfg.skills.add_all_array({
+					"writing-plans",
+					"executing-plans",
+					"brainstorming",
+					"research-codebase",
+					"debug-review",
+					"senior-solution-architect",
+					"prompt-engineer",
+					"deep-research",
+					"webpage-reader",
+				});
+			}
 			if (!tools.has_key("write")) {
 				GLib.error("agent %s: required tool missing: write", this.name);
 			}
