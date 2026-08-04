@@ -92,7 +92,9 @@ Markdown links such as [#user-1](#user-1) or [#tool-6](#tool-6) refer to stored 
 				"environment", factory.build_environment(),
 				"cwd", project_path,
 				"agents_md", factory.build_agents_md(project_path),
-				"skills_md", skill_set.to_prompt(),
+				"skills_md", skill_set.to_prompt(
+					agent.session.manager.config.agents.get(
+						agent.session.agent_name).skills),
 				"conversation_summary", summary_text)));
 
 			foreach (var msg in since_summary) {

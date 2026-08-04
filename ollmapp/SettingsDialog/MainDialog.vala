@@ -40,7 +40,8 @@ namespace OLLMapp.SettingsDialog
 		private ModelsPage models_page;
 		private ProjectsPage projects_page;
 		private ToolsPage tools_page;
-		
+		private SkillsPage skills_page;
+
 		// ViewStack for pages and ViewSwitcher for tabs
 		private Adw.ViewStack view_stack;
 		private Adw.ViewSwitcher view_switcher;
@@ -164,7 +165,15 @@ namespace OLLMapp.SettingsDialog
 			// Add action widget to action bar area (initially hidden)
 			this.action_bar_area.append(this.tools_page.action_widget);
 			this.tools_page.action_widget.visible = false;
-			
+
+			this.skills_page = new SkillsPage(this);
+			this.view_stack.add_titled(this.skills_page,
+				this.skills_page.page_name,
+				this.skills_page.page_title);
+			this.view_stack.get_page(this.skills_page).icon_name = this.skills_page.page_icon;
+			this.action_bar_area.append(this.skills_page.action_widget);
+			this.skills_page.action_widget.visible = false;
+
 			// Connect to page visibility to show/hide action widgets
 			this.view_stack.notify["visible-child"].connect(this.on_page_changed);
 			
@@ -218,7 +227,8 @@ namespace OLLMapp.SettingsDialog
 			// Load tools and configs for tools page (non-blocking)
 			this.tools_page.load_tools();
 			this.tools_page.load_configs();
-			
+			this.skills_page.load_skills();
+
 			// Bind projects list to ProjectManager (once; project_manager not available at dialog creation)
 			this.projects_page.load_projects();
 			

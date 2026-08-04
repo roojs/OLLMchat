@@ -115,13 +115,20 @@ namespace OLLMcoder.AgentPi
 		/**
 		 * Build the system-prompt skills block (empty when nothing visible).
 		 *
+		 * Only skills whose names appear in ''offered'' are listed (soft
+		 * filter — does not block reading other skill paths).
+		 *
+		 * @param offered offered skill names from {@link OLLMchat.Settings.AgentConfig.skills}
 		 * @return markdown + XML catalog, or empty string
 		 */
-		public string to_prompt()
+		public string to_prompt(Gee.ArrayList<string> offered)
 		{
 			string[] blocks = {};
 			foreach (var skill in this.items) {
 				if (skill.disable_model) {
+					continue;
+				}
+				if (!offered.contains(skill.name)) {
 					continue;
 				}
 				blocks += 
