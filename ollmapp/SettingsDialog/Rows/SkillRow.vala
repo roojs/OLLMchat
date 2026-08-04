@@ -22,8 +22,8 @@ namespace OLLMapp.SettingsDialog.Rows
 	 * One Agent Pi skill settings row: ActionRow, offered Switch, and Skill.
 	 *
 	 * Construction builds widgets and wires the offered toggle to
-	 * {@link SkillsPage.agent_skills}. Resource skills stay activatable until
-	 * {@link export} copies them to the user Pi-skills directory.
+	 * {@link SkillsPage.agent_skills}. Resource skills have no subtitle;
+	 * filesystem skills show their path. Export uses the page context menu.
 	 *
 	 * == Example ==
 	 *
@@ -55,7 +55,7 @@ namespace OLLMapp.SettingsDialog.Rows
 		public Gtk.Switch toggle { get; private set; }
 
 		/**
-		 * Build row + toggle and connect offered / export signals.
+		 * Build row + toggle and connect the offered switch.
 		 *
 		 * @param page skills settings page that owns the offered list
 		 * @param skill scanned Agent Pi skill
@@ -66,19 +66,12 @@ namespace OLLMapp.SettingsDialog.Rows
 			this.skill = skill;
 			this.row = new Adw.ActionRow() {
 				title = skill.name,
-				subtitle = skill.path,
+				subtitle = skill.path.has_prefix("resource://") ? "" : skill.path,
 				activatable = false
 			};
 			this.toggle = new Gtk.Switch() {
 				valign = Gtk.Align.CENTER
 			};
-			if (this.skill.path.has_prefix("resource://")) {
-				this.row.subtitle = "Built-in — click to export to the filesystem";
-				this.row.activatable = true;
-				this.row.activated.connect(() => {
-					this.export();
-				});
-			}
 			this.toggle.notify["active"].connect(() => {
 				if (this.page.filling_skills) {
 					return;
@@ -95,19 +88,18 @@ namespace OLLMapp.SettingsDialog.Rows
 		}
 
 		/**
-		 * Refresh offered toggle and resource/path subtitle from current skill.
+		 * Refresh offered toggle and path subtitle from current skill.
 		 *
 		 * @param offered AgentConfig.skills names currently offered
 		 */
 		public void fill(Gee.ArrayList<string> offered)
 		{
 			this.toggle.active = offered.contains(this.skill.name);
-			this.row.subtitle = this.skill.path;
-			this.row.activatable = false;
+			this.row.subtitle = "";
 			if (this.skill.path.has_prefix("resource://")) {
-				this.row.activatable = true;
-				this.row.subtitle = "Built-in — click to export to the filesystem";
+				return;
 			}
+			this.row.subtitle = this.skill.path;
 		}
 
 		/**
@@ -143,7 +135,6 @@ namespace OLLMapp.SettingsDialog.Rows
 			}
 			var skill_md = GLib.Path.build_filename(dest_dir, "SKILL.md");
 			this.skill.path = skill_md;
-			this.row.activatable = false;
 			this.row.subtitle = skill_md;
 		}
 	}
