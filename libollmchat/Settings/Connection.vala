@@ -198,6 +198,11 @@ namespace OLLMchat.Settings
 		{
 			var message = new Soup.Message(method, url);
 
+			this.soup.set_proxy_resolver(GLib.ProxyResolver.get_default());
+			if (GLib.Hostname.is_ip_address(message.get_uri().get_host())) {
+				this.soup.set_proxy_resolver(null);
+			}
+
 			if (this.api_key != "") {
 				message.request_headers.append("Authorization",
 					"Bearer " + this.api_key 
