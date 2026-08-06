@@ -170,7 +170,12 @@ namespace OLLMrpc.Transport
 					this
 				);
 				request.connection = this;
-				request.dispatch();
+				if (!request.dispatch()) {
+					this.reply_error(
+						request,
+						(int) OLLMrpc.RpcErrorCode.METHOD_NOT_FOUND
+					);
+				}
 			} while (
 				(source.get_buffer_condition() & GLib.IOCondition.IN) != 0
 			);

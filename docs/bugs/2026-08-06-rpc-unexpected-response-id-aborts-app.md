@@ -1,14 +1,14 @@
 # RPC: File.activate never replies → queue stall → unexpected response id abort
 
-**Status:** ⏳ root cause confirmed — fix owned by plan Phase 0
+**Status:** ✔️ Phase 0 applied — await user ✅
 
-ℹ️ Implement via [`docs/plans/2.10.4.7-URGENT-active-project-file-outside-db.md`](../plans/2.10.4.7-URGENT-active-project-file-outside-db.md) **Phase 0** (verbatim fences live there). Do not duplicate proposals here.
+ℹ️ Implemented via [`docs/plans/2.10.4.7-URGENT-active-project-file-outside-db.md`](../plans/2.10.4.7-URGENT-active-project-file-outside-db.md) **Phase 0**.
 
 ## Problem
 
 🔷 App aborted: **`Client.vala:665 unexpected response id 22`**.
 
-🔷 Abort is the **effect**. Must not “fix” by only downgrading `GLib.error` → warning.
+🔷 Abort is the **effect**. Must not “fix” by softening `GLib.error`, moving call timeouts, or other client queue cosmetics.
 
 ## Evidence
 
@@ -26,8 +26,7 @@
 ✔️ Client still sends `File.activate` from `libocfiles/ProjectManager.activate_file` (`rpc.call.begin`).  
 ✔️ Daemon `ollmfilesd/File.vala` has **no** `call_activate` — wire was dropped.  
 ✔️ `Request.dispatch` logs CRITICAL and returns **false** without `reply` / `reply_error`.  
-✔️ Client serializes sends: hung id=21 blocks the queue until timeout.  
-✔️ `wait_response` starts the **120 s timer when `call()` is entered** (when queued), **not when the request is actually sent**.
+✔️ Client serializes sends: hung id=21 blocks the queue until timeout; later calls pile up and the abort follows when a reply arrives after the client already gave up.
 
 ## Root cause
 
@@ -36,22 +35,24 @@
 1. UI activates a file → client RPC **`File.activate`**.
 2. Daemon has no handler → **no reply** (only a critical log).
 3. That call sits at the head of the client pending queue for ~120 s.
-4. A later call (here **`Folder.fetch_files` id=22**) is queued behind it; its timeout **already started at queue time**.
-5. When id=21 finally times out, id=22 is sent; its own timer is already ~expired → `complete_pending(22, TIMED_OUT)` removes it from pending.
-6. Daemon’s fast reply for id=22 arrives with **nothing pending** → `GLib.error("unexpected response id 22")` → **process abort**.
+4. Later calls queue behind it; when the hung call finally times out, a follow-on reply can land with nothing pending → `GLib.error("unexpected response id …")` → **process abort**.
 
-🚫 Treating orphan replies as soft warnings alone papers over step 6 and leaves steps 1–5.
+🚫 Softening orphan-reply abort, or moving when timeouts arm, papers over steps 1–2 and leaves silent no-reply handlers dangerous.
 
 ## Fix
 
-🔷 Apply **Phase 0** of [`2.10.4.7-URGENT-active-project-file-outside-db.md`](../plans/2.10.4.7-URGENT-active-project-file-outside-db.md): drop `File.activate` RPC; `METHOD_NOT_FOUND` on failed dispatch; arm call timeout on **send**, not enqueue.
+✔️ Applied **Phase 0**:
+
+1. Dropped `File.activate` RPC from `ProjectManager.activate_file` (local activate only).
+2. On failed `dispatch()`, daemon `reply_error(METHOD_NOT_FOUND)`.
 
 ## Attempts / changelog
 
-- 💩 2026-08-06 — First proposal only softened `GLib.error` (effect). User correctly rejected.
+- 💩 2026-08-06 — Soften `GLib.error` on unexpected response id. User rejected (effect only).
+- 💩 2026-08-06 — Arm call timeout on send instead of enqueue. User rejected (papers over missing replies).
 - ✔️ 2026-08-06 — Daemon log: `File.activate` id=21 no reply; id=22 ~121 s later; CRITICAL missing `call_activate`.
-- ✔️ 2026-08-06 — Proposed fences moved into plan Phase 0; this file is evidence-only.
+- ✔️ 2026-08-06 — Cause fences in plan Phase 0.1–0.2; Phase 0 applied in tree.
 
 ## Next
 
-⏳ 🔷 Implement / approve via plan Phase 0 — not from this bug log.
+⏳ User ✅ after verifying file activate no longer stalls RPC / aborts.

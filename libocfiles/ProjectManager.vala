@@ -119,7 +119,8 @@ namespace OLLMfiles
 		
 		/**
 		 * Activate a file (deactivates previous active file).
-		 * Local state + signal first; RPC is fire-and-forget ({@link OLLMrpc.Client.failed}).
+		 * Client-local only: updates ''is_active'', emits
+		 * {@link active_file_changed}. No daemon RPC.
 		 *
 		 * @param file The file to activate
 		 */
@@ -133,15 +134,6 @@ namespace OLLMfiles
 				file.is_active = true;
 			}
 			this.active_file_changed(file);
-
-			this.rpc.call.begin(new OLLMrpc.Request() {
-				method = "File.activate",
-				param = new OLLMfilesd.ProjectParams() {
-					path = file != null ? file.path : ""
-				}
-			}, (obj, res) => {
-				this.rpc.call.end(res);
-			});
 		}
 		
 		/**

@@ -110,6 +110,16 @@ namespace OLLMchat.Settings
 		public Gee.Map<string, AgentConfig> agents {
 			get; set; default = new Gee.HashMap<string, AgentConfig>();
 		}
+
+		/**
+		 * Map of window UUID → {@link Window} (UI chrome per window).
+		 *
+		 * Keys are ''GLib.Uuid.string_random()'' strings. Missing or
+		 * empty map means no restored chrome yet.
+		 */
+		public Gee.Map<string, Window> windows {
+			get; set; default = new Gee.HashMap<string, Window>();
+		}
 		
 		/**
 		 * Static registry of key → GType for deserialization.
@@ -316,6 +326,19 @@ namespace OLLMchat.Settings
 					var agents_node = new Json.Node(Json.NodeType.OBJECT);
 					agents_node.set_object(agents_obj);
 					return agents_node;
+
+				case "windows":
+					// Serialize windows map as a JSON object (key-value pairs)
+					var obj = new Json.Object();
+					foreach (var entry in this.windows.entries) {
+						var key = entry.key;
+						var win_cfg = entry.value;
+						var node = Json.gobject_serialize(win_cfg);
+						obj.set_member(key, node);
+					}
+					var result = new Json.Node(Json.NodeType.OBJECT);
+					result.set_object(obj);
+					return result;
 					
 				case "loaded":
 					// Exclude loaded flag from serialization (it's metadata, not config data)
@@ -445,6 +468,24 @@ namespace OLLMchat.Settings
 					});
 					value = Value(typeof(Gee.Map));
 					value.set_object(this.agents);
+					return true;
+
+				case "windows":
+					// Deserialize windows from JSON object (key-value pairs)
+					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
+						break;
+					}
+					var obj = property_node.get_object();
+					obj.foreach_member((object, key, node) => {
+						// Deserialize each Window object
+						var win_cfg = Json.gobject_deserialize(typeof(Window), node) as Window;
+						if (win_cfg != null) {
+							this.windows.set(key, win_cfg);
+						}
+					});
+					// Return the windows map as the value
+					value = Value(typeof(Gee.Map));
+					value.set_object(this.windows);
 					return true;
 			}
 			
