@@ -2,7 +2,7 @@
 
 **Status:** ✔️ Phase 0 applied — await user ✅
 
-ℹ️ Implemented via [`docs/plans/2.10.4.7-URGENT-active-project-file-outside-db.md`](../plans/2.10.4.7-URGENT-active-project-file-outside-db.md) **Phase 0**.
+ℹ️ Implemented via [`docs/plans/done/2.10.4.7-DONE-active-project-file-outside-db.md`](../plans/done/2.10.4.7-DONE-active-project-file-outside-db.md) **Phase 0**.
 
 ## Problem
 
