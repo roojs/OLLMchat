@@ -83,9 +83,6 @@ run_t1_case "$SCRIPT_DIR/rpc/t1-persist.script.in"
 sqlite_count_ok "T1.2 create_project persisted" "$RPC_DB" \
     "SELECT COUNT(*) FROM filebase WHERE delete_id = 0 AND is_project = 1 AND path = '$RPC_PROJECT_PATH';" \
     "1"
-sqlite_count_ok "T1.4 activate_project is_active" "$RPC_DB" \
-    "SELECT COUNT(*) FROM filebase WHERE path = '$RPC_PROJECT_PATH' AND delete_id = 0 AND is_active = 1;" \
-    "1"
 
 run_t1_case "$SCRIPT_DIR/rpc/t1-remove.script.in"
 sqlite_count_ok "T1.5 remove_project (is_project cleared)" "$RPC_DB" \

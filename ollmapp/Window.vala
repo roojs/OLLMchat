@@ -46,6 +46,10 @@ namespace OLLMapp
 		private FileChangeBanner file_change_banner;
 		private ActivityBanner activity_banner;
 		public OLLMfiles.ProjectManager? project_manager { get; private set; default = null; }
+		/**
+		 * UUID key into {@link OLLMchat.Settings.Config2.windows}.
+		 */
+		public string uuid { get; private set; default = ""; }
 		internal BusyDialog? busy_dialog = null;
 
 		public OLLMchat.Agent.Base? session_agent()
@@ -80,6 +84,27 @@ namespace OLLMapp
 				return;
 			}
 			this.chat_widget.chat_view.scroll_to_idx(idx);
+		}
+
+		public OLLMchat.Settings.Window window_config()
+		{
+			if (this.uuid != "") {
+				return this.app.config.windows.get(this.uuid);
+			}
+			if (this.app.config.windows.size == 0) {
+				this.uuid = GLib.Uuid.string_random();
+				this.app.config.windows.set(
+					this.uuid,
+					new OLLMchat.Settings.Window()
+				);
+				this.app.config.save();
+				return this.app.config.windows.get(this.uuid);
+			}
+			foreach (var entry in this.app.config.windows.entries) {
+				this.uuid = entry.key;
+				return entry.value;
+			}
+			GLib.error("windows map non-empty but no entries");
 		}
 
 		/**
@@ -428,6 +453,21 @@ namespace OLLMapp
 			
 			this.project_manager = new OLLMfiles.ProjectManager();
 			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
+
+			var win_cfg = this.window_config();
+			if (win_cfg.agent != "") {
+				this.history_manager.session.agent_name = win_cfg.agent;
+			}
+			this.project_manager.active_project_changed.connect((project) => {
+				var row = this.window_config();
+				row.project = project != null ? project.path : "";
+				this.app.config.save();
+			});
+			this.project_manager.active_file_changed.connect((file) => {
+				var row = this.window_config();
+				row.file = file != null ? file.path : "";
+				this.app.config.save();
+			});
 
 			if (this.busy_dialog != null) {
 				this.busy_dialog.status_label.label =

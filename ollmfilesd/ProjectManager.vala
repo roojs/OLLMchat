@@ -238,40 +238,16 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * Activate a file (deactivates previous active file).
-		 * 
-		 * @param file The file to activate
-		 */
-		public void activate_file(File? file)
-		{
-			// Deactivate previous active file
-			if (this.active_file != null && this.active_file != file) {
-				this.active_file.is_active = false;
-				if (this.db != null) {
-					this.active_file.saveToDB(this.db, null, false);
-					this.db.is_dirty = true;
-				}
-			}
-			
-			// Activate new file
-			this.active_file = file;
-			if (file != null) {
-				file.is_active = true;
-				if (this.db != null) {
-					file.saveToDB(this.db, null, false);
-					this.db.is_dirty = true;
-				}
-			}
-			
-			this.active_file_changed(file);
-		}
-		
-		/**
-		 * Activate a project (deactivates previous active project).
-		 * Note: Projects are Folders with is_project = true.
-		 * 
-		 * @param project The project folder to activate (must have is_project = true)
-		 * @param skip_fs_scan When true, skip {@link Folder.read_dir} (RPC skip_scan)
+		 * Open a project path on the daemon: load tree, optional
+		 * ''read_dir'', queue vector scan.
+		 *
+		 * Does not persist UI ''is_active''. Client Config2 owns
+		 * which project a window shows. Sets {@link active_project}
+		 * for scan / index coordination only.
+		 *
+		 * @param request RPC request to reply
+		 * @param project Project folder, or null to clear
+		 * @param skip_fs_scan When true, skip {@link Folder.read_dir}
 		 */
 		public async void activate_project(
 			OLLMrpc.Request request,
@@ -280,7 +256,7 @@ namespace OLLMfilesd
 		)
 		{
 			// Skip if this project is already active (avoid redundant scans)
-			if (this.active_project == project && project != null && project.is_active) {
+			if (this.active_project == project && project != null) {
 				GLib.debug ("opening project skipped already active path=%s", project.path);
 				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
@@ -288,46 +264,13 @@ namespace OLLMfilesd
 				return;
 			}
 
-			// Reset is_active for ALL other projects (ensure only one project is active)
-			foreach (var other_project in this.projects.project_map.values) {
-				if (other_project != project && other_project.is_project && other_project.is_active) {
-					//GLib.debug("ProjectManager.activate_project: Deactivating project '%s'", other_project.path);
-					other_project.is_active = false;
-					if (this.db != null) {
-						other_project.saveToDB(this.db, null, false);
-						this.db.is_dirty = true;
-					}
-				}
-			}
-			
-			// Deactivate previous active project (if different from the one being activated)
-			if (this.active_project != null && this.active_project != project) {
-				//GLib.debug("ProjectManager.activate_project: Deactivating previous active_project '%s'", this.active_project.path);
-				// Note: is_active may already be false from the loop above, but ensure it's saved
-				if (this.active_project.is_active) {
-					this.active_project.is_active = false;
-					if (this.db != null) {
-						this.active_project.saveToDB(this.db, null, false);
-						this.db.is_dirty = true;
-					}
-				}
-			}
-			
 			// Activate new project
 			this.active_project = project;
 			if (project != null && project.is_project) {
 				GLib.debug ("opening project path=%s", project.path);
-				project.is_active = true;
-				
-				if (this.db != null) {
-					project.saveToDB(this.db, null, false);
-					this.db.is_dirty = true;
-					
-					// Load project file tree from DB if not already loaded (for fast initial display)
-					if (project.children.items.size == 0) {
-						yield project.load_files_from_db();
-						project.project_files.update_from(project);
-					}
+				if (this.db != null && project.children.items.size == 0) {
+					yield project.load_files_from_db();
+					project.project_files.update_from(project);
 				}
 			}
 			
