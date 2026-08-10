@@ -1066,9 +1066,34 @@ if (project_file.file.is_ignored
 if (project_file.file.is_ignored || !project_file.file.is_text) {
 ```
 
+**CRITICAL — one argument per line needs justification:** Default to **keeping
+arguments grouped** on as few lines as practical. Do **not** put one argument
+per line just because a call wrapped. One-arg-per-line is allowed only when
+each argument is itself a large expression (nested array/object literal,
+multi-line closure, long conditional) and grouping would hurt readability —
+say why in a short comment if it is not obvious. Short scalars, booleans,
+and simple variables almost never justify one-per-line.
+
+**Bad (gratuitous one-arg-per-line — forbidden):**
+```vala
+this.whitelist_respond(
+	want_json,
+	true,
+	"Server IP allowlisted.",
+	data
+);
+```
+
+**Good (grouped wrap):**
+```vala
+this.whitelist_respond(want_json, true,
+	"Server IP allowlisted. If the feed URL is already set, use Fetch Feed Now.",
+	data);
+```
+
 **Maximum line length:** In docblocks and comments, no line may extend past **72 characters** (including leading spaces/tab). Break after a word so the next line continues the sentence; a good rule of thumb is “break after a comma or before the next phrase” so that the first line does not go beyond roughly “… add all references,” in length.
 
-- **Code:** Break on `(` when function calls or method invocations are long; break on `+` when string concatenation creates long lines; if arguments are broken, put each argument on its own line. **Exception:** format-string calls (`throw` / `GLib.IOError` / wire `Error` / `GLib.debug` / `warning` / `critical`) — see **CRITICAL — format-string calls** above: string stays on the call line; remaining args may wrap **grouped**, not one-per-line.
+- **Code:** Break on `(` when function calls or method invocations are long; break on `+` when string concatenation creates long lines; when arguments wrap, **group** them on the continuation line(s). **Do not** default to one argument per line — see **CRITICAL — one argument per line needs justification** above. Format-string calls (`throw` / `GLib.IOError` / wire `Error` / `GLib.debug` / `warning` / `critical`) — see **CRITICAL — format-string calls**: string stays on the call line; remaining args wrap **grouped**.
 - **Docblocks and comments:** Break so that no line exceeds 72 characters; prefer breaking after commas or natural phrase boundaries.
 
 **Bad:**
@@ -1076,27 +1101,32 @@ if (project_file.file.is_ignored || !project_file.file.is_text) {
 this.buffer.insert_markup(ref end_iter, "<span size=\"small\" color=\"#1a1a1a\">" + renderer.toPango(message) + "</span>\n", -1);
 ```
 
-**Good:**
+**Good (grouped wrap — not one arg per line):**
 ```vala
-this.buffer.insert_markup(
-	ref end_iter,
+this.buffer.insert_markup(ref end_iter,
 	"<span size=\"small\" color=\"#1a1a1a\">" + renderer.toPango(message) + "</span>\n",
-	-1
-);
+	-1);
 ```
 
 **Also Good (breaking on + for long concatenation):**
 ```vala
-this.buffer.insert_markup(
-	ref end_iter,
+this.buffer.insert_markup(ref end_iter,
 	"<span size=\"small\" color=\"#1a1a1a\">" +
 		renderer.toPango(message) +
 		"</span>\n",
-	-1
+	-1);
+```
+
+**Good (each argument on its own line — only when args are large/nested):**
+```vala
+this.some_method(
+	build_very_large_options_literal(),
+	new ComplicatedWidget.with_defaults(parent, flags),
+	callback
 );
 ```
 
-**Good (each argument on its own line):**
+**Bad (short args, one per line — forbidden):**
 ```vala
 this.some_method(
 	arg1,

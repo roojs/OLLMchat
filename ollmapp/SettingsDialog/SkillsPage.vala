@@ -32,6 +32,7 @@ namespace OLLMapp.SettingsDialog
 
 		/**
 		 * Agent Pi config entry this page edits (''agents["agent-pi"]'').
+		 * Set in {@link load_skills} after agent registration.
 		 */
 		public OLLMchat.Settings.AgentConfig agent_skills { get; private set; }
 
@@ -61,8 +62,6 @@ namespace OLLMapp.SettingsDialog
 				orientation: Gtk.Orientation.VERTICAL,
 				spacing: 0
 			);
-
-			this.agent_skills = this.dialog.app.config.agents.get("agent-pi");
 
 			this.action_widget = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				hexpand = true,
@@ -157,6 +156,7 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public void load_skills()
 		{
+			this.agent_skills = this.dialog.app.config.agents.get("agent-pi");
 			var project_path = "";
 			var history_manager = (this.dialog.parent as OllmchatWindow).history_manager;
 			if (history_manager != null) {

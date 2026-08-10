@@ -82,9 +82,7 @@ namespace OLLMapp.SettingsDialog.Rows
 		 */
 		private void introspect_config_properties()
 		{
-			GLib.debug("Introspecting properties for config class: %s", this.config.get_class().get_type().name());
 			foreach (var pspec in this.config.get_class().list_properties()) {
-				GLib.debug("Found property: %s (type: %s)", pspec.get_name(), pspec.value_type.name());
 				// Skip properties that shouldn't be shown in UI
 				// (e.g., internal GObject properties)
 				if (pspec.get_name().has_prefix("_") || 

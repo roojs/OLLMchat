@@ -207,7 +207,8 @@ namespace OLLMcoder.AgentPi
 		}
 
 		/**
-		 * Date and OS for the system prompt (project root is presented as ''{cwd}'').
+		 * Date, OS, and optional current editor file for the system prompt
+		 * (project root is presented as ''{cwd}'').
 		 *
 		 * @return markdown bullet list
 		 */
@@ -216,6 +217,9 @@ namespace OLLMcoder.AgentPi
 			var ret = "- **Date** - `" + new GLib.DateTime.now_local().format("%Y-%m-%d") + "`";
 			var os_info = GLib.Environment.get_os_info("PRETTY_NAME");
 			ret += "\n- **OS** - `" + (os_info != null && os_info != "" ? os_info : this.get_os_version()) + "`";
+			if (this.project_manager.active_file != null) {
+				ret += "\n- **Current file** - `" + this.project_manager.active_file.path + "`";
+			}
 			return ret;
 		}
 
