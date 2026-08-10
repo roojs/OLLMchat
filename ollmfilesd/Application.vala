@@ -393,22 +393,18 @@ Examples:
 			}
 
 			GLib.debug("scan-project start path=%s", project.path);
-			project.is_active = true;
-			if (this.project_manager.db != null) {
-				project.saveToDB(this.project_manager.db, null, false);
-				this.project_manager.db.is_dirty = true;
-				if (project.children.items.size == 0) {
-					GLib.debug(
-						"scan-project load_files_from_db path=%s",
-						project.path
-					);
-					yield project.load_files_from_db();
-					project.project_files.update_from(project);
-					GLib.debug(
-						"scan-project load_files_from_db done path=%s",
-						project.path
-					);
-				}
+			if (this.project_manager.db != null
+				&& project.children.items.size == 0) {
+				GLib.debug(
+					"scan-project load_files_from_db path=%s",
+					project.path
+				);
+				yield project.load_files_from_db();
+				project.project_files.update_from(project);
+				GLib.debug(
+					"scan-project load_files_from_db done path=%s",
+					project.path
+				);
 			}
 
 			GLib.debug(

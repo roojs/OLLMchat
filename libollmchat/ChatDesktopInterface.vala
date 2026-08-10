@@ -111,5 +111,16 @@ namespace OLLMchat
 		 *   to no-op
 		 */
 		public abstract void scroll_to_message(int idx);
+
+		/**
+		 * This window's {@link Settings.Window} entry in Config2.windows.
+		 *
+		 * Looked up with this window's ''uuid''. Creates the map entry
+		 * on first use. Factories read ''project'' / ''file'' after
+		 * ''load_projects_from_db''.
+		 *
+		 * @return the {@link Settings.Window} for this GTK window
+		 */
+		public abstract Settings.Window window_config();
 	}
 }

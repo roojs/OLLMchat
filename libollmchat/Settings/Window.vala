@@ -19,7 +19,8 @@
 namespace OLLMchat.Settings
 {
 	/**
-	 * Per-window UI chrome persisted in {@link Config2}.
+	 * Per-window open project, file, and agent persisted in
+	 * {@link Config2}.
 	 *
 	 * Stored under the ''windows'' map keyed by UUID from
 	 * ''GLib.Uuid.string_random()''. Runtime

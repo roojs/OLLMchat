@@ -145,11 +145,8 @@ if grep -q "no signal call_activate on File" "$RPC_LAST_ERR"; then
 else
     test_fail "T2A.7 File.activate (no server handler)"
 fi
-if [ -z "$(rpc_resp_by_id 4 "$RPC_LAST_OUT")" ]; then
-    test_pass "T2A.7 File.activate (no wire response)"
-else
-    test_fail "T2A.7 File.activate (no wire response)"
-fi
+jq_resp_ok "T2A.7 File.activate (METHOD_NOT_FOUND reply)" 4 "$RPC_LAST_OUT" \
+    '.error != null'
 
 # --- Path B: skip_scan + File.register ---
 run_t2_case "$SCRIPT_DIR/rpc/t2-register.script.in"

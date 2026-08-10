@@ -137,9 +137,13 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Activate a project (deactivates previous active project).
-		 * Local state + signal first; RPC is fire-and-forget ({@link OLLMrpc.Client.failed}).
-		 * 
+		 * Activate a project in this client ProjectManager.
+		 *
+		 * Updates local ''is_active'' / {@link active_project} for UI.
+		 * RPC ''ProjectManager.activate_project'' asks the daemon to
+		 * load/scan/index that path — not to persist UI selection
+		 * (Config2 ''Settings.Window'' owns that).
+		 *
 		 * @param project The project folder to activate (must have is_project = true)
 		 */
 		public void activate_project(Folder? project)
@@ -306,36 +310,29 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Restore active project and file from saved session paths.
+		 * Restore active project and file from Config2 Window paths.
 		 *
-		 * Does not read ''ProjectFiles'' or DB ''is_active'' flags.
-		 * ''file_path'' comes from agent/window config when wired.
+		 * Does not read DB ''is_active'' flags. Empty ''project_path'' is a
+		 * no-op. Empty ''file_path'' activates the project only.
 		 *
-		 * @param file_path Optional absolute path of file to open after project
+		 * @param project_path Absolute project path from ''Settings.Window.project''
+		 * @param file_path Absolute file path from ''Settings.Window.file'', or empty
 		 */
-		public async void restore_active_state(string? file_path = null)
+		public async void restore_active_state(string project_path, string file_path = "")
 		{
-			var project = this.projects.get_active_project();
-			if (project == null) {
-				foreach (var other_project in this.projects.project_map.values) {
-					if (other_project.is_project && other_project.is_active) {
-						other_project.is_active = false;
-					}
-				}
+			if (project_path == "") {
 				return;
 			}
-
-			if (project.is_active) {
-				project.is_active = false;
+			if (!this.projects.path_map.has_key(project_path)) {
+				GLib.warning("restore: project path not in list: %s", project_path);
+				return;
 			}
-
-			GLib.debug ("restoring session project path=%s", project.path);
+			var project = this.projects.path_map.get(project_path);
+			GLib.debug("restoring window config project path=%s", project.path);
 			this.activate_project(project);
-
-			if (file_path == null || file_path == "") {
+			if (file_path == "") {
 				return;
 			}
-
 			var file = yield project.fetch_file(file_path);
 			if (file != null) {
 				this.activate_file(file);

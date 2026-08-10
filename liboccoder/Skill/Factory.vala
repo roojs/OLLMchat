@@ -120,8 +120,12 @@ namespace OLLMcoder.Skill
 				method = "client.project.load_start",
 			});
 			try {
+				var win_cfg = host.window_config();
 				yield this.widget.manager.load_projects_from_db();
-				yield this.widget.manager.restore_active_state();
+				yield this.widget.manager.restore_active_state(
+					win_cfg.project,
+					win_cfg.file
+				);
 				yield this.widget.apply_manager_state();
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to initialize Skills Agent widget: %s", e.message);

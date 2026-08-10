@@ -112,10 +112,10 @@ namespace OLLMchat.Settings
 		}
 
 		/**
-		 * Map of window UUID → {@link Window} (UI chrome per window).
+		 * Map of window UUID → {@link Window} (project / file / agent).
 		 *
 		 * Keys are ''GLib.Uuid.string_random()'' strings. Missing or
-		 * empty map means no restored chrome yet.
+		 * empty map means nothing restored for windows yet.
 		 */
 		public Gee.Map<string, Window> windows {
 			get; set; default = new Gee.HashMap<string, Window>();

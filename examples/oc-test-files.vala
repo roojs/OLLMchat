@@ -213,7 +213,10 @@ Examples:
 		// Restore active project/file from DB so edits use real file IDs.
 		// Only do this in test mode (when --test-db is provided).
 		if (opt_test_db != null && opt_test_db != "") {
-			yield manager.restore_active_state();
+			var project = manager.projects.get_active_project();
+			if (project != null) {
+				yield manager.restore_active_state(project.path);
+			}
 		}
 		
 		// Execute the requested action

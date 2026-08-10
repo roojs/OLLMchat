@@ -2,7 +2,7 @@
 
 **Status:** ✔️ Phase 0 applied — await user ✅
 
-ℹ️ Implemented via [`docs/plans/2.10.4.7-URGENT-active-project-file-outside-db.md`](../plans/2.10.4.7-URGENT-active-project-file-outside-db.md) **Phase 0**.
+ℹ️ Implemented via [`docs/plans/done/2.10.4.7-DONE-active-project-file-outside-db.md`](../plans/done/2.10.4.7-DONE-active-project-file-outside-db.md) **Phase 0**.
 
 ## Problem
 
@@ -23,10 +23,9 @@
 | 08:34:24.158 | `reply id=22 Folder.fetch_files` |
 | ~08:34:36 | App restarted (new client hello) |
 
-✔️ Client still sends `File.activate` from `libocfiles/ProjectManager.activate_file` (`rpc.call.begin`).  
+ℹ️ **Historical (pre–Phase 0):** client sent `File.activate`; dispatch returned false with no reply.  
 ✔️ Daemon `ollmfilesd/File.vala` has **no** `call_activate` — wire was dropped.  
-✔️ `Request.dispatch` logs CRITICAL and returns **false** without `reply` / `reply_error`.  
-✔️ Client serializes sends: hung id=21 blocks the queue until timeout; later calls pile up and the abort follows when a reply arrives after the client already gave up.
+✔️ Phase 0: client no longer sends `File.activate`; failed `dispatch()` gets `reply_error(METHOD_NOT_FOUND)`.
 
 ## Root cause
 

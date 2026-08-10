@@ -144,6 +144,12 @@ namespace OLLMapp
 				var session = this.host.history_manager.session;
 				if (!(session is OLLMchat.History.Session)) {
 					session.activate_agent(factory.name);
+					var desktop = this.host as OLLMchat.ChatDesktopInterface;
+					if (desktop != null) {
+						var row = desktop.window_config();
+						row.agent = factory.name;
+						this.host.history_manager.config.save();
+					}
 					return;
 				}
 
@@ -153,6 +159,12 @@ namespace OLLMapp
 				this.host.chat_widget.switch_to_session.begin(empty, (obj, res) => {
 					this.host.chat_widget.switch_to_session.end(res);
 					empty.activate_agent(factory.name);
+					var desktop = this.host as OLLMchat.ChatDesktopInterface;
+					if (desktop != null) {
+						var row = desktop.window_config();
+						row.agent = factory.name;
+						this.host.history_manager.config.save();
+					}
 					/* session_activated may have selected the copied
 					 * old agent_name — put the dropdown back on the pick. */
 					var agent_index = 0u;
