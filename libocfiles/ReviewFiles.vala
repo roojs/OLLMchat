@@ -102,6 +102,11 @@ namespace OLLMfiles
 			}
 
 			var new_n_items = this.items.size;
+			GLib.debug(
+				"review_files refresh done old=%d new=%d",
+				old_n_items,
+				new_n_items
+			);
 			if (old_n_items > 0 || new_n_items > 0) {
 				this.items_changed(0, old_n_items, new_n_items);
 			}

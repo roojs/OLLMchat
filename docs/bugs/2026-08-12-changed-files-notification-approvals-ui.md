@@ -1,126 +1,150 @@
 # Changed-files notification → Approvals icon / open in editor
 
-**Status:** ⏳ OPEN — symptom logged; not yet debugged
+**Status:** ⏳ OPEN — daemon `File.write` creates pending approval; live UI path still untested
 
-**Started:** 2026-08-12
+**Started:** 2026-08-12 · **Updated:** 2026-08-13
 
 ---
 
 ## Problem
 
-🔷 User dropped a simple **Hello World** file into the project **`docs/`** directory (active project). Expected end-to-end:
+🔷 Create a Hello World file under the project **`docs/`** directory **via our API** (`File.write` / tools that call it — not a raw disk copy). Expected end-to-end:
 
-1. **Daemon** notices the new/changed file and updates pending / changed-file state.
+1. **Daemon** creates a pending-approval record for that file.
 2. **Backend → frontend notification** that the changed-file list should refresh.
 3. **Approvals control** (top-right header, next to save) becomes visible / clickable and shows the pending file(s).
 4. Selecting a row **opens that file in the editor** (`SourceView`).
 
-🔷 **Actual:** No usable UI update observed — Approvals icon / list did not reflect the new file after the drop.
+🔷 **Actual (user smoke):** Approvals icon / list did not reflect the new file.
 
-🔷 Class as a **bug** even where pieces are unfinished wiring: the intended product path (external or daemon-detected change → Approvals list → open) is broken or incomplete for this smoke test.
+🔷 Scope is the **API create → notify → Approvals → open** path.  
+🚫 Not about manually copying a file onto disk outside the API (agent misread that earlier as “external drop”).
 
 ---
 
-## Reproduction (user)
+## Reproduction
 
 1. Open app with a project that has a `docs/` tree.
-2. Create / copy a small Hello World file under `docs/` on disk (outside the in-app editor / tools path).
-3. Watch header Approvals control (top-right) and any daemon→client notification activity.
-4. **Expected:** list updates; icon usable; click opens file in editor.
+2. Create a small Hello World file under `docs/` **through the API** (`File.write` / write_file tool / equivalent).
+3. Watch header Approvals control and daemon→client notifications.
+4. **Expected:** pending list updates; icon usable; click opens file in editor.
 5. **Actual:** no observed Approvals update for that file.
 
 ---
 
-## Related (pointers only — not root cause yet)
+## Related
 
-ℹ️ Approvals UI + `ReviewFiles` client refresh on `event.project.invalidate_cache`:
+ℹ️ Approvals UI + `ReviewFiles` refresh on `event.project.invalidate_cache`:
 
 - `liboccoder/Approvals.vala` — `rpc.notification` → `review_files.refresh.begin()` when method is `event.project.invalidate_cache`
 - `liboccoder/SourceView.vala` — same notification refreshes file dropdown; `approvals.file_selected` → `open_file`
-- Daemon emit sites today: `ollmfilesd/File.vala` (write / register / `to_real`-style paths) — `event.project.invalidate_cache` with project path in `message`
+- Daemon emit: `ollmfilesd/File.vala` (`File.write` / `to_real`) — `event.project.invalidate_cache`
 
-ℹ️ Pending list RPC: `Folder.fetch_pending_approvals` → client `libocfiles/ReviewFiles.vala` (`fetch_pending` / `refresh`). Client also refreshes on project activate and after approve/reject / some tools — **not** on arbitrary disk drops unless a notification arrives.
+ℹ️ Pending list RPC: `Folder.fetch_pending_approvals` → client `libocfiles/ReviewFiles.vala`
 
-ℹ️ Planned / unfinished notification + watcher work:
+ℹ️ Prior related: [`2026-07-27-write-file-no-project-index-ui.md`](2026-07-27-write-file-no-project-index-ui.md)
 
-- [`docs/plans/2.10.4.8-per-client-project-notifications.md`](../plans/2.10.4.8-per-client-project-notifications.md) — **FUTURE** — per-client project watch + `event.file.*` routing
-- [`docs/plans/4.2.3-background-sync-file-watcher.md`](../plans/4.2.3-background-sync-file-watcher.md) — **TODO** — filesystem watcher
-- [`docs/plans/done/2.10.4.14-DONE-daemon-scan-update-notification.md`](../plans/done/2.10.4.14-DONE-daemon-scan-update-notification.md) — vector `scan_update` only (not Approvals list)
-- [`docs/plans/done/2.10.4.26-DONE-file-history-approval-knock-on.md`](../plans/done/2.10.4.26-DONE-file-history-approval-knock-on.md) — Approvals / `ReviewFiles` V2 wire
-
-ℹ️ Prior similar symptom (tool write path, not necessarily external drop):
-
-- [`docs/bugs/2026-07-27-write-file-no-project-index-ui.md`](2026-07-27-write-file-no-project-index-ui.md) — write/edit_mode create → pull-down + changed-files empty; `invalidate_cache` / `review_files` issues
-
-ℹ️ Editor open from Approvals:
-
-- `Approvals.update_selected_file()` only emits `file_selected` when `project_manager.file_cache.get(row.path)` is non-null.
-- 💩 If a pending row exists in `ReviewFiles` but the `File` is not yet in client `file_cache`, click may update selection without opening the editor — separate failure mode to check once the list populates.
+ℹ️ Editor open: `Approvals.update_selected_file()` only emits `file_selected` if `file_cache.get(row.path)` is non-null.
 
 ---
 
-## Hypotheses (unconfirmed)
+## Hypotheses
 
-💩 **H1 — No daemon detect:** External add under `docs/` is never registered / never marked `is_need_approval` (watcher missing; scan doesn’t treat drop as pending). → `fetch_pending_approvals` would stay empty even after a manual refresh.
+💩 **H1 — Daemon never creates a pending-approval record on API write.**  
+✔️ **Ruled out 2026-08-13:** `File.write` via `ollmfilesd --rpc-script` **does** create the record (see Evidence).
 
-💩 **H2 — Detected but no notify:** Daemon updates DB / history, but never sends `event.project.invalidate_cache` (or a dedicated pending-list event) for this path. → Approvals stays stale until project re-activate / other refresh trigger.
+💩 **H2 — Record exists, but live app never gets / never acts on the notify** (`event.project.invalidate_cache` → Approvals refresh).  
+⏳ Next to test against a live window (or client connected to daemon).
 
-💩 **H3 — Notify but client ignore / mismatch:** Notification arrives but `message` ≠ `active_project.path` (SourceView filters that way for dropdown; Approvals currently does **not** filter by path) or client RPC/notification path broken.
+💩 **H3 — Notify handled, but Approvals / `ReviewFiles` refresh still wrong** (empty list, wrong project path, etc.).  
+⏳ After H2.
 
-💩 **H4 — List OK, open broken:** Approvals shows the file, but `file_cache` miss prevents `file_selected` → editor open.
+💩 **H4 — List OK, open broken:** row visible but `file_cache` miss blocks editor open.  
+⏳ After list works.
 
 ---
 
 ## Evidence
 
-⏳ None captured yet this session (no `--debug` log slice, no SQLite pending check, no confirmation whether `invalidate_cache` fired).
+### Probe A — API `File.write` creates approval ✔️
 
-Suggested first checks when debugging starts:
+Tool: `build/ollmfilesd/ollmfilesd --interactive --rpc-script=…`
 
-1. Disk: confirm Hello World path under active project root.
-2. Daemon log: any register / history / `invalidate_cache` / filesystem scan around the drop time (`~/.cache/ollmchat/ollmfilesd.debug.log`).
-3. Client log: `event.project.invalidate_cache` / `Folder.fetch_pending_approvals` (`~/.cache/ollmchat/ollmchat.debug.log` with `--debug`).
-4. DB: `filebase` row for path; `is_need_approval`; `file_history` pending rows (`~/.local/share/ollmchat/files.sqlite`).
-5. After force `review_files.refresh` (e.g. re-activate project): does Approvals light up? Isolates H1 vs H2.
+1. `ProjectManager.create_project` + `activate_project`
+2. `File.write` → `docs/hello-via-write.txt`
+3. `Folder.fetch_pending_approvals`
+
+**Result** (`/tmp/ollm-approval-probe-wIdN`):
+
+- Write: `msg: ok`
+- Pending: one `FileWithHistory`, `last-change-type: added`, `approve-id: 1`
+- SQLite: `is_need_approval=1`, `file_history` `added` / `status=0`
+- Notification: `event.project.invalidate_cache` with project path
+
+→ Step 1 of the expected chain works at the daemon/API layer.
+
+### Out of scope (agent misread)
+
+ℹ️ Earlier “Probe B / external drop” used raw disk `printf` with no API. **User clarified that is not the scenario under test.** Left only as a note so we don’t chase it again.
+
+### Client receive path (code review 2026-08-13)
+
+Chain when a notify arrives on the app’s `OLLMrpc.Client`:
+
+1. **`libocrpc/Client.vala` `dispatch_message`**  
+   - ✔️ **Has debug:** `notification method=%s object_type=%s`  
+   - Then emits `this.notification(notif)`.
+
+2. **`liboccoder/Approvals.vala` ctor** (listener):  
+   - If `method != "event.project.invalidate_cache"` → return.  
+   - Else `review_files.refresh.begin()` (no path filter).  
+   - 🚫 **No `GLib.debug` here.**
+
+3. **`ReviewFiles.refresh()`** → `Folder.fetch_pending_approvals` → replace list → `items_changed` + `refreshed()`.  
+   - `refreshed` → `Approvals.update_button_visibility()` (show next-button if `get_n_items() > 0`).  
+   - 🚫 **No `GLib.debug` in refresh / fetch_pending / visibility.**
+
+4. **Parallel:** `SourceView` also listens — same method, **plus** requires `notif.message == active_project.path`, then refreshes file dropdown only.  
+   - 🚫 **No debug** on that branch either.
+
+5. **`Window`** also forwards every RPC notify (via Idle) to `ActivityBanner` — banner has **no** case for `invalidate_cache` (scan/vector only). Harmless for Approvals; Approvals is wired directly on `rpc.notification`.
+
+**Live check with `--debug`:** look for, in order:
+
+1. Client: `notification method=event.project.invalidate_cache` — wire reached client
+2. Approvals: `invalidate_cache received message=… — refreshing review_files` — Approvals handler ran
+3. ReviewFiles: `review_files refresh done old=N new=M` — fetch finished; `new>0` means pending rows returned
+
+If (1) missing → H2. If (1)+(2) but `new=0` or icon still hidden → H3. If `new>0` but icon still hidden → visibility/open path (H3/H4).
 
 ---
 
 ## Root cause
 
-⏳ Unknown — await evidence.
+⏳ Unknown for the UI failure — daemon approval-on-write is fine; break is later (notify delivery or Approvals client).
 
 ---
 
 ## Proposed fix
 
-⏳ None yet — debug first per `docs/bug-fix-process.md`. Do **not** paper over with polling-only UI or defensive null caches; fix detection and/or notification and/or open-from-cache at the real break.
-
----
-
-## Scope notes (product)
-
-🔷 Notification → Approvals refresh is the primary broken loop for this report.
-
-🔷 Opening the selected changed file in the editor is in scope for the same bug once the list works (or in parallel if list already works and only open fails).
-
-ℹ️ Full multi-window routing may still live under **2.10.4.8**; this bug is the **single-window** smoke path: external/daemon-known change → UI list → open.
+⏳ None yet — debug the live notify → Approvals path next.
 
 ---
 
 ## Attempts / changelog
 
-- ✔️ 2026-08-12 — Bug log created from user smoke test (Hello World under `docs/`).
+- ✔️ 2026-08-12 — Bug log created.
+- ✔️ 2026-08-13 — CLI Probe A: `File.write` creates pending approval + `invalidate_cache`.
+- ✔️ 2026-08-13 — User correction: scope is **API create**, not disk-only drop; bug log refocused.
+- ✔️ 2026-08-13 — Reviewed client receive path: only `OLLMrpc.Client` logged the notify.
+- ✔️ 2026-08-13 — Added temporary debug: Approvals on `invalidate_cache`; `ReviewFiles.refresh` old/new counts.
 
 ---
 
 ## Next
 
-⏳ 🔷 Reproduce with `--debug`; capture daemon + client logs around the drop.
+⏳ 🔷 Run app with `--debug`, API-create under `docs/`, grep client log for `notification method=event.project.invalidate_cache` (H2 vs H3).
 
-⏳ 🔷 Confirm whether pending row exists in DB after drop (H1 vs H2).
+⏳ 🔷 If list has a row but click does not open → H4 (`file_cache`).
 
-⏳ 🔷 If list refreshes only after project re-activate, focus on missing notification emit for external/scan discovery.
-
-⏳ 🔷 If list has row but click does not open, check `file_cache` miss in `Approvals.update_selected_file` (H4).
-
-⏳ Propose root-cause fix with Remove/Replace/Add fences; await apply approval.
+⏳ Propose fix with fences; await apply approval.

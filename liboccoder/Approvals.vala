@@ -141,6 +141,10 @@ namespace OLLMcoder
 				if (notif.method != "event.project.invalidate_cache") {
 					return;
 				}
+				GLib.debug(
+					"invalidate_cache received message=%s — refreshing review_files",
+					notif.message
+				);
 				this.project_manager.review_files.refresh.begin();
 			});
 			
