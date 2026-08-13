@@ -68,11 +68,14 @@ namespace OLLMfilesd
 					+ escaped_path + "')";
 			}
 			var root_scope = " AND (" + string.joinv(" OR ", path_conds) + ")";
+			if (path_conds.length == 0) {
+				return list;
+			}
 			var q = """
 SELECT
 	file_history.filebase_id AS id,
 	file_history.path,
-	filebase.last_change_type,
+	file_history.change_type AS last_change_type,
 	filebase.last_modified,
 	file_history.status,
 	(
@@ -113,6 +116,18 @@ WHERE
 		OR
 		file_history.since_id > """ + since_id.to_string() + """
 	)""" + root_scope + """
+	AND
+		COALESCE(filebase.base_type, file_history.base_type) = 'f'
+	AND
+	(
+		file_history.status != 0
+		OR
+		(
+			file_history.status = 0
+			AND
+			filebase.is_need_approval = 1
+		)
+	)
 ORDER BY
 	file_history.id ASC,
 	file_history.since_id ASC

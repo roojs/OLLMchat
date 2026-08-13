@@ -70,16 +70,10 @@ namespace OLLMcoder.List
 			this.model_filter = filter;
 			this.filter = filter;
 			
-			// Derive equality function from sorter: items are equal if sorter.compare returns EQUAL
-			this.sorted_items = new Gee.ArrayList<Object>((a, b) => {
-				return this.sorter.compare(a, b) == Gtk.Ordering.EQUAL;
-			});
-			this.got_list = new Gee.ArrayList<Object>((a, b) => {
-				return this.sorter.compare(a, b) == Gtk.Ordering.EQUAL;
-			});
-			this.pre_update = new Gee.ArrayList<Object>((a, b) => {
-				return this.sorter.compare(a, b) == Gtk.Ordering.EQUAL;
-			});
+			// Membership by object identity; sorter is only for order in rebuild().
+			this.sorted_items = new Gee.ArrayList<Object>();
+			this.got_list = new Gee.ArrayList<Object>();
+			this.pre_update = new Gee.ArrayList<Object>();
 			
 			// Connect to source model changes
 			this.source_changed_id = this.source_model.items_changed.connect(this.on_source_changed);
@@ -178,13 +172,9 @@ namespace OLLMcoder.List
 			if (this.change_queue.size == 0) {
 				return;
 			}
-			var c = this.change_queue.get(0);
-			this.items_changed(c.position, c.removed, c.added);
-			this.change_queue.remove_at(0);
-			GLib.Idle.add(() => {
-				this.run_queue();
-				return false;
-			});
+			// sorted_items is already final; do not drip step-wise items_changed (GTK asserts).
+			this.change_queue.clear();
+			this.items_changed(0, this.pre_update.size, this.sorted_items.size);
 		}
 		
 		private void rebuild()

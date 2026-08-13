@@ -409,9 +409,11 @@ namespace OLLMcoder
 			}
 			var row = this.sorted_model.get_item_typed(this.selection.selected);
 			this.selected_file = row;
-			var file = this.project_manager.file_cache.get(row.path);
-			if (file != null) {
-				this.file_selected((OLLMfiles.File) file);
+			if (row.last_change_type != "deleted") {
+				var file = this.project_manager.file_cache.get(row.path);
+				if (file != null) {
+					this.file_selected((OLLMfiles.File) file);
+				}
 			}
 			this.update_button_visibility();
 		}
@@ -467,10 +469,10 @@ namespace OLLMcoder
 			calculated_height = calculated_height < 100 ? 100 :
 				(calculated_height > 400 ? 400 : calculated_height);
 			
-			// Set size request on popover content
+			// Set size request on popover content (min width 400)
 			var child = this.popover.get_child();
 			if (child != null) {
-				child.set_size_request(-1, calculated_height);
+				child.set_size_request(400, calculated_height);
 			}
 		}
 		

@@ -1,6 +1,6 @@
 # Changed-files notification → Approvals icon / open in editor
 
-**Status:** ⏳ OPEN — **`since_id` marker sync applied** ✔️; await user re-test / ✅
+**Status:** ⏳ OPEN — marker sync + SortedList single-splice rebuild applied ✔️; await user re-test / ✅
 
 **Started:** 2026-08-12 · **Updated:** 2026-08-13
 
@@ -948,6 +948,68 @@ ORDER BY
 
 ---
 
+## GTK abort after marker sync (2026-08-13 ~20:55)
+
+### Evidence
+
+✔️ Stack: `g_assertion_message_expr` ← GTK list ← `SortedList.run_queue` ← `rebuild` ← `on_source_changed(position=0, removed=0, added=2)`.
+
+✔️ Debug log: `ReviewFiles.vala:105: review_files refresh done old=0 new=2` — that string is the **pre-marker** refresh message. Current tree logs `review_files refresh delta …` at line 143. So that run was still on an **old** `libocfiles` (or process not restarted from `build/`). `(0,0,2)` matches old bulk `items_changed(0, old, new)`.
+
+✔️ Approvals sorter: `last_modified` only; equal mtimes → `Gtk.Ordering.EQUAL`.
+
+### Root cause
+
+✔️ `SortedList` uses **sorter.compare == EQUAL** as `Gee.ArrayList` equality for `sorted_items` / `got_list` / `pre_update`. Two distinct `FileWithHistory` rows with the same `last_modified` (common for new writes) are treated as **one** object. `rebuild()` then add/remove/`items_changed` accounting no longer matches the real list → GTK `gtk_list_item_manager_ensure_items` abort.
+
+ℹ️ Marker sync does not cause this by itself; two same-mtime pending rows + SortedList equality does. Old bulk `(0,0,2)` and new per-row append both hit it.
+
+### Proposed fix — `liboccoder/List/SortedList.vala` ctor equality
+
+🔷 Use **default object identity** for membership lists. Sorter is only for `sort()`, not equality.
+
+**Where:** `SortedList` constructor — three `Gee.ArrayList` constructions.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+			// Derive equality function from sorter: items are equal if sorter.compare returns EQUAL
+			this.sorted_items = new Gee.ArrayList<Object>((a, b) => {
+				return this.sorter.compare(a, b) == Gtk.Ordering.EQUAL;
+			});
+			this.got_list = new Gee.ArrayList<Object>((a, b) => {
+				return this.sorter.compare(a, b) == Gtk.Ordering.EQUAL;
+			});
+			this.pre_update = new Gee.ArrayList<Object>((a, b) => {
+				return this.sorter.compare(a, b) == Gtk.Ordering.EQUAL;
+			});
+```
+
+#### Replace with
+
+```vala
+			// Membership by object identity; sorter is only for order in rebuild().
+			this.sorted_items = new Gee.ArrayList<Object>();
+			this.got_list = new Gee.ArrayList<Object>();
+			this.pre_update = new Gee.ArrayList<Object>();
+```
+
+💩 Optional hardening (not required if SortedList fixed): Approvals sorter tie-break on `id` / `path` when `last_modified` equal.
+
+🚫 Do not “fix” by swallowing GTK asserts or disabling Approvals.
+
+### Follow-up crash (still SortedList) — ~21:01
+
+✔️ Stack again: `run_queue` ← `rebuild` ← `on_source_changed(position=4, removed=0, added=1)` — identity fix in place; still asserts.
+
+✔️ **Root cause 2:** `rebuild()` updates `sorted_items` to the **final** size, then `run_queue` drips **multiple** `items_changed` (often via `Idle`). GTK queries `get_n_items()` which is already final while signals describe intermediate steps → `ensure_items` abort.
+
+### Applied fix 2 — single splice
+
+✔️ `rebuild()`: clear + refill + sort, then one `items_changed(0, old_n, new_n)`. Removed `ChangeQueue` / `run_queue` / idle drip.
+
 ## Attempts / changelog
 
 - ✔️ 2026-08-12 — Bug log created.
@@ -966,11 +1028,18 @@ ORDER BY
 - ✔️ 2026-08-13 — User: no zero/nonzero SQL branch — one `id > M OR since_id > M` query; bootstrap = `M=0` + clear + idempotent apply.
 - ✔️ 2026-08-13 — User: keep `refresh_queued` loop; **apply each iteration** (marker advances → small next batch). Not fetch-until-quiet+apply-once; not drop-the-loop.
 - ✔️ 2026-08-13 — User: fix `GLib.debug` wrap (message on call line); otherwise good to go — **applied** §1–§11 (minus cancelled §3).
+- ✔️ 2026-08-13 ~20:55 — GTK assert via SortedList; log still old refresh string; root cause = sorter-as-equality; fence proposed.
+- ✔️ 2026-08-13 — Applied SortedList identity equality (sorter only for order).
+- ✔️ 2026-08-13 — Still crash on append; root cause 2 = multi `items_changed` vs final `n_items`; applied single-splice rebuild.
+- ✔️ 2026-08-13 — User: over-deleted SortedList work. Restored `got_list`/`pre_update` membership; kept **one** splice emit (no Idle queue). Old per-position queue was also wrong for insert shifts.
+- ✔️ 2026-08-13 — User: reset SortedList to HEAD; **minimal** fix only — identity equality + `run_queue` single splice (keep change_queue build).
+- ✔️ 2026-08-13 — Approvals: popover min width 400; clear review_files on project switch; history `change_type` for +/-/~; skip open on deleted.
+- ✔️ 2026-08-13 — Live DB: `change_type` populated; list flooded by status=0 without `is_need_approval` + folders (`d`). Filtered pending SQL to files + need-approval (or status≠0 removes).
 
 ---
 
 ## Next
 
-⏳ 🔷 Re-test write under `docs/` (Approvals visible; delta refresh under burst; no GTK abort).
+⏳ 🔷 Re-test with **current** `build/` binaries (confirm log shows `refresh delta`, not `refresh done old=`).
 
-⏳ After ✅ on marker sync: remove temporary Approvals / ReviewFiles debug lines.
+⏳ After ✅: remove temporary Approvals / ReviewFiles debug lines.

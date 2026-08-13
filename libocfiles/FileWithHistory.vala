@@ -52,6 +52,8 @@ namespace OLLMfiles
 						return "+ " + this.path_basename;
 					case "deleted":
 						return "<s>" + this.path_basename + "</s>";
+					case "modified":
+						return "~ " + this.path_basename;
 					default:
 						return this.path_basename;
 				}

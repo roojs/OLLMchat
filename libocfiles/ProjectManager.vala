@@ -171,6 +171,7 @@ namespace OLLMfiles
 			this.active_project_changed(project);
 
 			if (project != null && project.is_project) {
+				this.review_files.clear();
 				this.review_files.refresh.begin();
 			}
 
