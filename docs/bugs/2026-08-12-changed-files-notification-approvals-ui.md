@@ -60,7 +60,9 @@
 ⏳ After H2.
 
 💩 **H4 — List OK, open broken:** row visible but `file_cache` miss blocks editor open.  
-⏳ After list works.
+✔️ `update_selected_file` now `fetch_file` on cache miss (still skips deleted).
+✔️ Live: click did `File.fetch`; extensionless `Hello World Test` has `is_text=0` → not in `child_map` → empty fetch.
+🚫 Reverted `File.fetch` → `all_files` workaround. Real fix tracked in [`2026-08-13-is-text-content-type-fallback.md`](2026-08-13-is-text-content-type-fallback.md) (GIO/system content-type on write/`to_real`).
 
 ---
 
@@ -1042,4 +1044,4 @@ ORDER BY
 
 ⏳ 🔷 Re-test with **current** `build/` binaries (confirm log shows `refresh delta`, not `refresh done old=`).
 
-⏳ After ✅: remove temporary Approvals / ReviewFiles debug lines.
+✔️ Removed temporary Approvals / ReviewFiles / `fetch_file` debug lines.

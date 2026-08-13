@@ -140,8 +140,6 @@ namespace OLLMfiles
 					}
 					this.append(file);
 				}
-				GLib.debug("review_files refresh delta n=%d marker=%lld list=%d replay=%d",
-					files.size, this.since_marker, this.items.size, replay ? 1 : 0);
 			} while (this.refresh_queued);
 			this.refreshed();
 			this.refresh_running = false;

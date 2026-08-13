@@ -141,7 +141,6 @@ namespace OLLMcoder
 				if (notif.method != "event.project.invalidate_cache") {
 					return;
 				}
-				GLib.debug("invalidate_cache received message=%s — refreshing review_files", notif.message);
 				this.project_manager.review_files.refresh.begin();
 			});
 			
@@ -409,13 +408,29 @@ namespace OLLMcoder
 			}
 			var row = this.sorted_model.get_item_typed(this.selection.selected);
 			this.selected_file = row;
-			if (row.last_change_type != "deleted") {
-				var file = this.project_manager.file_cache.get(row.path);
-				if (file != null) {
-					this.file_selected((OLLMfiles.File) file);
-				}
-			}
 			this.update_button_visibility();
+			if (row.last_change_type == "deleted") {
+				return;
+			}
+			var cached = this.project_manager.file_cache.get(row.path) as OLLMfiles.File;
+			if (cached != null) {
+				this.file_selected(cached);
+				return;
+			}
+			if (this.project_manager.active_project == null) {
+				return;
+			}
+			var path = row.path;
+			this.project_manager.active_project.fetch_file.begin(path, (obj, res) => {
+				var file = this.project_manager.active_project.fetch_file.end(res);
+				if (file == null) {
+					return;
+				}
+				if (this.selected_file == null || this.selected_file.path != path) {
+					return;
+				}
+				this.file_selected(file);
+			});
 		}
 		
 		/**
