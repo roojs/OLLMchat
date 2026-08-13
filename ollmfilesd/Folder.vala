@@ -176,8 +176,8 @@ namespace OLLMfilesd
 				this.fetch_files_reply.begin(request, project);
 			});
 			this.call_fetch_pending_approvals.connect((request) => {
-				var path = ((FolderParams) request.param).path;
-				var project = this.manager.project_root(path);
+				var p = (FolderParams) request.param;
+				var project = this.manager.project_root(p.path);
 				if (project == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -189,7 +189,8 @@ namespace OLLMfilesd
 				try {
 					result = FileWithHistory.pending(
 						this.manager,
-						project
+						project,
+						p.since_id
 					);
 				} catch (GLib.Error e) {
 					request.reply(new OLLMrpc.Response() {
@@ -201,9 +202,15 @@ namespace OLLMfilesd
 					});
 					return;
 				}
+				var max_stmt = FileHistory.query(this.manager.db).selectPrepare(
+					"SELECT MAX(id) FROM file_history"
+				);
+				var max_ids = FileHistory.query(this.manager.db).fetchAllInt64(max_stmt);
+				var marker = max_ids.size > 0 ? max_ids.get(0) : (int64) 0;
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					result = result
+					result = result,
+					msg = marker.to_string()
 				});
 			});
 			this.call_project_description.connect((request) => {

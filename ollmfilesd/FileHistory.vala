@@ -114,6 +114,13 @@ namespace OLLMfilesd
 		 * Note: Don't track "applied" or "restored" - status is just approval state.
 		 */
 		public int status { get; set; default = 0; }
+
+		/**
+		 * Sync poke for pending-list delta fetch.
+		 * Default {@code 0} on insert (new rows use {@link id} &gt; marker).
+		 * Set to {@code MAX(id)+1} on in-place status flip.
+		 */
+		public int64 since_id { get; set; default = 0; }
 		
 		/**
 		 * Target path if file was previously an alias (symlink target).
@@ -532,8 +539,14 @@ namespace OLLMfilesd
 				),
 				pending
 			);
+			var max_stmt = FileHistory.query(db).selectPrepare(
+				"SELECT MAX(id) FROM file_history"
+			);
+			var max_ids = FileHistory.query(db).fetchAllInt64(max_stmt);
+			var poke = (max_ids.size > 0 ? max_ids.get(0) : (int64) 0) + 1;
 			foreach (var row in pending) {
 				row.status = 1;
+				row.since_id = poke;
 				FileHistory.query(db).updateById(row);
 			}
 			file.is_need_approval = false;
@@ -631,6 +644,11 @@ namespace OLLMfilesd
 			file.last_modified = now.to_unix();
 			file.saveToDB(manager.db, null, false);
 			this.status = -1;
+			var max_stmt = FileHistory.query(manager.db).selectPrepare(
+				"SELECT MAX(id) FROM file_history"
+			);
+			var max_ids = FileHistory.query(manager.db).fetchAllInt64(max_stmt);
+			this.since_id = (max_ids.size > 0 ? max_ids.get(0) : (int64) 0) + 1;
 			FileHistory.query(manager.db).updateById(this);
 			file.last_change_type = "";
 			file.is_need_approval = false;
@@ -667,6 +685,7 @@ namespace OLLMfilesd
 				"base_type TEXT NOT NULL DEFAULT '', " +
 				"backup_path TEXT NOT NULL DEFAULT '', " +
 				"status INTEGER NOT NULL DEFAULT 0, " +
+				"since_id INT64 NOT NULL DEFAULT 0, " +
 				"alias_target TEXT NOT NULL DEFAULT '', " +
 				"moved_to TEXT NOT NULL DEFAULT '', " +
 				"moved_from TEXT NOT NULL DEFAULT '', " +
@@ -674,6 +693,12 @@ namespace OLLMfilesd
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create file_history table: %s", db.db.errmsg());
+			}
+			var migrate_since = "ALTER TABLE file_history ADD COLUMN since_id INT64 NOT NULL DEFAULT 0";
+			if (Sqlite.OK != db.db.exec(migrate_since, null, out errmsg)) {
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
 			}
 		}
 	}

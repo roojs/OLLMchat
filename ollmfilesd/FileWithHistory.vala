@@ -41,12 +41,22 @@ namespace OLLMfilesd
 		public int64 reject_id { get; set; default = 0; }
 
 		/**
-		 * {@code Folder.fetch_pending_approvals} — one {@code selectQuery}.
+		 * Pending-list delta: `0` = upsert still-pending; `1` / `-1` = leave pending set.
+		 */
+		public int status { get; set; default = 0; }
+
+		/**
+		 * {@code Folder.fetch_pending_approvals} — history rows since marker.
 		 * Project scope from {@link Folder.roots} (not {@code project.path} alone).
+		 *
+		 * @param manager Project manager / DB
+		 * @param project Project folder for root scope
+		 * @param since_id Client marker ({@code MAX(file_history.id)}); {@code 0} = replay from start
 		 */
 		public static Gee.ArrayList<GLib.Object> pending(
 			ProjectManager manager,
-			Folder project
+			Folder project,
+			int64 since_id = 0
 		) throws Error {
 			var list = new Gee.ArrayList<GLib.Object>();
 			var root_folders = project.roots();
@@ -60,9 +70,11 @@ namespace OLLMfilesd
 			var root_scope = " AND (" + string.joinv(" OR ", path_conds) + ")";
 			var q = """
 SELECT
-	filebase.id,
-	filebase.path,
+	file_history.filebase_id AS id,
+	file_history.path,
 	filebase.last_change_type,
+	filebase.last_modified,
+	file_history.status,
 	(
 		SELECT
 			file_history.id
@@ -90,27 +102,25 @@ SELECT
 		LIMIT 1
 	) AS reject_id
 FROM
+	file_history
+LEFT JOIN
 	filebase
+ON
+	filebase.id = file_history.filebase_id
 WHERE
-		filebase.is_need_approval = 1
-	AND
-		filebase.delete_id = 0
-	AND
-		filebase.base_type = 'f'
-	AND
-		filebase.id IN (
-			SELECT
-				file_history.filebase_id
-			FROM
-				file_history
-			WHERE
-				file_history.status = 0""" + root_scope + """
-		)
+	(
+		file_history.id > """ + since_id.to_string() + """
+		OR
+		file_history.since_id > """ + since_id.to_string() + """
+	)""" + root_scope + """
+ORDER BY
+	file_history.id ASC,
+	file_history.since_id ASC
 """;
 			var rows = new Gee.ArrayList<FileWithHistory>();
 			var query = new SQ.Query<FileWithHistory>(
 				manager.db,
-				"filebase"
+				"file_history"
 			);
 			query.selectQuery(q, rows);
 			foreach (var row in rows) {

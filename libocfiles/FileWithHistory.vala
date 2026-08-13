@@ -36,6 +36,11 @@ namespace OLLMfiles
 		public int64 approve_id { get; set; default = 0; }
 		public int64 reject_id { get; set; default = 0; }
 
+		/**
+		 * Delta: `0` upsert pending; `1` / `-1` remove from Approvals list.
+		 */
+		public int status { get; set; default = 0; }
+
 		public string path_basename {
 			owned get { return GLib.Path.get_basename(this.path); }
 		}

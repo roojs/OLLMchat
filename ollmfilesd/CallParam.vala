@@ -81,6 +81,8 @@ namespace OLLMfilesd
 		public string[] paths { get; set; default = new string[] {}; }
 		/** {@link Folder.fetch_files} — index row only; no buffer (path-filter batch). */
 		public bool metadata_only { get; set; default = false; }
+		/** {@link Folder.fetch_pending_approvals} — client marker (`MAX(file_history.id)`); `0` = replay from start. */
+		public int64 since_id { get; set; default = 0; }
 	}
 
 	/** ''vector.*'' request params. */

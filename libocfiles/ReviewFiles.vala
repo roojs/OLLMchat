@@ -50,6 +50,12 @@ namespace OLLMfiles
 		public Gee.HashMap<string, FileWithHistory> file_map { get; private set;
 			default = new Gee.HashMap<string, FileWithHistory>(); }
 
+		private bool refresh_running;
+		private bool refresh_queued;
+
+		/** Last `MAX(file_history.id)` from daemon (`Response.msg`); `0` = clear + replay from start. */
+		private int64 since_marker;
+
 		/**
 		 * Constructor.
 		 *
@@ -61,11 +67,12 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Fetch files pending approval from the daemon (''Folder.fetch_pending_approvals'' wire).
+		 * Fetch pending-approval delta from the daemon (''Folder.fetch_pending_approvals'' wire).
 		 *
 		 * Does not update this {@link GLib.ListModel} — use {@link refresh} for that.
+		 * Advances {@link since_marker} from {@code Response.msg} on success.
 		 *
-		 * @return Rows needing approval in the active project
+		 * @return History rows since the current marker (`status` 0 = upsert, else remove)
 		 */
 		public async Gee.ArrayList<FileWithHistory> fetch_pending()
 		{
@@ -75,10 +82,16 @@ namespace OLLMfiles
 			}
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "Folder.fetch_pending_approvals",
-				param = new OLLMfilesd.FolderParams() { path = project.path }
+				param = new OLLMfilesd.FolderParams() {
+					path = project.path,
+					since_id = this.since_marker
+				}
 			});
 			if (response.error != null) {
 				return new Gee.ArrayList<FileWithHistory>();
+			}
+			if (response.msg != "" && response.msg != "project not found") {
+				this.since_marker = int64.parse(response.msg);
 			}
 			return (Gee.ArrayList<FileWithHistory>) response.result;
 		}
@@ -86,31 +99,52 @@ namespace OLLMfiles
 		/**
 		 * Reload pending-approval rows from the daemon into this list model.
 		 *
-		 * Replaces the full snapshot and emits {@link GLib.ListModel.items_changed}
-		 * when the row count changes.
+		 * Queued overlapping callers set {@link refresh_queued}; each loop iteration
+		 * fetches with the current marker and applies that batch before the next.
 		 */
 		public async void refresh()
 		{
-			var old_n_items = this.items.size;
-			this.items.clear();
-			this.file_map.clear();
-
-			var files = yield this.fetch_pending();
-			foreach (var file in files) {
-				this.items.add(file);
-				this.file_map.set(file.path, file);
+			if (this.refresh_running) {
+				this.refresh_queued = true;
+				return;
 			}
-
-			var new_n_items = this.items.size;
-			GLib.debug(
-				"review_files refresh done old=%d new=%d",
-				old_n_items,
-				new_n_items
-			);
-			if (old_n_items > 0 || new_n_items > 0) {
-				this.items_changed(0, old_n_items, new_n_items);
-			}
+			this.refresh_running = true;
+			do {
+				this.refresh_queued = false;
+				var replay = this.since_marker == 0;
+				var files = yield this.fetch_pending();
+				if (replay) {
+					var old_n_items = this.items.size;
+					this.items.clear();
+					this.file_map.clear();
+					if (old_n_items > 0) {
+						this.items_changed(0, old_n_items, 0);
+					}
+				}
+				foreach (var file in files) {
+					if (file.status != 0) {
+						if (!this.file_map.has_key(file.path)) {
+							continue;
+						}
+						this.remove(this.file_map.get(file.path));
+						continue;
+					}
+					if (this.file_map.has_key(file.path)) {
+						var existing = this.file_map.get(file.path);
+						existing.last_change_type = file.last_change_type;
+						existing.last_modified = file.last_modified;
+						existing.approve_id = file.approve_id;
+						existing.reject_id = file.reject_id;
+						existing.status = 0;
+						continue;
+					}
+					this.append(file);
+				}
+				GLib.debug("review_files refresh delta n=%d marker=%lld list=%d replay=%d",
+					files.size, this.since_marker, this.items.size, replay ? 1 : 0);
+			} while (this.refresh_queued);
 			this.refreshed();
+			this.refresh_running = false;
 		}
 
 		/**
@@ -151,6 +185,7 @@ namespace OLLMfiles
 			var old_n_items = this.items.size;
 			this.items.clear();
 			this.file_map.clear();
+			this.since_marker = 0;
 
 			if (old_n_items > 0) {
 				this.items_changed(0, (uint)old_n_items, 0);
