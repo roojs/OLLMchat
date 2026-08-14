@@ -802,6 +802,7 @@ namespace OLLMfilesd
 				"manager", "path", "parent-id",
 				"target-path", "base-type", "parent",
 				"is-ignored", "is-repo",
+				"is-text", "language",
 			});
 			//GLib.debug(
 			//	"path=%s is_ignored=%s is_repo=%d",
@@ -814,6 +815,8 @@ namespace OLLMfilesd
 			old_item.saveToDB(this.manager.db, new_item, false);
 			old_item.is_ignored = new_item.is_ignored;
 			old_item.is_repo = new_item.is_repo;
+			old_item.is_text = new_item.is_text;
+			old_item.language = new_item.language;
 			
 			// Ensure it's in children list
 			// this will not actually do anything as it's 

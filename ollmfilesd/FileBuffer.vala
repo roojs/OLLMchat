@@ -442,6 +442,20 @@ namespace OLLMfilesd
 		 */
 		protected void update_file_metadata_after_write()
 		{
+			if (!this.file.is_text) {
+				var content_type = GLib.File.new_for_path(this.file.path).query_info(
+					GLib.FileAttribute.STANDARD_CONTENT_TYPE,
+					GLib.FileQueryInfoFlags.NONE,
+					null
+				).get_content_type();
+				this.file.is_text = content_type != null && content_type != ""
+					&& content_type.has_prefix("text/");
+				if (this.file.is_text && this.file.manager.active_project != null) {
+					this.file.manager.active_project.project_files.update_from(
+						this.file.manager.active_project
+					);
+				}
+			}
 			// Update last_modified from filesystem after writing
 			this.file.last_modified = this.file.mtime_on_disk();
 			

@@ -531,9 +531,9 @@ namespace OLLMfilesd
 		public void approve(SQ.Database db, File file)
 		{
 			var pending = new Gee.ArrayList<FileHistory>();
-			FileHistory.query(db).select(
-				"WHERE filebase_id = %lld AND status = 0 "
-				+ "AND timestamp <= %lld".printf(
+			FileHistory.query(db).select((
+					"WHERE filebase_id = %lld AND status = 0  AND timestamp <= %lld"
+				).printf(
 					file.id,
 					this.timestamp
 				),

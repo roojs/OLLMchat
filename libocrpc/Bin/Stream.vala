@@ -72,7 +72,7 @@ namespace OLLMrpc.Bin
 	/**
 	 * Per-connection bin codec — write and parse {@link Serializable} objects.
 	 *
-	 * Owns the I/O streams and JIT property-key table for one channel.
+	 * Owns the I/O streams and even/odd wire-name tables for one channel.
 	 * {@link OLLMrpc.Client} and {@link OLLMrpc.Transport.Connection} keep one
 	 * Stream for the connection lifetime. Call {@link write} to send a root
 	 * object; {@link parse} to receive one.
@@ -108,9 +108,15 @@ namespace OLLMrpc.Bin
 		/** Copied from {@link Json.mode} for GObject decode on this stream. */
 		public Mode mode { get; set; default = Mode.EXPLICIT; }
 
-		internal string[] names = {};
+		internal string[] client_names = {};
+		internal string[] server_names = {};
 		internal Gee.HashMap<string, uint16> name_to_token =
 			new Gee.HashMap<string, uint16>();
+		/**
+		 * True on the daemon/accepting end — allocates odd wire name tokens.
+		 * Client end leaves this false and allocates even tokens.
+		 */
+		public bool is_server { get; construct; default = false; }
 
 		public const uint16 TOKEN_REG_KEY = 0xFFFF;
 		public const uint16 TOKEN_REG_TYPE = 0xFFFE;
@@ -118,9 +124,14 @@ namespace OLLMrpc.Bin
 
 		public Stream(
 			GLib.DataInputStream? in_stream,
-			GLib.DataOutputStream? out_stream
+			GLib.DataOutputStream? out_stream,
+			bool is_server = false
 		) {
-			GLib.Object(in_stream: in_stream, out_stream: out_stream);
+			GLib.Object(
+				in_stream: in_stream,
+				out_stream: out_stream,
+				is_server: is_server
+			);
 			if (this.out_stream != null) {
 				this.out_stream.set_byte_order(GLib.DataStreamByteOrder.BIG_ENDIAN);
 			}
@@ -214,18 +225,25 @@ namespace OLLMrpc.Bin
 				return;
 			}
 
-			var id = (uint16) this.names.length;
+			var local = (uint16) (this.is_server
+				? this.server_names.length
+				: this.client_names.length);
+			var wire = this.is_server ? (uint16) (local * 2 + 1) : (uint16) (local * 2);
 			this.out_stream.put_uint16(TOKEN_REG_KEY);
-			this.out_stream.put_uint16(id);
+			this.out_stream.put_uint16(wire);
 
 			var len = (uint8) uint.min(prop_name.length, 255);
-			this.out_stream.put_byte(len);
 			size_t written;
+			this.out_stream.put_byte(len);
 			this.out_stream.write_all(((uint8[]) prop_name)[0:len], out written);
 
-			this.names += prop_name;
-			this.name_to_token.set(prop_name, id);
-			this.out_stream.put_uint16(id);
+			if (this.is_server) {
+				this.server_names += prop_name;
+			} else {
+				this.client_names += prop_name;
+			}
+			this.name_to_token.set(prop_name, wire);
+			this.out_stream.put_uint16(wire);
 		}
 
 		internal uint16 read_tag(out string prop_name) throws GLib.Error
@@ -238,13 +256,16 @@ namespace OLLMrpc.Bin
 			}
 
 			if (t != TOKEN_REG_KEY) {
-				if (t >= this.names.length) {
+				var server = (t & 1) != 0;
+				var local = (uint16) (t / 2);
+				var table = server ? this.server_names : this.client_names;
+				if (local >= table.length) {
 					throw new StreamError.PROTOCOL(
 						"unknown wire name token %u",
 						t
 					);
 				}
-				prop_name = this.names[t];
+				prop_name = table[local];
 				return t;
 			}
 
@@ -257,20 +278,27 @@ namespace OLLMrpc.Bin
 			buffer[len] = 0;
 			prop_name = (string) buffer;
 
-			if (assigned_id > this.names.length) {
+			var server = (assigned_id & 1) != 0;
+			var local = (uint16) (assigned_id / 2);
+			var table = server ? this.server_names : this.client_names;
+			if (local > table.length) {
 				throw new StreamError.PROTOCOL(
 					"wire name token %u out of sequence",
 					assigned_id
 				);
 			}
-			if (assigned_id < this.names.length && this.names[assigned_id] != prop_name) {
+			if (local < table.length && table[local] != prop_name) {
 				throw new StreamError.PROTOCOL(
 					"wire name token %u alias mismatch",
 					assigned_id
 				);
 			}
-			if (assigned_id == this.names.length) {
-				this.names += prop_name;
+			if (local == table.length) {
+				if (server) {
+					this.server_names += prop_name;
+				} else {
+					this.client_names += prop_name;
+				}
 			}
 			this.name_to_token.set(prop_name, assigned_id);
 			return this.read_tag(out prop_name);
@@ -315,43 +343,42 @@ namespace OLLMrpc.Bin
 				);
 			}
 
-			if (this.name_to_token.has_key(gtype_to_alias.get(object_type))) {
+			var alias = gtype_to_alias.get(object_type);
+			if (this.name_to_token.has_key(alias)) {
 				return;
 			}
 
-			var new_reg_id = (uint) this.names.length;
+			var local = (uint) (this.is_server
+				? this.server_names.length
+				: this.client_names.length);
+			var wire = this.is_server
+				? (uint16) (local * 2 + 1)
+				: (uint16) (local * 2);
 
 			this.out_stream.put_byte(0xFF);
 			this.out_stream.put_byte(0xFE);
-			if (new_reg_id < 128) {
-				this.out_stream.put_byte((uint8) new_reg_id);
+			if (wire < 128) {
+				this.out_stream.put_byte((uint8) wire);
 			} else {
-				this.out_stream.put_byte((uint8) (0x80 | ((new_reg_id >> 8) & 0x7F)));
-				this.out_stream.put_byte((uint8) (new_reg_id & 0xFF));
+				this.out_stream.put_byte((uint8) (0x80 | ((wire >> 8) & 0x7F)));
+				this.out_stream.put_byte((uint8) (wire & 0xFF));
 			}
 
 			this.out_stream.put_byte(
-				(uint8) uint.min(
-					gtype_to_alias.get(object_type).length,
-					255
-				)
+				(uint8) uint.min(alias.length, 255)
 			);
 			size_t written;
 			this.out_stream.write_all(
-				((uint8[]) gtype_to_alias.get(object_type))[
-					0:uint.min(
-						gtype_to_alias.get(object_type).length,
-						255
-					)
-				],
+				((uint8[]) alias)[0:uint.min(alias.length, 255)],
 				out written
 			);
 
-			this.names += gtype_to_alias.get(object_type);
-			this.name_to_token.set(
-				gtype_to_alias.get(object_type),
-				(uint16) new_reg_id
-			);
+			if (this.is_server) {
+				this.server_names += alias;
+			} else {
+				this.client_names += alias;
+			}
+			this.name_to_token.set(alias, wire);
 		}
 
 		/**
@@ -365,20 +392,23 @@ namespace OLLMrpc.Bin
 				reg_id = ((uint) (reg_b & 0x7F) << 8) | this.in_stream.read_byte();
 			}
 
-			if (reg_id >= this.names.length) {
+			var server = (reg_id & 1) != 0;
+			var local = (uint16) (reg_id / 2);
+			var table = server ? this.server_names : this.client_names;
+			if (local >= table.length) {
 				throw new StreamError.PROTOCOL(
 					"unknown wire name token %u",
 					reg_id
 				);
 			}
-			if (!alias_to_gtype.has_key(this.names[reg_id])) {
+			if (!alias_to_gtype.has_key(table[local])) {
 				throw new StreamError.REGISTRATION(
 					"Unrecognized type alias: %s",
-					this.names[reg_id]
+					table[local]
 				);
 			}
 
-			return alias_to_gtype.get(this.names[reg_id]);
+			return alias_to_gtype.get(table[local]);
 		}
 
 		internal void read_reg_gtype() throws GLib.Error
@@ -411,20 +441,27 @@ namespace OLLMrpc.Bin
 				);
 			}
 
-			if (assigned_id > this.names.length) {
+			var server = (assigned_id & 1) != 0;
+			var local = (uint16) (assigned_id / 2);
+			var table = server ? this.server_names : this.client_names;
+			if (local > table.length) {
 				throw new StreamError.PROTOCOL(
 					"wire name token %u out of sequence",
 					assigned_id
 				);
 			}
-			if (assigned_id < this.names.length && this.names[assigned_id] != alias) {
+			if (local < table.length && table[local] != alias) {
 				throw new StreamError.PROTOCOL(
 					"wire name token %u alias mismatch",
 					assigned_id
 				);
 			}
-			if (assigned_id == this.names.length) {
-				this.names += alias;
+			if (local == table.length) {
+				if (server) {
+					this.server_names += alias;
+				} else {
+					this.client_names += alias;
+				}
 			}
 			this.name_to_token.set(alias, (uint16) assigned_id);
 		}

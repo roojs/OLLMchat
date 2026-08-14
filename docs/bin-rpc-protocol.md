@@ -12,8 +12,8 @@ The **type byte** on the wire is always a `GLib.Type` fundamental value (optiona
 
 A **connection** maintains a per-instance **wire-name** table on its `OLLMrpc.Bin.Stream`. **Type aliases → GType** live in a **process-wide** static map (`OLLMrpc.Bin.register`).
 
-1. **Wire names (per connection)** — string → uint16 token map for **both** property keys (`"name"`, `"count"`, …) and object type aliases (`"TestPair"`, `"File"`, …). Tokens are learned on the wire via `TOKEN_REG_KEY` when a name is first sent.
-2. **Type aliases → GType (process-wide)** — `OLLMrpc.Bin.register(alias, gtype)` (namespace function in `libocrpc/Bin/Stream.vala`), called from each type's `rpc_register()` before any channel opens. Both ends register every wire alias string they send or receive; each maps that alias to its **own** local `GLib.Type`. `register()` call order is not significant.
+1. **Wire names (per connection)** — two tables on each `Stream`: **`client_names`** (even wire tokens `0,2,4,…`) and **`server_names`** (odd tokens `1,3,5,…`). Local index `i` → wire `2*i` or `2*i+1`. The client end allocates only even ids; the server end only odd. Tokens (property keys and type-alias strings) are learned via `TOKEN_REG_KEY` / `TOKEN_REG_TYPE`. Gaps on the global id line are expected until the other role allocates.
+2. **Type aliases → GType (process-wide)** — `OLLMrpc.Bin.register(alias, gtype)` (namespace function in `libocrpc/Bin/Stream.vala`), called from each type's `rpc_register()` before any channel opens. Both ends register every wire alias string they send or receive; each maps that alias to its **own** local `GLib.Type`. `register()` call order is not significant. On the wire, alias **strings** still enter the even/odd name tables above.
 
 Every **property value**: name token → one-byte **type** (`GLib.Type` fundamental) → payload. When the type is `GLib.Type.OBJECT`, a **name token** (uint16) identifying the object alias follows before the nested property stream. Unknown token or unrecognized alias → protocol error.
 
@@ -37,7 +37,7 @@ Domain types implement `OLLMrpc.Bin.Serializable` for bin encoding. **`rpc_regis
 2. Open the channel — create **one** **`Bin.Stream(in_stream, out_stream)`** for the connection lifetime.
 3. **Send:** **`bin.write(serializable)`** — writes root type header + property stream.
 4. **Receive:** **`bin.parse()`** — root type from wire; cast to **`Request`**, **`Response`**, etc.
-5. Wire-name tokens (**`names[]`**) accumulate across messages on the same connection.
+5. Wire-name tokens accumulate in **`client_names` / `server_names`** (even/odd) across messages on the same connection.
 
 **Tests / memory round-trip** (`tests/rpc/bin-test.vala`):
 
@@ -168,7 +168,11 @@ The object ends with `FF FD` (`TOKEN_END`).
 
 ## 5. Wire names and tokens
 
-Property keys and object type aliases share one **name index** table (`names[]` on the stream). Property keys use `TOKEN_REG_KEY` (uint16). Type aliases use `TOKEN_REG_TYPE` (`0xFF 0xFE` bytes) via `read_reg_gtype()`.
+Property keys and object type aliases share two **name index** tables on the
+stream: **`client_names`** (even wire tokens) and **`server_names`** (odd).
+Local index `i` maps to wire `2*i` (client) or `2*i+1` (server). Property keys
+use `TOKEN_REG_KEY` (uint16). Type aliases use `TOKEN_REG_TYPE` (`0xFF 0xFE`
+bytes) via `read_reg_gtype()`.
 
 | Value | Meaning |
 | ----- | ------- |

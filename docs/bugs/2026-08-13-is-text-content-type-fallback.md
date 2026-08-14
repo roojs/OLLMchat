@@ -1,8 +1,8 @@
 # Extensionless / API-written files stay `is_text=0`
 
-**Status:** ⏳ OPEN — root cause identified; fix not applied (await design/approval)
+**Status:** ✔️ §1–§2 applied — await user verify (restart daemon + write extensionless file)
 
-**Started:** 2026-08-13 · **Updated:** 2026-08-13
+**Started:** 2026-08-13 · **Updated:** 2026-08-14
 
 **Related:** [`2026-08-12-changed-files-notification-approvals-ui.md`](2026-08-12-changed-files-notification-approvals-ui.md) (Approvals click → `File.fetch` miss)
 
@@ -19,74 +19,202 @@
 
 **Actual:**
 - DB row has **`is_text = 0`**, `language` empty, often `is_need_approval = 1`
-- Excluded from `ProjectFiles.child_map` (only text files are added there)
-- `File.fetch` looks up `child_map` only → **“file not found”** / empty result
+- Excluded from `project_files.child_map` (only text files are added there)
+- `File.fetch` looks up `child_map` only → miss
 - Approvals click does nothing useful even though the path is pending and on disk
 
 ---
 
-## Evidence (2026-08-13)
+## Where `is_text` is set (daemon)
 
-✔️ Live `files.sqlite` for `/home/alan/gitlive/OLLMchat/docs/Hello World Test` (need-approval rows):
+ℹ️ Property: `ollmfilesd/FileBase.vala` — `bool is_text` (DB column `is_text`).
 
-- `is_text = 0`, `language` empty, `is_need_approval = 1`
-- File on disk exists (12 bytes, “Hello World”)
+| Site | File | When | How |
+|------|------|------|-----|
+| **A** `File.new_from_info` | `ollmfilesd/File.vala` | Filesystem scan (`Folder.enumerate_children` already requests `STANDARD_CONTENT_TYPE`) | `info.get_content_type()` → `text/*`, **or** `detect_language()` non-empty |
+| **B** `File.to_real` | `ollmfilesd/File.vala` | API create: fake → indexed (`write` / `register`) | **`detect_language()` only**; `is_text = true` **iff** `language != ""` |
+| **C** `File.new_fake` | `libocfiles/File.vala` | Client-side fake (outside daemon index) | `query_info(STANDARD_CONTENT_TYPE + TIME_MODIFIED)` → `text/*`, **or** language |
 
-✔️ System / GIO say it **is** text:
+Consumers that care:
+
+- `ProjectFiles.add_file_if_new` — skips `!is_text` → not in `child_map`
+- `File.fetch` RPC — `child_map` only
+- Vector scan / indexer — skip non-text
+
+---
+
+## Evidence
+
+✔️ Live file `/home/alan/gitlive/OLLMchat/docs/Hello World Test` (12 bytes): DB `is_text=0`, language empty.
+
+✔️ GIO on that path (2026-08-14):
 
 ```text
-gio info …/docs/Hello World Test
-  standard::content-type: text/plain
-  standard::fast-content-type: application/octet-stream
-
-file -bi …/docs/Hello World Test
-  text/plain; charset=us-ascii
+standard::content-type:      text/plain
+standard::fast-content-type: application/octet-stream
+ContentType.guess(path, null):  application/octet-stream (uncertain)
+ContentType.guess(path, bytes): text/plain
+query_info(STANDARD_CONTENT_TYPE).get_content_type(): text/plain
 ```
 
-✔️ Client log on Approvals click: `File.fetch` sent and replied quickly; no editor open (fetch miss).
+✔️ Scan path already asks for the right attribute:
 
-✔️ Code paths:
+```vala
+// Folder.enumerate_children — STANDARD_CONTENT_TYPE (not fast)
+```
 
-| Path | How `is_text` is set |
-|------|----------------------|
-| `File.new_from_info` (directory enum) | `FileInfo.get_content_type()` → `text/*`, or language from extension |
-| `File.to_real` (API create / fake→real) | `detect_language()` from **extension only**; `is_text = true` **only if** `language != ""` |
+✔️ Write order for **new** files (`File.write` default branch):
 
-→ Extensionless API writes never get `is_text` from content sniffing.
+1. `yield file.to_real()` — sets `is_text` from language, `saveToDB`, `project_files.update_from` / `new_file_added`
+2. `yield file.realize(p)` → `buffer.write_real` → bytes on disk → `update_file_metadata_after_write`
 
-🚫 **Wrong fix (reverted):** make `File.fetch` fall back to `project_files.all_files` so non-text rows still open. That papers over bad `is_text` and leaves index/dropdown/vector paths wrong.
+→ At **B**, the file **often does not exist yet**, so a disk `query_info` in `to_real` alone cannot fix the create-via-write path. `register` (file already on disk) can sniff in `to_real`.
+
+🚫 **Wrong fix (reverted):** `File.fetch` → `all_files`. Papers over bad `is_text`.
+
+🚫 **Do not use** `standard::fast-content-type` or `ContentType.guess(path, null)` for extensionless — both report `application/octet-stream` here.
 
 ---
 
 ## Root cause
 
-✔️ **`is_text` is not derived from system content-type on the API write / `to_real` path.**  
-Extensionless files stay `is_text = 0` even when GIO/`file` would report `text/plain`. Downstream `child_map` / `File.fetch` then treat them as non-index text files.
+✔️ **API promote path (`to_real`) never applies the same content-type rule as scan (`new_from_info`) / client (`new_fake`).**  
+It only promotes `is_text` from extension→language. Extensionless plain text stays `0`.  
+Additionally, **`project_files.update_from` runs in `to_real` before bytes (and thus before a reliable sniff)**, so even a later DB flip would need a second index refresh to enter `child_map`.
+
+✔️ **Related — scan used to be unable to heal a bad row:** `Folder.read_dir_update` `copy_from` except list kept scan `is-ignored` / `is-repo` but not `is-text` / `language`, so a correct `new_from_info` sniff was overwritten by the stale DB value. **Fixed:** except those two and sync onto `old_item` (same pattern as ignored/repo).
 
 ---
 
-## Hypotheses for the fix (not implemented)
+## Proposed fix (await approval)
 
-💩 **H1 — On `to_real` / write (after bytes exist on disk):** `GLib.File.query_info(…, "standard::content-type")` (or equivalent) and set `is_text` from `text/*` (same rule as `new_from_info`). Optionally also set language when detect_language is empty but content is text.
+🔷 Match **A** / **C**: use **`GLib.FileAttribute.STANDARD_CONTENT_TYPE`** via `query_info` / `get_content_type()`, then `has_prefix("text/")`, and keep the language override for `application/x-php`-style types.
 
-💩 **H2 — Prefer sniff over fast-content-type:** `standard::fast-content-type` for extensionless is often `application/octet-stream`; full `standard::content-type` is `text/plain` for this file. Use the non-fast attribute (or `GLib.ContentType.guess` / read sample) so we do not trust the fast path alone.
+🔷 Two sites (same rule, different timing):
 
-💩 **H3 — Backfill:** one-off or migrate existing `is_need_approval=1` / openable files with `is_text=0` that sniff as text — optional after H1/H2.
+1. **`to_real`** — after `detect_language()`: if still not text **and** `GLib.FileUtils.test(…, EXISTS)`, `query_info` (no try/catch — existence gated). Covers **`register`**; skips cleanly when create-via-`write` has no file yet.
+2. **`FileBuffer.update_file_metadata_after_write`** — after a successful write, file is known to exist: if still `!is_text`, `query_info` **without** exists check or try/catch; if it becomes text, `saveToDB` (already happens) **and** `project_files.update_from(active_project)` so `child_map` picks it up. Covers **create-via-`write`**.
+
+💩 Optional later: one-off backfill of existing `is_text=0` rows that sniff as `text/*` (not required for the forward fix).
 
 ---
 
-## Proposed direction (await approval)
+### 1. `ollmfilesd/File.vala` — `to_real()`: sniff when on disk
 
-🔷 Fix **detection** at the source (`to_real` / write), matching `new_from_info`’s content-type rule, using **system/GIO content-type** (not fetch-layer workarounds).
+**Why:** `register` and any promote where the file already exists must set `is_text` like `new_from_info`.
 
-🚫 Do not reopen by querying `all_files` in `File.fetch` as the product fix.
+**Where:** `to_real`, after parent/`id` setup, around the language-only `is_text` block (before `children.append`).
+
+**Depends on:** none.
+
+#### Keep
+```vala
+			this.parent = parent_folder;
+			this.parent_id = parent_folder.id;
+			this.id = 0;
+```
+
+#### Remove
+```vala
+			this.detect_language();
+			if (this.language != "") {
+				this.is_text = true;
+			}
+```
+
+#### Replace with
+```vala
+			this.detect_language();
+			if (this.language != "") {
+				this.is_text = true;
+			}
+			if (!this.is_text
+				&& GLib.FileUtils.test(this.path, GLib.FileTest.EXISTS)) {
+				var content_type = GLib.File.new_for_path(this.path).query_info(
+					GLib.FileAttribute.STANDARD_CONTENT_TYPE,
+					GLib.FileQueryInfoFlags.NONE,
+					null
+				).get_content_type();
+				this.is_text = content_type != null && content_type != ""
+					&& content_type.has_prefix("text/");
+			}
+```
+
+#### Keep
+```vala
+			parent_folder.children.append(this);
+			this.manager.buffer_provider.create_buffer(this);
+			if (this.manager.db != null) {
+```
+
+---
+
+### 2. `ollmfilesd/FileBuffer.vala` — `update_file_metadata_after_write()`: sniff after bytes
+
+**Why:** Create-via-`write` only has reliable content-type **after** `write_to_disk`; also refreshes `child_map` when `is_text` flips true.
+
+**Where:** start of `update_file_metadata_after_write` body, before `last_modified` / `saveToDB`.
+
+**Depends on:** §1 for register-only; this section for write-create.
+
+#### Keep
+```vala
+		protected void update_file_metadata_after_write()
+		{
+```
+
+#### Add — insert sniff before `last_modified` update
+New lines only: content-type sniff + optional `project_files.update_from` when `is_text` flips true.
+
+```vala
+			if (!this.file.is_text) {
+				var content_type = GLib.File.new_for_path(this.file.path).query_info(
+					GLib.FileAttribute.STANDARD_CONTENT_TYPE,
+					GLib.FileQueryInfoFlags.NONE,
+					null
+				).get_content_type();
+				this.file.is_text = content_type != null && content_type != ""
+					&& content_type.has_prefix("text/");
+				if (this.file.is_text && this.file.manager.active_project != null) {
+					this.file.manager.active_project.project_files.update_from(
+						this.file.manager.active_project
+					);
+				}
+			}
+```
+
+#### Keep
+```vala
+			// Update last_modified from filesystem after writing
+			this.file.last_modified = this.file.mtime_on_disk();
+			
+			// Save to database with sync to disk
+			if (this.file.manager.db != null) {
+				this.file.saveToDB(this.file.manager.db, null, true);
+			}
+			
+			// Update last_viewed timestamp
+			this.file.last_viewed = new GLib.DateTime.now_local().to_unix();
+			
+			// Notify ProjectManager that file contents have changed (triggers background scanning)
+			this.file.manager.on_file_contents_change(this.file);
+		}
+```
 
 ---
 
 ## Next
 
-⏳ 🔷 Confirm sniff API choice (query_info content-type vs ContentType.guess + sample).
+✔️ §1–§2 applied (`to_real` EXISTS-gated sniff; `update_file_metadata_after_write` post-write sniff + `update_from`). No `throws Error` on metadata method (user prefers living with Vala unhandled-error warning). Built `ollmfilesd`.
 
-⏳ 🔷 Propose Remove/Replace/Add fences for `to_real` / write; apply after approval.
+✔️ Live 2026-08-14 ~08:44: filesystem scan + `File.fetch` replied (open path OK after scan/`is_text` heal).
 
-⏳ Re-test: write extensionless Hello World → `is_text=1` → in `child_map` → Approvals click opens.
+✔️ Follow-up crash on Approve: daemon `GLib.error` from SQL `near "%"` — `approve()` `.printf` only applied to the second string concat piece, left literal `%lld` in `WHERE filebase_id = %lld`. Fixed by parenthesizing full WHERE before `.printf`. Client `Trace/breakpoint` was `Client.disconnect` → `GLib.error` with pending `FileHistory.approve`.
+
+✔️ Live 2026-08-14 ~08:50: after activate, restore `File.fetch` raced daemon `scan_start` → `wire name token 48 alias mismatch` (bin duplex name table). Tracked in [`2026-08-14-bin-wire-name-duplex-tables.md`](2026-08-14-bin-wire-name-duplex-tables.md) — not an `is_text` regression.
+
+⏳ 🔷 Restart `ollmfilesd` from `build/`; re-test **new** write extensionless Hello World → `is_text=1` → in `child_map` → Approvals click opens.
+
+⏳ 💩 Existing bad rows: after restart + filesystem scan (or touch that triggers scan), `is-text`/`language` now kept from scan (copy_from except + sync onto `old_item`).
+
+✔️ Follow-up applied: `"is-text"` / `"language"` on `read_dir_update` `copy_from` except list + assign onto `old_item` (same as `is-ignored` / `is-repo`).

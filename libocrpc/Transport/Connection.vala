@@ -62,7 +62,7 @@ namespace OLLMrpc.Transport
 				var out_stream = new GLib.DataOutputStream(
 					this.stream.get_output_stream()
 				);
-				this.bin = new Bin.Stream(in_stream, out_stream);
+				this.bin = new Bin.Stream(in_stream, out_stream, true);
 			} catch (GLib.Error e) {
 				GLib.warning("connection setup failed: %s", e.message);
 				this.stop();

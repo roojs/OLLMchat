@@ -657,6 +657,16 @@ namespace OLLMfilesd
 			if (this.language != "") {
 				this.is_text = true;
 			}
+			if (!this.is_text
+				&& GLib.FileUtils.test(this.path, GLib.FileTest.EXISTS)) {
+				var content_type = GLib.File.new_for_path(this.path).query_info(
+					GLib.FileAttribute.STANDARD_CONTENT_TYPE,
+					GLib.FileQueryInfoFlags.NONE,
+					null
+				).get_content_type();
+				this.is_text = content_type != null && content_type != ""
+					&& content_type.has_prefix("text/");
+			}
 			parent_folder.children.append(this);
 			this.manager.buffer_provider.create_buffer(this);
 			if (this.manager.db != null) {

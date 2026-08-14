@@ -70,7 +70,7 @@ namespace OLLMfilesd
 			this.channel.set_encoding(null);
 			this.channel.set_buffered(true);
 			this.channel_open = true;
-			this.bin = new OLLMrpc.Bin.Stream(in_stream, out_stream);
+			this.bin = new OLLMrpc.Bin.Stream(in_stream, out_stream, true);
 
 			this.write(new OLLMrpc.Notification() {
 				method = "Daemon.ready",
