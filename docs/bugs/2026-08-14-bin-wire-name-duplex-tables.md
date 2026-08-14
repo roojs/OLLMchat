@@ -578,8 +578,10 @@ Per connection: `client_names` / `server_names`; wire token **even = client**, *
 
 ✔️ Applied §1–§10 (two arrays + even/odd; `Client` / `Transport.Connection` / `StdioConnection` `is_server`; protocol doc).
 
-⏳ Rebuild matching client + `ollmfilesd`; re-test activate + overlapping client write vs `scan_start`.
+ℹ️ `is_server` is a construct property; Vala brace init was read-only — pass via `Stream(..., is_server)` ctor arg instead. `StdioConnection` also set (daemon stdio path; same role as `Transport.Connection`).
 
-⏳ Run `tests/rpc/bin-test.vala` / bin test binary.
+✔️ `tests/test-rpc-bin` exits 0.
+
+⏳ Rebuild matching client + `ollmfilesd`; re-test activate + overlapping client write vs `scan_start`.
 
 ⏳ User ✅ when duplex no longer aborts on wire name intro race.
