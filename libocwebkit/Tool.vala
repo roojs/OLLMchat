@@ -87,7 +87,7 @@ read output → repeat → download if needed.""";
 	 * Browser stack for this tool instance (one per chat when wired).
 	 *
 	 * Created on first access — not in the constructor — so
-	 * {@code register_config} / {@code setup_config_defaults} can
+	 * ''register_config'' / ''setup_config_defaults'' can
 	 * instantiate the tool without building WebKit/GTK chrome.
 	 */
 	private OLLMwebkit.BrowserStack owned_stack;

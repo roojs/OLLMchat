@@ -70,7 +70,7 @@ namespace OLLMfiles
 		 * Fetch pending-approval delta from the daemon (''Folder.fetch_pending_approvals'' wire).
 		 *
 		 * Does not update this {@link GLib.ListModel} — use {@link refresh} for that.
-		 * Advances {@link since_marker} from {@code Response.msg} on success.
+		 * Advances {@link since_marker} from ''Response.msg'' on success.
 		 *
 		 * @return History rows since the current marker (`status` 0 = upsert, else remove)
 		 */

@@ -324,7 +324,7 @@ public class ResolveLink : GLib.Object
 	}
 
 	/**
-	 * AST path fragment: {@link OLLMfiles.Tree} for {@code found} must already be parsed; lookup_path
+	 * AST path fragment: {@link OLLMfiles.Tree} for ''found'' must already be parsed; lookup_path
 	 * maps link.hash to buffer offsets, then text is taken from the file buffer (refinement
 	 * may abbreviate long excerpts).
 	 */
