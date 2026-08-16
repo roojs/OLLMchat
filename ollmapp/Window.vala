@@ -526,15 +526,15 @@ namespace OLLMapp
 				
 				// Window gained focus - check if active file has changed on disk
 				this.project_manager.check_active_file_changed.begin((obj, res) => {
-					var status = this.project_manager.check_active_file_changed.end(res);
-					
-					if (status == OLLMfiles.FileUpdateStatus.CHANGED_HAS_UNSAVED) {
-						// File changed on disk but buffer has unsaved changes - show warning banner
-						var filename = this.project_manager.active_file != null 
-							? GLib.Path.get_basename(this.project_manager.active_file.path) 
-							: "file";
-						this.file_change_banner.show(filename);
+					if (this.project_manager.check_active_file_changed.end(res)
+						== OLLMfiles.FileUpdateStatus.NO_CHANGE) {
+						return;
 					}
+					if (this.project_manager.active_file.buffer.is_modified) {
+						this.file_change_banner.show(GLib.Path.get_basename(this.project_manager.active_file.path));
+						return;
+					}
+					this.project_manager.reload_file_from_disk.begin();
 				});
 			});
 			

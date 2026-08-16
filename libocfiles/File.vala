@@ -22,8 +22,8 @@ namespace OLLMfiles
 	 * Result of checking if a file has been updated on disk.
 	 */
 	public enum FileUpdateStatus {
-		NO_CHANGE,              // File hasn't changed on disk
-		CHANGED_HAS_UNSAVED     // File changed on disk, buffer has unsaved changes - needs warning
+		NO_CHANGE, // File hasn't changed on disk
+		CHANGED    // File changed on disk; client decides banner vs reload via is_modified
 	}
 
 	/**

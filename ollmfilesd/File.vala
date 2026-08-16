@@ -22,8 +22,8 @@ namespace OLLMfilesd
 	 * Result of checking if a file has been updated on disk.
 	 */
 	public enum FileUpdateStatus {
-		NO_CHANGE,              // File hasn't changed on disk
-		CHANGED_HAS_UNSAVED     // File changed on disk, buffer has unsaved changes - needs warning
+		NO_CHANGE, // File hasn't changed on disk
+		CHANGED    // File changed on disk; client decides banner vs reload via is_modified
 	}
 
 	/**
@@ -278,9 +278,8 @@ namespace OLLMfilesd
 				var p = (FileParams) request.param;
 				var file = this.manager.get_file_from_active_project(p.path);
 				var status = FileUpdateStatus.NO_CHANGE;
-				if (file.mtime_on_disk() > p.last_known_mtime
-					&& p.buffer_dirty) {
-					status = FileUpdateStatus.CHANGED_HAS_UNSAVED;
+				if (file.mtime_on_disk() > p.last_known_mtime) {
+					status = FileUpdateStatus.CHANGED;
 				}
 				request.reply(new OLLMrpc.Response() {
 					msg = ((int) status).to_string()

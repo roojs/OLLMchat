@@ -345,7 +345,6 @@ namespace OLLMtools.WriteFile
 			// For added files: write to disk first, then register (index)
 			this.file.is_need_approval = true;
 			this.file.last_change_type = change_type;
-			this.file.last_modified = new GLib.DateTime.now_local().to_unix();
 			if (!(yield this.file.write())) {
 				throw new GLib.IOError.FAILED(
 					"Failed to write file via RPC: " + this.normalized_path);

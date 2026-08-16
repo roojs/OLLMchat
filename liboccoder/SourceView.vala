@@ -124,16 +124,33 @@ namespace OLLMcoder
 			this.file_dropdown.visible = false;
 			header_bar.append(this.file_dropdown);
 			this.manager.rpc.notification.connect((notif) => {
-				if (notif.method != "event.project.invalidate_cache") {
-					return;
-				}
-				if (this.manager.active_project == null) {
-					return;
-				}
-				if (notif.message != this.manager.active_project.path) {
+				if (notif.method != "event.project.invalidate_cache"
+					|| this.manager.active_project == null
+					|| notif.message != this.manager.active_project.path) {
 					return;
 				}
 				this.file_dropdown.refresh.begin();
+				if (this.current_file == null) {
+					return;
+				}
+				var file = this.current_file;
+				file.check_changed.begin((obj, res) => {
+					if (file.check_changed.end(res) == OLLMfiles.FileUpdateStatus.NO_CHANGE
+						|| this.current_file != file
+						|| file.buffer.is_modified) {
+						return;
+					}
+					this.save_current_file_state();
+					file.read.begin((read_obj, read_res) => {
+						file.read.end(read_res);
+						if (this.current_file != file) {
+							return;
+						}
+						this.source_view.set_buffer(file.buffer as GtkSource.Buffer);
+						this.restore_cursor_position(file);
+						this.restore_scroll_position(file);
+					});
+				});
 			});
 			
 			// Spacer to push save button to the right

@@ -127,15 +127,7 @@ namespace OLLMcoder
 			this.project_manager.active_file_changed.connect(this.on_active_file_changed);
 
 			this.project_manager.review_files.refreshed.connect(() => {
-				this.update_button_visibility();
-				if (this.selected_file == null) {
-					return;
-				}
-				if (!this.project_manager.review_files.file_map.has_key(
-					this.selected_file.path
-				)) {
-					this.clear_selection();
-				}
+				this.on_active_file_changed(this.project_manager.active_file);
 			});
 			this.project_manager.rpc.notification.connect((notif) => {
 				if (notif.method != "event.project.invalidate_cache") {
@@ -363,6 +355,7 @@ namespace OLLMcoder
 			}
 			
 			this.blocking_selection_handler = false;
+			this.update_button_visibility();
 		}
 		
 		/**
@@ -394,6 +387,7 @@ namespace OLLMcoder
 			this.selection.unselect_all();
 			this.selected_file = null;
 			this.blocking_selection_handler = false;
+			this.update_button_visibility();
 		}
 		
 		/**

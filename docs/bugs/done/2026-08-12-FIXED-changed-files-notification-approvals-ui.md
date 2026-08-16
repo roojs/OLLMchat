@@ -1,8 +1,8 @@
 # Changed-files notification → Approvals icon / open in editor
 
-**Status:** ⏳ OPEN — marker sync + SortedList single-splice rebuild applied ✔️; await user re-test / ✅
+**Status:** ✅ FIXED — user verified 2026-08-15 (approval list, buttons, approve/reject working)
 
-**Started:** 2026-08-12 · **Updated:** 2026-08-13
+**Started:** 2026-08-12 · **Updated:** 2026-08-15
 
 ---
 
@@ -42,7 +42,7 @@
 
 ℹ️ Pending list RPC: `Folder.fetch_pending_approvals` → client `libocfiles/ReviewFiles.vala`
 
-ℹ️ Prior related: [`2026-07-27-write-file-no-project-index-ui.md`](2026-07-27-write-file-no-project-index-ui.md)
+ℹ️ Prior related: [`2026-07-27-write-file-no-project-index-ui.md`](../2026-07-27-write-file-no-project-index-ui.md)
 
 ℹ️ Editor open: `Approvals.update_selected_file()` only emits `file_selected` if `file_cache.get(row.path)` is non-null.
 
@@ -62,7 +62,7 @@
 💩 **H4 — List OK, open broken:** row visible but `file_cache` miss blocks editor open.  
 ✔️ `update_selected_file` now `fetch_file` on cache miss (still skips deleted).
 ✔️ Live: click did `File.fetch`; extensionless `Hello World Test` has `is_text=0` → not in `child_map` → empty fetch.
-🚫 Reverted `File.fetch` → `all_files` workaround. Real fix tracked in [`2026-08-13-is-text-content-type-fallback.md`](2026-08-13-is-text-content-type-fallback.md) (GIO/system content-type on write/`to_real`).
+🚫 Reverted `File.fetch` → `all_files` workaround. Real fix tracked in [`2026-08-13-is-text-content-type-fallback.md`](../2026-08-13-is-text-content-type-fallback.md) (GIO/system content-type on write/`to_real`).
 
 ---
 
@@ -1042,6 +1042,6 @@ ORDER BY
 
 ## Next
 
-⏳ 🔷 Re-test with **current** `build/` binaries (confirm log shows `refresh delta`, not `refresh done old=`).
+✅ Closed 2026-08-15 — user verified approval list, buttons, and approve/reject.
 
-✔️ Removed temporary Approvals / ReviewFiles / `fetch_file` debug lines.
+Follow-on (open editor not reloading after LLM write): [`2026-08-15-open-file-not-reloaded-after-llm-write.md`](../2026-08-15-open-file-not-reloaded-after-llm-write.md)

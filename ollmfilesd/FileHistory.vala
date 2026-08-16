@@ -531,12 +531,8 @@ namespace OLLMfilesd
 		public void approve(SQ.Database db, File file)
 		{
 			var pending = new Gee.ArrayList<FileHistory>();
-			FileHistory.query(db).select((
-					"WHERE filebase_id = %lld AND status = 0  AND timestamp <= %lld"
-				).printf(
-					file.id,
-					this.timestamp
-				),
+			FileHistory.query(db).select(
+				"WHERE path = '" + this.path.replace("'", "''") + "' AND status = 0",
 				pending
 			);
 			var max_stmt = FileHistory.query(db).selectPrepare(
@@ -548,6 +544,16 @@ namespace OLLMfilesd
 				row.status = 1;
 				row.since_id = poke;
 				FileHistory.query(db).updateById(row);
+			}
+			var targets = new Gee.ArrayList<FileBase>();
+			FileBase.query(db, file.manager).select(
+				"WHERE path = '" + this.path.replace("'", "''") + "'",
+				targets
+			);
+			foreach (var target in targets) {
+				target.is_need_approval = false;
+				target.last_change_type = "";
+				target.saveToDB(db, null, false);
 			}
 			file.is_need_approval = false;
 			file.last_change_type = "";

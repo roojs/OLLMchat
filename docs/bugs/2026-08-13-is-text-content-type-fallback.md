@@ -4,7 +4,7 @@
 
 **Started:** 2026-08-13 · **Updated:** 2026-08-14
 
-**Related:** [`2026-08-12-changed-files-notification-approvals-ui.md`](2026-08-12-changed-files-notification-approvals-ui.md) (Approvals click → `File.fetch` miss)
+**Related:** [`2026-08-12-FIXED-changed-files-notification-approvals-ui.md`](done/2026-08-12-FIXED-changed-files-notification-approvals-ui.md) (Approvals click → `File.fetch` miss)
 
 ---
 
