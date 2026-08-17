@@ -42,6 +42,7 @@ namespace OLLMbwrap
 		public string bwrap_exe { get; private set; default = ""; }
 		public string ret_str { get; private set; default = ""; }
 		public string fail_str { get; private set; default = ""; }
+		public bool output_killed { get; private set; default = false; }
 
 		public Bubble (FileVerification verification)
 		{

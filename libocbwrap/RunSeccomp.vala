@@ -137,12 +137,16 @@ namespace OLLMbwrap
 			int[] sv = { 0, 0 };
 			if (Posix.socketpair(Posix.AF_UNIX, Posix.SOCK_STREAM, 0, sv) != 0) {
 				this.skipped = "seccomp: socketpair failed";
+				launcher.set_child_setup(() => {
+					Posix.setpgid(0, 0);
+				});
 				return;
 			}
 			this.parent_sock = sv[0];
 			/* take_fd owns sv[1]; GLib closes it after spawn — do not close here or spawn sees a bad FD. */
 			launcher.take_fd(sv[1], RunSeccomp.SYNC_SOCK_CHILD_FD);
 			launcher.set_child_setup(() => {
+				Posix.setpgid(0, 0);
 				this.child_seccomp_handshake();
 			});
 		}

@@ -119,6 +119,16 @@ namespace OLLMbwrap
 		 * Accumulator for stderr output (for failure case).
 		 */
 		public string fail_str { get; private set; default = ""; }
+
+		/**
+		 * Combined stdout+stderr lines read during {@link exec}.
+		 */
+		private int output_lines = 0;
+
+		/**
+		 * True when the subprocess was killed because output exceeded 100 lines.
+		 */
+		public bool output_killed { get; private set; default = false; }
 		
 		/**
 		 * @param verification Non-null apply hook wired into {@link Overlay} / {@link Scan}
@@ -414,10 +424,6 @@ namespace OLLMbwrap
 		var stdout_stream = subprocess.get_stdout_pipe();
 		var stderr_stream = subprocess.get_stderr_pipe();
 		
-		// Reset accumulators for this execution
-		this.ret_str = "";
-		this.fail_str = "";
-		
 		// Convert InputStreams to IOChannels for concurrent monitoring
 		// Note: We need to get file descriptors from the streams
 		// For UnixInputStream, we can use get_fd()
@@ -453,6 +459,13 @@ namespace OLLMbwrap
 			(channel, condition) => {
 				if ((condition & GLib.IOCondition.IN) != 0) {
 					this.read_from_channel(channel, true);
+					if (this.output_killed) {
+						var id = subprocess.get_identifier();
+						if (id != null) {
+							Posix.kill(-(int.parse(id)), Posix.Signal.KILL);
+						}
+						subprocess.force_exit();
+					}
 				}
 				if ((condition & (GLib.IOCondition.HUP | GLib.IOCondition.ERR)) != 0) {
 					stdout_open = false;
@@ -467,6 +480,13 @@ namespace OLLMbwrap
 			(channel, condition) => {
 				if ((condition & GLib.IOCondition.IN) != 0) {
 					this.read_from_channel(channel, false);
+					if (this.output_killed) {
+						var id = subprocess.get_identifier();
+						if (id != null) {
+							Posix.kill(-(int.parse(id)), Posix.Signal.KILL);
+						}
+						subprocess.force_exit();
+					}
 				}
 				if ((condition & (GLib.IOCondition.HUP | GLib.IOCondition.ERR)) != 0) {
 					stderr_open = false;
@@ -550,6 +570,12 @@ namespace OLLMbwrap
 		}
 		final_fail_str += "\n";
 
+		if (this.output_killed) {
+			GLib.debug("command killed: output exceeded 100 lines");
+			return this.ret_str + "\n" + this.fail_str
+				+ "\nCommand killed: output exceeded 100 lines. Avoid outputting large files to stdout; consider writing to a file or limiting what you are outputting.";
+		}
+
 		// Return appropriate string based on exit status
 		if (exit_status == 0) {
 			if (run_seccomp.fs != "") {
@@ -583,6 +609,9 @@ namespace OLLMbwrap
 	private void read_from_channel(GLib.IOChannel channel, bool is_stdout)
 	{
 		while (true) {
+			if (this.output_killed) {
+				return;
+			}
 			string? buffer = null;
 			size_t len = 0;
 			size_t term_pos = 0;
@@ -604,6 +633,11 @@ namespace OLLMbwrap
 			}
 			
 			// Status is NORMAL - accumulate output
+			if (this.output_lines >= 100) {
+				this.output_killed = true;
+				return;
+			}
+			this.output_lines++;
 			if (is_stdout) {
 				this.ret_str += buffer;
 				continue; // Read more

@@ -74,6 +74,11 @@ Root Access (Linux GTK app only):
 - The user must approve in the app and enter their password in the permission prompt (not saved).
 - Root runs execute outside the sandbox with full host access; `network` and `allow_write` do not restrict them.
 
+Output:
+- Keep listings and searches narrow. Do not recursively list large trees (for example `ls -R` / `ls -RL` on home, or `find` from `/` or `$HOME` without `-maxdepth` or a name filter).
+- Prefer a specific directory, non-recursive `ls`, `find -maxdepth`, `git ls-files`, or pipe through `head` / `grep`.
+- If output is too long, the command is killed and only the lines already captured are returned. Avoid outputting large files to stdout; write to a file or limit what you output.
+
 If the command fails, you should handle the error gracefully and provide a helpful error message to the user.
 """;
 				return this.desc_backing;

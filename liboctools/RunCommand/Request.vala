@@ -39,6 +39,8 @@ namespace OLLMtools.RunCommand
 		
 		/** When true, {@link execute} appends a unique suffix to {@link permission_target_path} so each prompt is distinct (used for non-bwrap runs). */
 		private bool is_complex_command = false;
+		private int output_lines = 0;
+		private bool output_killed = false;
 			
 		/**
 		 * Default constructor.
@@ -338,18 +340,15 @@ namespace OLLMtools.RunCommand
 					this.command,
 					normalized_working_dir
 				);
-				
-				// Truncate output if needed
-				// FIXME - not sure this is a great idea - we will be bumping the context up soon
-				// with ollama create tricks
-				output = this.truncate_output(output, 100);
 				if (output.strip() == "") {
 					output = "No output received from command";
 				}
-				
-				// Send output as second message via message_created
+
+				var frame_header = bubble.output_killed
+					? "text.oc-frame-danger.collapsed Execution results (output too excessive)"
+					: "text.oc-frame-success.collapsed Execution results";
 				this.agent.add_message(new OLLMchat.Message("ui",
-					 OLLMchat.Message.fenced("text.oc-frame-success.collapsed Execution results", output)));
+					 OLLMchat.Message.fenced(frame_header, output)));
 				
 				// Return output to LLM
 				return output;
@@ -443,6 +442,7 @@ namespace OLLMtools.RunCommand
 			}
 			stdout_output = stdout_buf ?? "";
 			stderr_output = stderr_buf ?? "";
+			stdout_output = this.truncate_output(stdout_output, 50);
 			exit_status = success ? 0 : subprocess.get_exit_status ();
 #else
 			if (this.run_as_root) {
@@ -463,6 +463,9 @@ namespace OLLMtools.RunCommand
 				if (!this.run_as_root) {
 					launcher.set_cwd (work_dir);
 				}
+				launcher.set_child_setup(() => {
+					Posix.setpgid(0, 0);
+				});
 				subprocess = launcher.spawnv (argv);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to create subprocess: " + e.message);
@@ -477,8 +480,8 @@ namespace OLLMtools.RunCommand
 
 			var stdout_stream = subprocess.get_stdout_pipe ();
 			var stderr_stream = subprocess.get_stderr_pipe ();
-			stdout_output = yield this.read_stream_async (stdout_stream);
-			stderr_output = yield this.read_stream_async (stderr_stream);
+			stdout_output = yield this.read_stream_async (stdout_stream, subprocess);
+			stderr_output = yield this.read_stream_async (stderr_stream, subprocess);
 
 			try {
 				if (!(yield subprocess.wait_async (null))) {
@@ -492,26 +495,17 @@ namespace OLLMtools.RunCommand
 			}
 #endif
 			
-			// Truncate outputs if they exceed max lines (50)
-			stdout_output = this.truncate_output(stdout_output, 50);
-			//stderr_output = this.truncate_output(stderr_output, 50);
-			
-			// Escape code blocks in stdout output
- 			
-			// Build output message (txt code block)
-			
 			var	output_content  = stdout_output;
-			 
-			// Add stderr output (if any)
 			if (stderr_output != "") {
 				if (stdout_output != "") {
 					output_content += "\n";
 				}
 				output_content += stderr_output;
 			}
-			 
-			// Add exit code only if non-zero (success doesn't need to be shown)
-			if (exit_status != 0) {
+			if (this.output_killed) {
+				output_content += "\nCommand killed: output exceeded 50 lines. Avoid outputting large files to stdout; consider writing to a file or limiting what you are outputting.";
+			}
+			if (!this.output_killed && exit_status != 0) {
 				if (stdout_output != "" || stderr_output != "") {
 					output_content += "\n";
 				}
@@ -528,9 +522,13 @@ namespace OLLMtools.RunCommand
 			 
 			
 		// Send output as second message (danger when command failed, success when exit 0)
-			var frame_header = exit_status != 0
-				? "text.oc-frame-danger.collapsed Execution results (Command Failed)"
-				: "text.oc-frame-success.collapsed Execution results";
+			var frame_header = "text.oc-frame-success.collapsed Execution results";
+			if (this.output_killed) {
+				frame_header = "text.oc-frame-danger.collapsed Execution results (output too excessive)";
+			}
+			if (!this.output_killed && exit_status != 0) {
+				frame_header = "text.oc-frame-danger.collapsed Execution results (Command Failed)";
+			}
 			this.agent.add_message(new OLLMchat.Message("ui", 
 				OLLMchat.Message.fenced(frame_header, output_content)));
 				
@@ -587,30 +585,46 @@ namespace OLLMtools.RunCommand
 		/**
 		 * Async method to read from a stream and accumulate output.
 		 */
-		private async string read_stream_async (InputStream? stream)
+		private async string read_stream_async (InputStream? stream, GLib.Subprocess subprocess)
 		{
 			if (stream == null) {
 				return "";
 			}
 
 			var data_input = new GLib.DataInputStream (stream);
-			string output = "";
+			var output = "";
 
-			try {
-				while (true) {
-					string? line = yield data_input.read_line_async (GLib.Priority.DEFAULT, null);
-
-					if (line == null) {
-						break;
-					}
-
-					if (output != "") {
-						output += "\n";
-					}
-					output += line;
+			while (true) {
+				if (this.output_killed) {
+					break;
 				}
-			} catch (GLib.Error e) {
-				return output;
+				string? line = null;
+				try {
+					line = yield data_input.read_line_async (GLib.Priority.DEFAULT, null);
+				} catch (GLib.Error e) {
+					return output;
+				}
+
+				if (line == null) {
+					break;
+				}
+
+				if (this.output_lines >= 50) {
+					this.output_killed = true;
+					GLib.debug("command killed: output exceeded 50 lines");
+					var id = subprocess.get_identifier();
+					if (id != null) {
+						Posix.kill(-(int.parse(id)), Posix.Signal.KILL);
+					}
+					subprocess.force_exit();
+					break;
+				}
+				this.output_lines++;
+
+				if (output != "") {
+					output += "\n";
+				}
+				output += line;
 			}
 
 			return output;
