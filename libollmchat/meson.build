@@ -18,25 +18,35 @@ local_gguf_include_dirs = []
 local_gguf_vala_args = []
 local_gguf_install_rpath = []
 
+# Debian libllama is under /usr/lib/<multiarch>/llama. Meson run_command()
+# still requires the binary to exist even with check: false — probe first so
+# Fedora/openSUSE (pkg-config llama, no dpkg) can configure.
+debian_llama_libdir = ''
+dpkg_architecture = find_program('dpkg-architecture', required: false)
+if dpkg_architecture.found()
+  dpkg_arch = run_command(dpkg_architecture, '-qDEB_HOST_MULTIARCH', check: false)
+  if dpkg_arch.returncode() == 0
+    multiarch = dpkg_arch.stdout().strip()
+    if multiarch != ''
+      debian_llama_libdir = '/usr/lib' / multiarch / 'llama'
+    endif
+  endif
+endif
+
 if not local_gguf_opt.disabled()
   llama_dep = dependency('llama', required: false)
   if llama_dep.found() and cc.has_header('llama.h', dependencies: llama_dep)
     local_gguf_deps += llama_dep
     local_gguf_enabled = true
   else
-    dpkg_arch = run_command('dpkg-architecture', '-qDEB_HOST_MULTIARCH', check: false)
     private_llama_dirs = []
     private_llama_link_args = []
     private_llama_compile_args = []
     private_llama_header_found = false
 
-    if dpkg_arch.returncode() == 0
-      multiarch = dpkg_arch.stdout().strip()
-      if multiarch != ''
-        private_llama_dir = '/usr/lib' / multiarch / 'llama'
-        private_llama_dirs += private_llama_dir
-        private_llama_link_args += '-Wl,-rpath,' + private_llama_dir
-      endif
+    if debian_llama_libdir != ''
+      private_llama_dirs += debian_llama_libdir
+      private_llama_link_args += '-Wl,-rpath,' + debian_llama_libdir
     endif
 
     if cc.has_header('llama.h', required: false)
@@ -66,14 +76,8 @@ if not local_gguf_opt.disabled()
   endif
 endif
 
-if local_gguf_enabled
-  dpkg_arch = run_command('dpkg-architecture', '-qDEB_HOST_MULTIARCH', check: false)
-  if dpkg_arch.returncode() == 0
-    multiarch = dpkg_arch.stdout().strip()
-    if multiarch != ''
-      local_gguf_install_rpath += '/usr/lib' / multiarch / 'llama'
-    endif
-  endif
+if local_gguf_enabled and debian_llama_libdir != ''
+  local_gguf_install_rpath += debian_llama_libdir
 endif
 
 if local_gguf_enabled

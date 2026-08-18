@@ -90,6 +90,7 @@ webview2gtk_prefix = get_option('webview2gtk_prefix')
 # PKG_CONFIG_PATH=<prefix>/lib/pkgconfig (see scripts/ci/windows-msys2-build.sh).
 
 local_gguf_enabled = false
+debian_llama_libdir = ''
 gee_vapi_dir = meson.project_source_root() / 'subprojects/libgee-0.20.8/gee'
 
 if android_cross_build
@@ -235,14 +236,8 @@ lib_path = ':'.join([
   meson.current_build_dir() / 'libocmcp'
 ])
 
-if local_gguf_enabled
-  dpkg_arch = run_command('dpkg-architecture', '-qDEB_HOST_MULTIARCH', check: false)
-  if dpkg_arch.returncode() == 0
-    multiarch = dpkg_arch.stdout().strip()
-    if multiarch != ''
-      lib_path = lib_path + ':/usr/lib/' + multiarch + '/llama'
-    endif
-  endif
+if local_gguf_enabled and debian_llama_libdir != ''
+  lib_path = lib_path + ':' + debian_llama_libdir
 endif
 
 ollmfilesd_export = 'export OLLM_OLLMFILESD="' + meson.current_build_dir() / 'ollmfilesd' / 'ollmfilesd' + '"'

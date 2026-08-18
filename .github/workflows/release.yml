@@ -39,6 +39,11 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: ubuntu:25.04
+    # Container jobs default to sh (dash). Collect artifacts uses shopt;
+    # the tag/version check uses [[. Both are bash.
+    defaults:
+      run:
+        shell: bash
     env:
       DEBIAN_FRONTEND: noninteractive
       ROOJS_APT_SUITE: plucky

@@ -84,7 +84,8 @@ case "${ID}" in
     ;;
   opensuse* | opensuse-tumbleweed | slfo)
     # desktop-file-utils needs gawk; Tumbleweed images ship busybox-gawk.
-    run_root zypper --non-interactive --force-resolution install \
+    # --force-resolution is an install option, not a global zypper flag.
+    run_root zypper --non-interactive install --force-resolution \
       --no-recommends gawk
     pkgconfig_deps+=('pkgconfig(openblas)')
     run_root zypper --non-interactive install --no-recommends \
