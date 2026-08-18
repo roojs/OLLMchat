@@ -8,13 +8,23 @@ export ROOT_DIR
 # shellcheck source=gtk-subproject.sh
 source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
 
-REDIRECT="$ROOT_DIR/subprojects/graphene.wrap"
-[ -f "$REDIRECT" ] || cp "$ROOT_DIR/android/pixiewood-wraps/gtk/gtk.wrap" "$ROOT_DIR/subprojects/" 2>/dev/null || true
-for wrap in "$ROOT_DIR/android/pixiewood-wraps"/*/*.wrap; do
-  [ -f "$wrap" ] && cp -a "$wrap" "$ROOT_DIR/subprojects/"
+mkdir -p "$ROOT_DIR/subprojects"
+for dep_dir in "$ROOT_DIR/android/pixiewood-wraps"/*/; do
+  for wrap in "$dep_dir"*.wrap; do
+    [ -f "$wrap" ] && cp -a "$wrap" "$ROOT_DIR/subprojects/"
+  done
 done
 
-grep -q 'gtk/subprojects/graphene.wrap' "$ROOT_DIR/subprojects/graphene.wrap" ||
+REDIRECT="$ROOT_DIR/subprojects/graphene.wrap"
+# Cold CI has no meson wrap-redirect cache; the probe still needs the file.
+if [ ! -f "$REDIRECT" ]; then
+  cat > "$REDIRECT" <<'EOF'
+[wrap-redirect]
+filename = gtk/subprojects/graphene.wrap
+EOF
+fi
+
+grep -q 'gtk/subprojects/graphene.wrap' "$REDIRECT" ||
   { echo "unexpected graphene.wrap format" >&2; exit 1; }
 
 rm -rf "$ROOT_DIR/subprojects/gtk"

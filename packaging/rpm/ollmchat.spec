@@ -18,7 +18,11 @@ URL: https://github.com/roojs/OLLMchat
 Source0: ollmchat-%{version}.tar.gz
 
 BuildRequires: meson
+%if 0%{?fedora}
 BuildRequires: ninja-build
+%else
+BuildRequires: ninja
+%endif
 BuildRequires: gcc
 BuildRequires: gcc-c++
 BuildRequires: vala
@@ -71,39 +75,39 @@ Recommends: ollmchat-tools
 Conflicts: ollmchat-remote-only
 %else
 Requires: bubblewrap
-Conflicts: ollmchat,
-           ollmchat-tools,
-           ollmchat-doc,
-           libocsqlite,
-           libocsqlite-devel,
-           libocrpc,
-           libocrpc-devel,
-           libocmarkdown,
-           libocmarkdown-devel,
-           libollamaweb,
-           libollamaweb-devel,
-           libochf,
-           libochf-devel,
-           libocmarkdowngtk,
-           libocmarkdowngtk-devel,
-           libocfiles,
-           libocfiles-devel,
-           libollmchat,
-           libollmchat-devel,
-           libocwebkit,
-           libocwebkit-devel,
-           libocvector2,
-           libocvector2-devel,
-           libocbwrap,
-           libocbwrap-devel,
-           libocmcp,
-           libocmcp-devel,
-           liboctools,
-           liboctools-devel,
-           liboccoder,
-           liboccoder-devel,
-           libollmchatgtk,
-           libollmchatgtk-devel
+Conflicts: ollmchat
+Conflicts: ollmchat-tools
+Conflicts: ollmchat-doc
+Conflicts: libocsqlite
+Conflicts: libocsqlite-devel
+Conflicts: libocrpc
+Conflicts: libocrpc-devel
+Conflicts: libocmarkdown
+Conflicts: libocmarkdown-devel
+Conflicts: libollamaweb
+Conflicts: libollamaweb-devel
+Conflicts: libochf
+Conflicts: libochf-devel
+Conflicts: libocmarkdowngtk
+Conflicts: libocmarkdowngtk-devel
+Conflicts: libocfiles
+Conflicts: libocfiles-devel
+Conflicts: libollmchat
+Conflicts: libollmchat-devel
+Conflicts: libocwebkit
+Conflicts: libocwebkit-devel
+Conflicts: libocvector2
+Conflicts: libocvector2-devel
+Conflicts: libocbwrap
+Conflicts: libocbwrap-devel
+Conflicts: libocmcp
+Conflicts: libocmcp-devel
+Conflicts: liboctools
+Conflicts: liboctools-devel
+Conflicts: liboccoder
+Conflicts: liboccoder-devel
+Conflicts: libollmchatgtk
+Conflicts: libollmchatgtk-devel
 %endif
 
 %description
