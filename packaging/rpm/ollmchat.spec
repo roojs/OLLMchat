@@ -52,6 +52,9 @@ BuildRequires: pkgconfig(openblas)
 BuildRequires: pkgconfig(lapack)
 %if %{with local_gguf}
 BuildRequires: pkgconfig(llama)
+%if 0%{?suse_version}
+BuildRequires: ggml-devel
+%endif
 %endif
 
 %if %{with local_gguf}

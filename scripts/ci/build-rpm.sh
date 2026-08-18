@@ -92,7 +92,7 @@ case "${ID}" in
       rpm-build rpmdevtools \
       meson ninja gcc gcc-c++ vala desktop-file-utils \
       gobject-introspection gobject-introspection-devel \
-      faiss-devel bubblewrap \
+      faiss-devel bubblewrap ggml-devel \
       "${pkgconfig_deps[@]}"
     # Repos publish openSUSE packages under rpm/tumbleweed/; omit %{dist}
     # so the filename has no .fc tag (see scripts/fetch-upstream.sh).
