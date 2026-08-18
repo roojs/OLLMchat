@@ -1,6 +1,6 @@
 # Build Instructions
 
-Canonical build workflow for this project. Written for **AI agents** — **mandatory** for agents building or changing the project. Human contributors may treat this as a helpful guide. See also **`docs/coding-standards.md`**.
+Canonical build workflow for this project. Written for **AI agents** — **mandatory** for agents building or changing the project. Human contributors may treat this as a helpful guide. See also **`docs/coding-standards.md`**. Humans installing dependencies and running Meson for the first time should start at **[`docs/BUILD.md`](BUILD.md)**.
 
 ## Building the Project
 

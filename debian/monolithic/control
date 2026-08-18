@@ -46,4 +46,4 @@ Description: OLLMchat - LLM chat application (all-in-one, local GGUF)
  .
  For remote backends only (no local GGUF), install ollmchat-remote-only
  instead (see debian/README). Split library packages are available via
- debian/use-split-packages when an apt repository is in place.
+ debian/use-split-packages.sh.

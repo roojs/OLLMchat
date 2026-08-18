@@ -1,9 +1,8 @@
 name: Release build
 
-# Builds Debian packages (amd64) first for fast feedback, then Linux AppImages
-# (x86_64 + aarch64) and the Windows installer with sqgipkg, and publishes
-# release assets for tags like `v1.0.0`. On tag pushes, also builds the Android
-# APK in parallel and uploads it to the same GitHub Release when ready.
+# Builds Debian packages (amd64), Fedora 44 and openSUSE Tumbleweed RPMs,
+# Linux AppImages (x86_64 + aarch64), the Windows installer, and the Android
+# remote-chat POC APK. Tag pushes (via scripts/release.sh) publish those assets.
 
 run-name: Release build · ${{ github.ref_name }}
 
@@ -14,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       refresh_cache:
-        description: Rebuild sqgipkg, Meson, and Debian extra-package caches from scratch
+        description: Rebuild sqgipkg and Meson caches from scratch
         type: boolean
         default: false
 
@@ -27,20 +26,97 @@ env:
 jobs:
   build-android:
     name: Build Android APK
-    if: startsWith(github.ref, 'refs/tags/')
     uses: ./.github/workflows/android-build-reusable.yml
     with:
-      refresh_cache: false
+      refresh_cache: ${{ inputs.refresh_cache || false }}
       upload_to_release: true
       non_blocking: true
     permissions:
-      contents: write
+      contents: read
+    continue-on-error: true
+
+  build-debian:
+    name: Build Debian packages
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu:25.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      ROOJS_APT_SUITE: plucky
+      TZ: UTC
+    steps:
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates curl
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: OLLMchat
+
+      # CI helper (not the user install path — see https://roojs.github.io/repos/).
+      - name: Enable roojs APT and install build dependencies
+        working-directory: OLLMchat
+        run: |
+          set -euo pipefail
+          chmod +x scripts/ci/enable-roojs-apt.sh
+          ./scripts/ci/enable-roojs-apt.sh
+          apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config file \
+            meson valac gobject-introspection devscripts debhelper \
+            libglib2.0-dev libgirepository1.0-dev libffi-dev libcairo2-dev \
+            libgee-0.8-dev libjson-glib-dev libsoup-3.0-dev libxml2-dev \
+            libsqlite3-dev libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev \
+            libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
+            libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
+
+      - name: Build Debian packages (amd64)
+        working-directory: OLLMchat
+        env:
+          DEBFULLNAME: GitHub Actions
+          DEBEMAIL: actions@users.noreply.github.com
+        run: |
+          set -euo pipefail
+          chmod +x scripts/release/changelog.sh scripts/release/sync-debian-changelog.sh
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            if cl_ver="$(./scripts/release/changelog.sh version 2>/dev/null)"; then
+              tag_ver="${GITHUB_REF_NAME#v}"
+              if [[ "${cl_ver}" != "${tag_ver}" ]]; then
+                echo "CHANGELOG.md version ${cl_ver} != tag ${tag_ver}" >&2
+                exit 1
+              fi
+              ./scripts/release/sync-debian-changelog.sh
+            else
+              ./scripts/release/sync-debian-changelog.sh --release "$GITHUB_REF_NAME"
+            fi
+          else
+            ./scripts/release/sync-debian-changelog.sh
+          fi
+          ./debian/use-monolithic-package.sh
+          dpkg-buildpackage -us -uc -b
+          rm -rf build
+          ./debian/use-monolithic-remote-only-package.sh
+          dpkg-buildpackage -us -uc -b
+          ./debian/use-monolithic-package.sh
+
+      - name: Collect artifacts
+        working-directory: OLLMchat
+        run: |
+          mkdir -p artifacts
+          cp ../ollmchat_[0-9]*.deb artifacts/
+          cp ../ollmchat-remote-only_[0-9]*.deb artifacts/
+          ls -lh artifacts
+
+      - name: Upload Debian artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollmchat-debian
+          path: OLLMchat/artifacts/*
 
   build:
-    name: Build and publish
+    name: Build AppImage and Windows
     runs-on: ubuntu-24.04
-    env:
-      DEB_CACHE_DIR: OLLMchat/.ci-cache/debian-debs-amd64
     steps:
       - name: Checkout OLLMchat
         uses: actions/checkout@v4
@@ -66,80 +142,17 @@ jobs:
           restore-keys: |
             sqgipkg-meson-v1-stable-
 
-      - name: Restore Debian extra package download cache
-        id: restore-deb-cache
-        uses: actions/cache/restore@v6
-        with:
-          path: ${{ env.DEB_CACHE_DIR }}
-          key: debian-extra-debs-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/scripts/ci/debian-pool-deb.sh', 'OLLMchat/scripts/ci/install-libfaiss-dev-debian.sh', 'OLLMchat/scripts/fetch-libllama.sh') }}
-          restore-keys: |
-            debian-extra-debs-v1-stable-
-            debian-extra-debs-v1-
-
-      - name: Install Debian build dependencies
+      - name: Install host build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build pkg-config git file ca-certificates wget curl \
-            meson valac gobject-introspection devscripts debhelper \
+            meson valac gobject-introspection \
             libglib2.0-dev libgirepository1.0-dev libffi-dev libcairo2-dev \
             libgee-0.8-dev libjson-glib-dev libsoup-3.0-dev libxml2-dev \
             libsqlite3-dev libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev \
             libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
             libopenblas-dev liblapack-dev
-
-      # Ubuntu 24.04 does not ship libfaiss-dev; install the current Debian amd64
-      # package (same approach as deploy-docs.yml) before the native deb build.
-      - name: Install libfaiss-dev from Debian
-        id: install-faiss
-        working-directory: OLLMchat
-        env:
-          DEB_CACHE_DIR: ${{ github.workspace }}/${{ env.DEB_CACHE_DIR }}
-        run: ./scripts/ci/install-libfaiss-dev-debian.sh
-
-      - name: Install libllama from Debian
-        id: install-llama
-        working-directory: OLLMchat
-        env:
-          DEB_CACHE_DIR: ${{ github.workspace }}/${{ env.DEB_CACHE_DIR }}
-        run: ./scripts/fetch-libllama.sh
-
-      - name: Detect Debian extra package cache
-        if: always()
-        id: deb-cache
-        run: |
-          if [ -d "$DEB_CACHE_DIR" ] && find "$DEB_CACHE_DIR" -type f -name '*.deb' -print -quit | grep -q .; then
-            echo "save=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "save=false" >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          DEB_CACHE_DIR: ${{ env.DEB_CACHE_DIR }}
-
-      - name: Save Debian extra package download cache
-        if: always() && steps.deb-cache.outputs.save == 'true' && steps.restore-deb-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ${{ env.DEB_CACHE_DIR }}
-          key: debian-extra-debs-v1-stable-${{ hashFiles('OLLMchat/scripts/ci/debian-pool-deb.sh', 'OLLMchat/scripts/ci/install-libfaiss-dev-debian.sh', 'OLLMchat/scripts/fetch-libllama.sh') }}
-
-      - name: Build Debian packages (amd64)
-        working-directory: OLLMchat
-        env:
-          DEBFULLNAME: GitHub Actions
-          DEBEMAIL: actions@users.noreply.github.com
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            ./scripts/release/sync-debian-changelog.sh --release "$GITHUB_REF_NAME"
-          else
-            ./scripts/release/sync-debian-changelog.sh
-          fi
-          ./debian/use-monolithic-package.sh
-          dpkg-buildpackage -us -uc -b
-          rm -rf build
-          ./debian/use-monolithic-remote-only-package.sh
-          dpkg-buildpackage -us -uc -b
-          ./debian/use-monolithic-package.sh
 
       - name: Read sqgi revision
         id: sqgi
@@ -211,8 +224,6 @@ jobs:
           cp dist-linux-x86_64/OLLMchat.AppImage artifacts/OLLMchat-remote-only-x86_64.AppImage
           cp dist-linux-aarch64/OLLMchat.AppImage artifacts/OLLMchat-remote-only-aarch64.AppImage
           cp dist-windows-x86_64/OLLMchat-Setup.exe artifacts/OLLMchat-remote-only-Setup.exe
-          cp ../ollmchat_[0-9]*.deb artifacts/
-          cp ../ollmchat-remote-only_[0-9]*.deb artifacts/
           ls -lh artifacts
 
       - name: Upload build artifacts
@@ -221,12 +232,77 @@ jobs:
           name: ollmchat-builds
           path: OLLMchat/artifacts/*
 
-      - name: Publish release assets
-        if: startsWith(github.ref, 'refs/tags/')
-        working-directory: OLLMchat
+  build-rpm-fedora:
+    name: Build Fedora 44 RPMs
+    runs-on: ubuntu-24.04
+    container:
+      image: fedora:44
+    steps:
+      - name: Install git
+        run: dnf -y install --setopt=install_weak_deps=False git-core ca-certificates curl
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build RPMs
+        run: |
+          set -euo pipefail
+          chmod +x scripts/ci/build-rpm.sh scripts/release/changelog.sh
+          ./scripts/ci/build-rpm.sh
+
+      - name: Upload Fedora RPM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollmchat-rpm-fedora
+          path: artifacts/*.rpm
+
+  build-rpm-opensuse:
+    name: Build openSUSE Tumbleweed RPMs
+    runs-on: ubuntu-24.04
+    container:
+      image: opensuse/tumbleweed
+    steps:
+      - name: Install git
+        run: zypper --non-interactive install --no-recommends git-core ca-certificates curl
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build RPMs
+        run: |
+          set -euo pipefail
+          chmod +x scripts/ci/build-rpm.sh scripts/release/changelog.sh
+          ./scripts/ci/build-rpm.sh
+
+      - name: Upload openSUSE RPM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollmchat-rpm-opensuse
+          path: artifacts/*.rpm
+
+  publish:
+    name: Publish release assets
+    needs: [build, build-debian, build-rpm-fedora, build-rpm-opensuse, build-android]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+          pattern: ollmchat-*
+
+      - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          ls -lh artifacts
+          chmod +x scripts/release/changelog.sh scripts/release/render-release-notes.sh
           ./scripts/release/render-release-notes.sh "$GITHUB_REF_NAME" release-notes.md
           gh release create "$GITHUB_REF_NAME" artifacts/* \
             --repo "$GITHUB_REPOSITORY" \
@@ -241,8 +317,6 @@ jobs:
           }
 
       - name: Finalize changelog on main
-        if: success() && startsWith(github.ref, 'refs/tags/')
-        working-directory: OLLMchat
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -4,65 +4,89 @@ All notable changes to OLLMchat are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
-for git tags (`v1.2.4-alpha`, etc.).
+for git tags (`v1.3.0`, etc.).
 
-`CHANGELOG.md` is the **single source of truth**. `debian/changelog` is generated
-from it — do not edit `debian/changelog` by hand. Regenerate with:
+Debian and RPM packaging notes are generated from this file at release time
+(see [Creating releases](docs/creating-releases.md)).
 
-```bash
-./scripts/release/sync-debian-changelog.sh
-```
+## [1.3.0] - Unreleased
 
-## [Unreleased]
+Work since **1.2.4-alpha** (2026-06-13). `v1.2.5-alpha` (2026-07-24) was tagged
+without promoting these notes.
 
 ### Added
 
-- **Coding Assistant**: Chatter-style summarized conversation history — background
-  summarizer after each turn, `summary` transcript role, and follow-up rounds that
-  send only messages since the latest summary plus a `coder_followup.md` system
-  tail (with `session_fetch` hash links)
+- **File daemon (`ollmfilesd`)**: project scan, file I/O, SQLite, and semantic
+  indexing run out of the UI process. The app talks to the daemon over
+  **`libocrpc`** (binary RPC). **`libocvector2`** is the daemon FAISS stack.
+- **Sandbox (`libocbwrap`)**: shared bubblewrap / seccomp helpers for
+  `run_command` and MCP stdio servers
+- **Browser tool**: WebKitGTK `browser` on Linux, plus Windows WebView2 and
+  Android WebView hosts — toggle/view chrome, downloads, fill-by-name
+- **Agent Π**: compact coding agent (`liboccoder/AgentPi`) with Pi-style tools
+  (`read` / `write` / `bash`), base skills, follow-up / urgent message queue,
+  skills settings tab, and project-summary skill
+- **Coding Assistant**: Chatter-style summarized conversation history —
+  background summarizer after each turn, `summary` transcript role, and
+  follow-up rounds that send only messages since the latest summary plus a
+  `coder_followup.md` system tail (with `session_fetch` hash links)
 - **Agents**: shared `OLLMchat.Agent.Summarizer` and `Agent.Base.create_summary()`
-  used by both Chatter and the Coding Assistant
-- **run_command**: `run_as_root` parameter runs commands via `sudo` after in-app password prompt
-  after explicit high-risk ChatPermission approval (Linux GTK app; no Allow Always
-  shortcut)
-- **Android**: chat shell under `ollmapp/android/` — `AndroidApplication` (app-private
-  Config2 storage), `AndroidMainWindow`, `AndroidStartup`, and
-  `AndroidSettingsDialog` (connections + default model); bootstrap via
-  `ConnectionAdd`; replaces the inline-form `AndroidPoc.vala` target
-- **Android**: Pixiewood shell APK scaffold and remote-only chat POC target
-  (`ollmchat-android-poc`)
-- **CI**: manual Android APK artifact workflow; Android validation workflows are
-  manual-only; tag releases also build and attach the Android debug APK
-- **Release tooling**: changelog sync/finalize scripts; GitHub Release notes rendered
-  from `CHANGELOG.md`
-- **Docs**: Android feasibility notes, remote-only CI documentation, and
-  `docs/creating-releases.md` changelog workflow
-
-### Removed
-
-- **Config**: Config1 and legacy `config.json` migration — applications load Config2
-  from `config.2.json` only (desktop and Android)
+  used by Chatter, the Coding Assistant, and Agent Π
+- **OpenAI-compatible APIs**: Chat, Embed, and Generate use the v1 Chat
+  Completions path (`tool_calls` / `tool_call_id`)
+- **run_command**: `run_as_root` runs via `sudo` after an in-app password prompt
+  and explicit high-risk ChatPermission approval (Linux GTK app; no Allow Always)
+- **Hugging Face**: `oc-hf` model catalog download with progress UI (local GGUF)
+- **Local GGUF**: optional `CallLocal` / libllama backend (`-Dlocal_gguf`; still
+  a proof of concept)
+- **Android**: remote-only chat shell / POC APK — Config2, connections, default
+  model, TLS, settings, browser host (`ollmapp/android/`)
+- **Packaging**: install from the [roojs repositories](https://roojs.github.io/repos/)
+  (`apt` / `dnf` / `zypper`). Debian `ollmchat` and `ollmchat-remote-only`;
+  Fedora 44 and openSUSE Tumbleweed RPMs. AppImage and Windows remain remote-only
+  GitHub assets
+- **CI / release**: changelog-driven GitHub Release notes; tag builds attach
+  Android debug APK; RPM jobs on Fedora 44 and Tumbleweed
 
 ### Changed
 
-- **Coding Assistant**: system prompt is outbound-only — no longer persisted as
+- Applications load Config2 (`config.2.json`) only
+- Open file / window / project state lives in config rather than the files DB
+- Git operations go through the file daemon
+- HTTP proxy is used only when the host is a real DNS name
+- Coding Assistant system prompt is outbound-only — no longer persisted as
   `system` rows in the session transcript each turn
-- **Chatter**: summarizer moved from `Chatter.Summarizer` to the shared agent class
-- **CI**: PR checks limited to stable offline tests (Android builds run manually)
-- **Android**: build caching for SDK, Pixiewood prefix, and Gradle; newer Meson
-  scoped to Android APK builds only
+- Chatter summarizer moved from `Chatter.Summarizer` to the shared agent class
+- Debian / docs / remote-only CI runs on Ubuntu 25.04 and installs `libllama-dev`
+  from the roojs APT repo (no Debian-pool `.deb` hunting)
+
+### Removed
+
+- Config1 and legacy `config.json` migration
+- In-process v1 file / vector path (replaced by `ollmfilesd` + `libocvector2`)
+- Tree-sitter Debian packaging script and FAISS / llama.cpp pool download helpers
+  (packages come from the distro or the roojs repos)
 
 ### Fixed
 
-- **Tool calling**: OpenAI-compatible request/response field names for `tool_calls`
-  and `tool_call_id` (fixes broken tool rounds on some backends)
-- **run_command**: tool execution path works reliably again after the tool-calling fix
-- **Add Model dialog**: changing the server connection no longer breaks model search;
-  connection labels no longer duplicate the URL when name and URL match
-- **Android cross-build**: libgee wrap (`vala_gir: disabler()` disabled the whole
-  library on Android); wrap patch re-apply when CI restores cached `subprojects/`;
-  CI cache no longer saved before the APK build finishes
+- **Tool calling** on OpenAI-compatible backends (`tool_calls` / `tool_call_id`)
+- **run_command** after the tool-calling fix; kill the process when output hits
+  the existing line caps (100 sandboxed / 50 unsandboxed)
+- **Add Model** / ollama.com search when switching connections; connection labels
+  no longer duplicate the URL when name and URL match
+- **Approvals / changed files**: approve and reject from the UI; notification
+  updates when the changed-file list changes
+- **RPC / daemon**: client write queue; stdio dispatch; second `ollmfilesd`
+  startup no longer blocks the RPC stream
+- **Composer / chat input** chrome and expand/collapse
+- **Markdown**: ATX heading + bold stream hang; table top gap
+- **SourceView**: opening a file no longer shows only the last line
+- **Android**: TLS, IME freeze, browser globe toggle, icon theme
+
+## [1.2.5-alpha] - 2026-07-24
+
+Interim git tag. Changelog notes were still under Unreleased; they are now
+listed under **1.3.0**.
 
 ## [1.2.4-alpha] - 2026-06-13
 

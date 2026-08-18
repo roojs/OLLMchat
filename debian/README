@@ -10,8 +10,9 @@ Two layouts are maintained:
 
 ### Monolithic (default)
 
-Builds all-in-one `.deb` packages for GitHub release downloads until an apt
-repository is available. Two variants are published:
+Builds all-in-one `.deb` packages. The [roojs APT repository](https://roojs.github.io/repos/)
+is the install path for users (`apt-get update && apt-get install ollmchat`).
+GitHub Releases still attach the same `.deb` files. Two variants are published:
 
 | Package | Script | `local_gguf` | Use when |
 |---------|--------|--------------|----------|
@@ -29,8 +30,8 @@ and includes libllama when it is found on the build host.
 **ollmchat** (with libllama):
 
 ```bash
+# libllama-dev from https://roojs.github.io/repos/ (CI: scripts/ci/enable-roojs-apt.sh)
 ./debian/use-monolithic-package.sh   # already the default in git
-# libllama-dev required; see scripts/fetch-libllama.sh on older distros
 dpkg-buildpackage -us -uc -b
 ```
 
@@ -45,8 +46,8 @@ dpkg-buildpackage -us -uc -b
 Build both release packages (clean rebuild between variants):
 
 ```bash
+# Add https://roojs.github.io/repos/ first (CI: scripts/ci/enable-roojs-apt.sh)
 ./debian/use-monolithic-package.sh
-./scripts/fetch-libllama.sh   # if libllama-dev is not in apt
 dpkg-buildpackage -us -uc -b
 rm -rf build
 ./debian/use-monolithic-remote-only-package.sh
@@ -107,14 +108,14 @@ When using split packages, the source builds:
 Building packages
 -----------------
 
-1. Install build dependencies:
+1. Install build dependencies on Debian 13 or Ubuntu 25.04+ (add the [roojs APT source](https://roojs.github.io/repos/) first so `libllama-dev` resolves; GitHub Actions uses `scripts/ci/enable-roojs-apt.sh`):
    ```bash
    sudo apt-get install build-essential devscripts debhelper meson ninja-build \
      pkg-config valac libgee-0.8-dev libglib2.0-dev libjson-glib-dev \
      libsoup-3.0-dev libxml2-dev libsqlite3-dev \
      libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev gobject-introspection \
      libgirepository1.0-dev libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
-     libopenblas-dev liblapack-dev libfaiss-dev
+     libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
    ```
 
 2. Build the packages:

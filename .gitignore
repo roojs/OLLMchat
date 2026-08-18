@@ -7,6 +7,7 @@ dist-*/
 .android-tools/
 .pixiewood/
 .buildconfig
+.rpmbuild/
 subprojects/
 
 # Downloaded for Windows portable bundle (see scripts/build-windows-dir.sh)

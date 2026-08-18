@@ -81,6 +81,7 @@ Online API documentation is available:
 
 Implementation plans and roadmap:
 
+- **[Building from source](docs/BUILD.md)** - Meson/Ninja, dependencies, and uninstalled runs
 - **[Implementation Plans Summary](docs/plans/1.0-summary.md)** - Overview of all planned features with status indicators
 - **[MCP server settings](docs/mcp-settings.md)** - How to configure `mcp.json` for Model Context Protocol tools
 - **[Binary RPC wire format](docs/bin-rpc-protocol.md)** - On-the-wire layout for `ollmfilesd` ↔ client (`libocrpc`)
@@ -88,166 +89,66 @@ Implementation plans and roadmap:
 Development standards (written for AI agents; **mandatory** for agents, helpful guides for human contributors):
 
 - **[Coding standards](docs/coding-standards.md)** - Vala style and patterns
-- **[Build rules](docs/build-rules.md)** - Meson/Ninja build workflow
+- **[Build rules](docs/build-rules.md)** - Meson/Ninja workflow for agents
 - **[Code documentation](docs/code-documentation.md)** - Valadoc markup for docblocks
 - **[Guide to writing plans](docs/guide-to-writing-plans.md)** - Plan layout, checklist, and implementation workflow
 - **[Creating releases](docs/creating-releases.md)** - How tagged releases and CI packaging work
 
 ## Releases
 
-**Alpha binaries** are published on GitHub: **[Releases](https://github.com/roojs/OLLMchat/releases)**. All current installable builds are pre-release quality — expect bugs and missing polish.
+Packages are published from [roojs/repos](https://github.com/roojs/repos)
+at **https://roojs.github.io/repos/**. All current builds are pre-release quality — expect bugs and missing polish.
+
+### APT (Debian / Ubuntu)
+
+Debian 13 (`trixie`). Ubuntu 25.04 (`plucky`), 25.10 (`questing`), 26.04
+(`resolute`). Architectures: `amd64`, `arm64`.
+
+Add the signing key and the sources file, replacing `@suite@` with your
+suite from `lsb_release -cs`:
+
+```bash
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://roojs.github.io/repos/key.gpg \
+  | sudo gpg --dearmor -o /etc/apt/keyrings/roojs.gpg
+
+curl -fsSL https://roojs.github.io/repos/sources \
+  | sed "s/@suite@/$(lsb_release -cs)/" \
+  | sudo tee /etc/apt/sources.list.d/roojs.sources
+
+sudo apt update
+sudo apt install ollmchat
+```
+
+(`ollmchat-remote-only` is the same app without libllama / local GGUF.)
+
+### DNF (Fedora)
+
+Fedora 44.
+
+```bash
+sudo curl -fsSL https://roojs.github.io/repos/key.gpg \
+  -o /etc/pki/rpm-gpg/RPM-GPG-KEY-roojs
+sudo curl -fsSL https://roojs.github.io/repos/repo \
+  -o /etc/yum.repos.d/roojs.repo
+sudo dnf makecache
+sudo dnf install ollmchat
+```
+
+More details (supported suites, openSUSE Tumbleweed, package list, and
+repository layout) are on the [roojs package repositories](https://roojs.github.io/repos/) page.
+
+AppImage, Windows, and the Android POC APK are still on GitHub: **[Releases](https://github.com/roojs/OLLMchat/releases)**.
 
 | Format | Platforms |
 |--------|-----------|
+| **APT** (`ollmchat`) | Debian / Ubuntu amd64 (also arm64 libs in the repo) |
+| **RPM** (`ollmchat`) | Fedora 44 and openSUSE Tumbleweed x86_64 |
 | **AppImage** | Linux x86_64 and aarch64 |
-| **Debian package** (`.deb`, all-in-one) | Debian/Ubuntu amd64 |
 | **Windows installer** (`.exe`) | Windows x86_64 |
+| **Android APK** | arm64-v8a remote-chat POC (sideload) |
 
-Download the assets attached to the latest tagged release (for example `v1.0.x-alpha`).
-
-**Debian/Ubuntu (amd64):** download the single **`ollmchat_*.deb`** all-in-one package, then:
-
-```bash
-sudo apt install ./ollmchat_*.deb
-```
-
-(`apt install` resolves system dependencies; `sudo dpkg -i ollmchat_*.deb` followed by `sudo apt install -f` also works.)
-
-To build from source instead, see below.
-
-## Build Instructions
-
-This directory contains the OLLMchat library and test applications for working with Ollama API and prompt generation. Building from source is optional if you use a release binary above.
-
-## Dependencies
-
-Before building, install the required dependencies. On Debian/Ubuntu systems:
-
-### Basic Build Dependencies
-
-```bash
-sudo apt install \
-  meson \
-  ninja-build \
-  valac \
-  valadoc \
-  libgee-0.8-dev \
-  libglib2.0-dev \
-  libgtk-4-dev \
-  libgtksourceview-5-dev \
-  libadwaita-1-dev \
-  libwebkitgtk-6.0-dev \
-  libatspi2.0-dev \
-  libsoup-3.0-dev \
-  libjson-glib-dev \
-  libxml2-dev \
-  libsqlite3-dev \
-  libgit2-glib-1.0-dev \
-  libseccomp-dev \
-  gobject-introspection \
-  libgirepository1.0-dev \
-  libomp-dev \
-  libblas-dev \
-  liblapack-dev \
-  libopenblas-dev \
-  libfaiss-dev \
-  libtree-sitter-dev \
-  desktop-file-utils \
-  bubblewrap \
-  build-essential \
-  pkg-config
-```
-
-- **libwebkitgtk-6.0-dev** / **libatspi2.0-dev** — Linux browser tool (`libocwebkit`; WebKitGTK + AT-SPI a11y)
-- **libseccomp-dev** — sandbox syscall reporting (`libocbwrap`)
-- **bubblewrap** — `bwrap` for sandboxed `run_command` and MCP stdio servers
-- **libblas-dev** / **liblapack-dev** / **libopenblas-dev** — required to link FAISS (`libocvector2` / semantic search). Meson accepts either OpenBLAS or the reference BLAS/LAPACK packages; install all three as above so setup does not fail if one provider is missing. A configure line `Library openblas found: NO` is fine only when `blas`/`lapack` were found instead.
-
-**For code search functionality**, you'll also need:
-
-- **Tree-sitter language parsers**: Install tree-sitter parsers for the languages you want to index. A script is available at `docs/tools/tree-sitter-packages.php` to generate Debian packages for tree-sitter language parsers from GitHub repositories.
-
-- **Ollama models**: For vector search to work, you need to have the following models available in Ollama:
-  - `bge-m3:latest` - For generating embeddings
-  - `qwen3-coder:30b` - For code analysis and description generation
-
-You can download these models through the settings dialog in the application, or manually using:
-```bash
-ollama pull bge-m3:latest
-ollama pull qwen3-coder:30b
-```
-
-### MCP servers (`libocmcp`)
-
-MCP tools are optional. See **[MCP server settings](docs/mcp-settings.md)** for `~/.config/ollmchat/mcp.json` format, stdio vs HTTP, sandbox options (`network`, `allow_write`, `allow_unsandboxed`), and examples.
-
-## Building
-
-To build the project, follow these steps:
-
-### 1. Setup the build directory
-
-From the project root directory, run:
-
-```bash
-meson setup build --prefix=/usr
-```
-
-This will configure the build system with Meson and set the installation prefix to `/usr`.
-
-### 2. Compile the project
-
-After setup, compile the project using:
-
-```bash
-ninja -C build
-```
-
-This will build:
-- `libocmarkdown.so` - Markdown parsing library (with headers, VAPI, and GIR files)
-- `libocmarkdowngtk.so` - Markdown GTK rendering library (with headers, VAPI, and GIR files)
-- `libocsqlite.so` - SQLite query builder library (with headers, VAPI, and GIR files)
-- `libocrpc.so` - Binary RPC wire library (with headers, VAPI, and GIR files)
-- `libocfiles.so` - File and project management library (with headers, VAPI, and GIR files)
-- `libocvector2.so` - Vector index/search for the file daemon (with headers, VAPI, and GIR files)
-- `liboccoder.so` - Code editor and project management library (with headers, VAPI, and GIR files)
-- `libocvector.so` - Semantic codebase search library (with headers, VAPI, and GIR files)
-- `libollmchat.so` - Base library for LLM API access (with headers, VAPI, and GIR files)
-- `liboctools.so` - Tools library for file operations and utilities (with headers, VAPI, and GIR files)
-- `libocmcp.so` - MCP client library (with headers, VAPI, and GIR files)
-- `libollmchatgtk.so` - GTK library with chat widgets (with headers, VAPI, and GIR files)
-- `ollmfilesd` - File and semantic-index daemon executable
-- `ollmchat` - Main application executable
-- `ollmchat-cli` - Command-line LLM chat and agent-tool executable
-- `oc-markdown-test` - Markdown parser test executable
-- `oc-html2md` - HTML to Markdown converter (reads from stdin)
-- `oc-md2html` - Markdown to HTML converter (takes file as argument)
-- `oc-diff` - Unified diff tool (compares two files and outputs differences)
-- `oc-vector-index` - Vector indexing tool for codebase search (indexes files/folders for semantic search)
-- `oc-vector-search` - Command-line semantic code search tool
-- `oc-migrate-editors` - Project migration tool
-- `oc-test-fetch` - Web fetch test tool (fetches web content from URLs)
-- Valadoc documentation (in `docs/ollmchat/`)
-
-### 3. Running executables without installing
-
-The executables are configured with `build_rpath` so they can find the libraries in the build directory without needing to install them. Wrapper scripts are automatically created in the top-level `build/` directory for easy access:
-
-```bash
-# Run from top-level build directory
-# Note: For testing uninstalled, use the executables directly
-./build/ollmchat.bin
-./build/ollmchat-cli --help
-./build/oc-markdown-test
-./build/oc-html2md
-./build/oc-md2html
-./build/oc-diff file1.txt file2.txt
-./build/oc-vector-index --help
-./build/oc-vector-search --help
-./build/oc-test-fetch https://example.com
-```
-
-The wrapper scripts are automatically generated during the build process and set up the library paths correctly. Note that only `ollmchat` has a `.bin` wrapper; the other executables can be run directly from the build directory.
+To build from source instead, see **[docs/BUILD.md](docs/BUILD.md)**.
 
 ## Project Structure
 
@@ -313,7 +214,7 @@ The project is organized into component directories, each with its own `meson.bu
     - `RequestCodebaseSearch.vala` - Request handling for codebase search tool
   - Uses `libocfiles` (OLLMfiles namespace) for file tracking and project management
   - Example tool: `oc-vector-index` - Command-line tool for indexing files/folders
-  - **Tree-sitter Language Support**: A script is available at `docs/tools/tree-sitter-packages.php` to generate Debian packages for tree-sitter language parsers. This script automates building Debian packages for various tree-sitter parsers from GitHub repositories, making it easy to install language support for the vector indexing system.
+  - **Tree-sitter language support**: Parser packages (`libtree-sitter-vala`, `libtree-sitter-python`, …) come from the [roojs APT/DNF repositories](https://roojs.github.io/repos/).
 
 **Vector Search Library v2 (`libocvector2.so`):**
 - `libocvector2/` - Slim FAISS index/search for `ollmfilesd` (libocvector2.so, namespace: `OLLMvector2`)
@@ -371,17 +272,4 @@ The project is organized into component directories, each with its own `meson.bu
 This project is licensed under the GNU Lesser General Public License version 3.0 (LGPL-3.0). See the [LICENSE](LICENSE) file for details.
 
 **Exceptions** (third-party / derived files, e.g. Pi MIT prompt text): see [`licenses/README.md`](licenses/README.md).
-
-
-## Notes
-
-- The build system uses Meson and Ninja with a modular structure
-- Each library component has its own directory with its own `meson.build` file
-- Resources are compiled into the binary using GLib's resource system
-- The prompt system loads agent-specific sections from resource files
-- Libraries are built as shared libraries with C headers, VAPI files, and GObject Introspection (GIR) files
-- Markdown functionality is split into separate libraries (libocmarkdown and libocmarkdowngtk) for better modularity
-- SQLite functionality is in a separate library (libocsqlite) for reuse
-- Valadoc documentation is automatically generated in `docs/ollmchat/` (unified documentation for all libraries)
-- Build order is managed automatically by Meson based on dependencies
 

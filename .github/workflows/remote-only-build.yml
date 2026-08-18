@@ -9,15 +9,25 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    container:
+      image: ubuntu:25.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      TZ: UTC
 
     steps:
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates curl
+
       - name: Checkout repository
         uses: actions/checkout@v6
 
       - name: Install build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          apt-get update
+          apt-get install -y --no-install-recommends \
             build-essential \
             ca-certificates \
             curl \
@@ -25,6 +35,7 @@ jobs:
             libadwaita-1-dev \
             libblas-dev \
             libcairo2-dev \
+            libfaiss-dev \
             libffi-dev \
             libgee-0.8-dev \
             libgirepository1.0-dev \
@@ -45,26 +56,6 @@ jobs:
             ninja-build \
             pkg-config \
             valac
-
-      # Ubuntu 24.04 does not ship libfaiss-dev. Match the existing release and
-      # documentation workflows by installing the current Debian amd64 package.
-      - name: Install libfaiss-dev from Debian
-        run: |
-          set -euo pipefail
-          POOL="https://deb.debian.org/debian/pool/main/f/faiss"
-          deb=$(curl -fsSL "$POOL/" \
-            | grep -oE 'href="libfaiss-dev_[^"]+_amd64\.deb"' \
-            | sed 's/^href="//;s/"$//' \
-            | sort -V \
-            | tail -n1)
-          if [ -z "${deb}" ]; then
-            echo "Could not find libfaiss-dev_*_amd64.deb under ${POOL}" >&2
-            exit 1
-          fi
-          echo "Using Debian package: ${deb}"
-          curl -fsSL "$POOL/${deb}" -o /tmp/libfaiss-dev.deb
-          sudo apt-get install -y libfaiss1 || true
-          sudo dpkg -i /tmp/libfaiss-dev.deb || sudo apt-get install -f -y
 
       - name: Configure remote-only build
         run: |

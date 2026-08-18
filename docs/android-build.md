@@ -251,8 +251,9 @@ Successful debug builds produce APKs under:
 **Debug stripped (release tags only):** GitHub Release builds set
 `PIXIEWOOD_STRIP_DEBUG=1`, which passes `-Dstrip=true` to Meson while keeping
 `--buildtype debug`. Pixiewood strips native libraries during `meson install`
-before Gradle packages the APK. The release asset is named
-`ollmchat-android-<tag>-debug-stripped.apk`. Manual **Android build** workflow
+before Gradle packages the APK. Tag releases attach
+`ollmchat-android-<tag>-debug.apk` (for example `ollmchat-android-v1.3.0-debug.apk`).
+Manual **Android build** workflow
 runs and local builds pass `-Dstrip=false` on every reconfigure so native debug
 symbols are kept for testing (Meson otherwise retains `strip=true` from a prior
 release configure).
@@ -369,6 +370,9 @@ no-GGUF path keeps compiling without requiring libllama packages.
 
 ### Android build workflow
 
+The **Release** workflow also builds this APK and, on a tag, attaches it to
+the GitHub Release next to the desktop packages.
+
 The **Android build** workflow builds the remote chat POC on demand:
 
 1. Open GitHub Actions.
@@ -393,8 +397,7 @@ The job provides:
   `.android-tools/` when the system Meson is too old
 - Pixiewood packaging through `android/pixiewood-chat-poc.xml` (GTK stack plus
   openssl/glib-networking for HTTPS via libsoup)
-- restore/save caching for the SDK, Pixiewood/GTK tree, and Gradle (same
-  pattern as the Debian extra-package cache in `release.yml`)
+- restore/save caching for the SDK, Pixiewood/GTK tree, and Gradle
 - a CI check that the APK contains `libollmchat-android-poc.so`,
   `libollmchat.so`, `assets/share/gio/modules/libgioopenssl.so`, and curated icons
   from `android/icons/manifest` under `assets/share/icons/Adwaita/`

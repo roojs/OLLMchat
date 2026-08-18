@@ -26,71 +26,34 @@ on:
       - 'docs/fix-valadoc-index-links.sh'
       - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:
-    inputs:
-      refresh_cache:
-        description: Rebuild Debian extra-package download cache from scratch
-        type: boolean
-        default: false
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
-env:
-  DEB_CACHE_DIR: .ci-cache/debian-debs-amd64
-
 jobs:
   build:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu:25.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      TZ: UTC
     steps:
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates curl
+
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Restore Debian extra package download cache
-        id: restore-deb-cache
-        uses: actions/cache/restore@v6
-        with:
-          path: ${{ env.DEB_CACHE_DIR }}
-          key: debian-extra-debs-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('scripts/ci/debian-pool-deb.sh', 'scripts/ci/install-libfaiss-dev-debian.sh') }}
-          restore-keys: |
-            debian-extra-debs-v1-stable-
-            debian-extra-debs-v1-
-
-      - name: Install libfaiss-dev from Debian
-        id: install-faiss
-        env:
-          DEB_CACHE_DIR: ${{ github.workspace }}/${{ env.DEB_CACHE_DIR }}
-        run: ./scripts/ci/install-libfaiss-dev-debian.sh
-
-      - name: Detect Debian extra package cache
-        if: always()
-        id: deb-cache
-        run: |
-          if [ -d "$DEB_CACHE_DIR" ] && find "$DEB_CACHE_DIR" -type f -name '*.deb' -print -quit | grep -q .; then
-            echo "save=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "save=false" >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          DEB_CACHE_DIR: ${{ env.DEB_CACHE_DIR }}
-
-      - name: Save Debian extra package download cache
-        if: always() && steps.deb-cache.outputs.save == 'true' && steps.restore-deb-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ${{ env.DEB_CACHE_DIR }}
-          key: debian-extra-debs-v1-stable-${{ hashFiles('scripts/ci/debian-pool-deb.sh', 'scripts/ci/install-libfaiss-dev-debian.sh') }}
-
       - name: Install build dependencies
         run: |
-          # Enable universe for GTK/Vala/doc tooling (faiss comes from Debian above)
-          sudo apt-get update
-          sudo apt-get install -y software-properties-common
-          sudo add-apt-repository universe -y
-          sudo apt-get update
-          sudo apt-get install -y \
+          apt-get update
+          apt-get install -y --no-install-recommends \
             meson \
             ninja-build \
             valac \
@@ -114,6 +77,7 @@ jobs:
             liblapack-dev \
             libseccomp-dev \
             libtree-sitter-dev \
+            libfaiss-dev \
             desktop-file-utils \
             build-essential \
             pkg-config

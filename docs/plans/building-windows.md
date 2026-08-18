@@ -202,7 +202,7 @@ Both can share the same `build-windows-x86_64/` compile tree; running win-nsis a
 Extract from creating-releases.md § “Local packaging”:
 
 - AppImage: `sqgipkg --target appimage --appimage-arch …`
-- Debian: faiss-from-Debian preamble + `dpkg-buildpackage` (or link README.packaging.md)
+- Debian: add the APT source from https://roojs.github.io/repos/ then `dpkg-buildpackage` (or link `debian/README`; CI uses `scripts/ci/enable-roojs-apt.sh`)
 
 creating-releases.md then ends with: *“For local builds see [building-windows.md](building-windows.md) and [building-linux.md](building-linux.md).”*
 

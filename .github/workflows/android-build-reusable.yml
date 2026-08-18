@@ -8,7 +8,7 @@ on:
         type: boolean
         default: false
       upload_to_release:
-        description: Upload the APK to the matching GitHub Release (tag pushes only)
+        description: Strip debug symbols on the APK (smaller download for GitHub Releases)
         type: boolean
         default: false
       non_blocking:
@@ -307,41 +307,27 @@ jobs:
           key: pixiewood-build-v3-${{ env.PIXIEWOOD_DEPS_HASH }}-${{ env.PIXIEWOOD_APP_HASH }}-${{ github.run_id }}
 
       - name: Collect APK artifact
+        id: collect-apk
         run: |
+          set -euo pipefail
           mkdir -p android-artifacts
-          cp .pixiewood/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk \
-            android-artifacts/ollmchat-android-poc-debug.apk
+          src=.pixiewood/android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            dest="android-artifacts/ollmchat-android-${GITHUB_REF_NAME}-debug.apk"
+          else
+            dest="android-artifacts/ollmchat-android-poc-debug.apk"
+          fi
+          cp "$src" "$dest"
           ls -lh android-artifacts
+          echo "apk_path=$dest" >> "$GITHUB_OUTPUT"
 
       - name: Verify APK contains application and chat libraries
-        run: scripts/android/verify-apk.sh android-artifacts/ollmchat-android-poc-debug.apk
+        run: scripts/android/verify-apk.sh "${{ steps.collect-apk.outputs.apk_path }}"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ollmchat-android-apk
-          path: android-artifacts/ollmchat-android-poc-debug.apk
+          name: ollmchat-android
+          path: android-artifacts/*.apk
           archive: false
           if-no-files-found: error
-
-      - name: Upload APK to GitHub Release
-        if: inputs.upload_to_release && startsWith(github.ref, 'refs/tags/')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
-          release_apk="android-artifacts/ollmchat-android-${tag}-debug-stripped.apk"
-          cp android-artifacts/ollmchat-android-poc-debug.apk "$release_apk"
-          for attempt in $(seq 1 90); do
-            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-              gh release upload "$tag" "$release_apk" \
-                --repo "$GITHUB_REPOSITORY" \
-                --clobber
-              exit 0
-            fi
-            echo "Release $tag not ready yet (attempt $attempt/90); waiting 60s..."
-            sleep 60
-          done
-          echo "Timed out waiting for GitHub Release $tag" >&2
-          exit 1

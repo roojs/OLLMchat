@@ -199,5 +199,5 @@ Enable debug logging when running from a terminal to see messages such as `Loade
 ## Related
 
 - Library: `libocmcp` (`OLLMmcp.*`)
-- README: [MCP servers section](../README.md#mcp-servers-libocmcp)
+- Source build: [BUILD.md](BUILD.md)
 - Plans: [done/2.11-DONE-mcp-loader-tool.md](plans/done/2.11-DONE-mcp-loader-tool.md)

@@ -1,116 +1,102 @@
 # Creating Releases
 
-OLLMchat publishes installable builds through **GitHub Releases**, driven by **git tags**. Pushing a version tag starts CI, which builds the binaries and attaches them to a release on GitHub.
+Users install OLLMchat from the **[roojs package repositories](https://roojs.github.io/repos/)** (`apt-get` / `dnf` / `zypper`). GitHub Releases still attach the same `.deb` / `.rpm` files plus AppImage, Windows, and Android builds.
 
-For more detail on the Debian package layout and local builds, see [README.packaging.md](../README.packaging.md).
+For Debian package layout and local `.deb` builds, see [`debian/README`](../debian/README). RPM packaging lives under [`packaging/rpm/`](../packaging/rpm/).
 
 ## How it works
 
 The [Release workflow](../.github/workflows/release.yml) runs when:
 
-- a tag matching `v*` is pushed (for example `v1.0.3-alpha`), or
+- a tag matching `v*` is pushed (run **`./scripts/release.sh`** — humans only), or
 - the workflow is started manually from the GitHub Actions UI (**workflow_dispatch**).
 
-On **ubuntu-24.04**, CI:
+CI then:
 
-1. Checks out OLLMchat and [sqgi](https://github.com/supercamel/sqgi) (runtime + `sqgipkg`).
-2. Installs build dependencies (Meson, Vala, cross-compilers, OpenBLAS, FAISS, and so on).
-3. Builds and installs sqgi.
-4. Runs `sqgipkg` to produce:
-   - Linux **x86_64** AppImage
-   - Linux **aarch64** AppImage
-   - Windows **NSIS** installer (`.exe`)
-5. Runs `dpkg-buildpackage` to produce **Debian packages** (amd64 only — see below).
-6. Uploads the artifacts to the workflow run.
-7. If the run was triggered by a tag push, creates or updates the matching **GitHub Release** and uploads the files as release assets.
-8. On tag pushes, also runs the **Android APK** build in parallel (via a reusable workflow). When the APK is ready, CI uploads a **debug-stripped** APK (`ollmchat-android-<tag>-debug-stripped.apk`) to the same GitHub Release — still a debug Gradle build and debug signing, but native debug symbols are stripped to reduce size. Android failures do not block desktop publishing or changelog finalization. Use the manual **Android build** workflow for a full-symbol debug APK while testing.
+1. Builds **Debian** packages on Ubuntu 25.04 (`ollmchat` and `ollmchat-remote-only`) using the [roojs APT repo](https://roojs.github.io/repos/) for `libllama-dev`.
+2. Builds **RPMs** on **Fedora 44** (`.fc44.` filenames) and **openSUSE Tumbleweed** (no `.fc` tag) from the same spec.
+3. Builds Linux AppImages and the Windows installer with sqgipkg (Ubuntu 24.04; FAISS is built from source for those bundles).
+4. Builds the **Android** remote-chat POC APK (`ollmchat-android-v*-debug.apk`). A Pixiewood failure does not block the other packages.
+5. On a tag push, publishes those files to the GitHub Release (including the APK when the Android job succeeded).
 
-AppImage and Windows packaging is configured in [`sqgipkg.json`](../sqgipkg.json). Debian packaging lives under [`debian/`](../debian/).
+AppImage and Windows packaging is configured in [`sqgipkg.json`](../sqgipkg.json). Debian packaging lives under [`debian/`](../debian/). The RPM spec is [`packaging/rpm/ollmchat.spec`](../packaging/rpm/ollmchat.spec).
 
-### Debian vs AppImage / Windows
+Fedora 44 is the RPM base. openSUSE uses the same spec; CI does **not** share one binary RPM between the two (Fedora dist tag vs Tumbleweed filename). The repos project already routes `.fcN.` files to `rpm/fcN/` and untagged RPMs to `rpm/tumbleweed/`.
+
+### Debian vs RPM vs AppImage / Windows / Android
 
 | Format | Architectures | libllama | Notes |
 |--------|---------------|----------|-------|
-| AppImage | x86_64, aarch64 | No | Self-contained; remote backends only (`OLLMchat-remote-only-*.AppImage`) |
-| `.deb` | amd64 | **ollmchat**: yes · **ollmchat-remote-only**: no | See [`debian/README`](../debian/README) |
-| Windows `.exe` | x86_64 | No | NSIS installer via sqgipkg (`OLLMchat-remote-only-Setup.exe`) |
+| APT / `.deb` | amd64 | **ollmchat**: yes · **ollmchat-remote-only**: no | Users: `apt-get update && apt-get install ollmchat` after adding [the repo](https://roojs.github.io/repos/) |
+| RPM | x86_64 | same two variants | Fedora 44 and openSUSE Tumbleweed; FAISS on Fedora comes from the roojs repo (nicked from Tumbleweed) |
+| AppImage | x86_64, aarch64 | No | Self-contained; remote backends only |
+| Windows `.exe` | x86_64 | No | NSIS installer via sqgipkg |
+| Android `.apk` | arm64-v8a | No | Remote-chat POC; sideload from GitHub Releases |
 
-Release builds use the **monolithic** Debian layout (see [`debian/README`](../debian/README)): **`ollmchat_*.deb`** (with libllama) and **`ollmchat-remote-only_*.deb`**. Split library packages under `debian/split/` are for a future apt repository, not GitHub release downloads.
+Release `.deb` files use the **monolithic** Debian layout (see [`debian/README`](../debian/README)). Split library packages under `debian/split/` are for the apt repository layout, not GitHub release downloads.
 
 ### Changelog (single source of truth)
 
-Release notes for packaging live in [`CHANGELOG.md`](../CHANGELOG.md) at the repository root.
-[`debian/changelog`](../debian/changelog) is **generated** from it — do not edit `debian/changelog` by hand.
+Release notes live in [`CHANGELOG.md`](../CHANGELOG.md). `debian/changelog` and the RPM `%changelog` are **generated** from it — do not edit those by hand.
 
-While developing, add entries under **`## [Unreleased]`** in `CHANGELOG.md`, then regenerate:
+While developing, add bullets under **`## [Unreleased]`**. When the release is ready, rename that heading to the version (Keep a Changelog still uses brackets), for example `## [1.2.5-alpha] - Unreleased`.
+
+Regenerate Debian packaging locally with:
 
 ```bash
 ./scripts/release/sync-debian-changelog.sh
 ```
 
-**Tag push (release attempt):**
+**Tag push (via `scripts/release.sh`):**
 
-1. CI reads `[Unreleased]` and builds `.deb` files labelled with the tag version (e.g. `v1.2.5-alpha` → `1.2.5~alpha-1`). This happens **only in the CI workspace** — nothing is committed yet.
-2. GitHub Release notes are rendered from the same `[Unreleased]` content (via `scripts/release/render-release-notes.sh`), not from git commits.
-3. If the workflow **fails** (build error, publish error, etc.), `CHANGELOG.md` on `main` is unchanged. Fix the problem, push, and re-tag or re-run — you will not accumulate failed-release entries in the changelog history.
-4. If the workflow **succeeds** (build + GitHub Release publish), CI runs **`finalize-changelog.sh`**, which promotes `[Unreleased]` to a dated `[1.2.5-alpha]` section, clears `[Unreleased]`, regenerates `debian/changelog`, and commits to `main`.
+1. CI reads the versioned heading, checks it matches the tag (`v1.2.5-alpha` → `1.2.5-alpha` → Debian/RPM `1.2.5~alpha-1`), and copies notes into Debian and RPM packaging **in the CI workspace**.
+2. GitHub Release notes come from that same section (`scripts/release/render-release-notes.sh`), not from git commits.
+3. If the workflow **fails**, `CHANGELOG.md` on `main` is unchanged.
+4. If it **succeeds**, CI runs **`finalize-changelog.sh`**, stamps the date on `[1.2.5-alpha]`, inserts a fresh `[Unreleased]` heading, regenerates `debian/changelog`, and commits to `main`.
 
-Manual **workflow_dispatch** runs use whatever is already in `CHANGELOG.md` (including `[Unreleased]`) and do **not** finalize the changelog.
+Manual **workflow_dispatch** runs do **not** finalize the changelog.
+
+Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must not be worked around).
 
 ## Making a release
 
-1. **Finish the release on `main`.** Merge or commit everything that should ship.
+1. **Finish the release on `main`.** Commit everything that should ship.
 
-2. **Update `CHANGELOG.md`.** Ensure `[Unreleased]` lists everything since the last release.
+2. **Update `CHANGELOG.md`.** Put the notes under `## [1.2.5-alpha] - Unreleased` (version in the heading).
 
-3. **Choose a tag name.** Use semantic versioning with a `v` prefix. Pre-releases use a suffix such as `-alpha`, for example `v1.2.5-alpha`. Tags must match `v*` or the workflow will not run automatically.
-
-4. **Create and push the tag:**
+3. **Run the human-only release script:**
 
    ```bash
-   git tag v1.2.5-alpha;  git push origin --tags
+   ./scripts/release.sh
    ```
 
-   A lightweight tag is enough — CI triggers on the tag name. The GitHub Release **title** is the tag (e.g. `v1.2.5-alpha`); **notes** come from `CHANGELOG.md`, not from the tag or any `-m` message. You can add `-a` and `-m "…"` if you want a note in `git show v1.2.5-alpha`, but it does not affect the published release.
+   It checks a clean tree, refuses an empty notes section, creates an annotated `v1.2.5-alpha` tag, and pushes the branch plus tag. Do not tag by hand unless you are doing the same checks.
 
-5. **Watch CI.** Open **Actions → Release** on GitHub and wait for the job to finish.
+4. **Watch CI.** Open **Actions → Release** on GitHub and wait for Debian, Fedora 44, openSUSE, AppImage/Windows, Android, and publish to finish.
 
-6. **Check the release.** When the workflow succeeds, GitHub should have a release named after the tag (for example `v1.2.5-alpha`) with these assets:
+5. **Check the release** and [roojs.github.io/repos](https://roojs.github.io/repos/) after the repos publish job picks up the new GitHub assets.
 
    | File | Platform |
    |------|----------|
    | `OLLMchat-remote-only-x86_64.AppImage` | Linux 64-bit (Intel/AMD); remote backends only |
    | `OLLMchat-remote-only-aarch64.AppImage` | Linux 64-bit (ARM); remote backends only |
    | `OLLMchat-remote-only-Setup.exe` | Windows installer; remote backends only |
-   | `ollmchat_*.deb` | All-in-one package with local GGUF (Debian/Ubuntu amd64) |
-   | `ollmchat-remote-only_*.deb` | All-in-one package without libllama (Debian/Ubuntu amd64) |
-   | `ollmchat-android-v*-debug.apk` | Android remote chat POC (arm64 debug APK; may appear shortly after the desktop assets) |
+   | `ollmchat_*.deb` / `ollmchat-remote-only_*.deb` | Debian/Ubuntu amd64 |
+   | `ollmchat-*.fc44.*.rpm` | Fedora 44 |
+   | `ollmchat-*.x86_64.rpm` (no `.fc`) | openSUSE Tumbleweed |
+   | `ollmchat-android-v*-debug.apk` | Android remote-chat POC (arm64; sideload) |
 
-   Release notes on GitHub come from the **`[Unreleased]`** section of `CHANGELOG.md` (not from commit messages).
-   After a **successful** publish, that section is promoted to a dated version entry and committed to `main`.
+### Installing from the package repositories
 
-### Installing Debian packages from a release
-
-Download **`ollmchat_*.deb`** (local GGUF via libllama) or **`ollmchat-remote-only_*.deb`** (remote backends only) from the release. The two packages conflict; install one or the other.
-
-With libllama:
+Add the APT or DNF source from [roojs.github.io/repos](https://roojs.github.io/repos/), then:
 
 ```bash
-sudo apt install ./ollmchat_*.deb
+sudo apt-get update && sudo apt-get install ollmchat
+sudo dnf install ollmchat
+sudo zypper install ollmchat
 ```
 
-Remote only:
-
-```bash
-sudo apt install ./ollmchat-remote-only_*.deb
-```
-
-Alternatively:
-
-```bash
-sudo dpkg -i ollmchat_*.deb    # or ollmchat-remote-only_*.deb
-sudo apt install -f
-```
+`ollmchat` and `ollmchat-remote-only` conflict; install one or the other.
 
 ## Manual builds (no release publish)
 
@@ -143,31 +129,30 @@ Outputs land under `dist-linux-x86_64/`, `dist-linux-aarch64/`, and `dist-window
 
 ### Debian packages
 
-Ubuntu does not ship a suitable `libfaiss-dev`; install the current Debian amd64 package first (same as CI and [deploy-docs.yml](../.github/workflows/deploy-docs.yml)):
+Build on Debian 13 (`trixie`) or Ubuntu 25.04+ (`plucky` / `questing` / `resolute`). Add the [roojs APT source](https://roojs.github.io/repos/) so `libllama-dev` resolves, then install build-depends and run `dpkg-buildpackage`. CI uses `scripts/ci/enable-roojs-apt.sh` for that first step.
 
 ```bash
-sudo apt-get install -y libblas-dev liblapack-dev libomp-dev
-POOL="https://deb.debian.org/debian/pool/main/f/faiss"
-deb=$(curl -fsSL "$POOL/" \
-  | grep -oE 'href="libfaiss-dev_[^"]+_amd64\.deb"' \
-  | sed 's/^href="//;s/"$//' \
-  | sort -V \
-  | tail -n1)
-curl -fsSL "$POOL/${deb}" -o /tmp/libfaiss-dev.deb
-sudo apt-get install -y libfaiss1 || true
-sudo dpkg -i /tmp/libfaiss-dev.deb || sudo apt-get install -f -y
-
 sudo apt-get install build-essential devscripts debhelper meson ninja-build \
-  pkg-config valac libgee-0.8-dev libglib2.0-dev libgobject-2.0-dev \
-  libgio-2.0-dev libjson-glib-dev libsoup-3.0-dev libxml2-dev libsqlite3-dev \
+  pkg-config valac libgee-0.8-dev libglib2.0-dev \
+  libjson-glib-dev libsoup-3.0-dev libxml2-dev libsqlite3-dev \
   libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev gobject-introspection \
   libgirepository1.0-dev libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
-  libopenblas-dev liblapack-dev
+  libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
 
 dpkg-buildpackage -us -uc -b
 ```
 
-The resulting `.deb` files are written to the parent directory. See [README.packaging.md](../README.packaging.md) for package descriptions and troubleshooting.
+The resulting `.deb` files are written to the parent directory. See [`debian/README`](../debian/README) for package layouts (monolithic vs split).
+
+### RPMs (Fedora 44 / openSUSE Tumbleweed)
+
+On the target distro (or a matching container):
+
+```bash
+./scripts/ci/build-rpm.sh
+```
+
+Artifacts land in `artifacts/`. Fedora 44 CI enables the [roojs DNF repo](https://roojs.github.io/repos/) so `faiss-devel` is available (Fedora does not ship FAISS; Tumbleweed does). Do not build against Fedora 42.
 
 ## Re-uploading assets
 
