@@ -13,7 +13,7 @@ The [Release workflow](../.github/workflows/release.yml) runs when:
 
 CI then:
 
-1. Builds **Debian** packages on Ubuntu 25.04 (`ollmchat` and `ollmchat-remote-only`) using the [roojs APT repo](https://roojs.github.io/repos/) for `libllama-dev`.
+1. Builds **Debian** packages on Ubuntu 25.04 using the [roojs APT repo](https://roojs.github.io/repos/) for `libllama-dev`: split runtime/`-dev` libraries plus `ollmchat`, then a second **ollmchat-remote-only** all-in-one `.deb`.
 2. Builds **RPMs** on **Fedora 44** (`.fc44.` filenames) and **openSUSE Tumbleweed** (no `.fc` tag) from the same spec.
 3. Builds Linux AppImages and the Windows installer with sqgipkg (Ubuntu 24.04; FAISS is built from source for those bundles).
 4. Builds the **Android** remote-chat POC APK (`ollmchat-android-v*-debug.apk`). A Pixiewood failure does not block the other packages.
@@ -27,13 +27,13 @@ Fedora 44 is the RPM base. openSUSE uses the same spec; CI does **not** share on
 
 | Format | Architectures | libllama | Notes |
 |--------|---------------|----------|-------|
-| APT / `.deb` | amd64 | **ollmchat**: yes · **ollmchat-remote-only**: no | Users: `apt-get update && apt-get install ollmchat` after adding [the repo](https://roojs.github.io/repos/) |
-| RPM | x86_64 | same two variants | Fedora 44 and openSUSE Tumbleweed; FAISS on Fedora comes from the roojs repo (nicked from Tumbleweed) |
+| APT / `.deb` | amd64 | **split `ollmchat`**: yes · **ollmchat-remote-only**: no | Users: `apt-get update && apt-get install ollmchat` (or `libocrpc-dev`) after adding [the repo](https://roojs.github.io/repos/) |
+| RPM | x86_64 | same split + remote-only | Fedora 44 and openSUSE Tumbleweed; FAISS on Fedora comes from the roojs repo (nicked from Tumbleweed) |
 | AppImage | x86_64, aarch64 | No | Self-contained; remote backends only |
 | Windows `.exe` | x86_64 | No | NSIS installer via sqgipkg |
 | Android `.apk` | arm64-v8a | No | Remote-chat POC; sideload from GitHub Releases |
 
-Release `.deb` files use the **monolithic** Debian layout (see [`debian/README`](../debian/README)). Split library packages under `debian/split/` are for the apt repository layout, not GitHub release downloads.
+Release `.deb` files use the **split** Debian layout (runtime libraries, `-dev` packages, `ollmchat`, `ollmchat-tools`, `ollmchat-doc`) plus a conflicting **ollmchat-remote-only** all-in-one package. See [`debian/README`](../debian/README). The RPM spec ships the same split (`libocrpc`, `libocrpc-devel`, …) for the GGUF build and a single `ollmchat-remote-only` RPM without libllama.
 
 ### Changelog (single source of truth)
 
@@ -81,9 +81,9 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    | `OLLMchat-remote-only-x86_64.AppImage` | Linux 64-bit (Intel/AMD); remote backends only |
    | `OLLMchat-remote-only-aarch64.AppImage` | Linux 64-bit (ARM); remote backends only |
    | `OLLMchat-remote-only-Setup.exe` | Windows installer; remote backends only |
-   | `ollmchat_*.deb` / `ollmchat-remote-only_*.deb` | Debian/Ubuntu amd64 |
-   | `ollmchat-*.fc44.*.rpm` | Fedora 44 |
-   | `ollmchat-*.x86_64.rpm` (no `.fc`) | openSUSE Tumbleweed |
+   | `ollmchat_*.deb`, `liboc*_*.deb`, `liboll*_*.deb`, `ollmchat-remote-only_*.deb` | Debian/Ubuntu amd64 (split libs + app; remote-only is all-in-one) |
+   | `libocrpc-*.rpm`, `liboc*-*.rpm`, `liboll*-*.rpm`, `ollmchat-*.fc44.*.rpm` | Fedora 44 (split libs + app; plus `ollmchat-remote-only`) |
+   | same names without `.fc` | openSUSE Tumbleweed |
    | `ollmchat-android-v*-debug.apk` | Android remote-chat POC (arm64; sideload) |
 
 ### Installing from the package repositories
@@ -96,7 +96,7 @@ sudo dnf install ollmchat
 sudo zypper install ollmchat
 ```
 
-`ollmchat` and `ollmchat-remote-only` conflict; install one or the other.
+`ollmchat` and `ollmchat-remote-only` conflict; install one or the other. Split library packages (`libocrpc1`, `libocrpc-dev`, …) also conflict with `ollmchat-remote-only`.
 
 ## Manual builds (no release publish)
 
@@ -137,12 +137,13 @@ sudo apt-get install build-essential devscripts debhelper meson ninja-build \
   libjson-glib-dev libsoup-3.0-dev libxml2-dev libsqlite3-dev \
   libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev gobject-introspection \
   libgirepository1.0-dev libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
+  libwebkitgtk-6.0-dev libatspi2.0-dev \
   libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
 
 dpkg-buildpackage -us -uc -b
 ```
 
-The resulting `.deb` files are written to the parent directory. See [`debian/README`](../debian/README) for package layouts (monolithic vs split).
+The resulting `.deb` files are written to the parent directory. The default layout is **split** libraries plus `-dev` packages; see [`debian/README`](../debian/README).
 
 ### RPMs (Fedora 44 / openSUSE Tumbleweed)
 

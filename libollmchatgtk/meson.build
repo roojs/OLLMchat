@@ -148,6 +148,10 @@ if g_ir_compiler.found()
     'install -Dm644 "' + ollmchatgtk_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMchatGtk-1.0.gir"',
   )
 endif
+meson.add_install_script(
+  'sh', '-c',
+  'install -Dm644 "' + meson.current_build_dir() / 'ollmchatgtk.vapi' + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/vala/vapi/ollmchatgtk.vapi"',
+)
 
 ollmchatgtk_vapi_dep = declare_dependency(
   link_args: [

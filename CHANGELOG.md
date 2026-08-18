@@ -42,9 +42,10 @@ without promoting these notes.
 - **Android**: remote-only chat shell / POC APK — Config2, connections, default
   model, TLS, settings, browser host (`ollmapp/android/`)
 - **Packaging**: install from the [roojs repositories](https://roojs.github.io/repos/)
-  (`apt` / `dnf` / `zypper`). Debian `ollmchat` and `ollmchat-remote-only`;
-  Fedora 44 and openSUSE Tumbleweed RPMs. AppImage and Windows remain remote-only
-  GitHub assets
+  (`apt` / `dnf` / `zypper`). Debian and RPM ship split libraries plus `-dev` /
+  `-devel` packages (`libocrpc`, `libocrpc-dev`, …) alongside `ollmchat`;
+  `ollmchat-remote-only` remains an all-in-one package without libllama.
+  AppImage and Windows remain remote-only GitHub assets
 - **CI / release**: changelog-driven GitHub Release notes; tag builds attach
   Android debug APK; RPM jobs on Fedora 44 and Tumbleweed
 
@@ -59,6 +60,9 @@ without promoting these notes.
 - Chatter summarizer moved from `Chatter.Summarizer` to the shared agent class
 - Debian / docs / remote-only CI runs on Ubuntu 25.04 and installs `libllama-dev`
   from the roojs APT repo (no Debian-pool `.deb` hunting)
+- Debian and RPM default layouts split each library into a runtime package and
+  a `-dev` / `-devel` package (`libocrpc`, `libocrpc-dev`, …) so other apps can
+  reuse the RPC library from the roojs repositories
 
 ### Removed
 

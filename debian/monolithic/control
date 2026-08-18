@@ -16,6 +16,8 @@ Build-Depends: debhelper-compat (= 13),
                libgtk-4-dev,
                libgtksourceview-5-dev,
                libadwaita-1-dev,
+               libwebkitgtk-6.0-dev,
+               libatspi2.0-dev,
                gobject-introspection,
                libgirepository1.0-dev,
                libtree-sitter-dev,
@@ -45,5 +47,5 @@ Description: OLLMchat - LLM chat application (all-in-one, local GGUF)
  OpenAI-compatible HTTP APIs, and other remote backends.
  .
  For remote backends only (no local GGUF), install ollmchat-remote-only
- instead (see debian/README). Split library packages are available via
- debian/use-split-packages.sh.
+ instead (see debian/README). Split library packages are the default
+ layout (`debian/use-split-packages.sh`).

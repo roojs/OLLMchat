@@ -6,76 +6,57 @@ This directory contains the Debian packaging files for OLLMchat.
 Packaging modes
 ---------------
 
-Two layouts are maintained:
+Three layouts are maintained. The **split** layout is the default in git and
+what CI publishes to the [roojs APT repository](https://roojs.github.io/repos/).
 
-### Monolithic (default)
+### Split packages (default)
 
-Builds all-in-one `.deb` packages. The [roojs APT repository](https://roojs.github.io/repos/)
-is the install path for users (`apt-get update && apt-get install ollmchat`).
-GitHub Releases still attach the same `.deb` files. Two variants are published:
-
-| Package | Script | `local_gguf` | Use when |
-|---------|--------|--------------|----------|
-| **ollmchat** | `use-monolithic-package.sh` (default) | `enabled` | Local GGUF via libllama plus remote backends |
-| **ollmchat-remote-only** | `use-monolithic-remote-only-package.sh` | `disabled` | Ollama / OpenAI-compatible APIs only |
-
-The active variant is selected by the switch script, which copies the
-matching `control` and `.install` files and writes `debian/local-gguf`
-(`enabled` or `disabled`). `debian/rules` passes that to Meson as
-`-Dlocal_gguf=…`.
-
-A normal Meson build (outside Debian) uses `-Dlocal_gguf=auto` by default
-and includes libllama when it is found on the build host.
-
-**ollmchat** (with libllama):
+Builds separate runtime libraries, matching `-dev` packages, the application,
+tools, and examples. This is the layout other applications use to depend on
+`libocrpc-dev` (and the other libraries) without installing the whole app.
 
 ```bash
 # libllama-dev from https://roojs.github.io/repos/ (CI: scripts/ci/enable-roojs-apt.sh)
-./debian/use-monolithic-package.sh   # already the default in git
+./debian/use-split-packages.sh   # already the default in git
 dpkg-buildpackage -us -uc -b
 ```
 
-**ollmchat-remote-only**:
+### Monolithic (optional all-in-one)
+
+Single `ollmchat` `.deb` that bundles the application, shared libraries, GIR
+data, and command-line tools (local GGUF via libllama).
+
+```bash
+./debian/use-monolithic-package.sh
+dpkg-buildpackage -us -uc -b
+./debian/use-split-packages.sh   # switch back when done
+```
+
+### Remote-only (all-in-one, no libllama)
+
+Single `ollmchat-remote-only` `.deb` built with `-Dlocal_gguf=disabled`. It
+conflicts with `ollmchat` and with the split library packages (they cannot
+share `/usr/lib/*/libocrpc.so`).
 
 ```bash
 ./debian/use-monolithic-remote-only-package.sh
 dpkg-buildpackage -us -uc -b
-./debian/use-monolithic-package.sh   # switch back when done
+./debian/use-split-packages.sh   # switch back when done
 ```
 
-Build both release packages (clean rebuild between variants):
+`ollmchat` and `ollmchat-remote-only` conflict; only one may be installed at
+a time. Both install the same `/usr/bin/ollmchat` application.
 
-```bash
-# Add https://roojs.github.io/repos/ first (CI: scripts/ci/enable-roojs-apt.sh)
-./debian/use-monolithic-package.sh
-dpkg-buildpackage -us -uc -b
-rm -rf build
-./debian/use-monolithic-remote-only-package.sh
-dpkg-buildpackage -us -uc -b
-./debian/use-monolithic-package.sh
-```
+The active variant is selected by the switch script, which copies the matching
+`control`, `.install`, and `not-installed` files and writes `debian/local-gguf`
+(`enabled` or `disabled`). `debian/rules` passes that to Meson as
+`-Dlocal_gguf=…`.
 
-`ollmchat` and `ollmchat-remote-only` conflict; only one may be installed
-at a time. Both install the same `/usr/bin/ollmchat` application.
+Canonical definitions live in `debian/split/`, `debian/monolithic/`, and
+`debian/monolithic-remote-only/`.
 
-GitHub release AppImages and the Windows installer use the same **remote-only**
-build (no libllama): `OLLMchat-remote-only-*.AppImage` and
-`OLLMchat-remote-only-Setup.exe`. See `docs/creating-releases.md`.
-
-### Split packages (for apt repository)
-
-Builds separate runtime, -dev, tools, and doc packages. Switch to this
-when publishing to an apt repository.
-
-```bash
-./debian/use-split-packages.sh
-dpkg-buildpackage -us -uc -b
-./debian/use-monolithic-package.sh   # switch back when done
-```
-
-Canonical definitions live in `debian/monolithic/`, `debian/monolithic-remote-only/`,
-and `debian/split/`. The switch scripts copy the chosen layout into the active
-`debian/` files.
+GitHub release AppImages and the Windows installer use a **remote-only**
+build (no libllama). See `docs/creating-releases.md`.
 
 Split package layout
 --------------------
@@ -84,26 +65,38 @@ When using split packages, the source builds:
 
 ### Core / data libraries
 1. **libocsqlite1** / **libocsqlite-dev** — SQLite helpers (libocsqlite.so)
-2. **libocfiles1** / **libocfiles-dev** — File and project management (libocfiles.so)
-3. **libocrpc1** / **libocrpc-dev** — JSON-RPC wire types (libocrpc.so)
+2. **libocrpc1** / **libocrpc-dev** — Binary RPC wire types (libocrpc.so)
+3. **libocfiles1** / **libocfiles-dev** — File and project management (libocfiles.so)
 4. **libollamaweb1** / **libollamaweb-dev** — Ollama HTTP client (libollamaweb.so)
+5. **libochf1** / **libochf-dev** — Hugging Face Hub catalog (libochf.so)
 
 ### Markdown libraries
-5. **libocmarkdown1** / **libocmarkdown-dev** — Markdown parsing (libocmarkdown.so)
-6. **libocmarkdowngtk1** / **libocmarkdowngtk-dev** — GTK markdown rendering (libocmarkdowngtk.so)
+6. **libocmarkdown1** / **libocmarkdown-dev** — Markdown parsing (libocmarkdown.so)
+7. **libocmarkdowngtk1** / **libocmarkdowngtk-dev** — GTK markdown rendering (libocmarkdowngtk.so)
 
 ### LLM stack libraries
-7. **libollmchat1** / **libollmchat-dev** — LLM API access (libollmchat.so)
-8. **libollmchatgtk1** / **libollmchatgtk-dev** — GTK chat widgets (libollmchatgtk.so)
-9. **liboctools1** / **liboctools-dev** — LLM tool implementations (liboctools.so)
-10. **libocvector1** / **libocvector-dev** — Vector search (libocvector.so)
-11. **liboccoder1** / **liboccoder-dev** — Code editor / agent UI (liboccoder.so)
-12. **libocmcp1** / **libocmcp-dev** — MCP integration (libocmcp.so)
+8. **libollmchat1** / **libollmchat-dev** — LLM API access (libollmchat.so)
+9. **libollmchatgtk1** / **libollmchatgtk-dev** — GTK chat widgets (libollmchatgtk.so)
+10. **liboctools1** / **liboctools-dev** — LLM tool implementations (liboctools.so)
+11. **libocvector2-1** / **libocvector2-dev** — Daemon FAISS vector search (libocvector2.so)
+12. **liboccoder1** / **liboccoder-dev** — Code editor / agent UI (liboccoder.so)
+13. **libocmcp1** / **libocmcp-dev** — MCP integration (libocmcp.so)
+14. **libocwebkit1** / **libocwebkit-dev** — WebKitGTK browser tool (libocwebkit.so)
+15. **libocbwrap1** / **libocbwrap-dev** — bubblewrap / seccomp helpers (libocbwrap.so)
 
 ### Application and tools
-13. **ollmchat** — Main application and ollmfilesd daemon
-14. **ollmchat-tools** — Command-line tools (oc-md2html, oc-html2md)
-15. **ollmchat-doc** — Test executables and documentation
+16. **ollmchat** — Main application and ollmfilesd daemon
+17. **ollmchat-tools** — Command-line tools (oc-md2html, oc-html2md)
+18. **ollmchat-doc** — Example and test executables
+
+To reuse the RPC library from another Vala project:
+
+```bash
+sudo apt-get install libocrpc-dev
+```
+
+That pulls in `libocrpc1` plus the GLib / Gee / JSON-GLib / libsoup development
+packages. The VAPI is `/usr/share/vala/vapi/ocrpc.vapi`.
 
 Building packages
 -----------------
@@ -113,7 +106,8 @@ Building packages
    sudo apt-get install build-essential devscripts debhelper meson ninja-build \
      pkg-config valac libgee-0.8-dev libglib2.0-dev libjson-glib-dev \
      libsoup-3.0-dev libxml2-dev libsqlite3-dev \
-     libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev gobject-introspection \
+     libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev \
+     libwebkitgtk-6.0-dev libatspi2.0-dev gobject-introspection \
      libgirepository1.0-dev libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
      libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
    ```
@@ -129,10 +123,11 @@ Install locations
 -----------------
 
 - Libraries: /usr/lib/
-- Headers: /usr/include/
-- VAPI files: /usr/share/vala/vapi/
-- GIR files: /usr/share/gir-1.0/
-- Typelib files: /usr/lib/*/girepository-1.0/
+- VAPI files: /usr/share/vala/vapi/ (`*-dev` packages)
+- GIR files: /usr/share/gir-1.0/ (`*-dev` packages, where generated)
+- Typelib files: /usr/lib/*/girepository-1.0/ (runtime library packages)
 - Application: /usr/bin/ (ollmchat)
 - Tools: /usr/bin/ (oc-md2html, oc-html2md)
-- Test executables: /usr/share/doc/ollmchat/ (oc-test-*, split mode only)
+- Test executables: /usr/bin/ and /usr/share/doc/ollmchat/ (ollmchat-doc)
+
+Vala consumers of `libocrpc-dev` pick up `/usr/share/vala/vapi/ocrpc.vapi` automatically.

@@ -1,20 +1,15 @@
-# Dev/test tools built with -Dexamples=true but omitted from the monolithic
-# ollmchat package. Split packaging installs these via ollmchat-doc.install.
-usr/bin/oc-diff
-usr/bin/oc-local-gguf-chat
-usr/bin/oc-local-gguf-embed
-usr/bin/oc-vala-ternary-bug
-usr/bin/oc-vector-index
-usr/bin/oc-vector-search
-usr/share/doc/ollmchat/oc-markdown-doc-test
-usr/share/doc/ollmchat/oc-markdown-test
-usr/share/doc/ollmchat/oc-migrate-editors
-usr/share/doc/ollmchat/oc-test-bubble
-usr/share/doc/ollmchat/oc-test-fetch
-usr/share/doc/ollmchat/oc-test-files
-usr/share/doc/ollmchat/oc-test-gtkmd
-usr/share/doc/ollmchat/oc-test-loop
-usr/share/doc/ollmchat/oc-test-ollamaweb
-usr/share/doc/ollmchat/oc-test-pull
-usr/share/doc/ollmchat/oc-test-seccomp-spike
-usr/share/doc/ollmchat/oc-test-skill-agent
+# Meson-internal VAPI names, if a Meson version installs them.
+# Vala consumers use the unsuffixed .vapi in *-dev.
+usr/share/vala/vapi/ocrpc-meson.vapi
+usr/share/vala/vapi/ocsqlite-meson.vapi
+usr/share/vala/vapi/ocmarkdown-meson.vapi
+usr/share/vala/vapi/ollamaweb-meson.vapi
+usr/share/vala/vapi/ochf-meson.vapi
+usr/share/vala/vapi/ocmarkdowngtk-meson.vapi
+usr/share/vala/vapi/ocfiles-meson.vapi
+usr/share/vala/vapi/ocwebkit-meson.vapi
+usr/share/vala/vapi/ocvector2-meson.vapi
+usr/share/vala/vapi/ocbwrap-meson.vapi
+usr/share/vala/vapi/ocmcp-meson.vapi
+usr/share/vala/vapi/octools-meson.vapi
+usr/share/vala/vapi/occoder-meson.vapi

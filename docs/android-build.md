@@ -287,7 +287,7 @@ GGUF support through libllama:
 - Meson option: `-Dlocal_gguf=disabled|auto|enabled`
 - Sources: `libollmchat/GGUF.vala` and `libollmchat/CallLocal/*`
 - Release packaging already disables it for AppImage and Windows builds
-- Debian packaging includes both full and `ollmchat-remote-only` variants
+- Debian packaging ships split libraries plus `-dev` packages, and `ollmchat-remote-only`
 
 Disabling GGUF is already supported and should be the default for any Android
 experiment. It removes libllama from the problem, but it does not remove the

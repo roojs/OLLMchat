@@ -320,6 +320,10 @@ if g_ir_compiler.found()
     'install -Dm644 "' + ollmchat_gir_file + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/gir-1.0/OLLMchat-1.0.gir"',
   )
 endif
+meson.add_install_script(
+  'sh', '-c',
+  'install -Dm644 "' + meson.current_build_dir() / 'ollmchat.vapi' + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/vala/vapi/ollmchat.vapi"',
+)
 
 # Create dependency for other libraries to use
 # Note: We need to manually create the VAPI dependency similar to ocsqlite

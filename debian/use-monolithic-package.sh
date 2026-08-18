@@ -1,5 +1,5 @@
 #!/bin/sh
-# Switch active debian/ packaging to the all-in-one ollmchat package (default).
+# Switch active debian/ packaging to the all-in-one ollmchat package.
 set -eu
 cd "$(dirname "$0")"
 rm -f ./*.install

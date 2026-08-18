@@ -120,7 +120,9 @@ sudo apt update
 sudo apt install ollmchat
 ```
 
-(`ollmchat-remote-only` is the same app without libllama / local GGUF.)
+(`ollmchat-remote-only` is the same app without libllama / local GGUF.
+`libocrpc-dev` and the other `liboc*-dev` / `liboll*-dev` packages are in
+the same repository.)
 
 ### DNF (Fedora)
 

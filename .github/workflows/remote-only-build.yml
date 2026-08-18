@@ -33,6 +33,7 @@ jobs:
             curl \
             gobject-introspection \
             libadwaita-1-dev \
+            libatspi2.0-dev \
             libblas-dev \
             libcairo2-dev \
             libfaiss-dev \
@@ -51,6 +52,7 @@ jobs:
             libsoup-3.0-dev \
             libsqlite3-dev \
             libtree-sitter-dev \
+            libwebkitgtk-6.0-dev \
             libxml2-dev \
             meson \
             ninja-build \

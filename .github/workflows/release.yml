@@ -67,6 +67,7 @@ jobs:
             libglib2.0-dev libgirepository1.0-dev libffi-dev libcairo2-dev \
             libgee-0.8-dev libjson-glib-dev libsoup-3.0-dev libxml2-dev \
             libsqlite3-dev libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev \
+            libwebkitgtk-6.0-dev libatspi2.0-dev \
             libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
             libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
 
@@ -92,19 +93,24 @@ jobs:
           else
             ./scripts/release/sync-debian-changelog.sh
           fi
-          ./debian/use-monolithic-package.sh
+          ./debian/use-split-packages.sh
           dpkg-buildpackage -us -uc -b
           rm -rf build
           ./debian/use-monolithic-remote-only-package.sh
           dpkg-buildpackage -us -uc -b
-          ./debian/use-monolithic-package.sh
+          ./debian/use-split-packages.sh
 
       - name: Collect artifacts
         working-directory: OLLMchat
         run: |
           mkdir -p artifacts
-          cp ../ollmchat_[0-9]*.deb artifacts/
-          cp ../ollmchat-remote-only_[0-9]*.deb artifacts/
+          shopt -s nullglob
+          for deb in ../*.deb; do
+            case "${deb}" in
+              *dbgsym*) continue ;;
+            esac
+            cp -v "${deb}" artifacts/
+          done
           ls -lh artifacts
 
       - name: Upload Debian artifacts
