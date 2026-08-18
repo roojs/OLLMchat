@@ -1,0 +1,15 @@
+# Meson-internal VAPI names, if a Meson version installs them.
+# Vala consumers use the unsuffixed .vapi in *-dev.
+usr/share/vala/vapi/ocrpc-meson.vapi
+usr/share/vala/vapi/ocsqlite-meson.vapi
+usr/share/vala/vapi/ocmarkdown-meson.vapi
+usr/share/vala/vapi/ollamaweb-meson.vapi
+usr/share/vala/vapi/ochf-meson.vapi
+usr/share/vala/vapi/ocmarkdowngtk-meson.vapi
+usr/share/vala/vapi/ocfiles-meson.vapi
+usr/share/vala/vapi/ocwebkit-meson.vapi
+usr/share/vala/vapi/ocvector2-meson.vapi
+usr/share/vala/vapi/ocbwrap-meson.vapi
+usr/share/vala/vapi/ocmcp-meson.vapi
+usr/share/vala/vapi/octools-meson.vapi
+usr/share/vala/vapi/occoder-meson.vapi
