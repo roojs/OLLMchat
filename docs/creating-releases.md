@@ -72,6 +72,14 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
 
    It checks a clean tree, refuses an empty notes section, creates an annotated `v1.2.5-alpha` tag, and pushes the branch plus tag. Do not tag by hand unless you are doing the same checks.
 
+   If CI failed for that version, commit the fix on `main` then retag:
+
+   ```bash
+   ./scripts/release.sh --retry
+   ```
+
+   That deletes the local and origin tags, then tags HEAD and pushes again. An existing GitHub Release for the same tag is updated (`gh release upload --clobber`), not recreated.
+
 4. **Watch CI.** Open **Actions → Release** on GitHub and wait for Debian, Fedora 44, openSUSE, AppImage/Windows, Android, and publish to finish.
 
 5. **Check the release** and [roojs.github.io/repos](https://roojs.github.io/repos/) after the repos publish job picks up the new GitHub assets.

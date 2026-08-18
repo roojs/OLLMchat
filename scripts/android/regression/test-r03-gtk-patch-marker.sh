@@ -45,7 +45,7 @@ grep -qi 'composing span into GTK' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/j
   { echo "ImContext.java finishComposingText composing-span commit missing" >&2; exit 1; }
 grep -q 'IME delete does not go through the key controller' "$ROOT_DIR/subprojects/gtk/gtk/gtktext.c" ||
   { echo "gtktext.c IME delete bubble hide missing" >&2; exit 1; }
-grep -q 'Emitting drag-update in that case is wrong' "$ROOT_DIR/subprojects/gtk/gtk/gtkgesturedrag.c" ||
+grep -q 'drag-update is for actual movement, not a stationary press' "$ROOT_DIR/subprojects/gtk/gtk/gtkgesturedrag.c" ||
   { echo "gtkgesturedrag.c zero-offset drag-update skip missing" >&2; exit 1; }
 grep -q 'gsk_gpu_device_make_current' "$ROOT_DIR/subprojects/gtk/gsk/gpu/gskgpudevice.c" ||
   { echo "gskgpudevice.c display-context atlas create missing" >&2; exit 1; }

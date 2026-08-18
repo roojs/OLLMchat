@@ -42,9 +42,24 @@ run install -d -m 0755 /etc/apt/keyrings
 run rm -f /etc/apt/keyrings/roojs.gpg
 curl -fsSL https://roojs.github.io/repos/key.gpg \
   | run gpg --batch --yes --dearmor -o /etc/apt/keyrings/roojs.gpg
+arch="$(dpkg --print-architecture)"
 curl -fsSL https://roojs.github.io/repos/sources \
   | sed "s/@suite@/${suite}/" \
+  | sed "/^Architectures:/d" \
   | run tee /etc/apt/sources.list.d/roojs.sources >/dev/null
-run chmod 0644 /etc/apt/keyrings/roojs.gpg /etc/apt/sources.list.d/roojs.sources
+printf 'Architectures: %s\n' "${arch}" \
+  | run tee -a /etc/apt/sources.list.d/roojs.sources >/dev/null
+# Keep Ubuntu/Debian as the default for names that exist in both archives.
+# Roojs ships llama/faiss and extra WebKit WebDriver bits; those unique
+# packages still install when requested. Incomplete rebuilt WebKit -dev
+# packages must not beat Ubuntu's libwebkitgtk-6.0-dev.
+run tee /etc/apt/preferences.d/roojs >/dev/null <<'EOF'
+Package: *
+Pin: origin roojs.github.io
+Pin-Priority: 100
+EOF
+run chmod 0644 /etc/apt/keyrings/roojs.gpg \
+  /etc/apt/sources.list.d/roojs.sources \
+  /etc/apt/preferences.d/roojs
 run apt-get update
 echo "Enabled roojs APT source for suite ${suite}."

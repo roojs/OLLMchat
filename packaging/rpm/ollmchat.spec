@@ -40,7 +40,11 @@ BuildRequires: pkgconfig(atspi-2)
 BuildRequires: pkgconfig(tree-sitter)
 BuildRequires: pkgconfig(libseccomp)
 BuildRequires: pkgconfig(libgit2-glib-1.0)
+%if 0%{?fedora}
+BuildRequires: pkgconfig(flexiblas)
+%else
 BuildRequires: pkgconfig(openblas)
+%endif
 BuildRequires: pkgconfig(lapack)
 %if %{with local_gguf}
 BuildRequires: pkgconfig(llama)

@@ -43,8 +43,12 @@ install_roojs_fedora_repo() {
   run_root install -d -m 0755 /etc/pki/rpm-gpg
   run_root curl -fsSL https://roojs.github.io/repos/key.gpg \
     -o /etc/pki/rpm-gpg/RPM-GPG-KEY-roojs
+  run_root rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-roojs
   run_root curl -fsSL https://roojs.github.io/repos/repo \
     -o /etc/yum.repos.d/roojs.repo
+  run_root sed -i \
+    's|^gpgkey=.*|gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-roojs|' \
+    /etc/yum.repos.d/roojs.repo
 }
 
 pkgconfig_deps=(
@@ -62,7 +66,6 @@ pkgconfig_deps=(
   'pkgconfig(tree-sitter)'
   'pkgconfig(libseccomp)'
   'pkgconfig(libgit2-glib-1.0)'
-  'pkgconfig(openblas)'
   'pkgconfig(lapack)'
   'pkgconfig(llama)'
 )
@@ -70,6 +73,7 @@ pkgconfig_deps=(
 case "${ID}" in
   fedora)
     install_roojs_fedora_repo
+    pkgconfig_deps+=('pkgconfig(flexiblas)')
     run_root dnf -y install --setopt=install_weak_deps=False \
       rpm-build rpmdevtools \
       meson ninja-build gcc gcc-c++ vala desktop-file-utils \
@@ -79,6 +83,10 @@ case "${ID}" in
     rpm_dist_args=()
     ;;
   opensuse* | opensuse-tumbleweed | slfo)
+    # desktop-file-utils needs gawk; Tumbleweed images ship busybox-gawk.
+    run_root zypper --non-interactive --force-resolution install \
+      --no-recommends gawk
+    pkgconfig_deps+=('pkgconfig(openblas)')
     run_root zypper --non-interactive install --no-recommends \
       rpm-build rpmdevtools \
       meson ninja gcc gcc-c++ vala desktop-file-utils \
