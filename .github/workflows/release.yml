@@ -28,12 +28,11 @@ jobs:
     name: Build Android APK
     uses: ./.github/workflows/android-build-reusable.yml
     with:
-      refresh_cache: ${{ inputs.refresh_cache || false }}
+      refresh_cache: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_cache || false }}
       upload_to_release: true
       non_blocking: true
     permissions:
       contents: read
-    continue-on-error: true
 
   build-debian:
     name: Build Debian packages
