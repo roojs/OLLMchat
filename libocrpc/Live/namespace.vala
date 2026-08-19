@@ -61,5 +61,20 @@ namespace OLLMrpc.Live
 		public void receive(GLib.Socket socket) throws GLib.Error {}
 	}
 
+	public class BufferStream : GLib.Object {
+		public BufferStream() { Object(); }
+		public async void connect_client(string main_socket_path) throws GLib.Error {}
+		public void write_with(Buffer? buffer, Bin.Serializable serializable, Bin.Stream bin) throws GLib.Error {}
+		public void attach(Notification notif) {}
+		public void close() {}
+	}
+
+	public class BufferListen : GLib.Object {
+		public BufferListen(string main_socket_path) { Object(); }
+		public bool start() { return true; }
+		public void pair_connection(Transport.Connection connection) {}
+		public void stop() {}
+	}
+
 #endif
 }

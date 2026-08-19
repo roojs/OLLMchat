@@ -101,7 +101,10 @@ namespace OLLMfilesd
 			this.app.quit();
 		}
 
-		public override void write(GLib.Object gobject)
+		public override void write(
+			GLib.Object gobject,
+			OLLMrpc.Live.Buffer? buffer = null
+		)
 		{
 			if (gobject is OLLMrpc.Response) {
 				var response = gobject as OLLMrpc.Response;

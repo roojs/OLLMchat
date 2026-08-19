@@ -21,6 +21,7 @@ namespace OLLMrpc.Transport
 		private GLib.SocketService service { get; set; default = new GLib.SocketService(); }
 		private bool listening = false;
 		private Gee.ArrayList<Connection> connections = new Gee.ArrayList<Connection>();
+		private Live.BufferListen? buffer_listen = null;
 
 		public SocketListen(string socket_path)
 		{
@@ -70,10 +71,19 @@ namespace OLLMrpc.Transport
 				var connection = new Connection(conn) {
 					live_handles = this.live_handles
 				};
+				if (this.buffer_listen != null) {
+					this.buffer_listen.pair_connection(connection);
+				}
 				connection.start();
 				this.connections.add(connection);
 				return true;
 			});
+			if (this.live_handles) {
+				this.buffer_listen = new Live.BufferListen(this.socket_path);
+				if (!this.buffer_listen.start()) {
+					return false;
+				}
+			}
 			this.service.start();
 			this.listening = true;
 			return true;
@@ -94,6 +104,10 @@ namespace OLLMrpc.Transport
 			this.listening = false;
 			this.service.stop();
 			this.service = new GLib.SocketService();
+			if (this.buffer_listen != null) {
+				this.buffer_listen.stop();
+				this.buffer_listen = null;
+			}
 			foreach (var connection in this.connections) {
 				connection.stop();
 			}

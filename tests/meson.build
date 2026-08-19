@@ -111,6 +111,31 @@ test('test-rpc-subscribe',
   suite: 'rpc',
   timeout: 10,
 )
+test_rpc_scm = executable('test-rpc-scm-notification',
+  'rpc/scm-notification-test.vala',
+  dependencies: [
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('gio-unix-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    ocrpc_vapi_dep,
+    meson.get_compiler('vala').find_library('posix'),
+  ],
+  build_rpath: meson.current_build_dir() / '..' / 'libocrpc',
+  vala_args: [
+    '--pkg=ocrpc',
+    '--pkg=json-glib-1.0',
+    '--pkg=posix',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  ],
+)
+test('test-rpc-scm-notification',
+  test_rpc_scm,
+  suite: 'rpc',
+  timeout: 10,
+)
 test('test-rpc-t1',
   find_program('bash'),
   args: [

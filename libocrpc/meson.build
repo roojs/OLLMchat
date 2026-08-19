@@ -61,14 +61,25 @@ ocrpc_core_src = files([
   'Error.vala',
   'Notification.vala',
   'Request.vala',
-  'Live/RemoteParams.vala',
-  'Live/Remote.vala',
-  'Live/SubscribeParams.vala',
-  'Live/Subscription.vala',
-  'Live/Subscribe.vala',
   'Response.vala',
   'RpcErrorCode.vala',
 ])
+
+live_src = files(['Live/namespace.vala'])
+if use_unix_sockets
+  live_src += files([
+    'Live/Buffer.vala',
+    'Live/BufferStream.vala',
+    'Live/BufferListen.vala',
+    'Live/RemoteParams.vala',
+    'Live/Remote.vala',
+    'Live/SubscribeParams.vala',
+    'Live/Subscription.vala',
+    'Live/Subscribe.vala',
+  ])
+endif
+
+ocrpc_core_src += live_src
 
 ocrpc_src = ocrpc_core_src + files(['Client.vala']) + transport_socket_src + client_boot_src
 

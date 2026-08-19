@@ -68,6 +68,8 @@ namespace OLLMrpc.Transport
 			default = new Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>>();
 		}
 
+		public Live.BufferStream? buffer_stream { get; set; default = null; }
+
 		private int next_handle = 1;
 
 		protected GLib.IOChannel? channel;
@@ -125,16 +127,13 @@ namespace OLLMrpc.Transport
 					this.on_input_ready
 				);
 				var in_stream = new GLib.DataInputStream(
-					new GLib.BufferedInputStream(
-						this.stream.get_input_stream()
-					)
+					this.stream.get_input_stream()
 				);
 				var out_stream = new GLib.DataOutputStream(
 					this.stream.get_output_stream()
 				);
 				this.bin = new Bin.Stream(in_stream, out_stream, true) {
-					live_handles = this.live_handles,
-					socket = this.stream.get_socket()
+					live_handles = this.live_handles
 				};
 			} catch (GLib.Error e) {
 				GLib.warning("connection setup failed: %s", e.message);
@@ -159,6 +158,9 @@ namespace OLLMrpc.Transport
 			this.floors.clear();
 			this.extras.clear();
 			this.lease_ids.clear();
+			if (this.buffer_stream != null) {
+				this.buffer_stream.close();
+			}
 			if (!this.running) {
 				return;
 			}
@@ -192,8 +194,12 @@ namespace OLLMrpc.Transport
 				return;
 			}
 			try {
-				this.bin.write(serializable, buffer);
-				this.bin.out_stream.flush();
+				if (this.buffer_stream != null) {
+					this.buffer_stream.write_with(buffer, serializable, this.bin);
+				} else {
+					this.bin.write(serializable);
+					this.bin.out_stream.flush();
+				}
 			} catch (GLib.Error e) {
 				GLib.warning("connection write error: %s", e.message);
 				this.stop();

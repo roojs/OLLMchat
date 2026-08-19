@@ -10,8 +10,10 @@ namespace OLLMrpcTests
 	{
 		OLLMrpc.Notification.rpc_register();
 
-		int[] sv = new int[2];
-		if (Posix.socketpair(Posix.AF_UNIX, Posix.SOCK_STREAM, 0, sv) != 0) {
+		int[] main_sv = new int[2];
+		int[] fd_sv = new int[2];
+		if (Posix.socketpair(Posix.AF_UNIX, Posix.SOCK_STREAM, 0, main_sv) != 0
+		 || Posix.socketpair(Posix.AF_UNIX, Posix.SOCK_STREAM, 0, fd_sv) != 0) {
 			GLib.printerr("socketpair failed\n");
 			return 1;
 		}
@@ -27,33 +29,43 @@ namespace OLLMrpcTests
 			return 1;
 		}
 
-		GLib.Socket server_sock;
-		GLib.Socket client_sock;
+		GLib.Socket main_server_sock;
+		GLib.Socket main_client_sock;
+		GLib.Socket fd_server_sock;
+		GLib.Socket fd_client_sock;
 		try {
-			server_sock = new GLib.Socket.from_fd(sv[0]);
-			client_sock = new GLib.Socket.from_fd(sv[1]);
+			main_server_sock = new GLib.Socket.from_fd(main_sv[0]);
+			main_client_sock = new GLib.Socket.from_fd(main_sv[1]);
+			fd_server_sock = new GLib.Socket.from_fd(fd_sv[0]);
+			fd_client_sock = new GLib.Socket.from_fd(fd_sv[1]);
 		} catch (GLib.Error e) {
 			GLib.printerr("socket from_fd failed: %s\n", e.message);
 			return 1;
 		}
+
 		var server_stream = (GLib.SocketConnection) GLib.Object.new(
 			typeof(GLib.SocketConnection),
-			"socket", server_sock,
+			"socket", main_server_sock,
 			null
 		);
 		var client_stream = (GLib.SocketConnection) GLib.Object.new(
 			typeof(GLib.SocketConnection),
-			"socket", client_sock,
+			"socket", main_client_sock,
 			null
 		);
-		var server_out = new GLib.DataOutputStream(
-			server_stream.get_output_stream()
-		);
-		var server_bin = new OLLMrpc.Bin.Stream(null, server_out, true) {
-			socket = server_sock
+
+		var server = new OLLMrpc.Transport.Connection(server_stream) {
+			buffer_stream = new OLLMrpc.Live.BufferStream() {
+				socket = fd_server_sock
+			}
+		};
+		server.start();
+
+		var client_buffer_stream = new OLLMrpc.Live.BufferStream() {
+			socket = fd_client_sock
 		};
 
-		server_bin.write(
+		server.write(
 			new OLLMrpc.Notification() {
 				method = "Window.thumbnail",
 				object_type = "Window",
@@ -61,14 +73,9 @@ namespace OLLMrpcTests
 			},
 			new OLLMrpc.Live.Buffer(pipe_fds[0])
 		);
-		server_bin.out_stream.flush();
 
-		var client_in = new GLib.DataInputStream(
-			new GLib.BufferedInputStream(client_stream.get_input_stream())
-		);
-		var client_bin = new OLLMrpc.Bin.Stream(client_in, null, false) {
-			socket = client_sock
-		};
+		var client_in = new GLib.DataInputStream(client_stream.get_input_stream());
+		var client_bin = new OLLMrpc.Bin.Stream(client_in, null, false);
 
 		OLLMrpc.Notification? notif = null;
 		try {
@@ -81,10 +88,13 @@ namespace OLLMrpcTests
 			GLib.printerr("expected Notification\n");
 			return 1;
 		}
-		if (notif.method != "Window.thumbnail") {
-			GLib.printerr("method mismatch\n");
+		try {
+			client_buffer_stream.receive_one();
+		} catch (GLib.Error e) {
+			GLib.printerr("receive fd failed: %s\n", e.message);
 			return 1;
 		}
+		client_buffer_stream.attach(notif);
 		if (notif.buffer == null || notif.buffer.fd < 0) {
 			GLib.printerr("missing buffer fd\n");
 			return 1;

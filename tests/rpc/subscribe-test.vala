@@ -17,7 +17,10 @@ namespace OLLMrpcTests
 		public OLLMrpc.Notification last { get; set; default = new OLLMrpc.Notification(); }
 		public int writes { get; set; default = 0; }
 
-		public override void write(GLib.Object gobject)
+		public override void write(
+			GLib.Object gobject,
+			OLLMrpc.Live.Buffer? buffer = null
+		)
 		{
 			if (!(gobject is OLLMrpc.Notification)) {
 				return;

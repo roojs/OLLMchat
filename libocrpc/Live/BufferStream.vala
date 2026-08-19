@@ -20,25 +20,15 @@ namespace OLLMrpc.Live
 	 */
 	public class BufferStream : GLib.Object
 	{
-		public GLib.Socket? socket { get; private set; default = null; }
+		public GLib.Socket? socket { get; set; default = null; }
 
 		internal Gee.ArrayQueue<Buffer> pending {
-			get;
-			private set;
-			default = new Gee.ArrayQueue<Buffer>();
+			get; private set; default = new Gee.ArrayQueue<Buffer>();
 		}
 
 		private GLib.IOChannel? channel = null;
 		private uint watch_id = 0;
 
-		/** Server: wrap an accepted fd-channel socket (no watch). */
-		public BufferStream.socket(GLib.Socket socket)
-		{
-			Object();
-			this.socket = socket;
-		}
-
-		/** Client: empty until {@link connect_client}. */
 		public BufferStream()
 		{
 			Object();
@@ -47,7 +37,7 @@ namespace OLLMrpc.Live
 		/**
 		 * Client: connect the **.fd** leg and start watching.
 		 *
-		 * Call after {@link BufferStream()} on the client path.
+		 * Call on a {@link BufferStream} constructed without a socket.
 		 *
 		 * @param main_socket_path main RPC socket path (**.fd** is appended)
 		 */
@@ -172,119 +162,6 @@ namespace OLLMrpc.Live
 				(source.get_buffer_condition() & GLib.IOCondition.IN) != 0
 			);
 			return this.socket != null;
-		}
-	}
-
-	/**
-	 * Server-side **.fd** listen and pairing for one main RPC socket path.
-	 *
-	 * {@link Transport.SocketListen} holds one instance when
-	 * {@link Transport.Connection.live_handles} is on; all fd-channel accept
-	 * logic lives here.
-	 */
-	public class BufferListen : GLib.Object
-	{
-		private string fd_path { get; construct; }
-
-		private GLib.SocketService service {
-			get;
-			set;
-			default = new GLib.SocketService();
-		}
-
-		private Gee.ArrayQueue<GLib.Socket> pending_sockets {
-			get;
-			set;
-			default = new Gee.ArrayQueue<GLib.Socket>();
-		}
-
-		private Gee.ArrayQueue<Transport.Connection> waiting_connections {
-			get;
-			set;
-			default = new Gee.ArrayQueue<Transport.Connection>();
-		}
-
-		private bool listening = false;
-
-		public BufferListen(string main_socket_path)
-		{
-			Object(fd_path: main_socket_path + ".fd");
-		}
-
-		public bool start()
-		{
-			if (this.listening) {
-				return true;
-			}
-			if (GLib.FileUtils.test(this.fd_path, GLib.FileTest.EXISTS)) {
-				try {
-					GLib.FileUtils.unlink(this.fd_path);
-				} catch (GLib.FileError e) {
-					GLib.warning("could not remove stale fd socket: %s", e.message);
-				}
-			}
-			this.service = new GLib.SocketService();
-			GLib.SocketAddress? effective;
-			try {
-				this.service.add_address(
-					new GLib.UnixSocketAddress(this.fd_path),
-					GLib.SocketType.STREAM,
-					GLib.SocketProtocol.DEFAULT,
-					null,
-					out effective
-				);
-			} catch (GLib.Error e) {
-				GLib.warning("failed to bind fd socket %s: %s",
-					this.fd_path, e.message);
-				return false;
-			}
-			this.service.incoming.connect((conn) => {
-				this.on_fd_accept(conn.get_socket());
-				return true;
-			});
-			this.service.start();
-			this.listening = true;
-			return true;
-		}
-
-		public void pair_connection(Transport.Connection connection)
-		{
-			if (this.pending_sockets.size > 0) {
-				connection.buffer_stream = new BufferStream.socket(
-					this.pending_sockets.poll()
-				);
-				return;
-			}
-			this.waiting_connections.offer(connection);
-		}
-
-		public void stop()
-		{
-			if (!this.listening) {
-				return;
-			}
-			this.listening = false;
-			this.service.stop();
-			this.service = new GLib.SocketService();
-			this.pending_sockets.clear();
-			this.waiting_connections.clear();
-			if (GLib.FileUtils.test(this.fd_path, GLib.FileTest.EXISTS)) {
-				try {
-					GLib.FileUtils.unlink(this.fd_path);
-				} catch (GLib.FileError e) {
-					GLib.warning("could not remove stale fd socket: %s", e.message);
-				}
-			}
-		}
-
-		private void on_fd_accept(GLib.Socket fd_socket)
-		{
-			if (this.waiting_connections.size > 0) {
-				var connection = this.waiting_connections.poll();
-				connection.buffer_stream = new BufferStream.socket(fd_socket);
-				return;
-			}
-			this.pending_sockets.offer(fd_socket);
 		}
 	}
 }

@@ -126,6 +126,8 @@ namespace OLLMrpc
 
 		public Bin.Stream? bin { get; private set; }
 
+		public Live.BufferStream? buffer_stream { get; private set; default = null; }
+
 		/**
 		 * Last {@link connect} failure (boot, socket, or hello).
 		 * Empty when {@link connected} is true. UI reads this from {@link Client}.
@@ -281,6 +283,10 @@ namespace OLLMrpc
 			this.bin = new Bin.Stream(this.input, this.output) {
 				live_handles = this.live_handles
 			};
+			if (this.live_handles && !this.socket_path.has_prefix("tcp://")) {
+				this.buffer_stream = new Live.BufferStream();
+				yield this.buffer_stream.connect_client(this.socket_path);
+			}
 			this.connected = true;
 			var fd = this.socket.get_socket().get_fd();
 			this.read_channel = new GLib.IOChannel.unix_new(fd);
@@ -403,6 +409,10 @@ namespace OLLMrpc
 			this.bin = null;
 			this.input = null;
 			this.output = null;
+			if (this.buffer_stream != null) {
+				this.buffer_stream.close();
+				this.buffer_stream = null;
+			}
 			if (this.socket != null) {
 				try {
 					this.socket.close();
@@ -694,6 +704,9 @@ namespace OLLMrpc
 					notif.method,
 					notif.object_type
 				);
+				if (this.buffer_stream != null) {
+					this.buffer_stream.attach(notif);
+				}
 				this.notification(notif);
 				return;
 			}

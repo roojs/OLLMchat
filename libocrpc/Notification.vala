@@ -34,6 +34,9 @@ namespace OLLMrpc
 		 */
 		public string action_label { get; set; default = ""; }
 
+		/** Filled by {@link Live.BufferStream.attach}; null on send. */
+		public Live.Buffer? buffer { get; internal set; default = null; }
+
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Notification", typeof(Notification));
