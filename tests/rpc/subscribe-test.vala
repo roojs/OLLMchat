@@ -127,18 +127,6 @@ namespace OLLMrpcTests
 			this.check(command_line, drop.dispatch(), "Remote.unref export-hold dispatch failed");
 			held_probe.title = "d";
 			this.check(command_line, held.writes == 0, "Remote.unref did not silence notify");
-
-			var off = new OLLMrpc.Transport.Connection();
-			var off_req = new OLLMrpc.Request() {
-				method = "RPC-Live-Subscribe.signal",
-				param = new OLLMrpc.Live.SubscribeParams() {
-					object_id = 1,
-					name = "notify::title"
-				},
-				connection = off
-			};
-			this.check(command_line, off_req.dispatch(), "flag-off Subscribe.signal dispatch failed");
-			this.check(command_line, off.signal_subs.size == 0, "flag off still stored a sub");
 		}
 	}
 }

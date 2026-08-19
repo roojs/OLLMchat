@@ -48,8 +48,7 @@ namespace OLLMrpc.Live
 		{
 			this.call_signal.connect((request) => {
 				if (!request.connection.live_handles) {
-					request.connection.reply_error(request, (int) RpcErrorCode.METHOD_NOT_FOUND);
-					return;
+					GLib.error("Subscribe.signal requires live_handles");
 				}
 				var param = request.param as SubscribeParams;
 				if (param == null) {
@@ -101,8 +100,7 @@ namespace OLLMrpc.Live
 			});
 			this.call_unsubscribe.connect((request) => {
 				if (!request.connection.live_handles) {
-					request.connection.reply_error(request, (int) RpcErrorCode.METHOD_NOT_FOUND);
-					return;
+					GLib.error("Subscribe.unsubscribe requires live_handles");
 				}
 				var param = request.param as SubscribeParams;
 				if (param == null) {

@@ -46,8 +46,7 @@ namespace OLLMrpc.Live
 		{
 			this.call_ref.connect((request) => {
 				if (!request.connection.live_handles) {
-					request.connection.reply_error(request, (int) RpcErrorCode.METHOD_NOT_FOUND);
-					return;
+					GLib.error("Remote.ref requires live_handles");
 				}
 				var param = request.param as RemoteParams;
 				if (param == null) {
@@ -65,8 +64,7 @@ namespace OLLMrpc.Live
 			});
 			this.call_unref.connect((request) => {
 				if (!request.connection.live_handles) {
-					request.connection.reply_error(request, (int) RpcErrorCode.METHOD_NOT_FOUND);
-					return;
+					GLib.error("Remote.unref requires live_handles");
 				}
 				var param = request.param as RemoteParams;
 				if (param == null) {

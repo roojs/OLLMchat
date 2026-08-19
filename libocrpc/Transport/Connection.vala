@@ -209,12 +209,6 @@ namespace OLLMrpc.Transport
 		public void reply(OLLMrpc.Request request, OLLMrpc.Response response)
 		{
 			response.id = request.id;
-			GLib.debug(
-				"reply id=%d method=%s conn=%p",
-				request.id,
-				request.method,
-				this
-			);
 			this.write(response);
 		}
 
