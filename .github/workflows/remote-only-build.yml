@@ -1,4 +1,4 @@
-name: CI · Remote-only
+name: X - Remote-only
 
 on:
   workflow_dispatch:

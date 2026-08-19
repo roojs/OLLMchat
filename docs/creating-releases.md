@@ -12,17 +12,17 @@ The [Release](../.github/workflows/release.yml) workflow (`name: Release`) runs 
 - **Release** is started manually from the GitHub Actions UI (**workflow_dispatch**).
 
 To test **one** package family without waiting on the others, run the matching
-`Release · …` workflow on your branch (same jobs Release uses; no publish):
+`Release - …` workflow on your branch (same jobs Release uses; no publish):
 
 | Actions name | File | Command |
 |--------------|------|---------|
-| **Release · Debian** | [`release-debian.yml`](../.github/workflows/release-debian.yml) | `gh workflow run release-debian.yml --ref <branch>` |
-| **Release · Fedora** | [`release-fedora.yml`](../.github/workflows/release-fedora.yml) | `gh workflow run release-fedora.yml --ref <branch>` |
-| **Release · openSUSE** | [`release-opensuse.yml`](../.github/workflows/release-opensuse.yml) | `gh workflow run release-opensuse.yml --ref <branch>` |
-| **Release · AppImage and Windows** | [`release-appimage-windows.yml`](../.github/workflows/release-appimage-windows.yml) | `gh workflow run release-appimage-windows.yml --ref <branch>` |
-| **Release · Android** | [`release-android.yml`](../.github/workflows/release-android.yml) | `gh workflow run release-android.yml --ref <branch>` |
+| **Release - Debian** | [`release-debian.yml`](../.github/workflows/release-debian.yml) | `gh workflow run release-debian.yml --ref <branch>` |
+| **Release - Fedora** | [`release-fedora.yml`](../.github/workflows/release-fedora.yml) | `gh workflow run release-fedora.yml --ref <branch>` |
+| **Release - openSUSE** | [`release-opensuse.yml`](../.github/workflows/release-opensuse.yml) | `gh workflow run release-opensuse.yml --ref <branch>` |
+| **Release - AppImage and Windows** | [`release-appimage-windows.yml`](../.github/workflows/release-appimage-windows.yml) | `gh workflow run release-appimage-windows.yml --ref <branch>` |
+| **Release - Android** | [`release-android.yml`](../.github/workflows/release-android.yml) | `gh workflow run release-android.yml --ref <branch>` |
 
-Do not run `reusable-*.yml` files — those are internals (`workflow_call` only).
+Ignore anything named **X - …** (sorts to the bottom). Those are internals.
 
 CI then:
 
@@ -124,7 +124,7 @@ sudo zypper install ollmchat
 To rebuild **one** package family (the usual way to iterate on openSUSE, Debian, and so on):
 
 1. Go to **Actions**.
-2. Choose **Release · openSUSE** (or Debian / Fedora / AppImage and Windows / Android).
+2. Choose **Release - openSUSE** (or Debian / Fedora / AppImage and Windows / Android).
 3. **Run workflow** on the branch you want to test.
 
 To rebuild **everything** without tagging: **Actions → Release → Run workflow**.

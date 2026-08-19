@@ -1,4 +1,4 @@
-name: Release · Android
+name: Release - Android
 
 # Manual APK build. Tags still go through Release (release.yml).
 
@@ -10,14 +10,14 @@ on:
         type: boolean
         default: false
 
-run-name: Release · Android · ${{ github.ref_name }}
+run-name: Release - Android - ${{ github.ref_name }}
 
 permissions:
   contents: read
 
 jobs:
   build-apk:
-    uses: ./.github/workflows/reusable-android.yml
+    uses: ./.github/workflows/x-android.yml
     with:
       refresh_cache: ${{ inputs.refresh_cache }}
       upload_to_release: false

@@ -1,6 +1,6 @@
-# Native Windows (MSYS2 UCRT64). Not the Release · AppImage and Windows NSIS job.
+# Native Windows (MSYS2 UCRT64). Not the Release - AppImage and Windows NSIS job.
 # Manual only. Iterate with: gh workflow run windows-build.yml --ref <branch>
-name: CI · Windows (MSYS2)
+name: X - Windows (MSYS2)
 
 on:
   workflow_dispatch:

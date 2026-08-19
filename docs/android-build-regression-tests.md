@@ -10,7 +10,7 @@ scripts/android/run-android-regression-tests.sh
 scripts/android/run-android-regression-tests.sh --full
 ```
 
-GitHub Actions runs the same suite in `.github/workflows/reusable-android.yml`
+GitHub Actions runs the same suite in `.github/workflows/x-android.yml`
 (`run-android-regression-tests.sh --full`).
 
 ---

@@ -1,9 +1,9 @@
 name: Release
 
 # Full package set. Tag pushes (scripts/release.sh) publish GitHub Release
-# assets. To test one distro, run Release · Debian / Fedora / openSUSE / etc.
+# assets. To test one distro, run Release - Debian / Fedora / openSUSE / etc.
 
-run-name: Release · ${{ github.ref_name }}
+run-name: Release - ${{ github.ref_name }}
 
 on:
   push:
@@ -22,7 +22,7 @@ permissions:
 jobs:
   build-android:
     name: Android
-    uses: ./.github/workflows/reusable-android.yml
+    uses: ./.github/workflows/x-android.yml
     with:
       refresh_cache: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_cache || false }}
       upload_to_release: true
@@ -32,13 +32,13 @@ jobs:
 
   build-debian:
     name: Debian
-    uses: ./.github/workflows/reusable-debian.yml
+    uses: ./.github/workflows/x-debian.yml
     permissions:
       contents: read
 
   build:
     name: AppImage and Windows
-    uses: ./.github/workflows/reusable-sqgipkg.yml
+    uses: ./.github/workflows/x-sqgipkg.yml
     with:
       refresh_cache: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_cache || false }}
     permissions:
@@ -46,7 +46,7 @@ jobs:
 
   build-rpm-fedora:
     name: Fedora
-    uses: ./.github/workflows/reusable-rpm.yml
+    uses: ./.github/workflows/x-rpm.yml
     with:
       job_name: Fedora 44 RPMs
       distro: fedora
@@ -57,7 +57,7 @@ jobs:
 
   build-rpm-opensuse:
     name: openSUSE
-    uses: ./.github/workflows/reusable-rpm.yml
+    uses: ./.github/workflows/x-rpm.yml
     with:
       job_name: openSUSE Tumbleweed RPMs
       distro: opensuse
