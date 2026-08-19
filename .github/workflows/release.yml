@@ -1,10 +1,9 @@
-name: Release build
+name: Release
 
-# Builds Debian packages (amd64), Fedora 44 and openSUSE Tumbleweed RPMs,
-# Linux AppImages (x86_64 + aarch64), the Windows installer, and the Android
-# remote-chat POC APK. Tag pushes (via scripts/release.sh) publish those assets.
+# Full package set. Tag pushes (scripts/release.sh) publish GitHub Release
+# assets. To test one distro, run Release · Debian / Fedora / openSUSE / etc.
 
-run-name: Release build · ${{ github.ref_name }}
+run-name: Release · ${{ github.ref_name }}
 
 on:
   push:
@@ -20,13 +19,10 @@ on:
 permissions:
   contents: write
 
-env:
-  APPIMAGE_EXTRACT_AND_RUN: '1'
-
 jobs:
   build-android:
-    name: Build Android APK
-    uses: ./.github/workflows/android-build-reusable.yml
+    name: Android
+    uses: ./.github/workflows/reusable-android.yml
     with:
       refresh_cache: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_cache || false }}
       upload_to_release: true
@@ -35,264 +31,43 @@ jobs:
       contents: read
 
   build-debian:
-    name: Build Debian packages
-    runs-on: ubuntu-24.04
-    container:
-      image: ubuntu:25.04
-    # Container jobs default to sh (dash). Collect artifacts uses shopt;
-    # the tag/version check uses [[. Both are bash.
-    defaults:
-      run:
-        shell: bash
-    env:
-      DEBIAN_FRONTEND: noninteractive
-      ROOJS_APT_SUITE: plucky
-      TZ: UTC
-    steps:
-      - name: Install git
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends git ca-certificates curl
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          path: OLLMchat
-
-      # CI helper (not the user install path — see https://roojs.github.io/repos/).
-      - name: Enable roojs APT and install build dependencies
-        working-directory: OLLMchat
-        run: |
-          set -euo pipefail
-          chmod +x scripts/ci/enable-roojs-apt.sh
-          ./scripts/ci/enable-roojs-apt.sh
-          apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build pkg-config file \
-            meson valac gobject-introspection devscripts debhelper \
-            libglib2.0-dev libgirepository1.0-dev libffi-dev libcairo2-dev \
-            libgee-0.8-dev libjson-glib-dev libsoup-3.0-dev libxml2-dev \
-            libsqlite3-dev libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev \
-            libwebkitgtk-6.0-dev libatspi2.0-dev \
-            libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
-            libopenblas-dev liblapack-dev libfaiss-dev libllama-dev
-
-      - name: Build Debian packages (amd64)
-        working-directory: OLLMchat
-        env:
-          DEBFULLNAME: GitHub Actions
-          DEBEMAIL: actions@users.noreply.github.com
-        run: |
-          set -euo pipefail
-          chmod +x scripts/release/changelog.sh scripts/release/sync-debian-changelog.sh
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            if cl_ver="$(./scripts/release/changelog.sh version 2>/dev/null)"; then
-              tag_ver="${GITHUB_REF_NAME#v}"
-              if [[ "${cl_ver}" != "${tag_ver}" ]]; then
-                echo "CHANGELOG.md version ${cl_ver} != tag ${tag_ver}" >&2
-                exit 1
-              fi
-              ./scripts/release/sync-debian-changelog.sh
-            else
-              ./scripts/release/sync-debian-changelog.sh --release "$GITHUB_REF_NAME"
-            fi
-          else
-            ./scripts/release/sync-debian-changelog.sh
-          fi
-          ./debian/use-split-packages.sh
-          dpkg-buildpackage -us -uc -b
-          rm -rf build
-          ./debian/use-monolithic-remote-only-package.sh
-          dpkg-buildpackage -us -uc -b
-          ./debian/use-split-packages.sh
-
-      - name: Collect artifacts
-        working-directory: OLLMchat
-        run: |
-          mkdir -p artifacts
-          shopt -s nullglob
-          for deb in ../*.deb; do
-            case "${deb}" in
-              *dbgsym*) continue ;;
-            esac
-            cp -v "${deb}" artifacts/
-          done
-          ls -lh artifacts
-
-      - name: Upload Debian artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ollmchat-debian
-          path: OLLMchat/artifacts/*
+    name: Debian
+    uses: ./.github/workflows/reusable-debian.yml
+    permissions:
+      contents: read
 
   build:
-    name: Build AppImage and Windows
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout OLLMchat
-        uses: actions/checkout@v4
-        with:
-          path: OLLMchat
-
-      - name: Restore sqgipkg dependency cache
-        uses: actions/cache@v6
-        with:
-          path: OLLMchat/.sqgipkg
-          key: sqgipkg-deps-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/sqgipkg.json', 'OLLMchat/scripts/release/sqgi.revision') }}
-          restore-keys: |
-            sqgipkg-deps-v1-stable-
-
-      - name: Restore sqgipkg Meson build cache
-        uses: actions/cache@v6
-        with:
-          path: |
-            OLLMchat/build-linux-x86_64
-            OLLMchat/build-linux-aarch64
-            OLLMchat/build-windows-x86_64
-          key: sqgipkg-meson-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/**/*.vala', 'OLLMchat/**/meson.build', 'OLLMchat/meson.build', 'OLLMchat/meson_options.txt', 'OLLMchat/sqgipkg.json') }}
-          restore-keys: |
-            sqgipkg-meson-v1-stable-
-
-      - name: Install host build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build pkg-config git file ca-certificates wget curl \
-            meson valac gobject-introspection \
-            libglib2.0-dev libgirepository1.0-dev libffi-dev libcairo2-dev \
-            libgee-0.8-dev libjson-glib-dev libsoup-3.0-dev libxml2-dev \
-            libsqlite3-dev libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev \
-            libwebkitgtk-6.0-dev libatspi2.0-dev \
-            libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
-            libopenblas-dev liblapack-dev
-
-      - name: Read sqgi revision
-        id: sqgi
-        working-directory: OLLMchat
-        run: |
-          rev="$(grep -v '^[[:space:]]*#' scripts/release/sqgi.revision | grep -v '^[[:space:]]*$' | head -n1 | tr -d '[:space:]')"
-          if [ -z "$rev" ]; then
-            echo "Missing sqgi revision in scripts/release/sqgi.revision" >&2
-            exit 1
-          fi
-          echo "rev=$rev" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout sqgi (runtime + sqgipkg)
-        uses: actions/checkout@v4
-        with:
-          repository: supercamel/sqgi
-          path: sqgi
-          ref: ${{ steps.sqgi.outputs.rev }}
-
-      - name: Restore sqgi build cache
-        uses: actions/cache@v6
-        with:
-          path: sqgi/build
-          key: sqgi-build-v1-${{ hashFiles('OLLMchat/scripts/release/sqgi.revision') }}
-          restore-keys: |
-            sqgi-build-v1-
-
-      - name: Install AppImage and Windows build dependencies
-        run: |
-          sudo apt-get install -y --no-install-recommends \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user-static binfmt-support \
-            mingw-w64 nsis squashfs-tools
-
-      - name: Build and install sqgi
-        run: |
-          cmake -S sqgi -B sqgi/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSQ_ENABLE_JIT=ON
-          cmake --build sqgi/build
-          sudo cmake --install sqgi/build --prefix /usr/local
-          sudo ldconfig
-
-      - name: Build Linux x86_64 AppImage
-        working-directory: OLLMchat
-        run: sqgipkg --target appimage --appimage-arch x86_64 --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
-
-      - name: Build Linux aarch64 AppImage
-        working-directory: OLLMchat
-        run: sqgipkg --target appimage --appimage-arch aarch64 --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
-
-      - name: Download Noto Color Emoji font (Windows bundle)
-        working-directory: OLLMchat
-        run: |
-          set -euo pipefail
-          mkdir -p resources/fonts
-          font=resources/fonts/NotoColorEmoji.ttf
-          if [[ ! -s "$font" ]]; then
-            curl -fsSL -o "$font" \
-              https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf
-          fi
-          test -s "$font"
-
-      - name: Build Windows installer
-        working-directory: OLLMchat
-        run: sqgipkg --target win-nsis --sqgi-source-dir "$GITHUB_WORKSPACE/sqgi"
-
-      - name: Collect artifacts
-        working-directory: OLLMchat
-        run: |
-          mkdir -p artifacts
-          cp dist-linux-x86_64/OLLMchat.AppImage artifacts/OLLMchat-remote-only-x86_64.AppImage
-          cp dist-linux-aarch64/OLLMchat.AppImage artifacts/OLLMchat-remote-only-aarch64.AppImage
-          cp dist-windows-x86_64/OLLMchat-Setup.exe artifacts/OLLMchat-remote-only-Setup.exe
-          ls -lh artifacts
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ollmchat-builds
-          path: OLLMchat/artifacts/*
+    name: AppImage and Windows
+    uses: ./.github/workflows/reusable-sqgipkg.yml
+    with:
+      refresh_cache: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_cache || false }}
+    permissions:
+      contents: read
 
   build-rpm-fedora:
-    name: Build Fedora 44 RPMs
-    runs-on: ubuntu-24.04
-    container:
+    name: Fedora
+    uses: ./.github/workflows/reusable-rpm.yml
+    with:
+      job_name: Fedora 44 RPMs
+      distro: fedora
       image: fedora:44
-    steps:
-      - name: Install git
-        run: dnf -y install --setopt=install_weak_deps=False git-core ca-certificates curl
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build RPMs
-        run: |
-          set -euo pipefail
-          chmod +x scripts/ci/build-rpm.sh scripts/release/changelog.sh
-          ./scripts/ci/build-rpm.sh
-
-      - name: Upload Fedora RPM artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ollmchat-rpm-fedora
-          path: artifacts/*.rpm
+      artifact_name: ollmchat-rpm-fedora
+    permissions:
+      contents: read
 
   build-rpm-opensuse:
-    name: Build openSUSE Tumbleweed RPMs
-    runs-on: ubuntu-24.04
-    container:
+    name: openSUSE
+    uses: ./.github/workflows/reusable-rpm.yml
+    with:
+      job_name: openSUSE Tumbleweed RPMs
+      distro: opensuse
       image: opensuse/tumbleweed
-    steps:
-      - name: Install git
-        run: zypper --non-interactive install --no-recommends git-core ca-certificates curl
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build RPMs
-        run: |
-          set -euo pipefail
-          chmod +x scripts/ci/build-rpm.sh scripts/release/changelog.sh
-          ./scripts/ci/build-rpm.sh
-
-      - name: Upload openSUSE RPM artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ollmchat-rpm-opensuse
-          path: artifacts/*.rpm
+      artifact_name: ollmchat-rpm-opensuse
+    permissions:
+      contents: read
 
   publish:
-    name: Publish release assets
+    name: Publish
     needs: [build, build-debian, build-rpm-fedora, build-rpm-opensuse, build-android]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04

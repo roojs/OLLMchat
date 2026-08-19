@@ -6,10 +6,23 @@ For Debian package layout and local `.deb` builds, see [`debian/README`](../debi
 
 ## How it works
 
-The [Release workflow](../.github/workflows/release.yml) runs when:
+The [Release](../.github/workflows/release.yml) workflow (`name: Release`) runs when:
 
 - a tag matching `v*` is pushed (run **`./scripts/release.sh`** — humans only), or
-- the workflow is started manually from the GitHub Actions UI (**workflow_dispatch**).
+- **Release** is started manually from the GitHub Actions UI (**workflow_dispatch**).
+
+To test **one** package family without waiting on the others, run the matching
+`Release · …` workflow on your branch (same jobs Release uses; no publish):
+
+| Actions name | File | Command |
+|--------------|------|---------|
+| **Release · Debian** | [`release-debian.yml`](../.github/workflows/release-debian.yml) | `gh workflow run release-debian.yml --ref <branch>` |
+| **Release · Fedora** | [`release-fedora.yml`](../.github/workflows/release-fedora.yml) | `gh workflow run release-fedora.yml --ref <branch>` |
+| **Release · openSUSE** | [`release-opensuse.yml`](../.github/workflows/release-opensuse.yml) | `gh workflow run release-opensuse.yml --ref <branch>` |
+| **Release · AppImage and Windows** | [`release-appimage-windows.yml`](../.github/workflows/release-appimage-windows.yml) | `gh workflow run release-appimage-windows.yml --ref <branch>` |
+| **Release · Android** | [`release-android.yml`](../.github/workflows/release-android.yml) | `gh workflow run release-android.yml --ref <branch>` |
+
+Do not run `reusable-*.yml` files — those are internals (`workflow_call` only).
 
 CI then:
 
@@ -80,7 +93,7 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
 
    That deletes the local and origin tags, then tags HEAD and pushes again. An existing GitHub Release for the same tag is updated (`gh release upload --clobber`), not recreated.
 
-4. **Watch CI.** Open **Actions → Release** on GitHub and wait for Debian, Fedora 44, openSUSE, AppImage/Windows, Android, and publish to finish.
+4. **Watch CI.** Open **Actions → Release** on GitHub and wait for Debian, Fedora, openSUSE, AppImage and Windows, Android, and Publish to finish.
 
 5. **Check the release** and [roojs.github.io/repos](https://roojs.github.io/repos/) after the repos publish job picks up the new GitHub assets.
 
@@ -108,12 +121,15 @@ sudo zypper install ollmchat
 
 ## Manual builds (no release publish)
 
-To rebuild the same artifacts without creating a GitHub Release:
+To rebuild **one** package family (the usual way to iterate on openSUSE, Debian, and so on):
 
-1. Go to **Actions → Release → Run workflow**.
-2. Run on the branch or tag you want to test.
+1. Go to **Actions**.
+2. Choose **Release · openSUSE** (or Debian / Fedora / AppImage and Windows / Android).
+3. **Run workflow** on the branch you want to test.
 
-Manual runs still upload build artifacts to the workflow run, but the **Publish release assets** and **Finalize changelog** steps only run for tag pushes. Manual runs sync `debian/changelog` from `CHANGELOG.md` without promoting `[Unreleased]`.
+To rebuild **everything** without tagging: **Actions → Release → Run workflow**.
+
+Manual runs upload artifacts on that workflow run. **Publish** and **Finalize changelog** only run for tag pushes. Manual runs sync `debian/changelog` from `CHANGELOG.md` without promoting `[Unreleased]`.
 
 ## Local packaging (optional)
 

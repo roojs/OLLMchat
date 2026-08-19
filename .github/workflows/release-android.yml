@@ -1,6 +1,6 @@
-name: Android build
+name: Release · Android
 
-# Manual APK builds. Tag pushes are built from release.yml via the reusable workflow.
+# Manual APK build. Tags still go through Release (release.yml).
 
 on:
   workflow_dispatch:
@@ -10,14 +10,14 @@ on:
         type: boolean
         default: false
 
-run-name: Android build
+run-name: Release · Android · ${{ github.ref_name }}
 
 permissions:
   contents: read
 
 jobs:
   build-apk:
-    uses: ./.github/workflows/android-build-reusable.yml
+    uses: ./.github/workflows/reusable-android.yml
     with:
       refresh_cache: ${{ inputs.refresh_cache }}
       upload_to_release: false

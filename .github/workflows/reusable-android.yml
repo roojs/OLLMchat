@@ -1,4 +1,4 @@
-name: Android build (reusable)
+# Internal (workflow_call only). Run "Release · Android" from the Actions tab.
 
 on:
   workflow_call:
@@ -120,7 +120,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ env.APT_CACHE_DIR }}
-          key: apt-android-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('.github/workflows/android-build.yml', '.github/workflows/android-build-reusable.yml') }}
+          key: apt-android-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('.github/workflows/release-android.yml', '.github/workflows/reusable-android.yml') }}
           restore-keys: |
             apt-android-v1-stable-
             apt-android-v1-
@@ -168,7 +168,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ${{ env.APT_CACHE_DIR }}
-          key: apt-android-v1-stable-${{ hashFiles('.github/workflows/android-build.yml', '.github/workflows/android-build-reusable.yml') }}
+          key: apt-android-v1-stable-${{ hashFiles('.github/workflows/release-android.yml', '.github/workflows/reusable-android.yml') }}
 
       - name: Android build regression tests
         run: scripts/android/run-android-regression-tests.sh --full

@@ -1,0 +1,12 @@
+diff --git a/glib/gutilsprivate.h b/glib/gutilsprivate.h
+index 24c1993..966b7f7 100644
+--- a/glib/gutilsprivate.h
++++ b/glib/gutilsprivate.h
+@@ -28,6 +28,7 @@
+ 
+ G_BEGIN_DECLS
+ 
++GLIB_AVAILABLE_IN_ALL
+ void g_set_user_dirs (const gchar *first_dir_type,
+                       ...) G_GNUC_NULL_TERMINATED;
+ 

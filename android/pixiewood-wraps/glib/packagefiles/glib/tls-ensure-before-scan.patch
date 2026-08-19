@@ -1,0 +1,13 @@
+diff --git a/gio/giomodule.c b/gio/giomodule.c
+index 76c2028..593f490 100644
+--- a/gio/giomodule.c
++++ b/gio/giomodule.c
+@@ -480,6 +480,8 @@ g_io_modules_scan_all_in_directory_with_scope (const char     *dirname,
+   if (!g_module_supported ())
+     return;
+ 
++  _g_io_modules_ensure_extension_points_registered ();
++
+   dir = g_dir_open (dirname, 0, NULL);
+   if (!dir)
+     return;

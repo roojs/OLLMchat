@@ -1,9 +1,6 @@
-# Native Windows build (MSYS2 UCRT64) — Phase 1 of docs/plans/5.6-windows-native-github-build.md
-#
-# Manual only (workflow_dispatch). Not wired to tags yet — iterate with:
-#   gh workflow run windows-build.yml --ref <branch>
-#
-name: Windows build
+# Native Windows (MSYS2 UCRT64). Not the Release · AppImage and Windows NSIS job.
+# Manual only. Iterate with: gh workflow run windows-build.yml --ref <branch>
+name: CI · Windows (MSYS2)
 
 on:
   workflow_dispatch:

@@ -10,7 +10,7 @@ scripts/android/run-android-regression-tests.sh
 scripts/android/run-android-regression-tests.sh --full
 ```
 
-GitHub Actions runs the same suite in `.github/workflows/android-build-reusable.yml`
+GitHub Actions runs the same suite in `.github/workflows/reusable-android.yml`
 (`run-android-regression-tests.sh --full`).
 
 ---
@@ -31,6 +31,7 @@ GitHub Actions runs the same suite in `.github/workflows/android-build-reusable.
 | **R10** | [27613430785](https://github.com/roojs/OLLMchat/actions/runs/27613430785), [27613805784](https://github.com/roojs/OLLMchat/actions/runs/27613805784) | `gdkandroidollmchatpatch.c` truncated or `g_debug` undeclared | covered by extended `test-r03-gtk-patch-marker.sh` |
 | **R11** | [27614072148](https://github.com/roojs/OLLMchat/actions/runs/27614072148) (runtime) | TLS still broken: `libgioopenssl.so` cannot load `libssl` from `filesDir/share/gio/modules/` | `regression/test-r11-gio-openssl-deps.sh` + `verify-apk.sh` OpenSSL asset checks |
 | **R12** | [27615842437](https://github.com/roojs/OLLMchat/actions/runs/27615842437) | `verify-apk.sh` grepped C comment `touch selection bubbles` (not in stripped `libgtk-4.so`) | `regression/test-r12-verify-apk-libgtk-strings.sh` |
+| **R13** | [32201421756](https://github.com/roojs/OLLMchat/actions/runs/32201421756) | `missing patch: …/subprojects/packagefiles/glib/tls-ensure-before-scan.patch` (`subprojects/` is gitignored) | `regression/test-r13-glib-tls-ensure-before-scan.sh` |
 
 When a **new** CI failure appears:
 
@@ -90,6 +91,13 @@ Stale compile caches that skip GTK rebuild fail R07 even when setup/configure pa
 Every `strings … libgtk-4.so | grep` pattern in `verify-apk.sh` must appear as a C
 string literal in `gdkandroidollmchatpatch.c`. C source comments are not present in
 stripped release libraries (CI run 27615842437).
+
+### R13 — GLib TLS ensure-before-scan patch
+`android/pixiewood-wraps/glib/packagefiles/glib/tls-ensure-before-scan.patch` and
+`hack.patch` exist (not under gitignored `subprojects/`), the TLS patch calls
+`_g_io_modules_ensure_extension_points_registered` in
+`g_io_modules_scan_all_in_directory_with_scope`, contains no OLLMchat debug
+strings, and `glib.wrap` pins 2.84.0 with both `diff_files`.
 
 ---
 

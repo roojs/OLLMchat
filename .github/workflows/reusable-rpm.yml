@@ -1,0 +1,65 @@
+# Internal (workflow_call only). Run "Release · Fedora" or "Release · openSUSE"
+# from the Actions tab.
+
+on:
+  workflow_call:
+    inputs:
+      job_name:
+        description: Actions job display name
+        type: string
+        required: true
+      distro:
+        description: fedora or opensuse (git bootstrap + image)
+        type: string
+        required: true
+      image:
+        description: Container image
+        type: string
+        required: true
+      artifact_name:
+        description: upload-artifact name
+        type: string
+        required: true
+
+jobs:
+  build-rpm:
+    name: ${{ inputs.job_name }}
+    runs-on: ubuntu-24.04
+    container:
+      image: ${{ inputs.image }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install git
+        run: |
+          set -euo pipefail
+          case "${{ inputs.distro }}" in
+            fedora)
+              dnf -y install --setopt=install_weak_deps=False git-core ca-certificates curl
+              ;;
+            opensuse)
+              # desktop-file-utils / git-core want gawk; Tumbleweed ships busybox-gawk.
+              zypper --non-interactive install --force-resolution --no-recommends gawk
+              zypper --non-interactive install --no-recommends git-core ca-certificates curl
+              ;;
+            *)
+              echo "Unknown distro: ${{ inputs.distro }} (expected fedora or opensuse)" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build RPMs
+        run: |
+          set -euo pipefail
+          chmod +x scripts/ci/build-rpm.sh scripts/release/changelog.sh
+          ./scripts/ci/build-rpm.sh
+
+      - name: Upload RPM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: artifacts/*.rpm

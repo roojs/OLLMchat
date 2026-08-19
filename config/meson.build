@@ -107,11 +107,23 @@ if using_openblas_dirs
 endif
 ocvector_link_dep = declare_dependency(link_args: ocvector_link_dirs + ocvector_link_libs)
 
-# --- libseccomp (libocfiles, Linux only) ---
+# --- libseccomp (libocbwrap, Linux only) ---
+# Do not pass dependency('libseccomp') into Vala targets: Meson would add
+# --pkg libseccomp, and there is no system vapi (we use vapi/seccomp.vapi).
+# pkg-config is still required for C flags: openSUSE installs seccomp.h under
+# /usr/include/libseccomp/, not /usr/include/.
 if host_machine.system() != 'windows'
   if bundle_using_sysroot and bundle_lib_dirs.length() > 0
-    libseccomp_dep = cc.find_library('seccomp', dirs: bundle_lib_dirs, required: true)
+    libseccomp_dep = declare_dependency(
+      dependencies: [cc.find_library('seccomp', dirs: bundle_lib_dirs, required: true)],
+      compile_args: bundle_include_args,
+    )
   else
-    libseccomp_dep = cc.find_library('seccomp', required: true)
+    libseccomp_pc = dependency('libseccomp', required: true)
+    libseccomp_dep = libseccomp_pc.partial_dependency(
+      includes: true,
+      compile_args: true,
+      links: true,
+    )
   endif
 endif

@@ -133,8 +133,8 @@ from cache).
 
 ### Host prerequisites
 
-Local APK builds use the same host packages as the **Android build** GitHub
-Actions workflow (`.github/workflows/android-build.yml`). On Debian/Ubuntu,
+Local APK builds use the same host packages as the **Release · Android** GitHub
+Actions workflow (`.github/workflows/release-android.yml`). On Debian/Ubuntu,
 install them once:
 
 ```bash
@@ -253,7 +253,7 @@ Successful debug builds produce APKs under:
 `--buildtype debug`. Pixiewood strips native libraries during `meson install`
 before Gradle packages the APK. Tag releases attach
 `ollmchat-android-<tag>-debug.apk` (for example `ollmchat-android-v1.3.0-debug.apk`).
-Manual **Android build** workflow
+Manual **Release · Android** workflow
 runs and local builds pass `-Dstrip=false` on every reconfigure so native debug
 symbols are kept for testing (Meson otherwise retains `strip=true` from a prior
 release configure).
@@ -365,7 +365,7 @@ services or GGUF inference on device.
 ### Remote-only desktop build
 
 GitHub Actions can build the existing remote-only desktop configuration on
-demand through the `Remote-only build` workflow. This validates that the
+demand through the **CI · Remote-only** workflow. This validates that the
 no-GGUF path keeps compiling without requiring libllama packages.
 
 ### Android build workflow
@@ -373,10 +373,11 @@ no-GGUF path keeps compiling without requiring libllama packages.
 The **Release** workflow also builds this APK and, on a tag, attaches it to
 the GitHub Release next to the desktop packages.
 
-The **Android build** workflow builds the remote chat POC on demand:
+**Release · Android** builds the remote chat POC on demand (same job, no
+publish):
 
 1. Open GitHub Actions.
-2. Choose **Android build**.
+2. Choose **Release · Android**.
 3. Click **Run workflow** and select the branch to test.
 4. Optionally enable **Rebuild SDK and Pixiewood/GTK caches from scratch** when
    you need a cold build.
@@ -413,8 +414,8 @@ Possible future triggers:
 
 - keep `workflow_dispatch` while iterating on device behavior
 - add `pull_request` only after the job is stable and the runtime cost is known
-- add release/tag publishing later by copying the generated APK into
-  `release.yml` or a dedicated Android release workflow
+
+Tag releases already attach the APK via **Release**; iterate with **Release · Android**.
 
 Normal Linux builds should continue to work with the distro Meson shipped by
 Ubuntu 24.04. A newer Meson is only required when cross-building the Android
@@ -422,7 +423,7 @@ application target, because that path needs `android_exe_type`.
 
 ## Recommended next steps
 
-1. Run **Android build** manually from GitHub Actions and install the debug APK
+1. Run **Release · Android** from GitHub Actions and install the debug APK
    on a device or emulator.
 2. Exercise remote chat against a reachable HTTP LLM endpoint on a real device.
 3. Add Meson options to disable Android-hostile subsystems independently:

@@ -1,0 +1,22 @@
+name: Release · AppImage and Windows
+
+# Manual sqgipkg AppImage + NSIS build. Tags still go through Release (release.yml).
+
+on:
+  workflow_dispatch:
+    inputs:
+      refresh_cache:
+        description: Rebuild sqgipkg and Meson caches from scratch
+        type: boolean
+        default: false
+
+run-name: Release · AppImage and Windows · ${{ github.ref_name }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/reusable-sqgipkg.yml
+    with:
+      refresh_cache: ${{ inputs.refresh_cache }}

@@ -585,18 +585,17 @@ oc_vector_search = executable('oc-vector-search',
 )
 
 # libseccomp + bwrap spike (plan docs/plans/done/2.22.1.2-DONE-seccomp-manual-vapi-and-validation.md): optional when libseccomp is linkable.
-# Use cc.find_library (not pkg-config dep) so Meson does not pass --pkg libseccomp to valac.
-# Vala: user-notify supervisor + bwrap; link vapi/seccomp-fd-pass.c for SCM_RIGHTS (see Seccomp.pass_unix_fd).
-cc_examples = meson.get_compiler('c')
-libseccomp_lib = cc_examples.find_library('seccomp', required: false)
+# Use libseccomp_dep from config/meson.build (pkg-config C flags + link) so Meson
+# does not pass --pkg libseccomp to valac. Vala: user-notify supervisor + bwrap;
+# link vapi/seccomp-fd-pass.c for SCM_RIGHTS (see Seccomp.pass_unix_fd).
 seccomp_vapi = valac.find_library('seccomp', dirs: meson.current_source_dir() / '../vapi', required: false)
-if libseccomp_lib.found() and seccomp_vapi.found()
+if host_machine.system() != 'windows' and seccomp_vapi.found()
   executable('oc-test-seccomp-spike',
     dependencies: [
       dependency('gio-2.0'),
       valac.find_library('posix'),
       seccomp_vapi,
-      libseccomp_lib,
+      libseccomp_dep,
     ],
     include_directories: include_directories ('../vapi'),
     sources: [
