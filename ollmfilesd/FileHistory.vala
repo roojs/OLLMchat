@@ -255,7 +255,7 @@ namespace OLLMfilesd
 			if (this.change_type == "deleted") {
 				var src = GLib.File.new_for_path(this.path);
 				if (!GLib.FileUtils.test(src.get_path(), GLib.FileTest.EXISTS)) {
-					//GLib.debug("FileHistory.create_backup: skip backup (path already absent): %s", this.path);
+					//GLib.debug("RPC-FileHistory.create_backup: skip backup (path already absent): %s", this.path);
 					return;
 				}
 			}
@@ -299,7 +299,7 @@ namespace OLLMfilesd
 				// Note: cleanup_old_backups() should be called separately with db and config
 				// (e.g., on startup or periodically) - not called here since we don't have config access
 			} catch (GLib.Error e) {
-				GLib.warning("FileHistory.create_backup: Failed to create backup for %s: %s", 
+				GLib.warning("RPC-FileHistory.create_backup: Failed to create backup for %s: %s", 
 					this.path, e.message);
 				throw e;
 			}
@@ -338,7 +338,7 @@ namespace OLLMfilesd
 			if (!GLib.FileUtils.test(this.backup_path, GLib.FileTest.EXISTS)) {
 				return;
 			}
-			GLib.debug("FileHistory.unlink: Deleting backup file %s", this.backup_path);
+			GLib.debug("RPC-FileHistory.unlink: Deleting backup file %s", this.backup_path);
 			GLib.FileUtils.unlink(this.backup_path);
 		}
 		
@@ -393,7 +393,7 @@ namespace OLLMfilesd
 				yield FileHistory.query(db).select_async(
 					"WHERE timestamp < " + cutoff_timestamp, old_records);
 			} catch (GLib.Error e) {
-				GLib.warning("FileHistory.cleanup_old_backups: Failed to select old records: %s", e.message);
+				GLib.warning("RPC-FileHistory.cleanup_old_backups: Failed to select old records: %s", e.message);
 				return;
 			}
 			
@@ -419,7 +419,7 @@ namespace OLLMfilesd
 						timestamp < """ + cutoff_timestamp + """
 				)"""	
 				, null, out errmsg)) {
-				GLib.warning("FileHistory.cleanup_old_backups: Failed to delete filebase records: %s", errmsg);
+				GLib.warning("RPC-FileHistory.cleanup_old_backups: Failed to delete filebase records: %s", errmsg);
 				return;
 			}
 			
@@ -430,7 +430,7 @@ namespace OLLMfilesd
 					file_history 
 				WHERE 
 					timestamp < """ + cutoff_timestamp, null, out errmsg)) {
-				GLib.warning("FileHistory.cleanup_old_backups: Failed to delete file_history records: %s", errmsg);
+				GLib.warning("RPC-FileHistory.cleanup_old_backups: Failed to delete file_history records: %s", errmsg);
 				return;
 			}
 			

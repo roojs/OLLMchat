@@ -152,7 +152,7 @@ Examples:
 		};
 
 		if (!yield this.rpc.connect(new OLLMrpc.Request() {
-			method = "Daemon.hello",
+			method = "RPC-Daemon.hello",
 			param = new OLLMfilesd.DaemonParams() {
 				protocol = 1,
 				client = "oc-vector-index"
@@ -167,7 +167,7 @@ Examples:
 
 		if (opt_reset_database) {
 			var reset_response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "Codebase.reset",
+				method = "RPC-Codebase.reset",
 				param = new OLLMfilesd.VectorParams()
 			});
 			if (reset_response.error != null) {
@@ -214,7 +214,7 @@ Examples:
 		}
 
 		var load_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "ProjectManager.load_projects_from_db",
+			method = "RPC-ProjectManager.load_projects_from_db",
 			param = new OLLMfilesd.ProjectParams()
 		});
 		if (load_response.error != null) {
@@ -222,7 +222,7 @@ Examples:
 		}
 
 		var fetch_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "Folder.fetch",
+			method = "RPC-Folder.fetch",
 			param = new OLLMfilesd.FolderParams() { path = project_path }
 		});
 		if (fetch_response.error != null) {
@@ -247,7 +247,7 @@ Examples:
 		if (opt_create_project) {
 			stdout.printf("Creating folder as project: %s\n", project_path);
 			var create_response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "ProjectManager.create_project",
+				method = "RPC-ProjectManager.create_project",
 				param = new OLLMfilesd.ProjectParams() { path = project_path }
 			});
 			if (create_response.error != null) {
@@ -258,7 +258,7 @@ Examples:
 
 		stdout.printf("Scanning folder for files...\n");
 		var scan_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "ProjectManager.activate_project",
+			method = "RPC-ProjectManager.activate_project",
 			param = new OLLMfilesd.ProjectParams() {
 				path = project_path,
 				skip_scan = false
@@ -272,7 +272,7 @@ Examples:
 		if (opt_project_summary) {
 			stdout.printf("=== Project summary ===\n\n");
 			var summary_response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "Folder.project_description",
+				method = "RPC-Folder.project_description",
 				param = new OLLMfilesd.FolderParams() { path = project_path }
 			});
 			if (summary_response.error != null) {
@@ -336,7 +336,7 @@ Examples:
 		});
 
 		var start_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "Codebase.start",
+			method = "RPC-Codebase.start",
 			param = new OLLMfilesd.VectorParams() {
 				path = project_path,
 				only_file = opt_only_file

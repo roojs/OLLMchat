@@ -427,7 +427,7 @@ namespace OLLMfilesd
 			var detected = this.manager.buffer_provider.detect_language(this);
 			if (detected != "") {
 				this.language = detected;
-				//GLib.debug("File.detect_language: Detected language '%s' for file '%s'", 
+				//GLib.debug("RPC-File.detect_language: Detected language '%s' for file '%s'", 
 				//	this.language, this.path);
 			}
 		}

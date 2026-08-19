@@ -70,7 +70,7 @@ namespace OLLMfiles
 					var file = (File) filebase;
 					if (!yield file.delete()) {
 						throw new IOError.FAILED(
-							"File.delete RPC failed for %s".printf(file.path)
+							"RPC-File.delete RPC failed for %s".printf(file.path)
 						);
 					}
 					if (this.manager.active_file == file) {

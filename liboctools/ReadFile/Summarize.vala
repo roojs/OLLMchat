@@ -122,7 +122,7 @@ namespace OLLMtools.ReadFile
 			}
 
 			var response = yield this.file.manager.rpc.call(new OLLMrpc.Request() {
-				method = "Codebase.file_info",
+				method = "RPC-Codebase.file_info",
 				param = new OLLMfilesd.VectorParams() {
 					path = project.path,
 					file_path = this.file.path

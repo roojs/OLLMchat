@@ -116,7 +116,7 @@ namespace OLLMfiles
 				}
 			} catch (GLib.Error e) {
 				// File might not exist yet, that's okay for fake files
-				GLib.debug("File.new_fake: Could not query file info for %s: %s", path, e.message);
+				GLib.debug("RPC-File.new_fake: Could not query file info for %s: %s", path, e.message);
 			}
 		}
 		
@@ -133,7 +133,7 @@ namespace OLLMfiles
 			var detected = this.manager.buffer_provider.detect_language(this);
 			if (detected != "") {
 				this.language = detected;
-				//GLib.debug("File.detect_language: Detected language '%s' for file '%s'", 
+				//GLib.debug("RPC-File.detect_language: Detected language '%s' for file '%s'", 
 				//	this.language, this.path);
 			}
 		}
@@ -320,7 +320,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "File.exists",
+				method = "RPC-File.exists",
 				param = new OLLMfilesd.FileParams() { path = this.path }
 			});
 			if (response.error != null || response.msg == "") {
@@ -334,7 +334,7 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Load filebase + content from daemon (''File.read'').
+		 * Load filebase + content from daemon (''RPC-File.read'').
 		 *
 		 * Wire: ''result'' is the {@link File} row (indexed id when in project,
 		 * else ''id == -1''); ''response.msg'' is file content;
@@ -352,7 +352,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "File.read",
+				method = "RPC-File.read",
 				param = new OLLMfilesd.FileParams() { path = this.path }
 			});
 			if (response.error != null) {
@@ -429,7 +429,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "File.write",
+				method = "RPC-File.write",
 				param = new OLLMfilesd.FileParams() {
 					path = this.path,
 					content = write_content,
@@ -457,7 +457,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "File.changed.check",
+				method = "RPC-File.changed.check",
 				param = new OLLMfilesd.FileParams() {
 					path = this.path,
 					buffer_dirty = this.buffer != null && this.buffer.is_modified,
@@ -490,7 +490,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "File.register",
+				method = "RPC-File.register",
 				param = new OLLMfilesd.FileParams() { path = this.path }
 			});
 			if (response.error != null) {
@@ -539,7 +539,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "File.delete",
+				method = "RPC-File.delete",
 				param = new OLLMfilesd.FileParams() { path = this.path }
 			});
 			return response.error == null;
@@ -558,7 +558,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "File.apply_permissions",
+				method = "RPC-File.apply_permissions",
 				param = new OLLMfilesd.FileParams() {
 					path = this.path,
 					unix_mode = unix_mode

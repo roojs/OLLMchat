@@ -516,7 +516,7 @@ namespace OLLMfilesd
 		{
 			var p = (VectorParams) request.param;
 			if (p.ast_path == "") {
-				GLib.error("Codebase.debug_get: ast_path is required");
+				GLib.error("RPC-Codebase.debug_get: ast_path is required");
 			}
 			var project = this.manager.project_root(p.path);
 			if (project == null) {

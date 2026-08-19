@@ -34,12 +34,12 @@ namespace OLLMrpcTests
 		};
 		OLLMrpc.Live.RemoteParams.rpc_register();
 		OLLMrpc.Live.SubscribeParams.rpc_register();
-		OLLMrpc.Request.register("Remote", new OLLMrpc.Live.Remote(), typeof(OLLMrpc.Live.RemoteParams));
-		OLLMrpc.Request.register("Subscribe", new OLLMrpc.Live.Subscribe(), typeof(OLLMrpc.Live.SubscribeParams));
+		OLLMrpc.Request.register("RPC-Live-Remote", new OLLMrpc.Live.Remote(), typeof(OLLMrpc.Live.RemoteParams));
+		OLLMrpc.Request.register("RPC-Live-Subscribe", new OLLMrpc.Live.Subscribe(), typeof(OLLMrpc.Live.SubscribeParams));
 		var probe = new Probe();
 		var id = conn.export(probe);
 		var sub = new OLLMrpc.Request() {
-			method = "Subscribe.signal",
+			method = "RPC-Live-Subscribe.signal",
 			param = new OLLMrpc.Live.SubscribeParams() {
 				object_id = id,
 				name = "notify::title"
@@ -68,7 +68,7 @@ namespace OLLMrpcTests
 			return 1;
 		}
 		var unsub = new OLLMrpc.Request() {
-			method = "Subscribe.unsubscribe",
+			method = "RPC-Live-Subscribe.unsubscribe",
 			param = new OLLMrpc.Live.SubscribeParams() {
 				object_id = id,
 				name = "notify::title"
@@ -85,7 +85,7 @@ namespace OLLMrpcTests
 			return 1;
 		}
 		var closed_sub = new OLLMrpc.Request() {
-			method = "Subscribe.signal",
+			method = "RPC-Live-Subscribe.signal",
 			param = new OLLMrpc.Live.SubscribeParams() {
 				object_id = id,
 				name = "closed"
@@ -122,7 +122,7 @@ namespace OLLMrpcTests
 		var held_probe = new Probe();
 		var held_id = held.export(held_probe);
 		var held_sub = new OLLMrpc.Request() {
-			method = "Subscribe.signal",
+			method = "RPC-Live-Subscribe.signal",
 			param = new OLLMrpc.Live.SubscribeParams() {
 				object_id = held_id,
 				name = "notify::title"
@@ -134,7 +134,7 @@ namespace OLLMrpcTests
 			return 1;
 		}
 		var drop = new OLLMrpc.Request() {
-			method = "Remote.unref",
+			method = "RPC-Live-Remote.unref",
 			param = new OLLMrpc.Live.RemoteParams() {
 				object_id = held_id
 			},
@@ -152,7 +152,7 @@ namespace OLLMrpcTests
 
 		var off = new OLLMrpc.Transport.Connection();
 		var off_req = new OLLMrpc.Request() {
-			method = "Subscribe.signal",
+			method = "RPC-Live-Subscribe.signal",
 			param = new OLLMrpc.Live.SubscribeParams() {
 				object_id = 1,
 				name = "notify::title"

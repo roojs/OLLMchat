@@ -19,8 +19,8 @@
  * {@link Remote} ref and unref.
  * {@link Subscribe} for notify and named signals.
  * {@link Subscription} holds one connected handler.
- * Wire prefixes stay ''Remote'' and ''Subscribe''
- * (one-dot ''Object.method'').
+ * Wire prefixes are ''RPC-Live-Remote'' and
+ * ''RPC-Live-Subscribe''.
  *
  * == Example ==
  *
@@ -28,10 +28,10 @@
  * OLLMrpc.Live.RemoteParams.rpc_register();
  * OLLMrpc.Live.SubscribeParams.rpc_register();
  * OLLMrpc.Request.register(
- *     "Remote", new OLLMrpc.Live.Remote(),
+ *     "RPC-Live-Remote", new OLLMrpc.Live.Remote(),
  *     typeof(OLLMrpc.Live.RemoteParams));
  * OLLMrpc.Request.register(
- *     "Subscribe", new OLLMrpc.Live.Subscribe(),
+ *     "RPC-Live-Subscribe", new OLLMrpc.Live.Subscribe(),
  *     typeof(OLLMrpc.Live.SubscribeParams));
  * }}}
  */

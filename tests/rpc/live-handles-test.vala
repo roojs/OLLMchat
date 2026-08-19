@@ -23,7 +23,7 @@ namespace OLLMrpcTests
 		};
 		OLLMrpc.Live.RemoteParams.rpc_register();
 		OLLMrpc.Request.register(
-			"Remote",
+			"RPC-Live-Remote",
 			new OLLMrpc.Live.Remote(),
 			typeof(OLLMrpc.Live.RemoteParams)
 		);
@@ -44,7 +44,7 @@ namespace OLLMrpcTests
 		}
 
 		var ref_req = new OLLMrpc.Request() {
-			method = "Remote.ref",
+			method = "RPC-Live-Remote.ref",
 			param = new OLLMrpc.Live.RemoteParams() {
 				object_id = id
 			},
@@ -60,7 +60,7 @@ namespace OLLMrpcTests
 		}
 
 		var unref_req = new OLLMrpc.Request() {
-			method = "Remote.unref",
+			method = "RPC-Live-Remote.unref",
 			param = new OLLMrpc.Live.RemoteParams() {
 				object_id = id
 			},
@@ -91,7 +91,7 @@ namespace OLLMrpcTests
 		var pinned_floor = pinned.ref_count;
 		var pinned_id = conn.export(pinned);
 		var extra_req = new OLLMrpc.Request() {
-			method = "Remote.ref",
+			method = "RPC-Live-Remote.ref",
 			param = new OLLMrpc.Live.RemoteParams() {
 				object_id = pinned_id
 			},

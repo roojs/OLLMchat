@@ -209,7 +209,7 @@ namespace OLLMtools.CodebaseSearch
 			
 			// Step 2: Codebase.search on ollmfilesd (filter, FAISS, snippets — daemon-side)
 			var response = yield this.project_manager.rpc.call(new OLLMrpc.Request() {
-				method = "Codebase.search",
+				method = "RPC-Codebase.search",
 				param = new OLLMfilesd.VectorParams() {
 					path = active_project.path,
 					query = this.query,

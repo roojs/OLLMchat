@@ -295,28 +295,28 @@ Examples:
 
 			this.daemon = new Daemon(this);
 			OLLMrpc.Request.register(
-				"Daemon", this.daemon,
+				"RPC-Daemon", this.daemon,
 				(new DaemonParams()).get_type()
 			);
 			OLLMrpc.Request.register(
-				"ProjectManager", this.project_manager,
+				"RPC-ProjectManager", this.project_manager,
 				(new ProjectParams()).get_type()
 			);
 			OLLMrpc.Request.register(
-				"File", new File(this.project_manager),
+				"RPC-File", new File(this.project_manager),
 				(new FileParams()).get_type()
 			);
 			OLLMrpc.Request.register(
-				"Folder", new Folder(this.project_manager),
+				"RPC-Folder", new Folder(this.project_manager),
 				(new FolderParams()).get_type()
 			);
 			OLLMrpc.Request.register(
-				"FileHistory",
+				"RPC-FileHistory",
 				new FileHistory.for_rpc(this.project_manager),
 				(new FileParams()).get_type()
 			);
 			OLLMrpc.Request.register(
-				"Codebase", new Codebase(this.project_manager, this.config),
+				"RPC-Codebase", new Codebase(this.project_manager, this.config),
 				(new VectorParams()).get_type()
 			);
 

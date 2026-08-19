@@ -1,9 +1,9 @@
 # T2.1 — File.write persistence (Path A: scan; flush on shutdown)
-{"id":1,"method":"Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
-{"id":2,"method":"ProjectManager.create_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
-{"id":3,"method":"ProjectManager.activate_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
-{"id":4,"method":"File.read","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__"}}
-{"id":5,"method":"File.write","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__","content":"written by rpc test\n"}}
-{"id":6,"method":"File.changed.check","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__","buffer_dirty":false,"last_known_mtime":0}}
-{"id":7,"method":"File.activate","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__"}}
-{"id":99,"method":"Daemon.shutdown","*type":"Request","param":{"*type":"DaemonParams"}}
+{"id":1,"method":"RPC-Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
+{"id":2,"method":"RPC-ProjectManager.create_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
+{"id":3,"method":"RPC-ProjectManager.activate_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
+{"id":4,"method":"RPC-File.read","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__"}}
+{"id":5,"method":"RPC-File.write","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__","content":"written by rpc test\n"}}
+{"id":6,"method":"RPC-File.changed.check","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__","buffer_dirty":false,"last_known_mtime":0}}
+{"id":7,"method":"RPC-File.activate","*type":"Request","param":{"*type":"FileParams","path":"__HELLO_PATH__"}}
+{"id":99,"method":"RPC-Daemon.shutdown","*type":"Request","param":{"*type":"DaemonParams"}}

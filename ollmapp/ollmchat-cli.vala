@@ -406,7 +406,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			this.project_manager = new OLLMfiles.ProjectManager();
 
 			var hello = new OLLMrpc.Request() {
-				method = "Daemon.hello",
+				method = "RPC-Daemon.hello",
 				param = new OLLMfilesd.DaemonParams() {
 					protocol = 1,
 					client = "ollmchat-cli"

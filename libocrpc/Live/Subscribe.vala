@@ -14,66 +14,6 @@
 namespace OLLMrpc.Live
 {
 	/**
-	 * Params for {@link Subscribe} signal / unsubscribe.
-	 *
-	 * == Example ==
-	 *
-	 * {{{
-	 * var req = new OLLMrpc.Request() {
-	 *     method = "Subscribe.signal",
-	 *     param = new OLLMrpc.Live.SubscribeParams() {
-	 *         object_id = handle,
-	 *         name = "notify::title"
-	 *     }
-	 * };
-	 * }}}
-	 */
-	public class SubscribeParams : CallParam
-	{
-		public uint64 object_id { get; set; default = 0; }
-		public string name { get; set; default = ""; }
-
-		public static void rpc_register()
-		{
-			Bin.register("SubscribeParams", typeof(SubscribeParams));
-		}
-	}
-
-	/**
-	 * Per-subscription holder for by-name GObject connect.
-	 *
-	 * {@link emit} is the C-callable method GObject invokes for named
-	 * signals. {@link hid} is the handler id for disconnect.
-	 *
-	 * == Example ==
-	 *
-	 * {{{
-	 * var subscription = new OLLMrpc.Live.Subscription() {
-	 *     connection = connection,
-	 *     method = "closed",
-	 *     id = (int) handle
-	 * };
-	 * subscription.hid = GLib.Signal.connect_swapped(obj, "closed",
-	 *     (GLib.Callback) Subscription.emit, subscription);
-	 * }}}
-	 */
-	public class Subscription : GLib.Object
-	{
-		public Transport.Connection connection { get; set; }
-		public string method { get; set; default = ""; }
-		public int id { get; set; default = 0; }
-		public ulong hid { get; set; default = 0; }
-
-		public void emit()
-		{
-			this.connection.write(new Notification() {
-				method = this.method,
-				id = this.id
-			});
-		}
-	}
-
-	/**
 	 * Process-wide handler for live-handle signal subscribe.
 	 *
 	 * Uses {@link Request.connection} so each peer has its own
@@ -86,10 +26,10 @@ namespace OLLMrpc.Live
 	 * {{{
 	 * OLLMrpc.Live.SubscribeParams.rpc_register();
 	 * OLLMrpc.Request.register(
-	 *     "Subscribe", new OLLMrpc.Live.Subscribe(),
+	 *     "RPC-Live-Subscribe", new OLLMrpc.Live.Subscribe(),
 	 *     typeof(OLLMrpc.Live.SubscribeParams));
 	 * var req = new OLLMrpc.Request() {
-	 *     method = "Subscribe.signal",
+	 *     method = "RPC-Live-Subscribe.signal",
 	 *     param = new OLLMrpc.Live.SubscribeParams() {
 	 *         object_id = handle,
 	 *         name = "notify::title"

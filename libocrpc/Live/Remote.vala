@@ -14,30 +14,6 @@
 namespace OLLMrpc.Live
 {
 	/**
-	 * Params for {@link Remote} ref / unref.
-	 *
-	 * == Example ==
-	 *
-	 * {{{
-	 * var req = new OLLMrpc.Request() {
-	 *     method = "Remote.unref",
-	 *     param = new OLLMrpc.Live.RemoteParams() {
-	 *         object_id = handle
-	 *     }
-	 * };
-	 * }}}
-	 */
-	public class RemoteParams : CallParam
-	{
-		public uint64 object_id { get; set; default = 0; }
-
-		public static void rpc_register()
-		{
-			Bin.register("RemoteParams", typeof(RemoteParams));
-		}
-	}
-
-	/**
 	 * Process-wide handler for live-handle refcount RPCs.
 	 *
 	 * Uses {@link Request.connection} so each peer has its own lease table.
@@ -49,10 +25,10 @@ namespace OLLMrpc.Live
 	 * {{{
 	 * OLLMrpc.Live.RemoteParams.rpc_register();
 	 * OLLMrpc.Request.register(
-	 *     "Remote", new OLLMrpc.Live.Remote(),
+	 *     "RPC-Live-Remote", new OLLMrpc.Live.Remote(),
 	 *     typeof(OLLMrpc.Live.RemoteParams));
 	 * var req = new OLLMrpc.Request() {
-	 *     method = "Remote.unref",
+	 *     method = "RPC-Live-Remote.unref",
 	 *     param = new OLLMrpc.Live.RemoteParams() {
 	 *         object_id = handle
 	 *     },

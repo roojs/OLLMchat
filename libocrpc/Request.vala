@@ -21,8 +21,10 @@ namespace OLLMrpc
 	/**
 	 * Outbound RPC envelope (one root object per call).
 	 *
-	 * Set ''method'' to the wire handler name (''Object.method'' for daemons,
-	 * or a REST path for HTTP). Attach a {@link CallParam} subclass on
+	 * Set ''method'' to the wire handler name
+	 * (''RPC-Object.method'' for daemons; hyphen nested
+	 * namespaces like ''RPC-Live-Remote.ref''; or a REST
+	 * path for HTTP). Attach a {@link CallParam} subclass on
 	 * ''param''. For typed HTTP results, set ''result_type'' before
 	 * {@link Client.call}.
 	 *
@@ -30,7 +32,7 @@ namespace OLLMrpc
 	 *
 	 * {{{
 	 * var req = new OLLMrpc.Request() {
-	 *     method = "Folder.fetch_files",
+	 *     method = "RPC-Folder.fetch_files",
 	 *     param = new OLLMfilesd.FolderParams() {
 	 *         path = "/home/user/project"
 	 *     },
@@ -89,7 +91,7 @@ namespace OLLMrpc
 		/**
 		 * Register a server dispatch handler and its params {@link GLib.Type}.
 		 *
-		 * @param name wire object prefix (e.g. Folder)
+		 * @param name wire object prefix (e.g. RPC-Folder)
 		 * @param target live singleton with call_* signals
 		 * @param param_type GObject type for wire params (extends {@link CallParam})
 		 */
@@ -161,7 +163,7 @@ namespace OLLMrpc
 			var dot = this.method.index_of_char('.');
 			if (dot < 1 || dot == this.method.length - 1) {
 				GLib.critical(
-					"RPC dispatch: method must be Object.method, got '%s'",
+					"RPC dispatch: method must be RPC-Object.method, got '%s'",
 					this.method
 				);
 				return false;

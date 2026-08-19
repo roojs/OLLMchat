@@ -73,7 +73,7 @@ namespace OLLMfilesd
 			this.bin = new OLLMrpc.Bin.Stream(in_stream, out_stream, true);
 
 			this.write(new OLLMrpc.Notification() {
-				method = "Daemon.ready",
+				method = "RPC-Daemon.ready",
 				object_type = "Daemon",
 			});
 

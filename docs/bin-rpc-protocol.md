@@ -622,7 +622,7 @@ Any key starting with **`*`** is meta only and is stripped before bin encode.
 ### Example (stdio script line → bin)
 
 ```json
-{"*type":"Request","id":1,"method":"Folder.fetch_files","param":{"*type":"FolderParams","path":"/tmp"}}
+{"*type":"Request","id":1,"method":"RPC-Folder.fetch_files","param":{"*type":"FolderParams","path":"/tmp"}}
 ```
 
 `StdioConnection.request_from_json_line` calls **`this.json.json_to_bin(root, encode_ctx)`**, then **`read_ctx.parse()`** as **`Request`**.

@@ -48,7 +48,7 @@
  *     "ollmfilesd.sock"
  * );
  * if (!yield rpc.connect(new OLLMrpc.Request() {
- *     method = "Daemon.hello",
+ *     method = "RPC-Daemon.hello",
  *     param = new OLLMfilesd.DaemonParams() {
  *         protocol = 1,
  *         client = "my-app"
@@ -57,7 +57,7 @@
  *     GLib.error("%s", rpc.connect_error);
  * }
  * var resp = yield rpc.call(new OLLMrpc.Request() {
- *     method = "ProjectManager.load_projects_from_db",
+ *     method = "RPC-ProjectManager.load_projects_from_db",
  *     param = new OLLMfilesd.ProjectParams()
  * });
  * }}}

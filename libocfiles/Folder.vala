@@ -104,7 +104,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "Folder.project_description",
+				method = "RPC-Folder.project_description",
 				param = new OLLMfilesd.FolderParams() { path = this.path }
 			});
 			if (response.error != null) {
@@ -128,7 +128,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "Folder.roots",
+				method = "RPC-Folder.roots",
 				param = new OLLMfilesd.FolderParams() { path = this.path }
 			});
 			if (response.error != null) {
@@ -164,7 +164,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "File.fetch",
+				method = "RPC-File.fetch",
 				param = new OLLMfilesd.FileParams() {
 					path = path,
 					project_path = this.path
@@ -196,7 +196,7 @@ namespace OLLMfiles
 		public async bool contains_folder(string dir_path)
 		{
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "Folder.contains_folder",
+				method = "RPC-Folder.contains_folder",
 				param = new OLLMfilesd.FolderParams() {
 					project_path = this.path,
 					path = dir_path
@@ -228,7 +228,7 @@ namespace OLLMfiles
 		)
 		{
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "Folder.fetch_files",
+				method = "RPC-Folder.fetch_files",
 				param = new OLLMfilesd.FolderParams() {
 					path = this.path,
 					offset = offset,

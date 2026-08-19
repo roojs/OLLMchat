@@ -200,7 +200,7 @@ Examples:
 		};
 
 		if (!yield this.rpc.connect(new OLLMrpc.Request() {
-			method = "Daemon.hello",
+			method = "RPC-Daemon.hello",
 			param = new OLLMfilesd.DaemonParams() {
 				protocol = 1,
 				client = "oc-vector-search"
@@ -214,7 +214,7 @@ Examples:
 		}
 
 		var load_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "ProjectManager.load_projects_from_db",
+			method = "RPC-ProjectManager.load_projects_from_db",
 			param = new OLLMfilesd.ProjectParams()
 		});
 		if (load_response.error != null) {
@@ -222,7 +222,7 @@ Examples:
 		}
 
 		var activate_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "ProjectManager.activate_project",
+			method = "RPC-ProjectManager.activate_project",
 			param = new OLLMfilesd.ProjectParams() {
 				path = abs_folder,
 				skip_scan = true
@@ -266,7 +266,7 @@ Examples:
 		}
 
 		var response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "Codebase.file_info",
+			method = "RPC-Codebase.file_info",
 			param = new OLLMfilesd.VectorParams() {
 				path = abs_folder,
 				file_path = resolved_path
@@ -338,7 +338,7 @@ Examples:
 	private async void run_dump_vector(string abs_folder, string ast_path) throws Error
 	{
 		var response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "Codebase.debug_get",
+			method = "RPC-Codebase.debug_get",
 			param = new OLLMfilesd.VectorParams() {
 				path = abs_folder,
 				ast_path = ast_path
@@ -379,7 +379,7 @@ Examples:
 		}
 
 		var response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "Codebase.search",
+			method = "RPC-Codebase.search",
 			param = new OLLMfilesd.VectorParams() {
 				path = abs_folder,
 				query = query,

@@ -37,7 +37,7 @@ namespace OLLMrpc
 	 * }
 	 *
 	 * var req = new OLLMrpc.Request() {
-	 *     method = "Daemon.hello",
+	 *     method = "RPC-Daemon.hello",
 	 *     param = new DaemonParams() {
 	 *         protocol = 1,
 	 *         client = "my-app"
