@@ -21,11 +21,11 @@ namespace OLLMrpcTests
 		var conn = new OLLMrpc.Transport.Connection() {
 			live_handles = true
 		};
-		OLLMrpc.RemoteParams.rpc_register();
+		OLLMrpc.Live.RemoteParams.rpc_register();
 		OLLMrpc.Request.register(
 			"Remote",
-			new OLLMrpc.Remote(),
-			typeof(OLLMrpc.RemoteParams)
+			new OLLMrpc.Live.Remote(),
+			typeof(OLLMrpc.Live.RemoteParams)
 		);
 		var obj = new GLib.Object();
 		var floor = obj.ref_count;
@@ -45,7 +45,7 @@ namespace OLLMrpcTests
 
 		var ref_req = new OLLMrpc.Request() {
 			method = "Remote.ref",
-			param = new OLLMrpc.RemoteParams() {
+			param = new OLLMrpc.Live.RemoteParams() {
 				object_id = id
 			},
 			connection = conn
@@ -61,7 +61,7 @@ namespace OLLMrpcTests
 
 		var unref_req = new OLLMrpc.Request() {
 			method = "Remote.unref",
-			param = new OLLMrpc.RemoteParams() {
+			param = new OLLMrpc.Live.RemoteParams() {
 				object_id = id
 			},
 			connection = conn
@@ -92,7 +92,7 @@ namespace OLLMrpcTests
 		var pinned_id = conn.export(pinned);
 		var extra_req = new OLLMrpc.Request() {
 			method = "Remote.ref",
-			param = new OLLMrpc.RemoteParams() {
+			param = new OLLMrpc.Live.RemoteParams() {
 				object_id = pinned_id
 			},
 			connection = conn

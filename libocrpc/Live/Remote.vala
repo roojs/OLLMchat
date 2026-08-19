@@ -11,7 +11,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMrpc
+namespace OLLMrpc.Live
 {
 	/**
 	 * Params for {@link Remote} ref / unref.
@@ -21,7 +21,7 @@ namespace OLLMrpc
 	 * {{{
 	 * var req = new OLLMrpc.Request() {
 	 *     method = "Remote.unref",
-	 *     param = new OLLMrpc.RemoteParams() {
+	 *     param = new OLLMrpc.Live.RemoteParams() {
 	 *         object_id = handle
 	 *     }
 	 * };
@@ -47,12 +47,13 @@ namespace OLLMrpc
 	 * == Example ==
 	 *
 	 * {{{
-	 * OLLMrpc.RemoteParams.rpc_register();
+	 * OLLMrpc.Live.RemoteParams.rpc_register();
 	 * OLLMrpc.Request.register(
-	 *     "Remote", new OLLMrpc.Remote(), typeof(OLLMrpc.RemoteParams));
+	 *     "Remote", new OLLMrpc.Live.Remote(),
+	 *     typeof(OLLMrpc.Live.RemoteParams));
 	 * var req = new OLLMrpc.Request() {
 	 *     method = "Remote.unref",
-	 *     param = new OLLMrpc.RemoteParams() {
+	 *     param = new OLLMrpc.Live.RemoteParams() {
 	 *         object_id = handle
 	 *     },
 	 *     connection = connection
@@ -108,6 +109,12 @@ namespace OLLMrpc
 					return;
 				}
 				var obj = request.connection.leases.get(id);
+				if (request.connection.signal_subs.has_key(id)) {
+					foreach (var name in request.connection.signal_subs.get(id).keys) {
+						GLib.SignalHandler.disconnect(obj, request.connection.signal_subs.get(id).get(name).hid);
+					}
+					request.connection.signal_subs.unset(id);
+				}
 				request.connection.lease_ids.unset(((uint64) (void*) obj).to_string(
 					"%" + uint64.FORMAT_MODIFIER + "x"));
 				request.connection.leases.unset(id);

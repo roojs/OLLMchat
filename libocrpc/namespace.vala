@@ -25,6 +25,7 @@
  * {@link Request} carries ''method'', a typed {@link CallParam} on ''param'',
  * and optional ''result_type''. {@link Bin} serializes {@link Bin.Serializable}
  * GObjects on the wire. {@link Transport} is the daemon listen/connection side.
+ * {@link Live} is opt-in live GObject handles (ref, unref, subscribe).
  *
  * == Architecture Benefits ==
  *

@@ -56,6 +56,18 @@ namespace OLLMrpc.Transport
 			default = new Gee.HashMap<string, int>();
 		}
 
+		/**
+		 * Subscribed GObject handler ids for this connection.
+		 *
+		 * Outer key is the lease id. Inner map is signal or
+		 * ''notify::'' name → handler id from connect.
+		 */
+		public Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>> signal_subs {
+			get;
+			set;
+			default = new Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>>();
+		}
+
 		private int next_handle = 1;
 
 		protected GLib.IOChannel? channel;
@@ -129,6 +141,12 @@ namespace OLLMrpc.Transport
 
 		public virtual void stop()
 		{
+			foreach (var id in this.signal_subs.keys) {
+				foreach (var name in this.signal_subs.get(id).keys) {
+					GLib.SignalHandler.disconnect(this.leases.get(id), this.signal_subs.get(id).get(name).hid);
+				}
+			}
+			this.signal_subs.clear();
 			foreach (var id in this.leases.keys) {
 				for (var i = 0u; i < this.extras.get(id); i++) {
 					this.leases.get(id).unref();

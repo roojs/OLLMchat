@@ -1,4 +1,4 @@
-name: X - GitHub Pages
+name: X - Publish Valadoc to GitHub Pages
 
 on:
   push:
@@ -33,7 +33,8 @@ permissions:
   id-token: write
 
 jobs:
-  build:
+  valadoc:
+    name: Generate Valadoc
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     container:
@@ -102,8 +103,9 @@ jobs:
           path: build/valadoc
 
   deploy:
+    name: Deploy to GitHub Pages
     if: github.ref == 'refs/heads/main'
-    needs: build
+    needs: valadoc
     runs-on: ubuntu-latest
     environment:
       name: github-pages

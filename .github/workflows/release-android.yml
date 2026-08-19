@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   build-apk:
+    name: Android APK
     uses: ./.github/workflows/x-android.yml
     with:
       refresh_cache: ${{ inputs.refresh_cache }}

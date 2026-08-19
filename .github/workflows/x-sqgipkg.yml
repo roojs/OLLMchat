@@ -1,6 +1,6 @@
-name: X - AppImage and Windows
+name: X - AppImage and Windows installer build (Release calls this)
 
-# Ignore in Actions. Called by Release - AppImage and Windows / Release.
+# The real sqgipkg job. Start Release - AppImage and Windows, not this file.
 
 on:
   workflow_call:
@@ -14,8 +14,8 @@ env:
   APPIMAGE_EXTRACT_AND_RUN: '1'
 
 jobs:
-  build:
-    name: Build AppImage and Windows
+  appimage-windows:
+    name: AppImage and Windows installer
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout OLLMchat

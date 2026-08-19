@@ -1,4 +1,4 @@
-name: X - Remote-only
+name: X - Meson compile check, remote-only (no packages)
 
 on:
   workflow_dispatch:
@@ -7,7 +7,8 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  compile:
+    name: Meson remote-only compile
     runs-on: ubuntu-24.04
     container:
       image: ubuntu:25.04

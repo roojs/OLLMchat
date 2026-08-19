@@ -1,6 +1,6 @@
-name: X - Android
+name: X - Android APK build (Release calls this)
 
-# Ignore in Actions. Called by Release - Android / Release.
+# The real Pixiewood/APK job. Start Release - Android, not this file.
 
 on:
   workflow_call:
@@ -24,7 +24,7 @@ env:
 
 jobs:
   build-apk:
-    name: Build APK
+    name: Android APK
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     continue-on-error: ${{ inputs.non_blocking }}

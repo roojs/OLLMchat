@@ -12,4 +12,5 @@ permissions:
 
 jobs:
   build-debian:
+    name: Debian packages
     uses: ./.github/workflows/x-debian.yml

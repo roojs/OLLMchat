@@ -89,6 +89,28 @@ test('test-rpc-live-handles',
   suite: 'rpc',
   timeout: 10,
 )
+test_rpc_subscribe = executable('test-rpc-subscribe',
+  'rpc/subscribe-test.vala',
+  dependencies: [
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    ocrpc_vapi_dep,
+  ],
+  build_rpath: meson.current_build_dir() / '..' / 'libocrpc',
+  vala_args: [
+    '--pkg=ocrpc',
+    '--pkg=json-glib-1.0',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  ],
+)
+test('test-rpc-subscribe',
+  test_rpc_subscribe,
+  suite: 'rpc',
+  timeout: 10,
+)
 test('test-rpc-t1',
   find_program('bash'),
   args: [

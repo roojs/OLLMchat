@@ -22,7 +22,10 @@ To test **one** package family without waiting on the others, run the matching
 | **Release - AppImage and Windows** | [`release-appimage-windows.yml`](../.github/workflows/release-appimage-windows.yml) | `gh workflow run release-appimage-windows.yml --ref <branch>` |
 | **Release - Android** | [`release-android.yml`](../.github/workflows/release-android.yml) | `gh workflow run release-android.yml --ref <branch>` |
 
-Ignore anything named **X - …** (sorts to the bottom). Those are internals.
+Ignore anything named **X - …** (sorts to the bottom). The `Release calls this`
+ones are the real package-build jobs; **Release - Debian** (and the others) are
+the buttons that start them. The rest are compile checks, docs publish, and PR
+housekeeping.
 
 CI then:
 

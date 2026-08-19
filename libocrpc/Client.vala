@@ -165,7 +165,8 @@ namespace OLLMrpc
 			Notification.rpc_register();
 			Request.rpc_register();
 			Response.rpc_register();
-			RemoteParams.rpc_register();
+			Live.RemoteParams.rpc_register();
+			Live.SubscribeParams.rpc_register();
 		}
 
 		/**

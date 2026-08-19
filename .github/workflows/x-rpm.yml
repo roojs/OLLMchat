@@ -1,6 +1,6 @@
-name: X - RPM
+name: X - RPM build, Fedora and openSUSE (Release calls this)
 
-# Ignore in Actions. Called by Release - Fedora / Release - openSUSE / Release.
+# The real rpmbuild job. Start Release - Fedora or Release - openSUSE, not this file.
 
 on:
   workflow_call:

@@ -61,7 +61,8 @@ ocrpc_core_src = files([
   'Error.vala',
   'Notification.vala',
   'Request.vala',
-  'Remote.vala',
+  'Live/Remote.vala',
+  'Live/Subscribe.vala',
   'Response.vala',
   'RpcErrorCode.vala',
 ])

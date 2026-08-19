@@ -364,9 +364,9 @@ services or GGUF inference on device.
 
 ### Remote-only desktop build
 
-GitHub Actions can build the existing remote-only desktop configuration on
-demand through the **X - Remote-only** workflow. This validates that the
-no-GGUF path keeps compiling without requiring libllama packages.
+GitHub Actions can compile the remote-only desktop configuration on demand
+(**X - Meson compile check, remote-only (no packages)**). That checks the
+no-GGUF path still builds without libllama packages.
 
 ### Android build workflow
 

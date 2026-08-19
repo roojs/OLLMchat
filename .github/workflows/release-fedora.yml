@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   build-rpm-fedora:
+    name: Fedora 44 RPMs
     uses: ./.github/workflows/x-rpm.yml
     with:
       job_name: Fedora 44 RPMs

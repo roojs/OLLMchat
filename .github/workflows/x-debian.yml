@@ -1,13 +1,13 @@
-name: X - Debian
+name: X - Debian .deb build (Release calls this)
 
-# Ignore in Actions. Called by Release - Debian / Release.
+# The real dpkg-buildpackage job. Start Release - Debian, not this file.
 
 on:
   workflow_call:
 
 jobs:
   build-debian:
-    name: Build Debian packages
+    name: Debian packages
     runs-on: ubuntu-24.04
     container:
       image: ubuntu:25.04

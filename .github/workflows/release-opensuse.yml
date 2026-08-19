@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   build-rpm-opensuse:
+    name: openSUSE Tumbleweed RPMs
     uses: ./.github/workflows/x-rpm.yml
     with:
       job_name: openSUSE Tumbleweed RPMs
