@@ -136,8 +136,22 @@ namespace OLLMrpcTests
 		}
 	}
 
-	public static int main (string[] args)
+	class TestRpcBin : RpcTestAppBase
 	{
+		public TestRpcBin()
+		{
+			base("com.roojs.ollmchat.test-rpc-bin");
+		}
+
+		protected override string get_app_name()
+		{
+			return "test-rpc-bin";
+		}
+
+		protected override void run_rpc_test(ApplicationCommandLine command_line) throws Error
+		{
+			try {
+
 		var mem = new GLib.MemoryOutputStream.resizable ();
 		var out_stream = new GLib.DataOutputStream (mem);
 
@@ -148,8 +162,7 @@ namespace OLLMrpcTests
 			count = 42,
 		};
 
-		try {
-			OLLMrpc.Bin.register ("TestPair", typeof (TestPair));
+					OLLMrpc.Bin.register ("TestPair", typeof (TestPair));
 			OLLMrpc.Bin.register (
 				"TestSkipDefault",
 				typeof (TestSkipDefault)
@@ -168,14 +181,8 @@ namespace OLLMrpcTests
 			var read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
 
 			var parsed = read_bin.parse () as TestPair;
-			if (parsed == null) {
-				GLib.printerr ("parse returned null\n");
-				return 1;
-			}
-			if (parsed.name != "alpha" || parsed.count != 42) {
-				GLib.printerr ("round-trip mismatch\n");
-				return 1;
-			}
+			this.check(command_line, !(parsed == null), "parse returned null\n");
+			this.check(command_line, !(parsed.name != "alpha" || parsed.count != 42), "round-trip mismatch\n");
 
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
@@ -197,25 +204,13 @@ namespace OLLMrpcTests
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
 
 			var nested_dst = read_bin.parse () as TestParent;
-			if (nested_dst == null) {
-				GLib.printerr ("nested parse returned null\n");
-				return 1;
-			}
-			if (nested_dst.label != "parent") {
-				GLib.printerr ("nested label mismatch\n");
-				return 1;
-			}
-			if (nested_dst.child == null) {
-				GLib.printerr ("nested child is null\n");
-				return 1;
-			}
-			if (
+			this.check(command_line, !(nested_dst == null), "nested parse returned null\n");
+			this.check(command_line, !(nested_dst.label != "parent"), "nested label mismatch\n");
+			this.check(command_line, !(nested_dst.child == null), "nested child is null\n");
+			this.check(command_line, !(
 				nested_dst.child.name != "nested"
 				|| nested_dst.child.count != 7
-			) {
-				GLib.printerr ("nested child mismatch\n");
-				return 1;
-			}
+			), "nested child mismatch\n");
 
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
@@ -234,20 +229,9 @@ namespace OLLMrpcTests
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
 
 			var skip_dst = read_bin.parse () as TestSkipDefault;
-			if (skip_dst == null) {
-				GLib.printerr ("skip parse returned null\n");
-				return 1;
-			}
-			if (skip_dst.keep != "visible") {
-				GLib.printerr ("skip keep mismatch\n");
-				return 1;
-			}
-			if (skip_dst.extra != null) {
-				GLib.printerr (
-					"unsupported prop should stay null after round-trip\n"
-				);
-				return 1;
-			}
+			this.check(command_line, !(skip_dst == null), "skip parse returned null\n");
+			this.check(command_line, !(skip_dst.keep != "visible"), "skip keep mismatch\n");
+			this.check(command_line, !(skip_dst.extra != null), "unsupported prop should stay null after round-trip\n");
 
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
@@ -265,22 +249,13 @@ namespace OLLMrpcTests
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
 
 			var paths_dst = read_bin.parse () as TestPaths;
-			if (paths_dst == null) {
-				GLib.printerr ("paths parse returned null\n");
-				return 1;
-			}
-			if (paths_dst.paths.length != 3) {
-				GLib.printerr ("paths length mismatch\n");
-				return 1;
-			}
-			if (
+			this.check(command_line, !(paths_dst == null), "paths parse returned null\n");
+			this.check(command_line, !(paths_dst.paths.length != 3), "paths length mismatch\n");
+			this.check(command_line, !(
 				paths_dst.paths[0] != "a"
 				|| paths_dst.paths[1] != "bb"
 				|| paths_dst.paths[2] != ""
-			) {
-				GLib.printerr ("paths element mismatch\n");
-				return 1;
-			}
+			), "paths element mismatch\n");
 
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
@@ -300,14 +275,8 @@ namespace OLLMrpcTests
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
 
 			var long_dst = read_bin.parse () as TestPair;
-			if (long_dst == null) {
-				GLib.printerr ("long string parse returned null\n");
-				return 1;
-			}
-			if (long_dst.name != long_name || long_dst.count != 1) {
-				GLib.printerr ("long string round-trip mismatch\n");
-				return 1;
-			}
+			this.check(command_line, !(long_dst == null), "long string parse returned null\n");
+			this.check(command_line, !(long_dst.name != long_name || long_dst.count != 1), "long string round-trip mismatch\n");
 
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
@@ -327,14 +296,8 @@ namespace OLLMrpcTests
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
 
 			var huge_dst = read_bin.parse () as TestPair;
-			if (huge_dst == null) {
-				GLib.printerr ("huge string parse returned null\n");
-				return 1;
-			}
-			if (huge_dst.name != huge || huge_dst.count != 2) {
-				GLib.printerr ("huge string round-trip mismatch\n");
-				return 1;
-			}
+			this.check(command_line, !(huge_dst == null), "huge string parse returned null\n");
+			this.check(command_line, !(huge_dst.name != huge || huge_dst.count != 2), "huge string round-trip mismatch\n");
 
 			mem = new GLib.MemoryOutputStream.resizable ();
 			out_stream = new GLib.DataOutputStream (mem);
@@ -361,32 +324,28 @@ namespace OLLMrpcTests
 			read_bin = new OLLMrpc.Bin.Stream (in_stream, null);
 
 			var list_dst = read_bin.parse () as TestListBag;
-			if (list_dst == null) {
-				GLib.printerr ("list bag parse returned null\n");
-				return 1;
-			}
-			if (list_dst.label != "bag") {
-				GLib.printerr ("list bag label mismatch\n");
-				return 1;
-			}
-			if (list_dst.items.size != 2) {
-				GLib.printerr ("list bag items size mismatch\n");
-				return 1;
-			}
-			if (
-				list_dst.items.get (0).name != "one"
-				|| list_dst.items.get (0).count != 1
-				|| list_dst.items.get (1).name != "two"
-				|| list_dst.items.get (1).count != 2
-			) {
-				GLib.printerr ("list bag element mismatch\n");
-				return 1;
-			}
-		} catch (GLib.Error e) {
-			GLib.printerr ("bin-test: %s\n", e.message);
-			return 1;
-		}
+			this.check(command_line, !(list_dst == null), "list bag parse returned null\n");
+			this.check(command_line, !(list_dst.label != "bag"), "list bag label mismatch\n");
+			this.check(command_line, !(list_dst.items.size != 2), "list bag items size mismatch\n");
+			this.check(
+				command_line,
+				!(
+					list_dst.items.get(0).name != "one"
+					|| list_dst.items.get(0).count != 1
+					|| list_dst.items.get(1).name != "two"
+					|| list_dst.items.get(1).count != 2
+				),
+				"list bag element mismatch"
+			);
 
-		return 0;
+			} catch (GLib.Error e) {
+				this.fail(command_line, "bin-test: %s".printf(e.message));
+			}
+		}
 	}
+}
+
+int main(string[] args)
+{
+	return new OLLMrpcTests.TestRpcBin().run(args);
 }

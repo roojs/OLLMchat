@@ -134,6 +134,7 @@
 					this.run_test.end(res);
 				} catch (Error e) {
 					command_line.printerr("Error: %s\n", e.message);
+					command_line.set_exit_status(1);
 				} finally {
 					// Release hold and quit when done
 					this.release();
