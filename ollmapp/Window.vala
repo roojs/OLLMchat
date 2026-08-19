@@ -481,7 +481,7 @@ namespace OLLMapp
 					client = "ollmchat"
 				}
 			};
-			if (!yield this.project_manager.rpc.connect(hello)) {
+			if (!yield this.project_manager.rpc.connect(hello, new OLLMrpc.ClientBoot())) {
 				if (this.busy_dialog != null) {
 					this.busy_dialog.close();
 				}

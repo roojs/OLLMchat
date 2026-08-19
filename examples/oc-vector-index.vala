@@ -157,7 +157,7 @@ Examples:
 				protocol = 1,
 				client = "oc-vector-index"
 			}
-		})) {
+		}, new OLLMrpc.ClientBoot())) {
 			var msg = this.rpc.connect_error;
 			if (msg == "") {
 				msg = "could not start or reach the filesystem daemon (ollmfilesd)";

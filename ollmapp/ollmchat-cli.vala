@@ -412,7 +412,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 					client = "ollmchat-cli"
 				}
 			};
-			if (!yield this.project_manager.rpc.connect(hello)) {
+			if (!yield this.project_manager.rpc.connect(hello, new OLLMrpc.ClientBoot())) {
 				unowned string msg = this.project_manager.rpc.connect_error;
 				if (msg == "") {
 					msg = "could not start or reach the filesystem daemon (ollmfilesd)";

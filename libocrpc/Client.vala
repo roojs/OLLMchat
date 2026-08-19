@@ -34,12 +34,13 @@ namespace OLLMrpc
 	}
 
 	/**
-	 * Bin RPC client for ollmfilesd and HTTPS JSON APIs.
+	 * Bin RPC client for ollmfilesd, compositor sockets, and HTTPS JSON APIs.
 	 *
-	 * Socket mode spawns or connects to ollmfilesd, then exchanges bin
-	 * {@link Request}/{@link Response} pairs. HTTP mode (''socket_name'' is an
-	 * https URL, empty ''data_dir'') sends JSON REST calls — used by libochf
-	 * for Hugging Face Hub. Register wire types before {@link connect}.
+	 * Socket mode exchanges bin {@link Request}/{@link Response} pairs.
+	 * Pass a {@link ClientBoot} to {@link connect} to spawn ollmfilesd; omit it
+	 * to attach to an already-listening socket. HTTP mode (''socket_name'' is
+	 * an https URL, empty ''data_dir'') sends JSON REST calls — used by
+	 * libochf for Hugging Face Hub. Register wire types before {@link connect}.
 	 *
 	 * == Basic Usage ==
 	 *
@@ -58,7 +59,7 @@ namespace OLLMrpc
 	 *         protocol = 1,
 	 *         client = "my-app"
 	 *     }
-	 * })) {
+	 * }, new OLLMrpc.ClientBoot())) {
 	 *     GLib.error("%s", rpc.connect_error);
 	 * }
 	 * var resp = yield rpc.call(new OLLMrpc.Request() {
@@ -105,9 +106,8 @@ namespace OLLMrpc
 		public string pid { get; construct; }
 
 		/**
-		 * When true (default), {@link connect} forwards to {@link ClientBoot} and
-		 * spawn passes ''--debug'' to ollmfilesd. Set in the object
-		 * initializer when not using the default.
+		 * Copied onto a blank {@link ClientBoot} in {@link connect}. When true
+		 * (default), spawn passes ''--debug'' to ollmfilesd.
 		 */
 		public bool debug { get; set; default = true; }
 
@@ -215,11 +215,19 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Boot ollmfilesd, open the socket, and send {@link hello_request}
+		 * Open the channel and send {@link hello_request}
 		 * (e.g. Daemon.hello — built by the caller, not libocrpc).
-		 * @return false when the client cannot talk to the daemon (see {@link connect_error})
+		 *
+		 * When ''boot'' is set, empty path and flag fields are copied from
+		 * this client, then {@link ClientBoot.ensure_daemon} runs before the
+		 * socket opens. When ''boot'' is ''null'', connect to
+		 * {@link socket_path} only — no spawn.
+		 *
+		 * @param hello_request first request on the channel
+		 * @param boot ollmfilesd spawn/probe, or ''null'' to attach only
+		 * @return false when the client cannot talk to the server (see {@link connect_error})
 		 */
-		public async bool connect(Request hello_request)
+		public async bool connect(Request hello_request, ClientBoot? boot = null)
 		{
 			if (this.connected) {
 				this.connect_error = "";
@@ -235,47 +243,69 @@ namespace OLLMrpc
 
 			hello_request.id = this.next_id++;
 
-			var boot_pid = this.pid;
-			if (this.data_dir != "") {
-				boot_pid = GLib.Path.get_basename(this.pid);
-			}
-			var boot_socket = this.socket_path;
-			if (this.data_dir != "") {
-				if (!this.socket_path.has_prefix("tcp://")) {
-					boot_socket = GLib.Path.get_basename(this.socket_path);
+			if (boot != null) {
+				var blank = boot.data_dir == "" && boot.pid == "" && boot.socket_path == "";
+				if (boot.data_dir == "") {
+					boot.data_dir = this.data_dir;
 				}
-			}
-			var boot = new ClientBoot(
-				this.data_dir,
-				boot_pid,
-				boot_socket,
-				this.debug,
-				this.pass_data_dir
-			);
-			try {
-				yield boot.ensure_daemon();
-			} catch (GLib.IOError e) {
-				this.connect_error = e.message != ""
-					? e.message
-					: "could not start or reach the filesystem daemon (ollmfilesd)";
-				GLib.critical(
-					"ensure_daemon %s: %s",
-					this.socket_path,
-					this.connect_error
-				);
-				return false;
-			}
+				if (boot.pid == "") {
+					boot.pid = this.pid;
+				}
+				if (boot.socket_path == "") {
+					boot.socket_path = this.socket_path;
+				}
+				if (blank) {
+					boot.debug = this.debug;
+					boot.pass_data_dir = this.pass_data_dir;
+				}
+				try {
+					yield boot.ensure_daemon();
+					this.socket = yield boot.connect();
+				} catch (GLib.Error e) {
+					this.connect_error = e.message != ""
+						? e.message
+						: "could not start or reach the filesystem daemon (ollmfilesd)";
+					GLib.critical("connect %s: %s",
+						this.socket_path, this.connect_error);
+					return false;
+				}
+			} else {
+				var client = new GLib.SocketClient();
+				switch (this.protocol) {
+					case Protocol.TCP:
+						var endpoint = this.socket_path.substring(6);
+						var host = endpoint;
+						var port = 4141;
+						var colon = endpoint.last_index_of(":");
+						if (colon > 0) {
+							host = endpoint[0:colon];
+							int.try_parse(endpoint.substring(colon + 1), out port);
+						}
+						try {
+							this.socket = yield client.connect_to_host_async(
+								host, port, null);
+						} catch (GLib.Error e) {
+							this.connect_error = e.message;
+							GLib.critical("connect %s: %s",
+								this.socket_path, this.connect_error);
+							return false;
+						}
+						break;
 
-			try {
-				this.socket = yield boot.connect();
-			} catch (GLib.Error e) {
-				this.connect_error = e.message;
-				GLib.critical(
-					"connect %s: %s",
-					this.socket_path,
-					this.connect_error
-				);
-				return false;
+					default:
+						try {
+							this.socket = yield client.connect_async(
+								new GLib.UnixSocketAddress(this.socket_path),
+								null
+							);
+						} catch (GLib.Error e) {
+							this.connect_error = e.message;
+							GLib.critical("connect %s: %s",
+								this.socket_path, this.connect_error);
+							return false;
+						}
+						break;
+				}
 			}
 
 			this.input = new GLib.DataInputStream(this.socket.get_input_stream());

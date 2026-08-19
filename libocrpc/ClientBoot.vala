@@ -14,15 +14,16 @@
 namespace OLLMrpc
 {
 	/**
-	 * Ensure ollmfilesd is running before {@link Client.connect} on Unix.
+	 * Ensure ollmfilesd is running when passed to {@link Client.connect}.
 	 *
-	 * The caller supplies every path; there is no default
-	 * ~/.local/share/ollmchat path in this class. Constructor args {@link pid}
-	 * and {@link socket_name} are basenames within {@link data_dir}; the {@link pid}
-	 * and {@link socket_path} properties hold the full paths used for probe, spawn,
-	 * and kill-and-respawn.
+	 * The caller supplies every path, or passes ''new ClientBoot()'' and lets
+	 * {@link Client.connect} copy empty fields from the client. There is no
+	 * default ~/.local/share/ollmchat path in this class. Constructor args
+	 * {@link pid} and {@link socket_name} are basenames within {@link data_dir};
+	 * the {@link pid} and {@link socket_path} properties hold the full paths
+	 * used for probe, spawn, and kill-and-respawn.
 	 *
-	 * Parameter order after the three required strings: {@link debug}, then
+	 * Parameter order after the three strings: {@link debug}, then
 	 * {@link pass_data_dir}. {@link debug} defaults to true because in-tree
 	 * callers almost always want ollmfilesd with ''--debug''. {@link pass_data_dir}
 	 * defaults to false; only out-of-band vector test CLIs set it true because
@@ -34,20 +35,20 @@ namespace OLLMrpc
 	 * (build wrapper scripts), else ollmfilesd on PATH; env selects
 	 * the binary only and does not set debug or data-dir flags (see §5.5.4).
 	 *
-	 * Production code constructs this only from {@link Client.connect}.
-	 * Callers set paths on {@link Client} — see §5.5.6 and §5.5.7.
+	 * Callers construct this and pass it to {@link Client.connect}. A
+	 * ''null'' boot means connect-only (no spawn).
 	 */
 	public class ClientBoot : GLib.Object
 	{
-		public string data_dir { get; construct; }
+		public string data_dir { get; set; default = ""; }
 
-		public bool debug { get; construct; default = true; }
+		public bool debug { get; set; default = true; }
 
-		public bool pass_data_dir { get; construct; default = false; }
+		public bool pass_data_dir { get; set; default = false; }
 
-		public string socket_path { get; construct; }
+		public string socket_path { get; set; default = ""; }
 
-		public string pid { get; construct; }
+		public string pid { get; set; default = ""; }
 
 		/** Poll interval after spawn (milliseconds). */
 		public uint poll { get; set; default = 100; }
@@ -65,7 +66,7 @@ namespace OLLMrpc
 
 		/**
 		 * @param data_dir Directory root for daemon DB, socket, and pid file.
-		 *   When empty, {@link pid} and {@link socket_name} are stored verbatim
+		 *   Empty lets {@link Client.connect} copy from the client.
 		 * @param pid Basename of the pid file within {@link data_dir}, or the full
 		 *   pid path when {@link data_dir} is empty
 		 * @param socket_name Basename of the Unix socket within {@link data_dir},
@@ -77,9 +78,9 @@ namespace OLLMrpc
 		 *   default false — out-of-band vector testing only
 		 */
 		public ClientBoot(
-			string data_dir,
-			string pid,
-			string socket_name,
+			string data_dir = "",
+			string pid = "",
+			string socket_name = "",
 			bool debug = true,
 			bool pass_data_dir = false
 		)

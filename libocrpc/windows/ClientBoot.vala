@@ -11,15 +11,15 @@ namespace OLLMrpc
 	 */
 	public class ClientBoot : GLib.Object
 	{
-		public string data_dir { get; construct; }
+		public string data_dir { get; set; default = ""; }
 
-		public bool debug { get; construct; default = true; }
+		public bool debug { get; set; default = true; }
 
-		public bool pass_data_dir { get; construct; default = false; }
+		public bool pass_data_dir { get; set; default = false; }
 
-		public string socket_path { get; construct; }
+		public string socket_path { get; set; default = ""; }
 
-		public string pid { get; construct; }
+		public string pid { get; set; default = ""; }
 
 		public uint poll { get; set; default = 100; }
 
@@ -32,9 +32,9 @@ namespace OLLMrpc
 		private int detached_pid = -1;
 
 		public ClientBoot(
-			string data_dir,
-			string pid,
-			string socket_name,
+			string data_dir = "",
+			string pid = "",
+			string socket_name = "",
 			bool debug = true,
 			bool pass_data_dir = false
 		)

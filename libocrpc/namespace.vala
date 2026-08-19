@@ -53,7 +53,7 @@
  *         protocol = 1,
  *         client = "my-app"
  *     }
- * })) {
+ * }, new OLLMrpc.ClientBoot())) {
  *     GLib.error("%s", rpc.connect_error);
  * }
  * var resp = yield rpc.call(new OLLMrpc.Request() {
