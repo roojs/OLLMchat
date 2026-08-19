@@ -125,13 +125,16 @@ namespace OLLMrpc.Transport
 					this.on_input_ready
 				);
 				var in_stream = new GLib.DataInputStream(
-					this.stream.get_input_stream()
+					new GLib.BufferedInputStream(
+						this.stream.get_input_stream()
+					)
 				);
 				var out_stream = new GLib.DataOutputStream(
 					this.stream.get_output_stream()
 				);
 				this.bin = new Bin.Stream(in_stream, out_stream, true) {
-					live_handles = this.live_handles
+					live_handles = this.live_handles,
+					socket = this.stream.get_socket()
 				};
 			} catch (GLib.Error e) {
 				GLib.warning("connection setup failed: %s", e.message);
@@ -175,7 +178,10 @@ namespace OLLMrpc.Transport
 			}
 		}
 
-		public virtual void write(GLib.Object gobject)
+		public virtual void write(
+			GLib.Object gobject,
+			Live.Buffer? buffer = null
+		)
 		{
 			if (!this.channel_open || this.bin == null) {
 				return;
@@ -186,7 +192,7 @@ namespace OLLMrpc.Transport
 				return;
 			}
 			try {
-				this.bin.write(serializable);
+				this.bin.write(serializable, buffer);
 				this.bin.out_stream.flush();
 			} catch (GLib.Error e) {
 				GLib.warning("connection write error: %s", e.message);

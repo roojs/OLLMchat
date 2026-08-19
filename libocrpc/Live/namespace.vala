@@ -14,32 +14,52 @@
 /**
  * Opt-in live GObject handles for {@link OLLMrpc}.
  *
- * The OLLMrpc.Live namespace is the RPC side of
- * {@link Transport.Connection.live_handles}:
- * {@link Remote} ref and unref.
- * {@link Subscribe} for notify and named signals.
- * {@link Subscription} holds one connected handler.
- * Wire prefixes are ''RPC-Live-Remote'' and
- * ''RPC-Live-Subscribe''.
+ * Unix builds compile {@link Remote}, {@link Subscribe}, {@link Buffer}, etc.
+ * from separate ''Live/'' sources. Windows and Android compile this file
+ * only — compile-only shells ({@link G_OS_WIN32} / {@link ANDROID}).
  *
- * == Example ==
- *
- * {{{
- * OLLMrpc.Live.RemoteParams.rpc_register();
- * OLLMrpc.Live.SubscribeParams.rpc_register();
- * OLLMrpc.Request.register(
- *     "RPC-Live-Remote", new OLLMrpc.Live.Remote(),
- *     typeof(OLLMrpc.Live.RemoteParams));
- * OLLMrpc.Request.register(
- *     "RPC-Live-Subscribe", new OLLMrpc.Live.Subscribe(),
- *     typeof(OLLMrpc.Live.SubscribeParams));
- * }}}
+ * {@link Buffer} — Unix: {@link Buffer}; Windows: shell in this file.
  */
 namespace OLLMrpc.Live
 {
-	/**
-	 * Namespace documentation marker.
-	 * This file contains namespace-level documentation for OLLMrpc.Live.
-	 */
 	internal class NamespaceDoc {}
+
+#if G_OS_WIN32 || ANDROID
+
+	public class RemoteParams : CallParam {
+		public uint64 object_id { get; set; default = 0; }
+		public static void rpc_register() {}
+	}
+
+	public class Remote : GLib.Object {
+		public signal void call_ref(Request request);
+		public signal void call_unref(Request request);
+	}
+
+	public class SubscribeParams : CallParam {
+		public uint64 object_id { get; set; default = 0; }
+		public string name { get; set; default = ""; }
+		public static void rpc_register() {}
+	}
+
+	public class Subscription : GLib.Object {
+		public Transport.Connection connection { get; set; }
+		public string method { get; set; default = ""; }
+		public int id { get; set; default = 0; }
+		public ulong hid { get; set; default = 0; }
+		public void emit() {}
+	}
+
+	public class Subscribe : GLib.Object {
+		public signal void call_signal(Request request);
+		public signal void call_unsubscribe(Request request);
+	}
+
+	public class Buffer : GLib.Object {
+		public int fd { get; set; default = -1; }
+		public void send(GLib.Socket socket) throws GLib.Error {}
+		public void receive(GLib.Socket socket) throws GLib.Error {}
+	}
+
+#endif
 }
