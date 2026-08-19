@@ -119,11 +119,21 @@ if host_machine.system() != 'windows'
       compile_args: bundle_include_args,
     )
   else
+    # Meson 1.11 still adds --pkg libseccomp from partial_dependency();
+    # valac then looks for a system vapi that does not exist. C library only,
+    # same as the sysroot branch (in-tree vapi/seccomp.vapi is --pkg=seccomp).
     libseccomp_pc = dependency('libseccomp', required: true)
-    libseccomp_dep = libseccomp_pc.partial_dependency(
-      includes: true,
-      compile_args: true,
-      links: true,
+    libseccomp_inc = libseccomp_pc.get_variable(
+      pkgconfig: 'includedir',
+      default_value: '',
+    )
+    libseccomp_cflags = []
+    if libseccomp_inc != ''
+      libseccomp_cflags += ['-I' + libseccomp_inc]
+    endif
+    libseccomp_dep = declare_dependency(
+      dependencies: [cc.find_library('seccomp', required: true)],
+      compile_args: libseccomp_cflags,
     )
   endif
 endif
