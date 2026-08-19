@@ -118,6 +118,8 @@ namespace OLLMrpc.Bin
 		 */
 		public bool is_server { get; construct; default = false; }
 
+		public bool live_handles { get; set; default = false; }
+
 		public const uint16 TOKEN_REG_KEY = 0xFFFF;
 		public const uint16 TOKEN_REG_TYPE = 0xFFFE;
 		public const uint16 TOKEN_END = 0xFFFD;

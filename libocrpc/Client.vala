@@ -117,6 +117,8 @@ namespace OLLMrpc
 		 */
 		public bool pass_data_dir { get; set; default = false; }
 
+		public bool live_handles { get; set; default = false; }
+
 		/** Seconds to wait for a matching {@link Response} id. */
 		public uint call_timeout_seconds { get; set; default = 120; }
 
@@ -163,6 +165,7 @@ namespace OLLMrpc
 			Notification.rpc_register();
 			Request.rpc_register();
 			Response.rpc_register();
+			RemoteParams.rpc_register();
 		}
 
 		/**
@@ -274,7 +277,9 @@ namespace OLLMrpc
 
 			this.input = new GLib.DataInputStream(this.socket.get_input_stream());
 			this.output = new GLib.DataOutputStream(this.socket.get_output_stream());
-			this.bin = new Bin.Stream(this.input, this.output);
+			this.bin = new Bin.Stream(this.input, this.output) {
+				live_handles = this.live_handles
+			};
 			this.connected = true;
 			var fd = this.socket.get_socket().get_fd();
 			this.read_channel = new GLib.IOChannel.unix_new(fd);

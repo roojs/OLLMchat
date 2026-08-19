@@ -16,6 +16,8 @@ namespace OLLMrpc.Transport
 	/** Server RPC entry — {@link SocketListen}; ollmfilesd adds Stdio transport. */
 	public abstract class Listen : GLib.Object
 	{
+		public bool live_handles { get; set; default = false; }
+
 		public abstract bool start();
 		public abstract void stop();
 

@@ -30,6 +30,34 @@ namespace OLLMrpc.Transport
 
 		public Bin.Stream? bin { get; protected set; }
 
+		public bool live_handles { get; set; default = false; }
+
+		public Gee.HashMap<int, GLib.Object> leases {
+			get;
+			set;
+			default = new Gee.HashMap<int, GLib.Object>();
+		}
+
+		public Gee.HashMap<int, uint> floors {
+			get;
+			set;
+			default = new Gee.HashMap<int, uint>();
+		}
+
+		public Gee.HashMap<int, uint> extras {
+			get;
+			set;
+			default = new Gee.HashMap<int, uint>();
+		}
+
+		public Gee.HashMap<string, int> lease_ids {
+			get;
+			set;
+			default = new Gee.HashMap<string, int>();
+		}
+
+		private int next_handle = 1;
+
 		protected GLib.IOChannel? channel;
 		protected bool channel_open = false;
 		protected uint input_watch_id = 0;
@@ -38,6 +66,34 @@ namespace OLLMrpc.Transport
 		public Connection(GLib.SocketConnection? stream = null)
 		{
 			GLib.Object(stream: stream);
+		}
+
+		/**
+		 * Pin a live GObject on this connection and return its handle.
+		 *
+		 * Reuses the same id while the object is still leased. Records
+		 * {@link GLib.Object.ref_count} as the unref floor, then takes one
+		 * table ref above that floor.
+		 *
+		 * @param gobject instance to lease
+		 * @return connection-local handle (never 0)
+		 */
+		public uint64 export(GLib.Object gobject)
+		{
+			if (!this.live_handles) {
+				GLib.error("export requires live_handles");
+			}
+			var key = ((uint64) (void*) gobject).to_string("%" + uint64.FORMAT_MODIFIER + "x");
+			if (this.lease_ids.has_key(key)) {
+				return (uint64) this.lease_ids.get(key);
+			}
+			var id = this.next_handle;
+			this.next_handle++;
+			this.floors.set(id, gobject.ref_count);
+			this.leases.set(id, gobject);
+			this.lease_ids.set(key, id);
+			this.extras.set(id, 0);
+			return (uint64) id;
 		}
 
 		public virtual void start()
@@ -62,7 +118,9 @@ namespace OLLMrpc.Transport
 				var out_stream = new GLib.DataOutputStream(
 					this.stream.get_output_stream()
 				);
-				this.bin = new Bin.Stream(in_stream, out_stream, true);
+				this.bin = new Bin.Stream(in_stream, out_stream, true) {
+					live_handles = this.live_handles
+				};
 			} catch (GLib.Error e) {
 				GLib.warning("connection setup failed: %s", e.message);
 				this.stop();
@@ -71,6 +129,15 @@ namespace OLLMrpc.Transport
 
 		public virtual void stop()
 		{
+			foreach (var id in this.leases.keys) {
+				for (var i = 0u; i < this.extras.get(id); i++) {
+					this.leases.get(id).unref();
+				}
+			}
+			this.leases.clear();
+			this.floors.clear();
+			this.extras.clear();
+			this.lease_ids.clear();
 			if (!this.running) {
 				return;
 			}

@@ -61,7 +61,7 @@
             "dir": ".",
             "build": [
               "./scripts/release/meson-sqgipkg-setup.sh linux \"$SQGI_LINUX_BUILD_DIR\"",
-              "meson compile -C \"$SQGI_LINUX_BUILD_DIR\" ./ollmapp/ollmchat:executable"
+              "meson compile -C \"$SQGI_LINUX_BUILD_DIR\" ./ollmapp/ollmchat:executable ./ollmfilesd/ollmfilesd:executable"
             ],
             "libraries": [
               "build-linux-x86_64/libocsqlite/libocsqlite.so",
@@ -137,7 +137,7 @@
             "dir": ".",
             "build": [
               "./scripts/release/meson-sqgipkg-setup.sh linux \"$SQGI_LINUX_BUILD_DIR\"",
-              "meson compile -C \"$SQGI_LINUX_BUILD_DIR\" ./ollmapp/ollmchat:executable"
+              "meson compile -C \"$SQGI_LINUX_BUILD_DIR\" ./ollmapp/ollmchat:executable ./ollmfilesd/ollmfilesd:executable"
             ],
             "libraries": [
               "build-linux-aarch64/libocsqlite/libocsqlite.so",

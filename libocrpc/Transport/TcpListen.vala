@@ -62,7 +62,9 @@ namespace OLLMrpc.Transport
 				return false;
 			}
 			this.service.incoming.connect((conn) => {
-				var connection = new Connection(conn);
+				var connection = new Connection(conn) {
+					live_handles = this.live_handles
+				};
 				connection.start();
 				this.connections.add(connection);
 				return true;
