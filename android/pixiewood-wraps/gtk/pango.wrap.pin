@@ -5,7 +5,8 @@ push-url = ssh://git@ssh.gitlab.gnome.org:GNOME/pango.git
 # GTK's wrap tracks main (nightly docs). Pin 1.57.2 so Meson does not fetch
 # pango 1.58.x, which needs glib >= 2.88 while Android glib.wrap is 2.84.0.
 # Commit is the local 2026-06-14 checkout that built the 2026-07-23 APK.
-# Filename is not subprojects/pango.wrap: root .gitignore matches any subprojects/.
+# Not named *.wrap: install_pixiewood_extra_wraps copies gtk/*.wrap into
+# subprojects/, and Meson then errors "Multiple wrap files provide pango".
 revision = fa2ba89e7ed0907c8852add50cb13edefe93e66e
 depth = 1
 

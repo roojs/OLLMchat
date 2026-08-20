@@ -8,11 +8,17 @@ export ROOT_DIR
 # shellcheck source=gtk-subproject.sh
 source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
 
-PIN="$ROOT_DIR/android/pixiewood-wraps/gtk/nested-pango.wrap"
+PIN="$ROOT_DIR/android/pixiewood-wraps/gtk/pango.wrap.pin"
 NESTED="$ROOT_DIR/subprojects/gtk/subprojects/pango.wrap"
 PIN_REV=fa2ba89e7ed0907c8852add50cb13edefe93e66e
 
 [ -f "$PIN" ] || { echo "missing pinned pango wrap: $PIN" >&2; exit 1; }
+case "$PIN" in
+  *.wrap)
+    echo "pango pin must not be named *.wrap (copied into subprojects/; Meson duplicate pango)" >&2
+    exit 1
+    ;;
+esac
 if git -C "$ROOT_DIR" check-ignore -q "$PIN"; then
   echo "pinned pango wrap is gitignored (CI will not see it): $PIN" >&2
   exit 1
@@ -27,6 +33,15 @@ for dep_dir in "$ROOT_DIR/android/pixiewood-wraps"/*/; do
   for wrap in "$dep_dir"/*.wrap; do
     [ -f "$wrap" ] && cp -a "$wrap" "$ROOT_DIR/subprojects/"
   done
+done
+
+for wrap in "$ROOT_DIR/subprojects/"*.wrap; do
+  [ -f "$wrap" ] || continue
+  grep -q '^\[wrap-redirect\]' "$wrap" && continue
+  if grep -qE '^pango[[:space:]]*=' "$wrap"; then
+    echo "extra pango wrap-git copied into subprojects/: $wrap" >&2
+    exit 1
+  fi
 done
 
 prepare_android_subprojects_before_meson

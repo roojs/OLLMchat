@@ -101,7 +101,7 @@ stripped release libraries (CI run 27615842437).
 strings, and `glib.wrap` pins 2.84.0 with both `diff_files`.
 
 ### R14 — pango wrap must not track `main`
-`android/pixiewood-wraps/gtk/nested-pango.wrap` pins pango 1.57.2
+`android/pixiewood-wraps/gtk/pango.wrap.pin` pins pango 1.57.2
 (`fa2ba89e7ed0907c8852add50cb13edefe93e66e`), compatible with glib 2.84.0.
 After GTK bootstrap / restore, `subprojects/gtk/subprojects/pango.wrap` matches
 that pin (upstream GTK wrap uses `revision = main`, which fetched pango 1.58.2

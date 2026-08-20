@@ -1,9 +1,9 @@
 # Android CI: pango `main` needs glib >= 2.88
 
-**Status:** ⏳ wrap pin was gitignored; moved off `subprojects/` — await GitHub Android re-run
+**Status:** ⏳ pin must not be a top-level `*.wrap` — await GitHub Android re-run
 
 **Opened:** 2026-08-20  
-**CI:** [Release - Android 32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256) (glib mismatch), [32322629999](https://github.com/roojs/OLLMchat/actions/runs/32322629999) (R14 missing wrap)
+**CI:** [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256) (glib mismatch), [32322629999](https://github.com/roojs/OLLMchat/actions/runs/32322629999) (gitignored wrap), [32324783895](https://github.com/roojs/OLLMchat/actions/runs/32324783895) (duplicate pango wrap)
 
 ## Problem
 
@@ -35,10 +35,10 @@ subprojects/pango/meson.build:233:11: ERROR: Dependency 'glib-2.0' is required b
 - 🔷 Overlay that wrap after every GTK bootstrap/restore so GitHub cache restore cannot put `revision = main` back.
 - 🚫 Do not bump glib (would need TLS patch rebase).
 
-#### Add `android/pixiewood-wraps/gtk/nested-pango.wrap`
+#### Add `android/pixiewood-wraps/gtk/pango.wrap.pin`
 
 Pinned `wrap-git` (same `[provide]` as upstream GTK wrap; `revision` is `fa2ba89e7ed0907c8852add50cb13edefe93e66e`).
-Not under a `subprojects/` directory: root `.gitignore` matches any path named `subprojects/`.
+Not under `subprojects/` (gitignore) and not named `*.wrap` (Pixiewood copies `gtk/*.wrap` into `subprojects/`).
 
 #### Replace `scripts/android/gtk-subproject.sh` — after GTK is patched, copy the pin onto `subprojects/gtk/subprojects/pango.wrap` before bootstrap save.
 
@@ -48,4 +48,5 @@ Not under a `subprojects/` directory: root `.gitignore` matches any path named `
 
 - ✔️ 2026-08-20 — pinned wrap + copy after GTK patch + R14.
 - ✔️ 2026-08-20 — [32322629999](https://github.com/roojs/OLLMchat/actions/runs/32322629999) died in 43s: `pinned pango.wrap missing`. Tracked path was `android/pixiewood-wraps/gtk/subprojects/pango.wrap`, ignored by `.gitignore` `subprojects/`. Moved to `nested-pango.wrap`; R14 now fails if `git check-ignore` matches the pin.
-- ⏳ GitHub `Release - Android` re-run after this path fix.
+- ✔️ 2026-08-20 — [32324783895](https://github.com/roojs/OLLMchat/actions/runs/32324783895) R14 passed; preflight Meson: `Multiple wrap files provide 'pango' dependency: pango and nested-pango`. `install_pixiewood_extra_wraps` copies `gtk/*.wrap` into `subprojects/`. Renamed pin to `pango.wrap.pin`; R14 fails if the pin is `*.wrap` or a second pango wrap-git lands in `subprojects/`.
+- ⏳ GitHub `Release - Android` re-run after `.pin` rename.
