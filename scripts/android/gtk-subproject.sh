@@ -148,7 +148,7 @@ ensure_gtk_subproject_checked_out() {
 
 pin_gtk_nested_pango_wrap() {
   local src dest
-  src="$ROOT_DIR/android/pixiewood-wraps/gtk/subprojects/pango.wrap"
+  src="$ROOT_DIR/android/pixiewood-wraps/gtk/nested-pango.wrap"
   dest="$ROOT_DIR/subprojects/gtk/subprojects/pango.wrap"
 
   if [ ! -f "$src" ]; then

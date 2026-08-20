@@ -1,9 +1,9 @@
 # Android CI: pango `main` needs glib >= 2.88
 
-**Status:** ⏳ root cause confirmed; pango wrap pin applied — await GitHub Android re-run
+**Status:** ⏳ wrap pin was gitignored; moved off `subprojects/` — await GitHub Android re-run
 
 **Opened:** 2026-08-20  
-**CI:** [Release - Android 32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256)
+**CI:** [Release - Android 32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256) (glib mismatch), [32322629999](https://github.com/roojs/OLLMchat/actions/runs/32322629999) (R14 missing wrap)
 
 ## Problem
 
@@ -35,9 +35,10 @@ subprojects/pango/meson.build:233:11: ERROR: Dependency 'glib-2.0' is required b
 - 🔷 Overlay that wrap after every GTK bootstrap/restore so GitHub cache restore cannot put `revision = main` back.
 - 🚫 Do not bump glib (would need TLS patch rebase).
 
-#### Add `android/pixiewood-wraps/gtk/subprojects/pango.wrap`
+#### Add `android/pixiewood-wraps/gtk/nested-pango.wrap`
 
 Pinned `wrap-git` (same `[provide]` as upstream GTK wrap; `revision` is `fa2ba89e7ed0907c8852add50cb13edefe93e66e`).
+Not under a `subprojects/` directory: root `.gitignore` matches any path named `subprojects/`.
 
 #### Replace `scripts/android/gtk-subproject.sh` — after GTK is patched, copy the pin onto `subprojects/gtk/subprojects/pango.wrap` before bootstrap save.
 
@@ -46,4 +47,5 @@ Pinned `wrap-git` (same `[provide]` as upstream GTK wrap; `revision` is `fa2ba89
 ## Attempts / changelog
 
 - ✔️ 2026-08-20 — pinned wrap + copy after GTK patch + R14.
-- ⏳ GitHub `Release - Android` re-run not done yet.
+- ✔️ 2026-08-20 — [32322629999](https://github.com/roojs/OLLMchat/actions/runs/32322629999) died in 43s: `pinned pango.wrap missing`. Tracked path was `android/pixiewood-wraps/gtk/subprojects/pango.wrap`, ignored by `.gitignore` `subprojects/`. Moved to `nested-pango.wrap`; R14 now fails if `git check-ignore` matches the pin.
+- ⏳ GitHub `Release - Android` re-run after this path fix.
