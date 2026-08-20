@@ -32,6 +32,7 @@ GitHub Actions runs the same suite in `.github/workflows/x-android.yml`
 | **R11** | [27614072148](https://github.com/roojs/OLLMchat/actions/runs/27614072148) (runtime) | TLS still broken: `libgioopenssl.so` cannot load `libssl` from `filesDir/share/gio/modules/` | `regression/test-r11-gio-openssl-deps.sh` + `verify-apk.sh` OpenSSL asset checks |
 | **R12** | [27615842437](https://github.com/roojs/OLLMchat/actions/runs/27615842437) | `verify-apk.sh` grepped C comment `touch selection bubbles` (not in stripped `libgtk-4.so`) | `regression/test-r12-verify-apk-libgtk-strings.sh` |
 | **R13** | [32201421756](https://github.com/roojs/OLLMchat/actions/runs/32201421756) | `missing patch: …/subprojects/packagefiles/glib/tls-ensure-before-scan.patch` (`subprojects/` is gitignored) | `regression/test-r13-glib-tls-ensure-before-scan.sh` |
+| **R14** | [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256) | `pango` 1.58.2 from GTK `revision = main` needs glib `>= 2.88`; wrap is pinned at 2.84.0 | `regression/test-r14-pango-wrap-not-main.sh` |
 
 When a **new** CI failure appears:
 
@@ -98,6 +99,13 @@ stripped release libraries (CI run 27615842437).
 `_g_io_modules_ensure_extension_points_registered` in
 `g_io_modules_scan_all_in_directory_with_scope`, contains no OLLMchat debug
 strings, and `glib.wrap` pins 2.84.0 with both `diff_files`.
+
+### R14 — pango wrap must not track `main`
+`android/pixiewood-wraps/gtk/subprojects/pango.wrap` pins pango 1.57.2
+(`fa2ba89e7ed0907c8852add50cb13edefe93e66e`), compatible with glib 2.84.0.
+After GTK bootstrap / restore, `subprojects/gtk/subprojects/pango.wrap` matches
+that pin (upstream GTK wrap uses `revision = main`, which fetched pango 1.58.2
+on CI and required glib `>= 2.88`).
 
 ---
 

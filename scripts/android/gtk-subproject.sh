@@ -146,6 +146,22 @@ ensure_gtk_subproject_checked_out() {
   fi
 }
 
+pin_gtk_nested_pango_wrap() {
+  local src dest
+  src="$ROOT_DIR/android/pixiewood-wraps/gtk/subprojects/pango.wrap"
+  dest="$ROOT_DIR/subprojects/gtk/subprojects/pango.wrap"
+
+  if [ ! -f "$src" ]; then
+    echo "pinned pango.wrap missing: $src" >&2
+    exit 1
+  fi
+  if [ ! -d "$ROOT_DIR/subprojects/gtk/subprojects" ]; then
+    echo "GTK nested subprojects dir missing; cannot pin pango." >&2
+    exit 1
+  fi
+  cp -a "$src" "$dest"
+}
+
 ensure_gtk_subproject_patched() {
   local gtk_dir="$ROOT_DIR/subprojects/gtk"
   local marker patch
@@ -153,6 +169,7 @@ ensure_gtk_subproject_patched() {
   patch="$ROOT_DIR/android/pixiewood-wraps/gtk/android-bugs.patch"
 
   if gtk_subproject_patch_applied; then
+    pin_gtk_nested_pango_wrap
     save_gtk_subproject_bootstrap || true
     return 0
   fi
@@ -168,6 +185,7 @@ ensure_gtk_subproject_patched() {
   patch -p1 -d "$gtk_dir" --forward --batch -s < "$patch" || true
 
   if gtk_subproject_patch_applied; then
+    pin_gtk_nested_pango_wrap
     save_gtk_subproject_bootstrap || true
     return 0
   fi
@@ -182,6 +200,7 @@ ensure_gtk_subproject_patched() {
     exit 1
   fi
 
+  pin_gtk_nested_pango_wrap
   save_gtk_subproject_bootstrap || true
 }
 
