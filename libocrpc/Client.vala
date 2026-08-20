@@ -119,6 +119,29 @@ namespace OLLMrpc
 
 		public bool live_handles { get; set; default = false; }
 
+		/**
+		 * Handle id → local proxy when {@link live_handles} is on.
+		 *
+		 * The app inserts after it constructs the proxy
+		 * ({@link Gee.HashMap.set}) and removes on closed
+		 * ({@link Gee.HashMap.unset}). Inbound ''notify::'' notifications
+		 * call {@link GLib.Object.set_property} from
+		 * {@link Notification.message}. Unbound ids still emit
+		 * {@link notification}.
+		 *
+		 * == Example ==
+		 *
+		 * {{{
+		 * rpc.proxies.set(notif.id, win);
+		 * rpc.proxies.unset(notif.id);
+		 * }}}
+		 */
+		public Gee.HashMap<int, GLib.Object> proxies {
+			get;
+			set;
+			default = new Gee.HashMap<int, GLib.Object>();
+		}
+
 		/** Seconds to wait for a matching {@link Response} id. */
 		public uint call_timeout_seconds { get; set; default = 120; }
 
@@ -436,6 +459,7 @@ namespace OLLMrpc
 				});
 			}
 			this.pending.clear();
+			this.proxies.clear();
 			this.bin = null;
 			this.input = null;
 			this.output = null;
@@ -736,6 +760,16 @@ namespace OLLMrpc
 				);
 				if (this.buffer_stream != null) {
 					this.buffer_stream.attach(notif);
+				}
+				if (this.live_handles
+					&& notif.method.has_prefix("notify::")
+					&& this.proxies.has_key(notif.id)) {
+					var current = GLib.Value(typeof(string));
+					current.set_string(notif.message);
+					this.proxies.get(notif.id).set_property(
+						notif.method.substring(8),
+						current
+					);
 				}
 				this.notification(notif);
 				return;
