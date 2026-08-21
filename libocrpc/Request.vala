@@ -78,10 +78,10 @@ namespace OLLMrpc
 		 * only set {@link param} never send this property. Direction is
 		 * not on the wire — the handler or typelib knows the signature.
 		 *
-		 * {@link Gee.ArrayList} cannot store {@link GLib.Value} (a struct):
-		 * valac errors ''not a supported generic type argument, use ? to
-		 * box value types''. The ''?'' is that boxing, not optional or
-		 * null arguments. An empty list means no positional args.
+		 * {@link Gee.ArrayList} cannot store {@link GLib.Value} (a struct).
+		 * valac requires a boxed element type. That is boxing, not
+		 * optional or null arguments. An empty list means no positional
+		 * args.
 		 *
 		 * == Example ==
 		 *
