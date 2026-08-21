@@ -105,7 +105,8 @@ strings, and `glib.wrap` pins 2.84.0 with both `diff_files`.
 (`fa2ba89e7ed0907c8852add50cb13edefe93e66e`), compatible with glib 2.84.0.
 After GTK bootstrap / restore, `subprojects/gtk/subprojects/pango.wrap` matches
 that pin (upstream GTK wrap uses `revision = main`, which fetched pango 1.58.2
-on CI and required glib `>= 2.88`).
+on CI and required glib `>= 2.88`). A restored `subprojects/nested-pango.wrap`
+from an older cache is deleted so Meson does not see two pango providers.
 
 ---
 

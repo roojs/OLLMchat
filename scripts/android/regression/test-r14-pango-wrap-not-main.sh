@@ -28,6 +28,15 @@ grep -qE "revision[[:space:]]*=[[:space:]]*$PIN_REV" "$PIN" ||
 grep -qE 'revision[[:space:]]*=[[:space:]]*main' "$PIN" &&
   { echo "pinned pango.wrap must not track main" >&2; exit 1; }
 
+for wrap in "$ROOT_DIR/android/pixiewood-wraps/"*/*.wrap; do
+  [ -f "$wrap" ] || continue
+  grep -q '^\[wrap-redirect\]' "$wrap" && continue
+  if grep -qE '^pango[[:space:]]*=' "$wrap"; then
+    echo "pixiewood-wraps must not ship a pango wrap-git: $wrap" >&2
+    exit 1
+  fi
+done
+
 mkdir -p "$ROOT_DIR/subprojects"
 for dep_dir in "$ROOT_DIR/android/pixiewood-wraps"/*/; do
   for wrap in "$dep_dir"/*.wrap; do
@@ -35,16 +44,21 @@ for dep_dir in "$ROOT_DIR/android/pixiewood-wraps"/*/; do
   done
 done
 
-for wrap in "$ROOT_DIR/subprojects/"*.wrap; do
-  [ -f "$wrap" ] || continue
-  grep -q '^\[wrap-redirect\]' "$wrap" && continue
-  if grep -qE '^pango[[:space:]]*=' "$wrap"; then
-    echo "extra pango wrap-git copied into subprojects/: $wrap" >&2
-    exit 1
-  fi
-done
+# CI run 32325671306: restored subprojects cache still had nested-pango.wrap.
+cat > "$ROOT_DIR/subprojects/nested-pango.wrap" <<'EOF'
+[wrap-git]
+directory = pango
+url = https://gitlab.gnome.org/GNOME/pango.git
+revision = main
+depth = 1
+
+[provide]
+pango = libpango_dep
+EOF
 
 prepare_android_subprojects_before_meson
+[ -f "$ROOT_DIR/subprojects/nested-pango.wrap" ] &&
+  { echo "prepare left extra top-level pango wrap-git" >&2; exit 1; }
 [ -f "$NESTED" ] || { echo "GTK nested pango.wrap missing after prepare" >&2; exit 1; }
 grep -qE "revision[[:space:]]*=[[:space:]]*$PIN_REV" "$NESTED" ||
   { echo "GTK nested pango.wrap was not pinned (still tracks main?)" >&2; exit 1; }

@@ -1,9 +1,9 @@
 # Android CI: pango `main` needs glib >= 2.88
 
-**Status:** ⏳ pin must not be a top-level `*.wrap` — await GitHub Android re-run
+**Status:** ⏳ leftover `nested-pango.wrap` in restored subprojects cache — await GitHub Android re-run
 
 **Opened:** 2026-08-20  
-**CI:** [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256) (glib mismatch), [32322629999](https://github.com/roojs/OLLMchat/actions/runs/32322629999) (gitignored wrap), [32324783895](https://github.com/roojs/OLLMchat/actions/runs/32324783895) (duplicate pango wrap)
+**CI:** [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256) (glib mismatch), [32322629999](https://github.com/roojs/OLLMchat/actions/runs/32322629999) (gitignored wrap), [32324783895](https://github.com/roojs/OLLMchat/actions/runs/32324783895) (duplicate pango wrap), [32325671306](https://github.com/roojs/OLLMchat/actions/runs/32325671306) (cached nested-pango.wrap)
 
 ## Problem
 
@@ -49,4 +49,5 @@ Not under `subprojects/` (gitignore) and not named `*.wrap` (Pixiewood copies `g
 - ✔️ 2026-08-20 — pinned wrap + copy after GTK patch + R14.
 - ✔️ 2026-08-20 — [32322629999](https://github.com/roojs/OLLMchat/actions/runs/32322629999) died in 43s: `pinned pango.wrap missing`. Tracked path was `android/pixiewood-wraps/gtk/subprojects/pango.wrap`, ignored by `.gitignore` `subprojects/`. Moved to `nested-pango.wrap`; R14 now fails if `git check-ignore` matches the pin.
 - ✔️ 2026-08-20 — [32324783895](https://github.com/roojs/OLLMchat/actions/runs/32324783895) R14 passed; preflight Meson: `Multiple wrap files provide 'pango' dependency: pango and nested-pango`. `install_pixiewood_extra_wraps` copies `gtk/*.wrap` into `subprojects/`. Renamed pin to `pango.wrap.pin`; R14 fails if the pin is `*.wrap` or a second pango wrap-git lands in `subprojects/`.
-- ⏳ GitHub `Release - Android` re-run after `.pin` rename.
+- ✔️ 2026-08-21 — [32325671306](https://github.com/roojs/OLLMchat/actions/runs/32325671306) R14 failed on restored `subprojects/nested-pango.wrap` (previous job saved that cache). Prepare now deletes extra top-level pango wrap-git files; R14 plants that leftover and asserts it is gone.
+- ⏳ GitHub `Release - Android` re-run after cache leftover cleanup.

@@ -147,7 +147,7 @@ ensure_gtk_subproject_checked_out() {
 }
 
 pin_gtk_nested_pango_wrap() {
-  local src dest
+  local src dest wrap
   src="$ROOT_DIR/android/pixiewood-wraps/gtk/pango.wrap.pin"
   dest="$ROOT_DIR/subprojects/gtk/subprojects/pango.wrap"
 
@@ -160,6 +160,17 @@ pin_gtk_nested_pango_wrap() {
     exit 1
   fi
   cp -a "$src" "$dest"
+
+  # CI restore-keys can keep subprojects/nested-pango.wrap from an earlier job
+  # (Meson: Multiple wrap files provide pango).
+  for wrap in "$ROOT_DIR/subprojects/"*.wrap; do
+    [ -f "$wrap" ] || continue
+    grep -q '^\[wrap-redirect\]' "$wrap" && continue
+    if grep -qE '^pango[[:space:]]*=' "$wrap"; then
+      echo "Removing extra top-level pango wrap: $wrap" >&2
+      rm -f "$wrap"
+    fi
+  done
 }
 
 ensure_gtk_subproject_patched() {
@@ -205,6 +216,16 @@ ensure_gtk_subproject_patched() {
 }
 
 prepare_android_subprojects_before_meson() {
+  local wrap
+  mkdir -p "$ROOT_DIR/subprojects"
+  for wrap in "$ROOT_DIR/subprojects/"*.wrap; do
+    [ -f "$wrap" ] || continue
+    grep -q '^\[wrap-redirect\]' "$wrap" && continue
+    if grep -qE '^pango[[:space:]]*=' "$wrap"; then
+      echo "Removing extra top-level pango wrap: $wrap" >&2
+      rm -f "$wrap"
+    fi
+  done
   ensure_gtk_subproject_checked_out
   ensure_gtk_subproject_patched
 }
