@@ -50,10 +50,7 @@ public class ProgressRunner : GLib.Object, ProgressItem
 		owned get { return this.status.to_human(); }
 	}
 
-	public GLib.ListModel children {
-		get;
-		default = new GLib.ListStore(typeof (ProgressItem));
-	}
+	public GLib.ListModel children { get; default = new GLib.ListStore(typeof (ProgressItem)); }
 
 	public OLLMchat.Tool.RequestBase? tool_request { get; set; default = null; }
 

@@ -25,8 +25,9 @@ namespace OLLMrpc
 	 * (''RPC-Object.method'' for daemons; hyphen nested
 	 * namespaces like ''RPC-Live-Remote.ref''; or a REST
 	 * path for HTTP). Attach a {@link CallParam} subclass on
-	 * ''param''. For typed HTTP results, set ''result_type'' before
-	 * {@link Client.call}.
+	 * ''param'', or positional {@link GLib.Value}s on ''values''
+	 * (omit when empty). For typed HTTP results, set
+	 * ''result_type'' before {@link Client.call}.
 	 *
 	 * == Example ==
 	 *
@@ -71,14 +72,32 @@ namespace OLLMrpc
 		public CallParam param { get; set; default = new CallParam(); }
 
 		/**
+		 * Positional arguments (client → daemon), GIR / C order.
+		 *
+		 * Empty list is omitted on the bin socket. Current callers that
+		 * only set {@link param} never send this property. Direction is
+		 * not on the wire — the handler or typelib knows the signature.
+		 *
+		 * {@link Gee.ArrayList} cannot store {@link GLib.Value} (a struct):
+		 * valac errors ''not a supported generic type argument, use ? to
+		 * box value types''. The ''?'' is that boxing, not optional or
+		 * null arguments. An empty list means no positional args.
+		 *
+		 * == Example ==
+		 *
+		 * {{{
+		 * var text = GLib.Value(typeof(string));
+		 * text.set_string("hi");
+		 * req.values.add(text);
+		 * }}}
+		 */
+		public Gee.ArrayList<GLib.Value?> values { get; set; default = new Gee.ArrayList<GLib.Value?>(); }
+
+		/**
 		 * HTTP client only: root JSON object {@link GLib.Type} for
 		 * {@link Response.result}. Not serialized on the bin socket.
 		 */
-		public GLib.Type result_type {
-			get;
-			set;
-			default = GLib.Type.INVALID;
-		}
+		public GLib.Type result_type { get; set; default = GLib.Type.INVALID; }
 
 		/** Set by the server before {@link dispatch}. */
 		public Transport.Connection connection { get; set; }
@@ -122,6 +141,24 @@ namespace OLLMrpc
 				case "connection":
 				case "result-type":
 					return;
+				case "values":
+					if (this.values.size == 0) {
+						return;
+					}
+					ctx.write_tag(prop.name);
+					ctx.out_stream.put_byte((uint8) GLib.Type.INVALID | 0x80);
+					if (this.values.size < 128) {
+						ctx.out_stream.put_byte((uint8) this.values.size);
+					} else {
+						ctx.out_stream.put_byte(
+							(uint8) (0x80 | ((this.values.size >> 8) & 0x7F))
+						);
+						ctx.out_stream.put_byte((uint8) (this.values.size & 0xFF));
+					}
+					foreach (var val in this.values) {
+						Bin.StreamValue.write(ctx, val);
+					}
+					return;
 				default:
 					this.bin_default_write_prop (ctx, prop);
 					return;
@@ -137,6 +174,17 @@ namespace OLLMrpc
 			switch (prop.name) {
 				case "connection":
 				case "result-type":
+					return;
+				case "values":
+					var n = ctx.in_stream.read_byte();
+					var count = n & 0x7F;
+					if ((n & 0x80) != 0) {
+						count = (count << 8) | ctx.in_stream.read_byte();
+					}
+					for (var i = 0; i < count; i++) {
+						var elem = ctx.in_stream.read_byte();
+						this.values.add(Bin.StreamValue.read(ctx, elem));
+					}
 					return;
 				default:
 					this.bin_default_read_prop (ctx, prop, type_byte);

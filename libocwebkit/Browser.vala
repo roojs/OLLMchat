@@ -50,9 +50,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 	 * Per-host Cookie header map (Snappr site_cookies — shared with stack).
 	 */
 	public Gee.HashMap<string, string> site_cookies {
-		get;
-		private set;
-		default = new Gee.HashMap<string, string>();
+		get; private set; default = new Gee.HashMap<string, string>();
 	}
 
 	/**
@@ -100,9 +98,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 	 * URL → destination path while a WebKit download is in progress.
 	 */
 	private Gee.HashMap<string, string> downloads_inflight {
-		get;
-		set;
-		default = new Gee.HashMap<string, string>();
+		get; set; default = new Gee.HashMap<string, string>();
 	}
 
 	/**
@@ -110,9 +106,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 	 * Value type is {@link GLib.Object} so all platforms share the map.
 	 */
 	private Gee.HashMap<string, GLib.Object> downloads_active {
-		get;
-		set;
-		default = new Gee.HashMap<string, GLib.Object>();
+		get; set; default = new Gee.HashMap<string, GLib.Object>();
 	}
 
 	public signal void uri_changed(string uri);

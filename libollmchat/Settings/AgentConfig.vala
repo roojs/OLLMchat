@@ -61,11 +61,7 @@ namespace OLLMchat.Settings
 		 * seeds the product default offer; empty array means none offered.
 		 */
 		[Description(nick = "Skills", blurb = "Offered Agent Pi skills")]
-		public Gee.ArrayList<string> skills {
-			get;
-			set;
-			default = new Gee.ArrayList<string>();
-		}
+		public Gee.ArrayList<string> skills { get; set; default = new Gee.ArrayList<string>(); }
 
 		/**
 		 * True when ''skills'' was present in the loaded JSON for this agent.

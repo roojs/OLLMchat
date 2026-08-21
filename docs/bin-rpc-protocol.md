@@ -531,6 +531,14 @@ List **results** (`fetch_files`, …) encode as an object array on the **`result
 
 See `libocrpc/Response.vala`.
 
+### Positional args (`Request.values`)
+
+Optional **`ANY[]`** (this section) on **`OLLMrpc.Request`**. Each element is one **`GLib.Value`** (type byte + payload via `Bin.StreamValue.write` / `read`).
+
+**Omit** when **`values.size == 0`**. Existing `CallParam`-only traffic never sends this property.
+
+No per-value direction flag and no wrapper object. No protocol version bump.
+
 ---
 
 ## 16. Omitted and default-valued properties

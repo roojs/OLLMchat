@@ -47,10 +47,20 @@ if use_unix_sockets
   client_boot_src = files(['ClientBoot.vala'])
 endif
 
+if is_android
+  ocrpc_vapi_pkgs += '--define=ANDROID'
+  ocrpc_vapi_gen_pkgs += ['--define', 'ANDROID']
+endif
+if is_windows
+  ocrpc_vapi_pkgs += '--define=G_OS_WIN32'
+  ocrpc_vapi_gen_pkgs += ['--define', 'G_OS_WIN32']
+endif
+
 ocrpc_core_src = files([
   'namespace.vala',
   'Bin/namespace.vala',
   'Bin/Stream.vala',
+  'Bin/StreamValue.vala',
   'Bin/Serializable.vala',
   'Bin/Json.vala',
   'Transport/Connection.vala',

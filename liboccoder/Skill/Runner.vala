@@ -56,11 +56,7 @@ namespace OLLMcoder.Skill
 		 * at task creation; index 1+ = follow-up prompt-box messages. Continuation
 		 * appends in_message.content only — never replaces index 0 or earlier entries.
 		 */
-		public Gee.ArrayList<string> user_prompts {
-			get;
-			private set;
-			default = new Gee.ArrayList<string>();
-		}
+		public Gee.ArrayList<string> user_prompts { get; private set; default = new Gee.ArrayList<string>(); }
 
 		/**
 		 * Prompt-box text buffered during replay for the in-flight continue turn.

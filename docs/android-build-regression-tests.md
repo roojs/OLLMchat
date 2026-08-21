@@ -31,8 +31,9 @@ GitHub Actions runs the same suite in `.github/workflows/x-android.yml`
 | **R10** | [27613430785](https://github.com/roojs/OLLMchat/actions/runs/27613430785), [27613805784](https://github.com/roojs/OLLMchat/actions/runs/27613805784) | `gdkandroidollmchatpatch.c` truncated or `g_debug` undeclared | covered by extended `test-r03-gtk-patch-marker.sh` |
 | **R11** | [27614072148](https://github.com/roojs/OLLMchat/actions/runs/27614072148) (runtime) | TLS still broken: `libgioopenssl.so` cannot load `libssl` from `filesDir/share/gio/modules/` | `regression/test-r11-gio-openssl-deps.sh` + `verify-apk.sh` OpenSSL asset checks |
 | **R12** | [27615842437](https://github.com/roojs/OLLMchat/actions/runs/27615842437) | `verify-apk.sh` grepped C comment `touch selection bubbles` (not in stripped `libgtk-4.so`) | `regression/test-r12-verify-apk-libgtk-strings.sh` |
-| **R13** | [32201421756](https://github.com/roojs/OLLMchat/actions/runs/32201421756) | `missing patch: …/subprojects/packagefiles/glib/tls-ensure-before-scan.patch` (`subprojects/` is gitignored) | `regression/test-r13-glib-tls-ensure-before-scan.sh` |
+| **R13** | [32201421756](https://github.com/roojs/OLLMchat/actions/runs/32201421756) | GLib TLS scan patch was gitignored under `subprojects/`; 9.2 dropped that approach | `regression/test-r13-glib-tls-ensure-before-scan.sh` (patch must **not** ship) |
 | **R14** | [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256) | `pango` 1.58.2 from GTK `revision = main` needs glib `>= 2.88`; wrap is pinned at 2.84.0 | `regression/test-r14-pango-wrap-not-main.sh` |
+| **R15** | [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256), [32435474269](https://github.com/roojs/OLLMchat/actions/runs/32435474269) | Local `--full` reused frozen wrap-git; GitHub fetched `main` (pango, then libadwaita) vs glib 2.84.0 | `regression/test-r15-glib-stack-wrap-git-pinned.sh` |
 
 When a **new** CI failure appears:
 
@@ -93,12 +94,12 @@ Every `strings … libgtk-4.so | grep` pattern in `verify-apk.sh` must appear as
 string literal in `gdkandroidollmchatpatch.c`. C source comments are not present in
 stripped release libraries (CI run 27615842437).
 
-### R13 — GLib TLS ensure-before-scan patch
-`android/pixiewood-wraps/glib/packagefiles/glib/tls-ensure-before-scan.patch` and
-`hack.patch` exist (not under gitignored `subprojects/`), the TLS patch calls
-`_g_io_modules_ensure_extension_points_registered` in
-`g_io_modules_scan_all_in_directory_with_scope`, contains no OLLMchat debug
-strings, and `glib.wrap` pins 2.84.0 with both `diff_files`.
+### R13 — GLib TLS scan patch must not ship
+TLS is static `g_io_openssl_load` in the app (plan 9.2). `glib.wrap` must not list
+`tls-ensure-before-scan.patch`, and that file must not exist under
+`android/pixiewood-wraps/glib/packagefiles/`. `hack.patch` (`g_set_user_dirs`
+visibility) stays. CI run 32201421756 originally failed because the patch lived
+only under gitignored `subprojects/`; we do not put that patch back.
 
 ### R14 — pango wrap must not track `main`
 `android/pixiewood-wraps/gtk/pango.wrap.pin` pins pango 1.57.2
@@ -109,6 +110,21 @@ on CI and required glib `>= 2.88`). A restored `subprojects/nested-pango.wrap`
 from an older cache is deleted so Meson does not see two pango providers. A
 restored `subprojects/pango` tree that is not the pinned commit is discarded so
 Meson re-clones 1.57.2 instead of keeping pango 1.58.2.
+
+### R15 — GLib-stack wrap-git must be pinned (not `main`)
+A local `meson` / `--full` preflight with `PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD=1`
+reuses `subprojects/` trees. That hid pango 1.58.2 and libadwaita 1.10.rc on
+GitHub: both wraps tracked `main` while the laptop still had June/July
+checkouts that configured against glib 2.84.0.
+
+Fast R15 fails unless `glib`, `gtk`, nested `pango`, and `libadwaita` wrap-git
+files exist in git (not ignored) with a non-floating `revision`. After GTK
+bootstrap, those wraps must not still say `main`/`master`. Skip-download is
+refused while any of those wraps float, so `--full` actually re-clones them.
+
+Do **not** pin fontconfig/fribidi here: they are not GLib consumers and did not
+fail configure. Pin the next GLib-stack wrap when Meson reports a glib floor
+above 2.84.0, and add it to this list.
 
 ---
 

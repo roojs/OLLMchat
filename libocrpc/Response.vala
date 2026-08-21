@@ -41,11 +41,7 @@ namespace OLLMrpc
 		public int id { get; set; default = 0; }
 		public Error? error { get; set; default = null; }
 		/** Object list on the wire (length 0, 1, or N). Single objects use one element. Never null. */
-		public Gee.ArrayList<GLib.Object> result {
-			get;
-			set;
-			default = new Gee.ArrayList<GLib.Object> ();
-		}
+		public Gee.ArrayList<GLib.Object> result { get; set; default = new Gee.ArrayList<GLib.Object> (); }
 		public string msg { get; set; default = ""; }
 		/**
 		 * File.read only: 0 = plain UTF-8 (is_text), 1 = base64 (not is_text).

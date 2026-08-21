@@ -137,9 +137,7 @@ namespace OLLMrpc
 		 * }}}
 		 */
 		public Gee.HashMap<int, GLib.Object> proxies {
-			get;
-			set;
-			default = new Gee.HashMap<int, GLib.Object>();
+			get; set; default = new Gee.HashMap<int, GLib.Object>();
 		}
 
 		/** Seconds to wait for a matching {@link Response} id. */
@@ -173,8 +171,7 @@ namespace OLLMrpc
 		private GLib.DataOutputStream? output;
 		private int next_id = 1;
 		private Gee.ArrayList<PendingWrite> pending {
-			get; private set;
-			default = new Gee.ArrayList<PendingWrite>();
+			get; private set; default = new Gee.ArrayList<PendingWrite>();
 		}
 		private bool sending { get; set; default = false; }
 		private GLib.IOChannel? read_channel;
@@ -316,6 +313,12 @@ namespace OLLMrpc
 						break;
 
 					default:
+#if G_OS_WIN32 || ANDROID
+						this.connect_error = "unix sockets are not available";
+						GLib.critical("connect %s: %s",
+							this.socket_path, this.connect_error);
+						return false;
+#else
 						try {
 							this.socket = yield client.connect_async(
 								new GLib.UnixSocketAddress(this.socket_path),
@@ -327,6 +330,7 @@ namespace OLLMrpc
 								this.socket_path, this.connect_error);
 							return false;
 						}
+#endif
 						break;
 				}
 			}
@@ -341,6 +345,13 @@ namespace OLLMrpc
 				yield this.buffer_stream.connect_client(this.socket_path);
 			}
 			this.connected = true;
+#if ANDROID
+			this.connect_error = "unix IO watch is not available";
+			GLib.critical("connect %s: %s",
+				this.socket_path, this.connect_error);
+			this.disconnect();
+			return false;
+#else
 			var fd = this.socket.get_socket().get_fd();
 			this.read_channel = new GLib.IOChannel.unix_new(fd);
 			this.read_channel.set_encoding(null);
@@ -425,6 +436,7 @@ namespace OLLMrpc
 			GLib.debug("connect ok hello id=%d", hello_request.id);
 			this.connect_error = "";
 			return true;
+#endif
 		}
 
 		public void disconnect()
@@ -761,9 +773,9 @@ namespace OLLMrpc
 				if (this.buffer_stream != null) {
 					this.buffer_stream.attach(notif);
 				}
-				if (this.live_handles
-					&& notif.method.has_prefix("notify::")
-					&& this.proxies.has_key(notif.id)) {
+				if (this.live_handles && notif.method.has_prefix("notify::")
+					&& this.proxies.has_key(notif.id)) 
+				{
 					var current = GLib.Value(typeof(string));
 					current.set_string(notif.message);
 					this.proxies.get(notif.id).set_property(

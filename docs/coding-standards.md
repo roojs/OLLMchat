@@ -790,6 +790,29 @@ public class MyClass
 }
 ```
 
+**Do not** put `get;`, `set;`, or `default =` on their own lines.
+
+**Bad:**
+```vala
+    public List<string> items {
+        get;
+        set;
+        default = new List<string>();
+    }
+```
+
+**Good (same line):**
+```vala
+    public List<string> items { get; set; default = new List<string>(); }
+```
+
+**Also Good (declaration already long — accessors still share one line):**
+```vala
+    public Gee.HashMap<int, GLib.Object> proxies {
+        get; set; default = new Gee.HashMap<int, GLib.Object>();
+    }
+```
+
 **Also Good (for private simple fields):**
 ```vala
 public class MyClass

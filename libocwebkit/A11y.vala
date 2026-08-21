@@ -51,18 +51,14 @@ public class OLLMwebkit.A11y : GLib.Object
 	 * Press-ref id → child-index route from the AT-SPI application root.
 	 */
 	public Gee.HashMap<int, Gee.ArrayList<int>> press_routes {
-		get;
-		private set;
-		default = new Gee.HashMap<int, Gee.ArrayList<int>>();
+		get; private set; default = new Gee.HashMap<int, Gee.ArrayList<int>>();
 	}
 
 	/**
 	 * Press-ref id → a11y label from the last dump (permission questions).
 	 */
 	public Gee.HashMap<int, string> press_labels {
-		get;
-		private set;
-		default = new Gee.HashMap<int, string>();
+		get; private set; default = new Gee.HashMap<int, string>();
 	}
 
 	/**
@@ -71,9 +67,7 @@ public class OLLMwebkit.A11y : GLib.Object
 	 * {@link press_routes} values).
 	 */
 	public Gee.HashMap<string, Gee.ArrayList<int>> html_names {
-		get;
-		private set;
-		default = new Gee.HashMap<string, Gee.ArrayList<int>>();
+		get; private set; default = new Gee.HashMap<string, Gee.ArrayList<int>>();
 	}
 
 	/**

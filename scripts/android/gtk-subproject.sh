@@ -147,8 +147,7 @@ ensure_gtk_subproject_checked_out() {
 }
 
 pango_pin_revision() {
-  sed -n 's/^revision[[:space:]]*=[[:space:]]*//p' \
-    "$ROOT_DIR/android/pixiewood-wraps/gtk/pango.wrap.pin" | head -1
+  wrap_file_revision "$ROOT_DIR/android/pixiewood-wraps/gtk/pango.wrap.pin"
 }
 
 pango_checkout_matches_pin() {
@@ -160,26 +159,100 @@ pango_checkout_matches_pin() {
   [ "$actual" = "$pin" ]
 }
 
-discard_stale_pango_checkout() {
-  local pin pango_dir actual
-  pin="$(pango_pin_revision)"
-  for pango_dir in \
-    "$ROOT_DIR/subprojects/pango" \
-    "$ROOT_DIR/subprojects/gtk/subprojects/pango"; do
-    [ -e "$pango_dir" ] || continue
-    if [ -n "$pin" ] && [ -d "$pango_dir/.git" ]; then
-      actual="$(git -C "$pango_dir" rev-parse HEAD 2>/dev/null || true)"
-      if [ "$actual" = "$pin" ]; then
-        continue
-      fi
+libadwaita_checkout_matches_pin() {
+  local wrap rev actual
+  wrap="$ROOT_DIR/android/pixiewood-wraps/libadwaita/libadwaita.wrap"
+  [ -f "$wrap" ] || return 1
+  rev="$(wrap_file_revision "$wrap")"
+  [ -n "$rev" ] || return 1
+  [ -d "$ROOT_DIR/subprojects/libadwaita/.git" ] || return 1
+  actual="$(git -C "$ROOT_DIR/subprojects/libadwaita" rev-parse HEAD 2>/dev/null || true)"
+  [ "$actual" = "$rev" ]
+}
+
+glib_stack_wrap_git_is_floating() {
+  local wrap rev
+  for wrap in \
+    "$ROOT_DIR/subprojects/glib.wrap" \
+    "$ROOT_DIR/subprojects/gtk.wrap" \
+    "$ROOT_DIR/subprojects/libadwaita.wrap" \
+    "$ROOT_DIR/subprojects/gtk/subprojects/pango.wrap" \
+    "$ROOT_DIR/subprojects/gtk/subprojects/glib.wrap"; do
+    [ -f "$wrap" ] || continue
+    grep -q '^\[wrap-git\]' "$wrap" || continue
+    rev="$(wrap_file_revision "$wrap")"
+    case "$rev" in
+      main|master|HEAD) return 0 ;;
+    esac
+  done
+  return 1
+}
+
+discard_floating_glib_stack_checkouts() {
+  local wrap rev dir
+  for wrap in \
+    "$ROOT_DIR/subprojects/libadwaita.wrap" \
+    "$ROOT_DIR/subprojects/gtk/subprojects/pango.wrap"; do
+    [ -f "$wrap" ] || continue
+    grep -q '^\[wrap-git\]' "$wrap" || continue
+    rev="$(wrap_file_revision "$wrap")"
+    case "$rev" in
+      main|master|HEAD) ;;
+      *) continue ;;
+    esac
+    dir="$(wrap_file_directory "$wrap")"
+    [ -n "$dir" ] || dir="$(basename "$wrap" .wrap)"
+    echo "Discarding floating wrap-git checkout $dir (wrap tracks $rev)." >&2
+    rm -rf "$ROOT_DIR/subprojects/$dir"
+  done
+}
+
+wrap_file_directory() {
+  sed -n 's/^directory[[:space:]]*=[[:space:]]*//p' "$1" | head -1 | tr -d '[:space:]'
+}
+
+wrap_file_revision() {
+  sed -n 's/^revision[[:space:]]*=[[:space:]]*//p' "$1" | head -1 | tr -d '[:space:]'
+}
+
+discard_git_checkout_unless_revision() {
+  local dir="$1" rev="$2" actual
+  [ -e "$dir" ] || return 0
+  if [ -d "$dir/.git" ] && [ -n "$rev" ]; then
+    actual="$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)"
+    if [ "$actual" = "$rev" ]; then
+      return 0
     fi
-    echo "Discarding stale pango checkout $pango_dir (want $pin)." >&2
-    rm -rf "$pango_dir"
+  fi
+  echo "Discarding stale checkout $dir (want $rev)." >&2
+  rm -rf "$dir"
+}
+
+discard_stale_pinned_checkouts() {
+  local wrap pin dir rev
+  for wrap in "$ROOT_DIR/android/pixiewood-wraps/"*/*.wrap; do
+    [ -f "$wrap" ] || continue
+    grep -q '^\[wrap-git\]' "$wrap" || continue
+    dir="$(wrap_file_directory "$wrap")"
+    rev="$(wrap_file_revision "$wrap")"
+    [ -n "$dir" ] && [ -n "$rev" ] || continue
+    case "$dir" in
+      gtk|glib) continue ;;
+    esac
+    discard_git_checkout_unless_revision "$ROOT_DIR/subprojects/$dir" "$rev"
+  done
+  for pin in "$ROOT_DIR/android/pixiewood-wraps/gtk/"*.wrap.pin; do
+    [ -f "$pin" ] || continue
+    dir="$(wrap_file_directory "$pin")"
+    rev="$(wrap_file_revision "$pin")"
+    [ -n "$dir" ] && [ -n "$rev" ] || continue
+    discard_git_checkout_unless_revision "$ROOT_DIR/subprojects/$dir" "$rev"
+    discard_git_checkout_unless_revision "$ROOT_DIR/subprojects/gtk/subprojects/$dir" "$rev"
   done
 }
 
 pin_gtk_nested_pango_wrap() {
-  local src dest wrap
+  local src dest wrap pin
   src="$ROOT_DIR/android/pixiewood-wraps/gtk/pango.wrap.pin"
   dest="$ROOT_DIR/subprojects/gtk/subprojects/pango.wrap"
 
@@ -191,7 +264,10 @@ pin_gtk_nested_pango_wrap() {
     echo "GTK nested subprojects dir missing; cannot pin pango." >&2
     exit 1
   fi
-  cp -a "$src" "$dest"
+  for pin in "$ROOT_DIR/android/pixiewood-wraps/gtk/"*.wrap.pin; do
+    [ -f "$pin" ] || continue
+    cp -a "$pin" "$ROOT_DIR/subprojects/gtk/subprojects/$(basename "$pin" .pin)"
+  done
 
   # CI restore-keys can keep subprojects/nested-pango.wrap from an earlier job
   # (Meson: Multiple wrap files provide pango).
@@ -203,7 +279,7 @@ pin_gtk_nested_pango_wrap() {
       rm -f "$wrap"
     fi
   done
-  discard_stale_pango_checkout
+  discard_stale_pinned_checkouts
 }
 
 ensure_gtk_subproject_patched() {
@@ -259,6 +335,7 @@ prepare_android_subprojects_before_meson() {
       rm -f "$wrap"
     fi
   done
+  discard_stale_pinned_checkouts
   ensure_gtk_subproject_checked_out
   ensure_gtk_subproject_patched
 }

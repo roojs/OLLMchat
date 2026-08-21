@@ -275,26 +275,19 @@ namespace OLLMrpc.Bin
 				}
 				var first_node = items.get_element(0);
 				if (first_node.get_node_type() == global::Json.NodeType.VALUE && first_node.get_value_type() == GLib.Type.STRING) {
-					var count = items.get_length();
-					bin.write_tag(tag_name);
-					bin.out_stream.put_byte((uint8) GLib.Type.STRING | 0x80);
-					if (count < 128) {
-						bin.out_stream.put_byte((uint8) count);
-					} else {
-						bin.out_stream.put_byte((uint8) (0x80 | ((count >> 8) & 0x7F)));
-						bin.out_stream.put_byte((uint8) (count & 0xFF));
-					}
-					for (var i = 0u; i < count; i++) {
-						var elem = items.get_string_element(i) != null ? items.get_string_element(i) : "";
-						if (elem.length < 128) {
-							bin.out_stream.put_byte((uint8) elem.length);
-						} else {
-							bin.out_stream.put_byte((uint8) (0x80 | ((elem.length >> 8) & 0x7F)));
-							bin.out_stream.put_byte((uint8) (elem.length & 0xFF));
+					string[] arr = {};
+					for (var i = 0u; i < items.get_length(); i++) {
+						var elem = items.get_string_element(i);
+						if (elem == null) {
+							arr += "";
+							continue;
 						}
-						size_t elem_written;
-						bin.out_stream.write_all(((uint8[]) elem)[0:elem.length], out elem_written);
+						arr += elem;
 					}
+					bin.write_tag(tag_name);
+					var val = GLib.Value(typeof(string[]));
+					val = arr;
+					StreamValue.write(bin, val);
 					return;
 				}
 				var first = items.get_object_element(0);
@@ -346,38 +339,22 @@ namespace OLLMrpc.Bin
 			}
 
 			if (node.get_node_type() != global::Json.NodeType.VALUE) {
-				throw new StreamError.PROTOCOL(
-					"member '%s' expected JSON value",
-					name
-				);
+				throw new StreamError.PROTOCOL("member '%s' expected JSON value", name);
 			}
 
 			switch (node.get_value_type()) {
 				case GLib.Type.STRING:
-					var s = node.get_string() != null ? node.get_string() : "";
 					bin.write_tag(tag_name);
-					if (s.length > 32767) {
-						bin.out_stream.put_byte((uint8) GLib.Type.BOXED);
-						bin.out_stream.put_uint32((uint32) s.length);
-						size_t written;
-						bin.out_stream.write_all(((uint8[]) s)[0:s.length], out written);
-						return;
-					}
-					bin.out_stream.put_byte((uint8) GLib.Type.STRING);
-					if (s.length < 128) {
-						bin.out_stream.put_byte((uint8) s.length);
-					} else {
-						bin.out_stream.put_byte((uint8) (0x80 | ((s.length >> 8) & 0x7F)));
-						bin.out_stream.put_byte((uint8) (s.length & 0xFF));
-					}
-					size_t written;
-					bin.out_stream.write_all(((uint8[]) s)[0:s.length], out written);
+					var str_val = GLib.Value(typeof(string));
+					str_val.set_string(node.get_string() != null ? node.get_string() : "");
+					StreamValue.write(bin, str_val);
 					return;
 
 				case GLib.Type.BOOLEAN:
 					bin.write_tag(tag_name);
-					bin.out_stream.put_byte((uint8) GLib.Type.BOOLEAN);
-					bin.out_stream.put_byte(node.get_boolean() ? 1 : 0);
+					var bool_val = GLib.Value(typeof(bool));
+					bool_val.set_boolean(node.get_boolean());
+					StreamValue.write(bin, bool_val);
 					return;
 
 				case GLib.Type.INT:
@@ -386,36 +363,22 @@ namespace OLLMrpc.Bin
 					var i64 = (int64) node.get_int();
 					bin.write_tag(tag_name);
 					if (i64 >= int.MIN && i64 <= int.MAX) {
-						bin.out_stream.put_byte((uint8) GLib.Type.INT);
-						var iv = (int) i64;
-						if (iv >= -128 && iv <= 127) {
-							bin.out_stream.put_byte(1);
-							bin.out_stream.put_byte((uint8) (int8) iv);
-							return;
-						}
-						bin.out_stream.put_byte(8);
-						bin.out_stream.put_int64(iv);
+						var int_val = GLib.Value(typeof(int));
+						int_val.set_int((int) i64);
+						StreamValue.write(bin, int_val);
 						return;
 					}
-					bin.out_stream.put_byte((uint8) GLib.Type.INT64);
-					if (i64 >= -128 && i64 <= 127) {
-						bin.out_stream.put_byte(1);
-						bin.out_stream.put_byte((uint8) (int8) i64);
-						return;
-					}
-					bin.out_stream.put_byte(8);
-					bin.out_stream.put_int64(i64);
+					var wide_val = GLib.Value(typeof(int64));
+					wide_val.set_int64(i64);
+					StreamValue.write(bin, wide_val);
 					return;
 
 				default:
 					break;
 			}
 
-			throw new StreamError.PROTOCOL(
-				"unsupported JSON value type '%s' on member '%s'",
-				node.get_value_type().name(),
-				name
-			);
+			throw new StreamError.PROTOCOL("unsupported JSON value type '%s' on member '%s'",
+				node.get_value_type().name(), name);
 		}
 
 		public global::Json.Node bin_member_to_json(
@@ -455,111 +418,49 @@ namespace OLLMrpc.Bin
 				return this.bin_to_json_object(bin, gtype_to_alias.get(nested_gtype));
 			}
 
+			var val = StreamValue.read(bin, type_byte);
+			if (val.type() == typeof(string[])) {
+				var arr = (string[]) val;
+				var json_arr = new global::Json.Array();
+				foreach (var s in arr) {
+					json_arr.add_string_element(s);
+				}
+				var arr_node = new global::Json.Node(global::Json.NodeType.ARRAY);
+				arr_node.set_array(json_arr);
+				return arr_node;
+			}
+
 			var member = new global::Json.Node(global::Json.NodeType.VALUE);
-			var width = (uint8) 0;
-
-			switch ((GLib.Type) (type_byte & 0x7F)) {
+			switch (val.type()) {
 				case GLib.Type.STRING:
-					if ((type_byte & 0x80) != 0) {
-						var count = (uint) bin.in_stream.read_byte();
-						if ((count & 0x80) != 0) {
-							count = ((count & 0x7F) << 8) | bin.in_stream.read_byte();
-						}
-						var json_arr = new global::Json.Array();
-						for (var i = 0u; i < count; i++) {
-							var elem_len = (uint) bin.in_stream.read_byte();
-							if ((elem_len & 0x80) != 0) {
-								elem_len = ((elem_len & 0x7F) << 8) | bin.in_stream.read_byte();
-							}
-							var buf = new uint8[elem_len + 1];
-							size_t read_bytes;
-							bin.in_stream.read_all(buf[0:elem_len], out read_bytes);
-							buf[elem_len] = 0;
-							json_arr.add_string_element((string) buf);
-						}
-						var arr_node = new global::Json.Node(global::Json.NodeType.ARRAY);
-						arr_node.set_array(json_arr);
-						return arr_node;
-					}
-					var str_len = (uint) bin.in_stream.read_byte();
-					if ((str_len & 0x80) != 0) {
-						str_len = ((str_len & 0x7F) << 8) | bin.in_stream.read_byte();
-					}
-					var str_buf = new uint8[str_len + 1];
-					size_t str_read;
-					bin.in_stream.read_all(str_buf[0:str_len], out str_read);
-					str_buf[str_len] = 0;
-					member.set_string((string) str_buf);
-					return member;
-
-				case GLib.Type.BOXED:
-					var blob_len = bin.in_stream.read_uint32();
-					var blob_buf = new uint8[blob_len + 1];
-					size_t blob_read;
-					bin.in_stream.read_all(blob_buf[0:blob_len], out blob_read);
-					blob_buf[blob_len] = 0;
-					member.set_string((string) blob_buf);
+					member.set_string(val.get_string());
 					return member;
 
 				case GLib.Type.BOOLEAN:
-					member.set_boolean(bin.in_stream.read_byte() == 1);
-					return member;
-
-				case GLib.Type.ENUM:
-					width = bin.in_stream.read_byte();
-					if (width == 1) {
-						member.set_int((int64) (int8) bin.in_stream.read_byte());
-						return member;
-					}
-					if (width != 8) {
-						throw new StreamError.PROTOCOL(
-							"invalid enum integer width %u",
-							width
-						);
-					}
-					member.set_int(bin.in_stream.read_int64());
+					member.set_boolean(val.get_boolean());
 					return member;
 
 				case GLib.Type.INT:
+					member.set_int(val.get_int());
+					return member;
+
 				case GLib.Type.INT64:
-					width = bin.in_stream.read_byte();
-					if (width == 1) {
-						member.set_int((int64) (int8) bin.in_stream.read_byte());
-						return member;
-					}
-					if (width != 8) {
-						throw new StreamError.PROTOCOL(
-							"invalid signed integer width %u",
-							width
-						);
-					}
-					member.set_int(bin.in_stream.read_int64());
+					member.set_int(val.get_int64());
 					return member;
 
 				case GLib.Type.UINT:
+					member.set_int((int64) val.get_uint());
+					return member;
+
 				case GLib.Type.UINT64:
-					width = bin.in_stream.read_byte();
-					if (width == 1) {
-						member.set_int((int64) bin.in_stream.read_byte());
-						return member;
-					}
-					if (width != 8) {
-						throw new StreamError.PROTOCOL(
-							"invalid unsigned integer width %u",
-							width
-						);
-					}
-					member.set_int((int64) bin.in_stream.read_uint64());
+					member.set_int((int64) val.get_uint64());
 					return member;
 
 				default:
 					break;
 			}
 
-			throw new StreamError.PROTOCOL(
-				"unsupported wire type 0x%02X",
-				type_byte & 0x7F
-			);
+			throw new StreamError.PROTOCOL("unsupported wire type 0x%02X", type_byte & 0x7F);
 		}
 
 		/**

@@ -33,11 +33,7 @@ namespace OLLMchat.History
 		public string fid { get; set; default = ""; }
 		public Gee.ArrayList<string> child_chats { get; set; default = new Gee.ArrayList<string>(); }
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
-		public Gee.ArrayList<Message> queued_messages {
-			get;
-			set;
-			default = new Gee.ArrayList<Message>();
-		}
+		public Gee.ArrayList<Message> queued_messages { get; set; default = new Gee.ArrayList<Message>(); }
 		/** Session project path; from JSON top-level (or DB when loading via placeholder). */
 		public string project_path { get; set; default = ""; }
 

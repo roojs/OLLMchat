@@ -29,11 +29,7 @@ namespace OLLMcoder.AgentPi
 	 */
 	public class SkillSet : GLib.Object
 	{
-		public Gee.ArrayList<Skill> items {
-			get;
-			private set;
-			default = new Gee.ArrayList<Skill>();
-		}
+		public Gee.ArrayList<Skill> items { get; private set; default = new Gee.ArrayList<Skill>(); }
 
 		/**
 		 * Clear and rescan resource pack + global + project skill roots.

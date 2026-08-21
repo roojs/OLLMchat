@@ -1,6 +1,6 @@
 # Android CI: pango `main` needs glib >= 2.88
 
-**Status:** ⏳ cached pango 1.58.2 ignored wrap pin — await GitHub Android re-run
+**Status:** ⏳ test-gap + libadwaita `main` — await local R15 and GitHub Android re-run
 
 **Opened:** 2026-08-20  
 **CI:** [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256) (glib mismatch), [32322629999](https://github.com/roojs/OLLMchat/actions/runs/32322629999) (gitignored wrap), [32324783895](https://github.com/roojs/OLLMchat/actions/runs/32324783895) (duplicate pango wrap), [32325671306](https://github.com/roojs/OLLMchat/actions/runs/32325671306) (cached nested-pango.wrap), [32433322949](https://github.com/roojs/OLLMchat/actions/runs/32433322949) (cached pango 1.58.2)
@@ -28,6 +28,7 @@ subprojects/pango/meson.build:233:11: ERROR: Dependency 'glib-2.0' is required b
 ## Root cause
 
 - ✔️ GTK’s nested `pango.wrap` tracks `main`. A clean CI checkout clones current pango; a local tree reuses the old checkout. `--full` locally does not re-clone (`PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD=1` plus an existing `subprojects/pango`).
+- ✔️ The same skip-download hole then hid **libadwaita**: Pixiewood’s wrap is `revision=main`; local tree is 1.10.alpha (`dc468f08`, glib `>= 2.84.0`); CI fetched 1.10.rc needing glib `>= 2.89.3` ([32435474269](https://github.com/roojs/OLLMchat/actions/runs/32435474269)). R14 only asserted the pango pin file, so a local test compile never asked “what would `main` fetch today?”.
 
 ## Proposed fix
 
@@ -51,4 +52,5 @@ Not under `subprojects/` (gitignore) and not named `*.wrap` (Pixiewood copies `g
 - ✔️ 2026-08-20 — [32324783895](https://github.com/roojs/OLLMchat/actions/runs/32324783895) R14 passed; preflight Meson: `Multiple wrap files provide 'pango' dependency: pango and nested-pango`. `install_pixiewood_extra_wraps` copies `gtk/*.wrap` into `subprojects/`. Renamed pin to `pango.wrap.pin`; R14 fails if the pin is `*.wrap` or a second pango wrap-git lands in `subprojects/`.
 - ✔️ 2026-08-21 — [32325671306](https://github.com/roojs/OLLMchat/actions/runs/32325671306) R14 failed on restored `subprojects/nested-pango.wrap` (previous job saved that cache). Prepare now deletes extra top-level pango wrap-git files; R14 plants that leftover and asserts it is gone.
 - ✔️ 2026-08-21 — [32433322949](https://github.com/roojs/OLLMchat/actions/runs/32433322949) R14 passed; Meson warned wrap changed but still configured **pango 1.58.2** (`PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD=1` kept the restored tree). Discard checkout unless `HEAD` is the pin; skip-download only if pango matches the pin. R14 plants a fake 1.58.2 tree and asserts it is removed.
-- ⏳ GitHub `Release - Android` re-run after stale pango checkout discard.
+- ✔️ 2026-08-21 — [32435474269](https://github.com/roojs/OLLMchat/actions/runs/32435474269) pango pin worked; **libadwaita 1.10.rc** needs glib `>= 2.89.3`. Same class of bug: wrap-git `main` + frozen local checkout. Pin libadwaita to `dc468f081ba85e8da0fc20520f08dfe1a354779a`. R15 fails if glib/gtk/pango/libadwaita wrap-git still track `main`. Skip-download is refused while those wraps float so `--full` re-clones. 🚫 Do not pin fontconfig/fribidi (configure succeeded; they are not GLib-stack).
+- ⏳ GitHub `Release - Android` after R15 + libadwaita pin.

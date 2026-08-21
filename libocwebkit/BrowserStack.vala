@@ -49,9 +49,7 @@ public class OLLMwebkit.BrowserStack : Gtk.Box
 	 * Shared per-host cookies for this chat session (Snappr stack map).
 	 */
 	public Gee.HashMap<string, string> site_cookies {
-		get;
-		private set;
-		default = new Gee.HashMap<string, string>();
+		get; private set; default = new Gee.HashMap<string, string>();
 	}
 
 	/**

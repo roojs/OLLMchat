@@ -47,9 +47,7 @@ namespace OLLMapp.SettingsDialog
 		private Gtk.PopoverMenu export_menu;
 		private Rows.SkillRow menu_skill;
 		private Gee.HashMap<string, Rows.SkillRow> skill_rows {
-			get;
-			set;
-			default = new Gee.HashMap<string, Rows.SkillRow>();
+			get; set; default = new Gee.HashMap<string, Rows.SkillRow>();
 		}
 
 		public SkillsPage(MainDialog dialog)

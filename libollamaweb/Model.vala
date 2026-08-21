@@ -26,11 +26,7 @@ namespace OllamaWeb
 		public Gee.ArrayList<string> features { get; set; default = new Gee.ArrayList<string>(); }
 		public Gee.ArrayList<ModelVariant> tags { get; set; default = new Gee.ArrayList<ModelVariant>(); }
 
-		public Gee.ArrayList<string> unique_sizes {
-			get;
-			private set;
-			default = new Gee.ArrayList<string>();
-		}
+		public Gee.ArrayList<string> unique_sizes { get; private set; default = new Gee.ArrayList<string>(); }
 
 		public string display {
 			owned get {

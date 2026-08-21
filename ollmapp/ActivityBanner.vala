@@ -45,11 +45,7 @@ namespace OLLMapp
 		public Gtk.ProgressBar progress_bar { get; private set; }
 		public Gtk.Button action_button { get; private set; }
 		/** Last notification shown (action click emits {@link notification_reply} with this). */
-		private OLLMrpc.Notification current_notification {
-			get;
-			set;
-			default = new OLLMrpc.Notification();
-		}
+		private OLLMrpc.Notification current_notification { get; set; default = new OLLMrpc.Notification(); }
 		public Gtk.Revealer revealer { get; private set; }
 
 		private int total_scan = 0;

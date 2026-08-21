@@ -145,11 +145,7 @@ namespace OLLMchat.History
 		 *
 		 * Serialized with the session. Agent wraps this in {@link MessageQueue}.
 		 */
-		public Gee.ArrayList<Message> queued_messages {
-			get;
-			set;
-			default = new Gee.ArrayList<Message>();
-		}
+		public Gee.ArrayList<Message> queued_messages { get; set; default = new Gee.ArrayList<Message>(); }
 		
 		// Manager reference for getting history directory
 		// Made a construct property so it can be set via Object.new_with_properties

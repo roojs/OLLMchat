@@ -40,11 +40,7 @@ namespace OLLMapp.SettingsDialog
 		private ToolsPage tools_page;
 		private Adw.ViewStack view_stack;
 		public Gtk.Box action_bar_area { get; private set; }
-		private SettingsPage previous_visible_child {
-			get;
-			set;
-			default = new SettingsPage();
-		}
+		private SettingsPage previous_visible_child { get; set; default = new SettingsPage(); }
 		public PullManager pull_manager { get; private set; }
 		private PullManagerBanner progress_banner;
 

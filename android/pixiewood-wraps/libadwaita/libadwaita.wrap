@@ -1,0 +1,10 @@
+[wrap-git]
+directory=libadwaita
+url=https://gitlab.gnome.org/GNOME/libadwaita.git
+# Pixiewood defaults this wrap to main. Pin 1.10.alpha (glib >= 2.84.0).
+# Current main is 1.10.rc and needs glib >= 2.89.3 (CI 32435474269).
+revision=dc468f081ba85e8da0fc20520f08dfe1a354779a
+depth=1
+
+[provide]
+libadwaita-1=liblibadwaita_dep

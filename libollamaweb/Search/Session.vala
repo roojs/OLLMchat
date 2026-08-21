@@ -29,11 +29,7 @@ namespace OllamaWeb.Search
 		/**
 		 * Slugs from the current search still awaiting {@link refine}.
 		 */
-		public Gee.ArrayList<string> refine_queue {
-			get;
-			private set;
-			default = new Gee.ArrayList<string>();
-		}
+		public Gee.ArrayList<string> refine_queue { get; private set; default = new Gee.ArrayList<string>(); }
 
 		public bool searching {
 			get {
@@ -56,9 +52,7 @@ namespace OllamaWeb.Search
 
 		private Service service { get; set; default = new Service(); }
 		private Gee.HashMap<string, OllamaWeb.Model> result_rows {
-			get;
-			set;
-			default = new Gee.HashMap<string, OllamaWeb.Model>();
+			get; set; default = new Gee.HashMap<string, OllamaWeb.Model>();
 		}
 		private GLib.Cancellable? search_cancellable;
 		private GLib.Cancellable? enrich_cancellable;

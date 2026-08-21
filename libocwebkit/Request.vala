@@ -36,11 +36,7 @@ public class OLLMwebkit.Request : OLLMchat.Tool.RequestBase
 	/**
 	 * Optional fill map for action ''press'': fill key (HTML ''name='' or ''id='') → text to type.
 	 */
-	public Gee.HashMap<string, string> fill {
-		get;
-		set;
-		default = new Gee.HashMap<string, string>();
-	}
+	public Gee.HashMap<string, string> fill { get; set; default = new Gee.HashMap<string, string>(); }
 
 	public Request()
 	{

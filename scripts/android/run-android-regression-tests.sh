@@ -32,6 +32,7 @@ FAST_TESTS=(
   "$REGRESSION_DIR/test-r12-verify-apk-libgtk-strings.sh"
   "$REGRESSION_DIR/test-r13-glib-tls-ensure-before-scan.sh"
   "$REGRESSION_DIR/test-r14-pango-wrap-not-main.sh"
+  "$REGRESSION_DIR/test-r15-glib-stack-wrap-git-pinned.sh"
 )
 
 for script in "${FAST_TESTS[@]}"; do

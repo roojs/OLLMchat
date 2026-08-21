@@ -20,15 +20,11 @@ namespace OLLMchat.Settings
 		public string data_dir { get; construct; }
 
 		public OllamaWeb.Search.Session session {
-			get;
-			private set;
-			default = new OllamaWeb.Search.Session();
+			get; private set; default = new OllamaWeb.Search.Session();
 		}
 
 		private Gee.ArrayList<OllamaWeb.Model> store {
-			get;
-			set;
-			default = new Gee.ArrayList<OllamaWeb.Model>();
+			get; set; default = new Gee.ArrayList<OllamaWeb.Model>();
 		}
 
 		private uint debounce_id;

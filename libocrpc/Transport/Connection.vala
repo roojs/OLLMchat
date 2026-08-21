@@ -33,28 +33,14 @@ namespace OLLMrpc.Transport
 		public bool live_handles { get; set; default = false; }
 
 		public Gee.HashMap<int, GLib.Object> leases {
-			get;
-			set;
-			default = new Gee.HashMap<int, GLib.Object>();
+			get; set; default = new Gee.HashMap<int, GLib.Object>();
 		}
 
-		public Gee.HashMap<int, uint> floors {
-			get;
-			set;
-			default = new Gee.HashMap<int, uint>();
-		}
+		public Gee.HashMap<int, uint> floors { get; set; default = new Gee.HashMap<int, uint>(); }
 
-		public Gee.HashMap<int, uint> extras {
-			get;
-			set;
-			default = new Gee.HashMap<int, uint>();
-		}
+		public Gee.HashMap<int, uint> extras { get; set; default = new Gee.HashMap<int, uint>(); }
 
-		public Gee.HashMap<string, int> lease_ids {
-			get;
-			set;
-			default = new Gee.HashMap<string, int>();
-		}
+		public Gee.HashMap<string, int> lease_ids { get; set; default = new Gee.HashMap<string, int>(); }
 
 		/**
 		 * Subscribed GObject handler ids for this connection.
@@ -63,9 +49,7 @@ namespace OLLMrpc.Transport
 		 * ''notify::'' name → handler id from connect.
 		 */
 		public Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>> signal_subs {
-			get;
-			set;
-			default = new Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>>();
+			get; set; default = new Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>>();
 		}
 
 		public Live.BufferStream? buffer_stream { get; set; default = null; }

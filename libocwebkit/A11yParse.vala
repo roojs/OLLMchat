@@ -127,28 +127,20 @@ public class OLLMwebkit.A11yParse : GLib.Object
 	/**
 	 * Child-index path from the application root to {@link root}.
 	 */
-	public Gee.ArrayList<int> route {
-		get;
-		construct;
-		default = new Gee.ArrayList<int>();
-	}
+	public Gee.ArrayList<int> route { get; construct; default = new Gee.ArrayList<int>(); }
 
 	/**
 	 * Press-ref id → child-index route from the AT-SPI application root.
 	 */
 	public Gee.HashMap<int, Gee.ArrayList<int>> press_routes {
-		get;
-		private set;
-		default = new Gee.HashMap<int, Gee.ArrayList<int>>();
+		get; private set; default = new Gee.HashMap<int, Gee.ArrayList<int>>();
 	}
 
 	/**
 	 * Press-ref id → a11y label (for permission questions).
 	 */
 	public Gee.HashMap<int, string> press_labels {
-		get;
-		private set;
-		default = new Gee.HashMap<int, string>();
+		get; private set; default = new Gee.HashMap<int, string>();
 	}
 
 	/**
@@ -157,9 +149,7 @@ public class OLLMwebkit.A11yParse : GLib.Object
 	 * ''get_child_at_index'' steps; same path shape as {@link press_routes} values).
 	 */
 	public Gee.HashMap<string, Gee.ArrayList<int>> html_names {
-		get;
-		private set;
-		default = new Gee.HashMap<string, Gee.ArrayList<int>>();
+		get; private set; default = new Gee.HashMap<string, Gee.ArrayList<int>>();
 	}
 
 	/**
@@ -172,11 +162,7 @@ public class OLLMwebkit.A11yParse : GLib.Object
 	 */
 	public string refs { get; private set; default = ""; }
 
-	private Gee.ArrayList<A11yNode> nodes {
-		get;
-		set;
-		default = new Gee.ArrayList<A11yNode>();
-	}
+	private Gee.ArrayList<A11yNode> nodes { get; set; default = new Gee.ArrayList<A11yNode>(); }
 	private int next_press = 1;
 
 	/**

@@ -144,6 +144,21 @@ test('test-rpc-proxies',
   suite: 'rpc',
   timeout: 10,
 )
+test_rpc_values = executable('test-rpc-values',
+  'rpc/values-test.vala',
+  dependencies: rpc_test_deps + [
+    rpc_test_app_dep,
+    dependency('gio-unix-2.0'),
+  ],
+  link_with: rpc_test_link_with,
+  build_rpath: rpc_test_build_rpath,
+  vala_args: rpc_test_vala_args,
+)
+test('test-rpc-values',
+  test_rpc_values,
+  suite: 'rpc',
+  timeout: 10,
+)
 test_rpc_scm = executable('test-rpc-scm-notification',
   'rpc/scm-notification-test.vala',
   dependencies: rpc_test_deps + [

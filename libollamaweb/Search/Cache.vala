@@ -21,9 +21,7 @@ namespace OllamaWeb.Search
 		}
 
 		public Gee.HashMap<string, Entry> entries {
-			get;
-			private set;
-			default = new Gee.HashMap<string, Entry>();
+			get; private set; default = new Gee.HashMap<string, Entry>();
 		}
 
 		public bool has_key(
