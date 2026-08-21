@@ -146,6 +146,38 @@ ensure_gtk_subproject_checked_out() {
   fi
 }
 
+pango_pin_revision() {
+  sed -n 's/^revision[[:space:]]*=[[:space:]]*//p' \
+    "$ROOT_DIR/android/pixiewood-wraps/gtk/pango.wrap.pin" | head -1
+}
+
+pango_checkout_matches_pin() {
+  local pin actual
+  pin="$(pango_pin_revision)"
+  [ -n "$pin" ] || return 1
+  [ -d "$ROOT_DIR/subprojects/pango/.git" ] || return 1
+  actual="$(git -C "$ROOT_DIR/subprojects/pango" rev-parse HEAD 2>/dev/null || true)"
+  [ "$actual" = "$pin" ]
+}
+
+discard_stale_pango_checkout() {
+  local pin pango_dir actual
+  pin="$(pango_pin_revision)"
+  for pango_dir in \
+    "$ROOT_DIR/subprojects/pango" \
+    "$ROOT_DIR/subprojects/gtk/subprojects/pango"; do
+    [ -e "$pango_dir" ] || continue
+    if [ -n "$pin" ] && [ -d "$pango_dir/.git" ]; then
+      actual="$(git -C "$pango_dir" rev-parse HEAD 2>/dev/null || true)"
+      if [ "$actual" = "$pin" ]; then
+        continue
+      fi
+    fi
+    echo "Discarding stale pango checkout $pango_dir (want $pin)." >&2
+    rm -rf "$pango_dir"
+  done
+}
+
 pin_gtk_nested_pango_wrap() {
   local src dest wrap
   src="$ROOT_DIR/android/pixiewood-wraps/gtk/pango.wrap.pin"
@@ -171,6 +203,7 @@ pin_gtk_nested_pango_wrap() {
       rm -f "$wrap"
     fi
   done
+  discard_stale_pango_checkout
 }
 
 ensure_gtk_subproject_patched() {

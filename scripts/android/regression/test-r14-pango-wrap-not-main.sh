@@ -56,9 +56,17 @@ depth = 1
 pango = libpango_dep
 EOF
 
+# CI run 32433322949: wrap pin applied but cached pango 1.58.2 was kept.
+rm -rf "$ROOT_DIR/subprojects/pango"
+mkdir -p "$ROOT_DIR/subprojects/pango"
+printf '%s\n' "project('pango', 'c', version: '1.58.2')" \
+  > "$ROOT_DIR/subprojects/pango/meson.build"
+
 prepare_android_subprojects_before_meson
 [ -f "$ROOT_DIR/subprojects/nested-pango.wrap" ] &&
   { echo "prepare left extra top-level pango wrap-git" >&2; exit 1; }
+[ -d "$ROOT_DIR/subprojects/pango" ] &&
+  { echo "prepare left stale pango checkout (1.58.2 cache)" >&2; exit 1; }
 [ -f "$NESTED" ] || { echo "GTK nested pango.wrap missing after prepare" >&2; exit 1; }
 grep -qE "revision[[:space:]]*=[[:space:]]*$PIN_REV" "$NESTED" ||
   { echo "GTK nested pango.wrap was not pinned (still tracks main?)" >&2; exit 1; }

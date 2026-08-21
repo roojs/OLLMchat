@@ -106,7 +106,9 @@ strings, and `glib.wrap` pins 2.84.0 with both `diff_files`.
 After GTK bootstrap / restore, `subprojects/gtk/subprojects/pango.wrap` matches
 that pin (upstream GTK wrap uses `revision = main`, which fetched pango 1.58.2
 on CI and required glib `>= 2.88`). A restored `subprojects/nested-pango.wrap`
-from an older cache is deleted so Meson does not see two pango providers.
+from an older cache is deleted so Meson does not see two pango providers. A
+restored `subprojects/pango` tree that is not the pinned commit is discarded so
+Meson re-clones 1.57.2 instead of keeping pango 1.58.2.
 
 ---
 

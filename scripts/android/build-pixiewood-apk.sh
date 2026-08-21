@@ -478,13 +478,14 @@ maybe_download_meson_subprojects() {
 
   if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ] &&
      [ -f "$(gtk_subproject_patch_marker)" ] &&
-     gtk_subproject_is_complete; then
+     gtk_subproject_is_complete &&
+     pango_checkout_matches_pin; then
     echo "Skipping Meson subprojects download (restored from cache)."
     return
   fi
 
   if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ]; then
-    echo "Subprojects cache needs GTK bootstrap or patch; re-downloading wraps." >&2
+    echo "Subprojects cache needs GTK bootstrap, patch, or pinned pango; re-downloading wraps." >&2
   fi
 
   echo "Downloading Meson subprojects for Android wraps."
