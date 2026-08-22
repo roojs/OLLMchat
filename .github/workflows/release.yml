@@ -1,7 +1,11 @@
 name: Release
 
-# Full package set. Tag pushes (scripts/release.sh) publish GitHub Release
-# assets. To test one distro, run Release - Debian / Fedora / openSUSE / etc.
+# Full package set. Tag pushes (scripts/release.sh) publish two GitHub
+# Releases: vX.Y.Z (AppImage / Windows / Android) and vX.Y.Z-packages
+# (.deb / .rpm). Packages is created first so the Releases page (newest
+# created_at first) shows the version tag, then packages, then older
+# versions. The packages tag must not rebuild (job if + tags exclude).
+# To test one distro, run Release - Debian / Fedora / etc.
 
 run-name: Release - ${{ github.ref_name }}
 
@@ -9,6 +13,7 @@ on:
   push:
     tags:
       - 'v*'
+      - '!v*-packages'
   workflow_dispatch:
     inputs:
       refresh_cache:
@@ -22,6 +27,7 @@ permissions:
 jobs:
   build-android:
     name: Android
+    if: ${{ !endsWith(github.ref_name, '-packages') }}
     uses: ./.github/workflows/x-android.yml
     with:
       refresh_cache: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_cache || false }}
@@ -32,12 +38,14 @@ jobs:
 
   build-debian:
     name: Debian
+    if: ${{ !endsWith(github.ref_name, '-packages') }}
     uses: ./.github/workflows/x-debian.yml
     permissions:
       contents: read
 
   build-appimage:
     name: AppImage
+    if: ${{ !endsWith(github.ref_name, '-packages') }}
     uses: ./.github/workflows/x-sqgipkg.yml
     with:
       refresh_cache: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_cache || false }}
@@ -46,12 +54,14 @@ jobs:
 
   build-windows:
     name: Windows
+    if: ${{ !endsWith(github.ref_name, '-packages') }}
     uses: ./.github/workflows/x-windows.yml
     permissions:
       contents: read
 
   build-rpm-fedora:
     name: Fedora
+    if: ${{ !endsWith(github.ref_name, '-packages') }}
     uses: ./.github/workflows/x-rpm.yml
     with:
       job_name: Fedora 44 RPMs
@@ -63,6 +73,7 @@ jobs:
 
   build-rpm-opensuse:
     name: openSUSE
+    if: ${{ !endsWith(github.ref_name, '-packages') }}
     uses: ./.github/workflows/x-rpm.yml
     with:
       job_name: openSUSE Tumbleweed RPMs
@@ -75,7 +86,7 @@ jobs:
   publish:
     name: Publish
     needs: [build-appimage, build-debian, build-rpm-fedora, build-rpm-opensuse, build-windows, build-android]
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref_name, '-packages')
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -93,20 +104,69 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          ls -lh artifacts
+          shopt -s nullglob
+          mkdir -p artifacts/main artifacts/packages
+          for f in artifacts/*; do
+            [ -f "$f" ] || continue
+            case "$f" in
+              *.deb|*.rpm) mv "$f" artifacts/packages/ ;;
+              *.AppImage|*.exe|*.apk) mv "$f" artifacts/main/ ;;
+              *)
+                echo "unclassified release asset: $f" >&2
+                exit 1
+                ;;
+            esac
+          done
+          main_files=(artifacts/main/*)
+          packages_files=(artifacts/packages/*)
+          ls -lh artifacts/main artifacts/packages
+          ((${#main_files[@]})) || {
+            echo "no AppImage / Windows / Android assets" >&2
+            exit 1
+          }
+          ((${#packages_files[@]})) || {
+            echo "no Debian / RPM assets" >&2
+            exit 1
+          }
           chmod +x scripts/release/changelog.sh scripts/release/render-release-notes.sh
           ./scripts/release/render-release-notes.sh "$GITHUB_REF_NAME" release-notes.md
-          gh release create "$GITHUB_REF_NAME" artifacts/* \
+          pkg_tag="${GITHUB_REF_NAME}-packages"
+          {
+            echo "Debian (\`.deb\`) and RPM (\`.rpm\`) builds for ${GITHUB_REF_NAME}."
+            echo
+            echo "Prefer the [roojs package repositories](https://roojs.github.io/repos/) (\`apt\` / \`dnf\` / \`zypper\`). This GitHub Release is the matching file set."
+            echo
+            echo "AppImage, Windows, and Android: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
+          } > packages-notes.md
+          # Create packages first. GitHub lists Releases by created_at
+          # (newest first), so the version tag published next sits above
+          # this one: vX.Y.Z, then vX.Y.Z-packages, then older versions.
+          gh release create "$pkg_tag" "${packages_files[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "${GITHUB_REF_NAME} packages" \
+            --notes-file packages-notes.md \
+            --latest=false \
+          || {
+            gh release upload "$pkg_tag" "${packages_files[@]}" \
+              --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$pkg_tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --notes-file packages-notes.md \
+              --latest=false
+          }
+          gh release create "$GITHUB_REF_NAME" "${main_files[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
             --notes-file release-notes.md \
           || {
-            gh release upload "$GITHUB_REF_NAME" artifacts/* \
+            gh release upload "$GITHUB_REF_NAME" "${main_files[@]}" \
               --repo "$GITHUB_REPOSITORY" --clobber
             gh release edit "$GITHUB_REF_NAME" \
               --repo "$GITHUB_REPOSITORY" \
               --notes-file release-notes.md
           }
+          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --latest
 
       - name: Finalize changelog on main
         env:

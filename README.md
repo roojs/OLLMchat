@@ -140,7 +140,7 @@ sudo dnf install ollmchat
 More details (supported suites, openSUSE Tumbleweed, package list, and
 repository layout) are on the [roojs package repositories](https://roojs.github.io/repos/) page.
 
-AppImage, Windows, and the Android POC APK are still on GitHub: **[Releases](https://github.com/roojs/OLLMchat/releases)**.
+AppImage, Windows, and the Android POC APK are on the version GitHub Release (for example `v1.3.0`). The `.deb` / `.rpm` files for that version are on the matching `v1.3.0-packages` Release; prefer the repositories above instead of installing those files by hand.
 
 | Format | Platforms |
 |--------|-----------|

@@ -1,6 +1,6 @@
 # Creating Releases
 
-Users install OLLMchat from the **[roojs package repositories](https://roojs.github.io/repos/)** (`apt-get` / `dnf` / `zypper`). GitHub Releases attach the same `.deb` / `.rpm` files plus AppImage, Android, and the Windows NSIS installer (`OLLMchat-<version>-Setup.exe`).
+Users install OLLMchat from the **[roojs package repositories](https://roojs.github.io/repos/)** (`apt-get` / `dnf` / `zypper`). GitHub keeps two Releases per version: the version tag (`v1.3.0`) has AppImage, Android, and the Windows NSIS installer (`OLLMchat-<version>-Setup.exe`); the matching `v1.3.0-packages` tag has the `.deb` / `.rpm` files. Publish creates the packages Release first, then the version tag, so the Releases page (newest `created_at` first) shows `v1.3.0`, then `v1.3.0-packages`, then older versions. GitHub’s **Latest** badge stays on the version tag.
 
 For Debian package layout and local `.deb` builds, see [`debian/README`](../debian/README). RPM packaging lives under [`packaging/rpm/`](../packaging/rpm/).
 
@@ -8,7 +8,7 @@ For Debian package layout and local `.deb` builds, see [`debian/README`](../debi
 
 The [Release](../.github/workflows/release.yml) workflow (`name: Release`) runs when:
 
-- a tag matching `v*` is pushed (run **`./scripts/release.sh`** — humans only), or
+- a tag matching `v*` is pushed (run **`./scripts/release.sh`** — humans only; `v*-packages` is ignored), or
 - **Release** is started manually from the GitHub Actions UI (**workflow_dispatch**).
 
 To test **one** package family without waiting on the others, run the matching
@@ -35,7 +35,7 @@ CI then:
 3. Builds Linux AppImages with sqgipkg (Ubuntu 24.04; FAISS is built from source for those bundles).
 4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**.
 5. Builds the **Android** remote-chat POC APK (`ollmchat-android-v*-debug.apk`). A Pixiewood failure does not block the other packages.
-6. On a tag push, publishes those files to the GitHub Release (including the Windows Setup.exe and the APK when the Android job succeeded).
+6. On a tag push, publishes **two** GitHub Releases. Debian and RPM files go on `${tag}-packages` first (same commit, not marked Latest), then AppImage, Windows Setup.exe, and the APK (when Android succeeded) on the version tag so that tag appears above packages on the Releases page.
 
 AppImage packaging is configured in [`sqgipkg.json`](../sqgipkg.json) (Linux only). Debian packaging lives under [`debian/`](../debian/). The RPM spec is [`packaging/rpm/ollmchat.spec`](../packaging/rpm/ollmchat.spec).
 
@@ -68,7 +68,7 @@ Regenerate Debian packaging locally with:
 **Tag push (via `scripts/release.sh`):**
 
 1. CI reads the versioned heading, checks it matches the tag (`v1.2.5-alpha` → `1.2.5-alpha` → Debian/RPM `1.2.5~alpha-1`), and copies notes into Debian and RPM packaging **in the CI workspace**.
-2. GitHub Release notes come from that same section (`scripts/release/render-release-notes.sh`), not from git commits.
+2. GitHub Release notes come from that same section (`scripts/release/render-release-notes.sh`), not from git commits. The version-tag notes start with a pointer to the [README Releases](../README.md#releases) install commands (APT / DNF / zypper) and to `${tag}-packages` for the `.deb` / `.rpm` files.
 3. If the workflow **fails**, `CHANGELOG.md` on `main` is unchanged.
 4. If it **succeeds**, CI runs **`finalize-changelog.sh`**, stamps the date on `[1.2.5-alpha]`, inserts a fresh `[Unreleased]` heading, regenerates `debian/changelog`, and commits to `main`.
 
@@ -96,21 +96,28 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    ./scripts/release.sh --retry
    ```
 
-   That deletes the local and origin tags, then tags HEAD and pushes again. An existing GitHub Release for the same tag is updated (`gh release upload --clobber`), not recreated.
+   That deletes the local and origin version tag **and** the matching `v*-packages` tag, then tags HEAD and pushes again. Existing GitHub Releases for those tags are updated (`gh release upload --clobber`), not recreated.
 
 4. **Watch CI.** Open **Actions → Release** on GitHub and wait for Debian, Fedora, openSUSE, AppImage, Windows, Android, and Publish to finish.
 
-5. **Check the release** and [roojs.github.io/repos](https://roojs.github.io/repos/) after the repos publish job picks up the new GitHub assets.
+5. **Check the releases** and [roojs.github.io/repos](https://roojs.github.io/repos/) after the repos publish job picks up the new GitHub assets. Distro files live on the `v*-packages` release; if the repos ingest currently only watches the version tag, point it at `-packages` as well.
+
+   **Version tag** (`v1.3.0` — GitHub Latest):
 
    | File | Platform |
    |------|----------|
    | `OLLMchat-remote-only-x86_64.AppImage` | Linux 64-bit (Intel/AMD); remote backends only |
    | `OLLMchat-remote-only-aarch64.AppImage` | Linux 64-bit (ARM); remote backends only |
    | `OLLMchat-<version>-Setup.exe` | Windows installer (MSYS2 / WebView2); remote backends only |
+   | `ollmchat-android-v*-debug.apk` | Android remote-chat POC (arm64; sideload) |
+
+   **Packages tag** (`v1.3.0-packages`):
+
+   | File | Platform |
+   |------|----------|
    | `ollmchat_*.deb`, `liboc*_*.deb`, `liboll*_*.deb`, `ollmchat-remote-only_*.deb` | Debian/Ubuntu amd64 (split libs + app; remote-only is all-in-one) |
    | `libocrpc-*.rpm`, `liboc*-*.rpm`, `liboll*-*.rpm`, `ollmchat-*.fc44.*.rpm` | Fedora 44 (split libs + app; plus `ollmchat-remote-only`) |
    | same names without `.fc` | openSUSE Tumbleweed |
-   | `ollmchat-android-v*-debug.apk` | Android remote-chat POC (arm64; sideload) |
 
 ### Installing from the package repositories
 

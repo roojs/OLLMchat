@@ -70,6 +70,7 @@ namespace OLLMrpcTests
 			this.check(command_line, response.error == null, "new returned error");
 			this.check(command_line, response.result.size == 1, "new returned no object");
 			this.check(command_line, rpc.proxies.size == 1, "proxy not bound");
+			var lease_id = (uint64) 0;
 			foreach (var id in rpc.proxies.keys) {
 				this.check(command_line, id != 0, "handle is 0");
 				this.check(
@@ -77,7 +78,21 @@ namespace OLLMrpcTests
 					rpc.proxies.get(id) == response.result.get(0),
 					"proxy is not result"
 				);
+				lease_id = (uint64) id;
 			}
+			response = null;
+			var items_loop = new GLib.MainLoop();
+			rpc.call.begin(new OLLMrpc.Request() {
+				method = "Gio-Menu.get_n_items",
+				lease_id = lease_id
+			}, (obj, res) => {
+				response = rpc.call.end(res);
+				items_loop.quit();
+			});
+			items_loop.run();
+			this.check(command_line, response.error == null, "get_n_items returned error");
+			this.check(command_line, response.values.size == 1, "get_n_items returned no value");
+			this.check(command_line, response.values.get(0).get_int() == 0, "empty menu is not 0");
 			rpc.disconnect();
 			listen.stop();
 		}

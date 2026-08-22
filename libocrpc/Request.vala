@@ -94,6 +94,15 @@ namespace OLLMrpc
 		public Gee.ArrayList<GLib.Value?> values { get; set; default = new Gee.ArrayList<GLib.Value?>(); }
 
 		/**
+		 * Row in {@link Transport.Connection.leases} for a typelib method.
+		 *
+		 * ''0'' means none (constructors, CallParam-only calls). Omitted
+		 * on the bin socket when ''0''. Not {@link Live.RemoteParams.object_id}
+		 * — that name stays on the CallParam bags.
+		 */
+		public uint64 lease_id { get; set; default = 0; }
+
+		/**
 		 * HTTP client only: root JSON object {@link GLib.Type} for
 		 * {@link Response.result}. Not serialized on the bin socket.
 		 */
@@ -140,6 +149,12 @@ namespace OLLMrpc
 			switch (prop.name) {
 				case "connection":
 				case "result-type":
+					return;
+				case "lease-id":
+					if (this.lease_id == 0) {
+						return;
+					}
+					this.bin_default_write_prop(ctx, prop);
 					return;
 				case "values":
 					if (this.values.size == 0) {

@@ -539,6 +539,14 @@ Optional **`ANY[]`** (this section) on **`OLLMrpc.Request`**. Each element is on
 
 No per-value direction flag and no wrapper object. No protocol version bump.
 
+### Positional returns (`Response.values`)
+
+Optional **`ANY[]`** (this section) on **`OLLMrpc.Response`**. Same encoding as `Request.values`.
+
+**Omit** when **`values.size == 0`**. A returned GObject uses **`result`**, not this list.
+
+No protocol version bump.
+
 ---
 
 ## 16. Omitted and default-valued properties

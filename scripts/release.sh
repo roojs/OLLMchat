@@ -39,8 +39,9 @@ Usage: scripts/release.sh [--retry]
 
 Create an annotated tag from CHANGELOG.md and push it to origin.
 
-  --retry   Delete the existing version tag locally and on origin, then
-            retag HEAD and push (use after a failed release CI run).
+  --retry   Delete the existing version tag and the matching
+            v*-packages tag locally and on origin, then retag HEAD
+            and push (use after a failed release CI run).
 EOF
       exit 0
       ;;
@@ -85,14 +86,16 @@ fi
 git fetch --tags origin 2>/dev/null || true
 
 if [[ "${retry}" -eq 1 ]]; then
-  if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
-    echo "Deleting local tag ${tag}..."
-    git tag -d "${tag}"
-  fi
-  if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
-    echo "Deleting origin tag ${tag}..."
-    git push origin --delete "refs/tags/${tag}"
-  fi
+  for t in "${tag}" "${tag}-packages"; do
+    if git rev-parse -q --verify "refs/tags/${t}" >/dev/null; then
+      echo "Deleting local tag ${t}..."
+      git tag -d "${t}"
+    fi
+    if git ls-remote --exit-code --tags origin "refs/tags/${t}" >/dev/null 2>&1; then
+      echo "Deleting origin tag ${t}..."
+      git push origin --delete "refs/tags/${t}"
+    fi
+  done
 fi
 
 if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
