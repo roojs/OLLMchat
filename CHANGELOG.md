@@ -9,7 +9,9 @@ for git tags (`v1.3.0`, etc.).
 Debian and RPM packaging notes are generated from this file at release time
 (see [Creating releases](docs/creating-releases.md)).
 
-## [1.3.0] - Unreleased
+## [Unreleased]
+
+## [1.3.0] - 2026-08-22
 
 Work since **1.2.4-alpha** (2026-06-13).
 
