@@ -11,8 +11,7 @@ Debian and RPM packaging notes are generated from this file at release time
 
 ## [1.3.0] - Unreleased
 
-Work since **1.2.4-alpha** (2026-06-13). `v1.2.5-alpha` (2026-07-24) was tagged
-without promoting these notes.
+Work since **1.2.4-alpha** (2026-06-13).
 
 ### Added
 
@@ -39,15 +38,21 @@ without promoting these notes.
 - **Hugging Face**: `oc-hf` model catalog download with progress UI (local GGUF)
 - **Local GGUF**: optional `CallLocal` / libllama backend (`-Dlocal_gguf`; still
   a proof of concept)
+- **`libocrpc` live / GI**: object leases and notify proxy; optional positional
+  `Request.values`; typelib register + `new` / invoke on a handle (`Gi`)
 - **Android**: remote-only chat shell / POC APK — Config2, connections, default
-  model, TLS, settings, browser host (`ollmapp/android/`)
+  model, TLS, settings, browser host (`ollmapp/android/`), Agent Π skills
+  catalog; WebView from webkitgtk-android **v0.1.3**
 - **Packaging**: install from the [roojs repositories](https://roojs.github.io/repos/)
   (`apt` / `dnf` / `zypper`). Debian and RPM ship split libraries plus `-dev` /
   `-devel` packages (`libocrpc`, `libocrpc-dev`, …) alongside `ollmchat`;
   `ollmchat-remote-only` remains an all-in-one package without libllama.
-  AppImage and Windows remain remote-only GitHub assets
-- **CI / release**: changelog-driven GitHub Release notes; tag builds attach
-  Android debug APK; RPM jobs on Fedora 44 and Tumbleweed
+  AppImage stays remote-only. Windows ships **`OLLMchat-<version>-Setup.exe`**
+  from native MSYS2 (not Ubuntu cross / sqgipkg)
+- **CI / release**: changelog-driven GitHub Release notes; per-family
+  **Release - Debian / Fedora / openSUSE / AppImage / Windows / Android**
+  jobs; tag builds attach the Android debug APK and Windows Setup.exe; RPM
+  jobs on Fedora 44 and Tumbleweed
 
 ### Changed
 
@@ -63,6 +68,11 @@ without promoting these notes.
 - Debian and RPM default layouts split each library into a runtime package and
   a `-dev` / `-devel` package (`libocrpc`, `libocrpc-dev`, …) so other apps can
   reuse the RPC library from the roojs repositories
+- Windows release build is native MSYS2 UCRT64 on `windows-latest` (WebView2);
+  sqgipkg is Linux AppImage only
+- `ollmfilesd` no longer vendors RPC types; it consumes `libocrpc`
+- Gee `HashMap` keys that are integer types use a stable hash so RPC handle
+  maps work on 64-bit
 
 ### Removed
 
