@@ -74,6 +74,10 @@ Root Access (Linux GTK app only):
 - The user must approve in the app and enter their password in the permission prompt (not saved).
 - Root runs execute outside the sandbox with full host access; `network` and `allow_write` do not restrict them.
 
+Command string:
+- Send only the shell to run. Do NOT append `#` comments (for example `apt update # refresh package lists`).
+- Commands that include `#` comments are always rejected. Put any explanation in your chat reply, not in the command.
+
 Output:
 - Keep listings and searches narrow. Do not recursively list large trees (for example `ls -R` / `ls -RL` on home, or `find` from `/` or `$HOME` without `-maxdepth` or a name filter).
 - Prefer a specific directory, non-recursive `ls`, `find -maxdepth`, `git ls-files`, or pipe through `head` / `grep`.
@@ -93,7 +97,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 				allow_write_line = "@param allow_write {string} [optional] \"project\" (default) or \"no\" for project-only writes, or a PATH-style list of absolute directory roots for additional host paths (user may be prompted).";
 			}
 			this.param_desc_backing = """
-@param command {string} [required] The terminal command to run.
+@param command {string} [required] The terminal command to run. Do not include `#` comments; those commands are rejected.
 @param working_dir {string} [optional] The working directory where the command will be executed. Should be an absolute path. """ + working_dir_default + """
 @param network {boolean} [optional] Whether to allow network access. Defaults to false. For fetching websites or web content, use the `web_fetch` tool instead.
 @param run_as_root {boolean} [optional] Run the command as root via sudo. Linux only. Defaults to false. Do not use sudo in the command string.
