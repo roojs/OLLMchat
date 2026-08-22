@@ -40,7 +40,16 @@ namespace OLLMrpc.Transport
 
 		public Gee.HashMap<int, uint> extras { get; set; default = new Gee.HashMap<int, uint>(); }
 
-		public Gee.HashMap<string, int> lease_ids { get; set; default = new Gee.HashMap<string, int>(); }
+		/**
+		 * Instance pointer → lease id.
+		 *
+		 * Outer key is the high 32 bits of the pointer, inner
+		 * key the low 32 bits, both as ''int'' bit patterns
+		 * (Gee has no ''uint64'' key hash).
+		 */
+		public Gee.HashMap<int, Gee.HashMap<int, int>> lease_ids {
+			get; set; default = new Gee.HashMap<int, Gee.HashMap<int, int>>();
+		}
 
 		/**
 		 * Subscribed GObject handler ids for this connection.
@@ -81,15 +90,20 @@ namespace OLLMrpc.Transport
 			if (!this.live_handles) {
 				GLib.error("export requires live_handles");
 			}
-			var key = ((uint64) (void*) gobject).to_string("%" + uint64.FORMAT_MODIFIER + "x");
-			if (this.lease_ids.has_key(key)) {
-				return (uint64) this.lease_ids.get(key);
+			var ptr = (uint64) (void*) gobject;
+			var hi = (int) (ptr >> 32);
+			var lo = (int) ptr;
+			if (!this.lease_ids.has_key(hi)) {
+				this.lease_ids.set(hi, new Gee.HashMap<int, int>());
+			}
+			if (this.lease_ids.get(hi).has_key(lo)) {
+				return (uint64) this.lease_ids.get(hi).get(lo);
 			}
 			var id = this.next_handle;
 			this.next_handle++;
 			this.floors.set(id, gobject.ref_count);
 			this.leases.set(id, gobject);
-			this.lease_ids.set(key, id);
+			this.lease_ids.get(hi).set(lo, id);
 			this.extras.set(id, 0);
 			return (uint64) id;
 		}

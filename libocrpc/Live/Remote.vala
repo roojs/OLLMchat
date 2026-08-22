@@ -89,8 +89,8 @@ namespace OLLMrpc.Live
 					}
 					request.connection.signal_subs.unset(id);
 				}
-				request.connection.lease_ids.unset(((uint64) (void*) obj).to_string(
-					"%" + uint64.FORMAT_MODIFIER + "x"));
+				var ptr = (uint64) (void*) obj;
+				request.connection.lease_ids.get((int) (ptr >> 32)).unset((int) ptr);
 				request.connection.leases.unset(id);
 				request.connection.floors.unset(id);
 				request.connection.extras.unset(id);
