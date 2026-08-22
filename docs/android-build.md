@@ -236,7 +236,7 @@ from desktop. **Do not cargo-cult `--pkg=gee-0.8` onto every target.**
 |-------------|-------------------------|-----------------|----------------------------------|
 | `library()` / `executable()` (e.g. `libollmchat`, `ollmchat-android-poc`) | yes | **no** — Meson already passes `gee-0.8.vapi`; duplicate `--pkg` causes *Package gee-0.8 not found* or *Gee already contains definition* | no |
 | Root `add_project_arguments` on Android (`meson.build`) | n/a | **no** (same reason) | n/a |
-| `custom_target` vapi generators (`ocmarkdown-vapi`, `ocsqlite-vapi`, `ollamaweb-vapi`) | n/a | **yes** | **yes** on Android — see `gee_vapi_dir` in each lib's `meson.build` |
+| `custom_target` vapi generators (`ocmarkdown-vapi`, `ocsqlite-vapi`, `ollamaweb-vapi`, `ocrpc-vapi`) | n/a | **yes** | **yes** on Android — see `gee_vapi_dir` in each lib's `meson.build` |
 
 When adding new Android Vala targets, mirror `ollmapp/meson.build` (`android_poc`
 block before the shell refactor): list `dependency('gee-0.8')` in `dependencies`

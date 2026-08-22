@@ -115,7 +115,7 @@ ocrpc_vapi = custom_target('ocrpc-vapi',
     '--target-glib=auto',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', '/usr/share/vala/vapi',
-  ] + ocrpc_vapi_gen_pkgs + [
+  ] + (is_android ? ['--vapidir', gee_vapi_dir] : []) + ocrpc_vapi_gen_pkgs + [
     '--library', 'ocrpc',
     '--header', meson.current_build_dir() / 'ocrpc.h',
     '--vapi', '@OUTPUT@',
