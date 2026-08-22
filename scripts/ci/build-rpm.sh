@@ -88,11 +88,15 @@ case "${ID}" in
     run_root zypper --non-interactive install --force-resolution \
       --no-recommends gawk
     pkgconfig_deps+=('pkgconfig(openblas)')
-    run_root zypper --non-interactive install --no-recommends \
+    # ggml-devel / llamacpp-devel ship dangling .so → .so.0 symlinks;
+    # the real libs are in libllama0 / libggml0 / libggml-base0.
+    run_root zypper --non-interactive install --force-resolution \
+      --no-recommends \
       rpm-build rpmdevtools \
       meson ninja gcc gcc-c++ vala desktop-file-utils \
       gobject-introspection gobject-introspection-devel \
       faiss-devel bubblewrap ggml-devel \
+      libllama0 libggml0 libggml-base0 \
       "${pkgconfig_deps[@]}"
     # Repos publish openSUSE packages under rpm/tumbleweed/; omit %{dist}
     # so the filename has no .fc tag (see scripts/fetch-upstream.sh).

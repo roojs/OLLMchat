@@ -54,6 +54,10 @@ BuildRequires: pkgconfig(lapack)
 BuildRequires: pkgconfig(llama)
 %if 0%{?suse_version}
 BuildRequires: ggml-devel
+# devel packages only ship .so → .so.0 symlinks; runtime SONAMEs required to link
+BuildRequires: libllama0
+BuildRequires: libggml0
+BuildRequires: libggml-base0
 %endif
 %endif
 
