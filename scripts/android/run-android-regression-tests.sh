@@ -33,6 +33,7 @@ FAST_TESTS=(
   "$REGRESSION_DIR/test-r13-glib-tls-ensure-before-scan.sh"
   "$REGRESSION_DIR/test-r14-pango-wrap-not-main.sh"
   "$REGRESSION_DIR/test-r15-glib-stack-wrap-git-pinned.sh"
+  "$REGRESSION_DIR/test-r16-pango-pin-checkout-before-meson.sh"
 )
 
 for script in "${FAST_TESTS[@]}"; do

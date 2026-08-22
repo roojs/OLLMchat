@@ -211,6 +211,53 @@ wrap_file_directory() {
   sed -n 's/^directory[[:space:]]*=[[:space:]]*//p' "$1" | head -1 | tr -d '[:space:]'
 }
 
+wrap_file_url() {
+  sed -n 's/^url[[:space:]]*=[[:space:]]*//p' "$1" | head -1 | tr -d '[:space:]'
+}
+
+ensure_git_checkout_at_revision() {
+  local dir="$1" url="$2" rev="$3" actual
+  if [ -d "$dir/.git" ] && [ -n "$rev" ]; then
+    actual="$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)"
+    if [ "$actual" = "$rev" ]; then
+      return 0
+    fi
+  fi
+  if [ -z "$url" ] || [ -z "$rev" ]; then
+    echo "cannot checkout $dir: missing url or revision" >&2
+    exit 1
+  fi
+  echo "Checking out $dir at $rev." >&2
+  rm -rf "$dir"
+  mkdir -p "$dir"
+  git -C "$dir" init -q
+  git -C "$dir" remote add origin "$url"
+  git -C "$dir" fetch --depth 1 origin "$rev"
+  git -C "$dir" checkout --detach FETCH_HEAD
+}
+
+ensure_pinned_wrap_git_checkouts() {
+  local wrap pin dir
+  wrap="$ROOT_DIR/android/pixiewood-wraps/libadwaita/libadwaita.wrap"
+  if [ -f "$wrap" ]; then
+    dir="$(wrap_file_directory "$wrap")"
+    [ -n "$dir" ] || dir=libadwaita
+    ensure_git_checkout_at_revision \
+      "$ROOT_DIR/subprojects/$dir" \
+      "$(wrap_file_url "$wrap")" \
+      "$(wrap_file_revision "$wrap")"
+  fi
+  for pin in "$ROOT_DIR/android/pixiewood-wraps/gtk/"*.wrap.pin; do
+    [ -f "$pin" ] || continue
+    dir="$(wrap_file_directory "$pin")"
+    [ -n "$dir" ] || continue
+    ensure_git_checkout_at_revision \
+      "$ROOT_DIR/subprojects/$dir" \
+      "$(wrap_file_url "$pin")" \
+      "$(wrap_file_revision "$pin")"
+  done
+}
+
 wrap_file_revision() {
   sed -n 's/^revision[[:space:]]*=[[:space:]]*//p' "$1" | head -1 | tr -d '[:space:]'
 }

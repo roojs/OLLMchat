@@ -34,6 +34,7 @@ GitHub Actions runs the same suite in `.github/workflows/x-android.yml`
 | **R13** | [32201421756](https://github.com/roojs/OLLMchat/actions/runs/32201421756) | GLib TLS scan patch was gitignored under `subprojects/`; 9.2 dropped that approach | `regression/test-r13-glib-tls-ensure-before-scan.sh` (patch must **not** ship) |
 | **R14** | [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256) | `pango` 1.58.2 from GTK `revision = main` needs glib `>= 2.88`; wrap is pinned at 2.84.0 | `regression/test-r14-pango-wrap-not-main.sh` |
 | **R15** | [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256), [32435474269](https://github.com/roojs/OLLMchat/actions/runs/32435474269) | Local `--full` reused frozen wrap-git; GitHub fetched `main` (pango, then libadwaita) vs glib 2.84.0 | `regression/test-r15-glib-stack-wrap-git-pinned.sh` |
+| **R16** | [32441247618](https://github.com/roojs/OLLMchat/actions/runs/32441247618), [32441610454](https://github.com/roojs/OLLMchat/actions/runs/32441610454) | After discarding stale pango, Meson download: `wrap-redirect … pango/subprojects/freetype2.wrap does not exist` | `regression/test-r16-pango-pin-checkout-before-meson.sh` |
 
 When a **new** CI failure appears:
 
@@ -125,6 +126,12 @@ refused while any of those wraps float, so `--full` actually re-clones them.
 Do **not** pin fontconfig/fribidi here: they are not GLib consumers and did not
 fail configure. Pin the next GLib-stack wrap when Meson reports a glib floor
 above 2.84.0, and add it to this list.
+
+### R16 — clone pinned pango before Meson wrap download
+Discarding a stale `subprojects/pango` (R14) left no tree. `--full` then ran
+`meson subprojects` and died on GTK wrap-redirects into
+`pango/subprojects/freetype2.wrap`. Ensure clones pango (and libadwaita) at
+their wrap pins before Meson download or skip-download.
 
 ---
 

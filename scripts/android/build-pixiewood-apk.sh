@@ -476,6 +476,7 @@ maybe_download_meson_subprojects() {
 
   prepare_android_subprojects_before_meson
   discard_floating_glib_stack_checkouts
+  ensure_pinned_wrap_git_checkouts
 
   if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ] &&
      [ -f "$(gtk_subproject_patch_marker)" ] &&
