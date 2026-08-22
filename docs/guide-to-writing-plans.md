@@ -426,7 +426,7 @@ Follow **`docs/coding-standards.md`** — [Defensive code and null checks](codin
 
 ## Done / archive
 
-When implemented: move or copy to **`docs/plans/done/`**, prefix filename with **`DONE`** or **`REJECTED`**, one-line **Status: DONE** and pointer to files changed.
+When implemented: prefix the filename with **`DONE`** or **`REJECTED`**. While a numbered range is still in flight (e.g. 8.3 / 8.4), keep those files in **`docs/plans/`** so the sequence stays visible. Move the range into **`docs/plans/done/`** when that range is archived. One-line **Status** and a pointer to files changed.
 
 ### Sub-plans and `1.0-summary.md`
 

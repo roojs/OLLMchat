@@ -332,5 +332,4 @@ jobs:
         with:
           name: ollmchat-android
           path: android-artifacts/*.apk
-          archive: false
           if-no-files-found: error
