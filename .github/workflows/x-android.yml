@@ -146,6 +146,7 @@ jobs:
             libglib-perl \
             libglib2.0-dev-bin \
             libgtk-4-dev \
+            libgtksourceview-5-dev \
             libipc-run-perl \
             libjson-perl \
             libset-scalar-perl \

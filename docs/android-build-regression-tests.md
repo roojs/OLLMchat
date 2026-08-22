@@ -35,6 +35,7 @@ GitHub Actions runs the same suite in `.github/workflows/x-android.yml`
 | **R14** | [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256) | `pango` 1.58.2 from GTK `revision = main` needs glib `>= 2.88`; wrap is pinned at 2.84.0 | `regression/test-r14-pango-wrap-not-main.sh` |
 | **R15** | [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256), [32435474269](https://github.com/roojs/OLLMchat/actions/runs/32435474269) | Local `--full` reused frozen wrap-git; GitHub fetched `main` (pango, then libadwaita) vs glib 2.84.0 | `regression/test-r15-glib-stack-wrap-git-pinned.sh` |
 | **R16** | [32441247618](https://github.com/roojs/OLLMchat/actions/runs/32441247618), [32441610454](https://github.com/roojs/OLLMchat/actions/runs/32441610454) | After discarding stale pango, Meson download: `wrap-redirect … pango/subprojects/freetype2.wrap does not exist` | `regression/test-r16-pango-pin-checkout-before-meson.sh` |
+| **R17** | [32547800217](https://github.com/roojs/OLLMchat/actions/runs/32547800217) | `Package gtksourceview-5 not found` compiling `libocmarkdowngtk`; local valac has the vapi from desktop `-dev` | `regression/test-r17-android-host-vapi-packages.sh` |
 
 When a **new** CI failure appears:
 
@@ -154,11 +155,22 @@ use the rules above automatically.
 
 ---
 
+### R17 — host vapi packages on the Android runner
+`libocmarkdowngtk` / `libollmchatgtk` / the POC pass `--pkg=gtksourceview-5`.
+`gtk4.vapi` ships with `valac`; `gtksourceview-5.vapi` comes from
+`libgtksourceview-5-dev`. A laptop with that desktop package compiles; GitHub
+did not install it. R17 greps `.github/workflows/x-android.yml` and
+`docs/android-build.md` for that package (and the existing gtk4 / libadwaita
+`-dev` lines). `--full` also runs `verify-cross-compile.sh`, which now builds
+`ollmchat-android-poc` instead of a library subset.
+
+---
+
 ## Related scripts (not in the default suite)
 
 | Script | Purpose |
 |--------|---------|
 | `verify-cross-configure.sh` | Host-side meson cross configure smoke test |
-| `verify-cross-compile.sh` | Host-side compile smoke test |
+| `verify-cross-compile.sh` | Host-side compile of `ollmchat-android-poc` (included in `--full`) |
 | `verify-apk.sh` | APK contents after a full build |
 | `test-gtk-subproject-readiness.sh` | Legacy; superseded by R02 + R06 |

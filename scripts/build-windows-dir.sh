@@ -33,6 +33,10 @@
 
 set -euo pipefail
 
+echo "Unix-to-Windows sqgipkg is removed (WebView2 cannot be cross-compiled from Linux)." >&2
+echo "Use scripts/ci/windows-msys2-build.sh on MSYS2 UCRT64, or: gh workflow run windows-build.yml" >&2
+exit 1
+
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 

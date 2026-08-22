@@ -36,8 +36,8 @@ jobs:
     permissions:
       contents: read
 
-  build-appimage-windows:
-    name: AppImage and Windows
+  build-appimage:
+    name: AppImage
     uses: ./.github/workflows/x-sqgipkg.yml
     with:
       refresh_cache: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_cache || false }}
@@ -68,7 +68,7 @@ jobs:
 
   publish:
     name: Publish
-    needs: [build-appimage-windows, build-debian, build-rpm-fedora, build-rpm-opensuse, build-android]
+    needs: [build-appimage, build-debian, build-rpm-fedora, build-rpm-opensuse, build-android]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04
     steps:

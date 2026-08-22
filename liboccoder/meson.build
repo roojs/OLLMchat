@@ -1,7 +1,62 @@
 # Build occoder library (liboccoder.so) - depends on libocsqlite, libocfiles
 
-# Dependencies for occoder library
 valac = meson.get_compiler('vala')
+is_android_cross = host_machine.system() == 'android'
+
+if is_android_cross
+  # Full occoder needs libocfiles / GtkSourceView / tree-sitter. Android
+  # SkillsPage only needs AgentPi.Skill + SkillSet. Same soname / --pkg=occoder.
+  occoder_src = files([
+    'AgentPi/Skill.vala',
+    'AgentPi/SkillSet.vala',
+  ])
+  occoder_deps = [
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    valac.find_library('posix'),
+  ]
+  occoder_base_lib = library(occoder_lib,
+    dependencies: occoder_deps,
+    sources: occoder_src,
+    vala_header: 'occoder.h',
+    vala_vapi: 'occoder-meson.vapi',
+    install: true,
+  )
+  occoder_vapi_cmd = [
+    valac_exe,
+    '-C', '--debug',
+    '--target-glib=auto',
+    '--vapidir', meson.current_build_dir(),
+    '--vapidir', gee_vapi_dir,
+    '--pkg', 'posix',
+    '--pkg', 'gobject-2.0',
+    '--pkg', 'glib-2.0',
+    '--pkg', 'gio-2.0',
+    '--pkg', 'gee-0.8',
+    '--library', occoder_lib,
+    '--header', meson.current_build_dir() / 'occoder.h',
+    '--vapi', '@OUTPUT@',
+    '@INPUT@',
+  ]
+  occoder_vapi = custom_target('occoder-vapi',
+    output: 'occoder.vapi',
+    input: occoder_src,
+    command: occoder_vapi_cmd,
+    depends: [occoder_base_lib],
+    build_by_default: true,
+    install: true,
+    install_dir: get_option('datadir') / 'vala' / 'vapi',
+  )
+  occoder_vapi_dep = declare_dependency(
+    link_args: ['-L' + meson.current_build_dir(), '-l' + occoder_lib],
+    sources: [occoder_vapi[0]],
+  )
+  subdir_done()
+endif
+
+# Dependencies for occoder library
 occoder_deps = [
   dependency('gtk4'),
   dependency('libadwaita-1'),

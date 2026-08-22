@@ -152,6 +152,7 @@ sudo apt-get install -y --no-install-recommends \
   libglib-perl \
   libglib2.0-dev-bin \
   libgtk-4-dev \
+  libgtksourceview-5-dev \
   libipc-run-perl \
   libjson-perl \
   libset-scalar-perl \
@@ -238,6 +239,13 @@ from desktop. **Do not cargo-cult `--pkg=gee-0.8` onto every target.**
 | Root `add_project_arguments` on Android (`meson.build`) | n/a | **no** (same reason) | n/a |
 | `custom_target` vapi generators (`ocmarkdown-vapi`, `ocsqlite-vapi`, `ollamaweb-vapi`, `ocrpc-vapi`) | n/a | **yes** | **yes** on Android — see `gee_vapi_dir` in each lib's `meson.build` |
 
+Host GTK toolkit vapis (`gtk4`, `libadwaita-1`, `gtksourceview-5`) are **not**
+produced by the Android wraps (introspection is off). `gtk4.vapi` ships with
+`valac`. `libadwaita-1.vapi` and `gtksourceview-5.vapi` need the matching
+`-dev` packages on the GitHub runner — see R17. Adding `--pkg=` for another
+host GTK library without the Debian package will pass on a desktop and fail in
+CI.
+
 When adding new Android Vala targets, mirror `ollmapp/meson.build` (`android_poc`
 block before the shell refactor): list `dependency('gee-0.8')` in `dependencies`
 and omit `--pkg=gee-0.8` from `vala_args`.
@@ -286,7 +294,7 @@ GGUF support through libllama:
 
 - Meson option: `-Dlocal_gguf=disabled|auto|enabled`
 - Sources: `libollmchat/GGUF.vala` and `libollmchat/CallLocal/*`
-- Release packaging already disables it for AppImage and Windows builds
+- Release packaging already disables it for AppImage builds
 - Debian packaging ships split libraries plus `-dev` packages, and `ollmchat-remote-only`
 
 Disabling GGUF is already supported and should be the default for any Android
@@ -337,8 +345,7 @@ Remaining gaps for a full app include at least:
 - tree-sitter
 - FAISS and OpenBLAS, unless vector search is disabled or replaced
 
-The current production cross-build support targets Linux AppImage and Windows
-through sqgipkg.
+The current production Linux bundle path is AppImage through sqgipkg. Windows is a native MSYS2 build, not a Linux cross-compile.
 
 ### Linux-specific runtime features
 

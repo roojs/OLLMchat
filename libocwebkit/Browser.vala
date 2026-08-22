@@ -265,7 +265,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 			return true;
 		});
 #endif
-		this.web_view.get_network_session().download_started.connect(this.on_download_started);
+		this.web_view.network_session.download_started.connect(this.on_download_started);
 	}
 
 	/**
@@ -671,7 +671,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 		if (!this.site_cookies.has_key(host.down())) {
 			return;
 		}
-		var manager = this.web_view.get_network_session().get_cookie_manager();
+		var manager = this.web_view.network_session.get_cookie_manager();
 		foreach (var part in this.site_cookies.get(host.down()).split(";")) {
 			var piece = part.strip();
 			if (piece == "") {
@@ -696,8 +696,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 	public async void harvest_site_cookies(string uri)
 	{
 		try {
-			var cookie_list = yield this.web_view
-				.get_network_session()
+			var cookie_list = yield this.web_view.network_session
 				.get_cookie_manager()
 				.get_cookies(uri, null);
 			var cookie_header = "";

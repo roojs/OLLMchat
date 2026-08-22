@@ -1,6 +1,6 @@
 # Building and running OLLMchat on Windows
 
-**Status:** PLAN
+**Status:** PLAN — **Linux sqgipkg cross-compile is superseded** (WebView2). Native path: [`5.6-windows-native-github-build.md`](5.6-windows-native-github-build.md), [`windows-build.yml`](../../.github/workflows/windows-build.yml).
 
 **Goal:** Document and script three separate Windows workflows — cross-build + Wine smoke test on Linux, run the portable bundle on native Windows without installing, and produce the NSIS installer. Split manual-build docs out of [creating-releases.md](../creating-releases.md), which should stay focused on CI/tag releases.
 
@@ -10,11 +10,11 @@
 
 | Piece | Status | Notes |
 |-------|--------|-------|
-| Cross-compile portable bundle | ✅ `scripts/build-windows-dir.sh` | `sqgipkg --target win-dir` → `dist-windows-x86_64/OLLMchat/` |
-| Wine smoke test | ⚠️ partial | `--wine` flag on build script; no standalone run script |
+| Cross-compile portable bundle | ❌ superseded | Unix sqgipkg `win-dir` removed; use native MSYS2 ([`5.6`](5.6-windows-native-github-build.md)) |
+| Wine smoke test | ⚠️ partial | `--wine` flag on old build script; no standalone run script |
 | Native Windows run (no install) | ⚠️ partial | Launchers in bundle (`OLLMchat.bat`, `OLLMchat.ps1`); no zip/transfer helper |
-| NSIS installer | ⚠️ CI only | `sqgipkg --target win-nsis` in release workflow; no local script |
-| Docs | ❌ wrong place | Manual `sqgipkg` / deb steps live in [creating-releases.md](../creating-releases.md) |
+| NSIS installer | ⏳ native CI | Not sqgipkg; see [`windows-build.yml`](../../.github/workflows/windows-build.yml) |
+| Docs | ⚠️ | Release CI: [creating-releases.md](../creating-releases.md) |
 
 **Artifact layout** (all gitignored):
 
@@ -111,7 +111,7 @@ Wine is a smoke test, not a release gate. First-run bootstrap loop fixed 2026-06
 
 3. On Windows, from the bundle folder (Samba / `X:`: see [vala.win32 `windows-build.md`](../../../vala.win32/docs/windows-build.md) — use `X:` then `cd …`, not `cd X:\…`):
 
-   Do **not** run `.\OLLMchat.ps1` directly — default policy blocks unsigned scripts. Same one-liner pattern as [Snappr `windows-build.md`](../../../app.Snappr/docs/windows-build.md):
+   Do **not** run `.\OLLMchat.ps1` directly — default policy blocks unsigned scripts:
 
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File .\OLLMchat.ps1

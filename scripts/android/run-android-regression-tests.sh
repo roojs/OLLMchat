@@ -34,6 +34,7 @@ FAST_TESTS=(
   "$REGRESSION_DIR/test-r14-pango-wrap-not-main.sh"
   "$REGRESSION_DIR/test-r15-glib-stack-wrap-git-pinned.sh"
   "$REGRESSION_DIR/test-r16-pango-pin-checkout-before-meson.sh"
+  "$REGRESSION_DIR/test-r17-android-host-vapi-packages.sh"
 )
 
 for script in "${FAST_TESTS[@]}"; do
@@ -43,6 +44,7 @@ done
 
 if [ "$MODE" = "--full" ]; then
   run_test "$ROOT_DIR/scripts/android/verify-android-ci-preflight.sh"
+  run_test "$ROOT_DIR/scripts/android/verify-cross-compile.sh"
 elif [ -n "$MODE" ] && [ "$MODE" != "--full" ]; then
   echo "Unknown option: $MODE (use --full or no args)" >&2
   exit 2

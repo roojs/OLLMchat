@@ -1,6 +1,6 @@
-name: Release - AppImage and Windows
+name: Release - AppImage
 
-# Manual sqgipkg AppImage + NSIS build. Tags still go through Release (release.yml).
+# Manual sqgipkg Linux AppImage build. Tags still go through Release (release.yml).
 
 on:
   workflow_dispatch:
@@ -10,14 +10,14 @@ on:
         type: boolean
         default: false
 
-run-name: Release - AppImage and Windows - ${{ github.ref_name }}
+run-name: Release - AppImage - ${{ github.ref_name }}
 
 permissions:
   contents: read
 
 jobs:
-  build-appimage-windows:
-    name: AppImage and Windows installer
+  build-appimage:
+    name: AppImage
     uses: ./.github/workflows/x-sqgipkg.yml
     with:
       refresh_cache: ${{ inputs.refresh_cache }}

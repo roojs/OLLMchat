@@ -2,8 +2,7 @@
   "name": "OLLMchat",
   "entry": {
     "type": "native",
-    "linux": "build-linux-x86_64/ollmapp/ollmchat",
-    "windows": "build-windows-x86_64/ollmapp/ollmchat.exe"
+    "linux": "build-linux-x86_64/ollmapp/ollmchat"
   },
   "linux": {
     "arches": [
@@ -157,102 +156,6 @@
               "build-linux-aarch64/libollmchatgtk/libollmchatgtk.so"
             ]
           }
-        ]
-      }
-    ]
-  },
-  "windows": {
-    "msys2_prefix": "mingw64",
-    "gdk_backend": "win32",
-    "gtk_icon_theme": "Adwaita",
-    "build_dir": "build-windows-x86_64",
-    "files": [
-      "scripts/windows/OLLMchat.ps1=OLLMchat.ps1",
-      {
-        "path": "pixmaps/scalable/apps/org.roojs.ollmchat.svg",
-        "dest": "share/icons/hicolor/scalable/apps/org.roojs.ollmchat.svg"
-      },
-      {
-        "path": "resources/fonts/NotoColorEmoji.ttf",
-        "dest": "share/fonts/noto-emoji/NotoColorEmoji.ttf"
-      },
-      {
-        "path": "resources/windows/fonts-local.conf",
-        "dest": "etc/fonts/local.conf"
-      },
-      {
-        "path": "build-windows-x86_64/ollmfilesd/ollmfilesd.exe",
-        "dest": "ollmfilesd.exe"
-      }
-    ],
-    "packages": [
-      "mingw-w64-x86_64-vala",
-      "mingw-w64-x86_64-gcc-libs",
-      "mingw-w64-x86_64-gcc-libgfortran",
-      "mingw-w64-x86_64-libwinpthread",
-      "mingw-w64-x86_64-cmake",
-      "mingw-w64-x86_64-ninja",
-      "mingw-w64-x86_64-pkgconf",
-      "mingw-w64-x86_64-gtk4",
-      "mingw-w64-x86_64-libadwaita",
-      "mingw-w64-x86_64-adwaita-icon-theme",
-      "mingw-w64-x86_64-shared-mime-info",
-      "mingw-w64-x86_64-gtksourceview5",
-      "mingw-w64-x86_64-libgee",
-      "mingw-w64-x86_64-json-glib",
-      "mingw-w64-x86_64-libsoup3",
-      "mingw-w64-x86_64-libxml2",
-      "mingw-w64-x86_64-sqlite3",
-      "mingw-w64-x86_64-tree-sitter",
-      "mingw-w64-x86_64-libtree-sitter",
-      "mingw-w64-x86_64-libgit2-glib",
-      "mingw-w64-x86_64-openblas"
-    ],
-    "native_dependencies": [
-      {
-        "name": "faiss",
-        "repo": "https://github.com/facebookresearch/faiss.git",
-        "dir": ".sqgipkg/native/faiss",
-        "ref": "v1.8.0",
-        "update": false,
-        "shallow": false,
-        "build": [
-          "grep -q 'MinGW aligned allocation shim' faiss/impl/platform_macros.h || perl -0pi -e 's/#include <cstdio>/#include <cstdio>\\n#if defined(_WIN32) \\&\\& !defined(_MSC_VER)\\n\\/\\/ MinGW aligned allocation shim.\\n#include <cerrno>\\n#include <malloc.h>\\n#define posix_memalign(p, a, s) (((*(p)) = _aligned_malloc((s), (a))), *(p) ? 0 : errno)\\n#define posix_memalign_free _aligned_free\\n#endif/' faiss/impl/platform_macros.h",
-          "grep -q 'ifndef posix_memalign_free' faiss/impl/platform_macros.h || perl -0pi -e 's/#define posix_memalign_free free/#ifndef posix_memalign_free\\n#define posix_memalign_free free\\n#endif/' faiss/impl/platform_macros.h",
-          "grep -q '#ifndef _WIN32' faiss/invlists/InvertedListsIOHook.cpp || perl -0pi -e 's/#ifndef _MSC_VER/#ifndef _WIN32/g; s/#endif \\/\\/ !_MSC_VER/#endif \\/\\/ !_WIN32/g' faiss/invlists/InvertedListsIOHook.cpp",
-          "cmake -S . -B build-windows-x86_64 -G Ninja -DCMAKE_TOOLCHAIN_FILE=\"$SQGI_WIN_CMAKE_TOOLCHAIN\" -DFAISS_ENABLE_GPU=OFF -DFAISS_ENABLE_PYTHON=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DBLA_VENDOR=OpenBLAS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\"$SQGI_WINDOWS_PREFIX\"",
-          "cmake --build build-windows-x86_64 --target faiss"
-        ],
-        "install": [
-          "DESTDIR=\"$SQGI_WINDOWS_SYSROOT\" cmake --install build-windows-x86_64 --prefix \"$SQGI_WINDOWS_PREFIX\""
-        ],
-        "stage": false
-      }
-    ],
-    "native_projects": [
-      {
-        "name": "ollmchat",
-        "dir": ".",
-        "build": [
-          "./scripts/release/meson-sqgipkg-setup.sh windows \"$SQGI_WINDOWS_BUILD_DIR\"",
-          "meson compile -C \"$SQGI_WINDOWS_BUILD_DIR\" ./ollmapp/ollmchat:executable ./ollmfilesd/ollmfilesd:executable"
-        ],
-        "libraries": [
-          "build-windows-x86_64/libocsqlite/libocsqlite.dll",
-          "build-windows-x86_64/libocrpc/libocrpc.dll",
-          "build-windows-x86_64/libocmarkdown/libocmarkdown.dll",
-          "build-windows-x86_64/libollamaweb/libollamaweb.dll",
-          "build-windows-x86_64/libochf/libochf.dll",
-          "build-windows-x86_64/libocmarkdowngtk/libocmarkdowngtk.dll",
-          "build-windows-x86_64/libocfiles/libocfiles.dll",
-          "build-windows-x86_64/libollmchat/libollmchat.dll",
-          "build-windows-x86_64/libocwebkit/libocwebkit.dll",
-          "build-windows-x86_64/libocvector2/libocvector2.dll",
-          "build-windows-x86_64/libocbwrap/libocbwrap.dll",
-          "build-windows-x86_64/libocmcp/libocmcp.dll",
-          "build-windows-x86_64/liboctools/liboctools.dll",
-          "build-windows-x86_64/liboccoder/liboccoder.dll",
-          "build-windows-x86_64/libollmchatgtk/libollmchatgtk.dll"
         ]
       }
     ]
