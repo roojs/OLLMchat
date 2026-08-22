@@ -37,6 +37,7 @@ GitHub Actions runs the same suite in `.github/workflows/x-android.yml`
 | **R16** | [32441247618](https://github.com/roojs/OLLMchat/actions/runs/32441247618), [32441610454](https://github.com/roojs/OLLMchat/actions/runs/32441610454) | After discarding stale pango, Meson download: `wrap-redirect … pango/subprojects/freetype2.wrap does not exist` | `regression/test-r16-pango-pin-checkout-before-meson.sh` |
 | **R17** | [32547800217](https://github.com/roojs/OLLMchat/actions/runs/32547800217) | `Package gtksourceview-5 not found` compiling `libocmarkdowngtk`; local valac has the vapi from desktop `-dev` | `regression/test-r17-android-host-vapi-packages.sh` |
 | **R18** | [32552806663](https://github.com/roojs/OLLMchat/actions/runs/32552806663) | `network_session` does not exist on `WebKitGtkAndroid.WebView` until wrap pin `v0.1.3` | `regression/test-r18-webkit-get-network-session.sh` |
+| **R19** | [32568270350](https://github.com/roojs/OLLMchat/actions/runs/32568270350) | `Package gee-0.8 not found` generating `ocmarkdowngtk.vapi`; laptop has host `libgee-0.8-dev` | `regression/test-r19-android-custom-vapi-gee-vapidir.sh` |
 
 When a **new** CI failure appears:
 
@@ -173,6 +174,14 @@ WebKit-shaped property. `Browser.vala` uses `.network_session`. CI
 restore-keys can leave a getter-only `subprojects/webkitgtk-android` and then
 skip Meson download. R18 requires wrap `v0.1.3`, property syntax in
 `Browser.vala`, and discards/clones a stale checkout (same as R16 pango).
+
+### R19 — custom_target `--pkg gee-0.8` needs `gee_vapi_dir`
+`library()` gets gee from the Android subproject via `dependency('gee-0.8')`.
+A `custom_target` valac line does not. Laptops with `libgee-0.8-dev` still
+compile; CI does not install that package. R19 greps Android meson files
+that pass `--pkg gee-0.8` and requires `gee_vapi_dir` (same as
+`libocmarkdown` / `libocrpc`). Do **not** add `libgee-0.8-dev` to the
+runner — that would hide a missing vapidir again.
 
 ---
 

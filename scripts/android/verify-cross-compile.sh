@@ -57,6 +57,7 @@ targets=(
   liboccoder/liboccoder.so
   liboccoder/occoder.vapi
   libocmarkdowngtk/libocmarkdowngtk.so
+  libocmarkdowngtk/ocmarkdowngtk.vapi
   libollmchatgtk/libollmchatgtk.so
   libocwebkit/libocwebkit.so
   ollmapp/libollmchat-android-poc.so

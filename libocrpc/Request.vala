@@ -220,29 +220,32 @@ namespace OLLMrpc
 			var object_name = this.method[0:dot];
 			var method_name = this.method.substring(dot + 1);
 
-			if (!handlers.has_key(object_name)) {
-				GLib.critical(
-					"RPC dispatch: no handler for '%s' (%s)",
-					object_name,
-					this.method
-				);
-				return false;
+			if (handlers != null && handlers.has_key(object_name)) {
+				var handler = handlers.get(object_name);
+				var signal_name = "call_" + method_name.replace(".", "_");
+				if (GLib.Signal.lookup(signal_name, handler.get_type()) == 0) {
+					GLib.critical(
+						"RPC dispatch: no signal call_%s on %s for %s",
+						method_name.replace(".", "_"),
+						object_name,
+						this.method
+					);
+					return false;
+				}
+				GLib.debug("emit %s id=%d", signal_name, this.id);
+				GLib.Signal.emit_by_name(handler, signal_name, this);
+				GLib.debug("emit returned id=%d", this.id);
+				return true;
 			}
-			var handler = handlers.get(object_name);
-			var signal_name = "call_" + method_name.replace(".", "_");
-			if (GLib.Signal.lookup(signal_name, handler.get_type()) == 0) {
-				GLib.critical(
-					"RPC dispatch: no signal call_%s on %s for %s",
-					method_name.replace(".", "_"),
-					object_name,
-					this.method
-				);
-				return false;
+			if (new Gi(this).dispatch()) {
+				return true;
 			}
-			GLib.debug("emit %s id=%d", signal_name, this.id);
-			GLib.Signal.emit_by_name(handler, signal_name, this);
-			GLib.debug("emit returned id=%d", this.id);
-			return true;
+			GLib.critical(
+				"RPC dispatch: no handler for '%s' (%s)",
+				object_name,
+				this.method
+			);
+			return false;
 		}
 
 		/**

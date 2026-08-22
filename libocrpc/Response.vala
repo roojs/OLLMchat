@@ -84,6 +84,15 @@ namespace OLLMrpc
 						);
 					}
 					foreach (var child in this.result) {
+						if (!child.get_type().is_a(typeof(Bin.Serializable))
+							&& ctx.connection.live_handles) {
+							var key = ((uint64) (void*) child).to_string(
+								"%" + uint64.FORMAT_MODIFIER + "x");
+							ctx.out_stream.put_uint64(
+								(uint64) ctx.connection.lease_ids.get(key));
+							ctx.out_stream.put_uint16(Bin.Stream.TOKEN_END);
+							continue;
+						}
 						((Bin.Serializable) child).bin_write (ctx);
 					}
 					return;

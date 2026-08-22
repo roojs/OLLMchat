@@ -120,9 +120,24 @@ namespace OLLMrpc.Bin
 
 		public bool live_handles { get; set; default = false; }
 
+		/**
+		 * Server {@link Stream}: the {@link OLLMrpc.Transport.Connection}
+		 * that owns {@link OLLMrpc.Transport.Connection.lease_ids}.
+		 */
+		public unowned OLLMrpc.Transport.Connection connection { get; set; }
+
+		/**
+		 * Client {@link Stream}: the {@link OLLMrpc.Client} that owns
+		 * {@link OLLMrpc.Client.proxies}.
+		 */
+		public unowned OLLMrpc.Client client { get; set; }
+
+		public GLib.Socket? socket { get; set; default = null; }
+
 		public const uint16 TOKEN_REG_KEY = 0xFFFF;
 		public const uint16 TOKEN_REG_TYPE = 0xFFFE;
 		public const uint16 TOKEN_END = 0xFFFD;
+		public const uint8 TOKEN_SCM_RIGHTS = 0xFC;
 
 		public Stream(
 			GLib.DataInputStream? in_stream,
@@ -142,10 +157,19 @@ namespace OLLMrpc.Bin
 			}
 		}
 
-		public void write(Serializable obj) throws GLib.Error
+		public void write(
+			Serializable obj,
+			Live.Buffer? buffer = null
+		) throws GLib.Error
 		{
 			this.write_gtype(obj.get_type());
 			obj.bin_write(this);
+			if (buffer == null || this.socket == null) {
+				return;
+			}
+			this.out_stream.put_byte(TOKEN_SCM_RIGHTS);
+			this.out_stream.flush();
+			buffer.send(this.socket);
 		}
 
 		public Serializable parse() throws GLib.Error
@@ -166,7 +190,7 @@ namespace OLLMrpc.Bin
 					b
 				);
 			}
-			return this.parse_object();
+			return (Serializable) this.parse_object();
 		}
 
 		/**
@@ -180,7 +204,7 @@ namespace OLLMrpc.Bin
 		 * @param object_type element class when already read from an array header
 		 * @param expected_type GObject property type for anonymous nested objects
 		 */
-		public Serializable parse_object(
+		public GLib.Object parse_object(
 			GLib.Type object_type = GLib.Type.INVALID,
 			GLib.Type expected_type = GLib.Type.INVALID
 		) throws GLib.Error
@@ -193,6 +217,17 @@ namespace OLLMrpc.Bin
 				&& expected_type != GLib.Type.INVALID
 				&& expected_type.is_a(typeof(Serializable))) {
 				decode_type = expected_type;
+			}
+			if (!decode_type.is_a(typeof(Serializable)) && this.client.live_handles) {
+				var handle = this.in_stream.read_uint64();
+				var live = GLib.Object.new(decode_type);
+				this.client.proxies.set((int) handle, live);
+				if (this.in_stream.read_uint16() != TOKEN_END) {
+					throw new StreamError.PROTOCOL(
+						"expected end after live handle"
+					);
+				}
+				return live;
 			}
 			var obj = (Serializable) GLib.Object.new(decode_type);
 			obj.bin_read(this);

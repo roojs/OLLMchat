@@ -159,6 +159,24 @@ test('test-rpc-values',
   suite: 'rpc',
   timeout: 10,
 )
+test_rpc_gi = executable('test-rpc-gi',
+  'rpc/gi-test.vala',
+  dependencies: rpc_test_deps + [
+    rpc_test_app_dep,
+    dependency('gobject-introspection-1.0'),
+    dependency('gio-unix-2.0'),
+  ],
+  link_with: rpc_test_link_with,
+  build_rpath: rpc_test_build_rpath,
+  vala_args: rpc_test_vala_args + [
+    '--pkg=gobject-introspection-1.0',
+  ],
+)
+test('test-rpc-gi',
+  test_rpc_gi,
+  suite: 'rpc',
+  timeout: 10,
+)
 test_rpc_scm = executable('test-rpc-scm-notification',
   'rpc/scm-notification-test.vala',
   dependencies: rpc_test_deps + [
