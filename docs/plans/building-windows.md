@@ -13,7 +13,7 @@
 | Cross-compile portable bundle | ❌ superseded | Unix sqgipkg `win-dir` removed; use native MSYS2 ([`5.6`](5.6-windows-native-github-build.md)) |
 | Wine smoke test | ⚠️ partial | `--wine` flag on old build script; no standalone run script |
 | Native Windows run (no install) | ⚠️ partial | Launchers in bundle (`OLLMchat.bat`, `OLLMchat.ps1`); no zip/transfer helper |
-| NSIS installer | ⏳ native CI | Not sqgipkg; see [`windows-build.yml`](../../.github/workflows/windows-build.yml) |
+| NSIS installer | ⏳ prove Setup.exe | [`x-windows.yml`](../../.github/workflows/x-windows.yml) / [`5.6`](5.6-windows-native-github-build.md); staging dir is not a release zip |
 | Docs | ⚠️ | Release CI: [creating-releases.md](../creating-releases.md) |
 
 **Artifact layout** (all gitignored):

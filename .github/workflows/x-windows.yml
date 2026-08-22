@@ -1,22 +1,26 @@
-# Compile-only smoke (no NSIS). Prefer Release - Windows for the installer.
-# Iterate with: gh workflow run windows-build.yml --ref <branch>
-name: X - Native Windows MSYS2 compile (not the installer)
+name: X - Windows NSIS installer (Release calls this)
+
+# Native MSYS2 UCRT64 compile + versioned Setup.exe.
+# Start Release - Windows, or let Release (release.yml) call this.
 
 on:
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
   build-windows:
-    name: Native Windows MSYS2 compile
+    name: Windows installer
     runs-on: windows-latest
     defaults:
       run:
         shell: msys2 {0}
 
     steps:
+      # Vala @"…" → C uses "…\n" \ continuations; CRLF makes `\` not last
+      # before newline and MinGW fails with missing terminating ". Keep LF in
+      # the workflow — do not wrap Meson's CC (Windows rejects shell scripts).
       - name: Git LF only
         shell: bash
         run: |
@@ -67,8 +71,28 @@ jobs:
             mingw-w64-ucrt-x86_64-curl
             mingw-w64-ucrt-x86_64-cantarell-fonts
             mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-nsis
 
       - name: Build OLLMchat (FAISS + webview2gtk pacman + meson)
         run: |
           chmod +x scripts/ci/windows-msys2-build.sh
           ./scripts/ci/windows-msys2-build.sh
+
+      - name: Package versioned NSIS installer
+        run: |
+          chmod +x scripts/ci/windows-package-nsis.sh scripts/copy-exe-runtime-dlls.sh
+          ./scripts/ci/windows-package-nsis.sh
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          cp -v dist-windows/OLLMchat-*-Setup.exe artifacts/
+          ls -lh artifacts
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollmchat-windows
+          path: artifacts/*

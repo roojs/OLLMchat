@@ -1,0 +1,16 @@
+name: Release - Windows
+
+# Manual native Windows NSIS build. Tags still go through Release (release.yml).
+
+on:
+  workflow_dispatch:
+
+run-name: Release - Windows - ${{ github.ref_name }}
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Windows installer
+    uses: ./.github/workflows/x-windows.yml

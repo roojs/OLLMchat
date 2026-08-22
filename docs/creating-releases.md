@@ -1,6 +1,6 @@
 # Creating Releases
 
-Users install OLLMchat from the **[roojs package repositories](https://roojs.github.io/repos/)** (`apt-get` / `dnf` / `zypper`). GitHub Releases still attach the same `.deb` / `.rpm` files plus AppImage and Android builds. Windows is a separate native MSYS2 compile ([`windows-build.yml`](../.github/workflows/windows-build.yml)); it is not packaged by sqgipkg.
+Users install OLLMchat from the **[roojs package repositories](https://roojs.github.io/repos/)** (`apt-get` / `dnf` / `zypper`). GitHub Releases attach the same `.deb` / `.rpm` files plus AppImage, Android, and the Windows NSIS installer (`OLLMchat-<version>-Setup.exe`).
 
 For Debian package layout and local `.deb` builds, see [`debian/README`](../debian/README). RPM packaging lives under [`packaging/rpm/`](../packaging/rpm/).
 
@@ -20,8 +20,8 @@ To test **one** package family without waiting on the others, run the matching
 | **Release - Fedora** | [`release-fedora.yml`](../.github/workflows/release-fedora.yml) | `gh workflow run release-fedora.yml --ref <branch>` |
 | **Release - openSUSE** | [`release-opensuse.yml`](../.github/workflows/release-opensuse.yml) | `gh workflow run release-opensuse.yml --ref <branch>` |
 | **Release - AppImage** | [`release-appimage.yml`](../.github/workflows/release-appimage.yml) | `gh workflow run release-appimage.yml --ref <branch>` |
+| **Release - Windows** | [`release-windows.yml`](../.github/workflows/release-windows.yml) | `gh workflow run release-windows.yml --ref <branch>` |
 | **Release - Android** | [`release-android.yml`](../.github/workflows/release-android.yml) | `gh workflow run release-android.yml --ref <branch>` |
-| **X - Native Windows MSYS2 compile** | [`windows-build.yml`](../.github/workflows/windows-build.yml) | `gh workflow run windows-build.yml --ref <branch>` |
 
 Ignore anything named **X - …** (sorts to the bottom). The `Release calls this`
 ones are the real package-build jobs; **Release - Debian** (and the others) are
@@ -32,21 +32,23 @@ CI then:
 
 1. Builds **Debian** packages on Ubuntu 25.04 using the [roojs APT repo](https://roojs.github.io/repos/) for `libllama-dev`: split runtime/`-dev` libraries plus `ollmchat`, then a second **ollmchat-remote-only** all-in-one `.deb`.
 2. Builds **RPMs** on **Fedora 44** (`.fc44.` filenames) and **openSUSE Tumbleweed** (no `.fc` tag) from the same spec.
-3. Builds Linux AppImages with sqgipkg (Ubuntu 24.04; FAISS is built from source for those bundles). Windows is **not** cross-compiled here — WebView2 needs a native MSYS2 job ([`windows-build.yml`](../.github/workflows/windows-build.yml)).
-4. Builds the **Android** remote-chat POC APK (`ollmchat-android-v*-debug.apk`). A Pixiewood failure does not block the other packages.
-5. On a tag push, publishes those files to the GitHub Release (including the APK when the Android job succeeded).
+3. Builds Linux AppImages with sqgipkg (Ubuntu 24.04; FAISS is built from source for those bundles).
+4. Builds the **Windows** NSIS installer on `windows-latest` + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)) → **`OLLMchat-<version>-Setup.exe`**.
+5. Builds the **Android** remote-chat POC APK (`ollmchat-android-v*-debug.apk`). A Pixiewood failure does not block the other packages.
+6. On a tag push, publishes those files to the GitHub Release (including the Windows Setup.exe and the APK when the Android job succeeded).
 
 AppImage packaging is configured in [`sqgipkg.json`](../sqgipkg.json) (Linux only). Debian packaging lives under [`debian/`](../debian/). The RPM spec is [`packaging/rpm/ollmchat.spec`](../packaging/rpm/ollmchat.spec).
 
 Fedora 44 is the RPM base. openSUSE uses the same spec; CI does **not** share one binary RPM between the two (Fedora dist tag vs Tumbleweed filename). The repos project already routes `.fcN.` files to `rpm/fcN/` and untagged RPMs to `rpm/tumbleweed/`.
 
-### Debian vs RPM vs AppImage / Android
+### Debian vs RPM vs AppImage / Windows / Android
 
 | Format | Architectures | libllama | Notes |
 |--------|---------------|----------|-------|
 | APT / `.deb` | amd64 | **split `ollmchat`**: yes · **ollmchat-remote-only**: no | Users: `apt-get update && apt-get install ollmchat` (or `libocrpc-dev`) after adding [the repo](https://roojs.github.io/repos/) |
 | RPM | x86_64 | same split + remote-only | Fedora 44 and openSUSE Tumbleweed; FAISS on Fedora comes from the roojs repo (nicked from Tumbleweed) |
 | AppImage | x86_64, aarch64 | No | Self-contained; remote backends only |
+| Windows `.exe` | x86_64 | No | Native MSYS2 NSIS: **`OLLMchat-<version>-Setup.exe`** |
 | Android `.apk` | arm64-v8a | No | Remote-chat POC; sideload from GitHub Releases |
 
 Release `.deb` files use the **split** Debian layout (runtime libraries, `-dev` packages, `ollmchat`, `ollmchat-tools`, `ollmchat-doc`) plus a conflicting **ollmchat-remote-only** all-in-one package. See [`debian/README`](../debian/README). The RPM spec ships the same split (`libocrpc`, `libocrpc-devel`, …) for the GGUF build and a single `ollmchat-remote-only` RPM without libllama.
@@ -96,7 +98,7 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
 
    That deletes the local and origin tags, then tags HEAD and pushes again. An existing GitHub Release for the same tag is updated (`gh release upload --clobber`), not recreated.
 
-4. **Watch CI.** Open **Actions → Release** on GitHub and wait for Debian, Fedora, openSUSE, AppImage, Android, and Publish to finish.
+4. **Watch CI.** Open **Actions → Release** on GitHub and wait for Debian, Fedora, openSUSE, AppImage, Windows, Android, and Publish to finish.
 
 5. **Check the release** and [roojs.github.io/repos](https://roojs.github.io/repos/) after the repos publish job picks up the new GitHub assets.
 
@@ -104,6 +106,7 @@ Agents must not run `scripts/release.sh` (it refuses `CURSOR_AGENT=1` and must n
    |------|----------|
    | `OLLMchat-remote-only-x86_64.AppImage` | Linux 64-bit (Intel/AMD); remote backends only |
    | `OLLMchat-remote-only-aarch64.AppImage` | Linux 64-bit (ARM); remote backends only |
+   | `OLLMchat-<version>-Setup.exe` | Windows installer (MSYS2 / WebView2); remote backends only |
    | `ollmchat_*.deb`, `liboc*_*.deb`, `liboll*_*.deb`, `ollmchat-remote-only_*.deb` | Debian/Ubuntu amd64 (split libs + app; remote-only is all-in-one) |
    | `libocrpc-*.rpm`, `liboc*-*.rpm`, `liboll*-*.rpm`, `ollmchat-*.fc44.*.rpm` | Fedora 44 (split libs + app; plus `ollmchat-remote-only`) |
    | same names without `.fc` | openSUSE Tumbleweed |
@@ -126,7 +129,7 @@ sudo zypper install ollmchat
 To rebuild **one** package family (the usual way to iterate on openSUSE, Debian, and so on):
 
 1. Go to **Actions**.
-2. Choose **Release - openSUSE** (or Debian / Fedora / AppImage / Android).
+2. Choose **Release - openSUSE** (or Debian / Fedora / AppImage / Windows / Android).
 3. **Run workflow** on the branch you want to test.
 
 To rebuild **everything** without tagging: **Actions → Release → Run workflow**.
@@ -153,11 +156,14 @@ Outputs land under `dist-linux-x86_64/` and `dist-linux-aarch64/` in the repo ro
 
 Do not use `sqgipkg --target win-nsis` — WebView2 cannot be cross-compiled from Linux.
 
-The browser tool links **[webview2-gtk](https://github.com/roojs/webview2-gtk)**. Follow that library’s **[Deploying a Windows build](https://github.com/roojs/webview2-gtk/blob/main/docs/deploying-windows.md)** for the portable folder (`exe` + GTK DLLs + `WebView2Loader.dll`) and the consumer GitHub Actions sample. End users need the [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (Evergreen) on the PC.
+Release CI builds on **`windows-latest`** + MSYS2 UCRT64 ([`x-windows.yml`](../.github/workflows/x-windows.yml)):
 
-Today: compile only on a Windows runner — [`windows-build.yml`](../.github/workflows/windows-build.yml) / `scripts/ci/windows-msys2-build.sh` (MSYS2 UCRT64). That job is **not** attached to tagged GitHub Releases yet.
+1. `scripts/ci/windows-msys2-build.sh` — FAISS + pinned webview2gtk pacman + meson compile
+2. `scripts/ci/windows-package-nsis.sh` — stages `dist-windows/OLLMchat/` (exe + DLLs; intermediate only), then NSIS → **`OLLMchat-<version>-Setup.exe`**
 
-Later (same stack): package a portable dir, then NSIS → **`OLLMchat-<version>-Setup.exe`** (`PRODUCT_VERSION` from `meson.build`). Do not run the raw `build\` exe from Explorer — GTK DLLs are not beside it until the portable dir exists.
+Tagged releases attach that Setup.exe. Manual: **Release - Windows**. Compile-only smoke: **X - Native Windows MSYS2 compile**.
+
+End users need the [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (Evergreen). See [webview2-gtk deploying docs](https://github.com/roojs/webview2-gtk/blob/main/docs/deploying-windows.md).
 
 ### Debian packages
 
