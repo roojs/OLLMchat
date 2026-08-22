@@ -216,10 +216,14 @@ wrap_file_url() {
 }
 
 ensure_git_checkout_at_revision() {
-  local dir="$1" url="$2" rev="$3" actual
+  local dir="$1" url="$2" rev="$3" actual peeled
   if [ -d "$dir/.git" ] && [ -n "$rev" ]; then
     actual="$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)"
     if [ "$actual" = "$rev" ]; then
+      return 0
+    fi
+    peeled="$(git -C "$dir" rev-parse --verify -q "${rev}^{commit}" 2>/dev/null || true)"
+    if [ -n "$peeled" ] && [ "$actual" = "$peeled" ]; then
       return 0
     fi
   fi
@@ -234,6 +238,9 @@ ensure_git_checkout_at_revision() {
   git -C "$dir" remote add origin "$url"
   git -C "$dir" fetch --depth 1 origin "$rev"
   git -C "$dir" checkout --detach FETCH_HEAD
+  if [[ ! "$rev" =~ ^[0-9a-fA-F]{40}$ ]]; then
+    git -C "$dir" update-ref "refs/tags/$rev" HEAD
+  fi
 }
 
 ensure_pinned_wrap_git_checkouts() {

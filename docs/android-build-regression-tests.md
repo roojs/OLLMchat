@@ -169,9 +169,10 @@ did not install it. R17 greps `.github/workflows/x-android.yml` and
 CI clones `webkitgtk-android` from
 `android/pixiewood-wraps/webkitgtk-android/webkitgtk-android.wrap`.
 `31fd762d` only had `get_network_session()`. Release **`v0.1.3`** adds the
-WebKit-shaped property. `Browser.vala` uses `.network_session`. A local
-`subprojects/webkitgtk-android` checkout can already be newer and hide a stale
-pin. R18 requires wrap `v0.1.3` and property syntax in `Browser.vala`.
+WebKit-shaped property. `Browser.vala` uses `.network_session`. CI
+restore-keys can leave a getter-only `subprojects/webkitgtk-android` and then
+skip Meson download. R18 requires wrap `v0.1.3`, property syntax in
+`Browser.vala`, and discards/clones a stale checkout (same as R16 pango).
 
 ---
 
