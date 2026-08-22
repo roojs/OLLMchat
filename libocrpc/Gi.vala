@@ -292,7 +292,6 @@ namespace OLLMrpc
 				case GI.TypeTag.VOID:
 					break;
 
-				case GI.TypeTag.OBJECT:
 				case GI.TypeTag.INTERFACE:
 					var created = (GLib.Object) ret.v_pointer;
 					this.request.connection.export(created);
