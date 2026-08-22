@@ -22,6 +22,7 @@ ollmfilesd_deps = [
   tree_sitter_lib,
   ocsqlite_vapi_dep,
   ocrpc_vapi_dep,
+  ocmarkdown_vapi_dep,
   ollmchat_vapi_dep,
   ocvector2_vapi_dep,
 ]
@@ -82,6 +83,7 @@ ollmfilesd_src = files(
 build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocsqlite',
   meson.current_build_dir() / '..' / 'libocrpc',
+  meson.current_build_dir() / '..' / 'libocmarkdown',
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollamaweb',
   meson.current_build_dir() / '..' / 'libocvector2',

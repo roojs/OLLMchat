@@ -35,6 +35,7 @@ FAST_TESTS=(
   "$REGRESSION_DIR/test-r15-glib-stack-wrap-git-pinned.sh"
   "$REGRESSION_DIR/test-r16-pango-pin-checkout-before-meson.sh"
   "$REGRESSION_DIR/test-r17-android-host-vapi-packages.sh"
+  "$REGRESSION_DIR/test-r18-webkit-get-network-session.sh"
 )
 
 for script in "${FAST_TESTS[@]}"; do

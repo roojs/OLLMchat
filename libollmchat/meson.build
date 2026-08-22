@@ -337,5 +337,5 @@ ollmchat_vapi_dep = declare_dependency(
     '-L' + meson.current_build_dir(), '-lollmchat',
     '-L' + meson.current_build_dir() / '..' / 'libollamaweb', '-lollamaweb',
   ],
-  dependencies: [ocsqlite_vapi_dep, ollamaweb_vapi_dep, ocrpc_vapi_dep]
+  dependencies: [ocsqlite_vapi_dep, ollamaweb_vapi_dep, ocrpc_vapi_dep, ocmarkdown_vapi_dep]
 )

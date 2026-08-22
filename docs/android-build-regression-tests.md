@@ -36,6 +36,7 @@ GitHub Actions runs the same suite in `.github/workflows/x-android.yml`
 | **R15** | [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256), [32435474269](https://github.com/roojs/OLLMchat/actions/runs/32435474269) | Local `--full` reused frozen wrap-git; GitHub fetched `main` (pango, then libadwaita) vs glib 2.84.0 | `regression/test-r15-glib-stack-wrap-git-pinned.sh` |
 | **R16** | [32441247618](https://github.com/roojs/OLLMchat/actions/runs/32441247618), [32441610454](https://github.com/roojs/OLLMchat/actions/runs/32441610454) | After discarding stale pango, Meson download: `wrap-redirect … pango/subprojects/freetype2.wrap does not exist` | `regression/test-r16-pango-pin-checkout-before-meson.sh` |
 | **R17** | [32547800217](https://github.com/roojs/OLLMchat/actions/runs/32547800217) | `Package gtksourceview-5 not found` compiling `libocmarkdowngtk`; local valac has the vapi from desktop `-dev` | `regression/test-r17-android-host-vapi-packages.sh` |
+| **R18** | [32552806663](https://github.com/roojs/OLLMchat/actions/runs/32552806663) | `network_session` does not exist on `WebKitGtkAndroid.WebView`; Android vapi is `get_network_session()` | `regression/test-r18-webkit-get-network-session.sh` |
 
 When a **new** CI failure appears:
 
@@ -163,6 +164,12 @@ did not install it. R17 greps `.github/workflows/x-android.yml` and
 `docs/android-build.md` for that package (and the existing gtk4 / libadwaita
 `-dev` lines). `--full` also runs `verify-cross-compile.sh`, which now builds
 `ollmchat-android-poc` instead of a library subset.
+
+### R18 — WebView `get_network_session()` not `.network_session`
+Android `webkitgtk-android-1` exposes `get_network_session()` only. Linux
+WebKitGTK and Windows webview2 also have that getter (plus a property).
+`libocwebkit/Browser.vala` must call the getter so cookies/downloads compile
+on all three. R18 greps for `.network_session` property access.
 
 ---
 
