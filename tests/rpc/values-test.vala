@@ -155,7 +155,8 @@ namespace OLLMrpcTests
 			var i_req = new OLLMrpc.Request() {
 				method = "RPC-Probe.blob"
 			};
-			i_req.values.add(new GLib.Variant("ai", ints));
+			i_req.values.add(GLib.Variant.new_fixed_array(
+				new GLib.VariantType("i"), ints, sizeof(int)));
 			response = null;
 			var i_loop = new GLib.MainLoop();
 			rpc.call.begin(i_req, (obj, res) => {
@@ -164,7 +165,7 @@ namespace OLLMrpcTests
 			});
 			i_loop.run();
 			this.check(command_line, response.error == null, "int[] returned error");
-			var got_var = (GLib.Variant) response.values.get(0);
+			unowned GLib.Variant got_var = response.values.get(0).get_variant();
 			this.check(command_line, got_var.n_children() == 3, "int[] length");
 			this.check(command_line, got_var.get_child_value(1).get_int32() == 2, "int[] [1]");
 			rpc.disconnect();

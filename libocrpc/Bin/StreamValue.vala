@@ -172,7 +172,7 @@ namespace OLLMrpc.Bin
 			}
 
 			if (val.type() == typeof(GLib.Variant)) {
-				var var = val.get_variant();
+				unowned GLib.Variant var = val.get_variant();
 				if (var.is_of_type(new GLib.VariantType("ai"))) {
 					StreamValue.write_numeric_array(ctx, GLib.Type.INT,
 						(int) (var.get_size() / sizeof(int)), var.get_data(), sizeof(int));
@@ -509,37 +509,43 @@ namespace OLLMrpc.Bin
 					var ints = new int[count];
 					size_t int_read;
 					ctx.in_stream.read_all(((uint8[]) ints)[0:count * sizeof(int)], out int_read);
-					return new GLib.Variant("ai", ints);
+					return GLib.Variant.new_fixed_array(
+						new GLib.VariantType("i"), ints, sizeof(int));
 
 				case GLib.Type.UINT:
 					var uints = new uint[count];
 					size_t uint_read;
 					ctx.in_stream.read_all(((uint8[]) uints)[0:count * sizeof(uint)], out uint_read);
-					return new GLib.Variant("au", uints);
+					return GLib.Variant.new_fixed_array(
+						new GLib.VariantType("u"), uints, sizeof(uint));
 
 				case GLib.Type.INT64:
 					var i64s = new int64[count];
 					size_t i64_read;
 					ctx.in_stream.read_all(((uint8[]) i64s)[0:count * sizeof(int64)], out i64_read);
-					return new GLib.Variant("ax", i64s);
+					return GLib.Variant.new_fixed_array(
+						new GLib.VariantType("x"), i64s, sizeof(int64));
 
 				case GLib.Type.UINT64:
 					var u64s = new uint64[count];
 					size_t u64_read;
 					ctx.in_stream.read_all(((uint8[]) u64s)[0:count * sizeof(uint64)], out u64_read);
-					return new GLib.Variant("at", u64s);
+					return GLib.Variant.new_fixed_array(
+						new GLib.VariantType("t"), u64s, sizeof(uint64));
 
 				case GLib.Type.FLOAT:
 					var floats = new float[count];
 					size_t float_read;
 					ctx.in_stream.read_all(((uint8[]) floats)[0:count * sizeof(float)], out float_read);
-					return new GLib.Variant("af", floats);
+					return GLib.Variant.new_fixed_array(
+						new GLib.VariantType("f"), floats, sizeof(float));
 
 				case GLib.Type.DOUBLE:
 					var doubles = new double[count];
 					size_t double_read;
 					ctx.in_stream.read_all(((uint8[]) doubles)[0:count * sizeof(double)], out double_read);
-					return new GLib.Variant("ad", doubles);
+					return GLib.Variant.new_fixed_array(
+						new GLib.VariantType("d"), doubles, sizeof(double));
 
 				default:
 					throw new StreamError.PROTOCOL(

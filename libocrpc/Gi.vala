@@ -532,7 +532,7 @@ namespace OLLMrpc
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
 				return false;
 			}
-			var var = val.get_variant();
+			unowned GLib.Variant var = val.get_variant();
 			var elem = arg.get_type().get_param_type(0);
 			switch (elem.get_tag()) {
 				case GI.TypeTag.UTF8:
@@ -871,37 +871,43 @@ namespace OLLMrpc
 				case GI.TypeTag.INT32:
 					var ints = new int[n_arr];
 					GLib.Memory.copy(ints, arg.v_pointer, n_arr * sizeof(int));
-					dest.add(new GLib.Variant("ai", ints));
+					dest.add(GLib.Variant.new_fixed_array(
+						new GLib.VariantType("i"), ints, sizeof(int)));
 					return true;
 
 				case GI.TypeTag.UINT32:
 					var uints = new uint[n_arr];
 					GLib.Memory.copy(uints, arg.v_pointer, n_arr * sizeof(uint));
-					dest.add(new GLib.Variant("au", uints));
+					dest.add(GLib.Variant.new_fixed_array(
+						new GLib.VariantType("u"), uints, sizeof(uint)));
 					return true;
 
 				case GI.TypeTag.INT64:
 					var i64s = new int64[n_arr];
 					GLib.Memory.copy(i64s, arg.v_pointer, n_arr * sizeof(int64));
-					dest.add(new GLib.Variant("ax", i64s));
+					dest.add(GLib.Variant.new_fixed_array(
+						new GLib.VariantType("x"), i64s, sizeof(int64)));
 					return true;
 
 				case GI.TypeTag.UINT64:
 					var u64s = new uint64[n_arr];
 					GLib.Memory.copy(u64s, arg.v_pointer, n_arr * sizeof(uint64));
-					dest.add(new GLib.Variant("at", u64s));
+					dest.add(GLib.Variant.new_fixed_array(
+						new GLib.VariantType("t"), u64s, sizeof(uint64)));
 					return true;
 
 				case GI.TypeTag.FLOAT:
 					var floats = new float[n_arr];
 					GLib.Memory.copy(floats, arg.v_pointer, n_arr * sizeof(float));
-					dest.add(new GLib.Variant("af", floats));
+					dest.add(GLib.Variant.new_fixed_array(
+						new GLib.VariantType("f"), floats, sizeof(float)));
 					return true;
 
 				case GI.TypeTag.DOUBLE:
 					var doubles = new double[n_arr];
 					GLib.Memory.copy(doubles, arg.v_pointer, n_arr * sizeof(double));
-					dest.add(new GLib.Variant("ad", doubles));
+					dest.add(GLib.Variant.new_fixed_array(
+						new GLib.VariantType("d"), doubles, sizeof(double)));
 					return true;
 
 				default:
