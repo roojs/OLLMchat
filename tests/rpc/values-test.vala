@@ -152,11 +152,10 @@ namespace OLLMrpcTests
 			this.check(command_line, response.error == null, "double returned error");
 			this.check(command_line, response.values.get(0).get_double() == 2.5, "double value");
 			var ints = new int[] { 1, 2, 3 };
-			var i_val = (GLib.Value) ints;
 			var i_req = new OLLMrpc.Request() {
 				method = "RPC-Probe.blob"
 			};
-			i_req.values.add(i_val);
+			i_req.values.add(new GLib.Variant("ai", ints));
 			response = null;
 			var i_loop = new GLib.MainLoop();
 			rpc.call.begin(i_req, (obj, res) => {
@@ -165,9 +164,9 @@ namespace OLLMrpcTests
 			});
 			i_loop.run();
 			this.check(command_line, response.error == null, "int[] returned error");
-			var got_ints = (int[]) response.values.get(0);
-			this.check(command_line, got_ints.length == 3, "int[] length");
-			this.check(command_line, got_ints[1] == 2, "int[] [1]");
+			var got_var = (GLib.Variant) response.values.get(0);
+			this.check(command_line, got_var.n_children() == 3, "int[] length");
+			this.check(command_line, got_var.get_child_value(1).get_int32() == 2, "int[] [1]");
 			rpc.disconnect();
 			listen.stop();
 		}

@@ -527,70 +527,80 @@ namespace OLLMrpc
 		private bool convert_array(GI.ArgInfo arg, int vi, int offset)
 		{
 			var val = this.request.values.get(vi);
+			if (val.type() != typeof(GLib.Variant)) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var var = val.get_variant();
 			var elem = arg.get_type().get_param_type(0);
 			switch (elem.get_tag()) {
 				case GI.TypeTag.UTF8:
 				case GI.TypeTag.FILENAME:
-					if (val.type() != typeof(string[])) {
+					if (!var.is_of_type(new GLib.VariantType("as"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = (void*) (string[]) val;
+					string[] strv = {};
+					for (var i = 0; i < var.n_children(); i++) {
+						strv += var.get_child_value(i).get_string();
+					}
+					this.in_args[vi + offset].v_pointer = (void*) strv;
 					return true;
 
 				case GI.TypeTag.INT32:
-					if (val.type() != typeof(int[])) {
+					if (!var.is_of_type(new GLib.VariantType("ai"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = (void*) (int[]) val;
+					this.in_args[vi + offset].v_pointer = var.get_data();
 					return true;
 
 				case GI.TypeTag.UINT32:
-					if (val.type() != typeof(uint[])) {
+					if (!var.is_of_type(new GLib.VariantType("au"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = (void*) (uint[]) val;
+					this.in_args[vi + offset].v_pointer = var.get_data();
 					return true;
 
 				case GI.TypeTag.INT64:
-					if (val.type() != typeof(int64[])) {
+					if (!var.is_of_type(new GLib.VariantType("ax"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = (void*) (int64[]) val;
+					this.in_args[vi + offset].v_pointer = var.get_data();
 					return true;
 
 				case GI.TypeTag.UINT64:
-					if (val.type() != typeof(uint64[])) {
+					if (!var.is_of_type(new GLib.VariantType("at"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = (void*) (uint64[]) val;
+					this.in_args[vi + offset].v_pointer = var.get_data();
 					return true;
 
 				case GI.TypeTag.FLOAT:
-					if (val.type() != typeof(float[])) {
+					if (!var.is_of_type(new GLib.VariantType("af"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = (void*) (float[]) val;
+					this.in_args[vi + offset].v_pointer = var.get_data();
 					return true;
 
 				case GI.TypeTag.DOUBLE:
-					if (val.type() != typeof(double[])) {
+					if (!var.is_of_type(new GLib.VariantType("ad"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = (void*) (double[]) val;
+					this.in_args[vi + offset].v_pointer = var.get_data();
 					return true;
 
 				default:
@@ -845,12 +855,11 @@ namespace OLLMrpc
 			if (n_arr < 0 && type.is_zero_terminated()
 				&& (elem.get_tag() == GI.TypeTag.UTF8 || elem.get_tag() == GI.TypeTag.FILENAME)) {
 				string[] strv = {};
-				var i = 0;
-				while (((string*) arg.v_pointer)[i] != null) {
-					strv += ((string*) arg.v_pointer)[i];
-					i++;
+				unowned string** rows = (string**) arg.v_pointer;
+				for (var i = 0; rows[i] != null; i++) {
+					strv += rows[i];
 				}
-				dest.add(strv);
+				dest.add(new GLib.Variant("as", strv));
 				return true;
 			}
 			if (n_arr < 0) {
@@ -862,37 +871,37 @@ namespace OLLMrpc
 				case GI.TypeTag.INT32:
 					var ints = new int[n_arr];
 					GLib.Memory.copy(ints, arg.v_pointer, n_arr * sizeof(int));
-					dest.add(ints);
+					dest.add(new GLib.Variant("ai", ints));
 					return true;
 
 				case GI.TypeTag.UINT32:
 					var uints = new uint[n_arr];
 					GLib.Memory.copy(uints, arg.v_pointer, n_arr * sizeof(uint));
-					dest.add(uints);
+					dest.add(new GLib.Variant("au", uints));
 					return true;
 
 				case GI.TypeTag.INT64:
 					var i64s = new int64[n_arr];
 					GLib.Memory.copy(i64s, arg.v_pointer, n_arr * sizeof(int64));
-					dest.add(i64s);
+					dest.add(new GLib.Variant("ax", i64s));
 					return true;
 
 				case GI.TypeTag.UINT64:
 					var u64s = new uint64[n_arr];
 					GLib.Memory.copy(u64s, arg.v_pointer, n_arr * sizeof(uint64));
-					dest.add(u64s);
+					dest.add(new GLib.Variant("at", u64s));
 					return true;
 
 				case GI.TypeTag.FLOAT:
 					var floats = new float[n_arr];
 					GLib.Memory.copy(floats, arg.v_pointer, n_arr * sizeof(float));
-					dest.add(floats);
+					dest.add(new GLib.Variant("af", floats));
 					return true;
 
 				case GI.TypeTag.DOUBLE:
 					var doubles = new double[n_arr];
 					GLib.Memory.copy(doubles, arg.v_pointer, n_arr * sizeof(double));
-					dest.add(doubles);
+					dest.add(new GLib.Variant("ad", doubles));
 					return true;
 
 				default:
@@ -935,8 +944,9 @@ namespace OLLMrpc
 				return true;
 			}
 			if (type.get_tag() == GI.TypeTag.GLIST) {
-				for (var node = (GLib.List) arg.v_pointer; node != null; node = node.next) {
-					var obj = (GLib.Object) node.data;
+				for (unowned GLib.List<GLib.Object>? node = (GLib.List<GLib.Object>) arg.v_pointer;
+					node != null; node = node.next) {
+					var obj = node.data;
 					if (Bin.gtype_to_alias != null && Bin.gtype_to_alias.has_key(obj.get_type())) {
 						this.request.connection.export(obj);
 						response.result.add(obj);
@@ -948,8 +958,9 @@ namespace OLLMrpc
 				}
 				return true;
 			}
-			for (var node = (GLib.SList) arg.v_pointer; node != null; node = node.next) {
-				var obj = (GLib.Object) node.data;
+			for (unowned GLib.SList<GLib.Object>? node = (GLib.SList<GLib.Object>) arg.v_pointer;
+				node != null; node = node.next) {
+				var obj = node.data;
 				if (Bin.gtype_to_alias != null && Bin.gtype_to_alias.has_key(obj.get_type())) {
 					this.request.connection.export(obj);
 					response.result.add(obj);

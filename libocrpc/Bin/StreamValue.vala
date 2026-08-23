@@ -171,41 +171,38 @@ namespace OLLMrpc.Bin
 				return;
 			}
 
-			if (val.type() == typeof(int[])) {
-				var arr = (int[]) val;
-				StreamValue.write_numeric_array(
-					ctx, GLib.Type.INT, arr.length, arr, sizeof(int));
-				return;
-			}
-			if (val.type() == typeof(uint[])) {
-				var arr = (uint[]) val;
-				StreamValue.write_numeric_array(
-					ctx, GLib.Type.UINT, arr.length, arr, sizeof(uint));
-				return;
-			}
-			if (val.type() == typeof(int64[])) {
-				var arr = (int64[]) val;
-				StreamValue.write_numeric_array(
-					ctx, GLib.Type.INT64, arr.length, arr, sizeof(int64));
-				return;
-			}
-			if (val.type() == typeof(uint64[])) {
-				var arr = (uint64[]) val;
-				StreamValue.write_numeric_array(
-					ctx, GLib.Type.UINT64, arr.length, arr, sizeof(uint64));
-				return;
-			}
-			if (val.type() == typeof(float[])) {
-				var arr = (float[]) val;
-				StreamValue.write_numeric_array(
-					ctx, GLib.Type.FLOAT, arr.length, arr, sizeof(float));
-				return;
-			}
-			if (val.type() == typeof(double[])) {
-				var arr = (double[]) val;
-				StreamValue.write_numeric_array(
-					ctx, GLib.Type.DOUBLE, arr.length, arr, sizeof(double));
-				return;
+			if (val.type() == typeof(GLib.Variant)) {
+				var var = val.get_variant();
+				if (var.is_of_type(new GLib.VariantType("ai"))) {
+					StreamValue.write_numeric_array(ctx, GLib.Type.INT,
+						(int) (var.get_size() / sizeof(int)), var.get_data(), sizeof(int));
+					return;
+				}
+				if (var.is_of_type(new GLib.VariantType("au"))) {
+					StreamValue.write_numeric_array(ctx, GLib.Type.UINT,
+						(int) (var.get_size() / sizeof(uint)), var.get_data(), sizeof(uint));
+					return;
+				}
+				if (var.is_of_type(new GLib.VariantType("ax"))) {
+					StreamValue.write_numeric_array(ctx, GLib.Type.INT64,
+						(int) (var.get_size() / sizeof(int64)), var.get_data(), sizeof(int64));
+					return;
+				}
+				if (var.is_of_type(new GLib.VariantType("at"))) {
+					StreamValue.write_numeric_array(ctx, GLib.Type.UINT64,
+						(int) (var.get_size() / sizeof(uint64)), var.get_data(), sizeof(uint64));
+					return;
+				}
+				if (var.is_of_type(new GLib.VariantType("af"))) {
+					StreamValue.write_numeric_array(ctx, GLib.Type.FLOAT,
+						(int) (var.get_size() / sizeof(float)), var.get_data(), sizeof(float));
+					return;
+				}
+				if (var.is_of_type(new GLib.VariantType("ad"))) {
+					StreamValue.write_numeric_array(ctx, GLib.Type.DOUBLE,
+						(int) (var.get_size() / sizeof(double)), var.get_data(), sizeof(double));
+					return;
+				}
 			}
 
 			if (val.type().is_a(GLib.Type.ENUM)) {
@@ -483,7 +480,9 @@ namespace OLLMrpc.Bin
 			}
 			var nbytes = count * elem_size;
 			var payload = new uint8[nbytes];
-			GLib.Memory.copy(payload, native, nbytes);
+			if (native != null) {
+				GLib.Memory.copy(payload, native, nbytes);
+			}
 			size_t written;
 			ctx.out_stream.write_all(payload, out written);
 		}
@@ -509,44 +508,38 @@ namespace OLLMrpc.Bin
 				case GLib.Type.INT:
 					var ints = new int[count];
 					size_t int_read;
-					ctx.in_stream.read_all(
-						((uint8[]) ints)[0:count * sizeof(int)], out int_read);
-					return ints;
+					ctx.in_stream.read_all(((uint8[]) ints)[0:count * sizeof(int)], out int_read);
+					return new GLib.Variant("ai", ints);
 
 				case GLib.Type.UINT:
 					var uints = new uint[count];
 					size_t uint_read;
-					ctx.in_stream.read_all(
-						((uint8[]) uints)[0:count * sizeof(uint)], out uint_read);
-					return uints;
+					ctx.in_stream.read_all(((uint8[]) uints)[0:count * sizeof(uint)], out uint_read);
+					return new GLib.Variant("au", uints);
 
 				case GLib.Type.INT64:
 					var i64s = new int64[count];
 					size_t i64_read;
-					ctx.in_stream.read_all(
-						((uint8[]) i64s)[0:count * sizeof(int64)], out i64_read);
-					return i64s;
+					ctx.in_stream.read_all(((uint8[]) i64s)[0:count * sizeof(int64)], out i64_read);
+					return new GLib.Variant("ax", i64s);
 
 				case GLib.Type.UINT64:
 					var u64s = new uint64[count];
 					size_t u64_read;
-					ctx.in_stream.read_all(
-						((uint8[]) u64s)[0:count * sizeof(uint64)], out u64_read);
-					return u64s;
+					ctx.in_stream.read_all(((uint8[]) u64s)[0:count * sizeof(uint64)], out u64_read);
+					return new GLib.Variant("at", u64s);
 
 				case GLib.Type.FLOAT:
 					var floats = new float[count];
 					size_t float_read;
-					ctx.in_stream.read_all(
-						((uint8[]) floats)[0:count * sizeof(float)], out float_read);
-					return floats;
+					ctx.in_stream.read_all(((uint8[]) floats)[0:count * sizeof(float)], out float_read);
+					return new GLib.Variant("af", floats);
 
 				case GLib.Type.DOUBLE:
 					var doubles = new double[count];
 					size_t double_read;
-					ctx.in_stream.read_all(
-						((uint8[]) doubles)[0:count * sizeof(double)], out double_read);
-					return doubles;
+					ctx.in_stream.read_all(((uint8[]) doubles)[0:count * sizeof(double)], out double_read);
+					return new GLib.Variant("ad", doubles);
 
 				default:
 					throw new StreamError.PROTOCOL(
