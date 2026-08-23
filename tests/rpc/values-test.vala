@@ -121,6 +121,53 @@ namespace OLLMrpcTests
 			this.check(command_line, got.get_size() == 16, "blob size");
 			this.check(command_line, got.get(0) == 0, "blob [0]");
 			this.check(command_line, got.get(4) == 10, "blob [4]");
+			var f_val = GLib.Value(typeof(float));
+			f_val.set_float((float) 1.5);
+			var f_req = new OLLMrpc.Request() {
+				method = "RPC-Probe.blob"
+			};
+			f_req.values.add(f_val);
+			response = null;
+			var f_loop = new GLib.MainLoop();
+			rpc.call.begin(f_req, (obj, res) => {
+				response = rpc.call.end(res);
+				f_loop.quit();
+			});
+			f_loop.run();
+			this.check(command_line, response.error == null, "float returned error");
+			this.check(command_line, response.values.get(0).get_float() == (float) 1.5, "float value");
+			var d_val = GLib.Value(typeof(double));
+			d_val.set_double(2.5);
+			var d_req = new OLLMrpc.Request() {
+				method = "RPC-Probe.blob"
+			};
+			d_req.values.add(d_val);
+			response = null;
+			var d_loop = new GLib.MainLoop();
+			rpc.call.begin(d_req, (obj, res) => {
+				response = rpc.call.end(res);
+				d_loop.quit();
+			});
+			d_loop.run();
+			this.check(command_line, response.error == null, "double returned error");
+			this.check(command_line, response.values.get(0).get_double() == 2.5, "double value");
+			var ints = new int[] { 1, 2, 3 };
+			var i_val = (GLib.Value) ints;
+			var i_req = new OLLMrpc.Request() {
+				method = "RPC-Probe.blob"
+			};
+			i_req.values.add(i_val);
+			response = null;
+			var i_loop = new GLib.MainLoop();
+			rpc.call.begin(i_req, (obj, res) => {
+				response = rpc.call.end(res);
+				i_loop.quit();
+			});
+			i_loop.run();
+			this.check(command_line, response.error == null, "int[] returned error");
+			var got_ints = (int[]) response.values.get(0);
+			this.check(command_line, got_ints.length == 3, "int[] length");
+			this.check(command_line, got_ints[1] == 2, "int[] [1]");
 			rpc.disconnect();
 			listen.stop();
 		}

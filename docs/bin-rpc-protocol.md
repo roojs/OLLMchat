@@ -276,6 +276,8 @@ Always **exactly one byte** per property value. The low seven bits (when bit 7 i
 | `0x2C` | `UINT64` (44) | `uint64` |
 | `0x30` | `ENUM` (48) | any `enum` |
 | `0x34` | `FLAGS` (52) | any `flags` |
+| `0x38` | `FLOAT` (56) | `float` — IEEE-754 bits as BE `uint32` |
+| `0x3C` | `DOUBLE` (60) | `double` — IEEE-754 bits as BE `uint64` |
 | `0x48` | `BOXED` (72) | large binary blob |
 | `0x50` | `GObject` (80) | registered object — `reg_id` follows |
 
@@ -415,6 +417,26 @@ Used for `uint`, `uint64`, and `flags`. The type byte reflects the property's fu
 
 ---
 
+### Float / double
+
+**`float`** — Vala: `ratio = 1.5f`
+
+```text
+38                       ;; G_TYPE_FLOAT (56)
+3F 00 00 00              ;; IEEE-754 bits as BE uint32
+```
+
+**`double`** — Vala: `ratio = 2.5`
+
+```text
+3C                       ;; G_TYPE_DOUBLE (60)
+40 04 00 00 00 00 00 00  ;; IEEE-754 bits as BE uint64
+```
+
+No width prefix — fixed 4 / 8 payload bytes (same endian swap as §12 `uint64` puts).
+
+---
+
 ## 13. Blob
 
 Large binary (`GLib.Type.BOXED`):
@@ -490,6 +512,13 @@ Each element uses the §9 length prefix (not a per-element type byte).
 ```
 
 Each array element carries its own type byte and payload (same encoding as a scalar of that type).
+
+### Endian transport of numeric arrays
+
+**Warning:** Do **not** send numeric arrays (`int[]`, `uint[]`, `int64[]`, `uint64[]`, `float[]`, `double[]`) between peers with **different endianness** or **different CPU architectures**. Payloads are a native-endian memcpy of the sender’s array — the receiver will misread values if endian or layout differs. Today both ends are x86_64 little-endian Linux (`Request.values` / `Response.values` only; not GObject property arrays above).
+
+- **Wire:** `type|0x80`, compact count (§9), then `count × sizeof(element)` — one contiguous slab (not per-element type bytes like the property `int[]` example above).
+- **Scalar ints** in the same `values[]` list stay **big-endian** (§7) — only the **array slab** is native-endian.
 
 ### Object array
 

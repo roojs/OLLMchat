@@ -118,6 +118,22 @@ namespace OLLMrpc.Bin
 					ctx.out_stream.put_byte(8);
 					ctx.out_stream.put_uint64(val.get_uint64());
 					return;
+
+				case GLib.Type.FLOAT:
+					var f = val.get_float();
+					var f_bits = (uint32) 0;
+					GLib.Memory.copy(&f_bits, &f, 4);
+					ctx.out_stream.put_byte((uint8) GLib.Type.FLOAT);
+					ctx.out_stream.put_uint32(f_bits);
+					return;
+
+				case GLib.Type.DOUBLE:
+					var d = val.get_double();
+					var d_bits = (uint64) 0;
+					GLib.Memory.copy(&d_bits, &d, 8);
+					ctx.out_stream.put_byte((uint8) GLib.Type.DOUBLE);
+					ctx.out_stream.put_uint64(d_bits);
+					return;
 			}
 
 			if (val.type() == typeof(GLib.Bytes)) {
@@ -152,6 +168,43 @@ namespace OLLMrpc.Bin
 					size_t written;
 					ctx.out_stream.write_all(((uint8[]) elem)[0:elem.length], out written);
 				}
+				return;
+			}
+
+			if (val.type() == typeof(int[])) {
+				var arr = (int[]) val;
+				StreamValue.write_numeric_array(
+					ctx, GLib.Type.INT, arr.length, arr, sizeof(int));
+				return;
+			}
+			if (val.type() == typeof(uint[])) {
+				var arr = (uint[]) val;
+				StreamValue.write_numeric_array(
+					ctx, GLib.Type.UINT, arr.length, arr, sizeof(uint));
+				return;
+			}
+			if (val.type() == typeof(int64[])) {
+				var arr = (int64[]) val;
+				StreamValue.write_numeric_array(
+					ctx, GLib.Type.INT64, arr.length, arr, sizeof(int64));
+				return;
+			}
+			if (val.type() == typeof(uint64[])) {
+				var arr = (uint64[]) val;
+				StreamValue.write_numeric_array(
+					ctx, GLib.Type.UINT64, arr.length, arr, sizeof(uint64));
+				return;
+			}
+			if (val.type() == typeof(float[])) {
+				var arr = (float[]) val;
+				StreamValue.write_numeric_array(
+					ctx, GLib.Type.FLOAT, arr.length, arr, sizeof(float));
+				return;
+			}
+			if (val.type() == typeof(double[])) {
+				var arr = (double[]) val;
+				StreamValue.write_numeric_array(
+					ctx, GLib.Type.DOUBLE, arr.length, arr, sizeof(double));
 				return;
 			}
 
@@ -266,6 +319,9 @@ namespace OLLMrpc.Bin
 				}
 				return arr;
 			}
+			if ((type_byte & 0x80) != 0) {
+				return StreamValue.read_array(ctx, type_byte);
+			}
 			switch ((GLib.Type) (type_byte & 0x7F)) {
 				case GLib.Type.BOOLEAN:
 					var bool_val = GLib.Value(typeof(bool));
@@ -378,6 +434,22 @@ namespace OLLMrpc.Bin
 					u64_val.set_uint64(ctx.in_stream.read_uint64());
 					return u64_val;
 
+				case GLib.Type.FLOAT:
+					var f_bits = ctx.in_stream.read_uint32();
+					var f = (float) 0;
+					GLib.Memory.copy(&f, &f_bits, 4);
+					var f_val = GLib.Value(typeof(float));
+					f_val.set_float(f);
+					return f_val;
+
+				case GLib.Type.DOUBLE:
+					var d_bits = ctx.in_stream.read_uint64();
+					var d = (double) 0;
+					GLib.Memory.copy(&d, &d_bits, 8);
+					var d_val = GLib.Value(typeof(double));
+					d_val.set_double(d);
+					return d_val;
+
 				case GLib.Type.OBJECT:
 					var child = ctx.parse_object();
 					var obj_val = GLib.Value(child.get_type());
@@ -389,6 +461,99 @@ namespace OLLMrpc.Bin
 				"unsupported wire type 0x%02X",
 				type_byte & 0x7F
 			);
+		}
+
+		private static void write_numeric_array(
+			Stream ctx,
+			GLib.Type fundamental,
+			int count,
+			void* native,
+			size_t elem_size
+		) throws GLib.Error
+		{
+			ctx.out_stream.put_byte((uint8) fundamental | 0x80);
+			if (count < 128) {
+				ctx.out_stream.put_byte((uint8) count);
+			} else {
+				ctx.out_stream.put_byte((uint8) (0x80 | ((count >> 8) & 0x7F)));
+				ctx.out_stream.put_byte((uint8) (count & 0xFF));
+			}
+			if (count == 0) {
+				return;
+			}
+			var nbytes = count * elem_size;
+			var payload = new uint8[nbytes];
+			GLib.Memory.copy(payload, native, nbytes);
+			size_t written;
+			ctx.out_stream.write_all(payload, out written);
+		}
+
+		/**
+		 * Decode a homogeneous scalar array (type byte has array flag).
+		 *
+		 * Compact count (§9), then one fixed-width **native-endian** payload slab —
+		 * not the per-element type-byte property layout in §15. Same-endian peers only.
+		 *
+		 * @param ctx active bin session
+		 * @param type_byte wire type with bit 7 set
+		 * @return array {@link GLib.Value} (''int[]'', ''uint[]'', …)
+		 */
+		private static GLib.Value read_array(Stream ctx, uint8 type_byte) throws GLib.Error
+		{
+			var n = ctx.in_stream.read_byte();
+			var count = n & 0x7F;
+			if ((n & 0x80) != 0) {
+				count = (count << 8) | ctx.in_stream.read_byte();
+			}
+			switch ((GLib.Type) (type_byte & 0x7F)) {
+				case GLib.Type.INT:
+					var ints = new int[count];
+					size_t int_read;
+					ctx.in_stream.read_all(
+						((uint8[]) ints)[0:count * sizeof(int)], out int_read);
+					return ints;
+
+				case GLib.Type.UINT:
+					var uints = new uint[count];
+					size_t uint_read;
+					ctx.in_stream.read_all(
+						((uint8[]) uints)[0:count * sizeof(uint)], out uint_read);
+					return uints;
+
+				case GLib.Type.INT64:
+					var i64s = new int64[count];
+					size_t i64_read;
+					ctx.in_stream.read_all(
+						((uint8[]) i64s)[0:count * sizeof(int64)], out i64_read);
+					return i64s;
+
+				case GLib.Type.UINT64:
+					var u64s = new uint64[count];
+					size_t u64_read;
+					ctx.in_stream.read_all(
+						((uint8[]) u64s)[0:count * sizeof(uint64)], out u64_read);
+					return u64s;
+
+				case GLib.Type.FLOAT:
+					var floats = new float[count];
+					size_t float_read;
+					ctx.in_stream.read_all(
+						((uint8[]) floats)[0:count * sizeof(float)], out float_read);
+					return floats;
+
+				case GLib.Type.DOUBLE:
+					var doubles = new double[count];
+					size_t double_read;
+					ctx.in_stream.read_all(
+						((uint8[]) doubles)[0:count * sizeof(double)], out double_read);
+					return doubles;
+
+				default:
+					throw new StreamError.PROTOCOL(
+						"unsupported bin array type 0x%02X",
+						type_byte & 0x7F
+					);
+			}
 		}
 	}
 }

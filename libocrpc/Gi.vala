@@ -327,6 +327,19 @@ namespace OLLMrpc
 				case GI.TypeTag.VOID:
 					break;
 
+				case GI.TypeTag.GLIST:
+				case GI.TypeTag.GSLIST:
+					if (!this.scalar_list(ret_type, ret, response)) {
+						return true;
+					}
+					break;
+
+				case GI.TypeTag.GHASH:
+					if (!this.scalar_hash(ret_type, ret, response)) {
+						return true;
+					}
+					break;
+
 				case GI.TypeTag.INTERFACE:
 					var kind = ret_type.get_interface().get_type();
 					if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
@@ -384,9 +397,78 @@ namespace OLLMrpc
 		private bool convert(GI.ArgInfo arg, int vi, int offset = 0)
 		{
 			var val = this.request.values.get(vi);
-			switch (arg.get_type().get_tag()) {
+			var tag = arg.get_type().get_tag();
+			var want = GLib.Type.INVALID;
+			switch (tag) {
+				case GI.TypeTag.BOOLEAN:
+					want = GLib.Type.BOOLEAN;
+					break;
+
+				case GI.TypeTag.INT8:
+					want = GLib.Type.CHAR;
+					break;
+
+				case GI.TypeTag.UINT8:
+					want = GLib.Type.UCHAR;
+					break;
+
+				case GI.TypeTag.INT16:
+				case GI.TypeTag.INT32:
+					want = GLib.Type.INT;
+					break;
+
+				case GI.TypeTag.UINT16:
+				case GI.TypeTag.UINT32:
+					want = GLib.Type.UINT;
+					break;
+
+				case GI.TypeTag.INT64:
+					want = GLib.Type.INT64;
+					break;
+
+				case GI.TypeTag.UINT64:
+					want = GLib.Type.UINT64;
+					break;
+
+				case GI.TypeTag.FLOAT:
+					want = GLib.Type.FLOAT;
+					break;
+
+				case GI.TypeTag.DOUBLE:
+					want = GLib.Type.DOUBLE;
+					break;
+
+				default:
+					break;
+			}
+			if (want != GLib.Type.INVALID && val.type() != want) {
+				var coerced = GLib.Value(want);
+				if (!val.transform(ref coerced)) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				val = coerced;
+			}
+			switch (tag) {
 				case GI.TypeTag.BOOLEAN:
 					this.in_args[vi + offset].v_boolean = val.get_boolean();
+					return true;
+
+				case GI.TypeTag.INT8:
+					this.in_args[vi + offset].v_int8 = val.get_schar();
+					return true;
+
+				case GI.TypeTag.UINT8:
+					this.in_args[vi + offset].v_uint8 = val.get_uchar();
+					return true;
+
+				case GI.TypeTag.INT16:
+					this.in_args[vi + offset].v_int16 = (int16) val.get_int();
+					return true;
+
+				case GI.TypeTag.UINT16:
+					this.in_args[vi + offset].v_uint16 = (uint16) val.get_uint();
 					return true;
 
 				case GI.TypeTag.INT32:
@@ -405,13 +487,111 @@ namespace OLLMrpc
 					this.in_args[vi + offset].v_uint64 = val.get_uint64();
 					return true;
 
+				case GI.TypeTag.FLOAT:
+					this.in_args[vi + offset].v_float = val.get_float();
+					return true;
+
+				case GI.TypeTag.DOUBLE:
+					this.in_args[vi + offset].v_double = val.get_double();
+					return true;
+
 				case GI.TypeTag.UTF8:
 				case GI.TypeTag.FILENAME:
 					this.in_args[vi + offset].v_string = val.get_string();
 					return true;
 
+				case GI.TypeTag.ARRAY:
+					return this.convert_array(arg, vi, offset);
+
 				case GI.TypeTag.INTERFACE:
 					return this.convert_interface(arg, vi, offset);
+
+				default:
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+			}
+		}
+
+		/**
+		 * Fill one {@link in_args} slot for a GIR ARRAY IN argument.
+		 *
+		 * The wire row must match the element {@link GI.TypeTag}. Pointer
+		 * aliases the array already in {@link request}.values.
+		 *
+		 * @param arg one IN argument from the callable
+		 * @param vi index in {@link request}.values
+		 * @param offset added to ''vi'' for {@link in_args}
+		 * @return false when this method already replied an error
+		 */
+		private bool convert_array(GI.ArgInfo arg, int vi, int offset)
+		{
+			var val = this.request.values.get(vi);
+			var elem = arg.get_type().get_param_type(0);
+			switch (elem.get_tag()) {
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME:
+					if (val.type() != typeof(string[])) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					this.in_args[vi + offset].v_pointer = (void*) (string[]) val;
+					return true;
+
+				case GI.TypeTag.INT32:
+					if (val.type() != typeof(int[])) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					this.in_args[vi + offset].v_pointer = (void*) (int[]) val;
+					return true;
+
+				case GI.TypeTag.UINT32:
+					if (val.type() != typeof(uint[])) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					this.in_args[vi + offset].v_pointer = (void*) (uint[]) val;
+					return true;
+
+				case GI.TypeTag.INT64:
+					if (val.type() != typeof(int64[])) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					this.in_args[vi + offset].v_pointer = (void*) (int64[]) val;
+					return true;
+
+				case GI.TypeTag.UINT64:
+					if (val.type() != typeof(uint64[])) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					this.in_args[vi + offset].v_pointer = (void*) (uint64[]) val;
+					return true;
+
+				case GI.TypeTag.FLOAT:
+					if (val.type() != typeof(float[])) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					this.in_args[vi + offset].v_pointer = (void*) (float[]) val;
+					return true;
+
+				case GI.TypeTag.DOUBLE:
+					if (val.type() != typeof(double[])) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					this.in_args[vi + offset].v_pointer = (void*) (double[]) val;
+					return true;
 
 				default:
 					this.request.connection.reply_error(
@@ -462,6 +642,18 @@ namespace OLLMrpc
 					return false;
 				}
 				this.in_args[vi + offset].v_pointer = (void*) obj;
+				return true;
+			}
+			if (kind == GI.InfoType.FLAGS) {
+				this.in_args[vi + offset].v_uint32 = val.get_flags();
+				return true;
+			}
+			if (kind == GI.InfoType.ENUM) {
+				if (val.type().is_a(GLib.Type.ENUM)) {
+					this.in_args[vi + offset].v_int32 = val.get_enum();
+					return true;
+				}
+				this.in_args[vi + offset].v_int32 = val.get_int();
 				return true;
 			}
 			size_t n = 0;
@@ -562,6 +754,18 @@ namespace OLLMrpc
 					dest.add(u64);
 					return true;
 
+				case GI.TypeTag.FLOAT:
+					var fl = GLib.Value(typeof(float));
+					fl.set_float(arg.v_float);
+					dest.add(fl);
+					return true;
+
+				case GI.TypeTag.DOUBLE:
+					var db = GLib.Value(typeof(double));
+					db.set_double(arg.v_double);
+					dest.add(db);
+					return true;
+
 				case GI.TypeTag.UTF8:
 				case GI.TypeTag.FILENAME:
 					var s = GLib.Value(typeof(string));
@@ -569,8 +773,23 @@ namespace OLLMrpc
 					dest.add(s);
 					return true;
 
+				case GI.TypeTag.ARRAY:
+					return this.scalar_array(type, arg, dest);
+
 				case GI.TypeTag.INTERFACE:
 					var kind = type.get_interface().get_type();
+					if (kind == GI.InfoType.ENUM) {
+						var e = GLib.Value(typeof(int));
+						e.set_int(arg.v_int32);
+						dest.add(e);
+						return true;
+					}
+					if (kind == GI.InfoType.FLAGS) {
+						var f = GLib.Value(typeof(uint));
+						f.set_uint(arg.v_uint32);
+						dest.add(f);
+						return true;
+					}
 					size_t n = 0;
 					if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
 						var si = (GI.StructInfo) type.get_interface();
@@ -602,6 +821,193 @@ namespace OLLMrpc
 						this.request, (int) RpcErrorCode.INVALID_PARAMS);
 					return false;
 			}
+		}
+
+		/**
+		 * Append one GIR ARRAY return / OUT argument to {@link dest}.
+		 *
+		 * Zero-terminated UTF8 / FILENAME → ''string[]''. Fixed-size
+		 * numeric → typed array via {@link GLib.Memory.copy}.
+		 *
+		 * @param type GIR array type
+		 * @param arg filled by {@link GI.FunctionInfo.invoke}
+		 * @param dest {@link Response.values}
+		 * @return false when this method already replied an error
+		 */
+		private bool scalar_array(
+			GI.TypeInfo type,
+			GI.Argument arg,
+			Gee.ArrayList<GLib.Value?> dest
+		)
+		{
+			var elem = type.get_param_type(0);
+			var n_arr = type.get_array_fixed_size();
+			if (n_arr < 0 && type.is_zero_terminated()
+				&& (elem.get_tag() == GI.TypeTag.UTF8 || elem.get_tag() == GI.TypeTag.FILENAME)) {
+				string[] strv = {};
+				var i = 0;
+				while (((string*) arg.v_pointer)[i] != null) {
+					strv += ((string*) arg.v_pointer)[i];
+					i++;
+				}
+				dest.add(strv);
+				return true;
+			}
+			if (n_arr < 0) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			switch (elem.get_tag()) {
+				case GI.TypeTag.INT32:
+					var ints = new int[n_arr];
+					GLib.Memory.copy(ints, arg.v_pointer, n_arr * sizeof(int));
+					dest.add(ints);
+					return true;
+
+				case GI.TypeTag.UINT32:
+					var uints = new uint[n_arr];
+					GLib.Memory.copy(uints, arg.v_pointer, n_arr * sizeof(uint));
+					dest.add(uints);
+					return true;
+
+				case GI.TypeTag.INT64:
+					var i64s = new int64[n_arr];
+					GLib.Memory.copy(i64s, arg.v_pointer, n_arr * sizeof(int64));
+					dest.add(i64s);
+					return true;
+
+				case GI.TypeTag.UINT64:
+					var u64s = new uint64[n_arr];
+					GLib.Memory.copy(u64s, arg.v_pointer, n_arr * sizeof(uint64));
+					dest.add(u64s);
+					return true;
+
+				case GI.TypeTag.FLOAT:
+					var floats = new float[n_arr];
+					GLib.Memory.copy(floats, arg.v_pointer, n_arr * sizeof(float));
+					dest.add(floats);
+					return true;
+
+				case GI.TypeTag.DOUBLE:
+					var doubles = new double[n_arr];
+					GLib.Memory.copy(doubles, arg.v_pointer, n_arr * sizeof(double));
+					dest.add(doubles);
+					return true;
+
+				default:
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+			}
+		}
+
+		/**
+		 * Export each GObject from a GIR GLIST / GSLIST return.
+		 *
+		 * Element type must be a registered GObject {@link GI.TypeTag.INTERFACE}.
+		 * Null list → empty {@link Response.result}.
+		 *
+		 * @param type GIR list type
+		 * @param arg filled by {@link GI.FunctionInfo.invoke}
+		 * @param response reply being built
+		 * @return false when this method already replied an error
+		 */
+		private bool scalar_list(
+			GI.TypeInfo type,
+			GI.Argument arg,
+			Response response
+		)
+		{
+			var elem = type.get_param_type(0);
+			if (elem.get_tag() != GI.TypeTag.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var kind = elem.get_interface().get_type();
+			if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			if (arg.v_pointer == null) {
+				return true;
+			}
+			if (type.get_tag() == GI.TypeTag.GLIST) {
+				for (var node = (GLib.List) arg.v_pointer; node != null; node = node.next) {
+					var obj = (GLib.Object) node.data;
+					if (Bin.gtype_to_alias != null && Bin.gtype_to_alias.has_key(obj.get_type())) {
+						this.request.connection.export(obj);
+						response.result.add(obj);
+						continue;
+					}
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				return true;
+			}
+			for (var node = (GLib.SList) arg.v_pointer; node != null; node = node.next) {
+				var obj = (GLib.Object) node.data;
+				if (Bin.gtype_to_alias != null && Bin.gtype_to_alias.has_key(obj.get_type())) {
+					this.request.connection.export(obj);
+					response.result.add(obj);
+					continue;
+				}
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			return true;
+		}
+
+		/**
+		 * Export each GObject value from a GIR GHASH return.
+		 *
+		 * Only ''UTF8'' keys and registered GObject values. Null table →
+		 * empty {@link Response.result}. Iteration order is undefined.
+		 *
+		 * @param type GIR hash type
+		 * @param arg filled by {@link GI.FunctionInfo.invoke}
+		 * @param response reply being built
+		 * @return false when this method already replied an error
+		 */
+		private bool scalar_hash(
+			GI.TypeInfo type,
+			GI.Argument arg,
+			Response response
+		)
+		{
+			var key_type = type.get_param_type(0);
+			var val_type = type.get_param_type(1);
+			if (key_type.get_tag() != GI.TypeTag.UTF8 || val_type.get_tag() != GI.TypeTag.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var kind = val_type.get_interface().get_type();
+			if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			if (arg.v_pointer == null) {
+				return true;
+			}
+			var ht = (GLib.HashTable<string, GLib.Object>) arg.v_pointer;
+			foreach (var key in ht.get_keys()) {
+				var obj = ht[key];
+				if (Bin.gtype_to_alias != null && Bin.gtype_to_alias.has_key(obj.get_type())) {
+					this.request.connection.export(obj);
+					response.result.add(obj);
+					continue;
+				}
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			return true;
 		}
 	}
 }
