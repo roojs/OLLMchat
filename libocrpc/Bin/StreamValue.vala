@@ -42,13 +42,10 @@ namespace OLLMrpc.Bin
 		{
 			switch (val.type()) {
 				case GLib.Type.STRING:
-					var s = val.get_string() != null ? val.get_string() : "";
+					var s = val.get_string();
+					s = s != null ? s : "";
 					if (s.length > 32767) {
-						ctx.out_stream.put_byte((uint8) GLib.Type.BOXED);
-						ctx.out_stream.put_uint32((uint32) s.length);
-						size_t written;
-						ctx.out_stream.write_all(((uint8[]) s)[0:s.length], out written);
-						return;
+						throw new StreamError.PROTOCOL("string value longer than 32767");
 					}
 					ctx.out_stream.put_byte((uint8) GLib.Type.STRING);
 					if (s.length < 128) {
@@ -121,6 +118,18 @@ namespace OLLMrpc.Bin
 					ctx.out_stream.put_byte(8);
 					ctx.out_stream.put_uint64(val.get_uint64());
 					return;
+			}
+
+			if (val.type() == typeof(GLib.Bytes)) {
+				var blob = (GLib.Bytes) val.get_boxed();
+				ctx.out_stream.put_byte((uint8) GLib.Type.BOXED);
+				ctx.out_stream.put_uint32((uint32) blob.get_size());
+				if (blob.get_size() == 0) {
+					return;
+				}
+				size_t written;
+				ctx.out_stream.write_all(blob.get_data(), out written);
+				return;
 			}
 
 			if (val.type() == typeof(string[])) {
@@ -202,12 +211,13 @@ namespace OLLMrpc.Bin
 		{
 			if ((GLib.Type) (type_byte & 0x7F) == GLib.Type.BOXED) {
 				var blob_len = ctx.in_stream.read_uint32();
-				var blob_buf = new uint8[blob_len + 1];
-				size_t blob_read;
-				ctx.in_stream.read_all(blob_buf[0:blob_len], out blob_read);
-				blob_buf[blob_len] = 0;
-				var blob_val = GLib.Value(typeof(string));
-				blob_val.set_string((string) blob_buf);
+				var blob_buf = new uint8[blob_len];
+				if (blob_len > 0) {
+					size_t blob_read;
+					ctx.in_stream.read_all(blob_buf[0:blob_len], out blob_read);
+				}
+				var blob_val = GLib.Value(typeof(GLib.Bytes));
+				blob_val.set_boxed(new GLib.Bytes(blob_buf));
 				return blob_val;
 			}
 			if ((GLib.Type) (type_byte & 0x7F) == GLib.Type.STRING) {

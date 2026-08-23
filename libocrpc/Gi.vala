@@ -56,6 +56,14 @@ namespace OLLMrpc
 
 		private GI.Argument[] out_args = {};
 
+		/**
+		 * Copies of IN / caller-allocates OUT blobs for the current
+		 * {@link dispatch_new} / {@link dispatch_function} invoke.
+		 * {@link GI.Argument} pointers alias {@link GLib.Bytes.get_data}
+		 * here.
+		 */
+		private Gee.ArrayList<GLib.Bytes> boxed_keep = new Gee.ArrayList<GLib.Bytes>();
+
 		public Gi(Request request)
 		{
 			GLib.Object(request: request);
@@ -171,6 +179,7 @@ namespace OLLMrpc
 			}
 			this.in_args = new GI.Argument[n_in];
 			this.out_args = new GI.Argument[0];
+			this.boxed_keep.clear();
 			var vi = 0;
 			for (var i = 0; i < fn.get_n_args(); i++) {
 				var arg = fn.get_arg(i);
@@ -263,20 +272,46 @@ namespace OLLMrpc
 			}
 			this.in_args = new GI.Argument[n_in];
 			this.out_args = new GI.Argument[n_out];
+			this.boxed_keep.clear();
 			this.in_args[0].v_pointer = (void*) this.request.connection.leases.get(id);
+			var out_i = 0;
 			var vi = 0;
 			for (var i = 0; i < fn.get_n_args(); i++) {
 				var arg = fn.get_arg(i);
 				if (arg.is_skip()) {
 					continue;
 				}
-				if (arg.get_direction() == GI.Direction.OUT) {
+				if (arg.get_direction() != GI.Direction.OUT) {
+					if (!this.convert(arg, vi, 1)) {
+						return true;
+					}
+					vi++;
 					continue;
 				}
-				if (!this.convert(arg, vi, 1)) {
+				if (!arg.is_caller_allocates() || arg.get_type().get_tag() != GI.TypeTag.INTERFACE) {
+					out_i++;
+					continue;
+				}
+				var kind = arg.get_type().get_interface().get_type();
+				size_t n = 0;
+				if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
+					var si = (GI.StructInfo) arg.get_type().get_interface();
+					if (!si.is_gtype_struct()) {
+						n = si.get_size();
+					}
+				} else if (kind == GI.InfoType.UNION) {
+					n = ((GI.UnionInfo) arg.get_type().get_interface()).get_size();
+				}
+				if (n == 0) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
 					return true;
 				}
-				vi++;
+				var buf = new uint8[n];
+				var keep = new GLib.Bytes(buf);
+				this.boxed_keep.add(keep);
+				this.out_args[out_i].v_pointer = (void*) keep.get_data();
+				out_i++;
 			}
 			var ret = GI.Argument();
 			try {
@@ -293,7 +328,19 @@ namespace OLLMrpc
 					break;
 
 				case GI.TypeTag.INTERFACE:
+					var kind = ret_type.get_interface().get_type();
+					if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
+						if (!this.scalar(ret_type, ret, response.values)) {
+							return true;
+						}
+						break;
+					}
 					var created = (GLib.Object) ret.v_pointer;
+					if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(created.get_type())) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return true;
+					}
 					this.request.connection.export(created);
 					response.result.add(created);
 					break;
@@ -363,11 +410,89 @@ namespace OLLMrpc
 					this.in_args[vi + offset].v_string = val.get_string();
 					return true;
 
+				case GI.TypeTag.INTERFACE:
+					return this.convert_interface(arg, vi, offset);
+
 				default:
 					this.request.connection.reply_error(
 						this.request, (int) RpcErrorCode.INVALID_PARAMS);
 					return false;
 			}
+		}
+
+		/**
+		 * Fill one {@link in_args} slot for a GIR INTERFACE argument.
+		 *
+		 * GObject / GInterface: lease id or a live object in
+		 * {@link request}.values. The instance GType must be in
+		 * {@link Bin.gtype_to_alias} (''Gi.register'' object types).
+		 * STRUCT / BOXED / UNION: {@link GLib.Bytes}
+		 * of {@link GI.StructInfo.get_size}. gtype-structs, size 0, and
+		 * other InfoTypes reply INVALID_PARAMS (one ''n == 0'' path).
+		 *
+		 * @param arg one IN argument from the callable
+		 * @param vi index in {@link request}.values
+		 * @param offset added to ''vi'' for {@link in_args}
+		 * @return false when this method already replied an error
+		 */
+		private bool convert_interface(GI.ArgInfo arg, int vi, int offset)
+		{
+			var val = this.request.values.get(vi);
+			var kind = arg.get_type().get_interface().get_type();
+			if (kind == GI.InfoType.OBJECT || kind == GI.InfoType.INTERFACE) {
+				if (val.type().is_a(GLib.Type.OBJECT)) {
+					if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(val.get_object().get_type())) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					this.in_args[vi + offset].v_pointer = (void*) val.get_object();
+					return true;
+				}
+				var id = (int) val.get_uint64();
+				if (!this.request.connection.leases.has_key(id)) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				var obj = this.request.connection.leases.get(id);
+				if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(obj.get_type())) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				this.in_args[vi + offset].v_pointer = (void*) obj;
+				return true;
+			}
+			size_t n = 0;
+			if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
+				var si = (GI.StructInfo) arg.get_type().get_interface();
+				if (!si.is_gtype_struct()) {
+					n = si.get_size();
+				}
+			} else if (kind == GI.InfoType.UNION) {
+				n = ((GI.UnionInfo) arg.get_type().get_interface()).get_size();
+			}
+			if (n == 0) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			if (val.type() != typeof(GLib.Bytes)) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var blob = (GLib.Bytes) val.get_boxed();
+			if (blob.get_size() != n) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var keep = new GLib.Bytes(blob.get_data());
+			this.boxed_keep.add(keep);
+			this.in_args[vi + offset].v_pointer = (void*) keep.get_data();
+			return true;
 		}
 
 		/**
@@ -442,6 +567,34 @@ namespace OLLMrpc
 					var s = GLib.Value(typeof(string));
 					s.set_string(arg.v_string);
 					dest.add(s);
+					return true;
+
+				case GI.TypeTag.INTERFACE:
+					var kind = type.get_interface().get_type();
+					size_t n = 0;
+					if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
+						var si = (GI.StructInfo) type.get_interface();
+						if (!si.is_gtype_struct()) {
+							n = si.get_size();
+						}
+					} else if (kind == GI.InfoType.UNION) {
+						n = ((GI.UnionInfo) type.get_interface()).get_size();
+					}
+					if (n == 0) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					if (arg.v_pointer == null) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					var copy = new uint8[n];
+					GLib.Memory.copy(copy, arg.v_pointer, n);
+					var boxed_val = GLib.Value(typeof(GLib.Bytes));
+					boxed_val.set_boxed(new GLib.Bytes(copy));
+					dest.add(boxed_val);
 					return true;
 
 				default:

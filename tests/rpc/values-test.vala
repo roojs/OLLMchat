@@ -22,6 +22,8 @@ namespace OLLMrpcTests
 	{
 		public signal void call_echo(OLLMrpc.Request request);
 
+		public signal void call_blob(OLLMrpc.Request request);
+
 		construct
 		{
 			this.call_echo.connect((request) => {
@@ -29,6 +31,11 @@ namespace OLLMrpcTests
 					msg = request.values.get(0).get_string()
 						+ request.values.get(1).get_int().to_string()
 				});
+			});
+			this.call_blob.connect((request) => {
+				var response = new OLLMrpc.Response();
+				response.values.add(request.values.get(0));
+				request.reply(response);
 			});
 		}
 	}
@@ -91,6 +98,29 @@ namespace OLLMrpcTests
 			call_loop.run();
 			this.check(command_line, response.error == null, "echo returned error");
 			this.check(command_line, response.msg == "n3", "echo values not applied");
+			var payload = new uint8[16];
+			payload[4] = 10;
+			payload[8] = 20;
+			payload[12] = 30;
+			var blob = GLib.Value(typeof(GLib.Bytes));
+			blob.set_boxed(new GLib.Bytes(payload));
+			var blob_req = new OLLMrpc.Request() {
+				method = "RPC-Probe.blob"
+			};
+			blob_req.values.add(blob);
+			response = null;
+			var blob_loop = new GLib.MainLoop();
+			rpc.call.begin(blob_req, (obj, res) => {
+				response = rpc.call.end(res);
+				blob_loop.quit();
+			});
+			blob_loop.run();
+			this.check(command_line, response.error == null, "blob returned error");
+			this.check(command_line, response.values.size == 1, "blob returned no value");
+			var got = (GLib.Bytes) response.values.get(0).get_boxed();
+			this.check(command_line, got.get_size() == 16, "blob size");
+			this.check(command_line, got.get(0) == 0, "blob [0]");
+			this.check(command_line, got.get(4) == 10, "blob [4]");
 			rpc.disconnect();
 			listen.stop();
 		}
