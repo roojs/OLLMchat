@@ -165,9 +165,9 @@ namespace OLLMrpcTests
 			});
 			i_loop.run();
 			this.check(command_line, response.error == null, "int[] returned error");
-			unowned GLib.Variant got_var = response.values.get(0).get_variant();
-			this.check(command_line, got_var.n_children() == 3, "int[] length");
-			this.check(command_line, got_var.get_child_value(1).get_int32() == 2, "int[] [1]");
+			var variant = response.values.get(0).dup_variant();
+			this.check(command_line, variant.n_children() == 3, "int[] length");
+			this.check(command_line, variant.get_child_value(1).get_int32() == 2, "int[] [1]");
 			rpc.disconnect();
 			listen.stop();
 		}

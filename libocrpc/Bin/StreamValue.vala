@@ -172,35 +172,35 @@ namespace OLLMrpc.Bin
 			}
 
 			if (val.type() == typeof(GLib.Variant)) {
-				unowned GLib.Variant var = val.get_variant();
-				if (var.is_of_type(new GLib.VariantType("ai"))) {
+				var variant = val.dup_variant();
+				if (variant.is_of_type(new GLib.VariantType("ai"))) {
 					StreamValue.write_numeric_array(ctx, GLib.Type.INT,
-						(int) (var.get_size() / sizeof(int)), var.get_data(), sizeof(int));
+						(int) (variant.get_size() / sizeof(int)), variant.get_data(), sizeof(int));
 					return;
 				}
-				if (var.is_of_type(new GLib.VariantType("au"))) {
+				if (variant.is_of_type(new GLib.VariantType("au"))) {
 					StreamValue.write_numeric_array(ctx, GLib.Type.UINT,
-						(int) (var.get_size() / sizeof(uint)), var.get_data(), sizeof(uint));
+						(int) (variant.get_size() / sizeof(uint)), variant.get_data(), sizeof(uint));
 					return;
 				}
-				if (var.is_of_type(new GLib.VariantType("ax"))) {
+				if (variant.is_of_type(new GLib.VariantType("ax"))) {
 					StreamValue.write_numeric_array(ctx, GLib.Type.INT64,
-						(int) (var.get_size() / sizeof(int64)), var.get_data(), sizeof(int64));
+						(int) (variant.get_size() / sizeof(int64)), variant.get_data(), sizeof(int64));
 					return;
 				}
-				if (var.is_of_type(new GLib.VariantType("at"))) {
+				if (variant.is_of_type(new GLib.VariantType("at"))) {
 					StreamValue.write_numeric_array(ctx, GLib.Type.UINT64,
-						(int) (var.get_size() / sizeof(uint64)), var.get_data(), sizeof(uint64));
+						(int) (variant.get_size() / sizeof(uint64)), variant.get_data(), sizeof(uint64));
 					return;
 				}
-				if (var.is_of_type(new GLib.VariantType("af"))) {
+				if (variant.is_of_type(new GLib.VariantType("af"))) {
 					StreamValue.write_numeric_array(ctx, GLib.Type.FLOAT,
-						(int) (var.get_size() / sizeof(float)), var.get_data(), sizeof(float));
+						(int) (variant.get_size() / sizeof(float)), variant.get_data(), sizeof(float));
 					return;
 				}
-				if (var.is_of_type(new GLib.VariantType("ad"))) {
+				if (variant.is_of_type(new GLib.VariantType("ad"))) {
 					StreamValue.write_numeric_array(ctx, GLib.Type.DOUBLE,
-						(int) (var.get_size() / sizeof(double)), var.get_data(), sizeof(double));
+						(int) (variant.get_size() / sizeof(double)), variant.get_data(), sizeof(double));
 					return;
 				}
 			}

@@ -532,75 +532,111 @@ namespace OLLMrpc
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
 				return false;
 			}
-			unowned GLib.Variant var = val.get_variant();
 			var elem = arg.get_type().get_param_type(0);
 			switch (elem.get_tag()) {
 				case GI.TypeTag.UTF8:
 				case GI.TypeTag.FILENAME:
-					if (!var.is_of_type(new GLib.VariantType("as"))) {
+					var str_variant = val.dup_variant();
+					if (!str_variant.is_of_type(new GLib.VariantType("as"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
 					string[] strv = {};
-					for (var i = 0; i < var.n_children(); i++) {
-						strv += var.get_child_value(i).get_string();
+					for (var i = 0; i < str_variant.n_children(); i++) {
+						strv += str_variant.get_child_value(i).get_string();
 					}
 					this.in_args[vi + offset].v_pointer = (void*) strv;
 					return true;
 
 				case GI.TypeTag.INT32:
-					if (!var.is_of_type(new GLib.VariantType("ai"))) {
+					var int_variant = val.dup_variant();
+					if (!int_variant.is_of_type(new GLib.VariantType("ai"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = var.get_data();
+					var int_nbytes = int_variant.get_size();
+					var int_slab = new uint8[int_nbytes];
+					GLib.Memory.copy(int_slab, int_variant.get_data(), int_nbytes);
+					var int_keep = new GLib.Bytes(int_slab);
+					this.boxed_keep.add(int_keep);
+					this.in_args[vi + offset].v_pointer = (void*) int_keep.get_data();
 					return true;
 
 				case GI.TypeTag.UINT32:
-					if (!var.is_of_type(new GLib.VariantType("au"))) {
+					var uint_variant = val.dup_variant();
+					if (!uint_variant.is_of_type(new GLib.VariantType("au"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = var.get_data();
+					var uint_nbytes = uint_variant.get_size();
+					var uint_slab = new uint8[uint_nbytes];
+					GLib.Memory.copy(uint_slab, uint_variant.get_data(), uint_nbytes);
+					var uint_keep = new GLib.Bytes(uint_slab);
+					this.boxed_keep.add(uint_keep);
+					this.in_args[vi + offset].v_pointer = (void*) uint_keep.get_data();
 					return true;
 
 				case GI.TypeTag.INT64:
-					if (!var.is_of_type(new GLib.VariantType("ax"))) {
+					var i64_variant = val.dup_variant();
+					if (!i64_variant.is_of_type(new GLib.VariantType("ax"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = var.get_data();
+					var i64_nbytes = i64_variant.get_size();
+					var i64_slab = new uint8[i64_nbytes];
+					GLib.Memory.copy(i64_slab, i64_variant.get_data(), i64_nbytes);
+					var i64_keep = new GLib.Bytes(i64_slab);
+					this.boxed_keep.add(i64_keep);
+					this.in_args[vi + offset].v_pointer = (void*) i64_keep.get_data();
 					return true;
 
 				case GI.TypeTag.UINT64:
-					if (!var.is_of_type(new GLib.VariantType("at"))) {
+					var u64_variant = val.dup_variant();
+					if (!u64_variant.is_of_type(new GLib.VariantType("at"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = var.get_data();
+					var u64_nbytes = u64_variant.get_size();
+					var u64_slab = new uint8[u64_nbytes];
+					GLib.Memory.copy(u64_slab, u64_variant.get_data(), u64_nbytes);
+					var u64_keep = new GLib.Bytes(u64_slab);
+					this.boxed_keep.add(u64_keep);
+					this.in_args[vi + offset].v_pointer = (void*) u64_keep.get_data();
 					return true;
 
 				case GI.TypeTag.FLOAT:
-					if (!var.is_of_type(new GLib.VariantType("af"))) {
+					var float_variant = val.dup_variant();
+					if (!float_variant.is_of_type(new GLib.VariantType("af"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = var.get_data();
+					var float_nbytes = float_variant.get_size();
+					var float_slab = new uint8[float_nbytes];
+					GLib.Memory.copy(float_slab, float_variant.get_data(), float_nbytes);
+					var float_keep = new GLib.Bytes(float_slab);
+					this.boxed_keep.add(float_keep);
+					this.in_args[vi + offset].v_pointer = (void*) float_keep.get_data();
 					return true;
 
 				case GI.TypeTag.DOUBLE:
-					if (!var.is_of_type(new GLib.VariantType("ad"))) {
+					var double_variant = val.dup_variant();
+					if (!double_variant.is_of_type(new GLib.VariantType("ad"))) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return false;
 					}
-					this.in_args[vi + offset].v_pointer = var.get_data();
+					var double_nbytes = double_variant.get_size();
+					var double_slab = new uint8[double_nbytes];
+					GLib.Memory.copy(double_slab, double_variant.get_data(), double_nbytes);
+					var double_keep = new GLib.Bytes(double_slab);
+					this.boxed_keep.add(double_keep);
+					this.in_args[vi + offset].v_pointer = (void*) double_keep.get_data();
 					return true;
 
 				default:
