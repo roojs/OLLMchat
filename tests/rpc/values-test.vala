@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
  *
- * Positional Request.values smoke — types here are NOT shipped in libocrpc.
+ * Positional Request.args smoke — types here are NOT shipped in libocrpc.
  */
 
 namespace OLLMrpcTests
@@ -28,13 +28,13 @@ namespace OLLMrpcTests
 		{
 			this.call_echo.connect((request) => {
 				request.reply(new OLLMrpc.Response() {
-					msg = request.values.get(0).get_string()
-						+ request.values.get(1).get_int().to_string()
+					msg = request.args.get(0).get_string()
+						+ request.args.get(1).get_int().to_string()
 				});
 			});
 			this.call_blob.connect((request) => {
 				var response = new OLLMrpc.Response();
-				response.values.add(request.values.get(0));
+				response.args.add(request.args.get(0));
 				request.reply(response);
 			});
 		}
@@ -54,6 +54,26 @@ namespace OLLMrpcTests
 
 		protected override void run_rpc_test(ApplicationCommandLine command_line) throws Error
 		{
+			var packed = OLLMrpc.args("sibt", "n", 3, true, (uint64) 7);
+			this.check(command_line, packed.size == 4, "args size");
+			this.check(command_line, packed.get(0).get_string() == "n", "args string");
+			this.check(command_line, packed.get(1).get_int() == 3, "args int");
+			this.check(command_line, packed.get(2).get_boolean(), "args bool");
+			this.check(command_line, packed.get(3).get_uint64() == 7, "args uint64");
+			var hello = new Hello();
+			var objects = OLLMrpc.args("o", hello);
+			this.check(command_line, objects.size == 1, "args object size");
+			this.check(
+				command_line,
+				objects.get(0).get_object() == hello,
+				"args object"
+			);
+			string[] names = { "a", "b" };
+			var strv = OLLMrpc.args("as", names);
+			this.check(command_line, strv.size == 1, "args strv size");
+			var got_names = (string[]) strv.get(0).get_boxed();
+			this.check(command_line, got_names.length == 2, "args strv length");
+			this.check(command_line, got_names[0] == "a", "args strv [0]");
 			OLLMrpc.Bin.register("CallParam", typeof(OLLMrpc.CallParam));
 			OLLMrpc.Request.register(
 				"RPC-Daemon",
@@ -87,8 +107,8 @@ namespace OLLMrpcTests
 			var req = new OLLMrpc.Request() {
 				method = "RPC-Probe.echo"
 			};
-			req.values.add(text);
-			req.values.add(number);
+			req.args.add(text);
+			req.args.add(number);
 			OLLMrpc.Response? response = null;
 			var call_loop = new GLib.MainLoop();
 			rpc.call.begin(req, (obj, res) => {
@@ -107,7 +127,7 @@ namespace OLLMrpcTests
 			var blob_req = new OLLMrpc.Request() {
 				method = "RPC-Probe.blob"
 			};
-			blob_req.values.add(blob);
+			blob_req.args.add(blob);
 			response = null;
 			var blob_loop = new GLib.MainLoop();
 			rpc.call.begin(blob_req, (obj, res) => {
@@ -116,8 +136,8 @@ namespace OLLMrpcTests
 			});
 			blob_loop.run();
 			this.check(command_line, response.error == null, "blob returned error");
-			this.check(command_line, response.values.size == 1, "blob returned no value");
-			var got = (GLib.Bytes) response.values.get(0).get_boxed();
+			this.check(command_line, response.args.size == 1, "blob returned no value");
+			var got = (GLib.Bytes) response.args.get(0).get_boxed();
 			this.check(command_line, got.get_size() == 16, "blob size");
 			this.check(command_line, got.get(0) == 0, "blob [0]");
 			this.check(command_line, got.get(4) == 10, "blob [4]");
@@ -126,7 +146,7 @@ namespace OLLMrpcTests
 			var f_req = new OLLMrpc.Request() {
 				method = "RPC-Probe.blob"
 			};
-			f_req.values.add(f_val);
+			f_req.args.add(f_val);
 			response = null;
 			var f_loop = new GLib.MainLoop();
 			rpc.call.begin(f_req, (obj, res) => {
@@ -135,13 +155,13 @@ namespace OLLMrpcTests
 			});
 			f_loop.run();
 			this.check(command_line, response.error == null, "float returned error");
-			this.check(command_line, response.values.get(0).get_float() == (float) 1.5, "float value");
+			this.check(command_line, response.args.get(0).get_float() == (float) 1.5, "float value");
 			var d_val = GLib.Value(typeof(double));
 			d_val.set_double(2.5);
 			var d_req = new OLLMrpc.Request() {
 				method = "RPC-Probe.blob"
 			};
-			d_req.values.add(d_val);
+			d_req.args.add(d_val);
 			response = null;
 			var d_loop = new GLib.MainLoop();
 			rpc.call.begin(d_req, (obj, res) => {
@@ -150,12 +170,12 @@ namespace OLLMrpcTests
 			});
 			d_loop.run();
 			this.check(command_line, response.error == null, "double returned error");
-			this.check(command_line, response.values.get(0).get_double() == 2.5, "double value");
+			this.check(command_line, response.args.get(0).get_double() == 2.5, "double value");
 			var ints = new int[] { 1, 2, 3 };
 			var i_req = new OLLMrpc.Request() {
 				method = "RPC-Probe.blob"
 			};
-			i_req.values.add(GLib.Variant.new_fixed_array(
+			i_req.args.add(GLib.Variant.new_fixed_array(
 				new GLib.VariantType("i"), ints, sizeof(int)));
 			response = null;
 			var i_loop = new GLib.MainLoop();
@@ -165,7 +185,7 @@ namespace OLLMrpcTests
 			});
 			i_loop.run();
 			this.check(command_line, response.error == null, "int[] returned error");
-			var variant = response.values.get(0).dup_variant();
+			var variant = response.args.get(0).dup_variant();
 			this.check(command_line, variant.n_children() == 3, "int[] length");
 			this.check(command_line, variant.get_child_value(1).get_int32() == 2, "int[] [1]");
 			rpc.disconnect();

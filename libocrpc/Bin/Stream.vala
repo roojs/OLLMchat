@@ -70,6 +70,43 @@ namespace OLLMrpc.Bin
 	}
 
 	/**
+	 * Map an extra server GType to an alias already passed to
+	 * {@link register}.
+	 *
+	 * Does not change {@link alias_to_gtype}. The client still
+	 * {@link GLib.Object.new} the stub type. Call after the typelib
+	 * alias exists (usually {@link OLLMrpc.Gi.register}) and after
+	 * the concrete GType is loaded ({@link GLib.Type.from_name}).
+	 * The concrete list is the consumer's (X11 vs Wayland differ).
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * OLLMrpc.Gi.register("Meta", "16");
+	 * OLLMrpc.Bin.register_alias("Meta-WindowActor",
+	 *     GLib.Type.from_name("MetaWindowActorX11"));
+	 * }}}
+	 *
+	 * @param alias wire type name already in {@link alias_to_gtype}
+	 * @param gtype extra server GType that should encode as ''alias''
+	 * @throws StreamError.REGISTRATION unknown alias, invalid
+	 *     ''gtype'', or ''gtype'' already mapped
+	 */
+	public static void register_alias(string alias, GLib.Type gtype) throws GLib.Error
+	{
+		if (gtype == GLib.Type.INVALID) {
+			throw new StreamError.REGISTRATION("invalid gtype for alias '%s'", alias);
+		}
+		if (alias_to_gtype == null || !alias_to_gtype.has_key(alias)) {
+			throw new StreamError.REGISTRATION("unknown alias '%s'", alias);
+		}
+		if (gtype_to_alias.has_key(gtype)) {
+			throw new StreamError.REGISTRATION("duplicate register of type '%s'", gtype.name());
+		}
+		gtype_to_alias.set(gtype, alias);
+	}
+
+	/**
 	 * Per-connection bin codec — write and parse {@link Serializable} objects.
 	 *
 	 * Owns the I/O streams and even/odd wire-name tables for one channel.

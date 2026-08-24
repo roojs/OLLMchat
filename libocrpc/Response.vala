@@ -18,9 +18,9 @@ namespace OLLMrpc
 	 *
 	 * After {@link Client.call}, check {@link error} first. Successful
 	 * calls put objects in {@link result} (never null; omit on the wire
-	 * when empty) and optional scalars in {@link values} (same
+	 * when empty) and optional scalars in {@link args} (same
 	 * {@link Gee.ArrayList} of boxed {@link GLib.Value} as
-	 * {@link Request.values}). File.read-style string payloads may use
+	 * {@link Request.args}). File.read-style string payloads may use
 	 * {@link msg} / {@link msg_encode}.
 	 *
 	 * == Usage Examples ==
@@ -40,11 +40,11 @@ namespace OLLMrpc
 	 *     stdout.printf("%s\n", obj.get_type().name());
 	 * }}}
 	 *
-	 * === Positional values ===
+	 * === Positional args ===
 	 *
 	 * {{{
-	 * if (resp.values.size > 0)
-	 *     stdout.printf("%d\n", resp.values.get(0).get_int());
+	 * if (resp.args.size > 0)
+	 *     stdout.printf("%d\n", resp.args.get(0).get_int());
 	 * }}}
 	 *
 	 * @see Request
@@ -57,7 +57,7 @@ namespace OLLMrpc
 		 */
 		public int id { get; set; default = 0; }
 		/**
-		 * Failure when set. Check this before {@link result} or {@link values}.
+		 * Failure when set. Check this before {@link result} or {@link args}.
 		 *
 		 * Null means success. {@link OLLMrpc.Error} is a wire object, not
 		 * {@link GLib.Error}.
@@ -87,14 +87,14 @@ namespace OLLMrpc
 		 * {{{
 		 * var n = GLib.Value(typeof(int));
 		 * n.set_int(0);
-		 * resp.values.add(n);
+		 * resp.args.add(n);
 		 * }}}
 		 */
-		public Gee.ArrayList<GLib.Value?> values { get; set; default = new Gee.ArrayList<GLib.Value?>(); }
+		public Gee.ArrayList<GLib.Value?> args { get; set; default = new Gee.ArrayList<GLib.Value?>(); }
 		/**
 		 * Scalar string payload (e.g. File.read). Empty when unused.
 		 *
-		 * Typelib scalar returns use {@link values}, not this property.
+		 * Typelib scalar returns use {@link args}, not this property.
 		 */
 		public string msg { get; set; default = ""; }
 		/**
@@ -131,7 +131,7 @@ namespace OLLMrpc
 		/**
 		 * Encode one property.
 		 *
-		 * Omits empty {@link result} and {@link values}. Live GObjects
+		 * Omits empty {@link result} and {@link args}. Live GObjects
 		 * write a lease id, not a property dump.
 		 *
 		 * @param ctx active bin session
@@ -176,21 +176,21 @@ namespace OLLMrpc
 						((Bin.Serializable) child).bin_write (ctx);
 					}
 					return;
-				case "values":
-					if (this.values.size == 0) {
+				case "args":
+					if (this.args.size == 0) {
 						return;
 					}
 					ctx.write_tag(prop.name);
 					ctx.out_stream.put_byte((uint8) GLib.Type.INVALID | 0x80);
-					if (this.values.size < 128) {
-						ctx.out_stream.put_byte((uint8) this.values.size);
+					if (this.args.size < 128) {
+						ctx.out_stream.put_byte((uint8) this.args.size);
 					} else {
 						ctx.out_stream.put_byte(
-							(uint8) (0x80 | ((this.values.size >> 8) & 0x7F))
+							(uint8) (0x80 | ((this.args.size >> 8) & 0x7F))
 						);
-						ctx.out_stream.put_byte((uint8) (this.values.size & 0xFF));
+						ctx.out_stream.put_byte((uint8) (this.args.size & 0xFF));
 					}
-					foreach (var val in this.values) {
+					foreach (var val in this.args) {
 						Bin.StreamValue.write(ctx, val);
 					}
 					return;
@@ -203,8 +203,8 @@ namespace OLLMrpc
 		/**
 		 * Decode one property.
 		 *
-		 * {@link result} is an object array. {@link values} is ''ANY[]''
-		 * (same encoding as {@link Request.values}).
+		 * {@link result} is an object array. {@link args} is ''ANY[]''
+		 * (same encoding as {@link Request.args}).
 		 *
 		 * @param ctx active bin session
 		 * @param prop property being read
@@ -226,7 +226,7 @@ namespace OLLMrpc
 					}
 					this.result = ctx.parse_object_array ();
 					return;
-				case "values":
+				case "args":
 					var n = ctx.in_stream.read_byte();
 					var count = n & 0x7F;
 					if ((n & 0x80) != 0) {
@@ -234,7 +234,7 @@ namespace OLLMrpc
 					}
 					for (var i = 0; i < count; i++) {
 						var elem = ctx.in_stream.read_byte();
-						this.values.add(Bin.StreamValue.read(ctx, elem));
+						this.args.add(Bin.StreamValue.read(ctx, elem));
 					}
 					return;
 				default:

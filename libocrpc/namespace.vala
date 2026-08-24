@@ -94,4 +94,155 @@ namespace OLLMrpc
 	 * This file contains namespace-level documentation for OLLMrpc.
 	 */
 	internal class NamespaceDoc {}
+
+	/**
+	 * Pack mixed RPC arguments into a {@link Gee.ArrayList} of
+	 * {@link GLib.Value}.
+	 *
+	 * The first argument is a D-Bus type signature (GVariant string).
+	 * Remaining arguments are Vala varargs, one value per complete type
+	 * in that signature. Unknown or invalid types are fatal.
+	 *
+	 * ''s'' string, ''b'' bool, ''y'' byte, ''n'' int16, ''q'' uint16,
+	 * ''i'' int32, ''u'' uint32, ''x'' int64, ''t'' uint64, ''d'' double,
+	 * ''o'' {@link GLib.Object}, ''g'' signature, ''h'' unix fd,
+	 * ''as'' ''string[]'', ''ay'' {@link GLib.Bytes},
+	 * ''v'' {@link GLib.Variant}.
+	 *
+	 * Lease ids and {@link Bin.Serializable} encoding happen when
+	 * {@link Request} is written ({@link Bin.StreamValue}).
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * var req = new OLLMrpc.Request() {
+	 *     method = "RPC-File.read",
+	 *     args = OLLMrpc.args("s", path)
+	 * };
+	 * }}}
+	 *
+	 * @param signature D-Bus type signature, concatenated complete types
+	 * @return list to assign to {@link Request.args}
+	 */
+	public Gee.ArrayList<GLib.Value?> args(string signature, ...)
+	{
+		var packed = new Gee.ArrayList<GLib.Value?>();
+		if (signature == "") {
+			return packed;
+		}
+		var l = va_list();
+		var offset = 0;
+		while (offset < signature.length) {
+			var rest = signature.substring(offset);
+			var rest_ptr = (char*) rest;
+			var next = (char*) null;
+			if (!GLib.VariantType.string_scan(rest, null, out next) || next == rest_ptr) {
+				GLib.error("invalid D-Bus type signature %s", signature);
+			}
+			var n = (long) ((uint8*) next - (uint8*) rest_ptr);
+			var tag = rest.substring(0, n);
+			offset += (int) n;
+			switch (tag) {
+				case "s":
+					var s_val = GLib.Value(typeof(string));
+					s_val.set_string(l.arg<string>());
+					packed.add(s_val);
+					break;
+
+				case "b":
+					var b_val = GLib.Value(typeof(bool));
+					b_val.set_boolean(l.arg<bool>());
+					packed.add(b_val);
+					break;
+
+				case "y":
+					var y_val = GLib.Value(typeof(uint8));
+					y_val.set_uchar((uint8) l.arg<int>());
+					packed.add(y_val);
+					break;
+
+				case "n":
+					var n_val = GLib.Value(typeof(int));
+					n_val.set_int(l.arg<int>());
+					packed.add(n_val);
+					break;
+
+				case "q":
+					var q_val = GLib.Value(typeof(uint));
+					q_val.set_uint((uint) l.arg<int>());
+					packed.add(q_val);
+					break;
+
+				case "i":
+					var i_val = GLib.Value(typeof(int));
+					i_val.set_int(l.arg<int>());
+					packed.add(i_val);
+					break;
+
+				case "u":
+					var u_val = GLib.Value(typeof(uint));
+					u_val.set_uint(l.arg<uint>());
+					packed.add(u_val);
+					break;
+
+				case "x":
+					var x_val = GLib.Value(typeof(int64));
+					x_val.set_int64(l.arg<int64>());
+					packed.add(x_val);
+					break;
+
+				case "t":
+					var t_val = GLib.Value(typeof(uint64));
+					t_val.set_uint64(l.arg<uint64>());
+					packed.add(t_val);
+					break;
+
+				case "d":
+					var d_val = GLib.Value(typeof(double));
+					d_val.set_double(l.arg<double>());
+					packed.add(d_val);
+					break;
+
+				case "o":
+					var o_val = GLib.Value(typeof(GLib.Object));
+					o_val.set_object(l.arg<GLib.Object>());
+					packed.add(o_val);
+					break;
+
+				case "g":
+					var g_val = GLib.Value(typeof(string));
+					g_val.set_string(l.arg<string>());
+					packed.add(g_val);
+					break;
+
+				case "h":
+					var h_val = GLib.Value(typeof(int));
+					h_val.set_int(l.arg<int>());
+					packed.add(h_val);
+					break;
+
+				case "as":
+					var as_val = GLib.Value(typeof(string[]));
+					as_val.set_boxed(l.arg<string[]>());
+					packed.add(as_val);
+					break;
+
+				case "ay":
+					var ay_val = GLib.Value(typeof(GLib.Bytes));
+					ay_val.set_boxed(l.arg<GLib.Bytes>());
+					packed.add(ay_val);
+					break;
+
+				case "v":
+					var v_val = GLib.Value(typeof(GLib.Variant));
+					v_val.set_variant(l.arg<GLib.Variant>());
+					packed.add(v_val);
+					break;
+
+				default:
+					GLib.error("unknown D-Bus type %s", tag);
+			}
+		}
+		return packed;
+	}
 }

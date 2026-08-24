@@ -25,7 +25,7 @@ namespace OLLMrpc
 	 * (''RPC-Object.method'' for daemons; hyphen nested
 	 * namespaces like ''RPC-Live-Remote.ref''; or a REST
 	 * path for HTTP). Attach a {@link CallParam} subclass on
-	 * ''param'', or positional {@link GLib.Value}s on ''values''
+	 * ''param'', or positional {@link GLib.Value}s on ''args''
 	 * (omit when empty). For typed HTTP results, set
 	 * ''result_type'' before {@link Client.call}.
 	 *
@@ -88,10 +88,10 @@ namespace OLLMrpc
 		 * {{{
 		 * var text = GLib.Value(typeof(string));
 		 * text.set_string("hi");
-		 * req.values.add(text);
+		 * req.args.add(text);
 		 * }}}
 		 */
-		public Gee.ArrayList<GLib.Value?> values { get; set; default = new Gee.ArrayList<GLib.Value?>(); }
+		public Gee.ArrayList<GLib.Value?> args { get; set; default = new Gee.ArrayList<GLib.Value?>(); }
 
 		/**
 		 * Row in {@link Transport.Connection.leases} for a typelib method.
@@ -156,21 +156,21 @@ namespace OLLMrpc
 					}
 					this.bin_default_write_prop(ctx, prop);
 					return;
-				case "values":
-					if (this.values.size == 0) {
+				case "args":
+					if (this.args.size == 0) {
 						return;
 					}
 					ctx.write_tag(prop.name);
 					ctx.out_stream.put_byte((uint8) GLib.Type.INVALID | 0x80);
-					if (this.values.size < 128) {
-						ctx.out_stream.put_byte((uint8) this.values.size);
+					if (this.args.size < 128) {
+						ctx.out_stream.put_byte((uint8) this.args.size);
 					} else {
 						ctx.out_stream.put_byte(
-							(uint8) (0x80 | ((this.values.size >> 8) & 0x7F))
+							(uint8) (0x80 | ((this.args.size >> 8) & 0x7F))
 						);
-						ctx.out_stream.put_byte((uint8) (this.values.size & 0xFF));
+						ctx.out_stream.put_byte((uint8) (this.args.size & 0xFF));
 					}
-					foreach (var val in this.values) {
+					foreach (var val in this.args) {
 						Bin.StreamValue.write(ctx, val);
 					}
 					return;
@@ -190,7 +190,7 @@ namespace OLLMrpc
 				case "connection":
 				case "result-type":
 					return;
-				case "values":
+				case "args":
 					var n = ctx.in_stream.read_byte();
 					var count = n & 0x7F;
 					if ((n & 0x80) != 0) {
@@ -198,7 +198,7 @@ namespace OLLMrpc
 					}
 					for (var i = 0; i < count; i++) {
 						var elem = ctx.in_stream.read_byte();
-						this.values.add(Bin.StreamValue.read(ctx, elem));
+						this.args.add(Bin.StreamValue.read(ctx, elem));
 					}
 					return;
 				default:

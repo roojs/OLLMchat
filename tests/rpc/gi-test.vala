@@ -10,12 +10,29 @@ namespace OLLMrpcTests
 	{
 		public signal void call_hello(OLLMrpc.Request request);
 
+		public signal void call_actors(OLLMrpc.Request request);
+
 		construct
 		{
 			this.call_hello.connect((request) => {
 				request.reply(new OLLMrpc.Response());
 			});
+			this.call_actors.connect((request) => {
+				var actor = new TestActorX11();
+				request.connection.export(actor);
+				var response = new OLLMrpc.Response();
+				response.result.add(actor);
+				request.reply(response);
+			});
 		}
+	}
+
+	public class TestActor : GLib.Object
+	{
+	}
+
+	public class TestActorX11 : TestActor
+	{
 	}
 
 	class TestRpcGi : RpcTestAppBase
@@ -33,6 +50,8 @@ namespace OLLMrpcTests
 		protected override void run_rpc_test(ApplicationCommandLine command_line) throws Error
 		{
 			OLLMrpc.Gi.register("Gio", "2.0");
+			OLLMrpc.Bin.register("Test-Actor", typeof(TestActor));
+			OLLMrpc.Bin.register_alias("Test-Actor", typeof(TestActorX11));
 			OLLMrpc.Bin.register("CallParam", typeof(OLLMrpc.CallParam));
 			OLLMrpc.Request.register(
 				"RPC-Daemon",
@@ -91,8 +110,24 @@ namespace OLLMrpcTests
 			});
 			items_loop.run();
 			this.check(command_line, response.error == null, "get_n_items returned error");
-			this.check(command_line, response.values.size == 1, "get_n_items returned no value");
-			this.check(command_line, response.values.get(0).get_int() == 0, "empty menu is not 0");
+			this.check(command_line, response.args.size == 1, "get_n_items returned no value");
+			this.check(command_line, response.args.get(0).get_int() == 0, "empty menu is not 0");
+			response = null;
+			var actors_loop = new GLib.MainLoop();
+			rpc.call.begin(new OLLMrpc.Request() {
+				method = "RPC-Daemon.actors"
+			}, (obj, res) => {
+				response = rpc.call.end(res);
+				actors_loop.quit();
+			});
+			actors_loop.run();
+			this.check(command_line, response.error == null, "actors returned error");
+			this.check(command_line, response.result.size == 1, "actors returned no object");
+			this.check(
+				command_line,
+				response.result.get(0).get_type() == typeof(TestActor),
+				"actors stub is not Test-Actor"
+			);
 			rpc.disconnect();
 			listen.stop();
 		}

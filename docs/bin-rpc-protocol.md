@@ -224,6 +224,10 @@ Wire names are limited to 255 bytes on introduction.
 Maps a wire alias string to a local `GLib.Type` for decode — **process-wide**, not per connection. Both peers must register every alias they send or receive; the **alias string** is the wire contract — each end may map it to a different GObject type. Per-connection wire indices for type aliases are learned via `TOKEN_REG_TYPE` / `read_reg_gtype()`; property keys via `TOKEN_REG_KEY`.
 
 - Duplicate alias → error.
+- `register_alias(alias, gtype)` — extra **server** GType that encodes as an
+  alias already passed to `register`. Does not change `alias_to_gtype` (client
+  stub). Unknown alias / `GType.INVALID` / GType already mapped → error.
+  Consumer-owned list (e.g. mutter `MetaWindowActorX11` → `Meta-WindowActor`).
 - `register()` call order is not significant.
 
 Example (from `tests/rpc/bin-test.vala`):
@@ -515,10 +519,10 @@ Each array element carries its own type byte and payload (same encoding as a sca
 
 ### Endian transport of numeric arrays
 
-**Warning:** Do **not** send numeric arrays (`int[]`, `uint[]`, `int64[]`, `uint64[]`, `float[]`, `double[]`) between peers with **different endianness** or **different CPU architectures**. Payloads are a native-endian memcpy of the sender’s array — the receiver will misread values if endian or layout differs. Today both ends are x86_64 little-endian Linux (`Request.values` / `Response.values` only; not GObject property arrays above).
+**Warning:** Do **not** send numeric arrays (`int[]`, `uint[]`, `int64[]`, `uint64[]`, `float[]`, `double[]`) between peers with **different endianness** or **different CPU architectures**. Payloads are a native-endian memcpy of the sender’s array — the receiver will misread values if endian or layout differs. Today both ends are x86_64 little-endian Linux (`Request.args` / `Response.args` only; not GObject property arrays above).
 
 - **Wire:** `type|0x80`, compact count (§9), then `count × sizeof(element)` — one contiguous slab (not per-element type bytes like the property `int[]` example above).
-- **Scalar ints** in the same `values[]` list stay **big-endian** (§7) — only the **array slab** is native-endian.
+- **Scalar ints** in the same `args[]` list stay **big-endian** (§7) — only the **array slab** is native-endian.
 
 ### Object array
 
@@ -560,19 +564,19 @@ List **results** (`fetch_files`, …) encode as an object array on the **`result
 
 See `libocrpc/Response.vala`.
 
-### Positional args (`Request.values`)
+### Positional args (`Request.args`)
 
 Optional **`ANY[]`** (this section) on **`OLLMrpc.Request`**. Each element is one **`GLib.Value`** (type byte + payload via `Bin.StreamValue.write` / `read`).
 
-**Omit** when **`values.size == 0`**. Existing `CallParam`-only traffic never sends this property.
+**Omit** when **`args.size == 0`**. Existing `CallParam`-only traffic never sends this property.
 
 No per-value direction flag and no wrapper object. No protocol version bump.
 
-### Positional returns (`Response.values`)
+### Positional returns (`Response.args`)
 
-Optional **`ANY[]`** (this section) on **`OLLMrpc.Response`**. Same encoding as `Request.values`.
+Optional **`ANY[]`** (this section) on **`OLLMrpc.Response`**. Same encoding as `Request.args`.
 
-**Omit** when **`values.size == 0`**. A returned GObject uses **`result`**, not this list.
+**Omit** when **`args.size == 0`**. A returned GObject uses **`result`**, not this list.
 
 No protocol version bump.
 

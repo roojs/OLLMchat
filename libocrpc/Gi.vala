@@ -47,7 +47,7 @@ namespace OLLMrpc
 		public static Gee.HashMap<string, GLib.Type> types;
 
 		/**
-		 * Inbound call this instance applies. Owner of method / values /
+		 * Inbound call this instance applies. Owner of method / args /
 		 * connection — not copied onto {@link Gi}.
 		 */
 		public Request request { get; construct; }
@@ -63,6 +63,38 @@ namespace OLLMrpc
 		 * here.
 		 */
 		private Gee.ArrayList<GLib.Bytes> boxed_keep = new Gee.ArrayList<GLib.Bytes>();
+
+		/**
+		 * Call C g_function_info_invoke with an out return slot.
+		 *
+		 * WORKAROUND: the system vapi
+		 * {@link GI.FunctionInfo.invoke} takes
+		 * {@link GI.Argument} return_value by value, so
+		 * libffi writes the object pointer into a copy and
+		 * the caller sees null. This declaration is the same
+		 * C function with return_value as ''out''
+		 * ({@link GI.Argument}*). Do not use ''fn.invoke''.
+		 *
+		 * Real fix: correct the annotations / comments on
+		 * g_function_info_invoke (and the generated
+		 * {@link GI.FunctionInfo.invoke} vapi) so
+		 * return_value is ''out''. Then delete this binding
+		 * and call ''fn.invoke'' again.
+		 *
+		 * @param info typelib function to run
+		 * @param in_args IN slots
+		 * @param out_args OUT slots
+		 * @param return_value filled by libffi
+		 * @return false when invoke fails
+		 * @throws GI.InvokeError from g_function_info_invoke
+		 */
+		[CCode (cname = "g_function_info_invoke", cheader_filename = "girepository.h")]
+		private static extern bool g_function_info_invoke(
+			GI.FunctionInfo info,
+			[CCode (array_length_cname = "n_in_args", array_length_pos = 2.5)] GI.Argument[] in_args,
+			[CCode (array_length_cname = "n_out_args", array_length_pos = 3.5)] GI.Argument[] out_args,
+			out GI.Argument return_value
+		) throws GI.InvokeError;
 
 		public Gi(Request request)
 		{
@@ -172,7 +204,7 @@ namespace OLLMrpc
 				}
 				n_in++;
 			}
-			if (n_in != this.request.values.size) {
+			if (n_in != this.request.args.size) {
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
 				return true;
@@ -193,7 +225,7 @@ namespace OLLMrpc
 			}
 			var ret = GI.Argument();
 			try {
-				fn.invoke(this.in_args, this.out_args, ret);
+				g_function_info_invoke(fn, this.in_args, this.out_args, out ret);
 			} catch (GLib.Error e) {
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.INTERNAL_ERROR);
@@ -211,7 +243,7 @@ namespace OLLMrpc
 		 * Invoke a typelib method on a leased object.
 		 *
 		 * Slot 0 is the instance. Remaining IN args use {@link convert}.
-		 * Return and OUT args use {@link scalar} into {@link Response.values}.
+		 * Return and OUT args use {@link scalar} into {@link Response.args}.
 		 * A returned GObject goes in {@link Response.result} like ''new''.
 		 *
 		 * @param fn non-constructor from {@link dispatch}
@@ -265,7 +297,7 @@ namespace OLLMrpc
 						break;
 				}
 			}
-			if (n_values != this.request.values.size) {
+			if (n_values != this.request.args.size) {
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
 				return true;
@@ -315,7 +347,7 @@ namespace OLLMrpc
 			}
 			var ret = GI.Argument();
 			try {
-				fn.invoke(this.in_args, this.out_args, ret);
+				g_function_info_invoke(fn, this.in_args, this.out_args, out ret);
 			} catch (GLib.Error e) {
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.INTERNAL_ERROR);
@@ -343,7 +375,7 @@ namespace OLLMrpc
 				case GI.TypeTag.INTERFACE:
 					var kind = ret_type.get_interface().get_type();
 					if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
-						if (!this.scalar(ret_type, ret, response.values)) {
+						if (!this.scalar(ret_type, ret, response.args)) {
 							return true;
 						}
 						break;
@@ -359,7 +391,7 @@ namespace OLLMrpc
 					break;
 
 				default:
-					if (!this.scalar(ret_type, ret, response.values)) {
+					if (!this.scalar(ret_type, ret, response.args)) {
 						return true;
 					}
 					break;
@@ -373,7 +405,7 @@ namespace OLLMrpc
 				if (arg.get_direction() == GI.Direction.IN) {
 					continue;
 				}
-				if (!this.scalar(arg.get_type(), this.out_args[oi], response.values)) {
+				if (!this.scalar(arg.get_type(), this.out_args[oi], response.args)) {
 					return true;
 				}
 				oi++;
@@ -383,20 +415,20 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Fill one {@link in_args} slot from {@link request}.values.
+		 * Fill one {@link in_args} slot from {@link request}.args.
 		 *
-		 * Uses ''arg'' TypeTag. Reads {@link request}.values at ''vi'' —
+		 * Uses ''arg'' TypeTag. Reads {@link request}.args at ''vi'' —
 		 * writes {@link in_args} at ''vi + offset''. Unknown tags reply
 		 * INVALID_PARAMS. ''offset'' is ''0'' for constructors.
 		 *
 		 * @param arg one IN argument from the callable
-		 * @param vi index in {@link request}.values
+		 * @param vi index in {@link request}.args
 		 * @param offset added to ''vi'' for {@link in_args} (''1'' when slot 0 is the instance)
 		 * @return false when this method already replied an error
 		 */
 		private bool convert(GI.ArgInfo arg, int vi, int offset = 0)
 		{
-			var val = this.request.values.get(vi);
+			var val = this.request.args.get(vi);
 			var tag = arg.get_type().get_tag();
 			var want = GLib.Type.INVALID;
 			switch (tag) {
@@ -517,16 +549,16 @@ namespace OLLMrpc
 		 * Fill one {@link in_args} slot for a GIR ARRAY IN argument.
 		 *
 		 * The wire row must match the element {@link GI.TypeTag}. Pointer
-		 * aliases the array already in {@link request}.values.
+		 * aliases the array already in {@link request}.args.
 		 *
 		 * @param arg one IN argument from the callable
-		 * @param vi index in {@link request}.values
+		 * @param vi index in {@link request}.args
 		 * @param offset added to ''vi'' for {@link in_args}
 		 * @return false when this method already replied an error
 		 */
 		private bool convert_array(GI.ArgInfo arg, int vi, int offset)
 		{
-			var val = this.request.values.get(vi);
+			var val = this.request.args.get(vi);
 			if (val.type() != typeof(GLib.Variant)) {
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
@@ -650,20 +682,20 @@ namespace OLLMrpc
 		 * Fill one {@link in_args} slot for a GIR INTERFACE argument.
 		 *
 		 * GObject / GInterface: lease id or a live object in
-		 * {@link request}.values. The instance GType must be in
+		 * {@link request}.args. The instance GType must be in
 		 * {@link Bin.gtype_to_alias} (''Gi.register'' object types).
 		 * STRUCT / BOXED / UNION: {@link GLib.Bytes}
 		 * of {@link GI.StructInfo.get_size}. gtype-structs, size 0, and
 		 * other InfoTypes reply INVALID_PARAMS (one ''n == 0'' path).
 		 *
 		 * @param arg one IN argument from the callable
-		 * @param vi index in {@link request}.values
+		 * @param vi index in {@link request}.args
 		 * @param offset added to ''vi'' for {@link in_args}
 		 * @return false when this method already replied an error
 		 */
 		private bool convert_interface(GI.ArgInfo arg, int vi, int offset)
 		{
-			var val = this.request.values.get(vi);
+			var val = this.request.args.get(vi);
 			var kind = arg.get_type().get_interface().get_type();
 			if (kind == GI.InfoType.OBJECT || kind == GI.InfoType.INTERFACE) {
 				if (val.type().is_a(GLib.Type.OBJECT)) {
@@ -734,13 +766,13 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Append one GI scalar to a values list.
+		 * Append one GI scalar to an args list.
 		 *
 		 * Reverse of {@link convert}. Unknown tags reply INVALID_PARAMS.
 		 *
 		 * @param type GIR type of the return or OUT argument
 		 * @param arg filled by {@link GI.FunctionInfo.invoke}
-		 * @param dest {@link Response.values}
+		 * @param dest {@link Response.args}
 		 * @return false when this method already replied an error
 		 */
 		private bool scalar(GI.TypeInfo type, GI.Argument arg, Gee.ArrayList<GLib.Value?> dest)
@@ -877,7 +909,7 @@ namespace OLLMrpc
 		 *
 		 * @param type GIR array type
 		 * @param arg filled by {@link GI.FunctionInfo.invoke}
-		 * @param dest {@link Response.values}
+		 * @param dest {@link Response.args}
 		 * @return false when this method already replied an error
 		 */
 		private bool scalar_array(
