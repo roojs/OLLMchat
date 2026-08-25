@@ -53,6 +53,12 @@ namespace OLLMrpc
 		/** Wire object prefix → handler singleton (server dispatch). */
 		public static Gee.HashMap<string, GLib.Object> handlers;
 
+		/** Wire object prefix → Vala GType (C symbol). */
+		public static Gee.HashMap<string, GLib.Type> types;
+
+		/** Wire object prefix → (method suffix → D-Bus signature). */
+		public static Gee.HashMap<string, Gee.HashMap<string, string>> methods;
+
 		public int id { get; set; }
 		public string method { get; set; default = ""; }
 
@@ -112,6 +118,49 @@ namespace OLLMrpc
 				handlers = new Gee.HashMap<string, GLib.Object>();
 			}
 			handlers.set(name, target);
+		}
+
+		/**
+		 * List FFI instance methods for a wire prefix.
+		 *
+		 * Pair method suffix with a D-Bus signature (same letters as
+		 * {@link args}). End the list with ''null''. The live singleton
+		 * is still {@link register}.
+		 *
+		 * == Example ==
+		 *
+		 * {{{
+		 * OLLMrpc.Request.add_class(
+		 *     "RPC-Daemon", typeof(Daemon), "hello", "is", null
+		 * );
+		 * OLLMrpc.Request.register("RPC-Daemon", this.daemon);
+		 * }}}
+		 *
+		 * @param name wire object prefix (e.g. RPC-Folder)
+		 * @param type handler GType (C prefix)
+		 * @param ... method, signature, …, then null
+		 */
+		public static void add_class(
+			string name,
+			GLib.Type type,
+			...
+		) {
+			if (types == null) {
+				types = new Gee.HashMap<string, GLib.Type>();
+				methods = new Gee.HashMap<string, Gee.HashMap<string, string>>();
+			}
+			types.set(name, type);
+			if (!methods.has_key(name)) {
+				methods.set(name, new Gee.HashMap<string, string>());
+			}
+			var l = va_list();
+			while (true) {
+				var method = l.arg<string>();
+				if (method == null) {
+					break;
+				}
+				methods.get(name).set(method, l.arg<string>());
+			}
 		}
 
 		public unowned ParamSpec? find_property(string name)
@@ -212,6 +261,10 @@ namespace OLLMrpc
 
 			var object_name = this.method[0:dot];
 			var method_name = this.method.substring(dot + 1);
+
+			if (new Ffi(this).dispatch()) {
+				return true;
+			}
 
 			if (handlers != null && handlers.has_key(object_name)) {
 				var handler = handlers.get(object_name);

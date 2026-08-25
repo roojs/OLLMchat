@@ -65,6 +65,16 @@ namespace OLLMrpc
 		private Gee.ArrayList<GLib.Bytes> boxed_keep = new Gee.ArrayList<GLib.Bytes>();
 
 		/**
+		 * IN {@link GLib.List} / {@link GLib.SList} heads for the current
+		 * invoke. Element pointers are lease-backed GObjects (transfer
+		 * none). Assigning ''{}'' runs each compact
+		 * ''free_function'' (''g_list_free'' / ''g_slist_free'').
+		 */
+		private GLib.List<void*>[] glist_keep = {};
+
+		private GLib.SList<void*>[] gslist_keep = {};
+
+		/**
 		 * Call C g_function_info_invoke with an out return slot.
 		 *
 		 * WORKAROUND: the system vapi
@@ -212,6 +222,8 @@ namespace OLLMrpc
 			this.in_args = new GI.Argument[n_in];
 			this.out_args = new GI.Argument[0];
 			this.boxed_keep.clear();
+			this.glist_keep = {};
+			this.gslist_keep = {};
 			var vi = 0;
 			for (var i = 0; i < fn.get_n_args(); i++) {
 				var arg = fn.get_arg(i);
@@ -305,6 +317,8 @@ namespace OLLMrpc
 			this.in_args = new GI.Argument[n_in];
 			this.out_args = new GI.Argument[n_out];
 			this.boxed_keep.clear();
+			this.glist_keep = {};
+			this.gslist_keep = {};
 			this.in_args[0].v_pointer = (void*) this.request.connection.leases.get(id);
 			var out_i = 0;
 			var vi = 0;
@@ -535,6 +549,10 @@ namespace OLLMrpc
 				case GI.TypeTag.ARRAY:
 					return this.convert_array(arg, vi, offset);
 
+				case GI.TypeTag.GLIST:
+				case GI.TypeTag.GSLIST:
+					return this.convert_list(arg, vi, offset);
+
 				case GI.TypeTag.INTERFACE:
 					return this.convert_interface(arg, vi, offset);
 
@@ -686,6 +704,96 @@ namespace OLLMrpc
 						this.request, (int) RpcErrorCode.INVALID_PARAMS);
 					return false;
 			}
+		}
+
+		/**
+		 * Fill one {@link in_args} slot for a GIR GLIST / GSLIST IN argument.
+		 *
+		 * Wire is a {@link GLib.Variant} ''at'' (uint64 lease ids). The
+		 * caller built those ids; this method only resolves
+		 * {@link Transport.Connection.leases} and builds the C list.
+		 * Element type must be GObject / GInterface in
+		 * {@link Bin.gtype_to_alias}. Empty array → null pointer.
+		 * Owned {@link GLib.List} / {@link GLib.SList} of ''void*'' so
+		 * append does not take GObject refs. Heads stay on glist_keep /
+		 * gslist_keep until the next invoke assigns ''{}''.
+		 *
+		 * @param arg one IN argument from the callable
+		 * @param vi index in {@link request}.args
+		 * @param offset added to ''vi'' for {@link in_args}
+		 * @return false when this method already replied an error
+		 */
+		private bool convert_list(GI.ArgInfo arg, int vi, int offset)
+		{
+			var val = this.request.args.get(vi);
+			var type = arg.get_type();
+			var elem = type.get_param_type(0);
+			if (elem.get_tag() != GI.TypeTag.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var kind = elem.get_interface().get_type();
+			if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			if (val.type() != typeof(GLib.Variant)) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var variant = val.dup_variant();
+			if (!variant.is_of_type(new GLib.VariantType("at"))) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			if (variant.n_children() == 0) {
+				this.in_args[vi + offset].v_pointer = null;
+				return true;
+			}
+			if (type.get_tag() == GI.TypeTag.GLIST) {
+				GLib.List<void*> list = null;
+				for (var i = 0; i < variant.n_children(); i++) {
+					var id = (int) variant.get_child_value(i).get_uint64();
+					if (!this.request.connection.leases.has_key(id)) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					var obj = this.request.connection.leases.get(id);
+					if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(obj.get_type())) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					list.append((void*) obj);
+				}
+				this.in_args[vi + offset].v_pointer = list;
+				this.glist_keep += (owned) list;
+				return true;
+			}
+			GLib.SList<void*> slist = null;
+			for (var i = 0; i < variant.n_children(); i++) {
+				var id = (int) variant.get_child_value(i).get_uint64();
+				if (!this.request.connection.leases.has_key(id)) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				var obj = this.request.connection.leases.get(id);
+				if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(obj.get_type())) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				slist.append((void*) obj);
+			}
+			this.in_args[vi + offset].v_pointer = slist;
+			this.gslist_keep += (owned) slist;
+			return true;
 		}
 
 		/**

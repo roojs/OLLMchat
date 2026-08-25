@@ -30,6 +30,14 @@ namespace OLLMfilesd
 	{
 		public static void rpc_register()
 		{
+			OLLMrpc.Request.add_class(
+				"RPC-Codebase", typeof(Codebase),
+				"file_info", "s",
+				"reset", "",
+				"start", "ss",
+				"stop", "",
+				null
+			);
 		}
 
 		public ProjectManager manager { get; construct; }
@@ -70,17 +78,6 @@ namespace OLLMfilesd
 		public signal void call_search(OLLMrpc.Request request);
 
 		/**
-		 * ''Codebase.file_info'' — {@link SQT.VectorMetadata} rows for one file.
-		 *
-		 * Params: ''args.get(0)'' file path. Reply: ''result'' list (empty
-		 * when the file is missing or not indexed) and ''msg'' row count — not an
-		 * error.
-		 *
-		 * @param request inbound RPC; file path on {@link OLLMrpc.Request.args}
-		 */
-		public signal void call_file_info(OLLMrpc.Request request);
-
-		/**
 		 * ''Codebase.debug_get'' — dump stored FAISS embedding for one AST path.
 		 *
 		 * Debug/admin only; CLI: ''oc-vector-search --dump-vector=AST_PATH''.
@@ -95,44 +92,68 @@ namespace OLLMfilesd
 		public signal void call_debug_get(OLLMrpc.Request request);
 
 		/**
+		 * ''Codebase.file_info'' — {@link SQT.VectorMetadata} rows for one file.
+		 *
+		 * Reply: ''result'' list (empty when the file is missing or not indexed)
+		 * and ''msg'' row count — not an error.
+		 *
+		 * @param request inbound RPC
+		 * @param file_path indexed file path
+		 */
+		public void file_info(OLLMrpc.Request request, string file_path)
+		{
+			var list = new Gee.ArrayList<GLib.Object>();
+			var indexed = this.manager.get_file_from_active_project(file_path);
+			if (indexed != null && indexed.id > 0) {
+				var rows = new Gee.ArrayList<SQT.VectorMetadata>();
+				SQT.VectorMetadata.query(
+					this.manager.db
+				).select(
+					"WHERE file_id = " + indexed.id.to_string(),
+					rows
+				);
+				foreach (var row in rows) {
+					list.add(row);
+				}
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				result = list,
+				msg = list.size.to_string()
+			});
+		}
+
+		/**
 		 * ''Codebase.reset'' — wipe FAISS file, vector metadata, and scan dates.
 		 *
 		 * CLI: ''oc-vector-index --reset-database''. Reply ''msg'': ''ok''
 		 * on success. ''response.error'' when reset I/O fails.
 		 *
 		 *  * Domain / I/O failure → ''response.error''
-		 *  * Client API bugs propagate; no catch-all on this signal
+		 *  * Client API bugs propagate; no catch-all on this method
 		 *
-		 * @param request inbound RPC; no args
+		 * @param request inbound RPC; no extra args
 		 */
-		public signal void call_reset(OLLMrpc.Request request);
-
-		/**
-		 * ''Codebase.start'' — enqueue stale files from DB and run the queue.
-		 * Clears {@link OLLMfilesd.Vector.BackgroundScan.stop_requested} from a
-		 * prior ''Codebase.stop''. ''args.get(0)'' path must already exist
-		 * (CLI scans via ''ProjectManager.activate_project'' first).
-		 *
-		 * @param request inbound RPC; path and only_file on {@link OLLMrpc.Request.args}
-		 */
-		public signal void call_start(OLLMrpc.Request request);
-
-		/**
-		 * ''Codebase.stop'' — pause indexing after the current file; queue
-		 * entries are preserved.
-		 *
-		 * @param request inbound RPC; no args
-		 */
-		public signal void call_stop(OLLMrpc.Request request);
-
-		construct
+		public void reset(OLLMrpc.Request request)
 		{
-			this.call_reset.connect((request) => {
+			try {
+				OLLMvector2.SQT.VectorMetadata.reset_database(
+					this.manager.db,
+					this.manager.vector_db_path
+				);
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			this.manager.vector_scan.open_vector_db.begin((obj, res) => {
 				try {
-					OLLMvector2.SQT.VectorMetadata.reset_database(
-						this.manager.db,
-						this.manager.vector_db_path
-					);
+					this.manager.vector_scan.open_vector_db.end(res);
 				} catch (GLib.Error e) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -143,82 +164,69 @@ namespace OLLMfilesd
 					});
 					return;
 				}
-				this.manager.vector_scan.open_vector_db.begin((obj, res) => {
-					try {
-						this.manager.vector_scan.open_vector_db.end(res);
-					} catch (GLib.Error e) {
-						request.reply(new OLLMrpc.Response() {
-							id = request.id,
-							error = new OLLMrpc.Error(
-								OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-								e.message
-							)
-						});
-						return;
-					}
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "ok"
-					});
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "ok"
 				});
 			});
+		}
+
+		/**
+		 * ''Codebase.start'' — enqueue stale files from DB and run the queue.
+		 * Clears {@link OLLMfilesd.Vector.BackgroundScan.stop_requested} from a
+		 * prior ''Codebase.stop''. ''path'' must already exist (CLI scans via
+		 * ''ProjectManager.activate_project'' first).
+		 *
+		 * @param request inbound RPC
+		 * @param path project path
+		 * @param only_file optional single-file filter; empty string if unused
+		 */
+		public void start(OLLMrpc.Request request, string path, string only_file)
+		{
+			var scan = this.manager.vector_scan;
+			scan.stop_requested = false;
+			scan.queueProject.begin(
+				path,
+				only_file,
+				true,
+				(obj, res) => {
+					var queued_count = scan.queueProject.end(res);
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						msg = queued_count > 0
+							? queued_count.to_string()
+							: "ok"
+					});
+				}
+			);
+		}
+
+		/**
+		 * ''Codebase.stop'' — pause indexing after the current file; queue
+		 * entries are preserved.
+		 *
+		 * @param request inbound RPC; no extra args
+		 */
+		public void stop(OLLMrpc.Request request)
+		{
+			this.manager.vector_scan.stop_requested = true;
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				msg = "ok"
+			});
+		}
+
+		construct
+		{
 			this.call_debug_get.connect((request) => {
 				this.debug_get.begin(request, (obj, res) => {
 					this.debug_get.end(res);
-				});
-			});
-			this.call_file_info.connect((request) => {
-				var list = new Gee.ArrayList<GLib.Object>();
-				var indexed = this.manager.get_file_from_active_project(
-					request.args.get(0).get_string()
-				);
-				if (indexed != null && indexed.id > 0) {
-					var rows = new Gee.ArrayList<SQT.VectorMetadata>();
-					SQT.VectorMetadata.query(
-						this.manager.db
-					).select(
-						"WHERE file_id = " + indexed.id.to_string(),
-						rows
-					);
-					foreach (var row in rows) {
-						list.add(row);
-					}
-				}
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					result = list,
-					msg = list.size.to_string()
 				});
 			});
 			this.call_search.connect((request) => {
 				this.search.begin(request, (obj, res) => {
 					this.search.end(res);
 				});
-			});
-			this.call_stop.connect((request) => {
-				this.manager.vector_scan.stop_requested = true;
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					msg = "ok"
-				});
-			});
-			this.call_start.connect((request) => {
-				var scan = this.manager.vector_scan;
-				scan.stop_requested = false;
-				scan.queueProject.begin(
-					request.args.get(0).get_string(),
-					request.args.get(1).get_string(),
-					true,
-					(obj, res) => {
-						var queued_count = scan.queueProject.end(res);
-						request.reply(new OLLMrpc.Response() {
-							id = request.id,
-							msg = queued_count > 0
-								? queued_count.to_string()
-								: "ok"
-						});
-					}
-				);
 			});
 		}
 

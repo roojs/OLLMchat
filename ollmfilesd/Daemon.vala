@@ -19,6 +19,12 @@ namespace OLLMfilesd
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Daemon", typeof(Daemon));
+			OLLMrpc.Request.add_class(
+				"RPC-Daemon", typeof(Daemon),
+				"hello", "is",
+				"shutdown", "",
+				null
+			);
 		}
 
 		public OllmfilesdApplication app { get; construct; }
@@ -32,8 +38,26 @@ namespace OLLMfilesd
 		public string server { get; set; default = "ollmfilesd"; }
 		public bool ready { get; set; default = true; }
 
-		public signal void call_hello(OLLMrpc.Request request);
-		public signal void call_shutdown(OLLMrpc.Request request);
+		public void hello(OLLMrpc.Request request, int protocol, string client)
+		{
+			if (protocol > 0) {
+				this.protocol = protocol;
+			}
+			var result = new Gee.ArrayList<GLib.Object>();
+			result.add(this);
+			request.reply(new OLLMrpc.Response() {
+				result = result
+			});
+		}
+
+		public void shutdown(OLLMrpc.Request request)
+		{
+			this.ready = false;
+			request.reply(new OLLMrpc.Response() {
+				msg = "ok"
+			});
+			this.app.quit();
+		}
 
 		public override void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,
@@ -56,27 +80,6 @@ namespace OLLMfilesd
 				return;
 			}
 			bin_default_read_prop(ctx, prop, type_byte);
-		}
-
-		construct
-		{
-			this.call_hello.connect((request) => {
-				if (request.args.get(0).get_int() > 0) {
-					this.protocol = request.args.get(0).get_int();
-				}
-				var result = new Gee.ArrayList<GLib.Object>();
-				result.add(this);
-				request.reply(new OLLMrpc.Response() {
-					result = result
-				});
-			});
-			this.call_shutdown.connect((request) => {
-				this.ready = false;
-				request.reply(new OLLMrpc.Response() {
-					msg = "ok"
-				});
-				this.app.quit();
-			});
 		}
 	}
 }

@@ -87,9 +87,6 @@ namespace OLLMrpc.Transport
 		 */
 		public uint64 export(GLib.Object gobject)
 		{
-			if (!this.live_handles) {
-				GLib.error("export requires live_handles");
-			}
 			var ptr = (uint64) (void*) gobject;
 			var hi = (int) (ptr >> 32);
 			var lo = (int) ptr;

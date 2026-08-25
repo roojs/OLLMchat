@@ -16,18 +16,24 @@ ocrpc_deps = [
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
   valac.find_library('posix'),
+  dependency('libffi'),
+  dependency('gmodule-2.0'),
 ]
 
 ocrpc_vapi_pkgs = [
   '--pkg=json-glib-1.0',
   '--pkg=libsoup-3.0',
   '--pkg=posix',
+  '--pkg=libffi',
+  '--pkg=gmodule-2.0',
 ]
 
 ocrpc_vapi_gen_pkgs = [
   '--pkg', 'json-glib-1.0',
   '--pkg', 'libsoup-3.0',
   '--pkg', 'posix',
+  '--pkg', 'libffi',
+  '--pkg', 'gmodule-2.0',
   '--pkg', 'gio-2.0',
   '--pkg', 'gobject-2.0',
   '--pkg', 'glib-2.0',
@@ -77,6 +83,7 @@ ocrpc_core_src = files([
   'Error.vala',
   'Notification.vala',
   'Request.vala',
+  'Ffi.vala',
   'Response.vala',
   'RpcErrorCode.vala',
 ])
@@ -101,11 +108,13 @@ ocrpc_src = ocrpc_core_src + files(['Client.vala']) + transport_socket_src + cli
 ocrpc_base_lib = library('ocrpc',
   dependencies: ocrpc_deps,
   sources: ocrpc_src,
+  include_directories: include_directories('.'),
   vala_header: 'ocrpc.h',
   vala_vapi: 'ocrpc-meson.vapi',
   vala_args: [
     '--target-glib=auto',
   ] + ocrpc_vapi_pkgs + [
+    '--vapidir', meson.current_source_dir(),
     '--vapidir', '/usr/share/vala/vapi',
   ],
   install: true,
@@ -119,6 +128,7 @@ ocrpc_vapi = custom_target('ocrpc-vapi',
     '-C', '--debug',
     '--target-glib=auto',
     '--vapidir', meson.current_build_dir(),
+    '--vapidir', meson.current_source_dir(),
     '--vapidir', '/usr/share/vala/vapi',
   ] + (is_android ? ['--vapidir', gee_vapi_dir] : []) + ocrpc_vapi_gen_pkgs + [
     '--library', 'ocrpc',

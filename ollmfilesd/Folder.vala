@@ -40,6 +40,13 @@ namespace OLLMfilesd
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Folder", typeof(Folder));
+			OLLMrpc.Request.add_class(
+				"RPC-Folder", typeof(Folder),
+				"fetch", "s",
+				"contains_folder", "ss",
+				"fetch_pending_approvals", "sx",
+				null
+			);
 		}
 		/**
 		 * Whether to use background (idle callback) processing for recursive folder scanning.
@@ -112,57 +119,97 @@ namespace OLLMfilesd
 			}
 		}
 
-		public signal void call_fetch(OLLMrpc.Request request);
-		public signal void call_contains_folder(OLLMrpc.Request request);
 		public signal void call_fetch_files(OLLMrpc.Request request);
-		public signal void call_fetch_pending_approvals(OLLMrpc.Request request);
 		public signal void call_project_description(OLLMrpc.Request request);
 		public signal void call_roots(OLLMrpc.Request request);
+
+		public void fetch(OLLMrpc.Request request, string path)
+		{
+			var folder = this.manager.get_folder_at_path(path);
+			if (folder == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "folder not found"
+				});
+				return;
+			}
+			var result = new Gee.ArrayList<GLib.Object>();
+			result.add(folder);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				result = result
+			});
+		}
+
+		public void contains_folder(
+			OLLMrpc.Request request,
+			string project_path,
+			string path
+		) {
+			var project = this.manager.project_root(project_path);
+			if (project == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "project not found"
+				});
+				return;
+			}
+			if (!project.project_files.folder_map.has_key(path)) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "directory not in project"
+				});
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				msg = "true"
+			});
+		}
+
+		public void fetch_pending_approvals(
+			OLLMrpc.Request request,
+			string path,
+			int64 since_id
+		) {
+			var project = this.manager.project_root(path);
+			if (project == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "project not found"
+				});
+				return;
+			}
+			var result = new Gee.ArrayList<GLib.Object>();
+			try {
+				result = FileWithHistory.pending(
+					this.manager,
+					project,
+					since_id
+				);
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			var max_stmt = FileHistory.query(this.manager.db).selectPrepare(
+				"SELECT MAX(id) FROM file_history"
+			);
+			var max_ids = FileHistory.query(this.manager.db).fetchAllInt64(max_stmt);
+			var marker = max_ids.size > 0 ? max_ids.get(0) : (int64) 0;
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				result = result,
+				msg = marker.to_string()
+			});
+		}
 		construct
 		{
-			this.call_fetch.connect((request) => {
-				var folder = this.manager.get_folder_at_path(
-					request.args.get(0).get_string()
-				);
-				if (folder == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "folder not found"
-					});
-					return;
-				}
-				var result = new Gee.ArrayList<GLib.Object>();
-				result.add(folder);
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					result = result
-				});
-			});
-			this.call_contains_folder.connect((request) => {
-				var project = this.manager.project_root(
-					request.args.get(0).get_string()
-				);
-				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "project not found"
-					});
-					return;
-				}
-				if (!project.project_files.folder_map.has_key(
-					request.args.get(1).get_string()
-				)) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "directory not in project"
-					});
-					return;
-				}
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					msg = "true"
-				});
-			});
 			this.call_fetch_files.connect((request) => {
 				var project = this.manager.project_root(
 					request.args.get(0).get_string()
@@ -178,47 +225,6 @@ namespace OLLMfilesd
 					return;
 				}
 				this.fetch_files_reply.begin(request, project);
-			});
-			this.call_fetch_pending_approvals.connect((request) => {
-				var project = this.manager.project_root(
-					request.args.get(0).get_string()
-				);
-				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "project not found"
-					});
-					return;
-				}
-				Gee.ArrayList<GLib.Object> result;
-				try {
-					var since_val = GLib.Value(typeof(int64));
-					request.args.get(1).transform(ref since_val);
-					result = FileWithHistory.pending(
-						this.manager,
-						project,
-						since_val.get_int64()
-					);
-				} catch (GLib.Error e) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
-					});
-					return;
-				}
-				var max_stmt = FileHistory.query(this.manager.db).selectPrepare(
-					"SELECT MAX(id) FROM file_history"
-				);
-				var max_ids = FileHistory.query(this.manager.db).fetchAllInt64(max_stmt);
-				var marker = max_ids.size > 0 ? max_ids.get(0) : (int64) 0;
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					result = result,
-					msg = marker.to_string()
-				});
 			});
 			this.call_project_description.connect((request) => {
 				var project = this.manager.project_root(
