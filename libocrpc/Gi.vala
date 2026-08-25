@@ -559,12 +559,22 @@ namespace OLLMrpc
 		private bool convert_array(GI.ArgInfo arg, int vi, int offset)
 		{
 			var val = this.request.args.get(vi);
+			var elem = arg.get_type().get_param_type(0);
+			if (val.type() == typeof(string[])) {
+				switch (elem.get_tag()) {
+					case GI.TypeTag.UTF8:
+					case GI.TypeTag.FILENAME:
+						this.in_args[vi + offset].v_pointer = (void*) (string[]) val;
+						return true;
+					default:
+						break;
+				}
+			}
 			if (val.type() != typeof(GLib.Variant)) {
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
 				return false;
 			}
-			var elem = arg.get_type().get_param_type(0);
 			switch (elem.get_tag()) {
 				case GI.TypeTag.UTF8:
 				case GI.TypeTag.FILENAME:
