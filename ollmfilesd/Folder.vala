@@ -1332,10 +1332,7 @@ namespace OLLMfilesd
 			if (unix_mode == 0) {
 				return;
 			}
-			if (Posix.chmod(
-				this.path,
-				(Posix.mode_t) (unix_mode & 0777)
-			) != 0) {
+			if (Posix.chmod(this.path, (Posix.mode_t) (unix_mode & 0777)) != 0) {
 				throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
 			}
 		}
