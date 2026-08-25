@@ -6,6 +6,11 @@
  * License as published by the Free Software Foundation; either
  * version 3 of the License, or (at your option) any later version.
  *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this library; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
@@ -17,21 +22,17 @@ namespace OLLMrpc.Live
 	 * Process-wide handler for live-handle refcount RPCs.
 	 *
 	 * Uses {@link Request.connection} so each peer has its own lease table.
-	 * Wire type is {@link RemoteParams} only. Handler wiring is
+	 * Lease id is {@link Request.lease_id}. Handler wiring is
 	 * {@link Request.register} at server boot, not a method on this class.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
-	 * OLLMrpc.Live.RemoteParams.rpc_register();
 	 * OLLMrpc.Request.register(
-	 *     "RPC-Live-Remote", new OLLMrpc.Live.Remote(),
-	 *     typeof(OLLMrpc.Live.RemoteParams));
+	 *     "RPC-Live-Remote", new OLLMrpc.Live.Remote());
 	 * var req = new OLLMrpc.Request() {
 	 *     method = "RPC-Live-Remote.unref",
-	 *     param = new OLLMrpc.Live.RemoteParams() {
-	 *         object_id = handle
-	 *     },
+	 *     lease_id = handle,
 	 *     connection = connection
 	 * };
 	 * req.dispatch();
@@ -48,12 +49,7 @@ namespace OLLMrpc.Live
 				if (!request.connection.live_handles) {
 					GLib.error("Remote.ref requires live_handles");
 				}
-				var param = request.param as RemoteParams;
-				if (param == null) {
-					request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
-					return;
-				}
-				var id = (int) param.object_id;
+				var id = (int) request.lease_id;
 				if (!request.connection.leases.has_key(id)) {
 					request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
 					return;
@@ -66,12 +62,7 @@ namespace OLLMrpc.Live
 				if (!request.connection.live_handles) {
 					GLib.error("Remote.unref requires live_handles");
 				}
-				var param = request.param as RemoteParams;
-				if (param == null) {
-					request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
-					return;
-				}
-				var id = (int) param.object_id;
+				var id = (int) request.lease_id;
 				if (!request.connection.leases.has_key(id)) {
 					request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
 					return;

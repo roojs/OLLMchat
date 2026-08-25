@@ -24,19 +24,19 @@ namespace OLLMrpc
 	 * Set ''method'' to the wire handler name
 	 * (''RPC-Object.method'' for daemons; hyphen nested
 	 * namespaces like ''RPC-Live-Remote.ref''; or a REST
-	 * path for HTTP). Attach a {@link CallParam} subclass on
-	 * ''param'', or positional {@link GLib.Value}s on ''args''
-	 * (omit when empty). For typed HTTP results, set
-	 * ''result_type'' before {@link Client.call}.
+	 * path for HTTP). Attach positional {@link GLib.Value}s on
+	 * ''args'' via {@link args} (omit when empty). For typed
+	 * HTTP results, set ''result_type'' before {@link Client.call}.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
 	 * var req = new OLLMrpc.Request() {
 	 *     method = "RPC-Folder.fetch_files",
-	 *     param = new OLLMfilesd.FolderParams() {
-	 *         path = "/home/user/project"
-	 *     },
+	 *     args = OLLMrpc.args(
+	 *         "siisasb", "/home/user/project", 0, 50, "",
+	 *         new string[] {}, false
+	 *     ),
 	 *     result_type = typeof(OLLMfilesd.FileArray)
 	 * };
 	 * var resp = yield rpc.call(req);
@@ -46,7 +46,6 @@ namespace OLLMrpc
 	 * }}}
 	 *
 	 * @see Client
-	 * @see CallParam
 	 * @see Response
 	 */
 	public class Request : GLib.Object, Bin.Serializable
@@ -54,51 +53,34 @@ namespace OLLMrpc
 		/** Wire object prefix → handler singleton (server dispatch). */
 		public static Gee.HashMap<string, GLib.Object> handlers;
 
-		/**
-		 * Wire object prefix → {@link GLib.Type} of the handler's param bag
-		 * (subclass of {@link CallParam}).
-		 */
-		public static Gee.HashMap<GLib.Type, GLib.Type> param_types;
-
 		public int id { get; set; }
 		public string method { get; set; default = ""; }
 
 		/**
-		 * Typed request arguments (client → daemon).
-		 *
-		 * Client: assign the registered param type for the target object.
-		 * Server: populated by {@link Bin.Serializable} decode on the wire.
-		 */
-		public CallParam param { get; set; default = new CallParam(); }
-
-		/**
 		 * Positional arguments (client → daemon), GIR / C order.
 		 *
-		 * Empty list is omitted on the bin socket. Current callers that
-		 * only set {@link param} never send this property. Direction is
+		 * Empty list is omitted on the bin socket. Direction is
 		 * not on the wire — the handler or typelib knows the signature.
 		 *
 		 * {@link Gee.ArrayList} cannot store {@link GLib.Value} (a struct).
 		 * valac requires a boxed element type. That is boxing, not
 		 * optional or null arguments. An empty list means no positional
-		 * args.
+		 * args. Prefer {@link args} to pack mixed types.
 		 *
 		 * == Example ==
 		 *
 		 * {{{
-		 * var text = GLib.Value(typeof(string));
-		 * text.set_string("hi");
-		 * req.args.add(text);
+		 * req.args = OLLMrpc.args("s", "hi");
 		 * }}}
 		 */
 		public Gee.ArrayList<GLib.Value?> args { get; set; default = new Gee.ArrayList<GLib.Value?>(); }
 
 		/**
-		 * Row in {@link Transport.Connection.leases} for a typelib method.
+		 * Row in {@link Transport.Connection.leases} for a typelib method
+		 * or live-handle RPC.
 		 *
-		 * ''0'' means none (constructors, CallParam-only calls). Omitted
-		 * on the bin socket when ''0''. Not {@link Live.RemoteParams.object_id}
-		 * — that name stays on the CallParam bags.
+		 * ''0'' means none (constructors, calls with no lease). Omitted
+		 * on the bin socket when ''0''.
 		 */
 		public uint64 lease_id { get; set; default = 0; }
 
@@ -117,23 +99,19 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Register a server dispatch handler and its params {@link GLib.Type}.
+		 * Register a server dispatch handler.
 		 *
 		 * @param name wire object prefix (e.g. RPC-Folder)
 		 * @param target live singleton with call_* signals
-		 * @param param_type GObject type for wire params (extends {@link CallParam})
 		 */
 		public static void register(
 			string name,
-			GLib.Object target,
-			GLib.Type param_type
+			GLib.Object target
 		) {
 			if (handlers == null) {
 				handlers = new Gee.HashMap<string, GLib.Object>();
-				param_types = new Gee.HashMap<GLib.Type, GLib.Type>();
 			}
 			handlers.set(name, target);
-			param_types.set(target.get_type(), param_type);
 		}
 
 		public unowned ParamSpec? find_property(string name)

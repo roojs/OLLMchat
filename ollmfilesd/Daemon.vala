@@ -19,7 +19,6 @@ namespace OLLMfilesd
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Daemon", typeof(Daemon));
-			DaemonParams.rpc_register();
 		}
 
 		public OllmfilesdApplication app { get; construct; }
@@ -62,9 +61,8 @@ namespace OLLMfilesd
 		construct
 		{
 			this.call_hello.connect((request) => {
-				var p = (DaemonParams) request.param;
-				if (p.protocol > 0) {
-					this.protocol = p.protocol;
+				if (request.args.get(0).get_int() > 0) {
+					this.protocol = request.args.get(0).get_int();
 				}
 				var result = new Gee.ArrayList<GLib.Object>();
 				result.add(this);

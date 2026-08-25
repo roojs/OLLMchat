@@ -33,7 +33,6 @@ namespace OLLMfilesd
 	{
 		public static void rpc_register()
 		{
-			ProjectParams.rpc_register();
 		}
 
 		/**
@@ -201,7 +200,7 @@ namespace OLLMfilesd
 			});
 			this.call_create_project.connect((request) => {
 				var project = this.create_project(
-					((ProjectParams) request.param).path
+					request.args.get(0).get_string()
 				);
 				var result = new Gee.ArrayList<GLib.Object>();
 				result.add(project);
@@ -212,7 +211,7 @@ namespace OLLMfilesd
 			this.call_remove_project.connect((request) => {
 				this.remove_project(
 					this.projects.path_map.get(
-						((ProjectParams) request.param).path
+						request.args.get(0).get_string()
 					)
 				);
 				request.reply(new OLLMrpc.Response() {
@@ -220,13 +219,14 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_activate_project.connect((request) => {
-				var p = (ProjectParams) request.param;
 				this.activate_project.begin(
 					request,
-					p.path.length > 0
-						? this.projects.path_map.get(p.path)
+					request.args.get(0).get_string().length > 0
+						? this.projects.path_map.get(
+							request.args.get(0).get_string()
+						)
 						: null,
-					p.skip_scan
+					request.args.get(1).get_boolean()
 				);
 			});
 			this.file_contents_changed.connect((file) => {
