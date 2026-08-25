@@ -407,10 +407,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 
 			var hello = new OLLMrpc.Request() {
 				method = "RPC-Daemon.hello",
-				param = new OLLMfilesd.DaemonParams() {
-					protocol = 1,
-					client = "ollmchat-cli"
-				}
+				args = OLLMrpc.args("is", 1, "ollmchat-cli")
 			};
 			if (!yield this.project_manager.rpc.connect(hello, new OLLMrpc.ClientBoot())) {
 				unowned string msg = this.project_manager.rpc.connect_error;

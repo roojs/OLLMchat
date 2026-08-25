@@ -263,26 +263,29 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * Apply {@link FileParams} on disk (replace symlink + mode).
+		 * Apply symlink target and mode on disk.
+		 *
+		 * @param target symlink destination path
+		 * @param unix_mode optional rwx bits (''0'' skips chmod)
 		 */
-		public async void realize(FileParams p) throws Error
+		public async void realize(string target, uint unix_mode) throws Error
 		{
-			if (p.target == "") {
+			if (target == "") {
 				throw new GLib.IOError.INVALID_ARGUMENT("Symlink target is empty");
 			}
 			if (GLib.FileUtils.test(this.path, GLib.FileTest.EXISTS)) {
 				GLib.FileUtils.unlink(this.path);
 			}
 			GLib.File.new_for_path(this.path).make_symbolic_link(
-				p.target,
+				target,
 				null
 			);
-			if (p.unix_mode == 0) {
+			if (unix_mode == 0) {
 				return;
 			}
 			if (Posix.chmod(
 				this.path,
-				(Posix.mode_t) (p.unix_mode & 0777)
+				(Posix.mode_t) (unix_mode & 0777)
 			) != 0) {
 				throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
 			}

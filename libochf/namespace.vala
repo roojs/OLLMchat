@@ -35,11 +35,11 @@
  * {{{
  * var resp = yield rpc.call(new OLLMrpc.Request() {
  *     method = "/api/models",
- *     param = new OLLMhf.Param.Search() {
+ *     args = OLLMrpc.args("o", new OLLMhf.Param.Search() {
  *         search = "mistral",
  *         filter = "gguf",
  *         limit = 20
- *     },
+ *     }),
  *     result_type = typeof(OLLMhf.ModelArray)
  * });
  * foreach (var model in ((OLLMhf.ModelArray) resp.result[0]).items) {

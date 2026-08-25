@@ -24,7 +24,7 @@ namespace OLLMhf.Param
 	 * Non-empty properties become HTTP query fields. See the OLLMhf namespace
 	 * page for usage with ''GET /api/models''.
 	 */
-	public class Search : OLLMrpc.CallParam
+	public class Search : GLib.Object
 	{
 		/** Free-text search term. */
 		public string search { get; set; default = ""; }

@@ -27,11 +27,9 @@ namespace OLLMrpcTests
 			var conn = new OLLMrpc.Transport.Connection() {
 				live_handles = true
 			};
-			OLLMrpc.Live.RemoteParams.rpc_register();
 			OLLMrpc.Request.register(
 				"RPC-Live-Remote",
-				new OLLMrpc.Live.Remote(),
-				typeof(OLLMrpc.Live.RemoteParams)
+				new OLLMrpc.Live.Remote()
 			);
 			var obj = new GLib.Object();
 			var floor = obj.ref_count;
@@ -42,9 +40,7 @@ namespace OLLMrpcTests
 
 			var ref_req = new OLLMrpc.Request() {
 				method = "RPC-Live-Remote.ref",
-				param = new OLLMrpc.Live.RemoteParams() {
-					object_id = id
-				},
+				lease_id = id,
 				connection = conn
 			};
 			this.check(command_line, ref_req.dispatch(), "Remote.ref dispatch failed");
@@ -52,9 +48,7 @@ namespace OLLMrpcTests
 
 			var unref_req = new OLLMrpc.Request() {
 				method = "RPC-Live-Remote.unref",
-				param = new OLLMrpc.Live.RemoteParams() {
-					object_id = id
-				},
+				lease_id = id,
 				connection = conn
 			};
 			this.check(command_line, unref_req.dispatch(), "Remote.unref extra dispatch failed");
@@ -68,9 +62,7 @@ namespace OLLMrpcTests
 			var pinned_id = conn.export(pinned);
 			var extra_req = new OLLMrpc.Request() {
 				method = "RPC-Live-Remote.ref",
-				param = new OLLMrpc.Live.RemoteParams() {
-					object_id = pinned_id
-				},
+				lease_id = pinned_id,
 				connection = conn
 			};
 			this.check(command_line, extra_req.dispatch(), "stop-path Remote.ref dispatch failed");

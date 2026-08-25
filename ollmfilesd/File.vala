@@ -40,7 +40,6 @@ namespace OLLMfilesd
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("File", typeof(File));
-			FileParams.rpc_register();
 		}
 
 		/**
@@ -89,7 +88,7 @@ namespace OLLMfilesd
 		construct
 		{
 			this.call_read.connect((request) => {
-				var path = ((FileParams) request.param).path;
+				var path = request.args.get(0).get_string();
 				uint8[] data;
 				string etag;
 				try {
@@ -136,7 +135,7 @@ namespace OLLMfilesd
 				var file_type = GLib.FileType.UNKNOWN;
 				try {
 					file_type = GLib.File.new_for_path(
-						((FileParams) request.param).path
+						request.args.get(0).get_string()
 					).query_file_type(
 						GLib.FileQueryInfoFlags.NONE,
 						null
@@ -154,8 +153,9 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_fetch.connect((request) => {
-				var p = (FileParams) request.param;
-				var project = this.manager.project_root(p.project_path);
+				var project = this.manager.project_root(
+					request.args.get(0).get_string()
+				);
 				if (project == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -163,7 +163,9 @@ namespace OLLMfilesd
 					});
 					return;
 				}
-				var project_file = project.project_files.child_map.get(p.path);
+				var project_file = project.project_files.child_map.get(
+					request.args.get(1).get_string()
+				);
 				if (project_file == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -187,9 +189,7 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_write.connect((request) => {
-				var p = (FileParams) request.param;
 				this.write.begin(
-					p,
 					request,
 					(obj, res) => {
 						this.write.end(res);
@@ -197,10 +197,11 @@ namespace OLLMfilesd
 				);
 			});
 			this.call_apply_permissions.connect((request) => {
-				var p = (FileParams) request.param;
+				var unix_mode_val = GLib.Value(typeof(uint));
+				request.args.get(1).transform(ref unix_mode_val);
 				if (Posix.chmod(
-					p.path,
-					(Posix.mode_t) (p.unix_mode & 0777)
+					request.args.get(0).get_string(),
+					(Posix.mode_t) (unix_mode_val.get_uint() & 0777)
 				) != 0) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -216,8 +217,8 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_register.connect((request) => {
-				var p = (FileParams) request.param;
-				var existing = this.manager.get_file_from_active_project(p.path);
+				var path = request.args.get(0).get_string();
+				var existing = this.manager.get_file_from_active_project(path);
 				if (existing != null && existing.id != -1) {
 					var row = new File(this.manager);
 					row.copy_from(existing, {"manager", "buffer", "parent"});
@@ -231,7 +232,7 @@ namespace OLLMfilesd
 					return;
 				}
 				var fake = new File(this.manager) {
-					path = p.path,
+					path = path,
 					id = -1
 				};
 				fake.to_real.begin((obj, res) => {
@@ -260,7 +261,7 @@ namespace OLLMfilesd
 			});
 			this.call_delete.connect((request) => {
 				var file = this.manager.get_file_from_active_project(
-					((FileParams) request.param).path
+					request.args.get(0).get_string()
 				);
 				this.manager.delete_manager.remove.begin(
 					file,
@@ -275,10 +276,13 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_changed_check.connect((request) => {
-				var p = (FileParams) request.param;
-				var file = this.manager.get_file_from_active_project(p.path);
+				var file = this.manager.get_file_from_active_project(
+					request.args.get(0).get_string()
+				);
+				var mtime_val = GLib.Value(typeof(int64));
+				request.args.get(1).transform(ref mtime_val);
 				var status = FileUpdateStatus.NO_CHANGE;
-				if (file.mtime_on_disk() > p.last_known_mtime) {
+				if (file.mtime_on_disk() > mtime_val.get_int64()) {
 					status = FileUpdateStatus.CHANGED;
 				}
 				request.reply(new OLLMrpc.Response() {
@@ -288,48 +292,54 @@ namespace OLLMfilesd
 		}
 
 		private async void write(
-			FileParams p,
 			OLLMrpc.Request request
 		) {
+			var path = request.args.get(0).get_string();
+			var content = request.args.get(1).get_string();
+			var base_type = request.args.get(2).get_string();
+			var target = request.args.get(3).get_string();
+			var unix_mode_val = GLib.Value(typeof(uint));
+			request.args.get(4).transform(ref unix_mode_val);
+			var unix_mode = unix_mode_val.get_uint();
 			try {
-				switch (p.base_type) {
+				switch (base_type) {
 					case "d": {
-						var folder = this.manager.get_folder_at_path(p.path);
+						var folder = this.manager.get_folder_at_path(path);
 						if (folder == null) {
 							folder = new Folder(this.manager) {
-								path = p.path,
+								path = path,
 								id = -1
 							};
 						}
 						if (folder.id < 0) {
 							yield folder.to_real();
 						}
-						yield folder.realize(p);
+						yield folder.realize(unix_mode);
 						break;
 					}
 					case "fa": {
 						var alias = this.manager.file_cache.get(
-							p.path
+							path
 						) as FileAlias;
 						if (alias == null) {
 							alias = new FileAlias(this.manager) {
-								path = p.path,
+								path = path,
 								id = -1
 							};
 						}
 						if (alias.id < 0) {
-							yield alias.to_real(p.target);
+							yield alias.to_real(target);
 						}
-						yield alias.realize(p);
+						yield alias.realize(target, unix_mode);
 						break;
 					}
 					default: {
 						var file = this.manager.get_file_from_active_project(
-							p.path
+							path
 						);
 						if (file == null) {
 							file = new File(this.manager) {
-								path = p.path,
+								path = path,
 								id = -1
 							};
 						}
@@ -349,7 +359,7 @@ namespace OLLMfilesd
 							yield file_history.commit();
 							file.saveToDB(this.manager.db, null, false);
 						}
-						yield file.realize(p);
+						yield file.realize(content, unix_mode);
 						if (change_type == "modified") {
 							this.manager.notification(new OLLMrpc.Notification() {
 								method = "event.project.invalidate_cache",
@@ -696,20 +706,23 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * Apply {@link FileParams} on disk for an indexed file (write bytes + mode).
+		 * Apply content and mode on disk for an indexed file.
+		 *
+		 * @param content bytes to write via the buffer
+		 * @param unix_mode optional rwx bits (''0'' skips chmod)
 		 */
-		public async void realize(FileParams p) throws Error
+		public async void realize(string content, uint unix_mode) throws Error
 		{
 			if (this.buffer == null) {
 				this.manager.buffer_provider.create_buffer(this);
 			}
-			yield this.buffer.write_real(p.content);
-			if (p.unix_mode == 0) {
+			yield this.buffer.write_real(content);
+			if (unix_mode == 0) {
 				return;
 			}
 			if (Posix.chmod(
 				this.path,
-				(Posix.mode_t) (p.unix_mode & 0777)
+				(Posix.mode_t) (unix_mode & 0777)
 			) != 0) {
 				throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
 			}

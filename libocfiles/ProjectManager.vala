@@ -95,16 +95,11 @@ namespace OLLMfiles
 		{
 			Object();
 			OLLMrpc.Daemon.rpc_register();
-			OLLMfilesd.DaemonParams.rpc_register();
 			Folder.rpc_register();
 			File.rpc_register();
 			FileAlias.rpc_register();
 			FileWithHistory.rpc_register();
 			SQT.VectorMetadata.rpc_register();
-			OLLMfilesd.ProjectParams.rpc_register();
-			OLLMfilesd.FileParams.rpc_register();
-			OLLMfilesd.FolderParams.rpc_register();
-			OLLMfilesd.VectorParams.rpc_register();
 			this.rpc = new OLLMrpc.Client(
 				GLib.Path.build_filename(
 					GLib.Environment.get_user_data_dir(),
@@ -177,10 +172,11 @@ namespace OLLMfiles
 
 			this.rpc.call.begin(new OLLMrpc.Request() {
 				method = "RPC-ProjectManager.activate_project",
-				param = new OLLMfilesd.ProjectParams() {
-					skip_scan = this.disable_initial_scan,
-					path = project != null ? project.path : ""
-				}
+				args = OLLMrpc.args(
+					"sb",
+					project != null ? project.path : "",
+					this.disable_initial_scan
+				)
 			}, (obj, res) => {
 				this.rpc.call.end(res);
 			});
@@ -212,8 +208,7 @@ namespace OLLMfiles
 		public async void load_projects_from_db()
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-ProjectManager.load_projects_from_db",
-				param = new OLLMfilesd.ProjectParams()
+				method = "RPC-ProjectManager.load_projects_from_db"
 			});
 			if (response.error != null) {
 				return;
@@ -237,7 +232,7 @@ namespace OLLMfiles
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.fetch",
-				param = new OLLMfilesd.ProjectParams() { path = path }
+				args = OLLMrpc.args("s", path)
 			});
 			if (response.error != null) {
 				return null;
@@ -264,7 +259,7 @@ namespace OLLMfiles
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-ProjectManager.create_project",
-				param = new OLLMfilesd.ProjectParams() { path = path }
+				args = OLLMrpc.args("s", path)
 			});
 			if (response.error != null) {
 				return new Folder(this) {
@@ -304,7 +299,7 @@ namespace OLLMfiles
 
 			this.rpc.call.begin(new OLLMrpc.Request() {
 				method = "RPC-ProjectManager.remove_project",
-				param = new OLLMfilesd.ProjectParams() { path = project.path }
+				args = OLLMrpc.args("s", project.path)
 			}, (obj, res) => {
 				this.rpc.call.end(res);
 			});

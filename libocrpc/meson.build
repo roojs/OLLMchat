@@ -73,7 +73,6 @@ ocrpc_core_src = files([
   'Transport/Connection.vala',
   'Transport/Listen.vala',
   'Transport/TcpListen.vala',
-  'CallParam.vala',
   'Daemon.vala',
   'Error.vala',
   'Notification.vala',
@@ -88,9 +87,7 @@ if use_unix_sockets
     'Live/Buffer.vala',
     'Live/BufferStream.vala',
     'Live/BufferListen.vala',
-    'Live/RemoteParams.vala',
     'Live/Remote.vala',
-    'Live/SubscribeParams.vala',
     'Live/Subscription.vala',
     'Live/Subscribe.vala',
   ])

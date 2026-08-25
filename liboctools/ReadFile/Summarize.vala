@@ -116,17 +116,13 @@ namespace OLLMtools.ReadFile
 			if (this.file.id <= 0) {
 				return;
 			}
-			var project = this.file.manager.active_project;
-			if (project == null) {
+			if (this.file.manager.active_project == null) {
 				return;
 			}
 
 			var response = yield this.file.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Codebase.file_info",
-				param = new OLLMfilesd.VectorParams() {
-					path = project.path,
-					file_path = this.file.path
-				}
+				args = OLLMrpc.args("s", this.file.path)
 			});
 			if (response.error != null) {
 				return;

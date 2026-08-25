@@ -39,12 +39,6 @@ ocfiles_vapi_gen_pkgs = [
   '--pkg', 'gee-0.8',
 ]
 
-ocfiles_callparam_src = files(
-  meson.current_source_dir() / '../ollmfilesd/CallParam.vala',
-)
-
-# OLLMfiles-only sources (no CallParam). CallParam is OLLMfilesd — a second
-# top-level namespace that Vala cannot emit into the same .gir as OLLMfiles.
 ocfiles_gir_src = files([
   'BufferProviderBase.vala',
   'FileBuffer.vala',
@@ -73,7 +67,7 @@ ocfiles_gir_src = files([
   'Tree.vala',
 ])
 
-ocfiles_src = ocfiles_gir_src + ocfiles_callparam_src
+ocfiles_src = ocfiles_gir_src
 
 # Build rpath for libraries to find each other in build directory
 lib_build_rpath = ':'.join([
@@ -95,8 +89,8 @@ if not is_windows
   ocfiles_lib_vala_args += ['--vapidir', '/usr/share/vala/vapi']
 endif
 
-# No vala_gir on library(): CallParam (OLLMfilesd) makes Vala reject dual-namespace GIR,
-# and MSYS2 Meson rejects vala_gir: [] / disabler(). Linux GIR is a custom_target below.
+# No vala_gir on library(): MSYS2 Meson rejects vala_gir: [] / disabler().
+# Linux GIR is a custom_target below (temp-dir script avoids clobbering VAPI).
 ocfiles_base_lib = library(ocfiles_lib,
   dependencies: ocfiles_lib_deps,
   sources: ocfiles_src,
@@ -154,31 +148,6 @@ ocfiles_vapi_dep = declare_dependency(
 ocfiles_gir_targets = []
 
 if host_machine.system() == 'linux' and g_ir_compiler.found()
-  # CallParam is OLLMfilesd (second top-level NS). Expose it as a VAPI so the
-  # OLLMfiles GIR compile can --pkg it without embedding that namespace in the gir.
-  ollmfilesd_callparam_vapi = custom_target('ollmfilesd-callparam-vapi',
-    output: 'ollmfilesd-callparam.vapi',
-    input: ocfiles_callparam_src,
-    command: [
-      valac_exe,
-      '-C', '--debug',
-      '--target-glib=auto',
-      '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-      '--vapidir', '/usr/share/vala/vapi',
-      '--pkg', 'ocrpc',
-      '--pkg', 'json-glib-1.0',
-      '--pkg', 'gobject-2.0',
-      '--pkg', 'glib-2.0',
-      '--pkg', 'gio-2.0',
-      '--pkg', 'gee-0.8',
-      '--library', 'ollmfilesd-callparam',
-      '--vapi', '@OUTPUT@',
-      '@INPUT@',
-    ],
-    depends: [ocrpc_vapi],
-    build_by_default: true,
-  )
-
   ocfiles_gir = custom_target('ocfiles-gir',
     output: 'OLLMfiles-1.0.gir',
     input: ocfiles_gir_src,
@@ -195,12 +164,11 @@ if host_machine.system() == 'linux' and g_ir_compiler.found()
       '--vapidir', '/usr/share/vala/vapi',
       '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
       '--pkg', 'ocrpc',
-      '--pkg', 'ollmfilesd-callparam',
     ] + ocfiles_vapi_gen_pkgs + strcasestr_vala_args + [
       '--library', ocfiles_lib,
       '@INPUT@',
     ],
-    depends: [ocfiles_base_lib, ocrpc_vapi, ollmfilesd_callparam_vapi],
+    depends: [ocfiles_base_lib, ocrpc_vapi],
     build_by_default: true,
   )
   ocfiles_gir_targets = [ocfiles_gir]

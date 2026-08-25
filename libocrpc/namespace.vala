@@ -22,14 +22,14 @@
  * The OLLMrpc namespace is the client library for talking to ollmfilesd over a
  * Unix socket (or stdio/TCP), and for calling HTTPS JSON APIs with the same
  * {@link Request} / {@link Response} shape. {@link Client} owns the channel.
- * {@link Request} carries ''method'', a typed {@link CallParam} on ''param'',
+ * {@link Request} carries ''method'', positional ''args'' via {@link args},
  * and optional ''result_type''. {@link Bin} serializes {@link Bin.Serializable}
  * GObjects on the wire. {@link Transport} is the daemon listen/connection side.
  * {@link Live} is opt-in live GObject handles (ref, unref, subscribe).
  *
  * == Architecture Benefits ==
  *
- *  * Typed params: CallParam subclasses, not ad-hoc JSON bags
+ *  * Positional args: D-Bus signature packing via {@link args}, not ad-hoc JSON bags
  *  * One client: Unix socket for ollmfilesd, HTTPS URL for Hub-style APIs
  *  * Bin codec: compact wire with JIT property keys ({@link Bin.Stream})
  *  * Shared types: same Request/Response on client and daemon
@@ -40,7 +40,6 @@
  *
  * {{{
  * OLLMrpc.Daemon.rpc_register();
- * OLLMfilesd.DaemonParams.rpc_register();
  * var rpc = new OLLMrpc.Client(
  *     GLib.Path.build_filename(
  *         GLib.Environment.get_user_data_dir(), "ollmchat"),
@@ -49,16 +48,12 @@
  * );
  * if (!yield rpc.connect(new OLLMrpc.Request() {
  *     method = "RPC-Daemon.hello",
- *     param = new OLLMfilesd.DaemonParams() {
- *         protocol = 1,
- *         client = "my-app"
- *     }
+ *     args = OLLMrpc.args("is", 1, "my-app")
  * }, new OLLMrpc.ClientBoot())) {
  *     GLib.error("%s", rpc.connect_error);
  * }
  * var resp = yield rpc.call(new OLLMrpc.Request() {
- *     method = "RPC-ProjectManager.load_projects_from_db",
- *     param = new OLLMfilesd.ProjectParams()
+ *     method = "RPC-ProjectManager.load_projects_from_db"
  * });
  * }}}
  *
@@ -70,11 +65,11 @@
  * yield rpc.connect(new OLLMrpc.Request());
  * var resp = yield rpc.call(new OLLMrpc.Request() {
  *     method = "/api/models",
- *     param = new OLLMhf.Param.Search() {
+ *     args = OLLMrpc.args("o", new OLLMhf.Param.Search() {
  *         search = "llama",
  *         filter = "gguf",
  *         limit = 10
- *     },
+ *     }),
  *     result_type = typeof(OLLMhf.ModelArray)
  * });
  * }}}
@@ -82,7 +77,7 @@
  * == Best Practices ==
  *
  *  1. Registration: call each wire type's ''rpc_register()'' before connect
- *  2. Params: use a CallParam subclass on Request.param, not raw maps
+ *  2. Args: pack with {@link args} onto {@link Request.args}, not raw maps
  *  3. Results: set result_type when the HTTP path should decode to a GType
  *  4. Errors: check Response.error after every call
  *  5. Bin round-trips: see {@link Bin} and docs/bin-rpc-protocol.md
@@ -104,7 +99,8 @@ namespace OLLMrpc
 	 * in that signature. Unknown or invalid types are fatal.
 	 *
 	 * ''s'' string, ''b'' bool, ''y'' byte, ''n'' int16, ''q'' uint16,
-	 * ''i'' int32, ''u'' uint32, ''x'' int64, ''t'' uint64, ''d'' double,
+	 * ''i'' int32, ''u'' uint32, ''x'' int64, ''t'' uint64, ''f'' float,
+	 * ''d'' double,
 	 * ''o'' {@link GLib.Object}, ''g'' signature, ''h'' unix fd,
 	 * ''as'' ''string[]'', ''ay'' {@link GLib.Bytes},
 	 * ''v'' {@link GLib.Variant}.
@@ -134,14 +130,20 @@ namespace OLLMrpc
 		var offset = 0;
 		while (offset < signature.length) {
 			var rest = signature.substring(offset);
-			var rest_ptr = (char*) rest;
-			var next = (char*) null;
-			if (!GLib.VariantType.string_scan(rest, null, out next) || next == rest_ptr) {
-				GLib.error("invalid D-Bus type signature %s", signature);
+			var tag = "";
+			if (rest.has_prefix("f")) {
+				tag = "f";
+				offset += 1;
+			} else {
+				var rest_ptr = (char*) rest;
+				var next = (char*) null;
+				if (!GLib.VariantType.string_scan(rest, null, out next) || next == rest_ptr) {
+					GLib.error("invalid D-Bus type signature %s", signature);
+				}
+				var n = (long) ((uint8*) next - (uint8*) rest_ptr);
+				tag = rest.substring(0, n);
+				offset += (int) n;
 			}
-			var n = (long) ((uint8*) next - (uint8*) rest_ptr);
-			var tag = rest.substring(0, n);
-			offset += (int) n;
 			switch (tag) {
 				case "s":
 					var s_val = GLib.Value(typeof(string));
@@ -195,6 +197,12 @@ namespace OLLMrpc
 					var t_val = GLib.Value(typeof(uint64));
 					t_val.set_uint64(l.arg<uint64>());
 					packed.add(t_val);
+					break;
+
+				case "f":
+					var f_val = GLib.Value(typeof(float));
+					f_val.set_float((float) l.arg<double>());
+					packed.add(f_val);
 					break;
 
 				case "d":

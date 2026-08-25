@@ -22,15 +22,14 @@ namespace OLLMfilesd
 	 * Server ''Codebase.*'' wire handlers — vector search, per-file metadata,
 	 * debug embedding dump, database reset, and background index queue control.
 	 *
-	 * Registered once in {@link OllmfilesdApplication}; params are
-	 * {@link VectorParams}. See {@link OLLMrpc.Request.dispatch} for signal
-	 * routing.
+	 * Registered once in {@link OllmfilesdApplication}. Arguments arrive on
+	 * {@link OLLMrpc.Request.args}. See {@link OLLMrpc.Request.dispatch} for
+	 * signal routing.
 	 */
 	public class Codebase : GLib.Object
 	{
 		public static void rpc_register()
 		{
-			VectorParams.rpc_register();
 		}
 
 		public ProjectManager manager { get; construct; }
@@ -66,18 +65,18 @@ namespace OLLMfilesd
 		 *  * Client API bugs → propagate; no catch-all on this signal
 		 *  * ''manager.db'' and ''vector_db'' set after init — no null guards
 		 *
-		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
+		 * @param request inbound RPC; search fields on {@link OLLMrpc.Request.args}
 		 */
 		public signal void call_search(OLLMrpc.Request request);
 
 		/**
 		 * ''Codebase.file_info'' — {@link SQT.VectorMetadata} rows for one file.
 		 *
-		 * Params: {@link VectorParams.file_path}. Reply: ''result'' list (empty
+		 * Params: ''args.get(0)'' file path. Reply: ''result'' list (empty
 		 * when the file is missing or not indexed) and ''msg'' row count — not an
 		 * error.
 		 *
-		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
+		 * @param request inbound RPC; file path on {@link OLLMrpc.Request.args}
 		 */
 		public signal void call_file_info(OLLMrpc.Request request);
 
@@ -85,13 +84,13 @@ namespace OLLMfilesd
 		 * ''Codebase.debug_get'' — dump stored FAISS embedding for one AST path.
 		 *
 		 * Debug/admin only; CLI: ''oc-vector-search --dump-vector=AST_PATH''.
-		 * Params: {@link VectorParams.path}, {@link VectorParams.ast_path}.
+		 * Params: ''args.get(0)'' path, ''args.get(1)'' ast_path.
 		 * Reply: ''msg'' with one float per line.
 		 *
 		 *  * Domain misses → ''response.error''
 		 *  * Caller must set ''ast_path''; client API bugs propagate
 		 *
-		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
+		 * @param request inbound RPC; path and ast_path on {@link OLLMrpc.Request.args}
 		 */
 		public signal void call_debug_get(OLLMrpc.Request request);
 
@@ -104,17 +103,17 @@ namespace OLLMfilesd
 		 *  * Domain / I/O failure → ''response.error''
 		 *  * Client API bugs propagate; no catch-all on this signal
 		 *
-		 * @param request inbound RPC; {@link VectorParams} unused
+		 * @param request inbound RPC; no args
 		 */
 		public signal void call_reset(OLLMrpc.Request request);
 
 		/**
 		 * ''Codebase.start'' — enqueue stale files from DB and run the queue.
 		 * Clears {@link OLLMfilesd.Vector.BackgroundScan.stop_requested} from a
-		 * prior ''Codebase.stop''. ''VectorParams.path'' must already exist
+		 * prior ''Codebase.stop''. ''args.get(0)'' path must already exist
 		 * (CLI scans via ''ProjectManager.activate_project'' first).
 		 *
-		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
+		 * @param request inbound RPC; path and only_file on {@link OLLMrpc.Request.args}
 		 */
 		public signal void call_start(OLLMrpc.Request request);
 
@@ -122,7 +121,7 @@ namespace OLLMfilesd
 		 * ''Codebase.stop'' — pause indexing after the current file; queue
 		 * entries are preserved.
 		 *
-		 * @param request inbound RPC; {@link VectorParams} unused
+		 * @param request inbound RPC; no args
 		 */
 		public signal void call_stop(OLLMrpc.Request request);
 
@@ -169,10 +168,9 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_file_info.connect((request) => {
-				var p = (VectorParams) request.param;
 				var list = new Gee.ArrayList<GLib.Object>();
 				var indexed = this.manager.get_file_from_active_project(
-					p.file_path
+					request.args.get(0).get_string()
 				);
 				if (indexed != null && indexed.id > 0) {
 					var rows = new Gee.ArrayList<SQT.VectorMetadata>();
@@ -205,12 +203,11 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_start.connect((request) => {
-				var p = (VectorParams) request.param;
 				var scan = this.manager.vector_scan;
 				scan.stop_requested = false;
 				scan.queueProject.begin(
-					p.path,
-					p.only_file,
+					request.args.get(0).get_string(),
+					request.args.get(1).get_string(),
 					true,
 					(obj, res) => {
 						var queued_count = scan.queueProject.end(res);
@@ -229,12 +226,18 @@ namespace OLLMfilesd
 		 * ''Codebase.search'' handler — filter ''vector_metadata'', run FAISS
 		 * {@link OLLMvector2.Search}, reply markdown in {@link OLLMrpc.Response.msg}.
 		 *
-		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
+		 * @param request inbound RPC; search fields on {@link OLLMrpc.Request.args}
 		 */
 		private async void search(OLLMrpc.Request request)
 		{
-			var p = (VectorParams) request.param;
-			var project = this.manager.project_root(p.path);
+			var path = request.args.get(0).get_string();
+			var query = request.args.get(1).get_string();
+			var max_results_arg = request.args.get(2).get_int();
+			var language = request.args.get(3).get_string();
+			var element_type = request.args.get(4).get_string();
+			var category = request.args.get(5).get_string();
+			var format = request.args.get(6).get_string();
+			var project = this.manager.project_root(path);
 			if (project == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -246,7 +249,7 @@ namespace OLLMfilesd
 				return;
 			}
 
-			if (p.element_type.strip().down() == "project") {
+			if (element_type.strip().down() == "project") {
 				var description = project.project_description();
 				if (description == "") {
 					request.reply(new OLLMrpc.Response() {
@@ -266,14 +269,14 @@ namespace OLLMfilesd
 				yield project.load_files_from_db();
 			}
 
-			var file_ids = project.project_files.get_ids(p.language);
+			var file_ids = project.project_files.get_ids(language);
 
 			if (file_ids.size == 0) {
-				if (p.language != "") {
+				if (language != "") {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "No files in the project match the language filter \""
-							+ p.language + "\". "
+							+ language + "\". "
 							+ "Try the same query without the language parameter to search all languages, or use a different language."
 					});
 					return;
@@ -291,8 +294,8 @@ namespace OLLMfilesd
 				+ string.joinv(",", file_ids.to_array()) + ")";
 
 			var search_both_function_and_method = false;
-			if (p.element_type != "") {
-				var normalized_type = p.element_type.strip().down();
+			if (element_type != "") {
+				var normalized_type = element_type.strip().down();
 				if (normalized_type == "function" || normalized_type == "method") {
 					sql = sql + " AND element_type IN ('function', 'method')";
 					search_both_function_and_method = true;
@@ -300,7 +303,7 @@ namespace OLLMfilesd
 					sql = sql + " AND element_type = $element_type";
 				}
 			}
-			if (p.category != "") {
+			if (category != "") {
 				sql = sql + " AND file_id IN "
 					+ "(SELECT file_id FROM vector_metadata fvm WHERE fvm.category = $category) "
 					+ "AND element_type IN ('document','section')";
@@ -309,24 +312,24 @@ namespace OLLMfilesd
 			GLib.debug(
 				"codebase_search vector filter: file_ids_count=%d, element_type='%s', category='%s', sql='%s'",
 				file_ids.size,
-				p.element_type != "" ? p.element_type : "none",
-				p.category != "" ? p.category : "none",
+				element_type != "" ? element_type : "none",
+				category != "" ? category : "none",
 				sql
 			);
 
 			var vector_query = OLLMvector2.SQT.VectorMetadata.query(this.manager.db);
 			var vector_stmt = vector_query.selectPrepare(sql);
 
-			if (p.element_type != "" && !search_both_function_and_method) {
+			if (element_type != "" && !search_both_function_and_method) {
 				vector_stmt.bind_text(
 					vector_stmt.bind_parameter_index("$element_type"),
-					p.element_type
+					element_type
 				);
 			}
-			if (p.category != "") {
+			if (category != "") {
 				vector_stmt.bind_text(
 					vector_stmt.bind_parameter_index("$category"),
-					p.category
+					category
 				);
 			}
 
@@ -340,11 +343,11 @@ namespace OLLMfilesd
 			);
 
 			if (filtered_vector_ids.size == 0) {
-				if (p.category != "") {
+				if (category != "") {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "No document matches the criteria (category=\""
-							+ p.category + "\"). "
+							+ category + "\"). "
 							+ "Try the same query without the category filter to search all docs, "
 							+ "or use a different category. Valid categories: "
 							+ string.joinv(", ", VALID_CATEGORIES) + "."
@@ -365,13 +368,13 @@ namespace OLLMfilesd
 				filter_array[i] = filtered_vector_ids.get(i);
 			}
 
-			var max_results = (uint64) (p.max_results > 0 ? p.max_results : 10);
+			var max_results = (uint64) (max_results_arg > 0 ? max_results_arg : 10);
 			var vector_search = new OLLMvector2.Search(
 				this.manager.vector_db,
 				this.manager.db,
 				this.config
 			) {
-				query = p.query,
+				query = query,
 				max_results = max_results
 			};
 
@@ -380,7 +383,7 @@ namespace OLLMfilesd
 			GLib.debug(
 				"codebase_search output: found %d result(s) for query '%s'",
 				hits.size,
-				p.query
+				query
 			);
 
 			var results = new Gee.ArrayList<Vector.SearchResult>();
@@ -395,7 +398,7 @@ namespace OLLMfilesd
 
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				msg = p.format == "json"
+				msg = format == "json"
 					? yield this.format_results_json(results)
 					: yield this.format_results(results)
 			});
@@ -442,7 +445,7 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * JSON array of search hits for {@link VectorParams.format} {@code json}.
+		 * JSON array of search hits for format ''json''.
 		 */
 		private async string format_results_json(
 			Gee.ArrayList<Vector.SearchResult> results
@@ -510,15 +513,16 @@ namespace OLLMfilesd
 		 * ''vector_id'', reconstruct from FAISS, reply one float per line in
 		 * {@link OLLMrpc.Response.msg}.
 		 *
-		 * @param request inbound RPC; {@link VectorParams} on {@link OLLMrpc.Request.param}
+		 * @param request inbound RPC; path and ast_path on {@link OLLMrpc.Request.args}
 		 */
 		private async void debug_get(OLLMrpc.Request request)
 		{
-			var p = (VectorParams) request.param;
-			if (p.ast_path == "") {
+			var path = request.args.get(0).get_string();
+			var ast_path = request.args.get(1).get_string();
+			if (ast_path == "") {
 				GLib.error("RPC-Codebase.debug_get: ast_path is required");
 			}
-			var project = this.manager.project_root(p.path);
+			var project = this.manager.project_root(path);
 			if (project == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -549,7 +553,7 @@ namespace OLLMfilesd
 			var rows = new Gee.ArrayList<SQT.VectorMetadata>();
 			SQT.VectorMetadata.query(this.manager.db).select(
 				"WHERE file_id IN (" + string.joinv(",", file_ids.to_array())
-					+ ") AND ast_path = '" + p.ast_path.replace("'", "''")
+					+ ") AND ast_path = '" + ast_path.replace("'", "''")
 					+ "' ORDER BY id DESC LIMIT 1",
 				rows
 			);
@@ -558,7 +562,7 @@ namespace OLLMfilesd
 					id = request.id,
 					error = new OLLMrpc.Error(
 						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"No vector found for AST path: " + p.ast_path
+						"No vector found for AST path: " + ast_path
 					)
 				});
 				return;

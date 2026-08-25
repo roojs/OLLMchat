@@ -1,10 +1,10 @@
 # T2.6 — File.delete (Path B: skip scan + register new file)
-{"id":1,"method":"RPC-Daemon.hello","*type":"Request","param":{"*type":"DaemonParams","protocol":1,"client":"test-rpc"}}
-{"id":2,"method":"RPC-ProjectManager.create_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__"}}
-{"id":3,"method":"RPC-ProjectManager.activate_project","*type":"Request","param":{"*type":"ProjectParams","path":"__PROJECT_PATH__","skip_scan":true}}
-{"id":4,"method":"RPC-File.register","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__"}}
-{"id":5,"method":"RPC-File.read","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__"}}
-{"id":6,"method":"RPC-File.write","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__","content":"delete me\n"}}
-{"id":7,"method":"RPC-File.delete","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__"}}
-{"id":8,"method":"RPC-File.activate","*type":"Request","param":{"*type":"FileParams","path":"__REGISTER_PATH__"}}
-{"id":99,"method":"RPC-Daemon.shutdown","*type":"Request","param":{"*type":"DaemonParams"}}
+{"id":1,"method":"RPC-Daemon.hello","*type":"Request","args":[1,"test-rpc"]}
+{"id":2,"method":"RPC-ProjectManager.create_project","*type":"Request","args":["__PROJECT_PATH__"]}
+{"id":3,"method":"RPC-ProjectManager.activate_project","*type":"Request","args":["__PROJECT_PATH__",true]}
+{"id":4,"method":"RPC-File.register","*type":"Request","args":["__REGISTER_PATH__"]}
+{"id":5,"method":"RPC-File.read","*type":"Request","args":["__REGISTER_PATH__"]}
+{"id":6,"method":"RPC-File.write","*type":"Request","args":["__REGISTER_PATH__","delete me\n","f","",0]}
+{"id":7,"method":"RPC-File.delete","*type":"Request","args":["__REGISTER_PATH__"]}
+{"id":8,"method":"RPC-File.activate","*type":"Request","args":["__REGISTER_PATH__"]}
+{"id":99,"method":"RPC-Daemon.shutdown","*type":"Request"}

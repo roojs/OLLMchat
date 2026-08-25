@@ -321,7 +321,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-File.exists",
-				param = new OLLMfilesd.FileParams() { path = this.path }
+				args = OLLMrpc.args("s", this.path)
 			});
 			if (response.error != null || response.msg == "") {
 				return GLib.FileType.UNKNOWN;
@@ -353,7 +353,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-File.read",
-				param = new OLLMfilesd.FileParams() { path = this.path }
+				args = OLLMrpc.args("s", this.path)
 			});
 			if (response.error != null) {
 				return false;
@@ -430,13 +430,14 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-File.write",
-				param = new OLLMfilesd.FileParams() {
-					path = this.path,
-					content = write_content,
-					base_type = base_type,
-					target = target,
-					unix_mode = unix_mode
-				}
+				args = OLLMrpc.args(
+					"ssssu",
+					this.path,
+					write_content,
+					base_type,
+					target,
+					unix_mode
+				)
 			});
 			if (response.error != null) {
 				return false;
@@ -458,11 +459,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-File.changed.check",
-				param = new OLLMfilesd.FileParams() {
-					path = this.path,
-					buffer_dirty = this.buffer != null && this.buffer.is_modified,
-					last_known_mtime = this.last_modified
-				}
+				args = OLLMrpc.args("sx", this.path, this.last_modified)
 			});
 			if (response.error != null) {
 				return FileUpdateStatus.NO_CHANGE;
@@ -491,7 +488,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-File.register",
-				param = new OLLMfilesd.FileParams() { path = this.path }
+				args = OLLMrpc.args("s", this.path)
 			});
 			if (response.error != null) {
 				return false;
@@ -540,7 +537,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-File.delete",
-				param = new OLLMfilesd.FileParams() { path = this.path }
+				args = OLLMrpc.args("s", this.path)
 			});
 			return response.error == null;
 		}
@@ -559,10 +556,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-File.apply_permissions",
-				param = new OLLMfilesd.FileParams() {
-					path = this.path,
-					unix_mode = unix_mode
-				}
+				args = OLLMrpc.args("su", this.path, unix_mode)
 			});
 			return response.error == null;
 		}

@@ -136,10 +136,6 @@ Examples:
 	) throws Error
 	{
 		OLLMrpc.Daemon.rpc_register();
-		OLLMfilesd.DaemonParams.rpc_register();
-		OLLMfilesd.ProjectParams.rpc_register();
-		OLLMfilesd.FolderParams.rpc_register();
-		OLLMfilesd.VectorParams.rpc_register();
 		OLLMrpc.Bin.register("Folder", typeof(OLLMfiles.Folder));
 
 		this.rpc = new OLLMrpc.Client(
@@ -153,10 +149,7 @@ Examples:
 
 		if (!yield this.rpc.connect(new OLLMrpc.Request() {
 			method = "RPC-Daemon.hello",
-			param = new OLLMfilesd.DaemonParams() {
-				protocol = 1,
-				client = "oc-vector-index"
-			}
+			args = OLLMrpc.args("is", 1, "oc-vector-index")
 		}, new OLLMrpc.ClientBoot())) {
 			var msg = this.rpc.connect_error;
 			if (msg == "") {
@@ -167,8 +160,7 @@ Examples:
 
 		if (opt_reset_database) {
 			var reset_response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Codebase.reset",
-				param = new OLLMfilesd.VectorParams()
+				method = "RPC-Codebase.reset"
 			});
 			if (reset_response.error != null) {
 				throw new GLib.IOError.FAILED(reset_response.error.message);
@@ -214,8 +206,7 @@ Examples:
 		}
 
 		var load_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-ProjectManager.load_projects_from_db",
-			param = new OLLMfilesd.ProjectParams()
+			method = "RPC-ProjectManager.load_projects_from_db"
 		});
 		if (load_response.error != null) {
 			throw new GLib.IOError.FAILED(load_response.error.message);
@@ -223,7 +214,7 @@ Examples:
 
 		var fetch_response = yield this.rpc.call(new OLLMrpc.Request() {
 			method = "RPC-Folder.fetch",
-			param = new OLLMfilesd.FolderParams() { path = project_path }
+			args = OLLMrpc.args("s", project_path)
 		});
 		if (fetch_response.error != null) {
 			throw new GLib.IOError.FAILED(fetch_response.error.message);
@@ -248,7 +239,7 @@ Examples:
 			stdout.printf("Creating folder as project: %s\n", project_path);
 			var create_response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-ProjectManager.create_project",
-				param = new OLLMfilesd.ProjectParams() { path = project_path }
+				args = OLLMrpc.args("s", project_path)
 			});
 			if (create_response.error != null) {
 				throw new GLib.IOError.FAILED(create_response.error.message);
@@ -259,10 +250,7 @@ Examples:
 		stdout.printf("Scanning folder for files...\n");
 		var scan_response = yield this.rpc.call(new OLLMrpc.Request() {
 			method = "RPC-ProjectManager.activate_project",
-			param = new OLLMfilesd.ProjectParams() {
-				path = project_path,
-				skip_scan = false
-			}
+			args = OLLMrpc.args("sb", project_path, false)
 		});
 		if (scan_response.error != null) {
 			throw new GLib.IOError.FAILED(scan_response.error.message);
@@ -273,7 +261,7 @@ Examples:
 			stdout.printf("=== Project summary ===\n\n");
 			var summary_response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.project_description",
-				param = new OLLMfilesd.FolderParams() { path = project_path }
+				args = OLLMrpc.args("s", project_path)
 			});
 			if (summary_response.error != null) {
 				throw new GLib.IOError.FAILED(summary_response.error.message);
@@ -337,10 +325,7 @@ Examples:
 
 		var start_response = yield this.rpc.call(new OLLMrpc.Request() {
 			method = "RPC-Codebase.start",
-			param = new OLLMfilesd.VectorParams() {
-				path = project_path,
-				only_file = opt_only_file
-			}
+			args = OLLMrpc.args("ss", project_path, opt_only_file)
 		});
 		if (start_response.error != null) {
 			throw new GLib.IOError.FAILED(start_response.error.message);

@@ -454,9 +454,8 @@ namespace OLLMfilesd
 			Object();
 			this.rpc_manager = manager;
 			this.call_approve.connect((request) => {
-				var p = (FileParams) request.param;
 				var file = this.rpc_manager.get_file_from_active_project(
-					p.path
+					request.args.get(0).get_string()
 				);
 				if (file == null) {
 					request.reply(new OLLMrpc.Response() {
@@ -468,9 +467,11 @@ namespace OLLMfilesd
 					});
 					return;
 				}
+				var id_val = GLib.Value(typeof(int64));
+				request.args.get(1).transform(ref id_val);
 				var rows = new Gee.ArrayList<FileHistory>();
 				FileHistory.query(this.rpc_manager.db).select(
-					"WHERE id = %lld".printf(p.id),
+					"WHERE id = %lld".printf(id_val.get_int64()),
 					rows
 				);
 				if (rows.size == 0) {
@@ -499,10 +500,11 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_revert.connect((request) => {
-				var p = (FileParams) request.param;
+				var id_val = GLib.Value(typeof(int64));
+				request.args.get(1).transform(ref id_val);
 				var rows = new Gee.ArrayList<FileHistory>();
 				FileHistory.query(this.rpc_manager.db).select(
-					"WHERE id = %lld".printf(p.id),
+					"WHERE id = %lld".printf(id_val.get_int64()),
 					rows
 				);
 				if (rows.size == 0) {
@@ -568,8 +570,9 @@ namespace OLLMfilesd
 			OLLMrpc.Request request,
 			ProjectManager manager
 		) {
-			var p = (FileParams) request.param;
-			var file = manager.get_file_from_active_project(p.path);
+			var file = manager.get_file_from_active_project(
+				request.args.get(0).get_string()
+			);
 			if (file == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,

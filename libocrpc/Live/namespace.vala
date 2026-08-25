@@ -26,20 +26,9 @@ namespace OLLMrpc.Live
 
 #if G_OS_WIN32 || ANDROID
 
-	public class RemoteParams : CallParam {
-		public uint64 object_id { get; set; default = 0; }
-		public static void rpc_register() {}
-	}
-
 	public class Remote : GLib.Object {
 		public signal void call_ref(Request request);
 		public signal void call_unref(Request request);
-	}
-
-	public class SubscribeParams : CallParam {
-		public uint64 object_id { get; set; default = 0; }
-		public string name { get; set; default = ""; }
-		public static void rpc_register() {}
 	}
 
 	public class Subscription : GLib.Object {

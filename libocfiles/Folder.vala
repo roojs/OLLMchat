@@ -105,7 +105,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.project_description",
-				param = new OLLMfilesd.FolderParams() { path = this.path }
+				args = OLLMrpc.args("s", this.path)
 			});
 			if (response.error != null) {
 				return "";
@@ -129,7 +129,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.roots",
-				param = new OLLMfilesd.FolderParams() { path = this.path }
+				args = OLLMrpc.args("s", this.path)
 			});
 			if (response.error != null) {
 				return new Gee.ArrayList<Folder>();
@@ -165,10 +165,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-File.fetch",
-				param = new OLLMfilesd.FileParams() {
-					path = path,
-					project_path = this.path
-				}
+				args = OLLMrpc.args("ss", this.path, path)
 			});
 			if (response.error != null) {
 				return null;
@@ -197,10 +194,7 @@ namespace OLLMfiles
 		{
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.contains_folder",
-				param = new OLLMfilesd.FolderParams() {
-					project_path = this.path,
-					path = dir_path
-				}
+				args = OLLMrpc.args("ss", this.path, dir_path)
 			});
 			if (response.error != null) {
 				return false;
@@ -229,14 +223,15 @@ namespace OLLMfiles
 		{
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.fetch_files",
-				param = new OLLMfilesd.FolderParams() {
-					path = this.path,
-					offset = offset,
-					limit = limit,
-					query = query,
-					paths = paths,
-					metadata_only = metadata_only
-				}
+				args = OLLMrpc.args(
+					"siisasb",
+					this.path,
+					offset,
+					limit,
+					query,
+					paths,
+					metadata_only
+				)
 			});
 			if (response.error == null) {
 				var files = (Gee.ArrayList<File>) response.result;

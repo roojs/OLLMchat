@@ -60,6 +60,9 @@ namespace OLLMrpcTests
 			this.check(command_line, packed.get(1).get_int() == 3, "args int");
 			this.check(command_line, packed.get(2).get_boolean(), "args bool");
 			this.check(command_line, packed.get(3).get_uint64() == 7, "args uint64");
+			var packed_f = OLLMrpc.args("f", 1.5);
+			this.check(command_line, packed_f.size == 1, "args float size");
+			this.check(command_line, packed_f.get(0).get_float() == (float) 1.5, "args float");
 			var hello = new Hello();
 			var objects = OLLMrpc.args("o", hello);
 			this.check(command_line, objects.size == 1, "args object size");
@@ -74,16 +77,13 @@ namespace OLLMrpcTests
 			var got_names = (string[]) strv.get(0).get_boxed();
 			this.check(command_line, got_names.length == 2, "args strv length");
 			this.check(command_line, got_names[0] == "a", "args strv [0]");
-			OLLMrpc.Bin.register("CallParam", typeof(OLLMrpc.CallParam));
 			OLLMrpc.Request.register(
 				"RPC-Daemon",
-				new Hello(),
-				typeof(OLLMrpc.CallParam)
+				new Hello()
 			);
 			OLLMrpc.Request.register(
 				"RPC-Probe",
-				new Probe(),
-				typeof(OLLMrpc.CallParam)
+				new Probe()
 			);
 			var dir = GLib.DirUtils.make_tmp("ocrpc-values-XXXXXX");
 			var sock = GLib.Path.build_filename(dir, "rpc.sock");

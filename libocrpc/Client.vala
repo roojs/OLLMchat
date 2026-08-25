@@ -46,7 +46,6 @@ namespace OLLMrpc
 	 *
 	 * {{{
 	 * OLLMrpc.Daemon.rpc_register();
-	 * OLLMfilesd.DaemonParams.rpc_register();
 	 * var rpc = new OLLMrpc.Client(
 	 *     GLib.Path.build_filename(
 	 *         GLib.Environment.get_user_data_dir(), "ollmchat"),
@@ -55,16 +54,12 @@ namespace OLLMrpc
 	 * );
 	 * if (!yield rpc.connect(new OLLMrpc.Request() {
 	 *     method = "RPC-Daemon.hello",
-	 *     param = new OLLMfilesd.DaemonParams() {
-	 *         protocol = 1,
-	 *         client = "my-app"
-	 *     }
+	 *     args = OLLMrpc.args("is", 1, "my-app")
 	 * }, new OLLMrpc.ClientBoot())) {
 	 *     GLib.error("%s", rpc.connect_error);
 	 * }
 	 * var resp = yield rpc.call(new OLLMrpc.Request() {
-	 *     method = "RPC-ProjectManager.load_projects_from_db",
-	 *     param = new OLLMfilesd.ProjectParams()
+	 *     method = "RPC-ProjectManager.load_projects_from_db"
 	 * });
 	 * }}}
 	 *
@@ -76,11 +71,11 @@ namespace OLLMrpc
 	 * yield rpc.connect(new OLLMrpc.Request());
 	 * var resp = yield rpc.call(new OLLMrpc.Request() {
 	 *     method = "/api/models",
-	 *     param = new OLLMhf.Param.Search() {
+	 *     args = OLLMrpc.args("o", new OLLMhf.Param.Search() {
 	 *         search = "llama",
 	 *         filter = "gguf",
 	 *         limit = 10
-	 *     },
+	 *     }),
 	 *     result_type = typeof(OLLMhf.ModelArray)
 	 * });
 	 * }}}
@@ -187,8 +182,6 @@ namespace OLLMrpc
 			Notification.rpc_register();
 			Request.rpc_register();
 			Response.rpc_register();
-			Live.RemoteParams.rpc_register();
-			Live.SubscribeParams.rpc_register();
 		}
 
 		/**
@@ -490,17 +483,18 @@ namespace OLLMrpc
 
 		private async void send_http(PendingWrite head) throws GLib.Error
 		{
+			var query_obj = head.request.args.get(0).get_object();
 			GLib.debug(
 				"id=%d send path=%s param=%s result_type=%s",
 				head.request.id,
 				head.request.method,
-				head.request.param.get_type().name(),
+				query_obj.get_type().name(),
 				head.request.result_type.name()
 			);
 			var qs = "";
-			foreach (var pspec in head.request.param.get_class().list_properties()) {
+			foreach (var pspec in query_obj.get_class().list_properties()) {
 				var val = Value(pspec.value_type);
-				head.request.param.get_property(pspec.name, ref val);
+				query_obj.get_property(pspec.name, ref val);
 				switch (val.type()) {
 					case GLib.Type.STRING:
 						var s = val.get_string();
@@ -648,8 +642,8 @@ namespace OLLMrpc
 		/**
 		 * Send a request (caller must {@link connect} first).
 		 *
-		 * Assign a typed {@link CallParam} subclass to {@link Request.param}
-		 * before calling; see {@link Request} for wire serialize rules.
+		 * Assign positional {@link Request.args} (via {@link args}) before
+		 * calling; see {@link Request} for wire serialize rules.
 		 *
 		 * @param request wire request; {@link Request.id} is set here
 		 * @return wire response; check {@link Response.error}, or connect

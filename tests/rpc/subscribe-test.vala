@@ -47,26 +47,20 @@ namespace OLLMrpcTests
 			var conn = new Capture() {
 				live_handles = true
 			};
-			OLLMrpc.Live.RemoteParams.rpc_register();
-			OLLMrpc.Live.SubscribeParams.rpc_register();
 			OLLMrpc.Request.register(
 				"RPC-Live-Remote",
-				new OLLMrpc.Live.Remote(),
-				typeof(OLLMrpc.Live.RemoteParams)
+				new OLLMrpc.Live.Remote()
 			);
 			OLLMrpc.Request.register(
 				"RPC-Live-Subscribe",
-				new OLLMrpc.Live.Subscribe(),
-				typeof(OLLMrpc.Live.SubscribeParams)
+				new OLLMrpc.Live.Subscribe()
 			);
 			var probe = new Probe();
 			var id = conn.export(probe);
 			var sub = new OLLMrpc.Request() {
 				method = "RPC-Live-Subscribe.signal",
-				param = new OLLMrpc.Live.SubscribeParams() {
-					object_id = id,
-					name = "notify::title"
-				},
+				lease_id = id,
+				args = OLLMrpc.args("s", "notify::title"),
 				connection = conn
 			};
 			this.check(command_line, sub.dispatch(), "Subscribe.signal notify dispatch failed");
@@ -77,10 +71,8 @@ namespace OLLMrpcTests
 			this.check(command_line, conn.last.message == "a", "notify value mismatch");
 			var unsub = new OLLMrpc.Request() {
 				method = "RPC-Live-Subscribe.unsubscribe",
-				param = new OLLMrpc.Live.SubscribeParams() {
-					object_id = id,
-					name = "notify::title"
-				},
+				lease_id = id,
+				args = OLLMrpc.args("s", "notify::title"),
 				connection = conn
 			};
 			this.check(command_line, unsub.dispatch(), "Subscribe.unsubscribe dispatch failed");
@@ -88,10 +80,8 @@ namespace OLLMrpcTests
 			this.check(command_line, conn.writes == 1, "unsubscribe did not silence notify");
 			var closed_sub = new OLLMrpc.Request() {
 				method = "RPC-Live-Subscribe.signal",
-				param = new OLLMrpc.Live.SubscribeParams() {
-					object_id = id,
-					name = "closed"
-				},
+				lease_id = id,
+				args = OLLMrpc.args("s", "closed"),
 				connection = conn
 			};
 			this.check(command_line, closed_sub.dispatch(), "Subscribe.signal closed dispatch failed");
@@ -110,18 +100,14 @@ namespace OLLMrpcTests
 			var held_id = held.export(held_probe);
 			var held_sub = new OLLMrpc.Request() {
 				method = "RPC-Live-Subscribe.signal",
-				param = new OLLMrpc.Live.SubscribeParams() {
-					object_id = held_id,
-					name = "notify::title"
-				},
+				lease_id = held_id,
+				args = OLLMrpc.args("s", "notify::title"),
 				connection = held
 			};
 			this.check(command_line, held_sub.dispatch(), "unref-path Subscribe.signal dispatch failed");
 			var drop = new OLLMrpc.Request() {
 				method = "RPC-Live-Remote.unref",
-				param = new OLLMrpc.Live.RemoteParams() {
-					object_id = held_id
-				},
+				lease_id = held_id,
 				connection = held
 			};
 			this.check(command_line, drop.dispatch(), "Remote.unref export-hold dispatch failed");

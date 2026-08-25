@@ -31,10 +31,7 @@ namespace OLLMfiles
 		{
 			yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-FileHistory.approve",
-				param = new OLLMfilesd.FileParams() {
-					path = this.path,
-					id = this.id
-				}
+				args = OLLMrpc.args("sx", this.path, this.id)
 			});
 		}
 
@@ -46,10 +43,7 @@ namespace OLLMfiles
 			var response = yield this.manager.rpc.call(
 				new OLLMrpc.Request() {
 					method = "RPC-FileHistory.revert",
-					param = new OLLMfilesd.FileParams() {
-						path = this.path,
-						id = this.id
-					}
+					args = OLLMrpc.args("sx", this.path, this.id)
 				}
 			);
 			if (response.error != null) {

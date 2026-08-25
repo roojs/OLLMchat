@@ -52,11 +52,9 @@ namespace OLLMrpcTests
 			OLLMrpc.Gi.register("Gio", "2.0");
 			OLLMrpc.Bin.register("Test-Actor", typeof(TestActor));
 			OLLMrpc.Bin.register_alias("Test-Actor", typeof(TestActorX11));
-			OLLMrpc.Bin.register("CallParam", typeof(OLLMrpc.CallParam));
 			OLLMrpc.Request.register(
 				"RPC-Daemon",
-				new Hello(),
-				typeof(OLLMrpc.CallParam)
+				new Hello()
 			);
 			var dir = GLib.DirUtils.make_tmp("ocrpc-gi-XXXXXX");
 			var sock = GLib.Path.build_filename(dir, "rpc.sock");

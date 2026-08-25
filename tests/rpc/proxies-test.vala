@@ -37,11 +37,9 @@ namespace OLLMrpcTests
 
 		protected override void run_rpc_test(ApplicationCommandLine command_line) throws Error
 		{
-			OLLMrpc.Bin.register("CallParam", typeof(OLLMrpc.CallParam));
 			OLLMrpc.Request.register(
 				"RPC-Daemon",
-				new Hello(),
-				typeof(OLLMrpc.CallParam)
+				new Hello()
 			);
 			var dir = GLib.DirUtils.make_tmp("ocrpc-proxies-XXXXXX");
 			var sock = GLib.Path.build_filename(dir, "rpc.sock");

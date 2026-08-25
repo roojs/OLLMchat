@@ -82,10 +82,7 @@ namespace OLLMfiles
 			}
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.fetch_pending_approvals",
-				param = new OLLMfilesd.FolderParams() {
-					path = project.path,
-					since_id = this.since_marker
-				}
+				args = OLLMrpc.args("sx", project.path, this.since_marker)
 			});
 			if (response.error != null) {
 				return new Gee.ArrayList<FileWithHistory>();

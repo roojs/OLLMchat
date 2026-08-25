@@ -40,7 +40,6 @@ namespace OLLMfilesd
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Folder", typeof(Folder));
-			FolderParams.rpc_register();
 		}
 		/**
 		 * Whether to use background (idle callback) processing for recursive folder scanning.
@@ -122,8 +121,9 @@ namespace OLLMfilesd
 		construct
 		{
 			this.call_fetch.connect((request) => {
-				var path = ((FolderParams) request.param).path;
-				var folder = this.manager.get_folder_at_path(path);
+				var folder = this.manager.get_folder_at_path(
+					request.args.get(0).get_string()
+				);
 				if (folder == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -139,8 +139,9 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_contains_folder.connect((request) => {
-				var p = (FolderParams) request.param;
-				var project = this.manager.project_root(p.project_path);
+				var project = this.manager.project_root(
+					request.args.get(0).get_string()
+				);
 				if (project == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -148,7 +149,9 @@ namespace OLLMfilesd
 					});
 					return;
 				}
-				if (!project.project_files.folder_map.has_key(p.path)) {
+				if (!project.project_files.folder_map.has_key(
+					request.args.get(1).get_string()
+				)) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						msg = "directory not in project"
@@ -161,8 +164,9 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_fetch_files.connect((request) => {
-				var p = (FolderParams) request.param;
-				var project = this.manager.project_root(p.path);
+				var project = this.manager.project_root(
+					request.args.get(0).get_string()
+				);
 				if (project == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -176,8 +180,9 @@ namespace OLLMfilesd
 				this.fetch_files_reply.begin(request, project);
 			});
 			this.call_fetch_pending_approvals.connect((request) => {
-				var p = (FolderParams) request.param;
-				var project = this.manager.project_root(p.path);
+				var project = this.manager.project_root(
+					request.args.get(0).get_string()
+				);
 				if (project == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -187,10 +192,12 @@ namespace OLLMfilesd
 				}
 				Gee.ArrayList<GLib.Object> result;
 				try {
+					var since_val = GLib.Value(typeof(int64));
+					request.args.get(1).transform(ref since_val);
 					result = FileWithHistory.pending(
 						this.manager,
 						project,
-						p.since_id
+						since_val.get_int64()
 					);
 				} catch (GLib.Error e) {
 					request.reply(new OLLMrpc.Response() {
@@ -214,8 +221,9 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_project_description.connect((request) => {
-				var path = ((FolderParams) request.param).path;
-				var project = this.manager.project_root(path);
+				var project = this.manager.project_root(
+					request.args.get(0).get_string()
+				);
 				if (project == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -229,8 +237,9 @@ namespace OLLMfilesd
 				});
 			});
 			this.call_roots.connect((request) => {
-				var path = ((FolderParams) request.param).path;
-				var project = this.manager.project_root(path);
+				var project = this.manager.project_root(
+					request.args.get(0).get_string()
+				);
 				if (project == null) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
@@ -277,10 +286,10 @@ namespace OLLMfilesd
 		)
 		{
 			yield this.manager.wait_scan_idle();
-			var p = (FolderParams) request.param;
-			if (p.paths.length > 0) {
+			var paths = (string[]) request.args.get(4).get_boxed();
+			if (paths.length > 0) {
 				var list = new Gee.ArrayList<GLib.Object>();
-				foreach (var lookup_path in p.paths) {
+				foreach (var lookup_path in paths) {
 					if (!project.project_files.all_files.has_key(lookup_path)) {
 						continue;
 					}
@@ -301,16 +310,18 @@ namespace OLLMfilesd
 				});
 				return;
 			}
-			p.limit = p.limit < 1 ? 50 : p.limit;
-			p.offset = p.offset < 0 ? 0 : p.offset;
+			var limit = request.args.get(2).get_int();
+			var offset = request.args.get(1).get_int();
+			limit = limit < 1 ? 50 : limit;
+			offset = offset < 0 ? 0 : offset;
 			var matched = project.project_files.cached_search(
-				p.query.strip().down()
+				request.args.get(3).get_string().strip().down()
 			);
 			var list = new Gee.ArrayList<GLib.Object>();
-			if (p.offset < matched.size) {
+			if (offset < matched.size) {
 				list.add_all(matched.slice(
-					p.offset,
-					int.min(p.limit, matched.size - p.offset)
+					offset,
+					int.min(limit, matched.size - offset)
 				));
 			}
 			request.reply(new OLLMrpc.Response() {
@@ -1303,19 +1314,21 @@ namespace OLLMfilesd
 			);
 		}
 		/**
-		 * Apply {@link FileParams} on disk (mkdir when missing, then mode).
+		 * Apply mkdir and mode on disk.
+		 *
+		 * @param unix_mode optional rwx bits (''0'' skips chmod)
 		 */
-		public async void realize(FileParams p) throws Error
+		public async void realize(uint unix_mode) throws Error
 		{
 			if (!GLib.FileUtils.test(this.path, GLib.FileTest.EXISTS)) {
 				GLib.File.new_for_path(this.path).make_directory(null);
 			}
-			if (p.unix_mode == 0) {
+			if (unix_mode == 0) {
 				return;
 			}
 			if (Posix.chmod(
 				this.path,
-				(Posix.mode_t) (p.unix_mode & 0777)
+				(Posix.mode_t) (unix_mode & 0777)
 			) != 0) {
 				throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
 			}

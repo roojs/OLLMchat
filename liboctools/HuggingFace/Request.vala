@@ -366,14 +366,14 @@ namespace OLLMtools.HuggingFace
 
 					var search_req = new OLLMrpc.Request() {
 						method = "/api/models",
-						param = new OLLMhf.Param.Search() {
+						args = OLLMrpc.args("o", new OLLMhf.Param.Search() {
 							search = this.query.strip(),
 							filter = "gguf",
 							limit = 20,
 							sort = "downloads",
 							direction = "-1",
 							full = true,
-						},
+						}),
 						result_type = typeof(OLLMhf.ModelArray),
 					};
 

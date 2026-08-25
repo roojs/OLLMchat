@@ -568,7 +568,7 @@ See `libocrpc/Response.vala`.
 
 Optional **`ANY[]`** (this section) on **`OLLMrpc.Request`**. Each element is one **`GLib.Value`** (type byte + payload via `Bin.StreamValue.write` / `read`).
 
-**Omit** when **`args.size == 0`**. Existing `CallParam`-only traffic never sends this property.
+**Omit** when **`args.size == 0`**. Call arguments go on **`args`** (not a separate named param bag).
 
 No per-value direction flag and no wrapper object. No protocol version bump.
 
