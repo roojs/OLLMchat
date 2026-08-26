@@ -49,8 +49,7 @@ namespace OLLMfilesd
 				"register", "s",
 				"changed.check", "sx",
 				"rpc_write", "ssssu",
-				"rpc_delete", "s",
-				null
+				"rpc_delete", "s"
 			);
 		}
 

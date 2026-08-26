@@ -37,8 +37,7 @@ namespace OLLMfilesd
 				"start", "ss",
 				"stop", "",
 				"rpc_search", "ssissss",
-				"rpc_debug_get", "ss",
-				null
+				"rpc_debug_get", "ss"
 			);
 		}
 

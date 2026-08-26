@@ -41,8 +41,7 @@ namespace OLLMrpc.Live
 				"RPC-Live-Callback", typeof(Callback),
 				"register", "",
 				"unregister", "t",
-				"reply", "",
-				null
+				"reply", ""
 			);
 		}
 

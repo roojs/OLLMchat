@@ -20,8 +20,7 @@ namespace RpcDummy
 		{
 			OLLMrpc.Request.add_class(
 				"RPC-Daemon", typeof(Hello),
-				"hello", "",
-				null
+				"hello", ""
 			);
 		}
 

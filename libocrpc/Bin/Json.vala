@@ -410,8 +410,7 @@ namespace OLLMrpc.Bin
 				bin.out_stream.put_byte((uint8) any_count);
 			} else {
 				bin.out_stream.put_byte(
-					(uint8) (0x80 | ((any_count >> 8) & 0x7F))
-				);
+					(uint8) (0x80 | ((any_count >> 8) & 0x7F)));
 				bin.out_stream.put_byte((uint8) (any_count & 0xFF));
 			}
 			for (var i = 0u; i < any_count; i++) {

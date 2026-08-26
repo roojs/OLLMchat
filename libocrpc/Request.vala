@@ -225,8 +225,7 @@ namespace OLLMrpc
 						ctx.out_stream.put_byte((uint8) this.args.size);
 					} else {
 						ctx.out_stream.put_byte(
-							(uint8) (0x80 | ((this.args.size >> 8) & 0x7F))
-						);
+							(uint8) (0x80 | ((this.args.size >> 8) & 0x7F)));
 						ctx.out_stream.put_byte((uint8) (this.args.size & 0xFF));
 					}
 					foreach (var val in this.args) {

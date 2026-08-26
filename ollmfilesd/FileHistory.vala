@@ -448,8 +448,7 @@ namespace OLLMfilesd
 			OLLMrpc.Request.add_class(
 				"RPC-FileHistory", typeof(FileHistory),
 				"rpc_approve", "sx",
-				"rpc_revert", "sx",
-				null
+				"rpc_revert", "sx"
 			);
 		}
 

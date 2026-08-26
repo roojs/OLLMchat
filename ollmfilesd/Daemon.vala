@@ -22,8 +22,7 @@ namespace OLLMfilesd
 			OLLMrpc.Request.add_class(
 				"RPC-Daemon", typeof(Daemon),
 				"hello", "is",
-				"shutdown", "",
-				null
+				"shutdown", ""
 			);
 		}
 

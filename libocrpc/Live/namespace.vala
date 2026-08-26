@@ -32,8 +32,7 @@ namespace OLLMrpc.Live
 			OLLMrpc.Request.add_class(
 				"RPC-Live-Remote", typeof(Remote),
 				"rpc_ref", "",
-				"rpc_unref", "",
-				null
+				"rpc_unref", ""
 			);
 		}
 
@@ -60,8 +59,7 @@ namespace OLLMrpc.Live
 			OLLMrpc.Request.add_class(
 				"RPC-Live-Subscribe", typeof(Subscribe),
 				"rpc_signal", "s",
-				"unsubscribe", "s",
-				null
+				"unsubscribe", "s"
 			);
 		}
 
@@ -81,8 +79,7 @@ namespace OLLMrpc.Live
 				"RPC-Live-Callback", typeof(Callback),
 				"register", "",
 				"unregister", "t",
-				"reply", "",
-				null
+				"reply", ""
 			);
 		}
 

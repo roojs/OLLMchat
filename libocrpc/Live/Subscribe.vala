@@ -48,8 +48,7 @@ namespace OLLMrpc.Live
 			OLLMrpc.Request.add_class(
 				"RPC-Live-Subscribe", typeof(Subscribe),
 				"rpc_signal", "s",
-				"unsubscribe", "s",
-				null
+				"unsubscribe", "s"
 			);
 		}
 

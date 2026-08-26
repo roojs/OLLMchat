@@ -12,8 +12,7 @@ namespace RpcDummy
 		{
 			OLLMrpc.Request.add_class(
 				"RPC-Daemon", typeof(Hello),
-				"hello", "",
-				null
+				"hello", ""
 			);
 		}
 
@@ -30,8 +29,7 @@ namespace RpcDummy
 			OLLMrpc.Request.add_class(
 				"RPC-Probe", typeof(Probe),
 				"echo", "si",
-				"blob", "",
-				null
+				"blob", ""
 			);
 		}
 

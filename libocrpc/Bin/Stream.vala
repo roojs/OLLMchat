@@ -438,9 +438,7 @@ namespace OLLMrpc.Bin
 				this.out_stream.put_byte((uint8) (wire & 0xFF));
 			}
 
-			this.out_stream.put_byte(
-				(uint8) uint.min(alias.length, 255)
-			);
+			this.out_stream.put_byte((uint8) uint.min(alias.length, 255));
 			size_t written;
 			this.out_stream.write_all(
 				((uint8[]) alias)[0:uint.min(alias.length, 255)],

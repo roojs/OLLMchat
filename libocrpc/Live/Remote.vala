@@ -45,8 +45,7 @@ namespace OLLMrpc.Live
 			OLLMrpc.Request.add_class(
 				"RPC-Live-Remote", typeof(Remote),
 				"rpc_ref", "",
-				"rpc_unref", "",
-				null
+				"rpc_unref", ""
 			);
 		}
 

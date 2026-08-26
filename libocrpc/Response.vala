@@ -70,7 +70,7 @@ namespace OLLMrpc
 		 * With {@link Transport.Connection.live_handles}, a non-Serializable
 		 * instance is a lease id, not a property dump.
 		 */
-		public Gee.ArrayList<GLib.Object> result { get; set; default = new Gee.ArrayList<GLib.Object> (); }
+		public Gee.ArrayList<GLib.Object> result { get; set; default = new Gee.ArrayList<GLib.Object>(); }
 		/**
 		 * Positional returns (daemon → client), GIR order.
 		 *
@@ -149,27 +149,20 @@ namespace OLLMrpc
 						return;
 					}
 					ctx.write_tag(prop.name);
-					ctx.write_gtype(
-						this.result.get(0).get_type(),
-						(uint8) GLib.Type.OBJECT | 0x80
-					);
+					ctx.write_gtype(this.result.get(0).get_type(),
+						(uint8) GLib.Type.OBJECT | 0x80);
 					if (this.result.size < 128) {
 						ctx.out_stream.put_byte((uint8) this.result.size);
 					} else {
 						ctx.out_stream.put_byte(
-							(uint8) (0x80 | ((this.result.size >> 8) & 0x7F))
-						);
-						ctx.out_stream.put_byte(
-							(uint8) (this.result.size & 0xFF)
-						);
+							(uint8) (0x80 | ((this.result.size >> 8) & 0x7F)));
+						ctx.out_stream.put_byte((uint8) (this.result.size & 0xFF));
 					}
 					foreach (var child in this.result) {
-						if (!child.get_type().is_a(typeof(Bin.Serializable))
-							&& ctx.connection.live_handles) {
+						if (!child.get_type().is_a(typeof(Bin.Serializable)) && ctx.connection.live_handles) {
 							var ptr = (uint64) (void*) child;
-							ctx.out_stream.put_uint64(
-								(uint64) ctx.connection.lease_ids.get(
-									(int) (ptr >> 32)).get((int) ptr));
+							ctx.out_stream.put_uint64((uint64) ctx.connection.lease_ids.get(
+								(int) (ptr >> 32)).get((int) ptr));
 							ctx.out_stream.put_uint16(Bin.Stream.TOKEN_END);
 							continue;
 						}
@@ -186,8 +179,7 @@ namespace OLLMrpc
 						ctx.out_stream.put_byte((uint8) this.args.size);
 					} else {
 						ctx.out_stream.put_byte(
-							(uint8) (0x80 | ((this.args.size >> 8) & 0x7F))
-						);
+							(uint8) (0x80 | ((this.args.size >> 8) & 0x7F)));
 						ctx.out_stream.put_byte((uint8) (this.args.size & 0xFF));
 					}
 					foreach (var val in this.args) {
@@ -219,8 +211,7 @@ namespace OLLMrpc
 		{
 			switch (prop.name) {
 				case "result":
-					if ((type_byte & 0x80) == 0
-						|| (type_byte & 0x7F) != GLib.Type.OBJECT) {
+					if ((type_byte & 0x80) == 0 || (type_byte & 0x7F) != GLib.Type.OBJECT) {
 						this.bin_default_read_prop(ctx, prop, type_byte);
 						return;
 					}

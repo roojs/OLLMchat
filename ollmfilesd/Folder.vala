@@ -47,8 +47,7 @@ namespace OLLMfilesd
 				"fetch_pending_approvals", "sx",
 				"rpc_project_description", "s",
 				"rpc_roots", "s",
-				"fetch_files", "siisSb",
-				null
+				"fetch_files", "siisSb"
 			);
 		}
 		/**

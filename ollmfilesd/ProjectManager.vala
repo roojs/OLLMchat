@@ -38,8 +38,7 @@ namespace OLLMfilesd
 				"remove_project", "s",
 				"rpc_load_projects_from_db", "",
 				"rpc_create_project", "s",
-				"rpc_activate_project", "sb",
-				null
+				"rpc_activate_project", "sb"
 			);
 		}
 
