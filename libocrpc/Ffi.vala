@@ -25,12 +25,13 @@ namespace OLLMrpc
 	 * {@link Request.dispatch} constructs {@link Ffi} with the inbound
 	 * {@link Request} and calls {@link dispatch}. That method looks up
 	 * the C symbol and calls it. Unlisted prefixes return false so
-	 * {@link Request.dispatch} can emit ''call_*'' then try {@link Gi}.
+	 * {@link Request.dispatch} can try {@link Gi}.
 	 * Compiled on every platform (not ''gi_src'').
 	 *
 	 * {@link pack} writes one {@link Libffi.Arg} from a D-Bus letter
-	 * and a {@link GLib.Value}. {@link Gi} will extend {@link Ffi} and
-	 * use {@link pack} for typelib scalars in a later cut.
+	 * and a {@link GLib.Value}. ''S'' is one wire ''string[]'' and two
+	 * C args (pointer + Vala hidden length). {@link Gi} will extend
+	 * {@link Ffi} and use {@link pack} for typelib scalars in a later cut.
 	 *
 	 * == Example ==
 	 *
@@ -152,6 +153,10 @@ namespace OLLMrpc
 		/**
 		 * FFI-call a listed instance method.
 		 *
+		 * Empty signature is (self, Request) only. The method may
+		 * still read {@link Request.args}. A non-empty signature must
+		 * match the inbound args size.
+		 *
 		 * @return true when this method is listed
 		 */
 		public bool dispatch()
@@ -167,13 +172,21 @@ namespace OLLMrpc
 				return false;
 			}
 			var signature = Request.methods.get(object_name).get(method_name);
-			var n_extra = 0;
+			var n_wire = 0;
+			var n_slots = 0;
 			var offset = 0;
 			while (offset < signature.length) {
 				var rest = signature.substring(offset);
 				if (rest.has_prefix("f")) {
 					offset += 1;
-					n_extra += 1;
+					n_wire += 1;
+					n_slots += 1;
+					continue;
+				}
+				if (rest.has_prefix("S")) {
+					offset += 1;
+					n_wire += 1;
+					n_slots += 2;
 					continue;
 				}
 				var rest_ptr = (char*) rest;
@@ -183,11 +196,12 @@ namespace OLLMrpc
 					GLib.error("invalid D-Bus type signature %s", signature);
 				}
 				offset += (int) ((uint8*) next - (uint8*) rest_ptr);
-				n_extra += 1;
+				n_wire += 1;
+				n_slots += 1;
 			}
-			if (n_extra != this.request.args.size) {
+			if (signature != "" && n_wire != this.request.args.size) {
 				GLib.critical("RPC dispatch: %s args size %d want %d",
-					this.request.method, this.request.args.size, n_extra);
+					this.request.method, this.request.args.size, n_wire);
 				return true;
 			}
 			if (Request.handlers == null
@@ -208,7 +222,9 @@ namespace OLLMrpc
 						this.request, (int) RpcErrorCode.INVALID_PARAMS);
 					return true;
 				}
-				self = this.request.connection.leases.get(id);
+				if (Request.live == null || !Request.live.has_key(object_name)) {
+					self = this.request.connection.leases.get(id);
+				}
 			}
 			var camel = new GLib.Regex("(?<=[a-z])([A-Z])");
 			var symbol = camel.replace(
@@ -226,7 +242,7 @@ namespace OLLMrpc
 					symbol, this.request.method);
 				return true;
 			}
-			var nargs = 2 + n_extra;
+			var nargs = 2 + n_slots;
 			var atypes = new Libffi.Type[nargs];
 			var slots = new Libffi.Arg[nargs];
 			slots[0].set_pointer((void*) self);
@@ -235,8 +251,18 @@ namespace OLLMrpc
 			atypes[1] = Libffi.POINTER;
 			offset = 0;
 			var ai = 0;
+			var si = 0;
 			while (offset < signature.length) {
 				var rest = signature.substring(offset);
+				if (rest.has_prefix("S")) {
+					this.pack("as", this.request.args.get(ai), ref slots[2 + si], out atypes[2 + si]);
+					slots[2 + si + 1].set_int32(((string[]) this.request.args.get(ai).get_boxed()).length);
+					atypes[2 + si + 1] = Libffi.SINT32;
+					offset += 1;
+					si += 2;
+					ai += 1;
+					continue;
+				}
 				var tag = "";
 				if (rest.has_prefix("f")) {
 					tag = "f";
@@ -252,7 +278,8 @@ namespace OLLMrpc
 					tag = rest.substring(0, n);
 					offset += (int) n;
 				}
-				this.pack(tag, this.request.args.get(ai), ref slots[2 + ai], out atypes[2 + ai]);
+				this.pack(tag, this.request.args.get(ai), ref slots[2 + si], out atypes[2 + si]);
+				si += 1;
 				ai += 1;
 			}
 			var cif = Libffi.Cif();

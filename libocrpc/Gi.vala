@@ -75,6 +75,10 @@ namespace OLLMrpc
 
 		private GLib.SList<void*>[] gslist_keep = {};
 
+		private bool[] skip_wire = {};
+
+		private int[] in_slot = {};
+
 		/**
 		 * Call C g_function_info_invoke with an out return slot.
 		 *
@@ -181,6 +185,26 @@ namespace OLLMrpc
 					this.request, (int) RpcErrorCode.METHOD_NOT_FOUND);
 				return true;
 			}
+			this.skip_wire = new bool[fn.get_n_args()];
+			this.in_slot = new int[fn.get_n_args()];
+			for (var i = 0; i < fn.get_n_args(); i++) {
+				var arg = fn.get_arg(i);
+				if (arg.is_skip()) {
+					continue;
+				}
+				if (arg.get_type().get_tag() != GI.TypeTag.INTERFACE) {
+					continue;
+				}
+				if (arg.get_type().get_interface().get_type() != GI.InfoType.CALLBACK) {
+					continue;
+				}
+				if (arg.get_closure() >= 0) {
+					this.skip_wire[arg.get_closure()] = true;
+				}
+				if (arg.get_destroy() >= 0) {
+					this.skip_wire[arg.get_destroy()] = true;
+				}
+			}
 			if ((fn.get_flags() & GI.FunctionInfoFlags.IS_CONSTRUCTOR) != 0) {
 				return this.dispatch_new(fn);
 			}
@@ -203,6 +227,7 @@ namespace OLLMrpc
 				return true;
 			}
 			var n_in = 0;
+			var n_values = 0;
 			for (var i = 0; i < fn.get_n_args(); i++) {
 				var arg = fn.get_arg(i);
 				if (arg.is_skip()) {
@@ -213,12 +238,17 @@ namespace OLLMrpc
 						this.request, (int) RpcErrorCode.INVALID_PARAMS);
 					return true;
 				}
+				this.in_slot[i] = n_in;
 				n_in++;
+				if (this.skip_wire[i]) {
+					continue;
+				}
+				n_values++;
 			}
-			if (n_in != this.request.args.size) {
+			if (n_values != this.request.args.size) {
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
-				return true;
+					return true;
 			}
 			this.in_args = new GI.Argument[n_in];
 			this.out_args = new GI.Argument[0];
@@ -229,6 +259,9 @@ namespace OLLMrpc
 			for (var i = 0; i < fn.get_n_args(); i++) {
 				var arg = fn.get_arg(i);
 				if (arg.is_skip()) {
+					continue;
+				}
+				if (this.skip_wire[i]) {
 					continue;
 				}
 				if (!this.convert(arg, vi)) {
@@ -295,7 +328,11 @@ namespace OLLMrpc
 				}
 				switch (arg.get_direction()) {
 					case GI.Direction.IN:
+						this.in_slot[i] = n_in;
 						n_in++;
+						if (this.skip_wire[i]) {
+							break;
+						}
 						n_values++;
 						break;
 
@@ -304,8 +341,12 @@ namespace OLLMrpc
 						break;
 
 					case GI.Direction.INOUT:
+						this.in_slot[i] = n_in;
 						n_in++;
 						n_out++;
+						if (this.skip_wire[i]) {
+							break;
+						}
 						n_values++;
 						break;
 				}
@@ -326,6 +367,9 @@ namespace OLLMrpc
 			for (var i = 0; i < fn.get_n_args(); i++) {
 				var arg = fn.get_arg(i);
 				if (arg.is_skip()) {
+					continue;
+				}
+				if (this.skip_wire[i]) {
 					continue;
 				}
 				if (arg.get_direction() != GI.Direction.OUT) {
@@ -913,6 +957,33 @@ namespace OLLMrpc
 		{
 			var val = this.request.args.get(vi);
 			var kind = arg.get_type().get_interface().get_type();
+			if (kind == GI.InfoType.CALLBACK) {
+				if (val.type() != GLib.Type.UINT64) {
+					var coerced = GLib.Value(GLib.Type.UINT64);
+					if (!val.transform(ref coerced)) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					val = coerced;
+				}
+				var id = (int) val.get_uint64();
+				if (!this.request.connection.callbacks.has_key(id)) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				var row = this.request.connection.callbacks.get(id);
+				var closure_i = arg.get_closure();
+				if (closure_i >= 0) {
+					this.in_args[this.in_slot[closure_i]].v_pointer = (void*) row;
+				}
+				var destroy_i = arg.get_destroy();
+				if (destroy_i >= 0) {
+					this.in_args[this.in_slot[destroy_i]].v_pointer = (void*) Live.Hook.drop;
+				}
+				return true;
+			}
 			if (kind == GI.InfoType.OBJECT || kind == GI.InfoType.INTERFACE) {
 				if (val.type().is_a(GLib.Type.OBJECT)) {
 					if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(val.get_object().get_type())) {

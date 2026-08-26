@@ -23,7 +23,7 @@ namespace OLLMrpc
 	 *
 	 * Set ''method'' to the wire handler name
 	 * (''RPC-Object.method'' for daemons; hyphen nested
-	 * namespaces like ''RPC-Live-Remote.ref''; or a REST
+	 * namespaces like ''RPC-Live-Remote.rpc_unref''; or a REST
 	 * path for HTTP). Attach positional {@link GLib.Value}s on
 	 * ''args'' via {@link args} (omit when empty). For typed
 	 * HTTP results, set ''result_type'' before {@link Client.call}.
@@ -34,7 +34,7 @@ namespace OLLMrpc
 	 * var req = new OLLMrpc.Request() {
 	 *     method = "RPC-Folder.fetch_files",
 	 *     args = OLLMrpc.args(
-	 *         "siisasb", "/home/user/project", 0, 50, "",
+	 *         "siisSb", "/home/user/project", 0, 50, "",
 	 *         new string[] {}, false
 	 *     ),
 	 *     result_type = typeof(OLLMfilesd.FileArray)
@@ -58,6 +58,9 @@ namespace OLLMrpc
 
 		/** Wire object prefix → (method suffix → D-Bus signature). */
 		public static Gee.HashMap<string, Gee.HashMap<string, string>> methods;
+
+		/** Wire prefixes registered with {@link register_live}. */
+		public static Gee.HashMap<string, bool> live;
 
 		public int id { get; set; }
 		public string method { get; set; default = ""; }
@@ -108,7 +111,7 @@ namespace OLLMrpc
 		 * Register a server dispatch handler.
 		 *
 		 * @param name wire object prefix (e.g. RPC-Folder)
-		 * @param target live singleton with call_* signals
+		 * @param target handler singleton
 		 */
 		public static void register(
 			string name,
@@ -121,11 +124,40 @@ namespace OLLMrpc
 		}
 
 		/**
+		 * Register a live-handle handler.
+		 *
+		 * Same as {@link register}, and FFI keeps this singleton as
+		 * ''this'' when {@link lease_id} is set. The id is the target
+		 * (rpc_ref / rpc_unref / rpc_signal), not the calling object.
+		 *
+		 * == Example ==
+		 *
+		 * {{{
+		 * OLLMrpc.Live.Remote.rpc_register();
+		 * OLLMrpc.Request.register_live("RPC-Live-Remote", new OLLMrpc.Live.Remote());
+		 * }}}
+		 *
+		 * @param name wire object prefix (e.g. RPC-Live-Remote)
+		 * @param target handler singleton
+		 */
+		public static void register_live(string name, GLib.Object target)
+		{
+			register(name, target);
+			if (live == null) {
+				live = new Gee.HashMap<string, bool>();
+			}
+			live.set(name, true);
+		}
+
+		/**
 		 * List FFI instance methods for a wire prefix.
 		 *
 		 * Pair method suffix with a D-Bus signature (same letters as
-		 * {@link args}). End the list with ''null''. The live singleton
-		 * is still {@link register}.
+		 * {@link args}). ''""'' is (self, Request) only; the method
+		 * may still read {@link Request.args}. ''S'' is one
+		 * ''string[]'' value and two C args (pointer + Vala length).
+		 * End the list with ''null''. The live singleton is still
+		 * {@link register}.
 		 *
 		 * == Example ==
 		 *
@@ -235,9 +267,9 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Route this request to the matching call_* signal.
+		 * Route this request to a listed FFI method or {@link Gi}.
 		 *
-		 * @return true when a handler signal was emitted
+		 * @return true when a handler ran
 		 */
 		public bool dispatch()
 		{
@@ -252,45 +284,19 @@ namespace OLLMrpc
 
 			var dot = this.method.index_of_char('.');
 			if (dot < 1 || dot == this.method.length - 1) {
-				GLib.critical(
-					"RPC dispatch: method must be RPC-Object.method, got '%s'",
-					this.method
-				);
+				GLib.critical("RPC dispatch: method must be RPC-Object.method, got '%s'",
+					this.method);
 				return false;
 			}
 
-			var object_name = this.method[0:dot];
-			var method_name = this.method.substring(dot + 1);
-
 			if (new Ffi(this).dispatch()) {
-				return true;
-			}
-
-			if (handlers != null && handlers.has_key(object_name)) {
-				var handler = handlers.get(object_name);
-				var signal_name = "call_" + method_name.replace(".", "_");
-				if (GLib.Signal.lookup(signal_name, handler.get_type()) == 0) {
-					GLib.critical(
-						"RPC dispatch: no signal call_%s on %s for %s",
-						method_name.replace(".", "_"),
-						object_name,
-						this.method
-					);
-					return false;
-				}
-				GLib.debug("emit %s id=%d", signal_name, this.id);
-				GLib.Signal.emit_by_name(handler, signal_name, this);
-				GLib.debug("emit returned id=%d", this.id);
 				return true;
 			}
 			if (new Gi(this).dispatch()) {
 				return true;
 			}
-			GLib.critical(
-				"RPC dispatch: no handler for '%s' (%s)",
-				object_name,
-				this.method
-			);
+			GLib.critical("RPC dispatch: no handler for '%s' (%s)",
+				this.method[0:dot], this.method);
 			return false;
 		}
 

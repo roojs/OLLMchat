@@ -24,16 +24,16 @@ namespace OLLMrpc.Live
 	 * Uses {@link Request.connection} so each peer has its own
 	 * {@link Transport.Connection.signal_subs} table.
 	 * Lease id is {@link Request.lease_id}; signal name is
-	 * ''args.get(0)''. Handler wiring is {@link Request.register}
+	 * the ''s'' argument. Handler wiring is {@link Request.register_live}
 	 * at server boot, not a method on this class.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
-	 * OLLMrpc.Request.register(
-	 *     "RPC-Live-Subscribe", new OLLMrpc.Live.Subscribe());
+	 * OLLMrpc.Live.Subscribe.rpc_register();
+	 * OLLMrpc.Request.register_live("RPC-Live-Subscribe", new OLLMrpc.Live.Subscribe());
 	 * var req = new OLLMrpc.Request() {
-	 *     method = "RPC-Live-Subscribe.signal",
+	 *     method = "RPC-Live-Subscribe.rpc_signal",
 	 *     lease_id = handle,
 	 *     args = OLLMrpc.args("s", "notify::title"),
 	 *     connection = connection
@@ -43,78 +43,97 @@ namespace OLLMrpc.Live
 	 */
 	public class Subscribe : GLib.Object
 	{
-		public signal void call_signal(Request request);
-		public signal void call_unsubscribe(Request request);
-
-		construct
+		public static void rpc_register()
 		{
-			this.call_signal.connect((request) => {
-				if (!request.connection.live_handles) {
-					GLib.error("Subscribe.signal requires live_handles");
-				}
-				var id = (int) request.lease_id;
-				if (!request.connection.leases.has_key(id)) {
-					request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
-					return;
-				}
-				var name = request.args.get(0).get_string();
-				if (name.length == 0) {
-					request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
-					return;
-				}
-				var subs = request.connection.signal_subs;
-				if (!subs.has_key(id)) {
-					subs.set(id, new Gee.HashMap<string, Subscription>());
-				}
-				if (subs.get(id).has_key(name)) {
-					request.reply(new Response());
-					return;
-				}
-				var obj = request.connection.leases.get(id);
-				var subscription = new Subscription() {
-					connection = request.connection,
-					method = name,
-					id = id
-				};
-				if (name.has_prefix("notify::")) {
-					subscription.hid = obj.notify[name.substring(8)].connect((pspec) => {
-						var current = GLib.Value(typeof(string));
-						obj.get_property(pspec.name, ref current);
-						var text = current.get_string();
-						text = text != null ? text : "";
-						request.connection.write(new Notification() {
-							method = name,
-							id = id,
-							message = text
-						});
+			OLLMrpc.Request.add_class(
+				"RPC-Live-Subscribe", typeof(Subscribe),
+				"rpc_signal", "s",
+				"unsubscribe", "s",
+				null
+			);
+		}
+
+		/**
+		 * ''Live.Subscribe.rpc_signal'' — subscribe to a named
+		 * signal on the lease.
+		 *
+		 * @param request inbound RPC
+		 * @param name signal or ''notify::'' property
+		 */
+		public void rpc_signal(Request request, string name)
+		{
+			if (!request.connection.live_handles) {
+				GLib.error("Subscribe.signal requires live_handles");
+			}
+			var id = (int) request.lease_id;
+			if (!request.connection.leases.has_key(id)) {
+				request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			if (name.length == 0) {
+				request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			var subs = request.connection.signal_subs;
+			if (!subs.has_key(id)) {
+				subs.set(id, new Gee.HashMap<string, Subscription>());
+			}
+			if (subs.get(id).has_key(name)) {
+				request.reply(new Response());
+				return;
+			}
+			var obj = request.connection.leases.get(id);
+			var subscription = new Subscription() {
+				connection = request.connection,
+				method = name,
+				id = id
+			};
+			if (name.has_prefix("notify::")) {
+				subscription.hid = obj.notify[name.substring(8)].connect((pspec) => {
+					var current = GLib.Value(typeof(string));
+					obj.get_property(pspec.name, ref current);
+					var text = current.get_string();
+					text = text != null ? text : "";
+					request.connection.write(new Notification() {
+						method = name,
+						id = id,
+						message = text
 					});
-					subs.get(id).set(name, subscription);
-					request.reply(new Response());
-					return;
-				}
-				subscription.hid = GLib.Signal.connect_swapped(obj, name, (GLib.Callback) Subscription.emit, subscription);
+				});
 				subs.get(id).set(name, subscription);
 				request.reply(new Response());
-			});
-			this.call_unsubscribe.connect((request) => {
-				if (!request.connection.live_handles) {
-					GLib.error("Subscribe.unsubscribe requires live_handles");
-				}
-				var id = (int) request.lease_id;
-				if (!request.connection.leases.has_key(id)) {
-					request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
-					return;
-				}
-				var name = request.args.get(0).get_string();
-				var subs = request.connection.signal_subs;
-				if (!subs.has_key(id) || !subs.get(id).has_key(name)) {
-					request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
-					return;
-				}
-				GLib.SignalHandler.disconnect(request.connection.leases.get(id), subs.get(id).get(name).hid);
-				subs.get(id).unset(name);
-				request.reply(new Response());
-			});
+				return;
+			}
+			subscription.hid = GLib.Signal.connect_swapped(obj, name, (GLib.Callback) Subscription.emit, subscription);
+			subs.get(id).set(name, subscription);
+			request.reply(new Response());
+		}
+
+		/**
+		 * ''Live.Subscribe.unsubscribe'' — drop a named
+		 * subscription on the lease.
+		 *
+		 * @param request inbound RPC
+		 * @param name signal or ''notify::'' property
+		 */
+		public void unsubscribe(Request request, string name)
+		{
+			if (!request.connection.live_handles) {
+				GLib.error("Subscribe.unsubscribe requires live_handles");
+			}
+			var id = (int) request.lease_id;
+			if (!request.connection.leases.has_key(id)) {
+				request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			var subs = request.connection.signal_subs;
+			if (!subs.has_key(id) || !subs.get(id).has_key(name)) {
+				request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			GLib.SignalHandler.disconnect(request.connection.leases.get(id), subs.get(id).get(name).hid);
+			subs.get(id).unset(name);
+			request.reply(new Response());
 		}
 	}
 }

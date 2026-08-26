@@ -47,6 +47,7 @@ namespace OLLMfilesd
 				"fetch_pending_approvals", "sx",
 				"rpc_project_description", "s",
 				"rpc_roots", "s",
+				"fetch_files", "siisSb",
 				null
 			);
 		}
@@ -121,7 +122,36 @@ namespace OLLMfilesd
 			}
 		}
 
-		public signal void call_fetch_files(OLLMrpc.Request request);
+		/**
+		 * ''Folder.fetch_files'' — page of file rows, or path-filter
+		 * batch.
+		 *
+		 * @param request inbound RPC
+		 * @param path project path
+		 * @param offset rows to skip
+		 * @param limit page size
+		 * @param query dropdown filter
+		 * @param paths path-filter batch (empty = paged mode)
+		 * @param metadata_only unused on the daemon today
+		 */
+		public void fetch_files(
+			OLLMrpc.Request request,
+			string path, int offset, int limit, string query,
+			string[] paths, bool metadata_only
+		) {
+			var project = this.manager.project_root(path);
+			if (project == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+						"project not found"
+					)
+				});
+				return;
+			}
+			this.fetch_files_reply.begin(request, project);
+		}
 
 		public void fetch(OLLMrpc.Request request, string path)
 		{
@@ -274,28 +304,8 @@ namespace OLLMfilesd
 			});
 		}
 
-		construct
-		{
-			this.call_fetch_files.connect((request) => {
-				var project = this.manager.project_root(
-					request.args.get(0).get_string()
-				);
-				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-							"project not found"
-						)
-					});
-					return;
-				}
-				this.fetch_files_reply.begin(request, project);
-			});
-		}
-
 		/**
-		 * Reply to {@link call_fetch_files} after filesystem scan is idle.
+		 * Reply to {@link fetch_files} after filesystem scan is idle.
 		 *
 		 * @param request the RPC request to reply to
 		 * @param project resolved project folder for this fetch

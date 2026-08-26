@@ -153,6 +153,13 @@ namespace OLLMrpc
 		public signal void notification(Notification notif);
 
 		/**
+		 * Server → client GI callback invoke (not a {@link Notification}).
+		 *
+		 * @param call packed callback id, reply id, and arguments
+		 */
+		public signal void invoke(Live.Invoke call);
+
+		/**
 		 * Emitted when {@link call} completes with a daemon
 		 * {@link Response.error}. Transport timeouts and disconnects surface as
 		 * {@link Response.error} and this signal; wire/protocol faults abort.
@@ -180,6 +187,7 @@ namespace OLLMrpc
 		{
 			Error.rpc_register();
 			Notification.rpc_register();
+			OLLMrpc.Live.Invoke.rpc_register();
 			Request.rpc_register();
 			Response.rpc_register();
 		}
@@ -754,6 +762,12 @@ namespace OLLMrpc
 					GLib.debug ("replied id=%d", response.id);
 				}
 				this.complete_pending(response.id, response, null);
+				return;
+			}
+
+			var call = msg as Live.Invoke;
+			if (call != null) {
+				this.invoke(call);
 				return;
 			}
 

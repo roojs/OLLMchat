@@ -61,9 +61,19 @@ namespace OLLMrpc.Transport
 			get; set; default = new Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>>();
 		}
 
+		/**
+		 * GI callback rows for this connection (id → {@link Live.Hook}).
+		 */
+		public Gee.HashMap<int, OLLMrpc.Live.Hook> callbacks {
+			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
+		}
+
 		public Live.BufferStream? buffer_stream { get; set; default = null; }
 
-		private int next_handle = 1;
+		/**
+		 * Next lease, callback, and reply id (never 0).
+		 */
+		public int next_handle { get; set; default = 1; }
 
 		protected GLib.IOChannel? channel;
 		protected bool channel_open = false;
@@ -144,6 +154,10 @@ namespace OLLMrpc.Transport
 				}
 			}
 			this.signal_subs.clear();
+			foreach (var id in this.callbacks.keys) {
+				this.callbacks.get(id).replied = true;
+			}
+			this.callbacks.clear();
 			foreach (var id in this.leases.keys) {
 				for (var i = 0u; i < this.extras.get(id); i++) {
 					this.leases.get(id).unref();

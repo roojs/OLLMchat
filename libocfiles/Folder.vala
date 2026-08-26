@@ -224,7 +224,7 @@ namespace OLLMfiles
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.fetch_files",
 				args = OLLMrpc.args(
-					"siisasb",
+					"siisSb",
 					this.path,
 					offset,
 					limit,

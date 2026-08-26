@@ -23,15 +23,15 @@ namespace OLLMrpc.Live
 	 *
 	 * Uses {@link Request.connection} so each peer has its own lease table.
 	 * Lease id is {@link Request.lease_id}. Handler wiring is
-	 * {@link Request.register} at server boot, not a method on this class.
+	 * {@link Request.register_live} at server boot, not a method on this class.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
-	 * OLLMrpc.Request.register(
-	 *     "RPC-Live-Remote", new OLLMrpc.Live.Remote());
+	 * OLLMrpc.Live.Remote.rpc_register();
+	 * OLLMrpc.Request.register_live("RPC-Live-Remote", new OLLMrpc.Live.Remote());
 	 * var req = new OLLMrpc.Request() {
-	 *     method = "RPC-Live-Remote.unref",
+	 *     method = "RPC-Live-Remote.rpc_unref",
 	 *     lease_id = handle,
 	 *     connection = connection
 	 * };
@@ -40,53 +40,72 @@ namespace OLLMrpc.Live
 	 */
 	public class Remote : GLib.Object
 	{
-		public signal void call_ref(Request request);
-		public signal void call_unref(Request request);
-
-		construct
+		public static void rpc_register()
 		{
-			this.call_ref.connect((request) => {
-				if (!request.connection.live_handles) {
-					GLib.error("Remote.ref requires live_handles");
-				}
-				var id = (int) request.lease_id;
-				if (!request.connection.leases.has_key(id)) {
-					request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
-					return;
-				}
-				request.connection.leases.get(id).ref();
-				request.connection.extras.set(id, request.connection.extras.get(id) + 1);
+			OLLMrpc.Request.add_class(
+				"RPC-Live-Remote", typeof(Remote),
+				"rpc_ref", "",
+				"rpc_unref", "",
+				null
+			);
+		}
+
+		/**
+		 * ''Live.Remote.rpc_ref'' — extra client ref on a
+		 * leased object.
+		 *
+		 * @param request inbound RPC
+		 */
+		public void rpc_ref(Request request)
+		{
+			if (!request.connection.live_handles) {
+				GLib.error("Remote.ref requires live_handles");
+			}
+			var id = (int) request.lease_id;
+			if (!request.connection.leases.has_key(id)) {
+				request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			request.connection.leases.get(id).ref();
+			request.connection.extras.set(id, request.connection.extras.get(id) + 1);
+			request.reply(new Response());
+		}
+
+		/**
+		 * ''Live.Remote.rpc_unref'' — drop a client extra, or
+		 * the export hold.
+		 *
+		 * @param request inbound RPC
+		 */
+		public void rpc_unref(Request request)
+		{
+			if (!request.connection.live_handles) {
+				GLib.error("Remote.unref requires live_handles");
+			}
+			var id = (int) request.lease_id;
+			if (!request.connection.leases.has_key(id)) {
+				request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
+				return;
+			}
+			if (request.connection.extras.get(id) > 0) {
+				request.connection.leases.get(id).unref();
+				request.connection.extras.set(id, request.connection.extras.get(id) - 1);
 				request.reply(new Response());
-			});
-			this.call_unref.connect((request) => {
-				if (!request.connection.live_handles) {
-					GLib.error("Remote.unref requires live_handles");
+				return;
+			}
+			var obj = request.connection.leases.get(id);
+			if (request.connection.signal_subs.has_key(id)) {
+				foreach (var name in request.connection.signal_subs.get(id).keys) {
+					GLib.SignalHandler.disconnect(obj, request.connection.signal_subs.get(id).get(name).hid);
 				}
-				var id = (int) request.lease_id;
-				if (!request.connection.leases.has_key(id)) {
-					request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
-					return;
-				}
-				if (request.connection.extras.get(id) > 0) {
-					request.connection.leases.get(id).unref();
-					request.connection.extras.set(id, request.connection.extras.get(id) - 1);
-					request.reply(new Response());
-					return;
-				}
-				var obj = request.connection.leases.get(id);
-				if (request.connection.signal_subs.has_key(id)) {
-					foreach (var name in request.connection.signal_subs.get(id).keys) {
-						GLib.SignalHandler.disconnect(obj, request.connection.signal_subs.get(id).get(name).hid);
-					}
-					request.connection.signal_subs.unset(id);
-				}
-				var ptr = (uint64) (void*) obj;
-				request.connection.lease_ids.get((int) (ptr >> 32)).unset((int) ptr);
-				request.connection.leases.unset(id);
-				request.connection.floors.unset(id);
-				request.connection.extras.unset(id);
-				request.reply(new Response());
-			});
+				request.connection.signal_subs.unset(id);
+			}
+			var ptr = (uint64) (void*) obj;
+			request.connection.lease_ids.get((int) (ptr >> 32)).unset((int) ptr);
+			request.connection.leases.unset(id);
+			request.connection.floors.unset(id);
+			request.connection.extras.unset(id);
+			request.reply(new Response());
 		}
 	}
 }

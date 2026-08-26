@@ -97,6 +97,9 @@ if use_unix_sockets
     'Live/Remote.vala',
     'Live/Subscription.vala',
     'Live/Subscribe.vala',
+    'Live/Callback.vala',
+    'Live/Hook.vala',
+    'Live/Invoke.vala',
   ])
 endif
 

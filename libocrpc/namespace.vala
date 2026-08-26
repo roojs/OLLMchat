@@ -102,7 +102,8 @@ namespace OLLMrpc
 	 * ''i'' int32, ''u'' uint32, ''x'' int64, ''t'' uint64, ''f'' float,
 	 * ''d'' double,
 	 * ''o'' {@link GLib.Object}, ''g'' signature, ''h'' unix fd,
-	 * ''as'' ''string[]'', ''ay'' {@link GLib.Bytes},
+	 * ''as'' ''string[]'', ''S'' same value plus Vala array length
+	 * at FFI call, ''ay'' {@link GLib.Bytes},
 	 * ''v'' {@link GLib.Variant}.
 	 *
 	 * Lease ids and {@link Bin.Serializable} encoding happen when
@@ -133,6 +134,9 @@ namespace OLLMrpc
 			var tag = "";
 			if (rest.has_prefix("f")) {
 				tag = "f";
+				offset += 1;
+			} else if (rest.has_prefix("S")) {
+				tag = "S";
 				offset += 1;
 			} else {
 				var rest_ptr = (char*) rest;
@@ -229,6 +233,7 @@ namespace OLLMrpc
 					packed.add(h_val);
 					break;
 
+				case "S":
 				case "as":
 					var as_val = GLib.Value(typeof(string[]));
 					as_val.set_boxed(l.arg<string[]>());

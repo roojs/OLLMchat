@@ -47,18 +47,14 @@ namespace OLLMrpcTests
 			var conn = new Capture() {
 				live_handles = true
 			};
-			OLLMrpc.Request.register(
-				"RPC-Live-Remote",
-				new OLLMrpc.Live.Remote()
-			);
-			OLLMrpc.Request.register(
-				"RPC-Live-Subscribe",
-				new OLLMrpc.Live.Subscribe()
-			);
+			OLLMrpc.Live.Remote.rpc_register();
+			OLLMrpc.Live.Subscribe.rpc_register();
+			OLLMrpc.Request.register_live("RPC-Live-Remote", new OLLMrpc.Live.Remote());
+			OLLMrpc.Request.register_live("RPC-Live-Subscribe", new OLLMrpc.Live.Subscribe());
 			var probe = new Probe();
 			var id = conn.export(probe);
 			var sub = new OLLMrpc.Request() {
-				method = "RPC-Live-Subscribe.signal",
+				method = "RPC-Live-Subscribe.rpc_signal",
 				lease_id = id,
 				args = OLLMrpc.args("s", "notify::title"),
 				connection = conn
@@ -79,7 +75,7 @@ namespace OLLMrpcTests
 			probe.title = "b";
 			this.check(command_line, conn.writes == 1, "unsubscribe did not silence notify");
 			var closed_sub = new OLLMrpc.Request() {
-				method = "RPC-Live-Subscribe.signal",
+				method = "RPC-Live-Subscribe.rpc_signal",
 				lease_id = id,
 				args = OLLMrpc.args("s", "closed"),
 				connection = conn
@@ -99,14 +95,14 @@ namespace OLLMrpcTests
 			var held_probe = new Probe();
 			var held_id = held.export(held_probe);
 			var held_sub = new OLLMrpc.Request() {
-				method = "RPC-Live-Subscribe.signal",
+				method = "RPC-Live-Subscribe.rpc_signal",
 				lease_id = held_id,
 				args = OLLMrpc.args("s", "notify::title"),
 				connection = held
 			};
 			this.check(command_line, held_sub.dispatch(), "unref-path Subscribe.signal dispatch failed");
 			var drop = new OLLMrpc.Request() {
-				method = "RPC-Live-Remote.unref",
+				method = "RPC-Live-Remote.rpc_unref",
 				lease_id = held_id,
 				connection = held
 			};
