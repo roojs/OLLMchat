@@ -97,7 +97,7 @@ namespace OLLMfiles
 		 *
 		 * @return description text, or empty string
 		 */
-		public async string project_description()
+		public async string rpc_project_description()
 		{
 			if (!this.is_project || this.path.length == 0) {
 				return "";
@@ -121,7 +121,7 @@ namespace OLLMfiles
 		 *
 		 * @return Write-root folder rows (paths are realpaths)
 		 */
-		public async Gee.ArrayList<Folder> roots()
+		public async Gee.ArrayList<Folder> rpc_roots()
 		{
 			if (!this.is_project || this.path.length == 0) {
 				return new Gee.ArrayList<Folder>();

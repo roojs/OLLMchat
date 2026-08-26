@@ -27,7 +27,7 @@ namespace OLLMfiles
 		public int64 id { get; set; default = 0; }
 		public string path { get; set; default = ""; }
 
-		public async void approve()
+		public async void rpc_approve()
 		{
 			yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-FileHistory.rpc_approve",
@@ -38,7 +38,7 @@ namespace OLLMfiles
 		/**
 		 * Revert on daemon, then refresh buffer via {@link File.read} (**G-2**).
 		 */
-		public async void revert()
+		public async void rpc_revert()
 		{
 			var response = yield this.manager.rpc.call(
 				new OLLMrpc.Request() {

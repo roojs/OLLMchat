@@ -84,7 +84,7 @@ namespace OLLMfiles
 		public bool disable_initial_scan { get; set; default = false; }
 
 		/**
-		 * File deletion facade — {@link File.delete} RPC on the daemon.
+		 * File deletion facade — {@link File.rpc_delete} RPC on the daemon.
 		 */
 		public DeleteManager delete_manager { get; private set; }
 
@@ -205,7 +205,7 @@ namespace OLLMfiles
 		 * Queries database for all folders where is_project = 1 and loads them
 		 * into the manager.projects list.
 		 */
-		public async void load_projects_from_db()
+		public async void rpc_load_projects_from_db()
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-ProjectManager.rpc_load_projects_from_db"
@@ -255,7 +255,7 @@ namespace OLLMfiles
 		 * @param path Normalized absolute path to the folder
 		 * @return The Folder that is the project at that path (existing or new)
 		 */
-		public async Folder create_project(string path)
+		public async Folder rpc_create_project(string path)
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-ProjectManager.rpc_create_project",
@@ -355,7 +355,7 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Writes current buffer contents via ''File.write''.
+		 * Writes current buffer contents via ''File.rpc_write''.
 		 * Scan/index queue is on the daemon. RPC errors: {@link OLLMrpc.Client.failed}.
 		 */
 		public async void write_buffer_to_disk()
@@ -364,7 +364,7 @@ namespace OLLMfiles
 				return;
 			}
 
-			yield this.active_file.write();
+			yield this.active_file.rpc_write();
 		}
 		
 		/**

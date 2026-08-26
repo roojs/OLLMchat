@@ -413,7 +413,7 @@ namespace OLLMfiles
 		 *
 		 * @return false when RPC fails or path is empty
 		 */
-		public async bool write(
+		public async bool rpc_write(
 			string content = "",
 			string base_type = "f",
 			string target = "",
@@ -527,16 +527,16 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Delete file on daemon (''File.delete'').
+		 * Delete file on daemon (''File.rpc_delete'').
 		 */
-		public async bool delete()
+		public async bool rpc_delete()
 		{
 			if (this.path.length == 0) {
 				return false;
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-File.delete",
+				method = "RPC-File.rpc_delete",
 				args = OLLMrpc.args("s", this.path)
 			});
 			return response.error == null;
@@ -688,30 +688,6 @@ namespace OLLMfiles
 			
 			return this.cursor_line;
 		}
-
-		/**
-		 * Check if the file has been modified on disk and differs from the buffer.
-		 *
-		 * Removed — use {@link check_changed}.
-		 */
-
-		/**
-		 * Approve this file and all its FileHistory items.
-		 *
-		 * Removed — ''FileHistory.approve'' RPC.
-		 */
-
-		/**
-		 * Whether this file is a documentation file (plain text or markdown, not code).
-		 *
-		 * Removed — daemon ''Indexer'' only.
-		 */
-
-		/**
-		 * Revert this file to previous version from FileHistory backup.
-		 *
-		 * Removed — ''FileHistory.revert'' RPC.
-		 */
 
 		public override void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,

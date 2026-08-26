@@ -208,7 +208,7 @@ Examples:
 		// For gitignore-aware scans, use ollmfilesd instead.
 		
 		// Load projects from database
-		yield manager.load_projects_from_db();
+		yield manager.rpc_load_projects_from_db();
 		
 		// Restore active project/file from DB so edits use real file IDs.
 		// Only do this in test mode (when --test-db is provided).
@@ -537,7 +537,7 @@ PROJECT_PATH: $(manager.active_project.path)
 		string project_path = opt_create_project;
 		
 		// Load existing projects from database first
-		yield manager.load_projects_from_db();
+		yield manager.rpc_load_projects_from_db();
 		
 		// Check if project already exists
 		var existing_project = manager.projects.path_map.get(project_path);

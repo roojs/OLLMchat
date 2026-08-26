@@ -203,6 +203,25 @@ namespace OLLMrpc.Bin
 						(int) (variant.get_size() / sizeof(double)), variant.get_data(), sizeof(double));
 					return;
 				}
+				if (variant.is_of_type(new GLib.VariantType("aay"))) {
+					ctx.out_stream.put_byte((uint8) GLib.Type.BOXED | 0x80);
+					if (variant.n_children() < 128) {
+						ctx.out_stream.put_byte((uint8) variant.n_children());
+					} else {
+						ctx.out_stream.put_byte((uint8) (0x80 | ((variant.n_children() >> 8) & 0x7F)));
+						ctx.out_stream.put_byte((uint8) (variant.n_children() & 0xFF));
+					}
+					for (var i = 0; i < variant.n_children(); i++) {
+						var blob = variant.get_child_value(i).get_data_as_bytes();
+						ctx.out_stream.put_uint32((uint32) blob.get_size());
+						if (blob.get_size() == 0) {
+							continue;
+						}
+						size_t written;
+						ctx.out_stream.write_all(blob.get_data(), out written);
+					}
+					return;
+				}
 			}
 
 			if (val.type().is_a(GLib.Type.ENUM)) {
@@ -260,6 +279,25 @@ namespace OLLMrpc.Bin
 		public static GLib.Value read(Stream ctx, uint8 type_byte) throws GLib.Error
 		{
 			if ((GLib.Type) (type_byte & 0x7F) == GLib.Type.BOXED) {
+				if ((type_byte & 0x80) != 0) {
+					var n = ctx.in_stream.read_byte();
+					var count = n & 0x7F;
+					if ((n & 0x80) != 0) {
+						count = (count << 8) | ctx.in_stream.read_byte();
+					}
+					var children = new GLib.Variant[count];
+					for (var i = 0; i < count; i++) {
+						var blob_len = ctx.in_stream.read_uint32();
+						var blob_buf = new uint8[blob_len];
+						if (blob_len > 0) {
+							size_t blob_read;
+							ctx.in_stream.read_all(blob_buf[0:blob_len], out blob_read);
+						}
+						children[i] = new GLib.Variant.from_bytes(
+							new GLib.VariantType("ay"), new GLib.Bytes(blob_buf), true);
+					}
+					return new GLib.Variant.array(new GLib.VariantType("ay"), children);
+				}
 				var blob_len = ctx.in_stream.read_uint32();
 				var blob_buf = new uint8[blob_len];
 				if (blob_len > 0) {

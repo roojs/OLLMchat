@@ -66,9 +66,10 @@ namespace OLLMrpc
 
 		/**
 		 * IN {@link GLib.List} / {@link GLib.SList} heads for the current
-		 * invoke. Element pointers are lease-backed GObjects (transfer
-		 * none). Assigning ''{}'' runs each compact
-		 * ''free_function'' (''g_list_free'' / ''g_slist_free'').
+		 * invoke. Element pointers are lease-backed GObjects, UTF8
+		 * strings, or boxed blobs (transfer none). Assigning ''{}''
+		 * runs each compact ''free_function'' (''g_list_free'' /
+		 * ''g_slist_free'').
 		 */
 		private GLib.List<void*>[] glist_keep = {};
 
@@ -709,14 +710,14 @@ namespace OLLMrpc
 		/**
 		 * Fill one {@link in_args} slot for a GIR GLIST / GSLIST IN argument.
 		 *
-		 * Wire is a {@link GLib.Variant} ''at'' (uint64 lease ids). The
-		 * caller built those ids; this method only resolves
-		 * {@link Transport.Connection.leases} and builds the C list.
-		 * Element type must be GObject / GInterface in
-		 * {@link Bin.gtype_to_alias}. Empty array → null pointer.
-		 * Owned {@link GLib.List} / {@link GLib.SList} of ''void*'' so
-		 * append does not take GObject refs. Heads stay on glist_keep /
-		 * gslist_keep until the next invoke assigns ''{}''.
+		 * UTF8 / FILENAME: native ''string[]'' (unboxed). GObject /
+		 * GInterface: {@link GLib.Variant} ''at'' (uint64 lease ids) via
+		 * {@link Transport.Connection.leases}. STRUCT / BOXED / UNION:
+		 * {@link GLib.Variant} ''aay'', each blob
+		 * {@link GI.StructInfo.get_size}. Empty array → null pointer.
+		 * Owned {@link GLib.List} / {@link GLib.SList} of ''void*''. Heads
+		 * stay on glist_keep / gslist_keep until the next invoke assigns
+		 * ''{}''.
 		 *
 		 * @param arg one IN argument from the callable
 		 * @param vi index in {@link request}.args
@@ -728,12 +729,109 @@ namespace OLLMrpc
 			var val = this.request.args.get(vi);
 			var type = arg.get_type();
 			var elem = type.get_param_type(0);
-			if (elem.get_tag() != GI.TypeTag.INTERFACE) {
-				this.request.connection.reply_error(
-					this.request, (int) RpcErrorCode.INVALID_PARAMS);
-				return false;
+			switch (elem.get_tag()) {
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME:
+					if (val.type() != typeof(string[])) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					var strv = (string[]) val;
+					if (strv.length == 0) {
+						this.in_args[vi + offset].v_pointer = null;
+						return true;
+					}
+					if (type.get_tag() == GI.TypeTag.GLIST) {
+						GLib.List<void*> utf8_list = null;
+						for (var i = 0; i < strv.length; i++) {
+							utf8_list.append((void*) strv[i]);
+						}
+						this.in_args[vi + offset].v_pointer = utf8_list;
+						this.glist_keep += (owned) utf8_list;
+						return true;
+					}
+					GLib.SList<void*> utf8_slist = null;
+					for (var i = 0; i < strv.length; i++) {
+						utf8_slist.append((void*) strv[i]);
+					}
+					this.in_args[vi + offset].v_pointer = utf8_slist;
+					this.gslist_keep += (owned) utf8_slist;
+					return true;
+
+				case GI.TypeTag.INTERFACE:
+					break;
+
+				default:
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
 			}
 			var kind = elem.get_interface().get_type();
+			if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED || kind == GI.InfoType.UNION) {
+				size_t n = 0;
+				if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
+					var si = (GI.StructInfo) elem.get_interface();
+					if (!si.is_gtype_struct()) {
+						n = si.get_size();
+					}
+				}
+				if (kind == GI.InfoType.UNION) {
+					n = ((GI.UnionInfo) elem.get_interface()).get_size();
+				}
+				if (n == 0) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				if (val.type() != typeof(GLib.Variant)) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				var blobs = val.dup_variant();
+				if (!blobs.is_of_type(new GLib.VariantType("aay"))) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				if (blobs.n_children() == 0) {
+					this.in_args[vi + offset].v_pointer = null;
+					return true;
+				}
+				if (type.get_tag() == GI.TypeTag.GLIST) {
+					GLib.List<void*> boxed_list = null;
+					for (var i = 0; i < blobs.n_children(); i++) {
+						var blob = blobs.get_child_value(i).get_data_as_bytes();
+						if (blob.get_size() != n) {
+							this.request.connection.reply_error(
+								this.request, (int) RpcErrorCode.INVALID_PARAMS);
+							return false;
+						}
+						var keep = new GLib.Bytes(blob.get_data());
+						this.boxed_keep.add(keep);
+						boxed_list.append((void*) keep.get_data());
+					}
+					this.in_args[vi + offset].v_pointer = boxed_list;
+					this.glist_keep += (owned) boxed_list;
+					return true;
+				}
+				GLib.SList<void*> boxed_slist = null;
+				for (var i = 0; i < blobs.n_children(); i++) {
+					var blob = blobs.get_child_value(i).get_data_as_bytes();
+					if (blob.get_size() != n) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					var keep = new GLib.Bytes(blob.get_data());
+					this.boxed_keep.add(keep);
+					boxed_slist.append((void*) keep.get_data());
+				}
+				this.in_args[vi + offset].v_pointer = boxed_slist;
+				this.gslist_keep += (owned) boxed_slist;
+				return true;
+			}
 			if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
@@ -1104,10 +1202,12 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Export each GObject from a GIR GLIST / GSLIST return.
+		 * Export a GIR GLIST / GSLIST return.
 		 *
-		 * Element type must be a registered GObject {@link GI.TypeTag.INTERFACE}.
-		 * Null list → empty {@link Response.result}.
+		 * UTF8 / FILENAME → native ''string[]'' on {@link Response.args}.
+		 * Registered GObject {@link GI.TypeTag.INTERFACE} → leased rows
+		 * on {@link Response.result}. Null list → empty string array or
+		 * empty result.
 		 *
 		 * @param type GIR list type
 		 * @param arg filled by {@link GI.FunctionInfo.invoke}
@@ -1121,10 +1221,34 @@ namespace OLLMrpc
 		)
 		{
 			var elem = type.get_param_type(0);
-			if (elem.get_tag() != GI.TypeTag.INTERFACE) {
-				this.request.connection.reply_error(
-					this.request, (int) RpcErrorCode.INVALID_PARAMS);
-				return false;
+			switch (elem.get_tag()) {
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME:
+					string[] strv = {};
+					if (arg.v_pointer != null && type.get_tag() == GI.TypeTag.GLIST) {
+						for (unowned GLib.List<void*>? node = (GLib.List<void*>) arg.v_pointer;
+							node != null; node = node.next) {
+							strv += (string) node.data;
+						}
+					}
+					if (arg.v_pointer != null && type.get_tag() == GI.TypeTag.GSLIST) {
+						for (unowned GLib.SList<void*>? node = (GLib.SList<void*>) arg.v_pointer;
+							node != null; node = node.next) {
+							strv += (string) node.data;
+						}
+					}
+					var as_val = GLib.Value(typeof(string[]));
+					as_val.set_boxed(strv);
+					response.args.add(as_val);
+					return true;
+
+				case GI.TypeTag.INTERFACE:
+					break;
+
+				default:
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
 			}
 			var kind = elem.get_interface().get_type();
 			if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {

@@ -587,8 +587,8 @@ namespace OLLMapp
 					this.notification(new OLLMrpc.Notification() {
 						method = "client.project.load_start",
 					});
-					this.project_manager.load_projects_from_db.begin((obj, res) => {
-						this.project_manager.load_projects_from_db.end(res);
+					this.project_manager.rpc_load_projects_from_db.begin((obj, res) => {
+						this.project_manager.rpc_load_projects_from_db.end(res);
 						this.notification(new OLLMrpc.Notification() {
 							method = "client.project.load_end",
 						});

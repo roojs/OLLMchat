@@ -49,6 +49,7 @@ namespace OLLMfilesd
 				"register", "s",
 				"changed.check", "sx",
 				"rpc_write", "ssssu",
+				"rpc_delete", "s",
 				null
 			);
 		}
@@ -63,8 +64,6 @@ namespace OLLMfilesd
 			base(manager);
 			this.base_type = "f";
 		}
-
-		public signal void call_delete(OLLMrpc.Request request);
 
 		public void read(OLLMrpc.Request request, string path)
 		{
@@ -262,6 +261,28 @@ namespace OLLMfilesd
 			});
 		}
 
+		/**
+		 * ''File.rpc_delete'' — delete a file on the daemon.
+		 *
+		 * @param request inbound RPC
+		 * @param path file path
+		 */
+		public void rpc_delete(OLLMrpc.Request request, string path)
+		{
+			var file = this.manager.get_file_from_active_project(path);
+			this.manager.delete_manager.remove.begin(
+				file,
+				new GLib.DateTime.now_local(),
+				(obj, res) => {
+					this.manager.delete_manager.remove.end(res);
+					this.manager.delete_manager.cleanup.begin();
+				}
+			);
+			request.reply(new OLLMrpc.Response() {
+				msg = "ok"
+			});
+		}
+
 		public override void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,
 			GLib.ParamSpec prop
@@ -283,26 +304,6 @@ namespace OLLMfilesd
 				return;
 			}
 			base.bin_read_prop(ctx, prop, type_byte);
-		}
-
-		construct
-		{
-			this.call_delete.connect((request) => {
-				var file = this.manager.get_file_from_active_project(
-					request.args.get(0).get_string()
-				);
-				this.manager.delete_manager.remove.begin(
-					file,
-					new GLib.DateTime.now_local(),
-					(obj, res) => {
-						this.manager.delete_manager.remove.end(res);
-						this.manager.delete_manager.cleanup.begin();
-					}
-				);
-				request.reply(new OLLMrpc.Response() {
-					msg = "ok"
-				});
-			});
 		}
 
 		private async void write(OLLMrpc.Request request)

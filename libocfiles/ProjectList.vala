@@ -22,7 +22,7 @@ namespace OLLMfiles
 	 * V2 client project list — {@link GLib.ListModel} over known project rows.
 	 *
 	 * Holds project-root {@link Folder} rows loaded via
-	 * {@link ProjectManager.load_projects_from_db} or {@link ProjectManager.create_project}.
+	 * {@link ProjectManager.rpc_load_projects_from_db} or {@link ProjectManager.rpc_create_project}.
 	 * Subfolder lookup is **not** cached here — use
 	 * {@link ProjectManager.fetch_folder} (daemon ''Folder.fetch'' RPC).
 	 */
