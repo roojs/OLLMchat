@@ -426,6 +426,7 @@ valadoc_docs = custom_target('valadoc',
     '--package-version=@0@'.format(meson.project_version()),
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_source_dir() / '../../vapi',
+    '--vapidir', meson.current_source_dir() / '../libocrpc',  # libffi.vapi (OLLMrpc.Ffi)
     '--vapidir', '/usr/share/vala/vapi',
     '--pkg=gee-0.8',
     '--pkg=gio-2.0',
@@ -443,6 +444,7 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=webkitgtk-6.0',  # libocwebkit
     '--pkg=atspi-2',  # libocwebkit A11y
     '--pkg=posix',
+    '--pkg=libffi',  # in-tree libocrpc/libffi.vapi (OLLMrpc.Ffi)
     '--pkg=fiass',  # FAISS via vapi (used by libocvector)
     '--pkg=tree-sitter',  # Tree-sitter via vapi (used by libocvector)
     '--pkg=seccomp',  # RunSeccomp / Bubble (liboctools)
