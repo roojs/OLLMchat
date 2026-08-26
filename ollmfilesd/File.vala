@@ -48,6 +48,7 @@ namespace OLLMfilesd
 				"apply_permissions", "su",
 				"register", "s",
 				"changed.check", "sx",
+				"rpc_write", "ssssu",
 				null
 			);
 		}
@@ -63,7 +64,6 @@ namespace OLLMfilesd
 			this.base_type = "f";
 		}
 
-		public signal void call_write(OLLMrpc.Request request);
 		public signal void call_delete(OLLMrpc.Request request);
 
 		public void read(OLLMrpc.Request request, string path)
@@ -242,6 +242,26 @@ namespace OLLMfilesd
 			});
 		}
 
+		/**
+		 * ''File.rpc_write'' — write path contents on the daemon.
+		 *
+		 * @param request inbound RPC
+		 * @param path file path
+		 * @param content file contents
+		 * @param base_type ''f'' / ''d'' / alias
+		 * @param target symlink target when applicable
+		 * @param unix_mode rwx bits
+		 */
+		public void rpc_write(
+			OLLMrpc.Request request,
+			string path, string content, string base_type,
+			string target, uint unix_mode
+		) {
+			this.write.begin(request, (obj, res) => {
+				this.write.end(res);
+			});
+		}
+
 		public override void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,
 			GLib.ParamSpec prop
@@ -267,11 +287,6 @@ namespace OLLMfilesd
 
 		construct
 		{
-			this.call_write.connect((request) => {
-				this.write.begin(request, (obj, res) => {
-					this.write.end(res);
-				});
-			});
 			this.call_delete.connect((request) => {
 				var file = this.manager.get_file_from_active_project(
 					request.args.get(0).get_string()

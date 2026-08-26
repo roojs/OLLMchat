@@ -89,7 +89,7 @@ namespace OLLMfiles
 		/**
 		 * Project-level description from vector metadata (''ProjectAnalysis'').
 		 *
-		 * Client calls ''Folder.project_description'' on the daemon
+		 * Client calls ''Folder.rpc_project_description'' on the daemon
 		 * ([`2.10.4.1`](../../docs/plans/2.10.4.1-ollmfilesd-rpc-api.md)).
 		 *
 		 * Callers (''Skill/Runner'', ''Task/Details'', ''Task/Tool'') must
@@ -104,7 +104,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Folder.project_description",
+				method = "RPC-Folder.rpc_project_description",
 				args = OLLMrpc.args("s", this.path)
 			});
 			if (response.error != null) {
@@ -116,7 +116,7 @@ namespace OLLMfiles
 		/**
 		 * Distinct folders that need write access (bwrap overlay roots).
 		 *
-		 * ''Folder.roots'' on the daemon — same result as shipping
+		 * ''Folder.rpc_roots'' on the daemon — same result as shipping
 		 * ''build_roots()'', without local ''project_files''.
 		 *
 		 * @return Write-root folder rows (paths are realpaths)
@@ -128,7 +128,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Folder.roots",
+				method = "RPC-Folder.rpc_roots",
 				args = OLLMrpc.args("s", this.path)
 			});
 			if (response.error != null) {

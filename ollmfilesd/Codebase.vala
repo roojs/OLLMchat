@@ -36,6 +36,8 @@ namespace OLLMfilesd
 				"reset", "",
 				"start", "ss",
 				"stop", "",
+				"rpc_search", "ssissss",
+				"rpc_debug_get", "ss",
 				null
 			);
 		}
@@ -63,33 +65,53 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * ''Codebase.search'' — semantic vector search over the active project.
+		 * ''Codebase.rpc_search'' — semantic vector search over the
+		 * active project.
 		 *
 		 * Reply ''msg'' with markdown when ''format=tool'', or explanatory
-		 * text when filters match nothing. ''response.error'' when the client
-		 * cannot know the outcome (e.g. no active project).
+		 * text when filters match nothing. ''response.error'' when the
+		 * client cannot know the outcome (e.g. no active project).
 		 *
-		 *  * Domain / daemon state → ''response.error'' or intentional ''msg''
-		 *  * Client API bugs → propagate; no catch-all on this signal
-		 *  * ''manager.db'' and ''vector_db'' set after init — no null guards
-		 *
-		 * @param request inbound RPC; search fields on {@link OLLMrpc.Request.args}
+		 * @param request inbound RPC
+		 * @param path project path
+		 * @param query search text
+		 * @param max_results cap
+		 * @param language language filter
+		 * @param element_type element-type filter
+		 * @param category category filter
+		 * @param format ''tool'' or other
 		 */
-		public signal void call_search(OLLMrpc.Request request);
+		public void rpc_search(
+			OLLMrpc.Request request,
+			string path, string query, int max_results,
+			string language, string element_type, string category,
+			string format
+		) {
+			this.search.begin(request, (obj, res) => {
+				this.search.end(res);
+			});
+		}
 
 		/**
-		 * ''Codebase.debug_get'' — dump stored FAISS embedding for one AST path.
+		 * ''Codebase.rpc_debug_get'' — dump stored FAISS embedding for
+		 * one AST path.
 		 *
 		 * Debug/admin only; CLI: ''oc-vector-search --dump-vector=AST_PATH''.
-		 * Params: ''args.get(0)'' path, ''args.get(1)'' ast_path.
 		 * Reply: ''msg'' with one float per line.
 		 *
-		 *  * Domain misses → ''response.error''
-		 *  * Caller must set ''ast_path''; client API bugs propagate
-		 *
-		 * @param request inbound RPC; path and ast_path on {@link OLLMrpc.Request.args}
+		 * @param request inbound RPC
+		 * @param path project path
+		 * @param ast_path AST path to dump
 		 */
-		public signal void call_debug_get(OLLMrpc.Request request);
+		public void rpc_debug_get(
+			OLLMrpc.Request request,
+			string path,
+			string ast_path
+		) {
+			this.debug_get.begin(request, (obj, res) => {
+				this.debug_get.end(res);
+			});
+		}
 
 		/**
 		 * ''Codebase.file_info'' — {@link SQT.VectorMetadata} rows for one file.
@@ -213,20 +235,6 @@ namespace OLLMfilesd
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				msg = "ok"
-			});
-		}
-
-		construct
-		{
-			this.call_debug_get.connect((request) => {
-				this.debug_get.begin(request, (obj, res) => {
-					this.debug_get.end(res);
-				});
-			});
-			this.call_search.connect((request) => {
-				this.search.begin(request, (obj, res) => {
-					this.search.end(res);
-				});
 			});
 		}
 

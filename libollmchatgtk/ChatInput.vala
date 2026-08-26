@@ -51,6 +51,7 @@ namespace OLLMchatGtk
 		private Gtk.TextBuffer buffer;
 		private bool is_expanded = false;
 		private bool syncing = false;
+		private bool has_preedit = false;
 
 		/** Emitted when the user submits (Ctrl+Enter or play) with the message text. */
 		public signal void send_clicked(string text);
@@ -123,7 +124,7 @@ namespace OLLMchatGtk
 			this.scrolled.line_peer = this.inline_play;
 
 			this.scrolled.lines_changed.connect((lines) => {
-				this.placeholder.visible = lines == 0;
+				this.placeholder.visible = lines == 0 && !this.has_preedit;
 				if (lines == 1) {
 					return;
 				}
@@ -144,6 +145,12 @@ namespace OLLMchatGtk
 				this.inline_play.visible = false;
 				this.add_css_class("is-expanded");
 				this.expanded_changed(true);
+			});
+
+			this.text_view.preedit_changed.connect((preedit) => {
+				this.has_preedit = preedit.length > 0;
+				this.placeholder.visible = !this.has_preedit && this.buffer.get_char_count() == 0;
+				this.scrolled.queue_fit();
 			});
 
 			var keys = new Gtk.EventControllerKey();

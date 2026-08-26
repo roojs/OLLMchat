@@ -206,7 +206,7 @@ Examples:
 		}
 
 		var load_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-ProjectManager.load_projects_from_db"
+			method = "RPC-ProjectManager.rpc_load_projects_from_db"
 		});
 		if (load_response.error != null) {
 			throw new GLib.IOError.FAILED(load_response.error.message);
@@ -238,7 +238,7 @@ Examples:
 		if (opt_create_project) {
 			stdout.printf("Creating folder as project: %s\n", project_path);
 			var create_response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-ProjectManager.create_project",
+				method = "RPC-ProjectManager.rpc_create_project",
 				args = OLLMrpc.args("s", project_path)
 			});
 			if (create_response.error != null) {
@@ -249,7 +249,7 @@ Examples:
 
 		stdout.printf("Scanning folder for files...\n");
 		var scan_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-ProjectManager.activate_project",
+			method = "RPC-ProjectManager.rpc_activate_project",
 			args = OLLMrpc.args("sb", project_path, false)
 		});
 		if (scan_response.error != null) {
@@ -260,7 +260,7 @@ Examples:
 		if (opt_project_summary) {
 			stdout.printf("=== Project summary ===\n\n");
 			var summary_response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Folder.project_description",
+				method = "RPC-Folder.rpc_project_description",
 				args = OLLMrpc.args("s", project_path)
 			});
 			if (summary_response.error != null) {

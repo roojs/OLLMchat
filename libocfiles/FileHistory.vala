@@ -30,7 +30,7 @@ namespace OLLMfiles
 		public async void approve()
 		{
 			yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-FileHistory.approve",
+				method = "RPC-FileHistory.rpc_approve",
 				args = OLLMrpc.args("sx", this.path, this.id)
 			});
 		}
@@ -42,7 +42,7 @@ namespace OLLMfiles
 		{
 			var response = yield this.manager.rpc.call(
 				new OLLMrpc.Request() {
-					method = "RPC-FileHistory.revert",
+					method = "RPC-FileHistory.rpc_revert",
 					args = OLLMrpc.args("sx", this.path, this.id)
 				}
 			);

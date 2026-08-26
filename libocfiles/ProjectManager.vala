@@ -135,7 +135,7 @@ namespace OLLMfiles
 		 * Activate a project in this client ProjectManager.
 		 *
 		 * Updates local ''is_active'' / {@link active_project} for UI.
-		 * RPC ''ProjectManager.activate_project'' asks the daemon to
+		 * RPC ''ProjectManager.rpc_activate_project'' asks the daemon to
 		 * load/scan/index that path — not to persist UI selection
 		 * (Config2 ''Settings.Window'' owns that).
 		 *
@@ -171,7 +171,7 @@ namespace OLLMfiles
 			}
 
 			this.rpc.call.begin(new OLLMrpc.Request() {
-				method = "RPC-ProjectManager.activate_project",
+				method = "RPC-ProjectManager.rpc_activate_project",
 				args = OLLMrpc.args(
 					"sb",
 					project != null ? project.path : "",
@@ -208,7 +208,7 @@ namespace OLLMfiles
 		public async void load_projects_from_db()
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-ProjectManager.load_projects_from_db"
+				method = "RPC-ProjectManager.rpc_load_projects_from_db"
 			});
 			if (response.error != null) {
 				return;
@@ -258,7 +258,7 @@ namespace OLLMfiles
 		public async Folder create_project(string path)
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-ProjectManager.create_project",
+				method = "RPC-ProjectManager.rpc_create_project",
 				args = OLLMrpc.args("s", path)
 			});
 			if (response.error != null) {

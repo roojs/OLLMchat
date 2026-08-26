@@ -404,7 +404,7 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Write on daemon (''File.write'').
+		 * Write on daemon (''File.rpc_write'').
 		 *
 		 * ''base_type'': ''f'' file (default), ''d'' directory,
 		 * ''fa'' symlink. Directories and symlinks use empty ''content'';
@@ -429,7 +429,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-File.write",
+				method = "RPC-File.rpc_write",
 				args = OLLMrpc.args(
 					"ssssu",
 					this.path,
