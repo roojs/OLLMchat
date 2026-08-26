@@ -1,0 +1,54 @@
+# 8.4 — Positional RPC values and typelib invoke
+
+> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
+
+**Status:** parent — archived. [`8.4.1`](RPC-8.4.1-DONE-rpc-positional-values.md) / [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) / [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) / [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) / [`8.4.6`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) / [`8.4.7`](RPC-8.4.7-rpc-ffi-inout.md) / [`8.4.8`](RPC-8.4.8-rpc-live-gtype-explicit-alias.md) / [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md) agent **✔️**. Leftover live cut: [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md) (typed `GLib.Error` on the wire).
+
+**Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
+
+**Builds on:** [`done/8.1-DONE-bin-protocol-libocrpc.md`](done/8.1-DONE-bin-protocol-libocrpc.md) — bin `Request` / `Response`, `CallParam` bags, `Request.dispatch`
+
+**Consumer:** [`gnome-shell-rpc` `0.5.1`](file:///home/alan/git/gnome-shell-rpc/docs/plans/0.5.1-runtime-helpers-and-positional-args.md) — drop per-method `*Params`; args are positional `GLib.Value`s in GIR order. Direction comes from the typelib at invoke time, not from a wrapper on the wire.
+
+**Related:** [`docs/bin-rpc-protocol.md`](../bin-rpc-protocol.md) (v3.0) — document optional `Request.values` when present. **No protocol version bump.** [`8.5`](RPC-8.5-rpc-drop-callparam-reply-value.md) — drop `CallParam` / `Request.param`; `Response.result` → `GLib.Value`. Not this parent.
+
+---
+
+## Purpose
+
+- **🔷** RPC calls can carry an **array of values** on the request, not only a named `CallParam` bag.
+- **🔷** Phase 1: the **recipient** can accept that array. The **caller** can send it. Existing `Request.param` / `Request.register` / `call_*` handlers stay.
+- **🔷** Phase 2 (this parent): typelib path in [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) — `Gi.register` (static) plus instance `new Gi(request).dispatch()`; `windows/Gi.vala` via meson. RPC `new` (no handle). [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) invokes any GI method on that lease. Construction and calls use **libffi** / `GI.FunctionInfo.invoke`. Vala `out` / `ref` / `[CCode]` are compile-time; they join this path only when a GIR/typelib exists.
+- **🔷** ollmfilesd and other current callers keep `Request.param`. These plans only add the values API beside it.
+- **ℹ️** gnome-shell-rpc vendors this library. Their Runtime / GenClient consume the new API; this repo adds the API and smokes it with dummy types.
+
+**Suggested order:** [`8.4.1`](RPC-8.4.1-DONE-rpc-positional-values.md) → [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) → [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) → [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md) / [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) → [`8.4.6`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) → [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md) (list IN) / [`8.4.7`](RPC-8.4.7-rpc-ffi-inout.md) / [`8.4.8`](RPC-8.4.8-rpc-live-gtype-explicit-alias.md). CallParam removal is [`8.5`](RPC-8.5-rpc-drop-callparam-reply-value.md).
+
+---
+
+## Phase summary
+
+- **🔷** `✔️` [`8.4.1`](RPC-8.4.1-DONE-rpc-positional-values.md) — `Request.values` as `Gee.ArrayList<GLib.Value?>`; `ANY[]` on the wire; `param` unchanged.
+- **🔷** `✔️` [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) — typelib register + RPC `Alias.new` in `Gi` (`windows/Gi.vala` via meson).
+  - Static `register` / `types`; per-call `new Gi(request).dispatch()` / instance `convert`.
+  - `Request.dispatch` only delegates after handlers miss.
+  - RPC `Alias.new` (no handle) leases the instance.
+  - `Stream` points at `Connection` / `Client` (unowned); does not copy `lease_ids` / `proxies`.
+  - No property dump on handled objects. Allowlist stays in the caller (plugin). ollmfilesd `call_*` unchanged.
+- **🔷** `✔️` [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) — any typelib method on that lease (`dispatch_function`, `Request.lease_id`, `Response.values` / `Gi.scalar`).
+- **🔷** `✔️` [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) — boxed blob + GObject `INTERFACE` (`TypeTag.INTERFACE` split). Invoke return uses local `g_function_info_invoke` (`out GI.Argument`); system vapi still by-value.
+- **🔷** `✔️` [`8.4.6`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) — slabs, float/double, arrays, narrow ints, ENUM/FLAGS, list **OUT** (`scalar_list` / `scalar_hash`).
+- **🔷** `✔️` [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md) — `GLIST` / `GSLIST` **IN** (lease-id GObject, unboxed `string[]` utf8, Variant `"aay"` boxed) and utf8 list **OUT**.
+- **🔷** `✔️` [`8.4.8`](RPC-8.4.8-rpc-live-gtype-explicit-alias.md) — live GObject: consumer explicitly maps concrete server GTypes to an existing typelib wire alias (`Bin.register_alias`). Mutter subclass list is the consumer.
+- **🔷** `⏳` [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md) — invoke `GLib.Error` on the wire; client emits the type the stub `throws`.
+- **🔷** [`8.4.7`](RPC-8.4.7-rpc-ffi-inout.md) — INOUT arguments (archived; not a live cut).
+
+---
+
+## LLM notes
+
+- **🚫** Domain types in `libocrpc`. Tests use dummy handlers / Gio types.
+- **🚫** Change `Request.register`, `Client.call`, or ollmfilesd `*Params` in **this** range — that cut is [`8.5`](RPC-8.5-rpc-drop-callparam-reply-value.md).
+- **🚫** Bump bin protocol version or `Daemon.protocol`.
+- **🚫** Runtime return helpers (`call_object` / `call_string`) — those live in gnome-shell-rpc `GiStub.Runtime`.
+- **🚫** Generate `GenServer` handler classes.

@@ -2,7 +2,7 @@
 
 Written for **AI agents** — **mandatory** when an agent drafts, reviews, or implements from **`docs/plans/*`**. Human contributors may treat this as a helpful guide.
 
-Plan markdown files live in **`docs/plans/`**; completed work is archived under **`docs/plans/done/`** (see **Done / archive** below). This document is intentionally **not** named `README.md` so it is not mistaken for a generic package readme.
+Plan markdown files live in **`docs/plans/`** as flat `{PREFIX}-{number}-{slug}.md` files (see **`docs/plans/-README.md`**). Completed work is archived under **`docs/plans/done/`** (see **Done / archive** below). This document is intentionally **not** named `README.md` so it is not mistaken for a generic package readme.
 
 It is the **canonical** place for: plan shape, code-proposal fences, **ordered chunk format** for large methods, **implementation workflow**, and the **checklist for plans**. Coding and build standards live in **`docs/coding-standards.md`** and **`docs/build-rules.md`**. When **implementing** Vala from a plan, use **`docs/coding-standards-router.md`** to choose which coding-standards sections to read (do not read the whole file by default).
 
@@ -426,13 +426,21 @@ Follow **`docs/coding-standards.md`** — [Defensive code and null checks](codin
 
 ## Done / archive
 
-When implemented: prefix the filename with **`DONE`** or **`REJECTED`**. While a numbered range is still in flight (e.g. 8.3 / 8.4), keep those files in **`docs/plans/`** so the sequence stays visible. Move the range into **`docs/plans/done/`** when that range is archived. One-line **Status** and a pointer to files changed.
+When implemented: put **`DONE`** or **`REJECTED`** in the slug. While a numbered range is still in flight, keep those files in **`docs/plans/`** so the sequence stays visible. Move the range into **`docs/plans/done/`** when that range is archived. One-line **Status** and a pointer to files changed.
 
-### Sub-plans and `1.0-summary.md`
+### Filenames
 
-- **Do not** add or edit entries in **`docs/plans/1.0-summary.md`** for in-progress sub-plans.
-- Put a **prominent blockquote at the top** of each sub-plan stating that 1.0 is **not** updated until the sub-plan is **done** and archived.
-- Update 1.0 **only** when closing a plan (optional — user may skip even then).
+- **`{PREFIX}-{number}-{slug}.md`** — prefix is the library short name (`RPC`, `TOOLS`, `FILES`, …). List: **`docs/plans/-README.md`**.
+- New work under a prefix is **`{PREFIX}-1.n-slug.md`**. **`{PREFIX}-1.0-summary.md`** is the category index.
+- Old files keep their original numbers (`RPC-8.3.6-…`). Do not mint a new global major (`9.1-…`).
+- **[`docs/plans/done/9.0-restructure-plans.md`](plans/done/9.0-restructure-plans.md)** is the last unprefixed numbered plan.
+
+### Sub-plans and `{PREFIX}-1.0-summary.md`
+
+- **Do not** add or edit entries in **`{PREFIX}-1.0-summary.md`** for in-progress sub-plans.
+- Put a **prominent blockquote at the top** of each sub-plan stating that the prefix **1.0** is **not** updated until the sub-plan is **done** and archived.
+- Update the prefix **1.0** **only** when closing a plan (optional — user may skip even then).
+- **`docs/plans/-README.md`** is categories only — not a per-plan checklist.
 
 ## Related
 

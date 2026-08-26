@@ -1,0 +1,628 @@
+# 8.4.3 — Typelib method on a lease
+
+> `docs/plans/RPC-1.0-summary.md` is **not** updated for this sub-plan until it is done and archived.
+
+**Status:** `✔️` agent-done — awaiting user **✅**
+
+**Parent:** [`RPC-8.4-rpc-positional-values-and-ffi.md`](RPC-8.4-rpc-positional-values-and-ffi.md)
+
+**Depends on:** [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) — `Gi.register`, RPC `Alias.new`, live object on the wire.
+
+**Leftovers:** [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md) (invoke errors), [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) (`INTERFACE` return tag, object args / `append`), [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) (float, array, width).
+
+**Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
+
+---
+
+## Purpose
+
+- **🔷** `✔️` After [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) has created an object, the client can call any method the typelib lists on that type (`Gio-Menu.get_n_items`).
+- **🔷** `✔️` Same `{alias}.{method}` string as `new`.
+- **🔷** `✔️` `Request.lease_id` names which row in `Connection.leases`. Method args stay in `Request.values` (the leased object is not one of those args).
+- **🔷** `✔️` `dispatch` already finds the callable. This plan adds `dispatch_function(fn)` only.
+- **🔷** `✔️` Missing / zero `lease_id` on a non-`new` call is `INVALID_PARAMS`.
+- **ℹ️** `RemoteParams.object_id` / `SubscribeParams.object_id` stay as they are (CallParam bags). This field is on `Request` because the GI path has no param bag. Same integer as the `leases` key.
+
+Intro: edits are **Remove** / **Replace with** / **Add** from the tree;
+verify surrounding context before applying.
+
+---
+
+## Call
+
+- **🔷** `⏳` Wire method stays `{alias}.{method}`.
+- **🔷** `⏳` `Request.lease_id` (`uint64`, default `0`). Omit on the wire when `0` (same omit as empty `values`). [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) `new` leaves it `0`.
+
+### 1. `libocrpc/Request.vala` — `lease_id` property + omit on write
+
+**Why:** GI method calls have no CallParam bag. The lease id rides on the request.
+
+**Where:** class body after `values`; `bin_write_prop` switch, after `result-type`.
+
+**Depends on:** none.
+
+#### Add — after the `values` property (before `result_type`) — lease id on the request
+
+```vala
+		/**
+		 * Row in {@link Transport.Connection.leases} for a typelib method.
+		 *
+		 * ''0'' means none (constructors, CallParam-only calls). Omitted
+		 * on the bin socket when ''0''. Not {@link Live.RemoteParams.object_id}
+		 * — that name stays on the CallParam bags.
+		 */
+		public uint64 lease_id { get; set; default = 0; }
+```
+
+#### Add — in `bin_write_prop` after `case "result-type":` / `return;` — skip zero
+
+```vala
+				case "lease-id":
+					if (this.lease_id == 0) {
+						return;
+					}
+					this.bin_default_write_prop(ctx, prop);
+					return;
+```
+
+---
+
+## Server
+
+- **🔷** `⏳` `Request.dispatch`: handlers first; else `new Gi(this).dispatch()`. This plan only adds `dispatch_function`.
+- **🔷** `⏳` Look up `this.request.connection.leases` with `(int) this.request.lease_id`. Unknown id → error.
+- **🔷** `⏳` No such method is already `METHOD_NOT_FOUND` in `dispatch`.
+
+The typelib says which arguments the client sends and which the server fills.
+
+- **🔷** `⏳` Client sends only the **in** arguments in `Request.values`, in typelib order. Skip arguments the typelib marks skip.
+- **🔷** `⏳` `dispatch_function` puts the leased object in invoke slot 0. Then the same `convert` loop as `dispatch_new` fills the rest from `Request.values`.
+- **🔷** `⏳` Wrong number of **in** args → `INVALID_PARAMS`.
+- **🔷** `⏳` After invoke, copy the return (if not void) and each **out** argument into `Response.values` via `scalar` (return first, then out args in typelib order).
+
+### 2. `libocrpc/Gi.vala` — `dispatch()` routes non-constructors
+
+**Why:** `return false` left methods for this plan. Constructors stay on `dispatch_new`.
+
+**Where:** end of `dispatch()`, the `IS_CONSTRUCTOR` branch.
+
+**Depends on:** §4 (`dispatch_function`).
+
+#### Remove
+
+```vala
+			if ((fn.get_flags() & GI.FunctionInfoFlags.IS_CONSTRUCTOR) != 0) {
+				return this.dispatch_new(fn);
+			}
+			return false;
+```
+
+#### Replace with
+
+```vala
+			if ((fn.get_flags() & GI.FunctionInfoFlags.IS_CONSTRUCTOR) != 0) {
+				return this.dispatch_new(fn);
+			}
+			return this.dispatch_function(fn);
+```
+
+### 3. `libocrpc/Gi.vala` — `convert`: `offset` on `in_args`
+
+**Why:** The leased object is `in_args[0]`. `dispatch_new` still writes at `vi`. `dispatch_function` passes `offset = 1`.
+
+**Where:** `convert` signature and `this.in_args[vi]` assignments. `dispatch_new` call site stays `convert(arg, vi)`.
+
+**Depends on:** none.
+
+##### Part 1 — Signature + docblock
+
+#### Remove
+
+```vala
+		/**
+		 * Fill one {@link in_args} slot from {@link request}.values.
+		 *
+		 * Uses ''arg'' TypeTag. Reads {@link request}.values at ''vi'' —
+		 * does not copy request fields onto {@link Gi}. Unknown tags
+		 * reply INVALID_PARAMS.
+		 *
+		 * @param arg one IN argument from the callable
+		 * @param vi index in {@link in_args} and {@link request}.values
+		 * @return false when this method already replied an error
+		 */
+		private bool convert(GI.ArgInfo arg, int vi)
+```
+
+#### Replace with
+
+```vala
+		/**
+		 * Fill one {@link in_args} slot from {@link request}.values.
+		 *
+		 * Uses ''arg'' TypeTag. Reads {@link request}.values at ''vi'' —
+		 * writes {@link in_args} at ''vi + offset''. Unknown tags reply
+		 * INVALID_PARAMS. ''offset'' is ''0'' for constructors.
+		 *
+		 * @param arg one IN argument from the callable
+		 * @param vi index in {@link request}.values
+		 * @param offset added to ''vi'' for {@link in_args} (''1'' when slot 0 is the instance)
+		 * @return false when this method already replied an error
+		 */
+		private bool convert(GI.ArgInfo arg, int vi, int offset = 0)
+```
+
+##### Part 2 — Assignments
+
+#### Remove
+
+```vala
+					this.in_args[vi].v_boolean = val.get_boolean();
+```
+
+#### Replace with
+
+```vala
+					this.in_args[vi + offset].v_boolean = val.get_boolean();
+```
+
+#### Remove
+
+```vala
+					this.in_args[vi].v_int32 = val.get_int();
+```
+
+#### Replace with
+
+```vala
+					this.in_args[vi + offset].v_int32 = val.get_int();
+```
+
+#### Remove
+
+```vala
+					this.in_args[vi].v_int64 = val.get_int64();
+```
+
+#### Replace with
+
+```vala
+					this.in_args[vi + offset].v_int64 = val.get_int64();
+```
+
+#### Remove
+
+```vala
+					this.in_args[vi].v_uint32 = val.get_uint();
+```
+
+#### Replace with
+
+```vala
+					this.in_args[vi + offset].v_uint32 = val.get_uint();
+```
+
+#### Remove
+
+```vala
+					this.in_args[vi].v_uint64 = val.get_uint64();
+```
+
+#### Replace with
+
+```vala
+					this.in_args[vi + offset].v_uint64 = val.get_uint64();
+```
+
+#### Remove
+
+```vala
+					this.in_args[vi].v_string = val.get_string();
+```
+
+#### Replace with
+
+```vala
+					this.in_args[vi + offset].v_string = val.get_string();
+```
+
+### 4. `libocrpc/Gi.vala` — `dispatch_function`
+
+**Why:** Lookup the lease, invoke the method, pack return / out args.
+
+**Where:** new private method immediately after `dispatch_new`.
+
+**Depends on:** §1 (`lease_id`), §3 (`convert` offset), §5 (`scalar`), §6 (`Response.values`).
+
+#### Add — after the closing `}` of `dispatch_new` — method on a lease
+
+```vala
+		/**
+		 * Invoke a typelib method on a leased object.
+		 *
+		 * Slot 0 is the instance. Remaining IN args use {@link convert}.
+		 * Return and OUT args use {@link scalar} into {@link Response.values}.
+		 * A returned GObject goes in {@link Response.result} like ''new''.
+		 *
+		 * @param fn non-constructor from {@link dispatch}
+		 * @return true — this method always replies
+		 */
+		private bool dispatch_function(GI.FunctionInfo fn)
+		{
+			if (!this.request.connection.live_handles) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return true;
+			}
+			if (this.request.lease_id == 0) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return true;
+			}
+			var id = (int) this.request.lease_id;
+			if (!this.request.connection.leases.has_key(id)) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return true;
+			}
+			if (!fn.is_method()) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return true;
+			}
+			var n_in = 1;
+			var n_out = 0;
+			var n_values = 0;
+			for (var i = 0; i < fn.get_n_args(); i++) {
+				var arg = fn.get_arg(i);
+				if (arg.is_skip()) {
+					continue;
+				}
+				switch (arg.get_direction()) {
+					case GI.Direction.IN:
+						n_in++;
+						n_values++;
+						break;
+
+					case GI.Direction.OUT:
+						n_out++;
+						break;
+
+					case GI.Direction.INOUT:
+						n_in++;
+						n_out++;
+						n_values++;
+						break;
+				}
+			}
+			if (n_values != this.request.values.size) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return true;
+			}
+			this.in_args = new GI.Argument[n_in];
+			this.out_args = new GI.Argument[n_out];
+			this.in_args[0].v_pointer = (void*) this.request.connection.leases.get(id);
+			var vi = 0;
+			for (var i = 0; i < fn.get_n_args(); i++) {
+				var arg = fn.get_arg(i);
+				if (arg.is_skip()) {
+					continue;
+				}
+				if (arg.get_direction() == GI.Direction.OUT) {
+					continue;
+				}
+				if (!this.convert(arg, vi, 1)) {
+					return true;
+				}
+				vi++;
+			}
+			var ret = GI.Argument();
+			try {
+				fn.invoke(this.in_args, this.out_args, ret);
+			} catch (GLib.Error e) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INTERNAL_ERROR);
+				return true;
+			}
+			var response = new Response();
+			var ret_type = fn.get_return_type();
+			switch (ret_type.get_tag()) {
+				case GI.TypeTag.VOID:
+					break;
+
+				case GI.TypeTag.OBJECT:
+				case GI.TypeTag.INTERFACE:
+					var created = (GLib.Object) ret.v_pointer;
+					this.request.connection.export(created);
+					response.result.add(created);
+					break;
+
+				default:
+					if (!this.scalar(ret_type, ret, response.values)) {
+						return true;
+					}
+					break;
+			}
+			var oi = 0;
+			for (var i = 0; i < fn.get_n_args(); i++) {
+				var arg = fn.get_arg(i);
+				if (arg.is_skip()) {
+					continue;
+				}
+				if (arg.get_direction() == GI.Direction.IN) {
+					continue;
+				}
+				if (!this.scalar(arg.get_type(), this.out_args[oi], response.values)) {
+					return true;
+				}
+				oi++;
+			}
+			this.request.reply(response);
+			return true;
+		}
+```
+
+### 5. `libocrpc/Gi.vala` — `scalar`
+
+**Why:** Return and OUT args share one TypeTag switch. It will grow.
+
+**Where:** new private method immediately after `convert`.
+
+**Depends on:** none.
+
+#### Add — after the closing `}` of `convert` — TypeTag → `GLib.Value`
+
+```vala
+		/**
+		 * Append one GI scalar to a values list.
+		 *
+		 * Reverse of {@link convert}. Unknown tags reply INVALID_PARAMS.
+		 *
+		 * @param type GIR type of the return or OUT argument
+		 * @param arg filled by {@link GI.FunctionInfo.invoke}
+		 * @param dest {@link Response.values}
+		 * @return false when this method already replied an error
+		 */
+		private bool scalar(GI.TypeInfo type, GI.Argument arg, Gee.ArrayList<GLib.Value?> dest)
+		{
+			switch (type.get_tag()) {
+				case GI.TypeTag.BOOLEAN:
+					var b = GLib.Value(typeof(bool));
+					b.set_boolean(arg.v_boolean);
+					dest.add(b);
+					return true;
+
+				case GI.TypeTag.INT8:
+					var i8 = GLib.Value(typeof(char));
+					i8.set_schar(arg.v_int8);
+					dest.add(i8);
+					return true;
+
+				case GI.TypeTag.UINT8:
+					var u8 = GLib.Value(typeof(uchar));
+					u8.set_uchar(arg.v_uint8);
+					dest.add(u8);
+					return true;
+
+				case GI.TypeTag.INT16:
+					var i16 = GLib.Value(typeof(int));
+					i16.set_int((int) arg.v_int16);
+					dest.add(i16);
+					return true;
+
+				case GI.TypeTag.UINT16:
+					var u16 = GLib.Value(typeof(uint));
+					u16.set_uint((uint) arg.v_uint16);
+					dest.add(u16);
+					return true;
+
+				case GI.TypeTag.INT32:
+					var i32 = GLib.Value(typeof(int));
+					i32.set_int(arg.v_int32);
+					dest.add(i32);
+					return true;
+
+				case GI.TypeTag.UINT32:
+					var u32 = GLib.Value(typeof(uint));
+					u32.set_uint(arg.v_uint32);
+					dest.add(u32);
+					return true;
+
+				case GI.TypeTag.INT64:
+					var i64 = GLib.Value(typeof(int64));
+					i64.set_int64(arg.v_int64);
+					dest.add(i64);
+					return true;
+
+				case GI.TypeTag.UINT64:
+					var u64 = GLib.Value(typeof(uint64));
+					u64.set_uint64(arg.v_uint64);
+					dest.add(u64);
+					return true;
+
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME:
+					var s = GLib.Value(typeof(string));
+					s.set_string(arg.v_string);
+					dest.add(s);
+					return true;
+
+				default:
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+			}
+		}
+```
+
+---
+
+## Return
+
+- **🔷** `⏳` `Response.values` — same `Gee.ArrayList<GLib.Value?>` shape as `Request.values`. Empty list omitted on the wire. Do not put scalars in `Response.msg`.
+- **🔷** `⏳` Void method → empty `values` and empty `result`.
+- **🔷** `⏳` Returned GObject → `export` if needed, put it in `Response.result` (same as [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) `new`). Not a `values` row.
+- **🔷** `⏳` `Gi.scalar` — TypeTag switch that turns one `GI.Argument` into a `GLib.Value` (the reverse of `convert`). Used for the return and for each **out** argument. Tags:
+  - `BOOLEAN`
+  - `INT8` / `UINT8` / `INT16` / `UINT16`
+  - `INT32` / `UINT32` / `INT64` / `UINT64`
+  - `UTF8` / `FILENAME`
+- **ℹ️** Object-as-arg / boxed `INTERFACE` → [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md). Float / array / width → [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md). The fenced `TypeTag.OBJECT` branch does not compile — leftover 8.4.5. Invoke throw → [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md).
+
+### 6. `libocrpc/Response.vala` — `values` property + bin write / read
+
+**Why:** Scalar returns use the same `ANY[]` as `Request.values`. Empty omitted.
+
+**Where:** class body after `result`; `bin_write_prop` / `bin_read_prop` switches after the `result` case.
+
+**Depends on:** none.
+
+#### Add — after the `result` property (before `msg`) — positional returns
+
+```vala
+		/**
+		 * Positional returns (daemon → client), GIR order.
+		 *
+		 * Empty list is omitted on the bin socket. A returned GObject
+		 * uses {@link result}, not this list. Do not put scalars in
+		 * {@link msg}.
+		 */
+		public Gee.ArrayList<GLib.Value?> values { get; set; default = new Gee.ArrayList<GLib.Value?>(); }
+```
+
+#### Add — in `bin_write_prop` after the `result` `return;` (before `default:`) — omit empty `values`
+
+```vala
+				case "values":
+					if (this.values.size == 0) {
+						return;
+					}
+					ctx.write_tag(prop.name);
+					ctx.out_stream.put_byte((uint8) GLib.Type.INVALID | 0x80);
+					if (this.values.size < 128) {
+						ctx.out_stream.put_byte((uint8) this.values.size);
+					} else {
+						ctx.out_stream.put_byte(
+							(uint8) (0x80 | ((this.values.size >> 8) & 0x7F))
+						);
+						ctx.out_stream.put_byte((uint8) (this.values.size & 0xFF));
+					}
+					foreach (var val in this.values) {
+						Bin.StreamValue.write(ctx, val);
+					}
+					return;
+```
+
+#### Add — in `bin_read_prop` after the `result` `return;` (before `default:`) — same `ANY[]` as `Request.values`
+
+```vala
+				case "values":
+					var n = ctx.in_stream.read_byte();
+					var count = n & 0x7F;
+					if ((n & 0x80) != 0) {
+						count = (count << 8) | ctx.in_stream.read_byte();
+					}
+					for (var i = 0; i < count; i++) {
+						var elem = ctx.in_stream.read_byte();
+						this.values.add(Bin.StreamValue.read(ctx, elem));
+					}
+					return;
+```
+
+### 7. `docs/bin-rpc-protocol.md` — `Response.values`
+
+**Why:** Same `ANY[]` as `Request.values`, on the reply.
+
+**Where:** section **15**, immediately after the `Request.values` paragraph (before `## 16.`).
+
+**Depends on:** §6.
+
+#### Add — after `No protocol version bump.` under Positional args — positional returns
+
+```markdown
+### Positional returns (`Response.values`)
+
+Optional **`ANY[]`** (this section) on **`OLLMrpc.Response`**. Same encoding as `Request.values`.
+
+**Omit** when **`values.size == 0`**. A returned GObject uses **`result`**, not this list.
+
+No protocol version bump.
+```
+
+---
+
+## Smoke
+
+Extend [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) `tests/rpc/gi-test.vala`, after `Gio-Menu.new`:
+
+- **🔷** `✔️` Call `Gio-Menu.get_n_items` with that menu's `lease_id`.
+- **🔷** `✔️` Empty menu → `Response.values[0]` is `0`.
+- **ℹ️** `append` / object args → [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md).
+
+### 8. `tests/rpc/gi-test.vala` — `Gio-Menu.get_n_items` after `new`
+
+**Why:** First method-on-lease proof. Empty menu returns `0`.
+
+**Where:** `run_rpc_test`, after the `proxies` foreach, before `rpc.disconnect()`.
+
+**Depends on:** §1, §2, §4, §5, §6.
+
+#### Remove
+
+```vala
+			foreach (var id in rpc.proxies.keys) {
+				this.check(command_line, id != 0, "handle is 0");
+				this.check(
+					command_line,
+					rpc.proxies.get(id) == response.result.get(0),
+					"proxy is not result"
+				);
+			}
+			rpc.disconnect();
+```
+
+#### Replace with
+
+```vala
+			var lease_id = (uint64) 0;
+			foreach (var id in rpc.proxies.keys) {
+				this.check(command_line, id != 0, "handle is 0");
+				this.check(
+					command_line,
+					rpc.proxies.get(id) == response.result.get(0),
+					"proxy is not result"
+				);
+				lease_id = (uint64) id;
+			}
+			response = null;
+			var items_loop = new GLib.MainLoop();
+			rpc.call.begin(new OLLMrpc.Request() {
+				method = "Gio-Menu.get_n_items",
+				lease_id = lease_id
+			}, (obj, res) => {
+				response = rpc.call.end(res);
+				items_loop.quit();
+			});
+			items_loop.run();
+			this.check(command_line, response.error == null, "get_n_items returned error");
+			this.check(command_line, response.values.size == 1, "get_n_items returned no value");
+			this.check(command_line, response.values.get(0).get_int() == 0, "empty menu is not 0");
+			rpc.disconnect();
+```
+
+---
+
+## LLM notes
+
+- **🚫** Fence `dispatch_function` in [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md). Name it here only.
+- **🚫** Put the lease id in the method string (`Gio-Menu.42.get_n_items`).
+- **🚫** Steal `values[0]` as the lease id (method args start at index 0).
+- **🚫** Name this field `object_id` on `Request` — that name is the CallParam property. Here it is `lease_id`.
+- **🚫** Rename `RemoteParams.object_id` in this plan.
+- **🚫** Dedicated property get/set RPC — if the typelib exposes a getter/setter **method**, this plan already covers it.
+- **🚫** Overload `Response.msg` for scalar returns.
+- **🚫** Copy `Request` fields onto `Gi`. Hold `this.request` and read it.
+- **🚫** Switch on `GValue.type()` to decide the `GI.Argument` field. GIR `TypeTag` is the schema.
+- **🚫** Public `dispatch_function` / `convert` / `scalar` — GI types must stay private so `ocrpc.vapi` does not require gobject-introspection.
+- **ℹ️** `windows/Gi.vala` is unchanged: `dispatch` still returns false.
+- **ℹ️** Fenced `GI.TypeTag.OBJECT` is leftover [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) (`INTERFACE` only). Invoke return pointer is there too. Float / array / width → [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md).

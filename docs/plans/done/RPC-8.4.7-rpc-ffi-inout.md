@@ -1,0 +1,21 @@
+# 8.4.7 — INOUT typelib arguments
+
+> `docs/plans/RPC-1.0-summary.md` is **not** updated for this sub-plan until it is done and archived.
+
+**Status:** **PROPOSED**
+
+**Parent:** [`RPC-8.4-rpc-positional-values-and-ffi.md`](RPC-8.4-rpc-positional-values-and-ffi.md)
+
+**Depends on:** [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) — caller-allocates OUT boxed only today. [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) — scalar / array / list OUT tags. List IN is [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md).
+
+**Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
+
+---
+
+## Purpose
+
+- **🔷** `⏳` INOUT boxed — caller buffer is also an IN blob from `values[]`. Today [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) only allocates empty OUT slots; INOUT needs read blob → invoke → `scalar` the same buffer back.
+- **🔷** `⏳` INOUT non-boxed (integer, string, …) — `convert` fills IN, `scalar` reads OUT after invoke on the same `GI.Argument` slot.
+- **ℹ️** [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md) and [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) invoke return pointer stay sibling plans.
+
+No fences until INOUT wire pairing is confirmed.

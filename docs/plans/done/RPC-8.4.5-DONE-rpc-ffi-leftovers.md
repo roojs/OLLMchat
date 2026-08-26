@@ -1,0 +1,607 @@
+# 8.4.5 — Typelib leftovers (`convert` tags, boxed blob, invoke return)
+
+> `docs/plans/RPC-1.0-summary.md` is **not** updated for this sub-plan until it is done and archived.
+
+**Status:** `✔️` agent-done — boxed / GObject `INTERFACE` / `StreamValue` `Bytes` / invoke return via `g_function_info_invoke` `out`. Awaiting user **✅**.
+
+**Parent:** [`RPC-8.4-rpc-positional-values-and-ffi.md`](RPC-8.4-rpc-positional-values-and-ffi.md)
+
+**Depends on:** [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) / [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) — landed. Invoke **errors** are [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md). Remaining convert tags (float, double, array, ENUM/FLAGS, width, list OUT) are [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md). List **IN** is [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md).
+
+**Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
+
+---
+
+## Purpose
+
+Bits pulled out of 8.4.2 / 8.4.3 so those plans stay **DONE**. GObject `INTERFACE` / boxed / `append` were never first-smoke. The invoke return pointer **is** — `Gio-Menu.new` can still lose the constructor object.
+
+- **🔷** `✔️` `fn.invoke` `return_value` is still by value in the system vapi. Local `[CCode]` `g_function_info_invoke` uses `out GI.Argument` (same C symbol). Delete that binding when the vapi is `out`.
+- **🔷** `✔️` GI has no `TypeTag.OBJECT`. GObject returns are `INTERFACE`. `dispatch_function` splits `OBJECT` / `INTERFACE` vs boxed `STRUCT` / `BOXED` / `UNION`.
+- **🔷** `✔️` `convert` / `scalar` `INTERFACE`: GObject lease vs boxed blob (`convert_interface`, `GLib.Bytes`).
+- **🔷** `✔️` GI boxed structs (`Mtk.Rectangle`, …) are `TypeTag.INTERFACE` held in `GLib.Bytes`. Wire is existing §13. No field-walk in `libocrpc`.
+- **🔷** `✔️` GObject args / returns that are **not** `Bin.register`’d (`gtype_to_alias`) reply `INVALID_PARAMS`. Same-library leases (`Gio-Menu` after `Gi.register("Gio")`) work.
+- **🔷** `✔️` Caller-allocates OUT boxed in the first `dispatch_function` arg walk.
+- **ℹ️** Invoke throw → client is [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md).
+- **ℹ️** `ARRAY` / float / double / width / `ENUM` / `FLAGS` / list OUT → [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md). List IN → [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md). `Gio.File` reconstruct is **not** libocrpc. INOUT boxed is skipped there too.
+- **ℹ️** gnome-shell-rpc [`0.5.2`](file:///home/alan/git/gnome-shell-rpc/docs/plans/0.5.2-close-gi-stub-gaps.md) Phase 2 is blocked on this boxed path.
+
+**🔷** Invoke return stays unfenced until the binding is named. Boxed / `StreamValue` / `convert` / `scalar` / return-tag split are fenced in the topic sections below.
+
+---
+
+## Invoke return
+
+- **ℹ️** [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) LLM note: vapi `GI.Argument return_value` by value. Both `out` and `ref` fail at valac.
+- **🔷** `✔️` Constructor / method GObject pointer comes back via a local
+  `[CCode]` `g_function_info_invoke` with `out GI.Argument` (same C
+  symbol). System vapi `GI.FunctionInfo.invoke` still by-value — delete
+  the local binding when that vapi is `out`.
+- **🔷** `✔️` User-named binding: `g_function_info_invoke` (not
+  `invoke_raw` / not a second C name).
+
+---
+
+## Return tag
+
+- **🔷** `✔️` In `dispatch_function`, GObject returns: `GI.TypeTag.INTERFACE` only. Drop `TypeTag.OBJECT`.
+- **🔷** `✔️` That `INTERFACE` case is GObject only. Inspect `get_interface()`. `InfoType.OBJECT` / `INTERFACE` → `export` + `result` **only if** `Bin.gtype_to_alias` has the instance GType. Else `INVALID_PARAMS`. `STRUCT` / `BOXED` / `UNION` → `scalar` (blob).
+- **ℹ️** `Gio.File` / `GLocalFile`: not registered by `Gi.register`. Reconstruct is the caller’s serializer, not [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md).
+
+Edits are **Remove** / **Replace with** / **Add** from the tree;
+verify surrounding context before applying.
+
+### 1. `libocrpc/Gi.vala` — `dispatch_function`: split `INTERFACE` return
+
+**Why:** Same GI tag as boxed. A `Mtk.Rectangle*` is not a `GLib.Object`. Inner InfoType uses `if`, not a nested switch.
+
+**Where:** `dispatch_function`, the `switch (ret_type.get_tag())` `INTERFACE` case.
+
+**Depends on:** §5 (`scalar` boxed), §6 (`boxed_keep`).
+
+#### Remove
+
+```vala
+				case GI.TypeTag.INTERFACE:
+					var created = (GLib.Object) ret.v_pointer;
+					this.request.connection.export(created);
+					response.result.add(created);
+					break;
+```
+
+#### Replace with
+
+Non-GObject first (`scalar`, then `break`). Lease/`result` is not nested inside `if (OBJECT)`.
+
+```vala
+				case GI.TypeTag.INTERFACE:
+					var kind = ret_type.get_interface().get_type();
+					if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
+						if (!this.scalar(ret_type, ret, response.values)) {
+							return true;
+						}
+						break;
+					}
+					var created = (GLib.Object) ret.v_pointer;
+					if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(created.get_type())) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return true;
+					}
+					this.request.connection.export(created);
+					response.result.add(created);
+					break;
+```
+
+---
+
+## More `convert` / `scalar` tags
+
+- **🔷** `✔️` GObject `INTERFACE` (`InfoType.OBJECT` / `INTERFACE`) — object-valued IN args and constructor args. Lease id in `values` as `uint64`, or a live `GLib.Object` already in the `GValue`. Unknown lease, or a GType not in `Bin.gtype_to_alias`, → `INVALID_PARAMS`.
+- **🔷** `✔️` Boxed `INTERFACE` — **Boxed** below. Same tag, not a lease.
+- **ℹ️** `GValue.transform` width, `FLOAT` / `DOUBLE` / `ARRAY`, `ENUM` / `FLAGS`: [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md).
+
+### 2. `libocrpc/Gi.vala` — `convert` + `convert_interface`
+
+**Why:** `INTERFACE` is large (GObject lease vs blob). User asked for a helper on `convert` only. `dispatch_function` return uses `if` on InfoType, not a nested switch.
+
+**Where:** `convert` `INTERFACE` case; new method immediately after `convert`.
+
+**Depends on:** §6 (`boxed_keep`).
+
+**🔷** Helper name: `convert_interface`. `scalar` stays inline (`if`, not a second helper).
+
+#### Remove
+
+```vala
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME:
+					this.in_args[vi + offset].v_string = val.get_string();
+					return true;
+
+				default:
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+			}
+		}
+```
+
+#### Replace with
+
+`convert` only delegates. `gtype-struct`, opaque size 0, and other InfoTypes share one `n == 0` error.
+
+```vala
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME:
+					this.in_args[vi + offset].v_string = val.get_string();
+					return true;
+
+				case GI.TypeTag.INTERFACE:
+					return this.convert_interface(arg, vi, offset);
+
+				default:
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+			}
+		}
+
+		/**
+		 * Fill one {@link in_args} slot for a GIR INTERFACE argument.
+		 *
+		 * GObject / GInterface: lease id or a live object in
+		 * {@link request}.values. The instance GType must be in
+		 * {@link Bin.gtype_to_alias} (''Gi.register'' object types).
+		 * STRUCT / BOXED / UNION: {@link GLib.Bytes}
+		 * of {@link GI.StructInfo.get_size}. gtype-structs, size 0, and
+		 * other InfoTypes reply INVALID_PARAMS (one `n == 0` path).
+		 *
+		 * @param arg one IN argument from the callable
+		 * @param vi index in {@link request}.values
+		 * @param offset added to ''vi'' for {@link in_args}
+		 * @return false when this method already replied an error
+		 */
+		private bool convert_interface(GI.ArgInfo arg, int vi, int offset)
+		{
+			var val = this.request.values.get(vi);
+			var kind = arg.get_type().get_interface().get_type();
+			if (kind == GI.InfoType.OBJECT || kind == GI.InfoType.INTERFACE) {
+				if (val.type().is_a(GLib.Type.OBJECT)) {
+					if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(val.get_object().get_type())) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					this.in_args[vi + offset].v_pointer = (void*) val.get_object();
+					return true;
+				}
+				var id = (int) val.get_uint64();
+				if (!this.request.connection.leases.has_key(id)) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				var obj = this.request.connection.leases.get(id);
+				if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(obj.get_type())) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				this.in_args[vi + offset].v_pointer = (void*) obj;
+				return true;
+			}
+			size_t n = 0;
+			if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
+				var si = (GI.StructInfo) arg.get_type().get_interface();
+				if (!si.is_gtype_struct()) {
+					n = si.get_size();
+				}
+			} else if (kind == GI.InfoType.UNION) {
+				n = ((GI.UnionInfo) arg.get_type().get_interface()).get_size();
+			}
+			if (n == 0) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			if (val.type() != typeof(GLib.Bytes)) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var blob = (GLib.Bytes) val.get_boxed();
+			if (blob.get_size() != n) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var keep = new GLib.Bytes(blob.get_data());
+			this.boxed_keep.add(keep);
+			this.in_args[vi + offset].v_pointer = (void*) keep.get_data();
+			return true;
+		}
+```
+
+---
+
+## Boxed
+
+- **🔷** GIR has no `GI.TypeTag.BOXED`. A boxed / C struct argument is `TypeTag.INTERFACE` whose `get_interface()` is `InfoType.STRUCT`, `BOXED`, or `UNION`.
+- **🔷** That is why `convert` / `scalar` look like they “don’t support boxed”: the tag is the same as GObject, and the default branch replies `INVALID_PARAMS`.
+- **🔷** Support is a **binary blob**, not a typed DTO inside `libocrpc`. No `Mtk.Rectangle` / field walk here. [`8.3`](RPC-8.3-libocrpc-live-handles-and-signals.md) DTOs stay for named GObject properties in gnome-shell-rpc. Positional GI convert only copies bytes.
+- **ℹ️** Wire layout is already [`docs/bin-rpc-protocol.md`](../bin-rpc-protocol.md) §13: type byte `0x48` (`GLib.Type.BOXED`) + `uint32` BE length + raw bytes. No new type byte. No protocol bump.
+
+**`StreamValue` (so `Request.values` / `Response.values` can carry the blob):**
+
+- **🔷** `✔️` Hold the blob in `GLib.Bytes` (`GValue` of `typeof(GLib.Bytes)`). `get_data()` / `get_size()` are the pointer + length `convert` needs.
+- **🔷** `✔️` Write / read as today’s BOXED blob — type byte `0x48`, then `uint32` BE length, then that many bytes. Same layout long strings already use once they pass the compact cutoff.
+- **🔷** Compact 1/2-byte length (cap **32767**) stays on `STRING` only. Do not put that prefix after `0x48` — property `BOXED` already assumes `uint32`.
+- **🔷** `✔️` Same size story as a long string: stay on this socket as `uint32` + bytes, including when larger than 32767. Rectangles and similar are small. Do not switch to SCM_RIGHTS / the other socket in this plan.
+- **🔷** `✔️` `StreamValue.read` of `BOXED` returns `GLib.Bytes`, not a string. Interior NUL (a rectangle with `x = 0`) cannot survive a C string.
+- **🔷** `✔️` Long strings in `values[]`: keep compact `STRING` (cap 32767). `BOXED` on this path is `Bytes` only. Property `bin_read_prop` can still decode `BOXED` → string because it knows the property GType.
+- **ℹ️** Huge blobs later: extend [`8.3.4`](RPC-8.3.4-DONE-scm-rights-fds.md) (fd / memory on the other socket). Not here.
+
+**`convert` (IN):**
+
+- **🔷** `✔️` On `TypeTag.INTERFACE`, `convert` calls `convert_interface`. `kind` from `get_interface().get_type()`. GObject `if` first. Then `if` STRUCT/BOXED (skip gtype-struct so `n` stays 0) / `else if` UNION. One `n == 0` error for gtype-struct, size 0, and every other InfoType.
+- **🔷** `✔️` `STRUCT` / `BOXED` / `UNION`: require blob length == `StructInfo.get_size()` / `UnionInfo.get_size()`. Copy into a `GLib.Bytes` on `boxed_keep`. `in_args[…].v_pointer` = `get_data()`. Keep that list until `invoke` returns.
+- **🔷** `✔️` Size `0` (opaque `cairo_t`, foreign structs) or `is_gtype_struct()` → `INVALID_PARAMS`. Not memcpy-able.
+- **ℹ️** Nested pointers inside the bytes are the caller’s problem. Contract is same-ABI POD (rectangles, transforms). `libocrpc` does not deep-copy.
+
+**`scalar` (return / OUT):**
+
+- **🔷** `✔️` Same InfoType split, inline `if` (not a switch, not a helper). `var kind = type.get_interface().get_type()`. Copy `n` bytes from `arg.v_pointer` into a `GLib.Bytes` and `dest.add`.
+
+**Caller-allocates OUT (typical `get_frame_rect`):**
+
+- **💩** `✔️` GIR `is_caller_allocates()`. First arg walk allocates `get_size()` before `invoke` for boxed `INTERFACE` OUT. INOUT boxed is not in that fence.
+
+**Consumer:**
+
+- **ℹ️** gnome-shell-rpc generator packs / unpacks the blob into a typed struct (`Mtk.Rectangle` ↔ `shared/Rectangle` or generated struct). That mapping stays there.
+
+### 3. `libocrpc/Bin/StreamValue.vala` — `write`: `STRING` cap + `GLib.Bytes`
+
+**Why:** `BOXED` on this path is `Bytes`. Compact `STRING` stays at 32767.
+
+**Where:** `write`, `GLib.Type.STRING` case, then after the `switch` before `typeof(string[])`.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+				case GLib.Type.STRING:
+					var s = val.get_string() != null ? val.get_string() : "";
+					if (s.length > 32767) {
+						ctx.out_stream.put_byte((uint8) GLib.Type.BOXED);
+						ctx.out_stream.put_uint32((uint32) s.length);
+						size_t written;
+						ctx.out_stream.write_all(((uint8[]) s)[0:s.length], out written);
+						return;
+					}
+					ctx.out_stream.put_byte((uint8) GLib.Type.STRING);
+```
+
+#### Replace with
+
+Throw if a `values[]` string would have used `BOXED`. Call `get_string()` once — both sides of a ternary is the Vala codegen bug (`examples/oc-vala-ternary-bug.vala`, [`8.3.2`](RPC-8.3.2-DONE-subscribe-unsubscribe.md)).
+
+```vala
+				case GLib.Type.STRING:
+					var s = val.get_string();
+					s = s != null ? s : "";
+					if (s.length > 32767) {
+						throw new StreamError.PROTOCOL("string value longer than 32767");
+					}
+					ctx.out_stream.put_byte((uint8) GLib.Type.STRING);
+```
+
+#### Add — after the closing `}` of `switch (val.type())`, before `if (val.type() == typeof(string[]))` — `GLib.Bytes` as §13
+
+```vala
+			if (val.type() == typeof(GLib.Bytes)) {
+				var blob = (GLib.Bytes) val.get_boxed();
+				ctx.out_stream.put_byte((uint8) GLib.Type.BOXED);
+				ctx.out_stream.put_uint32((uint32) blob.get_size());
+				if (blob.get_size() == 0) {
+					return;
+				}
+				size_t written;
+				ctx.out_stream.write_all(blob.get_data(), out written);
+				return;
+			}
+```
+
+### 4. `libocrpc/Bin/StreamValue.vala` — `read`: `BOXED` → `GLib.Bytes`
+
+**Why:** Interior NUL in a rectangle (`x = 0`) cannot be a C string.
+
+**Where:** `read`, the `GLib.Type.BOXED` block at the start.
+
+**Depends on:** §3 (write matches).
+
+#### Remove
+
+```vala
+			if ((GLib.Type) (type_byte & 0x7F) == GLib.Type.BOXED) {
+				var blob_len = ctx.in_stream.read_uint32();
+				var blob_buf = new uint8[blob_len + 1];
+				size_t blob_read;
+				ctx.in_stream.read_all(blob_buf[0:blob_len], out blob_read);
+				blob_buf[blob_len] = 0;
+				var blob_val = GLib.Value(typeof(string));
+				blob_val.set_string((string) blob_buf);
+				return blob_val;
+			}
+```
+
+#### Replace with
+
+```vala
+			if ((GLib.Type) (type_byte & 0x7F) == GLib.Type.BOXED) {
+				var blob_len = ctx.in_stream.read_uint32();
+				var blob_buf = new uint8[blob_len];
+				if (blob_len > 0) {
+					size_t blob_read;
+					ctx.in_stream.read_all(blob_buf[0:blob_len], out blob_read);
+				}
+				var blob_val = GLib.Value(typeof(GLib.Bytes));
+				blob_val.set_boxed(new GLib.Bytes(blob_buf));
+				return blob_val;
+			}
+```
+
+### 5. `libocrpc/Gi.vala` — `scalar`: boxed `INTERFACE`
+
+**Why:** Reverse of §2 blob path. Nested InfoType switch is too deep here — `if` / `else if` plus one `n == 0` error. GObject `INTERFACE` stays `INVALID_PARAMS` here — those returns use `result` in §1.
+
+**Where:** `scalar`, before `default`.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME:
+					var s = GLib.Value(typeof(string));
+					s.set_string(arg.v_string);
+					dest.add(s);
+					return true;
+
+				default:
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+```
+
+#### Replace with
+
+```vala
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME:
+					var s = GLib.Value(typeof(string));
+					s.set_string(arg.v_string);
+					dest.add(s);
+					return true;
+
+				case GI.TypeTag.INTERFACE:
+					var kind = type.get_interface().get_type();
+					size_t n = 0;
+					if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
+						var si = (GI.StructInfo) type.get_interface();
+						if (!si.is_gtype_struct()) {
+							n = si.get_size();
+						}
+					} else if (kind == GI.InfoType.UNION) {
+						n = ((GI.UnionInfo) type.get_interface()).get_size();
+					}
+					if (n == 0) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					if (arg.v_pointer == null) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					var copy = new uint8[n];
+					GLib.Memory.copy(copy, arg.v_pointer, n);
+					var boxed_val = GLib.Value(typeof(GLib.Bytes));
+					boxed_val.set_boxed(new GLib.Bytes(copy));
+					dest.add(boxed_val);
+					return true;
+
+				default:
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+```
+
+### 6. `libocrpc/Gi.vala` — `boxed_keep` + clear on each dispatch
+
+**Why:** `GI.Argument.v_pointer` does not own the bytes. A local `uint8[]` in `convert` dies before `invoke`.
+
+**Where:** class fields after `out_args`; start of `dispatch_new` and `dispatch_function` after the live-handles / lease checks, before building `in_args`.
+
+**Depends on:** none.
+
+#### Add — after `private GI.Argument[] out_args = {};` — keep boxed copies alive
+
+```vala
+		/**
+		 * Copies of IN / caller-allocates OUT blobs for the current
+		 * {@link dispatch_new} / {@link dispatch_function} invoke.
+		 * {@link GI.Argument} pointers alias {@link GLib.Bytes.get_data}
+		 * here.
+		 */
+		private Gee.ArrayList<GLib.Bytes> boxed_keep = new Gee.ArrayList<GLib.Bytes>();
+```
+
+#### Add — in `dispatch_new`, immediately after `this.out_args = new GI.Argument[0];` — drop the previous call’s blobs
+
+```vala
+			this.boxed_keep.clear();
+```
+
+#### Add — in `dispatch_function`, immediately after `this.out_args = new GI.Argument[n_out];` — drop the previous call’s blobs
+
+```vala
+			this.boxed_keep.clear();
+```
+
+### 7. `libocrpc/Gi.vala` — `dispatch_function`: caller-allocates OUT boxed
+
+**Why:** `get_frame_rect` writes into a caller buffer. Zeroed `out_args` is a NULL pointer.
+
+**Where:** first arg walk in `dispatch_function` (`var vi = 0` through that loop).
+
+**Depends on:** §6 (`boxed_keep`), §5 (`scalar` after invoke).
+
+**💩** This hunk is caller-allocates OUT only. INOUT boxed is skipped in [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) too.
+
+#### Remove
+
+```vala
+			var vi = 0;
+			for (var i = 0; i < fn.get_n_args(); i++) {
+				var arg = fn.get_arg(i);
+				if (arg.is_skip()) {
+					continue;
+				}
+				if (arg.get_direction() == GI.Direction.OUT) {
+					continue;
+				}
+				if (!this.convert(arg, vi, 1)) {
+					return true;
+				}
+				vi++;
+			}
+```
+
+#### Replace with
+
+Non-OUT first (`convert`, then `continue`). OUT alloc is not nested inside `if (OUT)`. Same `kind` / `n == 0` `if`s as `scalar`.
+
+```vala
+			var out_i = 0;
+			var vi = 0;
+			for (var i = 0; i < fn.get_n_args(); i++) {
+				var arg = fn.get_arg(i);
+				if (arg.is_skip()) {
+					continue;
+				}
+				if (arg.get_direction() != GI.Direction.OUT) {
+					if (!this.convert(arg, vi, 1)) {
+						return true;
+					}
+					vi++;
+					continue;
+				}
+				if (!arg.is_caller_allocates() || arg.get_type().get_tag() != GI.TypeTag.INTERFACE) {
+					out_i++;
+					continue;
+				}
+				var kind = arg.get_type().get_interface().get_type();
+				size_t n = 0;
+				if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
+					var si = (GI.StructInfo) arg.get_type().get_interface();
+					if (!si.is_gtype_struct()) {
+						n = si.get_size();
+					}
+				} else if (kind == GI.InfoType.UNION) {
+					n = ((GI.UnionInfo) arg.get_type().get_interface()).get_size();
+				}
+				if (n == 0) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return true;
+				}
+				var buf = new uint8[n];
+				var keep = new GLib.Bytes(buf);
+				this.boxed_keep.add(keep);
+				this.out_args[out_i].v_pointer = (void*) keep.get_data();
+				out_i++;
+			}
+```
+
+---
+
+## Smoke
+
+- **💩** `⏳` `Gio-Menu.new` then `append` (two UTF-8 args in GIR) then `get_n_items` → `1`.
+- **💩** Constructor-with-args once GObject `INTERFACE` / string args work (`Gio-SimpleAction.new`). `GVariant` is opaque — still `INVALID_PARAMS` if size is 0.
+- **💩** `✔️` `StreamValue` `GLib.Bytes` round-trip on `Request.values` — including 16 bytes with interior zeroes (rectangle-shaped).
+- **ℹ️** GI boxed smoke (`Meta-Window.get_frame_rect`) lives in gnome-shell-rpc 0.5.2. This repo has no POD boxed Gio type worth first-smoke.
+
+### 8. `tests/rpc/values-test.vala` — `GLib.Bytes` round-trip
+
+**Why:** Wire `BOXED` must survive interior `0` bytes.
+
+**Where:** `Probe` — new `call_blob` signal beside `call_echo`; `run_rpc_test` after the echo asserts.
+
+**Depends on:** §3, §4.
+
+#### Add — inside `Probe`, after `call_echo` — echo the first `values` row
+
+```vala
+		public signal void call_blob(OLLMrpc.Request request);
+```
+
+#### Add — inside `Probe` `construct`, after the `call_echo.connect` block — reply with the same blob
+
+```vala
+			this.call_blob.connect((request) => {
+				var response = new OLLMrpc.Response();
+				response.values.add(request.values.get(0));
+				request.reply(response);
+			});
+```
+
+#### Add — in `run_rpc_test`, after the echo `msg == "n3"` check, before `rpc.disconnect()` — 16-byte blob with interior zeroes
+
+```vala
+			var payload = new uint8[16];
+			payload[4] = 10;
+			payload[8] = 20;
+			payload[12] = 30;
+			var blob = GLib.Value(typeof(GLib.Bytes));
+			blob.set_boxed(new GLib.Bytes(payload));
+			var blob_req = new OLLMrpc.Request() {
+				method = "RPC-Probe.blob"
+			};
+			blob_req.values.add(blob);
+			response = null;
+			var blob_loop = new GLib.MainLoop();
+			rpc.call.begin(blob_req, (obj, res) => {
+				response = rpc.call.end(res);
+				blob_loop.quit();
+			});
+			blob_loop.run();
+			this.check(command_line, response.error == null, "blob returned error");
+			this.check(command_line, response.values.size == 1, "blob returned no value");
+			var got = (GLib.Bytes) response.values.get(0).get_boxed();
+			this.check(command_line, got.get_size() == 16, "blob size");
+			this.check(command_line, got.get(0) == 0, "blob [0]");
+			this.check(command_line, got.get(4) == 10, "blob [4]");
+```
+
+---
+
+## LLM notes
+
+- **🚫** Put invoke **errors** here — that is [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md).
+- **🚫** Reopen [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) / [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) for these follow-ups.
+- **🚫** Public GI types on `ocrpc.vapi`. Any invoke wrapper stays private.
+- **🔷** `convert_interface` — user asked; `convert` only. `scalar` stays inline `if`.
+- **🚫** A second helper for `scalar` / dispatch.
+- **🚫** Domain struct types in `libocrpc` (`Mtk.Rectangle`, …). Bytes only.
+- **🚫** Invent `GI.TypeTag.BOXED`. Use `get_interface()` InfoType.
+- **🚫** `uint8[]` as the `values[]` payload type — it is `GLib.Bytes`.
+- **🚫** Compact length after the `BOXED` type byte.
+- **🚫** SCM_RIGHTS / second-socket memory passing for boxed in this plan.
+- **🚫** `ARRAY` / float / double / width / `ENUM` / `FLAGS` — [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md). `Gio.File` reconstruct and INOUT boxed are not that plan either.
+- **🚫** `invoke_raw` or a second C symbol — binding is `g_function_info_invoke`.

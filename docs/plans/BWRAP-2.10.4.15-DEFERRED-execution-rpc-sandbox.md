@@ -1,0 +1,215 @@
+# 2.10.4.15 — Execution via RPC / sandbox in daemon (DEFERRED)
+
+> **Do not update `docs/plans/BWRAP-1.0-summary.md` for this plan.**
+
+**Status:** **DEFERRED** — **`ollmfilesd` phase 2** (execution / sandbox RPC). Not active work; revisit after Meson V2 flip ([`done/2.10.4.21-DONE-meson-v2-cutover.md`](done/2.10.4.21-DONE-meson-v2-cutover.md)) ✅.
+
+**Pointer:** `docs/guide-to-writing-plans.md` — checklist for plans; proposed Vala follows `docs/coding-standards.md`
+
+**Parent:** [`FILES-2.10.4.0-summary.md`](FILES-2.10.4.0-summary.md)
+
+**Depends on:** [`done/2.10.4.17-DONE-libocbwrap-sandbox-library.md`](done/2.10.4.17-DONE-libocbwrap-sandbox-library.md) — daemon links **`libocbwrap`**, **🚫** no full **`Sandbox/*`** copy under **`ollmfilesd/`**
+
+**Related:** [`done/2.10.4.9-DONE-v2-caller-cutover.md`](done/2.10.4.9-DONE-v2-caller-cutover.md) · [`FILES-2.10.4.1-ollmfilesd-rpc-api.md`](FILES-2.10.4.1-ollmfilesd-rpc-api.md)
+
+---
+
+## Purpose
+
+- **🔷** **Why phase 2 exists**
+  - in-app tools (step 4) run bwrap with a **lightweight filesystem view** and **`FileVerification`** reports overlay changes back to the files daemon
+  - **ℹ️** cleaner model: **`Bubble.exec`** on **`ollmfilesd`** — command runs where **`ProjectFiles`** lives; **`Scan`** + index update without cross-process report-back
+  - **🔷** **defer** — ship in-app repoint first; flip to daemon exec when ready
+- **🔷** **`Bubble.can_wrap`** + **`Bubble.exec`** RPC on **`ollmfilesd`**
+  - same method names as shipping **`OLLMfiles.Sandbox.Bubble`**
+  - see [`2.10.4.1`](FILES-2.10.4.1-ollmfilesd-rpc-api.md)
+- **🔷** Daemon delegates bwrap to **`libocbwrap`**
+  - **`ollmfilesd/FileVerification`** on daemon **`ProjectFiles`**
+  - **`Scan`** stays one class (**🚫** no **`OverlaySync`**)
+- **🔷** **`liboctools`** / **`libocmcp`**
+  - link **`libocbwrap`** for in-process bwrap (same stack as today)
+  - still use shipping **`libocfiles`** for PM / **`Folder`**
+  - **🚫** not blocked on daemon RPC or V2 flip
+- **🔷** **Optional daemon RPC path**
+  - V2 thin client: **`RunCommand`** may call **`Bubble.exec`** on **`ollmfilesd`** when daemon up
+- **🔷** **Shipping `libocfiles/Sandbox/*`**
+  - removed when tools repoint to **`libocbwrap`** ([`2.10.4.17`](done/2.10.4.17-DONE-libocbwrap-sandbox-library.md))
+  - **🚫** not part of V2 PM/Folder flip
+  - only callers: **`RunCommand`**, MCP, **`oc-test-bubble`**
+
+---
+
+## 🚫 Rejected designs (chat)
+
+- **🚫 `Exec.vala`** — no separate RPC relay class; handlers on daemon **`Sandbox/Bubble.vala`** (**`rpc_*`** signals in **`construct`**, like **`Folder.vala`**).
+- **🚫 `OverlaySync.vala`** — use **📋 `Scan.vala`** in **`libocbwrap`** (see [`2.10.4.17`](done/2.10.4.17-DONE-libocbwrap-sandbox-library.md)).
+
+**ℹ️ `FileVerification` is approved**
+
+- daemon: **`ollmfilesd/FileVerification.vala`**
+- in-app: **`liboctools/V2/RunCommand/FileVerification.vala`**
+- see [`2.10.4.17`](done/2.10.4.17-DONE-libocbwrap-sandbox-library.md)
+
+---
+
+## 🚫 Superseded approach (do not implement)
+
+- **🚫** Copy full **`libocfiles/Sandbox/*`** → **`ollmfilesd/Sandbox/`** + renamespace **`OLLMfiles` → `OLLMfilesd`**
+- **Reason (🔷):** bwrap stack in **`libocbwrap`**; only RPC glue + **`FileVerification`** in **`ollmfilesd`**
+
+---
+
+## Who calls sandbox today
+
+**Today (shipping)**
+
+- **`liboctools/RunCommand/Request.vala`**
+  - **`OLLMfiles.Sandbox.Bubble`**
+- **`libocmcp/Client/Stdio.vala`**
+  - **`OLLMfiles.Sandbox.Bubble`**, **`RunSeccomp`**, **`build_bubble_args`**
+- **`examples/oc-test-bubble.vala`**
+  - direct **`OLLMfiles.Sandbox.Bubble`**
+
+**`libocbwrap`** ✅ ([`done/2.10.4.17`](done/2.10.4.17-DONE-libocbwrap-sandbox-library.md)) — in-app repoint next ([`2.10.4.9`](2.10.4.9-DONE-v2-caller-cutover.md) step 4)
+
+- **`liboctools`**, **`libocmcp`**
+  - repoint to **`OLLMbwrap.*`**
+  - still link shipping **`libocfiles`** for PM / **`Folder`**
+
+**After `libocbwrap` + caller repoint**
+
+- remove **`libocfiles/Sandbox/*`** from Meson + tree
+- only callers were **`RunCommand`**, MCP, **`oc-test-bubble`**
+
+**After V2 flip (thin client + daemon)**
+
+- **`RunCommand`**
+  - may use daemon **`Bubble.exec`** RPC when **`ollmfilesd`** up
+- delete shipping **`libocfiles/Sandbox/*`**
+
+---
+
+## Daemon pieces (after `libocbwrap`)
+
+### Link shared library
+
+- **`ollmfilesd/meson.build`** — **`ocbwrap_vapi_dep`**, **`--pkg=ocbwrap`** (Linux full / Windows stub)
+
+### New in `ollmfilesd/`
+
+- **`FileVerification.vala`** — **`OLLMfilesd.FileVerification : OLLMbwrap.FileVerification`**
+  - daemon project-files / DB sync (body of today’s **`Scan.handle_*`** for **`OLLMfilesd.*`**)
+- **`Sandbox/Bubble.vala`** — RPC registration target only
+  - **`rpc_can_wrap`** → **`OLLMbwrap.Bubble.can_wrap()`**
+  - **`rpc_exec`** → resolve project + **`write_roots`**
+  - **`new OLLMbwrap.Bubble (verification) { … }`** — sole ctor arg + object initializer (**[`2.10.4.17`](done/2.10.4.17-DONE-libocbwrap-sandbox-library.md)**)
+  - **`yield bubble.exec(...)`** ( **`overlay.scan.run()`** inside, same as shipping)
+
+**🚫** **`Exec.vala`** — do not add.
+
+### Register in `Application.vala`
+
+- **`OLLMrpc.Request.register("Bubble", …)`** + **`BubbleParams`** in **`CallParam.vala`**
+
+---
+
+## RPC wire — `Bubble.*`
+
+**🔷** Object name **`Bubble`** — matches shipping class ([`2.10.4.1`](FILES-2.10.4.1-ollmfilesd-rpc-api.md)).
+
+### Phase A — one-shot command (**🔷** — **`RunCommand`** via RPC)
+
+#### `Bubble.can_wrap`
+
+```json
+{"method":"Bubble.can_wrap","params":{}}
+```
+
+**Result:** `{ "available": true, "reason": "" }`
+
+#### `Bubble.exec`
+
+```json
+{
+  "method": "Bubble.exec",
+  "params": {
+    "project_path": "/home/alan/proj/myapp",
+    "command": "make test",
+    "working_dir": "",
+    "network": false,
+    "allow_write": ["project"]
+  }
+}
+```
+
+**Params (`BubbleParams`)**
+
+- **`project_path`** (string) — empty = no-project mode
+- **`command`** (string) — `sh -c` shell string
+- **`working_dir`** (string) — absolute or empty; **`playground`** normalized like **`RunCommand`**
+- **`network`** (bool)
+- **`allow_write`** (string[])
+
+**Result**
+
+```json
+{
+  "output": "merged stdout/stderr (+ exit hint if non-zero)",
+  "exit_code": 0,
+  "seccomp_network": "",
+  "seccomp_fs": ""
+}
+```
+
+**Errors:** **`-32001`** project not found · **`-32003`** I/O / spawn · **`-32004`** sandbox unavailable
+
+**🚫 Not on wire:** **`run_as_root`/`sudo`**, client unsandboxed Flatpak/Windows fallback
+
+### Phase B — MCP stdio session (**💩** defer)
+
+- Long-lived stdio session RPC still **💩** deferred
+- in-app MCP keeps **`OLLMbwrap`** spawn (or shipping until repointed)
+
+---
+
+## Caller changes
+
+### In-app (`libocbwrap` — with [`2.10.4.17`](done/2.10.4.17-DONE-libocbwrap-sandbox-library.md))
+
+- **`RunCommand/Request.vala`**
+  - **`OLLMbwrap.Bubble`** + **`V2/RunCommand/FileVerification`**
+  - shipping **`libocfiles`** for PM / **`Folder`** unchanged
+- **`Stdio.vala`**
+  - **`OLLMbwrap.Bubble`**, **`RunSeccomp`**, **`build_bubble_args`**
+  - no overlay scan on MCP stdio path today
+- **`run_as_root`**
+  - unchanged (client subprocess)
+
+### Daemon RPC (optional — V2 thin client)
+
+- **`RunCommand/Request.vala`**
+  - when daemon up: **`Bubble.exec`** RPC instead of in-process **`OLLMbwrap`**
+- **`Stdio.vala`**
+  - Phase B long-lived session RPC still **💩** deferred
+
+---
+
+## Suggested order
+
+1. **✅** [`done/2.10.4.17`](done/2.10.4.17-DONE-libocbwrap-sandbox-library.md) — **`libocbwrap`** library
+2. **⏳** Repoint **`liboctools`**, **`libocmcp`** to **`OLLMbwrap`** ([`2.10.4.9`](2.10.4.9-DONE-v2-caller-cutover.md) step 4)
+3. **⏳** **`Sandbox/Bubble.vala`** daemon RPC + **`BubbleParams`** + T3 harness
+4. **⏳** V2 flip — optional **`Bubble.exec`** RPC caller; swap shipping PM/Folder (**`Sandbox/*`** already gone)
+
+## Still to do ⏳
+
+1. **⏳** Daemon **`FileVerification`**
+2. **⏳** **`Bubble.can_wrap`** + **`Bubble.exec`** RPC handlers
+3. **⏳** T3 harness
+4. **⏳** **`RunCommand`** daemon RPC caller path — **at V2 flip only** (in-app **`OLLMbwrap`** sooner)
+
+---
+
+## Concrete code proposals
+
+**⏳** Prerequisite **`libocbwrap`** ✅ — first **`###`**: **`ollmfilesd/CallParam.vala`** **`BubbleParams`**, then **`FileVerification.vala`**, then **`Sandbox/Bubble.vala`** RPC **`construct`** block.

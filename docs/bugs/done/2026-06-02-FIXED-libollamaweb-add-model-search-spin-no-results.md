@@ -8,8 +8,8 @@
 
 **Related plans (context only — not a diagnosis):**
 
-- **`docs/plans/4.8-ollama-web-live-search.md`** — replace bundled `ollama-models.json` filter with live ollama.com search via **`libollamaweb`**.
-- **`docs/plans/4.8.1-ollama-web-phase-2-1-add-model.md`** — Add Model integration (`SearchResults`, `AddModelDialog`).
+- **`docs/plans/OLLAMA-4.8-ollama-web-live-search.md`** — replace bundled `ollama-models.json` filter with live ollama.com search via **`libollamaweb`**.
+- **`docs/plans/OLLAMA-4.8.1-ollama-web-phase-2-1-add-model.md`** — Add Model integration (`SearchResults`, `AddModelDialog`).
 
 ---
 

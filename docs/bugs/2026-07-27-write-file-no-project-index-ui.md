@@ -29,8 +29,8 @@
 
 ## Related
 
-- ℹ️ Plan under test: [`docs/plans/2.22-write-file-tool.md`](../plans/2.22-write-file-tool.md)
-- ℹ️ Changed-files / approvals UX (known incomplete): [`docs/plans/2.6.2-bwrap-ux-fixes.md`](../plans/2.6.2-bwrap-ux-fixes.md) — summary flags “list of changed files does not work well”
+- ℹ️ Plan under test: [`docs/plans/TOOLS-2.22-write-file-tool.md`](../plans/TOOLS-2.22-write-file-tool.md)
+- ℹ️ Changed-files / approvals UX (known incomplete): [`docs/plans/TOOLS-2.6.2-bwrap-ux-fixes.md`](../plans/TOOLS-2.6.2-bwrap-ux-fixes.md) — summary flags “list of changed files does not work well”
 - ℹ️ Null-`manager` after RPC `copy_from` (diagnosed, **not applied**):
   [`docs/bugs/done/2026-07-05-CLOSED-file-read-null-manager-changed-banner.md`](done/2026-07-05-CLOSED-file-read-null-manager-changed-banner.md)
 - ℹ️ Debug logs: `~/.cache/ollmchat/ollmchat.debug.log`,

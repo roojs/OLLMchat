@@ -186,7 +186,7 @@ Authoring rules and examples: **[docs/skills-format.md](skills-format.md)**.
 
 ## Historical design notes
 
-The original **Conductor / skills agent** vision (skill runner as a chat agent, catalog discovery, task bullet format) lives in [docs/plans/1.23-skills-agent-conductor.md](plans/1.23-skills-agent-conductor.md). The **implemented** pipeline (task list parsing, refinement, `Tool` execution runs, post-exec) evolved in the **1.23.x done** plans under `docs/plans/done/` (e.g. task execution prompt, refinements, detail/exec merge, task slugs). **Slug-only `task://` links (no `#` in prompts):** [1.23.33 DONE](plans/done/1.23.33-DONE-task-links-slug-only.md). Those plans are the changelog of design decisions; this document reflects the **current code path** above.
+The original **Conductor / skills agent** vision (skill runner as a chat agent, catalog discovery, task bullet format) lives in [docs/plans/CODER-1.23-skills-agent-conductor.md](plans/CODER-1.23-skills-agent-conductor.md). The **implemented** pipeline (task list parsing, refinement, `Tool` execution runs, post-exec) evolved in the **1.23.x done** plans under `docs/plans/done/` (e.g. task execution prompt, refinements, detail/exec merge, task slugs). **Slug-only `task://` links (no `#` in prompts):** [1.23.33 DONE](plans/done/1.23.33-DONE-task-links-slug-only.md). Those plans are the changelog of design decisions; this document reflects the **current code path** above.
 
 ---
 

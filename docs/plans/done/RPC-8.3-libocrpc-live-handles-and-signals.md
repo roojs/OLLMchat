@@ -1,0 +1,86 @@
+# 8.3 — `libocrpc` live handles, signal subscribe, fd passing
+
+> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
+
+**Status:** parent — 8.3.1–8.3.5 and [`8.3.6`](RPC-8.3.6-rpc-live-callbacks.md) agent **✔️**. 8.3.3 **🚫**.
+
+**Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
+
+**Builds on:** [`done/8.1-DONE-bin-protocol-libocrpc.md`](done/8.1-DONE-bin-protocol-libocrpc.md) — bin `Request` / `Response` / `Notification`, `SocketListen`, `Bin.Serializable`
+
+**Consumer:** [`gnome-shell-rpc` `0.1`](file:///home/alan/git/gnome-shell-rpc/docs/plans/0.1-decouple-gnome-shell-vala-rpc.md) — mutter plugin is the RPC **server**; Vala shell (their `0.2`) is the **client**. That caller turns the feature **on**. ollmfilesd leaves it **off**.
+
+**Related:** [`docs/bin-rpc-protocol.md`](../bin-rpc-protocol.md) (v3.0) — document optional handle encoding when the feature is on. **No protocol version bump.**
+
+---
+
+## Purpose
+
+- **🔷** Extend bin RPC so a server **can** export **live GObjects** by `uint64` handle, not only nested value copies (`File` / `Folder` today).
+- **🔷** That behaviour is **optional**, not the default. General ollmfilesd work does not need live handles, remote refcounts, or signal subscribe.
+- **🔷** Caller opts in when setting up the **server** (and the matching **client**). Both ends must have the same flag on.
+- **🔷** Serialize **skips** handle / live-object fields when the flag is off. Existing banners and by-value objects keep today’s wire.
+- **🔷** Client GC sends `RemoteUnref`. Connection drop drops every lease for that client.
+- **🔷** A client that did not create the domain object cannot unref it **below the GObject refcount at handle creation**. Extra client-owned refs are additive only.
+- **🔷** Client can **subscribe** / **unsubscribe** to `notify` and named signals on a handle. Server pushes `Notification`s. Compositor must not stall waiting for the client.
+- **🔷** Live object references in notifications use existing **`Notification.id`** + **`object_type`** after caller **`export()`** — see [`8.3.3`](RPC-8.3.3-REJECTED-notification-gobject-payload.md) (**withdrawn**; no new `payload` field).
+- **🔷** Unix transport can pass **fds** (`SCM_RIGHTS`) for later dmabuf thumbnails. Not pixel blobs on the bin stream.
+- **ℹ️** gnome-shell-rpc vendors or submodules this library; it does not fork a second protocol.
+
+**Suggested order:** 1 → 2 → 4 → 5 (phase 3 withdrawn).
+
+---
+
+## Phase summary
+
+- **🔷** `✔️` [`8.3.1`](RPC-8.3.1-DONE-live-handles-and-remote-refcount.md) — live handles and remote refcount (`export`, `RPC-Live-Remote.ref` / `RPC-Live-Remote.unref`, `live_handles` flag).
+- **🔷** `✔️` [`8.3.2`](RPC-8.3.2-DONE-subscribe-unsubscribe.md) — subscribe / unsubscribe on a handle.
+- **🚫** [`8.3.3`](RPC-8.3.3-REJECTED-notification-gobject-payload.md) — **withdrawn**. Caller `export()` + existing `Notification` `id` / `object_type`; no `payload` property.
+- **🔷** `✔️` [`8.3.4`](RPC-8.3.4-DONE-scm-rights-fds.md) — `SCM_RIGHTS` fds (`Live.Buffer*` / `Notification.buffer`).
+- **🔷** `✔️` [`8.3.5`](RPC-8.3.5-DONE-client-apply-notify-proxies.md) — `Client.proxies`; apply inbound `notify::` as `set_property` from `Notification.message`.
+- **🔷** `✔️` [`8.3.6`](RPC-8.3.6-rpc-live-callbacks.md) — GI callbacks: callback id + server trampoline → `Live.Invoke` (keybindings / idle watches; foreach later).
+
+---
+
+## Feature flag (all phases)
+
+**Goal:** live handles and remote refcounts exist in the library. Callers who do not ask for them never run that code path.
+
+- **🔷** `✔️` Opt-in at **server setup** and **client setup**. Default **off**.
+- **🔷** `✔️` Both ends must have the flag on. This is not a negotiated protocol version.
+- **🔷** `✔️` When the flag is **off**, ollmfilesd wire stays as today.
+- **🔷** `✔️` When the flag is **on**, caller **`export()`** + `Notification` **`id`** for live object refs; subscribe and `RPC-Live-Remote.ref` / `RPC-Live-Remote.unref` are valid. ([`8.3.2`](RPC-8.3.2-DONE-subscribe-unsubscribe.md))
+- **💩** `✔️` Construct property `live_handles` (default `false`) on `Listen` (copied onto each accepted `Connection`) and on `Client`. Same name both sides.
+- **💩** `✔️` Copy that bool onto `Bin.Stream` at `Connection.start()` / client connect so `bin_write_prop` can skip without a new helper.
+
+---
+
+## Current behaviour
+
+- **ℹ️** Nested `Serializable` objects encode **by value**. Live handles use caller **`export()`** and existing notification **`id`** ([`8.3.3`](RPC-8.3.3-REJECTED-notification-gobject-payload.md) withdrawn).
+- **ℹ️** `Notification` has `method`, `object_type`, `int id`, `message`, progress fields. With `live_handles`, **`id`** is the exported handle when the caller sets it.
+- **ℹ️** With `live_handles` on, the server pushes subscribed `Notification`s per connection ([`8.3.2`](RPC-8.3.2-DONE-subscribe-unsubscribe.md)). Flag off: ollmfilesd still broadcasts.
+- **ℹ️** `yield client.call` is already async. Keep that as the only call path for the Vala mutter client.
+- **ℹ️** `bin_write_prop` / `bin_read_prop` overrides already exist for non-scalars. Mutter boxed structs stay in gnome-shell-rpc as wire DTOs, not types inside `libocrpc`.
+- **ℹ️** `Daemon.protocol` stays **1** for hello. Bin spec stays **v3.0**.
+
+---
+
+## What stays in gnome-shell-rpc
+
+- **ℹ️** `MetaRectangle` / `cairo_rectangle_int_t` / colour: wire DTOs with `bin_write_prop` overrides in **that** tree.
+- **ℹ️** Plugin `map` / `minimize` / `destroy`: complete locally, then fire-and-forget `Notification`. Do not add a “wait for client” RPC in `libocrpc`.
+- **ℹ️** How they vendor this library (subproject copy vs git submodule) is their open question.
+- **ℹ️** They pass `live_handles: true` when constructing `SocketListen` and `Client`. They call `Live.RemoteParams.rpc_register()` and `Request.register("RPC-Live-Remote", new Live.Remote(), typeof(Live.RemoteParams))` at plugin boot, same split as ollmfilesd `Application`. This repo’s ollmfilesd constructors stay at the default. Types live in `OLLMrpc.Live`. Wire prefixes are `RPC-Live-Remote` / `RPC-Live-Subscribe`. ollmfilesd handlers use `RPC-Daemon`, `RPC-File`, and the rest.
+
+---
+
+## LLM notes
+
+- Domain types stay out of `libocrpc` (same rule as **8.1**). Tests use dummy `GLib.Object`s.
+- Do not change ollmfilesd `File.id` (`int`) to `uint64` as a drive-by.
+- Do not add a blocking `client.call_sync` unless a later plan names it.
+- Do not turn the flag on for ollmfilesd or existing `Client` call sites.
+- Do not bump bin protocol version or `Daemon.protocol`. Gate with the flag and skip on write.
+- Do not add a `Bin.Mode` bit for this. `Mode` is JSON/auto decode.
+- `rpc_register` is `Bin.register` only. Do not fold `Request.register` into it.

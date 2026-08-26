@@ -1,0 +1,408 @@
+# 8.0 — libollmchat local GGUF backend
+
+**Status:** proposed
+
+**Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans · **Layout:** `docs/guide-to-writing-plans.md`
+
+---
+
+## Purpose
+
+- **🔷** Add a Vala-facing binding to a local inference library that is easily available on Debian and Ubuntu.
+- **🔷** The local library must load GGUF models.
+- **🔷** The local library must support text inference and embeddings.
+- **🔷** Implement this as an alternative backend for `libollmchat`.
+  - **🔷** End-user code should keep using the standard `libollmchat` API.
+  - **🔷** `libocvector` should not need a one-off local-vectorizer path.
+- **🔷** Replace vectorization so documents can be embedded without Ollama or OpenAI.
+- **🔷** Add code to download the BGE embedding model into `~/.local/share/ollmchat/models/`.
+  - **ℹ️** Model discovery + HF download: [`HF-8.0.1-libochf-model-catalog.md`](HF-8.0.1-libochf-model-catalog.md) (blocks on [`8.2.1`](RPC-8.2.1-libocrpc-auto-json-and-http-client.md)).
+- **🔷** Local GGUF inference must not block caller `MainLoop` threads — UI, agent tools, and single-threaded daemon indexing all call through the same `libollmchat` API.
+- **🔷** `⏳` Add a **`CallLocal` threading interface** (`Thread`) — shared machinery to spawn a **background thread per call**, run sync `libllama` work there, `yield` until done, and callback results to the caller context.
+- **🔷** `⏳` Each `CallLocal.*` class **implements** `Thread` and bolts threading onto its execution method — one background thread per `exec_embedding()` / `send()` / etc.; callers do not manage threads themselves.
+- **🔷** `⏳` Streaming local chat must **notify the UI per token** as tokens are sampled — not only when the call finishes; reuse the existing `stream_chunk` / `agent.handle_stream_chunk` path so the frontend shows a live token stream.
+
+---
+
+## Backend target
+
+- **🔷** The backend must use a distro-available inference library.
+- **💩** Use `llama.cpp` / `libllama` as the first target.
+  - **⏳** Debian and Ubuntu package it as `llama.cpp`, with development files in `libllama-dev`.
+  - **⏳** It supports GGUF model loading.
+  - **⏳** It supports embedding mode through the `libllama` C API.
+- **💩** Create a local VAPI for the subset of `llama.h` used by OLLMchat.
+  - **⏳** Keep the binding narrow.
+  - **⏳** Include only model load, context creation, tokenization, decode, sampling, embedding extraction, and cleanup.
+- **💩** Add a small C wrapper if direct Vala binding to structs or callbacks becomes brittle.
+  - **⏳** Prefer stable Vala-facing functions over exposing every `llama.cpp` detail.
+
+---
+
+## libollmchat API shape
+
+- **🔷** Callers keep using existing `libollmchat` APIs.
+  - **⏳** `Client.embed()` and `Client.embed_array()` return `Response.Embed`.
+  - **⏳** `Call.Embeddings.exec_embedding()` returns `Response.Embed`.
+  - **⏳** `Client.generate()` returns `Response.Generate`.
+  - **⏳** `Client.chat_execute()` continues to accept `Call.ChatBase`.
+- **🔷** **`Settings.Connection` keeps existing fields** — see [`8.0.2`](CHAT-8.0.2-backend-abstraction-in-libollmchat.md).
+  - **🔷** **`url` starting with `/`** — local model directory (Unix).
+  - **🔷** **`url` matching `^[A-Za-z]:[/\\]`** — local model directory (Windows drives **A–Z**).
+  - **⏳** **`url` otherwise** — HTTP / Ollama / OpenAI-compatible (current behaviour).
+- **🔷** Connection factory methods + **`CallLocal.*`** overrides — designed in Phase 2; implemented Phase 3+ (see subplan).
+  - **⏳** e.g. `connection.ChatCompletions(model)`, `connection.Embeddings(model)`.
+  - **⏳** No new Connection helper methods.
+  - **ℹ️** Phase 1 `Local/` probes temporary; remove when absorbed into `CallLocal`.
+- **🚫** Separate **`Backend.*`** layer — rejected; see [`8.0.2`](CHAT-8.0.2-backend-abstraction-in-libollmchat.md).
+
+---
+
+## Model layout
+
+- **🔷** Download BGE into `~/.local/share/ollmchat/models/`.
+- **💩** Store GGUF weights and metadata side by side under that directory.
+  - **⏳** `~/.local/share/ollmchat/models/bge-m3/`
+    - **⏳** `model.gguf`
+    - **⏳** `manifest.json`
+    - **⏳** `sha256`
+  - **⏳** Keep existing `Response.Model.get_cache_path()` JSON cache behavior for remote model metadata.
+- **💩** Use a local model manifest rather than hardcoding one filename throughout the codebase.
+  - **⏳** Alias: `bge-m3:local`.
+  - **⏳** Family: `bge`.
+  - **⏳** Capabilities: `embedding`.
+  - **⏳** Dimension: detected from the first embedding and stored after verification.
+  - **⏳** Source URL and checksum: reviewed before implementation.
+- **💩** Treat a changed embedding model or dimension as an index invalidation event.
+  - **⏳** Existing FAISS indexes should be rebuilt when the local BGE model changes dimension.
+
+---
+
+## Vectorization cutover
+
+- **🔷** `libocvector` should use the standard `libollmchat` API for local embeddings.
+- **💩** Keep `libocvector` calling `Call.Embeddings`.
+  - **⏳** The configured `codebase_search.embed.connection` points to a local GGUF connection.
+  - **⏳** `Database.embed_dimension()` still probes by running a test embedding.
+  - **⏳** `VectorBuilder` and `DocumentationVectorBuilder` still receive `Response.Embed`.
+  - **⏳** `Search.execute()` still embeds the query through the same call path.
+- **💩** Remove Ollama-specific temp-model customization from local embedding calls.
+  - **⏳** `Response.Model.customize()` remains for HTTP / Ollama.
+  - **⏳** Local BGE uses model manifest options instead.
+- **💩** Decide normalization deliberately.
+  - **⏳** `Call.Embed` normalizes embeddings today.
+  - **⏳** `Call.Embeddings` currently does not normalize.
+  - **⏳** Local backend should match the vector index metric chosen for FAISS.
+
+---
+
+## Local inference behavior
+
+- **🔷** The backend must support loading a GGUF and running inference.
+- **🔷** The backend must support embeddings.
+- **💩** Deliver embeddings first.
+  - **⏳** This unblocks document vectorization without Ollama or OpenAI.
+  - **⏳** It is the lowest-risk path because responses map cleanly to `Response.Embed`.
+- **💩** Add non-streaming generate next.
+  - **⏳** Map `Client.generate()` / `Call.Generate` onto local decode.
+  - **⏳** Return `Response.Generate`.
+- **🔷** `⏳` Add local chat with **streaming as the primary path** — UI must receive each token as it is generated.
+  - **⏳** Reuse `Response.Chat`, existing message conversion, and `Call.ChatBase.stream_chunk`.
+  - **⏳** Each token: background thread → `MainContext.invoke` on caller/UI context → `stream_chunk` / `agent.handle_stream_chunk` → frontend updates.
+  - **⏳** Tool calling remains HTTP-only until JSON/tool-call formatting is proven locally.
+- **💩** `⏳` Non-streaming local chat / generate acceptable as an internal fallback — not sufficient for app UI on its own.
+
+---
+
+## CallLocal threading (`Thread` interface)
+
+**🔷** Sync `libllama` calls (`decode`, model load, sampling) block the thread they run on.
+
+**🔷** HTTP `Call.*` stays responsive because `yield send_request()` uses async libsoup I/O.
+
+**🔷** `CallLocal.Embeddings` today has no `yield` inside `exec_embedding()` — it blocks the caller until every `ctx.decode()` returns.
+
+**ℹ️** [`done/2.10.4.13-DONE-daemon-index-queue.md`](done/2.10.4.13-DONE-daemon-index-queue.md) drops the `BackgroundScan` worker thread and relies on a single daemon `MainLoop`.
+
+**🔷** Local GGUF cutover is blocked without in-library threading — callers cannot each roll their own worker thread.
+
+### Interface in `libollmchat/CallLocal/`
+
+**🔷** Add `libollmchat/CallLocal/Thread.vala` — a Vala **`interface`** (with default method bodies) holding the chunky threading work:
+
+- **🔷** **One background thread per call** — not a process-wide singleton worker.
+- **🔷** Each `exec_embedding()` / `send()` / etc. spawns a `GLib.Thread`, runs the sync delegate on that thread, joins when the delegate finishes, then returns to the caller.
+- **🔷** `protected async` dispatch methods that:
+  - accept an `owned` sync delegate (the actual GGUF / `libllama` body),
+  - start a background thread for **this call only**,
+  - `yield` on the caller side until the thread completes,
+  - marshal result or `Error` back via `MainContext.invoke` to the caller's thread-default context,
+  - honour `Cancellable` where the call exposes it (cancel joins or flags the worker),
+  - tear down the background thread when the call ends — no long-lived inference `MainLoop`.
+- **🔷** Support **incremental notifications** during a call — not only the final result on thread join.
+  - **🔷** `protected void invoke_on_caller_context (...)` (or equivalent on `Thread`) — marshal a callback from the call's background thread to the caller's `MainContext` (UI / agent thread).
+  - **🔷** Used by streaming chat: **one invoke per token** so the frontend can paint each piece as it arrives.
+- **💩** `⏳` Overlapping concurrent calls each get their own background thread (parallel `libllama` possible — watch RAM if each loads a model).
+
+**🔷** Each `CallLocal.*` class **implements `Thread`**:
+
+- **🔷** `CallLocal.Embeddings` — `exec_embedding()` prepares args on caller thread; sync body (load model, tokenize, `decode`, extract vectors) runs entirely on **that call's** background thread; single result on join (no per-token stream).
+- **🔷** `CallLocal.ChatCompletions` — generation loop runs on the call's background thread; **each sampled token** calls `invoke_on_caller_context` to emit `stream_chunk` / `agent.handle_stream_chunk` on the caller thread before sampling the next token.
+- **⏳** `CallLocal.Generate` — same `Thread` pattern; streaming TBD if generate gains a stream surface.
+
+**🔷** Model + context lifetime is scoped to the call's background thread — load at start of delegate, free when thread joins.
+
+**💩** `⏳` Cross-call model reuse (shared cache) is a later optimization — not required for Phase 3.
+
+**ℹ️** Contrast `ollmfilesd/Vector/BackgroundScan.vala` — long-lived worker thread for indexing queues; `Thread` is **per-call**, lives only for one `CallLocal` execution.
+
+### Phase 3 acceptance (threading)
+
+**🔷** `⏳` Embed from GTK main thread while UI stays responsive (manual smoke test).
+
+**🔷** `⏳` Daemon-style single `MainLoop` can index one file and still process unrelated idle/RPC work while embedding (manual or scripted smoke test).
+
+**🔷** `⏳` `codebase_search` query embed path (`Search.execute` → `exec_embedding`) does not freeze the app when embed connection is local GGUF.
+
+### Phase 6 acceptance (streaming chat)
+
+**🔷** `⏳` Local `CallLocal.ChatCompletions` with `stream = true` shows assistant text appearing token-by-token in the chat UI (same behaviour as HTTP/Ollama streaming today).
+
+**🔷** `⏳` UI remains responsive while tokens stream — generation on background thread, per-token notify on caller/UI context.
+
+**ℹ️** Existing chain: `Call.ChatBase.stream_chunk` → `Agent.handle_stream_chunk` → `History.Manager.stream_chunk` → chat widget (`libollmchatgtk/ChatWidget.vala`).
+
+---
+
+## Download and model management
+
+- **🔷** Add code to download the BGE model into `~/.local/share/ollmchat/models/`.
+- **💩** Add a local model manager in `libollmchat`.
+  - **⏳** Resolve model aliases to manifest entries.
+  - **⏳** Download missing GGUF files.
+  - **⏳** Resume or safely replace partial downloads.
+  - **⏳** Verify checksum before exposing the model.
+  - **⏳** Write manifest state after successful verification.
+- **💩** Reuse existing application data-directory conventions.
+  - **⏳** Use `Environment.get_user_data_dir()/ollmchat/models`.
+  - **⏳** Do not require Ollama model storage.
+- **💩** Expose local models through `Client.models()`.
+  - **⏳** Local `models()` returns installed local manifests.
+  - **⏳** Missing default BGE may appear as downloadable in the settings UI.
+- **💩** Wire settings UI after the backend works.
+  - **⏳** Add a connection type for local GGUF.
+  - **⏳** Show installed BGE state.
+  - **⏳** Offer a download action for the default BGE model.
+
+---
+
+## Build and packaging
+
+- **💩** Add Meson detection for `libllama`.
+  - **⏳** Prefer `dependency('llama')` when the distro exposes pkg-config.
+  - **⏳** Support Debian private pkg-config paths if needed.
+  - **⏳** Fail with a clear message when local GGUF support is enabled but headers are missing.
+- **💩** Make local GGUF support a Meson feature option.
+  - **⏳** Suggested option: `local_gguf=auto|enabled|disabled`.
+  - **⏳** `auto` builds without local support when `libllama-dev` is unavailable.
+  - **⏳** `enabled` fails if the dependency is unavailable.
+- **💩** Update Debian packaging.
+  - **⏳** Add `libllama-dev` to `Build-Depends` when local GGUF support is enabled for the package.
+  - **⏳** Add the runtime `libllama` dependency through `${shlibs:Depends}`.
+  - **⏳** Review whether `libocvector` packaging also needs FAISS/tree-sitter dependency fixes in the same packaging pass.
+
+---
+
+## Phased delivery
+
+### Phase 1 — dependency spike and VAPI ✅
+
+- **✅** Confirm exact Debian and Ubuntu `libllama-dev` compile/link flags.
+- **✅** Add the narrow VAPI or wrapper target (`vapi/llama.vapi`, `Local/GGUFBackend.vala`).
+- **✅** Build tiny local probes that load a GGUF and return one embedding / one chat token (`Local/GGUFEmbeddingProbe.vala`, `Local/GGUFChatProbe.vala`).
+
+### Phase 2 — backend abstraction design ✅
+
+**Subplan:** [`CHAT-8.0.2-backend-abstraction-in-libollmchat.md`](CHAT-8.0.2-backend-abstraction-in-libollmchat.md)
+
+- **✅** Design only — no code changes.
+- **✅** Connection stays `name` + `url`; local when **`/`** prefix or Windows **`A:`–`Z:`** drive path (see [`8.0.2`](CHAT-8.0.2-backend-abstraction-in-libollmchat.md)).
+- **✅** Factories on Connection (`Models()`, `Embeddings()`, …) + `CallLocal.*` overrides — documented for Phase 3+.
+- **🚫** No `backend` enum, no `model_dir` field, no skeleton classes in Phase 2.
+
+### Phase 3 — threading interface + local models list + embeddings
+
+**🔷** Threading is **not** optional — ship `Thread` before any local inference is wired into app or daemon paths.
+
+- **🔷** `⏳` **`CallLocal/Thread.vala`** first — per-call background thread spawn, dispatch, join, callback; runnable unit/smoke test (no-op delegate + assert caller thread unchanged).
+- **🔷** `⏳` **`CallLocal.Models`** next — list GGUF models under `connection.url`; may use filesystem only (no `libllama`) but should follow same `CallLocal/` layout; runnable test.
+- **🔷** `⏳` **`CallLocal.Embeddings`** — implements `Thread`; local BGE without Ollama or OpenAI; all `libllama` work off caller thread; runnable test.
+- **💩** `⏳` Return `Response.Embed` from local calls.
+- **💩** `⏳` Preserve dimension probing.
+- **💩** `⏳` Add vector dump comparison tests for repeatability.
+- **🔷** `⏳` Connection factory methods land with first `CallLocal.*` class — local vs HTTP routing inside factory body per [`8.0.2`](CHAT-8.0.2-backend-abstraction-in-libollmchat.md); no `is_local()` helper.
+
+### Phase 4 — BGE download
+
+**Subplan:** [`HF-8.0.1-libochf-model-catalog.md`](HF-8.0.1-libochf-model-catalog.md) — Hugging Face search + resolve download via **`libochf`** (uses **`libocrpc`** HTTP + auto JSON per [`8.2.1`](RPC-8.2.1-libocrpc-auto-json-and-http-client.md)).
+
+- **🔷** `⏳` Download BGE into `~/.local/share/ollmchat/models/` (HF resolve → local manifest layout).
+- **💩** `⏳` Add manifest, checksum verification, and partial-download handling.
+- **💩** `⏳` Expose install state through `Client.models()` and settings UI.
+
+### Phase 5 — libocvector cutover
+
+- **🔷** `⏳` Configure codebase/document vectorization to use the local backend.
+- **💩** `⏳` Keep `libocvector` call sites on `Call.Embeddings` (factory returns `CallLocal.Embeddings` when connection `url` is local).
+- **💩** `⏳` Rebuild or invalidate FAISS indexes when model identity or dimension changes.
+- **ℹ️** Daemon [`2.10.4.0-summary`](FILES-2.10.4.0-summary.md) single-thread `BackgroundScan` depends on Phase 3 threading — do not cut over embed connection before `Thread` ships.
+
+### Phase 6 — local generate and streaming chat
+
+- **🔷** `⏳` Support local GGUF text inference through the standard API.
+- **🔷** `⏳` **`CallLocal.ChatCompletions`** with **`Thread` + per-token `invoke_on_caller_context`** — streaming is required for app UI; bolt onto existing `stream_chunk` path.
+- **💩** `⏳` Implement `Client.generate()` / non-streaming chat as needed for CLI/tests.
+- **💩** `⏳` Tool calling remains follow-up work.
+
+---
+
+## Current code pointers
+
+- **ℹ️** `libollmchat/Client.vala`
+  - Existing public API surface for chat, generate, and embeddings.
+- **ℹ️** `libollmchat/Call/Base.vala`
+  - Existing HTTP transport path.
+- **ℹ️** `libollmchat/Call/Embeddings.vala`
+  - Current OpenAI-compatible embedding call used by `libocvector`.
+- **ℹ️** `libollmchat/Call/Embed.vala`
+  - Current Ollama-native embedding call and normalization behavior.
+- **ℹ️** `libollmchat/Response/Embed.vala`
+  - Compatibility response type for both Ollama and OpenAI embedding shapes.
+- **ℹ️** `libocvector/Database.vala`
+  - Dimension probe and direct embedding call sites.
+- **ℹ️** `libocvector/Indexing/VectorBuilder.vala`
+  - Code embedding batches.
+- **ℹ️** `libocvector/Indexing/DocumentationVectorBuilder.vala`
+  - Documentation embedding batches.
+- **ℹ️** `libocvector/Search/Search.vala`
+  - Query embedding for search.
+- **ℹ️** `libocvector/Tool/CodebaseSearchToolConfig.vala`
+  - Current default `bge-m3:latest` model usage.
+- **ℹ️** `libollmchat/Response/Model.vala`
+  - Existing model metadata cache under `~/.local/share/ollmchat/models/`.
+- **ℹ️** `libollmchat/CallLocal/Embeddings.vala`
+  - Current local embed path — sync `libllama`, no `yield`; must move body behind `Thread`.
+- **ℹ️** `libollmchat/CallLocal/ChatCompletions.vala`
+  - Local chat — already emits `stream_chunk` per token when `emit_stream`; must move generation to background thread and use `Thread.invoke_on_caller_context` for each token notify.
+- **ℹ️** `libollmchat/Call/ChatBase.vala` — `stream_chunk` signal; `libollmchat/History/Manager.vala` — `stream_chunk` relay to UI.
+- **ℹ️** `ollmfilesd/Vector/BackgroundScan.vala`
+  - Worker-thread indexing precedent; daemon plan removes worker — inference threading must live in `libollmchat` instead.
+
+---
+
+## Open questions
+
+- **💩** Which exact BGE GGUF should be the default?
+  - **⏳** Need a reviewed source URL and checksum — see [`8.0.1`](HF-8.0.1-libochf-model-catalog.md) probe (`groonga/bge-m3-Q4_K_M-GGUF`).
+  - **⏳** Need expected dimension and pooling mode.
+- **💩** Should the first default be `bge-m3` or a smaller BGE variant for faster CPU-only indexing?
+- **💩** Should local GGUF support be mandatory for Debian packages or optional through a separate package?
+- **💩** Should local chat use the Ollama-style `Call.Chat` surface, OpenAI-style `Call.ChatCompletions`, or both?
+- **💩** Should GPU backends be exposed in config now, or left to distro `llama.cpp` defaults?
+
+---
+
+## Concrete code proposals
+
+Intro: hunks are **Add** from the tree; verify surrounding context before applying.
+
+### 1. `libollmchat/CallLocal/Thread.vala` — new threading interface
+
+**Why:** Centralize per-call background-thread dispatch so every `CallLocal.*` execution method can `yield` without blocking UI or daemon `MainLoop`.
+
+**Where:** New file under `libollmchat/CallLocal/`.
+
+**Depends on:** none (Phase 3 step 1).
+
+#### Add — `libollmchat/CallLocal/Thread.vala` at new file
+
+```vala
+namespace OLLMchat.CallLocal
+{
+	/**
+	 * Shared threading for CallLocal.* execution.
+	 * Each call spawns a background thread; sync libllama work runs there; async callers yield until join.
+	 */
+	public interface Thread : Object
+	{
+		/** Spawn background thread for this call; run sync body; join; resume caller. */
+		protected async void run_on_background_thread (
+			owned InferenceWork work,
+			Cancellable? cancellable = null
+		) throws Error;
+
+		/** Same as run_on_background_thread but returns a value marshalled back to caller context. */
+		protected async T run_on_background_thread_with_result<T> (
+			owned InferenceWorkWithResult<T> work,
+			Cancellable? cancellable = null
+		) throws Error;
+
+		/**
+		 * Run callback on caller MainContext from the call's background thread.
+		 * Used for per-token streaming: invoke once per token so UI updates live.
+		 */
+		protected void invoke_on_caller_context (owned CallerContextWork work);
+	}
+
+	public delegate void InferenceWork () throws Error;
+	public delegate T InferenceWorkWithResult<T> () throws Error;
+	public delegate void CallerContextWork ();
+}
+```
+
+**ℹ️** Default method bodies for `run_on_background_thread*` and `invoke_on_caller_context` live in the interface (Vala default interface methods) or in a package-private helper class the interface delegates to — implementer choice at coding time; behaviour contract is fixed.
+
+**ℹ️** `CallLocal.ChatCompletions` generation loop (background thread): sample token → `invoke_on_caller_context` { `stream_chunk` + `agent.handle_stream_chunk` } → continue until EOG.
+
+### 2. `libollmchat/CallLocal/Embeddings.vala` — bolt `Thread` onto `exec_embedding`
+
+**Why:** Move model load, `decode`, and vector extraction off the caller thread.
+
+**Where:** `CallLocal.Embeddings` class — implement `Thread`; wrap existing sync body in `yield run_on_background_thread_with_result(...)`.
+
+**Depends on:** `### 1` (`Thread.vala`).
+
+#### Add — implement `Thread` on `Embeddings`; dispatch `exec_embedding` body via interface
+
+- class declaration: `public class Embeddings : Call.Embeddings, Thread`
+- `exec_embedding()` keeps async signature; sync `embed_with_context` / model load run inside `InferenceWorkWithResult` delegate on **this call's** background thread
+- model/context freed when background thread joins at end of call
+
+### 3. `libollmchat/meson.build` — compile `Thread.vala`
+
+**Where:** `libollmchat` sources list — add `CallLocal/Thread.vala` before or with other `CallLocal/` sources.
+
+**Depends on:** `### 1`.
+
+### 4. Later passes (not Phase 3 step 1)
+
+- **⏳** `libollmchat/Settings/Connection.vala` — factory methods (`Embeddings()`, …) per [`8.0.2`](CHAT-8.0.2-backend-abstraction-in-libollmchat.md)
+- **⏳** `libollmchat/CallLocal/ChatCompletions.vala` — implement `Thread`; per-token `invoke_on_caller_context` → `stream_chunk` (Phase 6)
+- **⏳** `libollmchat/meson.build` and `debian/control` — `libllama` feature option
+- **⏳** `libocvector/Tool/CodebaseSearchToolConfig.vala` — default local embedding configuration (Phase 5)
+
+---
+
+## LLM implementer guardrails
+
+- **🚫** Do not add a separate `libocvector`-only local embedder.
+- **🚫** Do not require Ollama or OpenAI for document embeddings after the cutover.
+- **🚫** Do not hardcode one developer's home path.
+- **🚫** Do not silently reuse FAISS indexes created with a different embedding model or dimension.
+- **🚫** Do not make streaming chat or local tool-calling a blocker for local embeddings.
+- **🚫** Do not ship `CallLocal.*` with sync `libllama` on the caller thread — use `Thread`.
+- **🚫** Do not require each caller (`BackgroundScan`, `Search`, settings UI, daemon) to spawn its own background thread — `Thread` does that inside `CallLocal.*`.
+- **🚫** Do not use a process-wide singleton inference thread / `MainLoop` worker — one background thread **per call**.
+- **🚫** Do not treat Phase 3 `CallLocal.Embeddings` as done until `Thread` acceptance bullets pass.
+- **🚫** Do not ship local chat without per-token streaming notify — buffering the full reply and emitting once defeats the UI stream.
+- **🚫** Do not emit `stream_chunk` from the background thread directly — always `invoke_on_caller_context` first (GTK/UI is not thread-safe).

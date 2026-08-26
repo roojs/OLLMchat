@@ -1,0 +1,518 @@
+# 2.6.4 Command execution: stop, live output, tail/spill, password (VTE optional)
+
+> **Do not update `docs/plans/TOOLS-1.0-summary.md` for this plan.**
+
+**Status:** **URGENT** · **PROPOSED**
+
+**Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
+
+**Parent:** [`done/2.6-DONE-run-terminal-command-tool.md`](done/2.6-DONE-run-terminal-command-tool.md) · related: [`done/2.6.3-DONE-run-command-root-elevation.md`](done/2.6.3-DONE-run-command-root-elevation.md), [`TOOLS-2.6.2-bwrap-ux-fixes.md`](TOOLS-2.6.2-bwrap-ux-fixes.md)
+
+**Supersedes:** [`docs/bugs/2026-08-17-run-command-unbounded-output.md`](../bugs/2026-08-17-run-command-unbounded-output.md) — kill-at-N was a stopgap; this plan reverses it (tail + spill, not kill-for-length).
+
+**Precedent (password store + hold fill):** RooTerm — `app.RooTerm/src/Config.vala` (`Secret.password_store`), `app.RooTerm/src/Terminal/Ssh.vala` (`Secret.password_lookup_sync`), `app.RooTerm/src/Host/TabBar.vala` (overlay fill on hold/countdown), `app.RooTerm/resources/style.css` (`.host-tab-close-fill`). VTE notes in Phase 5 only if we ever decide to do it (`app.RooTerm/src/Terminal/Local.vala`).
+
+---
+
+## Purpose
+
+- **🔷** `⏳` **Stop** a running command from the UI (kill process group). Same path as wall-clock timeout.
+- **🔷** `⏳` **Live** visibility while the command runs (streaming / updating UI) — **without** stuffing an unbounded blob into the chat text buffer.
+- **🔷** `⏳` Do **not** kill because output is long. Let the command finish (or Stop / timeout).
+- **🔷** `⏳` The LLM gets a **tail** (last slice), not the head, and not a killed-for-length process.
+- **🔷** `⏳` **Short** runs: keep output in memory for the tool result. **Long** runs: spill full output to a **temp file** and put that path in the result so the model can `read_file` / shell-read what it needs (still include a tail in the result).
+- **🔷** `⏳` Stuck runs hit a **default wall-clock timeout**. The model can raise it per call.
+- **🔷** `⏳` The **command string** is the dominant thing on screen (permission row and live run frame). Bold. Largest type in that widget.
+- **🔷** `⏳` Repeated sudo typing: store with **libsecret**; **hold** Allow **two seconds** to reuse (not a single click). **Low priority** — after Stop / live / spill / bold; just above optional VTE.
+- **🔷** `✔️` Short-term: tool prompt forbids `#` comments in the command string. `liboctools/RunCommand/Tool.vala` description + `@param command`.
+- **🔷** `⏳` **Linux GTK** gets live UI + Stop first; libsecret later. **Windows** keeps subprocess + text frames with Stop/timeout/tail/spill where possible. **Android:** tool stays unregistered.
+- **ℹ️** Today: kill-at-N in `Request` (`50`) and `Bubble` (`100`). No command timeout. No Stop button. No spill file.
+- **🔷** `⏳` **VTE is not committed.** It is the **very last** optional chapter if we still want a real PTY after everything else works. We may never do it. Design Phases 3–4 + 1 so they stand alone without VTE or libsecret.
+
+**Suggested order**
+
+- **Urgent / committed:** Phase 3 (Stop + timeout + no kill-for-length + tail) → Phase 4 (live UI + spill-to-file) → Phase 1 (bold command).
+- **Late (just above VTE):** Phase 2 (libsecret + hold two seconds) — nice for root UX, **not** blocking Stop.
+- **Optional / maybe never:** Phase 5 (VTE) — only after an explicit go-ahead.
+
+Prompt comment ban is already in the tool description.
+
+---
+
+## Current behaviour
+
+- **ℹ️** Permission copy is one `Gtk.Label` (`ChatPermission.question_label`). No markup. The command is a trailing `Command: …` line under a wall of warning text.
+- **ℹ️** The “running” UI fence already puts the command in the frame **title** (`Request.execute`). Title markup is `<b>` in `MarkdownGtk.RenderSourceView`, but it is the same size as every other frame title and shares the row with “Running command in sandbox”.
+- **ℹ️** Root runs: type password every time → `sudo -S true` check → pipe into `sudo -S /bin/sh -c …`. Copy says the password is not saved. See `ChatPermission.vala`, `Request.execute_with_subprocess()`.
+- **ℹ️** Output: `Request.read_stream_async` kills the process group at **50** lines. `Bubble.read_from_channel` sets `output_killed` at **100** lines and stops accumulating. LLM gets a **head** slice plus “command killed”.
+- **ℹ️** No wall-clock timeout. No user Stop control on the live run.
+- **ℹ️** `ChatView.add_widget_frame(Gtk.Frame)` already exists and is unused. No VTE in this repo (and none required for this plan’s committed phases).
+- **ℹ️** **Windows:** `run_command` is registered. `Request.execute_with_subprocess()` uses `cmd.exe /c` and `communicate_utf8_async`. No bwrap, no sudo, no VTE, no libsecret.
+- **ℹ️** **Android:** tool is **not** registered. [`done/9.0-DONE-android-poc-summary.md`](done/9.0-DONE-android-poc-summary.md) — `run_command` 🚫.
+
+---
+
+## Platforms
+
+- **🔷** `⏳` **Linux GTK:** Stop, live bounded UI, last-slice, spill file, timeout, bold command. That is the urgent product. Libsecret hold-password is late polish (Phase 2).
+- **🔷** `⏳` **Windows:** subprocess + text frames. Apply Stop (if we can surface a control), timeout, last-slice, spill. No VTE, no libsecret, no `run_as_root`.
+- **🔷** `⏳` **Android:** leave the tool disabled. Do not register `run_command`. Do not add `vte` / `libsecret` to the Android meson cut.
+- **ℹ️** **Linux CLI** (`ollmchat-cli`): no live widget. Subprocess, last-slice, spill, timeout. No hold-password UI.
+
+---
+
+## Phase 1 — Bold command
+
+**ℹ️** Mechanical and self-contained. No architectural change — extra label + CSS + pass `permission_command` into the existing permission `request()`. **Code fences below are optional sketches, not a strict review gate.** Match coding standards; do not invent new types or providers.
+
+- **🔷** `✔️` Permission row: the command is its own label, **bold**, and visually larger than the warning / question text.
+- **🔷** `⏳` Live run frame (Phase 3/4 Stop + live output): same rule — command is the header, bold, largest type in that frame.
+- **💩** `✔️` CSS class `.command-preview` on both widgets (`font-weight: bold; font-size: 1.25em;` or `title-2`). Confirm size.
+- **💩** `✔️` Keep the existing warning paragraphs in `question_label` **without** repeating `Command: …` there. Pass via `RequestBase.permission_command` from `Tools.Permission.request_user`.
+- **💩** `✔️` Ellipsize the command label with a tooltip of the full string when it is long.
+
+### Sketch (optional) — files to touch
+
+- **ℹ️** `libollmchatgtk/ChatPermission.vala` — `command_label` above `question_label`; `request(..., string command = "", …)`; markup-escape + `.command-preview`.
+- **ℹ️** `libollmchatgtk/Tools/Permission.vala` — if `request` is `RunCommand.Request`, pass `command.strip()` into `permission_widget.request`.
+- **ℹ️** `liboctools/RunCommand/Request.vala` — drop trailing `Command: …` / `Run command: …` from `permission_question` strings (label owns the command).
+- **ℹ️** `resources/style.css` — `.permission-widget .command-preview` / `.command-frame .command-preview` bold + larger.
+
+<details><summary>Optional verbatim hunks (not required for approval)</summary>
+
+### 1. `libollmchatgtk/ChatPermission.vala` — `construct` + `request()`: command label
+
+**Why:** The command must outrank the warning copy.
+
+**Where:** class fields next to `question_label`; `construct` after `question_label` is created; `request()` after `question_label.label = question`.
+
+**Depends on:** none.
+
+#### Add — field next to `question_label`
+
+```vala
+		private Gtk.Label command_label;
+```
+
+#### Add — in `construct`, after `this.question_label = new Gtk.Label("") { … }`, before `password_label`
+
+```vala
+			this.command_label = new Gtk.Label("") {
+				wrap = true,
+				halign = Gtk.Align.START,
+				margin_start = 12,
+				margin_end = 12,
+				margin_top = 12,
+				use_markup = true,
+				selectable = true
+			};
+			this.command_label.add_css_class("command-preview");
+			this.command_label.set_visible(false);
+```
+
+#### Add — in the container, `command_label` **before** `question_label`
+
+```vala
+			container.append(this.command_label);
+```
+
+#### Remove — `request()` signature and the `question_label.label = question` assignment
+
+```vala
+		public async OLLMchat.ChatPermission.PermissionResponse request(
+			string question,
+			bool one_time = false,
+			bool high_risk = false,
+			out string elevation_password)
+		{
+			elevation_password = "";
+			this.pending_high_risk = high_risk;
+			this.pending_elevation_password = "";
+			// Update question text
+			this.question_label.label = question;
+```
+
+#### Replace with — extra `command` argument; bold command label; question is warning only
+
+```vala
+		public async OLLMchat.ChatPermission.PermissionResponse request(
+			string question,
+			string command = "",
+			bool one_time = false,
+			bool high_risk = false,
+			out string elevation_password)
+		{
+			elevation_password = "";
+			this.pending_high_risk = high_risk;
+			this.pending_elevation_password = "";
+			this.question_label.label = question;
+			this.command_label.set_visible(command != "");
+			this.command_label.tooltip_text = command;
+			this.command_label.label = (command == "")
+				? ""
+				: "<b>" + GLib.Markup.escape_text(command) + "</b>";
+```
+
+### 2. `libollmchatgtk/Tools/Permission.vala` — `request_user`: pass command, strip `Command:` from the question
+
+**Why:** The request object already has the command. Do not invent a parser for the question blob.
+
+**Where:** `request_user`, the `permission_widget.request(` call.
+
+**Depends on:** §1.
+
+#### Remove
+
+```vala
+			var response = yield this.chat_widget.permission_widget.request (
+				request.permission_question,
+				request.one_time_only,
+				high_risk,
+				out elevation_password);
+```
+
+#### Replace with
+
+```vala
+			var cmd = "";
+			var run_req = request as OLLMtools.RunCommand.Request;
+			if (run_req != null) {
+				cmd = run_req.command.strip();
+			}
+			var response = yield this.chat_widget.permission_widget.request (
+				request.permission_question,
+				cmd,
+				request.one_time_only,
+				high_risk,
+				out elevation_password);
+```
+
+### 3. `liboctools/RunCommand/Request.vala` — `build_perm_question()`: drop trailing `Command:` line
+
+**Why:** The command now lives on `command_label`. Repeating it under the warning fights the hierarchy.
+
+**Where:** each `permission_question =` assignment that appends `"Command: " + cmd_preview` or `"Run command: " + cmd_preview`.
+
+**Depends on:** §1, §2.
+
+- **🔷** `⏳` Root prompt: keep the warning paragraphs. Remove the final `Command: ` + preview line.
+- **🔷** `⏳` Network / allow_write / no-bwrap prompts: keep the confirm sentence. Do **not** hide the command from the warning if there is no dedicated label yet — Phase 1 always passes `cmd` into `request()`, so drop the inline preview from those strings too once the label is wired.
+
+### 4. `resources/style.css` — `.command-preview`
+
+**Why:** Bold + size must be CSS, not a one-off Pango size in one widget.
+
+**Where:** after `.permission-widget .elevation-password-error`.
+
+**Depends on:** §1.
+
+#### Add
+
+```css
+.permission-widget .command-preview,
+.command-frame .command-preview {
+  font-weight: bold;
+  font-size: 1.25em;
+}
+```
+
+</details>
+
+---
+
+## Phase 3 — Stop, timeout, no kill-for-length, tail to LLM
+
+**Why first:** Ship Stop + timeout + reverse the kill-at-N stopgap on the existing pipe path. No terminal widget required. Far more critical than saved-password UX.
+
+### 3a. Do not kill for long output — return a tail
+
+- **🔷** `⏳` Remove `output_killed` **kill-for-length** paths in `Request.read_stream_async` and `Bubble.read_from_channel`.
+- **🔷** `⏳` Let the command complete (or until **Stop** / timeout).
+- **🔷** `⏳` What goes back to the LLM (and the persisted “Execution results” fence) is the **last** slice, not the first.
+- **💩** `⏳` Slice size **50 lines** (today’s subprocess cap). Unify Bubble’s 100 with that. Confirm.
+- **💩** `⏳` If truncated, prefix a one-line note: showing last N of total. Confirm wording.
+- **🔷** `⏳` Update `Tool.description` Output bullet: drop “the command is killed”. Say the model sees the **tail**, and may get a saved-file path (Phase 4).
+
+### 3b. User Stop (no VTE yet)
+
+- **🔷** `⏳` While a command is running, the UI exposes **Stop**.
+- **🔷** `⏳` Stop kills the process group (`Posix.kill(-pid, KILL)` + `force_exit` as today) and finishes the tool with whatever output exists, plus a clear **stopped by user** line to the model.
+- **💩** `⏳` Put Stop on the existing “Running command …” UI fence / a small `Gtk.Frame` via `ChatView.add_widget_frame` — bold command header + Stop + (Phase 4) bounded live text. Confirm vs only a button on activity chrome.
+- **ℹ️** CLI: no Stop widget; timeout remains the backstop. Windows: Stop if we have a GTK frame; else timeout only.
+
+### 3c. Default timeout + LLM `timeout` argument
+
+- **🔷** `⏳` Every `run_command` has a wall-clock timeout. When it fires, kill the process group (**same path as Stop**) and return the tail plus a clear timed-out line so the model can retry with a larger `timeout`.
+- **🔷** `⏳` Tool argument **`timeout`** (seconds, integer). Document in `Tool.description` and `Tool.parameter_description`.
+- **💩** `⏳` Default **60** seconds when omitted. Confirm.
+- **💩** `⏳` Reject `timeout <= 0` with `ERROR:` (no infinite hang). Confirm vs `0` = wait until Stop.
+- **🔷** `⏳` User **Stop** still works before the timer.
+- **ℹ️** Elapsed time from spawn, not idle-time.
+
+### 8. `liboctools/RunCommand/Request.vala` — `read_stream_async`: never kill on line count; keep a tail
+
+**Why:** Killing was the wrong answer to long output ([2026-08-17](../bugs/2026-08-17-run-command-unbounded-output.md)).
+
+**Where:** the `if (this.output_lines >= 50)` block inside `read_stream_async`.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+				if (this.output_lines >= 50) {
+					this.output_killed = true;
+					GLib.debug("command killed: output exceeded 50 lines");
+					var id = subprocess.get_identifier();
+					if (id != null) {
+						Posix.kill(-(int.parse(id)), Posix.Signal.KILL);
+					}
+					subprocess.force_exit();
+					break;
+				}
+				this.output_lines++;
+
+				if (output != "") {
+					output += "\n";
+				}
+				output += line;
+```
+
+#### Replace with — keep reading to EOF (spill/tail applied when assembling the tool result; Phase 4).
+
+```vala
+				if (output != "") {
+					output += "\n";
+				}
+				output += line;
+```
+
+#### Remove — `truncate_output` head slice
+
+```vala
+			var truncated_lines = lines[0:max_lines];
+			var truncated = string.joinv("\n", truncated_lines);
+			
+			// Add truncation message (similar to codesearch tool format)
+			return truncated + "\n\n// ... (output truncated: showing first " + max_lines.to_string() + " of " + total_lines.to_string() + " lines, output too long) ...";
+```
+
+#### Replace with — last slice
+
+```vala
+			var start = total_lines - max_lines;
+			var truncated_lines = lines[start:total_lines];
+			var truncated = string.joinv("\n", truncated_lines);
+			return "// ... (output truncated: showing last " + max_lines.to_string() + " of " + total_lines.to_string() + " lines) ...\n" + truncated;
+```
+
+- **🔷** `⏳` Apply the same last-slice at the end of `execute_with_subprocess` / `execute_tool_async` (and Bubble’s returned `result`), instead of head `truncate_output`.
+
+### 9. `libocbwrap/Bubble.vala` — `read_from_channel`: drop the 100-line kill
+
+**Why:** Same contract as Request. Sandbox runs must also finish.
+
+**Where:** `read_from_channel`, the `output_lines >= 100` block; callers that branch on `output_killed`.
+
+**Depends on:** §8.
+
+#### Remove
+
+```vala
+			if (this.output_lines >= 100) {
+				this.output_killed = true;
+				return;
+			}
+			this.output_lines++;
+```
+
+- **🔷** `⏳` Delete kill/`force_exit` when `output_killed` was for length in `read_subprocess_output`.
+- **🔷** `⏳` Reuse one flag for Stop / timeout (e.g. `stopped` / reason string) — not “output too excessive”.
+
+### 11. `liboctools/RunCommand/Request.vala` — `timeout` property + kill on expiry
+
+**Why:** Hung interactive prompts must not block the agent forever.
+
+**Where:** property next to `allow_write`; after spawn, arm `GLib.Timeout.add_seconds`. **Inline** — no `arm_timeout()` helper.
+
+**Depends on:** process-group kill path (same as Stop).
+
+#### Add — property next to `allow_write`
+
+```vala
+		/**
+		 * Wall-clock seconds before the child is killed. Omitted JSON uses 60.
+		 */
+		public int timeout { get; set; default = 60; }
+```
+
+- **🔷** `⏳` After spawn: `GLib.Timeout.add_seconds(this.timeout, …)` kills the process group if still running, then lets wait/read finish.
+- **🔷** `⏳` On exit: `GLib.Source.remove` the timeout id (`0` = none).
+- **🔷** `⏳` Append when the timer fired: `Command timed out after N seconds. Raise timeout in run_command if this was expected to run longer.`
+- **🔷** `⏳` Same timer on the subprocess path (and on VTE only if Phase 5 is ever approved).
+- **🔷** `⏳` In `execute()`, if `this.timeout <= 0` return `ERROR: timeout must be a positive number of seconds`.
+- **🔷** `⏳` `to_summary()`: add `Timeout: ` + seconds when not 60.
+
+### 12. `liboctools/RunCommand/Tool.vala` — describe timeout + tail
+
+**Where:** `description` Output / Timeout bullets; `parameter_description` after `run_as_root`.
+
+**Depends on:** §8, §11.
+
+#### Add — in `description` (replacing the kill-for-length Output wording)
+
+```
+Output:
+- Keep listings and searches narrow.
+- If output is long, you see the **last** lines only (not the first). A full copy may be saved to a file path in the result — use read_file or a narrow shell read if you need more.
+Timeout:
+- Default is 60 seconds. Commands that block (SSH password, missing TTY) are killed at that cap.
+- Set `timeout` (seconds) higher for installs, compiles, or other long jobs.
+```
+
+#### Add — in `parameter_description`
+
+```
+@param timeout {integer} [optional] Wall-clock seconds before the command is killed. Defaults to 60. Increase for long jobs.
+```
+
+---
+
+## Phase 4 — Live output (bounded UI) + spill to file
+
+**Why:** See progress and Stop on the existing pipe path. Avoid filling chat `TextBuffer` / markdown frames with megabytes. No VTE required.
+
+### 4a. Live streaming to the UI — bounded
+
+- **🔷** `⏳` While the command runs, the user can **see output updating** (not only the final fence).
+- **🔷** `⏳` Do **not** append unbounded stdout into the embedded chat text buffer / `RenderSourceView` frame body.
+- **ℹ️** Today the “Running command …” fence is a static markdown title; results are one big `add_message` at the end. That path will OOM or lag if fed a live firehose.
+- **💩** `⏳` Live view shows a **rolling tail** only (same N lines as the LLM slice, or a slightly larger UI window). Older lines drop from the widget; full text goes to the spill/save path (4b). Confirm N for UI vs LLM.
+- **💩** `⏳` Prefer a dedicated small widget (e.g. `Gtk.TextView` / `GtkSource.View` with a **capped** buffer, or a `Label` refreshed on idle) inside the Phase 3 Stop frame — **not** rewriting the whole markdown document on every line. Confirm after poking `MarkdownGtk` / frame update paths.
+- **💩** `⏳` Throttle UI updates (e.g. idle / 100ms) so a tight `yes` loop does not starve the main loop. Confirm.
+- **ℹ️** History restore: persist the **final** results fence (tail + spill note), not a live buffer replay.
+
+### 4b. Save output + spill past a size threshold
+
+- **🔷** `⏳` **Short output:** keep it in memory. Tool result is the full (or tailed) text — **no** temp file.
+- **🔷** `⏳` **Long output:** write the full stdout/stderr to a **temporary file**, then after the run give the LLM the **absolute path** in the tool result / results fence so it can `read_file` or a narrow shell read to inspect what it needs.
+- **🔷** `⏳` When spilled, the model still gets a **tail** in the tool result (last N lines) **plus** a clear line naming the file (e.g. full output saved at `…/run_command-<id>.log`).
+- **💩** `⏳` Threshold that flips “short” → “long”: **1 MiB** or **~10k lines** — pick one metric. Confirm.
+- **💩** `⏳` Path under session/project temp (visible to later sandboxed `read_file` / commands), not a host-only `/tmp` the bwrap child cannot see. Confirm bind/visibility.
+- **ℹ️** If we ever add VTE (Phase 5), keep the same short-in-memory / long-spill contract when collecting text for the model.
+
+### 4c. Open design (confirm before coding)
+
+- **💩** `⏳` While running long: ring buffer in RAM for the live UI + LLM tail, **and** stream all bytes to the spill file as they arrive (constant RAM). Short runs never open a file. Confirm.
+- **💩** `⏳` stderr merged into the same spill file / memory blob, or separate. Confirm (today often concatenated).
+
+---
+
+## Phase 2 — libsecret + hold two seconds (late · just above VTE)
+
+**Deferred.** Do this only after Phase 3 Stop, Phase 4 live/spill, and Phase 1 bold command. Sits immediately above optional VTE — far less critical than stopping a runaway command.
+
+- **🔷** `⏳` First successful sudo password is stored in libsecret.
+- **🔷** `⏳` Later root prompts: **hold** the allow control for **two seconds**. Background fill animates while held. Release early cancels. A single click must not approve.
+- **🔷** `⏳` Deny stays a normal click.
+- **ℹ️** RooTerm fill: `Gtk.Overlay` child is a box whose `width_request` grows; CSS paints `.host-tab-close-fill`. Copy that overlay-on-the-button idea, do not import RooTerm widgets.
+- **ℹ️** RooTerm secret: `Secret.Schema` + `Secret.password_store.begin` / `Secret.password_lookup_sync`. Inline the same calls in `ChatPermission` (no secret-helper class).
+
+**When a secret exists**
+
+- **🔷** `⏳` Hide the password entry.
+- **🔷** `⏳` Allow (root) becomes a hold target. Label along the lines of `Hold 2s — use saved password`.
+- **💩** `⏳` A small `Use a different password` control that reveals the entry and restores click-Allow (typed password overwrites the secret on success). Confirm.
+
+**When no secret exists**
+
+- **🔷** `⏳` Keep today’s type-then-Allow path (`sudo -S true` before resume).
+- **🔷** `⏳` On success, `Secret.password_store` the password, then proceed as now.
+
+**Wrong stored password**
+
+- **🔷** `⏳` `sudo -S true` still runs after a completed hold (same check as typed).
+- **🔷** `⏳` Failure: show the entry, error label, delete the bad secret, do **not** resume.
+
+**Schema (confirm)**
+
+- **💩** `⏳` Schema `org.roojs.ollmchat.Elevation`, attribute `user` = `GLib.Environment.get_user_name()`, label `OLLMchat sudo`. One secret per login user.
+
+**Build**
+
+- **🔷** `⏳` `dependency('libsecret-1')` on `libollmchatgtk` (**Linux only**). `--pkg=libsecret-1`.
+- **🔷** `⏳` `debian/control` Build-Depends: `libsecret-1-dev`.
+- **ℹ️** Windows / Android meson: do not `dependency('libsecret-1', required: true)`. Root elevation stays Linux-only.
+
+### 5. `libollmchatgtk/ChatPermission.vala` — hold fill on Allow when a secret exists
+
+**Why:** Friction is the hold, not a second click.
+
+**Where:** `construct` (overlay around `allow_once_btn`); `request()` when `high_risk`; press/release controllers. **Inline** — no `start_hold()` / `on_hold_tick()` helpers.
+
+**Depends on:** Phase 1.
+
+- **🔷** `⏳` Overlay fill box, CSS class `.elevation-hold-fill`, `halign = START`, width 0 until press.
+- **🔷** `⏳` `Gtk.EventController` pressed: arm `GLib.Timeout.add(50)` (or 100). Each tick: `fill.width_request = (button_width * elapsed_ms) / 2000`. At `>= 2000` and still pressed: lookup secret, run existing `validate_elevation_and_resume`.
+- **🔷** `⏳` Released or leave before 2000: remove timeout, `fill.width_request = 1`, `visible = false`.
+- **🔷** `⏳` While holding, do **not** fire the existing `clicked` handler on Allow.
+- **ℹ️** Match RooTerm tick math in `Host/TabBar.vala` (`width_request = (row.get_width() * left) / total`) — here fill **grows** with elapsed, it does not shrink.
+
+### 6. `resources/style.css` — hold fill
+
+**Where:** after `.command-preview`.
+
+#### Add
+
+```css
+.permission-widget .elevation-hold-fill {
+  background-color: alpha(@destructive_color, 0.45);
+}
+```
+
+### 7. Secret store / lookup — inline in `validate_elevation_and_resume` and `request()`
+
+**Where:** `validate_elevation_and_resume` after `ok` is true (store); `request()` when `high_risk` (lookup to decide hold vs type).
+
+**Depends on:** meson `libsecret-1`.
+
+- **🔷** `⏳` After typed (or held) password passes `sudo -S true`, `Secret.password_store.begin` with the schema above, then resume as today.
+- **🔷** `⏳` At the start of a high-risk `request()`, `Secret.password_lookup_sync`. Non-empty → hold mode. Empty / error → type mode.
+- **🔷** `⏳` Failed held password: `Secret.password_clear` (or store empty / delete), then type mode.
+
+---
+
+## Phase 5 — VTE (optional · maybe never)
+
+**Not in the committed scope.** Parked notes only. Do **not** implement unless the user explicitly green-lights this phase after the urgent phases (and ideally after Phase 2 if we still care about saved passwords).
+
+**Why parked:** Heavy (PTY, bwrap argv, seccomp `child_setup`, meson/debian). Phases 3–4 already give Stop, live visibility, tail, and retrieve-from-file without a terminal widget.
+
+- **ℹ️** If approved later: GTK frame body becomes VTE; keep bold command header + Stop; same process-group kill / timeout / spill contracts.
+- **ℹ️** Hook already unused in tree: `ChatView.add_widget_frame`. History would still not resurrect a live VTE — persist the tail/spill fence.
+- **💩** Spawn via `Vte.Terminal.spawn_async` (RooTerm `Local.spawn`) vs pipe-and-`feed()`. Only relevant if this phase is approved.
+- **💩** New `libollmchatgtk/CommandFrame.vala` + `dependency('vte-2.91-gtk4')` Linux-only — only if approved.
+- **🚫** Do not add VTE deps, sources, or spawn paths while implementing Phases 3–4 or 1.
+
+### 10. Meson / debian — VTE (only if Phase 5 is approved)
+
+- **ℹ️** Would be `dependency('vte-2.91-gtk4')` on `libollmchatgtk` for Linux only, plus `libvte-2.91-gtk4-dev` in debian — **not** part of the urgent work.
+
+---
+
+## LLM notes
+
+- **🚫** Do not add a secret-helper class or `start_hold()` / `on_hold_tick()` — inline in `ChatPermission`.
+- **🚫** Do not make Allow-Always remember root commands (still `one_time_only` for `run_as_root`).
+- **🚫** Do not kill the child because the tail is long.
+- **🚫** Do not put VTE or libsecret in `liboctools`.
+- **🚫** Do not `dependency('vte-2.91-gtk4')` / `libsecret-1` as required on Windows or Android meson.
+- **🚫** Do not implement Phase 2 (libsecret/hold) before Phase 3 Stop / Phase 4 live-spill / Phase 1 bold are done (or the user reorders).
+- **🚫** Do not implement Phase 5 (VTE) or add VTE meson/debian deps unless the user explicitly approves that phase.
+- **🚫** Do not design Phases 3–4 to require a PTY, VTE, or libsecret (pipe + bounded UI + spill must stand alone).
+- **🚫** Do not register `run_command` on Android in this plan.
+- **🚫** Do not restore a live VTE from history JSON.
+- **🚫** Do not treat a single click as “use saved password”.
+- **🚫** Do not use output-idle as the timeout (elapsed time from spawn only).
+- **🚫** Do not wait forever when `timeout` is omitted.
+- **🚫** Do not stream unbounded stdout into the chat markdown / `TextBuffer` (Phase 4 bounded live view).

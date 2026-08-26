@@ -1,0 +1,200 @@
+# 8.0.2 — Backend abstraction design (Phase 2)
+
+**Status:** proposed — **design only**; no code changes in this phase
+
+**Parent:** [`CHAT-8.0-libollmchat-local-gguf-backend.md`](CHAT-8.0-libollmchat-local-gguf-backend.md) · **Layout:** [`guide-to-writing-plans.md`](../guide-to-writing-plans.md) · **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
+
+**Depends on:** Phase 1 ✅ (`Local/GGUFBackend.vala`, `Local/GGUFEmbeddingProbe.vala`, `Local/GGUFChatProbe.vala`, `vapi/llama.vapi`)
+
+**Blocks:** [`8.0`](CHAT-8.0-libollmchat-local-gguf-backend.md) Phase 3+ implementation
+
+---
+
+## Purpose
+
+User-specified (this thread):
+
+- **🔷** Phase 2 is **planning only** — no implementation beyond this design document.
+- **🔷** **`Settings.Connection` stays like the existing class** — `name`, `url`, … — no new backend enum or extra serialized fields.
+- **🔷** Local connection: **`name`** e.g. `"local"`; **`url`** is the model directory path.
+- **🔷** **`url` starting with `/`** — local model directory (Unix absolute path).
+- **🔷** **`url` matching Windows drive prefix** — local model directory (e.g. **`C:\…`**, **`Z:/…`**); use regex **`^[A-Za-z]:[/\\]`** (drive letters **A–Z**).
+- **🚫** **`~` home-relative `url`** — rejected; config is not portable; use absolute paths only.
+- **🔷** Construct calls on Connection, old-library style — e.g. `conn.ChatCompletions(...)`, `conn.Embeddings(...)`.
+- **🔷** Local call classes in namespace **`OLLMchat.CallLocal`** (not `Call.Local`).
+- **🔷** **`CallLocal.*` extends `Call.*`** — override execution only; add classes **one at a time**, each runnable as a test.
+- **🔷** First implementation (Phase 3): **list models** (`CallLocal.Models`).
+- **🔷** **`OLLMchat.Local/`** (Phase 1 probes) is **temporary** — remove when absorbed into `CallLocal`.
+- **🔷** **No new helper methods** on Connection (no `is_local()`, no `model_dir` getter, etc.).
+
+---
+
+## Phase 2 deliverable
+
+- **✅** This plan document.
+- **🚫** No edits to `Settings.Connection`, `CallLocal/`, `Client`, or Meson in Phase 2.
+
+---
+
+## Settings.Connection
+
+Keep existing serialized fields. **Do not add** `backend`, `type`, or `model_dir`.
+
+**🔷** Local vs HTTP — **`url`** is local when:
+- **`url.has_prefix("/")`** (Unix absolute path), or
+- **`url`** matches **`^[A-Za-z]:[/\\]`** (Windows drive **`A:`** through **`Z:`**, then **`/`** or **`\`**).
+
+Otherwise treat as HTTP URL (current behaviour).
+
+**💩** Inline at factory / call site (no Connection helper): e.g. **`GLib.Regex`** / **`Regex.match`** on the drive pattern — same check wherever routing is needed.
+
+**ℹ️** Windows drive letters are **one letter A–Z**, not multi-letter forms like **`ZZ:`**.
+
+**ℹ️** `api_key`, `soup`, `models`, `ollama_native`, … — unchanged.
+
+### Examples
+
+```vala
+// HTTP
+var ollama = new Settings.Connection() {
+    name = "Local Ollama",
+    url = "http://127.0.0.1:11434/api",
+};
+
+// Local — Unix
+var local_unix = new Settings.Connection() {
+    name = "local",
+    url = "/home/alan/.local/share/ollmchat/models",
+};
+
+// Local — Windows
+var local_win = new Settings.Connection() {
+    name = "local",
+    url = @"C:\\Users\\alan\\AppData\\Local\\ollmchat\\models",
+};
+```
+
+**ℹ️** Use absolute paths in config — no **`~`** expansion.
+
+---
+
+## Connection factory methods
+
+**🔷** PascalCase factories on Connection when implementation starts (Phase 3+), e.g. **`ChatCompletions(string model)`**, **`Embeddings(string model)`**, **`Models()`**.
+
+**ℹ️** Vala **`{ property = … }`** initializer blocks work only on **`new Type(...)`**, not on a method return value — so **`conn.Embeddings("m") { input = … }`** is **invalid**. Factories return the call; set properties on the next line(s).
+
+**💩** Suggested factory table:
+
+| Factory | HTTP | Local path (`/` or `A:`–`Z:`) |
+| ------- | ---- | ----------------------------- |
+| **`Models()`** | `new Call.Models(this)` | `new CallLocal.Models(this)` |
+| **`Embeddings(string model)`** | `new Call.Embeddings(this, model)` | `new CallLocal.Embeddings(this, model)` |
+| **`Embed(string model)`** | `new Call.Embed(this, model)` | `new CallLocal.Embed(this, model)` |
+| **`ChatCompletions(string model)`** | `new Call.ChatCompletions(this, model)` | `new CallLocal.ChatCompletions(this, model)` |
+| **`Generate()`** | `new Call.Generate(this)` | `new CallLocal.Generate(this)` |
+
+**💩** Factory body: local when **`url.has_prefix("/")`** or drive-letter regex matches — no separate config field, no helper method.
+
+```vala
+var conn = new Settings.Connection() {
+    name = "local",
+    url = "/home/alan/.local/share/ollmchat/models",
+};
+
+var models = yield conn.Models().exec_models();
+
+var embed = conn.Embeddings("bge-m3");
+embed.input = { "x" };
+var result = yield embed.exec_embedding();
+```
+
+**ℹ️** Today call sites use **`new Call.Embeddings(connection, model) { … }`**. After migration, same properties — one **`connection.Embeddings(model)`** line, then assignments (see **`libocvector/Database.vala`**, **`Agent/Base.vala`**, etc.).
+
+- **🚫** No **`Backend.*`** dispatch layer.
+
+---
+
+## Namespace layout
+
+```
+OLLMchat.Call           — existing HTTP call classes
+OLLMchat.CallLocal      — local GGUF subclasses (override execution only)
+OLLMchat.Local          — Phase 1 probes (temporary)
+```
+
+- **🔷** Use **`CallLocal`**, not **`Call.Local`**.
+- **🔷** Remove **`OLLMchat.Local/`** when probes are absorbed.
+
+---
+
+## CallLocal pattern
+
+**🔷** Each class extends matching **`Call.*`** and overrides one execution method.
+
+**🔷** Each class also **implements `Thread`** — see [`8.0` § CallLocal threading](CHAT-8.0-libollmchat-local-gguf-backend.md#calllocal-threading-thread-interface).
+
+**🔷** Sync `libllama` work runs inside `Thread` dispatch methods on a **per-call background thread** (spawned and joined for each execution).
+
+**🔷** Callers keep `yield exec_embedding()` / `yield send()` — they do not spawn worker threads.
+
+**🔷** Streaming chat: each token sampled on the call's background thread → `Thread.invoke_on_caller_context` → existing `stream_chunk` path → UI (`8.0` § CallLocal threading).
+
+**💩** Likely mapping:
+
+- **`CallLocal.Models`** — list models (first to implement)
+- **`CallLocal.Embeddings`** — `exec_embedding()`
+- **`CallLocal.Embed`** — `exec_embed()`
+- **`CallLocal.ChatCompletions`** — `send()`
+- **`CallLocal.Generate`** — `exec_generate()`
+
+**ℹ️** Response types stay **`Response.*`**. Local code does not call **`send_request()`**.
+
+---
+
+## Implementation order (Phase 3+)
+
+**🔷** One class at a time; each runnable as a standalone test (Phase 1 probe style).
+
+**🔷** Start with **`CallLocal.Models`** (list models).
+
+**💩** Suggested order after Models: Embeddings, Embed, Generate, ChatCompletions.
+
+**🔷** **`Thread`** ships before **`CallLocal.Embeddings`** — see [`8.0` Phase 3](CHAT-8.0-libollmchat-local-gguf-backend.md#phase-3--threading-interface--local-models-list--embeddings).
+
+---
+
+## Rejected
+
+| Idea | Verdict |
+| ---- | ------- |
+| **`~` home-relative `url`** | **🚫** |
+| **`backend` / `type` enum** | **🚫** |
+| **`model_dir` field** | **🚫** |
+| **`is_local()` / `model_dir` getters** | **🚫** — user: no new helper methods |
+| **`Backend.*` interface** | **🚫** |
+| **`Call.Local` namespace** | **🚫** |
+| **Phase 2 code changes** | **🚫** |
+
+---
+
+## Open questions
+
+- **💩** **`url`** that matches neither **`/`**, nor **`^[A-Za-z]:[/\\]`**, nor **`http(s)://`** — reject at factory time?
+
+---
+
+## Concrete code proposals
+
+**⏳** Deferred until Phase 3.
+
+---
+
+## LLM implementer guardrails
+
+- **🚫** Do not implement Phase 2 — this document **is** Phase 2.
+- **🚫** Do not add new Connection helper methods.
+- **🚫** Do not add **`backend`**, **`type`**, or **`model_dir`** to serialized config.
+- **🚫** Do not use **`Call.Local`** — use **`CallLocal`**.
+- **🚫** Do not add **`Backend/`** dispatch.
+- **🚫** Do not mark LLM-invented items with **🔷** — reserve **🔷** for user-specified requirements only.

@@ -11,7 +11,7 @@
   (`fid` `2026-07-14-09-05-44`)
 - ℹ️ Log: `~/.cache/ollmchat/ollmchat.debug.log`
 - ℹ️ Gee wrap already noted in
-  [`docs/plans/8.2.1-libocrpc-auto-json-and-http-client.md`](../../plans/8.2.1-libocrpc-auto-json-and-http-client.md)
+  [`docs/plans/RPC-8.2.1-libocrpc-auto-json-and-http-client.md`](../../plans/RPC-8.2.1-libocrpc-auto-json-and-http-client.md)
   (criticals log real message *before* `wait_async` clobbers it)
 - ℹ️ Hub tool: `liboctools/HuggingFace/Request.vala`
 - ℹ️ RPC: `libocrpc/Client.vala` (`complete_pending`, `call`, `wait_response`)

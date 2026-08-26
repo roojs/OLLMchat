@@ -1,0 +1,589 @@
+# 8.3.4 — `SCM_RIGHTS` fds
+
+> **`docs/plans/RPC-1.0-summary.md` is not updated** for this sub-plan until it is done and archived.
+
+**Status:** `✔️` agent-done — awaiting user **✅**
+
+**Parent:** [`RPC-8.3-libocrpc-live-handles-and-signals.md`](RPC-8.3-libocrpc-live-handles-and-signals.md)
+
+**Depends on:** [`8.3.1`](RPC-8.3.1-DONE-live-handles-and-remote-refcount.md)
+
+**Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
+
+---
+
+## What happened (read this first)
+
+- **ℹ️** gnome-shell-rpc needs a **dmabuf fd** with a **`Notification`**. The fd cannot go in bin bytes — Linux passes it with **`SCM_RIGHTS`** on a Unix stream socket.
+- **ℹ️** **v1 (failed):** in-band **`0xFC`** trailer + **`sendmsg`** on the **same** socket as **`DataOutputStream`**. Read-ahead loses the fd. Do not reimplement.
+- **🔷** **v2:** second Unix stream. **All SCM code lives in `Live.BufferStream`**, **`Live.BufferListen`**, and **`Live.Buffer`.** Transport only holds references and delegates.
+
+**Fd-less traffic.** Pass **`null`** for buffer. ollmfilesd unchanged.
+
+---
+
+## Purpose
+
+- **✔️** [`libocrpc/Live/Buffer.vala`](../libocrpc/Live/Buffer.vala) — **`sendmsg`** / **`recvmsg`** for one fd.
+- **✔️** [`libocrpc/Live/BufferStream.vala`](../libocrpc/Live/BufferStream.vala) — per-connection fd channel.
+- **✔️** [`libocrpc/Live/BufferListen.vala`](../libocrpc/Live/BufferListen.vala) — server **`.fd`** accept + pairing.
+- **🔷** `✔️` **`Live/namespace.vala`** — Windows/Android **`BufferStream`** shell (§1).
+- **🔷** `✔️` **`Notification.buffer`** — receive-side only (§2).
+- **🔷** `✔️` **`Connection`** — construct **`buffer_stream`**; **`write`** delegates (§3).
+- **🔷** `✔️` **`Client`** — **`new BufferStream()`** then **`yield connect_client`** in **`connect`**; **`attach`** on dispatch (§4).
+- **💩** `✔️` **`SocketListen`** — one **`BufferListen`** field; **`pair_connection`** only (§5).
+- **🔷** `✔️` Meson **`live_src`** + valadoc (§6–§7).
+- **🔷** `✔️` Smoke test + **`subscribe-test`** signature (§8–§10).
+
+---
+
+Intro: edits are **Remove** / **Replace with** / **Add** from the tree;
+verify surrounding context before applying.
+
+---
+
+### 1. `libocrpc/Live/namespace.vala` — `BufferStream` Windows / Android shell
+
+**Why.** Non-Unix builds compile this file only; **`BufferStream`** must exist as a type.
+
+**Where.** Inside **`#if G_OS_WIN32 || ANDROID`**, immediately after the closing **`}`** of **`public class Buffer`**.
+
+**Depends on.** none.
+
+#### Add — after `public class Buffer { … }` closing brace, before `#endif`
+
+```vala
+	public class BufferStream : GLib.Object {
+		public BufferStream() { Object(); }
+		public async void connect_client(string main_socket_path) throws GLib.Error {}
+		public void write_with(Buffer? buffer, Bin.Serializable serializable, Bin.Stream bin) throws GLib.Error {}
+		public void attach(Notification notif) {}
+		public void close() {}
+	}
+
+	public class BufferListen : GLib.Object {
+		public BufferListen(string main_socket_path) { Object(); }
+		public bool start() { return true; }
+		public void pair_connection(Transport.Connection connection) {}
+		public void stop() {}
+	}
+
+```
+
+---
+
+### 2. `libocrpc/Notification.vala` — `buffer` property
+
+**Why.** Client reads **`notif.buffer.fd`** after **`BufferStream.attach`**. Not on the wire.
+
+**Where.** Class body, immediately after **`action_label`** property, before **`rpc_register`**.
+
+**Depends on.** §6.
+
+#### Add — after `public string action_label { get; set; default = ""; }`
+
+```vala
+		/** Filled by {@link Live.BufferStream.attach}; null on send. */
+		public Live.Buffer? buffer { get; internal set; default = null; }
+
+```
+
+---
+
+### 3. `libocrpc/Transport/Connection.vala` — `buffer_stream` + delegate `write`
+
+**Why.** No SCM logic on **`Connection`** — only hold **`BufferStream?`** and call **`write_with`**.
+
+**Where.** Class fields; **`start()`**, **`stop()`**, **`write()`**.
+
+**Depends on.** §2.
+
+#### Add — after `signal_subs` property block, before `private int next_handle`
+
+```vala
+		public Live.BufferStream? buffer_stream { get; set; default = null; }
+
+```
+
+#### Remove — in `start()`, the `in_stream` / `bin` block that wraps **`BufferedInputStream`** and sets **`socket`**
+
+```vala
+				var in_stream = new GLib.DataInputStream(
+					new GLib.BufferedInputStream(
+						this.stream.get_input_stream()
+					)
+				);
+				var out_stream = new GLib.DataOutputStream(
+					this.stream.get_output_stream()
+				);
+				this.bin = new Bin.Stream(in_stream, out_stream, true) {
+					live_handles = this.live_handles,
+					socket = this.stream.get_socket()
+				};
+```
+
+#### Replace with — same position in `start()`
+
+```vala
+				var in_stream = new GLib.DataInputStream(
+					this.stream.get_input_stream()
+				);
+				var out_stream = new GLib.DataOutputStream(
+					this.stream.get_output_stream()
+				);
+				this.bin = new Bin.Stream(in_stream, out_stream, true) {
+					live_handles = this.live_handles
+				};
+```
+
+#### Add — in `stop()`, after `this.lease_ids.clear();`, before `if (!this.running)`
+
+```vala
+			if (this.buffer_stream != null) {
+				this.buffer_stream.close();
+			}
+
+```
+
+#### Remove — entire `write()` method
+
+```vala
+		public virtual void write(
+			GLib.Object gobject,
+			Live.Buffer? buffer = null
+		)
+		{
+			if (!this.channel_open || this.bin == null) {
+				return;
+			}
+			var serializable = gobject as Bin.Serializable;
+			if (serializable == null) {
+				GLib.warning("connection write: not bin Serializable");
+				return;
+			}
+			try {
+				this.bin.write(serializable, buffer);
+				this.bin.out_stream.flush();
+			} catch (GLib.Error e) {
+				GLib.warning("connection write error: %s", e.message);
+				this.stop();
+			}
+		}
+```
+
+#### Replace with
+
+```vala
+		public virtual void write(
+			GLib.Object gobject,
+			Live.Buffer? buffer = null
+		)
+		{
+			if (!this.channel_open || this.bin == null) {
+				return;
+			}
+			var serializable = gobject as Bin.Serializable;
+			if (serializable == null) {
+				GLib.warning("connection write: not bin Serializable");
+				return;
+			}
+			try {
+				if (this.buffer_stream != null) {
+					this.buffer_stream.write_with(buffer, serializable, this.bin);
+				} else {
+					this.bin.write(serializable);
+					this.bin.out_stream.flush();
+				}
+			} catch (GLib.Error e) {
+				GLib.warning("connection write error: %s", e.message);
+				this.stop();
+			}
+		}
+```
+
+---
+
+### 4. `libocrpc/Client.vala` — `connect_client` + `attach`
+
+**Why.** Fd leg connect is async — cannot be a constructor. Client constructs **`BufferStream`**, then **`yield connect_client`**. Dispatch delegates **`attach`**.
+
+**Where.** **`connect()`** after **`Bin.Stream`** setup; **`dispatch_message()`** notification branch.
+
+**Depends on.** §3.
+
+#### Add — in `connect()`, after `this.bin = new Bin.Stream(…)` block, before `this.connected = true`
+
+```vala
+			if (this.live_handles && !this.socket_path.has_prefix("tcp://")) {
+				this.buffer_stream = new Live.BufferStream();
+				yield this.buffer_stream.connect_client(this.socket_path);
+			}
+
+```
+
+#### Remove — in `dispatch_message()`, notification branch fd pairing
+
+```vala
+				if (this.buffer_stream != null) {
+					notif.buffer = this.buffer_stream.take_pending();
+				}
+```
+
+#### Replace with — same position in `dispatch_message()`
+
+```vala
+				if (this.buffer_stream != null) {
+					this.buffer_stream.attach(notif);
+				}
+```
+
+**ℹ️** **`disconnect()`** already calls **`buffer_stream.close()`** — no fence.
+
+---
+
+### 5. `libocrpc/Transport/SocketListen.vala` — delegate to `BufferListen`
+
+**Why.** Fd-channel bind, accept, and pairing live in **`Live.BufferListen`**. **`SocketListen`** only holds a hub and calls **`pair_connection`**.
+
+**Where.** Class field; **`start()`** when **`live_handles`**; main **`incoming`** handler; **`stop()`**.
+
+**Depends on.** §3 (**`BufferListen`** in [`libocrpc/Live/BufferListen.vala`](../libocrpc/Live/BufferListen.vala) — **✔️** landed).
+
+#### Add — after `private Gee.ArrayList<Connection> connections` field
+
+```vala
+		private Live.BufferListen? buffer_listen = null;
+
+```
+
+#### Add — in `start()`, after main `this.service.start();`, before `this.listening = true`, when `this.live_handles`
+
+```vala
+			if (this.live_handles) {
+				this.buffer_listen = new Live.BufferListen(this.socket_path);
+				if (!this.buffer_listen.start()) {
+					return false;
+				}
+			}
+
+```
+
+#### Remove — main `this.service.incoming.connect` handler body (connection create only)
+
+```vala
+			this.service.incoming.connect((conn) => {
+				var connection = new Connection(conn) {
+					live_handles = this.live_handles
+				};
+				connection.start();
+				this.connections.add(connection);
+				return true;
+			});
+```
+
+#### Replace with
+
+```vala
+			this.service.incoming.connect((conn) => {
+				var connection = new Connection(conn) {
+					live_handles = this.live_handles
+				};
+				if (this.buffer_listen != null) {
+					this.buffer_listen.pair_connection(connection);
+				}
+				connection.start();
+				this.connections.add(connection);
+				return true;
+			});
+```
+
+#### Add — in `stop()`, after `this.service.stop();`, before `foreach (var connection in this.connections)`
+
+```vala
+			if (this.buffer_listen != null) {
+				this.buffer_listen.stop();
+				this.buffer_listen = null;
+			}
+
+```
+
+**💩** Client must connect **main then `.fd`** immediately so **`BufferListen`** pairing matches.
+
+---
+
+### 6. `libocrpc/meson.build` — `live_src`
+
+**Why.** Unix lib compiles **`Buffer.vala`**, **`BufferStream.vala`**, and **`BufferListen.vala`**. **`namespace.vala`** always compiled.
+
+**Where.** Refactor Live entries out of **`ocrpc_core_src`** into **`live_src`**.
+
+**Depends on.** §1.
+
+#### Remove — from inside `ocrpc_core_src = files([` … `])`
+
+```meson
+  'Live/RemoteParams.vala',
+  'Live/Remote.vala',
+  'Live/SubscribeParams.vala',
+  'Live/Subscription.vala',
+  'Live/Subscribe.vala',
+```
+
+#### Add — after `client_boot_src` `endif`
+
+```meson
+live_src = files(['Live/namespace.vala'])
+if use_unix_sockets
+  live_src += files([
+    'Live/Buffer.vala',
+    'Live/BufferStream.vala',
+    'Live/BufferListen.vala',
+    'Live/RemoteParams.vala',
+    'Live/Remote.vala',
+    'Live/SubscribeParams.vala',
+    'Live/Subscription.vala',
+    'Live/Subscribe.vala',
+  ])
+endif
+
+```
+
+#### Add — after `ocrpc_core_src = files([` … `])` closing `])`
+
+```meson
+ocrpc_core_src += live_src
+
+```
+
+---
+
+### 7. `docs/meson.build` — valadoc input
+
+**Why.** Valadoc must list new Live sources.
+
+**Where.** `valadoc_docs` input list, immediately after `'../libocrpc/Live/Subscribe.vala',`.
+
+**Depends on.** §6.
+
+#### Add — after `'../libocrpc/Live/Subscribe.vala',`
+
+```meson
+    '../libocrpc/Live/Buffer.vala',
+    '../libocrpc/Live/BufferStream.vala',
+    '../libocrpc/Live/BufferListen.vala',
+
+```
+
+---
+
+### 8. `tests/rpc/subscribe-test.vala` — `Capture.write` second arg
+
+**Why.** **`Connection.write`** takes optional **`Live.Buffer?`**.
+
+**Where.** **`Capture.write`** override.
+
+**Depends on.** §3.
+
+#### Remove
+
+```vala
+		public override void write(GLib.Object gobject)
+		{
+			if (!(gobject is OLLMrpc.Notification)) {
+				return;
+			}
+			this.last = (OLLMrpc.Notification) gobject;
+			this.writes++;
+		}
+```
+
+#### Replace with
+
+```vala
+		public override void write(
+			GLib.Object gobject,
+			Live.Buffer? buffer = null
+		)
+		{
+			if (!(gobject is OLLMrpc.Notification)) {
+				return;
+			}
+			this.last = (OLLMrpc.Notification) gobject;
+			this.writes++;
+		}
+```
+
+---
+
+### 9. `tests/rpc/scm-notification-test.vala` — v2 smoke test
+
+**Why.** End-to-end **`Connection.write(notif, buffer)`** + **`BufferStream.attach`**.
+
+**Where.** Replace entire file.
+
+**Depends on.** §2–§4.
+
+#### Remove — entire current `tests/rpc/scm-notification-test.vala`
+
+#### Add — create `tests/rpc/scm-notification-test.vala`
+
+```vala
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * SCM_RIGHTS notification smoke — types here are NOT shipped in libocrpc.
+ */
+
+namespace OLLMrpcTests
+{
+	public static int main(string[] args)
+	{
+		OLLMrpc.Notification.rpc_register();
+
+		int[] main_sv = new int[2];
+		int[] fd_sv = new int[2];
+		if (Posix.socketpair(Posix.AF_UNIX, Posix.SOCK_STREAM, 0, main_sv) != 0
+		 || Posix.socketpair(Posix.AF_UNIX, Posix.SOCK_STREAM, 0, fd_sv) != 0) {
+			GLib.printerr("socketpair failed\n");
+			return 1;
+		}
+
+		int[] pipe_fds = new int[2];
+		if (Posix.pipe(pipe_fds) != 0) {
+			GLib.printerr("pipe failed\n");
+			return 1;
+		}
+		uint8 payload = 0xAB;
+		if (Posix.write(pipe_fds[1], &payload, 1) != 1) {
+			GLib.printerr("pipe write failed\n");
+			return 1;
+		}
+
+		GLib.Socket main_server_sock;
+		GLib.Socket main_client_sock;
+		GLib.Socket fd_server_sock;
+		GLib.Socket fd_client_sock;
+		try {
+			main_server_sock = new GLib.Socket.from_fd(main_sv[0]);
+			main_client_sock = new GLib.Socket.from_fd(main_sv[1]);
+			fd_server_sock = new GLib.Socket.from_fd(fd_sv[0]);
+			fd_client_sock = new GLib.Socket.from_fd(fd_sv[1]);
+		} catch (GLib.Error e) {
+			GLib.printerr("socket from_fd failed: %s\n", e.message);
+			return 1;
+		}
+
+		var server_stream = (GLib.SocketConnection) GLib.Object.new(
+			typeof(GLib.SocketConnection),
+			"socket", main_server_sock,
+			null
+		);
+		var client_stream = (GLib.SocketConnection) GLib.Object.new(
+			typeof(GLib.SocketConnection),
+			"socket", main_client_sock,
+			null
+		);
+
+		var server = new OLLMrpc.Transport.Connection(server_stream) {
+			buffer_stream = new OLLMrpc.Live.BufferStream() {
+				socket = fd_server_sock
+			}
+		};
+		server.start();
+
+		var client_buffer_stream = new OLLMrpc.Live.BufferStream() {
+			socket = fd_client_sock
+		};
+		client_buffer_stream.start_watch();
+
+		server.write(
+			new OLLMrpc.Notification() {
+				method = "Window.thumbnail",
+				object_type = "Window",
+				id = 42
+			},
+			new OLLMrpc.Live.Buffer(pipe_fds[0])
+		);
+
+		var client_in = new GLib.DataInputStream(client_stream.get_input_stream());
+		var client_bin = new OLLMrpc.Bin.Stream(client_in, null, false);
+
+		OLLMrpc.Notification? notif = null;
+		try {
+			notif = client_bin.parse() as OLLMrpc.Notification;
+		} catch (GLib.Error e) {
+			GLib.printerr("parse failed: %s\n", e.message);
+			return 1;
+		}
+		if (notif == null) {
+			GLib.printerr("expected Notification\n");
+			return 1;
+		}
+		client_buffer_stream.attach(notif);
+		if (notif.buffer == null || notif.buffer.fd < 0) {
+			GLib.printerr("missing buffer fd\n");
+			return 1;
+		}
+		uint8 read_byte = 0;
+		if (Posix.read(notif.buffer.fd, &read_byte, 1) != 1) {
+			GLib.printerr("read fd failed\n");
+			return 1;
+		}
+		if (read_byte != payload) {
+			GLib.printerr("fd payload mismatch\n");
+			return 1;
+		}
+
+		return 0;
+	}
+}
+```
+
+---
+
+### 10. `tests/meson.build` — `test-rpc-scm-notification`
+
+**Why.** Register smoke executable (Unix **`posix`** / **`gio-unix-2.0`** via test deps).
+
+**Where.** Immediately after the **`test('test-rpc-subscribe'`** block.
+
+**Depends on.** §9.
+
+#### Add — after the `test('test-rpc-subscribe'` block (`timeout: 10,`)
+
+```meson
+test_rpc_scm = executable('test-rpc-scm-notification',
+  'rpc/scm-notification-test.vala',
+  dependencies: [
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('gio-unix-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    dependency('json-glib-1.0'),
+    ocrpc_vapi_dep,
+  ],
+  build_rpath: meson.current_build_dir() / '..' / 'libocrpc',
+  vala_args: [
+    '--pkg=ocrpc',
+    '--pkg=json-glib-1.0',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+  ],
+)
+test('test-rpc-scm-notification',
+  test_rpc_scm,
+  suite: 'rpc',
+  timeout: 10,
+)
+
+```
+
+---
+
+## LLM notes
+
+- **🚫** v1: **`Bin.Stream.socket`**, **`TOKEN_SCM_RIGHTS`**, trailer peek — withdrawn.
+- **🚫** Do not add fd listen/pairing logic to **`SocketListen`** — only **`Live.BufferListen`**.
+- **🚫** Do not add **`connection.buffer`** / **`client.buffer`** properties.
+- **ℹ️** Server: **`new BufferStream() { socket = fd }`**. Client: **`new BufferStream()`** then **`yield connect_client(path)`**.
+- Build: `ninja -C build tests/test-rpc-scm-notification`; keep **`test-rpc-live-handles`** and **`test-rpc-subscribe`** green.

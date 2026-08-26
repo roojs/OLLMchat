@@ -7,8 +7,8 @@
 
 **Related:**
 
-- ℹ️ [`docs/plans/2.31-just-ask-summary-history.md`](../plans/2.31-just-ask-summary-history.md)
-  / [`2.31.1-chatter-summary-turn-queue.md`](../plans/2.31.1-chatter-summary-turn-queue.md)
+- ℹ️ [`docs/plans/CHAT-2.31-just-ask-summary-history.md`](../plans/CHAT-2.31-just-ask-summary-history.md)
+  / [`CHAT-2.31.1-chatter-summary-turn-queue.md`](../plans/CHAT-2.31.1-chatter-summary-turn-queue.md)
 - ℹ️ [`docs/bugs/done/2026-07-14-FIXED-chatter-summary-hang.md`](2026-07-14-FIXED-chatter-summary-hang.md)
 - ℹ️ Separate: [`docs/bugs/done/2026-07-24-FIXED-session-fetch-index-listing.md`](2026-07-24-FIXED-session-fetch-index-listing.md)
   — `session_fetch` discoverability (not this bug)

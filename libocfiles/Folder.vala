@@ -90,7 +90,7 @@ namespace OLLMfiles
 		 * Project-level description from vector metadata (''ProjectAnalysis'').
 		 *
 		 * Client calls ''Folder.rpc_project_description'' on the daemon
-		 * ([`2.10.4.1`](../../docs/plans/2.10.4.1-ollmfilesd-rpc-api.md)).
+		 * ([`2.10.4.1`](../../docs/plans/FILES-2.10.4.1-ollmfilesd-rpc-api.md)).
 		 *
 		 * Callers (''Skill/Runner'', ''Task/Details'', ''Task/Tool'') must
 		 * ''yield'' this at cutover (was synchronous on shipping {@link Folder}).

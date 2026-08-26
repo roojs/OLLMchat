@@ -82,7 +82,7 @@ Online API documentation is available:
 Implementation plans and roadmap:
 
 - **[Building from source](docs/BUILD.md)** - Meson/Ninja, dependencies, and uninstalled runs
-- **[Implementation Plans Summary](docs/plans/1.0-summary.md)** - Overview of all planned features with status indicators
+- **[Implementation Plans Summary](docs/plans/-README.md)** - Overview of all planned features with status indicators
 - **[MCP server settings](docs/mcp-settings.md)** - How to configure `mcp.json` for Model Context Protocol tools
 - **[Binary RPC wire format](docs/bin-rpc-protocol.md)** - On-the-wire layout for `ollmfilesd` ↔ client (`libocrpc`)
 

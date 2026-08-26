@@ -1,0 +1,152 @@
+# 2.10.4.1 — `ollmfilesd` RPC API (overview)
+
+**Status:** **IN PROGRESS** — wire conventions and shared shapes are agreed; per-object RPC is delivered in child plans (**not** this overview). **Vector** § and several methods remain unimplemented. Do **not** treat this plan as closed.
+
+**Parent:** [`FILES-2.10.4.0-summary.md`](FILES-2.10.4.0-summary.md) · **Layout:** [`done/2.10.4.0-DONE-libocfiles-v2-and-rpc-layout.md`](done/2.10.4.0-DONE-libocfiles-v2-and-rpc-layout.md)
+
+---
+
+## Progress
+
+| Area | Status |
+| ---- | ------ |
+| `method` = `{Object}.{method}`, flat `params` | ✅ agreed |
+| Shared shapes (`filebase`, error codes) | ✅ documented |
+| `Daemon.*` | ✅ [`2.10.4.3`](2.10.4.3-DONE-daemon-and-rpcclient.md) |
+| `ProjectManager.*` (PM tranche) | ✅ [`2.10.4.4`](2.10.4.4-DONE-projectmanager.md) — not all PM methods |
+| `Folder` | ✅ [`done/2.10.4.9.3.1`](done/2.10.4.9.3.1-DONE-daemon-folder-file-relays.md) — `Folder.fetch`, `contains_folder`, **`fetch_files`** (paged), `fetch_pending_approvals`, **`project_description`** ✔️ |
+| `File.*` | ✅ `File.fetch` + existing relays — [`done/2.10.4.9.3.1`](done/2.10.4.9.3.1-DONE-daemon-folder-file-relays.md); stubs [`done/2.10.4.6`](done/2.10.4.6-DONE-file.md) |
+| `vector.*` | **✅** [`done/2.10.4.29`](done/2.10.4.29-DONE-vector-cli-rpc-migration.md) — Phases 1–11 complete |
+| `Codebase.search` | **✅** [`done/2.10.4.18`](done/2.10.4.18-DONE-vector-search-rpc.md) · [`done/2.10.4.29`](done/2.10.4.29-DONE-vector-cli-rpc-migration.md) |
+| `Bubble.*` | **DEFERRED** [`2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) |
+| `event.*` | ⏳ [`2.10.4.8`](FILES-2.10.4.8-per-client-project-notifications.md) |
+| RPC integration tests | 🌗 [`done/2.10.4.10-DONE-rpc-tests.md`](done/2.10.4.10-DONE-rpc-tests.md) — T0/T1 green; T2 pending |
+
+---
+
+## `method` = `{Object}.{method}`
+
+Same names as `libocfiles` classes and methods — **PascalCase object**, **snake_case method**. Object not repeated in `params`.
+
+Examples:
+
+- **`Folder.project_description`**
+- **`Folder.fetch_files`** — paged dropdown — **B-10** in [`done/2.10.4.9`](done/2.10.4.9-DONE-v2-caller-cutover.md) (**`FolderParams`**: existing **`path`**; new **`offset`**, **`limit`**, **`query`**; **`msg`** = total count)
+- **`Codebase.search`**
+
+```json
+{"method":"Daemon.hello","params":{"protocol":1,"client":"ollmchat"}}
+{"method":"ProjectManager.create_project","params":{"path":"/home/alan/proj/newapp"}}
+```
+
+---
+
+## Per-object plans (design + client + server)
+
+| Plan | Object |
+| ---- | ------ |
+| [`2.10.4.3`](2.10.4.3-DONE-daemon-and-rpcclient.md) ✅ | `RpcClient`, `Daemon`, daemon startup |
+| [`2.10.4.4`](2.10.4.4-DONE-projectmanager.md) ✅ | `ProjectManager`, PM events, UI lists |
+| [`done/2.10.4.5-DONE-folder.md`](done/2.10.4.5-DONE-folder.md) ✅ | `Folder`, filesystem scan |
+| [`done/2.10.4.9.3.1`](done/2.10.4.9.3.1-DONE-daemon-folder-file-relays.md) ✅ | `Folder.*`, `File.fetch` |
+| [`2.10.4.6`](done/2.10.4.6-DONE-file.md) ✅ | `File`, editor I/O, delete |
+| [`2.10.4.7`](done/2.10.4.7-DONE-active-project-file-outside-db.md) | **DONE** — active project/file off daemon; Config2 `Window`; drop `File.activate` |
+| [`2.10.4.32`](APP-2.10.4.32-FUTURE-multi-window-support.md) | **FUTURE** — second window + per-window Config2 rows |
+| [`done/2.10.4.10-DONE-rpc-tests.md`](done/2.10.4.10-DONE-rpc-tests.md) | RPC round-trip tests |
+
+Detail for each object lives in those files — not a separate coverage doc.
+
+---
+
+## `Codebase` — vector search + admin ([`done/2.10.4.18`](done/2.10.4.18-DONE-vector-search-rpc.md) · [`done/2.10.4.29`](done/2.10.4.29-DONE-vector-cli-rpc-migration.md))
+
+**🔷** Wire object **`Codebase`** — single handler **`ollmfilesd/Codebase.vala`** / **`OLLMfilesd.Codebase`**. Signals are **`call_{method}`** (see [`libocrpc/Request.dispatch`](../../libocrpc/Request.vala)). **`OLLMfilesd.Vector`** (`ollmfilesd/Vector/*`) is indexing internals only.
+
+| Method | Signal | Status | Notes |
+|--------|--------|--------|-------|
+| **`Codebase.search`** | **`call_search`** | **✅** | semantic search for tool + CLI query |
+| **`Codebase.file_info`** | **`call_file_info`** | **✔️** | **`--show-info`**; replaces **`File.vector_metadata`** |
+| **`Codebase.debug_get`** | **`call_debug_get`** | **✔️** | **`--dump-vector`** |
+| **`Codebase.reset`** | **`call_reset`** | **✔️** | **`Indexer.reset_database`** |
+| **`Codebase.start`** | **`call_start`** | **✔️** | clear **`stop_requested`** → **`queueProject`** (**🚫** no **`read_dir`**) |
+| **`Codebase.stop`** | **`call_stop`** | **✔️** | **pause** — **`stop_requested = true`**; **preserve** **`file_queue`** (**🚫** no drain) |
+
+- register **`"Codebase"`** once in **`Application.vala`** (already done for search)
+- params: **`VectorParams`** — **`file_path`**, **`ast_path`**, **`path`**, **`only_file`** for **`start`**
+
+**Out-of-band test data dir (Phase 5.5):**
+
+- `ollmfilesd --data-dir=DIR` — server ✅ ([`Application.vala`](../../ollmfilesd/Application.vala))
+- Spawn contract: §5.5.2 docblocks; server §5.5.5; callers §5.5.6 — **✔️** (§5.5.7 Phase 8/9)
+
+**Indexing progress (not a request method):**
+
+- **`event.vector.scan_update`** — **✅** ([`done/2.10.4.14`](done/2.10.4.14-DONE-daemon-scan-update-notification.md))
+- **`event.project.scan_start`** / **`event.project.scan_end`** — **✔️** renamed **`event.filesystem.scan_start`** / **`event.filesystem.scan_end`** ([`done/2.10.4.30-DONE-startup-and-daemon-status-ui.md`](done/2.10.4.30-DONE-startup-and-daemon-status-ui.md) Phase 3)
+- **`event.vector.scan_start`** / **`event.vector.scan_end`** — **✔️** queue boundaries; **`event.vector.scan_update`** per file
+- **Filesystem scan** before **`start`**: CLI **`ProjectManager.activate_project`** (**🚫** not on **`Codebase.start`**)
+
+**🚫** **`Codebase.index`** — use **`start`** / **`stop`** instead.
+
+**`Codebase.search` params:**
+
+- **`format`**: `tool` | `json`
+
+**Related (not on `Codebase`):**
+
+- **`Folder.project_description`** — **`oc-vector-index --project-summary`** — **✅** on **`Folder`** handler
+
+**Removed:** **`File.vector_metadata`** — use **`Codebase.file_info`**.
+
+---
+
+## `Bubble` — sandboxed command execution ([`2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md))
+
+Phase A ( **`RunCommand`** ) — **⏳ not on wire yet**. Same object/method names as shipping **`OLLMfiles.Sandbox.Bubble`**.
+
+- **`Bubble.can_wrap`** — host can use bubblewrap (`available`, `reason`)
+- **`Bubble.exec`** — one-shot `sh -c` in bwrap; **`Scan.run()`** on daemon after exec; params: **`project_path`**, **`command`**, **`working_dir`**, **`network`**, **`allow_write[]`**
+- result: **`output`**, optional **`stdout`/`stderr`/`exit_code`**, **`seccomp_*`** evidence strings
+
+Phase B (MCP stdio session) — **💩 deferred** — see sibling plan.
+
+**🚫** not on wire: **`run_as_root`/`sudo`**, unsandboxed Flatpak/Windows fallback (stays client-local).
+
+**🚫** **`Exec.*`** wire name — rejected; use **`Bubble.*`** above.
+
+---
+
+## Shared wire shapes
+
+**`filebase`** — DB row (`FileBase` fields; omit `parent`, `manager`, `buffer`).
+
+**`vector_metadata`** — one indexed element (`SQT/VectorMetadata`).
+
+**Errors:** `-32600`…`-32603`, `-32001` not found, `-32002` busy, `-32003` io.
+
+---
+
+## Client-only (no RPC)
+
+- Chat, session, history
+- Editor buffers (see [`2.10.4.6`](2.10.4.6-file.md))
+- Gtk signals (see [`2.10.4.4`](2.10.4.4-DONE-projectmanager.md))
+- Per-window active file / cursor / scroll ([`2.10.4.7`](done/2.10.4.7-DONE-active-project-file-outside-db.md); multi-window [`2.10.4.32`](APP-2.10.4.32-FUTURE-multi-window-support.md))
+
+---
+
+## Deferred
+
+- Multi-window `client_id`
+- `project_files.get_recent_list`
+- Per-row snapshot deltas
+
+---
+
+## LLM reference (not plan flow)
+
+Shipping calls that have **no** wire method — do not invent RPC names (e.g. **`vector.status`**) for these:
+
+| Shipping (app today) | Wire |
+| -------------------- | ---- |
+| `CodebaseSearchTool.init_databases` | none — `BackgroundScan.open_vector_db` on daemon startup |

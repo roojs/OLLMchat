@@ -8,7 +8,7 @@
 
 **Related plans (context only — not a diagnosis):**
 
-- **`docs/plans/7.14.14-progress-tree-collapse-header.md`** — collapse header (“Skill activity”) + `Gtk.Revealer` around the progress grid; default collapsed; `set_runner` re-applies collapsed state.
+- **`docs/plans/CODER-7.14.14-progress-tree-collapse-header.md`** — collapse header (“Skill activity”) + `Gtk.Revealer` around the progress grid; default collapsed; `set_runner` re-applies collapsed state.
 - **`docs/plans/done/7.14-DONE-task-progress-tree-ui.md`** — overall task progress strip design.
 
 ---

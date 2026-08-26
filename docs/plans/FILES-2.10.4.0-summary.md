@@ -1,0 +1,88 @@
+# 2.10.4.0 — Tranche summary (index)
+
+> **Do not update `docs/plans/FILES-1.0-summary.md` for this plan.**
+
+**Status:** index — maps tranche **2.10.4**; Meson V2 cutover **DONE** (`2026-07-05`)
+
+**Pointer:** `docs/guide-to-writing-plans.md`
+
+**Legacy parent (archived):** [`done/2.10.4-DONE-semantic-index-daemon.md`](done/2.10.4-DONE-semantic-index-daemon.md)
+
+---
+
+## Purpose
+
+- **🔷** Move file + index work into **`ollmfilesd`**; **V2 `libocfiles`** = thin RPC client.
+- **✅** Caller reshape — [`done/2.10.4.9-DONE-v2-caller-cutover.md`](done/2.10.4.9-DONE-v2-caller-cutover.md).
+- **✅** Meson **`v2testing`** source swaps; default **`true`** — [`done/2.10.4.21-DONE-meson-v2-cutover.md`](done/2.10.4.21-DONE-meson-v2-cutover.md).
+- **✅** Green V2 build — [`done/2.10.4.24-DONE-v2-build-gaps.md`](done/2.10.4.24-DONE-v2-build-gaps.md).
+- **✅** App RPC boot + daemon startup — [`done/2.10.4.22-DONE-app-rpc-daemon-startup.md`](done/2.10.4.22-DONE-app-rpc-daemon-startup.md).
+- **✅** RPC client cleanup + wire registration — [`done/2.10.4.27-DONE-rpc-client-cleanup-and-wire-registration.md`](done/2.10.4.27-DONE-rpc-client-cleanup-and-wire-registration.md).
+- **✅** RPC client write queue — [`done/2.10.4.28-DONE-rpc-client-write-queue.md`](done/2.10.4.28-DONE-rpc-client-write-queue.md).
+- **✅** V1 removal + source consolidation — [`done/2.10.4.23-DONE-v1-removal-source-consolidation.md`](done/2.10.4.23-DONE-v1-removal-source-consolidation.md).
+- **ℹ️** Finished tranches: **`docs/plans/done/2.10.4.*`**
+
+---
+
+## Reference
+
+- [`FILES-2.10.4.1-ollmfilesd-rpc-api.md`](FILES-2.10.4.1-ollmfilesd-rpc-api.md) — wire API reference (not a work queue)
+
+---
+
+## Backlog / deferred / on hold / future
+
+| Plan | Status | Topic |
+|------|--------|-------|
+| [`MCP-2.10.4.20-BACKLOG-mcp-stdio-overlay-report-back.md`](MCP-2.10.4.20-BACKLOG-mcp-stdio-overlay-report-back.md) | **BACKLOG** | **B-9** MCP stdio overlay report-back on disconnect |
+| [`BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) | **DEFERRED** | **`Bubble.*` RPC** on daemon (phase 2) |
+| [`done/2.10.4.18-DONE-vector-search-rpc.md`](done/2.10.4.18-DONE-vector-search-rpc.md) | **DONE** | **`Codebase.search`**; admin/index → [`done/2.10.4.29`](done/2.10.4.29-DONE-vector-cli-rpc-migration.md) |
+| [`APP-2.10.4.32-FUTURE-multi-window-support.md`](APP-2.10.4.32-FUTURE-multi-window-support.md) | **FUTURE** | Second GTK window + per-window `Config2.windows` rows |
+| [`FILES-2.10.4.8-per-client-project-notifications.md`](FILES-2.10.4.8-per-client-project-notifications.md) | **FUTURE** | Per-client project context + notifications |
+
+---
+
+## Done ✅ (archived)
+
+- [`done/2.10.4.7-DONE-active-project-file-outside-db.md`](done/2.10.4.7-DONE-active-project-file-outside-db.md) — active project/file off daemon; Config2 `Window`; Phases 0–3; multi-window → [`2.10.4.32`](APP-2.10.4.32-FUTURE-multi-window-support.md)
+- [`done/2.10.4.30-DONE-startup-and-daemon-status-ui.md`](done/2.10.4.30-DONE-startup-and-daemon-status-ui.md) — startup overlay + daemon activity status bar (Phases 1–3); **`disable_filesd`** deferred
+- [`done/2.10.4.23-DONE-v1-removal-source-consolidation.md`](done/2.10.4.23-DONE-v1-removal-source-consolidation.md) — V1 delete, canonical paths, drop **`v2testing`**; Phases 1–4
+- [`done/2.10.4.29-DONE-vector-cli-rpc-migration.md`](done/2.10.4.29-DONE-vector-cli-rpc-migration.md) — vector CLIs + **`CodebaseSearch`** RPC; **`libocvector`** deleted; Phases 1–11
+- [`done/2.10.4.21-DONE-meson-v2-cutover.md`](done/2.10.4.21-DONE-meson-v2-cutover.md) — Meson **`v2testing`** + V2 source swaps; default **`true`**
+- [`done/2.10.4.22-DONE-app-rpc-daemon-startup.md`](done/2.10.4.22-DONE-app-rpc-daemon-startup.md) — **`ollmapp/V2/Window.vala`**; RPC boot before project load
+- [`done/2.10.4.24-DONE-v2-build-gaps.md`](done/2.10.4.24-DONE-v2-build-gaps.md) — **`v2testing=true`** compile failures resolved (**B-1**–**B-7i**)
+- [`done/2.10.4.27-DONE-rpc-client-cleanup-and-wire-registration.md`](done/2.10.4.27-DONE-rpc-client-cleanup-and-wire-registration.md) — delete **`RpcClient.vala`**; wire **`rpc_register`** in PM ctor
+- [`done/2.10.4.28-DONE-rpc-client-write-queue.md`](done/2.10.4.28-DONE-rpc-client-write-queue.md) — serialized outgoing writes on **`OLLMrpc.Client`**
+- [`done/2.10.4.0-DONE-libocfiles-v2-and-rpc-layout.md`](done/2.10.4.0-DONE-libocfiles-v2-and-rpc-layout.md) — V2 directory layout; `RpcClient` / `V2/*` in tree
+- [`done/2.10.4.3-DONE-daemon-and-rpcclient.md`](done/2.10.4.3-DONE-daemon-and-rpcclient.md) — `RpcClient`, `Daemon`, stdio listen
+- [`done/2.10.4.4-DONE-projectmanager.md`](done/2.10.4.4-DONE-projectmanager.md) — Daemon + V2 PM RPC stubs
+- [`done/2.10.4.5-DONE-folder.md`](done/2.10.4.5-DONE-folder.md) — V2 client `Folder` strip-down
+- [`done/2.10.4.6-DONE-file.md`](done/2.10.4.6-DONE-file.md) — V2 client stubs + daemon `File.*` relays
+- [`done/2.10.4.9-DONE-v2-caller-cutover.md`](done/2.10.4.9-DONE-v2-caller-cutover.md) — V2 copies, caller reshape, cutover inventory
+- [`done/2.10.4.9.1-DONE-design-project-files-and-client-api.md`](done/2.10.4.9.1-DONE-design-project-files-and-client-api.md) — V2 client API design
+- [`done/2.10.4.9.2-DONE-file-write-register-index.md`](done/2.10.4.9.2-DONE-file-write-register-index.md) — overlay → backend sync
+- [`done/2.10.4.9.3-DONE-daemon-rpc-wire.md`](done/2.10.4.9.3-DONE-daemon-rpc-wire.md) — wire tranche
+- [`done/2.10.4.9.3.1-DONE-daemon-folder-file-relays.md`](done/2.10.4.9.3.1-DONE-daemon-folder-file-relays.md) — daemon `Folder.*` / `File.fetch`
+- [`done/2.10.4.9-DONE-v2-wiring-index.md`](done/2.10.4.9-DONE-v2-wiring-index.md) — superseded cutover index
+- [`done/2.10.4.9.2-SUPERSEDED-reshape-callers.md`](done/2.10.4.9.2-SUPERSEDED-reshape-callers.md) — caller bullets → **2.10.4.9**
+- [`done/2.10.4.10-DONE-rpc-tests.md`](done/2.10.4.10-DONE-rpc-tests.md) — T0 + T1 harness; T2 pending
+- [`done/2.10.4.11-DONE-rpc-stdio-harness-fix.md`](done/2.10.4.11-DONE-rpc-stdio-harness-fix.md) — Stdio harness jq fix
+- [`done/2.10.4.11-DONE-libocvector2.md`](done/2.10.4.11-DONE-libocvector2.md) — `libocvector2.so`
+- [`done/2.10.4.12-DONE-ollmfilesd-vector-implementation.md`](done/2.10.4.12-DONE-ollmfilesd-vector-implementation.md) — Vector pipeline in daemon
+- [`done/2.10.4.13-DONE-daemon-index-queue.md`](done/2.10.4.13-DONE-daemon-index-queue.md) — daemon index queue
+- [`done/2.10.4.14-DONE-daemon-scan-update-notification.md`](done/2.10.4.14-DONE-daemon-scan-update-notification.md) — scan_update events
+- [`done/2.10.4.16-DONE-tree-buffer-client-audit.md`](done/2.10.4.16-DONE-tree-buffer-client-audit.md) — V2 **`Tree*`** + **`ReadFileV2`**
+- [`done/2.10.4.17-DONE-libocbwrap-sandbox-library.md`](done/2.10.4.17-DONE-libocbwrap-sandbox-library.md) — **`libocbwrap`**
+- [`done/2.10.4.19-DONE-runcommand-overlay-index.md`](done/2.10.4.19-DONE-runcommand-overlay-index.md) — **B-11** RunCommand overlay index
+- [`done/2.10.4.25-DONE-file-history-approval.md`](done/2.10.4.25-DONE-file-history-approval.md) — daemon FileHistory approve/revert + pending list SQL
+- [`done/2.10.4.26-DONE-file-history-approval-knock-on.md`](done/2.10.4.26-DONE-file-history-approval-knock-on.md) — V2 client **`ReviewFiles`**, **`Approvals`**, shared refresh
+- [`done/2.10.4-DONE-semantic-index-daemon.md`](done/2.10.4-DONE-semantic-index-daemon.md) — original parent
+
+---
+
+## Code vs app today
+
+- **`ollmfilesd`** — spawned by **`ollmapp/Window.vala`**; binary RPC over stdio/TCP
+- **`libocfiles`** — thin RPC client at canonical root paths (**✅** [**2.10.4.23**](done/2.10.4.23-DONE-v1-removal-source-consolidation.md))
+- **`libocvector2`** — daemon FAISS lib; shipping **`libocvector`** deleted (**[`done/2.10.4.29`](done/2.10.4.29-DONE-vector-cli-rpc-migration.md)**)
+- **`oc-vector-index`** / **`oc-vector-search`** — RPC thin clients to **`ollmfilesd`** (**✅**)

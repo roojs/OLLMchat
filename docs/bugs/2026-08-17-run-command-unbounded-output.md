@@ -1,6 +1,6 @@
 # run_command unbounded output (`ls -RL ~`)
 
-**Status:** ✔️ Applied as stopgap (kill at 100/50) — **superseded** by [`docs/plans/2.6.4-URGENT-run-command-stop-live-tail-spill.md`](../plans/2.6.4-URGENT-run-command-stop-live-tail-spill.md) (URGENT: Stop, live bounded UI, last-slice, spill-to-file; VTE optional / maybe never). Do not extend kill-for-length further.
+**Status:** ✔️ Applied as stopgap (kill at 100/50) — **superseded** by [`docs/plans/TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md`](../plans/TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md) (URGENT: Stop, live bounded UI, last-slice, spill-to-file; VTE optional / maybe never). Do not extend kill-for-length further.
 
 **Started:** 2026-08-17
 
@@ -20,7 +20,7 @@
 
 🔷 Advise the agent in the `run_command` / `bash` tool description against unbounded listings (e.g. `ls -RL` on home).
 
-ℹ️ **Supersession:** Product direction is no longer kill-for-length. Prefer let-finish + **tail** to the LLM + **spill file** for retrieval + user **Stop** / timeout ([2.6.4](../plans/2.6.4-URGENT-run-command-stop-live-tail-spill.md) Phases 3–4).
+ℹ️ **Supersession:** Product direction is no longer kill-for-length. Prefer let-finish + **tail** to the LLM + **spill file** for retrieval + user **Stop** / timeout ([2.6.4](../plans/TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md) Phases 3–4).
 
 ---
 

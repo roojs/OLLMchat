@@ -1,0 +1,510 @@
+# 8.4.9 — Typelib `GLIST` / `GSLIST` IN (lease-id arrays)
+
+> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
+
+**Status:** Priority A + utf8/boxed list IN + utf8 list OUT agent ✔️.
+
+**Parent:** [`RPC-8.4-rpc-positional-values-and-ffi.md`](RPC-8.4-rpc-positional-values-and-ffi.md)
+
+**Depends on:** [`8.4.6-DONE`](done/RPC-8.4.6-DONE-rpc-ffi-leftovers.md) — list **OUT** (`scalar_list` / `scalar_hash`) is in tree. That plan explicitly deferred IN convert.
+
+**Related:** [`8.4.8`](RPC-8.4.8-rpc-live-gtype-explicit-alias.md) — live subclass → typelib alias for mutter actors. gnome-shell-rpc / mutter GIR methods that take `GList*` / `GSList*` of windows / actors.
+
+**Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows `docs/coding-standards.md`
+
+---
+
+## Purpose
+
+- **🔷** `✔️` Priority A: `Gi.convert` / `convert_list` for `TypeTag.GLIST` / `GSLIST` **IN**.
+- **🔷** `✔️` On the wire the list slot is an **array of lease ids** (`UINT64` array → `GLib.Variant` `"at"`), not an array of objects.
+- **🔷** The **caller** turns live objects into those ids before packing `Request.args`. Not `OLLMrpc.args`, not `StreamValue` auto-rewrite.
+- **🔷** `✔️` The **GI layer** sees: GIR wants a list of objects, wire gave `"at"` → `Connection.leases` → real `GList` / `GSList`.
+- **🔷** `✔️` First cut: **GObject** / GInterface elements only (mutter).
+- **🔷** `✔️` utf8 / FILENAME element lists IN: native unboxed `string[]` (wire `as` / `STRING|0x80`). Not leases, not Variant `"as"`.
+- **🔷** `✔️` boxed STRUCT / BOXED / UNION element lists IN: `GLib.Variant` `"aay"` (same family as GObject `"at"`). Each `ay` blob size is `StructInfo.get_size` / `UnionInfo.get_size`. Wire `BOXED|0x80`.
+- **🔷** `✔️` utf8 / FILENAME list OUT: `scalar_list` writes native `string[]` on `Response.args`.
+- **ℹ️** GObject list OUT stays [`8.4.6-DONE`](done/RPC-8.4.6-DONE-rpc-ffi-leftovers.md) `scalar_list` → `Response.result`.
+- **🔷** `✔️` User-named helper: `convert_list` (same family as `convert_array` / `convert_interface`).
+
+---
+
+## Responsibility split
+
+- **🔷** Caller: export / already-leased objects → `uint64` ids → one positional `GLib.Value` holding `GLib.Variant` type `"at"` (or send a `UINT64` array so `StreamValue` encodes the same).
+- **🔷** Wire / `StreamValue`: ordinary `UINT64` array (`"at"`). No object-array type for Priority A.
+- **🔷** `Gi.convert_list`: build `GList` / `GSList`, `v_pointer`. Empty `"at"` → `null` list pointer.
+- **🔷** Lifetime: owned `GLib.List<void*>[]` / `GLib.SList<void*>[]` (`glist_keep` / `gslist_keep`). Compact `free_function` is `g_list_free` / `g_slist_free`. Next invoke assigns `{}` and Vala frees the old heads. Element type is `void*` so `append` does not ref the leased GObject.
+- **🚫** `Gee.ArrayList<void*>`, hand-rolled `glist_free` / `gslist_free` externs, or `~Gi`.
+
+Intro: edits are **Remove** / **Replace with** / **Add** from the tree;
+verify surrounding context before applying.
+
+---
+
+### 1. `libocrpc/Gi.vala` — keep lists for IN convert
+
+**Why:** List heads must stay alive through `g_function_info_invoke`. Owned compact arrays free nodes when replaced with `{}`.
+
+**Where:** fields after `boxed_keep`.
+
+**Depends on:** none.
+
+#### Add — after `private Gee.ArrayList<GLib.Bytes> boxed_keep = new Gee.ArrayList<GLib.Bytes>();`
+
+```vala
+		/**
+		 * IN {@link GLib.List} / {@link GLib.SList} heads for the current
+		 * invoke. Element pointers are lease-backed GObjects (transfer
+		 * none). Assigning ''{}'' runs each compact
+		 * ''free_function'' (''g_list_free'' / ''g_slist_free'').
+		 */
+		private GLib.List<void*>[] glist_keep = {};
+
+		private GLib.SList<void*>[] gslist_keep = {};
+```
+
+---
+
+### 2. `libocrpc/Gi.vala` — `dispatch_new` / `dispatch_function`: drop previous heads
+
+**Why:** Same as `boxed_keep.clear()` at the start of each invoke.
+
+**Where:** each `this.boxed_keep.clear();` in `dispatch_new` and `dispatch_function`.
+
+**Depends on:** §1.
+
+#### Add — immediately after each `this.boxed_keep.clear();`
+
+```vala
+			this.glist_keep = {};
+			this.gslist_keep = {};
+```
+
+---
+
+### 3. `libocrpc/Gi.vala` — `convert`: route `GLIST` / `GSLIST`
+
+**Why:** Today those tags fall through to `INVALID_PARAMS`.
+
+**Where:** `convert`, after the `ARRAY` case, before `INTERFACE`.
+
+**Depends on:** §4.
+
+#### Add — after `case GI.TypeTag.ARRAY:` block’s `return this.convert_array(...);`, before `case GI.TypeTag.INTERFACE:`
+
+```vala
+				case GI.TypeTag.GLIST:
+				case GI.TypeTag.GSLIST:
+					return this.convert_list(arg, vi, offset);
+
+```
+
+---
+
+### 4. `libocrpc/Gi.vala` — `convert_list`
+
+**Why:** Lease-id `"at"` → `GList` / `GSList` of leased GObjects.
+
+**Where:** new method after `convert_array`, before `convert_interface`.
+
+**Depends on:** §1.
+
+#### Add — after the closing `}` of `convert_array`, before `convert_interface` docblock
+
+```vala
+		/**
+		 * Fill one {@link in_args} slot for a GIR GLIST / GSLIST IN argument.
+		 *
+		 * Wire is a {@link GLib.Variant} ''at'' (uint64 lease ids). The
+		 * caller built those ids; this method only resolves
+		 * {@link Transport.Connection.leases} and builds the C list.
+		 * Element type must be GObject / GInterface in
+		 * {@link Bin.gtype_to_alias}. Empty array → null pointer.
+		 * List nodes use ''void*'' so append does not take GObject refs.
+		 *
+		 * @param arg one IN argument from the callable
+		 * @param vi index in {@link request}.args
+		 * @param offset added to ''vi'' for {@link in_args}
+		 * @return false when this method already replied an error
+		 */
+		private bool convert_list(GI.ArgInfo arg, int vi, int offset)
+		{
+			var val = this.request.args.get(vi);
+			var type = arg.get_type();
+			var elem = type.get_param_type(0);
+			if (elem.get_tag() != GI.TypeTag.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var kind = elem.get_interface().get_type();
+			if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			if (val.type() != typeof(GLib.Variant)) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var variant = val.dup_variant();
+			if (!variant.is_of_type(new GLib.VariantType("at"))) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			if (variant.n_children() == 0) {
+				this.in_args[vi + offset].v_pointer = null;
+				return true;
+			}
+			if (type.get_tag() == GI.TypeTag.GLIST) {
+				GLib.List<void*> list = null;
+				for (var i = 0; i < variant.n_children(); i++) {
+					var id = (int) variant.get_child_value(i).get_uint64();
+					if (!this.request.connection.leases.has_key(id)) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					var obj = this.request.connection.leases.get(id);
+					if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(obj.get_type())) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					list.append((void*) obj);
+				}
+				this.in_args[vi + offset].v_pointer = list;
+				this.glist_keep += (owned) list;
+				return true;
+			}
+			GLib.SList<void*> slist = null;
+			for (var i = 0; i < variant.n_children(); i++) {
+				var id = (int) variant.get_child_value(i).get_uint64();
+				if (!this.request.connection.leases.has_key(id)) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				var obj = this.request.connection.leases.get(id);
+				if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(obj.get_type())) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				slist.append((void*) obj);
+			}
+			this.in_args[vi + offset].v_pointer = slist;
+			this.gslist_keep += (owned) slist;
+			return true;
+		}
+
+```
+
+---
+
+## utf8 / boxed (second cut)
+
+Intro: edits are **Remove** / **Replace with** / **Add** from the tree;
+verify surrounding context before applying.
+
+### 5. `libocrpc/Gi.vala` — `convert_list`: utf8 unboxed + boxed `"aay"`
+
+**Why:** GIR `GList*` of strings and boxed structs (`set_builtin_struts`)
+must not `INVALID_PARAMS`. UTF8 is native unboxed `string[]`. Vala has
+no `GType` for `GLib.Bytes[]` (only `string[]`), so boxed lists use
+Variant `"aay"` like GObject `"at"`.
+
+**Where:** `convert_list`, from the element-tag gate through the GObject
+kind check.
+
+**Depends on:** §4 (Priority A method already in tree).
+
+#### Remove
+
+```vala
+			if (elem.get_tag() != GI.TypeTag.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var kind = elem.get_interface().get_type();
+			if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+```
+
+#### Replace with
+
+```vala
+			switch (elem.get_tag()) {
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME:
+					if (val.type() != typeof(string[])) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					var strv = (string[]) val;
+					if (strv.length == 0) {
+						this.in_args[vi + offset].v_pointer = null;
+						return true;
+					}
+					if (type.get_tag() == GI.TypeTag.GLIST) {
+						GLib.List<void*> utf8_list = null;
+						for (var i = 0; i < strv.length; i++) {
+							utf8_list.append((void*) strv[i]);
+						}
+						this.in_args[vi + offset].v_pointer = utf8_list;
+						this.glist_keep += (owned) utf8_list;
+						return true;
+					}
+					GLib.SList<void*> utf8_slist = null;
+					for (var i = 0; i < strv.length; i++) {
+						utf8_slist.append((void*) strv[i]);
+					}
+					this.in_args[vi + offset].v_pointer = utf8_slist;
+					this.gslist_keep += (owned) utf8_slist;
+					return true;
+
+				case GI.TypeTag.INTERFACE:
+					break;
+
+				default:
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+			}
+			var kind = elem.get_interface().get_type();
+			if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED || kind == GI.InfoType.UNION) {
+				size_t n = 0;
+				if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
+					var si = (GI.StructInfo) elem.get_interface();
+					if (!si.is_gtype_struct()) {
+						n = si.get_size();
+					}
+				}
+				if (kind == GI.InfoType.UNION) {
+					n = ((GI.UnionInfo) elem.get_interface()).get_size();
+				}
+				if (n == 0) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				if (val.type() != typeof(GLib.Variant)) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				var blobs = val.dup_variant();
+				if (!blobs.is_of_type(new GLib.VariantType("aay"))) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+				}
+				if (blobs.n_children() == 0) {
+					this.in_args[vi + offset].v_pointer = null;
+					return true;
+				}
+				if (type.get_tag() == GI.TypeTag.GLIST) {
+					GLib.List<void*> boxed_list = null;
+					for (var i = 0; i < blobs.n_children(); i++) {
+						var blob = blobs.get_child_value(i).get_data_as_bytes();
+						if (blob.get_size() != n) {
+							this.request.connection.reply_error(
+								this.request, (int) RpcErrorCode.INVALID_PARAMS);
+							return false;
+						}
+						var keep = new GLib.Bytes(blob.get_data());
+						this.boxed_keep.add(keep);
+						boxed_list.append((void*) keep.get_data());
+					}
+					this.in_args[vi + offset].v_pointer = boxed_list;
+					this.glist_keep += (owned) boxed_list;
+					return true;
+				}
+				GLib.SList<void*> boxed_slist = null;
+				for (var i = 0; i < blobs.n_children(); i++) {
+					var blob = blobs.get_child_value(i).get_data_as_bytes();
+					if (blob.get_size() != n) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+							return false;
+					}
+					var keep = new GLib.Bytes(blob.get_data());
+					this.boxed_keep.add(keep);
+					boxed_slist.append((void*) keep.get_data());
+				}
+				this.in_args[vi + offset].v_pointer = boxed_slist;
+				this.gslist_keep += (owned) boxed_slist;
+				return true;
+			}
+			if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+```
+
+---
+
+### 6. `libocrpc/Bin/StreamValue.vala` — Variant `"aay"` wire (`BOXED|0x80`)
+
+**Why:** Boxed list IN is Variant `"aay"`. Vala has no `GType` for
+`GLib.Bytes[]`. Single `BOXED` stays one blob. Array flag is `0x80`.
+
+**Where:** `write`, Variant `"ad"` block then `"aay"`. `read`, the
+existing `BOXED` type-byte branch.
+
+**Depends on:** §5.
+
+#### Add — `write`: after the `"ad"` Variant branch, still inside `typeof(GLib.Variant)`
+
+```vala
+				if (variant.is_of_type(new GLib.VariantType("aay"))) {
+					ctx.out_stream.put_byte((uint8) GLib.Type.BOXED | 0x80);
+					if (variant.n_children() < 128) {
+						ctx.out_stream.put_byte((uint8) variant.n_children());
+					} else {
+						ctx.out_stream.put_byte((uint8) (0x80 | ((variant.n_children() >> 8) & 0x7F)));
+						ctx.out_stream.put_byte((uint8) (variant.n_children() & 0xFF));
+					}
+					for (var i = 0; i < variant.n_children(); i++) {
+						var blob = variant.get_child_value(i).get_data_as_bytes();
+						ctx.out_stream.put_uint32((uint32) blob.get_size());
+						if (blob.get_size() == 0) {
+							continue;
+						}
+						size_t written;
+						ctx.out_stream.write_all(blob.get_data(), out written);
+					}
+					return;
+				}
+```
+
+#### Remove — `read`: treat every `BOXED` as one blob (masks `0x80`)
+
+```vala
+			if ((GLib.Type) (type_byte & 0x7F) == GLib.Type.BOXED) {
+				var blob_len = ctx.in_stream.read_uint32();
+				var blob_buf = new uint8[blob_len];
+				if (blob_len > 0) {
+					size_t blob_read;
+					ctx.in_stream.read_all(blob_buf[0:blob_len], out blob_read);
+				}
+				var blob_val = GLib.Value(typeof(GLib.Bytes));
+				blob_val.set_boxed(new GLib.Bytes(blob_buf));
+				return blob_val;
+			}
+```
+
+#### Replace with
+
+```vala
+			if ((GLib.Type) (type_byte & 0x7F) == GLib.Type.BOXED) {
+				if ((type_byte & 0x80) != 0) {
+					var n = ctx.in_stream.read_byte();
+					var count = n & 0x7F;
+					if ((n & 0x80) != 0) {
+						count = (count << 8) | ctx.in_stream.read_byte();
+					}
+					var children = new GLib.Variant[count];
+					for (var i = 0; i < count; i++) {
+						var blob_len = ctx.in_stream.read_uint32();
+						var blob_buf = new uint8[blob_len];
+						if (blob_len > 0) {
+							size_t blob_read;
+							ctx.in_stream.read_all(blob_buf[0:blob_len], out blob_read);
+						}
+						children[i] = new GLib.Variant.from_bytes(
+							new GLib.VariantType("ay"), new GLib.Bytes(blob_buf), true);
+					}
+					return new GLib.Variant.array(new GLib.VariantType("ay"), children);
+				}
+				var blob_len = ctx.in_stream.read_uint32();
+				var blob_buf = new uint8[blob_len];
+				if (blob_len > 0) {
+					size_t blob_read;
+					ctx.in_stream.read_all(blob_buf[0:blob_len], out blob_read);
+				}
+				var blob_val = GLib.Value(typeof(GLib.Bytes));
+				blob_val.set_boxed(new GLib.Bytes(blob_buf));
+				return blob_val;
+			}
+```
+
+---
+
+### 7. `libocrpc/Gi.vala` — `scalar_list`: utf8 OUT as unboxed `string[]`
+
+**Why:** `Meta-Selection.get_mimetypes` returns `GList*` of utf8.
+GObject-only `scalar_list` replied `INVALID_PARAMS`. Wire is native
+`string[]` on `Response.args` (same as `OLLMrpc.args("as")`).
+
+**Where:** `scalar_list`, opening tag gate.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+			if (elem.get_tag() != GI.TypeTag.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+```
+
+#### Replace with
+
+```vala
+			switch (elem.get_tag()) {
+				case GI.TypeTag.UTF8:
+				case GI.TypeTag.FILENAME:
+					string[] strv = {};
+					if (arg.v_pointer != null && type.get_tag() == GI.TypeTag.GLIST) {
+						for (unowned GLib.List<void*>? node = (GLib.List<void*>) arg.v_pointer;
+							node != null; node = node.next) {
+							strv += (string) node.data;
+						}
+					}
+					if (arg.v_pointer != null && type.get_tag() == GI.TypeTag.GSLIST) {
+						for (unowned GLib.SList<void*>? node = (GLib.SList<void*>) arg.v_pointer;
+							node != null; node = node.next) {
+							strv += (string) node.data;
+						}
+					}
+					var as_val = GLib.Value(typeof(string[]));
+					as_val.set_boxed(strv);
+					response.args.add(as_val);
+					return true;
+
+				case GI.TypeTag.INTERFACE:
+					break;
+
+				default:
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return false;
+			}
+```
+
+---
+
+## LLM notes
+
+- **🚫** Re-open [`8.4.6-DONE`](done/RPC-8.4.6-DONE-rpc-ffi-leftovers.md) for IN list work.
+- **🚫** Invent a second lease table — use `Connection.leases` only.
+- **🚫** Teach `StreamValue` / `OLLMrpc.args` to auto-convert `GObject[]` → lease-id arrays. Caller sends `"at"`.
+- **🚫** Free GObject data when freeing list nodes — compact `free_function` is nodes only (`g_list_free` / `g_slist_free`).
+- **🚫** `Gee.ArrayList<void*>`, `~Gi`, or extern `glist_free` / `gslist_free`. Store owned `GLib.List<void*>[]` / `GLib.SList<void*>[]`. `Gee.ArrayList<GLib.List<…>>` hits Vala compact duplicate.
+- **🚫** Use `GLib.List<GLib.Object>` — `append (owned G)` would take a GObject ref. Elements stay `void*`.
+- **🚫** INOUT list args — [`8.4.7`](RPC-8.4.7-rpc-ffi-inout.md).
+- **🚫** Boxed list **OUT**. GObject list OUT stays `Response.result`.
+- **🚫** Variant `"as"` for utf8 list IN — native `string[]` only. Boxed list IN is Variant `"aay"` (no `GLib.Bytes[]` GType).
+- **🚫** Extra helpers beyond **`convert_list`** (and the two keep fields).

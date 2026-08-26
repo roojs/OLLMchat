@@ -9,7 +9,7 @@
 **Related:**
 
 - ℹ️ Prior FIXED case (same surface): [`docs/bugs/done/2026-06-02-FIXED-libollamaweb-add-model-search-spin-no-results.md`](done/2026-06-02-FIXED-libollamaweb-add-model-search-spin-no-results.md)
-- ℹ️ Plans: `docs/plans/4.8-ollama-web-live-search.md`, `docs/plans/4.8.1-ollama-web-phase-2-1-add-model.md`
+- ℹ️ Plans: `docs/plans/OLLAMA-4.8-ollama-web-live-search.md`, `docs/plans/OLLAMA-4.8.1-ollama-web-phase-2-1-add-model.md`
 - ✔️ Commit: `ac21b081` — `ollmweb fix` (Parser + initial log)
 
 ---

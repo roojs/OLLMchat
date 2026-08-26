@@ -11,7 +11,7 @@
 
 **Related:**
 
-- ℹ️ Plan: `docs/plans/1.30-chat-input-composer.md`
+- ℹ️ Plan: `docs/plans/APP-1.30-chat-input-composer.md`
 - ℹ️ `docs/bugs/done/2026-07-18-FIXED-composer-plus-no-resize.md` — height fit works; chrome flip is separate
 - ℹ️ `docs/bugs/done/2026-07-16-FIXED-composer-expanded-height.md` — `ScrolledView` owns height
 - ℹ️ `libollmchatgtk/ChatInput.vala` — `is_expanded` / `expanded_changed` / side play
