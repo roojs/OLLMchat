@@ -156,21 +156,20 @@ namespace OLLMrpc
 		 * {@link args}). ''""'' is (self, Request) only; the method
 		 * may still read {@link Request.args}. ''S'' is one
 		 * ''string[]'' value and two C args (pointer + Vala length).
-		 * End the list with ''null''. The live singleton is still
-		 * {@link register}.
+		 * The live singleton is still {@link register}.
 		 *
 		 * == Example ==
 		 *
 		 * {{{
 		 * OLLMrpc.Request.add_class(
-		 *     "RPC-Daemon", typeof(Daemon), "hello", "is", null
+		 *     "RPC-Daemon", typeof(Daemon), "hello", "is"
 		 * );
 		 * OLLMrpc.Request.register("RPC-Daemon", this.daemon);
 		 * }}}
 		 *
 		 * @param name wire object prefix (e.g. RPC-Folder)
 		 * @param type handler GType (C prefix)
-		 * @param ... method, signature, …, then null
+		 * @param ... method, signature pairs
 		 */
 		public static void add_class(
 			string name,

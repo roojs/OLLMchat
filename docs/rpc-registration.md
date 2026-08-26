@@ -26,14 +26,13 @@ Request.register("RPC-Folder", this.folder);
 
 ## `add_class`
 
-Pairs of method suffix + letters, then `null`. Letters match `OLLMrpc.args`, except `S`.
+Pairs of method suffix + letters. Letters match `OLLMrpc.args`, except `S`.
 
 ```vala
 Request.add_class(
     "RPC-Folder", typeof(Folder),
     "fetch", "s",
-    "fetch_files", "siisSb",
-    null
+    "fetch_files", "siisSb"
 );
 ```
 

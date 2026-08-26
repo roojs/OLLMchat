@@ -37,7 +37,7 @@ namespace OLLMrpc
 	 *
 	 * {{{
 	 * OLLMrpc.Request.add_class(
-	 *     "RPC-Daemon", typeof(Daemon), "hello", "is", null
+	 *     "RPC-Daemon", typeof(Daemon), "hello", "is"
 	 * );
 	 * var ffi = new OLLMrpc.Ffi(req);
 	 * ffi.dispatch();
