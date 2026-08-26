@@ -55,7 +55,7 @@ namespace OLLMrpc.Live
 		 * @param prop property being written
 		 * @throws GLib.Error on encode failure
 		 */
-		public override void bin_write_prop (
+		public override void bin_write_prop(
 			Bin.Stream ctx,
 			GLib.ParamSpec prop
 		) throws GLib.Error
@@ -86,7 +86,7 @@ namespace OLLMrpc.Live
 					}
 					return;
 				default:
-					this.bin_default_write_prop (ctx, prop);
+					this.bin_default_write_prop(ctx, prop);
 					return;
 			}
 		}
@@ -101,7 +101,7 @@ namespace OLLMrpc.Live
 		 * @param type_byte wire type byte already consumed
 		 * @throws GLib.Error on decode failure
 		 */
-		public override void bin_read_prop (
+		public override void bin_read_prop(
 			Bin.Stream ctx,
 			GLib.ParamSpec prop,
 			uint8 type_byte
@@ -120,7 +120,7 @@ namespace OLLMrpc.Live
 					}
 					return;
 				default:
-					this.bin_default_read_prop (ctx, prop, type_byte);
+					this.bin_default_read_prop(ctx, prop, type_byte);
 					return;
 			}
 		}

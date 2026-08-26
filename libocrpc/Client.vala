@@ -759,7 +759,7 @@ namespace OLLMrpc
 					);
 				}
 				if (response.error == null) {
-					GLib.debug ("replied id=%d", response.id);
+					GLib.debug("replied id=%d", response.id);
 				}
 				this.complete_pending(response.id, response, null);
 				return;

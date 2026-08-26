@@ -200,7 +200,7 @@ namespace OLLMrpc
 			return this.get_class().find_property(name);
 		}
 
-		public override void bin_write_prop (
+		public override void bin_write_prop(
 			Bin.Stream ctx,
 			GLib.ParamSpec prop
 		) throws GLib.Error
@@ -234,12 +234,12 @@ namespace OLLMrpc
 					}
 					return;
 				default:
-					this.bin_default_write_prop (ctx, prop);
+					this.bin_default_write_prop(ctx, prop);
 					return;
 			}
 		}
 
-		public override void bin_read_prop (
+		public override void bin_read_prop(
 			Bin.Stream ctx,
 			GLib.ParamSpec prop,
 			uint8 type_byte
@@ -261,7 +261,7 @@ namespace OLLMrpc
 					}
 					return;
 				default:
-					this.bin_default_read_prop (ctx, prop, type_byte);
+					this.bin_default_read_prop(ctx, prop, type_byte);
 					return;
 			}
 		}
