@@ -173,6 +173,12 @@ separator.horizontal.oc-table-body-sep {
   color: #c0392b;
 }
 
+.permission-widget .command-preview,
+.command-frame .command-preview {
+  font-weight: bold;
+  font-size: 1.25em;
+}
+
 /* Banner styling - matches Adwaita banner appearance */
 /* Uses libadwaita warning colors for background and text (light theme values) */
 .banner {

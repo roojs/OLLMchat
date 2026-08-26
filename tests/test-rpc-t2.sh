@@ -140,7 +140,7 @@ jq_resp_ok "T2A.3 File.changed.check (NO_CHANGE)" 6 "$RPC_LAST_OUT" \
 file_content_ok "T2A.2 File.read (disk content)" "$HELLO_PATH" "hello from rpc fixture"
 
 run_t2_case "$SCRIPT_DIR/rpc/t2-file-activate.script.in"
-if grep -q "no signal call_activate on RPC-File" "$RPC_LAST_ERR"; then
+if grep -q "no handler for 'RPC-File' (RPC-File.activate)" "$RPC_LAST_ERR"; then
     test_pass "T2A.7 File.activate (no server handler)"
 else
     test_fail "T2A.7 File.activate (no server handler)"

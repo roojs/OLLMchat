@@ -1,6 +1,6 @@
 # T2.4 — changed.check after external touch (Path A: scan)
 {"id":1,"method":"RPC-Daemon.hello","*type":"Request","args":[1,"test-rpc"]}
-{"id":2,"method":"RPC-ProjectManager.create_project","*type":"Request","args":["__PROJECT_PATH__"]}
-{"id":3,"method":"RPC-ProjectManager.activate_project","*type":"Request","args":["__PROJECT_PATH__",false]}
+{"id":2,"method":"RPC-ProjectManager.rpc_create_project","*type":"Request","args":["__PROJECT_PATH__"]}
+{"id":3,"method":"RPC-ProjectManager.rpc_activate_project","*type":"Request","args":["__PROJECT_PATH__",false]}
 {"id":4,"method":"RPC-File.changed.check","*type":"Request","args":["__HELLO_PATH__",0]}
 {"id":99,"method":"RPC-Daemon.shutdown","*type":"Request"}

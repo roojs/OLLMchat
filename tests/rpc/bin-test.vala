@@ -325,6 +325,63 @@ namespace OLLMrpcTests
 				"list bag element mismatch"
 			);
 
+			OLLMrpc.Request.rpc_register();
+			mem = new GLib.MemoryOutputStream.resizable();
+			out_stream = new GLib.DataOutputStream(mem);
+			write_bin = new OLLMrpc.Bin.Stream(null, out_stream);
+			var req_a = new OLLMrpc.Request() {
+				id = 1,
+				method = "RPC-Daemon.hello"
+			};
+			var req_b = new OLLMrpc.Request() {
+				id = 2,
+				method = "RPC-Daemon.hello"
+			};
+			write_bin.write(req_a);
+			var after_first = (size_t) mem.data_size;
+			write_bin.write(req_b);
+			out_stream.close();
+			bytes = mem.steal_as_bytes();
+			var second_slice = bytes.slice((int) after_first, (int) bytes.get_size());
+			var needle = (uint8[]) "RPC-Daemon.hello";
+			var hay = second_slice.get_data();
+			var found_hello = false;
+			for (var i = 0; i + needle.length <= hay.length; i++) {
+				var match = true;
+				for (var j = 0; j < needle.length; j++) {
+					if (hay[i + j] != needle[j]) {
+						match = false;
+						break;
+					}
+				}
+				if (!match) {
+					continue;
+				}
+				found_hello = true;
+				break;
+			}
+			this.check(
+				command_line,
+				!found_hello,
+				"second Request.method still carries full UTF-8"
+			);
+			in_base = new GLib.MemoryInputStream.from_bytes(bytes);
+			in_stream = new GLib.DataInputStream(in_base);
+			read_bin = new OLLMrpc.Bin.Stream(in_stream, null);
+			var parsed_a = read_bin.parse() as OLLMrpc.Request;
+			var parsed_b = read_bin.parse() as OLLMrpc.Request;
+			this.check(command_line, !(parsed_a == null || parsed_b == null), "method-ref parse null\n");
+			this.check(
+				command_line,
+				!(
+					parsed_a.method != "RPC-Daemon.hello"
+					|| parsed_b.method != "RPC-Daemon.hello"
+					|| parsed_a.id != 1
+					|| parsed_b.id != 2
+				),
+				"method-ref round-trip mismatch"
+			);
+
 			} catch (GLib.Error e) {
 				this.fail(command_line, "bin-test: %s".printf(e.message));
 			}

@@ -59,6 +59,12 @@ namespace OLLMchat.Tool
 		 * Permission question text.
 		 */
 		public string permission_question { get; protected set; default = ""; }
+
+		/**
+		 * Optional command (or similar) shown bold above the permission warning.
+		 * Empty when the prompt has no separate command line.
+		 */
+		public string permission_command { get; protected set; default = ""; }
 		
 		/**
 		 * Target path/resource for permission checking.

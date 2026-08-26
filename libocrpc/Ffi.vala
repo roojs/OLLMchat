@@ -68,17 +68,22 @@ namespace OLLMrpc
 		 * @param val boxed argument
 		 * @param slot union written for libffi
 		 * @param atype matching {@link Libffi.Type} const
+		 * @param pin owned string copies kept alive until after ''cif.call''
+		 *        (''val'' is by-value; ''get_string'' would otherwise dangle)
 		 */
 		internal void pack(
 			string tag,
 			GLib.Value val,
 			ref Libffi.Arg slot,
-			out Libffi.Type atype
+			out Libffi.Type atype,
+			Gee.ArrayList<string> pin
 		) {
 			switch (tag) {
 				case "s":
 				case "g":
-					slot.set_pointer((void*) val.get_string());
+					var held = val.get_string();
+					pin.add(held);
+					slot.set_pointer((void*) pin.get(pin.size - 1));
 					atype = Libffi.POINTER;
 					break;
 
@@ -226,9 +231,11 @@ namespace OLLMrpc
 					self = this.request.connection.leases.get(id);
 				}
 			}
-			var camel = new GLib.Regex("(?<=[a-z])([A-Z])");
+			var camel = new GLib.Regex(
+				"(?<=[a-z0-9])([A-Z])|(?<=[A-Z])([A-Z][a-z])"
+			);
 			var symbol = camel.replace(
-				Request.types.get(object_name).name(), -1, 0, "_\\1"
+				Request.types.get(object_name).name(), -1, 0, "_\\1\\2"
 			).down() + "_" + method_name.replace(".", "_");
 			var mod = GLib.Module.open(null, GLib.ModuleFlags.LAZY);
 			if (mod == null) {
@@ -245,6 +252,7 @@ namespace OLLMrpc
 			var nargs = 2 + n_slots;
 			var atypes = new Libffi.Type[nargs];
 			var slots = new Libffi.Arg[nargs];
+			var pin = new Gee.ArrayList<string>();
 			slots[0].set_pointer((void*) self);
 			slots[1].set_pointer((void*) this.request);
 			atypes[0] = Libffi.POINTER;
@@ -255,7 +263,7 @@ namespace OLLMrpc
 			while (offset < signature.length) {
 				var rest = signature.substring(offset);
 				if (rest.has_prefix("S")) {
-					this.pack("as", this.request.args.get(ai), ref slots[2 + si], out atypes[2 + si]);
+					this.pack("as", this.request.args.get(ai), ref slots[2 + si], out atypes[2 + si], pin);
 					slots[2 + si + 1].set_int32(((string[]) this.request.args.get(ai).get_boxed()).length);
 					atypes[2 + si + 1] = Libffi.SINT32;
 					offset += 1;
@@ -278,7 +286,7 @@ namespace OLLMrpc
 					tag = rest.substring(0, n);
 					offset += (int) n;
 				}
-				this.pack(tag, this.request.args.get(ai), ref slots[2 + si], out atypes[2 + si]);
+				this.pack(tag, this.request.args.get(ai), ref slots[2 + si], out atypes[2 + si], pin);
 				si += 1;
 				ai += 1;
 			}

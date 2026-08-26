@@ -128,11 +128,7 @@ namespace OLLMtools.RunCommand
 		 */
 		public override bool build_perm_question()
 		{
-			string cmd_preview = "";
-			if (this.command != "") {
-				int nl = this.command.index_of_char ('\n');
-				cmd_preview = nl >= 0 ? this.command.substring (0, nl).strip () : this.command.strip ();
-			}
+			this.permission_command = this.command.strip();
 
 			if (this.run_as_root) {
 				this.one_time_only = true;
@@ -141,8 +137,7 @@ namespace OLLMtools.RunCommand
 				this.permission_question = "Confirm — Run as ROOT (high risk)\n\n"
 					+ "This command will run with root privileges on your system, outside the normal sandbox.\n\n"
 					+ "WARNING: This may damage your system. Only allow this if you understand exactly what the command does. If you get it wrong, you may not be able to log in tomorrow (or worse).\n\n"
-					+ "Enter your password below. It is used only for this command and is not saved.\n\n"
-					+ "Command: " + cmd_preview;
+					+ "Enter your password below. It is used only for this command and is not saved.";
 				return true;
 			}
 
@@ -153,7 +148,7 @@ namespace OLLMtools.RunCommand
 				this.permission_target_path = "network#" + GLib.get_real_time().to_string();
 				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
 				this.permission_question = "Confirm — Network access requested.\n\n"
-					+ "Run command with network access: " + cmd_preview + "?"
+					+ "Allow this command to run with network access?"
 					+ this.bwrap_unavailable_note ();
 				return true;
 			}
@@ -169,13 +164,14 @@ namespace OLLMtools.RunCommand
 				this.permission_question = "Confirm — Additional file write access requested.\n\n"
 					+ "This request asks for write permission to these folders: "
 					+ string.joinv (", ", this.write_array)
-					+ ", for this command: " + cmd_preview + "?"
+					+ "?"
 					+ this.bwrap_unavailable_note ();
 				return true;
 			}
 
 			if (can && default_sandbox_writes) {
 				this.permission_question = "";
+				this.permission_command = "";
 				this.is_complex_command = false;
 				return false;
 			}
@@ -185,7 +181,7 @@ namespace OLLMtools.RunCommand
 			this.one_time_only = true;
 			this.permission_target_path = this.command;
 			this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-			this.permission_question = "Confirm (sandbox unavailable):\n\nRun command: " + cmd_preview + "?"
+			this.permission_question = "Confirm (sandbox unavailable):\n\nRun this command?"
 				+ this.bwrap_unavailable_note ();
 			return true;
 		}

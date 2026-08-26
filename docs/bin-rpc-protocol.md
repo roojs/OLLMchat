@@ -1,10 +1,10 @@
 # Binary RPC wire format
 
-**Version 3.0**
+**Version 3.1**
 
 This document defines the on-the-wire byte layout for `OLLMrpc.Bin` object bodies. A message is one root object: a type header, a sequence of properties, and an end marker. Multi-byte integers are **big-endian** unless noted otherwise.
 
-The **type byte** on the wire is always a `GLib.Type` fundamental value (optionally OR'd with the array flag). There is no separate compact wire-type enum.
+The **type byte** on the wire is usually a `GLib.Type` fundamental value (optionally OR'd with the array flag). Method name values use dedicated bytes `NAME_REF_REG` / `NAME_REF` (not GLib fundamentals).
 
 ---
 
@@ -14,8 +14,9 @@ A **connection** maintains a per-instance **wire-name** table on its `OLLMrpc.Bi
 
 1. **Wire names (per connection)** — two tables on each `Stream`: **`client_names`** (even wire tokens `0,2,4,…`) and **`server_names`** (odd tokens `1,3,5,…`). Local index `i` → wire `2*i` or `2*i+1`. The client end allocates only even ids; the server end only odd. Tokens (property keys and type-alias strings) are learned via `TOKEN_REG_KEY` / `TOKEN_REG_TYPE`. Gaps on the global id line are expected until the other role allocates.
 2. **Type aliases → GType (process-wide)** — `OLLMrpc.Bin.register(alias, gtype)` (namespace function in `libocrpc/Bin/Stream.vala`), called from each type's `rpc_register()` before any channel opens. Both ends register every wire alias string they send or receive; each maps that alias to its **own** local `GLib.Type`. `register()` call order is not significant. On the wire, alias **strings** still enter the even/odd name tables above.
+3. **Method name values** — `Request.method` / `Notification.method` use type byte `NAME_REF_REG` (`0x7D`, first use: uint16 wire id + length + UTF-8) or `NAME_REF` (`0x7E`, later: uint16 token only) into the same even/odd name tables. **🚫** Do not emit `TOKEN_REG_KEY` after a property tag for this — the next byte is a type byte and `0xFF` is reserved for `TOKEN_REG_TYPE`.
 
-Every **property value**: name token → one-byte **type** (`GLib.Type` fundamental) → payload. When the type is `GLib.Type.OBJECT`, a **name token** (uint16) identifying the object alias follows before the nested property stream. Unknown token or unrecognized alias → protocol error.
+Every **property value**: name token → one-byte **type** → payload. When the type is `GLib.Type.OBJECT`, a **name token** (uint16) identifying the object alias follows before the nested property stream. Unknown token or unrecognized alias → protocol error.
 
 ### Type registration
 
@@ -179,6 +180,35 @@ bytes) via `read_reg_gtype()`.
 | `0xFFFF` | `TOKEN_REG_KEY` — introduce a new property key name |
 | `0xFFFE` | `TOKEN_REG_TYPE` — introduce a type alias (`0xFF` byte then `0xFE`) |
 | `0xFFFD` | `TOKEN_END` — end of property stream |
+
+### Method name values (`NAME_REF`)
+
+After the `method` property name token, the type byte is **not** `G_TYPE_STRING`:
+
+| Byte | Meaning |
+| ---- | ------- |
+| `0x7D` | `NAME_REF_REG` — introduce method string: uint16 wire id + uint8 length + UTF-8 |
+| `0x7E` | `NAME_REF` — uint16 token into the even/odd name tables only |
+
+First use of `"RPC-Daemon.hello"`:
+
+```text
+…              ;; name token for property "method"
+7D             ;; NAME_REF_REG
+00 04          ;; assigned even/odd token (example)
+11             ;; length 17
+52 50 43 …     ;; "RPC-Daemon.hello"
+```
+
+Later use of the same method on the same connection:
+
+```text
+…              ;; name token for property "method"
+7E             ;; NAME_REF
+00 04          ;; token only
+```
+
+JSON / NDJSON (`Bin.Json`) still carries full method strings; the bin bridge expands / learns tokens internally.
 
 ### Property key introduction
 

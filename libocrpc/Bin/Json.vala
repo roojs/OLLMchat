@@ -349,6 +349,12 @@ namespace OLLMrpc.Bin
 			switch (node.get_value_type()) {
 				case GLib.Type.STRING:
 					bin.write_tag(tag_name);
+					if (tag_name == "method") {
+						bin.write_name_ref(
+							node.get_string() != null ? node.get_string() : ""
+						);
+						return;
+					}
 					var str_val = GLib.Value(typeof(string));
 					str_val.set_string(node.get_string() != null ? node.get_string() : "");
 					StreamValue.write(bin, str_val);
@@ -474,6 +480,12 @@ namespace OLLMrpc.Bin
 			uint8 type_byte
 		) throws GLib.Error
 		{
+			if (type_byte == Stream.TYPE_NAME_REF
+				|| type_byte == Stream.TYPE_NAME_REF_REG) {
+				var member = new global::Json.Node(global::Json.NodeType.VALUE);
+				member.set_string(bin.read_name_ref(type_byte));
+				return member;
+			}
 			if ((type_byte & 0x7F) == GLib.Type.INVALID && (type_byte & 0x80) != 0) {
 				var n = bin.in_stream.read_byte();
 				var count = n & 0x7F;

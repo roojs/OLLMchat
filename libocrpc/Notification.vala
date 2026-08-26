@@ -41,5 +41,41 @@ namespace OLLMrpc
 		{
 			OLLMrpc.Bin.register("Notification", typeof(Notification));
 		}
+
+		public override void bin_write_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "buffer":
+					return;
+				case "method":
+					ctx.write_tag(prop.name);
+					ctx.write_name_ref(this.method);
+					return;
+				default:
+					this.bin_default_write_prop(ctx, prop);
+					return;
+			}
+		}
+
+		public override void bin_read_prop(
+			OLLMrpc.Bin.Stream ctx,
+			GLib.ParamSpec prop,
+			uint8 type_byte
+		) throws GLib.Error
+		{
+			switch (prop.name) {
+				case "buffer":
+					return;
+				case "method":
+					this.method = ctx.read_name_ref(type_byte);
+					return;
+				default:
+					this.bin_default_read_prop(ctx, prop, type_byte);
+					return;
+			}
+		}
 	}
 }

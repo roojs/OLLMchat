@@ -175,6 +175,15 @@ namespace OLLMrpc.Bin
 		public const uint16 TOKEN_REG_TYPE = 0xFFFE;
 		public const uint16 TOKEN_END = 0xFFFD;
 		public const uint8 TOKEN_SCM_RIGHTS = 0xFC;
+		/**
+		 * Method name value: introduce string into even/odd tables
+		 * (uint16 wire id + length + UTF-8). Cannot use {@link TOKEN_REG_KEY}
+		 * here — after a property tag the next byte is a type byte, and
+		 * ''0xFF'' is reserved for {@link TOKEN_REG_TYPE}.
+		 */
+		public const uint8 TYPE_NAME_REF_REG = 0x7D;
+		/** Method name value: uint16 token into even/odd name tables. */
+		public const uint8 TYPE_NAME_REF = 0x7E;
 
 		public Stream(
 			GLib.DataInputStream? in_stream,
@@ -318,6 +327,102 @@ namespace OLLMrpc.Bin
 			}
 			this.name_to_token.set(prop_name, wire);
 			this.out_stream.put_uint16(wire);
+		}
+
+		/**
+		 * Write a method name as a learned name-table token.
+		 *
+		 * Unknown names use {@link TYPE_NAME_REF_REG} (introduce + payload).
+		 * Known names use {@link TYPE_NAME_REF} + uint16 only.
+		 *
+		 * @param name full method string (e.g. ''RPC-Daemon.hello'')
+		 */
+		public void write_name_ref(string name) throws GLib.Error
+		{
+			if (this.name_to_token.has_key(name)) {
+				this.out_stream.put_byte(TYPE_NAME_REF);
+				this.out_stream.put_uint16(this.name_to_token.get(name));
+				return;
+			}
+			var local = (uint16) (this.is_server
+				? this.server_names.length
+				: this.client_names.length);
+			var wire = this.is_server ? (uint16) (local * 2 + 1) : (uint16) (local * 2);
+			this.out_stream.put_byte(TYPE_NAME_REF_REG);
+			this.out_stream.put_uint16(wire);
+			var len = (uint8) uint.min(name.length, 255);
+			size_t written;
+			this.out_stream.put_byte(len);
+			this.out_stream.write_all(((uint8[]) name)[0:len], out written);
+			if (this.is_server) {
+				this.server_names += name;
+			} else {
+				this.client_names += name;
+			}
+			this.name_to_token.set(name, wire);
+		}
+
+		/**
+		 * Read a method name after {@link TYPE_NAME_REF} or
+		 * {@link TYPE_NAME_REF_REG} was already consumed.
+		 *
+		 * @param type_byte {@link TYPE_NAME_REF} or {@link TYPE_NAME_REF_REG}
+		 * @return resolved method string
+		 */
+		public string read_name_ref(uint8 type_byte) throws GLib.Error
+		{
+			if (type_byte == TYPE_NAME_REF_REG) {
+				var assigned_id = this.in_stream.read_uint16();
+				var len = this.in_stream.read_byte();
+				var buffer = new uint8[len + 1];
+				size_t read_bytes;
+				this.in_stream.read_all(buffer[0:len], out read_bytes);
+				buffer[len] = 0;
+				var name = (string) buffer;
+				var server = (assigned_id & 1) != 0;
+				var local = (uint16) (assigned_id / 2);
+				var table = server ? this.server_names : this.client_names;
+				if (local > table.length) {
+					throw new StreamError.PROTOCOL(
+						"name-ref token %u out of sequence",
+						assigned_id
+					);
+				}
+				if (local < table.length && table[local] != name) {
+					throw new StreamError.PROTOCOL(
+						"name-ref token %u alias mismatch",
+						assigned_id
+					);
+				}
+				if (local == table.length) {
+					if (server) {
+						this.server_names += name;
+					} else {
+						this.client_names += name;
+					}
+				}
+				this.name_to_token.set(name, assigned_id);
+				return name;
+			}
+			if (type_byte != TYPE_NAME_REF) {
+				throw new StreamError.PROTOCOL(
+					"method expects NAME_REF, got 0x%02X",
+					type_byte
+				);
+			}
+			var wire = this.in_stream.read_uint16();
+			var is_server_token = (wire & 1) != 0;
+			var idx = (uint16) (wire / 2);
+			if (is_server_token) {
+				if (idx >= this.server_names.length) {
+					throw new StreamError.PROTOCOL("unknown server name token %u", wire);
+				}
+				return this.server_names[idx];
+			}
+			if (idx >= this.client_names.length) {
+				throw new StreamError.PROTOCOL("unknown client name token %u", wire);
+			}
+			return this.client_names[idx];
 		}
 
 		internal uint16 read_tag(out string prop_name) throws GLib.Error

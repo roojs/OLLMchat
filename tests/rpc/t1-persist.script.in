@@ -1,5 +1,5 @@
 # T1 persist — create + activate + shutdown (sqlite asserts; __PROJECT_PATH__ substituted)
 {"id":1,"method":"RPC-Daemon.hello","*type":"Request","args":[1,"test-rpc"]}
-{"id":2,"method":"RPC-ProjectManager.create_project","*type":"Request","args":["__PROJECT_PATH__"]}
-{"id":3,"method":"RPC-ProjectManager.activate_project","*type":"Request","args":["__PROJECT_PATH__",true]}
+{"id":2,"method":"RPC-ProjectManager.rpc_create_project","*type":"Request","args":["__PROJECT_PATH__"]}
+{"id":3,"method":"RPC-ProjectManager.rpc_activate_project","*type":"Request","args":["__PROJECT_PATH__",true]}
 {"id":99,"method":"RPC-Daemon.shutdown","*type":"Request"}

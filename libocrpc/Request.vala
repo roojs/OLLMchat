@@ -214,6 +214,10 @@ namespace OLLMrpc
 					}
 					this.bin_default_write_prop(ctx, prop);
 					return;
+				case "method":
+					ctx.write_tag(prop.name);
+					ctx.write_name_ref(this.method);
+					return;
 				case "args":
 					if (this.args.size == 0) {
 						return;
@@ -246,6 +250,9 @@ namespace OLLMrpc
 			switch (prop.name) {
 				case "connection":
 				case "result-type":
+					return;
+				case "method":
+					this.method = ctx.read_name_ref(type_byte);
 					return;
 				case "args":
 					var n = ctx.in_stream.read_byte();

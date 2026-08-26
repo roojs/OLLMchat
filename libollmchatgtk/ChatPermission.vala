@@ -30,6 +30,7 @@ namespace OLLMchatGtk
 	public class ChatPermission : Gtk.Frame
 	{
 		private Gtk.Label question_label;
+		private Gtk.Label command_label;
 		private Gtk.Label password_label;
 		private Gtk.PasswordEntry password_entry;
 		private Gtk.Label password_error_label;
@@ -61,6 +62,19 @@ namespace OLLMchatGtk
 				margin_top = 12,
 				margin_bottom = 8
 			};
+
+			this.command_label = new Gtk.Label("") {
+				halign = Gtk.Align.START,
+				hexpand = true,
+				margin_start = 12,
+				margin_end = 12,
+				margin_top = 12,
+				use_markup = true,
+				selectable = true,
+				ellipsize = Pango.EllipsizeMode.END
+			};
+			this.command_label.add_css_class("command-preview");
+			this.command_label.set_visible(false);
 
 			this.password_label = new Gtk.Label("Your password (sudo):") {
 				halign = Gtk.Align.START,
@@ -108,6 +122,7 @@ namespace OLLMchatGtk
 			var container = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true
 			};
+			container.append(this.command_label);
 			container.append(this.question_label);
 			container.append(this.password_label);
 			container.append(this.password_entry);
@@ -148,6 +163,7 @@ namespace OLLMchatGtk
 		 * Shows the widget, waits for user response, then hides the widget.
 		 * 
 		 * @param question The permission question to display
+		 * @param command Command string shown bold above the warning (empty hides the label)
 		 * @param one_time When true, hides "Allow Always" and "Deny Always" (see {@link OLLMchat.Tool.RequestBase.one_time_only})
 		 * @param high_risk When true, styles the row as high-risk (e.g. root elevation)
 		 * @param elevation_password Password entered for high-risk elevation (empty when denied)
@@ -156,6 +172,7 @@ namespace OLLMchatGtk
 		 */
 		public async OLLMchat.ChatPermission.PermissionResponse request(
 			string question,
+			string command = "",
 			bool one_time = false,
 			bool high_risk = false,
 			out string elevation_password)
@@ -163,8 +180,12 @@ namespace OLLMchatGtk
 			elevation_password = "";
 			this.pending_high_risk = high_risk;
 			this.pending_elevation_password = "";
-			// Update question text
 			this.question_label.label = question;
+			this.command_label.set_visible(command != "");
+			this.command_label.tooltip_text = command;
+			this.command_label.label = (command == "")
+				? ""
+				: "<b>" + GLib.Markup.escape_text(command) + "</b>";
 			
 			// Show/hide buttons based on one_time flag
 			this.deny_always_btn.visible = !one_time;
