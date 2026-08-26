@@ -420,7 +420,7 @@ namespace OLLMcoder.Task
 			var project = this.parent.runner.sr_factory.project_manager.active_project;
 			var project_description = "";
 			if (project != null) {
-				project_description = yield project.project_description();
+				project_description = yield project.rpc_project_description();
 			}
 			var tpl = OLLMcoder.Skill.PromptTemplate.template(
 				this.parent.skill.tools.contains("write_file")

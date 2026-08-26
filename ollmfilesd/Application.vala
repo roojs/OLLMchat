@@ -294,30 +294,23 @@ Examples:
 			OLLMrpc.Error.rpc_register();
 
 			this.daemon = new Daemon(this);
+			OLLMrpc.Request.register("RPC-Daemon", this.daemon);
 			OLLMrpc.Request.register(
-				"RPC-Daemon", this.daemon,
-				(new DaemonParams()).get_type()
+				"RPC-ProjectManager", this.project_manager
 			);
 			OLLMrpc.Request.register(
-				"RPC-ProjectManager", this.project_manager,
-				(new ProjectParams()).get_type()
+				"RPC-File", new File(this.project_manager)
 			);
 			OLLMrpc.Request.register(
-				"RPC-File", new File(this.project_manager),
-				(new FileParams()).get_type()
-			);
-			OLLMrpc.Request.register(
-				"RPC-Folder", new Folder(this.project_manager),
-				(new FolderParams()).get_type()
+				"RPC-Folder", new Folder(this.project_manager)
 			);
 			OLLMrpc.Request.register(
 				"RPC-FileHistory",
-				new FileHistory.for_rpc(this.project_manager),
-				(new FileParams()).get_type()
+				new FileHistory.for_rpc(this.project_manager)
 			);
 			OLLMrpc.Request.register(
-				"RPC-Codebase", new Codebase(this.project_manager, this.config),
-				(new VectorParams()).get_type()
+				"RPC-Codebase",
+				new Codebase(this.project_manager, this.config)
 			);
 
 			if (opt_interactive) {

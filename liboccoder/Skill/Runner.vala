@@ -186,7 +186,7 @@ namespace OLLMcoder.Skill
 			}
 			var description = "";
 			if (project_manager.active_project != null) {
-				description = yield project_manager.active_project.project_description();
+				description = yield project_manager.active_project.rpc_project_description();
 			}
 			var tpl = PromptTemplate.template("task_creation_initial.md");
 			tpl.fill(7,
@@ -455,7 +455,7 @@ namespace OLLMcoder.Skill
 			this.sr_factory.skill_manager.scan();
 			var description = "";
 			if (this.sr_factory.project_manager.active_project != null) {
-				description = yield this.sr_factory.project_manager.active_project.project_description();
+				description = yield this.sr_factory.project_manager.active_project.rpc_project_description();
 			}
 			var tpl = PromptTemplate.template("task_list_iteration.md");
 			tpl.system_fill(1, "skill_catalog", this.sr_factory.skill_manager.to_markdown());
@@ -499,7 +499,7 @@ namespace OLLMcoder.Skill
 			this.sr_factory.skill_manager.scan();
 			var description = "";
 			if (this.sr_factory.project_manager.active_project != null) {
-				description = yield this.sr_factory.project_manager.active_project.project_description();
+				description = yield this.sr_factory.project_manager.active_project.rpc_project_description();
 			}
 			var tpl = PromptTemplate.template("task_list_continue.md");
 			tpl.system_fill(1, "skill_catalog", this.sr_factory.skill_manager.to_markdown());

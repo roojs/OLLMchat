@@ -443,86 +443,108 @@ namespace OLLMfilesd
 		
 		private ProjectManager rpc_manager;
 
-		public signal void call_approve(OLLMrpc.Request request);
-		public signal void call_revert(OLLMrpc.Request request);
+		public static void rpc_register()
+		{
+			OLLMrpc.Request.add_class(
+				"RPC-FileHistory", typeof(FileHistory),
+				"rpc_approve", "sx",
+				"rpc_revert", "sx"
+			);
+		}
 
 		/**
-		 * Wire dispatch singleton ({@code FileHistory.approve} / {@code revert}).
+		 * Wire dispatch singleton ({@code FileHistory.rpc_approve} /
+		 * {@code FileHistory.rpc_revert}).
 		 */
 		public FileHistory.for_rpc(ProjectManager manager)
 		{
 			Object();
+			FileHistory.rpc_register();
 			this.rpc_manager = manager;
-			this.call_approve.connect((request) => {
-				var p = (FileParams) request.param;
-				var file = this.rpc_manager.get_file_from_active_project(
-					p.path
-				);
-				if (file == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							"file not found"
-						)
-					});
-					return;
-				}
-				var rows = new Gee.ArrayList<FileHistory>();
-				FileHistory.query(this.rpc_manager.db).select(
-					"WHERE id = %lld".printf(p.id),
-					rows
-				);
-				if (rows.size == 0) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							"history row not found"
-						)
-					});
-					return;
-				}
-				rows.get(0).approve(this.rpc_manager.db, file);
-				var row = new File(this.rpc_manager);
-				row.copy_from(file, {
-					"manager",
-					"buffer",
-					"parent"
-				});
-				var result = new Gee.ArrayList<GLib.Object>();
-				result.add(row);
+		}
+
+		/**
+		 * ''FileHistory.rpc_approve'' — approve pending history for a file.
+		 *
+		 * @param request inbound RPC
+		 * @param path file path
+		 * @param id history row id
+		 */
+		public void rpc_approve(OLLMrpc.Request request, string path, int64 id)
+		{
+			var file = this.rpc_manager.get_file_from_active_project(path);
+			if (file == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					result = result,
-					msg = "ok"
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"file not found"
+					)
 				});
+				return;
+			}
+			var rows = new Gee.ArrayList<FileHistory>();
+			FileHistory.query(this.rpc_manager.db).select(
+				"WHERE id = %lld".printf(id),
+				rows
+			);
+			if (rows.size == 0) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"history row not found"
+					)
+				});
+				return;
+			}
+			rows.get(0).approve(this.rpc_manager.db, file);
+			var row = new File(this.rpc_manager);
+			row.copy_from(file, {
+				"manager",
+				"buffer",
+				"parent"
 			});
-			this.call_revert.connect((request) => {
-				var p = (FileParams) request.param;
-				var rows = new Gee.ArrayList<FileHistory>();
-				FileHistory.query(this.rpc_manager.db).select(
-					"WHERE id = %lld".printf(p.id),
-					rows
-				);
-				if (rows.size == 0) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							"history row not found"
-						)
-					});
-					return;
+			var result = new Gee.ArrayList<GLib.Object>();
+			result.add(row);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				result = result,
+				msg = "ok"
+			});
+		}
+
+		/**
+		 * ''FileHistory.rpc_revert'' — revert a history row's backup.
+		 *
+		 * @param request inbound RPC
+		 * @param path file path
+		 * @param id history row id
+		 */
+		public void rpc_revert(OLLMrpc.Request request, string path, int64 id)
+		{
+			var rows = new Gee.ArrayList<FileHistory>();
+			FileHistory.query(this.rpc_manager.db).select(
+				"WHERE id = %lld".printf(id),
+				rows
+			);
+			if (rows.size == 0) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"history row not found"
+					)
+				});
+				return;
+			}
+			rows.get(0).revert.begin(
+				request,
+				this.rpc_manager,
+				(obj, res) => {
+					rows.get(0).revert.end(res);
 				}
-				rows.get(0).revert.begin(
-					request,
-					this.rpc_manager,
-					(obj, res) => {
-						rows.get(0).revert.end(res);
-					}
-				);
-			});
+			);
 		}
 
 		/**
@@ -568,8 +590,9 @@ namespace OLLMfilesd
 			OLLMrpc.Request request,
 			ProjectManager manager
 		) {
-			var p = (FileParams) request.param;
-			var file = manager.get_file_from_active_project(p.path);
+			var file = manager.get_file_from_active_project(
+				request.args.get(0).get_string()
+			);
 			if (file == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,

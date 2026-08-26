@@ -27,7 +27,7 @@ OLLMrpc.Bin.register ("Folder", typeof (OLLMfiles.V2.Folder));
 
 Client and server each register the **same wire alias strings**; each maps an alias to whatever local `GLib.Type` implements that payload on that end. Property keys do not need `register()` — they appear on the wire and enter the per-connection name-token table via `TOKEN_REG_KEY`.
 
-Domain types implement `OLLMrpc.Bin.Serializable` for bin encoding. **`rpc_register()`** calls **`Bin.register`** — **not** at channel setup.
+Domain types implement `OLLMrpc.Bin.Serializable` for bin encoding. **`rpc_register()`** calls **`Bin.register`** — **not** at channel setup. Handler wiring (`Request.register` / `add_class` / FFI) is [`rpc-registration.md`](rpc-registration.md), not this file.
 
 ### General usage
 
@@ -568,7 +568,7 @@ See `libocrpc/Response.vala`.
 
 Optional **`ANY[]`** (this section) on **`OLLMrpc.Request`**. Each element is one **`GLib.Value`** (type byte + payload via `Bin.StreamValue.write` / `read`).
 
-**Omit** when **`args.size == 0`**. Existing `CallParam`-only traffic never sends this property.
+**Omit** when **`args.size == 0`**. Call arguments go on **`args`** (not a separate named param bag).
 
 No per-value direction flag and no wrapper object. No protocol version bump.
 

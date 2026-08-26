@@ -205,7 +205,7 @@ Examples:
 		// Note: git_provider defaults to GitProviderBase (dummy implementation) - no need to set it
 		
 		// Load existing projects from database first
-		yield project_manager.load_projects_from_db();
+		yield project_manager.rpc_load_projects_from_db();
 		
 		// Check if project already exists in database
 		var project = project_manager.projects.path_map.get(opt_project);

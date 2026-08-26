@@ -40,7 +40,17 @@ namespace OLLMfilesd
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("File", typeof(File));
-			FileParams.rpc_register();
+			OLLMrpc.Request.add_class(
+				"RPC-File", typeof(File),
+				"read", "s",
+				"exists", "s",
+				"fetch", "ss",
+				"apply_permissions", "su",
+				"register", "s",
+				"changed.check", "sx",
+				"rpc_write", "ssssu",
+				"rpc_delete", "s"
+			);
 		}
 
 		/**
@@ -54,14 +64,223 @@ namespace OLLMfilesd
 			this.base_type = "f";
 		}
 
-		public signal void call_read(OLLMrpc.Request request);
-		public signal void call_exists(OLLMrpc.Request request);
-		public signal void call_fetch(OLLMrpc.Request request);
-		public signal void call_write(OLLMrpc.Request request);
-		public signal void call_apply_permissions(OLLMrpc.Request request);
-		public signal void call_register(OLLMrpc.Request request);
-		public signal void call_delete(OLLMrpc.Request request);
-		public signal void call_changed_check(OLLMrpc.Request request);
+		public void read(OLLMrpc.Request request, string path)
+		{
+			uint8[] data;
+			string etag;
+			try {
+				GLib.File.new_for_path(path).load_contents(
+					null,
+					out data,
+					out etag
+				);
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			var row = new File(this.manager);
+			var indexed = this.manager.get_file_from_active_project(path);
+			if (indexed != null) {
+				row.copy_from(indexed, {
+					"manager",
+					"buffer",
+					"parent"
+				});
+				row.last_modified = indexed.mtime_on_disk();
+			} else {
+				row.path = path;
+				row.id = -1;
+			}
+			var result = new Gee.ArrayList<GLib.Object>();
+			result.add(row);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				result = result,
+				msg = row.is_text ? (string) data : GLib.Base64.encode(
+					data[0:data.length > 0 ? data.length - 1 : 0]
+				),
+				msg_encode = row.is_text ? 0 : 1
+			});
+		}
+
+		public void exists(OLLMrpc.Request request, string path)
+		{
+			var file_type = GLib.FileType.UNKNOWN;
+			try {
+				file_type = GLib.File.new_for_path(path).query_file_type(
+					GLib.FileQueryInfoFlags.NONE,
+					null
+				);
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = ((int) GLib.FileType.UNKNOWN).to_string()
+				});
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				msg = ((int) file_type).to_string()
+			});
+		}
+
+		public void fetch(OLLMrpc.Request request, string project_path, string path)
+		{
+			var project = this.manager.project_root(project_path);
+			if (project == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "project not found"
+				});
+				return;
+			}
+			var project_file = project.project_files.child_map.get(path);
+			if (project_file == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "file not found"
+				});
+				return;
+			}
+			var source = project_file.file;
+			var row = new File(this.manager) {
+				last_modified = source.mtime_on_disk()
+			};
+			row.copy_from(
+				source,
+				{"manager", "buffer", "parent", "last-modified"}
+			);
+			var result = new Gee.ArrayList<GLib.Object>();
+			result.add(row);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				result = result
+			});
+		}
+
+		public void apply_permissions(OLLMrpc.Request request, string path, uint unix_mode)
+		{
+			if (Posix.chmod(path, (Posix.mode_t) (unix_mode & 0777)) != 0) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						GLib.strerror(Posix.errno)
+					)
+				});
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				msg = "ok"
+			});
+		}
+
+		public void register(OLLMrpc.Request request, string path)
+		{
+			var existing = this.manager.get_file_from_active_project(path);
+			if (existing != null && existing.id != -1) {
+				var row = new File(this.manager);
+				row.copy_from(existing, {"manager", "buffer", "parent"});
+				row.last_modified = existing.mtime_on_disk();
+				var result = new Gee.ArrayList<GLib.Object>();
+				result.add(row);
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					result = result
+				});
+				return;
+			}
+			var fake = new File(this.manager) {
+				path = path,
+				id = -1
+			};
+			fake.to_real.begin((obj, res) => {
+				try {
+					fake.to_real.end(res);
+				} catch (GLib.Error e) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							e.message
+						)
+					});
+					return;
+				}
+				var row = new File(this.manager);
+				row.copy_from(fake, {"manager", "buffer", "parent"});
+				row.last_modified = fake.mtime_on_disk();
+				var result = new Gee.ArrayList<GLib.Object>();
+				result.add(row);
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					result = result
+				});
+			});
+		}
+
+		public void changed_check(
+			OLLMrpc.Request request, 
+			string path, 
+			int64 last_known_mtime
+		) {
+			var file = this.manager.get_file_from_active_project(path);
+			var status = FileUpdateStatus.NO_CHANGE;
+			if (file.mtime_on_disk() > last_known_mtime) {
+				status = FileUpdateStatus.CHANGED;
+			}
+			request.reply(new OLLMrpc.Response() {
+				msg = ((int) status).to_string()
+			});
+		}
+
+		/**
+		 * ''File.rpc_write'' — write path contents on the daemon.
+		 *
+		 * @param request inbound RPC
+		 * @param path file path
+		 * @param content file contents
+		 * @param base_type ''f'' / ''d'' / alias
+		 * @param target symlink target when applicable
+		 * @param unix_mode rwx bits
+		 */
+		public void rpc_write(
+			OLLMrpc.Request request,
+			string path, string content, string base_type,
+			string target, uint unix_mode
+		) {
+			this.write.begin(request, (obj, res) => {
+				this.write.end(res);
+			});
+		}
+
+		/**
+		 * ''File.rpc_delete'' — delete a file on the daemon.
+		 *
+		 * @param request inbound RPC
+		 * @param path file path
+		 */
+		public void rpc_delete(OLLMrpc.Request request, string path)
+		{
+			var file = this.manager.get_file_from_active_project(path);
+			this.manager.delete_manager.remove.begin(
+				file,
+				new GLib.DateTime.now_local(),
+				(obj, res) => {
+					this.manager.delete_manager.remove.end(res);
+					this.manager.delete_manager.cleanup.begin();
+				}
+			);
+			request.reply(new OLLMrpc.Response() {
+				msg = "ok"
+			});
+		}
 
 		public override void bin_write_prop(
 			OLLMrpc.Bin.Stream ctx,
@@ -86,250 +305,54 @@ namespace OLLMfilesd
 			base.bin_read_prop(ctx, prop, type_byte);
 		}
 
-		construct
+		private async void write(OLLMrpc.Request request)
 		{
-			this.call_read.connect((request) => {
-				var path = ((FileParams) request.param).path;
-				uint8[] data;
-				string etag;
-				try {
-					GLib.File.new_for_path(path).load_contents(
-						null,
-						out data,
-						out etag
-					);
-				} catch (GLib.Error e) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
-					});
-					return;
-				}
-				var row = new File(this.manager);
-				var indexed = this.manager.get_file_from_active_project(path);
-				if (indexed != null) {
-					row.copy_from(indexed, {
-						"manager",
-						"buffer",
-						"parent"
-					});
-					row.last_modified = indexed.mtime_on_disk();
-				} else {
-					row.path = path;
-					row.id = -1;
-				}
-				var result = new Gee.ArrayList<GLib.Object>();
-				result.add(row);
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					result = result,
-					msg = row.is_text ? (string) data : GLib.Base64.encode(
-						data[0:data.length > 0 ? data.length - 1 : 0]
-					),
-					msg_encode = row.is_text ? 0 : 1
-				});
-			});
-			this.call_exists.connect((request) => {
-				var file_type = GLib.FileType.UNKNOWN;
-				try {
-					file_type = GLib.File.new_for_path(
-						((FileParams) request.param).path
-					).query_file_type(
-						GLib.FileQueryInfoFlags.NONE,
-						null
-					);
-				} catch (GLib.Error e) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = ((int) GLib.FileType.UNKNOWN).to_string()
-					});
-					return;
-				}
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					msg = ((int) file_type).to_string()
-				});
-			});
-			this.call_fetch.connect((request) => {
-				var p = (FileParams) request.param;
-				var project = this.manager.project_root(p.project_path);
-				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "project not found"
-					});
-					return;
-				}
-				var project_file = project.project_files.child_map.get(p.path);
-				if (project_file == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "file not found"
-					});
-					return;
-				}
-				var source = project_file.file;
-				var row = new File(this.manager) {
-					last_modified = source.mtime_on_disk()
-				};
-				row.copy_from(
-					source,
-					{"manager", "buffer", "parent", "last-modified"}
-				);
-				var result = new Gee.ArrayList<GLib.Object>();
-				result.add(row);
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					result = result
-				});
-			});
-			this.call_write.connect((request) => {
-				var p = (FileParams) request.param;
-				this.write.begin(
-					p,
-					request,
-					(obj, res) => {
-						this.write.end(res);
-					}
-				);
-			});
-			this.call_apply_permissions.connect((request) => {
-				var p = (FileParams) request.param;
-				if (Posix.chmod(
-					p.path,
-					(Posix.mode_t) (p.unix_mode & 0777)
-				) != 0) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							GLib.strerror(Posix.errno)
-						)
-					});
-					return;
-				}
-				request.reply(new OLLMrpc.Response() {
-					msg = "ok"
-				});
-			});
-			this.call_register.connect((request) => {
-				var p = (FileParams) request.param;
-				var existing = this.manager.get_file_from_active_project(p.path);
-				if (existing != null && existing.id != -1) {
-					var row = new File(this.manager);
-					row.copy_from(existing, {"manager", "buffer", "parent"});
-					row.last_modified = existing.mtime_on_disk();
-					var result = new Gee.ArrayList<GLib.Object>();
-					result.add(row);
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						result = result
-					});
-					return;
-				}
-				var fake = new File(this.manager) {
-					path = p.path,
-					id = -1
-				};
-				fake.to_real.begin((obj, res) => {
-					try {
-						fake.to_real.end(res);
-					} catch (GLib.Error e) {
-						request.reply(new OLLMrpc.Response() {
-							id = request.id,
-							error = new OLLMrpc.Error(
-								OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-								e.message
-							)
-						});
-						return;
-					}
-					var row = new File(this.manager);
-					row.copy_from(fake, {"manager", "buffer", "parent"});
-					row.last_modified = fake.mtime_on_disk();
-					var result = new Gee.ArrayList<GLib.Object>();
-					result.add(row);
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						result = result
-					});
-				});
-			});
-			this.call_delete.connect((request) => {
-				var file = this.manager.get_file_from_active_project(
-					((FileParams) request.param).path
-				);
-				this.manager.delete_manager.remove.begin(
-					file,
-					new GLib.DateTime.now_local(),
-					(obj, res) => {
-						this.manager.delete_manager.remove.end(res);
-						this.manager.delete_manager.cleanup.begin();
-					}
-				);
-				request.reply(new OLLMrpc.Response() {
-					msg = "ok"
-				});
-			});
-			this.call_changed_check.connect((request) => {
-				var p = (FileParams) request.param;
-				var file = this.manager.get_file_from_active_project(p.path);
-				var status = FileUpdateStatus.NO_CHANGE;
-				if (file.mtime_on_disk() > p.last_known_mtime) {
-					status = FileUpdateStatus.CHANGED;
-				}
-				request.reply(new OLLMrpc.Response() {
-					msg = ((int) status).to_string()
-				});
-			});
-		}
-
-		private async void write(
-			FileParams p,
-			OLLMrpc.Request request
-		) {
+			var path = request.args.get(0).get_string();
+			var content = request.args.get(1).get_string();
+			var base_type = request.args.get(2).get_string();
+			var target = request.args.get(3).get_string();
+			var unix_mode_val = GLib.Value(typeof(uint));
+			request.args.get(4).transform(ref unix_mode_val);
+			var unix_mode = unix_mode_val.get_uint();
 			try {
-				switch (p.base_type) {
+				switch (base_type) {
 					case "d": {
-						var folder = this.manager.get_folder_at_path(p.path);
+						var folder = this.manager.get_folder_at_path(path);
 						if (folder == null) {
 							folder = new Folder(this.manager) {
-								path = p.path,
+								path = path,
 								id = -1
 							};
 						}
 						if (folder.id < 0) {
 							yield folder.to_real();
 						}
-						yield folder.realize(p);
+						yield folder.realize(unix_mode);
 						break;
 					}
 					case "fa": {
 						var alias = this.manager.file_cache.get(
-							p.path
+							path
 						) as FileAlias;
 						if (alias == null) {
 							alias = new FileAlias(this.manager) {
-								path = p.path,
+								path = path,
 								id = -1
 							};
 						}
 						if (alias.id < 0) {
-							yield alias.to_real(p.target);
+							yield alias.to_real(target);
 						}
-						yield alias.realize(p);
+						yield alias.realize(target, unix_mode);
 						break;
 					}
 					default: {
 						var file = this.manager.get_file_from_active_project(
-							p.path
+							path
 						);
 						if (file == null) {
 							file = new File(this.manager) {
-								path = p.path,
+								path = path,
 								id = -1
 							};
 						}
@@ -349,7 +372,7 @@ namespace OLLMfilesd
 							yield file_history.commit();
 							file.saveToDB(this.manager.db, null, false);
 						}
-						yield file.realize(p);
+						yield file.realize(content, unix_mode);
 						if (change_type == "modified") {
 							this.manager.notification(new OLLMrpc.Notification() {
 								method = "event.project.invalidate_cache",
@@ -696,21 +719,21 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * Apply {@link FileParams} on disk for an indexed file (write bytes + mode).
+		 * Apply content and mode on disk for an indexed file.
+		 *
+		 * @param content bytes to write via the buffer
+		 * @param unix_mode optional rwx bits (''0'' skips chmod)
 		 */
-		public async void realize(FileParams p) throws Error
+		public async void realize(string content, uint unix_mode) throws Error
 		{
 			if (this.buffer == null) {
 				this.manager.buffer_provider.create_buffer(this);
 			}
-			yield this.buffer.write_real(p.content);
-			if (p.unix_mode == 0) {
+			yield this.buffer.write_real(content);
+			if (unix_mode == 0) {
 				return;
 			}
-			if (Posix.chmod(
-				this.path,
-				(Posix.mode_t) (p.unix_mode & 0777)
-			) != 0) {
+			if (Posix.chmod(this.path, (Posix.mode_t) (unix_mode & 0777)) != 0) {
 				throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
 			}
 		}

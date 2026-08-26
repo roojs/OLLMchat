@@ -4,41 +4,53 @@
  * Positional Request.args smoke — types here are NOT shipped in libocrpc.
  */
 
-namespace OLLMrpcTests
+namespace RpcDummy
 {
 	public class Hello : GLib.Object
 	{
-		public signal void call_hello(OLLMrpc.Request request);
-
-		construct
+		public static void rpc_register()
 		{
-			this.call_hello.connect((request) => {
-				request.reply(new OLLMrpc.Response());
-			});
+			OLLMrpc.Request.add_class(
+				"RPC-Daemon", typeof(Hello),
+				"hello", ""
+			);
+		}
+
+		public void hello(OLLMrpc.Request request)
+		{
+			request.reply(new OLLMrpc.Response());
 		}
 	}
 
 	public class Probe : GLib.Object
 	{
-		public signal void call_echo(OLLMrpc.Request request);
-
-		public signal void call_blob(OLLMrpc.Request request);
-
-		construct
+		public static void rpc_register()
 		{
-			this.call_echo.connect((request) => {
-				request.reply(new OLLMrpc.Response() {
-					msg = request.args.get(0).get_string()
-						+ request.args.get(1).get_int().to_string()
-				});
-			});
-			this.call_blob.connect((request) => {
-				var response = new OLLMrpc.Response();
-				response.args.add(request.args.get(0));
-				request.reply(response);
+			OLLMrpc.Request.add_class(
+				"RPC-Probe", typeof(Probe),
+				"echo", "si",
+				"blob", ""
+			);
+		}
+
+		public void echo(OLLMrpc.Request request, string text, int number)
+		{
+			request.reply(new OLLMrpc.Response() {
+				msg = text + number.to_string()
 			});
 		}
+
+		public void blob(OLLMrpc.Request request)
+		{
+			var response = new OLLMrpc.Response();
+			response.args.add(request.args.get(0));
+			request.reply(response);
+		}
 	}
+}
+
+namespace OLLMrpcTests
+{
 
 	class TestRpcValues : RpcTestAppBase
 	{
@@ -60,7 +72,10 @@ namespace OLLMrpcTests
 			this.check(command_line, packed.get(1).get_int() == 3, "args int");
 			this.check(command_line, packed.get(2).get_boolean(), "args bool");
 			this.check(command_line, packed.get(3).get_uint64() == 7, "args uint64");
-			var hello = new Hello();
+			var packed_f = OLLMrpc.args("f", 1.5);
+			this.check(command_line, packed_f.size == 1, "args float size");
+			this.check(command_line, packed_f.get(0).get_float() == (float) 1.5, "args float");
+			var hello = new RpcDummy.Hello();
 			var objects = OLLMrpc.args("o", hello);
 			this.check(command_line, objects.size == 1, "args object size");
 			this.check(
@@ -74,16 +89,17 @@ namespace OLLMrpcTests
 			var got_names = (string[]) strv.get(0).get_boxed();
 			this.check(command_line, got_names.length == 2, "args strv length");
 			this.check(command_line, got_names[0] == "a", "args strv [0]");
-			OLLMrpc.Bin.register("CallParam", typeof(OLLMrpc.CallParam));
+			var strv_s = OLLMrpc.args("S", names);
+			this.check(command_line, strv_s.size == 1, "args S size");
+			RpcDummy.Hello.rpc_register();
+			RpcDummy.Probe.rpc_register();
 			OLLMrpc.Request.register(
 				"RPC-Daemon",
-				new Hello(),
-				typeof(OLLMrpc.CallParam)
+				new RpcDummy.Hello()
 			);
 			OLLMrpc.Request.register(
 				"RPC-Probe",
-				new Probe(),
-				typeof(OLLMrpc.CallParam)
+				new RpcDummy.Probe()
 			);
 			var dir = GLib.DirUtils.make_tmp("ocrpc-values-XXXXXX");
 			var sock = GLib.Path.build_filename(dir, "rpc.sock");

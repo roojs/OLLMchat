@@ -632,7 +632,7 @@ namespace OLLMtools.EditMode
 		 * have been applied. Called by both line-based and AST-based change processing
 		 * when all changes are done, before sending the response.
 		 *
-		 * V2: {@link File.write} RPC sends buffer content; daemon records history.
+		 * V2: {@link File.rpc_write} RPC sends buffer content; daemon records history.
 		 * Client refreshes {@link ReviewFiles} after RPC.
 		 */
 		private async void sync_and_update_metadata() throws Error
@@ -650,7 +650,7 @@ namespace OLLMtools.EditMode
 			this.file.is_need_approval = true;
 			this.file.last_change_type = change_type;
 			
-			if (!(yield this.file.write())) {
+			if (!(yield this.file.rpc_write())) {
 				throw new GLib.IOError.FAILED(
 					"Failed to write file via RPC: " + this.request.normalized_path);
 			}

@@ -19,7 +19,7 @@
 namespace OLLMfiles
 {
 	/**
-	 * Client entry point for file deletion — delegates to {@link File.delete} RPC.
+	 * Client entry point for file deletion — delegates to {@link File.rpc_delete} RPC.
 	 *
 	 * V2 thin client: no local filesystem removal, ''FileHistory'', or SQLite.
 	 * The daemon ''ollmfilesd/DeleteManager'' performs backup, disk delete,
@@ -53,7 +53,7 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Delete a file via ''File.delete'' on the daemon.
+		 * Delete a file via ''File.rpc_delete'' on the daemon.
 		 *
 		 * {@link Folder} and alias rows are not supported on the client yet
 		 * (daemon scan / future ''Folder.delete'' RPC). ''timestamp'' is
@@ -68,9 +68,9 @@ namespace OLLMfiles
 			switch (filebase.base_type) {
 				case "f":
 					var file = (File) filebase;
-					if (!yield file.delete()) {
+					if (!yield file.rpc_delete()) {
 						throw new IOError.FAILED(
-							"RPC-File.delete RPC failed for %s".printf(file.path)
+							"RPC-File.rpc_delete RPC failed for %s".printf(file.path)
 						);
 					}
 					if (this.manager.active_file == file) {

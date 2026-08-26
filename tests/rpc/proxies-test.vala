@@ -10,18 +10,29 @@ namespace OLLMrpcTests
 	{
 		public string title { get; set; default = ""; }
 	}
+}
 
+namespace RpcDummy
+{
 	public class Hello : GLib.Object
 	{
-		public signal void call_hello(OLLMrpc.Request request);
-
-		construct
+		public static void rpc_register()
 		{
-			this.call_hello.connect((request) => {
-				request.reply(new OLLMrpc.Response());
-			});
+			OLLMrpc.Request.add_class(
+				"RPC-Daemon", typeof(Hello),
+				"hello", ""
+			);
+		}
+
+		public void hello(OLLMrpc.Request request)
+		{
+			request.reply(new OLLMrpc.Response());
 		}
 	}
+}
+
+namespace OLLMrpcTests
+{
 
 	class TestRpcProxies : RpcTestAppBase
 	{
@@ -37,11 +48,10 @@ namespace OLLMrpcTests
 
 		protected override void run_rpc_test(ApplicationCommandLine command_line) throws Error
 		{
-			OLLMrpc.Bin.register("CallParam", typeof(OLLMrpc.CallParam));
+			RpcDummy.Hello.rpc_register();
 			OLLMrpc.Request.register(
 				"RPC-Daemon",
-				new Hello(),
-				typeof(OLLMrpc.CallParam)
+				new RpcDummy.Hello()
 			);
 			var dir = GLib.DirUtils.make_tmp("ocrpc-proxies-XXXXXX");
 			var sock = GLib.Path.build_filename(dir, "rpc.sock");

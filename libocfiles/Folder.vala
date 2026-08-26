@@ -89,7 +89,7 @@ namespace OLLMfiles
 		/**
 		 * Project-level description from vector metadata (''ProjectAnalysis'').
 		 *
-		 * Client calls ''Folder.project_description'' on the daemon
+		 * Client calls ''Folder.rpc_project_description'' on the daemon
 		 * ([`2.10.4.1`](../../docs/plans/2.10.4.1-ollmfilesd-rpc-api.md)).
 		 *
 		 * Callers (''Skill/Runner'', ''Task/Details'', ''Task/Tool'') must
@@ -97,15 +97,15 @@ namespace OLLMfiles
 		 *
 		 * @return description text, or empty string
 		 */
-		public async string project_description()
+		public async string rpc_project_description()
 		{
 			if (!this.is_project || this.path.length == 0) {
 				return "";
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Folder.project_description",
-				param = new OLLMfilesd.FolderParams() { path = this.path }
+				method = "RPC-Folder.rpc_project_description",
+				args = OLLMrpc.args("s", this.path)
 			});
 			if (response.error != null) {
 				return "";
@@ -116,20 +116,20 @@ namespace OLLMfiles
 		/**
 		 * Distinct folders that need write access (bwrap overlay roots).
 		 *
-		 * ''Folder.roots'' on the daemon — same result as shipping
+		 * ''Folder.rpc_roots'' on the daemon — same result as shipping
 		 * ''build_roots()'', without local ''project_files''.
 		 *
 		 * @return Write-root folder rows (paths are realpaths)
 		 */
-		public async Gee.ArrayList<Folder> roots()
+		public async Gee.ArrayList<Folder> rpc_roots()
 		{
 			if (!this.is_project || this.path.length == 0) {
 				return new Gee.ArrayList<Folder>();
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Folder.roots",
-				param = new OLLMfilesd.FolderParams() { path = this.path }
+				method = "RPC-Folder.rpc_roots",
+				args = OLLMrpc.args("s", this.path)
 			});
 			if (response.error != null) {
 				return new Gee.ArrayList<Folder>();
@@ -165,10 +165,7 @@ namespace OLLMfiles
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-File.fetch",
-				param = new OLLMfilesd.FileParams() {
-					path = path,
-					project_path = this.path
-				}
+				args = OLLMrpc.args("ss", this.path, path)
 			});
 			if (response.error != null) {
 				return null;
@@ -197,10 +194,7 @@ namespace OLLMfiles
 		{
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.contains_folder",
-				param = new OLLMfilesd.FolderParams() {
-					project_path = this.path,
-					path = dir_path
-				}
+				args = OLLMrpc.args("ss", this.path, dir_path)
 			});
 			if (response.error != null) {
 				return false;
@@ -229,14 +223,15 @@ namespace OLLMfiles
 		{
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.fetch_files",
-				param = new OLLMfilesd.FolderParams() {
-					path = this.path,
-					offset = offset,
-					limit = limit,
-					query = query,
-					paths = paths,
-					metadata_only = metadata_only
-				}
+				args = OLLMrpc.args(
+					"siisSb",
+					this.path,
+					offset,
+					limit,
+					query,
+					paths,
+					metadata_only
+				)
 			});
 			if (response.error == null) {
 				var files = (Gee.ArrayList<File>) response.result;

@@ -37,7 +37,6 @@ endif
 
 ollmfilesd_src = files(
   'BufferProviderBase.vala',
-  'CallParam.vala',
   'DeleteManager.vala',
   'FileChange.vala',
   'FileBuffer.vala',

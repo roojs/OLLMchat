@@ -179,8 +179,10 @@ namespace OLLMtools.CodebaseSearch
 		
 		protected override async string execute_request() throws Error
 		{
-			if ((this.query == null || this.query.strip() == "") && this.element_type.strip().down() != "project") {
-				throw new GLib.IOError.INVALID_ARGUMENT("Query parameter is required for searches");
+			if ((this.query == null || this.query.strip() == "")
+					 && this.element_type.strip().down() != "project") {
+				throw new GLib.IOError.INVALID_ARGUMENT(
+						"Query parameter is required for searches");
 			}
 			
 			// Validate element type and category if provided
@@ -209,16 +211,17 @@ namespace OLLMtools.CodebaseSearch
 			
 			// Step 2: Codebase.search on ollmfilesd (filter, FAISS, snippets — daemon-side)
 			var response = yield this.project_manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Codebase.search",
-				param = new OLLMfilesd.VectorParams() {
-					path = active_project.path,
-					query = this.query,
-					language = this.language,
-					element_type = this.element_type,
-					category = this.category,
-					max_results = this.max_results,
-					format = "tool"
-				}
+				method = "Codebase.search",
+				args = OLLMrpc.args(
+					"ssissss",
+					active_project.path,
+					this.query,
+					this.max_results,
+					this.language,
+					this.element_type,
+					this.category,
+					"tool"
+				)
 			});
 			if (response.error != null) {
 				throw new GLib.IOError.FAILED(response.error.message);

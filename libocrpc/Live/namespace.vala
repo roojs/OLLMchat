@@ -26,20 +26,23 @@ namespace OLLMrpc.Live
 
 #if G_OS_WIN32 || ANDROID
 
-	public class RemoteParams : CallParam {
-		public uint64 object_id { get; set; default = 0; }
-		public static void rpc_register() {}
-	}
-
 	public class Remote : GLib.Object {
-		public signal void call_ref(Request request);
-		public signal void call_unref(Request request);
-	}
+		public static void rpc_register()
+		{
+			OLLMrpc.Request.add_class(
+				"RPC-Live-Remote", typeof(Remote),
+				"rpc_ref", "",
+				"rpc_unref", ""
+			);
+		}
 
-	public class SubscribeParams : CallParam {
-		public uint64 object_id { get; set; default = 0; }
-		public string name { get; set; default = ""; }
-		public static void rpc_register() {}
+		public void rpc_ref(Request request)
+		{
+		}
+
+		public void rpc_unref(Request request)
+		{
+		}
 	}
 
 	public class Subscription : GLib.Object {
@@ -51,8 +54,76 @@ namespace OLLMrpc.Live
 	}
 
 	public class Subscribe : GLib.Object {
-		public signal void call_signal(Request request);
-		public signal void call_unsubscribe(Request request);
+		public static void rpc_register()
+		{
+			OLLMrpc.Request.add_class(
+				"RPC-Live-Subscribe", typeof(Subscribe),
+				"rpc_signal", "s",
+				"unsubscribe", "s"
+			);
+		}
+
+		public void rpc_signal(Request request, string name)
+		{
+		}
+
+		public void unsubscribe(Request request, string name)
+		{
+		}
+	}
+
+	public class Callback : GLib.Object {
+		public static void rpc_register()
+		{
+			OLLMrpc.Request.add_class(
+				"RPC-Live-Callback", typeof(Callback),
+				"register", "",
+				"unregister", "t",
+				"reply", ""
+			);
+		}
+
+		public void register(Request request)
+		{
+		}
+
+		public void unregister(Request request, uint64 callback_id)
+		{
+		}
+
+		public void reply(Request request)
+		{
+		}
+	}
+
+	public class Hook : GLib.Object {
+		public Transport.Connection connection { get; set; }
+		public int id { get; set; default = 0; }
+		public int reply_id { get; set; default = 0; }
+		public bool replied { get; set; default = false; }
+		public Gee.ArrayList<GLib.Value?> reply_args {
+			get; set; default = new Gee.ArrayList<GLib.Value?>();
+		}
+
+		public void emit(Gee.ArrayList<GLib.Value?> args)
+		{
+		}
+
+		public static void drop(Hook user)
+		{
+		}
+	}
+
+	public class Invoke : GLib.Object {
+		public int id { get; set; default = 0; }
+		public int reply_id { get; set; default = 0; }
+		public Gee.ArrayList<GLib.Value?> args {
+			get; set; default = new Gee.ArrayList<GLib.Value?>();
+		}
+
+		public static void rpc_register()
+		{
+		}
 	}
 
 	public class Buffer : GLib.Object {

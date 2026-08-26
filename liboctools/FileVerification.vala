@@ -138,7 +138,7 @@ namespace OLLMtools
 			if (!(yield new OLLMfiles.File.new_fake(
 				this.manager,
 				real_path
-			).write(
+			).rpc_write(
 				content,
 				base_type,
 				target,
@@ -225,7 +225,7 @@ namespace OLLMtools
 			if (!(yield new OLLMfiles.File.new_fake(
 				this.manager,
 				real_path
-			).write(
+			).rpc_write(
 				content,
 				base_type,
 				target,

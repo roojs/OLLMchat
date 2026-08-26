@@ -395,7 +395,7 @@ Examples:
 		if (!opt_enable_file_scan) {
 			this.cl.printerr("oc-test-skill-agent: initial file scan disabled (use -E or --enable-file-scan to enable).\n");
 		}
-		yield project_manager.load_projects_from_db();
+		yield project_manager.rpc_load_projects_from_db();
 
 		if (project_path == "") {
 			this.cl.printerr("Project path required (--project PATH or session with project_path set).\n");

@@ -150,7 +150,7 @@ namespace OLLMapp.SettingsDialog
 		 * Load projects from DB (if needed) and bind the list view to the real project store.
 		 * Called when the Projects tab is shown (via map signal). ProjectManager is not available
 		 * at dialog creation; projects are only loaded from DB when the code assistant is first
-		 * used, so we trigger load_projects_from_db here when the user opens the Projects tab.
+		 * used, so we trigger rpc_load_projects_from_db here when the user opens the Projects tab.
 		 */
 		public async void load_projects()
 		{
@@ -161,7 +161,7 @@ namespace OLLMapp.SettingsDialog
 			if (win == null || win.project_manager == null) {
 				return;
 			}
-			yield win.project_manager.load_projects_from_db();
+			yield win.project_manager.rpc_load_projects_from_db();
 			this.project_manager = win.project_manager;
 			this.filtered_projects.model = win.project_manager.projects;
 			this.is_loaded = true;
@@ -218,7 +218,7 @@ namespace OLLMapp.SettingsDialog
 						GLib.warning("Project already in list: %s", normalized);
 						return;
 					}
-					this.project_manager.create_project(normalized);
+					this.project_manager.rpc_create_project.begin(normalized);
 					// TODO(v2): restore when app uses RPC-backed project persistence (2.10.4.22).
 					// this.project_manager.db.backupDB();
 				} catch (GLib.Error e) {

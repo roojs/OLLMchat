@@ -6,27 +6,6 @@
 
 namespace OLLMrpcTests
 {
-	public class Hello : GLib.Object
-	{
-		public signal void call_hello(OLLMrpc.Request request);
-
-		public signal void call_actors(OLLMrpc.Request request);
-
-		construct
-		{
-			this.call_hello.connect((request) => {
-				request.reply(new OLLMrpc.Response());
-			});
-			this.call_actors.connect((request) => {
-				var actor = new TestActorX11();
-				request.connection.export(actor);
-				var response = new OLLMrpc.Response();
-				response.result.add(actor);
-				request.reply(response);
-			});
-		}
-	}
-
 	public class TestActor : GLib.Object
 	{
 	}
@@ -34,6 +13,39 @@ namespace OLLMrpcTests
 	public class TestActorX11 : TestActor
 	{
 	}
+}
+
+namespace RpcDummy
+{
+	public class Hello : GLib.Object
+	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Request.add_class(
+				"RPC-Daemon", typeof(Hello),
+				"hello", "",
+				"actors", ""
+			);
+		}
+
+		public void hello(OLLMrpc.Request request)
+		{
+			request.reply(new OLLMrpc.Response());
+		}
+
+		public void actors(OLLMrpc.Request request)
+		{
+			var actor = new OLLMrpcTests.TestActorX11();
+			request.connection.export(actor);
+			var response = new OLLMrpc.Response();
+			response.result.add(actor);
+			request.reply(response);
+		}
+	}
+}
+
+namespace OLLMrpcTests
+{
 
 	class TestRpcGi : RpcTestAppBase
 	{
@@ -52,11 +64,10 @@ namespace OLLMrpcTests
 			OLLMrpc.Gi.register("Gio", "2.0");
 			OLLMrpc.Bin.register("Test-Actor", typeof(TestActor));
 			OLLMrpc.Bin.register_alias("Test-Actor", typeof(TestActorX11));
-			OLLMrpc.Bin.register("CallParam", typeof(OLLMrpc.CallParam));
+			RpcDummy.Hello.rpc_register();
 			OLLMrpc.Request.register(
 				"RPC-Daemon",
-				new Hello(),
-				typeof(OLLMrpc.CallParam)
+				new RpcDummy.Hello()
 			);
 			var dir = GLib.DirUtils.make_tmp("ocrpc-gi-XXXXXX");
 			var sock = GLib.Path.build_filename(dir, "rpc.sock");

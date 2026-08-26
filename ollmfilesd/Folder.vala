@@ -40,7 +40,15 @@ namespace OLLMfilesd
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("Folder", typeof(Folder));
-			FolderParams.rpc_register();
+			OLLMrpc.Request.add_class(
+				"RPC-Folder", typeof(Folder),
+				"fetch", "s",
+				"contains_folder", "ss",
+				"fetch_pending_approvals", "sx",
+				"rpc_project_description", "s",
+				"rpc_roots", "s",
+				"fetch_files", "siisSb"
+			);
 		}
 		/**
 		 * Whether to use background (idle callback) processing for recursive folder scanning.
@@ -113,160 +121,190 @@ namespace OLLMfilesd
 			}
 		}
 
-		public signal void call_fetch(OLLMrpc.Request request);
-		public signal void call_contains_folder(OLLMrpc.Request request);
-		public signal void call_fetch_files(OLLMrpc.Request request);
-		public signal void call_fetch_pending_approvals(OLLMrpc.Request request);
-		public signal void call_project_description(OLLMrpc.Request request);
-		public signal void call_roots(OLLMrpc.Request request);
-		construct
+		/**
+		 * ''Folder.fetch_files'' — page of file rows, or path-filter
+		 * batch.
+		 *
+		 * @param request inbound RPC
+		 * @param path project path
+		 * @param offset rows to skip
+		 * @param limit page size
+		 * @param query dropdown filter
+		 * @param paths path-filter batch (empty = paged mode)
+		 * @param metadata_only unused on the daemon today
+		 */
+		public void fetch_files(
+			OLLMrpc.Request request,
+			string path, int offset, int limit, string query,
+			string[] paths, bool metadata_only
+		) {
+			var project = this.manager.project_root(path);
+			if (project == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+						"project not found"
+					)
+				});
+				return;
+			}
+			this.fetch_files_reply.begin(request, project);
+		}
+
+		public void fetch(OLLMrpc.Request request, string path)
 		{
-			this.call_fetch.connect((request) => {
-				var path = ((FolderParams) request.param).path;
-				var folder = this.manager.get_folder_at_path(path);
-				if (folder == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "folder not found"
-					});
-					return;
-				}
-				var result = new Gee.ArrayList<GLib.Object>();
-				result.add(folder);
+			var folder = this.manager.get_folder_at_path(path);
+			if (folder == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					result = result
+					msg = "folder not found"
 				});
+				return;
+			}
+			var result = new Gee.ArrayList<GLib.Object>();
+			result.add(folder);
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				result = result
 			});
-			this.call_contains_folder.connect((request) => {
-				var p = (FolderParams) request.param;
-				var project = this.manager.project_root(p.project_path);
-				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "project not found"
-					});
-					return;
-				}
-				if (!project.project_files.folder_map.has_key(p.path)) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "directory not in project"
-					});
-					return;
-				}
+		}
+
+		public void contains_folder(
+			OLLMrpc.Request request,
+			string project_path,
+			string path
+		) {
+			var project = this.manager.project_root(project_path);
+			if (project == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					msg = "true"
+					msg = "project not found"
 				});
+				return;
+			}
+			if (!project.project_files.folder_map.has_key(path)) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "directory not in project"
+				});
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				msg = "true"
 			});
-			this.call_fetch_files.connect((request) => {
-				var p = (FolderParams) request.param;
-				var project = this.manager.project_root(p.path);
-				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-							"project not found"
-						)
-					});
-					return;
-				}
-				this.fetch_files_reply.begin(request, project);
-			});
-			this.call_fetch_pending_approvals.connect((request) => {
-				var p = (FolderParams) request.param;
-				var project = this.manager.project_root(p.path);
-				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "project not found"
-					});
-					return;
-				}
-				Gee.ArrayList<GLib.Object> result;
-				try {
-					result = FileWithHistory.pending(
-						this.manager,
-						project,
-						p.since_id
-					);
-				} catch (GLib.Error e) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
-					});
-					return;
-				}
-				var max_stmt = FileHistory.query(this.manager.db).selectPrepare(
-					"SELECT MAX(id) FROM file_history"
+		}
+
+		public void fetch_pending_approvals(
+			OLLMrpc.Request request,
+			string path,
+			int64 since_id
+		) {
+			var project = this.manager.project_root(path);
+			if (project == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "project not found"
+				});
+				return;
+			}
+			var result = new Gee.ArrayList<GLib.Object>();
+			try {
+				result = FileWithHistory.pending(
+					this.manager,
+					project,
+					since_id
 				);
-				var max_ids = FileHistory.query(this.manager.db).fetchAllInt64(max_stmt);
-				var marker = max_ids.size > 0 ? max_ids.get(0) : (int64) 0;
+			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					result = result,
-					msg = marker.to_string()
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
 				});
-			});
-			this.call_project_description.connect((request) => {
-				var path = ((FolderParams) request.param).path;
-				var project = this.manager.project_root(path);
-				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "project not found"
-					});
-					return;
-				}
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					msg = project.project_description()
-				});
-			});
-			this.call_roots.connect((request) => {
-				var path = ((FolderParams) request.param).path;
-				var project = this.manager.project_root(path);
-				if (project == null) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						msg = "project not found"
-					});
-					return;
-				}
-				Gee.ArrayList<Folder> roots;
-				try {
-					roots = project.roots();
-				} catch (GLib.Error e) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
-					});
-					return;
-				}
-				var list = new Gee.ArrayList<GLib.Object>();
-				foreach (var source in roots) {
-					var row = new Folder(this.manager);
-					row.copy_from(source, {"manager", "buffer", "parent"});
-					list.add(row);
-				}
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					result = list,
-					msg = list.size.to_string()
-				});
+				return;
+			}
+			var max_stmt = FileHistory.query(this.manager.db).selectPrepare(
+				"SELECT MAX(id) FROM file_history"
+			);
+			var max_ids = FileHistory.query(this.manager.db).fetchAllInt64(max_stmt);
+			var marker = max_ids.size > 0 ? max_ids.get(0) : (int64) 0;
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				result = result,
+				msg = marker.to_string()
 			});
 		}
 
 		/**
-		 * Reply to {@link call_fetch_files} after filesystem scan is idle.
+		 * ''Folder.rpc_project_description'' — project-level description
+		 * text from vector metadata.
+		 *
+		 * @param request inbound RPC
+		 * @param path project path
+		 */
+		public void rpc_project_description(OLLMrpc.Request request, string path)
+		{
+			var project = this.manager.project_root(path);
+			if (project == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "project not found"
+				});
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				msg = project.project_description()
+			});
+		}
+
+		/**
+		 * ''Folder.rpc_roots'' — distinct write-root folders for a project.
+		 *
+		 * @param request inbound RPC
+		 * @param path project path
+		 */
+		public void rpc_roots(OLLMrpc.Request request, string path)
+		{
+			var project = this.manager.project_root(path);
+			if (project == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "project not found"
+				});
+				return;
+			}
+			var roots = new Gee.ArrayList<Folder>();
+			try {
+				roots = project.roots();
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			var list = new Gee.ArrayList<GLib.Object>();
+			foreach (var source in roots) {
+				var row = new Folder(this.manager);
+				row.copy_from(source, {"manager", "buffer", "parent"});
+				list.add(row);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				result = list,
+				msg = list.size.to_string()
+			});
+		}
+
+		/**
+		 * Reply to {@link fetch_files} after filesystem scan is idle.
 		 *
 		 * @param request the RPC request to reply to
 		 * @param project resolved project folder for this fetch
@@ -277,10 +315,10 @@ namespace OLLMfilesd
 		)
 		{
 			yield this.manager.wait_scan_idle();
-			var p = (FolderParams) request.param;
-			if (p.paths.length > 0) {
+			var paths = (string[]) request.args.get(4).get_boxed();
+			if (paths.length > 0) {
 				var list = new Gee.ArrayList<GLib.Object>();
-				foreach (var lookup_path in p.paths) {
+				foreach (var lookup_path in paths) {
 					if (!project.project_files.all_files.has_key(lookup_path)) {
 						continue;
 					}
@@ -301,16 +339,18 @@ namespace OLLMfilesd
 				});
 				return;
 			}
-			p.limit = p.limit < 1 ? 50 : p.limit;
-			p.offset = p.offset < 0 ? 0 : p.offset;
+			var limit = request.args.get(2).get_int();
+			var offset = request.args.get(1).get_int();
+			limit = limit < 1 ? 50 : limit;
+			offset = offset < 0 ? 0 : offset;
 			var matched = project.project_files.cached_search(
-				p.query.strip().down()
+				request.args.get(3).get_string().strip().down()
 			);
 			var list = new Gee.ArrayList<GLib.Object>();
-			if (p.offset < matched.size) {
+			if (offset < matched.size) {
 				list.add_all(matched.slice(
-					p.offset,
-					int.min(p.limit, matched.size - p.offset)
+					offset,
+					int.min(limit, matched.size - offset)
 				));
 			}
 			request.reply(new OLLMrpc.Response() {
@@ -1303,20 +1343,19 @@ namespace OLLMfilesd
 			);
 		}
 		/**
-		 * Apply {@link FileParams} on disk (mkdir when missing, then mode).
+		 * Apply mkdir and mode on disk.
+		 *
+		 * @param unix_mode optional rwx bits (''0'' skips chmod)
 		 */
-		public async void realize(FileParams p) throws Error
+		public async void realize(uint unix_mode) throws Error
 		{
 			if (!GLib.FileUtils.test(this.path, GLib.FileTest.EXISTS)) {
 				GLib.File.new_for_path(this.path).make_directory(null);
 			}
-			if (p.unix_mode == 0) {
+			if (unix_mode == 0) {
 				return;
 			}
-			if (Posix.chmod(
-				this.path,
-				(Posix.mode_t) (p.unix_mode & 0777)
-			) != 0) {
+			if (Posix.chmod(this.path, (Posix.mode_t) (unix_mode & 0777)) != 0) {
 				throw new GLib.IOError.FAILED(GLib.strerror(Posix.errno));
 			}
 		}

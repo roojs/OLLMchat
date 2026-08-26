@@ -407,10 +407,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 
 			var hello = new OLLMrpc.Request() {
 				method = "RPC-Daemon.hello",
-				param = new OLLMfilesd.DaemonParams() {
-					protocol = 1,
-					client = "ollmchat-cli"
-				}
+				args = OLLMrpc.args("is", 1, "ollmchat-cli")
 			};
 			if (!yield this.project_manager.rpc.connect(hello, new OLLMrpc.ClientBoot())) {
 				unowned string msg = this.project_manager.rpc.connect_error;
@@ -420,7 +417,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 				throw new GLib.IOError.FAILED("%s", msg);
 			}
 
-			yield this.project_manager.load_projects_from_db();
+			yield this.project_manager.rpc_load_projects_from_db();
 
 			if (opt_project == "") {
 				return;
@@ -451,7 +448,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			}
 
 			if (project == null) {
-				project = yield this.project_manager.create_project(opt_project);
+				project = yield this.project_manager.rpc_create_project(opt_project);
 			}
 
 			this.project_manager.disable_initial_scan = true;

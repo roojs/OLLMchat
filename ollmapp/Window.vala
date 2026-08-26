@@ -223,9 +223,11 @@ namespace OLLMapp
 				}
 				this.project_manager.rpc.call.begin(new OLLMrpc.Request() {
 					method = notif.action.substring(4),
-					param = new OLLMfilesd.VectorParams() {
-						path = this.project_manager.active_project.path,
-					},
+					args = OLLMrpc.args(
+						"ss",
+						this.project_manager.active_project.path,
+						""
+					),
 				}, (obj, res) => {
 					this.project_manager.rpc.call.end(res);
 				});
@@ -476,10 +478,7 @@ namespace OLLMapp
 
 			var hello = new OLLMrpc.Request() {
 				method = "RPC-Daemon.hello",
-				param = new OLLMfilesd.DaemonParams() {
-					protocol = 1,
-					client = "ollmchat"
-				}
+				args = OLLMrpc.args("is", 1, "ollmchat")
 			};
 			if (!yield this.project_manager.rpc.connect(hello, new OLLMrpc.ClientBoot())) {
 				if (this.busy_dialog != null) {
@@ -588,8 +587,8 @@ namespace OLLMapp
 					this.notification(new OLLMrpc.Notification() {
 						method = "client.project.load_start",
 					});
-					this.project_manager.load_projects_from_db.begin((obj, res) => {
-						this.project_manager.load_projects_from_db.end(res);
+					this.project_manager.rpc_load_projects_from_db.begin((obj, res) => {
+						this.project_manager.rpc_load_projects_from_db.end(res);
 						this.notification(new OLLMrpc.Notification() {
 							method = "client.project.load_end",
 						});

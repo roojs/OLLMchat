@@ -23,20 +23,20 @@ namespace OLLMrpc
 	 *
 	 * Set ''method'' to the wire handler name
 	 * (''RPC-Object.method'' for daemons; hyphen nested
-	 * namespaces like ''RPC-Live-Remote.ref''; or a REST
-	 * path for HTTP). Attach a {@link CallParam} subclass on
-	 * ''param'', or positional {@link GLib.Value}s on ''args''
-	 * (omit when empty). For typed HTTP results, set
-	 * ''result_type'' before {@link Client.call}.
+	 * namespaces like ''RPC-Live-Remote.rpc_unref''; or a REST
+	 * path for HTTP). Attach positional {@link GLib.Value}s on
+	 * ''args'' via {@link args} (omit when empty). For typed
+	 * HTTP results, set ''result_type'' before {@link Client.call}.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
 	 * var req = new OLLMrpc.Request() {
 	 *     method = "RPC-Folder.fetch_files",
-	 *     param = new OLLMfilesd.FolderParams() {
-	 *         path = "/home/user/project"
-	 *     },
+	 *     args = OLLMrpc.args(
+	 *         "siisSb", "/home/user/project", 0, 50, "",
+	 *         new string[] {}, false
+	 *     ),
 	 *     result_type = typeof(OLLMfilesd.FileArray)
 	 * };
 	 * var resp = yield rpc.call(req);
@@ -46,7 +46,6 @@ namespace OLLMrpc
 	 * }}}
 	 *
 	 * @see Client
-	 * @see CallParam
 	 * @see Response
 	 */
 	public class Request : GLib.Object, Bin.Serializable
@@ -54,51 +53,43 @@ namespace OLLMrpc
 		/** Wire object prefix → handler singleton (server dispatch). */
 		public static Gee.HashMap<string, GLib.Object> handlers;
 
-		/**
-		 * Wire object prefix → {@link GLib.Type} of the handler's param bag
-		 * (subclass of {@link CallParam}).
-		 */
-		public static Gee.HashMap<GLib.Type, GLib.Type> param_types;
+		/** Wire object prefix → Vala GType (C symbol). */
+		public static Gee.HashMap<string, GLib.Type> types;
+
+		/** Wire object prefix → (method suffix → D-Bus signature). */
+		public static Gee.HashMap<string, Gee.HashMap<string, string>> methods;
+
+		/** Wire prefixes registered with {@link register_live}. */
+		public static Gee.HashMap<string, bool> live;
 
 		public int id { get; set; }
 		public string method { get; set; default = ""; }
 
 		/**
-		 * Typed request arguments (client → daemon).
-		 *
-		 * Client: assign the registered param type for the target object.
-		 * Server: populated by {@link Bin.Serializable} decode on the wire.
-		 */
-		public CallParam param { get; set; default = new CallParam(); }
-
-		/**
 		 * Positional arguments (client → daemon), GIR / C order.
 		 *
-		 * Empty list is omitted on the bin socket. Current callers that
-		 * only set {@link param} never send this property. Direction is
+		 * Empty list is omitted on the bin socket. Direction is
 		 * not on the wire — the handler or typelib knows the signature.
 		 *
 		 * {@link Gee.ArrayList} cannot store {@link GLib.Value} (a struct).
 		 * valac requires a boxed element type. That is boxing, not
 		 * optional or null arguments. An empty list means no positional
-		 * args.
+		 * args. Prefer {@link args} to pack mixed types.
 		 *
 		 * == Example ==
 		 *
 		 * {{{
-		 * var text = GLib.Value(typeof(string));
-		 * text.set_string("hi");
-		 * req.args.add(text);
+		 * req.args = OLLMrpc.args("s", "hi");
 		 * }}}
 		 */
 		public Gee.ArrayList<GLib.Value?> args { get; set; default = new Gee.ArrayList<GLib.Value?>(); }
 
 		/**
-		 * Row in {@link Transport.Connection.leases} for a typelib method.
+		 * Row in {@link Transport.Connection.leases} for a typelib method
+		 * or live-handle RPC.
 		 *
-		 * ''0'' means none (constructors, CallParam-only calls). Omitted
-		 * on the bin socket when ''0''. Not {@link Live.RemoteParams.object_id}
-		 * — that name stays on the CallParam bags.
+		 * ''0'' means none (constructors, calls with no lease). Omitted
+		 * on the bin socket when ''0''.
 		 */
 		public uint64 lease_id { get; set; default = 0; }
 
@@ -117,23 +108,90 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Register a server dispatch handler and its params {@link GLib.Type}.
+		 * Register a server dispatch handler.
 		 *
 		 * @param name wire object prefix (e.g. RPC-Folder)
-		 * @param target live singleton with call_* signals
-		 * @param param_type GObject type for wire params (extends {@link CallParam})
+		 * @param target handler singleton
 		 */
 		public static void register(
 			string name,
-			GLib.Object target,
-			GLib.Type param_type
+			GLib.Object target
 		) {
 			if (handlers == null) {
 				handlers = new Gee.HashMap<string, GLib.Object>();
-				param_types = new Gee.HashMap<GLib.Type, GLib.Type>();
 			}
 			handlers.set(name, target);
-			param_types.set(target.get_type(), param_type);
+		}
+
+		/**
+		 * Register a live-handle handler.
+		 *
+		 * Same as {@link register}, and FFI keeps this singleton as
+		 * ''this'' when {@link lease_id} is set. The id is the target
+		 * (rpc_ref / rpc_unref / rpc_signal), not the calling object.
+		 *
+		 * == Example ==
+		 *
+		 * {{{
+		 * OLLMrpc.Live.Remote.rpc_register();
+		 * OLLMrpc.Request.register_live("RPC-Live-Remote", new OLLMrpc.Live.Remote());
+		 * }}}
+		 *
+		 * @param name wire object prefix (e.g. RPC-Live-Remote)
+		 * @param target handler singleton
+		 */
+		public static void register_live(string name, GLib.Object target)
+		{
+			register(name, target);
+			if (live == null) {
+				live = new Gee.HashMap<string, bool>();
+			}
+			live.set(name, true);
+		}
+
+		/**
+		 * List FFI instance methods for a wire prefix.
+		 *
+		 * Pair method suffix with a D-Bus signature (same letters as
+		 * {@link args}). ''""'' is (self, Request) only; the method
+		 * may still read {@link Request.args}. ''S'' is one
+		 * ''string[]'' value and two C args (pointer + Vala length).
+		 * The live singleton is still {@link register}.
+		 *
+		 * == Example ==
+		 *
+		 * {{{
+		 * OLLMrpc.Request.add_class(
+		 *     "RPC-Daemon", typeof(Daemon), "hello", "is"
+		 * );
+		 * OLLMrpc.Request.register("RPC-Daemon", this.daemon);
+		 * }}}
+		 *
+		 * @param name wire object prefix (e.g. RPC-Folder)
+		 * @param type handler GType (C prefix)
+		 * @param ... method, signature pairs
+		 */
+		public static void add_class(
+			string name,
+			GLib.Type type,
+			...
+		) {
+			if (types == null) {
+				types = new Gee.HashMap<string, GLib.Type>();
+				methods = new Gee.HashMap<string, Gee.HashMap<string, string>>();
+			}
+			types.set(name, type);
+			if (!methods.has_key(name)) {
+				methods.set(name, new Gee.HashMap<string, string>());
+			}
+			var l = va_list();
+			while (true) {
+				var method = l.arg<string>();
+				if (method == null) {
+					break;
+				}
+				methods.get(name).set(method, l.arg<string>());
+			}
 		}
 
 		public unowned ParamSpec? find_property(string name)
@@ -141,7 +199,7 @@ namespace OLLMrpc
 			return this.get_class().find_property(name);
 		}
 
-		public override void bin_write_prop (
+		public override void bin_write_prop(
 			Bin.Stream ctx,
 			GLib.ParamSpec prop
 		) throws GLib.Error
@@ -166,8 +224,7 @@ namespace OLLMrpc
 						ctx.out_stream.put_byte((uint8) this.args.size);
 					} else {
 						ctx.out_stream.put_byte(
-							(uint8) (0x80 | ((this.args.size >> 8) & 0x7F))
-						);
+							(uint8) (0x80 | ((this.args.size >> 8) & 0x7F)));
 						ctx.out_stream.put_byte((uint8) (this.args.size & 0xFF));
 					}
 					foreach (var val in this.args) {
@@ -175,12 +232,12 @@ namespace OLLMrpc
 					}
 					return;
 				default:
-					this.bin_default_write_prop (ctx, prop);
+					this.bin_default_write_prop(ctx, prop);
 					return;
 			}
 		}
 
-		public override void bin_read_prop (
+		public override void bin_read_prop(
 			Bin.Stream ctx,
 			GLib.ParamSpec prop,
 			uint8 type_byte
@@ -202,15 +259,15 @@ namespace OLLMrpc
 					}
 					return;
 				default:
-					this.bin_default_read_prop (ctx, prop, type_byte);
+					this.bin_default_read_prop(ctx, prop, type_byte);
 					return;
 			}
 		}
 
 		/**
-		 * Route this request to the matching call_* signal.
+		 * Route this request to a listed FFI method or {@link Gi}.
 		 *
-		 * @return true when a handler signal was emitted
+		 * @return true when a handler ran
 		 */
 		public bool dispatch()
 		{
@@ -225,41 +282,19 @@ namespace OLLMrpc
 
 			var dot = this.method.index_of_char('.');
 			if (dot < 1 || dot == this.method.length - 1) {
-				GLib.critical(
-					"RPC dispatch: method must be RPC-Object.method, got '%s'",
-					this.method
-				);
+				GLib.critical("RPC dispatch: method must be RPC-Object.method, got '%s'",
+					this.method);
 				return false;
 			}
 
-			var object_name = this.method[0:dot];
-			var method_name = this.method.substring(dot + 1);
-
-			if (handlers != null && handlers.has_key(object_name)) {
-				var handler = handlers.get(object_name);
-				var signal_name = "call_" + method_name.replace(".", "_");
-				if (GLib.Signal.lookup(signal_name, handler.get_type()) == 0) {
-					GLib.critical(
-						"RPC dispatch: no signal call_%s on %s for %s",
-						method_name.replace(".", "_"),
-						object_name,
-						this.method
-					);
-					return false;
-				}
-				GLib.debug("emit %s id=%d", signal_name, this.id);
-				GLib.Signal.emit_by_name(handler, signal_name, this);
-				GLib.debug("emit returned id=%d", this.id);
+			if (new Ffi(this).dispatch()) {
 				return true;
 			}
 			if (new Gi(this).dispatch()) {
 				return true;
 			}
-			GLib.critical(
-				"RPC dispatch: no handler for '%s' (%s)",
-				object_name,
-				this.method
-			);
+			GLib.critical("RPC dispatch: no handler for '%s' (%s)",
+				this.method[0:dot], this.method);
 			return false;
 		}
 

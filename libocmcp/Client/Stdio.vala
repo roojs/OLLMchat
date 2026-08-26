@@ -218,7 +218,7 @@ namespace OLLMmcp.Client
 			var write_roots = new Gee.HashMap<string, string>();
 			if (project != null) {
 				project_path = project.path;
-				foreach (var folder in yield project.roots()) {
+				foreach (var folder in yield project.rpc_roots()) {
 					write_roots.set(folder.path, folder.path);
 				}
 			}

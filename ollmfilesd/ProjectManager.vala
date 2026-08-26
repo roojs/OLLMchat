@@ -33,7 +33,13 @@ namespace OLLMfilesd
 	{
 		public static void rpc_register()
 		{
-			ProjectParams.rpc_register();
+			OLLMrpc.Request.add_class(
+				"RPC-ProjectManager", typeof(ProjectManager),
+				"remove_project", "s",
+				"rpc_load_projects_from_db", "",
+				"rpc_create_project", "s",
+				"rpc_activate_project", "sb"
+			);
 		}
 
 		/**
@@ -133,11 +139,6 @@ namespace OLLMfilesd
 		 */
 		public signal void file_contents_changed(File file);
 
-		public signal void call_load_projects_from_db(OLLMrpc.Request request);
-		public signal void call_create_project(OLLMrpc.Request request);
-		public signal void call_remove_project(OLLMrpc.Request request);
-		public signal void call_activate_project(OLLMrpc.Request request);
-
 		/**
 		 * Out-of-band RPC notification (filesystem scan, etc.).
 		 * {@link OllmfilesdApplication} connects this to {@link OllmfilesdApplication.broadcast}.
@@ -187,54 +188,69 @@ namespace OLLMfilesd
 
 		construct
 		{
-			this.call_load_projects_from_db.connect((request) => {
-				this.load_projects_from_db.begin((obj, res) => {
-					this.load_projects_from_db.end(res);
-					var list = new Gee.ArrayList<GLib.Object>();
-					for (uint i = 0; i < this.projects.get_n_items(); i++) {
-						list.add(this.projects.get_item(i));
-					}
-					request.reply(new OLLMrpc.Response() {
-						result = list
-					});
-				});
-			});
-			this.call_create_project.connect((request) => {
-				var project = this.create_project(
-					((ProjectParams) request.param).path
-				);
-				var result = new Gee.ArrayList<GLib.Object>();
-				result.add(project);
-				request.reply(new OLLMrpc.Response() {
-					result = result
-				});
-			});
-			this.call_remove_project.connect((request) => {
-				this.remove_project(
-					this.projects.path_map.get(
-						((ProjectParams) request.param).path
-					)
-				);
-				request.reply(new OLLMrpc.Response() {
-					msg = "ok"
-				});
-			});
-			this.call_activate_project.connect((request) => {
-				var p = (ProjectParams) request.param;
-				this.activate_project.begin(
-					request,
-					p.path.length > 0
-						? this.projects.path_map.get(p.path)
-						: null,
-					p.skip_scan
-				);
-			});
 			this.file_contents_changed.connect((file) => {
 				if (this.vector_scan != null) {
 					this.vector_scan.queue_file(
 						file, this.active_project);
 				}
 			});
+		}
+
+		/**
+		 * ''ProjectManager.rpc_load_projects_from_db'' — load project
+		 * rows from SQLite, then reply with the list.
+		 *
+		 * @param request inbound RPC; no extra args
+		 */
+		public void rpc_load_projects_from_db(OLLMrpc.Request request)
+		{
+			this.load_projects_from_db.begin((obj, res) => {
+				this.load_projects_from_db.end(res);
+				var list = new Gee.ArrayList<GLib.Object>();
+				for (uint i = 0; i < this.projects.get_n_items(); i++) {
+					list.add(this.projects.get_item(i));
+				}
+				request.reply(new OLLMrpc.Response() {
+					result = list
+				});
+			});
+		}
+
+		/**
+		 * ''ProjectManager.rpc_create_project'' — ensure a project at
+		 * ''path'' and reply with the folder row.
+		 *
+		 * @param request inbound RPC
+		 * @param path project path
+		 */
+		public void rpc_create_project(OLLMrpc.Request request, string path)
+		{
+			var project = this.create_project(path);
+			var result = new Gee.ArrayList<GLib.Object>();
+			result.add(project);
+			request.reply(new OLLMrpc.Response() {
+				result = result
+			});
+		}
+
+		/**
+		 * ''ProjectManager.rpc_activate_project'' — open ''path'' on the
+		 * daemon (scan / index). Empty path clears the active project.
+		 *
+		 * @param request inbound RPC
+		 * @param path project path, or empty to clear
+		 * @param skip_scan when true, skip {@link Folder.read_dir}
+		 */
+		public void rpc_activate_project(
+			OLLMrpc.Request request,
+			string path,
+			bool skip_scan
+		) {
+			this.activate_project.begin(
+				request,
+				path.length > 0 ? this.projects.path_map.get(path) : null,
+				skip_scan
+			);
 		}
 
 		/**
@@ -490,13 +506,16 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * Remove a project from the projects list by clearing the is_project flag.
-		 * Does not delete any filebase or file_history data.
+		 * Remove a project from the projects list by clearing the
+		 * is_project flag. Does not delete any filebase or
+		 * file_history data.
 		 *
-		 * @param project The project folder to remove
+		 * @param request inbound RPC
+		 * @param path project path
 		 */
-		public void remove_project(Folder project)
+		public void remove_project(OLLMrpc.Request request, string path)
 		{
+			var project = this.projects.path_map.get(path);
 			if (this.active_project == project) {
 				this.active_project = null;
 				this.active_project_changed(null);
@@ -504,7 +523,9 @@ namespace OLLMfilesd
 			this.projects.remove(project);
 			project.saveToDB(this.db, null, false);
 			this.db.is_dirty = true;
-		
+			request.reply(new OLLMrpc.Response() {
+				msg = "ok"
+			});
 		}
 		
 		/**

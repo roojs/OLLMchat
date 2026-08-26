@@ -486,7 +486,7 @@ namespace OLLMcoder
 			});
 			try {
 				var win_cfg = host.window_config();
-				yield this.widget.manager.load_projects_from_db();
+				yield this.widget.manager.rpc_load_projects_from_db();
 				yield this.widget.manager.restore_active_state(
 					win_cfg.project,
 					win_cfg.file

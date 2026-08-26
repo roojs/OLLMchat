@@ -388,7 +388,7 @@ namespace OLLMfiles
 		 * Write contents to file on disk (sync buffer to file).
 		 *
 		 * Writes to disk only. Unlike write(), this does not update the buffer contents.
-		 * Client persistence (db, scan) is via {@link File.write} RPC on the daemon.
+		 * Client persistence (db, scan) is via {@link File.rpc_write} RPC on the daemon.
 		 *
 		 * @param contents Contents to write
 		 * @throws Error if file cannot be written

@@ -271,7 +271,7 @@ namespace OLLMfiles
 		/**
 		 * Remove filebase object from SQLite database.
 		 *
-		 * Removed — use {@link File.delete} RPC.
+		 * Removed — use {@link File.rpc_delete} RPC.
 		 */
 
 		/**

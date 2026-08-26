@@ -77,7 +77,7 @@ namespace OLLMchat.Prompt
 		/**
 		 * Fills template placeholders with values.
 		 * Varargs key-value pairs: fill("key1", value1, "key2", value2, ...).
-		 * Replaces {key1} with value1, etc. Vala passes null at end of varargs.
+		 * Replaces {key1} with value1, etc.
 		 */
 		public string fill(...)
 		{

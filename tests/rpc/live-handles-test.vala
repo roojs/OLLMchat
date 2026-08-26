@@ -27,12 +27,8 @@ namespace OLLMrpcTests
 			var conn = new OLLMrpc.Transport.Connection() {
 				live_handles = true
 			};
-			OLLMrpc.Live.RemoteParams.rpc_register();
-			OLLMrpc.Request.register(
-				"RPC-Live-Remote",
-				new OLLMrpc.Live.Remote(),
-				typeof(OLLMrpc.Live.RemoteParams)
-			);
+			OLLMrpc.Live.Remote.rpc_register();
+			OLLMrpc.Request.register_live("RPC-Live-Remote", new OLLMrpc.Live.Remote());
 			var obj = new GLib.Object();
 			var floor = obj.ref_count;
 			var id = conn.export(obj);
@@ -41,20 +37,16 @@ namespace OLLMrpcTests
 			this.check(command_line, conn.export(obj) == id, "re-export changed id");
 
 			var ref_req = new OLLMrpc.Request() {
-				method = "RPC-Live-Remote.ref",
-				param = new OLLMrpc.Live.RemoteParams() {
-					object_id = id
-				},
+				method = "RPC-Live-Remote.rpc_ref",
+				lease_id = id,
 				connection = conn
 			};
 			this.check(command_line, ref_req.dispatch(), "Remote.ref dispatch failed");
 			this.check(command_line, obj.ref_count == floor + 2, "Remote.ref did not increment");
 
 			var unref_req = new OLLMrpc.Request() {
-				method = "RPC-Live-Remote.unref",
-				param = new OLLMrpc.Live.RemoteParams() {
-					object_id = id
-				},
+				method = "RPC-Live-Remote.rpc_unref",
+				lease_id = id,
 				connection = conn
 			};
 			this.check(command_line, unref_req.dispatch(), "Remote.unref extra dispatch failed");
@@ -67,10 +59,8 @@ namespace OLLMrpcTests
 			var pinned_floor = pinned.ref_count;
 			var pinned_id = conn.export(pinned);
 			var extra_req = new OLLMrpc.Request() {
-				method = "RPC-Live-Remote.ref",
-				param = new OLLMrpc.Live.RemoteParams() {
-					object_id = pinned_id
-				},
+				method = "RPC-Live-Remote.rpc_ref",
+				lease_id = pinned_id,
 				connection = conn
 			};
 			this.check(command_line, extra_req.dispatch(), "stop-path Remote.ref dispatch failed");

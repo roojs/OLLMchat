@@ -22,7 +22,7 @@ namespace OLLMrpc
 	 * Compile-only {@link Gi} shell when typelib invoke is not built.
 	 *
 	 * {@link register} is a no-op. {@link dispatch} always returns false
-	 * so {@link Request.dispatch} stays on handler singletons.
+	 * so unlisted methods do not fall through to a signal path.
 	 */
 	public class Gi : GLib.Object
 	{

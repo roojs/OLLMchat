@@ -241,7 +241,7 @@ namespace OLLMtools.WriteFile
 					this.normalized_path
 				);
 			}
-			// Create fake file if not yet tracked (register before File.write RPC)
+			// Create fake file if not yet tracked (register before File.rpc_write RPC)
 			if (this.file == null) {
 				this.file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
 			}
@@ -345,7 +345,7 @@ namespace OLLMtools.WriteFile
 			// For added files: write to disk first, then register (index)
 			this.file.is_need_approval = true;
 			this.file.last_change_type = change_type;
-			if (!(yield this.file.write())) {
+			if (!(yield this.file.rpc_write())) {
 				throw new GLib.IOError.FAILED(
 					"Failed to write file via RPC: " + this.normalized_path);
 			}

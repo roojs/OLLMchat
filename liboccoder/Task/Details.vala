@@ -429,7 +429,7 @@ public class Details : OLLMchat.Agent.Base, ProgressItem
 		var project_description = "";
 		if (this.runner.sr_factory.project_manager.active_project != null) {
 			project_description = yield this.runner.sr_factory.project_manager
-				.active_project.project_description();
+				.active_project.rpc_project_description();
 		}
 		var tpl = OLLMcoder.Skill.PromptTemplate.template(
 			this.skill.tools.size > 0 && !this.skill.tools.contains("write_file")

@@ -273,6 +273,10 @@ namespace OLLMrpc.Bin
 				if (items.get_length() == 0) {
 					return;
 				}
+				if (tag_name == "args") {
+					this.json_array_to_bin(tag_name, items, bin, name);
+					return;
+				}
 				var first_node = items.get_element(0);
 				if (first_node.get_node_type() == global::Json.NodeType.VALUE && first_node.get_value_type() == GLib.Type.STRING) {
 					string[] arr = {};
@@ -381,11 +385,110 @@ namespace OLLMrpc.Bin
 				node.get_value_type().name(), name);
 		}
 
+		/**
+		 * Write a JSON array as wire ''ANY[]'' (heterogeneous args).
+		 *
+		 * Each element is a scalar or nested string array, encoded via
+		 * {@link StreamValue.write} after the ''INVALID|0x80'' header.
+		 *
+		 * @param tag_name wire property name (e.g. ''args'')
+		 * @param items JSON array body
+		 * @param bin destination stream
+		 * @param name original member name for error text
+		 */
+		void json_array_to_bin(
+			string tag_name,
+			global::Json.Array items,
+			Stream bin,
+			string name
+		) throws GLib.Error
+		{
+			bin.write_tag(tag_name);
+			bin.out_stream.put_byte((uint8) GLib.Type.INVALID | 0x80);
+			var any_count = items.get_length();
+			if (any_count < 128) {
+				bin.out_stream.put_byte((uint8) any_count);
+			} else {
+				bin.out_stream.put_byte(
+					(uint8) (0x80 | ((any_count >> 8) & 0x7F)));
+				bin.out_stream.put_byte((uint8) (any_count & 0xFF));
+			}
+			for (var i = 0u; i < any_count; i++) {
+				var elem = items.get_element(i);
+				if (elem.get_node_type() == global::Json.NodeType.ARRAY) {
+					string[] arr = {};
+					var nested = elem.get_array();
+					for (var j = 0u; j < nested.get_length(); j++) {
+						var s = nested.get_string_element(j);
+						arr += s != null ? s : "";
+					}
+					var as_val = GLib.Value(typeof(string[]));
+					as_val.set_boxed(arr);
+					StreamValue.write(bin, as_val);
+					continue;
+				}
+				if (elem.get_node_type() != global::Json.NodeType.VALUE) {
+					throw new StreamError.PROTOCOL(
+						"member '%s' ANY[] element unsupported",
+						name
+					);
+				}
+				switch (elem.get_value_type()) {
+					case GLib.Type.STRING:
+						var str_val = GLib.Value(typeof(string));
+						str_val.set_string(
+							elem.get_string() != null ? elem.get_string() : ""
+						);
+						StreamValue.write(bin, str_val);
+						break;
+					case GLib.Type.BOOLEAN:
+						var bool_val = GLib.Value(typeof(bool));
+						bool_val.set_boolean(elem.get_boolean());
+						StreamValue.write(bin, bool_val);
+						break;
+					case GLib.Type.INT:
+					case GLib.Type.INT64:
+					case GLib.Type.DOUBLE:
+						var i64 = (int64) elem.get_int();
+						if (i64 >= int.MIN && i64 <= int.MAX) {
+							var int_val = GLib.Value(typeof(int));
+							int_val.set_int((int) i64);
+							StreamValue.write(bin, int_val);
+							break;
+						}
+						var wide_val = GLib.Value(typeof(int64));
+						wide_val.set_int64(i64);
+						StreamValue.write(bin, wide_val);
+						break;
+					default:
+						throw new StreamError.PROTOCOL(
+							"unsupported JSON value type '%s' in args",
+							elem.get_value_type().name()
+						);
+				}
+			}
+		}
+
 		public global::Json.Node bin_member_to_json(
 			Stream bin,
 			uint8 type_byte
 		) throws GLib.Error
 		{
+			if ((type_byte & 0x7F) == GLib.Type.INVALID && (type_byte & 0x80) != 0) {
+				var n = bin.in_stream.read_byte();
+				var count = n & 0x7F;
+				if ((n & 0x80) != 0) {
+					count = (count << 8) | bin.in_stream.read_byte();
+				}
+				var items = new global::Json.Array();
+				for (var i = 0; i < count; i++) {
+					var elem = bin.in_stream.read_byte();
+					items.add_element(this.bin_member_to_json(bin, elem));
+				}
+				var out_node = new global::Json.Node(global::Json.NodeType.ARRAY);
+				out_node.set_array(items);
+				return out_node;
+			}
 			if ((type_byte & 0x7F) == GLib.Type.OBJECT) {
 				if ((type_byte & 0x80) != 0) {
 					var element_gtype = bin.read_gtype();

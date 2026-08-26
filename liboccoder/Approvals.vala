@@ -439,8 +439,8 @@ namespace OLLMcoder
 				path = this.selected_file.path,
 				manager = this.project_manager
 			};
-			hist.approve.begin((obj, res) => {
-				hist.approve.end(res);
+			hist.rpc_approve.begin((obj, res) => {
+				hist.rpc_approve.end(res);
 				this.project_manager.review_files.refresh.begin();
 			});
 		}
@@ -457,8 +457,8 @@ namespace OLLMcoder
 				path = this.selected_file.path,
 				manager = this.project_manager
 			};
-			hist.revert.begin((obj, res) => {
-				hist.revert.end(res);
+			hist.rpc_revert.begin((obj, res) => {
+				hist.rpc_revert.end(res);
 				this.project_manager.review_files.refresh.begin();
 			});
 		}
