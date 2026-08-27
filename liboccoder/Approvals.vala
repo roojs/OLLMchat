@@ -440,7 +440,19 @@ namespace OLLMcoder
 				manager = this.project_manager
 			};
 			hist.rpc_approve.begin((obj, res) => {
-				hist.rpc_approve.end(res);
+				try {
+					hist.rpc_approve.end(res);
+				} catch (GLib.Error e) {
+					GLib.critical ("approve failed %s: %s",
+						this.selected_file.path, e.message);
+					this.project_manager.rpc.notification (new OLLMrpc.Notification () {
+						method = "Alert.show",
+						message = "Could not approve change: " + e.message
+					});
+					this.approve_button.sensitive = true;
+					this.reject_button.sensitive = true;
+					return;
+				}
 				this.project_manager.review_files.refresh.begin();
 			});
 		}
@@ -458,7 +470,19 @@ namespace OLLMcoder
 				manager = this.project_manager
 			};
 			hist.rpc_revert.begin((obj, res) => {
-				hist.rpc_revert.end(res);
+				try {
+					hist.rpc_revert.end(res);
+				} catch (GLib.Error e) {
+					GLib.critical ("revert failed %s: %s",
+						this.selected_file.path, e.message);
+					this.project_manager.rpc.notification (new OLLMrpc.Notification () {
+						method = "Alert.show",
+						message = "Could not revert change: " + e.message
+					});
+					this.approve_button.sensitive = true;
+					this.reject_button.sensitive = true;
+					return;
+				}
 				this.project_manager.review_files.refresh.begin();
 			});
 		}

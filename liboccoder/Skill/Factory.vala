@@ -128,7 +128,11 @@ namespace OLLMcoder.Skill
 				);
 				yield this.widget.apply_manager_state();
 			} catch (GLib.Error e) {
-				GLib.warning("Failed to initialize Skills Agent widget: %s", e.message);
+				GLib.critical ("initialize Skills Agent widget: %s", e.message);
+				host.notification (new OLLMrpc.Notification () {
+					method = "Alert.show",
+					message = "Could not load projects: " + e.message
+				});
 			} finally {
 				host.notification(new OLLMrpc.Notification() {
 					method = "client.project.load_end",

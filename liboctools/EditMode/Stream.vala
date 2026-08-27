@@ -386,7 +386,13 @@ namespace OLLMtools.EditMode
 				// Queue is empty - sync buffer to file and update metadata for AST changes
 				// then send response if message is completed
 				if (this.request.message_completed) {
-					yield this.sync_and_update_metadata();
+					try {
+						yield this.sync_and_update_metadata();
+					} catch (GLib.Error e) {
+						this.changes.add (new OLLMfiles.FileChange.with_error (
+							this.file,
+							"Error syncing changes: " + e.message));
+					}
 					this.send_response();
 				}
 				return;
@@ -650,9 +656,14 @@ namespace OLLMtools.EditMode
 			this.file.is_need_approval = true;
 			this.file.last_change_type = change_type;
 			
-			if (!(yield this.file.rpc_write())) {
-				throw new GLib.IOError.FAILED(
-					"Failed to write file via RPC: " + this.request.normalized_path);
+			try {
+				yield this.file.rpc_write();
+			} catch (GLib.Error e) {
+				throw new GLib.IOError.FAILED (
+					"Failed to write file via RPC: "
+						+ this.request.normalized_path
+						+ ": "
+						+ e.message);
 			}
 			
 			if (change_type == "added" && this.file.id <= 0 && is_in_project) {

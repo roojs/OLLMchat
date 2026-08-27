@@ -120,11 +120,19 @@ namespace OLLMtools.ReadFile
 				return;
 			}
 
-			var response = yield this.file.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Codebase.file_info",
-				args = OLLMrpc.args("s", this.file.path)
-			});
-			var rows = (Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>) response.result;
+			Gee.ArrayList<OLLMfiles.SQT.VectorMetadata> rows;
+			try {
+				var response = yield this.file.manager.rpc.call (
+					new OLLMrpc.Request () {
+						method = "RPC-Codebase.file_info",
+						args = OLLMrpc.args ("s", this.file.path)
+					});
+				rows = (Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>) response.result;
+			} catch (GLib.Error e) {
+				GLib.critical ("Summarize vector metadata: %s: %s",
+					this.file.path, e.message);
+				return;
+			}
 			foreach (var row in rows) {
 				var ast_path = row.ast_path.strip();
 				if (ast_path == "") {

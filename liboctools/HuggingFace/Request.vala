@@ -505,10 +505,17 @@ namespace OLLMtools.HuggingFace
 								message = hub_ref,
 							});
 						} catch (GLib.Error e) {
-							this.agent.notification(new OLLMrpc.Notification() {
+							GLib.critical ("hf download %s: %s",
+								hub_ref, e.message);
+							this.agent.notification (new OLLMrpc.Notification () {
 								method = "event.hf.download.end",
 								object_type = "Model",
 								message = hub_ref + " error: " + e.message,
+							});
+							this.agent.notification (new OLLMrpc.Notification () {
+								method = "Banner.show",
+								message = "Hugging Face download failed: "
+									+ e.message
 							});
 						}
 					});

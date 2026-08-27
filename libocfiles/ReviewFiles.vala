@@ -107,7 +107,17 @@ namespace OLLMfiles
 			do {
 				this.refresh_queued = false;
 				var replay = this.since_marker == 0;
-				var files = yield this.fetch_pending();
+				Gee.ArrayList<FileWithHistory> files;
+				try {
+					files = yield this.fetch_pending();
+				} catch (GLib.Error e) {
+					GLib.critical ("ReviewFiles.refresh: %s", e.message);
+					this.manager.rpc.notification (new OLLMrpc.Notification () {
+						method = "Banner.show",
+						message = "Could not refresh pending files: " + e.message
+					});
+					break;
+				}
 				if (replay) {
 					var old_n_items = this.items.size;
 					this.items.clear();

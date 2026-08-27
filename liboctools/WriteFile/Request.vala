@@ -152,38 +152,72 @@ namespace OLLMtools.WriteFile
 				var norm = this.normalize_file_path(this.file_path);
 				var file = new OLLMfiles.File.new_fake(project_manager, norm);
 				if (project_manager.active_project != null) {
-					var indexed = yield project_manager.active_project.fetch_file(
-						norm
-					);
-					if (indexed != null) {
-						file = indexed;
+					try {
+						var indexed = yield project_manager.active_project.fetch_file (
+							norm);
+						if (indexed != null) {
+							file = indexed;
+						}
+					} catch (GLib.Error e) {
+						GLib.critical ("WriteFile.validate fetch_file: %s: %s",
+							norm, e.message);
+						return "could not verify file (RPC failed): " + e.message;
 					}
 				}
 				project_manager.buffer_provider.create_buffer(file);
-				if ((yield file.exists()) != GLib.FileType.REGULAR) {
-					return "file does not exist (required for ast_path / line_numbers mode)";
+				try {
+					if ((yield file.exists()) != GLib.FileType.REGULAR) {
+						return "file does not exist (required for ast_path / line_numbers mode)";
+					}
+				} catch (GLib.Error e) {
+					GLib.critical ("WriteFile.validate exists: %s: %s",
+						norm, e.message);
+					return "could not verify file (RPC failed): " + e.message;
 				}
-				if (!(yield file.read())) {
-					return "failed to read file";
+				try {
+					if (!(yield file.read())) {
+						return "failed to read file";
+					}
+				} catch (GLib.Error e) {
+					GLib.critical ("WriteFile.validate read: %s: %s",
+						norm, e.message);
+					return "could not read file (RPC failed): " + e.message;
 				}
 			}
 			if (project_manager != null && has_search) {
 				var norm = this.normalize_file_path(this.file_path);
 				var file = new OLLMfiles.File.new_fake(project_manager, norm);
 				if (project_manager.active_project != null) {
-					var indexed = yield project_manager.active_project.fetch_file(
-						norm
-					);
-					if (indexed != null) {
-						file = indexed;
+					try {
+						var indexed = yield project_manager.active_project.fetch_file (
+							norm);
+						if (indexed != null) {
+							file = indexed;
+						}
+					} catch (GLib.Error e) {
+						GLib.critical ("WriteFile.validate fetch_file: %s: %s",
+							norm, e.message);
+						return "could not verify file (RPC failed): " + e.message;
 					}
 				}
 				project_manager.buffer_provider.create_buffer(file);
-				if ((yield file.exists()) != GLib.FileType.REGULAR) {
-					return "file does not exist (required for search_text mode)";
+				try {
+					if ((yield file.exists()) != GLib.FileType.REGULAR) {
+						return "file does not exist (required for search_text mode)";
+					}
+				} catch (GLib.Error e) {
+					GLib.critical ("WriteFile.validate exists: %s: %s",
+						norm, e.message);
+					return "could not verify file (RPC failed): " + e.message;
 				}
-				if (!(yield file.read())) {
-					return "failed to read file";
+				try {
+					if (!(yield file.read())) {
+						return "failed to read file";
+					}
+				} catch (GLib.Error e) {
+					GLib.critical ("WriteFile.validate read: %s: %s",
+						norm, e.message);
+					return "could not read file (RPC failed): " + e.message;
 				}
 				var matches = file.buffer.locate(this.search_text, true, true);
 				if (matches.size == 0) {
@@ -198,19 +232,36 @@ namespace OLLMtools.WriteFile
 				var norm = this.normalize_file_path(this.file_path);
 				var file = new OLLMfiles.File.new_fake(project_manager, norm);
 				if (project_manager.active_project != null) {
-					var indexed = yield project_manager.active_project.fetch_file(
-						norm
-					);
-					if (indexed != null) {
-						file = indexed;
+					try {
+						var indexed = yield project_manager.active_project.fetch_file (
+							norm);
+						if (indexed != null) {
+							file = indexed;
+						}
+					} catch (GLib.Error e) {
+						GLib.critical ("WriteFile.validate fetch_file: %s: %s",
+							norm, e.message);
+						return "could not verify file (RPC failed): " + e.message;
 					}
 				}
 				project_manager.buffer_provider.create_buffer(file);
-				if ((yield file.exists()) != GLib.FileType.REGULAR) {
-					return "failed to read file for AST validation";
+				try {
+					if ((yield file.exists()) != GLib.FileType.REGULAR) {
+						return "failed to read file for AST validation";
+					}
+				} catch (GLib.Error e) {
+					GLib.critical ("WriteFile.validate exists: %s: %s",
+						norm, e.message);
+					return "could not verify file (RPC failed): " + e.message;
 				}
-				if (!(yield file.read())) {
-					return "failed to read file for AST validation";
+				try {
+					if (!(yield file.read())) {
+						return "failed to read file for AST validation";
+					}
+				} catch (GLib.Error e) {
+					GLib.critical ("WriteFile.validate read: %s: %s",
+						norm, e.message);
+					return "could not read file (RPC failed): " + e.message;
 				}
 				var change = new OLLMfiles.FileChange(file) {
 					ast_path = this.ast_path.strip(),

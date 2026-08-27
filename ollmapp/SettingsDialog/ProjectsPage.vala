@@ -161,7 +161,16 @@ namespace OLLMapp.SettingsDialog
 			if (win == null || win.project_manager == null) {
 				return;
 			}
-			yield win.project_manager.rpc_load_projects_from_db();
+			try {
+				yield win.project_manager.rpc_load_projects_from_db();
+			} catch (GLib.Error e) {
+				GLib.critical ("ProjectsPage.load_projects: %s", e.message);
+				win.project_manager.rpc.notification (new OLLMrpc.Notification () {
+					method = "Banner.show",
+					message = "Could not load projects: " + e.message
+				});
+				return;
+			}
 			this.project_manager = win.project_manager;
 			this.filtered_projects.model = win.project_manager.projects;
 			this.is_loaded = true;
@@ -218,7 +227,21 @@ namespace OLLMapp.SettingsDialog
 						GLib.warning("Project already in list: %s", normalized);
 						return;
 					}
-					this.project_manager.rpc_create_project.begin(normalized);
+					this.project_manager.rpc_create_project.begin(normalized,
+						(obj, res) => {
+						try {
+							this.project_manager.rpc_create_project.end(res);
+						} catch (GLib.Error e) {
+							GLib.critical ("create project %s: %s",
+								normalized, e.message);
+							this.project_manager.rpc.notification (
+								new OLLMrpc.Notification () {
+									method = "Alert.show",
+									message = "Could not create project: "
+										+ e.message
+								});
+						}
+					});
 					// TODO(v2): restore when app uses RPC-backed project persistence (2.10.4.22).
 					// this.project_manager.db.backupDB();
 				} catch (GLib.Error e) {

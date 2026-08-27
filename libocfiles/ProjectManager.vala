@@ -181,8 +181,12 @@ namespace OLLMfiles
 				try {
 					this.rpc.call.end(res);
 				} catch (GLib.Error e) {
-					GLib.critical("activate project failed %s: %s",
+					GLib.critical ("activate project failed %s: %s",
 						project != null ? project.path : "", e.message);
+					this.rpc.notification (new OLLMrpc.Notification () {
+						method = "Banner.show",
+						message = "Could not activate project: " + e.message
+					});
 				}
 			});
 		}
@@ -301,7 +305,13 @@ namespace OLLMfiles
 				try {
 					this.rpc.call.end(res);
 				} catch (GLib.Error e) {
-					GLib.critical("remove project failed %s: %s", project.path, e.message);
+					GLib.critical ("remove project failed %s: %s",
+						project.path, e.message);
+					this.rpc.notification (new OLLMrpc.Notification () {
+						method = "Alert.show",
+						message = "Could not remove project from daemon: "
+							+ e.message
+					});
 				}
 			});
 		}
@@ -368,7 +378,17 @@ namespace OLLMfiles
 				return FileUpdateStatus.NO_CHANGE;
 			}
 
-			return yield this.active_file.check_changed();
+			try {
+				return yield this.active_file.check_changed();
+			} catch (GLib.Error e) {
+				GLib.critical ("check_active_file_changed: %s: %s",
+					this.active_file.path, e.message);
+				this.rpc.notification (new OLLMrpc.Notification () {
+					method = "Banner.show",
+					message = "Could not check file on disk: " + e.message
+				});
+				return FileUpdateStatus.NO_CHANGE;
+			}
 		}
 		
 		/**
@@ -381,7 +401,16 @@ namespace OLLMfiles
 				return;
 			}
 
-			yield this.active_file.rpc_write();
+			try {
+				yield this.active_file.rpc_write();
+			} catch (GLib.Error e) {
+				GLib.critical ("write_buffer_to_disk: %s: %s",
+					this.active_file.path, e.message);
+				this.rpc.notification (new OLLMrpc.Notification () {
+					method = "Alert.show",
+					message = "Could not save file: " + e.message
+				});
+			}
 		}
 		
 		/**
@@ -393,7 +422,16 @@ namespace OLLMfiles
 				return;
 			}
 
-			yield this.active_file.read();
+			try {
+				yield this.active_file.read();
+			} catch (GLib.Error e) {
+				GLib.critical ("reload_file_from_disk: %s: %s",
+					this.active_file.path, e.message);
+				this.rpc.notification (new OLLMrpc.Notification () {
+					method = "Banner.show",
+					message = "Could not reload file: " + e.message
+				});
+			}
 		}
 		
 	}

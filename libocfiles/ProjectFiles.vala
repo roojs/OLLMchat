@@ -89,16 +89,24 @@ namespace OLLMfiles
 		 */
 		public async void refresh(string query = "")
 		{
+			this.loading = true;
+			OLLMrpc.Response response;
+			try {
+				response = yield this.project.fetch_files(0, 50, query);
+			} catch (GLib.Error e) {
+				this.loading = false;
+				GLib.critical ("ProjectFiles.refresh: %s", e.message);
+				this.project.manager.rpc.notification (new OLLMrpc.Notification () {
+					method = "Banner.show",
+					message = "Could not load project files: " + e.message
+				});
+				return;
+			}
+			this.loading = false;
 			this.query = query;
 			this.offset = 0;
-			this.total = 0;
-
 			var old_n_items = this.items.size;
 			this.items.clear();
-
-			this.loading = true;
-			var response = yield this.project.fetch_files(0, 50, query);
-			this.loading = false;
 			this.total = int.parse(response.msg);
 			var files = (Gee.ArrayList<File>) response.result;
 			foreach (var file in files) {
@@ -146,11 +154,22 @@ namespace OLLMfiles
 			}
 
 			this.loading = true;
-			var response = yield this.project.fetch_files(
-				this.offset,
-				50,
-				this.query
-			);
+			OLLMrpc.Response response;
+			try {
+				response = yield this.project.fetch_files(
+					this.offset,
+					50,
+					this.query
+				);
+			} catch (GLib.Error e) {
+				this.loading = false;
+				GLib.critical ("ProjectFiles.load_more: %s", e.message);
+				this.project.manager.rpc.notification (new OLLMrpc.Notification () {
+					method = "Banner.show",
+					message = "Could not load more files: " + e.message
+				});
+				return;
+			}
 			this.loading = false;
 
 			this.total = int.parse(response.msg);

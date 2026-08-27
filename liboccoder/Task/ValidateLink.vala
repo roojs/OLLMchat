@@ -205,11 +205,24 @@ public class ValidateLink : GLib.Object
 				}
 			}
 		}
-		var indexed = yield project.fetch_file (check_path);
-		if (indexed != null) {
+		try {
+			var indexed = yield project.fetch_file (check_path);
+			if (indexed != null) {
+				return;
+			}
+		} catch (GLib.Error e) {
+			GLib.critical ("ValidateLink.file fetch_file: %s: %s",
+				check_path, e.message);
 			return;
 		}
-		var is_directory = yield project.contains_folder (check_path);
+		var is_directory = false;
+		try {
+			is_directory = yield project.contains_folder (check_path);
+		} catch (GLib.Error e) {
+			GLib.critical ("ValidateLink.file contains_folder: %s: %s",
+				check_path, e.message);
+			return;
+		}
 		if (is_directory) {
 			switch (this.stage) {
 				case PhaseEnum.REFINEMENT:

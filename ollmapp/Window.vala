@@ -255,7 +255,15 @@ namespace OLLMapp
 						""
 					),
 				}, (obj, res) => {
-					this.project_manager.rpc.call.end(res);
+					try {
+						this.project_manager.rpc.call.end(res);
+					} catch (GLib.Error e) {
+						GLib.critical ("banner rpc action: %s", e.message);
+						this.notification (new OLLMrpc.Notification () {
+							method = "Banner.show",
+							message = "Action failed: " + e.message
+						});
+					}
 				});
 			});
 				
@@ -614,7 +622,19 @@ namespace OLLMapp
 						method = "client.project.load_start",
 					});
 					this.project_manager.rpc_load_projects_from_db.begin((obj, res) => {
-						this.project_manager.rpc_load_projects_from_db.end(res);
+						try {
+							this.project_manager.rpc_load_projects_from_db.end(res);
+						} catch (GLib.Error e) {
+							GLib.critical ("session project load: %s", e.message);
+							this.notification (new OLLMrpc.Notification () {
+								method = "Alert.show",
+								message = "Could not load projects: " + e.message
+							});
+							this.notification(new OLLMrpc.Notification() {
+								method = "client.project.load_end",
+							});
+							return;
+						}
 						this.notification(new OLLMrpc.Notification() {
 							method = "client.project.load_end",
 						});
@@ -624,6 +644,11 @@ namespace OLLMapp
 							GLib.warning(
 								"Session project_path '%s' not found in project list",
 								session.project_path);
+							this.notification (new OLLMrpc.Notification () {
+								method = "Alert.show",
+								message = "Session project is not in the project list: "
+									+ session.project_path
+							});
 							return;
 						}
 						this.project_manager.activate_project(project);
