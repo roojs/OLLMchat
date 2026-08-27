@@ -16,6 +16,6 @@
 
 - **🔷** `⏳` INOUT boxed — caller buffer is also an IN blob from `values[]`. Today [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) only allocates empty OUT slots; INOUT needs read blob → invoke → `scalar` the same buffer back.
 - **🔷** `⏳` INOUT non-boxed (integer, string, …) — `convert` fills IN, `scalar` reads OUT after invoke on the same `GI.Argument` slot.
-- **ℹ️** [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md) and [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) invoke return pointer stay sibling plans.
+- **ℹ️** [`8.4.4`](RPC-8.4.4-DONE-rpc-invoke-errors.md) and [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) invoke return pointer are done siblings.
 
 No fences until INOUT wire pairing is confirmed.

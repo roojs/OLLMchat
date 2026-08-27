@@ -8,7 +8,7 @@
 
 **Depends on:** [`8.4.1`](RPC-8.4.1-DONE-rpc-positional-values.md) (`Request.values` as `GLib.Value`s).
 
-**Next:** [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md). Leftovers: [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md) (invoke errors), [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) (boxed / GObject `INTERFACE` / invoke return), [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) (float, array, width).
+**Next:** [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md). Leftovers: [`8.4.4`](RPC-8.4.4-DONE-rpc-invoke-errors.md) (invoke errors), [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) (boxed / GObject `INTERFACE` / invoke return), [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) (float, array, width).
 
 **Already in tree:** `Connection.export` / leases (`Live.Remote` ref/unref), client `proxies` (`tests/rpc/live-handles-test.vala`, `tests/rpc/proxies-test.vala`).
 
@@ -935,6 +935,6 @@ int main(string[] args)
 - **🚫** Send GObject properties for a handled result.
 - **🚫** A Phase 1 test that only asserts `Gi.types.has_key` / bin aliases. First smoke is Phase 2 `Gio-Menu.new`.
 - **ℹ️** Unowned `Stream.connection` / `client` have no default. If valac wants one, `default = null` on a nullable unowned — do not copy the maps.
-- **ℹ️** `fn.invoke` `return_value` by value — leftover [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md). Constructor-with-args / `INTERFACE` also there. `ARRAY` / float / width → [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md). Invoke throw → client is [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md).
+- **ℹ️** `fn.invoke` `return_value` by value — leftover [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md). Constructor-with-args / `INTERFACE` also there. `ARRAY` / float / width → [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md). Invoke throw → client is [`8.4.4`](RPC-8.4.4-DONE-rpc-invoke-errors.md).
 - **ℹ️** Land Phase 1 §1–3b with Phase 2 §4–12. `ninja -C build tests/test-rpc-gi && build/tests/test-rpc-gi` (keep `test-rpc-values` and `test-rpc-live-handles` green).
 

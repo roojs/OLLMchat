@@ -2,7 +2,7 @@
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
-**Status:** parent — archived. [`8.4.1`](RPC-8.4.1-DONE-rpc-positional-values.md) / [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) / [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) / [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) / [`8.4.6`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) / [`8.4.7`](RPC-8.4.7-rpc-ffi-inout.md) / [`8.4.8`](RPC-8.4.8-rpc-live-gtype-explicit-alias.md) / [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md) agent **✔️**. Leftover live cut: [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md) (typed `GLib.Error` on the wire).
+**Status:** parent — archived. [`8.4.1`](RPC-8.4.1-DONE-rpc-positional-values.md) / [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) / [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) / [`8.4.4`](RPC-8.4.4-DONE-rpc-invoke-errors.md) (+ [`.1`](RPC-8.4.4.1-DONE-rpc-consumer-audit.md) / [`.2`](RPC-8.4.4.2-DONE-rpc-consumer-audit.md)) / [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) / [`8.4.6`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) / [`8.4.7`](RPC-8.4.7-rpc-ffi-inout.md) / [`8.4.8`](RPC-8.4.8-rpc-live-gtype-explicit-alias.md) / [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md) **DONE**.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
@@ -22,7 +22,7 @@
 - **🔷** ollmfilesd and other current callers keep `Request.param`. These plans only add the values API beside it.
 - **ℹ️** gnome-shell-rpc vendors this library. Their Runtime / GenClient consume the new API; this repo adds the API and smokes it with dummy types.
 
-**Suggested order:** [`8.4.1`](RPC-8.4.1-DONE-rpc-positional-values.md) → [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) → [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) → [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md) / [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) → [`8.4.6`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) → [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md) (list IN) / [`8.4.7`](RPC-8.4.7-rpc-ffi-inout.md) / [`8.4.8`](RPC-8.4.8-rpc-live-gtype-explicit-alias.md). CallParam removal is [`8.5`](RPC-8.5-rpc-drop-callparam-reply-value.md).
+**Suggested order:** [`8.4.1`](RPC-8.4.1-DONE-rpc-positional-values.md) → [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) → [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) → [`8.4.4`](RPC-8.4.4-DONE-rpc-invoke-errors.md) / [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) → [`8.4.6`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) → [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md) (list IN) / [`8.4.7`](RPC-8.4.7-rpc-ffi-inout.md) / [`8.4.8`](RPC-8.4.8-rpc-live-gtype-explicit-alias.md). CallParam removal is [`8.5`](RPC-8.5-rpc-drop-callparam-reply-value.md).
 
 ---
 
@@ -40,8 +40,8 @@
 - **🔷** `✔️` [`8.4.6`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) — slabs, float/double, arrays, narrow ints, ENUM/FLAGS, list **OUT** (`scalar_list` / `scalar_hash`).
 - **🔷** `✔️` [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md) — `GLIST` / `GSLIST` **IN** (lease-id GObject, unboxed `string[]` utf8, Variant `"aay"` boxed) and utf8 list **OUT**.
 - **🔷** `✔️` [`8.4.8`](RPC-8.4.8-rpc-live-gtype-explicit-alias.md) — live GObject: consumer explicitly maps concrete server GTypes to an existing typelib wire alias (`Bin.register_alias`). Mutter subclass list is the consumer.
-- **🔷** `⏳` [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md) — invoke `GLib.Error` on the wire; client emits the type the stub `throws`.
-- **🔷** [`8.4.7`](RPC-8.4.7-rpc-ffi-inout.md) — INOUT arguments (archived; not a live cut).
+- **🔷** `✔️` [`8.4.4`](RPC-8.4.4-DONE-rpc-invoke-errors.md) — invoke `GLib.Error` on the wire; client emits the type the stub `throws`. Consumers: [`.1`](RPC-8.4.4.1-DONE-rpc-consumer-audit.md) / [`.2`](RPC-8.4.4.2-DONE-rpc-consumer-audit.md).
+- **🔷** `✔️` [`8.4.7`](RPC-8.4.7-rpc-ffi-inout.md) — INOUT arguments (archived).
 
 ---
 

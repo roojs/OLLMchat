@@ -8,7 +8,7 @@
 
 **Depends on:** [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) — `Gi.register`, RPC `Alias.new`, live object on the wire.
 
-**Leftovers:** [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md) (invoke errors), [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) (`INTERFACE` return tag, object args / `append`), [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) (float, array, width).
+**Leftovers:** [`8.4.4`](RPC-8.4.4-DONE-rpc-invoke-errors.md) (invoke errors), [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md) (`INTERFACE` return tag, object args / `append`), [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md) (float, array, width).
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
@@ -467,7 +467,7 @@ The typelib says which arguments the client sends and which the server fills.
   - `INT8` / `UINT8` / `INT16` / `UINT16`
   - `INT32` / `UINT32` / `INT64` / `UINT64`
   - `UTF8` / `FILENAME`
-- **ℹ️** Object-as-arg / boxed `INTERFACE` → [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md). Float / array / width → [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md). The fenced `TypeTag.OBJECT` branch does not compile — leftover 8.4.5. Invoke throw → [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md).
+- **ℹ️** Object-as-arg / boxed `INTERFACE` → [`8.4.5`](RPC-8.4.5-DONE-rpc-ffi-leftovers.md). Float / array / width → [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md). The fenced `TypeTag.OBJECT` branch does not compile — leftover 8.4.5. Invoke throw → [`8.4.4`](RPC-8.4.4-DONE-rpc-invoke-errors.md).
 
 ### 6. `libocrpc/Response.vala` — `values` property + bin write / read
 

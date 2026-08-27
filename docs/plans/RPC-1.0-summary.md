@@ -8,7 +8,6 @@
 
 - [RPC-8.2-full-rpc-system.md](RPC-8.2-full-rpc-system.md) — JSON / HTTP / TLS / sessions (not the 8.3–8.5 live/FFI track)
 - [RPC-8.2.1-libocrpc-auto-json-and-http-client.md](RPC-8.2.1-libocrpc-auto-json-and-http-client.md) — auto JSON + HTTP client leftovers
-- [RPC-8.4.4-rpc-invoke-errors.md](RPC-8.4.4-rpc-invoke-errors.md) — typed `GLib.Error` on the wire
 - [RPC-8.5.3-rpc-response-value.md](RPC-8.5.3-rpc-response-value.md) — `Response.retval`
 
 ## Done
@@ -20,10 +19,14 @@
 - [RPC-8.3.4-DONE-scm-rights-fds.md](done/RPC-8.3.4-DONE-scm-rights-fds.md)
 - [RPC-8.3.5-DONE-client-apply-notify-proxies.md](done/RPC-8.3.5-DONE-client-apply-notify-proxies.md)
 - [RPC-8.3.6-rpc-live-callbacks.md](done/RPC-8.3.6-rpc-live-callbacks.md)
+- [RPC-8.3.7-DONE-response-scm-rights-buffer.md](done/RPC-8.3.7-DONE-response-scm-rights-buffer.md)
 - [RPC-8.4-rpc-positional-values-and-ffi.md](done/RPC-8.4-rpc-positional-values-and-ffi.md)
 - [RPC-8.4.1-DONE-rpc-positional-values.md](done/RPC-8.4.1-DONE-rpc-positional-values.md)
 - [RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md](done/RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md)
 - [RPC-8.4.3-DONE-rpc-ffi-typelib-method.md](done/RPC-8.4.3-DONE-rpc-ffi-typelib-method.md)
+- [RPC-8.4.4-DONE-rpc-invoke-errors.md](done/RPC-8.4.4-DONE-rpc-invoke-errors.md)
+- [RPC-8.4.4.1-DONE-rpc-consumer-audit.md](done/RPC-8.4.4.1-DONE-rpc-consumer-audit.md)
+- [RPC-8.4.4.2-DONE-rpc-consumer-audit.md](done/RPC-8.4.4.2-DONE-rpc-consumer-audit.md)
 - [RPC-8.4.5-DONE-rpc-ffi-leftovers.md](done/RPC-8.4.5-DONE-rpc-ffi-leftovers.md)
 - [RPC-8.4.6-DONE-rpc-ffi-leftovers.md](done/RPC-8.4.6-DONE-rpc-ffi-leftovers.md)
 - [RPC-8.4.7-rpc-ffi-inout.md](done/RPC-8.4.7-rpc-ffi-inout.md)

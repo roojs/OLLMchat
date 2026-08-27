@@ -32,7 +32,7 @@
 
 **After 8.4.6 (siblings):**
 
-- **ℹ️** [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md) — invoke errors on the wire.
+- **ℹ️** [`8.4.4`](RPC-8.4.4-DONE-rpc-invoke-errors.md) — invoke errors on the wire.
 - **ℹ️** [`8.4.7`](RPC-8.4.7-rpc-ffi-inout.md) — INOUT.
 - **ℹ️** [`8.4.8`](RPC-8.4.8-rpc-live-gtype-explicit-alias.md) — live subclass → typelib alias.
 - **🔷** `⏳` [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md) — list **IN** for mutter / GIR that take `GList*` / `GSList*`.
@@ -1090,7 +1090,7 @@ Transform only when the GIR tag has a numeric GType and the wire GType differs.
 
 - **🚫** Steal boxed / GObject `INTERFACE` / `StreamValue` `Bytes` from `[8.4.5](RPC-8.4.5-DONE-rpc-ffi-leftovers.md)`.
 - **🚫** Steal `fn.invoke` return pointer from 8.4.5. Name the C / `[CCode]` wrapper there.
-- **🚫** Put invoke errors here — `[8.4.4](../RPC-8.4.4-rpc-invoke-errors.md)`.
+- **🚫** Put invoke errors here — `[8.4.4](RPC-8.4.4-DONE-rpc-invoke-errors.md)`.
 - **🚫** Reconstruct `Gio.File` from URI / path in `libocrpc`. The caller registers a type both ends and serializes a form both ends understand.
 - **🚫** INOUT — `[8.4.7](RPC-8.4.7-rpc-ffi-inout.md)`.
 - **🚫** Domain struct types in `libocrpc`.

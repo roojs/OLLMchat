@@ -6,7 +6,7 @@
 
 **Parent:** [`RPC-8.4-rpc-positional-values-and-ffi.md`](RPC-8.4-rpc-positional-values-and-ffi.md)
 
-**Depends on:** [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) / [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) — landed. Invoke **errors** are [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md). Remaining convert tags (float, double, array, ENUM/FLAGS, width, list OUT) are [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md). List **IN** is [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md).
+**Depends on:** [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) / [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) — landed. Invoke **errors** are [`8.4.4`](RPC-8.4.4-DONE-rpc-invoke-errors.md). Remaining convert tags (float, double, array, ENUM/FLAGS, width, list OUT) are [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md). List **IN** is [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md).
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
@@ -22,7 +22,7 @@ Bits pulled out of 8.4.2 / 8.4.3 so those plans stay **DONE**. GObject `INTERFAC
 - **🔷** `✔️` GI boxed structs (`Mtk.Rectangle`, …) are `TypeTag.INTERFACE` held in `GLib.Bytes`. Wire is existing §13. No field-walk in `libocrpc`.
 - **🔷** `✔️` GObject args / returns that are **not** `Bin.register`’d (`gtype_to_alias`) reply `INVALID_PARAMS`. Same-library leases (`Gio-Menu` after `Gi.register("Gio")`) work.
 - **🔷** `✔️` Caller-allocates OUT boxed in the first `dispatch_function` arg walk.
-- **ℹ️** Invoke throw → client is [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md).
+- **ℹ️** Invoke throw → client is [`8.4.4`](RPC-8.4.4-DONE-rpc-invoke-errors.md).
 - **ℹ️** `ARRAY` / float / double / width / `ENUM` / `FLAGS` / list OUT → [`8.4.6-DONE`](RPC-8.4.6-DONE-rpc-ffi-leftovers.md). List IN → [`8.4.9`](RPC-8.4.9-rpc-ffi-glist-in.md). `Gio.File` reconstruct is **not** libocrpc. INOUT boxed is skipped there too.
 - **ℹ️** gnome-shell-rpc [`0.5.2`](file:///home/alan/git/gnome-shell-rpc/docs/plans/0.5.2-close-gi-stub-gaps.md) Phase 2 is blocked on this boxed path.
 
@@ -593,7 +593,7 @@ Non-OUT first (`convert`, then `continue`). OUT alloc is not nested inside `if (
 
 ## LLM notes
 
-- **🚫** Put invoke **errors** here — that is [`8.4.4`](../RPC-8.4.4-rpc-invoke-errors.md).
+- **🚫** Put invoke **errors** here — that is [`8.4.4`](RPC-8.4.4-DONE-rpc-invoke-errors.md).
 - **🚫** Reopen [`8.4.2`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) / [`8.4.3`](RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) for these follow-ups.
 - **🚫** Public GI types on `ocrpc.vapi`. Any invoke wrapper stays private.
 - **🔷** `convert_interface` — user asked; `convert` only. `scalar` stays inline `if`.
