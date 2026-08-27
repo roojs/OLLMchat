@@ -57,6 +57,7 @@ if is_android_cross
     dependencies: [
       ollmchatgtk_deps,
       ocsqlite_vapi_dep,
+      ocrpc_vapi_dep,
     ],
     sources: [ollmchatgtk_src],
     vala_header: 'ollmchatgtk.h',
@@ -67,7 +68,8 @@ if is_android_cross
       include_directories('../libollamaweb'),
       include_directories('../libocmarkdown'),
       include_directories('../libocmarkdowngtk'),
-      include_directories('../libocsqlite')
+      include_directories('../libocsqlite'),
+      include_directories('../libocrpc')
     ],
     build_rpath: lib_build_rpath,
     vala_args: [
@@ -86,8 +88,10 @@ if is_android_cross
     install: true
   )
 else
+  # Don't use link_with for ocrpc_base_lib — that pulls ocrpc-meson.vapi
+  # and duplicates --pkg=ocrpc. Link via ocrpc_vapi_dep.
   ollmchatgtk_lib = library('ollmchatgtk',
-    dependencies: [ollmchatgtk_deps],
+    dependencies: [ollmchatgtk_deps, ocrpc_vapi_dep],
     sources: [ollmchatgtk_src],
     vala_header: 'ollmchatgtk.h',
     vala_vapi: 'ollmchatgtk.vapi',
@@ -98,7 +102,8 @@ else
       include_directories('../libollamaweb'),
       include_directories('../libocmarkdown'),
       include_directories('../libocmarkdowngtk'),
-      include_directories('../libocsqlite')
+      include_directories('../libocsqlite'),
+      include_directories('../libocrpc')
     ],
     build_rpath: lib_build_rpath,
     vala_args: [

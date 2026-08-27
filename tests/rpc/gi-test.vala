@@ -93,7 +93,11 @@ namespace OLLMrpcTests
 			rpc.call.begin(new OLLMrpc.Request() {
 				method = "Gio-Menu.new"
 			}, (obj, res) => {
-				response = rpc.call.end(res);
+				try {
+					response = rpc.call.end(res);
+				} catch (GLib.Error e) {
+					this.check(command_line, false, e.message);
+				}
 				call_loop.quit();
 			});
 			call_loop.run();
@@ -116,7 +120,11 @@ namespace OLLMrpcTests
 				method = "Gio-Menu.get_n_items",
 				lease_id = lease_id
 			}, (obj, res) => {
-				response = rpc.call.end(res);
+				try {
+					response = rpc.call.end(res);
+				} catch (GLib.Error e) {
+					this.check(command_line, false, e.message);
+				}
 				items_loop.quit();
 			});
 			items_loop.run();
@@ -124,11 +132,101 @@ namespace OLLMrpcTests
 			this.check(command_line, response.args.size == 1, "get_n_items returned no value");
 			this.check(command_line, response.args.get(0).get_int() == 0, "empty menu is not 0");
 			response = null;
+			var file_loop = new GLib.MainLoop();
+			rpc.call.begin(new OLLMrpc.Request() {
+				method = "Gio-File.new_for_path",
+				args = OLLMrpc.args("s", GLib.Path.build_filename(dir, "missing"))
+			}, (obj, res) => {
+				try {
+					response = rpc.call.end(res);
+				} catch (GLib.Error e) {
+					this.check(command_line, false, e.message);
+				}
+				file_loop.quit();
+			});
+			file_loop.run();
+			this.check(command_line, response.error == null, "new_for_path returned error");
+			this.check(command_line, response.result.size == 1, "new_for_path returned no object");
+			var file_id = (uint64) 0;
+			foreach (var id in rpc.proxies.keys) {
+				if (id == lease_id) {
+					continue;
+				}
+				file_id = (uint64) id;
+			}
+			this.check(command_line, file_id != 0, "file handle is 0");
+			response = null;
+			GLib.Error? read_error = null;
+			var read_loop = new GLib.MainLoop();
+			rpc.call.begin(new OLLMrpc.Request() {
+				method = "Gio-File.read",
+				lease_id = file_id
+			}, (obj, res) => {
+				try {
+					response = rpc.call.end(res);
+				} catch (GLib.Error e) {
+					read_error = e;
+				}
+				read_loop.quit();
+			});
+			read_loop.run();
+			this.check(command_line, read_error != null, "read of missing path did not throw");
+			try {
+				throw read_error;
+			} catch (GLib.FileError e) {
+				this.check(command_line, e.message != "Internal error", "message is Internal error");
+				this.check(
+					command_line,
+					e.code != (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+					"gerror_code is INTERNAL_ERROR"
+				);
+			} catch (GLib.IOError e) {
+				this.check(command_line, e.message != "Internal error", "message is Internal error");
+				this.check(
+					command_line,
+					e.code != (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+					"gerror_code is INTERNAL_ERROR"
+				);
+			} catch (GLib.Error e) {
+				this.check(command_line, false, "not a file/I/O error: " + e.message);
+			}
+			response = null;
+			GLib.Error? params_error = null;
+			var params_loop = new GLib.MainLoop();
+			rpc.call.begin(new OLLMrpc.Request() {
+				method = "Gio-Menu.get_n_items",
+				lease_id = (uint64) 999999
+			}, (obj, res) => {
+				try {
+					response = rpc.call.end(res);
+				} catch (GLib.Error e) {
+					params_error = e;
+				}
+				params_loop.quit();
+			});
+			params_loop.run();
+			this.check(command_line, params_error != null, "bad lease_id did not throw");
+			try {
+				throw params_error;
+			} catch (OLLMrpc.RpcErrorCode e) {
+				this.check(
+					command_line,
+					e.code == (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+					"gerror_code is not INVALID_PARAMS"
+				);
+			} catch (GLib.Error e) {
+				this.check(command_line, false, "not RpcErrorCode: " + e.message);
+			}
+			response = null;
 			var actors_loop = new GLib.MainLoop();
 			rpc.call.begin(new OLLMrpc.Request() {
 				method = "RPC-Daemon.actors"
 			}, (obj, res) => {
-				response = rpc.call.end(res);
+				try {
+					response = rpc.call.end(res);
+				} catch (GLib.Error e) {
+					this.check(command_line, false, e.message);
+				}
 				actors_loop.quit();
 			});
 			actors_loop.run();

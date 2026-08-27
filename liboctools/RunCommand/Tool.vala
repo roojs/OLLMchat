@@ -81,7 +81,7 @@ Command string:
 Output:
 - Keep listings and searches narrow. Do not recursively list large trees (for example `ls -R` / `ls -RL` on home, or `find` from `/` or `$HOME` without `-maxdepth` or a name filter).
 - Prefer a specific directory, non-recursive `ls`, `find -maxdepth`, `git ls-files`, or pipe through `head` / `grep`.
-- If output is too long, the command is killed and only the lines already captured are returned. Avoid outputting large files to stdout; write to a file or limit what you output.
+- If output is long, you see the **last** lines only (not the first). Prefer a narrow listing, or write to a file and read a slice.
 
 If the command fails, you should handle the error gracefully and provide a helpful error message to the user.
 """;

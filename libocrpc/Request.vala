@@ -40,9 +40,6 @@ namespace OLLMrpc
 	 *     result_type = typeof(OLLMfilesd.FileArray)
 	 * };
 	 * var resp = yield rpc.call(req);
-	 * if (resp.error != null) {
-	 *     GLib.error("%s", resp.error.message);
-	 * }
 	 * }}}
 	 *
 	 * @see Client

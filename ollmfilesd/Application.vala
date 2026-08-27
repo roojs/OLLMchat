@@ -280,6 +280,7 @@ Examples:
 				return;
 			}
 
+			OLLMrpc.rpc_register();
 			Daemon.rpc_register();
 			ProjectManager.rpc_register();
 			Folder.rpc_register();
@@ -288,10 +289,6 @@ Examples:
 			FileWithHistory.rpc_register();
 			SQT.VectorMetadata.rpc_register();
 			Codebase.rpc_register();
-			OLLMrpc.Request.rpc_register();
-			OLLMrpc.Response.rpc_register();
-			OLLMrpc.Notification.rpc_register();
-			OLLMrpc.Error.rpc_register();
 
 			this.daemon = new Daemon(this);
 			OLLMrpc.Request.register("RPC-Daemon", this.daemon);

@@ -221,15 +221,39 @@ namespace OLLMrpc.Transport
 			this.write(response);
 		}
 
+		/**
+		 * Reply with a JSON-RPC error.
+		 *
+		 * {@link OLLMrpc.Error.code} is ''error_code''. When ''e'' is
+		 * passed, message, domain, and
+		 * {@link OLLMrpc.Error.gerror_code} are copied from it.
+		 * Otherwise {@link OLLMrpc.RpcErrorCode.to_response} is used.
+		 *
+		 * @param request the request being answered
+		 * @param error_code JSON-RPC number ({@link OLLMrpc.RpcErrorCode})
+		 * @param e thrown {@link GLib.Error} to send, or ''null'' for a
+		 *   protocol error
+		 */
 		public void reply_error(
 			OLLMrpc.Request request,
-			int error_code
+			int error_code,
+			GLib.Error? e = null
 		)
 		{
-			this.reply(
-				request,
-				OLLMrpc.RpcErrorCode.to_response(error_code)
-			);
+			if (e == null) {
+				this.reply(
+					request,
+					OLLMrpc.RpcErrorCode.to_response(error_code)
+				);
+				return;
+			}
+			var err = OLLMrpc.RpcErrorCode.to_error(error_code);
+			err.message = e.message;
+			err.domain = e.domain.to_string();
+			err.gerror_code = e.code;
+			this.reply(request, new Response() {
+				error = err
+			});
 		}
 
 		protected virtual bool on_input_ready(

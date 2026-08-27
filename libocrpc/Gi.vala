@@ -117,11 +117,12 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Require ''ns'' / ''version'' and register each object GType.
+		 * Require ''ns'' / ''version'' and register each object or
+		 * interface GType.
 		 *
 		 * Alias is ''ns-Name'' (hyphen, same style as ''RPC-Live-Remote'').
-		 * Skips infos that are not objects, or have no GType. A second
-		 * register of the same alias is a no-op.
+		 * Skips infos that are not objects or interfaces, or have no GType.
+		 * A second register of the same alias is a no-op.
 		 *
 		 * @param ns typelib namespace (''Gio'', ''Meta'')
 		 * @param version typelib version (''2.0'', ''16'')
@@ -136,7 +137,8 @@ namespace OLLMrpc
 			var n = GI.Repository.get_default().get_n_infos(ns);
 			for (var i = 0; i < n; i++) {
 				var info = GI.Repository.get_default().get_info(ns, i);
-				if (info.get_type() != GI.InfoType.OBJECT) {
+				if (info.get_type() != GI.InfoType.OBJECT
+					&& info.get_type() != GI.InfoType.INTERFACE) {
 					continue;
 				}
 				var registered = (GI.RegisteredTypeInfo) info;
@@ -179,7 +181,9 @@ namespace OLLMrpc
 			}
 			var info = GI.Repository.get_default().find_by_gtype(
 				types.get(object_name));
-			var fn = ((GI.ObjectInfo) info).find_method(method_name);
+			var fn = info.get_type() == GI.InfoType.INTERFACE
+				? ((GI.InterfaceInfo) info).find_method(method_name)
+				: ((GI.ObjectInfo) info).find_method(method_name);
 			if (fn == null) {
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.METHOD_NOT_FOUND);
@@ -273,8 +277,8 @@ namespace OLLMrpc
 			try {
 				g_function_info_invoke(fn, this.in_args, this.out_args, out ret);
 			} catch (GLib.Error e) {
-				this.request.connection.reply_error(
-					this.request, (int) RpcErrorCode.INTERNAL_ERROR);
+				this.request.connection.reply_error(this.request,
+					(int) RpcErrorCode.INTERNAL_ERROR, e);
 				return true;
 			}
 			var created = (GLib.Object) ret.v_pointer;
@@ -408,8 +412,8 @@ namespace OLLMrpc
 			try {
 				g_function_info_invoke(fn, this.in_args, this.out_args, out ret);
 			} catch (GLib.Error e) {
-				this.request.connection.reply_error(
-					this.request, (int) RpcErrorCode.INTERNAL_ERROR);
+				this.request.connection.reply_error(this.request,
+					(int) RpcErrorCode.INTERNAL_ERROR, e);
 				return true;
 			}
 			var response = new Response();

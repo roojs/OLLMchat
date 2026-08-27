@@ -260,6 +260,15 @@ namespace OLLMchat.Tool
 		}
 
 		/**
+		 * Kill in-flight work. Default is a no-op.
+		 *
+		 * {@link OLLMtools.RunCommand.Request} kills the process group.
+		 */
+		public virtual void stop()
+		{
+		}
+
+		/**
 		 * Plain-text summary for chat fences and UI tooltips. Must not call {@link execute}, {@link add_message}, or touch buffers.
 		 * Default **""** means no typed lines from deserialized fields.
 		 */

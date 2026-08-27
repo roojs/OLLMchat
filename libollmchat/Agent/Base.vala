@@ -87,8 +87,9 @@ namespace OLLMchat.Agent
 		 * Registry of active tool requests for monitoring streaming chunks.
 		 * Keyed by request_id (auto-generated int).
 		 */
-		private Gee.HashMap<int, OLLMchat.Tool.RequestBase> active_tools { 
-			get; set; default = new Gee.HashMap<int, OLLMchat.Tool.RequestBase>(); }
+		public Gee.HashMap<int, OLLMchat.Tool.RequestBase> active_tools {
+			get; set; default = new Gee.HashMap<int, OLLMchat.Tool.RequestBase>();
+		}
 		
 		/**
 		 * Constructor.

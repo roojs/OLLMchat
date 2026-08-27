@@ -16,7 +16,8 @@ namespace OLLMrpc
 	/**
 	 * Inbound RPC envelope — matching {@link Request.id}, plus result or error.
 	 *
-	 * After {@link Client.call}, check {@link error} first. Successful
+	 * After {@link Client.call} returns, the call succeeded.
+	 * {@link Client.call} throws on failure. Successful
 	 * calls put objects in {@link result} (never null; omit on the wire
 	 * when empty) and optional scalars in {@link args} (same
 	 * {@link Gee.ArrayList} of boxed {@link GLib.Value} as
@@ -25,12 +26,10 @@ namespace OLLMrpc
 	 *
 	 * == Usage Examples ==
 	 *
-	 * === Check error ===
+	 * === Call ===
 	 *
 	 * {{{
 	 * var resp = yield rpc.call(req);
-	 * if (resp.error != null)
-	 *     GLib.warning("%s", resp.error.message);
 	 * }}}
 	 *
 	 * === Object result ===
@@ -57,7 +56,8 @@ namespace OLLMrpc
 		 */
 		public int id { get; set; default = 0; }
 		/**
-		 * Failure when set. Check this before {@link result} or {@link args}.
+		 * Failure when set. {@link Client.call} throws this as
+		 * {@link GLib.Error}; it is not returned to the caller.
 		 *
 		 * Null means success. {@link OLLMrpc.Error} is a wire object, not
 		 * {@link GLib.Error}.
@@ -70,7 +70,8 @@ namespace OLLMrpc
 		 * With {@link Transport.Connection.live_handles}, a non-Serializable
 		 * instance is a lease id, not a property dump.
 		 */
-		public Gee.ArrayList<GLib.Object> result { get; set; default = new Gee.ArrayList<GLib.Object>(); }
+		public Gee.ArrayList<GLib.Object> result { 
+			get; set; default = new Gee.ArrayList<GLib.Object>(); }
 		/**
 		 * Positional returns (daemon → client), GIR order.
 		 *

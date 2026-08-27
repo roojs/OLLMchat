@@ -258,4 +258,45 @@ namespace OLLMrpc
 		}
 		return packed;
 	}
+
+	/**
+	 * Register stock envelope types, and optionally the live stack.
+	 *
+	 * Always registers {@link Request}, {@link Response},
+	 * {@link Notification}, and {@link Error}. When ''live'' is
+	 * ''true'', also registers {@link Live.Invoke} and the live
+	 * handler singletons ({@link Live.Remote},
+	 * {@link Live.Subscribe}, {@link Live.Callback}).
+	 *
+	 * Call once before listen. Clients that construct
+	 * {@link Client} already get envelope types plus
+	 * {@link Live.Invoke}; they must not pass ''live''
+	 * ''true''.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * OLLMrpc.rpc_register();
+	 * OLLMrpc.rpc_register(true);
+	 * }}}
+	 *
+	 * @param live ''true'' to export live-handle handlers
+	 */
+	public void rpc_register(bool live = false)
+	{
+		Request.rpc_register();
+		Response.rpc_register();
+		Notification.rpc_register();
+		Error.rpc_register();
+		if (!live) {
+			return;
+		}
+		Live.Remote.rpc_register();
+		Live.Subscribe.rpc_register();
+		Live.Invoke.rpc_register();
+		Live.Callback.rpc_register();
+		Request.register_live("RPC-Live-Remote", new Live.Remote());
+		Request.register_live("RPC-Live-Subscribe", new Live.Subscribe());
+		Request.register_live("RPC-Live-Callback", new Live.Callback());
+	}
 }

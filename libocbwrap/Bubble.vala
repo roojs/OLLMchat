@@ -125,10 +125,10 @@ namespace OLLMbwrap
 		 */
 		private int output_lines = 0;
 
-		/**
-		 * True when the subprocess was killed because output exceeded 100 lines.
-		 */
-		public bool output_killed { get; private set; default = false; }
+		public bool stopped { get; private set; default = false; }
+		private string[] tail = {};
+		private GLib.Subprocess child;
+		private bool child_active = false;
 		
 		/**
 		 * @param verification Non-null apply hook wired into {@link Overlay} / {@link Scan}
@@ -140,6 +140,19 @@ namespace OLLMbwrap
 			string? bp = GLib.Environment.find_program_in_path("bwrap");
 			this.bwrap_exe = bp != null ? bp : "";
 			this.overlay = new Overlay (this.verification);
+		}
+
+		public void stop()
+		{
+			this.stopped = true;
+			if (!this.child_active) {
+				return;
+			}
+			var id = this.child.get_identifier();
+			if (id != null) {
+				Posix.kill(-(int.parse(id)), Posix.Signal.KILL);
+			}
+			this.child.force_exit();
 		}
 		
 		/**
@@ -191,6 +204,10 @@ namespace OLLMbwrap
 				err = new GLib.IOError.FAILED(
 					"Failed to create bubblewrap subprocess: " + se.message);
 			}
+			if (subprocess != null) {
+				this.child = subprocess;
+				this.child_active = true;
+			}
 			var result = "";
 			 
 			if (err == null) {
@@ -206,6 +223,7 @@ namespace OLLMbwrap
 				}
 			}
 			run_seccomp.detach_sources();
+			this.child_active = false;
 			this.overlay.cleanup();
 			if (err != null) {
 				throw err;
@@ -459,13 +477,6 @@ namespace OLLMbwrap
 			(channel, condition) => {
 				if ((condition & GLib.IOCondition.IN) != 0) {
 					this.read_from_channel(channel, true);
-					if (this.output_killed) {
-						var id = subprocess.get_identifier();
-						if (id != null) {
-							Posix.kill(-(int.parse(id)), Posix.Signal.KILL);
-						}
-						subprocess.force_exit();
-					}
 				}
 				if ((condition & (GLib.IOCondition.HUP | GLib.IOCondition.ERR)) != 0) {
 					stdout_open = false;
@@ -480,13 +491,6 @@ namespace OLLMbwrap
 			(channel, condition) => {
 				if ((condition & GLib.IOCondition.IN) != 0) {
 					this.read_from_channel(channel, false);
-					if (this.output_killed) {
-						var id = subprocess.get_identifier();
-						if (id != null) {
-							Posix.kill(-(int.parse(id)), Posix.Signal.KILL);
-						}
-						subprocess.force_exit();
-					}
 				}
 				if ((condition & (GLib.IOCondition.HUP | GLib.IOCondition.ERR)) != 0) {
 					stderr_open = false;
@@ -538,15 +542,12 @@ namespace OLLMbwrap
 		run_seccomp.drain_notify_readable();
 		run_seccomp.finish_evidence_formatting();
 
-		// Build failure string (stderr + stdout + exit code) for failure case
-		// fail_str already contains stderr, now add stdout
-		var final_fail_str = this.fail_str;
-		if (this.ret_str != "") {
-			if (final_fail_str != "") {
-				final_fail_str += "\n";
-			}
-			final_fail_str += this.ret_str;
+		var sliced = string.joinv("\n", this.tail);
+		if (this.output_lines > 50) {
+			sliced = "// ... (output truncated: showing last 50 of " + this.output_lines.to_string() + " lines) ...\n" + sliced;
 		}
+
+		var final_fail_str = sliced;
 		
 		// Add exit code to fail_str
 		if (final_fail_str != "") {
@@ -570,27 +571,25 @@ namespace OLLMbwrap
 		}
 		final_fail_str += "\n";
 
-		if (this.output_killed) {
-			GLib.debug("command killed: output exceeded 100 lines");
-			return this.ret_str + "\n" + this.fail_str
-				+ "\nCommand killed: output exceeded 100 lines. Avoid outputting large files to stdout; consider writing to a file or limiting what you are outputting.";
+		if (this.stopped) {
+			return sliced + "\nCommand stopped by user.";
 		}
 
 		// Return appropriate string based on exit status
 		if (exit_status == 0) {
 			if (run_seccomp.fs != "") {
-				if (this.ret_str != "") {
-					return this.ret_str + "\n" + run_seccomp.fs;
+				if (sliced != "") {
+					return sliced + "\n" + run_seccomp.fs;
 				}
 				return run_seccomp.fs;
 			}
 			if (run_seccomp.skipped != "") {
-				if (this.ret_str != "") {
-					return this.ret_str + "\n" + run_seccomp.skipped;
+				if (sliced != "") {
+					return sliced + "\n" + run_seccomp.skipped;
 				}
 				return run_seccomp.skipped;
 			}
-			return this.ret_str;
+			return sliced;
 		}
 		// Failure: return stderr + stdout + exit code
 		return final_fail_str;
@@ -609,45 +608,26 @@ namespace OLLMbwrap
 	private void read_from_channel(GLib.IOChannel channel, bool is_stdout)
 	{
 		while (true) {
-			if (this.output_killed) {
+			if (this.stopped) {
 				return;
 			}
 			string? buffer = null;
 			size_t len = 0;
 			size_t term_pos = 0;
 			GLib.IOStatus status;
-			
 			try {
 				status = channel.read_line(out buffer, out len, out term_pos);
 			} catch (GLib.Error e) {
-				return; // Error reading, stop
-			}
-			
-			if (buffer == null) {
-				return; // No more data
-			}
-			
-			// If status is not NORMAL, return early
-			if (status != GLib.IOStatus.NORMAL) {
-				return; // AGAIN, EOF, or ERROR - stop reading
-			}
-			
-			// Status is NORMAL - accumulate output
-			if (this.output_lines >= 100) {
-				this.output_killed = true;
 				return;
 			}
+			if (buffer == null || status != GLib.IOStatus.NORMAL) {
+				return;
+			}
+			if (this.tail.length >= 50) {
+				this.tail = this.tail[1:this.tail.length];
+			}
+			this.tail += buffer.chomp();
 			this.output_lines++;
-			if (is_stdout) {
-				this.ret_str += buffer;
-				continue; // Read more
-			}
-			
-			if (this.fail_str != "") {
-				this.fail_str += "\n";
-			}
-			this.fail_str += buffer;
-			continue; // Read more
 		}
 	}
 	}

@@ -14,15 +14,27 @@
 namespace OLLMrpc
 {
 	/**
-	 * Wire error object (''code'', ''message'').
+	 * Wire error object (''code'', ''message'', ''domain'', ''gerror_code'').
 	 *
 	 * Not {@link GLib.Error} — {@link GLib.Object} for bin encode/decode.
-	 * {@link code} is the numeric error code (a {@link RpcErrorCode} value).
+	 * {@link code} is the JSON-RPC number (a {@link RpcErrorCode} value).
+	 * {@link domain} / {@link gerror_code} are the {@link GLib.Error} to throw
+	 * on the client (function throw or {@link RpcErrorCode}).
 	 */
 	public class Error : GLib.Object, OLLMrpc.Bin.Serializable
 	{
 		public int code { get; set; }
 		public string message { get; set; default = ""; }
+		/**
+		 * GLib error domain quark string (e.g. ''g-file-error-quark'').
+		 * Always set on replies from {@link RpcErrorCode.to_error}.
+		 */
+		public string domain { get; set; default = ""; }
+		/**
+		 * Thrown {@link GLib.Error} code (e.g. {@link GLib.FileError.NOENT}).
+		 * Not {@link code}.
+		 */
+		public int gerror_code { get; set; default = 0; }
 
 		/**
 		 * @param method optional RPC method (reserved; logging is on {@link Client})

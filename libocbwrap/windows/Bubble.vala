@@ -42,12 +42,16 @@ namespace OLLMbwrap
 		public string bwrap_exe { get; private set; default = ""; }
 		public string ret_str { get; private set; default = ""; }
 		public string fail_str { get; private set; default = ""; }
-		public bool output_killed { get; private set; default = false; }
+		public bool stopped { get; private set; default = false; }
 
 		public Bubble (FileVerification verification)
 		{
 			Object (verification: verification);
 			this.overlay = new Overlay (verification);
+		}
+
+		public void stop()
+		{
 		}
 
 		public async string exec (string command, string working_dir = "") throws Error

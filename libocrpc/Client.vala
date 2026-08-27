@@ -654,10 +654,11 @@ namespace OLLMrpc
 		 * calling; see {@link Request} for wire serialize rules.
 		 *
 		 * @param request wire request; {@link Request.id} is set here
-		 * @return wire response; check {@link Response.error}, or connect
-		 *   to {@link failed} for user-visible handling
+		 * @return wire response on success
+		 * @throws GLib.Error the error from the function or {@link RpcErrorCode};
+		 *   the transport error on disconnect / timeout
 		 */
-		public async Response call(Request request)
+		public async Response call(Request request) throws GLib.Error
 		{
 			request.id = this.next_id++;
 			if (!this.connected) {
@@ -680,22 +681,24 @@ namespace OLLMrpc
 					(int) RpcErrorCode.INTERNAL_ERROR,
 					e.message
 				);
+				transport_error.domain = e.domain.to_string();
+				transport_error.gerror_code = e.code;
 				this.failed(request, transport_error);
-				return new Response() {
-					id = request.id,
-					error = transport_error
-				};
+				throw e;
 			}
-			if (response.error != null) {
-				GLib.warning(
-					"%s id=%d: %s",
-					request.method,
-					request.id,
-					response.error.message
-				);
-				this.failed(request, response.error);
+			if (response.error == null) {
+				return response;
 			}
-			return response;
+			GLib.warning("%s id=%d: %s",
+				request.method, request.id, response.error.message);
+			this.failed(request, response.error);
+			var quark = GLib.Quark.from_string(response.error.domain);
+			var code = response.error.gerror_code;
+			if (response.error.domain == "") {
+				quark = new RpcErrorCode.INTERNAL_ERROR("").domain;
+				code = response.error.code;
+			}
+			throw new GLib.Error.literal(quark, code, response.error.message);
 		}
 
 		private async Response wait_response(

@@ -19,7 +19,7 @@
 - [TOOLS-2.23-tool-results-to-markdown.md](TOOLS-2.23-tool-results-to-markdown.md)
 - [TOOLS-2.30-pretooler-tool-filtering.md](TOOLS-2.30-pretooler-tool-filtering.md)
 - [TOOLS-2.6.2-bwrap-ux-fixes.md](TOOLS-2.6.2-bwrap-ux-fixes.md)
-- [TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md](TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md)
+- [done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md](done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md)
 - [TOOLS-2.9-NEEDS-TESTS-web-fetch-tool.md](TOOLS-2.9-NEEDS-TESTS-web-fetch-tool.md)
 - [TOOLS-2.9.1-web-fetch-html2md-cleanup.md](TOOLS-2.9.1-web-fetch-html2md-cleanup.md)
 - [TOOLS-2.9.2-disable-http-web-tools.md](TOOLS-2.9.2-disable-http-web-tools.md)

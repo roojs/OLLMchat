@@ -545,6 +545,9 @@ namespace OLLMchat.History
 		 */
 		public override void cancel_current_request()
 		{
+			foreach (var req in this.agent.active_tools.values) {
+				req.stop();
+			}
 			// Cancel via agent's chat if available
 			if (this.agent.chat().cancellable != null) {
 				this.agent.chat().cancellable.cancel();

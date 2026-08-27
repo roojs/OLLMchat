@@ -40,13 +40,37 @@ namespace OLLMtools.RunCommand
 		/** When true, {@link execute} appends a unique suffix to {@link permission_target_path} so each prompt is distinct (used for non-bwrap runs). */
 		private bool is_complex_command = false;
 		private int output_lines = 0;
-		private bool output_killed = false;
+		private bool stopped = false;
+		private string[] tail = {};
+		private GLib.Subprocess child;
+		private bool child_active = false;
+		private OLLMbwrap.Bubble bubble;
+		private bool bubble_active = false;
 			
 		/**
 		 * Default constructor.
 		 */
 		public Request()
 		{
+		}
+
+		public override void stop()
+		{
+			this.stopped = true;
+			if (this.bubble_active) {
+				this.bubble.stop();
+				return;
+			}
+			if (!this.child_active) {
+				return;
+			}
+#if !G_OS_WIN32
+			var id = this.child.get_identifier();
+			if (id != null) {
+				Posix.kill(-(int.parse(id)), Posix.Signal.KILL);
+			}
+#endif
+			this.child.force_exit();
 		}
 
 		public override string to_summary ()
@@ -263,7 +287,6 @@ namespace OLLMtools.RunCommand
 				}
 			}
 			
-			var nl = this.command.index_of_char('\n');
 			var run_status = "Running command (NOT IN SANDBOX)";
 			if (this.run_as_root) {
 				run_status = "Running command as root (sudo)";
@@ -271,16 +294,20 @@ namespace OLLMtools.RunCommand
 			if (!this.run_as_root && OLLMbwrap.Bubble.can_wrap()) {
 				run_status = "Running command in sandbox";
 			}
-			this.agent.add_message(new OLLMchat.Message("ui",
-				OLLMchat.Message.fenced("text.oc-frame-success.collapsed "
-					+ (nl >= 0 ? this.command.substring(0, nl).strip() : this.command.strip()),
-					run_status + "\n\n$ " + this.command)));
-			
-			// Execute the tool async
+			this.agent.notification(new OLLMrpc.Notification() {
+				method = "client.run_tool.start",
+				message = this.command.strip(),
+				action = run_status,
+			});
 			try {
 				return yield this.execute_tool_async();
 			} catch (Error e) {
 				return "ERROR: " + e.message;
+			} finally {
+				this.agent.notification(new OLLMrpc.Notification() {
+					method = "client.run_tool.end",
+					message = this.command.strip(),
+				});
 			}
 		}
 		
@@ -331,18 +358,19 @@ namespace OLLMtools.RunCommand
 				bubble.allow_network = this.network;
 				bubble.write_tokens = this.write_array;
 				bubble.write_roots = write_roots;
+				this.bubble = bubble;
+				this.bubble_active = true;
 
 				var output = yield bubble.exec(
 					this.command,
 					normalized_working_dir
 				);
+				this.bubble_active = false;
 				if (output.strip() == "") {
 					output = "No output received from command";
 				}
 
-				var frame_header = bubble.output_killed
-					? "text.oc-frame-danger.collapsed Execution results (output too excessive)"
-					: "text.oc-frame-success.collapsed Execution results";
+				var frame_header = "text.oc-frame-success.collapsed Execution results";
 				this.agent.add_message(new OLLMchat.Message("ui",
 					 OLLMchat.Message.fenced(frame_header, output)));
 				
@@ -427,6 +455,9 @@ namespace OLLMtools.RunCommand
 				throw new GLib.IOError.FAILED("Failed to create subprocess: " + e.message);
 			}
 
+			this.child = subprocess;
+			this.child_active = true;
+
 			// Win32 pipe reads via read_line_async can hang; STDIN_INHERIT can block cmd.exe.
 			string? stdout_buf = null;
 			string? stderr_buf = null;
@@ -467,6 +498,9 @@ namespace OLLMtools.RunCommand
 				throw new GLib.IOError.FAILED("Failed to create subprocess: " + e.message);
 			}
 
+			this.child = subprocess;
+			this.child_active = true;
+
 			if (this.run_as_root) {
 				var stdin_stream = subprocess.get_stdin_pipe ();
 				stdin_stream.write_all ((this.elevation_password + "\n").data, null);
@@ -476,8 +510,9 @@ namespace OLLMtools.RunCommand
 
 			var stdout_stream = subprocess.get_stdout_pipe ();
 			var stderr_stream = subprocess.get_stderr_pipe ();
-			stdout_output = yield this.read_stream_async (stdout_stream, subprocess);
-			stderr_output = yield this.read_stream_async (stderr_stream, subprocess);
+			yield this.read_stream_async (stdout_stream, subprocess);
+			stdout_output = yield this.read_stream_async (stderr_stream, subprocess);
+			stderr_output = "";
 
 			try {
 				if (!(yield subprocess.wait_async (null))) {
@@ -490,6 +525,8 @@ namespace OLLMtools.RunCommand
 				throw new GLib.IOError.FAILED("Failed to wait for process: " + e.message);
 			}
 #endif
+
+			this.child_active = false;
 			
 			var	output_content  = stdout_output;
 			if (stderr_output != "") {
@@ -498,10 +535,10 @@ namespace OLLMtools.RunCommand
 				}
 				output_content += stderr_output;
 			}
-			if (this.output_killed) {
-				output_content += "\nCommand killed: output exceeded 50 lines. Avoid outputting large files to stdout; consider writing to a file or limiting what you are outputting.";
+			if (this.stopped) {
+				output_content += "\nCommand stopped by user.";
 			}
-			if (!this.output_killed && exit_status != 0) {
+			if (!this.stopped && exit_status != 0) {
 				if (stdout_output != "" || stderr_output != "") {
 					output_content += "\n";
 				}
@@ -519,10 +556,7 @@ namespace OLLMtools.RunCommand
 			
 		// Send output as second message (danger when command failed, success when exit 0)
 			var frame_header = "text.oc-frame-success.collapsed Execution results";
-			if (this.output_killed) {
-				frame_header = "text.oc-frame-danger.collapsed Execution results (output too excessive)";
-			}
-			if (!this.output_killed && exit_status != 0) {
+			if (exit_status != 0) {
 				frame_header = "text.oc-frame-danger.collapsed Execution results (Command Failed)";
 			}
 			this.agent.add_message(new OLLMchat.Message("ui", 
@@ -569,12 +603,10 @@ namespace OLLMtools.RunCommand
 				return output;
 			}
 			
-			// Truncate to max_lines
-			var truncated_lines = lines[0:max_lines];
+			var start = total_lines - max_lines;
+			var truncated_lines = lines[start:total_lines];
 			var truncated = string.joinv("\n", truncated_lines);
-			
-			// Add truncation message (similar to codesearch tool format)
-			return truncated + "\n\n// ... (output truncated: showing first " + max_lines.to_string() + " of " + total_lines.to_string() + " lines, output too long) ...";
+			return "// ... (output truncated: showing last " + max_lines.to_string() + " of " + total_lines.to_string() + " lines) ...\n" + truncated;
 		}
 
 #if !G_OS_WIN32
@@ -588,42 +620,30 @@ namespace OLLMtools.RunCommand
 			}
 
 			var data_input = new GLib.DataInputStream (stream);
-			var output = "";
-
 			while (true) {
-				if (this.output_killed) {
+				if (this.stopped) {
 					break;
 				}
 				string? line = null;
 				try {
 					line = yield data_input.read_line_async (GLib.Priority.DEFAULT, null);
 				} catch (GLib.Error e) {
-					return output;
+					return string.joinv("\n", this.tail);
 				}
-
 				if (line == null) {
 					break;
 				}
-
-				if (this.output_lines >= 50) {
-					this.output_killed = true;
-					GLib.debug("command killed: output exceeded 50 lines");
-					var id = subprocess.get_identifier();
-					if (id != null) {
-						Posix.kill(-(int.parse(id)), Posix.Signal.KILL);
-					}
-					subprocess.force_exit();
-					break;
+				if (this.tail.length >= 50) {
+					this.tail = this.tail[1:this.tail.length];
 				}
+				this.tail += line;
 				this.output_lines++;
-
-				if (output != "") {
-					output += "\n";
-				}
-				output += line;
 			}
-
-			return output;
+			var output = string.joinv("\n", this.tail);
+			if (this.output_lines <= 50) {
+				return output;
+			}
+			return "// ... (output truncated: showing last 50 of " + this.output_lines.to_string() + " lines) ...\n" + output;
 		}
 #endif
 		

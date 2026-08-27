@@ -46,7 +46,10 @@ namespace OLLMrpc
 		 */
 		public static Error to_error(int code)
 		{
-			return new Error(code, ((RpcErrorCode) code).message);
+			var err = new Error(code, ((RpcErrorCode) code).message);
+			err.domain = (new RpcErrorCode.INTERNAL_ERROR("")).domain.to_string();
+			err.gerror_code = code;
+			return err;
 		}
 
 		/**

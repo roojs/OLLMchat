@@ -174,7 +174,7 @@ separator.horizontal.oc-table-body-sep {
 }
 
 .permission-widget .command-preview,
-.command-frame .command-preview {
+.tool-frame .command-preview {
   font-weight: bold;
   font-size: 1.25em;
 }

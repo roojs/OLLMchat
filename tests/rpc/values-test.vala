@@ -128,7 +128,11 @@ namespace OLLMrpcTests
 			OLLMrpc.Response? response = null;
 			var call_loop = new GLib.MainLoop();
 			rpc.call.begin(req, (obj, res) => {
-				response = rpc.call.end(res);
+				try {
+					response = rpc.call.end(res);
+				} catch (GLib.Error e) {
+					this.check(command_line, false, e.message);
+				}
 				call_loop.quit();
 			});
 			call_loop.run();
@@ -147,7 +151,11 @@ namespace OLLMrpcTests
 			response = null;
 			var blob_loop = new GLib.MainLoop();
 			rpc.call.begin(blob_req, (obj, res) => {
-				response = rpc.call.end(res);
+				try {
+					response = rpc.call.end(res);
+				} catch (GLib.Error e) {
+					this.check(command_line, false, e.message);
+				}
 				blob_loop.quit();
 			});
 			blob_loop.run();
@@ -166,7 +174,11 @@ namespace OLLMrpcTests
 			response = null;
 			var f_loop = new GLib.MainLoop();
 			rpc.call.begin(f_req, (obj, res) => {
-				response = rpc.call.end(res);
+				try {
+					response = rpc.call.end(res);
+				} catch (GLib.Error e) {
+					this.check(command_line, false, e.message);
+				}
 				f_loop.quit();
 			});
 			f_loop.run();
@@ -181,7 +193,11 @@ namespace OLLMrpcTests
 			response = null;
 			var d_loop = new GLib.MainLoop();
 			rpc.call.begin(d_req, (obj, res) => {
-				response = rpc.call.end(res);
+				try {
+					response = rpc.call.end(res);
+				} catch (GLib.Error e) {
+					this.check(command_line, false, e.message);
+				}
 				d_loop.quit();
 			});
 			d_loop.run();
@@ -196,7 +212,11 @@ namespace OLLMrpcTests
 			response = null;
 			var i_loop = new GLib.MainLoop();
 			rpc.call.begin(i_req, (obj, res) => {
-				response = rpc.call.end(res);
+				try {
+					response = rpc.call.end(res);
+				} catch (GLib.Error e) {
+					this.check(command_line, false, e.message);
+				}
 				i_loop.quit();
 			});
 			i_loop.run();
