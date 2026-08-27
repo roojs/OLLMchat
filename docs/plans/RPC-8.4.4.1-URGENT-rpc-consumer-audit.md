@@ -190,21 +190,92 @@ No code. These already `throws`. RPC failure fails the tool or CLI.
 
 ### 4. `⏳` `fetch_file` — restore last file, revert reload
 
-`fetch_file` asks the daemon: “do we already have this path in the project index?” `null` means **not in the index**. A thrown error means **the daemon failed**. Those must not be treated as the same thing.
+`fetch_file` is `RPC-File.fetch` (`ollmfilesd/File.vala` `fetch()`).
 
-**Read / write / edit tools** (already throw — item 3): they use `null` to mean “create a fake file / probe disk next”. A throw fails the tool. OK.
+**Server replies (success, no `response.error`):**
+
+- **🔷** Hit: `result` has one `File`. Client returns that file.
+- **🔷** Miss: empty `result`, `msg` is `file not found` or `project not found`. Client returns `null`.
+- **🔷** `mtime_on_disk` does not throw. It logs critical and returns `0`.
+
+**Server / transport that `Client.call` throws:**
+
+- **🔷** Transport / timeout (`IOError`, `TIMED_OUT`).
+- **🔷** Protocol (`METHOD_NOT_FOUND`, `INVALID_PARAMS`, wrong args).
+- **🔷** Not “file missing”. Missing is the success miss above.
+
+**Client `Folder.fetch_file`:** keep `throws`. Do **not** catch in the wrapper (that would turn a throw into `null`).
+
+**Read / write / edit tools** (item 3): `null` → fake file / probe disk. Throw fails the tool. OK.
 
 **Restore the last open file** — `ProjectManager.restore_active_state`:
 
-- On startup we load the saved file path and call `fetch_file`.
-- Today, if the RPC fails, we get `null` and skip opening the file (looks like there was no saved file).
-- **🔷** `GLib.critical` and skip opening it (same UI, but logged). `AgentFactory` / `Skill/Factory` already catch load errors with a warning.
+- **🔷** `null`: skip opening (no saved file / not in index). No critical.
+- **🔷** Throw: `GLib.critical`, skip opening. Do not treat as “no saved file”.
 
-**Revert a file from history** — `FileHistory.rpc_revert`:
+**Revert buffer reload** — `FileHistory.rpc_revert` after the revert RPC:
 
-- After revert, we `fetch_file` then `read` to refresh the buffer.
-- Today a failed lookup skips the reload with no log.
-- **🔷** `GLib.critical` and skip the reload.
+- **🔷** `null`: skip reload (not in index).
+- **🔷** Throw: `GLib.critical`, skip reload. Revert RPC itself still throws (item 9).
+
+#### `libocfiles/ProjectManager.vala` — `restore_active_state()`
+
+**Why:** A throw is not “file missing”. Log it. Leave the editor with no restored file.
+
+**Where:** `restore_active_state` — the `fetch_file` yield.
+
+**Depends on:** none.
+
+#### Remove
+```vala
+			var file = yield project.fetch_file(file_path);
+			if (file != null) {
+				this.activate_file(file);
+			}
+```
+
+#### Replace with
+```vala
+			try {
+				var file = yield project.fetch_file(file_path);
+				if (file != null) {
+					this.activate_file(file);
+				}
+			} catch (GLib.Error e) {
+				GLib.critical("restore open file failed %s: %s", file_path, e.message);
+			}
+```
+
+#### `libocfiles/FileHistory.vala` — `rpc_revert()` lookup
+
+**Why:** Revert already succeeded. A lookup throw must not skip the log. Skip only the buffer reload.
+
+**Where:** `rpc_revert` — the `fetch_file` yield when cache miss.
+
+**Depends on:** none.
+
+#### Remove
+```vala
+			if (cached == null && this.manager.active_project != null) {
+				cached = yield this.manager.active_project.fetch_file(
+					this.path
+				);
+			}
+```
+
+#### Replace with
+```vala
+			if (cached == null && this.manager.active_project != null) {
+				try {
+					cached = yield this.manager.active_project.fetch_file(
+						this.path
+					);
+				} catch (GLib.Error e) {
+					GLib.critical("revert reload lookup failed %s: %s", this.path, e.message);
+					return;
+				}
+			}
+```
 
 ### 5. `⏳` Overlay scan (`has_file` / `created` / `modified`)
 
