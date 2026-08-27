@@ -27,7 +27,7 @@ namespace OLLMfiles
 		public int64 id { get; set; default = 0; }
 		public string path { get; set; default = ""; }
 
-		public async void rpc_approve()
+		public async void rpc_approve() throws GLib.Error
 		{
 			yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-FileHistory.rpc_approve",
@@ -37,8 +37,10 @@ namespace OLLMfiles
 
 		/**
 		 * Revert on daemon, then refresh buffer via {@link File.read} (**G-2**).
+		 *
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async void rpc_revert()
+		public async void rpc_revert() throws GLib.Error
 		{
 			var response = yield this.manager.rpc.call(
 				new OLLMrpc.Request() {
@@ -46,9 +48,6 @@ namespace OLLMfiles
 					args = OLLMrpc.args("sx", this.path, this.id)
 				}
 			);
-			if (response.error != null) {
-				return;
-			}
 			var files = (Gee.ArrayList<File>) response.result;
 			var cached = this.manager.file_cache.get(this.path) as File;
 			if (cached == null && files.size > 0) {

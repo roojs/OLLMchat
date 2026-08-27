@@ -26,9 +26,9 @@ Verify surrounding context before applying.
 - **🔷** `⏳` `Error.code` stays the JSON-RPC envelope (`INTERNAL_ERROR` when invoke failed).
   - GError code is a **separate** property (`gerror_code`). Mixing them is why catch fails today.
 - **🔷** `⏳` Grow `reply_error` so the invoke `catch` can pass the thrown `GLib.Error`.
-- **ℹ️** Consumers: **URGENT** [`RPC-8.4.4.1-URGENT-rpc-consumer-audit.md`](RPC-8.4.4.1-URGENT-rpc-consumer-audit.md). Full-tree compile waits on that audit.
+- **ℹ️** Consumers: **URGENT** [`RPC-8.4.4.1-URGENT-rpc-consumer-audit.md`](RPC-8.4.4.1-URGENT-rpc-consumer-audit.md). Full-tree compile waits on that plan’s **Phase 1** (throw). Caller catch/UI is **Phase 2**.
 
-**Suggested order:** this plan (`libocrpc` + `tests/rpc`) → [`8.4.4.1`](RPC-8.4.4.1-URGENT-rpc-consumer-audit.md).
+**Suggested order:** this plan (`libocrpc` + `tests/rpc`) → [`8.4.4.1`](RPC-8.4.4.1-URGENT-rpc-consumer-audit.md) Phase 1 → Phase 2.
 
 ---
 

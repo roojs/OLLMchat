@@ -2,8 +2,8 @@
 # Tranche 2 — File RPC tests (interactive + rpc-script + jq + sqlite + filesystem).
 #
 # Two caller paths (see docs/plans/done/2.10.4.10-DONE-rpc-tests.md):
-#   Path A — activate with scan (normal open project); File.* on existing files.
-#   Path B — activate with skip_scan + File.register (agent new_fake path).
+#   Path A — skip_scan + File.register on the fixture file, then File.*.
+#   Path B — skip_scan + File.register (agent new_fake path).
 
 set -euo pipefail
 
@@ -124,17 +124,17 @@ REGISTER_PATH="$RPC_PROJECT_PATH/pending-register.txt"
 mkdir -p "$RPC_PROJECT_PATH/src"
 printf 'seed\n' >"$NEW_FILE_PATH"
 
-# --- Path A: scan on activate (single script session) ---
+# --- Path A: skip_scan + register fixture, then File.* ---
 run_t2_case "$SCRIPT_DIR/rpc/t2-scan.script.in"
 
-jq_resp_ok "T2A.2 File.read (no error)" 4 "$RPC_LAST_OUT" '.error == null'
-jq_resp_ok "T2A.2 File.read (id > 0)" 4 "$RPC_LAST_OUT" '(.result[0].id // .result[0]["id"]) > 0'
-jq_resp_args_ok "T2A.2 File.read (path)" 4 "$RPC_LAST_OUT" \
+jq_resp_ok "T2A.2 File.read (no error)" 5 "$RPC_LAST_OUT" '.error == null'
+jq_resp_ok "T2A.2 File.read (id > 0)" 5 "$RPC_LAST_OUT" '(.result[0].id // .result[0]["id"]) > 0'
+jq_resp_args_ok "T2A.2 File.read (path)" 5 "$RPC_LAST_OUT" \
     --arg p "$HELLO_PATH" '.result[0].path == $p'
 
-jq_resp_ok "T2A.1 File.write (no error)" 5 "$RPC_LAST_OUT" '.error == null and .msg == "ok"'
+jq_resp_ok "T2A.1 File.write (no error)" 6 "$RPC_LAST_OUT" '.error == null and .msg == "ok"'
 
-jq_resp_ok "T2A.3 File.changed.check (NO_CHANGE)" 6 "$RPC_LAST_OUT" \
+jq_resp_ok "T2A.3 File.changed.check (NO_CHANGE)" 7 "$RPC_LAST_OUT" \
     '.error == null and .msg == "0"'
 
 file_content_ok "T2A.2 File.read (disk content)" "$HELLO_PATH" "hello from rpc fixture"
@@ -171,7 +171,7 @@ jq_resp_args_ok "T2B.5 File.read after register (path)" 5 "$RPC_LAST_OUT" \
 # --- Path A: changed.check with external touch ---
 touch "$HELLO_PATH"
 run_t2_case "$SCRIPT_DIR/rpc/t2-changed-dirty.script.in"
-jq_resp_ok "T2A.4 File.changed.check (CHANGED_HAS_UNSAVED)" 4 "$RPC_LAST_OUT" \
+jq_resp_ok "T2A.4 File.changed.check (CHANGED_HAS_UNSAVED)" 5 "$RPC_LAST_OUT" \
     '.error == null and .msg == "1"'
 
 # --- Path A: write persistence (isolated data_dir) ---

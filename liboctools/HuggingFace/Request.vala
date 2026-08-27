@@ -158,9 +158,6 @@ namespace OLLMtools.HuggingFace
 					method = "/api/models/" + this.model_ref.strip(),
 					result_type = typeof(OLLMhf.Model),
 				});
-				if (detail_resp.error != null) {
-					throw new GLib.IOError.FAILED(detail_resp.error.message);
-				}
 				if (detail_resp.result.size == 0) {
 					throw new GLib.IOError.FAILED("empty Hub model response");
 				}
@@ -378,9 +375,6 @@ namespace OLLMtools.HuggingFace
 					};
 
 					var search_resp = yield rpc.call(search_req);
-					if (search_resp.error != null) {
-						throw new GLib.IOError.FAILED(search_resp.error.message);
-					}
 					if (search_resp.result.size == 0) {
 						throw new GLib.IOError.FAILED("empty Hub search response");
 					}
@@ -435,9 +429,6 @@ namespace OLLMtools.HuggingFace
 						method = "/api/models/" + this.model_ref.strip(),
 						result_type = typeof(OLLMhf.Model),
 					});
-					if (detail_resp.error != null) {
-						throw new GLib.IOError.FAILED(detail_resp.error.message);
-					}
 					if (detail_resp.result.size == 0) {
 						throw new GLib.IOError.FAILED("empty Hub model response");
 					}
@@ -474,9 +465,6 @@ namespace OLLMtools.HuggingFace
 							method = "/api/models/" + this.model_ref.strip(),
 							result_type = typeof(OLLMhf.Model),
 						});
-						if (detail_resp.error != null) {
-							throw new GLib.IOError.FAILED(detail_resp.error.message);
-						}
 						if (detail_resp.result.size == 0) {
 							throw new GLib.IOError.FAILED("empty Hub model response");
 						}

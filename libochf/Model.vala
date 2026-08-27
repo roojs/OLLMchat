@@ -184,9 +184,6 @@ namespace OLLMhf
 					+ revision,
 				result_type = typeof(ModelTreeArray),
 			});
-			if (tree_resp.error != null) {
-				throw new GLib.IOError.FAILED(tree_resp.error.message);
-			}
 			if (tree_resp.result.size == 0) {
 				throw new GLib.IOError.FAILED("empty Hub tree response");
 			}

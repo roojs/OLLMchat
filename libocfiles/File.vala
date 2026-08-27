@@ -309,11 +309,12 @@ namespace OLLMfiles
 		 * **🚫** do not probe existence via {@link read}.
 		 *
 		 * Wire: ''response.msg'' is ''((int) GLib.FileType)'' as decimal
-		 * ({@link GLib.FileType.UNKNOWN} = path absent or RPC error).
+		 * ({@link GLib.FileType.UNKNOWN} = path absent).
 		 *
 		 * @return File type on daemon disk; {@link GLib.FileType.UNKNOWN} when absent
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async GLib.FileType exists()
+		public async GLib.FileType exists() throws GLib.Error
 		{
 			if (this.path.length == 0) {
 				return GLib.FileType.UNKNOWN;
@@ -323,7 +324,7 @@ namespace OLLMfiles
 				method = "RPC-File.exists",
 				args = OLLMrpc.args("s", this.path)
 			});
-			if (response.error != null || response.msg == "") {
+			if (response.msg == "") {
 				return GLib.FileType.UNKNOWN;
 			}
 			int type_code;
@@ -344,8 +345,10 @@ namespace OLLMfiles
 		 *
 		 * Whether the path may be read (project vs permission-granted) is a
 		 * tool/client decision; the daemon reads ''params.path'' on disk.
+		 *
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async bool read()
+		public async bool read() throws GLib.Error
 		{
 			if (this.path.length == 0) {
 				return false;
@@ -355,9 +358,6 @@ namespace OLLMfiles
 				method = "RPC-File.read",
 				args = OLLMrpc.args("s", this.path)
 			});
-			if (response.error != null) {
-				return false;
-			}
 
 			var files = (Gee.ArrayList<File>) response.result;
 			if (files.size > 0) {
@@ -411,14 +411,15 @@ namespace OLLMfiles
 		 * symlinks set ''target''. Optional ''unix_mode'' applies rwx after
 		 * the op.
 		 *
-		 * @return false when RPC fails or path is empty
+		 * @return false when path is empty
+		 * @throws GLib.Error if the RPC fails
 		 */
 		public async bool rpc_write(
 			string content = "",
 			string base_type = "f",
 			string target = "",
 			uint unix_mode = 0
-		)
+		) throws GLib.Error
 		{
 			if (this.path.length == 0) {
 				return false;
@@ -428,7 +429,7 @@ namespace OLLMfiles
 				write_content = this.buffer.get_text();
 			}
 
-			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+			yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-File.rpc_write",
 				args = OLLMrpc.args(
 					"ssssu",
@@ -439,9 +440,6 @@ namespace OLLMfiles
 					unix_mode
 				)
 			});
-			if (response.error != null) {
-				return false;
-			}
 			if (this.buffer != null) {
 				this.buffer.is_modified = false;
 			}
@@ -450,8 +448,10 @@ namespace OLLMfiles
 
 		/**
 		 * Check disk change vs buffer (''File.changed.check'').
+		 *
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async FileUpdateStatus check_changed()
+		public async FileUpdateStatus check_changed() throws GLib.Error
 		{
 			if (this.path.length == 0) {
 				return FileUpdateStatus.NO_CHANGE;
@@ -461,9 +461,6 @@ namespace OLLMfiles
 				method = "RPC-File.changed.check",
 				args = OLLMrpc.args("sx", this.path, this.last_modified)
 			});
-			if (response.error != null) {
-				return FileUpdateStatus.NO_CHANGE;
-			}
 			int status_code;
 			if (int.try_parse(response.msg, out status_code)) {
 				return (FileUpdateStatus) status_code;
@@ -476,8 +473,10 @@ namespace OLLMfiles
 		 *
 		 * On success, {@link Copyable.copy_from} merges ''response.result'' onto
 		 * this instance (same object for buffer/UI).
+		 *
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async bool register()
+		public async bool register() throws GLib.Error
 		{
 			if (this.path.length == 0) {
 				return false;
@@ -490,9 +489,6 @@ namespace OLLMfiles
 				method = "RPC-File.register",
 				args = OLLMrpc.args("s", this.path)
 			});
-			if (response.error != null) {
-				return false;
-			}
 
 			var files = (Gee.ArrayList<File>) response.result;
 			if (files.size > 0) {
@@ -513,52 +509,54 @@ namespace OLLMfiles
 		/**
 		 * Promote fake file (''id == -1'') to indexed row on daemon.
 		 * Does not write disk bytes — call {@link write} first when needed.
+		 *
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async void to_real() throws Error
+		public async void to_real() throws GLib.Error
 		{
 			if (this.id != -1) {
 				return;
 			}
-			if (!(yield this.register())) {
-				throw new GLib.IOError.FAILED(
-					"Could not register file: " + this.path
-				);
-			}
+			yield this.register();
 		}
 
 		/**
 		 * Delete file on daemon (''File.rpc_delete'').
+		 *
+		 * @return false when path is empty
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async bool rpc_delete()
+		public async bool rpc_delete() throws GLib.Error
 		{
 			if (this.path.length == 0) {
 				return false;
 			}
 
-			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+			yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-File.rpc_delete",
 				args = OLLMrpc.args("s", this.path)
 			});
-			return response.error == null;
+			return true;
 		}
 
 		/**
 		 * Apply unix rwx permissions on daemon (''File.apply_permissions'').
 		 *
 		 * @param unix_mode Rwx bits (''0777'') from bubble overlay
-		 * @return false when RPC fails or path is empty
+		 * @return false when path is empty
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async bool apply_permissions(uint unix_mode)
+		public async bool apply_permissions(uint unix_mode) throws GLib.Error
 		{
 			if (this.path.length == 0) {
 				return false;
 			}
 
-			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+			yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-File.apply_permissions",
 				args = OLLMrpc.args("su", this.path, unix_mode)
 			});
-			return response.error == null;
+			return true;
 		}
 		
 		/**

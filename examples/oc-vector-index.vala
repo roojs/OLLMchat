@@ -162,9 +162,6 @@ Examples:
 			var reset_response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Codebase.reset"
 			});
-			if (reset_response.error != null) {
-				throw new GLib.IOError.FAILED(reset_response.error.message);
-			}
 			stdout.printf("✓ Database reset complete\n");
 			return;
 		}
@@ -208,17 +205,11 @@ Examples:
 		var load_response = yield this.rpc.call(new OLLMrpc.Request() {
 			method = "RPC-ProjectManager.rpc_load_projects_from_db"
 		});
-		if (load_response.error != null) {
-			throw new GLib.IOError.FAILED(load_response.error.message);
-		}
 
 		var fetch_response = yield this.rpc.call(new OLLMrpc.Request() {
 			method = "RPC-Folder.fetch",
 			args = OLLMrpc.args("s", project_path)
 		});
-		if (fetch_response.error != null) {
-			throw new GLib.IOError.FAILED(fetch_response.error.message);
-		}
 		var folders = (Gee.ArrayList<OLLMfiles.Folder>) fetch_response.result;
 		if (folders.size == 0 && !opt_create_project) {
 			throw new GLib.IOError.INVALID_ARGUMENT(
@@ -241,9 +232,6 @@ Examples:
 				method = "RPC-ProjectManager.rpc_create_project",
 				args = OLLMrpc.args("s", project_path)
 			});
-			if (create_response.error != null) {
-				throw new GLib.IOError.FAILED(create_response.error.message);
-			}
 			stdout.printf("✓ Project created\n\n");
 		}
 
@@ -252,9 +240,6 @@ Examples:
 			method = "RPC-ProjectManager.rpc_activate_project",
 			args = OLLMrpc.args("sb", project_path, false)
 		});
-		if (scan_response.error != null) {
-			throw new GLib.IOError.FAILED(scan_response.error.message);
-		}
 		stdout.printf("✓ Filesystem scan complete\n\n");
 
 		if (opt_project_summary) {
@@ -263,9 +248,6 @@ Examples:
 				method = "RPC-Folder.rpc_project_description",
 				args = OLLMrpc.args("s", project_path)
 			});
-			if (summary_response.error != null) {
-				throw new GLib.IOError.FAILED(summary_response.error.message);
-			}
 			if (summary_response.msg == "") {
 				stdout.printf("(no project summary in database)\n");
 			} else {
@@ -327,9 +309,6 @@ Examples:
 			method = "RPC-Codebase.start",
 			args = OLLMrpc.args("ss", project_path, opt_only_file)
 		});
-		if (start_response.error != null) {
-			throw new GLib.IOError.FAILED(start_response.error.message);
-		}
 		yield index_done.future.wait_async();
 
 		stdout.printf("\n✓ Indexing completed\n");

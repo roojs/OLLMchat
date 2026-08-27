@@ -68,11 +68,7 @@ namespace OLLMfiles
 			switch (filebase.base_type) {
 				case "f":
 					var file = (File) filebase;
-					if (!yield file.rpc_delete()) {
-						throw new IOError.FAILED(
-							"RPC-File.rpc_delete RPC failed for %s".printf(file.path)
-						);
-					}
+					yield file.rpc_delete();
 					if (this.manager.active_file == file) {
 						this.manager.activate_file(null);
 					}

@@ -124,9 +124,6 @@ namespace OLLMtools.ReadFile
 				method = "RPC-Codebase.file_info",
 				args = OLLMrpc.args("s", this.file.path)
 			});
-			if (response.error != null) {
-				return;
-			}
 			var rows = (Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>) response.result;
 			foreach (var row in rows) {
 				var ast_path = row.ast_path.strip();

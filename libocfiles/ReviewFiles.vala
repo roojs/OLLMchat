@@ -73,8 +73,9 @@ namespace OLLMfiles
 		 * Advances {@link since_marker} from ''Response.msg'' on success.
 		 *
 		 * @return History rows since the current marker (`status` 0 = upsert, else remove)
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async Gee.ArrayList<FileWithHistory> fetch_pending()
+		public async Gee.ArrayList<FileWithHistory> fetch_pending() throws GLib.Error
 		{
 			var project = this.manager.active_project;
 			if (project == null) {
@@ -84,9 +85,6 @@ namespace OLLMfiles
 				method = "RPC-Folder.fetch_pending_approvals",
 				args = OLLMrpc.args("sx", project.path, this.since_marker)
 			});
-			if (response.error != null) {
-				return new Gee.ArrayList<FileWithHistory>();
-			}
 			if (response.msg != "" && response.msg != "project not found") {
 				this.since_marker = int64.parse(response.msg);
 			}

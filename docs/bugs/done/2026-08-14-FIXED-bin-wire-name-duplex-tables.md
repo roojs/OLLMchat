@@ -1,8 +1,8 @@
 # Bin RPC: duplex wire-name token collision (`alias mismatch`)
 
-**Status:** ⏳ OPEN — dual-table fix applied; await verify (rebuild matching client+daemon)
+**Status:** ✅ FIXED — even/odd `client_names` / `server_names` in tree. User closed 2026-08-27.
 
-**Started:** 2026-08-14 · **Updated:** 2026-08-14
+**Started:** 2026-08-14 · **Updated:** 2026-08-27
 
 **Related:** [`2026-08-13-is-text-content-type-fallback.md`](2026-08-13-is-text-content-type-fallback.md) (restore `File.fetch` after activate hit this while testing Approvals / `is_text`)
 
@@ -582,6 +582,4 @@ Per connection: `client_names` / `server_names`; wire token **even = client**, *
 
 ✔️ `tests/test-rpc-bin` exits 0.
 
-⏳ Rebuild matching client + `ollmfilesd`; re-test activate + overlapping client write vs `scan_start`.
-
-⏳ User ✅ when duplex no longer aborts on wire name intro race.
+✅ 2026-08-27 — user confirmed solved; archived.

@@ -103,14 +103,16 @@ namespace OLLMfiles
 				return "";
 			}
 
-			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Folder.rpc_project_description",
-				args = OLLMrpc.args("s", this.path)
-			});
-			if (response.error != null) {
+			try {
+				var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+					method = "RPC-Folder.rpc_project_description",
+					args = OLLMrpc.args("s", this.path)
+				});
+				return response.msg;
+			} catch (GLib.Error e) {
+				GLib.critical("project description failed %s: %s", this.path, e.message);
 				return "";
 			}
-			return response.msg;
 		}
 
 		/**
@@ -127,19 +129,20 @@ namespace OLLMfiles
 				return new Gee.ArrayList<Folder>();
 			}
 
-			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Folder.rpc_roots",
-				args = OLLMrpc.args("s", this.path)
-			});
-			if (response.error != null) {
+			try {
+				var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+					method = "RPC-Folder.rpc_roots",
+					args = OLLMrpc.args("s", this.path)
+				});
+				var folders = (Gee.ArrayList<Folder>) response.result;
+				foreach (var folder in folders) {
+					folder.manager = this.manager;
+				}
+				return folders;
+			} catch (GLib.Error e) {
+				GLib.critical("project write roots failed %s: %s", this.path, e.message);
 				return new Gee.ArrayList<Folder>();
 			}
-
-			var folders = (Gee.ArrayList<Folder>) response.result;
-			foreach (var folder in folders) {
-				folder.manager = this.manager;
-			}
-			return folders;
 		}
 
 		/**
@@ -153,8 +156,9 @@ namespace OLLMfiles
 		 *
 		 * @param path Absolute normalized file path
 		 * @return The file, or null if not in this project
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async File? fetch_file(string path)
+		public async File? fetch_file(string path) throws GLib.Error
 		{
 			if (this.manager.file_cache.has_key(path)) {
 				var cached = this.manager.file_cache.get(path);
@@ -167,9 +171,6 @@ namespace OLLMfiles
 				method = "RPC-File.fetch",
 				args = OLLMrpc.args("ss", this.path, path)
 			});
-			if (response.error != null) {
-				return null;
-			}
 
 			var files = (Gee.ArrayList<File>) response.result;
 			if (files.size == 0) {
@@ -189,16 +190,14 @@ namespace OLLMfiles
 		 *
 		 * @param dir_path Absolute normalized directory path
 		 * @return true if the directory is tracked under this project
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async bool contains_folder(string dir_path)
+		public async bool contains_folder(string dir_path) throws GLib.Error
 		{
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.contains_folder",
 				args = OLLMrpc.args("ss", this.path, dir_path)
 			});
-			if (response.error != null) {
-				return false;
-			}
 			return response.msg == "true";
 		}
 
@@ -212,6 +211,7 @@ namespace OLLMfiles
 		 * @param limit Page size (default 50)
 		 * @param query Dropdown filter (default browse all)
 		 * @return {@link OLLMrpc.Response} — ''result'' = file page, ''msg'' = total
+		 * @throws GLib.Error if the RPC fails
 		 */
 		public async OLLMrpc.Response fetch_files(
 			int offset = 0,
@@ -219,7 +219,7 @@ namespace OLLMfiles
 			string query = "",
 			string[] paths = {},
 			bool metadata_only = false
-		)
+		) throws GLib.Error
 		{
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.fetch_files",
@@ -233,12 +233,10 @@ namespace OLLMfiles
 					metadata_only
 				)
 			});
-			if (response.error == null) {
-				var files = (Gee.ArrayList<File>) response.result;
-				foreach (var file in files) {
-					file.manager = this.manager;
-					this.manager.file_cache.set(file.path, file);
-				}
+			var files = (Gee.ArrayList<File>) response.result;
+			foreach (var file in files) {
+				file.manager = this.manager;
+				this.manager.file_cache.set(file.path, file);
 			}
 			return response;
 		}

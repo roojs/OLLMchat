@@ -1,6 +1,6 @@
-# RPC FFI Vala C-symbol acronym mismatch (hello hang)
+# FIXED: RPC FFI Vala C-symbol acronym mismatch (hello hang)
 
-**Status:** ✔️ acronym + string pin fixed; harness mostly green
+**Status:** ✅ FIXED — acronym regex + string pin; hello / t0 / t1 green. User closed.
 
 ## Problem
 
@@ -30,8 +30,4 @@
 - ✔️ `test-rpc` (t0 hello) OK
 - ✔️ unit suite (bin/live/subscribe/callback/values/gi/scm/proxies) OK
 - ✔️ `test-rpc-t1` OK
-- ⏳ `test-rpc-t2` — 3 remaining asserts (File.read id=-1 after scan activate; CHANGED_HAS_UNSAVED; sqlite count 2 vs 1). Paths correct now; looks like activate/scan/DB semantics, not symbol lookup.
-
-## Next
-
-- 💩 Optional: chase remaining T2A assert failures (async activate vs script drain; dirty/write row counts).
+- 🚫 `test-rpc-t2` remaining asserts (File.read id=-1 after scan activate; CHANGED_HAS_UNSAVED; sqlite count 2 vs 1) are activate/scan/DB semantics, not this symbol lookup. Out of scope here.

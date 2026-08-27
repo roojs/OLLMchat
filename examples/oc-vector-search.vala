@@ -210,17 +210,11 @@ Examples:
 		var load_response = yield this.rpc.call(new OLLMrpc.Request() {
 			method = "RPC-ProjectManager.rpc_load_projects_from_db"
 		});
-		if (load_response.error != null) {
-			throw new GLib.IOError.FAILED(load_response.error.message);
-		}
 
 		var activate_response = yield this.rpc.call(new OLLMrpc.Request() {
 			method = "RPC-ProjectManager.rpc_activate_project",
 			args = OLLMrpc.args("sb", abs_folder, true)
 		});
-		if (activate_response.error != null) {
-			throw new GLib.IOError.FAILED(activate_response.error.message);
-		}
 
 		if (opt_show_info != "") {
 			yield this.run_show_info(abs_folder, opt_show_info);
@@ -259,9 +253,6 @@ Examples:
 			method = "RPC-Codebase.file_info",
 			args = OLLMrpc.args("s", resolved_path)
 		});
-		if (response.error != null) {
-			throw new GLib.IOError.FAILED(response.error.message);
-		}
 
 		var metadata_list = (Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>) response.result;
 
@@ -328,9 +319,6 @@ Examples:
 			method = "RPC-Codebase.rpc_debug_get",
 			args = OLLMrpc.args("ss", abs_folder, ast_path)
 		});
-		if (response.error != null) {
-			throw new GLib.IOError.FAILED(response.error.message);
-		}
 		stdout.printf("%s", response.msg);
 		if (!response.msg.has_suffix("\n")) {
 			stdout.printf("\n");
@@ -375,9 +363,6 @@ Examples:
 				opt_json ? "json" : ""
 			)
 		});
-		if (response.error != null) {
-			throw new GLib.IOError.FAILED(response.error.message);
-		}
 		stdout.printf("%s\n", response.msg);
 	}
 }

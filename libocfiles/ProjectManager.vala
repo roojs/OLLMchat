@@ -178,7 +178,12 @@ namespace OLLMfiles
 					this.disable_initial_scan
 				)
 			}, (obj, res) => {
-				this.rpc.call.end(res);
+				try {
+					this.rpc.call.end(res);
+				} catch (GLib.Error e) {
+					GLib.critical("activate project failed %s: %s",
+						project != null ? project.path : "", e.message);
+				}
 			});
 		}
 		
@@ -204,15 +209,14 @@ namespace OLLMfiles
 		 * 
 		 * Queries database for all folders where is_project = 1 and loads them
 		 * into the manager.projects list.
+		 *
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async void rpc_load_projects_from_db()
+		public async void rpc_load_projects_from_db() throws GLib.Error
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-ProjectManager.rpc_load_projects_from_db"
 			});
-			if (response.error != null) {
-				return;
-			}
 			foreach (var folder in (Gee.ArrayList<Folder>) response.result) {
 				folder.manager = this;
 				this.projects.append(folder);
@@ -227,16 +231,14 @@ namespace OLLMfiles
 		 *
 		 * @param path Normalized absolute path
 		 * @return The folder row, or null if not found
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async Folder? fetch_folder(string path)
+		public async Folder? fetch_folder(string path) throws GLib.Error
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-Folder.fetch",
 				args = OLLMrpc.args("s", path)
 			});
-			if (response.error != null) {
-				return null;
-			}
 			var folders = (Gee.ArrayList<Folder>) response.result;
 			if (folders.size == 0) {
 				return null;
@@ -254,19 +256,14 @@ namespace OLLMfiles
 		 *
 		 * @param path Normalized absolute path to the folder
 		 * @return The Folder that is the project at that path (existing or new)
+		 * @throws GLib.Error if the RPC fails
 		 */
-		public async Folder rpc_create_project(string path)
+		public async Folder rpc_create_project(string path) throws GLib.Error
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-ProjectManager.rpc_create_project",
 				args = OLLMrpc.args("s", path)
 			});
-			if (response.error != null) {
-				return new Folder(this) {
-					is_project = true,
-					path = path
-				};
-			}
 			var folders = (Gee.ArrayList<Folder>) response.result;
 			if (folders.size == 0) {
 				return new Folder(this) {
@@ -301,7 +298,11 @@ namespace OLLMfiles
 				method = "RPC-ProjectManager.remove_project",
 				args = OLLMrpc.args("s", project.path)
 			}, (obj, res) => {
-				this.rpc.call.end(res);
+				try {
+					this.rpc.call.end(res);
+				} catch (GLib.Error e) {
+					GLib.critical("remove project failed %s: %s", project.path, e.message);
+				}
 			});
 		}
 		

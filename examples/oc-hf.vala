@@ -112,9 +112,6 @@ Examples:
 				result_type = typeof(OLLMhf.Model),
 			};
 			var detail_resp = yield rpc.call(detail_req);
-			if (detail_resp.error != null) {
-				throw new GLib.IOError.FAILED(detail_resp.error.message);
-			}
 			var dl = new OLLMhf.Download((OLLMhf.Model) detail_resp.result[0]);
 			if (opt_models_dir != null && opt_models_dir.strip() != "") {
 				dl.models_dir = opt_models_dir.strip();
@@ -198,9 +195,6 @@ Examples:
 				result_type = typeof(OLLMhf.ModelArray),
 			};
 			var resp = yield rpc.call(req);
-			if (resp.error != null) {
-				throw new GLib.IOError.FAILED(resp.error.message);
-			}
 			var arr = new Json.Array();
 			foreach (var model in ((OLLMhf.ModelArray) resp.result[0]).items) {
 				var node = json.from_gobject(model);
@@ -217,9 +211,6 @@ Examples:
 			result_type = typeof(OLLMhf.Model),
 		};
 		var detail_resp = yield rpc.call(detail_req);
-		if (detail_resp.error != null) {
-			throw new GLib.IOError.FAILED(detail_resp.error.message);
-		}
 		var hub_model = (OLLMhf.Model) detail_resp.result[0];
 		yield hub_model.fetch_siblings(rpc);
 		var node = json.from_gobject(hub_model);

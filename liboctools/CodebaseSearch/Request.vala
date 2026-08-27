@@ -223,9 +223,6 @@ namespace OLLMtools.CodebaseSearch
 					"tool"
 				)
 			});
-			if (response.error != null) {
-				throw new GLib.IOError.FAILED(response.error.message);
-			}
 			
 			// Step 3: Return daemon-formatted markdown for LLM consumption
 			var formatted = response.msg;

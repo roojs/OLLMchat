@@ -211,7 +211,7 @@ New lines only: content-type sniff + optional `project_files.update_from` when `
 
 ✔️ Follow-up crash on Approve: daemon `GLib.error` from SQL `near "%"` — `approve()` `.printf` only applied to the second string concat piece, left literal `%lld` in `WHERE filebase_id = %lld`. Fixed by parenthesizing full WHERE before `.printf`. Client `Trace/breakpoint` was `Client.disconnect` → `GLib.error` with pending `FileHistory.approve`.
 
-✔️ Live 2026-08-14 ~08:50: after activate, restore `File.fetch` raced daemon `scan_start` → `wire name token 48 alias mismatch` (bin duplex name table). Tracked in [`2026-08-14-bin-wire-name-duplex-tables.md`](2026-08-14-bin-wire-name-duplex-tables.md) — not an `is_text` regression.
+✔️ Live 2026-08-14 ~08:50: after activate, restore `File.fetch` raced daemon `scan_start` → `wire name token 48 alias mismatch` (bin duplex name table). Tracked in [`done/2026-08-14-FIXED-bin-wire-name-duplex-tables.md`](done/2026-08-14-FIXED-bin-wire-name-duplex-tables.md) — not an `is_text` regression.
 
 ⏳ 🔷 Restart `ollmfilesd` from `build/`; re-test **new** write extensionless Hello World → `is_text=1` → in `child_map` → Approvals click opens.
 

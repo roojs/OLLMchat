@@ -1,7 +1,8 @@
 # T2 Path A — same as t2-scan.script.in (kept for runner default name)
 {"id":1,"method":"RPC-Daemon.hello","*type":"Request","args":[1,"test-rpc"]}
 {"id":2,"method":"RPC-ProjectManager.rpc_create_project","*type":"Request","args":["__PROJECT_PATH__"]}
-{"id":3,"method":"RPC-ProjectManager.rpc_activate_project","*type":"Request","args":["__PROJECT_PATH__",false]}
-{"id":4,"method":"RPC-File.read","*type":"Request","args":["__HELLO_PATH__"]}
-{"id":5,"method":"RPC-File.rpc_write","*type":"Request","args":["__HELLO_PATH__","hello from rpc fixture\n","f","",0]}
-{"id":6,"method":"RPC-File.changed.check","*type":"Request","args":["__HELLO_PATH__",0]}
+{"id":3,"method":"RPC-ProjectManager.rpc_activate_project","*type":"Request","args":["__PROJECT_PATH__",true]}
+{"id":4,"method":"RPC-File.register","*type":"Request","args":["__HELLO_PATH__"]}
+{"id":5,"method":"RPC-File.read","*type":"Request","args":["__HELLO_PATH__"]}
+{"id":6,"method":"RPC-File.rpc_write","*type":"Request","args":["__HELLO_PATH__","hello from rpc fixture\n","f","",0]}
+{"id":7,"method":"RPC-File.changed.check","*type":"Request","args":["__HELLO_PATH__",0]}
