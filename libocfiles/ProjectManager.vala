@@ -330,10 +330,26 @@ namespace OLLMfiles
 			if (file_path == "") {
 				return;
 			}
-			var file = yield project.fetch_file(file_path);
-			if (file != null) {
-				this.activate_file(file);
+			try {
+				var file = yield project.fetch_file(file_path);
+				if (file != null) {
+					this.activate_file(file);
+					return;
+				}
+			} catch (GLib.Error e) {
+				GLib.critical("restore open file failed %s: %s", file_path, e.message);
+				this.rpc.notification(new OLLMrpc.Notification() {
+					method = "Alert.show",
+					message = "Could not restore last file: " + e.message
+				});
+				return;
 			}
+			GLib.warning("restore open file not in project: %s", file_path);
+			this.rpc.notification(new OLLMrpc.Notification() {
+				method = "Alert.show",
+				message = "Last file is not in the project: "
+					+ GLib.Path.get_basename(file_path)
+			});
 		}
 		
 		/**

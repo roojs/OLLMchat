@@ -215,10 +215,10 @@ namespace OLLMrpc.Transport
 			}
 		}
 
-		public void reply(OLLMrpc.Request request, OLLMrpc.Response response)
+		public void reply(OLLMrpc.Request request, OLLMrpc.Response response, Live.Buffer? buffer = null)
 		{
 			response.id = request.id;
-			this.write(response);
+			this.write(response, buffer);
 		}
 
 		/**

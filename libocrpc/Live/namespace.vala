@@ -137,6 +137,7 @@ namespace OLLMrpc.Live
 		public async void connect_client(string main_socket_path) throws GLib.Error {}
 		public void write_with(Buffer? buffer, Bin.Serializable serializable, Bin.Stream bin) throws GLib.Error {}
 		public void attach(Notification notif) {}
+		public Buffer? take_pending() { return null; }
 		public void close() {}
 	}
 

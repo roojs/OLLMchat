@@ -35,8 +35,9 @@ namespace OLLMbwrap
 		 *
 		 * @param real_path Live project path
 		 * @return Indexed {@link GLib.FileType}, or {@link GLib.FileType.UNKNOWN}
+		 * @throws GLib.Error if the index lookup fails (caller skips the path)
 		 */
-		public virtual async GLib.FileType has_file(string real_path)
+		public virtual async GLib.FileType has_file(string real_path) throws GLib.Error
 		{
 			return GLib.FileType.UNKNOWN;
 		}

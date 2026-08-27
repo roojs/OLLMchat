@@ -109,9 +109,16 @@ namespace OLLMbwrap
 					file_info.get_name()
 				);
 				var actual_real_path = this.to_real_path(item_overlay_path);
-				var indexed = yield this.verification.has_file(
-					actual_real_path
-				);
+				GLib.FileType indexed;
+				try {
+					indexed = yield this.verification.has_file(
+						actual_real_path
+					);
+				} catch (GLib.Error e) {
+					GLib.critical("overlay has_file failed %s: %s",
+						actual_real_path, e.message);
+					continue;
+				}
 
 				if (file_info.get_file_type() == GLib.FileType.DIRECTORY) {
 					folders_list.add(item_overlay_path);

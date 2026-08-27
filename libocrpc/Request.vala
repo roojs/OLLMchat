@@ -304,10 +304,16 @@ namespace OLLMrpc
 
 		/**
 		 * Relay a {@link Response} to {@link connection} (sets wire id).
+		 *
+		 * Optional {@link Live.Buffer} uses the ''.fd'' channel first
+		 * (same order as {@link Transport.Connection.write}).
+		 *
+		 * @param response envelope to send
+		 * @param buffer fd payload, or null for bin only
 		 */
-		public void reply(Response response)
+		public void reply(Response response, Live.Buffer? buffer = null)
 		{
-			this.connection.reply(this, response);
+			this.connection.reply(this, response, buffer);
 		}
 	}
 }

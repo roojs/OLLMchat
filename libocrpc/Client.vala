@@ -754,6 +754,9 @@ namespace OLLMrpc
 						response.id
 					);
 				}
+				if (this.buffer_stream != null) {
+					response.buffer = this.buffer_stream.take_pending();
+				}
 				if (response.error != null) {
 					GLib.debug(
 						"replied id=%d error=%s",

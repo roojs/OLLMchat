@@ -104,6 +104,8 @@ namespace OLLMrpc
 		 * ''0'' = plain UTF-8 (is_text). ''1'' = base64 (not is_text).
 		 */
 		public int msg_encode { get; set; default = 0; }
+		/** Filled by client {@link Live.BufferStream.take_pending}; null on send. */
+		public Live.Buffer? buffer { get; internal set; default = null; }
 
 		/**
 		 * Register the ''Response'' wire alias.
@@ -145,6 +147,8 @@ namespace OLLMrpc
 		) throws GLib.Error
 		{
 			switch (prop.name) {
+				case "buffer":
+					return;
 				case "result":
 					if (this.result.size == 0) {
 						return;
@@ -211,6 +215,8 @@ namespace OLLMrpc
 		) throws GLib.Error
 		{
 			switch (prop.name) {
+				case "buffer":
+					return;
 				case "result":
 					if ((type_byte & 0x80) == 0 || (type_byte & 0x7F) != GLib.Type.OBJECT) {
 						this.bin_default_read_prop(ctx, prop, type_byte);

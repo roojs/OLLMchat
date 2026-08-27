@@ -43,6 +43,10 @@ namespace OLLMapp
 		private Gtk.Spinner settings_spinner;
 		private Gtk.Image settings_icon;
 		private Adw.Banner tool_error_banner;
+		private Gee.ArrayList<string> banner_queue {
+			get; private set;
+			default = new Gee.ArrayList<string>();
+		}
 		private FileChangeBanner file_change_banner;
 		private ActivityBanner activity_banner;
 		public OLLMfiles.ProjectManager? project_manager { get; private set; default = null; }
@@ -204,7 +208,14 @@ namespace OLLMapp
 				revealed = false
 			};
 			this.tool_error_banner.button_clicked.connect(() => {
-				this.tool_error_banner.revealed = false;
+				if (this.banner_queue.size > 0) {
+					this.banner_queue.remove_at(0);
+				}
+				if (this.banner_queue.size == 0) {
+					this.tool_error_banner.revealed = false;
+					return;
+				}
+				this.tool_error_banner.title = this.banner_queue.get(0);
 			});
 			
 			// Create file change banner (creates revealer internally)
@@ -215,6 +226,21 @@ namespace OLLMapp
 
 			this.notification.connect((notif) => {
 				this.activity_banner.notification(notif);
+				if (notif.method == "Alert.show") {
+					var alert = new Adw.AlertDialog("Alert", notif.message);
+					alert.add_response("ok", "OK");
+					alert.choose.begin(this, null);
+					return;
+				}
+				if (notif.method != "Banner.show") {
+					return;
+				}
+				this.banner_queue.add(notif.message);
+				if (this.tool_error_banner.revealed) {
+					return;
+				}
+				this.tool_error_banner.title = notif.message;
+				this.tool_error_banner.revealed = true;
 			});
 			this.activity_banner.notification_reply.connect((notif) => {
 				this.history_manager.notification_reply(notif);

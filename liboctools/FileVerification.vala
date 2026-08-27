@@ -43,7 +43,7 @@ namespace OLLMtools
 			this.manager = manager;
 		}
 
-		public override async GLib.FileType has_file(string real_path)
+		public override async GLib.FileType has_file(string real_path) throws GLib.Error
 		{
 			if (this.project == null) {
 				return GLib.FileType.UNKNOWN;
@@ -72,82 +72,68 @@ namespace OLLMtools
 			if (this.project == null) {
 				return;
 			}
-			var base_type = "f";
-			var content = "";
-			var target = "";
-			switch (file_type) {
-				case GLib.FileType.DIRECTORY:
-					base_type = "d";
-					break;
-				case GLib.FileType.SYMBOLIC_LINK:
-					base_type = "fa";
-					try {
+			try {
+				var base_type = "f";
+				var content = "";
+				var target = "";
+				switch (file_type) {
+					case GLib.FileType.DIRECTORY:
+						base_type = "d";
+						break;
+
+					case GLib.FileType.SYMBOLIC_LINK:
+						base_type = "fa";
 						var link = GLib.FileUtils.read_link(overlay_path);
 						if (link == null) {
-							GLib.warning(
-								"Cannot read symlink target (%s)",
-								overlay_path
-							);
-							return;
+							throw new GLib.IOError.FAILED("Cannot read symlink target");
 						}
 						target = link;
-					} catch (GLib.Error e) {
-						GLib.warning(
-							"Cannot read symlink target (%s): %s",
-							overlay_path,
-							e.message
-						);
-						return;
-					}
-					break;
-				case GLib.FileType.REGULAR:
-					try {
+						break;
+
+					case GLib.FileType.REGULAR:
 						var bytes = GLib.File.new_for_path(
 							overlay_path
 						).load_bytes(null);
 						content = (string) bytes.get_data();
-					} catch (GLib.Error e) {
-						GLib.warning(
-							"Cannot read overlay file (%s): %s",
-							overlay_path,
-							e.message
-						);
-						return;
-					}
-					break;
-				default:
-					break;
-			}
-			var unix_mode = 0U;
-			try {
-				var info = GLib.File.new_for_path(overlay_path).query_info(
-					GLib.FileAttribute.UNIX_MODE,
-					GLib.FileQueryInfoFlags.NONE,
-					null
-				);
-				unix_mode = info.get_attribute_uint32(
-					GLib.FileAttribute.UNIX_MODE
-				) & 0777;
-			} catch (GLib.Error e) {
-				GLib.warning(
-					"Cannot query overlay mode (%s): %s",
-					overlay_path,
-					e.message
-				);
-			}
-			if (!(yield new OLLMfiles.File.new_fake(
-				this.manager,
-				real_path
-			).rpc_write(
-				content,
-				base_type,
-				target,
-				unix_mode
-			))) {
-				GLib.warning(
-					"Cannot apply overlay write via RPC (%s)",
+						break;
+
+					default:
+						break;
+				}
+				var unix_mode = 0U;
+				try {
+					var info = GLib.File.new_for_path(overlay_path).query_info(
+						GLib.FileAttribute.UNIX_MODE,
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+					unix_mode = info.get_attribute_uint32(
+						GLib.FileAttribute.UNIX_MODE
+					) & 0777;
+				} catch (GLib.Error e) {
+					GLib.warning(
+						"Cannot query overlay mode (%s): %s",
+						overlay_path,
+						e.message
+					);
+				}
+				if (!(yield new OLLMfiles.File.new_fake(
+					this.manager,
 					real_path
-				);
+				).rpc_write(
+					content,
+					base_type,
+					target,
+					unix_mode
+				))) {
+					throw new GLib.IOError.FAILED("empty path");
+				}
+			} catch (GLib.Error e) {
+				GLib.critical("overlay created failed %s: %s", real_path, e.message);
+				this.manager.rpc.notification(new OLLMrpc.Notification() {
+					method = "Banner.show",
+					message = "Could not save overlay file: " + real_path
+				});
 			}
 		}
 
@@ -159,82 +145,68 @@ namespace OLLMtools
 			if (this.project == null) {
 				return;
 			}
-			var base_type = "f";
-			var content = "";
-			var target = "";
-			switch (file_type) {
-				case GLib.FileType.DIRECTORY:
-					base_type = "d";
-					break;
-				case GLib.FileType.SYMBOLIC_LINK:
-					base_type = "fa";
-					try {
+			try {
+				var base_type = "f";
+				var content = "";
+				var target = "";
+				switch (file_type) {
+					case GLib.FileType.DIRECTORY:
+						base_type = "d";
+						break;
+
+					case GLib.FileType.SYMBOLIC_LINK:
+						base_type = "fa";
 						var link = GLib.FileUtils.read_link(overlay_path);
 						if (link == null) {
-							GLib.warning(
-								"Cannot read symlink target (%s)",
-								overlay_path
-							);
-							return;
+							throw new GLib.IOError.FAILED("Cannot read symlink target");
 						}
 						target = link;
-					} catch (GLib.Error e) {
-						GLib.warning(
-							"Cannot read symlink target (%s): %s",
-							overlay_path,
-							e.message
-						);
-						return;
-					}
-					break;
-				case GLib.FileType.REGULAR:
-					try {
+						break;
+
+					case GLib.FileType.REGULAR:
 						var bytes = GLib.File.new_for_path(
 							overlay_path
 						).load_bytes(null);
 						content = (string) bytes.get_data();
-					} catch (GLib.Error e) {
-						GLib.warning(
-							"Cannot read overlay file (%s): %s",
-							overlay_path,
-							e.message
-						);
-						return;
-					}
-					break;
-				default:
-					break;
-			}
-			var unix_mode = 0U;
-			try {
-				var info = GLib.File.new_for_path(overlay_path).query_info(
-					GLib.FileAttribute.UNIX_MODE,
-					GLib.FileQueryInfoFlags.NONE,
-					null
-				);
-				unix_mode = info.get_attribute_uint32(
-					GLib.FileAttribute.UNIX_MODE
-				) & 0777;
-			} catch (GLib.Error e) {
-				GLib.warning(
-					"Cannot query overlay mode (%s): %s",
-					overlay_path,
-					e.message
-				);
-			}
-			if (!(yield new OLLMfiles.File.new_fake(
-				this.manager,
-				real_path
-			).rpc_write(
-				content,
-				base_type,
-				target,
-				unix_mode
-			))) {
-				GLib.warning(
-					"Cannot apply overlay write via RPC (%s)",
+						break;
+
+					default:
+						break;
+				}
+				var unix_mode = 0U;
+				try {
+					var info = GLib.File.new_for_path(overlay_path).query_info(
+						GLib.FileAttribute.UNIX_MODE,
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+					unix_mode = info.get_attribute_uint32(
+						GLib.FileAttribute.UNIX_MODE
+					) & 0777;
+				} catch (GLib.Error e) {
+					GLib.warning(
+						"Cannot query overlay mode (%s): %s",
+						overlay_path,
+						e.message
+					);
+				}
+				if (!(yield new OLLMfiles.File.new_fake(
+					this.manager,
 					real_path
-				);
+				).rpc_write(
+					content,
+					base_type,
+					target,
+					unix_mode
+				))) {
+					throw new GLib.IOError.FAILED("empty path");
+				}
+			} catch (GLib.Error e) {
+				GLib.critical("overlay modified failed %s: %s", real_path, e.message);
+				this.manager.rpc.notification(new OLLMrpc.Notification() {
+					method = "Banner.show",
+					message = "Could not update overlay file: " + real_path
+				});
 			}
 		}
 
@@ -251,9 +223,18 @@ namespace OLLMtools
 				filebase = this.manager.file_cache.get(real_path);
 			}
 			if (filebase == null) {
-				var file = yield this.project.fetch_file(real_path);
-				if (file != null) {
-					filebase = file;
+				try {
+					var file = yield this.project.fetch_file(real_path);
+					if (file != null) {
+						filebase = file;
+					}
+				} catch (GLib.Error e) {
+					GLib.critical("overlay removed lookup failed %s: %s", real_path, e.message);
+					this.manager.rpc.notification(new OLLMrpc.Notification() {
+						method = "Banner.show",
+						message = "Could not remove overlay path: " + real_path
+					});
+					return;
 				}
 			}
 			if (filebase == null) {
@@ -265,11 +246,11 @@ namespace OLLMtools
 					new GLib.DateTime.now_local()
 				);
 			} catch (GLib.Error e) {
-				GLib.warning(
-					"Cannot delete %s: %s",
-					real_path,
-					e.message
-				);
+				GLib.critical("overlay removed failed %s: %s", real_path, e.message);
+				this.manager.rpc.notification(new OLLMrpc.Notification() {
+					method = "Banner.show",
+					message = "Could not remove overlay path: " + real_path
+				});
 			}
 		}
 
@@ -279,7 +260,11 @@ namespace OLLMtools
 				return;
 			}
 			yield this.manager.delete_manager.cleanup();
-			yield this.manager.review_files.refresh();
+			try {
+				yield this.manager.review_files.refresh();
+			} catch (GLib.Error e) {
+				GLib.critical("overlay finish refresh failed: %s", e.message);
+			}
 		}
 	}
 }

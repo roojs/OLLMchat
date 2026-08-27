@@ -8,7 +8,7 @@
 
 **Depends on:** [`8.4.3`](done/RPC-8.4.3-DONE-rpc-ffi-typelib-method.md) — `dispatch_function` / `dispatch_new` `fn.invoke` catch.
 
-**Sibling leftover:** [`8.4.5`](done/RPC-8.4.5-DONE-rpc-ffi-leftovers.md) — boxed / GObject `INTERFACE` / invoke return. [`8.4.6-DONE`](done/RPC-8.4.6-DONE-rpc-ffi-leftovers.md) — scalar / array / list OUT. [`8.4.9`](done/RPC-8.4.9-rpc-ffi-glist-in.md) — list IN. Not this plan. Consumers: [`RPC-8.4.4.1-URGENT-rpc-consumer-audit.md`](RPC-8.4.4.1-URGENT-rpc-consumer-audit.md).
+**Sibling leftover:** [`8.4.5`](done/RPC-8.4.5-DONE-rpc-ffi-leftovers.md) — boxed / GObject `INTERFACE` / invoke return. [`8.4.6-DONE`](done/RPC-8.4.6-DONE-rpc-ffi-leftovers.md) — scalar / array / list OUT. [`8.4.9`](done/RPC-8.4.9-rpc-ffi-glist-in.md) — list IN. Not this plan. Consumers: [`RPC-8.4.4.1`](RPC-8.4.4.1-URGENT-rpc-consumer-audit.md) (items 1–5) → [`RPC-8.4.4.2`](RPC-8.4.4.2-URGENT-rpc-consumer-audit.md) (items 6–13).
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
@@ -26,9 +26,9 @@ Verify surrounding context before applying.
 - **🔷** `⏳` `Error.code` stays the JSON-RPC envelope (`INTERNAL_ERROR` when invoke failed).
   - GError code is a **separate** property (`gerror_code`). Mixing them is why catch fails today.
 - **🔷** `⏳` Grow `reply_error` so the invoke `catch` can pass the thrown `GLib.Error`.
-- **ℹ️** Consumers: **URGENT** [`RPC-8.4.4.1-URGENT-rpc-consumer-audit.md`](RPC-8.4.4.1-URGENT-rpc-consumer-audit.md). Full-tree compile waits on that plan’s **Phase 1** (throw). Caller catch/UI is **Phase 2**.
+- **ℹ️** Consumers: **URGENT** [`8.4.4.1`](RPC-8.4.4.1-URGENT-rpc-consumer-audit.md) (Phase 1 + items 1–5) → [`8.4.4.2`](RPC-8.4.4.2-URGENT-rpc-consumer-audit.md) (items 6–13).
 
-**Suggested order:** this plan (`libocrpc` + `tests/rpc`) → [`8.4.4.1`](RPC-8.4.4.1-URGENT-rpc-consumer-audit.md) Phase 1 → Phase 2.
+**Suggested order:** this plan (`libocrpc` + `tests/rpc`) → [`8.4.4.1`](RPC-8.4.4.1-URGENT-rpc-consumer-audit.md) → [`8.4.4.2`](RPC-8.4.4.2-URGENT-rpc-consumer-audit.md).
 
 ---
 
@@ -396,5 +396,5 @@ The ready callback cannot throw. Wrap `call.end`. On throw, **fail the test** �
 - **🚫** Change ollmfilesd `*Params` handlers. They already build `Error` with a message when they want one. Empty `domain` on those replies uses the `RpcErrorCode` quark in `call()`.
 - **🚫** Bump bin protocol version.
 - **🚫** Collapse client throws to `IOError.FAILED(message)` — that is the bug.
-- **🚫** Audit or edit libocfiles / liboctools / liboccoder wrappers or their callers. That is [`RPC-8.4.4.1`](RPC-8.4.4.1-URGENT-rpc-consumer-audit.md).
+- **🚫** Audit or edit libocfiles / liboctools / liboccoder wrappers or their callers. That is [`RPC-8.4.4.1`](RPC-8.4.4.1-URGENT-rpc-consumer-audit.md) / [`RPC-8.4.4.2`](RPC-8.4.4.2-URGENT-rpc-consumer-audit.md).
 - **ℹ️** gnome-shell-rpc `Session.call` can stop wrapping `IOError.FAILED` once it uses this `Client.call`. Not this repo.

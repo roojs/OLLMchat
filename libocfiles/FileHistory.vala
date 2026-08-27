@@ -58,11 +58,26 @@ namespace OLLMfiles
 				cached = this.manager.file_cache.get(this.path) as File;
 			}
 			if (cached == null && this.manager.active_project != null) {
-				cached = yield this.manager.active_project.fetch_file(
-					this.path
-				);
+				try {
+					cached = yield this.manager.active_project.fetch_file(
+						this.path
+					);
+				} catch (GLib.Error e) {
+					GLib.critical("revert reload lookup failed %s: %s", this.path, e.message);
+					this.manager.rpc.notification(new OLLMrpc.Notification() {
+						method = "Alert.show",
+						message = "Reverted, but could not reload the editor: "
+							+ e.message
+					});
+					return;
+				}
 			}
 			if (cached == null) {
+				this.manager.rpc.notification(new OLLMrpc.Notification() {
+					method = "Alert.show",
+					message = "Reverted, but could not reload the editor: "
+						+ this.path
+				});
 				return;
 			}
 			cached.manager = this.manager;
