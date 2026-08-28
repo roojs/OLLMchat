@@ -4,7 +4,7 @@
 
 > Split from `TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md`. Done cut: [`done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md`](done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md). VTE is **not** here: [`TOOLS-2.6.6-FUTURE-run-command-vte.md`](TOOLS-2.6.6-FUTURE-run-command-vte.md).
 
-**Status:** **⏳** **PROPOSED**
+**Status:** **ACTIVE** — Phase **4a** live UI (widget-through-layers investigation first).
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
@@ -18,6 +18,7 @@
 
 - **🔷** `⏳` Stuck runs hit a **default wall-clock timeout**. The model can raise it per call.
 - **🔷** `⏳` **Live** visibility while the command runs (streaming / updating UI) — **without** stuffing an unbounded blob into the chat text buffer.
+- **🔷** `⏳` Phase **4a** starts here: revive a **live widget** in the transcript, not framed markdown firehose. Pass the widget through the GTK-free layers as **`GLib.Object`** (shell casts to `Gtk.Widget`).
 - **🔷** `⏳` **Short** runs: keep output in memory for the tool result. **Long** runs: spill full output to a **temp file** and put that path in the result so the model can `read_file` / shell-read what it needs (still include a tail in the result).
 - **🔷** `⏳` Repeated sudo typing: store with **libsecret**; **hold** Allow **two seconds** to reuse (not a single click). **Low priority** — after timeout / live / spill.
 - **🔷** `⏳` **Linux GTK** gets live UI first; libsecret later. **Windows** keeps subprocess + text frames with timeout/tail/spill where possible. **Android:** tool stays unregistered.
@@ -25,7 +26,8 @@
 
 **Suggested order**
 
-- **Committed:** Phase 3c (timeout) → Phase 4 (live UI + spill-to-file).
+- **Now:** Phase **4a** (live widget in the chat — investigation below, then implement).
+- **Next:** Phase 3c (timeout) and Phase **4b** (spill-to-file).
 - **Late:** Phase 2 (libsecret + hold two seconds).
 
 ---
@@ -111,15 +113,44 @@ Timeout:
 
 **Why:** See progress and Stop on the existing pipe path. Avoid filling chat `TextBuffer` / markdown frames with megabytes.
 
-### 4a. Live streaming to the UI — bounded
+### 4a. Live streaming to the UI — bounded widget (start here)
 
 - **🔷** `⏳` While the command runs, the user can **see output updating** (not only the final fence).
 - **🔷** `⏳` Do **not** append unbounded stdout into the embedded chat text buffer / `RenderSourceView` frame body.
-- **ℹ️** Today `tool_frame` has header + status + Stop. Results are one `add_message` at the end. That path will OOM or lag if fed a live firehose.
-- **💩** `⏳` Live view shows a **rolling tail** only (same N lines as the LLM slice, or a slightly larger UI window). Older lines drop from the widget; full text goes to the spill/save path (4b). Confirm N for UI vs LLM.
-- **💩** `⏳` Prefer a dedicated small widget (e.g. `Gtk.TextView` / `GtkSource.View` with a **capped** buffer, or a `Label` refreshed on idle) inside **`tool_frame`** — **not** rewriting the whole markdown document on every line. Confirm after poking `MarkdownGtk` / frame update paths.
-- **💩** `⏳` Throttle UI updates (e.g. idle / 100ms) so a tight `yes` loop does not starve the main loop. Confirm.
+- **🔷** `⏳` Hook a **live widget** through the layers (GTK-free core types it as **`GLib.Object`**; GTK shell casts to `Gtk.Widget`). Same idea as `OLLMchat.Tool.UiWidgets.view_widget` and `ChatDesktopInterface.above_input_widget()`.
 - **ℹ️** History restore: persist the **final** results fence (tail + spill note), not a live buffer replay.
+
+#### What the original widget hook was
+
+- **ℹ️** `RunTerminalCommand.create_terminal_widget()` returned `GLib.Object?` (`null` in the GTK-free base). `RunTerminalCommandGtk` overrode it with a `GtkSource.View`.
+- **ℹ️** The base called `client.tool_message("$ " + command, widget)`, then `send_or_append_message(line)` / `append_to_widget(line)` as stdout arrived.
+- **ℹ️** `OLLMchatGtk.Message` (`libollmchatgtk/Message.vala`) subclassed `OLLMchat.Message` with `public Gtk.Widget widget`.
+- **ℹ️** `ChatView.append_tool_message` did `if (message is OLLMchatGtk.Message)`, wrapped that widget in a `Gtk.Frame`, and called `add_widget_frame`.
+
+#### What is still in the tree
+
+- **ℹ️** `ChatView.add_widget_frame(Gtk.Frame)` — live. **2.6.4** already uses it for `ChatWidget.tool_frame` on `client.run_tool.start` (unparent on `client.run_tool.end`). Header + status + Stop only. No live stdout.
+- **ℹ️** `History.Manager.tool_message` → `ChatWidget` → `ChatView.append_tool_message`. The **widget extract branch is gone**. The method still documents it. Implementation is Pango insert only.
+- **ℹ️** `handle_tool_message` does **not** persist to `session.messages`. `add_message` does. Live widget should stay on the tool_message / notification path. Final fence stays `add_message(Message.fenced(…))`.
+- **ℹ️** `UiWidgets.view_widget` as `GLib.Object` — ChatBar / `view_stack` host, **not** the transcript. Pattern to copy, not the mount point.
+- **ℹ️** `Notification.buffer` is already a non-serialized `GLib.Object` on `OLLMrpc.Notification`. `idx_first` / `idx_last` on `Message` already skip JSON.
+- **ℹ️** Commented `send_initial_tool_message` / `send_or_append_message` in `liboctools/RunCommand/Request.vala` are the old **fenced-text** stream, not the widget path.
+
+#### What is gone
+
+- **ℹ️** `libollmchatgtk/Message.vala` (`OLLMchatGtk.Message`) — deleted (`a637f8ac`).
+- **ℹ️** `Tools/RunTerminalCommandGtk.vala` / ToolsUI subclass — deleted. `create_terminal_widget` / `append_to_widget` are not on `Request`.
+- **ℹ️** Tools switched to framed markdown: `agent.add_message(new Message("ui", Message.fenced("text.oc-frame-…", body)))`. That is the **after-the-run** results path. Do not reuse it for live stdout.
+
+#### Revive (confirm before coding)
+
+- **🔷** `⏳` Do **not** resurrect `OLLMchatGtk.Message`. `libollmchat` stays GTK-free. Put an optional **`GLib.Object`** on `OLLMchat.Message` (skip serialize, same as `idx_first`). GTK casts at `append_tool_message`.
+- **🔷** `⏳` Restore the extract in `ChatView.append_tool_message`: non-null widget `GLib.Object` on the message → wrap in `Gtk.Frame` (or reuse `tool_frame`) → `add_widget_frame`. Null → keep today’s Pango/markdown path.
+- **🔷** `⏳` `RunCommand.Request` gets the old virtuals back, typed GTK-free: `create_terminal_widget()` → `GLib.Object?`, `append_to_widget(string)`. CLI / no-UI: both no-ops. GTK path creates a **capped** `GtkSource.View` / `Gtk.TextView` and appends lines there.
+- **💩** `⏳` Where the GTK `GLib.Object` is constructed: `liboctools` already links `gtk4`, so `Request` *could* build the view itself. Cleaner is a GTK-side factory (old ToolsUI subclass, or ChatWidget builds it and the request only appends). Confirm.
+- **💩** `⏳` Live view shows a **rolling tail** only (same N as the LLM slice, or a slightly larger UI window). Older lines drop from the widget; full text goes to spill (4b). Confirm N for UI vs LLM.
+- **💩** `⏳` Throttle UI updates (e.g. idle / 100ms) so a tight `yes` loop does not starve the main loop. Confirm.
+- **ℹ️** `tool_frame` from **2.6.4** stays the chrome (bold command, status, Stop). The live output widget is the **body** of that frame, or the object passed on `tool_message` parented into it. Do not open a second live frame.
 
 ### 4b. Save output + spill past a size threshold
 
@@ -217,7 +248,9 @@ Timeout:
 - **🚫** Do not kill the child because the tail is long.
 - **🚫** Do not put libsecret in `liboctools`.
 - **🚫** Do not `dependency('libsecret-1')` as required on Windows or Android meson.
-- **🚫** Do not implement Phase 2 (libsecret/hold) before Phase 3c / Phase 4 (or the user reorders).
+- **🚫** Do not implement Phase 2 (libsecret/hold) before Phase 4a / 3c / 4b (or the user reorders).
+- **🚫** Do not resurrect `OLLMchatGtk.Message` (`Gtk.Widget` on a GTK subclass). Use `GLib.Object` on `OLLMchat.Message`.
+- **🚫** Do not stream live stdout into `Message.fenced` / `RenderSourceView` (that is the **final** results path).
 - **🚫** Do not implement VTE, add `CommandFrame.vala`, or add `vte-2.91-gtk4` — that is **2.6.6**.
 - **🚫** Do not design Phase 4 to require a PTY or libsecret (pipe + bounded UI + spill must stand alone).
 - **🚫** Do not register `run_command` on Android in this plan.
