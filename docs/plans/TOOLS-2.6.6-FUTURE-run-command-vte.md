@@ -2,7 +2,7 @@
 
 > **Do not update `docs/plans/TOOLS-1.0-summary.md` for this plan.**
 
-> Split from `TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md`. Done Stop/tail/frame: [`done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md`](done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md). Timeout / live / spill / libsecret: [`TOOLS-2.6.5-run-command-timeout-live-spill.md`](TOOLS-2.6.5-run-command-timeout-live-spill.md).
+> Split from `TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md`. Done Stop/tail/frame: [`done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md`](done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md). Timeout / live / spill: [`TOOLS-2.6.5-run-command-timeout-live-spill.md`](TOOLS-2.6.5-run-command-timeout-live-spill.md). Libsecret + hold: [`TOOLS-2.6.7-run-command-libsecret-hold.md`](TOOLS-2.6.7-run-command-libsecret-hold.md).
 
 **Status:** **⏳** **FUTURE** — parked. Do **not** implement unless the user explicitly green-lights this file.
 

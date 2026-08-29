@@ -1,21 +1,18 @@
-# 2.6.5 Timeout, live output, spill, libsecret
+# 2.6.5 Timeout, live output, spill
 
 > **Do not update `docs/plans/TOOLS-1.0-summary.md` for this plan.**
 
-> Split from `TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md`. Done cut: [`done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md`](done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md). VTE is **not** here: [`TOOLS-2.6.6-FUTURE-run-command-vte.md`](TOOLS-2.6.6-FUTURE-run-command-vte.md).
+> Split from `TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md`. Done cut: [`done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md`](done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md). VTE is **not** here: [`TOOLS-2.6.6-FUTURE-run-command-vte.md`](TOOLS-2.6.6-FUTURE-run-command-vte.md). Libsecret + hold: [`TOOLS-2.6.7-run-command-libsecret-hold.md`](TOOLS-2.6.7-run-command-libsecret-hold.md).
 
 **Status:** **ACTIVE**
 
 - **✔️** Phase **4a** — live `ToolOutput` stream frame + restore display (agent)
 - **✔️** Phase **4b** — spill file (agent)
 - **✔️** Phase **3c** — `timeout` (agent)
-- **⏳** Phase **2** — libsecret + hold two seconds
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
 **Parent:** [`done/2.6-DONE-run-terminal-command-tool.md`](done/2.6-DONE-run-terminal-command-tool.md) · related: [`done/2.6.3-DONE-run-command-root-elevation.md`](done/2.6.3-DONE-run-command-root-elevation.md), [`TOOLS-2.6.2-bwrap-ux-fixes.md`](TOOLS-2.6.2-bwrap-ux-fixes.md)
-
-**Precedent (password store + hold fill):** RooTerm — `app.RooTerm/src/Config.vala` (`Secret.password_store`), `app.RooTerm/src/Terminal/Ssh.vala` (`Secret.password_lookup_sync`), `app.RooTerm/src/Host/TabBar.vala` (overlay fill on hold/countdown), `app.RooTerm/resources/style.css` (`.host-tab-close-fill`).
 
 ---
 
@@ -27,8 +24,8 @@
 - **🔷** ✔️ Spill: always write the run to a file under the session’s sibling directory (`task_dir()` = session path without `.json`). If the run stays small (LLM already has the full text), delete the file; rmdir the folder if it is then empty.
 - **🔷** ✔️ Live pane holds about **2000** lines (user can scroll back). That pane is **not** persisted. The LLM tail **is** persisted (`tool_reply` in `session.messages`).
 - **🔷** ✔️ Emit in **500 ms** chunks (not per line). Flush leftover on `client.run_tool.end`.
-- **🔷** `⏳` Repeated sudo typing: store with **libsecret**; **hold** Allow **two seconds** to reuse (not a single click). **Low priority** — after timeout / live / spill.
-- **🔷** `⏳` **Linux GTK** gets live UI first; libsecret later. **Windows** keeps subprocess + text frames with timeout/tail/spill where possible. **Android:** tool stays unregistered.
+- **🔷** ✔️ **Linux GTK** gets live UI first. **Windows** keeps subprocess + text frames with timeout/tail/spill where possible. **Android:** tool stays unregistered.
+- **ℹ️** Libsecret + hold two seconds is [`TOOLS-2.6.7-run-command-libsecret-hold.md`](TOOLS-2.6.7-run-command-libsecret-hold.md).
 - **ℹ️** Stop, last-50 tail, and `ChatWidget` `tool_frame` already landed in **2.6.4**. Reuse `Request.stop()` / `Bubble.stop()`. RPC methods are `client.run_tool.start` / `client.run_tool.output` / `client.run_tool.end`.
 
 **Suggested order**
@@ -36,7 +33,6 @@
 - **✔️** Phase **4a** GTK `ToolOutput` + live/restore display.
 - **✔️** Phase **4b** spill.
 - **✔️** Phase **3c** (`timeout`, display as `Ns`).
-- **Late:** Phase 2 (libsecret + hold two seconds) ⏳.
 
 ---
 
@@ -53,7 +49,7 @@
 
 ## Platforms
 
-- **🔷** **Linux GTK:** live bounded UI ✔️, spill file ✔️. Timeout ✔️. Libsecret hold-password is late polish (Phase 2) ⏳.
+- **🔷** **Linux GTK:** live bounded UI ✔️, spill file ✔️. Timeout ✔️. Libsecret: [`TOOLS-2.6.7-run-command-libsecret-hold.md`](TOOLS-2.6.7-run-command-libsecret-hold.md).
 - **🔷** **Windows:** subprocess + text frames. Last-slice ✔️, spill ✔️. Timeout ✔️. No libsecret, no `run_as_root`.
 - **🔷** ✔️ **Android:** leave the tool disabled. Do not register `run_command`. Do not add `libsecret` to the Android meson cut.
 - **ℹ️** **Linux CLI** (`ollmchat-cli`): no `tool_frame`. Subprocess, last-slice ✔️, spill ✔️. Timeout ✔️. Notifications are no-ops for UI. No hold-password UI.
@@ -1052,88 +1048,10 @@ Close the stream first. Chopped → keep path in the return string. Else delete 
 
 ---
 
-## Phase 2 — libsecret + hold two seconds (late) ⏳
-
-**Deferred.** Do this only after Phase 3c timeout and Phase 4 live/spill.
-
-- **🔷** `⏳` First successful sudo password is stored in libsecret.
-- **🔷** `⏳` Later root prompts: **hold** the allow control for **two seconds**. Background fill animates while held. Release early cancels. A single click must not approve.
-- **🔷** `⏳` Deny stays a normal click.
-- **ℹ️** RooTerm fill: `Gtk.Overlay` child is a box whose `width_request` grows; CSS paints `.host-tab-close-fill`. Copy that overlay-on-the-button idea, do not import RooTerm widgets.
-- **ℹ️** RooTerm secret: `Secret.Schema` + `Secret.password_store.begin` / `Secret.password_lookup_sync`. Inline the same calls in `ChatPermission` (no secret-helper class).
-
-**When a secret exists** ⏳
-
-- **🔷** `⏳` Hide the password entry.
-- **🔷** `⏳` Allow (root) becomes a hold target. Label along the lines of `Hold 2s — use saved password`.
-- **💩** `⏳` A small `Use a different password` control that reveals the entry and restores click-Allow (typed password overwrites the secret on success). Confirm.
-
-**When no secret exists** ⏳
-
-- **🔷** `⏳` Keep today’s type-then-Allow path (`sudo -S true` before resume).
-- **🔷** `⏳` On success, `Secret.password_store` the password, then proceed as now.
-
-**Wrong stored password** ⏳
-
-- **🔷** `⏳` `sudo -S true` still runs after a completed hold (same check as typed).
-- **🔷** `⏳` Failure: show the entry, error label, delete the bad secret, do **not** resume.
-
-**Schema (confirm)** ⏳
-
-- **💩** `⏳` Schema `org.roojs.ollmchat.Elevation`, attribute `user` = `GLib.Environment.get_user_name()`, label `OLLMchat sudo`. One secret per login user.
-
-**Build** ⏳
-
-- **🔷** `⏳` `dependency('libsecret-1')` on `libollmchatgtk` (**Linux only**). `--pkg=libsecret-1`.
-- **🔷** `⏳` `debian/control` Build-Depends: `libsecret-1-dev`.
-- **ℹ️** Windows / Android meson: do not `dependency('libsecret-1', required: true)`. Root elevation stays Linux-only.
-
-### 1. `libollmchatgtk/ChatPermission.vala` — hold fill on Allow when a secret exists ⏳
-
-**Why:** Friction is the hold, not a second click.
-
-**Where:** constructor (overlay around `allow_once_btn`); `request()` when `high_risk`; press/release controllers. **Inline** — no `start_hold()` / `on_hold_tick()` helpers.
-
-**Depends on:** **2.6.4** permission `command_label`.
-
-- **🔷** `⏳` Overlay fill box, CSS class `.elevation-hold-fill`, `halign = START`, width 0 until press.
-- **🔷** `⏳` `Gtk.EventController` pressed: arm `GLib.Timeout.add(50)` (or 100). Each tick: `fill.width_request = (button_width * elapsed_ms) / 2000`. At `>= 2000` and still pressed: lookup secret, run existing `validate_elevation_and_resume`.
-- **🔷** `⏳` Released or leave before 2000: remove timeout, `fill.width_request = 1`, `visible = false`.
-- **🔷** `⏳` While holding, do **not** fire the existing `clicked` handler on Allow.
-- **ℹ️** Match RooTerm tick math in `Host/TabBar.vala` (`width_request = (row.get_width() * left) / total`) — here fill **grows** with elapsed, it does not shrink.
-
-### 2. `resources/style.css` — hold fill ⏳
-
-**Where:** after `.command-preview`.
-
-#### Add
-
-```css
-.permission-widget .elevation-hold-fill {
-  background-color: alpha(@destructive_color, 0.45);
-}
-```
-
-### 3. Secret store / lookup — inline in `validate_elevation_and_resume` and `request()` ⏳
-
-**Where:** `validate_elevation_and_resume` after `ok` is true (store); `request()` when `high_risk` (lookup to decide hold vs type).
-
-**Depends on:** meson `libsecret-1`.
-
-- **🔷** `⏳` After typed (or held) password passes `sudo -S true`, `Secret.password_store.begin` with the schema above, then resume as today.
-- **🔷** `⏳` At the start of a high-risk `request()`, `Secret.password_lookup_sync`. Non-empty → hold mode. Empty / error → type mode.
-- **🔷** `⏳` Failed held password: `Secret.password_clear` (or store empty / delete), then type mode.
-
----
-
 ## LLM notes
 
-- **🚫** Do not add a secret-helper class or `start_hold()` / `on_hold_tick()` — inline in `ChatPermission`.
-- **🚫** Do not make Allow-Always remember root commands (still `one_time_only` for `run_as_root`).
 - **🚫** Do not kill the child because the tail is long.
-- **🚫** Do not put libsecret in `liboctools`.
-- **🚫** Do not `dependency('libsecret-1')` as required on Windows or Android meson.
-- **🚫** Do not implement Phase 2 (libsecret/hold) before Phase 4a / 3c / 4b (or the user reorders).
+- **🚫** Do not implement libsecret / hold-password here — that is **2.6.7**.
 - **🚫** Do not use `GLib.StringBuilder` for the 500 ms pending chunk — `string[]` + `string.joinv` like `tail`.
 - **🚫** Do not add `queue_output` / `flush_output` / `append_to_widget` — arm the 500 ms timeout inline at both read sites; flush inline in `execute()` `finally`.
 - **🚫** Do not resurrect `OLLMchatGtk.Message` or put a widget `GLib.Object` on `OLLMchat.Message` for live output.
@@ -1147,9 +1065,8 @@ Close the stream first. Chopped → keep path in the return string. Else delete 
 - **🚫** Do not construct `Gtk.Widget` / `GtkSource.View` in `liboctools`. Do not register `OLLMwebkit.Tool` from `OLLMtools.Registry`.
 - **🚫** Do not stream live stdout into `Message.fenced` / `RenderSourceView`. Restore may fence `tool_reply.content`; live uses `ToolOutput`.
 - **🚫** Do not implement VTE, add `CommandFrame.vala`, or add `vte-2.91-gtk4` — that is **2.6.6**.
-- **🚫** Do not design Phase 4 to require a PTY or libsecret (pipe + bounded UI + spill must stand alone).
+- **🚫** Do not design Phase 4 to require a PTY (pipe + bounded UI + spill must stand alone).
 - **🚫** Do not register `run_command` on Android in this plan.
-- **🚫** Do not treat a single click as “use saved password”.
 - **🚫** Do not use output-idle as the timeout (elapsed time from spawn only).
 - **🚫** Do not add `arm_timeout()` — one `GLib.Timeout.add_seconds` inline in `execute()`.
 - **🚫** Do not change `Bubble.exec`'s `Command stopped by user.` line — Request strips it when `timed_out`.
