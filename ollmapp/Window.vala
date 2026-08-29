@@ -418,6 +418,7 @@ namespace OLLMapp
 				config.connections.set(this.bootstrap_dialog.verified_connection.url,
 					this.bootstrap_dialog.verified_connection);
 				app.tools_registry.setup_config_defaults(config);
+				(new OLLMwebkit.Tool()).setup_tool_config_default(config);
 				
 				// Create empty ModelUsage objects for default_model and title_model
 				config.usage.set("default_model", new OLLMchat.Settings.ModelUsage() {
@@ -575,6 +576,14 @@ namespace OLLMapp
 			// Use library-level registries from Application to register tools
 			var app = this.app as OllmchatApplication;
 			app.tools_registry.fill_tools(this.history_manager, this.project_manager);
+			var browser_tool = new OLLMwebkit.Tool();
+			this.history_manager.register_tool(browser_tool);
+			this.history_manager.notification_reply.connect((notif) => {
+				if (!notif.method.has_prefix("event.browser.download.")) {
+					return;
+				}
+				browser_tool.stack.primary.notification_reply(notif);
+			});
 			app.mcp_registry.fill_tools(this.history_manager, this.project_manager);
 			foreach (var entry in app.config.tools.entries) {
 				if (!this.history_manager.tools.has_key(entry.key)) {

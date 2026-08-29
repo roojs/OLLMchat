@@ -83,6 +83,10 @@ Output:
 - Prefer a specific directory, non-recursive `ls`, `find -maxdepth`, `git ls-files`, or pipe through `head` / `grep`.
 - If output is long, you see the **last** lines only (not the first). Prefer a narrow listing, or write to a file and read a slice.
 
+Timeout:
+- Default is 60s. Commands that block (SSH password, missing TTY) are killed at that cap.
+- Set `timeout` (seconds) higher for installs, compiles, or other long jobs.
+
 If the command fails, you should handle the error gracefully and provide a helpful error message to the user.
 """;
 				return this.desc_backing;
@@ -101,6 +105,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 @param working_dir {string} [optional] The working directory where the command will be executed. Should be an absolute path. """ + working_dir_default + """
 @param network {boolean} [optional] Whether to allow network access. Defaults to false. For fetching websites or web content, use the `web_fetch` tool instead.
 @param run_as_root {boolean} [optional] Run the command as root via sudo. Linux only. Defaults to false. Do not use sudo in the command string.
+@param timeout {integer} [optional] Wall-clock seconds before the command is killed. Defaults to 60s. Increase for long jobs.
 """ + allow_write_line;
 			return this.param_desc_backing;
 		} }

@@ -238,14 +238,17 @@ ollmchat_deps = [
   valac.find_library('posix'),
   cc.find_library('m', required: false),
 ]
+if host_machine.system() == 'windows'
+  ollmchat_deps += dependency('webview2gtk-1')
+else
+  ollmchat_deps += [
+    dependency('webkitgtk-6.0'),
+    dependency('atspi-2'),
+  ]
+endif
 
 # Windows: embed the same app icon used on Linux (pixmaps/org.roojs.ollmchat.ico).
 window_src = 'Window.vala'
-
-# octools → ocwebkit .deps require webview2gtk-1; staged prefix vapi is not on default path.
-if host_machine.system() == 'windows'
-  ollmchat_deps += dependency('webview2gtk-1')
-endif
 
 ollmchat_sources = [
   version_vala,
@@ -338,12 +341,17 @@ if host_machine.system() == 'windows'
   if webview2gtk_prefix != ''
     ollmchat_vala_args += ['--vapidir', webview2gtk_prefix / 'lib']
   endif
+else
+  ollmchat_vala_args += [
+    '--pkg=webkitgtk-6.0',
+    '--pkg=atspi-2',
+  ]
 endif
 
 ollmchat = executable('ollmchat',
   dependencies: ollmchat_exe_deps,
   sources: ollmchat_sources,
-  link_with: [ollmchat_base_lib, ollmchatgtk_lib],
+  link_with: [ollmchat_base_lib, ollmchatgtk_lib, ocwebkit_base_lib],
   include_directories: [
     include_directories('../libollmchat'),
     include_directories('../libollamaweb'),
@@ -351,7 +359,8 @@ ollmchat = executable('ollmchat',
     include_directories('../libocmarkdown'),
     include_directories('../libocmarkdowngtk'),
     include_directories('../libocsqlite'),  # For ocsqlite.h (transitive dependency)
-    include_directories('../libocfiles')   # For ocfiles.h (transitive dependency)
+    include_directories('../libocfiles'),
+    include_directories('../libocwebkit')
   ],
   build_rpath: build_rpath,
   # Use --pkg for VAPI access (uses manually generated VAPI files)
@@ -410,13 +419,6 @@ ollmchat_cli_vala_args = [
   '--vapidir', meson.current_build_dir() / '..' / 'libocmcp',
   '--vapidir', meson.current_source_dir() / '../vapi',
 ]
-if host_machine.system() == 'windows'
-  ollmchat_cli_deps += dependency('webview2gtk-1')
-  ollmchat_cli_vala_args += ['--pkg=webview2gtk-1']
-  if webview2gtk_prefix != ''
-    ollmchat_cli_vala_args += ['--vapidir', webview2gtk_prefix / 'lib']
-  endif
-endif
 
 ollmchat_cli = executable('ollmchat-cli',
   dependencies: [

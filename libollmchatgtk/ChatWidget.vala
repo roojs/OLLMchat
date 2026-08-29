@@ -57,9 +57,7 @@ namespace OLLMchatGtk
 		private bool streaming = false;
 		/** True while restoring a session from history; used to keep autoscroll disabled until restoration is done. */
 		internal bool restoring_session { get; private set; default = false; }
-		private Gtk.Frame tool_frame;
-		private Gtk.Label tool_header;
-		private Gtk.Label tool_status;
+		private ToolOutput? current_output;
 
 		/**
 		* Default message text to display in the input field.
@@ -234,49 +232,22 @@ namespace OLLMchatGtk
 
 			this.append(main_box);
 
-			this.tool_header = new Gtk.Label("") {
-				halign = Gtk.Align.START,
-				ellipsize = Pango.EllipsizeMode.END,
-				use_markup = true,
-				hexpand = true
-			};
-			this.tool_header.add_css_class("command-preview");
-			this.tool_status = new Gtk.Label("") {
-				halign = Gtk.Align.START,
-				wrap = true
-			};
-			var stop_btn = new Gtk.Button.with_label("Stop") {
-				valign = Gtk.Align.CENTER
-			};
-			stop_btn.add_css_class("destructive-action");
-			stop_btn.clicked.connect(() => {
-				foreach (var req in this.manager.session.agent.active_tools.values) {
-					req.stop();
-				}
-			});
-			var row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
-			row.append(this.tool_header);
-			row.append(stop_btn);
-			var col = new Gtk.Box(Gtk.Orientation.VERTICAL, 6);
-			col.append(row);
-			col.append(this.tool_status);
-			this.tool_frame = new Gtk.Frame(null);
-			this.tool_frame.add_css_class("tool-frame");
-			this.tool_frame.set_child(col);
 			this.manager.notification.connect((notif) => {
-				if (notif.method == "client.run_tool.start") {
-					this.tool_header.tooltip_text = notif.message;
-					this.tool_header.label = "<b>"
-						+ GLib.Markup.escape_text(notif.message) + "</b>";
-					this.tool_status.label = notif.action;
-					this.chat_view.add_widget_frame(this.tool_frame);
+				switch (notif.method) {
+				case "client.run_tool.start":
+					this.current_output = new ToolOutput(
+						this.manager, notif.message, notif.action);
+					this.chat_view.add_widget_frame(this.current_output);
 					return;
-				}
-				if (notif.method != "client.run_tool.end") {
+
+				case "client.run_tool.output":
+					this.current_output.output(notif.message);
 					return;
-				}
-				if (this.tool_frame.get_parent() != null) {
-					this.tool_frame.unparent();
+
+				case "client.run_tool.end":
+					this.current_output.close();
+					this.current_output = null;
+					return;
 				}
 			});
 
@@ -359,15 +330,23 @@ namespace OLLMchatGtk
 			if (!this.restoring_session) {
 				this.chat_view.scroll_enabled = true;
 			}
-			
-			// Skip messages that shouldn't be displayed in UI
-			if (!m.is_ui_visible) {
-				return;
-			}
-			
-			// Session is required for rendering messages
 			if (session == null) {
 				GLib.warning("ChatWidget.on_message_created: session is null, cannot render message");
+				return;
+			}
+			if (this.restoring_session && m.role == "tool" && m.name == "run_command") {
+				var ui_msg = new OLLMchat.Message("assistant",
+					OLLMchat.Message.fenced(
+						"text.oc-frame-success.collapsed Execution results",
+						m.content),
+					m.thinking);
+				ui_msg.idx_last = this.chat_view.append_complete_assistant_message(ui_msg, session);
+				ui_msg.idx_first = this.chat_view.render_box.first_id;
+				m.idx_first = ui_msg.idx_first;
+				m.idx_last = ui_msg.idx_last;
+				return;
+			}
+			if (!m.is_ui_visible) {
 				return;
 			}
 			

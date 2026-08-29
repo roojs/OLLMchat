@@ -21,10 +21,10 @@ namespace OLLMapp
 	/**
 	 * Registers the Android POC tool subset on {@link OLLMchat.History.Manager}.
 	 *
-	 * **Temporary:** duplicates {@link OLLMtools.Registry} because the Android APK
-	 * does not link full {@code liboctools} yet. Remove when {@code libocfiles} uses
-	 * RPC and Android can share {@link OLLMtools.Registry} with a name-list subset
-	 * (build all tools, register only what the platform needs).
+	 * **Temporary:** duplicates {@link OLLMtools.Registry} for Soup tools
+	 * because the Android APK does not link full liboctools yet.
+	 * Browser is registered here (same as desktop Window); it is not
+	 * part of {@link OLLMtools.Registry}.
 	 *
 	 * Compiles {@link OLLMtools.WebFetch}, {@link OLLMtools.SessionFetch},
 	 * {@link OLLMtools.GoogleSearch}, and {@link OLLMwebkit.Tool} into the

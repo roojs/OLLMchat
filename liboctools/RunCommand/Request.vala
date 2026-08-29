@@ -33,6 +33,11 @@ namespace OLLMtools.RunCommand
 		public bool run_as_root { get; set; default = false; }
 		/** Tool string allow_write: no, project, or colon-separated absolute roots on Unix. Parsed in execute() before permission. */
 		public string allow_write { get; set; default = "project"; }
+		/**
+		 * Wall-clock seconds before the child is killed.
+		 * Omitted JSON uses 60.
+		 */
+		public int timeout { get; set; default = 60; }
 
 		/** Validated allow_write tokens; populated only in {@link execute} before permission. */
 		private string[] write_array = {};
@@ -41,7 +46,14 @@ namespace OLLMtools.RunCommand
 		private bool is_complex_command = false;
 		private int output_lines = 0;
 		private bool stopped = false;
+		private bool timed_out = false;
+		private uint timeout_src = 0;
 		private string[] tail = {};
+		private string[] pending_output = {};
+		private uint pending_output_src = 0;
+		private GLib.FileOutputStream spill_stream;
+		private bool spill_active = false;
+		private string spill_path = "";
 		private GLib.Subprocess child;
 		private bool child_active = false;
 		private OLLMbwrap.Bubble bubble;
@@ -86,6 +98,9 @@ namespace OLLMtools.RunCommand
 			}
 			if (this.run_as_root) {
 				lines += "Run as root: yes";
+			}
+			if (this.timeout != 60) {
+				lines += "Timeout: " + this.timeout.to_string() + "s";
 			}
 			return string.joinv ("\n", lines);
 		}
@@ -299,11 +314,60 @@ namespace OLLMtools.RunCommand
 				message = this.command.strip(),
 				action = run_status,
 			});
+			this.spill_path = GLib.Path.build_filename(
+				this.agent.chat().agent.session.task_dir(),
+				"run_command-" + this.request_id.to_string() + ".log");
+			try {
+				this.spill_stream = GLib.File.new_for_path(this.spill_path).replace(
+					null, false, GLib.FileCreateFlags.PRIVATE, null);
+				this.spill_active = true;
+			} catch (GLib.Error e) {
+				this.spill_active = false;
+			}
+			this.timeout_src = GLib.Timeout.add_seconds(this.timeout, () => {
+				this.timed_out = true;
+				this.stop();
+				this.timeout_src = 0;
+				return false;
+			});
 			try {
 				return yield this.execute_tool_async();
 			} catch (Error e) {
 				return "ERROR: " + e.message;
 			} finally {
+				if (this.timeout_src != 0) {
+					GLib.Source.remove(this.timeout_src);
+					this.timeout_src = 0;
+				}
+				if (this.pending_output_src != 0) {
+					GLib.Source.remove(this.pending_output_src);
+					this.pending_output_src = 0;
+				}
+				if (this.pending_output.length > 0) {
+					this.agent.notification(new OLLMrpc.Notification() {
+						method = "client.run_tool.output",
+						message = string.joinv("\n", this.pending_output) + "\n",
+						id = this.request_id,
+					});
+					this.pending_output = {};
+				}
+				if (this.spill_active) {
+					try {
+						this.spill_stream.close(null);
+					} catch (GLib.Error e) {
+					}
+					this.spill_active = false;
+					if (this.output_lines <= 50) {
+						try {
+							GLib.File.new_for_path(this.spill_path).delete(null);
+						} catch (GLib.Error e) {
+						}
+						try {
+							GLib.File.new_for_path(GLib.Path.get_dirname(this.spill_path)).delete(null);
+						} catch (GLib.Error e) {
+						}
+					}
+				}
 				this.agent.notification(new OLLMrpc.Notification() {
 					method = "client.run_tool.end",
 					message = this.command.strip(),
@@ -360,6 +424,30 @@ namespace OLLMtools.RunCommand
 				bubble.write_roots = write_roots;
 				this.bubble = bubble;
 				this.bubble_active = true;
+				bubble.output.connect((line) => {
+					this.pending_output += line;
+					this.output_lines++;
+					if (this.spill_active) {
+						try {
+							this.spill_stream.write_all((line + "\n").data, null);
+						} catch (GLib.Error e) {
+							this.spill_active = false;
+						}
+					}
+					if (this.pending_output_src != 0) {
+						return;
+					}
+					this.pending_output_src = GLib.Timeout.add(500, () => {
+						this.agent.notification(new OLLMrpc.Notification() {
+							method = "client.run_tool.output",
+							message = string.joinv("\n", this.pending_output) + "\n",
+							id = this.request_id,
+						});
+						this.pending_output = {};
+						this.pending_output_src = 0;
+						return false;
+					});
+				});
 
 				var output = yield bubble.exec(
 					this.command,
@@ -369,12 +457,40 @@ namespace OLLMtools.RunCommand
 				if (output.strip() == "") {
 					output = "No output received from command";
 				}
+				if (this.timed_out) {
+					output = output.replace("\nCommand stopped by user.", "");
+					output += "\nCommand timed out after " + this.timeout.to_string()
+						+ "s. Raise timeout in run_command if this was expected to run longer.";
+				}
 
-				var frame_header = "text.oc-frame-success.collapsed Execution results";
-				this.agent.add_message(new OLLMchat.Message("ui",
-					 OLLMchat.Message.fenced(frame_header, output)));
-				
-				// Return output to LLM
+				var footer = "";
+				if (this.output_lines > 50) {
+					footer += "// LLM received last 50 of " + this.output_lines.to_string() + " lines.\n";
+					if (this.spill_path != "") {
+						footer += "Full output: " + this.spill_path + "\n";
+					}
+				}
+				if (this.timed_out) {
+					footer += "Command timed out after " + this.timeout.to_string()
+						+ "s. Raise timeout in run_command if this was expected to run longer.\n";
+				}
+				if (this.stopped && !this.timed_out) {
+					footer += "Command stopped by user.\n";
+				}
+				var exit_at = output.index_of("Exit code:");
+				if (!this.stopped && exit_at >= 0) {
+					footer += output.substring(exit_at);
+				}
+				if (this.spill_path != "" && this.output_lines > 50) {
+					output = output + "\nFull output: " + this.spill_path + "\n";
+				}
+				if (footer != "") {
+					this.agent.notification(new OLLMrpc.Notification() {
+						method = "client.run_tool.output",
+						message = footer,
+						id = this.request_id,
+					});
+				}
 				return output;
 				
 			} catch (Error e) {
@@ -469,6 +585,14 @@ namespace OLLMtools.RunCommand
 			}
 			stdout_output = stdout_buf ?? "";
 			stderr_output = stderr_buf ?? "";
+			if (this.spill_active) {
+				try {
+					this.spill_stream.write_all((stdout_output + stderr_output).data, null);
+				} catch (GLib.Error e) {
+					this.spill_active = false;
+				}
+			}
+			this.output_lines = (stdout_output + "\n" + stderr_output).split("\n").length;
 			stdout_output = this.truncate_output(stdout_output, 50);
 			exit_status = success ? 0 : subprocess.get_exit_status ();
 #else
@@ -535,7 +659,11 @@ namespace OLLMtools.RunCommand
 				}
 				output_content += stderr_output;
 			}
-			if (this.stopped) {
+			if (this.timed_out) {
+				output_content += "\nCommand timed out after " + this.timeout.to_string()
+					+ "s. Raise timeout in run_command if this was expected to run longer.";
+			}
+			if (this.stopped && !this.timed_out) {
 				output_content += "\nCommand stopped by user.";
 			}
 			if (!this.stopped && exit_status != 0) {
@@ -552,34 +680,47 @@ namespace OLLMtools.RunCommand
 			if (output_content.strip() == "") {
 				output_content = "No output received from command";
 			}
-			 
-			
-		// Send output as second message (danger when command failed, success when exit 0)
-			var frame_header = "text.oc-frame-success.collapsed Execution results";
-			if (exit_status != 0) {
-				frame_header = "text.oc-frame-danger.collapsed Execution results (Command Failed)";
+
+			if (this.spill_path != "" && this.output_lines > 50) {
+				output_content = output_content + "\nFull output: " + this.spill_path + "\n";
 			}
-			this.agent.add_message(new OLLMchat.Message("ui", 
-				OLLMchat.Message.fenced(frame_header, output_content)));
-				
-			// FUTURE: Streaming support - clear current message when done
-			// this.current_tool_message = null;
-			
-			// Merge outputs: stdout first, then stderr (for LLM return value)
-			// Note: stdout_output and stderr_output are already truncated above
-			/*
-			string merged_output = "";
-			if (stdout_output != "") {
-				merged_output = stdout_output;
-			}
-			if (stderr_output != "") {
-				if (merged_output != "") {
-					merged_output += "\n";
+#if G_OS_WIN32
+			this.agent.notification(new OLLMrpc.Notification() {
+				method = "client.run_tool.output",
+				message = output_content + "\n",
+				id = this.request_id,
+			});
+#else
+			var footer = "";
+			if (this.output_lines > 50) {
+				footer += "// LLM received last 50 of " + this.output_lines.to_string() + " lines.\n";
+				if (this.spill_path != "") {
+					footer += "Full output: " + this.spill_path + "\n";
 				}
-				merged_output += stderr_output;
 			}
-			 */
-			// Return same merged output as shown in UI (already truncated)
+			if (this.timed_out) {
+				footer += "Command timed out after " + this.timeout.to_string()
+					+ "s. Raise timeout in run_command if this was expected to run longer.\n";
+			}
+			if (this.stopped && !this.timed_out) {
+				footer += "Command stopped by user.\n";
+			}
+			if (!this.stopped && exit_status != 0) {
+				footer += "Exit code: " + exit_status.to_string();
+				if (!this.network) {
+					footer += " - Note: Networking is disabled by default. Pass \"network\": true in the "
+						+ this.tool.name + " arguments to enable it.";
+				}
+				footer += "\n";
+			}
+			if (footer != "") {
+				this.agent.notification(new OLLMrpc.Notification() {
+					method = "client.run_tool.output",
+					message = footer,
+					id = this.request_id,
+				});
+			}
+#endif
 			return output_content;
 		}
 		
@@ -638,6 +779,27 @@ namespace OLLMtools.RunCommand
 				}
 				this.tail += line;
 				this.output_lines++;
+				this.pending_output += line;
+				if (this.spill_active) {
+					try {
+						this.spill_stream.write_all((line + "\n").data, null);
+					} catch (GLib.Error e) {
+						this.spill_active = false;
+					}
+				}
+				if (this.pending_output_src != 0) {
+					continue;
+				}
+				this.pending_output_src = GLib.Timeout.add(500, () => {
+					this.agent.notification(new OLLMrpc.Notification() {
+						method = "client.run_tool.output",
+						message = string.joinv("\n", this.pending_output) + "\n",
+						id = this.request_id,
+					});
+					this.pending_output = {};
+					this.pending_output_src = 0;
+					return false;
+				});
 			}
 			var output = string.joinv("\n", this.tail);
 			if (this.output_lines <= 50) {

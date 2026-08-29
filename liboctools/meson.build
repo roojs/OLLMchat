@@ -14,35 +14,9 @@ octools_deps = [
   dependency('gmodule-2.0'),  # GModule for dynamic library loading
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
-  dependency('gtk4'),
   valac.find_library('posix'),
   tree_sitter_dep,
 ]
-
-octools_webview_vala_args = []
-octools_webview_vapi_pkgs = []
-if is_windows
-  octools_deps += dependency('webview2gtk-1')
-  octools_webview_vala_args += ['--pkg=webview2gtk-1']
-  octools_webview_vapi_pkgs += ['--pkg', 'webview2gtk-1']
-  if webview2gtk_prefix != ''
-    octools_webview_vala_args += ['--vapidir', webview2gtk_prefix / 'lib']
-    octools_webview_vapi_pkgs += ['--vapidir', webview2gtk_prefix / 'lib']
-  endif
-else
-  octools_deps += [
-    dependency('webkitgtk-6.0'),
-    dependency('atspi-2'),
-  ]
-  octools_webview_vala_args += [
-    '--pkg=webkitgtk-6.0',
-    '--pkg=atspi-2',
-  ]
-  octools_webview_vapi_pkgs += [
-    '--pkg', 'webkitgtk-6.0',
-    '--pkg', 'atspi-2',
-  ]
-endif
 
 # Source files for OLLMtools namespace
 octools_src = files([
@@ -92,7 +66,6 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocbwrap',
   meson.current_build_dir() / '..' / 'libochf',
   meson.current_build_dir() / '..' / 'libocrpc',
-  meson.current_build_dir() / '..' / 'libocwebkit',
 ])
 
 octools_lib_deps = [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep, ocbwrap_vapi_dep, ocrpc_vapi_dep]
@@ -105,7 +78,6 @@ octools_lib_vala_args = [
   '--pkg=ocmarkdown',
   '--pkg=ocbwrap',
   '--pkg=ocrpc',
-  '--pkg=gtk4',
   '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
   '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
   '--pkg=json-glib-1.0',
@@ -117,20 +89,19 @@ octools_lib_vala_args = [
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
   '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
   '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
-  '--vapidir', meson.current_build_dir() / '..' / 'libocwebkit',
   '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
   '--girdir', meson.current_build_dir() / '..' / 'libocsqlite',
   '--girdir', meson.current_build_dir() / '..' / 'libocfiles',
   '--girdir', meson.current_build_dir() / '..' / 'libocmarkdown',
   '--girdir', meson.current_build_dir() / '..' / 'libollmchat',
-] + octools_webview_vala_args
+]
 if not is_windows
   octools_lib_vala_args += ['--vapidir', '/usr/share/vala/vapi']
 endif
 
 octools_base_lib = library(octools_lib,
   dependencies: octools_lib_deps,
-  link_with: [ollmchat_base_lib, ochf_base_lib, ocwebkit_base_lib],
+  link_with: [ollmchat_base_lib, ochf_base_lib],
   sources: octools_src,
   vala_header: 'octools.h',
   vala_vapi: 'octools-meson.vapi',  # Use different name so our custom_target can use 'octools.vapi'
@@ -141,7 +112,6 @@ octools_base_lib = library(octools_lib,
     include_directories('..' / 'libollamaweb'),
     include_directories('..' / 'libochf'),
     include_directories('..' / 'libocrpc'),
-    include_directories('..' / 'libocwebkit'),
   ],
   vala_args: octools_lib_vala_args,
   install: true
@@ -159,8 +129,6 @@ octools_vapi_gen_pkgs = [
   '--pkg', 'ocfiles',
   '--pkg', 'ocrpc',
   '--pkg', 'ochf',
-  '--pkg', 'ocwebkit',
-  '--pkg', 'gtk4',
   '--pkg', 'ocmarkdown',
   '--pkg', 'ocsqlite',
   '--pkg', 'ocbwrap',
@@ -168,14 +136,13 @@ octools_vapi_gen_pkgs = [
   '--pkg', 'glib-2.0',
   '--pkg', 'gio-2.0',
   '--pkg', 'gee-0.8',
-] + octools_webview_vapi_pkgs
+]
 
 octools_vapi_vapidirs = [
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
   '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
   '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
   '--vapidir', meson.current_build_dir() / '..' / 'libochf',
-  '--vapidir', meson.current_build_dir() / '..' / 'libocwebkit',
   '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
   '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
@@ -200,7 +167,7 @@ octools_vapi = custom_target('octools-vapi',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
   ],
-  depends: [octools_base_lib, ollamaweb_vapi, ochf_vapi, ocwebkit_vapi],
+  depends: [octools_base_lib, ollamaweb_vapi, ochf_vapi],
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'

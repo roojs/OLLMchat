@@ -64,6 +64,8 @@ namespace OLLMapp
 			this.mcp_registry = new OLLMmcp.Registry();
 			this.tools_registry.init_config();
 			this.mcp_registry.init_config();
+			typeof(OLLMwebkit.Tool).ensure();
+			OLLMchat.Tool.BaseTool.register_config(typeof(OLLMwebkit.Tool));
 					
 			// Load config after registrations
 			this.config = this.load_config();
@@ -71,6 +73,7 @@ namespace OLLMapp
 			if (this.config.loaded) {
 				this.tools_registry.setup_config_defaults(this.config);
 				this.mcp_registry.setup_config_defaults(this.config);
+				(new OLLMwebkit.Tool()).setup_tool_config_default(this.config);
 			}
 			
 			// Connect activate signal

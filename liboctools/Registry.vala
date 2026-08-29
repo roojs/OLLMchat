@@ -22,8 +22,9 @@ namespace OLLMtools
 	 * Registry for all tools in liboctools.
 	 *
 	 * Registers: ReadFile (+ Read), RunCommand (+ Bash), WebFetch, EditMode (+ Write),
-	 * WriteFile, GoogleSearch, CodebaseSearch, SessionFetch, HuggingFace, Browser
-	 * (OLLMwebkit), and wrapped tools (via ToolBuilder).
+	 * WriteFile, GoogleSearch, CodebaseSearch, SessionFetch, HuggingFace, and
+	 * wrapped tools (via ToolBuilder). The GTK app registers the browser tool
+	 * (wire name ''browser''); this library stays GTK-free.
 	 */
 	public class Registry : Object
 	{
@@ -39,7 +40,6 @@ namespace OLLMtools
 			typeof(CodebaseSearch.CodebaseSearchTool).ensure();
 			typeof(SessionFetch.Tool).ensure();
 			typeof(HuggingFace.Tool).ensure();
-			typeof(OLLMwebkit.Tool).ensure();
 
 			// Register all liboctools tool config types with Config2
 			// Tools with BaseToolConfig get enabled/disabled in Settings; tools with custom config get that plus their options
@@ -52,7 +52,6 @@ namespace OLLMtools
 			OLLMchat.Tool.BaseTool.register_config(typeof(CodebaseSearch.CodebaseSearchTool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(SessionFetch.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(HuggingFace.Tool));
-			OLLMchat.Tool.BaseTool.register_config(typeof(OLLMwebkit.Tool));
 		}
 
 		/**
@@ -70,7 +69,6 @@ namespace OLLMtools
 			(new CodebaseSearch.CodebaseSearchTool(null)).setup_tool_config_default(config);
 			(new SessionFetch.Tool()).setup_tool_config_default(config);
 			(new HuggingFace.Tool(null)).setup_tool_config_default(config);
-			(new OLLMwebkit.Tool()).setup_tool_config_default(config);
 		}
 
 		public void fill_tools(
@@ -97,14 +95,6 @@ namespace OLLMtools
 					return;
 				}
 				hf_tool.notification_reply(notif);
-			});
-			var browser_tool = new OLLMwebkit.Tool();
-			manager.register_tool(browser_tool);
-			manager.notification_reply.connect((notif) => {
-				if (!notif.method.has_prefix("event.browser.download.")) {
-					return;
-				}
-				browser_tool.stack.primary.notification_reply(notif);
 			});
 
 			// Register wrapped tools from .tool definition files

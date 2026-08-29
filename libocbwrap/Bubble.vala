@@ -126,6 +126,7 @@ namespace OLLMbwrap
 		private int output_lines = 0;
 
 		public bool stopped { get; private set; default = false; }
+		public signal void output(string line);
 		private string[] tail = {};
 		private GLib.Subprocess child;
 		private bool child_active = false;
@@ -623,11 +624,13 @@ namespace OLLMbwrap
 			if (buffer == null || status != GLib.IOStatus.NORMAL) {
 				return;
 			}
+			var line = buffer.chomp();
 			if (this.tail.length >= 50) {
 				this.tail = this.tail[1:this.tail.length];
 			}
-			this.tail += buffer.chomp();
+			this.tail += line;
 			this.output_lines++;
+			this.output(line);
 		}
 	}
 	}

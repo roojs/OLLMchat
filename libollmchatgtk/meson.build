@@ -24,6 +24,7 @@ ollmchatgtk_deps = [
 # GTK source files (for GTK library and test-window)
 ollmchatgtk_src = files([
   'ChatWidget.vala',
+  'ToolOutput.vala',
   'ChatView.vala',
   'ChatInput.vala',
   'MessageQueueView.vala',
