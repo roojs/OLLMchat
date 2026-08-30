@@ -91,6 +91,169 @@ namespace OLLMrpc
 	internal class NamespaceDoc {}
 
 	/**
+	 * Pack one already-scanned D-Bus type from an open va_list.
+	 *
+	 * {@link val} and {@link args} call this once per letter.
+	 *
+	 * @param tag one complete type (''s'', ''o'', ''as'', …)
+	 * @param l varargs cursor
+	 * @return boxed value
+	 */
+	private GLib.Value to_value(string tag, va_list l)
+	{
+		switch (tag) {
+			case "s":
+				var s_val = GLib.Value(typeof(string));
+				s_val.set_string(l.arg<string>());
+				return s_val;
+
+			case "b":
+				var b_val = GLib.Value(typeof(bool));
+				b_val.set_boolean(l.arg<bool>());
+				return b_val;
+
+			case "y":
+				var y_val = GLib.Value(typeof(uint8));
+				y_val.set_uchar((uint8) l.arg<int>());
+				return y_val;
+
+			case "n":
+				var n_val = GLib.Value(typeof(int));
+				n_val.set_int(l.arg<int>());
+				return n_val;
+
+			case "q":
+				var q_val = GLib.Value(typeof(uint));
+				q_val.set_uint((uint) l.arg<int>());
+				return q_val;
+
+			case "i":
+				var i_val = GLib.Value(typeof(int));
+				i_val.set_int(l.arg<int>());
+				return i_val;
+
+			case "u":
+				var u_val = GLib.Value(typeof(uint));
+				u_val.set_uint(l.arg<uint>());
+				return u_val;
+
+			case "x":
+				var x_val = GLib.Value(typeof(int64));
+				x_val.set_int64(l.arg<int64>());
+				return x_val;
+
+			case "t":
+				var t_val = GLib.Value(typeof(uint64));
+				t_val.set_uint64(l.arg<uint64>());
+				return t_val;
+
+			case "f":
+				var f_val = GLib.Value(typeof(float));
+				f_val.set_float((float) l.arg<double>());
+				return f_val;
+
+			case "d":
+				var d_val = GLib.Value(typeof(double));
+				d_val.set_double(l.arg<double>());
+				return d_val;
+
+			case "o":
+				var obj = l.arg<GLib.Object>();
+				var o_val = GLib.Value(obj.get_type());
+				o_val.set_object(obj);
+				return o_val;
+
+			case "g":
+				var g_val = GLib.Value(typeof(string));
+				g_val.set_string(l.arg<string>());
+				return g_val;
+
+			case "h":
+				var h_val = GLib.Value(typeof(int));
+				h_val.set_int(l.arg<int>());
+				return h_val;
+
+			case "S":
+			case "as":
+				var as_val = GLib.Value(typeof(string[]));
+				as_val.set_boxed(l.arg<string[]>());
+				return as_val;
+
+			case "ay":
+				var ay_val = GLib.Value(typeof(GLib.Bytes));
+				ay_val.set_boxed(l.arg<GLib.Bytes>());
+				return ay_val;
+
+			case "v":
+				var v_val = GLib.Value(typeof(GLib.Variant));
+				v_val.set_variant(l.arg<GLib.Variant>());
+				return v_val;
+
+			default:
+				GLib.error("unknown D-Bus type %s", tag);
+		}
+	}
+
+	/**
+	 * Pack one return into a {@link GLib.Value} for {@link Response.retval}.
+	 *
+	 * Same D-Bus letters as {@link args}. ''signature'' is **one**
+	 * complete type. Two types belong on {@link args}. An empty
+	 * {@link Gee.ArrayList} returns unset ({@link GLib.Type.INVALID})
+	 * so the wire omits it. ''o'' uses the instance GType so a list
+	 * stays an array on the wire.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * request.reply(new OLLMrpc.Response() {
+	 *     id = request.id,
+	 *     retval = OLLMrpc.val("o", row)
+	 * });
+	 * }}}
+	 *
+	 * @param signature one D-Bus complete type
+	 * @return value to assign to {@link Response.retval}
+	 */
+	public GLib.Value val(string signature, ...)
+	{
+		if (signature == "") {
+			return GLib.Value(GLib.Type.INVALID);
+		}
+		var l = va_list();
+		var rest = signature;
+		var tag = "";
+		if (rest.has_prefix("f")) {
+			tag = "f";
+			rest = rest.substring(1);
+		} else if (rest.has_prefix("S")) {
+			tag = "S";
+			rest = rest.substring(1);
+		} else {
+			var rest_ptr = (char*) rest;
+			var next = (char*) null;
+			if (!GLib.VariantType.string_scan(rest, null, out next) || next == rest_ptr) {
+				GLib.error("invalid D-Bus type signature %s", signature);
+			}
+			var n = (long) ((uint8*) next - (uint8*) rest_ptr);
+			tag = rest.substring(0, n);
+			rest = rest.substring((int) n);
+		}
+		if (rest != "") {
+			GLib.error("val() takes one complete type, got %s", signature);
+		}
+		var v = to_value(tag, l);
+		if (!v.type().is_a(typeof(Gee.ArrayList))) {
+			return v;
+		}
+		var list = (Gee.ArrayList<GLib.Object>) v.get_object();
+		if (list.size == 0) {
+			return GLib.Value(GLib.Type.INVALID);
+		}
+		return v;
+	}
+
+	/**
 	 * Pack mixed RPC arguments into a {@link Gee.ArrayList} of
 	 * {@link GLib.Value}.
 	 *
@@ -148,113 +311,7 @@ namespace OLLMrpc
 				tag = rest.substring(0, n);
 				offset += (int) n;
 			}
-			switch (tag) {
-				case "s":
-					var s_val = GLib.Value(typeof(string));
-					s_val.set_string(l.arg<string>());
-					packed.add(s_val);
-					break;
-
-				case "b":
-					var b_val = GLib.Value(typeof(bool));
-					b_val.set_boolean(l.arg<bool>());
-					packed.add(b_val);
-					break;
-
-				case "y":
-					var y_val = GLib.Value(typeof(uint8));
-					y_val.set_uchar((uint8) l.arg<int>());
-					packed.add(y_val);
-					break;
-
-				case "n":
-					var n_val = GLib.Value(typeof(int));
-					n_val.set_int(l.arg<int>());
-					packed.add(n_val);
-					break;
-
-				case "q":
-					var q_val = GLib.Value(typeof(uint));
-					q_val.set_uint((uint) l.arg<int>());
-					packed.add(q_val);
-					break;
-
-				case "i":
-					var i_val = GLib.Value(typeof(int));
-					i_val.set_int(l.arg<int>());
-					packed.add(i_val);
-					break;
-
-				case "u":
-					var u_val = GLib.Value(typeof(uint));
-					u_val.set_uint(l.arg<uint>());
-					packed.add(u_val);
-					break;
-
-				case "x":
-					var x_val = GLib.Value(typeof(int64));
-					x_val.set_int64(l.arg<int64>());
-					packed.add(x_val);
-					break;
-
-				case "t":
-					var t_val = GLib.Value(typeof(uint64));
-					t_val.set_uint64(l.arg<uint64>());
-					packed.add(t_val);
-					break;
-
-				case "f":
-					var f_val = GLib.Value(typeof(float));
-					f_val.set_float((float) l.arg<double>());
-					packed.add(f_val);
-					break;
-
-				case "d":
-					var d_val = GLib.Value(typeof(double));
-					d_val.set_double(l.arg<double>());
-					packed.add(d_val);
-					break;
-
-				case "o":
-					var o_val = GLib.Value(typeof(GLib.Object));
-					o_val.set_object(l.arg<GLib.Object>());
-					packed.add(o_val);
-					break;
-
-				case "g":
-					var g_val = GLib.Value(typeof(string));
-					g_val.set_string(l.arg<string>());
-					packed.add(g_val);
-					break;
-
-				case "h":
-					var h_val = GLib.Value(typeof(int));
-					h_val.set_int(l.arg<int>());
-					packed.add(h_val);
-					break;
-
-				case "S":
-				case "as":
-					var as_val = GLib.Value(typeof(string[]));
-					as_val.set_boxed(l.arg<string[]>());
-					packed.add(as_val);
-					break;
-
-				case "ay":
-					var ay_val = GLib.Value(typeof(GLib.Bytes));
-					ay_val.set_boxed(l.arg<GLib.Bytes>());
-					packed.add(ay_val);
-					break;
-
-				case "v":
-					var v_val = GLib.Value(typeof(GLib.Variant));
-					v_val.set_variant(l.arg<GLib.Variant>());
-					packed.add(v_val);
-					break;
-
-				default:
-					GLib.error("unknown D-Bus type %s", tag);
-			}
+			packed.add(to_value(tag, l));
 		}
 		return packed;
 	}

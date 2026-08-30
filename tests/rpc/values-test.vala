@@ -83,6 +83,17 @@ namespace OLLMrpcTests
 				objects.get(0).get_object() == hello,
 				"args object"
 			);
+			var v_i = OLLMrpc.val("i", 3);
+			this.check(command_line, v_i.get_int() == 3, "val int");
+			var v_o = OLLMrpc.val("o", hello);
+			this.check(command_line, v_o.get_object() == hello, "val object");
+			var empty = new Gee.ArrayList<GLib.Object>();
+			var v_empty = OLLMrpc.val("o", empty);
+			this.check(
+				command_line,
+				v_empty.type() == GLib.Type.INVALID,
+				"val empty list"
+			);
 			string[] names = { "a", "b" };
 			var strv = OLLMrpc.args("as", names);
 			this.check(command_line, strv.size == 1, "args strv size");

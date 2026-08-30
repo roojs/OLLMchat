@@ -20,7 +20,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 - **🔷** `⏳` Leave `result` (`Gee.ArrayList<GLib.Object>`) as it is. Do not delete or retype it in this cut.
 - **🔷** `⏳` Encode / decode `retval` with `StreamValue`.
 - **🔷** `⏳` `StreamValue` writes live-handle objects and `typeof(Gee.ArrayList)` as `OBJECT|0x80` (`parse_object_array` on read).
-- **🔷** `⏳` Migrate methods onto `retval` later, one at a time. This cut is the property + codec, not every handler.
+- **ℹ️** Method migration and deleting `result` → [`RPC-8.5.4-rpc-retval-migrate.md`](RPC-8.5.4-rpc-retval-migrate.md).
 - **ℹ️** `args` / `msg` / `msg_encode` unchanged. No protocol version bump.
 
 ---
@@ -235,46 +235,22 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-## Phase 3 — later (no fences here)
+## Phase 3 — migrate / drop `result`
 
-- **🔷** `⏳` Move a method off `result` (or off `args` / `msg` for a scalar) onto `retval` only when both ends change together. First method is not this cut.
-- **ℹ️** `Gi` still uses `result.add` until a later sub-plan.
-- **ℹ️** Daemon list RPCs (`fetch_files`, …) stay on `result`.
+- **ℹ️** [`RPC-8.5.4-rpc-retval-migrate.md`](RPC-8.5.4-rpc-retval-migrate.md). Not this file.
 
 ---
 
 ## Phase 4 — protocol
 
-### 5. `docs/bin-rpc-protocol.md` — §15 `retval`
-
-**Why:** Spec only documents `result` object arrays.
-
-**Where:** after `### Root result arrays (`Response.result`)`, before `### Positional args`.
-
-**Depends on:** ### 3, ### 4.
-
-#### Add — new subsection after the `result` arrays block — `retval` is one `StreamValue`
-
-```markdown
-### Root retval (`Response.retval`)
-
-Optional typed return on **`OLLMrpc.Response.retval`** (`GLib.Value`), encoded with **`Bin.StreamValue`**.
-
-**Omit** when unset (`GLib.Type.INVALID`) or an empty **`Gee.ArrayList`**.
-
-**Scalar / one GObject / N GObjects:** same layouts as `StreamValue` (including object array `0xD0` and live-handle bodies). List GType on the value is **`typeof(Gee.ArrayList)`**.
-
-**`result`** (object list) is unchanged. A method uses one or the other, not both.
-
-See `libocrpc/Response.vala`, `libocrpc/Bin/StreamValue.vala`.
-```
+- **ℹ️** Final §15 text ( `retval` only, no `result` ) is **8.5.4** ### 13. Do not add a dual-property subsection here.
 
 ---
 
 ## LLM notes
 
 - **🚫** Delete, retype, or stop writing `Response.result` in this cut.
-- **🚫** Convert every handler / `Gi` / libocfiles caller onto `retval` here.
+- **🚫** Convert every handler / `Gi` / libocfiles caller onto `retval` here — that is **8.5.4**.
 - **🚫** Dual-write `result` and `retval` on the same reply.
 - **🚫** `get_object() is Gee.ArrayList`. Use `val.type().is_a(typeof(Gee.ArrayList))`.
 - **🚫** Put `OBJECT|0x80` through numeric `read_array`. Use `parse_object_array`.
