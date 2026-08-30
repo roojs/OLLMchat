@@ -21,7 +21,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 - **🔷** `✔️` Pack with `OLLMrpc.val` — same D-Bus letters as `OLLMrpc.args`, **one** complete type, varargs after. Assign in the `Response` initializer: `retval = OLLMrpc.val("o", row)`.
 - **🔷** `✔️` Writers that construct a Response set `retval` in that initializer. Do not `new Response()` then assign. Gi method dispatch already has a Response for OUT args — assign `retval` there.
 - **🔷** `✔️` One letter switch: private `to_value(tag, l)`. `val(...)` and `args()` both call it.
-- **🔷** `⏳` After the last caller, delete `result` (property, `bin_write_prop` / `bin_read_prop` cases, class examples, protocol).
+- **🔷** `✔️` After the last caller, delete `result` (property, `bin_write_prop` / `bin_read_prop` cases, class examples, protocol).
 - **🔷** Packing is by **method shape**, not by runtime count:
   - one GObject → `OLLMrpc.val("o", obj)` (Value GType is `obj.get_type()`, not `typeof(GLib.Object)`)
   - list → `OLLMrpc.val("o", list)` even when `size == 1` (`get_type()` is `Gee.ArrayList`)
@@ -477,11 +477,13 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-## Phase 3 — delete `result` ⏳
+## Phase 3 — delete `result` ✔️
 
-- **🔷** `⏳` When grep for `response.result` / `.result.add` / `result = result` on `OLLMrpc.Response` is empty, remove the property.
+- **🔷** `✔️` When grep for `response.result` / `.result.add` / `result = result` on `OLLMrpc.Response` is empty, remove the property.
 
 ### 12. `libocrpc/Response.vala` — drop `result`
+
+**Status:** **✔️** see `libocrpc/Response.vala`.
 
 **Why:** `retval` is the only object/list return.
 
@@ -505,6 +507,8 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 Update the overview sentence that names `{@link result}` so it names `{@link retval}` only.
 
 ### 13. `docs/bin-rpc-protocol.md` — §15: `retval` replaces `result` arrays
+
+**Status:** **✔️** see `docs/bin-rpc-protocol.md`.
 
 **Why:** Spec still describes `result` as the object list. 8.5.3 Phase 4 is **not** applied; write the final text here.
 

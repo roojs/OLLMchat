@@ -14,12 +14,13 @@
 namespace OLLMrpc
 {
 	/**
-	 * Inbound RPC envelope — matching {@link Request.id}, plus result or error.
+	 * Inbound RPC envelope — matching {@link Request.id}, plus retval or error.
 	 *
 	 * After {@link Client.call} returns, the call succeeded.
 	 * {@link Client.call} throws on failure. Successful
-	 * calls put objects in {@link result} (never null; omit on the wire
-	 * when empty) and optional scalars in {@link args} (same
+	 * calls put a typed return in {@link retval} (omit on the wire
+	 * when unset or an empty {@link Gee.ArrayList}) and optional
+	 * scalars in {@link args} (same
 	 * {@link Gee.ArrayList} of boxed {@link GLib.Value} as
 	 * {@link Request.args}). File.read-style string payloads may use
 	 * {@link msg} / {@link msg_encode}.
@@ -30,13 +31,6 @@ namespace OLLMrpc
 	 *
 	 * {{{
 	 * var resp = yield rpc.call(req);
-	 * }}}
-	 *
-	 * === Object result ===
-	 *
-	 * {{{
-	 * foreach (var obj in resp.result)
-	 *     stdout.printf("%s\n", obj.get_type().name());
 	 * }}}
 	 *
 	 * === Retval ===
@@ -70,15 +64,6 @@ namespace OLLMrpc
 		 */
 		public Error? error { get; set; default = null; }
 		/**
-		 * Object list on the wire (length 0, 1, or N).
-		 *
-		 * Never null. Single objects use one element. Omitted when empty.
-		 * With {@link Transport.Connection.live_handles}, a non-Serializable
-		 * instance is a lease id, not a property dump.
-		 */
-		public Gee.ArrayList<GLib.Object> result { 
-			get; set; default = new Gee.ArrayList<GLib.Object>(); }
-		/**
 		 * Typed return ({@link GLib.Value}).
 		 *
 		 * Unset ({@link GLib.Type.INVALID}) is omitted on the wire. A
@@ -86,8 +71,7 @@ namespace OLLMrpc
 		 * encoding as {@link args} elements. A GObject is one object.
 		 * A {@link Gee.ArrayList} is an object array. Live GObjects
 		 * write a lease id when {@link Transport.Connection.live_handles}
-		 * is on. Existing list replies stay on {@link result} until
-		 * that method moves here.
+		 * is on.
 		 *
 		 * == Example ==
 		 *
@@ -102,7 +86,7 @@ namespace OLLMrpc
 		 * Positional returns (daemon → client), GIR order.
 		 *
 		 * Empty list is omitted on the bin socket. A returned GObject
-		 * uses {@link result}, not this list. Do not put scalars in
+		 * uses {@link retval}, not this list. Do not put scalars in
 		 * {@link msg}.
 		 *
 		 * {@link Gee.ArrayList} cannot store {@link GLib.Value} (a struct).
@@ -160,7 +144,7 @@ namespace OLLMrpc
 		/**
 		 * Encode one property.
 		 *
-		 * Omits empty {@link result} and {@link args}. Live GObjects
+		 * Omits unset {@link retval} and empty {@link args}. Live GObjects
 		 * write a lease id, not a property dump.
 		 *
 		 * @param ctx active bin session
@@ -174,31 +158,6 @@ namespace OLLMrpc
 		{
 			switch (prop.name) {
 				case "buffer":
-					return;
-				case "result":
-					if (this.result.size == 0) {
-						return;
-					}
-					ctx.write_tag(prop.name);
-					ctx.write_gtype(this.result.get(0).get_type(),
-						(uint8) GLib.Type.OBJECT | 0x80);
-					if (this.result.size < 128) {
-						ctx.out_stream.put_byte((uint8) this.result.size);
-					} else {
-						ctx.out_stream.put_byte(
-							(uint8) (0x80 | ((this.result.size >> 8) & 0x7F)));
-						ctx.out_stream.put_byte((uint8) (this.result.size & 0xFF));
-					}
-					foreach (var child in this.result) {
-						if (!ctx.connection.live_handles || child.get_type().is_a(typeof(Bin.Serializable))) {
-							((Bin.Serializable) child).bin_write(ctx);
-							continue;
-						}
-						var ptr = (uint64) (void*) child;
-						ctx.out_stream.put_uint64((uint64) ctx.connection.lease_ids.get(
-							(int) (ptr >> 32)).get((int) ptr));
-						ctx.out_stream.put_uint16(Bin.Stream.TOKEN_END);
-					}
 					return;
 				case "retval":
 					if (this.retval.type() == GLib.Type.INVALID) {
@@ -237,8 +196,8 @@ namespace OLLMrpc
 		/**
 		 * Decode one property.
 		 *
-		 * {@link result} is an object array. {@link args} is ''ANY[]''
-		 * (same encoding as {@link Request.args}).
+		 * {@link retval} uses {@link Bin.StreamValue}. {@link args} is
+		 * ''ANY[]'' (same encoding as {@link Request.args}).
 		 *
 		 * @param ctx active bin session
 		 * @param prop property being read
@@ -253,13 +212,6 @@ namespace OLLMrpc
 		{
 			switch (prop.name) {
 				case "buffer":
-					return;
-				case "result":
-					if ((type_byte & 0x80) == 0 || (type_byte & 0x7F) != GLib.Type.OBJECT) {
-						this.bin_default_read_prop(ctx, prop, type_byte);
-						return;
-					}
-					this.result = ctx.parse_object_array();
 					return;
 				case "retval":
 					this.retval = Bin.StreamValue.read(ctx, type_byte);

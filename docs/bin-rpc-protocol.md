@@ -582,17 +582,17 @@ Rare. Type byte `0x80` only (base `0` + array flag):
 
 Each element carries its own `type_byte` and payload.
 
-### Root result arrays (`Response.result`)
+### Root retval (`Response.retval`)
 
-List **results** (`fetch_files`, …) encode as an object array on the **`result`** property of **`OLLMrpc.Response`** — not as a separate root message.
+Optional typed return on **`OLLMrpc.Response.retval`** (`GLib.Value`), encoded with **`Bin.StreamValue`**.
 
-**Property type:** **`Gee.ArrayList<GLib.Object>`** — **`default = new Gee.ArrayList<GLib.Object>()`**; never null. Handlers populate **`result`** (length 0, 1, or N). Single-row RPCs use a one-element list — **🚫** no bare object on **`result`**.
+**Omit** when unset (`GLib.Type.INVALID`) or an empty **`Gee.ArrayList`**.
 
-**Encode:** omit **`result`** when **`result.size == 0`**. When **`size > 0`**, **`Response.bin_write_prop`** writes reg-id-first object arrays (`0xD0` + element `reg_id` + count + bodies); element **`GType`** from **`result.get(0)`**. **🚫** no **`is_array`** / **`result_type`** on handlers.
+**One GObject** (method returns a single row): bare `OBJECT`. **N GObjects** (method returns a list): `typeof(Gee.ArrayList)` → object array `0xD0`, including when `size == 1`. Live-handle bodies follow `StreamValue` / `parse_object`.
 
-**Decode:** property present → **`Stream.parse_object_array()`**; property absent → default empty list. Clients: guard **`response.error`** only — **🚫** no **`response.result == null`**; one **`(Gee.ArrayList<T>) response.result`** cast — **🚫** no **`(Gee.ArrayList<GLib.Object>)`** hop. Single-row methods use **`list.get(0)`** when **`list.size > 0`**.
+**Decode:** property absent → `INVALID`. List methods treat `INVALID` as empty. One-object methods treat `INVALID` as no row.
 
-See `libocrpc/Response.vala`.
+See `libocrpc/Response.vala`, `libocrpc/Bin/StreamValue.vala`.
 
 ### Positional args (`Request.args`)
 
@@ -606,7 +606,7 @@ No per-value direction flag and no wrapper object. No protocol version bump.
 
 Optional **`ANY[]`** (this section) on **`OLLMrpc.Response`**. Same encoding as `Request.args`.
 
-**Omit** when **`args.size == 0`**. A returned GObject uses **`result`**, not this list.
+**Omit** when **`args.size == 0`**. A returned GObject uses **`retval`**, not this list.
 
 No protocol version bump.
 
@@ -654,7 +654,7 @@ Mirror the same prop names in **`bin_read_prop`** (ignore unknown wire keys for 
 | Graph / runtime omits | **`switch`** + early **`return`** | `ollmfilesd/File.vala` — `manager`, `buffer`, `parent` |
 | Skip unsupported prop | Override **`bin_write`** and skip the prop name, or omit in **`bin_write_prop`** | `TestSkipDefault` in `bin-test.vala` |
 | **`Gee.ArrayList<T>`** on a property | Inline encode/decode in **`case`** — **`write_gtype(T, OBJECT \| 0x80)`**, count, **`child.bin_write`** per element | `TestListBag` in `bin-test.vala` |
-| Root list **result** | Override on **`Response.bin_write_prop`** / **`bin_read_prop`**; omit **`result-type`** / **`is-array`** on write; decode via **`parse_object_array()`** | `libocrpc/Response.vala` |
+| Root **retval** | Override on **`Response.bin_write_prop`** / **`bin_read_prop`**; omit when unset or empty list; encode/decode via **`Bin.StreamValue`** | `libocrpc/Response.vala` |
 | **`string[]`** param | Default codec — no override | `FolderParams.paths`, `TestPaths` |
 
 **🚫** Do not call **`base.bin_write_prop`** — use **`bin_default_write_prop`** / **`bin_default_read_prop`** for the default branch.

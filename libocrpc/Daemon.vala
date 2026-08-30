@@ -14,7 +14,7 @@
 namespace OLLMrpc
 {
 	/**
-	 * Wire type for Daemon.hello (result is a one-element {@link Daemon} array).
+	 * Wire type for Daemon.hello (one {@link Daemon} on {@link Response.retval}).
 	 * Client deserializes into this class. Server type is
 	 * ollmfilesd/Daemon.vala (unchanged).
 	 */
