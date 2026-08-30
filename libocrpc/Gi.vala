@@ -293,8 +293,8 @@ namespace OLLMrpc
 		 * Invoke a typelib method on a leased object.
 		 *
 		 * Slot 0 is the instance. Remaining IN args use {@link convert}.
-		 * Return and OUT args use {@link scalar} into {@link Response.args}.
-		 * A returned GObject goes in {@link Response.retval} like ''new''.
+		 * The C return uses {@link scalar} into {@link Response.retval}.
+		 * OUT / INOUT use {@link scalar} into {@link Response.args}.
 		 *
 		 * @param fn non-constructor from {@link dispatch}
 		 * @return true — this method always replies
@@ -438,9 +438,11 @@ namespace OLLMrpc
 				case GI.TypeTag.INTERFACE:
 					var kind = ret_type.get_interface().get_type();
 					if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
-						if (!this.scalar(ret_type, ret, response.args)) {
+						var packed = new Gee.ArrayList<GLib.Value?>();
+						if (!this.scalar(ret_type, ret, packed)) {
 							return true;
 						}
+						response.retval = packed.get(0);
 						break;
 					}
 					var created = (GLib.Object) ret.v_pointer;
@@ -454,9 +456,11 @@ namespace OLLMrpc
 					break;
 
 				default:
-					if (!this.scalar(ret_type, ret, response.args)) {
+					var packed = new Gee.ArrayList<GLib.Value?>();
+					if (!this.scalar(ret_type, ret, packed)) {
 						return true;
 					}
+					response.retval = packed.get(0);
 					break;
 			}
 			var oi = 0;
@@ -1057,13 +1061,13 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Append one GI scalar to an args list.
+		 * Append one GI scalar to dest.
 		 *
 		 * Reverse of {@link convert}. Unknown tags reply INVALID_PARAMS.
 		 *
 		 * @param type GIR type of the return or OUT argument
 		 * @param arg filled by {@link GI.FunctionInfo.invoke}
-		 * @param dest {@link Response.args}
+		 * @param dest OUT list, or a one-element list copied onto retval
 		 * @return false when this method already replied an error
 		 */
 		private bool scalar(GI.TypeInfo type, GI.Argument arg, Gee.ArrayList<GLib.Value?> dest)
@@ -1200,7 +1204,7 @@ namespace OLLMrpc
 		 *
 		 * @param type GIR array type
 		 * @param arg filled by {@link GI.FunctionInfo.invoke}
-		 * @param dest {@link Response.args}
+		 * @param dest OUT list, or a one-element list copied onto retval
 		 * @return false when this method already replied an error
 		 */
 		private bool scalar_array(
@@ -1279,10 +1283,10 @@ namespace OLLMrpc
 		/**
 		 * Export a GIR GLIST / GSLIST return.
 		 *
-		 * UTF8 / FILENAME → native ''string[]'' on {@link Response.args}.
+		 * UTF8 / FILENAME → native ''string[]'' on {@link Response.retval}.
 		 * Registered GObject {@link GI.TypeTag.INTERFACE} → leased rows
-		 * on {@link Response.retval}. Null list → empty string array or
-		 * empty retval.
+		 * on {@link Response.retval}. Null utf8 list → empty string array.
+		 * Null object list → empty retval.
 		 *
 		 * @param type GIR list type
 		 * @param arg filled by {@link GI.FunctionInfo.invoke}
@@ -1314,7 +1318,7 @@ namespace OLLMrpc
 					}
 					var as_val = GLib.Value(typeof(string[]));
 					as_val.set_boxed(strv);
-					response.args.add(as_val);
+					response.retval = as_val;
 					return true;
 
 				case GI.TypeTag.INTERFACE:

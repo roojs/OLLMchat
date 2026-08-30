@@ -18,9 +18,9 @@ namespace OLLMrpc
 	 *
 	 * After {@link Client.call} returns, the call succeeded.
 	 * {@link Client.call} throws on failure. Successful
-	 * calls put a typed return in {@link retval} (omit on the wire
-	 * when unset or an empty {@link Gee.ArrayList}) and optional
-	 * scalars in {@link args} (same
+	 * calls put the C return in {@link retval} (omit on the wire
+	 * when unset or an empty {@link Gee.ArrayList}). OUT / INOUT
+	 * scalars go in {@link args} (same
 	 * {@link Gee.ArrayList} of boxed {@link GLib.Value} as
 	 * {@link Request.args}). File.read-style string payloads may use
 	 * {@link msg} / {@link msg_encode}.
@@ -85,9 +85,9 @@ namespace OLLMrpc
 		/**
 		 * Positional returns (daemon → client), GIR order.
 		 *
-		 * Empty list is omitted on the bin socket. A returned GObject
-		 * uses {@link retval}, not this list. Do not put scalars in
-		 * {@link msg}.
+		 * Empty list is omitted on the bin socket. The C return uses
+		 * {@link retval}, not this list. This list is OUT / INOUT only.
+		 * Do not put scalars in {@link msg}.
 		 *
 		 * {@link Gee.ArrayList} cannot store {@link GLib.Value} (a struct).
 		 * valac requires a boxed element type. That is boxing, not
@@ -105,7 +105,7 @@ namespace OLLMrpc
 		/**
 		 * Scalar string payload (e.g. File.read). Empty when unused.
 		 *
-		 * Typelib scalar returns use {@link args}, not this property.
+		 * Typelib scalar returns use {@link retval}, not this property.
 		 */
 		public string msg { get; set; default = ""; }
 		/**

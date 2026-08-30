@@ -129,8 +129,8 @@ namespace OLLMrpcTests
 			});
 			items_loop.run();
 			this.check(command_line, response.error == null, "get_n_items returned error");
-			this.check(command_line, response.args.size == 1, "get_n_items returned no value");
-			this.check(command_line, response.args.get(0).get_int() == 0, "empty menu is not 0");
+			this.check(command_line, response.retval.type() != GLib.Type.INVALID, "get_n_items returned no value");
+			this.check(command_line, response.retval.get_int() == 0, "empty menu is not 0");
 			response = null;
 			var file_loop = new GLib.MainLoop();
 			rpc.call.begin(new OLLMrpc.Request() {

@@ -1,14 +1,14 @@
 # 8.5.3 — `Response.retval`
 
-> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
+> Landed. Index: [`RPC-1.0-summary.md`](../RPC-1.0-summary.md).
 
-**Status:** **PROPOSED**
+**Status:** **✅** **done** — `retval` + StreamValue live-handle / ArrayList. Delete `result` is [`RPC-8.5.4-DONE-rpc-retval-migrate.md`](RPC-8.5.4-DONE-rpc-retval-migrate.md).
 
-**Parent:** [`RPC-8.5-rpc-drop-callparam-reply-value.md`](done/RPC-8.5-rpc-drop-callparam-reply-value.md) — this is that file’s Phase 3. FFI handler walk is ✔️ there.
+**Parent:** [`RPC-8.5-rpc-drop-callparam-reply-value.md`](RPC-8.5-rpc-drop-callparam-reply-value.md) — this is that file’s Phase 3. FFI handler walk is ✔️ there.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
-**Related:** [`docs/bin-rpc-protocol.md`](../bin-rpc-protocol.md) §15. [`RPC-8.3.3-REJECTED-notification-gobject-payload.md`](done/RPC-8.3.3-REJECTED-notification-gobject-payload.md) — GObject `payload` on `Notification` stays withdrawn.
+**Related:** [`docs/bin-rpc-protocol.md`](../../bin-rpc-protocol.md) §15. [`RPC-8.3.3-REJECTED-notification-gobject-payload.md`](RPC-8.3.3-REJECTED-notification-gobject-payload.md) — GObject `payload` on `Notification` stays withdrawn.
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
@@ -16,11 +16,11 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ## Purpose
 
-- **🔷** `⏳` Add `Response.retval` (`GLib.Value`). One payload: number, string, object, or object list.
-- **🔷** `⏳` Leave `result` (`Gee.ArrayList<GLib.Object>`) as it is. Do not delete or retype it in this cut.
-- **🔷** `⏳` Encode / decode `retval` with `StreamValue`.
-- **🔷** `⏳` `StreamValue` writes live-handle objects and `typeof(Gee.ArrayList)` as `OBJECT|0x80` (`parse_object_array` on read).
-- **ℹ️** Method migration and deleting `result` → [`RPC-8.5.4-rpc-retval-migrate.md`](RPC-8.5.4-rpc-retval-migrate.md).
+- **🔷** `✅` Add `Response.retval` (`GLib.Value`). One payload: number, string, object, or object list.
+- **🔷** `✅` Leave `result` (`Gee.ArrayList<GLib.Object>`) as it is. Do not delete or retype it in this cut.
+- **🔷** `✅` Encode / decode `retval` with `StreamValue`.
+- **🔷** `✅` `StreamValue` writes live-handle objects and `typeof(Gee.ArrayList)` as `OBJECT|0x80` (`parse_object_array` on read).
+- **ℹ️** Method migration and deleting `result` → [`RPC-8.5.4-DONE-rpc-retval-migrate.md`](RPC-8.5.4-DONE-rpc-retval-migrate.md).
 - **ℹ️** `args` / `msg` / `msg_encode` unchanged. No protocol version bump.
 
 ---
@@ -47,9 +47,9 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ## Phase 1 — `StreamValue` (so `retval` can hold objects)
 
-- **🔷** `⏳` Live-handle lease write in `StreamValue.write`.
-- **🔷** `⏳` `typeof(Gee.ArrayList)` writes as today’s `result` object array.
-- **🔷** `⏳` `OBJECT|0x80` in `read()` **before** `read_array`. `parse_object_array` reads gtype then count.
+- **🔷** `✅` Live-handle lease write in `StreamValue.write`.
+- **🔷** `✅` `typeof(Gee.ArrayList)` writes as today’s `result` object array.
+- **🔷** `✅` `OBJECT|0x80` in `read()` **before** `read_array`. `parse_object_array` reads gtype then count.
 
 ### 1. `libocrpc/Bin/StreamValue.vala` — `write`: live handle + `ArrayList`
 
@@ -156,7 +156,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ## Phase 2 — add `retval`, keep `result`
 
-- **🔷** `⏳` New property + `bin_write_prop` / `bin_read_prop` cases. `result` / `args` cases stay.
+- **🔷** `✅` New property + `bin_write_prop` / `bin_read_prop` cases. `result` / `args` cases stay.
 
 ### 3. `libocrpc/Response.vala` — `retval` property
 
@@ -237,7 +237,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ## Phase 3 — migrate / drop `result`
 
-- **ℹ️** [`RPC-8.5.4-rpc-retval-migrate.md`](RPC-8.5.4-rpc-retval-migrate.md). Not this file.
+- **ℹ️** [`RPC-8.5.4-DONE-rpc-retval-migrate.md`](RPC-8.5.4-DONE-rpc-retval-migrate.md). Not this file.
 
 ---
 

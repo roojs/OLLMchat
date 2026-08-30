@@ -2,7 +2,7 @@
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
-**Status:** parent — archived. Phase 1 (CallParam) agent ✔️; Phase 2 (FFI dispatch) agent ✔️; Phase 3 (reply `GLib.Value`) is the live cut [`8.5.3`](../RPC-8.5.3-rpc-response-value.md).
+**Status:** parent — archived. Phase 1 (CallParam) **✅**; Phase 2 (FFI dispatch) **✅**; Phase 3 (reply `GLib.Value`) **✅** [`8.5.3`](RPC-8.5.3-DONE-rpc-response-value.md) / [`8.5.4`](RPC-8.5.4-DONE-rpc-retval-migrate.md).
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
@@ -18,9 +18,9 @@
 - **🔷** `OLLMrpc.args("s", path)` (D-Bus signature + Vala `...`) only boxes. Lease / `export` / live wire stays on Request write (`StreamValue`).
 - **🔷** Phase 2: FFI dispatch instead of `call_*`, phased: (1) registration API (2) dispatch uses it when the method is listed (3) migrate methods one at a time, first **`RPC-Daemon.hello` only**. Unlisted methods keep `call_*`. Listed methods are **instance** methods. `this` is the default registered object leased on that connection (`export` + existing `lease_ids`). Caller omits `lease_id`. No static / prefix.
 - **🔷** Listed FFI lives in class `OLLMrpc.Ffi` (`libocrpc/Ffi.vala`), same shape as `Gi`: `new Ffi(this).dispatch()`. One `Libffi.Arg[]` of slots plus `pack`. Not a pile of typed arrays on `Request`.
-- **🔷** Phase 3: add **`Response.retval`** (`GLib.Value`) beside **`result`**. Split: [`8.5.3`](../RPC-8.5.3-rpc-response-value.md). Do not replace `result` in that cut.
-- **⏳** Sub-plans: **8.5.1** = migrate inventory below + delete bags (✔️ in this file); **8.5.2** fences are in this file; **8.5.3** = [`RPC-8.5.3-rpc-response-value.md`](../RPC-8.5.3-rpc-response-value.md).
-- **ℹ️** Infrastructure already in tree: `OLLMrpc.args`, `Request.args` / `Response.args`. Phase 2 walk is ✔️. `call_*` dropped. Next: [`8.5.3`](../RPC-8.5.3-rpc-response-value.md).
+- **🔷** Phase 3: add **`Response.retval`** (`GLib.Value`) beside **`result`**. Split: [`8.5.3`](RPC-8.5.3-DONE-rpc-response-value.md). Do not replace `result` in that cut.
+- **⏳** Sub-plans: **8.5.1** = migrate inventory below + delete bags (✔️ in this file); **8.5.2** fences are in this file; **8.5.3** = [`RPC-8.5.3-DONE-rpc-response-value.md`](RPC-8.5.3-DONE-rpc-response-value.md).
+- **ℹ️** Infrastructure already in tree: `OLLMrpc.args`, `Request.args` / `Response.args`. Phase 2 walk is ✔️. `call_*` dropped. `retval`: [`8.5.3`](RPC-8.5.3-DONE-rpc-response-value.md) / [`8.5.4`](RPC-8.5.4-DONE-rpc-retval-migrate.md).
 
 **Suggested order:** migrate CallParam consumers (8.5.1) → delete bags / `Request.param` → register API (8.5.2.1) → dispatch-if-listed (8.5.2.2) → `hello` only (8.5.2.3) → remaining methods later → add `retval` (8.5.3). Can overlap remaining 8.4 FFI; 8.5.3 needs `StreamValue` live-handle / `OBJECT[]`.
 
@@ -1145,7 +1145,7 @@ verify surrounding context before applying.
 
 ## Phase 3 — `Response.retval`
 
-**ℹ️** Split to [`RPC-8.5.3-rpc-response-value.md`](../RPC-8.5.3-rpc-response-value.md). Add `retval`; keep `result`. Do not duplicate the contract here.
+**ℹ️** Split to [`RPC-8.5.3-DONE-rpc-response-value.md`](RPC-8.5.3-DONE-rpc-response-value.md). Add `retval`; keep `result`. Do not duplicate the contract here.
 
 ---
 
@@ -1163,7 +1163,8 @@ verify surrounding context before applying.
 - **🔷** `✔️` Packing helper + `args` rename (already in tree).
 - **🔷** `✔️` **8.5.1** — migration inventory above (handlers + callers per method), then delete bags / `param` / `param_types`.
 - **🔷** `✔️` **8.5.2** — (1) method table (2) `OLLMrpc.Ffi.dispatch` if listed, else `call_*` (3) `RPC-Daemon.hello` first; remaining methods later.
-- **🔷** `⏳` **8.5.3** — [`RPC-8.5.3-rpc-response-value.md`](../RPC-8.5.3-rpc-response-value.md) — add `retval`; keep `result`.
+- **🔷** `✅` **8.5.3** — [`RPC-8.5.3-DONE-rpc-response-value.md`](RPC-8.5.3-DONE-rpc-response-value.md) — add `retval`; keep `result`.
+- **🔷** `✅` **8.5.4** — [`RPC-8.5.4-DONE-rpc-retval-migrate.md`](RPC-8.5.4-DONE-rpc-retval-migrate.md) — migrate callers; drop `result`.
 - **🔷** `✔️` Drop `call_*` after dummy tests list FFI (see leftover above).
 - **ℹ️** Sub-plan files get **Remove** / **Replace with** / **Add** fences when this parent is confirmed. Phase 2 hunks are in this file.
 

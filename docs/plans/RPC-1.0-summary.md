@@ -8,7 +8,6 @@
 
 - [RPC-8.2-full-rpc-system.md](RPC-8.2-full-rpc-system.md) — JSON / HTTP / TLS / sessions (not the 8.3–8.5 live/FFI track)
 - [RPC-8.2.1-libocrpc-auto-json-and-http-client.md](RPC-8.2.1-libocrpc-auto-json-and-http-client.md) — auto JSON + HTTP client leftovers
-- [RPC-8.5.3-rpc-response-value.md](RPC-8.5.3-rpc-response-value.md) — `Response.retval`
 
 ## Done
 
@@ -33,4 +32,6 @@
 - [RPC-8.4.8-rpc-live-gtype-explicit-alias.md](done/RPC-8.4.8-rpc-live-gtype-explicit-alias.md)
 - [RPC-8.4.9-rpc-ffi-glist-in.md](done/RPC-8.4.9-rpc-ffi-glist-in.md)
 - [RPC-8.5-rpc-drop-callparam-reply-value.md](done/RPC-8.5-rpc-drop-callparam-reply-value.md)
+- [RPC-8.5.3-DONE-rpc-response-value.md](done/RPC-8.5.3-DONE-rpc-response-value.md)
+- [RPC-8.5.4-DONE-rpc-retval-migrate.md](done/RPC-8.5.4-DONE-rpc-retval-migrate.md)
 - [RPC-8.6-URGENT-rpc-bin-learn-method-names.md](done/RPC-8.6-URGENT-rpc-bin-learn-method-names.md)

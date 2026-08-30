@@ -1,14 +1,14 @@
 # 8.5.4 — migrate `result` onto `retval`, then drop `result`
 
-> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
+> Landed. Index: [`RPC-1.0-summary.md`](../RPC-1.0-summary.md).
 
-> Split from [`RPC-8.5.3-rpc-response-value.md`](RPC-8.5.3-rpc-response-value.md) Phase 3. Codec + `retval` property are that file. This cut moves every `result` writer and reader, then deletes `result`.
+> Split from [`RPC-8.5.3-DONE-rpc-response-value.md`](RPC-8.5.3-DONE-rpc-response-value.md) Phase 3. Codec + `retval` property are that file. This cut moves every `result` writer and reader, then deletes `result`.
 
-**Status:** **⏳** **proposed**
+**Status:** **✅** **done**
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
-**Parent:** [`RPC-8.5.3-rpc-response-value.md`](RPC-8.5.3-rpc-response-value.md)
+**Parent:** [`RPC-8.5.3-DONE-rpc-response-value.md`](RPC-8.5.3-DONE-rpc-response-value.md)
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
@@ -16,12 +16,12 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ## Purpose
 
-- **🔷** `✔️` Every method that writes `Response.result` writes `retval` instead. Both ends change in the same cut. No dual-write.
-- **🔷** `✔️` Apply order: writer, then that method’s reader, then the next method. Do not convert all daemon replies and only later fix `libocfiles`.
-- **🔷** `✔️` Pack with `OLLMrpc.val` — same D-Bus letters as `OLLMrpc.args`, **one** complete type, varargs after. Assign in the `Response` initializer: `retval = OLLMrpc.val("o", row)`.
-- **🔷** `✔️` Writers that construct a Response set `retval` in that initializer. Do not `new Response()` then assign. Gi method dispatch already has a Response for OUT args — assign `retval` there.
-- **🔷** `✔️` One letter switch: private `to_value(tag, l)`. `val(...)` and `args()` both call it.
-- **🔷** `✔️` After the last caller, delete `result` (property, `bin_write_prop` / `bin_read_prop` cases, class examples, protocol).
+- **🔷** `✅` Every method that writes `Response.result` writes `retval` instead. Both ends change in the same cut. No dual-write.
+- **🔷** `✅` Apply order: writer, then that method’s reader, then the next method. Do not convert all daemon replies and only later fix `libocfiles`.
+- **🔷** `✅` Pack with `OLLMrpc.val` — same D-Bus letters as `OLLMrpc.args`, **one** complete type, varargs after. Assign in the `Response` initializer: `retval = OLLMrpc.val("o", row)`.
+- **🔷** `✅` Writers that construct a Response set `retval` in that initializer. Do not `new Response()` then assign. Gi method dispatch already has a Response for OUT args — assign `retval` there.
+- **🔷** `✅` One letter switch: private `to_value(tag, l)`. `val(...)` and `args()` both call it.
+- **🔷** `✅` After the last caller, delete `result` (property, `bin_write_prop` / `bin_read_prop` cases, class examples, protocol).
 - **🔷** Packing is by **method shape**, not by runtime count:
   - one GObject → `OLLMrpc.val("o", obj)` (Value GType is `obj.get_type()`, not `typeof(GLib.Object)`)
   - list → `OLLMrpc.val("o", list)` even when `size == 1` (`get_type()` is `Gee.ArrayList`)
@@ -39,14 +39,14 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-## Phase 1 — `val()` then Gi / HTTP, each with its reader ✔️
+## Phase 1 — `val()` then Gi / HTTP, each with its reader ✅
 
-- **🔷** `✔️` `OLLMrpc.val` next to `args`. `tests/rpc/values-test.vala` smokes `val("i" / "o" / empty list)`.
-- **🔷** `✔️` Gi writer then `gi-test`. HTTP writer then HF readers.
+- **🔷** `✅` `OLLMrpc.val` next to `args`. `tests/rpc/values-test.vala` smokes `val("i" / "o" / empty list)`.
+- **🔷** `✅` Gi writer then `gi-test`. HTTP writer then HF readers.
 
 ### 1. `libocrpc/namespace.vala` — `val()` next to `args()`
 
-**Status:** **✔️** see `libocrpc/namespace.vala`. Private `to_value` holds the switch. `val(...)` and `args()` call it.
+**Status:** **✅** see `libocrpc/namespace.vala`. Private `to_value` holds the switch. `val(...)` and `args()` call it.
 
 **Why:** `GLib.Value` cannot be built in a Vala object initializer.
 
@@ -60,7 +60,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ### 2. `libocrpc/Gi.vala` — `dispatch_new`: one object on `retval`
 
-**Status:** **✔️** see `libocrpc/Gi.vala`.
+**Status:** **✅** see `libocrpc/Gi.vala`.
 
 **Why:** `Gio-Menu.new` and friends return one GObject.
 
@@ -90,7 +90,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ### 3. `tests/rpc/gi-test.vala` — `Gio-Menu.new` / `new_for_path` read `retval`
 
-**Status:** **✔️** see `tests/rpc/gi-test.vala`.
+**Status:** **✅** see `tests/rpc/gi-test.vala`.
 
 **Why:** Consumer for **### 2**. Do not leave Gi sending `retval` while the test still reads `result`.
 
@@ -136,7 +136,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ### 4. `libocrpc/Gi.vala` — method `INTERFACE` return: one object on `retval`
 
-**Status:** **✔️** see `libocrpc/Gi.vala`.
+**Status:** **✅** see `libocrpc/Gi.vala`.
 
 **Why:** Same packing as `dispatch_new`. Response already exists (OUT args after the switch). Assign `retval` on it.
 
@@ -162,7 +162,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ### 5. `libocrpc/Gi.vala` — `GList` / `GSList` / `GHASH`: always `ArrayList` on `retval`
 
-**Status:** **✔️** see `libocrpc/Gi.vala`.
+**Status:** **✅** see `libocrpc/Gi.vala`.
 
 **Why:** List-shaped GIR returns stay lists when there is one element. Empty → `val("o", list)` is `INVALID`.
 
@@ -216,7 +216,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ### 6. `tests/rpc/gi-test.vala` — `actors` read list `retval`
 
-**Status:** **✔️** see `tests/rpc/gi-test.vala`. Dummy `hello` uses one-object `val("o", actor)`.
+**Status:** **✅** see `tests/rpc/gi-test.vala`. Dummy `hello` uses one-object `val("o", actor)`.
 
 **Why:** Consumer for **### 5**.
 
@@ -228,7 +228,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ### 7. `libocrpc/Client.vala` — HTTP JSON: one object on `retval`
 
-**Status:** **✔️** see `libocrpc/Client.vala`.
+**Status:** **✅** see `libocrpc/Client.vala`.
 
 **Why:** HF hub replies are one wrapper object today (`result.add(obj)`).
 
@@ -260,7 +260,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ### 8. `liboctools/HuggingFace/Request.vala` — `result[0]` → `get_object()`
 
-**Status:** **✔️** also `libochf/Model.vala`, `libochf/namespace.vala`, `examples/oc-hf.vala`.
+**Status:** **✅** also `libochf/Model.vala`, `libochf/namespace.vala`, `examples/oc-hf.vala`.
 
 **Why:** Consumer for **### 7**. Search/detail return one `Model` / `ModelArray`.
 
@@ -296,13 +296,13 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-## Phase 2 — ollmfilesd + libocfiles, one method both ends ✔️
+## Phase 2 — ollmfilesd + libocfiles, one method both ends ✅
 
-- **🔷** `✔️` For each RPC: daemon writer, then its `libocfiles` / tool reader, then the next RPC.
+- **🔷** `✅` For each RPC: daemon writer, then its `libocfiles` / tool reader, then the next RPC.
 
 ### 9. `ollmfilesd/Daemon.vala` — `hello()`: one object
 
-**Status:** **✔️** see `ollmfilesd/Daemon.vala`.
+**Status:** **✅** see `ollmfilesd/Daemon.vala`.
 
 **Why:** Template for a one-row reply. Connect does not read `result` / `retval`.
 
@@ -330,7 +330,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ### 10. `RPC-File.read` — daemon writer, then `libocfiles` reader
 
-**Status:** **✔️** plus the one-object pass listed below.
+**Status:** **✅** plus the one-object pass listed below.
 
 **Why:** One-row + `msg` / `msg_encode`. Writer and reader in this section so the client never sees `result` after the daemon sends `retval`.
 
@@ -415,7 +415,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ### 11. `RPC-Folder.fetch_files` — daemon writer, then `libocfiles` reader
 
-**Status:** **✔️** plus the list pass listed below.
+**Status:** **✅** plus the list pass listed below.
 
 **Why:** List template. Empty page still sends `msg` (total). `val("o", list)` is `INVALID` when empty.
 
@@ -477,13 +477,13 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-## Phase 3 — delete `result` ✔️
+## Phase 3 — delete `result` ✅
 
-- **🔷** `✔️` When grep for `response.result` / `.result.add` / `result = result` on `OLLMrpc.Response` is empty, remove the property.
+- **🔷** `✅` When grep for `response.result` / `.result.add` / `result = result` on `OLLMrpc.Response` is empty, remove the property.
 
 ### 12. `libocrpc/Response.vala` — drop `result`
 
-**Status:** **✔️** see `libocrpc/Response.vala`.
+**Status:** **✅** see `libocrpc/Response.vala`.
 
 **Why:** `retval` is the only object/list return.
 
@@ -508,7 +508,7 @@ Update the overview sentence that names `{@link result}` so it names `{@link ret
 
 ### 13. `docs/bin-rpc-protocol.md` — §15: `retval` replaces `result` arrays
 
-**Status:** **✔️** see `docs/bin-rpc-protocol.md`.
+**Status:** **✅** see `docs/bin-rpc-protocol.md`.
 
 **Why:** Spec still describes `result` as the object list. 8.5.3 Phase 4 is **not** applied; write the final text here.
 

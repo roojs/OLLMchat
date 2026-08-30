@@ -588,7 +588,7 @@ Optional typed return on **`OLLMrpc.Response.retval`** (`GLib.Value`), encoded w
 
 **Omit** when unset (`GLib.Type.INVALID`) or an empty **`Gee.ArrayList`**.
 
-**One GObject** (method returns a single row): bare `OBJECT`. **N GObjects** (method returns a list): `typeof(Gee.ArrayList)` → object array `0xD0`, including when `size == 1`. Live-handle bodies follow `StreamValue` / `parse_object`.
+The GIR C return lives here (scalar, boxed, utf8 `string[]`, one GObject, or object list). A number or string uses the same `StreamValue` encoding as `args` elements. Empty utf8 `string[]` is a boxed array, not omit. **One GObject**: bare `OBJECT`. **N GObjects**: `typeof(Gee.ArrayList)` → object array `0xD0`, including when `size == 1`. Live-handle bodies follow `StreamValue` / `parse_object`.
 
 **Decode:** property absent → `INVALID`. List methods treat `INVALID` as empty. One-object methods treat `INVALID` as no row.
 
@@ -606,7 +606,7 @@ No per-value direction flag and no wrapper object. No protocol version bump.
 
 Optional **`ANY[]`** (this section) on **`OLLMrpc.Response`**. Same encoding as `Request.args`.
 
-**Omit** when **`args.size == 0`**. A returned GObject uses **`retval`**, not this list.
+**Omit** when **`args.size == 0`**. The C return uses **`retval`**, not this list. This list is OUT / INOUT only.
 
 No protocol version bump.
 
