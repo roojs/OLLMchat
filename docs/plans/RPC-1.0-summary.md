@@ -34,4 +34,5 @@
 - [RPC-8.5-rpc-drop-callparam-reply-value.md](done/RPC-8.5-rpc-drop-callparam-reply-value.md)
 - [RPC-8.5.3-DONE-rpc-response-value.md](done/RPC-8.5.3-DONE-rpc-response-value.md)
 - [RPC-8.5.4-DONE-rpc-retval-migrate.md](done/RPC-8.5.4-DONE-rpc-retval-migrate.md)
+- [RPC-1.2-DONE-rpc-scalar-retval.md](done/RPC-1.2-DONE-rpc-scalar-retval.md)
 - [RPC-8.6-URGENT-rpc-bin-learn-method-names.md](done/RPC-8.6-URGENT-rpc-bin-learn-method-names.md)

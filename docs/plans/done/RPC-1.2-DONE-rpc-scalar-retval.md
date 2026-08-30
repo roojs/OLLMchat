@@ -1,12 +1,12 @@
 # RPC-1.2 — GIR C return on `retval`, not `args`
 
-> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
+> Landed. Index: [`RPC-1.0-summary.md`](../RPC-1.0-summary.md).
 
-**Status:** **✔️** **implemented** (agent done — not user-confirmed)
+**Status:** **✅** **done** — `libocrpc/Gi.vala`, `libocrpc/Response.vala`, `tests/rpc/gi-test.vala`, `docs/bin-rpc-protocol.md`.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
-**Parent:** [`RPC-8.5.4-DONE-rpc-retval-migrate.md`](done/RPC-8.5.4-DONE-rpc-retval-migrate.md) — GObject / object-list returns already use `retval`. This cut moves the leftover **C return** (scalars, boxed, utf8 lists) off `args`.
+**Parent:** [`RPC-8.5.4-DONE-rpc-retval-migrate.md`](RPC-8.5.4-DONE-rpc-retval-migrate.md) — GObject / object-list returns already use `retval`. This cut moves the leftover **C return** (scalars, boxed, utf8 lists) off `args`.
 
 **ℹ️** Consumer: gnome-shell-rpc `src/gi-stub-gen/Generator.vala` still unpacks a non-object return from `response.args.get(0)` and shifts OUT to `args[1]`. After this lands, that generator reads `retval` and OUT from `args[0]`.
 
@@ -16,10 +16,10 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ## Purpose
 
-- **🔷** `✔️` `Response.args` is OUT / INOUT only (GIR order).
-- **🔷** `✔️` The GIR C return goes on `Response.retval` — same slot GObject already uses.
-- **🔷** `✔️` Both ends in the same cut. No dual-write (return in `args` and `retval`).
-- **🔷** `✔️` Keep using `Gi.scalar` for packing. No second letter switch.
+- **🔷** `✅` `Response.args` is OUT / INOUT only (GIR order).
+- **🔷** `✅` The GIR C return goes on `Response.retval` — same slot GObject already uses.
+- **🔷** `✅` Both ends in the same cut. No dual-write (return in `args` and `retval`).
+- **🔷** `✅` Keep using `Gi.scalar` for packing. No second letter switch.
 - **ℹ️** `retval` already holds one GObject, a `Gee.ArrayList` of GObjects, or unset (`INVALID`).
 - **ℹ️** Today Gi prepends the C return onto `args`, then appends OUT. That was before `retval` existed for non-objects.
 
@@ -44,10 +44,10 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-## Phase 1 — Gi writer ✔️
+## Phase 1 — Gi writer ✅
 
-- **🔷** `✔️` Non-object C return → `retval`. OUT loop unchanged (`scalar` into `response.args`).
-- **🔷** `✔️` utf8 list return → `retval`. Object lists already use `retval`.
+- **🔷** `✅` Non-object C return → `retval`. OUT loop unchanged (`scalar` into `response.args`).
+- **🔷** `✅` utf8 list return → `retval`. Object lists already use `retval`.
 
 ### 1. `libocrpc/Gi.vala` — `dispatch_function` C return onto `retval`
 
@@ -205,9 +205,9 @@ Pack into `retval`, not `args`.
 
 ---
 
-## Phase 2 — Gi reader ✔️
+## Phase 2 — Gi reader ✅
 
-- **🔷** `✔️` `get_n_items` reads `retval`, not `args[0]`.
+- **🔷** `✅` `get_n_items` reads `retval`, not `args[0]`.
 
 ### 3. `tests/rpc/gi-test.vala` — `Gio-Menu.get_n_items`
 
@@ -233,9 +233,9 @@ Pack into `retval`, not `args`.
 
 ---
 
-## Phase 3 — docs ✔️
+## Phase 3 — docs ✅
 
-- **🔷** `✔️` Envelope and protocol say C return is `retval`; `args` is OUT only.
+- **🔷** `✅` Envelope and protocol say C return is `retval`; `args` is OUT only.
 
 ### 4. `libocrpc/Response.vala` — class / `args` / `msg` docs
 
