@@ -176,7 +176,7 @@ namespace OLLMtools.RunCommand
 				this.permission_question = "Confirm — Run as ROOT (high risk)\n\n"
 					+ "This command will run with root privileges on your system, outside the normal sandbox.\n\n"
 					+ "WARNING: This may damage your system. Only allow this if you understand exactly what the command does. If you get it wrong, you may not be able to log in tomorrow (or worse).\n\n"
-					+ "Enter your password below. It is used only for this command and is not saved.";
+					+ "If asked, enter your password. After a successful check it is stored in the system keyring.";
 				return true;
 			}
 

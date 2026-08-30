@@ -64,6 +64,7 @@ jobs:
             libgtk-4-dev \
             libgtksourceview-5-dev \
             libadwaita-1-dev \
+            libsecret-1-dev \
             libwebkitgtk-6.0-dev \
             libatspi2.0-dev \
             libsoup-3.0-dev \

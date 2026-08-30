@@ -61,6 +61,7 @@ pkgconfig_deps=(
   'pkgconfig(gtk4)'
   'pkgconfig(gtksourceview-5)'
   'pkgconfig(libadwaita-1)'
+  'pkgconfig(libsecret-1)'
   'pkgconfig(webkitgtk-6.0)'
   'pkgconfig(atspi-2)'
   'pkgconfig(tree-sitter)'

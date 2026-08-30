@@ -34,6 +34,7 @@ jobs:
             curl \
             gobject-introspection \
             libadwaita-1-dev \
+            libsecret-1-dev \
             libatspi2.0-dev \
             libblas-dev \
             libcairo2-dev \

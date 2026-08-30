@@ -314,6 +314,14 @@ namespace OLLMbwrap
 			args += "/";
 			args += "/";
 
+			args += "--unsetenv";
+			args += "DBUS_SESSION_BUS_ADDRESS";
+			var runtime_dir = GLib.Environment.get_variable("XDG_RUNTIME_DIR");
+			if (runtime_dir != null) {
+				args += "--tmpfs";
+				args += runtime_dir;
+			}
+
 			// Extra --bind pairs from validated write_array (absolute roots only after first segment rules).
 			for (var i = 0; i < this.write_tokens.length; i++) {
 				var root = this.write_tokens[i];

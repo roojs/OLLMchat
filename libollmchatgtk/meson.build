@@ -42,6 +42,13 @@ ollmchatgtk_src = files([
   'List/SortedList.vala',
 ])
 
+if host_machine.system() == 'linux'
+  ollmchatgtk_deps += dependency('libsecret-1')
+  ollmchatgtk_src += files('Sudo.vala')
+else
+  ollmchatgtk_src += files('stub/Sudo.vala')
+endif
+
 # Build rpath for libraries to find each other in build directory
 lib_build_rpath = ':'.join([
   meson.current_build_dir(),

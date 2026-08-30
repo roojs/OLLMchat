@@ -173,6 +173,10 @@ separator.horizontal.oc-table-body-sep {
   color: #c0392b;
 }
 
+.permission-widget .sudo-hold-fill {
+  background-color: alpha(@destructive_color, 0.45);
+}
+
 .permission-widget .command-preview,
 .tool-frame .command-preview {
   font-weight: bold;

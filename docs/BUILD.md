@@ -29,6 +29,7 @@ sudo apt install \
   libgtk-4-dev \
   libgtksourceview-5-dev \
   libadwaita-1-dev \
+  libsecret-1-dev \
   libwebkitgtk-6.0-dev \
   libatspi2.0-dev \
   libsoup-3.0-dev \
@@ -54,6 +55,7 @@ sudo apt install \
 
 - **libwebkitgtk-6.0-dev** / **libatspi2.0-dev** — Linux browser tool (`libocwebkit`)
 - **libseccomp-dev** — sandbox syscall reporting (`libocbwrap`)
+- **libsecret-1-dev** — sudo password keyring (`OLLMchatGtk.Sudo`, Linux)
 - **bubblewrap** — `bwrap` for sandboxed `run_command` and MCP stdio servers
 - **libblas-dev** / **liblapack-dev** / **libopenblas-dev** — required to link
   FAISS. Meson accepts either OpenBLAS or the reference BLAS/LAPACK packages;

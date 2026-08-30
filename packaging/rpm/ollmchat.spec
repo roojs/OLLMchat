@@ -39,6 +39,7 @@ BuildRequires: pkgconfig(sqlite3)
 BuildRequires: pkgconfig(gtk4)
 BuildRequires: pkgconfig(gtksourceview-5)
 BuildRequires: pkgconfig(libadwaita-1)
+BuildRequires: pkgconfig(libsecret-1)
 BuildRequires: pkgconfig(webkitgtk-6.0)
 BuildRequires: pkgconfig(atspi-2)
 BuildRequires: pkgconfig(tree-sitter)
@@ -521,6 +522,7 @@ Conflicts: ollmchat-remote-only
 Requires: libollmchatgtk%{?_isa} = %{version}-%{release}
 Requires: libollmchat-devel%{?_isa} = %{version}-%{release}
 Requires: libocmarkdowngtk-devel%{?_isa} = %{version}-%{release}
+Requires: pkgconfig(libsecret-1)
 
 %description -n libollmchatgtk-devel
 OLLMchat is a GTK chat application with LLM access, tool integration,
