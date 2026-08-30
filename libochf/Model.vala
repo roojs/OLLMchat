@@ -184,14 +184,14 @@ namespace OLLMhf
 					+ revision,
 				result_type = typeof(ModelTreeArray),
 			});
-			if (tree_resp.result.size == 0) {
+			if (tree_resp.retval.type() == GLib.Type.INVALID) {
 				throw new GLib.IOError.FAILED("empty Hub tree response");
 			}
 			foreach (var sibling in this.siblings) {
 				if (sibling.size > 0) {
 					continue;
 				}
-				foreach (var entry in ((ModelTreeArray) tree_resp.result[0]).items) {
+				foreach (var entry in ((ModelTreeArray) tree_resp.retval.get_object()).items) {
 					if (entry.path != sibling.rfilename) {
 						continue;
 					}

@@ -162,11 +162,9 @@ namespace OLLMfilesd
 				});
 				return;
 			}
-			var result = new Gee.ArrayList<GLib.Object>();
-			result.add(folder);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				result = result
+				retval = OLLMrpc.val("o", folder)
 			});
 		}
 
@@ -233,7 +231,7 @@ namespace OLLMfilesd
 			var marker = max_ids.size > 0 ? max_ids.get(0) : (int64) 0;
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				result = result,
+				retval = OLLMrpc.val("o", result),
 				msg = marker.to_string()
 			});
 		}
@@ -298,7 +296,7 @@ namespace OLLMfilesd
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				result = list,
+				retval = OLLMrpc.val("o", list),
 				msg = list.size.to_string()
 			});
 		}
@@ -334,7 +332,7 @@ namespace OLLMfilesd
 				}
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					result = list,
+					retval = OLLMrpc.val("o", list),
 					msg = list.size.to_string()
 				});
 				return;
@@ -355,7 +353,7 @@ namespace OLLMfilesd
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				result = list,
+				retval = OLLMrpc.val("o", list),
 				msg = matched.size.to_string()
 			});
 		}

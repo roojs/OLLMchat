@@ -134,7 +134,10 @@ namespace OLLMfiles
 					method = "RPC-Folder.rpc_roots",
 					args = OLLMrpc.args("s", this.path)
 				});
-				var folders = (Gee.ArrayList<Folder>) response.result;
+				if (response.retval.type() == GLib.Type.INVALID) {
+					return new Gee.ArrayList<Folder>();
+				}
+				var folders = (Gee.ArrayList<Folder>) response.retval.get_object();
 				foreach (var folder in folders) {
 					folder.manager = this.manager;
 				}
@@ -172,11 +175,10 @@ namespace OLLMfiles
 				args = OLLMrpc.args("ss", this.path, path)
 			});
 
-			var files = (Gee.ArrayList<File>) response.result;
-			if (files.size == 0) {
+			if (response.retval.type() == GLib.Type.INVALID) {
 				return null;
 			}
-			var file = (File) files.get(0);
+			var file = (File) response.retval.get_object();
 			file.manager = this.manager;
 			this.manager.file_cache.set(path, file);
 			return file;
@@ -233,10 +235,12 @@ namespace OLLMfiles
 					metadata_only
 				)
 			});
-			var files = (Gee.ArrayList<File>) response.result;
-			foreach (var file in files) {
-				file.manager = this.manager;
-				this.manager.file_cache.set(file.path, file);
+			if (response.retval.type() != GLib.Type.INVALID) {
+				var files = (Gee.ArrayList<File>) response.retval.get_object();
+				foreach (var file in files) {
+					file.manager = this.manager;
+					this.manager.file_cache.set(file.path, file);
+				}
 			}
 			return response;
 		}

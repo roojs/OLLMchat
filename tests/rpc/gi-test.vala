@@ -37,9 +37,9 @@ namespace RpcDummy
 		{
 			var actor = new OLLMrpcTests.TestActorX11();
 			request.connection.export(actor);
-			var response = new OLLMrpc.Response();
-			response.result.add(actor);
-			request.reply(response);
+			request.reply(new OLLMrpc.Response() {
+				retval = OLLMrpc.val("o", actor)
+			});
 		}
 	}
 }
@@ -102,15 +102,15 @@ namespace OLLMrpcTests
 			});
 			call_loop.run();
 			this.check(command_line, response.error == null, "new returned error");
-			this.check(command_line, response.result.size == 1, "new returned no object");
+			this.check(command_line, response.retval.type() != GLib.Type.INVALID, "new returned no object");
 			this.check(command_line, rpc.proxies.size == 1, "proxy not bound");
 			var lease_id = (uint64) 0;
 			foreach (var id in rpc.proxies.keys) {
 				this.check(command_line, id != 0, "handle is 0");
 				this.check(
 					command_line,
-					rpc.proxies.get(id) == response.result.get(0),
-					"proxy is not result"
+					rpc.proxies.get(id) == response.retval.get_object(),
+					"proxy is not retval"
 				);
 				lease_id = (uint64) id;
 			}
@@ -146,7 +146,7 @@ namespace OLLMrpcTests
 			});
 			file_loop.run();
 			this.check(command_line, response.error == null, "new_for_path returned error");
-			this.check(command_line, response.result.size == 1, "new_for_path returned no object");
+			this.check(command_line, response.retval.type() != GLib.Type.INVALID, "new_for_path returned no object");
 			var file_id = (uint64) 0;
 			foreach (var id in rpc.proxies.keys) {
 				if (id == lease_id) {
@@ -231,10 +231,10 @@ namespace OLLMrpcTests
 			});
 			actors_loop.run();
 			this.check(command_line, response.error == null, "actors returned error");
-			this.check(command_line, response.result.size == 1, "actors returned no object");
+			this.check(command_line, response.retval.type() != GLib.Type.INVALID, "actors returned no object");
 			this.check(
 				command_line,
-				response.result.get(0).get_type() == typeof(TestActor),
+				response.retval.get_object().get_type() == typeof(TestActor),
 				"actors stub is not Test-Actor"
 			);
 			rpc.disconnect();

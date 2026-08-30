@@ -128,9 +128,9 @@ printf 'seed\n' >"$NEW_FILE_PATH"
 run_t2_case "$SCRIPT_DIR/rpc/t2-scan.script.in"
 
 jq_resp_ok "T2A.2 File.read (no error)" 5 "$RPC_LAST_OUT" '.error == null'
-jq_resp_ok "T2A.2 File.read (id > 0)" 5 "$RPC_LAST_OUT" '(.result[0].id // .result[0]["id"]) > 0'
+jq_resp_ok "T2A.2 File.read (id > 0)" 5 "$RPC_LAST_OUT" '(.retval.id // .retval["id"]) > 0'
 jq_resp_args_ok "T2A.2 File.read (path)" 5 "$RPC_LAST_OUT" \
-    --arg p "$HELLO_PATH" '.result[0].path == $p'
+    --arg p "$HELLO_PATH" '.retval.path == $p'
 
 jq_resp_ok "T2A.1 File.write (no error)" 6 "$RPC_LAST_OUT" '.error == null and .msg == "ok"'
 
@@ -155,18 +155,18 @@ fi
 run_t2_case_isolated "$SCRIPT_DIR/rpc/t2-register.script.in"
 jq_resp_ok "T2B.5 File.register (no error)" 4 "$RPC_LAST_OUT" '.error == null'
 jq_resp_ok "T2B.5 File.register (id > 0)" 4 "$RPC_LAST_OUT" \
-    '(.result[0].id // .result[0]["id"]) > 0'
+    '(.retval.id // .retval["id"]) > 0'
 jq_resp_args_ok "T2B.5 File.register (path)" 4 "$RPC_LAST_OUT" \
-    --arg p "$ISOLATED_REGISTER" '.result[0].path == $p'
+    --arg p "$ISOLATED_REGISTER" '.retval.path == $p'
 sqlite_count_ok "T2B.5 File.register (sqlite row)" "$ISOLATED_DB" \
     "SELECT COUNT(*) FROM filebase WHERE delete_id = 0 AND path = '$ISOLATED_REGISTER';" \
     "1"
 
 jq_resp_ok "T2B.5 File.read after register (no error)" 5 "$RPC_LAST_OUT" '.error == null'
 jq_resp_ok "T2B.5 File.read after register (id > 0)" 5 "$RPC_LAST_OUT" \
-    '(.result[0].id // .result[0]["id"]) > 0'
+    '(.retval.id // .retval["id"]) > 0'
 jq_resp_args_ok "T2B.5 File.read after register (path)" 5 "$RPC_LAST_OUT" \
-    --arg p "$ISOLATED_REGISTER" '.result[0].path == $p'
+    --arg p "$ISOLATED_REGISTER" '.retval.path == $p'
 
 # --- Path A: changed.check with external touch ---
 touch "$HELLO_PATH"

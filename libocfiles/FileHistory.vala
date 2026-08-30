@@ -48,12 +48,11 @@ namespace OLLMfiles
 					args = OLLMrpc.args("sx", this.path, this.id)
 				}
 			);
-			var files = (Gee.ArrayList<File>) response.result;
 			var cached = this.manager.file_cache.get(this.path) as File;
-			if (cached == null && files.size > 0) {
+			if (cached == null && response.retval.type() != GLib.Type.INVALID) {
 				this.manager.file_cache.set(
 					this.path,
-					(File) files.get(0)
+					(File) response.retval.get_object()
 				);
 				cached = this.manager.file_cache.get(this.path) as File;
 			}
@@ -81,8 +80,8 @@ namespace OLLMfiles
 				return;
 			}
 			cached.manager = this.manager;
-			if (files.size > 0) {
-				cached.copy_from((File) files.get(0), {
+			if (response.retval.type() != GLib.Type.INVALID) {
+				cached.copy_from((File) response.retval.get_object(), {
 					"manager",
 					"buffer",
 					"parent"

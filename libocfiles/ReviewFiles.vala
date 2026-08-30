@@ -88,7 +88,10 @@ namespace OLLMfiles
 			if (response.msg != "" && response.msg != "project not found") {
 				this.since_marker = int64.parse(response.msg);
 			}
-			return (Gee.ArrayList<FileWithHistory>) response.result;
+			if (response.retval.type() == GLib.Type.INVALID) {
+				return new Gee.ArrayList<FileWithHistory>();
+			}
+			return (Gee.ArrayList<FileWithHistory>) response.retval.get_object();
 		}
 
 		/**

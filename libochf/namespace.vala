@@ -42,7 +42,7 @@
  *     }),
  *     result_type = typeof(OLLMhf.ModelArray)
  * });
- * foreach (var model in ((OLLMhf.ModelArray) resp.result[0]).items) {
+ * foreach (var model in ((OLLMhf.ModelArray) resp.retval.get_object()).items) {
  *     stdout.printf("%s\n", model.id);
  * }
  * }}}
@@ -56,7 +56,7 @@
  *     method = "/api/models/author/name",
  *     result_type = typeof(OLLMhf.Model)
  * });
- * var model = (OLLMhf.Model) resp.result[0];
+ * var model = (OLLMhf.Model) resp.retval.get_object();
  * yield model.fetch_siblings(rpc);
  * }}}
  *

@@ -108,13 +108,15 @@ namespace OLLMfiles
 			var old_n_items = this.items.size;
 			this.items.clear();
 			this.total = int.parse(response.msg);
-			var files = (Gee.ArrayList<File>) response.result;
-			foreach (var file in files) {
-				this.items.add(new ProjectFile(
-					this.project.manager,
-					file,
-					this.project
-				));
+			if (response.retval.type() != GLib.Type.INVALID) {
+				var files = (Gee.ArrayList<File>) response.retval.get_object();
+				foreach (var file in files) {
+					this.items.add(new ProjectFile(
+						this.project.manager,
+						file,
+						this.project
+					));
+				}
 			}
 			this.offset = this.items.size;
 
@@ -173,7 +175,10 @@ namespace OLLMfiles
 			this.loading = false;
 
 			this.total = int.parse(response.msg);
-			var files = (Gee.ArrayList<File>) response.result;
+			if (response.retval.type() == GLib.Type.INVALID) {
+				return;
+			}
+			var files = (Gee.ArrayList<File>) response.retval.get_object();
 			if (files.size == 0) {
 				return;
 			}

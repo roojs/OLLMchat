@@ -254,7 +254,9 @@ Examples:
 			args = OLLMrpc.args("s", resolved_path)
 		});
 
-		var metadata_list = (Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>) response.result;
+		var metadata_list = response.retval.type() == GLib.Type.INVALID
+			? new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>()
+			: (Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>) response.retval.get_object();
 
 		stdout.printf("Folder: %s\n", abs_folder);
 		stdout.printf("File: %s\n", resolved_path);

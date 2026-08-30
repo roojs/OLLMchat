@@ -42,10 +42,8 @@ namespace OLLMfilesd
 			if (protocol > 0) {
 				this.protocol = protocol;
 			}
-			var result = new Gee.ArrayList<GLib.Object>();
-			result.add(this);
 			request.reply(new OLLMrpc.Response() {
-				result = result
+				retval = OLLMrpc.val("o", this)
 			});
 		}
 

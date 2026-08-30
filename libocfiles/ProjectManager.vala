@@ -221,7 +221,10 @@ namespace OLLMfiles
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
 				method = "RPC-ProjectManager.rpc_load_projects_from_db"
 			});
-			foreach (var folder in (Gee.ArrayList<Folder>) response.result) {
+			if (response.retval.type() == GLib.Type.INVALID) {
+				return;
+			}
+			foreach (var folder in (Gee.ArrayList<Folder>) response.retval.get_object()) {
 				folder.manager = this;
 				this.projects.append(folder);
 			}
@@ -243,11 +246,10 @@ namespace OLLMfiles
 				method = "RPC-Folder.fetch",
 				args = OLLMrpc.args("s", path)
 			});
-			var folders = (Gee.ArrayList<Folder>) response.result;
-			if (folders.size == 0) {
+			if (response.retval.type() == GLib.Type.INVALID) {
 				return null;
 			}
-			var folder = (Folder) folders.get(0);
+			var folder = (Folder) response.retval.get_object();
 			folder.manager = this;
 			this.file_cache.set(folder.path, folder);
 			return folder;
@@ -268,14 +270,13 @@ namespace OLLMfiles
 				method = "RPC-ProjectManager.rpc_create_project",
 				args = OLLMrpc.args("s", path)
 			});
-			var folders = (Gee.ArrayList<Folder>) response.result;
-			if (folders.size == 0) {
+			if (response.retval.type() == GLib.Type.INVALID) {
 				return new Folder(this) {
 					is_project = true,
 					path = path
 				};
 			}
-			var project = (Folder) folders.get(0);
+			var project = (Folder) response.retval.get_object();
 			project.manager = this;
 			project.is_project = true;
 			this.file_cache.set(project.path, project);

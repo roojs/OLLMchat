@@ -127,7 +127,10 @@ namespace OLLMtools.ReadFile
 						method = "RPC-Codebase.file_info",
 						args = OLLMrpc.args ("s", this.file.path)
 					});
-				rows = (Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>) response.result;
+				if (response.retval.type() == GLib.Type.INVALID) {
+					return;
+				}
+				rows = (Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>) response.retval.get_object();
 			} catch (GLib.Error e) {
 				GLib.critical ("Summarize vector metadata: %s: %s",
 					this.file.path, e.message);

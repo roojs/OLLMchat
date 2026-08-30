@@ -283,9 +283,9 @@ namespace OLLMrpc
 			}
 			var created = (GLib.Object) ret.v_pointer;
 			this.request.connection.export(created);
-			var response = new Response();
-			response.result.add(created);
-			this.request.reply(response);
+			this.request.reply(new Response() {
+				retval = OLLMrpc.val("o", created)
+			});
 			return true;
 		}
 
@@ -294,7 +294,7 @@ namespace OLLMrpc
 		 *
 		 * Slot 0 is the instance. Remaining IN args use {@link convert}.
 		 * Return and OUT args use {@link scalar} into {@link Response.args}.
-		 * A returned GObject goes in {@link Response.result} like ''new''.
+		 * A returned GObject goes in {@link Response.retval} like ''new''.
 		 *
 		 * @param fn non-constructor from {@link dispatch}
 		 * @return true — this method always replies
@@ -450,7 +450,7 @@ namespace OLLMrpc
 						return true;
 					}
 					this.request.connection.export(created);
-					response.result.add(created);
+					response.retval = OLLMrpc.val("o", created);
 					break;
 
 				default:
@@ -1281,8 +1281,8 @@ namespace OLLMrpc
 		 *
 		 * UTF8 / FILENAME → native ''string[]'' on {@link Response.args}.
 		 * Registered GObject {@link GI.TypeTag.INTERFACE} → leased rows
-		 * on {@link Response.result}. Null list → empty string array or
-		 * empty result.
+		 * on {@link Response.retval}. Null list → empty string array or
+		 * empty retval.
 		 *
 		 * @param type GIR list type
 		 * @param arg filled by {@link GI.FunctionInfo.invoke}
@@ -1335,32 +1335,36 @@ namespace OLLMrpc
 				return true;
 			}
 			if (type.get_tag() == GI.TypeTag.GLIST) {
+				var list = new Gee.ArrayList<GLib.Object>();
 				for (unowned GLib.List<GLib.Object>? node = (GLib.List<GLib.Object>) arg.v_pointer;
 					node != null; node = node.next) {
 					var obj = node.data;
 					if (Bin.gtype_to_alias != null && Bin.gtype_to_alias.has_key(obj.get_type())) {
 						this.request.connection.export(obj);
-						response.result.add(obj);
+						list.add(obj);
 						continue;
 					}
 					this.request.connection.reply_error(
 						this.request, (int) RpcErrorCode.INVALID_PARAMS);
 					return false;
 				}
+				response.retval = OLLMrpc.val("o", list);
 				return true;
 			}
+			var slist = new Gee.ArrayList<GLib.Object>();
 			for (unowned GLib.SList<GLib.Object>? node = (GLib.SList<GLib.Object>) arg.v_pointer;
 				node != null; node = node.next) {
 				var obj = node.data;
 				if (Bin.gtype_to_alias != null && Bin.gtype_to_alias.has_key(obj.get_type())) {
 					this.request.connection.export(obj);
-					response.result.add(obj);
+					slist.add(obj);
 					continue;
 				}
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
 				return false;
 			}
+			response.retval = OLLMrpc.val("o", slist);
 			return true;
 		}
 
@@ -1368,7 +1372,7 @@ namespace OLLMrpc
 		 * Export each GObject value from a GIR GHASH return.
 		 *
 		 * Only ''UTF8'' keys and registered GObject values. Null table →
-		 * empty {@link Response.result}. Iteration order is undefined.
+		 * empty {@link Response.retval}. Iteration order is undefined.
 		 *
 		 * @param type GIR hash type
 		 * @param arg filled by {@link GI.FunctionInfo.invoke}
@@ -1398,17 +1402,19 @@ namespace OLLMrpc
 				return true;
 			}
 			var ht = (GLib.HashTable<string, GLib.Object>) arg.v_pointer;
+			var list = new Gee.ArrayList<GLib.Object>();
 			foreach (var key in ht.get_keys()) {
 				var obj = ht[key];
 				if (Bin.gtype_to_alias != null && Bin.gtype_to_alias.has_key(obj.get_type())) {
 					this.request.connection.export(obj);
-					response.result.add(obj);
+					list.add(obj);
 					continue;
 				}
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
 				return false;
 			}
+			response.retval = OLLMrpc.val("o", list);
 			return true;
 		}
 	}

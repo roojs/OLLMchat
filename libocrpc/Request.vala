@@ -92,7 +92,7 @@ namespace OLLMrpc
 
 		/**
 		 * HTTP client only: root JSON object {@link GLib.Type} for
-		 * {@link Response.result}. Not serialized on the bin socket.
+		 * {@link Response.retval}. Not serialized on the bin socket.
 		 */
 		public GLib.Type result_type { get; set; default = GLib.Type.INVALID; }
 

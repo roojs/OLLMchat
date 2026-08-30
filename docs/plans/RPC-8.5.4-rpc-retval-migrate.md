@@ -16,8 +16,10 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ## Purpose
 
-- **🔷** `⏳` Every method that writes `Response.result` writes `retval` instead. Both ends change in the same cut. No dual-write.
+- **🔷** `✔️` Every method that writes `Response.result` writes `retval` instead. Both ends change in the same cut. No dual-write.
+- **🔷** `✔️` Apply order: writer, then that method’s reader, then the next method. Do not convert all daemon replies and only later fix `libocfiles`.
 - **🔷** `✔️` Pack with `OLLMrpc.val` — same D-Bus letters as `OLLMrpc.args`, **one** complete type, varargs after. Assign in the `Response` initializer: `retval = OLLMrpc.val("o", row)`.
+- **🔷** `✔️` Writers that construct a Response set `retval` in that initializer. Do not `new Response()` then assign. Gi method dispatch already has a Response for OUT args — assign `retval` there.
 - **🔷** `✔️` One letter switch: private `to_value(tag, l)`. `val(...)` and `args()` both call it.
 - **🔷** `⏳` After the last caller, delete `result` (property, `bin_write_prop` / `bin_read_prop` cases, class examples, protocol).
 - **🔷** Packing is by **method shape**, not by runtime count:
@@ -37,10 +39,10 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-## Phase 1 — `val()` then FFI / HTTP / tests ⏳
+## Phase 1 — `val()` then Gi / HTTP, each with its reader ✔️
 
 - **🔷** `✔️` `OLLMrpc.val` next to `args`. `tests/rpc/values-test.vala` smokes `val("i" / "o" / empty list)`.
-- **🔷** `⏳` Then `Gi` / HTTP / tests use `val` on `retval`.
+- **🔷** `✔️` Gi writer then `gi-test`. HTTP writer then HF readers.
 
 ### 1. `libocrpc/namespace.vala` — `val()` next to `args()`
 
@@ -57,6 +59,8 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 ---
 
 ### 2. `libocrpc/Gi.vala` — `dispatch_new`: one object on `retval`
+
+**Status:** **✔️** see `libocrpc/Gi.vala`.
 
 **Why:** `Gio-Menu.new` and friends return one GObject.
 
@@ -79,14 +83,62 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 ```vala
 			var created = (GLib.Object) ret.v_pointer;
 			this.request.connection.export(created);
-			var response = new Response();
-			response.retval = OLLMrpc.val("o", created);
-			this.request.reply(response);
+			this.request.reply(new Response() {
+				retval = OLLMrpc.val("o", created)
+			});
 ```
 
-### 3. `libocrpc/Gi.vala` — method `INTERFACE` return: one object on `retval`
+### 3. `tests/rpc/gi-test.vala` — `Gio-Menu.new` / `new_for_path` read `retval`
 
-**Why:** Same packing as `dispatch_new`.
+**Status:** **✔️** see `tests/rpc/gi-test.vala`.
+
+**Why:** Consumer for **### 2**. Do not leave Gi sending `retval` while the test still reads `result`.
+
+**Where:** `Gio-Menu.new` asserts (same object check for `new_for_path`).
+
+**Depends on:** **### 2**.
+
+#### Remove (`Gio-Menu.new` asserts)
+
+```vala
+			this.check(command_line, response.result.size == 1, "new returned no object");
+			this.check(command_line, rpc.proxies.size == 1, "proxy not bound");
+			var lease_id = (uint64) 0;
+			foreach (var id in rpc.proxies.keys) {
+				this.check(command_line, id != 0, "handle is 0");
+				this.check(
+					command_line,
+					rpc.proxies.get(id) == response.result.get(0),
+					"proxy is not result"
+				);
+				lease_id = (uint64) id;
+			}
+```
+
+#### Replace with
+
+```vala
+			this.check(command_line, response.retval.type() != GLib.Type.INVALID, "new returned no object");
+			this.check(command_line, rpc.proxies.size == 1, "proxy not bound");
+			var lease_id = (uint64) 0;
+			foreach (var id in rpc.proxies.keys) {
+				this.check(command_line, id != 0, "handle is 0");
+				this.check(
+					command_line,
+					rpc.proxies.get(id) == response.retval.get_object(),
+					"proxy is not retval"
+				);
+				lease_id = (uint64) id;
+			}
+```
+
+**ℹ️** Same object check for `new_for_path`.
+
+### 4. `libocrpc/Gi.vala` — method `INTERFACE` return: one object on `retval`
+
+**Status:** **✔️** see `libocrpc/Gi.vala`.
+
+**Why:** Same packing as `dispatch_new`. Response already exists (OUT args after the switch). Assign `retval` on it.
 
 **Where:** `GI.TypeTag.INTERFACE` arm that `export`s `created`.
 
@@ -108,11 +160,13 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 					break;
 ```
 
-### 4. `libocrpc/Gi.vala` — `GList` / `GSList` / `GHASH`: always `ArrayList` on `retval`
+### 5. `libocrpc/Gi.vala` — `GList` / `GSList` / `GHASH`: always `ArrayList` on `retval`
+
+**Status:** **✔️** see `libocrpc/Gi.vala`.
 
 **Why:** List-shaped GIR returns stay lists when there is one element. Empty → `val("o", list)` is `INVALID`.
 
-**Where:** the three loops that `response.result.add(obj)`. Build a local list, then one `set_object`. Same packing in all three.
+**Where:** the three loops that `response.result.add(obj)`. Build a local list, then `response.retval = OLLMrpc.val("o", list)`. Response already exists (OUT args). Same packing in all three.
 
 **Depends on:** **### 1**.
 
@@ -160,7 +214,21 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 **ℹ️** Repeat for the `GSList` loop and the `GHASH` `foreach` (local `list`, then `response.retval = OLLMrpc.val("o", list)`).
 
-### 5. `libocrpc/Client.vala` — HTTP JSON: one object on `retval`
+### 6. `tests/rpc/gi-test.vala` — `actors` read list `retval`
+
+**Status:** **✔️** see `tests/rpc/gi-test.vala`. Dummy `hello` uses one-object `val("o", actor)`.
+
+**Why:** Consumer for **### 5**.
+
+**Where:** `actors` asserts.
+
+**Depends on:** **### 5**.
+
+**ℹ️** `retval.type().is_a(typeof(Gee.ArrayList))`, then `((Gee.ArrayList<GLib.Object>) response.retval.get_object()).get(0)`. Test `hello` that `result.add(actor)` becomes one-object `retval`.
+
+### 7. `libocrpc/Client.vala` — HTTP JSON: one object on `retval`
+
+**Status:** **✔️** see `libocrpc/Client.vala`.
 
 **Why:** HF hub replies are one wrapper object today (`result.add(obj)`).
 
@@ -190,59 +258,53 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			this.complete_pending(head.request.id, response, null);
 ```
 
-### 6. `tests/rpc/gi-test.vala` — read `retval`
+### 8. `liboctools/HuggingFace/Request.vala` — `result[0]` → `get_object()`
 
-**Why:** `Gio-Menu.new` / `new_for_path` / `actors` asserted `result.size` / `get(0)`.
+**Status:** **✔️** also `libochf/Model.vala`, `libochf/namespace.vala`, `examples/oc-hf.vala`.
 
-**Where:** each `response.result` assert. Test `hello` that `result.add(actor)` becomes one-object `retval` (that handler is a one-object return).
+**Why:** Consumer for **### 7**. Search/detail return one `Model` / `ModelArray`.
 
-**Depends on:** **### 2**, **### 4**.
+**Where:** each `detail_resp.result[0]` / `search_resp.result[0]` / `.size == 0`.
 
-#### Remove (`Gio-Menu.new` asserts)
+**Depends on:** **### 7**.
+
+#### Remove
 
 ```vala
-			this.check(command_line, response.result.size == 1, "new returned no object");
-			this.check(command_line, rpc.proxies.size == 1, "proxy not bound");
-			var lease_id = (uint64) 0;
-			foreach (var id in rpc.proxies.keys) {
-				this.check(command_line, id != 0, "handle is 0");
-				this.check(
-					command_line,
-					rpc.proxies.get(id) == response.result.get(0),
-					"proxy is not result"
-				);
-				lease_id = (uint64) id;
-			}
+				if (detail_resp.result.size == 0) {
 ```
 
 #### Replace with
 
 ```vala
-			this.check(command_line, response.retval.type() != GLib.Type.INVALID, "new returned no object");
-			this.check(command_line, rpc.proxies.size == 1, "proxy not bound");
-			var lease_id = (uint64) 0;
-			foreach (var id in rpc.proxies.keys) {
-				this.check(command_line, id != 0, "handle is 0");
-				this.check(
-					command_line,
-					rpc.proxies.get(id) == response.retval.get_object(),
-					"proxy is not retval"
-				);
-				lease_id = (uint64) id;
-			}
+				if (detail_resp.retval.type() == GLib.Type.INVALID) {
 ```
 
-**ℹ️** Same object check for `new_for_path`. `actors` is a GIR list: `retval.type().is_a(typeof(Gee.ArrayList))`, then `((Gee.ArrayList<GLib.Object>) response.retval.get_object()).get(0)`.
+#### Remove
+
+```vala
+				this.download_model = (OLLMhf.Model) detail_resp.result[0];
+```
+
+#### Replace with
+
+```vala
+				this.download_model = (OLLMhf.Model) detail_resp.retval.get_object();
+```
+
+**ℹ️** Same `INVALID` / `get_object()` at the other `result[0]` sites in this file, `libochf/Model.vala`, `libochf/namespace.vala` examples, `examples/oc-hf.vala`. Apply those in this same cut, before Phase 2.
 
 ---
 
-## Phase 2 — ollmfilesd + libocfiles ⏳
+## Phase 2 — ollmfilesd + libocfiles, one method both ends ✔️
 
-- **🔷** `⏳` Daemon writers and matching `libocfiles` / tool readers in one pass per method.
+- **🔷** `✔️` For each RPC: daemon writer, then its `libocfiles` / tool reader, then the next RPC.
 
-### 7. `ollmfilesd/Daemon.vala` — `hello()`: one object
+### 9. `ollmfilesd/Daemon.vala` — `hello()`: one object
 
-**Why:** Template for every one-row `result.add` + `result = result` reply.
+**Status:** **✔️** see `ollmfilesd/Daemon.vala`.
+
+**Why:** Template for a one-row reply. Connect does not read `result` / `retval`.
 
 **Where:** `hello()`, the list + `request.reply`.
 
@@ -266,13 +328,17 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			});
 ```
 
-### 8. `ollmfilesd/File.vala` — `read()`: one object (keeps `msg`)
+### 10. `RPC-File.read` — daemon writer, then `libocfiles` reader
 
-**Why:** One-row + `msg` / `msg_encode`. Same packing as **### 6** with extra fields.
+**Status:** **✔️** plus the one-object pass listed below.
+
+**Why:** One-row + `msg` / `msg_encode`. Writer and reader in this section so the client never sees `result` after the daemon sends `retval`.
+
+**Depends on:** **### 1**.
+
+##### Part 1 — `ollmfilesd/File.vala` `read()` writer
 
 **Where:** success `request.reply` after `result.add(row)`.
-
-**Depends on:** **### 1**, **### 7**.
 
 #### Remove
 
@@ -302,20 +368,9 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			});
 ```
 
-**ℹ️** Same one-object packing (drop the throwaway `ArrayList`) at:
+##### Part 2 — `libocfiles/File.vala` `read()` reader
 
-- `ollmfilesd/File.vala` — `fetch`, `register`
-- `ollmfilesd/Folder.vala` — `fetch`
-- `ollmfilesd/FileHistory.vala` — revert / approve replies that `result.add(row)`
-- `ollmfilesd/ProjectManager.vala` — `rpc_create_project`
-
-### 9. `libocfiles/File.vala` — `read()`: one object from `retval`
-
-**Why:** Reader for **### 7**. `INVALID` means no row (today `size == 0`).
-
-**Where:** after `rpc.call` in `read()`.
-
-**Depends on:** **### 8**.
+**Where:** after `rpc.call` in `read()`. `INVALID` means no row (today `size == 0`).
 
 #### Remove
 
@@ -350,20 +405,25 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			}
 ```
 
-**ℹ️** Same `INVALID` / `get_object()` shape at:
+**ℹ️** Same one-object pass (daemon writer, then its reader, before the next RPC):
 
-- `libocfiles/File.vala` — `register`
-- `libocfiles/Folder.vala` — `fetch_file` (`RPC-File.fetch`)
-- `libocfiles/ProjectManager.vala` — `fetch_folder`, `rpc_create_project`
-- `libocfiles/FileHistory.vala` — `rpc_revert`
+- `RPC-File.fetch` — `ollmfilesd/File.vala` `fetch`, then `libocfiles/Folder.vala` `fetch_file`
+- `RPC-File.register` — `ollmfilesd/File.vala` `register`, then `libocfiles/File.vala` `register`
+- `RPC-Folder.fetch` — `ollmfilesd/Folder.vala` `fetch`, then `libocfiles/ProjectManager.vala` `fetch_folder`
+- FileHistory revert / approve — `ollmfilesd/FileHistory.vala`, then `libocfiles/FileHistory.vala` `rpc_revert`
+- `RPC-ProjectManager.rpc_create_project` — `ollmfilesd/ProjectManager.vala`, then `libocfiles/ProjectManager.vala` `rpc_create_project`
 
-### 9. `ollmfilesd/Folder.vala` — `fetch_files_reply()`: list on `retval`
+### 11. `RPC-Folder.fetch_files` — daemon writer, then `libocfiles` reader
 
-**Why:** Template for list methods. Empty page still sends `msg` (total). Omit `retval` when `list.size == 0`.
+**Status:** **✔️** plus the list pass listed below.
 
-**Where:** both success `request.reply` calls in `fetch_files_reply()` (path-filter arm and paged arm).
+**Why:** List template. Empty page still sends `msg` (total). `val("o", list)` is `INVALID` when empty.
 
-**Depends on:** 8.5.3 `retval`.
+**Depends on:** **### 1**.
+
+##### Part 1 — `ollmfilesd/Folder.vala` `fetch_files_reply()` writer
+
+**Where:** both success `request.reply` calls (path-filter arm and paged arm).
 
 #### Remove (paged arm; path-filter arm is the same with `msg = list.size.to_string()`)
 
@@ -378,35 +438,16 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 #### Replace with
 
 ```vala
-			if (list.size == 0) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					msg = matched.size.to_string()
-				});
-				return;
-			}
-			var retval = GLib.Value(typeof(Gee.ArrayList));
-			retval.set_object(list);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				retval = retval,
+				retval = OLLMrpc.val("o", list),
 				msg = matched.size.to_string()
 			});
 ```
 
-**ℹ️** Path-filter arm: same `list.size == 0` skip, `msg = list.size.to_string()`. Same list packing at:
+##### Part 2 — `libocfiles/ProjectFiles.vala` `refresh` / `load_more` reader
 
-- `ollmfilesd/Folder.vala` — `fetch_pending_approvals` (`result` + `msg` marker)
-- `ollmfilesd/ProjectManager.vala` — `rpc_load_projects_from_db`
-- `ollmfilesd/Codebase.vala` — `file_info` (`result = list`)
-
-### 10. `libocfiles/ProjectFiles.vala` — list from `retval`
-
-**Why:** Reader for `fetch_files`. `INVALID` → empty foreach (no items).
-
-**Where:** `refresh` / `load_more` after `response.msg` total.
-
-**Depends on:** **### 9**.
+**Where:** after `response.msg` total. `INVALID` → empty foreach (no items).
 
 #### Remove
 
@@ -425,58 +466,18 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			foreach (var file in files) {
 ```
 
-**ℹ️** `load_more` already returns when `files.size == 0`. `INVALID` is that case. Same list unpack at:
+**ℹ️** `load_more` already returns when `files.size == 0`. `INVALID` is that case. Same list pass (writer, then reader):
 
 - `libocfiles/Folder.vala` — `fetch_files`
-- `libocfiles/ProjectManager.vala` — `rpc_load_projects_from_db` (`foreach` on the list; skip if `INVALID`)
-- `libocfiles/ReviewFiles.vala` — `fetch_pending`: `INVALID` → `return new Gee.ArrayList<FileWithHistory>();` else cast `get_object()`
-- `liboctools/ReadFile/Summarize.vala` — `RPC-Codebase.file_info`
+- `RPC-Folder.fetch_pending_approvals` — `ollmfilesd/Folder.vala`, then `libocfiles/ReviewFiles.vala` `fetch_pending` (`INVALID` → `return new Gee.ArrayList<FileWithHistory>();`)
+- `RPC-ProjectManager.rpc_load_projects_from_db` — `ollmfilesd/ProjectManager.vala`, then `libocfiles/ProjectManager.vala` (skip `foreach` if `INVALID`)
+- `RPC-Codebase.file_info` — `ollmfilesd/Codebase.vala`, then `liboctools/ReadFile/Summarize.vala`
 - `examples/oc-vector-index.vala` — folder list
 - `examples/oc-vector-search.vala` — metadata list
 
 ---
 
-## Phase 3 — HF / examples (one wrapper object) ⏳
-
-- **🔷** `⏳` `result[0]` becomes `retval.get_object()`. HTTP writer is **### 4**.
-
-### 11. `liboctools/HuggingFace/Request.vala` — `result[0]` → `get_object()`
-
-**Why:** Search/detail return one `Model` / `ModelArray`.
-
-**Where:** each `detail_resp.result[0]` / `search_resp.result[0]` / `.size == 0`.
-
-**Depends on:** **### 4**.
-
-#### Remove
-
-```vala
-				if (detail_resp.result.size == 0) {
-```
-
-#### Replace with
-
-```vala
-				if (detail_resp.retval.type() == GLib.Type.INVALID) {
-```
-
-#### Remove
-
-```vala
-				this.download_model = (OLLMhf.Model) detail_resp.result[0];
-```
-
-#### Replace with
-
-```vala
-				this.download_model = (OLLMhf.Model) detail_resp.retval.get_object();
-```
-
-**ℹ️** Same `INVALID` / `get_object()` at the other `result[0]` sites in this file, `libochf/Model.vala`, `libochf/namespace.vala` examples, `examples/oc-hf.vala`.
-
----
-
-## Phase 4 — delete `result` ⏳
+## Phase 3 — delete `result` ⏳
 
 - **🔷** `⏳` When grep for `response.result` / `.result.add` / `result = result` on `OLLMrpc.Response` is empty, remove the property.
 
@@ -486,7 +487,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 **Where:** property; class doc **Object result** sample; `bin_write_prop` / `bin_read_prop` `case "result":`.
 
-**Depends on:** Phases 1–3.
+**Depends on:** Phases 1–2.
 
 #### Remove — property (keep `retval` that follows)
 
@@ -563,6 +564,10 @@ See `libocrpc/Response.vala`, `libocrpc/Bin/StreamValue.vala`.
 - **🚫** Wrap a one-object method in `ArrayList` “for compatibility”.
 - **🚫** Pack a GIR `GList` as bare `OBJECT` when `length == 1`.
 - **🚫** New pack/unpack helpers besides `val` / `args` (private `to_value` is the letter switch).
+- **🚫** `GLib.Value` + `set_object` on writers — `val()` is for the object initializer.
+- **🚫** `new Response()` then `response.retval = …` when the reply can be `new Response() { retval = OLLMrpc.val(…) }`.
+- **🚫** `if (list.size == 0)` skip `retval` — `val("o", list)` is `INVALID`.
+- **🚫** Convert all daemon writers, then all `libocfiles` readers. Writer then that method’s reader before the next RPC.
 - **🚫** `[Deprecated]` soak on `result` — delete after the last caller.
 - **🚫** Fold `msg` / `args` into `retval` here.
 - **🚫** Apply 8.5.3 Phase 4 (spec that keeps `result`). This plan’s **### 13** is the spec.

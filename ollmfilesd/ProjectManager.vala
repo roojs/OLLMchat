@@ -211,7 +211,7 @@ namespace OLLMfilesd
 					list.add(this.projects.get_item(i));
 				}
 				request.reply(new OLLMrpc.Response() {
-					result = list
+					retval = OLLMrpc.val("o", list)
 				});
 			});
 		}
@@ -226,10 +226,8 @@ namespace OLLMfilesd
 		public void rpc_create_project(OLLMrpc.Request request, string path)
 		{
 			var project = this.create_project(path);
-			var result = new Gee.ArrayList<GLib.Object>();
-			result.add(project);
 			request.reply(new OLLMrpc.Response() {
-				result = result
+				retval = OLLMrpc.val("o", project)
 			});
 		}
 

@@ -210,15 +210,16 @@ Examples:
 			method = "RPC-Folder.fetch",
 			args = OLLMrpc.args("s", project_path)
 		});
-		var folders = (Gee.ArrayList<OLLMfiles.Folder>) fetch_response.result;
-		if (folders.size == 0 && !opt_create_project) {
+		if (fetch_response.retval.type() == GLib.Type.INVALID && !opt_create_project) {
 			throw new GLib.IOError.INVALID_ARGUMENT(
 				"Folder '%s' is not in the database. Use --create-project to create it as a project first.".printf(
 					project_path
 				)
 			);
 		}
-		if (folders.size > 0 && !folders.get(0).is_project && !opt_create_project) {
+		if (fetch_response.retval.type() != GLib.Type.INVALID
+			&& !((OLLMfiles.Folder) fetch_response.retval.get_object()).is_project
+			&& !opt_create_project) {
 			throw new GLib.IOError.INVALID_ARGUMENT(
 				"Folder '%s' is not a project. Use --create-project to create it as a project first.".printf(
 					project_path

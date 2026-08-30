@@ -570,8 +570,8 @@ namespace OLLMrpc
 			var obj = read_ctx.parse();
 			var response = new Response() {
 				id = head.request.id,
+				retval = OLLMrpc.val("o", obj)
 			};
-			response.result.add(obj);
 			this.complete_pending(head.request.id, response, null);
 		}
 

@@ -158,10 +158,10 @@ namespace OLLMtools.HuggingFace
 					method = "/api/models/" + this.model_ref.strip(),
 					result_type = typeof(OLLMhf.Model),
 				});
-				if (detail_resp.result.size == 0) {
+				if (detail_resp.retval.type() == GLib.Type.INVALID) {
 					throw new GLib.IOError.FAILED("empty Hub model response");
 				}
-				this.download_model = (OLLMhf.Model) detail_resp.result[0];
+				this.download_model = (OLLMhf.Model) detail_resp.retval.get_object();
 				if (this.download_model.@private
 					|| (this.download_model.gated != ""
 						&& this.download_model.gated != "false")) {
@@ -375,11 +375,11 @@ namespace OLLMtools.HuggingFace
 					};
 
 					var search_resp = yield rpc.call(search_req);
-					if (search_resp.result.size == 0) {
+					if (search_resp.retval.type() == GLib.Type.INVALID) {
 						throw new GLib.IOError.FAILED("empty Hub search response");
 					}
 
-					var hits = ((OLLMhf.ModelArray) search_resp.result[0]).items;
+					var hits = ((OLLMhf.ModelArray) search_resp.retval.get_object()).items;
 					var search_result = "# Hugging Face search\n\n"
 						+ "Query: " + this.query.strip() + "\n\n";
 					var skipped_gated = 0;
@@ -429,11 +429,11 @@ namespace OLLMtools.HuggingFace
 						method = "/api/models/" + this.model_ref.strip(),
 						result_type = typeof(OLLMhf.Model),
 					});
-					if (detail_resp.result.size == 0) {
+					if (detail_resp.retval.type() == GLib.Type.INVALID) {
 						throw new GLib.IOError.FAILED("empty Hub model response");
 					}
 
-					var hub_model = (OLLMhf.Model) detail_resp.result[0];
+					var hub_model = (OLLMhf.Model) detail_resp.retval.get_object();
 					if (hub_model.@private
 						|| (hub_model.gated != "" && hub_model.gated != "false")) {
 						throw new GLib.IOError.PERMISSION_DENIED(
@@ -465,10 +465,10 @@ namespace OLLMtools.HuggingFace
 							method = "/api/models/" + this.model_ref.strip(),
 							result_type = typeof(OLLMhf.Model),
 						});
-						if (detail_resp.result.size == 0) {
+						if (detail_resp.retval.type() == GLib.Type.INVALID) {
 							throw new GLib.IOError.FAILED("empty Hub model response");
 						}
-						hub_model = (OLLMhf.Model) detail_resp.result[0];
+						hub_model = (OLLMhf.Model) detail_resp.retval.get_object();
 					}
 					if (hub_model.@private
 						|| (hub_model.gated != "" && hub_model.gated != "false")) {

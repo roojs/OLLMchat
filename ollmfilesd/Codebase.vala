@@ -139,7 +139,7 @@ namespace OLLMfilesd
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				result = list,
+				retval = OLLMrpc.val("o", list),
 				msg = list.size.to_string()
 			});
 		}

@@ -505,11 +505,9 @@ namespace OLLMfilesd
 				"buffer",
 				"parent"
 			});
-			var result = new Gee.ArrayList<GLib.Object>();
-			result.add(row);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				result = result,
+				retval = OLLMrpc.val("o", row),
 				msg = "ok"
 			});
 		}
@@ -688,11 +686,9 @@ namespace OLLMfilesd
 				"buffer",
 				"parent"
 			});
-			var result = new Gee.ArrayList<GLib.Object>();
-			result.add(row);
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				result = result,
+				retval = OLLMrpc.val("o", row),
 				msg = "ok"
 			});
 		}

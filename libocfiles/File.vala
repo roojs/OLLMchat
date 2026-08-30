@@ -359,9 +359,8 @@ namespace OLLMfiles
 				args = OLLMrpc.args("s", this.path)
 			});
 
-			var files = (Gee.ArrayList<File>) response.result;
-			if (files.size > 0) {
-				this.copy_from((File) files.get(0), {
+			if (response.retval.type() != GLib.Type.INVALID) {
+				this.copy_from((File) response.retval.get_object(), {
 					"manager",
 					"buffer",
 					"parent",
@@ -471,7 +470,7 @@ namespace OLLMfiles
 		/**
 		 * Register fake file (''id == -1'') on daemon (''File.register'').
 		 *
-		 * On success, {@link Copyable.copy_from} merges ''response.result'' onto
+		 * On success, {@link Copyable.copy_from} merges ''response.retval'' onto
 		 * this instance (same object for buffer/UI).
 		 *
 		 * @throws GLib.Error if the RPC fails
@@ -490,9 +489,8 @@ namespace OLLMfiles
 				args = OLLMrpc.args("s", this.path)
 			});
 
-			var files = (Gee.ArrayList<File>) response.result;
-			if (files.size > 0) {
-				this.copy_from((File) files.get(0), {
+			if (response.retval.type() != GLib.Type.INVALID) {
+				this.copy_from((File) response.retval.get_object(), {
 					"manager",
 					"buffer",
 					"parent",
