@@ -246,8 +246,41 @@ namespace OLLMrpc.Bin
 				ctx.out_stream.put_uint64((uint64) val.get_flags());
 				return;
 			}
+			if (val.type().is_a(typeof(Gee.ArrayList))) {
+				var list = (Gee.ArrayList<GLib.Object>) val.get_object();
+				ctx.write_gtype(list.get(0).get_type(),
+					(uint8) GLib.Type.OBJECT | 0x80);
+				if (list.size < 128) {
+					ctx.out_stream.put_byte((uint8) list.size);
+				} else {
+					ctx.out_stream.put_byte(
+						(uint8) (0x80 | ((list.size >> 8) & 0x7F)));
+					ctx.out_stream.put_byte((uint8) (list.size & 0xFF));
+				}
+				foreach (var child in list) {
+					if (!ctx.connection.live_handles || child.get_type().is_a(typeof(Serializable))) {
+						((Serializable) child).bin_write(ctx);
+						continue;
+					}
+					var ptr = (uint64) (void*) child;
+					ctx.out_stream.put_uint64((uint64) ctx.connection.lease_ids.get(
+						(int) (ptr >> 32)).get((int) ptr));
+					ctx.out_stream.put_uint16(Stream.TOKEN_END);
+				}
+				return;
+			}
 			if (val.type().is_a(GLib.Type.OBJECT)) {
 				if (val.get_object() == null) {
+					return;
+				}
+				if (!val.get_object().get_type().is_a(typeof(Serializable))
+					&& ctx.connection.live_handles) {
+					var live = val.get_object();
+					ctx.write_gtype(live.get_type());
+					var ptr = (uint64) (void*) live;
+					ctx.out_stream.put_uint64((uint64) ctx.connection.lease_ids.get(
+						(int) (ptr >> 32)).get((int) ptr));
+					ctx.out_stream.put_uint16(Stream.TOKEN_END);
 					return;
 				}
 				if ((val.get_object() as Serializable) == null) {
@@ -353,6 +386,13 @@ namespace OLLMrpc.Bin
 					arr += (string) elem_buf;
 				}
 				return arr;
+			}
+			if ((type_byte & 0x80) != 0
+				&& (GLib.Type) (type_byte & 0x7F) == GLib.Type.OBJECT) {
+				var objects = ctx.parse_object_array();
+				var list_val = GLib.Value(typeof(Gee.ArrayList));
+				list_val.set_object(objects);
+				return list_val;
 			}
 			if ((type_byte & 0x80) != 0) {
 				return StreamValue.read_array(ctx, type_byte);

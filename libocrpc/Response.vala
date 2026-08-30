@@ -39,6 +39,12 @@ namespace OLLMrpc
 	 *     stdout.printf("%s\n", obj.get_type().name());
 	 * }}}
 	 *
+	 * === Retval ===
+	 *
+	 * {{{
+	 * stdout.printf("%d\n", resp.retval.get_int());
+	 * }}}
+	 *
 	 * === Positional args ===
 	 *
 	 * {{{
@@ -72,6 +78,26 @@ namespace OLLMrpc
 		 */
 		public Gee.ArrayList<GLib.Object> result { 
 			get; set; default = new Gee.ArrayList<GLib.Object>(); }
+		/**
+		 * Typed return ({@link GLib.Value}).
+		 *
+		 * Unset ({@link GLib.Type.INVALID}) is omitted on the wire. A
+		 * number or string uses the same {@link Bin.StreamValue}
+		 * encoding as {@link args} elements. A GObject is one object.
+		 * A {@link Gee.ArrayList} is an object array. Live GObjects
+		 * write a lease id when {@link Transport.Connection.live_handles}
+		 * is on. Existing list replies stay on {@link result} until
+		 * that method moves here.
+		 *
+		 * == Example ==
+		 *
+		 * {{{
+		 * var n = GLib.Value(typeof(int));
+		 * n.set_int(3);
+		 * resp.retval = n;
+		 * }}}
+		 */
+		public GLib.Value retval { get; set; }
 		/**
 		 * Positional returns (daemon → client), GIR order.
 		 *
@@ -164,15 +190,26 @@ namespace OLLMrpc
 						ctx.out_stream.put_byte((uint8) (this.result.size & 0xFF));
 					}
 					foreach (var child in this.result) {
-						if (!child.get_type().is_a(typeof(Bin.Serializable)) && ctx.connection.live_handles) {
-							var ptr = (uint64) (void*) child;
-							ctx.out_stream.put_uint64((uint64) ctx.connection.lease_ids.get(
-								(int) (ptr >> 32)).get((int) ptr));
-							ctx.out_stream.put_uint16(Bin.Stream.TOKEN_END);
+						if (!ctx.connection.live_handles || child.get_type().is_a(typeof(Bin.Serializable))) {
+							((Bin.Serializable) child).bin_write(ctx);
 							continue;
 						}
-						((Bin.Serializable) child).bin_write(ctx);
+						var ptr = (uint64) (void*) child;
+						ctx.out_stream.put_uint64((uint64) ctx.connection.lease_ids.get(
+							(int) (ptr >> 32)).get((int) ptr));
+						ctx.out_stream.put_uint16(Bin.Stream.TOKEN_END);
 					}
+					return;
+				case "retval":
+					if (this.retval.type() == GLib.Type.INVALID) {
+						return;
+					}
+					if (this.retval.type().is_a(typeof(Gee.ArrayList))
+						&& ((Gee.ArrayList<GLib.Object>) this.retval.get_object()).size == 0) {
+						return;
+					}
+					ctx.write_tag(prop.name);
+					Bin.StreamValue.write(ctx, this.retval);
 					return;
 				case "args":
 					if (this.args.size == 0) {
@@ -223,6 +260,9 @@ namespace OLLMrpc
 						return;
 					}
 					this.result = ctx.parse_object_array();
+					return;
+				case "retval":
+					this.retval = Bin.StreamValue.read(ctx, type_byte);
 					return;
 				case "args":
 					var n = ctx.in_stream.read_byte();

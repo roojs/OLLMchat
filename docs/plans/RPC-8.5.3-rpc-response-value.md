@@ -93,15 +93,14 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 					ctx.out_stream.put_byte((uint8) (list.size & 0xFF));
 				}
 				foreach (var child in list) {
-					if (!child.get_type().is_a(typeof(Serializable))
-						&& ctx.connection.live_handles) {
-						var ptr = (uint64) (void*) child;
-						ctx.out_stream.put_uint64((uint64) ctx.connection.lease_ids.get(
-							(int) (ptr >> 32)).get((int) ptr));
-						ctx.out_stream.put_uint16(Stream.TOKEN_END);
+					if (!ctx.connection.live_handles || child.get_type().is_a(typeof(Serializable))) {
+						((Serializable) child).bin_write(ctx);
 						continue;
 					}
-					((Serializable) child).bin_write(ctx);
+					var ptr = (uint64) (void*) child;
+					ctx.out_stream.put_uint64((uint64) ctx.connection.lease_ids.get(
+						(int) (ptr >> 32)).get((int) ptr));
+					ctx.out_stream.put_uint16(Stream.TOKEN_END);
 				}
 				return;
 			}
