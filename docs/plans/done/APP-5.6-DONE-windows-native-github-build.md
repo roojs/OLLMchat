@@ -1,18 +1,18 @@
 # 5.6 — Windows native GitHub release build
 
-> **Do not update `docs/plans/APP-1.0-summary.md` for this plan.**
+> Landed. Index: [`APP-1.0-summary.md`](../APP-1.0-summary.md).
 
-**Status:** in progress
+**Status:** **DONE** — native MSYS2 Windows installer shipped on **v1.3.0** (`OLLMchat-1.3.0-Setup.exe`, 2026-08-22). Archived 2026-08-31.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
 **Related:**
 
-- ℹ️ Parent WebKit: [`WEBKIT-5.0-webkit-control.md`](WEBKIT-5.0-webkit-control.md)
-- ℹ️ Windows a11y / `webview2-gtk` wire: [`done/5.0.1-DONE-windows-webkit-accessibility.md`](done/5.0.1-DONE-windows-webkit-accessibility.md)
-- ℹ️ Older Linux-cross Windows plan (superseded for **release**): [`APP-5.7-building-windows.md`](APP-5.7-building-windows.md)
-- ℹ️ Current Ubuntu release CI: [`.github/workflows/release.yml`](../../.github/workflows/release.yml)
-- ℹ️ Release docs: [`docs/creating-releases.md`](../creating-releases.md)
+- ℹ️ Parent WebKit: [`WEBKIT-5.0-webkit-control.md`](../WEBKIT-5.0-webkit-control.md)
+- ℹ️ Windows a11y / `webview2-gtk` wire: [`5.0.1-DONE-windows-webkit-accessibility.md`](5.0.1-DONE-windows-webkit-accessibility.md)
+- ℹ️ Older Linux-cross Windows plan (superseded for **release**): [`APP-5.7-SUPERSEDED-building-windows.md`](APP-5.7-SUPERSEDED-building-windows.md)
+- ℹ️ Current Ubuntu release CI: [`.github/workflows/release.yml`](../../../.github/workflows/release.yml)
+- ℹ️ Release docs: [`docs/creating-releases.md`](../../creating-releases.md)
 - ℹ️ **Library CI (copy shape):** `webview2-gtk/.github/workflows/release.yml`
 - ℹ️ **Library consumer template:** `webview2-gtk/scripts/sample-github-build-windows.yml`
 - ℹ️ **Library docs:** `webview2-gtk/docs/build-this-library.md` (no Linux cross-compile), `docs/deploying-windows.md`, `docs/using-in-your-app.md`
@@ -44,27 +44,27 @@
 
 ## Phase 1 — CI script + dispatch (done)
 
-- **✔️** **🔷** MSYS2 UCRT64 compile: [`windows-build.yml`](../../.github/workflows/windows-build.yml) (compile-only smoke) + [`scripts/ci/windows-msys2-build.sh`](../../scripts/ci/windows-msys2-build.sh).
+- **✔️** **🔷** MSYS2 UCRT64 compile: [`windows-build.yml`](../../../.github/workflows/windows-build.yml) (compile-only smoke) + [`scripts/ci/windows-msys2-build.sh`](../../../scripts/ci/windows-msys2-build.sh).
 - **✔️** **🔷** Meson Windows deps (`webview2gtk-1`, `-D WINDOWS` / `-D LINUX`, pacman pin).
 - **✔️** **🔷** Green compile proven on Windows QA host (`network_session` property API).
-- **⏳** **🔷** Confirm same green on GitHub `windows-latest` (Actions run).
+- **✔️** **🔷** Confirm same green on GitHub `windows-latest` — **v1.3.0** tag job.
 
 ---
 
-## Phase 2 — Package + release wire (current)
+## Phase 2 — Package + release wire (done)
 
-- **✔️** **🔷** Staging + NSIS: [`scripts/ci/windows-package-nsis.sh`](../../scripts/ci/windows-package-nsis.sh), [`scripts/copy-exe-runtime-dlls.sh`](../../scripts/copy-exe-runtime-dlls.sh), [`packaging/windows/ollmchat.nsi`](../../packaging/windows/ollmchat.nsi).
-- **✔️** **🔷** Release-callable job: [`x-windows.yml`](../../.github/workflows/x-windows.yml) (compile → package → artifact `ollmchat-windows`).
-- **✔️** **🔷** Manual button: [`release-windows.yml`](../../.github/workflows/release-windows.yml).
-- **✔️** **🔷** Tag publish: [`release.yml`](../../.github/workflows/release.yml) `build-windows` in `publish.needs` (same `ollmchat-*` download pattern).
-- **✔️** **🔷** Docs: [`creating-releases.md`](../creating-releases.md) lists Setup.exe + Release - Windows.
-- **⏳** **🔷** Prove package script produces Setup.exe (QA box and/or `gh workflow run release-windows.yml`).
+- **✔️** **🔷** Staging + NSIS: [`scripts/ci/windows-package-nsis.sh`](../../../scripts/ci/windows-package-nsis.sh), [`scripts/copy-exe-runtime-dlls.sh`](../../../scripts/copy-exe-runtime-dlls.sh), [`packaging/windows/ollmchat.nsi`](../../../packaging/windows/ollmchat.nsi).
+- **✔️** **🔷** Release-callable job: [`x-windows.yml`](../../../.github/workflows/x-windows.yml) (compile → package → artifact `ollmchat-windows`).
+- **✔️** **🔷** Manual button: [`release-windows.yml`](../../../.github/workflows/release-windows.yml).
+- **✔️** **🔷** Tag publish: [`release.yml`](../../../.github/workflows/release.yml) `build-windows` in `publish.needs` (same `ollmchat-*` download pattern).
+- **✔️** **🔷** Docs: [`creating-releases.md`](../../creating-releases.md) lists Setup.exe + Release - Windows.
+- **✔️** **🔷** Prove package script produces Setup.exe — **v1.3.0** asset `OLLMchat-1.3.0-Setup.exe`.
 
 ---
 
 ## Why cross-compile breaks
 
-- **🔷** **Ubuntu no longer ships a Windows installer.** sqgipkg is Linux AppImage only ([`x-sqgipkg.yml`](../../.github/workflows/x-sqgipkg.yml), [`creating-releases.md`](../creating-releases.md)). The old path was Ubuntu **`ubuntu-24.04`** → `mingw-w64` + **`sqgipkg --target win-nsis`**.
+- **🔷** **Ubuntu no longer ships a Windows installer.** sqgipkg is Linux AppImage only ([`x-sqgipkg.yml`](../../../.github/workflows/x-sqgipkg.yml), [`creating-releases.md`](../../creating-releases.md)). The old path was Ubuntu **`ubuntu-24.04`** → `mingw-w64` + **`sqgipkg --target win-nsis`**.
 - **🔷** Browser cookies / downloads use WebKitGTK-shaped **`web_view.network_session`** (property), not `get_network_session()` — latest webview2-gtk only exposes the property; WebKitGTK 6 has both.
 - **ℹ️** Sibling library states plainly: **no Linux cross-compile path** for webview2-gtk itself (`docs/build-this-library.md`).
 - **🔷** WebView2 needs native Windows headers / SDK vendoring (`vendor-webview2-sdk.sh`), `WebView2Loader.dll`, and a Win32 HWND parent — that stack is what **webview2-gtk** builds on **MSYS2 UCRT64 on Windows**.
@@ -100,7 +100,7 @@ OLLMchat CI follows **compile → stage runtime DLLs → NSIS Setup.exe** on **G
 ### Job split
 
 - **🔷** **Ubuntu jobs** — keep Debian, AppImages, Android; **✔️** no Windows from sqgipkg.
-- **✔️** **🔷** **`build-windows`** — [`x-windows.yml`](../../.github/workflows/x-windows.yml):
+- **✔️** **🔷** **`build-windows`** — [`x-windows.yml`](../../../.github/workflows/x-windows.yml):
   - Checkout OLLMchat
   - pacman webview2gtk (pinned) + FAISS + meson compile
   - Stage `dist-windows/OLLMchat/` then NSIS → **`OLLMchat-<version>-Setup.exe`**
@@ -110,7 +110,7 @@ OLLMchat CI follows **compile → stage runtime DLLs → NSIS Setup.exe** on **G
 
 - **✔️** **🔷** Manual: **Release - Windows** / compile-only **X - Native Windows MSYS2 compile**.
 - **✔️** **🔷** Tag path: `release.yml` waits on `build-windows` before Publish / changelog finalize.
-- **🔷** Changelog finalize on `main` waits until Windows installer artifact is present (preferred; same as other blocking package jobs).
+- **✔️** **🔷** Changelog finalize on `main` waits until Windows installer artifact is present (`publish.needs` includes `build-windows`).
 
 ---
 
@@ -131,8 +131,8 @@ OLLMchat CI follows **compile → stage runtime DLLs → NSIS Setup.exe** on **G
 
 ### Docs
 
-- **✔️** **🔷** [`creating-releases.md`](../creating-releases.md): Windows from Windows runner; **`OLLMchat-<version>-Setup.exe`**
-- **✔️** **🔷** [`APP-5.7-building-windows.md`](APP-5.7-building-windows.md) marks Linux cross-compile as superseded; points at 5.6 / `x-windows.yml`
+- **✔️** **🔷** [`creating-releases.md`](../../creating-releases.md): Windows from Windows runner; **`OLLMchat-<version>-Setup.exe`**
+- **✔️** **🔷** [`APP-5.7-SUPERSEDED-building-windows.md`](APP-5.7-SUPERSEDED-building-windows.md) marks Linux cross-compile as superseded; points at 5.6 / `x-windows.yml`
 
 ---
 
@@ -142,7 +142,7 @@ OLLMchat CI follows **compile → stage runtime DLLs → NSIS Setup.exe** on **G
 2. **✔️** **🔷** Green compile on Windows host (API `network_session`).
 3. **✔️** **🔷** Package + NSIS scripts + release wire (`x-windows` / `release-windows` / `release.yml`).
 4. **✔️** **🔷** Drop Ubuntu `win-nsis` / sqgipkg Windows.
-5. **⏳** **🔷** Prove Setup.exe on Actions / QA box; first tagged release with Windows asset.
+5. **✔️** **🔷** Prove Setup.exe on Actions / QA box; first tagged release with Windows asset (**v1.3.0**).
 
 ---
 

@@ -9,9 +9,39 @@ for git tags (`v1.3.0`, etc.).
 Debian and RPM packaging notes are generated from this file at release time
 (see [Creating releases](docs/creating-releases.md)).
 
-## [1.3.0] - Unreleased
+## [Unreleased]
 
-Work since **1.2.4-alpha** (2026-06-13).
+### RPC
+
+- GI / FFI: boxed structs, `float` / `double`, numeric arrays, enums / flags,
+  INOUT, GList IN, explicit GType aliases
+- Live GI callbacks (register / invoke / reply) and `SCM_RIGHTS` on
+  `Response`
+- Drop `CallParam`. Positional **`Request.args`** / **`Response.args`**.
+  Typed **`Response.retval`** for the GIR C return. `Request.add_class` FFI
+  handlers
+- Bin protocol **v3.1** method-name tokens (`NAME_REF`)
+- `OLLMrpc.rpc_register()`; client throws server errors to callers
+
+### FILES
+
+- `ollmfilesd` / `libocfiles`: File, Folder, FileHistory, ProjectManager,
+  Codebase, and Daemon methods on positional `args`; `CallParam` bags
+  deleted
+- Client wrappers throw. UI surfaces failures with Banner / Alert (file
+  dropdown, save / reload, approve / revert, project load / create /
+  remove, overlay scan)
+- Daemon boot uses `OLLMrpc.rpc_register()`; file payloads can ride the
+  `Response` SCM buffer
+
+### TOOLS
+
+- **run_command**: Stop; last-slice tail (do not kill for length); live
+  tool frame; wall-clock timeout; live output stream; spill file
+- Sudo: first-draft **libsecret** store and two-second hold Allow; Exec
+  approval shows the command as the bold label
+
+## [1.3.0] - 2026-08-22
 
 ### Added
 

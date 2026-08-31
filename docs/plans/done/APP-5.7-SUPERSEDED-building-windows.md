@@ -1,8 +1,10 @@
 # Building and running OLLMchat on Windows
 
-**Status:** PLAN — **Linux sqgipkg cross-compile is superseded** (WebView2). Native path: [`APP-5.6-windows-native-github-build.md`](APP-5.6-windows-native-github-build.md), [`windows-build.yml`](../../.github/workflows/windows-build.yml).
+> Landed (superseded). Index: [`APP-1.0-summary.md`](../APP-1.0-summary.md).
 
-**Goal:** Document and script three separate Windows workflows — cross-build + Wine smoke test on Linux, run the portable bundle on native Windows without installing, and produce the NSIS installer. Split manual-build docs out of [creating-releases.md](../creating-releases.md), which should stay focused on CI/tag releases.
+**Status:** **SUPERSEDED** — Linux sqgipkg / mingw cross-compile dropped for WebView2. Native installer is [`APP-5.6-DONE-windows-native-github-build.md`](APP-5.6-DONE-windows-native-github-build.md) (**v1.3.0**). Archived 2026-08-31. Wine / portable-dir leftovers below were never the release path.
+
+**Goal:** Document and script three separate Windows workflows — cross-build + Wine smoke test on Linux, run the portable bundle on native Windows without installing, and produce the NSIS installer. Split manual-build docs out of [creating-releases.md](../../creating-releases.md), which should stay focused on CI/tag releases.
 
 ---
 
@@ -10,11 +12,11 @@
 
 | Piece | Status | Notes |
 |-------|--------|-------|
-| Cross-compile portable bundle | ❌ superseded | Unix sqgipkg `win-dir` removed; use native MSYS2 ([`5.6`](APP-5.6-windows-native-github-build.md)) |
+| Cross-compile portable bundle | ❌ superseded | Unix sqgipkg `win-dir` removed; use native MSYS2 ([`5.6`](APP-5.6-DONE-windows-native-github-build.md)) |
 | Wine smoke test | ⚠️ partial | `--wine` flag on old build script; no standalone run script |
 | Native Windows run (no install) | ⚠️ partial | Launchers in bundle (`OLLMchat.bat`, `OLLMchat.ps1`); no zip/transfer helper |
-| NSIS installer | ⏳ prove Setup.exe | [`x-windows.yml`](../../.github/workflows/x-windows.yml) / [`5.6`](APP-5.6-windows-native-github-build.md); staging dir is not a release zip |
-| Docs | ⚠️ | Release CI: [creating-releases.md](../creating-releases.md) |
+| NSIS installer | ✔️ shipped v1.3.0 | [`x-windows.yml`](../../../.github/workflows/x-windows.yml) / [`5.6`](APP-5.6-DONE-windows-native-github-build.md); staging dir is not a release zip |
+| Docs | ⚠️ | Release CI: [creating-releases.md](../../creating-releases.md) |
 
 **Artifact layout** (all gitignored):
 
@@ -31,7 +33,7 @@ dist-windows-x86_64/
 .sqgipkg/                 # sqgi install, MSYS2 cache, native faiss build
 ```
 
-Configuration: [`sqgipkg.json`](../../sqgipkg.json) (`windows.build_dir`, packages, native faiss patches, staged files).
+Configuration: [`sqgipkg.json`](../../../sqgipkg.json) (`windows.build_dir`, packages, native faiss patches, staged files).
 
 ---
 
@@ -88,7 +90,7 @@ Refactor `build-windows-dir.sh --wine` to call this script instead of duplicatin
 
 ### Wine limitations
 
-Wine is a smoke test, not a release gate. First-run bootstrap loop fixed 2026-06-09 ([bug doc](../bugs/done/2026-06-09-FIXED-windows-startup-configure-loop-required-models.md)). Remaining gaps:
+Wine is a smoke test, not a release gate. First-run bootstrap loop fixed 2026-06-09 ([bug doc](../../bugs/done/2026-06-09-FIXED-windows-startup-configure-loop-required-models.md)). Remaining gaps:
 
 - Some GTK/adwaita rendering quirks
 - Use native Windows (Part 2) before tagging a release
@@ -109,7 +111,7 @@ Wine is a smoke test, not a release gate. First-run bootstrap loop fixed 2026-06
 
 2. Copy **`dist-windows-x86_64/OLLMchat/`** (the folder, not `build-windows-x86_64/`) to the Windows PC — USB, SMB, scp, etc.
 
-3. On Windows, from the bundle folder (Samba / `X:`: see [vala.win32 `windows-build.md`](../../../vala.win32/docs/windows-build.md) — use `X:` then `cd …`, not `cd X:\…`):
+3. On Windows, from the bundle folder (Samba / `X:`: see [vala.win32 `windows-build.md`](../../../../vala.win32/docs/windows-build.md) — use `X:` then `cd …`, not `cd X:\…`):
 
    Do **not** run `.\OLLMchat.ps1` directly — default policy blocks unsigned scripts:
 
@@ -147,7 +149,7 @@ Cross-compilation from Linux is the supported path (matches CI). A **native MSYS
 
 ## Part 3 — Package NSIS installer on Linux
 
-**Purpose:** Produce `OLLMchat-Setup.exe` locally — same artifact CI attaches to GitHub Releases. Releases themselves stay server-driven ([creating-releases.md](../creating-releases.md)); this is for pre-release QA of the installer.
+**Purpose:** Produce `OLLMchat-Setup.exe` locally — same artifact CI attaches to GitHub Releases. Releases themselves stay server-driven ([creating-releases.md](../../creating-releases.md)); this is for pre-release QA of the installer.
 
 ### Script: `scripts/package-windows-nsis.sh` (new)
 
@@ -219,9 +221,9 @@ creating-releases.md then ends with: *“For local builds see [APP-5.7-building-
 
 ### Docs
 
-- [ ] **D1** — Trim [creating-releases.md](../creating-releases.md): remove § “Local packaging”, add links
-- [ ] **D2** — Promote this plan to [APP-5.7-building-windows.md](../APP-5.7-building-windows.md) when scripts land
-- [ ] **D3** — Add [building-linux.md](../building-linux.md) for AppImage/deb local builds
+- [ ] **D1** — Trim [creating-releases.md](../../creating-releases.md): remove § “Local packaging”, add links
+- [ ] **D2** — Promote this plan to [APP-5.7-building-windows.md](../../APP-5.7-building-windows.md) when scripts land (never happened)
+- [ ] **D3** — Add [building-linux.md](../../building-linux.md) for AppImage/deb local builds
 - [ ] **D4** — One-line pointer from root README if it mentions building (optional)
 
 ### Verification

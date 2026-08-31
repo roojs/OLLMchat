@@ -312,6 +312,7 @@ Always **exactly one byte** per property value. The low seven bits (when bit 7 i
 | `0x34` | `FLAGS` (52) | any `flags` |
 | `0x38` | `FLOAT` (56) | `float` — IEEE-754 bits as BE `uint32` |
 | `0x3C` | `DOUBLE` (60) | `double` — IEEE-754 bits as BE `uint64` |
+| `0x40` | `STRING` (64) | UTF-8 string (§9) |
 | `0x48` | `BOXED` (72) | large binary blob |
 | `0x50` | `GObject` (80) | registered object — `reg_id` follows |
 
@@ -663,11 +664,16 @@ Mirror the same prop names in **`bin_read_prop`** (ignore unknown wire keys for 
 
 ## 17. Unsupported types
 
-Not defined in version 3.0:
+Not defined in version 3.1:
 
-- `float`, `double`, `date`
+- `GLib.Date` / `GLib.DateTime`
+- `long` / `ulong` (`GLib.Type.LONG` / `ULONG`) — use `int` / `int64` / `uint` / `uint64`
+- `GLib.Type.POINTER`, `PARAM`, `INTERFACE` as a type byte
+- generic `GLib.Variant` as a type byte (`0x54`) — `GVariant` is only an in-memory carrier for numeric array slabs (§15)
 - varint / LEB128 / zigzag integers
 - raw `GType` numbers on the wire (name tokens + `register()` aliases only)
+
+`float` and `double` are defined (§7, Float / double).
 
 ---
 
@@ -730,7 +736,9 @@ GLib.Type fundamentals (typical GLib 2.x):
   UINT64   = 2C
   ENUM     = 30
   FLAGS    = 34
+  FLOAT    = 38
+  DOUBLE   = 3C
+  STRING   = 40
   BOXED    = 48
   OBJECT   = 50
-  STRING   = 40
 ```

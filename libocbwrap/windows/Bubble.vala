@@ -43,6 +43,7 @@ namespace OLLMbwrap
 		public string ret_str { get; private set; default = ""; }
 		public string fail_str { get; private set; default = ""; }
 		public bool stopped { get; private set; default = false; }
+		public signal void output(string line);
 
 		public Bubble (FileVerification verification)
 		{

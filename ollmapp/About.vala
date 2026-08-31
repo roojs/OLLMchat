@@ -19,7 +19,7 @@
 namespace OLLMapp 
 {
 	/**
-	 * About button widget that shows an Adw.AboutWindow when clicked.
+	 * About button widget that shows an Adw.AboutDialog when clicked.
 	 * Self-contained component that handles its own dialog.
 	 */
 	public class About : Gtk.Button
@@ -40,12 +40,12 @@ namespace OLLMapp
 		/**
 		 * Shows the about dialog.
 		 *
-		 * Creates a fresh {@link Adw.AboutWindow} each time so Android can
-		 * safely re-present after the previous window was closed.
+		 * Uses {@link Adw.AboutDialog} so Android overlays the existing
+		 * toplevel instead of opening a second activity.
 		 */
 		private void show_about_dialog()
 		{
-			var about_window = new Adw.AboutWindow() {
+			var about = new Adw.AboutDialog() {
 				application_name = "OLLMchat",
 				application_icon = "org.roojs.ollmchat",
 				version = OLLMapp.APP_VERSION,
@@ -54,7 +54,6 @@ namespace OLLMapp
 				issue_url = "https://github.com/roojs/OLLMchat/issues",
 				license_type = Gtk.License.LGPL_3_0,
 				copyright = "Copyright © 2026 Alan Knowles",
-				default_width = 600,  // Set width ~30% wider than default
 				comments = """<b>OLLMchat</b> is a work-in-progress AI application for 
 interacting with LLMs (Large Language Models) such as Ollama and OpenAI, 
 featuring a full-featured chat interface with code assistant capabilities 
@@ -75,12 +74,7 @@ The application provides a comprehensive solution for local LLM work,
 combining powerful AI capabilities with a modern GTK4 interface."""
 			};
 			
-			var active_window = this.get_root() as Gtk.Window;
-			if (active_window != null) {
-				about_window.set_transient_for(active_window);
-			}
-			
-			about_window.present();
+			about.present(this);
 		}
 	}
 }

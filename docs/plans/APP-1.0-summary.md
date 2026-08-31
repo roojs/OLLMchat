@@ -20,7 +20,10 @@
 - [APP-5.1-planning-modes.md](APP-5.1-planning-modes.md)
 - [APP-5.4-pdf-extraction.md](APP-5.4-pdf-extraction.md)
 - [APP-5.5-wiki-maker.md](APP-5.5-wiki-maker.md)
-- [APP-5.6-windows-native-github-build.md](APP-5.6-windows-native-github-build.md)
-- [APP-5.7-building-windows.md](APP-5.7-building-windows.md)
 - [APP-6.2-speech-to-text.md](APP-6.2-speech-to-text.md)
 - [APP-7.15-startup-loading-feedback.md](APP-7.15-startup-loading-feedback.md)
+
+## Done
+
+- [APP-5.6-DONE-windows-native-github-build.md](done/APP-5.6-DONE-windows-native-github-build.md) — native MSYS2 Windows installer (`OLLMchat-<version>-Setup.exe`); shipped on **v1.3.0**
+- [APP-5.7-SUPERSEDED-building-windows.md](done/APP-5.7-SUPERSEDED-building-windows.md) — Linux sqgipkg / mingw Windows cross-compile; replaced by 5.6
