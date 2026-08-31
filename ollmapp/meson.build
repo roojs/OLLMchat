@@ -193,7 +193,6 @@ if get_option('android_poc') and host_machine.system() == 'android'
     # ocwebkit-meson.vapi (same pattern as libocwebkit/examples).
     # Do not add --pkg=webkitgtk-android-1: android_poc_deps already lists it.
     vala_args: [
-      '--define=OLLM_ANDROID',
       '--pkg=gtk4',
       '--pkg=libadwaita-1',
       '--pkg=gtksourceview-5',

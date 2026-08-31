@@ -226,7 +226,7 @@ namespace OLLMapp.SettingsDialog
 					api_key = api_key
 				};
 
-#if OLLM_ANDROID
+#if ANDROID
 				AndroidConnectionConfigTls.apply_to_connection (connection);
 #endif
 

@@ -204,6 +204,9 @@ namespace OLLMapp.SettingsDialog
 			this.add(page);
 			
 			this.search_results = new OLLMchat.Settings.SearchResults(this.dialog.app.data_dir);
+#if ANDROID
+			AndroidConnectionTls.apply_to_session(this.search_results.session.soup);
+#endif
 			this.closed.connect(() => {
 				this.search_results.cancel();
 			});

@@ -27,6 +27,17 @@ namespace OllamaWeb.Search
 		private Parser parser { get; set; default = new Parser(); }
 
 		/**
+		 * HTTP session for ollama.com catalog requests.
+		 *
+		 * Same instance as {@link Client.soup}.
+		 */
+		public Soup.Session soup {
+			get {
+				return this.client.soup;
+			}
+		}
+
+		/**
 		 * Run a catalog search: popular + newest pages merged by slug.
 		 *
 		 * When {@link page} is set, fetch and parse that page only and do not

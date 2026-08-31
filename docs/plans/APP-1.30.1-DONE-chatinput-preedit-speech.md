@@ -2,11 +2,11 @@
 
 > **Do not update `docs/plans/APP-1.0-summary.md` for this plan until it is done and archived.**
 
-**Status:** agent ✔️ (chrome-during-preedit still ⏳)
+**Status:** ✅ done — composer grows during IME / Sherpa ONNX preedit (`libollmchatgtk/ChatInput.vala`).
 
 **Parent:** [`APP-1.30-chat-input-composer.md`](APP-1.30-chat-input-composer.md)
 
-**Related:** [`APP-6.2-speech-to-text.md`](APP-6.2-speech-to-text.md) — STT engine / mic button (not this plan).
+**Related:** [`APP-6.2-speech-to-text.md`](APP-6.2-speech-to-text.md) — composer mic starts Sherpa ONNX listen (not this plan).
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows `docs/coding-standards.md`
 
@@ -14,12 +14,12 @@
 
 ## Purpose
 
-- **🔷** OS speech-to-text (and any IME composing text) into the composer `Gtk.TextView` must grow the field as the utterance wraps.
-- **🔷** Wire this in the `ChatInput` constructor. `ScrolledView` already owns height via `queue_fit()`.
-- **🔷** `✔️` Call `this.scrolled.queue_fit()` when preedit changes so height refits without waiting for `buffer.changed`.
+- **🔷** `✅` OS speech-to-text (and any IME composing text) into the composer `Gtk.TextView` must grow the field as the utterance wraps.
+- **🔷** `✅` Wire this in the `ChatInput` constructor. `ScrolledView` already owns height via `queue_fit()`.
+- **🔷** `✅` Call `this.scrolled.queue_fit()` when preedit changes so height refits without waiting for `buffer.changed`.
 - **ℹ️** Preedit is not in `Gtk.TextBuffer` until commit. `ScrolledView` only auto-fits on `buffer.changed`.
-- **💩** `✔️` Use `Gtk.TextView.preedit_changed` (existing IM). Do not add a second `Gtk.IMMulticontext`.
-- **💩** `✔️` Track `has_preedit` so the placeholder does not bounce back on the idle `lines_changed(0)` from an empty buffer.
+- **💩** `✅` Use `Gtk.TextView.preedit_changed` (existing IM). Do not add a second `Gtk.IMMulticontext`.
+- **💩** `✅` Track `has_preedit` so the placeholder does not bounce back on the idle `lines_changed(0)` from an empty buffer.
 
 ---
 
@@ -36,7 +36,7 @@
 - **🔷** During composing, composer height follows layout (`queue_fit` → yrange).
 - **💩** Placeholder hides while `has_preedit` is true, even if `lines == 0`.
 - **💩** Compact chrome (side play) stays until the buffer has committed text. Height may still grow beside the play button.
-- **💩** `⏳` Confirm in review: also move play to the footer while wrapping preedit (empty buffer, `lines` still 0). No fences until yes.
+- **🚫** Move play to the footer while wrapping preedit (empty buffer, `lines` still 0). User: height already works; no extra chrome.
 
 Intro: edits are **Remove** / **Replace with** / **Add** from the tree;
 verify surrounding context before applying.
@@ -106,4 +106,5 @@ verify surrounding context before applying.
 - **🚫** `retrieve_surrounding` (TextView already owns IM).
 - **🚫** `widget == null` / `scrolled == null` guards. `ChatInput` owns these.
 - **🚫** New methods (`on_preedit_changed`, helpers).
-- **🚫** Change `ScrolledView` or the Ctrl+Enter key controller unless review promotes chrome-during-preedit.
+- **🚫** Change `ScrolledView` or the Ctrl+Enter key controller.
+- **🚫** Move play to the footer during wrapping preedit (user: height already works).

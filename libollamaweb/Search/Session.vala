@@ -51,6 +51,19 @@ namespace OllamaWeb.Search
 		};
 
 		private Service service { get; set; default = new Service(); }
+
+		/**
+		 * HTTP session for ollama.com catalog requests.
+		 *
+		 * Same instance as {@link Client.soup}. On Android, the app applies
+		 * bundled CA trust to this session when Add Model is constructed.
+		 */
+		public Soup.Session soup {
+			get {
+				return this.service.soup;
+			}
+		}
+
 		private Gee.HashMap<string, OllamaWeb.Model> result_rows {
 			get; set; default = new Gee.HashMap<string, OllamaWeb.Model>();
 		}

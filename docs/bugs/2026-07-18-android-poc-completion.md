@@ -50,6 +50,22 @@
 
 ---
 
+### S1 — Settings tab order (Models first)
+
+**Status:** ⏳ OPEN — Connections is first; user wants Models first
+
+**Detail:** [`2026-08-31-android-settings-tab-order.md`](2026-08-31-android-settings-tab-order.md)
+
+---
+
+### S2 — Add Model search empty (TLS)
+
+**Status:** ✔️ applied (`apply_to_session` on catalog soup) — await user ✅ after APK rebuild
+
+**Detail:** [`2026-08-31-android-add-model-search-tls.md`](2026-08-31-android-add-model-search-tls.md)
+
+---
+
 ### U6 — Global copy button
 
 **Status:** ⏳ 🔷 open — “Copy output” at end of completed chat cycles  
@@ -68,8 +84,10 @@ Tracked under plans, not here:
 
 ## Suggested order
 
-1. **C1** — device verify FGS
-2. **U6** — global copy
-3. **T1** — when it regresses badly
+1. **S2** — Add Model search TLS
+2. **S1** — Settings Models-first tab order
+3. **C1** — device verify FGS
+4. **U6** — global copy
+5. **T1** — when it regresses badly
 4. 🚫 **IME-3** — passed over (GTK Knowles)
 5. **W / F1** — feature track (may need shared-code approval)

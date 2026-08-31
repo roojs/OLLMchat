@@ -26,7 +26,7 @@ Follow [gtk-android-builder#20](https://github.com/sp1ritCS/gtk-android-builder/
 | Layer | What we do |
 |-------|------------|
 | **TLS backend** | Static **glib-networking** OpenSSL: link `gioopenssl` into the app and call `g_io_openssl_load(NULL)` before any network I/O. |
-| **CA trust** | Ship `ca-certificates.crt` in APK assets; set `GTlsFileDatabase` on each `Soup.Session` from the extracted path. |
+| **CA trust** | Ship `ca-certificates.crt` in APK assets; set `GTlsFileDatabase` on each `Soup.Session` from the extracted path (`AndroidConnectionTls.apply_to_session`: connections, tools, Add Model catalog search). |
 
 No `libgioopenssl.so` in assets. No `GIO_MODULE_DIR`. No `g_setenv` for TLS or CA paths.
 

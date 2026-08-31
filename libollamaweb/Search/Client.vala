@@ -18,7 +18,13 @@ namespace OllamaWeb.Search
 		public const string USER_AGENT =
 			"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-		private Soup.Session session { get; set; default = new Soup.Session(); }
+		/**
+		 * HTTP session for ollama.com catalog requests.
+		 *
+		 * On Android, the app applies bundled CA trust to this session when
+		 * Add Model is constructed.
+		 */
+		public Soup.Session soup { get; set; default = new Soup.Session(); }
 
 		public async string fetch_path(string path, GLib.Cancellable? cancellable = null) throws Error, GLib.IOError, GLib.Error
 		{
@@ -27,7 +33,7 @@ namespace OllamaWeb.Search
 			var message = new Soup.Message("GET", url);
 			message.request_headers.append("User-Agent", USER_AGENT);
 			try {
-				var bytes = yield this.session.send_and_read_async(
+				var bytes = yield this.soup.send_and_read_async(
 					message,
 					GLib.Priority.DEFAULT,
 					cancellable
