@@ -509,6 +509,9 @@ namespace OLLMrpc
 						break;
 					}
 					var created = (GLib.Object) ret.v_pointer;
+					if (created == null) {
+						break;
+					}
 					if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(created.get_type())) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);

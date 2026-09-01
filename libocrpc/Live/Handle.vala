@@ -29,7 +29,7 @@ namespace OLLMrpc.Live
 	 *         if (this.rpc_lid != 0) {
 	 *             return;
 	 *         }
-	 *         // else create remote peer and set rpc_lid / qdata
+	 *         // else create remote peer and set rpc_lid
 	 *     }
 	 * }
 	 * }}}

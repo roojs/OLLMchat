@@ -123,9 +123,8 @@ namespace OLLMrpcTests
 					"proxy is not retval");
 				lease_id = (uint64) id;
 			}
-			var live_obj = response.retval.get_object();
-			void* stamped = live_obj.get_data("rpc-lid");
-			this.check(command_line, stamped == (void*) lease_id, "proxy missing lease qdata");
+			var live_obj = (OLLMrpc.Live.Handle) response.retval.get_object();
+			this.check(command_line, live_obj.rpc_lid == lease_id, "proxy missing rpc_lid");
 			response = null;
 			var items_loop = new GLib.MainLoop();
 			rpc.call.begin(new OLLMrpc.Request() {
@@ -238,12 +237,12 @@ namespace OLLMrpcTests
 			this.check(command_line, response.retval.get_object().get_type() == typeof(TestActor),
 				"actors stub is not Test-Actor");
 			var actor = response.retval.get_object();
-			void* actor_stamp = actor.get_data("rpc-lid");
-			this.check(command_line, actor_stamp != null, "actors handle is 0");
+			var actor_handle = (OLLMrpc.Live.Handle) actor;
+			this.check(command_line, actor_handle.rpc_lid != 0, "actors handle is 0");
 			this.check(command_line,
-				rpc.proxies.has_key((int) (uint64) actor_stamp)
-					&& rpc.proxies.get((int) (uint64) actor_stamp) == actor,
-				"actors proxy missing lease qdata");
+				rpc.proxies.has_key((int) actor_handle.rpc_lid)
+					&& rpc.proxies.get((int) actor_handle.rpc_lid) == actor,
+				"actors proxy missing rpc_lid");
 			rpc.disconnect();
 			listen.stop();
 		}

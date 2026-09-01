@@ -593,10 +593,8 @@ The GIR C return lives here (scalar, boxed, utf8 `string[]`, one GObject, or obj
 
 Client `parse_object` constructs the proxy with
 `GLib.Object.new(type, "rpc-lid", handle)` (live types implement
-`OLLMrpc.Live.Handle`) then stamps that handle as qdata
-`set_data("rpc-lid", (void*) handle)`. Consumers read
-`(uint64) get_data("rpc-lid")`. `Client.proxies` remains the
-notify table.
+`OLLMrpc.Live.Handle`). Consumers read `Handle.rpc_lid`.
+`Client.proxies` remains the notify table.
 
 **Decode:** property absent → `INVALID`. List methods treat `INVALID` as empty. One-object methods treat `INVALID` as no row.
 

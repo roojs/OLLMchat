@@ -1,6 +1,9 @@
 # RPC-1.6 — Live decode: `Live.Handle` + construct `rpc-lid`
 
 > Landed. Index: [`RPC-1.0-summary.md`](../RPC-1.0-summary.md).
+>
+> **Follow-up:** RPC-1.3 qdata `set_data("rpc-lid")` removed — lease is
+> only {@link Live.Handle.rpc_lid} / construct ''rpc-lid''.
 
 **Status:** **✔️** **done** — `libocrpc/Live/Handle.vala`, `libocrpc/Bin/Stream.vala` live `Object.new(..., "rpc-lid", handle)`, `tests/rpc/gi-test.vala` Handle stubs.
 
