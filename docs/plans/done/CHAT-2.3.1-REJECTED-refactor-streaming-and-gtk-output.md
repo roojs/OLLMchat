@@ -1,5 +1,9 @@
 # 2.3.1. Refactor Command Output to Markdown Code Blocks
 
+> Rejected. Index: [`CHAT-1.0-summary.md`](../CHAT-1.0-summary.md).
+
+**Status:** **REJECTED** — old design (accumulate then one markdown blob). GTK `RequestRunCommand` copies are already gone; current `RunCommand` is live-tail + bwrap + spill. Archived 2026-09-01.
+
 ## Overview
 
 Refactor `RequestRunCommand` to remove GTK dependency by using markdown code blocks for command output display. This eliminates the need for separate GTK versions and uses the existing markdown renderer.

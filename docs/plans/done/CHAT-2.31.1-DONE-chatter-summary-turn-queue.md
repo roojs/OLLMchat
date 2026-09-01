@@ -1,11 +1,11 @@
 # 2.31.1 — Chatter summary turn queue (promise FIFO)
 
-> **Do not update `docs/plans/CHAT-1.0-summary.md` for this plan.**
+> Landed. Index: [`CHAT-1.0-summary.md`](../CHAT-1.0-summary.md).
 
-**Status:** ⏳ awaiting user verify — Phases 0–2 ✔️ in tree; Phases 3–4 🚫 not approved
+**Status:** **DONE** — Phases 0–2 FIFO queue in `Chatter.Agent` / `PendingMessage`. Phases 3–4 were never approved. Archived 2026-09-01.
 
 **Hang after summary:** investigate / fix as a bug (message-stream UX), not this plan —
-[`docs/bugs/done/2026-07-14-FIXED-chatter-summary-hang.md`](../bugs/done/2026-07-14-FIXED-chatter-summary-hang.md)
+[`docs/bugs/done/2026-07-14-FIXED-chatter-summary-hang.md`](../../bugs/done/2026-07-14-FIXED-chatter-summary-hang.md)
 (debug process; summarize must not use `ui-waiting` / Stop mode — use `summary`
 on the message stream; input stays open).
 
@@ -15,11 +15,11 @@ follows `docs/coding-standards.md` via `docs/coding-standards-router.md`
 `gee-arraylist-access`, `property-initialization`, `docblocks`,
 `reducing-nesting`, `switch-case`, `string-interpolation`, `debug-warning-statements`).
 
-**Parent:** [`CHAT-2.31-just-ask-summary-history.md`](CHAT-2.31-just-ask-summary-history.md)
+**Parent:** [`CHAT-2.31-DONE-just-ask-summary-history.md`](CHAT-2.31-DONE-just-ask-summary-history.md)
 
 **Related:**
 
-- ℹ️ [`done/2.10.4.28-DONE-rpc-client-write-queue.md`](done/2.10.4.28-DONE-rpc-client-write-queue.md)
+- ℹ️ [`2.10.4.28-DONE-rpc-client-write-queue.md`](2.10.4.28-DONE-rpc-client-write-queue.md)
   — `PendingWrite` + `Gee.Promise` precedent (`OLLMrpc.Client`)
 - ℹ️ `liboctools/HuggingFace/Request.vala` calls `yield rpc.call(…)` — inherits RPC queue
 

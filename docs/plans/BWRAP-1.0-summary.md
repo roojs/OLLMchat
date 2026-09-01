@@ -7,5 +7,7 @@
 ## Current
 
 - [BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)
-- [BWRAP-2.22.1.5-seccomp-fs-appendix-bwrap-namespace-setup.md](BWRAP-2.22.1.5-seccomp-fs-appendix-bwrap-namespace-setup.md)
-- [BWRAP-5.3-agent-sandbox.md](BWRAP-5.3-agent-sandbox.md)
+
+## Done
+
+- [BWRAP-2.22.1.5-DONE-seccomp-fs-appendix-bwrap-namespace-setup.md](done/BWRAP-2.22.1.5-DONE-seccomp-fs-appendix-bwrap-namespace-setup.md) — omit bwrap namespace-setup opens from seccomp fs appendix (`libocbwrap/RunSeccomp.vala`)

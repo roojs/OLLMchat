@@ -15,6 +15,7 @@
 - [CODER-4.2.1-tree-navigation-filedropdown.md](CODER-4.2.1-tree-navigation-filedropdown.md)
 - [CODER-4.2.2-code-editor-manager-tool.md](CODER-4.2.2-code-editor-manager-tool.md)
 - [CODER-4.7-rules-system.md](CODER-4.7-rules-system.md)
+- [CODER-5.3-agent-sandbox.md](CODER-5.3-agent-sandbox.md)
 - [CODER-6.0-unified-task-file-format.md](CODER-6.0-unified-task-file-format.md)
 - [CODER-6.1-agent-pi.md](CODER-6.1-agent-pi.md)
 - [CODER-6.1.1-pi-agent.md](CODER-6.1.1-pi-agent.md)

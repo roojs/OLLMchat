@@ -1,8 +1,8 @@
 # 1.22. Generate — Consider Message as argument (simplify code e.g. images)
 
-## Status
+> Rejected. Index: [`CHAT-1.0-summary.md`](../CHAT-1.0-summary.md).
 
-⏳ **PENDING**
+**Status:** **REJECTED** — ImageAnalyzer uses `Call.Chat`; no remaining Generate-with-images caller. Archived 2026-09-01.
 
 ## Purpose
 

@@ -7,7 +7,7 @@
 
 **Related:**
 
-- ℹ️ [`docs/plans/CHAT-2.31.1-chatter-summary-turn-queue.md`](../plans/CHAT-2.31.1-chatter-summary-turn-queue.md)
+- ℹ️ [`docs/plans/done/CHAT-2.31.1-DONE-chatter-summary-turn-queue.md`](../plans/done/CHAT-2.31.1-DONE-chatter-summary-turn-queue.md)
   — queue design (separate); hang is UI, not promise deadlock
 - ℹ️ Log: `~/.cache/ollmchat/ollmchat.debug.log`
 

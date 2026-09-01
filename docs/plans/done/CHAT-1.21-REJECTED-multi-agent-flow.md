@@ -1,8 +1,8 @@
 # 1.21. Multi-Agent Flow
 
-## Status
+> Rejected. Index: [`CHAT-1.0-summary.md`](../CHAT-1.0-summary.md).
 
-⏳ **NOT STARTED**
+**Status:** **REJECTED** — title is multi-agent flow; body is configurable `plans_directory` / `create_plan` workflow conversion. Deprecated. Archived 2026-09-01.
 
 ## Overview
 

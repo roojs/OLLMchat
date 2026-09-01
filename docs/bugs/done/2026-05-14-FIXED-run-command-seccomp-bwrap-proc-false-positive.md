@@ -8,7 +8,7 @@
 
 **Related plan (fix):**
 
-- **`../plans/BWRAP-2.22.1.5-seccomp-fs-appendix-bwrap-namespace-setup.md`**
+- **`../plans/done/BWRAP-2.22.1.5-DONE-seccomp-fs-appendix-bwrap-namespace-setup.md`**
 
 ---
 
@@ -57,7 +57,7 @@ After a **`run_command`** run under bubblewrap, the tool output can append a **s
 
 - **Root cause:** seccomp fs evidence treats **all** qualifying **`openat`** events the same; **bubblewrap namespace setup** is included in the same bucket as **wrapped command** file activity.
 - **Ruled out:** `date` itself needing those paths for normal operation; the interesting syscalls are from **`bwrap`** (see plan for PID / **`exe`** attribution).
-- **Fix:** implemented per **`../plans/BWRAP-2.22.1.5-seccomp-fs-appendix-bwrap-namespace-setup.md`**; archived under **`docs/bugs/done/`**.
+- **Fix:** implemented per **`../plans/done/BWRAP-2.22.1.5-DONE-seccomp-fs-appendix-bwrap-namespace-setup.md`**; archived under **`docs/bugs/done/`**.
 
 ---
 

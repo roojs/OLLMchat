@@ -591,6 +591,11 @@ Optional typed return on **`OLLMrpc.Response.retval`** (`GLib.Value`), encoded w
 
 The GIR C return lives here (scalar, boxed, utf8 `string[]`, one GObject, or object list). A number or string uses the same `StreamValue` encoding as `args` elements. Empty utf8 `string[]` is a boxed array, not omit. **One GObject**: bare `OBJECT`. **N GObjects**: `typeof(Gee.ArrayList)` → object array `0xD0`, including when `size == 1`. Live-handle bodies follow `StreamValue` / `parse_object`.
 
+Client `parse_object` stamps that handle on the proxy with typed qdata
+`set_data<ulong>("ollmrpc-lease-id", handle)`. Consumers read
+`get_data<ulong>("ollmrpc-lease-id")`. `Client.proxies` remains the
+notify table.
+
 **Decode:** property absent → `INVALID`. List methods treat `INVALID` as empty. One-object methods treat `INVALID` as no row.
 
 See `libocrpc/Response.vala`, `libocrpc/Bin/StreamValue.vala`.

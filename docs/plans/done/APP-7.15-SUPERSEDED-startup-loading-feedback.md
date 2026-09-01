@@ -1,6 +1,8 @@
 # 7.15 Startup loading feedback (spinner vs blank main pane)
 
-**Status:** proposed — analysis and **proposed** changes only (**⏳** no implementation in this task)
+> Landed (superseded). Index: [`APP-1.0-summary.md`](../APP-1.0-summary.md).
+
+**Status:** **SUPERSEDED** — `CheckingConnectionDialog` is gone. `BusyDialog` already covers the full `Initialize.run()` path with phase labels. Archived 2026-09-01.
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Concrete code proposals**, **Keep** / **Remove** / **Replace with** / **Add**; **Discussion style (emoji prefixes)** for non-fence sections.
 

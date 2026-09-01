@@ -1,12 +1,12 @@
 # 1.30.1 — ChatInput OS speech / IME preedit height
 
-> **Do not update `docs/plans/APP-1.0-summary.md` for this plan until it is done and archived.**
+> Landed. Index: [`APP-1.0-summary.md`](../APP-1.0-summary.md).
 
-**Status:** ✅ done — composer grows during IME / Sherpa ONNX preedit (`libollmchatgtk/ChatInput.vala`).
+**Status:** **DONE** — composer grows during IME / Sherpa ONNX preedit (`libollmchatgtk/ChatInput.vala`). Archived 2026-09-01.
 
-**Parent:** [`APP-1.30-chat-input-composer.md`](APP-1.30-chat-input-composer.md)
+**Parent:** [`APP-1.30-DONE-chat-input-composer.md`](APP-1.30-DONE-chat-input-composer.md)
 
-**Related:** [`APP-6.2-speech-to-text.md`](APP-6.2-speech-to-text.md) — composer mic starts Sherpa ONNX listen (not this plan).
+**Related:** [`APP-6.2-speech-to-text.md`](../APP-6.2-speech-to-text.md) — composer mic starts Sherpa ONNX listen (not this plan).
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows `docs/coding-standards.md`
 

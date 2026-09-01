@@ -1,5 +1,7 @@
 # 5.3. Agent Sandbox
 
+> Prompt-experiment agent (`liboccoder`), not bubblewrap. Was `BWRAP-5.3`. Index: [`CODER-1.0-summary.md`](CODER-1.0-summary.md) is not updated until this plan is done.
+
 ## Overview
 
 A new agent for experimenting with system and user message prompts. It provides two editable prompt templates (system and user wrapper), a test harness to run them against an LLM, and a dedicated chat mode where the LLM acts as a "prompt creator" that can modify both prompts via a structured output format.

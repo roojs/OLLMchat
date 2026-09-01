@@ -1,5 +1,9 @@
 # 5.1. Planning Modes
 
+> Rejected. Index: [`APP-1.0-summary.md`](../APP-1.0-summary.md).
+
+**Status:** **REJECTED** — sketch (ask / plan / do / agent modes + orchestrator). Occupied by skills conductor (`CODER-1.23`) and iterate (`CODER-7.16`). Archived 2026-09-01.
+
 ## Overview
 
 Different planning modes for the chat: ask mode, planning mode, do stuff mode, and agent mode.

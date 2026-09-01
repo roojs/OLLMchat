@@ -7,7 +7,7 @@
 
 **Related:**
 
-- ℹ️ Plan: `docs/plans/APP-1.30-chat-input-composer.md`
+- ℹ️ Plan: `docs/plans/done/APP-1.30-DONE-chat-input-composer.md`
 - ✔️ `libollmchatgtk/ScrolledView.vala` — app-owned scroll shell
 - ✔️ `libollmchatgtk/ChatInput.vala` — compact/expanded; height via `scrolled`
 - ✔️ `ChatWidget` sets `chat_input.scrolled.max_height`

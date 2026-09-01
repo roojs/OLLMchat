@@ -1,5 +1,9 @@
 # 1.3.9. Agent Configuration and Window State
 
+> Landed (superseded). Index: [`APP-1.0-summary.md`](../APP-1.0-summary.md).
+
+**Status:** **SUPERSEDED** — window / project / file persistence shipped as `Config2.windows` in [`2.10.4.7-DONE-active-project-file-outside-db.md`](2.10.4.7-DONE-active-project-file-outside-db.md), not on agent config. Agents settings page was never started. Archived 2026-09-01.
+
 ## Overview
 
 Implement agent configuration system in Config2, similar to how tools are configured. This includes:

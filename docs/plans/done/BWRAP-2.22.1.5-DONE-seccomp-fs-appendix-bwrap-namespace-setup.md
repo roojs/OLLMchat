@@ -1,6 +1,10 @@
 # 2.22.1.5 Seccomp fs appendix: omit bubblewrap namespace-setup opens
 
-**Parent:** [2.22.1.4](./done/2.22.1.4-DONE-seccomp-write-paths-and-followups.md) · **Bug:** [2026-05-14](../bugs/done/2026-05-14-FIXED-run-command-seccomp-bwrap-proc-false-positive.md) · **Status:** proposed · **Standards:** [docs/coding-standards.md](../coding-standards.md)
+> Landed. Index: [`BWRAP-1.0-summary.md`](../BWRAP-1.0-summary.md).
+
+**Status:** **DONE** — filter is in `libocbwrap/RunSeccomp.vala` (ignore `uid_map` / `gid_map` / `setgroups` when opener exe is bwrap). Plan hunks targeted deleted `liboctools/RunCommand` paths; do not apply them. Archived 2026-09-01.
+
+**Parent:** [2.22.1.4](2.22.1.4-DONE-seccomp-write-paths-and-followups.md) · **Bug:** [2026-05-14](../../bugs/done/2026-05-14-FIXED-run-command-seccomp-bwrap-proc-false-positive.md) · **Standards:** [docs/coding-standards.md](../../coding-standards.md)
 
 ---
 

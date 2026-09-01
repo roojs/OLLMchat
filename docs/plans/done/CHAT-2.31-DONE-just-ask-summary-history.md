@@ -1,6 +1,8 @@
 # 2.31. Chatter agent — summarized history and recall links
 
-Status: ⏳ in progress (Phase 1–2 landed; Phase 3 wiring + UI outstanding)
+> Landed. Index: [`CHAT-1.0-summary.md`](../CHAT-1.0-summary.md).
+
+**Status:** **DONE** — `OLLMchat.Chatter` (`Factory` registered in `ollmapp/ChatUserInterface.vala`), `session_fetch`, summary frames. Archived 2026-09-01.
 
 ℹ️ Plan checklist: `docs/guide-to-writing-plans.md` — Checklist for plans.
 Vala code must follow `docs/coding-standards.md`. Plan layout and

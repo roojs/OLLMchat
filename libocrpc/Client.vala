@@ -124,6 +124,13 @@ namespace OLLMrpc
 		 * {@link Notification.message}. Unbound ids still emit
 		 * {@link notification}.
 		 *
+		 * {@link Bin.Stream.parse_object} also inserts the decoded
+		 * proxy here and stamps the handle on the object as GObject
+		 * qdata key ''ollmrpc-lease-id'' as ''ulong'' via typed
+		 * {@link GLib.Object.set_data}. This map stays the notify
+		 * table; qdata is for callers that hold the object without
+		 * walking keys.
+		 *
 		 * == Example ==
 		 *
 		 * {{{

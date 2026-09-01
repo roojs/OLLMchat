@@ -9,7 +9,7 @@ Status: proposed
 Proposed Vala code must follow `docs/coding-standards.md`. Plan layout and
 implementation workflow: `docs/guide-to-writing-plans.md`.
 
-ℹ️ Builds on **`docs/plans/CHAT-2.31-just-ask-summary-history.md`** (Chatter agent,
+ℹ️ Builds on **`docs/plans/done/CHAT-2.31-DONE-just-ask-summary-history.md`** (Chatter agent,
 `summary` role, `session_fetch`, summarizer contract).
 
 ## Purpose

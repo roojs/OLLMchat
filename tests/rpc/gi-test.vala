@@ -114,6 +114,11 @@ namespace OLLMrpcTests
 				);
 				lease_id = (uint64) id;
 			}
+			this.check(
+				command_line,
+				response.retval.get_object().get_data<ulong>("ollmrpc-lease-id") == lease_id,
+				"proxy missing lease qdata"
+			);
 			response = null;
 			var items_loop = new GLib.MainLoop();
 			rpc.call.begin(new OLLMrpc.Request() {

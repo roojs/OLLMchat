@@ -1,8 +1,8 @@
 # 1.30 — Chat input composer (compact → expand)
 
-> **Do not update `docs/plans/APP-1.0-summary.md` for this plan until it is done and archived.**
+> Landed. Index: [`APP-1.0-summary.md`](../APP-1.0-summary.md).
 
-**Status:** proposed
+**Status:** **DONE** — compact → expand composer in `libollmchatgtk/ChatInput.vala` / `ChatBar.vala` / `ChatWidget.vala`. Archived 2026-09-01.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 

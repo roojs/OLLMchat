@@ -7,8 +7,8 @@
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows `docs/coding-standards.md`
 
 **Related:**
-- [`APP-1.30.1-DONE-chatinput-preedit-speech.md`](APP-1.30.1-DONE-chatinput-preedit-speech.md) — `✅` composer already grows on IME / Sherpa ONNX preedit
-- [`APP-1.30-chat-input-composer.md`](APP-1.30-chat-input-composer.md) — compact play on the right; expanded play on `ChatBar`
+- [`APP-1.30.1-DONE-chatinput-preedit-speech.md`](done/APP-1.30.1-DONE-chatinput-preedit-speech.md) — `✅` composer already grows on IME / Sherpa ONNX preedit
+- [`APP-1.30-DONE-chat-input-composer.md`](done/APP-1.30-DONE-chat-input-composer.md) — compact play on the right; expanded play on `ChatBar`
 
 **ℹ️** Product: **Sherpa ONNX**. Package/repo [`ibus-sherpa-onnx`](https://github.com/roojs/ibus-sherpa-onnx). Engine ids `sherpa-onnx` / `sherpa-onnx-*`. IBus longname `Sherpa ONNX`.
 
