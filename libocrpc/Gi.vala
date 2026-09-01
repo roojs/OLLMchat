@@ -47,6 +47,14 @@ namespace OLLMrpc
 		public static Gee.HashMap<string, GLib.Type> types;
 
 		/**
+		 * Typelib namespace names from {@link register} (''Clutter'', ''Meta'').
+		 *
+		 * Bare wire prefix ''Clutter.get_default_text_direction'' looks up
+		 * here; object aliases stay in {@link types} (''Clutter-Actor'').
+		 */
+		public static Gee.ArrayList<string> namespaces;
+
+		/**
 		 * Inbound call this instance applies. Owner of method / args /
 		 * connection — not copied onto {@link Gi}.
 		 */
@@ -123,6 +131,9 @@ namespace OLLMrpc
 		 * Alias is ''ns-Name'' (hyphen, same style as ''RPC-Live-Remote'').
 		 * Skips infos that are not objects or interfaces, or have no GType.
 		 * A second register of the same alias is a no-op.
+		 * Also records ''ns'' in {@link namespaces} so bare
+		 * ''Clutter.fn'' / ''Meta.fn'' dispatch to typelib namespace
+		 * functions.
 		 *
 		 * @param ns typelib namespace (''Gio'', ''Meta'')
 		 * @param version typelib version (''2.0'', ''16'')
@@ -132,6 +143,12 @@ namespace OLLMrpc
 		{
 			if (types == null) {
 				types = new Gee.HashMap<string, GLib.Type>();
+			}
+			if (namespaces == null) {
+				namespaces = new Gee.ArrayList<string>();
+			}
+			if (!namespaces.contains(ns)) {
+				namespaces.add(ns);
 			}
 			GI.Repository.get_default().require(ns, version, 0);
 			var n = GI.Repository.get_default().get_n_infos(ns);
@@ -159,12 +176,13 @@ namespace OLLMrpc
 		/**
 		 * Find the typelib callable and route it.
 		 *
-		 * Prefix must be in {@link types}. Looks up
-		 * {@link GI.ObjectInfo.find_method} for the wire method name.
-		 * Constructors go to {@link dispatch_new}. Other callables
-		 * go to {@link dispatch_function}. Missing
-		 * method replies METHOD_NOT_FOUND. Prefix not in {@link types}
-		 * returns false so {@link Request.dispatch} can fall through.
+		 * Prefix in {@link types} → object/interface
+		 * {@link GI.ObjectInfo.find_method}. Prefix in {@link namespaces}
+		 * → {@link GI.Repository.find_by_name} for a namespace function.
+		 * Constructors go to {@link dispatch_new}. Other callables go to
+		 * {@link dispatch_function}. Missing method replies
+		 * METHOD_NOT_FOUND. Unknown prefix returns false so
+		 * {@link Request.dispatch} can fall through.
 		 *
 		 * @return true when this call was a GI path
 		 */
@@ -176,18 +194,32 @@ namespace OLLMrpc
 			var dot = this.request.method.index_of_char('.');
 			var object_name = this.request.method[0:dot];
 			var method_name = this.request.method.substring(dot + 1);
-			if (!types.has_key(object_name)) {
-				return false;
-			}
-			var info = GI.Repository.get_default().find_by_gtype(
-				types.get(object_name));
-			var fn = info.get_type() == GI.InfoType.INTERFACE
-				? ((GI.InterfaceInfo) info).find_method(method_name)
-				: ((GI.ObjectInfo) info).find_method(method_name);
-			if (fn == null) {
-				this.request.connection.reply_error(
-					this.request, (int) RpcErrorCode.METHOD_NOT_FOUND);
-				return true;
+			GI.FunctionInfo fn;
+			if (types.has_key(object_name)) {
+				var info = GI.Repository.get_default().find_by_gtype(
+					types.get(object_name));
+				if (info.get_type() == GI.InfoType.INTERFACE) {
+					fn = ((GI.InterfaceInfo) info).find_method(method_name);
+				} else {
+					fn = ((GI.ObjectInfo) info).find_method(method_name);
+				}
+				if (fn == null) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.METHOD_NOT_FOUND);
+					return true;
+				}
+			} else {
+				if (!namespaces.contains(object_name)) {
+					return false;
+				}
+				var info = GI.Repository.get_default().find_by_name(
+					object_name, method_name);
+				if (info == null || info.get_type() != GI.InfoType.FUNCTION) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.METHOD_NOT_FOUND);
+					return true;
+				}
+				fn = (GI.FunctionInfo) info;
 			}
 			this.skip_wire = new bool[fn.get_n_args()];
 			this.in_slot = new int[fn.get_n_args()];
@@ -290,11 +322,13 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Invoke a typelib method on a leased object.
+		 * Invoke a typelib callable (instance method or namespace function).
 		 *
-		 * Slot 0 is the instance. Remaining IN args use {@link convert}.
-		 * The C return uses {@link scalar} into {@link Response.retval}.
-		 * OUT / INOUT use {@link scalar} into {@link Response.args}.
+		 * When {@link GI.FunctionInfo.is_method}, slot 0 is the leased
+		 * instance. Namespace functions use no lease and start IN at 0.
+		 * Remaining IN args use {@link convert}. The C return uses
+		 * {@link scalar} into {@link Response.retval}. OUT / INOUT use
+		 * {@link scalar} into {@link Response.args}.
 		 *
 		 * @param fn non-constructor from {@link dispatch}
 		 * @return true — this method always replies
@@ -306,23 +340,22 @@ namespace OLLMrpc
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
 				return true;
 			}
-			if (this.request.lease_id == 0) {
-				this.request.connection.reply_error(
-					this.request, (int) RpcErrorCode.INVALID_PARAMS);
-				return true;
+			var instance = fn.is_method();
+			var id = 0;
+			if (instance) {
+				if (this.request.lease_id == 0) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return true;
+				}
+				id = (int) this.request.lease_id;
+				if (!this.request.connection.leases.has_key(id)) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.INVALID_PARAMS);
+					return true;
+				}
 			}
-			var id = (int) this.request.lease_id;
-			if (!this.request.connection.leases.has_key(id)) {
-				this.request.connection.reply_error(
-					this.request, (int) RpcErrorCode.INVALID_PARAMS);
-				return true;
-			}
-			if (!fn.is_method()) {
-				this.request.connection.reply_error(
-					this.request, (int) RpcErrorCode.INVALID_PARAMS);
-				return true;
-			}
-			var n_in = 1;
+			var n_in = instance ? 1 : 0;
 			var n_out = 0;
 			var n_values = 0;
 			for (var i = 0; i < fn.get_n_args(); i++) {
@@ -365,7 +398,9 @@ namespace OLLMrpc
 			this.boxed_keep.clear();
 			this.glist_keep = {};
 			this.gslist_keep = {};
-			this.in_args[0].v_pointer = (void*) this.request.connection.leases.get(id);
+			if (instance) {
+				this.in_args[0].v_pointer = (void*) this.request.connection.leases.get(id);
+			}
 			var out_i = 0;
 			var vi = 0;
 			for (var i = 0; i < fn.get_n_args(); i++) {
@@ -377,7 +412,7 @@ namespace OLLMrpc
 					continue;
 				}
 				if (arg.get_direction() != GI.Direction.OUT) {
-					if (!this.convert(arg, vi, 1)) {
+					if (!this.convert(arg, vi, instance ? 1 : 0)) {
 						return true;
 					}
 					vi++;

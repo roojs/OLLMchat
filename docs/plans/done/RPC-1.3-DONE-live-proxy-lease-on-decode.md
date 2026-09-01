@@ -12,7 +12,7 @@
 
 **Related (done track):** [`RPC-8.3-libocrpc-live-handles-and-signals.md`](RPC-8.3-libocrpc-live-handles-and-signals.md) / live handle wire format.
 
-**Follow-on:** live **write** key truncation — [`RPC-1.4-live-handle-write-lease-key.md`](../RPC-1.4-live-handle-write-lease-key.md).
+**Follow-on:** live **write** key truncation — [`RPC-1.4-DONE-live-handle-write-lease-key.md`](RPC-1.4-DONE-live-handle-write-lease-key.md).
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
@@ -38,7 +38,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 ## Out of scope (deferred)
 
 - **🚫** Prefer live-handle **write** over Serializable dump when already leased — not this cut.
-- **🚫** Live write `lease_ids` key truncation — [`RPC-1.4`](../RPC-1.4-live-handle-write-lease-key.md).
+- **🚫** Live write `lease_ids` key truncation — [`RPC-1.4`](RPC-1.4-DONE-live-handle-write-lease-key.md).
 - **🚫** JSON/HTTP live semantics; gnome-shell-rpc consumer edits.
 
 ---

@@ -1,14 +1,16 @@
 # RPC-1.4 — Live-handle write uses wrong lease_ids key (handle 0)
 
-> **`RPC-1.0-summary.md` is not updated until this plan is done and archived.**
+> Landed. Index: [`RPC-1.0-summary.md`](../RPC-1.0-summary.md).
 
-**Status:** **✔️** agent-done — awaiting user **✅**
+**Status:** **✔️** **done** — `libocrpc/Bin/StreamValue.vala`, `libocrpc/Live/Remote.vala`, `tests/rpc/gi-test.vala`.
 
-**Prefix:** `RPC` (`libocrpc`) · see [`RPC-1.0-summary.md`](RPC-1.0-summary.md)
+**Prefix:** `RPC` (`libocrpc`) · see [`RPC-1.0-summary.md`](../RPC-1.0-summary.md)
 
 **Unblocks:** gnome-shell-rpc nested boot — `RPC-Bootstrap.get_display` exports handle **3**, client receives **proxy[0]** / `rpc-lid=0` → `Meta-Display.get_context: no rpc-lid`.
 
-**Related:** [`done/RPC-1.3-DONE-live-proxy-lease-on-decode.md`](done/RPC-1.3-DONE-live-proxy-lease-on-decode.md) (decode stamp `rpc-lid` is fine; **write** is broken).
+**Related:** [`RPC-1.3-DONE-live-proxy-lease-on-decode.md`](RPC-1.3-DONE-live-proxy-lease-on-decode.md) (decode stamp `rpc-lid` is fine; **write** was broken).
+
+**Follow-on:** [`RPC-1.5-DONE-base-level-function-dispatch.md`](RPC-1.5-DONE-base-level-function-dispatch.md).
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 

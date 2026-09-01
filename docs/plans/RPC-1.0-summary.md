@@ -36,4 +36,6 @@
 - [RPC-8.5.4-DONE-rpc-retval-migrate.md](done/RPC-8.5.4-DONE-rpc-retval-migrate.md)
 - [RPC-1.2-DONE-rpc-scalar-retval.md](done/RPC-1.2-DONE-rpc-scalar-retval.md)
 - [RPC-1.3-DONE-live-proxy-lease-on-decode.md](done/RPC-1.3-DONE-live-proxy-lease-on-decode.md)
+- [RPC-1.4-DONE-live-handle-write-lease-key.md](done/RPC-1.4-DONE-live-handle-write-lease-key.md)
+- [RPC-1.5-DONE-base-level-function-dispatch.md](done/RPC-1.5-DONE-base-level-function-dispatch.md)
 - [RPC-8.6-URGENT-rpc-bin-learn-method-names.md](done/RPC-8.6-URGENT-rpc-bin-learn-method-names.md)
