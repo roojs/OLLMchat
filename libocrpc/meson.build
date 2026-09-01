@@ -88,7 +88,10 @@ ocrpc_core_src = files([
   'RpcErrorCode.vala',
 ])
 
-live_src = files(['Live/namespace.vala'])
+live_src = files([
+  'Live/namespace.vala',
+  'Live/Handle.vala',
+])
 if use_unix_sockets
   live_src += files([
     'Live/Buffer.vala',

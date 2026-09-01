@@ -177,12 +177,13 @@ namespace OLLMrpc
 		 * Find the typelib callable and route it.
 		 *
 		 * Prefix in {@link types} → object/interface
-		 * {@link GI.ObjectInfo.find_method}. Prefix in {@link namespaces}
-		 * → {@link GI.Repository.find_by_name} for a namespace function.
-		 * Constructors go to {@link dispatch_new}. Other callables go to
-		 * {@link dispatch_function}. Missing method replies
-		 * METHOD_NOT_FOUND. Unknown prefix returns false so
-		 * {@link Request.dispatch} can fall through.
+		 * {@link GI.ObjectInfo.find_method} (objects walk
+		 * {@link GI.ObjectInfo.get_parent}). Prefix in
+		 * {@link namespaces} → {@link GI.Repository.find_by_name} for a
+		 * namespace function. Constructors go to {@link dispatch_new}.
+		 * Other callables go to {@link dispatch_function}. Missing
+		 * method replies METHOD_NOT_FOUND. Unknown prefix returns false
+		 * so {@link Request.dispatch} can fall through.
 		 *
 		 * @return true when this call was a GI path
 		 */
@@ -201,7 +202,15 @@ namespace OLLMrpc
 				if (info.get_type() == GI.InfoType.INTERFACE) {
 					fn = ((GI.InterfaceInfo) info).find_method(method_name);
 				} else {
-					fn = ((GI.ObjectInfo) info).find_method(method_name);
+					var obj_info = (GI.ObjectInfo) info;
+					fn = obj_info.find_method(method_name);
+					while (fn == null) {
+						obj_info = obj_info.get_parent();
+						if (obj_info == null) {
+							break;
+						}
+						fn = obj_info.find_method(method_name);
+					}
 				}
 				if (fn == null) {
 					this.request.connection.reply_error(

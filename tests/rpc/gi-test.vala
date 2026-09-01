@@ -6,12 +6,23 @@
 
 namespace OLLMrpcTests
 {
-	public class TestActor : GLib.Object
+	public class TestActor : GLib.Object, OLLMrpc.Live.Handle
 	{
+		public uint64 rpc_lid { get; set construct; default = 0; }
 	}
 
 	public class TestActorX11 : TestActor
 	{
+	}
+
+	public class TestMenu : GLib.Object, OLLMrpc.Live.Handle
+	{
+		public uint64 rpc_lid { get; set construct; default = 0; }
+	}
+
+	public class TestFile : GLib.Object, OLLMrpc.Live.Handle
+	{
+		public uint64 rpc_lid { get; set construct; default = 0; }
 	}
 }
 
@@ -61,14 +72,15 @@ namespace OLLMrpcTests
 
 		protected override void run_rpc_test(ApplicationCommandLine command_line) throws Error
 		{
+			OLLMrpc.Bin.register("Gio-Menu", typeof(TestMenu));
+			OLLMrpc.Bin.register("Gio-File", typeof(TestFile));
 			OLLMrpc.Gi.register("Gio", "2.0");
+			OLLMrpc.Bin.register_alias("Gio-Menu", GLib.Type.from_name("GMenu"));
+			OLLMrpc.Bin.register_alias("Gio-File", GLib.File.new_for_path("/").get_type());
 			OLLMrpc.Bin.register("Test-Actor", typeof(TestActor));
 			OLLMrpc.Bin.register_alias("Test-Actor", typeof(TestActorX11));
 			RpcDummy.Hello.rpc_register();
-			OLLMrpc.Request.register(
-				"RPC-Daemon",
-				new RpcDummy.Hello()
-			);
+			OLLMrpc.Request.register("RPC-Daemon", new RpcDummy.Hello());
 			var dir = GLib.DirUtils.make_tmp("ocrpc-gi-XXXXXX");
 			var sock = GLib.Path.build_filename(dir, "rpc.sock");
 			var listen = new OLLMrpc.Transport.SocketListen(sock) {
@@ -107,20 +119,13 @@ namespace OLLMrpcTests
 			var lease_id = (uint64) 0;
 			foreach (var id in rpc.proxies.keys) {
 				this.check(command_line, id != 0, "handle is 0");
-				this.check(
-					command_line,
-					rpc.proxies.get(id) == response.retval.get_object(),
-					"proxy is not retval"
-				);
+				this.check(command_line, rpc.proxies.get(id) == response.retval.get_object(),
+					"proxy is not retval");
 				lease_id = (uint64) id;
 			}
 			var live_obj = response.retval.get_object();
 			void* stamped = live_obj.get_data("rpc-lid");
-			this.check(
-				command_line,
-				stamped == (void*) lease_id,
-				"proxy missing lease qdata"
-			);
+			this.check(command_line, stamped == (void*) lease_id, "proxy missing lease qdata");
 			response = null;
 			var items_loop = new GLib.MainLoop();
 			rpc.call.begin(new OLLMrpc.Request() {
@@ -182,18 +187,12 @@ namespace OLLMrpcTests
 				throw read_error;
 			} catch (GLib.FileError e) {
 				this.check(command_line, e.message != "Internal error", "message is Internal error");
-				this.check(
-					command_line,
-					e.code != (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-					"gerror_code is INTERNAL_ERROR"
-				);
+				this.check(command_line, e.code != (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+					"gerror_code is INTERNAL_ERROR");
 			} catch (GLib.IOError e) {
 				this.check(command_line, e.message != "Internal error", "message is Internal error");
-				this.check(
-					command_line,
-					e.code != (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-					"gerror_code is INTERNAL_ERROR"
-				);
+				this.check(command_line, e.code != (int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+					"gerror_code is INTERNAL_ERROR");
 			} catch (GLib.Error e) {
 				this.check(command_line, false, "not a file/I/O error: " + e.message);
 			}
@@ -216,11 +215,8 @@ namespace OLLMrpcTests
 			try {
 				throw params_error;
 			} catch (OLLMrpc.RpcErrorCode e) {
-				this.check(
-					command_line,
-					e.code == (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
-					"gerror_code is not INVALID_PARAMS"
-				);
+				this.check(command_line, e.code == (int) OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+					"gerror_code is not INVALID_PARAMS");
 			} catch (GLib.Error e) {
 				this.check(command_line, false, "not RpcErrorCode: " + e.message);
 			}
@@ -239,20 +235,15 @@ namespace OLLMrpcTests
 			actors_loop.run();
 			this.check(command_line, response.error == null, "actors returned error");
 			this.check(command_line, response.retval.type() != GLib.Type.INVALID, "actors returned no object");
-			this.check(
-				command_line,
-				response.retval.get_object().get_type() == typeof(TestActor),
-				"actors stub is not Test-Actor"
-			);
+			this.check(command_line, response.retval.get_object().get_type() == typeof(TestActor),
+				"actors stub is not Test-Actor");
 			var actor = response.retval.get_object();
 			void* actor_stamp = actor.get_data("rpc-lid");
 			this.check(command_line, actor_stamp != null, "actors handle is 0");
-			this.check(
-				command_line,
+			this.check(command_line,
 				rpc.proxies.has_key((int) (uint64) actor_stamp)
 					&& rpc.proxies.get((int) (uint64) actor_stamp) == actor,
-				"actors proxy missing lease qdata"
-			);
+				"actors proxy missing lease qdata");
 			rpc.disconnect();
 			listen.stop();
 		}

@@ -41,12 +41,15 @@ namespace OLLMrpc
 		/**
 		 * Build wire {@link Error} from an RPC error number.
 		 *
+		 * Message is empty — clients rebuild from {@link Error.domain} /
+		 * {@link Error.gerror_code}. Do not read errordomain ''.message''.
+		 *
 		 * @param code JSON-RPC error number — {@link RpcErrorCode} constant
 		 *   (e.g. {@link INVALID_PARAMS})
 		 */
 		public static Error to_error(int code)
 		{
-			var err = new Error(code, ((RpcErrorCode) code).message);
+			var err = new Error(code, "");
 			err.domain = (new RpcErrorCode.INTERNAL_ERROR("")).domain.to_string();
 			err.gerror_code = code;
 			return err;

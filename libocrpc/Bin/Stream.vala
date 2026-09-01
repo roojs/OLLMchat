@@ -252,6 +252,8 @@ namespace OLLMrpc.Bin
 		 * {@link TOKEN_END}. Decode constructs the proxy, stores it in
 		 * {@link Client.proxies}, and stamps the handle as qdata
 		 * ''rpc-lid'' with value ''(void*) handle''.
+		 * Live decode types implement {@link Live.Handle}; construction
+		 * always passes ''rpc-lid'' into {@link GLib.Object.new}.
 		 *
 		 * @param object_type element class when already read from an array header
 		 * @param expected_type GObject property type for anonymous nested objects
@@ -272,7 +274,7 @@ namespace OLLMrpc.Bin
 			}
 			if (!decode_type.is_a(typeof(Serializable)) && this.client.live_handles) {
 				var handle = this.in_stream.read_uint64();
-				var live = GLib.Object.new(decode_type);
+				var live = GLib.Object.new(decode_type, "rpc-lid", handle);
 				this.client.proxies.set((int) handle, live);
 				live.set_data("rpc-lid", (void*) handle);
 				if (this.in_stream.read_uint16() != TOKEN_END) {
