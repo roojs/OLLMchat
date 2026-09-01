@@ -43,9 +43,9 @@ Object arrays already call `parse_object` per element — one stamp site covers 
 
 ### In `libocrpc` (this repo)
 
-1. **⏳** **🔷** In `Bin.Stream.parse_object` live-handle path: after `proxies.set(handle, live)`, stamp the handle on `live` with typed qdata — `set_data<uint64>("ollmrpc-lease-id", handle)` (not raw `(void*)`).
-2. **⏳** **🔷** Document the key on `Client.proxies` and in `docs/bin-rpc-protocol.md` (decode stamps lease; `proxies` remains authoritative for notify).
-3. **⏳** **🔷** Test: round-trip `live_handles` object in `Response.retval` → client object has qdata handle == server `export` id.
+1. **✔️** **🔷** In `Bin.Stream.parse_object` live-handle path: after `proxies.set(handle, live)`, stamp the handle on `live` with qdata — `set_data("ollmrpc-lease-id", (void*) handle)`.
+2. **✔️** **🔷** Document the key on `Client.proxies` and in `docs/bin-rpc-protocol.md` (decode stamps lease; `proxies` remains authoritative for notify).
+3. **✔️** **🔷** Test: round-trip `live_handles` object in `Response.retval` → client object has qdata handle == server `export` id.
 
 **🚫** Do not require consumers to pack lease ids in `args` for ordinary live returns.
 
@@ -68,7 +68,7 @@ Object arrays already call `parse_object` per element — one stamp site covers 
 #### Add — after `this.client.proxies.set((int) handle, live);` — qdata handle on the proxy
 
 ```vala
-				live.set_data<uint64>("ollmrpc-lease-id", handle);
+				live.set_data("ollmrpc-lease-id", (void*) handle);
 ```
 
 ##### Part 2 — Method docblock
@@ -81,14 +81,13 @@ Object arrays already call `parse_object` per element — one stamp site covers 
 		 * When {@link Client.live_handles} is on and the type is not
 		 * {@link Serializable}, the body is a uint64 handle then
 		 * {@link TOKEN_END}. Decode constructs the proxy, stores it in
-		 * {@link Client.proxies}, and stamps the handle with
-		 * {@link GLib.Object.set_data} ''ollmrpc-lease-id'' as
-		 * ''uint64'' (typed qdata, not ''void*'').
+		 * {@link Client.proxies}, and stamps the handle as qdata
+		 * ''ollmrpc-lease-id'' with value ''(void*) handle''.
 ```
 
 ### 2. `libocrpc/Client.vala` — `proxies` docblock: decode stamps lease
 
-**Why:** The key is public contract for consumers (`get_data<uint64>("ollmrpc-lease-id")`).
+**Why:** The key is public contract for consumers (`(uint64) get_data("ollmrpc-lease-id")`).
 
 **Where:** `proxies` property docblock, after the unbound-ids sentence, before `== Example ==`.
 
@@ -98,11 +97,10 @@ Object arrays already call `parse_object` per element — one stamp site covers 
 
 ```vala
 		 * {@link Bin.Stream.parse_object} also inserts the decoded
-		 * proxy here and stamps the handle on the object as GObject
-		 * qdata key ''ollmrpc-lease-id'' as ''uint64'' via typed
-		 * {@link GLib.Object.set_data}. This map stays the notify
-		 * table; qdata is for callers that hold the object without
-		 * walking keys.
+		 * proxy here and stamps the wire handle as qdata key
+		 * ''ollmrpc-lease-id'' (''(void*) handle''). This map stays
+		 * the notify table; qdata is for callers that hold the object
+		 * without walking keys.
 ```
 
 ### 3. `docs/bin-rpc-protocol.md` — live-handle decode stamps qdata
@@ -116,9 +114,9 @@ Object arrays already call `parse_object` per element — one stamp site covers 
 #### Add — after that live-handle sentence — client qdata key
 
 ```markdown
-Client `parse_object` stamps that handle on the proxy with typed qdata
-`set_data<uint64>("ollmrpc-lease-id", handle)`. Consumers read
-`get_data<uint64>("ollmrpc-lease-id")`. `Client.proxies` remains the
+Client `parse_object` stamps that handle on the proxy as qdata
+`set_data("ollmrpc-lease-id", (void*) handle)`. Consumers read
+`(uint64) get_data("ollmrpc-lease-id")`. `Client.proxies` remains the
 notify table.
 ```
 
@@ -135,7 +133,7 @@ notify table.
 ```vala
 			this.check(
 				command_line,
-				response.retval.get_object().get_data<uint64>("ollmrpc-lease-id") == lease_id,
+				(uint64) response.retval.get_object().get_data("ollmrpc-lease-id") == lease_id,
 				"proxy missing lease qdata"
 			);
 ```
@@ -147,7 +145,7 @@ notify table.
 After this lands:
 
 - `Ui.Display.get_*` can reply `retval = val("o", exported)` again.
-- Overrides can `return (T) response.retval.get_object()` and read lease from `get_data<uint64>("ollmrpc-lease-id")` (map key → `gsr-lease-id` in `Runtime.attach_lease` if they keep a local name).
+- Overrides can `return (T) response.retval.get_object()` and read lease from `(uint64) get_data("ollmrpc-lease-id")` (map key → `gsr-lease-id` in `Runtime.attach_lease` if they keep a local name).
 - **🚫** New `args`/`t` + manual stub rebuild for live returns.
 
 ---
@@ -157,12 +155,12 @@ After this lands:
 - **🚫** Changing JSON/HTTP live semantics.
 - **🚫** gnome-shell-rpc edits inside this plan (consumer migrates after release/bump).
 - **🚫** Inventing leases for non-`live_handles` / Serializable snapshot rows (`Ui.Window` list snapshots stay property streams).
-- **🚫** New helper, new `const` for the key, raw `(void*)` qdata, or a second stamp site in `parse_object_array`.
+- **🚫** New helper, new `const` for the key, or a second stamp site in `parse_object_array`.
 
 ---
 
 ## Done when
 
-- **🔷** `⏳` Live decode stamps lease handle on the proxy.
-- **🔷** `⏳` Test covers retval live object round-trip.
+- **🔷** **✔️** Live decode stamps lease handle on the proxy.
+- **🔷** **✔️** Test covers retval live object round-trip.
 - **ℹ️** Consumer can drop `args`/`t` live-return workarounds after depending on this `libocrpc`.

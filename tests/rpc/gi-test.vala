@@ -114,9 +114,11 @@ namespace OLLMrpcTests
 				);
 				lease_id = (uint64) id;
 			}
+			var live_obj = response.retval.get_object();
+			void* stamped = live_obj.get_data("ollmrpc-lease-id");
 			this.check(
 				command_line,
-				response.retval.get_object().get_data<ulong>("ollmrpc-lease-id") == lease_id,
+				stamped == (void*) lease_id,
 				"proxy missing lease qdata"
 			);
 			response = null;
