@@ -38,4 +38,5 @@
 - [RPC-1.3-DONE-live-proxy-lease-on-decode.md](done/RPC-1.3-DONE-live-proxy-lease-on-decode.md)
 - [RPC-1.4-DONE-live-handle-write-lease-key.md](done/RPC-1.4-DONE-live-handle-write-lease-key.md)
 - [RPC-1.5-DONE-base-level-function-dispatch.md](done/RPC-1.5-DONE-base-level-function-dispatch.md)
+- [RPC-1.6-DONE-live-handle-interface.md](done/RPC-1.6-DONE-live-handle-interface.md)
 - [RPC-8.6-URGENT-rpc-bin-learn-method-names.md](done/RPC-8.6-URGENT-rpc-bin-learn-method-names.md)

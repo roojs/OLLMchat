@@ -1,18 +1,18 @@
 # RPC-1.6 — Live decode: `Live.Handle` + construct `rpc-lid`
 
-> **`RPC-1.0-summary.md` is not updated until this plan is done and archived.**
+> Landed. Index: [`RPC-1.0-summary.md`](../RPC-1.0-summary.md).
 
-**Status:** **✔️** agent-done — awaiting user **✅**
+**Status:** **✔️** **done** — `libocrpc/Live/Handle.vala`, `libocrpc/Bin/Stream.vala` live `Object.new(..., "rpc-lid", handle)`, `tests/rpc/gi-test.vala` Handle stubs.
 
-**Files:** `libocrpc/Live/Handle.vala`, `libocrpc/meson.build`, `libocrpc/Bin/Stream.vala`, `docs/bin-rpc-protocol.md`; test type `TestActor` implements `Handle` (existing live decode type).
+**Files:** `libocrpc/Live/Handle.vala`, `libocrpc/meson.build`, `libocrpc/Bin/Stream.vala`, `docs/bin-rpc-protocol.md`; `TestActor` / `TestMenu` / `TestFile` implement `Handle`.
 
-**ℹ️** In-tree `gi-test` registers client `Handle` stubs (`TestMenu` / `TestFile`) for Gio wire aliases; `register_alias` maps stock server GTypes for encode.
+**ℹ️** In-tree `gi-test` registers client `Handle` stubs for Gio wire aliases; `register_alias` maps stock server GTypes for encode.
 
-**Prefix:** `RPC` (`libocrpc`) · see [`RPC-1.0-summary.md`](RPC-1.0-summary.md)
+**Prefix:** `RPC` (`libocrpc`) · see [`RPC-1.0-summary.md`](../RPC-1.0-summary.md)
 
 **Unblocks:** Consumers that need the wire lease **during** stub `construct` (inside `GLib.Object.new`), without a `Client` side-channel.
 
-**Related:** [`done/RPC-1.3-DONE-live-proxy-lease-on-decode.md`](done/RPC-1.3-DONE-live-proxy-lease-on-decode.md) (qdata stamp after `Object.new` — keep).
+**Related:** [`RPC-1.3-DONE-live-proxy-lease-on-decode.md`](RPC-1.3-DONE-live-proxy-lease-on-decode.md) (qdata stamp after `Object.new` — keep).
 
 **🚫** Stub generator / emitted class bodies — consumer repo. This plan only defines the interface and client decode path.
 

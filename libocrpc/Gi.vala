@@ -290,10 +290,10 @@ namespace OLLMrpc
 				}
 				n_values++;
 			}
-			if (n_values != this.request.args.size) {
+			if (this.request.args.size > n_values) {
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
-					return true;
+				return true;
 			}
 			this.in_args = new GI.Argument[n_in];
 			this.out_args = new GI.Argument[0];
@@ -307,6 +307,15 @@ namespace OLLMrpc
 					continue;
 				}
 				if (this.skip_wire[i]) {
+					continue;
+				}
+				if (vi >= this.request.args.size) {
+					if (!arg.may_be_null()) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return true;
+					}
+					vi++;
 					continue;
 				}
 				if (!this.convert(arg, vi)) {
@@ -335,9 +344,10 @@ namespace OLLMrpc
 		 *
 		 * When {@link GI.FunctionInfo.is_method}, slot 0 is the leased
 		 * instance. Namespace functions use no lease and start IN at 0.
-		 * Remaining IN args use {@link convert}. The C return uses
-		 * {@link scalar} into {@link Response.retval}. OUT / INOUT use
-		 * {@link scalar} into {@link Response.args}.
+		 * Remaining IN args use {@link convert}. Trailing wire omissions
+		 * are allowed when {@link GI.ArgInfo.may_be_null} (null IN).
+		 * The C return uses {@link scalar} into {@link Response.retval}.
+		 * OUT / INOUT use {@link scalar} into {@link Response.args}.
 		 *
 		 * @param fn non-constructor from {@link dispatch}
 		 * @return true — this method always replies
@@ -397,7 +407,7 @@ namespace OLLMrpc
 						break;
 				}
 			}
-			if (n_values != this.request.args.size) {
+			if (this.request.args.size > n_values) {
 				this.request.connection.reply_error(
 					this.request, (int) RpcErrorCode.INVALID_PARAMS);
 				return true;
@@ -421,6 +431,15 @@ namespace OLLMrpc
 					continue;
 				}
 				if (arg.get_direction() != GI.Direction.OUT) {
+					if (vi >= this.request.args.size) {
+						if (!arg.may_be_null()) {
+							this.request.connection.reply_error(
+								this.request, (int) RpcErrorCode.INVALID_PARAMS);
+							return true;
+						}
+						vi++;
+						continue;
+					}
 					if (!this.convert(arg, vi, instance ? 1 : 0)) {
 						return true;
 					}
