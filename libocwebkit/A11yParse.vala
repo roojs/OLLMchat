@@ -31,6 +31,8 @@ public class OLLMwebkit.A11yNode : GLib.Object
 {
 	public int x { get; set; default = 0; }
 	public int y { get; set; default = 0; }
+	public int width { get; set; default = 0; }
+	public int height { get; set; default = 0; }
 	public string label { get; set; default = ""; }
 	public string value { get; set; default = ""; }
 	public string display_role { get; set; default = ""; }
@@ -162,7 +164,7 @@ public class OLLMwebkit.A11yParse : GLib.Object
 	 */
 	public string refs { get; private set; default = ""; }
 
-	private Gee.ArrayList<A11yNode> nodes { get; set; default = new Gee.ArrayList<A11yNode>(); }
+	public Gee.ArrayList<A11yNode> nodes { get; set; default = new Gee.ArrayList<A11yNode>(); }
 	private int next_press = 1;
 
 	/**
@@ -400,6 +402,8 @@ public class OLLMwebkit.A11yParse : GLib.Object
 			var node = new A11yNode() {
 				x = ext.x,
 				y = ext.y,
+				width = ext.width,
+				height = ext.height,
 				label = label,
 				value = value,
 				display_role = display_role,

@@ -263,8 +263,15 @@ namespace OLLMrpc.Bin
 						continue;
 					}
 					var ptr = (uint64) (void*) child;
-					ctx.out_stream.put_uint64((uint64) ctx.connection.lease_ids.get(
-						(int) (ptr >> 32)).get((int) ptr));
+					var lo = (int) ptr;
+					var id = ctx.connection.lease_ids.get((int) (ptr >> 32)).get(lo);
+					if (id == 0) {
+						throw new StreamError.PROTOCOL(
+							"live object %s not in connection.lease_ids",
+							child.get_type().name()
+						);
+					}
+					ctx.out_stream.put_uint64((uint64) id);
 					ctx.out_stream.put_uint16(Stream.TOKEN_END);
 				}
 				return;
@@ -278,8 +285,15 @@ namespace OLLMrpc.Bin
 					var live = val.get_object();
 					ctx.write_gtype(live.get_type());
 					var ptr = (uint64) (void*) live;
-					ctx.out_stream.put_uint64((uint64) ctx.connection.lease_ids.get(
-						(int) (ptr >> 32)).get((int) ptr));
+					var lo = (int) ptr;
+					var id = ctx.connection.lease_ids.get((int) (ptr >> 32)).get(lo);
+					if (id == 0) {
+						throw new StreamError.PROTOCOL(
+							"live object %s not in connection.lease_ids",
+							live.get_type().name()
+						);
+					}
+					ctx.out_stream.put_uint64((uint64) id);
 					ctx.out_stream.put_uint16(Stream.TOKEN_END);
 					return;
 				}

@@ -244,6 +244,15 @@ namespace OLLMrpcTests
 				response.retval.get_object().get_type() == typeof(TestActor),
 				"actors stub is not Test-Actor"
 			);
+			var actor = response.retval.get_object();
+			void* actor_stamp = actor.get_data("rpc-lid");
+			this.check(command_line, actor_stamp != null, "actors handle is 0");
+			this.check(
+				command_line,
+				rpc.proxies.has_key((int) (uint64) actor_stamp)
+					&& rpc.proxies.get((int) (uint64) actor_stamp) == actor,
+				"actors proxy missing lease qdata"
+			);
 			rpc.disconnect();
 			listen.stop();
 		}

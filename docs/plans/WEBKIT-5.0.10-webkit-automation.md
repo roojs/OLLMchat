@@ -79,12 +79,12 @@ User-approved new methods (do not invent more):
 
 ## Suggested order
 
-1. **⏳** **🔷** `WebDriverValue.vala` + Meson platform source lists (`linux/` / `cdp/` / per-OS `WebViewAuto`).
-2. **⏳** **🔷** `linux/WebDriver.vala` with `ingest_message` + `fill_node` helpers.
-3. **⏳** **🔷** `cdp/WebDriver.vala` (Windows + Android) with `await_cdp` + same `fill_node` / `click` / `press` shape.
-4. **⏳** **🔷** Platform `WebViewAuto` files; `Browser` always uses `WebViewAuto`; fill / press always call `WebDriver`.
-5. **⏳** **🔷** Drop `A11y.fill` / `A11y.press` / `*_sync` on **all** platforms (dump only).
-6. **⏳** **🔷** `prepare()` in `ollmapp` (desktop + Android) + `oc-test-webkit` **before** any WebView — always `new WebDriver()`.
+1. **✔️** **🔷** `WebDriverValue.vala` + Meson platform source lists (`linux/` / `cdp/` / per-OS `WebViewAuto`).
+2. **✔️** **🔷** `linux/WebDriver.vala` with `ingest_message` + `fill_node` helpers.
+3. **✔️** **🔷** `cdp/WebDriver.vala` (Windows + Android) with `await_cdp` + same `fill_node` / `click` / `press` shape.
+4. **✔️** **🔷** Platform `WebViewAuto` files; `Browser` always uses `WebViewAuto`; fill / press always call `WebDriver`.
+5. **✔️** **🔷** Drop `A11y.fill` / `A11y.press` / `*_sync` on **all** platforms (dump only).
+6. **✔️** **🔷** `prepare()` in `ollmapp` (desktop + Android) + `oc-test-webkit` **before** any WebView — always `new WebDriver()`.
 7. **⏳** **🔷** Smoke: Google fill + press on Linux, Windows, and Android.
 
 ---

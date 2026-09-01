@@ -242,6 +242,12 @@ Examples:
 
 int main(string[] args)
 {
+	OLLMwebkit.WebDriver.instance = new OLLMwebkit.WebDriver();
+	try {
+		OLLMwebkit.WebDriver.instance.prepare();
+	} catch (GLib.Error e) {
+		GLib.warning("%s", e.message);
+	}
 	var app = new OcTestWebkitApp();
 	return app.run(args);
 }

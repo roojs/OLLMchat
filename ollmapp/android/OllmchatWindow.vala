@@ -436,6 +436,12 @@ namespace OLLMapp
 		}
 
 		configure_android_gio_tls_modules();
+		OLLMwebkit.WebDriver.instance = new OLLMwebkit.WebDriver();
+		try {
+			OLLMwebkit.WebDriver.instance.prepare();
+		} catch (GLib.Error e) {
+			GLib.warning("%s", e.message);
+		}
 		var app = new AndroidApplication();
 		return app.run(args);
 	}

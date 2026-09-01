@@ -25,24 +25,23 @@ using Atspi;
 #endif
 
 /**
- * Accessibility dump / fill / press for {@link Browser}.
+ * Accessibility dump for {@link Browser}.
  *
  * Platform tree via ''using'' ({@link Atspi} / {@link Win32Atspi} /
- * {@link AndroidAtspi}) — same shape as {@link A11yParse}. Linux offsloads
- * AT-SPI dump/fill/press to a GLib worker (main-thread AT-SPI deadlocks;
- * set ''GTK_A11Y=atspi'' before GTK init). Windows stays on the UI thread
- * (COM). Android yields {@link AndroidAtspi.refresh_async} first so the
- * host walk runs on the Android UI thread without GTK sync-waiting (IME
- * ''blockForMain'' ANR — webkitgtk-android
- * ''2026-07-23-a11y-walk-gtk-thread-anr''). No page JavaScript.
+ * {@link AndroidAtspi}) — same shape as {@link A11yParse}. Dump stays
+ * a11y. Linux offsloads AT-SPI dump to a GLib worker (main-thread AT-SPI
+ * deadlocks; set ''GTK_A11Y=atspi'' before GTK init). Windows dump stays
+ * on the UI thread (COM). Android yields {@link AndroidAtspi.refresh_async}
+ * first so the host walk runs on the Android UI thread without GTK
+ * sync-waiting (IME ''blockForMain'' ANR — webkitgtk-android
+ * ''2026-07-23-a11y-walk-gtk-thread-anr''). Fill and press go through
+ * {@link WebDriver} on every platform. No page JavaScript.
  *
  * == Example ==
  *
  * {{{
  * var a11y = new OLLMwebkit.A11y();
  * var md = yield a11y.dump(uri, title);
- * yield a11y.fill(fields);
- * yield a11y.press(3);
  * }}}
  */
 public class OLLMwebkit.A11y : GLib.Object
@@ -69,6 +68,11 @@ public class OLLMwebkit.A11y : GLib.Object
 	public Gee.HashMap<string, Gee.ArrayList<int>> html_names {
 		get; private set; default = new Gee.HashMap<string, Gee.ArrayList<int>>();
 	}
+
+	/**
+	 * Nodes from the last {@link dump} (fill_key / press_id + WINDOW coords).
+	 */
+	public Gee.ArrayList<A11yNode> nodes { get; private set; default = new Gee.ArrayList<A11yNode>(); }
 
 	/**
 	 * Host widget whose toplevel is presented before keyboard fill.
@@ -110,73 +114,6 @@ public class OLLMwebkit.A11y : GLib.Object
 			throw thread_error;
 		}
 		return result;
-#endif
-	}
-
-	/**
-	 * Fill fields by key from the last dump (set_text_contents when available, else focus + keyboard).
-	 *
-	 * @param fields fill key (HTML ''name='' or ''id='' from ''(^fill:KEY)'') → text
-	 * @throws GLib.Error when a key is missing or input fails
-	 */
-	public async void fill(Gee.HashMap<string, string> fields) throws GLib.Error
-	{
-		if (this.host.get_root() is Gtk.Window) {
-			((Gtk.Window) this.host.get_root()).present();
-		}
-#if ANDROID
-		yield refresh_async();
-		this.fill_sync(fields);
-#elif WINDOWS
-		this.fill_sync(fields);
-#else
-		GLib.SourceFunc callback = fill.callback;
-		GLib.Error? thread_error = null;
-		new GLib.Thread<bool>("ocwebkit-a11y-fill", () => {
-			try {
-				this.fill_sync(fields);
-			} catch (GLib.Error e) {
-				thread_error = e;
-			}
-			Idle.add((owned) callback);
-			return true;
-		});
-		yield;
-		if (thread_error != null) {
-			throw thread_error;
-		}
-#endif
-	}
-
-	/**
-	 * Activate a press-ref via the platform Action / Invoke path.
-	 *
-	 * @param id press id from the last dump
-	 * @throws GLib.Error when the ref is missing or action fails
-	 */
-	public async void press(int id) throws GLib.Error
-	{
-#if ANDROID
-		yield refresh_async();
-		this.press_sync(id);
-#elif WINDOWS
-		this.press_sync(id);
-#else
-		GLib.SourceFunc callback = press.callback;
-		GLib.Error? thread_error = null;
-		new GLib.Thread<bool>("ocwebkit-a11y-press", () => {
-			try {
-				this.press_sync(id);
-			} catch (GLib.Error e) {
-				thread_error = e;
-			}
-			Idle.add((owned) callback);
-			return true;
-		});
-		yield;
-		if (thread_error != null) {
-			throw thread_error;
-		}
 #endif
 	}
 
@@ -244,6 +181,7 @@ public class OLLMwebkit.A11y : GLib.Object
 		this.press_routes = parse.press_routes;
 		this.press_labels = parse.press_labels;
 		this.html_names = parse.html_names;
+		this.nodes = parse.nodes;
 
 		if (title == "") {
 			title = walk_root.get_name() != null ? walk_root.get_name() : "";
@@ -251,121 +189,5 @@ public class OLLMwebkit.A11y : GLib.Object
 		return "# Page\n- URL: " + url + "\n- Title: " + title
 			+ "\n\n## Content\n" + parse.content
 			+ "\n## References\n" + parse.refs;
-	}
-
-	/**
-	 * Worker / UI-thread body for {@link fill}.
-	 *
-	 * @param fields fill key → text
-	 * @throws GLib.Error when a key is missing or input fails
-	 */
-	private void fill_sync(Gee.HashMap<string, string> fields) throws GLib.Error
-	{
-		if (!A11y.atspi_ready) {
-			init();
-			A11y.atspi_ready = true;
-		}
-
-		Accessible? app = null;
-		var desktop = get_desktop(0);
-		for (var i = 0; i < desktop.get_child_count(); i++) {
-			var candidate = desktop.get_child_at_index(i);
-			if (candidate.get_process_id() != (uint) Posix.getpid()) {
-				continue;
-			}
-			app = candidate;
-			break;
-		}
-		if (app == null) {
-			throw new GLib.IOError.FAILED("a11y: no application for pid %u", (uint) Posix.getpid());
-		}
-
-		var frame = app.get_child_at_index(0);
-		for (var ai = 0; ai < frame.get_n_actions(); ai++) {
-			if (frame.get_action_name(ai) != "default.activate") {
-				continue;
-			}
-			frame.do_action(ai);
-			break;
-		}
-		// Window present + frame activate need a beat before key synth lands.
-		GLib.Thread.usleep(100000);
-
-		foreach (var key in fields.keys) {
-			if (!this.html_names.has_key(key)) {
-				throw new GLib.IOError.INVALID_ARGUMENT("Unknown fill key %s", key);
-			}
-			var acc = app;
-			foreach (var index in this.html_names.get(key)) {
-				acc = acc.get_child_at_index(index);
-			}
-			if (acc.get_n_actions() > 0) {
-				acc.do_action(0);
-			}
-			acc.grab_focus();
-			var filled = false;
-			try {
-				filled = acc.set_text_contents(fields.get(key));
-			} catch (GLib.Error e) {
-			}
-			if (filled) {
-				continue;
-			}
-			var nchars = 0;
-			var ifaces = acc.get_interfaces();
-			if (ifaces != null) {
-				for (var ii = 0; ii < ifaces.length; ii++) {
-					if (ifaces.index(ii) != "Text") {
-						continue;
-					}
-					nchars = acc.get_text_iface().get_character_count();
-					break;
-				}
-			}
-			for (var b = 0; b < nchars + 2; b++) {
-				generate_keyboard_event(0xff08, null, KeySynthType.PRESSRELEASE);
-			}
-			generate_keyboard_event(0, fields.get(key), KeySynthType.STRING);
-		}
-	}
-
-	/**
-	 * Worker / UI-thread body for {@link press}.
-	 *
-	 * @param id press id from the last dump
-	 * @throws GLib.Error when the ref is missing or action fails
-	 */
-	private void press_sync(int id) throws GLib.Error
-	{
-		if (!this.press_routes.has_key(id)) {
-			throw new GLib.IOError.INVALID_ARGUMENT("Unknown press-ref %d", id);
-		}
-		if (!A11y.atspi_ready) {
-			init();
-			A11y.atspi_ready = true;
-		}
-
-		Accessible? app = null;
-		var desktop = get_desktop(0);
-		for (var i = 0; i < desktop.get_child_count(); i++) {
-			var candidate = desktop.get_child_at_index(i);
-			if (candidate.get_process_id() != (uint) Posix.getpid()) {
-				continue;
-			}
-			app = candidate;
-			break;
-		}
-		if (app == null) {
-			throw new GLib.IOError.FAILED("a11y: no application for pid %u", (uint) Posix.getpid());
-		}
-
-		var acc = app;
-		foreach (var index in this.press_routes.get(id)) {
-			acc = acc.get_child_at_index(index);
-		}
-		if (acc.get_n_actions() < 1) {
-			throw new GLib.IOError.FAILED("Press-ref %d has no a11y action", id);
-		}
-		acc.do_action(0);
 	}
 }

@@ -29,8 +29,8 @@ using WebKit;
  *
  * Load settle, Soup HEAD probe, freeze overlay, and site cookies follow
  * Snappr. ''#if ANDROID'' / ''WINDOWS'' / ''LINUX'' select webkitgtk-android /
- * webview2-gtk / WebKitGTK. Dump / fill / press delegate to {@link A11y}
- * (Linux AT-SPI / Windows Win32Atspi / Android Phase 2).
+ * webview2-gtk / WebKitGTK. Dump via {@link A11y}. Fill and press via
+ * {@link WebDriver} on every platform.
  *
  * == Example ==
  *
@@ -54,7 +54,8 @@ public class OLLMwebkit.Browser : Gtk.Box
 	}
 
 	/**
-	 * Platform accessibility dump / fill / press (Linux AT-SPI / Windows Win32Atspi).
+	 * Platform accessibility dump (Linux AT-SPI / Windows Win32Atspi /
+	 * Android). Fill and press use {@link WebDriver}.
 	 */
 	public OLLMwebkit.A11y a11y { get; private set; default = new OLLMwebkit.A11y(); }
 
@@ -143,10 +144,7 @@ public class OLLMwebkit.Browser : Gtk.Box
 			timeout = 10,
 			user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
 		};
-		this.web_view = new WebView() {
-			hexpand = true,
-			vexpand = true,
-		};
+		this.web_view = new WebViewAuto(this);
 		this.cloudflare = new OLLMwebkit.Cloudflare(this);
 		this.cloudflare.notify["is-blocked"].connect(() => {
 			if (!this.cloudflare.is_blocked || !this.load_wait_active) {
@@ -743,25 +741,28 @@ public class OLLMwebkit.Browser : Gtk.Box
 	}
 
 	/**
-	 * Apply fill map via {@link A11y}.
+	 * Apply fill map via {@link WebDriver}.
 	 *
 	 * @param fields fill key (HTML ''name='' or ''id='') → text
 	 * @throws GLib.Error when fill fails
 	 */
 	public async void fill(Gee.HashMap<string, string> fields) throws GLib.Error
 	{
-		yield this.a11y.fill(fields);
+		if (this.get_root() is Gtk.Window) {
+			((Gtk.Window) this.get_root()).present();
+		}
+		yield OLLMwebkit.WebDriver.instance.fill(this.a11y, this.web_view, fields);
 	}
 
 	/**
-	 * Activate press-ref via {@link A11y}.
+	 * Activate press-ref via {@link WebDriver}.
 	 *
 	 * @param id press id from the last a11y dump
 	 * @throws GLib.Error when press fails
 	 */
 	public async void press(int id) throws GLib.Error
 	{
-		yield this.a11y.press(id);
+		yield OLLMwebkit.WebDriver.instance.press(this.a11y, this.web_view, id);
 	}
 
 	/**

@@ -80,6 +80,13 @@ public class OLLMwebkit.BrowserStack : Gtk.Box
 		this.primary = new OLLMwebkit.Browser(this);
 		this.stack.add_named(this.primary, "primary");
 		this.stack.visible_child = this.primary;
+		OLLMwebkit.WebDriver.instance.attach.begin((obj, res) => {
+			try {
+				OLLMwebkit.WebDriver.instance.attach.end(res);
+			} catch (GLib.Error e) {
+				GLib.warning("%s", e.message);
+			}
+		});
 		this.primary.uri_changed.connect((uri) => {
 			if (this.stack.visible_child != this.primary) {
 				return;

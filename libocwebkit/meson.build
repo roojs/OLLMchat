@@ -62,7 +62,24 @@ ocwebkit_src = files([
   'Cloudflare.vala',
   'Request.vala',
   'Tool.vala',
+  'WebDriverValue.vala',
 ])
+if is_windows
+  ocwebkit_src += files(
+    'cdp/WebDriver.vala',
+    'windows/WebViewAuto.vala',
+  )
+elif is_android_cross
+  ocwebkit_src += files(
+    'cdp/WebDriver.vala',
+    'android/WebViewAuto.vala',
+  )
+else
+  ocwebkit_src += files(
+    'linux/WebDriver.vala',
+    'linux/WebViewAuto.vala',
+  )
+endif
 
 lib_build_rpath = ':'.join([
   meson.current_build_dir(),
