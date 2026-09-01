@@ -114,5 +114,21 @@ namespace OLLMfiles
 	 * This file contains namespace-level documentation for OLLMfiles.
 	 */
 	internal class NamespaceDoc {}
+
+	/**
+	 * Register libocfiles wire types with {@link OLLMrpc.Bin}.
+	 *
+	 * Call once per process at application startup, before any
+	 * {@link ProjectManager} or ollmfilesd {@link OLLMrpc.Client.connect}.
+	 */
+	public void rpc_register() throws GLib.Error
+	{
+		OLLMrpc.Daemon.rpc_register();
+		Folder.rpc_register();
+		File.rpc_register();
+		FileAlias.rpc_register();
+		FileWithHistory.rpc_register();
+		SQT.VectorMetadata.rpc_register();
+	}
 }
 

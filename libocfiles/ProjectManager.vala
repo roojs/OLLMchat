@@ -94,12 +94,6 @@ namespace OLLMfiles
 		public ProjectManager()
 		{
 			Object();
-			OLLMrpc.Daemon.rpc_register();
-			Folder.rpc_register();
-			File.rpc_register();
-			FileAlias.rpc_register();
-			FileWithHistory.rpc_register();
-			SQT.VectorMetadata.rpc_register();
 			this.rpc = new OLLMrpc.Client(
 				GLib.Path.build_filename(
 					GLib.Environment.get_user_data_dir(),

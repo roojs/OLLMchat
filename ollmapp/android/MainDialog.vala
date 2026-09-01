@@ -19,7 +19,7 @@
 namespace OLLMapp.SettingsDialog
 {
 	/**
-	 * Android settings dialog — Connections, Models, and Tools tabs.
+	 * Android settings dialog — Models, Connections, and Tools tabs.
 	 *
 	 * Same class name as desktop {@link MainDialog}; Android builds this file
 	 * instead of {@code SettingsDialog/MainDialog.vala}.
@@ -81,16 +81,6 @@ namespace OLLMapp.SettingsDialog
 
 			this.set_child(main_box);
 
-			this.connections_page = new ConnectionsPage(this);
-			this.view_stack.add_titled(
-				this.connections_page,
-				this.connections_page.page_name,
-				this.connections_page.page_title
-			);
-			this.view_stack.get_page(this.connections_page).icon_name = this.connections_page.page_icon;
-			this.action_bar_area.append(this.connections_page.action_widget);
-			this.connections_page.action_widget.visible = false;
-
 			this.models_page = new ModelsPage(this);
 			this.view_stack.add_titled(
 				this.models_page,
@@ -100,6 +90,16 @@ namespace OLLMapp.SettingsDialog
 			this.view_stack.get_page(this.models_page).icon_name = this.models_page.page_icon;
 			this.action_bar_area.append(this.models_page.action_widget);
 			this.models_page.action_widget.visible = false;
+
+			this.connections_page = new ConnectionsPage(this);
+			this.view_stack.add_titled(
+				this.connections_page,
+				this.connections_page.page_name,
+				this.connections_page.page_title
+			);
+			this.view_stack.get_page(this.connections_page).icon_name = this.connections_page.page_icon;
+			this.action_bar_area.append(this.connections_page.action_widget);
+			this.connections_page.action_widget.visible = false;
 
 			this.tools_page = new ToolsPage(this);
 			this.view_stack.add_titled(

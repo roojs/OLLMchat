@@ -40,6 +40,7 @@ ocfiles_vapi_gen_pkgs = [
 ]
 
 ocfiles_gir_src = files([
+  'namespace.vala',
   'BufferProviderBase.vala',
   'FileBuffer.vala',
   'DummyFileBuffer.vala',

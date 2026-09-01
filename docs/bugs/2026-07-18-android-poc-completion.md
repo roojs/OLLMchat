@@ -16,43 +16,27 @@
 
 ---
 
-### IME-3 — Spell-correct does not replace typed word
+### C1 — Streaming when screen off / app in background
 
-**Status:** 🚫 PASSED OVER — fix in Knowles GTK IME, not OLLMchat (2026-07-24)
+**Status:** ⏳ OPEN — code landed; needs a real device check
 
-**Detail:** [`done/2026-07-19-CLOSED-android-ime-autocomplete-nofill.md`](done/2026-07-19-CLOSED-android-ime-autocomplete-nofill.md)
+**What it is:** While the model is **still generating** a reply, Android often kills or suspends the network when you **turn the screen off** or **switch to another app**. Without a foreground service, the SSE stream dies and you get “Network error”.
 
-**Next:** 🚫 Do not implement in this repo; follow Knowles GTK / EntryPopupTest.
+**What we did:** ✔️ A **foreground service** (`StreamingForegroundService`) — the persistent “Generating reply…” notification — so Android is less likely to kill the connection mid-stream.
 
----
+**How to test (only if you care about this):**
 
-### C1 — Sleep / network disconnect (critical)
+1. Start a reply that takes several seconds (long prompt or slow model).
+2. While tokens are still arriving, **turn the screen off** or **switch to another app** for ~30s.
+3. Come back — stream should still be going (or finish cleanly), not instant “Network error”.
 
-**Status:** ⏳ OPEN — FGS `dataSync` applied; await device verify
-
-**Expected:** 🔷 Mid-stream survives screen-off / brief app flip (or clear interrupt UX).
-
-**Actual:** 🔷 OS drops TCP → libsoup SSE dies → “Network error”; no resume.
-
-**Applied:** ✔️ Java `StreamingForegroundService` + JNI + Vala start/stop on `session.is_running`; wake lock alone was insufficient.
-
-**Next:** ⏳ 🔷 Rebuild APK; screen-off / flip mid-stream — expect “Generating reply…” notification + stream survival. Soften error copy only after that.
-
----
-
-### T1 — Message input height flakiness
-
-**Status:** ⏳ 🔷 still open — improved, not fully reliable (e.g. after **+** fill)
-
-**ℹ️** Shared `libollmchatgtk` (`ScrolledView` / chat input) — **not Android-backend-specific**; exercised hard on the phone. Prior fixes: [`done/2026-07-18-FIXED-composer-plus-no-resize.md`](done/2026-07-18-FIXED-composer-plus-no-resize.md), height bugs under `docs/bugs/done/` (2026-07-16 … 2026-07-19).
-
-**Next:** ⏳ 🔷 Revisit when it bites again; not blocking other POC work.
+**Next:** ⏳ 🔷 Rebuild APK and run that test once; close or reopen if it still fails.
 
 ---
 
 ### S1 — Settings tab order (Models first)
 
-**Status:** ⏳ OPEN — Connections is first; user wants Models first
+**Status:** ✅ FIXED — Android Settings opens on **Models** first (no retest needed)
 
 **Detail:** [`2026-08-31-android-settings-tab-order.md`](2026-08-31-android-settings-tab-order.md)
 
@@ -60,16 +44,31 @@
 
 ### S2 — Add Model search empty (TLS)
 
-**Status:** ✔️ applied (`apply_to_session` on catalog soup) — await user ✅ after APK rebuild
+**Status:** ✅ FIXED — search returns rows (popup layout quirks are separate)
 
 **Detail:** [`2026-08-31-android-add-model-search-tls.md`](2026-08-31-android-add-model-search-tls.md)
 
 ---
 
-### U6 — Global copy button
+### U6 — “Copy output” button
 
-**Status:** ⏳ 🔷 open — “Copy output” at end of completed chat cycles  
-**Note:** ℹ️ General / shared product feature (not Android-specific). Parked on this tracker only because it was exercised during Android testing.
+**Status:** ⏳ 🔷 **Feature request** — not implemented yet
+
+**What it is:** A **Copy** control on completed assistant messages (copy the model’s reply to the clipboard). Mentioned during Android testing; would live in shared chat UI, not Android-only.
+
+**Next:** 🚫 Nothing to test until someone builds it.
+
+---
+
+### T1 — Composer height after **+**
+
+**Status:** ⏳ LOW — mostly fixed; reopen only if you see it again
+
+**What it is:** After tapping **+** (insert template / fill composer), the text box should **grow in height** to fit wrapped text. Sometimes it stayed one line tall until you typed another character.
+
+**How you’d notice:** Tap **+**, get a multi-line fill — if the composer stays stubby and clips text until you edit, that’s T1. No scheduled test; fix again if it annoys you.
+
+**Prior fixes:** [`done/2026-07-18-FIXED-composer-plus-no-resize.md`](done/2026-07-18-FIXED-composer-plus-no-resize.md)
 
 ---
 
@@ -84,10 +83,8 @@ Tracked under plans, not here:
 
 ## Suggested order
 
-1. **S2** — Add Model search TLS
-2. **S1** — Settings Models-first tab order
-3. **C1** — device verify FGS
-4. **U6** — global copy
-5. **T1** — when it regresses badly
-4. 🚫 **IME-3** — passed over (GTK Knowles)
+1. **C1** — optional device test (screen-off / app switch mid-stream)
+2. **U6** — feature request when you want it; no test plan
+3. **T1** — only if composer height misbehaves again
+4. ✅ **S1** / **S2** — done
 5. **W / F1** — feature track (may need shared-code approval)

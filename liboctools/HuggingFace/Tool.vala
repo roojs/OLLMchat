@@ -62,9 +62,6 @@ re-call help, then proceed. The help response contains mandatory operational gui
 		{
 			base();
 			this.project_manager = project_manager;
-			if (project_manager != null) {
-				OLLMhf.rpc_register();
-			}
 		}
 
 		/**

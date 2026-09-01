@@ -66,6 +66,9 @@ namespace OLLMapp
 			this.mcp_registry.init_config();
 			typeof(OLLMwebkit.Tool).ensure();
 			OLLMchat.Tool.BaseTool.register_config(typeof(OLLMwebkit.Tool));
+
+			OLLMfiles.rpc_register();
+			OLLMhf.rpc_register();
 					
 			// Load config after registrations
 			this.config = this.load_config();
@@ -76,7 +79,7 @@ namespace OLLMapp
 				(new OLLMwebkit.Tool()).setup_tool_config_default(this.config);
 			}
 			
-			// Connect activate signal
+			// One main window per process (wire types register in ctor above)
 			this.activate.connect(() => {
 				var window = new OllmchatWindow(this);
 				this.add_window(window);

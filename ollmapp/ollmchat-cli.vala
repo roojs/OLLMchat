@@ -95,6 +95,9 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			this.mcp_registry = new OLLMmcp.Registry();
 			this.tools_registry.init_config();
 			this.mcp_registry.init_config();
+
+			OLLMfiles.rpc_register();
+			OLLMhf.rpc_register();
 			
 			// Load config (no vector types needed for simple CLI)
 			this.config = this.load_config();
