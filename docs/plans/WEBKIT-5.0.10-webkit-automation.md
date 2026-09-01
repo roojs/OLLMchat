@@ -2,7 +2,7 @@
 
 > **Do not update `docs/plans/WEBKIT-1.0-summary.md` for this plan.**
 
-**Status:** **proposed** — standard priority. Linux + Windows land in this plan; Android fill / press stay on `AndroidAtspi` until **`webkitgtk-android`** has automation (CDP / `WEBKIT_INSPECTOR_SERVER` equivalent).
+**Status:** **proposed** — standard priority. Linux, Windows, and Android all switch fill / press to automation. Sibling **webkitgtk-android** Phase 0+1 is ready ([`1.4-android-automation-parity.md`](file:///home/alan/git/webkitgtk-android/docs/plans/1.4-android-automation-parity.md)); this plan is that sibling’s Phase 2 consumer wire.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
@@ -12,24 +12,25 @@
 
 - ℹ️ Parent dump / fill / press contract: [`WEBKIT-5.0-webkit-control.md`](WEBKIT-5.0-webkit-control.md) (a11y markdown, `(^fill:KEY)`, `(^press:N)`)
 - ℹ️ Fill keys (**DONE**): [`done/5.0.8-DONE-webkit-fill-by-name.md`](done/5.0.8-DONE-webkit-fill-by-name.md)
-- ℹ️ Windows WebView host: `/home/alan/git/webview2-gtk` — `WEBKIT_INSPECTOR_SERVER` → CDP `--remote-debugging-port`; `WebContext.set_automation_allowed` / `WebView.is_controlled_by_automation` already exist
-- ℹ️ Android WebView host: `/home/alan/git/webkitgtk-android` — inspector / automation is a **non-goal** on [`1.0-ACTIVE-webkitgtk-android.md`](file:///home/alan/git/webkitgtk-android/docs/plans/1.0-ACTIVE-webkitgtk-android.md); Android stays on a11y until that sibling adds it (does **not** defer Linux/Windows)
-- ℹ️ Linux WebKitGTK 6.0 mouse / keyboard synth: [WebKit #318171](https://bugs.webkit.org/show_bug.cgi?id=318171) — stock distro `libwebkitgtk-6.0` often compiles `performMouseInteraction` / `performKeyboardInteractions` to `NotImplemented`. Need a 6.0 build with `ENABLE_WEBDRIVER` + interaction flags
+- ℹ️ Windows WebView host: `/home/alan/git/webview2-gtk` — `WEBKIT_INSPECTOR_SERVER` → CDP; automation Vala API already exists
+- ℹ️ Android WebView host: `/home/alan/git/webkitgtk-android` — [`1.4`](file:///home/alan/git/webkitgtk-android/docs/plans/1.4-android-automation-parity.md) Phase 0 CDP bridge ✅ + Phase 1 `WebContext` / `WebView.is_controlled_by_automation` ✅ (`AUTOMATION_SMOKE_PASS`); fill/press consumer is **this** plan
+- ℹ️ Linux WebKitGTK 6.0 mouse / keyboard synth: [WebKit #318171](https://bugs.webkit.org/show_bug.cgi?id=318171) — stock distro `libwebkitgtk-6.0` often compiles interactions to `NotImplemented`. Need a 6.0 build with `ENABLE_WEBDRIVER` + interaction flags
+- ℹ️ Precedent for build-time platform files (not `#ifdef` class forks): `libocbwrap/windows/*.vala` vs Linux sources in `libocbwrap/meson.build`
 - ℹ️ Parent veto unchanged: no page-JS / DOM dump / fill / press (`evaluate_javascript` is not this path)
 
 ---
 
 ## Purpose
 
-- **🔷** Switch **fill** and **press** off AT-SPI / UIA **Action** + OS key synth (`do_action`, `set_text_contents`, `generate_keyboard_event`).
-- **🔷** Deliver input through **WebKit / WebView2 automation**: click at a11y WINDOW coords, then paste (clipboard + Ctrl+A / Ctrl+V). Trailing `\n` in fill text still means Return.
+- **🔷** Switch **fill** and **press** off AT-SPI / UIA / AndroidAtspi **Action** + OS key synth (`do_action`, `set_text_contents`, `generate_keyboard_event`).
+- **🔷** Deliver input through automation: click at a11y WINDOW coords, then paste (clipboard + Ctrl+A / Ctrl+V). Trailing `\n` in fill text still means Return.
 - **🔷** **Dump / locate stay a11y** (`A11y.dump` / `A11yParse`). Press-refs and `(^fill:KEY)` do not change.
 - **🔷** Same-process inspector client — **no** `WebKitWebDriver` / `msedgedriver` process, **no** Classic HTTP `/session` to an external driver.
-- **🔷** Linux: RemoteInspector GVariant framing + `Automation.performMouseInteraction` / `performKeyboardInteractions`.
-- **🔷** Windows: CDP `Input.dispatchMouseEvent` / `Input.dispatchKeyEvent` / `Input.insertText` on the loopback port `prepare()` advertises as `WEBKIT_INSPECTOR_SERVER` (already how **webview2-gtk** listens).
-- **🔷** Bind inspector **`127.0.0.1` only**. Set `WEBKIT_INSPECTOR_SERVER` in code before any WebView exists. No user-facing env-var docs.
+- **🔷** Linux: RemoteInspector GVariant + `Automation.performMouseInteraction` / `performKeyboardInteractions`.
+- **🔷** Windows **and** Android: CDP `Input.*` on the loopback port `prepare()` sets as `WEBKIT_INSPECTOR_SERVER`.
+- **🔷** Bind inspector **`127.0.0.1` only**. Set `WEBKIT_INSPECTOR_SERVER` in code before any WebView exists.
 - **🔷** Only the **primary** `WebView` is `is_controlled_by_automation = true`.
-- **🔷** **Android:** `#if ANDROID` keeps today’s `A11y.fill` / `A11y.press` until the sibling can attach the same way (or a CDP subclass). Linux / Windows are not waiting on that.
+- **🔷** **Platform classes via Meson**, not `#ifdef` forks of the same class — same type name (`OLLMwebkit.WebDriver`, `OLLMwebkit.WebViewAuto`); different source files per platform (see **Architecture**). Prefer this over `#if WINDOWS` / `#if ANDROID` inside method bodies.
 - **🔷** Do **not** spoof `navigator.webdriver`.
 - **ℹ️** Tool wire (`fetch` / `search` / `press` / `fill` argument / `whereami`) is unchanged.
 
@@ -43,32 +44,48 @@ WebViewAuto  →  set_automation_allowed + is_controlled_by_automation
 BrowserStack  →  attach() once the primary view exists
 
 fill / press:
-  dump (AT-SPI / Win32Atspi)  →  node x/y/width/height
+  dump (a11y)  →  node x/y/width/height
        →  WebDriver.click(view, center)  →  paste or click
 ```
 
-- **🔷** `OLLMwebkit.WebDriver` — Linux transport + shared `click` / `fill` / `press`.
-- **🔷** `OLLMwebkit.WebDriverCdp` — Windows subclass; expands Automation params to CDP `Input.*`.
-- **🔷** `OLLMwebkit.WebViewAuto` — construct-only automation `WebView`.
-- **🔷** JSON-RPC types live in `WebDriverValue.vala` (named below).
-- **🔷** New types / methods in this plan are **approved** (do not extract further helpers).
+### Build-time platform files (🔷 — not `#ifdef` class choice)
 
-### Platform
+- **🔷** Shared: `libocwebkit/WebDriverValue.vala` (JSON-RPC / CDP param types — all platforms).
+- **🔷** `OLLMwebkit.WebDriver` — **one class name**, two implementations Meson picks:
+  - `libocwebkit/linux/WebDriver.vala` — RemoteInspector (Linux only)
+  - `libocwebkit/cdp/WebDriver.vala` — CDP transport (Windows **and** Android)
+- **🔷** `OLLMwebkit.WebViewAuto` — **one class name**, three thin files (only `using` / pkg differs):
+  - `libocwebkit/linux/WebViewAuto.vala` — `using WebKit;`
+  - `libocwebkit/windows/WebViewAuto.vala` — `using WebView2Gtk;`
+  - `libocwebkit/android/WebViewAuto.vala` — `using WebKitGtkAndroid;`
+- **🔷** `main` / `oc-test-webkit` always: `WebDriver.instance = new WebDriver();` then `prepare()` — no `#if` to pick a subclass.
+- **🚫** Do **not** ship a `WebDriverCdp` type name or `#if WINDOWS … new WebDriverCdp()` — the CDP file **is** `WebDriver`.
 
-- **🔷** **Linux** — `WebDriver` inspector client. Requires a `libwebkitgtk-6.0` with WebDriver **interactions** compiled in ([#318171](https://bugs.webkit.org/show_bug.cgi?id=318171)).
-- **🔷** **Windows** — `WebDriverCdp`. **webview2-gtk** already maps `WEBKIT_INSPECTOR_SERVER` to CDP.
-- **⏳** **🔷** **Android** — sibling must add listen + input (CDP or equivalent). Then `main` calls `prepare()`, `Browser` uses `WebViewAuto` (or an Android-shaped twin), `Browser.fill` / `press` call `WebDriver`. Until that lands, Android stays on `AndroidAtspi` Action / IME.
+### Approved helpers (🔷 — nest flattening)
+
+User-approved new methods (do not invent more):
+
+- **🔷** `ingest_message` — Linux `WebDriver`: body of the `while (this.inbox.len >= 5)` loop (parse one framed inspector message + the switch that handles it).
+- **🔷** `fill_node` — shared `fill`: body of the inner `foreach (var node in a11y.nodes)` (click center + paste / Return for one matched node).
+- **🔷** `await_cdp` — CDP `WebDriver.attach`: the `if (!this.listening) { … }` block (poll `/json/version`, then `open_page`).
+
+### Platform notes
+
+- **🔷** **Linux** — RemoteInspector `WebDriver`. Needs WebKitGTK 6.0 **with interactions** ([#318171](https://bugs.webkit.org/show_bug.cgi?id=318171)).
+- **🔷** **Windows** — CDP `WebDriver`. **webview2-gtk** already maps `WEBKIT_INSPECTOR_SERVER`.
+- **🔷** **Android** — same CDP `WebDriver` file as Windows. Sibling listen + Vala automation API are ready; wire `prepare()` / `WebViewAuto` / fill+press here.
 
 ---
 
 ## Suggested order
 
-1. **⏳** **🔷** `WebDriverValue.vala` + `WebDriver.vala` + `WebViewAuto.vala` + meson.
-2. **⏳** **🔷** `WebDriverCdp.vala` on Windows only.
-3. **⏳** **🔷** `prepare()` in `ollmapp` + `oc-test-webkit` `main` **before** any WebView.
-4. **⏳** **🔷** `A11yNode` width / height; public `A11y.nodes`; `Browser` uses `WebViewAuto`; fill / press call `WebDriver`.
-5. **⏳** **🔷** Smoke: `oc-test-webkit --script` Google fill + press a result (Linux + Windows).
-6. **⏳** **🔷** Sibling **webkitgtk-android** automation listen + click / insert-text (not this repo) — then drop the Android a11y fill/press path.
+1. **⏳** **🔷** `WebDriverValue.vala` + Meson platform source lists (`linux/` / `cdp/` / per-OS `WebViewAuto`).
+2. **⏳** **🔷** `linux/WebDriver.vala` with `ingest_message` + `fill_node` helpers.
+3. **⏳** **🔷** `cdp/WebDriver.vala` (Windows + Android) with `await_cdp` + same `fill_node` / `click` / `press` shape.
+4. **⏳** **🔷** Platform `WebViewAuto` files; `Browser` always uses `WebViewAuto`; fill / press always call `WebDriver`.
+5. **⏳** **🔷** Drop `A11y.fill` / `A11y.press` / `*_sync` on **all** platforms (dump only).
+6. **⏳** **🔷** `prepare()` in `ollmapp` (desktop + Android) + `oc-test-webkit` **before** any WebView — always `new WebDriver()`.
+7. **⏳** **🔷** Smoke: Google fill + press on Linux, Windows, and Android.
 
 ---
 
@@ -656,19 +673,25 @@ public class OLLMwebkit.WebDriverCdpText : Object, Json.Serializable
 
 ---
 
-## 2. `libocwebkit/WebDriver.vala` — inspector client (new file)
+## 2. `libocwebkit/linux/WebDriver.vala` — Linux RemoteInspector client (new file)
 
-**Why:** Same-process input. Linux talks RemoteInspector; Windows subclasses override `attach` / `write` / `send`.
+**Why:** Same-process input on Linux. Meson compiles this file **only** on Linux as `OLLMwebkit.WebDriver`.
 
-**Where:** new file in `libocwebkit/`.
+**Where:** new file under `libocwebkit/linux/`.
 
 **Depends on:** §1.
 
-**Approved methods:** `prepare`, `attach`, `write`, `ingest`, `send`, `new_session`, `delete_session`, `click`, `fill`, `press`.
+**Approved methods:** `prepare`, `attach`, `write`, `ingest`, `ingest_message`, `send`, `new_session`, `delete_session`, `click`, `fill`, `fill_node`, `press`.
 
 **🔷** `fill` matches `A11yNode.fill_key` (HTML `name=` / `id=`), **not** press-ref ids.
 
+**🔷** `ingest_message` — whole inner body of the `while (this.inbox.len >= 5)` loop (frame parse + both switches).
+
+**🔷** `fill_node` — inner `foreach` body (one matched node: click + paste + optional Return).
+
 **💩** No on-WebView pointer overlay (click still wanders in from a nearby point).
+
+**ℹ️** Full-file fence below is the Linux implementation. Apply helpers as written (`ingest` / `fill` call them) — do not leave the nested forms.
 
 #### Add — full file
 
@@ -694,10 +717,10 @@ public class OLLMwebkit.WebDriverCdpText : Object, Json.Serializable
 /**
  * Same-process input client for the primary WebView.
  *
- * {{{prepare}}} binds the inspector port. Linux talks WebKit
- * RemoteInspector; Windows uses {@link WebDriverCdp} (CDP on the
- * same port). {{{click}}}, {{{fill}}}, and {{{press}}} are shared;
- * transport is {{{attach}}} / {{{write}}} / {{{send}}}.
+ * {{{prepare}}} binds the inspector port. This Linux file talks WebKit
+ * RemoteInspector. Windows / Android compile {{{cdp/WebDriver.vala}}} as
+ * the same class name. {{{click}}} / {{{fill}}} / {{{press}}} live on
+ * each platform file.
  *
  * == Example ==
  *
@@ -708,7 +731,6 @@ public class OLLMwebkit.WebDriverCdpText : Object, Json.Serializable
  * }}}
  *
  * @see OLLMwebkit.Browser
- * @see OLLMwebkit.WebDriverCdp
  */
 public class OLLMwebkit.WebDriver : Object
 {
@@ -904,89 +926,101 @@ public class OLLMwebkit.WebDriver : Object
 		}
 		this.inbox.append(chunk[0:n]);
 		while (this.inbox.len >= 5) {
-			var body_size = ((uint32) this.inbox.data[0] << 24)
-				| ((uint32) this.inbox.data[1] << 16)
-				| ((uint32) this.inbox.data[2] << 8)
-				| (uint32) this.inbox.data[3];
-			var message_size = 5 + (int) body_size;
-			if (this.inbox.len < message_size) {
+			if (!this.ingest_message()) {
 				return;
 			}
-			var flags = this.inbox.data[4];
-			var name = (string) this.inbox.data[5:message_size];
-			var blob = new GLib.Bytes(this.inbox.data[(6 + name.length):message_size]);
-			var rest = this.inbox.data[message_size:this.inbox.len];
-			this.inbox = new GLib.ByteArray();
-			this.inbox.append(rest);
-			var signature = "()";
-			switch (name) {
-				case "SetTargetList":
-					signature = "(ta(tsssb))";
-					break;
-				case "DidStartAutomationSession":
-					signature = "(ss)";
-					break;
-				case "SendMessageToFrontend":
-					signature = "(tts)";
-					break;
-			}
-			try {
-				this.incoming_message = new GLib.Variant.from_bytes(
-					new GLib.VariantType(signature),
-					blob,
-					false
-				);
-			} catch (GLib.Error parse_error) {
-				GLib.warning("%s", parse_error.message);
-				continue;
-			}
-			if ((flags & 1) == 0) {
-				this.incoming_message = this.incoming_message.byteswap();
-			}
-			switch (name) {
-				case "DidStartAutomationSession":
-					continue;
-				case "SetTargetList":
-					this.connection_id = this.incoming_message.get_child_value(0).get_uint64();
-					var list = this.incoming_message.get_child_value(1);
-					for (var i = 0; i < list.n_children(); i++) {
-						var row = list.get_child_value(i);
-						if (row.get_child_value(1).get_string() != "Automation") {
-							continue;
-						}
-						this.target_id = row.get_child_value(0).get_uint64();
-						break;
-					}
-					if (this.target_id == 0) {
+		}
+	}
+
+	/**
+	 * Parse and handle one framed inspector message from {{{inbox}}}.
+	 *
+	 * @return false when the frame is incomplete (caller should wait for more bytes)
+	 */
+	private bool ingest_message()
+	{
+		var body_size = ((uint32) this.inbox.data[0] << 24)
+			| ((uint32) this.inbox.data[1] << 16)
+			| ((uint32) this.inbox.data[2] << 8)
+			| (uint32) this.inbox.data[3];
+		var message_size = 5 + (int) body_size;
+		if (this.inbox.len < message_size) {
+			return false;
+		}
+		var flags = this.inbox.data[4];
+		var name = (string) this.inbox.data[5:message_size];
+		var blob = new GLib.Bytes(this.inbox.data[(6 + name.length):message_size]);
+		var rest = this.inbox.data[message_size:this.inbox.len];
+		this.inbox = new GLib.ByteArray();
+		this.inbox.append(rest);
+		var signature = "()";
+		switch (name) {
+			case "SetTargetList":
+				signature = "(ta(tsssb))";
+				break;
+			case "DidStartAutomationSession":
+				signature = "(ss)";
+				break;
+			case "SendMessageToFrontend":
+				signature = "(tts)";
+				break;
+		}
+		try {
+			this.incoming_message = new GLib.Variant.from_bytes(
+				new GLib.VariantType(signature),
+				blob,
+				false
+			);
+		} catch (GLib.Error parse_error) {
+			GLib.warning("%s", parse_error.message);
+			return true;
+		}
+		if ((flags & 1) == 0) {
+			this.incoming_message = this.incoming_message.byteswap();
+		}
+		switch (name) {
+			case "DidStartAutomationSession":
+				return true;
+			case "SetTargetList":
+				this.connection_id = this.incoming_message.get_child_value(0).get_uint64();
+				var list = this.incoming_message.get_child_value(1);
+				for (var i = 0; i < list.n_children(); i++) {
+					var row = list.get_child_value(i);
+					if (row.get_child_value(1).get_string() != "Automation") {
 						continue;
 					}
-					this.targeted();
-					continue;
-				case "SendMessageToFrontend":
-					var text = this.incoming_message.get_child_value(2).get_string();
-					try {
-						this.incoming_reply = (OLLMwebkit.WebDriverValue) Json.gobject_from_data(
-							typeof (OLLMwebkit.WebDriverValue), text, -1
-						);
-					} catch (GLib.Error json_error) {
-						GLib.warning("%s", json_error.message);
-						continue;
-					}
-					if (this.incoming_reply.id != this.reply_id) {
-						continue;
-					}
-					this.have_reply = true;
-					this.replied();
-					continue;
-				case "DidClose":
-					this.session_id = "";
-					this.target_id = 0;
-					this.replied();
-					this.targeted();
-					continue;
-				default:
-					continue;
-			}
+					this.target_id = row.get_child_value(0).get_uint64();
+					break;
+				}
+				if (this.target_id == 0) {
+					return true;
+				}
+				this.targeted();
+				return true;
+			case "SendMessageToFrontend":
+				var text = this.incoming_message.get_child_value(2).get_string();
+				try {
+					this.incoming_reply = (OLLMwebkit.WebDriverValue) Json.gobject_from_data(
+						typeof (OLLMwebkit.WebDriverValue), text, -1
+					);
+				} catch (GLib.Error json_error) {
+					GLib.warning("%s", json_error.message);
+					return true;
+				}
+				if (this.incoming_reply.id != this.reply_id) {
+					return true;
+				}
+				this.have_reply = true;
+				this.replied();
+				return true;
+			case "DidClose":
+				this.session_id = "";
+				this.target_id = 0;
+				this.replied();
+				this.targeted();
+				return true;
+			default:
+				return true;
 		}
 	}
 
@@ -1137,81 +1171,7 @@ public class OLLMwebkit.WebDriver : Object
 				if (node.fill_key != key) {
 					continue;
 				}
-				var scale = int.max(1, view.scale_factor);
-				var view_x = (node.x + node.width / 2) / scale;
-				var view_y = (node.y + node.height / 2) / scale;
-				GLib.debug("fill key=%s a11y=%d,%d %dx%d view=%d,%d",
-					key, node.x, node.y, node.width, node.height, view_x, view_y);
-				yield this.click(view, view_x, view_y);
-				var typed = fields.get(key);
-				var press_return = typed.has_suffix("\n");
-				if (press_return) {
-					typed = typed.substring(0, typed.length - 1);
-					if (typed.has_suffix("\r")) {
-						typed = typed.substring(0, typed.length - 1);
-					}
-				}
-				view.get_clipboard().set_text(typed);
-				this.paste_text = typed;
-				GLib.debug("fill paste key=%s return=%s chars=%d",
-					key, press_return.to_string(), (int) typed.char_count());
-				var select_all = new OLLMwebkit.WebDriverKeys() {
-					handle = this.session_id,
-				};
-				select_all.interactions.add(new OLLMwebkit.WebDriverKey() {
-					kind = "KeyPress",
-					key = "Control",
-				});
-				select_all.interactions.add(new OLLMwebkit.WebDriverKey() {
-					kind = "InsertByKey",
-					text = "a",
-				});
-				select_all.interactions.add(new OLLMwebkit.WebDriverKey() {
-					kind = "KeyRelease",
-					key = "Control",
-				});
-				yield this.send("performKeyboardInteractions", select_all);
-				GLib.Timeout.add(80 + GLib.Random.int_range(0, 120), () => {
-					this.fill.callback();
-					return false;
-				});
-				yield;
-				var paste = new OLLMwebkit.WebDriverKeys() {
-					handle = this.session_id,
-				};
-				paste.interactions.add(new OLLMwebkit.WebDriverKey() {
-					kind = "KeyPress",
-					key = "Control",
-				});
-				paste.interactions.add(new OLLMwebkit.WebDriverKey() {
-					kind = "InsertByKey",
-					text = "v",
-				});
-				paste.interactions.add(new OLLMwebkit.WebDriverKey() {
-					kind = "KeyRelease",
-					key = "Control",
-				});
-				yield this.send("performKeyboardInteractions", paste);
-				if (press_return) {
-					GLib.Timeout.add(220 + GLib.Random.int_range(0, 280), () => {
-						this.fill.callback();
-						return false;
-					});
-					yield;
-					var ret = new OLLMwebkit.WebDriverKeys() {
-						handle = this.session_id,
-					};
-					ret.interactions.add(new OLLMwebkit.WebDriverKey() {
-						kind = "KeyPress",
-						key = "Return",
-					});
-					yield this.send("performKeyboardInteractions", ret);
-					GLib.Timeout.add(180 + GLib.Random.int_range(0, 220), () => {
-						this.fill.callback();
-						return false;
-					});
-					yield;
-				}
+				yield this.fill_node(view, node, fields.get(key));
 				found = true;
 				break;
 			}
@@ -1220,6 +1180,94 @@ public class OLLMwebkit.WebDriver : Object
 			}
 			throw new GLib.IOError.INVALID_ARGUMENT("Unknown fill key %s", key);
 		}
+	}
+
+	/**
+	 * Click one dump node and paste {{{typed}}} (trailing newline → Return).
+	 *
+	 * @param view WebView for GDK scale and clipboard
+	 * @param node matched a11y node (fill_key already checked by caller)
+	 * @param typed fill text for this key
+	 * @throws GLib.Error when click or keys fail
+	 */
+	private async void fill_node(Gtk.Widget view, OLLMwebkit.A11yNode node, string typed) throws GLib.Error
+	{
+		var scale = int.max(1, view.scale_factor);
+		var view_x = (node.x + node.width / 2) / scale;
+		var view_y = (node.y + node.height / 2) / scale;
+		GLib.debug("fill key=%s a11y=%d,%d %dx%d view=%d,%d",
+			node.fill_key, node.x, node.y, node.width, node.height, view_x, view_y);
+		yield this.click(view, view_x, view_y);
+		var text = typed;
+		var press_return = text.has_suffix("\n");
+		if (press_return) {
+			text = text.substring(0, text.length - 1);
+			if (text.has_suffix("\r")) {
+				text = text.substring(0, text.length - 1);
+			}
+		}
+		view.get_clipboard().set_text(text);
+		this.paste_text = text;
+		GLib.debug("fill paste key=%s return=%s chars=%d",
+			node.fill_key, press_return.to_string(), (int) text.char_count());
+		var select_all = new OLLMwebkit.WebDriverKeys() {
+			handle = this.session_id,
+		};
+		select_all.interactions.add(new OLLMwebkit.WebDriverKey() {
+			kind = "KeyPress",
+			key = "Control",
+		});
+		select_all.interactions.add(new OLLMwebkit.WebDriverKey() {
+			kind = "InsertByKey",
+			text = "a",
+		});
+		select_all.interactions.add(new OLLMwebkit.WebDriverKey() {
+			kind = "KeyRelease",
+			key = "Control",
+		});
+		yield this.send("performKeyboardInteractions", select_all);
+		GLib.Timeout.add(80 + GLib.Random.int_range(0, 120), () => {
+			this.fill_node.callback();
+			return false;
+		});
+		yield;
+		var paste = new OLLMwebkit.WebDriverKeys() {
+			handle = this.session_id,
+		};
+		paste.interactions.add(new OLLMwebkit.WebDriverKey() {
+			kind = "KeyPress",
+			key = "Control",
+		});
+		paste.interactions.add(new OLLMwebkit.WebDriverKey() {
+			kind = "InsertByKey",
+			text = "v",
+		});
+		paste.interactions.add(new OLLMwebkit.WebDriverKey() {
+			kind = "KeyRelease",
+			key = "Control",
+		});
+		yield this.send("performKeyboardInteractions", paste);
+		if (!press_return) {
+			return;
+		}
+		GLib.Timeout.add(220 + GLib.Random.int_range(0, 280), () => {
+			this.fill_node.callback();
+			return false;
+		});
+		yield;
+		var ret = new OLLMwebkit.WebDriverKeys() {
+			handle = this.session_id,
+		};
+		ret.interactions.add(new OLLMwebkit.WebDriverKey() {
+			kind = "KeyPress",
+			key = "Return",
+		});
+		yield this.send("performKeyboardInteractions", ret);
+		GLib.Timeout.add(180 + GLib.Random.int_range(0, 220), () => {
+			this.fill_node.callback();
+			return false;
+		});
+		yield;
 	}
 
 	/**
@@ -1252,86 +1300,33 @@ public class OLLMwebkit.WebDriver : Object
 
 ---
 
-## 3. `libocwebkit/WebDriverCdp.vala` — Windows CDP transport (new file)
+## 3. `libocwebkit/cdp/WebDriver.vala` — CDP `WebDriver` (Windows + Android)
 
-**Why:** Windows has no RemoteInspector GVariant socket. **webview2-gtk** already listens as CDP on `WEBKIT_INSPECTOR_SERVER`.
+**Why:** Windows / Android have no RemoteInspector GVariant socket. Hosts listen as CDP on `WEBKIT_INSPECTOR_SERVER`. Meson compiles **this** file (not `linux/WebDriver.vala`) as `OLLMwebkit.WebDriver`.
 
-**Where:** new file; meson lists it **only** when `host_machine.system() == 'windows'`.
+**Where:** new file under `libocwebkit/cdp/`; Meson adds it when `windows` **or** `android`.
 
-**Depends on:** §1, §2.
+**Depends on:** §1.
 
-**Approved methods:** `attach`, `write`, `send`, `delete_session`, `click`, `mouse`, `keyboard`, `key_press`, `key_release`, `insert_key`, `open_page`, `ingest`.
+**Approved methods:** `prepare`, `attach`, `await_cdp`, `write`, `send`, `new_session`, `delete_session`, `click`, `fill`, `fill_node`, `press`, `mouse`, `keyboard`, `key_press`, `key_release`, `insert_key`, `open_page`, `ingest`.
 
-**🔷** Ctrl+V expands to `Input.insertText` with `paste_text` (CDP has no real clipboard paste here).
+**🔷** Same class name as Linux — **not** `WebDriverCdp`. No subclass; one complete class per transport file.
 
-#### Add — full file
+**🔷** `await_cdp` — the former `if (!this.listening) { … }` block inside `attach` (poll `/json/version`, then `open_page`).
+
+**🔷** `fill` / `fill_node` / `click` / `press` / `prepare` match the Linux file shapes (copy those method bodies; CDP `click` may set `page_uri` from `((WebView) view).get_uri()` before `base`-less mouse work).
+
+**🔷** Ctrl+V expands to `Input.insertText` with `paste_text`.
+
+**ℹ️** The fence below still shows the old subclass shape in places — **implement as a standalone `public class OLLMwebkit.WebDriver`**, include `prepare` / `fill` / `fill_node` / `press` / `click` from §2, rename overrides to ordinary methods, and extract `await_cdp` as follows.
+
+### 3.1 `attach` — call `await_cdp` when not listening
+
+**Where:** start of CDP `attach` after the attaching/session early returns.
+
+#### Remove (inline listen block)
 
 ```vala
-/*
- * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this library; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- */
-
-/**
- * Windows {{{WebDriver}}} — Chromium CDP on the same loopback
- * port {{{prepare}}} advertises as {{{WEBKIT_INSPECTOR_SERVER}}}.
- *
- * Overrides transport ({{{attach}}} / {{{write}}} / {{{send}}}).
- * {{{click}}} / {{{fill}}} / {{{press}}} stay on the base class;
- * {{{send}}} expands typed Automation params to CDP {{{Input.*}}}.
- *
- * @see OLLMwebkit.WebDriver
- */
-public class OLLMwebkit.WebDriverCdp : OLLMwebkit.WebDriver
-{
-	private Soup.Session http { get; set; default = new Soup.Session(); }
-	private Soup.WebsocketConnection sock;
-	private string page_uri = "";
-	private string page_opened = "";
-	private string inbox_text = "";
-
-	construct
-	{
-		this.http.set_timeout(8);
-	}
-
-	/**
-	 * Wait for CDP {{{/json/version}}}, open a page WebSocket,
-	 * then the same StartAutomationSession → Setup → {{{new_session}}}
-	 * sequence as the base class.
-	 */
-	public override async void attach()
-	{
-		if (this.session_id != "") {
-			return;
-		}
-		if (this.attaching) {
-			var wait_id = 0UL;
-			wait_id = this.attached.connect(() => {
-				this.disconnect(wait_id);
-				this.attach.callback();
-			});
-			yield;
-			if (this.session_id != "") {
-				return;
-			}
-		}
-		this.attaching = true;
-		this.target_id = 0;
-		this.connection_id = 0;
 		if (!this.listening) {
 			this.http.set_timeout(2);
 			var version_ok = false;
@@ -1377,6 +1372,166 @@ public class OLLMwebkit.WebDriverCdp : OLLMwebkit.WebDriver
 				return;
 			}
 		}
+```
+
+#### Replace with
+
+```vala
+		if (!this.listening) {
+			if (!yield this.await_cdp()) {
+				return;
+			}
+		}
+```
+
+#### Add — `await_cdp` method on CDP `WebDriver`
+
+**Where:** after `attach` in `cdp/WebDriver.vala`.
+
+**What:** poll `/json/version`, then `open_page`; return false on failure (caller already cleared attaching).
+
+```vala
+	/**
+	 * Wait for CDP {{{/json/version}}} and open the page WebSocket.
+	 *
+	 * @return false when version never becomes ready or {{{open_page}}} fails
+	 */
+	private async bool await_cdp()
+	{
+		this.http.set_timeout(2);
+		var version_ok = false;
+		for (var i = 0; i < 50; i++) {
+			var version_url = "http://127.0.0.1:"
+				+ this.inspector_port.to_string() + "/json/version";
+			var version_msg = new Soup.Message("GET", version_url);
+			try {
+				yield this.http.send_and_read_async(
+					version_msg, GLib.Priority.DEFAULT, null
+				);
+			} catch (GLib.Error connect_error) {
+				GLib.Timeout.add(200, () => {
+					this.await_cdp.callback();
+					return false;
+				});
+				yield;
+				continue;
+			}
+			if (version_msg.status_code == 200) {
+				version_ok = true;
+				break;
+			}
+			GLib.Timeout.add(200, () => {
+				this.await_cdp.callback();
+				return false;
+			});
+			yield;
+		}
+		this.http.set_timeout(8);
+		if (!version_ok) {
+			this.attaching = false;
+			this.attached();
+			GLib.warning("cdp: /json/version not ready");
+			return false;
+		}
+		try {
+			yield this.open_page();
+		} catch (GLib.Error open_error) {
+			this.attaching = false;
+			this.attached();
+			GLib.warning("%s", open_error.message);
+			return false;
+		}
+		return true;
+	}
+```
+
+#### Add — full CDP transport file (reference body)
+
+The remainder of the former `WebDriverCdp` fence (write / send / mouse / keyboard / open_page / ingest) stays, but:
+
+- **🔷** Class line is `public class OLLMwebkit.WebDriver : Object` (not `WebDriverCdp : WebDriver`).
+- **🔷** Drop `override` keywords; include full `prepare` / `fill` / `fill_node` / `press` / `click` / `new_session` from §2.
+- **🔷** `click` sets `this.page_uri = ((WebView) view).get_uri();` then runs the shared wander+click body (platform `using` supplies `WebView`).
+- **🔷** Do **not** leave a `WebDriverCdp` symbol anywhere.
+
+```vala
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+/**
+ * CDP {{{WebDriver}}} — Chromium CDP on the loopback port
+ * {{{prepare}}} advertises as {{{WEBKIT_INSPECTOR_SERVER}}}.
+ *
+ * Meson compiles this file for Windows and Android as
+ * {{{OLLMwebkit.WebDriver}}} (not a subclass). {{{send}}} expands
+ * typed Automation params to CDP {{{Input.*}}}. Include {{{prepare}}},
+ * {{{fill}}}, {{{fill_node}}}, {{{press}}}, and {{{click}}} from the
+ * Linux file (same bodies); use {{{await_cdp}}} from attach.
+ *
+ * @see OLLMwebkit.Browser
+ */
+public class OLLMwebkit.WebDriver : Object
+{
+	/* 🔷 Standalone CDP class — copy shared fields / signals from linux/WebDriver
+	 * (session_id, browser_name, inspector_port, connection_id, target_id,
+	 * command_id, reply_id, incoming_reply, have_reply, attaching, listening,
+	 * paste_text, targeted / replied / attached) plus prepare / fill / fill_node /
+	 * press / new_session. Then the CDP-only members below. */
+
+	private Soup.Session http { get; set; default = new Soup.Session(); }
+	private Soup.WebsocketConnection sock;
+	private string page_uri = "";
+	private string page_opened = "";
+	private string inbox_text = "";
+
+	construct
+	{
+		this.http.set_timeout(8);
+	}
+
+	/**
+	 * Wait for CDP, open the page WebSocket, then StartAutomationSession
+	 * → Setup → {{{new_session}}}.
+	 */
+	public async void attach()
+	{
+		if (this.session_id != "") {
+			return;
+		}
+		if (this.attaching) {
+			var wait_id = 0UL;
+			wait_id = this.attached.connect(() => {
+				this.disconnect(wait_id);
+				this.attach.callback();
+			});
+			yield;
+			if (this.session_id != "") {
+				return;
+			}
+		}
+		this.attaching = true;
+		this.target_id = 0;
+		this.connection_id = 0;
+		if (!this.listening) {
+			if (!yield this.await_cdp()) {
+				return;
+			}
+		}
 		var caps = new GLib.VariantBuilder(new GLib.VariantType("a{sv}"));
 		this.write("StartAutomationSession",
 			new GLib.Variant("(s@a{sv})", this.browser_name, caps.end()));
@@ -1405,7 +1560,7 @@ public class OLLMwebkit.WebDriverCdp : OLLMwebkit.WebDriver
 		this.attached();
 	}
 
-	protected override void write(string name, GLib.Variant parameters)
+	protected void write(string name, GLib.Variant parameters)
 	{
 		if (!this.listening) {
 			return;
@@ -1432,7 +1587,7 @@ public class OLLMwebkit.WebDriverCdp : OLLMwebkit.WebDriver
 	 * Expand typed Automation params to CDP {{{Input.*}}}
 	 * (no JSON round-trip through {{{write}}}).
 	 */
-	public override async OLLMwebkit.WebDriverValue send(
+	public async OLLMwebkit.WebDriverValue send(
 		string method,
 		GLib.Object parameters
 	) throws GLib.Error {
@@ -1485,7 +1640,7 @@ public class OLLMwebkit.WebDriverCdp : OLLMwebkit.WebDriver
 		return this.incoming_reply;
 	}
 
-	public override async void delete_session() throws GLib.Error
+	public async void delete_session() throws GLib.Error
 	{
 		if (this.session_id == "") {
 			return;
@@ -1495,10 +1650,51 @@ public class OLLMwebkit.WebDriverCdp : OLLMwebkit.WebDriver
 		this.session_id = "";
 	}
 
-	public override async void click(Gtk.Widget view, int x, int y) throws GLib.Error
+	public async void click(Gtk.Widget view, int x, int y) throws GLib.Error
 	{
-		this.page_uri = ((WebView2Gtk.WebView) view).get_uri();
-		yield base.click(view, x, y);
+		this.page_uri = ((WebView) view).get_uri();
+		/* Inline the same wander + performMouseInteraction body as linux/WebDriver.click — do not add a click_at helper. */
+		if (this.session_id == "") {
+			throw new GLib.IOError.FAILED("inspector: no session");
+		}
+		var start_x = (x + GLib.Random.int_range(-220, -40)).clamp(8, int.max(8, x));
+		var start_y = (y + GLib.Random.int_range(48, 200)).clamp(8, y + 240);
+		var mid_x = ((start_x + x) / 2) + GLib.Random.int_range(-40, 41);
+		var mid_y = ((start_y + y) / 2) + GLib.Random.int_range(-28, 29);
+		GLib.debug("click wander %d,%d %d,%d click %d,%d", start_x, start_y, mid_x, mid_y, x, y);
+		yield this.send("performMouseInteraction", new OLLMwebkit.WebDriverMouse() {
+			handle = this.session_id,
+			position = new OLLMwebkit.WebDriverPoint() { x = start_x, y = start_y },
+			button = "None",
+			interaction = "Move",
+		});
+		GLib.Timeout.add(80 + GLib.Random.int_range(0, 80), () => {
+			this.click.callback();
+			return false;
+		});
+		yield;
+		yield this.send("performMouseInteraction", new OLLMwebkit.WebDriverMouse() {
+			handle = this.session_id,
+			position = new OLLMwebkit.WebDriverPoint() { x = mid_x, y = mid_y },
+			button = "None",
+			interaction = "Move",
+		});
+		GLib.Timeout.add(80 + GLib.Random.int_range(0, 80), () => {
+			this.click.callback();
+			return false;
+		});
+		yield;
+		yield this.send("performMouseInteraction", new OLLMwebkit.WebDriverMouse() {
+			handle = this.session_id,
+			position = new OLLMwebkit.WebDriverPoint() { x = x, y = y },
+			button = "Left",
+			interaction = "SingleClick",
+		});
+		GLib.Timeout.add(180 + GLib.Random.int_range(0, 220), () => {
+			this.click.callback();
+			return false;
+		});
+		yield;
 	}
 
 	private void mouse(OLLMwebkit.WebDriverMouse mouse, Gee.ArrayList<OLLMwebkit.WebDriverCall> out_calls)
@@ -1783,17 +1979,21 @@ public class OLLMwebkit.WebDriverCdp : OLLMwebkit.WebDriver
 
 ---
 
-## 4. `libocwebkit/WebViewAuto.vala` — automation WebView (new file)
+## 4. Platform `WebViewAuto` files (new)
 
-**Why:** Construct-only `is_controlled_by_automation` + `create-web-view` must return the **same** primary view.
+**Why:** Construct-only `is_controlled_by_automation` + `create-web-view` must return the **same** primary view. Three files — only the `using` line differs (no `#ifdef` soup in one file).
 
-**Where:** new file in `libocwebkit/`. Not compiled on Android until the sibling has the same WebKit-shaped automation API.
+**Where:**
+
+- `libocwebkit/linux/WebViewAuto.vala` — `using WebKit;`
+- `libocwebkit/windows/WebViewAuto.vala` — `using WebView2Gtk;`
+- `libocwebkit/android/WebViewAuto.vala` — `using WebKitGtkAndroid;`
 
 **Depends on:** none (constructed from `Browser`).
 
-**Approved type:** `OLLMwebkit.WebViewAuto` with constructor `WebViewAuto(Browser browser)`.
+**Approved type:** `OLLMwebkit.WebViewAuto` with constructor `WebViewAuto(Browser browser)` — same in each file.
 
-#### Add — full file
+#### Add — body (identical in all three files after the `using` line)
 
 ```vala
 /*
@@ -1814,11 +2014,11 @@ public class OLLMwebkit.WebDriverCdp : OLLMwebkit.WebDriver
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#if WINDOWS
-using WebView2Gtk;
-#elif LINUX
-using WebKit;
-#endif
+/* Platform file: set the matching using line only —
+ * linux: using WebKit;
+ * windows: using WebView2Gtk;
+ * android: using WebKitGtkAndroid;
+ */
 
 /**
  * WebView constructed for automation.
@@ -1870,32 +2070,43 @@ public class OLLMwebkit.WebViewAuto : WebView
 }
 ```
 
+**ℹ️** Delete the old single-file `WebViewAuto.vala` proposal that used `#if WINDOWS` / `#elif LINUX`.
+
 ---
 
-## 5. `libocwebkit/meson.build` — list sources
+## 5. `libocwebkit/meson.build` — platform source lists
 
-**Why:** Compile the new files; skip them on Android until the sibling is ready.
+**Why:** Compile the right `WebDriver` / `WebViewAuto` without `#ifdef` class forks (same pattern as `libocbwrap` `windows/` stubs).
 
-**Where:** `ocwebkit_src` after the existing `files([…])` block.
+**Where:** after `ocwebkit_src = files([…])`.
 
 **Depends on:** §1–§4.
 
 #### Add — after the `ocwebkit_src = files([…])` closing `])`
 
-If not Android, add `WebViewAuto.vala`, `WebDriver.vala`, `WebDriverValue.vala`. If Windows, also add `WebDriverCdp.vala`.
-
 ```meson
-if not is_android_cross
-  ocwebkit_src += files([
-    'WebViewAuto.vala',
-    'WebDriver.vala',
-    'WebDriverValue.vala',
-  ])
-endif
+ocwebkit_src += files('WebDriverValue.vala')
 if is_windows
-  ocwebkit_src += files('WebDriverCdp.vala')
+  ocwebkit_src += files(
+    'cdp/WebDriver.vala',
+    'windows/WebViewAuto.vala',
+  )
+elif is_android_cross
+  ocwebkit_src += files(
+    'cdp/WebDriver.vala',
+    'android/WebViewAuto.vala',
+  )
+else
+  ocwebkit_src += files(
+    'linux/WebDriver.vala',
+    'linux/WebViewAuto.vala',
+  )
 endif
 ```
+
+**🔷** `cdp/WebDriver.vala` may use a **single** top-of-file `using` select (`#if ANDROID` / `#else` → `WebKitGtkAndroid` / `WebView2Gtk`) — that is the only `#if` allowed in that transport file. Prefer not to duplicate the whole CDP class under `windows/` and `android/`.
+
+**🚫** Do **not** add a `WebDriverCdp.vala` source name.
 
 ---
 
@@ -1968,11 +2179,11 @@ endif
 
 ---
 
-## 7. `libocwebkit/A11y.vala` — public `nodes`; Linux/Windows drop fill / press
+## 7. `libocwebkit/A11y.vala` — public `nodes`; drop fill / press on all platforms
 
-**Why:** Dump still walks AT-SPI. Fill / press leave this class on Linux / Windows. Android keeps `fill` / `press` / `*_sync`.
+**Why:** Dump still walks a11y. Fill / press leave this class everywhere — `Browser` → `WebDriver`.
 
-**Where:** class properties; `dump_sync` assignment; wrap `fill` / `press` / `fill_sync` / `press_sync` in `#if ANDROID`.
+**Where:** class properties; `dump_sync` assignment; **delete** `fill` / `press` / `fill_sync` / `press_sync` (do not `#if ANDROID` keep them).
 
 **Depends on:** §6.
 
@@ -1997,15 +2208,11 @@ endif
 		this.nodes = parse.nodes;
 ```
 
-### 7.3 `fill` / `press` / `fill_sync` / `press_sync` — Android only
+### 7.3 Remove `fill` / `press` / `fill_sync` / `press_sync`
 
-**Where:** wrap the four methods so they compile only under `#if ANDROID`. Linux / Windows call sites move to `Browser` → `WebDriver` (§9).
+**Where:** delete those four methods entirely (including Android branches).
 
-Keep the existing method bodies verbatim inside `#if ANDROID` … `#endif`. Delete the `#elif WINDOWS` / `#else` worker-thread branches of `fill` and `press` (those platforms no longer use `fill_sync` / `press_sync`).
-
-Docblock on the class: drop “fill / press” from the Linux/Windows sentence; dump stays.
-
-#### Remove (class brief lines that claim fill/press on all platforms)
+#### Remove (class brief that claims fill/press)
 
 ```vala
  * Platform tree via ''using'' ({@link Atspi} / {@link Win32Atspi} /
@@ -2028,12 +2235,11 @@ Docblock on the class: drop “fill / press” from the Linux/Windows sentence; 
  * on the UI thread (COM). Android yields {@link AndroidAtspi.refresh_async}
  * first so the host walk runs on the Android UI thread without GTK
  * sync-waiting (IME ''blockForMain'' ANR — webkitgtk-android
- * ''2026-07-23-a11y-walk-gtk-thread-anr''). Linux/Windows fill and press
- * go through {@link WebDriver}. Android fill/press stay on this class
- * until the sibling has automation. No page JavaScript.
+ * ''2026-07-23-a11y-walk-gtk-thread-anr''). Fill and press go through
+ * {@link WebDriver} on every platform. No page JavaScript.
 ```
 
-#### Remove (example that calls fill/press on `A11y` for all platforms)
+#### Remove (example that calls fill/press on `A11y`)
 
 ```vala
  * var a11y = new OLLMwebkit.A11y();
@@ -2049,21 +2255,21 @@ Docblock on the class: drop “fill / press” from the Linux/Windows sentence; 
  * var md = yield a11y.dump(uri, title);
 ```
 
-Wrap `fill`, `press`, `fill_sync`, and `press_sync` with `#if ANDROID` immediately above each method’s docblock and `#endif` after the closing brace of `press_sync`. Drop the `#elif WINDOWS` / `#else` thread bodies inside `fill` / `press` so those methods are Android-only (refresh_async + `*_sync` only).
+**🔷** Delete the four method bodies in full (no `#if ANDROID` wrappers).
 
 ---
 
 ## 8. `libocwebkit/Browser.vala` — `WebViewAuto`; fill / press → `WebDriver`
 
-**Why:** Primary view must be automation-controlled; tool fill / press must not call AT-SPI Action on Linux / Windows.
+**Why:** Primary view must be automation-controlled; tool fill / press must not call a11y Action.
 
 **Where:** constructor WebView creation; `fill` / `press` methods; class doc.
 
-**Depends on:** §2, §4, §7.
+**Depends on:** §2–§4, §7.
 
-### 8.1 constructor — create `WebViewAuto` (not Android)
+### 8.1 constructor — always `WebViewAuto`
 
-**Where:** `public Browser(…)` after `this.a11y.host = this;` / soup setup — the `this.web_view = new WebView()` assignment.
+**Where:** `public Browser(…)` — the `this.web_view = new WebView()` assignment.
 
 #### Remove
 
@@ -2077,17 +2283,10 @@ Wrap `fill`, `press`, `fill_sync`, and `press_sync` with `#if ANDROID` immediate
 #### Replace with
 
 ```vala
-#if ANDROID
-		this.web_view = new WebView() {
-			hexpand = true,
-			vexpand = true,
-		};
-#else
 		this.web_view = new WebViewAuto(this);
-#endif
 ```
 
-### 8.2 `fill` — WebDriver on Linux / Windows
+### 8.2 `fill` — always WebDriver
 
 **Where:** method `fill`.
 
@@ -2105,18 +2304,14 @@ Wrap `fill`, `press`, `fill_sync`, and `press_sync` with `#if ANDROID` immediate
 ```vala
 	public async void fill(Gee.HashMap<string, string> fields) throws GLib.Error
 	{
-#if ANDROID
-		yield this.a11y.fill(fields);
-#else
 		if (this.get_root() is Gtk.Window) {
 			((Gtk.Window) this.get_root()).present();
 		}
 		yield OLLMwebkit.WebDriver.instance.fill(this.a11y, this.web_view, fields);
-#endif
 	}
 ```
 
-### 8.3 `press` — WebDriver on Linux / Windows
+### 8.3 `press` — always WebDriver
 
 **Where:** method `press`.
 
@@ -2134,35 +2329,13 @@ Wrap `fill`, `press`, `fill_sync`, and `press_sync` with `#if ANDROID` immediate
 ```vala
 	public async void press(int id) throws GLib.Error
 	{
-#if ANDROID
-		yield this.a11y.press(id);
-#else
 		yield OLLMwebkit.WebDriver.instance.press(this.a11y, this.web_view, id);
-#endif
 	}
 ```
 
-### 8.4 class doc — dump vs fill/press
+### 8.4 class doc
 
-#### Remove
-
-```vala
- * (Linux AT-SPI / Windows Win32Atspi / Android Phase 2).
-```
-
-in the opening class comment, and:
-
-```vala
- * (Linux AT-SPI / Windows Win32Atspi).
-```
-
-on the `a11y` property (if still claiming fill/press).
-
-#### Replace with (class overview sentence)
-
-Dump still via {@link A11y}. Linux/Windows fill and press via {@link WebDriver}. Android fill/press via {@link A11y} until sibling automation exists.
-
-(Keep the rest of the existing class docblock; only retarget those two claims.)
+Dump still via {@link A11y}. Fill and press via {@link WebDriver} on every platform.
 
 ---
 
@@ -2176,10 +2349,7 @@ Dump still via {@link A11y}. Linux/Windows fill and press via {@link WebDriver}.
 
 #### Add — after `this.stack.visible_child = this.primary;`
 
-Not compiled on Android.
-
 ```vala
-#if !ANDROID
 		OLLMwebkit.WebDriver.instance.attach.begin((obj, res) => {
 			try {
 				OLLMwebkit.WebDriver.instance.attach.end(res);
@@ -2187,7 +2357,6 @@ Not compiled on Android.
 				GLib.warning("%s", e.message);
 			}
 		});
-#endif
 ```
 
 ---
@@ -2215,11 +2384,7 @@ int main(string[] args)
 ```vala
 int main(string[] args)
 {
-#if WINDOWS
-	OLLMwebkit.WebDriver.instance = new OLLMwebkit.WebDriverCdp();
-#else
 	OLLMwebkit.WebDriver.instance = new OLLMwebkit.WebDriver();
-#endif
 	try {
 		OLLMwebkit.WebDriver.instance.prepare();
 	} catch (GLib.Error e) {
@@ -2232,13 +2397,18 @@ int main(string[] args)
 
 ---
 
-## 11. `ollmapp/Application.vala` — `prepare()` before `app.run`
+## 11. `ollmapp` mains — `prepare()` before `app.run`
 
-**Why:** Chat `Tool` constructs `BrowserStack` after activate; inspector env must already be set.
+**Why:** Chat `Tool` constructs `BrowserStack` after activate; inspector env must already be set. Meson already picked the right `WebDriver` implementation.
 
-**Where:** `int main` in `ollmapp/Application.vala`.
+**Where:**
+
+- `ollmapp/Application.vala` — desktop `int main`
+- `ollmapp/android/OllmchatWindow.vala` — Android `int main`
 
 **Depends on:** §2, §3.
+
+### 11.1 Desktop `Application.vala`
 
 #### Remove
 
@@ -2255,11 +2425,7 @@ int main(string[] args)
 ```vala
 	int main(string[] args)
 	{
-#if WINDOWS
-		OLLMwebkit.WebDriver.instance = new OLLMwebkit.WebDriverCdp();
-#else
 		OLLMwebkit.WebDriver.instance = new OLLMwebkit.WebDriver();
-#endif
 		try {
 			OLLMwebkit.WebDriver.instance.prepare();
 		} catch (GLib.Error e) {
@@ -2270,7 +2436,20 @@ int main(string[] args)
 	}
 ```
 
-**🔷** `ollmapp/android/OllmchatWindow.vala` `main` does **not** call `prepare()` until the sibling has automation (no `WebDriver` sources on Android meson).
+### 11.2 Android `OllmchatWindow.vala` `main`
+
+**Where:** after TLS module setup, before `new AndroidApplication()`.
+
+#### Add — before `var app = new AndroidApplication();`
+
+```vala
+		OLLMwebkit.WebDriver.instance = new OLLMwebkit.WebDriver();
+		try {
+			OLLMwebkit.WebDriver.instance.prepare();
+		} catch (GLib.Error e) {
+			GLib.warning("%s", e.message);
+		}
+```
 
 ---
 
@@ -2284,28 +2463,21 @@ int main(string[] args)
 
 #### Add — after `'../libocwebkit/Tool.vala',`
 
-Do **not** add `WebDriverCdp.vala` (Windows-only, `WebView2Gtk`).
-
 ```meson
-    '../libocwebkit/WebViewAuto.vala',
-    '../libocwebkit/WebDriver.vala',
     '../libocwebkit/WebDriverValue.vala',
+    '../libocwebkit/linux/WebDriver.vala',
+    '../libocwebkit/linux/WebViewAuto.vala',
 ```
 
----
-
-## Android (sibling — not this repo)
-
-- **🔷** `webkitgtk-android` today lists inspector as a **non-goal**.
-- **⏳** **🔷** Sibling work (when opened there): listen on loopback (CDP `WEBKIT_INSPECTOR_SERVER` shape, matching **webview2-gtk**), plus mouse / insert-text.
-- **⏳** **🔷** Then this plan: compile `WebDriver*` on Android, `WebViewAuto` if the VAPI has `set_automation_allowed` / `is_controlled_by_automation`, `prepare()` in `OllmchatWindow.vala` `main`, drop `#if ANDROID` a11y fill/press.
-- **💩** If the sibling cannot emulate `WebViewAuto` construct properties, a thin Android WebView subclass in that repo — not a second fill path in `libocwebkit`.
+**🚫** Do not list `cdp/WebDriver.vala` or Windows/Android `WebViewAuto` on the Linux valadoc pass.
 
 ---
 
 ## LLM notes
 
-- Standard-priority **proposed** plan — not deferred. Implement when the user asks; Linux / Windows first. Android keeps a11y fill/press until the sibling has automation.
+- Standard-priority **proposed** plan. Android sibling Phase 0+1 is ready — include Android in this wire (same CDP `WebDriver` as Windows).
+- Platform classes via **Meson file lists**, not `#ifdef` picking `WebDriverCdp` vs `WebDriver`. Always `new WebDriver()`.
+- Approved helpers only: `ingest_message`, `fill_node`, `await_cdp`.
 - Dump stays a11y. Do not replace dump with page source / Find Element / `evaluate_javascript`.
 - Do not spawn `WebKitWebDriver`. Do not hide `navigator.webdriver`.
 - Inspector listen is `127.0.0.1` only.

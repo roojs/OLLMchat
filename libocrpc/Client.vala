@@ -126,7 +126,7 @@ namespace OLLMrpc
 		 *
 		 * {@link Bin.Stream.parse_object} also inserts the decoded
 		 * proxy here and stamps the wire handle as qdata key
-		 * ''ollmrpc-lease-id'' (''(void*) handle''). This map stays
+		 * ''rpc-lid'' (''(void*) handle''). This map stays
 		 * the notify table; qdata is for callers that hold the object
 		 * without walking keys.
 		 *

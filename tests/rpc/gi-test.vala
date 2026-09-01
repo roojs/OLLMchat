@@ -115,7 +115,7 @@ namespace OLLMrpcTests
 				lease_id = (uint64) id;
 			}
 			var live_obj = response.retval.get_object();
-			void* stamped = live_obj.get_data("ollmrpc-lease-id");
+			void* stamped = live_obj.get_data("rpc-lid");
 			this.check(
 				command_line,
 				stamped == (void*) lease_id,

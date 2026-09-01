@@ -7,7 +7,6 @@
 ## Current
 
 - [APP-1.11-libgjs-agents.md](APP-1.11-libgjs-agents.md)
-- [APP-1.3.11-config-pane-field-layout.md](APP-1.3.11-config-pane-field-layout.md)
 - [APP-2.10.4.32-FUTURE-multi-window-support.md](APP-2.10.4.32-FUTURE-multi-window-support.md)
 - [APP-3.5-background-permission-notifications.md](APP-3.5-background-permission-notifications.md)
 - [APP-4.2.3-background-sync-file-watcher.md](APP-4.2.3-background-sync-file-watcher.md)
@@ -21,6 +20,7 @@
 ## Done
 
 - [APP-1.3.9-SUPERSEDED-agent-configuration-and-window-state.md](done/APP-1.3.9-SUPERSEDED-agent-configuration-and-window-state.md) — window state shipped as `Config2.windows` in 2.10.4.7
+- [APP-1.3.11-DONE-config-pane-field-layout.md](done/APP-1.3.11-DONE-config-pane-field-layout.md) — `ConnectionAdd` suffix descriptions; later ActionRow copies dropped
 - [APP-1.30-DONE-chat-input-composer.md](done/APP-1.30-DONE-chat-input-composer.md) — compact → expand composer
 - [APP-1.30.1-DONE-chatinput-preedit-speech.md](done/APP-1.30.1-DONE-chatinput-preedit-speech.md) — composer `TextView` grows during IME / Sherpa ONNX preedit
 - [APP-5.1-REJECTED-planning-modes.md](done/APP-5.1-REJECTED-planning-modes.md) — ask/plan/do/agent sketch; occupied by 1.23 / 7.16

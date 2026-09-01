@@ -251,7 +251,7 @@ namespace OLLMrpc.Bin
 		 * {@link Serializable}, the body is a uint64 handle then
 		 * {@link TOKEN_END}. Decode constructs the proxy, stores it in
 		 * {@link Client.proxies}, and stamps the handle as qdata
-		 * ''ollmrpc-lease-id'' with value ''(void*) handle''.
+		 * ''rpc-lid'' with value ''(void*) handle''.
 		 *
 		 * @param object_type element class when already read from an array header
 		 * @param expected_type GObject property type for anonymous nested objects
@@ -274,7 +274,7 @@ namespace OLLMrpc.Bin
 				var handle = this.in_stream.read_uint64();
 				var live = GLib.Object.new(decode_type);
 				this.client.proxies.set((int) handle, live);
-				live.set_data("ollmrpc-lease-id", (void*) handle);
+				live.set_data("rpc-lid", (void*) handle);
 				if (this.in_stream.read_uint16() != TOKEN_END) {
 					throw new StreamError.PROTOCOL(
 						"expected end after live handle"

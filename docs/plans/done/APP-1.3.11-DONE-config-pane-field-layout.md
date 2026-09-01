@@ -1,8 +1,8 @@
 # 1.3.11 — Config pane field layout (description under control)
 
-> **Do not update `docs/plans/APP-1.0-summary.md` for this plan.**
+> Landed. Index: [`APP-1.0-summary.md`](../APP-1.0-summary.md).
 
-**Status:** in progress
+**Status:** **DONE** — Phase 1 only (`ConnectionAdd` suffix descriptions). Phases 2–4 (AddModelDialog, AndroidSettingsDialog, `Rows/*`) were copy-the-pattern, not a reported squeeze; Android dialog is gone. Archived 2026-09-01.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
