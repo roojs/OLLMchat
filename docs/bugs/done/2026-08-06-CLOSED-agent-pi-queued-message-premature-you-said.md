@@ -1,6 +1,6 @@
 # Agent Pi: queued follow-up shows "You said" before inject
 
-**Status:** ⏳ root cause confirmed; fix proposed — await apply approval
+**Status:** 🚫 CLOSED — not observed 2026-09-02 (Agent Pi testing; fix not applied)
 
 ## Problem
 
@@ -131,4 +131,4 @@
 
 ## Next
 
-⏳ 🔷 Await approval to apply §1–§3.
+- 🚫 Closed 2026-09-02 — not reproducing in recent Agent Pi use; reopen if queue + premature "You said" returns.

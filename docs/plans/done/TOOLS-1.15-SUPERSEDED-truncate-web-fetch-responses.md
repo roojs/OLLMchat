@@ -1,14 +1,16 @@
 # 1.15. URGENT - Truncate Web Fetch Responses
 
+**Status:** **SUPERSEDED** — `web_fetch` inline truncation already shipped in `liboctools/WebFetch/Request.vala` (`TOOL_BODY_MAX_LINES = 200`). Tool is being retired ([`TOOLS-2.9.2-disable-http-web-tools.md`](../TOOLS-2.9.2-disable-http-web-tools.md)). Browser spill-to-file + `read_file`: [`WEBKIT-5.0.11-browser-dump-spill-file.md`](../WEBKIT-5.0.11-browser-dump-spill-file.md). HtmlParser `base_url` link resolution below was never implemented and is **out of scope** unless `web_fetch` stays registered.
+
 ## Overview
 
 By default, web fetch responses should be truncated to the first 200 lines. When the markdown version is fetched, a truncation indicator should be added at the end to inform the LLM that the content has been truncated.
 
 Additionally, relative links in HTML should be resolved to absolute URLs during the HTML-to-markdown conversion process, so that links in the markdown output are usable.
 
-## Status
+## Status (historical)
 
-⏳ **TODO** - Not yet implemented.
+⏳ **TODO** - Not yet implemented. *(Superseded — see header.)*
 
 ## Problem
 

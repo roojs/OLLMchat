@@ -1,6 +1,6 @@
 # 2.6.4 Stop, tail, and live tool frame
 
-> Split from the old `TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md`. Remaining work: [`TOOLS-2.6.5-run-command-timeout-live-spill.md`](../TOOLS-2.6.5-run-command-timeout-live-spill.md). VTE: [`TOOLS-2.6.6-FUTURE-run-command-vte.md`](../TOOLS-2.6.6-FUTURE-run-command-vte.md).
+> Split from the old `TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md`. Done timeout / live / spill: [`TOOLS-2.6.5-DONE-run-command-timeout-live-spill.md`](TOOLS-2.6.5-DONE-run-command-timeout-live-spill.md). VTE: [`TOOLS-2.6.6-FUTURE-run-command-vte.md`](../TOOLS-2.6.6-FUTURE-run-command-vte.md).
 
 **Status:** **✔️** **DONE** — Stop, last-slice tail, permission bold command, live `tool_frame`. User asked to archive this cut.
 
@@ -8,7 +8,7 @@
 
 **Parent:** [`2.6-DONE-run-terminal-command-tool.md`](2.6-DONE-run-terminal-command-tool.md) · related: [`2.6.3-DONE-run-command-root-elevation.md`](2.6.3-DONE-run-command-root-elevation.md)
 
-**Supersedes:** [`docs/bugs/2026-08-17-run-command-unbounded-output.md`](../../bugs/2026-08-17-run-command-unbounded-output.md) — kill-at-N was a stopgap; this cut keeps the process alive and returns a tail.
+**Supersedes:** [`docs/bugs/done/2026-08-17-FIXED-run-command-unbounded-output.md`](../../bugs/done/2026-08-17-FIXED-run-command-unbounded-output.md) — kill-at-N was a stopgap; this cut keeps the process alive and returns a tail.
 
 ---
 
@@ -21,7 +21,7 @@
 - **🔷** `✔️` Live run frame: bold command header + sandbox/root status + Stop. Not a persisted markdown “Running …” fence.
 - **🔷** `✔️` Short-term: tool prompt forbids `#` comments in the command string.
 - **🔷** `✔️` Frame RPC is generic so other tools can reuse it: `client.run_tool.start` / `client.run_tool.end` (not `run_command`).
-- **ℹ️** Remaining timeout / live stream / spill / libsecret: **2.6.5**. Optional VTE: **2.6.6**.
+- **ℹ️** Timeout / live stream / spill: **2.6.5** (done). Libsecret: **2.6.7** (done). Optional VTE: **2.6.6**.
 
 ---
 

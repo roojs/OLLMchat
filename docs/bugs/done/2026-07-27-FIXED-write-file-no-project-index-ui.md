@@ -3,7 +3,7 @@
 > Pointer: `docs/bug-fix-process.md` (emoji). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ✔️ E1/E2 + F1/F2 + A′ + G applied 2026-07-27 — await user verify (file pull-down + changed-files after create)
+**Status:** ✅ FIXED — user closed 2026-09-02 (pull-down + changed-files after create)
 
 **Started:** 2026-07-25 · **Reopened:** 2026-07-27
 
@@ -516,6 +516,4 @@ and UI still fails for **E** + **F**.
 
 ## Next
 
-1. ⏳ ✅ User verify: create new file under project → pull-down shows it; Approvals / changed-files lists it; no `manager` criticals.
-2. ⏳ 💩 Trace **C′** invalidate on live daemon if pull-down still stale.
-3. ⏳ Keep **2.6.2** as UX follow-up once the list has rows.
+- ✅ User closed 2026-09-02. B′/C′ and plan 2.6.2 remain optional follow-ups if symptoms return.

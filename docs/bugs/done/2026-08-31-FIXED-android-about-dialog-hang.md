@@ -1,6 +1,6 @@
 # Android About hang: Adw.AboutWindow second toplevel vs singleTask
 
-**Status:** ✔️ applied in `ollmapp/About.vala` — await user ✅ on device
+**Status:** ✅ FIXED — user closed 2026-09-02 (About opens on first tap)
 
 **Started:** 2026-08-31
 
@@ -148,4 +148,4 @@ Device SM_S9380, 2026-08-31. Main logcat had already rotated; `events` buffer st
 
 ## Next
 
-⏳ 🔷 Rebuild APK and verify on device: About opens on first tap, dismisses, chat still works; Home/Recents still resumes (C5).
+- ✅ User closed 2026-09-02.

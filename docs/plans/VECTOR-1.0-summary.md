@@ -7,3 +7,9 @@
 ## Current
 
 - [VECTOR-2.10.2-background-scan-pause-and-foreground-reload.md](VECTOR-2.10.2-background-scan-pause-and-foreground-reload.md)
+- [VECTOR-2.13-documentation-indexing-tool.md](VECTOR-2.13-documentation-indexing-tool.md)
+- [VECTOR-2.10.3-code-search-target-by-path.md](VECTOR-2.10.3-code-search-target-by-path.md)
+
+## Bugs (vector output)
+
+- [`docs/bugs/2026-09-02-codebase-search-output-markdown.md`](../../bugs/2026-09-02-codebase-search-output-markdown.md) — `codebase_search` `format_results()` markdown layout (was `TOOLS-2.23-codebase-output-improvements.md`)

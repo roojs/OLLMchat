@@ -3,7 +3,7 @@
 > Pointer: `docs/bug-fix-process.md` (emoji). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ⏳ root cause confirmed; fix proposed — await apply approval
+**Status:** 🚫 CLOSED — not observed 2026-09-02 (no warning in normal use; harmless if latent)
 
 **Started:** 2026-08-05
 
@@ -89,4 +89,4 @@ the page arg.
 
 ## Next
 
-- ⏳ 🔷 Apply both Replace fences; reopen Settings and confirm warning gone
+- 🚫 Closed — user does not see the warning; no change applied.

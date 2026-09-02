@@ -2,9 +2,9 @@
 
 > **Do not update `docs/plans/TOOLS-1.0-summary.md` for this plan.**
 
-> Split from [`TOOLS-2.6.5-run-command-timeout-live-spill.md`](TOOLS-2.6.5-run-command-timeout-live-spill.md). Timeout / live / spill already landed there. VTE is **not** here: [`TOOLS-2.6.6-FUTURE-run-command-vte.md`](TOOLS-2.6.6-FUTURE-run-command-vte.md).
+> Split from [`done/TOOLS-2.6.5-DONE-run-command-timeout-live-spill.md`](done/TOOLS-2.6.5-DONE-run-command-timeout-live-spill.md). Timeout / live / spill already landed there. VTE is **not** here: [`TOOLS-2.6.6-FUTURE-run-command-vte.md`](TOOLS-2.6.6-FUTURE-run-command-vte.md).
 
-**Status:** **✔️** agent-done — awaiting user **✅**
+**Status:** **✅ DONE** — archived 2026-09-02 (user confirmed complete).
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 

@@ -1,6 +1,6 @@
 # RPC: File.activate never replies → queue stall → unexpected response id abort
 
-**Status:** ✔️ Phase 0 applied — await user ✅
+**Status:** ✅ FIXED — user closed 2026-09-02 (Phase 0: no `File.activate` RPC; METHOD_NOT_FOUND on failed dispatch)
 
 ℹ️ Implemented via [`docs/plans/done/2.10.4.7-DONE-active-project-file-outside-db.md`](../plans/done/2.10.4.7-DONE-active-project-file-outside-db.md) **Phase 0**.
 
@@ -54,4 +54,4 @@
 
 ## Next
 
-⏳ User ✅ after verifying file activate no longer stalls RPC / aborts.
+- ✅ User closed 2026-09-02.

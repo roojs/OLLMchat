@@ -1,4 +1,6 @@
-# 2.13. Documentation Indexing Tool
+# VECTOR-2.13 — Documentation indexing
+
+> **Category:** `VECTOR` (`libocvector2`) — not `TOOLS`. Vector/index pipeline + optional search tool wire; same family as codebase search (2.10).
 
 ## Overview
 

@@ -62,7 +62,7 @@ Text to embed: message content (and optionally role prefix, e.g. "user: ..." / "
 ## Related Plans
 
 - **2.10** - Codebase Search Tool (vector indexing, FAISS, metadata schema pattern)
-- **2.13** - Documentation Indexing Tool (similar indexing workflow and repository/shared DB ideas)
+- **[VECTOR-2.13](VECTOR-2.13-documentation-indexing-tool.md)** — Documentation indexing (similar indexing workflow and repository/shared DB ideas)
 - **2.10.3** - File-based vector entries / what gets vectorized
 
 ## Notes

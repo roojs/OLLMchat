@@ -4,7 +4,7 @@
 
 **Started:** 2026-08-14 · **Updated:** 2026-08-27
 
-**Related:** [`2026-08-13-is-text-content-type-fallback.md`](2026-08-13-is-text-content-type-fallback.md) (restore `File.fetch` after activate hit this while testing Approvals / `is_text`)
+**Related:** [`2026-08-13-FIXED-is-text-content-type-fallback.md`](2026-08-13-FIXED-is-text-content-type-fallback.md) (restore `File.fetch` after activate hit this while testing Approvals / `is_text`)
 
 **Wire docs:** [`docs/bin-rpc-protocol.md`](../bin-rpc-protocol.md) §1 (per-connection `client_names` / `server_names`, even/odd)
 

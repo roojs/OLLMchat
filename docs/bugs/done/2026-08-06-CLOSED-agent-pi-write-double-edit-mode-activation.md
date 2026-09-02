@@ -1,6 +1,6 @@
 # Agent Pi write: double Edit Mode Activated + file-written visibility
 
-**Status:** ⏳ root cause confirmed; fix proposed — await apply approval
+**Status:** 🚫 CLOSED — not pursued 2026-09-02 (double activation / "File written" UX; fix not applied)
 
 ## Problem
 
@@ -81,4 +81,4 @@
 
 ## Next
 
-⏳ 🔷 Await approval to apply §1–§2 (and confirm wording **"File written"** vs keep body "Successfully applied changes…").
+- 🚫 Closed 2026-09-02 — reopen if double Edit Mode Activated on new-file `write` bites again.

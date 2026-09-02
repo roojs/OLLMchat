@@ -1,6 +1,6 @@
 # Extensionless / API-written files stay `is_text=0`
 
-**Status:** ✔️ §1–§2 applied — await user verify (restart daemon + write extensionless file)
+**Status:** ✅ FIXED — user closed 2026-09-02 (extensionless / API-written files get `is_text=1`)
 
 **Started:** 2026-08-13 · **Updated:** 2026-08-14
 
@@ -205,16 +205,6 @@ New lines only: content-type sniff + optional `project_files.update_from` when `
 
 ## Next
 
-✔️ §1–§2 applied (`to_real` EXISTS-gated sniff; `update_file_metadata_after_write` post-write sniff + `update_from`). No `throws Error` on metadata method (user prefers living with Vala unhandled-error warning). Built `ollmfilesd`.
-
-✔️ Live 2026-08-14 ~08:44: filesystem scan + `File.fetch` replied (open path OK after scan/`is_text` heal).
-
-✔️ Follow-up crash on Approve: daemon `GLib.error` from SQL `near "%"` — `approve()` `.printf` only applied to the second string concat piece, left literal `%lld` in `WHERE filebase_id = %lld`. Fixed by parenthesizing full WHERE before `.printf`. Client `Trace/breakpoint` was `Client.disconnect` → `GLib.error` with pending `FileHistory.approve`.
-
-✔️ Live 2026-08-14 ~08:50: after activate, restore `File.fetch` raced daemon `scan_start` → `wire name token 48 alias mismatch` (bin duplex name table). Tracked in [`done/2026-08-14-FIXED-bin-wire-name-duplex-tables.md`](done/2026-08-14-FIXED-bin-wire-name-duplex-tables.md) — not an `is_text` regression.
-
-⏳ 🔷 Restart `ollmfilesd` from `build/`; re-test **new** write extensionless Hello World → `is_text=1` → in `child_map` → Approvals click opens.
-
-⏳ 💩 Existing bad rows: after restart + filesystem scan (or touch that triggers scan), `is-text`/`language` now kept from scan (copy_from except + sync onto `old_item`).
+- ✅ User closed 2026-09-02.
 
 ✔️ Follow-up applied: `"is-text"` / `"language"` on `read_dir_update` `copy_from` except list + assign onto `old_item` (same as `is-ignored` / `is-repo`).

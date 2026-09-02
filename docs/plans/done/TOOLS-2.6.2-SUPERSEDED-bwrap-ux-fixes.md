@@ -1,5 +1,7 @@
 # 2.6.2. Bwrap UX Fixes: Pulldown Sizing and Open-First-File
 
+**Status:** **SUPERSEDED** — remaining work → [`../BWRAP-2.6.2-open-first-changed-file.md`](../BWRAP-2.6.2-open-first-changed-file.md). Min width shipped; open-first-file and optional min-height deferred there.
+
 ## Overview
 
 This plan addresses UX issues in the bwrap/run-command and edit-file flow:
@@ -9,7 +11,15 @@ This plan addresses UX issues in the bwrap/run-command and edit-file flow:
 
 ## Status
 
-⏳ **PLANNING** – Design phase.
+⏳ **PARTIAL** — Phase 1 partly shipped; Phases 2–4 not started.
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 1 — Approvals popover min size | ✔️ partial | `Approvals.update_popover_size()` sets min width **400px** (above plan’s 280px). Min height still **100px** (plan target ~180px). |
+| 2–4 — open first modified/added | ⏳ not started | No `open_file_requested` / `is_focus_inside` in tree yet. |
+| 5 — SearchableDropdown min size | ⏳ optional | Separate Android popover layout bug: [`docs/bugs/2026-09-02-android-add-model-search-popover-layout.md`](../bugs/2026-09-02-android-add-model-search-popover-layout.md). |
+
+**Related shipped work (different scope):** file **reload** when already open in the source view after LLM write — [`docs/bugs/2026-08-15-open-file-not-reloaded-after-llm-write.md`](../bugs/2026-08-15-open-file-not-reloaded-after-llm-write.md). Does not cover auto-open when focus is in chat.
 
 ## Problem
 
@@ -160,7 +170,7 @@ Only the code-assistant AgentFactory has a SourceView. It should react to `open_
 
 ### Phase 1: Approvals Popover Min Width and Min Height
 
-- [ ] In `Approvals.update_popover_size()` (and/or popover setup), set a minimum width (e.g. 280px) on the popover child.
+- [x] Min width on popover child — **shipped** (`set_size_request(400, …)` in `Approvals.update_popover_size()`).
 - [ ] Set a higher minimum height (e.g. 180px) for the list area when there are items, while keeping the existing per‑item and max (400px) behavior.
 - [ ] Ensure the popover is usable on first open (initial min size before `update_popover_size` runs, if needed).
 - [ ] Manually test: RunCommand with bwrap that modifies/adds files → Approvals bar → next popover is comfortably sized.

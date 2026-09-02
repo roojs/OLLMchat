@@ -1,6 +1,6 @@
 # Android Settings tabs: Connections first, want Models first
 
-**Status:** ⏳ user-stated; fix proposed — await apply approval
+**Status:** ✅ FIXED — user closed 2026-09-02 (Settings opens on Models first)
 
 **Started:** 2026-08-31
 
@@ -96,4 +96,4 @@
 
 ## Next
 
-⏳ 🔷 Approve Part 1, then rebuild APK and confirm Settings opens on Models.
+- ✅ User closed 2026-09-02.

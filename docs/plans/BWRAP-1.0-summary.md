@@ -6,6 +6,7 @@
 
 ## Current
 
+- [BWRAP-2.6.2-open-first-changed-file.md](BWRAP-2.6.2-open-first-changed-file.md)
 - [BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)
 
 ## Done

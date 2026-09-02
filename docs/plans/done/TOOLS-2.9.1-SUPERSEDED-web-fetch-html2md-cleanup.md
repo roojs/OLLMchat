@@ -1,5 +1,7 @@
 # 2.9.1. Web Fetch HTML2MD Cleanup
 
+**Status:** **SUPERSEDED** — `web_fetch` is being retired ([`TOOLS-2.9.2-URGENT-disable-http-web-tools.md`](../TOOLS-2.9.2-URGENT-disable-http-web-tools.md)). Tag classes in `libocmarkdown/Tags.vala` are already `internal`. No further HTML2MD cleanup needed for HTTP fetch.
+
 ## Overview
 
 Tidy up the HTML to Markdown conversion code used by WebFetchTool, specifically making the node classes internal and improving code organization.

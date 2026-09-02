@@ -1,6 +1,6 @@
 # Open editor not reloaded after LLM write
 
-**Status:** ✔️ Applied — await user verify (editor reloads after LLM write of a clean open file)
+**Status:** ✅ FIXED — user closed 2026-09-02 (editor reload after LLM write of clean open file)
 
 **Started:** 2026-08-15
 
@@ -302,4 +302,4 @@ Apply the same **Remove** / **Replace with** in **both** `libocfiles/File.vala` 
 
 ## Next
 
-🔷 ⏳ User verify: LLM write of an already-open **clean** file updates the editor; dirty buffer still shows the overwrite/refresh banner (on focus).
+- ✅ User closed 2026-09-02.

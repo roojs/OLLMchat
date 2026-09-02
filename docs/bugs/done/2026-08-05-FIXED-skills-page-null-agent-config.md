@@ -3,7 +3,7 @@
 > Pointer: `docs/bug-fix-process.md` (emoji). Legend:
 > `docs/guide-to-writing-plans.md` — Discussion style (emoji prefixes).
 
-**Status:** ✔️ A + C applied — await user verify (Settings → Skills, no criticals)
+**Status:** ✅ FIXED — user closed 2026-09-02 (Settings → Skills, no criticals)
 
 **Started:** 2026-08-05
 
@@ -131,4 +131,4 @@ agent-config UI before `initialize_client`.
 
 ## Next
 
-- ⏳ ✅ User verify: Settings → Skills — no criticals; toggles show offered skills
+- ✅ User closed 2026-09-02.

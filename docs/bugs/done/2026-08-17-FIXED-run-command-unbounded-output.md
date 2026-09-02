@@ -1,6 +1,6 @@
 # run_command unbounded output (`ls -RL ~`)
 
-**Status:** ✔️ Applied as stopgap (kill at 100/50) — **superseded** by [`docs/plans/done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md`](../plans/done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md) (Stop + last-slice tail landed). Remaining live/spill/timeout: [`TOOLS-2.6.5-run-command-timeout-live-spill.md`](../plans/TOOLS-2.6.5-run-command-timeout-live-spill.md). Do not extend kill-for-length further.
+**Status:** ✅ FIXED — user closed 2026-09-02 (stopgap kill-at-cap applied; superseded by TOOLS-2.6.4 Stop + tail)
 
 **Started:** 2026-08-17
 
@@ -20,7 +20,7 @@
 
 🔷 Advise the agent in the `run_command` / `bash` tool description against unbounded listings (e.g. `ls -RL` on home).
 
-ℹ️ **Supersession:** Product direction is no longer kill-for-length. Prefer let-finish + **tail** to the LLM + **spill file** for retrieval + user **Stop** / timeout ([2.6.4](../plans/done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md) done; [2.6.5](../plans/TOOLS-2.6.5-run-command-timeout-live-spill.md) timeout / live / spill).
+ℹ️ **Supersession:** Product direction is no longer kill-for-length. Prefer let-finish + **tail** to the LLM + **spill file** for retrieval + user **Stop** / timeout ([2.6.4](../plans/done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md) and [2.6.5](../plans/done/TOOLS-2.6.5-DONE-run-command-timeout-live-spill.md) done).
 
 ---
 
@@ -611,6 +611,4 @@ If the command fails, you should handle the error gracefully and provide a helpf
 
 ## Next
 
-✔️ Fences applied (sandbox kill at 100, fallback kill at 50, tool description, process group).
-
-💩 ⏳ After apply: `seq 1 300` via sandboxed `run_command` should return 100 lines, the killed notice, and not wait for the rest of `seq`.
+- ✅ User closed 2026-09-02. Further work tracked in TOOLS-2.6.5 (timeout / live / spill) if needed.

@@ -1,6 +1,6 @@
 # Android Add Model search: ollama.com TLS reject
 
-**Status:** ✔️ applied (`apply_to_session` like tools) — await user ✅ after APK rebuild
+**Status:** ✅ FIXED — user closed 2026-09-02 (Add Model search returns rows)
 
 **Started:** 2026-08-31
 
@@ -152,4 +152,4 @@ Device SM_S9380, 2026-08-31, pid 9210 (fresh launch 09:09:32).
 
 ## Next
 
-⏳ 🔷 Rebuild APK; type a query in Add Model; expect rows, no TLS warning.
+- ✅ User closed 2026-09-02. Popover width/height layout tracked separately in [`2026-09-02-android-add-model-search-popover-layout.md`](../2026-09-02-android-add-model-search-popover-layout.md).

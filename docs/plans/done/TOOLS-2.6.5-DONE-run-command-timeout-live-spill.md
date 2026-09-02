@@ -2,17 +2,17 @@
 
 > **Do not update `docs/plans/TOOLS-1.0-summary.md` for this plan.**
 
-> Split from `TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md`. Done cut: [`done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md`](done/TOOLS-2.6.4-DONE-run-command-stop-and-tail.md). VTE is **not** here: [`TOOLS-2.6.6-FUTURE-run-command-vte.md`](TOOLS-2.6.6-FUTURE-run-command-vte.md). Libsecret + hold: [`TOOLS-2.6.7-run-command-libsecret-hold.md`](TOOLS-2.6.7-run-command-libsecret-hold.md).
+> Split from `TOOLS-2.6.4-URGENT-run-command-stop-live-tail-spill.md`. Done cut: [`TOOLS-2.6.4-DONE-run-command-stop-and-tail.md`](TOOLS-2.6.4-DONE-run-command-stop-and-tail.md). VTE is **not** here: [`TOOLS-2.6.6-FUTURE-run-command-vte.md`](../TOOLS-2.6.6-FUTURE-run-command-vte.md). Libsecret + hold: [`TOOLS-2.6.7-run-command-libsecret-hold.md`](../TOOLS-2.6.7-run-command-libsecret-hold.md).
 
-**Status:** **ACTIVE**
+**Status:** **✔️** **DONE** — timeout, live `ToolOutput` stream, spill file. User asked to archive this cut.
 
-- **✔️** Phase **4a** — live `ToolOutput` stream frame + restore display (agent)
-- **✔️** Phase **4b** — spill file (agent)
-- **✔️** Phase **3c** — `timeout` (agent)
+- **✔️** Phase **4a** — live `ToolOutput` stream frame + restore display
+- **✔️** Phase **4b** — spill file
+- **✔️** Phase **3c** — `timeout`
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
-**Parent:** [`done/2.6-DONE-run-terminal-command-tool.md`](done/2.6-DONE-run-terminal-command-tool.md) · related: [`done/2.6.3-DONE-run-command-root-elevation.md`](done/2.6.3-DONE-run-command-root-elevation.md), [`TOOLS-2.6.2-bwrap-ux-fixes.md`](TOOLS-2.6.2-bwrap-ux-fixes.md)
+**Parent:** [`2.6-DONE-run-terminal-command-tool.md`](2.6-DONE-run-terminal-command-tool.md) · related: [`2.6.3-DONE-run-command-root-elevation.md`](2.6.3-DONE-run-command-root-elevation.md), [`TOOLS-2.6.2-bwrap-ux-fixes.md`](../TOOLS-2.6.2-bwrap-ux-fixes.md)
 
 ---
 
@@ -25,7 +25,7 @@
 - **🔷** ✔️ Live pane holds about **2000** lines (user can scroll back). That pane is **not** persisted. The LLM tail **is** persisted (`tool_reply` in `session.messages`).
 - **🔷** ✔️ Emit in **500 ms** chunks (not per line). Flush leftover on `client.run_tool.end`.
 - **🔷** ✔️ **Linux GTK** gets live UI first. **Windows** keeps subprocess + text frames with timeout/tail/spill where possible. **Android:** tool stays unregistered.
-- **ℹ️** Libsecret + hold two seconds is [`TOOLS-2.6.7-run-command-libsecret-hold.md`](TOOLS-2.6.7-run-command-libsecret-hold.md).
+- **ℹ️** Libsecret + hold two seconds is [`TOOLS-2.6.7-run-command-libsecret-hold.md`](../TOOLS-2.6.7-run-command-libsecret-hold.md).
 - **ℹ️** Stop, last-50 tail, and `ChatWidget` `tool_frame` already landed in **2.6.4**. Reuse `Request.stop()` / `Bubble.stop()`. RPC methods are `client.run_tool.start` / `client.run_tool.output` / `client.run_tool.end`.
 
 **Suggested order**
@@ -49,7 +49,7 @@
 
 ## Platforms
 
-- **🔷** **Linux GTK:** live bounded UI ✔️, spill file ✔️. Timeout ✔️. Libsecret: [`TOOLS-2.6.7-run-command-libsecret-hold.md`](TOOLS-2.6.7-run-command-libsecret-hold.md).
+- **🔷** **Linux GTK:** live bounded UI ✔️, spill file ✔️. Timeout ✔️. Libsecret: [`TOOLS-2.6.7-run-command-libsecret-hold.md`](../TOOLS-2.6.7-run-command-libsecret-hold.md).
 - **🔷** **Windows:** subprocess + text frames. Last-slice ✔️, spill ✔️. Timeout ✔️. No libsecret, no `run_as_root`.
 - **🔷** ✔️ **Android:** leave the tool disabled. Do not register `run_command`. Do not add `libsecret` to the Android meson cut.
 - **ℹ️** **Linux CLI** (`ollmchat-cli`): no `tool_frame`. Subprocess, last-slice ✔️, spill ✔️. Timeout ✔️. Notifications are no-ops for UI. No hold-password UI.

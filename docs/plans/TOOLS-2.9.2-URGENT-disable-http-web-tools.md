@@ -1,8 +1,8 @@
-# 2.9.2 — Disable HTTP `web_fetch` / `google_search` / `web_search`
+# 2.9.2 URGENT — Disable HTTP `web_fetch` / `google_search` / `web_search`
 
 > **Do not update `docs/plans/TOOLS-1.0-summary.md` for this plan** until archived (Focus already points here).
 
-**Status:** **ACTIVE** — simple retire of the old HTTP tools now that **`browser`** (5.0) is the real path.
+**Status:** **URGENT** — retire the old HTTP tools now that **`browser`** (5.0) is the real path. Not yet implemented.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
 

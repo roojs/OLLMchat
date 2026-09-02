@@ -38,15 +38,23 @@
 
 **Status:** ✅ FIXED — Android Settings opens on **Models** first (no retest needed)
 
-**Detail:** [`2026-08-31-android-settings-tab-order.md`](2026-08-31-android-settings-tab-order.md)
+**Detail:** [`done/2026-08-31-FIXED-android-settings-tab-order.md`](done/2026-08-31-FIXED-android-settings-tab-order.md)
+
+---
+
+### S3 — Add Model search popover layout (width + height)
+
+**Status:** ⏳ OPEN — search works; popover too narrow and clips off top of screen
+
+**Detail:** [`2026-09-02-android-add-model-search-popover-layout.md`](2026-09-02-android-add-model-search-popover-layout.md)
 
 ---
 
 ### S2 — Add Model search empty (TLS)
 
-**Status:** ✅ FIXED — search returns rows (popup layout quirks are separate)
+**Status:** ✅ FIXED — search returns rows
 
-**Detail:** [`2026-08-31-android-add-model-search-tls.md`](2026-08-31-android-add-model-search-tls.md)
+**Detail:** [`done/2026-08-31-FIXED-android-add-model-search-tls.md`](done/2026-08-31-FIXED-android-add-model-search-tls.md)
 
 ---
 

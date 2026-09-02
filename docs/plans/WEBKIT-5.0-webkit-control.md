@@ -2,7 +2,7 @@
 
 > **Do not update `docs/plans/WEBKIT-1.0-summary.md` for this plan.**
 
-**Status:** **parked** — core Linux/Windows/Android browser tool shipped; remaining children are **DEFERRED** ([`5.0.3`](WEBKIT-5.0.3-DEFERRED-webkit-press-permission-overlay.md), [`5.0.7`](WEBKIT-5.0.7-DEFERRED-webkit-download-advanced.md)) plus **proposed** [`5.0.10`](WEBKIT-5.0.10-webkit-automation.md) (fill/press via automation). Not the active focus for now.
+**Status:** **parked** — core Linux/Windows/Android browser tool shipped; remaining children are **DEFERRED** ([`5.0.3`](WEBKIT-5.0.3-DEFERRED-webkit-press-permission-overlay.md), [`5.0.7`](WEBKIT-5.0.7-DEFERRED-webkit-download-advanced.md)) plus **ON HOLD** [`5.0.10`](WEBKIT-5.0.10-webkit-automation.md) (fill/press via automation — blocked by [`2026-09-02-webkit-automation-leaks-into-client-sites.md`](../bugs/2026-09-02-webkit-automation-leaks-into-client-sites.md)). Not the active focus for now.
 
 **Where we are (2026-07-26):**
 
@@ -35,7 +35,8 @@
 - ℹ️ Press permission overlay (**DEFERRED**): [`WEBKIT-5.0.3-DEFERRED-webkit-press-permission-overlay.md`](WEBKIT-5.0.3-DEFERRED-webkit-press-permission-overlay.md) — v1 uses **standard** `ChatPermission` gating on `press` instead
 - ℹ️ **`fill` by field name** (**DONE**): [`done/5.0.8-DONE-webkit-fill-by-name.md`](done/5.0.8-DONE-webkit-fill-by-name.md) — `(^fill:KEY)` / HTML `name=` (else `id=`)
 - ℹ️ **Run JavaScript** (**proposed**): [`WEBKIT-5.0.9-webkit-run-javascript.md`](WEBKIT-5.0.9-webkit-run-javascript.md) — file-based `run_js`, site-scoped Allow / Describe / Allow always (not a11y dump/fill/press)
-- ℹ️ Fill / press via **automation** (**proposed**): [`WEBKIT-5.0.10-webkit-automation.md`](WEBKIT-5.0.10-webkit-automation.md) — dump stays a11y; Linux RemoteInspector + Windows/Android CDP; Meson picks platform `WebDriver` / `WebViewAuto` files; no `WebKitWebDriver` process
+- ℹ️ Fill / press via **automation** (**ON HOLD**): [`WEBKIT-5.0.10-webkit-automation.md`](WEBKIT-5.0.10-webkit-automation.md) — smoke blocked by [`2026-09-02-webkit-automation-leaks-into-client-sites.md`](../bugs/2026-09-02-webkit-automation-leaks-into-client-sites.md)
+- ℹ️ Long dump spill file + `read_file` (**proposed**): [`WEBKIT-5.0.11-browser-dump-spill-file.md`](WEBKIT-5.0.11-browser-dump-spill-file.md) — supersedes [`done/TOOLS-1.15-SUPERSEDED-truncate-web-fetch-responses.md`](done/TOOLS-1.15-SUPERSEDED-truncate-web-fetch-responses.md)
 - ℹ️ Browser **`download`** basic (**DONE**): [`done/5.0.5-DONE-webkit-download.md`](done/5.0.5-DONE-webkit-download.md); advanced V2 **DEFERRED**: [`WEBKIT-5.0.7-DEFERRED-webkit-download-advanced.md`](WEBKIT-5.0.7-DEFERRED-webkit-download-advanced.md)
 - ℹ️ Activity progress Cancel / Pause (**DONE**): [`done/5.0.6-DONE-activity-progress-actions.md`](done/5.0.6-DONE-activity-progress-actions.md)
 - ℹ️ Phase **6** detail (generic tool button + view): [`done/5.0.4-DONE-webkit-tool-ui-affordance.md`](done/5.0.4-DONE-webkit-tool-ui-affordance.md)
@@ -289,7 +290,7 @@ Snappr is the **working browsing system**. `libocwebkit` must **follow it closel
 ## Relationship to `google_search` / `web_fetch`
 
 - **🔷** This tool is the **interactive browser** path (a11y + real WebKit session).
-- **✅** Core `browser` shipped — retire HTTP tools via **[`2.9.2`](TOOLS-2.9.2-disable-http-web-tools.md)** (unregister `web_fetch` / `google_search` / `web_search`).
+- **✅** Core `browser` shipped — retire HTTP tools via **[`2.9.2`](TOOLS-2.9.2-URGENT-disable-http-web-tools.md)** (unregister `web_fetch` / `google_search` / `web_search`).
 - **ℹ️** Android W1/W2 assumed “WebKit replaces API search via DOM extract”; **5.0** replaces that approach with **a11y fill + a11y dump**; Android wiring is **5.0.2**.
 
 ---
