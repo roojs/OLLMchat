@@ -1,5 +1,8 @@
 # 5.3. Agent Sandbox
 
+
+> **SUPERSEDED** — prompt-experiment sandbox; Agent Pi is the active coder approach. Index: [`CODER-1.0-summary.md`](../CODER-1.0-summary.md).
+
 > Prompt-experiment agent (`liboccoder`), not bubblewrap. Was `BWRAP-5.3`. Index: [`CODER-1.0-summary.md`](CODER-1.0-summary.md) is not updated until this plan is done.
 
 ## Overview

@@ -137,3 +137,26 @@ if host_machine.system() != 'windows'
     )
   endif
 endif
+
+# --- webkitgtk-6.0-webdriver (libocwebkit Linux) ---
+# Parallel-install .so (roojs APT): WebDriver interactions + #165269 WebCore.
+# Do not put dependency('webkitgtk-6.0-webdriver') in Vala targets — Meson would
+# add --pkg webkitgtk-6.0-webdriver and there is no system vapi. Vala types stay
+# --pkg=webkitgtk-6.0 from stock libwebkitgtk-6.0-dev (same idea as libseccomp).
+# Link the versioned .so by path: -dev ships only .pc + .so.N (no unversioned .so).
+if host_machine.system() == 'linux'
+  webkit_webdriver_pc = dependency('webkitgtk-6.0-webdriver', required: true)
+  webkit_webdriver_libdir = webkit_webdriver_pc.get_variable(
+    pkgconfig: 'libdir',
+  )
+  webkit_webdriver_inc = webkit_webdriver_pc.get_variable(
+    pkgconfig: 'includedir',
+  )
+  webkit_webdriver_dep = declare_dependency(
+    dependencies: [dependency('javascriptcoregtk-6.0')],
+    compile_args: ['-I' + join_paths(webkit_webdriver_inc, 'webkitgtk-6.0')],
+    link_args: [
+      join_paths(webkit_webdriver_libdir, 'libwebkitgtk-6.0-webdriver.so.4'),
+    ],
+  )
+endif

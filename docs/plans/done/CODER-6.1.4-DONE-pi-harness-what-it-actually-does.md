@@ -1,8 +1,11 @@
 # 6.1.4 What Pi’s “harness” actually does
 
+
+> **DONE** — study archived. Parent: [`CODER-6.1-agent-pi.md`](../CODER-6.1-agent-pi.md).
+
 Status: ⏳ study (not an implement plan)
 
-ℹ️ Parent: [6.1.2](done/6.1.2-DONE-pi-like-agent.md). Prior: [6.1.1](CODER-6.1.1-pi-agent.md), [done/6.1.3](done/6.1.3-DONE-base-skills.md).  
+ℹ️ Parent: [6.1.2](done/6.1.2-DONE-pi-like-agent.md). Prior: [6.1.1](CODER-6.1.1-DONE-pi-agent.md), [done/6.1.3](done/6.1.3-DONE-base-skills.md).  
 ℹ️ Sources: `/home/alan/git/pi` (`pi-agent-core`, `pi-coding-agent` README Philosophy / Extensions); [Bitter Frontier profile](https://frontier.bitter.sh/profiles/pi-coding-agent/) (“harness that refuses to govern”).
 
 ## Purpose
@@ -16,7 +19,7 @@ Status: ⏳ study (not an implement plan)
 
 ## Verdict (read this first)
 
-- ℹ️ **Pi does not harness model output quality.** No plan gate, no skill-was-followed check, no RAPIR stages, no host retry that “you skipped the skill.” Soft skills fail open ([01 §4](CODER-6.1.1-pi-agent.md#4-skills-in-pi--catalog-cheap-body-on-demand)).
+- ℹ️ **Pi does not harness model output quality.** No plan gate, no skill-was-followed check, no RAPIR stages, no host retry that “you skipped the skill.” Soft skills fail open ([01 §4](CODER-6.1.1-DONE-pi-agent.md#4-skills-in-pi--catalog-cheap-body-on-demand)).
 - ℹ️ In Pi’s vocabulary, **harness ≈ substrate around the model**: LLM call → tool args validate → run tools → optional mid-run inject → compact context → repeat. Plus hooks so *you* can add governance as extensions.
 - ℹ️ The famous bit is **refusal**: no baked-in permissions, plan mode, MCP, sub-agents, or todos. “Special” = minimal core + typed extension surface + packaging, **not** a smarter conductor than Skill.Runner.
 - 🔷 Our Agent Pi so far (AGENTS inject, skill catalog, lean tools, threshold compact) is a fair port of the **coding-agent defaults**. It is **not** a port of a hidden output-checking layer — that layer does not exist in core.
@@ -84,7 +87,7 @@ Not because it out-harnesses Skill.Runner on output control.
 1. **Clear product thesis** — four tools, short system prompt, everything else opt-in.
 2. **Extension platform** — typed lifecycle hooks without forking the agent (permissions, checkpoints, custom tools as *code*).
 3. **Packaging** — `pi-ai` + agent-core + coding-agent CLI + TUI + RPC/SDK; easy embed (OpenClaw etc. cite it).
-4. **Context-file contract** — `AGENTS.md` always-inlined; skills progressive — clean prompt pattern ([01](CODER-6.1.1-pi-agent.md)).
+4. **Context-file contract** — `AGENTS.md` always-inlined; skills progressive — clean prompt pattern ([01](CODER-6.1.1-DONE-pi-agent.md)).
 5. **Anti-Claude-Code stance** — no MCP/subagent/plan baked in; community likes the floor-not-cathedral pitch.
 6. **Author / community signal** — Mario Zechner / Earendil; demos; session sharing for evals.
 
@@ -118,7 +121,7 @@ None of those are “the host verifies the model did the skill correctly.”
 | Permissions / approvals (ours) | A — **we** add governance Pi refuses |
 | Hash tags + `session_fetch` | B+ — our stronger recall than Pi alone |
 
-Open: [09](CODER-6.1.9-offer-agents-md.md), [10](CODER-6.1.10-skills-configuration.md), [11](CODER-6.1.11-extended-base-skills.md). ✅ [done/02](done/6.1.2-DONE-pi-like-agent.md); ✅ [done/03](done/6.1.3-DONE-base-skills.md); ✅ [done/07](done/6.1.7-DONE-project-summary-tool.md); ✅ [06](done/6.1.6-DONE-urgent-follow-up.md).
+Open: [09](CODER-6.1.9-offer-agents-md.md), [10](CODER-6.1.10-DONE-skills-configuration.md), [11](CODER-6.1.11-extended-base-skills.md). ✅ [done/02](done/6.1.2-DONE-pi-like-agent.md); ✅ [done/03](done/6.1.3-DONE-base-skills.md); ✅ [done/07](done/6.1.7-DONE-project-summary-tool.md); ✅ [06](done/6.1.6-DONE-urgent-follow-up.md).
 
 ---
 
@@ -128,7 +131,7 @@ Open: [09](CODER-6.1.9-offer-agents-md.md), [10](CODER-6.1.10-skills-configurati
 
 - **Urgent** after current tool batch, before next LLM call (Phase 6a agent; 6b UI reserved). Pi called this **steer**.
 - **Follow-up** when the agent would otherwise stop.
-- Chatter FIFO ≠ between-tool-batch inject ([01 §9](CODER-6.1.1-pi-agent.md#9-urgent--follow-up-requirement-not-the-headline)).
+- Chatter FIFO ≠ between-tool-batch inject ([01 §9](CODER-6.1.1-DONE-pi-agent.md#9-urgent--follow-up-requirement-not-the-headline)).
 
 - 🔷 That **is** harnessing the **conversation timeline** (sense B), not verifying code/skill quality (sense A).
 - 🚫 Do not delete [06](done/6.1.6-DONE-urgent-follow-up.md) and substitute “figure out real harness.” This study already answers: core Pi has no secret sense-A layer.

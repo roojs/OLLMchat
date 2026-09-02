@@ -1,12 +1,15 @@
 # 7.16 — Iterative task execution loop (overview)
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 **Status:** in progress (**7.16.1** done; **7.16.1b** partial)
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans · **Layout:** `docs/guide-to-writing-plans.md`
 
 **ℹ️** Related: `docs/plans/done/7.14-DONE-task-progress-tree-ui.md`, `docs/plans/done/7.13-DONE-agent-save-restore.md`, `docs/task-and-skills-flow.md`, `docs/skills-format.md`
 
-> **Note:** `docs/plans/CODER-1.0-summary.md` is not updated until sub-plans are done and archived.
+> **Note:** `docs/plans/ORCA-1.0-summary.md` is not updated until sub-plans are done and archived.
 
 ---
 
@@ -14,11 +17,11 @@
 
 | # | Plan | Summary |
 | --- | --- | --- |
-| **1a** | [`CODER-7.16.1-action-copy.md`](CODER-7.16.1-action-copy.md) | ✅ **Done** — Action **`run()`** copies + **extraction on `Base`** + build (`11d40d40`) |
-| **1b** | [`CODER-7.16.1b-action-wire.md`](CODER-7.16.1b-action-wire.md) | **In progress** — extract wired; **`run_action`** + **`Details`** trim **remaining** |
-| **2** | [`CODER-7.16.2-session-markers-replay.md`](CODER-7.16.2-session-markers-replay.md) | **`schema_version`** + session markers + replay for **`Action`** parity |
-| **3** | [`CODER-7.16.3-action-iterate-wire.md`](CODER-7.16.3-action-iterate-wire.md) | **`Action.Iterate`** + wire in; drop **`RunTools`** |
-| **4** | [`CODER-7.16.4-iterate-collateral.md`](CODER-7.16.4-iterate-collateral.md) | Prompts, skills, **`to_human`**, docs, replay cleanup |
+| **1a** | [`ORCA-7.16.1-ON-HOLD-action-copy.md`](ORCA-7.16.1-ON-HOLD-action-copy.md) | ✅ **Done** — Action **`run()`** copies + **extraction on `Base`** + build (`11d40d40`) |
+| **1b** | [`ORCA-7.16.1b-ON-HOLD-action-wire.md`](ORCA-7.16.1b-ON-HOLD-action-wire.md) | **In progress** — extract wired; **`run_action`** + **`Details`** trim **remaining** |
+| **2** | [`ORCA-7.16.2-ON-HOLD-session-markers-replay.md`](ORCA-7.16.2-ON-HOLD-session-markers-replay.md) | **`schema_version`** + session markers + replay for **`Action`** parity |
+| **3** | [`ORCA-7.16.3-ON-HOLD-action-iterate-wire.md`](ORCA-7.16.3-ON-HOLD-action-iterate-wire.md) | **`Action.Iterate`** + wire in; drop **`RunTools`** |
+| **4** | [`ORCA-7.16.4-ON-HOLD-iterate-collateral.md`](ORCA-7.16.4-ON-HOLD-iterate-collateral.md) | Prompts, skills, **`to_human`**, docs, replay cleanup |
 
 Expand each sub-plan with concrete hunks before implementation.
 
@@ -28,7 +31,7 @@ Expand each sub-plan with concrete hunks before implementation.
 
 **Merged:** `11d40d40` — *refactor action classes of skill layer - prior to looping change*
 
-**Approved design changes** (documented in [`CODER-7.16.1-action-copy.md`](CODER-7.16.1-action-copy.md)):
+**Approved design changes** (documented in [`ORCA-7.16.1-ON-HOLD-action-copy.md`](ORCA-7.16.1-ON-HOLD-action-copy.md)):
 
 - **`Action.Base : OLLMchat.Agent.Base`** — shared chat/model context; constructor calls **`replace_chat(task.chat())`**.
 - **Executor extraction** moved from **`ResultParser`** to **`Action.Base`** (**`extract_result`**, **`extract_tool`**) with **`WriteExec`** override and **`PostExamMerge.extract`**; live + replay call sites updated.
@@ -160,7 +163,7 @@ flowchart LR
   M --> D
 ```
 
-**Dispatch:** wire sketch in [`CODER-7.16.1b-action-wire.md`](CODER-7.16.1b-action-wire.md); path **B** line changes in [`CODER-7.16.3-action-iterate-wire.md`](CODER-7.16.3-action-iterate-wire.md).
+**Dispatch:** wire sketch in [`ORCA-7.16.1b-ON-HOLD-action-wire.md`](ORCA-7.16.1b-ON-HOLD-action-wire.md); path **B** line changes in [`ORCA-7.16.3-ON-HOLD-action-iterate-wire.md`](ORCA-7.16.3-ON-HOLD-action-iterate-wire.md).
 
 ---
 

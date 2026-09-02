@@ -1,16 +1,19 @@
 # 7.16.1b — Wire `Action.*` into `Details`
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 **Status:** **in progress** — extraction + build landed in **7.16.1** merge; **`run_action`** dispatch and **`Details`** trim **remaining**
 
-**Parent:** [`CODER-7.16-iterative-task-execution-loop.md`](CODER-7.16-iterative-task-execution-loop.md)
+**Parent:** [`ORCA-7.16-ON-HOLD-iterative-task-execution-loop.md`](ORCA-7.16-ON-HOLD-iterative-task-execution-loop.md)
 
-**Depends on:** [`CODER-7.16.1-action-copy.md`](CODER-7.16.1-action-copy.md) ✅
+**Depends on:** [`ORCA-7.16.1-ON-HOLD-action-copy.md`](ORCA-7.16.1-ON-HOLD-action-copy.md) ✅
 
-**Blocks:** [`CODER-7.16.2-session-markers-replay.md`](CODER-7.16.2-session-markers-replay.md)
+**Blocks:** [`ORCA-7.16.2-ON-HOLD-session-markers-replay.md`](ORCA-7.16.2-ON-HOLD-session-markers-replay.md)
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans · **Layout:** `docs/guide-to-writing-plans.md`
 
-> **Note:** `docs/plans/CODER-1.0-summary.md` is not updated until **7.16.1** (copy + wire) is done and archived.
+> **Note:** `docs/plans/ORCA-1.0-summary.md` is not updated until **7.16.1** (copy + wire) is done and archived.
 
 ---
 
@@ -40,7 +43,7 @@
 - **✅** **`Skill.Runner`** replay hydration — same Action extract dispatch.
 - **✅** **`ResultParser`** — executor methods removed; **`document`** public read-only for Action parsers.
 
-See [`CODER-7.16.1-action-copy.md`](CODER-7.16.1-action-copy.md) **Design revisions** for the approved **`Base`** extraction API.
+See [`ORCA-7.16.1-ON-HOLD-action-copy.md`](ORCA-7.16.1-ON-HOLD-action-copy.md) **Design revisions** for the approved **`Base`** extraction API.
 
 ---
 

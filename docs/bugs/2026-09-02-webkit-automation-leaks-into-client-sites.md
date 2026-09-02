@@ -1,6 +1,6 @@
 # WebKit automation leaks into client sites
 
-**Status:** ⏳ ON HOLD — blocks WEBKIT-5.0.10 smoke / sign-off until fixed
+**Status:** ⏳ OPEN — OLLMchat implementation ✔️; smoke pending; Linux hide blocked on GTK Settings API (webkitgtk-automation)
 
 **Started:** 2026-09-02
 
@@ -10,59 +10,64 @@
 
 **Related:**
 
-- ℹ️ Plan (code landed, smoke blocked): [`WEBKIT-5.0.10-webkit-automation.md`](../plans/WEBKIT-5.0.10-webkit-automation.md)
-- ℹ️ `WebViewAuto` (all platforms): `libocwebkit/linux/WebViewAuto.vala`, `windows/`, `android/`
-- ℹ️ Plan intent: only primary `WebView` is `is_controlled_by_automation = true`; do **not** spoof `navigator.webdriver`
+- ℹ️ Plan: [`WEBKIT-5.0.10-webkit-automation.md`](../plans/WEBKIT-5.0.10-webkit-automation.md)
+- ℹ️ `WebViewAuto`: `libocwebkit/linux/`, `windows/`, `android/`
+- ℹ️ webview2-gtk ≥ **0.5.9**: `WebViewSettings.navigator_webdriver_active_policy`
+- ℹ️ webkitgtk-android ≥ **0.1.5**: same Vala API (DISABLED no-op on System WebView)
+- ℹ️ Linux: [webkitgtk-automation](https://github.com/roojs/webkitgtk-automation) — WebCore `#165269` in `libwebkitgtk-6.0-webdriver4`; **no** public GTK `WebKitSettings` property yet
 
 ---
 
 ## Problem
 
-🔷 After WEBKIT-5.0.10 wire-up, **automation state leaks into sites the user browses** (“client sites”) — not confined to the tool-controlled primary browser session.
-
-🔷 User report 2026-09-02: treat this as **on hold** until automation is scoped so normal browsing / visited pages are not affected.
-
-⏳ Exact observable on sites (e.g. `navigator.webdriver`, bot challenges, inspector/CDP exposure) — **needs capture** before proposing fences.
+🔷 Controlled tool views expose W3C `navigator.webdriver === true`, which sites use as a bot signal. Blocks WEBKIT-5.0.10 smoke.
 
 ---
 
-## Evidence
+## Fix (app config; libraries do the rest)
 
-- ✔️ `WebViewAuto` ctor calls `WebContext.get_default()` then `context.set_automation_allowed(true)` — process-wide default context, not a dedicated automation-only context.
-- ✔️ Same ctor sets `is_controlled_by_automation: true`, `network_session: context.get_network_session_for_automation()`, `enable_developer_extras = true`.
-- ✔️ `WebDriver.prepare()` sets `WEBKIT_INSPECTOR_SERVER` on loopback before any WebView — env is process-wide.
-- ✔️ `BrowserStack` attaches `WebDriver` when constructed; `Tool` lazily creates stack on first use — automation may be live even when user is not actively using the browser tool.
+🔷 Set on view settings where the Vala property exists:
+
+```vala
+this.get_settings().navigator_webdriver_active_policy =
+	NavigatorWebDriverActivePolicy.DISABLED;
+```
+
+| Layer | Responsibility |
+|-------|----------------|
+| **OLLMchat** (`WebViewAuto`) | Set policy **Disabled** (Win/Android); link webdriver on Linux |
+| **webview2-gtk** ≥ 0.5.9 | DISABLED → `--disable-blink-features=AutomationControlled` at env create |
+| **webkitgtk-android** ≥ 0.1.5 | Same property; DISABLED no-op (System WebView already reports false) |
+| **libwebkitgtk-6.0-webdriver** | Interactions + WebCore policy; GTK Settings setter still upstream |
+
+🚫 Spoof from page JS.  
+🚫 Dummy `webkitgtk-6.0-webdriver` vapis — link via `declare_dependency` + `--pkg=webkitgtk-6.0`.  
+🚫 Edit webview2-gtk host C from this repo.
 
 ---
 
-## Expected vs actual
+## Implementation (OLLMchat — ✔️ except Linux Settings line)
 
-| | Expected | Actual |
-|---|----------|--------|
-| Automation scope | Only the primary tool `WebView` / automation session | ⏳ Leaks into client sites (user report) |
-| Site fingerprint | No automation signals on normal user browsing | ⏳ TBD — measure on target sites |
-| Inspector | Loopback-only, not visible to remote origins | ⏳ TBD — confirm no remote exposure |
+- ✔️ `windows/WebViewAuto.vala` + `android/WebViewAuto.vala`: `navigator_webdriver_active_policy = DISABLED`.
+- ✔️ Linux: `webkit_webdriver_dep` in `config/meson.build`; meson targets use it.
+- ✔️ Debian / `docs/BUILD.md`: `libwebkitgtk-6.0-webdriver-dev`; Android wrap **v0.1.5**; Windows CI **webview2-gtk 0.5.9**.
+- 💤 `linux/WebViewAuto.vala`: policy line **commented** — stock Vala `WebKit.Settings` has no property yet (webkitgtk-automation GTK API pending).
 
 ---
 
 ## Root cause
 
-⏳ **Hypothesis:** `set_automation_allowed(true)` on **`WebContext.get_default()`** plus process-wide `WEBKIT_INSPECTOR_SERVER` applies automation plumbing beyond the single `is_controlled_by_automation` view. May also affect any other WebKit view sharing that context.
-
-🚫 Not proposing code fences until device/browser repro confirms what sites see.
-
----
-
-## Proposed fix direction
-
-⏳ Deferred — likely needs **isolated `WebContext`** (not `get_default()`), and/or **lazy** `prepare()` + `set_automation_allowed` only while the browser tool session is active. Confirm with user before fences.
+✔️ Default **Auto** policy advertises automation on controlled views. Hiding is embedder opt-in (`NavigatorWebDriverActivePolicy.DISABLED`).
 
 ---
 
 ## Attempts / changelog
 
-- ✔️ 2026-09-02 — User: on hold until automation leak into client sites is solved; blocks WEBKIT-5.0.10 smoke.
+- ✔️ 2026-09-02 — Hold until leak addressed; blocks WEBKIT-5.0.10 smoke.
+- ✔️ 2026-09-02 — Direction locked: app sets Disabled; libraries own platform mechanism.
+- ✔️ 2026-09-02 — Full OLLMchat apply: Win/Android settings, Linux webdriver link, packaging, dependency pins; removed mistaken empty `vapi/webkitgtk-6.0-webdriver.*`.
 
 ## Next
 
-⏳ 🔷 Repro on a real site (note what the page sees), then propose verbatim fences in this file.
+⏳ 🔷 Smoke: Win/Android console `navigator.webdriver` → `false`; Linux fill/press smoke (hide still `true` until GTK Settings API).
+⏳ 🔷 webkitgtk-automation: expose `navigator_webdriver_active_policy` on GTK `WebKitSettings` (then add same line to `linux/WebViewAuto.vala`).

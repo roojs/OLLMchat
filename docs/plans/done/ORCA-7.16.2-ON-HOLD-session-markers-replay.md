@@ -1,16 +1,19 @@
 # 7.16.2 — Session markers and replay (`Action` parity)
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 **Status:** proposed
 
-**Parent:** [`CODER-7.16-iterative-task-execution-loop.md`](CODER-7.16-iterative-task-execution-loop.md)
+**Parent:** [`ORCA-7.16-ON-HOLD-iterative-task-execution-loop.md`](ORCA-7.16-ON-HOLD-iterative-task-execution-loop.md)
 
-**Depends on:** [`CODER-7.16.1b-action-wire.md`](CODER-7.16.1b-action-wire.md)
+**Depends on:** [`ORCA-7.16.1b-ON-HOLD-action-wire.md`](ORCA-7.16.1b-ON-HOLD-action-wire.md)
 
-**Blocks:** [`CODER-7.16.3-action-iterate-wire.md`](CODER-7.16.3-action-iterate-wire.md)
+**Blocks:** [`ORCA-7.16.3-ON-HOLD-action-iterate-wire.md`](ORCA-7.16.3-ON-HOLD-action-iterate-wire.md)
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans · **Layout:** `docs/guide-to-writing-plans.md`
 
-> **Note:** `docs/plans/CODER-1.0-summary.md` is not updated until this sub-plan is done and archived.
+> **Note:** `docs/plans/ORCA-1.0-summary.md` is not updated until this sub-plan is done and archived.
 
 ---
 
@@ -73,7 +76,7 @@
 - **🔷** Path **B**: still multi-tool + merge transcript shape until **7.16.3**.
 - **🔷** Drop reliance on **`replay_tool_pos`** stepping where markers suffice.
 - **🚫** Do not require replay of pre-schema sessions.
-- **ℹ️** **`docs/plans/CODER-7.14.11-ON-HOLD-tool-call-summary-replay-tooltip.md`** — revisit after marker shape settles.
+- **ℹ️** **`docs/plans/ORCA-7.14.11-ON-HOLD-tool-call-summary-replay-tooltip.md`** — revisit after marker shape settles.
 
 ---
 

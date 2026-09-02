@@ -2,9 +2,10 @@
 # R18 — CI clones webkitgtk-android from the wrap pin, not the laptop
 # subprojects/ tree. 31fd762d shipped get_network_session() only; OLLMchat
 # uses WebView.network_session (WebKitGTK / webview2-gtk). Pin must be
-# release tag v0.1.3 (includes the property). CI 32552806663 / 32567946821:
-# restore-keys can leave the getter-only checkout; discard and clone the pin
-# (same as R16 pango) so skip-download later does not keep the stale tree.
+# release tag v0.1.5 (network_session property; navigator_webdriver_active_policy).
+# CI 32552806663 / 32567946821: restore-keys can leave the getter-only checkout;
+# discard and clone the pin (same as R16 pango) so skip-download later does not
+# keep the stale tree.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -15,7 +16,7 @@ source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
 
 WRAP="$ROOT_DIR/android/pixiewood-wraps/webkitgtk-android/webkitgtk-android.wrap"
 BROWSER="$ROOT_DIR/libocwebkit/Browser.vala"
-PIN_REV=v0.1.3
+PIN_REV=v0.1.5
 OLD_REV=31fd762d87f200f6a087f772681accc3cc58a11a
 SRC="$ROOT_DIR/subprojects/webkitgtk-android/lib/webkitgtkandroid/WebView.vala"
 CHECKOUT="$ROOT_DIR/subprojects/webkitgtk-android"

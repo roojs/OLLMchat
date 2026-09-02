@@ -18,7 +18,7 @@ FAISS_PREFIX="${FAISS_PREFIX:-${MSYSTEM_PREFIX:-/ucrt64}}"
 BUILD_DIR="${BUILD_DIR:-build-windows}"
 
 # Signed release from https://github.com/roojs/webview2-gtk — pin via env to bump.
-WEBVIEW2GTK_VERSION="${WEBVIEW2GTK_VERSION:-0.4.2}"
+WEBVIEW2GTK_VERSION="${WEBVIEW2GTK_VERSION:-0.5.9}"
 WEBVIEW2GTK_PKG_URL="${WEBVIEW2GTK_PKG_URL:-https://github.com/roojs/webview2-gtk/releases/download/v${WEBVIEW2GTK_VERSION}/mingw-w64-ucrt-x86_64-webview2gtk-${WEBVIEW2GTK_VERSION}-1-any.pkg.tar.zst}"
 WEBVIEW2GTK_KEY="${ROOT}/packaging/msys2/webview2gtk-packager.gpg"
 WEBVIEW2GTK_FPR_FILE="${ROOT}/packaging/msys2/webview2gtk-packager.fpr"

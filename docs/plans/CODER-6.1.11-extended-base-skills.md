@@ -7,13 +7,13 @@ Status: ⏳ proposed
 ℹ️ Checklist: `docs/guide-to-writing-plans.md` — Checklist for plans (emoji provenance: **🔷** = user said it; **💩** = LLM suggestion).  
 ℹ️ Parent: [6.1](CODER-6.1-agent-pi.md) / [6.1.2](done/6.1.2-DONE-pi-like-agent.md).  
 ℹ️ Core pack (done): [done/6.1.3-DONE-base-skills.md](done/6.1.3-DONE-base-skills.md) — `resources/pi-skills/`.  
-ℹ️ Offer / export UI: [6.1.10](CODER-6.1.10-skills-configuration.md).  
+ℹ️ Offer / export UI: [6.1.10](done/CODER-6.1.10-DONE-skills-configuration.md).  
 ℹ️ Upstream shortlist source: [ericgandrade/claude-superskills](https://github.com/ericgandrade/claude-superskills) (MIT) unless noted.
 
 ## Purpose
 
 - 🔷 `⏳` Hold everything **left out** of the core base pack ([03](done/6.1.3-DONE-base-skills.md)) for later triage / vendoring as an **extended** set.
-- 🔷 Same delivery shape as 03 when we ship any of these: Agent Skills folders under `resources/pi-skills/` (or a sibling tree), resource scan, optional export via [10](CODER-6.1.10-skills-configuration.md).
+- 🔷 Same delivery shape as 03 when we ship any of these: Agent Skills folders under `resources/pi-skills/` (or a sibling tree), resource scan, optional export via [10](done/CODER-6.1.10-DONE-skills-configuration.md).
 - 🔷 Prefer vendored / attributed upstream `SKILL.md` trees; thin human ports only when needed.
 - ℹ️ Core pack stays the default; extended skills are available / offerable once locked — not dumped into the initial offer by default.
 
@@ -54,7 +54,7 @@ Status: ⏳ proposed
 
 - ℹ️ Same mechanical adapt as 03: yank `evals/`, Agent Pi tools, ask in chat, say what to use (don’t name absent upstream tools).
 - ℹ️ New folders join the same `/pi-skills` scan (or a dedicated extended root if we want to keep core vs extended physically split — **💩** lock then).
-- ℹ️ [6.1.10](CODER-6.1.10-skills-configuration.md) decides what enters the **initial offer**; extended can be available-only by default.
+- ℹ️ [6.1.10](done/CODER-6.1.10-DONE-skills-configuration.md) decides what enters the **initial offer**; extended can be available-only by default.
 
 ---
 
@@ -64,12 +64,12 @@ Status: ⏳ proposed
 2. 🔷 `⏳` **`subagent-delegate`** when host sub-agent API exists (or a portable soft brief).
 3. 💩 `⏳` Markdown-only **skill-creator** if we want in-app authoring.
 4. 🔷 `⏳` Cherry-pick any remaining superskills includes into the pack + gresource.
-5. ℹ️ Wire offer defaults in [10](CODER-6.1.10-skills-configuration.md) so extended stays off the initial menu unless chosen.
+5. ℹ️ Wire offer defaults in [10](done/CODER-6.1.10-DONE-skills-configuration.md) so extended stays off the initial menu unless chosen.
 
 ---
 
 ## LLM notes
 
 - ℹ️ Core pack is archived at [done/6.1.3-DONE-base-skills.md](done/6.1.3-DONE-base-skills.md) — do not re-vendor those here.
-- 🚫 Do not silently expand the **initial offer** when adding extended skills — that is [10](CODER-6.1.10-skills-configuration.md).
+- 🚫 Do not silently expand the **initial offer** when adding extended skills — that is [10](done/CODER-6.1.10-DONE-skills-configuration.md).
 - 🚫 Do not ship skill-creator Python/eval harness or enuno orchestrator without a new explicit decision.

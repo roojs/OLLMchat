@@ -1,5 +1,8 @@
 # 7.14.6 — Continue, `replay_as_new`, “continue from here” (phase 6)
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 **Status:** proposed
 
 **Parent:** `docs/plans/done/7.14-DONE-task-progress-tree-ui.md`

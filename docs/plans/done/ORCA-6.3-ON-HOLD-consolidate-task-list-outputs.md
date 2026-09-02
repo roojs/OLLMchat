@@ -1,5 +1,8 @@
 # Consolidate multi-file task list outputs
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 ## Status
 
 ⏳ PENDING

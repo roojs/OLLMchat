@@ -6,7 +6,7 @@ Status: ⏳ proposed
 
 ℹ️ Checklist: `docs/guide-to-writing-plans.md` — Checklist for plans.  
 ℹ️ Parent: [6.1](CODER-6.1-agent-pi.md). Inject today: [done/6.1.2](done/6.1.2-DONE-pi-like-agent.md) Phase 1.  
-ℹ️ Banner offer: [6.1.9](CODER-6.1.9-offer-agents-md.md). Default offer list: [6.1.10](CODER-6.1.10-skills-configuration.md).  
+ℹ️ Banner offer: [6.1.9](CODER-6.1.9-offer-agents-md.md). Default offer list: [6.1.10](done/CODER-6.1.10-DONE-skills-configuration.md).  
 ℹ️ Indexed summary: [done/6.1.7](done/6.1.7-DONE-project-summary-tool.md) (`codebase_search` `element_type = "project"`).  
 ℹ️ Wiki skill (separate plan): [5.5](APP-5.5-wiki-maker.md).
 
@@ -143,7 +143,7 @@ What belongs where (for the skill’s “where things live” section):
 
 Packaging: `resources/pi-skills/writing-agents-md/SKILL.md`, gresource `/pi-skills`, same scan as [done/03](done/6.1.3-DONE-base-skills.md).
 
-- 🔷 `⏳` Default **offered** (add to [6.1.10](CODER-6.1.10-skills-configuration.md) seed). Critical enough to be in the catalog.
+- 🔷 `⏳` Default **offered** (add to [6.1.10](done/CODER-6.1.10-DONE-skills-configuration.md) seed). Critical enough to be in the catalog.
 - 🔷 Tools: `read`, `write`, `codebase_search`, `bash` as needed. Ask in chat when the project root is unclear.
 
 ### Create
@@ -413,7 +413,7 @@ If the project has no AGENTS.md, read the writing-agents-md skill and create one
 before relying on a brief standing contract.
 ```
 
-### 6. [6.1.10](CODER-6.1.10-skills-configuration.md) — default offered list
+### 6. [6.1.10](done/CODER-6.1.10-DONE-skills-configuration.md) — default offered list
 
 **Why:** Seed in Settings matches Factory.
 
@@ -428,7 +428,7 @@ before relying on a brief standing contract.
 1. 🔷 Lock skill name + content contract + wiki-as-memory wording.
 2. 🔷 `⏳` Add `SKILL.md` + gresource.
 3. 🔷 `⏳` Missing-project hint in `build_agents_md`.
-4. 🔷 `⏳` Default offer seed ([10](CODER-6.1.10-skills-configuration.md) + Factory).
+4. 🔷 `⏳` Default offer seed ([10](done/CODER-6.1.10-DONE-skills-configuration.md) + Factory).
 5. 💩 `⏳` `codebase_search` description line.
 6. 🔷 `⏳` Point [6.1.9](CODER-6.1.9-offer-agents-md.md) Create at this skill (no stub).
 7. ℹ️ Wiki build/read remains [5.5](APP-5.5-wiki-maker.md).

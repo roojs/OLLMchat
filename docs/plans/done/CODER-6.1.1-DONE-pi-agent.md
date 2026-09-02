@@ -1,5 +1,8 @@
 # 6.1.1 Pi coding agent vs OLLMchat
 
+
+> **DONE** — study archived. Parent: [`CODER-6.1-agent-pi.md`](../CODER-6.1-agent-pi.md).
+
 Source checkout: `/home/alan/git/pi` (Pi agent harness — `@earendil-works/pi-agent-core`, `@earendil-works/pi-coding-agent`).
 
 Focus: **how standing instructions and skills get into the model** — especially `AGENTS.md` and skill catalogs — and how that could map onto **JustAsk / Chatter** (and where Skill.Runner already has related slots). Mid-run message queuing is a solid requirement but not treated as the main lesson.

@@ -13,7 +13,8 @@ New work: `{PREFIX}-1.n-slug.md`. `{PREFIX}-1.0-summary.md` is the category inde
 - [`MD`](MD-1.0-summary.md) — `libocmarkdown` and `libocmarkdowngtk`
 - [`WEBKIT`](WEBKIT-1.0-summary.md) — `libocwebkit`
 - [`CHAT`](CHAT-1.0-summary.md) — `libollmchat` and `libollmchatgtk`
-- [`CODER`](CODER-1.0-summary.md) — `liboccoder`
+- [`CODER`](CODER-1.0-summary.md) — `liboccoder` (Agent Pi and related; not skills orchestrator)
+- [`ORCA`](ORCA-1.0-summary.md) — skills / conductor / task orchestration — **ON HOLD** (see summary)
 - [`MCP`](MCP-1.0-summary.md) — `libocmcp`
 - [`OLLAMA`](OLLAMA-1.0-summary.md) — `libollamaweb`
 - [`HF`](HF-1.0-summary.md) — `libochf`

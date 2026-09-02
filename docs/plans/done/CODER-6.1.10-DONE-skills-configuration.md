@@ -1,5 +1,8 @@
 # 6.1.10 Agent Pi — skills configuration (initial offer)
 
+
+> **DONE** — archived. Parent: [`CODER-6.1-agent-pi.md`](../CODER-6.1-agent-pi.md).
+
 Status: ✔️ agent-done (Phases 1–4; awaiting user ✅)
 
 > **`docs/plans/CODER-1.0-summary.md` is not updated** for this sub-plan until it is done and archived.

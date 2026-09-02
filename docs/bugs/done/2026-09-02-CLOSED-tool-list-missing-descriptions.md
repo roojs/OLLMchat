@@ -1,6 +1,6 @@
 # Tool list: six of sixteen tools missing `function.description`
 
-**Status:** ⏳ OPEN — moved from `docs/plans/TOOLS-2.20-tools-bugs.md` 2026-09-02
+**Status:** 🚫 **CLOSED** (2026-09-02) — obsolete UI; tools pulldown no longer used
 
 **Started:** (prior plan; no single report date)
 
@@ -9,13 +9,19 @@
 **Related:**
 
 - ℹ️ Former plan slot: `TOOLS-2.20-tools-bugs.md` (retired — bugs live in `docs/bugs/`)
-- ℹ️ Parent vector/scanner work: [`done/2.20-DONE-codebase-scanner-improvements.md`](../plans/done/2.20-DONE-codebase-scanner-improvements.md)
+- ℹ️ Parent vector/scanner work: [`../plans/done/2.20-DONE-codebase-scanner-improvements.md`](../plans/done/2.20-DONE-codebase-scanner-improvements.md)
 - ℹ️ Wrapped tools: `liboctools/ToolBuilder.vala`, `resources/wrapped-tools/*.tool`
 - ℹ️ Serialization: `libollmchat/Tool/BaseTool.vala`
 
 ---
 
-## Problem
+## Why closed
+
+🔷 Symptom was empty `function.description` in the **tools pulldown / tool-list UI**. That pulldown is **gone** — we do not surface tools that way anymore — so this bug is **irrelevant**. Not fixing for a removed UI.
+
+---
+
+## Problem (archived)
 
 🔷 With **16** tools registered, **6** have no `function.description` in the tool list (API payload / UI). The model and schema-driven UI see empty descriptions for those tools.
 
@@ -56,7 +62,4 @@
 ## Attempts / changelog
 
 - ✔️ 2026-09-02 — Moved from `docs/plans/TOOLS-2.20-tools-bugs.md` to `docs/bugs/` (not a plan).
-
-## Next
-
-⏳ 🔷 Identify the six tools → root cause → verbatim fences in this file → approval → implement.
+- ✔️ 2026-09-02 — **CLOSED** — tools pulldown retired; archived under `docs/bugs/done/`.

@@ -1,5 +1,8 @@
 # 1.23 Skills Agent & Conductor
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 ## Overview
 
 Introduce a **skills agent** system: skill definitions live under `resources/skills`, and a new agent **SkillRunner** (in the occoder directory) runs skills by loading their prompts. The first skill is the **Conductor**—a process enforcer and router that orchestrates a phased workflow (research → planning → implementation → review → finalize) and emits directives to invoke other skills rather than executing work itself.

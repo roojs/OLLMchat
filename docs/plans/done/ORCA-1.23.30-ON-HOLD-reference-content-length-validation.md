@@ -1,5 +1,8 @@
 # Plan 1.23.30: Reference content length validation
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 **Source:** [1.23.20 DONE](done/1.23.20-DONE-post-testing-changes.md) §1 (deferred from 1.23.18).
 
 **Coding standards:** `docs/coding-standards.md`.

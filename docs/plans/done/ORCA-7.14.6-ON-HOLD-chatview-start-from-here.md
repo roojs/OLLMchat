@@ -1,8 +1,11 @@
 # 7.14.6 — “Start from here” control on `ChatView` (task review entry)
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 **Status:** on hold
 
-**Parent:** `docs/plans/CODER-7.14.6-continue-replay-as-new.md`
+**Parent:** `docs/plans/ORCA-7.14.6-ON-HOLD-continue-replay-as-new.md`
 
 **Checklist:** `docs/guide-to-writing-plans.md` — **Checklist for plans**.
 
@@ -125,5 +128,5 @@ The bridge **must not** import **`OLLMchatGtk`** from **`liboccoder`**. Options 
 
 ## Related
 
-- **ℹ️** `docs/plans/CODER-7.14.6-continue-replay-as-new.md` — **`msg_idx`**, **`scroll_to_idx`**, **`replay_as_new`**
+- **ℹ️** `docs/plans/ORCA-7.14.6-ON-HOLD-continue-replay-as-new.md` — **`msg_idx`**, **`scroll_to_idx`**, **`replay_as_new`**
 - **ℹ️** `docs/plans/done/7.14.6-DONE-progress-tree-click-scroll.md` — sibling **`scroll_to_idx`** wiring (archived)

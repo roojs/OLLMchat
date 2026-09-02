@@ -241,7 +241,7 @@ if host_machine.system() == 'windows'
   ollmchat_deps += dependency('webview2gtk-1')
 else
   ollmchat_deps += [
-    dependency('webkitgtk-6.0'),
+    webkit_webdriver_dep,
     dependency('atspi-2'),
   ]
 endif

@@ -65,5 +65,7 @@ public class OLLMwebkit.WebViewAuto : WebView
 			GLib.debug("automation-started session=%s", session.get_id());
 		});
 		this.get_settings().enable_developer_extras = true;
+		this.get_settings().navigator_webdriver_active_policy =
+			NavigatorWebDriverActivePolicy.DISABLED;
 	}
 }

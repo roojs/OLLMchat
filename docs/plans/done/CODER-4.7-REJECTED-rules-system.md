@@ -1,5 +1,8 @@
 # 4.7. Rules System
 
+
+> **REJECTED** — superseded by Agent Pi / `AGENTS.md` standing instructions. Index: [`CODER-1.0-summary.md`](../CODER-1.0-summary.md).
+
 ## Overview
 
 Rules system for coding rules and other rules that need to be injected into the prompting system. This enables users to define project-specific or global coding standards, conventions, and guidelines that the code assistant should follow.

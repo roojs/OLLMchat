@@ -1,16 +1,19 @@
 # 7.16.3 — `Action.Iterate` and wire in
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 **Status:** proposed
 
-**Parent:** [`CODER-7.16-iterative-task-execution-loop.md`](CODER-7.16-iterative-task-execution-loop.md)
+**Parent:** [`ORCA-7.16-ON-HOLD-iterative-task-execution-loop.md`](ORCA-7.16-ON-HOLD-iterative-task-execution-loop.md)
 
-**Depends on:** [`CODER-7.16.2-session-markers-replay.md`](CODER-7.16.2-session-markers-replay.md)
+**Depends on:** [`ORCA-7.16.2-ON-HOLD-session-markers-replay.md`](ORCA-7.16.2-ON-HOLD-session-markers-replay.md)
 
-**Blocks:** [`CODER-7.16.4-iterate-collateral.md`](CODER-7.16.4-iterate-collateral.md)
+**Blocks:** [`ORCA-7.16.4-ON-HOLD-iterate-collateral.md`](ORCA-7.16.4-ON-HOLD-iterate-collateral.md)
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans · **Layout:** `docs/guide-to-writing-plans.md`
 
-> **Note:** `docs/plans/CODER-1.0-summary.md` is not updated until this sub-plan is done and archived.
+> **Note:** `docs/plans/ORCA-1.0-summary.md` is not updated until this sub-plan is done and archived.
 
 ---
 

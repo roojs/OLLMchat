@@ -24,7 +24,7 @@ if is_windows
   endif
 else
   oc_test_webkit_deps += [
-    dependency('webkitgtk-6.0'),
+    webkit_webdriver_dep,
     dependency('atspi-2'),
   ]
   oc_test_webkit_platform_vala += [

@@ -1,16 +1,19 @@
 # 7.16.4 — Iterate collateral (prompts, skills, progress, docs, cleanup)
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 **Status:** proposed
 
-**Parent:** [`CODER-7.16-iterative-task-execution-loop.md`](CODER-7.16-iterative-task-execution-loop.md)
+**Parent:** [`ORCA-7.16-ON-HOLD-iterative-task-execution-loop.md`](ORCA-7.16-ON-HOLD-iterative-task-execution-loop.md)
 
-**Depends on:** [`CODER-7.16.3-action-iterate-wire.md`](CODER-7.16.3-action-iterate-wire.md)
+**Depends on:** [`ORCA-7.16.3-ON-HOLD-action-iterate-wire.md`](ORCA-7.16.3-ON-HOLD-action-iterate-wire.md)
 
 **Blocks:** nothing (closes **7.16** feature)
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans · **Layout:** `docs/guide-to-writing-plans.md`
 
-> **Note:** `docs/plans/CODER-1.0-summary.md` is not updated until this sub-plan is done and archived.
+> **Note:** `docs/plans/ORCA-1.0-summary.md` is not updated until this sub-plan is done and archived.
 
 ---
 

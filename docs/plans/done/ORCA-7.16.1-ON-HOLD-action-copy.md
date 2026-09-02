@@ -1,16 +1,19 @@
 # 7.16.1 — Copy execution into `Action.*` (no wiring)
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 **Status:** **done** — merged (`11d40d40` *refactor action classes of skill layer - prior to looping change*); see **Design revisions** below
 
-**Parent:** [`CODER-7.16-iterative-task-execution-loop.md`](CODER-7.16-iterative-task-execution-loop.md)
+**Parent:** [`ORCA-7.16-ON-HOLD-iterative-task-execution-loop.md`](ORCA-7.16-ON-HOLD-iterative-task-execution-loop.md)
 
 **Depends on:** nothing (first sub-plan)
 
-**Blocks:** [`CODER-7.16.1b-action-wire.md`](CODER-7.16.1b-action-wire.md)
+**Blocks:** [`ORCA-7.16.1b-ON-HOLD-action-wire.md`](ORCA-7.16.1b-ON-HOLD-action-wire.md)
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans · **Layout:** `docs/guide-to-writing-plans.md`
 
-> **Note:** `docs/plans/CODER-1.0-summary.md` is not updated until the **7.16.1** pair (copy + wire) is done and archived.
+> **Note:** `docs/plans/ORCA-1.0-summary.md` is not updated until the **7.16.1** pair (copy + wire) is done and archived.
 
 ---
 
@@ -127,7 +130,7 @@ liboccoder/Action/
 
 ## Next
 
-- **🔷** [`CODER-7.16.1b-action-wire.md`](CODER-7.16.1b-action-wire.md) — **`run_action`** dispatch, trim **`Details`** run loops.
+- **🔷** [`ORCA-7.16.1b-ON-HOLD-action-wire.md`](ORCA-7.16.1b-ON-HOLD-action-wire.md) — **`run_action`** dispatch, trim **`Details`** run loops.
 
 ---
 

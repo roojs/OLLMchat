@@ -1,8 +1,11 @@
 # 7.14.15 — Progress collapse header: active row title
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 **Status:** proposed
 
-**Parent:** `docs/plans/CODER-7.14.14-progress-tree-collapse-header.md` (**✅** collapse chrome)
+**Parent:** `docs/plans/ORCA-7.14.14-ON-HOLD-progress-tree-collapse-header.md` (**✅** collapse chrome)
 
 **Pointer:** `docs/coding-standards.md`, `docs/guide-to-writing-plans.md`
 
@@ -316,5 +319,5 @@ Intro: hunks are **Add** / **Keep** from the tree; verify context before applyin
 
 ## Related
 
-- `docs/plans/CODER-7.14.14-progress-tree-collapse-header.md`
+- `docs/plans/ORCA-7.14.14-ON-HOLD-progress-tree-collapse-header.md`
 - `liboccoder/Task/List.vala` — calls **`refine`** / **`run_exec`** (emits inside **`Details`**)

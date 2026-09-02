@@ -1,5 +1,8 @@
 # 7.14.11 — `tool-call-summary` message role + replay tooltip hydration
 
+
+> **ON HOLD** — ORCA track paused. Index: [`ORCA-1.0-summary.md`](../ORCA-1.0-summary.md).
+
 **Status:** on hold
 
 **Pointer — `docs/guide-to-writing-plans.md` (**Checklist for plans**),** **`docs/guide-to-writing-plans.md`**

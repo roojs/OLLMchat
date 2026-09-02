@@ -39,8 +39,9 @@ elif is_android_cross
     '--vapidir', meson.current_build_dir() / '..' / 'subprojects' / 'webkitgtk-android',
   ]
 else
+  # Link parallel webdriver .so; Vala --pkg stays stock webkitgtk-6.0 (config/).
   ocwebkit_deps += [
-    dependency('webkitgtk-6.0'),
+    webkit_webdriver_dep,
     dependency('atspi-2'),
   ]
   ocwebkit_platform_vala_args += [
