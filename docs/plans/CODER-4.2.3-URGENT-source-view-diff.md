@@ -29,7 +29,7 @@
 - 🔷 **Approved hunk** — DB + UI only; **disk unchanged**:
   - **Added** lines: highlight **off**; normal editor text (already on disk).
   - **Removed** lines: **no red interleaved rows** in the diff view (deletion already on disk; overlay dropped).
-- 🔷 **Reject** (whole file or hunk ⏳) — **writes disk** (undo diff from **`backup_path`** or per-part equivalent) + DB.
+- 🔷 **Rejected hunk** — **writes V_disk** (undo that hunk only); **`reviewed=1`**, **`accepted=0`**; overlay off.
 - ✔️ Per-file **Approve** / **Reject** / changed-files list on **`Approvals`** bar — shipped today; **placement of destructive / bulk actions** is still ⏳ (see below).
 - 🔷 Destructive review actions (whole-file reject, **approve all files**, reject all) must **not** sit as casual primary UI — tuck away (e.g. changes-list menu), with explicit revert.
 
@@ -37,7 +37,7 @@
 
 - 🔷 ⏳ **Partial approval** — user may accept **some** hunks/lines/chunks, not only whole-file approve.
 - 🔷 ⏳ **What the diff is against** — which stored snapshot is “baseline” while review is in progress.
-- 🔷 ⏳ **Intermediate approved state** — **`file_diff_part.status`** + diff UI only (disk already final).
+- 🔷 ⏳ **Intermediate approved state** — **`file_diff_part.reviewed`** / **`accepted`** + diff UI only (disk already final).
 - 🔷 ⏳ **Stacked LLM edits** — file still pending (or partly approved); agent writes again; what diff do we show?
 - 🔷 ⏳ **Undo approval vs undo edit** — approval rollback must **not** rely on editor undo/redo (see **Cursor contrast** below).
 - 🔷 ⏳ **Bulk approve all files** — if offered at all, placement, confirmation, and **revert bulk approve** (see **Destructive actions**).
@@ -71,24 +71,65 @@
    - User: file in changed-files list; editor in **diff mode**
    - **V_disk:** new end result (diff already applied)
    - **V_backup:** pre-write snapshot (`file_history.backup_path`)
-   - SQLite: `file_history` **H1** — `status=0`, `backup_path` → **V_backup**
+   - SQLite: `file_history` **H1** — `reviewed=0`, `backup_path` → **V_backup** (shipped today: `status=0`)
 2. **First look**
    - User: hunk **A** (~line 2) green/red overlay; hunk **B** (~5) pending overlay
    - **V_disk:** unchanged
 3. **Approve hunk A**
    - User: clicks **Approve** on hunk **A**
    - **V_disk:** unchanged (approve does not write disk)
-   - SQLite: `file_diff_part` **P1** — `file_history_id=H1`, `part_index=0`, `status=1`
+   - SQLite: `file_diff_part` **P1** — `file_history_id=H1`, `part_index=0`, `reviewed=1`, `accepted=1`
 4. **Partial state**
    - User: **A** — no diff overlay (normal text); **B** still green/red overlay
    - **V_disk:** unchanged
-   - SQLite: **H1** still `status=0` (pending); partial = some **`file_diff_part`** rows approved, not all
+   - SQLite: **H1** still `reviewed=0`; some parts **`reviewed=1`**, not all
 5. **Approve hunk B**
    - User: clicks **Approve** on hunk **B**
    - **V_disk:** unchanged
-   - SQLite: **P2** — `part_index=1`, `status=1`; **H1** `status=1`; `filebase.is_need_approval=0`
+   - SQLite: **P2** — `part_index=1`, `reviewed=1`, `accepted=1`; **H1** `reviewed=1`; `filebase.is_need_approval=0`
 
 ℹ️ **Whole-file Approve today** = flip **`file_history.status`** only — **no disk write** (same as partial: DB only).
+
+### Flow A1 — Same setup; user approves hunk A, rejects hunk B
+
+**Setup:** same as Flow A through step 4 — **P1** approved, **B** still pending overlay.
+
+1. **Reject hunk B**
+   - User: clicks **Reject** on hunk **B** (destructive — per-hunk)
+   - **V_disk:** **written** — undo **B** only (inverse of hunk **B** patch); **A** stays (already accepted)
+   - SQLite: `file_diff_part` **P2** — `file_history_id=H1`, `part_index=1`, `reviewed=1`, `accepted=0`
+2. **After reject**
+   - User: **A** — normal text (unchanged from step 4); **B** — overlay off; editor shows **V_disk** without **B**’s agent changes
+   - **V_disk:** **V_backup + A** (agent’s **B** hunk reverted on disk)
+   - SQLite: **P1** `reviewed=1`, `accepted=1`; **P2** `reviewed=1`, `accepted=0`; **H1** `reviewed=1`; `filebase.is_need_approval=0`
+
+**Data snapshot after step 2**
+
+```
+file_history H1
+  id=1  path=foo.vala  reviewed=1  backup_path -> V_backup
+
+file_diff_part
+  P1  file_history_id=1  part_index=0  reviewed=1  accepted=1  reviewed_at=...
+  P2  file_history_id=1  part_index=1  reviewed=1  accepted=0  reviewed_at=...
+
+filebase (foo.vala)
+  is_need_approval=0
+
+disk
+  V_disk = V_backup with hunk A kept, hunk B reverted
+```
+
+ℹ️ **`reviewed`** = user acted on this part. **`accepted`** = their choice (`1` keep agent hunk on disk, `0` reject hunk → undo on **V_disk**). No **`status=-1`**.
+
+ℹ️ **Approve** vs **Reject** on a part:
+
+- **Approve part** — **V_disk** unchanged; **`reviewed=1`**, **`accepted=1`**; overlay off.
+- **Reject part** — **V_disk** written (undo that hunk); **`reviewed=1`**, **`accepted=0`**; overlay off.
+
+🔷 **Chunk closed** when every part has **`reviewed=1`** (mix of **`accepted`** is fine). **H1.reviewed=1** = no parts left to review.
+
+🔷 ⏳ **Per-hunk reject** uses hunk file at derived path + **`PatchApplier`** (or equivalent) on daemon — only action besides whole-file **Flow E** that writes **V_disk**.
 
 ### Flow B — Agent writes again while review incomplete (stacked edit)
 
@@ -101,10 +142,10 @@
    - SQLite: `file_history` **H2** pending, `backup_path` → **V_backup**
 2. **Active diff switches to H2**
    - User: diff overlay for **H2** (**V_backup** vs **V_disk**)
-   - SQLite: **H1** partial (parts on **H1**); **P1** still `status=1` on **H1**
+   - SQLite: **H1** partial; **P1** still `reviewed=1`, `accepted=1` on **H1**
 3. **New chunk only** (no Flow C in v1)
    - User: diff overlay for **H2** only (**V_backup** vs **V_disk**)
-   - SQLite: **H1** partial (parts on **H1**); **P1** still `status=1` on **H1** — frozen; no cross-chunk match
+   - SQLite: **H1** partial; **P1** frozen — no cross-chunk match
 
 🔷 ⏳ **Open:** does partial progress on **H1** **block** the agent, **merge** into **H2**, or **fork** a new review session? Walkthrough assumes **H2** is the active diff; **H1** hunks not yet approved may be **obsolete** or **re-targeted**.
 
@@ -128,10 +169,10 @@ When **H2** exists, consumer **may** (⏳ deferred — see below):
 ### Flow D — Unapprove one hunk (not editor undo)
 
 1. User **Unapprove** on hunk **A** (was **P1**)
-   - SQLite: **P1** `status=0` (back to pending) ⏳
+   - SQLite: **P1** `reviewed=0` (and clear **`accepted`** / **`reviewed_at`**) ⏳
    - Disk: **unchanged**
 2. Diff overlay for **A** returns — green added / red removed rows for **A**
-   - **H1** stays `status=0` until all parts approved
+   - **H1** stays `reviewed=0` until all parts **`reviewed=1`**
 
 ℹ️ **Not** `Ctrl+Z`. **`file_diff_part`** + **`file_history`** is the audit trail. **Reject** (Flow E) is what actually rewrites disk.
 
@@ -140,16 +181,16 @@ When **H2** exists, consumer **may** (⏳ deferred — see below):
 User picks **Reject** (destructive; menu/bar TBD):
 
 - **Disk:** restore from **`reject_id`** **`backup_path`** (today: newest `file_history` row with backup) — **undoes the agent diff on disk**.
-- **SQLite:** mark pending **`file_history`** rejected; **`file_diff_part`** on those rows → `status=-1` ⏳.
+- **SQLite:** **`file_history.reviewed=1`**; pending **`file_diff_part`** → `reviewed=1`, `accepted=0` ⏳.
 - **`filebase.is_need_approval=0`**; client **`File.read`**.
 
-🔷 ⏳ **Per-hunk reject** — does one part restore a slice of the diff on disk, or only whole-chunk / whole-file reject for v1?
+🔷 ⏳ **Per-hunk reject** — undo one hunk on **V_disk** (see **Flow A1**); **whole-file reject** — restore full **V_backup** (**Flow E**).
 
 ### Flow F — Bulk approve all files
 
 User opens **changes-list menu** → **Approve all pending** → confirm “**N** files, **M** parts”:
 
-- One RPC: for each pending **`file_history`**, set `status=1` and all child **`file_diff_part`** → `status=1`.
+- One RPC: for each pending **`file_history`**, `reviewed=1`; all child **`file_diff_part`** → `reviewed=1`, `accepted=1`.
 - **Disk unchanged** (same as single approve — DB only).
 
 ---
@@ -158,12 +199,23 @@ User opens **changes-list menu** → **Approve all pending** → confirm “**N*
 
 ℹ️ Shipped DDL: [`ollmfilesd/FileHistory.vala`](../../ollmfilesd/FileHistory.vala) **`init_db`**. **Partial approve adds one child table** — not a second parallel timeline.
 
+### What `status` means today vs proposed
+
+ℹ️ Shipped **`file_history.status`** overloads three ideas: not reviewed (`0`), reviewed+accepted (`1`), reviewed+rejected (`-1`). That works for **whole-file** approve/reject only.
+
+🔷 **`file_diff_part`** — two fields, not **`status=-1`**:
+
+- **`reviewed`** — `0` not yet; `1` user acted.
+- **`accepted`** — meaningful when **`reviewed=1`**: `1` keep hunk; `0` reject hunk (undo on **V_disk**).
+
+🔷 **`file_history`** (partial world) — chunk **`reviewed=1`** when every part has **`reviewed=1`**. Chunk-level **`accepted`** is **not** needed when parts disagree (Flow A1: A yes, B no). ⏳ migrate shipped **`status`** → **`reviewed`** (+ whole-file **`accepted`** only when no parts table).
+
 ### What we already store (whole-file review)
 
 **`file_history`** already holds the write chunk:
 
-- **`backup_path`** — snapshot **before** the agent write (diff baseline / reject target)
-- **`status`** — `0` pending · `1` approved · `-1` rejected (whole chunk today)
+- **`backup_path`** — **V_backup**
+- **`status`** (shipped) — `0` / `1` / `-1` as above; ⏳ **`reviewed`** column long term
 - **`path`**, **`filebase_id`**, **`timestamp`**, **`change_type`**, **`since_id`**, …
 
 **`filebase.is_need_approval`** — file is in the pending review list.
@@ -190,19 +242,22 @@ CREATE TABLE IF NOT EXISTS file_history (
 	moved_from TEXT NOT NULL DEFAULT '',
 	agent_id INTEGER NOT NULL DEFAULT 0
 );
+-- ⏳ ALTER TABLE file_history ADD COLUMN reviewed INTEGER NOT NULL DEFAULT 0;
+-- shipped status: 0=unreviewed, 1=reviewed+accepted, -1=reviewed+rejected (whole-file only)
+-- partial: reviewed=1 when all file_diff_part.reviewed=1; accepted lives on parts
 
 CREATE TABLE IF NOT EXISTS file_diff_part (
 	id INTEGER PRIMARY KEY,
 	file_history_id INT64 NOT NULL DEFAULT 0,      -- parent write chunk (required)
 	part_index INTEGER NOT NULL DEFAULT 0,         -- hunk index in unified diff for that chunk
-	status INTEGER NOT NULL DEFAULT 0,             -- 0 pending, 1 approved, -1 rejected
-	approved_at INT64 NOT NULL DEFAULT 0           -- unix time when user approved; 0 = not yet
+	reviewed INTEGER NOT NULL DEFAULT 0,             -- 0 not reviewed, 1 user acted
+	accepted INTEGER NOT NULL DEFAULT 0,             -- 0 reject hunk, 1 accept hunk (when reviewed=1)
+	reviewed_at INT64 NOT NULL DEFAULT 0             -- unix time when reviewed; 0 = not yet
 );
 -- UNIQUE (file_history_id, part_index) ⏳
--- native path: join file_history.path — do not duplicate on child row
--- hunk file path: derived at runtime (see below) — not stored in SQLite
--- partial review: infer from COUNT(file_diff_part WHERE status=1) < total parts; H1.status stays 0 until all parts approved
--- whole-file approve: set file_history.status=1 (may skip file_diff_part rows, or set all parts in same txn)
+-- chunk open: any file_diff_part.reviewed=0
+-- chunk closed: all reviewed=1; set file_history.reviewed=1, is_need_approval=0
+-- whole-file approve (no parts): file_history.reviewed=1 only (shipped: status=1)
 ```
 
 ### Derived hunk file path (not in SQLite)
@@ -230,15 +285,14 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 ```
   V_disk: always agent end result (updates on each agent write)
 
-  file_history H1 (backup_path -> V_backup, status pending)
+  file_history H1 (backup_path -> V_backup, reviewed=0)
         |
-        +-- file_diff_part  P1  part_index=0  status=approved   (DB + UI overlay off)
-        +-- file_diff_part  P2  part_index=1  status=pending     (still green/red overlay)
+        +-- file_diff_part  P1  reviewed=1  accepted=1   (overlay off)
+        +-- file_diff_part  P2  reviewed=0               (green/red overlay)
 
-  file_history H2 (stacked edit; backup_path -> V_backup before second write)
-
-  Approve  ->  file_diff_part.status + UI only
-  Reject   ->  restore V_disk from V_backup + DB
+  Approve part  ->  reviewed=1, accepted=1  (+ UI; V_disk unchanged)
+  Reject part   ->  reviewed=1, accepted=0  (+ undo hunk on V_disk)
+  Reject chunk  ->  V_disk = V_backup       (Flow E; whole-file)
 ```
 
 ### Queries (names only)
@@ -253,7 +307,7 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 - **Disk model** — always agent end result; approve = DB + UI; reject = disk restore
 - **Baseline for diff overlay** — **`file_history.backup_path`** vs current disk content
 - **Stacked LLM edit** — new **`file_history`** row; new disk end result; match old approved parts in new overlay
-- **Undo approve** — flip **`file_diff_part.status`** + UI — **not** disk, **not** GtkSource undo
+- **Undo approve** — **`reviewed=0`** (+ UI) — **not** disk, **not** GtkSource undo
 - **Bulk approve** — loop pending **`file_history`** (+ parts); DB only
 
 ---
@@ -323,7 +377,7 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 
 ### Working notes (not decisions)
 
-- 💩 Partial state = **`file_diff_part`** counts; **`file_history.status`** stays `0` until all parts approved (or whole-file approve).
+- 💩 Partial state = some **`file_diff_part.reviewed=1`**, not all; **`file_history.reviewed=0`** until every part reviewed.
 - 💩 Wire may need active **`file_history.id`** on **`FileWithHistory`** once partial approve ships — not required for whole-file v1.
 
 ### Out of scope until design closes

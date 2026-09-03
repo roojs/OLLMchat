@@ -42,6 +42,20 @@ namespace OLLMrpc
 	{
 		private bool[] skip_wire = {};
 
+		private static Gee.HashMap<string, GLib.Type>? mock_gtypes;
+
+		// g_type_register_static_simple is not bound in gobject-2.0.vapi (Vala 0.56).
+		[CCode (cname = "g_type_register_static_simple", cheader_name = "glib-object.h")]
+		private static extern GLib.Type register_static_simple_type (
+			GLib.Type parent_type,
+			string type_name,
+			uint class_size,
+			GLib.ClassInitFunc class_init,
+			uint instance_size,
+			GLib.InstanceInitFunc instance_init,
+			GLib.TypeFlags flags
+		);
+
 		public GiMock(Request request)
 		{
 			GLib.Object(request: request);
@@ -168,11 +182,89 @@ namespace OLLMrpc
 				}
 				vi++;
 			}
-			var token = new GLib.Object();
-			this.request.connection.export(token);
+			var token = (GLib.Object?) null;
+			if (!this.mint_object_lease(fn.get_return_type(), out token)) {
+				return true;
+			}
+			if (token != null) {
+				this.request.connection.export(token);
+			}
 			this.request.reply(new Response() {
 				retval = OLLMrpc.val("o", token)
 			});
+			return true;
+		}
+
+		/**
+		 * Mint a lease whose GType encodes on the wire as the GIR return type.
+		 *
+		 * Registers a per-alias fake GType (cached) via {@link Bin.register_alias}
+		 * so {@link Bin.Stream.write_reg_gtype} succeeds without invoking C.
+		 */
+		private bool mint_object_lease(GI.TypeInfo type, out GLib.Object? token)
+		{
+			token = null;
+			if (type.is_pointer()) {
+				return true;
+			}
+			var kind = type.get_interface().get_type();
+			if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var gtype = ((GI.RegisteredTypeInfo) type.get_interface()).get_g_type();
+			if (gtype == GLib.Type.INVALID) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(gtype)) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return false;
+			}
+			var alias = Bin.gtype_to_alias.get(gtype);
+			if (GiMock.mock_gtypes == null) {
+				GiMock.mock_gtypes = new Gee.HashMap<string, GLib.Type>();
+			}
+			if (GiMock.mock_gtypes.has_key(alias)) {
+				token = (GLib.Object) GLib.Object.new(GiMock.mock_gtypes.get(alias));
+				return true;
+			}
+			var type_name = "OLLMrpcGiMock_" + alias.replace("-", "_");
+			GLib.Type fake_gtype = GLib.Type.from_name(type_name);
+			if (fake_gtype == GLib.Type.INVALID) {
+				fake_gtype = GiMock.register_static_simple_type(
+					typeof(GLib.Object),
+					type_name,
+					0,
+					null,
+					0,
+					null,
+					0
+				);
+			}
+			if (fake_gtype == GLib.Type.INVALID) {
+				this.request.connection.reply_error(this.request,
+					(int) RpcErrorCode.INTERNAL_ERROR,
+					new Bin.StreamError.REGISTRATION(
+						"mock gtype register failed for '%s'",
+						alias
+					));
+				return false;
+			}
+			if (!Bin.gtype_to_alias.has_key(fake_gtype)) {
+				try {
+					Bin.register_alias(alias, fake_gtype);
+				} catch (GLib.Error e) {
+					this.request.connection.reply_error(this.request,
+						(int) RpcErrorCode.INTERNAL_ERROR, e);
+					return false;
+				}
+			}
+			GiMock.mock_gtypes.set(alias, fake_gtype);
+			token = (GLib.Object) GLib.Object.new(fake_gtype);
 			return true;
 		}
 
@@ -420,12 +512,14 @@ namespace OLLMrpc
 
 				case GI.InfoType.OBJECT:
 				case GI.InfoType.INTERFACE:
-					if (type.is_pointer()) {
-						return true;
+					GLib.Object? token = null;
+					if (!this.mint_object_lease(type, out token)) {
+						return false;
 					}
-					var token = new GLib.Object();
-					this.request.connection.export(token);
-					val = OLLMrpc.val("o", token);
+					if (token != null) {
+						this.request.connection.export(token);
+						val = OLLMrpc.val("o", token);
+					}
 					return true;
 
 				case GI.InfoType.STRUCT:
