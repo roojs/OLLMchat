@@ -19,12 +19,10 @@
 namespace OLLMrpc
 {
 	/**
-	 * {@link Gi} subclass — GIR lookup with typed empty replies.
+	 * GIR lookup with typed empty replies (no {@link GI.FunctionInfo.invoke}).
 	 *
-	 * Inherits wire resolution and {@link skip_wire} rules from
-	 * {@link Gi.dispatch}. Overrides {@link dispatch_new} and
-	 * {@link dispatch_function} only — no {@link GI.FunctionInfo.invoke}.
-	 * Call {@link Gi.register} before use. Used when
+	 * Same wire resolution as {@link Gi.dispatch} using {@link Gi.types} and
+	 * {@link Gi.namespaces}. Call {@link Gi.register} before use. Used when
 	 * {@link Request.register_mock} was called.
 	 *
 	 * == Example ==
@@ -42,12 +40,87 @@ namespace OLLMrpc
 	 */
 	public class GiMock : Gi
 	{
+		private bool[] skip_wire = {};
+
 		public GiMock(Request request)
 		{
 			GLib.Object(request: request);
 		}
 
-		protected override bool dispatch_new(GI.FunctionInfo fn)
+		/**
+		 * Resolve wire method and reply with typed empties.
+		 *
+		 * @return true when this call was a GI mock path
+		 */
+		public new bool dispatch()
+		{
+			if (Gi.types == null) {
+				return false;
+			}
+			var dot = this.request.method.index_of_char('.');
+			var object_name = this.request.method[0:dot];
+			var method_name = this.request.method.substring(dot + 1);
+			GI.FunctionInfo fn;
+			if (Gi.types.has_key(object_name)) {
+				var info = GI.Repository.get_default().find_by_gtype(
+					Gi.types.get(object_name));
+				if (info.get_type() == GI.InfoType.INTERFACE) {
+					fn = ((GI.InterfaceInfo) info).find_method(method_name);
+				} else {
+					var obj_info = (GI.ObjectInfo) info;
+					fn = obj_info.find_method(method_name);
+					while (fn == null) {
+						obj_info = obj_info.get_parent();
+						if (obj_info == null) {
+							break;
+						}
+						fn = obj_info.find_method(method_name);
+					}
+				}
+				if (fn == null) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.METHOD_NOT_FOUND);
+					return true;
+				}
+			} else {
+				if (!Gi.namespaces.contains(object_name)) {
+					return false;
+				}
+				var info = GI.Repository.get_default().find_by_name(
+					object_name, method_name);
+				if (info == null || info.get_type() != GI.InfoType.FUNCTION) {
+					this.request.connection.reply_error(
+						this.request, (int) RpcErrorCode.METHOD_NOT_FOUND);
+					return true;
+				}
+				fn = (GI.FunctionInfo) info;
+			}
+			this.skip_wire = new bool[fn.get_n_args()];
+			for (var i = 0; i < fn.get_n_args(); i++) {
+				var arg = fn.get_arg(i);
+				if (arg.is_skip()) {
+					continue;
+				}
+				if (arg.get_type().get_tag() != GI.TypeTag.INTERFACE) {
+					continue;
+				}
+				if (arg.get_type().get_interface().get_type() != GI.InfoType.CALLBACK) {
+					continue;
+				}
+				if (arg.get_closure() >= 0) {
+					this.skip_wire[arg.get_closure()] = true;
+				}
+				if (arg.get_destroy() >= 0) {
+					this.skip_wire[arg.get_destroy()] = true;
+				}
+			}
+			if ((fn.get_flags() & GI.FunctionInfoFlags.IS_CONSTRUCTOR) != 0) {
+				return this.mock_new(fn);
+			}
+			return this.mock_function(fn);
+		}
+
+		private bool mock_new(GI.FunctionInfo fn)
 		{
 			if (!this.request.connection.live_handles) {
 				this.request.connection.reply_error(
@@ -103,7 +176,7 @@ namespace OLLMrpc
 			return true;
 		}
 
-		protected override bool dispatch_function(GI.FunctionInfo fn)
+		private bool mock_function(GI.FunctionInfo fn)
 		{
 			if (!this.request.connection.live_handles) {
 				this.request.connection.reply_error(
