@@ -27,7 +27,8 @@ namespace OLLMrpc
 	 * {@link Request.dispatch} constructs {@link Gi} with the inbound
 	 * {@link Request} and calls {@link dispatch}. That method finds the
 	 * typelib callable and routes constructors to {@link dispatch_new},
-	 * other methods to {@link dispatch_function}.
+	 * other methods to {@link dispatch_function}. Subclasses such as
+	 * {@link GiMock} override those two methods for test servers.
 	 * Windows and Android compile ''windows/Gi.vala'' instead (meson,
 	 * not ''#if'').
 	 *
@@ -83,7 +84,7 @@ namespace OLLMrpc
 
 		private GLib.SList<void*>[] gslist_keep = {};
 
-		private bool[] skip_wire = {};
+		protected bool[] skip_wire = {};
 
 		private int[] in_slot = {};
 
@@ -264,7 +265,7 @@ namespace OLLMrpc
 		 * @param fn constructor from {@link dispatch}
 		 * @return true — this method always replies
 		 */
-		private bool dispatch_new(GI.FunctionInfo fn)
+		protected virtual bool dispatch_new(GI.FunctionInfo fn)
 		{
 			if (!this.request.connection.live_handles) {
 				this.request.connection.reply_error(
@@ -352,7 +353,7 @@ namespace OLLMrpc
 		 * @param fn non-constructor from {@link dispatch}
 		 * @return true — this method always replies
 		 */
-		private bool dispatch_function(GI.FunctionInfo fn)
+		protected virtual bool dispatch_function(GI.FunctionInfo fn)
 		{
 			if (!this.request.connection.live_handles) {
 				this.request.connection.reply_error(

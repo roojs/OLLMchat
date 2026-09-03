@@ -11,6 +11,8 @@
 
 ## Done
 
+- [RPC-1.7-DONE-mock-dispatch-and-gi-mock.md](done/RPC-1.7-DONE-mock-dispatch-and-gi-mock.md) — `register_mock` + `GiMock` (test-only; unblocks gnome-shell-rpc 0.7.8)
+
 - [RPC-8.3-libocrpc-live-handles-and-signals.md](done/RPC-8.3-libocrpc-live-handles-and-signals.md)
 - [RPC-8.3.1-DONE-live-handles-and-remote-refcount.md](done/RPC-8.3.1-DONE-live-handles-and-remote-refcount.md)
 - [RPC-8.3.2-DONE-subscribe-unsubscribe.md](done/RPC-8.3.2-DONE-subscribe-unsubscribe.md)

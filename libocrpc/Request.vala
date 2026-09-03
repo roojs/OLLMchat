@@ -59,6 +59,9 @@ namespace OLLMrpc
 		/** Wire prefixes registered with {@link register_live}. */
 		public static Gee.HashMap<string, bool> live;
 
+		/** Test-only helper handler; null on production servers. */
+		private static MockDispatch? mock_handler = null;
+
 		public int id { get; set; }
 		public string method { get; set; default = ""; }
 
@@ -144,6 +147,26 @@ namespace OLLMrpc
 				live = new Gee.HashMap<string, bool>();
 			}
 			live.set(name, true);
+		}
+
+		/**
+		 * Register a test-only helper for dispatch after {@link Ffi}.
+		 *
+		 * When registered, {@link dispatch} calls
+		 * {@link MockDispatch.dispatch} first. Return true when the helper
+		 * handled the call (must {@link reply} / {@link Transport.Connection.reply_error}).
+		 * Return false to fall through to {@link GiMock}.
+		 * When no helper is registered, {@link dispatch} uses {@link Gi}.
+		 * Production compositor servers must not call this.
+		 *
+		 * @param handler helper singleton (e.g. consumer ''HelperMock'')
+		 */
+		public static void register_mock(MockDispatch handler)
+		{
+			if (mock_handler != null) {
+				GLib.debug("RPC register_mock: replacing previous mock handler");
+			}
+			mock_handler = handler;
 		}
 
 		/**
@@ -269,7 +292,10 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Route this request to a listed FFI method or {@link Gi}.
+		 * Route this request to FFI, optional helper, or {@link Gi}.
+		 *
+		 * Order: {@link Ffi}; then {@link register_mock} helper when set
+		 * (false → {@link GiMock}); when no helper, {@link Gi}.
 		 *
 		 * @return true when a handler ran
 		 */
@@ -293,6 +319,12 @@ namespace OLLMrpc
 
 			if (new Ffi(this).dispatch()) {
 				return true;
+			}
+			if (mock_handler != null) {
+				if (mock_handler.dispatch(this)) {
+					return true;
+				}
+				return new GiMock(this).dispatch();
 			}
 			if (new Gi(this).dispatch()) {
 				return true;

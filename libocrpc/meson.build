@@ -57,7 +57,7 @@ if use_unix_sockets
   ]
   transport_socket_src = files(['Transport/SocketListen.vala'])
   client_boot_src = files(['ClientBoot.vala'])
-  gi_src = files(['Gi.vala'])
+  gi_src = files(['Gi.vala', 'GiMock.vala'])
 endif
 
 if is_android
@@ -86,6 +86,7 @@ ocrpc_core_src = files([
   'Ffi.vala',
   'Response.vala',
   'RpcErrorCode.vala',
+  'MockDispatch.vala',
 ])
 
 live_src = files([
