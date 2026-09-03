@@ -39,9 +39,198 @@
 
 **Suggested order**
 
-1. 🔷 ⏳ Close **Design — approval baseline** (partial approve, intermediate storage, stacked edits, **approval undo**).
-2. 🔷 ⏳ Design **diff UI** and **destructive-action placement** (changes dropdown, bulk actions, revert paths).
-3. 🔷 ⏳ Add **implementation spec** (code fences) to this plan or a sub-plan — only after 1–2.
+1. 🔷 ⏳ Walk through **Design — user walkthrough** + **SQLite model** below — confirm or correct before coding.
+2. 🔷 ⏳ Close remaining ⏳ bullets in **Design — approval baseline** (anything the walkthrough does not settle).
+3. 🔷 ⏳ Design **diff UI** and **destructive-action placement** (changes dropdown, bulk actions, revert paths).
+4. 🔷 ⏳ Add **implementation spec** (code fences) to this plan or a sub-plan — only after 1–3.
+
+---
+
+## Design — user walkthrough (flows)
+
+ℹ️ **Goal:** one readable path from “agent wrote the file” → “user clicks approve on hunks” → “what SQLite holds” → “agent writes again” → “carry-forward / re-review”. Names below are **proposal** until you sign off.
+
+### Vocabulary
+
+- **Write chunk** — one agent/tool edit → one **`file_history`** row (`backup_path` = snapshot **before** that write; disk = **after**).
+- **Hunk** — one contiguous block in the inline diff (added/removed lines the user sees as a unit).
+- **Approval unit** — one user action: “I accept **this hunk** of **this write chunk**” → one row in proposed **`file_approval_unit`** table.
+- **Working file** — on-disk content after hunks the user has already approved in this review (may differ from full agent proposal until all hunks approved).
+- **Approved head** — last fully signed-off content for the file (all pending hunks for all chunks resolved, or whole-file approve today).
+
+### Flow A — Agent writes; user partial-approves (happy path)
+
+**Setup:** `foo.vala` on disk is version **V0**. Agent writes **V1** (changes around lines 2 and 5 — **hunk A**, **hunk B**).
+
+| Step | User sees | Daemon / disk | SQLite |
+|------|-----------|---------------|--------|
+| 1 | File appears in changed-files list; editor opens in **diff mode** | Disk = **V1**; backup file = **V0** | `file_history` **H1**: `status=0` (pending), `backup_path`→V0 |
+| 2 | Unified diff: hunk **A** (line ~2) green/red; hunk **B** (~5) still pending | Unchanged **V1** | — |
+| 3 | User clicks **Approve** on hunk **A** | Apply **A** only: working file becomes **V0+A** (hunk **B** not applied yet) | `file_approval_unit` **U1**: `file_history_id=H1`, `hunk_index=0`, `seq=1`, `status=1`; store **approved text** / patch coords for **A** |
+| 4 | Diff refreshes: **A** dimmed or “approved”; **B** still red/green vs new baseline | Disk = **V0+A**; diff baseline = working file, not raw **V1** | `file_history` **H1**: `status=2` (**partial**) ⏳ new enum value |
+| 5 | User approves hunk **B** | Disk = **V1** (full agent proposal accepted) | **U2**: `hunk_index=1`, `seq=2`, `status=1`; **H1**: `status=1`; `filebase.is_need_approval=0` |
+
+ℹ️ **Approve order matters:** **`seq`** records click order (1 then 2). Unapprove / audit / bulk revert can walk **`seq`** backwards.
+
+ℹ️ **Whole-file Approve today** = one step: all hunks + **H1** → approved (equivalent to approving every hunk in one batch with shared **`batch_id`**).
+
+### Flow B — Agent writes again while review incomplete (stacked edit)
+
+**Setup:** After step 4 above (only **A** approved), agent writes **V2** before user approves **B**.
+
+| Step | User sees | Daemon / disk | SQLite |
+|------|-----------|---------------|--------|
+| 1 | Notification: file changed again | New backup = **V0+A** (working file before second write); disk = **V2** | **`file_history` H2**: pending, `backup_path`→working copy |
+| 2 | Diff for **H2** vs **V0+A** | — | **H1** stays **partial**; **U1** still `status=1` |
+| 3 | System **carry-forward scan** (see Flow D) | Marks which old approvals still apply to **V2** | New rows or flags on **U1** → `superseded_by_history_id=H2`, `carry_state` ⏳ |
+
+🔷 ⏳ **Open:** does partial progress on **H1** **block** the agent, **merge** into **H2**, or **fork** a new review session? Walkthrough assumes **H2** is the active diff; **H1** hunks not yet approved may be **obsolete** or **re-targeted**.
+
+### Flow C — Carry-forward / re-approve after newer write
+
+When **H2** exists, daemon (or client with daemon verify) for each **`file_approval_unit`** with `status=1` on this file:
+
+1. Load **approved payload** for the unit (text added/changed, or patch relative to that chunk’s `backup_path`).
+2. Locate same semantic change in **H2**’s diff (match by **content hash**, **context lines**, or **`PatchApplier`** fuzzy apply).
+3. Set **`carry_state`** on the unit:
+   - **`carried`** — still valid in **V2**; UI shows pre-checked / dimmed approved.
+   - **`needs_review`** — overlapping region changed; user must approve again on **H2**’s hunk list.
+   - **`lost`** — hunk gone (agent removed that edit); unit stays in history but not applied.
+
+🔷 ⏳ No silent auto-approve on carry-forward unless user prefers “trust carried hunks” setting.
+
+### Flow D — Unapprove one hunk (not editor undo)
+
+| Step | User sees | Storage |
+|------|-----------|---------|
+| 1 | User **Unapprove** on hunk **A** (was **U1**) | **U1**: `status=-1` (unapproved) or new **`file_approval_unit`** row type **`unapprove`** with `seq=3` ⏳ |
+| 2 | Working file rebuilt from **V0** + remaining approved units (**none** if only **A** was approved) | Re-apply patch list in **`seq`** order, skip unapproved |
+| 3 | Diff shows **A** pending again | **H1** back to **partial** or **pending** |
+
+ℹ️ **Not** `Ctrl+Z`. **`file_approval_unit.seq`** + **`file_history`** is the audit trail.
+
+### Flow E — Reject whole file
+
+User picks **Reject** (destructive; menu/bar TBD):
+
+- Restore disk from **`reject_id`** backup (today: newest `file_history` row with `backup_path`).
+- Mark pending **`file_history`** rows rejected; **`file_approval_unit`** rows for those chunks → `status=-1` or archived ⏳.
+- **`filebase.is_need_approval=0`**.
+
+🔷 ⏳ After partial approve, reject target: **pre-first-write V0**, **last working file**, or confirm dialog?
+
+### Flow F — Bulk approve all files
+
+User opens **changes-list menu** → **Approve all pending** → confirm “**N** files, **M** hunks”:
+
+- One **`file_approval_batch`** row (`id`, `timestamp`).
+- Each hunk approve gets same **`batch_id`**; **`seq`** still per-file.
+- **Revert last bulk approve** = invert batch (new **`unapprove`** units or flip status) using **`batch_id`** — not undo stack.
+
+---
+
+## Design — SQLite model (proposal)
+
+ℹ️ Shipped schema: [`ollmfilesd/FileHistory.vala`](../../ollmfilesd/FileHistory.vala) **`init_db`**. Partial approval needs **finer rows** than whole **`file_history.status`**.
+
+### Shipped today (unchanged role)
+
+**`file_history`** — one row per write chunk
+
+- **`id`**, **`filebase_id`**, **`path`**, **`timestamp`**, **`change_type`**, **`backup_path`**
+- **`status`**: `0` pending · `1` approved · `-1` rejected (⏳ add **`2` partial** when any hunk approved but chunk not closed?)
+- **`since_id`** — pending-list delta poke ([`2026-08-12` bug doc](../../docs/bugs/done/2026-08-12-FIXED-changed-files-notification-approvals-ui.md))
+
+**`filebase`**
+
+- **`is_need_approval`** — file still in review set
+- **`last_change_type`** — display hint
+
+Whole-file approve today: flip **`status`** on pending **`file_history`** rows in place — **no** per-hunk rows.
+
+### Proposed: `file_approval_unit` (new table)
+
+One row per **hunk approve**, **hunk unapprove**, or **carried-forward** decision.
+
+| Column | Type | Role |
+|--------|------|------|
+| **`id`** | INTEGER PK | |
+| **`filebase_id`** | INT64 | File |
+| **`file_history_id`** | INT64 | Write chunk this hunk belongs to (**H1**, **H2**, …) |
+| **`hunk_index`** | INT | 0-based index in unified diff for that chunk |
+| **`seq`** | INT64 | **Global per-file approve order** (monotonic; unapprove gets next seq) |
+| **`status`** | INT | `1` approved · `-1` unapproved/rejected · `0` pending re-review |
+| **`approved_at`** | INT64 | Timestamp |
+| **`batch_id`** | INT64 | `0` or FK → **`file_approval_batch`** for bulk approve all |
+| **`baseline_start_line`** | INT | Line range in chunk’s **`backup_path`** snapshot ⏳ |
+| **`baseline_end_line`** | INT | |
+| **`proposed_start_line`** | INT | Line range in agent proposal (pre-apply) ⏳ |
+| **`proposed_end_line`** | INT | |
+| **`approved_text_hash`** | TEXT | Fingerprint of accepted new text (carry-forward matching) |
+| **`approved_text`** | TEXT | Optional small payload; large hunks → blob file path ⏳ |
+| **`superseded_by_history_id`** | INT64 | Set when newer **`file_history`** row replaces this review context |
+| **`carry_state`** | TEXT | `''` · `carried` · `needs_review` · `lost` ⏳ |
+
+🔷 ⏳ **Alternative:** store only **`patch_json`** (hunk coords + lines) instead of line ranges — aligns with [`OLLMfiles.Diff`](../../libocfiles/Diff/) / [`examples/oc-diff.vala`](../../examples/oc-diff.vala).
+
+### Proposed: `file_approval_batch` (new table, optional)
+
+| Column | Role |
+|--------|------|
+| **`id`** | PK |
+| **`timestamp`** | When bulk action ran |
+| **`action`** | `approve_all` · `reject_all` · `revert_batch` |
+| **`file_count`**, **`unit_count`** | Confirm dialog echo / audit |
+
+### Proposed: `filebase` column (optional)
+
+| Column | Role |
+|--------|------|
+| **`approved_working_path`** | Path to on-disk **working file** during partial review (successor to old **`last_approved_copy_path`**) ⏳ |
+
+Or: derive working file by re-applying **`file_approval_unit`** patches to latest backup — no extra column, more CPU on open.
+
+### How tables interact (mermaid)
+
+```mermaid
+flowchart TD
+  subgraph write_events [Write events]
+    H1[file_history H1 pending]
+    H2[file_history H2 pending]
+  end
+  subgraph units [Per-hunk decisions]
+    U1[file_approval_unit seq=1 hunk A]
+    U2[file_approval_unit seq=2 hunk B]
+  end
+  FB[filebase.is_need_approval]
+  DISK[(Disk: working file)]
+  H1 --> U1
+  H1 --> U2
+  H2 --> U1
+  U1 --> DISK
+  U2 --> DISK
+  U1 --> FB
+  U2 --> FB
+```
+
+### Queries the UI will need (names only)
+
+- Pending hunks for open file: **`file_history`** head + **`file_approval_unit`** where `status=1` grouped by **`hunk_index`**
+- Approve order timeline: **`file_approval_unit`** for **`filebase_id`** `ORDER BY seq`
+- Carry-forward on new write: approved units for file where **`file_history_id`** ≤ previous head and **`carry_state`** not **`lost`**
+- Revert bulk: all units with **`batch_id`** = X, invert in reverse **`seq`** order
+
+### Walkthrough → open questions (short map)
+
+| Earlier ⏳ question | Walkthrough answer (proposal — confirm?) |
+|-------------------|------------------------------------------|
+| Partial granularity | **Hunk** within **`file_history`** chunk → **`file_approval_unit`** |
+| Intermediate storage | **Working file** on disk + unit rows; optional **`approved_working_path`** |
+| Baseline for diff | **Working file** after each partial approve (Flow A step 4) |
+| Stacked LLM edit | New **`file_history`** row; **carry-forward scan** (Flow C) |
+| Approval order | **`file_approval_unit.seq`** per file |
+| Undo approve | New unit or flip status; rebuild working file — **not** GtkSource undo |
+| Bulk approve | **`file_approval_batch`** + shared **`batch_id`** |
 
 ---
 
@@ -86,21 +275,13 @@
 
 ### Questions to close (user + design review)
 
-- 🔷 ⏳ **Partial approve granularity** — hunk, line range, or `file_history` chunk? Per-hunk buttons in the diff view vs a separate chunk list?
-- 🔷 ⏳ **Baseline for the diff** while pending:
-  - (A) **`reject_id` backup** — pre–latest-write on disk (matches today’s revert target; whole-file mental model).
-  - (B) **Last fully approved snapshot** — “approved head” even if user only partly approved last time.
-  - (C) **Last intermediate snapshot** — explicit “working approved copy” updated as user accepts hunks.
-  - (D) **Per-chunk backup** — each `file_history` row’s `backup_path` (aligns with chunk timeline).
-- 🔷 ⏳ **Intermediate storage** — where does partly-approved content live?
-  - On disk (new backup path / “staging” file)?
-  - Only in DB flags on `file_history` rows (some approved, some pending)?
-  - Client-side until next save (probably insufficient for multi-window / reload)?
-- 🔷 ⏳ **Second LLM edit while still pending** — agent modifies the same file again before user finishes review:
-  - New `file_history` row + new backup; diff baseline stays “start of this review session” or “last approved/intermediate”?
-  - Does partial progress reset, merge, or apply on top of the intermediate copy?
-  - Does **`approve_id` / `reject_id`** on `FileWithHistory` stay sufficient or do we need **`diff_base_id`** (or similar) on the wire?
-- 🔷 ⏳ **Reject after partial approve** — revert to original pre-change backup, to last intermediate, or ask user?
+ℹ️ Start from **Design — user walkthrough** + **SQLite model** above; items below are what the walkthrough still leaves open.
+
+- 🔷 ⏳ **Sign off walkthrough** — Flow A–F and table columns: correct mental model?
+- 🔷 ⏳ **`file_history.status=2` (partial)** — needed, or infer partial only from **`file_approval_unit`** counts?
+- 🔷 ⏳ **Working file rebuild** — on each partial approve (eager) vs on read (lazy re-apply patches)?
+- 🔷 ⏳ **Carry-forward** — auto-trust **`carried`** hunks vs always show for re-click?
+- 🔷 ⏳ **Stacked edit (Flow B)** — obsolete hunks on **H1** when **H2** arrives: hide, merge, or show both sessions?
 - 🔷 ⏳ **Relationship to whole-file Approve/Reject on `Approvals` bar** — demote, move to menu, or keep for selected file only?
 - 🔷 ⏳ **Approve all files** — ship at all? Menu-only? Reversible how?
 - 🔷 ⏳ **Reject all pending** — same placement rules as approve all?
@@ -118,11 +299,8 @@
 
 ### Working notes (not decisions)
 
-- 💩 “Approved head” pointer on `filebase` (successor to old `last_approved_copy_path` idea) — one canonical path or blob id for “what user has signed off on”.
-- 💩 Diff UI might show **two** baselines in labels: “vs last approved” and “vs this write’s backup” — clarify whether one diff or stacked sessions.
-- 💩 Partial apply may need **`PatchApplier`** ([`done/5.2-DONE-diff-match-patch-simple-port.md`](done/5.2-DONE-diff-match-patch-simple-port.md)) on daemon side when persisting intermediate state, not only `Differ` in the editor.
-- 💩 **`file_history` row types** for `approved`, `unapproved`, `partially_applied` — may be needed so rollback is data-driven, not undo-stack-driven.
-- 💩 **`bulk_approval_id`** (or batch timestamp) on daemon — group rows approved in one “approve all” so revert bulk is one operation.
+- 💩 **`file_approval_unit`** may supersede vague **`file_history` row types** (`partially_applied`) — prefer explicit unit rows + optional **`status=2`** on chunk.
+- 💩 Wire may need **`diff_base_id`** or **`working_path`** on **`FileWithHistory`** once partial approve ships — not required for whole-file v1.
 
 ### Out of scope until design closes
 
@@ -143,7 +321,7 @@
 
 ## LLM notes
 
-- 🚫 **No code fences** in this plan until user closes design + UI.
+- 🚫 **No Vala code fences** until user signs off walkthrough + UI.
 - 🚫 Conflate **approve / unapprove** with GtkSource **undo/redo** or buffer edit history.
 - 🚫 **Approve all** / **reject all** as primary header buttons beside everyday editor controls.
 - 🚫 Do not implement daemon RPC, `SourceView` diff mode, or CSS from this document as it stands.
