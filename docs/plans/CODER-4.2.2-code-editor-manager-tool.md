@@ -47,7 +47,7 @@ Single unified tool that handles:
   - Wraps the existing `EditMode` tool
   - Connects to `EditMode.change_done` signal to intercept file changes
   - Updates SourceView when files are edited via EditMode tool
-  - If file is open in editor, refreshes content and highlights changes
+  - If file is open in editor, refreshes content and enters diff review mode when pending (see [CODER-4.2.3-URGENT-source-view-diff.md](CODER-4.2.3-URGENT-source-view-diff.md))
   - If file is not open, optionally opens it in editor to show changes
 - **Note**: The `change_done` signal is currently not emitted by EditMode. The signal exists in `Tool.vala` but `emit_change_signals()` is not implemented in `Stream.vala`. This needs to be implemented before EditModeWrapper can connect to it.
 
@@ -91,7 +91,7 @@ public interface CodeEditorManager : Tool.Interface {
 - `open_file(File file, int? line_number = null)` - Already exists, may need to expose for tool access
 - `navigate_to_line(int line_number)` - Already exists, may need to expose for tool access
 - `refresh_file()` - May need enhancement to handle EditMode changes
-- `highlight_changes()` - New method to highlight changes from EditMode
+- `highlight_changes()` — superseded for pending files by [CODER-4.2.3-URGENT-source-view-diff.md](CODER-4.2.3-URGENT-source-view-diff.md) diff review mode
 
 ### WindowPane Integration
 - May need method to ensure code view is visible when tool opens a file
