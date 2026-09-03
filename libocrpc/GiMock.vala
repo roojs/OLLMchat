@@ -32,6 +32,7 @@ namespace OLLMrpc
 	 * OLLMrpc.Gi.register("Clutter", "16");
 	 * OLLMrpc.Gi.register("St", "16");
 	 * OLLMrpc.Request.register_mock(new HelperMock());
+	 * var lease = OLLMrpc.GiMock.mint("Meta-Compositor");
 	 * }}}
 	 *
 	 * @see Gi
@@ -196,44 +197,45 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Register (or return cached) fake GType for a wire alias.
+		 * Mint a fake GObject lease for a wire alias.
 		 *
-		 * Used by mock servers to mint leases for abstract GIR types without
-		 * invoking C. Queries class and instance sizes from the alias GType
-		 * (required on GLib 2.84+).
+		 * Mock servers must never {@link GLib.Object.new} real Meta/Clutter/St
+		 * GTypes — there is no live compositor. Registers a
+		 * {@link GLib.Object}-parented fake GType (cached under OLLMrpcGiMock_*),
+		 * maps it to ''alias'' via {@link Bin.register_alias}, and returns a new
+		 * instance that skips stock C init while encoding as ''alias'' on the wire.
 		 *
 		 * == Example ==
 		 *
 		 * {{{
 		 * OLLMrpc.Gi.register("Meta", "16");
-		 * var gtype = OLLMrpc.GiMock.fake_gtype_for_alias("Meta-Compositor");
-		 * var obj = (GLib.Object) GLib.Object.new(gtype);
+		 * var compositor = OLLMrpc.GiMock.mint("Meta-Compositor");
+		 * request.connection.export(compositor);
 		 * }}}
 		 *
 		 * @param alias wire alias from {@link Gi.register} (e.g. Meta-Compositor)
-		 * @return fake GType registered under OLLMrpcGiMock_*
+		 * @return new lease object
 		 * @throws GLib.Error unknown alias or registration failure
 		 */
-		public static GLib.Type fake_gtype_for_alias(string alias) throws GLib.Error
+		public static GLib.Object mint(string alias) throws GLib.Error
 		{
 			if (GiMock.mock_gtypes == null) {
 				GiMock.mock_gtypes = new Gee.HashMap<string, GLib.Type>();
 			}
 			if (GiMock.mock_gtypes.has_key(alias)) {
-				return GiMock.mock_gtypes.get(alias);
+				return (GLib.Object) GLib.Object.new(GiMock.mock_gtypes.get(alias));
 			}
 			if (Bin.alias_to_gtype == null || !Bin.alias_to_gtype.has_key(alias)) {
 				throw new Bin.StreamError.REGISTRATION(
 					"unknown wire alias '%s'", alias);
 			}
-			var parent = Bin.alias_to_gtype.get(alias);
 			var type_name = "OLLMrpcGiMock_" + alias.replace("-", "_");
 			GLib.Type fake_gtype = GLib.Type.from_name(type_name);
 			if (fake_gtype == GLib.Type.INVALID) {
 				GLib.TypeQuery parent_query = {};
-				parent.query(out parent_query);
+				GLib.Type.OBJECT.query(out parent_query);
 				fake_gtype = GiMock.register_static_simple_type(
-					parent,
+					GLib.Type.OBJECT,
 					type_name,
 					parent_query.class_size,
 					null,
@@ -250,7 +252,7 @@ namespace OLLMrpc
 				Bin.register_alias(alias, fake_gtype);
 			}
 			GiMock.mock_gtypes.set(alias, fake_gtype);
-			return fake_gtype;
+			return (GLib.Object) GLib.Object.new(fake_gtype);
 		}
 
 		/**
@@ -283,9 +285,7 @@ namespace OLLMrpc
 				return false;
 			}
 			try {
-				token = (GLib.Object) GLib.Object.new(
-					GiMock.fake_gtype_for_alias(
-						Bin.gtype_to_alias.get(gtype)));
+				token = GiMock.mint(Bin.gtype_to_alias.get(gtype));
 			} catch (GLib.Error e) {
 				this.request.connection.reply_error(this.request,
 					(int) RpcErrorCode.INTERNAL_ERROR, e);
