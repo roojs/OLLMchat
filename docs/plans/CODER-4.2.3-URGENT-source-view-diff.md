@@ -2,7 +2,7 @@
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this plan.**
 
-**Status:** **URGENT** · **DESIGN OPEN** · **⏳** implementation **blocked** until baseline, partial-approval, and undo/approval separation are designed
+**Status:** **URGENT** · **⏳** phased — Phases **1–3** implementable on settled model; Phase **4** (per-hunk approval UI) **design open** until we reach it
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
@@ -20,24 +20,33 @@
 
 ## Purpose
 
-### Confirmed (UI — ship when design unblocks)
+### Phases (ship order)
+
+| Phase | Scope | Design |
+| ----- | ----- | ------ |
+| **1** | SQLite + migrate — `file_diff_part`, drop legacy `status` | **Settled** (DDL below) |
+| **2** | `SourceView` inline unified-diff **rendering** (gutter, green/red) | **Settled** for whole pending chunk |
+| **3** | **View** pending file with changes — wire backup vs disk into editor | **Settled** (baseline = `backup_path`) |
+| **4** | Per-hunk / block **approval flow** (approve / reject / unapprove) | **Open** — design when Phase 3 lands |
+
+### Confirmed (all phases)
 
 - 🔷 **Disk vs review** — file on disk is **always the agent end result** (full diff already applied when the agent wrote). **Approve** = DB + UI only (does **not** write disk). **Reject** = restore disk from **`backup_path`** + DB (the only review action that undoes content on disk).
 - 🔷 Pending-approval files show an **inline unified diff** in `SourceView` (not a second editor pane).
 - 🔷 **Secondary gutter** — baseline line numbers beside the normal gutter.
 - 🔷 **Added** lines: green background (pending hunk only).
 - 🔷 **Removed** lines: red background (pending hunk only); interleaved rows (unified-diff style).
-- 🔷 **Approved hunk** — DB + UI only; **disk unchanged**:
+- 🔷 **Approved hunk** — DB + UI only; **disk unchanged** (Phase **4**):
   - **Added** lines: highlight **off**; normal editor text (already on disk).
   - **Removed** lines: **no red interleaved rows** in the diff view (deletion already on disk; overlay dropped).
-- 🔷 **Rejected hunk** — **writes V_disk** (undo that hunk only); insert **`file_diff_part`** with **`accepted=0`**; overlay off.
-- ✔️ Per-file **Approve** / **Reject** / changed-files list on **`Approvals`** bar — shipped today; **placement of destructive / bulk actions** is still ⏳ (see below).
-- 🔷 Destructive review actions (whole-file reject, **approve all files**, reject all) must **not** sit as casual primary UI — tuck away (e.g. changes-list menu), with explicit revert.
+- 🔷 **Rejected hunk** — **writes V_disk** (undo that hunk only); insert **`file_diff_part`** with **`accepted=0`**; overlay off (Phase **4**).
+- ✔️ Per-file **Approve** / **Reject** / changed-files list on **`Approvals`** bar — shipped today; **placement of destructive / bulk actions** is still ⏳ (Phase **4**).
+- 🔷 Destructive review actions (whole-file reject, **approve all files**, reject all) must **not** sit as casual primary UI — tuck away (e.g. changes-list menu), with explicit revert (Phase **4**).
 
-### Open (must decide before coding)
+### Open (Phase 4 — decide when we get there)
 
 - 🔷 ⏳ **Partial approval** — user may accept **some** hunks/lines/chunks, not only whole-file approve.
-- 🔷 ⏳ **What the diff is against** — which stored snapshot is “baseline” while review is in progress.
+- 🔷 **What the diff is against** — **settled for Phases 2–3:** `file_history.backup_path` (**V_backup**) vs **V_disk**.
 - 🔷 **Intermediate approved state** — **`file_diff_part.accepted`** + diff UI only (disk already final); **`file_history.reviewed`** = all hunks decided, not “chunk accepted”.
 - 🔷 **`reviewed` only on `file_history`** — `0` / `1` only; **no `reviewed` column on `file_diff_part`**.
 - 🔷 ⏳ **Stacked LLM edits** — file still pending (or partly approved); agent writes again; what diff do we show?
@@ -46,10 +55,66 @@
 
 **Suggested order**
 
-1. 🔷 ⏳ Walk through [`CODER-4.2.3.1-source-view-diff-walkthrough-hello.md`](CODER-4.2.3.1-source-view-diff-walkthrough-hello.md) + **Design — user walkthrough** + **SQLite model** below — confirm or correct before coding.
-2. 🔷 ⏳ Close remaining ⏳ bullets in **Design — approval baseline** (anything the walkthrough does not settle).
-3. 🔷 ⏳ Design **diff UI** and **destructive-action placement** (changes dropdown, bulk actions, revert paths).
-4. 🔷 ⏳ Add **implementation spec** (code fences) to this plan or a sub-plan — only after 1–3.
+1. 🔷 ⏳ **Phase 1** — DB + migrate (`file_diff_part`; drop legacy `status`). Spec fences in **Phase 1** before coding.
+2. 🔷 ⏳ **Phase 2** — `SourceView` diff **render** (secondary gutter, green/red overlays). Spec after Phase 1.
+3. 🔷 ⏳ **Phase 3** — open pending file → load **V_backup** vs **V_disk** → show Phase 2 overlay. Spec after Phase 2.
+4. 🔷 ⏳ **Phase 4** — design per-hunk approve / reject / unapprove + destructive placement; then implement. **Do not invent UI** before this design pass.
+
+---
+
+## Phase 1 — Database + upgrade
+
+- 🔷 Create **`file_diff_part`** (child of **`file_history`**).
+- 🔷 Migrate **`file_history`**: drop legacy **`status`**; map old `status != 0` → `reviewed=1`.
+- 🔷 ⏳ UNIQUE `(file_history_id, part_index)` when table lands.
+- 🔷 ⏳ Daemon / client can **read** parts for a chunk (no UI yet).
+- 🔷 ⏳ Derived hunk-file path helper (formula under **SQLite model**) — write path only; no approve RPC yet.
+- 🚫 No SourceView changes in this phase.
+- 🚫 No per-hunk approve / reject RPC beyond what whole-file already does.
+- ℹ️ Full DDL + interaction rules: **Design — SQLite model** below.
+- ℹ️ Implementation fences: add under this heading when coding starts (Remove / Replace / Add).
+
+---
+
+## Phase 2 — SourceView diff rendering
+
+- 🔷 Inline **unified-diff** overlay in `SourceView` (not a second pane).
+- 🔷 **Secondary gutter** — baseline (**V_backup**) line numbers beside the normal gutter.
+- 🔷 **Added** lines: green background; **Removed** lines: red interleaved rows.
+- 🔷 Drive from two strings (**V_backup**, **V_disk**) via **`OLLMfiles.Diff.Differ`** — no approval state yet (treat whole chunk as pending).
+- 🔷 CSS / markers in `resources/style.css` (or existing SourceView styles).
+- 🚫 No per-hunk approve / reject controls yet (Phase **4**).
+- 🚫 Do not wire “which file is pending” here if that belongs in Phase **3** — render API can take two texts + show overlay.
+- ℹ️ Touch points (names only until fences): `liboccoder/SourceView.vala`, `resources/style.css`.
+- ℹ️ Implementation fences: add under this heading after Phase 1 lands.
+
+---
+
+## Phase 3 — View file with changes
+
+- 🔷 When user opens / focuses a **pending-approval** file, editor enters **diff mode**.
+- 🔷 Resolve active chunk: newest pending **`file_history`** for path; **V_backup** = `backup_path`; **V_disk** = current file content.
+- 🔷 Call Phase **2** render with those two texts.
+- 🔷 Leave / exit diff mode when file is no longer pending (whole-file approve / reject as shipped today still works).
+- 🔷 Changed-files list / `Approvals` bar still drive **which** file is under review (shipped); this phase only shows the inline diff for that file.
+- 🚫 No new per-hunk approval UI (Phase **4**).
+- 🚫 No carry-forward / stacked-edit merge UI (v1: active chunk only — see Flow B deferred notes).
+- ℹ️ Touch points (names only): `liboccoder/Approvals.vala`, `liboccoder/SourceView.vala`, `libocfiles/FileHistory.vala` / daemon as needed to expose backup text.
+- ℹ️ Implementation fences: add under this heading after Phase 2 lands.
+
+---
+
+## Phase 4 — Approval flow of blocks (design then implement)
+
+ℹ️ **Stop and design** when Phase 3 works. Do not invent gutter buttons / menus from this section alone.
+
+- 🔷 Per-hunk **Approve** / **Reject** / **Unapprove** (Flows A, A1, D, E partial).
+- 🔷 Insert / delete **`file_diff_part`** rows; set **`file_history.reviewed`** when every hunk decided.
+- 🔷 Overlay off for decided hunks (approved = keep on disk; rejected = undo hunk on **V_disk**).
+- 🔷 Destructive / bulk placement (changes-list menu, confirm, revert) — see **Destructive actions**.
+- 🔷 ⏳ Close remaining open bullets (stacked edit, carry-forward, bulk) before coding fences.
+- ℹ️ Walkthrough + SQLite model below stay the contract reference for this phase.
+- 🚫 No Vala fences for Phase 4 until user signs off the design pass.
 
 ---
 
@@ -325,6 +390,8 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 
 ℹ️ Parent context: [`done/4.2-DONE-code-editor-tool.md`](done/4.2-DONE-code-editor-tool.md) Phase 6 mentioned “temporary approved copy” — **superseded:** disk is always end result; review is overlay + DB.
 
+ℹ️ **Baseline for Phases 2–3:** diff overlay = **`file_history.backup_path`** (**V_backup**) vs current **V_disk**. Partial / stacked / bulk remain Phase **4**.
+
 ℹ️ Shipped today ([`done/2.10.4.25-DONE-file-history-approval.md`](done/2.10.4.25-DONE-file-history-approval.md)):
 
 - One **file** row in `ReviewFiles` with **`approve_id`** (newest pending `file_history` row) and **`reject_id`** (newest row with backup).
@@ -360,9 +427,9 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
   - backed by **`file_history`** / **`file_diff_part`** flips — **not** editor undo.
 - ℹ️ Shipped today: per-file Approve/Reject on [`liboccoder/Approvals.vala`](../../liboccoder/Approvals.vala) header — redesign may move or restyle when diff UI lands.
 
-### Questions to close (user + design review)
+### Questions to close (Phase 4 design pass)
 
-ℹ️ Start from **Design — user walkthrough** + **SQLite model** above; items below are what the walkthrough still leaves open.
+ℹ️ Phases **1–3** do not need these closed. Revisit before Phase **4** coding.
 
 - 🔷 ⏳ **Sign off walkthrough** — Flow A–F and **`file_diff_part`** columns: correct mental model?
 - 🔷 ⏳ **When to insert `file_diff_part` rows** — on first user approve/reject (no row = pending); not upfront on agent write ⏳
@@ -375,33 +442,38 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 - 🔷 ⏳ **Undo approve vs Reject** — **Unapprove** = DB + diff overlay only (disk stays). **Reject** = disk restore. Neither is editor undo.
 - 🔷 ⏳ **Partial unapprove** — walk back one hunk, one chunk, or only all-or-nothing?
 
-### UI (not designed yet)
+### UI (Phase 4 — not designed yet)
 
 - 🔷 ⏳ Where partial-approve controls live — gutter icons, per-hunk bar, context menu, keyboard?
 - 🔷 ⏳ Read-only diff buffer vs editable file with overlays?
 - 🔷 ⏳ How user sees progress when some hunks approved and others not (counts, approved hunks in normal text only, second list)?
-- 🔷 ⏳ Secondary baseline gutter — always visible in diff mode, or only on changed hunks?
+- 🔷 ⏳ Secondary baseline gutter — always visible in diff mode, or only on changed hunks? (Phase **2** can default to always-on in diff mode.)
 - 🔷 ⏳ **Unapprove** control placement — bar, diff hunk, history list, changes menu; must **not** be “use undo”.
 - 🔷 ⏳ **Changes-list menu** — home for approve all, reject all, revert last bulk action?
 
 ### Working notes (not decisions)
 
 - 💩 Partial state = some hunks have **`file_diff_part`** rows, not all; **`file_history.reviewed=0`** until every hunk has a row. **Mixed accept/reject on one chunk is normal** — only parts carry **`accepted`**.
-- 💩 Wire may need active **`file_history.id`** on **`FileWithHistory`** once partial approve ships — not required for whole-file v1.
+- 💩 Wire may need active **`file_history.id`** on **`FileWithHistory`** once partial approve ships — not required for whole-file Phases **1–3**.
 
-### Out of scope until design closes
+### Out of scope until Phase 4 design
 
-- 🔷 ⏳ **Diff UI** — layout, partial-approve affordances, interaction model (not designed yet).
-- 🔷 ⏳ Per-chunk popover UI promised as “later” in 2.10.4.25 — may merge into this plan once baseline rules exist.
+- 🔷 ⏳ **Per-hunk approval UI** — layout, partial-approve affordances, interaction model.
+- 🔷 ⏳ Per-chunk popover UI promised as “later” in 2.10.4.25 — may merge into Phase **4** once that design pass runs.
 
 ---
 
 ## Implementation spec
 
-ℹ️ **No code fences in this plan** — interface and approval model are not designed yet.
+ℹ️ **Phases 1–3:** add **Remove / Replace with / Add** fences **under each phase heading** when that phase is ready to code (per `docs/guide-to-writing-plans.md`).
 
-- 🔷 ⏳ After **Design — approval baseline** and **diff UI** are closed, add a follow-on plan section (or sub-plan) with **Remove / Replace with / Add** fences per `docs/guide-to-writing-plans.md`.
-- ℹ️ Likely touch points when spec exists: `ollmfilesd/FileHistory.vala`, `libocfiles/FileHistory.vala`, `liboccoder/SourceView.vala`, `resources/style.css` — names only; no proposals until then.
+ℹ️ **Phase 4:** **no** Vala fences until the Phase **4** design pass closes.
+
+- ℹ️ Likely touch points:
+  - Phase **1:** `ollmfilesd/FileHistory.vala`, migrate / `init_db`
+  - Phase **2:** `liboccoder/SourceView.vala`, `resources/style.css`
+  - Phase **3:** `liboccoder/Approvals.vala`, client/daemon `FileHistory` (backup text)
+  - Phase **4:** same + part RPCs / hunk overlay state
 - ℹ️ Diff **library** ([`OLLMfiles.Diff.Differ`](../../libocfiles/Diff/)): diff two strings → hunks/patches only.
 - ℹ️ Diff **consumer** (`ollmfilesd`, `liboccoder/SourceView`, `Approvals`): pending state, overlay, approve/reject RPC, **`file_diff_part`** — including any future carry-forward (Flow C).
 
@@ -409,11 +481,11 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 
 ## LLM notes
 
-- 🚫 **No Vala code fences** until user signs off walkthrough + UI.
+- 🚫 **Phase 4 Vala fences** until user signs off Phase **4** design.
+- 🚫 Skip ahead to per-hunk approve UI before Phases **1–3** land.
 - 🚫 Conflate **approve / unapprove** with GtkSource **undo/redo** or buffer edit history.
 - 🚫 **Approve all** / **reject all** as primary header buttons beside everyday editor controls.
-- 🚫 Do not implement daemon RPC, `SourceView` diff mode, or CSS from this document as it stands.
-- 🚫 Do not add duplicate approve/reject in the editor body until UI design closes (bar/menu placement TBD).
+- 🚫 Do not invent Phase **4** gutter buttons / menus from the open UI bullets alone.
 - 🚫 Rewrite disk on **approve** (whole-file or partial) — disk is already the agent end result.
 - 🚫 Add **`file_approval_batch`**, **`seq`**, line-range columns, or duplicate **`filebase_id`** on the child table without user sign-off.
 - 🚫 Put approval state, carry-forward, or **`file_history`** awareness in **`OLLMfiles.Diff`** — consumer only.
