@@ -159,6 +159,11 @@ namespace OLLMrpc
 
 			case "o":
 				var obj = l.arg<GLib.Object>();
+				if (obj == null) {
+					var null_o = GLib.Value(typeof(GLib.Object));
+					null_o.set_object(null);
+					return null_o;
+				}
 				var o_val = GLib.Value(obj.get_type());
 				o_val.set_object(obj);
 				return o_val;

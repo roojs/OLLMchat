@@ -1,6 +1,6 @@
-# WebKit automation leaks into client sites
+# FIXED: WebKit automation leaks into client sites
 
-**Status:** ⏳ OPEN — Linux build ✔️ (`webdriver6`); smoke still pending
+**Status:** ✔️ FIXED — code + Meson + `webdriver6` in place; Linux smoke left to WEBKIT-5.0.10
 
 **Started:** 2026-09-02
 
@@ -10,7 +10,7 @@
 
 **Related:**
 
-- ℹ️ Plan: [`WEBKIT-5.0.10-webkit-automation.md`](../plans/WEBKIT-5.0.10-webkit-automation.md)
+- ℹ️ Plan: [`WEBKIT-5.0.10-webkit-automation.md`](../../plans/WEBKIT-5.0.10-webkit-automation.md)
 - ℹ️ [webkitgtk-automation](https://github.com/roojs/webkitgtk-automation) — `docs/consuming.md` + installed `+webdriver6` `-dev`
 
 ---
@@ -27,16 +27,16 @@
 
 ---
 
-## Fix direction
+## Fix applied
 
-🔷 Set **Disabled** on automation WebView settings:
+✔️ Set **Disabled** on automation WebView settings:
 
 | Platform | Status |
 | --- | --- |
 | Windows / Android | ✔️ `navigator_webdriver_active_policy = DISABLED` |
-| Linux | ✔️ `set_navigator_webdriver_active_policy(..., DISABLED)` in `linux/WebViewAuto.vala` + `--pkg=webkitgtk-webdriver` |
+| Linux | ✔️ `set_navigator_webdriver_active_policy(..., DISABLED)` under `#if HAVE_WEBKIT_NAVIGATOR_WEBDRIVER_POLICY` |
 
-**Linux `-dev`:** `+webdriver6` ships fixed vapi (no `partial class Settings`) and header (`#include <webkit/WebKitSettings.h>`). Meson follows [`consuming.md`](file:///home/alan/git/webkitgtk-automation/docs/consuming.md) via vendored `scripts/meson/check-webkit-interactions.sh`.
+✔️ Linux `-dev` `+webdriver6` + Meson `.so` probes (`interactions` / `navigator-policy`) per `consuming.md`.
 
 🚫 Page-JS spoof. 🚫 In-tree vapi forks or C shims in OLLMchat.
 
@@ -48,7 +48,7 @@
 | --- | --- |
 | Win/Android `navigator.webdriver` hidden | ✔️ |
 | `libocwebkit.so` build (Linux) | ✔️ after `+webdriver6` |
-| Linux console `navigator.webdriver` | ⏳ smoke |
+| Linux console `navigator.webdriver` | ⏳ WEBKIT-5.0.10 smoke |
 | WEBKIT-5.0.10 fill/press smoke | ⏳ |
 
 ---
@@ -61,3 +61,4 @@
 - ✔️ 2026-09-05 — Wired Meson to `consuming.md`: vendored `scripts/meson/check-webkit-interactions.sh`, prefer `webkitgtk-6.0-webdriver` then stock.
 - ✔️ 2026-09-05 — Installed `+webdriver6`; `libocwebkit.so` builds with navigator-policy call.
 - ✔️ 2026-09-05 — Gate hide API on `.so` probe (`navigator-policy`), not distro; `#if HAVE_WEBKIT_NAVIGATOR_WEBDRIVER_POLICY`.
+- ✔️ 2026-09-05 — Archived to `docs/bugs/done/`.

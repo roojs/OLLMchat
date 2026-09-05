@@ -2,7 +2,7 @@
 
 > **Do not update `docs/plans/WEBKIT-1.0-summary.md` for this plan.**
 
-**Status:** **ON HOLD** — OLLMchat app opt-in landed (steps 1–6 ✔️); Linux hide blocked until rebuilt `libwebkitgtk-6.0-webdriver-dev` ([`2026-09-02-webkit-automation-leaks-into-client-sites.md`](../bugs/2026-09-02-webkit-automation-leaks-into-client-sites.md)). Win/Android wired; requires **webview2-gtk ≥ 0.5.9** / **webkitgtk-android ≥ 0.1.5**.
+**Status:** **ON HOLD** — OLLMchat app opt-in landed (steps 1–6 ✔️); Linux hide wired ([`2026-09-02-FIXED-webkit-automation-leaks-into-client-sites.md`](../bugs/done/2026-09-02-FIXED-webkit-automation-leaks-into-client-sites.md)); fill/press smoke still open. Win/Android wired; requires **webview2-gtk ≥ 0.5.9** / **webkitgtk-android ≥ 0.1.5**.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
@@ -85,7 +85,7 @@ User-approved new methods (do not invent more):
 4. **✔️** **🔷** Platform `WebViewAuto` files; `Browser` always uses `WebViewAuto`; fill / press always call `WebDriver`.
 5. **✔️** **🔷** Drop `A11y.fill` / `A11y.press` / `*_sync` on **all** platforms (dump only).
 6. **✔️** **🔷** `prepare()` in `ollmapp` (desktop + Android) + `oc-test-webkit` **before** any WebView — always `new WebDriver()`.
-7. **⏸️ ON HOLD** **🔷** Smoke: Google fill + press on Linux, Windows, and Android — Linux blocked on `-dev` reinstall ([`2026-09-02-webkit-automation-leaks-into-client-sites.md`](../bugs/2026-09-02-webkit-automation-leaks-into-client-sites.md)).
+7. **⏸️ ON HOLD** **🔷** Smoke: Google fill + press on Linux, Windows, and Android — Linux hide fixed ([`2026-09-02-FIXED-webkit-automation-leaks-into-client-sites.md`](../bugs/done/2026-09-02-FIXED-webkit-automation-leaks-into-client-sites.md)); smoke still open.
 
 ---
 

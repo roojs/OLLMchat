@@ -1,4 +1,4 @@
-# GiMock: pointer object returns skip mint; ctors crash on `val("o", null)`
+# FIXED: GiMock pointer object returns skip mint; ctors crash on `val("o", null)`
 
 **Status:** ✔️ FIXED — apply verified in tree; await consumer ✅
 
@@ -10,9 +10,10 @@
 
 **Related:**
 
-- ℹ️ Design: [`docs/plans/done/RPC-1.7-DONE-mock-dispatch-and-gi-mock.md`](../plans/done/RPC-1.7-DONE-mock-dispatch-and-gi-mock.md)
-- ℹ️ Prior: [`done/2026-09-03-FIXED-gimock-untyped-object-returns.md`](done/2026-09-03-FIXED-gimock-untyped-object-returns.md)
-- ℹ️ Prior follow-up note: [`done/2026-09-03-FIXED-gimock-fake-gtype-register-static-simple-glib-284.md`](done/2026-09-03-FIXED-gimock-fake-gtype-register-static-simple-glib-284.md) (pointer object returns still open)
+- ℹ️ Design: [`docs/plans/done/RPC-1.7-DONE-mock-dispatch-and-gi-mock.md`](../../plans/done/RPC-1.7-DONE-mock-dispatch-and-gi-mock.md)
+- ℹ️ Prior: [`2026-09-03-FIXED-gimock-untyped-object-returns.md`](2026-09-03-FIXED-gimock-untyped-object-returns.md)
+- ℹ️ Prior follow-up note: [`2026-09-03-FIXED-gimock-fake-gtype-register-static-simple-glib-284.md`](2026-09-03-FIXED-gimock-fake-gtype-register-static-simple-glib-284.md)
+- ℹ️ Related packer: [`2026-09-05-FIXED-ollmrpc-null-object-to-value.md`](2026-09-05-FIXED-ollmrpc-null-object-to-value.md)
 - ℹ️ Consumer: gnome-shell-rpc `gi-rpc-mock` / `Clutter-Actor.new` (workaround in `HelperMock`)
 
 ---
@@ -74,8 +75,4 @@ gnome-shell-rpc `HelperMock`: hand-mint `Clutter-Actor.new` via `GiMock.mint("Cl
 - ✔️ 2026-09-05 — Root cause: `is_pointer()` skip + `val("o", null)` in `mock_new`.
 - ✔️ 2026-09-05 — Refined: mint only OBJECT/INTERFACE in library set; keep skip for non-object pointers (user review).
 - ✔️ 2026-09-05 — Applied approved hunks in `libocrpc/GiMock.vala`.
-
-## Next
-
-- ⏳ Rebuild consumer against fixed `libocrpc.so`; drop `HelperMock` `Clutter-Actor.new` arm; verify `gi-rpc-smoke`.
-- ⏳ User ✅ → rename/move to `docs/bugs/done/2026-09-05-FIXED-gimock-pointer-return-skips-mint.md`.
+- ✔️ 2026-09-05 — Archived to `docs/bugs/done/`.

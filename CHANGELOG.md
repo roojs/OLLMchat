@@ -17,11 +17,20 @@ Debian and RPM packaging notes are generated from this file at release time
   INOUT, GList IN, explicit GType aliases
 - Live GI callbacks (register / invoke / reply) and `SCM_RIGHTS` on
   `Response`
+- Live leases: stamp lease id on proxy decode; write path uses the lease key;
+  `Live.Handle` interface
+- Namespace (top-level) GI functions — bare `Clutter.` / `Meta.` wire prefixes
+  with no lease
 - Drop `CallParam`. Positional **`Request.args`** / **`Response.args`**.
   Typed **`Response.retval`** for the GIR C return. `Request.add_class` FFI
   handlers
 - Bin protocol **v3.1** method-name tokens (`NAME_REF`)
 - `OLLMrpc.rpc_register()`; client throws server errors to callers
+- **GiMock** / `register_mock`: test-only GI dispatch that mints leased fakes for
+  registered OBJECT / INTERFACE returns (including GIR pointer types); ctors no
+  longer pack `val("o", null)`
+- Nullable OBJECT returns and null `"o"` args pack safely (no `get_type()` on
+  null)
 
 ### FILES
 
@@ -40,6 +49,21 @@ Debian and RPM packaging notes are generated from this file at release time
   tool frame; wall-clock timeout; live output stream; spill file
 - Sudo: first-draft **libsecret** store and two-second hold Allow; Exec
   approval shows the command as the bold label
+
+### BROWSER
+
+- WebDriver automation path for the browser tool (Linux RemoteInspector;
+  Windows / Android CDP) — controlled views, session hand-off; fill/press
+  smoke still open
+- Hide `navigator.webdriver` when the linked WebKit `.so` exports the
+  navigator-policy API (`HAVE_WEBKIT_NAVIGATOR_WEBDRIVER_POLICY`)
+- Meson probes the WebKit `.so` for interactions (required) and navigator-policy
+  (optional) — prefer `webkitgtk-6.0-webdriver`, else stock with interactions
+  (Fedora / RPM)
+
+### ANDROID
+
+- About dialog no longer hangs; Add Model search TLS; settings tab order
 
 ## [1.3.0] - 2026-08-22
 
