@@ -187,9 +187,12 @@ namespace OLLMrpc
 			if (!this.mint_object_lease(fn.get_return_type(), out token)) {
 				return true;
 			}
-			if (token != null) {
-				this.request.connection.export(token);
+			if (token == null) {
+				this.request.connection.reply_error(
+					this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				return true;
 			}
+			this.request.connection.export(token);
 			this.request.reply(new Response() {
 				retval = OLLMrpc.val("o", token)
 			});
@@ -264,14 +267,12 @@ namespace OLLMrpc
 		private bool mint_object_lease(GI.TypeInfo type, out GLib.Object? token)
 		{
 			token = null;
-			if (type.is_pointer()) {
+			if (type.get_tag() != GI.TypeTag.INTERFACE) {
 				return true;
 			}
 			var kind = type.get_interface().get_type();
 			if (kind != GI.InfoType.OBJECT && kind != GI.InfoType.INTERFACE) {
-				this.request.connection.reply_error(
-					this.request, (int) RpcErrorCode.INVALID_PARAMS);
-				return false;
+				return true;
 			}
 			var gtype = ((GI.RegisteredTypeInfo) type.get_interface()).get_g_type();
 			if (gtype == GLib.Type.INVALID) {

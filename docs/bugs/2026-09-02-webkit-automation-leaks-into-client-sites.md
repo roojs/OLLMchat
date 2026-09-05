@@ -1,6 +1,6 @@
 # WebKit automation leaks into client sites
 
-**Status:** ⏳ OPEN — OLLMchat implementation ✔️; smoke pending; Linux hide blocked on GTK Settings API (webkitgtk-automation)
+**Status:** ⏳ OPEN — Linux build ✔️ (`webdriver6`); smoke still pending
 
 **Started:** 2026-09-02
 
@@ -11,47 +11,13 @@
 **Related:**
 
 - ℹ️ Plan: [`WEBKIT-5.0.10-webkit-automation.md`](../plans/WEBKIT-5.0.10-webkit-automation.md)
-- ℹ️ `WebViewAuto`: `libocwebkit/linux/`, `windows/`, `android/`
-- ℹ️ webview2-gtk ≥ **0.5.9**: `WebViewSettings.navigator_webdriver_active_policy`
-- ℹ️ webkitgtk-android ≥ **0.1.5**: same Vala API (DISABLED no-op on System WebView)
-- ℹ️ Linux: [webkitgtk-automation](https://github.com/roojs/webkitgtk-automation) — WebCore `#165269` in `libwebkitgtk-6.0-webdriver4`; **no** public GTK `WebKitSettings` property yet
+- ℹ️ [webkitgtk-automation](https://github.com/roojs/webkitgtk-automation) — `docs/consuming.md` + installed `+webdriver6` `-dev`
 
 ---
 
 ## Problem
 
-🔷 Controlled tool views expose W3C `navigator.webdriver === true`, which sites use as a bot signal. Blocks WEBKIT-5.0.10 smoke.
-
----
-
-## Fix (app config; libraries do the rest)
-
-🔷 Set on view settings where the Vala property exists:
-
-```vala
-this.get_settings().navigator_webdriver_active_policy =
-	NavigatorWebDriverActivePolicy.DISABLED;
-```
-
-| Layer | Responsibility |
-|-------|----------------|
-| **OLLMchat** (`WebViewAuto`) | Set policy **Disabled** (Win/Android); link webdriver on Linux |
-| **webview2-gtk** ≥ 0.5.9 | DISABLED → `--disable-blink-features=AutomationControlled` at env create |
-| **webkitgtk-android** ≥ 0.1.5 | Same property; DISABLED no-op (System WebView already reports false) |
-| **libwebkitgtk-6.0-webdriver** | Interactions + WebCore policy; GTK Settings setter still upstream |
-
-🚫 Spoof from page JS.  
-🚫 Dummy `webkitgtk-6.0-webdriver` vapis — link via `declare_dependency` + `--pkg=webkitgtk-6.0`.  
-🚫 Edit webview2-gtk host C from this repo.
-
----
-
-## Implementation (OLLMchat — ✔️ except Linux Settings line)
-
-- ✔️ `windows/WebViewAuto.vala` + `android/WebViewAuto.vala`: `navigator_webdriver_active_policy = DISABLED`.
-- ✔️ Linux: `webkit_webdriver_dep` in `config/meson.build`; meson targets use it.
-- ✔️ Debian / `docs/BUILD.md`: `libwebkitgtk-6.0-webdriver-dev`; Android wrap **v0.1.5**; Windows CI **webview2-gtk 0.5.9**.
-- 💤 `linux/WebViewAuto.vala`: policy line **commented** — stock Vala `WebKit.Settings` has no property yet (webkitgtk-automation GTK API pending).
+🔷 Controlled tool views expose W3C `navigator.webdriver === true`, which sites use as a bot signal. Blocks WEBKIT-5.0.10 smoke on Linux.
 
 ---
 
@@ -61,13 +27,37 @@ this.get_settings().navigator_webdriver_active_policy =
 
 ---
 
+## Fix direction
+
+🔷 Set **Disabled** on automation WebView settings:
+
+| Platform | Status |
+| --- | --- |
+| Windows / Android | ✔️ `navigator_webdriver_active_policy = DISABLED` |
+| Linux | ✔️ `set_navigator_webdriver_active_policy(..., DISABLED)` in `linux/WebViewAuto.vala` + `--pkg=webkitgtk-webdriver` |
+
+**Linux `-dev`:** `+webdriver6` ships fixed vapi (no `partial class Settings`) and header (`#include <webkit/WebKitSettings.h>`). Meson follows [`consuming.md`](file:///home/alan/git/webkitgtk-automation/docs/consuming.md) via vendored `scripts/meson/check-webkit-interactions.sh`.
+
+🚫 Page-JS spoof. 🚫 In-tree vapi forks or C shims in OLLMchat.
+
+---
+
+## Verification
+
+| Check | Status |
+| --- | --- |
+| Win/Android `navigator.webdriver` hidden | ✔️ |
+| `libocwebkit.so` build (Linux) | ✔️ after `+webdriver6` |
+| Linux console `navigator.webdriver` | ⏳ smoke |
+| WEBKIT-5.0.10 fill/press smoke | ⏳ |
+
+---
+
 ## Attempts / changelog
 
-- ✔️ 2026-09-02 — Hold until leak addressed; blocks WEBKIT-5.0.10 smoke.
-- ✔️ 2026-09-02 — Direction locked: app sets Disabled; libraries own platform mechanism.
-- ✔️ 2026-09-02 — Full OLLMchat apply: Win/Android settings, Linux webdriver link, packaging, dependency pins; removed mistaken empty `vapi/webkitgtk-6.0-webdriver.*`.
-
-## Next
-
-⏳ 🔷 Smoke: Win/Android console `navigator.webdriver` → `false`; Linux fill/press smoke (hide still `true` until GTK Settings API).
-⏳ 🔷 webkitgtk-automation: expose `navigator_webdriver_active_policy` on GTK `WebKitSettings` (then add same line to `linux/WebViewAuto.vala`).
+- ✔️ 2026-09-02 — Filed; Win/Android wired; Linux line commented pending `-dev` API.
+- ✔️ 2026-09-05 — OLLMchat: `--pkg=webkitgtk-webdriver`, `set_navigator_webdriver_active_policy` in `linux/WebViewAuto.vala`.
+- ✔️ 2026-09-05 — Confirmed git `webkitgtk-automation` has fixed vapi/header; installed `webdriver5` `-dev` did not.
+- ✔️ 2026-09-05 — Wired Meson to `consuming.md`: vendored `scripts/meson/check-webkit-interactions.sh`, prefer `webkitgtk-6.0-webdriver` then stock.
+- ✔️ 2026-09-05 — Installed `+webdriver6`; `libocwebkit.so` builds with navigator-policy call.
+- ✔️ 2026-09-05 — Gate hide API on `.so` probe (`navigator-policy`), not distro; `#if HAVE_WEBKIT_NAVIGATOR_WEBDRIVER_POLICY`.

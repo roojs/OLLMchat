@@ -138,25 +138,63 @@ if host_machine.system() != 'windows'
   endif
 endif
 
-# --- webkitgtk-6.0-webdriver (libocwebkit Linux) ---
-# Parallel-install .so (roojs APT): WebDriver interactions + #165269 WebCore.
-# Do not put dependency('webkitgtk-6.0-webdriver') in Vala targets — Meson would
-# add --pkg webkitgtk-6.0-webdriver and there is no system vapi. Vala types stay
-# --pkg=webkitgtk-6.0 from stock libwebkitgtk-6.0-dev (same idea as libseccomp).
-# Link the versioned .so by path: -dev ships only .pc + .so.N (no unversioned .so).
+# --- WebKitGTK with WebDriver interactions (libocwebkit Linux) ---
+# Consumer contract: webkitgtk-automation docs/consuming.md — probe the .so
+# behind each pkg-config module; prefer parallel webdriver, else stock (Fedora).
+# Do not pass the chosen Dependency into Vala targets when the module is
+# webkitgtk-6.0-webdriver — Meson would add --pkg=webkitgtk-6.0-webdriver (no
+# such Vala module). Vala stays --pkg=webkitgtk-6.0 (+ optional
+# --pkg=webkitgtk-webdriver when the .so exports navigator-policy). Link C only.
+webkit_have_navigator_policy = false
 if host_machine.system() == 'linux'
-  webkit_webdriver_pc = dependency('webkitgtk-6.0-webdriver', required: true)
-  webkit_webdriver_libdir = webkit_webdriver_pc.get_variable(
-    pkgconfig: 'libdir',
-  )
-  webkit_webdriver_inc = webkit_webdriver_pc.get_variable(
-    pkgconfig: 'includedir',
-  )
-  webkit_webdriver_dep = declare_dependency(
-    dependencies: [dependency('javascriptcoregtk-6.0')],
-    compile_args: ['-I' + join_paths(webkit_webdriver_inc, 'webkitgtk-6.0')],
-    link_args: [
-      join_paths(webkit_webdriver_libdir, 'libwebkitgtk-6.0-webdriver.so.4'),
-    ],
-  )
+  webkit_interactions_check = meson.project_source_root() / 'scripts' / 'meson' / 'check-webkit-interactions.sh'
+  webkit_pc_raw = disabler()
+  webkit_pc_used = ''
+  foreach pc : ['webkitgtk-6.0-webdriver', 'webkitgtk-6.0']
+    _dep = dependency(pc, required: false)
+    if _dep.found() and run_command(webkit_interactions_check, pc, check: false).returncode() == 0
+      webkit_pc_raw = _dep
+      webkit_pc_used = pc
+      break
+    endif
+  endforeach
+  if not webkit_pc_raw.found()
+    error('No WebKitGTK with WebDriver interactions found. '
+      + 'On Ubuntu/Debian install libwebkitgtk-6.0-webdriver-dev.')
+  endif
+  message('WebKitGTK for automation: @0@'.format(webkit_pc_used))
+
+  # Optional #165269 hide API — same .so probe, not distro guessing.
+  if run_command(webkit_interactions_check, webkit_pc_used, 'navigator-policy', check: false).returncode() == 0
+    webkit_have_navigator_policy = true
+  endif
+  message('WebKitGTK navigator.webdriver policy: @0@'.format(
+    webkit_have_navigator_policy.to_string()))
+
+  webkit_webdriver_libdir = webkit_pc_raw.get_variable(pkgconfig: 'libdir')
+  webkit_webdriver_inc = webkit_pc_raw.get_variable(pkgconfig: 'includedir')
+  webkit_webdriver_cflags = [
+    '-I' + join_paths(webkit_webdriver_inc, 'webkitgtk-6.0'),
+  ]
+  if webkit_have_navigator_policy
+    webkit_webdriver_cflags += [
+      '-I' + join_paths(webkit_webdriver_inc, 'webkitgtk-webdriver-6.0'),
+    ]
+  endif
+  if webkit_pc_used == 'webkitgtk-6.0-webdriver'
+    # Versioned .so only (no unversioned .so in -dev); same as .pc Libs -l:.
+    webkit_webdriver_dep = declare_dependency(
+      dependencies: [dependency('javascriptcoregtk-6.0')],
+      compile_args: webkit_webdriver_cflags,
+      link_args: [
+        join_paths(webkit_webdriver_libdir, 'libwebkitgtk-6.0-webdriver.so.4'),
+      ],
+    )
+  else
+    # Stock GTK4 WebKit already has interactions (Fedora etc.): safe for Vala --pkg.
+    webkit_webdriver_dep = declare_dependency(
+      dependencies: [webkit_pc_raw],
+      compile_args: webkit_webdriver_cflags,
+    )
+  endif
 endif

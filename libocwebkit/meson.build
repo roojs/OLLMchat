@@ -39,7 +39,7 @@ elif is_android_cross
     '--vapidir', meson.current_build_dir() / '..' / 'subprojects' / 'webkitgtk-android',
   ]
 else
-  # Link parallel webdriver .so; Vala --pkg stays stock webkitgtk-6.0 (config/).
+  # Link WebKit with interactions; optional navigator-policy from .so probe.
   ocwebkit_deps += [
     webkit_webdriver_dep,
     dependency('atspi-2'),
@@ -52,6 +52,13 @@ else
     '--pkg', 'webkitgtk-6.0',
     '--pkg', 'atspi-2',
   ]
+  if webkit_have_navigator_policy
+    ocwebkit_platform_vala_args += [
+      '--pkg=webkitgtk-webdriver',
+      '--define=HAVE_WEBKIT_NAVIGATOR_WEBDRIVER_POLICY',
+    ]
+    ocwebkit_vapi_platform_pkgs += ['--pkg', 'webkitgtk-webdriver']
+  endif
 endif
 
 ocwebkit_src = files([
@@ -153,6 +160,9 @@ elif is_android_cross
   ocwebkit_vapi_cmd += ['--define=ANDROID']
 else
   ocwebkit_vapi_cmd += ['--define=LINUX']
+  if webkit_have_navigator_policy
+    ocwebkit_vapi_cmd += ['--define=HAVE_WEBKIT_NAVIGATOR_WEBDRIVER_POLICY']
+  endif
 endif
 ocwebkit_vapi_cmd += [
   '--pkg', 'posix',
