@@ -106,19 +106,17 @@ namespace OLLMfilesd
 		public string backup_path { get; set; default = ""; }
 		
 		/**
-		 * User approval state (0 = pending, 1 = approved, -1 = rejected).
-		 * - 0 = pending (not yet reviewed)
-		 * - 1 = approved (user approved the change)
-		 * - -1 = rejected (user rejected the change)
-		 * 
-		 * Note: Don't track "applied" or "restored" - status is just approval state.
+		 * Chunk review closed flag (0 = open, 1 = every hunk decided or whole-file done).
+		 *
+		 * Accept vs reject lives on {@link FileDiffPart.accepted} when parts exist.
+		 * Whole-file approve/reject sets {@code reviewed=1} with no part rows.
 		 */
-		public int status { get; set; default = 0; }
+		public int reviewed { get; set; default = 0; }
 
 		/**
 		 * Sync poke for pending-list delta fetch.
 		 * Default {@code 0} on insert (new rows use {@link id} &gt; marker).
-		 * Set to {@code MAX(id)+1} on in-place status flip.
+		 * Set to {@code MAX(id)+1} on in-place reviewed flip.
 		 */
 		public int64 since_id { get; set; default = 0; }
 		
@@ -552,16 +550,14 @@ namespace OLLMfilesd
 		{
 			var pending = new Gee.ArrayList<FileHistory>();
 			FileHistory.query(db).select(
-				"WHERE path = '" + this.path.replace("'", "''") + "' AND status = 0",
-				pending
-			);
+				"WHERE path = '" + this.path.replace("'", "''") + "' AND reviewed = 0", pending);
 			var max_stmt = FileHistory.query(db).selectPrepare(
 				"SELECT MAX(id) FROM file_history"
 			);
 			var max_ids = FileHistory.query(db).fetchAllInt64(max_stmt);
 			var poke = (max_ids.size > 0 ? max_ids.get(0) : (int64) 0) + 1;
 			foreach (var row in pending) {
-				row.status = 1;
+				row.reviewed = 1;
 				row.since_id = poke;
 				FileHistory.query(db).updateById(row);
 			}
@@ -632,7 +628,7 @@ namespace OLLMfilesd
 				"revert",
 				now
 			);
-			revert_history.status = 1;
+			revert_history.reviewed = 1;
 			try {
 				yield revert_history.commit();
 			} catch (GLib.Error e) {
@@ -670,7 +666,7 @@ namespace OLLMfilesd
 			}
 			file.last_modified = now.to_unix();
 			file.saveToDB(manager.db, null, false);
-			this.status = -1;
+			this.reviewed = 1;
 			var max_stmt = FileHistory.query(manager.db).selectPrepare(
 				"SELECT MAX(id) FROM file_history"
 			);
@@ -709,7 +705,7 @@ namespace OLLMfilesd
 				"change_type TEXT NOT NULL DEFAULT '', " +
 				"base_type TEXT NOT NULL DEFAULT '', " +
 				"backup_path TEXT NOT NULL DEFAULT '', " +
-				"status INTEGER NOT NULL DEFAULT 0, " +
+				"reviewed INTEGER NOT NULL DEFAULT 0, " +
 				"since_id INT64 NOT NULL DEFAULT 0, " +
 				"alias_target TEXT NOT NULL DEFAULT '', " +
 				"moved_to TEXT NOT NULL DEFAULT '', " +
@@ -722,6 +718,24 @@ namespace OLLMfilesd
 			var migrate_since = "ALTER TABLE file_history ADD COLUMN since_id INT64 NOT NULL DEFAULT 0";
 			if (Sqlite.OK != db.db.exec(migrate_since, null, out errmsg)) {
 				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
+			var migrate_reviewed = "ALTER TABLE file_history ADD COLUMN reviewed INTEGER NOT NULL DEFAULT 0";
+			if (Sqlite.OK != db.db.exec(migrate_reviewed, null, out errmsg)) {
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
+			if (Sqlite.OK != db.db.exec("UPDATE file_history SET reviewed = 1 WHERE status != 0",
+				null, out errmsg)) {
+				if (!errmsg.contains("no such column")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
+			if (Sqlite.OK != db.db.exec("ALTER TABLE file_history DROP COLUMN status",
+				null, out errmsg)) {
+				if (!errmsg.contains("no such column")) {
 					GLib.debug("Migration note (may be expected): %s", errmsg);
 				}
 			}

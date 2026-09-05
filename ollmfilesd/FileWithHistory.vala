@@ -41,9 +41,10 @@ namespace OLLMfilesd
 		public int64 reject_id { get; set; default = 0; }
 
 		/**
-		 * Pending-list delta: `0` = upsert still-pending; `1` / `-1` = leave pending set.
+		 * Chunk review flag from {@code file_history.reviewed}.
+		 * Pending-list delta: {@code 0} = upsert still-pending; non-zero = leave pending set.
 		 */
-		public int status { get; set; default = 0; }
+		public int reviewed { get; set; default = 0; }
 
 		/**
 		 * {@code Folder.fetch_pending_approvals} — history rows since marker.
@@ -77,7 +78,7 @@ SELECT
 	file_history.path,
 	file_history.change_type AS last_change_type,
 	filebase.last_modified,
-	file_history.status,
+	file_history.reviewed,
 	(
 		SELECT
 			file_history.id
@@ -86,7 +87,7 @@ SELECT
 		WHERE
 				file_history.filebase_id = filebase.id
 			AND
-				file_history.status = 0
+				file_history.reviewed = 0
 		ORDER BY
 			file_history.timestamp DESC
 		LIMIT 1
@@ -120,10 +121,10 @@ WHERE
 		COALESCE(filebase.base_type, file_history.base_type) = 'f'
 	AND
 	(
-		file_history.status != 0
+		file_history.reviewed != 0
 		OR
 		(
-			file_history.status = 0
+			file_history.reviewed = 0
 			AND
 			filebase.is_need_approval = 1
 		)

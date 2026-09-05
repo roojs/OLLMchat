@@ -37,9 +37,10 @@ namespace OLLMfiles
 		public int64 reject_id { get; set; default = 0; }
 
 		/**
-		 * Delta: `0` upsert pending; `1` / `-1` remove from Approvals list.
+		 * Chunk review flag from {@code file_history.reviewed}.
+		 * Delta: {@code 0} upsert pending; non-zero remove from Approvals list.
 		 */
-		public int status { get; set; default = 0; }
+		public int reviewed { get; set; default = 0; }
 
 		public string path_basename {
 			owned get { return GLib.Path.get_basename(this.path); }

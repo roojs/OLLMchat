@@ -72,7 +72,7 @@ namespace OLLMfiles
 		 * Does not update this {@link GLib.ListModel} — use {@link refresh} for that.
 		 * Advances {@link since_marker} from ''Response.msg'' on success.
 		 *
-		 * @return History rows since the current marker (`status` 0 = upsert, else remove)
+		 * @return History rows since the current marker ({@code reviewed} 0 = upsert, else remove)
 		 * @throws GLib.Error if the RPC fails
 		 */
 		public async Gee.ArrayList<FileWithHistory> fetch_pending() throws GLib.Error
@@ -130,7 +130,7 @@ namespace OLLMfiles
 					}
 				}
 				foreach (var file in files) {
-					if (file.status != 0) {
+					if (file.reviewed != 0) {
 						if (!this.file_map.has_key(file.path)) {
 							continue;
 						}
@@ -143,7 +143,7 @@ namespace OLLMfiles
 						existing.last_modified = file.last_modified;
 						existing.approve_id = file.approve_id;
 						existing.reject_id = file.reject_id;
-						existing.status = 0;
+						existing.reviewed = 0;
 						continue;
 					}
 					this.append(file);

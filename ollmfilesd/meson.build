@@ -45,6 +45,7 @@ ollmfilesd_src = files(
   'Copyable.vala',
   'FileBase.vala',
   'FileHistory.vala',
+  'FileDiffPart.vala',
   'FileWithHistory.vala',
   'FileAlias.vala',
   'File.vala',

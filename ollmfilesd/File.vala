@@ -471,7 +471,7 @@ namespace OLLMfilesd
 		 * Approve this file and all its FileHistory items.
 		 * 
 		 * Sets is_need_approval = false and updates all FileHistory records
-		 * for this file to status = 1 (approved).
+		 * for this file to reviewed = 1.
 		 */
 		public void approve()
 		{
@@ -493,13 +493,12 @@ namespace OLLMfilesd
 				return;
 			}
 			
-			// Update each FileHistory record to approved status
 			foreach (var history in history_records) {
-				history.status = 1;
+				history.reviewed = 1;
 				try {
 					FileHistory.query(db).updateById(history);
 				} catch (GLib.Error e) {
-					GLib.warning("Failed to update FileHistory status: %s", e.message);
+					GLib.warning("Failed to update FileHistory reviewed: %s", e.message);
 				}
 			}
 		}
@@ -541,7 +540,7 @@ namespace OLLMfilesd
 		 * Finds the most recent FileHistory record with a backup for this file
 		 * and restores the file from that backup. Before restoring, creates a new
 		 * FileHistory record with change_type="revert" to backup the rejected content
-		 * (flagged as approved). Updates the original FileHistory status to rejected (-1)
+		 * (flagged as reviewed). Updates the original FileHistory to reviewed = 1
 		 * and sets is_need_approval = true.
 		 * 
 		 * @throws Error if backup file doesn't exist or restore fails
@@ -587,8 +586,7 @@ namespace OLLMfilesd
 				now
 			);
 			
-			// Set status to approved (1) for the revert record
-			revert_history.status = 1;
+			revert_history.reviewed = 1;
 			
 			// Commit the revert history record (creates backup of current content)
 			yield revert_history.commit();
@@ -626,12 +624,11 @@ namespace OLLMfilesd
 				}
 			}
 			
-			// Update FileHistory status to rejected (-1) using query wrapper
-			history.status = -1;
+			history.reviewed = 1;
 			try {
 				FileHistory.query(db).updateById(history);
 			} catch (GLib.Error e) {
-				GLib.warning("Failed to update FileHistory status: %s", e.message);
+				GLib.warning("Failed to update FileHistory reviewed: %s", e.message);
 			}
 			
 			this.last_change_type = "";

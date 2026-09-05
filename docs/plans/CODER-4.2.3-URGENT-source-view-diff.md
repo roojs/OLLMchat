@@ -15,6 +15,10 @@
 - ℹ️ Diff library: [`done/5.2-DONE-diff-match-patch-simple-port.md`](done/5.2-DONE-diff-match-patch-simple-port.md) — `OLLMfiles.Diff.Differ`
 - ℹ️ Hunk merge reference: [`examples/oc-diff.vala`](../../examples/oc-diff.vala)
 - ℹ️ Worked example (seven-line walkthrough): [`CODER-4.2.3.1-source-view-diff-walkthrough-hello.md`](CODER-4.2.3.1-source-view-diff-walkthrough-hello.md)
+- ℹ️ Phase 1 DB: [`CODER-4.2.3.2-source-view-diff-db.md`](CODER-4.2.3.2-source-view-diff-db.md)
+- ℹ️ Phase 2 render: [`CODER-4.2.3.3-source-view-diff-render.md`](CODER-4.2.3.3-source-view-diff-render.md)
+- ℹ️ Phase 3 view: [`CODER-4.2.3.4-source-view-diff-view.md`](CODER-4.2.3.4-source-view-diff-view.md)
+- ℹ️ Phase 4 approval: [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md)
 
 ---
 
@@ -22,12 +26,10 @@
 
 ### Phases (ship order)
 
-| Phase | Scope | Design |
-| ----- | ----- | ------ |
-| **1** | SQLite + migrate — `file_diff_part`, drop legacy `status` | **Settled** (DDL below) |
-| **2** | `SourceView` inline unified-diff **rendering** (gutter, green/red) | **Settled** for whole pending chunk |
-| **3** | **View** pending file with changes — wire backup vs disk into editor | **Settled** (baseline = `backup_path`) |
-| **4** | Per-hunk / block **approval flow** (approve / reject / unapprove) | **Open** — design when Phase 3 lands |
+- 🔷 **Phase 1** — SQLite + migrate (`file_diff_part`, `status` → `reviewed`) — **settled** · [`CODER-4.2.3.2`](CODER-4.2.3.2-source-view-diff-db.md)
+- 🔷 **Phase 2** — `SourceView` inline unified-diff **rendering** — **settled** · [`CODER-4.2.3.3`](CODER-4.2.3.3-source-view-diff-render.md)
+- 🔷 **Phase 3** — **View** pending file (backup vs disk) — **settled** · [`CODER-4.2.3.4`](CODER-4.2.3.4-source-view-diff-view.md)
+- 🔷 **Phase 4** — Per-hunk **approval flow** — **design open** after Phase 3 · [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md)
 
 ### Confirmed (all phases)
 
@@ -55,66 +57,54 @@
 
 **Suggested order**
 
-1. 🔷 ⏳ **Phase 1** — DB + migrate (`file_diff_part`; drop legacy `status`). Spec fences in **Phase 1** before coding.
-2. 🔷 ⏳ **Phase 2** — `SourceView` diff **render** (secondary gutter, green/red overlays). Spec after Phase 1.
-3. 🔷 ⏳ **Phase 3** — open pending file → load **V_backup** vs **V_disk** → show Phase 2 overlay. Spec after Phase 2.
-4. 🔷 ⏳ **Phase 4** — design per-hunk approve / reject / unapprove + destructive placement; then implement. **Do not invent UI** before this design pass.
+1. 🔷 ✔️ **Phase 1** — [`CODER-4.2.3.2`](CODER-4.2.3.2-source-view-diff-db.md) (agent-done).
+2. 🔷 ⏳ **Phase 2** — [`CODER-4.2.3.3`](CODER-4.2.3.3-source-view-diff-render.md) (fences ready).
+3. 🔷 ⏳ **Phase 3** — [`CODER-4.2.3.4`](CODER-4.2.3.4-source-view-diff-view.md) (stub; fences after Phase 2).
+4. 🔷 ⏳ **Phase 4** — [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md) (design then fences).
 
 ---
 
 ## Phase 1 — Database + upgrade
 
-- 🔷 Create **`file_diff_part`** (child of **`file_history`**).
-- 🔷 Migrate **`file_history`**: drop legacy **`status`**; map old `status != 0` → `reviewed=1`.
-- 🔷 ⏳ UNIQUE `(file_history_id, part_index)` when table lands.
-- 🔷 ⏳ Daemon / client can **read** parts for a chunk (no UI yet).
-- 🔷 ⏳ Derived hunk-file path helper (formula under **SQLite model**) — write path only; no approve RPC yet.
-- 🚫 No SourceView changes in this phase.
-- 🚫 No per-hunk approve / reject RPC beyond what whole-file already does.
-- ℹ️ Full DDL + interaction rules: **Design — SQLite model** below.
-- ℹ️ Implementation fences: add under this heading when coding starts (Remove / Replace / Add).
+ℹ️ Spec + fences: [`CODER-4.2.3.2-source-view-diff-db.md`](CODER-4.2.3.2-source-view-diff-db.md) — **✔️** agent-done.
+
+- 🔷 ✔️ Create **`file_diff_part`**; migrate **`status` → `reviewed`**.
+- 🔷 ✔️ Derived **`FileDiffPart.path(FileHistory)`**; no SourceView / per-hunk RPC.
+- ℹ️ Full DDL + semantics: **Design — SQLite model** below.
 
 ---
 
 ## Phase 2 — SourceView diff rendering
 
-- 🔷 Inline **unified-diff** overlay in `SourceView` (not a second pane).
-- 🔷 **Secondary gutter** — baseline (**V_backup**) line numbers beside the normal gutter.
-- 🔷 **Added** lines: green background; **Removed** lines: red interleaved rows.
-- 🔷 Drive from two strings (**V_backup**, **V_disk**) via **`OLLMfiles.Diff.Differ`** — no approval state yet (treat whole chunk as pending).
-- 🔷 CSS / markers in `resources/style.css` (or existing SourceView styles).
-- 🚫 No per-hunk approve / reject controls yet (Phase **4**).
-- 🚫 Do not wire “which file is pending” here if that belongs in Phase **3** — render API can take two texts + show overlay.
-- ℹ️ Touch points (names only until fences): `liboccoder/SourceView.vala`, `resources/style.css`.
-- ℹ️ Implementation fences: add under this heading after Phase 1 lands.
+ℹ️ Spec + fences: [`CODER-4.2.3.3-source-view-diff-render.md`](CODER-4.2.3.3-source-view-diff-render.md).
+
+- 🔷 **`show_diff(Differ)` / `clear_diff`** — unified overlay, secondary gutter, green/red **tags**.
+- 🔷 Caller owns **`Differ`**; SourceView uses **`patches`** + public **`lines1`/`lines2`** (no re-split).
+- 🔷 Removed lines — tag **`editable=false`** + red fill; still selectable / copyable; added = green fill.
+- 🚫 No Approvals wire (Phase **3**); no per-hunk controls (Phase **4**).
 
 ---
 
 ## Phase 3 — View file with changes
 
-- 🔷 When user opens / focuses a **pending-approval** file, editor enters **diff mode**.
-- 🔷 Resolve active chunk: newest pending **`file_history`** for path; **V_backup** = `backup_path`; **V_disk** = current file content.
-- 🔷 Call Phase **2** render with those two texts.
-- 🔷 Leave / exit diff mode when file is no longer pending (whole-file approve / reject as shipped today still works).
-- 🔷 Changed-files list / `Approvals` bar still drive **which** file is under review (shipped); this phase only shows the inline diff for that file.
-- 🚫 No new per-hunk approval UI (Phase **4**).
-- 🚫 No carry-forward / stacked-edit merge UI (v1: active chunk only — see Flow B deferred notes).
-- ℹ️ Touch points (names only): `liboccoder/Approvals.vala`, `liboccoder/SourceView.vala`, `libocfiles/FileHistory.vala` / daemon as needed to expose backup text.
-- ℹ️ Implementation fences: add under this heading after Phase 2 lands.
+ℹ️ Stub: [`CODER-4.2.3.4-source-view-diff-view.md`](CODER-4.2.3.4-source-view-diff-view.md).
+
+- 🔷 Pending file → build **`Differ(V_backup, V_disk)`** → Phase **2** `show_diff(differ)`.
+- 🔷 Exit diff when no longer pending (shipped whole-file approve/reject).
+- 🚫 No per-hunk UI (Phase **4**).
 
 ---
 
 ## Phase 4 — Approval flow of blocks (design then implement)
 
+ℹ️ Stub: [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md).
+
 ℹ️ **Stop and design** when Phase 3 works. Do not invent gutter buttons / menus from this section alone.
 
-- 🔷 Per-hunk **Approve** / **Reject** / **Unapprove** (Flows A, A1, D, E partial).
-- 🔷 Insert / delete **`file_diff_part`** rows; set **`file_history.reviewed`** when every hunk decided.
-- 🔷 Overlay off for decided hunks (approved = keep on disk; rejected = undo hunk on **V_disk**).
-- 🔷 Destructive / bulk placement (changes-list menu, confirm, revert) — see **Destructive actions**.
-- 🔷 ⏳ Close remaining open bullets (stacked edit, carry-forward, bulk) before coding fences.
-- ℹ️ Walkthrough + SQLite model below stay the contract reference for this phase.
-- 🚫 No Vala fences for Phase 4 until user signs off the design pass.
+- 🔷 Per-hunk **Approve** / **Reject** / **Unapprove**; **`file_diff_part`** rows; destructive placement.
+- 🔷 ⏳ Close remaining open bullets before coding fences.
+- ℹ️ Walkthrough + SQLite model below stay the contract reference.
+- 🚫 No Vala fences until user signs off the design pass.
 
 ---
 
@@ -336,13 +326,13 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 
 ℹ️ Shipped backups: [`FileHistory.create_backup`](../../ollmfilesd/FileHistory.vala) stores **`backup_path`** in DB (written once at insert). **Hunk files differ:** path is **computed** from ids + parent path — no extra column.
 
-🔷 ⏳ **Formula** (one shared helper in daemon + client when spec exists):
+🔷 **Formula** — **`FileDiffPart.path(FileHistory history)`** (Phase 1):
 
 ```
 ~/.cache/ollmchat/edited/parts/{file_history_id}-{file_diff_part.id}-{part_index}-{basename}.patch
 ```
 
-- **`basename`** — `GLib.Path.get_basename(file_history.path)` from join on **`file_history_id`**
+- **`basename`** — `GLib.Path.get_basename(history.path)`
 - **`file_history_id`** + **`part_index`** + **`file_diff_part.id`** — unique, stable after row insert
 - **Exists?** — `GLib.FileUtils.test(derived_path, EXISTS)`; no row field needed
 - **Format** ⏳ — unified-diff hunk text or serialised **`OLLMfiles.Diff.Patch`**
@@ -465,17 +455,17 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 
 ## Implementation spec
 
-ℹ️ **Phases 1–3:** add **Remove / Replace with / Add** fences **under each phase heading** when that phase is ready to code (per `docs/guide-to-writing-plans.md`).
+ℹ️ **Phase 1–2 fences** live in sub-plans [`CODER-4.2.3.2`](CODER-4.2.3.2-source-view-diff-db.md) and [`CODER-4.2.3.3`](CODER-4.2.3.3-source-view-diff-render.md).
 
-ℹ️ **Phase 4:** **no** Vala fences until the Phase **4** design pass closes.
+ℹ️ **Phase 3–4:** expand stubs [`CODER-4.2.3.4`](CODER-4.2.3.4-source-view-diff-view.md) / [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md) when ready (Phase 4 after design pass).
 
 - ℹ️ Likely touch points:
-  - Phase **1:** `ollmfilesd/FileHistory.vala`, migrate / `init_db`
-  - Phase **2:** `liboccoder/SourceView.vala`, `resources/style.css`
+  - Phase **1:** `ollmfilesd/FileHistory.vala`, `FileDiffPart.vala`, migrate / `init_db`
+  - Phase **2:** `liboccoder/SourceView.vala`
   - Phase **3:** `liboccoder/Approvals.vala`, client/daemon `FileHistory` (backup text)
   - Phase **4:** same + part RPCs / hunk overlay state
 - ℹ️ Diff **library** ([`OLLMfiles.Diff.Differ`](../../libocfiles/Diff/)): diff two strings → hunks/patches only.
-- ℹ️ Diff **consumer** (`ollmfilesd`, `liboccoder/SourceView`, `Approvals`): pending state, overlay, approve/reject RPC, **`file_diff_part`** — including any future carry-forward (Flow C).
+- ℹ️ Diff **consumer** (`ollmfilesd`, `liboccoder/SourceView`, `Approvals`): pending state, overlay, approve/reject RPC, **`file_diff_part`**.
 
 ---
 
