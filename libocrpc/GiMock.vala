@@ -184,7 +184,17 @@ namespace OLLMrpc
 				vi++;
 			}
 			var token = (GLib.Object?) null;
-			if (!this.mint_object_lease(fn.get_return_type(), out token)) {
+			var prefix = this.request.method[0:this.request.method.index_of_char('.')];
+			if (Bin.alias_to_gtype != null && Bin.alias_to_gtype.has_key(prefix)) {
+				try {
+					token = GiMock.mint(prefix);
+				} catch (GLib.Error e) {
+					this.request.connection.reply_error(this.request,
+						(int) RpcErrorCode.INTERNAL_ERROR, e);
+					return true;
+				}
+			}
+			if (token == null && !this.mint_object_lease(fn.get_return_type(), out token)) {
 				return true;
 			}
 			if (token == null) {
