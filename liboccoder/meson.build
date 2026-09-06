@@ -113,6 +113,7 @@ occoder_src = files([
   'Task/ResultParser.vala',
   'List/SortedList.vala',
   'Approvals.vala',
+  'Diff/ReviewBar.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory

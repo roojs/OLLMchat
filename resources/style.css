@@ -247,6 +247,24 @@ separator.horizontal.oc-table-body-sep {
   /* No styling currently, class exists for potential future use */
 }
 
+.oc-diff-review-bar {
+  border-top: 1px solid alpha(@borders, 0.6);
+}
+
+.oc-diff-pending-label {
+  color: @error_color;
+}
+
+.oc-diff-review-overlay {
+  padding: 8px 12px;
+  background-color: alpha(@window_bg_color, 0.92);
+  border-radius: 6px;
+}
+
+.oc-diff-hunk-gap {
+  background-color: @window_bg_color;
+}
+
 /* Task progress strip (ProgressView / Gtk.ColumnView): compact row vertical spacing */
 .oc-task-progress columnview cell {
   padding-top: 2px;

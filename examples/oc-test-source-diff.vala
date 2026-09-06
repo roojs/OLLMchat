@@ -17,26 +17,35 @@
  */
 
 /**
- * Smoke: {@link TestAppBase} window showing {@link OLLMcoder.SourceView} inline diff.
+ * Smoke: {@link TestAppBase} window showing {@link OLLMcoder.SourceView} inline diff
+ * and {@link OLLMcoder.Diff.ReviewBar} Phase A mock review chrome.
  *
- * Usage: oc-test-source-diff <baseline_file> <current_file>
+ * Usage: oc-test-source-diff [OPTIONS] <baseline_file> <current_file>
  * text1 = baseline (V_backup), text2 = current (V_disk).
  */
 class TestSourceDiff : TestAppBase
 {
+	private static int opt_mock_files = 1;
+	private static bool opt_mock_inactive = false;
+
 	private Gtk.Window window;
 
 	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS] <baseline_file> <current_file>
 
-Opens a window with SourceView.show_diff of the two files.
+Opens a window with SourceView.show_diff of the two files plus footer review bar.
 
 Arguments:
   baseline_file              Old / backup text (Differ text1)
   current_file               New / disk text (Differ text2)
 
+Options:
+  --mock-files=N             Stub pending file count for footer nav (default 1)
+  --mock-inactive            Show "N changes pending review" instead of hunk bands
+
 Examples:
   {ARG} old.vala new.vala
+  {ARG} --mock-files=5 --mock-inactive tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
 """; }
 
 	public TestSourceDiff()
@@ -52,11 +61,15 @@ Examples:
 	protected override OptionContext app_options()
 	{
 		var opt_context = new OptionContext(this.get_app_name());
-		var base_opts = new OptionEntry[3];
-		base_opts[0] = base_options[0];
-		base_opts[1] = base_options[1];
-		base_opts[2] = { null };
-		opt_context.add_main_entries(base_opts, null);
+		var opts = new OptionEntry[5];
+		opts[0] = base_options[0];
+		opts[1] = base_options[1];
+		opts[2] = { "mock-files", 0, 0, OptionArg.INT, ref opt_mock_files,
+			"Stub pending file count for footer nav", "N" };
+		opts[3] = { "mock-inactive", 0, 0, OptionArg.NONE, ref opt_mock_inactive,
+			"Show pending-review label instead of hunk bands", null };
+		opts[4] = { null };
+		opt_context.add_main_entries(opts, null);
 		return opt_context;
 	}
 
@@ -64,6 +77,9 @@ Examples:
 	{
 		if (args.length < 3 || args[1] == "" || args[2] == "") {
 			return "ERROR: Two files required.\nUsage: %s <baseline_file> <current_file>\n".printf(args[0]);
+		}
+		if (opt_mock_files < 1) {
+			opt_mock_files = 1;
 		}
 		return null;
 	}
@@ -89,11 +105,26 @@ Examples:
 				GLib.Path.get_basename(baseline_path),
 				GLib.Path.get_basename(current_path)),
 			default_width = 720,
-			default_height = 480
+			default_height = 520
 		};
 		var source_view = new OLLMcoder.SourceView(new OLLMfiles.ProjectManager());
-		source_view.show_diff(new OLLMfiles.Diff.Differ(baseline, current));
-		this.window.set_child(source_view);
+		var differ = new OLLMfiles.Diff.Differ(baseline, current);
+		source_view.show_diff(differ);
+		var review_bar = new OLLMcoder.Diff.ReviewBar(
+			source_view, differ, opt_mock_files, opt_mock_inactive);
+		var editor_overlay = new Gtk.Overlay() {
+			vexpand = true,
+			hexpand = true,
+		};
+		editor_overlay.set_child(source_view);
+		editor_overlay.add_overlay(review_bar.review_overlay);
+		var root = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+			hexpand = true,
+			vexpand = true,
+		};
+		root.append(editor_overlay);
+		root.append(review_bar);
+		this.window.set_child(root);
 		var loop = new GLib.MainLoop();
 		this.window.close_request.connect(() => {
 			loop.quit();
