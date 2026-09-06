@@ -1060,6 +1060,15 @@ namespace OLLMrpc
 			}
 			if (kind == GI.InfoType.OBJECT || kind == GI.InfoType.INTERFACE) {
 				if (val.type().is_a(GLib.Type.OBJECT)) {
+					if (val.get_object() == null) {
+						if (!arg.may_be_null()) {
+							this.request.connection.reply_error(
+								this.request, (int) RpcErrorCode.INVALID_PARAMS);
+							return false;
+						}
+						this.in_args[vi + offset].v_pointer = null;
+						return true;
+					}
 					if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(val.get_object().get_type())) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
@@ -1069,6 +1078,15 @@ namespace OLLMrpc
 					return true;
 				}
 				var id = (int) val.get_uint64();
+				if (id == 0) {
+					if (!arg.may_be_null()) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						return false;
+					}
+					this.in_args[vi + offset].v_pointer = null;
+					return true;
+				}
 				if (!this.request.connection.leases.has_key(id)) {
 					this.request.connection.reply_error(
 						this.request, (int) RpcErrorCode.INVALID_PARAMS);

@@ -1,6 +1,6 @@
 # 4.2.3.5 — SourceView diff Phase 4: block approval flow
 
-**Status:** **⏳** design — **UI settled** · **Phase A next** (mock UI on `oc-test-source-diff`) · Vala fences after sign-off
+**Status:** **✔️** Phase A **agent-done** (mock UI on `oc-test-source-diff`) · awaiting user smoke **✅** · Phase B not started
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
@@ -185,13 +185,13 @@ private Gtk.Box review_actions;   // Accept, Reject, Unapprove — centre via va
 
 | File | Type | Role |
 | --- | --- | --- |
-| [`liboccoder/Diff/ReviewBar.vala`](../../liboccoder/Diff/ReviewBar.vala) | **`Diff.ReviewBar`** | **Only new Vala file for Phase A.** Footer three zones, hunk bands (Cairo), mock state, stub file nav / bulk; builds or hosts centre overlay. Enums/structs stay **in this file** until **you** choose to split after review. |
+| [`liboccoder/Diff/ReviewBar.vala`](../../liboccoder/Diff/ReviewBar.vala) | **`Diff.ReviewBar`** | **✔️** **Only new Vala file for Phase A.** Footer three zones, hunk bands (Cairo), mock state, stub file nav / bulk; centre overlay child exposed as **`review_overlay`**. |
 
 | Also (minimal) | Change |
 | --- | --- |
-| [`liboccoder/meson.build`](../../liboccoder/meson.build) | Add **one** `Diff/ReviewBar.vala` to `occoder_src` |
-| [`examples/oc-test-source-diff.vala`](../../examples/oc-test-source-diff.vala) | Vertical **`Gtk.Box`**: **`Gtk.Overlay`**(`SourceView` + overlay child from **`ReviewBar`**) + **`ReviewBar`** footer; bind **`Differ`** after `show_diff`. |
-| [`resources/style.css`](../../resources/style.css) | CSS classes **when needed** — not a prerequisite to first paint |
+| [`liboccoder/meson.build`](../../liboccoder/meson.build) | **✔️** Add **one** `Diff/ReviewBar.vala` to `occoder_src` |
+| [`examples/oc-test-source-diff.vala`](../../examples/oc-test-source-diff.vala) | **✔️** Vertical **`Gtk.Box`**: **`Gtk.Overlay`**(`SourceView` + **`ReviewBar.review_overlay`**) + **`ReviewBar`** footer; **`ReviewBar(source_view, differ, …)`** after `show_diff`. |
+| [`resources/style.css`](../../resources/style.css) | **✔️** `.oc-diff-review-bar`, `.oc-diff-pending-label`, `.oc-diff-review-overlay`, `.oc-diff-hunk-map`, `.oc-diff-hunk-gap` |
 
 ℹ️ **Split extra types/files:** **user review after Phase A smoke** — not an automated or agent decision. Do **not** create `Manager.vala`, `HunkMap.vala`, `ReviewOverlay.vala`, `HunkBand.vala` up front.
 
@@ -203,26 +203,77 @@ private Gtk.Box review_actions;   // Accept, Reject, Unapprove — centre via va
 
 ### Implementation order (Phase A)
 
-1. 🔷 ⏳ Fence **one file** — **`Diff.ReviewBar`** (footer + hunk map + overlay + mock state).
-2. 🔷 ⏳ Wire **`oc-test-source-diff`**; smoke bands, border, Accept/Unapprove.
-3. 💩 **You** review smoke; split into extra types/files only if **you** ask for it — agents do not split proactively.
+1. **✔️** **🔷** Fence **one file** — **`Diff.ReviewBar`** (footer + hunk map + overlay + mock state).
+2. **✔️** **🔷** Wire **`oc-test-source-diff`**; smoke bands, border, Accept/Unapprove.
+3. **⏳** **💩** **You** review smoke; split into extra types/files only if **you** ask for it — agents do not split proactively.
 
 ### Done when (Phase A)
 
-Run **`oc-test-source-diff a b`** → proportional bands, **active hunk bordered**, click → border moves, Accept repeatedly without moving mouse, grey + Unapprove works. Optional: **`--mock-inactive`** / **`--mock-files`** behave as stubbed.
+**Agent:** all bullets below implemented and compile-clean. **User:** run smoke test and promote to **✅**.
+
+- **✔️** Proportional hunk bands from real **`Differ.patches`**; active hunk **border**; click band → border moves + scroll.
+- **✔️** Centre **Accept** / **Reject** / **Unapprove** overlay on **`SourceView`**; Accept advances to next pending hunk without moving mouse.
+- **✔️** Accept/Reject → grey band; **Unapprove** on grey → pending colours back.
+- **✔️** Stub file nav (**`--mock-files=N`**) and inactive middle (**`--mock-inactive`**) behave as stubbed.
+- **✔️** Bulk actions stub greys all bands in memory.
+- **⏳** User smoke on a display confirms interaction feels right.
+
+ℹ️ **Implementation notes (vs reference blocks above):** single generic **`map_row`** click handler + **`HunkList.index_at`** (sort-by-distance on copy) instead of per-band **`GestureClick`**; layout on **`notify["width"]`** via **`on_width()`**; Cairo in **`draw_hunk_band()`**.
+
+### Test (Phase A)
+
+Build (from repo root):
+
+```bash
+meson compile -C build occoder examples/oc-test-source-diff
+```
+
+**Basic smoke** — diff view + footer bands + overlay (needs a display):
+
+```bash
+./build/examples/oc-test-source-diff \
+  tests/source-diff/hello-baseline.txt \
+  tests/source-diff/hello-current.txt
+```
+
+**Check:**
+
+- Footer shows proportional coloured bands with square gaps; one band has an active **border**.
+- Click another band → border moves; editor scrolls to that hunk.
+- Click **Accept** repeatedly (mouse stays on overlay) → each hunk greys; border advances.
+- Click a grey band → **Unapprove** appears; restore pending colour.
+- **Reject** greys and advances like Accept.
+- **Bulk actions** greys all bands; overlay hides.
+
+**Mock file nav:**
+
+```bash
+./build/examples/oc-test-source-diff --mock-files=5 \
+  tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
+```
+
+- Footer left shows **`1 / 5`**; prev/next cycle stub index (no real file switch yet).
+
+**Inactive middle:**
+
+```bash
+./build/examples/oc-test-source-diff --mock-inactive --mock-files=5 \
+  tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
+```
+
+- Red **`5 changes pending review`** instead of bands; click label → bands appear, mock file **`1 / 5`**.
 
 ### Still open (Phase A)
 
-- 🔷 ⏳ Sign-off on this scope before fences.
-- 💩 Active-border colour & label padding — implement time (min width / gap = **50% of strip height** is settled).
+- **⏳** **💩** User smoke **✅** on the checks above.
+- **⏳** **💩** Active-border colour & label padding polish if smoke finds gaps (min width / gap = **50% of strip height** is implemented).
 
 ### LLM notes (Phase A)
 
-- 🚫 Vala fences until sign-off.
+- **✔️** Phase A Vala landed in **`ReviewBar.vala`** + test harness (Phase B still 🚫).
 - 🚫 Daemon, **`file_diff_part`**, disk writes, **`ReviewFiles`**, **`Approvals`** changes.
 - 🚫 Gutter / inline-buffer Accept/Reject as primary UI.
 - 🚫 Accept/Reject chrome on footer band (breaks rapid accept).
-- 🚫 Linear foreach hit-test over all hunks on every click (use per-band widgets or binary search on `band_starts[]`).
 - 🚫 Pre-splitting into extra files before first smoke.
 - 🚫 Agent/automated split of **`ReviewBar.vala`** (e.g. “file too long”) — split is **your** call after review.
 
@@ -232,7 +283,7 @@ Run **`oc-test-source-diff a b`** → proportional bands, **active hunk bordered
 
 **Goal:** Same chrome as Phase A, backed by real pending review state — **`file_diff_part`**, daemon RPC, **`ReviewFiles`**, disk on reject.
 
-**Depends on:** Phase A UI signed off and smoking on **`oc-test-source-diff`**.
+**Depends on:** Phase A UI **✔️** agent-done; user smoke **✅** on **`oc-test-source-diff`** before product wire.
 
 ### Adds on top of Phase A
 
@@ -297,7 +348,7 @@ Pending file in editor → footer matches Phase A behaviour but persists; file n
 
 ## Shared LLM notes (both phases)
 
-- 🚫 Vala fences until user signs off design.
+- 🚫 Vala fences for **Phase B** until Phase A user **✅**.
 - 🚫 Duplicate approve/reject in editor body until placement closed.
 - 🚫 Split **`ReviewBar.vala`** into more files without explicit user request after Phase A review.
 - ℹ️ Touch points when spec exists: `liboccoder/Diff/ReviewBar.vala`, `SourceView.vala`, `Approvals.vala`, `ollmfilesd/FileHistory.vala`, `FileDiffPart.vala`.
