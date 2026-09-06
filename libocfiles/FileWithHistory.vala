@@ -42,6 +42,12 @@ namespace OLLMfiles
 		 */
 		public int reviewed { get; set; default = 0; }
 
+		/**
+		 * Backup snapshot path for the newest pending chunk ({@code reviewed=0}).
+		 * Empty when the pending write has no backup (e.g. added).
+		 */
+		public string backup_path { get; set; default = ""; }
+
 		public string path_basename {
 			owned get { return GLib.Path.get_basename(this.path); }
 		}

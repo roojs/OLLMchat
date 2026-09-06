@@ -185,8 +185,10 @@ namespace OLLMcoder
 				this.update_selected_file();
 			});
 			
-			// Initialize with current active_project
-			this.activate_project(this.project_manager.active_project);
+			// Initialize when a project is already active (null = keep empty model from ctor)
+			if (this.project_manager.active_project != null) {
+				this.activate_project(this.project_manager.active_project);
+			}
 			
 			// Initially hide button
 			this.visible = false;

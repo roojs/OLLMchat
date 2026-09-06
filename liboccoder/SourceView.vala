@@ -45,13 +45,26 @@ namespace OLLMcoder
 		private FileDropdown file_dropdown;
 		private Gtk.Button save_button;
 		private Approvals? approvals = null;
+		private Gtk.TextTagTable diff_tag_table { get; set; default = new Gtk.TextTagTable(); }
+		private GtkSource.Buffer? diff_buffer = null;
+		private GtkSource.Buffer? pre_diff_buffer = null;
+		private Gee.ArrayList<int> diff_baseline { 
+			get; set; default = new Gee.ArrayList<int>(); }
+		private Gee.ArrayList<int> diff_remove_at {
+			get; set; default = new Gee.ArrayList<int>(); }
+		private Gee.ArrayList<int> diff_remove_n {
+			get; set; default = new Gee.ArrayList<int>(); }
+		private GtkSource.GutterRendererText baseline_gutter {
+			get; set; default = new GtkSource.GutterRendererText();
+		}
+		private bool diff_active = false;
 		private GtkSource.View source_view;
 		private Gtk.ScrolledWindow scrolled_window;
 		
 		/**
 		* Timeout source for debouncing scroll position saves.
 		*/
-		private uint? scroll_save_timeout_id = null;
+		private uint scroll_save_timeout_id = 0;
 		
 		/**
 		* Search-related components.
@@ -146,7 +159,14 @@ namespace OLLMcoder
 						if (this.current_file != file) {
 							return;
 						}
+						if (this.diff_active) {
+							this.clear_diff();
+						}
 						this.source_view.set_buffer(file.buffer as GtkSource.Buffer);
+						if (this.manager.review_files.file_map.has_key(file.path)) {
+							this.show_pending_diff.begin(file);
+							return;
+						}
 						this.restore_cursor_position(file);
 						this.restore_scroll_position(file);
 					});
@@ -180,6 +200,16 @@ namespace OLLMcoder
 			this.approvals.file_selected.connect((file) => {
 				this.open_file.begin(file);
 			});
+			this.manager.review_files.refreshed.connect(() => {
+				if (this.current_file == null) {
+					return;
+				}
+				if (!this.manager.review_files.file_map.has_key(this.current_file.path)) {
+					this.clear_diff();
+					return;
+				}
+				this.show_pending_diff.begin(this.current_file);
+			});
 			
 			this.append(header_bar);
 			
@@ -202,6 +232,34 @@ namespace OLLMcoder
 			};
 			// Add CSS class for monospace font styling
 			this.source_view.add_css_class("source-view");
+			this.diff_tag_table.add(new Gtk.TextTag("diff-add") {
+				paragraph_background_rgba = Gdk.RGBA() {
+					red = 0.75f,
+					green = 0.95f,
+					blue = 0.75f,
+					alpha = 1.0f
+				}
+			});
+			this.diff_tag_table.add(new Gtk.TextTag("diff-remove") {
+				paragraph_background_rgba = Gdk.RGBA() {
+					red = 0.95f,
+					green = 0.75f,
+					blue = 0.75f,
+					alpha = 1.0f
+				},
+				editable = false
+			});
+			this.baseline_gutter.xalign = 1.0f;
+			this.baseline_gutter.xpad = 4;
+			this.baseline_gutter.query_data.connect((lines, line) => {
+				if (!this.diff_active || (int) line >= this.diff_baseline.size
+					|| this.diff_baseline.get((int) line) <= 0) {
+					this.baseline_gutter.set_text("", -1);
+					return;
+				}
+				this.baseline_gutter.set_text(this.diff_baseline.get((int) line).to_string(), -1);
+			});
+			this.source_view.get_gutter(Gtk.TextWindowType.LEFT).insert(this.baseline_gutter, -40);
 			
 			// Enable whitespace display
 			this.source_view.get_space_drawer().set_matrix(null);
@@ -422,6 +480,10 @@ namespace OLLMcoder
 		 */
 		public async void open_file(OLLMfiles.File file, int line_number = -1)
 		{
+			// Leave diff before saving state (save reads source_view.buffer)
+			if (this.diff_active) {
+				this.clear_diff();
+			}
 			// Save current file state if switching away
 			if (this.current_file != null && this.current_file != file) {
 				this.save_current_file_state();
@@ -493,6 +555,8 @@ namespace OLLMcoder
 				
 				// Make editor editable
 				this.source_view.editable = true;
+
+				yield this.show_pending_diff(file);
 			}
 			
 			// Reset search context when switching files
@@ -526,6 +590,151 @@ namespace OLLMcoder
 			// Note: selected_file is now read-only and set when dialog closes
 			this.file_dropdown.placeholder_text = Path.get_basename(file.path);
 		}
+
+		/**
+		 * Show inline unified diff from a caller-owned {@link OLLMfiles.Diff.Differ}.
+		 *
+		 * Builds interleaved equal / removed / added rows. Green and red come from
+		 * buffer tags; removed lines are non-editable but selectable/copyable.
+		 * Secondary gutter shows baseline line numbers. Does not write disk.
+		 * Caller restores with {@link clear_diff}.
+		 *
+		 * @param differ already constructed (text1 = V_backup, text2 = V_disk)
+		 */
+		public void show_diff(OLLMfiles.Diff.Differ differ)
+		{
+			if (this.diff_active) {
+				this.clear_diff();
+			}
+			differ.diff();
+			var display = new Gee.ArrayList<string>();
+			var kinds = new Gee.ArrayList<int>();
+			this.diff_baseline.clear();
+			this.diff_remove_at.clear();
+			this.diff_remove_n.clear();
+			var old_i = 1, new_i = 1;
+			foreach (var patch in differ.patches) {
+				while (old_i < patch.old_line_start && new_i < patch.new_line_start
+					&& old_i <= differ.lines1.length && new_i <= differ.lines2.length) {
+					display.add(differ.lines2[new_i - 1]);
+					this.diff_baseline.add(old_i);
+					kinds.add(0);
+					old_i++;
+					new_i++;
+				}
+				if (patch.old_line_start > patch.old_line_end) {
+					old_i = patch.old_line_start;
+				} else {
+					for (var ln = patch.old_line_start; ln <= patch.old_line_end; ln++) {
+						display.add(differ.lines1[ln - 1]);
+						this.diff_baseline.add(ln);
+						kinds.add(2);
+					}
+					this.diff_remove_at.add(patch.new_line_start);
+					this.diff_remove_n.add(patch.old_line_end - patch.old_line_start + 1);
+					old_i = patch.old_line_end + 1;
+				}
+				if (patch.new_line_start > patch.new_line_end) {
+					new_i = patch.new_line_start;
+					continue;
+				}
+				for (var ln = patch.new_line_start; ln <= patch.new_line_end; ln++) {
+					display.add(differ.lines2[ln - 1]);
+					this.diff_baseline.add(0);
+					kinds.add(1);
+				}
+				new_i = patch.new_line_end + 1;
+			}
+			while (old_i <= differ.lines1.length && new_i <= differ.lines2.length) {
+				display.add(differ.lines2[new_i - 1]);
+				this.diff_baseline.add(old_i);
+				kinds.add(0);
+				old_i++;
+				new_i++;
+			}
+			this.diff_buffer = new GtkSource.Buffer(this.diff_tag_table);
+			this.diff_buffer.set_text(string.joinv("\n", display.to_array()), -1);
+			var add_tag = this.diff_tag_table.lookup("diff-add");
+			var remove_tag = this.diff_tag_table.lookup("diff-remove");
+			for (var i = 0; i < kinds.size; i++) {
+				if (kinds.get(i) == 0) {
+					continue;
+				}
+				Gtk.TextIter iter;
+				this.diff_buffer.get_iter_at_line(out iter, i);
+				var line_end = iter;
+				if (!line_end.ends_line()) {
+					line_end.forward_to_line_end();
+				}
+				if (!line_end.is_end()) {
+					line_end.forward_char();
+				}
+				this.diff_buffer.apply_tag(kinds.get(i) == 1 ? add_tag : remove_tag, iter, line_end);
+			}
+			this.pre_diff_buffer = this.source_view.buffer as GtkSource.Buffer;
+			this.source_view.set_buffer(this.diff_buffer);
+			this.source_view.show_line_numbers = false;
+			this.diff_active = true;
+			this.scrolled_window.visible = true;
+		}
+
+		/**
+		 * Leave diff mode and restore the previous buffer.
+		 */
+		public void clear_diff()
+		{
+			if (!this.diff_active) {
+				return;
+			}
+			if (this.pre_diff_buffer != null) {
+				this.source_view.set_buffer(this.pre_diff_buffer);
+			}
+			this.diff_buffer = null;
+			this.pre_diff_buffer = null;
+			this.diff_baseline.clear();
+			this.diff_remove_at.clear();
+			this.diff_remove_n.clear();
+			this.source_view.show_line_numbers = true;
+			this.diff_active = false;
+		}
+
+		/**
+		 * If {@code file} is pending approval, load V_backup via daemon and show inline diff.
+		 *
+		 * @param file open project file (buffer already holds V_disk)
+		 */
+		public async void show_pending_diff(OLLMfiles.File file)
+		{
+			if (!this.manager.review_files.file_map.has_key(file.path)) {
+				return;
+			}
+			var row = this.manager.review_files.file_map.get(file.path);
+			var gtk_buffer = file.buffer as GtkSource.Buffer;
+			if (row.backup_path == "") {
+				this.show_diff(new OLLMfiles.Diff.Differ("", gtk_buffer.text));
+				return;
+			}
+			var v_backup = "";
+			try {
+				var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+					method = "RPC-File.read",
+					args = OLLMrpc.args("s", row.backup_path)
+				});
+				if (this.current_file != file) {
+					return;
+				}
+				v_backup = response.msg;
+				if (response.msg_encode == 1) {
+					v_backup = (string) GLib.Base64.decode(response.msg);
+				}
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to read backup %s: %s", row.backup_path, e.message);
+			}
+			if (this.current_file != file) {
+				return;
+			}
+			this.show_diff(new OLLMfiles.Diff.Differ(v_backup, gtk_buffer.text));
+		}
 		
 		/**
 		 * Open/switch to a project.
@@ -555,9 +764,20 @@ namespace OLLMcoder
 		public void navigate_to_line(int line_number)
 		{
 			var buffer = this.source_view.buffer;
-			
+			var display_line = line_number;
+			if (this.diff_active) {
+				var extras = 0;
+				var disk = line_number + 1;
+				for (var i = 0; i < this.diff_remove_at.size; i++) {
+					if (this.diff_remove_at.get(i) > disk) {
+						break;
+					}
+					extras += this.diff_remove_n.get(i);
+				}
+				display_line = line_number + extras;
+			}
 			Gtk.TextIter iter;
-			if (!buffer.get_iter_at_line(out iter, line_number)) {
+			if (!buffer.get_iter_at_line(out iter, display_line)) {
 				return;
 			}
 			buffer.place_cursor(iter);
@@ -605,9 +825,9 @@ namespace OLLMcoder
 			}
 			
 			// Cancel any pending scroll save timeout
-			if (this.scroll_save_timeout_id != null) {
+			if (this.scroll_save_timeout_id != 0) {
 				GLib.Source.remove(this.scroll_save_timeout_id);
-				this.scroll_save_timeout_id = null;
+				this.scroll_save_timeout_id = 0;
 			}
 			
 			var buffer = this.source_view.buffer;
@@ -660,7 +880,7 @@ namespace OLLMcoder
 			}
 			
 			// Cancel existing timeout if any
-			if (this.scroll_save_timeout_id != null) {
+			if (this.scroll_save_timeout_id != 0) {
 				GLib.Source.remove(this.scroll_save_timeout_id);
 			}
 			
@@ -669,7 +889,7 @@ namespace OLLMcoder
 				// Save scroll position and update database (metadata-only change)
 				this.save_scroll_position();
 				this.manager.on_file_metadata_change(this.current_file);
-				this.scroll_save_timeout_id = null;
+				this.scroll_save_timeout_id = 0;
 				return false; // Only run once
 			});
 		}
@@ -687,7 +907,9 @@ namespace OLLMcoder
 			}
 			// Use navigate_to_line to handle line navigation and scrolling
 			this.navigate_to_line(file.cursor_line);
-			
+			if (this.diff_active) {
+				return;
+			}
 			// Then adjust the offset (character position within the line)
 			Gtk.TextIter iter;
 			if (!buffer.get_iter_at_line_offset(out iter, file.cursor_line, file.cursor_offset)) {

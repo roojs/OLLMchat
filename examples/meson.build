@@ -242,6 +242,35 @@ test_gtkmd = executable('oc-test-gtkmd',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
+# Smoke: SourceView.show_diff of two files (Phase 2) — TestAppBase flow
+test_source_diff = executable('oc-test-source-diff',
+  dependencies: [test_window_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ollamaweb_vapi_dep],
+  sources: ['TestAppBase.vala', 'oc-test-source-diff.vala'],
+  link_with: [ollmchat_base_lib, occoder_base_lib],
+  include_directories: [
+    include_directories('../libocfiles'),
+    include_directories('../libollmchat'),
+    include_directories('../liboccoder'),
+    ollmchat_consumer_include
+  ],
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=gmodule-2.0',
+    '--pkg=tree-sitter',
+    '--pkg=ocfiles',
+    '--pkg=ollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+    '--vapidir', meson.current_source_dir() / '../vapi',
+  ] + ollmchat_consumer_vala_args,
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+
 # Build oc-test-fetch executable (WebFetchTool test)
 test_web_fetch = executable('oc-test-fetch',
   dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ocmarkdown_vapi_dep, octools_vapi_dep],

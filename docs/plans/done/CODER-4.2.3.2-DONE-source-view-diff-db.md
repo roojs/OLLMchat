@@ -1,14 +1,14 @@
 # 4.2.3.2 — SourceView diff Phase 1: DB + migrate
 
-**Status:** **✔️** agent-done (awaiting user ✅)
+**Status:** **DONE** ✅ — DB migrate + `file_diff_part` in tree
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
-**Parent:** [`CODER-4.2.3-URGENT-source-view-diff.md`](CODER-4.2.3-URGENT-source-view-diff.md)
+**Parent:** [`../CODER-4.2.3-URGENT-source-view-diff.md`](../CODER-4.2.3-URGENT-source-view-diff.md)
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans; proposed Vala follows **`docs/coding-standards.md`**
 
-**Sibling:** walkthrough [`CODER-4.2.3.1`](CODER-4.2.3.1-source-view-diff-walkthrough-hello.md) · Phase 2 [`CODER-4.2.3.3`](CODER-4.2.3.3-source-view-diff-render.md)
+**Sibling:** walkthrough [`../CODER-4.2.3.1-source-view-diff-walkthrough-hello.md`](../CODER-4.2.3.1-source-view-diff-walkthrough-hello.md) · Phase 2 [`CODER-4.2.3.3-DONE-source-view-diff-render.md`](CODER-4.2.3.3-DONE-source-view-diff-render.md)
 
 ---
 

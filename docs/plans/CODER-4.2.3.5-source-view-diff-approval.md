@@ -6,7 +6,7 @@
 
 **Parent:** [`CODER-4.2.3-URGENT-source-view-diff.md`](CODER-4.2.3-URGENT-source-view-diff.md)
 
-**Depends on:** [`CODER-4.2.3.4`](CODER-4.2.3.4-source-view-diff-view.md) (and earlier phases)
+**Depends on:** [`done/CODER-4.2.3.4-DONE-source-view-diff-view.md`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md) (and earlier phases)
 
 **Contract reference:** parent **Design — user walkthrough** + **SQLite model** + [`CODER-4.2.3.1`](CODER-4.2.3.1-source-view-diff-walkthrough-hello.md)
 
@@ -32,6 +32,7 @@
 - 🔷 ⏳ Bulk approve / reject all placement + revert.
 - 🔷 ⏳ Unapprove vs Reject vs editor undo (must stay separate).
 - 🔷 ⏳ Hunk file format at **`FileDiffPart.path`**.
+- 🔷 ⏳ **Unsaved user edits while reviewing** — if the buffer is dirty, should the overlay re-diff against the unsaved buffer (show the user’s edits in the review diff)? **Lean: no** — keep review diff as **V_backup** vs **V_disk** (saved); unsaved edits stay ordinary buffer dirty state / editor undo, not part of the approval overlay. Confirm in design pass.
 
 ---
 

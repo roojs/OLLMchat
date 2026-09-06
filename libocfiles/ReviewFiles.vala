@@ -143,6 +143,7 @@ namespace OLLMfiles
 						existing.last_modified = file.last_modified;
 						existing.approve_id = file.approve_id;
 						existing.reject_id = file.reject_id;
+						existing.backup_path = file.backup_path;
 						existing.reviewed = 0;
 						continue;
 					}

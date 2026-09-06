@@ -47,6 +47,12 @@ namespace OLLMfilesd
 		public int reviewed { get; set; default = 0; }
 
 		/**
+		 * Backup snapshot path for the newest pending chunk ({@code reviewed=0}).
+		 * Empty when the pending write has no backup (e.g. added).
+		 */
+		public string backup_path { get; set; default = ""; }
+
+		/**
 		 * {@code Folder.fetch_pending_approvals} — history rows since marker.
 		 * Project scope from {@link Folder.roots} (not {@code project.path} alone).
 		 *
@@ -104,7 +110,20 @@ SELECT
 		ORDER BY
 			file_history.timestamp DESC
 		LIMIT 1
-	) AS reject_id
+	) AS reject_id,
+	(
+		SELECT
+			file_history.backup_path
+		FROM
+			file_history
+		WHERE
+				file_history.filebase_id = filebase.id
+			AND
+				file_history.reviewed = 0
+		ORDER BY
+			file_history.timestamp DESC
+		LIMIT 1
+	) AS backup_path
 FROM
 	file_history
 LEFT JOIN

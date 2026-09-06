@@ -48,8 +48,6 @@ namespace OLLMcoder.List
 		private GLib.ListModel source_model;
 		private Gtk.Filter filter;
 		private Gtk.Sorter sorter;
-		private ulong source_changed_id;
-		private ulong filter_changed_id;
 		private Gee.ArrayList<Object> sorted_items;
 		private Gee.ArrayList<Object> got_list;
 		private Gee.ArrayList<Object> pre_update;
@@ -76,23 +74,13 @@ namespace OLLMcoder.List
 			this.pre_update = new Gee.ArrayList<Object>();
 			
 			// Connect to source model changes
-			this.source_changed_id = this.source_model.items_changed.connect(this.on_source_changed);
+			this.source_model.items_changed.connect(this.on_source_changed);
 			
 			// Connect to filter changes
-			this.filter_changed_id = this.filter.changed.connect(this.on_filter_changed);
+			this.filter.changed.connect(this.on_filter_changed);
 			
 			// Initial build of sorted list
 			this.rebuild();
-		}
-		
-		~SortedList()
-		{
-			if (this.source_changed_id != 0) {
-				this.source_model.disconnect(this.source_changed_id);
-			}
-			if (this.filter_changed_id != 0) {
-				this.filter.disconnect(this.filter_changed_id);
-			}
 		}
 		
 		/**

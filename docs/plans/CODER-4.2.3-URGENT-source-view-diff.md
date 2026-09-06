@@ -2,7 +2,7 @@
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this plan.**
 
-**Status:** **URGENT** · **⏳** phased — Phases **1–3** implementable on settled model; Phase **4** (per-hunk approval UI) **design open** until we reach it
+**Status:** **URGENT** · **⏳** Phases **1–3** ✅ done · Phase **4** design open
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`**
 
@@ -15,9 +15,9 @@
 - ℹ️ Diff library: [`done/5.2-DONE-diff-match-patch-simple-port.md`](done/5.2-DONE-diff-match-patch-simple-port.md) — `OLLMfiles.Diff.Differ`
 - ℹ️ Hunk merge reference: [`examples/oc-diff.vala`](../../examples/oc-diff.vala)
 - ℹ️ Worked example (seven-line walkthrough): [`CODER-4.2.3.1-source-view-diff-walkthrough-hello.md`](CODER-4.2.3.1-source-view-diff-walkthrough-hello.md)
-- ℹ️ Phase 1 DB: [`CODER-4.2.3.2-source-view-diff-db.md`](CODER-4.2.3.2-source-view-diff-db.md)
-- ℹ️ Phase 2 render: [`CODER-4.2.3.3-source-view-diff-render.md`](CODER-4.2.3.3-source-view-diff-render.md)
-- ℹ️ Phase 3 view: [`CODER-4.2.3.4-source-view-diff-view.md`](CODER-4.2.3.4-source-view-diff-view.md)
+- ℹ️ Phase 1 DB: [`done/CODER-4.2.3.2-DONE-source-view-diff-db.md`](done/CODER-4.2.3.2-DONE-source-view-diff-db.md) ✅
+- ℹ️ Phase 2 render: [`done/CODER-4.2.3.3-DONE-source-view-diff-render.md`](done/CODER-4.2.3.3-DONE-source-view-diff-render.md) ✅
+- ℹ️ Phase 3 view: [`done/CODER-4.2.3.4-DONE-source-view-diff-view.md`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md) ✅
 - ℹ️ Phase 4 approval: [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md)
 
 ---
@@ -26,16 +26,16 @@
 
 ### Phases (ship order)
 
-- 🔷 **Phase 1** — SQLite + migrate (`file_diff_part`, `status` → `reviewed`) — **settled** · [`CODER-4.2.3.2`](CODER-4.2.3.2-source-view-diff-db.md)
-- 🔷 **Phase 2** — `SourceView` inline unified-diff **rendering** — **settled** · [`CODER-4.2.3.3`](CODER-4.2.3.3-source-view-diff-render.md)
-- 🔷 **Phase 3** — **View** pending file (backup vs disk) — **settled** · [`CODER-4.2.3.4`](CODER-4.2.3.4-source-view-diff-view.md)
+- 🔷 **Phase 1** — SQLite + migrate (`file_diff_part`, `status` → `reviewed`) — ✅ · [`done/CODER-4.2.3.2-DONE`](done/CODER-4.2.3.2-DONE-source-view-diff-db.md)
+- 🔷 **Phase 2** — `SourceView` inline unified-diff **rendering** — ✅ · [`done/CODER-4.2.3.3-DONE`](done/CODER-4.2.3.3-DONE-source-view-diff-render.md)
+- 🔷 **Phase 3** — **View** pending file (backup vs disk) — ✅ · [`done/CODER-4.2.3.4-DONE`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md)
 - 🔷 **Phase 4** — Per-hunk **approval flow** — **design open** after Phase 3 · [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md)
 
 ### Confirmed (all phases)
 
 - 🔷 **Disk vs review** — file on disk is **always the agent end result** (full diff already applied when the agent wrote). **Approve** = DB + UI only (does **not** write disk). **Reject** = restore disk from **`backup_path`** + DB (the only review action that undoes content on disk).
 - 🔷 Pending-approval files show an **inline unified diff** in `SourceView` (not a second editor pane).
-- 🔷 **Secondary gutter** — baseline line numbers beside the normal gutter.
+- 🔷 **Secondary gutter** — baseline line numbers in diff mode (default `show_line_numbers` off while diff is active).
 - 🔷 **Added** lines: green background (pending hunk only).
 - 🔷 **Removed** lines: red background (pending hunk only); interleaved rows (unified-diff style).
 - 🔷 **Approved hunk** — DB + UI only; **disk unchanged** (Phase **4**):
@@ -57,40 +57,41 @@
 
 **Suggested order**
 
-1. 🔷 ✔️ **Phase 1** — [`CODER-4.2.3.2`](CODER-4.2.3.2-source-view-diff-db.md) (agent-done).
-2. 🔷 ⏳ **Phase 2** — [`CODER-4.2.3.3`](CODER-4.2.3.3-source-view-diff-render.md) (fences ready).
-3. 🔷 ⏳ **Phase 3** — [`CODER-4.2.3.4`](CODER-4.2.3.4-source-view-diff-view.md) (stub; fences after Phase 2).
-4. 🔷 ⏳ **Phase 4** — [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md) (design then fences).
+1. 🔷 ✅ **Phase 1** — [`done/CODER-4.2.3.2-DONE`](done/CODER-4.2.3.2-DONE-source-view-diff-db.md).
+2. 🔷 ✅ **Phase 2** — [`done/CODER-4.2.3.3-DONE`](done/CODER-4.2.3.3-DONE-source-view-diff-render.md).
+3. 🔷 ✅ **Phase 3** — [`done/CODER-4.2.3.4-DONE`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md).
+4. 🔷 ⏳ **Phase 4** — [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md) (design open).
 
 ---
 
 ## Phase 1 — Database + upgrade
 
-ℹ️ Spec + fences: [`CODER-4.2.3.2-source-view-diff-db.md`](CODER-4.2.3.2-source-view-diff-db.md) — **✔️** agent-done.
+ℹ️ Spec + fences: [`done/CODER-4.2.3.2-DONE-source-view-diff-db.md`](done/CODER-4.2.3.2-DONE-source-view-diff-db.md) — ✅
 
-- 🔷 ✔️ Create **`file_diff_part`**; migrate **`status` → `reviewed`**.
-- 🔷 ✔️ Derived **`FileDiffPart.path(FileHistory)`**; no SourceView / per-hunk RPC.
+- 🔷 ✅ Create **`file_diff_part`**; migrate **`status` → `reviewed`**.
+- 🔷 ✅ Derived **`FileDiffPart.path(FileHistory)`**; no SourceView / per-hunk RPC.
 - ℹ️ Full DDL + semantics: **Design — SQLite model** below.
 
 ---
 
 ## Phase 2 — SourceView diff rendering
 
-ℹ️ Spec + fences: [`CODER-4.2.3.3-source-view-diff-render.md`](CODER-4.2.3.3-source-view-diff-render.md).
+ℹ️ Spec + fences: [`done/CODER-4.2.3.3-DONE-source-view-diff-render.md`](done/CODER-4.2.3.3-DONE-source-view-diff-render.md) — ✅
 
-- 🔷 **`show_diff(Differ)` / `clear_diff`** — unified overlay, secondary gutter, green/red **tags**.
-- 🔷 Caller owns **`Differ`**; SourceView uses **`patches`** + public **`lines1`/`lines2`** (no re-split).
-- 🔷 Removed lines — tag **`editable=false`** + red fill; still selectable / copyable; added = green fill.
+- 🔷 ✅ **`show_diff(Differ)` / `clear_diff`** — unified overlay, secondary gutter, green/red **tags**.
+- 🔷 ✅ Caller owns **`Differ`**; SourceView uses **`patches`** + public **`lines1`/`lines2`** (no re-split).
+- 🔷 ✅ Green/red via per-`SourceView` **`diff_tag_table`** (named tags once per view); removed = **`editable=false`** + still copyable.
+- 🔷 ✅ Smoke: **`examples/oc-test-source-diff.vala`** — **`TestAppBase`**, two files → `show_diff` (no Phase 3).
 - 🚫 No Approvals wire (Phase **3**); no per-hunk controls (Phase **4**).
 
 ---
 
 ## Phase 3 — View file with changes
 
-ℹ️ Stub: [`CODER-4.2.3.4-source-view-diff-view.md`](CODER-4.2.3.4-source-view-diff-view.md).
+ℹ️ Spec + fences: [`done/CODER-4.2.3.4-DONE-source-view-diff-view.md`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md) — ✅
 
-- 🔷 Pending file → build **`Differ(V_backup, V_disk)`** → Phase **2** `show_diff(differ)`.
-- 🔷 Exit diff when no longer pending (shipped whole-file approve/reject).
+- 🔷 ✅ Wire **`backup_path`** on pending **`FileWithHistory`**; **`open_file`** → **`Differ(V_backup, V_disk)`** → **`show_diff`**.
+- 🔷 ✅ **`clear_diff`** / rebuild on **`review_files.refreshed`**.
 - 🚫 No per-hunk UI (Phase **4**).
 
 ---
@@ -431,11 +432,13 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 - 🔷 ⏳ **Reject all pending** — same placement rules as approve all?
 - 🔷 ⏳ **Undo approve vs Reject** — **Unapprove** = DB + diff overlay only (disk stays). **Reject** = disk restore. Neither is editor undo.
 - 🔷 ⏳ **Partial unapprove** — walk back one hunk, one chunk, or only all-or-nothing?
+- 🔷 ⏳ **Unsaved user edits while reviewing** — re-diff overlay against dirty buffer vs keep **V_backup** vs **V_disk** only? **Lean: no** (don’t fold unsaved edits into the review diff).
 
 ### UI (Phase 4 — not designed yet)
 
 - 🔷 ⏳ Where partial-approve controls live — gutter icons, per-hunk bar, context menu, keyboard?
 - 🔷 ⏳ Read-only diff buffer vs editable file with overlays?
+- 🔷 ⏳ If editable + dirty: leave review overlay on saved baseline/disk only (**lean**), or refresh against buffer? (same question as Open above)
 - 🔷 ⏳ How user sees progress when some hunks approved and others not (counts, approved hunks in normal text only, second list)?
 - 🔷 ⏳ Secondary baseline gutter — always visible in diff mode, or only on changed hunks? (Phase **2** can default to always-on in diff mode.)
 - 🔷 ⏳ **Unapprove** control placement — bar, diff hunk, history list, changes menu; must **not** be “use undo”.
@@ -455,9 +458,9 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 
 ## Implementation spec
 
-ℹ️ **Phase 1–2 fences** live in sub-plans [`CODER-4.2.3.2`](CODER-4.2.3.2-source-view-diff-db.md) and [`CODER-4.2.3.3`](CODER-4.2.3.3-source-view-diff-render.md).
+ℹ️ **Phase 1–2 fences** live in [`done/CODER-4.2.3.2-DONE`](done/CODER-4.2.3.2-DONE-source-view-diff-db.md) and [`done/CODER-4.2.3.3-DONE`](done/CODER-4.2.3.3-DONE-source-view-diff-render.md).
 
-ℹ️ **Phase 3–4:** expand stubs [`CODER-4.2.3.4`](CODER-4.2.3.4-source-view-diff-view.md) / [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md) when ready (Phase 4 after design pass).
+ℹ️ **Phase 3–4:** Phase 3 done ([`done/CODER-4.2.3.4-DONE`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md)); Phase 4 stub [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md) after design pass.
 
 - ℹ️ Likely touch points:
   - Phase **1:** `ollmfilesd/FileHistory.vala`, `FileDiffPart.vala`, migrate / `init_db`

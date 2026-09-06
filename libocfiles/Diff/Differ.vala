@@ -57,8 +57,8 @@ namespace OLLMfiles.Diff
 	 */
 	public class Differ : Object
 	{
-		private string[] lines1;
-		private string[] lines2;
+		public string[] lines1 { get; private set; }
+		public string[] lines2 { get; private set; }
 		private Gee.ArrayList<Edit> edits = new Gee.ArrayList<Edit>();
 		private int prefix_len = 0;
 		private int suffix_len = 0;
