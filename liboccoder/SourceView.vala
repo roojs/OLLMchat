@@ -48,14 +48,10 @@ namespace OLLMcoder
 		private Gtk.TextTagTable diff_tag_table { get; set; default = new Gtk.TextTagTable(); }
 		private GtkSource.Buffer? diff_buffer = null;
 		private GtkSource.Buffer? pre_diff_buffer = null;
-		private Gee.ArrayList<int> diff_baseline { 
-			get; set; default = new Gee.ArrayList<int>(); }
-		private Gee.ArrayList<int> diff_remove_at {
-			get; set; default = new Gee.ArrayList<int>(); }
-		private Gee.ArrayList<int> diff_remove_n {
-			get; set; default = new Gee.ArrayList<int>(); }
-		private GtkSource.GutterRendererText baseline_gutter {
-			get; set; default = new GtkSource.GutterRendererText();
+		private Gee.ArrayList<int> diff_baseline {  get; set; default = new Gee.ArrayList<int>(); }
+		private Gee.ArrayList<int> diff_remove_at { get; set; default = new Gee.ArrayList<int>(); }
+		private Gee.ArrayList<int> diff_remove_n { get; set; default = new Gee.ArrayList<int>(); }
+		private GtkSource.GutterRendererText baseline_gutter { get; set; default = new GtkSource.GutterRendererText();
 		}
 		private bool diff_active = false;
 		private GtkSource.View source_view;
@@ -699,7 +695,7 @@ namespace OLLMcoder
 		}
 
 		/**
-		 * If {@code file} is pending approval, load V_backup via daemon and show inline diff.
+		 * If ''file'' is pending approval, load V_backup via daemon and show inline diff.
 		 *
 		 * @param file open project file (buffer already holds V_disk)
 		 */
@@ -768,6 +764,7 @@ namespace OLLMcoder
 			if (this.diff_active) {
 				var extras = 0;
 				var disk = line_number + 1;
+				// walk diff's should be ok as long as there are not too many
 				for (var i = 0; i < this.diff_remove_at.size; i++) {
 					if (this.diff_remove_at.get(i) > disk) {
 						break;

@@ -72,7 +72,7 @@ namespace OLLMfiles
 		 * Does not update this {@link GLib.ListModel} — use {@link refresh} for that.
 		 * Advances {@link since_marker} from ''Response.msg'' on success.
 		 *
-		 * @return History rows since the current marker ({@code reviewed} 0 = upsert, else remove)
+		 * @return History rows since the current marker (''reviewed'' 0 = upsert, else remove)
 		 * @throws GLib.Error if the RPC fails
 		 */
 		public async Gee.ArrayList<FileWithHistory> fetch_pending() throws GLib.Error

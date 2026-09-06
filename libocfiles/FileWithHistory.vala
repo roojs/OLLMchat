@@ -37,13 +37,13 @@ namespace OLLMfiles
 		public int64 reject_id { get; set; default = 0; }
 
 		/**
-		 * Chunk review flag from {@code file_history.reviewed}.
-		 * Delta: {@code 0} upsert pending; non-zero remove from Approvals list.
+		 * Chunk review flag from ''file_history.reviewed''.
+		 * Delta: ''0'' upsert pending; non-zero remove from Approvals list.
 		 */
 		public int reviewed { get; set; default = 0; }
 
 		/**
-		 * Backup snapshot path for the newest pending chunk ({@code reviewed=0}).
+		 * Backup snapshot path for the newest pending chunk (''reviewed=0'').
 		 * Empty when the pending write has no backup (e.g. added).
 		 */
 		public string backup_path { get; set; default = ""; }

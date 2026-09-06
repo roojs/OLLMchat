@@ -98,14 +98,15 @@
 
 ## Phase 4 — Approval flow of blocks (design then implement)
 
-ℹ️ Stub: [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md).
+ℹ️ Design: [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md) — **footer overview bar** settled; fences after sign-off.
 
-ℹ️ **Stop and design** when Phase 3 works. Do not invent gutter buttons / menus from this section alone.
-
-- 🔷 Per-hunk **Approve** / **Reject** / **Unapprove**; **`file_diff_part`** rows; destructive placement.
-- 🔷 ⏳ Close remaining open bullets before coding fences.
+- 🔷 Per-hunk **Accept** / **Reject** / **Unapprove**; **`file_diff_part`** rows; bulk in **Bulk actions** hover menu.
+- 🔷 UI: footer bar — file nav | proportional hunk bands | **Bulk actions**; Accept/Reject in a **fixed centre overlay** on the source view (rapid accept).
+- 🔷 **Phase A:** prove UI on `oc-test-source-diff` with in-memory decisions; **Phase B:** daemon / `file_diff_part`.
+- 🔷 ⏳ Close remaining open bullets (Flow B, hunk file format, Approvals header relationship) before coding fences.
 - ℹ️ Walkthrough + SQLite model below stay the contract reference.
 - 🚫 No Vala fences until user signs off the design pass.
+- 🚫 Gutter Accept/Reject; Accept/Reject tied to footer bands; “overflow” naming.
 
 ---
 
@@ -434,15 +435,13 @@ CREATE TABLE IF NOT EXISTS file_diff_part (
 - 🔷 ⏳ **Partial unapprove** — walk back one hunk, one chunk, or only all-or-nothing?
 - 🔷 ⏳ **Unsaved user edits while reviewing** — re-diff overlay against dirty buffer vs keep **V_backup** vs **V_disk** only? **Lean: no** (don’t fold unsaved edits into the review diff).
 
-### UI (Phase 4 — not designed yet)
+### UI (Phase 4)
 
-- 🔷 ⏳ Where partial-approve controls live — gutter icons, per-hunk bar, context menu, keyboard?
-- 🔷 ⏳ Read-only diff buffer vs editable file with overlays?
-- 🔷 ⏳ If editable + dirty: leave review overlay on saved baseline/disk only (**lean**), or refresh against buffer? (same question as Open above)
-- 🔷 ⏳ How user sees progress when some hunks approved and others not (counts, approved hunks in normal text only, second list)?
-- 🔷 ⏳ Secondary baseline gutter — always visible in diff mode, or only on changed hunks? (Phase **2** can default to always-on in diff mode.)
-- 🔷 ⏳ **Unapprove** control placement — bar, diff hunk, history list, changes menu; must **not** be “use undo”.
-- 🔷 ⏳ **Changes-list menu** — home for approve all, reject all, revert last bulk action?
+ℹ️ Settled direction: [`CODER-4.2.3.5`](CODER-4.2.3.5-source-view-diff-approval.md) — footer proportional hunk bar + overlay Accept/Reject; gutter buttons rejected.
+
+- 🔷 Footer overview bar (file nav | hunk bands | hover overflow).
+- 🔷 ⏳ Confirm Approvals header vs footer relationship; Flow B; hunk file format.
+- 🚫 Gutter Accept/Reject as primary; inline per-hunk toolbars in the buffer.
 
 ### Working notes (not decisions)
 
