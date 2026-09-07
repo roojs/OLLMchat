@@ -42,11 +42,13 @@ Footer **diff control bar** — three zones:
 ```
 ┌──────────────┬────────────────────────────────────────────┬──────────────┐
 │ File nav     │  Hunk overview (proportional bands)        │ Bulk actions │
-│ « 2 / 5 »    │  [gap][hunk][gap][hunk]…                   │  (stub)      │
+│ « 2 / 5 ▾»  │  [gap][hunk][gap][hunk]…                   │  (hover)     │
 └──────────────┴────────────────────────────────────────────┴──────────────┘
 ```
 
-**Left — file nav (stub):** prev / next + `n / N` label only. Mock queue (e.g. **`2 / 5`**, CLI **`--mock-files=5`**). **No** real popover list yet — fake basenames; prev/next cycle mock index.
+**Left — file nav (stub):** prev / next + `n / N` label; **hover popover** lists pending files (Phase A: CLI pair basenames from harness; same interaction as header [`Approvals`](../../liboccoder/Approvals.vala) task-due hover list — Phase B wires **`ReviewFiles`** and removes top popover).
+
+**Right — bulk actions (stub):** visible **Bulk actions** label; **hover popover** (not click dropdown) with “Accept all this file” → grey all bands in memory; overlay hides.
 
 **Middle — hunk map:** proportional bands from real **`Differ.patches`** for the two smoke files.
 
@@ -66,11 +68,27 @@ Footer **diff control bar** — three zones:
 - Click grey band → Unapprove → restore pending colour.
 - **No** Next/Previous hunk buttons — map + border + auto-advance replace them.
 
-**Right — bulk actions (stub):** visible label; menu optional (“Accept all this file” → grey all bands in memory).
+**Right — bulk actions:** see **Left — file nav** block above (hover popover spec).
 
 ### Ownership
 
 **`OLLMcoder.Diff.ReviewBar`** (one file to start) — footer shell, Cairo hunk map, mock decision list, active hunk index, file-nav stub, hooks for centre Accept/Reject overlay. **`SourceView`** keeps buffer / gutter only.
+
+### SourceView vs ReviewBar (agent boundary)
+
+**`SourceView`** (inline diff view — [`4.2.3.4`](done/CODER-4.2.3.4-DONE-source-view-diff-view.md); **not** Phase A review work):
+
+- **`show_diff(Differ)`** — interleaved buffer, `diff-add` / `diff-remove` tags, baseline gutter
+- **`navigate_to_line`**, **`clear_diff`**
+- 🚫 **No** review state, hunk-index tracking, hunk display ranges, focus/dim tag variants, or **`set_review_*`** APIs
+
+**`ReviewBar`** (**current Phase A work**):
+
+- Footer bands, overlay, in-memory decisions, file nav, bulk menu, accept/reject preview (`sync_diff_from_decisions` rebuilds effective baseline/current and calls **`show_diff`**)
+- **✔️** Active hunk **border on footer band**
+- **⏳** Active hunk **in-buffer** indicator (dim non-selected / emphasize selected changed lines) — **ReviewBar** owns this if we add it; via ReviewBar logic and public buffer access only, **not** by extending **`SourceView.show_diff`**
+
+ℹ️ **Agent reminder:** If the user mentions in-text hunk highlighting, dimming unchanged hunks, or “indicator on the text” — that is **in this plan under ReviewBar**, not SourceView. Say that explicitly; **do not** add review fields or helpers to **`SourceView.vala`**. We are working on **ReviewBar**; SourceView diff view is settled unless a separate diff-view bug is filed.
 
 Middle strip: **`Gtk.Box`** row of band widgets (preferred) or one **`DrawingArea`**; **`layout_hunk_map()`** on resize/state change; per-band click wired at build time — no linear hit-test scan.
 
@@ -245,14 +263,25 @@ meson compile -C build occoder examples/oc-test-source-diff
 - **Reject** greys and advances like Accept.
 - **Bulk actions** greys all bands; overlay hides.
 
-**Mock file nav:**
+**Mock file nav (single pair, stub count):**
 
 ```bash
 ./build/examples/oc-test-source-diff --mock-files=5 \
   tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
 ```
 
-- Footer left shows **`1 / 5`**; prev/next cycle stub index (no real file switch yet).
+- Footer left shows **`File 1 of 5`**; prev/next cycle stub index (no real file switch).
+
+**Two real file pairs (footer nav + switch diff):**
+
+```bash
+./build/examples/oc-test-source-diff \
+  tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt \
+  tests/source-diff/insert-only-baseline.txt tests/source-diff/insert-only-current.txt
+```
+
+- Footer shows **`File 1 of 2`** / **`File 2 of 2`**; prev/next loads each pair.
+- **Single pair:** entire file nav (label + buttons) **hidden** — no **`File 1 of 1`**.
 
 **Inactive middle:**
 
@@ -261,21 +290,35 @@ meson compile -C build occoder examples/oc-test-source-diff
   tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
 ```
 
-- Red **`5 changes pending review`** instead of bands; click label → bands appear, mock file **`1 / 5`**.
+- Red **`5 changes pending review`** instead of bands; click label → bands appear, mock file **`File 1 of 5`**.
 
 ### Still open (Phase A)
 
 - **⏳** **💩** User smoke **✅** on the checks above.
 - **⏳** **💩** Active-border colour & label padding polish if smoke finds gaps (min width / gap = **50% of strip height** is implemented).
+- **⏳** **ReviewBar:** in-buffer active-hunk highlight (dim / emphasize changed lines) — **not** SourceView; design + implement in **`ReviewBar.vala`** only when user approves approach.
+- **⏳** Smoke fixes in progress: hunk map visibility, overlay position, bulk menu, file nav hidden when one file, two-pair CLI on **`oc-test-source-diff`**.
+- **⏳** Accept/Reject **diff preview** (rebuild **`show_diff`** after each decision) — **removed** unauthorized **`sync_diff_from_decisions`** / **`load_diff`** helpers; needs **user-named** approach in **`ReviewBar`** before re-adding.
 
 ### LLM notes (Phase A)
 
 - **✔️** Phase A Vala landed in **`ReviewBar.vala`** + test harness (Phase B still 🚫).
+- ℹ️ **SourceView boundary:** review hunk tracking / in-text highlight belongs in **ReviewBar** (see **SourceView vs ReviewBar** above). Wrong experiment reverted — do not re-add to **`SourceView.vala`** without explicit user approval.
+- 🚫 **`ReviewBar` helpers** unless **user or plan names them** — approved: **`on_width()`**, **`draw_hunk_band()`**, **`on_accept_clicked()`**, **`on_reject_clicked()`**, **`on_map_clicked()`**; do **not** add **`sync_*`**, **`load_*`**, **`ensure_*`**, etc. without approval.
 - 🚫 Daemon, **`file_diff_part`**, disk writes, **`ReviewFiles`**, **`Approvals`** changes.
 - 🚫 Gutter / inline-buffer Accept/Reject as primary UI.
 - 🚫 Accept/Reject chrome on footer band (breaks rapid accept).
 - 🚫 Pre-splitting into extra files before first smoke.
 - 🚫 Agent/automated split of **`ReviewBar.vala`** (e.g. “file too long”) — split is **your** call after review.
+- 🚫 Adding review-state fields, hunk display ranges, or **`set_review_*`** to **`SourceView`** — **ReviewBar** only (see **SourceView vs ReviewBar**).
+
+### Agent session note (ReviewBar vs SourceView)
+
+When the user asks about **in-text hunk highlighting**, **dimming non-active hunks**, or similar editor-buffer styling during Phase A smoke:
+
+1. Confirm it is **planned under ReviewBar** (see **SourceView vs ReviewBar** and **Still open** above), **not** SourceView.
+2. **`SourceView`** is limited to **`show_diff` / `navigate_to_line` / `clear_diff`** for this sub-plan.
+3. Current implementation work is **`ReviewBar.vala`** + **`oc-test-source-diff`** harness — do not expand **`SourceView.vala`** for review chrome.
 
 ---
 

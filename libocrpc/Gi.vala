@@ -1102,7 +1102,11 @@ namespace OLLMrpc
 				return true;
 			}
 			if (kind == GI.InfoType.FLAGS) {
-				this.in_args[vi + offset].v_uint32 = val.get_flags();
+				if (val.type().is_a(GLib.Type.FLAGS)) {
+					this.in_args[vi + offset].v_uint32 = val.get_flags();
+					return true;
+				}
+				this.in_args[vi + offset].v_uint32 = val.get_uint();
 				return true;
 			}
 			if (kind == GI.InfoType.ENUM) {

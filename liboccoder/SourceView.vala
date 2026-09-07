@@ -51,7 +51,8 @@ namespace OLLMcoder
 		private Gee.ArrayList<int> diff_baseline {  get; set; default = new Gee.ArrayList<int>(); }
 		private Gee.ArrayList<int> diff_remove_at { get; set; default = new Gee.ArrayList<int>(); }
 		private Gee.ArrayList<int> diff_remove_n { get; set; default = new Gee.ArrayList<int>(); }
-		private GtkSource.GutterRendererText baseline_gutter { get; set; default = new GtkSource.GutterRendererText();
+		private GtkSource.GutterRendererText baseline_gutter {
+			get; set; default = new GtkSource.GutterRendererText();
 		}
 		private bool diff_active = false;
 		private GtkSource.View source_view;

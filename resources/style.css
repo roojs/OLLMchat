@@ -257,8 +257,14 @@ separator.horizontal.oc-table-body-sep {
 
 .oc-diff-review-overlay {
   padding: 8px 12px;
+  margin-bottom: 12px;
   background-color: alpha(@window_bg_color, 0.92);
   border-radius: 6px;
+}
+
+.oc-diff-hunk-map {
+  min-height: 28px;
+  background-color: @window_bg_color;
 }
 
 .oc-diff-hunk-gap {

@@ -20,32 +20,43 @@
  * Smoke: {@link TestAppBase} window showing {@link OLLMcoder.SourceView} inline diff
  * and {@link OLLMcoder.Diff.ReviewBar} Phase A mock review chrome.
  *
- * Usage: oc-test-source-diff [OPTIONS] <baseline_file> <current_file>
+ * Usage: oc-test-source-diff [OPTIONS] <baseline> <current> [<baseline> <current> ...]
  * text1 = baseline (V_backup), text2 = current (V_disk).
  */
 class TestSourceDiff : TestAppBase
 {
-	private static int opt_mock_files = 1;
 	private static bool opt_mock_inactive = false;
 
 	private Gtk.Window window;
+	private Gtk.Box root_box;
+	private Gtk.Overlay editor_overlay;
+	private OLLMcoder.SourceView source_view;
+	private OLLMcoder.Diff.ReviewBar review_bar;
+	private string[] pair_baselines = {};
+	private string[] pair_currents = {};
+	private string[] pair_titles = {};
+	private int current_file_index = 0;
 
 	protected override string help { get; set; default = """
-Usage: {ARG} [OPTIONS] <baseline_file> <current_file>
+Usage: {ARG} [OPTIONS] <baseline> <current> [<baseline> <current> ...]
 
-Opens a window with SourceView.show_diff of the two files plus footer review bar.
+Opens a window with SourceView.show_diff of the file pair(s) plus footer review bar.
+Pass two or more baseline/current pairs to exercise real file prev/next in the footer.
 
 Arguments:
   baseline_file              Old / backup text (Differ text1)
   current_file               New / disk text (Differ text2)
+  ...                        Optional further baseline/current pairs
 
 Options:
-  --mock-files=N             Stub pending file count for footer nav (default 1)
   --mock-inactive            Show "N changes pending review" instead of hunk bands
 
 Examples:
-  {ARG} old.vala new.vala
-  {ARG} --mock-files=5 --mock-inactive tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
+  {ARG} tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt \\
+      tests/source-diff/insert-only-baseline.txt tests/source-diff/insert-only-current.txt
+  {ARG} --mock-inactive \\
+      tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt \\
+      tests/source-diff/insert-only-baseline.txt tests/source-diff/insert-only-current.txt
 """; }
 
 	public TestSourceDiff()
@@ -61,14 +72,12 @@ Examples:
 	protected override OptionContext app_options()
 	{
 		var opt_context = new OptionContext(this.get_app_name());
-		var opts = new OptionEntry[5];
+		var opts = new OptionEntry[4];
 		opts[0] = base_options[0];
 		opts[1] = base_options[1];
-		opts[2] = { "mock-files", 0, 0, OptionArg.INT, ref opt_mock_files,
-			"Stub pending file count for footer nav", "N" };
-		opts[3] = { "mock-inactive", 0, 0, OptionArg.NONE, ref opt_mock_inactive,
+		opts[2] = { "mock-inactive", 0, 0, OptionArg.NONE, ref opt_mock_inactive,
 			"Show pending-review label instead of hunk bands", null };
-		opts[4] = { null };
+		opts[3] = { null };
 		opt_context.add_main_entries(opts, null);
 		return opt_context;
 	}
@@ -76,10 +85,10 @@ Examples:
 	protected override string? validate_args(string[] args)
 	{
 		if (args.length < 3 || args[1] == "" || args[2] == "") {
-			return "ERROR: Two files required.\nUsage: %s <baseline_file> <current_file>\n".printf(args[0]);
+			return "ERROR: At least one baseline/current pair required.\nUsage: %s <baseline> <current> [...]\n".printf(args[0]);
 		}
-		if (opt_mock_files < 1) {
-			opt_mock_files = 1;
+		if ((args.length - 1) % 2 != 0) {
+			return "ERROR: File arguments must be baseline/current pairs (even count).\n";
 		}
 		return null;
 	}
@@ -90,41 +99,67 @@ Examples:
 			command_line.printerr("ERROR: Failed to initialize GTK (no display?)\n");
 			throw new GLib.IOError.FAILED("Failed to initialize GTK");
 		}
-		var baseline_path = GLib.Path.is_absolute(args[1])
-			? args[1]
-			: GLib.Path.build_filename(GLib.Environment.get_current_dir(), args[1]);
-		var current_path = GLib.Path.is_absolute(args[2])
-			? args[2]
-			: GLib.Path.build_filename(GLib.Environment.get_current_dir(), args[2]);
-		var baseline = "";
-		var current = "";
-		GLib.FileUtils.get_contents(baseline_path, out baseline);
-		GLib.FileUtils.get_contents(current_path, out current);
-		this.window = new Gtk.Window() {
-			title = "%s → %s".printf(
+		var pair_count = (args.length - 1) / 2;
+		for (var pi = 0; pi < pair_count; pi++) {
+			var baseline_arg = args[1 + pi * 2];
+			var current_arg = args[2 + pi * 2];
+			var baseline_path = GLib.Path.is_absolute(baseline_arg)
+				? baseline_arg
+				: GLib.Path.build_filename(GLib.Environment.get_current_dir(), baseline_arg);
+			var current_path = GLib.Path.is_absolute(current_arg)
+				? current_arg
+				: GLib.Path.build_filename(GLib.Environment.get_current_dir(), current_arg);
+			var baseline = "";
+			var current = "";
+			GLib.FileUtils.get_contents(baseline_path, out baseline);
+			GLib.FileUtils.get_contents(current_path, out current);
+			this.pair_baselines += baseline;
+			this.pair_currents += current;
+			this.pair_titles += "%s → %s".printf(
 				GLib.Path.get_basename(baseline_path),
-				GLib.Path.get_basename(current_path)),
+				GLib.Path.get_basename(current_path));
+		}
+		this.window = new Gtk.Window() {
+			title = this.pair_titles[0],
 			default_width = 720,
 			default_height = 520
 		};
-		var source_view = new OLLMcoder.SourceView(new OLLMfiles.ProjectManager());
-		var differ = new OLLMfiles.Diff.Differ(baseline, current);
-		source_view.show_diff(differ);
-		var review_bar = new OLLMcoder.Diff.ReviewBar(
-			source_view, differ, opt_mock_files, opt_mock_inactive);
-		var editor_overlay = new Gtk.Overlay() {
-			vexpand = true,
-			hexpand = true,
-		};
-		editor_overlay.set_child(source_view);
-		editor_overlay.add_overlay(review_bar.review_overlay);
-		var root = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+		this.source_view = new OLLMcoder.SourceView(new OLLMfiles.ProjectManager()) {
 			hexpand = true,
 			vexpand = true,
 		};
-		root.append(editor_overlay);
-		root.append(review_bar);
-		this.window.set_child(root);
+		this.review_bar = new OLLMcoder.Diff.ReviewBar(
+			this.source_view, pair_count, opt_mock_inactive, 0, this.pair_titles);
+		this.review_bar.file_index_changed.connect((index) => {
+			if (index < 0 || index >= this.pair_baselines.length) {
+				return;
+			}
+			this.current_file_index = index;
+			this.window.title = this.pair_titles[index];
+			var differ = new OLLMfiles.Diff.Differ(
+				this.pair_baselines[index], this.pair_currents[index]);
+			this.source_view.show_diff(differ);
+			this.review_bar.update_diff(differ, index);
+		});
+		this.editor_overlay = new Gtk.Overlay() {
+			vexpand = true,
+			hexpand = true,
+		};
+		this.editor_overlay.set_child(this.source_view);
+		this.editor_overlay.add_overlay(this.review_bar.review_overlay);
+		this.root_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+			hexpand = true,
+			vexpand = true,
+		};
+		this.root_box.append(this.editor_overlay);
+		this.root_box.append(this.review_bar);
+		this.window.set_child(this.root_box);
+		this.current_file_index = 0;
+		this.window.title = this.pair_titles[0];
+		var differ = new OLLMfiles.Diff.Differ(
+			this.pair_baselines[0], this.pair_currents[0]);
+		this.source_view.show_diff(differ);
+		this.review_bar.update_diff(differ, 0);
 		var loop = new GLib.MainLoop();
 		this.window.close_request.connect(() => {
 			loop.quit();

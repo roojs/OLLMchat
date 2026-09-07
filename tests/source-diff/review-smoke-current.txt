@@ -1,0 +1,110 @@
+# Review smoke fixture — current (Phase A sign-off)
+# ~100 lines with many small hunks separated by unchanged context.
+
+[meta]
+name = review-smoke
+version = 2.0.0
+author = current author
+mode = published
+enabled = true
+
+[section-01]
+context 01-01 unchanged filler line
+context 01-02 unchanged filler line
+context 01-03 unchanged filler line
+setting alpha = new-alpha-value
+context 01-05 unchanged filler line
+context 01-06 unchanged filler line
+
+[section-02]
+context 02-01 unchanged filler line
+context 02-02 unchanged filler line
+context 02-03 unchanged filler line
+context 02-05 unchanged filler line
+context 02-06 unchanged filler line
+
+[section-03]
+context 03-01 unchanged filler line
+context 03-02 unchanged filler line
+context 03-03 unchanged filler line
+retries = 5
+timeout = 60
+context 03-06 unchanged filler line
+context 03-07 unchanged filler line
+
+[section-04]
+context 04-01 unchanged filler line
+context 04-02 unchanged filler line
+context 04-03 unchanged filler line
+log_level = info
+debug_traces = on
+context 04-05 unchanged filler line
+context 04-06 unchanged filler line
+
+[section-05]
+context 05-01 unchanged filler line
+context 05-02 unchanged filler line
+context 05-03 unchanged filler line
+cache_size = 256
+context 05-05 unchanged filler line
+context 05-06 unchanged filler line
+
+[section-06]
+context 06-01 unchanged filler line
+context 06-02 unchanged filler line
+context 06-03 unchanged filler line
+worker_count = 4
+pool_idle = 120
+context 06-05 unchanged filler line
+context 06-06 unchanged filler line
+
+[section-07]
+context 07-01 unchanged filler line
+context 07-02 unchanged filler line
+context 07-03 unchanged filler line
+feature_flags = beta,metrics
+context 07-05 unchanged filler line
+context 07-06 unchanged filler line
+
+[section-08]
+context 08-01 unchanged filler line
+context 08-02 unchanged filler line
+context 08-03 unchanged filler line
+backup_path = /var/backups/new
+archive = weekly
+context 08-05 unchanged filler line
+context 08-06 unchanged filler line
+
+[section-09]
+context 09-01 unchanged filler line
+context 09-02 unchanged filler line
+context 09-03 unchanged filler line
+notify_email = ops@example.com
+notify_slack = #alerts
+context 09-05 unchanged filler line
+context 09-06 unchanged filler line
+
+[section-10]
+context 10-01 unchanged filler line
+context 10-02 unchanged filler line
+context 10-03 unchanged filler line
+max_upload = 25
+context 10-05 unchanged filler line
+context 10-06 unchanged filler line
+
+[section-11]
+context 11-01 unchanged filler line
+context 11-02 unchanged filler line
+context 11-03 unchanged filler line
+theme = dark
+context 11-05 unchanged filler line
+context 11-06 unchanged filler line
+
+[section-12]
+context 12-01 unchanged filler line
+context 12-02 unchanged filler line
+context 12-03 unchanged filler line
+footer_note = current end marker
+reviewed = true
+context 12-05 unchanged filler line
+context 12-06 unchanged filler line
