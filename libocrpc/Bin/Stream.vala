@@ -17,7 +17,7 @@ namespace OLLMrpc.Bin
 	public static Gee.HashMap<string, GLib.Type> alias_to_gtype;
 
 	/** Process-wide GType → wire alias. */
-	internal static Gee.HashMap<GLib.Type, string> gtype_to_alias;
+	public static Gee.HashMap<GLib.Type, string> gtype_to_alias;
 
 	/**
 	 * {@link Stream} wire / registration failures (throw/catch).
