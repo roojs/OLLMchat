@@ -271,6 +271,23 @@ separator.horizontal.oc-table-body-sep {
   background-color: @window_bg_color;
 }
 
+.oc-diff-map-scroll-btn {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0 2px;
+  min-width: 20px;
+  opacity: 0.55;
+}
+
+.oc-diff-map-scroll-btn:hover {
+  opacity: 1;
+}
+
+.oc-diff-map-scroll-btn:disabled {
+  opacity: 0.2;
+}
+
 /* Task progress strip (ProgressView / Gtk.ColumnView): compact row vertical spacing */
 .oc-task-progress columnview cell {
   padding-top: 2px;

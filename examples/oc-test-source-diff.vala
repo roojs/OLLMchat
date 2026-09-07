@@ -52,11 +52,12 @@ Options:
   --mock-inactive            Show "N changes pending review" instead of hunk bands
 
 Examples:
-  {ARG} tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt \\
-      tests/source-diff/insert-only-baseline.txt tests/source-diff/insert-only-current.txt
+  {ARG} tests/source-diff/review-smoke-baseline.txt tests/source-diff/review-smoke-current.txt
+  {ARG} tests/source-diff/review-smoke-baseline.txt tests/source-diff/review-smoke-current.txt \\
+      tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
   {ARG} --mock-inactive \\
-      tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt \\
-      tests/source-diff/insert-only-baseline.txt tests/source-diff/insert-only-current.txt
+      tests/source-diff/review-smoke-baseline.txt tests/source-diff/review-smoke-current.txt \\
+      tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
 """; }
 
 	public TestSourceDiff()

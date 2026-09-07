@@ -50,7 +50,7 @@ Footer **diff control bar** — three zones:
 
 **Right — bulk actions (stub):** visible **Bulk actions** label; **hover popover** (not click dropdown) with “Accept all this file” → grey all bands in memory; overlay hides.
 
-**Middle — hunk map:** proportional bands from real **`Differ.patches`** for the two smoke files.
+**Middle — hunk map:** proportional bands from real **`Differ.patches`**; primary smoke fixture **`tests/source-diff/review-smoke-*.txt`** (~105 lines, **12 hunks**).
 
 - Pending add-only: **green**; remove-only: **red**; mixed: **red+green**.
 - Decided: **grey** (Accept/Reject in memory only — **no disk write**).
@@ -246,7 +246,15 @@ Build (from repo root):
 meson compile -C build occoder examples/oc-test-source-diff
 ```
 
-**Basic smoke** — diff view + footer bands + overlay (needs a display):
+**Basic smoke (sign-off)** — large single pair (~105 lines, **12 hunks**: replace / insert / delete, spaced sections) + footer bands + overlay (needs a display):
+
+```bash
+./build/examples/oc-test-source-diff \
+  tests/source-diff/review-smoke-baseline.txt \
+  tests/source-diff/review-smoke-current.txt
+```
+
+**Minimal pair** (two hunks only — quick regression):
 
 ```bash
 ./build/examples/oc-test-source-diff \
@@ -263,34 +271,26 @@ meson compile -C build occoder examples/oc-test-source-diff
 - **Reject** greys and advances like Accept.
 - **Bulk actions** greys all bands; overlay hides.
 
-**Mock file nav (single pair, stub count):**
-
-```bash
-./build/examples/oc-test-source-diff --mock-files=5 \
-  tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
-```
-
-- Footer left shows **`File 1 of 5`**; prev/next cycle stub index (no real file switch).
-
 **Two real file pairs (footer nav + switch diff):**
 
 ```bash
 ./build/examples/oc-test-source-diff \
-  tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt \
-  tests/source-diff/insert-only-baseline.txt tests/source-diff/insert-only-current.txt
+  tests/source-diff/review-smoke-baseline.txt tests/source-diff/review-smoke-current.txt \
+  tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
 ```
 
-- Footer shows **`File 1 of 2`** / **`File 2 of 2`**; prev/next loads each pair.
+- Footer shows **`File 1 of 2`** / **`File 2 of 2`**; prev/next loads each pair (large 12-hunk file first, minimal 2-hunk file second).
 - **Single pair:** entire file nav (label + buttons) **hidden** — no **`File 1 of 1`**.
 
 **Inactive middle:**
 
 ```bash
-./build/examples/oc-test-source-diff --mock-inactive --mock-files=5 \
+./build/examples/oc-test-source-diff --mock-inactive \
+  tests/source-diff/review-smoke-baseline.txt tests/source-diff/review-smoke-current.txt \
   tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
 ```
 
-- Red **`5 changes pending review`** instead of bands; click label → bands appear, mock file **`File 1 of 5`**.
+- Red **`2 changes pending review`** instead of bands; click label → bands appear for first pair.
 
 ### Still open (Phase A)
 

@@ -127,6 +127,8 @@ namespace OLLMcoder.Diff
 		public Gtk.Box review_overlay;
 
 		public signal void file_index_changed(int index);
+		public signal void accept_all_files();
+		public signal void reject_all_files();
 
 		private OLLMcoder.SourceView source_view;
 		private HunkList hunks { get; set; default = new HunkList(); }
@@ -134,10 +136,15 @@ namespace OLLMcoder.Diff
 		private int file_count = 1;
 		private int file_index = 0;
 		private bool mock_inactive = false;
+		private HunkDecision[] file_bulk = {};
 		private int map_height = 28;
 		private int map_width = 0;
 		private double map_gap_width = 0.0;
 		private int hunk_line_sum = 0;
+		private bool map_scroll_mode = false;
+		private double map_scroll_x = 0.0;
+		private double map_content_width = 0.0;
+		private double map_drag_scroll_start = 0.0;
 
 		private Gtk.Button file_prev;
 		private Gtk.Button file_next;
@@ -145,6 +152,8 @@ namespace OLLMcoder.Diff
 		private Gtk.Box file_nav;
 		private Gtk.Box map_host;
 		private Gtk.DrawingArea map_area;
+		private Gtk.Button map_scroll_left;
+		private Gtk.Button map_scroll_right;
 		private Gtk.Label pending_label;
 		private Gtk.Button bulk_btn;
 		private Gtk.PopoverMenu file_menu_popover;
@@ -166,6 +175,7 @@ namespace OLLMcoder.Diff
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
 			this.source_view = source_view;
 			this.file_count = int.max(1, file_count);
+			this.file_bulk = new HunkDecision[this.file_count];
 			this.file_labels = file_labels;
 			this.mock_inactive = mock_inactive;
 			this.file_index = initial_file_index;
@@ -288,11 +298,124 @@ namespace OLLMcoder.Diff
 			this.map_area.set_draw_func((area, cr, w, h) => {
 				this.draw_hunk_band(cr, w, h);
 			});
+			this.map_scroll_left = new Gtk.Button() {
+				icon_name = "go-previous-symbolic",
+				tooltip_text = "Previous change",
+				css_classes = { "oc-diff-map-scroll-btn" },
+				visible = false,
+			};
+			this.map_scroll_left.clicked.connect(() => {
+				if (this.hunks.size < 1) {
+					return;
+				}
+				this.active = this.active < 1 ? this.hunks.size - 1 : this.active - 1;
+				this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
+				switch (this.hunks.get(this.active).decision) {
+					case HunkDecision.PENDING:
+						this.accept_btn.visible = true;
+						this.reject_btn.visible = true;
+						this.unapprove_btn.visible = false;
+						break;
+
+					default:
+						this.accept_btn.visible = false;
+						this.reject_btn.visible = false;
+						this.unapprove_btn.visible = true;
+						break;
+				}
+				if (this.map_scroll_mode) {
+					var ah = this.hunks.get(this.active);
+					var vw = (double) this.map_area.get_allocated_width();
+					var max_scroll = this.map_content_width - vw;
+					if (max_scroll < 0) {
+						max_scroll = 0;
+					}
+					this.map_scroll_x = ah.map_start + ah.map_width * 0.5 - vw * 0.5;
+					if (this.map_scroll_x < 0) {
+						this.map_scroll_x = 0;
+					}
+					if (this.map_scroll_x > max_scroll) {
+						this.map_scroll_x = max_scroll;
+					}
+					this.map_scroll_left.sensitive = this.map_scroll_x > 0.5;
+					this.map_scroll_right.sensitive = this.map_scroll_x < max_scroll - 0.5;
+				}
+				this.map_area.queue_draw();
+			});
+			this.map_scroll_right = new Gtk.Button() {
+				icon_name = "go-next-symbolic",
+				tooltip_text = "Next change",
+				css_classes = { "oc-diff-map-scroll-btn" },
+				visible = false,
+			};
+			this.map_scroll_right.clicked.connect(() => {
+				if (this.hunks.size < 1) {
+					return;
+				}
+				this.active = (this.active + 1) % this.hunks.size;
+				this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
+				switch (this.hunks.get(this.active).decision) {
+					case HunkDecision.PENDING:
+						this.accept_btn.visible = true;
+						this.reject_btn.visible = true;
+						this.unapprove_btn.visible = false;
+						break;
+
+					default:
+						this.accept_btn.visible = false;
+						this.reject_btn.visible = false;
+						this.unapprove_btn.visible = true;
+						break;
+				}
+				if (this.map_scroll_mode) {
+					var ah = this.hunks.get(this.active);
+					var vw = (double) this.map_area.get_allocated_width();
+					var max_scroll = this.map_content_width - vw;
+					if (max_scroll < 0) {
+						max_scroll = 0;
+					}
+					this.map_scroll_x = ah.map_start + ah.map_width * 0.5 - vw * 0.5;
+					if (this.map_scroll_x < 0) {
+						this.map_scroll_x = 0;
+					}
+					if (this.map_scroll_x > max_scroll) {
+						this.map_scroll_x = max_scroll;
+					}
+					this.map_scroll_left.sensitive = this.map_scroll_x > 0.5;
+					this.map_scroll_right.sensitive = this.map_scroll_x < max_scroll - 0.5;
+				}
+				this.map_area.queue_draw();
+			});
 			var map_click = new Gtk.GestureClick();
 			map_click.pressed.connect((n, x, y) => {
 				this.on_map_clicked(x);
 			});
 			this.map_area.add_controller(map_click);
+			var map_drag = new Gtk.GestureDrag();
+			map_drag.drag_begin.connect((start_x, start_y) => {
+				this.map_drag_scroll_start = this.map_scroll_x;
+			});
+			map_drag.drag_update.connect((offset_x, offset_y) => {
+				if (!this.map_scroll_mode) {
+					return;
+				}
+				var vw = (double) this.map_area.get_allocated_width();
+				var max_scroll = this.map_content_width - vw;
+				if (max_scroll < 0) {
+					max_scroll = 0;
+				}
+				this.map_scroll_x = this.map_drag_scroll_start - offset_x;
+				if (this.map_scroll_x < 0) {
+					this.map_scroll_x = 0;
+				}
+				if (this.map_scroll_x > max_scroll) {
+					this.map_scroll_x = max_scroll;
+				}
+				this.map_scroll_left.sensitive = this.map_scroll_x > 0.5;
+				this.map_scroll_right.sensitive = this.map_scroll_x < max_scroll - 0.5;
+				this.map_area.queue_draw();
+			});
+			this.map_area.add_controller(map_drag);
 			this.pending_label = new Gtk.Label("") {
 				hexpand = true,
 				xalign = 0.5f,
@@ -326,7 +449,9 @@ namespace OLLMcoder.Diff
 				});
 			});
 			this.pending_label.add_controller(pending_click);
+			this.map_host.append(this.map_scroll_left);
 			this.map_host.append(this.map_area);
+			this.map_host.append(this.map_scroll_right);
 			this.map_host.append(this.pending_label);
 			this.map_host.notify["width"].connect(() => {
 				this.on_width();
@@ -340,12 +465,37 @@ namespace OLLMcoder.Diff
 			});
 
 			var bulk_menu = new GLib.Menu();
-			bulk_menu.append("Accept all this file", "bulk.accept-all");
+			var file_section = new GLib.Menu();
+			var accept_file = new GLib.MenuItem("Accept file changes", "bulk.accept-file");
+			accept_file.set_icon(new GLib.ThemedIcon("emblem-ok-symbolic"));
+			file_section.append_item(accept_file);
+			var reject_file = new GLib.MenuItem("Reject file changes", "bulk.reject-file");
+			reject_file.set_icon(new GLib.ThemedIcon("dialog-cancel-symbolic"));
+			file_section.append_item(reject_file);
+			var reset_file = new GLib.MenuItem("Reset", "bulk.reset-file");
+			reset_file.set_icon(new GLib.ThemedIcon("edit-undo-symbolic"));
+			file_section.append_item(reset_file);
+			bulk_menu.append_section(null, file_section);
+			if (this.file_count > 1) {
+				var all_section = new GLib.Menu();
+				var accept_all_files = new GLib.MenuItem(
+					"Accept changes to all files", "bulk.accept-all-files");
+				accept_all_files.set_icon(new GLib.ThemedIcon("emblem-ok-symbolic"));
+				all_section.append_item(accept_all_files);
+				var reject_all_files = new GLib.MenuItem(
+					"Reject changes to all files", "bulk.reject-all-files");
+				reject_all_files.set_icon(new GLib.ThemedIcon("dialog-cancel-symbolic"));
+				all_section.append_item(reject_all_files);
+				bulk_menu.append_section(null, all_section);
+			}
 			var bulk_actions = new GLib.SimpleActionGroup();
-			var accept_all = new GLib.SimpleAction("accept-all", null);
-			accept_all.activate.connect(() => {
+			var accept_file_action = new GLib.SimpleAction("accept-file", null);
+			accept_file_action.activate.connect(() => {
 				foreach (var hunk in this.hunks) {
 					hunk.decision = HunkDecision.ACCEPTED;
+				}
+				if (this.file_index < this.file_bulk.length) {
+					this.file_bulk[this.file_index] = HunkDecision.ACCEPTED;
 				}
 				this.active = -1;
 				this.accept_btn.visible = false;
@@ -354,10 +504,85 @@ namespace OLLMcoder.Diff
 				((Gtk.Popover) this.bulk_menu_popover).popdown();
 				this.map_area.queue_draw();
 			});
-			bulk_actions.add_action(accept_all);
+			var reject_file_action = new GLib.SimpleAction("reject-file", null);
+			reject_file_action.activate.connect(() => {
+				foreach (var hunk in this.hunks) {
+					hunk.decision = HunkDecision.REJECTED;
+				}
+				if (this.file_index < this.file_bulk.length) {
+					this.file_bulk[this.file_index] = HunkDecision.REJECTED;
+				}
+				this.active = -1;
+				this.accept_btn.visible = false;
+				this.reject_btn.visible = false;
+				this.unapprove_btn.visible = false;
+				((Gtk.Popover) this.bulk_menu_popover).popdown();
+				this.map_area.queue_draw();
+			});
+			var reset_file_action = new GLib.SimpleAction("reset-file", null);
+			reset_file_action.activate.connect(() => {
+				foreach (var hunk in this.hunks) {
+					hunk.decision = HunkDecision.PENDING;
+				}
+				if (this.file_index < this.file_bulk.length) {
+					this.file_bulk[this.file_index] = HunkDecision.PENDING;
+				}
+				this.active = this.hunks.pending_after(-1);
+				this.active = this.active < 0 && this.hunks.size > 0 ? 0 : this.active;
+				if (this.active >= 0) {
+					this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
+				}
+				var pending = this.active >= 0
+					&& this.hunks.get(this.active).decision == HunkDecision.PENDING;
+				this.accept_btn.visible = pending;
+				this.reject_btn.visible = pending;
+				this.unapprove_btn.visible = false;
+				((Gtk.Popover) this.bulk_menu_popover).popdown();
+				this.map_area.queue_draw();
+			});
+			bulk_actions.add_action(accept_file_action);
+			bulk_actions.add_action(reject_file_action);
+			bulk_actions.add_action(reset_file_action);
+			if (this.file_count > 1) {
+				var accept_all_files_action = new GLib.SimpleAction("accept-all-files", null);
+				accept_all_files_action.activate.connect(() => {
+					for (var fi = 0; fi < this.file_bulk.length; fi++) {
+						this.file_bulk[fi] = HunkDecision.ACCEPTED;
+					}
+					foreach (var hunk in this.hunks) {
+						hunk.decision = HunkDecision.ACCEPTED;
+					}
+					this.active = -1;
+					this.accept_btn.visible = false;
+					this.reject_btn.visible = false;
+					this.unapprove_btn.visible = false;
+					((Gtk.Popover) this.bulk_menu_popover).popdown();
+					this.map_area.queue_draw();
+					this.accept_all_files();
+				});
+				var reject_all_files_action = new GLib.SimpleAction("reject-all-files", null);
+				reject_all_files_action.activate.connect(() => {
+					for (var fi = 0; fi < this.file_bulk.length; fi++) {
+						this.file_bulk[fi] = HunkDecision.REJECTED;
+					}
+					foreach (var hunk in this.hunks) {
+						hunk.decision = HunkDecision.REJECTED;
+					}
+					this.active = -1;
+					this.accept_btn.visible = false;
+					this.reject_btn.visible = false;
+					this.unapprove_btn.visible = false;
+					((Gtk.Popover) this.bulk_menu_popover).popdown();
+					this.map_area.queue_draw();
+					this.reject_all_files();
+				});
+				bulk_actions.add_action(accept_all_files_action);
+				bulk_actions.add_action(reject_all_files_action);
+			}
 			this.insert_action_group("bulk", bulk_actions);
 			this.bulk_menu_popover = new Gtk.PopoverMenu.from_model(bulk_menu);
-			this.bulk_btn = new Gtk.Button.with_label("Bulk actions") {
+			this.bulk_btn = new Gtk.Button() {
+				icon_name = "open-menu-symbolic",
 				tooltip_text = "Bulk review actions",
 			};
 			this.bulk_menu_popover.set_parent(this.bulk_btn);
@@ -462,10 +687,17 @@ namespace OLLMcoder.Diff
 			this.hunk_line_sum = 0;
 			differ.diff();
 			var bi = 0;
+			var bulk_decision = HunkDecision.PENDING;
+			if (this.file_index < this.file_bulk.length) {
+				bulk_decision = this.file_bulk[this.file_index];
+			}
 			foreach (var patch in differ.patches) {
 				var band = new HunkBand(patch) {
 					band_index = bi,
 				};
+				if (bulk_decision != HunkDecision.PENDING) {
+					band.decision = bulk_decision;
+				}
 				this.hunks.add(band);
 				this.hunk_line_sum += band.line_count;
 				bi++;
@@ -478,6 +710,8 @@ namespace OLLMcoder.Diff
 			if (this.mock_inactive) {
 				this.pending_label.visible = true;
 				this.map_area.visible = false;
+				this.map_scroll_left.visible = false;
+				this.map_scroll_right.visible = false;
 				this.pending_label.label = "%d changes pending review".printf(
 					this.file_count);
 				this.accept_btn.visible = false;
@@ -517,22 +751,62 @@ namespace OLLMcoder.Diff
 			}
 			this.map_width = w;
 			var sq = (double) this.map_height;
-			this.map_gap_width = sq;
+			var half_sq = sq * 0.5;
 			var weight_sum = int.max(1, this.hunk_line_sum);
 			var gap_count = this.hunks.size > 1 ? this.hunks.size - 1 : 0;
-			var gap_total_sq = (double) gap_count * sq;
+			var pad_slots = gap_count + 2;
 			var band_total_sq = (double) weight_sum * sq;
-			var square_fits = band_total_sq + gap_total_sq <= (double) w;
-			var avail = double.max((double) w - gap_total_sq, sq);
-			var pos = 0.0;
+			var width = (double) w;
+			var gap = sq;
+			if (band_total_sq + (double) pad_slots * sq > width) {
+				gap = half_sq;
+			}
+			var fits_square = band_total_sq + (double) pad_slots * gap <= width;
+			var needs_scroll = !fits_square
+				&& (width - (double) pad_slots * half_sq) / (double) weight_sum < half_sq;
+			this.map_scroll_mode = needs_scroll;
+			this.map_gap_width = needs_scroll ? half_sq : gap;
+			this.map_scroll_left.visible = needs_scroll;
+			this.map_scroll_right.visible = needs_scroll;
+			if (!needs_scroll) {
+				this.map_scroll_x = 0.0;
+			}
+			var layout_gap = this.map_gap_width;
+			var avail = needs_scroll
+				? 0.0
+				: double.max(width - (double) pad_slots * layout_gap, half_sq);
+			var pos = layout_gap;
 			foreach (var hunk in this.hunks) {
-				pos += hunk.band_index > 0 ? sq : 0.0;
+				pos += hunk.band_index > 0 ? layout_gap : 0.0;
 				hunk.map_start = pos;
-				hunk.map_width = square_fits
-					? (double) hunk.line_count * sq
-					: avail * (double) hunk.line_count / (double) weight_sum;
+				hunk.map_width = needs_scroll
+					? (double) hunk.line_count * half_sq
+					: (fits_square
+						? (double) hunk.line_count * sq
+						: avail * (double) hunk.line_count / (double) weight_sum);
 				pos += hunk.map_width;
 			}
+			if (!needs_scroll) {
+				this.map_area.queue_draw();
+				return;
+			}
+			this.map_content_width = pos + half_sq;
+			var max_scroll = this.map_content_width - width;
+			if (max_scroll < 0) {
+				max_scroll = 0;
+			}
+			if (this.active >= 0 && this.active < this.hunks.size) {
+				var ah = this.hunks.get(this.active);
+				this.map_scroll_x = ah.map_start + ah.map_width * 0.5 - width * 0.5;
+				if (this.map_scroll_x < 0) {
+					this.map_scroll_x = 0;
+				}
+				if (this.map_scroll_x > max_scroll) {
+					this.map_scroll_x = max_scroll;
+				}
+			}
+			this.map_scroll_left.sensitive = this.map_scroll_x > 0.5;
+			this.map_scroll_right.sensitive = this.map_scroll_x < max_scroll - 0.5;
 			this.map_area.queue_draw();
 		}
 
@@ -543,6 +817,23 @@ namespace OLLMcoder.Diff
 			}
 			if (!this.mock_inactive && this.hunks.size > 0 && this.map_width != w) {
 				this.on_width();
+			}
+			cr.save();
+			cr.rectangle(0.0, 0.0, (double) w, (double) h);
+			cr.clip();
+			if (this.map_scroll_mode) {
+				cr.translate(-this.map_scroll_x, 0.0);
+			}
+			if (this.map_gap_width > 0.0) {
+				cr.set_source_rgb(1.0, 1.0, 1.0);
+				cr.rectangle(0.0, 0.0, this.map_gap_width, (double) h);
+				cr.fill();
+				if (this.hunks.size > 0) {
+					var last = this.hunks.get(this.hunks.size - 1);
+					cr.rectangle(last.map_start + last.map_width, 0.0,
+						this.map_gap_width, (double) h);
+					cr.fill();
+				}
 			}
 			foreach (var hunk in this.hunks) {
 				if (hunk.band_index > 0 && this.map_gap_width > 0.0) {
@@ -601,6 +892,7 @@ namespace OLLMcoder.Diff
 				}
 				cr.restore();
 			}
+			cr.restore();
 		}
 
 		private void on_map_clicked(double x)
@@ -608,7 +900,8 @@ namespace OLLMcoder.Diff
 			if (this.mock_inactive || this.hunks.size < 1) {
 				return;
 			}
-			var i = this.hunks.index_at(x);
+			var map_x = this.map_scroll_mode ? x + this.map_scroll_x : x;
+			var i = this.hunks.index_at(map_x);
 			if (i < 0) {
 				return;
 			}
@@ -629,6 +922,23 @@ namespace OLLMcoder.Diff
 					this.reject_btn.visible = false;
 					this.unapprove_btn.visible = true;
 					break;
+			}
+			if (this.map_scroll_mode) {
+				var ah = this.hunks.get(i);
+				var vw = (double) this.map_area.get_allocated_width();
+				var max_scroll = this.map_content_width - vw;
+				if (max_scroll < 0) {
+					max_scroll = 0;
+				}
+				this.map_scroll_x = ah.map_start + ah.map_width * 0.5 - vw * 0.5;
+				if (this.map_scroll_x < 0) {
+					this.map_scroll_x = 0;
+				}
+				if (this.map_scroll_x > max_scroll) {
+					this.map_scroll_x = max_scroll;
+				}
+				this.map_scroll_left.sensitive = this.map_scroll_x > 0.5;
+				this.map_scroll_right.sensitive = this.map_scroll_x < max_scroll - 0.5;
 			}
 			this.map_area.queue_draw();
 		}
@@ -651,6 +961,23 @@ namespace OLLMcoder.Diff
 			this.accept_btn.visible = pending;
 			this.reject_btn.visible = pending;
 			this.unapprove_btn.visible = false;
+			if (this.map_scroll_mode && this.active >= 0) {
+				var ah = this.hunks.get(this.active);
+				var vw = (double) this.map_area.get_allocated_width();
+				var max_scroll = this.map_content_width - vw;
+				if (max_scroll < 0) {
+					max_scroll = 0;
+				}
+				this.map_scroll_x = ah.map_start + ah.map_width * 0.5 - vw * 0.5;
+				if (this.map_scroll_x < 0) {
+					this.map_scroll_x = 0;
+				}
+				if (this.map_scroll_x > max_scroll) {
+					this.map_scroll_x = max_scroll;
+				}
+				this.map_scroll_left.sensitive = this.map_scroll_x > 0.5;
+				this.map_scroll_right.sensitive = this.map_scroll_x < max_scroll - 0.5;
+			}
 			this.map_area.queue_draw();
 		}
 
@@ -672,6 +999,23 @@ namespace OLLMcoder.Diff
 			this.accept_btn.visible = pending;
 			this.reject_btn.visible = pending;
 			this.unapprove_btn.visible = false;
+			if (this.map_scroll_mode && this.active >= 0) {
+				var ah = this.hunks.get(this.active);
+				var vw = (double) this.map_area.get_allocated_width();
+				var max_scroll = this.map_content_width - vw;
+				if (max_scroll < 0) {
+					max_scroll = 0;
+				}
+				this.map_scroll_x = ah.map_start + ah.map_width * 0.5 - vw * 0.5;
+				if (this.map_scroll_x < 0) {
+					this.map_scroll_x = 0;
+				}
+				if (this.map_scroll_x > max_scroll) {
+					this.map_scroll_x = max_scroll;
+				}
+				this.map_scroll_left.sensitive = this.map_scroll_x > 0.5;
+				this.map_scroll_right.sensitive = this.map_scroll_x < max_scroll - 0.5;
+			}
 			this.map_area.queue_draw();
 		}
 	}
