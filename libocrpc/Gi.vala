@@ -1244,7 +1244,7 @@ namespace OLLMrpc
 				case GI.TypeTag.UTF8:
 				case GI.TypeTag.FILENAME:
 					var s = GLib.Value(typeof(string));
-					s.set_string(arg.v_string);
+					s.set_string(arg.v_string != null ? arg.v_string : "");
 					dest.add(s);
 					return true;
 

@@ -180,6 +180,8 @@ namespace OLLMcoder.Diff
 		private Gtk.Button unapprove_btn;
 		private Gtk.Button feedback_btn;
 		private Gtk.PopoverMenu feedback_menu_popover;
+		private GLib.Menu feedback_menu;
+		private GLib.MenuItem[] feedback_menu_items = {};
 		private uint feedback_popover_hide_id = 0;
 		private Gtk.Box review_decision_box;
 		private Gee.ArrayList<ReviewResponse> review_responses {
@@ -611,6 +613,7 @@ namespace OLLMcoder.Diff
 			};
 			this.bulk_menu_popover.set_parent(this.bulk_btn);
 			((Gtk.Popover) this.bulk_menu_popover).autohide = false;
+			((Gtk.Popover) this.bulk_menu_popover).set_position(Gtk.PositionType.TOP);
 			var bulk_anchor_motion = new Gtk.EventControllerMotion();
 			bulk_anchor_motion.enter.connect(() => {
 				if (this.bulk_popover_hide_id != 0) {
@@ -674,6 +677,26 @@ namespace OLLMcoder.Diff
 				if (this.feedback_popover_hide_id != 0) {
 					GLib.Source.remove(this.feedback_popover_hide_id);
 					this.feedback_popover_hide_id = 0;
+				}
+				var hunk_ok = this.active >= 0 && this.active < this.hunks.size
+					&& this.hunks.get(this.active).decision == HunkDecision.PENDING;
+				for (var ri = 0; ri < this.review_responses.size; ri++) {
+					var menu_action = this.feedback_response_actions.lookup(
+						"response-%u".printf(ri)) as GLib.SimpleAction;
+					if (menu_action == null) {
+						continue;
+					}
+					var resp = this.review_responses.get(ri);
+					if (resp.is_bulk) {
+						menu_action.set_enabled(true);
+						this.feedback_menu_items[ri].set_attribute(
+							"tooltip", "s", resp.tooltip);
+						continue;
+					}
+					menu_action.set_enabled(hunk_ok);
+					this.feedback_menu_items[ri].set_attribute(
+						"tooltip", "s",
+						hunk_ok ? resp.tooltip : "Select a pending change");
 				}
 				this.feedback_menu_popover.popup();
 			});
@@ -744,14 +767,17 @@ namespace OLLMcoder.Diff
 		public void responses(Gee.ArrayList<ReviewResponse> items)
 		{
 			this.review_responses.clear();
+			this.feedback_menu_items = {};
 			for (var ri = 0; ri < items.size; ri++) {
 				this.review_responses.add(items.get(ri));
 			}
 			var menu = new GLib.Menu();
+			this.feedback_menu = menu;
 			for (var ri = 0; ri < this.review_responses.size; ri++) {
 				var resp_action = new GLib.SimpleAction("response-%u".printf(ri), null);
 				resp_action.set_data<ReviewResponse>(
 					"review-response", this.review_responses.get(ri));
+				resp_action.set_enabled(this.review_responses.get(ri).is_bulk);
 				resp_action.activate.connect(() => {
 					var resp = resp_action.get_data<ReviewResponse>("review-response");
 					if (resp.is_bulk) {
@@ -773,12 +799,18 @@ namespace OLLMcoder.Diff
 				var resp_item = new GLib.MenuItem(
 					this.review_responses.get(ri).label,
 					"feedback-resp.response-%u".printf(ri));
+				if (this.review_responses.get(ri).tooltip != "") {
+					resp_item.set_attribute(
+						"tooltip", "s", this.review_responses.get(ri).tooltip);
+				}
 				menu.append_item(resp_item);
+				this.feedback_menu_items += resp_item;
 			}
-			this.insert_action_group("feedback-resp", this.feedback_response_actions);
+			this.feedback_btn.insert_action_group("feedback-resp", this.feedback_response_actions);
 			this.feedback_menu_popover = new Gtk.PopoverMenu.from_model(menu);
 			this.feedback_menu_popover.set_parent(this.feedback_btn);
 			((Gtk.Popover) this.feedback_menu_popover).autohide = false;
+			((Gtk.Popover) this.feedback_menu_popover).set_position(Gtk.PositionType.TOP);
 			var feedback_popover_motion = new Gtk.EventControllerMotion();
 			feedback_popover_motion.enter.connect(() => {
 				if (this.feedback_popover_hide_id != 0) {
