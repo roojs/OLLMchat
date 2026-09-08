@@ -1,6 +1,6 @@
 # Gi.convert UTF8 IN: dangling `get_string` before `g_function_info_invoke`
 
-**Status:** ✔️ fix applied in `libocrpc/Gi.vala` — await consumer retest  
+**Status:** ✅ fixed — `string_keep` pin in `Gi.convert` UTF8/FILENAME  
 **Hit:** 2026-09-08  
 **Package / area:** `libocrpc` — `Gi.vala` `convert` (`GI.TypeTag.UTF8` / `FILENAME`)  
 **Consumer:** gnome-shell-rpc L7 — `Clutter-ActorMeta.set_name("align")` → mutter `priv->name` garbage → `get_constraint('align')` miss  
