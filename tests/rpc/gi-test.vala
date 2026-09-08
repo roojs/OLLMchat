@@ -167,6 +167,31 @@ namespace OLLMrpcTests
 			}
 			this.check(command_line, file_id != 0, "file handle is 0");
 			response = null;
+			var base_loop = new GLib.MainLoop();
+			rpc.call.begin(new OLLMrpc.Request() {
+				method = "Gio-File.get_basename",
+				lease_id = file_id
+			}, (obj, res) => {
+				try {
+					response = rpc.call.end(res);
+				} catch (GLib.Error e) {
+					this.check(command_line, false, e.message);
+				}
+				base_loop.quit();
+			});
+			base_loop.run();
+			this.check(command_line, response.error == null, "get_basename returned error");
+			this.check(
+				command_line,
+				response.retval.type() == typeof(string),
+				"get_basename retval type"
+			);
+			this.check(
+				command_line,
+				response.retval.get_string() == "missing",
+				"get_basename not missing"
+			);
+			response = null;
 			GLib.Error? read_error = null;
 			var read_loop = new GLib.MainLoop();
 			rpc.call.begin(new OLLMrpc.Request() {

@@ -1243,8 +1243,14 @@ namespace OLLMrpc
 
 				case GI.TypeTag.UTF8:
 				case GI.TypeTag.FILENAME:
+					if (arg.v_pointer == null) {
+						var z = GLib.Value(typeof(int));
+						z.set_int(0);
+						dest.add(z);
+						return true;
+					}
 					var s = GLib.Value(typeof(string));
-					s.set_string(arg.v_string != null ? arg.v_string : "");
+					s.set_string(arg.v_string);
 					dest.add(s);
 					return true;
 

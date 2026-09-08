@@ -24,6 +24,11 @@ namespace OLLMrpc
 		public Gee.Promise<Response> promise { get; construct; }
 		public bool sent { get; set; default = false; }
 
+		/**
+		 * Set by {@link Client.complete_pending} for {@link Client.call_sync}.
+		 */
+		public Response done_response { get; set; }
+
 		public PendingWrite(Request request)
 		{
 			Object(
@@ -183,6 +188,9 @@ namespace OLLMrpc
 		private bool sending { get; set; default = false; }
 		private GLib.IOChannel? read_channel;
 		private uint read_watch_id = 0;
+		/** Non-null while {@link call_sync} runs a private {@link GLib.MainLoop}. */
+		private GLib.MainLoop? sync_loop;
+		private int sync_id = 0;
 		private Soup.Session? http_session;
 		private Bin.Json http_json = new Bin.Json(
 			Bin.Mode.AUTO | Bin.Mode.AUTO_STR | Bin.Mode.IGNORE_UNKNOWN
@@ -364,42 +372,7 @@ namespace OLLMrpc
 			this.read_channel.set_buffered(false);
 			this.read_watch_id = this.read_channel.add_watch(
 				GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
-				(source, condition) => {
-					if ((condition & GLib.IOCondition.HUP) != 0
-						|| (condition & GLib.IOCondition.ERR) != 0) {
-						GLib.warning(
-							"socket closed socket_path=%s pending=%u hup=%s err=%s",
-							this.socket_path,
-							this.pending.size,
-							((condition & GLib.IOCondition.HUP) != 0).to_string(),
-							((condition & GLib.IOCondition.ERR) != 0).to_string()
-						);
-						this.disconnect();
-						return false;
-					}
-					if ((condition & GLib.IOCondition.IN) == 0) {
-						return this.connected;
-					}
-					if (!this.connected || this.bin == null) {
-						return this.connected;
-					}
-					do {
-						if (!this.connected || this.bin == null) {
-							break;
-						}
-						try {
-							var msg = this.bin.parse();
-							this.dispatch_message(msg);
-						} catch (GLib.IOError e) {
-							GLib.error("%s", e.message);
-						} catch (GLib.Error e) {
-							GLib.error("%s", e.message);
-						}
-					} while (
-						(source.get_buffer_condition() & GLib.IOCondition.IN) != 0
-					);
-					return this.connected;
-				}
+				this.on_read
 			);
 			GLib.debug("read watch started");
 
@@ -471,10 +444,11 @@ namespace OLLMrpc
 			foreach (var entry in this.pending) {
 				GLib.warning("disconnect abort %s id=%d socket_path=%s",
 					entry.request.method, entry.request.id, this.socket_path);
-				entry.promise.set_value(new Response() {
+				entry.done_response = new Response() {
 					id = entry.request.id,
 					error = new Error((int) RpcErrorCode.INTERNAL_ERROR, "Client: disconnected")
-				});
+				};
+				entry.promise.set_value(entry.done_response);
 			}
 			this.pending.clear();
 			this.proxies.clear();
@@ -640,16 +614,60 @@ namespace OLLMrpc
 				if (error != null) {
 					GLib.critical("RPC failed %s id=%d: %s",
 						entry.request.method, id, error.message);
-					entry.promise.set_value(new Response() {
+					entry.done_response = new Response() {
 						id = entry.request.id,
 						error = new Error((int) RpcErrorCode.INTERNAL_ERROR, error.message)
-					});
+					};
+					entry.promise.set_value(entry.done_response);
 				} else {
+					entry.done_response = response;
 					entry.promise.set_value(response);
 				}
 				this.send_head.begin();
+				if (this.sync_loop != null && id == this.sync_id) {
+					this.sync_loop.quit();
+				}
 				return;
 			}
+		}
+
+		/**
+		 * Socket read watch for {@link connect} and {@link call_sync}.
+		 *
+		 * @param source RPC socket channel
+		 * @param condition readiness bits from the main loop
+		 * @return whether to keep the watch
+		 */
+		private bool on_read(GLib.IOChannel source, GLib.IOCondition condition)
+		{
+			if ((condition & GLib.IOCondition.HUP) != 0 || (condition & GLib.IOCondition.ERR) != 0) {
+				GLib.warning("socket closed socket_path=%s pending=%u hup=%s err=%s",
+					this.socket_path, this.pending.size,
+					((condition & GLib.IOCondition.HUP) != 0).to_string(),
+					((condition & GLib.IOCondition.ERR) != 0).to_string());
+				this.disconnect();
+				return false;
+			}
+			if ((condition & GLib.IOCondition.IN) == 0) {
+				return this.connected;
+			}
+			if (!this.connected || this.bin == null) {
+				return this.connected;
+			}
+			do {
+				if (!this.connected || this.bin == null) {
+					break;
+				}
+				try {
+					var msg = this.bin.parse();
+					this.dispatch_message(msg);
+				} catch (GLib.IOError e) {
+					GLib.error("%s", e.message);
+				} catch (GLib.Error e) {
+					GLib.error("%s", e.message);
+				}
+			} while ((source.get_buffer_condition() & GLib.IOCondition.IN) != 0);
+			return this.connected;
 		}
 
 		/**
@@ -704,6 +722,103 @@ namespace OLLMrpc
 				code = response.error.code;
 			}
 			throw new GLib.Error.literal(quark, code, response.error.message);
+		}
+
+		/**
+		 * Blocking {@link call} that does not iterate the default
+		 * {@link GLib.MainContext}.
+		 *
+		 * Moves the existing read watch onto a private context and runs
+		 * {@link send_head} / completion there, so nested sync callers
+		 * (e.g. GI stubs) do not run Pulse/Gvc/idle sources mid-call.
+		 * Socket / TCP only.
+		 *
+		 * @param request wire request; {@link Request.id} is set here
+		 * @return wire response on success
+		 * @throws GLib.Error same as {@link call}
+		 */
+		public Response call_sync(Request request) throws GLib.Error
+		{
+#if ANDROID
+			throw new GLib.IOError.FAILED("call_sync is not available");
+#else
+			if (this.protocol != Protocol.SOCKET && this.protocol != Protocol.TCP) {
+				throw new GLib.IOError.FAILED("call_sync requires a socket protocol");
+			}
+			if (this.sync_loop != null) {
+				throw new GLib.IOError.FAILED("nested call_sync is not supported");
+			}
+			request.id = this.next_id++;
+			if (!this.connected) {
+				GLib.error("%s id=%d: not connected", request.method, request.id);
+			}
+
+			var entry = new PendingWrite(request);
+			this.pending.add(entry);
+
+			if (this.read_watch_id != 0) {
+				GLib.Source.remove(this.read_watch_id);
+				this.read_watch_id = 0;
+			}
+
+			this.sync_loop = new GLib.MainLoop(new GLib.MainContext(), false);
+			this.sync_id = request.id;
+			this.sync_loop.get_context().push_thread_default();
+			var sync_watch = this.read_channel.create_watch(
+				GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR
+			);
+			sync_watch.set_callback(this.on_read);
+			sync_watch.attach(this.sync_loop.get_context());
+			GLib.Source? timeout_source = null;
+			if (this.call_timeout_seconds > 0) {
+				timeout_source = new GLib.TimeoutSource.seconds(this.call_timeout_seconds);
+				timeout_source.set_callback(() => {
+					GLib.warning("call timed out %s id=%d after %u s",
+						entry.request.method, entry.request.id, this.call_timeout_seconds);
+					this.complete_pending(
+						entry.request.id, null, new GLib.IOError.TIMED_OUT("call timed out"));
+					return false;
+				});
+				timeout_source.attach(this.sync_loop.get_context());
+			}
+			this.send_head.begin();
+			try {
+				while (entry.done_response == null) {
+					this.sync_loop.run();
+				}
+			} finally {
+				if (timeout_source != null) {
+					timeout_source.destroy();
+				}
+				sync_watch.destroy();
+				this.sync_loop.get_context().pop_thread_default();
+				this.sync_loop = null;
+				this.sync_id = 0;
+				if (this.connected && this.read_channel != null) {
+					this.read_watch_id = this.read_channel.add_watch(
+						GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
+						this.on_read
+					);
+					if (this.pending.size > 0 && !this.pending.get(0).sent) {
+						this.send_head.begin();
+					}
+				}
+			}
+
+			if (entry.done_response.error == null) {
+				return entry.done_response;
+			}
+			GLib.warning("%s id=%d: %s",
+				request.method, request.id, entry.done_response.error.message);
+			this.failed(request, entry.done_response.error);
+			var quark = GLib.Quark.from_string(entry.done_response.error.domain);
+			var code = entry.done_response.error.gerror_code;
+			if (entry.done_response.error.domain == "") {
+				quark = new RpcErrorCode.INTERNAL_ERROR("").domain;
+				code = entry.done_response.error.code;
+			}
+			throw new GLib.Error.literal(quark, code, entry.done_response.error.message);
+#endif
 		}
 
 		private async Response wait_response(
