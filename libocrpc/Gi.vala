@@ -73,6 +73,15 @@ namespace OLLMrpc
 		private Gee.ArrayList<GLib.Bytes> boxed_keep = new Gee.ArrayList<GLib.Bytes>();
 
 		/**
+		 * Owned UTF8 / FILENAME IN copies for the current
+		 * {@link dispatch_new} / {@link dispatch_function} invoke.
+		 * {@link GI.Argument} ''v_pointer'' aliases storage here so
+		 * ''val.get_string()'' does not dangle after the by-value
+		 * {@link GLib.Value} copy is unset (same role as Ffi ''pin'').
+		 */
+		private Gee.ArrayList<string> string_keep = new Gee.ArrayList<string>();
+
+		/**
 		 * IN {@link GLib.List} / {@link GLib.SList} heads for the current
 		 * invoke. Element pointers are lease-backed GObjects, UTF8
 		 * strings, or boxed blobs (transfer none). Assigning ''{}''
@@ -298,6 +307,7 @@ namespace OLLMrpc
 			this.in_args = new GI.Argument[n_in];
 			this.out_args = new GI.Argument[0];
 			this.boxed_keep.clear();
+			this.string_keep.clear();
 			this.glist_keep = {};
 			this.gslist_keep = {};
 			var vi = 0;
@@ -415,6 +425,7 @@ namespace OLLMrpc
 			this.in_args = new GI.Argument[n_in];
 			this.out_args = new GI.Argument[n_out];
 			this.boxed_keep.clear();
+			this.string_keep.clear();
 			this.glist_keep = {};
 			this.gslist_keep = {};
 			if (instance) {
@@ -662,7 +673,10 @@ namespace OLLMrpc
 
 				case GI.TypeTag.UTF8:
 				case GI.TypeTag.FILENAME:
-					this.in_args[vi + offset].v_string = val.get_string();
+					var held = val.get_string();
+					this.string_keep.add(held);
+					this.in_args[vi + offset].v_pointer =
+						(void*) this.string_keep.get(this.string_keep.size - 1);
 					return true;
 
 				case GI.TypeTag.ARRAY:

@@ -123,12 +123,12 @@ End-to-end RPC stack beyond the bin socket cutover (**8.1**):
 
 - **🔷** `⏳` **`libocrpc`** HTTP JSON on **`Client`** (see **8.2.1** Part B).
 - **🔷** `⏳` **`libocrpc` Client** — HTTP mode on existing **`call()`**; **`Request.method`** = path; one libsoup round-trip per call (no socket **`connect`**).
-- **🔷** `⏳` HTTP server hook — for daemons or future OpenAI-compat server (Phase 5); map route → `method` string + body parse.
+- **🔷** `⏳` HTTP **server** — sub-plan [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md) (JSON Hello World → bin+session → HTTPS / auth / client certs).
 - **💩** `⏳` Mapping table: HTTP path ↔ RPC `method` (e.g. `POST /v1/chat/completions` ↔ `Chat.completions` internal method) — define when Phase 4/5 specs land.
 
 ### Out of scope for Phase 3 alone
 
-- **🚫** SSE/streaming HTTP for chat tokens — separate follow-up (may share session id from Phase 6).
+- **🚫** SSE/streaming HTTP for chat tokens — owned by [`RPC-8.2.3.1-http-json-streaming.md`](RPC-8.2.3.1-http-json-streaming.md) (may share session id from Phase 6 / **8.2.3.2**).
 - **🚫** Full OpenAI schema compatibility — Phase 5.
 
 ---
@@ -258,10 +258,13 @@ End-to-end RPC stack beyond the bin socket cutover (**8.1**):
 
 - **⏳** **8.2.1** — [`RPC-8.2.1-libocrpc-auto-json-and-http-client.md`](RPC-8.2.1-libocrpc-auto-json-and-http-client.md) — **active**; **`Bin.Json` AUTO** + HTTP on **`OLLMrpc.Client`**; unblocks **`libochf`**
 - **✔️** **8.2.2** — [`done/8.2.2-DONE-proper-bin-json-streaming.md`](done/8.2.2-DONE-proper-bin-json-streaming.md) — **`Bin.Json.from_gobject`**; async **`Connection.write`**; stdio NDJSON path
-- **⏳** **8.2.3** — Phase 4: `libollmchat` Json.Serializable removal
-- **⏳** **8.2.4** — Phase 5: OpenAI-compatible server
-- **⏳** **8.2.5** — Phase 6: session resumption
-- **⏳** **8.2.6** — Phase 7: TLS + client certificates
+- **⏳** **8.2.3** — [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md) — HTTP **server** Phase 1 unary `✔️` agent; HTTPS / auth / certs later
+- **⏳** **8.2.3.1** — [`RPC-8.2.3.1-http-json-streaming.md`](RPC-8.2.3.1-http-json-streaming.md) — NDJSON streaming for inference
+- **⏳** **8.2.3.2** — [`RPC-8.2.3.2-http-bin-session.md`](RPC-8.2.3.2-http-bin-session.md) — bin over HTTP + session id
+- **⏳** **8.2.4** — Phase 4: `libollmchat` Json.Serializable removal
+- **⏳** **8.2.5** — Phase 5: OpenAI-compatible server
+- **⏳** **8.2.6** — Phase 6: session resumption (socket / shared with **8.2.3.2**)
+- **⏳** **8.2.7** — Phase 7: TLS + client certificates (socket / shared with **8.2.3** Phases 4–6)
 
 ---
 

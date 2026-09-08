@@ -299,12 +299,13 @@ meson compile -C build occoder examples/oc-test-source-diff
 - **⏳** **ReviewBar:** in-buffer active-hunk highlight (dim / emphasize changed lines) — **not** SourceView; design + implement in **`ReviewBar.vala`** only when user approves approach.
 - **⏳** Smoke fixes in progress: hunk map visibility, overlay position, bulk menu, file nav hidden when one file, two-pair CLI on **`oc-test-source-diff`**.
 - **⏳** Accept/Reject **diff preview** (rebuild **`show_diff`** after each decision) — **removed** unauthorized **`sync_diff_from_decisions`** / **`load_diff`** helpers; needs **user-named** approach in **`ReviewBar`** before re-adding.
+- **⏳** **Programmable review responses** — sub-plan [`CODER-4.2.3.5.1-source-view-diff-review-responses.md`](CODER-4.2.3.5.1-source-view-diff-review-responses.md) (reverted first attempt; minimal **`responses()`** + **`review_response_zone`** only).
 
 ### LLM notes (Phase A)
 
 - **✔️** Phase A Vala landed in **`ReviewBar.vala`** + test harness (Phase B still 🚫).
 - ℹ️ **SourceView boundary:** review hunk tracking / in-text highlight belongs in **ReviewBar** (see **SourceView vs ReviewBar** above). Wrong experiment reverted — do not re-add to **`SourceView.vala`** without explicit user approval.
-- 🚫 **`ReviewBar` helpers** unless **user or plan names them** — approved: **`on_width()`**, **`draw_hunk_band()`**, **`on_accept_clicked()`**, **`on_reject_clicked()`**, **`on_map_clicked()`**; do **not** add **`sync_*`**, **`load_*`**, **`ensure_*`**, etc. without approval.
+- 🚫 **`ReviewBar` helpers** unless **user or plan names them** — approved: **`on_width()`**, **`draw_hunk_band()`**, **`on_accept_clicked()`**, **`on_reject_clicked()`**, **`on_map_clicked()`**, **`next()`** (sub-plan [`CODER-4.2.3.5.1`](CODER-4.2.3.5.1-source-view-diff-review-responses.md)); do **not** add **`sync_*`**, **`load_*`**, **`ensure_*`**, etc. without approval.
 - 🚫 Daemon, **`file_diff_part`**, disk writes, **`ReviewFiles`**, **`Approvals`** changes.
 - 🚫 Gutter / inline-buffer Accept/Reject as primary UI.
 - 🚫 Accept/Reject chrome on footer band (breaks rapid accept).

@@ -131,6 +131,23 @@ Examples:
 		};
 		this.review_bar = new OLLMcoder.Diff.ReviewBar(
 			this.source_view, pair_count, opt_mock_inactive, 0, this.pair_titles);
+		var review_responses = new Gee.ArrayList<OLLMcoder.Diff.ReviewResponse>();
+		review_responses.add(new OLLMcoder.Diff.ReviewResponse() {
+			label = "Coding standards",
+			prompt = "This section of code does not follow coding standards. "
+				+ "Please refer to docs/coding-standards-router.md and the mapped "
+				+ "sections in docs/coding-standards.md.",
+			tooltip = "Report coding standards issue for this hunk",
+			is_bulk = false,
+		});
+		review_responses.add(new OLLMcoder.Diff.ReviewResponse() {
+			label = "Helper methods (whole file)",
+			prompt = "This file contains helper methods that were not requested. "
+				+ "Do not add helper methods unless the user or plan names them.",
+			tooltip = "Report unauthorized helper methods for the whole file",
+			is_bulk = true,
+		});
+		this.review_bar.responses(review_responses);
 		this.review_bar.file_index_changed.connect((index) => {
 			if (index < 0 || index >= this.pair_baselines.length) {
 				return;
@@ -161,6 +178,10 @@ Examples:
 			this.pair_baselines[0], this.pair_currents[0]);
 		this.source_view.show_diff(differ);
 		this.review_bar.update_diff(differ, 0);
+		this.review_bar.review_response.connect((response, file_index, hunk_index) => {
+			GLib.print("Review response [%s] file=%d hunk=%d:\n%s\n\n".printf(
+				response.label, file_index, hunk_index, response.prompt));
+		});
 		var loop = new GLib.MainLoop();
 		this.window.close_request.connect(() => {
 			loop.quit();

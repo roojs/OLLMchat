@@ -24,6 +24,18 @@ namespace OLLMcoder.Diff
 		REJECTED
 	}
 
+	/**
+	 * Programmable quick-review feedback to the LLM (label, tooltip, prompt text).
+	 * Does not change hunk or file review state — consumer sends prompt to the LLM.
+	 */
+	public class ReviewResponse : Object
+	{
+		public string label { get; set; default = ""; }
+		public string tooltip { get; set; default = ""; }
+		public string prompt { get; set; default = ""; }
+		public bool is_bulk { get; set; default = false; }
+	}
+
 	public class HunkBand : Object
 	{
 		public OLLMfiles.Diff.PatchOperation operation { get; construct; }
@@ -130,6 +142,8 @@ namespace OLLMcoder.Diff
 		public signal void accept_all_files();
 		public signal void reject_all_files();
 
+		public signal void review_response(ReviewResponse response, int file_index, int hunk_index);
+
 		private OLLMcoder.SourceView source_view;
 		private HunkList hunks { get; set; default = new HunkList(); }
 		private int active = -1;
@@ -164,6 +178,16 @@ namespace OLLMcoder.Diff
 		private Gtk.Button accept_btn;
 		private Gtk.Button reject_btn;
 		private Gtk.Button unapprove_btn;
+		private Gtk.Button feedback_btn;
+		private Gtk.PopoverMenu feedback_menu_popover;
+		private uint feedback_popover_hide_id = 0;
+		private Gtk.Box review_decision_box;
+		private Gee.ArrayList<ReviewResponse> review_responses {
+			get; set; default = new Gee.ArrayList<ReviewResponse>();
+		}
+		private GLib.SimpleActionGroup feedback_response_actions {
+			get; set; default = new GLib.SimpleActionGroup();
+		}
 
 		public ReviewBar(
 			OLLMcoder.SourceView source_view,
@@ -631,12 +655,45 @@ namespace OLLMcoder.Diff
 			this.append(footer);
 
 			this.review_overlay = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8) {
-				halign = Gtk.Align.CENTER,
+				halign = Gtk.Align.FILL,
 				valign = Gtk.Align.END,
 				vexpand = true,
 				hexpand = true,
 				spacing = 8,
 				css_classes = { "oc-diff-review-overlay" },
+			};
+			this.feedback_btn = new Gtk.Button.with_label("Feedback") {
+				visible = false,
+				tooltip_text = "Quick review feedback to the LLM",
+			};
+			var feedback_anchor_motion = new Gtk.EventControllerMotion();
+			feedback_anchor_motion.enter.connect(() => {
+				if (this.feedback_menu_popover == null || this.review_responses.size < 1) {
+					return;
+				}
+				if (this.feedback_popover_hide_id != 0) {
+					GLib.Source.remove(this.feedback_popover_hide_id);
+					this.feedback_popover_hide_id = 0;
+				}
+				this.feedback_menu_popover.popup();
+			});
+			feedback_anchor_motion.leave.connect(() => {
+				if (this.feedback_menu_popover == null) {
+					return;
+				}
+				if (this.feedback_popover_hide_id != 0) {
+					GLib.Source.remove(this.feedback_popover_hide_id);
+				}
+				this.feedback_popover_hide_id = GLib.Timeout.add_seconds(3, () => {
+					((Gtk.Popover) this.feedback_menu_popover).popdown();
+					this.feedback_popover_hide_id = 0;
+					return false;
+				});
+			});
+			this.feedback_btn.add_controller(feedback_anchor_motion);
+			this.review_decision_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8) {
+				halign = Gtk.Align.END,
+				spacing = 8,
 			};
 			this.accept_btn = new Gtk.Button.with_label("Accept") {
 				css_classes = { "suggested-action" },
@@ -667,9 +724,80 @@ namespace OLLMcoder.Diff
 				this.unapprove_btn.visible = false;
 				this.map_area.queue_draw();
 			});
-			this.review_overlay.append(this.accept_btn);
-			this.review_overlay.append(this.reject_btn);
-			this.review_overlay.append(this.unapprove_btn);
+			this.review_decision_box.append(this.accept_btn);
+			this.review_decision_box.append(this.reject_btn);
+			this.review_decision_box.append(this.unapprove_btn);
+			var overlay_spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				hexpand = true,
+			};
+			this.review_overlay.append(this.feedback_btn);
+			this.review_overlay.append(overlay_spacer);
+			this.review_overlay.append(this.review_decision_box);
+		}
+
+		/**
+		 * Programmable review-response menu (Feedback popover).
+		 * Emits {@link review_response} only — does not accept/reject/revert.
+		 *
+		 * @param items quick-review actions supplied by the owner
+		 */
+		public void responses(Gee.ArrayList<ReviewResponse> items)
+		{
+			this.review_responses.clear();
+			for (var ri = 0; ri < items.size; ri++) {
+				this.review_responses.add(items.get(ri));
+			}
+			var menu = new GLib.Menu();
+			for (var ri = 0; ri < this.review_responses.size; ri++) {
+				var resp_action = new GLib.SimpleAction("response-%u".printf(ri), null);
+				resp_action.set_data<ReviewResponse>(
+					"review-response", this.review_responses.get(ri));
+				resp_action.activate.connect(() => {
+					var resp = resp_action.get_data<ReviewResponse>("review-response");
+					if (resp.is_bulk) {
+						this.review_response(resp, this.file_index, -1);
+						((Gtk.Popover) this.feedback_menu_popover).popdown();
+						return;
+					}
+					if (this.active < 0 || this.active >= this.hunks.size) {
+						return;
+					}
+					if (this.hunks.get(this.active).decision != HunkDecision.PENDING) {
+						return;
+					}
+					this.review_response(resp, this.file_index, this.active);
+					this.next();
+					((Gtk.Popover) this.feedback_menu_popover).popdown();
+				});
+				this.feedback_response_actions.add_action(resp_action);
+				var resp_item = new GLib.MenuItem(
+					this.review_responses.get(ri).label,
+					"feedback-resp.response-%u".printf(ri));
+				menu.append_item(resp_item);
+			}
+			this.insert_action_group("feedback-resp", this.feedback_response_actions);
+			this.feedback_menu_popover = new Gtk.PopoverMenu.from_model(menu);
+			this.feedback_menu_popover.set_parent(this.feedback_btn);
+			((Gtk.Popover) this.feedback_menu_popover).autohide = false;
+			var feedback_popover_motion = new Gtk.EventControllerMotion();
+			feedback_popover_motion.enter.connect(() => {
+				if (this.feedback_popover_hide_id != 0) {
+					GLib.Source.remove(this.feedback_popover_hide_id);
+					this.feedback_popover_hide_id = 0;
+				}
+			});
+			feedback_popover_motion.leave.connect(() => {
+				if (this.feedback_popover_hide_id != 0) {
+					GLib.Source.remove(this.feedback_popover_hide_id);
+				}
+				this.feedback_popover_hide_id = GLib.Timeout.add_seconds(3, () => {
+					((Gtk.Popover) this.feedback_menu_popover).popdown();
+					this.feedback_popover_hide_id = 0;
+					return false;
+				});
+			});
+			(this.feedback_menu_popover as Gtk.Widget).add_controller(feedback_popover_motion);
+			this.feedback_btn.visible = this.review_responses.size > 0;
 		}
 
 		/**
@@ -716,6 +844,7 @@ namespace OLLMcoder.Diff
 					this.file_count);
 				this.accept_btn.visible = false;
 				this.reject_btn.visible = false;
+				this.feedback_btn.visible = false;
 				this.unapprove_btn.visible = false;
 				return;
 			}
@@ -730,6 +859,7 @@ namespace OLLMcoder.Diff
 				&& this.hunks.get(this.active).decision == HunkDecision.PENDING;
 			this.accept_btn.visible = pending;
 			this.reject_btn.visible = pending;
+			this.feedback_btn.visible = this.review_responses.size > 0;
 			this.unapprove_btn.visible = false;
 			this.map_width = 0;
 			GLib.Idle.add_once(() => {
@@ -895,6 +1025,38 @@ namespace OLLMcoder.Diff
 			cr.restore();
 		}
 
+		private void next()
+		{
+			this.active = this.hunks.pending_after(this.active);
+			if (this.active >= 0) {
+				this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
+			}
+			var pending = this.active >= 0;
+			this.accept_btn.visible = pending;
+			this.reject_btn.visible = pending;
+			this.unapprove_btn.visible = false;
+			if (!this.map_scroll_mode || this.active < 0) {
+				this.map_area.queue_draw();
+				return;
+			}
+			var ah = this.hunks.get(this.active);
+			var vw = (double) this.map_area.get_allocated_width();
+			var max_scroll = this.map_content_width - vw;
+			if (max_scroll < 0) {
+				max_scroll = 0;
+			}
+			this.map_scroll_x = ah.map_start + ah.map_width * 0.5 - vw * 0.5;
+			if (this.map_scroll_x < 0) {
+				this.map_scroll_x = 0;
+			}
+			if (this.map_scroll_x > max_scroll) {
+				this.map_scroll_x = max_scroll;
+			}
+			this.map_scroll_left.sensitive = this.map_scroll_x > 0.5;
+			this.map_scroll_right.sensitive = this.map_scroll_x < max_scroll - 0.5;
+			this.map_area.queue_draw();
+		}
+
 		private void on_map_clicked(double x)
 		{
 			if (this.mock_inactive || this.hunks.size < 1) {
@@ -953,32 +1115,7 @@ namespace OLLMcoder.Diff
 			}
 			var decided = this.active;
 			this.hunks.get(decided).decision = HunkDecision.ACCEPTED;
-			this.active = this.hunks.pending_after(decided);
-			if (this.active >= 0) {
-				this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
-			}
-			var pending = this.active >= 0;
-			this.accept_btn.visible = pending;
-			this.reject_btn.visible = pending;
-			this.unapprove_btn.visible = false;
-			if (this.map_scroll_mode && this.active >= 0) {
-				var ah = this.hunks.get(this.active);
-				var vw = (double) this.map_area.get_allocated_width();
-				var max_scroll = this.map_content_width - vw;
-				if (max_scroll < 0) {
-					max_scroll = 0;
-				}
-				this.map_scroll_x = ah.map_start + ah.map_width * 0.5 - vw * 0.5;
-				if (this.map_scroll_x < 0) {
-					this.map_scroll_x = 0;
-				}
-				if (this.map_scroll_x > max_scroll) {
-					this.map_scroll_x = max_scroll;
-				}
-				this.map_scroll_left.sensitive = this.map_scroll_x > 0.5;
-				this.map_scroll_right.sensitive = this.map_scroll_x < max_scroll - 0.5;
-			}
-			this.map_area.queue_draw();
+			this.next();
 		}
 
 		private void on_reject_clicked()
@@ -991,32 +1128,7 @@ namespace OLLMcoder.Diff
 			}
 			var decided = this.active;
 			this.hunks.get(decided).decision = HunkDecision.REJECTED;
-			this.active = this.hunks.pending_after(decided);
-			if (this.active >= 0) {
-				this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
-			}
-			var pending = this.active >= 0;
-			this.accept_btn.visible = pending;
-			this.reject_btn.visible = pending;
-			this.unapprove_btn.visible = false;
-			if (this.map_scroll_mode && this.active >= 0) {
-				var ah = this.hunks.get(this.active);
-				var vw = (double) this.map_area.get_allocated_width();
-				var max_scroll = this.map_content_width - vw;
-				if (max_scroll < 0) {
-					max_scroll = 0;
-				}
-				this.map_scroll_x = ah.map_start + ah.map_width * 0.5 - vw * 0.5;
-				if (this.map_scroll_x < 0) {
-					this.map_scroll_x = 0;
-				}
-				if (this.map_scroll_x > max_scroll) {
-					this.map_scroll_x = max_scroll;
-				}
-				this.map_scroll_left.sensitive = this.map_scroll_x > 0.5;
-				this.map_scroll_right.sensitive = this.map_scroll_x < max_scroll - 0.5;
-			}
-			this.map_area.queue_draw();
+			this.next();
 		}
 	}
 }

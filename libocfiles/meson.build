@@ -14,6 +14,7 @@ ocfiles_deps = [
   dependency('gmodule-2.0'),  # GModule for dynamic library loading
   dependency('json-glib-1.0'),
   dependency('sqlite3'),
+  dependency('libsoup-3.0'),  # ocrpc.h includes Soup types (HttpReply)
   valac.find_library('posix'),
   tree_sitter_dep,
 ]
@@ -24,6 +25,7 @@ ocfiles_vapi_pkgs = [
   '--pkg=gmodule-2.0',  # GModule for dynamic library loading (required for TreeBase)
   '--pkg=tree-sitter',  # Tree-sitter via vapi (required for TreeBase)
   '--pkg=ocsqlite',
+  '--pkg=libsoup-3.0',  # ocrpc.vapi references Soup types (HttpReply)
 ]
 
 ocfiles_vapi_gen_pkgs = [
@@ -33,6 +35,7 @@ ocfiles_vapi_gen_pkgs = [
   '--pkg', 'gmodule-2.0',  # GModule for dynamic library loading (required for TreeBase)
   '--pkg', 'tree-sitter',  # Tree-sitter via vapi (required for TreeBase)
   '--pkg', 'ocsqlite',
+  '--pkg', 'libsoup-3.0',
   '--pkg', 'gobject-2.0',
   '--pkg', 'glib-2.0',
   '--pkg', 'gio-2.0',

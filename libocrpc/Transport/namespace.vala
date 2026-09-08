@@ -16,8 +16,10 @@
  *
  * The OLLMrpc.Transport namespace owns daemon-side sockets: {@link Listen}
  * accept loops, {@link Connection} per peer, and helpers for Unix socket
- * ({@link SocketListen}) or TCP ({@link TcpListen}). Each connection keeps
- * one {@link OLLMrpc.Bin.Stream} for the peer lifetime.
+ * ({@link SocketListen}) or TCP ({@link TcpListen}). HTTP JSON RPC uses
+ * {@link HttpServer} with per-POST {@link HttpReply} write targets.
+ * Each socket connection keeps one {@link OLLMrpc.Bin.Stream} for the peer
+ * lifetime.
  *
  * == Example ==
  *
@@ -27,6 +29,13 @@
  *     GLib.error("failed to listen on %s", socket_path);
  * }
  * // Incoming peers become Connection instances; use broadcast() to fan out
+ * }}}
+ *
+ * === HTTP ===
+ *
+ * {{{
+ * var http = new OLLMrpc.Transport.HttpServer(8080);
+ * http.start();
  * }}}
  */
 namespace OLLMrpc.Transport
