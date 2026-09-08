@@ -623,9 +623,12 @@ namespace OLLMrpc
 					entry.done_response = response;
 					entry.promise.set_value(response);
 				}
-				this.send_head.begin();
-				if (this.sync_loop != null && id == this.sync_id) {
-					this.sync_loop.quit();
+				if (this.sync_loop != null) {
+					if (id == this.sync_id) {
+						this.sync_loop.quit();
+					}
+				} else {
+					this.send_head.begin();
 				}
 				return;
 			}
@@ -728,10 +731,12 @@ namespace OLLMrpc
 		 * Blocking {@link call} that does not iterate the default
 		 * {@link GLib.MainContext}.
 		 *
-		 * Moves the existing read watch onto a private context and runs
-		 * {@link send_head} / completion there, so nested sync callers
-		 * (e.g. GI stubs) do not run Pulse/Gvc/idle sources mid-call.
-		 * Socket / TCP only.
+		 * Attaches the read watch (and call timeout) to a private context
+		 * and runs only that loop until this request completes. Does not
+		 * {@link GLib.MainContext.push_thread_default} — that would steal
+		 * Clutter/GJS idles onto the private context and drop them on
+		 * teardown. Sends with a blocking flush so {@link send_head} is
+		 * not required mid-call. Socket / TCP only.
 		 *
 		 * @param request wire request; {@link Request.id} is set here
 		 * @return wire response on success
@@ -763,7 +768,6 @@ namespace OLLMrpc
 
 			this.sync_loop = new GLib.MainLoop(new GLib.MainContext(), false);
 			this.sync_id = request.id;
-			this.sync_loop.get_context().push_thread_default();
 			var sync_watch = this.read_channel.create_watch(
 				GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR
 			);
@@ -781,17 +785,33 @@ namespace OLLMrpc
 				});
 				timeout_source.attach(this.sync_loop.get_context());
 			}
-			this.send_head.begin();
 			try {
 				while (entry.done_response == null) {
+					if (!this.sending && this.pending.size > 0 && !this.pending.get(0).sent) {
+						var head = this.pending.get(0);
+						this.sending = true;
+						GLib.debug("id=%d method=%s", head.request.id, head.request.method);
+						this.bin.write(head.request);
+						this.output.flush(null);
+						head.sent = true;
+						this.sending = false;
+						continue;
+					}
+					if (entry.done_response != null) {
+						break;
+					}
 					this.sync_loop.run();
 				}
+			} catch (GLib.Error e) {
+				this.sending = false;
+				this.complete_pending(
+					this.pending.size > 0 ? this.pending.get(0).request.id : entry.request.id,
+					null, e);
 			} finally {
 				if (timeout_source != null) {
 					timeout_source.destroy();
 				}
 				sync_watch.destroy();
-				this.sync_loop.get_context().pop_thread_default();
 				this.sync_loop = null;
 				this.sync_id = 0;
 				if (this.connected && this.read_channel != null) {
