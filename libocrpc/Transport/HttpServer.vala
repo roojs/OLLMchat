@@ -96,19 +96,36 @@ namespace OLLMrpc.Transport
 			if (path == this.rpc_path) {
 				return;
 			}
-			if (OLLMrpc.Http.by_verb == null
-				|| !OLLMrpc.Http.by_verb.has_key(msg.get_method())) {
+			var verb = msg.get_method();
+			if (OLLMrpc.Http.by_verb == null || !OLLMrpc.Http.by_verb.has_key(verb)) {
 				msg.set_status(404, null);
 				msg.set_response("text/plain", Soup.MemoryUse.COPY, "not found".data);
 				return;
 			}
-			var paths = OLLMrpc.Http.by_verb.get(msg.get_method());
+			var paths = OLLMrpc.Http.by_verb.get(verb);
+			var path_id = "";
+			var lookup = path;
 			if (!paths.has_key(path)) {
+				var slash = path.last_index_of_char('/');
+				if (slash <= 0) {
+					msg.set_status(404, null);
+					msg.set_response("text/plain", Soup.MemoryUse.COPY, "not found".data);
+					return;
+				}
+				lookup = path.substring(0, slash);
+				path_id = path.substring(slash + 1);
+			}
+			if (!paths.has_key(lookup)) {
 				msg.set_status(404, null);
 				msg.set_response("text/plain", Soup.MemoryUse.COPY, "not found".data);
 				return;
 			}
-			var route = paths.get(path);
+			var route = paths.get(lookup);
+			if (path_id != "" && !route.variable) {
+				msg.set_status(404, null);
+				msg.set_response("text/plain", Soup.MemoryUse.COPY, "not found".data);
+				return;
+			}
 			var reply = new HttpReply(this.soup, msg) {
 				live_handles = this.live_handles
 			};
@@ -116,6 +133,8 @@ namespace OLLMrpc.Transport
 				method = route.wire_name + "." + route.method,
 				connection = reply
 			};
+			var have_body = false;
+			var body = (GLib.Object) null;
 			if (route.request_type != typeof(void)) {
 				var bytes = msg.get_request_body().flatten();
 				if (bytes.get_size() > 0) {
@@ -178,8 +197,16 @@ namespace OLLMrpc.Transport
 						msg.set_status(400, null);
 						return;
 					}
-					request.args = OLLMrpc.args("o", parsed);
+					body = parsed;
+					have_body = true;
 				}
+			}
+			if (route.variable && have_body) {
+				request.args = OLLMrpc.args("so", path_id, body);
+			} else if (route.variable) {
+				request.args = OLLMrpc.args("s", path_id);
+			} else if (have_body) {
+				request.args = OLLMrpc.args("o", body);
 			}
 			if (!request.dispatch()) {
 				msg.set_status(404, null);

@@ -34,11 +34,17 @@ namespace OLLMrpc
 	 *
 	 * {{{
 	 * OLLMrpc.Http.routes("RPC-Alarm", typeof(Service),
-	 *     "/v1/alarms", "GET", "list", "", typeof(AlarmListQuery), typeof(AlarmList),
-	 *     "/v1/alarms", "POST", "create", "o", typeof(AlarmCreate), typeof(Alarm)
+	 *     "/v1/alarms/{id}", "GET", "get", "s", typeof(void), typeof(void),
+	 *     "/v1/alarms", "POST", "create", "o", typeof(AlarmCreate), typeof(Alarm),
+	 *     "/v1/alarms/{id}", "DELETE", "remove", "s", typeof(void), typeof(void)
 	 * );
 	 * OLLMrpc.Request.register("RPC-Alarm", new Service());
 	 * }}}
+	 *
+	 * One registration per verb+path. A trailing ''/{id}'' is stripped
+	 * and sets {@link Route.variable}: the last segment is optional and
+	 * becomes the first FFI ''s'' (empty when absent). A JSON body (if
+	 * any) follows as ''o'' (sig ''"so"'').
 	 *
 	 * === One extra path ===
 	 *
@@ -59,7 +65,7 @@ namespace OLLMrpc
 		public class Route : GLib.Object
 		{
 			/**
-			 * Short FFI method name (e.g. ''list''), not the wire
+			 * Short FFI method name (e.g. ''get''), not the wire
 			 * prefix.
 			 */
 			public string method { get; set; default = ""; }
@@ -86,17 +92,26 @@ namespace OLLMrpc
 			 * dispatch.
 			 */
 			public GLib.Type response_type { get; set; }
+
+			/**
+			 * True when registration ended in ''/{id}'' — optional
+			 * trailing segment → first FFI ''s''.
+			 */
+			public bool variable { get; set; default = false; }
 		}
 
-		/** Verb → exact path → {@link Route} (filled by {@link add}). */
+		/** Verb → path → {@link Route}. */
 		internal static Gee.HashMap<string, Gee.HashMap<string, Route>> by_verb;
 
 		/**
-		 * Register one HTTP route (exact path key under verb).
+		 * Register one HTTP route under a verb.
 		 *
 		 * Does ''not'' call {@link Request.add_class}. Use when the
 		 * method/sig is already registered, or for a late/test-only
 		 * path. Prefer {@link routes} from service ''rpc_register()''.
+		 * A trailing ''/{id}'' is stripped from the stored path and
+		 * sets {@link Route.variable} (optional id on that one
+		 * method).
 		 *
 		 * == Example ==
 		 *
@@ -109,11 +124,12 @@ namespace OLLMrpc
 		 *
 		 * @param wire_name wire object prefix (e.g. RPC-Alarm)
 		 * @param handler handler GType (same as add_class)
-		 * @param path exact path key (e.g. /v1/alarms)
+		 * @param path path key (e.g. /v1/alarms or /v1/alarms/{id})
 		 * @param verb HTTP verb (GET, POST, …)
-		 * @param method_name short method (e.g. list)
+		 * @param method_name short method (e.g. get)
 		 * @param request_type body GType, or typeof(void)
 		 * @param response_type retval GType
+		 * @throws GLib.IOError.EXISTS when verb+path is already registered
 		 */
 		public static void add(
 			string wire_name,
@@ -123,19 +139,29 @@ namespace OLLMrpc
 			string method_name,
 			GLib.Type request_type,
 			GLib.Type response_type
-		) {
+		) throws GLib.Error {
+			var variable = path.has_suffix("/{id}");
+			var key = variable
+				? path.substring(0, path.length - "/{id}".length)
+				: path;
 			if (by_verb == null) {
 				by_verb = new Gee.HashMap<string, Gee.HashMap<string, Route>>();
 			}
 			if (!by_verb.has_key(verb)) {
 				by_verb.set(verb, new Gee.HashMap<string, Route>());
 			}
-			by_verb.get(verb).set(path, new Route() {
+			if (by_verb.get(verb).has_key(key)) {
+				throw new GLib.IOError.EXISTS(
+					"key has already been set: %s %s", verb, key
+				);
+			}
+			by_verb.get(verb).set(key, new Route() {
 				method = method_name,
 				wire_name = wire_name,
 				handler = handler,
 				request_type = request_type,
-				response_type = response_type
+				response_type = response_type,
+				variable = variable
 			});
 		}
 
@@ -154,7 +180,7 @@ namespace OLLMrpc
 		 *
 		 * {{{
 		 * OLLMrpc.Http.routes("RPC-Alarm", typeof(Service),
-		 *     "/v1/alarms", "GET", "list", "", typeof(AlarmListQuery), typeof(AlarmList),
+		 *     "/v1/alarms/{id}", "GET", "get", "s", typeof(void), typeof(void),
 		 *     "/v1/alarms", "POST", "create", "o", typeof(AlarmCreate), typeof(Alarm)
 		 * );
 		 * }}}
@@ -163,8 +189,9 @@ namespace OLLMrpc
 		 * @param type handler GType
 		 * @param ... path, verb, method, sig, request_type,
 		 *   response_type (repeat; end with null path)
+		 * @throws GLib.IOError.EXISTS when a verb+path is repeated
 		 */
-		public static void routes(string name, GLib.Type type, ...)
+		public static void routes(string name, GLib.Type type, ...) throws GLib.Error
 		{
 			var l = va_list();
 			while (true) {

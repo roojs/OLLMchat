@@ -91,19 +91,37 @@ namespace RpcDummy.Alarm
 			AlarmListQuery.rpc_register();
 
 			OLLMrpc.Http.routes("RPC-Alarm", typeof(Service),
-				"/v1/alarms", "GET", "list", "", typeof(AlarmListQuery), typeof(AlarmList),
-				"/v1/alarms", "POST", "create", "o", typeof(AlarmCreate), typeof(Alarm)
+				"/v1/alarms/{id}", "GET", "get", "s", typeof(void), typeof(void),
+				"/v1/alarms", "POST", "create", "o", typeof(AlarmCreate), typeof(Alarm),
+				"/v1/alarms/{id}", "DELETE", "remove", "s", typeof(void), typeof(void)
 			);
 		}
 
-		public void list(OLLMrpc.Request request)
+		public void get(OLLMrpc.Request request, string id)
 		{
-			var out_list = new AlarmList();
+			if (id == "") {
+				var out_list = new AlarmList();
+				foreach (var row in this.stored) {
+					out_list.items.add(row);
+				}
+				request.reply(new OLLMrpc.Response() {
+					retval = OLLMrpc.val("o", out_list)
+				});
+				return;
+			}
 			foreach (var row in this.stored) {
-				out_list.items.add(row);
+				if (row.id != id) {
+					continue;
+				}
+				request.reply(new OLLMrpc.Response() {
+					retval = OLLMrpc.val("o", row)
+				});
+				return;
 			}
 			request.reply(new OLLMrpc.Response() {
-				retval = OLLMrpc.val("o", out_list)
+				error = OLLMrpc.RpcErrorCode.to_error(
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS
+				)
 			});
 		}
 
@@ -117,6 +135,23 @@ namespace RpcDummy.Alarm
 			this.stored.add(row);
 			request.reply(new OLLMrpc.Response() {
 				retval = OLLMrpc.val("o", row)
+			});
+		}
+
+		public void remove(OLLMrpc.Request request, string id)
+		{
+			for (var i = 0; i < this.stored.size; i++) {
+				if (this.stored.get(i).id != id) {
+					continue;
+				}
+				this.stored.remove_at(i);
+				request.reply(new OLLMrpc.Response());
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				error = OLLMrpc.RpcErrorCode.to_error(
+					(int) OLLMrpc.RpcErrorCode.INVALID_PARAMS
+				)
 			});
 		}
 	}
@@ -185,6 +220,43 @@ namespace OLLMrpcTests
 				"create missing alarm: %s".printf(text)
 			);
 
+			var create_parser = new Json.Parser();
+			create_parser.load_from_data(text, -1);
+			var alarm_id = create_parser.get_root().get_object()
+				.get_object_member("retval").get_string_member("id");
+
+			var get_msg = new Soup.Message(
+				"GET",
+				"http://127.0.0.1:%u/v1/alarms/%s".printf(http.port, alarm_id)
+			);
+			status = 0u;
+			text = "";
+			loop = new GLib.MainLoop();
+			session.send_and_read_async.begin(
+				get_msg, GLib.Priority.DEFAULT, null,
+				(obj, res) => {
+					try {
+						var bytes = session.send_and_read_async.end(res);
+						status = get_msg.status_code;
+						text = (string) bytes.get_data();
+					} catch (GLib.Error e) {
+						text = e.message;
+					}
+					loop.quit();
+				}
+			);
+			loop.run();
+			this.check(
+				command_line,
+				status == 200,
+				"get status %u body=%s".printf(status, text)
+			);
+			this.check(
+				command_line,
+				text.contains("wake") && text.contains(alarm_id),
+				"get missing alarm: %s".printf(text)
+			);
+
 			var list_msg = new Soup.Message(
 				"GET",
 				"http://127.0.0.1:%u/v1/alarms".printf(http.port)
@@ -215,6 +287,60 @@ namespace OLLMrpcTests
 				command_line,
 				text.contains("wake") && text.contains("items"),
 				"list missing alarms: %s".printf(text)
+			);
+
+			var del_msg = new Soup.Message(
+				"DELETE",
+				"http://127.0.0.1:%u/v1/alarms/%s".printf(http.port, alarm_id)
+			);
+			status = 0u;
+			text = "";
+			loop = new GLib.MainLoop();
+			session.send_and_read_async.begin(
+				del_msg, GLib.Priority.DEFAULT, null,
+				(obj, res) => {
+					try {
+						var bytes = session.send_and_read_async.end(res);
+						status = del_msg.status_code;
+						text = (string) bytes.get_data();
+					} catch (GLib.Error e) {
+						text = e.message;
+					}
+					loop.quit();
+				}
+			);
+			loop.run();
+			this.check(
+				command_line,
+				status == 200,
+				"delete status %u body=%s".printf(status, text)
+			);
+
+			var get_gone = new Soup.Message(
+				"GET",
+				"http://127.0.0.1:%u/v1/alarms/%s".printf(http.port, alarm_id)
+			);
+			status = 0u;
+			text = "";
+			loop = new GLib.MainLoop();
+			session.send_and_read_async.begin(
+				get_gone, GLib.Priority.DEFAULT, null,
+				(obj, res) => {
+					try {
+						var bytes = session.send_and_read_async.end(res);
+						status = get_gone.status_code;
+						text = (string) bytes.get_data();
+					} catch (GLib.Error e) {
+						text = e.message;
+					}
+					loop.quit();
+				}
+			);
+			loop.run();
+			this.check(
+				command_line,
+				status == 200 && text.contains("error"),
+				"get after delete expected error: %u %s".printf(status, text)
 			);
 
 			http.stop();

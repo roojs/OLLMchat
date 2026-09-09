@@ -31,13 +31,12 @@
 - **🔷** Routes listed inside `Service.rpc_register()`; nested `Alarm*.rpc_register()`.
 - **🔷** Global registrar (any `HttpServer` uses it).
 - **🔷** Bulk register; each HTTP tuple **leads with path** (one full route per line after wire name/type).
-- **🔷** Resolve: `by_verb[verb][path]` — full path string key.
-- **🔷** `Http.add(...)` for one route; `Http.routes(...)` bulk-calls `add` and **`Request.add_class`** (method + FFI sig still required for socket/FFI).
-- **🔷** Valadoc on `Http` namespace, `Route`, `add` / `routes` — overview + `{{{ … }}}` samples. No `resolve` helper — `HttpServer` reads `by_verb` directly.
-- **🔷** `HttpServer.rpc_path` (default `"/rpc"`) — body-`method` POST endpoint; do not hardcode `"/rpc"` in handlers.
-- **💩** Keep body-`method` POST on `rpc_path` for Hello / stream smokes alongside path routes.
+- **🔷** Resolve: exact `by_verb[verb][path]`, else last segment → same prefix if `variable`.
+- **🔷** `Http.add(...)` for one route; `Http.routes(...)` bulk-calls `add` and **`Request.add_class`**.
+- **🔷** Path param (v1): one registration — trailing `/{id}` → strip + `variable` (optional id → FFI ''s'', empty if absent). Not two methods on the same path.
+- **🔷** `HttpServer.rpc_path` (default `"/rpc"`) — body-`method` POST endpoint.
+- **💩** Keep body-`method` POST on `rpc_path` alongside path routes.
 - **💩** Empty request type: `typeof(void)`.
-- **💩** First smoke: exact paths only (`/v1/alarms`). `{id}` ⏳ later.
 - **💩** Success body: JSON `Response` with `retval` holding the typed object (same envelope as Phase 1).
 - **💩** `Bin.register`: same alias + same `GType` = no-op; mismatch still errors.
 
@@ -47,10 +46,11 @@
 
 | Verb | Path | Request type | Response type | Method | Sig |
 |------|------|--------------|---------------|--------|-----|
-| `GET` | `/v1/alarms` | `AlarmListQuery` | `AlarmList` | `list` | `""` |
+| `GET` | `/v1/alarms/{id}` | `typeof(void)` | (list or one) | `get` | `"s"` |
 | `POST` | `/v1/alarms` | `AlarmCreate` | `Alarm` | `create` | `"o"` |
+| `DELETE` | `/v1/alarms/{id}` | `typeof(void)` | `typeof(void)` / empty | `remove` | `"s"` |
 
-**⏳** `GET`/`DELETE` `/v1/alarms/{id}` — after path-param story exists.
+**✔️** `{id}` = optional trailing segment on that one method (empty ''s'' when absent).
 
 ### Boot (`Service.rpc_register`)
 
@@ -63,14 +63,11 @@ public static void rpc_register()
 	AlarmListQuery.rpc_register();
 
 	OLLMrpc.Http.routes("RPC-Alarm", typeof(Service),
-		"/v1/alarms", "GET", "list", "", typeof(AlarmListQuery), typeof(AlarmList),
-		"/v1/alarms", "POST", "create", "o", typeof(AlarmCreate), typeof(Alarm)
+		"/v1/alarms/{id}", "GET", "get", "s", typeof(void), typeof(void),
+		"/v1/alarms", "POST", "create", "o", typeof(AlarmCreate), typeof(Alarm),
+		"/v1/alarms/{id}", "DELETE", "remove", "s", typeof(void), typeof(void)
 	);
 }
-
-// app
-Demo.Alarm.Service.rpc_register();
-OLLMrpc.Request.register("RPC-Alarm", new Demo.Alarm.Service());
 ```
 
 **ℹ️** Wire name + handler type stay on the `routes(` line. Each following
@@ -407,24 +404,24 @@ Wire executable in `tests/meson.build` like `test-rpc-http-server`.
 
 ## Suggested order
 
-1. **✔️** §1 `Http.add` / `Http.routes` (calls `Request.add_class` per tuple; `by_verb` for server lookup)
+1. **✔️** §1 `Http.add` / `Http.routes`
 2. **✔️** §3 idempotent `Bin.register`
 3. **✔️** §4 `HttpServer.rpc_path` + `on_route` + POST body decode
-4. **✔️** §5–§6 meson + smoke
-5. **⏳** GET query → request object (if list needs it)
-6. **🚫** `{id}` / bin session until this smoke is ✅
+4. **✔️** §5–§6 meson + exact-path smoke
+5. **✔️** One `{id}` path param → first FFI ''s''
+6. **💩** `⏳` GET query → request ''o'' (optional; list works with sig `""` today)
+7. **🚫** Bin session / multi path-args (later)
 
 ---
 
 ## Backlog
 
-- **🔷** `✔️` Implement §1–§6 (this commit).
-- **💩** `⏳` GET query reflection into `request_type`.
-- **💩** `⏳` `{id}` path keys without segment tree (separate follow-up).
-- **🚫** Segment-tree resolve / a `resolve()` helper method.
+- **🔷** `✔️` Exact-path + `{id}` smoke (`test-rpc-http-routes`).
+- **💩** `⏳` GET query reflection into `request_type` / pass as ''o'' when listed (optional).
+- **💩** `⏳` More than one path capture (sig `"ss…"` / `"sso"` …) — later.
+- **🚫** Full segment-tree router.
 - **🚫** Per-server route tables.
-- **🚫** Requiring `RPC-Alarm.list` on the HTTP path string.
-- **🚫** `Request.add_class_from_pairs` helper.
+- **🚫** Bin session (see **8.2.3.2**).
 
 ---
 
