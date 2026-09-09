@@ -59,12 +59,14 @@ namespace OLLMrpc.Bin
 			gtype_to_alias = new Gee.HashMap<GLib.Type, string>();
 		}
 		if (alias_to_gtype.has_key(alias)) {
+			if (alias_to_gtype.get(alias) == gtype) {
+				return;
+			}
 			throw new StreamError.REGISTRATION(
 				"duplicate register of alias '%s'",
 				alias
 			);
 		}
-
 		alias_to_gtype.set(alias, gtype);
 		gtype_to_alias.set(gtype, alias);
 	}

@@ -16,10 +16,12 @@ namespace OLLMrpc.Transport
 	/**
 	 * HTTP JSON RPC server ({@link Soup.Server}).
 	 *
-	 * Phase 1: POST ''/rpc'' with auto-JSON {@link OLLMrpc.Request} body;
-	 * reply is auto-JSON {@link OLLMrpc.Response}. Same
-	 * {@link OLLMrpc.Request.dispatch} path as socket RPC. Runs on the
-	 * process main loop — no fork or thread pool inside the library.
+	 * POST to {@link rpc_path} with auto-JSON {@link OLLMrpc.Request} body
+	 * (method in the body). Exact paths from {@link OLLMrpc.Http.routes}
+	 * dispatch by verb+path. Replies are auto-JSON
+	 * {@link OLLMrpc.Response}. Same {@link OLLMrpc.Request.dispatch}
+	 * path as socket RPC. Runs on the process main loop — no fork or
+	 * thread pool inside the library.
 	 *
 	 * == Example ==
 	 *
@@ -36,6 +38,13 @@ namespace OLLMrpc.Transport
 		 */
 		public uint port { get; private set; default = 8080; }
 
+		/**
+		 * Path for POST body-method RPC (Hello / stream).
+		 *
+		 * Default ''/rpc''. Typed {@link OLLMrpc.Http.routes} paths are separate.
+		 */
+		public string rpc_path { get; set; default = "/rpc"; }
+
 		private Soup.Server soup = new Soup.Server("server-header", null);
 		private bool listening = false;
 		private Bin.Json json = new Bin.Json(Bin.Mode.AUTO);
@@ -51,7 +60,8 @@ namespace OLLMrpc.Transport
 			if (this.listening) {
 				return true;
 			}
-			this.soup.add_handler("/rpc", this.on_rpc);
+			this.soup.add_handler(this.rpc_path, this.on_rpc);
+			this.soup.add_handler(null, this.on_route);
 			try {
 				this.soup.listen_local(this.port, 0);
 			} catch (GLib.Error e) {
@@ -77,8 +87,117 @@ namespace OLLMrpc.Transport
 			this.soup = new Soup.Server("server-header", null);
 		}
 
-		private void on_rpc(Soup.Server server, Soup.ServerMessage msg, string path, GLib.HashTable<string, string>? query)
-		{
+		private void on_route(
+			Soup.Server server,
+			Soup.ServerMessage msg,
+			string path,
+			GLib.HashTable<string, string>? query
+		) {
+			if (path == this.rpc_path) {
+				return;
+			}
+			if (OLLMrpc.Http.by_verb == null
+				|| !OLLMrpc.Http.by_verb.has_key(msg.get_method())) {
+				msg.set_status(404, null);
+				msg.set_response("text/plain", Soup.MemoryUse.COPY, "not found".data);
+				return;
+			}
+			var paths = OLLMrpc.Http.by_verb.get(msg.get_method());
+			if (!paths.has_key(path)) {
+				msg.set_status(404, null);
+				msg.set_response("text/plain", Soup.MemoryUse.COPY, "not found".data);
+				return;
+			}
+			var route = paths.get(path);
+			var reply = new HttpReply(this.soup, msg) {
+				live_handles = this.live_handles
+			};
+			var request = new Request() {
+				method = route.wire_name + "." + route.method,
+				connection = reply
+			};
+			if (route.request_type != typeof(void)) {
+				var bytes = msg.get_request_body().flatten();
+				if (bytes.get_size() > 0) {
+					var parser = new Json.Parser();
+					try {
+						parser.load_from_data((string) bytes.get_data(), (ssize_t) bytes.get_size());
+					} catch (GLib.Error e) {
+						reply.write(new Response() {
+							error = new OLLMrpc.Error(
+								(int) OLLMrpc.RpcErrorCode.PARSE_ERROR,
+								"invalid JSON: " + e.message
+							)
+						});
+						msg.set_status(400, null);
+						return;
+					}
+					var root = parser.get_root();
+					if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
+						reply.write(new Response() {
+							error = new OLLMrpc.Error(
+								(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
+								"JSON root must be an object"
+							)
+						});
+						msg.set_status(400, null);
+						return;
+					}
+					var mem = new GLib.MemoryOutputStream.resizable();
+					var encode_ctx = new Bin.Stream(null, new GLib.DataOutputStream(mem));
+					try {
+						this.json.json_to_bin(root.get_object(), encode_ctx, route.request_type);
+						encode_ctx.out_stream.close();
+					} catch (GLib.Error e) {
+						reply.write(new Response() {
+							error = new OLLMrpc.Error(
+								(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
+								"request decode failed: " + e.message
+							)
+						});
+						msg.set_status(400, null);
+						return;
+					}
+					var read_ctx = new Bin.Stream(
+						new GLib.DataInputStream(
+							new GLib.MemoryInputStream.from_bytes(mem.steal_as_bytes())
+						),
+						null
+					);
+					read_ctx.mode = this.json.mode;
+					Bin.Serializable parsed;
+					try {
+						parsed = read_ctx.parse();
+					} catch (GLib.Error e) {
+						reply.write(new Response() {
+							error = new OLLMrpc.Error(
+								(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
+								"request parse failed: " + e.message
+							)
+						});
+						msg.set_status(400, null);
+						return;
+					}
+					request.args = OLLMrpc.args("o", parsed);
+				}
+			}
+			if (!request.dispatch()) {
+				msg.set_status(404, null);
+				msg.set_response("text/plain", Soup.MemoryUse.COPY,
+					("no handler for '" + request.method + "'").data);
+			}
+			if (reply.streaming && !reply.finished) {
+				reply.paused = true;
+				this.soup.pause_message(msg);
+			}
+		}
+
+		private void on_rpc(
+			Soup.Server server, 
+			Soup.ServerMessage msg, 
+			string path, 
+			GLib.HashTable<string, string>? query
+		) {
 			var reply = new HttpReply(this.soup, msg) {
 				live_handles = this.live_handles
 			};

@@ -81,6 +81,7 @@ ocrpc_core_src = files([
   'Transport/TcpListen.vala',
   'Transport/HttpReply.vala',
   'Transport/HttpServer.vala',
+  'Http/Route.vala',
   'Daemon.vala',
   'Error.vala',
   'Notification.vala',

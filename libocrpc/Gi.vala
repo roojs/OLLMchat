@@ -458,6 +458,10 @@ namespace OLLMrpc
 					continue;
 				}
 				if (!arg.is_caller_allocates() || arg.get_type().get_tag() != GI.TypeTag.INTERFACE) {
+					var cell = new uint8[sizeof(GI.Argument)];
+					var cell_keep = new GLib.Bytes(cell);
+					this.boxed_keep.add(cell_keep);
+					this.out_args[out_i].v_pointer = (void*) cell_keep.get_data();
 					out_i++;
 					continue;
 				}
@@ -548,6 +552,12 @@ namespace OLLMrpc
 				}
 				if (arg.get_direction() == GI.Direction.IN) {
 					continue;
+				}
+				if (arg.get_direction() == GI.Direction.OUT
+					&& !(arg.is_caller_allocates() && arg.get_type().get_tag() == GI.TypeTag.INTERFACE)) {
+					var flat = GI.Argument();
+					GLib.Memory.copy(&flat, this.out_args[oi].v_pointer, sizeof(GI.Argument));
+					this.out_args[oi] = flat;
 				}
 				if (!this.scalar(arg.get_type(), this.out_args[oi], response.args)) {
 					return true;

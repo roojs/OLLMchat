@@ -29,10 +29,11 @@
 
 1. Phase 1 — HTTP JSON server + Hello World (unary) — `✔️` agent
 2. [`RPC-8.2.3.1-http-json-streaming.md`](RPC-8.2.3.1-http-json-streaming.md) — streaming JSON
-3. [`RPC-8.2.3.2-http-bin-session.md`](RPC-8.2.3.2-http-bin-session.md) — bin over HTTP + session id
-4. Phase 4 — HTTPS
-5. Phase 5 — Application authentication
-6. Phase 6 — Issued client certificate after auth
+3. [`RPC-8.2.3.3-http-path-type-registration.md`](RPC-8.2.3.3-http-path-type-registration.md) — path ↔ request/response types — `✔️`
+4. [`RPC-8.2.3.2-http-bin-session.md`](RPC-8.2.3.2-http-bin-session.md) — bin over HTTP + session id
+5. Phase 4 — HTTPS
+6. Phase 5 — Application authentication
+7. Phase 6 — Issued client certificate after auth
 
 ---
 
