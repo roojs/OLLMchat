@@ -792,15 +792,25 @@ namespace OLLMrpc
 			this.sync_depth++;
 			try {
 				while (entry.done_response == null) {
-					if (!this.sending && this.pending.size > 0 && !this.pending.get(0).sent) {
-						var head = this.pending.get(0);
-						this.sending = true;
-						GLib.debug("id=%d method=%s", head.request.id, head.request.method);
-						this.bin.write(head.request);
-						this.output.flush(null);
-						head.sent = true;
-						this.sending = false;
-						continue;
+					if (!this.sending && this.pending.size > 0) {
+						var sent_one = false;
+						for (var i = 0; i < this.pending.size; i++) {
+							var p = this.pending.get(i);
+							if (p.sent) {
+								continue;
+							}
+							this.sending = true;
+							GLib.debug("id=%d method=%s", p.request.id, p.request.method);
+							this.bin.write(p.request);
+							this.output.flush(null);
+							p.sent = true;
+							this.sending = false;
+							sent_one = true;
+							break;
+						}
+						if (sent_one) {
+							continue;
+						}
 					}
 					if (entry.done_response != null) {
 						break;
