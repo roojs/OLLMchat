@@ -190,7 +190,8 @@ namespace OLLMrpc
 		private uint read_watch_id = 0;
 		/** Non-null while {@link call_sync} runs a private {@link GLib.MainLoop}. */
 		private GLib.MainLoop? sync_loop;
-		private int sync_id = 0;
+		/** Nesting depth of {@link call_sync} on {@link sync_loop} (0 = idle). */
+		private int sync_depth = 0;
 		private Soup.Session? http_session;
 		private Bin.Json http_json = new Bin.Json(
 			Bin.Mode.AUTO | Bin.Mode.AUTO_STR | Bin.Mode.IGNORE_UNKNOWN
@@ -624,9 +625,7 @@ namespace OLLMrpc
 					entry.promise.set_value(response);
 				}
 				if (this.sync_loop != null) {
-					if (id == this.sync_id) {
-						this.sync_loop.quit();
-					}
+					this.sync_loop.quit();
 				} else {
 					this.send_head.begin();
 				}
@@ -738,6 +737,12 @@ namespace OLLMrpc
 		 * teardown. Sends with a blocking flush so {@link send_head} is
 		 * not required mid-call. Socket / TCP only.
 		 *
+		 * While an outer wait is open, a nested {@link call_sync} (e.g.
+		 * {@link Live.Invoke} handler → ''RPC-Live-Callback.reply'' or a
+		 * child GI request) reuses the same private loop; it must not
+		 * iterate the default context. Handlers run on that private
+		 * context.
+		 *
 		 * @param request wire request; {@link Request.id} is set here
 		 * @return wire response on success
 		 * @throws GLib.Error same as {@link call}
@@ -750,9 +755,6 @@ namespace OLLMrpc
 			if (this.protocol != Protocol.SOCKET && this.protocol != Protocol.TCP) {
 				throw new GLib.IOError.FAILED("call_sync requires a socket protocol");
 			}
-			if (this.sync_loop != null) {
-				throw new GLib.IOError.FAILED("nested call_sync is not supported");
-			}
 			request.id = this.next_id++;
 			if (!this.connected) {
 				GLib.error("%s id=%d: not connected", request.method, request.id);
@@ -761,30 +763,33 @@ namespace OLLMrpc
 			var entry = new PendingWrite(request);
 			this.pending.add(entry);
 
-			if (this.read_watch_id != 0) {
-				GLib.Source.remove(this.read_watch_id);
-				this.read_watch_id = 0;
-			}
-
-			this.sync_loop = new GLib.MainLoop(new GLib.MainContext(), false);
-			this.sync_id = request.id;
-			var sync_watch = this.read_channel.create_watch(
-				GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR
-			);
-			sync_watch.set_callback(this.on_read);
-			sync_watch.attach(this.sync_loop.get_context());
+			var outer = (this.sync_loop == null);
+			GLib.IOSource? sync_watch = null;
 			GLib.Source? timeout_source = null;
-			if (this.call_timeout_seconds > 0) {
-				timeout_source = new GLib.TimeoutSource.seconds(this.call_timeout_seconds);
-				timeout_source.set_callback(() => {
-					GLib.warning("call timed out %s id=%d after %u s",
-						entry.request.method, entry.request.id, this.call_timeout_seconds);
-					this.complete_pending(
-						entry.request.id, null, new GLib.IOError.TIMED_OUT("call timed out"));
-					return false;
-				});
-				timeout_source.attach(this.sync_loop.get_context());
+			if (outer) {
+				if (this.read_watch_id != 0) {
+					GLib.Source.remove(this.read_watch_id);
+					this.read_watch_id = 0;
+				}
+				this.sync_loop = new GLib.MainLoop(new GLib.MainContext(), false);
+				sync_watch = this.read_channel.create_watch(
+					GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR
+				);
+				sync_watch.set_callback(this.on_read);
+				sync_watch.attach(this.sync_loop.get_context());
+				if (this.call_timeout_seconds > 0) {
+					timeout_source = new GLib.TimeoutSource.seconds(this.call_timeout_seconds);
+					timeout_source.set_callback(() => {
+						GLib.warning("call timed out %s id=%d after %u s",
+							entry.request.method, entry.request.id, this.call_timeout_seconds);
+						this.complete_pending(
+							entry.request.id, null, new GLib.IOError.TIMED_OUT("call timed out"));
+						return false;
+					});
+					timeout_source.attach(this.sync_loop.get_context());
+				}
 			}
+			this.sync_depth++;
 			try {
 				while (entry.done_response == null) {
 					if (!this.sending && this.pending.size > 0 && !this.pending.get(0).sent) {
@@ -808,19 +813,23 @@ namespace OLLMrpc
 					this.pending.size > 0 ? this.pending.get(0).request.id : entry.request.id,
 					null, e);
 			} finally {
-				if (timeout_source != null) {
-					timeout_source.destroy();
-				}
-				sync_watch.destroy();
-				this.sync_loop = null;
-				this.sync_id = 0;
-				if (this.connected && this.read_channel != null) {
-					this.read_watch_id = this.read_channel.add_watch(
-						GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
-						this.on_read
-					);
-					if (this.pending.size > 0 && !this.pending.get(0).sent) {
-						this.send_head.begin();
+				this.sync_depth--;
+				if (outer) {
+					if (timeout_source != null) {
+						timeout_source.destroy();
+					}
+					if (sync_watch != null) {
+						sync_watch.destroy();
+					}
+					this.sync_loop = null;
+					if (this.connected && this.read_channel != null) {
+						this.read_watch_id = this.read_channel.add_watch(
+							GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
+							this.on_read
+						);
+						if (this.pending.size > 0 && !this.pending.get(0).sent) {
+							this.send_head.begin();
+						}
 					}
 				}
 			}
