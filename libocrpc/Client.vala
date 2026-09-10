@@ -1019,14 +1019,14 @@ namespace OLLMrpc
 				if (GLib.poll(poll_fds, timeout_ms) <= 0) {
 					continue;
 				}
-				if ((poll_source.revents & GLib.IOCondition.ERR) != 0
-					|| (poll_source.revents & GLib.IOCondition.HUP) != 0) {
+				if ((poll_fds[0].revents & GLib.IOCondition.ERR) != 0
+					|| (poll_fds[0].revents & GLib.IOCondition.HUP) != 0) {
 					GLib.warning("socket closed socket_path=%s pending=%u",
 						this.socket_path, this.pending.size);
 					this.disconnect();
 					break;
 				}
-				if ((poll_source.revents & GLib.IOCondition.IN) == 0) {
+				if ((poll_fds[0].revents & GLib.IOCondition.IN) == 0) {
 					continue;
 				}
 				this.poll_drain_readable(this.read_channel);
