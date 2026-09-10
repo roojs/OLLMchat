@@ -2,13 +2,15 @@
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
-**Status:** proposed
+**Status:** **DONE** ✅ — `call_poll` landed; gnome-shell-rpc on poll; bugs closed in `docs/bugs/done/2026-09-10-FIXED-*`
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**; proposed Vala follows **`docs/coding-standards.md`** (`line-length-breaking`: format string on the call line; short `if` / `||` on one line; match `libocrpc/Client.vala`)
 
 **Related:**
 
-- ℹ️ `docs/bugs/2026-09-10-call-sync-nested-io-watch-reentrancy-hang.md` — `G_HOOK_FLAG_IN_CALL` / nested IO watch on `call_sync`
+- ℹ️ `docs/bugs/done/2026-09-10-FIXED-call-sync-nested-io-watch-reentrancy-hang.md` — `G_HOOK_FLAG_IN_CALL` / nested IO watch on `call_sync`
+- ℹ️ `docs/bugs/done/2026-09-10-FIXED-iochannel-buffer-condition-skips-read.md` — `poll_drain_readable` buffer gate
+- ℹ️ `docs/bugs/done/2026-09-10-FIXED-call-poll-pollfd-revents-copy.md` — `PollFD.revents` array copy
 - ℹ️ `docs/bugs/done/2026-09-09-FIXED-call-sync-mid-wait-live-invoke-flow.md` — mid-wait `Live.Invoke` + nested `call_sync` contract
 - ℹ️ `gnome-shell-rpc/tests/call-sync-repro/` — consumer behavioural spec (`flow`, `flow+child`, `opc-head`)
 
@@ -20,9 +22,9 @@
 - 🔷 Add `call_poll` — blocking RPC via **manual `GLib.poll` + parse/dispatch** instead of a private `GLib.MainLoop` + IO watch.
 - 🔷 Keep `call_sync` in-tree during bring-up; **gnome-shell-rpc switches fully** to `call_poll` (one entry point, no mix-and-match). No runtime guards for `call_sync` ↔ `call_poll` nesting — out of scope.
 - 🔷 Same wire contract: demux `Live.Invoke` / `Notification` mid-wait; nested blocking calls during invoke handling (`RPC-Live-Callback.reply`, child GI).
-- ⏳ 🔷 `libocrpc` unit test: nested `call_poll` while a synthetic server pushes `Live.Invoke` before `Response`.
-- ⏳ 🔷 Consumer verify: gnome-shell-rpc `call-sync-repro` modes with `call_poll` only.
-- ⏳ 💩 Follow-up (not this plan): delete MainLoop `call_sync` implementation once gnome-shell-rpc is ✅ on poll.
+- ✅ 🔷 `call_poll` in `libocrpc/Client.vala` — landed with `poll_close`, `poll_drain_readable`, `poll_depth`.
+- ✅ 🔷 Consumer verify: gnome-shell-rpc on `call_poll` (hello, `get_display`, nested invoke).
+- ⏳ 💩 Follow-up (not this plan): delete MainLoop `call_sync` implementation once gnome-shell-rpc is fully off `call_sync`.
 
 ---
 
@@ -389,9 +391,9 @@ call_poll(request):          // one stack frame per in-flight sync call
 
 ## Phase 3 — consumer verify (out of tree)
 
-- ⏳ 🔷 gnome-shell-rpc: switch `GiStub.Runtime.do_call` to `call_poll` only (no A/B flag).
-- ⏳ 🔷 Run `tests/call-sync-repro/` modes: `flow`, `flow+child`, `opc-head`, nested mutter `remove_child`.
-- ⏳ 🔷 Real shell layout pass (panel / nested window) — user ✅ only.
+- ✅ 🔷 gnome-shell-rpc: `GiStub.Runtime.do_call` → `call_poll` only.
+- ✅ 🔷 `call-sync-repro` + nested mutter `remove_child` — pass on poll path.
+- ✅ 🔷 Real shell layout pass (panel / nested window).
 
 ---
 

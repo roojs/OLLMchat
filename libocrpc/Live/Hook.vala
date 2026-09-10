@@ -52,7 +52,7 @@ namespace OLLMrpc.Live
 				args = args
 			});
 			while (!this.replied) {
-				GLib.MainContext.default().iteration(true);
+				this.connection.emit_wait_poll();
 			}
 		}
 

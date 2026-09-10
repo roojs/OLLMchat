@@ -259,6 +259,26 @@ namespace OLLMrpc.Transport
 			});
 		}
 
+		/**
+		 * Wait for input during {@link Live.Hook.emit}.
+		 *
+		 * Default: one blocking {@link GLib.MainContext.iteration}. That is
+		 * enough when emit runs off the request-dispatch stack.
+		 *
+		 * **Socket servers that call sync {@link Live.Hook.emit} from inside
+		 * a dispatched GI method** must override: the connection io watch
+		 * cannot run again while {@link on_input_ready} is still on the stack,
+		 * so iteration never reads the client's
+		 * ''RPC-Live-Callback.reply''. Override with {@link GLib.poll} on
+		 * {@link channel}, then {@link Bin.Stream.parse} and
+		 * {@link OLLMrpc.Request.dispatch} (same body as {@link on_input_ready}
+		 * inner loop). {@link on_input_ready} itself does not need to change.
+		 */
+		public virtual void emit_wait_poll()
+		{
+			GLib.MainContext.default().iteration(true);
+		}
+
 		protected virtual bool on_input_ready(
 			GLib.IOChannel source,
 			GLib.IOCondition condition

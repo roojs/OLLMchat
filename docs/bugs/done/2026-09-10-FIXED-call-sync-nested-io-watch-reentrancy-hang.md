@@ -1,11 +1,11 @@
 # `call_sync` nested wait hangs: single IO watch cannot re-enter dispatch
 
-**Status:** ✔️ applied — await consumer verify  
+**Status:** ✅ fixed — superseded by `call_poll`; `call_sync` frame fix retained in-tree  
 **Hit:** 2026-09-09 / 2026-09-10 — gnome-shell-rpc nested Wayland (`remove_child` 120s timeout)  
 **Component:** `libocrpc` / `Client.call_sync` wait loop & IO watch lifecycle  
 **Consumer:** gnome-shell-rpc layout relay `Live.Invoke` → `RPC-Live-Callback.reply`  
 **Related:**  
-- `2026-09-09-call-sync-pending-head-blocks-nested.md` (write first unsent — fixed)  
+- `2026-09-09-FIXED-call-sync-pending-head-blocks-nested.md` (write first unsent — fixed)  
 - `done/2026-09-09-FIXED-call-sync-mid-wait-live-invoke-flow.md` (same-context nested wait)  
 
 ---

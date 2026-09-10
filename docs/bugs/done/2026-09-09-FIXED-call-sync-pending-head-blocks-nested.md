@@ -1,6 +1,6 @@
 # `call_sync` head-only send blocks nested Request
 
-**Status:** ✔️ applied — await consumer verify  
+**Status:** ✅ fixed — consumer verified on gnome-shell-rpc  
 **Hit:** 2026-09-09 — gnome-shell-rpc nested Wayland (`remove_child` 120s)  
 **Component:** `libocrpc` / `Client.call_sync` pending send loop  
 **Consumer:** gnome-shell-rpc layout `Live.Invoke` → `RPC-Live-Callback.reply`  
@@ -124,7 +124,7 @@ waits on reply before Response(A)).
 - 🚫 Re-opening default MainLoop nesting
 - 🚫 Changing async `send_head` (still head-only; queue advances on `complete_pending`)
 
-## Next
+## Conclusion
 
-- ⏳🔷 Consumer: `call-sync-repro` `opc-head` / nested mutter `remove_child` without 120s silence.
-- After ✅: rename `FIXED` + move to `docs/bugs/done/`.
+✅ First-unsent send policy verified; gnome-shell-rpc nested `remove_child` no
+longer blocks behind head-only send.
