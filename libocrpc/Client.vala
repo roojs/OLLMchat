@@ -648,9 +648,6 @@ namespace OLLMrpc
 			if (!this.connected || this.bin == null) {
 				return true;
 			}
-			if ((source.get_buffer_condition() & GLib.IOCondition.IN) == 0) {
-				return true;
-			}
 			try {
 				var msg = this.bin.parse();
 				this.dispatch_message(msg);

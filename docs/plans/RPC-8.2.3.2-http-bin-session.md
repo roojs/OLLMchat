@@ -1,6 +1,6 @@
 # 8.2.3.2 — HTTP binary RPC + session id
 
-**Status:** **PROPOSED** — code proposals filled; implement after user approval
+**Status:** **PROPOSED** — design revised (composition, no bind); implement after user approval
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -23,15 +23,25 @@
 
 ---
 
-## Why sessions
+## Design principle — composition, not bind
 
-- **ℹ️** Socket `Connection` holds `Bin.Stream` name tables, leases, and live handles for the peer lifetime.
-- **🔷** Each HTTP POST is a new `HttpReply` today — maps would reset every call without a session.
-- **🔷** JSON auto mode needs fewer JIT maps; **bin** needs them — session is required before bin is useful.
+- **ℹ️** Today `Connection` mixes two roles:
+  - **Session state** — `bin` name tables, leases, live-handle maps, `next_handle` (long-lived).
+  - **Transport** — socket I/O, `write()`, read loop (one channel per peer).
+- **ℹ️** For TCP these coincide: one socket = one session lifetime. `HttpReply : Connection` reused the type so `Request.dispatch()` could call `connection.write()` / `connection.export()`.
+- **🔷** For HTTP, session state spans many POSTs but transport is one-shot per POST. Copying or reassigning session fields onto each `HttpReply` (`bind` / `sync`) is a smell — it papers over the wrong ownership.
+- **🔷** Fix: **`Session` owns state**; **`Connection` composes a `Session`** and exposes delegating properties so `Gi.vala` and dispatch keep using `request.connection.leases` unchanged.
+- **🔷** **`HttpReply` takes a `Session` in its constructor** — no `bind`, no `sync`, no property copying.
+- **🔷** Socket listeners keep `new Connection(stream)` — default `session = new Session()` inside `Connection`.
+- **🚫** `Session.bind`, `Session.sync`, freestanding `OLLMrpc.Checksum` class.
 
----
+### Roles after refactor
 
-## Design (outline)
+| Type | Owns |
+|------|------|
+| **`Session`** | `id`, `bin`, lease maps, `next_handle`, static registry checksum (`note` / `roll`), HTTP `take()` table |
+| **`Connection`** | `session` (composed), transport (`stream`, channel, `write`, read loop), `live_handles` |
+| **`HttpReply`** | `soup`, `msg`, POST flags (`streaming`, `finished`, `paused`, `bin_body`); inherits `Connection` with injected `Session` |
 
 ### Content types
 
@@ -44,8 +54,8 @@
 
 - **🔷** Wire header: `X-rpc-session: <id>` on request; echo on response.
 - **🚫** `X-OLLMrpc-Session` / OLLM-prefixed header names.
-- **🔷** Assign at first call when the header is omitted.
-- **🔷** Server table: session id → in-memory state (stream name maps, leases).
+- **🔷** Assign at first call when the header is omitted (`Session.take("")`).
+- **🔷** Server table: session id → `Session` instance.
 - **🔷** Unknown session → HTTP `409` + plain text.
 - **🚫** Session-table OOM / LRU (v1 skip).
 
@@ -54,45 +64,48 @@
 - **🔷** Header: `X-rpc-checksum: <32-char lowercase hex MD5>`.
 - **🔷** Mismatch → HTTP `409` + plain text.
 - **🔷** **New key** = newly inserted registration-map entry only.
-- **🔷** Pending buffer of key strings; **≤1 MD5 per request** via `Checksum.roll()`.
+- **🔷** Pending buffer of key strings; **≤1 MD5 per request** via `Session.roll_checksum()`.
 - **🔷** `checksum = md5(old_hex + pending)`; no pending → unchanged.
 - **🔷** Pending keys joined with `'\n'`.
 - **🔷** Feeds: `Bin.register` / `register_alias`, `Http.add`, new `Request.add_class` method rows.
 - **🔷** Idempotent / thrown duplicate → no pending append.
 - **🚫** Rehash whole maps; hash HTTP bodies for this header.
+- **ℹ️** Checksum is process-wide registration language (static on `Session`), not per-session instance state.
 
 ### Named APIs (this plan)
 
-- **🔷** `OLLMrpc.Checksum` — `note(string key)`, `roll()` → hex string.
-- **🔷** `OLLMrpc.Transport.Session` — `id`, long-lived `bin` + lease maps; static `by_id`.
+- **🔷** `OLLMrpc.Transport.Session` — state owner; `take(string id)`; static `note_checksum` / `roll_checksum`.
+- **🔷** `Connection.session` — composed; delegating `leases`, `bin`, `next_handle`, etc.
+- **🔷** `HttpReply(Soup.Server, Soup.ServerMessage, Session)` — reply aware of session.
 
 ---
 
 ## Suggested implement order
 
-1. `Checksum` + hooks in `Bin` / `Http` / `Request.add_class`.
-2. `Session` + `X-rpc-session` / `X-rpc-checksum` on `/rpc` (JSON first).
-3. Bin POST (`application/octet-stream`) on `/rpc`.
-4. Smoke: two POSTs, shared session, JIT name survives; checksum match.
-5. Streaming resume (with **8.2.3.1**) — later fill.
+1. **Phase 0** — extract `Session`, refactor `Connection` to compose it (no HTTP changes yet).
+2. **Phase 1** — registry checksum hooks (`Session.note_checksum`) in `Bin` / `Http` / `Request.add_class`.
+3. **Phase 2** — `Session.take` + headers on `/rpc`; `HttpReply(session)`.
+4. **Phase 3** — bin POST (`application/octet-stream`) on `/rpc`.
+5. **Phase 4** — smoke: two POSTs, shared session, JIT name survives; checksum match.
+6. Streaming resume (with **8.2.3.1**) — later fill.
 
 ---
 
-## Phase 1 — Rolling MD5 registry checksum
+## Phase 0 — `Session` composes into `Connection`
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
-### 1. `libocrpc/Checksum.vala` — new file: pending keys + `roll`
+### 1. `libocrpc/Transport/Session.vala` — new file: state owner
 
-**Why:** One place for registry fingerprint; ≤1 MD5 when `roll()` runs.
+**Why:** Single home for lease maps, bin codec, and (later) HTTP session table. `Connection` delegates here.
 
-**Where:** new file under `libocrpc/`.
+**Where:** new file under `libocrpc/Transport/`.
 
 **Depends on:** none.
 
 #### Add
 
-New file `libocrpc/Checksum.vala` (entire contents):
+New file `libocrpc/Transport/Session.vala` (entire contents):
 
 ```vala
 /*
@@ -108,103 +121,334 @@ New file `libocrpc/Checksum.vala` (entire contents):
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMrpc
+namespace OLLMrpc.Transport
 {
 	/**
-	 * Rolling MD5 of process-wide registration map inserts.
+	 * RPC session state — bin name tables, leases, live-handle maps.
 	 *
-	 * Call {@link note} after each successful new map entry.
-	 * Call {@link roll} at most once per HTTP request (or when
-	 * reading ''X-rpc-checksum'') — hashes only pending keys.
+	 * One {@link Connection} or many {@link HttpReply} POSTs can share a
+	 * session. Socket {@link Connection} constructs a private session by
+	 * default; HTTP looks up sessions by ''X-rpc-session'' via
+	 * {@link take}.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
-	 * OLLMrpc.Checksum.note("bin:Alarm:RpcDummyAlarmAlarm");
-	 * var hex = OLLMrpc.Checksum.roll();
+	 * var session = OLLMrpc.Transport.Session.take("");
+	 * var reply = new OLLMrpc.Transport.HttpReply(soup, msg, session);
 	 * }}}
 	 */
-	public class Checksum : GLib.Object
+	public class Session : GLib.Object
 	{
-		/** Current hex digest (empty before first {@link roll} with pending). */
-		public static string value { get; private set; default = ""; }
-
-		private static string pending = "";
+		/** Opaque session id (echoed on ''X-rpc-session''; empty until assigned). */
+		public string id { get; set; default = ""; }
 
 		/**
-		 * Queue one new registration key for the next {@link roll}.
-		 *
-		 * Keys are joined with ''\\n''. Does not MD5.
+		 * Bin codec (name tables). I/O streams wired per transport.
+		 */
+		public Bin.Stream? bin {
+			get; set; default = new Bin.Stream(null, null) {
+				is_server = true
+			};
+		}
+
+		public Gee.HashMap<int, GLib.Object> leases {
+			get; set; default = new Gee.HashMap<int, GLib.Object>();
+		}
+
+		public Gee.HashMap<int, uint> floors {
+			get; set; default = new Gee.HashMap<int, uint>();
+		}
+
+		public Gee.HashMap<int, uint> extras {
+			get; set; default = new Gee.HashMap<int, uint>();
+		}
+
+		public Gee.HashMap<int, Gee.HashMap<int, int>> lease_ids {
+			get; set; default = new Gee.HashMap<int, Gee.HashMap<int, int>>();
+		}
+
+		public Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>> signal_subs {
+			get; set; default = new Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>>();
+		}
+
+		public Gee.HashMap<int, OLLMrpc.Live.Hook> callbacks {
+			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
+		}
+
+		/** Next lease, callback, and reply id (never 0). */
+		public int next_handle { get; set; default = 1; }
+
+		/** Current registry checksum hex (process-wide; see {@link roll_checksum}). */
+		public static string checksum { get; private set; default = ""; }
+
+		private static string checksum_pending = "";
+
+		internal static Gee.HashMap<string, Session> by_id;
+
+		private static uint next_id = 1;
+
+		/**
+		 * Queue one new registration key for the next {@link roll_checksum}.
 		 *
 		 * @param key canonical insert string (e.g. bin:Alias:TypeName)
 		 */
-		public static void note(string key)
+		public static void note_checksum(string key)
 		{
-			if (pending == "") {
-				pending = key;
+			if (checksum_pending == "") {
+				checksum_pending = key;
 				return;
 			}
-			pending = pending + "\n" + key;
+			checksum_pending = checksum_pending + "\n" + key;
 		}
 
 		/**
-		 * Apply at most one MD5: ''md5(value + pending)'' when pending
-		 * is non-empty; otherwise return {@link value} unchanged.
+		 * Apply at most one MD5: ''md5(checksum + pending)'' when pending
+		 * is non-empty; otherwise return {@link checksum} unchanged.
 		 *
 		 * @return lowercase hex MD5 string
 		 */
-		public static string roll()
+		public static string roll_checksum()
 		{
-			if (pending == "") {
-				return value;
+			if (checksum_pending == "") {
+				return checksum;
 			}
 			var sum = new GLib.Checksum(GLib.ChecksumType.MD5);
-			sum.update(value.data);
-			sum.update(pending.data);
-			value = sum.get_string();
-			pending = "";
-			return value;
+			sum.update(checksum.data);
+			sum.update(checksum_pending.data);
+			checksum = sum.get_string();
+			checksum_pending = "";
+			return checksum;
+		}
+
+		/**
+		 * Look up ''id'', or allocate a new session when ''id'' is empty.
+		 *
+		 * @param id client ''X-rpc-session'' value, or empty to create
+		 * @return session, or null when ''id'' is non-empty and unknown
+		 */
+		public static Session? take(string id)
+		{
+			if (by_id == null) {
+				by_id = new Gee.HashMap<string, Session>();
+			}
+			if (id != "") {
+				if (!by_id.has_key(id)) {
+					return null;
+				}
+				return by_id.get(id);
+			}
+			var session = new Session();
+			session.id = "%u".printf(next_id);
+			next_id++;
+			by_id.set(session.id, session);
+			return session;
 		}
 	}
 }
 ```
 
-### 2. `libocrpc/meson.build` — compile `Checksum.vala`
+### 2. `libocrpc/Transport/Connection.vala` — compose `Session`, delegate state
 
-**Why:** Wire new source into `ocrpc`.
+**Why:** `export`, `stop`, and `Gi.vala` keep using `connection.leases` etc.; storage moves to `session`.
 
-**Where:** `ocrpc_core_src` list, after `'RpcErrorCode.vala',`.
-
-**Depends on:** §1.
-
-#### Add — after `'RpcErrorCode.vala',` in `ocrpc_core_src`
-
-```meson
-  'Checksum.vala',
-```
-
-### 3. `docs/meson.build` — valadoc input
-
-**Why:** Valadoc lists every public `.vala`.
-
-**Where:** near other `libocrpc` inputs (after `Http/Route.vala`).
+**Where:** field declarations and `export` / `stop` (body unchanged if getters delegate).
 
 **Depends on:** §1.
 
-#### Add
+#### Remove
 
-```meson
-    '../libocrpc/Checksum.vala',
+```vala
+		public Bin.Stream? bin { get; protected set; }
+
+		public bool live_handles { get; set; default = false; }
+
+		public Gee.HashMap<int, GLib.Object> leases {
+			get; set; default = new Gee.HashMap<int, GLib.Object>();
+		}
+
+		public Gee.HashMap<int, uint> floors { get; set; default = new Gee.HashMap<int, uint>(); }
+
+		public Gee.HashMap<int, uint> extras { get; set; default = new Gee.HashMap<int, uint>(); }
+
+		/**
+		 * Instance pointer → lease id.
+		 *
+		 * Outer key is the high 32 bits of the pointer, inner
+		 * key the low 32 bits, both as ''int'' bit patterns
+		 * (Gee has no ''uint64'' key hash).
+		 */
+		public Gee.HashMap<int, Gee.HashMap<int, int>> lease_ids {
+			get; set; default = new Gee.HashMap<int, Gee.HashMap<int, int>>();
+		}
+
+		/**
+		 * Subscribed GObject handler ids for this connection.
+		 *
+		 * Outer key is the lease id. Inner map is signal or
+		 * ''notify::'' name → handler id from connect.
+		 */
+		public Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>> signal_subs {
+			get; set; default = new Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>>();
+		}
+
+		/**
+		 * GI callback rows for this connection (id → {@link Live.Hook}).
+		 */
+		public Gee.HashMap<int, OLLMrpc.Live.Hook> callbacks {
+			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
+		}
+
+		public Live.BufferStream? buffer_stream { get; set; default = null; }
+
+		/**
+		 * Next lease, callback, and reply id (never 0).
+		 */
+		public int next_handle { get; set; default = 1; }
 ```
 
-### 4. `libocrpc/Bin/Stream.vala` — `register` / `register_alias` note
+#### Replace with
+
+```vala
+		/**
+		 * Session state (leases, bin name tables, live handles).
+		 * Socket connections default to a private session; HTTP
+		 * {@link HttpReply} injects a shared session from {@link Session.take}.
+		 */
+		public Session session { get; construct; default = new Session(); }
+
+		public Bin.Stream? bin {
+			get { return this.session.bin; }
+			protected set { this.session.bin = value; }
+		}
+
+		public bool live_handles { get; set; default = false; }
+
+		public Gee.HashMap<int, GLib.Object> leases {
+			get { return this.session.leases; }
+		}
+
+		public Gee.HashMap<int, uint> floors {
+			get { return this.session.floors; }
+		}
+
+		public Gee.HashMap<int, uint> extras {
+			get { return this.session.extras; }
+		}
+
+		public Gee.HashMap<int, Gee.HashMap<int, int>> lease_ids {
+			get { return this.session.lease_ids; }
+		}
+
+		public Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>> signal_subs {
+			get { return this.session.signal_subs; }
+		}
+
+		public Gee.HashMap<int, OLLMrpc.Live.Hook> callbacks {
+			get { return this.session.callbacks; }
+		}
+
+		public Live.BufferStream? buffer_stream { get; set; default = null; }
+
+		public int next_handle {
+			get { return this.session.next_handle; }
+			set { this.session.next_handle = value; }
+		}
+```
+
+**ℹ️** `export`, `stop`, `start`, `write`, `on_input_ready` bodies stay as-is — they already use `this.leases`, `this.bin`, `this.next_handle`, which now delegate to `this.session`.
+
+### 3. `libocrpc/Transport/HttpReply.vala` — construct with `Session`
+
+**Why:** Reply is session-aware; wires `session.bin.connection = this` once. No bind.
+
+**Where:** class body + constructor.
+
+**Depends on:** §1, §2.
+
+#### Remove
+
+```vala
+		public HttpReply(Soup.Server soup, Soup.ServerMessage msg)
+		{
+			GLib.Object(soup: soup, msg: msg);
+		}
+```
+
+#### Replace with
+
+```vala
+		public HttpReply(
+			Soup.Server soup,
+			Soup.ServerMessage msg,
+			Session session
+		) {
+			GLib.Object(soup: soup, msg: msg, session: session);
+		}
+
+		construct {
+			if (this.session.bin != null) {
+				this.session.bin.connection = this;
+			}
+		}
+```
+
+### 4. `libocrpc/Transport/HttpServer.vala` — pass ephemeral session on typed routes
+
+**Why:** `HttpReply` now requires a `Session`. Typed routes do not use the HTTP session table in v1 — each POST gets a private session.
+
+**Where:** `on_route` `new HttpReply(...)`.
+
+**Depends on:** §3.
+
+#### Remove
+
+```vala
+			var reply = new HttpReply(this.soup, msg) {
+				live_handles = this.live_handles
+			};
+```
+
+#### Replace with
+
+```vala
+			var reply = new HttpReply(this.soup, msg, new Session()) {
+				live_handles = this.live_handles
+			};
+```
+
+### 5. `libocrpc/meson.build` + `docs/meson.build` — Session source
+
+**Why:** Compile + valadoc.
+
+**Where:** `ocrpc_core_src` before `Connection.vala`; docs list with other Transport types.
+
+**Depends on:** §1.
+
+#### Add — meson `ocrpc_core_src` (before `'Transport/Connection.vala',`)
+
+```meson
+  'Transport/Session.vala',
+```
+
+#### Add — `docs/meson.build` valadoc inputs
+
+```meson
+    '../libocrpc/Transport/Session.vala',
+```
+
+---
+
+## Phase 1 — Registry checksum hooks
+
+**Depends on:** Phase 0 (checksum statics live on `Session`).
+
+### 6. `libocrpc/Bin/Stream.vala` — `register` / `register_alias` note
 
 **Why:** New bin aliases feed the checksum.
 
 **Where:** end of `register` after `gtype_to_alias.set`; end of `register_alias` after `gtype_to_alias.set`.
 
-**Depends on:** §1.
-
 #### Remove
 
 ```vala
@@ -221,7 +465,7 @@ namespace OLLMrpc
 ```vala
 		alias_to_gtype.set(alias, gtype);
 		gtype_to_alias.set(gtype, alias);
-		OLLMrpc.Checksum.note("bin:" + alias + ":" + gtype.name());
+		OLLMrpc.Transport.Session.note_checksum("bin:" + alias + ":" + gtype.name());
 	}
 
 	/**
@@ -245,18 +489,16 @@ namespace OLLMrpc
 			throw new StreamError.REGISTRATION("duplicate register of type '%s'", gtype.name());
 		}
 		gtype_to_alias.set(gtype, alias);
-		OLLMrpc.Checksum.note("bin-alias:" + alias + ":" + gtype.name());
+		OLLMrpc.Transport.Session.note_checksum("bin-alias:" + alias + ":" + gtype.name());
 	}
 ```
 
-### 5. `libocrpc/Http/Route.vala` — `add` notes after insert
+### 7. `libocrpc/Http/Route.vala` — `add` notes after insert
 
 **Why:** New HTTP routes feed the checksum.
 
 **Where:** end of `Http.add`, after `by_verb.get(verb).set(...)`.
 
-**Depends on:** §1.
-
 #### Remove
 
 ```vala
@@ -282,7 +524,7 @@ namespace OLLMrpc
 				response_type = response_type,
 				variable = variable
 			});
-			OLLMrpc.Checksum.note(
+			OLLMrpc.Transport.Session.note_checksum(
 				"http:" + verb + ":" + key + ":" + method_name + ":"
 				+ (variable ? "1" : "0") + ":"
 				+ request_type.name() + ":" + response_type.name()
@@ -290,13 +532,11 @@ namespace OLLMrpc
 		}
 ```
 
-### 6. `libocrpc/Request.vala` — `add_class` notes new methods only
+### 8. `libocrpc/Request.vala` — `add_class` notes new methods only
 
 **Why:** New FFI method rows feed the checksum; overwrites of the same method do not.
 
 **Where:** `add_class` loop body.
-
-**Depends on:** §1.
 
 #### Remove
 
@@ -327,7 +567,7 @@ namespace OLLMrpc
 				if (!fresh) {
 					continue;
 				}
-				OLLMrpc.Checksum.note(
+				OLLMrpc.Transport.Session.note_checksum(
 					"ffi:" + name + ":" + method + ":" + sig
 				);
 			}
@@ -336,179 +576,26 @@ namespace OLLMrpc
 
 ---
 
-## Phase 2 — Session table + headers (JSON `/rpc`)
-
-### 7. `libocrpc/Transport/Session.vala` — new file
-
-**Why:** Long-lived JIT name tables + leases across POSTs.
-
-**Where:** new file under `libocrpc/Transport/`.
-
-**Depends on:** none (Phase 1 optional for smoke).
-
-#### Add
-
-New file `libocrpc/Transport/Session.vala` (entire contents):
-
-```vala
-/*
- * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this library; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- */
-
-namespace OLLMrpc.Transport
-{
-	/**
-	 * HTTP RPC session — restores bin name tables and leases across POSTs.
-	 *
-	 * Look up by ''X-rpc-session''. Missing id creates a new session.
-	 * Bind onto each {@link HttpReply} before {@link OLLMrpc.Request.dispatch}.
-	 *
-	 * == Example ==
-	 *
-	 * {{{
-	 * var session = OLLMrpc.Transport.Session.take("");
-	 * session.bind(reply);
-	 * }}}
-	 */
-	public class Session : GLib.Object
-	{
-		/** Opaque session id (echoed on ''X-rpc-session''). */
-		public string id { get; set; default = ""; }
-
-		/**
-		 * Long-lived bin codec (name tables). I/O streams set per POST.
-		 */
-		public Bin.Stream bin {
-			get; set; default = new Bin.Stream(null, null) {
-				is_server = true
-			};
-		}
-
-		public Gee.HashMap<int, GLib.Object> leases {
-			get; set; default = new Gee.HashMap<int, GLib.Object>();
-		}
-
-		public Gee.HashMap<int, uint> floors {
-			get; set; default = new Gee.HashMap<int, uint>();
-		}
-
-		public Gee.HashMap<int, uint> extras {
-			get; set; default = new Gee.HashMap<int, uint>();
-		}
-
-		public Gee.HashMap<int, Gee.HashMap<int, int>> lease_ids {
-			get; set; default = new Gee.HashMap<int, Gee.HashMap<int, int>>();
-		}
-
-		public Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>> signal_subs {
-			get; set; default = new Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>>();
-		}
-
-		public Gee.HashMap<int, OLLMrpc.Live.Hook> callbacks {
-			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
-		}
-
-		public int next_handle { get; set; default = 1; }
-
-		internal static Gee.HashMap<string, Session> by_id;
-
-		private static uint next_id = 1;
-
-		/**
-		 * Look up ''id'', or allocate a new session when ''id'' is empty.
-		 *
-		 * @param id client ''X-rpc-session'' value, or empty to create
-		 * @return session, or null when ''id'' is non-empty and unknown
-		 */
-		public static Session? take(string id)
-		{
-			if (by_id == null) {
-				by_id = new Gee.HashMap<string, Session>();
-			}
-			if (id != "") {
-				if (!by_id.has_key(id)) {
-					return null;
-				}
-				return by_id.get(id);
-			}
-			var session = new Session();
-			session.id = "%u".printf(next_id);
-			next_id++;
-			by_id.set(session.id, session);
-			return session;
-		}
-
-		/**
-		 * Attach this session’s maps and bin stream to one HTTP reply.
-		 *
-		 * @param reply per-POST write target
-		 */
-		public void bind(HttpReply reply)
-		{
-			reply.bin = this.bin;
-			reply.leases = this.leases;
-			reply.floors = this.floors;
-			reply.extras = this.extras;
-			reply.lease_ids = this.lease_ids;
-			reply.signal_subs = this.signal_subs;
-			reply.callbacks = this.callbacks;
-			reply.next_handle = this.next_handle;
-			this.bin.connection = reply;
-		}
-
-		/**
-		 * Copy handle counter back after dispatch.
-		 *
-		 * @param reply finished or paused reply
-		 */
-		public void sync(HttpReply reply)
-		{
-			this.next_handle = reply.next_handle;
-		}
-	}
-}
-```
-
-### 8. `libocrpc/meson.build` + `docs/meson.build` — Session source
-
-**Why:** Compile + valadoc.
-
-**Where:** `ocrpc_core_src` after `HttpServer.vala`; docs list after `HttpServer.vala`.
-
-**Depends on:** §7.
-
-#### Add — meson `ocrpc_core_src`
-
-```meson
-  'Transport/Session.vala',
-```
-
-#### Add — `docs/meson.build` valadoc inputs
-
-```meson
-    '../libocrpc/Transport/Session.vala',
-```
+## Phase 2 — HTTP session table + headers (JSON `/rpc`)
 
 ### 9. `libocrpc/Transport/HttpServer.vala` — session + checksum on `on_rpc`
 
-**Why:** Create/lookup session, roll checksum, set response headers; reject mismatch / unknown session.
+**Why:** Look up or create session, verify checksum, echo headers. `HttpReply` constructed with session — no bind.
 
-**Where:** start of `on_rpc`, after creating `reply`, before method/body handling.
+**Where:** `on_rpc` — session lookup before reply construction; headers after reply exists.
 
-**Depends on:** §1, §7.
+**Depends on:** Phase 0, Phase 1.
 
-#### Add — immediately after `var reply = new HttpReply(...) { ... };` in `on_rpc`
+#### Remove
 
-Purpose: bind session, verify checksum, echo headers. Before POST check.
+```vala
+			var reply = new HttpReply(this.soup, msg) {
+				live_handles = this.live_handles
+			};
+			if (msg.get_method() != "POST") {
+```
+
+#### Replace with
 
 ```vala
 			var req_headers = msg.get_request_headers();
@@ -523,29 +610,24 @@ Purpose: bind session, verify checksum, echo headers. Before POST check.
 					"unknown session".data);
 				return;
 			}
-			session.bind(reply);
 			var client_sum = req_headers.get_one("X-rpc-checksum");
-			var server_sum = OLLMrpc.Checksum.roll();
+			var server_sum = Session.roll_checksum();
 			if (client_sum != null && client_sum != "" && client_sum != server_sum) {
 				msg.set_status(409, null);
 				msg.set_response("text/plain", Soup.MemoryUse.COPY,
 					"checksum mismatch".data);
 				return;
 			}
+			var reply = new HttpReply(this.soup, msg, session) {
+				live_handles = this.live_handles
+			};
 			var res_headers = msg.get_response_headers();
 			res_headers.replace("X-rpc-session", session.id);
 			res_headers.replace("X-rpc-checksum", server_sum);
+			if (msg.get_method() != "POST") {
 ```
 
-#### Add — before each successful return path that finishes dispatch (and after pause setup)
-
-Purpose: sync `next_handle` back to session. After `request.dispatch()` block / pause block at end of `on_rpc`:
-
-```vala
-			session.sync(reply);
-```
-
-**ℹ️** Implementer: keep `session` in scope for the whole `on_rpc` (declare before early returns that still need it only when bind succeeded).
+**ℹ️** No `session.sync(reply)` — `next_handle` lives on `session` and `export()` updates it through delegating getters.
 
 ---
 
@@ -557,7 +639,7 @@ Purpose: sync `next_handle` back to session. After `request.dispatch()` block / 
 
 **Where:** `HttpReply` — add `bin_body` flag; branch in `write`.
 
-**Depends on:** §7.
+**Depends on:** Phase 0.
 
 #### Add — property after `paused`
 
@@ -622,9 +704,9 @@ Purpose: sync `next_handle` back to session. After `request.dispatch()` block / 
 
 ### 11. `libocrpc/Transport/HttpServer.vala` — bin decode branch in `on_rpc`
 
-**Why:** `Content-Type: application/octet-stream` → parse with session `bin`.
+**Why:** `Content-Type: application/octet-stream` → parse with `reply.session.bin`.
 
-**Where:** `on_rpc` after session bind / POST check — branch before JSON parser.
+**Where:** `on_rpc` after POST check — branch before JSON parser.
 
 **Depends on:** §9, §10.
 
@@ -641,13 +723,13 @@ Purpose: detect octet-stream, parse bin `Request`, set `reply.bin_body`, then sh
 			if (content_type.has_prefix("application/octet-stream")) {
 				reply.bin_body = true;
 				var bytes = msg.get_request_body().flatten();
-				session.bin.in_stream = new GLib.DataInputStream(
+				reply.session.bin.in_stream = new GLib.DataInputStream(
 					new GLib.MemoryInputStream.from_bytes(bytes)
 				);
-				session.bin.mode = Bin.Mode.EXPLICIT;
+				reply.session.bin.mode = Bin.Mode.EXPLICIT;
 				Bin.Serializable parsed;
 				try {
-					parsed = session.bin.parse();
+					parsed = reply.session.bin.parse();
 				} catch (GLib.Error e) {
 					reply.write(new Response() {
 						error = new OLLMrpc.Error(
@@ -656,10 +738,9 @@ Purpose: detect octet-stream, parse bin `Request`, set `reply.bin_body`, then sh
 						)
 					});
 					msg.set_status(400, null);
-					session.sync(reply);
 					return;
 				}
-				session.bin.in_stream = null;
+				reply.session.bin.in_stream = null;
 				request = parsed as OLLMrpc.Request;
 				if (request == null) {
 					reply.write(new Response() {
@@ -669,7 +750,6 @@ Purpose: detect octet-stream, parse bin `Request`, set `reply.bin_body`, then sh
 						)
 					});
 					msg.set_status(400, null);
-					session.sync(reply);
 					return;
 				}
 			} else {
@@ -687,14 +767,14 @@ Purpose: detect octet-stream, parse bin `Request`, set `reply.bin_body`, then sh
 
 **Where:** new test file; wire in `tests/meson.build` like `test-rpc-http-routes`.
 
-**Depends on:** Phases 1–3.
+**Depends on:** Phases 0–3.
 
 #### Add
 
 New executable smoke (outline — fill literals when implementing):
 
 - Register Hello + types; note both client and server use same `rpc_register` order.
-- `Checksum.roll()` once after register (or rely on first request).
+- `Session.roll_checksum()` once after register (or rely on first request).
 - POST 1: `Content-Type: application/octet-stream`, no `X-rpc-session`; capture `X-rpc-session` + `X-rpc-checksum` from response.
 - POST 2: same session + checksum; bin body that depends on a wire name learned in POST 1 (or second call that only works if JIT tables persist).
 - Wrong checksum → expect `409`.
@@ -716,17 +796,20 @@ test('test-rpc-http-bin-session', test_rpc_http_bin_session, ...)
 
 ## Backlog
 
-- **🔷** `⏳` Implement Phases 1–4 after approval.
+- **🔷** `⏳` Implement Phases 0–4 after approval.
+- **🔷** `⏳` Typed HTTP routes (`on_route`) — optional shared session table later.
 - **🔷** `⏳` Streaming resume + session (**8.2.3.1**) — fill fences later.
 - **🚫** TLS / client certs — **8.2.3** / **8.2.7**.
 - **🚫** Threaded workers; session LRU/OOM.
 - **🚫** Rehash entire maps / body MD5 for `X-rpc-checksum`.
+- **🚫** `Session.bind` / `Session.sync` / freestanding `Checksum` class.
 
 ---
 
 ## LLM notes
 
 - **🚫** Do not start implementation until user approves these proposals.
-- **ℹ️** `Checksum.note` / `Checksum.roll` and `Session.take` / `bind` / `sync` are **named in this plan** (allowed methods).
+- **ℹ️** `Session.note_checksum` / `Session.roll_checksum` / `Session.take` are **named in this plan** (allowed methods).
 - **ℹ️** Parent **8.2.6** should reuse `Session` concepts long-term.
 - **ℹ️** Checksum is registration language, not body integrity.
+- **ℹ️** Phase 0 is a behaviour-preserving refactor for sockets; run existing HTTP/socket tests after it.
