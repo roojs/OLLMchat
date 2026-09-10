@@ -194,8 +194,8 @@ namespace OLLMrpc
 		private GLib.MainLoop? sync_loop;
 		/** Nesting depth of {@link call_sync} on {@link sync_context} (0 = idle). */
 		private int sync_depth = 0;
-		/** Nesting depth of {@link sync_call_poll} (0 = idle). */
-		private int sync_poll_depth = 0;
+		/** Nesting depth of {@link call_poll} (0 = idle). */
+		private int poll_depth = 0;
 		private Soup.Session? http_session;
 		private Bin.Json http_json = new Bin.Json(
 			Bin.Mode.AUTO | Bin.Mode.AUTO_STR | Bin.Mode.IGNORE_UNKNOWN
@@ -630,7 +630,7 @@ namespace OLLMrpc
 				}
 				if (this.sync_loop != null) {
 					this.sync_loop.quit();
-				} else if (this.sync_poll_depth == 0) {
+				} else if (this.poll_depth == 0) {
 					this.send_head.begin();
 				}
 				return;
@@ -886,7 +886,7 @@ namespace OLLMrpc
 		}
 
 		/**
-		 * Leave one {@link sync_call_poll} frame and return its
+		 * Leave one {@link call_poll} frame and return its
 		 * response.
 		 *
 		 * Depth--, outer restores async read watch, then same
@@ -894,8 +894,8 @@ namespace OLLMrpc
 		 */
 		private Response poll_close(Request request, PendingWrite entry) throws GLib.Error
 		{
-			this.sync_poll_depth--;
-			if (this.sync_poll_depth == 0 && this.connected && this.read_channel != null) {
+			this.poll_depth--;
+			if (this.poll_depth == 0 && this.connected && this.read_channel != null) {
 				this.read_watch_id = this.read_channel.add_watch(
 					GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
 					this.on_read
@@ -928,7 +928,7 @@ namespace OLLMrpc
 		 * Same contract as {@link call_sync}: does not iterate the
 		 * default {@link GLib.MainContext}; demuxes {@link Live.Invoke}
 		 * and {@link Notification} while waiting; supports nested
-		 * {@link sync_call_poll} (e.g. invoke handler →
+		 * {@link call_poll} (e.g. invoke handler →
 		 * ''RPC-Live-Callback.reply''). Socket / TCP only. Linux
 		 * gnome-shell-rpc; not Windows or Android.
 		 *
@@ -942,13 +942,13 @@ namespace OLLMrpc
 		 * @return wire response on success
 		 * @throws GLib.Error same as {@link call_sync}
 		 */
-		public Response sync_call_poll(Request request) throws GLib.Error
+		public Response call_poll(Request request) throws GLib.Error
 		{
 #if ANDROID
-			throw new GLib.IOError.FAILED("sync_call_poll is not available");
+			throw new GLib.IOError.FAILED("call_poll is not available");
 #else
 			if (this.protocol != Protocol.SOCKET && this.protocol != Protocol.TCP) {
-				throw new GLib.IOError.FAILED("sync_call_poll requires a socket protocol");
+				throw new GLib.IOError.FAILED("call_poll requires a socket protocol");
 			}
 			request.id = this.next_id++;
 			if (!this.connected) {
@@ -958,11 +958,11 @@ namespace OLLMrpc
 			var entry = new PendingWrite(request);
 			this.pending.add(entry);
 
-			if (this.sync_poll_depth == 0 && this.read_watch_id != 0) {
+			if (this.poll_depth == 0 && this.read_watch_id != 0) {
 				GLib.Source.remove(this.read_watch_id);
 				this.read_watch_id = 0;
 			}
-			this.sync_poll_depth++;
+			this.poll_depth++;
 
 			try {
 				this.sending = true;

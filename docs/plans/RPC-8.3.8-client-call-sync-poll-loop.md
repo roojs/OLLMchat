@@ -1,4 +1,4 @@
-# RPC-8.3.8 — `Client.sync_call_poll`: manual read loop blocking RPC
+# RPC-8.3.8 — `Client.call_poll`: manual read loop blocking RPC
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -17,11 +17,11 @@
 ## Purpose
 
 - 🔷 **Primary consumer: gnome-shell-rpc on Linux** (Wayland/GI blocking path). Same platform class as `call_sync` today — **not** Windows, **not** Android (`#if ANDROID` unavailable stub like `call_sync`).
-- 🔷 Add `sync_call_poll` — blocking RPC via **manual `GLib.poll` + parse/dispatch** instead of a private `GLib.MainLoop` + IO watch.
-- 🔷 Keep `call_sync` in-tree during bring-up; **gnome-shell-rpc switches fully** to `sync_call_poll` (one entry point, no mix-and-match). No runtime guards for `call_sync` ↔ `sync_call_poll` nesting — out of scope.
+- 🔷 Add `call_poll` — blocking RPC via **manual `GLib.poll` + parse/dispatch** instead of a private `GLib.MainLoop` + IO watch.
+- 🔷 Keep `call_sync` in-tree during bring-up; **gnome-shell-rpc switches fully** to `call_poll` (one entry point, no mix-and-match). No runtime guards for `call_sync` ↔ `call_poll` nesting — out of scope.
 - 🔷 Same wire contract: demux `Live.Invoke` / `Notification` mid-wait; nested blocking calls during invoke handling (`RPC-Live-Callback.reply`, child GI).
-- ⏳ 🔷 `libocrpc` unit test: nested `sync_call_poll` while a synthetic server pushes `Live.Invoke` before `Response`.
-- ⏳ 🔷 Consumer verify: gnome-shell-rpc `call-sync-repro` modes with `sync_call_poll` only.
+- ⏳ 🔷 `libocrpc` unit test: nested `call_poll` while a synthetic server pushes `Live.Invoke` before `Response`.
+- ⏳ 🔷 Consumer verify: gnome-shell-rpc `call-sync-repro` modes with `call_poll` only.
 - ⏳ 💩 Follow-up (not this plan): delete MainLoop `call_sync` implementation once gnome-shell-rpc is ✅ on poll.
 
 ---
@@ -37,41 +37,41 @@
 
 ## Proposed behaviour
 
-- 🔷 `sync_call_poll(Request)` — Linux gnome-shell-rpc path; socket/TCP only; same throws/retval/error mapping as `call_sync`.
+- 🔷 `call_poll(Request)` — Linux gnome-shell-rpc path; socket/TCP only; same throws/retval/error mapping as `call_sync`.
 - 🔷 **No** private `MainContext` / `MainLoop` / per-frame IO watch for the poll path.
-- 🔷 **Read-watch lifecycle** — open inlined in `sync_call_poll` (depth++, outer drops async `read_watch_id`); **`poll_close(request, entry)`** only private helper — called once at the end (`return this.poll_close(request, entry);`), no `try` / `finally`. Teardown (depth--, restore watch) plus response return/throw live in `poll_close`.
-- 🔷 **Pending queue recurses with the call stack** — each `sync_call_poll` frame owns one `PendingWrite`:
+- 🔷 **Read-watch lifecycle** — open inlined in `call_poll` (depth++, outer drops async `read_watch_id`); **`poll_close(request, entry)`** only private helper — called once at the end (`return this.poll_close(request, entry);`), no `try` / `finally`. Teardown (depth--, restore watch) plus response return/throw live in `poll_close`.
+- 🔷 **Pending queue recurses with the call stack** — each `call_poll` frame owns one `PendingWrite`:
 
 ```text
-sync_call_poll(request):          // one stack frame per in-flight sync call
+call_poll(request):          // one stack frame per in-flight sync call
   enqueue entry for this request
-  if sync_poll_depth == 0: remove async read_watch_id
-  sync_poll_depth++
+  if poll_depth == 0: remove async read_watch_id
+  poll_depth++
   send THIS entry once (blocking flush)
     catch GLib.Error → complete_pending(entry.id, e) only
   while entry.done_response == null:
     if call_timeout expired: complete_pending(TIMED_OUT); break
     poll_drain_readable (recursive; returns true when buffer drained)
-      Live.Invoke → handler → sync_call_poll(child) … poll_close(child)
+      Live.Invoke → handler → call_poll(child) … poll_close(child)
     if entry.done_response: break
     GLib.poll(socket_fd, remaining_timeout_ms)
     on POLLIN/HUP/ERR: poll_drain_readable
   return poll_close(request, entry)   // depth--; restore watch; return/throw
 ```
 
-- 🔷 Nested send does **not** rely on the outer frame scanning `pending` for “first unsent”. Outer sent A before it polls; when invoke fires, **inner** `sync_call_poll` enqueues B and sends B on **its own** frame entry — that is the queue recursion. (Flat “scan first unsent” each loop iteration is the `call_sync` workaround; poll path should not copy it.)
-- 🔷 Nested `sync_call_poll` is **stack recursion** into another wait loop — no `GSource` re-dispatch, so no `G_HOOK_FLAG_IN_CALL` skip.
-- 🔷 `complete_pending`: when `sync_poll_depth > 0`, do **not** `send_head.begin()`; poll waiter observes `done_response` on the next loop check.
+- 🔷 Nested send does **not** rely on the outer frame scanning `pending` for “first unsent”. Outer sent A before it polls; when invoke fires, **inner** `call_poll` enqueues B and sends B on **its own** frame entry — that is the queue recursion. (Flat “scan first unsent” each loop iteration is the `call_sync` workaround; poll path should not copy it.)
+- 🔷 Nested `call_poll` is **stack recursion** into another wait loop — no `GSource` re-dispatch, so no `G_HOOK_FLAG_IN_CALL` skip.
+- 🔷 `complete_pending`: when `poll_depth > 0`, do **not** `send_head.begin()`; poll waiter observes `done_response` on the next loop check.
 - 🚫 Replacing or deleting `call_sync` in this plan (follow-up after gnome-shell-rpc ✅).
-- 🚫 Runtime guards for mixing `call_sync` and `sync_call_poll` — consumer picks one API.
+- 🚫 Runtime guards for mixing `call_sync` and `call_poll` — consumer picks one API.
 - 🚫 Dual-socket / protocol changes.
-- 🚫 New `reply_invoke` API — trampoline stays `sync_call_poll(RPC-Live-Callback.reply, …)`.
+- 🚫 New `reply_invoke` API — trampoline stays `call_poll(RPC-Live-Callback.reply, …)`.
 
 ---
 
 ## Phase 1 — `libocrpc/Client.vala`
 
-### 1. `libocrpc/Client.vala` — field: `sync_poll_depth`
+### 1. `libocrpc/Client.vala` — field: `poll_depth`
 
 **Why:** Track poll-mode wait nesting and outer lifecycle (read-watch teardown) without a `MainLoop`.
 
@@ -82,8 +82,8 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 #### Add — after `sync_depth` field declaration.
 
 ```vala
-		/** Nesting depth of {@link sync_call_poll} (0 = idle). */
-		private int sync_poll_depth = 0;
+		/** Nesting depth of {@link call_poll} (0 = idle). */
+		private int poll_depth = 0;
 ```
 
 ### 2. `libocrpc/Client.vala` — `complete_pending`: poll waiters
@@ -109,16 +109,16 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 ```vala
 				if (this.sync_loop != null) {
 					this.sync_loop.quit();
-				} else if (this.sync_poll_depth == 0) {
+				} else if (this.poll_depth == 0) {
 					this.send_head.begin();
 				}
 ```
 
 ### 3. `libocrpc/Client.vala` — `poll_close`: frame teardown + return
 
-**Why:** Replaces `try` / `finally` — `sync_call_poll` always ends with `return this.poll_close(request, entry);`.
+**Why:** Replaces `try` / `finally` — `call_poll` always ends with `return this.poll_close(request, entry);`.
 
-**Where:** class body — immediately after `call_sync` (before `sync_call_poll`).
+**Where:** class body — immediately after `call_sync` (before `call_poll`).
 
 **Depends on:** §1.
 
@@ -126,7 +126,7 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 
 ```vala
 		/**
-		 * Leave one {@link sync_call_poll} frame and return its
+		 * Leave one {@link call_poll} frame and return its
 		 * response.
 		 *
 		 * Depth--, outer restores async read watch, then same
@@ -134,8 +134,8 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 		 */
 		private Response poll_close(Request request, PendingWrite entry) throws GLib.Error
 		{
-			this.sync_poll_depth--;
-			if (this.sync_poll_depth == 0 && this.connected && this.read_channel != null) {
+			this.poll_depth--;
+			if (this.poll_depth == 0 && this.connected && this.read_channel != null) {
 				this.read_watch_id = this.read_channel.add_watch(
 					GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
 					this.on_read
@@ -163,7 +163,7 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 		}
 ```
 
-### 4. `libocrpc/Client.vala` — `sync_call_poll`: new public method
+### 4. `libocrpc/Client.vala` — `call_poll`: new public method
 
 **Why:** Blocking RPC via manual poll/dispatch; alternative to MainLoop-based `call_sync`.
 
@@ -180,7 +180,7 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 		 * Same contract as {@link call_sync}: does not iterate the
 		 * default {@link GLib.MainContext}; demuxes {@link Live.Invoke}
 		 * and {@link Notification} while waiting; supports nested
-		 * {@link sync_call_poll} (e.g. invoke handler →
+		 * {@link call_poll} (e.g. invoke handler →
 		 * ''RPC-Live-Callback.reply''). Socket / TCP only. Linux
 		 * gnome-shell-rpc; not Windows or Android.
 		 *
@@ -194,13 +194,13 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 		 * @return wire response on success
 		 * @throws GLib.Error same as {@link call_sync}
 		 */
-		public Response sync_call_poll(Request request) throws GLib.Error
+		public Response call_poll(Request request) throws GLib.Error
 		{
 #if ANDROID
-			throw new GLib.IOError.FAILED("sync_call_poll is not available");
+			throw new GLib.IOError.FAILED("call_poll is not available");
 #else
 			if (this.protocol != Protocol.SOCKET && this.protocol != Protocol.TCP) {
-				throw new GLib.IOError.FAILED("sync_call_poll requires a socket protocol");
+				throw new GLib.IOError.FAILED("call_poll requires a socket protocol");
 			}
 			request.id = this.next_id++;
 			if (!this.connected) {
@@ -210,11 +210,11 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 			var entry = new PendingWrite(request);
 			this.pending.add(entry);
 
-			if (this.sync_poll_depth == 0 && this.read_watch_id != 0) {
+			if (this.poll_depth == 0 && this.read_watch_id != 0) {
 				GLib.Source.remove(this.read_watch_id);
 				this.read_watch_id = 0;
 			}
-			this.sync_poll_depth++;
+			this.poll_depth++;
 
 			try {
 				this.sending = true;
@@ -295,7 +295,7 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 
 ### 5. `libocrpc/Client.vala` — `poll_drain_readable`: recursive bool drain
 
-**Why:** `sync_call_poll` must parse/dispatch identically to `on_read` without registering a `GSource`. One wire message per stack frame; **`return this.poll_drain_readable(source)`** when more `IN` remains. Returns **`true`** when the buffer is drained; propagates the recursive result.
+**Why:** `call_poll` must parse/dispatch identically to `on_read` without registering a `GSource`. One wire message per stack frame; **`return this.poll_drain_readable(source)`** when more `IN` remains. Returns **`true`** when the buffer is drained; propagates the recursive result.
 
 **Where:** class body — immediately before `on_read`.
 
@@ -335,7 +335,7 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 
 ### 6. `libocrpc/Client.vala` — `on_read`: delegate drain to `poll_drain_readable`
 
-**Why:** Same recursive drain as `sync_call_poll`; single call (return ignored).
+**Why:** Same recursive drain as `call_poll`; single call (return ignored).
 
 **Where:** `on_read` body — replace inner `do/while` parse loop.
 
@@ -369,7 +369,7 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 
 ### 1. `tests/rpc/call-sync-poll-test.vala` — nested invoke + reply under poll
 
-**Why:** Lock in mid-wait demux and nested `sync_call_poll` without consumer repro.
+**Why:** Lock in mid-wait demux and nested `call_poll` without consumer repro.
 
 **Where:** new test file; wire into `tests/rpc/meson.build` like `callback-test.vala`.
 
@@ -379,9 +379,9 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 
 - 🔷 Spawn or attach loopback TCP / Unix test server (reuse `RpcTestAppBase` patterns from `tests/rpc/gi-test.vala` if present).
 - 🔷 Server handler for method `RPC-Test.hold`: write `Live.Invoke` to client, block until `RPC-Live-Callback.reply`, then write `Response(hold)`.
-- 🔷 Client: `rpc.invoke.connect((call) => { rpc.sync_call_poll(reply_request); })`.
-- 🔷 Client: `sync_call_poll(hold_request)` completes without timeout.
-- 🔷 Second case **💩** `flow+child`: invoke handler issues a child `sync_call_poll` before trampoline reply — mirror consumer repro if cheap; otherwise defer to consumer verify only.
+- 🔷 Client: `rpc.invoke.connect((call) => { rpc.call_poll(reply_request); })`.
+- 🔷 Client: `call_poll(hold_request)` completes without timeout.
+- 🔷 Second case **💩** `flow+child`: invoke handler issues a child `call_poll` before trampoline reply — mirror consumer repro if cheap; otherwise defer to consumer verify only.
 
 **Meson:** add executable + `test()` entry alongside `callback-test`.
 
@@ -389,7 +389,7 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 
 ## Phase 3 — consumer verify (out of tree)
 
-- ⏳ 🔷 gnome-shell-rpc: switch `GiStub.Runtime.do_call` to `sync_call_poll` only (no A/B flag).
+- ⏳ 🔷 gnome-shell-rpc: switch `GiStub.Runtime.do_call` to `call_poll` only (no A/B flag).
 - ⏳ 🔷 Run `tests/call-sync-repro/` modes: `flow`, `flow+child`, `opc-head`, nested mutter `remove_child`.
 - ⏳ 🔷 Real shell layout pass (panel / nested window) — user ✅ only.
 
@@ -406,9 +406,9 @@ sync_call_poll(request):          // one stack frame per in-flight sync call
 ## Risks / open questions
 
 - ℹ️ `GLib.poll` + `unix_get_fd()` — Linux gnome-shell-rpc / CI only; no Windows target for this path.
-- ℹ️ Follow-up: remove MainLoop `call_sync` once gnome-shell-rpc is ✅ on `sync_call_poll`.
+- ℹ️ Follow-up: remove MainLoop `call_sync` once gnome-shell-rpc is ✅ on `call_poll`.
 
 ## LLM notes
 
 - Implement only Phase 1–2 unless user approves Phase 3 in-tree edits (gnome-shell-rpc is another repo).
-- Named private helpers: `poll_close(request, entry)` (teardown + return/throw — replaces `try`/`finally`), `poll_drain_readable` (recursive `bool`; `return this.poll_drain_readable(source)` when more `IN`). Frame **open** stays inlined in `sync_call_poll`.
+- Named private helpers: `poll_close(request, entry)` (teardown + return/throw — replaces `try`/`finally`), `poll_drain_readable` (recursive `bool`; `return this.poll_drain_readable(source)` when more `IN`). Frame **open** stays inlined in `call_poll`.
