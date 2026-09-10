@@ -932,8 +932,8 @@ namespace OLLMrpc
 		 * Unlike {@link call_sync}, does not attach a private
 		 * {@link GLib.MainLoop} or per-frame IO watch — nested waits
 		 * recurse on the call stack and read with {@link GLib.poll}.
-		 * Ends with {@code return this.poll_close(request, entry);}
-		 * (no {@code try} / {@code finally}).
+		 * Ends with {{{ return this.poll_close(request, entry); }}} (no
+		 * {{{ try }}} / {{{ finally }}}).
 		 *
 		 * @param request wire request; {@link Request.id} is set here
 		 * @return wire response on success

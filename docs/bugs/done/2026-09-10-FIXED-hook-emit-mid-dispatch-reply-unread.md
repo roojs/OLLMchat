@@ -1,6 +1,6 @@
 # `Hook.emit` cannot recv nested `RPC-Live-Callback.reply` mid-`on_input_ready`
 
-**Status:** ✔️ applied — await consumer verify  
+**Status:** ✅ fixed — libocrpc contract landed; mutter-rpc overrides `emit_wait_poll`
 **Hit:** 2026-09-10 — gnome-shell-rpc nested Wayland after `call_poll` + in-flow reply  
 **Component:** `libocrpc` / `Live.Hook.emit` + `Transport.Connection.on_input_ready`  
 **Consumer:** gnome-shell-rpc `Helper.Actor` sync preferred/allocate emit  
@@ -141,9 +141,13 @@ Toy: `tests/call-sync-repro/` `stack` (FAIL) vs `reenter` (PASS).
   parse/dispatch). No in-tree subclass — server app overrides on its
   `Connection` type.
 - ✔️ `Hook.emit` — calls `connection.emit_wait_poll()` each wait turn.
-- ⏳🔷 Consumer (mutter-rpc): subclass `Connection`, override
-  `emit_wait_poll`, wire into listen accept path.
 - ✔️ `tests/test-rpc.sh` + `test-rpc-callback` — pass.
+
+## Conclusion
+
+✅ libocrpc exposes virtual `Connection.emit_wait_poll()`; `Hook.emit` calls
+it. Socket servers (mutter-rpc) override with `GLib.poll` + parse/dispatch
+per `Connection` docblock — not an in-tree subclass.
 
 ## Non-goals / already done elsewhere
 

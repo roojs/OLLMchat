@@ -270,7 +270,7 @@ namespace OLLMrpc.Transport
 		 * cannot run again while {@link on_input_ready} is still on the stack,
 		 * so iteration never reads the client's
 		 * ''RPC-Live-Callback.reply''. Override with {@link GLib.poll} on
-		 * {@link channel}, then {@link Bin.Stream.parse} and
+		 * the socket fd, then {@link Bin.Stream.parse} and
 		 * {@link OLLMrpc.Request.dispatch} (same body as {@link on_input_ready}
 		 * inner loop). {@link on_input_ready} itself does not need to change.
 		 */
