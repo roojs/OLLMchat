@@ -441,6 +441,50 @@ namespace OLLMrpc
 				if (this.skip_wire[i]) {
 					continue;
 				}
+				if (arg.get_direction() == GI.Direction.INOUT) {
+					if (vi >= this.request.args.size) {
+						if (!arg.may_be_null()) {
+							this.request.connection.reply_error(
+								this.request, (int) RpcErrorCode.INVALID_PARAMS);
+							return true;
+						}
+						vi++;
+						continue;
+					}
+					if (!this.convert(arg, vi, instance ? 1 : 0)) {
+						return true;
+					}
+					var slot = this.in_slot[i];
+					var tag = arg.get_type().get_tag();
+					switch (tag) {
+						case GI.TypeTag.BOOLEAN:
+						case GI.TypeTag.INT8:
+						case GI.TypeTag.UINT8:
+						case GI.TypeTag.INT16:
+						case GI.TypeTag.UINT16:
+						case GI.TypeTag.INT32:
+						case GI.TypeTag.UINT32:
+						case GI.TypeTag.INT64:
+						case GI.TypeTag.UINT64:
+						case GI.TypeTag.FLOAT:
+						case GI.TypeTag.DOUBLE:
+							var cell = new uint8[sizeof(GI.Argument)];
+							var cell_keep = new GLib.Bytes(cell);
+							this.boxed_keep.add(cell_keep);
+							var ptr = (void*) cell_keep.get_data();
+							GLib.Memory.copy(ptr, &this.in_args[slot], sizeof(GI.Argument));
+							this.in_args[slot].v_pointer = ptr;
+							this.out_args[out_i].v_pointer = ptr;
+							break;
+
+						default:
+							this.out_args[out_i] = this.in_args[slot];
+							break;
+					}
+					out_i++;
+					vi++;
+					continue;
+				}
 				if (arg.get_direction() != GI.Direction.OUT) {
 					if (vi >= this.request.args.size) {
 						if (!arg.may_be_null()) {
@@ -553,8 +597,31 @@ namespace OLLMrpc
 				if (arg.get_direction() == GI.Direction.IN) {
 					continue;
 				}
-				if (arg.get_direction() == GI.Direction.OUT
-					&& !(arg.is_caller_allocates() && arg.get_type().get_tag() == GI.TypeTag.INTERFACE)) {
+				var flatten = false;
+				if (arg.get_direction() == GI.Direction.OUT) {
+					flatten = !(arg.is_caller_allocates()
+						&& arg.get_type().get_tag() == GI.TypeTag.INTERFACE);
+				} else if (arg.get_direction() == GI.Direction.INOUT) {
+					switch (arg.get_type().get_tag()) {
+						case GI.TypeTag.BOOLEAN:
+						case GI.TypeTag.INT8:
+						case GI.TypeTag.UINT8:
+						case GI.TypeTag.INT16:
+						case GI.TypeTag.UINT16:
+						case GI.TypeTag.INT32:
+						case GI.TypeTag.UINT32:
+						case GI.TypeTag.INT64:
+						case GI.TypeTag.UINT64:
+						case GI.TypeTag.FLOAT:
+						case GI.TypeTag.DOUBLE:
+							flatten = true;
+							break;
+
+						default:
+							break;
+					}
+				}
+				if (flatten) {
 					var flat = GI.Argument();
 					GLib.Memory.copy(&flat, this.out_args[oi].v_pointer, sizeof(GI.Argument));
 					this.out_args[oi] = flat;
