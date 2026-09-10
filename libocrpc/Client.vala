@@ -188,10 +188,14 @@ namespace OLLMrpc
 		private bool sending { get; set; default = false; }
 		private GLib.IOChannel? read_channel;
 		private uint read_watch_id = 0;
-		/** Non-null while {@link call_sync} runs a private {@link GLib.MainLoop}. */
+		/** Private context shared across outer and nested {@link call_sync} frames. */
+		private GLib.MainContext? sync_context;
+		/** Innermost {@link GLib.MainLoop} while {@link call_sync} waits. */
 		private GLib.MainLoop? sync_loop;
-		/** Nesting depth of {@link call_sync} on {@link sync_loop} (0 = idle). */
+		/** Nesting depth of {@link call_sync} on {@link sync_context} (0 = idle). */
 		private int sync_depth = 0;
+		/** Nesting depth of {@link sync_call_poll} (0 = idle). */
+		private int sync_poll_depth = 0;
 		private Soup.Session? http_session;
 		private Bin.Json http_json = new Bin.Json(
 			Bin.Mode.AUTO | Bin.Mode.AUTO_STR | Bin.Mode.IGNORE_UNKNOWN
@@ -626,11 +630,39 @@ namespace OLLMrpc
 				}
 				if (this.sync_loop != null) {
 					this.sync_loop.quit();
-				} else {
+				} else if (this.sync_poll_depth == 0) {
 					this.send_head.begin();
 				}
 				return;
 			}
+		}
+
+		/**
+		 * Parse and dispatch buffered socket messages recursively.
+		 *
+		 * @param source RPC socket channel
+		 * @return {@code true} when the buffer has no more readable data
+		 */
+		private bool poll_drain_readable(GLib.IOChannel source)
+		{
+			if (!this.connected || this.bin == null) {
+				return true;
+			}
+			if ((source.get_buffer_condition() & GLib.IOCondition.IN) == 0) {
+				return true;
+			}
+			try {
+				var msg = this.bin.parse();
+				this.dispatch_message(msg);
+			} catch (GLib.IOError e) {
+				GLib.error("%s", e.message);
+			} catch (GLib.Error e) {
+				GLib.error("%s", e.message);
+			}
+			if ((source.get_buffer_condition() & GLib.IOCondition.IN) != 0) {
+				return this.poll_drain_readable(source);
+			}
+			return true;
 		}
 
 		/**
@@ -656,19 +688,7 @@ namespace OLLMrpc
 			if (!this.connected || this.bin == null) {
 				return this.connected;
 			}
-			do {
-				if (!this.connected || this.bin == null) {
-					break;
-				}
-				try {
-					var msg = this.bin.parse();
-					this.dispatch_message(msg);
-				} catch (GLib.IOError e) {
-					GLib.error("%s", e.message);
-				} catch (GLib.Error e) {
-					GLib.error("%s", e.message);
-				}
-			} while ((source.get_buffer_condition() & GLib.IOCondition.IN) != 0);
+			this.poll_drain_readable(source);
 			return this.connected;
 		}
 
@@ -730,18 +750,18 @@ namespace OLLMrpc
 		 * Blocking {@link call} that does not iterate the default
 		 * {@link GLib.MainContext}.
 		 *
-		 * Attaches the read watch (and call timeout) to a private context
-		 * and runs only that loop until this request completes. Does not
-		 * {@link GLib.MainContext.push_thread_default} — that would steal
-		 * Clutter/GJS idles onto the private context and drop them on
-		 * teardown. Sends with a blocking flush so {@link send_head} is
-		 * not required mid-call. Socket / TCP only.
+		 * Attaches a per-frame read watch (and call timeout) to a private
+		 * {@link sync_context} and runs only that loop until this request
+		 * completes. Does not {@link GLib.MainContext.push_thread_default}
+		 * — that would steal Clutter/GJS idles onto the private context and
+		 * drop them on teardown. Sends with a blocking flush so
+		 * {@link send_head} is not required mid-call. Socket / TCP only.
 		 *
 		 * While an outer wait is open, a nested {@link call_sync} (e.g.
 		 * {@link Live.Invoke} handler → ''RPC-Live-Callback.reply'' or a
-		 * child GI request) reuses the same private loop; it must not
-		 * iterate the default context. Handlers run on that private
-		 * context.
+		 * child GI request) reuses the same private context with its own
+		 * IO watch and {@link GLib.MainLoop}; it must not iterate the
+		 * default context. Handlers run on that private context.
 		 *
 		 * @param request wire request; {@link Request.id} is set here
 		 * @return wire response on success
@@ -763,32 +783,38 @@ namespace OLLMrpc
 			var entry = new PendingWrite(request);
 			this.pending.add(entry);
 
-			var outer = (this.sync_loop == null);
-			GLib.IOSource? sync_watch = null;
-			GLib.Source? timeout_source = null;
+			var outer = (this.sync_context == null);
 			if (outer) {
 				if (this.read_watch_id != 0) {
 					GLib.Source.remove(this.read_watch_id);
 					this.read_watch_id = 0;
 				}
-				this.sync_loop = new GLib.MainLoop(new GLib.MainContext(), false);
-				sync_watch = this.read_channel.create_watch(
-					GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR
-				);
-				sync_watch.set_callback(this.on_read);
-				sync_watch.attach(this.sync_loop.get_context());
-				if (this.call_timeout_seconds > 0) {
-					timeout_source = new GLib.TimeoutSource.seconds(this.call_timeout_seconds);
-					timeout_source.set_callback(() => {
-						GLib.warning("call timed out %s id=%d after %u s",
-							entry.request.method, entry.request.id, this.call_timeout_seconds);
-						this.complete_pending(
-							entry.request.id, null, new GLib.IOError.TIMED_OUT("call timed out"));
-						return false;
-					});
-					timeout_source.attach(this.sync_loop.get_context());
-				}
+				this.sync_context = new GLib.MainContext();
 			}
+
+			var saved_loop = this.sync_loop;
+			var my_loop = new GLib.MainLoop(this.sync_context, false);
+			this.sync_loop = my_loop;
+
+			var sync_watch = this.read_channel.create_watch(
+				GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR
+			);
+			sync_watch.set_callback(this.on_read);
+			sync_watch.attach(this.sync_context);
+
+			GLib.Source? timeout_source = null;
+			if (this.call_timeout_seconds > 0) {
+				timeout_source = new GLib.TimeoutSource.seconds(this.call_timeout_seconds);
+				timeout_source.set_callback(() => {
+					GLib.warning("call timed out %s id=%d after %u s",
+						entry.request.method, entry.request.id, this.call_timeout_seconds);
+					this.complete_pending(
+						entry.request.id, null, new GLib.IOError.TIMED_OUT("call timed out"));
+					return false;
+				});
+				timeout_source.attach(this.sync_context);
+			}
+
 			this.sync_depth++;
 			try {
 				while (entry.done_response == null) {
@@ -815,7 +841,7 @@ namespace OLLMrpc
 					if (entry.done_response != null) {
 						break;
 					}
-					this.sync_loop.run();
+					my_loop.run();
 				}
 			} catch (GLib.Error e) {
 				this.sending = false;
@@ -824,14 +850,13 @@ namespace OLLMrpc
 					null, e);
 			} finally {
 				this.sync_depth--;
+				if (timeout_source != null) {
+					timeout_source.destroy();
+				}
+				sync_watch.destroy();
+				this.sync_loop = saved_loop;
 				if (outer) {
-					if (timeout_source != null) {
-						timeout_source.destroy();
-					}
-					if (sync_watch != null) {
-						sync_watch.destroy();
-					}
-					this.sync_loop = null;
+					this.sync_context = null;
 					if (this.connected && this.read_channel != null) {
 						this.read_watch_id = this.read_channel.add_watch(
 							GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
@@ -857,6 +882,163 @@ namespace OLLMrpc
 				code = entry.done_response.error.code;
 			}
 			throw new GLib.Error.literal(quark, code, entry.done_response.error.message);
+#endif
+		}
+
+		/**
+		 * Leave one {@link sync_call_poll} frame and return its
+		 * response.
+		 *
+		 * Depth--, outer restores async read watch, then same
+		 * return/throw tail as {@link call_sync}.
+		 */
+		private Response poll_close(Request request, PendingWrite entry) throws GLib.Error
+		{
+			this.sync_poll_depth--;
+			if (this.sync_poll_depth == 0 && this.connected && this.read_channel != null) {
+				this.read_watch_id = this.read_channel.add_watch(
+					GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
+					this.on_read
+				);
+				if (this.pending.size > 0 && !this.pending.get(0).sent) {
+					this.send_head.begin();
+				}
+			}
+			if (entry.done_response == null) {
+				throw new GLib.IOError.FAILED("call ended without response");
+			}
+			if (entry.done_response.error == null) {
+				return entry.done_response;
+			}
+			GLib.warning("%s id=%d: %s",
+				request.method, request.id, entry.done_response.error.message);
+			this.failed(request, entry.done_response.error);
+			var quark = GLib.Quark.from_string(entry.done_response.error.domain);
+			var code = entry.done_response.error.gerror_code;
+			if (entry.done_response.error.domain == "") {
+				quark = new RpcErrorCode.INTERNAL_ERROR("").domain;
+				code = entry.done_response.error.code;
+			}
+			throw new GLib.Error.literal(quark, code, entry.done_response.error.message);
+		}
+
+		/**
+		 * Blocking {@link call} using a manual socket poll loop.
+		 *
+		 * Same contract as {@link call_sync}: does not iterate the
+		 * default {@link GLib.MainContext}; demuxes {@link Live.Invoke}
+		 * and {@link Notification} while waiting; supports nested
+		 * {@link sync_call_poll} (e.g. invoke handler →
+		 * ''RPC-Live-Callback.reply''). Socket / TCP only. Linux
+		 * gnome-shell-rpc; not Windows or Android.
+		 *
+		 * Unlike {@link call_sync}, does not attach a private
+		 * {@link GLib.MainLoop} or per-frame IO watch — nested waits
+		 * recurse on the call stack and read with {@link GLib.poll}.
+		 * Ends with {@code return this.poll_close(request, entry);}
+		 * (no {@code try} / {@code finally}).
+		 *
+		 * @param request wire request; {@link Request.id} is set here
+		 * @return wire response on success
+		 * @throws GLib.Error same as {@link call_sync}
+		 */
+		public Response sync_call_poll(Request request) throws GLib.Error
+		{
+#if ANDROID
+			throw new GLib.IOError.FAILED("sync_call_poll is not available");
+#else
+			if (this.protocol != Protocol.SOCKET && this.protocol != Protocol.TCP) {
+				throw new GLib.IOError.FAILED("sync_call_poll requires a socket protocol");
+			}
+			request.id = this.next_id++;
+			if (!this.connected) {
+				GLib.error("%s id=%d: not connected", request.method, request.id);
+			}
+
+			var entry = new PendingWrite(request);
+			this.pending.add(entry);
+
+			if (this.sync_poll_depth == 0 && this.read_watch_id != 0) {
+				GLib.Source.remove(this.read_watch_id);
+				this.read_watch_id = 0;
+			}
+			this.sync_poll_depth++;
+
+			try {
+				this.sending = true;
+				GLib.debug("id=%d method=%s", entry.request.id, entry.request.method);
+				this.bin.write(entry.request);
+				this.output.flush(null);
+				entry.sent = true;
+				this.sending = false;
+			} catch (GLib.Error e) {
+				this.sending = false;
+				this.complete_pending(entry.request.id, null, e);
+			}
+
+			var poll_fd = -1;
+			var poll_source = GLib.PollFD();
+			if (this.read_channel != null) {
+				poll_fd = this.read_channel.unix_get_fd();
+				poll_source.fd = poll_fd;
+				poll_source.events = GLib.IOCondition.IN | GLib.IOCondition.ERR | GLib.IOCondition.HUP;
+			}
+
+			var deadline_us = (int64) 0;
+			if (this.call_timeout_seconds > 0) {
+				deadline_us = GLib.get_monotonic_time()
+					+ (int64) this.call_timeout_seconds * 1000000;
+			}
+
+			while (entry.done_response == null) {
+				if (deadline_us > 0 && GLib.get_monotonic_time() >= deadline_us) {
+					GLib.warning("call timed out %s id=%d after %u s",
+						entry.request.method, entry.request.id, this.call_timeout_seconds);
+					this.complete_pending(
+						entry.request.id, null, new GLib.IOError.TIMED_OUT("call timed out"));
+					break;
+				}
+				if (this.read_channel != null && (this.read_channel.get_buffer_condition() & GLib.IOCondition.IN) != 0) {
+					this.poll_drain_readable(this.read_channel);
+				}
+				if (entry.done_response != null) {
+					break;
+				}
+				if (poll_fd < 0) {
+					GLib.error("%s id=%d: poll socket fd missing", entry.request.method, entry.request.id);
+				}
+				var timeout_ms = -1;
+				if (deadline_us > 0) {
+					var remain_us = deadline_us - GLib.get_monotonic_time();
+					if (remain_us <= 0) {
+						continue;
+					}
+					timeout_ms = (int) (remain_us / 1000);
+					if (timeout_ms == 0) {
+						timeout_ms = 1;
+					}
+				}
+				var poll_fds = new GLib.PollFD[] { poll_source };
+				if (GLib.poll(poll_fds, timeout_ms) <= 0) {
+					continue;
+				}
+				if ((poll_source.revents & GLib.IOCondition.ERR) != 0
+					|| (poll_source.revents & GLib.IOCondition.HUP) != 0) {
+					GLib.warning("socket closed socket_path=%s pending=%u",
+						this.socket_path, this.pending.size);
+					this.disconnect();
+					break;
+				}
+				if ((poll_source.revents & GLib.IOCondition.IN) == 0) {
+					continue;
+				}
+				this.poll_drain_readable(this.read_channel);
+				if (entry.done_response != null) {
+					break;
+				}
+			}
+
+			return this.poll_close(request, entry);
 #endif
 		}
 
