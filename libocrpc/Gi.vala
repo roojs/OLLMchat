@@ -628,9 +628,11 @@ namespace OLLMrpc
 					if (((GI.RegisteredTypeInfo) in_iface).get_g_type() != typeof(GLib.Value)) {
 						continue;
 					}
-					if (!this.scalar(arg.get_type(), this.in_args[this.in_slot[i]], response.args)) {
+					var packed = new Gee.ArrayList<GLib.Value?>();
+					if (!this.scalar(arg.get_type(), this.in_args[this.in_slot[i]], packed)) {
 						return true;
 					}
+					response.retval = packed.get(0);
 					continue;
 				}
 				var flatten = false;

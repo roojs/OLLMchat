@@ -19,8 +19,7 @@
 - Wire args are already `GLib.Value` rows (`Request.args`).
 - GIR `value` parameter is `GValue*` (`GObject.Value` record).
 - Get fills that buffer; set reads it. Reply carries the property
-  payload as a normal scalar `GLib.Value` (bool, int, string, …) on
-  `Response.args`.
+  payload as a normal scalar on `Response.retval` (C return is void).
 
 **Actual:** Gi has no `GObject.Value` special case. `convert_interface`
 treats the record like a sized STRUCT/BOXED and requires
@@ -264,12 +263,14 @@ flat continues (wire present first, then omit/GValue, then may_be_null).
   libocrpc/libocrpc.so` ok.
 - ✅ 2026-09-11 — marked done; archived as
   `docs/bugs/done/2026-09-11-FIXED-gi-gvalue-property-args.md`.
+- ✔️ 2026-09-11 — IN GValue fill-back → `response.retval` (not `args`);
+  void C return makes args unnecessary for get/set_property.
 
 ## Consumer follow-up
 
-ℹ️ Overrides should read `response.args.get(0).get_boolean()` (generator
-OUT pattern), not `response.retval` — `get_property` returns void
-(consumer tree).
+✅ Fill-back goes on `response.retval` (C return is void for
+`get_property` / `set_property`) — not `args`. Overrides keep
+`response.retval.get_boolean()`.
 
 ---
 
@@ -283,7 +284,7 @@ rg 'method=Meta-MonitorManager.get_property|method=Meta-Context.get_property|met
   ~/.cache/gnome-shell-rpc/org.gnome.ShellRpc.debug.log
 ```
 
-**Done when:** those calls reply with a bool on `args` (not
+**Done when:** those calls reply with a bool on `retval` (not
 `INVALID_PARAMS`); no Value-in-Value; nested init no longer blocked on
 missing property *values* once stubs expose the GIR property names.
 
