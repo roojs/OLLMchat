@@ -1,6 +1,6 @@
 # 8.2.3.2 — HTTP binary RPC + session id
 
-**Status:** **PROPOSED** — design revised (composition, no bind); implement after user approval
+**Status:** **PROPOSED** — design revised (HTTP `Session` = bin JIT + id only; leases stay on `Connection`); implement after user approval
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -17,7 +17,7 @@
 ## Purpose
 
 - **🔷** Accept **bin** RPC request bodies over HTTP (same `Request` / `Response` / `Notification` objects as the socket).
-- **🔷** Because HTTP is sessionless, carry a **session id** so the server can restore JIT type maps / lease tables across POSTs.
+- **🔷** Because HTTP is sessionless, carry a **session id** so the server can restore **bin JIT name tables** across POSTs (not leases — those stay per POST on `HttpReply`).
 - **🔷** Carry a **registry checksum** with the session so both ends know they share the same registration “language”.
 - **🔷** Keep main-loop-only concurrency (no threading MPM).
 
@@ -25,23 +25,22 @@
 
 ## Design principle — composition, not bind
 
-- **ℹ️** Today `Connection` mixes two roles:
-  - **Session state** — `bin` name tables, leases, live-handle maps, `next_handle` (long-lived).
-  - **Transport** — socket I/O, `write()`, read loop (one channel per peer).
-- **ℹ️** For TCP these coincide: one socket = one session lifetime. `HttpReply : Connection` reused the type so `Request.dispatch()` could call `connection.write()` / `connection.export()`.
-- **🔷** For HTTP, session state spans many POSTs but transport is one-shot per POST. Copying or reassigning session fields onto each `HttpReply` (`bind` / `sync`) is a smell — it papers over the wrong ownership.
-- **🔷** Fix: **`Session` owns state**; **`Connection` composes a `Session`** and exposes delegating properties so `Gi.vala` and dispatch keep using `request.connection.leases` unchanged.
-- **🔷** **`HttpReply` takes a `Session` in its constructor** — no `bind`, no `sync`, no property copying.
-- **🔷** Socket listeners keep `new Connection(stream)` — default `session = new Session()` inside `Connection`.
+- **ℹ️** Today `Connection` holds both transport and **live-handle / lease** state (`leases`, `next_handle`, callbacks, …).
+- **ℹ️** For TCP, one socket = one `Connection` for the channel lifetime. `HttpReply : Connection` reuses the type so `Request.dispatch()` keeps calling `connection.write()` / `connection.export()` on the active reply.
+- **ℹ️** For HTTP, **only bin JIT wire-name tables** must survive across POSTs. Leases and callbacks are scoped to **one POST** (one `HttpReply` instance).
+- **🔷** **`Session`** holds shared **`Bin.Stream` name tables**, opaque **`id`**, and HTTP **`take()`** lookup — not leases.
+- **🔷** **`Connection`** keeps leases, `next_handle`, callbacks, socket `bin`, transport — **no delegating getters**, **no `Connection.session` field**.
+- **🔷** **`HttpReply` takes a `Session`** and sets `this.bin = session.bin` in `construct` so encode/decode shares JIT tables; **`session.bin.connection = this`** so live refs resolve against **this POST’s** lease maps.
+- **🔷** Socket listeners keep `new Connection(stream)` unchanged — private `bin` from `start()` as today.
 - **🚫** `Session.bind`, `Session.sync`, freestanding `OLLMrpc.Checksum` class.
 
 ### Roles after refactor
 
 | Type | Owns |
 |------|------|
-| **`Session`** | `id`, `bin`, lease maps, `next_handle`, static registry checksum (`note` / `roll`), HTTP `take()` table |
-| **`Connection`** | `session` (composed), transport (`stream`, channel, `write`, read loop), `live_handles` |
-| **`HttpReply`** | `soup`, `msg`, POST flags (`streaming`, `finished`, `paused`, `bin_body`); inherits `Connection` with injected `Session` |
+| **`Session`** | `id`, shared `Bin.Stream` (JIT name tables only; I/O streams wired per POST), static registry checksum (`note` / `roll`), HTTP `take()` table |
+| **`Connection`** | Leases, `next_handle`, callbacks, `signal_subs`, per-channel `bin` (socket), transport (`stream`, channel, `write`, read loop), `live_handles` |
+| **`HttpReply`** | `session`, `soup`, `msg`, POST flags (`streaming`, `finished`, `paused`, `bin_body`); inherits `Connection` — **fresh lease maps per POST**, **shared `session.bin`** |
 
 ### Content types
 
@@ -74,15 +73,15 @@
 
 ### Named APIs (this plan)
 
-- **🔷** `OLLMrpc.Transport.Session` — state owner; `take(string id)`; static `note_checksum` / `roll_checksum`.
-- **🔷** `Connection.session` — composed; delegating `leases`, `bin`, `next_handle`, etc.
-- **🔷** `HttpReply(Soup.Server, Soup.ServerMessage, Session)` — reply aware of session.
+- **🔷** `OLLMrpc.Transport.Session` — HTTP bin-table owner; `take(string id)`; static `note_checksum` / `roll_checksum`.
+- **🔷** `Connection` — unchanged lease/export API for Gi and Live handlers.
+- **🔷** `HttpReply(Soup.Server, Soup.ServerMessage, Session)` — wires shared `session.bin` onto the per-POST reply.
 
 ---
 
 ## Suggested implement order
 
-1. **Phase 0** — extract `Session`, refactor `Connection` to compose it (no HTTP changes yet).
+1. **Phase 0** — add slim `Session` + `HttpReply(session)` wiring ( **`Connection.vala` unchanged** ).
 2. **Phase 1** — registry checksum hooks (`Session.note_checksum`) in `Bin` / `Http` / `Request.add_class`.
 3. **Phase 2** — `Session.take` + headers on `/rpc`; `HttpReply(session)`.
 4. **Phase 3** — bin POST (`application/octet-stream`) on `/rpc`.
@@ -91,13 +90,13 @@
 
 ---
 
-## Phase 0 — `Session` composes into `Connection`
+## Phase 0 — `Session` (HTTP bin tables only)
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
-### 1. `libocrpc/Transport/Session.vala` — new file: state owner
+### 1. `libocrpc/Transport/Session.vala` — new file: HTTP JIT + id
 
-**Why:** Single home for lease maps, bin codec, and (later) HTTP session table. `Connection` delegates here.
+**Why:** Cross-POST **bin name tables** and **`X-rpc-session`** lookup. Leases stay on {@link Connection}.
 
 **Where:** new file under `libocrpc/Transport/`.
 
@@ -124,12 +123,12 @@ New file `libocrpc/Transport/Session.vala` (entire contents):
 namespace OLLMrpc.Transport
 {
 	/**
-	 * RPC session state — bin name tables, leases, live-handle maps.
+	 * HTTP RPC session — shared bin JIT name tables and session id.
 	 *
-	 * One {@link Connection} or many {@link HttpReply} POSTs can share a
-	 * session. Socket {@link Connection} constructs a private session by
-	 * default; HTTP looks up sessions by ''X-rpc-session'' via
-	 * {@link take}.
+	 * Many {@link HttpReply} POSTs share one session's {@link bin} tables.
+	 * Leases and {@link Connection.next_handle} live on each {@link HttpReply}
+	 * (per POST), not here. HTTP looks up sessions by ''X-rpc-session'' via
+	 * {@link take}. Socket {@link Connection} does not use this type.
 	 *
 	 * == Example ==
 	 *
@@ -146,38 +145,17 @@ namespace OLLMrpc.Transport
 		/**
 		 * Bin codec (name tables). I/O streams wired per transport.
 		 */
+		/**
+		 * Shared JIT wire-name tables ({@link Bin.Stream.client_names} /
+		 * {@link Bin.Stream.server_names}). I/O streams are attached per POST
+		 * on {@link HttpReply}; {@link Bin.Stream.connection} points at the
+		 * active {@link HttpReply} for that POST's leases.
+		 */
 		public Bin.Stream? bin {
 			get; set; default = new Bin.Stream(null, null) {
 				is_server = true
 			};
 		}
-
-		public Gee.HashMap<int, GLib.Object> leases {
-			get; set; default = new Gee.HashMap<int, GLib.Object>();
-		}
-
-		public Gee.HashMap<int, uint> floors {
-			get; set; default = new Gee.HashMap<int, uint>();
-		}
-
-		public Gee.HashMap<int, uint> extras {
-			get; set; default = new Gee.HashMap<int, uint>();
-		}
-
-		public Gee.HashMap<int, Gee.HashMap<int, int>> lease_ids {
-			get; set; default = new Gee.HashMap<int, Gee.HashMap<int, int>>();
-		}
-
-		public Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>> signal_subs {
-			get; set; default = new Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>>();
-		}
-
-		public Gee.HashMap<int, OLLMrpc.Live.Hook> callbacks {
-			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
-		}
-
-		/** Next lease, callback, and reply id (never 0). */
-		public int next_handle { get; set; default = 1; }
 
 		/** Current registry checksum hex (process-wide; see {@link roll_checksum}). */
 		public static string checksum { get; private set; default = ""; }
@@ -248,123 +226,32 @@ namespace OLLMrpc.Transport
 }
 ```
 
-### 2. `libocrpc/Transport/Connection.vala` — compose `Session`, delegate state
+### 2. `libocrpc/Transport/Connection.vala` — **Keep** (Phase 0)
 
-**Why:** `export`, `stop`, and `Gi.vala` keep using `connection.leases` etc.; storage moves to `session`.
+**Why:** {@link export}, {@link stop}, Gi, and Live code keep using `connection.leases`, `connection.next_handle`, and socket {@link bin} from {@link start} with no indirection.
 
-**Where:** field declarations and `export` / `stop` (body unchanged if getters delegate).
+**Where:** no edit in Phase 0.
 
-**Depends on:** §1.
+**Depends on:** none.
 
-#### Remove
-
-```vala
-		public Bin.Stream? bin { get; protected set; }
-
-		public bool live_handles { get; set; default = false; }
-
-		public Gee.HashMap<int, GLib.Object> leases {
-			get; set; default = new Gee.HashMap<int, GLib.Object>();
-		}
-
-		public Gee.HashMap<int, uint> floors { get; set; default = new Gee.HashMap<int, uint>(); }
-
-		public Gee.HashMap<int, uint> extras { get; set; default = new Gee.HashMap<int, uint>(); }
-
-		/**
-		 * Instance pointer → lease id.
-		 *
-		 * Outer key is the high 32 bits of the pointer, inner
-		 * key the low 32 bits, both as ''int'' bit patterns
-		 * (Gee has no ''uint64'' key hash).
-		 */
-		public Gee.HashMap<int, Gee.HashMap<int, int>> lease_ids {
-			get; set; default = new Gee.HashMap<int, Gee.HashMap<int, int>>();
-		}
-
-		/**
-		 * Subscribed GObject handler ids for this connection.
-		 *
-		 * Outer key is the lease id. Inner map is signal or
-		 * ''notify::'' name → handler id from connect.
-		 */
-		public Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>> signal_subs {
-			get; set; default = new Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>>();
-		}
-
-		/**
-		 * GI callback rows for this connection (id → {@link Live.Hook}).
-		 */
-		public Gee.HashMap<int, OLLMrpc.Live.Hook> callbacks {
-			get; set; default = new Gee.HashMap<int, OLLMrpc.Live.Hook>();
-		}
-
-		public Live.BufferStream? buffer_stream { get; set; default = null; }
-
-		/**
-		 * Next lease, callback, and reply id (never 0).
-		 */
-		public int next_handle { get; set; default = 1; }
-```
-
-#### Replace with
-
-```vala
-		/**
-		 * Session state (leases, bin name tables, live handles).
-		 * Socket connections default to a private session; HTTP
-		 * {@link HttpReply} injects a shared session from {@link Session.take}.
-		 */
-		public Session session { get; construct; default = new Session(); }
-
-		public Bin.Stream? bin {
-			get { return this.session.bin; }
-			protected set { this.session.bin = value; }
-		}
-
-		public bool live_handles { get; set; default = false; }
-
-		public Gee.HashMap<int, GLib.Object> leases {
-			get { return this.session.leases; }
-		}
-
-		public Gee.HashMap<int, uint> floors {
-			get { return this.session.floors; }
-		}
-
-		public Gee.HashMap<int, uint> extras {
-			get { return this.session.extras; }
-		}
-
-		public Gee.HashMap<int, Gee.HashMap<int, int>> lease_ids {
-			get { return this.session.lease_ids; }
-		}
-
-		public Gee.HashMap<int, Gee.HashMap<string, OLLMrpc.Live.Subscription>> signal_subs {
-			get { return this.session.signal_subs; }
-		}
-
-		public Gee.HashMap<int, OLLMrpc.Live.Hook> callbacks {
-			get { return this.session.callbacks; }
-		}
-
-		public Live.BufferStream? buffer_stream { get; set; default = null; }
-
-		public int next_handle {
-			get { return this.session.next_handle; }
-			set { this.session.next_handle = value; }
-		}
-```
-
-**ℹ️** `export`, `stop`, `start`, `write`, `on_input_ready` bodies stay as-is — they already use `this.leases`, `this.bin`, `this.next_handle`, which now delegate to `this.session`.
+**ℹ️** HTTP POSTs use {@link HttpReply} — a new {@link Connection} subclass per POST with **empty** lease maps; only {@link HttpReply.session.bin} is shared.
 
 ### 3. `libocrpc/Transport/HttpReply.vala` — construct with `Session`
 
-**Why:** Reply is session-aware; wires `session.bin.connection = this` once. No bind.
+**Why:** Reply shares JIT tables via `session.bin`; leases stay on `this` (the POST-scoped {@link Connection}).
 
 **Where:** class body + constructor.
 
-**Depends on:** §1, §2.
+**Depends on:** §1.
+
+#### Add — property (before `soup` or after class opening)
+
+```vala
+		/**
+		 * Shared HTTP session (bin name tables + id). Not used for leases.
+		 */
+		public Session session { get; construct; }
+```
 
 #### Remove
 
@@ -387,8 +274,9 @@ namespace OLLMrpc.Transport
 		}
 
 		construct {
-			if (this.session.bin != null) {
-				this.session.bin.connection = this;
+			this.bin = this.session.bin;
+			if (this.bin != null) {
+				this.bin.connection = this;
 			}
 		}
 ```
@@ -627,7 +515,7 @@ namespace OLLMrpc.Transport
 			if (msg.get_method() != "POST") {
 ```
 
-**ℹ️** No `session.sync(reply)` — `next_handle` lives on `session` and `export()` updates it through delegating getters.
+**ℹ️** No `session.sync(reply)` — `next_handle` and leases are on each {@link HttpReply} (per POST); only {@link Session.bin} name tables persist.
 
 ---
 
@@ -812,4 +700,4 @@ test('test-rpc-http-bin-session', test_rpc_http_bin_session, ...)
 - **ℹ️** `Session.note_checksum` / `Session.roll_checksum` / `Session.take` are **named in this plan** (allowed methods).
 - **ℹ️** Parent **8.2.6** should reuse `Session` concepts long-term.
 - **ℹ️** Checksum is registration language, not body integrity.
-- **ℹ️** Phase 0 is a behaviour-preserving refactor for sockets; run existing HTTP/socket tests after it.
+- **ℹ️** Phase 0 adds {@link Session} and {@link HttpReply.session} only — **no** {@link Connection} field moves; socket tests should be unchanged.

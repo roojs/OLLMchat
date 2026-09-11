@@ -82,6 +82,13 @@ namespace OLLMrpc
 		private Gee.ArrayList<string> string_keep = new Gee.ArrayList<string>();
 
 		/**
+		 * Pinned {@link GLib.Value} IN buffers for GIR {@code GObject.Value}
+		 * ({@code GValue*}) — wire row copy or empty get fill-slot.
+		 * {@link GI.Argument} ''v_pointer'' aliases {@code &value_keep[i]}.
+		 */
+		private GLib.Value[] value_keep = {};
+
+		/**
 		 * IN {@link GLib.List} / {@link GLib.SList} heads for the current
 		 * invoke. Element pointers are lease-backed GObjects, UTF8
 		 * strings, or boxed blobs (transfer none). Assigning ''{}''
@@ -308,6 +315,7 @@ namespace OLLMrpc
 			this.out_args = new GI.Argument[0];
 			this.boxed_keep.clear();
 			this.string_keep.clear();
+			this.value_keep = {};
 			this.glist_keep = {};
 			this.gslist_keep = {};
 			var vi = 0;
@@ -426,6 +434,7 @@ namespace OLLMrpc
 			this.out_args = new GI.Argument[n_out];
 			this.boxed_keep.clear();
 			this.string_keep.clear();
+			this.value_keep = {};
 			this.glist_keep = {};
 			this.gslist_keep = {};
 			if (instance) {
@@ -485,17 +494,30 @@ namespace OLLMrpc
 					vi++;
 					continue;
 				}
-				if (arg.get_direction() != GI.Direction.OUT) {
-					if (vi >= this.request.args.size) {
-						if (!arg.may_be_null()) {
-							this.request.connection.reply_error(
-								this.request, (int) RpcErrorCode.INVALID_PARAMS);
+				if (arg.get_direction() == GI.Direction.IN) {
+					if (vi < this.request.args.size) {
+						if (!this.convert(arg, vi, instance ? 1 : 0)) {
 							return true;
 						}
 						vi++;
 						continue;
 					}
-					if (!this.convert(arg, vi, instance ? 1 : 0)) {
+					if (arg.get_type().get_tag() == GI.TypeTag.INTERFACE) {
+						var omit_iface = arg.get_type().get_interface();
+						var omit_kind = omit_iface.get_type();
+						if (omit_kind == GI.InfoType.STRUCT || omit_kind == GI.InfoType.BOXED) {
+							if (((GI.RegisteredTypeInfo) omit_iface).get_g_type() == typeof(GLib.Value)) {
+								var omit_i = this.value_keep.length;
+								this.value_keep += GLib.Value(GLib.Type.INVALID);
+								this.in_args[this.in_slot[i]].v_pointer = &this.value_keep[omit_i];
+								vi++;
+								continue;
+							}
+						}
+					}
+					if (!arg.may_be_null()) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return true;
 					}
 					vi++;
@@ -595,6 +617,20 @@ namespace OLLMrpc
 					continue;
 				}
 				if (arg.get_direction() == GI.Direction.IN) {
+					if (arg.get_type().get_tag() != GI.TypeTag.INTERFACE) {
+						continue;
+					}
+					var in_iface = arg.get_type().get_interface();
+					var in_kind = in_iface.get_type();
+					if (in_kind != GI.InfoType.STRUCT && in_kind != GI.InfoType.BOXED) {
+						continue;
+					}
+					if (((GI.RegisteredTypeInfo) in_iface).get_g_type() != typeof(GLib.Value)) {
+						continue;
+					}
+					if (!this.scalar(arg.get_type(), this.in_args[this.in_slot[i]], response.args)) {
+						return true;
+					}
 					continue;
 				}
 				var flatten = false;
@@ -1109,9 +1145,12 @@ namespace OLLMrpc
 		 * GObject / GInterface: lease id or a live object in
 		 * {@link request}.args. The instance GType must be in
 		 * {@link Bin.gtype_to_alias} (''Gi.register'' object types).
-		 * STRUCT / BOXED / UNION: {@link GLib.Bytes}
-		 * of {@link GI.StructInfo.get_size}. gtype-structs, size 0, and
-		 * other InfoTypes reply INVALID_PARAMS (one ''n == 0'' path).
+		 * {@code GObject.Value}: pin the wire {@link GLib.Value} into
+		 * {@link value_keep} (pointer is that row — no Bytes, no
+		 * Value-in-Value). Other STRUCT / BOXED / UNION:
+		 * {@link GLib.Bytes} of {@link GI.StructInfo.get_size}.
+		 * gtype-structs, size 0, and other InfoTypes reply
+		 * INVALID_PARAMS (one ''n == 0'' path).
 		 *
 		 * @param arg one IN argument from the callable
 		 * @param vi index in {@link request}.args
@@ -1207,6 +1246,15 @@ namespace OLLMrpc
 				}
 				this.in_args[vi + offset].v_int32 = val.get_int();
 				return true;
+			}
+			if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
+				if (((GI.RegisteredTypeInfo) arg.get_type().get_interface()).get_g_type() == typeof(GLib.Value)) {
+					var pin_i = this.value_keep.length;
+					this.value_keep += GLib.Value(GLib.Type.INVALID);
+					val.copy(ref this.value_keep[pin_i]);
+					this.in_args[vi + offset].v_pointer = &this.value_keep[pin_i];
+					return true;
+				}
 			}
 			size_t n = 0;
 			if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
@@ -1347,6 +1395,17 @@ namespace OLLMrpc
 						f.set_uint(arg.v_uint32);
 						dest.add(f);
 						return true;
+					}
+					if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
+						if (((GI.RegisteredTypeInfo) type.get_interface()).get_g_type() == typeof(GLib.Value)) {
+							if (arg.v_pointer == null) {
+								this.request.connection.reply_error(
+									this.request, (int) RpcErrorCode.INVALID_PARAMS);
+								return false;
+							}
+							dest.add(*(GLib.Value*) arg.v_pointer);
+							return true;
+						}
 					}
 					size_t n = 0;
 					if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
