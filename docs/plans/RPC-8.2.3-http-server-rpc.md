@@ -19,6 +19,7 @@
 - **🔷** Streaming JSON / bin+session — **split out**:
   - [`RPC-8.2.3.1-http-json-streaming.md`](RPC-8.2.3.1-http-json-streaming.md)
   - [`RPC-8.2.3.2-http-bin-session.md`](RPC-8.2.3.2-http-bin-session.md)
+  - [`RPC-8.2.3.4-http-client.md`](RPC-8.2.3.4-http-client.md)
 - **🔷** Later — HTTPS; application auth; **client certificate** registration.
 - **ℹ️** Parent Phase 3 client HTTP (Hub GET) is already largely done in **8.2.1**; this plan is the **server** side (and later bin/TLS on that path).
 - **ℹ️** Parent Phase 5 called out SSE/chunked vs bin notifications for chat — this plan owns the HTTP JSON streaming half.
@@ -31,9 +32,10 @@
 2. [`RPC-8.2.3.1-http-json-streaming.md`](RPC-8.2.3.1-http-json-streaming.md) — streaming JSON
 3. [`RPC-8.2.3.3-http-path-type-registration.md`](RPC-8.2.3.3-http-path-type-registration.md) — path ↔ request/response types — `✔️`
 4. [`RPC-8.2.3.2-http-bin-session.md`](RPC-8.2.3.2-http-bin-session.md) — bin over HTTP + session id
-5. Phase 4 — HTTPS
-6. Phase 5 — Application authentication
-7. Phase 6 — Issued client certificate after auth
+5. [`RPC-8.2.3.4-http-client.md`](RPC-8.2.3.4-http-client.md) — separate `Transport.HttpClient` (POST JSON or bin + session)
+6. Phase 4 — HTTPS
+7. Phase 5 — Application authentication
+8. Phase 6 — Issued client certificate after auth
 
 ---
 
@@ -86,7 +88,7 @@
 - **💩** `⏳` Default port **`8080`** (construct props; override in tests).
 - **💩** `⏳` HTTP status mapping: `405` wrong method, `400` bad JSON / not a Request, `500` encode failure; RPC `METHOD_NOT_FOUND` still goes out as JSON `Response.error` (HTTP `200` or `404` — pick one when implementing; body must carry the message either way).
 - **🚫** Streaming JSON — **[`8.2.3.1`](RPC-8.2.3.1-http-json-streaming.md)** (not in Phase 1 unary Hello World).
-- **🚫** Extending `OLLMrpc.Client` for POST-to-our-server — Phase 1 smoke uses `Soup.Session` (or curl) in the test; dedicated client POST mode can follow.
+- **🚫** Extending `OLLMrpc.Client` for POST-to-our-server — Phase 1 smoke uses `Soup.Session` (or curl) in the test; dedicated client is **[`8.2.3.4`](RPC-8.2.3.4-http-client.md)**.
 - **🚫** Sessions, bin Content-Type — **[`8.2.3.2`](RPC-8.2.3.2-http-bin-session.md)**; TLS, auth — Phases 4–6.
 
 ### Wire (Phase 1)

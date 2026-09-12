@@ -612,6 +612,7 @@ test('test-rpc-http-bin-session', test_rpc_http_bin_session, ...)
 - **🔷** `✔️` Implement Phases 0–3 after approval.
 - **🔷** `⏳` Typed HTTP routes (`on_route`) — optional shared session table later.
 - **🔷** `⏳` Streaming resume + session (**8.2.3.1**) — fill fences later.
+- **🔷** `⏳` HTTP **client** (JSON + bin) — [`RPC-8.2.3.4-http-client.md`](RPC-8.2.3.4-http-client.md).
 - **🔷** `⏳` **Future:** stream HTTP **request** body into `Bin.Stream` (`set_accumulate(false)` / chunk handlers) — not in this plan’s implement phases.
 - **💩** `⏳` Confirm idle TTL (plan default **1800** s) before implement.
 - **🚫** TLS / client certs — **8.2.3** / **8.2.7**.
