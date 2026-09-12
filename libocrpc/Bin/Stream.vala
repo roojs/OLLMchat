@@ -141,8 +141,8 @@ namespace OLLMrpc.Bin
 	 */
 	public class Stream : GLib.Object
 	{
-		public GLib.DataOutputStream? out_stream { get; construct; }
-		public GLib.DataInputStream? in_stream { get; construct; }
+		public GLib.DataOutputStream? out_stream { get; set; }
+		public GLib.DataInputStream? in_stream { get; set; }
 
 		/** Copied from {@link Json.mode} for GObject decode on this stream. */
 		public Mode mode { get; set; default = Mode.EXPLICIT; }
@@ -276,9 +276,7 @@ namespace OLLMrpc.Bin
 			if (!decode_type.is_a(typeof(Serializable)) && this.client.live_handles) {
 				var handle = this.in_stream.read_uint64();
 				if (this.in_stream.read_uint16() != TOKEN_END) {
-					throw new StreamError.PROTOCOL(
-						"expected end after live handle"
-					);
+					throw new StreamError.PROTOCOL("expected end after live handle");
 				}
 				var live = GLib.Object.new(decode_type, "rpc-lid", handle);
 				this.client.proxies.set((int) handle, live);

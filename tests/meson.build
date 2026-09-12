@@ -209,6 +209,24 @@ test('test-rpc-http-routes',
   suite: 'rpc',
   timeout: 10,
 )
+test_rpc_http_bin_session = executable('test-rpc-http-bin-session',
+  'rpc/http-bin-session-test.vala',
+  dependencies: rpc_test_deps + [
+    rpc_test_app_dep,
+    dependency('libsoup-3.0'),
+  ],
+  link_with: rpc_test_link_with,
+  build_rpath: rpc_test_build_rpath,
+  export_dynamic: true,
+  vala_args: rpc_test_vala_args + [
+    '--pkg=libsoup-3.0',
+  ],
+)
+test('test-rpc-http-bin-session',
+  test_rpc_http_bin_session,
+  suite: 'rpc',
+  timeout: 10,
+)
 test_rpc_gi = executable('test-rpc-gi',
   'rpc/gi-test.vala',
   dependencies: rpc_test_deps + [

@@ -126,7 +126,7 @@ namespace OLLMrpc.Transport
 				msg.set_response("text/plain", Soup.MemoryUse.COPY, "not found".data);
 				return;
 			}
-			var reply = new HttpReply(this.soup, msg) {
+			var reply = new HttpReply(this.soup, msg, new Session()) {
 				live_handles = this.live_handles
 			};
 			var request = new Request() {
@@ -225,9 +225,47 @@ namespace OLLMrpc.Transport
 			string path, 
 			GLib.HashTable<string, string>? query
 		) {
-			var reply = new HttpReply(this.soup, msg) {
+			var req_headers = msg.get_request_headers();
+			var session_hdr = req_headers.get_one("X-rpc-session");
+			if (session_hdr == null) {
+				session_hdr = "";
+			}
+			var session = Session.take(session_hdr);
+			if (session == null) {
+				msg.set_status(409, null);
+				msg.set_response("text/plain", Soup.MemoryUse.COPY,
+					"unknown session".data);
+				return;
+			}
+			var client_seq_hdr = req_headers.get_one("X-rpc-sequence");
+			var client_seq = (int64) 0;
+			if (client_seq_hdr != null && client_seq_hdr != "") {
+				if (!int64.try_parse(client_seq_hdr, out client_seq)) {
+					msg.set_status(409, null);
+					msg.set_response("text/plain", Soup.MemoryUse.COPY,
+						"sequence mismatch".data);
+					return;
+				}
+			}
+			if (client_seq == -1) {
+				session.bin = new Bin.Stream(null, null, true);
+				session.sequence = 0;
+			} else if (client_seq < 0
+				|| client_seq > uint.MAX
+				|| (uint) client_seq != session.sequence) {
+				msg.set_status(409, null);
+				msg.set_response("text/plain", Soup.MemoryUse.COPY,
+					"sequence mismatch".data);
+				return;
+			}
+			session.sequence++;
+			var reply = new HttpReply(this.soup, msg, session) {
 				live_handles = this.live_handles
 			};
+			var res_headers = msg.get_response_headers();
+			res_headers.replace("X-rpc-session", session.id);
+			res_headers.replace("X-rpc-sequence",
+				"%u".printf(session.sequence));
 			if (msg.get_method() != "POST") {
 				reply.write(new Response() {
 					error = new OLLMrpc.Error(
@@ -238,76 +276,117 @@ namespace OLLMrpc.Transport
 				msg.set_status(405, null);
 				return;
 			}
-			var bytes = msg.get_request_body().flatten();
-			var parser = new Json.Parser();
-			try {
-				parser.load_from_data((string) bytes.get_data(), (ssize_t) bytes.get_size());
-			} catch (GLib.Error e) {
-				reply.write(new Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.PARSE_ERROR,
-						"invalid JSON: " + e.message
-					)
-				});
-				msg.set_status(400, null);
-				return;
+			var content_type = msg.get_request_headers().get_one("Content-Type");
+			if (content_type == null) {
+				content_type = "";
 			}
-			var root = parser.get_root();
-			if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
-				reply.write(new Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-						"JSON root must be an object"
-					)
-				});
-				msg.set_status(400, null);
-				return;
-			}
-			var mem = new GLib.MemoryOutputStream.resizable();
-			var encode_ctx = new Bin.Stream(null, new GLib.DataOutputStream(mem));
-			try {
-				this.json.json_to_bin(root.get_object(), encode_ctx, typeof(Request));
-				encode_ctx.out_stream.close();
-			} catch (GLib.Error e) {
-				reply.write(new Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-						"request decode failed: " + e.message
-					)
-				});
-				msg.set_status(400, null);
-				return;
-			}
-			var read_ctx = new Bin.Stream(
-				new GLib.DataInputStream(
-					new GLib.MemoryInputStream.from_bytes(mem.steal_as_bytes())
-				),
-				null
-			);
-			read_ctx.mode = this.json.mode;
-			Bin.Serializable parsed;
-			try {
-				parsed = read_ctx.parse();
-			} catch (GLib.Error e) {
-				reply.write(new Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-						"request parse failed: " + e.message
-					)
-				});
-				msg.set_status(400, null);
-				return;
-			}
-			var request = parsed as OLLMrpc.Request;
-			if (request == null) {
-				reply.write(new Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-						"body did not decode to a Request"
-					)
-				});
-				msg.set_status(400, null);
-				return;
+			OLLMrpc.Request request;
+			if (content_type.has_prefix("application/octet-stream")) {
+				reply.bin_body = true;
+				var bytes = msg.get_request_body().flatten();
+				reply.session.bin.in_stream = new GLib.DataInputStream(
+					new GLib.MemoryInputStream.from_bytes(bytes)
+				);
+				reply.session.bin.in_stream.set_byte_order(
+					GLib.DataStreamByteOrder.BIG_ENDIAN);
+				reply.session.bin.mode = Bin.Mode.EXPLICIT;
+				Bin.Serializable parsed;
+				try {
+					parsed = reply.session.bin.parse();
+				} catch (GLib.Error e) {
+					reply.write(new Response() {
+						error = new OLLMrpc.Error(
+							(int) OLLMrpc.RpcErrorCode.PARSE_ERROR,
+							"invalid bin: " + e.message
+						)
+					});
+					msg.set_status(400, null);
+					return;
+				}
+				reply.session.bin.in_stream = null;
+				request = parsed as OLLMrpc.Request;
+				if (request == null) {
+					reply.write(new Response() {
+						error = new OLLMrpc.Error(
+							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
+							"body did not decode to a Request"
+						)
+					});
+					msg.set_status(400, null);
+					return;
+				}
+			} else {
+				var bytes = msg.get_request_body().flatten();
+				var parser = new Json.Parser();
+				try {
+					parser.load_from_data((string) bytes.get_data(), (ssize_t) bytes.get_size());
+				} catch (GLib.Error e) {
+					reply.write(new Response() {
+						error = new OLLMrpc.Error(
+							(int) OLLMrpc.RpcErrorCode.PARSE_ERROR,
+							"invalid JSON: " + e.message
+						)
+					});
+					msg.set_status(400, null);
+					return;
+				}
+				var root = parser.get_root();
+				if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
+					reply.write(new Response() {
+						error = new OLLMrpc.Error(
+							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
+							"JSON root must be an object"
+						)
+					});
+					msg.set_status(400, null);
+					return;
+				}
+				var mem = new GLib.MemoryOutputStream.resizable();
+				var encode_ctx = new Bin.Stream(null, new GLib.DataOutputStream(mem));
+				try {
+					this.json.json_to_bin(root.get_object(), encode_ctx, typeof(Request));
+					encode_ctx.out_stream.close();
+				} catch (GLib.Error e) {
+					reply.write(new Response() {
+						error = new OLLMrpc.Error(
+							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
+							"request decode failed: " + e.message
+						)
+					});
+					msg.set_status(400, null);
+					return;
+				}
+				var read_ctx = new Bin.Stream(
+					new GLib.DataInputStream(
+						new GLib.MemoryInputStream.from_bytes(mem.steal_as_bytes())
+					),
+					null
+				);
+				read_ctx.mode = this.json.mode;
+				Bin.Serializable parsed;
+				try {
+					parsed = read_ctx.parse();
+				} catch (GLib.Error e) {
+					reply.write(new Response() {
+						error = new OLLMrpc.Error(
+							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
+							"request parse failed: " + e.message
+						)
+					});
+					msg.set_status(400, null);
+					return;
+				}
+				request = parsed as OLLMrpc.Request;
+				if (request == null) {
+					reply.write(new Response() {
+						error = new OLLMrpc.Error(
+							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
+							"body did not decode to a Request"
+						)
+					});
+					msg.set_status(400, null);
+					return;
+				}
 			}
 			request.connection = reply;
 			if (!request.dispatch()) {

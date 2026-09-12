@@ -76,6 +76,7 @@ ocrpc_core_src = files([
   'Bin/StreamValue.vala',
   'Bin/Serializable.vala',
   'Bin/Json.vala',
+  'Transport/Session.vala',
   'Transport/Connection.vala',
   'Transport/Listen.vala',
   'Transport/TcpListen.vala',

@@ -76,6 +76,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocrpc/MockDispatch.vala',
     '../libocrpc/Transport/namespace.vala',  # Transport namespace documentation
     '../libocrpc/Transport/Listen.vala',
+    '../libocrpc/Transport/Session.vala',
     '../libocrpc/Transport/Connection.vala',
     '../libocrpc/Live/BufferListen.vala',
     '../libocrpc/Live/Remote.vala',
