@@ -19,8 +19,8 @@ grep -q 'gitlab.gnome.org/GNOME/gtk.git' "$WRAP" ||
 prepare_android_subprojects_before_meson
 
 [ -f "$MARKER" ] || { echo "patch marker missing: $MARKER" >&2; exit 1; }
-grep -q 'ollmchat-android-bugs-v11' "$MARKER" ||
-  { echo "patch marker missing ollmchat-android-bugs-v11 tag" >&2; exit 1; }
+grep -q 'ollmchat-android-bugs-v12' "$MARKER" ||
+  { echo "patch marker missing ollmchat-android-bugs-v12 tag" >&2; exit 1; }
 grep -q 'g_debug' "$MARKER" ||
   { echo "patch marker missing g_debug reference" >&2; exit 1; }
 grep -q '#include <glib.h>' "$MARKER" ||
@@ -32,25 +32,26 @@ grep -q 'syncEditableFromGtk' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/o
   { echo "ImContext.java editable sync helper missing" >&2; exit 1; }
 grep -q 'sendKeyEvent' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
   { echo "ImContext.java hold-delete sendKeyEvent path missing" >&2; exit 1; }
-grep -q 'in_long_press' "$ROOT_DIR/subprojects/gtk/gtk/gtktext.c" ||
-  { echo "gtktext.c long-press paste bubble path missing" >&2; exit 1; }
-grep -q 'Touch drag selects only after long-press' "$ROOT_DIR/subprojects/gtk/gtk/gtktextview.c" ||
-  { echo "gtktextview.c touch long-press selection gate missing" >&2; exit 1; }
-grep -q 'deleteBackwardOrSelection' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
+grep -q 'notifyGtkTextChanged' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
+  { echo "ImContext.java notifyGtkTextChanged missing" >&2; exit 1; }
+grep -q 'runThenPushToGtk' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
+  { echo "ImContext.java runThenPushToGtk missing" >&2; exit 1; }
+grep -q 'deleteSelectionIfAny' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
   { echo "ImContext.java selection-aware delete missing" >&2; exit 1; }
-grep -q 'priv->in_long_press = FALSE' "$ROOT_DIR/subprojects/gtk/gtk/gtktextview.c" ||
-  { echo "gtktextview.c sticky in_long_press clear missing" >&2; exit 1; }
-# Comment text is "Composing span into GTK" (capital C) in android-bugs.patch.
-grep -qi 'composing span into GTK' "$ROOT_DIR/subprojects/gtk/gdk/android/glue/java/org/gtk/android/ImContext.java" ||
-  { echo "ImContext.java finishComposingText composing-span commit missing" >&2; exit 1; }
-grep -q 'IME delete does not go through the key controller' "$ROOT_DIR/subprojects/gtk/gtk/gtktext.c" ||
-  { echo "gtktext.c IME delete bubble hide missing" >&2; exit 1; }
+grep -q 'gtk_text_touch_new' "$ROOT_DIR/subprojects/gtk/gtk/gtktext.c" ||
+  { echo "gtktext.c GtkTextTouch wiring missing" >&2; exit 1; }
+grep -q 'gtk_text_touch_new' "$ROOT_DIR/subprojects/gtk/gtk/gtktextview.c" ||
+  { echo "gtktextview.c GtkTextTouch wiring missing" >&2; exit 1; }
+grep -q 'gtktexttouch.c' "$ROOT_DIR/subprojects/gtk/gtk/meson.build" ||
+  { echo "gtk/meson.build gtktexttouch.c missing" >&2; exit 1; }
 grep -q 'drag-update is for actual movement, not a stationary press' "$ROOT_DIR/subprojects/gtk/gtk/gtkgesturedrag.c" ||
   { echo "gtkgesturedrag.c zero-offset drag-update skip missing" >&2; exit 1; }
 grep -q 'gsk_gpu_device_make_current' "$ROOT_DIR/subprojects/gtk/gsk/gpu/gskgpudevice.c" ||
   { echo "gskgpudevice.c display-context atlas create missing" >&2; exit 1; }
 grep -q 'gsk_gpu_device_make_current' "$ROOT_DIR/subprojects/gtk/gsk/gpu/gskgpuuploadop.c" ||
   { echo "gskgpuuploadop.c display-context atlas upload missing" >&2; exit 1; }
+grep -q 'commit_in_progress' "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidclipboard-private.h" ||
+  { echo "clipboard commit_in_progress guard missing" >&2; exit 1; }
 grep -q 'gdk_android_scan_gio_modules' "$ROOT_DIR/subprojects/gtk/gdk/android/gdkandroidruntime.c" &&
   { echo "gdkandroidruntime.c must not contain GDK TLS scan (app loads TLS)" >&2; exit 1; }
 
