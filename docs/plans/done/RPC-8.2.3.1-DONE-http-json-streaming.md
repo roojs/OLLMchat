@@ -1,10 +1,10 @@
-# 8.2.3.1 — HTTP JSON streaming (inference)
+# 8.2.3.1 — DONE — HTTP JSON streaming (inference)
 
-**Status:** **PROPOSED** — Phase streaming `✔️` agent (NDJSON)
+**Status:** **DONE** ✔️ — NDJSON stream smoke `test-rpc-http-server`
 
-> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
+**Parent:** [`RPC-8.2.3-http-server-rpc.md`](../RPC-8.2.3-http-server-rpc.md) — Phase 1 unary HTTP JSON `✔️`
 
-**Parent:** [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md) — Phase 1 unary HTTP JSON `✔️`
+**Tree:** `libocrpc/Transport/HttpReply.vala` (streaming), `tests/rpc/http-server-test.vala`
 
 **Follows:** Phase 1 `HttpServer` / `HttpReply` in tree
 
@@ -391,7 +391,7 @@ Second POST `RPC-Hello.stream`; assert body contains `Hel`, `lo`, and `done` (an
 - **🔷** `✔️` §1–§3 land; `meson test test-rpc-http-server` covers unary + stream.
 - **💩** `⏳` Async stream smoke (idle callbacks + pause) — optional follow-up if sync smoke is enough for v1.
 - **🚫** SSE / OpenAI event format.
-- **🚫** Bin body streaming — [`RPC-8.2.3.2-http-bin-session.md`](RPC-8.2.3.2-http-bin-session.md).
+- **🚫** Bin body streaming — [`RPC-8.2.3.2-DONE-http-bin-session.md`](RPC-8.2.3.2-DONE-http-bin-session.md).
 
 **Implementation notes (agent):**
 

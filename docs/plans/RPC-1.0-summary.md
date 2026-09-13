@@ -11,6 +11,11 @@
 
 ## Done
 
+- [RPC-8.2.3.1-DONE-http-json-streaming.md](done/RPC-8.2.3.1-DONE-http-json-streaming.md) — HTTP JSON NDJSON streaming (`test-rpc-http-server`)
+- [RPC-8.2.3.2-DONE-http-bin-session.md](done/RPC-8.2.3.2-DONE-http-bin-session.md) — HTTP bin + session (`test-rpc-http-bin-session`)
+- [RPC-8.2.3.3-DONE-http-path-type-registration.md](done/RPC-8.2.3.3-DONE-http-path-type-registration.md) — HTTP path ↔ request/response types (`Http.routes`, `test-rpc-http-routes`)
+- [RPC-8.2.3.4-DONE-http-client.md](done/RPC-8.2.3.4-DONE-http-client.md) — `Transport.HttpClient` (`test-rpc-http-client`)
+
 - [RPC-1.7-DONE-mock-dispatch-and-gi-mock.md](done/RPC-1.7-DONE-mock-dispatch-and-gi-mock.md) — `register_mock` + `GiMock` (test-only; unblocks gnome-shell-rpc 0.7.8)
 
 - [RPC-8.3-libocrpc-live-handles-and-signals.md](done/RPC-8.3-libocrpc-live-handles-and-signals.md)

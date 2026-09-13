@@ -1,14 +1,14 @@
-# 8.2.3.4 — HTTP RPC client (JSON + bin, session + sequence)
+# 8.2.3.4 — DONE — HTTP RPC client (JSON + bin, session + sequence)
 
-**Status:** **PROPOSED** — Phases 0–1 **✔️** agent (`HttpClient` + full `call`); Phase 2 confirm next; Phase 3 smoke not started; user verify → ✅
+**Status:** **DONE** ✔️ — `HttpClient` smoke `test-rpc-http-client`
 
-> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
+**Parent:** [`RPC-8.2.3-http-server-rpc.md`](../RPC-8.2.3-http-server-rpc.md)
 
-**Parent:** [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md)
+**Tree:** `libocrpc/Transport/HttpClient.vala`, `windows/CreatePipe.vala`, `tests/rpc/http-client-test.vala`
 
-**Depends on:** [`RPC-8.2.3.2-http-bin-session.md`](RPC-8.2.3.2-http-bin-session.md) server bin + `Session` + headers **✔️** agent; HTTP JSON `/rpc` from parent Phase 1
+**Depends on:** [`RPC-8.2.3.2-DONE-http-bin-session.md`](RPC-8.2.3.2-DONE-http-bin-session.md) server bin + `Session` + headers; HTTP JSON `/rpc` from parent Phase 1
 
-**Related:** [`RPC-8.2.1-libocrpc-auto-json-and-http-client.md`](RPC-8.2.1-libocrpc-auto-json-and-http-client.md) Hub GET on `OLLMrpc.Client` (different role); [`docs/bin-rpc-protocol.md`](../bin-rpc-protocol.md)
+**Related:** [`../RPC-8.2.1-libocrpc-auto-json-and-http-client.md`](../RPC-8.2.1-libocrpc-auto-json-and-http-client.md) Hub GET on `OLLMrpc.Client` (different role); [`docs/bin-rpc-protocol.md`](../bin-rpc-protocol.md)
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -483,7 +483,7 @@ test('test-rpc-http-client', test_rpc_http_client, ...)
 
 ## Backlog
 
-- **🔷** `⏳` Implement Phase 2 confirm (no code) + Phase 3 smoke after approval.
+- **🔷** `✔️` Implement Phase 2 confirm + Phase 3 smoke (`test-rpc-http-client`).
 - **💩** `⏳` `call_sync` for non-async callers.
 - **🔷** `⏳` Streaming / NDJSON client (**8.2.3.1**) — later.
 - **🔷** `⏳` **Future:** stream HTTP **response** read (not only `send_and_read_async`) — not in v1.

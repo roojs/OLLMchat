@@ -508,7 +508,7 @@ namespace OLLMrpc
 						if (omit_kind == GI.InfoType.STRUCT || omit_kind == GI.InfoType.BOXED) {
 							if (((GI.RegisteredTypeInfo) omit_iface).get_g_type() == typeof(GLib.Value)) {
 								var omit_i = this.value_keep.length;
-								this.value_keep += GLib.Value(GLib.Type.INVALID);
+								this.value_keep.resize(omit_i + 1);
 								this.in_args[this.in_slot[i]].v_pointer = &this.value_keep[omit_i];
 								vi++;
 								continue;
@@ -1252,7 +1252,7 @@ namespace OLLMrpc
 			if (kind == GI.InfoType.STRUCT || kind == GI.InfoType.BOXED) {
 				if (((GI.RegisteredTypeInfo) arg.get_type().get_interface()).get_g_type() == typeof(GLib.Value)) {
 					var pin_i = this.value_keep.length;
-					this.value_keep += GLib.Value(GLib.Type.INVALID);
+					this.value_keep += GLib.Value(val.type());
 					val.copy(ref this.value_keep[pin_i]);
 					this.in_args[vi + offset].v_pointer = &this.value_keep[pin_i];
 					return true;

@@ -42,14 +42,25 @@ ocrpc_vapi_gen_pkgs = [
 
 transport_socket_src = files(['windows/Transport/SocketListen.vala'])
 client_boot_src = files(['windows/ClientBoot.vala'])
-gi_src = files(['windows/Gi.vala'])
+gi_src = files(['windows/Gi.vala', 'windows/GiMock.vala'])
 
-if use_unix_sockets
+# HttpClient bin encode: gio-unix (Linux/Android) or gio-windows (Win32 streams).
+# Unix-domain sockets / GI typelib stay behind use_unix_sockets (not Android).
+if is_windows
+  ocrpc_deps += dependency('gio-windows-2.0')
+  ocrpc_vapi_pkgs += '--pkg=gio-windows-2.0'
+  ocrpc_vapi_gen_pkgs += [
+    '--pkg', 'gio-windows-2.0',
+  ]
+else
   ocrpc_deps += dependency('gio-unix-2.0')
   ocrpc_vapi_pkgs += '--pkg=gio-unix-2.0'
   ocrpc_vapi_gen_pkgs += [
     '--pkg', 'gio-unix-2.0',
   ]
+endif
+
+if use_unix_sockets
   ocrpc_deps += dependency('gobject-introspection-1.0')
   ocrpc_vapi_pkgs += '--pkg=gobject-introspection-1.0'
   ocrpc_vapi_gen_pkgs += [
@@ -116,6 +127,9 @@ ocrpc_core_src += live_src
 ocrpc_core_src += gi_src
 
 ocrpc_src = ocrpc_core_src + files(['Client.vala']) + transport_socket_src + client_boot_src
+if is_windows
+  ocrpc_src += files(['windows/CreatePipe.vala'])
+endif
 
 ocrpc_base_lib = library('ocrpc',
   dependencies: ocrpc_deps,

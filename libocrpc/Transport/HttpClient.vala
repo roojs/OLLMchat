@@ -109,14 +109,24 @@ namespace OLLMrpc.Transport
 			}
 			var bytes = (GLib.Bytes?) null;
 			if (this.bin_body) {
+#if G_OS_WIN32
+				var read_handle = (void*) null;
+				var write_handle = (void*) null;
+				if (!CreatePipe(out read_handle, out write_handle, null, 0)) {
+					throw new GLib.IOError.FAILED("CreatePipe failed");
+				}
+				var pipe_in = new GLib.Win32InputStream(read_handle, true);
+				var pipe_out = new GLib.Win32OutputStream(write_handle, true);
+#else
 				var fds = new int[2];
 				if (Posix.pipe(fds) != 0) {
 					throw new GLib.IOError.FAILED("pipe failed");
 				}
-				var unix_in = new GLib.UnixInputStream(fds[0], true);
-				var unix_out = new GLib.UnixOutputStream(fds[1], true);
+				var pipe_in = new GLib.UnixInputStream(fds[0], true);
+				var pipe_out = new GLib.UnixOutputStream(fds[1], true);
+#endif
 				message.set_request_body(
-					"application/octet-stream", unix_in, -1);
+					"application/octet-stream", pipe_in, -1);
 				/* Start Soup before filling the pipe — avoid deadlock. */
 				var send_res = (GLib.AsyncResult?) null;
 				SourceFunc resume = call.callback;
@@ -127,7 +137,7 @@ namespace OLLMrpc.Transport
 						resume();
 					}
 				);
-				this.bin.out_stream = new GLib.DataOutputStream(unix_out);
+				this.bin.out_stream = new GLib.DataOutputStream(pipe_out);
 				this.bin.out_stream.set_byte_order(
 					GLib.DataStreamByteOrder.BIG_ENDIAN);
 				this.bin.mode = Bin.Mode.EXPLICIT;

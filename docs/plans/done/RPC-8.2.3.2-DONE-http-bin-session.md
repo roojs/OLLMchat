@@ -1,12 +1,12 @@
-# 8.2.3.2 — HTTP binary RPC + session id
+# 8.2.3.2 — DONE — HTTP binary RPC + session id
 
-**Status:** **PROPOSED** — Phases 0–3 **✔️** agent (`Session` lifecycle + bin HTTP + smoke); implement idle TTL still **💩** 1800s default; user verify → ✅
+**Status:** **DONE** ✔️ — session/bin/sequence smoke `test-rpc-http-bin-session`
 
-> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
+**Parent:** [`RPC-8.2.3-http-server-rpc.md`](../RPC-8.2.3-http-server-rpc.md)
 
-**Parent:** [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md)
+**Tree:** `libocrpc/Transport/Session.vala`, `HttpReply`/`HttpServer` bin path, `tests/rpc/http-bin-session-test.vala`
 
-**Depends on:** [`RPC-8.2.3.3-http-path-type-registration.md`](RPC-8.2.3.3-http-path-type-registration.md) route/type shape ✅; [`RPC-8.2.3.1-http-json-streaming.md`](RPC-8.2.3.1-http-json-streaming.md) preferred stable first
+**Depends on:** [`RPC-8.2.3.3-DONE-http-path-type-registration.md`](RPC-8.2.3.3-DONE-http-path-type-registration.md) route/type shape ✅; [`RPC-8.2.3.1-DONE-http-json-streaming.md`](RPC-8.2.3.1-DONE-http-json-streaming.md) preferred stable first
 
 **Related:** Parent **8.2** Phase 6 session resumption; [`docs/bin-rpc-protocol.md`](../bin-rpc-protocol.md)
 
@@ -612,7 +612,7 @@ test('test-rpc-http-bin-session', test_rpc_http_bin_session, ...)
 - **🔷** `✔️` Implement Phases 0–3 after approval.
 - **🔷** `⏳` Typed HTTP routes (`on_route`) — optional shared session table later.
 - **🔷** `⏳` Streaming resume + session (**8.2.3.1**) — fill fences later.
-- **🔷** `⏳` HTTP **client** (JSON + bin) — [`RPC-8.2.3.4-http-client.md`](RPC-8.2.3.4-http-client.md).
+- **🔷** `✔️` HTTP **client** (JSON + bin) — [`RPC-8.2.3.4-DONE-http-client.md`](RPC-8.2.3.4-DONE-http-client.md).
 - **🔷** `⏳` **Future:** stream HTTP **request** body into `Bin.Stream` (`set_accumulate(false)` / chunk handlers) — not in this plan’s implement phases.
 - **💩** `⏳` Confirm idle TTL (plan default **1800** s) before implement.
 - **🚫** TLS / client certs — **8.2.3** / **8.2.7**.

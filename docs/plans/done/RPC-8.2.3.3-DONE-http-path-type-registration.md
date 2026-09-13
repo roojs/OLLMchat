@@ -1,14 +1,14 @@
-# 8.2.3.3 — HTTP path ↔ request/response type registration
+# 8.2.3.3 — DONE — HTTP path ↔ request/response type registration
 
-**Status:** **DONE** — implemented + smoke `test-rpc-http-routes`
+**Status:** **DONE** ✔️ — implemented + smoke `test-rpc-http-routes`
 
-> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
+**Parent:** [`RPC-8.2.3-http-server-rpc.md`](../RPC-8.2.3-http-server-rpc.md)
 
-**Parent:** [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md)
+**Tree:** `libocrpc/Http/Route.vala`, `Transport/HttpServer.vala`, `tests/rpc/http-routes-test.vala`
 
-**Pause gate:** Decide / implement this **before** [`RPC-8.2.3.2-http-bin-session.md`](RPC-8.2.3.2-http-bin-session.md). Streaming ([`8.2.3.1`](RPC-8.2.3.1-http-json-streaming.md)) can keep Phase 1 `/rpc` + body `method`.
+**Pause gate:** Decide / implement this **before** [`RPC-8.2.3.2-DONE-http-bin-session.md`](RPC-8.2.3.2-DONE-http-bin-session.md). Streaming ([`8.2.3.1`](RPC-8.2.3.1-DONE-http-json-streaming.md)) can keep Phase 1 `/rpc` + body `method`.
 
-**Related:** [`RPC-8.2.1`](RPC-8.2.1-libocrpc-auto-json-and-http-client.md); socket `Request.add_class` / `register` / `Bin.register`
+**Related:** [`RPC-8.2.1`](../RPC-8.2.1-libocrpc-auto-json-and-http-client.md); socket `Request.add_class` / `register` / `Bin.register`
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 

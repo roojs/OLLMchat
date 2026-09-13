@@ -16,34 +16,19 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-
-using WebKitGtkAndroid;
-
-/**
- * WebView for Android — no WebDriver automation surface yet.
- *
- * webkitgtk-android lacks WebsitePolicies / WebContext automation;
- * construct a plain {@link WebView} with a {@link NetworkSession}.
- *
- * == Example ==
- *
- * {{{
- * this.web_view = new OLLMwebkit.WebViewAuto(this);
- * }}}
- *
- * @see OLLMwebkit.Browser
- */
-public class OLLMwebkit.WebViewAuto : WebView
+namespace OLLMrpc
 {
 	/**
-	 * @param browser owner (unused on Android; kept for API parity)
+	 * Compile-only {@link GiMock} shell when typelib mock is not built.
+	 *
+	 * Extends the stub {@link Gi}. {@link dispatch} returns false so
+	 * {@link Request.dispatch} mock fall-through does not invent replies.
 	 */
-	public WebViewAuto(OLLMwebkit.Browser browser)
+	public class GiMock : Gi
 	{
-		Object(
-			hexpand: true,
-			vexpand: true,
-			network_session: new NetworkSession()
-		);
+		public GiMock(Request request)
+		{
+			GLib.Object(request: request);
+		}
 	}
 }

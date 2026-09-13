@@ -1,6 +1,6 @@
 # 8.2.3 — HTTP server RPC (JSON → stream → bin → TLS / certs)
 
-**Status:** **PROPOSED** — Phase 1 `✔️` agent; Phases 2–6 stubs
+**Status:** **PROPOSED** — Phases 1–3 sub-plans `✔️` (unary / stream / routes / bin+session / client); Phases 4–6 HTTPS / auth / certs still open
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -16,11 +16,11 @@
 
 - **🔷** HTTP **server** in `libocrpc` that speaks the same `Request` / `Response` pipeline as socket RPC.
 - **🔷** Phase 1 — plain HTTP + **auto JSON** body; dummy **Hello World** RPC round-trip.
-- **🔷** Streaming JSON / bin+session — **split out**:
-  - [`RPC-8.2.3.1-http-json-streaming.md`](RPC-8.2.3.1-http-json-streaming.md)
-  - [`RPC-8.2.3.2-http-bin-session.md`](RPC-8.2.3.2-http-bin-session.md)
-  - [`RPC-8.2.3.4-http-client.md`](RPC-8.2.3.4-http-client.md)
-- **🔷** Later — HTTPS; application auth; **client certificate** registration.
+- **🔷** Streaming JSON / bin+session — **done**:
+  - [`done/RPC-8.2.3.1-DONE-http-json-streaming.md`](done/RPC-8.2.3.1-DONE-http-json-streaming.md)
+  - [`done/RPC-8.2.3.2-DONE-http-bin-session.md`](done/RPC-8.2.3.2-DONE-http-bin-session.md)
+  - [`done/RPC-8.2.3.4-DONE-http-client.md`](done/RPC-8.2.3.4-DONE-http-client.md)
+- **🔷** Later — HTTPS ([`8.2.3.5`](RPC-8.2.3.5-https-server.md) / [`8.2.3.6`](RPC-8.2.3.6-https-client.md)); application auth; **client certificate** registration.
 - **ℹ️** Parent Phase 3 client HTTP (Hub GET) is already largely done in **8.2.1**; this plan is the **server** side (and later bin/TLS on that path).
 - **ℹ️** Parent Phase 5 called out SSE/chunked vs bin notifications for chat — this plan owns the HTTP JSON streaming half.
 
@@ -29,13 +29,14 @@
 ## Suggested order
 
 1. Phase 1 — HTTP JSON server + Hello World (unary) — `✔️` agent
-2. [`RPC-8.2.3.1-http-json-streaming.md`](RPC-8.2.3.1-http-json-streaming.md) — streaming JSON
-3. [`RPC-8.2.3.3-http-path-type-registration.md`](RPC-8.2.3.3-http-path-type-registration.md) — path ↔ request/response types — `✔️`
-4. [`RPC-8.2.3.2-http-bin-session.md`](RPC-8.2.3.2-http-bin-session.md) — bin over HTTP + session id
-5. [`RPC-8.2.3.4-http-client.md`](RPC-8.2.3.4-http-client.md) — separate `Transport.HttpClient` (POST JSON or bin + session)
-6. Phase 4 — HTTPS
-7. Phase 5 — Application authentication
-8. Phase 6 — Issued client certificate after auth
+2. [`done/RPC-8.2.3.1-DONE-http-json-streaming.md`](done/RPC-8.2.3.1-DONE-http-json-streaming.md) — streaming JSON — `✔️`
+3. [`done/RPC-8.2.3.3-DONE-http-path-type-registration.md`](done/RPC-8.2.3.3-DONE-http-path-type-registration.md) — path ↔ request/response types — `✔️`
+4. [`done/RPC-8.2.3.2-DONE-http-bin-session.md`](done/RPC-8.2.3.2-DONE-http-bin-session.md) — bin over HTTP + session id — `✔️`
+5. [`done/RPC-8.2.3.4-DONE-http-client.md`](done/RPC-8.2.3.4-DONE-http-client.md) — separate `Transport.HttpClient` — `✔️`
+6. [`RPC-8.2.3.5-https-server.md`](RPC-8.2.3.5-https-server.md) — HTTPS server (TLS listen + server cert)
+7. [`RPC-8.2.3.6-https-client.md`](RPC-8.2.3.6-https-client.md) — HTTPS client (trust store)
+8. Phase 5 — Application authentication
+9. Phase 6 — Issued client certificate after auth
 
 ---
 
@@ -87,9 +88,9 @@
 - **💩** `⏳` Default bind **`127.0.0.1`** via `Soup.Server.listen_local(port, …)`.
 - **💩** `⏳` Default port **`8080`** (construct props; override in tests).
 - **💩** `⏳` HTTP status mapping: `405` wrong method, `400` bad JSON / not a Request, `500` encode failure; RPC `METHOD_NOT_FOUND` still goes out as JSON `Response.error` (HTTP `200` or `404` — pick one when implementing; body must carry the message either way).
-- **🚫** Streaming JSON — **[`8.2.3.1`](RPC-8.2.3.1-http-json-streaming.md)** (not in Phase 1 unary Hello World).
-- **🚫** Extending `OLLMrpc.Client` for POST-to-our-server — Phase 1 smoke uses `Soup.Session` (or curl) in the test; dedicated client is **[`8.2.3.4`](RPC-8.2.3.4-http-client.md)**.
-- **🚫** Sessions, bin Content-Type — **[`8.2.3.2`](RPC-8.2.3.2-http-bin-session.md)**; TLS, auth — Phases 4–6.
+- **🚫** Streaming JSON — **[`8.2.3.1`](done/RPC-8.2.3.1-DONE-http-json-streaming.md)** (not in Phase 1 unary Hello World).
+- **🚫** Extending `OLLMrpc.Client` for POST-to-our-server — Phase 1 smoke uses `Soup.Session` (or curl) in the test; dedicated client is **[`8.2.3.4`](done/RPC-8.2.3.4-DONE-http-client.md)**.
+- **🚫** Sessions, bin Content-Type — **[`8.2.3.2`](done/RPC-8.2.3.2-DONE-http-bin-session.md)**; TLS, auth — Phases 4–6.
 
 ### Wire (Phase 1)
 
@@ -524,29 +525,24 @@ namespace OLLMrpcTests
 
 ---
 
-## Phase 2 — Streaming JSON → [`RPC-8.2.3.1`](RPC-8.2.3.1-http-json-streaming.md)
+## Phase 2 — Streaming JSON → [`RPC-8.2.3.1`](done/RPC-8.2.3.1-DONE-http-json-streaming.md)
 
 - **ℹ️** Split out — NDJSON proposals live in that plan (not duplicated here).
 
 ---
 
-## Phase 3 — Bin + session → [`RPC-8.2.3.2`](RPC-8.2.3.2-http-bin-session.md)
+## Phase 3 — Bin + session → [`RPC-8.2.3.2`](done/RPC-8.2.3.2-DONE-http-bin-session.md)
 
 - **ℹ️** Split out — session table + bin Content-Type live in that plan.
 
 ---
 
-## Phase 4 — HTTPS
+## Phase 4 — HTTPS → [`RPC-8.2.3.5`](RPC-8.2.3.5-https-server.md) + [`RPC-8.2.3.6`](RPC-8.2.3.6-https-client.md)
 
-### Goal
-
-- **🔷** `⏳` TLS on `Soup.Server` (server certificate).
-- **🔷** `⏳` Client talks `https://` to the same RPC paths.
-
-### Notes
-
-- **💩** `⏳` Auto-generated vs configured server cert — fill with Phase 6 cert story.
-- **⏳** Code proposals — later.
+- **ℹ️** Split out — private app↔app TLS (no public CA / Let’s Encrypt).
+- **🔷** `⏳` `Transport.Cert.ensure` generates/loads server identity; `HttpServer` HTTPS listen.
+- **🔷** `⏳` `HttpClient.tls_database` trusts that private PEM.
+- **ℹ️** Client certs / auth stay Phases 5–6.
 
 ---
 

@@ -16,34 +16,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-
-using WebKitGtkAndroid;
-
-/**
- * WebView for Android — no WebDriver automation surface yet.
- *
- * webkitgtk-android lacks WebsitePolicies / WebContext automation;
- * construct a plain {@link WebView} with a {@link NetworkSession}.
- *
- * == Example ==
- *
- * {{{
- * this.web_view = new OLLMwebkit.WebViewAuto(this);
- * }}}
- *
- * @see OLLMwebkit.Browser
- */
-public class OLLMwebkit.WebViewAuto : WebView
-{
-	/**
-	 * @param browser owner (unused on Android; kept for API parity)
-	 */
-	public WebViewAuto(OLLMwebkit.Browser browser)
-	{
-		Object(
-			hexpand: true,
-			vexpand: true,
-			network_session: new NetworkSession()
-		);
-	}
-}
+/* Win32InputStream/OutputStream take HANDLEs; CreatePipe is not in the Vala vapi. */
+[CCode (cname = "CreatePipe", cheader_filename = "windows.h")]
+extern bool CreatePipe(
+	out void* h_read_pipe,
+	out void* h_write_pipe,
+	void* lp_pipe_attributes,
+	uint32 n_size
+);
