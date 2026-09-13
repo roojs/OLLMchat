@@ -2,11 +2,11 @@
 
 **Status:** **DONE** ✔️ — `HttpClient.tls_database` + joint smoke `test-rpc-http-https`
 
-**Parent:** [`RPC-8.2.3-http-server-rpc.md`](../RPC-8.2.3-http-server-rpc.md) — Phase 4 HTTPS
+**Parent:** [`RPC-8.2.3-DONE-http-server-rpc.md`](RPC-8.2.3-DONE-http-server-rpc.md) — Phase 4 HTTPS
 
 **Depends on:** [`RPC-8.2.3.4-DONE-http-client.md`](RPC-8.2.3.4-DONE-http-client.md); peer [`RPC-8.2.3.5-DONE-https-server.md`](RPC-8.2.3.5-DONE-https-server.md) (`Transport.Cert` + product CA)
 
-**Related:** Parent Phases 5–6; [`docs/android-tls.md`](../../android-tls.md)
+**Related:** [`RPC-8.2.7-client-cert-registration.md`](../RPC-8.2.7-client-cert-registration.md); [`docs/android-tls.md`](../../android-tls.md)
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -298,7 +298,7 @@ test('test-rpc-http-https',
 
 - **🔷** `✔️` Implement with **8.2.3.5**.
 - **🔷** `⏳` Bundle/extract `/ollmrpc/ollmrpc-ca.pem` from GResource for RPC `HttpClient` (separate from public `ca-certificates.crt`).
-- **🔷** `⏳` Phase 6 — client cert on reconnect.
+- **🔷** `⏳` Client cert on reconnect → [`RPC-8.2.7-client-cert-registration.md`](../RPC-8.2.7-client-cert-registration.md).
 - **🚫** Pairing UX that copies leaf PEMs to the phone (product CA replaces that).
 - **🚫** CA private key in Android resources.
 

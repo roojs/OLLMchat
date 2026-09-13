@@ -20,6 +20,8 @@
   - **Registered** cert → full access.
   - **Unknown** cert → exactly **one** call allowed: **`request_registration`**; all other methods rejected.
 - **🔷** **`request_registration`** registers the client's **IP against its certificate** as a pending request.
+  - IP keys the **maximum** pending registrations (anti-spam on the pending store).
+  - **Dropped on approval** — registered store is fingerprint-only (phones move between Wi-Fi / mobile networks, so the IP is never stable).
 - **🔷** Rate limiting protects the pending store from filling up:
   - Max **3 pending requests per IP** — further requests from that IP are rejected.
   - Re-registering the **same certificate** is ignored — retries never consume slots.
@@ -50,7 +52,7 @@
    - Fingerprint already pending or registered → ignored (no new row).
    - IP already has 3 pending rows → rejected.
    - Pending rows older than 24 h are pruned.
-5. Admin lists pending requests (`ollmfilesd` CLI) → approves one → fingerprint becomes **registered**.
+5. Admin lists pending requests (`ollmfilesd` CLI) → approves one → fingerprint becomes **registered** (IP dropped).
 6. Client reconnects with the same cert → accepted.
 
 ---
@@ -78,14 +80,13 @@
 
 ### Notes
 
-- **💩** `⏳` `TlsAuthenticationMode.REQUEST` on `Soup.Server` — handshake accepts any client cert; gating at RPC dispatch (handshake-level rejection would make registration impossible).
-- **💩** `⏳` Store key = SHA-256 fingerprint of the client cert.
+- **🔷** `⏳` `TlsAuthenticationMode.REQUEST` on `Soup.Server` — handshake accepts any client cert; gating at RPC dispatch (handshake-level rejection would make registration impossible).
+- **🔷** `⏳` Store key = SHA-256 fingerprint of the client cert.
 - **🔷** `⏳` Stores live in the daemon's SQLite database (`files.sqlite`):
   - **ℹ️** Opened in `ollmfilesd/Application.vala` `initialize()` via `libocsqlite` (`SQ.Database`); tables created with `db.db.exec(...)` like existing daemon tables.
-  - **💩** `⏳` One table keyed by fingerprint with a `status` (`pending` / `registered`) column — simpler than two stores.
-- **💩** `⏳` Prune lazily: delete pending rows older than 24 h at daemon startup and on each `request_registration` — no timer needed.
-- **💩** `⏳` IP in the pending record is informational for the admin (NAT etc.) — the fingerprint is the identity.
-- **💩** `⏳` Client cert may be self-signed — server pins the fingerprint; CA signing adds nothing (product CA key is in-repo).
+  - **🔷** `⏳` One table keyed by fingerprint with a `status` (`pending` / `registered`) column — simpler than two stores.
+- **🔷** `⏳` Prune lazily: delete pending rows older than 24 h at daemon startup and on each `request_registration` — no timer needed.
+- **🔷** `⏳` Client cert is **self-signed by construction** — generated on device; the product CA key never ships to clients and there is no CSR step. Server pins the fingerprint, so chain trust is irrelevant.
 - **⏳** Code proposals — later.
 
 ---
@@ -96,12 +97,13 @@
 
 - **🔷** `⏳` `ollmfilesd` command line: list pending registration requests (ip, fingerprint, time).
 - **🔷** `⏳` `ollmfilesd` command line: accept one by number → fingerprint becomes **registered**.
+- **🔷** `⏳` `ollmfilesd` command line: **reset** — clear **all** registered clients (back to first-run; every client must re-register).
 
 ### Notes
 
 - **🔷** `⏳` Admin surface = **`ollmfilesd` CLI** — new options on the existing `command_line` handler:
   - **ℹ️** `ollmfilesd/Application.vala` — `command_line()` + `app_options`.
-- **💩** `⏳` Revocation = remove fingerprint from the registered store (client must re-register) — v2 if needed.
+- **🚫** Per-certificate revocation — too few clients expected; reset-all covers it.
 - **⏳** Code proposals — later.
 
 ---

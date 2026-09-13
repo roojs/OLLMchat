@@ -2,7 +2,7 @@
 
 **Status:** **DONE** ✔️ — implemented + smoke `test-rpc-http-routes`
 
-**Parent:** [`RPC-8.2.3-http-server-rpc.md`](../RPC-8.2.3-http-server-rpc.md)
+**Parent:** [`RPC-8.2.3-DONE-http-server-rpc.md`](RPC-8.2.3-DONE-http-server-rpc.md)
 
 **Tree:** `libocrpc/Http/Route.vala`, `Transport/HttpServer.vala`, `tests/rpc/http-routes-test.vala`
 

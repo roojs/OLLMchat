@@ -2,7 +2,7 @@
 
 **Status:** **DONE** ✔️ — `HttpClient` smoke `test-rpc-http-client`
 
-**Parent:** [`RPC-8.2.3-http-server-rpc.md`](../RPC-8.2.3-http-server-rpc.md)
+**Parent:** [`RPC-8.2.3-DONE-http-server-rpc.md`](RPC-8.2.3-DONE-http-server-rpc.md)
 
 **Tree:** `libocrpc/Transport/HttpClient.vala`, `windows/CreatePipe.vala`, `tests/rpc/http-client-test.vala`
 

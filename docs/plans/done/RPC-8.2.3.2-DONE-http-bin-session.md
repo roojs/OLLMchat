@@ -2,7 +2,7 @@
 
 **Status:** **DONE** ✔️ — session/bin/sequence smoke `test-rpc-http-bin-session`
 
-**Parent:** [`RPC-8.2.3-http-server-rpc.md`](../RPC-8.2.3-http-server-rpc.md)
+**Parent:** [`RPC-8.2.3-DONE-http-server-rpc.md`](RPC-8.2.3-DONE-http-server-rpc.md)
 
 **Tree:** `libocrpc/Transport/Session.vala`, `HttpReply`/`HttpServer` bin path, `tests/rpc/http-bin-session-test.vala`
 

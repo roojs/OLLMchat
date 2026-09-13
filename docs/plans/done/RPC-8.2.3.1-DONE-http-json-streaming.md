@@ -2,7 +2,7 @@
 
 **Status:** **DONE** ✔️ — NDJSON stream smoke `test-rpc-http-server`
 
-**Parent:** [`RPC-8.2.3-http-server-rpc.md`](../RPC-8.2.3-http-server-rpc.md) — Phase 1 unary HTTP JSON `✔️`
+**Parent:** [`RPC-8.2.3-DONE-http-server-rpc.md`](RPC-8.2.3-DONE-http-server-rpc.md) — Phase 1 unary HTTP JSON `✔️`
 
 **Tree:** `libocrpc/Transport/HttpReply.vala` (streaming), `tests/rpc/http-server-test.vala`
 

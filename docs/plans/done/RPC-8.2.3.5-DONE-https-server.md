@@ -2,11 +2,11 @@
 
 **Status:** **DONE** ✔️ — `Transport.Cert` + `HttpServer` HTTPS; smoke `test-rpc-http-https`
 
-**Parent:** [`RPC-8.2.3-http-server-rpc.md`](../RPC-8.2.3-http-server-rpc.md) — Phase 4 HTTPS
+**Parent:** [`RPC-8.2.3-DONE-http-server-rpc.md`](RPC-8.2.3-DONE-http-server-rpc.md) — Phase 4 HTTPS
 
 **Depends on:** Phase 1 `HttpServer` ✔️; peer client [`RPC-8.2.3.6-DONE-https-client.md`](RPC-8.2.3.6-DONE-https-client.md)
 
-**Related:** Parent Phases 5–6; [`RPC-8.2-full-rpc-system.md`](../RPC-8.2-full-rpc-system.md) Phase 7
+**Related:** [`RPC-8.2.7-client-cert-registration.md`](../RPC-8.2.7-client-cert-registration.md); [`RPC-8.2-full-rpc-system.md`](../RPC-8.2-full-rpc-system.md) Phase 7
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -464,8 +464,7 @@ Shared executable with **8.2.3.6** — full test body lives in that plan’s Pha
 - **🔷** `✔️` Implement Phases 0–2 with **8.2.3.6**.
 - **🔷** `⏳` Wire client extract of `/ollmrpc/ollmrpc-ca.pem` from GResource for `tls_database` (RPC trust separate from Ollama’s public CA bundle in [`docs/android-tls.md`](../android-tls.md)).
 - **🔷** `⏳` Configurable leaf SAN for LAN IP/hostname (device E2E).
-- **🔷** `⏳` Phase 5 — application auth over HTTPS.
-- **🔷** `⏳` Phase 6 — issue client certs from the same product CA.
+- **🔷** `⏳` Client-cert registration → [`RPC-8.2.7-client-cert-registration.md`](../RPC-8.2.7-client-cert-registration.md) (approval model — no server-issued certs).
 - **🚫** Let’s Encrypt / public CA.
 
 ---
