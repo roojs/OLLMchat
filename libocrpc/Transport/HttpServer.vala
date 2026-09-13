@@ -27,6 +27,8 @@ namespace OLLMrpc.Transport
 	 *
 	 * {{{
 	 * var http = new OLLMrpc.Transport.HttpServer(8080);
+	 * var cert = new OLLMrpc.Transport.Cert(tls_dir, ca_pem, ca_key);
+	 * http.tls_certificate = cert.certificate;
 	 * http.start();
 	 * }}}
 	 */
@@ -44,6 +46,14 @@ namespace OLLMrpc.Transport
 		 * Default ''/rpc''. Typed {@link OLLMrpc.Http.routes} paths are separate.
 		 */
 		public string rpc_path { get; set; default = "/rpc"; }
+
+		/**
+		 * Server TLS identity. Non-null → {@link start} listens with
+		 * {@link Soup.ServerListenOptions.HTTPS}.
+		 *
+		 * Typical: ''new Cert(dir, ca_pem, ca_key)'' then assign {@link Cert.certificate}.
+		 */
+		public GLib.TlsCertificate? tls_certificate { get; set; default = null; }
 
 		private Soup.Server soup = new Soup.Server("server-header", null);
 		private bool listening = false;
@@ -63,7 +73,12 @@ namespace OLLMrpc.Transport
 			this.soup.add_handler(this.rpc_path, this.on_rpc);
 			this.soup.add_handler(null, this.on_route);
 			try {
-				this.soup.listen_local(this.port, 0);
+				var opts = (Soup.ServerListenOptions) 0;
+				if (this.tls_certificate != null) {
+					this.soup.set_tls_certificate(this.tls_certificate);
+					opts = Soup.ServerListenOptions.HTTPS;
+				}
+				this.soup.listen_local(this.port, opts);
 			} catch (GLib.Error e) {
 				GLib.warning("failed to start HTTP server on port %u: %s",
 					this.port, e.message);

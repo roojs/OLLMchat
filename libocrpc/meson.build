@@ -15,6 +15,7 @@ ocrpc_deps = [
   dependency('gobject-2.0'),
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
+  dependency('gnutls'),
   valac.find_library('posix'),
   dependency('libffi'),
   dependency('gmodule-2.0'),
@@ -23,6 +24,7 @@ ocrpc_deps = [
 ocrpc_vapi_pkgs = [
   '--pkg=json-glib-1.0',
   '--pkg=libsoup-3.0',
+  '--pkg=gnutls',
   '--pkg=posix',
   '--pkg=libffi',
   '--pkg=gmodule-2.0',
@@ -31,6 +33,7 @@ ocrpc_vapi_pkgs = [
 ocrpc_vapi_gen_pkgs = [
   '--pkg', 'json-glib-1.0',
   '--pkg', 'libsoup-3.0',
+  '--pkg', 'gnutls',
   '--pkg', 'posix',
   '--pkg', 'libffi',
   '--pkg', 'gmodule-2.0',
@@ -94,6 +97,7 @@ ocrpc_core_src = files([
   'Transport/HttpReply.vala',
   'Transport/HttpServer.vala',
   'Transport/HttpClient.vala',
+  'Transport/Cert.vala',
   'Http/Route.vala',
   'Daemon.vala',
   'Error.vala',
@@ -131,9 +135,16 @@ if is_windows
   ocrpc_src += files(['windows/CreatePipe.vala'])
 endif
 
+ocrpc_resources = gnome.compile_resources(
+  'ollmrpc-resources',
+  'data/ollmrpc.gresource.xml',
+  source_dir: 'data',
+  c_name: 'ollmrpc_resources',
+)
+
 ocrpc_base_lib = library('ocrpc',
   dependencies: ocrpc_deps,
-  sources: ocrpc_src,
+  sources: ocrpc_src + ocrpc_resources,
   include_directories: include_directories('.'),
   vala_header: 'ocrpc.h',
   vala_vapi: 'ocrpc-meson.vapi',

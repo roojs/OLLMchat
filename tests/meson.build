@@ -245,6 +245,28 @@ test('test-rpc-http-client',
   suite: 'rpc',
   timeout: 10,
 )
+test_rpc_http_https = executable('test-rpc-http-https',
+  'rpc/http-https-test.vala',
+  dependencies: rpc_test_deps + [
+    rpc_test_app_dep,
+    dependency('libsoup-3.0'),
+  ],
+  link_with: rpc_test_link_with,
+  build_rpath: rpc_test_build_rpath,
+  export_dynamic: true,
+  vala_args: rpc_test_vala_args + [
+    '--pkg=libsoup-3.0',
+  ],
+)
+test('test-rpc-http-https',
+  test_rpc_http_https,
+  suite: 'rpc',
+  timeout: 30,
+  env: {
+    'OLLM_RPC_CA_PEM': meson.project_source_root() / 'libocrpc' / 'data' / 'ollmrpc-ca.pem',
+    'OLLM_RPC_CA_KEY': meson.project_source_root() / 'libocrpc' / 'data' / 'ollmrpc-ca-key.pem',
+  },
+)
 test_rpc_gi = executable('test-rpc-gi',
   'rpc/gi-test.vala',
   dependencies: rpc_test_deps + [

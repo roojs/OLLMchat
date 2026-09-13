@@ -1,6 +1,6 @@
 # 8.2.3.6 — HTTPS client (trust product CA)
 
-**Status:** **PROPOSED** — draft for review; implement after user approval
+**Status:** **✔️** — implemented (agent); user promotes **✅**
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -16,22 +16,23 @@
 
 ## Purpose
 
-- **🔷** `⏳` `HttpClient` POSTs to **`https://`** with the same JSON / bin / session behaviour as HTTP.
-- **🔷** `⏳` Trust the **product CA** PEM (`Cert.trust_pem_path` / bundled `ollmrpc-ca.pem`) — Android→Linux without copying leaf PEMs.
-- **🔷** `⏳` Joint smoke with **8.2.3.5** after `new Cert(dir, ca_pem, ca_key)`.
+- **🔷** `✔️` `HttpClient` POSTs to **`https://`** with the same JSON / bin / session behaviour as HTTP.
+- **🔷** `✔️` Trust the **product CA** PEM (`Cert.trust_pem_path` / bundled `ollmrpc-ca.pem`) — Android→Linux without copying leaf PEMs.
+- **🔷** `✔️` Joint smoke with **8.2.3.5** after `new Cert(dir, ca_pem, ca_key)`.
 - **ℹ️** Phase 4 does not present a client certificate (Phase 6).
 
 ---
 
 ## Trust model
 
-- **🔷** Client: `TlsFileDatabase.@new(ca_pem_path)` → `HttpClient.tls_database` (product CA, not leaf).
-- **🔷** Android ships `ollmrpc-ca.pem` only (no CA private key).
+- **🔷** Client: extract `/ollmrpc/ollmrpc-ca.pem` from GResource → `TlsFileDatabase` → `HttpClient.tls_database`.
+- **🔷** Android gets the public CA automatically with libocrpc resources (no separate APK asset copy of the leaf).
 - **🔷** System/public roots are not the trust path for RPC HTTPS.
 - **ℹ️** Existing Android Ollama HTTPS still uses the public `ca-certificates.crt` bundle ([`android-tls.md`](../android-tls.md)) — RPC uses a **separate** `tls_database` on the RPC `HttpClient` session.
 - **🚫** Let’s Encrypt / public CA install for RPC.
 - **🚫** Disabling verification as the normal path.
 - **🚫** Pushing each server leaf PEM to the phone for normal use.
+- **🚫** CA private key in client gresource / APK.
 
 ---
 
@@ -57,7 +58,7 @@ var client = new OLLMrpc.Transport.HttpClient(
 };
 ```
 
-**ℹ️** Production Android: extract/bundle `ollmrpc-ca.pem` and set `tls_database` the same way — no `Cert` on the phone.
+**ℹ️** Production Android: load CA from GResource `/ollmrpc/ollmrpc-ca.pem` into `tls_database` — no `Cert` and no CA key on the phone.
 
 ### Out of scope
 
@@ -75,7 +76,7 @@ var client = new OLLMrpc.Transport.HttpClient(
 
 ---
 
-## Phase 0 — `HttpClient.tls_database` — **⏳**
+## Phase 0 — `HttpClient.tls_database` — **✔️**
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
@@ -139,7 +140,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-## Phase 1 — Smoke — **⏳**
+## Phase 1 — Smoke — **✔️**
 
 ### 4. `tests/rpc/http-https-test.vala` — new file
 
@@ -295,16 +296,16 @@ test('test-rpc-http-https',
 
 ## Backlog
 
-- **🔷** `⏳` Implement with **8.2.3.5**.
-- **🔷** `⏳` Bundle `ollmrpc-ca.pem` on Android for RPC `HttpClient` (separate from public `ca-certificates.crt`).
+- **🔷** `✔️` Implement with **8.2.3.5**.
+- **🔷** `⏳` Bundle/extract `/ollmrpc/ollmrpc-ca.pem` from GResource for RPC `HttpClient` (separate from public `ca-certificates.crt`).
 - **🔷** `⏳` Phase 6 — client cert on reconnect.
 - **🚫** Pairing UX that copies leaf PEMs to the phone (product CA replaces that).
+- **🚫** CA private key in Android resources.
 
 ---
 
 ## LLM notes
 
-- **🚫** Do not implement until user approves.
 - **ℹ️** `GLib.TlsFileDatabase.@new` is the Vala name for `g_tls_file_database_new`.
 - **ℹ️** Smoke needs `libocrpc/data/ollmrpc-ca{,-key}.pem` present (generated once per **8.2.3.5**).
 - **ℹ️** After implement, mark **✔️**; user promotes **✅**.

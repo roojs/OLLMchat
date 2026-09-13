@@ -1,6 +1,6 @@
 # 8.2.3.5 — HTTPS server (TLS listen + private cert)
 
-**Status:** **PROPOSED** — draft for review; implement after user approval
+**Status:** **✔️** — implemented (agent); user promotes **✅**
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -16,11 +16,11 @@
 
 ## Purpose
 
-- **🔷** `⏳` TLS on `Soup.Server` for the real target: **Android client → Linux filesystem server**.
-- **🔷** `⏳` **Product CA** (our PKI): clients trust one shipped CA PEM; servers mint **CA-signed** leaves — no Let’s Encrypt, no hand PEM copy per phone.
-- **🔷** `⏳` **`new Transport.Cert(dir, ca_pem, ca_key)`** loads or mints the server leaf.
-- **🔷** `⏳` Same RPC paths over **`https://`**.
-- **🔷** `⏳` Plain HTTP when `tls_certificate` is null (existing smokes unchanged).
+- **🔷** `✔️` TLS on `Soup.Server` for the real target: **Android client → Linux filesystem server**.
+- **🔷** `✔️` **Product CA** (our PKI): clients trust one shipped CA PEM; servers mint **CA-signed** leaves — no Let’s Encrypt, no hand PEM copy per phone.
+- **🔷** `✔️` **`new Transport.Cert(dir, ca_pem, ca_key)`** loads or mints the server leaf.
+- **🔷** `✔️` Same RPC paths over **`https://`**.
+- **🔷** `✔️` Plain HTTP when `tls_certificate` is null (existing smokes unchanged).
 - **ℹ️** Phase 4 = encrypted transport + product CA trust. Not mTLS client certs (Phase 6), not RPC login (Phase 5).
 
 ---
@@ -28,16 +28,17 @@
 ## Trust model
 
 - **🔷** Trust is **product PKI**, not the public Web PKI.
-- **🔷** **`ollmrpc-ca.pem`** (CA **public**) — ship with **every** client (Android assets / Linux data). This is what `HttpClient.tls_database` trusts.
-- **🔷** **`ollmrpc-ca-key.pem`** (CA **private**) — ship only with **Linux server** (and smoke fixtures). Used to sign leaves. **Not** in the Android APK.
+- **🔷** **`ollmrpc-ca.pem`** (CA **public**) — embed in **libocrpc GResource** (`/ollmrpc/ollmrpc-ca.pem`) so Linux **and** Android pick it up with the library. Clients trust this via `TlsFileDatabase` (extract resource → path, or reuse extract cache).
+- **🔷** **`ollmrpc-ca-key.pem`** (CA **private**) — **not** in the Android-linked resource. Server/smoke only: source-tree file and/or a **server-only** gresource / install that Android builds omit.
 - **🔷** On disk under server `dir`: `server.pem` + `server-key.pem` (**leaf** signed by product CA).
-- **🔷** `Cert.trust_pem_path` = **`ca_pem_path`** (product CA), never the leaf.
+- **🔷** `Cert.trust_pem_path` = extracted/cached **product CA** PEM path (from GResource), never the leaf.
 - **🔷** Generation uses **GnuTLS library** APIs — no subprocess / openssl CLI.
 - **ℹ️** Anyone with the CA private key can mint TLS identities Android will trust. Committing the key in-repo is intentional: TLS here is mainly **confidentiality for RPC/conversations**, not access control. **Phase 5** application auth (and later client certs) is the real gate.
 - **🚫** Let’s Encrypt / ACME / public CA.
 - **🚫** Shelling out to `openssl`.
 - **🚫** Expecting users to copy `server.pem` onto the phone for normal use.
 - **🚫** Self-signed leaf as the client trust anchor (breaks multi-device).
+- **🚫** Shipping `ollmrpc-ca-key.pem` inside the Android APK / client gresource.
 
 ---
 
@@ -61,8 +62,9 @@
 ### Android client
 
 - **🔷** Does **not** need `Cert` or the CA private key.
-- **🔷** Bundles `ollmrpc-ca.pem` → `HttpClient.tls_database = TlsFileDatabase.@new(ca_pem_path)`.
+- **🔷** Loads product CA from GResource (`/ollmrpc/ollmrpc-ca.pem`) → `HttpClient.tls_database`.
 - **🔷** Connects to `https://<linux-host>:<port>/…` (same JSON/bin/session as HTTP).
+- **ℹ️** Separate from the public `ca-certificates.crt` bundle used for Ollama HTTPS ([`android-tls.md`](../android-tls.md)).
 
 ### Leaf identity (Phase 4 smoke)
 
@@ -88,20 +90,20 @@
 
 ---
 
-## Phase 0 — Product CA + `Transport.Cert` — **⏳**
+## Phase 0 — Product CA + `Transport.Cert` — **✔️**
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
-### 0. `libocrpc/data/` — product CA PEMs (once)
+### 0. `libocrpc/data/` + GResource — product CA
 
-**Why:** Fixed product CA so Android can trust any leaf the Linux server mints.
+**Why:** Fixed product CA; public half ships in GResource with every libocrpc consumer (including Android).
 
-**Where:** new files under `libocrpc/data/`.
+**Where:** `libocrpc/data/` source PEMs + `libocrpc/data/ollmrpc.gresource.xml`.
 
 **ℹ️** Implementer generates **once** (GnuTLS or openssl), then commits:
 
-- `ollmrpc-ca.pem` — CA certificate (public)
-- `ollmrpc-ca-key.pem` — CA private key (server/smoke only)
+- `data/ollmrpc-ca.pem` — CA certificate (public) → **in** gresource
+- `data/ollmrpc-ca-key.pem` — CA private key → **repo + Linux server/smoke only**, **not** listed in the client gresource XML
 
 Example openssl one-liner (generation only; runtime still uses GnuTLS library):
 
@@ -112,7 +114,18 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
   -out libocrpc/data/ollmrpc-ca.pem
 ```
 
-**🚫** Do not put `ollmrpc-ca-key.pem` in the Android APK assets.
+#### Add — `libocrpc/data/ollmrpc.gresource.xml`
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/ollmrpc">
+    <file>ollmrpc-ca.pem</file>
+  </gresource>
+</gresources>
+```
+
+**🚫** Do not add `ollmrpc-ca-key.pem` to this XML (would ship into Android with libocrpc).
 
 ### 1. `libocrpc/Transport/Cert.vala` — new file
 
@@ -319,7 +332,7 @@ namespace OLLMrpc.Transport
 }
 ```
 
-### 2. `libocrpc/meson.build` — source, GnuTLS, install CA public
+### 2. `libocrpc/meson.build` — source, GnuTLS, GResource
 
 **Where (source):** inside `ocrpc_core_src` after `'Transport/HttpClient.vala',`.
 
@@ -345,22 +358,25 @@ namespace OLLMrpc.Transport
   '--pkg', 'gnutls',
 ```
 
-**Where (install):** end of `libocrpc/meson.build`.
+**Where (gresource):** near other libocrpc targets (compile + link into `libocrpc`).
 
 #### Add
 
 ```meson
-install_data(
-  'data/ollmrpc-ca.pem',
-  install_dir: get_option('datadir') / 'ollmrpc',
+ocrpc_resources = gnome.compile_resources(
+  'ollmrpc-resources',
+  'data/ollmrpc.gresource.xml',
+  source_dir: 'data',
+  c_name: 'ollmrpc_resources',
 )
-# Server packages / smoke also need data/ollmrpc-ca-key.pem on disk;
-# do not install the key into Android APK assets.
+# Link ocrpc_resources into the libocrpc library target sources.
+# CA private key stays a plain file under data/ for server + smoke env;
+# not compiled into the gresource.
 ```
 
 ---
 
-## Phase 1 — `HttpServer` HTTPS listen — **⏳**
+## Phase 1 — `HttpServer` HTTPS listen — **✔️**
 
 ### 3. `libocrpc/Transport/HttpServer.vala` — property
 
@@ -437,7 +453,7 @@ install_data(
 
 ---
 
-## Phase 2 — Smoke — **⏳**
+## Phase 2 — Smoke — **✔️**
 
 Shared executable with **8.2.3.6** — full test body lives in that plan’s Phase 1 (uses `new Cert(dir, ca_pem, ca_key)` + client `TlsFileDatabase` on **CA** PEM). Meson target name: `test-rpc-http-https`.
 
@@ -445,8 +461,8 @@ Shared executable with **8.2.3.6** — full test body lives in that plan’s Pha
 
 ## Backlog
 
-- **🔷** `⏳` Implement Phases 0–2 with **8.2.3.6**.
-- **🔷** `⏳` Wire `ollmrpc-ca.pem` into Android assets (alongside existing public CA bundle in [`docs/android-tls.md`](../android-tls.md) — **separate** trust DB for RPC vs Ollama HTTPS).
+- **🔷** `✔️` Implement Phases 0–2 with **8.2.3.6**.
+- **🔷** `⏳` Wire client extract of `/ollmrpc/ollmrpc-ca.pem` from GResource for `tls_database` (RPC trust separate from Ollama’s public CA bundle in [`docs/android-tls.md`](../android-tls.md)).
 - **🔷** `⏳` Configurable leaf SAN for LAN IP/hostname (device E2E).
 - **🔷** `⏳` Phase 5 — application auth over HTTPS.
 - **🔷** `⏳` Phase 6 — issue client certs from the same product CA.
@@ -456,8 +472,7 @@ Shared executable with **8.2.3.6** — full test body lives in that plan’s Pha
 
 ## LLM notes
 
-- **🚫** Do not implement until user approves.
 - **ℹ️** GLib/`GTlsCertificate` only **loads** PEMs — minting is GnuTLS (`gnutls` pkg + `--pkg gnutls`).
-- **ℹ️** Generate and commit `libocrpc/data/ollmrpc-ca.pem` + `ollmrpc-ca-key.pem` once before coding.
-- **🚫** Do not spawn `openssl` at runtime; do not put the CA private key in the Android APK.
+- **ℹ️** Generate and commit `libocrpc/data/ollmrpc-ca.pem` + `ollmrpc-ca-key.pem` once before coding; only the **public** PEM goes in `ollmrpc.gresource.xml`.
+- **🚫** Do not spawn `openssl` at runtime; do not put the CA private key in the client gresource / Android APK.
 - **ℹ️** After implement, mark **✔️**; user promotes **✅**.

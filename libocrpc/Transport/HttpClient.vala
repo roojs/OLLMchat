@@ -24,12 +24,10 @@ namespace OLLMrpc.Transport
 	 * == Example ==
 	 *
 	 * {{{
-	 * var http = new OLLMrpc.Transport.HttpClient("http://127.0.0.1:8080");
+	 * var http = new OLLMrpc.Transport.HttpClient("https://127.0.0.1:8080") {
+	 *     tls_database = GLib.TlsFileDatabase.@new(ca_pem_path)
+	 * };
 	 * var resp = yield http.call(new OLLMrpc.Request() {
-	 *     method = "RPC-Hello.world"
-	 * });
-	 * http.bin_body = true;
-	 * var bin_resp = yield http.call(new OLLMrpc.Request() {
 	 *     method = "RPC-Hello.world"
 	 * });
 	 * }}}
@@ -65,6 +63,12 @@ namespace OLLMrpc.Transport
 			get; set; default = new Bin.Stream(null, null, false);
 		}
 
+		/**
+		 * Trust store for product-CA HTTPS ({@link Cert.trust_pem_path} /
+		 * bundled ''ollmrpc-ca.pem''). Null → Soup platform default.
+		 */
+		public GLib.TlsDatabase? tls_database { get; set; default = null; }
+
 		private Soup.Session soup = new Soup.Session();
 		private Bin.Json json = new Bin.Json(Bin.Mode.AUTO);
 		private int next_id = 1;
@@ -95,6 +99,9 @@ namespace OLLMrpc.Transport
 		public async Response call(Request request) throws GLib.Error
 		{
 			request.id = this.next_id++;
+			if (this.tls_database != null) {
+				this.soup.set_tls_database(this.tls_database);
+			}
 			var url = this.base_url + this.rpc_path;
 			var message = new Soup.Message("POST", url);
 			var req_headers = message.get_request_headers();

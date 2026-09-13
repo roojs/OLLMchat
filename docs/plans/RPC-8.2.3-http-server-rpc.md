@@ -1,6 +1,6 @@
 # 8.2.3 — HTTP server RPC (JSON → stream → bin → TLS / certs)
 
-**Status:** **PROPOSED** — Phases 1–3 sub-plans `✔️` (unary / stream / routes / bin+session / client); Phases 4–6 HTTPS / auth / certs still open
+**Status:** **PROPOSED** — Phases 1–4 sub-plans `✔️` (HTTP + HTTPS product CA); Phases 5–6 auth / client certs still open
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -540,8 +540,8 @@ namespace OLLMrpcTests
 ## Phase 4 — HTTPS → [`RPC-8.2.3.5`](RPC-8.2.3.5-https-server.md) + [`RPC-8.2.3.6`](RPC-8.2.3.6-https-client.md)
 
 - **ℹ️** Split out — product CA TLS for Android→Linux (no public CA / Let’s Encrypt).
-- **🔷** `⏳` Product CA public in clients; `new Transport.Cert(dir, ca_pem, ca_key)` mints CA-signed leaf; `HttpServer` HTTPS listen.
-- **🔷** `⏳` `HttpClient.tls_database` trusts **product CA** PEM (not the leaf).
+- **🔷** `✔️` Product CA public in clients; `new Transport.Cert(dir, ca_pem, ca_key)` mints CA-signed leaf; `HttpServer` HTTPS listen.
+- **🔷** `✔️` `HttpClient.tls_database` trusts **product CA** PEM (not the leaf).
 - **ℹ️** Client certs / auth stay Phases 5–6.
 
 ---

@@ -13,8 +13,22 @@ Debian and RPM packaging notes are generated from this file at release time
 
 ### RPC
 
+- **HTTP RPC** (`libocrpc`): path ↔ type routes; JSON unary + NDJSON streaming;
+  bin POST with session / sequence headers; `HttpClient` (JSON + bin, session
+  reset) — separate from Hub-style `OLLMrpc.Client` GET
+- **`Client.call_poll`**: blocking read loop without nested `MainLoop` /
+  IO-watch reentrancy; fixes hang / CRITICAL paths that `call_sync` hit under
+  nested live invokes
+- Live decode reuses `Client.proxies` for the same lease id (object identity);
+  consume `TOKEN_END` before live `Object.new` so nested sync RPC cannot steal
+  the trailer
 - GI / FFI: boxed structs, `float` / `double`, numeric arrays, enums / flags,
-  INOUT, GList IN, explicit GType aliases
+  INOUT (incl. float-by-pointer), GList IN, explicit GType aliases;
+  `Bin.gtype_to_alias` public for consumers
+- GI property / GValue: no double-wrap on `GObject.Value` args; initialize out
+  GValues for `get_property`; FLAGS wire as uint; UTF8 IN/OUT (no dangling
+  `get_string`, no garbage / int-null sentinels); OUT scalars with null
+  `v_pointer`; lease id `0` → INVALID_PARAMS
 - Live GI callbacks (register / invoke / reply) and `SCM_RIGHTS` on
   `Response`
 - Live leases: stamp lease id on proxy decode; write path uses the lease key;
@@ -27,8 +41,9 @@ Debian and RPM packaging notes are generated from this file at release time
 - Bin protocol **v3.1** method-name tokens (`NAME_REF`)
 - `OLLMrpc.rpc_register()`; client throws server errors to callers
 - **GiMock** / `register_mock`: test-only GI dispatch that mints leased fakes for
-  registered OBJECT / INTERFACE returns (including GIR pointer types); ctors no
-  longer pack `val("o", null)`
+  registered OBJECT / INTERFACE returns (including GIR pointer types); ctors
+  mint the constructor class, not a mismatched GIR return type; no
+  `val("o", null)` packing
 - Nullable OBJECT returns and null `"o"` args pack safely (no `get_type()` on
   null)
 
@@ -42,6 +57,14 @@ Debian and RPM packaging notes are generated from this file at release time
   remove, overlay scan)
 - Daemon boot uses `OLLMrpc.rpc_register()`; file payloads can ride the
   `Response` SCM buffer
+- Pending-file **diff** DB: `file_history.reviewed`, `file_diff_part`,
+  `backup_path` on pending rows
+
+### EDITOR
+
+- **SourceView** inline diff: `show_diff` / `clear_diff` from
+  `OLLMfiles.Diff.Differ`; open / refresh pending-approval files show backup ↔
+  disk hunks
 
 ### TOOLS
 
@@ -64,6 +87,10 @@ Debian and RPM packaging notes are generated from this file at release time
 ### ANDROID
 
 - About dialog no longer hangs; Add Model search TLS; settings tab order
+
+### Fixed
+
+- SortedList finalize no longer double-disconnects signal handlers
 
 ## [1.3.0] - 2026-08-22
 
