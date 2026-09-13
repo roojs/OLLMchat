@@ -31,9 +31,12 @@ End-to-end RPC stack beyond the bin socket cutover (**8.1**):
 - **🔷** **Replace `Json.Serializable` in `libollmchat`** — chat/API HTTP bodies built from bin types + auto JSON encode, not hand-rolled `serialize_property`.
 - **🔷** **OpenAI-compatible server** — local chat backend exposing OpenAI HTTP **and** bin RPC (client/server).
 - **🔷** **Session resumption** — reconnect after mobile/network drops; carry stream/session state in server memory.
-- **🔷** **TLS + client certificate registration** — SSL as session manager; post-auth client cert for identity on reconnect.
+- **🔷** **TLS + client certificate registration** — unknown client certs get one `request_registration` call; admin approval registers the cert.
 
 **Suggested order (phases below):** 1 → 2 → 3 → 4 → 5 → 6 → 7. Later phases depend on earlier ones; sub-plans may split out per phase when implementing.
+
+- **🔷** **Priority:** remote **file server** access from **Android** — not the OpenAI-compatible server (Phase 5).
+- **🔷** That path needs **Phase 7** (auth) on the done HTTPS stack (**8.2.3.5** / **8.2.3.6**); Phases 4–5 do not block it.
 
 ---
 
@@ -45,7 +48,7 @@ End-to-end RPC stack beyond the bin socket cutover (**8.1**):
 - **ℹ️** **`Request.register(name, target, param_type)`** — maps handler singleton → param **`GLib.Type`**; **not** keyed by full method string (`RPC-File.read` vs `RPC-Folder.list`). Handler names use an `RPC-` prefix; nested Vala namespaces use hyphens (`RPC-Live-Remote.ref`).
 - **ℹ️** **`libollmchat`** — HTTP to Ollama/OpenAI uses **`Json.Serializable`** overrides on **`Call.*`**, **`Response.*`**, **`Settings.Connection`** (separate from RPC bin stack).
 - **ℹ️** RPC assumes a **persistent** socket; no session reattach after disconnect.
-- **ℹ️** No TLS or client-cert flow on RPC transports today.
+- **ℹ️** HTTPS server/client done on the HTTP track (**8.2.3.5** / **8.2.3.6**); no client-cert flow yet; socket RPC still plain.
 
 ---
 
@@ -215,28 +218,41 @@ End-to-end RPC stack beyond the bin socket cutover (**8.1**):
 ### Goal
 
 - **🔷** Encrypted transport for remote RPC (phone ↔ server, internet-facing daemon).
-- **🔷** **First connection:** TLS with server auto-generated / configured cert; application-level auth over RPC (method TBD).
-- **🔷** **After auth:** server **registers a client certificate**, returns it to the client (or CSR flow).
-- **🔷** **Subsequent connections:** client presents client cert; server maps cert → session identity (replaces or supplements token in Phase 6).
+- **🔷** Client presents **its own certificate** on connect (generated on device, kept on device).
+- **🔷** Server gates RPC on the certificate:
+  - **Registered** cert → full access.
+  - **Unknown** cert → exactly **one** call allowed: **`request_registration`**; all other methods rejected.
+- **🔷** **`request_registration`** registers the client’s **IP against its certificate** as a pending request.
+- **🔷** Admin on the server: **list** pending requests, **accept** one (“accept #2”) → cert becomes **registered**.
+- **🔷** Later connections with that cert are accepted; cert identity feeds Phase 6 session reattach.
 
 ### Flow (conceptual)
 
-1. Client → TLS → server (server cert only).
-2. Client → RPC auth call (credentials / token / pairing code).
-3. Server → issue client cert (OpenSSL/GnuTLS “registration” or custom CA sign).
-4. Client disconnects, reconnects with **client cert** → server recognizes peer without repeating full auth.
+1. Client generates / loads its own client cert (on device).
+2. Client → TLS → server, presents the client cert.
+3. Server looks up the cert fingerprint in the **registered** store:
+   - Found → normal RPC dispatch.
+   - Not found → dispatch **`request_registration`** only; reject everything else.
+4. `request_registration` → append `(ip, cert fingerprint, time)` to the **pending** store.
+5. Admin lists pending requests → approves one → fingerprint moves to the **registered** store.
+6. Client reconnects with the same cert → accepted.
 
 ### Work items
 
-- **🔷** `⏳` TLS wrapper on **`TcpListen`** / **`Client`** (not Unix socket).
-- **🔷** `⏳` Cert storage paths under `~/.local/share/ollmchat/` (or configurable).
-- **🔷** `⏳` RPC methods: `Auth.*` or `Daemon.register_client` — exact API in sub-plan.
-- **💩** `⏳` Certificate rotation and revocation — v2 if needed.
+- **🔷** `⏳` TLS wrapper on **`TcpListen`** / **`Client`** (not Unix socket); HTTP track TLS already done (**8.2.3.5** / **8.2.3.6** ✔️).
+- **🔷** `⏳` Registered + pending cert stores under `~/.local/share/ollmchat/` (or configurable).
+- **🔷** `⏳` RPC method `request_registration` + admin list/accept surface — exact API in sub-plan.
+- **💩** `⏳` Store key = SHA-256 fingerprint of the client cert.
+- **💩** `⏳` TLS handshake **requests** a client cert but does not require a known one — gating at RPC dispatch (handshake-level rejection would make registration impossible).
+- **💩** `⏳` IP in the pending record is informational for the admin (NAT etc.) — the cert fingerprint is the identity.
+- **💩** `⏳` Client cert may be self-signed — server pins the fingerprint; CA signing adds nothing (product CA key is in-repo).
+- **💩** `⏳` Certificate rotation and revocation (drop from registered store → re-register) — v2 if needed.
 
 ### Notes
 
-- **ℹ️** User referenced SSL “registration” — map to concrete API (GnuTLS `gnutls_certificate_allocate_credentials` / OpenSSL equivalent) during implementation spike.
-- **🚫** Mutual TLS alone without app-level pairing is **not** sufficient for first-time trust — keep explicit auth step before issuing client cert.
+- **🔷** **Admin approval is the auth** — no server-issued certs, no CSR, no passwords / pairing codes (supersedes the earlier “server issues client cert” flow).
+- **ℹ️** HTTP track: [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md) Phases 5–6.
+- **🚫** Public CA / Let’s Encrypt — server identity stays on the product CA (**8.2.3.5**).
 
 ---
 
@@ -258,7 +274,7 @@ End-to-end RPC stack beyond the bin socket cutover (**8.1**):
 
 - **⏳** **8.2.1** — [`RPC-8.2.1-libocrpc-auto-json-and-http-client.md`](RPC-8.2.1-libocrpc-auto-json-and-http-client.md) — **active**; **`Bin.Json` AUTO** + HTTP on **`OLLMrpc.Client`**; unblocks **`libochf`**
 - **✔️** **8.2.2** — [`done/8.2.2-DONE-proper-bin-json-streaming.md`](done/8.2.2-DONE-proper-bin-json-streaming.md) — **`Bin.Json.from_gobject`**; async **`Connection.write`**; stdio NDJSON path
-- **⏳** **8.2.3** — [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md) — HTTP **server**; Phases 1–4 sub-plans ✔️; Phases 5–6 auth / client certs open
+- **⏳** **8.2.3** — [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md) — HTTP **server**; Phases 1–4 sub-plans ✔️; Phases 5–6 client-cert registration open
 - **✔️** **8.2.3.1** — [`done/RPC-8.2.3.1-DONE-http-json-streaming.md`](done/RPC-8.2.3.1-DONE-http-json-streaming.md) — NDJSON streaming for inference
 - **✔️** **8.2.3.2** — [`done/RPC-8.2.3.2-DONE-http-bin-session.md`](done/RPC-8.2.3.2-DONE-http-bin-session.md) — bin over HTTP + session id
 - **✔️** **8.2.3.3** — [`done/RPC-8.2.3.3-DONE-http-path-type-registration.md`](done/RPC-8.2.3.3-DONE-http-path-type-registration.md) — path ↔ types

@@ -1,6 +1,6 @@
 # 8.2.3 — HTTP server RPC (JSON → stream → bin → TLS / certs)
 
-**Status:** **PROPOSED** — Phases 1–4 sub-plans `✔️` (HTTP + HTTPS product CA); Phases 5–6 auth / client certs still open
+**Status:** **DONE** ✔️ — HTTP server + streaming + bin/session + HTTPS product CA; client-cert registration split to [`RPC-8.2.7-client-cert-registration.md`](../RPC-8.2.7-client-cert-registration.md)
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -22,7 +22,7 @@
   - [`done/RPC-8.2.3.4-DONE-http-client.md`](done/RPC-8.2.3.4-DONE-http-client.md)
   - [`done/RPC-8.2.3.5-DONE-https-server.md`](done/RPC-8.2.3.5-DONE-https-server.md)
   - [`done/RPC-8.2.3.6-DONE-https-client.md`](done/RPC-8.2.3.6-DONE-https-client.md)
-- **🔷** Later — application auth; **client certificate** registration.
+- **ℹ️** Client-cert registration split to [`RPC-8.2.7-client-cert-registration.md`](../RPC-8.2.7-client-cert-registration.md) — add-on feature, not part of the HTTP server.
 - **ℹ️** Parent Phase 3 client HTTP (Hub GET) is already largely done in **8.2.1**; this plan is the **server** side (and later bin/TLS on that path).
 - **ℹ️** Parent Phase 5 called out SSE/chunked vs bin notifications for chat — this plan owns the HTTP JSON streaming half.
 
@@ -37,8 +37,7 @@
 5. [`done/RPC-8.2.3.4-DONE-http-client.md`](done/RPC-8.2.3.4-DONE-http-client.md) — separate `Transport.HttpClient` — `✔️`
 6. [`done/RPC-8.2.3.5-DONE-https-server.md`](done/RPC-8.2.3.5-DONE-https-server.md) — HTTPS server (TLS listen + product CA) — `✔️`
 7. [`done/RPC-8.2.3.6-DONE-https-client.md`](done/RPC-8.2.3.6-DONE-https-client.md) — HTTPS client (trust store) — `✔️`
-8. Phase 5 — Application authentication
-9. Phase 6 — Issued client certificate after auth
+8. Phases 5–6 (client-cert registration) — split to [`RPC-8.2.7-client-cert-registration.md`](../RPC-8.2.7-client-cert-registration.md)
 
 ---
 
@@ -548,38 +547,39 @@ namespace OLLMrpcTests
 
 ---
 
-## Phase 5 — Application authentication
+## Phase 5 — Client registration (request + admin approval)
 
 ### Goal
 
-- **🔷** `⏳` First-time (or unknown-cert) clients must pass an RPC auth step before privileged methods.
-- **🔷** `⏳` Auth method surface (`Auth.*` or `Daemon.register_client`) — exact API in a later fill-in.
+- **🔷** `⏳` Client generates / loads **its own** client cert on device; presents it on every HTTPS connect.
+- **🔷** `⏳` Server gates RPC dispatch on the peer cert fingerprint:
+  - **Registered** → normal dispatch.
+  - **Unknown** (or no cert) → only **`request_registration`** dispatches; all other methods rejected.
+- **🔷** `⏳` `request_registration` appends `(ip, cert fingerprint, time)` to a **pending** store.
+- **🔷** `⏳` Admin surface on the server: **list** pending requests, **accept** one by number → fingerprint moves to the **registered** store.
 
 ### Notes
 
-- **ℹ️** Parent Phase 7: mTLS alone is **not** first-time trust.
+- **🔷** Admin approval **is** the auth — no passwords / tokens / pairing codes (supersedes the earlier app-level auth step).
+- **ℹ️** Full flow: parent [`RPC-8.2-full-rpc-system.md`](RPC-8.2-full-rpc-system.md) Phase 7.
+- **💩** `⏳` `TlsAuthenticationMode.REQUEST` on `Soup.Server` — handshake accepts any client cert; gating happens at dispatch.
+- **💩** `⏳` Pending + registered stores as files under `~/.local/share/ollmchat/`.
 - **⏳** Code proposals — later.
 
 ---
 
-## Phase 6 — Client certificate registration
+## Phase 6 — Registered cert → session identity
 
 ### Goal
 
-- **🔷** `⏳` After successful auth, server **issues / registers a client certificate** and returns it to the client.
-- **🔷** `⏳` Later connections present that cert; server maps cert → session identity (with or without repeating full auth).
-
-### Flow (from parent Phase 7)
-
-1. Client → TLS (server cert only).
-2. Client → RPC auth.
-3. Server → issue client cert.
-4. Client reconnects with client cert → recognized.
+- **🔷** `⏳` Registered client cert fingerprint maps to a stable **client identity** for sessions (parent Phase 6 reattach).
+- **🔷** `⏳` Reconnect with the same cert resumes identity — no re-registration, no auth repeat.
 
 ### Notes
 
+- **ℹ️** No server-issued cert — client keeps its self-generated cert; the server store is fingerprint-only.
+- **💩** `⏳` Revocation = remove fingerprint from the registered store (client must re-register).
 - **⏳** Code proposals — later.
-- **💩** `⏳` Cert storage under `~/.local/share/ollmchat/` (or configurable) — confirm when filling.
 
 ---
 
