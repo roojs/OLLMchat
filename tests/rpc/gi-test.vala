@@ -79,6 +79,34 @@ namespace OLLMrpcTests
 			OLLMrpc.Bin.register_alias("Gio-File", GLib.File.new_for_path("/").get_type());
 			OLLMrpc.Bin.register("Test-Actor", typeof(TestActor));
 			OLLMrpc.Bin.register_alias("Test-Actor", typeof(TestActorX11));
+			var off_startup = OLLMrpc.Gi.vfunc_offset("Gio", "Application", "startup");
+			var off_activate = OLLMrpc.Gi.vfunc_offset("Gio", "Application", "activate");
+			this.check(command_line, off_startup != off_activate, "vfunc offsets not distinct");
+			this.check(command_line,
+				off_startup == OLLMrpc.Gi.vfunc_offset("Gio", "Application", "startup"),
+				"vfunc offset cache miss");
+			this.check(command_line,
+				off_activate == OLLMrpc.Gi.vfunc_offset("Gio", "Application", "activate"),
+				"vfunc offset activate cache miss");
+			var app_type = typeof(GLib.Application);
+			var slot = OLLMrpc.Gi.vfunc_slot(app_type, "Gio", "Application", "activate");
+			unowned var klass = app_type.class_peek();
+			this.check(command_line, klass != null, "Application class_peek null");
+			var direct = *(void**) ((char*) klass + off_activate);
+			this.check(command_line, slot == direct, "vfunc_slot mismatch");
+			var names = OLLMrpc.Gi.vfunc_names("Gio", "Application");
+			var has_activate = false;
+			var has_startup = false;
+			foreach (var name in names) {
+				if (name == "activate") {
+					has_activate = true;
+					continue;
+				}
+				if (name == "startup") {
+					has_startup = true;
+				}
+			}
+			this.check(command_line, has_activate && has_startup, "vfunc_names missing known vfuncs");
 			RpcDummy.Hello.rpc_register();
 			OLLMrpc.Request.register("RPC-Daemon", new RpcDummy.Hello());
 			var dir = GLib.DirUtils.make_tmp("ocrpc-gi-XXXXXX");

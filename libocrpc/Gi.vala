@@ -55,6 +55,12 @@ namespace OLLMrpc
 		public static Gee.ArrayList<string> namespaces;
 
 		/**
+		 * Vfunc offsets by name: ns → class → vfunc name → byte
+		 * offset. Real keys at every level — no composite strings.
+		 */
+		private static Gee.HashMap<string, Gee.HashMap<string, Gee.HashMap<string, int>>>? vfunc_offsets;
+
+		/**
 		 * Inbound call this instance applies. Owner of method / args /
 		 * connection — not copied onto {@link Gi}.
 		 */
@@ -187,6 +193,102 @@ namespace OLLMrpc
 				Bin.register(alias, gtype);
 				types.set(alias, gtype);
 			}
+		}
+
+		/**
+		 * Byte offset of ''vfunc_name'' in
+		 * ''ns''.''class_name'''s class struct, from the loaded
+		 * typelib (g-ir-compiler computed it; cached). A missing
+		 * namespace / class / field is a consumer stub-generation bug —
+		 * fatal, same as {@link Live.Callback} invariants.
+		 *
+		 * @param ns typelib namespace (''Clutter'')
+		 * @param class_name class name (''Actor'')
+		 * @param vfunc_name vfunc field name (''get_preferred_width'')
+		 */
+		public static int vfunc_offset(
+			string ns,
+			string class_name,
+			string vfunc_name
+		)
+		{
+			if (vfunc_offsets == null) {
+				vfunc_offsets = new Gee.HashMap<string, Gee.HashMap<string, Gee.HashMap<string, int>>>();
+			}
+			if (!vfunc_offsets.has_key(ns)) {
+				vfunc_offsets.set(ns,
+					new Gee.HashMap<string, Gee.HashMap<string, int>>());
+			}
+			var by_class = vfunc_offsets.get(ns);
+			if (!by_class.has_key(class_name)) {
+				by_class.set(class_name, new Gee.HashMap<string, int>());
+			}
+			var by_name = by_class.get(class_name);
+			if (by_name.has_key(vfunc_name)) {
+				return by_name.get(vfunc_name);
+			}
+			var info = GI.Repository.get_default().find_by_name(ns, class_name);
+			if (info == null || info.get_type() != GI.InfoType.OBJECT) {
+				GLib.error("Gi.vfunc_offset: no object %s.%s", ns, class_name);
+			}
+			var class_struct = ((GI.ObjectInfo) info).get_class_struct();
+			if (class_struct == null) {
+				GLib.error("Gi.vfunc_offset: no class struct %s.%s", ns, class_name);
+			}
+			var field = class_struct.find_field(vfunc_name);
+			if (field == null) {
+				GLib.error("Gi.vfunc_offset: %s.%s has no vfunc field %s",
+					ns, class_name, vfunc_name);
+			}
+			var offset = field.get_offset();
+			by_name.set(vfunc_name, offset);
+			return offset;
+		}
+
+		/**
+		 * Read the vfunc function pointer from ''type'''s class
+		 * struct at the typelib offset. ''null'' when the class is
+		 * not peeked.
+		 *
+		 * == Example ==
+		 *
+		 * {{{
+		 * var overridden =
+		 *     OLLMrpc.Gi.vfunc_slot(type, "Clutter", "Actor", "event")
+		 *     != OLLMrpc.Gi.vfunc_slot(baseline, "Clutter", "Actor", "event");
+		 * }}}
+		 */
+		public static void* vfunc_slot(
+			GLib.Type type,
+			string ns,
+			string class_name,
+			string vfunc_name
+		)
+		{
+			unowned var klass = type.class_peek();
+			if (klass == null) {
+				return null;
+			}
+			return *(void**) ((char*) klass + vfunc_offset(ns, class_name, vfunc_name));
+		}
+
+		/**
+		 * All vfunc names of ''ns''.''class_name'' from the
+		 * typelib — drives consumer override detection, so the consumer
+		 * keeps no hardcoded vfunc list.
+		 */
+		public static string[] vfunc_names(string ns, string class_name)
+		{
+			var info = GI.Repository.get_default().find_by_name(ns, class_name);
+			if (info == null || info.get_type() != GI.InfoType.OBJECT) {
+				GLib.error("Gi.vfunc_names: no object %s.%s", ns, class_name);
+			}
+			var object_info = (GI.ObjectInfo) info;
+			string[] names = {};
+			for (var i = 0; i < object_info.get_n_vfuncs(); i++) {
+				names += object_info.get_vfunc(i).get_name();
+			}
+			return names;
 		}
 
 		/**

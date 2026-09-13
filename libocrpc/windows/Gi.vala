@@ -39,6 +39,39 @@ namespace OLLMrpc
 		{
 		}
 
+		/**
+		 * Typelib vfunc offsets are not available without girepository.
+		 */
+		public static int vfunc_offset(
+			string ns,
+			string class_name,
+			string vfunc_name
+		)
+		{
+			GLib.error("Gi.vfunc_offset: not available on this platform");
+		}
+
+		/**
+		 * Typelib vfunc slots are not available without girepository.
+		 */
+		public static void* vfunc_slot(
+			GLib.Type type,
+			string ns,
+			string class_name,
+			string vfunc_name
+		)
+		{
+			GLib.error("Gi.vfunc_slot: not available on this platform");
+		}
+
+		/**
+		 * Typelib vfunc names are not available without girepository.
+		 */
+		public static string[] vfunc_names(string ns, string class_name)
+		{
+			GLib.error("Gi.vfunc_names: not available on this platform");
+		}
+
 		public bool dispatch()
 		{
 			return false;
