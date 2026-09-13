@@ -258,13 +258,13 @@ End-to-end RPC stack beyond the bin socket cutover (**8.1**):
 
 - **⏳** **8.2.1** — [`RPC-8.2.1-libocrpc-auto-json-and-http-client.md`](RPC-8.2.1-libocrpc-auto-json-and-http-client.md) — **active**; **`Bin.Json` AUTO** + HTTP on **`OLLMrpc.Client`**; unblocks **`libochf`**
 - **✔️** **8.2.2** — [`done/8.2.2-DONE-proper-bin-json-streaming.md`](done/8.2.2-DONE-proper-bin-json-streaming.md) — **`Bin.Json.from_gobject`**; async **`Connection.write`**; stdio NDJSON path
-- **⏳** **8.2.3** — [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md) — HTTP **server**; Phases 1–3 sub-plans ✔️; HTTPS → **8.2.3.5** / **8.2.3.6**
+- **⏳** **8.2.3** — [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md) — HTTP **server**; Phases 1–4 sub-plans ✔️; Phases 5–6 auth / client certs open
 - **✔️** **8.2.3.1** — [`done/RPC-8.2.3.1-DONE-http-json-streaming.md`](done/RPC-8.2.3.1-DONE-http-json-streaming.md) — NDJSON streaming for inference
 - **✔️** **8.2.3.2** — [`done/RPC-8.2.3.2-DONE-http-bin-session.md`](done/RPC-8.2.3.2-DONE-http-bin-session.md) — bin over HTTP + session id
 - **✔️** **8.2.3.3** — [`done/RPC-8.2.3.3-DONE-http-path-type-registration.md`](done/RPC-8.2.3.3-DONE-http-path-type-registration.md) — path ↔ types
 - **✔️** **8.2.3.4** — [`done/RPC-8.2.3.4-DONE-http-client.md`](done/RPC-8.2.3.4-DONE-http-client.md) — `Transport.HttpClient`
-- **⏳** **8.2.3.5** — [`RPC-8.2.3.5-https-server.md`](RPC-8.2.3.5-https-server.md) — HTTPS server (TLS listen)
-- **⏳** **8.2.3.6** — [`RPC-8.2.3.6-https-client.md`](RPC-8.2.3.6-https-client.md) — HTTPS client (trust store)
+- **✔️** **8.2.3.5** — [`done/RPC-8.2.3.5-DONE-https-server.md`](done/RPC-8.2.3.5-DONE-https-server.md) — HTTPS server (TLS + product CA)
+- **✔️** **8.2.3.6** — [`done/RPC-8.2.3.6-DONE-https-client.md`](done/RPC-8.2.3.6-DONE-https-client.md) — HTTPS client (trust product CA)
 - **⏳** **8.2.4** — Phase 4: `libollmchat` Json.Serializable removal
 - **⏳** **8.2.5** — Phase 5: OpenAI-compatible server
 - **⏳** **8.2.6** — Phase 6: session resumption (socket / shared with **8.2.3.2**)

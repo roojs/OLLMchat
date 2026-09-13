@@ -1,16 +1,16 @@
-# 8.2.3.5 — HTTPS server (TLS listen + private cert)
+# 8.2.3.5 — DONE — HTTPS server (TLS listen + product CA)
 
-**Status:** **✔️** — implemented (agent); user promotes **✅**
+**Status:** **DONE** ✔️ — `Transport.Cert` + `HttpServer` HTTPS; smoke `test-rpc-http-https`
 
-> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
+**Parent:** [`RPC-8.2.3-http-server-rpc.md`](../RPC-8.2.3-http-server-rpc.md) — Phase 4 HTTPS
 
-**Parent:** [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md) — Phase 4 HTTPS
+**Depends on:** Phase 1 `HttpServer` ✔️; peer client [`RPC-8.2.3.6-DONE-https-client.md`](RPC-8.2.3.6-DONE-https-client.md)
 
-**Depends on:** Phase 1 `HttpServer` ✔️; peer client [`RPC-8.2.3.6-https-client.md`](RPC-8.2.3.6-https-client.md)
-
-**Related:** Parent Phases 5–6; [`RPC-8.2-full-rpc-system.md`](RPC-8.2-full-rpc-system.md) Phase 7
+**Related:** Parent Phases 5–6; [`RPC-8.2-full-rpc-system.md`](../RPC-8.2-full-rpc-system.md) Phase 7
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
+
+> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
 ---
 

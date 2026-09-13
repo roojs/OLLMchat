@@ -52,6 +52,7 @@ jobs:
             libopenblas-dev \
             libseccomp-dev \
             libsoup-3.0-dev \
+            libgnutls28-dev \
             libsqlite3-dev \
             libtree-sitter-dev \
             libwebkitgtk-6.0-dev \

@@ -179,7 +179,7 @@ Build on Debian 13 (`trixie`) or Ubuntu 25.04+ (`plucky` / `questing` / `resolut
 ```bash
 sudo apt-get install build-essential devscripts debhelper meson ninja-build \
   pkg-config valac libgee-0.8-dev libglib2.0-dev \
-  libjson-glib-dev libsoup-3.0-dev libxml2-dev libsqlite3-dev \
+  libjson-glib-dev libsoup-3.0-dev libgnutls28-dev libxml2-dev libsqlite3-dev \
   libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev libsecret-1-dev gobject-introspection \
   libgirepository1.0-dev libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
   libwebkitgtk-6.0-dev libatspi2.0-dev \

@@ -16,11 +16,13 @@
 
 - **🔷** HTTP **server** in `libocrpc` that speaks the same `Request` / `Response` pipeline as socket RPC.
 - **🔷** Phase 1 — plain HTTP + **auto JSON** body; dummy **Hello World** RPC round-trip.
-- **🔷** Streaming JSON / bin+session — **done**:
+- **🔷** Streaming JSON / bin+session / HTTPS — **done**:
   - [`done/RPC-8.2.3.1-DONE-http-json-streaming.md`](done/RPC-8.2.3.1-DONE-http-json-streaming.md)
   - [`done/RPC-8.2.3.2-DONE-http-bin-session.md`](done/RPC-8.2.3.2-DONE-http-bin-session.md)
   - [`done/RPC-8.2.3.4-DONE-http-client.md`](done/RPC-8.2.3.4-DONE-http-client.md)
-- **🔷** Later — HTTPS ([`8.2.3.5`](RPC-8.2.3.5-https-server.md) / [`8.2.3.6`](RPC-8.2.3.6-https-client.md)); application auth; **client certificate** registration.
+  - [`done/RPC-8.2.3.5-DONE-https-server.md`](done/RPC-8.2.3.5-DONE-https-server.md)
+  - [`done/RPC-8.2.3.6-DONE-https-client.md`](done/RPC-8.2.3.6-DONE-https-client.md)
+- **🔷** Later — application auth; **client certificate** registration.
 - **ℹ️** Parent Phase 3 client HTTP (Hub GET) is already largely done in **8.2.1**; this plan is the **server** side (and later bin/TLS on that path).
 - **ℹ️** Parent Phase 5 called out SSE/chunked vs bin notifications for chat — this plan owns the HTTP JSON streaming half.
 
@@ -33,8 +35,8 @@
 3. [`done/RPC-8.2.3.3-DONE-http-path-type-registration.md`](done/RPC-8.2.3.3-DONE-http-path-type-registration.md) — path ↔ request/response types — `✔️`
 4. [`done/RPC-8.2.3.2-DONE-http-bin-session.md`](done/RPC-8.2.3.2-DONE-http-bin-session.md) — bin over HTTP + session id — `✔️`
 5. [`done/RPC-8.2.3.4-DONE-http-client.md`](done/RPC-8.2.3.4-DONE-http-client.md) — separate `Transport.HttpClient` — `✔️`
-6. [`RPC-8.2.3.5-https-server.md`](RPC-8.2.3.5-https-server.md) — HTTPS server (TLS listen + server cert)
-7. [`RPC-8.2.3.6-https-client.md`](RPC-8.2.3.6-https-client.md) — HTTPS client (trust store)
+6. [`done/RPC-8.2.3.5-DONE-https-server.md`](done/RPC-8.2.3.5-DONE-https-server.md) — HTTPS server (TLS listen + product CA) — `✔️`
+7. [`done/RPC-8.2.3.6-DONE-https-client.md`](done/RPC-8.2.3.6-DONE-https-client.md) — HTTPS client (trust store) — `✔️`
 8. Phase 5 — Application authentication
 9. Phase 6 — Issued client certificate after auth
 
@@ -537,7 +539,7 @@ namespace OLLMrpcTests
 
 ---
 
-## Phase 4 — HTTPS → [`RPC-8.2.3.5`](RPC-8.2.3.5-https-server.md) + [`RPC-8.2.3.6`](RPC-8.2.3.6-https-client.md)
+## Phase 4 — HTTPS → [`RPC-8.2.3.5`](done/RPC-8.2.3.5-DONE-https-server.md) + [`RPC-8.2.3.6`](done/RPC-8.2.3.6-DONE-https-client.md)
 
 - **ℹ️** Split out — product CA TLS for Android→Linux (no public CA / Let’s Encrypt).
 - **🔷** `✔️` Product CA public in clients; `new Transport.Cert(dir, ca_pem, ca_key)` mints CA-signed leaf; `HttpServer` HTTPS listen.

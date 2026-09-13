@@ -1,16 +1,16 @@
-# 8.2.3.6 — HTTPS client (trust product CA)
+# 8.2.3.6 — DONE — HTTPS client (trust product CA)
 
-**Status:** **✔️** — implemented (agent); user promotes **✅**
+**Status:** **DONE** ✔️ — `HttpClient.tls_database` + joint smoke `test-rpc-http-https`
 
-> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
+**Parent:** [`RPC-8.2.3-http-server-rpc.md`](../RPC-8.2.3-http-server-rpc.md) — Phase 4 HTTPS
 
-**Parent:** [`RPC-8.2.3-http-server-rpc.md`](RPC-8.2.3-http-server-rpc.md) — Phase 4 HTTPS
+**Depends on:** [`RPC-8.2.3.4-DONE-http-client.md`](RPC-8.2.3.4-DONE-http-client.md); peer [`RPC-8.2.3.5-DONE-https-server.md`](RPC-8.2.3.5-DONE-https-server.md) (`Transport.Cert` + product CA)
 
-**Depends on:** [`done/RPC-8.2.3.4-DONE-http-client.md`](done/RPC-8.2.3.4-DONE-http-client.md); peer [`RPC-8.2.3.5-https-server.md`](RPC-8.2.3.5-https-server.md) (`Transport.Cert` + product CA)
-
-**Related:** Parent Phases 5–6; [`docs/android-tls.md`](../android-tls.md)
+**Related:** Parent Phases 5–6; [`docs/android-tls.md`](../../android-tls.md)
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
+
+> **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
 ---
 

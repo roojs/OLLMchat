@@ -56,6 +56,7 @@ jobs:
             mingw-w64-ucrt-x86_64-gtksourceview5
             mingw-w64-ucrt-x86_64-libgee
             mingw-w64-ucrt-x86_64-libsoup3
+            mingw-w64-ucrt-x86_64-gnutls
             mingw-w64-ucrt-x86_64-json-glib
             mingw-w64-ucrt-x86_64-libxml2
             mingw-w64-ucrt-x86_64-sqlite3

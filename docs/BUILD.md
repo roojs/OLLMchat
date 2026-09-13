@@ -34,6 +34,7 @@ sudo apt install \
   libwebkitgtk-6.0-webdriver-dev \
   libatspi2.0-dev \
   libsoup-3.0-dev \
+  libgnutls28-dev \
   libjson-glib-dev \
   libxml2-dev \
   libsqlite3-dev \

@@ -15,7 +15,6 @@ ocrpc_deps = [
   dependency('gobject-2.0'),
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
-  dependency('gnutls'),
   valac.find_library('posix'),
   dependency('libffi'),
   dependency('gmodule-2.0'),
@@ -24,7 +23,6 @@ ocrpc_deps = [
 ocrpc_vapi_pkgs = [
   '--pkg=json-glib-1.0',
   '--pkg=libsoup-3.0',
-  '--pkg=gnutls',
   '--pkg=posix',
   '--pkg=libffi',
   '--pkg=gmodule-2.0',
@@ -33,7 +31,6 @@ ocrpc_vapi_pkgs = [
 ocrpc_vapi_gen_pkgs = [
   '--pkg', 'json-glib-1.0',
   '--pkg', 'libsoup-3.0',
-  '--pkg', 'gnutls',
   '--pkg', 'posix',
   '--pkg', 'libffi',
   '--pkg', 'gmodule-2.0',
@@ -42,6 +39,14 @@ ocrpc_vapi_gen_pkgs = [
   '--pkg', 'glib-2.0',
   '--pkg', 'gee-0.8',
 ]
+
+# Product-CA leaf mint (Transport.Cert) needs GnuTLS. Android clients only
+# trust the CA PEM from GResource — no mint, no GnuTLS wrap in pixiewood.
+if not is_android
+  ocrpc_deps += dependency('gnutls')
+  ocrpc_vapi_pkgs += '--pkg=gnutls'
+  ocrpc_vapi_gen_pkgs += ['--pkg', 'gnutls']
+endif
 
 transport_socket_src = files(['windows/Transport/SocketListen.vala'])
 client_boot_src = files(['windows/ClientBoot.vala'])
@@ -97,7 +102,6 @@ ocrpc_core_src = files([
   'Transport/HttpReply.vala',
   'Transport/HttpServer.vala',
   'Transport/HttpClient.vala',
-  'Transport/Cert.vala',
   'Http/Route.vala',
   'Daemon.vala',
   'Error.vala',
@@ -108,6 +112,10 @@ ocrpc_core_src = files([
   'RpcErrorCode.vala',
   'MockDispatch.vala',
 ])
+
+if not is_android
+  ocrpc_core_src += files(['Transport/Cert.vala'])
+endif
 
 live_src = files([
   'Live/namespace.vala',

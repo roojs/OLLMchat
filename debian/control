@@ -11,6 +11,7 @@ Build-Depends: debhelper-compat (= 13),
                libglib2.0-dev,
                libjson-glib-dev,
                libsoup-3.0-dev,
+               libgnutls28-dev,
                libxml2-dev,
                libsqlite3-dev,
                libgtk-4-dev,
@@ -84,6 +85,7 @@ Depends: libocrpc1 (= ${binary:Version}),
          libglib2.0-dev,
          libjson-glib-dev,
          libsoup-3.0-dev,
+         libgnutls28-dev,
          ${misc:Depends}
 Conflicts: ollmchat-remote-only
 Breaks: ollmchat (<< 1.3.0-1)
@@ -145,6 +147,7 @@ Depends: libollamaweb1 (= ${binary:Version}),
          libglib2.0-dev,
          libjson-glib-dev,
          libsoup-3.0-dev,
+         libgnutls28-dev,
          libxml2-dev,
          ${misc:Depends}
 Conflicts: ollmchat-remote-only
@@ -179,6 +182,7 @@ Depends: libochf1 (= ${binary:Version}),
          libglib2.0-dev,
          libjson-glib-dev,
          libsoup-3.0-dev,
+         libgnutls28-dev,
          ${misc:Depends}
 Conflicts: ollmchat-remote-only
 Breaks: ollmchat (<< 1.3.0-1)
