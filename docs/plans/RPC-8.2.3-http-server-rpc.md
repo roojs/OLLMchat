@@ -539,9 +539,9 @@ namespace OLLMrpcTests
 
 ## Phase 4 — HTTPS → [`RPC-8.2.3.5`](RPC-8.2.3.5-https-server.md) + [`RPC-8.2.3.6`](RPC-8.2.3.6-https-client.md)
 
-- **ℹ️** Split out — private app↔app TLS (no public CA / Let’s Encrypt).
-- **🔷** `⏳` `Transport.Cert.ensure` generates/loads server identity; `HttpServer` HTTPS listen.
-- **🔷** `⏳` `HttpClient.tls_database` trusts that private PEM.
+- **ℹ️** Split out — product CA TLS for Android→Linux (no public CA / Let’s Encrypt).
+- **🔷** `⏳` Product CA public in clients; `new Transport.Cert(dir, ca_pem, ca_key)` mints CA-signed leaf; `HttpServer` HTTPS listen.
+- **🔷** `⏳` `HttpClient.tls_database` trusts **product CA** PEM (not the leaf).
 - **ℹ️** Client certs / auth stay Phases 5–6.
 
 ---

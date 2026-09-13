@@ -252,9 +252,10 @@ namespace OLLMrpc.Bin
 		 * When {@link Client.live_handles} is on and the type is not
 		 * {@link Serializable}, the body is a uint64 handle then
 		 * {@link TOKEN_END} (consumed before {@link GLib.Object.new} so
-		 * construct setters may nest sync RPC). Decode constructs the
-		 * proxy via {@link GLib.Object.new} with ''rpc-lid''
-		 * ({@link Live.Handle}) and stores it in {@link Client.proxies}.
+		 * construct setters may nest sync RPC). Decode reuses
+		 * {@link Client.proxies} when the lease is already known; otherwise
+		 * constructs via {@link GLib.Object.new} with ''rpc-lid''
+		 * ({@link Live.Handle}) and stores it.
 		 *
 		 * @param object_type element class when already read from an array header
 		 * @param expected_type GObject property type for anonymous nested objects
@@ -278,8 +279,12 @@ namespace OLLMrpc.Bin
 				if (this.in_stream.read_uint16() != TOKEN_END) {
 					throw new StreamError.PROTOCOL("expected end after live handle");
 				}
+				var id = (int) handle;
+				if (this.client.proxies.has_key(id)) {
+					return this.client.proxies.get(id);
+				}
 				var live = GLib.Object.new(decode_type, "rpc-lid", handle);
-				this.client.proxies.set((int) handle, live);
+				this.client.proxies.set(id, live);
 				return live;
 			}
 			var obj = (Serializable) GLib.Object.new(decode_type);
