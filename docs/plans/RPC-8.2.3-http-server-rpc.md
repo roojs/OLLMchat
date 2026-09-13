@@ -91,7 +91,7 @@
 - **💩** `⏳` HTTP status mapping: `405` wrong method, `400` bad JSON / not a Request, `500` encode failure; RPC `METHOD_NOT_FOUND` still goes out as JSON `Response.error` (HTTP `200` or `404` — pick one when implementing; body must carry the message either way).
 - **🚫** Streaming JSON — **[`8.2.3.1`](done/RPC-8.2.3.1-DONE-http-json-streaming.md)** (not in Phase 1 unary Hello World).
 - **🚫** Extending `OLLMrpc.Client` for POST-to-our-server — Phase 1 smoke uses `Soup.Session` (or curl) in the test; dedicated client is **[`8.2.3.4`](done/RPC-8.2.3.4-DONE-http-client.md)**.
-- **🚫** Sessions, bin Content-Type — **[`8.2.3.2`](done/RPC-8.2.3.2-DONE-http-bin-session.md)**; TLS, auth — Phases 4–6.
+- **🚫** Sessions, bin Content-Type — **[`8.2.3.2`](done/RPC-8.2.3.2-DONE-http-bin-session.md)**; TLS — Phase 4; client-cert auth — **8.2.7**.
 
 ### Wire (Phase 1)
 
@@ -543,43 +543,13 @@ namespace OLLMrpcTests
 - **ℹ️** Split out — product CA TLS for Android→Linux (no public CA / Let’s Encrypt).
 - **🔷** `✔️` Product CA public in clients; `new Transport.Cert(dir, ca_pem, ca_key)` mints CA-signed leaf; `HttpServer` HTTPS listen.
 - **🔷** `✔️` `HttpClient.tls_database` trusts **product CA** PEM (not the leaf).
-- **ℹ️** Client certs / auth stay Phases 5–6.
+- **ℹ️** Client certs / registration → [`RPC-8.2.7-client-cert-registration.md`](../RPC-8.2.7-client-cert-registration.md).
 
 ---
 
-## Phase 5 — Client registration (request + admin approval)
+## Phases 5–6 — split out → [`RPC-8.2.7-client-cert-registration.md`](../RPC-8.2.7-client-cert-registration.md)
 
-### Goal
-
-- **🔷** `⏳` Client generates / loads **its own** client cert on device; presents it on every HTTPS connect.
-- **🔷** `⏳` Server gates RPC dispatch on the peer cert fingerprint:
-  - **Registered** → normal dispatch.
-  - **Unknown** (or no cert) → only **`request_registration`** dispatches; all other methods rejected.
-- **🔷** `⏳` `request_registration` appends `(ip, cert fingerprint, time)` to a **pending** store.
-- **🔷** `⏳` Admin surface on the server: **list** pending requests, **accept** one by number → fingerprint moves to the **registered** store.
-
-### Notes
-
-- **🔷** Admin approval **is** the auth — no passwords / tokens / pairing codes (supersedes the earlier app-level auth step).
-- **ℹ️** Full flow: parent [`RPC-8.2-full-rpc-system.md`](RPC-8.2-full-rpc-system.md) Phase 7.
-- **💩** `⏳` `TlsAuthenticationMode.REQUEST` on `Soup.Server` — handshake accepts any client cert; gating happens at dispatch.
-- **💩** `⏳` Pending + registered stores as files under `~/.local/share/ollmchat/`.
-- **⏳** Code proposals — later.
-
----
-
-## Phase 6 — Registered cert → session identity
-
-### Goal
-
-- **🔷** `⏳` Registered client cert fingerprint maps to a stable **client identity** for sessions (parent Phase 6 reattach).
-- **🔷** `⏳` Reconnect with the same cert resumes identity — no re-registration, no auth repeat.
-
-### Notes
-
-- **ℹ️** No server-issued cert — client keeps its self-generated cert; the server store is fingerprint-only.
-- **💩** `⏳` Revocation = remove fingerprint from the registered store (client must re-register).
-- **⏳** Code proposals — later.
+- **ℹ️** Client-cert registration (unknown cert → one `request_registration` call; admin approval registers the cert) is an add-on feature — it lives in **8.2.7**, not in this plan.
 
 ---
 

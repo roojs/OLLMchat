@@ -220,6 +220,14 @@ where valadoc treats the whole block as code.
 - `{@link SymbolName}` → link to a Vala symbol (class, method, property)
 - `{@inheritDoc}` → inherit description from parent (e.g. overridden method)
 
+**URLs only inside `[[ … ]]` (or `{{{ … }}}` samples).** A bare
+`http://…` / `https://…` in docblock prose — with or without `''…''` — makes
+valadoc fail with `unexpected token: <end-of-line>` / `<end-of-file>` (its URL
+lexer swallows the rest of the line, including any closing `''`). This error
+only surfaces once semantic analysis is clean, so it can hide behind unrelated
+compile errors. License headers and `/* … */` notes are not docblocks and are
+unaffected.
+
 **Package overview wiki (`docs/valadoc-wiki/index.valadoc`):** Use
 **full URLs** to the published GitHub Pages docs in `[[url|label]]` links, e.g.
 `[[https://roojs.github.io/OLLMchat/ollmchat/OLLMchat.html|OLLMchat]]`. Valadoc

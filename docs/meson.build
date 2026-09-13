@@ -459,6 +459,7 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=atspi-2',  # libocwebkit A11y
     '--pkg=posix',
     '--pkg=libffi',  # in-tree libocrpc/libffi.vapi (OLLMrpc.Ffi)
+    '--pkg=gnutls',  # Transport/Cert.vala (libocrpc product-CA leaf mint)
     '--pkg=fiass',  # FAISS via vapi (used by libocvector)
     '--pkg=tree-sitter',  # Tree-sitter via vapi (used by libocvector)
     '--pkg=seccomp',  # RunSeccomp / Bubble (liboctools)

@@ -34,7 +34,7 @@ namespace OLLMrpc.Transport
 	 */
 	public class HttpClient : GLib.Object
 	{
-		/** Base origin (no path), e.g. ''http://127.0.0.1:8080''. */
+		/** Base origin (no path), e.g. [[http://127.0.0.1:8080]]. */
 		public string base_url { get; construct; }
 
 		/** RPC path under {@link base_url}. Default ''/rpc''. */
