@@ -133,7 +133,25 @@ namespace OLLMrpc
 					break;
 
 				case "o":
-					slot.set_pointer((void*) val.get_object());
+					if (val.type().is_a(GLib.Type.OBJECT)) {
+						slot.set_pointer((void*) val.get_object());
+						atype = Libffi.POINTER;
+						break;
+					}
+					var id = (int) val.get_uint64();
+					if (id == 0) {
+						slot.set_pointer(null);
+						atype = Libffi.POINTER;
+						break;
+					}
+					if (!this.request.connection.leases.has_key(id)) {
+						this.request.connection.reply_error(
+							this.request, (int) RpcErrorCode.INVALID_PARAMS);
+						slot.set_pointer(null);
+						atype = Libffi.POINTER;
+						break;
+					}
+					slot.set_pointer((void*) this.request.connection.leases.get(id));
 					atype = Libffi.POINTER;
 					break;
 

@@ -1,6 +1,7 @@
 # `Hook.emit` does not clear `reply_args` before wait
 
-**Status:** ✔️ FIXED (await user ✅)  
+**Status:** ✔️ FIXED  
+
 **Hit:** 2026-09-14 — gnome-shell-rpc consumer always clears before emit  
 **Component:** `libocrpc` / `Live.Hook.emit`  
 **Consumer:** gnome-shell-rpc `Helper.LayoutHooks` / `Helper.Actor.fire_button_press`  
@@ -105,4 +106,3 @@ libocrpc.
   / replaced, not the first reply’s values.
 - ⏳ Consumer follow-up (gnome-shell-rpc): remove redundant
   `hook.reply_args.clear()` before emit once libocrpc is bumped.
-- ⏳ Move this log to `docs/bugs/done/` after user ✅.
