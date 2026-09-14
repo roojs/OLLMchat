@@ -281,8 +281,9 @@ namespace OLLMrpc
 			while (offset < signature.length) {
 				var rest = signature.substring(offset);
 				if (rest.has_prefix("S")) {
-					this.pack("as", this.request.args.get(ai), ref slots[2 + si], out atypes[2 + si], pin);
-					slots[2 + si + 1].set_int32(((string[]) this.request.args.get(ai).get_boxed()).length);
+					var as_val = this.request.args.get(ai);
+					this.pack("as", as_val, ref slots[2 + si], out atypes[2 + si], pin);
+					slots[2 + si + 1].set_int32(((string[]) as_val).length);
 					atypes[2 + si + 1] = Libffi.SINT32;
 					offset += 1;
 					si += 2;
