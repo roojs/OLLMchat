@@ -173,6 +173,22 @@ test('test-rpc-values',
   suite: 'rpc',
   timeout: 10,
 )
+test_rpc_ffi_as = executable('test-rpc-ffi-as',
+  'rpc/ffi-as-test.vala',
+  dependencies: rpc_test_deps + [
+    rpc_test_app_dep,
+    dependency('gio-unix-2.0'),
+  ],
+  link_with: rpc_test_link_with,
+  build_rpath: rpc_test_build_rpath,
+  export_dynamic: true,
+  vala_args: rpc_test_vala_args,
+)
+test('test-rpc-ffi-as',
+  test_rpc_ffi_as,
+  suite: 'rpc',
+  timeout: 10,
+)
 test_rpc_http_server = executable('test-rpc-http-server',
   'rpc/http-server-test.vala',
   dependencies: rpc_test_deps + [

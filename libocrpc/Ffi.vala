@@ -68,22 +68,26 @@ namespace OLLMrpc
 		 * @param val boxed argument
 		 * @param slot union written for libffi
 		 * @param atype matching {@link Libffi.Type} const
-		 * @param pin owned string copies kept alive until after ''cif.call''
-		 *        (''val'' is by-value; ''get_string'' would otherwise dangle)
+		 * @param pin owned string / ''string[]'' Values kept alive until
+		 *        after ''cif.call'' (indexed storage — not ArrayList.get,
+		 *        which would free a temporary Value and drop the boxed
+		 *        ''GStrv'')
 		 */
 		internal void pack(
 			string tag,
 			GLib.Value val,
 			ref Libffi.Arg slot,
 			out Libffi.Type atype,
-			Gee.ArrayList<string> pin
+			ref GLib.Value[] pin
 		) {
 			switch (tag) {
 				case "s":
 				case "g":
-					var held = val.get_string();
-					pin.add(held);
-					slot.set_pointer((void*) pin.get(pin.size - 1));
+					var s_i = pin.length;
+					pin.resize(s_i + 1);
+					pin[s_i] = GLib.Value(typeof(string));
+					pin[s_i].set_string(val.get_string());
+					slot.set_pointer((void*) pin[s_i].get_string());
 					atype = Libffi.POINTER;
 					break;
 
@@ -156,6 +160,14 @@ namespace OLLMrpc
 					break;
 
 				case "as":
+					var as_i = pin.length;
+					pin.resize(as_i + 1);
+					pin[as_i] = GLib.Value(typeof(string[]));
+					pin[as_i].set_boxed(GLib.strdupv((string[]) val));
+					slot.set_pointer(pin[as_i].get_boxed());
+					atype = Libffi.POINTER;
+					break;
+
 				case "ay":
 					slot.set_pointer(val.get_boxed());
 					atype = Libffi.POINTER;
@@ -270,7 +282,7 @@ namespace OLLMrpc
 			var nargs = 2 + n_slots;
 			var atypes = new Libffi.Type[nargs];
 			var slots = new Libffi.Arg[nargs];
-			var pin = new Gee.ArrayList<string>();
+			GLib.Value[] pin = {};
 			slots[0].set_pointer((void*) self);
 			slots[1].set_pointer((void*) this.request);
 			atypes[0] = Libffi.POINTER;
@@ -282,8 +294,8 @@ namespace OLLMrpc
 				var rest = signature.substring(offset);
 				if (rest.has_prefix("S")) {
 					var as_val = this.request.args.get(ai);
-					this.pack("as", as_val, ref slots[2 + si], out atypes[2 + si], pin);
-					slots[2 + si + 1].set_int32(((string[]) as_val).length);
+					this.pack("as", as_val, ref slots[2 + si], out atypes[2 + si], ref pin);
+					slots[2 + si + 1].set_int32(((string[]) pin[pin.length - 1]).length);
 					atypes[2 + si + 1] = Libffi.SINT32;
 					offset += 1;
 					si += 2;
@@ -305,7 +317,7 @@ namespace OLLMrpc
 					tag = rest.substring(0, n);
 					offset += (int) n;
 				}
-				this.pack(tag, this.request.args.get(ai), ref slots[2 + si], out atypes[2 + si], pin);
+				this.pack(tag, this.request.args.get(ai), ref slots[2 + si], out atypes[2 + si], ref pin);
 				si += 1;
 				ai += 1;
 			}
