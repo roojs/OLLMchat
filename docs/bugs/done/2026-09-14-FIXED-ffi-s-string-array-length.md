@@ -1,6 +1,6 @@
 # Ffi `"S"` / `"as"` delivers empty Vala `string[]` (length lost)
 
-**Status:** ⏳ fix applied — await consumer gate / user verify  
+**Status:** ✅ FIXED — consumer gate PASS (`echo_S`)  
 **Hit:** 2026-09-14 — gnome-shell-rpc `Helper-WaylandClient.spawnv`  
 **Component:** `libocrpc` / `OLLMrpc.Ffi.dispatch` (`"S"` length + `"as"` pack)  
 **Consumer:** gnome-shell-rpc Helpers with Vala length-bearing `string[]`  
@@ -157,8 +157,7 @@ from a void* cast of `get_boxed()`.
 ## Next
 
 ✔️ Apply `"S"` length fix in `libocrpc/Ffi.vala`.  
-⏳ Consumer: `timeout 5 ./build/tests/call-sync-repro/ffi-as-string-array-gate`
-→ expect `echo_S` PASS; `echo_as` may still FAIL (pointer-only — OK).  
-⏳ Optionally tighten gate so PASS = `echo_S` only, or accept both when
-`"as"` is defined not to feed Vala length.  
-⏳ User verify → move to `docs/bugs/done/…-FIXED-…`.
+✔️ Consumer gate PASS 2026-09-14 (`echo_S` ffi=4; `echo_as`=0 expected).  
+✔️ Consumer Helpers: `spawnv` `"osS"`, `set_theme` `"sssS"`.  
+✔️ Moved to `docs/bugs/done/2026-09-14-FIXED-ffi-s-string-array-length.md`.  
+ℹ️ Nested prove stay-up / non-empty spawnv argv tracked in gnome-shell-rpc S3 (out of scope here).

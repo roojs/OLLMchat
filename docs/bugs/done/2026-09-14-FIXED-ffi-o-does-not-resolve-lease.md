@@ -1,6 +1,6 @@
 # Ffi `pack("o")` does not resolve wire lease ids
 
-**Status:** ✔️ applied in `libocrpc/Ffi.vala` — await consumer gate / user verify  
+**Status:** ✅ FIXED — `pack("o")` lease resolve applied  
 **Hit:** 2026-09-14 — gnome-shell-rpc `Helper-WaylandClient.create`  
 **Component:** `libocrpc` / `OLLMrpc.Ffi.pack`  
 **Consumer:** gnome-shell-rpc Helpers with GObject args (`"o"`)  
@@ -149,6 +149,5 @@ instance `lease_id`.
 
 ## Next
 
-⏳ Re-run consumer gate:
-`timeout 5 ./build/tests/call-sync-repro/ffi-o-lease-gate` (gnome-shell-rpc).
-⏳ User verify → rename/move to `docs/bugs/done/…-FIXED-…`.
+✔️ Applied `pack("o")` lease resolve in `libocrpc/Ffi.vala`.  
+✔️ Moved to `docs/bugs/done/2026-09-14-FIXED-ffi-o-does-not-resolve-lease.md`.
