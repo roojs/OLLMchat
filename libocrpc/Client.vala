@@ -1076,6 +1076,30 @@ namespace OLLMrpc
 
 		private void dispatch_message(Bin.Serializable msg)
 		{
+			/* call_poll does not run the .fd IOChannel watch — drain SCM fds into pending first. */
+			while (this.poll_depth > 0 && this.buffer_stream != null
+				&& this.buffer_stream.socket != null) {
+				var buffer_poll = GLib.PollFD();
+				buffer_poll.fd = this.buffer_stream.socket.get_fd();
+				buffer_poll.events = GLib.IOCondition.IN;
+				var buffer_fds = new GLib.PollFD[] { buffer_poll };
+				if (GLib.poll(buffer_fds, 0) <= 0
+					|| (buffer_fds[0].revents & GLib.IOCondition.IN) == 0) {
+					break;
+				}
+				try {
+					this.buffer_stream.receive_one();
+				} catch (GLib.IOError e) {
+					if (e.code == GLib.IOError.WOULD_BLOCK) {
+						break;
+					}
+					GLib.warning("buffer stream receive: %s", e.message);
+					break;
+				} catch (GLib.Error e) {
+					GLib.warning("buffer stream receive: %s", e.message);
+					break;
+				}
+			}
 			var response = msg as Response;
 			if (response != null) {
 				var found = false;
