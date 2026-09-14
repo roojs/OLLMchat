@@ -44,6 +44,7 @@ namespace OLLMrpc.Live
 		public void emit(Gee.ArrayList<GLib.Value?> args)
 		{
 			this.replied = false;
+			this.reply_args.clear();
 			this.reply_id = this.connection.next_handle;
 			this.connection.next_handle++;
 			this.connection.write(new Invoke() {
