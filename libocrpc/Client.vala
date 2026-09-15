@@ -197,9 +197,11 @@ namespace OLLMrpc
 		/** Nesting depth of {@link call_poll} (0 = idle). */
 		private int poll_depth = 0;
 		private Soup.Session? http_session;
-		private Bin.Json http_json = new Bin.Json(
-			Bin.Mode.AUTO | Bin.Mode.AUTO_STR | Bin.Mode.IGNORE_UNKNOWN
-		);
+		private Bin.Json http_json {
+			get; set; default = new Bin.Json(
+				Bin.Mode.AUTO | Bin.Mode.AUTO_STR | Bin.Mode.IGNORE_UNKNOWN
+			);
+		}
 
 		static construct
 		{

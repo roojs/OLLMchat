@@ -178,6 +178,7 @@ namespace OLLMfilesd
 				FileBase.init_db(this.db);
 				FileHistory.init_db(this.db);
 				FileDiffPart.init_db(this.db);
+				ClientCert.init_db(this.db);
 				OLLMvector2.SQT.VectorMetadata.initDB(this.db);
 			}
 			// Initialize git provider if set

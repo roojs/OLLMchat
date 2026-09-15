@@ -120,6 +120,11 @@ namespace OLLMchat.Settings
 		public Gee.Map<string, Window> windows {
 			get; set; default = new Gee.HashMap<string, Window>();
 		}
+
+		/**
+		 * File-daemon listen settings (HTTPS / PROXY / systemd).
+		 */
+		public Filesd filesd { get; set; default = new Filesd(); }
 		
 		/**
 		 * Static registry of key → GType for deserialization.

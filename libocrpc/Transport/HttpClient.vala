@@ -69,8 +69,13 @@ namespace OLLMrpc.Transport
 		 */
 		public GLib.TlsDatabase? tls_database { get; set; default = null; }
 
-		private Soup.Session soup = new Soup.Session();
-		private Bin.Json json = new Bin.Json(Bin.Mode.AUTO);
+		/**
+		 * Client certificate to present (mTLS). Null → none.
+		 */
+		public GLib.TlsCertificate? tls_certificate { get; set; default = null; }
+
+		private Soup.Session soup { get; set; default = new Soup.Session(); }
+		private Bin.Json json { get; set; default = new Bin.Json(Bin.Mode.AUTO); }
 		private int next_id = 1;
 		private bool send_reset = false;
 
@@ -104,6 +109,9 @@ namespace OLLMrpc.Transport
 			}
 			var url = this.base_url + this.rpc_path;
 			var message = new Soup.Message("POST", url);
+			if (this.tls_certificate != null) {
+				message.set_tls_client_certificate(this.tls_certificate);
+			}
 			var req_headers = message.get_request_headers();
 			if (this.session_id != "") {
 				req_headers.replace("X-rpc-session", this.session_id);

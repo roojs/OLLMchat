@@ -64,6 +64,8 @@ ollmfilesd_src = files(
   'ProjectManager.vala',
   'SQT/VectorMetadata.vala',
   'Daemon.vala',
+  'ClientCert.vala',
+  'Https.vala',
   'StdioConnection.vala',
   'Stdio.vala',
   'Application.vala',

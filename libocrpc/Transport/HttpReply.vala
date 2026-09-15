@@ -100,7 +100,18 @@ namespace OLLMrpc.Transport
 		 */
 		public bool bin_body { get; set; default = false; }
 
-		private Bin.Json json = new Bin.Json(Bin.Mode.AUTO);
+		/**
+		 * Client address for pending registration (PROXY-sourced when
+		 * ''filesd.proxy'', else TCP peer). Empty when unknown.
+		 */
+		public string client_ip { get; set; default = ""; }
+
+		/**
+		 * SHA-256 hex of the TLS peer cert DER. Empty when no client cert.
+		 */
+		public string cert_fingerprint { get; set; default = ""; }
+
+		private Bin.Json json { get; set; default = new Bin.Json(Bin.Mode.AUTO); }
 
 		public HttpReply(Soup.Server soup, Soup.ServerMessage msg, Session session)
 		{

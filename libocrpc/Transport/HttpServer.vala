@@ -38,7 +38,7 @@ namespace OLLMrpc.Transport
 		 * Bound TCP port. After {@link start} with port ''0'', updated to the
 		 * ephemeral port Soup chose.
 		 */
-		public uint port { get; private set; default = 8080; }
+		public uint port { get; set; default = 8080; }
 
 		/**
 		 * Path for POST body-method RPC (Hello / stream).
@@ -55,9 +55,35 @@ namespace OLLMrpc.Transport
 		 */
 		public GLib.TlsCertificate? tls_certificate { get; set; default = null; }
 
-		private Soup.Server soup = new Soup.Server("server-header", null);
+		/**
+		 * Registration / auth gate before {@link OLLMrpc.Request.dispatch}.
+		 *
+		 * Return ''false'' when the request was already answered (rejected).
+		 * Default allows all. Override in a subclass (e.g. ollmfilesd Https).
+		 *
+		 * @param reply HTTP reply for this POST (fingerprint / IP filled)
+		 * @param request parsed request about to dispatch
+		 * @return true to dispatch, false if already rejected
+		 */
+		protected virtual bool allow_rpc(HttpReply reply, OLLMrpc.Request request)
+		{
+			return true;
+		}
+
+		/**
+		 * Bind host for {@link start}. Empty → {@link Soup.Server.listen_local}.
+		 */
+		public string host { get; set; default = ""; }
+
+		/**
+		 * Expect PROXY Protocol v1 on each inbound TCP connection before TLS.
+		 */
+		public bool proxy { get; set; default = false; }
+
+		private Soup.Server soup { get; set; default = new Soup.Server("server-header", null); }
 		private bool listening = false;
-		private Bin.Json json = new Bin.Json(Bin.Mode.AUTO);
+		private Bin.Json json { get; set; default = new Bin.Json(Bin.Mode.AUTO); }
+		private GLib.SocketService? proxy_service = null;
 
 		public HttpServer(uint port = 8080)
 		{
@@ -72,22 +98,104 @@ namespace OLLMrpc.Transport
 			}
 			this.soup.add_handler(this.rpc_path, this.on_rpc);
 			this.soup.add_handler(null, this.on_route);
-			try {
-				var opts = (Soup.ServerListenOptions) 0;
-				if (this.tls_certificate != null) {
-					this.soup.set_tls_certificate(this.tls_certificate);
-					opts = Soup.ServerListenOptions.HTTPS;
+			var opts = (Soup.ServerListenOptions) 0;
+			if (this.tls_certificate != null) {
+				this.soup.set_tls_certificate(this.tls_certificate);
+				this.soup.set_tls_auth_mode(GLib.TlsAuthenticationMode.REQUESTED);
+				opts = Soup.ServerListenOptions.HTTPS;
+			}
+			this.soup.request_started.connect((server, msg) => {
+				msg.accept_certificate.connect((peer_cert, errors) => {
+					msg.set_data("ollmrpc-peer-cert", peer_cert);
+					return true;
+				});
+			});
+			if (!this.proxy) {
+				try {
+					if (this.host != "") {
+						this.soup.listen(
+							new GLib.InetSocketAddress.from_string(this.host, this.port),
+							opts
+						);
+					} else {
+						this.soup.listen_local(this.port, opts);
+					}
+				} catch (GLib.Error e) {
+					GLib.warning("failed to start HTTP server on port %u: %s",
+						this.port, e.message);
+					return false;
 				}
-				this.soup.listen_local(this.port, opts);
+				var uris = this.soup.get_uris();
+				if (uris != null && uris.data != null) {
+					this.port = (uint) uris.data.get_port();
+				}
+				this.listening = true;
+				return true;
+			}
+			this.proxy_service = new GLib.SocketService();
+			GLib.SocketAddress effective;
+			try {
+				this.proxy_service.add_address(
+					new GLib.InetSocketAddress.from_string(
+						this.host != "" ? this.host : "127.0.0.1", this.port),
+					GLib.SocketType.STREAM,
+					GLib.SocketProtocol.TCP,
+					null,
+					out effective
+				);
 			} catch (GLib.Error e) {
 				GLib.warning("failed to start HTTP server on port %u: %s",
 					this.port, e.message);
 				return false;
 			}
-			var uris = this.soup.get_uris();
-			if (uris != null && uris.data != null) {
-				this.port = (uint) uris.data.get_port();
-			}
+			this.proxy_service.incoming.connect((connection, source_object) => {
+				var src_ip = "";
+				var src_port = (uint)0;
+				var accum = new GLib.ByteArray();
+				var one = new uint8[1];
+				try {
+					var input = connection.get_input_stream();
+					while (accum.len < 128) {
+						if (input.read(one) <= 0) {
+							break;
+						}
+						accum.append(one);
+						if (accum.len >= 2
+							&& accum.data[accum.len - 2] == '\r'
+							&& accum.data[accum.len - 1] == '\n') {
+							break;
+						}
+					}
+				} catch (GLib.Error e) {
+					GLib.warning("proxy accept failed: %s", e.message);
+					return true;
+				}
+				var line = ((string)accum.data).chomp();
+				if (line.has_prefix("PROXY ")) {
+					var parts = line.split(" ");
+					if (parts.length >= 5) {
+						src_ip = parts[2];
+						uint.try_parse(parts[4], out src_port);
+					}
+				}
+				GLib.SocketAddress? remote = null;
+				if (src_ip != "") {
+					remote = new GLib.InetSocketAddress.from_string(
+						src_ip, src_port);
+				}
+				GLib.SocketAddress? local = null;
+				try {
+					local = connection.get_local_address();
+				} catch (GLib.Error e) {
+				}
+				try {
+					this.soup.accept_iostream(connection, local, remote);
+				} catch (GLib.Error e) {
+					GLib.warning("proxy accept failed: %s", e.message);
+				}
+				return true;
+			});
+			this.proxy_service.start();
 			this.listening = true;
 			return true;
 		}
@@ -98,6 +206,10 @@ namespace OLLMrpc.Transport
 				return;
 			}
 			this.listening = false;
+			if (this.proxy_service != null) {
+				this.proxy_service.stop();
+				this.proxy_service = null;
+			}
 			this.soup.disconnect();
 			this.soup = new Soup.Server("server-header", null);
 		}
@@ -144,6 +256,18 @@ namespace OLLMrpc.Transport
 			var reply = new HttpReply(this.soup, msg, new Session()) {
 				live_handles = this.live_handles
 			};
+			var peer = msg.get_data<GLib.TlsCertificate>("ollmrpc-peer-cert");
+			if (peer != null) {
+				var der = peer.certificate;
+				reply.cert_fingerprint = GLib.Checksum.compute_for_data(
+					GLib.ChecksumType.SHA256, der.data);
+			}
+			if (reply.client_ip == "") {
+				var remote = msg.get_remote_address() as GLib.InetSocketAddress;
+				if (remote != null) {
+					reply.client_ip = remote.get_address().to_string();
+				}
+			}
 			var request = new Request() {
 				method = route.wire_name + "." + route.method,
 				connection = reply
@@ -223,6 +347,9 @@ namespace OLLMrpc.Transport
 			} else if (have_body) {
 				request.args = OLLMrpc.args("o", body);
 			}
+			if (!this.allow_rpc(reply, request)) {
+				return;
+			}
 			if (!request.dispatch()) {
 				msg.set_status(404, null);
 				msg.set_response("text/plain", Soup.MemoryUse.COPY,
@@ -281,6 +408,18 @@ namespace OLLMrpc.Transport
 			res_headers.replace("X-rpc-session", session.id);
 			res_headers.replace("X-rpc-sequence",
 				"%u".printf(session.sequence));
+			var peer = msg.get_data<GLib.TlsCertificate>("ollmrpc-peer-cert");
+			if (peer != null) {
+				var der = peer.certificate;
+				reply.cert_fingerprint = GLib.Checksum.compute_for_data(
+					GLib.ChecksumType.SHA256, der.data);
+			}
+			if (reply.client_ip == "") {
+				var remote = msg.get_remote_address() as GLib.InetSocketAddress;
+				if (remote != null) {
+					reply.client_ip = remote.get_address().to_string();
+				}
+			}
 			if (msg.get_method() != "POST") {
 				reply.write(new Response() {
 					error = new OLLMrpc.Error(
@@ -404,6 +543,9 @@ namespace OLLMrpc.Transport
 				}
 			}
 			request.connection = reply;
+			if (!this.allow_rpc(reply, request)) {
+				return;
+			}
 			if (!request.dispatch()) {
 				var err = OLLMrpc.RpcErrorCode.to_error(
 					(int) OLLMrpc.RpcErrorCode.METHOD_NOT_FOUND
