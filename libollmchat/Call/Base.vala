@@ -106,8 +106,9 @@ namespace OLLMchat.Call
 			var bytes = yield this.connection.soup.send_and_read_async(message, GLib.Priority.DEFAULT, null);
 
 			if (message.status_code != 200) {
-				if (message.status_code == 400 && bytes != null && bytes.get_size() > 0) {
-					this.parse_error_from_json((string)bytes.get_data(), "Bad request: ");
+				if (bytes != null && bytes.get_size() > 0) {
+					this.parse_error_from_json((string)bytes.get_data(),
+						message.status_code == 400 ? "Bad request: " : "");
 				}
 				this.handle_message_error(message);
 			}
@@ -159,7 +160,7 @@ namespace OLLMchat.Call
 			return true;
 		}
 
-		/** Throws OllmError.FAILED for non-200 status; call after attempting to parse 400 body if desired. */
+		/** Throws OllmError.FAILED for non-200 status; call after attempting to parse JSON error body if desired. */
 		protected void handle_message_error(Soup.Message message) throws OllmError
 		{
 			switch (message.status_code) {
@@ -168,7 +169,7 @@ namespace OLLMchat.Call
 				case 401:
 					throw new OllmError.FAILED("fetch returned 401: Unauthorized. Please check your API key.");
 				case 404:
-					throw new OllmError.FAILED("fetch returned 404: Endpoint not found. Please check the server URL.");
+					throw new OllmError.FAILED("fetch returned 404: Not found.");
 				default:
 					if (message.status_code >= 500) {
 						throw new OllmError.FAILED("fetch returned " + message.status_code.to_string() + ": Server error. The server may be experiencing issues.");
@@ -264,9 +265,8 @@ namespace OLLMchat.Call
 			}
 			
 			if (message.status_code != 200) {
-				if (message.status_code == 400) {
-					this.parse_streaming_error(input_stream, "Bad request: ");
-				}
+				this.parse_streaming_error(input_stream,
+					message.status_code == 400 ? "Bad request: " : "");
 				this.handle_message_error(message);
 			}
 			
