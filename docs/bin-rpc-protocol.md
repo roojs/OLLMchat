@@ -241,7 +241,7 @@ FF FE           TOKEN_REG_TYPE
 00              reg_id 0 again
 ```
 
-On read, `parse()` and `bin_read` use a single `if (b == 0xFF) read_reg_gtype()` before the type byte.
+On read, `parse()`, `bin_read`, and `StreamValue.read` use a single `if (b == 0xFF) read_reg_gtype()` before the type byte. That includes `ANY[]` elements (`Request.args` / `Response.args` / `Invoke.args`).
 
 Wire names are limited to 255 bytes on introduction.
 

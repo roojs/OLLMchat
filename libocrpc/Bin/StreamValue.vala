@@ -325,6 +325,10 @@ namespace OLLMrpc.Bin
 		 */
 		public static GLib.Value read(Stream ctx, uint8 type_byte) throws GLib.Error
 		{
+			if (type_byte == 0xFF) {
+				ctx.read_reg_gtype();
+				type_byte = ctx.in_stream.read_byte();
+			}
 			if ((GLib.Type) (type_byte & 0x7F) == GLib.Type.BOXED) {
 				if ((type_byte & 0x80) != 0) {
 					var n = ctx.in_stream.read_byte();
