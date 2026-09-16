@@ -47,7 +47,7 @@ namespace OLLMfilesd
 		public ProjectManager project_manager { get; private set; }
 		public Daemon daemon { get; private set; }
 		private OLLMrpc.Transport.Listen? listen;
-		private OLLMfilesd.Https? https_listen;
+		public OLLMfilesd.Https? https_listen { get; private set; default = null; }
 		private static weak OllmfilesdApplication? instance;
 
 		protected string help { get; set; default = """
@@ -283,6 +283,7 @@ Examples:
 
 			OLLMrpc.rpc_register();
 			Daemon.rpc_register();
+			ClientCert.rpc_register();
 			ProjectManager.rpc_register();
 			Folder.rpc_register();
 			File.rpc_register();
@@ -293,23 +294,12 @@ Examples:
 
 			this.daemon = new Daemon(this);
 			OLLMrpc.Request.register("RPC-Daemon", this.daemon);
-			OLLMrpc.Request.register(
-				"RPC-ProjectManager", this.project_manager
-			);
-			OLLMrpc.Request.register(
-				"RPC-File", new File(this.project_manager)
-			);
-			OLLMrpc.Request.register(
-				"RPC-Folder", new Folder(this.project_manager)
-			);
-			OLLMrpc.Request.register(
-				"RPC-FileHistory",
-				new FileHistory.for_rpc(this.project_manager)
-			);
-			OLLMrpc.Request.register(
-				"RPC-Codebase",
-				new Codebase(this.project_manager, this.config)
-			);
+			OLLMrpc.Request.register("RPC-ClientCert", new ClientCert.for_rpc(this));
+			OLLMrpc.Request.register("RPC-ProjectManager", this.project_manager);
+			OLLMrpc.Request.register("RPC-File", new File(this.project_manager));
+			OLLMrpc.Request.register("RPC-Folder", new Folder(this.project_manager));
+			OLLMrpc.Request.register("RPC-FileHistory", new FileHistory.for_rpc(this.project_manager));
+			OLLMrpc.Request.register("RPC-Codebase", new Codebase(this.project_manager, this.config));
 
 			if (opt_interactive) {
 				this.listen = new Stdio(this, opt_rpc_script);

@@ -22,8 +22,9 @@ namespace OLLMfilesd
 	 * HTTPS RPC server with client-cert registration gate.
 	 *
 	 * Extends {@link OLLMrpc.Transport.HttpServer}. Unknown certs may only
-	 * call {@link Daemon.request_registration}; registered certs pass through.
-	 * Call {@link listen} after construct to bind from ''filesd'' settings.
+	 * call {@link ClientCert.request_registration}; registered certs pass
+	 * through. Call {@link listen} after construct to bind from ''filesd''
+	 * settings.
 	 *
 	 * == Example ==
 	 *
@@ -66,7 +67,9 @@ namespace OLLMfilesd
 			}
 			var host = filesd.https.substring(0, colon);
 			var port = 0;
-			if (host == "" || !int.try_parse(filesd.https.substring(colon + 1), out port) || port <= 0) {
+			if (host == ""
+				|| !int.try_parse(filesd.https.substring(colon + 1), out port)
+				|| port <= 0) {
 				GLib.warning("filesd.https must be host:port, got %s", filesd.https);
 				return false;
 			}
@@ -78,58 +81,73 @@ namespace OLLMfilesd
 			var ca_key = GLib.Path.build_filename(tls_dir, "ollmrpc-ca-key.pem");
 			if (!GLib.FileUtils.test(ca_pem, GLib.FileTest.EXISTS)) {
 				try {
-					var bytes = GLib.resources_lookup_data(
-						"/ollmrpc/ollmrpc-ca.pem",
-						GLib.ResourceLookupFlags.NONE
-					);
-					GLib.FileUtils.set_contents(ca_pem, (string)bytes.get_data());
+					GLib.FileUtils.set_contents(ca_pem,
+						(string) GLib.resources_lookup_data("/ollmrpc/ollmrpc-ca.pem",
+							GLib.ResourceLookupFlags.NONE).get_data());
 				} catch (GLib.Error e) {
 					GLib.error("extract CA PEM: %s", e.message);
 				}
 			}
 			if (!GLib.FileUtils.test(ca_key, GLib.FileTest.EXISTS)) {
-				GLib.error(
-					"missing CA key %s (copy libocrpc/data/ollmrpc-ca-key.pem)",
-					ca_key
-				);
+				GLib.error("missing CA key %s (copy libocrpc/data/ollmrpc-ca-key.pem)",
+					ca_key);
 			}
-			var cert = new OLLMrpc.Transport.Cert(tls_dir, ca_pem, ca_key);
 			this.host = host;
-			this.port = (uint)port;
+			this.port = (uint) port;
 			this.proxy = filesd.proxy;
-			this.tls_certificate = cert.certificate;
+			this.tls_certificate = new OLLMrpc.Transport.Cert(
+				tls_dir, ca_pem, ca_key).certificate;
 			if (!this.start()) {
 				GLib.error("failed to start HTTPS RPC listener");
 			}
-			GLib.debug(
-				"HTTPS listening on %s:%u proxy=%s",
-				host,
-				this.port,
-				filesd.proxy ? "true" : "false"
-			);
+			GLib.debug("HTTPS listening on %s:%u proxy=%s",
+				host, this.port, filesd.proxy ? "true" : "false");
+			var banned = new Gee.ArrayList<ClientCert>();
+			ClientCert.query(this.app.project_manager.db).select(
+				"WHERE status = -1", banned);
+			foreach (var row in banned) {
+				if (row.ip != "" && !this.banned_ips.contains(row.ip)) {
+					this.banned_ips.add(row.ip);
+				}
+			}
 			return true;
 		}
 
+		/**
+		 * Gate HTTPS RPC: admin wires blocked; unknown certs may only
+		 * register; approved certs pass.
+		 *
+		 * @param reply HTTPS connection (client IP + cert fingerprint)
+		 * @param request inbound RPC
+		 * @return true when the method may run
+		 */
 		protected override bool allow_rpc(
-			OLLMrpc.Transport.HttpReply reply,
-			OLLMrpc.Request request
-		) {
-			if (request.method == "RPC-Daemon.request_registration") {
+			OLLMrpc.Transport.HttpReply reply, OLLMrpc.Request request)
+		{
+			switch (request.method) {
+				case "RPC-ClientCert.pending_cert":
+				case "RPC-ClientCert.client_cert":
+					reply.write(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "local admin only")
+					});
+					return false;
+			}
+			if (request.method == "RPC-ClientCert.request_registration") {
 				return true;
 			}
 			if (reply.cert_fingerprint == "") {
 				reply.write(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-						"client certificate required"
-					)
+						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "client certificate required")
 				});
 				return false;
 			}
 			var rows = new Gee.ArrayList<ClientCert>();
 			ClientCert.query(this.app.project_manager.db).select(
-				"WHERE fingerprint = '%s' AND status = 'registered'".printf(
+				"WHERE fingerprint = '%s' AND status = 1".printf(
 					reply.cert_fingerprint.replace("'", "''")),
 				rows);
 			if (rows.size > 0) {
@@ -138,9 +156,7 @@ namespace OLLMfilesd
 			reply.write(new OLLMrpc.Response() {
 				id = request.id,
 				error = new OLLMrpc.Error(
-					(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-					"certificate not registered"
-				)
+					(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "certificate not registered")
 			});
 			return false;
 		}

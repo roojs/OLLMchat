@@ -74,7 +74,7 @@
 
 1. Phase 0 — File-daemon listen config (Unix + HTTPS / PROXY) + user-session startup + nginx doc
 2. Phase 1 — Registration gate + `request_registration`
-3. Phase 2 — Admin approval surface → [`RPC-8.2.8-filesd-connections-ui.md`](RPC-8.2.8-filesd-connections-ui.md)
+3. Phase 2 — Admin approval surface → [`RPC-8.2.8`](RPC-8.2.8-filesd-connections-ui.md) / desktop UI [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
 4. Phase 3 — Cert → session identity
 
 ---
@@ -167,7 +167,7 @@ stream {
 - **🔷** `⏳` Stores live in the daemon's SQLite database (`files.sqlite`):
   - **ℹ️** Opened in `ollmfilesd/Application.vala` `initialize()` via `libocsqlite` (`SQ.Database`); tables created with `db.db.exec(...)` like existing daemon tables.
   - **🔷** `⏳` One table `client_cert` (`id` PK + **unique** `fingerprint`, int `status`, `ip`, `created`) — simpler than two stores.
-  - **ℹ️** Status values locked in **8.2.8**: `0` pending, `1` approved, `-1` banned (tree may still have string placeholders until that migrate lands).
+  - **ℹ️** Status values locked in **8.2.8**: `0` pending, `1` approved, `-1` IP ban (flood control, not cert revoke).
   - **🔷** `⏳` Row type **`OLLMfilesd.ClientCert`** (same pattern as `FileDiffPart`) + **`ClientCert.init_db`**.
 - **🔷** `⏳` Prune lazily: delete pending rows older than 24 h at daemon startup and on each `request_registration` — no timer needed.
 - **🔷** `⏳` Client cert is **self-signed by construction** — generated on device; the product CA key never ships to clients and there is no CSR step. Server pins the fingerprint, so chain trust is irrelevant.
@@ -656,7 +656,7 @@ namespace OLLMfilesd
 
 ### Goal
 
-- **🔷** `⏳` Admin approval moves to the **Connections** UI — see [`RPC-8.2.8-filesd-connections-ui.md`](RPC-8.2.8-filesd-connections-ui.md).
+- **🔷** `⏳` Admin approval moves to the **Connections** UI — see [`RPC-8.2.8`](RPC-8.2.8-filesd-connections-ui.md) → [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md).
   - Desktop preferences dialog: **one** pending at a time as a banner (like download progress); Accept / Reject / Ban; clear → next latest.
   - Registered clients as expand/remove rows on Connections.
   - Ban blocks IP from re-registering; no unban.
