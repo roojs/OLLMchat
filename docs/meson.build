@@ -177,6 +177,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Settings/namespace.vala',  # Settings namespace documentation
     '../libollmchat/Settings/AgentConfig.vala',  # Before Config2 (Config2.agents uses AgentConfig)
     '../libollmchat/Settings/Window.vala',  # Before Config2 (Config2.windows uses Window)
+    '../libollmchat/Settings/Filesd.vala',  # Before Config2 (Config2.filesd)
     '../libollmchat/Settings/Config2.vala',
     '../libollmchat/Settings/Connection.vala',
     '../libollmchat/Settings/ConnectionModels.vala',
