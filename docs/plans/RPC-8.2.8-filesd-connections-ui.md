@@ -110,10 +110,12 @@
 
 Tracked on the sub-plans:
 
-1. Desktop File Server expander always shown? → [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
+1. ~~Desktop File Server expander always shown?~~ → **🔷** always — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
 2. Android one file-server URL or multiple? → [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
 3. Which agents unlock on Android? → [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
-4. Remove approved = `client_cert("remove", id)` → bool? → [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
+4. ~~Remove approved = `client_cert("remove", id)` → bool?~~ → **🔷** yes — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
+5. Machine-type vocabulary → [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
+
 
 ---
 

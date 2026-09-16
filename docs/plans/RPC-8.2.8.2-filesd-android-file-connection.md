@@ -36,6 +36,7 @@
 
 - **🔷** `⏳` Add file connection UI (HTTPS URL).
 - **🔷** `⏳` Mint/load device client cert; present on TLS; call `RPC-ClientCert.request_registration` when unknown.
+  - Include a basic **machine type** on registration (see [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)) so the desktop can label the client.
 - **🔷** `⏳` After desktop Accept (`status = 1`), use normal file RPC over HTTPS.
 - **🔷** `⏳` Verified connection unlocks agents that need file/project tools.
 - **💩** `⏳` Config shape: dedicated `Config2` field (e.g. file-server URL / `FilesdClient`) **or** a typed row beside LLM connections — **not** reusing `Settings.Connection` URL-as-Ollama without a type discriminant. Prefer a small nested settings object + one URL.
