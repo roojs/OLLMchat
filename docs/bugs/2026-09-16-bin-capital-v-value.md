@@ -1,10 +1,10 @@
 # Bin / args: capital-`V` Value (type + data → `GLib.Value`)
 
-**Status:** ✔️ applied — await consumer `value-v-gate` / user verify  
+**Status:** ✔️ applied + consumer migrated — `value-v-gate` PASS; await user verify  
 **Hit:** 2026-09-16 — gnome-shell-rpc Transition / Interval / ease corridor  
 **Component:** `libocrpc` — `Bin.StreamValue`, `args` / `val`, `Ffi.pack`, protocol § type bytes  
-**Consumer gate:** `gnome-shell-rpc/tests/call-sync-repro/value-v-gate` (**FAIL** until this lands)  
-**Consumer context:** nest chrome / `Helper-Transition.set_relay_value` (`bsid` kind casting); Gi pin path already green (`gvalue-in-gate`, `clutter-interval-gvalue-gate`)
+**Consumer gate:** `gnome-shell-rpc/tests/call-sync-repro/value-v-gate` (**PASS**)  
+**Consumer context:** Transition/Interval set_* use `args("V")` → stock Gi (no `bsid`)
 
 ---
 
@@ -498,7 +498,11 @@ In-tree: `meson compile -C build test-rpc-ffi-v test-rpc-values` then those test
 
 ## Attempts / changelog
 
-- ⏳ 2026-09-16 — Proposal from gnome-shell-rpc (Transition `bsid` vs Gi flatten vs `ay`). Gate filed consumer-side **FAIL**. No libocrpc edit until approve.
+- ✔️ 2026-09-16 — gnome-shell-rpc: dropped `bsid` / `to_wire` / `from_wire`;
+  Transition/Interval set_* use `args("V")` → stock Gi; deleted
+  Helper-Transition relay; Helper-Interval keeps create only.
+  `value-v-gate` **PASS**.
+
 - ⏳ 2026-09-16 — Confirmed `"V"` unused; flatten + Remove/Replace/Add fences in this log.
 - ✔️ 2026-09-16 — Applied fences: `namespace.vala` / `Ffi.vala` / protocol note / `values-test` V smoke / `ffi-v-test` + meson. `meson test test-rpc-ffi-v` OK. V pack checks in `values-test` pass before a pre-existing `args strv length` stderr (TestAppBase still exits 0).
 
