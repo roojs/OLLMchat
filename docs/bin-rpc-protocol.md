@@ -608,6 +608,8 @@ Optional **`ANY[]`** (this section) on **`OLLMrpc.Request`**. Each element is on
 
 No per-value direction flag and no wrapper object. No protocol version bump.
 
+Helper / `OLLMrpc.args` letter **`V`** (capital) packs a held `GLib.Value` into that list. The wire row is the same flattened `StreamValue` encoding as any other `args` element (type byte + payload). There is no outer wrap type byte. Lowercase `v` remains the in-memory `GLib.Variant` args letter (Variant is not a type byte — §17).
+
 ### Positional returns (`Response.args`)
 
 Optional **`ANY[]`** (this section) on **`OLLMrpc.Response`**. Same encoding as `Request.args`.

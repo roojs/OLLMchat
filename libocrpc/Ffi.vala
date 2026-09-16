@@ -178,6 +178,15 @@ namespace OLLMrpc
 					atype = Libffi.POINTER;
 					break;
 
+				case "V":
+					var v_i = pin.length;
+					pin.resize(v_i + 1);
+					pin[v_i] = GLib.Value(val.type());
+					val.copy(ref pin[v_i]);
+					slot.set_pointer(&pin[v_i]);
+					atype = Libffi.POINTER;
+					break;
+
 				default:
 					slot.set_int32(val.get_int());
 					atype = Libffi.SINT32;
@@ -222,6 +231,12 @@ namespace OLLMrpc
 					offset += 1;
 					n_wire += 1;
 					n_slots += 2;
+					continue;
+				}
+				if (rest.has_prefix("V")) {
+					offset += 1;
+					n_wire += 1;
+					n_slots += 1;
 					continue;
 				}
 				var rest_ptr = (char*) rest;
@@ -305,6 +320,9 @@ namespace OLLMrpc
 				var tag = "";
 				if (rest.has_prefix("f")) {
 					tag = "f";
+					offset += 1;
+				} else if (rest.has_prefix("V")) {
+					tag = "V";
 					offset += 1;
 				} else {
 					var rest_ptr = (char*) rest;
