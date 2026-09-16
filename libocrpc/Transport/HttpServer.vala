@@ -80,6 +80,14 @@ namespace OLLMrpc.Transport
 		 */
 		public bool proxy { get; set; default = false; }
 
+		/**
+		 * Client IPs to drop on accept (flood ban). Small list; checked
+		 * before {@link Soup.Server.accept_iostream}.
+		 */
+		public Gee.ArrayList<string> banned_ips {
+			get; set; default = new Gee.ArrayList<string>();
+		}
+
 		private Soup.Server soup { get; set; default = new Soup.Server("server-header", null); }
 		private bool listening = false;
 		private Bin.Json json { get; set; default = new Bin.Json(Bin.Mode.AUTO); }
@@ -110,78 +118,73 @@ namespace OLLMrpc.Transport
 					return true;
 				});
 			});
-			if (!this.proxy) {
-				try {
-					if (this.host != "") {
-						this.soup.listen(
-							new GLib.InetSocketAddress.from_string(this.host, this.port),
-							opts
-						);
-					} else {
-						this.soup.listen_local(this.port, opts);
-					}
-				} catch (GLib.Error e) {
-					GLib.warning("failed to start HTTP server on port %u: %s",
-						this.port, e.message);
-					return false;
-				}
-				var uris = this.soup.get_uris();
-				if (uris != null && uris.data != null) {
-					this.port = (uint) uris.data.get_port();
-				}
-				this.listening = true;
-				return true;
-			}
 			this.proxy_service = new GLib.SocketService();
 			GLib.SocketAddress effective;
 			try {
 				this.proxy_service.add_address(
 					new GLib.InetSocketAddress.from_string(
 						this.host != "" ? this.host : "127.0.0.1", this.port),
-					GLib.SocketType.STREAM,
-					GLib.SocketProtocol.TCP,
-					null,
-					out effective
-				);
+					GLib.SocketType.STREAM, GLib.SocketProtocol.TCP, null, out effective);
 			} catch (GLib.Error e) {
-				GLib.warning("failed to start HTTP server on port %u: %s",
-					this.port, e.message);
+				GLib.warning("failed to start HTTP server on port %u: %s", this.port, e.message);
 				return false;
+			}
+			var bound = effective as GLib.InetSocketAddress;
+			if (bound != null) {
+				this.port = bound.get_port();
 			}
 			this.proxy_service.incoming.connect((connection, source_object) => {
 				var src_ip = "";
-				var src_port = (uint)0;
-				var accum = new GLib.ByteArray();
-				var one = new uint8[1];
-				try {
-					var input = connection.get_input_stream();
-					while (accum.len < 128) {
-						if (input.read(one) <= 0) {
-							break;
+				var src_port = (uint) 0;
+				if (this.proxy) {
+					var accum = new GLib.ByteArray();
+					var one = new uint8[1];
+					try {
+						var input = connection.get_input_stream();
+						while (accum.len < 128) {
+							if (input.read(one) <= 0) {
+								break;
+							}
+							accum.append(one);
+							if (accum.len >= 2 && accum.data[accum.len - 2] == '\r'
+								&& accum.data[accum.len - 1] == '\n') {
+								break;
+							}
 						}
-						accum.append(one);
-						if (accum.len >= 2
-							&& accum.data[accum.len - 2] == '\r'
-							&& accum.data[accum.len - 1] == '\n') {
-							break;
+					} catch (GLib.Error e) {
+						GLib.warning("proxy accept failed: %s", e.message);
+						return true;
+					}
+					var line = ((string) accum.data).chomp();
+					if (line.has_prefix("PROXY ")) {
+						var parts = line.split(" ");
+						if (parts.length >= 5) {
+							src_ip = parts[2];
+							uint.try_parse(parts[4], out src_port);
 						}
 					}
-				} catch (GLib.Error e) {
-					GLib.warning("proxy accept failed: %s", e.message);
-					return true;
 				}
-				var line = ((string)accum.data).chomp();
-				if (line.has_prefix("PROXY ")) {
-					var parts = line.split(" ");
-					if (parts.length >= 5) {
-						src_ip = parts[2];
-						uint.try_parse(parts[4], out src_port);
+				if (!this.proxy) {
+					try {
+						var peer = connection.get_remote_address() as GLib.InetSocketAddress;
+						if (peer != null) {
+							src_ip = peer.get_address().to_string();
+							src_port = peer.get_port();
+						}
+					} catch (GLib.Error e) {
 					}
+				}
+				if (src_ip != "" && this.banned_ips.contains(src_ip)) {
+					GLib.debug("dropping banned client IP %s", src_ip);
+					try {
+						connection.close();
+					} catch (GLib.Error e) {
+					}
+					return true;
 				}
 				GLib.SocketAddress? remote = null;
 				if (src_ip != "") {
-					remote = new GLib.InetSocketAddress.from_string(
-						src_ip, src_port);
+					remote = new GLib.InetSocketAddress.from_string(src_ip, src_port);
 				}
 				GLib.SocketAddress? local = null;
 				try {
