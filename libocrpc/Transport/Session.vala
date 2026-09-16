@@ -14,7 +14,31 @@
 namespace OLLMrpc.Transport
 {
 	/**
-	 * HTTP RPC session — shared bin JIT name tables, sequence, idle expiry.
+	 * HTTP RPC session — shared bin JIT name tables, sequence, i**Stock prove (no layout overlay) after READY (2026-09-12 10:27):**
+
+- `Meta.is_restart` = **0**
+- Mutter: `preferred_width emit BEGIN hook_id=581` then **no END** for the whole settle
+  (only libmutter motion). Client: last line is prior hook’s `REPLY done` — **no**
+  `invoke ENTER` for 581.
+- So mutter is blocked in `Hook.emit` → `emit_wait_poll`; client never runs the
+  Live.Invoke handler. `PRIORITY_LOW` not running is a side effect of that stall.
+
+**Next (do now):** fix why Live.Invoke for that preferred_width never reaches the
+client handler (read watch / `call_poll` / main-loop). **🚫** layout.js override.
+
+---
+
+## How we prove (every change)
+
+1. `./scripts/weston-gsr-session.sh` (default) or `./scripts/nested-init-prove.sh` — **5s** hard cap until past that boundary; early-stop on `READY=1` / A4 marker.
+2. Property / Gi GValue: `GI_META_SMOKE=property-smoke` + `src/gjs-embed/property-smoke.js`.
+3. Logs: `~/.cache/gnome-shell-rpc/{org.gnome.ShellRpc,mutter-rpc}.debug.log`.
+4. Mock (`gi-rpc-smoke.sh`, `tests/call-sync-repro/`) only when a **named** RPC gap appears; then live re-prove.
+5. **ℹ️** `GI_RPC_JS_OVERRIDE_DIR` only when deliberately bisecting — prove scripts do **not** default it.
+
+Init hooks: `GLib.debug` in `Util.util_sd_notify` (`READY=1`). Client `--debug`.
+
+---dle expiry.
 	 *
 	 * Many {@link HttpReply} POSTs share one session's {@link bin} tables.
 	 * Leases and {@link Connection.next_handle} live on each {@link HttpReply}

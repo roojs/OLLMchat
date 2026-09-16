@@ -298,8 +298,10 @@ Examples:
 			OLLMrpc.Request.register("RPC-ProjectManager", this.project_manager);
 			OLLMrpc.Request.register("RPC-File", new File(this.project_manager));
 			OLLMrpc.Request.register("RPC-Folder", new Folder(this.project_manager));
-			OLLMrpc.Request.register("RPC-FileHistory", new FileHistory.for_rpc(this.project_manager));
-			OLLMrpc.Request.register("RPC-Codebase", new Codebase(this.project_manager, this.config));
+			OLLMrpc.Request.register("RPC-FileHistory", 
+				new FileHistory.for_rpc(this.project_manager));
+			OLLMrpc.Request.register("RPC-Codebase", 
+				new Codebase(this.project_manager, this.config));
 
 			if (opt_interactive) {
 				this.listen = new Stdio(this, opt_rpc_script);

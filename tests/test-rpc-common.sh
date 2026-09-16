@@ -90,7 +90,7 @@ jq_resp_ok() {
 }
 
 # Pass jq args after out file, e.g. --arg p "$path" '.retval.path == $p'
-jq_resp_args_ok() {
+jq_resp_args_ok() {...
     local label="$1"
     local id="$2"
     local out="$3"
