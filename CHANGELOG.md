@@ -16,15 +16,19 @@ Debian and RPM packaging notes are generated from this file at release time
 - **HTTP RPC** (`libocrpc`): path ↔ type routes; JSON unary + NDJSON streaming;
   bin POST with session / sequence headers; `HttpClient` (JSON + bin, session
   reset) — separate from Hub-style `OLLMrpc.Client` GET
+- HTTPS on `ollmfilesd` / `HttpServer` (TLS listen, client-cert registration,
+  Settings Filesd)
 - **`Client.call_poll`**: blocking read loop without nested `MainLoop` /
-  IO-watch reentrancy; fixes hang / CRITICAL paths that `call_sync` hit under
-  nested live invokes
+  IO-watch reentrancy; drains the `Live.Buffer` `.fd` channel before
+  `take_pending` so SCM replies keep their fd
 - Live decode reuses `Client.proxies` for the same lease id (object identity);
   consume `TOKEN_END` before live `Object.new` so nested sync RPC cannot steal
   the trailer
 - GI / FFI: boxed structs, `float` / `double`, numeric arrays, enums / flags,
   INOUT (incl. float-by-pointer), GList IN, explicit GType aliases;
   `Bin.gtype_to_alias` public for consumers
+- FFI `"S"` / `"as"` pin a live `GStrv` across `cif.call`; `"o"` resolves
+  wire lease ids (same as Gi)
 - GI property / GValue: no double-wrap on `GObject.Value` args; initialize out
   GValues for `get_property`; FLAGS wire as uint; UTF8 IN/OUT (no dangling
   `get_string`, no garbage / int-null sentinels); OUT scalars with null
@@ -38,6 +42,9 @@ Debian and RPM packaging notes are generated from this file at release time
 - Drop `CallParam`. Positional **`Request.args`** / **`Response.args`**.
   Typed **`Response.retval`** for the GIR C return. `Request.add_class` FFI
   handlers
+- `ANY[]` values consume `TOKEN_REG_TYPE` (`0xFF`) before the type byte
+  (`StreamValue.read`) so a first-use object in callback / request args
+  decodes
 - Bin protocol **v3.1** method-name tokens (`NAME_REF`)
 - `OLLMrpc.rpc_register()`; client throws server errors to callers
 - **GiMock** / `register_mock`: test-only GI dispatch that mints leased fakes for
@@ -91,6 +98,8 @@ Debian and RPM packaging notes are generated from this file at release time
 ### Fixed
 
 - SortedList finalize no longer double-disconnects signal handlers
+- Ollama non-200 JSON `error` body is used for the throw (missing model is
+  not reported as “Endpoint not found”)
 
 ## [1.3.0] - 2026-08-22
 

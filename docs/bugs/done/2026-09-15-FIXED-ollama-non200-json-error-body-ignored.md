@@ -1,6 +1,6 @@
 # Ollama non-200 responses: JSON `error` body ignored (show 404 → “Endpoint not found”)
 
-**Status:** ✔️ applied in `libollmchat/Call/Base.vala` — await user verify  
+**Status:** ✅ FIXED — non-200 JSON `error` body used for the throw  
 **Started:** 2026-09-15  
 **Reporter:** Alan  
 **Component:** `libollmchat/Call/Base.vala` (`send_request`, `handle_streaming_response`)  
@@ -82,7 +82,7 @@ if (message.status_code != 200) {
 
 ---
 
-## Proposed fix
+## Fix applied
 
 🔷 On non-200 responses with a non-empty body, always attempt `parse_error_from_json` (same as today’s 400 path) so the thrown message is the server’s `error` text. Then fall through to `handle_message_error` only if that call does not throw (unchanged structure).
 
@@ -196,11 +196,10 @@ if (message.status_code != 200) {
 
 - ✔️ 2026-09-15 — Probed LAN Ollama; confirmed show 404 body vs pull stream 200+`error`; traced `send_request` 400-only parse and `ShowModel` non-stream path.
 - ✔️ 2026-09-15 — Applied §1–§3 in `libollmchat/Call/Base.vala` (user approved apply). Single-use `prefix` local from the proposal was inlined at the call site (coding-standards `temporary-variables`).
+- ✔️ Moved to `docs/bugs/done/2026-09-15-FIXED-ollama-non200-json-error-body-ignored.md`.
 
 ---
 
 ## Next
 
-- ⏳🔷 Verify: show a missing model via app/`--debug` — expect thrown message containing `model '…' not found`, not “Endpoint not found”.
-- ⏳💩 Decide whether to open a second bug for pull NDJSON `error` handling.
-`)
+- ℹ️ Pull NDJSON `{"error":"EOF"}` at HTTP 200 is a separate follow-up (not this bug).
