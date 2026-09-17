@@ -152,6 +152,16 @@ namespace OLLMrpc.Bin
 		internal Gee.HashMap<string, uint16> name_to_token =
 			new Gee.HashMap<string, uint16>();
 		/**
+		 * Name-ref wire id → index in {@link OLLMrpc.Request.rows}
+		 * ({@link Gee.ArrayList.get}).
+		 *
+		 * Filled when {@link OLLMrpc.Ffi.dispatch} first resolves a
+		 * listed method on this stream. Missing means expand the
+		 * string (same as today).
+		 */
+		internal Gee.HashMap<uint16, int> ref_slots { get; set;
+			default = new Gee.HashMap<uint16, int>(); }
+		/**
 		 * True on the daemon/accepting end — allocates odd wire name tokens.
 		 * Client end leaves this false and allocates even tokens.
 		 */

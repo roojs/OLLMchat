@@ -13,6 +13,8 @@ Debian and RPM packaging notes are generated from this file at release time
 
 ### RPC
 
+- FFI dispatch: `add_class` `dlsym`s once into `FfiSlot` rows; later bin calls
+  use the per-connection name-ref token → slot cache (no per-call Regex / `dlsym`)
 - **HTTP RPC** (`libocrpc`): path ↔ type routes; JSON unary + NDJSON streaming;
   bin POST with session / sequence headers; `HttpClient` (JSON + bin, session
   reset) — separate from Hub-style `OLLMrpc.Client` GET

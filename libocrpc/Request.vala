@@ -19,6 +19,50 @@
 namespace OLLMrpc
 {
 	/**
+	 * Handler singleton for one ''add_class'' prefix (e.g. RPC-Folder).
+	 *
+	 * {@link Request.register} sets {@link handler}.
+	 * {@link Request.register_live} sets {@link live}.
+	 */
+	public class FfiOwner : GLib.Object
+	{
+		/**
+		 * Handler singleton. Set by {@link Request.register}.
+		 */
+		public GLib.Object handler { get; set; }
+
+		/**
+		 * True after {@link Request.register_live} for this prefix.
+		 */
+		public bool live { get; set; default = false; }
+	}
+
+	/**
+	 * One listed FFI method: C pointer, call signature, and class.
+	 *
+	 * Appended by {@link Request.add_class}. {@link Request.slot} is the
+	 * index in {@link Request.rows}. ''fn'' is ''0'' when the symbol
+	 * was missing.
+	 */
+	public class FfiSlot : GLib.Object
+	{
+		/**
+		 * C function pointer from add_class ''dlsym''. ''0'' if missing.
+		 */
+		public uint64 fn { get; set; default = 0; }
+
+		/**
+		 * Call signature letters (same as {@link Request.add_class}).
+		 */
+		public string sig { get; set; default = ""; }
+
+		/**
+		 * Prefix owner ({@link FfiOwner.handler} / {@link FfiOwner.live}).
+		 */
+		public FfiOwner cls { get; set; }
+	}
+
+	/**
 	 * Outbound RPC envelope (one root object per call).
 	 *
 	 * Set ''method'' to the wire handler name
@@ -53,8 +97,22 @@ namespace OLLMrpc
 		/** Wire object prefix → Vala GType (C symbol). */
 		public static Gee.HashMap<string, GLib.Type> types;
 
-		/** Wire object prefix → (method suffix → D-Bus signature). */
-		public static Gee.HashMap<string, Gee.HashMap<string, string>> methods;
+		/** Wire object prefix → (method suffix → index in {@link rows}). */
+		public static Gee.HashMap<string, Gee.HashMap<string, int>> methods;
+
+		/**
+		 * Listed FFI methods, index from {@link add_class}.
+		 *
+		 * Null until the first {@link add_class}.
+		 */
+		public static Gee.ArrayList<FfiSlot> rows;
+
+		/**
+		 * Wire prefix → {@link FfiOwner} (boot + {@link register}).
+		 *
+		 * Null until the first {@link add_class}.
+		 */
+		public static Gee.HashMap<string, FfiOwner> classes;
 
 		/** Wire prefixes registered with {@link register_live}. */
 		public static Gee.HashMap<string, bool> live;
@@ -92,6 +150,14 @@ namespace OLLMrpc
 		 * on the bin socket when ''0''.
 		 */
 		public uint64 lease_id { get; set; default = 0; }
+
+		/**
+		 * Inbound bin only: index into {@link rows} ({@link Gee.ArrayList.get}).
+		 *
+		 * ''-1'' means look up {@link methods} from {@link method}.
+		 * Not on the wire.
+		 */
+		public int slot = -1;
 
 		/**
 		 * HTTP client only: root JSON object {@link GLib.Type} for
@@ -132,6 +198,9 @@ namespace OLLMrpc
 				handlers = new Gee.HashMap<string, GLib.Object>();
 			}
 			handlers.set(name, target);
+			if (classes != null && classes.has_key(name)) {
+				classes.get(name).handler = target;
+			}
 		}
 
 		/**
@@ -158,6 +227,9 @@ namespace OLLMrpc
 				live = new Gee.HashMap<string, bool>();
 			}
 			live.set(name, true);
+			if (classes != null && classes.has_key(name)) {
+				classes.get(name).live = true;
+			}
 		}
 
 		/**
@@ -209,19 +281,39 @@ namespace OLLMrpc
 		) {
 			if (types == null) {
 				types = new Gee.HashMap<string, GLib.Type>();
-				methods = new Gee.HashMap<string, Gee.HashMap<string, string>>();
+				methods = new Gee.HashMap<string, Gee.HashMap<string, int>>();
+				rows = new Gee.ArrayList<FfiSlot>();
+				classes = new Gee.HashMap<string, FfiOwner>();
 			}
 			types.set(name, type);
 			if (!methods.has_key(name)) {
-				methods.set(name, new Gee.HashMap<string, string>());
+				methods.set(name, new Gee.HashMap<string, int>());
 			}
+			if (!classes.has_key(name)) {
+				classes.set(name, new FfiOwner());
+			}
+			var cls = classes.get(name);
+			var c_prefix = new GLib.Regex(
+				"(?<=[a-z0-9])([A-Z])|(?<=[A-Z])([A-Z][a-z])"
+			).replace(type.name(), -1, 0, "_\\1\\2").down();
+			var mod = GLib.Module.open(null, GLib.ModuleFlags.LAZY);
 			var l = va_list();
 			while (true) {
 				var method = l.arg<string>();
 				if (method == null) {
 					break;
 				}
-				methods.get(name).set(method, l.arg<string>());
+				var signature = l.arg<string>();
+				var fn = (void*) null;
+				if (mod != null) {
+					mod.symbol(c_prefix + "_" + method.replace(".", "_"), out fn);
+				}
+				methods.get(name).set(method, rows.size);
+				rows.add(new FfiSlot() {
+					fn = (uint64) fn,
+					sig = signature,
+					cls = cls
+				});
 			}
 		}
 
@@ -286,7 +378,14 @@ namespace OLLMrpc
 				return;
 			case "method":
 				this.method = ctx.read_name_ref(type_byte);
+				if (!ctx.name_to_token.has_key(this.method)) {
 					return;
+				}
+				var wire = ctx.name_to_token.get(this.method);
+				if (ctx.ref_slots.has_key(wire)) {
+					this.slot = ctx.ref_slots.get(wire);
+				}
+				return;
 				case "args":
 					var n = ctx.in_stream.read_byte();
 					var count = n & 0x7F;
@@ -317,6 +416,9 @@ namespace OLLMrpc
 			if (this.connection == null) {
 				GLib.critical("RPC dispatch: connection not set");
 				return false;
+			}
+			if (this.slot >= 0) {
+				return new Ffi(this).dispatch();
 			}
 			if (this.method.length == 0) {
 				GLib.critical("RPC dispatch: method not set");

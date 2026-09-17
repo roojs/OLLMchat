@@ -23,9 +23,10 @@ namespace OLLMrpc
 	 *
 	 * {@link Request.add_class} records the method table.
 	 * {@link Request.dispatch} constructs {@link Ffi} with the inbound
-	 * {@link Request} and calls {@link dispatch}. That method looks up
-	 * the C symbol and calls it. Unlisted prefixes return false so
-	 * {@link Request.dispatch} can try {@link Gi}.
+	 * {@link Request} and calls {@link dispatch}. That method calls
+	 * {@link Request.rows}.get ({@link Request.slot}).fn. Unlisted
+	 * prefixes return false so {@link Request.dispatch} can try
+	 * {@link Gi}.
 	 * Compiled on every platform (not ''gi_src'').
 	 *
 	 * {@link pack} writes one {@link Libffi.Arg} from a D-Bus letter
@@ -205,17 +206,33 @@ namespace OLLMrpc
 		 */
 		public bool dispatch()
 		{
-			if (Request.methods == null) {
-				return false;
+			if (this.request.slot < 0) {
+				if (Request.methods == null) {
+					return false;
+				}
+				var dot = this.request.method.index_of_char('.');
+				var object_name = this.request.method[0:dot];
+				var method_name = this.request.method.substring(dot + 1);
+				if (!Request.methods.has_key(object_name)
+					|| !Request.methods.get(object_name).has_key(method_name)) {
+					return false;
+				}
+				this.request.slot = Request.methods.get(object_name)
+					.get(method_name);
+				// Bin slot cache: next NAME_REF on this stream skips
+				// the methods lookup (Request.bin_read_prop sets slot).
+				if (this.request.connection.bin != null
+					&& this.request.connection.bin.name_to_token.has_key(
+						this.request.method)) {
+					this.request.connection.bin.ref_slots.set(
+						this.request.connection.bin.name_to_token.get(
+							this.request.method),
+						this.request.slot);
+				}
 			}
-			var dot = this.request.method.index_of_char('.');
-			var object_name = this.request.method[0:dot];
-			var method_name = this.request.method.substring(dot + 1);
-			if (!Request.methods.has_key(object_name)
-				|| !Request.methods.get(object_name).has_key(method_name)) {
-				return false;
-			}
-			var signature = Request.methods.get(object_name).get(method_name);
+			var row = Request.rows.get(this.request.slot);
+			var signature = row.sig;
+			var self = row.cls.handler;
 			var n_wire = 0;
 			var n_slots = 0;
 			var offset = 0;
@@ -254,13 +271,11 @@ namespace OLLMrpc
 					this.request.method, this.request.args.size, n_wire);
 				return true;
 			}
-			if (Request.handlers == null
-				|| !Request.handlers.has_key(object_name)) {
+			if (self == null) {
 				GLib.critical("RPC dispatch: no handler instance for %s",
 					this.request.method);
 				return true;
 			}
-			var self = Request.handlers.get(object_name);
 			if (this.request.lease_id == 0) {
 				var id = (int) this.request.connection.export(self);
 				self = this.request.connection.leases.get(id);
@@ -272,26 +287,13 @@ namespace OLLMrpc
 						this.request, (int) RpcErrorCode.INVALID_PARAMS);
 					return true;
 				}
-				if (Request.live == null || !Request.live.has_key(object_name)) {
+				if (!row.cls.live) {
 					self = this.request.connection.leases.get(id);
 				}
 			}
-			var camel = new GLib.Regex(
-				"(?<=[a-z0-9])([A-Z])|(?<=[A-Z])([A-Z][a-z])"
-			);
-			var symbol = camel.replace(
-				Request.types.get(object_name).name(), -1, 0, "_\\1\\2"
-			).down() + "_" + method_name.replace(".", "_");
-			var mod = GLib.Module.open(null, GLib.ModuleFlags.LAZY);
-			if (mod == null) {
-				GLib.critical("RPC dispatch: Module.open failed for %s",
-					this.request.method);
-				return true;
-			}
-			var fn = (void*) null;
-			if (!mod.symbol(symbol, out fn)) {
-				GLib.critical("RPC dispatch: no symbol %s for %s",
-					symbol, this.request.method);
+			var fn = (void*) row.fn;
+			if (fn == null) {
+				GLib.critical("RPC dispatch: no symbol for %s", this.request.method);
 				return true;
 			}
 			var nargs = 2 + n_slots;
