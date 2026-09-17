@@ -1,6 +1,6 @@
 # Ffi `"S"` length ok but element pointers ≠ wire `GStrv`
 
-**Status:** ✔️ applied + in-tree `test-rpc-ffi-as` PASS — await user verify  
+**Status:** ✅ FIXED — user archived 2026-09-17 (`test-rpc-ffi-as` PASS)  
 **Hit:** 2026-09-14 — gnome-shell-rpc nest `Helper-WaylandClient.spawnv`  
 **Component:** `libocrpc` / `OLLMrpc.Ffi.dispatch` (`"S"` / `pack("as")`)  
 **Prior (length):** [`done/2026-09-14-FIXED-ffi-s-string-array-length.md`](done/2026-09-14-FIXED-ffi-s-string-array-length.md)  
@@ -227,7 +227,4 @@ so Bytes stay `get_boxed()` (unchanged this bug).
 
 ## Next
 
-✔️ Apply pin/`strdupv` fix in `libocrpc/Ffi.vala`.  
-✔️ In-tree `test-rpc-ffi-as` PASS.  
-⏳ Consumer gate optional cross-check.  
-⏳ User verify → move to `docs/bugs/done/…-FIXED-…`.
+✅ Archived 2026-09-17.

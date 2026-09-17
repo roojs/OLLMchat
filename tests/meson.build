@@ -374,6 +374,25 @@ test('test-rpc-scm-response-call-poll',
   suite: 'rpc',
   timeout: 15,
 )
+test_rpc_scm_request_call_poll = executable('test-rpc-scm-request-call-poll',
+  'rpc/scm-request-call-poll-test.vala',
+  dependencies: rpc_test_deps + [
+    rpc_test_app_dep,
+    dependency('gio-unix-2.0'),
+    meson.get_compiler('vala').find_library('posix'),
+  ],
+  link_with: rpc_test_link_with,
+  build_rpath: rpc_test_build_rpath,
+  export_dynamic: true,
+  vala_args: rpc_test_vala_args + [
+    '--pkg=posix',
+  ],
+)
+test('test-rpc-scm-request-call-poll',
+  test_rpc_scm_request_call_poll,
+  suite: 'rpc',
+  timeout: 15,
+)
 test('test-rpc-t1',
   find_program('bash'),
   args: [

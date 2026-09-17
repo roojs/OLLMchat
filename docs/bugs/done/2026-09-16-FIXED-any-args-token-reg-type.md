@@ -1,6 +1,6 @@
 # ANY[] does not consume `TOKEN_REG_TYPE`
 
-**Status:** ✔️ applied in libocrpc; in-tree RPC suite green except flaky `test-rpc-t2` — await gnome-shell-rpc `hook-o-gate` verify  
+**Status:** ✅ FIXED — user archived 2026-09-17  
 **Hit:** 2026-09-16 — gnome-shell-rpc sent a live actor in a callback and the
 client process died (`unsupported bin array type 0x7F`)  
 **Component:** `libocrpc` — type-byte position on `ANY[]` (`Invoke.args` /
@@ -196,4 +196,4 @@ returned.
   `test-rpc-t1` OK unsandboxed. `test-rpc-t2` flakes SIGTRAP on
   write-persist/delete isolation (same crash with the skip reverted; first
   run with the skip was OK).
-- ⏳ `hook-o-gate` lives in gnome-shell-rpc — not in this tree.
+- ✅ 2026-09-17 — user archived (RPC bugs closed).

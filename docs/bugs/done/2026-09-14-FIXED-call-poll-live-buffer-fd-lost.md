@@ -1,6 +1,6 @@
 # `call_poll` loses `Live.Buffer` fd on reply
 
-**Status:** ✔️ applied — in-tree tests green; await consumer / user ✅  
+**Status:** ✅ FIXED — user archived 2026-09-17  
 **Hit:** 2026-09-14 — gnome-shell-rpc DING `WaylandClient.spawnv` stdout  
 **Component:** `libocrpc` / `OLLMrpc.Client.call_poll` + `Live.BufferStream`  
 **Consumer gate:** `gnome-shell-rpc/tests/call-sync-repro/call-poll-buffer-fd-gate`  
@@ -204,4 +204,4 @@ Fill `pending` before the existing `take_pending` / `attach` lines.
 
 ## Next
 
-- ⏳ 🔷 Consumer gate / nest verify → ✅ then rename FIXED and move to `docs/bugs/done/`.
+✅ Archived 2026-09-17.

@@ -1,6 +1,6 @@
 # Bin / args: capital-`V` Value (type + data → `GLib.Value`)
 
-**Status:** ✔️ applied + consumer migrated — `value-v-gate` PASS; await user verify  
+**Status:** ✅ FIXED — user archived 2026-09-17 (`value-v-gate` PASS; consumer migrated)  
 **Hit:** 2026-09-16 — gnome-shell-rpc Transition / Interval / ease corridor  
 **Component:** `libocrpc` — `Bin.StreamValue`, `args` / `val`, `Ffi.pack`, protocol § type bytes  
 **Consumer gate:** `gnome-shell-rpc/tests/call-sync-repro/value-v-gate` (**PASS**)  
@@ -510,5 +510,4 @@ In-tree: `meson compile -C build test-rpc-ffi-v test-rpc-values` then those test
 
 ## Next
 
-🔷 `⏳` Consumer `value-v-gate` PASS + drop `bsid` (not this repo).  
-⏳ User verify on device / promote ✅.
+✅ Archived 2026-09-17.

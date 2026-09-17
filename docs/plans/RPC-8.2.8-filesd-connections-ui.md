@@ -32,8 +32,9 @@
 | Phase | Plan | Status |
 | --- | --- | --- |
 | **1** | Daemon: `ClientCert` RPC + int status + IP drop (this file) | **✔️** agent-done |
-| **2** | [`RPC-8.2.8.1-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) — Desktop File Server expander + pending banner + registered rows | **⏳** |
+| **2** | [`RPC-8.2.8.1-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) — Desktop pending banner + registered client rows | **⏳** |
 | **3** | [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) — Android Add file connection + client cert + unlock agents | **⏳** |
+| **4** | [`RPC-8.2.8.3-filesd-file-server-tls.md`](RPC-8.2.8.3-filesd-file-server-tls.md) — Desktop File Server expander + TLS CA key auto-install | **⏳** |
 
 ---
 
@@ -42,6 +43,7 @@
 1. **✔️** Phase 1 — `ClientCert` RPC + int `status` + accept drop (this file)
 2. **⏳** Phase 2 — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
 3. **⏳** Phase 3 — [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
+4. **⏳** Phase 4 — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md)
 
 ---
 
@@ -106,11 +108,17 @@
 
 ---
 
+## Phase 4 — Desktop File Server expander + TLS CA key auto-install
+
+**➡️** [`RPC-8.2.8.3-filesd-file-server-tls.md`](RPC-8.2.8.3-filesd-file-server-tls.md)
+
+---
+
 ## Open questions (need 🔷)
 
 Tracked on the sub-plans:
 
-1. ~~Desktop File Server expander always shown?~~ → **🔷** always — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
+1. ~~Desktop File Server expander always shown?~~ → **🔷** always — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md)
 2. Android one file-server URL or multiple? → [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
 3. Which agents unlock on Android? → [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
 4. ~~Remove approved = `client_cert("remove", id)` → bool?~~ → **🔷** yes — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
