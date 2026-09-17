@@ -17,6 +17,7 @@
 - [RPC-8.2.3.4-DONE-http-client.md](done/RPC-8.2.3.4-DONE-http-client.md) — `Transport.HttpClient` (`test-rpc-http-client`)
 
 - [RPC-1.7-DONE-mock-dispatch-and-gi-mock.md](done/RPC-1.7-DONE-mock-dispatch-and-gi-mock.md) — `register_mock` + `GiMock` (test-only; unblocks gnome-shell-rpc 0.7.8)
+- [RPC-1.8-DONE-vfunc-hooks.md](done/RPC-1.8-DONE-vfunc-hooks.md) — `Gi.vfunc_offset` / `vfunc_slot` / `vfunc_names`
 
 - [RPC-8.3-libocrpc-live-handles-and-signals.md](done/RPC-8.3-libocrpc-live-handles-and-signals.md)
 - [RPC-8.3.1-DONE-live-handles-and-remote-refcount.md](done/RPC-8.3.1-DONE-live-handles-and-remote-refcount.md)

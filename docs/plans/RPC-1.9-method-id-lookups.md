@@ -14,7 +14,9 @@
 - **ℹ️** [`docs/rpc-registration.md`](../rpc-registration.md) — `add_class` / `register` / FFI vs Gi
 - **ℹ️** [`docs/bin-rpc-protocol.md`](../bin-rpc-protocol.md) — `NAME_REF_REG` / `NAME_REF` (v3.1)
 - **ℹ️** `libocrpc/Ffi.vala` · `libocrpc/Request.vala` · `libocrpc/Gi.vala` · `libocrpc/Bin/Stream.vala`
-- **ℹ️** [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md) — vfunc numbered lookups (other direction)
+- **ℹ️** [`RPC-1.9.1-generated-method-ids.md`](RPC-1.9.1-generated-method-ids.md) — generator constants + shared table + integer call (C/D)
+- **ℹ️** [`done/RPC-1.8-DONE-vfunc-hooks.md`](done/RPC-1.8-DONE-vfunc-hooks.md) — `Gi.vfunc_*` offset lookups (landed)
+- **ℹ️** [`done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md`](done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md) — vfunc numbered lookups (other direction)
 
 **Slugs read for proposed Vala:** `temporary-variables`, `this-prefix`, `reducing-nesting`, `defensive-code-null-checks`, `method-names-new-methods`, `line-length-breaking`, `docblocks`, `underscore-prefix`, `property-initialization`, `gobject-construct-blocks`, `brace-placement`, `gee-hashmap-access`, `gee-arraylist-access`, `arraylist-for-strings`, `avoiding-nullable-types`, `debug-warning-statements`, `agent-compliance-gate` (+ `docs/code-documentation.md`)
 
@@ -28,8 +30,9 @@
 - **🔷** After that table exists, later bin FFI calls use the **transport name-ref id** (the uint16 from 8.6) → that slot. Not `"RPC-Folder.fetch_files"`.
 - **🔷** If the token is already bound to an FFI slot, Ffi uses `slot` and does **not** hash `methods`. Miss stays `read_name_ref` (same as today).
 - **🔷** No wire change. Client call sites stay `method = "RPC-File.read"`.
-- **⏳** `🔷` C–F (constants, generator, handshake, two-level ids) stay later.
-- **ℹ️** Vfunc numbered lookups are [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md) — not a string-name cache in this file.
+- **⏳** `🔷` C/D expanded in [`RPC-1.9.1-generated-method-ids.md`](RPC-1.9.1-generated-method-ids.md) (generator constants, shared table, integer call).
+- **⏳** `💩` E–F (handshake, two-level ids) stay later.
+- **ℹ️** Vfunc numbered lookups are [`done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md`](done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md) — not a string-name cache in this file.
 - **ℹ️** How hard **B** is, and the fences, are in **B** below.
 
 ---
@@ -102,7 +105,7 @@ Steady-state **bin** call (names already learned on this connection). First use 
 - **ℹ️** `Gi.dispatch`: split; `Gi.types.has_key` + `.get`; `GI.Repository.find_by_gtype`; `ObjectInfo.find_method(method_name)` (and parent walk).
 - **ℹ️** Namespace functions: `namespaces.contains` (list scan) + `find_by_name(ns, method)`.
 - **ℹ️** No `add_class` row. **A** does not change Gi.
-- **ℹ️** Vfunc hot path (name → hook) is [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md).
+- **ℹ️** Vfunc hot path (name → hook) is [`done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md`](done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md).
 
 ---
 
@@ -638,14 +641,10 @@ Always `read_name_ref`. Then `slot` only if `ref_slots` already has the wire id.
 
 ## Later options (not this cut)
 
-### C — Hand-written method constants
+### C / D — moved to 1.9.1
 
-- **⏳** `🔷` Client sends `const uint16` / enum. Server dense table.
-- **ℹ️** ~40 listed FFI methods. Gi / gnome-shell-rpc is not a closed set.
-
-### D — Precompiler / generated table
-
-- **⏳** `🔷` Generate ids + `FfiEntry[]` from `add_class` lists.
+- **ℹ️** Generator integer constants, both-ends register (shared table), integer RPC call: [`RPC-1.9.1-generated-method-ids.md`](RPC-1.9.1-generated-method-ids.md).
+- **ℹ️** **C** in that file is hand-written constants if the generator is not ready. **D** is in-tree generate from `add_class` lists.
 
 ### E — Handshake catalog (server assigns ids)
 
@@ -657,7 +656,7 @@ Always `read_name_ref`. Then `slot` only if `ref_slots` already has the wire id.
 
 ### G — moved
 
-- **ℹ️** Wrong lead (cache another string map). Walkthrough + numbered wire path: [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md).
+- **ℹ️** Wrong lead (cache another string map). Walkthrough + numbered wire path: [`done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md`](done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md).
 
 ---
 
@@ -665,8 +664,8 @@ Always `read_name_ref`. Then `slot` only if `ref_slots` already has the wire id.
 
 - **🔷** **A** (`FfiSlot` / `FfiOwner`, Gee `rows` + `classes`) and **B** (`ref_slots` bin slot cache, `Request.slot`) approved.
 - **⏳** `💩` Also cache cif prep in a later pass?
-- **⏳** `🔷` After A+B: C/D/E for a client integer, or stop?
-- **ℹ️** Vfuncs: [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md).
+- **⏳** `🔷` After A+B: [`RPC-1.9.1-generated-method-ids.md`](RPC-1.9.1-generated-method-ids.md) for a client integer, or stop?
+- **ℹ️** Vfuncs: [`done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md`](done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md).
 
 ---
 
@@ -675,8 +674,8 @@ Always `read_name_ref`. Then `slot` only if `ref_slots` already has the wire id.
 1. **⏳** Approve **A** + **B** (this proposal).
 2. **⏳** Apply **A** §1–§3, then **B** §4–§7.
 3. **⏳** `meson test -C build --suite rpc` — `test-rpc-bin` (second encode still compact), FFI tests, one Gi call (string path still works).
-4. **⏳** Later C–F.
-5. **ℹ️** Vfuncs: [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md).
+4. **⏳** [`RPC-1.9.1-generated-method-ids.md`](RPC-1.9.1-generated-method-ids.md) (C/D). Later E–F.
+5. **ℹ️** Vfuncs: [`done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md`](done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md).
 
 ---
 
@@ -689,5 +688,6 @@ Always `read_name_ref`. Then `slot` only if `ref_slots` already has the wire id.
 - **🚫** Do **not** pack the call signature into an integer.
 - **🚫** Do not change the bin byte layout. Do not skip-string inside `Notification.bin_read_prop`.
 - **🚫** Do not look up `methods` or reimplement `read_name_ref` in `bin_read_prop`.
-- **ℹ️** Vfunc numbered path is [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md).
+- **ℹ️** Client integer / generator catalog is [`RPC-1.9.1-generated-method-ids.md`](RPC-1.9.1-generated-method-ids.md) — not this file.
+- **ℹ️** Vfunc offset lookups: [`done/RPC-1.8-DONE-vfunc-hooks.md`](done/RPC-1.8-DONE-vfunc-hooks.md). Numbered vfunc path: [`done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md`](done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md).
 - **ℹ️** `Call.Base` / Ollama HTTP is a different stack.

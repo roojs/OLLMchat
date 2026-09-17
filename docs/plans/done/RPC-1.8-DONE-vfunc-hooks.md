@@ -1,17 +1,21 @@
 # RPC-1.8 — Vfunc relay: `Gi.vfunc_*` offset lookups; container = plain map field
 
-**Status:** **✔️** agent implemented — `test-rpc-gi` green; awaiting user verify.
+> Landed. Index: [`RPC-1.0-summary.md`](../RPC-1.0-summary.md).
+>
+> Archived 2026-09-17 from `docs/plans/RPC-1.8-vfunc-hooks.md`.
+
+**Status:** **✔️** **done** — `test-rpc-gi` green.
 
 **Files:** `libocrpc/Gi.vala` (edit), `libocrpc/windows/Gi.vala` (edit — stub statics), `tests/rpc/gi-test.vala`. **No new files, no new types, no meson change.**
 
-**Prefix:** `RPC` (`libocrpc`) · see [`RPC-1.0-summary.md`](RPC-1.0-summary.md)
+**Prefix:** `RPC` (`libocrpc`) · see [`RPC-1.0-summary.md`](../RPC-1.0-summary.md)
 
 **Unblocks:** gnome-shell-rpc `0.8.2-vfunc-hook-registry` — consumer relays
 GObject vfuncs (`get_preferred_width`, `allocate`, `event`, …) over live
 callbacks. With this plan its share shrinks to: minting peers (`create`)
 and `add_hook`, the sentinel protocol, and per-signature arg packing.
 
-**Related:** [`done/RPC-8.3.6-rpc-live-callbacks.md`](done/RPC-8.3.6-rpc-live-callbacks.md) (Live.Hook round-trip) · [`done/RPC-1.6-DONE-live-handle-interface.md`](done/RPC-1.6-DONE-live-handle-interface.md) (interface-for-peers precedent) · [`done/RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md`](done/RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) (Gi typelib engine).
+**Related:** [`RPC-8.3.6-rpc-live-callbacks.md`](RPC-8.3.6-rpc-live-callbacks.md) (Live.Hook round-trip) · [`RPC-1.6-DONE-live-handle-interface.md`](RPC-1.6-DONE-live-handle-interface.md) (interface-for-peers precedent) · [`RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md`](RPC-8.4.2-DONE-rpc-ffi-typelib-invoke.md) (Gi typelib engine).
 
 **🚫** No library wire methods — `create` **and** `add_hook` are
 consumer-registered (the consumer casts the lease to its own peer type);
@@ -81,13 +85,11 @@ dependency, no new types.
 
 **ℹ️** What deliberately does **not** move (stays with the consumer):
 
-| Piece | Why |
-| ----- | --- |
-| `create` / peer minting | consumer picks the peer type (`Request.add_class` is consumer policy) |
-| `add_hook` wire method | consumer casts the lease to its own peer type; validate/insert/reply inline — no library bridge, no shared body |
-| Sentinel / fallthrough protocol (`use_base` mid-ask base calls) | consumer correctness contract |
-| Per-signature bind + emit arg packing | Clutter types on the wire — see Future |
-| Which vfuncs to relay + baseline compare policy | consumer knows its stub classes |
+- `create` / peer minting — consumer picks the peer type (`Request.add_class` is consumer policy)
+- `add_hook` wire method — consumer casts the lease to its own peer type; validate/insert/reply inline — no library bridge, no shared body
+- Sentinel / fallthrough protocol (`use_base` mid-ask base calls) — consumer correctness contract
+- Per-signature bind + emit arg packing — Clutter types on the wire — see Future
+- Which vfuncs to relay + baseline compare policy — consumer knows its stub classes
 
 ---
 
@@ -123,7 +125,7 @@ read, `vfunc_names` contains those names.
 
 ## Future (not this plan)
 
-- **⏳** `🔷` Numbered vfunc id (wire + hook map) — [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md). Not a `vfunc_names` string cache.
+- **ℹ️** Numbered vfunc id (wire + hook map) is consumer work — gnome-shell-rpc https://github.com/roojs/gnome-shell-rpc/issues/1. Walkthrough archived: [`RPC-1.10-ARCHIVED-vfunc-id-lookups.md`](RPC-1.10-ARCHIVED-vfunc-id-lookups.md). Not a `vfunc_names` string cache.
 - **💩** Generic vfunc **invoke** via `g_vfunc_info_invoke` — would replace the consumer's per-signature client binders (and possibly server emit packing) with typelib-driven marshalling, reusing the `Gi.convert` / `scalar` machinery. Needs `Gi.convert` decoupled from `Request`, plus integration with the consumer's fallthrough sentinel protocol.
 
 **ℹ️** 1.8 already gave name → offset. 1.9 **A+B** gave inbound RPC name → slot. The leftover string hash is the consumer's `HashMap<string, Live.Hook>` on each vfunc fire.
@@ -132,15 +134,13 @@ read, `vfunc_names` contains those names.
 
 ## Not this
 
-| | |
-| - | - |
-| New container / wire / peer / offsets classes (`Vfuncs`, `VfuncPeer`, `RPC-Live-Vfuncs`, `GiVfunc`) | all dropped — the lookups land on the existing `Gi` (user calls 2026-09-13) |
-| Shared `add_hook` body on `Live.Callback` | dropped — no delegate; the consumer's wire method validates/inserts/replies inline (same user call) |
-| Library-owned wire methods | consumer owns `create` + `add_hook` |
-| Sentinel / fallthrough protocol | consumer correctness contract |
-| Per-signature arg packing | consumer-side (see Future) |
-| Dict/array wire types | unneeded; scalar `st` per hook is enough |
-| Windows/Android offsets | no girepository there — `windows/Gi.vala` stubs |
+- New container / wire / peer / offsets classes (`Vfuncs`, `VfuncPeer`, `RPC-Live-Vfuncs`, `GiVfunc`) — all dropped — the lookups land on the existing `Gi` (user calls 2026-09-13)
+- Shared `add_hook` body on `Live.Callback` — dropped — no delegate; the consumer's wire method validates/inserts/replies inline (same user call)
+- Library-owned wire methods — consumer owns `create` + `add_hook`
+- Sentinel / fallthrough protocol — consumer correctness contract
+- Per-signature arg packing — consumer-side (see Future)
+- Dict/array wire types — unneeded; scalar `st` per hook is enough
+- Windows/Android offsets — no girepository there — `windows/Gi.vala` stubs
 
 **Done when:** gi-test green; gnome-shell-rpc 0.8.2 consumes
 `Gi.vfunc_*` — no new library types, no C slot reader.
