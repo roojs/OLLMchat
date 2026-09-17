@@ -67,8 +67,9 @@ namespace OLLMapp
 			typeof(OLLMwebkit.Tool).ensure();
 			OLLMchat.Tool.BaseTool.register_config(typeof(OLLMwebkit.Tool));
 
-			OLLMfiles.rpc_register();
-			OLLMhf.rpc_register();
+		OLLMfiles.rpc_register();
+		OLLMhf.rpc_register();
+		ClientCert.rpc_register();
 					
 			// Load config after registrations
 			this.config = this.load_config();

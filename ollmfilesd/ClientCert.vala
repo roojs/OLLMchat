@@ -39,9 +39,10 @@ namespace OLLMfilesd
 			OLLMrpc.Bin.register("ClientCert", typeof(ClientCert));
 			OLLMrpc.Request.add_class(
 				"RPC-ClientCert", typeof(ClientCert),
-				"request_registration", "",
+				"request_registration", "s",
 				"pending_cert", "",
-				"client_cert", "sx"
+				"client_cert", "sx",
+				"approved_certs", ""
 			);
 		}
 
@@ -52,6 +53,7 @@ namespace OLLMfilesd
 		public int status { get; set; default = 0; }
 		public string ip { get; set; default = ""; }
 		public int64 created { get; set; default = 0; }
+		public string requester { get; set; default = ""; }
 
 		public ClientCert()
 		{
@@ -108,11 +110,15 @@ namespace OLLMfilesd
 				"fingerprint TEXT NOT NULL UNIQUE, " +
 				"status INTEGER NOT NULL DEFAULT 0, " +
 				"ip TEXT NOT NULL DEFAULT '', " +
-				"created INT64 NOT NULL DEFAULT 0" +
+				"created INT64 NOT NULL DEFAULT 0, " +
+				"requester TEXT NOT NULL DEFAULT ''" +
 				");",
 				null, out errmsg)) {
 				GLib.warning("Failed to create client_cert table: %s", db.db.errmsg());
 			}
+			db.db.exec(
+				"ALTER TABLE client_cert ADD COLUMN requester TEXT NOT NULL DEFAULT ''",
+				null, out errmsg);
 			if (Sqlite.OK != db.db.exec(
 				"DELETE FROM client_cert WHERE status = 0 AND created < %lld".printf(
 					new GLib.DateTime.now_utc().to_unix() - (24 * 60 * 60)),
@@ -126,8 +132,9 @@ namespace OLLMfilesd
 		 *
 		 * @param request inbound RPC (connection must be
 		 * {@link OLLMrpc.Transport.HttpReply})
+		 * @param requester best-effort device string sent by the client
 		 */
-		public void request_registration(OLLMrpc.Request request)
+		public void request_registration(OLLMrpc.Request request, string requester)
 		{
 			var reply = request.connection as OLLMrpc.Transport.HttpReply;
 			if (reply == null) {
@@ -189,9 +196,15 @@ namespace OLLMfilesd
 				fingerprint = reply.cert_fingerprint,
 				status = 0,
 				ip = reply.client_ip,
-				created = new GLib.DateTime.now_utc().to_unix()
+				created = new GLib.DateTime.now_utc().to_unix(),
+				requester = requester
 			};
 			ClientCert.query(db).insert(row);
+			this.app.broadcast(new OLLMrpc.Notification() {
+				method = "event.client_cert",
+				object_type = "ClientCert",
+				action = "request"
+			});
 			request.reply(new OLLMrpc.Response() {
 				msg = "ok"
 			});
@@ -210,6 +223,25 @@ namespace OLLMfilesd
 			request.reply(new OLLMrpc.Response() {
 				retval = OLLMrpc.val("o", rows.size > 0 ? rows.get(0) : new ClientCert()),
 				msg = "ok"
+			});
+		}
+
+		/**
+		 * Approved client certs for the Connections tab expanders.
+		 *
+		 * @param request inbound RPC (local Unix / bin)
+		 */
+		public void approved_certs(OLLMrpc.Request request)
+		{
+			var rows = new Gee.ArrayList<ClientCert>();
+			ClientCert.query(this.app.project_manager.db).select(
+				"WHERE status = 1 ORDER BY created DESC", rows);
+			var list = new Gee.ArrayList<GLib.Object>();
+			foreach (var row in rows) {
+				list.add(row);
+			}
+			request.reply(new OLLMrpc.Response() {
+				retval = OLLMrpc.val("o", list)
 			});
 		}
 
