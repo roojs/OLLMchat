@@ -170,6 +170,7 @@ ollmchat_ollama_src = files([
   'Settings/ConnectionModels.vala',
   'Settings/Window.vala',  # Before Config2 (Config2.windows uses Window)
   'Settings/Filesd.vala',  # Before Config2 (Config2.filesd)
+  'Settings/FilesdClient.vala',  # Before Config2 (Config2.filesd_client)
   'Settings/Config2.vala',
   'Settings/BaseToolConfig.vala',
   'Settings/AgentConfig.vala',

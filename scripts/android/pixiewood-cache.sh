@@ -45,7 +45,7 @@ pixiewood_prefix_libgtk_has_patch_tag() {
   libgtk="$(
     find "$ROOT_DIR/.pixiewood/bin-aarch64" -name 'libgtk-4.so' -print -quit 2>/dev/null
   )"
-  [ -n "$libgtk" ] && strings "$libgtk" 2>/dev/null | grep -q 'ollmchat-android-bugs-v12'
+  [ -n "$libgtk" ] && strings "$libgtk" 2>/dev/null | grep -q 'ollmchat-android-bugs-v13'
 }
 
 pixiewood_prefix_has_patched_gtk() {

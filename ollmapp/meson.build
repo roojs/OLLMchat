@@ -111,6 +111,8 @@ if get_option('android_poc')
     'SettingsDialog/Rows/IntRow.vala',
     'SettingsDialog/ConnectionAdd.vala',
     'SettingsDialog/ConnectionRow.vala',
+    'SettingsDialog/FileConnectionAdd.vala',
+    'SettingsDialog/FileConnectionRow.vala',
   ]
 endif
 
@@ -265,6 +267,8 @@ ollmchat_sources = [
   'SettingsDialog/AddModelDialog.vala',
   'SettingsDialog/ConnectionAdd.vala',
   'SettingsDialog/ConnectionRow.vala',
+  'SettingsDialog/FileConnectionAdd.vala',
+  'SettingsDialog/FileConnectionRow.vala',
   'SettingsDialog/ApprovedClientRow.vala',
   'SettingsDialog/SettingsPage.vala',
   'SettingsDialog/ConnectionsPage.vala',

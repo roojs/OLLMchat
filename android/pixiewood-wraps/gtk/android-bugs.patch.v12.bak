@@ -1,39 +1,3 @@
-diff --git a/gdk/android/gdkandroidollmchatpatch.c b/gdk/android/gdkandroidollmchatpatch.c
-new file mode 100644
-index 0000000000..0000000001
---- /dev/null
-+++ b/gdk/android/gdkandroidollmchatpatch.c
-@@ -0,0 +1,18 @@
-+/*
-+ * OLLMchat android-bugs.patch compile marker.
-+ * CI/build logs should contain: gdkandroidollmchatpatch.c.o
-+ * SPDX-License-Identifier: LGPL-2.1-or-later
-+ */
-+
-+#include "config.h"
-+#include <glib.h>
-+
-+/* Survives in libgtk-4.so; verify-apk.sh greps for this tag. */
-+const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v13";
-+
-+static void
-+gdk_android_ollmchat_patch_marker (void)
-+{
-+  /* Keep the tag referenced so release builds do not drop it. */
-+  g_debug ("%s", gdk_android_ollmchat_bugs_tag);
-+}
-diff --git a/gdk/android/meson.build b/gdk/android/meson.build
-index f0a57ea52c..11ab0c0ce1 100644
---- a/gdk/android/meson.build
-+++ b/gdk/android/meson.build
-@@ -17,6 +17,7 @@ gdk_android_sources = files([
- 
-   'gdkandroidcontentfile.c',
- 
-+  'gdkandroidollmchatpatch.c',
-   'gdkandroidutils.c'
- ])
- 
 diff --git a/gdk/android/gdkandroidclipboard-private.h b/gdk/android/gdkandroidclipboard-private.h
 index 73a91cc110..fee72885c3 100644
 --- a/gdk/android/gdkandroidclipboard-private.h
@@ -264,6 +228,30 @@ index d108b5aada..33623ac750 100644
    gdk_clipboard_claim_remote ((GdkClipboard *) self, formats);
    gdk_content_formats_unref (formats);
  }
+diff --git a/gdk/android/gdkandroidollmchatpatch.c b/gdk/android/gdkandroidollmchatpatch.c
+new file mode 100644
+index 0000000000..427d59229e
+--- /dev/null
++++ b/gdk/android/gdkandroidollmchatpatch.c
+@@ -0,0 +1,18 @@
++/*
++ * OLLMchat android-bugs.patch compile marker.
++ * CI/build logs should contain: gdkandroidollmchatpatch.c.o
++ * SPDX-License-Identifier: LGPL-2.1-or-later
++ */
++
++#include "config.h"
++#include <glib.h>
++
++/* Survives in libgtk-4.so; verify-apk.sh greps for this tag. */
++const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v12";
++
++static void
++gdk_android_ollmchat_patch_marker (void)
++{
++  /* Keep the tag referenced so release builds do not drop it. */
++  g_debug ("%s", gdk_android_ollmchat_bugs_tag);
++}
 diff --git a/gdk/android/gdkandroidpopup.c b/gdk/android/gdkandroidpopup.c
 index 67f31d022e..3c0727b58d 100644
 --- a/gdk/android/gdkandroidpopup.c
@@ -812,6 +800,18 @@ index 09889b9c5b..b17323b878 100644
  			}
  
  			@Override
+diff --git a/gdk/android/meson.build b/gdk/android/meson.build
+index f0a57ea52c..11ab0c0ce1 100644
+--- a/gdk/android/meson.build
++++ b/gdk/android/meson.build
+@@ -17,6 +17,7 @@ gdk_android_sources = files([
+ 
+   'gdkandroidcontentfile.c',
+ 
++  'gdkandroidollmchatpatch.c',
+   'gdkandroidutils.c'
+ ])
+ 
 diff --git a/gsk/gpu/gskgpudevice.c b/gsk/gpu/gskgpudevice.c
 index 58e087cba4..d9cc8560a3 100644
 --- a/gsk/gpu/gskgpudevice.c
@@ -4535,10 +4535,10 @@ index 120b25fcd5..c7a3c10685 100644
  gboolean
 diff --git a/gtk/gtktexttouch.c b/gtk/gtktexttouch.c
 new file mode 100644
-index 0000000000..90e59406a7
+index 0000000000..21ae925510
 --- /dev/null
 +++ b/gtk/gtktexttouch.c
-@@ -0,0 +1,438 @@
+@@ -0,0 +1,420 @@
 +/* GTK - The GIMP Toolkit
 + * Copyright © 2026 Knowles / LP-1 touch policy
 + *
@@ -4731,9 +4731,6 @@ index 0000000000..90e59406a7
 +        case GTK_TEXT_TOUCH_EVENT_PIN_DRAGGED:
 +        case GTK_TEXT_TOUCH_EVENT_PIN_RELEASED:
 +          break;
-+
-+        default:
-+          break;
 +        }
 +      break;
 +
@@ -4818,9 +4815,6 @@ index 0000000000..90e59406a7
 +        case GTK_TEXT_TOUCH_EVENT_PIN_DRAGGED:
 +        case GTK_TEXT_TOUCH_EVENT_PIN_RELEASED:
 +          break;
-+
-+        default:
-+          break;
 +        }
 +      break;
 +
@@ -4856,9 +4850,6 @@ index 0000000000..90e59406a7
 +        case GTK_TEXT_TOUCH_EVENT_TAP_OUTSIDE:
 +        case GTK_TEXT_TOUCH_EVENT_PIN_DRAGGED:
 +        case GTK_TEXT_TOUCH_EVENT_PIN_RELEASED:
-+          break;
-+
-+        default:
 +          break;
 +        }
 +      break;
@@ -4896,9 +4887,6 @@ index 0000000000..90e59406a7
 +        case GTK_TEXT_TOUCH_EVENT_TAP_IN_SELECTION:
 +        case GTK_TEXT_TOUCH_EVENT_TAP_OUTSIDE:
 +          break;
-+
-+        default:
-+          break;
 +        }
 +      break;
 +
@@ -4930,9 +4918,6 @@ index 0000000000..90e59406a7
 +        case GTK_TEXT_TOUCH_EVENT_TAP_IN_SELECTION:
 +        case GTK_TEXT_TOUCH_EVENT_TAP_OUTSIDE:
 +          break;
-+
-+        default:
-+          break;
 +        }
 +      break;
 +
@@ -4961,9 +4946,6 @@ index 0000000000..90e59406a7
 +        case GTK_TEXT_TOUCH_EVENT_PIN_GRABBED:
 +        case GTK_TEXT_TOUCH_EVENT_TAP_IN_SELECTION:
 +        case GTK_TEXT_TOUCH_EVENT_TAP_OUTSIDE:
-+          break;
-+
-+        default:
 +          break;
 +        }
 +      break;

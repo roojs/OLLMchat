@@ -95,8 +95,14 @@ namespace OLLMfilesd
 			this.host = host;
 			this.port = (uint) port;
 			this.proxy = filesd.proxy;
-			this.tls_certificate = new OLLMrpc.Transport.Cert(tls_dir, ca_pem,
-				 ca_key).certificate;
+			var server_cert = new OLLMrpc.Transport.Cert() {
+				dir = tls_dir,
+				ca_pem_path = ca_pem,
+				ca_key_path = ca_key,
+				server_san = true,
+			};
+			server_cert.ensure();
+			this.tls_certificate = server_cert.certificate;
 			if (!this.start()) {
 				GLib.error("failed to start HTTPS RPC listener");
 			}

@@ -125,6 +125,13 @@ namespace OLLMchat.Settings
 		 * File-daemon listen settings (HTTPS / PROXY / systemd).
 		 */
 		public Filesd filesd { get; set; default = new Filesd(); }
+
+		/**
+		 * Outbound remote file-server connection (client side).
+		 */
+		public FilesdClient filesd_client {
+			get; set; default = new FilesdClient();
+		}
 		
 		/**
 		 * Static registry of key → GType for deserialization.

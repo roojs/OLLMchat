@@ -27,7 +27,13 @@ namespace OLLMrpc.Transport
 	 *
 	 * {{{
 	 * var http = new OLLMrpc.Transport.HttpServer(8080);
-	 * var cert = new OLLMrpc.Transport.Cert(tls_dir, ca_pem, ca_key);
+	 * var cert = new OLLMrpc.Transport.Cert() {
+	 *     dir = tls_dir,
+	 *     ca_pem_path = ca_pem,
+	 *     ca_key_path = ca_key,
+	 *     server_san = true,
+	 * };
+	 * cert.ensure();
 	 * http.tls_certificate = cert.certificate;
 	 * http.start();
 	 * }}}
@@ -51,7 +57,8 @@ namespace OLLMrpc.Transport
 		 * Server TLS identity. Non-null → {@link start} listens with
 		 * {@link Soup.ServerListenOptions.HTTPS}.
 		 *
-		 * Typical: ''new Cert(dir, ca_pem, ca_key)'' then assign {@link Cert.certificate}.
+		 * Typical: configure {@link Cert}, call {@link Cert.ensure}, assign
+		 * {@link Cert.certificate}.
 		 */
 		public GLib.TlsCertificate? tls_certificate { get; set; default = null; }
 

@@ -20,11 +20,11 @@ namespace OLLMapp.SettingsDialog
 {
 	/**
 	 * Connections tab content for settings dialog.
-	 *
+	 * 
 	 * Manages server connections (add, remove, edit connection details).
 	 * Uses Adw.PreferencesGroup with Gtk.ListBox for connection list.
 	 * Editing is inline - no separate edit/update methods needed.
-	 *
+	 * 
 	 * @since 1.0
 	 */
 	public class ConnectionsPage : SettingsPage
@@ -45,11 +45,14 @@ namespace OLLMapp.SettingsDialog
 			get; set; default = new Gee.ArrayList<Adw.ExpanderRow>();
 		}
 		private ConnectionAdd add_dialog;
+		private Gtk.Button add_file_btn;
+		private FileConnectionAdd add_file_dialog;
+		private FileConnectionRow? file_connection_row;
 		private bool updating_defaults = false;
 
 		/**
 		 * Creates a new ConnectionsPage.
-		 *
+		 * 
 		 * @param dialog Parent SettingsDialog (which has the app object)
 		 */
 		public ConnectionsPage(MainDialog dialog)
@@ -75,6 +78,12 @@ namespace OLLMapp.SettingsDialog
 			this.add_btn.clicked.connect(this.add_connection);
 			this.action_widget.append(this.add_btn);
 
+			this.add_file_btn = new Gtk.Button.with_label("Add file connection");
+			this.add_file_btn.clicked.connect(() => {
+				this.add_file_dialog.present(this.dialog);
+			});
+			this.action_widget.append(this.add_file_btn);
+
 			// Create preferences group (no title; tab already shows "Connections")
 			this.group = new Adw.PreferencesGroup();
 
@@ -95,8 +104,14 @@ namespace OLLMapp.SettingsDialog
 			this.add_dialog = new ConnectionAdd();
 			this.add_dialog.dialog_closed.connect(this.on_add_closed);
 
+			this.add_file_dialog = new FileConnectionAdd(this.dialog.app.config);
+			this.add_file_dialog.dialog_closed.connect(() => {
+				this.render_file_connection();
+			});
+
 			// Initial render of connections
 			this.render_connections();
+			this.render_file_connection();
 			this.render_approved.begin();
 		}
 
@@ -191,7 +206,7 @@ namespace OLLMapp.SettingsDialog
 		/**
 		 * Removes connection from config.connections map and updates visibility of Remove buttons.
 		 * Hides Remove button if only one connection left.
-		 *
+		 * 
 		 * @param url Connection URL to remove
 		 */
 		private void remove_connection(string url)
@@ -235,7 +250,7 @@ namespace OLLMapp.SettingsDialog
 
 		/**
 		 * Adds a single connection row to the UI.
-		 *
+		 * 
 		 * @param url Connection URL (key in config.connections map)
 		 * @param connection Connection object
 		 * @param can_remove Whether Remove button should be visible
@@ -377,6 +392,49 @@ namespace OLLMapp.SettingsDialog
 				found_first = true;
 			}
 			this.updating_defaults = false;
+		}
+
+		private void render_file_connection()
+		{
+			this.add_file_btn.visible =
+				this.dialog.app.config.filesd_client.url.strip() == "";
+			if (this.file_connection_row != null) {
+				this.file_connection_row.expander.unparent();
+				this.file_connection_row = null;
+			}
+			var client = this.dialog.app.config.filesd_client;
+			if (client.url.strip() == "") {
+				return;
+			}
+			this.file_connection_row = new FileConnectionRow(client);
+			this.file_connection_row.remove_requested.connect(() => {
+				this.dialog.app.config.filesd_client =
+					new OLLMchat.Settings.FilesdClient();
+				this.render_file_connection();
+				this.dialog.app.config.save();
+			});
+			this.file_connection_row.check_button.clicked.connect(() => {
+				GLib.critical("file connection check not implemented");
+			});
+			this.file_connection_row.enabled_changed.connect((enabled) => {
+				this.dialog.app.config.filesd_client.enabled = enabled;
+				this.dialog.app.config.save();
+			});
+			Adw.ExpanderRow? insert_after = null;
+			foreach (var row in this.rows.values) {
+				insert_after = row.expander;
+			}
+			if (insert_after != null) {
+				this.boxed_list.insert_child_after(
+					insert_after, this.file_connection_row.expander);
+				return;
+			}
+			if (this.approved_rows.size > 0) {
+				this.boxed_list.insert_child_after(
+					null, this.file_connection_row.expander);
+				return;
+			}
+			this.boxed_list.append(this.file_connection_row.expander);
 		}
 
 		/**

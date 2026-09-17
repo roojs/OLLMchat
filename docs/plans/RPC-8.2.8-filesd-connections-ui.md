@@ -1,6 +1,6 @@
 # 8.2.8 — File-server Connections UI + registration approval
 
-**Status:** **IN PROGRESS** — Phase 1 **✔️** agent-done · Phase 2–3 in sub-plans
+**Status:** **IN PROGRESS** — Phase 1 **✔️** agent-done · Phase 2 **✔️** agent-done · Phase 3–4 in sub-plans
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -20,8 +20,8 @@
 - **🔷** Ban blocks that **IP** from further registration attempts (flood control) — **not** a permanent cert ban; **no unban** UI.
 - **🔷** Banned IPs also live in an **in-memory list** on the HTTPS server: load from DB on listen; update on `"ban"`. Drop the TCP connection as soon as the client IP is known (PROXY header path or direct peer) — do not hand the stream to Soup / TLS for banned IPs.
 - **🔷** After Accept, the client appears in the Connections list like a remote connection — **expand + remove only**.
-- **🔷** Android: **Add file connection** (HTTPS URL of the file server) on the Connections tab.
-- **🔷** A working Android file connection **unlocks** agents that need the file daemon / project tools.
+- **🔷** **Client** (Android + Linux): **Add file connection** on the Connections tab — name + HTTPS URL, **Request** registration, single row with Check / Enable / Remove.
+- **🔷** An approved + enabled file connection **unlocks Agent Pi** (`agent-pi`); local Unix `ollmfilesd` on Linux is overridden only when enabled.
 - **ℹ️** Phase 0–1 of **8.2.7** are largely in tree (`Filesd`, `Https`, `ClientCert`, `request_registration`).
 - **ℹ️** This plan **supersedes** **8.2.7 Phase 2** CLI (`list` / `accept` / `reset`) with the Connections UI.
 
@@ -32,8 +32,8 @@
 | Phase | Plan | Status |
 | --- | --- | --- |
 | **1** | Daemon: `ClientCert` RPC + int status + IP drop (this file) | **✔️** agent-done |
-| **2** | [`RPC-8.2.8.1-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) — Desktop pending banner + registered client rows | **⏳** |
-| **3** | [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) — Android Add file connection + client cert + unlock agents | **⏳** |
+| **2** | [`RPC-8.2.8.1-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) — Desktop pending banner + registered client rows | **✔️** agent-done |
+| **3** | [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) — Client file connection UI (Ph.1) + HTTPS/Agent Pi (Ph.2); Android + Linux | **⏳** |
 | **4** | [`RPC-8.2.8.3-filesd-file-server-tls.md`](RPC-8.2.8.3-filesd-file-server-tls.md) — Desktop File Server expander + TLS CA key auto-install | **⏳** |
 
 ---
@@ -41,7 +41,7 @@
 ## Suggested order
 
 1. **✔️** Phase 1 — `ClientCert` RPC + int `status` + accept drop (this file)
-2. **⏳** Phase 2 — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
+2. **✔️** Phase 2 — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) (agent-done; awaiting user ✅)
 3. **⏳** Phase 3 — [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
 4. **⏳** Phase 4 — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md)
 
@@ -54,9 +54,9 @@
 - **✔️** `client_cert.status` is int `0` / `1` / `-1`; cert RPC on `RPC-ClientCert` (`request_registration`, `pending_cert`, `client_cert`).
 - **✔️** Banned IPs: DB `status = -1` + `HttpServer.banned_ips`; drop on accept with `GLib.debug`.
 - **ℹ️** Desktop Connections tab = LLM API `Settings.Connection` rows only — Phase 2.
-- **ℹ️** Android Connections tab reuses the same page; no file-server connection yet — Phase 3.
-- **ℹ️** Android `OLLMfiles.ProjectManager` is a stub; desktop boots local Unix `ollmfilesd` and registers Code Assistant / related agents.
-- **ℹ️** `OLLMrpc.Client` HTTP path exists; `Transport.HttpClient.tls_certificate` is ready — Android client-cert mint/load not wired — Phase 3.
+- **ℹ️** Connections tab has no outbound file-server row yet — Phase 3.
+- **ℹ️** Android `OLLMfiles.ProjectManager` is a stub; desktop boots local Unix `ollmfilesd` and registers Code Assistant / Agent Pi / related agents.
+- **ℹ️** `OLLMrpc.Client` HTTP path exists; `Transport.HttpClient.tls_certificate` is ready — outbound client-cert mint/load not wired — Phase 3.
 
 ---
 
@@ -102,9 +102,9 @@
 
 ---
 
-## Phase 3 — Android file connection + unlock agents
+## Phase 3 — Client file connection + Agent Pi unlock
 
-**➡️** [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md)
+**➡️** [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) — Phase 1 UI, then Phase 2 connection/support (Android + Linux)
 
 ---
 
@@ -119,8 +119,8 @@
 Tracked on the sub-plans:
 
 1. ~~Desktop File Server expander always shown?~~ → **🔷** always — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md)
-2. Android one file-server URL or multiple? → [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
-3. Which agents unlock on Android? → [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
+2. ~~One file-server URL or multiple?~~ → **🔷** one — [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
+3. ~~Which agents unlock?~~ → **🔷** Agent Pi only — [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
 4. ~~Remove approved = `client_cert("remove", id)` → bool?~~ → **🔷** yes — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
 5. Machine-type vocabulary → [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
 

@@ -1,6 +1,6 @@
 # 8.2.8.1 — Desktop Connections: File Server + pending banner
 
-**Status:** **PROPOSED** — design decisions locked below; code proposals not yet written
+**Status:** **✔️ agent-done** — all sections landed in tree (see *Landed* below)
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this sub-plan.**
 
@@ -51,15 +51,30 @@
 
 - **ℹ️** File Server expander (edits `Config2.filesd`) and TLS CA key auto-install moved to [`RPC-8.2.8.3-filesd-file-server-tls.md`](RPC-8.2.8.3-filesd-file-server-tls.md) — this plan was large enough already.
 
-## Pending banner
+---
 
-- **🔷** `⏳` One newest `status = 0` via `pending_cert`; Accept / Reject / Ban → `client_cert`.
-- **🔷** `⏳` Bootstrap: refresh when preferences opens.
-- **🔷** `⏳` Live: subscribe to daemon broadcast on **new pending request** only; then reload newest pending into the banner.
+## Landed (tree)
+
+- `ollmapp/SettingsDialog/RegistrationBanner.vala` — pending banner widget (Accept/Reject/Ban + `refresh` + `act`)
+- `ollmapp/SettingsDialog/ApprovedClientRow.vala` — approved client expander row (extracted helper; mirrors `ConnectionRow`)
+- `ollmapp/SettingsDialog/ConnectionsPage.vala` — `approved_rows`, `render_approved`, `remove_approved`, constructor bootstrap
+- `ollmapp/SettingsDialog/MainDialog.vala` — `registration_banner` + `registration_wired`, construct prepend, `show_dialog` subscribe to `event.client_cert`
+- `ollmapp/ClientCert.vala` — desktop wire container with `requester`
+- `ollmapp/Application.vala` — `ClientCert.rpc_register()` call
+- `ollmapp/meson.build` — new sources (`ClientCert.vala`, `RegistrationBanner.vala`, `ApprovedClientRow.vala`)
+- `ollmfilesd/ClientCert.vala` — `requester` property, `request_registration(requester)`, `approved_certs` handler, `init_db` column + `ALTER TABLE` migrate, `event.client_cert` broadcast on pending insert
+
+---
+
+## ✔️ Pending banner
+
+- **🔷** `✔️` One newest `status = 0` via `pending_cert`; Accept / Reject / Ban → `client_cert`.
+- **🔷** `✔️` Bootstrap: refresh when preferences opens.
+- **🔷** `✔️` Live: subscribe to daemon broadcast on **new pending request** only; then reload newest pending into the banner.
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
-### 1. `ollmapp/SettingsDialog/RegistrationBanner.vala` — new widget: show newest pending + Accept/Reject/Ban
+### ✔️ 1. `ollmapp/SettingsDialog/RegistrationBanner.vala` — new widget: show newest pending + Accept/Reject/Ban
 
 **Why:** the banner is the desktop home of the `requester` string — it displays the pending row's `requester` / IP / short fingerprint / time and issues `client_cert` actions. Copies the `PullManagerBanner`-on-`action_bar_area` placement and the `rpc.call` pattern from `FileHistory.rpc_revert`.
 **Where:** new file under `ollmapp/SettingsDialog/` (add to `ollmapp/meson.build` sources alongside the other `SettingsDialog/*.vala` files).
@@ -174,7 +189,7 @@ public class OLLMapp.SettingsDialog.RegistrationBanner : Gtk.Box
 }
 ```
 
-### 2. `ollmapp/SettingsDialog/MainDialog.vala` — `construct`: create + prepend the registration banner
+### ✔️ 2. `ollmapp/SettingsDialog/MainDialog.vala` — `construct`: create + prepend the registration banner
 
 **Why:** place the banner in `action_bar_area` (same area as `PullManagerBanner`), above the page action widgets.
 **Where:** `construct`, immediately after `this.progress_banner.visible = false;` (and before `main_box.append(this.action_bar_area);`).
@@ -187,7 +202,7 @@ public class OLLMapp.SettingsDialog.RegistrationBanner : Gtk.Box
 			this.action_bar_area.prepend(this.registration_banner);
 ```
 
-### 3. `ollmapp/SettingsDialog/MainDialog.vala` — fields: registration banner + once-wire flag
+### ✔️ 3. `ollmapp/SettingsDialog/MainDialog.vala` — fields: registration banner + once-wire flag
 
 **Why:** hold the banner reference and a guard so the `rpc.notification` subscription is connected once.
 **Where:** near the `private PullManagerBanner progress_banner;` declaration.
@@ -200,7 +215,7 @@ public class OLLMapp.SettingsDialog.RegistrationBanner : Gtk.Box
 		private bool registration_wired = false;
 ```
 
-### 4. `ollmapp/SettingsDialog/MainDialog.vala` — `show_dialog`: bootstrap + subscribe to `event.client_cert`
+### ✔️ 4. `ollmapp/SettingsDialog/MainDialog.vala` — `show_dialog`: bootstrap + subscribe to `event.client_cert`
 
 **Why:** refresh newest pending when the dialog opens (bootstrap) and on each daemon `event.client_cert` broadcast (live update — no poll loop).
 **Where:** `show_dialog`, immediately after `this.progress_banner.initialize_existing_pulls();`.
@@ -222,16 +237,17 @@ public class OLLMapp.SettingsDialog.RegistrationBanner : Gtk.Box
 			this.registration_banner.refresh.begin();
 ```
 
-## Approved client expanders
+## ✔️ Approved client expanders
 
-- **🔷** `⏳` Same expandable-block UX as File Server / Connection (not a table, not a special widget class for “banned”).
-- **🔷** `⏳` Expand = read-only detail; Remove = `client_cert("remove", id)` → bool.
-- **🔷** `⏳` Titles: **Client N** for v1; upgrade label when a requester is present.
-- **🔷** `⏳` Wire to list approved rows (`status = 1`) for the Connections tab (thin list wire on `ClientCert`, or equivalent — needed for the expanders).
+- **🔷** `✔️` Same expandable-block UX as File Server / Connection (not a table, not a special widget class for “banned”).
+- **🔷** `✔️` Expand = read-only detail; Remove = `client_cert("remove", id)` → bool.
+- **🔷** `✔️` Titles: **Client N** for v1; upgrade label when a requester is present.
+- **🔷** `✔️` Wire to list approved rows (`status = 1`) for the Connections tab (thin list wire on `ClientCert`, or equivalent — needed for the expanders).
+- **ℹ️** Implementation extracted an `ApprovedClientRow` helper class (`ollmapp/SettingsDialog/ApprovedClientRow.vala`) mirroring the existing `ConnectionRow` pattern — minor deviation from the inline-expander proposal above; same UX outcome.
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
-### 1. `ollmfilesd/ClientCert.vala` — `rpc_register`: register `approved_certs`
+### ✔️ 1. `ollmfilesd/ClientCert.vala` — `rpc_register`: register `approved_certs`
 
 **Why:** the Connections tab needs a list of `status = 1` rows to render the approved expanders; today only `pending_cert` (one pending) exists.
 **Where:** `rpc_register`, the `OLLMrpc.Request.add_class(...)` call.
@@ -260,7 +276,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			);
 ```
 
-### 2. `ollmfilesd/ClientCert.vala` — `approved_certs`: return `status = 1` rows
+### ✔️ 2. `ollmfilesd/ClientCert.vala` — `approved_certs`: return `status = 1` rows
 
 **Why:** thin list wire for the Connections tab; mirrors `ProjectManager.rpc_load_projects_from_db` (`retval = OLLMrpc.val("o", list)` with `Gee.ArrayList<GLib.Object>`).
 **Where:** new handler, after the `pending_cert` method.
@@ -289,7 +305,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 		}
 ```
 
-### 3. `ollmapp/SettingsDialog/ConnectionsPage.vala` — fields: track approved expander rows
+### ✔️ 3. `ollmapp/SettingsDialog/ConnectionsPage.vala` — fields: track approved expander rows
 
 **Why:** re-render must clear the previous approved expanders before appending fresh ones.
 **Where:** near the `private Gee.HashMap<string, ConnectionRow> rows = …` declaration.
@@ -302,7 +318,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			new Gee.ArrayList<Adw.ExpanderRow>();
 ```
 
-### 4. `ollmapp/SettingsDialog/ConnectionsPage.vala` — `render_approved` + `remove_approved`: load + render approved expanders
+### ✔️ 4. `ollmapp/SettingsDialog/ConnectionsPage.vala` — `render_approved` + `remove_approved`: load + render approved expanders
 
 **Why:** render each approved client as a read-only `Adw.ExpanderRow` (title = `requester` or `Client N`, subtitle = fingerprint, detail rows IP / accepted time, Remove button → `client_cert("remove", id)` then refresh). Mirrors the `ConnectionRow` expander pattern but read-only.
 **Where:** new methods, after the `add_connection_row` method. `render_approved` is `public` so the registration banner can trigger it after an Accept.
@@ -392,7 +408,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 		}
 ```
 
-### 5. `ollmapp/SettingsDialog/ConnectionsPage.vala` — constructor: bootstrap `render_approved`
+### ✔️ 5. `ollmapp/SettingsDialog/ConnectionsPage.vala` — constructor: bootstrap `render_approved`
 
 **Why:** load approved expanders when the page is first built, same as `render_connections` is called at construction.
 **Where:** constructor, immediately after `this.render_connections();`.
@@ -404,24 +420,24 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			this.render_approved.begin();
 ```
 
-### 6. Banner → approved refresh after Accept
+### ✔️ 6. Banner → approved refresh after Accept
 
 **Why:** after the registration banner Accepts a pending client, that row becomes approved and should appear in the Connections tab.
 **Where:** `RegistrationBanner.act`, after `this.refresh.begin();` (the pending reload).
 **Depends on:** Pending banner §1, Approved §4.
 
-- **⏳** `RegistrationBanner.act` should also trigger `ConnectionsPage.render_approved` after a successful Accept. `connections_page` is currently `private` on `MainDialog`, so this needs either exposing it or a small `MainDialog` relay method — pick one during implementation (do **not** add both).
+- **✔️** `RegistrationBanner.act` also triggers `ConnectionsPage.render_approved` after a successful Accept, via the now-public `MainDialog.connections_page` (one relay path, not both).
 
-## Registration requester
+## ✔️ Registration requester
 
-- **🔷** `⏳` Add a **requester** string on the `client_cert` row + `request_registration` payload — best-effort extracted by the client from the device, **not** a fixed enum and **not** user-entered text.
+- **🔷** `✔️` Add a **requester** string on the `client_cert` row + `request_registration` payload — best-effort extracted by the client from the device, **not** a fixed enum and **not** user-entered text.
   - Ideal: device model identifier (e.g. Android `Build.MODEL` → `SM-A110O`-style Samsung phone name); fall back to whatever is reasonably extractable on the platform (Linux DMI product / Windows hostname / etc.); empty when nothing usable.
 - **🔷** `⏳` Desktop treats it as an opaque display string — banner + approved expander show it verbatim; Android plan sends it ([`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)).
 - **🚫** Desktop does **not** populate `requester` — it only stores (from the client's `request_registration` call) and displays it. Extraction from the device (`Build.MODEL` / DMI / hostname) lives in [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md).
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
-### 1. `ollmfilesd/ClientCert.vala` — `ClientCert`: add `requester` property
+### ✔️ 1. `ollmfilesd/ClientCert.vala` — `ClientCert`: add `requester` property
 
 **Why:** the descriptor rides on the `ClientCert` row the desktop already serializes (`bin_default_write_prop` covers any non-`app` property), so `pending_cert` + approved rows carry it to the UI with no extra wire.
 **Where:** class body, after the `created` property.
@@ -433,7 +449,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 		public string requester { get; set; default = ""; }
 ```
 
-### 2. `ollmfilesd/ClientCert.vala` — `rpc_register`: widen `request_registration` arg signature
+### ✔️ 2. `ollmfilesd/ClientCert.vala` — `rpc_register`: widen `request_registration` arg signature
 
 **Why:** the client must send the descriptor on the call; today `request_registration` has no typed args (`""`).
 **Where:** `rpc_register`, the `OLLMrpc.Request.add_class(...)` call.
@@ -461,7 +477,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			);
 ```
 
-### 3. `ollmfilesd/ClientCert.vala` — `request_registration`: accept + persist descriptor
+### ✔️ 3. `ollmfilesd/ClientCert.vala` — `request_registration`: accept + persist descriptor
 
 **Why:** store the caller-supplied descriptor on the pending row.
 **Where:** `request_registration` — signature line, and the `new ClientCert() { … }` insert.
@@ -504,7 +520,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			};
 ```
 
-### 4. `ollmfilesd/ClientCert.vala` — `init_db`: add column + migrate existing DBs
+### ✔️ 4. `ollmfilesd/ClientCert.vala` — `init_db`: add column + migrate existing DBs
 
 **Why:** new column must be in `CREATE TABLE` for fresh DBs and added via `ALTER TABLE` for existing installs.
 **Where:** `init_db`, the `CREATE TABLE IF NOT EXISTS client_cert (...)` exec.
@@ -548,9 +564,9 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ℹ️ The trailing `ALTER TABLE … ADD COLUMN` errors harmlessly on DBs that already have the column (idempotent), so no extra guard is needed.
 
-## Broadcast
+## ✔️ Broadcast
 
-- **🔷** `⏳` On new pending insert in `request_registration`, broadcast `OLLMrpc.Notification` with method **`event.client_cert`** (via `OllmfilesdApplication.broadcast`).
+- **🔷** `✔️` On new pending insert in `request_registration`, broadcast `OLLMrpc.Notification` with method **`event.client_cert`** (via `OllmfilesdApplication.broadcast`).
   - Payload property indicates **request** (registration requested) — do not encode that in a long method name.
 - **🔷** `⏳` Desktop banner listens for `event.client_cert` and refreshes newest pending.
   - Listen-side fence lives in **Pending banner** §4 (`MainDialog.show_dialog`): the `registration_wired` once-wire + `if (notif.method == "event.client_cert") this.registration_banner.refresh.begin();`. Not duplicated here.
@@ -560,7 +576,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
-### 1. `ollmfilesd/ClientCert.vala` — `request_registration`: broadcast on pending insert
+### ✔️ 1. `ollmfilesd/ClientCert.vala` — `request_registration`: broadcast on pending insert
 
 **Why:** the desktop banner must wake without polling the moment a new pending row is created; `OllmfilesdApplication.broadcast` fans the notification out on the local Unix listen (the desktop admin path).
 **Where:** `request_registration`, immediately after `ClientCert.query(db).insert(row);` and before `request.reply(...)`.
@@ -585,7 +601,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 - **ℹ️** Pattern: `PullManagerBanner` on `MainDialog.action_bar_area` — registration banner lives there, not a Connections-tab pending list.
 - **🔷** **No** pending-registration list, table, or multi-row pending UI — banner only, one at a time.
 - **🔷** Registered client rows are **not** `Settings.Connection` (LLM API). Parallel expandable blocks on the same tab.
-- **⏳** Code proposals — ready to draft fences (requester + `event.client_cert` broadcast both settled).
+- **✔️** Code proposals — landed in tree (requester + `event.client_cert` broadcast both settled).
 
 ---
 

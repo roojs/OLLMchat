@@ -53,7 +53,13 @@ namespace OLLMrpcTests
 			var ca_key = GLib.Environment.get_variable("OLLM_RPC_CA_KEY");
 			this.check(command_line, ca_pem != null && ca_pem != "", "OLLM_RPC_CA_PEM");
 			this.check(command_line, ca_key != null && ca_key != "", "OLLM_RPC_CA_KEY");
-			var cert = new OLLMrpc.Transport.Cert(tls_dir, ca_pem, ca_key);
+			var cert = new OLLMrpc.Transport.Cert() {
+				dir = tls_dir,
+				ca_pem_path = ca_pem,
+				ca_key_path = ca_key,
+				server_san = true,
+			};
+			cert.ensure();
 			var http = new OLLMrpc.Transport.HttpServer(0) {
 				tls_certificate = cert.certificate
 			};
