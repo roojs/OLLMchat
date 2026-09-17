@@ -20,11 +20,11 @@ namespace OLLMapp.SettingsDialog
 {
 	/**
 	 * Connections tab content for settings dialog.
-	 * 
+	 *
 	 * Manages server connections (add, remove, edit connection details).
 	 * Uses Adw.PreferencesGroup with Gtk.ListBox for connection list.
 	 * Editing is inline - no separate edit/update methods needed.
-	 * 
+	 *
 	 * @since 1.0
 	 */
 	public class ConnectionsPage : SettingsPage
@@ -38,13 +38,18 @@ namespace OLLMapp.SettingsDialog
 		private Gtk.ScrolledWindow scrolled_window;
 		private Adw.PreferencesGroup group;
 		private Gtk.Box boxed_list;
-		private Gee.HashMap<string, ConnectionRow> rows = new Gee.HashMap<string, ConnectionRow>();
+		private Gee.HashMap<string, ConnectionRow> rows {
+			get; set; default = new Gee.HashMap<string, ConnectionRow>();
+		}
+		private Gee.ArrayList<Adw.ExpanderRow> approved_rows {
+			get; set; default = new Gee.ArrayList<Adw.ExpanderRow>();
+		}
 		private ConnectionAdd add_dialog;
 		private bool updating_defaults = false;
 
 		/**
 		 * Creates a new ConnectionsPage.
-		 * 
+		 *
 		 * @param dialog Parent SettingsDialog (which has the app object)
 		 */
 		public ConnectionsPage(MainDialog dialog)
@@ -92,6 +97,7 @@ namespace OLLMapp.SettingsDialog
 
 			// Initial render of connections
 			this.render_connections();
+			this.render_approved.begin();
 		}
 
 		/**
@@ -121,7 +127,7 @@ namespace OLLMapp.SettingsDialog
 
 		/**
 		 * Tests connection and saves to config on success.
-		 * 
+		 *
 		 * @param url Connection URL to verify
 		 */
 		private async void verify_connection(string url)
@@ -185,7 +191,7 @@ namespace OLLMapp.SettingsDialog
 		/**
 		 * Removes connection from config.connections map and updates visibility of Remove buttons.
 		 * Hides Remove button if only one connection left.
-		 * 
+		 *
 		 * @param url Connection URL to remove
 		 */
 		private void remove_connection(string url)
@@ -229,7 +235,7 @@ namespace OLLMapp.SettingsDialog
 
 		/**
 		 * Adds a single connection row to the UI.
-		 * 
+		 *
 		 * @param url Connection URL (key in config.connections map)
 		 * @param connection Connection object
 		 * @param can_remove Whether Remove button should be visible
@@ -253,11 +259,70 @@ namespace OLLMapp.SettingsDialog
 		}
 
 		/**
+		 * Load approved client certs and render each as a read-only expander.
+		 *
+		 * @since 1.0
+		 */
+		public async void render_approved()
+		{
+			var win = this.dialog.parent;
+			if (win == null || win.project_manager == null) {
+				return;
+			}
+			OLLMrpc.Response response;
+			try {
+				response = yield win.project_manager.rpc.call(
+					new OLLMrpc.Request() {
+						method = "RPC-ClientCert.approved_certs"
+					});
+			} catch (GLib.Error e) {
+				GLib.debug("approved_certs failed: %s", e.message);
+				return;
+			}
+			foreach (var row in this.approved_rows) {
+				this.boxed_list.remove(row);
+			}
+			this.approved_rows.clear();
+			if (response.retval.type() == GLib.Type.INVALID) {
+				return;
+			}
+		var clients = (Gee.ArrayList<OLLMapp.ClientCert>) response.retval.get_object();
+		var n = 0;
+		foreach (var client in clients) {
+			n++;
+			var row = new ApprovedClientRow(client, n);
+			row.remove_requested.connect(() => {
+				this.remove_approved.begin(row.id);
+			});
+			this.approved_rows.add(row.expander);
+			this.boxed_list.append(row.expander);
+		}
+		}
+
+		private async void remove_approved(int64 id)
+		{
+			var win = this.dialog.parent;
+			if (win == null || win.project_manager == null) {
+				return;
+			}
+			try {
+				yield win.project_manager.rpc.call(new OLLMrpc.Request() {
+					method = "RPC-ClientCert.client_cert",
+					args = OLLMrpc.args("sx", "remove", id)
+				});
+			} catch (GLib.Error e) {
+				GLib.debug("client_cert remove failed: %s", e.message);
+				return;
+			}
+			this.render_approved.begin();
+		}
+
+		/**
 		 * Called when a connection's default switch is toggled.
 		 * 
 		 * Applies config from UI, then ensures only one connection is default.
 		 * If unsetting default and this is the only connection, it will be set back to default.
-		 * 
+		 *
 		 * @param url Connection URL
 		 * @param is_default Whether this connection should be default
 		 */
@@ -290,7 +355,7 @@ namespace OLLMapp.SettingsDialog
 				if (entry.key == url) {
 					continue;
 				}
-				
+
 				if (is_default) {
 					// Setting this as default: clear all other connections
 					entry.value.is_default = false;
@@ -299,7 +364,7 @@ namespace OLLMapp.SettingsDialog
 					}
 					continue;
 				}
-				
+
 				if (found_first) {
 					continue;
 				}
@@ -327,4 +392,3 @@ namespace OLLMapp.SettingsDialog
 
 	}
 }
-

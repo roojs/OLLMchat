@@ -139,7 +139,8 @@ namespace OLLMrpc
 			string method_name,
 			GLib.Type request_type,
 			GLib.Type response_type
-		) throws GLib.Error {
+		) throws GLib.Error 
+		{
 			var variable = path.has_suffix("/{id}");
 			var key = variable
 				? path.substring(0, path.length - "/{id}".length)
@@ -151,9 +152,8 @@ namespace OLLMrpc
 				by_verb.set(verb, new Gee.HashMap<string, Route>());
 			}
 			if (by_verb.get(verb).has_key(key)) {
-				throw new GLib.IOError.EXISTS(
-					"key has already been set: %s %s", verb, key
-				);
+				throw new GLib.IOError.EXISTS("key has already been set: %s %s", 
+					verb, key);
 			}
 			by_verb.get(verb).set(key, new Route() {
 				method = method_name,

@@ -194,6 +194,12 @@ namespace OLLMrpc
 				v_val.set_variant(l.arg<GLib.Variant>());
 				return v_val;
 
+			case "V":
+				var held = l.arg<GLib.Value>();
+				var copy = GLib.Value(held.type());
+				held.copy(ref copy);
+				return copy;
+
 			default:
 				GLib.error("unknown D-Bus type %s", tag);
 		}
@@ -234,6 +240,9 @@ namespace OLLMrpc
 		} else if (rest.has_prefix("S")) {
 			tag = "S";
 			rest = rest.substring(1);
+		} else if (rest.has_prefix("V")) {
+			tag = "V";
+			rest = rest.substring(1);
 		} else {
 			var rest_ptr = (char*) rest;
 			var next = (char*) null;
@@ -272,7 +281,8 @@ namespace OLLMrpc
 	 * ''o'' {@link GLib.Object}, ''g'' signature, ''h'' unix fd,
 	 * ''as'' ''string[]'', ''S'' same value plus Vala array length
 	 * at FFI call, ''ay'' {@link GLib.Bytes},
-	 * ''v'' {@link GLib.Variant}.
+	 * ''v'' {@link GLib.Variant},
+	 * ''V'' {@link GLib.Value} (Helper / generator; not D-Bus).
 	 *
 	 * Lease ids and {@link Bin.Serializable} encoding happen when
 	 * {@link Request} is written ({@link Bin.StreamValue}).
@@ -305,6 +315,9 @@ namespace OLLMrpc
 				offset += 1;
 			} else if (rest.has_prefix("S")) {
 				tag = "S";
+				offset += 1;
+			} else if (rest.has_prefix("V")) {
+				tag = "V";
 				offset += 1;
 			} else {
 				var rest_ptr = (char*) rest;

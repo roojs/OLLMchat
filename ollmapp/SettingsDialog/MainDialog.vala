@@ -36,7 +36,7 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public OLLMchat.ApplicationInterface app { get; construct; }
 		
-		private ConnectionsPage connections_page;
+		public ConnectionsPage connections_page;
 		private ModelsPage models_page;
 		private ProjectsPage projects_page;
 		private ToolsPage tools_page;
@@ -62,6 +62,8 @@ namespace OLLMapp.SettingsDialog
 		 * Progress banner for pull operations (displayed above action widgets)
 		 */
 		private PullManagerBanner progress_banner;
+		private RegistrationBanner registration_banner;
+		private bool registration_wired = false;
 		
 		/**
 		 * Checking connection dialog (reused for connection verification)
@@ -122,6 +124,8 @@ namespace OLLMapp.SettingsDialog
 			// Add progress banner above action widgets (always visible when action bar area is visible)
 			this.action_bar_area.prepend(this.progress_banner);
 			this.progress_banner.visible = false;
+			this.registration_banner = new RegistrationBanner(this);
+			this.action_bar_area.prepend(this.registration_banner);
 			main_box.append(this.action_bar_area);
 			
 			// Set main box as dialog content
@@ -139,8 +143,8 @@ namespace OLLMapp.SettingsDialog
 
 			// Create connections page
 			this.connections_page = new ConnectionsPage(this);
-			this.view_stack.add_titled(this.connections_page, 
-				this.connections_page.page_name, 
+			this.view_stack.add_titled(this.connections_page,
+				this.connections_page.page_name,
 				this.connections_page.page_title);
 			this.view_stack.get_page(this.connections_page).icon_name = this.connections_page.page_icon;
 			// Add action widget to action bar area (initially hidden)
@@ -176,7 +180,7 @@ namespace OLLMapp.SettingsDialog
 
 			// Connect to page visibility to show/hide action widgets
 			this.view_stack.notify["visible-child"].connect(this.on_page_changed);
-			
+
 			// Initial activation of the default visible page
 			this.on_page_changed();
 
@@ -184,7 +188,7 @@ namespace OLLMapp.SettingsDialog
 			this.closed.connect(this.on_closed);
 
 		}
-		
+
 		/**
 		 * Called when page changes.
 		 * 
@@ -214,7 +218,7 @@ namespace OLLMapp.SettingsDialog
 		public async void show_dialog(string? page_name = null)
 		{
 			// Present the main dialog immediately
-			
+
 			// Create and show checking connection dialog
 			var busy_dialog = new BusyDialog(this.parent);
 			busy_dialog.status_label.label = "Checking connection…";
@@ -223,7 +227,7 @@ namespace OLLMapp.SettingsDialog
 			yield this.check_all_connections();
 
 			busy_dialog.close();
-			
+
 			// Load tools and configs for tools page (non-blocking)
 			this.tools_page.load_tools();
 			this.tools_page.load_configs();
@@ -231,15 +235,24 @@ namespace OLLMapp.SettingsDialog
 
 			// Bind projects list to ProjectManager (once; project_manager not available at dialog creation)
 			this.projects_page.load_projects();
-			
+
 			// Initialize progress bars for any existing active pulls
 			this.progress_banner.initialize_existing_pulls();
-			
+			if (this.parent.project_manager != null && !this.registration_wired) {
+				this.registration_wired = true;
+				this.parent.project_manager.rpc.notification.connect((notif) => {
+					if (notif.method == "event.client_cert") {
+						this.registration_banner.refresh.begin();
+					}
+				});
+			}
+			this.registration_banner.refresh.begin();
+
 			// Switch to specified page if provided
 			if (page_name != null) {
 				this.view_stack.set_visible_child_name(page_name);
 			}
-			
+
 			// Show checking connection dialog
 			//this.parent.checking_connection_dialog.show_dialog();
 

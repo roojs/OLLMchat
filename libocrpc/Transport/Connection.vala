@@ -316,13 +316,14 @@ namespace OLLMrpc.Transport
 					request.method,
 					this
 				);
-				request.connection = this;
-				if (!request.dispatch()) {
-					this.reply_error(
-						request,
-						(int) OLLMrpc.RpcErrorCode.METHOD_NOT_FOUND
-					);
-				}
+			request.connection = this;
+			if (this.buffer_stream != null) {
+				this.buffer_stream.read_fd();
+				request.buffer = this.buffer_stream.take_pending();
+			}
+			if (!request.dispatch()) {
+				this.reply_error(request, (int) OLLMrpc.RpcErrorCode.METHOD_NOT_FOUND);
+			}
 			} while (
 				(source.get_buffer_condition() & GLib.IOCondition.IN) != 0
 			);

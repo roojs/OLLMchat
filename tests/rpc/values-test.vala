@@ -75,6 +75,14 @@ namespace OLLMrpcTests
 			var packed_f = OLLMrpc.args("f", 1.5);
 			this.check(command_line, packed_f.size == 1, "args float size");
 			this.check(command_line, packed_f.get(0).get_float() == (float) 1.5, "args float");
+			var held_f = GLib.Value(typeof(float));
+			held_f.set_float((float) 1.25);
+			var packed_V = OLLMrpc.args("V", held_f);
+			this.check(command_line, packed_V.size == 1, "args V size");
+			this.check(command_line, packed_V.get(0).type() == typeof(float), "args V type");
+			this.check(command_line, packed_V.get(0).get_float() == (float) 1.25, "args V float");
+			var retval_V = OLLMrpc.val("V", held_f);
+			this.check(command_line, retval_V.get_float() == (float) 1.25, "val V float");
 			var hello = new RpcDummy.Hello();
 			var objects = OLLMrpc.args("o", hello);
 			this.check(command_line, objects.size == 1, "args object size");

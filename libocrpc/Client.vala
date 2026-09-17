@@ -592,10 +592,15 @@ namespace OLLMrpc
 				return;
 			}
 			try {
-				GLib.debug("id=%d method=%s", head.request.id, head.request.method);
+			GLib.debug("id=%d method=%s", head.request.id, head.request.method);
+			if (this.buffer_stream != null) {
+				this.buffer_stream.write_with(head.request.buffer,
+					head.request, this.bin);
+			} else {
 				this.bin.write(head.request);
 				yield this.output.flush_async(GLib.Priority.DEFAULT, null);
-				head.sent = true;
+			}
+			head.sent = true;
 			} catch (GLib.Error e) {
 				this.complete_pending(head.request.id, null, e);
 			}
@@ -824,12 +829,17 @@ namespace OLLMrpc
 							if (p.sent) {
 								continue;
 							}
-							this.sending = true;
-							GLib.debug("id=%d method=%s", p.request.id, p.request.method);
+						this.sending = true;
+						GLib.debug("id=%d method=%s", p.request.id, p.request.method);
+						if (this.buffer_stream != null) {
+							this.buffer_stream.write_with(p.request.buffer,
+								p.request, this.bin);
+						} else {
 							this.bin.write(p.request);
 							this.output.flush(null);
-							p.sent = true;
-							this.sending = false;
+						}
+						p.sent = true;
+						this.sending = false;
 							sent_one = true;
 							break;
 						}
@@ -964,12 +974,17 @@ namespace OLLMrpc
 			this.poll_depth++;
 
 			try {
-				this.sending = true;
-				GLib.debug("id=%d method=%s", entry.request.id, entry.request.method);
+			this.sending = true;
+			GLib.debug("id=%d method=%s", entry.request.id, entry.request.method);
+			if (this.buffer_stream != null) {
+				this.buffer_stream.write_with(entry.request.buffer,
+					entry.request, this.bin);
+			} else {
 				this.bin.write(entry.request);
 				this.output.flush(null);
-				entry.sent = true;
-				this.sending = false;
+			}
+			entry.sent = true;
+			this.sending = false;
 			} catch (GLib.Error e) {
 				this.sending = false;
 				this.complete_pending(entry.request.id, null, e);

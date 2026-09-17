@@ -94,6 +94,39 @@ namespace OLLMrpc.Live
 			this.pending.offer(buffer);
 		}
 
+		/**
+		 * Read currently-readable fds on the ''.fd'' channel into pending.
+		 *
+		 * Non-blocking: poll(0) + {@link receive_one} until the socket has
+		 * no more data. Call before {@link take_pending} on the receive side
+		 * (server on_input_ready, client dispatch_message).
+		 */
+		public void read_fd()
+		{
+			while (this.socket != null) {
+				var buffer_poll = GLib.PollFD();
+				buffer_poll.fd = this.socket.get_fd();
+				buffer_poll.events = GLib.IOCondition.IN;
+				var buffer_fds = new GLib.PollFD[] { buffer_poll };
+				if (GLib.poll(buffer_fds, 0) <= 0
+					|| (buffer_fds[0].revents & GLib.IOCondition.IN) == 0) {
+					break;
+				}
+				try {
+					this.receive_one();
+				} catch (GLib.IOError e) {
+					if (e.code == GLib.IOError.WOULD_BLOCK) {
+						break;
+					}
+					GLib.warning("buffer stream receive: %s", e.message);
+					break;
+				} catch (GLib.Error e) {
+					GLib.warning("buffer stream receive: %s", e.message);
+					break;
+				}
+			}
+		}
+
 		/** Client: watch fd channel and fill {@link pending}. */
 		public void start_watch()
 		{

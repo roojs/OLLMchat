@@ -99,10 +99,21 @@ namespace OLLMrpc
 		 */
 		public GLib.Type result_type { get; set; default = GLib.Type.INVALID; }
 
-		/** Set by the server before {@link dispatch}. */
-		public Transport.Connection connection { get; set; }
+	/** Set by the server before {@link dispatch}. */
+	public Transport.Connection connection { get; set; }
 
-		public static void rpc_register()
+	/**
+	 * Live fd payload, or null for bin only.
+	 *
+	 * Client sets before {@link Client.call} / {@link Client.call_poll};
+	 * server fills via {@link Live.BufferStream.take_pending} before
+	 * {@link dispatch}. Never serialized on the bin socket — the fd
+	 * travels the ''.fd'' channel first, same order as
+	 * {@link Response.buffer}.
+	 */
+	public Live.Buffer? buffer { get; set; default = null; }
+
+	public static void rpc_register()
 		{
 			Bin.register("Request", typeof(Request));
 		}
@@ -224,13 +235,14 @@ namespace OLLMrpc
 			GLib.ParamSpec prop
 		) throws GLib.Error
 		{
-			switch (prop.name) {
-				case "connection":
-				case "result-type":
+		switch (prop.name) {
+			case "buffer":
+			case "connection":
+			case "result-type":
+				return;
+			case "lease-id":
+				if (this.lease_id == 0) {
 					return;
-				case "lease-id":
-					if (this.lease_id == 0) {
-						return;
 					}
 					this.bin_default_write_prop(ctx, prop);
 					return;
@@ -267,12 +279,13 @@ namespace OLLMrpc
 			uint8 type_byte
 		) throws GLib.Error
 		{
-			switch (prop.name) {
-				case "connection":
-				case "result-type":
-					return;
-				case "method":
-					this.method = ctx.read_name_ref(type_byte);
+		switch (prop.name) {
+			case "buffer":
+			case "connection":
+			case "result-type":
+				return;
+			case "method":
+				this.method = ctx.read_name_ref(type_byte);
 					return;
 				case "args":
 					var n = ctx.in_stream.read_byte();

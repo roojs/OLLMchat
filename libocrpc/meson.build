@@ -162,7 +162,11 @@ ocrpc_base_lib = library('ocrpc',
     '--vapidir', meson.current_source_dir(),
     '--vapidir', '/usr/share/vala/vapi',
   ],
+  # Meson Vala: install:true alone installs only the .so. Secondary outputs
+  # (header, vapi) need matching install_dir slots — true = default path,
+  # false = skip (ocrpc.vapi comes from custom_target below).
   install: true,
+  install_dir: [true, true, false],
 )
 
 ocrpc_vapi = custom_target('ocrpc-vapi',

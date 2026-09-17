@@ -95,8 +95,8 @@ namespace OLLMfilesd
 			this.host = host;
 			this.port = (uint) port;
 			this.proxy = filesd.proxy;
-			this.tls_certificate = new OLLMrpc.Transport.Cert(
-				tls_dir, ca_pem, ca_key).certificate;
+			this.tls_certificate = new OLLMrpc.Transport.Cert(tls_dir, ca_pem,
+				 ca_key).certificate;
 			if (!this.start()) {
 				GLib.error("failed to start HTTPS RPC listener");
 			}
@@ -140,8 +140,8 @@ namespace OLLMfilesd
 			if (reply.cert_fingerprint == "") {
 				reply.write(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "client certificate required")
+					error = new OLLMrpc.Error((int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, 
+						"client certificate required")
 				});
 				return false;
 			}
@@ -155,8 +155,8 @@ namespace OLLMfilesd
 			}
 			reply.write(new OLLMrpc.Response() {
 				id = request.id,
-				error = new OLLMrpc.Error(
-					(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "certificate not registered")
+				error = new OLLMrpc.Error((int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, 
+					"certificate not registered")
 			});
 			return false;
 		}

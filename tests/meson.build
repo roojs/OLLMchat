@@ -189,6 +189,22 @@ test('test-rpc-ffi-as',
   suite: 'rpc',
   timeout: 10,
 )
+test_rpc_ffi_v = executable('test-rpc-ffi-v',
+  'rpc/ffi-v-test.vala',
+  dependencies: rpc_test_deps + [
+    rpc_test_app_dep,
+    dependency('gio-unix-2.0'),
+  ],
+  link_with: rpc_test_link_with,
+  build_rpath: rpc_test_build_rpath,
+  export_dynamic: true,
+  vala_args: rpc_test_vala_args,
+)
+test('test-rpc-ffi-v',
+  test_rpc_ffi_v,
+  suite: 'rpc',
+  timeout: 10,
+)
 test_rpc_http_server = executable('test-rpc-http-server',
   'rpc/http-server-test.vala',
   dependencies: rpc_test_deps + [
@@ -355,6 +371,25 @@ test_rpc_scm_response_call_poll = executable('test-rpc-scm-response-call-poll',
 )
 test('test-rpc-scm-response-call-poll',
   test_rpc_scm_response_call_poll,
+  suite: 'rpc',
+  timeout: 15,
+)
+test_rpc_scm_request_call_poll = executable('test-rpc-scm-request-call-poll',
+  'rpc/scm-request-call-poll-test.vala',
+  dependencies: rpc_test_deps + [
+    rpc_test_app_dep,
+    dependency('gio-unix-2.0'),
+    meson.get_compiler('vala').find_library('posix'),
+  ],
+  link_with: rpc_test_link_with,
+  build_rpath: rpc_test_build_rpath,
+  export_dynamic: true,
+  vala_args: rpc_test_vala_args + [
+    '--pkg=posix',
+  ],
+)
+test('test-rpc-scm-request-call-poll',
+  test_rpc_scm_request_call_poll,
   suite: 'rpc',
   timeout: 15,
 )
