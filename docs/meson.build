@@ -392,6 +392,7 @@ valadoc_docs = custom_target('valadoc',
     # Note: version_fake.vala must come first as it defines OLLMapp.APP_VERSION (internal, not documented)
     'version_fake.vala',
     '../ollmapp/Application.vala',
+    '../ollmapp/ClientCert.vala',
     '../ollmapp/About.vala',
     '../ollmapp/ChatUserInterface.vala',  # Must come before Window (Window implements interface)
     '../ollmapp/AgentDropdown.vala',  # Must come before Window (Window uses AgentDropdown)
@@ -403,6 +404,7 @@ valadoc_docs = custom_target('valadoc',
     # ollmapp application sources (Settings UI)
     '../ollmapp/SettingsDialog/ConnectionAdd.vala',
     '../ollmapp/SettingsDialog/ConnectionRow.vala',
+    '../ollmapp/SettingsDialog/ApprovedClientRow.vala',
     '../ollmapp/SettingsDialog/SettingsPage.vala',
     '../ollmapp/BusyDialog.vala',
     '../ollmapp/SettingsDialog/ConnectionsPage.vala',
@@ -415,6 +417,7 @@ valadoc_docs = custom_target('valadoc',
     '../ollmapp/SettingsDialog/PullManager.vala',
     '../ollmapp/SettingsDialog/PullManagerThread.vala',
     '../ollmapp/SettingsDialog/PullManagerBanner.vala',
+    '../ollmapp/SettingsDialog/RegistrationBanner.vala',
     '../ollmapp/SettingsDialog/SearchablePulldown.vala',
     '../ollmapp/SettingsDialog/MainDialog.vala',
     '../ollmapp/SettingsDialog/ToolsPage.vala',
