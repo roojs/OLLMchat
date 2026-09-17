@@ -14,8 +14,9 @@
 - **ℹ️** [`docs/rpc-registration.md`](../rpc-registration.md) — `add_class` / `register` / FFI vs Gi
 - **ℹ️** [`docs/bin-rpc-protocol.md`](../bin-rpc-protocol.md) — `NAME_REF_REG` / `NAME_REF` (v3.1)
 - **ℹ️** `libocrpc/Ffi.vala` · `libocrpc/Request.vala` · `libocrpc/Gi.vala` · `libocrpc/Bin/Stream.vala`
+- **ℹ️** [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md) — vfunc numbered lookups (other direction)
 
-**Slugs read for proposed Vala:** `temporary-variables`, `this-prefix`, `reducing-nesting`, `defensive-code-null-checks`, `method-names-new-methods`, `line-length-breaking`, `docblocks`, `underscore-prefix`, `property-initialization`, `gobject-construct-blocks`, `brace-placement`, `gee-hashmap-access`, `gee-arraylist-access`, `avoiding-nullable-types`, `debug-warning-statements`, `agent-compliance-gate` (+ `docs/code-documentation.md`)
+**Slugs read for proposed Vala:** `temporary-variables`, `this-prefix`, `reducing-nesting`, `defensive-code-null-checks`, `method-names-new-methods`, `line-length-breaking`, `docblocks`, `underscore-prefix`, `property-initialization`, `gobject-construct-blocks`, `brace-placement`, `gee-hashmap-access`, `gee-arraylist-access`, `arraylist-for-strings`, `avoiding-nullable-types`, `debug-warning-statements`, `agent-compliance-gate` (+ `docs/code-documentation.md`)
 
 ---
 
@@ -28,6 +29,7 @@
 - **🔷** If the token is already bound to an FFI slot, Ffi uses `slot` and does **not** hash `methods`. Miss stays `read_name_ref` (same as today).
 - **🔷** No wire change. Client call sites stay `method = "RPC-File.read"`.
 - **⏳** `🔷` C–F (constants, generator, handshake, two-level ids) stay later.
+- **ℹ️** Vfunc numbered lookups are [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md) — not a string-name cache in this file.
 - **ℹ️** How hard **B** is, and the fences, are in **B** below.
 
 ---
@@ -100,6 +102,7 @@ Steady-state **bin** call (names already learned on this connection). First use 
 - **ℹ️** `Gi.dispatch`: split; `Gi.types.has_key` + `.get`; `GI.Repository.find_by_gtype`; `ObjectInfo.find_method(method_name)` (and parent walk).
 - **ℹ️** Namespace functions: `namespaces.contains` (list scan) + `find_by_name(ns, method)`.
 - **ℹ️** No `add_class` row. **A** does not change Gi.
+- **ℹ️** Vfunc hot path (name → hook) is [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md).
 
 ---
 
@@ -652,6 +655,10 @@ Always `read_name_ref`. Then `slot` only if `ref_slots` already has the wire id.
 
 - **⏳** `💩` Wire two uint16s. `objects[5].methods[3]`. Spec bump.
 
+### G — moved
+
+- **ℹ️** Wrong lead (cache another string map). Walkthrough + numbered wire path: [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md).
+
 ---
 
 ## Open points
@@ -659,6 +666,7 @@ Always `read_name_ref`. Then `slot` only if `ref_slots` already has the wire id.
 - **🔷** **A** (`FfiSlot` / `FfiOwner`, Gee `rows` + `classes`) and **B** (`ref_slots` bin slot cache, `Request.slot`) approved.
 - **⏳** `💩` Also cache cif prep in a later pass?
 - **⏳** `🔷` After A+B: C/D/E for a client integer, or stop?
+- **ℹ️** Vfuncs: [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md).
 
 ---
 
@@ -668,6 +676,7 @@ Always `read_name_ref`. Then `slot` only if `ref_slots` already has the wire id.
 2. **⏳** Apply **A** §1–§3, then **B** §4–§7.
 3. **⏳** `meson test -C build --suite rpc` — `test-rpc-bin` (second encode still compact), FFI tests, one Gi call (string path still works).
 4. **⏳** Later C–F.
+5. **ℹ️** Vfuncs: [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md).
 
 ---
 
@@ -680,4 +689,5 @@ Always `read_name_ref`. Then `slot` only if `ref_slots` already has the wire id.
 - **🚫** Do **not** pack the call signature into an integer.
 - **🚫** Do not change the bin byte layout. Do not skip-string inside `Notification.bin_read_prop`.
 - **🚫** Do not look up `methods` or reimplement `read_name_ref` in `bin_read_prop`.
+- **ℹ️** Vfunc numbered path is [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md).
 - **ℹ️** `Call.Base` / Ollama HTTP is a different stack.

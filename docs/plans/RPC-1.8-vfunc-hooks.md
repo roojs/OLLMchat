@@ -121,14 +121,12 @@ read, `vfunc_names` contains those names.
 
 ---
 
-## Future (not this plan) **💩**
+## Future (not this plan)
 
-Generic vfunc **invoke** via `g_vfunc_info_invoke` — would replace the
-consumer's per-signature client binders (and possibly server emit packing)
-with typelib-driven marshalling, reusing the `Gi.convert` / `scalar`
-machinery. Needs `Gi.convert` decoupled from `Request`, plus integration
-with the consumer's fallthrough sentinel protocol. Separate `RPC-1.9` if
-the per-signature trampolines ever become the bottleneck.
+- **⏳** `🔷` Numbered vfunc id (wire + hook map) — [`RPC-1.10-vfunc-id-lookups.md`](RPC-1.10-vfunc-id-lookups.md). Not a `vfunc_names` string cache.
+- **💩** Generic vfunc **invoke** via `g_vfunc_info_invoke` — would replace the consumer's per-signature client binders (and possibly server emit packing) with typelib-driven marshalling, reusing the `Gi.convert` / `scalar` machinery. Needs `Gi.convert` decoupled from `Request`, plus integration with the consumer's fallthrough sentinel protocol.
+
+**ℹ️** 1.8 already gave name → offset. 1.9 **A+B** gave inbound RPC name → slot. The leftover string hash is the consumer's `HashMap<string, Live.Hook>` on each vfunc fire.
 
 ---
 
