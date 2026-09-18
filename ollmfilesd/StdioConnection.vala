@@ -167,9 +167,7 @@ namespace OLLMfilesd
 		private void drain_script_request(int request_id)
 		{
 			while (this.script_awaiting_id == request_id) {
-				if (!GLib.MainContext.default().iteration(true)) {
-					break;
-				}
+				GLib.MainContext.default().iteration(true);
 			}
 		}
 
