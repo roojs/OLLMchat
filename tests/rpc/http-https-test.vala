@@ -64,7 +64,7 @@ namespace OLLMrpcTests
 				tls_certificate = cert.certificate
 			};
 			this.check(command_line, http.start(), "https server start");
-			var base_url = "https://127.0.0.1:%u".printf(http.port);
+			var base_url = "https://localhost:%u".printf(http.port);
 
 			var client = new OLLMrpc.Transport.HttpClient(base_url) {
 				tls_database = cert.trust

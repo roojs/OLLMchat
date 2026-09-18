@@ -19,18 +19,20 @@
 namespace OLLMrpc.Transport
 {
 	/**
-	 * TLS leaf identity and product-CA trust for HTTPS RPC.
+	 * The key and certificate files one program uses for HTTPS RPC.
 	 *
-	 * Configure with construct properties, then call {@link ensure} once:
-	 * it loads or mints the leaf into {@link certificate} and builds the
-	 * product-CA trust store into {@link trust}. Signing: when
-	 * {@link ca_pem_path} and {@link ca_key_path} are set, the leaf is
-	 * CA-signed; otherwise self-signed.
+	 * Used by both ends: ollmfilesd makes the server's files, ollmapp
+	 * makes the client's. Configure with construct properties, then call
+	 * {@link ensure} once: it creates the files if needed and sets
+	 * {@link certificate} (this program's own) and {@link trust} (the
+	 * product CA the other end must be signed by). When
+	 * {@link ca_pem_path} and {@link ca_key_path} are set the certificate
+	 * is signed with that CA; otherwise it is self-signed.
 	 *
-	 * {@link ensure} does not throw. Damage it can repair (an unreadable
-	 * leaf PEM, a missing or stale trust PEM) is repaired in place;
-	 * anything else (directory not creatable, GnuTLS failure, CA key
-	 * missing) is a broken install and aborts with {@link GLib.error}.
+	 * {@link ensure} does not throw. Files that are missing or will not
+	 * load are recreated; anything else (directory not creatable, CA
+	 * files missing, cannot write) is a broken install and aborts with
+	 * {@link GLib.error}.
 	 *
 	 * == Example ==
 	 *
@@ -46,7 +48,7 @@ namespace OLLMrpc.Transport
 	 * http.tls_certificate = server.certificate;
 	 *
 	 * // device client (ollmapp)
-	 * var leaf = new OLLMrpc.Transport.Cert() {
+	 * var client = new OLLMrpc.Transport.Cert() {
 	 *     dir = GLib.Path.build_filename(
 	 *         GLib.Environment.get_user_data_dir(), "ollmchat"),
 	 *     cert_pem = "client.pem",
@@ -54,38 +56,38 @@ namespace OLLMrpc.Transport
 	 *     cn = "ollmchat-device",
 	 *     product_ca_resource = true,
 	 * };
-	 * leaf.ensure();
+	 * client.ensure();
 	 * var http = new OLLMrpc.Transport.HttpClient(url) {
 	 *     bin_body = true,
-	 *     tls_certificate = leaf.certificate,
-	 *     tls_database = leaf.trust
+	 *     tls_certificate = client.certificate,
+	 *     tls_database = client.trust
 	 * };
 	 * }}}
 	 */
 	public class Cert : GLib.Object
 	{
-		/** Directory for leaf PEMs and optional trust PEM. */
+		/** Directory the key, certificate and trust files live in. */
 		public string dir { get; set; default = ""; }
 
-		/** Leaf certificate PEM basename under {@link dir}. */
+		/** Certificate file name under {@link dir}. */
 		public string cert_pem { get; set; default = "server.pem"; }
 
-		/** Leaf private key PEM basename under {@link dir}. */
+		/** Private key file name under {@link dir}. */
 		public string key_pem { get; set; default = "server-key.pem"; }
 
-		/** X.509 common name (DN 2.5.4.3). */
+		/** Name written into the certificate (X.509 common name). */
 		public string cn { get; set; default = "ollmrpc"; }
 
-		/** Add localhost DNS + 127.0.0.1 SAN (server leaf). */
+		/** Server only: also make the certificate valid for ''localhost''. */
 		public bool server_san { get; set; default = false; }
 
 		/**
-		 * Product CA certificate PEM path for CA-signed leaves.
-		 * Empty with empty {@link ca_key_path} → self-signed leaf.
+		 * Product CA certificate file used to sign our certificate.
+		 * Empty (with empty {@link ca_key_path}) means self-signed.
 		 */
 		public string ca_pem_path { get; set; default = ""; }
 
-		/** Product CA private key PEM (server host only). */
+		/** Product CA private key file (ollmfilesd only). */
 		public string ca_key_path { get; set; default = ""; }
 
 		/**
@@ -101,7 +103,7 @@ namespace OLLMrpc.Transport
 		 */
 		public bool product_ca_resource { get; set; default = false; }
 
-		/** Loaded/minted leaf after {@link ensure}. */
+		/** This program's own certificate and key, set by {@link ensure}. */
 		public GLib.TlsCertificate certificate { get; private set; }
 
 		/**
@@ -114,14 +116,17 @@ namespace OLLMrpc.Transport
 		public GLib.TlsDatabase? trust { get; private set; default = null; }
 
 		/**
-		 * Load or mint the leaf and build the trust store.
+		 * Make sure this program's key and certificate files exist
+		 * under {@link dir}, then set {@link certificate} and
+		 * {@link trust} from them.
 		 *
-		 * Repairs what it can: an unreadable leaf PEM pair is deleted and
-		 * re-minted; with {@link product_ca_resource} the trust PEM is
-		 * rewritten from GResource. Everything else (directory not
-		 * creatable, GnuTLS failure, CA PEM or key unreadable, PEM write
-		 * failure) aborts with {@link GLib.error}: the install is broken
-		 * and nothing in-process can fix it.
+		 * If the key/certificate files are missing or will not load
+		 * they are deleted and created again with
+		 * {@link create_pem_files}. With {@link product_ca_resource}
+		 * the trust file is rewritten from the bundled copy each time.
+		 * Anything else that goes wrong (cannot create the directory,
+		 * cannot write a file, CA files unreadable) means the install
+		 * is broken and aborts with {@link GLib.error}.
 		 */
 		public void ensure()
 		{
@@ -131,6 +136,22 @@ namespace OLLMrpc.Transport
 			if (!GLib.FileUtils.test(this.dir, GLib.FileTest.IS_DIR)
 				&& GLib.DirUtils.create_with_parents(this.dir, 0700) != 0) {
 				GLib.error("mkdir %s failed", this.dir);
+			}
+
+			var cert_path = GLib.Path.build_filename(this.dir, this.cert_pem);
+			var key_path = GLib.Path.build_filename(this.dir, this.key_pem);
+			if (GLib.FileUtils.test(cert_path, GLib.FileTest.EXISTS)
+				&& GLib.FileUtils.test(key_path, GLib.FileTest.EXISTS)) {
+				try {
+					this.certificate = new GLib.TlsCertificate.from_files(cert_path, key_path);
+				} catch (GLib.Error e) {
+					GLib.warning("recreating %s: %s", cert_path, e.message);
+					GLib.FileUtils.remove(cert_path);
+					GLib.FileUtils.remove(key_path);
+				}
+			}
+			if (!GLib.FileUtils.test(cert_path, GLib.FileTest.EXISTS)) {
+				this.create_pem_files(cert_path, key_path);
 			}
 
 			var trust_path = this.ca_pem_path;
@@ -146,27 +167,29 @@ namespace OLLMrpc.Transport
 					GLib.error("write trust PEM %s: %s", trust_path, e.message);
 				}
 			}
-			if (GLib.FileUtils.test(trust_path, GLib.FileTest.EXISTS)) {
-				try {
-					this.trust = GLib.TlsFileDatabase.@new(trust_path);
-				} catch (GLib.Error e) {
-					GLib.error("trust PEM %s: %s", trust_path, e.message);
-				}
+			if (!GLib.FileUtils.test(trust_path, GLib.FileTest.EXISTS)) {
+				return;
 			}
+			try {
+				this.trust = GLib.TlsFileDatabase.@new(trust_path);
+			} catch (GLib.Error e) {
+				GLib.error("trust PEM %s: %s", trust_path, e.message);
+			}
+		}
 
-			var cert_path = GLib.Path.build_filename(this.dir, this.cert_pem);
-			var key_path = GLib.Path.build_filename(this.dir, this.key_pem);
-			if (GLib.FileUtils.test(cert_path, GLib.FileTest.EXISTS)
-				&& GLib.FileUtils.test(key_path, GLib.FileTest.EXISTS)) {
-				try {
-					this.certificate = new GLib.TlsCertificate.from_files(cert_path, key_path);
-					return;
-				} catch (GLib.Error e) {
-					GLib.warning("re-minting leaf %s: %s", cert_path, e.message);
-					GLib.FileUtils.remove(cert_path);
-					GLib.FileUtils.remove(key_path);
-				}
-			}
+		/**
+		 * Create one key file and one certificate file and load them
+		 * into {@link certificate}. Makes one pair: the server's when
+		 * run in ollmfilesd, the client's when run in ollmapp.
+		 *
+		 * Called by {@link ensure} when the files are missing or
+		 * unreadable; any failure is {@link GLib.error}.
+		 *
+		 * @param cert_path where to write the certificate file
+		 * @param key_path where to write the private key file
+		 */
+		private void create_pem_files(string cert_path, string key_path)
+		{
 			var init_ret = GnuTLS.global_init();
 			if (init_ret < 0) {
 				GLib.error("gnutls_global_init: %s", ((GnuTLS.ErrorCode)init_ret).to_string());
@@ -197,16 +220,12 @@ namespace OLLMrpc.Transport
 			crt.set_activation_time(now);
 			crt.set_expiration_time(now + (time_t)(3650 * 24 * 60 * 60));
 			if (this.server_san) {
-				/* GNUTLS_SAN_DNSNAME=1, GNUTLS_SAN_IPADDRESS=4 (vapi enum lacks cprefix). */
+				/* GNUTLS_SAN_DNSNAME=1 (vapi enum lacks cprefix). The string API
+				 * rejects GNUTLS_SAN_IPADDRESS, so clients use https://localhost. */
 				var san_dns = crt.set_subject_alternative_name(
 					(GnuTLS.X509.SubjectAltName)1, "localhost");
 				if (san_dns < 0) {
 					GLib.error("SAN DNS: %s", ((GnuTLS.ErrorCode)san_dns).to_string());
-				}
-				var san_ip = crt.set_subject_alternative_name(
-					(GnuTLS.X509.SubjectAltName)4, "\x7f\x00\x00\x01");
-				if (san_ip < 0) {
-					GLib.error("SAN IP: %s", ((GnuTLS.ErrorCode)san_ip).to_string());
 				}
 			}
 			var key_ret = crt.set_key(key);
@@ -275,7 +294,7 @@ namespace OLLMrpc.Transport
 				GLib.FileUtils.set_contents(cert_path, (string)crt_pem);
 				this.certificate = new GLib.TlsCertificate.from_files(cert_path, key_path);
 			} catch (GLib.Error e) {
-				GLib.error("write leaf %s: %s", cert_path, e.message);
+				GLib.error("write %s: %s", cert_path, e.message);
 			}
 		}
 	}

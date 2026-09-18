@@ -7138,7 +7138,7 @@ index e8d0f4e23e..1fe4c8b53f 100644
  
    box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 5);
    gtk_widget_set_margin_start (box, 10);
-@@ -9588,16 +10955,125 @@ gtk_text_view_selection_bubble_popup_show (gpointer user_data)
+@@ -9588,16 +10955,123 @@ gtk_text_view_selection_bubble_popup_show (gpointer user_data)
    rect.height += 10;
  
    gtk_popover_set_pointing_to (GTK_POPOVER (priv->selection_bubble), &rect);
@@ -7165,8 +7165,6 @@ index e8d0f4e23e..1fe4c8b53f 100644
 +      g_message ("CLIP: bubble stole focus → grab TextView (keep IME)");
 +      gtk_widget_grab_focus (GTK_WIDGET (text_view));
 +    }
-+
-+  return G_SOURCE_REMOVE;
  }
  
  static void
