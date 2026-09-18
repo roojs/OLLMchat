@@ -1,6 +1,6 @@
 # 8.2.8.4 — Remote file connection: HTTPS RPC client + `ProjectManager.replace_rpc`
 
-**Status:** **IMPLEMENTED** — Phases A and B applied; build, RPC/HTTP tests, and valadoc pass
+**Status:** **✔️ agent-done** — Phases A and B in tree (awaiting user **✅**)
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
@@ -16,14 +16,23 @@
 
 ---
 
+## Landed (tree)
+
+- `libocrpc/Client.vala` — `http` property, HTTPS hello in `connect()`, `send_http()` forward, `disconnect()` fails pending
+- `libocrpc/Transport/HttpClient.vala` — `call()` no longer sets `Request.id`
+- `libocfiles/ProjectManager.vala` — `notification` signal + `replace_rpc()`
+- listeners moved: `ollmapp/Window.vala`, `liboccoder/Approvals.vala`, `liboccoder/SourceView.vala`, `ollmapp/SettingsDialog/MainDialog.vala`
+
+---
+
 ## Purpose
 
-- **🔷** `OLLMfiles.ProjectManager` can talk to a remote `ollmfilesd` over **HTTPS** with the device client cert, through its existing `rpc` field, with no change to libocfiles callers.
-- **🔷** The client behind `ProjectManager.rpc` can be swapped **live** (`replace_rpc`): old client disconnected, cached server state cleared, listeners keep working.
-- **💩** `⏳` `OLLMrpc.Client` gains an `http` property so `ProjectManager.rpc` can POST bin RPC to the `Transport.HttpServer` gate.
+- **🔷** `✔️` `OLLMfiles.ProjectManager` can talk to a remote `ollmfilesd` over **HTTPS** with the device client cert, through its existing `rpc` field, with no change to libocfiles callers.
+- **🔷** `✔️` The client behind `ProjectManager.rpc` can be swapped **live** (`replace_rpc`): old client disconnected, cached server state cleared, listeners keep working.
+- **💩** `✔️` `OLLMrpc.Client` gains an `http` property so `ProjectManager.rpc` can POST bin RPC to the `Transport.HttpServer` gate.
   - The existing `Protocol.HTTP` path is the Hugging Face GET/JSON client and cannot talk to `ollmfilesd`.
-- **💩** `⏳` `OLLMrpc.Client.disconnect()` bug fix: it aborts the process when calls are pending instead of failing them (§0). Standalone bug; a prerequisite for any live swap.
-- **💩** `⏳` `ProjectManager.notification` signal replaces the four direct `rpc.notification` hooks so listeners survive the swap.
+- **💩** `✔️` `OLLMrpc.Client.disconnect()` bug fix: it aborts the process when calls are pending instead of failing them (§0). Standalone bug; a prerequisite for any live swap.
+- **💩** `✔️` `ProjectManager.notification` signal replaces the four direct `rpc.notification` hooks so listeners survive the swap.
 - **ℹ️** Gate behaviour: [`ollmfilesd/Https.vala`](../../ollmfilesd/Https.vala) `allow_rpc`.
   - Approved certs pass every non-admin method.
   - Unknown certs may only call `request_registration`.
@@ -68,18 +77,18 @@
 
 ---
 
-## Phase A — `libocrpc`: bin POST RPC through `OLLMrpc.Client`
+## ✔️ Phase A — `libocrpc`: bin POST RPC through `OLLMrpc.Client`
 
 ### Goal
 
-- **💩** `⏳` `OLLMrpc.Client.disconnect()` fails pending calls instead of aborting the process (bug fix, §0).
-- **💩** `⏳` `Transport.HttpClient.call` stops numbering requests (transport only; the owner of the `Request` owns its id).
-- **💩** `⏳` `OLLMrpc.Client.http` property, hello over HTTPS in `connect()`, forwarding in `send_http()`.
-- **💩** `⏳` Class docblock example for the HTTPS RPC mode.
+- **💩** `✔️` `OLLMrpc.Client.disconnect()` fails pending calls instead of aborting the process (bug fix, §0).
+- **💩** `✔️` `Transport.HttpClient.call` stops numbering requests (transport only; the owner of the `Request` owns its id).
+- **💩** `✔️` `OLLMrpc.Client.http` property, hello over HTTPS in `connect()`, forwarding in `send_http()`.
+- **💩** `✔️` Class docblock example for the HTTPS RPC mode.
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
-### 0. `libocrpc/Client.vala` — `disconnect()`: fail pending calls, do not abort
+### ✔️ 0. `libocrpc/Client.vala` — `disconnect()`: fail pending calls, do not abort
 
 **Why:** bug, independent of this plan. `disconnect()` has two contradictory blocks. The first `GLib.error`s when `pending.size > 0`. The second (a few lines later) walks `pending`, completes each entry with `Response.error = "Client: disconnected"`, and clears the list. The second is the intended behaviour and is unreachable while the first exists. `on_read` (HUP/ERR) and the poll loop call `disconnect()`, so a daemon dying with any call in flight aborts ollmchat instead of surfacing an error to the caller. For this plan it also blocks a live `replace_rpc`.
 **Where:** `disconnect()`, the block between `if (!this.connected) { return; }` and the `GLib.debug("disconnect socket_path=…")` call.
@@ -99,7 +108,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 ℹ️ Pure deletion. The `foreach (var entry in this.pending)` abort loop and `this.pending.clear()` below already do the right thing and already log each aborted call with `GLib.warning("disconnect abort …")`.
 ℹ️ `tests/rpc/*` call `rpc.disconnect()` after awaiting their calls (`pending` empty), so behaviour there is unchanged. A test for "disconnect with one pending call yields `Client: disconnected`" is listed under **Follow-ups**.
 
-### 1. `libocrpc/Transport/HttpClient.vala` — `call()`: do not renumber the request
+### ✔️ 1. `libocrpc/Transport/HttpClient.vala` — `call()`: do not renumber the request
 
 **Why:** `OLLMrpc.Client.call` assigns `request.id` before `send_head` and `complete_pending` looks the entry up by that id. Renumbering here would orphan the pending entry (or collide with another queued id). `HttpClient` is a transport: the caller that owns the `Request` owns its id. The server echoes whatever id it receives, and `HttpClient.call` returns that response straight to its awaiting caller, so standalone callers (`FileConnectionAdd.request()`, the Check probe in `8.2.8.5`) work with id `0`.
 **Where:** the `next_id` field, the first statement of `call()`, and the `@param request` line in its docblock.
@@ -132,7 +141,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ℹ️ Pure deletion; the next statement (`if (this.tls_database != null) {`) becomes the first line of `call()`.
 
-### 2. `libocrpc/Client.vala` — `http` property, `connect()`, `send_http()`
+### ✔️ 2. `libocrpc/Client.vala` — `http` property, `connect()`, `send_http()`
 
 **Why:** `ProjectManager.rpc` is an `OLLMrpc.Client`; every libocfiles call goes through `rpc.call()`. Forwarding to a `Transport.HttpClient` makes the remote server a drop-in for the Unix socket without touching libocfiles callers.
 **Where:** class docblock, property block after `pass_data_dir`, the `Protocol.HTTP` branch in `connect()`, first statement of `send_http()`.
@@ -235,13 +244,13 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-## Phase B — `libocfiles` + listeners: `ProjectManager.replace_rpc()`
+## ✔️ Phase B — `libocfiles` + listeners: `ProjectManager.replace_rpc()`
 
 ### Goal
 
-- **💩** `⏳` Give callers a way to hand `ProjectManager` a different `OLLMrpc.Client` (HTTPS with `http` set, or a fresh Unix one) **at any time**: before the first `connect()` (startup) or on a live session.
-- **💩** `⏳` `ProjectManager.notification` signal so the four `rpc.notification` listeners survive a swap.
-- **💩** `⏳` Move those four listeners (`Window`, `Approvals`, `SourceView`, `MainDialog`) to the new signal.
+- **💩** `✔️` Give callers a way to hand `ProjectManager` a different `OLLMrpc.Client` (HTTPS with `http` set, or a fresh Unix one) **at any time**: before the first `connect()` (startup) or on a live session.
+- **💩** `✔️` `ProjectManager.notification` signal so the four `rpc.notification` listeners survive a swap.
+- **💩** `✔️` Move those four listeners (`Window`, `Approvals`, `SourceView`, `MainDialog`) to the new signal.
 
 ### Context
 
@@ -256,7 +265,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
     - `ProjectList` has no `clear()`; `remove(item)` emits `items_changed` per row, so a `while (get_n_items() > 0) remove(get_item(0))` loop is the in-tree way.
   - **Not** in `replace_rpc`: `connect()`, `rpc_load_projects_from_db()`, `restore_active_state()`. Those stay with the caller (`8.2.8.5`).
 
-### 3a. `libocfiles/ProjectManager.vala` — `notification` signal + forward from the constructor
+### ✔️ 3a. `libocfiles/ProjectManager.vala` — `notification` signal + forward from the constructor
 
 **Why:** listeners that connect straight to `rpc.notification` are bound to one client object and go deaf on a swap. A signal on the manager is stable across swaps; §3 re-forwards the new client into it.
 **Where:** signal after `file_metadata_changed`; forward as the last statement of `ProjectManager()`.
@@ -295,7 +304,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 		}
 ```
 
-### 3. `libocfiles/ProjectManager.vala` — `replace_rpc()`: swap the client, live or not
+### ✔️ 3. `libocfiles/ProjectManager.vala` — `replace_rpc()`: swap the client, live or not
 
 **Why:** `rpc` is `private set` and the constructor hard-wires the Unix socket (see **Context**). This is the one place that knows every field the old server populated. It does the state transition; the caller does the network calls.
 **Where:** after the closing `}` of `public ProjectManager()`, before the `activate_file` docblock.
@@ -358,7 +367,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 ℹ️ The old client's `notification` lambda is not disconnected. The old `OLLMrpc.Client` is unreferenced after the swap and finalises; `disconnect()` already removed its read watch and closed the socket, so it cannot emit again.
 ℹ️ `disconnect()` on a never-connected Unix client is a no-op (`if (!this.connected) return;`), so the startup path in `8.2.8.5` pays nothing.
 
-### 3b. `ollmapp/Window.vala` — `initialize_client()`: listen on the manager
+### ✔️ 3b. `ollmapp/Window.vala` — `initialize_client()`: listen on the manager
 
 **Why:** listener move (see §3a). Without it the main window stops receiving `event.*` after the first swap.
 **Where:** `initialize_client()`, the `rpc.notification.connect` block after the `Preparing agents…` busy label.
@@ -376,7 +385,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			this.project_manager.notification.connect((notif) => {
 ```
 
-### 3c. `liboccoder/Approvals.vala` — constructor: listen on the manager
+### ✔️ 3c. `liboccoder/Approvals.vala` — constructor: listen on the manager
 
 **Why:** listener move (see §3a).
 **Where:** constructor, after `this.project_manager.review_files.refreshed.connect(…)`.
@@ -394,7 +403,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			this.project_manager.notification.connect((notif) => {
 ```
 
-### 3d. `liboccoder/SourceView.vala` — constructor: listen on the manager
+### ✔️ 3d. `liboccoder/SourceView.vala` — constructor: listen on the manager
 
 **Why:** listener move (see §3a).
 **Where:** constructor, after `header_bar.append(this.file_dropdown);`.
@@ -412,7 +421,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 			this.manager.notification.connect((notif) => {
 ```
 
-### 3e. `ollmapp/SettingsDialog/MainDialog.vala` — `present_dialog()`: listen on the manager
+### ✔️ 3e. `ollmapp/SettingsDialog/MainDialog.vala` — `present_dialog()`: listen on the manager
 
 **Why:** listener move (see §3a).
 **Where:** the `registration_wired` block.
@@ -444,8 +453,8 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ## Suggested order
 
-1. **⏳** Phase A — §0 (`disconnect()` fix; own commit), then §1–§2 (`libocrpc`)
-2. **⏳** Phase B — §3a, §3, §3b–§3e (`libocfiles` + the four listeners; app behaves as before with only the Unix client)
+1. **✔️** Phase A — §0 (`disconnect()` fix; own commit), then §1–§2 (`libocrpc`)
+2. **✔️** Phase B — §3a, §3, §3b–§3e (`libocfiles` + the four listeners; app behaves as before with only the Unix client)
 3. **⏳** Then [`RPC-8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) wires it into the desktop.
 
 ---

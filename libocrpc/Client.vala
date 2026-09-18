@@ -702,7 +702,7 @@ namespace OLLMrpc
 			} catch (GLib.Error e) {
 				GLib.error("%s", e.message);
 			}
-			if ((source.get_buffer_condition() & GLib.IOCondition.IN) != 0) {
+			if (this.bin.in_stream.get_available() > 0) {
 				return this.poll_drain_readable(source);
 			}
 			return true;
@@ -1051,7 +1051,7 @@ namespace OLLMrpc
 						entry.request.id, null, new GLib.IOError.TIMED_OUT("call timed out"));
 					break;
 				}
-				if (this.read_channel != null && (this.read_channel.get_buffer_condition() & GLib.IOCondition.IN) != 0) {
+				if (this.bin.in_stream.get_available() > 0) {
 					this.poll_drain_readable(this.read_channel);
 				}
 				if (entry.done_response != null) {

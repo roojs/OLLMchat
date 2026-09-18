@@ -41,7 +41,7 @@ namespace OLLMrpc.Live
 		 *
 		 * @param args packed GI callback arguments
 		 */
-		public void emit(Gee.ArrayList<GLib.Value?> args)
+		public virtual void emit(Gee.ArrayList<GLib.Value?> args)
 		{
 			this.replied = false;
 			this.reply_args.clear();
