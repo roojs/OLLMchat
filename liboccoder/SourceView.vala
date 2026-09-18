@@ -133,7 +133,7 @@ namespace OLLMcoder
 			// Hide file dropdown initially (no project selected)
 			this.file_dropdown.visible = false;
 			header_bar.append(this.file_dropdown);
-			this.manager.rpc.notification.connect((notif) => {
+			this.manager.notification.connect((notif) => {
 				if (notif.method != "event.project.invalidate_cache"
 					|| this.manager.active_project == null
 					|| notif.message != this.manager.active_project.path) {

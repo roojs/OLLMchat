@@ -32,8 +32,8 @@ GitHub Actions runs the same suite in `.github/workflows/x-android.yml`
 | **R11** | [27614072148](https://github.com/roojs/OLLMchat/actions/runs/27614072148) (runtime) | TLS still broken: `libgioopenssl.so` cannot load `libssl` from `filesDir/share/gio/modules/` | `regression/test-r11-gio-openssl-deps.sh` + `verify-apk.sh` OpenSSL asset checks |
 | **R12** | [27615842437](https://github.com/roojs/OLLMchat/actions/runs/27615842437) | `verify-apk.sh` grepped C comment `touch selection bubbles` (not in stripped `libgtk-4.so`) | `regression/test-r12-verify-apk-libgtk-strings.sh` |
 | **R13** | [32201421756](https://github.com/roojs/OLLMchat/actions/runs/32201421756) | GLib TLS scan patch was gitignored under `subprojects/`; 9.2 dropped that approach | `regression/test-r13-glib-tls-ensure-before-scan.sh` (patch must **not** ship) |
-| **R14** | [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256) | `pango` 1.58.2 from GTK `revision = main` needs glib `>= 2.88`; wrap is pinned at 2.84.0 | `regression/test-r14-pango-wrap-not-main.sh` |
-| **R15** | [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256), [32435474269](https://github.com/roojs/OLLMchat/actions/runs/32435474269) | Local `--full` reused frozen wrap-git; GitHub fetched `main` (pango, then libadwaita) vs glib 2.84.0 | `regression/test-r15-glib-stack-wrap-git-pinned.sh` |
+| **R14** | [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256) | GTK nested `pango.wrap` tracked `main`; must stay pinned (now 1.58.2 + glib 2.90.0) | `regression/test-r14-pango-wrap-not-main.sh` |
+| **R15** | [32241554256](https://github.com/roojs/OLLMchat/actions/runs/32241554256), [32435474269](https://github.com/roojs/OLLMchat/actions/runs/32435474269) | Local `--full` reused frozen wrap-git; GitHub must not fetch floating `main` for glib-stack wraps | `regression/test-r15-glib-stack-wrap-git-pinned.sh` |
 | **R16** | [32441247618](https://github.com/roojs/OLLMchat/actions/runs/32441247618), [32441610454](https://github.com/roojs/OLLMchat/actions/runs/32441610454) | After discarding stale pango, Meson download: `wrap-redirect … pango/subprojects/freetype2.wrap does not exist` | `regression/test-r16-pango-pin-checkout-before-meson.sh` |
 | **R17** | [32547800217](https://github.com/roojs/OLLMchat/actions/runs/32547800217) | `Package gtksourceview-5 not found` compiling `libocmarkdowngtk`; local valac has the vapi from desktop `-dev` | `regression/test-r17-android-host-vapi-packages.sh` |
 | **R18** | [32552806663](https://github.com/roojs/OLLMchat/actions/runs/32552806663) | `network_session` does not exist on `WebKitGtkAndroid.WebView` until wrap pin `v0.1.3` | `regression/test-r18-webkit-get-network-session.sh` |
@@ -87,7 +87,7 @@ After a local or CI build, `verify-apk.sh` checks:
 
 - `assets/share/gio/modules/libgioopenssl.so` is packaged with `libssl.so*` and `libcrypto.so*` beside it
 - `assets/share/ollmchat-android-runtime.tag` contains `ollmchat-android-bugs-v2`
-- `libgtk-4.so` contains `ollmchat-android-bugs-v13` (patch marker string literals; no GDK TLS markers)
+- `libgtk-4.so` contains `ollmchat-android-bugs-v14` (patch marker string literals; no GDK TLS markers)
 - `classes.dex` uses `deleteSurroundingText` lambda, not `sendKeyEvent` IME deletes
 - `classes.dex` contains `syncEditableFromGtk` (IME `Editable` kept in sync for hold-backspace)
 
@@ -106,29 +106,28 @@ visibility) stays. CI run 32201421756 originally failed because the patch lived
 only under gitignored `subprojects/`; we do not put that patch back.
 
 ### R14 — pango wrap must not track `main`
-`android/pixiewood-wraps/gtk/pango.wrap.pin` pins pango 1.57.2
-(`fa2ba89e7ed0907c8852add50cb13edefe93e66e`), compatible with glib 2.84.0.
-After GTK bootstrap / restore, `subprojects/gtk/subprojects/pango.wrap` matches
-that pin (upstream GTK wrap uses `revision = main`, which fetched pango 1.58.2
-on CI and required glib `>= 2.88`). A restored `subprojects/nested-pango.wrap`
-from an older cache is deleted so Meson does not see two pango providers. A
-restored `subprojects/pango` tree that is not the pinned commit is discarded so
-Meson re-clones 1.57.2 instead of keeping pango 1.58.2.
+`android/pixiewood-wraps/gtk/pango.wrap.pin` pins pango **1.58.2**
+(`d360f14004e4a4824f2352f6e2722016f9a51dd6`), matching GTK’s `>= 1.58`
+requirement and Android glib **2.90.0**. After GTK bootstrap / restore,
+`subprojects/gtk/subprojects/pango.wrap` matches that pin (upstream GTK wrap
+still uses `revision = main`). A restored `subprojects/nested-pango.wrap` from
+an older cache is deleted so Meson does not see two pango providers. A restored
+`subprojects/pango` tree that is not the pinned commit is discarded so Meson
+re-clones the pin.
 
 ### R15 — GLib-stack wrap-git must be pinned (not `main`)
 A local `meson` / `--full` preflight with `PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD=1`
-reuses `subprojects/` trees. That hid pango 1.58.2 and libadwaita 1.10.rc on
-GitHub: both wraps tracked `main` while the laptop still had June/July
-checkouts that configured against glib 2.84.0.
+reuses `subprojects/` trees. That previously hid floating `main` fetches on
+GitHub while the laptop still had older checkouts.
 
 Fast R15 fails unless `glib`, `gtk`, nested `pango`, and `libadwaita` wrap-git
 files exist in git (not ignored) with a non-floating `revision`. After GTK
 bootstrap, those wraps must not still say `main`/`master`. Skip-download is
 refused while any of those wraps float, so `--full` actually re-clones them.
 
-Do **not** pin fontconfig/fribidi here: they are not GLib consumers and did not
-fail configure. Pin the next GLib-stack wrap when Meson reports a glib floor
-above 2.84.0, and add it to this list.
+Current pins (Knowles `android-ime` rebase): glib **2.90.0**, GTK
+`ae709f962a…`, pango **1.58.2**, libadwaita **1.10.0**. Do **not** pin
+fontconfig/fribidi here unless Meson reports a floor that breaks configure.
 
 ### R16 — clone pinned pango before Meson wrap download
 Discarding a stale `subprojects/pango` (R14) left no tree. `--full` then ran

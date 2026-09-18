@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # R15 — Local Android compile reused frozen wrap-git trees, so GitHub fetching
-# `revision = main` (pango 1.58.2, libadwaita 1.10.rc) vs glib 2.84.0 was invisible.
+# `revision = main` for glib-stack deps (while laptop kept old checkouts) was invisible.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -21,7 +21,7 @@ assert_pinned_wrap_git() {
   rev="$(wrap_file_revision "$wrap")"
   case "$rev" in
     ''|main|master|HEAD)
-      echo "R15 $label wrap-git tracks '$rev' — local checkouts hide Meson fetching today's tree vs glib 2.84.0" >&2
+      echo "R15 $label wrap-git tracks '$rev' — local checkouts hide Meson fetching today's tree vs pinned glib" >&2
       exit 1
       ;;
   esac

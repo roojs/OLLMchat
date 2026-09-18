@@ -9,7 +9,7 @@ export ROOT_DIR
 # shellcheck source=gtk-subproject.sh
 source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
 
-PIN_REV=fa2ba89e7ed0907c8852add50cb13edefe93e66e
+PIN_REV=d360f14004e4a4824f2352f6e2722016f9a51dd6
 PANGO="$ROOT_DIR/subprojects/pango"
 
 rm -rf "$PANGO"

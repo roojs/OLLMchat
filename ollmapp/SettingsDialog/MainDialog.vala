@@ -240,7 +240,7 @@ namespace OLLMapp.SettingsDialog
 			this.progress_banner.initialize_existing_pulls();
 			if (this.parent.project_manager != null && !this.registration_wired) {
 				this.registration_wired = true;
-				this.parent.project_manager.rpc.notification.connect((notif) => {
+				this.parent.project_manager.notification.connect((notif) => {
 					if (notif.method == "event.client_cert") {
 						this.registration_banner.refresh.begin();
 					}

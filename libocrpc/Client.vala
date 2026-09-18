@@ -85,6 +85,25 @@ namespace OLLMrpc
 	 * });
 	 * }}}
 	 *
+	 * == HTTPS RPC (ollmfilesd gate) ==
+	 *
+	 * {{{
+	 * var http = new OLLMrpc.Transport.HttpClient("https://host:8443") {
+	 *     bin_body = true,
+	 *     tls_certificate = leaf.certificate,
+	 *     tls_database = leaf.trust
+	 * };
+	 * var rpc = new OLLMrpc.Client("", "", "https://host:8443") {
+	 *     http = http
+	 * };
+	 * if (!yield rpc.connect(new OLLMrpc.Request() {
+	 *     method = "RPC-Daemon.hello",
+	 *     args = OLLMrpc.args("is", 1, "ollmchat")
+	 * })) {
+	 *     GLib.error("%s", rpc.connect_error);
+	 * }
+	 * }}}
+	 *
 	 * @see Request
 	 * @see Response
 	 */
@@ -116,6 +135,18 @@ namespace OLLMrpc
 		 * Set in the object initializer when needed.
 		 */
 		public bool pass_data_dir { get; set; default = false; }
+
+		/**
+		 * Bin POST transport to a {@link Transport.HttpServer} (the
+		 * ''ollmfilesd'' HTTPS gate).
+		 *
+		 * When set on an HTTPS {@link socket_path}, {@link connect}
+		 * sends the hello through it and {@link call} POSTs each request
+		 * instead of the Hub GET path. Set
+		 * {@link Transport.HttpClient.tls_certificate} and
+		 * {@link Transport.HttpClient.tls_database} before {@link connect}.
+		 */
+		public Transport.HttpClient? http { get; set; default = null; }
 
 		public bool live_handles { get; set; default = false; }
 
@@ -275,6 +306,18 @@ namespace OLLMrpc
 				return true;
 			}
 
+			if (this.protocol == Protocol.HTTP && this.http != null) {
+				try {
+					yield this.http.call(hello_request);
+				} catch (GLib.Error e) {
+					this.connect_error = e.message;
+					GLib.critical("connect %s: %s", this.socket_path, this.connect_error);
+					return false;
+				}
+				this.connected = true;
+				this.connect_error = "";
+				return true;
+			}
 			if (this.protocol == Protocol.HTTP) {
 				this.http_session = new Soup.Session();
 				this.connected = true;
@@ -430,17 +473,9 @@ namespace OLLMrpc
 			if (!this.connected) {
 				return;
 			}
-			if (this.pending.size > 0) {
-				GLib.error(
-					"disconnected with %u pending RPC call(s)",
-					this.pending.size
-				);
-			}
-			GLib.debug(
-				"disconnect socket_path=%s pending=%u",
-				this.socket_path,
-				this.pending.size
-			);
+			GLib.debug("disconnect socket_path=%s pending=%u",
+				this.socket_path,this.pending.size);
+				
 			this.sending = false;
 			this.connected = false;
 			if (this.read_watch_id != 0) {
@@ -477,6 +512,10 @@ namespace OLLMrpc
 
 		private async void send_http(PendingWrite head) throws GLib.Error
 		{
+			if (this.http != null) {
+				this.complete_pending(head.request.id, yield this.http.call(head.request), null);
+				return;
+			}
 			var query_obj = head.request.args.get(0).get_object();
 			GLib.debug(
 				"id=%d send path=%s param=%s result_type=%s",

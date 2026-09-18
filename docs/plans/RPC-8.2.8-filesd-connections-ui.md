@@ -33,8 +33,10 @@
 | --- | --- | --- |
 | **1** | Daemon: `ClientCert` RPC + int status + IP drop (this file) | **✔️** agent-done |
 | **2** | [`RPC-8.2.8.1-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) — Desktop pending banner + registered client rows | **✔️** agent-done |
-| **3** | [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) — Client file connection UI (Ph.1) + HTTPS/Agent Pi (Ph.2); Android + Linux | **⏳** |
+| **3** | [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) — Client file connection UI + registration request; Android + Linux | **⏳** |
 | **4** | [`RPC-8.2.8.3-filesd-file-server-tls.md`](RPC-8.2.8.3-filesd-file-server-tls.md) — Desktop File Server expander + TLS CA key auto-install | **⏳** |
+| **5** | [`RPC-8.2.8.4-filesd-remote-rpc-client.md`](RPC-8.2.8.4-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification` (library half of 8.2.8.2 Phase 2) | **⏳** |
+| **6** | [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle, Agent Pi (UI half of 8.2.8.2 Phase 2) | **⏳** |
 
 ---
 
@@ -44,6 +46,8 @@
 2. **✔️** Phase 2 — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) (agent-done; awaiting user ✅)
 3. **⏳** Phase 3 — [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
 4. **⏳** Phase 4 — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md)
+5. **⏳** Phase 5 — [`8.2.8.4`](RPC-8.2.8.4-filesd-remote-rpc-client.md)
+6. **⏳** Phase 6 — [`8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md)
 
 ---
 
@@ -104,13 +108,25 @@
 
 ## Phase 3 — Client file connection + Agent Pi unlock
 
-**➡️** [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) — Phase 1 UI, then Phase 2 connection/support (Android + Linux)
+**➡️** [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) — UI + registration request (Android + Linux)
 
 ---
 
 ## Phase 4 — Desktop File Server expander + TLS CA key auto-install
 
 **➡️** [`RPC-8.2.8.3-filesd-file-server-tls.md`](RPC-8.2.8.3-filesd-file-server-tls.md)
+
+---
+
+## Phase 5 — Remote file connection: HTTPS RPC client + `replace_rpc`
+
+**➡️** [`RPC-8.2.8.4-filesd-remote-rpc-client.md`](RPC-8.2.8.4-filesd-remote-rpc-client.md) — library half of 8.2.8.2 Phase 2
+
+---
+
+## Phase 6 — Remote file connection: desktop takeover, Check, live toggle
+
+**➡️** [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) — UI half of 8.2.8.2 Phase 2
 
 ---
 

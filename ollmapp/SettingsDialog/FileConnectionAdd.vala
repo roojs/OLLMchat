@@ -110,24 +110,23 @@ namespace OLLMapp.SettingsDialog
 			this.spinner.spinning = true;
 			this.spinner.visible = true;
 
+			var tls = new OLLMrpc.Transport.Cert() {
+				dir = GLib.Path.build_filename(
+					GLib.Environment.get_user_data_dir(), "ollmchat"),
+				cert_pem = "client.pem",
+				key_pem = "client-key.pem",
+				cn = "ollmchat-device",
+				product_ca_resource = true,
+			};
+			tls.ensure();
+			var http = new OLLMrpc.Transport.HttpClient(url) {
+				bin_body = true,
+				tls_certificate = tls.certificate,
+				tls_database = tls.trust
+			};
+			var os = GLib.Environment.get_os_info("PRETTY_NAME");
+			var requester = (os != null && os != "") ? os : "unknown OS";
 			try {
-				var data_dir = GLib.Path.build_filename(
-					GLib.Environment.get_user_data_dir(), "ollmchat");
-				var tls = new OLLMrpc.Transport.Cert() {
-					dir = data_dir,
-					cert_pem = "client.pem",
-					key_pem = "client-key.pem",
-					cn = "ollmchat-device",
-					product_ca_resource = true,
-				};
-				tls.ensure();
-				var http = new OLLMrpc.Transport.HttpClient(url) {
-					bin_body = true,
-					tls_certificate = tls.certificate,
-					tls_database = tls.ensure_trust()
-				};
-				var os = GLib.Environment.get_os_info("PRETTY_NAME");
-				var requester = (os != null && os != "") ? os : "unknown OS";
 				yield http.call(new OLLMrpc.Request() {
 					method = "RPC-ClientCert.request_registration",
 					args = OLLMrpc.args("s", requester)

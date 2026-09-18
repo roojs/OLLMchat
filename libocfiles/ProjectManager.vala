@@ -77,6 +77,15 @@ namespace OLLMfiles
 		 * This signal is emitted for metadata-only updates that don't require background scanning.
 		 */
 		public signal void file_metadata_changed(File file);
+
+		/**
+		 * Server notification from the current {@link rpc}, re-emitted
+		 * here so listeners survive {@link replace_rpc}. Connect to this,
+		 * not to ''rpc.notification''.
+		 *
+		 * @param notif the notification as received
+		 */
+		public signal void notification(OLLMrpc.Notification notif);
 		
 		/**
 		 * When true, {@link activate_project} tells the daemon to skip initial scan.
@@ -104,6 +113,57 @@ namespace OLLMfiles
 			);
 			this.delete_manager = new DeleteManager(this);
 			this.review_files = new ReviewFiles(this);
+			this.rpc.notification.connect((notif) => {
+				this.notification(notif);
+			});
+		}
+
+		/**
+		 * Swap the RPC client.
+		 *
+		 * The constructor picks the local Unix-socket client. Call this to
+		 * point the manager at a remote ''ollmfilesd'' (an HTTPS
+		 * {@link OLLMrpc.Client} with {@link OLLMrpc.Client.http} set) or
+		 * back to a fresh Unix client. Works before the first
+		 * {@link OLLMrpc.Client.connect} (startup) or on a live session:
+		 * the old client is disconnected (in-flight calls fail with
+		 * ''Client: disconnected''), cached project state is cleared with
+		 * {@link active_file_changed} / {@link active_project_changed}
+		 * emitted as ''null'', and {@link notification} is re-forwarded
+		 * from ''rpc''.
+		 *
+		 * The caller then runs {@link OLLMrpc.Client.connect},
+		 * {@link rpc_load_projects_from_db} and
+		 * {@link restore_active_state}; this method does not touch the
+		 * network. Check {@link File.buffer} ''is_modified'' on
+		 * {@link active_file} ''before'' calling: the buffer is dropped.
+		 *
+		 * @param rpc replacement client, not yet connected
+		 */
+		public void replace_rpc(OLLMrpc.Client rpc)
+		{
+			if (this.rpc.connected) {
+				this.rpc.disconnect();
+			}
+			if (this.active_file != null) {
+				this.active_file.is_active = false;
+				this.active_file = null;
+				this.active_file_changed(null);
+			}
+			if (this.active_project != null) {
+				this.active_project.is_active = false;
+				this.active_project = null;
+				this.active_project_changed(null);
+			}
+			while (this.projects.get_n_items() > 0) {
+				this.projects.remove((Folder) this.projects.get_item(0));
+			}
+			this.file_cache.clear();
+			this.review_files.clear();
+			this.rpc = rpc;
+			this.rpc.notification.connect((notif) => {
+				this.notification(notif);
+			});
 		}
 		
 		/**

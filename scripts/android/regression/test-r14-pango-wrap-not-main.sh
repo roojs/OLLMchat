@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# R14 — CI run 32241554256: pango.wrap revision=main fetched 1.58.2 (glib >= 2.88).
+# R14 — CI run 32241554256: pango.wrap revision=main must stay pinned (not main).
+# Current pin: pango 1.58.2 + glib 2.90.0 (Knowles android-ime rebase).
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -10,7 +11,7 @@ source "$ROOT_DIR/scripts/android/gtk-subproject.sh"
 
 PIN="$ROOT_DIR/android/pixiewood-wraps/gtk/pango.wrap.pin"
 NESTED="$ROOT_DIR/subprojects/gtk/subprojects/pango.wrap"
-PIN_REV=fa2ba89e7ed0907c8852add50cb13edefe93e66e
+PIN_REV=d360f14004e4a4824f2352f6e2722016f9a51dd6
 
 [ -f "$PIN" ] || { echo "missing pinned pango wrap: $PIN" >&2; exit 1; }
 case "$PIN" in
@@ -24,7 +25,7 @@ if git -C "$ROOT_DIR" check-ignore -q "$PIN"; then
   exit 1
 fi
 grep -qE "revision[[:space:]]*=[[:space:]]*$PIN_REV" "$PIN" ||
-  { echo "pinned pango.wrap must use $PIN_REV (glib 2.84.0)" >&2; exit 1; }
+  { echo "pinned pango.wrap must use $PIN_REV (glib 2.90.0)" >&2; exit 1; }
 grep -qE 'revision[[:space:]]*=[[:space:]]*main' "$PIN" &&
   { echo "pinned pango.wrap must not track main" >&2; exit 1; }
 

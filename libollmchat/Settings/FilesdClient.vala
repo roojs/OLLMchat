@@ -27,7 +27,7 @@ namespace OLLMchat.Settings
 	public class FilesdClient : Object, Json.Serializable
 	{
 		/**
-		 * Remote ''ollmfilesd'' HTTPS base URL (e.g. ''https://host:8443'').
+		 * Remote ''ollmfilesd'' HTTPS base URL (e.g. [[https://host:8443]]).
 		 */
 		public string url { get; set; default = ""; }
 

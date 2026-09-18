@@ -64,7 +64,7 @@ namespace OLLMrpc.Transport
 		}
 
 		/**
-		 * Trust store for product-CA HTTPS ({@link Cert.trust_pem_path} /
+		 * Trust store for product-CA HTTPS ({@link Cert.trust} /
 		 * bundled ''ollmrpc-ca.pem''). Null → Soup platform default.
 		 */
 		public GLib.TlsDatabase? tls_database { get; set; default = null; }
@@ -76,7 +76,6 @@ namespace OLLMrpc.Transport
 
 		private Soup.Session soup { get; set; default = new Soup.Session(); }
 		private Bin.Json json { get; set; default = new Bin.Json(Bin.Mode.AUTO); }
-		private int next_id = 1;
 		private bool send_reset = false;
 
 		public HttpClient(string base_url)
@@ -97,13 +96,13 @@ namespace OLLMrpc.Transport
 		/**
 		 * POST one {@link OLLMrpc.Request} (JSON or bin per {@link bin_body}).
 		 *
-		 * @param request wire request; {@link OLLMrpc.Request.id} set here
+		 * @param request wire request; the caller owns
+		 *   {@link OLLMrpc.Request.id} (''0'' is fine for one-shot calls)
 		 * @return decoded {@link OLLMrpc.Response}
 		 * @throws GLib.Error HTTP non-2xx or encode/parse failure
 		 */
 		public async Response call(Request request) throws GLib.Error
 		{
-			request.id = this.next_id++;
 			if (this.tls_database != null) {
 				this.soup.set_tls_database(this.tls_database);
 			}

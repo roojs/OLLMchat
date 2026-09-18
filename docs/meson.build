@@ -178,6 +178,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Settings/AgentConfig.vala',  # Before Config2 (Config2.agents uses AgentConfig)
     '../libollmchat/Settings/Window.vala',  # Before Config2 (Config2.windows uses Window)
     '../libollmchat/Settings/Filesd.vala',  # Before Config2 (Config2.filesd)
+    '../libollmchat/Settings/FilesdClient.vala',  # Before Config2 (Config2.filesd_client)
     '../libollmchat/Settings/Config2.vala',
     '../libollmchat/Settings/Connection.vala',
     '../libollmchat/Settings/ConnectionModels.vala',
@@ -404,6 +405,8 @@ valadoc_docs = custom_target('valadoc',
     # ollmapp application sources (Settings UI)
     '../ollmapp/SettingsDialog/ConnectionAdd.vala',
     '../ollmapp/SettingsDialog/ConnectionRow.vala',
+    '../ollmapp/SettingsDialog/FileConnectionAdd.vala',
+    '../ollmapp/SettingsDialog/FileConnectionRow.vala',
     '../ollmapp/SettingsDialog/ApprovedClientRow.vala',
     '../ollmapp/SettingsDialog/SettingsPage.vala',
     '../ollmapp/BusyDialog.vala',

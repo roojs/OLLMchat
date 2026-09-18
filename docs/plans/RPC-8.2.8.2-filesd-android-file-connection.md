@@ -1,6 +1,6 @@
 # 8.2.8.2 — Client file connection + unlock Agent Pi
 
-**Status:** **PROPOSED** — Phase 1 code proposals ready for review · Phase 2 design only
+**Status:** **PROPOSED** — Phase 1 code proposals ready for review · Phase 2 split out to [`RPC-8.2.8.4`](RPC-8.2.8.4-filesd-remote-rpc-client.md) + [`RPC-8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md)
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
@@ -31,7 +31,7 @@
 - **🔷** **Linux desktop** as well as Android — when configured, `enabled`, and `approved`, remote **takes over** local Unix `ollmfilesd`. When `enabled` is false, local Unix wins.
 - **🔷** Two implementation phases (implement in order):
   1. **Phase 1 — UI + registration request** — config, dialog, row, Connections tab, client-cert mint/load, `request_registration` on Request (Check stub).
-  2. **Phase 2 — Live connection + Agent Pi** — Check probe, HTTPS `ProjectManager` takeover, `enabled` wiring, Agent Pi unlock.
+  2. **Phase 2 — Live connection + Agent Pi** — split into [`RPC-8.2.8.4`](RPC-8.2.8.4-filesd-remote-rpc-client.md) (libocrpc / libocfiles) and [`RPC-8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) (takeover, Check, live toggle, Agent Pi).
 - **🚫** Code Assistant, Skill Runner, OC Coder agents — out of scope for this plan (Agent Pi only).
 - **🚫** Reusing `Settings.Connection` as the file-server URL without a type discriminant.
 - **ℹ️** Operator nginx doc: [`docs/filesd-behind-nginx-proxy.md`](../filesd-behind-nginx-proxy.md).
@@ -894,39 +894,15 @@ endif
 
 ## Phase 2 — Live connection + Agent Pi unlock
 
-### Goal
-
-- **🔷** `⏳` Replace Check `GLib.critical` stub in `render_file_connection` — `Cert` + `ensure()` + `HttpClient` probe; on success `approved = true`, `render_file_connection()`.
-- **🔷** `⏳` `FileConnectionRow.check_button.sensitive = true` once probe is wired.
-- **🔷** `⏳` `ProjectManager` HTTPS transport when `enabled && approved` (reuse same `Cert` property set + `ensure()`).
-- **🔷** `⏳` Linux takeover / disable fallback; Android stub replacement.
-- **🔷** `⏳` Register `OLLMcoder.AgentPi.Factory` only when remote connection is live.
-- **🔷** `⏳` `enabled` toggle reconnects / falls back (tear down remote RPC when disabled).
-
-Code proposals for Phase 2 — after Phase 1 review lands.
-
-### Agent unlock contract
-
-- **🔷** **Agent Pi** (`agent-pi`) registers when:
-  - `filesd_client.url != ""`
-  - `filesd_client.enabled`
-  - `filesd_client.approved`
-  - `ProjectManager.rpc` connected and passing a non-registration RPC
-- **🚫** Do not register Code Assistant, Skill Runner, or other `Window.vala` agents via this path.
-- **ℹ️** Chatter remains always registered via `register_default_agents()`.
-
-### Linux takeover contract
-
-- **🔷** Default when no `filesd_client.url`: unchanged — `ProjectManager` → local Unix socket.
-- **🔷** When configured + `enabled` + `approved`: construct/repoint `OLLMrpc.Client` to HTTPS URL + client cert.
-- **🔷** When configured but `enabled` is false: ignore remote URL; local Unix path wins.
+**➡️** [`RPC-8.2.8.4-filesd-remote-rpc-client.md`](RPC-8.2.8.4-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http` bridge, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification`.
+**➡️** [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle, Agent Pi, Android design.
 
 ---
 
 ## Suggested order
 
 1. **⏳** Phase 1 — apply §1–§9 (UI + `Cert.ensure()` + `request_registration`)
-2. **⏳** Phase 2 — Check + `ProjectManager` HTTPS takeover + Agent Pi unlock
+2. **⏳** Phase 2 — [`8.2.8.4`](RPC-8.2.8.4-filesd-remote-rpc-client.md) then [`8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md)
 
 ---
 

@@ -534,7 +534,7 @@ namespace OLLMapp
 					"Preparing agents…";
 			}
 
-			this.project_manager.rpc.notification.connect((notif) => {
+			this.project_manager.notification.connect((notif) => {
 				GLib.Idle.add(() => {
 					this.notification(notif);
 					return false;

@@ -129,7 +129,7 @@ namespace OLLMcoder
 			this.project_manager.review_files.refreshed.connect(() => {
 				this.on_active_file_changed(this.project_manager.active_file);
 			});
-			this.project_manager.rpc.notification.connect((notif) => {
+			this.project_manager.notification.connect((notif) => {
 				if (notif.method != "event.project.invalidate_cache") {
 					return;
 				}

@@ -67,7 +67,7 @@ namespace OLLMrpcTests
 			var base_url = "https://127.0.0.1:%u".printf(http.port);
 
 			var client = new OLLMrpc.Transport.HttpClient(base_url) {
-				tls_database = GLib.TlsFileDatabase.@new(cert.trust_pem_path)
+				tls_database = cert.trust
 			};
 			OLLMrpc.Response? response = null;
 			var err_msg = "";
