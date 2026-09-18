@@ -1,6 +1,6 @@
 # `call_poll` strands a buffered reply; re-entrant `Live.Hook.emit` aliases it
 
-**Status:** ✔️ §1–§3 applied in `libocrpc`; ⏳ consumer gates still need FAIL → PASS
+**Status:** ✅ FIXED — user archived 2026-09-18 (`libocrpc` §1–§3 applied)
 
 **Process:** `docs/bug-fix-process.md`
 
@@ -140,6 +140,6 @@ Reproduce:
 
 ## Next
 
-- ✔️ 🔷 §1–§3 applied 2026-09-18 (drain/`call_poll` ask `in_stream.get_available()`, `Hook.emit` virtual). Pending test inlined; no `poll_input_pending`.
-- ⏳ 💩 `Client.vala:1170` — a late reply after a timeout calls `GLib.error()`, aborting the process milliseconds after the stall. Dropping it with a warning would have preserved the evidence. Not included above; separate call.
-- ⏳ 🔷 Regression: `nested-relay-storm-gate` and `same-hook-reentrant-emit-gate` must both flip FAIL → PASS.
+- ✅ 🔷 §1–§3 applied 2026-09-18 (drain/`call_poll` ask `in_stream.get_available()`, `Hook.emit` virtual). Pending test inlined; no `poll_input_pending`.
+- ℹ️ 💩 `Client.vala` unexpected-response `GLib.error()` after timeout — separate call; not part of this fix.
+- ℹ️ 🔷 Consumer regression (`nested-relay-storm-gate`, `same-hook-reentrant-emit-gate`) lives in gnome-shell-rpc.

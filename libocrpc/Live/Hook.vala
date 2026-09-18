@@ -36,6 +36,17 @@ namespace OLLMrpc.Live
 			get; set; default = new Gee.ArrayList<GLib.Value?>();
 		}
 
+		/** One in-flight emit: emits nest, so reply state cannot live on the row. */
+		private class Frame : GLib.Object
+		{
+			public bool replied { get; set; default = false; }
+			public Gee.ArrayList<GLib.Value?> args {
+				get; set; default = new Gee.ArrayList<GLib.Value?>();
+			}
+		}
+
+		private Gee.HashMap<int, Frame> frames = new Gee.HashMap<int, Frame>();
+
 		/**
 		 * Write {@link Invoke} and wait for {@link Callback.reply}.
 		 *
@@ -43,18 +54,47 @@ namespace OLLMrpc.Live
 		 */
 		public virtual void emit(Gee.ArrayList<GLib.Value?> args)
 		{
-			this.replied = false;
-			this.reply_args.clear();
-			this.reply_id = this.connection.next_handle;
+			var correlation = this.connection.next_handle;
 			this.connection.next_handle++;
+			var frame = new Frame();
+			this.frames.set(correlation, frame);
+
+			this.replied = false;
+			this.reply_id = correlation;
 			this.connection.write(new Invoke() {
 				id = this.id,
-				reply_id = this.reply_id,
+				reply_id = correlation,
 				args = args
 			});
-			while (!this.replied) {
+			while (!frame.replied && !this.replied) {
 				this.connection.emit_wait_poll();
 			}
+			this.frames.unset(correlation);
+			this.reply_args.clear();
+			foreach (var arg in frame.args) {
+				this.reply_args.add(arg);
+			}
+		}
+
+		/**
+		 * Complete the emit waiting on ''correlation''.
+		 *
+		 * @param correlation {@link Invoke.reply_id} the client replied to
+		 * @param args values after the ''reply_id'' argument
+		 * @return ''false'' when no emit on this row is waiting for it
+		 */
+		public bool complete(int correlation, Gee.ArrayList<GLib.Value?> args)
+		{
+			if (!this.frames.has_key(correlation)) {
+				return false;
+			}
+			var frame = this.frames.get(correlation);
+			frame.args.clear();
+			foreach (var arg in args) {
+				frame.args.add(arg);
+			}
+			frame.replied = true;
+			return true;
 		}
 
 		/**

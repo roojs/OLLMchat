@@ -1,8 +1,8 @@
-# test-rpc-http-https times out (REQUESTED client cert, no handler)
+# test-rpc-http-https times out (REQUESTED client cert)
 
-**Status:** ⏳ root cause confirmed; fix proposed — await apply approval  
+**Status:** ⏳ previous client hunks ruled out; no apply-ready fix yet  
 **Hit:** 2026-09-18 — `meson test -C build --suite rpc`  
-**Component:** `libocrpc/Transport/HttpClient.vala` `call`  
+**Component:** `libocrpc/Transport/HttpClient.vala` + `HttpServer.vala` TLS  
 **Gate:** `meson test -C build test-rpc-http-https`
 
 ---
@@ -39,65 +39,56 @@ timeout 8 ./build/tests/test-rpc-http-https --debug
 - ✔️ Temporary `GLib.debug` on `accept_iostream`: both `start` and `done`
   fire. Handshake is not stuck inside `accept_iostream`.
 - ℹ️ `HttpServer.start` sets `TlsAuthenticationMode.REQUESTED` whenever
-  `tls_certificate` is set. 8.2.7 did that so ollmfilesd can read the device
-  cert. `tests/rpc/http-https-test.vala` does not set
-  `HttpClient.tls_certificate`.
-- ✔️ Experiment: server `REQUESTED` → `NONE` → the smoke **exits 0**. So the
-  hang is “server asked for a client cert” plus “client never completed that
-  ask.”
-- ✔️ Experiment: `message.request_certificate.connect(() => { return true; })`
-  with **no** `set_tls_client_certificate` → still TIMEOUT 30s.
-- ℹ️ Soup 3 `Message::request-certificate`: return `TRUE` **and** call
-  `soup_message_set_tls_client_certificate`. `certificate == NULL` continues
-  the handshake with no client cert. Return `TRUE` without that call means
-  “I’ll set it later” — async wait, i.e. the hang we measured.
-- ℹ️ Signal is **not** emitted if `set_tls_client_certificate` was already
-  called with a non-null cert before the handshake, or if
-  `Session:tls-interaction` is set. Today we only call set when
-  `tls_certificate != null`, so the null (smoke) path never completes the
-  REQUESTED ask.
+  `tls_certificate` is set (8.2.7, so ollmfilesd can read the device cert).
+  `tests/rpc/http-https-test.vala` does not set
+  `HttpClient.tls_certificate`. Production clients do (`Cert.vala` example,
+  `Client.vala` HTTPS snippet).
+- ✔️ Server `REQUESTED` → `NONE` → smoke **exits 0**. Hang is the
+  REQUESTED client-cert ask, not CA trust.
+- 🚫 `message.request_certificate` returning `true` only — TIMEOUT 30s.
+- 🚫 Same handler plus `set_tls_client_certificate(this.tls_certificate)`
+  (null on the smoke) — TIMEOUT 30s. Reverted.
+- 🚫 Always `set_tls_client_certificate(this.tls_certificate)` before send
+  (null included, no `if`) — TIMEOUT 30s. Reverted.
+- 🚫 `GLib.Idle.add` around `accept_iostream` — TIMEOUT 30s. Reverted.
+  Accept already returned; idle does not answer the cert ask.
+- ℹ️ Soup `soup_connection_complete_tls_certificate_request`: a **non-null**
+  cert → `g_tls_connection_set_certificate` + `G_TLS_INTERACTION_HANDLED`.
+  A **null** cert → `G_TLS_INTERACTION_FAILED`. The Message docs’ “null
+  continues without a client cert” is not what the connection complete
+  path does. That is why the client hunks above did not unstick REQUESTED.
 
 ---
 
 ## Root cause
 
-✔️ Server `REQUESTED` a client certificate. `HttpClient.call` never answers
-that ask when `tls_certificate` is null, so glib-tls waits forever. Not a
-CA-trust failure (NONE without a client cert passes) and not an
-`accept_iostream` deadlock (start and done both logged).
+✔️ Server `REQUESTED` a client certificate. The smoke client has none.
+glib-tls waits on Soup’s `TlsInteraction`. Message-level
+`set_tls_client_certificate(null)` / `request_certificate` do not complete
+that interaction as HANDLED (null → FAILED). Not CA verify, not
+`accept_iostream` deadlock.
 
 ---
 
 ## Proposed fix
 
-💩 In `HttpClient.call`, connect `request-certificate` and call
-`set_tls_client_certificate(this.tls_certificate)` inside the handler
-(null is allowed — Soup continues without a client cert). Keep server
-`REQUESTED`. Keep the existing pre-handshake set when a cert is already on
-the client.
+💩 Open — no hunk to apply yet. The §1 Message handler is **ruled out**.
 
-🚫 Do not switch the server to `NONE` (breaks filesd mTLS). 🚫 Do not
-disable TLS verify. 🚫 Do not raise the meson timeout. 🚫 Do not make the
-smoke present a leaf unless this client complete still hangs. 🚫 Do not
-`return true` without `set_tls_client_certificate` — already measured as a
-hang.
+Remaining directions (pick one, do not stack):
 
-### 1. `libocrpc/Transport/HttpClient.vala` — `call()`: finish REQUESTED handshake
+- 💩 Session/connection `TlsInteraction` that returns **SUCCESS** with no
+  certificate when `HttpClient.tls_certificate` is null (REQUESTED allows
+  none). Small class or Soup session interaction — not idle, not `NONE`.
+- 💩 Smoke presents a leaf (`tls_certificate = cert.certificate` or a
+  device Cert), matching production `HttpClient`. That would make the
+  gate mTLS; it would not teach the library to finish REQUESTED with no
+  cert.
 
-**Why:** Soup only continues a REQUESTED client-cert ask after
-`set_tls_client_certificate` (null = none).
-**Where:** `call()`, immediately after the existing
-`if (this.tls_certificate != null) { message.set_tls_client_certificate(...) }`
-block.
-
-#### Add — `request_certificate` handler that completes the ask
-
-```vala
-			message.request_certificate.connect((tls_connection) => {
-				message.set_tls_client_certificate(this.tls_certificate);
-				return true;
-			});
-```
+🚫 Server `TlsAuthenticationMode.NONE` (breaks filesd mTLS).
+🚫 Disable TLS verify / raise meson timeout.
+🚫 `GLib.Idle.add` around `accept_iostream`.
+🚫 `Message.request_certificate` + `set_tls_client_certificate(null)` —
+  measured TIMEOUT; Soup complete treats null as FAILED.
 
 ---
 
@@ -108,10 +99,14 @@ block.
 - ✔️ `accept_iostream` start+done logged — not blocked in accept.
 - ✔️ Server `REQUESTED` → `NONE` → smoke PASS. Reverted (`NONE` is not the
   product behaviour).
-- 🚫 Handler that only `return true` — still TIMEOUT. Soup waits for
-  `set_tls_client_certificate`.
+- 🚫 Handler that only `return true` — still TIMEOUT.
+- 🚫 `request_certificate` + `set_tls_client_certificate(this.tls_certificate)`
+  — still TIMEOUT 30s. Reverted.
+- 🚫 Always `set_tls_client_certificate` before send (null included) —
+  still TIMEOUT 30s. Reverted.
+- 🚫 `GLib.Idle.add` around `accept_iostream` — still TIMEOUT. Reverted.
 
 ## Next
 
-- ⏳ 💩 Approve §1, then apply. Gate: `meson test -C build test-rpc-http-https`
-  (and `--suite rpc` after both suite bugs land).
+- ⏳ 💩 Choose a remaining direction above; write a verbatim fence only
+  once that direction is picked. Gate: `meson test -C build test-rpc-http-https`.

@@ -107,16 +107,15 @@ namespace OLLMrpc.Live
 				return;
 			}
 			var correlation = (int) request.args.get(0).get_uint64();
+			var values = new Gee.ArrayList<GLib.Value?>();
+			for (var i = 1; i < request.args.size; i++) {
+				values.add(request.args.get(i));
+			}
 			foreach (var id in request.connection.callbacks.keys) {
 				var row = request.connection.callbacks.get(id);
-				if (row.reply_id != correlation) {
+				if (!row.complete(correlation, values)) {
 					continue;
 				}
-				row.reply_args.clear();
-				for (var i = 1; i < request.args.size; i++) {
-					row.reply_args.add(request.args.get(i));
-				}
-				row.replied = true;
 				request.reply(new Response());
 				return;
 			}

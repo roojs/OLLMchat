@@ -113,7 +113,9 @@ namespace OLLMrpc
 					break;
 
 				case "u":
-					slot.set_uint32(val.get_uint());
+					var u = GLib.Value(typeof(uint));
+					val.transform(ref u);
+					slot.set_uint32(u.get_uint());
 					atype = Libffi.UINT32;
 					break;
 
