@@ -191,6 +191,25 @@ namespace OLLMrpc
 		}
 
 		/**
+		 * Stop a running ollmfilesd (SIGTERM), then drop socket and pid files.
+		 *
+		 * After this, {@link ensure_daemon} will spawn. No-op if nothing
+		 * is running besides leftover files.
+		 */
+		public async void kill()
+		{
+			var daemon_pid = this.read_pid();
+			if (this.pid_running(daemon_pid)) {
+				this.terminate_daemon(daemon_pid);
+				yield this.pause(this.grace);
+			}
+			this.unlink_socket();
+			if (GLib.FileUtils.test(this.pid, GLib.FileTest.EXISTS)) {
+				GLib.FileUtils.unlink(this.pid);
+			}
+		}
+
+		/**
 		 * @return true when a stream connection to {@link socket_path} succeeds
 		 */
 		public bool connectable()

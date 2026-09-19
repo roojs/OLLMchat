@@ -22,8 +22,9 @@ namespace OLLMchat.Settings
 	 * File-daemon listen settings on {@link Config2}.
 	 *
 	 * JSON key ''filesd''. ''unix'' / ''socket'' are reserved for later;
-	 * this plan uses ''https'', ''proxy'', and ''systemd''. {@link install}
-	 * sets up the user systemd unit from {@link systemd}.
+	 * this plan uses ''enabled'', ''https'', ''proxy'', and
+	 * ''systemd''. {@link install} sets up the user systemd unit from
+	 * {@link systemd}.
 	 *
 	 * == Example ==
 	 *
@@ -31,6 +32,7 @@ namespace OLLMchat.Settings
 	 * "filesd": {
 	 *   "unix": true,
 	 *   "socket": "",
+	 *   "enabled": true,
 	 *   "https": "127.0.0.1:8443",
 	 *   "proxy": true,
 	 *   "systemd": true
@@ -50,9 +52,16 @@ namespace OLLMchat.Settings
 		public string socket { get; set; default = ""; }
 
 		/**
-		 * HTTPS listen as ''host:port'' (empty = off).
+		 * HTTPS listen as ''host:port''. Kept when {@link enabled} is
+		 * false; empty means no address stored yet.
 		 */
 		public string https { get; set; default = ""; }
+
+		/**
+		 * When false, ollmfilesd does not bind HTTPS. Host, port,
+		 * {@link proxy}, and {@link systemd} keep their last values.
+		 */
+		public bool enabled { get; set; default = true; }
 
 		/**
 		 * Expect PROXY Protocol v1 on the HTTPS TCP listener.
@@ -71,13 +80,21 @@ namespace OLLMchat.Settings
 		/**
 		 * Write the user unit and enable it when {@link systemd} is true.
 		 *
-		 * Skips rewrite when the unit file already matches. Skips
-		 * ''enable --now'' when already active or when this process is
-		 * already under systemd (''INVOCATION_ID'' set).
+		 * When {@link systemd} is false, runs ''disable --now'' on the
+		 * user unit. Skips rewrite when the unit file already matches.
+		 * Skips ''enable --now'' when already active or when this
+		 * process is already under systemd (''INVOCATION_ID'' set).
 		 */
 		public void install()
 		{
 			if (!this.systemd) {
+				try {
+					GLib.Process.spawn_command_line_async(
+						"systemctl --user disable --now ollmfilesd.service"
+					);
+				} catch (GLib.Error e) {
+					GLib.warning("systemd disable failed: %s", e.message);
+				}
 				return;
 			}
 			var unit_dir = GLib.Path.build_filename(

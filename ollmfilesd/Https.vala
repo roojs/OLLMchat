@@ -48,15 +48,18 @@ namespace OLLMfilesd
 		/**
 		 * Mint the product-CA leaf if needed and bind per ''filesd.https''.
 		 *
-		 * No-op (returns ''false'') when ''filesd.https'' is empty or not
-		 * a valid ''host:port''. Uses {@link app} for ''config.filesd''
-		 * and ''data_dir''.
+		 * No-op (returns ''false'') when ''filesd.enabled'' is false,
+		 * ''filesd.https'' is empty, or not a valid ''host:port''. Uses
+		 * {@link app} for ''config.filesd'' and ''data_dir''.
 		 *
 		 * @return true when the HTTPS listener is up
 		 */
 		public bool listen()
 		{
 			var filesd = this.app.config.filesd;
+			if (!filesd.enabled) {
+				return false;
+			}
 			if (filesd.https == "") {
 				return false;
 			}
@@ -89,28 +92,33 @@ namespace OLLMfilesd
 				}
 			}
 			if (!GLib.FileUtils.test(ca_key, GLib.FileTest.EXISTS)) {
-				GLib.error("missing CA key %s (copy libocrpc/data/ollmrpc-ca-key.pem)",
-					ca_key);
+				try {
+					GLib.FileUtils.set_contents(ca_key,
+						(string) GLib.resources_lookup_data("/ollmrpc/ollmrpc-ca-key.pem",
+							GLib.ResourceLookupFlags.NONE).get_data());
+				} catch (GLib.Error e) {
+					GLib.error("extract CA key: %s", e.message);
+				}
 			}
 			this.host = host;
 			this.port = (uint) port;
 			this.proxy = filesd.proxy;
-			var server_cert = new OLLMrpc.Transport.Cert() {
+			var cert = new OLLMrpc.Transport.Cert() {
 				dir = tls_dir,
 				ca_pem_path = ca_pem,
 				ca_key_path = ca_key,
 				server_san = true,
 			};
-			server_cert.ensure();
-			this.tls_certificate = server_cert.certificate;
+			cert.ensure();
+			this.tls_certificate = cert.certificate;
 			if (!this.start()) {
 				GLib.error("failed to start HTTPS RPC listener");
 			}
-			GLib.debug("HTTPS listening on %s:%u proxy=%s",
-				host, this.port, filesd.proxy ? "true" : "false");
+			GLib.debug("HTTPS listening on %s:%u proxy=%s",	host, this.port, 
+				filesd.proxy ? "true" : "false");
 			var banned = new Gee.ArrayList<ClientCert>();
-			ClientCert.query(this.app.project_manager.db).select(
-				"WHERE status = -1", banned);
+			ClientCert.query(this.app.project_manager.db).select("WHERE status = -1", 
+				banned);
 			foreach (var row in banned) {
 				if (row.ip != "" && !this.banned_ips.contains(row.ip)) {
 					this.banned_ips.add(row.ip);

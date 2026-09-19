@@ -39,12 +39,9 @@ Under `~/.config/ollmchat/config.2.json`:
 | `systemd` | Install/enable the user unit on daemon start |
 | `unix` / `socket` | Reserved; current Unix / `--tcp` behaviour unchanged |
 
-Place the product CA **private** key once at:
-
-`~/.local/share/ollmchat/tls/ollmrpc-ca-key.pem`
-
-(copy from `libocrpc/data/ollmrpc-ca-key.pem`). The public CA PEM is extracted
-from GResource into the same `tls/` directory on first HTTPS start. Leaf
+On first HTTPS listen, `ollmfilesd` extracts the product CA PEM and private key
+from GResource into `~/.local/share/ollmchat/tls/` (`ollmrpc-ca.pem` and
+`ollmrpc-ca-key.pem`). Operators do not copy TLS files by hand. Leaf
 `server.pem` / `server-key.pem` are minted there via `Transport.Cert`.
 
 ---

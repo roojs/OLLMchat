@@ -298,6 +298,11 @@ ollmchat_sources = [
   'SettingsDialog/Rows/IntRow.vala',
   ollmchat_resources
 ]
+if host_machine.system() == 'linux'
+  ollmchat_sources += [
+    'SettingsDialog/FileServerRow.vala',
+  ]
+endif
 # VectorRegistry.vala removed — CodebaseSearch is registered via liboctools/Registry.
 if host_machine.system() == 'windows'
   win_mod = import('windows')
@@ -353,6 +358,7 @@ if host_machine.system() == 'windows'
 else
   ollmchat_vala_args += [
     '--pkg=webkitgtk-6.0',
+    '--pkg=linux',
     '--pkg=atspi-2',
   ]
 endif

@@ -231,6 +231,7 @@ namespace OLLMapp.SettingsDialog
 			// Load tools and configs for tools page (non-blocking)
 			this.tools_page.load_tools();
 			this.tools_page.load_configs();
+			this.connections_page.load_config();
 			this.skills_page.load_skills();
 
 			// Bind projects list to ProjectManager (once; project_manager not available at dialog creation)

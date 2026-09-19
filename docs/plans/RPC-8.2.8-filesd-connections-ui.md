@@ -13,7 +13,7 @@
 ## Purpose
 
 - **🔷** Wire **file-server** into the **Connections** settings tab on **desktop** and **Android**.
-- **🔷** Desktop hosts `ollmfilesd` HTTPS: expander picks a listen IP from this machine, plus port / proxy / etc.
+- **🔷** Desktop **Linux** hosts `ollmfilesd` HTTPS: expander picks a listen IP from this machine, plus port / proxy / systemd.
 - **🔷** Desktop preferences dialog shows a **banner** for the **single latest** pending registration (same slot as model-download / `PullManagerBanner` on `MainDialog`) — **Accept** / **Reject** / **Ban**.
 - **🔷** Only **one** pending is shown at a time; clearing it (any of the three actions) reveals the **next latest** if any remain — **no pending list UI**.
 - **🔷** Reject deletes the pending row.

@@ -1,6 +1,6 @@
 # `StreamValue.write` drops boxed types that are not `GLib.Bytes`
 
-**Status:** ⏳ root cause confirmed; fix proposed — await apply approval  
+**Status:** ✅ FIXED — user archived. Registered boxed `GValue` on `Notification.args` (`0x50` + token + `uint32`). `Live.boxed_ok` is fatal on pointer-shaped GI fields.  
 **Hit:** 2026-09-19 — nested mutter-rpc boot: `ClutterStage::before-update`  
 **Component:** `libocrpc` / `OLLMrpc.Bin.StreamValue.write`  
 **Consumer gate:** `gnome-shell-rpc/tests/call-sync-repro/subscribe-boxed-signal-arg-gate`  
@@ -365,6 +365,5 @@ token after `0x48`.
 
 ## Next
 
-- 🔷 ⏳ Apply remaining §2–§5; `boxed_ok` lives in `OLLMrpc.Live` (`Live/namespace.vala`).
+- 🔷 ✅ Applied in this repo: `Live.boxed_ok` (unix GI walk, `GLib.error` if not wire-portable; Windows/Android stub in `Live/namespace.windows.vala`), `StreamValue` registered-boxed write/read, `bin-test` VariantType round-trip + unregistered boxed throw, protocol §13.
 - ℹ️ gnome-shell-rpc: `Gi.register` Clutter/GLib, then `Bin.register` the boxed GTypes on subscribed signals (`GLib.VariantType`, `Clutter-Frame`, …). Not this repo.
-- ℹ️ Then re-run `subscribe-boxed-signal-arg-gate`. Assert `notif.args` GType + `GVariantType` string `"i"`. Re-emit with those GValues.

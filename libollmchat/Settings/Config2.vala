@@ -351,6 +351,12 @@ namespace OLLMchat.Settings
 					var result = new Json.Node(Json.NodeType.OBJECT);
 					result.set_object(obj);
 					return result;
+
+				case "filesd":
+					return Json.gobject_serialize(this.filesd);
+
+				case "filesd-client":
+					return Json.gobject_serialize(this.filesd_client);
 					
 				case "loaded":
 					// Exclude loaded flag from serialization (it's metadata, not config data)

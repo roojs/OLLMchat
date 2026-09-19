@@ -48,6 +48,9 @@ namespace OLLMapp.SettingsDialog
 		private Gtk.Button add_file_btn;
 		private FileConnectionAdd add_file_dialog;
 		private FileConnectionRow? file_connection_row;
+#if !ANDROID && !G_OS_WIN32
+		private FileServerRow file_server_row;
+#endif
 		private bool updating_defaults = false;
 
 		/**
@@ -110,6 +113,11 @@ namespace OLLMapp.SettingsDialog
 			});
 
 			// Initial render of connections
+#if !ANDROID && !G_OS_WIN32
+			this.file_server_row = new FileServerRow(
+				this.dialog.app.config.filesd, this.dialog.parent);
+			this.boxed_list.append(this.file_server_row.expander);
+#endif
 			this.render_connections();
 			this.render_file_connection();
 			this.render_approved.begin();
@@ -444,6 +452,22 @@ namespace OLLMapp.SettingsDialog
 			foreach (var entry in this.rows.entries) {
 				entry.value.apply_config(this.dialog.app.config.connections.get(entry.key));
 			}
+#if !ANDROID && !G_OS_WIN32
+			this.file_server_row.apply_config();
+#endif
+		}
+
+		/**
+		 * Fill File Server widgets from {@link OLLMchat.Settings.Config2.filesd}.
+		 *
+		 * Called when the settings dialog is shown, same moment as
+		 * {@link ToolsPage.load_configs}.
+		 */
+		public void load_config()
+		{
+#if !ANDROID && !G_OS_WIN32
+			this.file_server_row.load_config();
+#endif
 		}
 
 
