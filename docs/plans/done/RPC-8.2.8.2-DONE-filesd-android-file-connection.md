@@ -15,6 +15,8 @@
 
 **Scope note:** filename still says *android* for link stability; this plan covers **Android and Linux desktop** (Linux is useful for testing).
 
+---
+
 ## Landed (tree)
 
 - `libollmchat/Settings/FilesdClient.vala` — `url` / `approved` / `enabled` on `Config2.filesd_client`
