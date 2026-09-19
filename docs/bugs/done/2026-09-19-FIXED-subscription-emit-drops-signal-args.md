@@ -1,6 +1,6 @@
 # `Live.Subscription.emit` drops GObject signal arguments
 
-**Status:** ✔️ applied — `test-rpc-subscribe` pass; await user verify  
+**Status:** ✅ FIXED — user archived. `test-rpc-subscribe` pass. Named-signal args on `Notification.args`.  
 **Hit:** 2026-09-19 — overview search `Meta.Laters` / `ClutterStage::before-update`  
 **Component:** `libocrpc` / `OLLMrpc.Live.Subscription` + `Notification`  
 **Consumer gate:** `gnome-shell-rpc/tests/call-sync-repro/subscribe-signal-args-gate` — **FAIL** 2026-09-19  
@@ -362,5 +362,5 @@ Fresh connection so existing `writes` asserts are untouched.
 
 ## Next
 
-- 🔷 ✔️ Apply §1–§5 here after approve. `ref()`/`sink()` before connect; `set_marshal` so `connect_closure` does not install `VOID__VOID`.
-- 🔷 ⏳ gnome-shell-rpc keeps the FAIL gate until this lands, then asserts `notif.args` (not `message`) and re-emits with those GValues. No Laters / Runtime flush workaround.
+- 🔷 ✅ Apply §1–§5 here. `ref()`/`sink()` before connect; `set_marshal` so `connect_closure` does not install `VOID__VOID`.
+- ℹ️ gnome-shell-rpc gate still asserts `message`; after this library is in that tree, assert `notif.args` and re-emit with those GValues. Not this repo.

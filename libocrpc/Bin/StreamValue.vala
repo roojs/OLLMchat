@@ -308,6 +308,23 @@ namespace OLLMrpc.Bin
 				return;
 			}
 
+			if (val.type().is_a(GLib.Type.BOXED)
+				&& gtype_to_alias != null
+				&& gtype_to_alias.has_key(val.type())) {
+				ctx.write_gtype(val.type());
+				if (val.type() == typeof(GLib.VariantType) && val.get_boxed() != null) {
+					var vt = (GLib.VariantType) val.get_boxed();
+					var s = (string) vt.peek_string();
+					ctx.out_stream.put_uint32((uint32) s.length);
+					size_t boxed_written;
+					ctx.out_stream.write_all(((uint8[]) s)[0:s.length], out boxed_written);
+					return;
+				}
+				OLLMrpc.Live.boxed_ok(val.type());
+				ctx.out_stream.put_uint32(0);
+				return;
+			}
+
 			throw new StreamError.PROTOCOL(
 				"unsupported bin value type '%s'",
 				val.type().name()
@@ -544,7 +561,23 @@ namespace OLLMrpc.Bin
 					return d_val;
 
 				case GLib.Type.OBJECT:
-					var child = ctx.parse_object();
+					var wire_gtype = ctx.read_gtype();
+					if (wire_gtype.is_a(GLib.Type.BOXED)) {
+						var blob_len = ctx.in_stream.read_uint32();
+						var boxed_val = GLib.Value(wire_gtype);
+						if (blob_len == 0) {
+							return boxed_val;
+						}
+						var blob_buf = new uint8[blob_len + 1];
+						size_t boxed_read;
+						ctx.in_stream.read_all(blob_buf[0:blob_len], out boxed_read);
+						blob_buf[blob_len] = 0;
+						if (wire_gtype == typeof(GLib.VariantType)) {
+							boxed_val.set_boxed(new GLib.VariantType((string) blob_buf));
+						}
+						return boxed_val;
+					}
+					var child = ctx.parse_object(wire_gtype);
 					var obj_val = GLib.Value(child.get_type());
 					obj_val.set_object(child);
 					return obj_val;

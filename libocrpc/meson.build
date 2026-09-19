@@ -111,12 +111,10 @@ ocrpc_core_src = files([
   'MockDispatch.vala',
 ])
 
-live_src = files([
-  'Live/namespace.vala',
-  'Live/Handle.vala',
-])
 if use_unix_sockets
-  live_src += files([
+  live_src = files([
+    'Live/namespace.vala',
+    'Live/Handle.vala',
     'Live/Buffer.vala',
     'Live/BufferStream.vala',
     'Live/BufferListen.vala',
@@ -126,6 +124,11 @@ if use_unix_sockets
     'Live/Callback.vala',
     'Live/Hook.vala',
     'Live/Invoke.vala',
+  ])
+else
+  live_src = files([
+    'Live/namespace.windows.vala',
+    'Live/Handle.vala',
   ])
 endif
 

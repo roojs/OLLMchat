@@ -13,7 +13,7 @@
 ## Purpose
 
 - **🔷** Wire **file-server** into the **Connections** settings tab on **desktop** and **Android**.
-- **🔷** Desktop hosts `ollmfilesd` HTTPS: expander edits listen settings (`filesd` port / proxy / etc.).
+- **🔷** Desktop hosts `ollmfilesd` HTTPS: expander picks a listen IP from this machine, plus port / proxy / etc.
 - **🔷** Desktop preferences dialog shows a **banner** for the **single latest** pending registration (same slot as model-download / `PullManagerBanner` on `MainDialog`) — **Accept** / **Reject** / **Ban**.
 - **🔷** Only **one** pending is shown at a time; clearing it (any of the three actions) reveals the **next latest** if any remain — **no pending list UI**.
 - **🔷** Reject deletes the pending row.
@@ -164,8 +164,9 @@ Tracked on the sub-plans:
 - **🚫** CLI admin as the primary surface (GUI owns approval).
 - **🚫** `client_cert` over HTTPS.
 - **🚫** Six separate admin cert methods.
+- **🔷** File Server listen changes: stop local `ollmfilesd` from the app (pid + SIGTERM) then `ClientBoot` — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md).
+- **🚫** Live HTTPS rebind inside a running daemon.
 - **🚫** Putting file-server listen settings into `Settings.Connection` LLM map.
-- **💩** Live HTTPS rebind without daemon restart when `filesd.https` changes from the UI.
 - **🚫** Row-level string→int migrate — unused; drop+recreate table instead.
 - **🚫** `ALTER TABLE …` to change column type — SQLite still does not support that.
 - **💩** Int action codes instead of string actions — strings kept for readability unless you prefer ints.

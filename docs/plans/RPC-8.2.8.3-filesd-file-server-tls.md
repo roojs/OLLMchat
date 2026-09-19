@@ -19,12 +19,13 @@
 
 - **🔷** Connections tab: **File Server** expander — **always shown** on desktop (empty `https` = server off).
   - Same expandable-block pattern as an LLM `Connection` row.
-  - Edit listen values: host/port (→ `filesd.https`), **proxy**, related `filesd` fields (`systemd`).
-  - Saving updates `Config2.filesd` and persists; daemon pick-up = restart / existing install path.
+  - Host is a dropdown of this machine’s listen IPs (not free text). Port, proxy, systemd.
+  - Saving updates `Config2.filesd` and persists.
+  - If those listen fields changed, stop the local `ollmfilesd` from this process and start it again so HTTPS / proxy pick up. No reboot RPC.
 - **🔷** Enabling HTTPS must **not** require the operator to hand-copy TLS material.
   - Today CA PEM is extracted from GResource; CA **key** still errors with “copy `libocrpc/data/…`”.
   - Extract / install the CA key the same way on first listen; update [`docs/filesd-behind-nginx-proxy.md`](../filesd-behind-nginx-proxy.md) so it no longer tells operators to copy certs by hand.
-- **⏳** Land the expander, GResource key, `Https.listen` extract, and nginx-doc rewrite (fences below).
+- **⏳** Land the expander, GResource key, `Https.listen` extract, nginx-doc rewrite, and `FileServerRow.reboot` (fences below).
 
 ---
 
@@ -43,9 +44,14 @@
 ## Design decisions
 
 - **🔷** Always present on desktop Connections. Android does not host `ollmfilesd`, so the expander is `#if !ANDROID` and `FileServerRow.vala` is desktop `ollmchat_sources` only.
-- **🔷** Host + Port entries compose `filesd.https` as `host + ":" + port`. Empty host **or** empty port → `https = ""` (server off). Split on load with `last_index_of(":")` (same as `Https.listen`).
+- **🔷** Host is a `Gtk.DropDown` of this machine’s IPv4 addresses (`Linux.Network.getifaddrs`, UP, skip `0.0.0.0`, de-dupe). Not a free-text entry.
+- **🔷** Port stays a `Gtk.Entry`. `filesd.https` is selected IP `+ ":" +` port. No IP selected **or** empty port → `https = ""` (server off). Split on load with `last_index_of(":")` (same as `Https.listen`). If the saved IP is not on the machine right now, still list it so the row does not silently change.
 - **🔷** Proxy and systemd are switches on `filesd.proxy` / `filesd.systemd`.
-- **🔷** Persist on dialog close: `ConnectionsPage.apply_config()` writes the widgets into `config.filesd`; `MainDialog.on_closed` already saves. No live HTTPS rebind.
+- **🔷** Persist on dialog close: `ConnectionsPage.apply_config()` writes the widgets into `config.filesd`; `MainDialog.on_closed` already saves.
+- **🔷** Bounce lives on `FileServerRow.reboot()` (not `MainDialog`). `new ClientBoot` → `yield boot.kill()` → `yield boot.ensure_daemon()`. Pid/socket stop lives on `ClientBoot`, not the row.
+- **🔷** `ClientBoot.kill()` — SIGTERM the pid, wait `grace`, unlink socket and pid file. Then `ensure_daemon` will spawn (it no-ops if the socket is still up).
+- **🔷** `FileServerRow(filesd, win)` — window at construct so `reboot` can reconnect `ProjectManager` when it is still on Unix. Remote takeover: bounce local daemon only.
+- **🔷** `apply_config` compares listen fields, `config.save()`s if they changed, then `file_server_row.reboot.begin()` so the new daemon reads disk. `MainDialog.on_closed` stays as it is.
 - **💩** File Server is the **first** row in `boxed_list` (this machine, then LLM connections, then outbound file connection, then approved clients).
 - **ℹ️** `Filesd.install()` still runs on daemon start, not from this UI. Turning systemd on only persists the flag.
 - **ℹ️** [`RPC-8.2.3.5`](done/RPC-8.2.3.5-DONE-https-server.md) kept the CA **key** out of the libocrpc GResource so Android would not ship it. This plan still lists the key in `libocrpc/data/ollmrpc.gresource.xml` so `Https.listen` can mirror the PEM lookup path (`/ollmrpc/ollmrpc-ca-key.pem`). ollmfilesd already links libocrpc. Confirm or veto (alternative: ollmfilesd-only GResource).
@@ -137,19 +143,52 @@ from GResource into `~/.local/share/ollmchat/tls/` (`ollmrpc-ca.pem` and
 
 ---
 
+### 3a. `libocrpc/ClientBoot.vala` — public `kill()`
+
+**Why:** Stop/unlink belongs on `ClientBoot`, not `FileServerRow`. `ensure_daemon` no-ops when the socket is already up, so a bounce is `kill` then `ensure_daemon`.
+**Where:** after `ensure_daemon()`, before `connectable()`.
+**Depends on:** none.
+
+Sanctioned method: `kill`. Reuse private `read_pid` / `pid_running` / `terminate_daemon` / `unlink_socket` / `pause`. No extra helpers.
+
+#### Add — after `ensure_daemon()`
+
+```vala
+		/**
+		 * Stop a running ollmfilesd (SIGTERM), then drop socket and pid files.
+		 *
+		 * After this, {@link ensure_daemon} will spawn. No-op if nothing
+		 * is running besides leftover files.
+		 */
+		public async void kill()
+		{
+			var daemon_pid = this.read_pid();
+			if (this.pid_running(daemon_pid)) {
+				this.terminate_daemon(daemon_pid);
+				yield this.pause(this.grace);
+			}
+			this.unlink_socket();
+			if (GLib.FileUtils.test(this.pid, GLib.FileTest.EXISTS)) {
+				GLib.FileUtils.unlink(this.pid);
+			}
+		}
+```
+
+---
+
 ## File Server expander
 
 ### 4. `ollmapp/SettingsDialog/FileServerRow.vala` — new expander row
 
 **Why:** File Server is an editable expander like `ConnectionRow`, bound to `Config2.filesd` (not an LLM `Settings.Connection`).
 **Where:** new file under `ollmapp/SettingsDialog/` (desktop meson + valadoc lists in §6).
-**Depends on:** none.
+**Depends on:** §3a `ClientBoot.kill`.
 
-Sanctioned new type: `FileServerRow`. Constructor only — no `apply_config` helper; the page writes the widgets in existing `ConnectionsPage.apply_config()`.
+Sanctioned new type: `FileServerRow`. No `apply_config` on the row. Sanctioned method: `reboot` (`new ClientBoot` → `kill` → `ensure_daemon`). Pass `OllmchatWindow` at construct (`this.win`), same as `FileConnectionRow`.
 
 #### Add — new file `ollmapp/SettingsDialog/FileServerRow.vala`
 
-Desktop File Server expander: Host / Port / Proxy / systemd bound to `filesd`.
+Desktop File Server expander: Host dropdown (machine IPv4) / Port / Proxy / systemd bound to `filesd`.
 
 ```vala
 /*
@@ -177,15 +216,16 @@ namespace OLLMapp.SettingsDialog
 	 *
 	 * Binds {@link OLLMchat.Settings.Filesd} listen fields (https
 	 * host/port, proxy, systemd). Empty https is server off. The
-	 * Connections page writes the widgets back in
-	 * {@link ConnectionsPage.apply_config}.
-	 *
-	 * == Example ==
-	 *
-	 * {{{
-	 * var row = new FileServerRow(config.filesd);
-	 * boxed_list.append(row.expander);
-	 * }}}
+ * Connections page writes the widgets back in
+ * {@link ConnectionsPage.apply_config}, then calls {@link reboot}
+ * if listen fields changed.
+ *
+ * == Example ==
+ *
+ * {{{
+ * var row = new FileServerRow(config.filesd, win);
+ * boxed_list.append(row.expander);
+ * }}}
 	 */
 	public class FileServerRow : Object
 	{
@@ -195,10 +235,10 @@ namespace OLLMapp.SettingsDialog
 		public Adw.ExpanderRow expander { get; private set; }
 
 		/**
-		 * HTTPS listen host (left of ''host:port'' in
+		 * HTTPS listen IP from this machine (left of ''host:port'' in
 		 * {@link OLLMchat.Settings.Filesd.https}).
 		 */
-		public Gtk.Entry host_entry { get; private set; }
+		public Gtk.DropDown host_dropdown { get; private set; }
 
 		/**
 		 * HTTPS listen port (right of ''host:port'' in
@@ -222,15 +262,21 @@ namespace OLLMapp.SettingsDialog
 		 * Config ''filesd'' object this expander edits.
 		 */
 		public OLLMchat.Settings.Filesd filesd { get; private set; }
+		/**
+		 * Host window: {@link OLLMfiles.ProjectManager} after a local bounce.
+		 */
+		public OllmchatWindow win { get; private set; }
 
 		/**
 		 * File Server expander for one {@link OLLMchat.Settings.Filesd}.
 		 *
 		 * @param filesd Config listen settings (https, proxy, systemd)
+		 * @param win Host window for ProjectManager reconnect
 		 */
-		public FileServerRow(OLLMchat.Settings.Filesd filesd)
+		public FileServerRow(OLLMchat.Settings.Filesd filesd, OllmchatWindow win)
 		{
 			this.filesd = filesd;
+			this.win = win;
 			var host = "";
 			var port = "";
 			var colon = this.filesd.https.last_index_of(":");
@@ -245,16 +291,62 @@ namespace OLLMapp.SettingsDialog
 				focus_on_click = false
 			};
 
-			this.host_entry = new Gtk.Entry() {
-				text = host,
-				placeholder_text = "127.0.0.1",
+			string[] ips = {};
+#if !G_OS_WIN32
+			var addrs = (Linux.Network.IfAddrs) null;
+			if (Linux.Network.getifaddrs(out addrs) == 0) {
+				for (var iface = addrs; iface != null; iface = iface.ifa_next) {
+					if (iface.ifa_addr == null) {
+						continue;
+					}
+					if (iface.ifa_addr.sa_family != Posix.AF_INET) {
+						continue;
+					}
+					if ((iface.ifa_flags & Linux.Network.IfFlag.UP) == 0) {
+						continue;
+					}
+					var sin = (Posix.SockAddrIn*) iface.ifa_addr;
+					var buf = new uint8[Posix.INET_ADDRSTRLEN];
+					var ip = Posix.inet_ntop(Posix.AF_INET, &sin.sin_addr, buf);
+					if (ip == null || ip == "" || ip == "0.0.0.0") {
+						continue;
+					}
+					var seen = false;
+					foreach (var existing in ips) {
+						if (existing != ip) {
+							continue;
+						}
+						seen = true;
+						break;
+					}
+					if (seen) {
+						continue;
+					}
+					ips += ip;
+				}
+			}
+#endif
+			var selected = Gtk.INVALID_LIST_POSITION;
+			for (var i = 0; i < ips.length; i++) {
+				if (ips[i] != host) {
+					continue;
+				}
+				selected = i;
+				break;
+			}
+			if (host != "" && selected == Gtk.INVALID_LIST_POSITION) {
+				ips += host;
+				selected = ips.length - 1;
+			}
+			this.host_dropdown = new Gtk.DropDown(new Gtk.StringList(ips), null) {
+				selected = selected,
 				vexpand = false,
 				valign = Gtk.Align.CENTER
 			};
 			var host_row = new Adw.ActionRow() {
 				title = "Host"
 			};
-			host_row.add_suffix(this.host_entry);
+			host_row.add_suffix(this.host_dropdown);
 			this.expander.add_row(host_row);
 
 			this.port_entry = new Gtk.Entry() {
@@ -291,6 +383,47 @@ namespace OLLMapp.SettingsDialog
 			systemd_row.add_suffix(this.systemd_switch);
 			this.expander.add_row(systemd_row);
 		}
+
+		/**
+		 * Stop the local Unix ollmfilesd and start it again.
+		 *
+		 * {@link OLLMrpc.ClientBoot.kill} then
+		 * {@link OLLMrpc.ClientBoot.ensure_daemon}. Spawn failure
+		 * raises ''Alert.show'' on the window and returns. If this
+		 * window is still on Unix, reconnect
+		 * {@link OLLMfiles.ProjectManager} like
+		 * {@link FileConnectionRow.reconnect} with ''remote = false''.
+		 * If the window is on a remote file connection, only bounce the
+		 * local daemon.
+		 */
+		public async void reboot()
+		{
+			var data_dir = GLib.Path.build_filename(
+				GLib.Environment.get_user_data_dir(), "ollmchat");
+			var boot = new OLLMrpc.ClientBoot(data_dir, "ollmfilesd.pid", "ollmfilesd.sock");
+			yield boot.kill();
+			try {
+				yield boot.ensure_daemon();
+			} catch (GLib.Error e) {
+				GLib.critical("file server restart: %s", e.message);
+				this.win.notification(new OLLMrpc.Notification() {
+					method = "Alert.show",
+					message = "File daemon is not up: " + e.message
+				});
+				return;
+			}
+			if (this.win.project_manager.rpc.http != null) {
+				return;
+			}
+			this.win.project_manager.replace_rpc(
+				new OLLMrpc.Client(data_dir, "ollmfilesd.pid", "ollmfilesd.sock")
+			);
+			var hello = new OLLMrpc.Request() {
+				method = "RPC-Daemon.hello",
+				args = OLLMrpc.args("is", 1, "ollmchat")
+			};
+			yield this.win.project_manager.rpc.connect(hello, new OLLMrpc.ClientBoot());
+		}
 	}
 }
 ```
@@ -299,7 +432,7 @@ namespace OLLMapp.SettingsDialog
 
 ### 5. `ollmapp/SettingsDialog/ConnectionsPage.vala` — show File Server; persist on apply
 
-**Why:** always-on desktop expander; write `Config2.filesd` from the widgets when the dialog closes.
+**Why:** always-on desktop expander; write `Config2.filesd` from the widgets when the dialog closes; `reboot.begin()` if listen fields changed (after `save()` so the new daemon reads disk).
 **Where:** field next to `file_connection_row`; constructor before `render_connections()`; `apply_config()`.
 **Depends on:** §4.
 
@@ -329,7 +462,8 @@ Desktop-only File Server expander handle.
 
 ```vala
 #if !ANDROID
-			this.file_server_row = new FileServerRow(this.dialog.app.config.filesd);
+			this.file_server_row = new FileServerRow(
+				this.dialog.app.config.filesd, this.dialog.parent);
 			this.boxed_list.append(this.file_server_row.expander);
 #endif
 			this.render_connections();
@@ -360,7 +494,14 @@ Desktop-only File Server expander handle.
 			}
 #if !ANDROID
 			var filesd = this.dialog.app.config.filesd;
-			var host = this.file_server_row.host_entry.text.strip();
+			var prev_https = filesd.https;
+			var prev_proxy = filesd.proxy;
+			var prev_systemd = filesd.systemd;
+			var host = "";
+			var item = this.file_server_row.host_dropdown.selected_item as Gtk.StringObject;
+			if (item != null) {
+				host = item.string;
+			}
 			var port = this.file_server_row.port_entry.text.strip();
 			filesd.https = "";
 			if (host != "" && port != "") {
@@ -370,6 +511,11 @@ Desktop-only File Server expander handle.
 			filesd.systemd = this.file_server_row.systemd_switch.active;
 			this.file_server_row.expander.subtitle =
 				filesd.https == "" ? "Off" : filesd.https;
+			if (filesd.https != prev_https || filesd.proxy != prev_proxy
+				|| filesd.systemd != prev_systemd) {
+				this.dialog.app.config.save();
+				this.file_server_row.reboot.begin();
+			}
 #endif
 		}
 ```
@@ -379,7 +525,7 @@ Desktop-only File Server expander handle.
 ### 6. Meson + valadoc — desktop sources only
 
 **Why:** new Vala file; Android `android_poc_settings_sources` must not list it (`#if !ANDROID` in the page is not enough if the class file is compiled in).
-**Where:** `ollmchat_sources` next to `FileConnectionRow.vala`; `docs/meson.build` valadoc inputs next to the same file.
+**Where:** `ollmchat_sources` next to `FileConnectionRow.vala`; non-Windows `ollmchat_vala_args` `--pkg=linux`; `docs/meson.build` valadoc inputs next to the same file.
 **Depends on:** §4.
 
 #### Add — `ollmapp/meson.build` `ollmchat_sources`, immediately after `'SettingsDialog/FileConnectionRow.vala',`
@@ -388,6 +534,14 @@ Desktop compile list only (not `android_poc_settings_sources`).
 
 ```meson
     'SettingsDialog/FileServerRow.vala',
+```
+
+#### Add — `ollmapp/meson.build` `ollmchat_vala_args` non-Windows branch (next to `'--pkg=webkitgtk-6.0'`)
+
+`Linux.Network.getifaddrs` in `FileServerRow` (desktop Linux only).
+
+```meson
+    '--pkg=linux',
 ```
 
 #### Add — `docs/meson.build` valadoc inputs, immediately after `'../ollmapp/SettingsDialog/FileConnectionRow.vala',`
@@ -402,21 +556,29 @@ Desktop compile list only (not `android_poc_settings_sources`).
 
 1. **⏳** §1–§2 — GResource + `Https.listen` extract (HTTPS enable works without UI)
 2. **⏳** §3 — nginx doc matches automatic install
-3. **⏳** §4–§6 — File Server expander on desktop Connections
+3. **⏳** §3a — `ClientBoot.kill`
+4. **⏳** §4–§6 — File Server expander; `FileServerRow.reboot` when listen fields change
 
 ---
 
 ## LLM notes
 
 - **ℹ️** Parent Phase 1 owns `Config2.filesd` + CA PEM extraction — this sub-plan adds the key extract and the expander.
-- **ℹ️** Sanctioned new type: `FileServerRow` (`expander`, `host_entry`, `port_entry`, `proxy_switch`, `systemd_switch`, `filesd`). No `apply_config` on the row.
-- **🚫** Live HTTPS rebind without daemon restart when `filesd.https` changes from the UI.
+- **ℹ️** Sanctioned: `ClientBoot.kill`; `FileServerRow` (`expander`, `host_dropdown`, `port_entry`, `proxy_switch`, `systemd_switch`, `filesd`, `win`, `reboot`). No `apply_config` on the row.
+- **ℹ️** `ensure_daemon` failure: `this.win.notification` `Alert.show` “File daemon is not up” (same channel as `FileConnectionRow` local connect failure). Not silent `critical` + return.
+- **🚫** Pid / SIGTERM / unlink in `FileServerRow` or `MainDialog` — that is `ClientBoot.kill`.
+- **🚫** New `RPC-Daemon.reboot` (or any reboot RPC).
+- **🚫** `RPC-Daemon.shutdown` for this bounce — stop from this process via pid + SIGTERM.
+- **🚫** Live HTTPS rebind inside a running daemon (no listen swap without restart).
 - **🚫** Putting file-server listen settings into `Settings.Connection` LLM map.
 - **🚫** Operator hand-copy of CA key as the supported enable path.
 - **🚫** `unix` / `socket` fields on the expander (reserved).
-- **🚫** Enabled switch (empty host or port is off).
+- **🚫** `Gtk.Entry` / typing hostnames for Host — dropdown of this machine’s IPv4 only.
+- **🚫** Enabled switch (no IP selected or empty port is off).
 - **🚫** `FileServerRow` in `android_poc_settings_sources`.
 - **🚫** Calling `Filesd.install()` from the UI.
 - **💩** Save on every keystroke / switch instead of dialog close.
-- **💩** Restart-hint ActionRow (“restart ollmfilesd to apply”).
+- **🚫** Restart-hint ActionRow (“restart ollmfilesd to apply”) — dialog close bounces the daemon.
+- **💩** `0.0.0.0` / all-interfaces as a Host choice.
+- **💩** IPv6 Host values until `Https.listen` `host:port` split is IPv6-safe.
 - **💩** ollmfilesd-only GResource for the CA key (if you veto shipping it via libocrpc to Android).

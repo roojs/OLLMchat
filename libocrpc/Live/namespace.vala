@@ -15,146 +15,59 @@
  * Opt-in live GObject handles for {@link OLLMrpc}.
  *
  * Unix builds compile {@link Remote}, {@link Subscribe}, {@link Buffer}, etc.
- * from separate ''Live/'' sources. Windows and Android compile this file
- * only — compile-only shells ({@link G_OS_WIN32} / {@link ANDROID}).
+ * from separate ''Live/'' sources. Windows and Android compile
+ * ''Live/namespace.windows.vala'' instead (meson, not ''#if'').
  *
- * {@link Buffer} — Unix: {@link Buffer}; Windows: shell in this file.
+ * {@link Buffer} — Unix: {@link Buffer}; Windows: shell in that file.
  */
 namespace OLLMrpc.Live
 {
-	internal class NamespaceDoc {}
+	/** Boxed GTypes that already passed {@link boxed_ok}. */
+	private static Gee.HashMap<GLib.Type, bool> boxed_valid;
 
-#if G_OS_WIN32 || ANDROID
-
-	public class Remote : GLib.Object {
-		public static void rpc_register()
-		{
-			OLLMrpc.Request.add_class(
-				"RPC-Live-Remote", typeof(Remote),
-				"rpc_ref", "",
-				"rpc_unref", ""
-			);
+	/**
+	 * GI layout check for a registered boxed GType.
+	 *
+	 * First call walks fields; later calls return. Size 0 / disguised
+	 * passes. Size greater than 0 with a field tag at or above UTF8
+	 * is fatal.
+	 *
+	 * @param gtype boxed GType already in {@link Bin.gtype_to_alias}
+	 */
+	public static void boxed_ok(GLib.Type gtype)
+	{
+		if (boxed_valid == null) {
+			boxed_valid = new Gee.HashMap<GLib.Type, bool>();
 		}
-
-		public void rpc_ref(Request request)
-		{
+		if (boxed_valid.has_key(gtype)) {
+			return;
 		}
-
-		public void rpc_unref(Request request)
-		{
+		var gi = GI.Repository.get_default().find_by_gtype(gtype);
+		if (gi == null) {
+			GLib.error("boxed type '%s' has no GI info", gtype.name());
 		}
+		if (gi.get_type() == GI.InfoType.STRUCT || gi.get_type() == GI.InfoType.BOXED) {
+			var si = (GI.StructInfo) gi;
+			if (!si.is_gtype_struct() && si.get_size() > 0) {
+				for (var fi = 0; fi < si.get_n_fields(); fi++) {
+					if ((int) si.get_field(fi).get_type().get_tag() < (int) GI.TypeTag.UTF8) {
+						continue;
+					}
+					GLib.error("boxed type '%s' is not wire-portable", gtype.name());
+				}
+			}
+		}
+		if (gi.get_type() == GI.InfoType.UNION) {
+			var ui = (GI.UnionInfo) gi;
+			if (ui.get_size() > 0) {
+				for (var fi = 0; fi < ui.get_n_fields(); fi++) {
+					if ((int) ui.get_field(fi).get_type().get_tag() < (int) GI.TypeTag.UTF8) {
+						continue;
+					}
+					GLib.error("boxed type '%s' is not wire-portable", gtype.name());
+				}
+			}
+		}
+		boxed_valid.set(gtype, true);
 	}
-
-	public class Subscription : GLib.Object {
-		public Transport.Connection connection { get; set; }
-		public string method { get; set; default = ""; }
-		public int id { get; set; default = 0; }
-		public ulong hid { get; set; default = 0; }
-		public static void emit(
-			GLib.Closure closure,
-			[CCode (type = "GValue*")] GLib.Value? return_value,
-			[CCode (array_length_cname = "n_param_values", array_length_pos = 2.5, array_length_type = "guint")]
-			GLib.Value[] param_values,
-			void* invocation_hint,
-			void* marshal_data
-		) {
-		}
-	}
-
-	public class Subscribe : GLib.Object {
-		public static void rpc_register()
-		{
-			OLLMrpc.Request.add_class(
-				"RPC-Live-Subscribe", typeof(Subscribe),
-				"rpc_signal", "s",
-				"unsubscribe", "s"
-			);
-		}
-
-		public void rpc_signal(Request request, string name)
-		{
-		}
-
-		public void unsubscribe(Request request, string name)
-		{
-		}
-	}
-
-	public class Callback : GLib.Object {
-		public static void rpc_register()
-		{
-			OLLMrpc.Request.add_class(
-				"RPC-Live-Callback", typeof(Callback),
-				"register", "",
-				"unregister", "t",
-				"reply", ""
-			);
-		}
-
-		public void register(Request request)
-		{
-		}
-
-		public void unregister(Request request, uint64 callback_id)
-		{
-		}
-
-		public void reply(Request request)
-		{
-		}
-	}
-
-	public class Hook : GLib.Object {
-		public Transport.Connection connection { get; set; }
-		public int id { get; set; default = 0; }
-		public int reply_id { get; set; default = 0; }
-		public bool replied { get; set; default = false; }
-		public Gee.ArrayList<GLib.Value?> reply_args {
-			get; set; default = new Gee.ArrayList<GLib.Value?>();
-		}
-
-		public void emit(Gee.ArrayList<GLib.Value?> args)
-		{
-		}
-
-		public static void drop(Hook user)
-		{
-		}
-	}
-
-	public class Invoke : GLib.Object {
-		public int id { get; set; default = 0; }
-		public int reply_id { get; set; default = 0; }
-		public Gee.ArrayList<GLib.Value?> args {
-			get; set; default = new Gee.ArrayList<GLib.Value?>();
-		}
-
-		public static void rpc_register()
-		{
-		}
-	}
-
-	public class Buffer : GLib.Object {
-		public int fd { get; set; default = -1; }
-		public void send(GLib.Socket socket) throws GLib.Error {}
-		public void receive(GLib.Socket socket) throws GLib.Error {}
-	}
-
-	public class BufferStream : GLib.Object {
-		public BufferStream() { Object(); }
-		public async void connect_client(string main_socket_path) throws GLib.Error {}
-		public void write_with(Buffer? buffer, Bin.Serializable serializable, Bin.Stream bin) throws GLib.Error {}
-		public void attach(Notification notif) {}
-		public Buffer? take_pending() { return null; }
-		public void close() {}
-	}
-
-	public class BufferListen : GLib.Object {
-		public BufferListen(string main_socket_path) { Object(); }
-		public bool start() { return true; }
-		public void pair_connection(Transport.Connection connection) {}
-		public void stop() {}
-	}
-
-#endif
 }

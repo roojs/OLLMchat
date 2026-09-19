@@ -486,6 +486,23 @@ Large binary (`GLib.Type.BOXED`):
 
 **Custom overrides:** opaque buffers (`uint8[]`, …) and other non-string blobs use the same wire layout in a `bin_write_prop` / `bin_read_prop` override on the owning type.
 
+Registered boxed `GValue` (not `GLib.Bytes`) uses the §14 type header
+(`0x50` + compact token from `Bin.register`) then a `uint32` BE length.
+
+- `GLib.VariantType`: length is the `peek_string()` byte count, then that UTF-8.
+- Size-0 / disguised boxed (`ClutterFrame`): length `0`, no payload.
+- Sized boxed with a pointer-shaped GI field: `Live.boxed_ok` aborts (`not wire-portable`).
+
+```text
+50           ;; G_TYPE_OBJECT header (registered GType, boxed or object)
+01           ;; compact token → "GLib.VariantType"
+00 00 00 01  ;; uint32 length 1
+69           ;; "i"
+```
+
+Untyped `GLib.Bytes` stays §13 (`0x48` + `uint32` + data). Do not put a
+token after `0x48`.
+
 ---
 
 ## 14. Nested object

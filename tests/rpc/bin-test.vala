@@ -265,6 +265,50 @@ namespace OLLMrpcTests
 			this.check(command_line, !(long_dst == null), "long string parse returned null\n");
 			this.check(command_line, !(long_dst.name != long_name || long_dst.count != 1), "long string round-trip mismatch\n");
 
+			OLLMrpc.Notification.rpc_register();
+			OLLMrpc.Bin.register("GLib.VariantType", typeof(GLib.VariantType));
+			mem = new GLib.MemoryOutputStream.resizable();
+			out_stream = new GLib.DataOutputStream(mem);
+			write_bin = new OLLMrpc.Bin.Stream(null, out_stream);
+			var framed = GLib.Value(typeof(GLib.VariantType));
+			framed.set_boxed(new GLib.VariantType("i"));
+			var notif_src = new OLLMrpc.Notification() {
+				method = "framed"
+			};
+			notif_src.args.add(framed);
+			write_bin.write(notif_src);
+			out_stream.close();
+			bytes = mem.steal_as_bytes();
+			in_base = new GLib.MemoryInputStream.from_bytes(bytes);
+			in_stream = new GLib.DataInputStream(in_base);
+			read_bin = new OLLMrpc.Bin.Stream(in_stream, null);
+			var notif_dst = read_bin.parse() as OLLMrpc.Notification;
+			this.check(command_line, !(notif_dst == null), "framed parse returned null\n");
+			this.check(command_line, notif_dst.args.size == 1, "framed args missing");
+			this.check(
+				command_line,
+				notif_dst.args.get(0).type() == typeof(GLib.VariantType),
+				"framed type mismatch"
+			);
+			var got_vt = (GLib.VariantType) notif_dst.args.get(0).get_boxed();
+			this.check(command_line, (string) got_vt.peek_string() == "i", "framed payload mismatch");
+			mem = new GLib.MemoryOutputStream.resizable();
+			out_stream = new GLib.DataOutputStream(mem);
+			write_bin = new OLLMrpc.Bin.Stream(null, out_stream);
+			var dt = GLib.Value(typeof(GLib.DateTime));
+			dt.set_boxed(new GLib.DateTime.now_utc());
+			var bad = new OLLMrpc.Notification() {
+				method = "framed"
+			};
+			bad.args.add(dt);
+			var threw = false;
+			try {
+				write_bin.write(bad);
+			} catch (OLLMrpc.Bin.StreamError e) {
+				threw = true;
+			}
+			this.check(command_line, threw, "unregistered boxed must throw");
+
 			mem = new GLib.MemoryOutputStream.resizable();
 			out_stream = new GLib.DataOutputStream(mem);
 			write_bin = new OLLMrpc.Bin.Stream(null, out_stream);
