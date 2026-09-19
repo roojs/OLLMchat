@@ -6,13 +6,13 @@
 
 **Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](RPC-8.2.8-filesd-connections-ui.md)
 
-**Split from:** [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) Phase 2. UI half; the library half is [`RPC-8.2.8.4-filesd-remote-rpc-client.md`](RPC-8.2.8.4-filesd-remote-rpc-client.md).
+**Split from:** [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) Phase 2. UI half; the library half is [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md).
 
 **Depends on:**
 
-- [`RPC-8.2.8.4`](RPC-8.2.8.4-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, safe `disconnect()`, `ProjectManager.replace_rpc` + `notification`
+- [`RPC-8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, safe `disconnect()`, `ProjectManager.replace_rpc` + `notification`
 - `8.2.8.2` Phase 1 (in tree) — `Config2.filesd_client`, `Transport.Cert`, `FileConnectionAdd`, `FileConnectionRow`, `ConnectionsPage.render_file_connection`
-- [`RPC-8.2.8.1-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) — desktop Accept so a device can become `status = 1`
+- [`RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) — desktop Accept so a device can become `status = 1`
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -458,7 +458,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ## Suggested order
 
-1. **⏳** [`RPC-8.2.8.4`](RPC-8.2.8.4-filesd-remote-rpc-client.md) in full (library side)
+1. **✔️** [`RPC-8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) in full (library side)
 2. **⏳** Phase D — §2–§3 (Check works against a desktop that has accepted the device; toggle swaps live)
 3. **⏳** Phase C — §1 (Linux takeover at startup; verify local fallback when `enabled` is off)
 4. **⏳** Phase E — Android sub-plan

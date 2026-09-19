@@ -455,7 +455,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 1. **✔️** Phase A — §0 (`disconnect()` fix; own commit), then §1–§2 (`libocrpc`)
 2. **✔️** Phase B — §3a, §3, §3b–§3e (`libocfiles` + the four listeners; app behaves as before with only the Unix client)
-3. **⏳** Then [`RPC-8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) wires it into the desktop.
+3. **⏳** Then [`RPC-8.2.8.5`](../RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) wires it into the desktop.
 
 ---
 

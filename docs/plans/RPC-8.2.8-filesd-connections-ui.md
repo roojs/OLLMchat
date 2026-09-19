@@ -1,6 +1,6 @@
 # 8.2.8 — File-server Connections UI + registration approval
 
-**Status:** **IN PROGRESS** — Phase 1 **✔️** · Phase 2 **✔️** · Phase 5 **✔️** · Phase 3–4 and 6 in sub-plans
+**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 5 **✔️** · Phase 4 and 6 in sub-plans
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -32,10 +32,10 @@
 | Phase | Plan | Status |
 | --- | --- | --- |
 | **1** | Daemon: `ClientCert` RPC + int status + IP drop (this file) | **✔️** agent-done |
-| **2** | [`RPC-8.2.8.1-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) — Desktop pending banner + registered client rows | **✔️** agent-done |
-| **3** | [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) — Client file connection UI + registration request; Android + Linux | **⏳** |
+| **2** | [`RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) — Desktop pending banner + registered client rows | **✔️** agent-done |
+| **3** | [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) — Client file connection UI + registration request; Android + Linux | **✔️** agent-done |
 | **4** | [`RPC-8.2.8.3-filesd-file-server-tls.md`](RPC-8.2.8.3-filesd-file-server-tls.md) — Desktop File Server expander + TLS CA key auto-install | **⏳** |
-| **5** | [`RPC-8.2.8.4-filesd-remote-rpc-client.md`](RPC-8.2.8.4-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification` (library half of 8.2.8.2 Phase 2) | **✔️** agent-done |
+| **5** | [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification` (library half of 8.2.8.2 Phase 2) | **✔️** agent-done |
 | **6** | [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle, Agent Pi (UI half of 8.2.8.2 Phase 2) | **⏳** |
 
 ---
@@ -43,10 +43,10 @@
 ## Suggested order
 
 1. **✔️** Phase 1 — `ClientCert` RPC + int `status` + accept drop (this file)
-2. **✔️** Phase 2 — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) (agent-done; awaiting user ✅)
-3. **⏳** Phase 3 — [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
+2. **✔️** Phase 2 — [`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) (agent-done; awaiting user ✅)
+3. **✔️** Phase 3 — [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) (agent-done; awaiting user ✅)
 4. **⏳** Phase 4 — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md)
-5. **✔️** Phase 5 — [`8.2.8.4`](RPC-8.2.8.4-filesd-remote-rpc-client.md) (agent-done; awaiting user ✅)
+5. **✔️** Phase 5 — [`8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) (agent-done; awaiting user ✅)
 6. **⏳** Phase 6 — [`8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md)
 
 ---
@@ -96,19 +96,19 @@
 - **🔷** Wire prefix: `RPC-ClientCert`.
 - **🔷** Desktop talks to local `ollmfilesd` via Unix socket for admin calls.
 - **ℹ️** nginx unchanged — drop is in `ollmfilesd` after PROXY parse (or direct peer).
-- **💩** `⏳` List approved (`status = 1`) for Connections rows — Phase 2 ([`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)).
+- **💩** `⏳` List approved (`status = 1`) for Connections rows — Phase 2 ([`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md)).
 
 ---
 
 ## Phase 2 — Desktop Connections UI
 
-**➡️** [`RPC-8.2.8.1-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
+**➡️** [`RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md)
 
 ---
 
 ## Phase 3 — Client file connection + Agent Pi unlock
 
-**➡️** [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) — UI + registration request (Android + Linux)
+**➡️** [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) — UI + registration request (Android + Linux)
 
 ---
 
@@ -120,7 +120,7 @@
 
 ## Phase 5 — Remote file connection: HTTPS RPC client + `replace_rpc`
 
-**➡️** [`RPC-8.2.8.4-filesd-remote-rpc-client.md`](RPC-8.2.8.4-filesd-remote-rpc-client.md) — library half of 8.2.8.2 Phase 2
+**➡️** [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — library half of 8.2.8.2 Phase 2
 
 ---
 
@@ -135,10 +135,10 @@
 Tracked on the sub-plans:
 
 1. ~~Desktop File Server expander always shown?~~ → **🔷** always — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md)
-2. ~~One file-server URL or multiple?~~ → **🔷** one — [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
-3. ~~Which agents unlock?~~ → **🔷** Agent Pi only — [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
-4. ~~Remove approved = `client_cert("remove", id)` → bool?~~ → **🔷** yes — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
-5. Machine-type vocabulary → [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
+2. ~~One file-server URL or multiple?~~ → **🔷** one — [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md)
+3. ~~Which agents unlock?~~ → **🔷** Agent Pi only — [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md)
+4. ~~Remove approved = `client_cert("remove", id)` → bool?~~ → **🔷** yes — [`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md)
+5. Machine-type vocabulary → [`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md)
 
 
 ---

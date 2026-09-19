@@ -433,7 +433,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 - **🔷** `✔️` Add a **requester** string on the `client_cert` row + `request_registration` payload — best-effort extracted by the client from the device, **not** a fixed enum and **not** user-entered text.
   - Ideal: device model identifier (e.g. Android `Build.MODEL` → `SM-A110O`-style Samsung phone name); fall back to whatever is reasonably extractable on the platform (Linux DMI product / Windows hostname / etc.); empty when nothing usable.
 - **🔷** `⏳` Desktop treats it as an opaque display string — banner + approved expander show it verbatim; Android plan sends it ([`8.2.8.2`](RPC-8.2.8.2-DONE-filesd-android-file-connection.md)).
-- **🚫** Desktop does **not** populate `requester` — it only stores (from the client's `request_registration` call) and displays it. Extraction from the device (`Build.MODEL` / DMI / hostname) lives in [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md).
+- **🚫** Desktop does **not** populate `requester` — it only stores (from the client's `request_registration` call) and displays it. Extraction from the device (`Build.MODEL` / DMI / hostname) lives in [`8.2.8.2`](RPC-8.2.8.2-DONE-filesd-android-file-connection.md).
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 

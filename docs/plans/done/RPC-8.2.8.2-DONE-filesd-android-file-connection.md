@@ -1,19 +1,27 @@
-# 8.2.8.2 — Client file connection + unlock Agent Pi
+# 8.2.8.2 — DONE — Client file connection + unlock Agent Pi
 
-**Status:** **PROPOSED** — Phase 1 code proposals ready for review · Phase 2 split out to [`RPC-8.2.8.4`](RPC-8.2.8.4-filesd-remote-rpc-client.md) + [`RPC-8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md)
+**Status:** **DONE** ✔️ — Phase 1 in tree; Phase 2 split to [`RPC-8.2.8.4`](RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) + [`RPC-8.2.8.5`](../RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md)
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
-**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](RPC-8.2.8-filesd-connections-ui.md)
+**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](../RPC-8.2.8-filesd-connections-ui.md)
 
 **Depends on:**
 
 - Phase 1 of parent (**✔️** agent-done) — `RPC-ClientCert.request_registration` + gateroute
-- [`RPC-8.2.8.1-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) — desktop Accept so the client can leave pending
+- [`RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) — desktop Accept so the client can leave pending
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
 **Scope note:** filename still says *android* for link stability; this plan covers **Android and Linux desktop** (Linux is useful for testing).
+
+## Landed (tree)
+
+- `libollmchat/Settings/FilesdClient.vala` — `url` / `approved` / `enabled` on `Config2.filesd_client`
+- `libocrpc/Transport/Cert.vala` — construct properties + `ensure()`
+- `ollmapp/SettingsDialog/FileConnectionAdd.vala` — Request dialog
+- `ollmapp/SettingsDialog/FileConnectionRow.vala` — outbound row
+- `ollmapp/SettingsDialog/ConnectionsPage.vala` — Add button + `render_file_connection`
 
 ---
 
@@ -31,11 +39,11 @@
 - **🔷** **Linux desktop** as well as Android — when configured, `enabled`, and `approved`, remote **takes over** local Unix `ollmfilesd`. When `enabled` is false, local Unix wins.
 - **🔷** Two implementation phases (implement in order):
   1. **Phase 1 — UI + registration request** — config, dialog, row, Connections tab, client-cert mint/load, `request_registration` on Request (Check stub).
-  2. **Phase 2 — Live connection + Agent Pi** — split into [`RPC-8.2.8.4`](RPC-8.2.8.4-filesd-remote-rpc-client.md) (libocrpc / libocfiles) and [`RPC-8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) (takeover, Check, live toggle, Agent Pi).
+  2. **Phase 2 — Live connection + Agent Pi** — split into [`RPC-8.2.8.4`](RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) (libocrpc / libocfiles) and [`RPC-8.2.8.5`](../RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) (takeover, Check, live toggle, Agent Pi).
 - **🚫** Code Assistant, Skill Runner, OC Coder agents — out of scope for this plan (Agent Pi only).
 - **🚫** Reusing `Settings.Connection` as the file-server URL without a type discriminant.
-- **ℹ️** Operator nginx doc: [`docs/filesd-behind-nginx-proxy.md`](../filesd-behind-nginx-proxy.md).
-- **ℹ️** Desktop pending banner + approved incoming-client rows live in [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) — this plan is the **outbound client** side.
+- **ℹ️** Operator nginx doc: [`docs/filesd-behind-nginx-proxy.md`](../../filesd-behind-nginx-proxy.md).
+- **ℹ️** Desktop pending banner + approved incoming-client rows live in [`8.2.8.1`](RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) — this plan is the **outbound client** side.
 
 ---
 
@@ -63,11 +71,11 @@
 
 ### Goal
 
-- **🔷** `⏳` New `OLLMchat.Settings.FilesdClient` on `Config2` (JSON key `filesd_client`).
-- **🔷** `⏳` Refactor `OLLMrpc.Transport.Cert` (libocrpc) — GObject construct properties (`dir`, PEM basenames, `cn`, CA paths, …) + `ensure()` / `ensure_trust()` (no static TLS API).
-- **🔷** `⏳` `FileConnectionAdd` — construct with `Config2`; **Request** = cert + HTTPS `request_registration(requester)` + write `config.filesd_client` + `config.save()`; no `show_add`; URL field resets on `closed`.
-- **🔷** `⏳` `FileConnectionRow` — hostname title, exposed **Check** button (wired from `render_file_connection`, not a signal), **Enabled** switch, Remove.
-- **🔷** `⏳` `ConnectionsPage` — inline `present()` on Add button; Check handler inline in `render_file_connection` (`GLib.critical` stub until Phase 2).
+- **🔷** `✔️` New `OLLMchat.Settings.FilesdClient` on `Config2` (JSON key `filesd_client`).
+- **🔷** `✔️` Refactor `OLLMrpc.Transport.Cert` (libocrpc) — GObject construct properties (`dir`, PEM basenames, `cn`, CA paths, …) + `ensure()` / `ensure_trust()` (no static TLS API).
+- **🔷** `✔️` `FileConnectionAdd` — construct with `Config2`; **Request** = cert + HTTPS `request_registration(requester)` + write `config.filesd_client` + `config.save()`; no `show_add`; URL field resets on `closed`.
+- **🔷** `✔️` `FileConnectionRow` — hostname title, exposed **Check** button (wired from `render_file_connection`, not a signal), **Enabled** switch, Remove.
+- **🔷** `✔️` `ConnectionsPage` — inline `present()` on Add button; Check handler inline in `render_file_connection` (`GLib.critical` stub until Phase 2).
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
@@ -894,15 +902,15 @@ endif
 
 ## Phase 2 — Live connection + Agent Pi unlock
 
-**➡️** [`RPC-8.2.8.4-filesd-remote-rpc-client.md`](RPC-8.2.8.4-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http` bridge, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification`.
-**➡️** [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle, Agent Pi, Android design.
+**➡️** [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http` bridge, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification`.
+**➡️** [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](../RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle, Agent Pi, Android design.
 
 ---
 
 ## Suggested order
 
-1. **⏳** Phase 1 — apply §1–§9 (UI + `Cert.ensure()` + `request_registration`)
-2. **⏳** Phase 2 — [`8.2.8.4`](RPC-8.2.8.4-filesd-remote-rpc-client.md) then [`8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md)
+1. **✔️** Phase 1 — apply §1–§9 (UI + `Cert.ensure()` + `request_registration`)
+2. **✔️** Phase 2 library — [`8.2.8.4`](RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md); **⏳** UI — [`8.2.8.5`](../RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md)
 
 ---
 

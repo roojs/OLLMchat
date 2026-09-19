@@ -1,6 +1,6 @@
 # 8.2.8.3 — Desktop File Server expander + TLS CA key auto-install
 
-**Status:** **PROPOSED** — design moved from [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md); code proposals not yet written
+**Status:** **PROPOSED** — design moved from [`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md); code proposals not yet written
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this sub-plan.**
 
@@ -8,7 +8,7 @@
 
 **Depends on:**
 - Phase 1 of parent (**✔️** agent-done) — `Config2.filesd` + `OLLMfilesd.Https.listen` CA PEM extraction
-- [`RPC-8.2.8.1-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) — Connections tab / `MainDialog.action_bar_area` expander pattern (`ConnectionRow`)
+- [`RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) — Connections tab / `MainDialog.action_bar_area` expander pattern (`ConnectionRow`)
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -57,7 +57,7 @@
 
 ## Notes
 
-- **ℹ️** Expander UX copies [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) `ConnectionRow` (`Adw.ExpanderRow` + `Adw.ActionRow` suffixes) — read/write here (File Server is editable, unlike approved-client rows).
+- **ℹ️** Expander UX copies [`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) `ConnectionRow` (`Adw.ExpanderRow` + `Adw.ActionRow` suffixes) — read/write here (File Server is editable, unlike approved-client rows).
 - **ℹ️** Pattern reference: `Https.listen` CA PEM extraction (`ollmfilesd/Https.vala`).
 - **⏳** Code proposals — after design sign-off; otherwise ready to draft fences.
 

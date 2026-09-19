@@ -74,7 +74,7 @@
 
 1. Phase 0 — File-daemon listen config (Unix + HTTPS / PROXY) + user-session startup + nginx doc
 2. Phase 1 — Registration gate + `request_registration`
-3. Phase 2 — Admin approval surface → [`RPC-8.2.8`](RPC-8.2.8-filesd-connections-ui.md) / desktop UI [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
+3. Phase 2 — Admin approval surface → [`RPC-8.2.8`](RPC-8.2.8-filesd-connections-ui.md) / desktop UI [`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md)
 4. Phase 3 — Cert → session identity
 
 ---
@@ -656,7 +656,7 @@ namespace OLLMfilesd
 
 ### Goal
 
-- **🔷** `⏳` Admin approval moves to the **Connections** UI — see [`RPC-8.2.8`](RPC-8.2.8-filesd-connections-ui.md) → [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md).
+- **🔷** `⏳` Admin approval moves to the **Connections** UI — see [`RPC-8.2.8`](RPC-8.2.8-filesd-connections-ui.md) → [`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md).
   - Desktop preferences dialog: **one** pending at a time as a banner (like download progress); Accept / Reject / Ban; clear → next latest.
   - Registered clients as expand/remove rows on Connections.
   - Ban blocks IP from re-registering; no unban.
