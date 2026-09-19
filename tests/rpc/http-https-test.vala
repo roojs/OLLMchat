@@ -66,8 +66,16 @@ namespace OLLMrpcTests
 			this.check(command_line, http.start(), "https server start");
 			var base_url = "https://localhost:%u".printf(http.port);
 
+			var leaf = new OLLMrpc.Transport.Cert() {
+				dir = tls_dir,
+				cert_pem = "client.pem",
+				key_pem = "client-key.pem",
+				cn = "ollmchat-device",
+			};
+			leaf.ensure();
 			var client = new OLLMrpc.Transport.HttpClient(base_url) {
-				tls_database = cert.trust
+				tls_database = cert.trust,
+				tls_certificate = leaf.certificate
 			};
 			OLLMrpc.Response? response = null;
 			var err_msg = "";

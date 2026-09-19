@@ -1,12 +1,12 @@
-# 8.2.8.4 — Remote file connection: HTTPS RPC client + `ProjectManager.replace_rpc`
+# 8.2.8.4 — DONE — Remote file connection: HTTPS RPC client + `ProjectManager.replace_rpc`
 
-**Status:** **✔️ agent-done** — Phases A and B in tree (awaiting user **✅**)
+**Status:** **DONE** ✔️ — Phases A and B in tree (awaiting user **✅**)
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
-**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](RPC-8.2.8-filesd-connections-ui.md)
+**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](../RPC-8.2.8-filesd-connections-ui.md)
 
-**Split from:** [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) Phase 2. Library half; the UI half is [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md).
+**Split from:** [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](RPC-8.2.8.2-DONE-filesd-android-file-connection.md) Phase 2. Library half; the UI half is [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](../RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md).
 
 **Depends on:**
 
@@ -33,7 +33,7 @@
   - The existing `Protocol.HTTP` path is the Hugging Face GET/JSON client and cannot talk to `ollmfilesd`.
 - **💩** `✔️` `OLLMrpc.Client.disconnect()` bug fix: it aborts the process when calls are pending instead of failing them (§0). Standalone bug; a prerequisite for any live swap.
 - **💩** `✔️` `ProjectManager.notification` signal replaces the four direct `rpc.notification` hooks so listeners survive the swap.
-- **ℹ️** Gate behaviour: [`ollmfilesd/Https.vala`](../../ollmfilesd/Https.vala) `allow_rpc`.
+- **ℹ️** Gate behaviour: [`ollmfilesd/Https.vala`](../../../ollmfilesd/Https.vala) `allow_rpc`.
   - Approved certs pass every non-admin method.
   - Unknown certs may only call `request_registration`.
 

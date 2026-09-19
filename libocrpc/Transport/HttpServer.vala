@@ -198,11 +198,40 @@ namespace OLLMrpc.Transport
 					local = connection.get_local_address();
 				} catch (GLib.Error e) {
 				}
+				if (this.tls_certificate == null) {
+					try {
+						this.soup.accept_iostream(connection, local, remote);
+					} catch (GLib.Error e) {
+						GLib.warning("proxy accept failed: %s", e.message);
+					}
+					return true;
+				}
+				GLib.TlsServerConnection tls;
 				try {
-					this.soup.accept_iostream(connection, local, remote);
+					tls = GLib.TlsServerConnection.@new(
+						connection, this.tls_certificate);
 				} catch (GLib.Error e) {
 					GLib.warning("proxy accept failed: %s", e.message);
+					return true;
 				}
+				tls.authentication_mode = GLib.TlsAuthenticationMode.REQUESTED;
+				tls.accept_certificate.connect((peer_cert, errors) => {
+					return true;
+				});
+				tls.handshake_async.begin(
+					GLib.Priority.DEFAULT, null, (obj, res) => {
+					try {
+						tls.handshake_async.end(res);
+					} catch (GLib.Error e) {
+						GLib.warning("tls handshake failed: %s", e.message);
+						return;
+					}
+					try {
+						this.soup.accept_iostream(tls, local, remote);
+					} catch (GLib.Error e) {
+						GLib.warning("proxy accept failed: %s", e.message);
+					}
+				});
 				return true;
 			});
 			this.proxy_service.start();
