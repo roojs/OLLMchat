@@ -1,6 +1,6 @@
 # `Live.Subscription.emit` drops GObject signal arguments
 
-**Status:** ⏳ root cause confirmed; fix proposed — await apply approval  
+**Status:** ✔️ applied — `test-rpc-subscribe` pass; await user verify  
 **Hit:** 2026-09-19 — overview search `Meta.Laters` / `ClutterStage::before-update`  
 **Component:** `libocrpc` / `OLLMrpc.Live.Subscription` + `Notification`  
 **Consumer gate:** `gnome-shell-rpc/tests/call-sync-repro/subscribe-signal-args-gate` — **FAIL** 2026-09-19  
@@ -72,52 +72,39 @@ This is not a mutter/gnome-shell-rpc later-phase bug. The wire subscribe path is
 
 ## Proposed fix (library)
 
-Intro: edits are **Remove** / **Replace with** / **Add** from the tree;
-verify surrounding context before applying.
+Intro: edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
-- 🔷 Named-signal subscribe packs GObject signal arguments onto
-  `Notification` (same class of problem as `Hook.emit` args).
+- 🔷 Named-signal subscribe packs GObject signal arguments onto `Notification` (same class of problem as `Hook.emit` args).
 - 🔷 `notify::` keeps `message`.
-- 🔷 Zero-arg signals stay `method` + `id` (empty `args` omitted on the
-  wire, same as `Request.args` / `Invoke.args`).
+- 🔷 Zero-arg signals stay `method` + `id` (empty `args` omitted on the wire, same as `Request.args` / `Invoke.args`).
 - 💩 Property name `args` — same as `Request` / `Invoke` / `Response`.
-  Wire encoding is the existing `ANY[]` block (copy `Invoke.bin_write_prop`
-  / `bin_read_prop` `args` case, not a helper).
-- 💩 Retarget existing `Subscription.emit` as the `GLib.ClosureMarshal`
-  (no new method). Connect with `GLib.Signal.connect_closure` so GObject
-  delivers the GValue array. `param_values[0]` is the instance; pack
-  `[1..]`.
-- 💩 `GLib.Type.OBJECT` args call `connection.export` before write so
-  `Bin.StreamValue.write` finds a lease (same as `Hook.emit` packing).
-- ℹ️ gnome-shell-rpc `subscribe-signal-args-gate` currently asserts
-  `notif.message == "hello"`. After this, the string lives in
-  `notif.args.get(0)`, and `message` stays empty. The gate must read
-  `args` once this lands — do not change that tree from here.
-- ℹ️ `stopped(bool)` / `before-update(StageView, Frame)` then re-emit
-  from `args` on the consumer. Boxed types `StreamValue` does not
-  already encode (not `GLib.Bytes`) stay a StreamValue limit, not this
-  bug.
+- 💩 Wire encoding is the existing `ANY[]` block (copy `Invoke.bin_write_prop` / `bin_read_prop` `args` case, not a helper).
+- 💩 Retarget existing `Subscription.emit` as the `GLib.ClosureMarshal` (no new method).
+- 💩 Connect with `GLib.Signal.connect_closure` so GObject delivers the GValue array. `param_values[0]` is the instance; pack `[1..]`.
+- ℹ️ `new GLib.Closure.simple` is floating. `connect_closure` sinks; Vala also unrefs at end of `rpc_signal`. `ref()` then `sink()` before connect so the handler keeps a live closure.
+- ℹ️ `set_marshal` is required so `connect_closure` does not install `VOID__VOID` (`G_CLOSURE_NEEDS_MARSHAL`).
+- ℹ️ gnome-shell-rpc `subscribe-signal-args-gate` currently asserts `notif.message == "hello"`.
+- ℹ️ After this, the string lives in `notif.args.get(0)`, and `message` stays empty. The gate must read `args` once this lands — do not change that tree from here.
+- ℹ️ `stopped(bool)` / `before-update(StageView, Frame)` then re-emit from `args` on the consumer.
+- ℹ️ Boxed types `StreamValue` does not already encode (not `GLib.Bytes`) stay a StreamValue limit, not this bug.
 
 **🚫** Consumer `GLib.Idle.add` / `Timeout.add` as a compositor phase.  
-**🚫** Consumer Runtime flush delegates instead of re-emitting the real
-signal.  
+**🚫** Consumer Runtime flush delegates instead of re-emitting the real signal.  
 **🚫** HTTP/JSON. **🚫** Editing libocrpc from gnome-shell-rpc.  
 **🚫** Copy the first string into `Notification.message` (`notify::` only).  
 **🚫** `Notification.callback_args` / `reply_id` (that is `Live.Invoke`).  
 **🚫** New pack/marshal helper.  
 **🚫** Invent boxed `Frame` encoding.  
-**🚫** `g_signal_add_emission_hook` (process-wide; would change
-unsubscribe away from `SignalHandler.disconnect`).
+**🚫** `g_signal_add_emission_hook` (process-wide; would change unsubscribe away from `SignalHandler.disconnect`).  
+**🚫** Gi `value_keep` / Ffi `pin` / `val.copy(ref …)` / take `&GValue` — that keeps pointers alive across `cif.call`. Subscribe does not call FFI.
 
 ---
 
 ### 1. `libocrpc/Notification.vala` — `args` on the subscribe notify
 
-**Why:** named-signal payload has nowhere to live; `Invoke.args` is the
-existing `ANY[]` encoding.
+**Why:** named-signal payload has nowhere to live; `Invoke.args` is the existing `ANY[]` encoding.
 
-**Where:** class fields after `message`; `bin_write_prop` /
-`bin_read_prop` switch before `default`.
+**Where:** class fields after `message`; `bin_write_prop` / `bin_read_prop` switch before `default`.
 
 **Depends on:** none.
 
@@ -181,16 +168,13 @@ Same `ANY[]` read as `Invoke.bin_read_prop` `case "args"`.
 
 ### 2. `libocrpc/Live/Subscription.vala` — `emit` is the GClosure marshal
 
-**Why:** `connect_swapped` → `void emit()` has no GValue slots.
-`GLib.ClosureMarshal` receives the full array.
+**Why:** `connect_swapped` → `void emit()` has no GValue slots. `GLib.ClosureMarshal` receives the full array.
 
 **Where:** class docblock example; replace `emit()`.
 
 **Depends on:** §1 (`Notification.args`).
 
-💩 `return_value` is `GValue*` and **null** on void signals. Do not use
-Vala `out GLib.Value` (compiler requires an assignment; writing through
-null crashes). Cast to `GLib.ClosureMarshal` at `set_meta_marshal`.
+💩 `return_value` is `GValue*` and **null** on void signals. Do not use Vala `out GLib.Value` (compiler requires an assignment; writing through null crashes). Cast to `GLib.ClosureMarshal` at `set_meta_marshal`.
 
 #### Remove
 
@@ -215,6 +199,9 @@ Class `== Example ==` sample: connect via a GClosure marshal.
 	 *     id = (int) handle
 	 * };
 	 * var closure = new GLib.Closure.simple((uint) GLib.Closure.SIZE, subscription);
+	 * closure.ref();
+	 * closure.sink();
+	 * closure.set_marshal((GLib.ClosureMarshal) Subscription.emit);
 	 * closure.set_meta_marshal(subscription, (GLib.ClosureMarshal) Subscription.emit);
 	 * subscription.hid = GLib.Signal.connect_closure(obj, "closed", closure, false);
 ```
@@ -241,8 +228,6 @@ Same method name. GClosure marshal: pack `[1..]` into `Notification.args`.
 		 *
 		 * Packs parameters after the instance into
 		 * {@link Notification.args} and writes the notification.
-		 * {@link GLib.Type.OBJECT} values are exported so
-		 * {@link Bin.StreamValue.write} can send the lease.
 		 *
 		 * @param closure unused GObject slot
 		 * @param return_value unused; null on void signals
@@ -261,13 +246,7 @@ Same method name. GClosure marshal: pack `[1..]` into `Notification.args`.
 			var subscription = (Subscription) marshal_data;
 			var packed = new Gee.ArrayList<GLib.Value?>();
 			for (var i = 1; i < param_values.length; i++) {
-				if (param_values[i].type().is_a(GLib.Type.OBJECT)
-					&& param_values[i].get_object() != null) {
-					subscription.connection.export(param_values[i].get_object());
-				}
-				var copy = GLib.Value(param_values[i].type());
-				param_values[i].copy(ref copy);
-				packed.add(copy);
+				packed.add(param_values[i]);
 			}
 			subscription.connection.write(new Notification() {
 				method = subscription.method,
@@ -295,11 +274,13 @@ Same method name. GClosure marshal: pack `[1..]` into `Notification.args`.
 
 #### Replace with
 
-Same place: GClosure + `connect_closure`. `hid` still works with
-`SignalHandler.disconnect` on unsubscribe / `stop` / `rpc_unref`.
+Same place: GClosure + `connect_closure`. `ref()`/`sink()` before connect so Vala’s unref does not drop the handler. `hid` still works with `SignalHandler.disconnect` on unsubscribe / `stop` / `rpc_unref`.
 
 ```vala
 			var closure = new GLib.Closure.simple((uint) GLib.Closure.SIZE, subscription);
+			closure.ref();
+			closure.sink();
+			closure.set_marshal((GLib.ClosureMarshal) Subscription.emit);
 			closure.set_meta_marshal(subscription, (GLib.ClosureMarshal) Subscription.emit);
 			subscription.hid = GLib.Signal.connect_closure(obj, name, closure, false);
 ```
@@ -340,11 +321,9 @@ Empty marshal with the Unix signature.
 
 ### 5. `tests/rpc/subscribe-test.vala` — `pinged("hello")` on `Notification.args`
 
-**Why:** library gate for the gnome-shell-rpc FAIL (string payload).
-Existing `closed()` / `notify::title` counts stay unchanged.
+**Why:** library gate for the gnome-shell-rpc FAIL (string payload). Existing `closed()` / `notify::title` counts stay unchanged.
 
-**Where:** `Probe` signals; new `Capture` block after the `held_probe`
-unref checks.
+**Where:** `Probe` signals; new `Capture` block after the `held_probe` unref checks.
 
 **Depends on:** §1, §2, §3.
 
@@ -383,7 +362,5 @@ Fresh connection so existing `writes` asserts are untouched.
 
 ## Next
 
-- 🔷 ⏳ Apply §1–§5 here after approve.
-- 🔷 ⏳ gnome-shell-rpc keeps the FAIL gate until this lands, then
-  asserts `notif.args` (not `message`) and re-emits with those GValues.
-  No Laters / Runtime flush workaround.
+- 🔷 ✔️ Apply §1–§5 here after approve. `ref()`/`sink()` before connect; `set_marshal` so `connect_closure` does not install `VOID__VOID`.
+- 🔷 ⏳ gnome-shell-rpc keeps the FAIL gate until this lands, then asserts `notif.args` (not `message`) and re-emits with those GValues. No Laters / Runtime flush workaround.

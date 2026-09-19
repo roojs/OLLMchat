@@ -103,7 +103,12 @@ namespace OLLMrpc.Live
 				request.reply(new Response());
 				return;
 			}
-			subscription.hid = GLib.Signal.connect_swapped(obj, name, (GLib.Callback) Subscription.emit, subscription);
+			var closure = new GLib.Closure.simple((uint) GLib.Closure.SIZE, subscription);
+			closure.ref();
+			closure.sink();
+			closure.set_marshal((GLib.ClosureMarshal) Subscription.emit);
+			closure.set_meta_marshal(subscription, (GLib.ClosureMarshal) Subscription.emit);
+			subscription.hid = GLib.Signal.connect_closure(obj, name, closure, false);
 			subs.get(id).set(name, subscription);
 			request.reply(new Response());
 		}

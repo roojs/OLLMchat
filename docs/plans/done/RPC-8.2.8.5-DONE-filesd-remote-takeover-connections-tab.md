@@ -1,20 +1,28 @@
-# 8.2.8.5 — Remote file connection: desktop takeover, Check, live toggle
+# 8.2.8.5 — DONE — Remote file connection: desktop takeover, Check, live toggle
 
-**Status:** **PROPOSED** — code proposals ready for review
+**Status:** **DONE** ✅ — Phases C and D in tree. Android is [`RPC-8.2.8.6`](../RPC-8.2.8.6-filesd-android-remote-takeover.md).
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
-**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](RPC-8.2.8-filesd-connections-ui.md)
+**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](../RPC-8.2.8-filesd-connections-ui.md)
 
-**Split from:** [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) Phase 2. UI half; the library half is [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md).
+**Split from:** [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](RPC-8.2.8.2-DONE-filesd-android-file-connection.md) Phase 2. UI half; the library half is [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md).
 
 **Depends on:**
 
-- [`RPC-8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, safe `disconnect()`, `ProjectManager.replace_rpc` + `notification`
+- [`RPC-8.2.8.4`](RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, safe `disconnect()`, `ProjectManager.replace_rpc` + `notification`
 - `8.2.8.2` Phase 1 (in tree) — `Config2.filesd_client`, `Transport.Cert`, `FileConnectionAdd`, `FileConnectionRow`, `ConnectionsPage.render_file_connection`
-- [`RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) — desktop Accept so a device can become `status = 1`
+- [`RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) — desktop Accept so a device can become `status = 1`
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
+
+---
+
+## Landed (tree)
+
+- `ollmapp/Window.vala` — `initialize_client()` HTTPS `replace_rpc` when `url` + `enabled` + `approved`
+- `ollmapp/SettingsDialog/FileConnectionRow.vala` — `check()`, `reconnect(bool remote)`, Enabled switch, `OllmchatWindow` at construct
+- `ollmapp/SettingsDialog/ConnectionsPage.vala` — row construct with window; **Remove** falls back to local when the remote was live
 
 ---
 
@@ -29,10 +37,10 @@
 - **🔷** `enabled` toggle turns the remote connection on or off **live**: the running `ProjectManager` drops its client, connects the other one, reloads projects, restores the active project/file.
 - **🔷** **Agent Pi** is available when the file connection is live.
   - **Linux:** Agent Pi stays registered as today (local daemon or remote both satisfy it).
-  - **Android:** unlock needs the Android port in **Phase E** (design only here).
+  - **Android:** unlock is [`RPC-8.2.8.6`](../RPC-8.2.8.6-filesd-android-remote-takeover.md).
 - **🔷** `FileConnectionRow(FilesdClient, OllmchatWindow)` — window at construct. **Check** and **Enabled** are wired on the row, not on `ConnectionsPage`.
 - **🔷** `FileConnectionRow.check()` / `reconnect(bool remote)` — use `this.win` (config, `project_manager`, notifications).
-- **ℹ️** Operator nginx doc: [`docs/filesd-behind-nginx-proxy.md`](../filesd-behind-nginx-proxy.md).
+- **ℹ️** Operator nginx doc: [`docs/filesd-behind-nginx-proxy.md`](../../filesd-behind-nginx-proxy.md).
 
 ---
 
@@ -58,11 +66,11 @@
 - **💩** Agent Pi mid-run is **not** guarded: with 8.2.8.4 §0 its in-flight RPC fails with "Client: disconnected" instead of aborting the app. Acceptable for this plan; see **Follow-ups**.
 - **🔷** `Cert.ensure()` does **not** throw (in tree). Missing/unreadable leaf PEMs are recreated; a broken install is `GLib.error` and aborts. Same construction as `FileConnectionAdd.request()`: `tls.ensure()` then `tls.certificate` / `tls.trust` on `HttpClient`.
 - **💩** A remote connect failure in `reconnect` disables the file connection, raises `Alert.show`, and falls back to the local daemon (one recursive `reconnect(false)`). Not silent: the alert and the row subtitle both say so.
-- **💩** Agent Pi contract reading: `8.2.8.2` says register Agent Pi only when the remote connection is live. On Linux that would remove Agent Pi from every local-daemon user, so this plan keeps the Linux registration unchanged and applies the gate on Android (Phase E). Confirm or veto.
+- **💩** Agent Pi contract reading: `8.2.8.2` says register Agent Pi only when the remote connection is live. On Linux that would remove Agent Pi from every local-daemon user, so this plan keeps the Linux registration unchanged and applies the gate on Android ([`8.2.8.6`](../RPC-8.2.8.6-filesd-android-remote-takeover.md)). Confirm or veto.
 
 ---
 
-## Phase C — Desktop takeover (`ollmapp/Window.vala`)
+## Phase C — Desktop takeover (`ollmapp/Window.vala`) **✅**
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
@@ -115,7 +123,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-## Phase D — Check + live toggle (Connections tab)
+## Phase D — Check + live toggle (Connections tab) **✅**
 
 ### 2. `ollmapp/SettingsDialog/FileConnectionRow.vala` — `check` / `reconnect`; enable **Check**; expose the switch
 
@@ -474,17 +482,9 @@ Point `this.win.project_manager` at the remote file server or back at the local 
 
 ---
 
-## Phase E — Android (design only, `⏳`)
+## Phase E — Android
 
-- **🔷** `⏳` Replace the `OLLMfiles.ProjectManager` stub in `ollmapp/android/AndroidToolTypes.vala` with the real class.
-  - Needs `libocfiles` in the Android `subdir()` list (root `meson.build`) and `ocfiles_vapi_dep` + `--pkg=ocfiles` on `android_poc`.
-  - `libocfiles` pulls `tree-sitter`, `sqlite3`, `gmodule-2.0` into the pixiewood cross-build.
-- **🔷** `⏳` `OllmchatWindow.initialize_client` (Android): when `url != "" && enabled && approved`, build the HTTPS client and call `project_manager.replace_rpc(rpc)` exactly as §1, `yield rpc.connect(hello)` (no `ClientBoot`), then register `OLLMcoder.AgentPi.Factory`.
-  - Needs the **full** liboccoder on Android (today `liboccoder/meson.build` builds only `AgentPi/Skill.vala` + `SkillSet.vala` for `is_android_cross`).
-  - `AgentPi.Factory.activate` casts to `OLLMchat.ChatDesktopInterface` (`tab_view`, `window_config`, `schedule_pane_update`, `chat_message_queue`, `notification`); `OllmchatWindow` implements `ChatUserInterface` only.
-  - Agent Pi tools `write` / `read` / `bash` are asserted in `register_config` and are desktop tool registrations.
-- **💩** `⏳` Give the Android port its own sub-plan (`RPC-8.2.8.6`) once §1–§3 are reviewed. It is a library port, not a wiring change.
-- **ℹ️** `ConnectionsPage.render_approved` (from `8.2.8.1`) already references `win.project_manager.rpc`, which the Android stub lacks. Verify the `android_poc` target still compiles before starting Phase E.
+**➡️** [`RPC-8.2.8.6-filesd-android-remote-takeover.md`](../RPC-8.2.8.6-filesd-android-remote-takeover.md) — `ProjectManager`, HTTPS takeover, full liboccoder, phone/tablet pane. Agent Pi register is a follow-up there.
 
 ---
 
@@ -497,10 +497,10 @@ Point `this.win.project_manager` at the remote file server or back at the local 
 
 ## Suggested order
 
-1. **✔️** [`RPC-8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) in full (library side)
-2. **⏳** Phase D — §2–§3 (Check works against a desktop that has accepted the device; toggle swaps live)
-3. **⏳** Phase C — §1 (Linux takeover at startup; verify local fallback when `enabled` is off)
-4. **⏳** Phase E — Android sub-plan
+1. **✅** [`RPC-8.2.8.4`](RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) in full (library side)
+2. **✅** Phase D — §2–§3 (Check works against a desktop that has accepted the device; toggle swaps live)
+3. **✅** Phase C — §1 (Linux takeover at startup; verify local fallback when `enabled` is off)
+4. **⏳** Phase E — [`RPC-8.2.8.6`](../RPC-8.2.8.6-filesd-android-remote-takeover.md)
 
 ---
 
@@ -509,3 +509,4 @@ Point `this.win.project_manager` at the remote file server or back at the local 
 - **ℹ️** `FileConnectionRow.check` `yield`s `HttpClient.call` with a fresh `Request`; after 8.2.8.4 §1 it goes out with `id == 0`, which the server echoes.
 - **ℹ️** Sanctioned new members on `FileConnectionRow`: `enabled_switch`, `status_label`, `client`, `win`, `check`, `reconnect`. Drop `enabled_changed`. Page only wires **Remove**.
 - **🚫** `ensure_trust()`, `try/catch` around `Cert.ensure()`, `ConnectionsPage.reconnect_file_server`, `connect_remote` / `device_cert` helpers, `new` on a ternary arm (`remote ? null : new ClientBoot()`), gating Linux Agent Pi on the remote connection, multiple file-server URLs, "restart to apply" wording anywhere.
+

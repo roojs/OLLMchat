@@ -21,6 +21,13 @@ namespace OLLMrpc
 		/** Referenced object id when {@link object_type} has one; 0 for singletons. */
 		public int id { get; set; default = 0; }
 		public string message { get; set; default = ""; }
+		/**
+		 * Named-signal parameters (GIR order). Empty for zero-arg
+		 * signals and ''notify::''.
+		 */
+		public Gee.ArrayList<GLib.Value?> args {
+			get; set; default = new Gee.ArrayList<GLib.Value?>();
+		}
 		/** Bytes completed when {@link method} carries progress (else 0). */
 		public int64 progress_completed { get; set; default = 0; }
 		/** Bytes total when {@link method} carries progress (else 0). */
@@ -54,6 +61,23 @@ namespace OLLMrpc
 					ctx.write_tag(prop.name);
 					ctx.write_name_ref(this.method);
 					return;
+				case "args":
+					if (this.args.size == 0) {
+						return;
+					}
+					ctx.write_tag(prop.name);
+					ctx.out_stream.put_byte((uint8) GLib.Type.INVALID | 0x80);
+					if (this.args.size < 128) {
+						ctx.out_stream.put_byte((uint8) this.args.size);
+					} else {
+						ctx.out_stream.put_byte(
+							(uint8) (0x80 | ((this.args.size >> 8) & 0x7F)));
+						ctx.out_stream.put_byte((uint8) (this.args.size & 0xFF));
+					}
+					foreach (var val in this.args) {
+						Bin.StreamValue.write(ctx, val);
+					}
+					return;
 				default:
 					this.bin_default_write_prop(ctx, prop);
 					return;
@@ -71,6 +95,17 @@ namespace OLLMrpc
 					return;
 				case "method":
 					this.method = ctx.read_name_ref(type_byte);
+					return;
+				case "args":
+					var n = ctx.in_stream.read_byte();
+					var count = n & 0x7F;
+					if ((n & 0x80) != 0) {
+						count = (count << 8) | ctx.in_stream.read_byte();
+					}
+					for (var i = 0; i < count; i++) {
+						var elem = ctx.in_stream.read_byte();
+						this.args.add(Bin.StreamValue.read(ctx, elem));
+					}
 					return;
 				default:
 					this.bin_default_read_prop(ctx, prop, type_byte);

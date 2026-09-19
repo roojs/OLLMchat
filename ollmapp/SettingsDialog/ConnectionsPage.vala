@@ -406,19 +406,18 @@ namespace OLLMapp.SettingsDialog
 			if (client.url.strip() == "") {
 				return;
 			}
-			this.file_connection_row = new FileConnectionRow(client);
+			this.file_connection_row = new FileConnectionRow(client, this.dialog.parent);
 			this.file_connection_row.remove_requested.connect(() => {
+				var was_live = client.enabled && client.approved;
+				var row = this.file_connection_row;
 				this.dialog.app.config.filesd_client =
 					new OLLMchat.Settings.FilesdClient();
 				this.render_file_connection();
 				this.dialog.app.config.save();
-			});
-			this.file_connection_row.check_button.clicked.connect(() => {
-				GLib.critical("file connection check not implemented");
-			});
-			this.file_connection_row.enabled_changed.connect((enabled) => {
-				this.dialog.app.config.filesd_client.enabled = enabled;
-				this.dialog.app.config.save();
+				if (!was_live) {
+					return;
+				}
+				row.reconnect.begin(false);
 			});
 			Adw.ExpanderRow? insert_after = null;
 			foreach (var row in this.rows.values) {

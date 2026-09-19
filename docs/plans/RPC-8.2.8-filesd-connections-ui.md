@@ -1,6 +1,6 @@
 # 8.2.8 — File-server Connections UI + registration approval
 
-**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 5 **✔️** · Phase 4 and 6 in sub-plans
+**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 5 **✔️** · Phase 6 **✅** · Phase 4 and 7 in sub-plans
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -36,7 +36,8 @@
 | **3** | [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) — Client file connection UI + registration request; Android + Linux | **✔️** agent-done |
 | **4** | [`RPC-8.2.8.3-filesd-file-server-tls.md`](RPC-8.2.8.3-filesd-file-server-tls.md) — Desktop File Server expander + TLS CA key auto-install | **⏳** |
 | **5** | [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification` (library half of 8.2.8.2 Phase 2) | **✔️** agent-done |
-| **6** | [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle, Agent Pi (UI half of 8.2.8.2 Phase 2) | **⏳** |
+| **6** | [`RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle (UI half of 8.2.8.2 Phase 2) | **✅** |
+| **7** | [`RPC-8.2.8.6-filesd-android-remote-takeover.md`](RPC-8.2.8.6-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder compile, phone/tablet pane | **⏳** |
 
 ---
 
@@ -47,7 +48,8 @@
 3. **✔️** Phase 3 — [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) (agent-done; awaiting user ✅)
 4. **⏳** Phase 4 — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md)
 5. **✔️** Phase 5 — [`8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) (agent-done; awaiting user ✅)
-6. **⏳** Phase 6 — [`8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md)
+6. **✅** Phase 6 — [`8.2.8.5`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md)
+7. **⏳** Phase 7 — [`8.2.8.6`](RPC-8.2.8.6-filesd-android-remote-takeover.md)
 
 ---
 
@@ -126,7 +128,13 @@
 
 ## Phase 6 — Remote file connection: desktop takeover, Check, live toggle
 
-**➡️** [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) — UI half of 8.2.8.2 Phase 2
+**➡️** [`RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) — UI half of 8.2.8.2 Phase 2
+
+---
+
+## Phase 7 — Remote file connection: Android takeover + Agent Pi
+
+**➡️** [`RPC-8.2.8.6-filesd-android-remote-takeover.md`](RPC-8.2.8.6-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder, phone/tablet pane (Agent Pi register later)
 
 ---
 

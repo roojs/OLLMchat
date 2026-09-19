@@ -50,7 +50,15 @@ namespace OLLMrpc.Live
 		public string method { get; set; default = ""; }
 		public int id { get; set; default = 0; }
 		public ulong hid { get; set; default = 0; }
-		public void emit() {}
+		public static void emit(
+			GLib.Closure closure,
+			[CCode (type = "GValue*")] GLib.Value? return_value,
+			[CCode (array_length_cname = "n_param_values", array_length_pos = 2.5, array_length_type = "guint")]
+			GLib.Value[] param_values,
+			void* invocation_hint,
+			void* marshal_data
+		) {
+		}
 	}
 
 	public class Subscribe : GLib.Object {
