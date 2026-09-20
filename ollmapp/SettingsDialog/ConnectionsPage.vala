@@ -36,6 +36,7 @@ namespace OLLMapp.SettingsDialog
 
 		private Gtk.Button add_btn;
 		private Gtk.ScrolledWindow scrolled_window;
+		private Adw.ToastOverlay toast_overlay;
 		private Adw.PreferencesGroup group;
 		private Gtk.Box boxed_list;
 		private Gee.HashMap<string, ConnectionRow> rows {
@@ -101,7 +102,9 @@ namespace OLLMapp.SettingsDialog
 			};
 			this.scrolled_window.set_child(this.group);
 			this.scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
-			this.append(this.scrolled_window);
+			this.toast_overlay = new Adw.ToastOverlay();
+			this.toast_overlay.set_child(this.scrolled_window);
+			this.append(this.toast_overlay);
 
 			// Create ConnectionAdd dialog
 			this.add_dialog = new ConnectionAdd();
@@ -115,7 +118,9 @@ namespace OLLMapp.SettingsDialog
 			// Initial render of connections
 #if !ANDROID && !G_OS_WIN32
 			this.file_server_row = new FileServerRow(
-				this.dialog.app.config.filesd, this.dialog.parent);
+				this.dialog.app.config.filesd,
+				this.dialog.parent,
+				this.toast_overlay);
 			this.boxed_list.append(this.file_server_row.expander);
 #endif
 			this.render_connections();

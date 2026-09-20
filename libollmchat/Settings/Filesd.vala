@@ -83,15 +83,20 @@ namespace OLLMchat.Settings
 		 * When {@link systemd} is false, runs ''disable --now'' on the
 		 * user unit. Skips rewrite when the unit file already matches.
 		 * Skips ''enable --now'' when already active or when this
-		 * process is already under systemd (''INVOCATION_ID'' set).
+		 * binary is ollmfilesd (the unit already started us).
+		 * ''ExecStart'' is ''ollmfilesd'' on PATH. The unit sets
+		 * ''OLLMFILESD_DAEMON=1'' so the process does not double-fork
+		 * under ''Type=simple''.
 		 */
 		public void install()
 		{
 			if (!this.systemd) {
+				string sout, serr;
+				int status;
 				try {
-					GLib.Process.spawn_command_line_async(
-						"systemctl --user disable --now ollmfilesd.service"
-					);
+					GLib.Process.spawn_command_line_sync(
+						"systemctl --user disable --now ollmfilesd.service",
+						out sout, out serr, out status);
 				} catch (GLib.Error e) {
 					GLib.warning("systemd disable failed: %s", e.message);
 				}
@@ -109,11 +114,10 @@ namespace OLLMchat.Settings
 				unit_dir,
 				"ollmfilesd.service"
 			);
-			var exe_buf = new char[4096];
-			var exe_len = Posix.readlink("/proc/self/exe", exe_buf);
-			var exe = exe_len > 0
-				? ((string)exe_buf).substring(0, (int)exe_len)
-				: "ollmfilesd";
+			var exe = GLib.Environment.find_program_in_path("ollmfilesd");
+			if (exe == null || exe == "") {
+				exe = "ollmfilesd";
+			}
 			var unit_text = """
 [Unit]
 Description=OLLMchat file daemon (ollmfilesd)
@@ -121,6 +125,7 @@ After=default.target
 
 [Service]
 Type=simple
+Environment=OLLMFILESD_DAEMON=1
 ExecStart=""" + exe + """
 Restart=on-failure
 
@@ -145,18 +150,22 @@ WantedBy=default.target
 					GLib.warning("systemd unit write failed: %s", e.message);
 					return;
 				}
+				string reload_out, reload_err;
+				int reload_status;
 				try {
-					GLib.Process.spawn_command_line_async(
-						"systemctl --user daemon-reload"
-					);
+					GLib.Process.spawn_command_line_sync(
+						"systemctl --user daemon-reload",
+						out reload_out, out reload_err, out reload_status);
 				} catch (GLib.Error e) {
 					GLib.warning("systemd daemon-reload failed: %s", e.message);
 				}
 				GLib.debug("systemd user unit installed at %s", unit_path);
 			}
-			var invocation = GLib.Environment.get_variable("INVOCATION_ID");
-			if (invocation != null && invocation != "") {
-				return;
+			try {
+				if (GLib.Path.get_basename(GLib.FileUtils.read_link("/proc/self/exe")) == "ollmfilesd") {
+					return;
+				}
+			} catch (GLib.FileError e) {
 			}
 			try {
 				var sout = "";
@@ -173,10 +182,12 @@ WantedBy=default.target
 				}
 			} catch (GLib.Error e) {
 			}
+			string en_out, en_err;
+			int en_status;
 			try {
-				GLib.Process.spawn_command_line_async(
-					"systemctl --user enable --now ollmfilesd.service"
-				);
+				GLib.Process.spawn_command_line_sync(
+					"systemctl --user enable --now ollmfilesd.service",
+					out en_out, out en_err, out en_status);
 			} catch (GLib.Error e) {
 				GLib.warning("systemd enable failed: %s", e.message);
 			}
