@@ -13,6 +13,7 @@
 - [`RPC-8.2.8.5`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) — desktop Check / `reconnect` / Linux takeover (Phases C–D)
 - [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `ProjectManager.replace_rpc` + `notification`
 - [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) Phase 1 — Android Connections UI + `FileConnectionAdd.request()`
+- **This plan Phase 0** — leftover client tree-sitter. `libocfiles` cannot join the Android `subdir()` list until that is settled.
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -23,6 +24,7 @@
 - **🔷** Replace the `OLLMfiles.ProjectManager` stub so an approved + enabled file connection talks to remote `ollmfilesd` over HTTPS.
 - **🔷** Android startup: when `url != "" && enabled && approved`, HTTPS `replace_rpc` as [`8.2.8.5`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) §1, then `yield rpc.connect(hello)` with **no** `ClientBoot`.
 - **🔷** Compile **full** `liboccoder` on Android (same sources as desktop). Implication is meson + deps, not a second agent API.
+- **🔷** Tree-sitter stays off Android on purpose. AST parse is the file daemon's job (`ollmfilesd`), not the phone client.
 - **🔷** Do **not** register occoder agent factories on Android in this plan (Agent Pi / Code Assistant / Skill Runner). Later.
 - **🔷** Android `OllmchatWindow` implements `OLLMchat.ChatDesktopInterface`.
   - Phone: browser and code editor use today's globe pattern (`chat_widget.view_stack` swap).
@@ -35,6 +37,8 @@
 
 - **ℹ️** `android_poc` links reduced `occoder` (`AgentPi/Skill.vala` + `SkillSet.vala` only) via `liboccoder/meson.build` `is_android_cross` + `subdir_done()`.
 - **ℹ️** `OLLMfiles.ProjectManager` is a stub in `ollmapp/android/AndroidToolTypes.vala`. `libocfiles` is not in the Android `subdir()` list.
+- **ℹ️** Pixiewood `android/pixiewood-chat-poc.xml` has no tree-sitter wrap. That is deliberate, not a packaging hole.
+- **ℹ️** `libocfiles/meson.build` still lists `Tree.vala` / `TreeBase.vala` and `tree_sitter_dep`. Root `config/meson.build` (which defines that dep) is skipped on Android.
 - **ℹ️** Phone shell: `Gtk.Stack` (`startup` / `chat` / `history`). Browser globe toggles `chat_widget.view_stack` (`"chat"` vs tool name). No right pane.
 - **ℹ️** Desktop split is `ollmapp/WindowPane.vala` (`Gtk.Paned` + `Adw.ViewStack tab_view`). Showing the pane **grows** the window. Not in `android_poc` sources.
 - **ℹ️** `AgentPi.Factory.activate` casts the window to `ChatDesktopInterface` and `tab_view()` to `Adw.ViewStack`, then mounts `OLLMcoder.SourceView`. Android window is `ChatUserInterface` only.
@@ -51,20 +55,44 @@
 - **🔷** Tablet vs phone is a **device class**, not a live wide/narrow cutoff. A tablet does not flip to the phone shell when rotated.
 - **🔷** Tablet UI is landscape only. Do not show a vertical (portrait) phone layout on tablet.
 - **🔷** Tablet split is a **fixed** two-column layout. Not a user-draggable sash (`Gtk.Paned` / desktop `WindowPane`).
-- **💩** Detect tablet with the platform's tablet signal (Android `smallestScreenWidthDp` / `sw600dp`, or equivalent Gdk screen layout). Confirm the exact API when coding.
-- **💩** Lock tablet orientation in the Android manifest / activity (`landscape` / `sensorLandscape`) so the phone stack never appears there.
-- **💩** Tablet `tab_view()` is still an `Adw.ViewStack` so factory casts match desktop. Columns are a `Gtk.Box`, not `WindowPane`.
+- **🔷** Detect tablet the standard Android way (`smallestScreenWidthDp` / `sw600dp`). If that signal is not reachable from Vala/GTK, expose it (JNI / activity). Do not invent a Gdk width cutoff.
+- **🔷** Lock tablet orientation in the Android manifest / activity (`landscape` / `sensorLandscape`) so the phone stack never appears there.
+- **🔷** Tablet `tab_view()` is still an `Adw.ViewStack` so factory casts match desktop. Columns are a `Gtk.Box`, not `WindowPane`. No extra tablet tab API.
+- **🔷** Tree-sitter is daemon-side. Do not add a Pixiewood wrap or ship language `.so` files in the APK.
 - **ℹ️** `register_default_agents()` is Chatter only (`ChatUserInterface`). Coder factories are a separate desktop `Window.initialize_client` block. Leave that block off Android.
 
 ---
 
+## Phase 0 — Client tree-sitter leftover (look at before Phase 1) (`⏳`)
+
+- **🔷** `⏳` Look at this **before** putting `libocfiles` on the Android `subdir()` list. Missing tree-sitter on Android is not a wrap to add.
+- **🔷** AST parse belongs on `ollmfilesd`. The phone client talks RPC. It does not load tree-sitter or language parsers.
+- **ℹ️** Already decided in [`2.10.4.6`](done/2.10.4.6-DONE-file.md) **AST on wire**:
+  - `OLLMfiles.Tree` is backend-only.
+  - V2 `ProjectManager` has no `tree_factory` / `tree_cache`.
+  - Target wire is `File.ast.lookup` (`path` + `ast_path` → line range). Not a `Tree` object on the client.
+  - That RPC is still in **Deferred** there. It is not in the tree (`File.ast.lookup` has no Vala hits).
+- **ℹ️** Client still compiles and calls local `Tree` anyway:
+  - `libocfiles/meson.build` — `Tree.vala`, `TreeBase.vala`, `tree_sitter_dep`, `--pkg=tree-sitter`, `--pkg=gmodule-2.0`
+  - `libocfiles/FileChange.vala` `resolve_ast_path()` — `new Tree(this.file)` then `parse` / `lookup_path`
+  - `liboccoder/Task/ResolveLink.vala` — `new OLLMfiles.Tree` in `preload_links` and `file_ast`
+  - `liboctools/ReadFile/Request.vala` + `Summarize.vala` — same local `Tree` (not in the Android `subdir()` list today)
+- **ℹ️** Daemon already has the real parse path: `ollmfilesd/Tree.vala`, `tree_factory` / `tree_cache` on server `ProjectManager`.
+- **🔷** `⏳` Decide how the leftover client callers stop using local `Tree` so `libocfiles` (and full `liboccoder`, same sources) compile without tree-sitter.
+  - Likely: land `File.ast.lookup` (or fold into `File.read`) as [`2.10.4.6`](done/2.10.4.6-DONE-file.md) specified, then drop `Tree.vala` / `TreeBase.vala` from the client meson.
+  - That may be a split plan. Do not start Phase 1 until this is chosen.
+- **🚫** Pixiewood `tree-sitter` wrap.
+- **🚫** Shipping `libtree-sitter-*.so` language parsers in the APK.
+- **🚫** `#if ANDROID` stub `Tree` on the client so meson can ignore the leftover.
+- **⏳** Code proposals — after this look-at. Not in Phase 1.
+
 ## Phase 1 — Real `ProjectManager` + full `liboccoder` (`⏳`)
 
 - **🔷** `⏳` `libocfiles` in the Android `subdir()` list. `ocfiles_vapi_dep` + `--pkg=ocfiles` on `android_poc`.
-- **🔷** `⏳` Drop the `is_android_cross` Skill-only `subdir_done()` in `liboccoder/meson.build`. Build the same `occoder_src` as desktop (GtkSourceView, tree-sitter, `SourceView`, factories).
+- **🔷** `⏳` Drop the `is_android_cross` Skill-only `subdir_done()` in `liboccoder/meson.build`. Build the same `occoder_src` as desktop (GtkSourceView, `SourceView`, factories). No tree-sitter on this cross-build.
 - **🔷** `⏳` Drop / replace the stub in `ollmapp/android/AndroidToolTypes.vala`.
-- **ℹ️** Cross-build picks up `tree-sitter`, `sqlite3`, `gmodule-2.0`, `gtksourceview-5`.
-- **⏳** Code proposals — after design sign-off.
+- **ℹ️** Cross-build already has `sqlite3`, `gmodule-2.0`, `gtksourceview-5`. Tree-sitter is Phase 0, not a wrap here.
+- **⏳** Code proposals — after Phase 0 is settled.
 
 ---
 
@@ -95,6 +123,7 @@
 
 - **ℹ️** `ConnectionsPage.render_approved` already references `win.project_manager.rpc`.
 - **ℹ️** `FileConnectionRow.reconnect` already references `win.project_manager`, `win.notification`, `win.window_config()`.
+- **🔷** `⏳` Phase 0 settled before any Android `subdir('libocfiles')`.
 - **🔷** `⏳` Fix `android_poc` compile errors in this plan. No `#if ANDROID` stubs on the desktop row.
 
 ---
@@ -107,9 +136,10 @@
 
 ## Suggested order
 
-1. **⏳** Phase 1 — `libocfiles` + full `liboccoder` + real `ProjectManager`
-2. **⏳** Phase 2 — HTTPS `replace_rpc` + window APIs `FileConnectionRow` already calls
-3. **⏳** Phase 3 — `ChatDesktopInterface` + phone stack / tablet landscape columns (browser now, editor host ready)
+1. **⏳** Phase 0 — leftover client tree-sitter (daemon AST). Do not start Phase 1 until this is settled
+2. **⏳** Phase 1 — `libocfiles` (no tree-sitter) + full `liboccoder` + real `ProjectManager`
+3. **⏳** Phase 2 — HTTPS `replace_rpc` + window APIs `FileConnectionRow` already calls
+4. **⏳** Phase 3 — `ChatDesktopInterface` + phone stack / tablet landscape columns (browser now, editor host ready)
 
 ---
 
@@ -125,3 +155,5 @@
 - **🚫** Portrait phone shell on a tablet.
 - **🚫** Multiple file-server URLs.
 - **🚫** `ensure_trust()` / `try/catch` around `Cert.ensure()`.
+- **🚫** A Pixiewood tree-sitter wrap, or language parser `.so` files in the APK, to make `libocfiles` compile.
+- **🚫** `#if ANDROID` stub `OLLMfiles.Tree` so Phase 1 can ignore the leftover.

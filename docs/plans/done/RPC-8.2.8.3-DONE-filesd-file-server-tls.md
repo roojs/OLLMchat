@@ -1,15 +1,15 @@
-# 8.2.8.3 — Desktop File Server expander + TLS CA key auto-install
+# 8.2.8.3 — DONE — Desktop File Server expander + TLS CA key auto-install
 
-**Status:** **PROPOSED** — code proposals ready for review
+**Status:** **DONE** ✅ — expander, CA key extract, live apply, systemd handoff in tree. User archived 2026-09-20.
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this sub-plan.**
 
-**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](RPC-8.2.8-filesd-connections-ui.md)
+**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](../RPC-8.2.8-filesd-connections-ui.md)
 
 **Depends on:**
 
 - Phase 1 of parent (**✔️** agent-done) — `Config2.filesd` + `OLLMfilesd.Https.listen` CA PEM extraction
-- [`RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) — Connections tab / `ConnectionRow` expander pattern
+- [`RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) — Connections tab / `ConnectionRow` expander pattern
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -24,8 +24,23 @@
   - If those listen fields changed, stop the local `ollmfilesd` from this process and start it again so HTTPS / proxy pick up. No reboot RPC.
 - **🔷** Enabling HTTPS must **not** require the operator to hand-copy TLS material.
   - Today CA PEM is extracted from GResource; CA **key** still errors with “copy `libocrpc/data/…`”.
-  - Extract / install the CA key the same way on first listen; update [`docs/filesd-behind-nginx-proxy.md`](../filesd-behind-nginx-proxy.md) so it no longer tells operators to copy certs by hand.
-- **⏳** Land the expander, GResource key, `Https.listen` extract, nginx-doc rewrite, and `FileServerRow.reboot` (fences below).
+  - Extract / install the CA key the same way on first listen; update [`docs/filesd-behind-nginx-proxy.md`](../../filesd-behind-nginx-proxy.md) so it no longer tells operators to copy certs by hand.
+- **✅** Land the expander, GResource key, `Https.listen` extract, nginx-doc rewrite, and `FileServerRow.reboot`.
+
+---
+
+## Landed (tree)
+
+- `libocrpc/data/ollmrpc.gresource.xml` — CA key next to PEM
+- `ollmfilesd/Https.vala` — extract CA key like CA PEM
+- `docs/filesd-behind-nginx-proxy.md` — no operator copy step
+- `libocrpc/ClientBoot.vala` — `kill()`, `connectable()`
+- `libollmchat/Settings/Filesd.vala` — `disable --now`; `ExecStart` PATH `ollmfilesd`; `OLLMFILESD_DAEMON=1`; skip enable only when this binary is `ollmfilesd`
+- `libollmchat/Settings/Config2.vala` — serialize `filesd` / `filesd-client`
+- `ollmapp/SettingsDialog/FileServerRow.vala` — expander; live apply; systemd always shown; Port Engine ID pattern; systemd ↔ manual handoff; Connections toasts
+- `ollmapp/SettingsDialog/ConnectionsPage.vala` / `ConnectionRow.vala` / meson / valadoc
+
+ℹ️ Bug archives: [`2026-09-19-FIXED-config2-save-drops-filesd.md`](../../bugs/done/2026-09-19-FIXED-config2-save-drops-filesd.md), [`2026-09-19-FIXED-fileserver-port-not-sensitive.md`](../../bugs/done/2026-09-19-FIXED-fileserver-port-not-sensitive.md), [`2026-09-20-FIXED-fileserver-apply-on-change.md`](../../bugs/done/2026-09-20-FIXED-fileserver-apply-on-change.md), [`2026-09-20-FIXED-fileserver-systemd-starts-ollmchat.md`](../../bugs/done/2026-09-20-FIXED-fileserver-systemd-starts-ollmchat.md)
 
 ---
 
@@ -56,7 +71,7 @@
 - **🔷** `FileServerRow(filesd, win)` — window at construct so `reboot` can reconnect `ProjectManager` when it is still on Unix. Remote takeover: bounce local daemon only.
 - **💩** File Server is the **first** row in `boxed_list` (this machine, then LLM connections, then outbound file connection, then approved clients).
 - **🔷** systemd on: existing `Filesd.install()` (`enable --now`) after bounce, when the new daemon starts. systemd off: same `install()` runs `systemctl --user disable --now ollmfilesd.service` (no new method, not from the UI).
-- **ℹ️** [`RPC-8.2.3.5`](done/RPC-8.2.3.5-DONE-https-server.md) kept the CA **key** out of the libocrpc GResource so Android would not ship it. This plan still lists the key in `libocrpc/data/ollmrpc.gresource.xml` so `Https.listen` can mirror the PEM lookup path (`/ollmrpc/ollmrpc-ca-key.pem`). ollmfilesd already links libocrpc. Confirm or veto (alternative: ollmfilesd-only GResource).
+- **ℹ️** [`RPC-8.2.3.5`](RPC-8.2.3.5-DONE-https-server.md) kept the CA **key** out of the libocrpc GResource so Android would not ship it. This plan still lists the key in `libocrpc/data/ollmrpc.gresource.xml` so `Https.listen` can mirror the PEM lookup path (`/ollmrpc/ollmrpc-ca-key.pem`). ollmfilesd already links libocrpc. Confirm or veto (alternative: ollmfilesd-only GResource).
 
 ---
 
@@ -658,11 +673,13 @@ Not `android_poc_settings_sources`, not the Windows `ollmchat` source list.
 
 ## Suggested order
 
-1. **⏳** §1–§2 — GResource + `Https.listen` extract (HTTPS enable works without UI)
-2. **⏳** §3 — nginx doc matches automatic install
-3. **⏳** §3a — `ClientBoot.kill`
-4. **✔️** §3b — `Filesd.install` `disable --now` when systemd is off
-5. **⏳** §4–§6 — File Server expander; `FileServerRow.reboot` when listen fields change
+1. **✅** §1–§2 — GResource + `Https.listen` extract (HTTPS enable works without UI)
+2. **✅** §3 — nginx doc matches automatic install
+3. **✅** §3a — `ClientBoot.kill`
+4. **✅** §3b — `Filesd.install` `disable --now` when systemd is off
+5. **✅** §4–§6 — File Server expander; `FileServerRow.reboot` when listen fields change
+
+ℹ️ Live apply, systemd always visible, Port Engine ID, stay-up, and `ExecStart=ollmfilesd` landed in the bug archives above (plan fences were persist-on-close + `Alert.show`).
 
 ---
 

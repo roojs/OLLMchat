@@ -14,7 +14,7 @@
 
 ## Purpose
 
-- **ℹ️** File Server expander + TLS CA key auto-install moved to [`RPC-8.2.8.3-filesd-file-server-tls.md`](../RPC-8.2.8.3-filesd-file-server-tls.md).
+- **ℹ️** File Server expander + TLS CA key auto-install moved to [`RPC-8.2.8.3-DONE-filesd-file-server-tls.md`](RPC-8.2.8.3-DONE-filesd-file-server-tls.md).
 - **🔷** Preferences-dialog **banner** (same area as `PullManagerBanner` on `SettingsDialog.MainDialog` / `action_bar_area`) for the **latest** pending registration only.
   - Shows enough to decide (IP + short fingerprint + time; requester when present).
   - Buttons: **Accept** / **Reject** / **Ban**.
@@ -49,7 +49,7 @@
 
 ## File Server + TLS — moved to 8.2.8.3
 
-- **ℹ️** File Server expander (edits `Config2.filesd`) and TLS CA key auto-install moved to [`RPC-8.2.8.3-filesd-file-server-tls.md`](../RPC-8.2.8.3-filesd-file-server-tls.md) — this plan was large enough already.
+- **ℹ️** File Server expander (edits `Config2.filesd`) and TLS CA key auto-install moved to [`RPC-8.2.8.3-DONE-filesd-file-server-tls.md`](RPC-8.2.8.3-DONE-filesd-file-server-tls.md) — this plan was large enough already.
 
 ---
 

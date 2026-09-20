@@ -1,6 +1,6 @@
 # 8.2.8 — File-server Connections UI + registration approval
 
-**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 5 **✔️** · Phase 6 **✅** · Phase 4 and 7 in sub-plans
+**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 4 **✅** · Phase 5 **✔️** · Phase 6 **✅** · Phase 7 in sub-plan
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -34,7 +34,7 @@
 | **1** | Daemon: `ClientCert` RPC + int status + IP drop (this file) | **✔️** agent-done |
 | **2** | [`RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) — Desktop pending banner + registered client rows | **✔️** agent-done |
 | **3** | [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) — Client file connection UI + registration request; Android + Linux | **✔️** agent-done |
-| **4** | [`RPC-8.2.8.3-filesd-file-server-tls.md`](RPC-8.2.8.3-filesd-file-server-tls.md) — Desktop File Server expander + TLS CA key auto-install | **⏳** |
+| **4** | [`RPC-8.2.8.3-DONE-filesd-file-server-tls.md`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md) — Desktop File Server expander + TLS CA key auto-install | **✅** |
 | **5** | [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification` (library half of 8.2.8.2 Phase 2) | **✔️** agent-done |
 | **6** | [`RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle (UI half of 8.2.8.2 Phase 2) | **✅** |
 | **7** | [`RPC-8.2.8.6-filesd-android-remote-takeover.md`](RPC-8.2.8.6-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder compile, phone/tablet pane | **⏳** |
@@ -46,7 +46,7 @@
 1. **✔️** Phase 1 — `ClientCert` RPC + int `status` + accept drop (this file)
 2. **✔️** Phase 2 — [`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) (agent-done; awaiting user ✅)
 3. **✔️** Phase 3 — [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) (agent-done; awaiting user ✅)
-4. **⏳** Phase 4 — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md)
+4. **✅** Phase 4 — [`8.2.8.3`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md)
 5. **✔️** Phase 5 — [`8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) (agent-done; awaiting user ✅)
 6. **✅** Phase 6 — [`8.2.8.5`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md)
 7. **⏳** Phase 7 — [`8.2.8.6`](RPC-8.2.8.6-filesd-android-remote-takeover.md)
@@ -116,7 +116,7 @@
 
 ## Phase 4 — Desktop File Server expander + TLS CA key auto-install
 
-**➡️** [`RPC-8.2.8.3-filesd-file-server-tls.md`](RPC-8.2.8.3-filesd-file-server-tls.md)
+**➡️** [`RPC-8.2.8.3-DONE-filesd-file-server-tls.md`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md)
 
 ---
 
@@ -142,7 +142,7 @@
 
 Tracked on the sub-plans:
 
-1. ~~Desktop File Server expander always shown?~~ → **🔷** always — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md)
+1. ~~Desktop File Server expander always shown?~~ → **🔷** always — [`8.2.8.3`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md)
 2. ~~One file-server URL or multiple?~~ → **🔷** one — [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md)
 3. ~~Which agents unlock?~~ → **🔷** Agent Pi only — [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md)
 4. ~~Remove approved = `client_cert("remove", id)` → bool?~~ → **🔷** yes — [`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md)
@@ -164,7 +164,7 @@ Tracked on the sub-plans:
 - **🚫** CLI admin as the primary surface (GUI owns approval).
 - **🚫** `client_cert` over HTTPS.
 - **🚫** Six separate admin cert methods.
-- **🔷** File Server listen changes: stop local `ollmfilesd` from the app (pid + SIGTERM) then `ClientBoot` — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md).
+- **🔷** File Server listen changes: stop local `ollmfilesd` from the app (pid + SIGTERM) then `ClientBoot` — [`8.2.8.3`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md).
 - **🚫** Live HTTPS rebind inside a running daemon.
 - **🚫** Putting file-server listen settings into `Settings.Connection` LLM map.
 - **🚫** Row-level string→int migrate — unused; drop+recreate table instead.

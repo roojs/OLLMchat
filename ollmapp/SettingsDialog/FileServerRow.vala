@@ -425,13 +425,14 @@ namespace OLLMapp.SettingsDialog
 		 * Stop the local Unix ollmfilesd and start it again.
 		 *
 		 * {@link OLLMrpc.ClientBoot.kill} then
-		 * {@link OLLMrpc.ClientBoot.ensure_daemon}. Spawn or stay-up failure toasts
-		 * ''File server did not stay up'' on Connections. If this
-		 * window is still on Unix, reconnect
-		 * {@link OLLMfiles.ProjectManager} like
+		 * {@link OLLMrpc.ClientBoot.ensure_daemon}. Spawn or stay-up
+		 * failure toasts ''File server did not stay up'' on
+		 * Connections. Stay-up success toasts the expander subtitle
+		 * (socket only vs socket and HTTPS). If this window is still
+		 * on Unix, reconnect {@link OLLMfiles.ProjectManager} like
 		 * {@link FileConnectionRow.reconnect} with ''remote = false''.
-		 * If the window is on a remote file connection, only bounce the
-		 * local daemon.
+		 * If the window is on a remote file connection, only bounce
+		 * the local daemon.
 		 */
 		public async void reboot()
 		{
@@ -527,11 +528,7 @@ namespace OLLMapp.SettingsDialog
 			if (via_systemd && https_ok) {
 				this.expander.subtitle = "Running via systemd (socket and HTTPS)";
 			}
-			var done = "Running on startup";
-			if (via_systemd) {
-				done = "Running via systemd";
-			}
-			this.toast_overlay.add_toast(new Adw.Toast(done) { timeout = 2 });
+			this.toast_overlay.add_toast(new Adw.Toast(this.expander.subtitle) { timeout = 2 });
 			if (this.win.project_manager.rpc.http != null) {
 				this.rebooting = false;
 				if (this.reboot_again) {
