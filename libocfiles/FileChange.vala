@@ -217,12 +217,11 @@ namespace OLLMfiles
 				return;
 			}
 			
-			var tree = new Tree(this.file);
-			
 			int start, end, comment_start;
 			try {
-				yield tree.parse();
-				if (!tree.lookup_path(this.ast_path, out start, out end, out comment_start)) {
+				if (!yield this.file.ast_lookup(
+					this.ast_path, out start, out end, out comment_start
+				)) {
 					this.result = "AST path not found: " + this.ast_path;
 					this.completed = true;
 					this.has_error = true;

@@ -11,7 +11,10 @@ Canonical rules: **`docs/coding-standards.md`**. Full checklist:
 
 **Top mistakes: helper methods, gratuitous line-length chopping** — inline in the
 method you are editing; short `if` / `||` lines stay on one line unless genuinely
-long; for format-string calls (`throw` / error-ctors / `GLib.debug`/`warning`/
+long; **long** method/constructor definitions use **one parameter per line**
+then `) {` on its own line (`brace-placement`); **short** signatures stay on
+one line; comment/docblock wrap is **72 characters** (do not wrap at ~50); for
+format-string **calls** (`throw` / error-ctors / `GLib.debug`/`warning`/
 `critical`) put the message on the call line (wrap remaining args grouped, not
 one-per-line) (`line-length-breaking`). Task wording is not approval for helpers
 (`method-names-new-methods`).

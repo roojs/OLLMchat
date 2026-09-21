@@ -149,11 +149,12 @@ elif android_poc_opt and host_machine.system() == 'android'
   subdir('libocmarkdowngtk')
   subdir('libocsqlite')
   subdir('libocrpc')
+  subdir('libocfiles')       # Depends on libocsqlite + libocrpc; no tree-sitter
   subdir('libollamaweb')
   subdir('libollmchat')
   subdir('libocwebkit')      # Browser tool — webkitgtk-android backend
   subdir('libollmchatgtk')
-  subdir('liboccoder')       # AgentPi catalog only on Android (see liboccoder/meson.build)
+  subdir('liboccoder')       # Same sources as desktop (see liboccoder/meson.build)
   subdir('ollmapp')         # Remote-chat Android APK target
 else
   subdir('libocsqlite')      # No dependencies

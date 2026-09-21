@@ -403,6 +403,46 @@ namespace OLLMfiles
 		}
 
 		/**
+		 * Line range for an AST path (''RPC-File.ast_lookup'').
+		 *
+		 * ''response.msg'' is ''start end comment_start'' (1-based lines).
+		 * Empty msg means the path was not found.
+		 *
+		 * @param ast_path tree-sitter path
+		 * @param start_line element start line
+		 * @param end_line element end line
+		 * @param comment_start preceding comment start, or start_line
+		 * @return false when path/ast_path is empty or the AST path is missing
+		 * @throws GLib.Error if the RPC fails
+		 */
+		public async bool ast_lookup(
+			string ast_path,
+			out int start_line,
+			out int end_line,
+			out int comment_start
+		) throws GLib.Error
+		{
+			start_line = 0;
+			end_line = 0;
+			comment_start = 0;
+			if (this.path.length == 0 || ast_path == "") {
+				return false;
+			}
+			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+				method = "RPC-File.ast_lookup",
+				args = OLLMrpc.args("ss", this.path, ast_path)
+			});
+			var parts = response.msg.split(" ");
+			if (parts.length != 3) {
+				return false;
+			}
+			int.try_parse(parts[0], out start_line);
+			int.try_parse(parts[1], out end_line);
+			int.try_parse(parts[2], out comment_start);
+			return true;
+		}
+
+		/**
 		 * Write on daemon (''File.rpc_write'').
 		 *
 		 * ''base_type'': ''f'' file (default), ''d'' directory,

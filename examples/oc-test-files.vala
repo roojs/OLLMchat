@@ -325,11 +325,8 @@ Examples:
 				return;
 			}
 			
-			var tree = manager.tree_factory(file);
-			yield tree.parse();
-			
 			int start, end, comment_start;
-			if (!tree.lookup_path(opt_ast_path, out start, out end, out comment_start)) {
+			if (!yield file.ast_lookup(opt_ast_path, out start, out end, out comment_start)) {
 				stderr.printf("AST path not found: %s\n", opt_ast_path);
 				return;
 			}
@@ -644,13 +641,11 @@ BACKUP_PATH: (tracked_in_file_history)
 		}
 		
 		// Create Summarize instance (pass show_lines option)
-		var summarizer = new OLLMtools.ReadFile.Summarize(file, opt_show_lines);
-		
-		// Generate summary
-		var summary = yield summarizer.summarize();
-		
-		// Output full summary
-		print(summary);
+		var response = yield file.manager.rpc.call(new OLLMrpc.Request() {
+			method = "RPC-File.ast_summarize",
+			args = OLLMrpc.args("sb", file.path, opt_show_lines)
+		});
+		print(response.msg);
 	}
 
 	private async void run_edit(OLLMfiles.ProjectManager manager) throws Error

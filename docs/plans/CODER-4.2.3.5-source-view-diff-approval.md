@@ -46,9 +46,13 @@ Footer **diff control bar** — three zones:
 └──────────────┴────────────────────────────────────────────┴──────────────┘
 ```
 
-**Left — file nav (stub):** prev / next + `n / N` label; **hover popover** lists pending files (Phase A: CLI pair basenames from harness; same interaction as header [`Approvals`](../../liboccoder/Approvals.vala) task-due hover list — Phase B wires **`ReviewFiles`** and removes top popover).
+**Left — file nav (stub):** prev / next + `n / N` control; **hover popover** lists pending files (Phase A: CLI pair basenames from harness; same interaction as header [`Approvals`](../../liboccoder/Approvals.vala) task-due hover list — Phase B wires **`ReviewFiles`** and removes top popover).
 
-**Right — bulk actions (stub):** visible **Bulk actions** label; **hover popover** (not click dropdown) with “Accept all this file” → grey all bands in memory; overlay hides.
+- 🔷 **Desktop:** hover opens; 750ms leave hides; click **File n of n** toggles; prev/next first click must change file (do not eat the press).
+- 🔷 **Android:** no hover / no timeout; tap **File n of n** to open, tap again to close, tap an item to choose and close.
+- 🔷 **File n of n** is a **`Gtk.Button`**. Chrome / styling at the rendering pass.
+
+**Right — bulk actions (stub):** visible **Bulk actions** label; **hover popover** (desktop) / **tap toggle** (Android) with “Accept all this file” → grey all bands in memory; overlay hides.
 
 **Middle — hunk map:** proportional bands from real **`Differ.patches`**; primary smoke fixture **`tests/source-diff/review-smoke-*.txt`** (~105 lines, **12 hunks**).
 
@@ -68,7 +72,14 @@ Footer **diff control bar** — three zones:
 - Click grey band → Unapprove → restore pending colour.
 - **No** Next/Previous hunk buttons — map + border + auto-advance replace them.
 
-**Right — bulk actions:** see **Left — file nav** block above (hover popover spec).
+**Right — bulk actions:** see **Left — file nav** block above (hover / tap toggle spec).
+
+### Android form factor (product, not Phase A harness)
+
+- 🔷 **Phone:** no source-view **diff preview** (no ReviewBar + interleaved diff in the editor).
+- 🔷 **Tablet:** can show the same review chrome as desktop.
+- 🔷 The user scrolls the source view by hand. Accept / Reject still advances to the next pending hunk (`next()` → `navigate_to_line`).
+- 🔷 A tap on the scrolled source view (dismiss a menu, etc.) is **not** ReviewBar. It belongs to the editor scroll view / `SourceView` when that is implemented.
 
 ### Ownership
 
@@ -295,6 +306,8 @@ meson compile -C build occoder examples/oc-test-source-diff
 ### Still open (Phase A)
 
 - **⏳** **💩** User smoke **✅** on the checks above.
+- **✔️** File-nav / bulk / Feedback: desktop hover + **750ms** leave timeout; **click toggles** (including **File n of n**). **`autohide = false`** so prev/next first click is not eaten. Item click still popdowns.
+- **✔️** **File n of n** is a **`Gtk.Button`** (click toggles the file list). Chrome / styling at the rendering pass.
 - **⏳** **💩** Active-border colour & label padding polish if smoke finds gaps (min width / gap = **50% of strip height** is implemented).
 - **⏳** **ReviewBar:** in-buffer active-hunk highlight (dim / emphasize changed lines) — **not** SourceView; design + implement in **`ReviewBar.vala`** only when user approves approach.
 - **⏳** Smoke fixes in progress: hunk map visibility, overlay position, bulk menu, file nav hidden when one file, two-pair CLI on **`oc-test-source-diff`**.
@@ -362,6 +375,8 @@ When the user asks about **in-text hunk highlighting**, **dimming non-active hun
 
 ### Still open (Phase B)
 
+- 🔷 ⏳ Phone: no source-view diff preview. Tablet: ReviewBar + interleaved diff.
+- 🔷 ⏳ Editor scroll view / `SourceView`: tap-on-scrolled-content (menu dismiss, etc.). Not ReviewBar.
 - 🔷 ⏳ Stacked LLM edit (**Flow B**) — review **H2** only; no carry-forward v1.
 - 🔷 ⏳ Hunk file format at **`FileDiffPart.path`**.
 - 🔷 ⏳ Unsaved dirty buffer while reviewing — **lean: no**.
@@ -386,7 +401,8 @@ Pending file in editor → footer matches Phase A behaviour but persists; file n
 - 🚫 Accept all files as primary header button.
 - 🚫 Carry-forward inside **`OLLMfiles.Diff`**.
 - 🚫 Keep header changed-files popover after footer file nav ships.
-- 🚫 “Overflow” naming in UI or docs.
+- 🚫 Phone source-view diff preview (tablet only).
+- 🚫 ReviewBar handling taps on the editor scroll view — that is the scroll view / `SourceView` when wired.
 
 ---
 

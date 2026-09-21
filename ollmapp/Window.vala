@@ -490,6 +490,26 @@ namespace OLLMapp
 			
 			this.project_manager = new OLLMfiles.ProjectManager();
 			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
+			if (config.filesd_client.url != "" && config.filesd_client.enabled
+				&& config.filesd_client.approved) {
+				var tls = new OLLMrpc.Transport.Cert() {
+					dir = GLib.Path.build_filename(
+						GLib.Environment.get_user_data_dir(), "ollmchat"),
+					cert_pem = "client.pem",
+					key_pem = "client-key.pem",
+					cn = "ollmchat-device",
+					product_ca_resource = true,
+				};
+				tls.ensure();
+				var http = new OLLMrpc.Transport.HttpClient(config.filesd_client.url) {
+					bin_body = true,
+					tls_certificate = tls.certificate,
+					tls_database = tls.trust
+				};
+				this.project_manager.replace_rpc(
+					new OLLMrpc.Client("", "", config.filesd_client.url) { http = http }
+				);
+			}
 
 			var win_cfg = this.window_config();
 			if (win_cfg.agent != "") {

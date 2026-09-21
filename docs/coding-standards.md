@@ -357,6 +357,53 @@ namespace MyNamespace
 }
 ```
 
+**CRITICAL — method and constructor definitions:** When the **parameter
+list is genuinely long** (rough guide: past ~100 characters, same as
+code wrapping), put **each parameter on its own line**. Keep `(` on the
+name line. After the last parameter, put `)` and `{` together on their
+**own line**. A **short** signature stays on **one line** with `{` on the
+following line — two or three short parameters is not a reason to wrap.
+This is **not** the same as wrapping a **call**.
+
+**Bad (wrapping a short constructor):**
+```vala
+public Summarize(
+    File file,
+    bool show_lines = false)
+{
+```
+
+**Good (short signature stays on one line):**
+```vala
+public Summarize(File file, bool show_lines = false)
+{
+```
+
+**Also Bad (` ) { ` hanging off the last parameter):**
+```vala
+private void traverse_ast(
+    TreeSitter.Node node,
+    string code_content) {
+```
+
+**Also Bad (`{` on a line by itself after `)`):**
+```vala
+private void traverse_ast(
+    TreeSitter.Node node,
+    string code_content)
+{
+```
+
+**Good (long parameter list: one parameter per line; ` ) { ` on its own line):**
+```vala
+private void traverse_ast(
+    TreeSitter.Node node,
+    string code_content,
+    string? parent_enum_name = null,
+    string? current_namespace = null
+) {
+```
+
 ## Underscore prefix on variables and fields <!-- section: underscore-prefix -->
 
 **CRITICAL - FORBIDDEN:** Do NOT use a leading underscore (`_`) on variable names, field names, or property names. Use plain names and access with `this.` where needed.
@@ -1089,13 +1136,19 @@ if (project_file.file.is_ignored
 if (project_file.file.is_ignored || !project_file.file.is_text) {
 ```
 
-**CRITICAL — one argument per line needs justification:** Default to **keeping
-arguments grouped** on as few lines as practical. Do **not** put one argument
-per line just because a call wrapped. One-arg-per-line is allowed only when
-each argument is itself a large expression (nested array/object literal,
-multi-line closure, long conditional) and grouping would hurt readability —
-say why in a short comment if it is not obvious. Short scalars, booleans,
-and simple variables almost never justify one-per-line.
+**CRITICAL — method definitions vs calls:** The grouped-argument rule below
+applies to **calls and invocations only**. A **long** method or constructor
+**definition** uses **one parameter per line** — see `brace-placement`. A
+**short** definition stays on one line. Do **not** apply this call-wrapping
+rule to a long definition.
+
+**CRITICAL — one argument per line needs justification (calls only):** Default
+to **keeping arguments grouped** on as few lines as practical. Do **not** put
+one argument per line just because a call wrapped. One-arg-per-line is allowed
+only when each argument is itself a large expression (nested array/object
+literal, multi-line closure, long conditional) and grouping would hurt
+readability — say why in a short comment if it is not obvious. Short scalars,
+booleans, and simple variables almost never justify one-per-line.
 
 **Bad (gratuitous one-arg-per-line — forbidden):**
 ```vala
@@ -1114,9 +1167,9 @@ this.whitelist_respond(want_json, true,
 	data);
 ```
 
-**Maximum line length:** In docblocks and comments, no line may extend past **72 characters** (including leading spaces/tab). Break after a word so the next line continues the sentence; a good rule of thumb is “break after a comma or before the next phrase” so that the first line does not go beyond roughly “… add all references,” in length.
+**Maximum line length:** In docblocks and comments, no line may extend past **72 characters** (including leading spaces/tab). Break after a word so the next line continues the sentence; a good rule of thumb is “break after a comma or before the next phrase” so that the first line does not go beyond roughly “… add all references,” in length. **Do not wrap a comment well short of 72** — use the budget; wrap only the overflow.
 
-- **Code:** Break on `(` when function calls or method invocations are long; break on `+` when string concatenation creates long lines; when arguments wrap, **group** them on the continuation line(s). **Do not** default to one argument per line — see **CRITICAL — one argument per line needs justification** above. Format-string calls (`throw` / `GLib.IOError` / wire `Error` / `GLib.debug` / `warning` / `critical`) — see **CRITICAL — format-string calls**: string stays on the call line; remaining args wrap **grouped**.
+- **Code:** **Long** method/constructor **definitions**: one parameter per line (`brace-placement`). **Short** signatures stay on one line. **Calls:** break on `(` when invocations are long; break on `+` when string concatenation creates long lines; when call arguments wrap, **group** them on the continuation line(s). **Do not** default to one argument per line on a **call** — see **CRITICAL — one argument per line needs justification (calls only)** above. Format-string calls (`throw` / `GLib.IOError` / wire `Error` / `GLib.debug` / `warning` / `critical`) — see **CRITICAL — format-string calls**: string stays on the call line; remaining args wrap **grouped**. A short `if` / `||` / `&&` stays on one line; wrap those only when the line is genuinely long (past ~100).
 - **Docblocks and comments:** Break so that no line exceeds 72 characters; prefer breaking after commas or natural phrase boundaries.
 
 **Bad:**
@@ -1774,7 +1827,7 @@ Run these checks on **every file you changed**. Fix violations; do not hand-wave
 | **`var` on locals** | Search: `^\s+(string\|int\|bool\|uint\|int64)\s+\w+\s*[=;]` — no local matches except `string[] … = {}` |
 | **No `handle_*` for signals** | Button/signal handlers inline in lambda, not new `handle_*` methods |
 | **No gratuitous `else`** | New `else` / `else if` chains restructure to early return/`continue` |
-| **No gratuitous line breaks** | Short `if`, `\|\|`, `&&`, and calls stay on one line; **format-string calls (`throw` / error ctor / `GLib.debug`/`warning`/`critical`): message on the call line**; if wrapping, group remaining args (not one-per-line); match surrounding file; 72-char rule is docblocks/comments only |
+| **No gratuitous line breaks** | Short `if`, `\|\|`, `&&`, **calls**, and **short** method signatures stay on one line; wrap only when genuinely long (past ~100). **format-string calls (`throw` / error ctor / `GLib.debug`/`warning`/`critical`): message on the call line**; if a **call** wraps, group remaining args (not one-per-line). **Long definitions**: one parameter per line, then `) {` on its own line. Comment/docblock lines may reach **72** characters — do not wrap them early. |
 | **Enum branches use `switch`** | Multi-value response/status checks use `switch`, not `\|\|` chains |
 | **No defensive re-checks** | No duplicate validation after a module boundary already enforced it |
 | **Debug text** | No class/method names in `GLib.debug()` / `GLib.warning()` messages |

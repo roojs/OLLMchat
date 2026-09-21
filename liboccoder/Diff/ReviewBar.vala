@@ -162,7 +162,7 @@ namespace OLLMcoder.Diff
 
 		private Gtk.Button file_prev;
 		private Gtk.Button file_next;
-		private Gtk.Label file_nav_label;
+		private Gtk.Button file_nav_label;
 		private Gtk.Box file_nav;
 		private Gtk.Box map_host;
 		private Gtk.DrawingArea map_area;
@@ -219,6 +219,7 @@ namespace OLLMcoder.Diff
 				tooltip_text = "Previous pending file",
 			};
 			this.file_prev.clicked.connect(() => {
+				((Gtk.Popover) this.file_menu_popover).popdown();
 				this.file_index = (this.file_index - 1 + this.file_count) % this.file_count;
 				this.file_nav_label.label = "File %d of %d".printf(
 					this.file_index + 1, this.file_count);
@@ -229,14 +230,13 @@ namespace OLLMcoder.Diff
 				tooltip_text = "Next pending file",
 			};
 			this.file_next.clicked.connect(() => {
+				((Gtk.Popover) this.file_menu_popover).popdown();
 				this.file_index = (this.file_index + 1) % this.file_count;
 				this.file_nav_label.label = "File %d of %d".printf(
 					this.file_index + 1, this.file_count);
 				this.file_index_changed(this.file_index);
 			});
-			this.file_nav_label = new Gtk.Label("") {
-				xalign = 0.5f,
-			};
+			this.file_nav_label = new Gtk.Button.with_label("");
 			if (this.file_count > 1) {
 				this.file_nav_label.label = "File %d of %d".printf(
 					this.file_index + 1, this.file_count);
@@ -269,6 +269,21 @@ namespace OLLMcoder.Diff
 			this.file_menu_popover = new Gtk.PopoverMenu.from_model(file_menu);
 			this.file_menu_popover.set_parent(this.file_nav_label);
 			((Gtk.Popover) this.file_menu_popover).autohide = false;
+			this.file_nav_label.clicked.connect(() => {
+				if (this.file_count < 2 || this.file_labels.length < 1) {
+					return;
+				}
+				if (this.file_popover_hide_id != 0) {
+					GLib.Source.remove(this.file_popover_hide_id);
+					this.file_popover_hide_id = 0;
+				}
+				if (this.file_menu_popover.visible) {
+					((Gtk.Popover) this.file_menu_popover).popdown();
+					return;
+				}
+				this.file_menu_popover.popup();
+			});
+#if !ANDROID
 			var file_anchor_motion = new Gtk.EventControllerMotion();
 			file_anchor_motion.enter.connect(() => {
 				if (this.file_count < 2 || this.file_labels.length < 1) {
@@ -284,7 +299,7 @@ namespace OLLMcoder.Diff
 				if (this.file_popover_hide_id != 0) {
 					GLib.Source.remove(this.file_popover_hide_id);
 				}
-				this.file_popover_hide_id = GLib.Timeout.add_seconds(3, () => {
+				this.file_popover_hide_id = GLib.Timeout.add(750, () => {
 					((Gtk.Popover) this.file_menu_popover).popdown();
 					this.file_popover_hide_id = 0;
 					return false;
@@ -302,13 +317,14 @@ namespace OLLMcoder.Diff
 				if (this.file_popover_hide_id != 0) {
 					GLib.Source.remove(this.file_popover_hide_id);
 				}
-				this.file_popover_hide_id = GLib.Timeout.add_seconds(3, () => {
+				this.file_popover_hide_id = GLib.Timeout.add(750, () => {
 					((Gtk.Popover) this.file_menu_popover).popdown();
 					this.file_popover_hide_id = 0;
 					return false;
 				});
 			});
 			(this.file_menu_popover as Gtk.Widget).add_controller(file_popover_motion);
+#endif
 
 			this.map_host = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				hexpand = true,
@@ -614,6 +630,18 @@ namespace OLLMcoder.Diff
 			this.bulk_menu_popover.set_parent(this.bulk_btn);
 			((Gtk.Popover) this.bulk_menu_popover).autohide = false;
 			((Gtk.Popover) this.bulk_menu_popover).set_position(Gtk.PositionType.TOP);
+			this.bulk_btn.clicked.connect(() => {
+				if (this.bulk_popover_hide_id != 0) {
+					GLib.Source.remove(this.bulk_popover_hide_id);
+					this.bulk_popover_hide_id = 0;
+				}
+				if (this.bulk_menu_popover.visible) {
+					((Gtk.Popover) this.bulk_menu_popover).popdown();
+					return;
+				}
+				this.bulk_menu_popover.popup();
+			});
+#if !ANDROID
 			var bulk_anchor_motion = new Gtk.EventControllerMotion();
 			bulk_anchor_motion.enter.connect(() => {
 				if (this.bulk_popover_hide_id != 0) {
@@ -626,7 +654,7 @@ namespace OLLMcoder.Diff
 				if (this.bulk_popover_hide_id != 0) {
 					GLib.Source.remove(this.bulk_popover_hide_id);
 				}
-				this.bulk_popover_hide_id = GLib.Timeout.add_seconds(3, () => {
+				this.bulk_popover_hide_id = GLib.Timeout.add(750, () => {
 					((Gtk.Popover) this.bulk_menu_popover).popdown();
 					this.bulk_popover_hide_id = 0;
 					return false;
@@ -644,13 +672,14 @@ namespace OLLMcoder.Diff
 				if (this.bulk_popover_hide_id != 0) {
 					GLib.Source.remove(this.bulk_popover_hide_id);
 				}
-				this.bulk_popover_hide_id = GLib.Timeout.add_seconds(3, () => {
+				this.bulk_popover_hide_id = GLib.Timeout.add(750, () => {
 					((Gtk.Popover) this.bulk_menu_popover).popdown();
 					this.bulk_popover_hide_id = 0;
 					return false;
 				});
 			});
 			(this.bulk_menu_popover as Gtk.Widget).add_controller(bulk_popover_motion);
+#endif
 
 			footer.append(this.file_nav);
 			footer.append(this.map_host);
@@ -669,6 +698,41 @@ namespace OLLMcoder.Diff
 				visible = false,
 				tooltip_text = "Quick review feedback to the LLM",
 			};
+			this.feedback_btn.clicked.connect(() => {
+				if (this.feedback_menu_popover == null || this.review_responses.size < 1) {
+					return;
+				}
+				if (this.feedback_popover_hide_id != 0) {
+					GLib.Source.remove(this.feedback_popover_hide_id);
+					this.feedback_popover_hide_id = 0;
+				}
+				if (this.feedback_menu_popover.visible) {
+					((Gtk.Popover) this.feedback_menu_popover).popdown();
+					return;
+				}
+				var hunk_ok = this.active >= 0 && this.active < this.hunks.size
+					&& this.hunks.get(this.active).decision == HunkDecision.PENDING;
+				for (var ri = 0; ri < this.review_responses.size; ri++) {
+					var menu_action = this.feedback_response_actions.lookup(
+						"response-%u".printf(ri)) as GLib.SimpleAction;
+					if (menu_action == null) {
+						continue;
+					}
+					var resp = this.review_responses.get(ri);
+					if (resp.is_bulk) {
+						menu_action.set_enabled(true);
+						this.feedback_menu_items[ri].set_attribute(
+							"tooltip", "s", resp.tooltip);
+						continue;
+					}
+					menu_action.set_enabled(hunk_ok);
+					this.feedback_menu_items[ri].set_attribute(
+						"tooltip", "s",
+						hunk_ok ? resp.tooltip : "Select a pending change");
+				}
+				this.feedback_menu_popover.popup();
+			});
+#if !ANDROID
 			var feedback_anchor_motion = new Gtk.EventControllerMotion();
 			feedback_anchor_motion.enter.connect(() => {
 				if (this.feedback_menu_popover == null || this.review_responses.size < 1) {
@@ -707,13 +771,14 @@ namespace OLLMcoder.Diff
 				if (this.feedback_popover_hide_id != 0) {
 					GLib.Source.remove(this.feedback_popover_hide_id);
 				}
-				this.feedback_popover_hide_id = GLib.Timeout.add_seconds(3, () => {
+				this.feedback_popover_hide_id = GLib.Timeout.add(750, () => {
 					((Gtk.Popover) this.feedback_menu_popover).popdown();
 					this.feedback_popover_hide_id = 0;
 					return false;
 				});
 			});
 			this.feedback_btn.add_controller(feedback_anchor_motion);
+#endif
 			this.review_decision_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8) {
 				halign = Gtk.Align.END,
 				spacing = 8,
@@ -811,6 +876,7 @@ namespace OLLMcoder.Diff
 			this.feedback_menu_popover.set_parent(this.feedback_btn);
 			((Gtk.Popover) this.feedback_menu_popover).autohide = false;
 			((Gtk.Popover) this.feedback_menu_popover).set_position(Gtk.PositionType.TOP);
+#if !ANDROID
 			var feedback_popover_motion = new Gtk.EventControllerMotion();
 			feedback_popover_motion.enter.connect(() => {
 				if (this.feedback_popover_hide_id != 0) {
@@ -822,13 +888,14 @@ namespace OLLMcoder.Diff
 				if (this.feedback_popover_hide_id != 0) {
 					GLib.Source.remove(this.feedback_popover_hide_id);
 				}
-				this.feedback_popover_hide_id = GLib.Timeout.add_seconds(3, () => {
+				this.feedback_popover_hide_id = GLib.Timeout.add(750, () => {
 					((Gtk.Popover) this.feedback_menu_popover).popdown();
 					this.feedback_popover_hide_id = 0;
 					return false;
 				});
 			});
 			(this.feedback_menu_popover as Gtk.Widget).add_controller(feedback_popover_motion);
+#endif
 			this.feedback_btn.visible = this.review_responses.size > 0;
 		}
 

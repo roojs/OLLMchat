@@ -112,16 +112,10 @@ namespace OLLMrpc
 					host = endpoint[0:colon];
 					int.try_parse(endpoint.substring(colon + 1), out port);
 				}
-				return yield client.connect_to_host_async(
-					host,
-					port,
-					null
-				);
+				return yield client.connect_to_host_async(host, port, null);
 			}
 			return yield client.connect_async(
-				new GLib.UnixSocketAddress(this.socket_path),
-				null
-			);
+				new GLib.UnixSocketAddress(this.socket_path), null);
 		}
 
 		/**
@@ -131,33 +125,20 @@ namespace OLLMrpc
 		public async void ensure_daemon() throws GLib.IOError
 		{
 			var daemon_pid = this.read_pid();
-			GLib.debug(
-				"ensure_daemon socket_path=%s pid_file=%s pid=%d pid_running=%s "
-					+ "socket_exists=%s connectable=%s",
-				this.socket_path,
-				this.pid,
-				daemon_pid,
+			GLib.debug("ensure_daemon socket_path=%s pid_file=%s pid=%d pid_running=%s "
+				+ "socket_exists=%s connectable=%s",
+				this.socket_path, this.pid, daemon_pid,
 				this.pid_running(daemon_pid) ? "true" : "false",
-				GLib.FileUtils.test(this.socket_path, GLib.FileTest.EXISTS)
-					? "true"
-					: "false",
-				this.connectable() ? "true" : "false"
-			);
+				GLib.FileUtils.test(this.socket_path, GLib.FileTest.EXISTS) ? "true" : "false",
+				this.connectable() ? "true" : "false");
 
 			if (this.connectable()) {
-				GLib.debug(
-					"ensure_daemon ready socket_path=%s pid=%d",
-					this.socket_path,
-					daemon_pid
-				);
+				GLib.debug("ensure_daemon ready socket_path=%s pid=%d", this.socket_path, daemon_pid);
 				return;
 			}
 
 			if (this.pid_running(daemon_pid)) {
-				GLib.debug(
-					"ensure_daemon terminating pid=%d (socket not connectable)",
-					daemon_pid
-				);
+				GLib.debug("ensure_daemon terminating pid=%d (socket not connectable)", daemon_pid);
 				this.terminate_daemon(daemon_pid);
 				yield this.pause(this.grace);
 			}
@@ -171,23 +152,35 @@ namespace OLLMrpc
 
 			yield this.startup();
 			daemon_pid = this.read_pid();
-			GLib.debug(
-				"ensure_daemon after startup pid=%d pid_running=%s "
-					+ "socket_exists=%s connectable=%s",
-				daemon_pid,
-				this.pid_running(daemon_pid) ? "true" : "false",
-				GLib.FileUtils.test(this.socket_path, GLib.FileTest.EXISTS)
-					? "true"
-					: "false",
-				this.connectable() ? "true" : "false"
-			);
+			GLib.debug("ensure_daemon after startup pid=%d pid_running=%s "
+				+ "socket_exists=%s connectable=%s",
+				daemon_pid, this.pid_running(daemon_pid) ? "true" : "false",
+				GLib.FileUtils.test(this.socket_path, GLib.FileTest.EXISTS) ? "true" : "false",
+				this.connectable() ? "true" : "false");
 			if (this.connectable()) {
 				return;
 			}
 
-			throw new GLib.IOError.FAILED(
-				"could not start or reach the filesystem daemon"
-			);
+			throw new GLib.IOError.FAILED("could not start or reach the filesystem daemon");
+		}
+
+		/**
+		 * Stop a running ollmfilesd (SIGTERM), then drop socket and pid files.
+		 *
+		 * After this, {@link ensure_daemon} will spawn. No-op if nothing
+		 * is running besides leftover files.
+		 */
+		public async void kill()
+		{
+			var daemon_pid = this.read_pid();
+			if (this.pid_running(daemon_pid)) {
+				this.terminate_daemon(daemon_pid);
+				yield this.pause(this.grace);
+			}
+			this.unlink_socket();
+			if (GLib.FileUtils.test(this.pid, GLib.FileTest.EXISTS)) {
+				GLib.FileUtils.unlink(this.pid);
+			}
 		}
 
 		/**
@@ -230,38 +223,20 @@ namespace OLLMrpc
 			var child_pid = 0;
 			try {
 				GLib.Process.spawn_async(
-					null,
-					argv,
-					null,
+					null, argv,	null,
 					GLib.SpawnFlags.DO_NOT_REAP_CHILD
 						| GLib.SpawnFlags.STDOUT_TO_DEV_NULL
 						| GLib.SpawnFlags.STDERR_TO_DEV_NULL
 						| (!GLib.Path.is_absolute(executable)
-							? GLib.SpawnFlags.SEARCH_PATH
-							: 0),
-					null,
-					out child_pid
+							? GLib.SpawnFlags.SEARCH_PATH : 0),
+					null,	out child_pid
 				);
 			} catch (GLib.SpawnError e) {
-				throw new GLib.IOError.FAILED(
-					"spawn "
-						+ executable
-						+ ": "
-						+ e.message
-				);
+				throw new GLib.IOError.FAILED("spawn " + executable + ": " + e.message);
 			}
 			if (from_env != null && from_env != "") {
-				GLib.debug(
-					"spawned pid=%d executable=%s stderr log=%s",
-					child_pid,
-					executable,
-					GLib.Path.build_filename(
-						GLib.Environment.get_home_dir(),
-						".cache",
-						"ollmchat",
-						"ollmfilesd.stderr.log"
-					)
-				);
+				GLib.debug("spawned pid=%d executable=%s stderr log=%s", child_pid, executable,
+					GLib.Path.build_filename(GLib.Environment.get_home_dir(), ".cache", "ollmchat", "ollmfilesd.stderr.log"));
 			} else {
 				GLib.debug("spawned pid=%d executable=%s", child_pid, executable);
 			}
@@ -281,19 +256,15 @@ namespace OLLMrpc
 
 		private async void startup()
 		{
-			var deadline = GLib.get_monotonic_time()
-				+ (int64) this.startup_wait * 1000000;
+			var deadline = GLib.get_monotonic_time()+ (int64) this.startup_wait * 1000000;
 			while (GLib.get_monotonic_time() < deadline) {
 				if (this.connectable()) {
 					return;
 				}
 				yield this.pause(this.poll);
 			}
-			GLib.debug(
-				"startup timed out socket_path=%s wait=%us",
-				this.socket_path,
-				this.startup_wait
-			);
+			GLib.debug("startup timed out socket_path=%s wait=%us",
+				this.socket_path, this.startup_wait);
 		}
 
 		private async void pause(uint ms)

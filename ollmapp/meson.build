@@ -153,7 +153,6 @@ if get_option('android_poc') and host_machine.system() == 'android'
     'android/AndroidTouchDebug.vala',
     'android/AndroidStartup.vala',
     'android/AndroidBootstrapConnectionAdd.vala',
-    'android/AndroidToolTypes.vala',
     'android/AndroidToolsRegistration.vala',
     'android/tools/WebFetch/Tool.vala',
     'android/tools/WebFetch/Request.vala',
@@ -174,6 +173,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
       ollmchatgtk_vapi_dep,
       ollamaweb_vapi_dep,
       occoder_vapi_dep,
+      ocfiles_vapi_dep,
     ],
     sources: android_poc_sources,
     link_with: [ollmchat_base_lib, ollmchatgtk_lib, ocwebkit_base_lib],
@@ -186,6 +186,7 @@ if get_option('android_poc') and host_machine.system() == 'android'
       include_directories('../libocsqlite'),
       include_directories('../libocwebkit'),
       include_directories('../liboccoder'),
+      include_directories('../libocfiles'),
     ],
     build_rpath: build_rpath,
     # Do not add --pkg=gee-0.8 here: android_poc_deps already lists
@@ -205,6 +206,8 @@ if get_option('android_poc') and host_machine.system() == 'android'
       '--pkg=ollamaweb',
       '--pkg=ocmarkdown',
       '--pkg=occoder',
+      '--pkg=ocfiles',
+      '--pkg=ocrpc',
       '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
       '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
       '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
@@ -213,6 +216,8 @@ if get_option('android_poc') and host_machine.system() == 'android'
       '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
       '--vapidir', meson.current_build_dir() / '..' / 'libocwebkit',
       '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
     ],
     android_exe_type: 'application',
     install: true,
@@ -298,6 +303,11 @@ ollmchat_sources = [
   'SettingsDialog/Rows/IntRow.vala',
   ollmchat_resources
 ]
+if host_machine.system() == 'linux'
+  ollmchat_sources += [
+    'SettingsDialog/FileServerRow.vala',
+  ]
+endif
 # VectorRegistry.vala removed — CodebaseSearch is registered via liboctools/Registry.
 if host_machine.system() == 'windows'
   win_mod = import('windows')
@@ -322,8 +332,6 @@ ollmchat_vala_args = [
   '--pkg=ocmarkdowngtk',
   '--pkg=sqlite3',
   '--pkg=ocsqlite',
-  '--pkg=gmodule-2.0',
-  '--pkg=tree-sitter',
   '--pkg=occoder',
   '--pkg=ocfiles',
   '--pkg=octools',
@@ -353,6 +361,7 @@ if host_machine.system() == 'windows'
 else
   ollmchat_vala_args += [
     '--pkg=webkitgtk-6.0',
+    '--pkg=linux',
     '--pkg=atspi-2',
   ]
 endif
@@ -415,8 +424,6 @@ ollmchat_cli_build_rpath = ':'.join([
 
 # ollmchat-cli — RPC client; spawns ollmfilesd when needed.
 ollmchat_cli_vala_args = [
-  '--pkg=gmodule-2.0',
-  '--pkg=tree-sitter',
   '--pkg=ocfiles',
   '--pkg=ocrpc',
   '--pkg=ollmchat',

@@ -6,7 +6,7 @@
 
 **Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](../RPC-8.2.8-filesd-connections-ui.md)
 
-**Split from:** [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](RPC-8.2.8.2-DONE-filesd-android-file-connection.md) Phase 2. Library half; the UI half is [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](../RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md).
+**Split from:** [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](RPC-8.2.8.2-DONE-filesd-android-file-connection.md) Phase 2. Library half; the UI half is [`RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md`](RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md).
 
 **Depends on:**
 
@@ -455,7 +455,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 1. **✔️** Phase A — §0 (`disconnect()` fix; own commit), then §1–§2 (`libocrpc`)
 2. **✔️** Phase B — §3a, §3, §3b–§3e (`libocfiles` + the four listeners; app behaves as before with only the Unix client)
-3. **⏳** Then [`RPC-8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) wires it into the desktop.
+3. **✅** Then [`RPC-8.2.8.5`](RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) wires it into the desktop.
 
 ---
 

@@ -1,6 +1,6 @@
 # 8.2.8 — File-server Connections UI + registration approval
 
-**Status:** **IN PROGRESS** — Phase 1 **✔️** · Phase 2 **✔️** · Phase 5 **✔️** · Phase 3–4 and 6 in sub-plans
+**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 4 **✅** · Phase 5 **✔️** · Phase 6 **✅** · Phase 7 **✔️** · Phase 8 in sub-plan · Phase 9 **✔️** · Phase 10 **⏳**
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -13,7 +13,7 @@
 ## Purpose
 
 - **🔷** Wire **file-server** into the **Connections** settings tab on **desktop** and **Android**.
-- **🔷** Desktop hosts `ollmfilesd` HTTPS: expander edits listen settings (`filesd` port / proxy / etc.).
+- **🔷** Desktop **Linux** hosts `ollmfilesd` HTTPS: expander picks a listen IP from this machine, plus port / proxy / systemd.
 - **🔷** Desktop preferences dialog shows a **banner** for the **single latest** pending registration (same slot as model-download / `PullManagerBanner` on `MainDialog`) — **Accept** / **Reject** / **Ban**.
 - **🔷** Only **one** pending is shown at a time; clearing it (any of the three actions) reveals the **next latest** if any remain — **no pending list UI**.
 - **🔷** Reject deletes the pending row.
@@ -32,22 +32,30 @@
 | Phase | Plan | Status |
 | --- | --- | --- |
 | **1** | Daemon: `ClientCert` RPC + int status + IP drop (this file) | **✔️** agent-done |
-| **2** | [`RPC-8.2.8.1-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) — Desktop pending banner + registered client rows | **✔️** agent-done |
-| **3** | [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) — Client file connection UI + registration request; Android + Linux | **⏳** |
-| **4** | [`RPC-8.2.8.3-filesd-file-server-tls.md`](RPC-8.2.8.3-filesd-file-server-tls.md) — Desktop File Server expander + TLS CA key auto-install | **⏳** |
-| **5** | [`RPC-8.2.8.4-filesd-remote-rpc-client.md`](RPC-8.2.8.4-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification` (library half of 8.2.8.2 Phase 2) | **✔️** agent-done |
-| **6** | [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle, Agent Pi (UI half of 8.2.8.2 Phase 2) | **⏳** |
+| **2** | [`RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) — Desktop pending banner + registered client rows | **✔️** agent-done |
+| **3** | [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) — Client file connection UI + registration request; Android + Linux | **✔️** agent-done |
+| **4** | [`RPC-8.2.8.3-DONE-filesd-file-server-tls.md`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md) — Desktop File Server expander + TLS CA key auto-install | **✅** |
+| **5** | [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification` (library half of 8.2.8.2 Phase 2) | **✔️** agent-done |
+| **6** | [`RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle (UI half of 8.2.8.2 Phase 2) | **✅** |
+| **7** | [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder compile. Precursor [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️** | **✔️** |
+| **8** | [`RPC-8.2.8.7-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux `filesd.socket` LAN TCP + TLS registration | **⏳** |
+| **9** | [`RPC-8.2.8.8-android-phone-tablet-pane.md`](RPC-8.2.8.8-android-phone-tablet-pane.md) — Android `ChatDesktopInterface`, phone stack / tablet landscape columns | **✔️** |
+| **10** | (this file) Android register `AgentPi.Factory` when the remote file connection is live | **⏳** |
 
 ---
 
 ## Suggested order
 
 1. **✔️** Phase 1 — `ClientCert` RPC + int `status` + accept drop (this file)
-2. **✔️** Phase 2 — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md) (agent-done; awaiting user ✅)
-3. **⏳** Phase 3 — [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
-4. **⏳** Phase 4 — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md)
-5. **✔️** Phase 5 — [`8.2.8.4`](RPC-8.2.8.4-filesd-remote-rpc-client.md) (agent-done; awaiting user ✅)
-6. **⏳** Phase 6 — [`8.2.8.5`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md)
+2. **✔️** Phase 2 — [`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md) (agent-done; awaiting user ✅)
+3. **✔️** Phase 3 — [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) (agent-done; awaiting user ✅)
+4. **✅** Phase 4 — [`8.2.8.3`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md)
+5. **✔️** Phase 5 — [`8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) (agent-done; awaiting user ✅)
+6. **✅** Phase 6 — [`8.2.8.5`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md)
+7. **✔️** Phase 7 — [`8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) (Android takeover; [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️**)
+8. **⏳** Phase 8 — [`8.2.8.7`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux LAN TCP socket (Windows loopback port is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md))
+9. **✔️** Phase 9 — [`8.2.8.8`](RPC-8.2.8.8-android-phone-tablet-pane.md) — Android phone/tablet `ChatDesktopInterface`
+10. **⏳** Phase 10 — Android `AgentPi.Factory` register when the remote file connection is live (this file; no sub-plan yet)
 
 ---
 
@@ -96,37 +104,65 @@
 - **🔷** Wire prefix: `RPC-ClientCert`.
 - **🔷** Desktop talks to local `ollmfilesd` via Unix socket for admin calls.
 - **ℹ️** nginx unchanged — drop is in `ollmfilesd` after PROXY parse (or direct peer).
-- **💩** `⏳` List approved (`status = 1`) for Connections rows — Phase 2 ([`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)).
+- **💩** `⏳` List approved (`status = 1`) for Connections rows — Phase 2 ([`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md)).
 
 ---
 
 ## Phase 2 — Desktop Connections UI
 
-**➡️** [`RPC-8.2.8.1-filesd-desktop-connections-ui.md`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
+**➡️** [`RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md)
 
 ---
 
 ## Phase 3 — Client file connection + Agent Pi unlock
 
-**➡️** [`RPC-8.2.8.2-filesd-android-file-connection.md`](RPC-8.2.8.2-filesd-android-file-connection.md) — UI + registration request (Android + Linux)
+**➡️** [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) — UI + registration request (Android + Linux)
 
 ---
 
 ## Phase 4 — Desktop File Server expander + TLS CA key auto-install
 
-**➡️** [`RPC-8.2.8.3-filesd-file-server-tls.md`](RPC-8.2.8.3-filesd-file-server-tls.md)
+**➡️** [`RPC-8.2.8.3-DONE-filesd-file-server-tls.md`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md)
 
 ---
 
 ## Phase 5 — Remote file connection: HTTPS RPC client + `replace_rpc`
 
-**➡️** [`RPC-8.2.8.4-filesd-remote-rpc-client.md`](RPC-8.2.8.4-filesd-remote-rpc-client.md) — library half of 8.2.8.2 Phase 2
+**➡️** [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — library half of 8.2.8.2 Phase 2
 
 ---
 
 ## Phase 6 — Remote file connection: desktop takeover, Check, live toggle
 
-**➡️** [`RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md`](RPC-8.2.8.5-filesd-remote-takeover-connections-tab.md) — UI half of 8.2.8.2 Phase 2
+**➡️** [`RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) — UI half of 8.2.8.2 Phase 2
+
+---
+
+## Phase 7 — Remote file connection: Android takeover
+
+**➡️** [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder
+
+---
+
+## Phase 8 — Linux LAN TCP socket (`filesd.socket`)
+
+**➡️** [`RPC-8.2.8.7-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — bind bin TCP like HTTPS; TLS + cert registration on the LAN; no WAN / PROXY
+
+ℹ️ Windows loopback port (hardcoded 4141) is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md), not this phase.
+
+---
+
+## Phase 9 — Android phone / tablet `ChatDesktopInterface`
+
+**➡️** [`RPC-8.2.8.8-android-phone-tablet-pane.md`](RPC-8.2.8.8-android-phone-tablet-pane.md) — phone globe stack vs tablet landscape columns
+
+---
+
+## Phase 10 — Android Agent Pi register (`⏳`)
+
+- **🔷** `⏳` Register `OLLMcoder.AgentPi.Factory` on Android when the remote file connection is live (`url` + `enabled` + `approved`, after HTTPS hello).
+- **🔷** Linux stays as today (local Unix or remote both keep Agent Pi).
+- **ℹ️** Needs Phase 7 (`ProjectManager` live) and Phase 9 (`ChatDesktopInterface` host). No sub-plan yet.
 
 ---
 
@@ -134,11 +170,11 @@
 
 Tracked on the sub-plans:
 
-1. ~~Desktop File Server expander always shown?~~ → **🔷** always — [`8.2.8.3`](RPC-8.2.8.3-filesd-file-server-tls.md)
-2. ~~One file-server URL or multiple?~~ → **🔷** one — [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
-3. ~~Which agents unlock?~~ → **🔷** Agent Pi only — [`8.2.8.2`](RPC-8.2.8.2-filesd-android-file-connection.md)
-4. ~~Remove approved = `client_cert("remove", id)` → bool?~~ → **🔷** yes — [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
-5. Machine-type vocabulary → [`8.2.8.1`](RPC-8.2.8.1-filesd-desktop-connections-ui.md)
+1. ~~Desktop File Server expander always shown?~~ → **🔷** always — [`8.2.8.3`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md)
+2. ~~One file-server URL or multiple?~~ → **🔷** one — [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md)
+3. ~~Which agents unlock?~~ → **🔷** Agent Pi only — [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md)
+4. ~~Remove approved = `client_cert("remove", id)` → bool?~~ → **🔷** yes — [`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md)
+5. Machine-type vocabulary → [`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md)
 
 
 ---
@@ -156,8 +192,9 @@ Tracked on the sub-plans:
 - **🚫** CLI admin as the primary surface (GUI owns approval).
 - **🚫** `client_cert` over HTTPS.
 - **🚫** Six separate admin cert methods.
+- **🔷** File Server listen changes: stop local `ollmfilesd` from the app (pid + SIGTERM) then `ClientBoot` — [`8.2.8.3`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md).
+- **🚫** Live HTTPS rebind inside a running daemon.
 - **🚫** Putting file-server listen settings into `Settings.Connection` LLM map.
-- **💩** Live HTTPS rebind without daemon restart when `filesd.https` changes from the UI.
 - **🚫** Row-level string→int migrate — unused; drop+recreate table instead.
 - **🚫** `ALTER TABLE …` to change column type — SQLite still does not support that.
 - **💩** Int action codes instead of string actions — strings kept for readability unless you prefer ints.

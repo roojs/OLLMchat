@@ -94,9 +94,7 @@ namespace OLLMapp.SettingsDialog
 
 			this.expander = new Adw.ExpanderRow() {
 				title = connection.name,
-				subtitle = url,
-				can_focus = false,
-				focus_on_click = false
+				subtitle = url
 			};
 
 			// Helper to show verify button when values change
@@ -117,13 +115,13 @@ namespace OLLMapp.SettingsDialog
 			// Create form fields
 			this.nameEntry = new Gtk.Entry() {
 				text = connection.name,
-				vexpand = false,
+				width_chars = 30,
 				valign = Gtk.Align.CENTER
 			};
 
 			this.urlEntry = new Gtk.Entry() {
 				text = connection.url,
-				vexpand = false,
+				width_chars = 30,
 				valign = Gtk.Align.CENTER
 			};
 			this.urlEntry.changed.connect(() => {
@@ -133,7 +131,7 @@ namespace OLLMapp.SettingsDialog
 
 			this.apiKeyEntry = new Gtk.PasswordEntry() {
 				text = connection.api_key,
-				vexpand = false,
+				width_chars = 30,
 				valign = Gtk.Align.CENTER
 			};
 			this.apiKeyEntry.changed.connect(() => {
@@ -152,18 +150,21 @@ namespace OLLMapp.SettingsDialog
 				title = "Name"
 			};
 			nameRow.add_suffix(this.nameEntry);
+			nameRow.set_activatable_widget(this.nameEntry);
 			this.expander.add_row(nameRow);
 
 			var urlRow = new Adw.ActionRow() {
 				title = "URL"
 			};
 			urlRow.add_suffix(this.urlEntry);
+			urlRow.set_activatable_widget(this.urlEntry);
 			this.expander.add_row(urlRow);
 
 			var apiKeyRow = new Adw.ActionRow() {
 				title = "API Key"
 			};
 			apiKeyRow.add_suffix(this.apiKeyEntry);
+			apiKeyRow.set_activatable_widget(this.apiKeyEntry);
 			this.expander.add_row(apiKeyRow);
 
 			var defaultRow = new Adw.ActionRow() {

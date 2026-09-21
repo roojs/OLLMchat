@@ -27,8 +27,12 @@ namespace OLLMrpc.Live
 	 *     method = "closed",
 	 *     id = (int) handle
 	 * };
-	 * subscription.hid = GLib.Signal.connect_swapped(obj, "closed",
-	 *     (GLib.Callback) Subscription.emit, subscription);
+	 * var closure = new GLib.Closure.simple((uint) GLib.Closure.SIZE, subscription);
+	 * closure.ref();
+	 * closure.sink();
+	 * closure.set_marshal((GLib.ClosureMarshal) Subscription.emit);
+	 * closure.set_meta_marshal(subscription, (GLib.ClosureMarshal) Subscription.emit);
+	 * subscription.hid = GLib.Signal.connect_closure(obj, "closed", closure, false);
 	 * }}}
 	 */
 	public class Subscription : GLib.Object
@@ -38,11 +42,35 @@ namespace OLLMrpc.Live
 		public int id { get; set; default = 0; }
 		public ulong hid { get; set; default = 0; }
 
-		public void emit()
-		{
-			this.connection.write(new Notification() {
-				method = this.method,
-				id = this.id
+		/**
+		 * GClosure marshal for a named GObject signal.
+		 *
+		 * Packs parameters after the instance into
+		 * {@link Notification.args} and writes the notification.
+		 *
+		 * @param closure unused GObject slot
+		 * @param return_value unused; null on void signals
+		 * @param param_values instance then signal arguments
+		 * @param invocation_hint unused GObject slot
+		 * @param marshal_data the {@link Subscription}
+		 */
+		public static void emit(
+			GLib.Closure closure,
+			[CCode (type = "GValue*")] GLib.Value? return_value,
+			[CCode (array_length_cname = "n_param_values", array_length_pos = 2.5, array_length_type = "guint")]
+			GLib.Value[] param_values,
+			void* invocation_hint,
+			void* marshal_data
+		) {
+			var subscription = (Subscription) marshal_data;
+			var packed = new Gee.ArrayList<GLib.Value?>();
+			for (var i = 1; i < param_values.length; i++) {
+				packed.add(param_values[i]);
+			}
+			subscription.connection.write(new Notification() {
+				method = subscription.method,
+				id = subscription.id,
+				args = packed
 			});
 		}
 	}

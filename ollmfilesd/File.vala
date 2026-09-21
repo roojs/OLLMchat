@@ -49,7 +49,9 @@ namespace OLLMfilesd
 				"register", "s",
 				"changed.check", "sx",
 				"rpc_write", "ssssu",
-				"rpc_delete", "s"
+				"rpc_delete", "s",
+				"ast_lookup", "ss",
+				"ast_summarize", "sb"
 			);
 		}
 
@@ -104,6 +106,91 @@ namespace OLLMfilesd
 					data[0:data.length > 0 ? data.length - 1 : 0]
 				),
 				msg_encode = row.is_text ? 0 : 1
+			});
+		}
+
+		/**
+		 * ''File.ast_lookup'' — line range for one AST path.
+		 *
+		 * @param request inbound RPC
+		 * @param path indexed file path
+		 * @param ast_path tree-sitter path (e.g. Class.method)
+		 */
+		public void ast_lookup(
+			OLLMrpc.Request request,
+			string path,
+			string ast_path
+		)
+		{
+			var tree = this.manager.tree_factory(
+				this.manager.get_file_from_active_project(path)
+			);
+			tree.parse.begin((obj, res) => {
+				try {
+					tree.parse.end(res);
+				} catch (GLib.Error e) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							e.message
+						)
+					});
+					return;
+				}
+				var start = 0;
+				var end = 0;
+				var comment_start = 0;
+				if (!tree.lookup_path(ast_path, out start, out end, out comment_start)) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						msg = ""
+					});
+					return;
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = start.to_string() + " " + end.to_string() + " "
+						+ comment_start.to_string()
+				});
+			});
+		}
+
+		/**
+		 * ''File.ast_summarize'' — markdown AST outline.
+		 *
+		 * @param request inbound RPC
+		 * @param path indexed file path
+		 * @param show_lines true → line numbers instead of AST paths
+		 */
+		public void ast_summarize(
+			OLLMrpc.Request request,
+			string path,
+			bool show_lines
+		)
+		{
+			var summarizer = new Summarize(
+				this.manager.get_file_from_active_project(path),
+				show_lines
+			);
+			summarizer.summarize.begin((obj, res) => {
+				var markdown = "";
+				try {
+					markdown = summarizer.summarize.end(res);
+				} catch (GLib.Error e) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							e.message
+						)
+					});
+					return;
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = markdown
+				});
 			});
 		}
 

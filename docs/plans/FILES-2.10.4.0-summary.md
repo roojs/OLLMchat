@@ -39,6 +39,7 @@
 | [`done/2.10.4.18-DONE-vector-search-rpc.md`](done/2.10.4.18-DONE-vector-search-rpc.md) | **DONE** | **`Codebase.search`**; admin/index → [`done/2.10.4.29`](done/2.10.4.29-DONE-vector-cli-rpc-migration.md) |
 | [`APP-2.10.4.32-FUTURE-multi-window-support.md`](APP-2.10.4.32-FUTURE-multi-window-support.md) | **FUTURE** | Second GTK window + per-window `Config2.windows` rows |
 | [`FILES-2.10.4.8-per-client-project-notifications.md`](FILES-2.10.4.8-per-client-project-notifications.md) | **FUTURE** | Per-client project context + notifications |
+| [`FILES-2.10.4.33-client-tree-sitter-daemon.md`](FILES-2.10.4.33-client-tree-sitter-daemon.md) | **DONE** | Client `Tree` leftover → `File.ast_lookup` / `File.ast_summarize` (unblocks Android `libocfiles`) |
 
 ---
 

@@ -10,6 +10,7 @@ namespace OLLMrpcTests
 	{
 		public string title { get; set; default = ""; }
 		public signal void closed();
+		public signal void pinged(string payload);
 	}
 
 	public class Capture : OLLMrpc.Transport.Connection
@@ -109,6 +110,25 @@ namespace OLLMrpcTests
 			this.check(command_line, drop.dispatch(), "Remote.unref export-hold dispatch failed");
 			held_probe.title = "d";
 			this.check(command_line, held.writes == 0, "Remote.unref did not silence notify");
+
+			var pinged_conn = new Capture() {
+				live_handles = true
+			};
+			var pinged_probe = new Probe();
+			var pinged_id = pinged_conn.export(pinged_probe);
+			var pinged_sub = new OLLMrpc.Request() {
+				method = "RPC-Live-Subscribe.rpc_signal",
+				lease_id = pinged_id,
+				args = OLLMrpc.args("s", "pinged"),
+				connection = pinged_conn
+			};
+			this.check(command_line, pinged_sub.dispatch(), "Subscribe.signal pinged dispatch failed");
+			pinged_probe.pinged("hello");
+			this.check(command_line, pinged_conn.writes == 1, "pinged did not write one Notification");
+			this.check(command_line, pinged_conn.last.method == "pinged", "pinged method mismatch");
+			this.check(command_line, pinged_conn.last.args.size == 1, "pinged args missing");
+			this.check(command_line, pinged_conn.last.args.get(0).get_string() == "hello", "pinged payload mismatch");
+			this.check(command_line, pinged_conn.last.message == "", "pinged must not stuff message");
 		}
 	}
 }

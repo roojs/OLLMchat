@@ -2,5 +2,6 @@
 <gresources>
   <gresource prefix="/ollmrpc">
     <file>ollmrpc-ca.pem</file>
+    <file>ollmrpc-ca-key.pem</file>
   </gresource>
 </gresources>
