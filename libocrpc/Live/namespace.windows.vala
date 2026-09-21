@@ -145,9 +145,12 @@ namespace OLLMrpc.Live
 	}
 
 	public class BufferStream : GLib.Object {
+		public GLib.Socket? socket { get; set; default = null; }
 		public BufferStream() { Object(); }
 		public async void connect_client(string main_socket_path) throws GLib.Error {}
 		public void write_with(Buffer? buffer, Bin.Serializable serializable, Bin.Stream bin) throws GLib.Error {}
+		public void receive_one() throws GLib.Error {}
+		public void read_fd() {}
 		public void attach(Notification notif) {}
 		public Buffer? take_pending() { return null; }
 		public void close() {}

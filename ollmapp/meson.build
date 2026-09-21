@@ -113,6 +113,8 @@ if get_option('android_poc')
     'SettingsDialog/ConnectionRow.vala',
     'SettingsDialog/FileConnectionAdd.vala',
     'SettingsDialog/FileConnectionRow.vala',
+    'SettingsDialog/ApprovedClientRow.vala',
+    'ClientCert.vala',
   ]
 endif
 

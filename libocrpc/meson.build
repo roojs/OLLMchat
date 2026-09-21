@@ -40,10 +40,19 @@ ocrpc_vapi_gen_pkgs = [
   '--pkg', 'gee-0.8',
 ]
 
-# GnuTLS: Transport.Cert (server leaf + device client ensure).
-ocrpc_deps += dependency('gnutls')
-ocrpc_vapi_pkgs += '--pkg=gnutls'
-ocrpc_vapi_gen_pkgs += ['--pkg', 'gnutls']
+# GnuTLS mints Transport.Cert on desktop. Android has no GnuTLS wrap;
+# pixiewood already builds OpenSSL (glib-networking backend).
+ocrpc_c_src = []
+cert_src = files('Transport/Cert.vala')
+if is_android
+  ocrpc_deps += dependency('openssl')
+  ocrpc_c_src += files('android/cert-openssl.c')
+  cert_src = files('android/Cert.vala')
+else
+  ocrpc_deps += dependency('gnutls')
+  ocrpc_vapi_pkgs += '--pkg=gnutls'
+  ocrpc_vapi_gen_pkgs += ['--pkg', 'gnutls']
+endif
 
 transport_socket_src = files(['windows/Transport/SocketListen.vala'])
 client_boot_src = files(['windows/ClientBoot.vala'])
@@ -99,7 +108,6 @@ ocrpc_core_src = files([
   'Transport/HttpReply.vala',
   'Transport/HttpServer.vala',
   'Transport/HttpClient.vala',
-  'Transport/Cert.vala',
   'Http/Route.vala',
   'Daemon.vala',
   'Error.vala',
@@ -110,6 +118,8 @@ ocrpc_core_src = files([
   'RpcErrorCode.vala',
   'MockDispatch.vala',
 ])
+
+ocrpc_core_src += cert_src
 
 if use_unix_sockets
   live_src = files([
@@ -149,7 +159,7 @@ ocrpc_resources = gnome.compile_resources(
 
 ocrpc_base_lib = library('ocrpc',
   dependencies: ocrpc_deps,
-  sources: ocrpc_src + ocrpc_resources,
+  sources: ocrpc_src + ocrpc_c_src + ocrpc_resources,
   include_directories: include_directories('.'),
   vala_header: 'ocrpc.h',
   vala_vapi: 'ocrpc-meson.vapi',
