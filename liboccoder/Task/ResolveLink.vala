@@ -35,7 +35,11 @@ public class ResolveLink : GLib.Object
 	 */
 	public OLLMfiles.ProjectManager project_manager { get; private set; }
 
-	public ResolveLink (
+	Gee.HashMap<string, Gee.ArrayList<int>> ast_range {
+		get; private set; default = new Gee.HashMap<string, Gee.ArrayList<int>>();
+	}
+
+	public ResolveLink(
 			OLLMcoder.Skill.Runner runner,
 			Details details,
 			PhaseEnum stage)
@@ -50,98 +54,98 @@ public class ResolveLink : GLib.Object
 	 * Build one reference block (header + body). Synchronous; call [[preload_links]]
 	 * (and any narrower preload) first so file buffers, trees, and runner.http_cache are ready.
 	 */
-	public string resolve (Markdown.Document.Format link)
+	public string resolve(Markdown.Document.Format link)
 	{
 		if (link.path == "") {
-			return this.anchor (link);
+			return this.anchor(link);
 		}
 		switch (link.scheme) {
 			case "http":
 			case "https":
-				return this.http (link);
+				return this.http(link);
 			case "task":
-				return this.task (link);
+				return this.task(link);
 			case "file":
-				return this.file (link);
+				return this.file(link);
 			default:
-				GLib.assert_not_reached ();
+				GLib.assert_not_reached();
 		}
 	}
 
-	string task (Markdown.Document.Format link)
+	string task(Markdown.Document.Format link)
 	{
-		GLib.debug ("path=%s hash=%s", link.path, link.hash);
-		var slug = link.path.has_suffix (".md")
-			? link.path.substring (0, link.path.length - 3) : link.path;
-		var task = this.runner.completed.slugs.has_key (slug)
-			? this.runner.completed.slugs.get (slug) : this.runner.pending.slugs.get (slug);
+		GLib.debug("path=%s hash=%s", link.path, link.hash);
+		var slug = link.path.has_suffix(".md")
+			? link.path.substring(0, link.path.length - 3) : link.path;
+		var task = this.runner.completed.slugs.has_key(slug)
+			? this.runner.completed.slugs.get(slug) : this.runner.pending.slugs.get(slug);
 		var doc = task.out_doc;
 		if (link.hash == "") {
 			if (this.stage == PhaseEnum.REFINEMENT) {
-				var inner = doc.headings.get ("result-summary").to_markdown_with_content ();
-				var fence = (inner.index_of ("\n```") >= 0 || inner.has_prefix ("```")) ? "~~~~" : "```";
+				var inner = doc.headings.get("result-summary").to_markdown_with_content();
+				var fence = (inner.index_of("\n```") >= 0 || inner.has_prefix("```")) ? "~~~~" : "```";
 				var body = fence + "markdown\n" + inner + "\n" + fence + "\n";
-				return this.details.header_fenced (this.reference_title (link), body, "markdown");
+				return this.details.header_fenced(this.reference_title(link), body, "markdown");
 			}
-			return this.details.header_fenced (
-				this.reference_title (link),
-				doc.to_markdown (),
+			return this.details.header_fenced(
+				this.reference_title(link),
+				doc.to_markdown(),
 				"markdown");
 		}
-		var section_md = doc.headings.get (link.hash).to_markdown_with_content ();
+		var section_md = doc.headings.get(link.hash).to_markdown_with_content();
 		if (this.stage == PhaseEnum.REFINEMENT) {
-			string[] lines = section_md.split ("\n");
+			string[] lines = section_md.split("\n");
 			if (lines.length <= 20) {
-				return this.details.header_fenced (
-					this.reference_title (link),
+				return this.details.header_fenced(
+					this.reference_title(link),
 					section_md,
 					"markdown");
 			}
-			var abbrev = string.joinv ("\n", lines[0:20])
+			var abbrev = string.joinv("\n", lines[0:20])
 				+ "\n\n**This has been abbreviated.** The full content has "
-				+ lines.length.to_string () + " lines.\n";
-			return this.details.header_fenced (this.reference_title (link), abbrev, "markdown");
+				+ lines.length.to_string() + " lines.\n";
+			return this.details.header_fenced(this.reference_title(link), abbrev, "markdown");
 		}
-		return this.details.header_fenced (this.reference_title (link), section_md, "markdown");
+		return this.details.header_fenced(this.reference_title(link), section_md, "markdown");
 	}
 
-	string anchor (Markdown.Document.Format link)
+	string anchor(Markdown.Document.Format link)
 	{
-		var block = this.runner.user_request.headings.get (link.hash);
-		var anchor_md = block.to_markdown_with_content ();
+		var block = this.runner.user_request.headings.get(link.hash);
+		var anchor_md = block.to_markdown_with_content();
 		if (this.stage == PhaseEnum.REFINEMENT) {
-			string[] lines = anchor_md.split ("\n");
+			string[] lines = anchor_md.split("\n");
 			if (lines.length <= 20) {
-				return this.details.header_fenced (
-					this.reference_title (link),
+				return this.details.header_fenced(
+					this.reference_title(link),
 					anchor_md,
 					"markdown");
 			}
-			var abbrev = string.joinv ("\n", lines[0:20])
+			var abbrev = string.joinv("\n", lines[0:20])
 				+ "\n\n**This has been abbreviated.** The full content has "
-				+ lines.length.to_string () + " lines.\n";
-			return this.details.header_fenced (this.reference_title (link), abbrev, "markdown");
+				+ lines.length.to_string() + " lines.\n";
+			return this.details.header_fenced(this.reference_title(link), abbrev, "markdown");
 		}
-		return this.details.header_fenced (this.reference_title (link), anchor_md, "markdown");
+		return this.details.header_fenced(this.reference_title(link), anchor_md, "markdown");
 	}
 
 	/**
 	 * HTTP(s): markdown body from runner.http_cache (filled by [[preload_http]] using
 	 * the session web_fetch tool). Returns "" unless PhaseEnum is EXECUTION.
 	 */
-	string http (Markdown.Document.Format link)
+	string http(Markdown.Document.Format link)
 	{
 		if (this.stage != PhaseEnum.EXECUTION) {
 			return "";
 		}
 		var key = link.href != "" ? link.href : link.path;
-		return this.details.header_fenced (
-			this.reference_title (link),
-			this.runner.http_cache.get (key),
+		return this.details.header_fenced(
+			this.reference_title(link),
+			this.runner.http_cache.get(key),
 			"markdown");
 	}
 
-	string reference_title (Markdown.Document.Format link)
+	string reference_title(Markdown.Document.Format link)
 	{
 		var name = link.title != ""
 			? link.title
@@ -164,10 +168,10 @@ public class ResolveLink : GLib.Object
 	 */
 	private static GLib.Regex? line_regex_cache;
 
-	private GLib.Regex line_regex ()
+	private GLib.Regex line_regex()
 	{
 		if (line_regex_cache == null) {
-			line_regex_cache = new GLib.Regex (
+			line_regex_cache = new GLib.Regex(
 				"^[Ll](\\d+)-[Ll](\\d+)$",
 				GLib.RegexCompileFlags.OPTIMIZE | GLib.RegexCompileFlags.CASELESS);
 		}
@@ -178,24 +182,24 @@ public class ResolveLink : GLib.Object
 	 * Resolve path, create the buffer if needed, and read_async so [[resolve]] / [[file]]
 	 * can read full file or line ranges from the buffer.
 	 */
-	public async void preload_file (Markdown.Document.Format link)
+	public async void preload_file(Markdown.Document.Format link)
 	{
-		link.resolve (this.project_manager.active_project.path);
-		if (link.scheme == "file" && link.is_dir (this.project_manager.active_project.path)) {
+		link.resolve(this.project_manager.active_project.path);
+		if (link.scheme == "file" && link.is_dir(this.project_manager.active_project.path)) {
 			return;
 		}
 		var resolved_path = link.is_relative
-			? link.abspath (this.project_manager.active_project.path)
+			? link.abspath(this.project_manager.active_project.path)
 			: link.path;
-		var found = yield this.project_manager.active_project.fetch_file (resolved_path);
+		var found = yield this.project_manager.active_project.fetch_file(resolved_path);
 		if (found == null) {
-			found = new OLLMfiles.File.new_fake (this.project_manager, resolved_path);
+			found = new OLLMfiles.File.new_fake(this.project_manager, resolved_path);
 		}
-		this.project_manager.buffer_provider.create_buffer (found);
+		this.project_manager.buffer_provider.create_buffer(found);
 		try {
-			yield found.buffer.read_async ();
+			yield found.buffer.read_async();
 		} catch (GLib.Error e) {
-			GLib.debug ("%s: %s", found.path, e.message);
+			GLib.debug("%s: %s", found.path, e.message);
 		}
 	}
 
@@ -204,67 +208,77 @@ public class ResolveLink : GLib.Object
 	 * session web_fetch tool (markdown format) and store the body under that key;
 	 * no-op when already cached; empty key stores an error message instead of fetching.
 	 */
-	private async void preload_http (Markdown.Document.Format link)
+	private async void preload_http(Markdown.Document.Format link)
 	{
 		if (link.scheme != "http" && link.scheme != "https") {
 			return;
 		}
 		var key = link.href != "" ? link.href : link.path;
-		if (this.runner.http_cache.has_key (key)) {
+		if (this.runner.http_cache.has_key(key)) {
 			return;
 		}
 		if (key == "") {
-			this.runner.http_cache.set (key,
+			this.runner.http_cache.set(key,
 				"ERROR: Reference URL is empty; cannot prefetch.");
 			return;
 		}
-		var tool_impl = this.runner.session.manager.tools.get ("web_fetch");
-		var args = new Json.Object ();
-		args.set_string_member ("url", key);
-		args.set_string_member ("format", "markdown");
-		var fn = new OLLMchat.Response.CallFunction.with_values ("web_fetch", args);
-		var call = new OLLMchat.Response.ToolCall.with_values ("http-fake-id", fn);
-		var md = yield tool_impl.execute (this.details.chat (), call, true);
-		this.runner.http_cache.set (key, md);
+		var tool_impl = this.runner.session.manager.tools.get("web_fetch");
+		var args = new Json.Object();
+		args.set_string_member("url", key);
+		args.set_string_member("format", "markdown");
+		var fn = new OLLMchat.Response.CallFunction.with_values("web_fetch", args);
+		var call = new OLLMchat.Response.ToolCall.with_values("http-fake-id", fn);
+		var md = yield tool_impl.execute(this.details.chat(), call, true);
+		this.runner.http_cache.set(key, md);
 	}
 
 	/**
 	 * Warm state for a batch of links: [[preload_http]] for http(s); for file,
 	 * [[preload_file]] then, when hash is non-empty and not a #L line-range,
-	 * {@link OLLMfiles.Tree.parse} so [[file_ast]] can resolve AST path fragments.
+	 * {@link OLLMfiles.File.ast_lookup} so [[file_ast]] can resolve AST path fragments.
 	 */
-	public async void preload_links (Gee.Collection<Markdown.Document.Format> links)
+	public async void preload_links(Gee.Collection<Markdown.Document.Format> links)
 	{
 		foreach (var link in links) {
 			if (link.scheme == "http" || link.scheme == "https") {
-				yield this.preload_http (link);
+				yield this.preload_http(link);
 				continue;
 			}
 			if (link.scheme != "file") {
 				continue;
 			}
-			link.resolve (this.project_manager.active_project.path);
-			if (link.is_dir (this.project_manager.active_project.path)) {
+			link.resolve(this.project_manager.active_project.path);
+			if (link.is_dir(this.project_manager.active_project.path)) {
 				continue;
 			}
-			yield this.preload_file (link);
+			yield this.preload_file(link);
 			GLib.MatchInfo mi_lr;
-			if (link.hash == "" || this.line_regex ().match (link.hash, 0, out mi_lr)) {
+			if (link.hash == "" || this.line_regex().match(link.hash, 0, out mi_lr)) {
 				continue;
 			}
 			var resolved_path = link.is_relative
-				? link.abspath (this.project_manager.active_project.path)
+				? link.abspath(this.project_manager.active_project.path)
 				: link.path;
-			var found = yield this.project_manager.active_project.fetch_file (resolved_path);
+			var found = yield this.project_manager.active_project.fetch_file(resolved_path);
 			if (found == null) {
-				found = new OLLMfiles.File.new_fake (this.project_manager, resolved_path);
+				found = new OLLMfiles.File.new_fake(this.project_manager, resolved_path);
 			}
-			var tree = new OLLMfiles.Tree (found);
+			int start, end, comment_start;
 			try {
-				yield tree.parse ();
+				if (!yield found.ast_lookup(
+					link.hash, out start, out end, out comment_start
+				)) {
+					continue;
+				}
 			} catch (GLib.Error e) {
-				GLib.debug ("tree.parse %s: %s", found.path, e.message);
+				GLib.debug("ast_lookup %s: %s", found.path, e.message);
+				continue;
 			}
+			var store = new Gee.ArrayList<int>();
+			store.add(start);
+			store.add(end);
+			store.add(comment_start);
+			this.range(found.path, link.hash, store);
 		}
 	}
 
@@ -272,84 +286,108 @@ public class ResolveLink : GLib.Object
 	 * file: scheme — full file, #Lstart-Lend line slice, or [[file_ast]] for other hashes.
 	 * Expects buffer (and tree when not a line-range) from preload.
 	 */
-	string file (Markdown.Document.Format link)
+	string file(Markdown.Document.Format link)
 	{
-		link.resolve (this.project_manager.active_project.path);
-		if (link.scheme == "file" && link.is_dir (this.project_manager.active_project.path)) {
+		link.resolve(this.project_manager.active_project.path);
+		if (link.scheme == "file" && link.is_dir(this.project_manager.active_project.path)) {
 			return "";
 		}
 		var resolved_path = link.is_relative
-			? link.abspath (this.project_manager.active_project.path)
+			? link.abspath(this.project_manager.active_project.path)
 			: link.path;
 		OLLMfiles.File? found = null;
-		if (this.project_manager.file_cache.has_key (resolved_path)) {
-			var cached = this.project_manager.file_cache.get (resolved_path);
+		if (this.project_manager.file_cache.has_key(resolved_path)) {
+			var cached = this.project_manager.file_cache.get(resolved_path);
 			if (cached is OLLMfiles.File) {
 				found = (OLLMfiles.File) cached;
 			}
 		}
 		if (found == null) {
-			found = new OLLMfiles.File.new_fake (this.project_manager, resolved_path);
+			found = new OLLMfiles.File.new_fake(this.project_manager, resolved_path);
 		}
-		var title = this.reference_title (link);
+		var title = this.reference_title(link);
 
 		if (link.hash == "") {
 			var stage = this.stage;
 			var content = stage == PhaseEnum.REFINEMENT
-				? found.contents (1, 20)
-				: found.contents (-1, -1);
-			if (stage == PhaseEnum.REFINEMENT && found.line_count () > 20) {
+				? found.contents(1, 20)
+				: found.contents(-1, -1);
+			if (stage == PhaseEnum.REFINEMENT && found.line_count() > 20) {
 				content += "\n\n**This has been abbreviated.** The full content has "
-					+ found.line_count ().to_string () + " lines.\n";
+					+ found.line_count().to_string() + " lines.\n";
 			}
-			return this.file_fence_block (title, found, content);
+			return this.file_fence_block(title, found, content);
 		}
 
 		GLib.MatchInfo mi;
-		if (this.line_regex ().match (link.hash, 0, out mi)) {
-			var start = int.parse (mi.fetch (1));
-			var end = int.parse (mi.fetch (2));
+		if (this.line_regex().match(link.hash, 0, out mi)) {
+			var start = int.parse(mi.fetch(1));
+			var end = int.parse(mi.fetch(2));
 			var stage = this.stage;
 			var content = stage == PhaseEnum.REFINEMENT
-				? found.contents (int.max (start, 1), int.min (end, start + 29))
-				: found.contents (start, end);
+				? found.contents(int.max(start, 1), int.min(end, start + 29))
+				: found.contents(start, end);
 			if (stage == PhaseEnum.REFINEMENT && end > start + 29) {
 				content += "\n\n**This has been abbreviated.** The full content has "
-					+ found.line_count ().to_string () + " lines.\n";
+					+ found.line_count().to_string() + " lines.\n";
 			}
-			return this.file_fence_block (title, found, content);
+			return this.file_fence_block(title, found, content);
 		}
 
-		return this.file_ast (link, found);
+		return this.file_ast(link, found);
 	}
 
 	/**
-	 * AST path fragment: {@link OLLMfiles.Tree} for ''found'' must already be parsed; lookup_path
-	 * maps link.hash to buffer offsets, then text is taken from the file buffer (refinement
-	 * may abbreviate long excerpts).
+	 * AST line range for a file path and hash fragment.
+	 * Slot 0 is start, 1 is end, 2 is comment_start.
+	 * Pass three ints to store; pass empty to read.
+	 * Empty return means no preload hit.
+	 *
+	 * @param path resolved file path
+	 * @param hash AST path fragment
+	 * @param store three ints to save, or empty to read
+	 * @return stored three ints, or empty if missing
 	 */
-	string file_ast (Markdown.Document.Format link, OLLMfiles.File found)
+	Gee.ArrayList<int> range(string path, string hash, Gee.ArrayList<int> store)
 	{
-		var tree = new OLLMfiles.Tree (found);
-		int start_line, end_line, comment_start;
-		tree.lookup_path (link.hash, out start_line, out end_line, out comment_start);
-		string content = found.buffer.get_text (comment_start - 1, end_line - 2);
+		var key = path + "\0" + hash;
+		if (store.size >= 3) {
+			this.ast_range.set(key, store);
+			return store;
+		}
+		if (!this.ast_range.has_key(key)) {
+			return new Gee.ArrayList<int>();
+		}
+		return this.ast_range.get(key);
+	}
+
+	/**
+	 * AST path fragment: [[preload_links]] stored the range in [[range]];
+	 * text is taken from the file buffer (refinement may abbreviate long excerpts).
+	 */
+	string file_ast(Markdown.Document.Format link, OLLMfiles.File found)
+	{
+		var range = this.range(found.path, link.hash, new Gee.ArrayList<int>());
+		if (range.size < 3) {
+			return "";
+		}
+		var content = found.buffer.get_text(range.get(2) - 1, range.get(1) - 2);
 		if (this.stage == PhaseEnum.REFINEMENT) {
-			string[] lines = content.split ("\n");
+			string[] lines = content.split("\n");
 			if (lines.length > 29) {
-				content = string.joinv ("\n", lines[0:29])
+				content = string.joinv("\n", lines[0:29])
 					+ "\n\n**This has been abbreviated.**\n";
 			}
 		}
-		return this.file_fence_block (
-			this.reference_title (link),
+		return this.file_fence_block(
+			this.reference_title(link),
 			found,
 			content);
 	}
 
-	string file_fence_block (string line, OLLMfiles.File file, string content)
+	string file_fence_block(string line, OLLMfiles.File file, string content)
 	{
-		var fence = (content.index_of ("\n```") >= 0 || content.has_prefix ("```")) ? "~~~~" : "```";
+		var fence = (content.index_of("\n```") >= 0 || content.has_prefix("```")) ? "~~~~" : "```";
 		return line + "\n\n"
 			+ fence
 			+ (file.language != "" ? file.language + "\n" : "\n")

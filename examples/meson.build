@@ -257,8 +257,6 @@ test_source_diff = executable('oc-test-source-diff',
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
-    '--pkg=gmodule-2.0',
-    '--pkg=tree-sitter',
     '--pkg=ocfiles',
     '--pkg=ollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -281,8 +279,6 @@ test_web_fetch = executable('oc-test-fetch',
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
-    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
     '--pkg=ocmarkdown',
     '--pkg=octools',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -346,8 +342,6 @@ test_files = executable('oc-test-files',
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
-    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
     '--pkg=ocfiles',
     '--pkg=ollmchat',
     '--pkg=octools',
@@ -383,8 +377,6 @@ test_bubble = executable('oc-test-bubble',
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
-    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=gio-unix-2.0',  # Required for UnixInputStream in Bubble.vala
     '--pkg=ocfiles',
     '--pkg=ollmchat',
@@ -422,8 +414,6 @@ oc_test_skill_agent = executable('oc-test-skill-agent',
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
-    '--pkg=gmodule-2.0',
-    '--pkg=tree-sitter',
     '--pkg=ocfiles',
     '--pkg=ollmchat',
     '--pkg=ocmarkdown',
@@ -452,8 +442,6 @@ oc_diff = executable('oc-diff',
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
-    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=ocsqlite',
     '--pkg=ocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -474,8 +462,6 @@ oc_migrate_editors = executable('oc-migrate-editors',
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
-    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=ocsqlite',
     '--pkg=ocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',

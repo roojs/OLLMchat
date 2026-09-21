@@ -327,8 +327,6 @@ ollmchat_vala_args = [
   '--pkg=ocmarkdowngtk',
   '--pkg=sqlite3',
   '--pkg=ocsqlite',
-  '--pkg=gmodule-2.0',
-  '--pkg=tree-sitter',
   '--pkg=occoder',
   '--pkg=ocfiles',
   '--pkg=octools',
@@ -421,8 +419,6 @@ ollmchat_cli_build_rpath = ':'.join([
 
 # ollmchat-cli — RPC client; spawns ollmfilesd when needed.
 ollmchat_cli_vala_args = [
-  '--pkg=gmodule-2.0',
-  '--pkg=tree-sitter',
   '--pkg=ocfiles',
   '--pkg=ocrpc',
   '--pkg=ollmchat',

@@ -37,7 +37,8 @@
 | **4** | [`RPC-8.2.8.3-DONE-filesd-file-server-tls.md`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md) — Desktop File Server expander + TLS CA key auto-install | **✅** |
 | **5** | [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification` (library half of 8.2.8.2 Phase 2) | **✔️** agent-done |
 | **6** | [`RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle (UI half of 8.2.8.2 Phase 2) | **✅** |
-| **7** | [`RPC-8.2.8.6-filesd-android-remote-takeover.md`](RPC-8.2.8.6-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder compile, phone/tablet pane | **⏳** |
+| **7** | [`RPC-8.2.8.6-filesd-android-remote-takeover.md`](RPC-8.2.8.6-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder compile, phone/tablet pane. Precursor [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️** | **⏳** |
+| **8** | [`RPC-8.2.8.7-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux `filesd.socket` LAN TCP + TLS registration | **⏳** |
 
 ---
 
@@ -49,7 +50,8 @@
 4. **✅** Phase 4 — [`8.2.8.3`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md)
 5. **✔️** Phase 5 — [`8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) (agent-done; awaiting user ✅)
 6. **✅** Phase 6 — [`8.2.8.5`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md)
-7. **⏳** Phase 7 — [`8.2.8.6`](RPC-8.2.8.6-filesd-android-remote-takeover.md)
+7. **⏳** Phase 7 — [`8.2.8.6`](RPC-8.2.8.6-filesd-android-remote-takeover.md) (Phase 1 proposals; [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️**)
+8. **⏳** Phase 8 — [`8.2.8.7`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux LAN TCP socket (Windows loopback port is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md))
 
 ---
 
@@ -135,6 +137,14 @@
 ## Phase 7 — Remote file connection: Android takeover + Agent Pi
 
 **➡️** [`RPC-8.2.8.6-filesd-android-remote-takeover.md`](RPC-8.2.8.6-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder, phone/tablet pane (Agent Pi register later)
+
+---
+
+## Phase 8 — Linux LAN TCP socket (`filesd.socket`)
+
+**➡️** [`RPC-8.2.8.7-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — bind bin TCP like HTTPS; TLS + cert registration on the LAN; no WAN / PROXY
+
+ℹ️ Windows loopback port (hardcoded 4141) is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md), not this phase.
 
 ---
 

@@ -5,25 +5,20 @@
 valac = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
 is_windows = host_machine.system() == 'windows'
-# tree-sitter: resolved in config/meson.build
 ocfiles_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
-  dependency('gmodule-2.0'),  # GModule for dynamic library loading
   dependency('json-glib-1.0'),
   dependency('sqlite3'),
   dependency('libsoup-3.0'),  # ocrpc.h includes Soup types (HttpReply)
   valac.find_library('posix'),
-  tree_sitter_dep,
 ]
 
 ocfiles_vapi_pkgs = [
   '--pkg=sqlite3',
   '--pkg=json-glib-1.0',
-  '--pkg=gmodule-2.0',  # GModule for dynamic library loading (required for TreeBase)
-  '--pkg=tree-sitter',  # Tree-sitter via vapi (required for TreeBase)
   '--pkg=ocsqlite',
   '--pkg=libsoup-3.0',  # ocrpc.vapi references Soup types (HttpReply)
 ]
@@ -32,8 +27,6 @@ ocfiles_vapi_gen_pkgs = [
   '--pkg', 'posix',
   '--pkg', 'sqlite3',
   '--pkg', 'json-glib-1.0',
-  '--pkg', 'gmodule-2.0',  # GModule for dynamic library loading (required for TreeBase)
-  '--pkg', 'tree-sitter',  # Tree-sitter via vapi (required for TreeBase)
   '--pkg', 'ocsqlite',
   '--pkg', 'libsoup-3.0',
   '--pkg', 'gobject-2.0',
@@ -67,8 +60,6 @@ ocfiles_gir_src = files([
   'ProjectList.vala',
   'ProjectManager.vala',
   'DeleteManager.vala',
-  'TreeBase.vala',
-  'Tree.vala',
 ])
 
 ocfiles_src = ocfiles_gir_src

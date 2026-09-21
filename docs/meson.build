@@ -127,8 +127,6 @@ valadoc_docs = custom_target('valadoc',
     '../libocfiles/ProjectList.vala',
     '../libocfiles/ProjectManager.vala',
     '../libocfiles/DeleteManager.vala',  # Uses ProjectManager
-    '../libocfiles/TreeBase.vala',  # Tree-sitter base class
-    '../libocfiles/Tree.vala',  # Tree-sitter AST path lookup class
     # libocmarkdown sources (must come before libocmarkdowngtk)
     '../libocmarkdown/Parser.vala',
     '../libocmarkdown/TableState.vala',
@@ -276,7 +274,6 @@ valadoc_docs = custom_target('valadoc',
     # liboctools sources (RPC tool impls — depends on libollmchat and libocfiles)
     '../liboctools/ReadFile/Tool.vala',
     '../liboctools/ReadFile/Request.vala',
-    '../liboctools/ReadFile/Summarize.vala',  # Tree-sitter based file summarizer
     '../liboctools/ReadFile/Read.vala',
     '../liboctools/EditMode/Tool.vala',
     '../liboctools/EditMode/Request.vala',

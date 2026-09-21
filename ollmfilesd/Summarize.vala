@@ -16,30 +16,26 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMtools.ReadFile
+namespace OLLMfilesd
 {
 	/**
 	 * Tree-sitter based file structure summarizer.
-	 * 
+	 *
 	 * Parses source code files using tree-sitter to extract code elements
-	 * and output a markdown summary with indentation following file structure.
+	 * and output a markdown summary with indentation following file
+	 * structure.
 	 */
-	public class Summarize : OLLMfiles.TreeBase
+	public class Summarize : TreeBase
 	{
 		/**
 		 * Markdown output buffer.
 		 */
 		private string output = "";
-		
+
 		/**
 		 * Current indentation level (number of spaces).
 		 */
 		private int indent_level = 0;
-		
-		/**
-		 * Indentation step (spaces per level).
-		 */
-		private const int INDENT_STEP = 3;
 		
 		/**
 		 * Whether to show line numbers instead of AST paths.
@@ -49,15 +45,17 @@ namespace OLLMtools.ReadFile
 		/**
 		 * Cached vector rows from vector_metadata, keyed by AST path.
 		 */
-		private Gee.HashMap<string,OLLMfiles.SQT.VectorMetadata> vectors = new Gee.HashMap<string,OLLMfiles.SQT.VectorMetadata>();
+		private Gee.HashMap<string, SQT.VectorMetadata> vectors {
+			get; set; default = new Gee.HashMap<string, SQT.VectorMetadata>();
+		}
 		
 		/**
 		 * Constructor.
 		 * 
-		 * @param file The OLLMfiles.File to parse
+		 * @param file The File to parse
 		 * @param show_lines If true, show line numbers instead of AST paths
 		 */
-		public Summarize(OLLMfiles.File file, bool show_lines = false)
+		public Summarize(File file, bool show_lines = false)
 		{
 			base(file);
 			this.show_lines = show_lines;
@@ -85,7 +83,8 @@ namespace OLLMtools.ReadFile
 			yield this.init_parser();
 			if (this.language == null) {
 				// GLib.debug("ReadFileSummarize: Language is null after init_parser");
-				return "# File Summary\n\n* unsupported language: " + (this.file.language != "" ? this.file.language : "unknown") + "\n";
+				return "# File Summary\n\n* unsupported language: " +
+					(this.file.language != "" ? this.file.language : "unknown") + "\n";
 			}
 			// GLib.debug("ReadFileSummarize: Language loaded successfully");
 			
@@ -103,9 +102,13 @@ namespace OLLMtools.ReadFile
 			// Traverse AST and extract elements
 			var root_node = tree.get_root_node();
 			unowned string? root_type = TreeSitter.node_get_type(root_node);
-			// GLib.debug("ReadFileSummarize: Root node type: %s", root_type ?? "null");
-			// GLib.debug("ReadFileSummarize: Root node child count: %u", TreeSitter.node_get_child_count(root_node));
-			// GLib.debug("ReadFileSummarize: Root node named child count: %u", TreeSitter.node_get_named_child_count(root_node));
+			// GLib.debug("ReadFileSummarize: Root node type: %s",
+			// root_type ?? "null");
+			// GLib.debug("ReadFileSummarize: Root node child "
+			// + "count: %u", TreeSitter.node_get_child_count(root_node));
+			// GLib.debug("ReadFileSummarize: Root node named child "
+			// + "count: %u",
+			// TreeSitter.node_get_named_child_count(root_node));
 			this.traverse_ast(root_node, code_content, null, null, null, null);
 			
 			return this.output;
@@ -120,28 +123,14 @@ namespace OLLMtools.ReadFile
 				return;
 			}
 
-			Gee.ArrayList<OLLMfiles.SQT.VectorMetadata> rows;
-			try {
-				var response = yield this.file.manager.rpc.call (
-					new OLLMrpc.Request () {
-						method = "RPC-Codebase.file_info",
-						args = OLLMrpc.args ("s", this.file.path)
-					});
-				if (response.retval.type() == GLib.Type.INVALID) {
-					return;
-				}
-				rows = (Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>) response.retval.get_object();
-			} catch (GLib.Error e) {
-				GLib.critical ("Summarize vector metadata: %s: %s",
-					this.file.path, e.message);
-				return;
-			}
+			var rows = new Gee.ArrayList<SQT.VectorMetadata>();
+			SQT.VectorMetadata.query(this.file.manager.db).select(
+				"WHERE file_id = " + this.file.id.to_string()
+					+ " AND ast_path != ''",
+				rows
+			);
 			foreach (var row in rows) {
-				var ast_path = row.ast_path.strip();
-				if (ast_path == "") {
-					continue;
-				}
-				this.vectors.set(ast_path, row);
+				this.vectors.set(row.ast_path, row);
 			}
 		}
 		
@@ -155,7 +144,13 @@ namespace OLLMtools.ReadFile
 		 * @param current_namespace Current namespace
 		 * @param parent_class_name Parent class/struct/interface name
 		 */
-		private void traverse_ast(TreeSitter.Node node, string code_content, string? parent_enum_name = null, string? current_namespace = null, string? parent_class_name = null, TreeSitter.Node? parent_section = null)
+		private void traverse_ast(
+			TreeSitter.Node node,
+			string code_content,
+			string? parent_enum_name = null,
+			string? current_namespace = null,
+			string? parent_class_name = null,
+			TreeSitter.Node? parent_section = null)
 		{
 			if (TreeSitter.node_is_null(node)) {
 				return;
@@ -195,18 +190,18 @@ namespace OLLMtools.ReadFile
 						while (j < child_count && hash_count < 6) {
 							var sibling = TreeSitter.node_get_child(node, j);
 							unowned string? sibling_type = TreeSitter.node_get_type(sibling);
-							if (sibling_type != null && sibling_type == "#") {
-								hash_count++;
-								j++;
-							} else {
+							if (sibling_type == null || sibling_type != "#") {
 								break;
 							}
+							hash_count++;
+							j++;
 						}
-						if (hash_count >= 1 && hash_count <= 6) {
-							// GLib.debug("ReadFileSummarize.traverse_ast: Found heading pattern in list_item: %d hashes starting at index %u", hash_count, i);
-							// We found a heading pattern - process it specially
-							// The heading text should be in subsequent children
-						}
+						// if (hash_count >= 1 && hash_count <= 6) {
+						// 	GLib.debug("ReadFileSummarize.traverse_ast: Found heading pattern 
+						// in list_item: %d hashes starting at index %u", hash_count, i);
+						// 	// We found a heading pattern - process it specially
+						// 	// The heading text should be in subsequent children
+						// }
 					}
 				}
 			}
@@ -222,13 +217,16 @@ namespace OLLMtools.ReadFile
 			// }
 			
 			// Track parent enum name for enum_value nodes
-			var current_parent_enum = this.update_parent_enum_from_node(node_type_lower, node, code_content, parent_enum_name);
+			var current_parent_enum = this.update_parent_enum_from_node(node_type_lower, node,
+				code_content, parent_enum_name);
 			
 			// Track namespace for all elements
-			var updated_namespace = this.update_namespace_from_node(node_type_lower, node, code_content, current_namespace);
+			var updated_namespace = this.update_namespace_from_node(node_type_lower, node,
+				code_content, current_namespace);
 			
 			// Track parent class/struct/interface for methods, properties, fields, etc.
-			var updated_parent_class = this.update_parent_class_from_node(node_type_lower, node, code_content, parent_class_name);
+			var updated_parent_class = this.update_parent_class_from_node(node_type_lower, node,
+				code_content, parent_class_name);
 			
 			// Extract and output element if this node represents a code element
 			var element_type = this.get_element_type(node, this.language);
@@ -264,48 +262,64 @@ namespace OLLMtools.ReadFile
 					}
 					
 					if (line_end > line_start + 1) {
-						var line_text = code_content.substring(line_start + 1, line_end - line_start - 1);
+						var line_text = code_content.substring(line_start + 1,
+							line_end - line_start - 1);
 						// Check if line starts with 1-6 '#' characters
 						int hash_count = 0;
 						for (int i = 0; i < line_text.length && i < 6; i++) {
 							if (line_text[i] == '#') {
 								hash_count++;
-							} else if (line_text[i] == ' ' || line_text[i] == '\t') {
 								continue;
-							} else {
-								break;
 							}
+							if (line_text[i] == ' ' || line_text[i] == '\t') {
+								continue;
+							}
+							break;
 						}
 						
 							if (hash_count >= 1 && hash_count <= 6) {
 								element_type = "heading" + hash_count.to_string();
-								// GLib.debug("ReadFileSummarize.traverse_ast: Detected heading%d from block_continuation pattern at line %d", hash_count, start_line);
+								// GLib.debug("ReadFileSummarize.traverse_ast:
+								// Detected heading%d from block_continuation
+								// pattern at line %d", hash_count, start_line);
 							}
 					}
 				}
 			}
 			
-			// Debug: log element type detection (including block_continuation for investigation)
-			// if (element_type != "" || node_type_lower.has_prefix("heading") || node_type_lower.has_prefix("atx") || node_type_lower == "block_continuation") {
-			// 	GLib.debug("ReadFileSummarize.traverse_ast: element_type='%s' for node_type='%s' lines %d-%d", 
+			// Debug: log element type detection (including block_continuation
+			// for investigation)
+			// if (element_type != "" || node_type_lower.has_prefix("heading") ||
+			// node_type_lower.has_prefix("atx") ||
+			// node_type_lower == "block_continuation") {
+			// 	GLib.debug("ReadFileSummarize.traverse_ast: element_type='%s'
+			// 	for node_type='%s' lines %d-%d",
 			// 		element_type, node_type ?? "null", start_line, end_line);
 			// }
 			
 			if (element_type != "") {
-				// Skip namespace declarations - we track namespace for context but don't output them separately
+				// Skip namespace declarations - we track namespace for context
+				// but don't output them separately
 				if (element_type != "namespace") {
 					cached_element_name = this.element_name(node, code_content);
 					
 					// Debug: log name extraction
-					// if (element_type.has_prefix("heading") || node_type_lower.has_prefix("heading") || node_type_lower.has_prefix("atx")) {
-					// 	GLib.debug("ReadFileSummarize.traverse_ast: extracted name='%s' for element_type='%s' lines %d-%d", 
-					// 		cached_element_name ?? "null", element_type, start_line, end_line);
+					// if (element_type.has_prefix("heading") ||
+					// node_type_lower.has_prefix("heading") ||
+					// node_type_lower.has_prefix("atx")) {
+					// 	GLib.debug("ReadFileSummarize.traverse_ast: extracted
+					// 	name='%s' for element_type='%s' lines %d-%d",
+					// 		cached_element_name ?? "null", element_type,
+					// 		start_line, end_line);
 					// }
 					
-					// For enum_value nodes, prefix with parent enum name if available
-					if (node_type_lower == "enum_value" && current_parent_enum != null && current_parent_enum != "") {
+					// For enum_value nodes, prefix with parent enum name if
+					// available
+					if (node_type_lower == "enum_value" && current_parent_enum != null
+						&& current_parent_enum != "") {
 						if (cached_element_name != null && cached_element_name != "") {
-							cached_element_name = "%s.%s".printf(current_parent_enum, cached_element_name);
+							cached_element_name = current_parent_enum + "."
+								+ cached_element_name;
 						}
 					}
 					
@@ -314,18 +328,22 @@ namespace OLLMtools.ReadFile
 						should_output = true;
 						// start_line and end_line already calculated above
 						
-						// For markdown headings, use section end line if available (includes all content)
+						// For markdown headings, use section end line if
+						// available (includes all content)
 						int output_end_line = end_line;
-						if (element_type.has_prefix("heading") && current_section != null && !TreeSitter.node_is_null(current_section)) {
+						if (element_type.has_prefix("heading") && current_section != null
+							&& !TreeSitter.node_is_null(current_section)) {
 							var section_end_line = (int)TreeSitter.node_get_end_point(current_section).row + 1;
 							if (section_end_line > end_line) {
 								output_end_line = section_end_line;
 							}
 						}
 						
-						// For markdown headings, set indent based on heading level (h1=0, h2=1, etc.)
+						// For markdown headings, set indent based on heading
+						// level (h1=0, h2=1, etc.)
 						if (element_type.has_prefix("heading")) {
-							var heading_num_str = element_type.substring(7);  // Remove "heading" prefix
+							var heading_num_str = element_type.substring(7);
+							// Remove "heading" prefix
 							var heading_num = int.parse(heading_num_str);
 							if (heading_num > 0 && heading_num <= 6) {
 								this.indent_level = heading_num - 1;
@@ -333,9 +351,11 @@ namespace OLLMtools.ReadFile
 						}
 						
 						// Output markdown line with indentation
-						this.output_indented_line(node, code_content, element_type, cached_element_name, start_line, output_end_line);
+						this.output_indented_line(node, code_content, element_type,
+							cached_element_name, start_line, output_end_line);
 						
-						// Increase indent for children (for code elements, not markdown headings)
+						// Increase indent for children (for code elements, not
+						// markdown headings)
 						if (!element_type.has_prefix("heading")) {
 							this.indent_level++;
 						}
@@ -343,34 +363,45 @@ namespace OLLMtools.ReadFile
 				}
 			}
 			
-			// Special handling: Check if we're in a context where '#' nodes indicate a heading
-			// When headings appear after list items, they might be parsed as block_continuation + '#' siblings
+			// Special handling: Check if we're in a context where '#' nodes
+			// indicate a heading
+			// When headings appear after list items, they might be parsed as
+			// block_continuation + '#' siblings
 			// Look ahead to see if the next siblings are '#' characters
-			// if (node_type_lower == "block_continuation" && start_line >= 1143 && start_line <= 1147) {
-			// 	GLib.debug("ReadFileSummarize.traverse_ast: Found block_continuation at line %d, checking siblings", start_line);
+			// if (node_type_lower == "block_continuation" && start_line >= 1143
+			// && start_line <= 1147) {
+			// 	GLib.debug("ReadFileSummarize.traverse_ast: Found
+			// 	block_continuation at line %d, checking siblings", start_line);
 			// }
 			
 			// Recursively traverse children
 			uint child_count = TreeSitter.node_get_child_count(node);
 			for (uint i = 0; i < child_count; i++) {
 				var child = TreeSitter.node_get_child(node, i);
-				this.traverse_ast(child, code_content, current_parent_enum, updated_namespace, updated_parent_class, current_section);
+				this.traverse_ast(child, code_content, current_parent_enum,
+					updated_namespace, updated_parent_class, current_section);
 			}
 			
-			// After processing children, check if this node and its siblings form a heading pattern
-			// This handles cases where headings are parsed as separate nodes (block_continuation + '#' + text)
-			// We can't easily check siblings from here, so we'll handle this in get_element_type/element_name
-			// by checking the node's position and looking at the raw text content
+			// After processing children, check if this node and its siblings
+			// form a heading pattern
+			// This handles cases where headings are parsed as separate nodes
+			// (block_continuation + '#' + text)
+			// We can't easily check siblings from here, so we'll handle this in
+			// get_element_type/element_name by checking the node's position and
+			// looking at the raw text content
 			
-			// Decrease indent after processing children (use cached element_name)
-			// For markdown headings, restore saved indent; for code elements, decrease by 1
-			if (should_output) {
-				if (element_type.has_prefix("heading")) {
-					this.indent_level = saved_indent;
-				} else {
-					this.indent_level--;
-				}
+			// Decrease indent after processing children (use cached
+			// element_name)
+			// For markdown headings, restore saved indent; for code elements,
+			// decrease by 1
+			if (!should_output) {
+				return;
 			}
+			if (element_type.has_prefix("heading")) {
+				this.indent_level = saved_indent;
+				return;
+			}
+			this.indent_level--;
 		}
 		
 		/**
@@ -383,34 +414,45 @@ namespace OLLMtools.ReadFile
 		 * @param start_line Starting line number (1-indexed)
 		 * @param end_line Ending line number (1-indexed)
 		 */
-		private void output_indented_line(TreeSitter.Node node, string code_content, string type, string name, int start_line, int end_line)
+		private void output_indented_line(
+			TreeSitter.Node node,
+			string code_content,
+			string type,
+			string name,
+			int start_line,
+			int end_line)
 		{
 			// Generate indentation
-			var indent = string.nfill(this.indent_level * INDENT_STEP, ' ');
+			var indent = string.nfill(this.indent_level * 3, ' ');
 			var ast_path_str = this.ast_path(node, code_content);
 			var description = "";
 			if (ast_path_str != "" && this.vectors.has_key(ast_path_str)) {
 				description = " - "+  this.vectors.get(ast_path_str).description;
 			}
 			
-			// Build the line - use AST path by default, or line numbers if show_lines is true
+			// Build the line - use AST path by default, or line numbers if
+			// show_lines is true
 			if (this.show_lines) {
 				// Show line numbers
-				this.output += indent + "* " + type + " " + name + " lines " + start_line.to_string() +
-					(end_line != start_line ? "-" + end_line.to_string() : "") + description + "\n";
+				this.output += indent + "* " + type + " " + name + " lines "
+					+ start_line.to_string()
+					+ (end_line != start_line ? "-" + end_line.to_string() : "")
+					+ description + "\n";
 				return;
 			}
 			
 			// Show AST path (default)
 			if (ast_path_str != "") {
-				this.output += indent + "* " + type + " " + name + " ast-path: " + ast_path_str + description + "\n";
+				this.output += indent + "* " + type + " " + name
+					+ " ast-path: " + ast_path_str + description + "\n";
 				return;
 			}
 			
 			// Fallback to line numbers if AST path not available
-			this.output += indent + "* " + type + " " + name + " lines " + start_line.to_string() +
-				(end_line != start_line ? "-" + end_line.to_string() : "") + description + "\n";
+			this.output += indent + "* " + type + " " + name + " lines "
+				+ start_line.to_string()
+				+ (end_line != start_line ? "-" + end_line.to_string() : "")
+				+ description + "\n";
 		}
 	}
 }
-

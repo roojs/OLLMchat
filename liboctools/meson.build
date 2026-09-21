@@ -5,24 +5,20 @@
 valac = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
 is_windows = host_machine.system() == 'windows'
-# tree-sitter: resolved in config/meson.build
 octools_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
-  dependency('gmodule-2.0'),  # GModule for dynamic library loading
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
   valac.find_library('posix'),
-  tree_sitter_dep,
 ]
 
 # Source files for OLLMtools namespace
 octools_src = files([
   'ReadFile/Tool.vala',
   'ReadFile/Request.vala',
-  'ReadFile/Summarize.vala',
   'ReadFile/Read.vala',
   'EditMode/Tool.vala',
   'EditMode/Request.vala',
@@ -78,8 +74,6 @@ octools_lib_vala_args = [
   '--pkg=ocmarkdown',
   '--pkg=ocbwrap',
   '--pkg=ocrpc',
-  '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-  '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
   '--pkg=json-glib-1.0',
   # Put build directories FIRST so we use local VAPIs instead of installed ones
   '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -121,8 +115,6 @@ octools_vapi_gen_pkgs = [
   '--pkg', 'posix',
   '--pkg', 'json-glib-1.0',
   '--pkg', 'libsoup-3.0',
-  '--pkg', 'gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
-  '--pkg', 'tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
   '--pkg', 'sqlite3',  # Required for ocsqlite.vapi (Sqlite namespace)
   '--pkg', 'ollmchat',
   '--pkg', 'ollamaweb',

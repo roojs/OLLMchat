@@ -134,19 +134,15 @@ namespace OLLMtools.ReadFile
 				return false;
 			}
 			
-			// Parse via V2 Tree (RPC-fed content in load_file_content)
-			var tree = new OLLMfiles.Tree(this.file);
-			yield tree.parse();
-			
-			// Lookup AST path
 			int start, end, comment_start;
-			if (tree.lookup_path(this.ast_path, out start, out end, out comment_start)) {
-				this.start_line = comment_start;
-				this.end_line = end;
-				return true;
+			if (!yield this.file.ast_lookup(
+				this.ast_path, out start, out end, out comment_start
+			)) {
+				return false;
 			}
-			
-			return false;
+			this.start_line = comment_start;
+			this.end_line = end;
+			return true;
 		}
 		
 		/**
@@ -406,19 +402,14 @@ namespace OLLMtools.ReadFile
 			
 			// Handle summarize option
 			if (this.summarize) {
-				// Create Summarize instance (pass show_lines to control output format)
-				var summarizer = new Summarize(this.file, this.show_lines);
-				
-				// Generate summary
-				var summary = yield summarizer.summarize();
-				
-				// Send summary to UI
-				var preview_summary = this.get_first_lines(summary, 20);
-				this.agent.add_message(new OLLMchat.Message("ui", 
+				var response = yield this.file.manager.rpc.call(new OLLMrpc.Request() {
+					method = "RPC-File.ast_summarize",
+					args = OLLMrpc.args("sb", this.file.path, this.show_lines)
+				});
+				var preview_summary = this.get_first_lines(response.msg, 20);
+				this.agent.add_message(new OLLMchat.Message("ui",
 					OLLMchat.Message.fenced("text.oc-frame-success File Summary", preview_summary)));
-				
-				// Return full summary to LLM
-				return summary;
+				return response.msg;
 			}
 			
 			// Buffer loaded by File.read above

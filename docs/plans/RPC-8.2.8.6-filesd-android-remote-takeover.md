@@ -1,6 +1,6 @@
 # 8.2.8.6 — Remote file connection: Android takeover + tablet shell
 
-**Status:** **PROPOSED** — design only; code proposals not yet written
+**Status:** **PROPOSED** — Phase 1 code proposals; Phase 2–3 still design-only
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
@@ -13,7 +13,7 @@
 - [`RPC-8.2.8.5`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) — desktop Check / `reconnect` / Linux takeover (Phases C–D)
 - [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `ProjectManager.replace_rpc` + `notification`
 - [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) Phase 1 — Android Connections UI + `FileConnectionAdd.request()`
-- **This plan Phase 0** — leftover client tree-sitter. `libocfiles` cannot join the Android `subdir()` list until that is settled.
+- [`FILES-2.10.4.33-client-tree-sitter-daemon.md`](FILES-2.10.4.33-client-tree-sitter-daemon.md) — **✔️** client `Tree` dropped; `libocfiles` has no tree-sitter dep
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -24,7 +24,7 @@
 - **🔷** Replace the `OLLMfiles.ProjectManager` stub so an approved + enabled file connection talks to remote `ollmfilesd` over HTTPS.
 - **🔷** Android startup: when `url != "" && enabled && approved`, HTTPS `replace_rpc` as [`8.2.8.5`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) §1, then `yield rpc.connect(hello)` with **no** `ClientBoot`.
 - **🔷** Compile **full** `liboccoder` on Android (same sources as desktop). Implication is meson + deps, not a second agent API.
-- **🔷** Tree-sitter stays off Android on purpose. AST parse is the file daemon's job (`ollmfilesd`), not the phone client.
+- **🔷** Tree-sitter stays off Android on purpose. AST parse is the file daemon's job — [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md).
 - **🔷** Do **not** register occoder agent factories on Android in this plan (Agent Pi / Code Assistant / Skill Runner). Later.
 - **🔷** Android `OllmchatWindow` implements `OLLMchat.ChatDesktopInterface`.
   - Phone: browser and code editor use today's globe pattern (`chat_widget.view_stack` swap).
@@ -37,8 +37,7 @@
 
 - **ℹ️** `android_poc` links reduced `occoder` (`AgentPi/Skill.vala` + `SkillSet.vala` only) via `liboccoder/meson.build` `is_android_cross` + `subdir_done()`.
 - **ℹ️** `OLLMfiles.ProjectManager` is a stub in `ollmapp/android/AndroidToolTypes.vala`. `libocfiles` is not in the Android `subdir()` list.
-- **ℹ️** Pixiewood `android/pixiewood-chat-poc.xml` has no tree-sitter wrap. That is deliberate, not a packaging hole.
-- **ℹ️** `libocfiles/meson.build` still lists `Tree.vala` / `TreeBase.vala` and `tree_sitter_dep`. Root `config/meson.build` (which defines that dep) is skipped on Android.
+- **ℹ️** Pixiewood has no tree-sitter wrap (deliberate). Client `Tree` / `TreeBase` are gone ([`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md)).
 - **ℹ️** Phone shell: `Gtk.Stack` (`startup` / `chat` / `history`). Browser globe toggles `chat_widget.view_stack` (`"chat"` vs tool name). No right pane.
 - **ℹ️** Desktop split is `ollmapp/WindowPane.vala` (`Gtk.Paned` + `Adw.ViewStack tab_view`). Showing the pane **grows** the window. Not in `android_poc` sources.
 - **ℹ️** `AgentPi.Factory.activate` casts the window to `ChatDesktopInterface` and `tab_view()` to `Adw.ViewStack`, then mounts `OLLMcoder.SourceView`. Android window is `ChatUserInterface` only.
@@ -58,41 +57,312 @@
 - **🔷** Detect tablet the standard Android way (`smallestScreenWidthDp` / `sw600dp`). If that signal is not reachable from Vala/GTK, expose it (JNI / activity). Do not invent a Gdk width cutoff.
 - **🔷** Lock tablet orientation in the Android manifest / activity (`landscape` / `sensorLandscape`) so the phone stack never appears there.
 - **🔷** Tablet `tab_view()` is still an `Adw.ViewStack` so factory casts match desktop. Columns are a `Gtk.Box`, not `WindowPane`. No extra tablet tab API.
-- **🔷** Tree-sitter is daemon-side. Do not add a Pixiewood wrap or ship language `.so` files in the APK.
+- **🔷** Tree-sitter is daemon-side ([`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md)). Do not add a Pixiewood wrap or ship language `.so` files in the APK.
 - **ℹ️** `register_default_agents()` is Chatter only (`ChatUserInterface`). Coder factories are a separate desktop `Window.initialize_client` block. Leave that block off Android.
 
 ---
-
-## Phase 0 — Client tree-sitter leftover (look at before Phase 1) (`⏳`)
-
-- **🔷** `⏳` Look at this **before** putting `libocfiles` on the Android `subdir()` list. Missing tree-sitter on Android is not a wrap to add.
-- **🔷** AST parse belongs on `ollmfilesd`. The phone client talks RPC. It does not load tree-sitter or language parsers.
-- **ℹ️** Already decided in [`2.10.4.6`](done/2.10.4.6-DONE-file.md) **AST on wire**:
-  - `OLLMfiles.Tree` is backend-only.
-  - V2 `ProjectManager` has no `tree_factory` / `tree_cache`.
-  - Target wire is `File.ast.lookup` (`path` + `ast_path` → line range). Not a `Tree` object on the client.
-  - That RPC is still in **Deferred** there. It is not in the tree (`File.ast.lookup` has no Vala hits).
-- **ℹ️** Client still compiles and calls local `Tree` anyway:
-  - `libocfiles/meson.build` — `Tree.vala`, `TreeBase.vala`, `tree_sitter_dep`, `--pkg=tree-sitter`, `--pkg=gmodule-2.0`
-  - `libocfiles/FileChange.vala` `resolve_ast_path()` — `new Tree(this.file)` then `parse` / `lookup_path`
-  - `liboccoder/Task/ResolveLink.vala` — `new OLLMfiles.Tree` in `preload_links` and `file_ast`
-  - `liboctools/ReadFile/Request.vala` + `Summarize.vala` — same local `Tree` (not in the Android `subdir()` list today)
-- **ℹ️** Daemon already has the real parse path: `ollmfilesd/Tree.vala`, `tree_factory` / `tree_cache` on server `ProjectManager`.
-- **🔷** `⏳` Decide how the leftover client callers stop using local `Tree` so `libocfiles` (and full `liboccoder`, same sources) compile without tree-sitter.
-  - Likely: land `File.ast.lookup` (or fold into `File.read`) as [`2.10.4.6`](done/2.10.4.6-DONE-file.md) specified, then drop `Tree.vala` / `TreeBase.vala` from the client meson.
-  - That may be a split plan. Do not start Phase 1 until this is chosen.
-- **🚫** Pixiewood `tree-sitter` wrap.
-- **🚫** Shipping `libtree-sitter-*.so` language parsers in the APK.
-- **🚫** `#if ANDROID` stub `Tree` on the client so meson can ignore the leftover.
-- **⏳** Code proposals — after this look-at. Not in Phase 1.
 
 ## Phase 1 — Real `ProjectManager` + full `liboccoder` (`⏳`)
 
 - **🔷** `⏳` `libocfiles` in the Android `subdir()` list. `ocfiles_vapi_dep` + `--pkg=ocfiles` on `android_poc`.
 - **🔷** `⏳` Drop the `is_android_cross` Skill-only `subdir_done()` in `liboccoder/meson.build`. Build the same `occoder_src` as desktop (GtkSourceView, `SourceView`, factories). No tree-sitter on this cross-build.
 - **🔷** `⏳` Drop / replace the stub in `ollmapp/android/AndroidToolTypes.vala`.
-- **ℹ️** Cross-build already has `sqlite3`, `gmodule-2.0`, `gtksourceview-5`. Tree-sitter is Phase 0, not a wrap here.
-- **⏳** Code proposals — after Phase 0 is settled.
+- **ℹ️** Cross-build already has `sqlite3`, `gmodule-2.0`, `gtksourceview-5`. Tree-sitter is [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md), not a wrap here.
+- **ℹ️** `FileConnectionRow` / `ConnectionsPage.render_approved` still need `win.project_manager`, `win.notification`, `win.window_config()` — those are Phase 2. Do not `#if ANDROID` the row.
+- **💩** Skip `vala_gir` on the Android `occoder` `library()` (same as `libollmchat` / `libollmchatgtk`).
+- **💩** `gee_vapi_dir` on Android `ocfiles` / `occoder` VAPI `custom_target`s (same as `libocrpc`).
+- **💩** `--define=ANDROID` on the `occoder` VAPI `custom_target` (`ReviewBar` is `#if !ANDROID`; that valac does not inherit project args).
+- **💩** `--pkg=ocrpc` + its vapidir on `android_poc` (desktop `ollmchat` already does; `ocfiles.vapi` names `OLLMrpc`).
+
+Edits are **Remove** / **Replace with** / **Add** from the tree;
+verify surrounding context before applying.
+
+### 1. `meson.build` — `libocfiles` on the `android_poc` `subdir()` list
+
+**Why:** `liboccoder` and `android_poc` need `ocfiles_vapi_dep`. Client tree-sitter is gone, so this cross-build does not need a Pixiewood wrap.
+
+**Where:** `elif android_poc_opt and host_machine.system() == 'android'` library order, after `subdir('libocrpc')`. Also the `liboccoder` comment on that branch.
+
+**Depends on:** none.
+
+#### Remove
+
+```python
+  subdir('libocsqlite')
+  subdir('libocrpc')
+  subdir('libollamaweb')
+```
+
+#### Replace with
+
+```python
+  subdir('libocsqlite')
+  subdir('libocrpc')
+  subdir('libocfiles')       # Depends on libocsqlite + libocrpc; no tree-sitter
+  subdir('libollamaweb')
+```
+
+#### Remove — `liboccoder` comment on the same branch
+
+```python
+  subdir('liboccoder')       # AgentPi catalog only on Android (see liboccoder/meson.build)
+```
+
+#### Replace with
+
+```python
+  subdir('liboccoder')       # Same sources as desktop (see liboccoder/meson.build)
+```
+
+---
+
+### 2. `libocfiles/meson.build` — Android `gee_vapi_dir` on the VAPI custom_target
+
+**Why:** `ocrpc` / `ocsqlite` already pass `gee_vapi_dir` on Android `custom_target` valac. `libocfiles` did not, because it was not in the Android `subdir()` list.
+
+**Where:** next to `is_windows`; then `ocfiles_vapi_cmd` after the `if not is_windows` vapidir.
+
+**Depends on:** §1.
+
+#### Add — after `is_windows = host_machine.system() == 'windows'`
+
+```python
+is_android = host_machine.system() == 'android'
+```
+
+#### Add — after `ocfiles_vapi_cmd`'s `if not is_windows` vapidir block, before `ocfiles_vapi = custom_target(`
+
+```python
+if is_android
+  ocfiles_vapi_cmd += ['--vapidir', gee_vapi_dir]
+endif
+```
+
+---
+
+### 3. `liboccoder/meson.build` — full `occoder_src` on Android
+
+**Why:** SkillsPage already needs `AgentPi.Skill`; Phase 3 needs `SourceView` / factories compiled. Keep `is_android_cross` for GIR skip and VAPI `--define`.
+
+**Where:** top of file through `subdir_done()`; then `occoder_base_lib = library(`; then after `occoder_vapi_vapidirs`.
+
+**Depends on:** §1, §2.
+
+##### Part 1 — drop Skill-only `subdir_done()`
+
+#### Remove
+
+```python
+if is_android_cross
+  # Full occoder needs libocfiles / GtkSourceView / tree-sitter. Android
+  # SkillsPage only needs AgentPi.Skill + SkillSet. Same soname / --pkg=occoder.
+  occoder_src = files([
+    'AgentPi/Skill.vala',
+    'AgentPi/SkillSet.vala',
+  ])
+  occoder_deps = [
+    dependency('gee-0.8'),
+    dependency('gio-2.0'),
+    dependency('glib-2.0'),
+    dependency('gobject-2.0'),
+    valac.find_library('posix'),
+  ]
+  occoder_base_lib = library(occoder_lib,
+    dependencies: occoder_deps,
+    sources: occoder_src,
+    vala_header: 'occoder.h',
+    vala_vapi: 'occoder-meson.vapi',
+    install: true,
+  )
+  occoder_vapi_cmd = [
+    valac_exe,
+    '-C', '--debug',
+    '--target-glib=auto',
+    '--vapidir', meson.current_build_dir(),
+    '--vapidir', gee_vapi_dir,
+    '--pkg', 'posix',
+    '--pkg', 'gobject-2.0',
+    '--pkg', 'glib-2.0',
+    '--pkg', 'gio-2.0',
+    '--pkg', 'gee-0.8',
+    '--library', occoder_lib,
+    '--header', meson.current_build_dir() / 'occoder.h',
+    '--vapi', '@OUTPUT@',
+    '@INPUT@',
+  ]
+  occoder_vapi = custom_target('occoder-vapi',
+    output: 'occoder.vapi',
+    input: occoder_src,
+    command: occoder_vapi_cmd,
+    depends: [occoder_base_lib],
+    build_by_default: true,
+    install: true,
+    install_dir: get_option('datadir') / 'vala' / 'vapi',
+  )
+  occoder_vapi_dep = declare_dependency(
+    link_args: ['-L' + meson.current_build_dir(), '-l' + occoder_lib],
+    sources: [occoder_vapi[0]],
+  )
+  subdir_done()
+endif
+```
+
+Keep `valac = meson.get_compiler('vala')` and `is_android_cross = host_machine.system() == 'android'` above this block. The desktop `occoder_src` / `occoder_deps` that follow become the Android compile too.
+
+##### Part 2 — omit `vala_gir` on Android (`library()`)
+
+**Why:** `libollmchat` / `libollmchatgtk` already skip `vala_gir` on Android. `g_ir_compiler` is a `disabler()` there; Meson still rejects or fails `vala_gir` on the `library()` itself.
+
+#### Remove
+
+```python
+occoder_base_lib = library(occoder_lib,
+  dependencies: occoder_lib_deps,
+  sources: occoder_src,
+  vala_header: 'occoder.h',
+  vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
+  vala_gir: 'OLLMcoder-1.0.gir',
+  build_rpath: lib_build_rpath,
+  include_directories: [
+    include_directories('..' / 'libollmchat'),
+    include_directories('..' / 'libollamaweb'),
+    include_directories('..' / 'libocfiles')     # For C headers (build directory)
+  ],
+  vala_args: occoder_vala_args,
+  install: true
+)
+```
+
+#### Replace with
+
+```python
+if is_android_cross
+  occoder_base_lib = library(occoder_lib,
+    dependencies: occoder_lib_deps,
+    sources: occoder_src,
+    vala_header: 'occoder.h',
+    vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
+    build_rpath: lib_build_rpath,
+    include_directories: [
+      include_directories('..' / 'libollmchat'),
+      include_directories('..' / 'libollamaweb'),
+      include_directories('..' / 'libocfiles')     # For C headers (build directory)
+    ],
+    vala_args: occoder_vala_args,
+    install: true
+  )
+else
+  occoder_base_lib = library(occoder_lib,
+    dependencies: occoder_lib_deps,
+    sources: occoder_src,
+    vala_header: 'occoder.h',
+    vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
+    vala_gir: 'OLLMcoder-1.0.gir',
+    build_rpath: lib_build_rpath,
+    include_directories: [
+      include_directories('..' / 'libollmchat'),
+      include_directories('..' / 'libollamaweb'),
+      include_directories('..' / 'libocfiles')     # For C headers (build directory)
+    ],
+    vala_args: occoder_vala_args,
+    install: true
+  )
+endif
+```
+
+##### Part 3 — Android VAPI `custom_target`: `gee_vapi_dir` + `--define=ANDROID`
+
+**Why:** that `custom_target` does not inherit `add_project_arguments`. `ReviewBar` is `#if !ANDROID`. `gee_vapi_dir` matches the old Skill-only Android vapi command and `libocrpc`.
+
+#### Add — after the `occoder_vapi_vapidirs = [ ... ]` list, before `occoder_vapi_depends =`
+
+```python
+if is_android_cross
+  occoder_vapi_vapidirs += ['--vapidir', gee_vapi_dir]
+  occoder_vapi_gen_pkgs += ['--define', 'ANDROID']
+endif
+```
+
+---
+
+### 4. `ollmapp/meson.build` — `ocfiles` on `android_poc` + drop stub source
+
+**Why:** link the real `OLLMfiles.ProjectManager`. `ocfiles.vapi` references `OLLMrpc`, so `--pkg=ocrpc` / its vapidir go on the same target (desktop `ollmchat` already does).
+
+**Where:** `android_poc` `dependencies`, `include_directories`, `vala_args`, and `android_poc_sources`.
+
+**Depends on:** §1–§3.
+
+#### Remove — `android_poc_sources`
+
+```python
+    'android/AndroidBootstrapConnectionAdd.vala',
+    'android/AndroidToolTypes.vala',
+    'android/AndroidToolsRegistration.vala',
+```
+
+#### Replace with
+
+```python
+    'android/AndroidBootstrapConnectionAdd.vala',
+    'android/AndroidToolsRegistration.vala',
+```
+
+#### Add — `android_poc` `dependencies:` list, after `occoder_vapi_dep,`
+
+```python
+      ocfiles_vapi_dep,
+```
+
+#### Add — `android_poc` `include_directories:`, after `include_directories('../liboccoder'),`
+
+```python
+      include_directories('../libocfiles'),
+```
+
+#### Add — `android_poc` `vala_args:`, after `'--pkg=occoder',`
+
+```python
+      '--pkg=ocfiles',
+      '--pkg=ocrpc',
+```
+
+#### Add — `android_poc` `vala_args:` vapidirs, after `'--vapidir', meson.current_build_dir() / '..' / 'liboccoder',`
+
+```python
+      '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocrpc',
+```
+
+---
+
+### 5. Delete `ollmapp/android/AndroidToolTypes.vala`
+
+**Why:** the file is only the empty `OLLMfiles.ProjectManager` stub. The real class is `libocfiles/ProjectManager.vala`.
+
+**Where:** delete the file. Meson source drop is §4.
+
+**Depends on:** §4.
+
+#### Remove
+
+```vala
+namespace OLLMfiles
+{
+	/**
+	 * Android POC stub for {@link OLLMtools.WebFetch.Tool} constructor typing.
+	 *
+	 * Full project workspace support is desktop-only; mobile passes null.
+	 *
+	 * @since 1.0
+	 */
+	public class ProjectManager : GLib.Object
+	{
+	}
+}
+```
+
+Delete the leftover license header with the file.
 
 ---
 
@@ -123,7 +393,7 @@
 
 - **ℹ️** `ConnectionsPage.render_approved` already references `win.project_manager.rpc`.
 - **ℹ️** `FileConnectionRow.reconnect` already references `win.project_manager`, `win.notification`, `win.window_config()`.
-- **🔷** `⏳` Phase 0 settled before any Android `subdir('libocfiles')`.
+- **🔷** `✔️` [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) landed before any Android `subdir('libocfiles')`.
 - **🔷** `⏳` Fix `android_poc` compile errors in this plan. No `#if ANDROID` stubs on the desktop row.
 
 ---
@@ -136,7 +406,7 @@
 
 ## Suggested order
 
-1. **⏳** Phase 0 — leftover client tree-sitter (daemon AST). Do not start Phase 1 until this is settled
+1. **✔️** [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) — client `Tree` off `libocfiles`
 2. **⏳** Phase 1 — `libocfiles` (no tree-sitter) + full `liboccoder` + real `ProjectManager`
 3. **⏳** Phase 2 — HTTPS `replace_rpc` + window APIs `FileConnectionRow` already calls
 4. **⏳** Phase 3 — `ChatDesktopInterface` + phone stack / tablet landscape columns (browser now, editor host ready)

@@ -60,6 +60,7 @@ ollmfilesd_src = files(
   'ProjectList.vala',
   'TreeBase.vala',
   'Tree.vala',
+  'Summarize.vala',
   'ProjectMigrate.vala',
   'ProjectManager.vala',
   'SQT/VectorMetadata.vala',
