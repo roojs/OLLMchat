@@ -6,7 +6,7 @@
 
 **Parent:** [`FILES-2.10.4.0-summary.md`](FILES-2.10.4.0-summary.md)
 
-**Split from:** [`done/2.10.4.6-DONE-file.md`](done/2.10.4.6-DONE-file.md) deferred AST-on-wire lookup. Unblocks [`RPC-8.2.8.6-filesd-android-remote-takeover.md`](RPC-8.2.8.6-filesd-android-remote-takeover.md) Phase 1.
+**Split from:** [`done/2.10.4.6-DONE-file.md`](done/2.10.4.6-DONE-file.md) deferred AST-on-wire lookup. Unblocks [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) Phase 1.
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -730,7 +730,7 @@ Delete those lines after this cut; they only existed for client `TreeBase`.
 1. ✔︎ Phase 1 — `ast_lookup` daemon + client + switch three callers
 2. ✔︎ Phase 2 — move Summarize, `ast_summarize`, switch tool + CLI
 3. ✔︎ Phase 3 — delete client `Tree` / `TreeBase` / meson deps
-4. Then [`RPC-8.2.8.6`](RPC-8.2.8.6-filesd-android-remote-takeover.md) Phase 1
+4. Then [`RPC-8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) Phase 1
 
 ---
 

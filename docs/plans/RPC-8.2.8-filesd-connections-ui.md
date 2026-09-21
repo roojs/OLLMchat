@@ -1,6 +1,6 @@
 # 8.2.8 — File-server Connections UI + registration approval
 
-**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 4 **✅** · Phase 5 **✔️** · Phase 6 **✅** · Phase 7 in sub-plan
+**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 4 **✅** · Phase 5 **✔️** · Phase 6 **✅** · Phase 7 **✔️** · Phase 8 in sub-plan · Phase 9 **✔️** · Phase 10 **⏳**
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -37,8 +37,10 @@
 | **4** | [`RPC-8.2.8.3-DONE-filesd-file-server-tls.md`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md) — Desktop File Server expander + TLS CA key auto-install | **✅** |
 | **5** | [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification` (library half of 8.2.8.2 Phase 2) | **✔️** agent-done |
 | **6** | [`RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle (UI half of 8.2.8.2 Phase 2) | **✅** |
-| **7** | [`RPC-8.2.8.6-filesd-android-remote-takeover.md`](RPC-8.2.8.6-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder compile, phone/tablet pane. Precursor [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️** | **⏳** |
+| **7** | [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder compile. Precursor [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️** | **✔️** |
 | **8** | [`RPC-8.2.8.7-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux `filesd.socket` LAN TCP + TLS registration | **⏳** |
+| **9** | [`RPC-8.2.8.8-android-phone-tablet-pane.md`](RPC-8.2.8.8-android-phone-tablet-pane.md) — Android `ChatDesktopInterface`, phone stack / tablet landscape columns | **✔️** |
+| **10** | (this file) Android register `AgentPi.Factory` when the remote file connection is live | **⏳** |
 
 ---
 
@@ -50,8 +52,10 @@
 4. **✅** Phase 4 — [`8.2.8.3`](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md)
 5. **✔️** Phase 5 — [`8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) (agent-done; awaiting user ✅)
 6. **✅** Phase 6 — [`8.2.8.5`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md)
-7. **⏳** Phase 7 — [`8.2.8.6`](RPC-8.2.8.6-filesd-android-remote-takeover.md) (Phase 1 proposals; [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️**)
+7. **✔️** Phase 7 — [`8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) (Android takeover; [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️**)
 8. **⏳** Phase 8 — [`8.2.8.7`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux LAN TCP socket (Windows loopback port is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md))
+9. **✔️** Phase 9 — [`8.2.8.8`](RPC-8.2.8.8-android-phone-tablet-pane.md) — Android phone/tablet `ChatDesktopInterface`
+10. **⏳** Phase 10 — Android `AgentPi.Factory` register when the remote file connection is live (this file; no sub-plan yet)
 
 ---
 
@@ -134,9 +138,9 @@
 
 ---
 
-## Phase 7 — Remote file connection: Android takeover + Agent Pi
+## Phase 7 — Remote file connection: Android takeover
 
-**➡️** [`RPC-8.2.8.6-filesd-android-remote-takeover.md`](RPC-8.2.8.6-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder, phone/tablet pane (Agent Pi register later)
+**➡️** [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder
 
 ---
 
@@ -145,6 +149,20 @@
 **➡️** [`RPC-8.2.8.7-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — bind bin TCP like HTTPS; TLS + cert registration on the LAN; no WAN / PROXY
 
 ℹ️ Windows loopback port (hardcoded 4141) is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md), not this phase.
+
+---
+
+## Phase 9 — Android phone / tablet `ChatDesktopInterface`
+
+**➡️** [`RPC-8.2.8.8-android-phone-tablet-pane.md`](RPC-8.2.8.8-android-phone-tablet-pane.md) — phone globe stack vs tablet landscape columns
+
+---
+
+## Phase 10 — Android Agent Pi register (`⏳`)
+
+- **🔷** `⏳` Register `OLLMcoder.AgentPi.Factory` on Android when the remote file connection is live (`url` + `enabled` + `approved`, after HTTPS hello).
+- **🔷** Linux stays as today (local Unix or remote both keep Agent Pi).
+- **ℹ️** Needs Phase 7 (`ProjectManager` live) and Phase 9 (`ChatDesktopInterface` host). No sub-plan yet.
 
 ---
 

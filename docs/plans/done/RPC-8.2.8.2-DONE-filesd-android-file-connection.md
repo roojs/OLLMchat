@@ -907,14 +907,15 @@ endif
 **➡️** [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http` bridge, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification`.
 **➡️** [`RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md`](RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle.
 
-**➡️** [`RPC-8.2.8.6-filesd-android-remote-takeover.md`](../RPC-8.2.8.6-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder, phone/tablet pane.
+**➡️** [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder.
+**➡️** [`RPC-8.2.8.8-android-phone-tablet-pane.md`](../RPC-8.2.8.8-android-phone-tablet-pane.md) — Android `ChatDesktopInterface`, phone/tablet pane.
 
 ---
 
 ## Suggested order
 
 1. **✔️** Phase 1 — apply §1–§9 (UI + `Cert.ensure()` + `request_registration`)
-2. **✔️** Phase 2 library — [`8.2.8.4`](RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md); **✅** desktop UI — [`8.2.8.5`](RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md); **⏳** Android — [`8.2.8.6`](../RPC-8.2.8.6-filesd-android-remote-takeover.md)
+2. **✔️** Phase 2 library — [`8.2.8.4`](RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md); **✅** desktop UI — [`8.2.8.5`](RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md); **✔️** Android takeover — [`8.2.8.6`](RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md); **✔️** phone/tablet pane — [`8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md)
 
 ---
 

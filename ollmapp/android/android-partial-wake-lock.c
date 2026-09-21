@@ -1,7 +1,5 @@
 #include "android-partial-wake-lock.h"
 
-#ifdef __ANDROID__
-
 #include <jni.h>
 #include <gdk/android/gdkandroid.h>
 
@@ -157,20 +155,81 @@ ollmapp_android_set_streaming_foreground (GtkWindow *window, gboolean enable)
 	(*env)->DeleteLocalRef (env, activity);
 }
 
-#else /* !__ANDROID__ */
-
-void
-ollmapp_android_set_partial_wake_lock (GtkWindow *window, gboolean enable)
+gboolean
+ollmapp_android_is_tablet (GtkWindow *window)
 {
-	(void) window;
-	(void) enable;
+	GdkSurface *surface;
+	jobject activity;
+	JNIEnv *env;
+	jclass activity_cls;
+	jmethodID get_resources;
+	jobject resources;
+	jclass resources_cls;
+	jmethodID get_configuration;
+	jobject configuration;
+	jclass configuration_cls;
+	jfieldID sw_field;
+	jint sw;
+
+	surface = gtk_native_get_surface (GTK_NATIVE (window));
+	if (surface == NULL || !GDK_IS_ANDROID_TOPLEVEL (surface)) {
+		return FALSE;
+	}
+	activity = gdk_android_toplevel_get_activity (GDK_ANDROID_TOPLEVEL (surface));
+	if (activity == NULL) {
+		return FALSE;
+	}
+	env = ollmapp_android_jni_env ();
+	if (env == NULL) {
+		return FALSE;
+	}
+	activity_cls = (*env)->GetObjectClass (env, activity);
+	get_resources = (*env)->GetMethodID (env, activity_cls, "getResources",
+		"()Landroid/content/res/Resources;");
+	resources = (*env)->CallObjectMethod (env, activity, get_resources);
+	resources_cls = (*env)->GetObjectClass (env, resources);
+	get_configuration = (*env)->GetMethodID (env, resources_cls,
+		"getConfiguration", "()Landroid/content/res/Configuration;");
+	configuration = (*env)->CallObjectMethod (env, resources, get_configuration);
+	configuration_cls = (*env)->GetObjectClass (env, configuration);
+	sw_field = (*env)->GetFieldID (env, configuration_cls,
+		"smallestScreenWidthDp", "I");
+	sw = (*env)->GetIntField (env, configuration, sw_field);
+	(*env)->DeleteLocalRef (env, configuration_cls);
+	(*env)->DeleteLocalRef (env, configuration);
+	(*env)->DeleteLocalRef (env, resources_cls);
+	(*env)->DeleteLocalRef (env, resources);
+	(*env)->DeleteLocalRef (env, activity_cls);
+	(*env)->DeleteLocalRef (env, activity);
+	return sw >= 600;
 }
 
 void
-ollmapp_android_set_streaming_foreground (GtkWindow *window, gboolean enable)
+ollmapp_android_lock_landscape (GtkWindow *window)
 {
-	(void) window;
-	(void) enable;
-}
+	GdkSurface *surface;
+	jobject activity;
+	JNIEnv *env;
+	jclass activity_cls;
+	jmethodID set_mid;
 
-#endif
+	surface = gtk_native_get_surface (GTK_NATIVE (window));
+	if (surface == NULL || !GDK_IS_ANDROID_TOPLEVEL (surface)) {
+		return;
+	}
+	activity = gdk_android_toplevel_get_activity (GDK_ANDROID_TOPLEVEL (surface));
+	if (activity == NULL) {
+		return;
+	}
+	env = ollmapp_android_jni_env ();
+	if (env == NULL) {
+		return;
+	}
+	activity_cls = (*env)->GetObjectClass (env, activity);
+	set_mid = (*env)->GetMethodID (env, activity_cls,
+		"setRequestedOrientation", "(I)V");
+	/* ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE */
+	(*env)->CallVoidMethod (env, activity, set_mid, 6);
+	(*env)->DeleteLocalRef (env, activity_cls);
+	(*env)->DeleteLocalRef (env, activity);
+}

@@ -21,8 +21,8 @@ namespace OLLMapp
 	/**
 	 * Shared chat shell for desktop and Android main windows (ollmapp only).
 	 *
-	 * Coder pane API for liboccoder is {@link OLLMchat.ChatDesktopInterface}
-	 * (desktop window only).
+		 * Coder pane API for liboccoder is {@link OLLMchat.ChatDesktopInterface}
+		 * (desktop and Android windows).
 	 */
 	public interface ChatUserInterface : GLib.Object
 	{

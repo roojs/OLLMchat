@@ -26,7 +26,7 @@ namespace OLLMapp
 	 *
 	 * @since 1.0
 	 */
-	public class OllmchatWindow : Adw.ApplicationWindow, ChatUserInterface
+	public class OllmchatWindow : Adw.ApplicationWindow, ChatUserInterface, OLLMchat.ChatDesktopInterface
 	{
 		public OLLMchat.ApplicationInterface app { get; construct; }
 		public SettingsDialog.MainDialog settings_dialog { get; private set; }
@@ -44,6 +44,75 @@ namespace OLLMapp
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
 		private AndroidBootstrapConnectionAdd? bootstrap_dialog = null;
 		public Gtk.Label startup_status_label;
+		private Adw.ViewStack pane_stack;
+		private bool is_tablet = false;
+		public OLLMfiles.ProjectManager? project_manager { get; private set; default = null; }
+		/**
+		 * UUID key into {@link OLLMchat.Settings.Config2.windows}.
+		 */
+		public string uuid { get; private set; default = ""; }
+
+		public OLLMchat.Settings.Window window_config()
+		{
+			if (this.uuid != "") {
+				return this.app.config.windows.get(this.uuid);
+			}
+			if (this.app.config.windows.size == 0) {
+				this.uuid = GLib.Uuid.string_random();
+				this.app.config.windows.set(
+					this.uuid,
+					new OLLMchat.Settings.Window()
+				);
+				this.app.config.save();
+				return this.app.config.windows.get(this.uuid);
+			}
+			foreach (var entry in this.app.config.windows.entries) {
+				this.uuid = entry.key;
+				return entry.value;
+			}
+			GLib.error("windows map non-empty but no entries");
+		}
+
+		public OLLMchat.Agent.Base? session_agent()
+		{
+			return this.history_manager.session.agent;
+		}
+
+		public GLib.Object above_input_widget()
+		{
+			return this.chat_widget.above_input;
+		}
+
+		public OLLMchat.MessageQueue chat_message_queue()
+		{
+			return this.chat_widget.queue_view.queue;
+		}
+
+		public GLib.Object tab_view()
+		{
+			return this.pane_stack;
+		}
+
+		public void schedule_pane_update(bool visible)
+		{
+			if (this.is_tablet) {
+				this.pane_stack.visible = visible;
+				return;
+			}
+			if (visible) {
+				this.chat_widget.view_stack.visible_child_name = "pane";
+				return;
+			}
+			this.chat_widget.view_stack.visible_child_name = "chat";
+		}
+
+		public void scroll_to_message(int idx)
+		{
+			if (idx < 0) {
+				return;
+			}
+			this.chat_widget.chat_view.scroll_to_idx(idx);
+		}
 
 		public OllmchatWindow(AndroidApplication app)
 		{
@@ -72,6 +141,14 @@ namespace OLLMapp
 					}
 					this.history_manager.tools.get(entry.key).active = entry.value.enabled;
 				}
+			});
+			this.notification.connect((notif) => {
+				if (notif.method != "Alert.show") {
+					return;
+				}
+				var alert = new Adw.AlertDialog("Alert", notif.message);
+				alert.add_response("ok", "OK");
+				alert.choose.begin(this, null);
 			});
 
 			var toolbar_view = new Adw.ToolbarView();
@@ -117,6 +194,10 @@ namespace OLLMapp
 			toolbar_view.add_top_bar(this.header_bar);
 
 			this.chat_container = new Gtk.Box (Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = true,
+			};
+			this.pane_stack = new Adw.ViewStack() {
 				hexpand = true,
 				vexpand = true,
 			};
@@ -339,6 +420,57 @@ namespace OLLMapp
 			this.startup_status_label.label = "Loading models…";
 			yield this.history_manager.connection_models.refresh();
 
+			this.is_tablet = android_is_tablet(this);
+			if (this.is_tablet) {
+				android_lock_landscape(this);
+			}
+
+			this.project_manager = new OLLMfiles.ProjectManager();
+			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
+			if (config.filesd_client.url != "" && config.filesd_client.enabled
+				&& config.filesd_client.approved) {
+				var tls = new OLLMrpc.Transport.Cert() {
+					dir = GLib.Path.build_filename(
+						GLib.Environment.get_user_data_dir(), "ollmchat"),
+					cert_pem = "client.pem",
+					key_pem = "client-key.pem",
+					cn = "ollmchat-device",
+					product_ca_resource = true,
+				};
+				tls.ensure();
+				var http = new OLLMrpc.Transport.HttpClient(config.filesd_client.url) {
+					bin_body = true,
+					tls_certificate = tls.certificate,
+					tls_database = tls.trust
+				};
+				this.project_manager.replace_rpc(
+					new OLLMrpc.Client("", "", config.filesd_client.url) { 
+						http = http 
+					}
+				);
+				var hello = new OLLMrpc.Request() {
+					method = "RPC-Daemon.hello",
+					args = OLLMrpc.args("is", 1, "ollmchat")
+				};
+				if (!yield this.project_manager.rpc.connect(hello)) {
+					var msg = this.project_manager.rpc.connect_error;
+					if (msg == "") {
+						msg = "could not reach the file server";
+					}
+					GLib.warning("%s", msg);
+					this.notification(new OLLMrpc.Notification() {
+						method = "Alert.show",
+						message = "File server: " + msg
+					});
+				}
+			}
+			this.project_manager.notification.connect((notif) => {
+				GLib.Idle.add(() => {
+					this.notification(notif);
+					return false;
+				});
+			});
+
 			this.register_default_agents();
 
 			this.agent_dropdown.wire();
@@ -371,7 +503,7 @@ namespace OLLMapp
 			}
 			this.chat_widget.chat_bar.tool_toggle.connect((tool_name, active) => {
 				if (!active) {
-					this.chat_widget.view_stack.visible_child_name = "chat";
+					this.schedule_pane_update(false);
 					return;
 				}
 				if (!this.history_manager.tools.has_key(tool_name)) {
@@ -382,10 +514,11 @@ namespace OLLMapp
 					return;
 				}
 				var view = (Gtk.Widget) ui.view_widget;
-				if (this.chat_widget.view_stack.get_child_by_name(tool_name) == null) {
-					this.chat_widget.view_stack.add_named(view, tool_name);
+				if (this.pane_stack.get_child_by_name(tool_name) == null) {
+					this.pane_stack.add_named(view, tool_name);
 				}
-				this.chat_widget.view_stack.visible_child_name = tool_name;
+				this.pane_stack.set_visible_child_name(tool_name);
+				this.schedule_pane_update(true);
 			});
 
 			this.history_browser.session_selected.connect((session) => {
@@ -405,7 +538,21 @@ namespace OLLMapp
 			android_set_streaming_foreground(
 				this, this.history_manager.session.is_running);
 
-			this.chat_container.append (this.chat_widget);
+			if (this.is_tablet) {
+				var columns = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+					hexpand = true,
+					vexpand = true,
+				};
+				this.chat_widget.hexpand = true;
+				this.chat_widget.vexpand = true;
+				columns.append(this.chat_widget);
+				this.pane_stack.visible = false;
+				columns.append(this.pane_stack);
+				this.chat_container.append(columns);
+			} else {
+				this.chat_widget.view_stack.add_named(this.pane_stack, "pane");
+				this.chat_container.append(this.chat_widget);
+			}
 			this.view_stack.visible_child_name = "chat";
 
 			GLib.message (
@@ -424,6 +571,12 @@ namespace OLLMapp
 
 	[CCode (cname = "ollmapp_android_set_streaming_foreground", cheader_filename = "android-partial-wake-lock.h")]
 	private extern void android_set_streaming_foreground(Gtk.Window window, bool enable);
+
+	[CCode (cname = "ollmapp_android_is_tablet", cheader_filename = "android-partial-wake-lock.h")]
+	private extern bool android_is_tablet(Gtk.Window window);
+
+	[CCode (cname = "ollmapp_android_lock_landscape", cheader_filename = "android-partial-wake-lock.h")]
+	private extern void android_lock_landscape(Gtk.Window window);
 
 	int main(string[] args)
 	{
