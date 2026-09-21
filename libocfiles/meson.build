@@ -5,6 +5,7 @@
 valac = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
 is_windows = host_machine.system() == 'windows'
+is_android = host_machine.system() == 'android'
 ocfiles_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
@@ -113,6 +114,9 @@ ocfiles_vapi_cmd = [
 ]
 if not is_windows
   ocfiles_vapi_cmd += ['--vapidir', '/usr/share/vala/vapi']
+endif
+if is_android
+  ocfiles_vapi_cmd += ['--vapidir', gee_vapi_dir]
 endif
 ocfiles_vapi = custom_target('ocfiles-vapi',
   output: 'ocfiles.vapi',

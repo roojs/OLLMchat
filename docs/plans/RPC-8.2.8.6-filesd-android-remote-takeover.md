@@ -1,6 +1,6 @@
 # 8.2.8.6 — Remote file connection: Android takeover + tablet shell
 
-**Status:** **PROPOSED** — Phase 1 code proposals; Phase 2–3 still design-only
+**Status:** **PROPOSED** — Phase 1 hunks in tree (`✔️`); Android compile not verified; Phase 2–3 still design-only
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
@@ -62,17 +62,18 @@
 
 ---
 
-## Phase 1 — Real `ProjectManager` + full `liboccoder` (`⏳`)
+## Phase 1 — Real `ProjectManager` + full `liboccoder` (`✔️` tree, Android compile `⏳`)
 
-- **🔷** `⏳` `libocfiles` in the Android `subdir()` list. `ocfiles_vapi_dep` + `--pkg=ocfiles` on `android_poc`.
-- **🔷** `⏳` Drop the `is_android_cross` Skill-only `subdir_done()` in `liboccoder/meson.build`. Build the same `occoder_src` as desktop (GtkSourceView, `SourceView`, factories). No tree-sitter on this cross-build.
-- **🔷** `⏳` Drop / replace the stub in `ollmapp/android/AndroidToolTypes.vala`.
+- **🔷** `✔️` `libocfiles` in the Android `subdir()` list. `ocfiles_vapi_dep` + `--pkg=ocfiles` on `android_poc`.
+- **🔷** `✔️` Drop the `is_android_cross` Skill-only `subdir_done()` in `liboccoder/meson.build`. Build the same `occoder_src` as desktop (GtkSourceView, `SourceView`, factories). No tree-sitter on this cross-build.
+- **🔷** `✔️` Drop / replace the stub in `ollmapp/android/AndroidToolTypes.vala`.
 - **ℹ️** Cross-build already has `sqlite3`, `gmodule-2.0`, `gtksourceview-5`. Tree-sitter is [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md), not a wrap here.
 - **ℹ️** `FileConnectionRow` / `ConnectionsPage.render_approved` still need `win.project_manager`, `win.notification`, `win.window_config()` — those are Phase 2. Do not `#if ANDROID` the row.
-- **💩** Skip `vala_gir` on the Android `occoder` `library()` (same as `libollmchat` / `libollmchatgtk`).
-- **💩** `gee_vapi_dir` on Android `ocfiles` / `occoder` VAPI `custom_target`s (same as `libocrpc`).
-- **💩** `--define=ANDROID` on the `occoder` VAPI `custom_target` (`ReviewBar` is `#if !ANDROID`; that valac does not inherit project args).
-- **💩** `--pkg=ocrpc` + its vapidir on `android_poc` (desktop `ollmchat` already does; `ocfiles.vapi` names `OLLMrpc`).
+- **💩** `✔️` Skip `vala_gir` on the Android `occoder` `library()` (same as `libollmchat` / `libollmchatgtk`).
+- **💩** `✔️` `gee_vapi_dir` on Android `ocfiles` / `occoder` VAPI `custom_target`s (same as `libocrpc`).
+- **💩** `✔️` `--define=ANDROID` on the `occoder` VAPI `custom_target` (`ReviewBar` is `#if !ANDROID`; that valac does not inherit project args).
+- **💩** `✔️` `--pkg=ocrpc` + its vapidir on `android_poc` (desktop `ollmchat` already does; `ocfiles.vapi` names `OLLMrpc`).
+- **⏳** Android `android_poc` compile not reached: Pixiewood meson reconfigure failed on wrap-pin skew (stale `subprojects/glib` 2.84 vs wrap 2.90, then pango `harfbuzz` 8.4 vs `>= 11`). Desktop `ninja -C build` succeeded.
 
 Edits are **Remove** / **Replace with** / **Add** from the tree;
 verify surrounding context before applying.
@@ -407,7 +408,7 @@ Delete the leftover license header with the file.
 ## Suggested order
 
 1. **✔️** [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) — client `Tree` off `libocfiles`
-2. **⏳** Phase 1 — `libocfiles` (no tree-sitter) + full `liboccoder` + real `ProjectManager`
+2. **✔️** Phase 1 — `libocfiles` (no tree-sitter) + full `liboccoder` + real `ProjectManager` (Android meson reconfigure still `⏳`)
 3. **⏳** Phase 2 — HTTPS `replace_rpc` + window APIs `FileConnectionRow` already calls
 4. **⏳** Phase 3 — `ChatDesktopInterface` + phone stack / tablet landscape columns (browser now, editor host ready)
 
