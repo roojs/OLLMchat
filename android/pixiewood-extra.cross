@@ -1,3 +1,8 @@
+[binaries]
+# Host glib-mkenums 2.84 does not parse G_GNUC_FLAG_ENUM (GLib 2.86+).
+# Use the wrap's 2.90 script so libadwaita does not need a source patch.
+glib-mkenums = ['python3', '../subprojects/glib/gobject/glib-mkenums.in']
+
 [json-glib:project options]
 introspection = 'disabled'
 documentation = 'disabled'

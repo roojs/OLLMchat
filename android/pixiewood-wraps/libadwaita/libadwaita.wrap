@@ -5,10 +5,6 @@ url=https://gitlab.gnome.org/GNOME/libadwaita.git
 # Matches Android glib.wrap 2.90.0 after GTK android-ime rebase.
 revision=c9ab118612eee92324143783c4641c98eaded3f0
 depth=1
-# Host glib-mkenums 2.84 does not parse G_GNUC_FLAG_ENUM on the enum
-# typedef name (GLib 2.86+). Without this, ADW_TYPE_TAB_VIEW_SHORTCUTS
-# is omitted and adw-tab-view.c fails to compile.
-diff_files=libadwaita/mkenums-flag-enum.patch
 
 [provide]
 libadwaita-1=liblibadwaita_dep
