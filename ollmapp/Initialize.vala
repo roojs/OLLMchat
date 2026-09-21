@@ -68,7 +68,7 @@ namespace OLLMapp
 				var working_conn = config.working_connection();
 				if (working_conn == null) {
 					if (this.window.busy_dialog != null) {
-						this.window.busy_dialog.close();
+						this.window.busy_dialog.force_close();
 					}
 					yield this.show_settings(
 						"No working connection found. Please check your connection settings.",
@@ -83,7 +83,7 @@ namespace OLLMapp
 				// Found a working connection - now ensure default model is set before creating history manager
 				if (!(yield this.initialize_model(config, working_conn))) {
 					if (this.window.busy_dialog != null) {
-						this.window.busy_dialog.close();
+						this.window.busy_dialog.force_close();
 					}
 					yield this.show_settings(
 						"No chat model found (only embedding models available). Please add or select a model.",
@@ -95,16 +95,7 @@ namespace OLLMapp
 					this.window.busy_dialog.status_label.label =
 						"Checking tool models…";
 				}
-				// Ensure all required models are available (early return on failure)
-				if (!(yield this.ensure_required_models(config))) {
-					if (this.window.busy_dialog != null) {
-						this.window.busy_dialog.close();
-					}
-					yield this.show_settings(
-						"Required models are not available. Please ensure models are downloaded.",
-						"tools");
-					return false;
-				}
+				yield this.ensure_required_models(config);
 				
 				this.window.history_manager = new OLLMchat.History.Manager(this.window.app);
 				this.window.history_manager.notification.connect((notif) => {
@@ -128,7 +119,7 @@ namespace OLLMapp
 						e.message);
 					if (!(yield this.initialize_model(config, working_conn))) {
 						if (this.window.busy_dialog != null) {
-							this.window.busy_dialog.close();
+							this.window.busy_dialog.force_close();
 						}
 						yield this.show_settings(
 							"No chat model found (only embedding models available). Please add or select a model.",
@@ -235,60 +226,15 @@ namespace OLLMapp
 		}
 		
 		/**
-		 * Waits for a model pull to complete (success or failure).
-		 * 
-		 * Connects to PullManager signals and waits until model_complete or model_failed
-		 * is emitted for the specified model.
-		 * 
-		 * @param pull_manager The PullManager instance
-		 * @param model_name The model name to wait for
-		 * @return true if pull succeeded, false if failed
-		 */
-		private async bool wait_for_pull(SettingsDialog.PullManager pull_manager, string model_name)
-		{
-			GLib.SourceFunc callback = wait_for_pull.callback;
-			bool pull_success = false;
-			bool completed = false;
-			
-			// Declare signal IDs before lambdas so they can be captured
-			ulong complete_id = 0;
-			ulong failed_id = 0;
-			
-			complete_id = pull_manager.model_complete.connect((name) => {
-				if (name == model_name && !completed) {
-					completed = true;
-					pull_success = true;
-					pull_manager.disconnect(complete_id);
-					pull_manager.disconnect(failed_id);
-					callback();
-				}
-			});
-			
-			failed_id = pull_manager.model_failed.connect((name) => {
-				if (name == model_name && !completed) {
-					completed = true;
-					pull_success = false;
-					pull_manager.disconnect(complete_id);
-					pull_manager.disconnect(failed_id);
-					callback();
-				}
-			});
-			
-			// Wait for signal
-			yield;
-			
-			return pull_success;
-		}
-		
-		/**
-		 * Checks and ensures all required models are available.
-		 * 
-		 * Iterates through all tool configs that implement RequiresModelsInterface interface,
-		 * collects required models via required_models() method, verifies they're available,
-		 * and auto-pulls them if missing. Shows progress in settings dialog.
-		 * 
+		 * Checks required tool models and notifies if any are missing.
+		 *
+		 * Iterates through all tool configs that implement
+		 * RequiresModelsInterface, collects required models via
+		 * required_models(), and verifies they are on the server.
+		 * Missing models emit a Banner.show notification; init continues.
+		 *
 		 * @param config The Config2 instance
-		 * @return true if all required models are available, false if user cancelled
+		 * @return always true after the check
 		 */
 		private async bool ensure_required_models(OLLMchat.Settings.Config2 config) throws GLib.Error
 		{
@@ -308,49 +254,19 @@ namespace OLLMapp
 				return true;  // No required models
 			}
 			
-			// Check each required model
 			foreach (var model_usage in required_models) {
-				// Verify model is available
 				if (yield model_usage.verify_model(config)) {
-					continue;  // Model is available
+					continue;
 				}
-				
-				// Model not available - need to pull it
-				// Show settings dialog if not already shown
-				if (!this.window.settings_dialog.visible) {
-					if (this.window.busy_dialog != null) {
-						this.window.busy_dialog.close();
-					}
-					this.window.settings_dialog.show_dialog.begin("tools");
-				}
-				
-				// Get connection (early return on failure)
-				if (!config.connections.has_key(model_usage.connection)) {
-					GLib.warning("Connection not found for model: %s", model_usage.model);
-					return false;
-				}
-				var connection = config.connections.get(model_usage.connection);
-				
-				// Start background pull operation
-				if (!this.window.settings_dialog.pull_manager.start_pull(model_usage.model, connection)) {
-					// Pull already in progress - wait for it to complete
-					GLib.debug("Pull already in progress for model: %s", model_usage.model);
-				}
-				
-				// Wait for pull to complete (early return on failure)
-				if (!(yield this.wait_for_pull(this.window.settings_dialog.pull_manager, model_usage.model))) {
-					GLib.warning("Model pull failed: %s", model_usage.model);
-					return false;
-				}
-				
-				// Verify model is now available (early return on failure)
-				if (!(yield model_usage.verify_model(config))) {
-					GLib.warning("Model %s still not available after pull", model_usage.model);
-					return false;
-				}
+				this.window.notification(new OLLMrpc.Notification() {
+					method = "Banner.show",
+					message = "Required tool model not available: "
+						+ model_usage.model
+						+ ". Update the tool model in Settings."
+				});
 			}
 			
-			return true;  // All required models are available
+			return true;
 		}
 		
 		/**

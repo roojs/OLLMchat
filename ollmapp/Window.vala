@@ -236,6 +236,9 @@ namespace OLLMapp
 					return;
 				}
 				this.banner_queue.add(notif.message);
+				if (this.busy_dialog != null && this.busy_dialog.visible) {
+					return;
+				}
 				if (this.tool_error_banner.revealed) {
 					return;
 				}
@@ -537,7 +540,11 @@ namespace OLLMapp
 			};
 			if (!yield this.project_manager.rpc.connect(hello, new OLLMrpc.ClientBoot())) {
 				if (this.busy_dialog != null) {
-					this.busy_dialog.close();
+					this.busy_dialog.force_close();
+				}
+				if (this.banner_queue.size > 0 && !this.tool_error_banner.revealed) {
+					this.tool_error_banner.title = this.banner_queue.get(0);
+					this.tool_error_banner.revealed = true;
 				}
 				var msg = this.project_manager.rpc.connect_error;
 				if (msg == "") {
@@ -690,7 +697,11 @@ namespace OLLMapp
 			this.new_chat_button.sensitive = true;
 
 			if (this.busy_dialog != null) {
-				this.busy_dialog.close();
+				this.busy_dialog.force_close();
+			}
+			if (this.banner_queue.size > 0 && !this.tool_error_banner.revealed) {
+				this.tool_error_banner.title = this.banner_queue.get(0);
+				this.tool_error_banner.revealed = true;
 			}
 			
 			// Create history browser and add to split view sidebar
