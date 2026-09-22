@@ -482,6 +482,7 @@ maybe_download_meson_subprojects() {
      [ -f "$(gtk_subproject_patch_marker)" ] &&
      gtk_subproject_is_complete &&
      pango_checkout_matches_pin &&
+     harfbuzz_checkout_matches_pin &&
      libadwaita_checkout_matches_pin &&
      ! glib_stack_wrap_git_is_floating; then
     echo "Skipping Meson subprojects download (restored from cache)."
@@ -489,7 +490,7 @@ maybe_download_meson_subprojects() {
   fi
 
   if [ "${PIXIEWOOD_SKIP_SUBPROJECTS_DOWNLOAD:-}" = "1" ]; then
-    echo "Subprojects cache needs GTK bootstrap, patch, pinned pango, or floating wrap-git refresh." >&2
+    echo "Subprojects cache needs GTK bootstrap, patch, pinned pango/harfbuzz, or floating wrap-git refresh." >&2
   fi
 
   echo "Downloading Meson subprojects for Android wraps."

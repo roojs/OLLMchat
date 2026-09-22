@@ -159,6 +159,19 @@ pango_checkout_matches_pin() {
   [ "$actual" = "$pin" ]
 }
 
+harfbuzz_pin_revision() {
+  wrap_file_revision "$ROOT_DIR/android/pixiewood-wraps/gtk/harfbuzz.wrap.pin"
+}
+
+harfbuzz_checkout_matches_pin() {
+  local pin actual
+  pin="$(harfbuzz_pin_revision)"
+  [ -n "$pin" ] || return 1
+  [ -d "$ROOT_DIR/subprojects/harfbuzz/.git" ] || return 1
+  actual="$(git -C "$ROOT_DIR/subprojects/harfbuzz" rev-parse HEAD 2>/dev/null || true)"
+  [ "$actual" = "$pin" ]
+}
+
 libadwaita_checkout_matches_pin() {
   local wrap rev actual
   wrap="$ROOT_DIR/android/pixiewood-wraps/libadwaita/libadwaita.wrap"

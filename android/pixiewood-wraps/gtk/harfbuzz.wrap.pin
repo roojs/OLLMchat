@@ -1,0 +1,13 @@
+[wrap-git]
+directory = harfbuzz
+url = https://github.com/harfbuzz/harfbuzz.git
+push-url = git@github.com:harfbuzz/harfbuzz.git
+# GTK nested wrap uses tag 14.4.0. Pin the peeled commit so
+# discard_git_checkout_unless_revision can match HEAD. Pango 1.58.2
+# needs harfbuzz >= 11.0.0; a restored 8.4.0 checkout breaks configure.
+revision = 36cb489cb02ce4b92099669ba9f9bea348eff93f
+depth = 1
+
+[provide]
+harfbuzz = libharfbuzz_dep
+harfbuzz-subset = libharfbuzz_subset_dep
