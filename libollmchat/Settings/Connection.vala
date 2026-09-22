@@ -242,6 +242,41 @@ namespace OLLMchat.Settings
 		}
 
 		/**
+		 * Retry listing models with ''/api'' appended to {@link url}.
+		 *
+		 * Used when OpenAI ''/v1/models'' works but native Ollama
+		 * endpoints need the ''/api'' prefix. No-op when {@link url}
+		 * already ends with ''/api''. Restores the previous URL if
+		 * the retry fails.
+		 *
+		 * @return true when ''/api'' listed models
+		 */
+		public async bool try_api()
+		{
+			if (this.url.has_suffix("/api") || this.url.has_suffix("/api/")) {
+				return false;
+			}
+			var prev = this.url;
+			var prev_native = this.ollama_native;
+			var api_host = this.url;
+			if (api_host.has_suffix("/")) {
+				api_host = api_host.substring(0, api_host.length - 1);
+			}
+			this.url = api_host + "/api";
+			this.ollama_native = -1;
+			try {
+				var models_call = new OLLMchat.Call.Models(this);
+				var models = yield models_call.exec_models();
+				GLib.debug("Connection verified, found %d models", models.size);
+				return true;
+			} catch (Error e) {
+				this.url = prev;
+				this.ollama_native = prev_native;
+				return false;
+			}
+		}
+
+		/**
 		 * Loads all available models from the server and stores them in models.
 		 *
 		 * Fetches the list of models, then gets detailed information for each model

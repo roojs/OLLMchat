@@ -40,7 +40,7 @@ namespace OLLMapp.SettingsDialog
 		/**
 		 * The connection URL (used to identify this row)
 		 */
-		public string url { get; construct; }
+		public string url { get; construct set; }
 
 		/**
 		 * The expander row containing all connection fields
@@ -233,7 +233,18 @@ namespace OLLMapp.SettingsDialog
 		public void apply_config(OLLMchat.Settings.Connection connection)
 		{
 			connection.name = this.nameEntry.text.strip();
-			connection.url = this.urlEntry.text.strip();
+			var url = this.urlEntry.text.strip();
+			if (!url.has_prefix("http://") && !url.has_prefix("https://")) {
+				url = "https://" + url;
+			}
+			var prefix = url;
+			if (prefix.has_suffix("/")) {
+				prefix = prefix.substring(0, prefix.length - 1);
+			}
+			if (connection.url == prefix + "/api" || connection.url == prefix + "/api/") {
+				url = connection.url;
+			}
+			connection.url = url;
 			connection.api_key = this.apiKeyEntry.text.strip();
 			connection.is_default = this.defaultSwitch.active;
 		}

@@ -226,6 +226,14 @@ namespace OLLMrpc.Transport
 						GLib.warning("tls handshake failed: %s", e.message);
 						return;
 					}
+					GLib.debug("tls handshake peer cert %s",
+						tls.peer_certificate != null ? "present" : "missing");
+					if (tls.peer_certificate != null) {
+						connection.socket.set_data("ollmrpc-peer-cert", tls.peer_certificate);
+						if (remote != null) {
+							remote.set_data("ollmrpc-peer-cert", tls.peer_certificate);
+						}
+					}
 					try {
 						this.soup.accept_iostream(tls, local, remote);
 					} catch (GLib.Error e) {
@@ -295,12 +303,21 @@ namespace OLLMrpc.Transport
 			var reply = new HttpReply(this.soup, msg, new Session()) {
 				live_handles = this.live_handles
 			};
-			var peer = msg.get_data<GLib.TlsCertificate>("ollmrpc-peer-cert");
+			var peer = msg.get_tls_peer_certificate();
+			if (peer == null) {
+				peer = msg.get_data<GLib.TlsCertificate>("ollmrpc-peer-cert");
+			}
+			if (peer == null && msg.get_socket() != null) {
+				peer = msg.get_socket().get_data<GLib.TlsCertificate>("ollmrpc-peer-cert");
+			}
+			if (peer == null && msg.get_remote_address() != null) {
+				peer = msg.get_remote_address().get_data<GLib.TlsCertificate>("ollmrpc-peer-cert");
+			}
 			if (peer != null) {
 				var der = peer.certificate;
-				reply.cert_fingerprint = GLib.Checksum.compute_for_data(
-					GLib.ChecksumType.SHA256, der.data);
+				reply.cert_fingerprint = GLib.Checksum.compute_for_data(GLib.ChecksumType.SHA256, der.data);
 			}
+			GLib.debug("route peer fingerprint %s",	reply.cert_fingerprint != "" ? "set" : "empty");
 			if (reply.client_ip == "") {
 				var remote = msg.get_remote_address() as GLib.InetSocketAddress;
 				if (remote != null) {
@@ -423,8 +440,7 @@ namespace OLLMrpc.Transport
 			if (client_seq_hdr != null && client_seq_hdr != "") {
 				if (!int64.try_parse(client_seq_hdr, out client_seq)) {
 					msg.set_status(409, null);
-					msg.set_response("text/plain", Soup.MemoryUse.COPY,
-						"sequence mismatch".data);
+					msg.set_response("text/plain", Soup.MemoryUse.COPY,	"sequence mismatch".data);
 					return;
 				}
 			}
@@ -435,8 +451,7 @@ namespace OLLMrpc.Transport
 				|| client_seq > uint.MAX
 				|| (uint) client_seq != session.sequence) {
 				msg.set_status(409, null);
-				msg.set_response("text/plain", Soup.MemoryUse.COPY,
-					"sequence mismatch".data);
+				msg.set_response("text/plain", Soup.MemoryUse.COPY, "sequence mismatch".data);
 				return;
 			}
 			session.sequence++;
@@ -445,14 +460,24 @@ namespace OLLMrpc.Transport
 			};
 			var res_headers = msg.get_response_headers();
 			res_headers.replace("X-rpc-session", session.id);
-			res_headers.replace("X-rpc-sequence",
-				"%u".printf(session.sequence));
-			var peer = msg.get_data<GLib.TlsCertificate>("ollmrpc-peer-cert");
+			res_headers.replace("X-rpc-sequence","%u".printf(session.sequence));
+			var peer = msg.get_tls_peer_certificate();
+			if (peer == null) {
+				peer = msg.get_data<GLib.TlsCertificate>("ollmrpc-peer-cert");
+			}
+			if (peer == null && msg.get_socket() != null) {
+				peer = msg.get_socket().get_data<GLib.TlsCertificate>("ollmrpc-peer-cert");
+			}
+			if (peer == null && msg.get_remote_address() != null) {
+				peer = msg.get_remote_address().get_data<GLib.TlsCertificate>("ollmrpc-peer-cert");
+			}
 			if (peer != null) {
 				var der = peer.certificate;
 				reply.cert_fingerprint = GLib.Checksum.compute_for_data(
 					GLib.ChecksumType.SHA256, der.data);
 			}
+			GLib.debug("rpc peer fingerprint %s",
+				reply.cert_fingerprint != "" ? "set" : "empty");
 			if (reply.client_ip == "") {
 				var remote = msg.get_remote_address() as GLib.InetSocketAddress;
 				if (remote != null) {

@@ -76,7 +76,7 @@ namespace OLLMapp
 			};
 			host_suffix.append(this.host_entry);
 			host_suffix.append(new Gtk.Label(
-				"URL of the Ollama or OpenAI API server"
+				"Host, IP:port, or URL of the Ollama or OpenAI API server"
 			) {
 				wrap = true,
 				wrap_mode = Pango.WrapMode.WORD,
@@ -187,6 +187,10 @@ namespace OLLMapp
 				return;
 			}
 
+			if (!host.has_prefix("http://") && !host.has_prefix("https://")) {
+				host = "https://" + host;
+			}
+
 			this.next_button.sensitive = false;
 			this.spinner.spinning = true;
 			this.spinner.visible = true;
@@ -210,17 +214,40 @@ namespace OLLMapp
 
 				var original_timeout = connection.timeout;
 				connection.timeout = 5;
+				var connect_error = "";
 				try {
 					var models_call = new OLLMchat.Call.Models(connection);
 					var models = yield models_call.exec_models();
-					GLib.debug(
-						"Connection verified, found %d models", models.size
-					);
-				} finally {
-					connection.timeout = original_timeout;
+					GLib.debug("Connection verified, found %d models", models.size);
+				} catch (Error e) {
+					connect_error = e.message;
+				}
+
+				if (connect_error != "") {
+					if (!(yield connection.try_api())) {
+						this.error_occurred("Failed to connect: " + connect_error);
+						return;
+					}
+					connection.name = connection.url;
 				}
 
 				yield connection.detect_ollama();
+
+				if (connection.ollama_native != 1) {
+					var prev_url = connection.url;
+					if (yield connection.try_api()) {
+						yield connection.detect_ollama();
+						if (connection.ollama_native == 1) {
+							connection.name = connection.url;
+						}
+					}
+					if (connection.ollama_native != 1) {
+						connection.url = prev_url;
+						connection.ollama_native = 0;
+					}
+				}
+
+				connection.timeout = original_timeout;
 
 				this.verified_connection = connection;
 				this.force_close();

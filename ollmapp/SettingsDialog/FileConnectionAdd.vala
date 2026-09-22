@@ -48,16 +48,34 @@ namespace OLLMapp.SettingsDialog
 			};
 
 			this.url_entry = new Gtk.Entry() {
-				placeholder_text = "https://host:8443",
+				placeholder_text = "192.168.1.10:8443",
 				width_request = 280,
 				vexpand = false,
 				valign = Gtk.Align.CENTER
 			};
 			var url_row = new Adw.ActionRow() {
-				title = "URL",
-				subtitle = "HTTPS URL of the remote file server"
+				title = "URL"
 			};
+#if ANDROID
+			var url_suffix = new Gtk.Box(Gtk.Orientation.VERTICAL, 4) {
+				halign = Gtk.Align.END
+			};
+			url_suffix.append(this.url_entry);
+			url_suffix.append(new Gtk.Label(
+				"Host:port or HTTPS URL of the remote file server"
+			) {
+				wrap = true,
+				wrap_mode = Pango.WrapMode.WORD,
+				xalign = 1.0f,
+				justify = Gtk.Justification.RIGHT,
+				css_classes = {"dim-label"},
+				max_width_chars = 45
+			});
+			url_row.add_suffix(url_suffix);
+#else
+			url_row.subtitle = "Host:port or HTTPS URL of the remote file server";
 			url_row.add_suffix(this.url_entry);
+#endif
 			this.group.add(url_row);
 
 			page.add(this.group);
@@ -101,9 +119,11 @@ namespace OLLMapp.SettingsDialog
 				this.error_occurred("URL is required");
 				return;
 			}
+			if (url.has_prefix("http://")) {
+				url = "https://" + url.substring("http://".length);
+			}
 			if (!url.has_prefix("https://")) {
-				this.error_occurred("URL must start with https://");
-				return;
+				url = "https://" + url;
 			}
 
 			this.request_button.sensitive = false;
@@ -126,6 +146,7 @@ namespace OLLMapp.SettingsDialog
 			};
 			var os = GLib.Environment.get_os_info("PRETTY_NAME");
 			var requester = (os != null && os != "") ? os : "unknown OS";
+			GLib.debug("file connection request url=%s", url);
 			try {
 				yield http.call(new OLLMrpc.Request() {
 					method = "RPC-ClientCert.request_registration",
@@ -135,7 +156,11 @@ namespace OLLMapp.SettingsDialog
 				this.request_button.sensitive = true;
 				this.spinner.spinning = false;
 				this.spinner.visible = false;
+				GLib.debug("file connection request failed: %s", e.message);
 				this.error_occurred("Request failed: " + e.message);
+				var alert = new Adw.AlertDialog("Request failed", e.message);
+				alert.add_response("ok", "OK");
+				alert.present(this);
 				return;
 			}
 

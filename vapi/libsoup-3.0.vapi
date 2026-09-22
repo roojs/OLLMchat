@@ -522,6 +522,10 @@ namespace Soup {
 		public unowned Soup.MessageHeaders get_response_headers ();
 		public unowned GLib.Socket? get_socket ();
 		public uint get_status ();
+		[Version (since = "3.2")]
+		public unowned GLib.TlsCertificate? get_tls_peer_certificate ();
+		[Version (since = "3.2")]
+		public GLib.TlsCertificateFlags get_tls_peer_certificate_errors ();
 		public unowned GLib.Uri get_uri ();
 		public bool is_options_ping ();
 		public void set_http_version (Soup.HTTPVersion version);

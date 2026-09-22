@@ -86,7 +86,7 @@ namespace OLLMapp.SettingsDialog
 			};
 			host_suffix.append(this.host_entry);
 			host_suffix.append(new Gtk.Label(
-				"URL of the Ollama or OpenAI API server"
+				"Host, IP:port, or URL of the Ollama or OpenAI API server"
 			) {
 				wrap = true,
 				wrap_mode = Pango.WrapMode.WORD,
@@ -207,57 +207,73 @@ namespace OLLMapp.SettingsDialog
 		{
 			var host = this.host_entry.text.strip();
 			var api_key = this.api_key_entry.text.strip();
-			
+
 			if (host == "") {
 				this.error_occurred("Host is required");
 				return;
 			}
 
-			// Lock button and show spinner
+			if (!host.has_prefix("http://") && !host.has_prefix("https://")) {
+				host = "https://" + host;
+			}
+
 			this.next_button.sensitive = false;
 			this.spinner.spinning = true;
 			this.spinner.visible = true;
 
-			try {
-				// Create Connection object
-				var connection = new OLLMchat.Settings.Connection() {
-					name = host, // Default name to URL, user can edit later
-					url = host,
-					api_key = api_key
-				};
+			var connection = new OLLMchat.Settings.Connection() {
+				name = host,
+				url = host,
+				api_key = api_key
+			};
 
 #if ANDROID
-				AndroidConnectionConfigTls.apply_to_connection (connection);
+			AndroidConnectionConfigTls.apply_to_connection(connection);
 #endif
 
-				// Test connection by calling models endpoint directly with short timeout
-				var original_timeout = connection.timeout;
-				connection.timeout = 5;  // 5 seconds - connection check should be quick
-				try {
-					var models_call = new OLLMchat.Call.Models(connection);
-					var models = yield models_call.exec_models();
-					GLib.debug("Connection verified, found %d models", models.size);
-				} finally {
-					connection.timeout = original_timeout;
-				}
-
-				yield connection.detect_ollama();
-
-				// Store verified connection
-				this.verified_connection = connection;
-
-				// Close dialog (will emit closed signal which triggers dialog_closed)
-				this.force_close();
-
+			var original_timeout = connection.timeout;
+			connection.timeout = 5;
+			var connect_error = "";
+			try {
+				var models_call = new OLLMchat.Call.Models(connection);
+				var models = yield models_call.exec_models();
+				GLib.debug("Connection verified, found %d models", models.size);
 			} catch (Error e) {
-				// Unlock button and hide spinner
-				this.next_button.sensitive = true;
-				this.spinner.spinning = false;
-				this.spinner.visible = false;
-
-				// Show error
-				this.error_occurred("Failed to connect: " + e.message);
+				connect_error = e.message;
 			}
+
+			if (connect_error != "") {
+				if (!(yield connection.try_api())) {
+					connection.timeout = original_timeout;
+					this.next_button.sensitive = true;
+					this.spinner.spinning = false;
+					this.spinner.visible = false;
+					this.error_occurred("Failed to connect: " + connect_error);
+					return;
+				}
+				connection.name = connection.url;
+			}
+
+			yield connection.detect_ollama();
+
+			if (connection.ollama_native != 1) {
+				var prev_url = connection.url;
+				if (yield connection.try_api()) {
+					yield connection.detect_ollama();
+					if (connection.ollama_native == 1) {
+						connection.name = connection.url;
+					}
+				}
+				if (connection.ollama_native != 1) {
+					connection.url = prev_url;
+					connection.ollama_native = 0;
+				}
+			}
+
+			connection.timeout = original_timeout;
+
+			this.verified_connection = connection;
+			this.force_close();
 		}
 	}
 }

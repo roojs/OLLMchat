@@ -34,6 +34,36 @@ namespace OLLMrpc.Transport
 	 */
 	public class HttpClient : GLib.Object
 	{
+		private class CertAsk : GLib.TlsInteraction
+		{
+			public GLib.TlsCertificate certificate { get; construct; }
+
+			public CertAsk(GLib.TlsCertificate certificate)
+			{
+				Object(certificate: certificate);
+			}
+
+			public override GLib.TlsInteractionResult request_certificate(
+				GLib.TlsConnection connection,
+				GLib.TlsCertificateRequestFlags flags,
+				GLib.Cancellable? cancellable
+			) throws GLib.Error
+			{
+				connection.set_certificate(this.certificate);
+				return GLib.TlsInteractionResult.HANDLED;
+			}
+
+			public override async GLib.TlsInteractionResult request_certificate_async(
+				GLib.TlsConnection connection,
+				GLib.TlsCertificateRequestFlags flags,
+				GLib.Cancellable? cancellable
+			) throws GLib.Error
+			{
+				connection.set_certificate(this.certificate);
+				return GLib.TlsInteractionResult.HANDLED;
+			}
+		}
+
 		/** Base origin (no path), e.g. [[http://127.0.0.1:8080]]. */
 		public string base_url { get; construct; }
 
@@ -103,13 +133,21 @@ namespace OLLMrpc.Transport
 		 */
 		public async Response call(Request request) throws GLib.Error
 		{
-			if (this.tls_database != null) {
-				this.soup.set_tls_database(this.tls_database);
-			}
 			var url = this.base_url + this.rpc_path;
 			var message = new Soup.Message("POST", url);
 			if (this.tls_certificate != null) {
+				this.soup.tls_interaction = new CertAsk(this.tls_certificate);
 				message.set_tls_client_certificate(this.tls_certificate);
+				message.request_certificate.connect((tls_connection) => {
+					tls_connection.set_certificate(this.tls_certificate);
+					return true;
+				});
+			}
+			if (this.tls_database != null) {
+				this.soup.set_tls_database(this.tls_database);
+				message.accept_certificate.connect((peer_cert, errors) => {
+					return (errors & ~GLib.TlsCertificateFlags.BAD_IDENTITY) == 0;
+				});
 			}
 			var req_headers = message.get_request_headers();
 			if (this.session_id != "") {

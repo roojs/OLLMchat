@@ -114,6 +114,14 @@ namespace OLLMapp.SettingsDialog
 			this.add_file_dialog.dialog_closed.connect(() => {
 				this.render_file_connection();
 			});
+			this.add_file_dialog.error_occurred.connect((error_message) => {
+				this.toast_overlay.add_toast(new Adw.Toast(error_message) {
+					timeout = 5
+				});
+				var alert = new Adw.AlertDialog("Could not connect", error_message);
+				alert.add_response("ok", "OK");
+				alert.present(this.dialog);
+			});
 
 			// Initial render of connections
 #if !ANDROID && !G_OS_WIN32
@@ -167,52 +175,77 @@ namespace OLLMapp.SettingsDialog
 				return;
 			}
 
-			// Create Connection object with current values
 			var newName = row.nameEntry.text.strip();
 			var test_connection = new OLLMchat.Settings.Connection() {
 				name = newName != "" ? newName : newUrl,
 				url = newUrl
 			};
 			row.apply_config(test_connection);
+			if (!test_connection.url.has_prefix("http://") && !test_connection.url.has_prefix("https://")) {
+				test_connection.url = "https://" + test_connection.url;
+			}
+			newUrl = test_connection.url;
+#if ANDROID
+			AndroidConnectionConfigTls.apply_to_connection(test_connection);
+#endif
 
-			// Validate connection by testing it
-		try {
-			// Test connection by calling models endpoint directly with short timeout
 			var original_timeout = test_connection.timeout;
-			test_connection.timeout = 5;  // 5 seconds - connection check should be quick
+			test_connection.timeout = 5;
+			var connect_error = "";
 			try {
 				var models_call = new OLLMchat.Call.Models(test_connection);
 				var models = yield models_call.exec_models();
 				GLib.debug("Connection verified, found %d models", models.size);
-			} finally {
-				test_connection.timeout = original_timeout;
-			}
 			} catch (Error e) {
-				// Show error message
-				GLib.warning("Failed to verify connection: " + e.message);
-				return;
+				connect_error = e.message;
 			}
 
-			// Update connection in config
-			// If URL changed, remove old entry and add new one
+			if (connect_error != "") {
+				if (!(yield test_connection.try_api())) {
+					test_connection.timeout = original_timeout;
+					GLib.warning("Failed to verify connection: " + connect_error);
+					return;
+				}
+				if (newName == "") {
+					test_connection.name = test_connection.url;
+				}
+			}
+
+			yield test_connection.detect_ollama();
+
+			if (test_connection.ollama_native != 1) {
+				var prev_url = test_connection.url;
+				if (yield test_connection.try_api()) {
+					yield test_connection.detect_ollama();
+					if (test_connection.ollama_native == 1 && newName == "") {
+						test_connection.name = test_connection.url;
+					}
+				}
+				if (test_connection.ollama_native != 1) {
+					test_connection.url = prev_url;
+					test_connection.ollama_native = 0;
+				}
+			}
+
+			test_connection.timeout = original_timeout;
+			newUrl = test_connection.url;
+			row.nameEntry.grab_focus();
+			row.urlEntry.text = newUrl;
+			row.url = newUrl;
+
 			if (newUrl != url) {
 				this.dialog.app.config.connections.unset(url);
 				this.dialog.app.config.connections.set(newUrl, test_connection);
-				// Update tracking map
 				this.rows.set(newUrl, row);
 				this.rows.unset(url);
-			} else {
+			}
+			if (newUrl == url) {
 				this.dialog.app.config.connections.set(url, test_connection);
 			}
 
-			// Update expander row title/subtitle
 			row.expander.title = test_connection.name;
 			row.expander.subtitle = newUrl;
-
-			// Remove unverified CSS class from all fields
 			row.clearUnverified();
-
-			// Save config
 			this.dialog.app.config.save();
 		}
 
@@ -235,7 +268,7 @@ namespace OLLMapp.SettingsDialog
 
 		public void render_connections()
 		{
-			bool can_remove = this.dialog.app.config.connections.size > 1;
+			var can_remove = this.dialog.app.config.connections.size > 1;
 
 			// Find and remove connections that no longer exist in config
 			var urls_to_remove = new Gee.ArrayList<string>();
@@ -378,7 +411,7 @@ namespace OLLMapp.SettingsDialog
 
 			// Update other connections based on the new state
 			this.updating_defaults = true;
-			bool found_first = false;
+			var found_first = false;
 			foreach (var entry in this.dialog.app.config.connections.entries) {
 				if (entry.key == url) {
 					continue;
