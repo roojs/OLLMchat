@@ -19,6 +19,12 @@ ntlm = 'disabled'
 tls_check = false
 sysprof = 'disabled'
 
+[glib:built-in options]
+# GLib 2.90 needs C11 (duplicate typedef in glib-init.c). Pixiewood's
+# unified cross build otherwise leaves glib on gnu99 and NDK clang errors
+# with -Werror=typedef-redefinition.
+c_std = 'gnu11'
+
 [glib-networking:project options]
 default_library = 'static'
 gnutls = 'disabled'
