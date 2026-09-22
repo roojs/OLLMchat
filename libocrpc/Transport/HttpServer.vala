@@ -607,6 +607,9 @@ namespace OLLMrpc.Transport
 				}
 			}
 			request.connection = reply;
+			GLib.debug("rpc method=%s fingerprint %s",
+				request.method,
+				reply.cert_fingerprint != "" ? "set" : "empty");
 			if (!this.allow_rpc(reply, request)) {
 				return;
 			}

@@ -471,12 +471,7 @@ namespace OLLMapp.SettingsDialog
 			}
 			if (insert_after != null) {
 				this.boxed_list.insert_child_after(
-					insert_after, this.file_connection_row.expander);
-				return;
-			}
-			if (this.approved_rows.size > 0) {
-				this.boxed_list.insert_child_after(
-					null, this.file_connection_row.expander);
+					this.file_connection_row.expander, insert_after);
 				return;
 			}
 			this.boxed_list.append(this.file_connection_row.expander);

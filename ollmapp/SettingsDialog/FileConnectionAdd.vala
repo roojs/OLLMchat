@@ -61,9 +61,7 @@ namespace OLLMapp.SettingsDialog
 				halign = Gtk.Align.END
 			};
 			url_suffix.append(this.url_entry);
-			url_suffix.append(new Gtk.Label(
-				"Host:port or HTTPS URL of the remote file server"
-			) {
+			url_suffix.append(new Gtk.Label("Host:port or HTTPS URL of the remote file server") {
 				wrap = true,
 				wrap_mode = Pango.WrapMode.WORD,
 				xalign = 1.0f,
@@ -104,6 +102,7 @@ namespace OLLMapp.SettingsDialog
 				this.request.begin();
 			});
 			this.closed.connect(() => {
+				this.can_close = true;
 				this.url_entry.text = "";
 				this.request_button.sensitive = false;
 				this.spinner.spinning = false;
@@ -129,6 +128,7 @@ namespace OLLMapp.SettingsDialog
 			this.request_button.sensitive = false;
 			this.spinner.spinning = true;
 			this.spinner.visible = true;
+			this.can_close = false;
 
 			var tls = new OLLMrpc.Transport.Cert() {
 				dir = GLib.Path.build_filename(
@@ -140,30 +140,56 @@ namespace OLLMapp.SettingsDialog
 			};
 			tls.ensure();
 			var http = new OLLMrpc.Transport.HttpClient(url) {
-				bin_body = true,
 				tls_certificate = tls.certificate,
 				tls_database = tls.trust
 			};
 			var os = GLib.Environment.get_os_info("PRETTY_NAME");
 			var requester = (os != null && os != "") ? os : "unknown OS";
 			GLib.debug("file connection request url=%s", url);
+			var finished = false;
+			var timeout_id = GLib.Timeout.add_seconds(15, () => {
+				if (finished) {
+					return false;
+				}
+				finished = true;
+				this.request_button.sensitive = true;
+				this.spinner.spinning = false;
+				this.spinner.visible = false;
+				this.can_close = true;
+				GLib.debug("file connection request timed out");
+				this.error_occurred("Could not connect: timed out");
+				return false;
+			});
 			try {
 				yield http.call(new OLLMrpc.Request() {
 					method = "RPC-ClientCert.request_registration",
 					args = OLLMrpc.args("s", requester)
 				});
 			} catch (GLib.Error e) {
+				if (finished) {
+					return;
+				}
+				finished = true;
+				if (timeout_id != 0) {
+					GLib.Source.remove(timeout_id);
+				}
 				this.request_button.sensitive = true;
 				this.spinner.spinning = false;
 				this.spinner.visible = false;
+				this.can_close = true;
 				GLib.debug("file connection request failed: %s", e.message);
-				this.error_occurred("Request failed: " + e.message);
-				var alert = new Adw.AlertDialog("Request failed", e.message);
-				alert.add_response("ok", "OK");
-				alert.present(this);
+				this.error_occurred("Could not connect: " + e.message);
 				return;
 			}
-
+			if (finished) {
+				return;
+			}
+			finished = true;
+			if (timeout_id != 0) {
+				GLib.Source.remove(timeout_id);
+			}
+			this.can_close = true;
+			GLib.debug("file connection request ok");
 			this.config.filesd_client.url = url;
 			this.config.filesd_client.approved = false;
 			this.config.filesd_client.enabled = true;
