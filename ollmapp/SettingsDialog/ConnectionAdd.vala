@@ -189,8 +189,8 @@ namespace OLLMapp.SettingsDialog
 		public void show_add()
 		{
 			this.verified_connection = null;
-			this.title = "Add Connection";
-			this.group.title = "Add Connection";
+			this.title = "Add LLM connection";
+			this.group.title = "Add LLM connection";
 			this.group.description = "Add a new server connection. Enter the URL and optional API key for your Ollama or OpenAI server.";
 			this.host_entry.text = "";
 			this.api_key_entry.text = "";

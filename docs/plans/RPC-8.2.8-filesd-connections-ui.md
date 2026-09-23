@@ -1,6 +1,6 @@
 # 8.2.8 — File-server Connections UI + registration approval
 
-**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 4 **✅** · Phase 5 **✔️** · Phase 6 **✅** · Phase 7 **✔️** · Phase 8 in sub-plan · Phase 9 **✔️** · Phase 10 **⏳**
+**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 4 **✅** · Phase 5 **✔️** · Phase 6 **✅** · Phase 7 **✔️** · Phase 8 skipped for now · Phase 9 **✔️** · Phase 10 **⏳** · Phase 11 **⏳**
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -40,7 +40,8 @@
 | **7** | [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder compile. Precursor [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️** | **✔️** |
 | **8** | [`RPC-8.2.8.7-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux `filesd.socket` LAN TCP + TLS registration | **⏳** |
 | **9** | [`RPC-8.2.8.8-android-phone-tablet-pane.md`](RPC-8.2.8.8-android-phone-tablet-pane.md) — Android `ChatDesktopInterface`, phone stack / tablet landscape columns | **✔️** |
-| **10** | (this file) Android register `AgentPi.Factory` when the remote file connection is live | **⏳** |
+| **10** | [`RPC-8.2.8.9-android-agent-pi.md`](RPC-8.2.8.9-android-agent-pi.md) — Android Agent Pi when the desktop environment is live | **⏳** |
+| **11** | (this file) More than one desktop environment on Android: home, office, online via proxy | **⏳** |
 
 ---
 
@@ -53,9 +54,10 @@
 5. **✔️** Phase 5 — [`8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) (agent-done; awaiting user ✅)
 6. **✅** Phase 6 — [`8.2.8.5`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md)
 7. **✔️** Phase 7 — [`8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) (Android takeover; [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️**)
-8. **⏳** Phase 8 — [`8.2.8.7`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux LAN TCP socket (Windows loopback port is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md))
+8. **⏳** Phase 8 — [`8.2.8.7`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux LAN TCP socket. Skipped for now. Not Phase 7. Windows loopback port is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md)
 9. **✔️** Phase 9 — [`8.2.8.8`](RPC-8.2.8.8-android-phone-tablet-pane.md) — Android phone/tablet `ChatDesktopInterface`
-10. **⏳** Phase 10 — Android `AgentPi.Factory` register when the remote file connection is live (this file; no sub-plan yet)
+10. **⏳** Phase 10 — [`8.2.8.9`](RPC-8.2.8.9-android-agent-pi.md). Phone connection flow is user-closed (2026-09-23). Bottom bar flips browser, editor, and chat. Thinking icon (`weather-fog-symbolic`) cycles on the chat button while the session runs. Still one desktop environment.
+11. **🔷** `⏳` Phase 11 — Android keeps more than one desktop environment. Home (one network), office (another network), and later an online one through the proxy. Not part of Phase 10.
 
 ---
 
@@ -158,11 +160,22 @@
 
 ---
 
-## Phase 10 — Android Agent Pi register (`⏳`)
+## Phase 10 — Android Agent Pi (`⏳`)
 
-- **🔷** `⏳` Register `OLLMcoder.AgentPi.Factory` on Android when the remote file connection is live (`url` + `enabled` + `approved`, after HTTPS hello).
-- **🔷** Linux stays as today (local Unix or remote both keep Agent Pi).
-- **ℹ️** Needs Phase 7 (`ProjectManager` live) and Phase 9 (`ChatDesktopInterface` host). No sub-plan yet.
+**➡️** [`RPC-8.2.8.9-android-agent-pi.md`](RPC-8.2.8.9-android-agent-pi.md) — select Agent Pi when the desktop environment is live. Bottom bar flips browser, editor, and chat.
+
+---
+
+## Phase 11 — Several desktop environments (`⏳`)
+
+- **🔷** The phone is used against more than one machine.
+  - Home, on the home network, already connected there.
+  - Office, on the office network, already connected there.
+  - A third, online, through the proxy. Not built yet.
+- **ℹ️** Today `Config2.filesd_client` is one object (`libollmchat/Settings/FilesdClient.vala`). Empty `url` means none. Android cannot store home and office together.
+- **ℹ️** [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) chose one URL. This phase is the follow-up, after Phase 10.
+- **🔷** `⏳` Which row is live at startup (home vs office vs online) is not decided. Do not invent a picker inside Phase 10.
+- **ℹ️** Phase 8 ([`8.2.8.7`](RPC-8.2.8.7-filesd-tcp-socket-lan.md)) is the skipped Linux LAN TCP socket. Phase 7 is the Android takeover and is already done.
 
 ---
 

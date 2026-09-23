@@ -41,13 +41,13 @@ namespace OLLMapp.SettingsDialog
 
 		public FileConnectionAdd()
 		{
-			this.title = "Add file connection";
+			this.title = "Add desktop environment";
 			this.set_content_height(360);
 			this.set_content_width(720);
 
 			var page = new Adw.PreferencesPage();
 			this.group = new Adw.PreferencesGroup() {
-				description = "Connect to a remote OLLMchat file server over HTTPS. "
+				description = "Connect to a desktop environment over HTTPS. "
 					+ "The desktop must Accept the registration request."
 			};
 
@@ -65,7 +65,7 @@ namespace OLLMapp.SettingsDialog
 				halign = Gtk.Align.END
 			};
 			url_suffix.append(this.url_entry);
-			url_suffix.append(new Gtk.Label("Host:port or HTTPS URL of the remote file server") {
+			url_suffix.append(new Gtk.Label("Host:port or HTTPS URL of the desktop") {
 				wrap = true,
 				wrap_mode = Pango.WrapMode.WORD,
 				xalign = 1.0f,
@@ -75,7 +75,7 @@ namespace OLLMapp.SettingsDialog
 			});
 			url_row.add_suffix(url_suffix);
 #else
-			url_row.subtitle = "Host:port or HTTPS URL of the remote file server";
+			url_row.subtitle = "Host:port or HTTPS URL of the desktop";
 			url_row.add_suffix(this.url_entry);
 #endif
 			this.group.add(url_row);

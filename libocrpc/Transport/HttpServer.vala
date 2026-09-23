@@ -232,6 +232,7 @@ namespace OLLMrpc.Transport
 						connection.socket.set_data("ollmrpc-peer-cert", tls.peer_certificate);
 						if (remote != null) {
 							remote.set_data("ollmrpc-peer-cert", tls.peer_certificate);
+							tls.peer_certificate.set_data("ollmrpc-peer-addr", remote);
 						}
 					}
 					try {
@@ -320,6 +321,9 @@ namespace OLLMrpc.Transport
 			GLib.debug("route peer fingerprint %s",	reply.cert_fingerprint != "" ? "set" : "empty");
 			if (reply.client_ip == "") {
 				var remote = msg.get_remote_address() as GLib.InetSocketAddress;
+				if (remote == null && peer != null) {
+					remote = peer.get_data<GLib.InetSocketAddress>("ollmrpc-peer-addr");
+				}
 				if (remote != null) {
 					reply.client_ip = remote.get_address().to_string();
 				}
@@ -480,10 +484,14 @@ namespace OLLMrpc.Transport
 				reply.cert_fingerprint != "" ? "set" : "empty");
 			if (reply.client_ip == "") {
 				var remote = msg.get_remote_address() as GLib.InetSocketAddress;
+				if (remote == null && peer != null) {
+					remote = peer.get_data<GLib.InetSocketAddress>("ollmrpc-peer-addr");
+				}
 				if (remote != null) {
 					reply.client_ip = remote.get_address().to_string();
 				}
 			}
+			GLib.debug("client ip %s", reply.client_ip != "" ? reply.client_ip : "empty");
 			if (msg.get_method() != "POST") {
 				reply.write(new Response() {
 					error = new OLLMrpc.Error(
@@ -607,8 +615,7 @@ namespace OLLMrpc.Transport
 				}
 			}
 			request.connection = reply;
-			GLib.debug("rpc method=%s fingerprint %s",
-				request.method,
+			GLib.debug("rpc method=%s fingerprint %s", request.method, 
 				reply.cert_fingerprint != "" ? "set" : "empty");
 			if (!this.allow_rpc(reply, request)) {
 				return;

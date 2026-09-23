@@ -94,8 +94,14 @@ if is_windows
   ocrpc_vapi_gen_pkgs += ['--define', 'G_OS_WIN32']
 endif
 
-ocrpc_core_src = files([
-  'namespace.vala',
+# aarch64 passes va_list by value. Android compiles android/namespace.vala
+# so args() can advance the cursor. Desktop keeps namespace.vala.
+namespace_src = files('namespace.vala')
+if is_android
+  namespace_src = files('android/namespace.vala')
+endif
+
+ocrpc_core_src = namespace_src + files([
   'Bin/namespace.vala',
   'Bin/Stream.vala',
   'Bin/StreamValue.vala',

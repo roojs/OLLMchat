@@ -93,8 +93,7 @@ namespace OLLMapp.SettingsDialog
 			Object(url: url);
 
 			this.expander = new Adw.ExpanderRow() {
-				title = connection.name,
-				subtitle = url
+				title = "LLM: " + connection.name
 			};
 
 			// Helper to show verify button when values change
@@ -118,6 +117,9 @@ namespace OLLMapp.SettingsDialog
 				width_chars = 30,
 				valign = Gtk.Align.CENTER
 			};
+			this.nameEntry.changed.connect(() => {
+				this.expander.title = "LLM: " + this.nameEntry.text.strip();
+			});
 
 			this.urlEntry = new Gtk.Entry() {
 				text = connection.url,

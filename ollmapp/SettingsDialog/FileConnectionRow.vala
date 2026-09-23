@@ -27,6 +27,8 @@ namespace OLLMapp.SettingsDialog
 
 		public Adw.ExpanderRow expander { get; private set; }
 		public Gtk.Button check_button { get; private set; }
+		/** Registration row. Hidden once the desktop has approved this device. */
+		private Adw.ActionRow registration_row;
 		/** Enabled switch; live {@link reconnect} when the device is approved. */
 		public Gtk.Switch enabled_switch { get; private set; }
 		/** Status suffix on the Status action row. */
@@ -50,13 +52,13 @@ namespace OLLMapp.SettingsDialog
 			this.client = client;
 			this.win = win;
 			var subtitle = client.approved ? "Active" : "Requested";
-			var title = client.url;
+			var host = client.url;
 			try {
-				title = GLib.Uri.parse(client.url, GLib.UriFlags.NONE).get_host();
+				host = GLib.Uri.parse(client.url, GLib.UriFlags.NONE).get_host();
 			} catch (GLib.UriError e) {
 			}
 			this.expander = new Adw.ExpanderRow() {
-				title = title,
+				title = "Desktop environment: " + host,
 				subtitle = subtitle,
 				can_focus = false,
 				focus_on_click = false
@@ -111,16 +113,17 @@ namespace OLLMapp.SettingsDialog
 			this.expander.add_row(enabled_row);
 
 			this.check_button = new Gtk.Button.with_label("Check") {
-				tooltip_text = "Ask the file server whether the desktop has approved this device"
+				tooltip_text = "Ask the desktop whether it has approved this device"
 			};
 			this.check_button.clicked.connect(() => {
 				this.check.begin();
 			});
-			var check_row = new Adw.ActionRow() {
-				title = "Registration"
+			this.registration_row = new Adw.ActionRow() {
+				title = "Registration",
+				visible = !client.approved
 			};
-			check_row.add_suffix(this.check_button);
-			this.expander.add_row(check_row);
+			this.registration_row.add_suffix(this.check_button);
+			this.expander.add_row(this.registration_row);
 
 			var remove_button = new Gtk.Button.with_label("Remove") {
 				css_classes = {"destructive-action"}
@@ -137,9 +140,8 @@ namespace OLLMapp.SettingsDialog
 		 * Ask the remote file server whether this device is approved.
 		 *
 		 * Sends ''RPC-Daemon.hello'' with the device client certificate.
-		 * On success sets {@link OLLMchat.Settings.FilesdClient.approved}
-		 * and saves config. Does not swap {@link OLLMfiles.ProjectManager}
-		 * RPC (use the Enabled switch or restart to connect live).
+		 * On success sets {@link OLLMchat.Settings.FilesdClient.approved},
+		 * saves config, and connects live when Enabled is already on.
 		 */
 		public async void check()
 		{
@@ -153,6 +155,7 @@ namespace OLLMapp.SettingsDialog
 			};
 			tls.ensure();
 			var http = new OLLMrpc.Transport.HttpClient(this.client.url) {
+				bin_body = true,
 				tls_certificate = tls.certificate,
 				tls_database = tls.trust
 			};
@@ -172,10 +175,14 @@ namespace OLLMapp.SettingsDialog
 			this.win.app.config.save();
 			this.expander.subtitle = "Active";
 			this.status_label.label = "Active";
+			this.registration_row.visible = false;
 			this.check_button.sensitive = true;
+			if (this.client.enabled) {
+				yield this.reconnect(true);
+			}
 			this.win.notification(new OLLMrpc.Notification() {
 				method = "Banner.show",
-				message = "Device approved — turn the connection off and on to connect"
+				message = "Device approved"
 			});
 		}
 

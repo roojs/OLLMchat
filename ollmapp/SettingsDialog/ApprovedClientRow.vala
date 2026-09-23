@@ -59,17 +59,8 @@ namespace OLLMapp.SettingsDialog
 				focus_on_click = false
 			};
 
-			var ip_row = new Adw.ActionRow() {
-				title = "IP"
-			};
-			ip_row.add_suffix(new Gtk.Label(client.ip) {
-				xalign = 1,
-				selectable = true
-			});
-			this.expander.add_row(ip_row);
-
 			var when_row = new Adw.ActionRow() {
-				title = "Accepted"
+				title = "Registered"
 			};
 			var when = new GLib.DateTime.from_unix_local(client.created).format("%Y-%m-%d %H:%M");
 			when_row.add_suffix(new Gtk.Label(when) {

@@ -76,7 +76,7 @@ namespace OLLMapp.SettingsDialog
 			};
 
 			// Create Add Connection button
-			this.add_btn = new Gtk.Button.with_label("Add Connection") {
+			this.add_btn = new Gtk.Button.with_label("Add LLM connection") {
 				css_classes = {"suggested-action"}
 			};
 			this.add_btn.clicked.connect(() => {
@@ -85,7 +85,7 @@ namespace OLLMapp.SettingsDialog
 			});
 			this.action_widget.append(this.add_btn);
 
-			this.add_file_btn = new Gtk.Button.with_label("Add file connection");
+			this.add_file_btn = new Gtk.Button.with_label("Add desktop environment");
 			this.add_file_btn.clicked.connect(() => {
 				this.add_file_dialog.show_add();
 				this.add_file_dialog.present(this.dialog);
@@ -136,7 +136,7 @@ namespace OLLMapp.SettingsDialog
 				this.dialog.app.config.save();
 				this.render_file_connection();
 				this.toast_overlay.add_toast(new Adw.Toast(
-					"Registration pending — accept the request on the desktop file server"
+					"Registration pending — accept the request on the desktop"
 				) {
 					timeout = 5
 				});
@@ -161,7 +161,6 @@ namespace OLLMapp.SettingsDialog
 			this.boxed_list.append(this.file_server_row.expander);
 #endif
 			this.render_connections();
-			this.render_file_connection();
 			this.render_approved.begin();
 		}
 
@@ -247,8 +246,8 @@ namespace OLLMapp.SettingsDialog
 				this.dialog.app.config.connections.set(url, test_connection);
 			}
 
-			row.expander.title = test_connection.name;
-			row.expander.subtitle = newUrl;
+			row.expander.title = "LLM: " + test_connection.name;
+			row.expander.subtitle = "";
 			row.clearUnverified();
 			this.dialog.app.config.save();
 		}
@@ -296,6 +295,7 @@ namespace OLLMapp.SettingsDialog
 				// Update Remove button visibility for existing row
 				this.rows.get(entry.key).removeButton.visible = can_remove;
 			}
+			this.render_file_connection();
 		}
 
 		/**
