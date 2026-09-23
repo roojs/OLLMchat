@@ -116,10 +116,17 @@ namespace OLLMfilesd
 			}
 			GLib.debug("HTTPS listening on %s:%u proxy=%s",	host, this.port, 
 				filesd.proxy ? "true" : "false");
+			var cert_q = ClientCert.query(this.app.project_manager.db);
 			var banned = new Gee.ArrayList<ClientCert>();
-			ClientCert.query(this.app.project_manager.db).select("WHERE status = -1", 
-				banned);
+			var int_binds = new Gee.HashMap<string, int>();
+			int_binds["status"] = -1;
+			cert_q.selectWhere("WHERE status = $status ORDER BY created DESC", int_binds, null, banned);
+			var ban_cutoff = new GLib.DateTime.now_utc().to_unix() - (30 * 24 * 60 * 60);
 			foreach (var row in banned) {
+				if (row.created < ban_cutoff) {
+					cert_q.deleteId(row.id);
+					continue;
+				}
 				if (row.ip != "" && !this.banned_ips.contains(row.ip)) {
 					this.banned_ips.add(row.ip);
 				}
@@ -160,10 +167,13 @@ namespace OLLMfilesd
 				return false;
 			}
 			var rows = new Gee.ArrayList<ClientCert>();
-			ClientCert.query(this.app.project_manager.db).select(
-				"WHERE fingerprint = '%s' AND status = 1".printf(
-					reply.cert_fingerprint.replace("'", "''")),
-				rows);
+			var cert_q = ClientCert.query(this.app.project_manager.db);
+			var int_binds = new Gee.HashMap<string, int>();
+			var text_binds = new Gee.HashMap<string, string>();
+			int_binds["status"] = 1;
+			text_binds["fingerprint"] = reply.cert_fingerprint;
+			cert_q.selectWhere("WHERE fingerprint = $fingerprint AND status = $status",
+				int_binds, text_binds, rows);
 			if (rows.size > 0) {
 				return true;
 			}

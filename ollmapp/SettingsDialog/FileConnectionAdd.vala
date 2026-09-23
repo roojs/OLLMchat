@@ -170,7 +170,6 @@ namespace OLLMapp.SettingsDialog
 				this.request_button.sensitive = true;
 				this.spinner.spinning = false;
 				this.spinner.visible = false;
-				this.can_close = true;
 				GLib.debug("file connection request timed out");
 				this.error_occurred("Could not connect: timed out");
 				return false;
@@ -191,7 +190,6 @@ namespace OLLMapp.SettingsDialog
 				this.request_button.sensitive = true;
 				this.spinner.spinning = false;
 				this.spinner.visible = false;
-				this.can_close = true;
 				GLib.debug("file connection request failed: %s", e.message);
 				this.error_occurred("Could not connect: " + e.message);
 				return;

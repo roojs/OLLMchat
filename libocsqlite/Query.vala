@@ -546,6 +546,71 @@ namespace SQ {
 			this.selectQuery(q, ret);
 			
 		}
+
+		/**
+		 * Selects rows with a WHERE clause and named ''$param'' bindings.
+		 *
+		 * Builds ''SELECT … FROM table WHERE …'' like {@link select}, prepares
+		 * the statement, binds ''$key'' from ''int_binds'' / ''text_binds'', then
+		 * {@link selectExecute}. Use this instead of hand-rolled
+		 * ''selectPrepare'' + ''bind_parameter_index'' at each call site.
+		 *
+		 * @param where WHERE clause and optional ORDER BY / LIMIT (e.g.
+		 * ''WHERE status = $status AND ip = $ip'')
+		 * @param int_binds map keys without ''$'' (bound as INT64 via cast)
+		 * @param text_binds map keys without ''$'' (bound as TEXT), or null
+		 * @param ret list to populate
+		 */
+		public void selectWhere(
+			string where,
+			Gee.HashMap<string, int> int_binds,
+			Gee.HashMap<string, string>? text_binds,
+			Gee.ArrayList<T> ret
+		) {
+			assert(this.table != "");
+			var keys = this.getColsExcept(null);
+			var q = "SELECT " + string.joinv(",", keys) + " FROM " + this.table + " " + where;
+			var stmt = this.selectPrepare(q);
+			foreach (var entry in int_binds.entries) {
+				stmt.bind_int64(stmt.bind_parameter_index("$" + entry.key), (int64) entry.value);
+			}
+			if (text_binds != null) {
+				foreach (var entry in text_binds.entries) {
+					stmt.bind_text(stmt.bind_parameter_index("$" + entry.key), entry.value);
+				}
+			}
+			this.selectExecute(stmt, ret);
+		}
+
+		/**
+		 * Deletes rows matching a WHERE clause with named ''$param'' bindings.
+		 *
+		 * @param where WHERE clause (e.g. ''WHERE status = $status AND created < $before'')
+		 * @param int_binds map keys without ''$'' (bound as INT64 via cast)
+		 * @param text_binds map keys without ''$'' (bound as TEXT), or null
+		 */
+		public void deleteWhere(
+			string where,
+			Gee.HashMap<string, int> int_binds,
+			Gee.HashMap<string, string>? text_binds
+		) {
+			assert(this.table != "");
+			var q = "DELETE FROM " + this.table + " " + where;
+			var stmt = this.selectPrepare(q);
+			foreach (var entry in int_binds.entries) {
+				stmt.bind_int64(stmt.bind_parameter_index("$" + entry.key), (int64) entry.value);
+			}
+			if (text_binds != null) {
+				foreach (var entry in text_binds.entries) {
+					stmt.bind_text(stmt.bind_parameter_index("$" + entry.key), entry.value);
+				}
+			}
+			this.db.db_mutex.lock();
+			if (Sqlite.DONE != stmt.step()) {
+				GLib.error("Delete where: %s", this.db.db.errmsg());
+			}
+			this.db.db_mutex.unlock();
+		}
 		
 		/**
 		 * Selects objects from the table matching a WHERE clause asynchronously.

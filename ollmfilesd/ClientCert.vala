@@ -21,7 +21,9 @@ namespace OLLMfilesd
 	/**
 	 * Client TLS certificate row + ''RPC-ClientCert'' handler.
 	 *
-	 * ''status'': ''0'' pending, ''1'' approved, ''-1'' IP ban (flood control).
+	 * ''status'': ''0'' pending, ''1'' approved, ''-1'' IP ban, ''-2'' rejected
+	 * (kept for audit). Three ''-2'' rows from one IP within 30 days auto-bans
+	 * that IP for 30 days (''created'' on ban rows).
 	 * RPC singleton from {@link for_rpc}; plain rows from {@link query} have
 	 * no ''app''.
 	 *
@@ -119,12 +121,18 @@ namespace OLLMfilesd
 			db.db.exec(
 				"ALTER TABLE client_cert ADD COLUMN requester TEXT NOT NULL DEFAULT ''",
 				null, out errmsg);
-			if (Sqlite.OK != db.db.exec(
-				"DELETE FROM client_cert WHERE status = 0 AND created < %lld".printf(
-					new GLib.DateTime.now_utc().to_unix() - (24 * 60 * 60)),
-				null, out errmsg)) {
-				GLib.warning("Failed to prune client_cert: %s", db.db.errmsg());
-			}
+			db.db.exec("DROP TABLE IF EXISTS client_cert_reject", null, out errmsg);
+			var q = ClientCert.query(db);
+			var now = new GLib.DateTime.now_utc().to_unix();
+			var int_binds = new Gee.HashMap<string, int>();
+			int_binds["before"] = (int) (now - (24 * 60 * 60));
+			int_binds["status"] = 0;
+			q.deleteWhere("WHERE status = $status AND created < $before", int_binds, null);
+			int_binds["status"] = -2;
+			int_binds["before"] = (int) (now - (30 * 24 * 60 * 60));
+			q.deleteWhere("WHERE status = $status AND created < $before", int_binds, null);
+			int_binds["status"] = -1;
+			q.deleteWhere("WHERE status = $status AND created < $before", int_binds, null);
 		}
 
 		/**
@@ -152,42 +160,62 @@ namespace OLLMfilesd
 				return;
 			}
 			var db = this.app.project_manager.db;
-			var errmsg = "";
-			db.db.exec(
-				"DELETE FROM client_cert WHERE status = 0 AND created < %lld".printf(
-					new GLib.DateTime.now_utc().to_unix() - (24 * 60 * 60)),
-				null, out errmsg);
+			var q = ClientCert.query(db);
+			var int_binds = new Gee.HashMap<string, int>();
+			var text_binds = new Gee.HashMap<string, string>();
+			int_binds["status"] = 0;
+			int_binds["before"] = (int) (new GLib.DateTime.now_utc().to_unix() - (24 * 60 * 60));
+			q.deleteWhere("WHERE status = $status AND created < $before", int_binds, null);
 			var banned_ip = new Gee.ArrayList<ClientCert>();
-			ClientCert.query(db).select(
-				"WHERE status = -1 AND ip = '%s'".printf(
-					reply.client_ip.replace("'", "''")),
-				banned_ip);
+			int_binds["status"] = -1;
+			text_binds["ip"] = reply.client_ip;
+			q.selectWhere("WHERE status = $status AND ip = $ip", int_binds, text_binds, banned_ip);
 			if (banned_ip.size > 0) {
-				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "IP banned")
-				});
-				return;
+				var ban_cutoff = new GLib.DateTime.now_utc().to_unix() - (30 * 24 * 60 * 60);
+				if (banned_ip.get(0).created < ban_cutoff) {
+					q.deleteId(banned_ip.get(0).id);
+				} else {
+					request.reply(new OLLMrpc.Response() {
+						error = new OLLMrpc.Error(
+							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "IP banned")
+					});
+					return;
+				}
 			}
 			var existing = new Gee.ArrayList<ClientCert>();
-			ClientCert.query(db).select(
-				"WHERE fingerprint = '%s'".printf(
-					reply.cert_fingerprint.replace("'", "''")),
-				existing);
+			int_binds.clear();
+			text_binds.clear();
+			text_binds["fingerprint"] = reply.cert_fingerprint;
+			q.selectWhere("WHERE fingerprint = $fingerprint", int_binds, text_binds, existing);
 			if (existing.size > 0) {
+				var row = existing.get(0);
+				if (row.status != 0) {
+					request.reply(new OLLMrpc.Response() {
+						msg = "ok"
+					});
+					return;
+				}
+				row.created = new GLib.DateTime.now_utc().to_unix();
+				row.requester = requester;
+				q.updateById(row);
+				this.app.broadcast(new OLLMrpc.Notification() {
+					method = "event.client_cert",
+					object_type = "ClientCert",
+					action = "request"
+				});
 				request.reply(new OLLMrpc.Response() {
 					msg = "ok"
 				});
 				return;
 			}
 			var by_ip = new Gee.ArrayList<ClientCert>();
-			ClientCert.query(db).select(
-				"WHERE status = 0 AND ip = '%s'".printf(
-					reply.client_ip.replace("'", "''")),
-				by_ip);
+			int_binds["status"] = 0;
+			text_binds["ip"] = reply.client_ip;
+			q.selectWhere("WHERE status = $status AND ip = $ip", int_binds, text_binds, by_ip);
 			if (by_ip.size >= 3) {
 				request.reply(new OLLMrpc.Response() {
-					error = new OLLMrpc.Error((int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
+					error = new OLLMrpc.Error(
+						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
 						"too many pending registrations for this IP")
 				});
 				return;
@@ -199,7 +227,7 @@ namespace OLLMfilesd
 				created = new GLib.DateTime.now_utc().to_unix(),
 				requester = requester
 			};
-			ClientCert.query(db).insert(row);
+			q.insert(row);
 			this.app.broadcast(new OLLMrpc.Notification() {
 				method = "event.client_cert",
 				object_type = "ClientCert",
@@ -217,9 +245,11 @@ namespace OLLMfilesd
 		 */
 		public void pending_cert(OLLMrpc.Request request)
 		{
+			var q = ClientCert.query(this.app.project_manager.db);
 			var rows = new Gee.ArrayList<ClientCert>();
-			ClientCert.query(this.app.project_manager.db).select(
-				"WHERE status = 0 ORDER BY created DESC LIMIT 1", rows);
+			var int_binds = new Gee.HashMap<string, int>();
+			int_binds["status"] = 0;
+			q.selectWhere("WHERE status = $status ORDER BY created DESC LIMIT 1", int_binds, null, rows);
 			request.reply(new OLLMrpc.Response() {
 				retval = OLLMrpc.val("o", rows.size > 0 ? rows.get(0) : new ClientCert()),
 				msg = "ok"
@@ -233,9 +263,11 @@ namespace OLLMfilesd
 		 */
 		public void approved_certs(OLLMrpc.Request request)
 		{
+			var q = ClientCert.query(this.app.project_manager.db);
 			var rows = new Gee.ArrayList<ClientCert>();
-			ClientCert.query(this.app.project_manager.db).select(
-				"WHERE status = 1 ORDER BY created DESC", rows);
+			var int_binds = new Gee.HashMap<string, int>();
+			int_binds["status"] = 1;
+			q.selectWhere("WHERE status = $status ORDER BY created DESC", int_binds, null, rows);
 			var list = new Gee.ArrayList<GLib.Object>();
 			foreach (var row in rows) {
 				list.add(row);
@@ -257,12 +289,15 @@ namespace OLLMfilesd
 		 */
 		public void client_cert(OLLMrpc.Request request, string action, int64 id)
 		{
-			var db = this.app.project_manager.db;
+			var q = ClientCert.query(this.app.project_manager.db);
+			var int_binds = new Gee.HashMap<string, int>();
+			var text_binds = new Gee.HashMap<string, string>();
 			switch (action) {
 				case "accept":
 					var accept_rows = new Gee.ArrayList<ClientCert>();
-					ClientCert.query(db).select(
-						"WHERE id = %lld AND status = 0".printf(id), accept_rows);
+					int_binds["id"] = (int) id;
+					int_binds["status"] = 0;
+					q.selectWhere("WHERE id = $id AND status = $status", int_binds, null, accept_rows);
 					if (accept_rows.size == 0) {
 						request.reply(new OLLMrpc.Response() {
 							retval = OLLMrpc.val("b", false),
@@ -272,7 +307,7 @@ namespace OLLMfilesd
 					}
 					accept_rows.get(0).status = 1;
 					accept_rows.get(0).ip = "";
-					ClientCert.query(db).updateById(accept_rows.get(0));
+					q.updateById(accept_rows.get(0));
 					request.reply(new OLLMrpc.Response() {
 						retval = OLLMrpc.val("b", true),
 						msg = "ok"
@@ -281,8 +316,9 @@ namespace OLLMfilesd
 
 				case "reject":
 					var reject_rows = new Gee.ArrayList<ClientCert>();
-					ClientCert.query(db).select(
-						"WHERE id = %lld AND status = 0".printf(id), reject_rows);
+					int_binds["id"] = (int) id;
+					int_binds["status"] = 0;
+					q.selectWhere("WHERE id = $id AND status = $status", int_binds, null, reject_rows);
 					if (reject_rows.size == 0) {
 						request.reply(new OLLMrpc.Response() {
 							retval = OLLMrpc.val("b", false),
@@ -290,7 +326,44 @@ namespace OLLMfilesd
 						});
 						return;
 					}
-					ClientCert.query(db).deleteId(id);
+					var rejected = reject_rows.get(0);
+					var reject_now = new GLib.DateTime.now_utc().to_unix();
+					rejected.status = -2;
+					rejected.created = reject_now;
+					q.updateById(rejected);
+					var recent_rejects = new Gee.ArrayList<ClientCert>();
+					text_binds["ip"] = rejected.ip;
+					int_binds["since"] = (int) (reject_now - (30 * 24 * 60 * 60));
+					q.selectWhere("WHERE status = -2 AND ip = $ip AND created > $since",
+						int_binds, text_binds, recent_rejects);
+					if (recent_rejects.size < 3 || rejected.ip == "") {
+						request.reply(new OLLMrpc.Response() {
+							retval = OLLMrpc.val("b", true),
+							msg = "ok"
+						});
+						return;
+					}
+					var auto_ban = new Gee.ArrayList<ClientCert>();
+					int_binds["status"] = -1;
+					q.selectWhere("WHERE status = $status AND ip = $ip", int_binds, text_binds, auto_ban);
+					if (auto_ban.size == 0) {
+						q.insert(new ClientCert() {
+							fingerprint = "ip:" + rejected.ip,
+							status = -1,
+							ip = rejected.ip,
+							created = reject_now
+						});
+					} else {
+						auto_ban.get(0).created = reject_now;
+						auto_ban.get(0).fingerprint = "ip:" + rejected.ip;
+						q.updateById(auto_ban.get(0));
+					}
+					if (this.app.https_listen != null
+						&& !this.app.https_listen.banned_ips.contains(rejected.ip)) {
+						this.app.https_listen.banned_ips.add(rejected.ip);
+					}
+					GLib.debug("auto-banned IP %s after %d rejects in 30 days",
+						rejected.ip, recent_rejects.size);
 					request.reply(new OLLMrpc.Response() {
 						retval = OLLMrpc.val("b", true),
 						msg = "ok"
@@ -299,8 +372,9 @@ namespace OLLMfilesd
 
 				case "ban":
 					var ban_rows = new Gee.ArrayList<ClientCert>();
-					ClientCert.query(db).select(
-						"WHERE id = %lld AND status = 0".printf(id), ban_rows);
+					int_binds["id"] = (int) id;
+					int_binds["status"] = 0;
+					q.selectWhere("WHERE id = $id AND status = $status", int_binds, null, ban_rows);
 					if (ban_rows.size == 0) {
 						request.reply(new OLLMrpc.Response() {
 							retval = OLLMrpc.val("b", false),
@@ -310,7 +384,8 @@ namespace OLLMfilesd
 					}
 					ban_rows.get(0).status = -1;
 					ban_rows.get(0).fingerprint = "ip:" + ban_rows.get(0).ip;
-					ClientCert.query(db).updateById(ban_rows.get(0));
+					ban_rows.get(0).created = new GLib.DateTime.now_utc().to_unix();
+					q.updateById(ban_rows.get(0));
 					if (this.app.https_listen != null && ban_rows.get(0).ip != ""
 						&& !this.app.https_listen.banned_ips.contains(ban_rows.get(0).ip)) {
 						this.app.https_listen.banned_ips.add(ban_rows.get(0).ip);
@@ -323,8 +398,9 @@ namespace OLLMfilesd
 
 				case "remove":
 					var remove_rows = new Gee.ArrayList<ClientCert>();
-					ClientCert.query(db).select(
-						"WHERE id = %lld AND status = 1".printf(id), remove_rows);
+					int_binds["id"] = (int) id;
+					int_binds["status"] = 1;
+					q.selectWhere("WHERE id = $id AND status = $status", int_binds, null, remove_rows);
 					if (remove_rows.size == 0) {
 						request.reply(new OLLMrpc.Response() {
 							retval = OLLMrpc.val("b", false),
@@ -332,7 +408,7 @@ namespace OLLMfilesd
 						});
 						return;
 					}
-					ClientCert.query(db).deleteId(id);
+					q.deleteId(id);
 					request.reply(new OLLMrpc.Response() {
 						retval = OLLMrpc.val("b", true),
 						msg = "ok"

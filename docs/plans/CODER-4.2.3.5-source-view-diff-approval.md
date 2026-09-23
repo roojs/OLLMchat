@@ -1,6 +1,6 @@
 # 4.2.3.5 — SourceView diff Phase 4: block approval flow
 
-**Status:** **✔️** Phase A **agent-done** (mock UI on `oc-test-source-diff`) · awaiting user smoke **✅** · Phase B not started
+**Status:** **✅** Phase A + [`4.2.3.5.1`](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) user-smoked · **⏳** Phase B → [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md)
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
@@ -12,6 +12,8 @@
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
 
+**Next (active):** [`CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md)
+
 ---
 
 ## Overview
@@ -19,7 +21,7 @@
 | Phase | Focus | Where it runs |
 | --- | --- | --- |
 | **A** | Footer bar + hunk map + centre Accept/Reject overlay; **in-memory** decisions | [`oc-test-source-diff`](../../examples/oc-test-source-diff.vala) |
-| **B** | Wire to **`ReviewFiles`**, **`file_diff_part`**, daemon; move changed-files list from header **`Approvals`** | Product `SourceView` / editor |
+| **B** | Wire to **`ReviewFiles`**, **`file_diff_part`**, daemon; move changed-files list from header **`Approvals`** | [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) · product editor |
 
 🔷 **Chosen UI:** footer **overview bar** (not gutter icons, not inline per-hunk toolbars). **One new review-chrome type** in **`liboccoder`** — not more logic in **`SourceView`**. Extra files only if **you** review Phase A and decide to split — not an agent or size heuristic.
 
@@ -312,13 +314,13 @@ meson compile -C build occoder examples/oc-test-source-diff
 - **⏳** **ReviewBar:** in-buffer active-hunk highlight (dim / emphasize changed lines) — **not** SourceView; design + implement in **`ReviewBar.vala`** only when user approves approach.
 - **⏳** Smoke fixes in progress: hunk map visibility, overlay position, bulk menu, file nav hidden when one file, two-pair CLI on **`oc-test-source-diff`**.
 - **⏳** Accept/Reject **diff preview** (rebuild **`show_diff`** after each decision) — **removed** unauthorized **`sync_diff_from_decisions`** / **`load_diff`** helpers; needs **user-named** approach in **`ReviewBar`** before re-adding.
-- **✅** **Programmable review responses** — sub-plan [`CODER-4.2.3.5.1-source-view-diff-review-responses.md`](CODER-4.2.3.5.1-source-view-diff-review-responses.md) (**`responses()`**, **`review_response`**, **Feedback** popover on harness; user-smoked).
+- **✅** **Programmable review responses** — [`done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md`](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md).
 
 ### LLM notes (Phase A)
 
 - **✔️** Phase A Vala landed in **`ReviewBar.vala`** + test harness (Phase B still 🚫).
 - ℹ️ **SourceView boundary:** review hunk tracking / in-text highlight belongs in **ReviewBar** (see **SourceView vs ReviewBar** above). Wrong experiment reverted — do not re-add to **`SourceView.vala`** without explicit user approval.
-- 🚫 **`ReviewBar` helpers** unless **user or plan names them** — approved: **`on_width()`**, **`draw_hunk_band()`**, **`on_accept_clicked()`**, **`on_reject_clicked()`**, **`on_map_clicked()`**, **`next()`** (sub-plan [`CODER-4.2.3.5.1`](CODER-4.2.3.5.1-source-view-diff-review-responses.md)); do **not** add **`sync_*`**, **`load_*`**, **`ensure_*`**, etc. without approval.
+- 🚫 **`ReviewBar` helpers** unless **user or plan names them** — approved: **`on_width()`**, **`draw_hunk_band()`**, **`on_accept_clicked()`**, **`on_reject_clicked()`**, **`on_map_clicked()`**, **`next()`**, **`responses()`** ( [`4.2.3.5.1` done](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) ); do **not** add **`sync_*`**, **`load_*`**, **`ensure_*`**, etc. without approval.
 - 🚫 Daemon, **`file_diff_part`**, disk writes, **`ReviewFiles`**, **`Approvals`** changes.
 - 🚫 Gutter / inline-buffer Accept/Reject as primary UI.
 - 🚫 Accept/Reject chrome on footer band (breaks rapid accept).
@@ -338,77 +340,15 @@ When the user asks about **in-text hunk highlighting**, **dimming non-active hun
 
 ## Phase B — Product wire
 
-**Goal:** Same chrome as Phase A, backed by real pending review state — **`file_diff_part`**, daemon RPC, **`ReviewFiles`**, disk on reject.
+**Goal:** Same chrome as Phase A, backed by real pending review state.
 
-**Depends on:** Phase A UI **✔️** agent-done; user smoke **✅** on **`oc-test-source-diff`** before product wire.
-
-### Adds on top of Phase A
-
-**Persistence & disk**
-
-- Accept → insert **`file_diff_part`** `accepted=1`; **no disk write**.
-- Reject → undo hunk on **V_disk** + `accepted=0`.
-- Unapprove → delete part row; overlay back; disk unchanged for prior accept.
-- All hunks decided → **`file_history.reviewed=1`**.
-
-**Left — file nav (real)**
-
-- **`n / N`** over real pending files; queue **oldest pending change first** (by **`file_history`** write time).
-- **Changed-files hover list** moves here from header **`Approvals`** (`next_button` popover) — same list, Approvals-style hover.
-- **Remove** top popover when footer ships.
-- Reconcile sort: today’s **`Approvals`** uses **`last_modified` descending** → footer uses **oldest-first**.
-
-**Middle — inactive file (real)**
-
-- User on non-pending file: grey bar, red **`N changes pending review`**.
-- Click → open **oldest** pending file (`show_pending_diff`).
-
-**Right — bulk actions (real)**
-
-- Hover menu (not “overflow”): Unapprove all (file); Accept all pending files (confirm); destructive bulk per parent plan.
-- Whole-file Reject (full **V_backup** restore) stays destructive — **`Approvals`** or bulk menu, not casual band click.
-
-**Integration**
-
-- Hook **`Diff.ReviewBar`** into **`show_pending_diff`** / editor shell (not test harness only).
-- Header **`Approvals`:** strip changed-files popover; demote or relocate whole-file Approve/Reject ⏳.
-
-### Still open (Phase B)
-
-- 🔷 ⏳ Phone: no source-view diff preview. Tablet: ReviewBar + interleaved diff.
-- 🔷 ⏳ Editor scroll view / `SourceView`: tap-on-scrolled-content (menu dismiss, etc.). Not ReviewBar.
-- 🔷 ⏳ Stacked LLM edit (**Flow B**) — review **H2** only; no carry-forward v1.
-- 🔷 ⏳ Hunk file format at **`FileDiffPart.path`**.
-- 🔷 ⏳ Unsaved dirty buffer while reviewing — **lean: no**.
-- 🔷 ⏳ Header **`Approvals`** Approve/Reject vs footer relationship.
-- 🔷 ⏳ Accept all files — confirm / revert semantics.
-- 💩 Exact middle placeholder copy vs hide footer when zero pending.
-
-### Implementation order (Phase B)
-
-1. 🔷 ⏳ Real file nav + changed-files list (from **`Approvals`**) + inactive middle label + **Bulk actions** menu.
-2. 🔷 ⏳ Daemon part RPCs; Reject → hunk apply on **V_disk**; Accept → **`file_diff_part`**.
-3. 🔷 ⏳ Integrate **`show_pending_diff`**; strip header popover; wire remaining **`Approvals`** buttons.
-
-### Done when (Phase B)
-
-Pending file in editor → footer matches Phase A behaviour but persists; file nav across real queue; click **`N changes pending review`** opens oldest pending; reject writes disk; header no longer owns changed-files list.
-
-### LLM notes (Phase B)
-
-- 🚫 Rewrite disk on **accept**.
-- 🚫 Approve / unapprove aliased to GtkSource undo/redo.
-- 🚫 Accept all files as primary header button.
-- 🚫 Carry-forward inside **`OLLMfiles.Diff`**.
-- 🚫 Keep header changed-files popover after footer file nav ships.
-- 🚫 Phone source-view diff preview (tablet only).
-- 🚫 ReviewBar handling taps on the editor scroll view — that is the scroll view / `SourceView` when wired.
+ℹ️ **Spec lives in sub-plan** [`CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) — persistence, footer queue, **`Approvals`** integration, suggested order, done-when, LLM notes.
 
 ---
 
 ## Shared LLM notes (both phases)
 
-- 🚫 Vala fences for **Phase B** until Phase A user **✅**.
+- 🚫 Vala fences for **Phase B** until open items in [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) are **🔷** in review.
 - 🚫 Duplicate approve/reject in editor body until placement closed.
 - 🚫 Split **`ReviewBar.vala`** into more files without explicit user request after Phase A review.
 - ℹ️ Touch points when spec exists: `liboccoder/Diff/ReviewBar.vala`, `SourceView.vala`, `Approvals.vala`, `ollmfilesd/FileHistory.vala`, `FileDiffPart.vala`.

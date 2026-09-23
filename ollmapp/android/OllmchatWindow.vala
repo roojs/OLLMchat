@@ -143,6 +143,12 @@ namespace OLLMapp
 				}
 			});
 			this.notification.connect((notif) => {
+				if (notif.method == "Banner.show") {
+					var banner = new Adw.AlertDialog("OLLMchat", notif.message);
+					banner.add_response("ok", "OK");
+					banner.choose.begin(this, null);
+					return;
+				}
 				if (notif.method != "Alert.show") {
 					return;
 				}

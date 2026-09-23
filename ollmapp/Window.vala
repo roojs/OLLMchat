@@ -226,6 +226,15 @@ namespace OLLMapp
 
 			this.notification.connect((notif) => {
 				this.activity_banner.notification(notif);
+				if (notif.method == "event.client_cert") {
+					this.banner_queue.add("Pending device registration — open Settings → Connections");
+					if (this.tool_error_banner.revealed) {
+						return;
+					}
+					this.tool_error_banner.title = this.banner_queue.get(0);
+					this.tool_error_banner.revealed = true;
+					return;
+				}
 				if (notif.method == "Alert.show") {
 					var alert = new Adw.AlertDialog("Alert", notif.message);
 					alert.add_response("ok", "OK");
@@ -236,9 +245,6 @@ namespace OLLMapp
 					return;
 				}
 				this.banner_queue.add(notif.message);
-				if (this.busy_dialog != null && this.busy_dialog.visible) {
-					return;
-				}
 				if (this.tool_error_banner.revealed) {
 					return;
 				}
@@ -496,8 +502,8 @@ namespace OLLMapp
 			if (config.filesd_client.url != "" && config.filesd_client.enabled
 				&& config.filesd_client.approved) {
 				var tls = new OLLMrpc.Transport.Cert() {
-					dir = GLib.Path.build_filename(
-						GLib.Environment.get_user_data_dir(), "ollmchat"),
+					dir = GLib.Path.build_filename(GLib.Environment.get_user_data_dir(), 
+							"ollmchat"),
 					cert_pem = "client.pem",
 					key_pem = "client-key.pem",
 					cn = "ollmchat-device",
@@ -510,7 +516,9 @@ namespace OLLMapp
 					tls_database = tls.trust
 				};
 				this.project_manager.replace_rpc(
-					new OLLMrpc.Client("", "", config.filesd_client.url) { http = http }
+					new OLLMrpc.Client("", "", config.filesd_client.url) { 
+						http = http 
+					}
 				);
 			}
 
@@ -540,11 +548,7 @@ namespace OLLMapp
 			};
 			if (!yield this.project_manager.rpc.connect(hello, new OLLMrpc.ClientBoot())) {
 				if (this.busy_dialog != null) {
-					this.busy_dialog.force_close();
-				}
-				if (this.banner_queue.size > 0 && !this.tool_error_banner.revealed) {
-					this.tool_error_banner.title = this.banner_queue.get(0);
-					this.tool_error_banner.revealed = true;
+					this.busy_dialog.close();
 				}
 				var msg = this.project_manager.rpc.connect_error;
 				if (msg == "") {
@@ -697,11 +701,7 @@ namespace OLLMapp
 			this.new_chat_button.sensitive = true;
 
 			if (this.busy_dialog != null) {
-				this.busy_dialog.force_close();
-			}
-			if (this.banner_queue.size > 0 && !this.tool_error_banner.revealed) {
-				this.tool_error_banner.title = this.banner_queue.get(0);
-				this.tool_error_banner.revealed = true;
+				this.busy_dialog.close();
 			}
 			
 			// Create history browser and add to split view sidebar

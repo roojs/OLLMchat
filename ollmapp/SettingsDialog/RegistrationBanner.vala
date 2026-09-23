@@ -128,9 +128,14 @@ namespace OLLMapp.SettingsDialog
 				return;
 			}
 			this.refresh.begin();
-			if (action == "accept") {
-				this.dialog.connections_page.render_approved.begin();
+			if (action != "accept") {
+				return;
 			}
+			this.dialog.connections_page.render_approved.begin();
+			win.notification(new OLLMrpc.Notification() {
+				method = "Banner.show",
+				message = "Device approved — on the phone, tap Check on the file connection"
+			});
 		}
 	}
 }

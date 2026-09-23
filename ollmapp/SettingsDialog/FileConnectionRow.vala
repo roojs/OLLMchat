@@ -137,9 +137,9 @@ namespace OLLMapp.SettingsDialog
 		 * Ask the remote file server whether this device is approved.
 		 *
 		 * Sends ''RPC-Daemon.hello'' with the device client certificate.
-		 * On success sets {@link OLLMchat.Settings.FilesdClient.approved},
-		 * saves config, and if Enabled calls {@link reconnect} to the remote
-		 * server.
+		 * On success sets {@link OLLMchat.Settings.FilesdClient.approved}
+		 * and saves config. Does not swap {@link OLLMfiles.ProjectManager}
+		 * RPC (use the Enabled switch or restart to connect live).
 		 */
 		public async void check()
 		{
@@ -173,31 +173,32 @@ namespace OLLMapp.SettingsDialog
 			this.expander.subtitle = "Active";
 			this.status_label.label = "Active";
 			this.check_button.sensitive = true;
-			if (!this.client.enabled) {
-				return;
-			}
-			yield this.reconnect(true);
+			this.win.notification(new OLLMrpc.Notification() {
+				method = "Banner.show",
+				message = "Device approved — turn the connection off and on to connect"
+			});
 		}
 
 		/**
 		 * Point the window's {@link OLLMfiles.ProjectManager} at the remote
 		 * file server or back at the local Unix daemon, live.
 		 *
-		 * Builds the client, swaps it in with
-		 * {@link OLLMfiles.ProjectManager.replace_rpc}, connects with
-		 * ''RPC-Daemon.hello'', reloads projects and restores the window's
-		 * active project and file. Progress goes through the window's
-		 * ''client.project.load_start'' / ''load_end'' notifications.
+		 * Swaps RPC and runs ''RPC-Daemon.hello'' only; project reload is
+		 * left to startup, the Projects tab, or session activation.
 		 *
-		 * A remote connect failure disables the file connection, reports
-		 * it with ''Alert.show'' and falls back to the local daemon (one
-		 * recursive call with ''remote = false'').
+		 * A remote connect failure disables the outbound row and falls back
+		 * to the local daemon once (desktop only).
 		 *
 		 * @param remote true for HTTPS to this row's URL, false for
 		 *   the local Unix socket
 		 */
 		public async void reconnect(bool remote)
 		{
+#if ANDROID
+			if (!remote) {
+				return;
+			}
+#endif
 			var data_dir = GLib.Path.build_filename(
 				GLib.Environment.get_user_data_dir(), "ollmchat");
 			var rpc = new OLLMrpc.Client(data_dir, "ollmfilesd.pid", "ollmfilesd.sock");
@@ -247,24 +248,14 @@ namespace OLLMapp.SettingsDialog
 				this.win.app.config.save();
 				this.enabled_switch.active = false;
 				this.expander.subtitle = "Failed: " + rpc.connect_error;
+#if !ANDROID
 				yield this.reconnect(false);
+#endif
 				return;
 			}
-			try {
-				yield this.win.project_manager.rpc_load_projects_from_db();
-				var win_cfg = this.win.window_config();
-				yield this.win.project_manager.restore_active_state(win_cfg.project, win_cfg.file);
-			} catch (GLib.Error e) {
-				GLib.critical("file server reconnect: %s", e.message);
-				this.win.notification(new OLLMrpc.Notification() {
-					method = "Alert.show",
-					message = "Could not load projects: " + e.message
-				});
-			} finally {
-				this.win.notification(new OLLMrpc.Notification() {
-					method = "client.project.load_end"
-				});
-			}
+			this.win.notification(new OLLMrpc.Notification() {
+				method = "client.project.load_end"
+			});
 		}
 	}
 }

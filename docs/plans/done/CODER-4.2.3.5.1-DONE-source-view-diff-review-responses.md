@@ -1,10 +1,12 @@
 # 4.2.3.5.1 — ReviewBar programmable review responses
 
-**Status:** **✅** user-verified on **`oc-test-source-diff`** (programmable **Feedback** popover) · **✔️** in tree
+**Status:** **DONE** **✅** — user-verified on **`oc-test-source-diff`** (programmable **Feedback** popover) · **✔️** in tree
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
-**Parent:** [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md) (Phase A)
+**Parent:** [`CODER-4.2.3.5-source-view-diff-approval.md`](../CODER-4.2.3.5-source-view-diff-approval.md) (Phase A)
+
+**Next:** [`CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md`](../CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md)
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans; proposed Vala follows **`docs/coding-standards.md`**
 

@@ -10,6 +10,8 @@
   no **Requested** row; desktop never shows Accept.
 - 🔷 If there is no answer, show **Could not connect**, do not close
   the add dialog.
+- 🔷 ✔️ `can_close = true` immediately after failure dismissed the add
+  dialog; keep `can_close` false until idle, re-`present`, then allow close.
 - 🔷 Restart after filling the LLM connection loses that config.
 
 ## Evidence
@@ -54,7 +56,17 @@
 - ✔️ 17:53 — ConnectionAdd-style redesign applied then **reverted**
   (needs approval).
 
+## Post-approval Check (2026-09-23)
+
+- 🔷 After desktop **Accept**, main-window banner: tap **Check** on the phone.
+- ✔️ **Check** only verifies hello + sets `approved` (no `replace_rpc` in
+  settings flow). Use **Enabled** toggle or restart to connect live.
+- ✔️ Local Unix fallback on reconnect failure is desktop-only (`#if !ANDROID`).
+- ✔️ Repeat **Request** with the same cert fingerprint returns ok (like a
+  check); new fingerprints from one IP still cap at three pending rows.
+- ✔️ Main window banner when a registration arrives while settings are closed.
+
 ## Next
 
 - 🔷 User verify on device: Request → pending toast, **Requested** row,
-  config persists after restart.
+  config persists after restart; Accept → banner; Check → **Active** without crash.

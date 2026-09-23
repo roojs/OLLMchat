@@ -130,8 +130,7 @@ namespace OLLMapp.SettingsDialog
 					this.render_file_connection();
 					return;
 				}
-				this.dialog.app.config.filesd_client.url =
-					this.add_file_dialog.registered_url;
+				this.dialog.app.config.filesd_client.url = this.add_file_dialog.registered_url;
 				this.dialog.app.config.filesd_client.approved = false;
 				this.dialog.app.config.filesd_client.enabled = true;
 				this.dialog.app.config.save();
@@ -146,11 +145,11 @@ namespace OLLMapp.SettingsDialog
 				this.toast_overlay.add_toast(new Adw.Toast(error_message) {
 					timeout = 5
 				});
-#if !ANDROID
-				var alert = new Adw.AlertDialog("Could not connect", error_message);
-				alert.add_response("ok", "OK");
-				alert.present(this.dialog);
-#endif
+				this.add_file_dialog.present(this.dialog);
+				GLib.Idle.add(() => {
+					this.add_file_dialog.can_close = true;
+					return false;
+				});
 			});
 
 			// Initial render of connections
@@ -468,7 +467,9 @@ namespace OLLMapp.SettingsDialog
 				if (!was_live) {
 					return;
 				}
+#if !ANDROID
 				row.reconnect.begin(false);
+#endif
 			});
 			Adw.ExpanderRow? insert_after = null;
 			foreach (var row in this.rows.values) {
