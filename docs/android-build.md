@@ -87,6 +87,12 @@ Build the debug APK locally with:
 scripts/android/build-chat-poc-apk.sh
 ```
 
+**Build trees outside the clone:** `scripts/android/ensure-build-dirs.sh` (run from
+the APK scripts) loads `android/local-build.office.env` when
+`/storage/Downloads/OLLMchat-build` exists, otherwise `android/local-build.local.env`
+(in-repo `.android-sdk/`, `.pixiewood/`, `.android-tools/`). Optional gitignored
+`android/local-build.env` overrides both.
+
 `build-chat-poc-apk.sh` bootstraps the Android command-line SDK/NDK under
 `.android-sdk/` when needed, clones Pixiewood under `.android-tools/`, and runs
 prepare, generate, and build through `android/pixiewood-chat-poc.xml`. Extra

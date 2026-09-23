@@ -79,11 +79,15 @@ namespace OLLMapp.SettingsDialog
 			this.add_btn = new Gtk.Button.with_label("Add Connection") {
 				css_classes = {"suggested-action"}
 			};
-			this.add_btn.clicked.connect(this.add_connection);
+			this.add_btn.clicked.connect(() => {
+				this.add_dialog.show_add();
+				this.add_dialog.present(this.dialog);
+			});
 			this.action_widget.append(this.add_btn);
 
 			this.add_file_btn = new Gtk.Button.with_label("Add file connection");
 			this.add_file_btn.clicked.connect(() => {
+				this.add_file_dialog.show_add();
 				this.add_file_dialog.present(this.dialog);
 			});
 			this.action_widget.append(this.add_file_btn);
@@ -108,19 +112,45 @@ namespace OLLMapp.SettingsDialog
 
 			// Create ConnectionAdd dialog
 			this.add_dialog = new ConnectionAdd();
-			this.add_dialog.dialog_closed.connect(this.on_add_closed);
+			this.add_dialog.dialog_closed.connect(() => {
+				if (this.add_dialog.verified_connection == null) {
+					return;
+				}
+				this.dialog.app.config.connections.set(
+					this.add_dialog.verified_connection.url,
+					this.add_dialog.verified_connection
+				);
+				this.render_connections();
+				this.dialog.app.config.save();
+			});
 
-			this.add_file_dialog = new FileConnectionAdd(this.dialog.app.config);
+			this.add_file_dialog = new FileConnectionAdd();
 			this.add_file_dialog.dialog_closed.connect(() => {
+				if (this.add_file_dialog.registered_url == null) {
+					this.render_file_connection();
+					return;
+				}
+				this.dialog.app.config.filesd_client.url =
+					this.add_file_dialog.registered_url;
+				this.dialog.app.config.filesd_client.approved = false;
+				this.dialog.app.config.filesd_client.enabled = true;
+				this.dialog.app.config.save();
 				this.render_file_connection();
+				this.toast_overlay.add_toast(new Adw.Toast(
+					"Registration pending — accept the request on the desktop file server"
+				) {
+					timeout = 5
+				});
 			});
 			this.add_file_dialog.error_occurred.connect((error_message) => {
 				this.toast_overlay.add_toast(new Adw.Toast(error_message) {
 					timeout = 5
 				});
+#if !ANDROID
 				var alert = new Adw.AlertDialog("Could not connect", error_message);
 				alert.add_response("ok", "OK");
 				alert.present(this.dialog);
+#endif
 			});
 
 			// Initial render of connections
@@ -134,31 +164,6 @@ namespace OLLMapp.SettingsDialog
 			this.render_connections();
 			this.render_file_connection();
 			this.render_approved.begin();
-		}
-
-		/**
-		 * Opens ConnectionAdd dialog for adding new connection.
-		 */
-		private void add_connection()
-		{
-			this.add_dialog.show_add();
-			this.add_dialog.present(this.dialog);
-		}
-
-		/**
-		 * Called when ConnectionAdd dialog closes.
-		 * Checks if connection was verified and adds it to config if successful.
-		 */
-		private void on_add_closed()
-		{
-			if (this.add_dialog.verified_connection != null) {
-				this.dialog.app.config.connections.set(
-					this.add_dialog.verified_connection.url,
-					this.add_dialog.verified_connection
-				);
-				this.render_connections();
-				this.dialog.app.config.save();
-			}
 		}
 
 		/**

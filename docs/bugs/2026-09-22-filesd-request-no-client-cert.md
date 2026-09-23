@@ -1,7 +1,6 @@
 # File connection Request: stale config snapshot
 
-**Status:** ⏳ root cause confirmed; fix proposed — await apply
-approval
+**Status:** ✔️ fix applied (live `config` before present + success toast)
 
 **Pointer:** `docs/bug-fix-process.md`
 
@@ -42,34 +41,9 @@ approval
 
 ## Proposed fix
 
-- 💩 Do **not** redesign FileConnectionAdd (no `requested_url`,
-  still `this.config.save()`). Before present, point it at the live
-  config:
-- 🚫 Unapplied: move save into ConnectionsPage / ConnectionAdd
-  pattern; extra `render_file_connection()` from Android
-  `show_dialog`. Reverted.
-
-### ConnectionsPage.vala
-
-#### Replace
-
-```vala
-			this.add_file_btn.clicked.connect(() => {
-				this.add_file_dialog.present(this.dialog);
-			});
-```
-
-#### with
-
-```vala
-			this.add_file_btn.clicked.connect(() => {
-				this.add_file_dialog.config = this.dialog.app.config;
-				this.add_file_dialog.present(this.dialog);
-			});
-```
-
-`FileConnectionAdd.config` from `{ get; construct; }` to
-`{ get; set; }` so that assignment is allowed.
+- ✔️ `FileConnectionAdd()` builds UI only; `ConnectionsPage` saves live
+  `app.config` in `on_file_add_closed` from `registered_url` (same as
+  `ConnectionAdd` / `verified_connection`).
 
 ## Attempts / changelog
 
@@ -82,5 +56,5 @@ approval
 
 ## Next
 
-- 🔷 Approve or reject the present-time `config = app.config`
-  assignment.
+- 🔷 User verify on device: Request → pending toast, **Requested** row,
+  config persists after restart.

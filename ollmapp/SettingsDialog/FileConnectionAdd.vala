@@ -23,7 +23,12 @@ namespace OLLMapp.SettingsDialog
 	 */
 	public class FileConnectionAdd : Adw.PreferencesDialog
 	{
-		public OLLMchat.Settings.Config2 config { get; construct; }
+		/**
+		 * HTTPS URL after a successful registration request; null otherwise.
+		 * {@link ConnectionsPage} reads this on {@link dialog_closed}, same as
+		 * {@link ConnectionAdd.verified_connection}.
+		 */
+		public string? registered_url { get; private set; }
 
 		private Gtk.Entry url_entry;
 		private Gtk.Button request_button;
@@ -34,9 +39,8 @@ namespace OLLMapp.SettingsDialog
 		public signal void error_occurred(string error_message);
 		public signal void dialog_closed();
 
-		public FileConnectionAdd(OLLMchat.Settings.Config2 config)
+		public FileConnectionAdd()
 		{
-			Object(config: config);
 			this.title = "Add file connection";
 			this.set_content_height(360);
 			this.set_content_width(720);
@@ -109,6 +113,17 @@ namespace OLLMapp.SettingsDialog
 				this.spinner.visible = false;
 				this.dialog_closed();
 			});
+		}
+
+		/**
+		 * Prepares the dialog before {@link Gtk.Window.present}, like
+		 * {@link ConnectionAdd.show_add}.
+		 */
+		public void show_add()
+		{
+			this.registered_url = null;
+			this.url_entry.text = "";
+			this.request_button.sensitive = false;
 		}
 
 		private async void request()
@@ -190,10 +205,10 @@ namespace OLLMapp.SettingsDialog
 			}
 			this.can_close = true;
 			GLib.debug("file connection request ok");
-			this.config.filesd_client.url = url;
-			this.config.filesd_client.approved = false;
-			this.config.filesd_client.enabled = true;
-			this.config.save();
+			this.registered_url = url;
+			this.request_button.sensitive = true;
+			this.spinner.spinning = false;
+			this.spinner.visible = false;
 			this.force_close();
 		}
 	}

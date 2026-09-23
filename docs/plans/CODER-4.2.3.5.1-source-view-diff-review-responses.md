@@ -1,6 +1,6 @@
 # 4.2.3.5.1 — ReviewBar programmable review responses
 
-**Status:** implemented
+**Status:** **✅** user-verified on **`oc-test-source-diff`** (programmable **Feedback** popover) · **✔️** in tree
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
@@ -15,47 +15,46 @@
 - 🔷 Programmable **review responses** — quick feedback **to the LLM** (first samples: **Coding standards**, **Helper methods**).
 - 🔷 **Does not** accept, reject, revert, or change hunk/file review state — user flags a problem; **LLM decides** what to do next.
 - 🔷 Each item: **`ReviewResponse`** with **`label`**, **`tooltip`**, **`prompt`**, **`is_bulk`** (`get; set; default =`).
-- 🔷 **`is_bulk == false`** → per-hunk overlay button (active hunk context); click **emits then advances** to the next pending change block (**no** decision change).
-- 🔷 **`is_bulk == true`** → whole-file overlay button at the **far left** of **`review_overlay`** (**`hunk_index = -1`** on emit; **no** navigation).
+- 🔷 **`is_bulk == false`** → per-hunk menu item (active hunk context); click **emits then advances** to the next pending change block (**no** decision change).
+- 🔷 **`is_bulk == true`** → whole-file menu item (**`hunk_index = -1`** on emit; **no** navigation); always enabled in **Feedback** popover.
 - 🔷 Signal carries **what was flagged**:
   - **`review_response(ReviewResponse response, int file_index, int hunk_index)`**
   - **`hunk_index >= 0`** — per-hunk button (**`is_bulk == false`**, active hunk)
   - **`hunk_index == -1`** — bulk button (**`is_bulk == true`**, whole current file)
 - 🔷 Owner supplies the list — harness only, not hard-coded in **`ReviewBar`**.
-- 🔷 Two overlay zones on **`review_overlay`** (left → right):
-  - **`review_bulk_response_zone`** — **`is_bulk`** buttons at the **very left**; visible whenever review map is active (**not** tied to pending/unapprove).
-  - **`review_response_zone`** — **`!is_bulk`** buttons **right of Reject**; same visibility as Accept/Reject (**hidden with Unapprove**).
+- 🚫 **Rejected sketch:** separate **`review_bulk_response_zone`** / **`review_response_zone`** button rows — superseded by **Feedback** popover (see **✅** shipped UX above).
 - 🔷 **Not** in the footer bulk dropdown menu.
 - 🔷 **One entry point:** **`responses(Gee.ArrayList<ReviewResponse> items)`** — owner calls **once** after construction.
-- 🔷 Constructor exposes both zones on **`review_overlay`**.
-- ⏳ Implement after user approves this doc.
-- ⏳ User smoke **✅** on harness with two samples.
+- 🔷 Constructor exposes programmable response UI on **`review_overlay`**.
+- ✅ Implemented and user-smoked on harness (two samples).
+- 🔷 **Shipped UX (user-approved):** single **Feedback** **`Gtk.Button`** + **`Gtk.PopoverMenu`** on **`review_overlay`** (far left), not separate per-item overlay buttons — same contract (**`responses()`**, **`review_response`**, **`next()`** on per-hunk picks).
 - ℹ️ First attempt reverted — do not hook response UI into **`update_diff()`**.
+- 🚫 **Superseded:** §3 and §5 code fences below — zone-button sketch only; tree uses **Feedback** popover. Do not implement those fences.
 
 ---
 
-## How it works
+## How it works ✅
 
 1. Owner constructs **`ReviewBar`**, calls **`responses(list)`** once, then **`update_diff`** as today.
-2. **`responses()`** only: store list, rebuild **`review_bulk_response_zone`** (**`is_bulk`**) and **`review_response_zone`** (**`!is_bulk`**). **No** bulk-menu / **`bulk_menu_popover`** changes.
-3. Per-hunk button (**`is_bulk == false`**): require valid pending **`active`** hunk, emit with **`hunk_index = active`**, then **`next()`** (same advance as accept/reject, no decision change).
-4. Bulk button (**`is_bulk == true`**): emit with **`hunk_index = -1`** only — no navigation, no state change.
-5. **`review_response_zone.visible`** mirrors **`accept_btn.visible`** at existing toggle sites (§5 patterns A–E).
-6. **`review_bulk_response_zone.visible`** — mock-inactive off + zone has children (§5 patterns F–G); **not** hidden on unapprove / grey hunk.
+2. **`responses()`** only: store list, rebuild **Feedback** **`Gtk.PopoverMenu`** from **`ReviewResponse`** items. **No** footer **`bulk_menu_popover`** changes.
+3. Per-hunk item (**`is_bulk == false`**): require valid pending **`active`** hunk, emit with **`hunk_index = active`**, then **`next()`** (same advance as accept/reject, no decision change).
+4. Bulk item (**`is_bulk == true`**): emit with **`hunk_index = -1`** only — no navigation, no state change.
+5. **`feedback_btn.visible`** — hidden in mock-inactive; on when **`review_responses`** non-empty during normal review.
+6. Popover open (hover / click): enable per-hunk items only when **`active`** hunk is **PENDING**; **`is_bulk`** items stay enabled.
 
 ---
 
-## Named methods (approved)
+## Named methods (approved) ✅
 
-- 🔷 **`ReviewResponse`** — data object in **`OLLMcoder.Diff`** (same file as **`ReviewBar`**).
-- 🔷 **`next()`** — advance to next pending hunk from **`active`** (source scroll, overlay visibility, map scroll); used by accept, reject, per-hunk response.
-- 🔷 **`responses(Gee.ArrayList<ReviewResponse> items)`** — sole method that touches response UI.
+- ✅ **`ReviewResponse`** — data object in **`OLLMcoder.Diff`** (same file as **`ReviewBar`**).
+- ✅ **`next()`** — advance to next pending hunk from **`active`** (source scroll, overlay visibility, map scroll); used by accept, reject, per-hunk response.
+- ✅ **`responses(Gee.ArrayList<ReviewResponse> items)`** — sole method that touches response UI.
 
 ---
 
 Edits are **Remove** / **Replace with** / **Add** from the tree; verify surrounding context before applying.
 
-### 1. `liboccoder/Diff/ReviewBar.vala` — `ReviewResponse` type
+### 1. `liboccoder/Diff/ReviewBar.vala` — `ReviewResponse` type ✅
 
 **Why:** owner-configurable label / tooltip / prompt; **`is_bulk`** picks left bulk zone vs per-hunk zone.
 
@@ -99,7 +98,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-### 2. `liboccoder/Diff/ReviewBar.vala` — fields + signal
+### 2. `liboccoder/Diff/ReviewBar.vala` — fields + signal ✅
 
 **Why:** zone hooks, stored list, signal with feedback context.
 
@@ -151,9 +150,11 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-### 3. `liboccoder/Diff/ReviewBar.vala` — constructor: overlay zones
+### 3. `liboccoder/Diff/ReviewBar.vala` — constructor: overlay zones (superseded)
 
-**Why:** left bulk zone + per-hunk zone between Reject and Unapprove.
+🚫 **Superseded** by **Feedback** popover on **`review_overlay`** — fences kept for history; do not apply.
+
+**Why (original sketch):** left bulk zone + per-hunk zone between Reject and Unapprove.
 
 **Where:** constructor — **`review_overlay`** block before **`update_diff()`**.
 
@@ -226,7 +227,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-### 3.5. `liboccoder/Diff/ReviewBar.vala` — `next()` (user-approved)
+### 3.5. `liboccoder/Diff/ReviewBar.vala` — `next()` (user-approved) ✅
 
 **Why:** pending-advance + map-scroll tail duplicated in accept/reject; per-hunk response reuses it.
 
@@ -315,7 +316,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-### 4. `liboccoder/Diff/ReviewBar.vala` — `responses()` method
+### 4. `liboccoder/Diff/ReviewBar.vala` — `responses()` method ✅
 
 **Why:** sole entry point for **review-response UI only** — not accept/reject chrome.
 
@@ -401,9 +402,11 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-### 5. `liboccoder/Diff/ReviewBar.vala` — zone visibility (one-line inserts)
+### 5. `liboccoder/Diff/ReviewBar.vala` — zone visibility (one-line inserts) (superseded)
 
-**Why:** per-hunk zone shares Accept/Reject visibility; bulk zone stays up during review.
+🚫 **Superseded** — visibility is **`feedback_btn`** + popover item **`set_enabled`** in shipped code; do not apply patterns A–G.
+
+**Why (original sketch):** per-hunk zone shares Accept/Reject visibility; bulk zone stays up during review.
 
 **Where:** grep **`reject_btn.visible`** for patterns A–E; **`update_diff()`** for F–G.
 
@@ -539,7 +542,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-### 6. `examples/oc-test-source-diff.vala` — harness wiring
+### 6. `examples/oc-test-source-diff.vala` — harness wiring ✅
 
 **Why:** Phase A mock; samples and signal handler in harness only.
 
@@ -600,7 +603,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree; verify surround
 
 ---
 
-## Test (Phase A)
+## Test (Phase A) ✅
 
 ```bash
 meson compile -C build occoder examples/oc-test-source-diff
@@ -609,10 +612,10 @@ meson compile -C build occoder examples/oc-test-source-diff
   tests/source-diff/review-smoke-current.txt
 ```
 
-- Pending hunk: **Helper methods (whole file)** on the **left**; **Accept**, **Reject**, **Coding standards** visible.
-- Click **Coding standards** → terminal prints **`hunk=N`**; view **jumps to next pending hunk**; bands unchanged.
-- Click **Helper methods (whole file)** → terminal prints **`hunk=-1`**; no navigation; bands unchanged.
-- Click grey hunk → **Unapprove** only; **Helper methods** still visible; **Coding standards** hidden.
+- ✅ Pending hunk: open **Feedback** popover — **Helper methods (whole file)** and **Coding standards** listed; **Accept** / **Reject** visible.
+- ✅ Click **Coding standards** → terminal prints **`hunk=N`**; view **jumps to next pending hunk**; bands unchanged.
+- ✅ Click **Helper methods (whole file)** → terminal prints **`hunk=-1`**; no navigation; bands unchanged.
+- ✅ Click grey hunk → **Unapprove** only; per-hunk menu entries disabled when no pending hunk (**Feedback** stays visible for bulk items).
 
 ---
 

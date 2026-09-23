@@ -2,6 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=ensure-build-dirs.sh
+source "$ROOT_DIR/scripts/android/ensure-build-dirs.sh"
+ensure_android_build_dirs "$ROOT_DIR"
 ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ROOT_DIR/.android-sdk}"
 CMDLINE_TOOLS_URL="${CMDLINE_TOOLS_URL:-https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip}"
 ANDROID_NDK_VERSION="${ANDROID_NDK_VERSION:-28.2.13676358}"

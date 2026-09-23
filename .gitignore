@@ -6,6 +6,7 @@ dist-*/
 .android-sdk/
 .android-tools/
 .pixiewood/
+android/local-build.env
 .buildconfig
 .rpmbuild/
 subprojects/

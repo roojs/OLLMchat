@@ -312,7 +312,7 @@ meson compile -C build occoder examples/oc-test-source-diff
 - **⏳** **ReviewBar:** in-buffer active-hunk highlight (dim / emphasize changed lines) — **not** SourceView; design + implement in **`ReviewBar.vala`** only when user approves approach.
 - **⏳** Smoke fixes in progress: hunk map visibility, overlay position, bulk menu, file nav hidden when one file, two-pair CLI on **`oc-test-source-diff`**.
 - **⏳** Accept/Reject **diff preview** (rebuild **`show_diff`** after each decision) — **removed** unauthorized **`sync_diff_from_decisions`** / **`load_diff`** helpers; needs **user-named** approach in **`ReviewBar`** before re-adding.
-- **⏳** **Programmable review responses** — sub-plan [`CODER-4.2.3.5.1-source-view-diff-review-responses.md`](CODER-4.2.3.5.1-source-view-diff-review-responses.md) (reverted first attempt; minimal **`responses()`** + **`review_response_zone`** only).
+- **✅** **Programmable review responses** — sub-plan [`CODER-4.2.3.5.1-source-view-diff-review-responses.md`](CODER-4.2.3.5.1-source-view-diff-review-responses.md) (**`responses()`**, **`review_response`**, **Feedback** popover on harness; user-smoked).
 
 ### LLM notes (Phase A)
 
