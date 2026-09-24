@@ -1,6 +1,6 @@
 # Rename Live.Handle to Live.Interface and add rpc_ctor_
 
-**Status:** ⏳ open
+**Status:** ✅ FIXED — user archived. `Live.Handle` is `Live.Interface` in libocrpc. gnome-shell-rpc still names `Live.Handle`.
 
 **Started:** 2026-09-24
 
@@ -147,4 +147,4 @@ Private `CtorBag` is declared at the top of `libocrpc/Live/Interface.vala`, in t
 
 ✔️ 2026-09-24 — `libocrpc/Live/Handle.vala` replaced by `libocrpc/Live/Interface.vala`. `CtorBag` is private at the top of that file. `[GIR (visible = false)]` is on `rpc_lid` and the four `rpc_ctor_*` methods. This library's call sites and `docs/bin-rpc-protocol.md` say `Live.Interface`. `ninja -C build libocrpc/libocrpc.so tests/test-rpc-gi` succeeded.
 
-⏳ gnome-shell-rpc still says `OLLMrpc.Live.Handle`, and `src/gi-stub/Stub.vala` is still the draft stash.
+✅ 2026-09-24 — user archived this log. gnome-shell-rpc still says `OLLMrpc.Live.Handle`, and `src/gi-stub/Stub.vala` is still the draft stash.
