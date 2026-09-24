@@ -265,7 +265,7 @@ namespace OLLMrpc.Bin
 		 * construct setters may nest sync RPC). Decode reuses
 		 * {@link Client.proxies} when the lease is already known; otherwise
 		 * constructs via {@link GLib.Object.new} with ''rpc-lid''
-		 * ({@link Live.Handle}) and stores it.
+		 * ({@link Live.Interface}) and stores it.
 		 *
 		 * @param object_type element class when already read from an array header
 		 * @param expected_type GObject property type for anonymous nested objects

@@ -6,7 +6,7 @@
 
 namespace OLLMrpcTests
 {
-	public class TestActor : GLib.Object, OLLMrpc.Live.Handle
+	public class TestActor : GLib.Object, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 	}
@@ -15,12 +15,12 @@ namespace OLLMrpcTests
 	{
 	}
 
-	public class TestMenu : GLib.Object, OLLMrpc.Live.Handle
+	public class TestMenu : GLib.Object, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 	}
 
-	public class TestFile : GLib.Object, OLLMrpc.Live.Handle
+	public class TestFile : GLib.Object, OLLMrpc.Live.Interface
 	{
 		public uint64 rpc_lid { get; set construct; default = 0; }
 	}
@@ -151,7 +151,7 @@ namespace OLLMrpcTests
 					"proxy is not retval");
 				lease_id = (uint64) id;
 			}
-			var live_obj = (OLLMrpc.Live.Handle) response.retval.get_object();
+			var live_obj = (OLLMrpc.Live.Interface) response.retval.get_object();
 			this.check(command_line, live_obj.rpc_lid == lease_id, "proxy missing rpc_lid");
 			response = null;
 			var items_loop = new GLib.MainLoop();
@@ -290,7 +290,7 @@ namespace OLLMrpcTests
 			this.check(command_line, response.retval.get_object().get_type() == typeof(TestActor),
 				"actors stub is not Test-Actor");
 			var actor = response.retval.get_object();
-			var actor_handle = (OLLMrpc.Live.Handle) actor;
+			var actor_handle = (OLLMrpc.Live.Interface) actor;
 			this.check(command_line, actor_handle.rpc_lid != 0, "actors handle is 0");
 			this.check(command_line,
 				rpc.proxies.has_key((int) actor_handle.rpc_lid)

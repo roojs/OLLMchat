@@ -131,7 +131,7 @@ ocrpc_core_src += cert_src
 if use_unix_sockets
   live_src = files([
     'Live/namespace.vala',
-    'Live/Handle.vala',
+    'Live/Interface.vala',
     'Live/Buffer.vala',
     'Live/BufferStream.vala',
     'Live/BufferListen.vala',
@@ -145,7 +145,7 @@ if use_unix_sockets
 else
   live_src = files([
     'Live/namespace.windows.vala',
-    'Live/Handle.vala',
+    'Live/Interface.vala',
   ])
 endif
 

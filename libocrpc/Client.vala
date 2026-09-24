@@ -161,7 +161,7 @@ namespace OLLMrpc
 		 * {@link notification}.
 		 *
 		 * {@link Bin.Stream.parse_object} also inserts the decoded
-		 * proxy here. The wire lease is {@link Live.Handle.rpc_lid}
+		 * proxy here. The wire lease is {@link Live.Interface.rpc_lid}
 		 * on the object (construct property ''rpc-lid''). This map
 		 * stays the notify table.
 		 *
