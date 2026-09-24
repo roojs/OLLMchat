@@ -106,6 +106,7 @@ ocrpc_core_src = namespace_src + files([
   'Bin/Stream.vala',
   'Bin/StreamValue.vala',
   'Bin/Serializable.vala',
+  'Bin/TypeOverride.vala',
   'Bin/Json.vala',
   'Transport/Session.vala',
   'Transport/Connection.vala',

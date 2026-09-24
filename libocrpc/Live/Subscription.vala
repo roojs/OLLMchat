@@ -63,10 +63,7 @@ namespace OLLMrpc.Live
 			void* marshal_data
 		) {
 			var subscription = (Subscription) marshal_data;
-			var packed = new Gee.ArrayList<GLib.Value?>();
-			for (var i = 1; i < param_values.length; i++) {
-				packed.add(param_values[i]);
-			}
+			var packed = OLLMrpc.Bin.TypeOverride.pack_params(param_values);
 			subscription.connection.write(new Notification() {
 				method = subscription.method,
 				id = subscription.id,
