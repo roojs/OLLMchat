@@ -1,6 +1,6 @@
 # Android `libocrpc` configure fails: GnuTLS with no wrap
 
-**Status:** ✔️ applied; APK rebuild in progress
+**Status:** ✅ FIXED — user archived 2026-09-23. Android cert mint uses OpenSSL.
 
 **Started:** 2026-09-21
 
@@ -12,7 +12,7 @@
 
 **Related:**
 
-- ℹ️ [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](../plans/done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) §9 required GnuTLS on Android
+- ℹ️ [`RPC-8.2.8.2-DONE-filesd-android-file-connection.md`](../../plans/done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) §9 required GnuTLS on Android
 - ℹ️ `android/pixiewood-extra.cross` sets `gnutls = 'disabled'` for glib-networking
 - ℹ️ Pixiewood deps already include `<openssl/>`
 
@@ -91,4 +91,4 @@ Call `ocrpc_cert_create_pem_files` then `GLib.TlsCertificate.from_files`.
 
 ## Next
 
-- ⏳ 🔷 APK configure past `libocrpc`; install on phone
+- ✅ 2026-09-23 — user archived this bug. APK configure got past `libocrpc`.

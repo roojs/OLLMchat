@@ -1,6 +1,6 @@
 # AdwViewStack: Child name '' not found when opening Settings
 
-**Status:** ✔️ applied; await user smoke **✅**
+**Status:** ✅ FIXED — user archived 2026-09-23
 
 **Started:** 2026-09-21
 
@@ -12,7 +12,7 @@
 
 **Related:**
 
-- ℹ️ [`2026-08-05-CLOSED-adw-viewstack-empty-child-name.md`](done/2026-08-05-CLOSED-adw-viewstack-empty-child-name.md) — same diagnosis; closed unapplied because the warning was not seen then
+- ℹ️ [`2026-08-05-CLOSED-adw-viewstack-empty-child-name.md`](2026-08-05-CLOSED-adw-viewstack-empty-child-name.md) — same diagnosis; closed unapplied because the warning was not seen then
 
 ---
 
@@ -56,4 +56,4 @@ G_LOG_LEVEL_WARNING : Adwaita : Child name '' not found in AdwViewStack
 
 ## Next
 
-- ⏳ 🔷 User smoke: open Settings from the gear; warning gone
+- ✅ 2026-09-23 — user archived this bug.

@@ -1,6 +1,6 @@
 # Android Verify connection SIGSEGV
 
-**Status:** ⏳ root cause confirmed; pad-after-apply_config applied — await device ✅
+**Status:** ✅ FIXED — user archived 2026-09-23 (Verify no longer SIGSEGV)
 
 **Pointer:** `docs/bug-fix-process.md`
 
@@ -65,5 +65,5 @@
 
 ## Next
 
-- 🔷 ⏳ Rebuild/install APK; tap Verify on a host without `https://`.
-- 💩 ⏳ `ConnectionRow.url` stays the construct key after a successful URL change; a later Verify can miss the row map. Not this crash.
+- ✅ 2026-09-23 — user closed this bug (Verify on a host without `https://`).
+- ℹ️ Construct-key follow-up landed in [`2026-09-22-FIXED-android-verify-url-not-kept.md`](2026-09-22-FIXED-android-verify-url-not-kept.md).

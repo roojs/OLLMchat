@@ -1,9 +1,9 @@
 # ReviewBar hover menus stay up after leave / click-away
 
-**Status:** ✔️ agent applied; await user smoke **✅**  
+**Status:** ✅ FIXED — user archived 2026-09-23 (hover dismiss and first prev/next click)  
 **Hit:** 2026-09-21 — `oc-test-source-diff` file nav, bulk, Feedback  
 **Component:** `liboccoder/Diff/ReviewBar.vala`  
-**Plan:** [`CODER-4.2.3.5`](../plans/CODER-4.2.3.5-source-view-diff-approval.md)
+**Plan:** [`CODER-4.2.3.5`](../../plans/CODER-4.2.3.5-source-view-diff-approval.md)
 
 ---
 
@@ -35,4 +35,4 @@
 
 ## Next
 
-- 🔷 ⏳ User smoke: File 2 of 2 → prev once goes to 1 of 2. Desktop hover still opens. Tap label/bulk/Feedback toggles.
+- ✅ 2026-09-23 — user tested dismiss; it was fine.

@@ -1,6 +1,6 @@
 # Android Verify drops https and /api on edit
 
-**Status:** ⏳ root cause from code; fix applied — await device ✅
+**Status:** ✅ FIXED — user archived 2026-09-23 (canonical URL kept after close)
 
 **Pointer:** `docs/bug-fix-process.md`
 
@@ -13,7 +13,7 @@
 
 ## Evidence
 
-- ℹ️ Follows `docs/bugs/2026-09-22-android-verify-connection-crash.md`
+- ℹ️ Follows [`2026-09-22-FIXED-android-verify-connection-crash.md`](2026-09-22-FIXED-android-verify-connection-crash.md)
   (pad after `apply_config` so Soup gets a host).
 - ✔️ `verify_connection` stores `test_connection.url` (padded + `/api`)
   and sets `row.urlEntry.text`, then `config.save()`.
@@ -111,5 +111,4 @@
 
 ## Next
 
-- 🔷 ⏳ Verify a host without scheme; close settings; reopen — field
-  must still show `https://…/api`.
+- ✅ 2026-09-23 — user closed this bug (reopen still shows `https://…/api`).

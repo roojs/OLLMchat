@@ -1,10 +1,10 @@
 # Android configure: stale harfbuzz 8.4.0, then missing gnutls
 
-**Status:** ⏳ two configure blockers; harfbuzz pin proposed — await apply approval; gnutls needs a direction
+**Status:** ✅ FIXED — user archived 2026-09-23. Harfbuzz pin is in tree; GnuTLS left this log for OpenSSL in [`2026-09-21-FIXED-android-ocrpc-gnutls-configure.md`](2026-09-21-FIXED-android-ocrpc-gnutls-configure.md).
 
 **Hit:** 2026-09-21 / 2026-09-22 — `scripts/android/build-chat-poc-apk.sh` (Pixiewood meson reconfigure)
 
-**Related:** [`done/2026-08-20-FIXED-android-pango-glib-mismatch.md`](done/2026-08-20-FIXED-android-pango-glib-mismatch.md) (same wrap-pin / stale-checkout class; R14–R16)
+**Related:** [`2026-08-20-FIXED-android-pango-glib-mismatch.md`](2026-08-20-FIXED-android-pango-glib-mismatch.md) (same wrap-pin / stale-checkout class; R14–R16)
 
 ---
 
@@ -208,9 +208,9 @@ pango 1.58.2.
 
 ## Root cause — gnutls
 
-✔️ After harfbuzz 14.4.0, configure reaches `libocrpc` (already on the Android `subdir()` list; Phase 1 also added `libocfiles`). `libocrpc/meson.build` always does `dependency('gnutls')` ([`RPC-8.2.8.2`](../plans/done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) §9). Pixiewood has **no gnutls wrap**. `android/pixiewood-extra.cross` only disables gnutls **inside glib-networking** (OpenSSL TLS). WrapDB has no gnutls wrap.
+✔️ After harfbuzz 14.4.0, configure reaches `libocrpc` (already on the Android `subdir()` list; Phase 1 also added `libocfiles`). `libocrpc/meson.build` always does `dependency('gnutls')` ([`RPC-8.2.8.2`](../../plans/done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) §9). Pixiewood has **no gnutls wrap**. `android/pixiewood-extra.cross` only disables gnutls **inside glib-networking** (OpenSSL TLS). WrapDB has no gnutls wrap.
 
-ℹ️ [`RPC-8.2.8.6`](../plans/done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) Phase 2 `Cert.ensure()` mints a device client leaf via GnuTLS (`create_pem_files`). Android HTTPS takeover needs that mint.
+ℹ️ [`RPC-8.2.8.6`](../../plans/done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) Phase 2 `Cert.ensure()` mints a device client leaf via GnuTLS (`create_pem_files`). Android HTTPS takeover needs that mint.
 
 🚫 Do not `#if ANDROID` away `Cert` minting to make configure pass.
 🚫 Do not treat the glib-networking `gnutls = 'disabled'` line as the libocrpc switch.
@@ -228,9 +228,10 @@ pango 1.58.2.
 - ⏳ Apply harfbuzz wrap.pin + R20 after approval.
 - ⏳ GnuTLS: wait for A vs B.
 
-## Next
+## Archived
 
-- 🔷 ⏳ User approve harfbuzz pin apply.
-- 🔷 ⏳ User pick gnutls A or B (or another direction).
-- 🔷 ⏳ After harfbuzz apply: R14–R16 + R20.
+- ✅ 2026-09-23 — user closed this bug.
+- ✔️ `android/pixiewood-wraps/gtk/harfbuzz.wrap.pin` (14.4.0 peeled `36cb489cb0…`) plus `harfbuzz_checkout_matches_pin()`. Existing `*.wrap.pin` loops discard a stale checkout, copy the pin onto the GTK nested wrap, and clone before Meson.
+- ✔️ GnuTLS direction is OpenSSL (`libocrpc/android/Cert.vala`), tracked on [`2026-09-21-FIXED-android-ocrpc-gnutls-configure.md`](2026-09-21-FIXED-android-ocrpc-gnutls-configure.md).
+- ℹ️ R20 (`test-r20-harfbuzz-wrap-pin.sh`), the R15 harfbuzz assert, and the regression-doc row were not added. Skip-download never gained a `harfbuzz_checkout_matches_pin` call; that helper is only defined.
 - 💩 glib tag-vs-HEAD skip in `discard_stale_pinned_checkouts` — same class, not this cut.

@@ -1,6 +1,6 @@
 # File connection Request: stale config snapshot
 
-**Status:** ✅ phone connection flow closed by the user (2026-09-23). Next step is Agent Pi, plan 8.2.8 Phase 10, not this bug.
+**Status:** ✅ FIXED — user archived 2026-09-23 (Request, Accept, Check, restart). Agent Pi is [`RPC-8.2.8`](../../plans/RPC-8.2.8-filesd-connections-ui.md) Phase 10, not this bug.
 
 **Pointer:** `docs/bug-fix-process.md`
 
@@ -139,4 +139,4 @@
 
 - ✅ User closed this flow (2026-09-23): Request, Accept, Check stays
   up, config row survives restart.
-- 🔷 ⏳ Agent Pi on Android is [`RPC-8.2.8`](../plans/RPC-8.2.8-filesd-connections-ui.md) Phase 10. Split that before implementing.
+- ℹ️ Agent Pi on Android is [`RPC-8.2.8`](../../plans/RPC-8.2.8-filesd-connections-ui.md) Phase 10. Split that before implementing.

@@ -1,6 +1,6 @@
 # Startup overlay stuck on “Checking tool models…” (deleted analysis model auto-pull)
 
-**Status:** ✔️ applied; await user smoke **✅**
+**Status:** CLOSED — user archived 2026-09-23. Overlay hang is still intermittent; not confirmed fixed.
 
 **Started:** 2026-09-21
 
@@ -12,8 +12,8 @@
 
 **Related:**
 
-- ℹ️ [`2026-09-15-FIXED-ollama-non200-json-error-body-ignored.md`](done/2026-09-15-FIXED-ollama-non200-json-error-body-ignored.md) — same missing `qwen3-coder:30b`; follow-up already noted auto-pull blocking `ensure_required_models`
-- ℹ️ [`APP-7.15-SUPERSEDED-startup-loading-feedback.md`](../plans/done/APP-7.15-SUPERSEDED-startup-loading-feedback.md) — overlay stays up while `wait_for_pull` runs
+- ℹ️ [`2026-09-15-FIXED-ollama-non200-json-error-body-ignored.md`](2026-09-15-FIXED-ollama-non200-json-error-body-ignored.md) — same missing `qwen3-coder:30b`; follow-up already noted auto-pull blocking `ensure_required_models`
+- ℹ️ [`APP-7.15-SUPERSEDED-startup-loading-feedback.md`](../../plans/done/APP-7.15-SUPERSEDED-startup-loading-feedback.md) — overlay stays up while `wait_for_pull` runs
 
 ---
 
@@ -200,5 +200,5 @@ The whole `wait_for_pull` method.
 
 ## Next
 
-- ⏳ 🔷 User smoke: overlay dismisses; window is clickable; banner appears **after** load with Dismiss working
-- ⏳ 💩 Optional: cancel the in-flight 18 GB pull / clear `loading.json` so `PullManager.restart()` does not resume it after 60s
+- ℹ️ 2026-09-23 — user archived this log. Checking tool models still hangs sometimes; reopen if it sticks again.
+- ℹ️ Optional: cancel the in-flight 18 GB pull / clear `loading.json` so `PullManager.restart()` does not resume it after 60s.
