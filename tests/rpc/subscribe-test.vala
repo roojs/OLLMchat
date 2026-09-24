@@ -9,6 +9,7 @@ namespace OLLMrpcTests
 	public class Probe : GLib.Object
 	{
 		public string title { get; set; default = ""; }
+		public bool visible { get; set; default = false; }
 		public signal void closed();
 		public signal void pinged(string payload);
 	}
@@ -65,7 +66,9 @@ namespace OLLMrpcTests
 			this.check(command_line, conn.writes == 1, "notify did not write one Notification");
 			this.check(command_line, conn.last.method == "notify::title", "notify method mismatch");
 			this.check(command_line, conn.last.id == (int) id, "notify id mismatch");
-			this.check(command_line, conn.last.message == "a", "notify value mismatch");
+			this.check(command_line, conn.last.message == "", "notify must not stuff message");
+			this.check(command_line, conn.last.args.size == 1, "notify args missing");
+			this.check(command_line, conn.last.args.get(0).get_string() == "a", "notify value mismatch");
 			var unsub = new OLLMrpc.Request() {
 				method = "RPC-Live-Subscribe.unsubscribe",
 				lease_id = id,
@@ -129,6 +132,26 @@ namespace OLLMrpcTests
 			this.check(command_line, pinged_conn.last.args.size == 1, "pinged args missing");
 			this.check(command_line, pinged_conn.last.args.get(0).get_string() == "hello", "pinged payload mismatch");
 			this.check(command_line, pinged_conn.last.message == "", "pinged must not stuff message");
+
+			var vis_conn = new Capture() {
+				live_handles = true
+			};
+			var vis_probe = new Probe();
+			var vis_id = vis_conn.export(vis_probe);
+			var vis_sub = new OLLMrpc.Request() {
+				method = "RPC-Live-Subscribe.rpc_signal",
+				lease_id = vis_id,
+				args = OLLMrpc.args("s", "notify::visible"),
+				connection = vis_conn
+			};
+			this.check(command_line, vis_sub.dispatch(), "Subscribe.signal notify::visible dispatch failed");
+			vis_probe.visible = true;
+			this.check(command_line, vis_conn.writes == 1, "notify::visible did not write one Notification");
+			this.check(command_line, vis_conn.last.method == "notify::visible", "notify::visible method mismatch");
+			this.check(command_line, vis_conn.last.message == "", "notify::visible must not stuff message");
+			this.check(command_line, vis_conn.last.args.size == 1, "notify::visible args missing");
+			this.check(command_line, vis_conn.last.args.get(0).holds(typeof(bool)), "notify::visible arg is not boolean");
+			this.check(command_line, vis_conn.last.args.get(0).get_boolean(), "notify::visible value mismatch");
 		}
 	}
 }

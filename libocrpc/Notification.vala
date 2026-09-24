@@ -22,8 +22,8 @@ namespace OLLMrpc
 		public int id { get; set; default = 0; }
 		public string message { get; set; default = ""; }
 		/**
-		 * Named-signal parameters (GIR order). Empty for zero-arg
-		 * signals and ''notify::''.
+		 * Named-signal parameters (GIR order), or the new property
+		 * value for ''notify::''. Empty for zero-arg signals.
 		 */
 		public Gee.ArrayList<GLib.Value?> args {
 			get; set; default = new Gee.ArrayList<GLib.Value?>();

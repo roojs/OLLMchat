@@ -89,14 +89,14 @@ namespace OLLMrpc.Live
 			};
 			if (name.has_prefix("notify::")) {
 				subscription.hid = obj.notify[name.substring(8)].connect((pspec) => {
-					var current = GLib.Value(typeof(string));
+					var current = GLib.Value(pspec.value_type);
 					obj.get_property(pspec.name, ref current);
-					var text = current.get_string();
-					text = text != null ? text : "";
+					var packed = new Gee.ArrayList<GLib.Value?>();
+					packed.add(current);
 					request.connection.write(new Notification() {
 						method = name,
 						id = id,
-						message = text
+						args = packed
 					});
 				});
 				subs.get(id).set(name, subscription);

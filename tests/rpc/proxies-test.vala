@@ -76,7 +76,10 @@ namespace OLLMrpcTests
 			this.check(command_line, connected, "client connect failed");
 			var seen = "";
 			rpc.notification.connect((notif) => {
-				seen = notif.message;
+				if (notif.args.size == 0) {
+					return;
+				}
+				seen = notif.args.get(0).get_string();
 			});
 			var apply_loop = new GLib.MainLoop();
 			probe.notify["title"].connect(() => {
@@ -86,10 +89,14 @@ namespace OLLMrpcTests
 				apply_loop.quit();
 				return false;
 			});
+			var title_a = GLib.Value(typeof(string));
+			title_a.set_string("a");
+			var args_a = new Gee.ArrayList<GLib.Value?>();
+			args_a.add(title_a);
 			listen.broadcast(new OLLMrpc.Notification() {
 				method = "notify::title",
 				id = 7,
-				message = "a"
+				args = args_a
 			});
 			if (probe.title != "a") {
 				apply_loop.run();
@@ -103,10 +110,14 @@ namespace OLLMrpcTests
 				unbound_loop.quit();
 				return false;
 			});
+			var title_b = GLib.Value(typeof(string));
+			title_b.set_string("b");
+			var args_b = new Gee.ArrayList<GLib.Value?>();
+			args_b.add(title_b);
 			listen.broadcast(new OLLMrpc.Notification() {
 				method = "notify::title",
 				id = 7,
-				message = "b"
+				args = args_b
 			});
 			if (seen != "b") {
 				unbound_loop.run();

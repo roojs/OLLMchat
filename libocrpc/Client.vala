@@ -157,8 +157,8 @@ namespace OLLMrpc
 		 * ({@link Gee.HashMap.set}) and removes on closed
 		 * ({@link Gee.HashMap.unset}). Inbound ''notify::'' notifications
 		 * call {@link GLib.Object.set_property} from
-		 * {@link Notification.message}. Unbound ids still emit
-		 * {@link notification}.
+		 * {@link Notification.args} when that list holds the new value.
+		 * Unbound ids still emit {@link notification}.
 		 *
 		 * {@link Bin.Stream.parse_object} also inserts the decoded
 		 * proxy here. The wire lease is {@link Live.Interface.rpc_lid}
@@ -1206,13 +1206,12 @@ namespace OLLMrpc
 					this.buffer_stream.attach(notif);
 				}
 				if (this.live_handles && notif.method.has_prefix("notify::")
-					&& this.proxies.has_key(notif.id)) 
+					&& this.proxies.has_key(notif.id)
+					&& notif.args.size > 0)
 				{
-					var current = GLib.Value(typeof(string));
-					current.set_string(notif.message);
 					this.proxies.get(notif.id).set_property(
 						notif.method.substring(8),
-						current
+						notif.args.get(0)
 					);
 				}
 				this.notification(notif);
