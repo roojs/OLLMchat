@@ -82,7 +82,7 @@ namespace OLLMrpc.Bin
 		/**
 		 * Turn signal parameters into notification fields.
 		 *
-		 * Skips {@code param_values[0]}, the instance. An override replaces
+		 * Skips ''param_values[0]'', the instance. An override replaces
 		 * one parameter with the fields from {@link pack}.
 		 *
 		 * @param param_values instance then signal arguments
@@ -108,7 +108,7 @@ namespace OLLMrpc.Bin
 		/**
 		 * Fill one GValue per signal parameter from notification fields.
 		 *
-		 * {@code dest[0]} is the instance and is left alone. An override
+		 * ''dest[0]'' is the instance and is left alone. An override
 		 * consumes the field count from {@link unpack}. Any other parameter
 		 * consumes one field.
 		 *

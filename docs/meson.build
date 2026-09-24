@@ -57,6 +57,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocrpc/namespace.vala',
     '../libocrpc/Bin/namespace.vala',  # Bin namespace documentation
     '../libocrpc/Bin/Serializable.vala',
+    '../libocrpc/Bin/TypeOverride.vala',
     '../libocrpc/Bin/Stream.vala',
     '../libocrpc/Bin/StreamValue.vala',
     '../libocrpc/Bin/Json.vala',

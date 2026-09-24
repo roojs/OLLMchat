@@ -23,7 +23,7 @@ namespace OLLMrpc.Live
 	 * Live proxy that takes the wire lease as a construct property.
 	 *
 	 * {@link Bin.Stream.parse_object} calls {@link GLib.Object.new} with
-	 * ''rpc-lid'' on the live path. Stub {@code construct} reads
+	 * ''rpc-lid'' on the live path. Stub ''construct'' reads
 	 * {@link rpc_lid} (non-zero → already leased; skip ''Ns-Type.new'').
 	 * Construct setters that run before that block stash values with
 	 * {@link rpc_ctor_stash} and read them back with {@link rpc_ctor_get}.
@@ -56,10 +56,10 @@ namespace OLLMrpc.Live
 		/**
 		 * Copy one construct property onto this instance.
 		 *
-		 * Call from a property {@code construct} setter. Does not RPC.
+		 * Call from a property ''construct'' setter. Does not RPC.
 		 *
 		 * @param name GIR property name
-		 * @param value the construct value to keep until {@code construct}
+		 * @param value the construct value to keep until ''construct''
 		 */
 		[GIR (visible = false)]
 		public void rpc_ctor_stash(string name, GLib.Value value)
