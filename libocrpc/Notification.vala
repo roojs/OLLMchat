@@ -23,7 +23,8 @@ namespace OLLMrpc
 		public string message { get; set; default = ""; }
 		/**
 		 * Named-signal parameters (GIR order), or the new property
-		 * value for ''notify::''. Empty for zero-arg signals.
+		 * value for ''notify::''. A {@link Bin.TypeOverride} replaces
+		 * that value with its wire fields. Empty for zero-arg signals.
 		 */
 		public Gee.ArrayList<GLib.Value?> args {
 			get; set; default = new Gee.ArrayList<GLib.Value?>();

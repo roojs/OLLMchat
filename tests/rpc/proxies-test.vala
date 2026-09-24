@@ -9,6 +9,40 @@ namespace OLLMrpcTests
 	public class Probe : GLib.Object
 	{
 		public string title { get; set; default = ""; }
+		public GLib.DateTime stamp { get; set; default = new GLib.DateTime.now_utc(); }
+	}
+
+	public class StampOverride : OLLMrpc.Bin.TypeOverride
+	{
+		public override GLib.Type override_type {
+			get {
+				return typeof(GLib.DateTime);
+			}
+		}
+
+		public override Gee.ArrayList<GLib.Value?> pack(GLib.Value src)
+		{
+			var fields = new Gee.ArrayList<GLib.Value?>();
+			var text = GLib.Value(typeof(string));
+			text.set_string(((GLib.DateTime) src.get_boxed()).format_iso8601());
+			fields.add(text);
+			return fields;
+		}
+
+		public override GLib.Value unpack(
+			Gee.ArrayList<GLib.Value?> fields,
+			int index,
+			out int consumed
+		)
+		{
+			consumed = 1;
+			var value = GLib.Value(typeof(GLib.DateTime));
+			value.set_boxed(new GLib.DateTime.from_iso8601(
+				fields.get(index).get_string(),
+				null
+			));
+			return value;
+		}
 	}
 }
 
@@ -125,6 +159,31 @@ namespace OLLMrpcTests
 			GLib.Source.remove(unbound_timeout);
 			this.check(command_line, seen == "b", "unbound notification not emitted");
 			this.check(command_line, probe.title == "a", "unbound id still applied");
+			OLLMrpc.Bin.TypeOverride.register(new StampOverride());
+			rpc.proxies.set(7, probe);
+			var stamp_loop = new GLib.MainLoop();
+			probe.notify["stamp"].connect(() => {
+				stamp_loop.quit();
+			});
+			var stamp_timeout = GLib.Timeout.add(2000, () => {
+				stamp_loop.quit();
+				return false;
+			});
+			var stamp = new GLib.DateTime.utc(2026, 9, 24, 12, 0, 0.0);
+			var stamp_text = GLib.Value(typeof(string));
+			stamp_text.set_string(stamp.format_iso8601());
+			var args_stamp = new Gee.ArrayList<GLib.Value?>();
+			args_stamp.add(stamp_text);
+			listen.broadcast(new OLLMrpc.Notification() {
+				method = "notify::stamp",
+				id = 7,
+				args = args_stamp
+			});
+			if (probe.stamp.format_iso8601() != stamp.format_iso8601()) {
+				stamp_loop.run();
+			}
+			GLib.Source.remove(stamp_timeout);
+			this.check(command_line, probe.stamp.format_iso8601() == stamp.format_iso8601(), "proxy stamp not unpacked");
 			rpc.disconnect();
 			this.check(command_line, rpc.proxies.size == 0, "disconnect left proxies");
 			listen.stop();

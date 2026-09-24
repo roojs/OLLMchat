@@ -10,8 +10,42 @@ namespace OLLMrpcTests
 	{
 		public string title { get; set; default = ""; }
 		public bool visible { get; set; default = false; }
+		public GLib.DateTime stamp { get; set; default = new GLib.DateTime.now_utc(); }
 		public signal void closed();
 		public signal void pinged(string payload);
+	}
+
+	public class StampOverride : OLLMrpc.Bin.TypeOverride
+	{
+		public override GLib.Type override_type {
+			get {
+				return typeof(GLib.DateTime);
+			}
+		}
+
+		public override Gee.ArrayList<GLib.Value?> pack(GLib.Value src)
+		{
+			var fields = new Gee.ArrayList<GLib.Value?>();
+			var text = GLib.Value(typeof(string));
+			text.set_string(((GLib.DateTime) src.get_boxed()).format_iso8601());
+			fields.add(text);
+			return fields;
+		}
+
+		public override GLib.Value unpack(
+			Gee.ArrayList<GLib.Value?> fields,
+			int index,
+			out int consumed
+		)
+		{
+			consumed = 1;
+			var value = GLib.Value(typeof(GLib.DateTime));
+			value.set_boxed(new GLib.DateTime.from_iso8601(
+				fields.get(index).get_string(),
+				null
+			));
+			return value;
+		}
 	}
 
 	public class Capture : OLLMrpc.Transport.Connection
@@ -152,6 +186,28 @@ namespace OLLMrpcTests
 			this.check(command_line, vis_conn.last.args.size == 1, "notify::visible args missing");
 			this.check(command_line, vis_conn.last.args.get(0).holds(typeof(bool)), "notify::visible arg is not boolean");
 			this.check(command_line, vis_conn.last.args.get(0).get_boolean(), "notify::visible value mismatch");
+
+			OLLMrpc.Bin.TypeOverride.register(new StampOverride());
+			var stamp_conn = new Capture() {
+				live_handles = true
+			};
+			var stamp_probe = new Probe();
+			var stamp_id = stamp_conn.export(stamp_probe);
+			var stamp_sub = new OLLMrpc.Request() {
+				method = "RPC-Live-Subscribe.rpc_signal",
+				lease_id = stamp_id,
+				args = OLLMrpc.args("s", "notify::stamp"),
+				connection = stamp_conn
+			};
+			this.check(command_line, stamp_sub.dispatch(), "Subscribe.signal notify::stamp dispatch failed");
+			var stamp = new GLib.DateTime.utc(2026, 9, 24, 12, 0, 0.0);
+			stamp_probe.stamp = stamp;
+			this.check(command_line, stamp_conn.writes == 1, "notify::stamp did not write one Notification");
+			this.check(command_line, stamp_conn.last.method == "notify::stamp", "notify::stamp method mismatch");
+			this.check(command_line, stamp_conn.last.message == "", "notify::stamp must not stuff message");
+			this.check(command_line, stamp_conn.last.args.size == 1, "notify::stamp args missing");
+			this.check(command_line, stamp_conn.last.args.get(0).holds(typeof(string)), "notify::stamp arg is not the override string");
+			this.check(command_line, stamp_conn.last.args.get(0).get_string() == stamp.format_iso8601(), "notify::stamp value mismatch");
 		}
 	}
 }

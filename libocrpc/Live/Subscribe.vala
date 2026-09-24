@@ -91,8 +91,16 @@ namespace OLLMrpc.Live
 				subscription.hid = obj.notify[name.substring(8)].connect((pspec) => {
 					var current = GLib.Value(pspec.value_type);
 					obj.get_property(pspec.name, ref current);
+					var helper = OLLMrpc.Bin.TypeOverride.lookup(pspec.value_type);
 					var packed = new Gee.ArrayList<GLib.Value?>();
-					packed.add(current);
+					if (helper != null) {
+						foreach (var field in helper.pack(current)) {
+							packed.add(field);
+						}
+					}
+					if (helper == null) {
+						packed.add(current);
+					}
 					request.connection.write(new Notification() {
 						method = name,
 						id = id,

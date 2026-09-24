@@ -157,7 +157,8 @@ namespace OLLMrpc
 		 * ({@link Gee.HashMap.set}) and removes on closed
 		 * ({@link Gee.HashMap.unset}). Inbound ''notify::'' notifications
 		 * call {@link GLib.Object.set_property} from
-		 * {@link Notification.args} when that list holds the new value.
+		 * {@link Notification.args}. A {@link Bin.TypeOverride} for the
+		 * property type is unpacked first.
 		 * Unbound ids still emit {@link notification}.
 		 *
 		 * {@link Bin.Stream.parse_object} also inserts the decoded
@@ -1209,10 +1210,22 @@ namespace OLLMrpc
 					&& this.proxies.has_key(notif.id)
 					&& notif.args.size > 0)
 				{
-					this.proxies.get(notif.id).set_property(
-						notif.method.substring(8),
-						notif.args.get(0)
-					);
+					var prop_name = notif.method.substring(8);
+					var helper = OLLMrpc.Bin.TypeOverride.lookup(
+						this.proxies.get(notif.id).get_class().find_property(prop_name).value_type);
+					if (helper != null) {
+						var consumed = 0;
+						this.proxies.get(notif.id).set_property(
+							prop_name,
+							helper.unpack(notif.args, 0, out consumed)
+						);
+					}
+					if (helper == null) {
+						this.proxies.get(notif.id).set_property(
+							prop_name,
+							notif.args.get(0)
+						);
+					}
 				}
 				this.notification(notif);
 				return;
