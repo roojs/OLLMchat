@@ -32,15 +32,19 @@ namespace OLLMchat.Settings
 		public string url { get; set; default = ""; }
 
 		/**
-		 * Desktop has accepted registration (Check sets true in Phase 2).
-		 * UI: false → ''Requested'', true → ''Active''.
+		 * Connection state. JSON is the ordinal.
+		 *
+		 * 0 requested, 1 disabled, 2 enabled, 3 live, 4 unreachable.
 		 */
-		public bool approved { get; set; default = false; }
+		public enum State {
+			REQUESTED,
+			DISABLED,
+			ENABLED,
+			LIVE,
+			UNREACHABLE
+		}
 
-		/**
-		 * When false, Phase 2 must not connect / must not override local Unix.
-		 */
-		public bool enabled { get; set; default = true; }
+		public State state { get; set; default = State.REQUESTED; }
 
 		public FilesdClient()
 		{
@@ -66,6 +70,11 @@ namespace OLLMchat.Settings
 		public override Json.Node serialize_property(
 			string property_name, Value value, ParamSpec pspec)
 		{
+			if (property_name == "state") {
+				var node = new Json.Node(Json.NodeType.VALUE);
+				node.set_int((int) this.state);
+				return node;
+			}
 			return default_serialize_property(property_name, value, pspec);
 		}
 
@@ -73,6 +82,11 @@ namespace OLLMchat.Settings
 			string property_name, out Value value, ParamSpec pspec,
 			Json.Node property_node)
 		{
+			if (property_name == "state") {
+				value = Value(typeof(State));
+				value.set_enum((int) property_node.get_int());
+				return true;
+			}
 			return default_deserialize_property(
 				property_name, out value, pspec, property_node);
 		}

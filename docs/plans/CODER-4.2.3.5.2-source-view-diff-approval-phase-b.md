@@ -1,6 +1,6 @@
 # 4.2.3.5.2 — ReviewBar Phase B: product wire
 
-**Status:** **⏳** proposed — design carry-over from parent; **no Vala fences** until open **💩** items are **🔷**
+**Status:** **⏳** proposed — design carry-over from parent
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
@@ -20,97 +20,713 @@
 
 ## Purpose
 
-- 🔷 Same footer + centre overlay chrome as Phase A, backed by **real** pending review state — **`file_diff_part`**, daemon RPC, **`ReviewFiles`**, disk on reject.
-- 🔷 **`ReviewBar`** stays the review-chrome owner; **`SourceView`** keeps **`show_diff` / `navigate_to_line` / `clear_diff`** only (see parent **SourceView vs ReviewBar**).
-- 🔷 **`show_pending_diff`** + editor shell — not harness-only.
-- 🔷 Move **changed-files list** from header **`Approvals`** into footer file nav; **remove** top popover when footer ships.
-- ℹ️ Phase A mock decisions in **`ReviewBar`** become persistence + RPC in this sub-plan.
+- 🔷 Phase 1 — embed **`ReviewBar`** in the product editor and drive file nav from the real **`ReviewFiles`** queue.
+- 🔷 Phase 2 — persist hunk decisions as **`file_diff_part`** via daemon RPC; reject writes **V_disk**, accept does not.
+- 🔷 Phase 3 — header **`Approvals`** drops the changed-files list; **`show_pending_diff`** is the only pending-diff entry.
+- ℹ️ Phase A mock decisions in **`ReviewBar`** become persistence + RPC in Phase 2.
+- ℹ️ **`ReviewBar`** stays the review-chrome owner. **`SourceView`** keeps **`show_diff` / `navigate_to_line` / `clear_diff`** only (parent **SourceView vs ReviewBar**).
 
 ---
 
-## How it works
+## Phase 1 — Wire chrome
 
-1. User opens a pending file → existing **`show_pending_diff`** builds **`Differ`**; editor hosts **`ReviewBar`** under **`SourceView`** (same layout as **`oc-test-source-diff`**).
-2. **`ReviewBar.update_diff`** loads hunks from **`Differ.patches`** and merges **`file_diff_part`** rows for the active **`file_history`** chunk (no row = pending hunk).
-3. Accept hunk → insert **`file_diff_part`** **`accepted=1`**; **no** disk write; grey band + advance.
-4. Reject hunk → apply hunk undo on **V_disk** + insert **`accepted=0`**; grey band + advance.
-5. Unapprove → delete part row; band pending again; disk unchanged for a prior accept.
-6. All hunks have part rows → **`file_history.reviewed=1`** for that chunk.
-7. Owner wires **`responses()`** for LLM feedback (same as harness); **`review_response`** handled outside **`ReviewBar`**.
+Embed **`ReviewBar`** under **`SourceView`** (same layout as **`oc-test-source-diff`**). File nav, the inactive middle label, and the bulk menu use the real **`ReviewFiles`** queue. Bulk actions are stubs that report real counts. Part rows and disk writes are Phase 2.
 
----
-
-## Persistence and disk
-
-- 🔷 Accept → insert **`file_diff_part`** with **`accepted=1`**; **no** disk write.
-- 🔷 Reject → undo hunk on **V_disk** + **`accepted=0`** part row.
-- 🔷 Unapprove → delete part row; overlay state back; disk unchanged for prior accept.
-- 🔷 Chunk complete when every hunk has a part row → **`file_history.reviewed=1`**.
-- 🔷 Insert part rows **on first** user accept/reject per hunk — **no** upfront rows on agent write.
-- 🔷 ⏳ Daemon RPC surface for part insert/delete/reject-apply (name methods when spec is **🔷**).
-- 🔷 ⏳ Hunk file format at **`FileDiffPart.path`** — unified-diff text vs serialised **`Patch`** (parent open item).
-- 🚫 Rewrite disk on **accept**.
-- 🚫 Approve / unapprove aliased to GtkSource undo/redo.
-
----
-
-## Footer chrome (real queue)
-
-### Left — file nav
-
-- 🔷 **`n / N`** over real pending files; queue **oldest pending change first** (by **`file_history`** write time).
-- 🔷 Changed-files **hover list** from header **`Approvals`** (`next_button` popover) — same interaction, footer anchor.
-- 🔷 Reconcile sort: **`Approvals`** today uses **`last_modified` descending** → footer **oldest-first**.
-- 🔷 ⏳ Status affordance per file in list (pending / partial / decided) — **💩** exact glyphs TBD in review.
-
-### Middle — inactive file
-
-- 🔷 User on non-pending file: grey bar, red **`N changes pending review`** (real **N**).
-- 🔷 Click → open **oldest** pending file via **`show_pending_diff`**.
-
-### Right — bulk actions
-
-- 🔷 Hover menu: unapprove all (file); accept all pending files (confirm); destructive bulk per parent plan.
-- 🔷 Whole-file reject (full **V_backup** restore) stays destructive — **`Approvals`** or bulk menu, not casual band click.
-- 💩 Exact middle placeholder copy vs hide footer when zero pending.
-
----
-
-## Editor and `Approvals` integration
-
-- 🔷 Hook **`Diff.ReviewBar`** into **`show_pending_diff`** / editor shell.
-- 🔷 ⏳ Header **`Approvals`:** strip changed-files popover; demote or relocate whole-file Approve/Reject.
-- 🔷 ⏳ **`review_response`** signal → product handler (send prompt to LLM); not in scope for daemon parts unless **🔷** later.
+- 🔷 ⏳ Pending file opens through existing **`show_pending_diff`** (builds **`Differ`**). Editor hosts **`ReviewBar`** under **`SourceView`**.
+- 🔷 ⏳ **`n / N`** over the footer file list. Order is **basename**, then full path when basenames match.
+- 🔷 ⏳ Footer file menu (header **`Approvals`** `next_button` interaction, anchored on the footer):
+  - A file that is fully decided leaves the list.
+  - The file you are on stays in the list even when it is decided.
+  - That row is marked selected (1 of 3 on file 1 → row 1 selected).
+  - No pending / partial / decided glyphs.
+  - Header popover removal is Phase 3.
+- 🔷 ⏳ Footer file menu row label is the basename. Hover tooltip is the path relative to the project root (no leading slash). Header **`Approvals`** stays **`last_modified` descending** until Phase 3.
+- 🔷 ⏳ **1 of 1** (queue down to the file already open):
+  - Bar stays visible.
+  - Label stays **File n of N** (**File 1 of 1** on that file).
+  - Prev / next hidden.
+  - File-list popover disabled (no hover, click does nothing).
+- 🔷 ⏳ Open a file with **zero** approvals → review bar hidden.
+- 🔷 ⏳ Change notification (`event.project.invalidate_cache` / review refresh):
+  - Current file is in the change set → stay on it. A later change to another file does not switch.
+  - Current file is **not** in the change set → open the first change file.
+  - Current file **is** the file that changed, already open, bar hidden → show the bar.
+- 🔷 ⏳ Non-pending file: grey bar, red **`N changes pending review`** (real **N**). Click opens the **first** file in that basename order via **`show_pending_diff`**.
+- 🔷 ⏳ Bulk hover menu is present (unapprove all on the file, accept all pending files, destructive bulk per parent). Actions are stubs. Confirm / revert semantics are Phase 2.
 - 🔷 ⏳ Phone: no source-view diff preview. Tablet: **ReviewBar** + interleaved diff.
-- 🔷 ⏳ Editor scroll view / **`SourceView`:** tap-on-scrolled-content (menu dismiss, etc.) — **not** **ReviewBar**.
-- 🔷 ⏳ Stacked LLM edit (**Flow B**) — review **H2** only; no carry-forward v1.
-- 🔷 ⏳ Unsaved dirty buffer while reviewing — **lean: no**.
-- 🔷 ⏳ Header **`Approvals`** Approve/Reject vs footer relationship.
-- 🔷 ⏳ Accept all files — confirm / revert semantics.
+- 🔷 ⏳ A tap on the editor scroll view (menu dismiss and similar) belongs to the scroll view / **`SourceView`**, not **`ReviewBar`**.
+- 🔷 ⏳ Owner calls **`responses()`** as in the harness. Product **`review_response`** handler (send the prompt to the LLM) is outside daemon part work.
+
+Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes. Bulk accept / reject stay the existing in-memory stubs and emit **`accept_all_files`** / **`reject_all_files`**. Phone (`ANDROID`) does not host the bar.
+
+### 1. `liboccoder/Diff/ReviewBar.vala` — live queue fields
+
+**Why:** Product file nav is a live list. The harness still uses the constructor `file_count` / `file_labels` path.
+
+**Where:** `ReviewBar` fields, after `file_labels`.
+
+**Depends on:** none.
+
+#### Add — after `private string[] file_labels = {};`, the live queue of `FileWithHistory` rows. The menu reads display fields off each row.
+
+```vala
+		private bool live_queue = false;
+		public Gee.ArrayList<OLLMfiles.FileWithHistory> queue {
+			get; private set;
+			default = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+		}
+```
+
+`file_nav` stays the box. The control inside it is a `Gtk.Button`, so the field is `file_nav_btn`. Apply these before ### 4. ### 4 still removes the old `file_nav_label` line inside `update_diff`.
+
+#### Remove
+
+```vala
+		private Gtk.Button file_nav_label;
+```
+
+#### Replace with — button field, not a label.
+
+```vala
+		private Gtk.Button file_nav_btn;
+```
+
+#### Remove
+
+```vala
+				this.file_nav_label.label = "File %d of %d".printf(
+					this.file_index + 1, this.file_count);
+				this.file_index_changed(this.file_index);
+			});
+			this.file_next = new Gtk.Button() {
+```
+
+#### Replace with — prev click uses `file_nav_btn`.
+
+```vala
+				this.file_nav_btn.label = "File %d of %d".printf(
+					this.file_index + 1, this.file_count);
+				this.file_index_changed(this.file_index);
+			});
+			this.file_next = new Gtk.Button() {
+```
+
+#### Remove
+
+```vala
+				this.file_nav_label.label = "File %d of %d".printf(
+					this.file_index + 1, this.file_count);
+				this.file_index_changed(this.file_index);
+			});
+			this.file_nav_label = new Gtk.Button.with_label("");
+```
+
+#### Replace with — next click uses `file_nav_btn`.
+
+```vala
+				this.file_nav_btn.label = "File %d of %d".printf(
+					this.file_index + 1, this.file_count);
+				this.file_index_changed(this.file_index);
+			});
+			this.file_nav_btn = new Gtk.Button.with_label("");
+```
+
+#### Remove
+
+```vala
+				this.file_nav_label.label = "File %d of %d".printf(
+					this.file_index + 1, this.file_count);
+			}
+			this.file_nav = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 4);
+			this.file_nav.append(this.file_prev);
+			this.file_nav.append(this.file_nav_label);
+```
+
+#### Replace with — initial caption and box child.
+
+```vala
+				this.file_nav_btn.label = "File %d of %d".printf(
+					this.file_index + 1, this.file_count);
+			}
+			this.file_nav = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 4);
+			this.file_nav.append(this.file_prev);
+			this.file_nav.append(this.file_nav_btn);
+```
+
+#### Remove
+
+```vala
+						this.file_nav_label.label = "File %d of %d".printf(
+							pick + 1, this.file_count);
+```
+
+#### Replace with — harness menu pick uses `file_nav_btn`.
+
+```vala
+						this.file_nav_btn.label = "File %d of %d".printf(
+							pick + 1, this.file_count);
+```
+
+#### Remove
+
+```vala
+			this.file_menu_popover.set_parent(this.file_nav_label);
+			((Gtk.Popover) this.file_menu_popover).autohide = false;
+			this.file_nav_label.clicked.connect(() => {
+```
+
+#### Replace with — popover parent and click handler.
+
+```vala
+			this.file_menu_popover.set_parent(this.file_nav_btn);
+			((Gtk.Popover) this.file_menu_popover).autohide = false;
+			this.file_nav_btn.clicked.connect(() => {
+```
+
+#### Remove
+
+```vala
+			this.file_nav_label.add_controller(file_anchor_motion);
+```
+
+#### Replace with — hover controller on the button.
+
+```vala
+			this.file_nav_btn.add_controller(file_anchor_motion);
+```
+
+### 2. `liboccoder/Diff/ReviewBar.vala` — inactive label opens the first file
+
+**Why:** Click on `N changes pending review` opens the first file in basename order. The harness mock path is unchanged.
+
+**Where:** `ReviewBar` constructor, `pending_click.pressed`.
+
+**Depends on:** ### 1.
+
+#### Remove
+
+```vala
+			pending_click.pressed.connect(() => {
+				if (!this.mock_inactive) {
+					return;
+				}
+```
+
+#### Replace with — live queue emits index 0 and does not enter the mock path.
+
+```vala
+			pending_click.pressed.connect(() => {
+				if (this.live_queue) {
+					if (this.file_count < 1) {
+						return;
+					}
+					this.file_index_changed(0);
+					return;
+				}
+				if (!this.mock_inactive) {
+					return;
+				}
+```
+
+### 3. `liboccoder/Diff/ReviewBar.vala` — bulk menu always lists all-files stubs
+
+**Why:** The product bar is constructed with `file_count` 1, so the all-files items would never appear. They stay stubs.
+
+**Where:** `ReviewBar` constructor, both `if (this.file_count > 1)` blocks around the all-files menu section and its actions.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+			if (this.file_count > 1) {
+				var all_section = new GLib.Menu();
+				var accept_all_files = new GLib.MenuItem(
+					"Accept changes to all files", "bulk.accept-all-files");
+				accept_all_files.set_icon(new GLib.ThemedIcon("emblem-ok-symbolic"));
+				all_section.append_item(accept_all_files);
+				var reject_all_files = new GLib.MenuItem(
+					"Reject changes to all files", "bulk.reject-all-files");
+				reject_all_files.set_icon(new GLib.ThemedIcon("dialog-cancel-symbolic"));
+				all_section.append_item(reject_all_files);
+				bulk_menu.append_section(null, all_section);
+			}
+```
+
+#### Replace with — all-files section is always on the bulk menu.
+
+```vala
+			var all_section = new GLib.Menu();
+			var accept_all_files = new GLib.MenuItem(
+				"Accept changes to all files", "bulk.accept-all-files");
+			accept_all_files.set_icon(new GLib.ThemedIcon("emblem-ok-symbolic"));
+			all_section.append_item(accept_all_files);
+			var reject_all_files = new GLib.MenuItem(
+				"Reject changes to all files", "bulk.reject-all-files");
+			reject_all_files.set_icon(new GLib.ThemedIcon("dialog-cancel-symbolic"));
+			all_section.append_item(reject_all_files);
+			bulk_menu.append_section(null, all_section);
+```
+
+#### Remove
+
+```vala
+			if (this.file_count > 1) {
+				var accept_all_files_action = new GLib.SimpleAction("accept-all-files", null);
+```
+
+#### Replace with — drop the condition. Action bodies stay.
+
+```vala
+			var accept_all_files_action = new GLib.SimpleAction("accept-all-files", null);
+```
+
+#### Remove
+
+```vala
+				bulk_actions.add_action(reject_all_files_action);
+			}
+			this.insert_action_group("bulk", bulk_actions);
+```
+
+#### Replace with — remove the `if` closing brace. Action group insert stays.
+
+```vala
+				bulk_actions.add_action(reject_all_files_action);
+			this.insert_action_group("bulk", bulk_actions);
+```
+
+### 4. `liboccoder/Diff/ReviewBar.vala` — `update_diff` keeps 1 of 1 nav
+
+**Why:** `update_diff` currently hides file nav when `file_count` is 1. A live queue of one file stays visible as `File 1 of 1` with prev / next hidden. Popover click already returns when `file_count < 2`.
+
+**Where:** `update_diff`, the `file_nav.visible` assignment.
+
+**Depends on:** ### 1.
+
+#### Remove
+
+```vala
+			this.file_nav.visible = this.file_count > 1;
+			if (this.file_count > 1) {
+				this.file_nav_label.label = "File %d of %d".printf(
+					this.file_index + 1, this.file_count);
+			}
+```
+
+#### Replace with — live queue shows nav for one file. Label stays `File n of N`.
+
+```vala
+			this.file_nav.visible = this.live_queue ? this.file_count > 0 : this.file_count > 1;
+			this.file_prev.visible = this.file_count > 1;
+			this.file_next.visible = this.file_count > 1;
+			if (this.file_nav.visible) {
+				this.file_nav_btn.label = "File %d of %d".printf(
+					this.file_index + 1, this.file_count);
+			}
+```
+
+### 5. `liboccoder/Diff/ReviewBar.vala` — `sync_pending`
+
+**Why:** One method owns the live list: basename order, drop decided files, keep the open file, mark that row selected, hide the bar when nothing is pending and the open file is not kept.
+
+**Where:** end of class `ReviewBar`, after `on_reject_clicked`.
+
+**Depends on:** ### 1, ### 4.
+
+#### Add — new method `sync_pending` after `on_reject_clicked`.
+
+```vala
+		/**
+		 * Replace the footer file list from the live pending queue.
+		 *
+		 * Basename order, then full path. The queue stores the
+		 * ``FileWithHistory`` rows. ``current_file`` is the open
+		 * editor file, or null when none is open. ``keep_current``
+		 * retains that file's row after it leaves the pending set.
+		 * The open row gets a select icon. No pending / partial /
+		 * decided glyphs.
+		 *
+		 * @param pending pending rows, sorted in place
+		 * @param current_file open editor file, or null
+		 * @param keep_current true while the bar is already visible
+		 */
+		public void sync_pending(
+			Gee.ArrayList<OLLMfiles.FileWithHistory> pending,
+			OLLMfiles.File? current_file,
+			bool keep_current)
+		{
+			this.live_queue = true;
+			var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+			foreach (var row in pending) {
+				rows.add(row);
+			}
+			var on_list = false;
+			for (var i = 0; i < rows.size; i++) {
+				if (current_file == null || rows.get(i).path != current_file.path) {
+					continue;
+				}
+				on_list = true;
+				this.file_index = i;
+			}
+			if (!on_list && keep_current && current_file != null) {
+				foreach (var old in this.queue) {
+					if (old.path != current_file.path) {
+						continue;
+					}
+					rows.add(old);
+					on_list = true;
+				}
+			}
+			rows.sort((a, b) => {
+				var cmp = a.path_basename.collate(b.path_basename);
+				if (cmp != 0) {
+					return cmp;
+				}
+				return a.path.collate(b.path);
+			});
+			if (on_list && current_file != null) {
+				for (var i = 0; i < rows.size; i++) {
+					if (rows.get(i).path != current_file.path) {
+						continue;
+					}
+					this.file_index = i;
+				}
+			}
+			this.queue = rows;
+			this.file_count = this.queue.size;
+			this.file_bulk = new HunkDecision[int.max(1, this.file_count)];
+			this.visible = this.file_count > 0;
+			this.file_nav.visible = this.file_count > 0;
+			this.file_prev.visible = this.file_count > 1;
+			this.file_next.visible = this.file_count > 1;
+			if (this.file_count < 1) {
+				return;
+			}
+			if (on_list) {
+				this.file_nav_btn.label = "File %d of %d".printf(
+					this.file_index + 1, this.file_count);
+			}
+			if (!on_list) {
+				this.file_nav_btn.label = "%d files".printf(this.file_count);
+				this.file_index = 0;
+			}
+			this.pending_label.visible = !on_list;
+			this.map_area.visible = on_list;
+			this.map_scroll_left.visible = on_list;
+			this.map_scroll_right.visible = on_list;
+			if (!on_list) {
+				this.pending_label.label = "%d changes pending review".printf(
+					this.file_count);
+				this.accept_btn.visible = false;
+				this.reject_btn.visible = false;
+				this.feedback_btn.visible = false;
+				this.unapprove_btn.visible = false;
+			}
+			var file_list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+			var project = this.source_view.manager.active_project;
+			for (var fi = 0; fi < this.queue.size; fi++) {
+				var pick = fi;
+				var rel = this.queue.get(fi).path;
+				if (project != null && rel.has_prefix(project.path)) {
+					rel = rel.substring(project.path.length);
+					if (rel.has_prefix("/")) {
+						rel = rel.substring(1);
+					}
+				}
+				var row_btn = new Gtk.Button() {
+					label = this.queue.get(fi).path_basename,
+					tooltip_text = rel,
+					has_frame = false,
+				};
+				if (on_list && fi == this.file_index) {
+					row_btn.icon_name = "object-select-symbolic";
+				}
+				row_btn.clicked.connect(() => {
+					if (this.file_index != pick) {
+						this.file_index = pick;
+						this.file_nav_btn.label = "File %d of %d".printf(
+							pick + 1, this.file_count);
+						this.file_index_changed(pick);
+					}
+					((Gtk.Popover) this.file_menu_popover).popdown();
+				});
+				file_list.append(row_btn);
+			}
+			((Gtk.Popover) this.file_menu_popover).set_child(file_list);
+		}
+```
+
+### 6. `liboccoder/SourceView.vala` — host the bar
+
+**Why:** Same stack as `oc-test-source-diff`: overlay plus footer. `ANDROID` keeps the scrolled view only.
+
+**Where:** field next to `approvals`. Constructor, replace `this.append(this.scrolled_window)`.
+
+**Depends on:** ### 5.
+
+#### Add — field under `private Approvals? approvals = null;`.
+
+```vala
+#if !ANDROID
+		private OLLMcoder.Diff.ReviewBar review_bar;
+#endif
+```
+
+#### Remove
+
+```vala
+			this.scrolled_window.set_child(this.source_view);
+			// Hide sourceview initially until a file is opened
+			this.scrolled_window.visible = false;
+			this.append(this.scrolled_window);
+```
+
+#### Replace with — desktop hosts `ReviewBar`. Phone appends the scrolled view as today.
+
+```vala
+			this.scrolled_window.set_child(this.source_view);
+			// Hide sourceview initially until a file is opened
+			this.scrolled_window.visible = false;
+#if ANDROID
+			this.append(this.scrolled_window);
+#else
+			this.review_bar = new OLLMcoder.Diff.ReviewBar(this);
+			this.review_bar.visible = false;
+			this.review_bar.responses(new Gee.ArrayList<OLLMcoder.Diff.ReviewResponse>());
+			var editor_overlay = new Gtk.Overlay() {
+				vexpand = true,
+				hexpand = true,
+			};
+			editor_overlay.set_child(this.scrolled_window);
+			editor_overlay.add_overlay(this.review_bar.review_overlay);
+			this.append(editor_overlay);
+			this.append(this.review_bar);
+			this.review_bar.file_index_changed.connect((index) => {
+				if (index < 0 || index >= this.review_bar.queue.size) {
+					return;
+				}
+				var path = this.review_bar.queue.get(index).path;
+				if (this.current_file != null && this.current_file.path == path) {
+					return;
+				}
+				var cached = this.manager.file_cache.get(path) as OLLMfiles.File;
+				if (cached != null) {
+					this.open_file.begin(cached);
+					return;
+				}
+				if (this.manager.active_project == null) {
+					return;
+				}
+				this.manager.active_project.fetch_file.begin(path, (obj, res) => {
+					var file = this.manager.active_project.fetch_file.end(res);
+					if (file == null) {
+						return;
+					}
+					if (this.current_file != null && this.current_file.path == path) {
+						return;
+					}
+					this.open_file.begin(file);
+				});
+			});
+#endif
+```
+
+### 7. `liboccoder/SourceView.vala` — `review_files.refreshed`
+
+**Why:** On a review refresh, stay when the open file is in the queue (including a decided file kept on the bar). Otherwise open the first file in basename order. An already-open changed file with the bar hidden is shown by `sync_pending`.
+
+**Where:** constructor, `review_files.refreshed` handler.
+
+**Depends on:** ### 5, ### 6.
+
+#### Remove
+
+```vala
+			this.manager.review_files.refreshed.connect(() => {
+				if (this.current_file == null) {
+					return;
+				}
+				if (!this.manager.review_files.file_map.has_key(this.current_file.path)) {
+					this.clear_diff();
+					return;
+				}
+				this.show_pending_diff.begin(this.current_file);
+			});
+```
+
+#### Replace with — desktop follows the live queue. Phone keeps the old handler.
+
+```vala
+			this.manager.review_files.refreshed.connect(() => {
+#if ANDROID
+				if (this.current_file == null) {
+					return;
+				}
+				if (!this.manager.review_files.file_map.has_key(this.current_file.path)) {
+					this.clear_diff();
+					return;
+				}
+				this.show_pending_diff.begin(this.current_file);
+#else
+				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+				foreach (var row in this.manager.review_files.file_map.values) {
+					rows.add(row);
+				}
+				var keep = this.review_bar.visible && this.current_file != null;
+				this.review_bar.sync_pending(rows, this.current_file, keep);
+				if (this.review_bar.queue.size < 1) {
+					return;
+				}
+				var listed = false;
+				if (this.current_file != null) {
+					foreach (var row in this.review_bar.queue) {
+						if (row.path != this.current_file.path) {
+							continue;
+						}
+						listed = true;
+					}
+				}
+				if (listed && this.current_file != null
+					&& this.manager.review_files.file_map.has_key(this.current_file.path)) {
+					this.show_pending_diff.begin(this.current_file);
+					return;
+				}
+				if (listed) {
+					return;
+				}
+				var first = this.review_bar.queue.get(0).path;
+				var cached = this.manager.file_cache.get(first) as OLLMfiles.File;
+				if (cached != null) {
+					this.open_file.begin(cached);
+					return;
+				}
+				if (this.manager.active_project == null) {
+					return;
+				}
+				this.manager.active_project.fetch_file.begin(first, (obj, res) => {
+					var file = this.manager.active_project.fetch_file.end(res);
+					if (file == null) {
+						return;
+					}
+					if (this.current_file != null
+						&& this.manager.review_files.file_map.has_key(this.current_file.path)) {
+						return;
+					}
+					this.open_file.begin(file);
+				});
+#endif
+			});
+```
+
+### 8. `liboccoder/SourceView.vala` — `open_file` hides the bar when nothing is pending
+
+**Why:** Opening a file with zero approvals hides the bar. `keep_current` is false, so a decided file is not pinned across an open.
+
+**Where:** `open_file`, immediately before `yield this.show_pending_diff(file)`.
+
+**Depends on:** ### 5, ### 6.
+
+#### Remove
+
+```vala
+				yield this.show_pending_diff(file);
+```
+
+#### Replace with — sync the queue, then show the diff when this file is pending.
+
+```vala
+#if !ANDROID
+				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+				foreach (var row in this.manager.review_files.file_map.values) {
+					rows.add(row);
+				}
+				this.review_bar.sync_pending(rows, file, false);
+#endif
+				yield this.show_pending_diff(file);
+```
+
+### 9. `liboccoder/SourceView.vala` — `show_pending_diff` feeds `update_diff`
+
+**Why:** The bar's hunk map follows the differ `show_pending_diff` already builds. No new review API on `SourceView`.
+
+**Where:** `show_pending_diff`, both `show_diff` call sites.
+
+**Depends on:** ### 4, ### 6.
+
+#### Remove
+
+```vala
+			if (row.backup_path == "") {
+				this.show_diff(new OLLMfiles.Diff.Differ("", gtk_buffer.text));
+				return;
+			}
+```
+
+#### Replace with — empty backup still shows the diff, then updates the bar.
+
+```vala
+			if (row.backup_path == "") {
+				var differ = new OLLMfiles.Diff.Differ("", gtk_buffer.text);
+				this.show_diff(differ);
+#if !ANDROID
+				this.review_bar.update_diff(differ, this.review_bar.file_index);
+#endif
+				return;
+			}
+```
+
+#### Remove
+
+```vala
+			this.show_diff(new OLLMfiles.Diff.Differ(v_backup, gtk_buffer.text));
+		}
+```
+
+#### Replace with — backup text updates the bar the same way.
+
+```vala
+			var differ = new OLLMfiles.Diff.Differ(v_backup, gtk_buffer.text);
+			this.show_diff(differ);
+#if !ANDROID
+			this.review_bar.update_diff(differ, this.review_bar.file_index);
+#endif
+		}
+```
 
 ---
 
-## Suggested order
+## Phase 2 — Daemon + parts
 
-1. 🔷 ⏳ **Wire chrome** — embed **`ReviewBar`** in product editor; real file nav + changed-files list from **`ReviewFiles`**; inactive middle label; bulk menu stubs calling real queue counts.
-2. 🔷 ⏳ **Daemon + parts** — RPCs for part CRUD and reject→**V_disk**; **`ReviewBar`** reads/writes parts for active **`file_history`**.
-3. 🔷 ⏳ **Approvals cleanup** — remove header changed-files popover; relocate remaining approve/reject; **`show_pending_diff`** as single entry for pending diff + bar state.
+**`ReviewBar.update_diff`** loads hunks from **`Differ.patches`** and merges **`file_diff_part`** rows for the active **`file_history`** chunk. No row means the hunk is still pending. Depends on Phase 1 hosting the bar.
+
+- 🔷 ⏳ Accept hunk → insert **`file_diff_part`** with **`accepted=1`**. No disk write. Grey band and advance.
+- 🔷 ⏳ Reject hunk → undo that hunk on **V_disk** and insert **`accepted=0`**. Grey band and advance.
+- 🔷 ⏳ Unapprove → delete the part row. Band returns to pending. Disk is unchanged for a prior accept.
+- 🔷 ⏳ Insert a part row on the **first** accept or reject of that hunk. No upfront rows on agent write.
+- 🔷 ⏳ Every hunk in the chunk has a part row → **`file_history.reviewed=1`**.
+- 🔷 ⏳ Daemon RPC for part insert, part delete, and reject-apply. Method names still open.
+- 🔷 ⏳ Hunk bytes at **`FileDiffPart.path`**: unified-diff text vs serialised **`Patch`**. Still open (parent).
+- 🔷 ⏳ Stacked LLM edit (**Flow B**): review **H2** only. No carry-forward in v1.
+- 🔷 ⏳ Unsaved dirty buffer while reviewing: **lean no**.
+- 🔷 ⏳ Accept all pending files: confirm and revert semantics still open. Phase 1 only stubs the menu.
+- ℹ️ Accept does not rewrite disk. Reject does, for that hunk only.
 
 ---
 
-## Done when
+## Phase 3 — Approvals cleanup
 
-- 🔷 Pending file in editor → footer matches Phase A interaction but **persists** **`file_diff_part`**.
-- 🔷 File nav walks the **real** pending queue (oldest-first).
-- 🔷 Click **`N changes pending review`** opens oldest pending file.
-- 🔷 Reject writes **V_disk**; accept does not.
-- 🔷 Header no longer owns the changed-files list.
+Header **`Approvals`** no longer owns the changed-files list. Depends on Phase 1 footer nav. Whole-file approve / reject moves off the header once the footer bulk menu is real (Phase 2).
+
+- 🔷 ⏳ Remove the header changed-files popover.
+- 🔷 ⏳ Relocate whole-file Approve / Reject. They are not a second pending-diff path.
+- 🔷 ⏳ **`show_pending_diff`** is the single entry for pending diff and bar state.
+- 🔷 ⏳ Whole-file reject (full **V_backup** restore) stays destructive: header **`Approvals`** or the bulk menu, not a casual band click.
 
 ---
 
 ## LLM notes
 
-- 🚫 Vala implementation fences until **Still open** **💩** bullets are promoted or rejected in review.
 - 🚫 Accept all files as primary header button.
 - 🚫 Carry-forward inside **`OLLMfiles.Diff`**.
 - 🚫 Keep header changed-files popover after footer file nav ships.
@@ -118,4 +734,6 @@
 - 🚫 **ReviewBar** handling taps on the editor scroll view.
 - 🚫 Split **`ReviewBar.vala`** without explicit user request.
 - 🚫 Add review-state APIs to **`SourceView`** — **ReviewBar** only.
+- 🚫 Rewrite disk on **accept**.
+- 🚫 Approve / unapprove aliased to GtkSource undo/redo.
 - ℹ️ Touch points: `liboccoder/Diff/ReviewBar.vala`, `liboccoder/SourceView.vala`, `liboccoder/Approvals.vala`, `ollmfilesd/FileHistory.vala`, `ollmfilesd/FileDiffPart.vala`, `libocfiles/ReviewFiles.vala`.

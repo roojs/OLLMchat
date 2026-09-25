@@ -16,6 +16,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+// Normally no using. FilesdClient.State.* without this is
+// OLLMchat.Settings.FilesdClient.State.* at every site.
+using OLLMchat.Settings;
+
 namespace OLLMapp
 {
 	/**
@@ -433,8 +437,10 @@ namespace OLLMapp
 
 			this.project_manager = new OLLMfiles.ProjectManager();
 			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
-			if (config.filesd_client.url != "" && config.filesd_client.enabled
-				&& config.filesd_client.approved) {
+			if (config.filesd_client.url != ""
+				&& (config.filesd_client.state == FilesdClient.State.ENABLED
+					|| config.filesd_client.state == FilesdClient.State.LIVE
+					|| config.filesd_client.state == FilesdClient.State.UNREACHABLE)) {
 				var tls = new OLLMrpc.Transport.Cert() {
 					dir = GLib.Path.build_filename(
 						GLib.Environment.get_user_data_dir(), "ollmchat"),

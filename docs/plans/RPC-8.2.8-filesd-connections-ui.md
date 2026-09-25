@@ -40,7 +40,7 @@
 | **7** | [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder compile. Precursor [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️** | **✔️** |
 | **8** | [`RPC-8.2.8.7-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux `filesd.socket` LAN TCP + TLS registration | **⏳** |
 | **9** | [`RPC-8.2.8.8-android-phone-tablet-pane.md`](RPC-8.2.8.8-android-phone-tablet-pane.md) — Android `ChatDesktopInterface`, phone stack / tablet landscape columns | **✔️** |
-| **10** | [`RPC-8.2.8.9-android-agent-pi.md`](RPC-8.2.8.9-android-agent-pi.md) — Android Agent Pi when the desktop environment is live | **⏳** |
+| **10** | [`RPC-8.2.8.9-URGENT-android-agent-pi.md`](RPC-8.2.8.9-URGENT-android-agent-pi.md) — **URGENT** Android Agent Pi when the desktop environment is live | **⏳** |
 | **11** | (this file) More than one desktop environment on Android: home, office, online via proxy | **⏳** |
 
 ---
@@ -56,7 +56,7 @@
 7. **✔️** Phase 7 — [`8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) (Android takeover; [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️**)
 8. **⏳** Phase 8 — [`8.2.8.7`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux LAN TCP socket. Skipped for now. Not Phase 7. Windows loopback port is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md)
 9. **✔️** Phase 9 — [`8.2.8.8`](RPC-8.2.8.8-android-phone-tablet-pane.md) — Android phone/tablet `ChatDesktopInterface`
-10. **⏳** Phase 10 — [`8.2.8.9`](RPC-8.2.8.9-android-agent-pi.md). Phone connection flow is user-closed (2026-09-23). Startup hello uses a short timeout. A miss is `UNREACHABLE` (not the user switch), leaves Agent Pi off, starts a new Chatter session, and uses `Banner.show`. `approved` / `enabled` become one integer state. History rows for a missing agent stay listed, marked disabled, and cannot be restored. Bottom bar flips browser, editor, and chat. Thinking icon (`weather-fog-symbolic`) cycles on the chat button while the session runs. Idle chat button is a speech bubble. Still one desktop environment.
+10. **⏳** Phase 10 — [`8.2.8.9`](RPC-8.2.8.9-URGENT-android-agent-pi.md) **URGENT**. Phone connection flow is user-closed (2026-09-23). Startup hello uses a short timeout. A miss is `UNREACHABLE` (not the user switch), leaves Agent Pi off, starts a new Chatter session, and uses `Banner.show`. `approved` / `enabled` become one integer state. History rows for a missing agent stay listed, marked disabled, and cannot be restored. Bottom bar flips browser, editor, and chat. Thinking icon (`weather-fog-symbolic`) cycles on the chat button while the session runs. Idle chat button is a speech bubble. Still one desktop environment.
 11. **🔷** `⏳` Phase 11 — Android keeps more than one desktop environment. Home (one network), office (another network), and later an online one through the proxy. Not part of Phase 10.
 
 ---
@@ -160,9 +160,9 @@
 
 ---
 
-## Phase 10 — Android Agent Pi (`⏳`)
+## Phase 10 — Android Agent Pi (**URGENT** `⏳`)
 
-**➡️** [`RPC-8.2.8.9-android-agent-pi.md`](RPC-8.2.8.9-android-agent-pi.md) — select Agent Pi when the desktop environment is live. A short-timeout miss is `UNREACHABLE`, `Banner.show`, and a new Chatter session. History rows for a missing agent stay listed and cannot be restored.
+**➡️** [`RPC-8.2.8.9-URGENT-android-agent-pi.md`](RPC-8.2.8.9-URGENT-android-agent-pi.md) **URGENT** — select Agent Pi when the desktop environment is live. A short-timeout miss is `UNREACHABLE`, `Banner.show`, and a new Chatter session. History rows for a missing agent stay listed and cannot be restored.
 
 ---
 

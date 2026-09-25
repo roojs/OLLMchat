@@ -16,6 +16,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+// Normally no using. FilesdClient.State.* without this is
+// OLLMchat.Settings.FilesdClient.State.* at every site.
+using OLLMchat.Settings;
+
 namespace OLLMapp.SettingsDialog
 {
 	/**
@@ -27,9 +31,7 @@ namespace OLLMapp.SettingsDialog
 
 		public Adw.ExpanderRow expander { get; private set; }
 		public Gtk.Button check_button { get; private set; }
-		/** Registration row. Hidden once the desktop has approved this device. */
-		private Adw.ActionRow registration_row;
-		/** Enabled switch; live {@link reconnect} when the device is approved. */
+		/** Enabled switch; live {@link reconnect} when turning the connection on. */
 		public Gtk.Switch enabled_switch { get; private set; }
 		/** Status suffix on the Status action row. */
 		public Gtk.Label status_label { get; private set; }
@@ -44,21 +46,24 @@ namespace OLLMapp.SettingsDialog
 		 * File-connection expander for one
 		 * {@link OLLMchat.Settings.FilesdClient}.
 		 *
-		 * @param client Config row (url, approved, enabled)
+		 * @param client Config row (url, state)
 		 * @param win Host window for config, ProjectManager, and notifications
 		 */
 		public FileConnectionRow(OLLMchat.Settings.FilesdClient client, OllmchatWindow win)
 		{
 			this.client = client;
 			this.win = win;
-			var subtitle = client.approved ? "Active" : "Requested";
-			var host = client.url;
+			var subtitle = "Requested";
+			if (client.state != FilesdClient.State.REQUESTED) {
+				subtitle = "Active";
+			}
+			var title = client.url;
 			try {
-				host = GLib.Uri.parse(client.url, GLib.UriFlags.NONE).get_host();
+				title = GLib.Uri.parse(client.url, GLib.UriFlags.NONE).get_host();
 			} catch (GLib.UriError e) {
 			}
 			this.expander = new Adw.ExpanderRow() {
-				title = "Desktop environment: " + host,
+				title = title,
 				subtitle = subtitle,
 				can_focus = false,
 				focus_on_click = false
@@ -84,7 +89,7 @@ namespace OLLMapp.SettingsDialog
 			this.expander.add_row(status_row);
 
 			this.enabled_switch = new Gtk.Switch() {
-				active = client.enabled,
+				active = client.state != FilesdClient.State.DISABLED,
 				vexpand = false,
 				valign = Gtk.Align.CENTER
 			};
@@ -93,7 +98,8 @@ namespace OLLMapp.SettingsDialog
 			};
 			enabled_row.add_suffix(this.enabled_switch);
 			this.enabled_switch.notify["active"].connect(() => {
-				if (this.enabled_switch.active == this.client.enabled) {
+				if (this.enabled_switch.active
+					== (this.client.state != FilesdClient.State.DISABLED)) {
 					return;
 				}
 				var manager = this.win.project_manager;
@@ -103,27 +109,33 @@ namespace OLLMapp.SettingsDialog
 					this.enabled_switch.active = !this.enabled_switch.active;
 					return;
 				}
-				this.client.enabled = this.enabled_switch.active;
+				if (this.enabled_switch.active) {
+					if (this.client.state == FilesdClient.State.REQUESTED) {
+						return;
+					}
+					this.client.state = FilesdClient.State.ENABLED;
+				} else if (this.client.state != FilesdClient.State.REQUESTED) {
+					this.client.state = FilesdClient.State.DISABLED;
+				}
 				this.win.app.config.save();
-				if (!this.client.approved) {
+				if (this.client.state != FilesdClient.State.ENABLED) {
 					return;
 				}
-				this.reconnect.begin(this.enabled_switch.active);
+				this.reconnect.begin(true);
 			});
 			this.expander.add_row(enabled_row);
 
 			this.check_button = new Gtk.Button.with_label("Check") {
-				tooltip_text = "Ask the desktop whether it has approved this device"
+				tooltip_text = "Ask the file server whether the desktop has approved this device"
 			};
 			this.check_button.clicked.connect(() => {
 				this.check.begin();
 			});
-			this.registration_row = new Adw.ActionRow() {
-				title = "Registration",
-				visible = !client.approved
+			var check_row = new Adw.ActionRow() {
+				title = "Registration"
 			};
-			this.registration_row.add_suffix(this.check_button);
-			this.expander.add_row(this.registration_row);
+			check_row.add_suffix(this.check_button);
+			this.expander.add_row(check_row);
 
 			var remove_button = new Gtk.Button.with_label("Remove") {
 				css_classes = {"destructive-action"}
@@ -140,8 +152,10 @@ namespace OLLMapp.SettingsDialog
 		 * Ask the remote file server whether this device is approved.
 		 *
 		 * Sends ''RPC-Daemon.hello'' with the device client certificate.
-		 * On success sets {@link OLLMchat.Settings.FilesdClient.approved},
-		 * saves config, and connects live when Enabled is already on.
+		 * On success sets {@link OLLMchat.Settings.FilesdClient.state}
+		 * from the Enabled switch and saves config. Does not swap
+		 * {@link OLLMfiles.ProjectManager} RPC (use the Enabled switch or
+		 * restart to connect live).
 		 */
 		public async void check()
 		{
@@ -155,7 +169,6 @@ namespace OLLMapp.SettingsDialog
 			};
 			tls.ensure();
 			var http = new OLLMrpc.Transport.HttpClient(this.client.url) {
-				bin_body = true,
 				tls_certificate = tls.certificate,
 				tls_database = tls.trust
 			};
@@ -171,30 +184,30 @@ namespace OLLMapp.SettingsDialog
 				this.expander.subtitle = "Requested: " + e.message;
 				return;
 			}
-			this.client.approved = true;
+			if (this.enabled_switch.active) {
+				this.client.state = FilesdClient.State.ENABLED;
+			} else {
+				this.client.state = FilesdClient.State.DISABLED;
+			}
 			this.win.app.config.save();
 			this.expander.subtitle = "Active";
 			this.status_label.label = "Active";
-			this.registration_row.visible = false;
 			this.check_button.sensitive = true;
-			if (this.client.enabled) {
-				yield this.reconnect(true);
-			}
 			this.win.notification(new OLLMrpc.Notification() {
 				method = "Banner.show",
-				message = "Device approved"
+				message = "Device approved — turn the connection off and on to connect"
 			});
 		}
 
 		/**
 		 * Point the window's {@link OLLMfiles.ProjectManager} at the remote
-		 * file server or back at the local Unix daemon, live.
+		 * file server or back at the local Unix daemon, live.1
 		 *
 		 * Swaps RPC and runs ''RPC-Daemon.hello'' only; project reload is
 		 * left to startup, the Projects tab, or session activation.
 		 *
-		 * A remote connect failure disables the outbound row and falls back
-		 * to the local daemon once (desktop only).
+		 * A remote connect failure sets the row to unreachable and falls
+		 * back to the local daemon once (desktop only).
 		 *
 		 * @param remote true for HTTPS to this row's URL, false for
 		 *   the local Unix socket
@@ -251,10 +264,9 @@ namespace OLLMapp.SettingsDialog
 				if (!remote) {
 					return;
 				}
-				this.client.enabled = false;
+				this.client.state = FilesdClient.State.UNREACHABLE;
 				this.win.app.config.save();
-				this.enabled_switch.active = false;
-				this.expander.subtitle = "Failed: " + rpc.connect_error;
+				this.expander.subtitle = "Unreachable: " + rpc.connect_error;
 #if !ANDROID
 				yield this.reconnect(false);
 #endif
