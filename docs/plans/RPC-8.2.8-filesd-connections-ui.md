@@ -154,7 +154,7 @@
 
 ## Phase 8 — Linux LAN TCP socket (`filesd.socket`) (`URGENT`)
 
-**➡️** [`RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) — Desktop server row: HTTP server, Remote TCP socket, always-on local socket. systemd stays on the outer row. Phone uses Remote TCP at home and in the office. HTTPS is for outside those networks.
+**➡️** [`RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) — Desktop server expands to Unix socket or Localhost TCP, then systemd on Linux, HTTPS server, and Local network socket. No control on the outer row. Phone uses the local network socket at home and in the office. HTTPS is for outside those networks.
 
 ℹ️ Windows loopback port (hardcoded 4141) is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md), not this phase.
 

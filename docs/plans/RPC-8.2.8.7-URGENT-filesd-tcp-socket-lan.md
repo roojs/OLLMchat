@@ -23,7 +23,7 @@
 - 🔷 Opening that TCP socket on a **LAN interface** (not only loopback) needs **TLS + client-certificate registration**, the same idea as the HTTPS file server.
 - 🔷 LAN only. This path is **not** for the public internet: no nginx PROXY, no WAN registration, no reverse-proxy IP rewrite.
 - 🔷 The phone uses this socket on the home LAN and the office LAN. HTTPS is only for when the phone is outside those networks.
-- 🔷 Connections calls the row Desktop server. It expands. That row has no on/off switch.
+- 🔷 Connections calls the row Desktop server. It expands. That row has no control on the right. Subtitle says what is running.
 - ℹ️ HTTPS remains the internet / proxy path ([`docs/filesd-behind-nginx-proxy.md`](../filesd-behind-nginx-proxy.md)).
 - ℹ️ Today the row is File Server in `ollmapp/SettingsDialog/FileServerRow.vala`: one Enabled switch, then Host / Port / Proxy, and systemd as an inner row.
 - ⏳ Row layout is below. Code fences after the TLS-on-bin-TCP shape is agreed.
@@ -47,10 +47,11 @@
 - 🔷 Linux port **0** or missing port → treat as **off** (Unix only). Not an ephemeral TCP bind.
 - 🔷 Unix on Linux, and localhost TCP on Windows, stay up. Those rows have no switch.
 - 🔷 LAN bind (an address that is not loopback) uses TLS and the same registration gate as HTTPS (client cert, pending / accept / ban).
-- 🔷 No PROXY Protocol on the remote TCP listener. Client IP is the TCP peer.
+- 🔷 No PROXY Protocol on the local network socket. Client IP is the TCP peer.
 - 🔷 Do not publish this socket past the local network. WAN clients use HTTPS + nginx as today.
-- 🔷 Remote TCP default port is 8422. HTTPS default port is 8443.
-- 🔷 Remote TCP host list excludes localhost (`127.0.0.1`).
+- 🔷 Local network socket default port is 8422. HTTPS default port is 8443.
+- 🔷 Local network socket host list excludes localhost (`127.0.0.1`).
+- 🔷 `⏳` Joining still needs a client certificate and the approval process. Anyone can make a certificate and request to join. Whether that is enough is not decided.
 
 - 💩 Reuse the existing `ClientCert` SQLite rows (same fingerprints) so Accept once covers HTTPS and LAN TCP.
 - 💩 Loopback `127.0.0.1` TCP may stay plaintext (Windows pattern). TLS required only when the host is a LAN address.
@@ -80,66 +81,61 @@
 
 ## Connections rows
 
-🔷 Desktop server is one expander. systemd sits on that outer row, so it is visible without opening HTTP server. There is no on/off on Desktop server.
+🔷 Desktop server is one expander. Nothing sits on the right of that row. The subtitle says what is running, for example Running on socket, or Running via systemd.
 
 ```
-Linux — collapsed
-
-┌ Desktop server ───────────────────────── [ systemd  ○ ] ┐
-└─────────────────────────────────────────────────────────┘
-
 Linux — expanded
 
-┌ Desktop server ───────────────────────── [ systemd  ○ ] ┐
-│  ▸ HTTP server                                          │
-│  ▸ Remote TCP socket                                    │
+┌ Desktop server                                          ┐
+│  subtitle: Running on socket                            │
 │    Unix socket                               Running    │
+│    systemd                                   [  ○   ]   │
+│  ▸ HTTPS server                              [  ○   ]   │
+│  ▸ Local network socket                      [  ○   ]   │
 └─────────────────────────────────────────────────────────┘
 ```
 
-🔷 HTTP server expands to three rows: Host, Port, Proxy. Port placeholder is 8443. This is still the TLS listener in `filesd.https`.
+🔷 Unix socket is the first row on Linux. It is not an expander and it has no toggle. The row says Running.
+
+🔷 systemd is the next row, above HTTPS server. The toggle is on that row.
+
+🔷 HTTPS server has an on/off toggle. It expands to Host, Port, and Proxy. Port placeholder is 8443. The listener is `filesd.https`.
 
 ```
-│  ▾ HTTP server                                          │
+│  ▾ HTTPS server                              [  ○   ]   │
 │      Host                                     [ ▾ ip ]  │
 │      Port                                     [ 8443 ]  │
 │      Proxy                                    [  ○   ]  │
 ```
 
-🔷 Remote TCP socket expands to Host and Port. Port placeholder is 8422. The host dropdown is this machine's addresses with `127.0.0.1` left out.
+🔷 Local network socket has an on/off toggle. It expands to Host and Port. Port placeholder is 8422. The host list leaves out `127.0.0.1`. Subtitle: Don't put this on the internet.
 
 ```
-Before it is set up — no switch, just the fields
-
-│  ▾ Remote TCP socket                                    │
-│      Host                        [ ▾ ip, no 127.0.0.1 ] │
-│      Port                                     [ 8422 ]  │
-
-After host and port are saved — switch on that row
-
-│  ▾ Remote TCP socket ─────────────────────── [  ○   ]   │
+│  ▾ Local network socket                      [  ○   ]   │
+│      Don't put this on the internet                     │
 │      Host                        [ ▾ ip, no 127.0.0.1 ] │
 │      Port                                     [ 8422 ]  │
 ```
 
-🔷 Unix socket is Linux only. It is not an expander and it has no switch. The row says Running.
+🔷 The local network socket toggle shows after a host and port are saved. Before that, the row expands to Host and Port with no toggle.
 
-🔷 Windows has no Unix socket row. It has two TCP rows. Localhost TCP is the always-on one: listed Running, no switch, same idea as the Unix socket. Remote TCP socket is the other, with the same host and port rows as Linux.
+🔷 Windows has no Unix socket row and no systemd row. Localhost TCP is the first row: listed Running, no toggle.
 
 ```
-Windows — expanded (no systemd, no Unix socket)
+Windows — expanded
 
-┌ Desktop server ─────────────────────────────────────────┐
-│  ▸ HTTP server                                          │
+┌ Desktop server                                          ┐
+│  subtitle: Running on localhost TCP                     │
 │    Localhost TCP                             Running    │
-│  ▸ Remote TCP socket                                    │
+│  ▸ HTTPS server                              [  ○   ]   │
+│  ▸ Local network socket                      [  ○   ]   │
 └─────────────────────────────────────────────────────────┘
 ```
 
 - 🔷 `⏳` Replace the File Server Enabled suffix with this layout in `FileServerRow`.
-- 💩 `⏳` HTTP server gets the same suffix switch once its host and port are saved. Off keeps the saved values and does not listen. The user listed only Host, Port, and Proxy for HTTP.
-- 💩 `⏳` “Set up” means `filesd.socket` has a host and a port in 1024–65535. The switch hides until then. Off keeps host and port and does not listen.
-- 💩 `⏳` Windows omits the systemd suffix. systemd is not on Windows.
+- 🔷 `⏳` HTTPS server and Local network socket each have an on/off toggle. Off keeps the saved host and port and does not listen.
+- 💩 `⏳` Those toggles are `Gtk.Switch`, same as today's File Server Enabled switch.
+- 💩 `⏳` “Set up” means `filesd.socket` has a host and a port in 1024–65535.
 - 💩 `⏳` Localhost TCP subtitle can show the live listen address. The row stays status-only.
 - ℹ️ Windows loopback port is still [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md). This row does not add a port editor for it.
 - ℹ️ Windows does not build `FileServerRow` today (`ConnectionsPage.vala`, `#if !ANDROID && !G_OS_WIN32`).
@@ -147,7 +143,7 @@ Windows — expanded (no systemd, no Unix socket)
 ## Phase 3 — Client + Connections UI (`⏳`)
 
 - 🔷 `⏳` A LAN client connects with device cert + trust (same `Cert.ensure` as HTTPS file connection), to the socket `host:port`, not an `https://` URL.
-- 🔷 `⏳` Desktop server Remote TCP socket edits `filesd.socket` host and port. Apply/reboot when those fields change (same bounce as HTTPS).
+- 🔷 `⏳` Desktop server Local network socket edits `filesd.socket` host and port. Apply/reboot when those fields change (same bounce as HTTPS).
 - ℹ️ Outbound “Add file connection” today is HTTPS URL only ([`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md)). A `tcp://` / TLS-socket client row is this phase if we want phone-on-LAN without HTTPS.
 - ⏳ Code proposals — after Phase 2 compiles. Row layout is Connections rows above.
 
@@ -157,7 +153,7 @@ Windows — expanded (no systemd, no Unix socket)
 
 1. ⏳ Phase 1 — daemon binds `filesd.socket` (Linux; port 0 / empty = Unix only)
 2. ⏳ Phase 2 — TLS + registration on non-loopback
-3. ⏳ Phase 3 — client + Desktop server rows (HTTP server, Remote TCP socket, always-on local socket)
+3. ⏳ Phase 3 — client + Desktop server rows (Unix or Localhost TCP, systemd on Linux, HTTPS server, Local network socket)
 4. ℹ️ Windows localhost TCP stays a Running row here. Changing its port is the bug log, not these phases.
 
 ---
@@ -168,11 +164,12 @@ Windows — expanded (no systemd, no Unix socket)
 - 🚫 nginx stream / PROXY Protocol on `filesd.socket`.
 - 🚫 Advertising this socket on the public internet.
 - 🚫 Replacing HTTPS with TCP for WAN / Android-over-internet.
-- 🚫 An on/off switch on the Desktop server row.
-- 🚫 A switch on Unix socket, or on Windows Localhost TCP.
-- 🚫 `127.0.0.1` in the Remote TCP socket host list.
-- 🚫 systemd inside HTTP server. It stays on the Desktop server row.
-- 🚫 A Proxy row on Remote TCP socket.
-- 🚫 Turning off the Unix socket because Remote TCP socket is on.
+- 🚫 A control on the right of the Desktop server row. Subtitle only.
+- 🚫 A toggle on Unix socket, or on Windows Localhost TCP.
+- 🚫 `127.0.0.1` in the Local network socket host list.
+- 🚫 systemd on the Desktop server header. It is a row under Unix socket and above HTTPS server.
+- 🚫 Titling the TLS row HTTP server. The title is HTTPS server.
+- 🚫 A Proxy row on Local network socket.
+- 🚫 Turning off the Unix socket because Local network socket is on.
 - 🚫 New CLI flags for listen host/port (config object already exists).
 - 🚫 Helper methods “for TLS accept” — inline on the existing listen/accept path unless a later fence names one.
