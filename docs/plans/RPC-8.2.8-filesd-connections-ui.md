@@ -38,7 +38,7 @@
 | **5** | [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification` (library half of 8.2.8.2 Phase 2) | **✔️** agent-done |
 | **6** | [`RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle (UI half of 8.2.8.2 Phase 2) | **✅** |
 | **7** | [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder compile. Precursor [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️** | **✔️** |
-| **8** | [`RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) — Linux `filesd.socket` LAN TCP + TLS registration | **URGENT** |
+| **8** | [`RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) — Linux `filesd.socket` LAN TLS listener. Rows: [`8.2.8.13`](RPC-8.2.8.13-filesd-desktop-server-rows.md). Windows later: [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md) | **URGENT** |
 | **9** | [`RPC-8.2.8.8-DONE-android-phone-tablet-pane.md`](done/RPC-8.2.8.8-DONE-android-phone-tablet-pane.md) — Android `ChatDesktopInterface`, phone stack / tablet landscape columns | **✔️** |
 | **10** | [`RPC-8.2.8.9-DONE-android-agent-pi.md`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — Android Agent Pi on `SOCKET` / `LIVE` (state + Check listen) | **✔️** |
 | **11** | [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) — startup hello, history when Agent Pi is off, phone pickers | **✔️** |
@@ -57,7 +57,7 @@
 5. **✔️** Phase 5 — [`8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) (agent-done; awaiting user ✅)
 6. **✅** Phase 6 — [`8.2.8.5`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md)
 7. **✔️** Phase 7 — [`8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) (Android takeover; [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️**)
-8. **URGENT** Phase 8 — [`8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) — Linux LAN TCP socket. Phone uses this on the home LAN and the office LAN. HTTPS is only for outside those networks. Windows loopback port is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md)
+8. **URGENT** Phase 8 — [`8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) listener **✔️**. Desktop server rows and the LAN client are [`8.2.8.13`](RPC-8.2.8.13-filesd-desktop-server-rows.md). Windows service and host list are [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md), later. Phone uses the local network SSL server at home and in the office. HTTPS is only for outside those networks. Windows loopback port is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md)
 9. **✔️** Phase 9 — [`8.2.8.8`](done/RPC-8.2.8.8-DONE-android-phone-tablet-pane.md) — Android phone/tablet `ChatDesktopInterface`
 10. **✔️** Phase 10 — [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — `FilesdClient.State`, Agent Pi visible on `SOCKET` or `LIVE`, Check listen. Registers `write` / `read` only. Does not register `bash`.
 11. **✔️** Phase 11 — [`8.2.8.11`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md). Startup hello uses a short timeout. A miss is `UNREACHABLE` (not the user switch), leaves Agent Pi off, starts a new Chatter session, and uses `Banner.show`. History rows for a missing agent stay listed, marked disabled, and cannot be restored. Phone bottom bar flips browser, editor, and chat. Thinking icon cycles on the chat button while the session runs. Idle chat button is a speech bubble. Still one desktop environment.
@@ -154,7 +154,11 @@
 
 ## Phase 8 — Linux LAN TCP socket (`filesd.socket`) (`URGENT`)
 
-**➡️** [`RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) — Desktop server expands to Unix socket or Localhost TCP, then systemd on Linux, HTTPS server, and Local network socket. No control on the outer row. Phone uses the local network socket at home and in the office. HTTPS is for outside those networks.
+**➡️** [`RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) — TLS bin listener **✔️**. Phone uses it at home and in the office. HTTPS is for outside those networks.
+
+**➡️** [`RPC-8.2.8.13-filesd-desktop-server-rows.md`](RPC-8.2.8.13-filesd-desktop-server-rows.md) — Desktop server rows and the LAN client. No control on the outer row.
+
+**➡️** [`RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md) — Windows per-user service and the Windows host list. Later.
 
 ℹ️ Windows loopback port (hardcoded 4141) is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md), not this phase.
 

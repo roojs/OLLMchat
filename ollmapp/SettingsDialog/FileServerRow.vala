@@ -24,7 +24,7 @@ namespace OLLMapp.SettingsDialog
 	 * Binds {@link OLLMchat.Settings.Filesd} listen fields (https
 	 * host/port, proxy, systemd). Off {@link enabled_switch} hides
 	 * Host / Port / Proxy and sets
-	 * {@link OLLMchat.Settings.Filesd.enabled} false without
+	 * {@link OLLMchat.Settings.Filesd.https_enabled} false without
 	 * clearing their values. {@link systemd_row} stays visible.
 	 * Toggles and Port blur call {@link apply_config}, which writes
 	 * {@link filesd} and {@link reboot}s if listen fields changed.
@@ -49,7 +49,7 @@ namespace OLLMapp.SettingsDialog
 
 		/**
 		 * File Server HTTPS on/off. Off hides Host / Port / Proxy
-		 * and sets {@link OLLMchat.Settings.Filesd.enabled} false;
+		 * and sets {@link OLLMchat.Settings.Filesd.https_enabled} false;
 		 * those fields keep their last values. systemd stays shown.
 		 */
 		public Gtk.Switch enabled_switch { get; private set; }
@@ -325,7 +325,7 @@ namespace OLLMapp.SettingsDialog
 				this.host_dropdown.model = new Gtk.StringList(ips);
 				this.host_dropdown.selected = selected;
 			}
-			this.enabled_switch.active = this.filesd.enabled;
+			this.enabled_switch.active = this.filesd.https_enabled;
 			var data_dir = GLib.Path.build_filename(
 				GLib.Environment.get_user_data_dir(), "ollmchat");
 			var boot = new OLLMrpc.ClientBoot(data_dir, "ollmfilesd.pid", "ollmfilesd.sock");
@@ -340,7 +340,7 @@ namespace OLLMapp.SettingsDialog
 				via_systemd = active_out.strip() == "active";
 			} catch (GLib.Error e) {
 			}
-			var https_ok = this.filesd.enabled && n >= 1024 && n <= 65535;
+			var https_ok = this.filesd.https_enabled && n >= 1024 && n <= 65535;
 			this.expander.subtitle = "Not running";
 			if (up) {
 				this.expander.subtitle = "Running on startup (socket only)";
@@ -369,7 +369,7 @@ namespace OLLMapp.SettingsDialog
 		 * {@link filesd}.
 		 *
 		 * Off {@link enabled_switch} sets
-		 * {@link OLLMchat.Settings.Filesd.enabled} false and leaves
+		 * {@link OLLMchat.Settings.Filesd.https_enabled} false and leaves
 		 * ''https'' / proxy unchanged. systemd is always written.
 		 * On, Host / Port write ''https'' when both are filled. If
 		 * listen fields changed, save config and {@link reboot}.
@@ -379,10 +379,10 @@ namespace OLLMapp.SettingsDialog
 			var prev_https = this.filesd.https;
 			var prev_proxy = this.filesd.proxy;
 			var prev_systemd = this.filesd.systemd;
-			var prev_enabled = this.filesd.enabled;
+			var prev_enabled = this.filesd.https_enabled;
 			this.was_systemd = prev_systemd;
-			this.filesd.enabled = this.enabled_switch.active;
-			if (this.filesd.enabled && this.host_row.visible) {
+			this.filesd.https_enabled = this.enabled_switch.active;
+			if (this.filesd.https_enabled && this.host_row.visible) {
 				var host = "";
 				var item = this.host_dropdown.selected_item as Gtk.StringObject;
 				if (item != null) {
@@ -402,10 +402,10 @@ namespace OLLMapp.SettingsDialog
 				}
 			}
 			this.filesd.systemd = this.systemd_switch.active;
-			if (this.filesd.enabled) {
+			if (this.filesd.https_enabled) {
 				this.filesd.proxy = this.proxy_switch.active;
 			}
-			if (this.filesd.enabled != prev_enabled
+			if (this.filesd.https_enabled != prev_enabled
 				|| this.filesd.https != prev_https
 				|| this.filesd.proxy != prev_proxy
 				|| this.filesd.systemd != prev_systemd) {
@@ -511,7 +511,7 @@ namespace OLLMapp.SettingsDialog
 			}
 			var https_ok = false;
 			var colon = this.filesd.https.last_index_of(":");
-			if (this.filesd.enabled && colon > 0) {
+			if (this.filesd.https_enabled && colon > 0) {
 				var n = 0;
 				if (int.try_parse(this.filesd.https.substring(colon + 1), out n)
 					&& n >= 1024 && n <= 65535) {

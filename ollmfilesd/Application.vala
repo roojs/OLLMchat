@@ -48,6 +48,7 @@ namespace OLLMfilesd
 		public Daemon daemon { get; private set; }
 		private OLLMrpc.Transport.Listen? listen;
 		public OLLMfilesd.Https? https_listen { get; private set; default = null; }
+		public OLLMfilesd.SslListen? ssl_listen { get; private set; default = null; }
 		private static weak OllmfilesdApplication? instance;
 
 		protected string help { get; set; default = """
@@ -344,6 +345,10 @@ Examples:
 			if (https.listen()) {
 				this.https_listen = https;
 			}
+			var ssl = new OLLMfilesd.SslListen(this);
+			if (ssl.listen()) {
+				this.ssl_listen = ssl;
+			}
 			this.config.filesd.install();
 		}
 
@@ -496,6 +501,10 @@ Examples:
 			if (this.https_listen != null) {
 				this.https_listen.stop();
 				this.https_listen = null;
+			}
+			if (this.ssl_listen != null) {
+				this.ssl_listen.stop();
+				this.ssl_listen = null;
 			}
 			if (this.listen != null) {
 				this.listen.stop();

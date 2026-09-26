@@ -48,7 +48,7 @@ namespace OLLMfilesd
 		/**
 		 * Mint the product-CA leaf if needed and bind per ''filesd.https''.
 		 *
-		 * No-op (returns ''false'') when ''filesd.enabled'' is false,
+		 * No-op (returns ''false'') when ''filesd.https_enabled'' is false,
 		 * ''filesd.https'' is empty, or not a valid ''host:port''. Uses
 		 * {@link app} for ''config.filesd'' and ''data_dir''.
 		 *
@@ -57,7 +57,7 @@ namespace OLLMfilesd
 		public bool listen()
 		{
 			var filesd = this.app.config.filesd;
-			if (!filesd.enabled) {
+			if (!filesd.https_enabled) {
 				return false;
 			}
 			if (filesd.https == "") {
@@ -118,9 +118,7 @@ namespace OLLMfilesd
 				filesd.proxy ? "true" : "false");
 			var cert_q = ClientCert.query(this.app.project_manager.db);
 			var banned = new Gee.ArrayList<ClientCert>();
-			var int_binds = new Gee.HashMap<string, int>();
-			int_binds["status"] = -1;
-			cert_q.selectWhere("WHERE status = $status ORDER BY created DESC", int_binds, null, banned);
+			cert_q.select("WHERE status = -1 ORDER BY created DESC", banned);
 			var ban_cutoff = new GLib.DateTime.now_utc().to_unix() - (30 * 24 * 60 * 60);
 			foreach (var row in banned) {
 				if (row.created < ban_cutoff) {

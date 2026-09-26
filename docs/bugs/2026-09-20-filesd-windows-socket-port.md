@@ -11,6 +11,7 @@
 - ℹ️ Config already reserves `filesd.socket` as `host:port` (`libollmchat/Settings/Filesd.vala`) — listen never reads it
 - ℹ️ Linux File Server expander is HTTPS only (`ollmapp/SettingsDialog/FileServerRow.vala`); Windows does not build that row (`#if !ANDROID && !G_OS_WIN32` in `ConnectionsPage.vala`)
 - ℹ️ LAN TCP + TLS registration (Linux, non-loopback) is a plan, not this bug: [`RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md`](../plans/RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md)
+- ℹ️ Windows per-user service and the Windows host list are [`RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md`](../plans/RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md), later. This bug is only the localhost port.
 
 ---
 

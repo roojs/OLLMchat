@@ -21,9 +21,10 @@ namespace OLLMchat.Settings
 	/**
 	 * File-daemon listen settings on {@link Config2}.
 	 *
-	 * JSON key ''filesd''. ''unix'' / ''socket'' are reserved for later;
-	 * this plan uses ''enabled'', ''https'', ''proxy'', and
-	 * ''systemd''. {@link install} sets up the user systemd unit from
+	 * JSON key ''filesd''. ''ssl_enabled'' binds the local network
+	 * SSL server from ''socket''. ''https_enabled'' binds HTTPS from
+	 * ''https''. Do not read the old ''enabled'' key.
+	 * {@link install} sets up the user systemd unit from
 	 * {@link systemd}.
 	 *
 	 * == Example ==
@@ -32,8 +33,9 @@ namespace OLLMchat.Settings
 	 * "filesd": {
 	 *   "unix": true,
 	 *   "socket": "",
-	 *   "enabled": true,
+	 *   "ssl_enabled": false,
 	 *   "https": "127.0.0.1:8443",
+	 *   "https_enabled": true,
 	 *   "proxy": true,
 	 *   "systemd": true
 	 * }
@@ -47,13 +49,22 @@ namespace OLLMchat.Settings
 		public bool unix { get; set; default = true; }
 
 		/**
-		 * Bin TCP listen as ''host:port'' (empty = off). Config-only for now.
+		 * Local network SSL listen as ''host:port''. Kept when
+		 * {@link ssl_enabled} is false. Empty means no address
+		 * stored yet, not the off switch.
 		 */
 		public string socket { get; set; default = ""; }
 
 		/**
-		 * HTTPS listen as ''host:port''. Kept when {@link enabled} is
-		 * false; empty means no address stored yet.
+		 * When false, ollmfilesd does not bind the local network
+		 * SSL server. {@link socket} keeps its host and port.
+		 */
+		public bool ssl_enabled { get; set; default = false; }
+
+		/**
+		 * HTTPS listen as ''host:port''. Kept when
+		 * {@link https_enabled} is false. Empty means no address
+		 * stored yet.
 		 */
 		public string https { get; set; default = ""; }
 
@@ -61,7 +72,7 @@ namespace OLLMchat.Settings
 		 * When false, ollmfilesd does not bind HTTPS. Host, port,
 		 * {@link proxy}, and {@link systemd} keep their last values.
 		 */
-		public bool enabled { get; set; default = true; }
+		public bool https_enabled { get; set; default = true; }
 
 		/**
 		 * Expect PROXY Protocol v1 on the HTTPS TCP listener.

@@ -28,6 +28,19 @@ namespace OLLMrpc.Transport
 	{
 		public GLib.SocketConnection? stream { get; construct; default = null; }
 
+		/**
+		 * Plaintext bin streams after a TLS handshake.
+		 *
+		 * Null on Unix and plaintext TCP. The fd watch stays
+		 * on {@link stream}.
+		 */
+		public GLib.IOStream? io { get; set; default = null; }
+
+		/**
+		 * SHA256 of the peer certificate DER, or empty.
+		 */
+		public string cert_fingerprint { get; set; default = ""; }
+
 		public Bin.Stream? bin { get; protected set; }
 
 		public bool live_handles { get; set; default = false; }
@@ -131,12 +144,14 @@ namespace OLLMrpc.Transport
 					GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
 					this.on_input_ready
 				);
-				var in_stream = new GLib.DataInputStream(
-					this.stream.get_input_stream()
-				);
-				var out_stream = new GLib.DataOutputStream(
-					this.stream.get_output_stream()
-				);
+				var bin_in = this.stream.get_input_stream();
+				var bin_out = this.stream.get_output_stream();
+				if (this.io != null) {
+					bin_in = this.io.get_input_stream();
+					bin_out = this.io.get_output_stream();
+				}
+				var in_stream = new GLib.DataInputStream(bin_in);
+				var out_stream = new GLib.DataOutputStream(bin_out);
 				this.bin = new Bin.Stream(in_stream, out_stream, true) {
 					connection = this
 				};
@@ -260,6 +275,20 @@ namespace OLLMrpc.Transport
 		}
 
 		/**
+		 * Return true when this request may run.
+		 *
+		 * Unix and plaintext TCP stay open.
+		 * {@link OLLMfilesd.SslConnection} overrides this.
+		 *
+		 * @param request inbound RPC
+		 * @return true when dispatch may run
+		 */
+		public virtual bool allow_request(OLLMrpc.Request request)
+		{
+			return true;
+		}
+
+		/**
 		 * Wait for input during {@link Live.Hook.emit}.
 		 *
 		 * Default: one blocking {@link GLib.MainContext.iteration}. That is
@@ -316,14 +345,14 @@ namespace OLLMrpc.Transport
 					request.method,
 					this
 				);
-			request.connection = this;
-			if (this.buffer_stream != null) {
-				this.buffer_stream.read_fd();
-				request.buffer = this.buffer_stream.take_pending();
-			}
-			if (!request.dispatch()) {
-				this.reply_error(request, (int) OLLMrpc.RpcErrorCode.METHOD_NOT_FOUND);
-			}
+				request.connection = this;
+				if (this.buffer_stream != null) {
+					this.buffer_stream.read_fd();
+					request.buffer = this.buffer_stream.take_pending();
+				}
+				if (this.allow_request(request) && !request.dispatch()) {
+					this.reply_error(request, (int) OLLMrpc.RpcErrorCode.METHOD_NOT_FOUND);
+				}
 			} while (
 				(source.get_buffer_condition() & GLib.IOCondition.IN) != 0
 			);

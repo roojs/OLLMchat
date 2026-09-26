@@ -67,6 +67,8 @@ ollmfilesd_src = files(
   'Daemon.vala',
   'ClientCert.vala',
   'Https.vala',
+  'SslListen.vala',
+  'SslConnection.vala',
   'StdioConnection.vala',
   'Stdio.vala',
   'Application.vala',

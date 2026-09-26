@@ -362,6 +362,10 @@ namespace OLLMfilesd
 						&& !this.app.https_listen.banned_ips.contains(rejected.ip)) {
 						this.app.https_listen.banned_ips.add(rejected.ip);
 					}
+					if (this.app.ssl_listen != null
+						&& !this.app.ssl_listen.banned_ips.contains(rejected.ip)) {
+						this.app.ssl_listen.banned_ips.add(rejected.ip);
+					}
 					GLib.debug("auto-banned IP %s after %d rejects in 30 days",
 						rejected.ip, recent_rejects.size);
 					request.reply(new OLLMrpc.Response() {
@@ -389,6 +393,10 @@ namespace OLLMfilesd
 					if (this.app.https_listen != null && ban_rows.get(0).ip != ""
 						&& !this.app.https_listen.banned_ips.contains(ban_rows.get(0).ip)) {
 						this.app.https_listen.banned_ips.add(ban_rows.get(0).ip);
+					}
+					if (this.app.ssl_listen != null && ban_rows.get(0).ip != ""
+						&& !this.app.ssl_listen.banned_ips.contains(ban_rows.get(0).ip)) {
+						this.app.ssl_listen.banned_ips.add(ban_rows.get(0).ip);
 					}
 					request.reply(new OLLMrpc.Response() {
 						retval = OLLMrpc.val("b", true),
