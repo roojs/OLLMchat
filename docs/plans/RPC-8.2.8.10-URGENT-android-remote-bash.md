@@ -1,6 +1,6 @@
-# 8.2.8.10 — `bash` as a remote tool Android can use
+# 8.2.8.10 — URGENT — `bash` as a remote tool Android can use
 
-**Status:** **PROPOSED** — design only; code proposals not yet written
+**Status:** **URGENT** — design only; code proposals not yet written
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 

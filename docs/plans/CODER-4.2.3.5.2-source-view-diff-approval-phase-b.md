@@ -1,6 +1,6 @@
 # 4.2.3.5.2 — ReviewBar Phase B: product wire
 
-**Status:** **✔️** Phase 1 applied — Phase 2 and Phase 3 still **⏳**
+**Status:** **✔️** closed — Phase 1 applied. Part rows and Approvals cleanup → [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md)
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
@@ -20,17 +20,15 @@
 
 ## Purpose
 
-- 🔷 Phase 1 — embed **`ReviewBar`** in the product editor and drive file nav from the real **`ReviewFiles`** queue.
-- 🔷 Phase 2 — persist hunk decisions as **`file_diff_part`** via daemon RPC; reject writes **V_disk**, accept does not.
-- 🔷 Phase 3 — header **`Approvals`** drops the changed-files list; **`show_pending_diff`** is the only pending-diff entry.
-- ℹ️ Phase A mock decisions in **`ReviewBar`** become persistence + RPC in Phase 2.
+- 🔷 Phase 1 — embed **`ReviewBar`** in the product editor and drive file nav from the real **`ReviewFiles`** queue. **✔️** applied.
+- ℹ️ Part rows, disk writes, and header **`Approvals`** cleanup → [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md).
 - ℹ️ **`ReviewBar`** stays the review-chrome owner. **`SourceView`** keeps **`show_diff` / `navigate_to_line` / `clear_diff`** only (parent **SourceView vs ReviewBar**).
 
 ---
 
 ## Phase 1 — Wire chrome
 
-Embed **`ReviewBar`** under **`SourceView`** (same layout as **`oc-test-source-diff`**). File nav, the inactive middle label, and the bulk menu use the real **`ReviewFiles`** queue. Bulk actions are stubs that report real counts. Part rows and disk writes are Phase 2.
+Embed **`ReviewBar`** under **`SourceView`** (same layout as **`oc-test-source-diff`**). File nav, the inactive middle label, and the bulk menu use the real **`ReviewFiles`** queue. Bulk actions are stubs that report real counts. Part rows and header cleanup are [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md).
 
 - 🔷 ⏳ Pending file opens through existing **`show_pending_diff`** (builds **`Differ`**). Editor hosts **`ReviewBar`** under **`SourceView`**.
 - 🔷 ⏳ **`n / N`** over the footer file list. Order is **basename**, then full path when basenames match.
@@ -56,7 +54,7 @@ Embed **`ReviewBar`** under **`SourceView`** (same layout as **`oc-test-source-d
 - 🔷 ⏳ A tap on the editor scroll view (menu dismiss and similar) belongs to the scroll view / **`SourceView`**, not **`ReviewBar`**.
 - 🔷 ⏳ Owner calls **`responses()`** as in the harness. Product **`review_response`** handler (send the prompt to the LLM) is outside daemon part work.
 
-Applied in `liboccoder/Diff/ReviewBar.vala` and `liboccoder/SourceView.vala`. Phase 2 still owns part rows and disk writes. Bulk accept / reject stay the existing in-memory stubs and emit **`accept_all_files`** / **`reject_all_files`**. Android hosts the bar the same way as desktop.
+Applied in `liboccoder/Diff/ReviewBar.vala` and `liboccoder/SourceView.vala`. Bulk accept / reject stay in-memory stubs and emit **`accept_all_files`** / **`reject_all_files`**. Part rows are [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md). Android hosts the bar the same way as desktop.
 
 ### 1. `liboccoder/Diff/ReviewBar.vala` — live queue fields
 
@@ -636,43 +634,10 @@ Applied in `liboccoder/Diff/ReviewBar.vala` and `liboccoder/SourceView.vala`. Ph
 
 ---
 
-## Phase 2 — Daemon + parts
-
-**`ReviewBar.update_diff`** loads hunks from **`Differ.patches`** and merges **`file_diff_part`** rows for the active **`file_history`** chunk. No row means the hunk is still pending. Depends on Phase 1 hosting the bar.
-
-- 🔷 ⏳ Accept hunk → insert **`file_diff_part`** with **`accepted=1`**. No disk write. Grey band and advance.
-- 🔷 ⏳ Reject hunk → undo that hunk on **V_disk** and insert **`accepted=0`**. Grey band and advance.
-- 🔷 ⏳ Unapprove → delete the part row. Band returns to pending. Disk is unchanged for a prior accept.
-- 🔷 ⏳ Insert a part row on the **first** accept or reject of that hunk. No upfront rows on agent write.
-- 🔷 ⏳ Every hunk in the chunk has a part row → **`file_history.reviewed=1`**.
-- 🔷 ⏳ Daemon RPC for part insert, part delete, and reject-apply. Method names still open.
-- 🔷 ⏳ Hunk bytes at **`FileDiffPart.path`**: unified-diff text vs serialised **`Patch`**. Still open (parent).
-- 🔷 ⏳ Stacked LLM edit (**Flow B**): review **H2** only. No carry-forward in v1.
-- 🔷 ⏳ Unsaved dirty buffer while reviewing: **lean no**.
-- 🔷 ⏳ Accept all pending files: confirm and revert semantics still open. Phase 1 only stubs the menu.
-- ℹ️ Accept does not rewrite disk. Reject does, for that hunk only.
-
----
-
-## Phase 3 — Approvals cleanup
-
-Header **`Approvals`** no longer owns the changed-files list. Depends on Phase 1 footer nav. Whole-file approve / reject moves off the header once the footer bulk menu is real (Phase 2).
-
-- 🔷 ⏳ Remove the header changed-files popover.
-- 🔷 ⏳ Relocate whole-file Approve / Reject. They are not a second pending-diff path.
-- 🔷 ⏳ **`show_pending_diff`** is the single entry for pending diff and bar state.
-- 🔷 ⏳ Whole-file reject (full **V_backup** restore) stays destructive: header **`Approvals`** or the bulk menu, not a casual band click.
-
----
-
 ## LLM notes
 
-- 🚫 Accept all files as primary header button.
-- 🚫 Carry-forward inside **`OLLMfiles.Diff`**.
-- 🚫 Keep header changed-files popover after footer file nav ships.
 - 🚫 **ReviewBar** handling taps on the editor scroll view.
 - 🚫 Split **`ReviewBar.vala`** without explicit user request.
 - 🚫 Add review-state APIs to **`SourceView`** — **ReviewBar** only.
-- 🚫 Rewrite disk on **accept**.
-- 🚫 Approve / unapprove aliased to GtkSource undo/redo.
-- ℹ️ Touch points: `liboccoder/Diff/ReviewBar.vala`, `liboccoder/SourceView.vala`, `liboccoder/Approvals.vala`, `ollmfilesd/FileHistory.vala`, `ollmfilesd/FileDiffPart.vala`, `libocfiles/ReviewFiles.vala`.
+- ℹ️ Open work (part rows, header **`Approvals`**) is [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md).
+- ℹ️ Touch points: `liboccoder/Diff/ReviewBar.vala`, `liboccoder/SourceView.vala`.

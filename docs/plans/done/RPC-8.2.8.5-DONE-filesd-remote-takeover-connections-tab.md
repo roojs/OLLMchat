@@ -1,6 +1,6 @@
 # 8.2.8.5 — DONE — Remote file connection: desktop takeover, Check, live toggle
 
-**Status:** **DONE** ✅ — Phases C and D in tree. Android takeover is [`RPC-8.2.8.6`](RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md). Phone/tablet pane is [`RPC-8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md).
+**Status:** **DONE** ✅ — Phases C and D in tree. Android takeover is [`RPC-8.2.8.6`](RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md). Phone/tablet pane is [`RPC-8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md).
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
@@ -37,7 +37,7 @@
 - **🔷** `enabled` toggle turns the remote connection on or off **live**: the running `ProjectManager` drops its client, connects the other one, reloads projects, restores the active project/file.
 - **🔷** **Agent Pi** is available when the file connection is live.
   - **Linux:** Agent Pi stays registered as today (local daemon or remote both satisfy it).
-  - **Android:** host surface is [`RPC-8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md). Register is [`8.2.8`](../RPC-8.2.8-filesd-connections-ui.md) Phase 10.
+  - **Android:** host surface is [`RPC-8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md). Register is [`8.2.8`](../RPC-8.2.8-filesd-connections-ui.md) Phase 10.
 - **🔷** `FileConnectionRow(FilesdClient, OllmchatWindow)` — window at construct. **Check** and **Enabled** are wired on the row, not on `ConnectionsPage`.
 - **🔷** `FileConnectionRow.check()` / `reconnect(bool remote)` — use `this.win` (config, `project_manager`, notifications).
 - **ℹ️** Operator nginx doc: [`docs/filesd-behind-nginx-proxy.md`](../../filesd-behind-nginx-proxy.md).
@@ -485,7 +485,7 @@ Point `this.win.project_manager` at the remote file server or back at the local 
 ## Phase E — Android
 
 **➡️** [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — `ProjectManager`, HTTPS takeover, full liboccoder.
-**➡️** [`RPC-8.2.8.8-android-phone-tablet-pane.md`](../RPC-8.2.8.8-android-phone-tablet-pane.md) — `ChatDesktopInterface`, phone/tablet pane.
+**➡️** [`RPC-8.2.8.8-DONE-android-phone-tablet-pane.md`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md) — `ChatDesktopInterface`, phone/tablet pane.
 **➡️** [`8.2.8`](../RPC-8.2.8-filesd-connections-ui.md) Phase 10 — Android `AgentPi.Factory` register.
 
 ---
@@ -503,7 +503,7 @@ Point `this.win.project_manager` at the remote file server or back at the local 
 2. **✅** Phase D — §2–§3 (Check works against a desktop that has accepted the device; toggle swaps live)
 3. **✅** Phase C — §1 (Linux takeover at startup; verify local fallback when `enabled` is off)
 4. **✔️** Phase E takeover — [`RPC-8.2.8.6`](RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md)
-5. **✔️** Phase E pane — [`RPC-8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md)
+5. **✔️** Phase E pane — [`RPC-8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md)
 
 ---
 

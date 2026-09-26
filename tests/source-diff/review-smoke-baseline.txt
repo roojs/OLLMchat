@@ -1,5 +1,6 @@
 # Review smoke fixture — baseline (Phase A sign-off)
-# ~100 lines with many small hunks separated by unchanged context.
+# Mixed hunk sizes: section-02 drops 4 lines, section-03 replaces 2 with 5,
+# section-04 replaces 5 with 1. Other sections stay small.
 
 [meta]
 name = review-smoke
@@ -20,6 +21,9 @@ context 02-01 unchanged filler line
 context 02-02 unchanged filler line
 context 02-03 unchanged filler line
 deprecated = yes
+legacy_flag = on
+old_key = alpha
+old_key = beta
 context 02-05 unchanged filler line
 context 02-06 unchanged filler line
 
@@ -37,6 +41,10 @@ context 04-01 unchanged filler line
 context 04-02 unchanged filler line
 context 04-03 unchanged filler line
 log_level = verbose
+trace_sql = on
+trace_rpc = on
+trace_ui = on
+trace_net = on
 context 04-05 unchanged filler line
 context 04-06 unchanged filler line
 

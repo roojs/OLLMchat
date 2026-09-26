@@ -24,6 +24,7 @@ namespace OLLMcoder.Skill
 	public class Factory : OLLMchat.Agent.Factory
 	{
 		public override string name { get; protected set; default = "skill-runner"; }
+		public override bool has_editor { get; protected set; default = true; }
 		public override string title { get; protected set; default = "Skills Agent"; }
 		public override string long_title { get; protected set; default = "Runs multi-step skills and structured task workflows."; }
 

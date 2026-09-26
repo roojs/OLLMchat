@@ -53,6 +53,14 @@ namespace OLLMchatGtk
 		public Gtk.Box tool_button_box { get; private set; }
 
 		/**
+		 * Right-hand strip, after the spacer and before send.
+		 *
+		 * Phone and tablet append browser, code, and chat.
+		 * Desktop shows this strip for a coding-edit agent.
+		 */
+		public Gtk.Box end_box { get; private set; }
+
+		/**
 		 * User toggled a tool chrome button.
 		 *
 		 * @param tool_name {@link OLLMchat.Tool.BaseTool.name}
@@ -88,6 +96,12 @@ namespace OLLMchatGtk
 			this.append(this.model_loading_label);
 			this.append(this.model_dropdown);
 			this.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) { hexpand = true });
+			this.end_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5) {
+				hexpand = false,
+				vexpand = false,
+			};
+			this.append(this.end_box);
+			this.end_box.visible = false;
 
 			this.action_button = new Gtk.Button.from_icon_name("media-playback-start-symbolic") {
 				tooltip_text = "Send"

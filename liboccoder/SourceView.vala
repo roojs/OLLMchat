@@ -46,7 +46,8 @@ namespace OLLMcoder
 		private Gtk.Button save_button;
 		private Approvals? approvals = null;
 		private OLLMcoder.Diff.ReviewBar review_bar;
-		private Gtk.TextTagTable diff_tag_table { get; set; default = new Gtk.TextTagTable(); }
+		private Gtk.TextTagTable diff_tag_table {
+				 get; set; default = new Gtk.TextTagTable(); }
 		private GtkSource.Buffer? diff_buffer = null;
 		private GtkSource.Buffer? pre_diff_buffer = null;
 		private Gee.ArrayList<int> diff_baseline {  get; set; default = new Gee.ArrayList<int>(); }
@@ -657,7 +658,8 @@ namespace OLLMcoder
 		 *
 		 * Builds interleaved equal / removed / added rows. Green and red come from
 		 * buffer tags; removed lines are non-editable but selectable/copyable.
-		 * Secondary gutter shows baseline line numbers. Does not write disk.
+		 * The gutter shows the new file's line numbers. Removed lines are blank.
+		 * Does not write disk.
 		 * Caller restores with {@link clear_diff}.
 		 *
 		 * @param differ already constructed (text1 = V_backup, text2 = V_disk)
@@ -678,7 +680,7 @@ namespace OLLMcoder
 				while (old_i < patch.old_line_start && new_i < patch.new_line_start
 					&& old_i <= differ.lines1.length && new_i <= differ.lines2.length) {
 					display.add(differ.lines2[new_i - 1]);
-					this.diff_baseline.add(old_i);
+					this.diff_baseline.add(new_i);
 					kinds.add(0);
 					old_i++;
 					new_i++;
@@ -688,7 +690,7 @@ namespace OLLMcoder
 				} else {
 					for (var ln = patch.old_line_start; ln <= patch.old_line_end; ln++) {
 						display.add(differ.lines1[ln - 1]);
-						this.diff_baseline.add(ln);
+						this.diff_baseline.add(0);
 						kinds.add(2);
 					}
 					this.diff_remove_at.add(patch.new_line_start);
@@ -701,14 +703,14 @@ namespace OLLMcoder
 				}
 				for (var ln = patch.new_line_start; ln <= patch.new_line_end; ln++) {
 					display.add(differ.lines2[ln - 1]);
-					this.diff_baseline.add(0);
+					this.diff_baseline.add(ln);
 					kinds.add(1);
 				}
 				new_i = patch.new_line_end + 1;
 			}
 			while (old_i <= differ.lines1.length && new_i <= differ.lines2.length) {
 				display.add(differ.lines2[new_i - 1]);
-				this.diff_baseline.add(old_i);
+				this.diff_baseline.add(new_i);
 				kinds.add(0);
 				old_i++;
 				new_i++;

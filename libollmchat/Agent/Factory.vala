@@ -60,6 +60,14 @@ namespace OLLMchat.Agent
 		 * Longer description for tooltips (e.g., agent dropdown hover text).
 		 */
 		public virtual string long_title { get; protected set; default = ""; }
+
+		/**
+		 * True when this agent mounts the source editor.
+		 *
+		 * The desktop bar then shows browser and code on the
+		 * right. The chat bar itself stays visible.
+		 */
+		public virtual bool has_editor { get; protected set; default = false; }
 		
 		/**
 		 * User's shell (optional, can be set after construction).

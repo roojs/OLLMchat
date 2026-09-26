@@ -160,6 +160,12 @@ namespace OLLMcoder.Diff
 		private double map_content_width = 0.0;
 		private double map_drag_scroll_start = 0.0;
 
+		private Gtk.Label add_swatch;
+		private Gtk.Label remove_swatch;
+		private Gtk.Label add_active_swatch;
+		private Gtk.Label remove_active_swatch;
+		private Gtk.Label accepted_swatch;
+		private Gtk.Label rejected_swatch;
 		private Gtk.Button file_prev;
 		private Gtk.Button file_next;
 		private Gtk.Button file_nav_btn;
@@ -831,6 +837,36 @@ namespace OLLMcoder.Diff
 			this.review_overlay.append(this.feedback_btn);
 			this.review_overlay.append(overlay_spacer);
 			this.review_overlay.append(this.review_decision_box);
+			this.add_swatch = new Gtk.Label("") {
+				css_classes = { "oc-diff-add-band" },
+				visible = false,
+			};
+			this.remove_swatch = new Gtk.Label("") {
+				css_classes = { "oc-diff-remove-band" },
+				visible = false,
+			};
+			this.add_active_swatch = new Gtk.Label("") {
+				css_classes = { "oc-diff-add-active" },
+				visible = false,
+			};
+			this.remove_active_swatch = new Gtk.Label("") {
+				css_classes = { "oc-diff-remove-active" },
+				visible = false,
+			};
+			this.accepted_swatch = new Gtk.Label("") {
+				css_classes = { "oc-diff-accepted" },
+				visible = false,
+			};
+			this.rejected_swatch = new Gtk.Label("") {
+				css_classes = { "oc-diff-rejected" },
+				visible = false,
+			};
+			this.append(this.add_swatch);
+			this.append(this.remove_swatch);
+			this.append(this.add_active_swatch);
+			this.append(this.remove_active_swatch);
+			this.append(this.accepted_swatch);
+			this.append(this.rejected_swatch);
 		}
 
 		/**
@@ -1090,8 +1126,9 @@ namespace OLLMcoder.Diff
 				}
 				cr.save();
 				cr.translate(hunk.map_start, 0.0);
-				if (hunk.decision != HunkDecision.PENDING) {
-					cr.set_source_rgba(0.424, 0.459, 0.490, 0.85);
+				if (hunk.decision == HunkDecision.ACCEPTED) {
+					var accepted = this.accepted_swatch.get_color();
+					cr.set_source_rgba(accepted.red, accepted.green, accepted.blue, 1.0);
 					cr.rectangle(0.0, 0.0, (double) bw, (double) h);
 					cr.fill();
 					if (index == this.active) {
@@ -1103,24 +1140,44 @@ namespace OLLMcoder.Diff
 					cr.restore();
 					continue;
 				}
+				if (hunk.decision == HunkDecision.REJECTED) {
+					var rejected = this.rejected_swatch.get_color();
+					cr.set_source_rgba(rejected.red, rejected.green, rejected.blue, 1.0);
+					cr.rectangle(0.0, 0.0, (double) bw, (double) h);
+					cr.fill();
+					if (index == this.active) {
+						cr.set_source_rgb(0.0, 0.0, 0.0);
+						cr.set_line_width(2.0);
+						cr.rectangle(1.0, 1.0, (double) bw - 2.0, (double) h - 2.0);
+						cr.stroke();
+					}
+					cr.restore();
+					continue;
+				}
+				var add_wash = this.add_swatch.get_color();
+				var remove_wash = this.remove_swatch.get_color();
+				if (index == this.active) {
+					add_wash = this.add_active_swatch.get_color();
+					remove_wash = this.remove_active_swatch.get_color();
+				}
 				switch (hunk.operation) {
 					case OLLMfiles.Diff.PatchOperation.ADD:
-						cr.set_source_rgba(0.024, 0.839, 0.627, 1.0);
+						cr.set_source_rgba(add_wash.red, add_wash.green, add_wash.blue, 1.0);
 						cr.rectangle(0.0, 0.0, (double) bw, (double) h);
 						cr.fill();
 						break;
 
 					case OLLMfiles.Diff.PatchOperation.REMOVE:
-						cr.set_source_rgba(0.902, 0.322, 0.322, 1.0);
+						cr.set_source_rgba(remove_wash.red, remove_wash.green, remove_wash.blue, 1.0);
 						cr.rectangle(0.0, 0.0, (double) bw, (double) h);
 						cr.fill();
 						break;
 
 					default:
-						cr.set_source_rgba(0.902, 0.322, 0.322, 1.0);
+						cr.set_source_rgba(remove_wash.red, remove_wash.green, remove_wash.blue, 1.0);
 						cr.rectangle(0.0, 0.0, (double) bw * 0.5, (double) h);
 						cr.fill();
-						cr.set_source_rgba(0.024, 0.839, 0.627, 1.0);
+						cr.set_source_rgba(add_wash.red, add_wash.green, add_wash.blue, 1.0);
 						cr.rectangle((double) bw * 0.5, 0.0, (double) bw * 0.5, (double) h);
 						cr.fill();
 						break;

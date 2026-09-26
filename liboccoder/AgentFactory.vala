@@ -27,6 +27,7 @@ namespace OLLMcoder
 	public class AgentFactory : OLLMchat.Agent.Factory
 	{
 		public override string name { get; protected set; default = "code-assistant"; }
+		public override bool has_editor { get; protected set; default = true; }
 		public override string title { get; protected set; default = "Coding Assistant"; }
 		public override string long_title { get; protected set; default = "Code-aware assistant with project context, tools, and editor integration."; }
 

@@ -47,6 +47,8 @@ namespace OLLMapp
 		private Gtk.Spinner settings_spinner;
 		private Gtk.Image settings_icon;
 		private Adw.Banner tool_error_banner;
+		private Gtk.Button browser_picker;
+		private Gtk.Button editor_picker;
 		private Gee.ArrayList<string> banner_queue {
 			get; private set;
 			default = new Gee.ArrayList<string>();
@@ -84,6 +86,16 @@ namespace OLLMapp
 		public void schedule_pane_update(bool visible)
 		{
 			this.window_pane.schedule_pane_update(visible);
+			this.browser_picker.remove_css_class("picker-on");
+			this.editor_picker.remove_css_class("picker-on");
+			if (!visible) {
+				return;
+			}
+			if (this.window_pane.tab_view.visible_child_name == "browser") {
+				this.browser_picker.add_css_class("picker-on");
+				return;
+			}
+			this.editor_picker.add_css_class("picker-on");
 		}
 
 		public void scroll_to_message(int idx)
@@ -752,6 +764,28 @@ namespace OLLMapp
 			this.window_pane.paned.set_start_child(this.chat_widget);
 			this.window_pane.paned.set_resize_start_child(true);
 
+			this.browser_picker = new Gtk.Button();
+			this.browser_picker.icon_name = "web-browser-symbolic";
+			this.browser_picker.tooltip_text = "Browser";
+			this.editor_picker = new Gtk.Button();
+			this.editor_picker.icon_name = "document-edit-symbolic";
+			this.editor_picker.tooltip_text = "Text editor";
+			this.chat_widget.chat_bar.end_box.append(this.browser_picker);
+			this.chat_widget.chat_bar.end_box.append(this.editor_picker);
+			this.browser_picker.clicked.connect(() => {
+				var ui = this.history_manager.tools.get("browser") as OLLMchat.Tool.UiWidgets;
+				var view = (Gtk.Widget) ui.view_widget;
+				if (this.window_pane.tab_view.get_child_by_name("browser") == null) {
+					this.window_pane.tab_view.add_named(view, "browser");
+				}
+				this.window_pane.tab_view.set_visible_child_name("browser");
+				this.schedule_pane_update(true);
+			});
+			this.editor_picker.clicked.connect(() => {
+				var widget_id = this.history_manager.session.agent_name + "-widget";
+				this.window_pane.tab_view.set_visible_child_name(widget_id);
+				this.schedule_pane_update(true);
+			});
 			foreach (var tool in this.history_manager.tools.values) {
 				var ui = tool as OLLMchat.Tool.UiWidgets;
 				if (ui == null) {
@@ -761,6 +795,15 @@ namespace OLLMapp
 				this.chat_widget.chat_bar.add_tool_toggle(
 					widget_id, ui.icon_name, ui.tooltip_text);
 				ui.show_view.connect(() => {
+					if (this.chat_widget.chat_bar.end_box.visible) {
+						var view = (Gtk.Widget) ui.view_widget;
+						if (this.window_pane.tab_view.get_child_by_name(widget_id) == null) {
+							this.window_pane.tab_view.add_named(view, widget_id);
+						}
+						this.window_pane.tab_view.set_visible_child_name(widget_id);
+						this.schedule_pane_update(true);
+						return;
+					}
 					this.chat_widget.chat_bar.toggle_active_tool(widget_id, true);
 				});
 			}
@@ -774,6 +817,9 @@ namespace OLLMapp
 				}
 				var view = (Gtk.Widget) ui.view_widget;
 				if (!active) {
+					if (this.chat_widget.chat_bar.end_box.visible) {
+						return;
+					}
 					this.window_pane.schedule_pane_update(false);
 					return;
 				}
@@ -784,7 +830,28 @@ namespace OLLMapp
 				this.window_pane.tab_view.set_visible_child_name(tool_name);
 				this.window_pane.schedule_pane_update(true);
 			});
-			
+
+			this.history_manager.agent_activated.connect((factory) => {
+				if (factory.has_editor) {
+					this.chat_widget.chat_bar.tool_button_box.visible = false;
+					this.chat_widget.chat_bar.end_box.visible = true;
+					return;
+				}
+				if (this.chat_widget.chat_bar.end_box.visible) {
+					this.chat_widget.chat_bar.end_box.visible = false;
+					this.chat_widget.chat_bar.toggle_active_tool("browser", false);
+				}
+				this.chat_widget.chat_bar.tool_button_box.visible = true;
+				this.chat_widget.chat_bar.end_box.visible = false;
+			});
+			if (this.history_manager.get_active_agent().has_editor) {
+				this.chat_widget.chat_bar.tool_button_box.visible = false;
+				this.chat_widget.chat_bar.end_box.visible = true;
+				if (this.window_pane.intended_pane_visible) {
+					this.schedule_pane_update(true);
+				}
+			}
+
 			// Agent UI: factories receive this window as ChatDesktopInterface (§3b)
 			this.connect_agent_factory_signals();
 

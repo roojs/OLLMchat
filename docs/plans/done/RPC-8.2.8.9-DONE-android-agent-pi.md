@@ -1,18 +1,18 @@
 # 8.2.8.9 — DONE — Android Agent Pi when the desktop environment is live
 
-**Status:** **DONE** ✔️ — Phase 1–2 in tree. Phases 3–5 are [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](RPC-8.2.8.11-DONE-android-startup-history-bars.md). Phases 6–8 are [`RPC-8.2.8.12-android-editor-chrome-bars.md`](../RPC-8.2.8.12-android-editor-chrome-bars.md).
+**Status:** **DONE** ✔️ — Phase 1–2 in tree. Phases 3–5 are [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](RPC-8.2.8.11-DONE-android-startup-history-bars.md). Phases 6–8 are [`RPC-8.2.8.12-DONE-android-editor-chrome-bars.md`](RPC-8.2.8.12-DONE-android-editor-chrome-bars.md).
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
 **Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](../RPC-8.2.8-filesd-connections-ui.md) Phase 10
 
-**Split to:** [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](RPC-8.2.8.11-DONE-android-startup-history-bars.md), then [`RPC-8.2.8.12-android-editor-chrome-bars.md`](../RPC-8.2.8.12-android-editor-chrome-bars.md)
+**Split to:** [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](RPC-8.2.8.11-DONE-android-startup-history-bars.md), then [`RPC-8.2.8.12-DONE-android-editor-chrome-bars.md`](RPC-8.2.8.12-DONE-android-editor-chrome-bars.md)
 
 **Depends on:**
 
 - Phone connection flow, user-closed 2026-09-23 (Check stays up, row survives restart)
 - [`RPC-8.2.8.6`](RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS hello
-- [`RPC-8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md) — `ChatDesktopInterface`, phone stack, tablet column
+- [`RPC-8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md) — `ChatDesktopInterface`, phone stack, tablet column
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -28,7 +28,7 @@ Proposed Vala follows `docs/coding-standards.md`. Phases 1–2 are applied.
 - **ℹ️** Desktop Linux already registers Agent Pi at window setup (`ollmapp/Window.vala`). This plan does not change that.
 - **ℹ️** Only Agent Pi. Not Code Assistant. Not Skill Runner. Parent decision in [`8.2.8.2`](RPC-8.2.8.2-DONE-filesd-android-file-connection.md).
 - **ℹ️** Still one desktop environment. Home, office, and an online proxy host are [`8.2.8`](../RPC-8.2.8-filesd-connections-ui.md) Phase 13.
-- **ℹ️** Startup hello and history-when-off are [`8.2.8.11`](RPC-8.2.8.11-DONE-android-startup-history-bars.md). Editor chrome and bar placement are [`8.2.8.12`](../RPC-8.2.8.12-android-editor-chrome-bars.md).
+- **ℹ️** Startup hello and history-when-off are [`8.2.8.11`](RPC-8.2.8.11-DONE-android-startup-history-bars.md). Editor chrome and bar placement are [`8.2.8.12`](RPC-8.2.8.12-DONE-android-editor-chrome-bars.md).
 
 ---
 
@@ -367,8 +367,8 @@ Live means Phase 1 state `LIVE`: the row is approved, the user left it on, and t
 - **ℹ️** `this.filter.changed(Gtk.FilterChange.DIFFERENT)` is the same call as `libollmchatgtk/HistoryBrowser.vala`.
 - **ℹ️** `Gtk.DropDown.selected_item` is how `FileServerRow` and `ProjectDropdown` read the current row.
 - **ℹ️** `write` / `read` already go through `ProjectManager` RPC when the client is on HTTPS.
-- **ℹ️** `bash` does not exec on the daemon. `RunCommand` calls in-process `OLLMbwrap.Bubble.exec` (or `GLib.Subprocess` when bwrap is missing). Overlay apply is File.* RPC ([`2.10.4.19-DONE-runcommand-overlay-index.md`](2.10.4.19-DONE-runcommand-overlay-index.md)). Remote `bash` is [`RPC-8.2.8.10-android-remote-bash.md`](../RPC-8.2.8.10-android-remote-bash.md). Daemon `Bubble.exec` is [`BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md`](../BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md).
-- **🔷** Android Agent Pi needs `bash` on the desktop. That is [`8.2.8.10`](../RPC-8.2.8.10-android-remote-bash.md), not this plan’s hunks. Registering `Bash` on the phone would run on the phone.
+- **ℹ️** `bash` does not exec on the daemon. `RunCommand` calls in-process `OLLMbwrap.Bubble.exec` (or `GLib.Subprocess` when bwrap is missing). Overlay apply is File.* RPC ([`2.10.4.19-DONE-runcommand-overlay-index.md`](2.10.4.19-DONE-runcommand-overlay-index.md)). Remote `bash` is [`RPC-8.2.8.10-URGENT-android-remote-bash.md`](../RPC-8.2.8.10-URGENT-android-remote-bash.md). Daemon `Bubble.exec` is [`BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md`](../BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md).
+- **🔷** Android Agent Pi needs `bash` on the desktop. That is [`8.2.8.10`](../RPC-8.2.8.10-URGENT-android-remote-bash.md), not this plan’s hunks. Registering `Bash` on the phone would run on the phone.
 - **💩** Check hello is only the approval probe. Going live still needs `reconnect(true)` so `ProjectManager` is on the remote daemon.
 - **💩** Android tool fill does not register `write` / `read`. Register those before `wire()`. Do not register `bash` until `Bubble.exec` is RPC.
 - **💩** Manager `switch_to_session` does not clear the transcript. `ChatWidget` `session_activated` clears only for `EmptySession`, not when an empty session converts to a real `Session`.
@@ -631,7 +631,7 @@ Save `window_config.agent` on a LIVE-driven switch. `select_only` does not run t
 			}
 ```
 
-`bash` and `AgentPi.Factory.register_config` wait on [`RPC-8.2.8.10`](../RPC-8.2.8.10-android-remote-bash.md). Do not register `Bash` here.
+`bash` and `AgentPi.Factory.register_config` wait on [`RPC-8.2.8.10`](../RPC-8.2.8.10-URGENT-android-remote-bash.md). Do not register `Bash` here.
 
 ### 6. `ollmapp/Window.vala` — local hello sets `SOCKET`
 
@@ -783,7 +783,7 @@ Save `window_config.agent` on a LIVE-driven switch. `select_only` does not run t
 
 ## Remaining work
 
-**➡️** [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](RPC-8.2.8.11-DONE-android-startup-history-bars.md) — startup hello, history when Agent Pi is off, phone pickers. Editor chrome and bar placement are [`8.2.8.12`](../RPC-8.2.8.12-android-editor-chrome-bars.md).
+**➡️** [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](RPC-8.2.8.11-DONE-android-startup-history-bars.md) — startup hello, history when Agent Pi is off, phone pickers. Editor chrome and bar placement are [`8.2.8.12`](RPC-8.2.8.12-DONE-android-editor-chrome-bars.md).
 
 ---
 
@@ -793,8 +793,8 @@ Save `window_config.agent` on a LIVE-driven switch. `select_only` does not run t
 - **🚫** Changing Linux Agent Pi registration.
 - **🚫** `#if ANDROID` to decide whether Agent Pi is in the list. That check is `SOCKET` or `LIVE`.
 - **🚫** Index loops / `ListStore.find` to locate the selected agent.
-- **🚫** Registering in-process `Bash` on Android. Exec stays on the daemon ([`8.2.8.10`](../RPC-8.2.8.10-android-remote-bash.md)).
+- **🚫** Registering in-process `Bash` on Android. Exec stays on the daemon ([`8.2.8.10`](../RPC-8.2.8.10-URGENT-android-remote-bash.md)).
 - **🚫** `FileConnectionRow` registering tools, constructing `AgentPi.Factory`, appending the dropdown store, calling `switch_to_session`, or `activate_agent`.
 - **🚫** A second agent `ListStore` class, or rebuilding the dropdown store when `state` changes.
 - **🚫** More than one desktop environment. That is parent Phase 13.
-- **ℹ️** Startup hello and history 🚫 list live on [`8.2.8.11`](RPC-8.2.8.11-DONE-android-startup-history-bars.md). Bar placement 🚫 list lives on [`8.2.8.12`](../RPC-8.2.8.12-android-editor-chrome-bars.md).
+- **ℹ️** Startup hello and history 🚫 list live on [`8.2.8.11`](RPC-8.2.8.11-DONE-android-startup-history-bars.md). Bar placement 🚫 list lives on [`8.2.8.12`](RPC-8.2.8.12-DONE-android-editor-chrome-bars.md).

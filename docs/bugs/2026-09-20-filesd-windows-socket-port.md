@@ -10,7 +10,7 @@
 
 - ℹ️ Config already reserves `filesd.socket` as `host:port` (`libollmchat/Settings/Filesd.vala`) — listen never reads it
 - ℹ️ Linux File Server expander is HTTPS only (`ollmapp/SettingsDialog/FileServerRow.vala`); Windows does not build that row (`#if !ANDROID && !G_OS_WIN32` in `ConnectionsPage.vala`)
-- ℹ️ LAN TCP + TLS registration (Linux, non-loopback) is a plan, not this bug: [`RPC-8.2.8.7-filesd-tcp-socket-lan.md`](../plans/RPC-8.2.8.7-filesd-tcp-socket-lan.md)
+- ℹ️ LAN TCP + TLS registration (Linux, non-loopback) is a plan, not this bug: [`RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md`](../plans/RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md)
 
 ---
 
@@ -48,7 +48,7 @@
 
 🔷 Spawn, probe, and client connect must use the saved `filesd.socket` (including `is_running()` and `windows/ClientBoot`).
 
-ℹ️ Linux `filesd.socket` empty / port **0** means **no TCP** (Unix socket stays). That sentinel and LAN TLS are [`8.2.8.7`](../plans/RPC-8.2.8.7-filesd-tcp-socket-lan.md), not this bug.
+ℹ️ Linux `filesd.socket` empty / port **0** means **no TCP** (Unix socket stays). That sentinel and LAN TLS are [`8.2.8.7`](../plans/RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md), not this bug.
 
 💩 Ephemeral bind (port `0` → OS-chosen port, then write it back) — `HttpServer` already does that for HTTPS; not asked for Windows.
 

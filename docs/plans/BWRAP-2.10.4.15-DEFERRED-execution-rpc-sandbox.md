@@ -10,7 +10,7 @@
 
 **Depends on:** [`done/2.10.4.17-DONE-libocbwrap-sandbox-library.md`](done/2.10.4.17-DONE-libocbwrap-sandbox-library.md) — daemon links **`libocbwrap`**, **🚫** no full **`Sandbox/*`** copy under **`ollmfilesd/`**
 
-**Related:** [`done/2.10.4.9-DONE-v2-caller-cutover.md`](done/2.10.4.9-DONE-v2-caller-cutover.md) · [`FILES-2.10.4.1-ollmfilesd-rpc-api.md`](FILES-2.10.4.1-ollmfilesd-rpc-api.md) · [`RPC-8.2.8.10-android-remote-bash.md`](RPC-8.2.8.10-android-remote-bash.md) — Android `bash` tool over this RPC
+**Related:** [`done/2.10.4.9-DONE-v2-caller-cutover.md`](done/2.10.4.9-DONE-v2-caller-cutover.md) · [`FILES-2.10.4.1-ollmfilesd-rpc-api.md`](FILES-2.10.4.1-ollmfilesd-rpc-api.md) · [`RPC-8.2.8.10-URGENT-android-remote-bash.md`](RPC-8.2.8.10-URGENT-android-remote-bash.md) — Android `bash` tool over this RPC
 
 ---
 

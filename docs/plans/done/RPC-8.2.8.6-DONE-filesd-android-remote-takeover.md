@@ -1,6 +1,6 @@
 # 8.2.8.6 — DONE — Remote file connection: Android takeover
 
-**Status:** **DONE** ✔️ — Phase 1–2 in tree. Phase 3 is [`RPC-8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md).
+**Status:** **DONE** ✔️ — Phase 1–2 in tree. Phase 3 is [`RPC-8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md).
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
@@ -33,7 +33,7 @@
 - **🔷** Compile **full** `liboccoder` on Android (same sources as desktop). Implication is meson + deps, not a second agent API.
 - **🔷** Tree-sitter stays off Android on purpose. AST parse is the file daemon's job — [`FILES-2.10.4.33`](../FILES-2.10.4.33-client-tree-sitter-daemon.md).
 - **🔷** Do **not** register occoder agent factories on Android in this plan (Agent Pi / Code Assistant / Skill Runner). Android Agent Pi register is [`8.2.8`](../RPC-8.2.8-filesd-connections-ui.md) Phase 10.
-- **ℹ️** Phone/tablet `ChatDesktopInterface` shell is [`RPC-8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md).
+- **ℹ️** Phone/tablet `ChatDesktopInterface` shell is [`RPC-8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md).
 - **ℹ️** Operator nginx doc: [`docs/filesd-behind-nginx-proxy.md`](../../filesd-behind-nginx-proxy.md).
 
 ---
@@ -43,7 +43,7 @@
 - **ℹ️** `android_poc` links reduced `occoder` (`AgentPi/Skill.vala` + `SkillSet.vala` only) via `liboccoder/meson.build` `is_android_cross` + `subdir_done()`.
 - **ℹ️** `OLLMfiles.ProjectManager` is a stub in `ollmapp/android/AndroidToolTypes.vala`. `libocfiles` is not in the Android `subdir()` list.
 - **ℹ️** Pixiewood has no tree-sitter wrap (deliberate). Client `Tree` / `TreeBase` are gone ([`FILES-2.10.4.33`](../FILES-2.10.4.33-client-tree-sitter-daemon.md)).
-- **ℹ️** Phone/tablet shell was this plan's Phase 3 — now [`8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md).
+- **ℹ️** Phone/tablet shell was this plan's Phase 3 — now [`8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md).
 - **ℹ️** [`8.2.8.5`](RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) `FileConnectionRow` / `ConnectionsPage.render_approved` already call `win.project_manager`, `win.notification`, `win.window_config()`.
 
 ---
@@ -54,7 +54,7 @@
 - **🔷** Full liboccoder compiles on Android. Registration of those factories stays off.
 - **🔷** Tree-sitter is daemon-side ([`FILES-2.10.4.33`](../FILES-2.10.4.33-client-tree-sitter-daemon.md)). Do not add a Pixiewood wrap or ship language `.so` files in the APK.
 - **ℹ️** `register_default_agents()` is Chatter only (`ChatUserInterface`). Coder factories are a separate desktop `Window.initialize_client` block. Leave that block off Android.
-- **ℹ️** `ChatDesktopInterface` / phone vs tablet layout is [`8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md).
+- **ℹ️** `ChatDesktopInterface` / phone vs tablet layout is [`8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md).
 
 ---
 
@@ -139,7 +139,7 @@ endif
 
 ### 3. `liboccoder/meson.build` — full `occoder_src` on Android
 
-**Why:** SkillsPage already needs `AgentPi.Skill`; [`8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md) needs `SourceView` / factories compiled. Keep `is_android_cross` for GIR skip and VAPI `--define`.
+**Why:** SkillsPage already needs `AgentPi.Skill`; [`8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md) needs `SourceView` / factories compiled. Keep `is_android_cross` for GIR skip and VAPI `--define`.
 
 **Where:** top of file through `subdir_done()`; then `occoder_base_lib = library(`; then after `occoder_vapi_vapidirs`.
 
@@ -368,11 +368,11 @@ Delete the leftover license header with the file.
 - **🔷** `✔️` `OllmchatWindow.initialize_client` (Android): when `filesd_client.url != "" && enabled && approved`, mint the device `Cert`, `HttpClient`, `OLLMrpc.Client` with `http` set, `replace_rpc`, `yield rpc.connect(hello)` (no `ClientBoot`).
 - **🔷** `✔️` Copy the Cert / HttpClient literals from `FileConnectionAdd.request()` (no fourth helper).
 - **🔷** `✔️` Expose `project_manager`, `notification`, `window_config()` on the Android window so `FileConnectionRow.reconnect` compiles (same names as desktop).
-- **ℹ️** `notification` on desktop is the `ChatDesktopInterface` signal. Phase 2 adds that signal on the Android window without implementing the interface ([`8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md)).
+- **ℹ️** `notification` on desktop is the `ChatDesktopInterface` signal. Phase 2 adds that signal on the Android window without implementing the interface ([`8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md)).
 - **ℹ️** `FileConnectionRow.reconnect(false)` still uses `ClientBoot` (local Unix). Do not `#if ANDROID` the row. Startup never passes `ClientBoot`.
 - **💩** `✔️` On HTTPS `connect` failure, `GLib.warning` + `Alert.show` and **continue** chat (desktop `return`s out of `initialize_client` because the local daemon is required there).
 - **💩** `✔️` Constructor `notification` handler: `Alert.show` → `Adw.AlertDialog` only (desktop also has `ActivityBanner` / `Banner.show` / file-change). `FileConnectionRow` emits `Alert.show`.
-- **💩** `✔️` GtkSource `BufferProvider` on the Android `ProjectManager` (desktop always sets it; editor host is [`8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md)).
+- **💩** `✔️` GtkSource `BufferProvider` on the Android `ProjectManager` (desktop always sets it; editor host is [`8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md)).
 - **💩** `✔️` Forward `ProjectManager.notification` → window `notification` via `GLib.Idle.add` (desktop does this after connect).
 
 Edits are **Remove** / **Replace with** / **Add** from the tree;
@@ -532,7 +532,7 @@ Named members this phase adds: `project_manager`, `uuid`, `notification` (signal
 
 ## Phase 3 — `ChatDesktopInterface` + phone / tablet pane
 
-**➡️** [`RPC-8.2.8.8-android-phone-tablet-pane.md`](../RPC-8.2.8.8-android-phone-tablet-pane.md)
+**➡️** [`RPC-8.2.8.8-DONE-android-phone-tablet-pane.md`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md)
 
 ---
 
@@ -550,14 +550,14 @@ Named members this phase adds: `project_manager`, `uuid`, `notification` (signal
 1. **✔️** [`FILES-2.10.4.33`](../FILES-2.10.4.33-client-tree-sitter-daemon.md) — client `Tree` off `libocfiles`
 2. **✔️** Phase 1 — `libocfiles` (no tree-sitter) + full `liboccoder` + real `ProjectManager` (Android meson reconfigure still `⏳`)
 3. **✔️** Phase 2 — HTTPS `replace_rpc` + window APIs `FileConnectionRow` already calls
-4. **✔️** Phase 3 — [`8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md) — `ChatDesktopInterface` + phone stack / tablet landscape columns
+4. **✔️** Phase 3 — [`8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md) — `ChatDesktopInterface` + phone stack / tablet landscape columns
 
 ---
 
 ## LLM notes
 
 - **ℹ️** Desktop Check / live toggle / Linux takeover stay in [`8.2.8.5`](RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md).
-- **ℹ️** Phone/tablet shell is [`8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md).
+- **ℹ️** Phone/tablet shell is [`8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md).
 - **🚫** `ClientBoot` on Android (no local Unix `ollmfilesd`).
 - **🚫** Gating Linux Agent Pi on the remote connection.
 - **🚫** Registering occoder agents on Android in this plan — [`8.2.8`](../RPC-8.2.8-filesd-connections-ui.md) Phase 10.

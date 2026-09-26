@@ -1,17 +1,17 @@
-# 8.2.8.8 — Android `ChatDesktopInterface`: phone stack / tablet columns
+# 8.2.8.8 — DONE — Android `ChatDesktopInterface`: phone stack / tablet columns
 
-**Status:** **PROPOSED** — Phase 1 hunks in tree (`✔️`)
+**Status:** **DONE** ✔️ — Phase 1 hunks in tree
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
-**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](RPC-8.2.8-filesd-connections-ui.md)
+**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](../RPC-8.2.8-filesd-connections-ui.md)
 
-**Split from:** [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) Phase 3.
+**Split from:** [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) Phase 3.
 
 **Depends on:**
 
-- [`RPC-8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full `liboccoder`, `notification` / `window_config()`
-- [`RPC-8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) Phase 1 — Android browser `tool_toggle` on `chat_widget.view_stack`
+- [`RPC-8.2.8.6`](RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full `liboccoder`, `notification` / `window_config()`
+- [`RPC-8.2.8.2`](RPC-8.2.8.2-DONE-filesd-android-file-connection.md) Phase 1 — Android browser `tool_toggle` on `chat_widget.view_stack`
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -26,13 +26,13 @@
 - **🔷** Route the existing Android browser `tool_toggle` into that same secondary surface (stack on phone, right column on tablet).
 - **🔷** Detect tablet the standard Android way (`smallestScreenWidthDp` / `sw600dp`). If that signal is not reachable from Vala/GTK, expose it (JNI / activity). Do not invent a Gdk width cutoff.
 - **🔷** Tablet `tab_view()` is still an `Adw.ViewStack` so factory casts match desktop.
-- **ℹ️** Agent Pi register is [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md). Startup hello and history are [`8.2.8.11`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md). Editor chrome and bar placement are [`8.2.8.12`](RPC-8.2.8.12-android-editor-chrome-bars.md). This plan only makes the host surface.
+- **ℹ️** Agent Pi register is [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md). Startup hello and history are [`8.2.8.11`](RPC-8.2.8.11-DONE-android-startup-history-bars.md). Editor chrome and bar placement are [`8.2.8.12`](RPC-8.2.8.12-DONE-android-editor-chrome-bars.md). This plan only makes the host surface.
 
 ---
 
 ## Current behaviour
 
-- **ℹ️** Android `OllmchatWindow` is `ChatUserInterface` only. Phase 2 on [`8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) added `notification` as a class signal (not the interface).
+- **ℹ️** Android `OllmchatWindow` is `ChatUserInterface` only. Phase 2 on [`8.2.8.6`](RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) added `notification` as a class signal (not the interface).
 - **ℹ️** Phone shell: `Gtk.Stack` (`startup` / `chat` / `history`). Browser globe toggles `chat_widget.view_stack` (`"chat"` vs tool name). No right pane.
 - **ℹ️** Desktop split is `ollmapp/WindowPane.vala` (`Gtk.Paned` + `Adw.ViewStack tab_view`). Showing the pane **grows** the window. Not in `android_poc` sources.
 - **ℹ️** `AgentPi.Factory.activate` casts the window to `ChatDesktopInterface` and `tab_view()` to `Adw.ViewStack`, then mounts `OLLMcoder.SourceView`.
@@ -431,15 +431,15 @@ ollmapp_android_lock_landscape (GtkWindow *window)
 
 ## Suggested order
 
-1. **✔️** [`8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) Phase 1–2
+1. **✔️** [`8.2.8.6`](RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) Phase 1–2
 2. **✔️** This plan — JNI device class, `ChatDesktopInterface`, phone `"pane"` stack / tablet columns
 
 ---
 
 ## LLM notes
 
-- **ℹ️** HTTPS takeover / `ProjectManager` stay in [`8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md).
-- **🚫** Registering `AgentPi.Factory` / `AgentFactory` / Skill Runner on Android in this plan — [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md).
+- **ℹ️** HTTPS takeover / `ProjectManager` stay in [`8.2.8.6`](RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md).
+- **🚫** Registering `AgentPi.Factory` / `AgentFactory` / Skill Runner on Android in this plan — [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md).
 - **🚫** `WindowPane` / `Gtk.Paned` on Android (resizable sash, grow-the-window).
 - **🚫** Width breakpoint that swaps phone ↔ tablet as the window rotates or resizes.
 - **🚫** Portrait phone shell on a tablet.

@@ -1,6 +1,6 @@
 # 8.2.8.11 — DONE — Android startup hello and history
 
-**Status:** **DONE** ✔️ — Phases 1–3 in tree. Phases 4–6 are [`RPC-8.2.8.12-android-editor-chrome-bars.md`](../RPC-8.2.8.12-android-editor-chrome-bars.md).
+**Status:** **DONE** ✔️ — Phases 1–3 in tree. Phases 4–6 are [`RPC-8.2.8.12-DONE-android-editor-chrome-bars.md`](RPC-8.2.8.12-DONE-android-editor-chrome-bars.md).
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
@@ -8,13 +8,13 @@
 
 **Split from:** [`RPC-8.2.8.9-DONE-android-agent-pi.md`](RPC-8.2.8.9-DONE-android-agent-pi.md) Phases 3–8. That plan is closed. Phase 1 here was Phase 3 there, through Phase 6 here = Phase 8 there.
 
-**Split to:** [`RPC-8.2.8.12-android-editor-chrome-bars.md`](../RPC-8.2.8.12-android-editor-chrome-bars.md)
+**Split to:** [`RPC-8.2.8.12-DONE-android-editor-chrome-bars.md`](RPC-8.2.8.12-DONE-android-editor-chrome-bars.md)
 
 **Depends on:**
 
 - Phone connection flow, user-closed 2026-09-23 (Check stays up, row survives restart)
 - [`RPC-8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md) — `FilesdClient.State`, Agent Pi on `SOCKET` / `LIVE`, Check listen
-- [`RPC-8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md) — `ChatDesktopInterface`, phone stack, tablet column
+- [`RPC-8.2.8.8`](RPC-8.2.8.8-DONE-android-phone-tablet-pane.md) — `ChatDesktopInterface`, phone stack, tablet column
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -26,10 +26,10 @@ Proposed Vala follows `docs/coding-standards.md`. Code fences after each phase i
 
 - **🔷** Leftover Android Agent Pi work from [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md). That file closed after state + visibility.
 - **🔷** Each phase below is the whole design for that slice. Read that phase on its own.
-- **ℹ️** Editor chrome, tablet bar placement, and pickers on the right are [`8.2.8.12`](../RPC-8.2.8.12-android-editor-chrome-bars.md).
+- **ℹ️** Editor chrome, tablet bar placement, and pickers on the right are [`8.2.8.12`](RPC-8.2.8.12-DONE-android-editor-chrome-bars.md).
 - **ℹ️** State enum, dropdown filter, Manager `LIVE` listen, and Check reconnect are already in tree ([`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md) Phases 1–2).
 - **ℹ️** Still one desktop environment. Home, office, and an online proxy host are [`8.2.8`](../RPC-8.2.8-filesd-connections-ui.md) Phase 13.
-- **ℹ️** Remote `bash` is [`8.2.8.10`](../RPC-8.2.8.10-android-remote-bash.md). Not this plan.
+- **ℹ️** Remote `bash` is [`8.2.8.10`](../RPC-8.2.8.10-URGENT-android-remote-bash.md). Not this plan.
 
 ---
 
@@ -44,7 +44,7 @@ Proposed Vala follows `docs/coding-standards.md`. Code fences after each phase i
 - **ℹ️** `OllmchatWindow.initialize_client` already sends that hello when the row is approved and enabled. Failure today is `Alert.show` ("File server: …") and startup continues.
 - **ℹ️** `Client.call_timeout_seconds` defaults to 120. That is the socket wait. HTTP `connect` does not read it. This hello sets `http.soup.timeout` to 15, then back to 0.
 - **ℹ️** Empty `url` plus a successful local hello is already `SOCKET` in desktop `ollmapp/Window.vala`. Android hellos only when `url != ""`. Success here is `LIVE`.
-- **ℹ️** `AgentPi.Factory.register_config` aborts without `bash`. Do not call it. Registration of `Bash` is [`8.2.8.10`](../RPC-8.2.8.10-android-remote-bash.md). The factory still goes in `agent_factories` so the `LIVE` switch can run. The dropdown filter hides it until `LIVE`.
+- **ℹ️** `AgentPi.Factory.register_config` aborts without `bash`. Do not call it. Registration of `Bash` is [`8.2.8.10`](../RPC-8.2.8.10-URGENT-android-remote-bash.md). The factory still goes in `agent_factories` so the `LIVE` switch can run. The dropdown filter hides it until `LIVE`.
 - **🔷** Hello succeeds → state `LIVE` (remote) or `SOCKET` (local, empty `url`), then [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md) Phase 2's Agent Pi visibility. Remote `LIVE` still switches the session.
 - **🔷** Startup hellos the remote URL when `url != ""` and state is `ENABLED`, `LIVE`, `UNREACHABLE`, or `SOCKET`.
 - **🔷** Hello fails or times out:
@@ -711,7 +711,7 @@ button.picker-on {
 
 ## Remaining work
 
-**➡️** [`RPC-8.2.8.12-android-editor-chrome-bars.md`](../RPC-8.2.8.12-android-editor-chrome-bars.md) — editor chrome, tablet buttons on the right of the left-column bar, pickers on the right.
+**➡️** [`RPC-8.2.8.12-DONE-android-editor-chrome-bars.md`](RPC-8.2.8.12-DONE-android-editor-chrome-bars.md) — editor chrome, tablet buttons on the right of the left-column bar, pickers on the right.
 
 ---
 
@@ -737,5 +737,5 @@ button.picker-on {
 - **🚫** `Alert.show` for desktop-environment unavailable.
 - **🚫** Turning the saved connection to `DISABLED` because one startup hello missed. That miss is `UNREACHABLE`.
 - **🚫** Rewriting a missing `agent_name` to `just-ask`, or hiding that history row.
-- **🚫** Registering in-process `Bash` on Android. That is [`8.2.8.10`](../RPC-8.2.8.10-android-remote-bash.md).
+- **🚫** Registering in-process `Bash` on Android. That is [`8.2.8.10`](../RPC-8.2.8.10-URGENT-android-remote-bash.md).
 - **🚫** Reopening [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md) for these hunks.

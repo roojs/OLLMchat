@@ -1,6 +1,6 @@
 # 8.2.8 — File-server Connections UI + registration approval
 
-**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 4 **✅** · Phase 5 **✔️** · Phase 6 **✅** · Phase 7 **✔️** · Phase 8 skipped for now · Phase 9 **✔️** · Phase 10 **✔️** · Phase 11 **✔️** · Phase 12 **⏳** · Phase 13 **⏳** · Phase 14 **⏳**
+**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 4 **✅** · Phase 5 **✔️** · Phase 6 **✅** · Phase 7 **✔️** · Phase 8 **URGENT** · Phase 9 **✔️** · Phase 10 **✔️** · Phase 11 **✔️** · Phase 12 **URGENT** · Phase 13 **⏳** · Phase 14 **✔️**
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -38,13 +38,13 @@
 | **5** | [`RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) — `OLLMrpc.Client.http`, `disconnect()` fix, `ProjectManager.replace_rpc` + `notification` (library half of 8.2.8.2 Phase 2) | **✔️** agent-done |
 | **6** | [`RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md) — Linux takeover, Check probe, live `enabled` toggle (UI half of 8.2.8.2 Phase 2) | **✅** |
 | **7** | [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder compile. Precursor [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️** | **✔️** |
-| **8** | [`RPC-8.2.8.7-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux `filesd.socket` LAN TCP + TLS registration | **⏳** |
-| **9** | [`RPC-8.2.8.8-android-phone-tablet-pane.md`](RPC-8.2.8.8-android-phone-tablet-pane.md) — Android `ChatDesktopInterface`, phone stack / tablet landscape columns | **✔️** |
+| **8** | [`RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) — Linux `filesd.socket` LAN TCP + TLS registration | **URGENT** |
+| **9** | [`RPC-8.2.8.8-DONE-android-phone-tablet-pane.md`](done/RPC-8.2.8.8-DONE-android-phone-tablet-pane.md) — Android `ChatDesktopInterface`, phone stack / tablet landscape columns | **✔️** |
 | **10** | [`RPC-8.2.8.9-DONE-android-agent-pi.md`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — Android Agent Pi on `SOCKET` / `LIVE` (state + Check listen) | **✔️** |
 | **11** | [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) — startup hello, history when Agent Pi is off, phone pickers | **✔️** |
-| **12** | [`RPC-8.2.8.10-android-remote-bash.md`](RPC-8.2.8.10-android-remote-bash.md) — `bash` as an RPC tool Android can use on the desktop | **⏳** |
+| **12** | [`RPC-8.2.8.10-URGENT-android-remote-bash.md`](RPC-8.2.8.10-URGENT-android-remote-bash.md) — `bash` as an RPC tool Android can use on the desktop | **URGENT** |
 | **13** | (this file) More than one desktop environment on Android: home, office, online via proxy | **⏳** |
-| **14** | [`RPC-8.2.8.12-android-editor-chrome-bars.md`](RPC-8.2.8.12-android-editor-chrome-bars.md) — editor chrome, tablet buttons on the right, pickers on the right | **⏳** |
+| **14** | [`RPC-8.2.8.12-DONE-android-editor-chrome-bars.md`](done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md) — editor chrome, tablet buttons on the right, pickers on the right, desktop coding-edit agents use the tablet bar | **✔️** |
 
 ---
 
@@ -57,13 +57,13 @@
 5. **✔️** Phase 5 — [`8.2.8.4`](done/RPC-8.2.8.4-DONE-filesd-remote-rpc-client.md) (agent-done; awaiting user ✅)
 6. **✅** Phase 6 — [`8.2.8.5`](done/RPC-8.2.8.5-DONE-filesd-remote-takeover-connections-tab.md)
 7. **✔️** Phase 7 — [`8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) (Android takeover; [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️**)
-8. **⏳** Phase 8 — [`8.2.8.7`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux LAN TCP socket. Skipped for now. Not Phase 7. Windows loopback port is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md)
-9. **✔️** Phase 9 — [`8.2.8.8`](RPC-8.2.8.8-android-phone-tablet-pane.md) — Android phone/tablet `ChatDesktopInterface`
+8. **URGENT** Phase 8 — [`8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) — Linux LAN TCP socket. Phone uses this on the home LAN and the office LAN. HTTPS is only for outside those networks. Windows loopback port is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md)
+9. **✔️** Phase 9 — [`8.2.8.8`](done/RPC-8.2.8.8-DONE-android-phone-tablet-pane.md) — Android phone/tablet `ChatDesktopInterface`
 10. **✔️** Phase 10 — [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — `FilesdClient.State`, Agent Pi visible on `SOCKET` or `LIVE`, Check listen. Registers `write` / `read` only. Does not register `bash`.
 11. **✔️** Phase 11 — [`8.2.8.11`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md). Startup hello uses a short timeout. A miss is `UNREACHABLE` (not the user switch), leaves Agent Pi off, starts a new Chatter session, and uses `Banner.show`. History rows for a missing agent stay listed, marked disabled, and cannot be restored. Phone bottom bar flips browser, editor, and chat. Thinking icon cycles on the chat button while the session runs. Idle chat button is a speech bubble. Still one desktop environment.
-12. **🔷** `⏳` Phase 12 — [`8.2.8.10`](RPC-8.2.8.10-android-remote-bash.md) — `bash` as a remote tool. Commands run on desktop `ollmfilesd`, not on the phone. Daemon `Bubble.exec` is [`BWRAP-2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md).
+12. **URGENT** Phase 12 — [`8.2.8.10`](RPC-8.2.8.10-URGENT-android-remote-bash.md) — `bash` as a remote tool. Commands run on desktop `ollmfilesd`, not on the phone. Daemon `Bubble.exec` is [`BWRAP-2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md).
 13. **🔷** `⏳` Phase 13 — Android keeps more than one desktop environment. Home (one network), office (another network), and later an online one through the proxy. Not part of Phase 10, Phase 11, or Phase 14.
-14. **🔷** `⏳` Phase 14 — [`8.2.8.12`](RPC-8.2.8.12-android-editor-chrome-bars.md). Editor chrome. Tablet browser and text-editor buttons move to the right of the left-column bar. Later, pickers sit on the right and the model selector moves fully left.
+14. **✔️** Phase 14 — [`8.2.8.12`](done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md). Editor chrome. Tablet browser and text-editor buttons move to the right of the left-column bar. Pickers sit on the right and the model selector moves fully left. While the session is a coding-edit agent, desktop uses that same tablet bar.
 
 ---
 
@@ -152,9 +152,9 @@
 
 ---
 
-## Phase 8 — Linux LAN TCP socket (`filesd.socket`)
+## Phase 8 — Linux LAN TCP socket (`filesd.socket`) (`URGENT`)
 
-**➡️** [`RPC-8.2.8.7-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — bind bin TCP like HTTPS; TLS + cert registration on the LAN; no WAN / PROXY
+**➡️** [`RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) — Desktop server row: HTTP server, Remote TCP socket, always-on local socket. systemd stays on the outer row. Phone uses Remote TCP at home and in the office. HTTPS is for outside those networks.
 
 ℹ️ Windows loopback port (hardcoded 4141) is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md), not this phase.
 
@@ -162,7 +162,7 @@
 
 ## Phase 9 — Android phone / tablet `ChatDesktopInterface`
 
-**➡️** [`RPC-8.2.8.8-android-phone-tablet-pane.md`](RPC-8.2.8.8-android-phone-tablet-pane.md) — phone globe stack vs tablet landscape columns
+**➡️** [`RPC-8.2.8.8-DONE-android-phone-tablet-pane.md`](done/RPC-8.2.8.8-DONE-android-phone-tablet-pane.md) — phone globe stack vs tablet landscape columns
 
 ---
 
@@ -178,9 +178,9 @@
 
 ---
 
-## Phase 12 — Android remote `bash` (`⏳`)
+## Phase 12 — Android remote `bash` (`URGENT`)
 
-**➡️** [`RPC-8.2.8.10-android-remote-bash.md`](RPC-8.2.8.10-android-remote-bash.md) — `bash` tool over RPC. Exec on desktop `ollmfilesd`.
+**➡️** [`RPC-8.2.8.10-URGENT-android-remote-bash.md`](RPC-8.2.8.10-URGENT-android-remote-bash.md) — `bash` tool over RPC. Exec on desktop `ollmfilesd`.
 
 ---
 
@@ -193,13 +193,13 @@
 - **ℹ️** Today `Config2.filesd_client` is one object (`libollmchat/Settings/FilesdClient.vala`). Empty `url` means none. Android cannot store home and office together.
 - **ℹ️** [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) chose one URL. This phase is the follow-up, after Phase 10 and Phase 11.
 - **🔷** `⏳` Which row is live at startup (home vs office vs online) is not decided. Do not invent a picker inside Phase 10 or Phase 11.
-- **ℹ️** Phase 8 ([`8.2.8.7`](RPC-8.2.8.7-filesd-tcp-socket-lan.md)) is the skipped Linux LAN TCP socket. Phase 7 is the Android takeover and is already done.
+- **ℹ️** Phase 8 ([`8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md)) is the Linux LAN TCP socket the phone uses at home and in the office. Phase 7 is the Android takeover and is already done.
 
 ---
 
 ## Phase 14 — Android editor chrome and bar placement (`⏳`)
 
-**➡️** [`RPC-8.2.8.12-android-editor-chrome-bars.md`](RPC-8.2.8.12-android-editor-chrome-bars.md) — editor chrome, tablet buttons on the right of the left-column bar, pickers on the right.
+**➡️** [`RPC-8.2.8.12-DONE-android-editor-chrome-bars.md`](done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md) — editor chrome, tablet buttons on the right of the left-column bar, pickers on the right. Desktop coding-edit agents use the tablet bar.
 
 ---
 

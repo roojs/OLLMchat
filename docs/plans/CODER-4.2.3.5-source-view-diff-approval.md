@@ -1,6 +1,6 @@
 # 4.2.3.5 — SourceView diff Phase 4: block approval flow
 
-**Status:** **✅** Phase A + [`4.2.3.5.1`](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) user-smoked · **⏳** Phase B → [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md)
+**Status:** **✅** Phase A + [`4.2.3.5.1`](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) user-smoked · **✔️** [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) editor wire · **⏳** [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md)
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
@@ -12,7 +12,7 @@
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
 
-**Next (active):** [`CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md)
+**Next (active):** [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md) — part rows and Approvals cleanup
 
 ---
 
@@ -342,7 +342,7 @@ When the user asks about **in-text hunk highlighting**, **dimming non-active hun
 
 **Goal:** Same chrome as Phase A, backed by real pending review state.
 
-ℹ️ **Spec lives in sub-plan** [`CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) — persistence, footer queue, **`Approvals`** integration, suggested order, done-when, LLM notes.
+ℹ️ **Editor wire** is applied in [`CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md). **Part rows and Approvals cleanup** live in [`CODER-4.2.3.5.3-source-view-diff-part-rows.md`](CODER-4.2.3.5.3-source-view-diff-part-rows.md).
 
 ---
 

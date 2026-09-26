@@ -288,6 +288,42 @@ separator.horizontal.oc-table-body-sep {
   opacity: 0.2;
 }
 
+/* Source hunk washes and review-bar bands. Text tags and Cairo are not
+   CSS nodes; both copy `color`. Source lines use the pale pair. Review-bar
+   bands that are not the active hunk sit halfway between that and the
+   active pair. Accepted bands are light blue. Rejected bands are light grey. */
+.oc-diff-add {
+  color: rgb(239, 252, 239);
+}
+
+.oc-diff-remove {
+  color: rgb(252, 239, 239);
+}
+
+.oc-diff-add-band {
+  color: rgb(215, 247, 215);
+}
+
+.oc-diff-remove-band {
+  color: rgb(247, 215, 215);
+}
+
+.oc-diff-add-active {
+  color: rgb(191, 242, 191);
+}
+
+.oc-diff-remove-active {
+  color: rgb(242, 191, 191);
+}
+
+.oc-diff-accepted {
+  color: rgb(191, 191, 242);
+}
+
+.oc-diff-rejected {
+  color: rgb(221, 221, 221);
+}
+
 /* Task progress strip (ProgressView / Gtk.ColumnView): compact row vertical spacing */
 .oc-task-progress columnview cell {
   padding-top: 2px;

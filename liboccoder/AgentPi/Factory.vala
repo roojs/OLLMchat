@@ -29,6 +29,7 @@ namespace OLLMcoder.AgentPi
 	public class Factory : OLLMchat.Agent.Factory
 	{
 		public override string name { get; protected set; default = "agent-pi"; }
+		public override bool has_editor { get; protected set; default = true; }
 		public override string title { get; protected set; default = "Agent 𝚷"; }
 		public override string long_title {
 			get; protected set;

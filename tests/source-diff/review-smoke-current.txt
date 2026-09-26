@@ -1,5 +1,6 @@
 # Review smoke fixture — current (Phase A sign-off)
-# ~100 lines with many small hunks separated by unchanged context.
+# Mixed hunk sizes: section-02 drops 4 lines, section-03 replaces 2 with 5,
+# section-04 replaces 5 with 1. Other sections stay small.
 
 [meta]
 name = review-smoke
@@ -29,6 +30,9 @@ context 03-02 unchanged filler line
 context 03-03 unchanged filler line
 retries = 5
 timeout = 60
+backoff = 2
+jitter = 0.1
+deadline = 90
 context 03-06 unchanged filler line
 context 03-07 unchanged filler line
 

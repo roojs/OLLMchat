@@ -553,9 +553,11 @@ namespace OLLMapp
 			this.chat_picker.tooltip_text = "Chat";
 			this.chat_picker.visible = !this.is_tablet;
 			this.chat_picker.add_css_class("picker-on");
-			this.chat_widget.chat_bar.tool_button_box.append(this.browser_picker);
-			this.chat_widget.chat_bar.tool_button_box.append(this.editor_picker);
-			this.chat_widget.chat_bar.tool_button_box.append(this.chat_picker);
+			this.chat_widget.chat_bar.end_box.append(this.browser_picker);
+			this.chat_widget.chat_bar.end_box.append(this.editor_picker);
+			this.chat_widget.chat_bar.end_box.append(this.chat_picker);
+			this.chat_widget.chat_bar.end_box.visible = true;
+			this.chat_widget.chat_bar.tool_button_box.visible = false;
 			this.chat_picker.clicked.connect(() => {
 				this.schedule_pane_update(false);
 			});
