@@ -148,7 +148,7 @@ namespace OLLMcoder.Diff
 		private HunkList hunks { get; set; default = new HunkList(); }
 		private int active = -1;
 		private int file_count = 1;
-		private int file_index = 0;
+		public int file_index = 0;
 		private bool mock_inactive = false;
 		private HunkDecision[] file_bulk = {};
 		private int map_height = 28;
@@ -162,7 +162,7 @@ namespace OLLMcoder.Diff
 
 		private Gtk.Button file_prev;
 		private Gtk.Button file_next;
-		private Gtk.Button file_nav_label;
+		private Gtk.Button file_nav_btn;
 		private Gtk.Box file_nav;
 		private Gtk.Box map_host;
 		private Gtk.DrawingArea map_area;
@@ -175,6 +175,11 @@ namespace OLLMcoder.Diff
 		private uint file_popover_hide_id = 0;
 		private uint bulk_popover_hide_id = 0;
 		private string[] file_labels = {};
+		private bool live_queue = false;
+		public Gee.ArrayList<OLLMfiles.FileWithHistory> queue {
+			get; private set;
+			default = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+		}
 		private Gtk.Button accept_btn;
 		private Gtk.Button reject_btn;
 		private Gtk.Button unapprove_btn;
@@ -221,7 +226,7 @@ namespace OLLMcoder.Diff
 			this.file_prev.clicked.connect(() => {
 				((Gtk.Popover) this.file_menu_popover).popdown();
 				this.file_index = (this.file_index - 1 + this.file_count) % this.file_count;
-				this.file_nav_label.label = "File %d of %d".printf(
+				this.file_nav_btn.label = "File %d of %d".printf(
 					this.file_index + 1, this.file_count);
 				this.file_index_changed(this.file_index);
 			});
@@ -232,18 +237,18 @@ namespace OLLMcoder.Diff
 			this.file_next.clicked.connect(() => {
 				((Gtk.Popover) this.file_menu_popover).popdown();
 				this.file_index = (this.file_index + 1) % this.file_count;
-				this.file_nav_label.label = "File %d of %d".printf(
+				this.file_nav_btn.label = "File %d of %d".printf(
 					this.file_index + 1, this.file_count);
 				this.file_index_changed(this.file_index);
 			});
-			this.file_nav_label = new Gtk.Button.with_label("");
+			this.file_nav_btn = new Gtk.Button.with_label("");
 			if (this.file_count > 1) {
-				this.file_nav_label.label = "File %d of %d".printf(
+				this.file_nav_btn.label = "File %d of %d".printf(
 					this.file_index + 1, this.file_count);
 			}
 			this.file_nav = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 4);
 			this.file_nav.append(this.file_prev);
-			this.file_nav.append(this.file_nav_label);
+			this.file_nav.append(this.file_nav_btn);
 			this.file_nav.append(this.file_next);
 			this.file_nav.visible = this.file_count > 1;
 
@@ -256,7 +261,7 @@ namespace OLLMcoder.Diff
 				pick_action.activate.connect(() => {
 					if (this.file_index != pick) {
 						this.file_index = pick;
-						this.file_nav_label.label = "File %d of %d".printf(
+						this.file_nav_btn.label = "File %d of %d".printf(
 							pick + 1, this.file_count);
 						this.file_index_changed(pick);
 					}
@@ -267,9 +272,9 @@ namespace OLLMcoder.Diff
 			}
 			this.insert_action_group("file", file_actions);
 			this.file_menu_popover = new Gtk.PopoverMenu.from_model(file_menu);
-			this.file_menu_popover.set_parent(this.file_nav_label);
+			this.file_menu_popover.set_parent(this.file_nav_btn);
 			((Gtk.Popover) this.file_menu_popover).autohide = false;
-			this.file_nav_label.clicked.connect(() => {
+			this.file_nav_btn.clicked.connect(() => {
 				if (this.file_count < 2 || this.file_labels.length < 1) {
 					return;
 				}
@@ -305,7 +310,7 @@ namespace OLLMcoder.Diff
 					return false;
 				});
 			});
-			this.file_nav_label.add_controller(file_anchor_motion);
+			this.file_nav_btn.add_controller(file_anchor_motion);
 			var file_popover_motion = new Gtk.EventControllerMotion();
 			file_popover_motion.enter.connect(() => {
 				if (this.file_popover_hide_id != 0) {
@@ -466,6 +471,13 @@ namespace OLLMcoder.Diff
 			};
 			var pending_click = new Gtk.GestureClick();
 			pending_click.pressed.connect(() => {
+				if (this.live_queue) {
+					if (this.file_count < 1) {
+						return;
+					}
+					this.file_index_changed(0);
+					return;
+				}
 				if (!this.mock_inactive) {
 					return;
 				}
@@ -518,18 +530,16 @@ namespace OLLMcoder.Diff
 			reset_file.set_icon(new GLib.ThemedIcon("edit-undo-symbolic"));
 			file_section.append_item(reset_file);
 			bulk_menu.append_section(null, file_section);
-			if (this.file_count > 1) {
-				var all_section = new GLib.Menu();
-				var accept_all_files = new GLib.MenuItem(
-					"Accept changes to all files", "bulk.accept-all-files");
-				accept_all_files.set_icon(new GLib.ThemedIcon("emblem-ok-symbolic"));
-				all_section.append_item(accept_all_files);
-				var reject_all_files = new GLib.MenuItem(
-					"Reject changes to all files", "bulk.reject-all-files");
-				reject_all_files.set_icon(new GLib.ThemedIcon("dialog-cancel-symbolic"));
-				all_section.append_item(reject_all_files);
-				bulk_menu.append_section(null, all_section);
-			}
+			var all_section = new GLib.Menu();
+			var accept_all_files = new GLib.MenuItem("Accept changes to all files", 
+				"bulk.accept-all-files");
+			accept_all_files.set_icon(new GLib.ThemedIcon("emblem-ok-symbolic"));
+			all_section.append_item(accept_all_files);
+			var reject_all_files = new GLib.MenuItem("Reject changes to all files",
+				 "bulk.reject-all-files");
+			reject_all_files.set_icon(new GLib.ThemedIcon("dialog-cancel-symbolic"));
+			all_section.append_item(reject_all_files);
+			bulk_menu.append_section(null, all_section);
 			var bulk_actions = new GLib.SimpleActionGroup();
 			var accept_file_action = new GLib.SimpleAction("accept-file", null);
 			accept_file_action.activate.connect(() => {
@@ -585,42 +595,42 @@ namespace OLLMcoder.Diff
 			bulk_actions.add_action(accept_file_action);
 			bulk_actions.add_action(reject_file_action);
 			bulk_actions.add_action(reset_file_action);
-			if (this.file_count > 1) {
-				var accept_all_files_action = new GLib.SimpleAction("accept-all-files", null);
-				accept_all_files_action.activate.connect(() => {
-					for (var fi = 0; fi < this.file_bulk.length; fi++) {
-						this.file_bulk[fi] = HunkDecision.ACCEPTED;
-					}
-					foreach (var hunk in this.hunks) {
-						hunk.decision = HunkDecision.ACCEPTED;
-					}
-					this.active = -1;
-					this.accept_btn.visible = false;
-					this.reject_btn.visible = false;
-					this.unapprove_btn.visible = false;
-					((Gtk.Popover) this.bulk_menu_popover).popdown();
-					this.map_area.queue_draw();
-					this.accept_all_files();
-				});
-				var reject_all_files_action = new GLib.SimpleAction("reject-all-files", null);
-				reject_all_files_action.activate.connect(() => {
-					for (var fi = 0; fi < this.file_bulk.length; fi++) {
-						this.file_bulk[fi] = HunkDecision.REJECTED;
-					}
-					foreach (var hunk in this.hunks) {
-						hunk.decision = HunkDecision.REJECTED;
-					}
-					this.active = -1;
-					this.accept_btn.visible = false;
-					this.reject_btn.visible = false;
-					this.unapprove_btn.visible = false;
-					((Gtk.Popover) this.bulk_menu_popover).popdown();
-					this.map_area.queue_draw();
-					this.reject_all_files();
-				});
-				bulk_actions.add_action(accept_all_files_action);
-				bulk_actions.add_action(reject_all_files_action);
-			}
+			var accept_all_files_action = new GLib.SimpleAction("accept-all-files", null);
+			accept_all_files_action.activate.connect(() => {
+				for (var fi = 0; fi < this.file_bulk.length; fi++) {
+					this.file_bulk[fi] = HunkDecision.ACCEPTED;
+				}
+				foreach (var hunk in this.hunks) {
+					hunk.decision = HunkDecision.ACCEPTED;
+				}
+				this.active = -1;
+				this.accept_btn.visible = false;
+				this.reject_btn.visible = false;
+				this.unapprove_btn.visible = false;
+				((Gtk.Popover) this.bulk_menu_popover).popdown();
+				this.map_area.queue_draw();
+				this.accept_all_files();
+			});
+			var reject_all_files_action = new GLib.SimpleAction("reject-all-files", null);
+			reject_all_files_action.activate.connect(() => {
+				for (var fi = 0; fi < this.file_bulk.length; fi++) {
+					this.file_bulk[fi] = HunkDecision.REJECTED;
+				}
+				foreach (var hunk in this.hunks) {
+					hunk.decision = HunkDecision.REJECTED;
+				}
+				this.active = -1;
+				this.accept_btn.visible = false;
+				this.reject_btn.visible = false;
+				this.unapprove_btn.visible = false;
+				((Gtk.Popover) this.bulk_menu_popover).popdown();
+				this.map_area.queue_draw();
+				this.reject_all_files();
+			});
+
+			bulk_actions.add_action(accept_all_files_action);
+			bulk_actions.add_action(reject_all_files_action);
+			
 			this.insert_action_group("bulk", bulk_actions);
 			this.bulk_menu_popover = new Gtk.PopoverMenu.from_model(bulk_menu);
 			this.bulk_btn = new Gtk.Button() {
@@ -929,9 +939,11 @@ namespace OLLMcoder.Diff
 				this.hunk_line_sum += band.line_count;
 				bi++;
 			}
-			this.file_nav.visible = this.file_count > 1;
-			if (this.file_count > 1) {
-				this.file_nav_label.label = "File %d of %d".printf(
+			this.file_nav.visible = this.live_queue ? this.file_count > 0 : this.file_count > 1;
+			this.file_prev.visible = this.file_count > 1;
+			this.file_next.visible = this.file_count > 1;
+			if (this.file_nav.visible) {
+				this.file_nav_btn.label = "File %d of %d".printf(
 					this.file_index + 1, this.file_count);
 			}
 			if (this.mock_inactive) {
@@ -1228,6 +1240,106 @@ namespace OLLMcoder.Diff
 			var decided = this.active;
 			this.hunks.get(decided).decision = HunkDecision.REJECTED;
 			this.next();
+		}
+
+		/**
+		 * Replace the footer file list from the live pending queue.
+		 *
+		 * Basename order, then full path. The queue stores the
+		 * ``FileWithHistory`` rows passed in. ``current_file`` is the
+		 * open editor file, or null when none is open. The open row
+		 * gets a select icon when it is in that list. No pending /
+		 * partial / decided glyphs.
+		 *
+		 * @param pending pending rows (copied, then sorted)
+		 * @param current_file open editor file, or null
+		 */
+		public void sync_pending(
+			Gee.ArrayList<OLLMfiles.FileWithHistory> pending,
+			OLLMfiles.File? current_file)
+		{
+			this.live_queue = true;
+			var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+			rows.add_all(pending);
+			rows.sort((a, b) => {
+				var cmp = a.path_basename.collate(b.path_basename);
+				if (cmp != 0) {
+					return cmp;
+				}
+				return a.path.collate(b.path);
+			});
+			var on_list = false;
+			this.file_index = 0;
+			if (current_file != null) {
+				for (var i = 0; i < rows.size; i++) {
+					if (rows.get(i).path != current_file.path) {
+						continue;
+					}
+					on_list = true;
+					this.file_index = i;
+				}
+			}
+			this.queue = rows;
+			this.file_count = this.queue.size;
+			this.file_bulk = new HunkDecision[int.max(1, this.file_count)];
+			this.visible = this.file_count > 0;
+			this.file_nav.visible = this.file_count > 0;
+			this.file_prev.visible = this.file_count > 1;
+			this.file_next.visible = this.file_count > 1;
+			if (this.file_count < 1) {
+				return;
+			}
+			if (on_list) {
+				this.file_nav_btn.label = "File %d of %d".printf(
+					this.file_index + 1, this.file_count);
+			}
+			if (!on_list) {
+				this.file_nav_btn.label = "%d files".printf(this.file_count);
+				this.file_index = 0;
+			}
+			this.pending_label.visible = !on_list;
+			this.map_area.visible = on_list;
+			this.map_scroll_left.visible = on_list;
+			this.map_scroll_right.visible = on_list;
+			if (!on_list) {
+				this.pending_label.label = "%d changes pending review".printf(
+					this.file_count);
+				this.accept_btn.visible = false;
+				this.reject_btn.visible = false;
+				this.feedback_btn.visible = false;
+				this.unapprove_btn.visible = false;
+			}
+			var file_list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+			var project = this.source_view.manager.active_project;
+			for (var fi = 0; fi < this.queue.size; fi++) {
+				var pick = fi;
+				var rel = this.queue.get(fi).path;
+				if (project != null && rel.has_prefix(project.path)) {
+					rel = rel.substring(project.path.length);
+					if (rel.has_prefix("/")) {
+						rel = rel.substring(1);
+					}
+				}
+				var row_btn = new Gtk.Button() {
+					label = this.queue.get(fi).path_basename,
+					tooltip_text = rel,
+					has_frame = false,
+				};
+				if (on_list && fi == this.file_index) {
+					row_btn.icon_name = "object-select-symbolic";
+				}
+				row_btn.clicked.connect(() => {
+					if (this.file_index != pick) {
+						this.file_index = pick;
+						this.file_nav_btn.label = "File %d of %d".printf(
+							pick + 1, this.file_count);
+						this.file_index_changed(pick);
+					}
+					((Gtk.Popover) this.file_menu_popover).popdown();
+				});
+				file_list.append(row_btn);
+			}
+			((Gtk.Popover) this.file_menu_popover).set_child(file_list);
 		}
 	}
 }

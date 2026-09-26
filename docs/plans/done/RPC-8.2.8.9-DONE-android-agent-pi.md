@@ -1,12 +1,12 @@
 # 8.2.8.9 — DONE — Android Agent Pi when the desktop environment is live
 
-**Status:** **DONE** ✔️ — Phase 1–2 in tree. Phases 3–8 are [`RPC-8.2.8.11-URGENT-android-startup-history-bars.md`](../RPC-8.2.8.11-URGENT-android-startup-history-bars.md).
+**Status:** **DONE** ✔️ — Phase 1–2 in tree. Phases 3–5 are [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](RPC-8.2.8.11-DONE-android-startup-history-bars.md). Phases 6–8 are [`RPC-8.2.8.12-android-editor-chrome-bars.md`](../RPC-8.2.8.12-android-editor-chrome-bars.md).
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
 **Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](../RPC-8.2.8-filesd-connections-ui.md) Phase 10
 
-**Split to:** [`RPC-8.2.8.11-URGENT-android-startup-history-bars.md`](../RPC-8.2.8.11-URGENT-android-startup-history-bars.md) **URGENT**
+**Split to:** [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](RPC-8.2.8.11-DONE-android-startup-history-bars.md), then [`RPC-8.2.8.12-android-editor-chrome-bars.md`](../RPC-8.2.8.12-android-editor-chrome-bars.md)
 
 **Depends on:**
 
@@ -28,7 +28,7 @@ Proposed Vala follows `docs/coding-standards.md`. Phases 1–2 are applied.
 - **ℹ️** Desktop Linux already registers Agent Pi at window setup (`ollmapp/Window.vala`). This plan does not change that.
 - **ℹ️** Only Agent Pi. Not Code Assistant. Not Skill Runner. Parent decision in [`8.2.8.2`](RPC-8.2.8.2-DONE-filesd-android-file-connection.md).
 - **ℹ️** Still one desktop environment. Home, office, and an online proxy host are [`8.2.8`](../RPC-8.2.8-filesd-connections-ui.md) Phase 13.
-- **ℹ️** Startup hello, history-when-off, and phone/tablet bars are [`8.2.8.11`](../RPC-8.2.8.11-URGENT-android-startup-history-bars.md).
+- **ℹ️** Startup hello and history-when-off are [`8.2.8.11`](RPC-8.2.8.11-DONE-android-startup-history-bars.md). Editor chrome and bar placement are [`8.2.8.12`](../RPC-8.2.8.12-android-editor-chrome-bars.md).
 
 ---
 
@@ -783,7 +783,7 @@ Save `window_config.agent` on a LIVE-driven switch. `select_only` does not run t
 
 ## Remaining work
 
-**➡️** [`RPC-8.2.8.11-URGENT-android-startup-history-bars.md`](../RPC-8.2.8.11-URGENT-android-startup-history-bars.md) **URGENT** — startup hello, history when Agent Pi is off, phone / tablet bars.
+**➡️** [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](RPC-8.2.8.11-DONE-android-startup-history-bars.md) — startup hello, history when Agent Pi is off, phone pickers. Editor chrome and bar placement are [`8.2.8.12`](../RPC-8.2.8.12-android-editor-chrome-bars.md).
 
 ---
 
@@ -797,4 +797,4 @@ Save `window_config.agent` on a LIVE-driven switch. `select_only` does not run t
 - **🚫** `FileConnectionRow` registering tools, constructing `AgentPi.Factory`, appending the dropdown store, calling `switch_to_session`, or `activate_agent`.
 - **🚫** A second agent `ListStore` class, or rebuilding the dropdown store when `state` changes.
 - **🚫** More than one desktop environment. That is parent Phase 13.
-- **ℹ️** Startup hello, history, and bar 🚫 list live on [`8.2.8.11`](../RPC-8.2.8.11-URGENT-android-startup-history-bars.md).
+- **ℹ️** Startup hello and history 🚫 list live on [`8.2.8.11`](RPC-8.2.8.11-DONE-android-startup-history-bars.md). Bar placement 🚫 list lives on [`8.2.8.12`](../RPC-8.2.8.12-android-editor-chrome-bars.md).

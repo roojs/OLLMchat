@@ -51,7 +51,12 @@ namespace OLLMapp
 		private Adw.Banner tool_error_banner;
 		private Adw.ViewStack pane_stack;
 		private bool is_tablet = false;
-		public OLLMfiles.ProjectManager? project_manager { get; private set; default = null; }
+		private Gtk.Button chat_picker;
+		private Gtk.Button browser_picker;
+		private Gtk.Button editor_picker;
+		private uint fog_source = 0;
+		public OLLMfiles.ProjectManager? project_manager { 
+			get; private set; default = null; }
 		/**
 		 * UUID key into {@link OLLMchat.Settings.Config2.windows}.
 		 */
@@ -102,13 +107,22 @@ namespace OLLMapp
 		{
 			if (this.is_tablet) {
 				this.pane_stack.visible = visible;
+			}
+			if (!this.is_tablet) {
+				this.chat_widget.view_stack.visible_child_name = visible ? "pane" : "chat";
+			}
+			this.browser_picker.remove_css_class("picker-on");
+			this.editor_picker.remove_css_class("picker-on");
+			this.chat_picker.remove_css_class("picker-on");
+			if (!visible) {
+				this.chat_picker.add_css_class("picker-on");
 				return;
 			}
-			if (visible) {
-				this.chat_widget.view_stack.visible_child_name = "pane";
+			if (this.pane_stack.visible_child_name == "browser") {
+				this.browser_picker.add_css_class("picker-on");
 				return;
 			}
-			this.chat_widget.view_stack.visible_child_name = "chat";
+			this.editor_picker.add_css_class("picker-on");
 		}
 
 		public void scroll_to_message(int idx)
@@ -527,36 +541,38 @@ namespace OLLMapp
 				this.app as Gtk.Application,
 				GLib.Path.build_filename(this.app.data_dir, "config"));
 
-			foreach (var tool in this.history_manager.tools.values) {
-				var ui = tool as OLLMchat.Tool.UiWidgets;
-				if (ui == null) {
-					continue;
-				}
-				var widget_id = tool.name;
-				this.chat_widget.chat_bar.add_tool_toggle(
-					widget_id, ui.icon_name, ui.tooltip_text);
-				ui.show_view.connect(() => {
-					this.chat_widget.chat_bar.toggle_active_tool(widget_id, true);
-				});
-			}
-			this.chat_widget.chat_bar.tool_toggle.connect((tool_name, active) => {
-				if (!active) {
-					this.schedule_pane_update(false);
-					return;
-				}
-				if (!this.history_manager.tools.has_key(tool_name)) {
-					return;
-				}
-				var ui = this.history_manager.tools.get(tool_name) as OLLMchat.Tool.UiWidgets;
-				if (ui == null) {
-					return;
-				}
+			// avoid async vala ctor bug
+			this.browser_picker = new Gtk.Button();
+			this.browser_picker.icon_name = "web-browser-symbolic";
+			this.browser_picker.tooltip_text = "Browser";
+			this.editor_picker = new Gtk.Button();
+			this.editor_picker.icon_name = "document-edit-symbolic";
+			this.editor_picker.tooltip_text = "Text editor";
+			this.chat_picker = new Gtk.Button();
+			this.chat_picker.icon_name = "chat-message-new-symbolic";
+			this.chat_picker.tooltip_text = "Chat";
+			this.chat_picker.visible = !this.is_tablet;
+			this.chat_picker.add_css_class("picker-on");
+			this.chat_widget.chat_bar.tool_button_box.append(this.browser_picker);
+			this.chat_widget.chat_bar.tool_button_box.append(this.editor_picker);
+			this.chat_widget.chat_bar.tool_button_box.append(this.chat_picker);
+			this.chat_picker.clicked.connect(() => {
+				this.schedule_pane_update(false);
+			});
+			this.browser_picker.clicked.connect(() => {
+				var ui = this.history_manager.tools.get("browser") as OLLMchat.Tool.UiWidgets;
 				var view = (Gtk.Widget) ui.view_widget;
-				if (this.pane_stack.get_child_by_name(tool_name) == null) {
-					this.pane_stack.add_named(view, tool_name);
+				if (this.pane_stack.get_child_by_name("browser") == null) {
+					this.pane_stack.add_named(view, "browser");
 				}
-				this.pane_stack.set_visible_child_name(tool_name);
+				this.pane_stack.set_visible_child_name("browser");
 				this.schedule_pane_update(true);
+			});
+			this.editor_picker.clicked.connect(() => {
+				var factory = this.history_manager.agent_factories.get("agent-pi");
+				factory.activate.begin(this, (obj, res) => {
+					factory.activate.end(res);
+				});
 			});
 
 			this.history_browser.session_selected.connect((session) => {
@@ -591,6 +607,28 @@ namespace OLLMapp
 				var running = this.history_manager.session.is_running;
 				android_set_partial_wake_lock(this, running);
 				android_set_streaming_foreground(this, running);
+				if (this.fog_source != 0) {
+					GLib.Source.remove(this.fog_source);
+					this.fog_source = 0;
+				}
+				var image = (Gtk.Image) this.chat_picker.child;
+				if (!running) {
+					image.set_from_icon_name("chat-message-new-symbolic");
+					return;
+				}
+				string[] frames = {
+					"/icons/ollm-fog-1-symbolic.svg",
+					"/icons/ollm-fog-2-symbolic.svg",
+					"/icons/ollm-fog-3-symbolic.svg"
+				};
+				var frame = 0;
+				image.set_from_resource(frames[frame]);
+				this.fog_source = GLib.Timeout.add(400, () => {
+					frame++;
+					frame = frame > 2 ? 0 : frame;
+					image.set_from_resource(frames[frame]);
+					return true;
+				});
 			});
 			android_set_partial_wake_lock(
 				this, this.history_manager.session.is_running);

@@ -26,7 +26,7 @@
 - **🔷** Route the existing Android browser `tool_toggle` into that same secondary surface (stack on phone, right column on tablet).
 - **🔷** Detect tablet the standard Android way (`smallestScreenWidthDp` / `sw600dp`). If that signal is not reachable from Vala/GTK, expose it (JNI / activity). Do not invent a Gdk width cutoff.
 - **🔷** Tablet `tab_view()` is still an `Adw.ViewStack` so factory casts match desktop.
-- **ℹ️** Agent Pi register is [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md). Startup hello, history, and bars are [`8.2.8.11`](RPC-8.2.8.11-URGENT-android-startup-history-bars.md). This plan only makes the host surface.
+- **ℹ️** Agent Pi register is [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md). Startup hello and history are [`8.2.8.11`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md). Editor chrome and bar placement are [`8.2.8.12`](RPC-8.2.8.12-android-editor-chrome-bars.md). This plan only makes the host surface.
 
 ---
 

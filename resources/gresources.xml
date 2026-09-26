@@ -90,6 +90,11 @@
     <file>research-codebase/SKILL.md</file>
     <file>debug-review/SKILL.md</file>
   </gresource>
+  <gresource prefix="/icons">
+    <file>ollm-fog-1-symbolic.svg</file>
+    <file>ollm-fog-2-symbolic.svg</file>
+    <file>ollm-fog-3-symbolic.svg</file>
+  </gresource>
 </gresources>
 
 

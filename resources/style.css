@@ -409,3 +409,7 @@ button.chat-composer-send label {
 	background: none;
 	box-shadow: none;
 }
+
+button.picker-on {
+	background-color: alpha(@window_fg_color, 0.15);
+}

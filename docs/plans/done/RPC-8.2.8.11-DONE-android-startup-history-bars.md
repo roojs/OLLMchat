@@ -1,18 +1,20 @@
-# 8.2.8.11 URGENT — Android startup hello, history, and bars
+# 8.2.8.11 — DONE — Android startup hello and history
 
-**Status:** **URGENT** · Phases 1–2 **✔️** · Phases 3–6 **⏳**
+**Status:** **DONE** ✔️ — Phases 1–3 in tree. Phases 4–6 are [`RPC-8.2.8.12-android-editor-chrome-bars.md`](../RPC-8.2.8.12-android-editor-chrome-bars.md).
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
-**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](RPC-8.2.8-filesd-connections-ui.md) Phase 11
+**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](../RPC-8.2.8-filesd-connections-ui.md) Phase 11
 
-**Split from:** [`RPC-8.2.8.9-DONE-android-agent-pi.md`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) Phases 3–8. That plan is closed. Phase 1 here was Phase 3 there, through Phase 6 here = Phase 8 there.
+**Split from:** [`RPC-8.2.8.9-DONE-android-agent-pi.md`](RPC-8.2.8.9-DONE-android-agent-pi.md) Phases 3–8. That plan is closed. Phase 1 here was Phase 3 there, through Phase 6 here = Phase 8 there.
+
+**Split to:** [`RPC-8.2.8.12-android-editor-chrome-bars.md`](../RPC-8.2.8.12-android-editor-chrome-bars.md)
 
 **Depends on:**
 
 - Phone connection flow, user-closed 2026-09-23 (Check stays up, row survives restart)
-- [`RPC-8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — `FilesdClient.State`, Agent Pi on `SOCKET` / `LIVE`, Check listen
-- [`RPC-8.2.8.8`](RPC-8.2.8.8-android-phone-tablet-pane.md) — `ChatDesktopInterface`, phone stack, tablet column
+- [`RPC-8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md) — `FilesdClient.State`, Agent Pi on `SOCKET` / `LIVE`, Check listen
+- [`RPC-8.2.8.8`](../RPC-8.2.8.8-android-phone-tablet-pane.md) — `ChatDesktopInterface`, phone stack, tablet column
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -22,18 +24,18 @@ Proposed Vala follows `docs/coding-standards.md`. Code fences after each phase i
 
 ## Purpose
 
-- **🔷** Leftover Android Agent Pi work from [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md). That file closed after state + visibility.
-- **🔷** This ticket is **URGENT**.
+- **🔷** Leftover Android Agent Pi work from [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md). That file closed after state + visibility.
 - **🔷** Each phase below is the whole design for that slice. Read that phase on its own.
-- **ℹ️** State enum, dropdown filter, Manager `LIVE` listen, and Check reconnect are already in tree ([`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) Phases 1–2).
-- **ℹ️** Still one desktop environment. Home, office, and an online proxy host are [`8.2.8`](RPC-8.2.8-filesd-connections-ui.md) Phase 13.
-- **ℹ️** Remote `bash` is [`8.2.8.10`](RPC-8.2.8.10-android-remote-bash.md). Not this plan.
+- **ℹ️** Editor chrome, tablet bar placement, and pickers on the right are [`8.2.8.12`](../RPC-8.2.8.12-android-editor-chrome-bars.md).
+- **ℹ️** State enum, dropdown filter, Manager `LIVE` listen, and Check reconnect are already in tree ([`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md) Phases 1–2).
+- **ℹ️** Still one desktop environment. Home, office, and an online proxy host are [`8.2.8`](../RPC-8.2.8-filesd-connections-ui.md) Phase 13.
+- **ℹ️** Remote `bash` is [`8.2.8.10`](../RPC-8.2.8.10-android-remote-bash.md). Not this plan.
 
 ---
 
 ## Phase 1 — Startup hello (`✔️`)
 
-- **🔷** `✔️` On startup, if the desktop environment is already live, the session starts on Agent Pi. Same switch as [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) Phase 2, before the first session paint.
+- **🔷** `✔️` On startup, if the desktop environment is already live, the session starts on Agent Pi. Same switch as [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md) Phase 2, before the first session paint.
 - **🔷** That check is a hello to the file server. The desktop may be on another network.
 - **🔷** `✔️` That hello waits 15 seconds. Do not sit on the normal RPC wait.
 - **🔷** `✔️` While it waits, the startup spinner stays up. The status line says it is checking the desktop environment.
@@ -42,11 +44,11 @@ Proposed Vala follows `docs/coding-standards.md`. Code fences after each phase i
 - **ℹ️** `OllmchatWindow.initialize_client` already sends that hello when the row is approved and enabled. Failure today is `Alert.show` ("File server: …") and startup continues.
 - **ℹ️** `Client.call_timeout_seconds` defaults to 120. That is the socket wait. HTTP `connect` does not read it. This hello sets `http.soup.timeout` to 15, then back to 0.
 - **ℹ️** Empty `url` plus a successful local hello is already `SOCKET` in desktop `ollmapp/Window.vala`. Android hellos only when `url != ""`. Success here is `LIVE`.
-- **ℹ️** `AgentPi.Factory.register_config` aborts without `bash`. Do not call it. Registration of `Bash` is [`8.2.8.10`](RPC-8.2.8.10-android-remote-bash.md). The factory still goes in `agent_factories` so the `LIVE` switch can run. The dropdown filter hides it until `LIVE`.
-- **🔷** Hello succeeds → state `LIVE` (remote) or `SOCKET` (local, empty `url`), then [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) Phase 2's Agent Pi visibility. Remote `LIVE` still switches the session.
+- **ℹ️** `AgentPi.Factory.register_config` aborts without `bash`. Do not call it. Registration of `Bash` is [`8.2.8.10`](../RPC-8.2.8.10-android-remote-bash.md). The factory still goes in `agent_factories` so the `LIVE` switch can run. The dropdown filter hides it until `LIVE`.
+- **🔷** Hello succeeds → state `LIVE` (remote) or `SOCKET` (local, empty `url`), then [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md) Phase 2's Agent Pi visibility. Remote `LIVE` still switches the session.
 - **🔷** Startup hellos the remote URL when `url != ""` and state is `ENABLED`, `LIVE`, `UNREACHABLE`, or `SOCKET`.
 - **🔷** Hello fails or times out:
-  - State `UNREACHABLE` (Phase 1 on [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md)). Do not add Agent Pi. Do not show it in the agent list.
+  - State `UNREACHABLE` (Phase 1 on [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md)). Do not add Agent Pi. Do not show it in the agent list.
   - Start a new Chatter session. Do not keep the open chat on Agent Pi.
   - Header banner: the desktop environment is unavailable.
 - **🔷** That notice is `Banner.show` on `window.notification`.
@@ -457,19 +459,22 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 ---
 
-## Phase 3 — Phone bottom bar (`⏳`)
+## Phase 3 — Phone bottom bar (`✔️`)
 
 The phone does not keep a left-rail toggle and does not split the screen. The bottom bar (`OLLMchatGtk.ChatBar`) already holds the browser toggle and the model selector. That row is where you change what fills the screen.
 
 - **ℹ️** Phone `schedule_pane_update(true)` replaces the chat: `chat_widget.view_stack` child `"pane"`. `false` puts `"chat"` back. That is the same swap the browser globe uses.
 - **ℹ️** Today `ChatBar.tool_button_box` is on the left and the model dropdown follows it. Moving the pickers to the right is Phase 6.
-- **🔷** `⏳` Three pickers: browser, text editor, chat.
-- **🔷** One of them is the visible page. Picking another replaces it. Chat, browser, and the editor each take the whole content area.
-- **🔷** While the session is running, the chat picker shows the thinking mark, even if the editor or the browser is the visible page. That is how you see that chat is occurring without leaving the file.
-- **🔷** The mark is `weather-fog-symbolic`, the thinking icon on the model dropdown (`libollmchatgtk/List/ModelUsageFactory.vala`). It is three wavy lines. Each frame hides lines: show one, then two, then three, then back to one. Not a spinner.
+- **🔷** `✔️` Three pickers: browser, text editor, chat.
+- **🔷** `✔️` One of them is the visible page. Picking another replaces it. Chat, browser, and the editor each take the whole content area.
+- **🔷** `✔️` While the session is running, the chat picker shows the thinking mark, even if the editor or the browser is the visible page. That is how you see that chat is occurring without leaving the file.
+- **🔷** `✔️` The mark is `weather-fog-symbolic`, the thinking icon on the model dropdown (`libollmchatgtk/List/ModelUsageFactory.vala`). It is three wavy lines. Each frame hides lines: show one, then two, then three, then back to one. Not a spinner.
 - **ℹ️** The icon is one Adwaita symbolic, not three files. Extract each wavy line into its own icon (the other lines hidden) and cycle those on the chat picker while `session.is_running`.
-- **🔷** When the session is idle, the chat picker is a speech bubble. The thinking icon is only the running state.
-- **ℹ️** Phone only. Tablet keeps today's tool toggles until Phase 5. The three buttons stay in `tool_button_box` on the left. Phase 6 moves them right.
+- **🔷** `✔️` When the session is idle, the chat picker is a speech bubble. The thinking icon is only the running state.
+- **🔷** `✔️` These are `Gtk.Button`s. A click activates that page. They are not toggle buttons, and a second click does not turn the page off.
+- **🔷** `✔️` The active button is highlighted. The others are not.
+- **🔷** `✔️` Tablet adds the same chat button and sets `visible` to false. Chat stays the left column. Highlight and the thinking mark still update that button. It is not on screen, so those updates can be ignored.
+- **ℹ️** All three buttons are created in `tool_button_box` on the left. Phase 5 moves the tablet pair to the right of that left-column bar. Phase 6 moves the phone pickers right.
 - **ℹ️** Idle icon is Adwaita `chat-message-new-symbolic`. Editor is `document-edit-symbolic`. Browser stays `web-browser-symbolic`.
 - **💩** That speech-bubble icon includes a plus badge.
 - **💩** The thinking frames advance every 400 ms.
@@ -481,62 +486,54 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 **Why:** The chat picker cycles one icon. Each frame is the same fog mark with later waves removed.
 
-**Where:** `resources/icons/scalable/status/`, and `resources/gresources.xml`.
+**Where:** `resources/ollm-fog-1-symbolic.svg`, `resources/ollm-fog-2-symbolic.svg`, `resources/ollm-fog-3-symbolic.svg`, and `resources/gresources.xml`. The gresource prefix is `/icons`. The chat button loads `/icons/ollm-fog-N-symbolic.svg` with `Gtk.Image.set_from_resource`.
 
 **Depends on:** none.
 
-#### Add — `resources/icons/scalable/status/ollm-fog-1-symbolic.svg`
+#### Add — `resources/ollm-fog-1-symbolic.svg`
 
 Copy `/usr/share/icons/Adwaita/symbolic/status/weather-fog-symbolic.svg`. In `d`, delete from the first `z m 0 5.003906` to the end of the path. Leave the closing `z` on the first subpath.
 
-#### Add — `resources/icons/scalable/status/ollm-fog-2-symbolic.svg`
+#### Add — `resources/ollm-fog-2-symbolic.svg`
 
 Same copy. Delete from the second `z m 0 5.003906` to the end. Leave the `z` that closes the second subpath.
 
-#### Add — `resources/icons/scalable/status/ollm-fog-3-symbolic.svg`
+#### Add — `resources/ollm-fog-3-symbolic.svg`
 
 The Adwaita file unchanged.
 
 #### Add — before `</gresources>` in `resources/gresources.xml`
 
 ```xml
-  <gresource prefix="/ollmchat/icons/scalable/status">
-    <file alias="ollm-fog-1-symbolic.svg">icons/scalable/status/ollm-fog-1-symbolic.svg</file>
-    <file alias="ollm-fog-2-symbolic.svg">icons/scalable/status/ollm-fog-2-symbolic.svg</file>
-    <file alias="ollm-fog-3-symbolic.svg">icons/scalable/status/ollm-fog-3-symbolic.svg</file>
+  <gresource prefix="/icons">
+    <file>ollm-fog-1-symbolic.svg</file>
+    <file>ollm-fog-2-symbolic.svg</file>
+    <file>ollm-fog-3-symbolic.svg</file>
   </gresource>
 ```
 
-### 2. `ollmapp/android/OllmchatWindow.vala` — picker fields and icon path
+### 2. `ollmapp/android/OllmchatWindow.vala` — picker fields
 
-**Why:** The phone buttons and the fog timeout have to outlive `initialize_client`. The frames are resource icons, so the icon theme has to see that path.
+**Why:** The phone buttons and the fog timeout have to outlive `initialize_client`.
 
-**Where:** Fields after `private bool is_tablet`. Icon path in the existing `realize` handler, before `load_config_and_initialize`.
+**Where:** Fields after `private bool is_tablet`.
 
 **Depends on:** §1.
 
 #### Add — after `private bool is_tablet = false;`
 
 ```vala
-		private Gtk.ToggleButton chat_picker;
-		private Gtk.ToggleButton browser_picker;
-		private Gtk.ToggleButton editor_picker;
-		private bool picker_block = false;
+		private Gtk.Button chat_picker;
+		private Gtk.Button browser_picker;
+		private Gtk.Button editor_picker;
 		private uint fog_source = 0;
 ```
 
-#### Add — first line inside the `realize` handler
+### 3. `ollmapp/android/OllmchatWindow.vala` — page buttons
 
-```vala
-				Gtk.IconTheme.get_for_display(this.display).add_resource_path(
-					"/ollmchat/icons");
-```
+**Why:** A click activates that page. Both form factors create browser, editor, and chat. Tablet sets the chat button invisible.
 
-### 3. `ollmapp/android/OllmchatWindow.vala` — three phone pickers
-
-**Why:** Browser, editor, and chat each take the whole phone content area. One stays on. Tablet still uses the tool toggles.
-
-**Where:** `initialize_client`, the `foreach` over `UiWidgets` and the `tool_toggle` handler. Phone skips that loop.
+**Where:** `initialize_client`, the `foreach` over `UiWidgets` and the `tool_toggle` handler. That loop is the old browser toggle.
 
 **Depends on:** §2.
 
@@ -578,139 +575,101 @@ The Adwaita file unchanged.
 
 #### Replace with
 
-Tablet keeps the tool toggles. Phone gets three exclusive pickers in `tool_button_box`.
-
 ```vala
-			if (this.is_tablet) {
-				foreach (var tool in this.history_manager.tools.values) {
-					var ui = tool as OLLMchat.Tool.UiWidgets;
-					if (ui == null) {
-						continue;
-					}
-					var widget_id = tool.name;
-					this.chat_widget.chat_bar.add_tool_toggle(
-						widget_id, ui.icon_name, ui.tooltip_text);
-					ui.show_view.connect(() => {
-						this.chat_widget.chat_bar.toggle_active_tool(widget_id, true);
-					});
+			this.browser_picker = new Gtk.Button() {
+				icon_name = "web-browser-symbolic",
+				tooltip_text = "Browser"
+			};
+			this.editor_picker = new Gtk.Button() {
+				icon_name = "document-edit-symbolic",
+				tooltip_text = "Text editor"
+			};
+			this.chat_picker = new Gtk.Button() {
+				icon_name = "chat-message-new-symbolic",
+				tooltip_text = "Chat",
+				visible = !this.is_tablet
+			};
+			this.chat_picker.add_css_class("picker-on");
+			this.chat_widget.chat_bar.tool_button_box.append(this.browser_picker);
+			this.chat_widget.chat_bar.tool_button_box.append(this.editor_picker);
+			this.chat_widget.chat_bar.tool_button_box.append(this.chat_picker);
+			this.chat_picker.clicked.connect(() => {
+				this.schedule_pane_update(false);
+			});
+			this.browser_picker.clicked.connect(() => {
+				var ui = this.history_manager.tools.get("browser") as OLLMchat.Tool.UiWidgets;
+				var view = (Gtk.Widget) ui.view_widget;
+				if (this.pane_stack.get_child_by_name("browser") == null) {
+					this.pane_stack.add_named(view, "browser");
 				}
-				this.chat_widget.chat_bar.tool_toggle.connect((tool_name, active) => {
-					if (!active) {
-						this.schedule_pane_update(false);
-						return;
-					}
-					if (!this.history_manager.tools.has_key(tool_name)) {
-						return;
-					}
-					var ui = this.history_manager.tools.get(tool_name) as OLLMchat.Tool.UiWidgets;
-					if (ui == null) {
-						return;
-					}
-					var view = (Gtk.Widget) ui.view_widget;
-					if (this.pane_stack.get_child_by_name(tool_name) == null) {
-						this.pane_stack.add_named(view, tool_name);
-					}
-					this.pane_stack.set_visible_child_name(tool_name);
-					this.schedule_pane_update(true);
+				this.pane_stack.set_visible_child_name("browser");
+				this.schedule_pane_update(true);
+			});
+			this.editor_picker.clicked.connect(() => {
+				var factory = this.history_manager.agent_factories.get("agent-pi");
+				factory.activate.begin(this, (obj, res) => {
+					factory.activate.end(res);
 				});
-			}
-			if (!this.is_tablet) {
-				this.browser_picker = new Gtk.ToggleButton() {
-					icon_name = "web-browser-symbolic",
-					tooltip_text = "Browser"
-				};
-				this.editor_picker = new Gtk.ToggleButton() {
-					icon_name = "document-edit-symbolic",
-					tooltip_text = "Text editor"
-				};
-				this.chat_picker = new Gtk.ToggleButton() {
-					icon_name = "chat-message-new-symbolic",
-					tooltip_text = "Chat",
-					active = true
-				};
-				this.chat_widget.chat_bar.tool_button_box.append(this.browser_picker);
-				this.chat_widget.chat_bar.tool_button_box.append(this.editor_picker);
-				this.chat_widget.chat_bar.tool_button_box.append(this.chat_picker);
-				this.browser_picker.toggled.connect(() => {
-					if (this.picker_block) {
-						return;
-					}
-					if (!this.browser_picker.active) {
-						this.picker_block = true;
-						this.browser_picker.active = true;
-						this.picker_block = false;
-						return;
-					}
-					var ui = this.history_manager.tools.get("browser") as OLLMchat.Tool.UiWidgets;
-					var view = (Gtk.Widget) ui.view_widget;
-					if (this.pane_stack.get_child_by_name("browser") == null) {
-						this.pane_stack.add_named(view, "browser");
-					}
-					this.pane_stack.set_visible_child_name("browser");
-					this.schedule_pane_update(true);
-				});
-				this.editor_picker.toggled.connect(() => {
-					if (this.picker_block) {
-						return;
-					}
-					if (!this.editor_picker.active) {
-						this.picker_block = true;
-						this.editor_picker.active = true;
-						this.picker_block = false;
-						return;
-					}
-					var factory = this.history_manager.agent_factories.get("agent-pi");
-					factory.activate.begin(this, (obj, res) => {
-						factory.activate.end(res);
-					});
-				});
-				this.chat_picker.toggled.connect(() => {
-					if (this.picker_block) {
-						return;
-					}
-					if (!this.chat_picker.active) {
-						this.picker_block = true;
-						this.chat_picker.active = true;
-						this.picker_block = false;
-						return;
-					}
-					this.schedule_pane_update(false);
-				});
-			}
+			});
 ```
 
-### 4. `ollmapp/android/OllmchatWindow.vala` — `schedule_pane_update` keeps one picker on
+### 4. `ollmapp/android/OllmchatWindow.vala` — highlight the active page
 
-**Why:** Agent Pi `activate` already calls `schedule_pane_update(true)`. The phone pickers have to follow that, or the chat button stays down while the editor is showing.
+**Why:** A click only activates. `picker-on` is the highlight. The same three buttons are updated on tablet. The chat one is invisible there, so its highlight does not show.
 
-**Where:** `schedule_pane_update`, the phone branch.
+**Where:** `schedule_pane_update`, after the tablet early return's column show. And a `picker-on` rule in `resources/style.css`.
 
 **Depends on:** §3.
+
+#### Add — at the end of `resources/style.css`
+
+```css
+button.picker-on {
+	background-color: alpha(@window_fg_color, 0.15);
+}
+```
 
 #### Remove
 
 ```vala
+		public void schedule_pane_update(bool visible)
+		{
+			if (this.is_tablet) {
+				this.pane_stack.visible = visible;
+				return;
+			}
 			if (visible) {
 				this.chat_widget.view_stack.visible_child_name = "pane";
 				return;
 			}
 			this.chat_widget.view_stack.visible_child_name = "chat";
+		}
 ```
 
 #### Replace with
 
 ```vala
-			this.chat_widget.view_stack.visible_child_name = visible ? "pane" : "chat";
-			if (this.picker_block) {
+		public void schedule_pane_update(bool visible)
+		{
+			if (this.is_tablet) {
+				this.pane_stack.visible = visible;
+			}
+			if (!this.is_tablet) {
+				this.chat_widget.view_stack.visible_child_name = visible ? "pane" : "chat";
+			}
+			this.browser_picker.remove_css_class("picker-on");
+			this.editor_picker.remove_css_class("picker-on");
+			this.chat_picker.remove_css_class("picker-on");
+			if (!visible) {
+				this.chat_picker.add_css_class("picker-on");
 				return;
 			}
-			this.picker_block = true;
-			this.chat_picker.active = !visible;
-			this.browser_picker.active = visible
-				&& this.pane_stack.visible_child_name == "browser";
-			this.editor_picker.active = visible
-				&& this.pane_stack.visible_child_name != "browser";
-			this.picker_block = false;
+			if (this.pane_stack.visible_child_name == "browser") {
+				this.browser_picker.add_css_class("picker-on");
+				return;
+			}
+			this.editor_picker.add_css_class("picker-on");
+		}
 ```
 
 ### 5. `ollmapp/android/OllmchatWindow.vala` — thinking mark on the chat picker
@@ -724,62 +683,35 @@ Tablet keeps the tool toggles. Phone gets three exclusive pickers in `tool_butto
 #### Add — at the end of the `agent_status_change` lambda, after the wake-lock calls
 
 ```vala
-				if (this.is_tablet) {
-					return;
-				}
 				if (this.fog_source != 0) {
 					GLib.Source.remove(this.fog_source);
 					this.fog_source = 0;
 				}
+				var image = (Gtk.Image) this.chat_picker.child;
 				if (!running) {
-					this.chat_picker.icon_name = "chat-message-new-symbolic";
+					image.set_from_icon_name("chat-message-new-symbolic");
 					return;
 				}
 				string[] frames = {
-					"ollm-fog-1-symbolic",
-					"ollm-fog-2-symbolic",
-					"ollm-fog-3-symbolic"
+					"/icons/ollm-fog-1-symbolic.svg",
+					"/icons/ollm-fog-2-symbolic.svg",
+					"/icons/ollm-fog-3-symbolic.svg"
 				};
 				var frame = 0;
-				this.chat_picker.icon_name = frames[frame];
+				image.set_from_resource(frames[frame]);
 				this.fog_source = GLib.Timeout.add(400, () => {
 					frame++;
-					if (frame > 2) {
-						frame = 0;
-					}
-					this.chat_picker.icon_name = frames[frame];
+					frame = frame > 2 ? 0 : frame;
+					image.set_from_resource(frames[frame]);
 					return true;
 				});
 ```
 
 ---
 
-## Phase 4 — Editor chrome (`⏳`)
+## Remaining work
 
-When the text editor is the visible page, the column is four bands, top to bottom.
-
-- **🔷** `⏳` The normal OLLMchat header stays on top.
-- **🔷** Under that, a second bar: project dropdown and file dropdown. Those already exist inside the coder (`ProjectDropdown`, `FileDropdown`).
-- **🔷** Then the text area.
-- **🔷** When review is active, the review bar sits at the bottom of the text area. Not in this slice unless review is already showing there on desktop.
-- **ℹ️** Desktop review footer is `liboccoder/Diff/ReviewBar.vala`. The phone reuses that band. It does not invent a second review widget.
-
----
-
-## Phase 5 — Tablet bar (`⏳`)
-
-- **ℹ️** Tablet `schedule_pane_update` only shows or hides the right column. Chat stays on the left ([`8.2.8.8`](RPC-8.2.8.8-android-phone-tablet-pane.md)).
-- **🔷** `⏳` Browser and code are the same kind of choice as on the phone. Those two buttons sit on the right of the left column's bottom bar, not on its left edge.
-- **🔷** Selecting Agent Pi still fills the right column with the editor. The buttons choose browser vs code in that column.
-- **ℹ️** Moving the model selector fully left, on phone and tablet together, is Phase 6. This phase only moves browser and code to the right of that left-column bar.
-
----
-
-## Phase 6 — Pickers on the right (`⏳`)
-
-- **🔷** `⏳` Later, the same bar on phone and tablet: pickers sit on the right, and the model selector moves fully left.
-  - Phone: three pickers (browser, text editor, chat).
-  - Tablet: two pickers (browser, code). Chat is the left column, so it is not a picker.
+**➡️** [`RPC-8.2.8.12-android-editor-chrome-bars.md`](../RPC-8.2.8.12-android-editor-chrome-bars.md) — editor chrome, tablet buttons on the right of the left-column bar, pickers on the right.
 
 ---
 
@@ -787,10 +719,7 @@ When the text editor is the visible page, the column is four bands, top to botto
 
 1. **✔️** Phase 1 — startup hello (15s, spinner while checking, `UNREACHABLE`, `Banner.show`, Chatter if miss)
 2. **✔️** Phase 2 — history rows for a missing agent stay listed, marked disabled, cannot restore
-3. **⏳** Phase 3 — phone bottom bar: browser / editor / chat + thinking icon
-4. **⏳** Phase 4 — editor chrome (header, project/file dropdowns, text, review bar)
-5. **⏳** Phase 5 — tablet bar: browser and code on the right of the left-column bar
-6. **⏳** Phase 6 — pickers on the right, model selector fully left
+3. **✔️** Phase 3 — phone bottom bar: browser / editor / chat + thinking icon
 
 ---
 
@@ -799,6 +728,7 @@ When the text editor is the visible page, the column is four bands, top to botto
 - **🚫** Code Assistant and Skill Runner on Android.
 - **🚫** Changing Linux Agent Pi registration.
 - **🚫** A left-rail editor toggle.
+- **🚫** `Gtk.ToggleButton` for browser, editor, or chat. A click activates the page. The active one is highlighted.
 - **🚫** A phone split (editor over a short chat strip) and a draggable sash (`Gtk.Paned`).
 - **🚫** A spinner on the chat picker. Running is `weather-fog-symbolic`, one wavy line at a time. Idle is a speech bubble.
 - **🚫** More than one desktop environment. That is parent Phase 13.
@@ -807,5 +737,5 @@ When the text editor is the visible page, the column is four bands, top to botto
 - **🚫** `Alert.show` for desktop-environment unavailable.
 - **🚫** Turning the saved connection to `DISABLED` because one startup hello missed. That miss is `UNREACHABLE`.
 - **🚫** Rewriting a missing `agent_name` to `just-ask`, or hiding that history row.
-- **🚫** Registering in-process `Bash` on Android. That is [`8.2.8.10`](RPC-8.2.8.10-android-remote-bash.md).
-- **🚫** Reopening [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) for these hunks.
+- **🚫** Registering in-process `Bash` on Android. That is [`8.2.8.10`](../RPC-8.2.8.10-android-remote-bash.md).
+- **🚫** Reopening [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md) for these hunks.

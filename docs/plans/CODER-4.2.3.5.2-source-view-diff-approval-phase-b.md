@@ -1,6 +1,6 @@
 # 4.2.3.5.2 — ReviewBar Phase B: product wire
 
-**Status:** **⏳** proposed — design carry-over from parent
+**Status:** **✔️** Phase 1 applied — Phase 2 and Phase 3 still **⏳**
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
@@ -52,11 +52,11 @@ Embed **`ReviewBar`** under **`SourceView`** (same layout as **`oc-test-source-d
   - Current file **is** the file that changed, already open, bar hidden → show the bar.
 - 🔷 ⏳ Non-pending file: grey bar, red **`N changes pending review`** (real **N**). Click opens the **first** file in that basename order via **`show_pending_diff`**.
 - 🔷 ⏳ Bulk hover menu is present (unapprove all on the file, accept all pending files, destructive bulk per parent). Actions are stubs. Confirm / revert semantics are Phase 2.
-- 🔷 ⏳ Phone: no source-view diff preview. Tablet: **ReviewBar** + interleaved diff.
+- 🔷 ⏳ Android hosts the same **ReviewBar**. The button layout already works there.
 - 🔷 ⏳ A tap on the editor scroll view (menu dismiss and similar) belongs to the scroll view / **`SourceView`**, not **`ReviewBar`**.
 - 🔷 ⏳ Owner calls **`responses()`** as in the harness. Product **`review_response`** handler (send the prompt to the LLM) is outside daemon part work.
 
-Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes. Bulk accept / reject stay the existing in-memory stubs and emit **`accept_all_files`** / **`reject_all_files`**. Phone (`ANDROID`) does not host the bar.
+Applied in `liboccoder/Diff/ReviewBar.vala` and `liboccoder/SourceView.vala`. Phase 2 still owns part rows and disk writes. Bulk accept / reject stay the existing in-memory stubs and emit **`accept_all_files`** / **`reject_all_files`**. Android hosts the bar the same way as desktop.
 
 ### 1. `liboccoder/Diff/ReviewBar.vala` — live queue fields
 
@@ -439,7 +439,7 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 
 ### 6. `liboccoder/SourceView.vala` — host the bar
 
-**Why:** Same stack as `oc-test-source-diff`: overlay plus footer. `ANDROID` keeps the scrolled view only.
+**Why:** Same stack as `oc-test-source-diff`: overlay plus footer, including Android.
 
 **Where:** field next to `approvals`. Constructor, replace `this.append(this.scrolled_window)`.
 
@@ -448,9 +448,7 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 #### Add — field under `private Approvals? approvals = null;`.
 
 ```vala
-#if !ANDROID
 		private OLLMcoder.Diff.ReviewBar review_bar;
-#endif
 ```
 
 #### Remove
@@ -462,15 +460,12 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 			this.append(this.scrolled_window);
 ```
 
-#### Replace with — desktop hosts `ReviewBar`. Phone appends the scrolled view as today.
+#### Replace with — host `ReviewBar` under the scrolled view, on desktop and Android.
 
 ```vala
 			this.scrolled_window.set_child(this.source_view);
 			// Hide sourceview initially until a file is opened
 			this.scrolled_window.visible = false;
-#if ANDROID
-			this.append(this.scrolled_window);
-#else
 			this.review_bar = new OLLMcoder.Diff.ReviewBar(this);
 			this.review_bar.visible = false;
 			this.review_bar.responses(new Gee.ArrayList<OLLMcoder.Diff.ReviewResponse>());
@@ -509,7 +504,6 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 					this.open_file.begin(file);
 				});
 			});
-#endif
 ```
 
 ### 7. `liboccoder/SourceView.vala` — `review_files.refreshed`
@@ -535,20 +529,10 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 			});
 ```
 
-#### Replace with — desktop follows the live queue. Phone keeps the old handler.
+#### Replace with — follow the live queue on desktop and Android.
 
 ```vala
 			this.manager.review_files.refreshed.connect(() => {
-#if ANDROID
-				if (this.current_file == null) {
-					return;
-				}
-				if (!this.manager.review_files.file_map.has_key(this.current_file.path)) {
-					this.clear_diff();
-					return;
-				}
-				this.show_pending_diff.begin(this.current_file);
-#else
 				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
 				rows.add_all(this.manager.review_files.file_map.values);
 				this.review_bar.sync_pending(rows, this.current_file);
@@ -580,7 +564,6 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 					}
 					this.open_file.begin(file);
 				});
-#endif
 			});
 ```
 
@@ -601,11 +584,9 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 #### Replace with — sync the queue, then show the diff when this file is pending.
 
 ```vala
-#if !ANDROID
 				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
 				rows.add_all(this.manager.review_files.file_map.values);
 				this.review_bar.sync_pending(rows, file);
-#endif
 				yield this.show_pending_diff(file);
 ```
 
@@ -632,9 +613,7 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 			if (row.backup_path == "") {
 				var differ = new OLLMfiles.Diff.Differ("", gtk_buffer.text);
 				this.show_diff(differ);
-#if !ANDROID
 				this.review_bar.update_diff(differ, this.review_bar.file_index);
-#endif
 				return;
 			}
 ```
@@ -651,9 +630,7 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 ```vala
 			var differ = new OLLMfiles.Diff.Differ(v_backup, gtk_buffer.text);
 			this.show_diff(differ);
-#if !ANDROID
 			this.review_bar.update_diff(differ, this.review_bar.file_index);
-#endif
 		}
 ```
 
@@ -693,7 +670,6 @@ Header **`Approvals`** no longer owns the changed-files list. Depends on Phase 1
 - 🚫 Accept all files as primary header button.
 - 🚫 Carry-forward inside **`OLLMfiles.Diff`**.
 - 🚫 Keep header changed-files popover after footer file nav ships.
-- 🚫 Phone source-view diff preview (tablet only).
 - 🚫 **ReviewBar** handling taps on the editor scroll view.
 - 🚫 Split **`ReviewBar.vala`** without explicit user request.
 - 🚫 Add review-state APIs to **`SourceView`** — **ReviewBar** only.

@@ -45,6 +45,7 @@ namespace OLLMcoder
 		private FileDropdown file_dropdown;
 		private Gtk.Button save_button;
 		private Approvals? approvals = null;
+		private OLLMcoder.Diff.ReviewBar review_bar;
 		private Gtk.TextTagTable diff_tag_table { get; set; default = new Gtk.TextTagTable(); }
 		private GtkSource.Buffer? diff_buffer = null;
 		private GtkSource.Buffer? pre_diff_buffer = null;
@@ -198,14 +199,37 @@ namespace OLLMcoder
 				this.open_file.begin(file);
 			});
 			this.manager.review_files.refreshed.connect(() => {
-				if (this.current_file == null) {
+				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+				rows.add_all(this.manager.review_files.file_map.values);
+				this.review_bar.sync_pending(rows, this.current_file);
+				if (this.review_bar.queue.size < 1) {
 					return;
 				}
-				if (!this.manager.review_files.file_map.has_key(this.current_file.path)) {
-					this.clear_diff();
+				if (this.current_file != null
+					&& this.manager.review_files.file_map.has_key(this.current_file.path)) {
+					this.show_pending_diff.begin(this.current_file);
 					return;
 				}
-				this.show_pending_diff.begin(this.current_file);
+				var first = this.review_bar.queue.get(0).path;
+				var cached = this.manager.file_cache.get(first) as OLLMfiles.File;
+				if (cached != null) {
+					this.open_file.begin(cached);
+					return;
+				}
+				if (this.manager.active_project == null) {
+					return;
+				}
+				this.manager.active_project.fetch_file.begin(first, (obj, res) => {
+					var file = this.manager.active_project.fetch_file.end(res);
+					if (file == null) {
+						return;
+					}
+					if (this.current_file != null
+						&& this.manager.review_files.file_map.has_key(this.current_file.path)) {
+						return;
+					}
+					this.open_file.begin(file);
+				});
 			});
 			
 			this.append(header_bar);
@@ -271,7 +295,44 @@ namespace OLLMcoder
 			this.scrolled_window.set_child(this.source_view);
 			// Hide sourceview initially until a file is opened
 			this.scrolled_window.visible = false;
-			this.append(this.scrolled_window);
+			this.review_bar = new OLLMcoder.Diff.ReviewBar(this);
+			this.review_bar.visible = false;
+			this.review_bar.responses(new Gee.ArrayList<OLLMcoder.Diff.ReviewResponse>());
+			var editor_overlay = new Gtk.Overlay() {
+				vexpand = true,
+				hexpand = true,
+			};
+			editor_overlay.set_child(this.scrolled_window);
+			editor_overlay.add_overlay(this.review_bar.review_overlay);
+			this.append(editor_overlay);
+			this.append(this.review_bar);
+			this.review_bar.file_index_changed.connect((index) => {
+				if (index < 0 || index >= this.review_bar.queue.size) {
+					return;
+				}
+				var path = this.review_bar.queue.get(index).path;
+				if (this.current_file != null && this.current_file.path == path) {
+					return;
+				}
+				var cached = this.manager.file_cache.get(path) as OLLMfiles.File;
+				if (cached != null) {
+					this.open_file.begin(cached);
+					return;
+				}
+				if (this.manager.active_project == null) {
+					return;
+				}
+				this.manager.active_project.fetch_file.begin(path, (obj, res) => {
+					var file = this.manager.active_project.fetch_file.end(res);
+					if (file == null) {
+						return;
+					}
+					if (this.current_file != null && this.current_file.path == path) {
+						return;
+					}
+					this.open_file.begin(file);
+				});
+			});
 			
 			// Create search footer bar (will be hidden initially)
 			this.create_search_bar();
@@ -553,6 +614,9 @@ namespace OLLMcoder
 				// Make editor editable
 				this.source_view.editable = true;
 
+				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
+				rows.add_all(this.manager.review_files.file_map.values);
+				this.review_bar.sync_pending(rows, file);
 				yield this.show_pending_diff(file);
 			}
 			
@@ -708,7 +772,9 @@ namespace OLLMcoder
 			var row = this.manager.review_files.file_map.get(file.path);
 			var gtk_buffer = file.buffer as GtkSource.Buffer;
 			if (row.backup_path == "") {
-				this.show_diff(new OLLMfiles.Diff.Differ("", gtk_buffer.text));
+				var differ = new OLLMfiles.Diff.Differ("", gtk_buffer.text);
+				this.show_diff(differ);
+				this.review_bar.update_diff(differ, this.review_bar.file_index);
 				return;
 			}
 			var v_backup = "";
@@ -730,7 +796,9 @@ namespace OLLMcoder
 			if (this.current_file != file) {
 				return;
 			}
-			this.show_diff(new OLLMfiles.Diff.Differ(v_backup, gtk_buffer.text));
+			var differ = new OLLMfiles.Diff.Differ(v_backup, gtk_buffer.text);
+			this.show_diff(differ);
+			this.review_bar.update_diff(differ, this.review_bar.file_index);
 		}
 		
 		/**
