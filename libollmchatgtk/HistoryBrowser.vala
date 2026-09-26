@@ -147,10 +147,21 @@ namespace OLLMchatGtk
 					return;
 				}
 				var position = selection_model.selected;
-				if (position != Gtk.INVALID_LIST_POSITION) {
-					var session = this.sorted_store.get_item(position) as OLLMchat.History.SessionBase;
-					this.session_selected(session);
+				if (position == Gtk.INVALID_LIST_POSITION) {
+					return;
 				}
+				var session = this.sorted_store.get_item(position) as OLLMchat.History.SessionBase;
+				var state = this.manager.config.filesd_client.state;
+				if (!this.manager.agent_factories.has_key(session.agent_name)
+					|| (session.agent_name == "agent-pi"
+						&& state != OLLMchat.Settings.FilesdClient.State.LIVE
+						&& state != OLLMchat.Settings.FilesdClient.State.SOCKET)) {
+					this.changing_selection = true;
+					selection_model.selected = Gtk.INVALID_LIST_POSITION;
+					this.changing_selection = false;
+					return;
+				}
+				this.session_selected(session);
 			});
 			
 			// Create ScrolledWindow and add ListView to it

@@ -104,7 +104,13 @@ namespace OLLMrpc.Transport
 		 */
 		public GLib.TlsCertificate? tls_certificate { get; set; default = null; }
 
-		private Soup.Session soup { get; set; default = new Soup.Session(); }
+		/**
+		 * Soup session used by {@link call}.
+		 *
+		 * Startup sets {@link Soup.Session.timeout} to 15 for the
+		 * desktop hello, then 0. 0 means no limit.
+		 */
+		public Soup.Session soup { get; private set; default = new Soup.Session(); }
 		private Bin.Json json { get; set; default = new Bin.Json(Bin.Mode.AUTO); }
 		private bool send_reset = false;
 

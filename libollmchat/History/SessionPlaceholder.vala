@@ -30,6 +30,17 @@ namespace OLLMchat.History
 		
 		public override string display_info {
 			owned get {
+				var state = this.manager.config.filesd_client.state;
+				if (!this.manager.agent_factories.has_key(this.agent_name)
+					|| (this.agent_name == "agent-pi"
+						&& state != Settings.FilesdClient.State.LIVE
+						&& state != Settings.FilesdClient.State.SOCKET)) {
+					var agent_label = this.agent_name;
+					if (this.manager.agent_factories.has_key(this.agent_name)) {
+						agent_label = this.manager.agent_factories.get(this.agent_name).title;
+					}
+					return agent_label + " disabled";
+				}
 				return "%s - %d %s".printf(
 					this.model_usage.model,
 					this.total_messages,

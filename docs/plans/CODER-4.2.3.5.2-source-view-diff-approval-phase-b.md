@@ -35,9 +35,8 @@ Embed **`ReviewBar`** under **`SourceView`** (same layout as **`oc-test-source-d
 - 🔷 ⏳ Pending file opens through existing **`show_pending_diff`** (builds **`Differ`**). Editor hosts **`ReviewBar`** under **`SourceView`**.
 - 🔷 ⏳ **`n / N`** over the footer file list. Order is **basename**, then full path when basenames match.
 - 🔷 ⏳ Footer file menu (header **`Approvals`** `next_button` interaction, anchored on the footer):
-  - A file that is fully decided leaves the list.
-  - The file you are on stays in the list even when it is decided.
-  - That row is marked selected (1 of 3 on file 1 → row 1 selected).
+  - A file that is fully decided leaves the list. The previous queue is not copied back in.
+  - That row is marked selected when the open file is in the list (1 of 3 on file 1 → row 1 selected).
   - No pending / partial / decided glyphs.
   - Header popover removal is Phase 3.
 - 🔷 ⏳ Footer file menu row label is the basename. Hover tooltip is the path relative to the project root (no leading slash). Header **`Approvals`** stays **`last_modified` descending** until Phase 3.
@@ -328,7 +327,7 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 
 ### 5. `liboccoder/Diff/ReviewBar.vala` — `sync_pending`
 
-**Why:** One method owns the live list: basename order, drop decided files, keep the open file, mark that row selected, hide the bar when nothing is pending and the open file is not kept.
+**Why:** One method owns the live list: basename order, mark the open file when it is in that list, hide the bar when the list is empty. The pending rows passed in are the queue.
 
 **Where:** end of class `ReviewBar`, after `on_reject_clicked`.
 
@@ -341,43 +340,21 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 		 * Replace the footer file list from the live pending queue.
 		 *
 		 * Basename order, then full path. The queue stores the
-		 * ``FileWithHistory`` rows. ``current_file`` is the open
-		 * editor file, or null when none is open. ``keep_current``
-		 * retains that file's row after it leaves the pending set.
-		 * The open row gets a select icon. No pending / partial /
-		 * decided glyphs.
+		 * ``FileWithHistory`` rows passed in. ``current_file`` is the
+		 * open editor file, or null when none is open. The open row
+		 * gets a select icon when it is in that list. No pending /
+		 * partial / decided glyphs.
 		 *
-		 * @param pending pending rows, sorted in place
+		 * @param pending pending rows (copied, then sorted)
 		 * @param current_file open editor file, or null
-		 * @param keep_current true while the bar is already visible
 		 */
 		public void sync_pending(
 			Gee.ArrayList<OLLMfiles.FileWithHistory> pending,
-			OLLMfiles.File? current_file,
-			bool keep_current)
+			OLLMfiles.File? current_file)
 		{
 			this.live_queue = true;
 			var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
-			foreach (var row in pending) {
-				rows.add(row);
-			}
-			var on_list = false;
-			for (var i = 0; i < rows.size; i++) {
-				if (current_file == null || rows.get(i).path != current_file.path) {
-					continue;
-				}
-				on_list = true;
-				this.file_index = i;
-			}
-			if (!on_list && keep_current && current_file != null) {
-				foreach (var old in this.queue) {
-					if (old.path != current_file.path) {
-						continue;
-					}
-					rows.add(old);
-					on_list = true;
-				}
-			}
+			rows.add_all(pending);
 			rows.sort((a, b) => {
 				var cmp = a.path_basename.collate(b.path_basename);
 				if (cmp != 0) {
@@ -385,11 +362,14 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 				}
 				return a.path.collate(b.path);
 			});
-			if (on_list && current_file != null) {
+			var on_list = false;
+			this.file_index = 0;
+			if (current_file != null) {
 				for (var i = 0; i < rows.size; i++) {
 					if (rows.get(i).path != current_file.path) {
 						continue;
 					}
+					on_list = true;
 					this.file_index = i;
 				}
 			}
@@ -570,29 +550,14 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 				this.show_pending_diff.begin(this.current_file);
 #else
 				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
-				foreach (var row in this.manager.review_files.file_map.values) {
-					rows.add(row);
-				}
-				var keep = this.review_bar.visible && this.current_file != null;
-				this.review_bar.sync_pending(rows, this.current_file, keep);
+				rows.add_all(this.manager.review_files.file_map.values);
+				this.review_bar.sync_pending(rows, this.current_file);
 				if (this.review_bar.queue.size < 1) {
 					return;
 				}
-				var listed = false;
-				if (this.current_file != null) {
-					foreach (var row in this.review_bar.queue) {
-						if (row.path != this.current_file.path) {
-							continue;
-						}
-						listed = true;
-					}
-				}
-				if (listed && this.current_file != null
+				if (this.current_file != null
 					&& this.manager.review_files.file_map.has_key(this.current_file.path)) {
 					this.show_pending_diff.begin(this.current_file);
-					return;
-				}
-				if (listed) {
 					return;
 				}
 				var first = this.review_bar.queue.get(0).path;
@@ -621,7 +586,7 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 
 ### 8. `liboccoder/SourceView.vala` — `open_file` hides the bar when nothing is pending
 
-**Why:** Opening a file with zero approvals hides the bar. `keep_current` is false, so a decided file is not pinned across an open.
+**Why:** Opening a file with zero approvals hides the bar. The pending list passed in is the queue.
 
 **Where:** `open_file`, immediately before `yield this.show_pending_diff(file)`.
 
@@ -638,10 +603,8 @@ Proposed edits below. Not applied. Phase 2 still owns part rows and disk writes.
 ```vala
 #if !ANDROID
 				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
-				foreach (var row in this.manager.review_files.file_map.values) {
-					rows.add(row);
-				}
-				this.review_bar.sync_pending(rows, file, false);
+				rows.add_all(this.manager.review_files.file_map.values);
+				this.review_bar.sync_pending(rows, file);
 #endif
 				yield this.show_pending_diff(file);
 ```

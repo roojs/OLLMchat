@@ -175,6 +175,12 @@ namespace OLLMchat.History
 			// Store config
 			this.config = app.config;
 			this.config.filesd_client.notify["state"].connect(() => {
+				foreach (var session in this.sessions.id_map.values) {
+					if (session.agent_name != "agent-pi") {
+						continue;
+					}
+					session.notify_property("display_info");
+				}
 				if (this.config.filesd_client.state != Settings.FilesdClient.State.LIVE
 					|| !this.agent_factories.has_key("agent-pi")
 					|| this.session.agent_name == "agent-pi") {
@@ -390,14 +396,6 @@ namespace OLLMchat.History
 					continue;
 				}
 				placeholder.reconstruct_model_usage_from_model();
-
-				if (placeholder.agent_name == "" || !this.agent_factories.has_key(placeholder.agent_name)) {
-					GLib.warning(
-						"Session fid=%s: unknown agent_name '%s', resetting to just-ask (in memory only)",
-						placeholder.fid,
-						placeholder.agent_name);
-					placeholder.agent_name = "just-ask";
-				}
 
 				this.sessions.append(placeholder);
 			}

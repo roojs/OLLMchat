@@ -48,6 +48,7 @@ namespace OLLMapp
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
 		private AndroidBootstrapConnectionAdd? bootstrap_dialog = null;
 		public Gtk.Label startup_status_label;
+		private Adw.Banner tool_error_banner;
 		private Adw.ViewStack pane_stack;
 		private bool is_tablet = false;
 		public OLLMfiles.ProjectManager? project_manager { get; private set; default = null; }
@@ -146,11 +147,17 @@ namespace OLLMapp
 					this.history_manager.tools.get(entry.key).active = entry.value.enabled;
 				}
 			});
+			this.tool_error_banner = new Adw.Banner("") {
+				button_label = "Dismiss",
+				revealed = false
+			};
+			this.tool_error_banner.button_clicked.connect(() => {
+				this.tool_error_banner.revealed = false;
+			});
 			this.notification.connect((notif) => {
 				if (notif.method == "Banner.show") {
-					var banner = new Adw.AlertDialog("OLLMchat", notif.message);
-					banner.add_response("ok", "OK");
-					banner.choose.begin(this, null);
+					this.tool_error_banner.title = notif.message;
+					this.tool_error_banner.revealed = true;
 					return;
 				}
 				if (notif.method != "Alert.show") {
@@ -202,6 +209,7 @@ namespace OLLMapp
 			this.header_bar.pack_end(new About());
 
 			toolbar_view.add_top_bar(this.header_bar);
+			toolbar_view.add_top_bar(this.tool_error_banner);
 
 			this.chat_container = new Gtk.Box (Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
@@ -437,11 +445,15 @@ namespace OLLMapp
 
 			this.project_manager = new OLLMfiles.ProjectManager();
 			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
+			var desktop_checked = false;
+			var desktop_reached = false;
 			if (config.filesd_client.url != ""
 				&& (config.filesd_client.state == FilesdClient.State.ENABLED
 					|| config.filesd_client.state == FilesdClient.State.LIVE
 					|| config.filesd_client.state == FilesdClient.State.UNREACHABLE
 					|| config.filesd_client.state == FilesdClient.State.SOCKET)) {
+				desktop_checked = true;
+				this.startup_status_label.label = "Checking desktop environment…";
 				var tls = new OLLMrpc.Transport.Cert() {
 					dir = GLib.Path.build_filename(
 						GLib.Environment.get_user_data_dir(), "ollmchat"),
@@ -456,6 +468,7 @@ namespace OLLMapp
 					tls_certificate = tls.certificate,
 					tls_database = tls.trust
 				};
+				http.soup.timeout = 15;
 				this.project_manager.replace_rpc(
 					new OLLMrpc.Client("", "", config.filesd_client.url) { 
 						http = http 
@@ -465,17 +478,16 @@ namespace OLLMapp
 					method = "RPC-Daemon.hello",
 					args = OLLMrpc.args("is", 1, "ollmchat")
 				};
-				if (!yield this.project_manager.rpc.connect(hello)) {
+				desktop_reached = yield this.project_manager.rpc.connect(hello);
+				http.soup.timeout = 0;
+				if (!desktop_reached) {
 					var msg = this.project_manager.rpc.connect_error;
 					if (msg == "") {
 						msg = "could not reach the file server";
 					}
 					GLib.warning("%s", msg);
-					this.notification(new OLLMrpc.Notification() {
-						method = "Alert.show",
-						message = "File server: " + msg
-					});
 				}
+				this.startup_status_label.label = "Opening chat…";
 			}
 			this.project_manager.notification.connect((notif) => {
 				GLib.Idle.add(() => {
@@ -493,6 +505,10 @@ namespace OLLMapp
 			if (!this.history_manager.tools.has_key("read")) {
 				this.history_manager.register_tool(
 					new OLLMtools.ReadFile.Read(this.project_manager));
+			}
+			if (!this.history_manager.agent_factories.has_key("agent-pi")) {
+				var agent_pi = new OLLMcoder.AgentPi.Factory(this.project_manager);
+				this.history_manager.agent_factories.set(agent_pi.name, agent_pi);
 			}
 
 			this.agent_dropdown.wire();
@@ -549,6 +565,27 @@ namespace OLLMapp
 			});
 
 			this.connect_agent_factory_signals();
+
+			if (desktop_checked && desktop_reached) {
+				var empty = this.history_manager.create_new_session();
+				empty.project_path = this.history_manager.session.project_path;
+				empty.agent_name = "agent-pi";
+				yield this.chat_widget.switch_to_session(empty);
+				config.filesd_client.state = FilesdClient.State.LIVE;
+				this.app.config.save();
+			}
+			if (desktop_checked && !desktop_reached) {
+				config.filesd_client.state = FilesdClient.State.UNREACHABLE;
+				this.app.config.save();
+				this.notification(new OLLMrpc.Notification() {
+					method = "Banner.show",
+					message = "The desktop environment is unavailable."
+				});
+				var empty = this.history_manager.create_new_session();
+				empty.project_path = this.history_manager.session.project_path;
+				empty.agent_name = "chatter";
+				yield this.chat_widget.switch_to_session(empty);
+			}
 
 			this.history_manager.agent_status_change.connect(() => {
 				var running = this.history_manager.session.is_running;
