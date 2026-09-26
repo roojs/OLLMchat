@@ -135,8 +135,7 @@ namespace OLLMapp.SettingsDialog
 					return;
 				}
 				this.dialog.app.config.filesd_client.url = this.add_file_dialog.registered_url;
-				this.dialog.app.config.filesd_client.state =
-					FilesdClient.State.REQUESTED;
+				this.dialog.app.config.filesd_client.state = FilesdClient.State.REQUESTED;
 				this.dialog.app.config.save();
 				this.render_file_connection();
 				this.toast_overlay.add_toast(new Adw.Toast(
@@ -462,7 +461,8 @@ namespace OLLMapp.SettingsDialog
 			}
 			this.file_connection_row = new FileConnectionRow(client, this.dialog.parent);
 			this.file_connection_row.remove_requested.connect(() => {
-				var was_live = client.state == FilesdClient.State.LIVE;
+				var was_live = client.state == FilesdClient.State.LIVE
+					|| client.state == FilesdClient.State.SOCKET;
 				var row = this.file_connection_row;
 				this.dialog.app.config.filesd_client =
 					new OLLMchat.Settings.FilesdClient();

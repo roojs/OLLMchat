@@ -16,6 +16,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+// Normally no using. FilesdClient.State.* without this is
+// OLLMchat.Settings.FilesdClient.State.* at every site.
+using OLLMchat.Settings;
+
 namespace OLLMapp
 {
 	/**
@@ -31,6 +35,8 @@ namespace OLLMapp
 		private Gtk.DropDown dropdown;
 		private Gtk.SignalListItemFactory list_factory;
 		private bool block_select_signal = false;
+		private GLib.ListStore store;
+		private Gtk.CustomFilter filter;
 
 		public uint selected {
 			get { return this.dropdown.selected; }
@@ -84,6 +90,7 @@ namespace OLLMapp
 					return;
 				}
 				var agent_factory = list_item.item as OLLMchat.Agent.Factory;
+				agent_factory.set_data<uint>("dropdown-pos", list_item.position);
 				var label = list_item.get_data<Gtk.Label>("label");
 				if (label == null) {
 					return;
@@ -114,19 +121,26 @@ namespace OLLMapp
 
 		public void wire ()
 		{
-			var agent_store = new GLib.ListStore(typeof(OLLMchat.Agent.Factory));
-
-			uint selected_index = 0;
-			uint i = 0;
+			var filesd_client = this.host.history_manager.config.filesd_client;
+			this.store = new GLib.ListStore(typeof(OLLMchat.Agent.Factory));
 			foreach (var factory in this.host.history_manager.agent_factories.values) {
-				agent_store.append(factory);
-				if (factory.name == this.host.history_manager.session.agent_name) {
-					selected_index = i;
-				}
-				i++;
+				this.store.append(factory);
 			}
-
-			this.dropdown.model = agent_store;
+			this.filter = new Gtk.CustomFilter((item) => {
+				var factory = (OLLMchat.Agent.Factory) item;
+				if (factory.name != "agent-pi") {
+					return true;
+				}
+				if (filesd_client.state == FilesdClient.State.LIVE
+					|| filesd_client.state == FilesdClient.State.SOCKET) {
+					return true;
+				}
+				return false;
+			});
+			this.dropdown.model = new Gtk.FilterListModel(this.store, this.filter);
+			filesd_client.notify["state"].connect(() => {
+				this.filter.changed(Gtk.FilterChange.DIFFERENT);
+			});
 
 			this.dropdown.notify["selected"].connect(() => {
 				if (this.block_select_signal) {
@@ -136,9 +150,7 @@ namespace OLLMapp
 					return;
 				}
 
-				var factory = (this.dropdown.model as GLib.ListStore)
-					.get_item(this.dropdown.selected)
-					as OLLMchat.Agent.Factory;
+				var factory = (OLLMchat.Agent.Factory) this.dropdown.selected_item;
 				this.dropdown.tooltip_text = factory.long_title;
 
 				var session = this.host.history_manager.session;
@@ -167,30 +179,32 @@ namespace OLLMapp
 					}
 					/* session_activated may have selected the copied
 					 * old agent_name — put the dropdown back on the pick. */
-					var agent_index = 0u;
-					var store = (GLib.ListStore) this.dropdown.model;
-					store.find(factory, out agent_index);
-					this.select_only(agent_index);
+					this.select_only(factory.get_data<uint>("dropdown-pos"));
 					if (draft.length > 0) {
 						this.host.chat_widget.chat_input.update_entry(draft);
 					}
 				});
 			});
 
-			this.select_only(selected_index);
+			this.select_only(this.host.history_manager.get_active_agent()
+				.get_data<uint>("dropdown-pos"));
 
 			this.host.history_manager.session_activated.connect((session) => {
 				var factory = this.host.history_manager.get_active_agent();
 				factory.activate.begin(this.host, (obj, res) => {
 					factory.activate.end(res);
 				});
-				var agent_index = 0u;
-				var store = (GLib.ListStore) this.dropdown.model;
-				store.find(factory, out agent_index);
+				var agent_index = factory.get_data<uint>("dropdown-pos");
 				if (this.session_selection(session, agent_index)) {
 					return;
 				}
 				this.select_only(agent_index);
+				var desktop = this.host as OLLMchat.ChatDesktopInterface;
+				if (desktop != null) {
+					var row = desktop.window_config();
+					row.agent = factory.name;
+					this.host.history_manager.config.save();
+				}
 			});
 		}
 	}

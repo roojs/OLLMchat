@@ -34,14 +34,16 @@ namespace OLLMchat.Settings
 		/**
 		 * Connection state. JSON is the ordinal.
 		 *
-		 * 0 requested, 1 disabled, 2 enabled, 3 live, 4 unreachable.
+		 * 0 requested, 1 disabled, 2 enabled, 3 live, 4 unreachable,
+		 * 5 socket.
 		 */
 		public enum State {
 			REQUESTED,
 			DISABLED,
 			ENABLED,
 			LIVE,
-			UNREACHABLE
+			UNREACHABLE,
+			SOCKET
 		}
 
 		public State state { get; set; default = State.REQUESTED; }

@@ -440,7 +440,8 @@ namespace OLLMapp
 			if (config.filesd_client.url != ""
 				&& (config.filesd_client.state == FilesdClient.State.ENABLED
 					|| config.filesd_client.state == FilesdClient.State.LIVE
-					|| config.filesd_client.state == FilesdClient.State.UNREACHABLE)) {
+					|| config.filesd_client.state == FilesdClient.State.UNREACHABLE
+					|| config.filesd_client.state == FilesdClient.State.SOCKET)) {
 				var tls = new OLLMrpc.Transport.Cert() {
 					dir = GLib.Path.build_filename(
 						GLib.Environment.get_user_data_dir(), "ollmchat"),
@@ -484,6 +485,15 @@ namespace OLLMapp
 			});
 
 			this.register_default_agents();
+
+			if (!this.history_manager.tools.has_key("write")) {
+				this.history_manager.register_tool(
+					new OLLMtools.EditMode.Write(this.project_manager));
+			}
+			if (!this.history_manager.tools.has_key("read")) {
+				this.history_manager.register_tool(
+					new OLLMtools.ReadFile.Read(this.project_manager));
+			}
 
 			this.agent_dropdown.wire();
 

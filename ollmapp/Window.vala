@@ -506,7 +506,8 @@ namespace OLLMapp
 			if (config.filesd_client.url != ""
 				&& (config.filesd_client.state == FilesdClient.State.ENABLED
 					|| config.filesd_client.state == FilesdClient.State.LIVE
-					|| config.filesd_client.state == FilesdClient.State.UNREACHABLE)) {
+					|| config.filesd_client.state == FilesdClient.State.UNREACHABLE
+					|| config.filesd_client.state == FilesdClient.State.SOCKET)) {
 				var tls = new OLLMrpc.Transport.Cert() {
 					dir = GLib.Path.build_filename(GLib.Environment.get_user_data_dir(), 
 							"ollmchat"),
@@ -564,6 +565,11 @@ namespace OLLMapp
 				this.tool_error_banner.title = "Filesystem daemon: " + msg;
 				this.tool_error_banner.revealed = true;
 				return;
+			}
+
+			if (config.filesd_client.url == "") {
+				config.filesd_client.state = FilesdClient.State.SOCKET;
+				this.app.config.save();
 			}
 
 			if (this.busy_dialog != null) {

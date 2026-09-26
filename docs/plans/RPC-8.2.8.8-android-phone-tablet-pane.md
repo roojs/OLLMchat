@@ -26,7 +26,7 @@
 - **🔷** Route the existing Android browser `tool_toggle` into that same secondary surface (stack on phone, right column on tablet).
 - **🔷** Detect tablet the standard Android way (`smallestScreenWidthDp` / `sw600dp`). If that signal is not reachable from Vala/GTK, expose it (JNI / activity). Do not invent a Gdk width cutoff.
 - **🔷** Tablet `tab_view()` is still an `Adw.ViewStack` so factory casts match desktop.
-- **ℹ️** Agent Pi register is [`8.2.8`](RPC-8.2.8-filesd-connections-ui.md) Phase 10. This plan only makes the host surface.
+- **ℹ️** Agent Pi register is [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md). Startup hello, history, and bars are [`8.2.8.11`](RPC-8.2.8.11-URGENT-android-startup-history-bars.md). This plan only makes the host surface.
 
 ---
 
@@ -439,7 +439,7 @@ ollmapp_android_lock_landscape (GtkWindow *window)
 ## LLM notes
 
 - **ℹ️** HTTPS takeover / `ProjectManager` stay in [`8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md).
-- **🚫** Registering `AgentPi.Factory` / `AgentFactory` / Skill Runner on Android in this plan — [`8.2.8`](RPC-8.2.8-filesd-connections-ui.md) Phase 10.
+- **🚫** Registering `AgentPi.Factory` / `AgentFactory` / Skill Runner on Android in this plan — [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md).
 - **🚫** `WindowPane` / `Gtk.Paned` on Android (resizable sash, grow-the-window).
 - **🚫** Width breakpoint that swaps phone ↔ tablet as the window rotates or resizes.
 - **🚫** Portrait phone shell on a tablet.

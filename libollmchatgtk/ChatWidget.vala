@@ -201,6 +201,10 @@ namespace OLLMchatGtk
 			// session_activated: scroll only when not mid-restore; restoring_session cleared on session_restored
 			this.manager.session_activated.connect((session) => {
 				GLib.Idle.add(() => {
+					if (!this.restoring_session && session is OLLMchat.History.EmptySession) {
+						this.chat_view.finalize_assistant_message();
+						this.clear_chat();
+					}
 					if (!this.restoring_session && session.is_running) {
 						this.chat_view.scroll_enabled = true;
 						/* GLib.debug("scroll_to_bottom_caller reason=session_activated_idle"); */

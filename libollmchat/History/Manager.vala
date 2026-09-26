@@ -174,6 +174,23 @@ namespace OLLMchat.History
 			
 			// Store config
 			this.config = app.config;
+			this.config.filesd_client.notify["state"].connect(() => {
+				if (this.config.filesd_client.state != Settings.FilesdClient.State.LIVE
+					|| !this.agent_factories.has_key("agent-pi")
+					|| this.session.agent_name == "agent-pi") {
+					return;
+				}
+				var empty = this.create_new_session();
+				empty.project_path = this.session.project_path;
+				empty.agent_name = "agent-pi";
+				this.switch_to_session.begin(empty, (obj, res) => {
+					try {
+						this.switch_to_session.end(res);
+					} catch (GLib.Error e) {
+						GLib.warning("%s", e.message);
+					}
+				});
+			});
 			
 			// Create ConnectionModels instance
 			this.connection_models = new Settings.ConnectionModels(this.config);

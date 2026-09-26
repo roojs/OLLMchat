@@ -1,6 +1,6 @@
 # 8.2.8 — File-server Connections UI + registration approval
 
-**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 4 **✅** · Phase 5 **✔️** · Phase 6 **✅** · Phase 7 **✔️** · Phase 8 skipped for now · Phase 9 **✔️** · Phase 10 **⏳** · Phase 11 **⏳**
+**Status:** **IN PROGRESS** — Phase 1–3 **✔️** · Phase 4 **✅** · Phase 5 **✔️** · Phase 6 **✅** · Phase 7 **✔️** · Phase 8 skipped for now · Phase 9 **✔️** · Phase 10 **✔️** · Phase 11 **⏳** · Phase 12 **⏳** · Phase 13 **⏳**
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
@@ -40,8 +40,10 @@
 | **7** | [`RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) — Android `ProjectManager`, HTTPS takeover, full liboccoder compile. Precursor [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️** | **✔️** |
 | **8** | [`RPC-8.2.8.7-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux `filesd.socket` LAN TCP + TLS registration | **⏳** |
 | **9** | [`RPC-8.2.8.8-android-phone-tablet-pane.md`](RPC-8.2.8.8-android-phone-tablet-pane.md) — Android `ChatDesktopInterface`, phone stack / tablet landscape columns | **✔️** |
-| **10** | [`RPC-8.2.8.9-URGENT-android-agent-pi.md`](RPC-8.2.8.9-URGENT-android-agent-pi.md) — **URGENT** Android Agent Pi when the desktop environment is live | **⏳** |
-| **11** | (this file) More than one desktop environment on Android: home, office, online via proxy | **⏳** |
+| **10** | [`RPC-8.2.8.9-DONE-android-agent-pi.md`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — Android Agent Pi on `SOCKET` / `LIVE` (state + Check listen) | **✔️** |
+| **11** | [`RPC-8.2.8.11-URGENT-android-startup-history-bars.md`](RPC-8.2.8.11-URGENT-android-startup-history-bars.md) — **URGENT** startup hello, history when Agent Pi is off, phone / tablet bars | **⏳** |
+| **12** | [`RPC-8.2.8.10-android-remote-bash.md`](RPC-8.2.8.10-android-remote-bash.md) — `bash` as an RPC tool Android can use on the desktop | **⏳** |
+| **13** | (this file) More than one desktop environment on Android: home, office, online via proxy | **⏳** |
 
 ---
 
@@ -56,8 +58,10 @@
 7. **✔️** Phase 7 — [`8.2.8.6`](done/RPC-8.2.8.6-DONE-filesd-android-remote-takeover.md) (Android takeover; [`FILES-2.10.4.33`](FILES-2.10.4.33-client-tree-sitter-daemon.md) **✔️**)
 8. **⏳** Phase 8 — [`8.2.8.7`](RPC-8.2.8.7-filesd-tcp-socket-lan.md) — Linux LAN TCP socket. Skipped for now. Not Phase 7. Windows loopback port is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md)
 9. **✔️** Phase 9 — [`8.2.8.8`](RPC-8.2.8.8-android-phone-tablet-pane.md) — Android phone/tablet `ChatDesktopInterface`
-10. **⏳** Phase 10 — [`8.2.8.9`](RPC-8.2.8.9-URGENT-android-agent-pi.md) **URGENT**. Phone connection flow is user-closed (2026-09-23). Startup hello uses a short timeout. A miss is `UNREACHABLE` (not the user switch), leaves Agent Pi off, starts a new Chatter session, and uses `Banner.show`. `approved` / `enabled` become one integer state. History rows for a missing agent stay listed, marked disabled, and cannot be restored. Bottom bar flips browser, editor, and chat. Thinking icon (`weather-fog-symbolic`) cycles on the chat button while the session runs. Idle chat button is a speech bubble. Still one desktop environment.
-11. **🔷** `⏳` Phase 11 — Android keeps more than one desktop environment. Home (one network), office (another network), and later an online one through the proxy. Not part of Phase 10.
+10. **✔️** Phase 10 — [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — `FilesdClient.State`, Agent Pi visible on `SOCKET` or `LIVE`, Check listen. Registers `write` / `read` only. Does not register `bash`.
+11. **⏳** Phase 11 — [`8.2.8.11`](RPC-8.2.8.11-URGENT-android-startup-history-bars.md) **URGENT**. Startup hello uses a short timeout. A miss is `UNREACHABLE` (not the user switch), leaves Agent Pi off, starts a new Chatter session, and uses `Banner.show`. History rows for a missing agent stay listed, marked disabled, and cannot be restored. Bottom bar flips browser, editor, and chat. Thinking icon (`weather-fog-symbolic`) cycles on the chat button while the session runs. Idle chat button is a speech bubble. Still one desktop environment.
+12. **🔷** `⏳` Phase 12 — [`8.2.8.10`](RPC-8.2.8.10-android-remote-bash.md) — `bash` as a remote tool. Commands run on desktop `ollmfilesd`, not on the phone. Daemon `Bubble.exec` is [`BWRAP-2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md).
+13. **🔷** `⏳` Phase 13 — Android keeps more than one desktop environment. Home (one network), office (another network), and later an online one through the proxy. Not part of Phase 10 or Phase 11.
 
 ---
 
@@ -160,21 +164,33 @@
 
 ---
 
-## Phase 10 — Android Agent Pi (**URGENT** `⏳`)
+## Phase 10 — Android Agent Pi (`✔️`)
 
-**➡️** [`RPC-8.2.8.9-URGENT-android-agent-pi.md`](RPC-8.2.8.9-URGENT-android-agent-pi.md) **URGENT** — select Agent Pi when the desktop environment is live. A short-timeout miss is `UNREACHABLE`, `Banner.show`, and a new Chatter session. History rows for a missing agent stay listed and cannot be restored.
+**➡️** [`RPC-8.2.8.9-DONE-android-agent-pi.md`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — select Agent Pi when the file backend is `SOCKET` or `LIVE`.
 
 ---
 
-## Phase 11 — Several desktop environments (`⏳`)
+## Phase 11 — Android startup hello, history, and bars (**URGENT** `⏳`)
+
+**➡️** [`RPC-8.2.8.11-URGENT-android-startup-history-bars.md`](RPC-8.2.8.11-URGENT-android-startup-history-bars.md) **URGENT** — short-timeout hello, `UNREACHABLE` + `Banner.show`, history rows for a missing agent, phone / tablet bars.
+
+---
+
+## Phase 12 — Android remote `bash` (`⏳`)
+
+**➡️** [`RPC-8.2.8.10-android-remote-bash.md`](RPC-8.2.8.10-android-remote-bash.md) — `bash` tool over RPC. Exec on desktop `ollmfilesd`.
+
+---
+
+## Phase 13 — Several desktop environments (`⏳`)
 
 - **🔷** The phone is used against more than one machine.
   - Home, on the home network, already connected there.
   - Office, on the office network, already connected there.
   - A third, online, through the proxy. Not built yet.
 - **ℹ️** Today `Config2.filesd_client` is one object (`libollmchat/Settings/FilesdClient.vala`). Empty `url` means none. Android cannot store home and office together.
-- **ℹ️** [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) chose one URL. This phase is the follow-up, after Phase 10.
-- **🔷** `⏳` Which row is live at startup (home vs office vs online) is not decided. Do not invent a picker inside Phase 10.
+- **ℹ️** [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) chose one URL. This phase is the follow-up, after Phase 10 and Phase 11.
+- **🔷** `⏳` Which row is live at startup (home vs office vs online) is not decided. Do not invent a picker inside Phase 10 or Phase 11.
 - **ℹ️** Phase 8 ([`8.2.8.7`](RPC-8.2.8.7-filesd-tcp-socket-lan.md)) is the skipped Linux LAN TCP socket. Phase 7 is the Android takeover and is already done.
 
 ---

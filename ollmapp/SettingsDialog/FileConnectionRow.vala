@@ -152,10 +152,9 @@ namespace OLLMapp.SettingsDialog
 		 * Ask the remote file server whether this device is approved.
 		 *
 		 * Sends ''RPC-Daemon.hello'' with the device client certificate.
-		 * On success sets {@link OLLMchat.Settings.FilesdClient.state}
-		 * from the Enabled switch and saves config. Does not swap
-		 * {@link OLLMfiles.ProjectManager} RPC (use the Enabled switch or
-		 * restart to connect live).
+		 * On success, switch off is {@link FilesdClient.State.DISABLED}.
+		 * Switch on is {@link FilesdClient.State.ENABLED}, then
+		 * {@link reconnect} which sets {@link FilesdClient.State.LIVE}.
 		 */
 		public async void check()
 		{
@@ -184,19 +183,18 @@ namespace OLLMapp.SettingsDialog
 				this.expander.subtitle = "Requested: " + e.message;
 				return;
 			}
-			if (this.enabled_switch.active) {
-				this.client.state = FilesdClient.State.ENABLED;
-			} else {
-				this.client.state = FilesdClient.State.DISABLED;
-			}
-			this.win.app.config.save();
 			this.expander.subtitle = "Active";
 			this.status_label.label = "Active";
+			if (!this.enabled_switch.active) {
+				this.client.state = FilesdClient.State.DISABLED;
+				this.win.app.config.save();
+				this.check_button.sensitive = true;
+				return;
+			}
+			this.client.state = FilesdClient.State.ENABLED;
+			this.win.app.config.save();
+			yield this.reconnect(true);
 			this.check_button.sensitive = true;
-			this.win.notification(new OLLMrpc.Notification() {
-				method = "Banner.show",
-				message = "Device approved — turn the connection off and on to connect"
-			});
 		}
 
 		/**
@@ -275,6 +273,16 @@ namespace OLLMapp.SettingsDialog
 			this.win.notification(new OLLMrpc.Notification() {
 				method = "client.project.load_end"
 			});
+			if (remote) {
+				this.client.state = FilesdClient.State.LIVE;
+				this.win.app.config.save();
+				return;
+			}
+			this.client.state = FilesdClient.State.SOCKET;
+			if (this.client.url != "") {
+				return;
+			}
+			this.win.app.config.save();
 		}
 	}
 }
