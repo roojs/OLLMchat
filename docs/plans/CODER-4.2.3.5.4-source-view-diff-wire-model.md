@@ -136,9 +136,7 @@ show_pending_diff   (only if pending)
 - 🔷 The file server writes the diff items to disk and is in charge of that store. A later open returns the active items, hunk text included.
 - 🔷 The client hangs that text on the diff item in memory. The client does not write diff items.
 - ℹ️ `file_diff_part` today is only `id`, `file_history_id`, `part_index`, `accepted`, `decided_at`. No hunk text. Rows are unused. `ollmfilesd/FileDiffPart.vala`.
-- 💩 The stored row is `file_diff_part`, with the hunk text on it. Not a second file that holds the whole project text.
-- 💩 Once every hunk has a row, `accepted` `0` / `1` cannot also mean "not decided yet". Pending needs its own state on the row.
-- 💩 The call's argument is the pending `file_history` id (`FileWithHistory.approve_id`). The method name is not chosen.
+- 🔷 Settled in [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md). The table is `file_diff_part`, with a `hunk` column. `accepted` `0` is undecided, `1` accepted, `-1` rejected. `OLLMfilesd-FileHistory.parts` takes the `file_history` id.
 
 ---
 

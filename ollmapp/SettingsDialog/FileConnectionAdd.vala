@@ -41,7 +41,7 @@ namespace OLLMapp.SettingsDialog
 
 		public FileConnectionAdd()
 		{
-			this.title = "Add remote desktop environment";
+			this.title = "Add Remote Desktop Environment";
 			this.set_content_height(360);
 			this.set_content_width(720);
 
@@ -155,6 +155,7 @@ namespace OLLMapp.SettingsDialog
 			};
 			tls.ensure();
 			var http = new OLLMrpc.Transport.HttpClient(url) {
+				bin_body = true,
 				tls_certificate = tls.certificate,
 				tls_database = tls.trust
 			};

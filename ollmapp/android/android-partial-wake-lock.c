@@ -1,5 +1,6 @@
 #include "android-partial-wake-lock.h"
 
+#include <dlfcn.h>
 #include <jni.h>
 #include <gdk/android/gdkandroid.h>
 
@@ -17,9 +18,27 @@ static JNIEnv *
 ollmapp_android_jni_env (void)
 {
 	JNIEnv *env = NULL;
+	jsize vm_count = 0;
 
+	/* GTK loads this .so with g_module_open, which does not run JNI_OnLoad. */
 	if (ollmapp_android_vm == NULL) {
-		return NULL;
+		void *helper = dlopen ("libnativehelper.so", RTLD_NOW | RTLD_NOLOAD);
+		jint (*get_vms) (JavaVM **, jsize, jsize *) = NULL;
+
+		if (helper != NULL) {
+			get_vms = dlsym (helper, "JNI_GetCreatedJavaVMs");
+		}
+		if (get_vms == NULL) {
+			get_vms = dlsym (RTLD_DEFAULT, "JNI_GetCreatedJavaVMs");
+		}
+		if (get_vms == NULL
+			|| get_vms (&ollmapp_android_vm, 1, &vm_count) != JNI_OK
+			|| vm_count < 1) {
+			g_message ("android jni: no JavaVM helper=%p get_vms=%p count=%d",
+				helper, (void *) get_vms, (int) vm_count);
+			ollmapp_android_vm = NULL;
+			return NULL;
+		}
 	}
 	if ((*ollmapp_android_vm)->GetEnv (ollmapp_android_vm, (void **) &env,
 		JNI_VERSION_1_6) == JNI_OK) {
@@ -173,14 +192,19 @@ ollmapp_android_is_tablet (GtkWindow *window)
 
 	surface = gtk_native_get_surface (GTK_NATIVE (window));
 	if (surface == NULL || !GDK_IS_ANDROID_TOPLEVEL (surface)) {
+		g_message ("android tablet: surface=%p android_toplevel=%d",
+			(void *) surface,
+			surface != NULL && GDK_IS_ANDROID_TOPLEVEL (surface));
 		return FALSE;
 	}
 	activity = gdk_android_toplevel_get_activity (GDK_ANDROID_TOPLEVEL (surface));
 	if (activity == NULL) {
+		g_message ("android tablet: activity is null");
 		return FALSE;
 	}
 	env = ollmapp_android_jni_env ();
 	if (env == NULL) {
+		g_message ("android tablet: jni env is null");
 		return FALSE;
 	}
 	activity_cls = (*env)->GetObjectClass (env, activity);
@@ -195,6 +219,7 @@ ollmapp_android_is_tablet (GtkWindow *window)
 	sw_field = (*env)->GetFieldID (env, configuration_cls,
 		"smallestScreenWidthDp", "I");
 	sw = (*env)->GetIntField (env, configuration, sw_field);
+	g_message ("android tablet: smallestScreenWidthDp=%d", (int) sw);
 	(*env)->DeleteLocalRef (env, configuration_cls);
 	(*env)->DeleteLocalRef (env, configuration);
 	(*env)->DeleteLocalRef (env, resources_cls);
@@ -230,6 +255,13 @@ ollmapp_android_lock_landscape (GtkWindow *window)
 		"setRequestedOrientation", "(I)V");
 	/* ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE */
 	(*env)->CallVoidMethod (env, activity, set_mid, 6);
+	if ((*env)->ExceptionCheck (env)) {
+		(*env)->ExceptionDescribe (env);
+		(*env)->ExceptionClear (env);
+		g_message ("android landscape: setRequestedOrientation threw");
+	} else {
+		g_message ("android landscape: requested SENSOR_LANDSCAPE");
+	}
 	(*env)->DeleteLocalRef (env, activity_cls);
 	(*env)->DeleteLocalRef (env, activity);
 }

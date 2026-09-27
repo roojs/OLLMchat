@@ -141,6 +141,10 @@ namespace OLLMrpc.Transport
 					);
 					this.msg.set_status(500, null);
 					this.finished = true;
+					if (this.paused) {
+						this.soup.unpause_message(this.msg);
+						this.paused = false;
+					}
 				}
 				return;
 			}
@@ -161,6 +165,10 @@ namespace OLLMrpc.Transport
 					this.bin.out_stream = null;
 					this.msg.get_response_body().complete();
 					this.finished = true;
+					if (this.paused) {
+						this.soup.unpause_message(this.msg);
+						this.paused = false;
+					}
 					return;
 				}
 				var json_text = global::Json.to_string(
@@ -174,6 +182,10 @@ namespace OLLMrpc.Transport
 					);
 					this.msg.set_status(200, null);
 					this.finished = true;
+					if (this.paused) {
+						this.soup.unpause_message(this.msg);
+						this.paused = false;
+					}
 					return;
 				}
 				if (!this.streaming) {
@@ -206,6 +218,10 @@ namespace OLLMrpc.Transport
 					);
 					this.msg.set_status(500, null);
 					this.finished = true;
+					if (this.paused) {
+						this.soup.unpause_message(this.msg);
+						this.paused = false;
+					}
 				}
 			}
 		}

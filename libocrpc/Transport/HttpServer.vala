@@ -414,8 +414,9 @@ namespace OLLMrpc.Transport
 				msg.set_status(404, null);
 				msg.set_response("text/plain", Soup.MemoryUse.COPY,
 					("no handler for '" + request.method + "'").data);
+				return;
 			}
-			if (reply.streaming && !reply.finished) {
+			if (!reply.finished) {
 				reply.paused = true;
 				this.soup.pause_message(msg);
 			}
@@ -631,7 +632,7 @@ namespace OLLMrpc.Transport
 				});
 				return;
 			}
-			if (reply.streaming && !reply.finished) {
+			if (!reply.finished) {
 				reply.paused = true;
 				this.soup.pause_message(msg);
 			}

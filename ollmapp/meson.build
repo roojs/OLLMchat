@@ -163,6 +163,13 @@ if get_option('android_poc') and host_machine.system() == 'android'
     'android/tools/GoogleSearch/Tool.vala',
     'android/tools/GoogleSearch/Request.vala',
     'android/tools/GoogleSearch/Config.vala',
+    'android/tools/ReadFile/Tool.vala',
+    'android/tools/ReadFile/Request.vala',
+    'android/tools/ReadFile/Read.vala',
+    'android/tools/EditMode/Tool.vala',
+    'android/tools/EditMode/Request.vala',
+    'android/tools/EditMode/Stream.vala',
+    'android/tools/EditMode/Write.vala',
   ] + android_poc_settings_sources
 
   android_poc = executable('ollmchat-android-poc',

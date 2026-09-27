@@ -384,6 +384,10 @@ patch_android_manifest() {
   if grep -q 'android:launchMode="standard"' "$manifest"; then
     sed -i 's/android:launchMode="standard"/android:launchMode="singleTask"/' "$manifest"
   fi
+  # API 36 ignores setRequestedOrientation on sw600dp unless this is set.
+  if ! grep -q 'PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY' "$manifest"; then
+    sed -i '/<\/application>/i\    <property android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY" android:value="true"/>' "$manifest"
+  fi
 }
 
 install_icon_themes_to_assets() {

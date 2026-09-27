@@ -168,6 +168,7 @@ namespace OLLMapp.SettingsDialog
 			};
 			tls.ensure();
 			var http = new OLLMrpc.Transport.HttpClient(this.client.url) {
+				bin_body = true,
 				tls_certificate = tls.certificate,
 				tls_database = tls.trust
 			};
