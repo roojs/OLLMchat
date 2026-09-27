@@ -1,6 +1,6 @@
 # 4.2.3.5.2 — ReviewBar Phase B: product wire
 
-**Status:** **✔️** closed — Phase 1 applied. Part rows and Approvals cleanup → [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md)
+**Status:** **✔️** closed — Phase 1 applied. Diff items → [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md). Approval → [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md). Resync → [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md).
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
@@ -21,14 +21,14 @@
 ## Purpose
 
 - 🔷 Phase 1 — embed **`ReviewBar`** in the product editor and drive file nav from the real **`ReviewFiles`** queue. **✔️** applied.
-- ℹ️ Part rows, disk writes, and header **`Approvals`** cleanup → [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md).
+- ℹ️ Diff items → [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md). Approval and header **`Approvals`** cleanup → [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md). Resync after save → [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md).
 - ℹ️ **`ReviewBar`** stays the review-chrome owner. **`SourceView`** keeps **`show_diff` / `navigate_to_line` / `clear_diff`** only (parent **SourceView vs ReviewBar**).
 
 ---
 
 ## Phase 1 — Wire chrome
 
-Embed **`ReviewBar`** under **`SourceView`** (same layout as **`oc-test-source-diff`**). File nav, the inactive middle label, and the bulk menu use the real **`ReviewFiles`** queue. Bulk actions are stubs that report real counts. Part rows and header cleanup are [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md).
+Embed **`ReviewBar`** under **`SourceView`** (same layout as **`oc-test-source-diff`**). File nav, the inactive middle label, and the bulk menu use the real **`ReviewFiles`** queue. Bulk actions are stubs that report real counts. Diff items are [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md). Header cleanup is [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md).
 
 - 🔷 ⏳ Pending file opens through existing **`show_pending_diff`** (builds **`Differ`**). Editor hosts **`ReviewBar`** under **`SourceView`**.
 - 🔷 ⏳ **`n / N`** over the footer file list. Order is **basename**, then full path when basenames match.
@@ -54,7 +54,7 @@ Embed **`ReviewBar`** under **`SourceView`** (same layout as **`oc-test-source-d
 - 🔷 ⏳ A tap on the editor scroll view (menu dismiss and similar) belongs to the scroll view / **`SourceView`**, not **`ReviewBar`**.
 - 🔷 ⏳ Owner calls **`responses()`** as in the harness. Product **`review_response`** handler (send the prompt to the LLM) is outside daemon part work.
 
-Applied in `liboccoder/Diff/ReviewBar.vala` and `liboccoder/SourceView.vala`. Bulk accept / reject stay in-memory stubs and emit **`accept_all_files`** / **`reject_all_files`**. Part rows are [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md). Android hosts the bar the same way as desktop.
+Applied in `liboccoder/Diff/ReviewBar.vala` and `liboccoder/SourceView.vala`. Bulk accept / reject stay in-memory stubs and emit **`accept_all_files`** / **`reject_all_files`**. Diff items are [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md). Android hosts the bar the same way as desktop.
 
 ### 1. `liboccoder/Diff/ReviewBar.vala` — live queue fields
 
@@ -639,5 +639,5 @@ Applied in `liboccoder/Diff/ReviewBar.vala` and `liboccoder/SourceView.vala`. Bu
 - 🚫 **ReviewBar** handling taps on the editor scroll view.
 - 🚫 Split **`ReviewBar.vala`** without explicit user request.
 - 🚫 Add review-state APIs to **`SourceView`** — **ReviewBar** only.
-- ℹ️ Open work (part rows, header **`Approvals`**) is [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md).
+- ℹ️ Open work is [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md), [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md), and [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md).
 - ℹ️ Touch points: `liboccoder/Diff/ReviewBar.vala`, `liboccoder/SourceView.vala`.

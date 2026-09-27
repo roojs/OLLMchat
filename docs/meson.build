@@ -333,6 +333,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/SearchableDropdown.vala',
     '../liboccoder/ProjectDropdown.vala',
     '../liboccoder/FileDropdown.vala',
+    '../liboccoder/Diff/ReviewBar.vala',  # Must come before SourceView (SourceView uses OLLMcoder.Diff)
     '../liboccoder/SourceView.vala',
     '../liboccoder/AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
     '../liboccoder/Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)

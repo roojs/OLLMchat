@@ -1,6 +1,6 @@
 # 4.2.3.5 — SourceView diff Phase 4: block approval flow
 
-**Status:** **✅** Phase A + [`4.2.3.5.1`](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) user-smoked · **✔️** [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) editor wire · **⏳** [`4.2.3.5.4`](CODER-4.2.3.5.4-source-view-diff-wire-model.md) wire model · **⏳** [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md) blocked on that model
+**Status:** **✅** Phase A + [`4.2.3.5.1`](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) user-smoked · **✔️** [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) editor wire · **⏳** [`4.2.3.5.4`](CODER-4.2.3.5.4-source-view-diff-wire-model.md) design · **⏳** [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md) · **⏳** [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md) · **⏳** [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md)
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
@@ -12,7 +12,7 @@
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
 
-**Next (active):** [`4.2.3.5.4`](CODER-4.2.3.5.4-source-view-diff-wire-model.md) — what crosses the wire. [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md) waits on that.
+**Next (active):** [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md) — diff items. Then [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md) and [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md). Design: [`4.2.3.5.4`](CODER-4.2.3.5.4-source-view-diff-wire-model.md).
 
 ---
 
@@ -342,7 +342,7 @@ When the user asks about **in-text hunk highlighting**, **dimming non-active hun
 
 **Goal:** Same chrome as Phase A, backed by real pending review state.
 
-ℹ️ **Editor wire** is applied in [`CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md). **Part rows and Approvals cleanup** live in [`CODER-4.2.3.5.3-source-view-diff-part-rows.md`](CODER-4.2.3.5.3-source-view-diff-part-rows.md).
+ℹ️ **Editor wire** is applied in [`CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md). One plan per phase: [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md) diff items, [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md) approval, [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md) resync. Design: [`CODER-4.2.3.5.4-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-source-view-diff-wire-model.md). [`4.2.3.5.3`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) is superseded.
 
 ---
 
