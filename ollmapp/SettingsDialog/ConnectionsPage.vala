@@ -79,17 +79,29 @@ namespace OLLMapp.SettingsDialog
 				hexpand = true
 			};
 
-			// Create Add Connection button
-			this.add_btn = new Gtk.Button.with_label("Add LLM connection") {
+			this.add_btn = new Gtk.Button() {
+				icon_name = "list-add-symbolic",
+				label = "LLM connection",
+				hexpand = true,
 				css_classes = {"suggested-action"}
 			};
+			var llm_label = this.add_btn.child.get_last_child() as Gtk.Label;
+			llm_label.ellipsize = Pango.EllipsizeMode.END;
+			llm_label.hexpand = true;
 			this.add_btn.clicked.connect(() => {
 				this.add_dialog.show_add();
 				this.add_dialog.present(this.dialog);
 			});
 			this.action_widget.append(this.add_btn);
 
-			this.add_file_btn = new Gtk.Button.with_label("Add remote desktop environment");
+			this.add_file_btn = new Gtk.Button() {
+				icon_name = "list-add-symbolic",
+				label = "remote desktop environment",
+				hexpand = true
+			};
+			var desktop_label = this.add_file_btn.child.get_last_child() as Gtk.Label;
+			desktop_label.ellipsize = Pango.EllipsizeMode.END;
+			desktop_label.hexpand = true;
 			this.add_file_btn.clicked.connect(() => {
 				this.add_file_dialog.show_add();
 				this.add_file_dialog.present(this.dialog);

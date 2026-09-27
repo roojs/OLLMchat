@@ -449,3 +449,14 @@ button.chat-composer-send label {
 button.picker-on {
 	background-color: alpha(@window_fg_color, 0.15);
 }
+
+button.page-picker {
+	background: none;
+	border: none;
+	box-shadow: none;
+}
+
+button.page-picker.picker-on {
+	background-color: alpha(@window_fg_color, 0.34);
+	box-shadow: inset 0 1px 2px alpha(black, 0.5);
+}

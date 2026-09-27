@@ -545,13 +545,19 @@ namespace OLLMapp
 			this.browser_picker = new Gtk.Button();
 			this.browser_picker.icon_name = "web-browser-symbolic";
 			this.browser_picker.tooltip_text = "Browser";
+			this.browser_picker.has_frame = false;
+			this.browser_picker.add_css_class("page-picker");
 			this.editor_picker = new Gtk.Button();
 			this.editor_picker.icon_name = "document-edit-symbolic";
 			this.editor_picker.tooltip_text = "Text editor";
+			this.editor_picker.has_frame = false;
+			this.editor_picker.add_css_class("page-picker");
 			this.chat_picker = new Gtk.Button();
-			this.chat_picker.icon_name = "chat-message-new-symbolic";
+			this.chat_picker.icon_name = "chat-message-symbolic";
 			this.chat_picker.tooltip_text = "Chat";
 			this.chat_picker.visible = !this.is_tablet;
+			this.chat_picker.has_frame = false;
+			this.chat_picker.add_css_class("page-picker");
 			this.chat_picker.add_css_class("picker-on");
 			this.chat_widget.chat_bar.end_box.append(this.browser_picker);
 			this.chat_widget.chat_bar.end_box.append(this.editor_picker);
@@ -636,7 +642,7 @@ namespace OLLMapp
 				}
 				var image = (Gtk.Image) this.chat_picker.child;
 				if (!running) {
-					image.set_from_icon_name("chat-message-new-symbolic");
+					image.set_from_icon_name("chat-message-symbolic");
 					return;
 				}
 				string[] frames = {

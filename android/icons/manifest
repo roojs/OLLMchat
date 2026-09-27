@@ -32,7 +32,8 @@ symbolic/actions/go-up-symbolic.svg	Adwaita	symbolic/actions/go-up-symbolic.svg
 symbolic/actions/help-about-symbolic.svg	Adwaita	symbolic/actions/help-about-symbolic.svg
 symbolic/actions/document-properties-symbolic.svg	Adwaita	symbolic/actions/document-properties-symbolic.svg
 symbolic/status/weather-fog-symbolic.svg	Adwaita	symbolic/status/weather-fog-symbolic.svg
-symbolic/legacy/web-browser-symbolic.svg	Adwaita	symbolic/legacy/web-browser-symbolic.svg
+symbolic/legacy/web-browser-symbolic.svg	bundled	bundled
 symbolic/actions/document-edit-symbolic.svg	Adwaita	symbolic/actions/document-edit-symbolic.svg
 symbolic/actions/chat-message-new-symbolic.svg	Adwaita	symbolic/actions/chat-message-new-symbolic.svg
+symbolic/actions/chat-message-symbolic.svg	bundled	bundled
 scalable/apps/org.roojs.ollmchat.svg	bundled	scalable/apps/org.roojs.ollmchat.svg

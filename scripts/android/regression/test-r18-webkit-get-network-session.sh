@@ -48,7 +48,14 @@ if grep -nE 'get_network_session\(\)' "$BROWSER"; then
   exit 1
 fi
 
-if [ -f "$SRC" ] && ! grep -q 'public NetworkSession network_session' "$SRC"; then
+# v0.1.3 already has network_session, but builds the WebView host only in
+# WebView(). Subclasses that chain with Object() never run that body, so
+# host_area stays null and the page stays on Loading. v0.1.5 builds the
+# host in construct.
+if [ -f "$SRC" ] && {
+  ! grep -q 'public NetworkSession network_session' "$SRC" ||
+  ! grep -q 'Host overlay must be built here' "$SRC"
+}; then
   echo "Discarding stale webkitgtk-android checkout (want $PIN_REV)." >&2
   rm -rf "$CHECKOUT"
 fi
@@ -66,6 +73,10 @@ fi
 }
 grep -q 'public NetworkSession network_session' "$SRC" || {
   echo "R18 $SRC still lacks network_session property after $PIN_REV checkout" >&2
+  exit 1
+}
+grep -q 'Host overlay must be built here' "$SRC" || {
+  echo "R18 $SRC still builds the WebView host only in WebView() after $PIN_REV checkout" >&2
   exit 1
 }
 
