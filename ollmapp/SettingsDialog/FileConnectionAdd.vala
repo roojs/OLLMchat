@@ -41,7 +41,7 @@ namespace OLLMapp.SettingsDialog
 
 		public FileConnectionAdd()
 		{
-			this.title = "Add desktop environment";
+			this.title = "Add remote desktop environment";
 			this.set_content_height(360);
 			this.set_content_width(720);
 

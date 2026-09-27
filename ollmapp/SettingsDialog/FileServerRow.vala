@@ -293,8 +293,7 @@ namespace OLLMapp.SettingsDialog
 			};
 			this.ssl_expander = new Adw.ExpanderRow() {
 				title = "Local network SSL server",
-				subtitle = "Recommended for local networks only",
-				expanded = true
+				subtitle = "Recommended for local networks only"
 			};
 			this.ssl_expander.add_suffix(this.ssl_switch);
 			this.ssl_host_dropdown = new Gtk.DropDown(new Gtk.StringList({}), null) {
@@ -542,9 +541,6 @@ namespace OLLMapp.SettingsDialog
 			var ssl_ready = socket_host != ""
 				&& socket_n >= 1024 && socket_n <= 65535;
 			this.ssl_switch.visible = ssl_ready;
-			if (!ssl_ready) {
-				this.ssl_expander.expanded = true;
-			}
 			this.loading = false;
 		}
 
@@ -613,9 +609,6 @@ namespace OLLMapp.SettingsDialog
 			var ssl_ready = saved_host != ""
 				&& saved_n >= 1024 && saved_n <= 65535;
 			this.ssl_switch.visible = ssl_ready;
-			if (!ssl_ready) {
-				this.ssl_expander.expanded = true;
-			}
 			if (this.ssl_switch.visible) {
 				this.filesd.ssl_enabled = this.ssl_switch.active;
 			}

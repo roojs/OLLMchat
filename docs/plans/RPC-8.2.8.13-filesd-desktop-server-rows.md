@@ -61,7 +61,7 @@ Linux — expanded
 │      Port                                     [ 8422 ]  │
 ```
 
-🔷 The Local network SSL server toggle shows after a host and port are saved. Before that, the row expands to Host and Port with no toggle. The toggle writes `ssl_enabled`. The HTTPS server toggle writes `https_enabled`.
+🔷 The Local network SSL server toggle shows after a host and port are saved. Before that, the row stays collapsed and has no toggle. The user expands it to set Host and Port. The toggle writes `ssl_enabled`. The HTTPS server toggle writes `https_enabled`.
 
 🔷 Windows has no Unix socket row and no systemd row. Localhost TCP is the first row: listed Running, no toggle.
 
@@ -451,8 +451,7 @@ After `systemd_row`. Unix socket has a Running label, not a switch. The SSL swit
 			};
 			this.ssl_expander = new Adw.ExpanderRow() {
 				title = "Local network SSL server",
-				subtitle = "Recommended for local networks only",
-				expanded = true
+				subtitle = "Recommended for local networks only"
 			};
 			this.ssl_expander.add_suffix(this.ssl_switch);
 			this.ssl_host_dropdown = new Gtk.DropDown(new Gtk.StringList({}), null) {
@@ -676,9 +675,6 @@ HTTPS and local network SSL are appended when those listeners are on. 💩 The c
 			var ssl_ready = socket_host != ""
 				&& socket_n >= 1024 && socket_n <= 65535;
 			this.ssl_switch.visible = ssl_ready;
-			if (!ssl_ready) {
-				this.ssl_expander.expanded = true;
-			}
 ```
 
 ### 4. `apply_config` — save `filesd.socket` and reboot
@@ -768,9 +764,6 @@ The SSL switch is not written while it is hidden, so a first save of host and po
 			var ssl_ready = saved_host != ""
 				&& saved_n >= 1024 && saved_n <= 65535;
 			this.ssl_switch.visible = ssl_ready;
-			if (!ssl_ready) {
-				this.ssl_expander.expanded = true;
-			}
 			if (this.ssl_switch.visible) {
 				this.filesd.ssl_enabled = this.ssl_switch.active;
 			}

@@ -89,7 +89,7 @@ namespace OLLMapp.SettingsDialog
 			});
 			this.action_widget.append(this.add_btn);
 
-			this.add_file_btn = new Gtk.Button.with_label("Add desktop environment");
+			this.add_file_btn = new Gtk.Button.with_label("Add remote desktop environment");
 			this.add_file_btn.clicked.connect(() => {
 				this.add_file_dialog.show_add();
 				this.add_file_dialog.present(this.dialog);
@@ -162,6 +162,7 @@ namespace OLLMapp.SettingsDialog
 				this.dialog.parent,
 				this.toast_overlay);
 			this.boxed_list.append(this.file_server_row.expander);
+			this.arrow(this.file_server_row.expander, this.file_server_row.expander);
 #endif
 			this.render_connections();
 			this.render_approved.begin();
@@ -302,6 +303,43 @@ namespace OLLMapp.SettingsDialog
 		}
 
 		/**
+		 * Move each expander arrow to the left of its title.
+		 *
+		 * The built-in arrow is ''adw-expander-arrow-symbolic'',
+		 * which this icon theme does not ship, so it draws as a
+		 * broken image on the right of switches. Collapsed uses
+		 * ''pan-end-symbolic''. Expanded uses
+		 * ''pan-down-symbolic''.
+		 *
+		 * @param widget Widget to walk, usually an expander
+		 * @param row Expander that owns the arrow being moved
+		 */
+		private void arrow(Gtk.Widget widget, Adw.ExpanderRow row)
+		{
+			if (widget is Adw.ExpanderRow) {
+				row = (Adw.ExpanderRow) widget;
+			}
+			if (widget.has_css_class("expander-row-arrow")) {
+				var image = (Gtk.Image) widget;
+				image.unparent();
+				image.remove_css_class("expander-row-arrow");
+				image.valign = Gtk.Align.CENTER;
+				image.icon_name = row.expanded ? "pan-down-symbolic" : "pan-end-symbolic";
+				row.add_prefix(image);
+				row.notify["expanded"].connect(() => {
+					image.icon_name = row.expanded ? "pan-down-symbolic" : "pan-end-symbolic";
+				});
+				return;
+			}
+			var child = widget.get_first_child();
+			while (child != null) {
+				var next = child.get_next_sibling();
+				this.arrow(child, row);
+				child = next;
+			}
+		}
+
+		/**
 		 * Adds a single connection row to the UI.
 		 * 
 		 * @param url Connection URL (key in config.connections map)
@@ -323,6 +361,7 @@ namespace OLLMapp.SettingsDialog
 			});
 
 			this.rows.set(url, row);
+			this.arrow(row.expander, row.expander);
 			this.boxed_list.append(row.expander);
 		}
 
@@ -363,6 +402,7 @@ namespace OLLMapp.SettingsDialog
 				this.remove_approved.begin(row.id);
 			});
 			this.approved_rows.add(row.expander);
+			this.arrow(row.expander, row.expander);
 			this.boxed_list.append(row.expander);
 		}
 		}
@@ -460,6 +500,7 @@ namespace OLLMapp.SettingsDialog
 				return;
 			}
 			this.file_connection_row = new FileConnectionRow(client, this.dialog.parent);
+			this.arrow(this.file_connection_row.expander, this.file_connection_row.expander);
 			this.file_connection_row.remove_requested.connect(() => {
 				var was_live = client.state == FilesdClient.State.LIVE
 					|| client.state == FilesdClient.State.SOCKET;
