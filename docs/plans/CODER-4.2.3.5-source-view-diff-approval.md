@@ -1,6 +1,6 @@
 # 4.2.3.5 — SourceView diff Phase 4: block approval flow
 
-**Status:** **✅** Phase A + [`4.2.3.5.1`](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) user-smoked · **✔️** [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) editor wire · **⏳** [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md)
+**Status:** **✅** Phase A + [`4.2.3.5.1`](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) user-smoked · **✔️** [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) editor wire · **⏳** [`4.2.3.5.4`](CODER-4.2.3.5.4-source-view-diff-wire-model.md) wire model · **⏳** [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md) blocked on that model
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
@@ -12,7 +12,7 @@
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
 
-**Next (active):** [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md) — part rows and Approvals cleanup
+**Next (active):** [`4.2.3.5.4`](CODER-4.2.3.5.4-source-view-diff-wire-model.md) — what crosses the wire. [`4.2.3.5.3`](CODER-4.2.3.5.3-source-view-diff-part-rows.md) waits on that.
 
 ---
 

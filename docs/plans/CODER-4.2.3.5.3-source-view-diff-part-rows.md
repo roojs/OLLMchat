@@ -1,10 +1,12 @@
 # 4.2.3.5.3 — ReviewBar part rows and Approvals cleanup
 
-**Status:** **⏳** proposed
+**Status:** **⏳** not ready — wire model first
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
 **Parent:** [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md)
+
+**Blocked by:** [`CODER-4.2.3.5.4-source-view-diff-wire-model.md`](CODER-4.2.3.5.4-source-view-diff-wire-model.md) — client diffs today; approval must not ship full texts. Do not apply the fences below until that model is signed off.
 
 **Depends on:**
 
@@ -167,10 +169,11 @@ Register `decide` on `OLLMfilesd-FileHistory`. Signature `xii` is `history_id`, 
 
 - 🔷 `decide(history_id, part_index, action_state)`. The history row has the path.
 - 🔷 `decide` checks the arguments, the history row, the file, and any saved part, then creates the buffer. That work does not yield.
-- 🔷 `load_texts` reads the buffer, the backup, and any saved project text. `decide` starts it.
-- 🔷 `save_part` runs `Differ`, writes the row and the hunk file, and does not yield. `load_texts` calls it.
-- 🔷 `write_kept` applies the kept patches and writes the buffer. `save_part` starts it. The reply is sent from there.
-- ℹ️ None of those three is a second wire call.
+- 🔷 `load_texts` reads the buffer, the backup, and any saved project text. `decide` starts it with the call: the request, the history row, the project file, `part_index`, and `action_state`.
+- 🔷 `save_part(history, part_index, action_state, agent_text)` writes the row and the hunk file. It does not yield, and it does not reply.
+- 🔷 `kept(patches, parts, part_index, action_state)` returns the patches to apply. `load_texts` passes that list to `PatchApplier` and writes the buffer.
+- 🚫 Passing the request, the file, the diff, and the new row into every helper so the helper can finish the call.
+- ℹ️ None of those methods is a second wire call.
 - 🔷 The project file is `ProjectManager.get_file_from_active_project(history.path)`. Read it with `buffer.read_async`. Write it with `buffer.write`.
 - ℹ️ The backup and the hunk file are cache files, not project files.
 - ℹ️ The batch diff is `Differ` on the backup and the saved project text. `part_index` is an index into `differ.patches`.
@@ -181,9 +184,9 @@ Register `decide` on `OLLMfilesd-FileHistory`. Signature `xii` is `history_id`, 
   - `last_change_type` clears in that same case, matching `approve`
 - ℹ️ Reset sets `reviewed = 0`. `is_need_approval` stays on while any open row remains.
 
-#### Add — `decide`, `load_texts`, `save_part`, and `write_kept` above `public void approve`
+#### Add — `decide`, `load_texts`, `save_part`, and `kept` above `public void approve`
 
-`decide` stops before any yield. `load_texts` does the reads. `save_part` writes the row. `write_kept` writes the project file and replies.
+`decide` stops before any yield. `load_texts` holds the call and sends the reply. `save_part` and `kept` take only the values they use.
 
 ```vala
 		/**
@@ -199,53 +202,44 @@ Register `decide` on `OLLMfilesd-FileHistory`. Signature `xii` is `history_id`, 
 		 */
 		public void decide(OLLMrpc.Request request, int64 history_id, int part_index, int action_state)
 		{
+			// Reject a bad action, or a part index that cannot exist.
 			if (action_state > 1 || action_state < -1) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"action_state must be 1, -1, or 0"
-					)
-				});
+				var reply = new OLLMrpc.Response();
+				reply.id = request.id;
+				reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "action_state must be 1, -1, or 0");
+				request.reply(reply);
 				return;
 			}
 			if (part_index < 0) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"part_index out of range"
-					)
-				});
+				var reply = new OLLMrpc.Response();
+				reply.id = request.id;
+				reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "part_index out of range");
+				request.reply(reply);
 				return;
 			}
+			// The history row has the path. The project file comes from that.
 			var rows = new Gee.ArrayList<FileHistory>();
 			FileHistory.query(this.rpc_manager.db).select(
 				"WHERE id = %lld".printf(history_id),
 				rows
 			);
 			if (rows.size == 0) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"history row not found"
-					)
-				});
+				var reply = new OLLMrpc.Response();
+				reply.id = request.id;
+				reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "history row not found");
+				request.reply(reply);
 				return;
 			}
 			var history = rows.get(0);
 			var file = this.rpc_manager.get_file_from_active_project(history.path);
 			if (file == null) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"file not found"
-					)
-				});
+				var reply = new OLLMrpc.Response();
+				reply.id = request.id;
+				reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "file not found");
+				request.reply(reply);
 				return;
 			}
+			// Accept and reject need an empty slot. Reset needs the row.
 			var parts = new Gee.ArrayList<FileDiffPart>();
 			FileDiffPart.query(this.rpc_manager.db).select(
 				"WHERE file_history_id = %lld ORDER BY part_index".printf(history.id),
@@ -260,43 +254,35 @@ Register `decide` on `OLLMfilesd-FileHistory`. Signature `xii` is `history_id`, 
 				break;
 			}
 			if ((action_state == 1 || action_state == -1) && existing_at >= 0) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"hunk already decided"
-					)
-				});
+				var reply = new OLLMrpc.Response();
+				reply.id = request.id;
+				reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "hunk already decided");
+				request.reply(reply);
 				return;
 			}
 			if (action_state == 0 && existing_at < 0) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"hunk has no row"
-					)
-				});
+				var reply = new OLLMrpc.Response();
+				reply.id = request.id;
+				reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "hunk has no row");
+				request.reply(reply);
 				return;
 			}
+			// Create the buffer here. load_texts does the reads and the reply.
 			file.manager.buffer_provider.create_buffer(file);
-			this.load_texts.begin(
-				request, history, file, parts, existing_at, part_index, action_state,
+			this.load_texts.begin(request, history, file, part_index, action_state,
 				(obj, res) => {
 					this.load_texts.end(res);
 				});
 		}
 
 		/**
-		 * Read the project buffer, the backup, and any saved project text.
+		 * Read the texts, save or clear the part, and reply.
 		 *
-		 * Then calls ''save_part''. Not a wire call.
+		 * Not a wire call. ''save_part'' and ''kept'' do not see the request.
 		 *
 		 * @param request inbound RPC
 		 * @param history batch row
 		 * @param file project file, buffer already created
-		 * @param parts saved rows for this batch
-		 * @param existing_at index of this hunk in ''parts'', or -1
 		 * @param part_index hunk index in that batch
 		 * @param action_state 1 accept, -1 reject, 0 reset
 		 */
@@ -304,24 +290,36 @@ Register `decide` on `OLLMfilesd-FileHistory`. Signature `xii` is `history_id`, 
 			OLLMrpc.Request request,
 			FileHistory history,
 			File file,
-			Gee.ArrayList<FileDiffPart> parts,
-			int existing_at,
 			int part_index,
 			int action_state
 		) {
+			// Saved rows for this batch. existing_at is this hunk, or -1.
+			var parts = new Gee.ArrayList<FileDiffPart>();
+			FileDiffPart.query(this.rpc_manager.db).select(
+				"WHERE file_history_id = %lld ORDER BY part_index".printf(history.id),
+				parts
+			);
+			var existing_at = -1;
+			for (var i = 0; i < parts.size; i++) {
+				if (parts.get(i).part_index != part_index) {
+					continue;
+				}
+				existing_at = i;
+				break;
+			}
+			// Project text as it is now.
 			var agent_text = "";
 			try {
 				agent_text = yield file.buffer.read_async();
 			} catch (GLib.Error e) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
-					)
-				});
+				// avoid async vala ctor bug
+				var reply = new OLLMrpc.Response();
+				reply.id = request.id;
+				reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e.message);
+				request.reply(reply);
 				return;
 			}
+			// Text from before this batch.
 			var backup_text = "";
 			if (history.backup_path != "") {
 				var backup_bytes = new uint8[0];
@@ -330,17 +328,16 @@ Register `decide` on `OLLMfilesd-FileHistory`. Signature `xii` is `history_id`, 
 					yield GLib.File.new_for_path(history.backup_path).load_contents_async(
 						null, out backup_bytes, out backup_etag);
 				} catch (GLib.Error e) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
-					});
+					// avoid async vala ctor bug
+					var reply = new OLLMrpc.Response();
+					reply.id = request.id;
+					reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e.message);
+					request.reply(reply);
 					return;
 				}
 				backup_text = (string) backup_bytes;
 			}
+			// A hunk file stores that project text, so the patch index holds.
 			foreach (var part in parts) {
 				if (!GLib.FileUtils.test(part.path(history), GLib.FileTest.EXISTS)) {
 					continue;
@@ -351,203 +348,88 @@ Register `decide` on `OLLMfilesd-FileHistory`. Signature `xii` is `history_id`, 
 					yield GLib.File.new_for_path(part.path(history)).load_contents_async(
 						null, out agent_bytes, out agent_etag);
 				} catch (GLib.Error e) {
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
-					});
+					// avoid async vala ctor bug
+					var reply = new OLLMrpc.Response();
+					reply.id = request.id;
+					reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e.message);
+					request.reply(reply);
 					return;
 				}
 				agent_text = (string) agent_bytes;
 				break;
 			}
-			this.save_part(request, history, file, parts, existing_at, part_index, action_state,
-				backup_text, agent_text);
-		}
-
-		/**
-		 * Diff the batch, then write the part row and the hunk file.
-		 *
-		 * Starts ''write_kept'' when the row write succeeds. Not a wire call.
-		 *
-		 * @param request inbound RPC
-		 * @param history batch row
-		 * @param file project file
-		 * @param parts saved rows for this batch
-		 * @param existing_at index of this hunk in ''parts'', or -1
-		 * @param part_index hunk index in that batch
-		 * @param action_state 1 accept, -1 reject, 0 reset
-		 * @param backup_text backup text
-		 * @param agent_text project text for this batch
-		 */
-		private void save_part(
-			OLLMrpc.Request request,
-			FileHistory history,
-			File file,
-			Gee.ArrayList<FileDiffPart> parts,
-			int existing_at,
-			int part_index,
-			int action_state,
-			string backup_text,
-			string agent_text
-		) {
+			// Patches are the backup against that project text.
 			var differ = new OLLMfiles.Diff.Differ(backup_text, agent_text);
 			differ.diff();
 			if (action_state != 0 && part_index >= differ.patches.size) {
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						"part_index out of range"
-					)
-				});
+				// avoid async vala ctor bug
+				var reply = new OLLMrpc.Response();
+				reply.id = request.id;
+				reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "part_index out of range");
+				request.reply(reply);
 				return;
 			}
-			var new_id = (int64) 0;
-			var new_path = "";
+			// Accept and reject store the row and the project text.
+			var saved_id = (int64) 0;
+			var saved_path = "";
 			if (action_state == 1 || action_state == -1) {
-				var part = new FileDiffPart();
-				part.file_history_id = history.id;
-				part.part_index = part_index;
-				part.accepted = action_state == 1 ? 1 : 0;
-				part.decided_at = new GLib.DateTime.now_local().to_unix();
-				part.id = FileDiffPart.query(this.rpc_manager.db).insert(part);
-				new_id = part.id;
-				new_path = part.path(history);
-				var parts_dir = GLib.Path.get_dirname(new_path);
-				if (!GLib.FileUtils.test(parts_dir, GLib.FileTest.EXISTS)) {
-					try {
-						GLib.File.new_for_path(parts_dir).make_directory_with_parents(null);
-					} catch (GLib.Error e) {
-						FileDiffPart.query(this.rpc_manager.db).deleteId(new_id);
-						request.reply(new OLLMrpc.Response() {
-							id = request.id,
-							error = new OLLMrpc.Error(
-								OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-								e.message
-							)
-						});
-						return;
-					}
-				}
 				try {
-					GLib.FileUtils.set_contents(new_path, agent_text);
+					var part = this.save_part(history, part_index, action_state, agent_text);
+					saved_id = part.id;
+					saved_path = part.path(history);
 				} catch (GLib.Error e) {
-					FileDiffPart.query(this.rpc_manager.db).deleteId(new_id);
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
-					});
+					// avoid async vala ctor bug
+					var reply = new OLLMrpc.Response();
+					reply.id = request.id;
+					reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e.message);
+					request.reply(reply);
 					return;
 				}
 			}
-			this.write_kept.begin(
-				request, history, file, parts, existing_at, part_index, action_state,
-				differ, backup_text, new_id, new_path,
-				(obj, res) => {
-					this.write_kept.end(res);
-				});
-		}
-
-		/**
-		 * Apply the kept patches, write the project file, and reply.
-		 *
-		 * Accept leaves the project file alone. Not a wire call.
-		 *
-		 * @param request inbound RPC
-		 * @param history batch row
-		 * @param file project file
-		 * @param parts saved rows for this batch, without a row just inserted
-		 * @param existing_at index of this hunk in ''parts'', or -1
-		 * @param part_index hunk index in that batch
-		 * @param action_state 1 accept, -1 reject, 0 reset
-		 * @param differ batch diff
-		 * @param backup_text backup text
-		 * @param new_id row just inserted, or 0
-		 * @param new_path hunk file just written, or empty
-		 */
-		private async void write_kept(
-			OLLMrpc.Request request,
-			FileHistory history,
-			File file,
-			Gee.ArrayList<FileDiffPart> parts,
-			int existing_at,
-			int part_index,
-			int action_state,
-			OLLMfiles.Diff.Differ differ,
-			string backup_text,
-			int64 new_id,
-			string new_path
-		) {
-			if (action_state == -1 || (action_state == 0 && parts.get(existing_at).accepted == 0)) {
-				var keep = new Gee.ArrayList<OLLMfiles.Diff.Patch>();
-				for (var i = 0; i < differ.patches.size; i++) {
-					if (i == part_index && action_state == -1) {
-						continue;
-					}
-					var skipped = false;
-					foreach (var part in parts) {
-						if (part.part_index != i) {
-							continue;
-						}
-						if (part.accepted != 0) {
-							continue;
-						}
-						if (action_state == 0 && part.part_index == part_index) {
-							continue;
-						}
-						skipped = true;
-						break;
-					}
-					if (skipped) {
-						continue;
-					}
-					keep.add(differ.patches.get(i));
-				}
+			// Reject removes this hunk. Reset of a reject writes it back.
+			var write_file = action_state == -1;
+			if (action_state == 0 && existing_at >= 0 && parts.get(existing_at).accepted == 0) {
+				write_file = true;
+			}
+			if (write_file) {
 				var next_text = "";
 				try {
-					next_text = new OLLMfiles.Diff.PatchApplier().apply(keep, backup_text);
+					next_text = new OLLMfiles.Diff.PatchApplier().apply(
+						this.kept(differ.patches, parts, part_index, action_state),
+						backup_text);
 				} catch (GLib.Error e) {
 					if (action_state != 0) {
-						FileDiffPart.query(this.rpc_manager.db).deleteId(new_id);
-						if (GLib.FileUtils.test(new_path, GLib.FileTest.EXISTS)) {
-							GLib.FileUtils.unlink(new_path);
+						FileDiffPart.query(this.rpc_manager.db).deleteId(saved_id);
+						if (GLib.FileUtils.test(saved_path, GLib.FileTest.EXISTS)) {
+							GLib.FileUtils.unlink(saved_path);
 						}
 					}
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
-					});
+					// avoid async vala ctor bug
+					var reply = new OLLMrpc.Response();
+					reply.id = request.id;
+					reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e.message);
+					request.reply(reply);
 					return;
 				}
 				try {
 					yield file.buffer.write(next_text);
 				} catch (GLib.Error e) {
 					if (action_state != 0) {
-						FileDiffPart.query(this.rpc_manager.db).deleteId(new_id);
-						if (GLib.FileUtils.test(new_path, GLib.FileTest.EXISTS)) {
-							GLib.FileUtils.unlink(new_path);
+						FileDiffPart.query(this.rpc_manager.db).deleteId(saved_id);
+						if (GLib.FileUtils.test(saved_path, GLib.FileTest.EXISTS)) {
+							GLib.FileUtils.unlink(saved_path);
 						}
 					}
-					request.reply(new OLLMrpc.Response() {
-						id = request.id,
-						error = new OLLMrpc.Error(
-							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-							e.message
-						)
-					});
+					// avoid async vala ctor bug
+					var reply = new OLLMrpc.Response();
+					reply.id = request.id;
+					reply.error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR, e.message);
+					request.reply(reply);
 					return;
 				}
 			}
-			if (action_state == 0) {
+			// Reset deletes the row and the hunk file.
+			if (action_state == 0 && existing_at >= 0) {
 				if (GLib.FileUtils.test(
 					parts.get(existing_at).path(history), GLib.FileTest.EXISTS)) {
 					GLib.FileUtils.unlink(parts.get(existing_at).path(history));
@@ -555,6 +437,7 @@ Register `decide` on `OLLMfilesd-FileHistory`. Signature `xii` is `history_id`, 
 				FileDiffPart.query(this.rpc_manager.db).deleteId(
 					parts.get(existing_at).id);
 			}
+			// Reviewed when every hunk has a row. Then reply with the file.
 			var after = new Gee.ArrayList<FileDiffPart>();
 			FileDiffPart.query(this.rpc_manager.db).select(
 				"WHERE file_history_id = %lld".printf(history.id),
@@ -583,11 +466,103 @@ Register `decide` on `OLLMfilesd-FileHistory`. Signature `xii` is `history_id`, 
 				"buffer",
 				"parent"
 			});
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				retval = OLLMrpc.val("o", row),
-				msg = "ok"
-			});
+			// avoid async vala ctor bug
+			var reply = new OLLMrpc.Response();
+			reply.id = request.id;
+			reply.retval = OLLMrpc.val("o", row);
+			reply.msg = "ok";
+			request.reply(reply);
+		}
+
+		/**
+		 * Insert the part row and write the hunk file.
+		 *
+		 * Deletes the row again when the file write fails.
+		 *
+		 * @param history batch row
+		 * @param part_index hunk index in that batch
+		 * @param action_state 1 accept or -1 reject
+		 * @param agent_text project text stored in the hunk file
+		 * @return the inserted row
+		 * @throws GLib.Error when the hunk file cannot be written
+		 */
+		private FileDiffPart save_part(
+			FileHistory history,
+			int part_index,
+			int action_state,
+			string agent_text
+		) throws GLib.Error {
+			// Insert first. The hunk path includes the new row id.
+			var part = new FileDiffPart();
+			part.file_history_id = history.id;
+			part.part_index = part_index;
+			part.accepted = action_state == 1 ? 1 : 0;
+			part.decided_at = new GLib.DateTime.now_local().to_unix();
+			part.id = FileDiffPart.query(this.rpc_manager.db).insert(part);
+			var hunk_path = part.path(history);
+			var parts_dir = GLib.Path.get_dirname(hunk_path);
+			if (!GLib.FileUtils.test(parts_dir, GLib.FileTest.EXISTS)) {
+				try {
+					GLib.File.new_for_path(parts_dir).make_directory_with_parents(null);
+				} catch (GLib.Error e) {
+					FileDiffPart.query(this.rpc_manager.db).deleteId(part.id);
+					throw e;
+				}
+			}
+			try {
+				GLib.FileUtils.set_contents(hunk_path, agent_text);
+			} catch (GLib.Error e) {
+				FileDiffPart.query(this.rpc_manager.db).deleteId(part.id);
+				throw e;
+			}
+			return part;
+		}
+
+		/**
+		 * Patches that stay on the project file.
+		 *
+		 * Drops this hunk on reject, and drops every rejected hunk except
+		 * the one being reset.
+		 *
+		 * @param patches batch diff
+		 * @param parts saved rows for this batch, without a row just inserted
+		 * @param part_index hunk index in that batch
+		 * @param action_state 1 accept, -1 reject, 0 reset
+		 * @return patches to pass to ''PatchApplier''
+		 */
+		private Gee.ArrayList<OLLMfiles.Diff.Patch> kept(
+			Gee.ArrayList<OLLMfiles.Diff.Patch> patches,
+			Gee.ArrayList<FileDiffPart> parts,
+			int part_index,
+			int action_state
+		) {
+			// Reject drops this hunk. Other rejected hunks stay off.
+			// Reset puts this hunk back and leaves those rejects off.
+			var keep = new Gee.ArrayList<OLLMfiles.Diff.Patch>();
+			for (var i = 0; i < patches.size; i++) {
+				if (i == part_index && action_state == -1) {
+					continue;
+				}
+				var skipped = false;
+				foreach (var part in parts) {
+					if (part.part_index != i) {
+						continue;
+					}
+					if (part.accepted != 0) {
+						continue;
+					}
+					if (action_state == 0 && part.part_index == part_index) {
+						continue;
+					}
+					skipped = true;
+					break;
+				}
+				if (skipped) {
+					continue;
+				}
+				keep.add(patches.get(i));
+			}
+			return keep;
 		}
 ```
 
@@ -618,10 +593,11 @@ Send `OLLMfilesd-FileHistory.decide` with this row's id.
 		 */
 		public async void decide(int part_index, int action_state) throws GLib.Error
 		{
-			yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "OLLMfilesd-FileHistory.decide",
-				args = OLLMrpc.args("xii", this.id, part_index, action_state)
-			});
+			// avoid async vala ctor bug
+			var call = new OLLMrpc.Request();
+			call.method = "OLLMfilesd-FileHistory.decide";
+			call.args = OLLMrpc.args("xii", this.id, part_index, action_state);
+			yield this.manager.rpc.call(call);
 		}
 ```
 

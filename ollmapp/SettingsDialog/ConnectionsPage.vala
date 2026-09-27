@@ -501,7 +501,7 @@ namespace OLLMapp.SettingsDialog
 		}
 
 		/**
-		 * Fill File Server widgets from {@link OLLMchat.Settings.Config2.filesd}.
+		 * Fill Desktop server widgets from {@link OLLMchat.Settings.Config2.filesd}.
 		 *
 		 * Called when the settings dialog is shown, same moment as
 		 * {@link ToolsPage.load_configs}.
