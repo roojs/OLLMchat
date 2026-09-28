@@ -359,6 +359,391 @@ This request is the trigger. Remembered objects go back as they are. Otherwise i
 			OLLMrpc.Request.register("OLLMfilesd-FileHistory", history_rpc);
 ```
 
+### 6. `libocfiles/FileDiffPart.vala` — client wire object
+
+**Why:** The desktop decodes the `parts` reply. The daemon class is not in this process. Same wire name `FileDiffPart`.
+
+**Where:** new file. `libocfiles/meson.build` `ocfiles_gir_src` after `'FileWithHistory.vala',`. `OLLMfiles.rpc_register()` after `FileWithHistory.rpc_register()`.
+
+**Depends on:** §1.
+
+#### Add — new file `libocfiles/FileDiffPart.vala`
+
+```vala
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+namespace OLLMfiles
+{
+	/**
+	 * One diff item on the wire ({@code OLLMfilesd-FileHistory.parts}).
+	 *
+	 * {@code hunk} is the unified hunk text. {@code accepted} is 0 undecided,
+	 * 1 accepted, -1 rejected.
+	 */
+	public class FileDiffPart : Object, OLLMrpc.Bin.Serializable
+	{
+		public static void rpc_register()
+		{
+			OLLMrpc.Bin.register("FileDiffPart", typeof(FileDiffPart));
+		}
+
+		public int64 id { get; set; default = 0; }
+		public int64 file_history_id { get; set; default = 0; }
+		public int part_index { get; set; default = 0; }
+
+		/**
+		 * Unified hunk text from {@code parts}. Not a database column.
+		 */
+		public string hunk { get; set; default = ""; }
+
+		public int accepted { get; set; default = 0; }
+		public int64 decided_at { get; set; default = 0; }
+	}
+}
+```
+
+#### Add — `libocfiles/meson.build` `ocfiles_gir_src`, after `'FileWithHistory.vala',`
+
+```meson
+  'FileDiffPart.vala',
+```
+
+#### Add — `libocfiles/namespace.vala` `rpc_register()`, after `FileWithHistory.rpc_register();`
+
+```vala
+		FileDiffPart.rpc_register();
+```
+
+### 7. `liboccoder/SourceView.vala` — `show_pending_diff` paints from `parts`
+
+**Why:** Open asks for the parts and paints that array. The backup stays on the daemon.
+
+**Where:** replace `show_pending_diff`.
+
+**Depends on:** §4, §6.
+
+#### Remove
+
+```vala
+		/**
+		 * If ''file'' is pending approval, load V_backup via daemon and show inline diff.
+		 *
+		 * @param file open project file (buffer already holds V_disk)
+		 */
+		public async void show_pending_diff(OLLMfiles.File file)
+		{
+			if (!this.manager.review_files.file_map.has_key(file.path)) {
+				return;
+			}
+			var row = this.manager.review_files.file_map.get(file.path);
+			var gtk_buffer = file.buffer as GtkSource.Buffer;
+			if (row.backup_path == "") {
+				var differ = new OLLMfiles.Diff.Differ("", gtk_buffer.text);
+				this.show_diff(differ);
+				this.review_bar.update_diff(differ, this.review_bar.file_index);
+				return;
+			}
+			var v_backup = "";
+			try {
+				var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+					method = "RPC-File.read",
+					args = OLLMrpc.args("s", row.backup_path)
+				});
+				if (this.current_file != file) {
+					return;
+				}
+				v_backup = response.msg;
+				if (response.msg_encode == 1) {
+					v_backup = (string) GLib.Base64.decode(response.msg);
+				}
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to read backup %s: %s", row.backup_path, e.message);
+			}
+			if (this.current_file != file) {
+				return;
+			}
+			var differ = new OLLMfiles.Diff.Differ(v_backup, gtk_buffer.text);
+			this.show_diff(differ);
+			this.review_bar.update_diff(differ, this.review_bar.file_index);
+		}
+```
+
+#### Replace with
+
+```vala
+		/**
+		 * If ''file'' is pending approval, load diff items and paint them.
+		 *
+		 * Calls {@code OLLMfilesd-FileHistory.parts}. Does not read the backup.
+		 *
+		 * @param file open project file (buffer already holds V_disk)
+		 */
+		public async void show_pending_diff(OLLMfiles.File file)
+		{
+			if (!this.manager.review_files.file_map.has_key(file.path)) {
+				return;
+			}
+			var row = this.manager.review_files.file_map.get(file.path);
+			var parts = new Gee.ArrayList<OLLMfiles.FileDiffPart>();
+			try {
+				var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+					method = "OLLMfilesd-FileHistory.parts",
+					args = OLLMrpc.args("x", row.approve_id)
+				});
+				if (this.current_file != file) {
+					return;
+				}
+				if (response.error != null) {
+					GLib.warning("Failed to load diff parts for %s: %s", file.path, response.error.message);
+					return;
+				}
+				if (response.retval.type() == GLib.Type.INVALID) {
+					if (this.diff_active) {
+						this.clear_diff();
+					}
+					return;
+				}
+				parts = (Gee.ArrayList<OLLMfiles.FileDiffPart>) response.retval.get_object();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to load diff parts for %s: %s", file.path, e.message);
+				return;
+			}
+			if (this.current_file != file) {
+				return;
+			}
+			if (this.diff_active) {
+				this.clear_diff();
+			}
+			var editor_lines = (file.buffer as GtkSource.Buffer).text.split("\n");
+			var display = new Gee.ArrayList<string>();
+			var kinds = new Gee.ArrayList<int>();
+			this.diff_baseline.clear();
+			this.diff_remove_at.clear();
+			this.diff_remove_n.clear();
+			var header = new GLib.Regex("^@@ -(\\d+),(\\d+) \\+(\\d+),(\\d+) @@$");
+			var new_i = 1;
+			foreach (var part in parts) {
+				var part_lines = part.hunk.split("\n");
+				if (part_lines.length < 1) {
+					continue;
+				}
+				GLib.MatchInfo info;
+				if (!header.match(part_lines[0], 0, out info)) {
+					continue;
+				}
+				var new_start = int.parse(info.fetch(3));
+				var new_count = int.parse(info.fetch(4));
+				string[] removed = {};
+				for (var li = 1; li < part_lines.length; li++) {
+					if (!part_lines[li].has_prefix("-")) {
+						continue;
+					}
+					removed += part_lines[li].substring(1);
+				}
+				while (new_i < new_start && new_i <= editor_lines.length) {
+					display.add(editor_lines[new_i - 1]);
+					this.diff_baseline.add(new_i);
+					kinds.add(0);
+					new_i++;
+				}
+				if (removed.length > 0) {
+					this.diff_remove_at.add(new_start);
+					this.diff_remove_n.add(removed.length);
+					foreach (var line in removed) {
+						display.add(line);
+						this.diff_baseline.add(0);
+						kinds.add(2);
+					}
+				}
+				if (new_count == 0) {
+					if (new_start > new_i) {
+						new_i = new_start;
+					}
+					continue;
+				}
+				for (var ln = new_start; ln < new_start + new_count && ln <= editor_lines.length; ln++) {
+					display.add(editor_lines[ln - 1]);
+					this.diff_baseline.add(ln);
+					kinds.add(1);
+				}
+				new_i = new_start + new_count;
+			}
+			while (new_i <= editor_lines.length) {
+				display.add(editor_lines[new_i - 1]);
+				this.diff_baseline.add(new_i);
+				kinds.add(0);
+				new_i++;
+			}
+			this.diff_buffer = new GtkSource.Buffer(this.diff_tag_table);
+			this.diff_buffer.set_text(string.joinv("\n", display.to_array()), -1);
+			var add_tag = this.diff_tag_table.lookup("diff-add");
+			var remove_tag = this.diff_tag_table.lookup("diff-remove");
+			for (var i = 0; i < kinds.size; i++) {
+				if (kinds.get(i) == 0) {
+					continue;
+				}
+				Gtk.TextIter iter;
+				this.diff_buffer.get_iter_at_line(out iter, i);
+				var line_end = iter;
+				if (!line_end.ends_line()) {
+					line_end.forward_to_line_end();
+				}
+				if (!line_end.is_end()) {
+					line_end.forward_char();
+				}
+				this.diff_buffer.apply_tag(kinds.get(i) == 1 ? add_tag : remove_tag, iter, line_end);
+			}
+			this.pre_diff_buffer = this.source_view.buffer as GtkSource.Buffer;
+			this.source_view.set_buffer(this.diff_buffer);
+			this.source_view.show_line_numbers = false;
+			this.diff_active = true;
+			this.scrolled_window.visible = true;
+			this.review_bar.update_diff(parts, this.review_bar.file_index);
+		}
+```
+
+### 8. `liboccoder/Diff/ReviewBar.vala` — bands from the parts
+
+**Why:** The bar paints from the same objects. It keeps that list so a later decision still has the hunk text.
+
+**Where:** `parts` property after `hunks`. New `update_diff` overload after the existing `update_diff(Differ, …)`.
+
+**Depends on:** §6.
+
+#### Add — after `private HunkList hunks`
+
+```vala
+		public Gee.ArrayList<OLLMfiles.FileDiffPart> parts { get; set; default = new Gee.ArrayList<OLLMfiles.FileDiffPart>(); }
+```
+
+#### Add — after the existing `update_diff(OLLMfiles.Diff.Differ, …)` method
+
+Bands from the unified hunk header. `accepted` 0 is pending, 1 accepted, -1 rejected.
+
+```vala
+		/**
+		 * Paint hunk bands from {@code OLLMfilesd-FileHistory.parts}.
+		 *
+		 * Keeps {@code parts} so the hunk text stays on the client.
+		 *
+		 * @param parts diff items, hunk text on each
+		 * @param file_index file position in the pending list
+		 */
+		public void update_diff(
+			Gee.ArrayList<OLLMfiles.FileDiffPart> parts,
+			int file_index = -1)
+		{
+			this.parts = parts;
+			this.file_index = file_index >= 0 ? file_index : this.file_index;
+			this.hunks.clear();
+			this.hunk_line_sum = 0;
+			var header = new GLib.Regex("^@@ -(\\d+),(\\d+) \\+(\\d+),(\\d+) @@$");
+			var bi = 0;
+			var bulk_decision = HunkDecision.PENDING;
+			if (this.file_index < this.file_bulk.length) {
+				bulk_decision = this.file_bulk[this.file_index];
+			}
+			foreach (var part in this.parts) {
+				var part_lines = part.hunk.split("\n");
+				if (part_lines.length < 1) {
+					continue;
+				}
+				GLib.MatchInfo info;
+				if (!header.match(part_lines[0], 0, out info)) {
+					continue;
+				}
+				var old_start = int.parse(info.fetch(1));
+				var old_count = int.parse(info.fetch(2));
+				var new_start = int.parse(info.fetch(3));
+				var new_count = int.parse(info.fetch(4));
+				var old_end = old_count == 0 ? old_start - 1 : old_start + old_count - 1;
+				var new_end = new_count == 0 ? new_start - 1 : new_start + new_count - 1;
+				var op = OLLMfiles.Diff.PatchOperation.REPLACE;
+				if (old_count == 0) {
+					op = OLLMfiles.Diff.PatchOperation.ADD;
+				}
+				if (old_count > 0 && new_count == 0) {
+					op = OLLMfiles.Diff.PatchOperation.REMOVE;
+				}
+				var patch = new OLLMfiles.Diff.Patch(
+					op, old_start, old_end, new_start, new_end,
+					new string[0], new string[0]);
+				var band = new HunkBand(patch) {
+					band_index = bi,
+				};
+				switch (part.accepted) {
+					case 1:
+						band.decision = HunkDecision.ACCEPTED;
+						break;
+					case -1:
+						band.decision = HunkDecision.REJECTED;
+						break;
+					default:
+						break;
+				}
+				if (bulk_decision != HunkDecision.PENDING) {
+					band.decision = bulk_decision;
+				}
+				this.hunks.add(band);
+				this.hunk_line_sum += band.line_count;
+				bi++;
+			}
+			this.file_nav.visible = this.live_queue ? this.file_count > 0 : this.file_count > 1;
+			this.file_prev.visible = this.file_count > 1;
+			this.file_next.visible = this.file_count > 1;
+			if (this.file_nav.visible) {
+				this.file_nav_btn.label = "File %d of %d".printf(
+					this.file_index + 1, this.file_count);
+			}
+			if (this.mock_inactive) {
+				this.pending_label.visible = true;
+				this.map_area.visible = false;
+				this.map_scroll_left.visible = false;
+				this.map_scroll_right.visible = false;
+				this.pending_label.label = "%d changes pending review".printf(
+					this.file_count);
+				this.accept_btn.visible = false;
+				this.reject_btn.visible = false;
+				this.feedback_btn.visible = false;
+				this.unapprove_btn.visible = false;
+				return;
+			}
+			this.pending_label.visible = false;
+			this.map_area.visible = true;
+			this.active = this.hunks.pending_after(-1);
+			this.active = this.active < 0 && this.hunks.size > 0 ? 0 : this.active;
+			if (this.active >= 0) {
+				this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
+			}
+			var pending = this.active >= 0
+				&& this.hunks.get(this.active).decision == HunkDecision.PENDING;
+			this.accept_btn.visible = pending;
+			this.reject_btn.visible = pending;
+			this.feedback_btn.visible = this.review_responses.size > 0;
+			this.unapprove_btn.visible = false;
+			this.map_width = 0;
+			GLib.Idle.add_once(() => {
+				this.on_width();
+			});
+		}
+```
+
 ---
 
 ## LLM notes
@@ -367,7 +752,10 @@ This request is the trigger. Remembered objects go back as they are. Otherwise i
 - 🚫 A hunk file that stores the full project text.
 - 🚫 A `hunk` column on `file_diff_part`. No `ALTER TABLE` for it.
 - 🚫 Copy `rows` into a `Gee.ArrayList<GLib.Object>` before `val("o", …)`. `rows` is already that array.
+- 🚫 `parts` that only selects rows and replies. That request runs `Differ` and sets `hunk`.
 - 🚫 No row until Accept or Reject. The items exist when the diff is shown.
-- 🚫 Client `Differ` on the backup body.
+- 🚫 Client `Differ`, and `RPC-File.read` of `backup_path`, inside `show_pending_diff`.
 - 🚫 `RPC-File` rename in this plan. New calls use `OLLMfilesd-`. The hyphen joins the namespace and the class. The dot is only the method. `RPC-` stays for internal calls such as `RPC-Daemon.hello`.
-- ℹ️ Touch points: `liboccoder/SourceView.vala` `show_pending_diff`, `ollmfilesd/FileDiffPart.vala`, `ollmfilesd/FileHistory.vala`, `libocfiles/Diff/Differ.vala`.
+- ℹ️ [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md) drops `FileHistory.live` for that history id when it replaces the rows. Otherwise the next `parts` returns the stale objects.
+- ℹ️ Do not wrap `new GLib.Regex` in try/catch. The pattern is a fixed literal.
+- ℹ️ Touch points: `liboccoder/SourceView.vala` `show_pending_diff`, `liboccoder/Diff/ReviewBar.vala`, `ollmfilesd/FileDiffPart.vala`, `ollmfilesd/FileHistory.vala`, `libocfiles/Diff/Differ.vala`.

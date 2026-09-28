@@ -140,9 +140,10 @@ separator.horizontal.oc-table-body-sep {
   background-color: white;
 }
 
-/* SourceView editor styling - monospace font */
+/* Source view. Droid Sans Mono is the Android fixed face.
+   Desktop skips it and uses monospace. */
 .source-view {
-  font-family: monospace;
+  font-family: "Droid Sans Mono", monospace;
 }
 
 /* Permission widget styling */

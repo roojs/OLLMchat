@@ -46,6 +46,7 @@ diff update
 - 🔷 Save writes the project file. Then diff update. Then re-render and refill. Resync everything.
 - 🔷 `Differ` runs on the daemon again. Cache backup against the project file just saved.
 - 🔷 The reply is the new array. The desktop throws away the old paint and hangs the new text on the in-memory items.
+- 🔷 Replacing the stored items drops `FileHistory.live` for that history id. Otherwise the next `parts` returns the objects from before the save.
 - 💩 Same return shape as `show_pending_diff` in [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md). The old stored items are replaced.
 
 ---

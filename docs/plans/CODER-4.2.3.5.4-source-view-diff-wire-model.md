@@ -131,7 +131,10 @@ show_pending_diff   (only if pending)
 ```
 
 - 🔷 `show_pending_diff` is an RPC. It does not call `RPC-File.read` on `backup_path`.
-- 🔷 The `parts` request is the trigger. Inputs are the cache backup and the project file. No rows yet: `Differ`, store the rows, set `hunk` on the objects, and remember them. A later `parts` in the same process returns those objects. Rows already in the table, with no remembered objects: `Differ` sets `hunk` on them and does not insert again.
+- 🔷 The `parts` request is the trigger. Inputs are the cache backup and the project file.
+- 🔷 No rows yet: `Differ`, store the rows, set `hunk` on the objects, and remember them.
+- 🔷 A later `parts` in the same process returns those objects.
+- 🔷 Rows already in the table, with no remembered objects: `Differ` sets `hunk` on them and does not insert again.
 - 🔷 The diff item holds the hunk text. That text is a property on the object that comes down the wire. It is not a database column.
 - 🔷 The file server writes the diff items to disk and is in charge of that store. `hunk` is not in that row. A later open sets the text on the object and returns it.
 - 🔷 The client hangs that text on the diff item in memory. The client does not write diff items.

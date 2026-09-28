@@ -97,6 +97,8 @@ namespace OLLMapp
 				}
 				label.label = this.row_title(agent_factory);
 				label.tooltip_text = agent_factory.long_title;
+				GLib.debug("agent list bind pos=%u name=%s label=%s",
+					list_item.position, agent_factory.name, label.label);
 			});
 
 			this.dropdown = new Gtk.DropDown(null, null) {
@@ -126,22 +128,52 @@ namespace OLLMapp
 			foreach (var factory in this.host.history_manager.agent_factories.values) {
 				this.store.append(factory);
 			}
+			var store_n = (int) this.store.get_n_items();
+			GLib.debug("agent list store n=%d", store_n);
+			for (var i = 0; i < store_n; i++) {
+				var stored = (OLLMchat.Agent.Factory) this.store.get_item(i);
+				GLib.debug("agent list store i=%d name=%s title=%s",
+					i, stored.name, stored.title);
+			}
 			this.filter = new Gtk.CustomFilter((item) => {
 				var factory = (OLLMchat.Agent.Factory) item;
 				if (factory.name != "agent-pi") {
 					return true;
 				}
-				GLib.debug("agent-pi list state=%s", filesd_client.state.to_string());
-				if (filesd_client.state == FilesdClient.State.LIVE
-					|| filesd_client.state == FilesdClient.State.SOCKET) {
-					return true;
+				var show = false;
+				switch (filesd_client.state) {
+				case FilesdClient.State.LIVE:
+				case FilesdClient.State.SOCKET:
+					show = true;
+					break;
+
+				default:
+					break;
 				}
-				return false;
+				GLib.debug("agent-pi list state=%s show=%s",
+					filesd_client.state.to_string(), show.to_string());
+				return show;
 			});
-			this.dropdown.model = new Gtk.FilterListModel(this.store, this.filter);
+			var model = new Gtk.FilterListModel(this.store, this.filter);
+			this.dropdown.model = model;
+			var model_n = (int) model.get_n_items();
+			GLib.debug("agent list model n=%d", model_n);
+			for (var i = 0; i < model_n; i++) {
+				var listed = (OLLMchat.Agent.Factory) model.get_item(i);
+				GLib.debug("agent list model i=%d name=%s title=%s",
+					i, listed.name, listed.title);
+			}
 			filesd_client.notify["state"].connect(() => {
 				GLib.debug("agent list notify state=%s", filesd_client.state.to_string());
 				this.filter.changed(Gtk.FilterChange.DIFFERENT);
+				var listed_model = (Gtk.FilterListModel) this.dropdown.model;
+				var listed_n = (int) listed_model.get_n_items();
+				GLib.debug("agent list model n=%d", listed_n);
+				for (var i = 0; i < listed_n; i++) {
+					var listed = (OLLMchat.Agent.Factory) listed_model.get_item(i);
+					GLib.debug("agent list model i=%d name=%s title=%s",
+						i, listed.name, listed.title);
+				}
 			});
 
 			this.dropdown.notify["selected"].connect(() => {

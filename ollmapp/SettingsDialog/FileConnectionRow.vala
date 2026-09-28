@@ -58,7 +58,7 @@ namespace OLLMapp.SettingsDialog
 				subtitle = "Active";
 			}
 			this.expander = new Adw.ExpanderRow() {
-				title = "Remote Desktop Connection: " + client.url,
+				title = "Remote Desktop: " + client.url,
 				subtitle = subtitle,
 				can_focus = false,
 				focus_on_click = false
