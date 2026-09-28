@@ -35,8 +35,8 @@ Save
 
 diff update
   history id                        →
-                                      Differ(cache backup, project file)
-                                      file server replaces the stored items
+                                      FileHistory.rebuild_parts
+                                      cache backup against the project file
                                   ←  the new array, hunk text included
   clear bands and overlay
   refill the in-memory items
@@ -44,10 +44,11 @@ diff update
 ```
 
 - 🔷 Save writes the project file. Then diff update. Then re-render and refill. Resync everything.
-- 🔷 `Differ` runs on the daemon again. Cache backup against the project file just saved.
+- 🔷 Diff update calls `FileHistory.rebuild_parts`. Same method as a `parts` cache miss. Cache backup against the project file just saved. It does not delete the rows and insert a new set.
 - 🔷 The reply is the new array. The desktop throws away the old paint and hangs the new text on the in-memory items.
-- 🔷 Replacing the stored items drops `FileHistory.live` for that history id. Otherwise the next `parts` returns the objects from before the save.
-- 💩 Same return shape as `show_pending_diff` in [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md). The old stored items are replaced.
+- 🔷 `rebuild_parts` writes `FileHistory.live` and `FileHistory.live_stamp` for that history. The save path does not clear those maps and does not delete the rows.
+- ℹ️ [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md) `parts` returns the remembered list only when the project file's modification stamp still matches `live_stamp`. A miss calls the same `rebuild_parts`.
+- 💩 Same return shape as `show_pending_diff` in [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md).
 
 ---
 

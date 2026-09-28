@@ -131,9 +131,9 @@ show_pending_diff   (only if pending)
 ```
 
 - 🔷 `show_pending_diff` is an RPC. It does not call `RPC-File.read` on `backup_path`.
-- 🔷 The `parts` request is the trigger. Inputs are the cache backup and the project file.
+- 🔷 The `parts` request is the trigger. The diff itself is `FileHistory.rebuild_parts`. Inputs are the cache backup and the project file.
 - 🔷 No rows yet: `Differ`, store the rows, set `hunk` on the objects, and remember them.
-- 🔷 A later `parts` in the same process returns those objects.
+- 🔷 A later `parts` in the same process returns those objects only when the project file's modification stamp still matches the stamp captured when that list was diffed. The history id alone is not enough. Settled in [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md).
 - 🔷 Rows already in the table, with no remembered objects: `Differ` sets `hunk` on them and does not insert again.
 - 🔷 The diff item holds the hunk text. That text is a property on the object that comes down the wire. It is not a database column.
 - 🔷 The file server writes the diff items to disk and is in charge of that store. `hunk` is not in that row. A later open sets the text on the object and returns it.
@@ -145,7 +145,7 @@ show_pending_diff   (only if pending)
 
 ## Save while a review is open
 
-The user edits the file after the diff items exist, then saves. Those rows no longer match the project file. Diff update replaces them. The desktop throws away the old paint and refills from the new array.
+The user edits the file after the diff items exist, then saves. Those hunks no longer match the project file. Diff update calls `FileHistory.rebuild_parts`. The desktop throws away the old paint and refills from the new array. The rows stay.
 
 ```
 desktop                                          ollmfilesd
@@ -157,8 +157,8 @@ Save
 
 diff update
   history id                        →
-                                      Differ(cache backup, project file)
-                                      replace the diff-item rows
+                                      FileHistory.rebuild_parts
+                                      cache backup against the project file
                                   ←  the new array
   clear bands and overlay
   refill from that array
@@ -166,9 +166,9 @@ diff update
 ```
 
 - 🔷 Save writes the project file. The diff items from the earlier `show_pending_diff` are stale.
-- 🔷 Diff update runs `Differ` again on the daemon. Cache backup against the project file just saved.
+- 🔷 Diff update calls `FileHistory.rebuild_parts`. Cache backup against the project file just saved. The rows stay.
 - 🔷 The reply is the new array. The desktop re-renders and refills everything from it.
-- 💩 Same return shape as `show_pending_diff`. One history id in. The whole row set comes back. The old rows are replaced.
+- 💩 Same return shape as `show_pending_diff`. One history id in. The array comes back.
 
 ---
 
