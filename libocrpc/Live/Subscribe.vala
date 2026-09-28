@@ -93,16 +93,18 @@ namespace OLLMrpc.Live
 					obj.get_property(pspec.name, ref current);
 					var helper = OLLMrpc.Bin.TypeOverride.lookup(pspec.value_type);
 					var packed = new Gee.ArrayList<GLib.Value?>();
+					var method_name = name;
 					if (helper != null) {
 						foreach (var field in helper.pack(current)) {
 							packed.add(field);
 						}
+						method_name = helper.rpc_signal_alias(name);
 					}
 					if (helper == null) {
 						packed.add(current);
 					}
 					request.connection.write(new Notification() {
-						method = name,
+						method = method_name,
 						id = id,
 						args = packed
 					});
