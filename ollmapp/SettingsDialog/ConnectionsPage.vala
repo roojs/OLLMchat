@@ -79,29 +79,35 @@ namespace OLLMapp.SettingsDialog
 				hexpand = true
 			};
 
+			var llm_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
+			llm_box.append(new Gtk.Image.from_icon_name("list-add-symbolic"));
+			var llm_label = new Gtk.Label("LLM Connection") {
+				ellipsize = Pango.EllipsizeMode.END,
+				hexpand = true
+			};
+			llm_box.append(llm_label);
 			this.add_btn = new Gtk.Button() {
-				icon_name = "list-add-symbolic",
-				label = "LLM connection",
+				child = llm_box,
 				hexpand = true,
 				css_classes = {"suggested-action"}
 			};
-			var llm_label = this.add_btn.child.get_last_child() as Gtk.Label;
-			llm_label.ellipsize = Pango.EllipsizeMode.END;
-			llm_label.hexpand = true;
 			this.add_btn.clicked.connect(() => {
 				this.add_dialog.show_add();
 				this.add_dialog.present(this.dialog);
 			});
 			this.action_widget.append(this.add_btn);
 
-			this.add_file_btn = new Gtk.Button() {
-				icon_name = "list-add-symbolic",
-				label = "remote desktop environment",
+			var desktop_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
+			desktop_box.append(new Gtk.Image.from_icon_name("list-add-symbolic"));
+			var desktop_label = new Gtk.Label("Remote Desktop Connection") {
+				ellipsize = Pango.EllipsizeMode.END,
 				hexpand = true
 			};
-			var desktop_label = this.add_file_btn.child.get_last_child() as Gtk.Label;
-			desktop_label.ellipsize = Pango.EllipsizeMode.END;
-			desktop_label.hexpand = true;
+			desktop_box.append(desktop_label);
+			this.add_file_btn = new Gtk.Button() {
+				child = desktop_box,
+				hexpand = true
+			};
 			this.add_file_btn.clicked.connect(() => {
 				this.add_file_dialog.show_add();
 				this.add_file_dialog.present(this.dialog);

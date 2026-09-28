@@ -131,6 +131,7 @@ namespace OLLMapp
 				if (factory.name != "agent-pi") {
 					return true;
 				}
+				GLib.debug("agent-pi list state=%s", filesd_client.state.to_string());
 				if (filesd_client.state == FilesdClient.State.LIVE
 					|| filesd_client.state == FilesdClient.State.SOCKET) {
 					return true;
@@ -139,6 +140,7 @@ namespace OLLMapp
 			});
 			this.dropdown.model = new Gtk.FilterListModel(this.store, this.filter);
 			filesd_client.notify["state"].connect(() => {
+				GLib.debug("agent list notify state=%s", filesd_client.state.to_string());
 				this.filter.changed(Gtk.FilterChange.DIFFERENT);
 			});
 

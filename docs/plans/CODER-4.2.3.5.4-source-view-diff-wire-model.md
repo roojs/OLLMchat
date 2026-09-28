@@ -131,12 +131,12 @@ show_pending_diff   (only if pending)
 ```
 
 - 🔷 `show_pending_diff` is an RPC. It does not call `RPC-File.read` on `backup_path`.
-- 🔷 `Differ` runs on `ollmfilesd` when this history has no stored items yet. Inputs are the cache backup and the project file.
-- 🔷 The diff item holds the hunk text. That text is part of the row that comes down the wire.
-- 🔷 The file server writes the diff items to disk and is in charge of that store. A later open returns the active items, hunk text included.
+- 🔷 The `parts` request is the trigger. Inputs are the cache backup and the project file. No rows yet: `Differ`, store the rows, set `hunk` on the objects, and remember them. A later `parts` in the same process returns those objects. Rows already in the table, with no remembered objects: `Differ` sets `hunk` on them and does not insert again.
+- 🔷 The diff item holds the hunk text. That text is a property on the object that comes down the wire. It is not a database column.
+- 🔷 The file server writes the diff items to disk and is in charge of that store. `hunk` is not in that row. A later open sets the text on the object and returns it.
 - 🔷 The client hangs that text on the diff item in memory. The client does not write diff items.
 - ℹ️ `file_diff_part` today is only `id`, `file_history_id`, `part_index`, `accepted`, `decided_at`. No hunk text. Rows are unused. `ollmfilesd/FileDiffPart.vala`.
-- 🔷 Settled in [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md). The table is `file_diff_part`, with a `hunk` column. `accepted` `0` is undecided, `1` accepted, `-1` rejected. `OLLMfilesd-FileHistory.parts` takes the `file_history` id.
+- 🔷 Settled in [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md). The table is `file_diff_part`. `hunk` is a property on that object, not a column. `accepted` `0` is undecided, `1` accepted, `-1` rejected. `OLLMfilesd-FileHistory.parts` takes the `file_history` id.
 
 ---
 
@@ -228,7 +228,7 @@ backup and project text stay put        (no wire)
 - 🔷 One hunk goes through the diff item. The request is that item and the approval. That item makes the adjustment.
 - 🔷 **Accept file changes**, **Reject file changes**, and **Reset** are one method: `OLLMfilesd-FileHistory.decide`. The action is the difference. It is not a separate accept method and reject method.
 - 🔷 That call covers every diff item on that history. It does not call the diff item once per hunk.
-- 🔷 The daemon does not run `Differ` again. The hunks are already on the rows from `show_pending_diff`.
+- 🔷 The daemon does not run `Differ` again. The hunk text is already on the object from `show_pending_diff`.
 - ℹ️ The menu labels are in `liboccoder/Diff/ReviewBar.vala`. Today they only flip in-memory hunk decisions.
 - ℹ️ Today the whole-file wire is two methods, `RPC-FileHistory.rpc_approve` and `RPC-FileHistory.rpc_revert`. Each sends `path` and `history id`. `libocfiles/FileHistory.vala`, `ollmfilesd/FileHistory.vala`.
 - 💩 **Accept changes to all files** and **Reject changes to all files** are `decide` once per file. Not a new call.

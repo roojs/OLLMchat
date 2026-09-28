@@ -57,13 +57,8 @@ namespace OLLMapp.SettingsDialog
 			if (client.state != FilesdClient.State.REQUESTED) {
 				subtitle = "Active";
 			}
-			var title = client.url;
-			try {
-				title = GLib.Uri.parse(client.url, GLib.UriFlags.NONE).get_host();
-			} catch (GLib.UriError e) {
-			}
 			this.expander = new Adw.ExpanderRow() {
-				title = title,
+				title = "Remote Desktop Connection: " + client.url,
 				subtitle = subtitle,
 				can_focus = false,
 				focus_on_click = false
@@ -135,6 +130,13 @@ namespace OLLMapp.SettingsDialog
 				title = "Registration"
 			};
 			check_row.add_suffix(this.check_button);
+			this.client.bind_property("state", check_row, "visible",
+				GLib.BindingFlags.SYNC_CREATE,
+				(binding, from_value, ref to_value) => {
+					var state = (FilesdClient.State) from_value.get_enum();
+					to_value.set_boolean(state == FilesdClient.State.REQUESTED);
+					return true;
+				});
 			this.expander.add_row(check_row);
 
 			var remove_button = new Gtk.Button.with_label("Remove") {
@@ -186,6 +188,7 @@ namespace OLLMapp.SettingsDialog
 			}
 			this.expander.subtitle = "Active";
 			this.status_label.label = "Active";
+			GLib.debug("check ok state=%s", this.client.state.to_string());
 			if (!this.enabled_switch.active) {
 				this.client.state = FilesdClient.State.DISABLED;
 				this.win.app.config.save();
@@ -276,6 +279,7 @@ namespace OLLMapp.SettingsDialog
 			});
 			if (remote) {
 				this.client.state = FilesdClient.State.LIVE;
+				GLib.debug("reconnect live url=%s", this.client.url);
 				this.win.app.config.save();
 				return;
 			}

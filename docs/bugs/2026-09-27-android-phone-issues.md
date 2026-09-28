@@ -60,7 +60,8 @@
 
 ### Fix
 
-- **✔️** Both buttons use `list-add-symbolic` plus the shorter label. Labels ellipsize at the end.
+- **✔️** Both buttons set `list-add-symbolic` and a shorter label.
+- **🔷** 2026-09-28: the plus is not on the phone. The label is. Follow-up is [`2026-09-28-android-remote-desktop.md`](2026-09-28-android-remote-desktop.md).
 
 ---
 

@@ -175,6 +175,9 @@ namespace OLLMchat.History
 			// Store config
 			this.config = app.config;
 			this.config.filesd_client.notify["state"].connect(() => {
+				GLib.debug("filesd state=%s session=%s",
+					this.config.filesd_client.state.to_string(),
+					this.session.agent_name);
 				foreach (var session in this.sessions.id_map.values) {
 					if (session.agent_name != "agent-pi") {
 						continue;

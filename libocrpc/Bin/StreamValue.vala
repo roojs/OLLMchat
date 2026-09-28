@@ -278,6 +278,9 @@ namespace OLLMrpc.Bin
 			}
 			if (val.type().is_a(GLib.Type.OBJECT)) {
 				if (val.get_object() == null) {
+					ctx.out_stream.put_byte((uint8) GLib.Type.UINT64);
+					ctx.out_stream.put_byte(1);
+					ctx.out_stream.put_byte(0);
 					return;
 				}
 				if (!val.get_object().get_type().is_a(typeof(Serializable))

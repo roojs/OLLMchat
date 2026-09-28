@@ -568,6 +568,9 @@ namespace OLLMcoder
 					GLib.warning("Failed to read file %s: %s", file.path, e.message);
 					gtk_buffer.text = "";
 				}
+				GLib.debug("file read path=%s loaded=%s chars=%d",
+					file.path, file.buffer.is_loaded.to_string(),
+					gtk_buffer.text.length);
 			}
 			
 			// Switch view to file's buffer (GtkSourceFileBuffer IS a GtkSource.Buffer)
