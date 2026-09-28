@@ -67,6 +67,7 @@
 ## Problem 3 — Settings expanders open only sometimes
 
 - **🔷** Connections row `LLM: …` (the default LLM row). Taps sometimes expand, usually do nothing. One sequence took six taps before it collapsed. Further taps then did nothing for a while, then it opened again.
+- **🔷** 2026-09-27 21:51, same row, live: one click can open it. Further clicks do not reliably expand or collapse. It opens or closes only sometimes.
 - **🔷** Same intermittent expand and collapse on Tools rows.
 - **🔷** Same on Models rows.
 - **🔷** Expected: one tap on the row header opens it. One tap closes it.
@@ -77,11 +78,15 @@
 - **ℹ️** Tools rows (`Rows/ToolRow.vala`) and model rows (`ModelRow.vala`) are also `Adw.ExpanderRow`. They do not go through `arrow()`.
 - **✔️** Phone log 2026-09-27 19:22, settings open: `AdwExpanderRow placed into GtkBox, can only be placed into GtkListBox`. Connections, Tools, and Models all append expanders to a `Gtk.Box`.
 - **ℹ️** Expansion is the inner `Gtk.ListBox` `row-activated` on the header (`adw-expander-row.ui`), not the outer row. A `Gtk.Box` parent does not remove that header list.
-- **💩** A shared Android tap on that header list. `gtk_list_box_click_gesture_stopped` clears the press, so a scroll claim on a slightly moving finger never activates the row.
+- **💩** A shared Android tap on that header list. The header toggles only if the list click is still active on release. Two parents can cancel that click while the finger is still inside the click slop:
+  - `Gtk.ScrolledWindow` claims a touch after `gtk-dnd-drag-threshold` (~8px) when the page can scroll (`gtkscrolledwindow.c` `scrolled_window_drag_update_cb`).
+  - The settings bottom sheet claims a downward drag after 16px (`adw-swipe-tracker.c` `DRAG_THRESHOLD_DISTANCE`) to pull the sheet closed.
+- **ℹ️** The Android click patch already lets a touch wobble 40px before the click cancels itself (`gtkgestureclick.c`). The scroller and the sheet still claim first, so a slightly moving finger never activates the row. A still finger does.
+- **🚫** The `GtkBox` warning does not disable the header list. Moving the expander into a `Gtk.ListBox` would not stop those claims.
 
 ### Next
 
-- **⏳** **💩** One log on expander header activation (page, row title, expanded before and after) and a tap series on the phone.
+- **⏳** **💩** Phone was not on wireless debugging for the 21:51 series, so which parent claimed those taps is not in a log yet.
 
 ---
 

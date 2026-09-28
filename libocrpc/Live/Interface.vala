@@ -28,6 +28,16 @@ namespace OLLMrpc.Live
 	 * Construct setters that run before that block stash values with
 	 * {@link rpc_ctor_stash} and read them back with {@link rpc_ctor_get}.
 	 *
+	 * ''[GIR (visible = false)]'' marks this interface non-introspectable.
+	 * Stock Vala still emits an implements edge for it on every public
+	 * consumer class. That edge names a library with no typelib, and
+	 * GJS crashes while resolving methods. Hide it one of two ways:
+	 * build with the Vala patch that skips non-introspectable
+	 * interfaces (girwriter-hidden-interface-implements), or strip
+	 * implements name OLLMrpc.LiveInterface with XSLT before
+	 * g-ir-compiler. gnome-shell-rpc does the strip in
+	 * scripts/gir-inject.xsl.
+	 *
 	 * == Example ==
 	 *
 	 * {{{
@@ -42,6 +52,7 @@ namespace OLLMrpc.Live
 	 * }
 	 * }}}
 	 */
+	[GIR (visible = false)]
 	public interface Interface : GLib.Object
 	{
 		/**
@@ -50,7 +61,6 @@ namespace OLLMrpc.Live
 		 * GObject name ''rpc-lid''. Set by live decode via
 		 * {@link GLib.Object.new}.
 		 */
-		[GIR (visible = false)]
 		public abstract uint64 rpc_lid { get; set construct; }
 
 		/**
@@ -61,7 +71,6 @@ namespace OLLMrpc.Live
 		 * @param name GIR property name
 		 * @param value the construct value to keep until ''construct''
 		 */
-		[GIR (visible = false)]
 		public void rpc_ctor_stash(string name, GLib.Value value)
 		{
 			var bag = this.get_data<CtorBag>("rpc-ctor");
@@ -78,7 +87,6 @@ namespace OLLMrpc.Live
 		/**
 		 * Drop the construct stash. Safe when nothing was stored.
 		 */
-		[GIR (visible = false)]
 		public void rpc_ctor_clear()
 		{
 			this.set_data("rpc-ctor", null);
@@ -91,7 +99,6 @@ namespace OLLMrpc.Live
 		 * @return the stashed value, or null when this construction
 		 *     did not set it
 		 */
-		[GIR (visible = false)]
 		public GLib.Value? rpc_ctor_get(string name)
 		{
 			var bag = this.get_data<CtorBag>("rpc-ctor");
@@ -108,15 +115,31 @@ namespace OLLMrpc.Live
 		}
 
 		/**
-		 * Whether this construction stashed at least one property.
+		 * Whether stashed construct arguments belong to this wire name.
 		 *
-		 * @return true when at least one construct property was stashed
+		 * Walks {@link GLib.Object.get_type} through
+		 * {@link Bin.gtype_to_alias}. True only when something was
+		 * stashed and the registered leaf is ''wire''.
+		 *
+		 * @param wire ''Ns-Type'' of the class about to call ''.new''
+		 * @return true when this construction should send the stash
 		 */
-		[GIR (visible = false)]
-		public bool rpc_ctor_has()
+		public bool rpc_ctor_has(string wire)
 		{
 			var bag = this.get_data<CtorBag>("rpc-ctor");
-			return bag != null && bag.names.size > 0;
+			if (bag == null || bag.names.size == 0) {
+				return false;
+			}
+			var leaf = this.get_type();
+			while (leaf != GLib.Type.INVALID) {
+				if (OLLMrpc.Bin.gtype_to_alias == null
+						|| !OLLMrpc.Bin.gtype_to_alias.has_key(leaf)) {
+					leaf = leaf.parent();
+					continue;
+				}
+				return OLLMrpc.Bin.gtype_to_alias.get(leaf) == wire;
+			}
+			return false;
 		}
 	}
 }
