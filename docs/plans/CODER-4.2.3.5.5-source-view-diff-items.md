@@ -24,7 +24,12 @@
 ## Purpose
 
 - 🔷 The file server stores one diff item per hunk and sends that array down the wire.
-- 🔷 The hunk text is a property on that object. It goes down the wire. It is not a database column.
+- 🔷 A hunk stores the removed lines and the added lines separately. `hunk_remove` and `hunk_add`. Neither string has a `+` or `-` on each line.
+- 🔷 The line range is on the object. Counts come from that range. Nothing scans the lines to find out how many there are.
+- 🔷 `FileDiffPart.compare` takes another file part and returns an int. `0` neither. `1` line numbers only. `2` checksum only. `3` both.
+- 🔷 `checksum` is a column on `file_diff_part`. `compare` uses it instead of `hunk_remove` and `hunk_add`.
+- 🔷 `FileDiffPart.update_sum` sets `checksum` from that part's `hunk_remove` and `hunk_add`.
+- 💩 The checksum is SHA256 of `hunk_remove`, a NUL byte, then `hunk_add`.
 - 🔷 Close and open again reloads those active items. The client hangs the text on the in-memory item and paints from it.
 - 🔷 The client does not write diff items and does not read the backup.
 
@@ -46,42 +51,47 @@ show_pending_diff
     file_history id                 →
                                       stored file_diff_part rows, if any
                                       else Differ, then store
-                                  ←  those objects, hunk text on each
+                                  ←  those objects, remove and add text on each
   hang the text on the in-memory item
   paint from that array
   backup stays on the daemon           (no wire)
 ```
 
-- 🔷 The diff item contains the hunk text. That text is a property on the object. It goes down the wire with the item.
-- 🔷 The file server writes the items to disk. `hunk` is not in that row. A later open sets the text on the object and returns it.
+- 🔷 The diff item contains `hunk_remove` and `hunk_add`. Those strings are properties on the object. They go down the wire with the item.
+- 🔷 The file server writes the items to disk. `hunk_remove` and `hunk_add` are not in that row. A later open sets the text on the object and returns it.
 - 🔷 The client hangs that text on the diff item in memory. The client does not write diff items.
 - 🔷 The `parts` request answers the client. The diff itself is `FileHistory.rebuild_parts`. That method is not the request.
-- 🔷 `rebuild_parts` reads the cache backup and the project file. No rows yet: `Differ`, insert one row per patch, set `hunk` on the objects, remember those objects, return them.
+- 🔷 `rebuild_parts` reads the cache backup and the project file. No rows yet: `Differ`, insert one row per patch, set `hunk_remove`, `hunk_add`, and the line range on the objects, remember those objects, return them.
 - 🔷 The diff is the project file now against that history's backup. The history id alone does not make a remembered list current.
-- 🔷 A later `parts` returns the remembered objects only when the project file's modification stamp still equals the stamp captured when that list was diffed. `hunk` is already on them.
+- 🔷 A later `parts` returns the remembered objects only when the project file's modification stamp still equals the stamp captured when that list was diffed. `hunk_remove` and `hunk_add` are already on them.
 - 🔷 That stamp is the project file's modification time in microseconds, read from the file at diff time.
-- 🔷 A different stamp does not return that list. `parts` calls `rebuild_parts`. That sets `hunk` on the rows already stored for that history. Those rows stay.
-- 🔷 Rows in the table but no remembered objects: `rebuild_parts` sets `hunk` on those rows. It does not insert again.
+- 🔷 A different stamp does not return that list. `parts` calls `rebuild_parts`.
+- 🔷 Keep or remove is the bullet list above `rebuild_parts`.
 - 🔷 `show_pending_diff` does not call `RPC-File.read` on `backup_path`.
-- ℹ️ `file_diff_part` today has no hunk text. `ollmfilesd/FileDiffPart.vala`. The daemon cannot link `libocfiles`, so `Differ` still has to be built into `ollmfilesd` the same way `Copyable.vala` is symlinked.
-- 🔷 The table is already `file_diff_part`. `hunk` is a property on `FileDiffPart`, not a column. Not a new table, and not `edited/parts/…patch`.
+- ℹ️ `file_diff_part` today has no hunk text. `ollmfilesd/FileDiffPart.vala`. The daemon cannot link `libocfiles`.
+- 🔷 The review diff runs on the file server. If that is the only user, `Differ` / `Patch` / `PatchApplier` move out of `libocfiles` into `ollmfilesd`.
+- ℹ️ Still compiled against `libocfiles/Diff` today: `liboccoder/SourceView.vala` `show_diff`, `liboccoder/Diff/ReviewBar.vala` (`HunkBand`, `update_diff(Differ)`), `examples/oc-diff.vala`, `examples/oc-test-source-diff.vala`. `PatchApplier` has no caller.
+- 🔷 Those callers are the old path. They are deprecated.
+- 💩 This phase still symlinks `libocfiles/Diff` into `ollmfilesd`, same as `Copyable.vala`. Moving the files now would fork the algorithm or break `show_diff` and the examples. The move waits until those callers are gone.
+- 🔷 The table is already `file_diff_part`. `hunk_remove` and `hunk_add` are properties on `FileDiffPart`, not columns. Not a new table, and not `edited/parts/…patch`.
 - 🔷 `accepted` `0` is undecided. `1` accepted. `-1` rejected. Same values as the old `file_history.status`. A row exists before anyone decides.
 - ℹ️ Today’s comment says the opposite: no row means pending, and `accepted` `0` means reject. Nothing writes `file_diff_part` yet, and the column default is already `0`, so `0` becomes undecided. Reject is `-1`.
 - ℹ️ `HunkDecision` in the bar is a separate enum. Its third value is not the stored reject.
 - 🔷 `OLLMfilesd-FileHistory.parts` takes the `file_history` id. `FileWithHistory.approve_id` is that same id on the pending-list row. It is not a separate argument.
-- 🔷 `hunk` is the changed lines. A removed line starts with `-`. An added line starts with `+`. No `@@` header and no line numbers in that text.
-- 💩 `old_line_start` and `new_line_start` are properties on the object, not part of `hunk` and not columns. A removal has no place in the current file, so the editor still needs those starts.
+- 🔷 `hunk_remove` is the removed lines. `hunk_add` is the added lines. No `+` or `-` prefix. No `@@` header. Line numbers are not inside those strings.
+- 🔷 The range is `old_line_start`, `old_line_end`, `new_line_start`, `new_line_end`. A count is `end - start + 1` when `end >= start`, otherwise `0`.
+- 💩 Those four ints are properties on the object, not columns. A removal has no place in the current file, so the editor still needs the old range.
 - 🔷 `show_pending_diff` calls `parts` and paints from that array. It does not read the backup and it does not run `Differ`.
 
 Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surrounding context before applying.
 
-### 1. `ollmfilesd/FileDiffPart.vala` — hunk on the object, undecided is `0`
+### 1. `ollmfilesd/FileDiffPart.vala` — remove and add on the object, undecided is `0`
 
-**Why:** The row is `file_diff_part`. It exists before a decision. `hunk` is on the object for the wire. The table has no `hunk` column.
+**Why:** The row is `file_diff_part`. It exists before a decision. `hunk_remove` and `hunk_add` are on the object for the wire. They are not columns. `checksum` is a column. `compare` uses it instead of the hunk strings. `compare` returns `0`, `1`, `2`, or `3`. No result class.
 
-**Where:** class docblock and properties. Do not change the `init_db` create string.
+**Where:** class docblock and properties, then `compare` after `decided_at` and before `path`. `init_db` gains the `checksum` column.
 
-**Depends on:** none.
+**Depends on:** none. `compare` takes another `FileDiffPart`.
 
 #### Remove
 
@@ -108,7 +118,8 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 	 * One hunk on a {@link FileHistory} write.
 	 *
 	 * The row is stored when the diff is shown, before anyone decides.
-	 * {@code hunk} is on this object for the wire. It is not a column.
+	 * {@code hunk_remove} and {@code hunk_add} are on this object for
+	 * the wire. They are not columns. No '+' or '-' prefix.
 	 * {@code accepted} 0 is undecided, 1 accepted, -1 rejected.
 	 */
 	public class FileDiffPart : Object, OLLMrpc.Bin.Serializable
@@ -123,10 +134,20 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 		public int part_index { get; set; default = 0; }
 
 		/**
-		 * Changed lines. A removed line starts with ''-''. An added
-		 * line starts with ''+''. No line numbers. Not a column.
+		 * SHA256 of ''hunk_remove'', a NUL, then ''hunk_add''.
+		 * A column. {@link compare} uses this instead of the hunk text.
 		 */
-		public string hunk { get; set; default = ""; }
+		public string checksum { get; set; default = ""; }
+
+		/**
+		 * Removed lines, joined by newline. No '-' prefix. Not a column.
+		 */
+		public string hunk_remove { get; set; default = ""; }
+
+		/**
+		 * Added lines, joined by newline. No '+' prefix. Not a column.
+		 */
+		public string hunk_add { get; set; default = ""; }
 
 		/**
 		 * First old line, 1-based. Not a column.
@@ -134,12 +155,96 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 		public int old_line_start { get; set; default = 0; }
 
 		/**
+		 * Last old line, 1-based inclusive. Not a column.
+		 * Less than {@code old_line_start} means no removal.
+		 */
+		public int old_line_end { get; set; default = 0; }
+
+		/**
 		 * First new line, 1-based. Not a column.
 		 */
 		public int new_line_start { get; set; default = 0; }
 
+		/**
+		 * Last new line, 1-based inclusive. Not a column.
+		 * Less than {@code new_line_start} means no addition.
+		 */
+		public int new_line_end { get; set; default = 0; }
+
 		public int accepted { get; set; default = 0; }
 		public int64 decided_at { get; set; default = 0; }
+
+		/**
+		 * Set {@code checksum} from {@code hunk_remove} and
+		 * {@code hunk_add}. SHA256 of the remove text, a NUL,
+		 * then the add text.
+		 */
+		public void update_sum()
+		{
+			var sum = new GLib.Checksum(GLib.ChecksumType.SHA256);
+			sum.update((uint8[]) (this.hunk_remove + "\0" + this.hunk_add).to_utf8(), -1);
+			this.checksum = sum.get_string();
+		}
+
+		/**
+		 * Compare this part to another file part.
+		 *
+		 * {@code 0} neither. {@code 1} line numbers only.
+		 * {@code 2} checksum only. {@code 3} both.
+		 *
+		 * @param other the other hunk
+		 * @return 0, 1, 2, or 3
+		 */
+		public int compare(FileDiffPart other)
+		{
+			var lines = this.old_line_start == other.old_line_start
+				&& this.old_line_end == other.old_line_end
+				&& this.new_line_start == other.new_line_start
+				&& this.new_line_end == other.new_line_end;
+			var hunks = this.checksum != "" && this.checksum == other.checksum;
+			return lines ? (hunks ? 3 : 1) : (hunks ? 2 : 0);
+		}
+```
+
+#### Remove — `init_db` create string
+
+The table already exists on databases created before `checksum`. `CREATE TABLE IF NOT EXISTS` does not add a column. The `ALTER` matches `file_history`.
+
+```vala
+			var query = "CREATE TABLE IF NOT EXISTS file_diff_part (" +
+				"id INTEGER PRIMARY KEY, " +
+				"file_history_id INT64 NOT NULL DEFAULT 0, " +
+				"part_index INTEGER NOT NULL DEFAULT 0, " +
+				"accepted INTEGER NOT NULL DEFAULT 0, " +
+				"decided_at INT64 NOT NULL DEFAULT 0, " +
+				"UNIQUE (file_history_id, part_index)" +
+				");";
+			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
+				GLib.warning("Failed to create file_diff_part table: %s", db.db.errmsg());
+			}
+```
+
+#### Replace with
+
+```vala
+			var query = "CREATE TABLE IF NOT EXISTS file_diff_part (" +
+				"id INTEGER PRIMARY KEY, " +
+				"file_history_id INT64 NOT NULL DEFAULT 0, " +
+				"part_index INTEGER NOT NULL DEFAULT 0, " +
+				"accepted INTEGER NOT NULL DEFAULT 0, " +
+				"decided_at INT64 NOT NULL DEFAULT 0, " +
+				"checksum TEXT NOT NULL DEFAULT '', " +
+				"UNIQUE (file_history_id, part_index)" +
+				");";
+			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
+				GLib.warning("Failed to create file_diff_part table: %s", db.db.errmsg());
+			}
+			var migrate_checksum = "ALTER TABLE file_diff_part ADD COLUMN checksum TEXT NOT NULL DEFAULT ''";
+			if (Sqlite.OK != db.db.exec(migrate_checksum, null, out errmsg)) {
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
 ```
 
 ### 2. `ollmfilesd/Application.vala` — register the row
@@ -158,7 +263,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 ### 3. `ollmfilesd/Diff/*.vala` — symlink `Differ` into the daemon
 
-**Why:** `parts` runs `Differ` on the daemon. `ollmfilesd/meson.build` bans linking `libocfiles`. `Copyable.vala` is already a symlink of an `OLLMfiles` source into this binary.
+**Why:** `parts` runs `Differ` on the daemon. `ollmfilesd/meson.build` bans linking `libocfiles`. `Copyable.vala` is already a symlink of an `OLLMfiles` source into this binary. The long-term home is `ollmfilesd` once the deprecated callers listed above are gone. This phase does not move the files.
 
 **Where:** new symlinks under `ollmfilesd/Diff/`, then `ollmfilesd_src` after `'FileDiffPart.vala',`.
 
@@ -214,7 +319,7 @@ ln -s ../../libocfiles/Diff/Differ.vala ollmfilesd/Diff/Differ.vala
 
 #### Add — `live` after `private ProjectManager rpc_manager;`
 
-Remembered objects for this process. `hunk` stays on them. The table does not store it. `live_stamp` is the project file's modification time in microseconds when that list was diffed.
+Remembered objects for this process. `hunk_remove` and `hunk_add` stay on them. The table does not store them. `live_stamp` is the project file's modification time in microseconds when that list was diffed.
 
 ```vala
 		private Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>> live { get; set; default = new Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>>(); }
@@ -299,21 +404,41 @@ This request returns the remembered list when `live_stamp` for that history id s
 
 #### Add — new method `rebuild_parts` after `parts`.
 
-The diff. Reads the backup and the project file, runs `Differ`, and sets `hunk` on the rows already stored. Inserts rows only when that history has none. Does not delete rows. Does not write `hunk`. Remembers the list with the project file's modification time from this read.
+Looking at one file. The backup and the project file are the two texts. `Differ` makes the new parts. The stored rows are the old parts. `compare` is how a new part is checked against an old one.
+
+- 🔷 No stored rows. Insert one row per new part. Set `hunk_remove`, `hunk_add`, and the line range. Do not write those strings into the table. Remember the list with the file stamp. Return it.
+- 🔷 Stored rows are indexed by start line.
+- 💩 That key is `old_line_start`. A pure add still has that anchor on the backup.
+- 🔷 The pass walks the file by the line range. Removed lines are `hunk_remove`. Added lines are the new-file range.
+- 🔷 At each new part, `compare` it to the old part at that start line.
+- 🔷 Return `3`. Keep that stored row. The decision stays. Drop that old part out of the leftover set.
+- 🔷 Every old part returns `3`. The leftover set is empty. Nothing is added or removed.
+- 💩 Return `1`. Same lines, different checksum. Write the new `hunk_remove` and `hunk_add`, then `update_sum`. Clear `accepted` and `decided_at`.
+- 💩 Return `2`. Same checksum, different lines. Keep the row and the decision. Write the new line range on the object.
+- 💩 Return `0`. Neither matches. Delete that stored row. Insert the new part. `accepted` stays `0`.
+- 💩 A new part with no old part at that start. Insert a row. `accepted` stays `0`.
+- 💩 An old part whose start line is not among the new parts. Delete that row.
+- ℹ️ `hunk_remove` and `hunk_add` are not columns. A part from the table does not have them. The old parts are the remembered list, which still has the text.
 
 ```vala
 		/**
 		 * Build the diff items for one history row.
 		 *
 		 * Reads the backup and the project file, then runs
-		 * {@link OLLMfiles.Diff.Differ}. Sets ''hunk'' on the rows
-		 * already stored. Inserts rows only when that history has
-		 * none. Does not delete rows. Does not write ''hunk''.
-		 * Remembers the list with the project file's modification
-		 * stamp from this read.
+		 * {@link OLLMfiles.Diff.Differ}. No stored rows: insert
+		 * one part per patch. Stored rows are indexed by
+		 * ''old_line_start'' and checked with
+		 * {@link FileDiffPart.compare}. ''3'' keeps the row.
+		 * ''1'' replaces the hunk text and clears the decision.
+		 * ''2'' keeps the decision and writes the new line range.
+		 * ''0'' deletes that row and inserts the new part.
+		 * A stored part with no new part at its start line is
+		 * deleted. Old parts come from the remembered list.
+		 * A load from the table does not have the hunk text.
+		 * Does not write the hunk strings into the table.
 		 *
 		 * @param history the file_history row to diff
-		 * @return the diff items, with hunk text on each
+		 * @return the parts to paint, in file order
 		 * @throws GLib.Error the backup or project file could not be read
 		 */
 		public Gee.ArrayList<FileDiffPart> rebuild_parts(FileHistory history) throws GLib.Error
@@ -339,52 +464,87 @@ The diff. Reads the backup and the project file, runs `Differ`, and sets `hunk` 
 			var stamp = (int64) info.get_attribute_uint64(GLib.FileAttribute.TIME_MODIFIED_USEC);
 			var differ = new OLLMfiles.Diff.Differ(backup, project);
 			var patches = differ.diff();
-			var hunks = new string[patches.size];
-			var old_starts = new int[patches.size];
-			var new_starts = new int[patches.size];
+			var fresh = new Gee.ArrayList<FileDiffPart>();
 			var index = 0;
 			foreach (var patch in patches) {
-				var old_body = patch.old_lines();
-				var new_body = patch.new_lines();
-				var marked = new string[old_body.length + new_body.length];
-				for (var line_i = 0; line_i < old_body.length; line_i++) {
-					marked[line_i] = "-" + old_body[line_i];
-				}
-				for (var line_i = 0; line_i < new_body.length; line_i++) {
-					marked[old_body.length + line_i] = "+" + new_body[line_i];
-				}
-				hunks[index] = string.joinv("\n", marked);
-				old_starts[index] = patch.old_line_start;
-				new_starts[index] = patch.new_line_start;
+				var part = new FileDiffPart() {
+					file_history_id = history.id,
+					part_index = index,
+					hunk_remove = string.joinv("\n", patch.old_lines()),
+					hunk_add = string.joinv("\n", patch.new_lines()),
+					old_line_start = patch.old_line_start,
+					old_line_end = patch.old_line_end,
+					new_line_start = patch.new_line_start,
+					new_line_end = patch.new_line_end
+				};
+				part.update_sum();
+				fresh.add(part);
 				index++;
 			}
 			if (rows.size == 0) {
-				for (var n = 0; n < hunks.length; n++) {
-					var part = new FileDiffPart();
-					part.file_history_id = history.id;
-					part.part_index = n;
-					part.hunk = hunks[n];
-					part.old_line_start = old_starts[n];
-					part.new_line_start = new_starts[n];
+				foreach (var part in fresh) {
 					FileDiffPart.query(this.rpc_manager.db).insert(part);
-					rows.add(part);
 				}
-			}
-			if (rows.size > 0 && rows.get(0).hunk == "") {
-				foreach (var part in rows) {
-					if (part.part_index < 0 || part.part_index >= hunks.length) {
-						continue;
-					}
-					part.hunk = hunks[part.part_index];
-					part.old_line_start = old_starts[part.part_index];
-					part.new_line_start = new_starts[part.part_index];
-				}
-			}
-			if (rows.size > 0) {
-				this.live.set(history.id, rows);
+				this.live.set(history.id, fresh);
 				this.live_stamp.set(history.id, stamp);
+				return fresh;
 			}
-			return rows;
+			if (this.live.has_key(history.id) && this.live.get(history.id).size > 0) {
+				rows = this.live.get(history.id);
+			}
+			var next_index = rows.get(rows.size - 1).part_index + 1;
+			var older = new Gee.HashMap<int, FileDiffPart>();
+			foreach (var part in rows) {
+				older.set(part.old_line_start, part);
+			}
+			var kept = new Gee.ArrayList<FileDiffPart>();
+			foreach (var part in fresh) {
+				if (!older.has_key(part.old_line_start)) {
+					part.part_index = next_index;
+					next_index++;
+					FileDiffPart.query(this.rpc_manager.db).insert(part);
+					kept.add(part);
+					continue;
+				}
+				var old = older.get(part.old_line_start);
+				older.unset(part.old_line_start);
+				switch (old.compare(part)) {
+					case 3:
+						kept.add(old);
+						break;
+
+					case 1:
+						old.hunk_remove = part.hunk_remove;
+						old.hunk_add = part.hunk_add;
+						old.update_sum();
+						old.accepted = 0;
+						old.decided_at = 0;
+						FileDiffPart.query(this.rpc_manager.db).updateById(old);
+						kept.add(old);
+						break;
+
+					case 2:
+						old.old_line_end = part.old_line_end;
+						old.new_line_start = part.new_line_start;
+						old.new_line_end = part.new_line_end;
+						kept.add(old);
+						break;
+
+					default:
+						FileDiffPart.query(this.rpc_manager.db).deleteId(old.id);
+						part.part_index = next_index;
+						next_index++;
+						FileDiffPart.query(this.rpc_manager.db).insert(part);
+						kept.add(part);
+						break;
+				}
+			}
+			foreach (var old in older.values) {
+				FileDiffPart.query(this.rpc_manager.db).deleteId(old.id);
+			}
+			this.live.set(history.id, kept);
+			this.live_stamp.set(history.id, stamp);
+			return kept;
 		}
 ```
 
@@ -445,9 +605,11 @@ namespace OLLMfiles
 	/**
 	 * One diff item on the wire ({@code OLLMfilesd-FileHistory.parts}).
 	 *
-	 * {@code hunk} is the changed lines. A removed line starts with
-	 * ''-''. An added line starts with ''+''. No line numbers.
+	 * {@code hunk_remove} and {@code hunk_add} are the changed lines.
+	 * No '+' or '-' prefix. No line numbers in those strings.
 	 * {@code accepted} is 0 undecided, 1 accepted, -1 rejected.
+	 * {@code compare} is on the file-server part. It takes another
+	 * part.
 	 */
 	public class FileDiffPart : Object, OLLMrpc.Bin.Serializable
 	{
@@ -461,10 +623,19 @@ namespace OLLMfiles
 		public int part_index { get; set; default = 0; }
 
 		/**
-		 * Changed lines from {@code parts}. A removed line starts with
-		 * ''-''. An added line starts with ''+''. No line numbers.
+		 * SHA256 of the hunk text. A column on the file server.
 		 */
-		public string hunk { get; set; default = ""; }
+		public string checksum { get; set; default = ""; }
+
+		/**
+		 * Removed lines from {@code parts}. No '-' prefix.
+		 */
+		public string hunk_remove { get; set; default = ""; }
+
+		/**
+		 * Added lines from {@code parts}. No '+' prefix.
+		 */
+		public string hunk_add { get; set; default = ""; }
 
 		/**
 		 * First old line, 1-based. Not a database column.
@@ -472,9 +643,19 @@ namespace OLLMfiles
 		public int old_line_start { get; set; default = 0; }
 
 		/**
+		 * Last old line, 1-based inclusive. Not a database column.
+		 */
+		public int old_line_end { get; set; default = 0; }
+
+		/**
 		 * First new line, 1-based. Not a database column.
 		 */
 		public int new_line_start { get; set; default = 0; }
+
+		/**
+		 * Last new line, 1-based inclusive. Not a database column.
+		 */
+		public int new_line_end { get; set; default = 0; }
 
 		public int accepted { get; set; default = 0; }
 		public int64 decided_at { get; set; default = 0; }
@@ -602,47 +783,36 @@ namespace OLLMfiles
 			this.diff_remove_n.clear();
 			var new_i = 1;
 			foreach (var part in parts) {
-				var removed = new Gee.ArrayList<string>();
-				var new_count = 0;
-				if (part.hunk != "") {
-					foreach (var line in part.hunk.split("\n")) {
-						if (line.has_prefix("-")) {
-							removed.add(line.substring(1));
-							continue;
-						}
-						if (line.has_prefix("+")) {
-							new_count++;
-						}
-					}
-				}
-				var new_start = part.new_line_start;
-				while (new_i < new_start && new_i <= editor_lines.length) {
+				var add_count = part.new_line_end < part.new_line_start ? 0 : part.new_line_end - part.new_line_start + 1;
+				var remove_count = part.old_line_end < part.old_line_start ? 0 : part.old_line_end - part.old_line_start + 1;
+				while (new_i < part.new_line_start && new_i <= editor_lines.length) {
 					display.add(editor_lines[new_i - 1]);
 					this.diff_baseline.add(new_i);
 					kinds.add(0);
 					new_i++;
 				}
-				if (removed.size > 0) {
-					this.diff_remove_at.add(new_start);
-					this.diff_remove_n.add(removed.size);
-					foreach (var line in removed) {
-						display.add(line);
+				if (remove_count > 0 && part.hunk_remove != "") {
+					this.diff_remove_at.add(part.new_line_start);
+					this.diff_remove_n.add(remove_count);
+					var removed = part.hunk_remove.split("\n");
+					for (var r = 0; r < remove_count && r < removed.length; r++) {
+						display.add(removed[r]);
 						this.diff_baseline.add(0);
 						kinds.add(2);
 					}
 				}
-				if (new_count == 0) {
-					if (new_start > new_i) {
-						new_i = new_start;
+				if (add_count == 0) {
+					if (part.new_line_start > new_i) {
+						new_i = part.new_line_start;
 					}
 					continue;
 				}
-				for (var ln = new_start; ln < new_start + new_count && ln <= editor_lines.length; ln++) {
+				for (var ln = part.new_line_start; ln < part.new_line_start + add_count && ln <= editor_lines.length; ln++) {
 					display.add(editor_lines[ln - 1]);
 					this.diff_baseline.add(ln);
 					kinds.add(1);
 				}
-				new_i = new_start + new_count;
+				new_i = part.new_line_start + add_count;
 			}
 			while (new_i <= editor_lines.length) {
 				display.add(editor_lines[new_i - 1]);
@@ -694,7 +864,7 @@ namespace OLLMfiles
 
 #### Add — after the existing `update_diff(OLLMfiles.Diff.Differ, …)` method
 
-Bands from the changed lines and the start properties. `accepted` 0 is pending, 1 accepted, -1 rejected.
+Bands from the line range. `accepted` 0 is pending, 1 accepted, -1 rejected. The count is `end - start + 1`. No scan of `hunk_remove` or `hunk_add`.
 
 ```vala
 		/**
@@ -702,7 +872,7 @@ Bands from the changed lines and the start properties. `accepted` 0 is pending, 
 		 *
 		 * Keeps {@code parts} so the hunk text stays on the client.
 		 *
-		 * @param parts diff items, hunk text on each
+		 * @param parts diff items, remove and add text on each
 		 * @param file_index file position in the pending list
 		 */
 		public void update_diff(
@@ -719,23 +889,8 @@ Bands from the changed lines and the start properties. `accepted` 0 is pending, 
 				bulk_decision = this.file_bulk[this.file_index];
 			}
 			foreach (var part in this.parts) {
-				var old_count = 0;
-				var new_count = 0;
-				if (part.hunk != "") {
-					foreach (var line in part.hunk.split("\n")) {
-						if (line.has_prefix("-")) {
-							old_count++;
-							continue;
-						}
-						if (line.has_prefix("+")) {
-							new_count++;
-						}
-					}
-				}
-				var old_start = part.old_line_start;
-				var new_start = part.new_line_start;
-				var old_end = old_count == 0 ? old_start - 1 : old_start + old_count - 1;
-				var new_end = new_count == 0 ? new_start - 1 : new_start + new_count - 1;
+				var old_count = part.old_line_end < part.old_line_start ? 0 : part.old_line_end - part.old_line_start + 1;
+				var new_count = part.new_line_end < part.new_line_start ? 0 : part.new_line_end - part.new_line_start + 1;
 				var op = OLLMfiles.Diff.PatchOperation.REPLACE;
 				if (old_count == 0) {
 					op = OLLMfiles.Diff.PatchOperation.ADD;
@@ -744,7 +899,8 @@ Bands from the changed lines and the start properties. `accepted` 0 is pending, 
 					op = OLLMfiles.Diff.PatchOperation.REMOVE;
 				}
 				var patch = new OLLMfiles.Diff.Patch(
-					op, old_start, old_end, new_start, new_end,
+					op, part.old_line_start, part.old_line_end,
+					part.new_line_start, part.new_line_end,
 					new string[0], new string[0]);
 				var band = new HunkBand(patch) {
 					band_index = bi,
@@ -812,14 +968,17 @@ Bands from the changed lines and the start properties. `accepted` 0 is pending, 
 
 - 🚫 Apply any fence from [`4.2.3.5.3`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md).
 - 🚫 A hunk file that stores the full project text.
-- 🚫 A `hunk` column on `file_diff_part`. No `ALTER TABLE` for it.
+- 🚫 A `hunk`, `hunk_remove`, or `hunk_add` column on `file_diff_part`. No `ALTER TABLE` for them.
 - 🚫 Copy `rows` into a `Gee.ArrayList<GLib.Object>` before `val("o", …)`. `rows` is already that array.
 - 🚫 `Differ` inside `parts`. A cache miss calls `rebuild_parts`.
 - 🚫 No row until Accept or Reject. The items exist when the diff is shown.
 - 🚫 Client `Differ`, and `RPC-File.read` of `backup_path`, inside `show_pending_diff`.
 - 🚫 `RPC-File` rename in this plan. New calls use `OLLMfilesd-`. The hyphen joins the namespace and the class. The dot is only the method. `RPC-` stays for internal calls such as `RPC-Daemon.hello`.
 - 🚫 Return `live` because the history id is present. The project file's modification stamp from that diff has to match `live_stamp`.
-- 🚫 Delete the `file_diff_part` rows for a history and insert a new set inside `parts`. A stamp mismatch only refuses the remembered list. The rows stay. `Differ` sets `hunk` on them.
-- ℹ️ [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md) drops `FileHistory.live` and `FileHistory.live_stamp` for that history id when it replaces the rows.
-- 🚫 A `@@` line-number header inside `hunk`. That text is the changed lines only.
+- 🚫 Delete every `file_diff_part` row for a history and insert a new set. `rebuild_parts` deletes a row only when `compare` says so. A return of `3` keeps that row.
+- 🚫 Delete a row because `hunk_remove` and `hunk_add` are empty. Those strings are not columns. A load from the table always looks empty.
+- ℹ️ [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md) calls the same `rebuild_parts` after save. That writes `live` and `live_stamp` for the kept parts.
+- 🚫 A `+` or `-` prefix on hunk lines, and a `@@` line-number header inside `hunk_remove` or `hunk_add`.
+- 🚫 Move `libocfiles/Diff` into `ollmfilesd` in this phase. Symlink until `show_diff`, `ReviewBar`'s `Differ` / `Patch` API, and the two examples are gone.
+- 💩 `ReviewBar.update_diff` still builds an `OLLMfiles.Diff.Patch` so `HunkBand` can take one. That is the deprecated client use. The counts come from the range.
 - ℹ️ Touch points: `liboccoder/SourceView.vala` `show_pending_diff`, `liboccoder/Diff/ReviewBar.vala`, `ollmfilesd/FileDiffPart.vala`, `ollmfilesd/FileHistory.vala`, `libocfiles/Diff/Differ.vala`.
