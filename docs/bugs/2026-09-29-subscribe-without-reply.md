@@ -2,7 +2,7 @@
 
 **Status:** ⏳ open. gnome-shell-rpc wants to attach signal handlers while it is still inside `Helper-Actor.create`. `rpc_signal` always writes a reply, so that reply is what the client reads as the create result.
 
-**Consumer:** [`gnome-shell-rpc` `docs/bugs/2026-09-29-rpc-call-volume.md`](../../gnome-shell-rpc/docs/bugs/2026-09-29-rpc-call-volume.md) row 1. That bug queues the first property sets and the signal names onto one create. The server has to subscribe before it replies. It cannot call `rpc_signal` to do that.
+**Consumer:** [`gnome-shell-rpc` `docs/bugs/2026-09-29-rpc-call-volume.md`](../../../gnome-shell-rpc/docs/bugs/2026-09-29-rpc-call-volume.md) row 1. That bug queues the first property sets and the signal names onto one create. The server has to subscribe before it replies. It cannot call `rpc_signal` to do that.
 
 ## Problem
 
@@ -138,15 +138,19 @@
 				var helper = OLLMrpc.Bin.TypeOverride.lookup(pspec.value_type);
 				var packed = new Gee.ArrayList<GLib.Value?>();
 				var method_name = name;
-				if (helper != null) {
-					foreach (var field in helper.pack(current)) {
-						packed.add(field);
-					}
-					method_name = helper.rpc_signal_alias(name);
-				}
 				if (helper == null) {
 					packed.add(current);
+					subscription.connection.write(new Notification() {
+						method = method_name,
+						id = id,
+						args = packed
+					});
+					return;
 				}
+				foreach (var field in helper.pack(current)) {
+					packed.add(field);
+				}
+				method_name = helper.rpc_signal_alias(name);
 				subscription.connection.write(new Notification() {
 					method = method_name,
 					id = id,
