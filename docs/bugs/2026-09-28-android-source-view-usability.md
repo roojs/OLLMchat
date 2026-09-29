@@ -1,6 +1,6 @@
 # Android — source view usability
 
-**Status:** ⏳ open — scroll and search bar still need design. Problem 3 (font) is in the tree, not confirmed on a device.
+**Status:** ⏳ open — scroll still needs design. Search-bar direction moved to [`2026-09-29-android-source-view-phone.md`](2026-09-29-android-source-view-phone.md) (hide it for now). Problem 3 (font) is in the tree, not confirmed on a device.
 
 **Package:** `org.roojs.ollmchat.androidpoc`
 
@@ -32,10 +32,9 @@
 
 ### Direction
 
-- **🔷** Working idea, not a locked layout: take the window’s top-right button and use it as the source-view menu. That button’s current action is expected to be replaced.
+- **🔷** 2026-09-29: hide the bar. Search comes back later. The About-button menu is not the current plan. Follow-up is [`2026-09-29-android-source-view-phone.md`](2026-09-29-android-source-view-phone.md).
 - **ℹ️** Rightmost header control is About (`help-about-symbolic`), packed after Settings in `OllmchatWindow`.
 - **ℹ️** The bar is shown for every opened file: `open_file` sets `this.search_bar.visible = true`. It is hidden only when no file is selected.
-- **⏳** What the menu contains, and whether the bar hides until that menu opens search, is not decided.
 
 ---
 
