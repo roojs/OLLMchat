@@ -64,62 +64,15 @@ namespace OLLMrpc.Live
 			if (!request.connection.live_handles) {
 				GLib.error("Subscribe.signal requires live_handles");
 			}
-			var id = (int) request.lease_id;
-			if (!request.connection.leases.has_key(id)) {
-				request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
-				return;
-			}
-			if (name.length == 0) {
-				request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
-				return;
-			}
-			var subs = request.connection.signal_subs;
-			if (!subs.has_key(id)) {
-				subs.set(id, new Gee.HashMap<string, Subscription>());
-			}
-			if (subs.get(id).has_key(name)) {
-				request.reply(new Response());
-				return;
-			}
-			var obj = request.connection.leases.get(id);
 			var subscription = new Subscription() {
 				connection = request.connection,
 				method = name,
-				id = id
+				id = (int) request.lease_id
 			};
-			if (name.has_prefix("notify::")) {
-				subscription.hid = obj.notify[name.substring(8)].connect((pspec) => {
-					var current = GLib.Value(pspec.value_type);
-					obj.get_property(pspec.name, ref current);
-					var helper = OLLMrpc.Bin.TypeOverride.lookup(pspec.value_type);
-					var packed = new Gee.ArrayList<GLib.Value?>();
-					var method_name = name;
-					if (helper != null) {
-						foreach (var field in helper.pack(current)) {
-							packed.add(field);
-						}
-						method_name = helper.rpc_signal_alias(name);
-					}
-					if (helper == null) {
-						packed.add(current);
-					}
-					request.connection.write(new Notification() {
-						method = method_name,
-						id = id,
-						args = packed
-					});
-				});
-				subs.get(id).set(name, subscription);
-				request.reply(new Response());
+			if (!subscription.connect()) {
+				request.connection.reply_error(request, (int) RpcErrorCode.INVALID_PARAMS);
 				return;
 			}
-			var closure = new GLib.Closure.simple((uint) GLib.Closure.SIZE, subscription);
-			closure.ref();
-			closure.sink();
-			closure.set_marshal((GLib.ClosureMarshal) Subscription.emit);
-			closure.set_meta_marshal(subscription, (GLib.ClosureMarshal) Subscription.emit);
-			subscription.hid = GLib.Signal.connect_closure(obj, name, closure, false);
-			subs.get(id).set(name, subscription);
 			request.reply(new Response());
 		}
 

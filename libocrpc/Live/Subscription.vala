@@ -16,6 +16,8 @@ namespace OLLMrpc.Live
 	/**
 	 * Per-subscription holder for by-name GObject connect.
 	 *
+	 * {@link connect} records this row in
+	 * {@link Transport.Connection.signal_subs} and writes no reply.
 	 * {@link emit} is the C-callable method GObject invokes for named
 	 * signals. {@link hid} is the handler id for disconnect.
 	 *
@@ -27,12 +29,7 @@ namespace OLLMrpc.Live
 	 *     method = "closed",
 	 *     id = (int) handle
 	 * };
-	 * var closure = new GLib.Closure.simple((uint) GLib.Closure.SIZE, subscription);
-	 * closure.ref();
-	 * closure.sink();
-	 * closure.set_marshal((GLib.ClosureMarshal) Subscription.emit);
-	 * closure.set_meta_marshal(subscription, (GLib.ClosureMarshal) Subscription.emit);
-	 * subscription.hid = GLib.Signal.connect_closure(obj, "closed", closure, false);
+	 * subscription.connect();
 	 * }}}
 	 */
 	public class Subscription : GLib.Object
@@ -41,6 +38,64 @@ namespace OLLMrpc.Live
 		public string method { get; set; default = ""; }
 		public int id { get; set; default = 0; }
 		public ulong hid { get; set; default = 0; }
+
+		/**
+		 * Connect ''method'' on lease ''id'' for ''connection''.
+		 *
+		 * Already subscribed is success. A missing lease or an empty
+		 * ''method'' returns false. Writes no reply, so a create
+		 * handler can connect several names and then reply once.
+		 *
+		 * @return false when the lease is missing or ''method'' is empty
+		 */
+		public bool connect()
+		{
+			if (!this.connection.leases.has_key(this.id) || this.method.length == 0) {
+				return false;
+			}
+			if (!this.connection.signal_subs.has_key(this.id)) {
+				this.connection.signal_subs.set(this.id, new Gee.HashMap<string, Subscription>());
+			}
+			if (this.connection.signal_subs.get(this.id).has_key(this.method)) {
+				return true;
+			}
+			var obj = this.connection.leases.get(this.id);
+			if (!this.method.has_prefix("notify::")) {
+				var closure = new GLib.Closure.simple((uint) GLib.Closure.SIZE, this);
+				closure.ref();
+				closure.sink();
+				closure.set_marshal((GLib.ClosureMarshal) Subscription.emit);
+				closure.set_meta_marshal(this, (GLib.ClosureMarshal) Subscription.emit);
+				this.hid = GLib.Signal.connect_closure(obj, this.method, closure, false);
+				this.connection.signal_subs.get(this.id).set(this.method, this);
+				return true;
+			}
+			this.hid = obj.notify[this.method.substring(8)].connect((pspec) => {
+				var current = GLib.Value(pspec.value_type);
+				obj.get_property(pspec.name, ref current);
+				var helper = OLLMrpc.Bin.TypeOverride.lookup(pspec.value_type);
+				var packed = new Gee.ArrayList<GLib.Value?>();
+				if (helper == null) {
+					packed.add(current);
+					this.connection.write(new Notification() {
+						method = this.method,
+						id = this.id,
+						args = packed
+					});
+					return;
+				}
+				foreach (var field in helper.pack(current)) {
+					packed.add(field);
+				}
+				this.connection.write(new Notification() {
+					method = helper.rpc_signal_alias(this.method),
+					id = this.id,
+					args = packed
+				});
+			});
+			this.connection.signal_subs.get(this.id).set(this.method, this);
+			return true;
+		}
 
 		/**
 		 * GClosure marshal for a named GObject signal.

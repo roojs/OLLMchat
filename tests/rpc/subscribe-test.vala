@@ -208,6 +208,49 @@ namespace OLLMrpcTests
 			this.check(command_line, stamp_conn.last.args.size == 1, "notify::stamp args missing");
 			this.check(command_line, stamp_conn.last.args.get(0).holds(typeof(string)), "notify::stamp arg is not the override string");
 			this.check(command_line, stamp_conn.last.args.get(0).get_string() == stamp.format_iso8601(), "notify::stamp value mismatch");
+
+			var direct = new Capture() {
+				live_handles = true
+			};
+			var direct_probe = new Probe();
+			var direct_id = (int) direct.export(direct_probe);
+			var missing = new OLLMrpc.Live.Subscription() {
+				connection = direct,
+				method = "closed",
+				id = 0
+			};
+			this.check(command_line, !missing.connect(), "connect rejects a missing lease");
+			var empty = new OLLMrpc.Live.Subscription() {
+				connection = direct,
+				method = "",
+				id = direct_id
+			};
+			this.check(command_line, !empty.connect(), "connect rejects an empty name");
+			var notify_sub = new OLLMrpc.Live.Subscription() {
+				connection = direct,
+				method = "notify::title",
+				id = direct_id
+			};
+			this.check(command_line, notify_sub.connect(), "connect notify failed");
+			this.check(command_line, direct.writes == 0, "connect wrote before the signal");
+			var again = new OLLMrpc.Live.Subscription() {
+				connection = direct,
+				method = "notify::title",
+				id = direct_id
+			};
+			this.check(command_line, again.connect(), "connect twice failed");
+			direct_probe.title = "e";
+			this.check(command_line, direct.writes == 1, "direct connect did not notify once");
+			this.check(command_line, direct.last.method == "notify::title", "direct notify method mismatch");
+			var direct_closed = new OLLMrpc.Live.Subscription() {
+				connection = direct,
+				method = "closed",
+				id = direct_id
+			};
+			this.check(command_line, direct_closed.connect(), "connect closed failed");
+			direct_probe.closed();
+			this.check(command_line, direct.writes == 2, "direct closed did not notify");
+			this.check(command_line, direct.last.method == "closed", "direct closed method mismatch");
 		}
 	}
 }

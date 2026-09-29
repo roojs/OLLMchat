@@ -53,7 +53,7 @@ namespace OLLMrpc.Bin
 		/**
 		 * Signal name to write on a notify message.
 		 *
-		 * Called from {@link OLLMrpc.Live.Subscribe.rpc_signal} with the
+		 * Called from {@link OLLMrpc.Live.Subscription.connect} with the
 		 * subscribed name. The default returns that name unchanged.
 		 *
 		 * @param name subscribed signal, including ''notify::''
