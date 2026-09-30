@@ -1,13 +1,13 @@
 # Android — source view on the phone
 
-**Status:** ⏳ open — recorded from the phone. No device log yet.
+**Status:** ⏳ open — problems 1, 2, and 5 are in the tree. Not confirmed on a device. Problems 3 and 4 are still open.
 
 **Package:** `org.roojs.ollmchat.androidpoc`
 
 **Related:**
 
 - **ℹ️** Earlier scroll, search bar, and font: [`2026-09-28-android-source-view-usability.md`](2026-09-28-android-source-view-usability.md).
-- **ℹ️** Editor: `liboccoder/SourceView.vala`. Search bar is shown in `open_file`.
+- **ℹ️** Editor: `liboccoder/SourceView.vala`. Desktop `open_file` shows the search bar. Android leaves it hidden.
 - **ℹ️** Phone bottom bar: `ollmapp/android/OllmchatWindow.vala` (`chat_picker`, `browser_picker`, `editor_picker`).
 - **ℹ️** Language id on a buffer: `liboccoder/BufferProvider.vala`.
 
@@ -21,7 +21,15 @@
 ### Evidence
 
 - **ℹ️** `.source-view` in `resources/style.css` sets the family only (`Droid Sans Mono`, then `monospace`). It does not set a size.
-- **⏳** No gesture in `SourceView` listens for pinch.
+
+### Fix
+
+- **✔️** Two-finger pinch and Ctrl+mouse wheel both change `.source-view` font size, clamped to 8–64 px, starting at 14 px. Wheel up grows the font by 2 px per step.
+- **ℹ️** The same path runs on the phone and on the desktop.
+
+### Next
+
+- **⏳** **🔷** Confirm on the phone: pinch changes the source font size.
 
 ---
 
@@ -33,8 +41,16 @@
 
 ### Evidence
 
-- **ℹ️** `open_file` sets `this.search_bar.visible = true`. The bar is hidden only when no file is selected.
+- **ℹ️** `open_file` sets `this.search_bar.visible = true` on desktop. The bar is hidden when no file is selected.
 - **ℹ️** The 2026-09-28 note’s menu idea (window About button opens search) is not the current direction.
+
+### Fix
+
+- **✔️** On Android, `open_file` leaves the bar hidden. Desktop still shows it.
+
+### Next
+
+- **⏳** **🔷** Confirm on the phone: an open file has no search bar.
 
 ---
 
@@ -77,12 +93,21 @@
 
 ### Evidence
 
-- **ℹ️** `BufferProvider.detect_language` asks `GtkSource.LanguageManager.get_default().guess_language` for the file name. `create_buffer` then calls `get_language` with that id. A missing language leaves the buffer with no spec.
-- **ℹ️** This repo has no `*.lang` files. Specs come from the GtkSourceView install (`language-specs`), not from OLLMchat sources.
-- **ℹ️** `android/pixiewood-chat-poc.xml` depends on `<gtksourceview/>`. Nothing under `scripts/android/` copies `language-specs` into the APK.
-- **⏳** An installed APK has not been listed for `language-specs/vala.lang`, and the phone share path has not been checked.
+- **ℹ️** `BufferProvider.detect_language` asks `GtkSource.LanguageManager.get_default().guess_language` for the file name. `create_buffer` then calls `get_language` with that id.
+- **✔️** `libgtksourceview-5.so` in the Pixiewood tree already contains the `.lang` files, including Vala, as gresources.
+- **✔️** Parsing a spec still calls `xmlTextReaderRelaxNGValidate` on `language2.rng`. That call needs a filesystem path. `resource://` does not pass `g_file_test`.
+- **✔️** The Android library’s `DATADIR` is `/share`. That path is not on the phone. The first place the manager looks is `XDG_DATA_HOME/gtksourceview-5/language-specs`, which is the extracted `assets/share/` tree.
+- **✔️** The built APK listed no `language-specs` files. Style schemes already load from `resource://`, so they do not need a copy.
+
+### Root cause
+
+- **✔️** Without `language2.rng` on disk, every language spec fails validation. The buffer stays uncoloured. The `.lang` data itself is already in the library.
+
+### Fix
+
+- **✔️** The APK build copies `language2.rng`, `language.rng`, and `language.dtd` from the GtkSourceView 5.16.0 wrap into `assets/share/gtksourceview-5/language-specs/`. `verify-apk.sh` requires `language2.rng`.
 
 ### Next
 
-- **⏳** **🔷** Confirm on the phone: pinch changes font size; the search bar is gone; the bar is Chat, Browser, Editor, Viewer; Viewer does not raise the keyboard; a `.vala` file is coloured.
-- **⏳** **💩** List the APK (or the device share tree) for `gtksourceview-5/language-specs` before changing how the language is chosen.
+- **⏳** **🔷** Rebuild the APK and confirm a `.vala` file is coloured on the phone.
+- **⏳** **🔷** Confirm pinch changes font size, and an open file has no search bar.

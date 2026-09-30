@@ -59,6 +59,9 @@ namespace OLLMcoder
 		private bool diff_active = false;
 		private GtkSource.View source_view;
 		private Gtk.ScrolledWindow scrolled_window;
+		private Gtk.CssProvider font_css { get; set; default = new Gtk.CssProvider(); }
+		private double source_font_px = 14;
+		private double pinch_origin = 14;
 		
 		/**
 		* Timeout source for debouncing scroll position saves.
@@ -254,6 +257,33 @@ namespace OLLMcoder
 			};
 			// Add CSS class for monospace font styling
 			this.source_view.add_css_class("source-view");
+			this.font_css.load_from_string(".source-view { font-size: 14px; }");
+			Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),
+				this.font_css, Gtk.STYLE_PROVIDER_PRIORITY_USER);
+			var pinch = new Gtk.GestureZoom();
+			pinch.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+			pinch.begin.connect((sequence) => {
+				this.pinch_origin = this.source_font_px;
+			});
+			pinch.scale_changed.connect((scale) => {
+				this.source_font_px = (this.pinch_origin * scale).clamp(8.0, 64.0);
+				this.font_css.load_from_string(".source-view { font-size: %dpx; }".printf(
+					(int) (this.source_font_px + 0.5)));
+			});
+			this.source_view.add_controller(pinch);
+			var font_wheel = new Gtk.EventControllerScroll(
+				Gtk.EventControllerScrollFlags.VERTICAL | Gtk.EventControllerScrollFlags.DISCRETE);
+			font_wheel.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+			font_wheel.scroll.connect((dx, dy) => {
+				if ((font_wheel.get_current_event_state() & Gdk.ModifierType.CONTROL_MASK) == 0 || dy == 0) {
+					return false;
+				}
+				this.source_font_px = (this.source_font_px - dy * 2).clamp(8.0, 64.0);
+				this.font_css.load_from_string(".source-view { font-size: %dpx; }".printf(
+					(int) (this.source_font_px + 0.5)));
+				return true;
+			});
+			this.scrolled_window.add_controller(font_wheel);
 			this.diff_tag_table.add(new Gtk.TextTag("diff-add") {
 				paragraph_background_rgba = Gdk.RGBA() {
 					red = 0.75f,
@@ -601,9 +631,12 @@ namespace OLLMcoder
 				}
 			});
 			
-			// Show sourceview and search bar when file is opened (even if deleted)
+			// Show the editor when a file is open. The phone search bar stays
+			// hidden until search is designed; desktop still shows it.
 			this.scrolled_window.visible = true;
+#if !ANDROID
 			this.search_bar.visible = true;
+#endif
 			
 			// Check if file is already deleted
 			if (file.delete_id > 0) {

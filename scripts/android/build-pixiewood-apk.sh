@@ -390,6 +390,32 @@ patch_android_manifest() {
   fi
 }
 
+# Language specs are gresources inside libgtksourceview. Parsing still
+# needs language2.rng on a real path: xmlTextReaderRelaxNGValidate does not
+# read resource://. The manager looks in XDG_DATA_HOME/gtksourceview-5/
+# language-specs first, and GTK extracts assets/share/ there.
+install_gtksourceview_language_schema() {
+  local spec_src="$ROOT_DIR/subprojects/gtksourceview-5.16.0/data/language-specs"
+  local dest="$ROOT_DIR/.pixiewood/android/app/src/main/assets/share/gtksourceview-5/language-specs"
+  local name
+
+  if [ ! -f "$spec_src/language2.rng" ]; then
+    echo "GtkSourceView language schema missing: $spec_src/language2.rng" >&2
+    exit 1
+  fi
+
+  rm -rf "$dest"
+  mkdir -p "$dest"
+  for name in language2.rng language.rng language.dtd; do
+    cp -a "$spec_src/$name" "$dest/$name"
+  done
+
+  if [ ! -s "$dest/language2.rng" ]; then
+    echo "GtkSourceView language schema staging failed: $dest/language2.rng" >&2
+    exit 1
+  fi
+}
+
 install_icon_themes_to_assets() {
   local manifest="$ROOT_DIR/android/icons/manifest"
   local index_theme="$ROOT_DIR/android/icons/Adwaita/index.theme"
@@ -603,6 +629,7 @@ run_pixiewood_build() {
   materialize_pixiewood_jni_libs
   write_ollmchat_android_runtime_tag
   install_ca_certificates_to_assets
+  install_gtksourceview_language_schema
   install_icon_themes_to_assets
   install_poc_java
   patch_android_manifest

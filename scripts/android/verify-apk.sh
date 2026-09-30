@@ -30,6 +30,7 @@ required=(
   assets/share/ssl/certs/ca-certificates.crt
   assets/share/ollmchat-android-runtime.tag
   assets/share/icons/Adwaita/index.theme
+  assets/share/gtksourceview-5/language-specs/language2.rng
 )
 
 if [ -f "$MANIFEST" ]; then
