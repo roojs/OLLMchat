@@ -82,7 +82,7 @@ Windows — expanded
 - 💩 `⏳` Those toggles are `Gtk.Switch`, same as today's File Server Enabled switch.
 - 💩 `⏳` “Set up” means `filesd.socket` has a host and a port in 1024–65535.
 - 💩 `⏳` Localhost TCP subtitle can show the live listen address. The row stays status-only.
-- ℹ️ Windows loopback port is still [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md). This row does not add a port editor for it.
+- ℹ️ Windows loopback port is still [`docs/bugs/done/2026-09-20-FIXED-filesd-windows-socket-port.md`](../bugs/done/2026-09-20-FIXED-filesd-windows-socket-port.md). This row does not add a port editor for it.
 - ℹ️ Windows does not build `FileServerRow` today (`ConnectionsPage.vala`, `#if !ANDROID && !G_OS_WIN32`). The Windows host list and per-user service are [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md).
 
 Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surrounding context before applying. Linux only. Do not build the Windows host list here.

@@ -94,8 +94,9 @@
 
 ### Fix
 
-- **✔️** The editor button stays visible. Order on the right is browser, text editor, chat.
-- **✔️** Its click calls Agent Pi `activate`, which adds the source view and shows that page.
+- **✔️** The text-editor button is shown only for a coding agent. With no editor the phone bar is browser and chat.
+- **✔️** Its click calls the active agent's `activate`, which adds that source view and shows the page.
+- **🔷** 2026-09-30: On the phone, an agent with no editor does not show the text-editor button. That agent has no editor page. The bar is browser and chat. The text-editor button is shown when the agent has an editor, and that click shows the source view.
 
 ---
 
@@ -126,3 +127,181 @@
 - **⏳** **🔷** Confirm pinch changes font size, and an open file has no search bar.
 - **⏳** **🔷** Open a file: no keyboard. A tap toasts “Long hold to start editing”. A long hold edits. A tap outside the file toasts “View mode. Long hold to edit.”
 - **⏳** **🔷** Footer, left to right on the right: browser, text editor, chat. The editor button opens the source view.
+
+---
+
+## Appendix — Views by layout and agent
+
+- **ℹ️** Spec: [`RPC-8.2.8.11`](../plans/done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) Phase 3 and [`RPC-8.2.8.12`](../plans/done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md) Phases 2–3.
+- **ℹ️** A coding agent is `has_editor`: Agent Pi, the coder agent, and Skill. Chatter is not.
+- **ℹ️** The model dropdown stays on the left in every case. Send follows the composer, not these pages.
+- **🔷** Tablet and desktop are the same layout. The tablet is that layout in a smaller window.
+
+### Phone
+
+- **🔷** Coding agent.
+  - **🔷** Editor view. Buttons: browser (not selected), text editor (selected), chat (not selected). The source view fills the screen.
+  - **🔷** Browser view. Buttons: browser (selected), text editor (not selected), chat (not selected). The browser fills the screen.
+  - **🔷** Chat view. Buttons: browser (not selected), text editor (not selected), chat (selected). Chat fills the screen.
+- **🔷** No editor.
+  - **🔷** Browser view. Buttons: browser (selected), chat (not selected). The browser fills the screen.
+  - **🔷** Chat view. Buttons: browser (not selected), chat (selected). Chat fills the screen.
+
+### Tablet and desktop
+
+- **🔷** Chat stays the left column. It is not a separate view.
+- **🔷** Coding agent.
+  - **🔷** Editor view. Buttons: browser (not selected), text editor (selected). The right side is the source view.
+  - **🔷** Browser view. Buttons: browser (selected), text editor (not selected). The right side is the browser.
+- **🔷** No editor.
+  - **🔷** Browser view. Buttons: browser (selected). The right side is the browser.
+  - **🔷** Nothing. Buttons: browser (not selected). The right side is not shown.
+
+---
+
+## What has to change
+
+- **✔️** The two replacements below are in the tree. Not confirmed on a device.
+
+The appendix is the design. These were the places the windows did something else.
+
+- **🔷** The text-editor button is shown only for a coding agent. Phone, tablet, and desktop.
+  - **ℹ️** Before this change, the phone and tablet always showed it. `12ef13e4` had stopped hiding it when the agent has no editor.
+  - **ℹ️** Before this change, the desktop hid both the browser button and the text-editor button when the agent has no editor, and showed a browser on/off toggle on the left instead.
+- **🔷** With no editor, the browser button stays. On the phone the chat button stays too. On a tablet and on the desktop the chat column stays, and there is no chat button.
+- **🔷** Leaving a coding agent for one with no editor hides the text-editor button.
+  - **🔷** Phone: chat view, whether the editor or the browser was showing. Chat selected. Browser not selected.
+  - **🔷** Tablet and desktop, editor was showing: nothing. The right side is hidden. Browser not selected.
+  - **🔷** Tablet and desktop, browser was showing: leave the browser open. Browser selected.
+  - **ℹ️** Before this change, the tablet opened the browser when the editor was showing. Leaving a coding agent on the desktop hid the right side even when the browser was showing.
+- **🔷** A coding agent on a tablet or the desktop always has the editor or the browser on the right. There is no hidden right side for that agent.
+- **🔷** The text-editor click shows that coding agent's source view.
+  - **ℹ️** Before this change, the phone click always opened Agent Pi, even when the session agent was Skill or the coder.
+
+### 1. `ollmapp/android/OllmchatWindow.vala` — text-editor button and leaving a coding agent
+
+**Why:** The text-editor button is shown only for a coding agent. Its click opens that agent's source view. On the phone, switching to an agent with no editor shows chat. On a tablet, an open browser stays open. If the editor was showing, the right side closes.
+
+**Where:** `initialize_client`, the text-editor click handler and the `agent_activated` handler immediately after it.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+			this.editor_picker.clicked.connect(() => {
+				var factory = this.history_manager.agent_factories.get("agent-pi");
+				factory.activate.begin(this, (obj, res) => {
+					factory.activate.end(res);
+				});
+			});
+			this.history_manager.agent_activated.connect((factory) => {
+				if (factory.has_editor) {
+					return;
+				}
+				if (this.pane_stack.visible_child_name != null
+					&& this.pane_stack.visible_child_name.has_suffix("-widget")) {
+					var ui = this.history_manager.tools.get("browser")
+						as OLLMchat.Tool.UiWidgets;
+					var view = (Gtk.Widget) ui.view_widget;
+					if (this.pane_stack.get_child_by_name("browser") == null) {
+						this.pane_stack.add_named(view, "browser");
+					}
+					this.pane_stack.set_visible_child_name("browser");
+				}
+				if (!this.is_tablet) {
+					return;
+				}
+				this.schedule_pane_update(true);
+			});
+```
+
+#### Replace with
+
+The text-editor button follows the agent. The phone goes to chat. The tablet keeps an open browser and otherwise hides the right side.
+
+```vala
+			this.editor_picker.clicked.connect(() => {
+				var factory = this.history_manager.get_active_agent();
+				factory.activate.begin(this, (obj, res) => {
+					factory.activate.end(res);
+				});
+			});
+			this.editor_picker.visible = this.history_manager.get_active_agent().has_editor;
+			this.history_manager.agent_activated.connect((factory) => {
+				this.editor_picker.visible = factory.has_editor;
+				if (factory.has_editor) {
+					return;
+				}
+				if (!this.is_tablet) {
+					this.schedule_pane_update(false);
+					return;
+				}
+				if (this.pane_stack.visible_child_name == "browser") {
+					this.schedule_pane_update(true);
+					return;
+				}
+				this.schedule_pane_update(false);
+			});
+```
+
+### 2. `ollmapp/Window.vala` — desktop bar matches the tablet
+
+**Why:** The desktop keeps the browser button when the agent has no editor. The text-editor button hides. The browser on/off toggle stays off the bar. An open browser stays open. If the editor was showing, the right side closes.
+
+**Where:** `OllmchatWindow` constructor, the `agent_activated` handler, then the startup block immediately after it.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+			this.history_manager.agent_activated.connect((factory) => {
+				if (factory.has_editor) {
+					this.chat_widget.chat_bar.tool_button_box.visible = false;
+					this.chat_widget.chat_bar.end_box.visible = true;
+					return;
+				}
+				if (this.chat_widget.chat_bar.end_box.visible) {
+					this.chat_widget.chat_bar.end_box.visible = false;
+					this.chat_widget.chat_bar.toggle_active_tool("browser", false);
+				}
+				this.chat_widget.chat_bar.tool_button_box.visible = true;
+				this.chat_widget.chat_bar.end_box.visible = false;
+			});
+			if (this.history_manager.get_active_agent().has_editor) {
+				this.chat_widget.chat_bar.tool_button_box.visible = false;
+				this.chat_widget.chat_bar.end_box.visible = true;
+				if (this.window_pane.intended_pane_visible) {
+					this.schedule_pane_update(true);
+				}
+			}
+```
+
+#### Replace with
+
+The browser and text-editor buttons stay on the right. Only the text-editor button follows the agent. The right side follows the same rule as the tablet.
+
+```vala
+			this.history_manager.agent_activated.connect((factory) => {
+				this.chat_widget.chat_bar.tool_button_box.visible = false;
+				this.chat_widget.chat_bar.end_box.visible = true;
+				this.editor_picker.visible = factory.has_editor;
+				if (factory.has_editor) {
+					return;
+				}
+				if (this.window_pane.tab_view.visible_child_name == "browser") {
+					this.schedule_pane_update(true);
+					return;
+				}
+				this.schedule_pane_update(false);
+			});
+			this.chat_widget.chat_bar.tool_button_box.visible = false;
+			this.chat_widget.chat_bar.end_box.visible = true;
+			this.editor_picker.visible = this.history_manager.get_active_agent().has_editor;
+			if (this.history_manager.get_active_agent().has_editor
+				&& this.window_pane.intended_pane_visible) {
+				this.schedule_pane_update(true);
+			}
+```
+

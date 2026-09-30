@@ -10,7 +10,7 @@
 
 - `[RPC-8.2.7-client-cert-registration.md](RPC-8.2.7-client-cert-registration.md)` — `filesd.socket` reserved; HTTPS registration already in tree
 - `[RPC-8.2.8.3-DONE-filesd-file-server-tls.md](done/RPC-8.2.8.3-DONE-filesd-file-server-tls.md)` — File Server expander is HTTPS host/port/proxy/systemd
-- **Windows loopback port** is a **bug**, not this plan: `[docs/bugs/2026-09-20-filesd-windows-socket-port.md](../bugs/2026-09-20-filesd-windows-socket-port.md)`
+- **Windows loopback port** is a **bug**, not this plan: `[docs/bugs/done/2026-09-20-FIXED-filesd-windows-socket-port.md](../bugs/done/2026-09-20-FIXED-filesd-windows-socket-port.md)`
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -35,7 +35,7 @@
 - ℹ️ `TcpListen` is **plaintext** bin RPC. Docblock already says a public bind needs an authenticated transport first (`libocrpc/Transport/TcpListen.vala`).
 - ℹ️ HTTPS registration: product-CA TLS + `OLLMfilesd.Https.allow_rpc` + `ClientCert` (`request_registration` / accept / reject / ban).
 - ℹ️ File Server UI edits `https` / `proxy` / `systemd` only. No socket host/port rows.
-- ℹ️ Windows loopback TCP is hardcoded **4141** — `[2026-09-20-filesd-windows-socket-port.md](../bugs/2026-09-20-filesd-windows-socket-port.md)`.
+- ℹ️ Windows loopback TCP is hardcoded **4141** — `[docs/bugs/done/2026-09-20-FIXED-filesd-windows-socket-port.md](../bugs/done/2026-09-20-FIXED-filesd-windows-socket-port.md)`.
 
 ---
 

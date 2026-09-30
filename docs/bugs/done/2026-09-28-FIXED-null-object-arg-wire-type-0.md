@@ -1,6 +1,6 @@
 # Null GObject in `Notification.args` aborts the client
 
-**Status:** ✔️ closed 2026-09-28. A null object in a value slot is compact uint64 `0`. `null-object-arg-gate` passes. User closed the calendar-close crash.
+**Status:** ✅ FIXED — user closed 2026-09-28. A null object in a value slot is compact uint64 `0`. `null-object-arg-gate` passes. Calendar close no longer aborts the client.
 
 ## Problem
 

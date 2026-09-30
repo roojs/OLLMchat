@@ -1,6 +1,6 @@
 # Subscribe without writing a reply
 
-**Status:** ✔️ applied. `Live.Subscription.connect` writes no reply. `rpc_signal` calls it and still replies. Not user-verified. gnome-shell-rpc still has to call `connect` from `Helper-Actor.create` instead of `rpc_signal`.
+**Status:** ✅ FIXED — user closed 2026-09-30. `Live.Subscription.connect` writes no reply. `rpc_signal` calls it and still replies.
 
 **Consumer:** [`gnome-shell-rpc` `docs/bugs/2026-09-29-rpc-call-volume.md`](../../../gnome-shell-rpc/docs/bugs/2026-09-29-rpc-call-volume.md) row 1. That bug queues the first property sets and the signal names onto one create. The server has to subscribe before it replies. It cannot call `rpc_signal` to do that.
 

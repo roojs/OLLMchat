@@ -1,6 +1,6 @@
 # HTTP 500 on async filesd RPC
 
-**Status:** ⏳ pause is in the running daemon; tablet not rechecked yet
+**Status:** ✅ FIXED — user closed 2026-09-30. Soup stays paused until the async filesd reply is written.
 
 ## Problem
 
@@ -33,8 +33,4 @@ After each `this.finished = true` on a single response, unpause when `this.pause
 
 - **✔️** `ninja -C build libocrpc/libocrpc.so`.
 - **ℹ️** `/usr/bin/ollmfilesd` loads `/lib/x86_64-linux-gnu/libocrpc.so`. Replacing that file needs root. The user unit drop-in `~/.config/systemd/user/ollmfilesd.service.d/build-libocrpc.conf` sets `LD_LIBRARY_PATH` to `build/libocrpc`. Restarted `ollmfilesd`; `/proc/<pid>/maps` shows that library.
-- **⏳** Tablet process did not stay up on the relaunch from here, so the project-list alert is not confirmed gone.
-
-## Next
-
-- **⏳** Open the tablet app and confirm the project list loads without HTTP 500.
+- **✅** 2026-09-30 — User closed. Project list no longer returns HTTP 500.

@@ -17,7 +17,7 @@
 - 🔷 Windows equivalent of `systemctl --user`: a per-user service that starts `ollmfilesd`.
 - 🔷 Windows host list for HTTPS server and Local network SSL server.
 - ℹ️ The row layout, including Localhost TCP as a Running row with no toggle, is [`8.2.8.13`](RPC-8.2.8.13-filesd-desktop-server-rows.md).
-- ℹ️ Changing the localhost TCP port is [`docs/bugs/2026-09-20-filesd-windows-socket-port.md`](../bugs/2026-09-20-filesd-windows-socket-port.md), not this plan.
+- ℹ️ Changing the localhost TCP port is [`docs/bugs/done/2026-09-20-FIXED-filesd-windows-socket-port.md`](../bugs/done/2026-09-20-FIXED-filesd-windows-socket-port.md), not this plan.
 - ⏳ Code proposals — only if this plan is kept.
 
 ---

@@ -1,6 +1,6 @@
 # Windows file-daemon TCP port is not configurable
 
-**Status:** ⏳ OPEN — user report 2026-09-20; fix not applied
+**Status:** ✅ FIXED — user closed 2026-09-30.
 
 **Started:** 2026-09-20
 
@@ -65,7 +65,4 @@
 
 - ✔️ 2026-09-20 — User: Connections / File Server has no Windows socket port; split Windows port (this log) from Linux LAN TCP plan.
 
-## Next
-
-- ⏳ 🔷 Agree Windows UI: port field only vs a Windows File Server expander (no HTTPS / systemd)
-- ⏳ 🔷 Propose fences: `Filesd` / Windows `ClientBoot` / `ProjectManager` or Window connect path / `is_running()`
+- ✅ 2026-09-30 — User closed.

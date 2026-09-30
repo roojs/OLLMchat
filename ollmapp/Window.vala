@@ -832,24 +832,24 @@ namespace OLLMapp
 			});
 
 			this.history_manager.agent_activated.connect((factory) => {
-				if (factory.has_editor) {
-					this.chat_widget.chat_bar.tool_button_box.visible = false;
-					this.chat_widget.chat_bar.end_box.visible = true;
-					return;
-				}
-				if (this.chat_widget.chat_bar.end_box.visible) {
-					this.chat_widget.chat_bar.end_box.visible = false;
-					this.chat_widget.chat_bar.toggle_active_tool("browser", false);
-				}
-				this.chat_widget.chat_bar.tool_button_box.visible = true;
-				this.chat_widget.chat_bar.end_box.visible = false;
-			});
-			if (this.history_manager.get_active_agent().has_editor) {
 				this.chat_widget.chat_bar.tool_button_box.visible = false;
 				this.chat_widget.chat_bar.end_box.visible = true;
-				if (this.window_pane.intended_pane_visible) {
-					this.schedule_pane_update(true);
+				this.editor_picker.visible = factory.has_editor;
+				if (factory.has_editor) {
+					return;
 				}
+				if (this.window_pane.tab_view.visible_child_name == "browser") {
+					this.schedule_pane_update(true);
+					return;
+				}
+				this.schedule_pane_update(false);
+			});
+			this.chat_widget.chat_bar.tool_button_box.visible = false;
+			this.chat_widget.chat_bar.end_box.visible = true;
+			this.editor_picker.visible = this.history_manager.get_active_agent().has_editor;
+			if (this.history_manager.get_active_agent().has_editor
+				&& this.window_pane.intended_pane_visible) {
+				this.schedule_pane_update(true);
 			}
 
 			// Agent UI: factories receive this window as ChatDesktopInterface (§3b)

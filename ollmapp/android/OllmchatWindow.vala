@@ -577,29 +577,26 @@ namespace OLLMapp
 				this.schedule_pane_update(true);
 			});
 			this.editor_picker.clicked.connect(() => {
-				var factory = this.history_manager.agent_factories.get("agent-pi");
+				var factory = this.history_manager.get_active_agent();
 				factory.activate.begin(this, (obj, res) => {
 					factory.activate.end(res);
 				});
 			});
+			this.editor_picker.visible = this.history_manager.get_active_agent().has_editor;
 			this.history_manager.agent_activated.connect((factory) => {
+				this.editor_picker.visible = factory.has_editor;
 				if (factory.has_editor) {
 					return;
 				}
-				if (this.pane_stack.visible_child_name != null
-					&& this.pane_stack.visible_child_name.has_suffix("-widget")) {
-					var ui = this.history_manager.tools.get("browser")
-						as OLLMchat.Tool.UiWidgets;
-					var view = (Gtk.Widget) ui.view_widget;
-					if (this.pane_stack.get_child_by_name("browser") == null) {
-						this.pane_stack.add_named(view, "browser");
-					}
-					this.pane_stack.set_visible_child_name("browser");
-				}
 				if (!this.is_tablet) {
+					this.schedule_pane_update(false);
 					return;
 				}
-				this.schedule_pane_update(true);
+				if (this.pane_stack.visible_child_name == "browser") {
+					this.schedule_pane_update(true);
+					return;
+				}
+				this.schedule_pane_update(false);
 			});
 
 			this.history_browser.session_selected.connect((session) => {
