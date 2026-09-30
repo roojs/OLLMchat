@@ -62,6 +62,12 @@ namespace OLLMcoder
 		private Gtk.CssProvider font_css { get; set; default = new Gtk.CssProvider(); }
 		private double source_font_px = 14;
 		private double pinch_origin = 14;
+#if ANDROID
+		private Adw.ToastOverlay phone_toast;
+		private Gtk.GestureLongPress phone_hold;
+		private Gtk.GestureClick phone_tap;
+		private bool phone_watch = false;
+#endif
 		
 		/**
 		* Timeout source for debouncing scroll position saves.
@@ -275,7 +281,8 @@ namespace OLLMcoder
 				Gtk.EventControllerScrollFlags.VERTICAL | Gtk.EventControllerScrollFlags.DISCRETE);
 			font_wheel.propagation_phase = Gtk.PropagationPhase.CAPTURE;
 			font_wheel.scroll.connect((dx, dy) => {
-				if ((font_wheel.get_current_event_state() & Gdk.ModifierType.CONTROL_MASK) == 0 || dy == 0) {
+				if ((font_wheel.get_current_event_state() & Gdk.ModifierType.CONTROL_MASK) == 0 
+					|| dy == 0) {
 					return false;
 				}
 				this.source_font_px = (this.source_font_px - dy * 2).clamp(8.0, 64.0);
@@ -335,7 +342,116 @@ namespace OLLMcoder
 			};
 			editor_overlay.set_child(this.scrolled_window);
 			editor_overlay.add_overlay(this.review_bar.review_overlay);
+#if ANDROID
+			this.source_view.editable = false;
+			this.source_view.cursor_visible = false;
+			this.source_view.focus_on_click = false;
+			this.source_view.focusable = false;
+			this.source_view.can_focus = false;
+			this.phone_toast = new Adw.ToastOverlay() {
+				vexpand = true,
+				hexpand = true
+			};
+			this.phone_toast.set_child(editor_overlay);
+			this.append(this.phone_toast);
+			this.phone_hold = new Gtk.GestureLongPress();
+			this.phone_hold.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+			this.phone_hold.begin.connect((sequence) => {
+				if (this.source_view.editable || this.diff_active) {
+					this.phone_hold.set_state(Gtk.EventSequenceState.DENIED);
+					return;
+				}
+				if (this.current_file != null && this.current_file.delete_id > 0) {
+					this.phone_hold.set_state(Gtk.EventSequenceState.DENIED);
+				}
+			});
+			this.phone_hold.pressed.connect((x, y) => {
+				if (this.source_view.editable || this.diff_active) {
+					return;
+				}
+				if (this.current_file != null && this.current_file.delete_id > 0) {
+					return;
+				}
+				var bx = 0;
+				var by = 0;
+				this.source_view.window_to_buffer_coords(
+					Gtk.TextWindowType.WIDGET, (int) x, (int) y, out bx, out by);
+				Gtk.TextIter at;
+				if (this.source_view.get_iter_at_location(out at, bx, by)) {
+					this.source_view.buffer.place_cursor(at);
+				}
+				this.source_view.focusable = true;
+				this.source_view.focus_on_click = true;
+				this.source_view.can_focus = true;
+				this.source_view.editable = true;
+				this.source_view.cursor_visible = true;
+				this.source_view.grab_focus();
+			});
+			this.source_view.add_controller(this.phone_hold);
+			this.phone_tap = new Gtk.GestureClick();
+			this.phone_tap.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+			this.phone_tap.begin.connect((sequence) => {
+				if (!this.source_view.editable) {
+					return;
+				}
+				this.phone_tap.set_state(Gtk.EventSequenceState.DENIED);
+			});
+			this.phone_tap.released.connect((n_press, x, y) => {
+				if (this.source_view.editable || this.diff_active) {
+					return;
+				}
+				if (this.current_file != null && this.current_file.delete_id > 0) {
+					return;
+				}
+				this.phone_toast.add_toast(new Adw.Toast("Long hold to start editing") {
+					timeout = 3
+				});
+			});
+			this.source_view.add_controller(this.phone_tap);
+			this.map.connect(() => {
+				if (this.phone_watch) {
+					return;
+				}
+				this.phone_watch = true;
+				var root = (Gtk.Widget) this.get_root();
+				var watch = new Gtk.EventControllerLegacy();
+				watch.propagation_phase = Gtk.PropagationPhase.BUBBLE;
+				watch.event.connect((event) => {
+					switch (event.get_event_type()) {
+					case Gdk.EventType.BUTTON_RELEASE:
+					case Gdk.EventType.TOUCH_END:
+						break;
+					default:
+						return false;
+					}
+					if (!this.source_view.editable) {
+						return false;
+					}
+					var x = 0.0;
+					var y = 0.0;
+					event.get_position(out x, out y);
+					var picked = root.pick(x, y, Gtk.PickFlags.DEFAULT);
+					for (var w = picked; w != null; w = w.get_parent()) {
+						if (w == this.source_view || w == this.scrolled_window) {
+							return false;
+						}
+					}
+					this.source_view.editable = false;
+					this.source_view.cursor_visible = false;
+					this.source_view.focus_on_click = false;
+					this.source_view.focusable = false;
+					this.source_view.can_focus = false;
+					((Gtk.Root) root).set_focus(null);
+					this.phone_toast.add_toast(new Adw.Toast("View mode. Long hold to edit.") {
+						timeout = 3
+					});
+					return false;
+				});
+				root.add_controller(watch);
+			});
+#else
 			this.append(editor_overlay);
+#endif
 			this.append(this.review_bar);
 			this.review_bar.file_index_changed.connect((index) => {
 				if (index < 0 || index >= this.review_bar.queue.size) {
@@ -555,8 +671,15 @@ namespace OLLMcoder
 			
 			this.open_file.begin(file, -1, (obj, res) => {
 				this.open_file.end(res);
-				// Unlock source view after file load completes
+#if ANDROID
+				this.source_view.editable = false;
+				this.source_view.cursor_visible = false;
+				this.source_view.focus_on_click = false;
+				this.source_view.focusable = false;
+				this.source_view.can_focus = false;
+#else
 				this.source_view.editable = true;
+#endif
 				this.source_view.remove_css_class("loading");
 			});
 		}
@@ -647,9 +770,20 @@ namespace OLLMcoder
 				
 				// Enable save button when file is open
 				this.save_button.sensitive = true;
-				
-				// Make editor editable
+
+				// Phone stays in view mode until a long-press. Desktop edits.
+#if ANDROID
+				this.source_view.editable = false;
+				this.source_view.cursor_visible = false;
+				this.source_view.focus_on_click = false;
+				this.source_view.focusable = false;
+				this.source_view.can_focus = false;
+				if (this.source_view.has_focus) {
+					((Gtk.Root) this.get_root()).set_focus(null);
+				}
+#else
 				this.source_view.editable = true;
+#endif
 
 				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
 				rows.add_all(this.manager.review_files.file_map.values);

@@ -1,6 +1,6 @@
 # Android — source view on the phone
 
-**Status:** ⏳ open — problems 1, 2, and 5 are in the tree. Not confirmed on a device. Problems 3 and 4 are still open.
+**Status:** ⏳ open — problems 1–5 are in the tree. Not confirmed on a device.
 
 **Package:** `org.roojs.ollmchat.androidpoc`
 
@@ -58,31 +58,44 @@
 
 - **🔷** Pan on the file works reasonably well.
 - **🔷** It still loses to editing often enough that panning is not a reliable way to read a file.
-- **🔷** Long-press to turn editing on was considered. The chosen control is a bottom-bar toggle, not a long-press.
-- **🔷** Viewer is the same source view with editing off, so the keyboard does not keep opening.
-- **🔷** Editor is that view with editing on.
+- **🔷** A document opens read-only. A tap must not bring up the keyboard.
+- **🔷** A tap shows a toast under the source view: long hold to start editing.
+- **🔷** A long hold starts editing: keyboard up, cursor at the hold.
+- **🔷** A tap anywhere that is not the source view locks it again. Toast: view mode, long hold to edit.
+- **🚫** A bottom-bar Viewer / Editor pair. That split is not the control.
 
 ### Evidence
 
-- **ℹ️** After a file loads, `open_file` sets `this.source_view.editable = true`.
+- **ℹ️** After a file loads, `open_file` sets `this.source_view.editable = true`. The view is focusable, so a tap opens the Android keyboard.
 - **ℹ️** Scroll vs cursor is problem 1 in the 2026-09-28 note. This problem is the mode split, not a new scroll patch.
+
+### Fix
+
+- **✔️** On Android a file stays non-editable, with focus off, until a long-press. Desktop still opens editable.
+- **✔️** The long-press places the cursor and focuses the view so the keyboard can show.
+- **✔️** A short tap toasts `Long hold to start editing` at the bottom of the source view.
+- **✔️** A button release outside the source view (header, review bar, footer) returns to view mode and toasts `View mode. Long hold to edit.`
 
 ---
 
-## Problem 4 — Bottom bar needs four buttons
+## Problem 4 — Bottom bar button sequence
 
-- **🔷** Phone bar today shows Chat and Browser. Edit mode is missing.
-- **🔷** The editor button does not work.
-- **🔷** The bar should be four buttons: Chat, Browser, Editor, Viewer.
-- **🔷** Viewer opens the source view with editing disabled.
-- **🔷** Editor opens the same view with editing enabled.
+- **🔷** Phone bar today shows Chat and Browser. The editor control is missing or does nothing.
+- **🔷** Do not add a separate Viewer button. View vs edit is problem 3.
+- **🔷** The three phone buttons stay the ones from [`RPC-8.2.8.11`](../plans/done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) and [`RPC-8.2.8.12`](../plans/done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md): browser, text editor, chat, on the right of the bar.
+- **🔷** A click activates that page. The editor click mounts Agent Pi’s source view.
 
 ### Evidence
 
-- **ℹ️** The bar appends `browser_picker`, `editor_picker`, then `chat_picker` (`chat_picker` is phone-only).
-- **ℹ️** `editor_picker` uses `document-edit-symbolic` and tooltip `Text editor`. It is shown only when the active agent `has_editor`.
-- **ℹ️** Its click sets the pane to `{agent_name}-widget` and calls `schedule_pane_update(true)`.
-- **⏳** Why the phone shows two buttons, and why the editor control does nothing, is not logged on a device.
+- **ℹ️** The bar appends `browser_picker`, `editor_picker`, then `chat_picker`. That is the spec order.
+- **ℹ️** `editor_picker` was shown only when the active agent `has_editor`, so Chatter hid it and the bar was Browser, Chat.
+- **ℹ️** Its click set the pane to `{agent_name}-widget`. That child is absent until `Factory.activate` adds it, so the control did nothing.
+- **ℹ️** The Android spec click is `agent_factories.get("agent-pi").activate()`.
+
+### Fix
+
+- **✔️** The editor button stays visible. Order on the right is browser, text editor, chat.
+- **✔️** Its click calls Agent Pi `activate`, which adds the source view and shows that page.
 
 ---
 
@@ -111,3 +124,5 @@
 
 - **⏳** **🔷** Rebuild the APK and confirm a `.vala` file is coloured on the phone.
 - **⏳** **🔷** Confirm pinch changes font size, and an open file has no search bar.
+- **⏳** **🔷** Open a file: no keyboard. A tap toasts “Long hold to start editing”. A long hold edits. A tap outside the file toasts “View mode. Long hold to edit.”
+- **⏳** **🔷** Footer, left to right on the right: browser, text editor, chat. The editor button opens the source view.

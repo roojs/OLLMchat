@@ -261,11 +261,14 @@ namespace OLLMcoder.AgentPi
 			this.widget.visible = true;
 			tabs.set_visible_child_name(widget_id);
 			ui.schedule_pane_update(true);
-			var agent = (Agent) ui.session_agent();
+			var coder = ui.session_agent() as Agent;
+			if (coder == null) {
+				return;
+			}
 			var queue = ui.chat_message_queue();
-			queue.items = agent.session.queued_messages;
+			queue.items = coder.session.queued_messages;
 			queue.can_queue(true);
-			agent.message_queue = queue;
+			coder.message_queue = queue;
 		}
 
 		public override async void deactivate(GLib.Object window)

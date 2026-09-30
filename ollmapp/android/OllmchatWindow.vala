@@ -577,14 +577,12 @@ namespace OLLMapp
 				this.schedule_pane_update(true);
 			});
 			this.editor_picker.clicked.connect(() => {
-				this.pane_stack.set_visible_child_name(
-					this.history_manager.session.agent_name + "-widget");
-				this.schedule_pane_update(true);
+				var factory = this.history_manager.agent_factories.get("agent-pi");
+				factory.activate.begin(this, (obj, res) => {
+					factory.activate.end(res);
+				});
 			});
-			this.editor_picker.visible =
-				this.history_manager.get_active_agent().has_editor;
 			this.history_manager.agent_activated.connect((factory) => {
-				this.editor_picker.visible = factory.has_editor;
 				if (factory.has_editor) {
 					return;
 				}
