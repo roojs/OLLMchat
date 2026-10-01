@@ -165,15 +165,24 @@ namespace OLLMapp
 			}
 			filesd_client.notify["state"].connect(() => {
 				GLib.debug("agent list notify state=%s", filesd_client.state.to_string());
+				/* Filter growth moves the selected row. That must not
+				   activate a different agent before the button is shown. */
+				this.block_select_signal = true;
 				this.filter.changed(Gtk.FilterChange.DIFFERENT);
 				var listed_model = (Gtk.FilterListModel) this.dropdown.model;
 				var listed_n = (int) listed_model.get_n_items();
 				GLib.debug("agent list model n=%d", listed_n);
+				var active = this.host.history_manager.get_active_agent();
 				for (var i = 0; i < listed_n; i++) {
 					var listed = (OLLMchat.Agent.Factory) listed_model.get_item(i);
 					GLib.debug("agent list model i=%d name=%s title=%s",
 						i, listed.name, listed.title);
+					if (listed != active) {
+						continue;
+					}
+					this.dropdown.selected = (uint) i;
 				}
+				this.block_select_signal = false;
 			});
 
 			this.dropdown.notify["selected"].connect(() => {

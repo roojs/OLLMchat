@@ -1,6 +1,6 @@
 # Android — source view on the phone
 
-**Status:** ⏳ open — problems 1–5 are in the tree. Not confirmed on a device.
+**Status:** ✔️ 2026-10-01 emulator (`Medium_Phone`, `sw411dp`): file `docs/bugs/2026-09-29-android-source-view-phone.md` open, header Agent Π, footer browser / text editor (selected) / chat. Problems 1 and 3 are still awaiting a phone check.
 
 **Package:** `org.roojs.ollmchat.androidpoc`
 
@@ -97,6 +97,105 @@
 - **✔️** The text-editor button is shown only for a coding agent. With no editor the phone bar is browser and chat.
 - **✔️** Its click calls the active agent's `activate`, which adds that source view and shows the page.
 - **🔷** 2026-09-30: On the phone, an agent with no editor does not show the text-editor button. That agent has no editor page. The bar is browser and chat. The text-editor button is shown when the agent has an editor, and that click shows the source view.
+- **✔️** 2026-09-30 emulator (`Medium_Phone`, `sw411dp`): desktop `https://192.168.0.16:8443` connected, file `docs/bugs/2026-09-29-android-source-view-phone.md` open and coloured. Footer is the model dropdown, browser, and chat. The text-editor button is not there. The header agent reads Just Ask. The saved window agent is `agent-pi`. `filesd-client.state` stayed `2` (`ENABLED`).
+- **✔️** `editor_picker.visible` is set from `get_active_agent().has_editor` before the desktop session switch. That switch uses `ensure_agent_handler()`, which does not emit `agent_activated`. `activate()` then shows the source view. The button stays hidden.
+- **✔️** `History.Manager` keeps the `Config2` from before `load_config()` replaces `app.config`. `initialize_client` writes `LIVE` on the new object. The agent list watches the old one, so Agent Pi stays filtered out and the header stays on Just Ask.
+
+### Fix — same config, button after the session switch
+
+- **✔️** One `Config2` for startup and the agent list. `LIVE` reaches the list, so Agent Pi can be selected.
+- **✔️** After the desktop session switch, the text-editor button follows that agent.
+- **✔️** When the file-server state changes, the agent list selects the active agent. The select signal stays blocked across that filter change. An unblocked change was activating Just Ask (`Replacing chat from old agent` in the 2026-10-01 log) and hiding the button while the header still read Agent Π.
+- **✔️** 2026-10-01 emulator, saved `filesd-client.state` set back to `2` (`ENABLED`) then launched: state became `LIVE`, no `Replacing chat` line, same open file, header Agent Π, text-editor button selected between browser and chat.
+
+#### 1. `ollmapp/android/OllmchatWindow.vala` — do not reload config after startup
+
+**Why:** The reload replaces `app.config`. The history manager and the agent list keep the previous object, so they never see `LIVE`.
+
+**Where:** `load_config_and_initialize`, the success branch after `startup.run`.
+
+**Depends on:** none.
+
+#### Remove
+
+```vala
+			if (yield startup.run(this.app.config)) {
+				this.startup_status_label.label = "Opening chat…";
+				this.app.config = (this.app as AndroidApplication).load_config();
+				AndroidConnectionConfigTls.apply_to_config(this.app.config);
+				yield this.initialize_client(this.app.config);
+				return;
+			}
+```
+
+#### Replace with
+
+```vala
+			if (yield startup.run(this.app.config)) {
+				this.startup_status_label.label = "Opening chat…";
+				yield this.initialize_client(this.app.config);
+				return;
+			}
+```
+
+#### 2. `ollmapp/android/OllmchatWindow.vala` — text-editor button after the session switch
+
+**Why:** The switch does not emit `agent_activated`. The button was set while the session was still Just Ask.
+
+**Where:** `initialize_client`, immediately after the desktop-reached and desktop-unreachable session switches.
+
+**Depends on:** none.
+
+#### Add
+
+```vala
+			this.editor_picker.visible = this.history_manager.get_active_agent().has_editor;
+```
+
+#### 3. `ollmapp/AgentDropdown.vala` — select the active agent when the file server state changes
+
+**Why:** Agent Pi enters the list only after the state becomes live. The closed button was left on Just Ask.
+
+**Where:** `wire`, the `filesd_client.notify["state"]` handler.
+
+**Depends on:** §1.
+
+#### Remove
+
+```vala
+				this.filter.changed(Gtk.FilterChange.DIFFERENT);
+				var listed_model = (Gtk.FilterListModel) this.dropdown.model;
+				var listed_n = (int) listed_model.get_n_items();
+				GLib.debug("agent list model n=%d", listed_n);
+				for (var i = 0; i < listed_n; i++) {
+					var listed = (OLLMchat.Agent.Factory) listed_model.get_item(i);
+					GLib.debug("agent list model i=%d name=%s title=%s",
+						i, listed.name, listed.title);
+				}
+```
+
+#### Replace with
+
+```vala
+				/* Filter growth moves the selected row. That must not
+				   activate a different agent before the button is shown. */
+				this.block_select_signal = true;
+				this.filter.changed(Gtk.FilterChange.DIFFERENT);
+				var listed_model = (Gtk.FilterListModel) this.dropdown.model;
+				var listed_n = (int) listed_model.get_n_items();
+				GLib.debug("agent list model n=%d", listed_n);
+				var active = this.host.history_manager.get_active_agent();
+				for (var i = 0; i < listed_n; i++) {
+					var listed = (OLLMchat.Agent.Factory) listed_model.get_item(i);
+					GLib.debug("agent list model i=%d name=%s title=%s",
+						i, listed.name, listed.title);
+					if (listed != active) {
+						continue;
+					}
+					this.dropdown.selected = (uint) i;
+				}
+				this.block_select_signal = false;
+```
 
 ---
 
@@ -303,5 +402,43 @@ The browser and text-editor buttons stay on the right. Only the text-editor butt
 				&& this.window_pane.intended_pane_visible) {
 				this.schedule_pane_update(true);
 			}
+```
+
+---
+
+## Problem 6 — File field keeps the cursor after a file is chosen
+
+- **🔷** Select a project, then a file. The caret pin stays in the file field.
+- **🔷** The keyboard stays up with it.
+- **🔷** Choosing a file drops focus. The pin goes away and the keyboard closes.
+- **🚫** Leaving the file field focused so another search can start immediately. The next search is a new tap on the field.
+
+### Evidence
+
+- **ℹ️** The file list is `can_focus = false` so the entry keeps focus while the popup is open. `on_selected` clears the entry text and does not move focus.
+- **ℹ️** Opening a project then focuses that entry on purpose, so a file can be typed. That focus is still there after the file is chosen.
+- **✔️** 2026-10-01 emulator: the file field shows a blue ring and a caret at the start of the filename, and the keyboard is open.
+
+### Fix
+
+- **🔷** After a choice, the pulldown leaves its entry. The phone and the desktop use the same path. The source view does not move that focus.
+
+#### `liboccoder/SearchableDropdown.vala` — drop focus when a choice is accepted
+
+**Why:** The caret and the keyboard belong to the pulldown entry. Click and Enter both accept a choice there.
+
+**Where:** `list.activate`, and Enter in `on_key_pressed`, after `on_selected`.
+
+**Depends on:** none.
+
+#### Add
+
+```vala
+				/* A choice leaves the entry. The caret and the keyboard
+				   go with that focus. */
+				GLib.Idle.add(() => {
+					((Gtk.Root) this.get_root()).set_focus(null);
+					return false;
+				});
 ```
 

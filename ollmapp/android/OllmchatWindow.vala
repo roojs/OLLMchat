@@ -336,8 +336,6 @@ namespace OLLMapp
 
 			if (yield startup.run(this.app.config)) {
 				this.startup_status_label.label = "Opening chat…";
-				this.app.config = (this.app as AndroidApplication).load_config();
-				AndroidConnectionConfigTls.apply_to_config(this.app.config);
 				yield this.initialize_client(this.app.config);
 				return;
 			}
@@ -626,6 +624,7 @@ namespace OLLMapp
 				empty.agent_name = "chatter";
 				yield this.chat_widget.switch_to_session(empty);
 			}
+			this.editor_picker.visible = this.history_manager.get_active_agent().has_editor;
 
 			this.history_manager.agent_status_change.connect(() => {
 				var running = this.history_manager.session.is_running;

@@ -196,6 +196,12 @@ namespace OLLMcoder
 			this.list.activate.connect((position) => {
 				this.set_popup_visible(false);
 				this.on_selected();
+				/* A choice leaves the entry. The caret and the keyboard
+				   go with that focus. */
+				GLib.Idle.add(() => {
+					((Gtk.Root) this.get_root()).set_focus(null);
+					return false;
+				});
 			});
 			
 			sw.child = this.list;
@@ -563,6 +569,12 @@ namespace OLLMcoder
 				if (this.popup.visible) {
 					this.set_popup_visible(false);
 					this.on_selected();
+					/* A choice leaves the entry. The caret and the keyboard
+					   go with that focus. */
+					GLib.Idle.add(() => {
+						((Gtk.Root) this.get_root()).set_focus(null);
+						return false;
+					});
 					return true; // Consume the event
 				}
 				return false; // Let default behavior handle it

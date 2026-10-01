@@ -62,12 +62,11 @@ namespace OLLMcoder
 		private Gtk.CssProvider font_css { get; set; default = new Gtk.CssProvider(); }
 		private double source_font_px = 14;
 		private double pinch_origin = 14;
-#if ANDROID
+		// ANDROID ONLY
 		private Adw.ToastOverlay phone_toast;
 		private Gtk.GestureLongPress phone_hold;
 		private Gtk.GestureClick phone_tap;
 		private bool phone_watch = false;
-#endif
 		
 		/**
 		* Timeout source for debouncing scroll position saves.
