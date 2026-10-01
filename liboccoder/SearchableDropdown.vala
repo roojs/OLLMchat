@@ -196,12 +196,15 @@ namespace OLLMcoder
 			this.list.activate.connect((position) => {
 				this.set_popup_visible(false);
 				this.on_selected();
-				/* A choice leaves the entry. The caret and the keyboard
-				   go with that focus. */
+				/* The click puts focus back on the entry. Drop it after that. */
 				GLib.Idle.add(() => {
+					this.entry.can_focus = false;
 					((Gtk.Root) this.get_root()).set_focus(null);
+					this.entry.can_focus = true;
+					GLib.debug("choice blur entry_focus=%s",
+						this.entry.has_focus.to_string());
 					return false;
-				});
+				}, GLib.Priority.LOW);
 			});
 			
 			sw.child = this.list;
@@ -569,12 +572,15 @@ namespace OLLMcoder
 				if (this.popup.visible) {
 					this.set_popup_visible(false);
 					this.on_selected();
-					/* A choice leaves the entry. The caret and the keyboard
-					   go with that focus. */
+					/* The click puts focus back on the entry. Drop it after that. */
 					GLib.Idle.add(() => {
+						this.entry.can_focus = false;
 						((Gtk.Root) this.get_root()).set_focus(null);
+						this.entry.can_focus = true;
+						GLib.debug("choice blur entry_focus=%s",
+							this.entry.has_focus.to_string());
 						return false;
-					});
+					}, GLib.Priority.LOW);
 					return true; // Consume the event
 				}
 				return false; // Let default behavior handle it

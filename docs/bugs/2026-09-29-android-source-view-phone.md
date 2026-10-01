@@ -417,7 +417,9 @@ The browser and text-editor buttons stay on the right. Only the text-editor butt
 
 - **ℹ️** The file list is `can_focus = false` so the entry keeps focus while the popup is open. `on_selected` clears the entry text and does not move focus.
 - **ℹ️** Opening a project then focuses that entry on purpose, so a file can be typed. That focus is still there after the file is chosen.
-- **✔️** 2026-10-01 emulator: the file field shows a blue ring and a caret at the start of the filename, and the keyboard is open.
+- **✔️** 2026-10-01 emulator: opening the file field shows a blue ring, a caret, and the keyboard. A list tap there closed the popup without accepting a row, so that run did not show a finished selection.
+- **✔️** 2026-10-01 phone: a finished selection left the caret in the file field. About showed `0.20260930` because that string was taken from the previous commit when the Android build was configured. The package itself was updated at 09:59.
+- **ℹ️** The first focus clear ran in a normal idle. The click then put focus back on the entry, because the list cannot take focus.
 
 ### Fix
 
@@ -434,11 +436,14 @@ The browser and text-editor buttons stay on the right. Only the text-editor butt
 #### Add
 
 ```vala
-				/* A choice leaves the entry. The caret and the keyboard
-				   go with that focus. */
+				/* The click puts focus back on the entry. Drop it after that. */
 				GLib.Idle.add(() => {
+					this.entry.can_focus = false;
 					((Gtk.Root) this.get_root()).set_focus(null);
+					this.entry.can_focus = true;
+					GLib.debug("choice blur entry_focus=%s",
+						this.entry.has_focus.to_string());
 					return false;
-				});
+				}, GLib.Priority.LOW);
 ```
 
