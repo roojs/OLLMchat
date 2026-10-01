@@ -14,7 +14,7 @@ index 0000000000..cf99458155
 +#include <glib.h>
 +
 +/* Survives in libgtk-4.so; verify-apk.sh greps for this tag. */
-+const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v15";
++const char gdk_android_ollmchat_bugs_tag[] = "ollmchat-android-bugs-v16";
 +
 +static void
 +gdk_android_ollmchat_patch_marker (void)
@@ -1390,6 +1390,24 @@ index 4879bb4a81..68376ebe70 100644
        gtk_im_context_android_update_ime_keyboard (self);
      }
  
+diff --git a/gtk/gtklistbox.c b/gtk/gtklistbox.c
+index 1fe30172ae..d211ba2191 100644
+--- a/gtk/gtklistbox.c
++++ b/gtk/gtklistbox.c
+@@ -1956,7 +1956,12 @@ gtk_list_box_click_gesture_released (GtkGestureClick *gesture,
+       gboolean focus_on_click = gtk_widget_get_focus_on_click (GTK_WIDGET (box->active_row));
+ 
+       if (n_press == 1 && box->activate_single_click)
+-        gtk_list_box_select_and_activate_full (box, box->active_row, focus_on_click);
++        {
++          gtk_list_box_select_and_activate_full (box, box->active_row, focus_on_click);
++          /* This click is finished. Reset so the next tap is press 1
++           * again inside the double-click window. */
++          gtk_event_controller_reset (GTK_EVENT_CONTROLLER (gesture));
++        }
+       else
+         {
+           GdkEventSequence *sequence;
 diff --git a/gtk/gtkscrolledwindow.c b/gtk/gtkscrolledwindow.c
 index e90138939c..63ec8f8799 100644
 --- a/gtk/gtkscrolledwindow.c

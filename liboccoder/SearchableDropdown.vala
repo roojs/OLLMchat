@@ -128,6 +128,10 @@ namespace OLLMcoder
 					this.entry.text,
 					focus == null ? "null" : focus.get_type().name()
 				);
+				/* A row click moves focus into the list. That is still the popup. */
+				if (focus != null && (focus == this.popup || focus.is_ancestor(this.popup))) {
+					return;
+				}
 				this.set_popup_visible(false);
 			});
 			this.entry.add_controller(focus_controller);
@@ -170,7 +174,7 @@ namespace OLLMcoder
 				autohide = false,  // Don't auto-hide - we handle closing manually
 				has_arrow = false,
 				halign = Gtk.Align.START,
-				can_focus = false  // Don't allow popover to receive focus - keep focus on entry
+				can_focus = false
 			};
 			this.popup.set_parent(this);
 			this.popup.add_css_class("menu");
@@ -182,7 +186,7 @@ namespace OLLMcoder
 				max_content_height = 400,
 				propagate_natural_height = true,
 				propagate_natural_width = false,  // Prevent horizontal expansion
-				can_focus = false  // Don't allow scrolled window to receive focus
+				can_focus = false
 			};
 			
 			// Create list view
@@ -190,21 +194,13 @@ namespace OLLMcoder
 			// This follows the GTK suggestion entry pattern
 			this.list = new Gtk.ListView(this.selection, factory) {
 				single_click_activate = true,  // Click activates item
-				can_focus = false  // Don't allow list view to receive focus - keep focus on entry
+				can_focus = false  // Row click must not move focus before activate
 			};
 			// Connect to activate signal - this is called when user clicks an item
 			this.list.activate.connect((position) => {
+				this.grab_focus();
 				this.set_popup_visible(false);
 				this.on_selected();
-				/* The click puts focus back on the entry. Drop it after that. */
-				GLib.Idle.add(() => {
-					this.entry.can_focus = false;
-					((Gtk.Root) this.get_root()).set_focus(null);
-					this.entry.can_focus = true;
-					GLib.debug("choice blur entry_focus=%s",
-						this.entry.has_focus.to_string());
-					return false;
-				}, GLib.Priority.LOW);
 			});
 			
 			sw.child = this.list;
@@ -275,7 +271,20 @@ namespace OLLMcoder
 		
 		public override bool grab_focus()
 		{
-			// Delegate focus to entry (like the example)
+			/* An open list must not hand focus back to the entry. */
+			if (this.popup.visible) {
+				this.focusable = true;
+				var took = base.grab_focus();
+				this.focusable = false;
+				var focus = this.get_root()?.get_focus() as Gtk.Widget;
+				GLib.debug(
+					"accept focus=%s took=%s",
+					focus == null ? "null" : focus.get_type().name(),
+					took.to_string()
+				);
+				return took;
+			}
+			GLib.debug("entry focus");
 			return this.entry.grab_focus();
 		}
 		
@@ -570,17 +579,9 @@ namespace OLLMcoder
 			// Handle Enter key - accept current selection and close popup
 			if (keyval == Gdk.Key.Return || keyval == Gdk.Key.KP_Enter || keyval == Gdk.Key.ISO_Enter) {
 				if (this.popup.visible) {
+					this.grab_focus();
 					this.set_popup_visible(false);
 					this.on_selected();
-					/* The click puts focus back on the entry. Drop it after that. */
-					GLib.Idle.add(() => {
-						this.entry.can_focus = false;
-						((Gtk.Root) this.get_root()).set_focus(null);
-						this.entry.can_focus = true;
-						GLib.debug("choice blur entry_focus=%s",
-							this.entry.has_focus.to_string());
-						return false;
-					}, GLib.Priority.LOW);
 					return true; // Consume the event
 				}
 				return false; // Let default behavior handle it

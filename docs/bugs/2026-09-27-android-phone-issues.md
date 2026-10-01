@@ -82,12 +82,7 @@
 - **💩** A shared Android tap on that header list. The header toggles only if the list click is still active on release. Two parents can cancel that click while the finger is still inside the click slop:
   - `Gtk.ScrolledWindow` claims a touch after `gtk-dnd-drag-threshold` (~8px) when the page can scroll (`gtkscrolledwindow.c` `scrolled_window_drag_update_cb`).
   - The settings bottom sheet claims a downward drag after 16px (`adw-swipe-tracker.c` `DRAG_THRESHOLD_DISTANCE`) to pull the sheet closed.
-- **ℹ️** The Android click patch already lets a touch wobble 40px before the click cancels itself (`gtkgestureclick.c`). The scroller and the sheet still claim first, so a slightly moving finger never activates the row. A still finger does.
-- **🚫** The `GtkBox` warning does not disable the header list. Moving the expander into a `Gtk.ListBox` would not stop those claims.
-
-### Next
-
-- **⏳** **💩** Phone was not on wireless debugging for the 21:51 series, so which parent claimed those taps is not in a log yet.
+- **✔️** A second tap within 1.2s is press 2, and the list box only emits `row-activated` on press 1. After that activation, `gtk_event_controller_reset()` (`gtklistbox.c`, patch `ollmchat-android-bugs-v16`). Emulator passed. Phone APK not rebuilt yet.
 
 ---
 

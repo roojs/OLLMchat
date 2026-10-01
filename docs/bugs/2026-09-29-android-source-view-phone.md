@@ -421,29 +421,44 @@ The browser and text-editor buttons stay on the right. Only the text-editor butt
 - **✔️** 2026-10-01 phone: a finished selection left the caret in the file field. About showed `0.20260930` because that string was taken from the previous commit when the Android build was configured. The package itself was updated at 09:59.
 - **ℹ️** The first focus clear ran in a normal idle. The click then put focus back on the entry, because the list cannot take focus.
 
-### Fix
+### Current focus
 
-- **🔷** After a choice, the pulldown leaves its entry. The phone and the desktop use the same path. The source view does not move that focus.
+- ℹ️ Click and Enter accept a row the same way.
+- ℹ️ `SearchableDropdown.list` is `can_focus = false`. The row click does not move focus.
+- ℹ️ `list.activate`, and Enter in `on_key_pressed`, call `set_popup_visible(false)` then `on_selected`.
+- ℹ️ Showing a popup calls `entry.grab_focus()` when that entry does not already have focus.
 
-#### `liboccoder/SearchableDropdown.vala` — drop focus when a choice is accepted
+Project:
 
-**Why:** The caret and the keyboard belong to the pulldown entry. Click and Enter both accept a choice there.
+- ℹ️ `ProjectDropdown.on_selected` emits `project_selected`.
+- ℹ️ It clears the project entry text and sets the placeholder to the project name.
+- ℹ️ It does not move focus.
+- ℹ️ `SourceView.on_project_selected` opens the project.
+- ℹ️ When that finishes, an idle calls `file_dropdown.grab_focus()`.
+- ℹ️ That is `entry.grab_focus()` on the file field.
+- ℹ️ After a project is chosen, focus is the file field.
 
-**Where:** `list.activate`, and Enter in `on_key_pressed`, after `on_selected`.
+File:
 
-**Depends on:** none.
+- ℹ️ The file field already has that focus, or the focus from a tap on it.
+- ℹ️ The list cannot take focus, so the caret stays in the file entry while the list is open.
+- ℹ️ `FileDropdown.set_popup_visible(false)` clears the entry text.
+- ℹ️ `on_selected` emits `file_selected`, clears the text again, and sets the placeholder to the file name.
+- ℹ️ Neither step moves focus.
+- ℹ️ `SourceView.on_file_selected` does not grab or drop focus.
+- ℹ️ On Android, `open_file` makes the source view unfocusable.
+- ℹ️ It calls `set_focus(null)` only when the source view itself has focus.
+- ℹ️ The file entry still has focus, so the caret and the keyboard stay there.
 
-#### Add
+### Rejected
 
-```vala
-				/* The click puts focus back on the entry. Drop it after that. */
-				GLib.Idle.add(() => {
-					this.entry.can_focus = false;
-					((Gtk.Root) this.get_root()).set_focus(null);
-					this.entry.can_focus = true;
-					GLib.debug("choice blur entry_focus=%s",
-						this.entry.has_focus.to_string());
-					return false;
-				}, GLib.Priority.LOW);
-```
+- 🚫 A late idle that clears focus inside `SearchableDropdown`. It runs after `on_project_selected` has focused the file field, and takes that focus away.
+
+### Next
+
+- 🔷 The list stays `can_focus = false`. A row click must not move focus before the row is chosen.
+- 🔷 Click and Enter call `grab_focus()` while the popup is still open. That focuses the dropdown itself, so the entry loses the caret.
+- 🔷 With the popup closed, `grab_focus()` still focuses the entry. Choosing a project can still hand focus to the file field.
+- 🚫 Letting the row take focus. The click blurred the entry with focus already null, the list closed, and the file was not chosen.
+- ✔️ 2026-10-01 emulator: chose `.gitattributes`. Log: `accept focus=OLLMcoderFileDropdown took=true`, then `file read` of that file. No `entry focus`. The keyboard was gone and the file field had no caret. Same package installed on the phone at 22:50.
 
