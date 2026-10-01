@@ -2,6 +2,8 @@
 
 **Status:** **PROPOSED** — flow agreed in chat; no code proposals yet
 
+> **Urgent next step:** [`RPC-1.11-URGENT-vpn-local-pin-pairing.md`](RPC-1.11-URGENT-vpn-local-pin-pairing.md) replaces this plan’s always-open `request_registration` and desktop Accept with VPN/local pairing (180s window, 6-digit PIN, mDNS, multi-interface fallback).
+
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
 **Parent:** [`RPC-8.2-full-rpc-system.md`](RPC-8.2-full-rpc-system.md) — Phase 7

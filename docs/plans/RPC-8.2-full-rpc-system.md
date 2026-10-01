@@ -227,6 +227,7 @@ End-to-end RPC stack beyond the bin socket cutover (**8.1**):
 ### Sub-plan
 
 - **⏳** [`RPC-8.2.7-client-cert-registration.md`](RPC-8.2.7-client-cert-registration.md) — registration gate, admin approval surface, cert → session identity.
+- **🔷** `⏳` **Urgent next:** [`RPC-1.11-URGENT-vpn-local-pin-pairing.md`](RPC-1.11-URGENT-vpn-local-pin-pairing.md) — drop public WAN registration. Pair on VPN/LAN only: 180s window, 6-digit PIN, mDNS, signed cert, multi-interface fallback.
 
 ---
 
@@ -259,6 +260,7 @@ End-to-end RPC stack beyond the bin socket cutover (**8.1**):
 - **⏳** **8.2.5** — Phase 5: OpenAI-compatible server
 - **⏳** **8.2.6** — Phase 6: session resumption (socket / shared with **8.2.3.2**)
 - **⏳** **8.2.7** — [`RPC-8.2.7-client-cert-registration.md`](RPC-8.2.7-client-cert-registration.md) — Phase 7: client-cert registration (request + admin approval) on HTTPS; socket TLS wrapper later
+- **⏳** **1.11 URGENT** — [`RPC-1.11-URGENT-vpn-local-pin-pairing.md`](RPC-1.11-URGENT-vpn-local-pin-pairing.md) — next registration step: VPN/local timed PIN pairing (replaces the open WAN registration path)
 
 ---
 
