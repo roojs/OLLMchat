@@ -22,7 +22,11 @@ ARGS=(
   -Dsysroot_triplet="$SQGI_LINUX_TRIPLET"
 )
 if [ -n "${SQGI_LINUX_MESON_CROSS_FILE:-}" ]; then
-  ARGS+=(--cross-file "$SQGI_LINUX_MESON_CROSS_FILE")
+  # Our [binaries] overrides come after sqgipkg's cross file so they win.
+  ARGS+=(
+    --cross-file "$SQGI_LINUX_MESON_CROSS_FILE"
+    --cross-file "$(cd "$(dirname "$0")" && pwd)/sqgipkg-linux-extra.cross"
+  )
 fi
 # roojs does not publish libwebkitgtk-6.0-webdriver-dev for arm64.
 case "${SQGI_LINUX_TRIPLET:-}" in

@@ -1,0 +1,9 @@
+[binaries]
+# sqgipkg's sysroot ships the target-architecture GLib tools. Meson resolves
+# glib-compile-resources from the sysroot pkg-config, and an arm64 binary on
+# an x86_64 runner dies with "Exec format error". These generators emit
+# architecture-independent C, so run the build machine's copies.
+glib-compile-resources = '/usr/bin/glib-compile-resources'
+glib-compile-schemas = '/usr/bin/glib-compile-schemas'
+glib-genmarshal = '/usr/bin/glib-genmarshal'
+glib-mkenums = '/usr/bin/glib-mkenums'
