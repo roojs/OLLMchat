@@ -1,6 +1,6 @@
 # v1.4.0 release jobs failed
 
-**Status:** ✔️ fixes applied locally — not committed; CI not re-run
+**Status:** ✔️ `ollmchat.vapi` is now a valac input; desktop `liboccoder` rebuilt after the vapi was deleted. Not committed. CI not re-run.
 
 **Related:**
 
@@ -40,8 +40,30 @@
     - **✔️** Android `libocrpc/ocrpc.vapi`: `The name get_tls_peer_certificate does not exist in the context of Soup.ServerMessage`. Ubuntu 24.04 ships valac 0.56.16; that `libsoup-3.0.vapi` has no such method on `ServerMessage`. The repo already vendors a newer `vapi/libsoup-3.0.vapi`, but `libocrpc/meson.build` passed only `--vapidir .` and `--vapidir /usr/share/vala/vapi`. Both the library and the `ocrpc-vapi` target now pass `../vapi` ahead of the system vapidir. Verified first-vapidir-wins with a stub `libsoup-3.0.vapi`: stub first fails, `vapi/` first compiles.
     - **✔️** Debian remote-only pass: `dh_missing: usr/include/ocrpc.h exists in debian/tmp but is not installed to anywhere`. **🔷** Monolithic has no separate `-dev` package but already ships `usr/share/vala/vapi/oc*.vapi`, so dropping the header would repeat this bug log's original defect (vapi without `ocrpc.h`). `ocrpc.h` is installed by `debian/monolithic/ollmchat.install` and `debian/monolithic-remote-only/ollmchat-remote-only.install`. The RPM remote-only build no longer does `rm -rf %{buildroot}%{_includedir}` and its `%files` owns `%{_includedir}/ocrpc.h`. Split packaging keeps `libocrpc-dev`.
 
+## AppImage and Android after `c37b0131`
+
+- **🔷** Run `36983772132`: Debian, Fedora, openSUSE, and Windows succeeded. AppImage job `110764026737` and Android job `110764026817` failed.
+- **✔️** Both logs stop in `liboccoder` valac: `Package 'ollmchat' not found in specified Vala API directories or GObject-Introspection GIR directories`.
+- **✔️** Android ninja order: `ollmchat-resources_c` at step 3815, then `liboccoder` valac fails, then `libollmchat` valac starts at step 3822. The vapi is an output of that later valac.
+- **✔️** `ollmchat_vapi_dep` only had `link_args`. Those make the linker wait for `libollmchat.so`. They do not put `ollmchat.vapi` on the consumer valac rule. Other internal libs pass their custom vapi in `sources:`. This library's vapi comes from `library()`, so `link_with: ollmchat_base_lib` is what Meson uses to add that vapi as a valac input (`determine_dep_vapis`).
+- **✔️** Local `.pixiewood/bin-aarch64/build.ninja` and `build/build.ninja` match CI: the `liboccoder` valac rule lists `ocsqlite.vapi` and the other custom vapis, and does not list `libollmchat/ollmchat.vapi`.
+
+#### Replace with — `libollmchat/meson.build` `ollmchat_vapi_dep`
+
+```meson
+ollmchat_vapi_dep = declare_dependency(
+  link_with: ollmchat_base_lib,
+  link_args: [
+    '-L' + meson.current_build_dir() / '..' / 'libollamaweb', '-lollamaweb',
+  ],
+  dependencies: [ocsqlite_vapi_dep, ollamaweb_vapi_dep, ocrpc_vapi_dep, ocmarkdown_vapi_dep]
+)
+```
+
 ## Next
 
+- **✔️** Desktop: deleted `build/libollmchat/ollmchat.vapi`, then `ninja -C build liboccoder/liboccoder.so` rebuilt that vapi first and linked `liboccoder.so`. Valac warned `Ignoring source file .../ollmchat.vapi, which was already added` (`--pkg=ollmchat` and the new input are the same file) and continued.
+- **✔️** Android Meson 1.12 reconfigure: `liboccoder` valac inputs now include `libollmchat/ollmchat.vapi`. Did not finish the cross compile. Reconfigure rewrote ninja against the real path of the `.pixiewood` symlink, so `glib-mkenums.in` pointed at `OLLMchat-build/subprojects` and about 1800 targets went dirty.
 - **⏳** **💩** Not committed and not pushed. Re-tag or re-run Release only after that commit.
 - **⏳** **ℹ️** Fedora 44 job `110733770535` is still on "Build RPMs" (started 06:32 UTC). GitHub does not publish that log until the job finishes. openSUSE already failed on missing gnutls; the spec change covers both.
 - **✔️** Local: `ninja -C build libocwebkit/libocwebkit.so` linked. `ninja -C build docs/valadoc` ended `Succeeded - 445 warning(s)`. `scripts/android/regression/test-r02-gtk-bootstrap-restore.sh` printed `R02 gtk-bootstrap-restore: OK` (this machine's `.pixiewood` symlink target exists; CI's copy of the committed symlink does not).

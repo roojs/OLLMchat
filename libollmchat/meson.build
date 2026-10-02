@@ -331,12 +331,12 @@ meson.add_install_script(
   'install -Dm644 "' + meson.current_build_dir() / 'ollmchat.vapi' + '" "$DESTDIR$MESON_INSTALL_PREFIX/share/vala/vapi/ollmchat.vapi"',
 )
 
-# Create dependency for other libraries to use
-# Note: We need to manually create the VAPI dependency similar to ocsqlite
-# For now, we'll use link_args to ensure the library is linked
+# link_with is what puts ollmchat.vapi on the consumer's valac inputs.
+# link_args alone only order the later link step, so liboccoder can run
+# valac before this library has written ollmchat.vapi.
 ollmchat_vapi_dep = declare_dependency(
+  link_with: ollmchat_base_lib,
   link_args: [
-    '-L' + meson.current_build_dir(), '-lollmchat',
     '-L' + meson.current_build_dir() / '..' / 'libollamaweb', '-lollamaweb',
   ],
   dependencies: [ocsqlite_vapi_dep, ollamaweb_vapi_dep, ocrpc_vapi_dep, ocmarkdown_vapi_dep]
