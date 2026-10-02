@@ -88,6 +88,7 @@ if get_option('android_poc')
   android_poc_settings_sources = [
     'SettingsDialog/SettingsPage.vala',
     'SettingsDialog/ConnectionsPage.vala',
+    'SettingsDialog/PairingDialog.vala',
     'SettingsDialog/ModelsPage.vala',
     'SettingsDialog/ModelRow.vala',
     'SettingsDialog/AddModelDialog.vala',
@@ -286,6 +287,7 @@ ollmchat_sources = [
   'SettingsDialog/ApprovedClientRow.vala',
   'SettingsDialog/SettingsPage.vala',
   'SettingsDialog/ConnectionsPage.vala',
+  'SettingsDialog/PairingDialog.vala',
   'SettingsDialog/PullStatus.vala',
   'SettingsDialog/PullManager.vala',
   'SettingsDialog/PullManagerThread.vala',

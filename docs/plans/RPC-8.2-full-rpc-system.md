@@ -227,7 +227,7 @@ End-to-end RPC stack beyond the bin socket cutover (**8.1**):
 ### Sub-plan
 
 - **⏳** [`RPC-8.2.7-client-cert-registration.md`](RPC-8.2.7-client-cert-registration.md) — registration gate, admin approval surface, cert → session identity.
-- **🔷** `⏳` **Urgent next:** [`RPC-1.11-URGENT-vpn-local-pin-pairing.md`](RPC-1.11-URGENT-vpn-local-pin-pairing.md) — drop public WAN registration. Pair on VPN/LAN only: 180s window, 6-digit PIN, mDNS, signed cert, multi-interface fallback.
+- **🔷** `⏳` **Urgent next:** [`RPC-1.11-URGENT-vpn-local-pin-pairing.md`](RPC-1.11-URGENT-vpn-local-pin-pairing.md) — drop public WAN registration. Pair on the TLS bin socket (VPN/LAN): 60s window, 6-digit PIN dialog, mDNS publish + Android `NsdManager`, signed cert, one-or-all interfaces. No HTTPS fallback.
 
 ---
 
