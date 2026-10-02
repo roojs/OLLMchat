@@ -13,3 +13,4 @@ usr/lib/*/girepository-1.0/OC*.typelib
 usr/lib/*/girepository-1.0/OLL*.typelib
 usr/share/vala/vapi/oc*.vapi
 usr/share/vala/vapi/oll*.vapi
+usr/include/ocrpc.h

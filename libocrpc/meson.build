@@ -174,6 +174,9 @@ ocrpc_base_lib = library('ocrpc',
     '--target-glib=auto',
   ] + ocrpc_vapi_pkgs + [
     '--vapidir', meson.current_source_dir(),
+    # Before the system vapidir: valac 0.56.16 (Ubuntu 24.04, Android CI)
+    # has no Soup.ServerMessage.get_tls_peer_certificate.
+    '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', '/usr/share/vala/vapi',
   ],
   # Meson Vala: install:true alone installs only the .so. Secondary outputs
@@ -192,6 +195,7 @@ ocrpc_vapi = custom_target('ocrpc-vapi',
     '--target-glib=auto',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', meson.current_source_dir(),
+    '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', '/usr/share/vala/vapi',
   ] + (is_android ? ['--vapidir', gee_vapi_dir] : []) + ocrpc_vapi_gen_pkgs + [
     '--library', 'ocrpc',

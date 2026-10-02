@@ -582,7 +582,6 @@ rm -f %{buildroot}%{_bindir}/oc-vala-ternary-bug
 rm -f %{buildroot}%{_bindir}/oc-vector-index
 rm -f %{buildroot}%{_bindir}/oc-vector-search
 rm -rf %{buildroot}%{_datadir}/doc/ollmchat
-rm -rf %{buildroot}%{_includedir}
 %endif
 
 %if %{with local_gguf}
@@ -735,6 +734,7 @@ rm -rf %{buildroot}%{_includedir}
 %{_libdir}/girepository-1.0/OLL*.typelib
 %{_datadir}/vala/vapi/oc*.vapi
 %{_datadir}/vala/vapi/oll*.vapi
+%{_includedir}/ocrpc.h
 %endif
 
 %changelog
