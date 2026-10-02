@@ -24,6 +24,12 @@ ARGS=(
 if [ -n "${SQGI_LINUX_MESON_CROSS_FILE:-}" ]; then
   ARGS+=(--cross-file "$SQGI_LINUX_MESON_CROSS_FILE")
 fi
+# roojs does not publish libwebkitgtk-6.0-webdriver-dev for arm64.
+case "${SQGI_LINUX_TRIPLET:-}" in
+  aarch64-*)
+    ARGS+=(-Dwebkit_webdriver=disabled)
+    ;;
+esac
 
 if [ -f "$BUILD_DIR/build.ninja" ]; then
   meson setup "$BUILD_DIR" --reconfigure "${ARGS[@]}"

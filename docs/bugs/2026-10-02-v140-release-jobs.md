@@ -30,8 +30,8 @@
 ## Fix applied
 
 - **✔️** `x-debian.yml` and `remote-only-build.yml` install `libwebkitgtk-6.0-webdriver-dev` (remote-only also enables roojs APT).
-- **✔️** AppImage job uses `ubuntu:25.04` with `ROOJS_APT_SUITE=plucky`. `sqgipkg.json` both arches list `libwebkitgtk-6.0-webdriver-dev` and `libgnutls28-dev`. Dep and meson cache keys bumped so a noble sysroot is not restored.
-- **✔️** RPM `BuildRequires: pkgconfig(gnutls)`.
+- **✔️** AppImage job uses `ubuntu:25.04` with `ROOJS_APT_SUITE=plucky`. x86_64 `sqgipkg.json` lists `libwebkitgtk-6.0-webdriver-dev`. aarch64 does not: roojs has no arm64 package. `scripts/release/meson-sqgipkg-setup.sh` passes `-Dwebkit_webdriver=disabled` when `SQGI_LINUX_TRIPLET` is `aarch64-*`, and Meson then links stock `webkitgtk-6.0`.
+- **✔️** RPM install list in `scripts/ci/build-rpm.sh` includes `pkgconfig(gnutls)`. The spec `BuildRequires` line does not install the package; `zypper`/`dnf` only see `pkgconfig_deps`.
 - **✔️** `.android-sdk`, `.android-tools`, and `.pixiewood` removed from the index. Working-tree symlinks kept. `.gitignore` matches the symlink names.
 - **✔️** `Cloudflare.vala`: Android keeps `main_document_response`. Linux and Windows use `decide_policy`. Windows pin is webview2gtk **0.6.7**.
 - **✔️** `docs/meson.build` lists `PairingDialog.vala` before `ConnectionsPage.vala`.

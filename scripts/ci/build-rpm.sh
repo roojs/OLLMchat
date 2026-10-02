@@ -56,6 +56,7 @@ pkgconfig_deps=(
   'pkgconfig(glib-2.0)'
   'pkgconfig(json-glib-1.0)'
   'pkgconfig(libsoup-3.0)'
+  'pkgconfig(gnutls)'
   'pkgconfig(libxml-2.0)'
   'pkgconfig(sqlite3)'
   'pkgconfig(gtk4)'

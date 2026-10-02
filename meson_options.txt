@@ -27,3 +27,9 @@ option('sysroot_triplet', type: 'string', value: '',
   description: 'GNU triplet under sysroot/usr/lib (e.g. x86_64-linux-gnu). Defaults to SQGI_LINUX_TRIPLET when sysroot is set.')
 option('webview2gtk_prefix', type: 'string', value: '',
   description: 'Optional prefix where webview2gtk-1 was meson-installed (Windows). Adds lib/ to PKG_CONFIG_PATH / vapidir.')
+option(
+  'webkit_webdriver',
+  type: 'feature',
+  value: 'enabled',
+  description: 'Require WebKitGTK with WebDriver interactions. Disabled builds link stock webkitgtk-6.0.'
+)

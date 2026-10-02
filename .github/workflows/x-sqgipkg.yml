@@ -21,8 +21,9 @@ jobs:
   appimage:
     name: AppImage
     runs-on: ubuntu-24.04
-    # Ubuntu 24.04 has no roojs suite. The sysroot needs plucky plus
-    # libwebkitgtk-6.0-webdriver-dev or meson rejects WebKit.
+    # Ubuntu 24.04 has no roojs suite. x86_64 sysroot needs plucky plus
+    # libwebkitgtk-6.0-webdriver-dev. aarch64 has no arm64 webdriver package
+    # and meson is configured with -Dwebkit_webdriver=disabled.
     container:
       image: ubuntu:25.04
     steps:

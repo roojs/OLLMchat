@@ -100,7 +100,6 @@
             "libgtksourceview-5-dev",
             "gir1.2-gtksource-5",
             "libwebkitgtk-6.0-dev",
-            "libwebkitgtk-6.0-webdriver-dev",
             "gir1.2-webkit-6.0",
             "libatspi2.0-dev",
             "libgee-0.8-dev",

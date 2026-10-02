@@ -153,7 +153,7 @@ If you have sqgi installed locally:
 # Linux x86_64 AppImage
 sqgipkg --target appimage --appimage-arch x86_64
 
-# Linux aarch64 AppImage
+# Linux aarch64 AppImage (stock WebKit; no WebDriver interactions package)
 sqgipkg --target appimage --appimage-arch aarch64
 ```
 

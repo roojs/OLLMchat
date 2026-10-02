@@ -150,17 +150,22 @@ if host_machine.system() == 'linux'
   webkit_interactions_check = meson.project_source_root() / 'scripts' / 'meson' / 'check-webkit-interactions.sh'
   webkit_pc_raw = disabler()
   webkit_pc_used = ''
-  foreach pc : ['webkitgtk-6.0-webdriver', 'webkitgtk-6.0']
-    _dep = dependency(pc, required: false)
-    if _dep.found() and run_command(webkit_interactions_check, pc, check: false).returncode() == 0
-      webkit_pc_raw = _dep
-      webkit_pc_used = pc
-      break
+  if get_option('webkit_webdriver').disabled()
+    webkit_pc_raw = dependency('webkitgtk-6.0')
+    webkit_pc_used = 'webkitgtk-6.0'
+  else
+    foreach pc : ['webkitgtk-6.0-webdriver', 'webkitgtk-6.0']
+      _dep = dependency(pc, required: false)
+      if _dep.found() and run_command(webkit_interactions_check, pc, check: false).returncode() == 0
+        webkit_pc_raw = _dep
+        webkit_pc_used = pc
+        break
+      endif
+    endforeach
+    if not webkit_pc_raw.found()
+      error('No WebKitGTK with WebDriver interactions found. '
+        + 'On Ubuntu/Debian install libwebkitgtk-6.0-webdriver-dev.')
     endif
-  endforeach
-  if not webkit_pc_raw.found()
-    error('No WebKitGTK with WebDriver interactions found. '
-      + 'On Ubuntu/Debian install libwebkitgtk-6.0-webdriver-dev.')
   endif
   message('WebKitGTK for automation: @0@'.format(webkit_pc_used))
 
