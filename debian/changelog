@@ -1,17 +1,100 @@
-ollmchat (UNRELEASED) unstable; urgency=medium
+ollmchat (1.4.0-1) unstable; urgency=medium
 
-  * GI / FFI: boxed structs, `float` / `double`, numeric arrays, enums / flags, INOUT, GList IN, explicit GType aliases
-  * Live GI callbacks (register / invoke / reply) and `SCM_RIGHTS` on `Response`
-  * Drop `CallParam`. Positional **`Request.args`** / **`Response.args`**. Typed **`Response.retval`** for the GIR C return. `Request.add_class` FFI handlers
-  * Bin protocol **v3.1** method-name tokens (`NAME_REF`)
-  * `OLLMrpc.rpc_register()`; client throws server errors to callers
-  * `ollmfilesd` / `libocfiles`: File, Folder, FileHistory, ProjectManager, Codebase, and Daemon methods on positional `args`; `CallParam` bags deleted
-  * Client wrappers throw. UI surfaces failures with Banner / Alert (file dropdown, save / reload, approve / revert, project load / create / remove, overlay scan)
-  * Daemon boot uses `OLLMrpc.rpc_register()`; file payloads can ride the `Response` SCM buffer
-  * **run_command**: Stop; last-slice tail (do not kill for length); live tool frame; wall-clock timeout; live output stream; spill file
-  * Sudo: first-draft **libsecret** store and two-second hold Allow; Exec approval shows the command as the bold label
+  * The HTTP server maps a path to a type, with JSON, NDJSON streaming, and bin POST
+  * `HttpClient` calls that server in JSON or bin and can reset the session
+  * `Client.call_poll` waits on the socket without a nested `MainLoop`
+  * `call_poll` keeps SCM file descriptors attached to the reply
+  * A live GI callback can be registered, invoked, and answered
+  * `Response` can carry `SCM_RIGHTS` file descriptors
+  * Top-level GI functions such as `Clutter.` and `Meta.` need no object lease
+  * A live object can subscribe to `notify::` property signals
+  * `rpc_signal_alias` maps a notify name onto another signal
+  * Several signals can be registered in one call
+  * GiMock mints a leased fake when a test return is an object or interface
+  * The daemon can listen on HTTPS with the product CA
+  * An unknown client certificate can request registration
+  * File Server settings can accept, reject, or ban that request
+  * Desktop can check a remote file daemon and reconnect to it
+  * Android opens a file connection over HTTPS and takes over the project
+  * `SslListen` serves bin RPC on the LAN with the same client certificates
+  * Desktop server rows show Unix, systemd, HTTPS, and the LAN SSL listener
+  * Allow New Device opens a one-minute PIN dialog. Pairing is not wired yet
+  * The phone uses one stack. The tablet uses a side-by-side pane
+  * Agent Π runs only while the desktop environment is reachable, with `read` and `write`
+  * The phone shows a startup bar, a history bar, and editor chrome
+  * SourceView draws backup-versus-disk hunks on files waiting for approval
+  * The diff test app includes a ReviewBar for those hunks
+  * `run_command` can be stopped from the tool frame
+  * Long command output keeps the last slice
+  * Command output streams into the live tool frame
+  * `run_command` stops when its wall-clock timeout is hit
+  * Output past the cap spills to a file
+  * The sudo password can be stored in libsecret
+  * Allow on a sudo prompt stays down for two seconds
+  * The exec approval label is the command
+  * The browser tool can drive a page through WebDriver
+  * Linux uses RemoteInspector. Windows and Android use CDP
+  * Automation attaches only to views opened as controlled
+  * The tool session is handed to that controlled view
+  * `CallParam` bags are removed
+  * Arguments are positional `Request.args` and `Response.args`
+  * The GIR C return is `Response.retval`
+  * FFI classes register with `Request.add_class`
+  * Bin protocol v3.1 sends method names as `NAME_REF` tokens
+  * FFI resolves each symbol once and reuses that slot
+  * Daemons boot through `OLLMrpc.rpc_register()`
+  * A server error is thrown to the caller
+  * A file payload can travel in the `Response` SCM buffer
+  * The same lease id returns the existing live proxy
+  * `Live.Interface` replaces the `Live.Handle` class
+  * Live `Object.new` waits for `TOKEN_END` before a nested call can run
+  * GI and FFI cover boxed structs, floats, numeric arrays, enums, and flags
+  * GI and FFI cover INOUT arguments and GList IN
+  * A GType can be sent with an explicit alias
+  * `GValue` arguments use the `V` wire type
+  * A bin type override can replace the GIR type on the wire
+  * An `ANY[]` value reads its type token before the value
+  * File, Folder, FileHistory, ProjectManager, Codebase, and Daemon take positional `args`
+  * Those client wrappers throw
+  * The UI shows those failures as a Banner or an Alert
+  * The HTTPS switch is `https_enabled`
+  * `ssl_enabled` turns on the LAN TLS listener
+  * The Linux daemon still listens on its Unix socket
+  * Tree-sitter stays in the daemon
+  * A pending file stores `reviewed`, `file_diff_part`, and `backup_path`
+  * `navigator.webdriver` is hidden when the linked WebKit exports that API
+  * The build uses `webkitgtk-6.0-webdriver` when it is installed
+  * A null object return no longer calls `get_type()`
+  * A null `"o"` argument is packed safely
+  * UTF-8 strings stay valid across a GI call
+  * FLAGS values travel as uint
+  * An inout float no longer crashes
+  * Lease id `0` is rejected
+  * An FFI string array keeps its length
+  * Out `GValue`s are initialized before `get_property`
+  * A signal emit still includes its arguments when there is no reply frame
+  * A null object argument is written with a real type on the wire
+  * `libocrpc-dev` and `libocrpc-devel` install `ocrpc.h`
+  * Saving Config2 keeps the `filesd` block
+  * The file-server port can be edited
+  * File-server edits apply when they change
+  * The filesd systemd unit starts the daemon, not the `ollmchat` window
+  * Windows uses the configured loopback port
+  * A non-200 Ollama response throws the JSON `error` text
+  * A missing model reports that Ollama error
+  * Startup finishes when the selected model has been deleted
+  * SortedList finalize disconnects each handler once
+  * A ReviewBar hover menu closes when the pointer leaves
+  * A ReviewBar menu closes on click-away
+  * The first prev or next click moves the review
+  * The About dialog opens
+  * Add Model search reaches the catalog over TLS
+  * Settings tabs follow the desktop order
+  * The browser loads the page
+  * Checking a connection no longer crashes
+  * Checking a connection keeps the URL that was typed
 
- -- Alan Knowles <alan@roojs.com>  Mon, 31 Aug 2026 00:00:00 +0000
+ -- Alan Knowles <alan@roojs.com>  Fri, 02 Oct 2026 00:00:00 +0000
 
 ollmchat (1.3.0-1) unstable; urgency=medium
 

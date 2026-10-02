@@ -4,104 +4,163 @@ All notable changes to OLLMchat are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
-for git tags (`v1.3.0`, etc.).
+for git tags (`v1.4.0`, etc.).
 
 Debian and RPM packaging notes are generated from this file at release time
 (see [Creating releases](docs/creating-releases.md)).
 
-## [Unreleased]
+## [1.4.0] - Unreleased
 
-### RPC
+Work since **1.3.0** (2026-08-22). `libocrpc` drops `CallParam` and uses bin protocol **v3.1**.
 
-- FFI dispatch: `add_class` `dlsym`s once into `FfiSlot` rows; later bin calls
-  use the per-connection name-ref token → slot cache (no per-call Regex / `dlsym`)
-- **HTTP RPC** (`libocrpc`): path ↔ type routes; JSON unary + NDJSON streaming;
-  bin POST with session / sequence headers; `HttpClient` (JSON + bin, session
-  reset) — separate from Hub-style `OLLMrpc.Client` GET
-- HTTPS on `ollmfilesd` / `HttpServer` (TLS listen, client-cert registration,
-  Settings Filesd)
-- **`Client.call_poll`**: blocking read loop without nested `MainLoop` /
-  IO-watch reentrancy; drains the `Live.Buffer` `.fd` channel before
-  `take_pending` so SCM replies keep their fd
-- Live decode reuses `Client.proxies` for the same lease id (object identity);
-  consume `TOKEN_END` before live `Object.new` so nested sync RPC cannot steal
-  the trailer
-- GI / FFI: boxed structs, `float` / `double`, numeric arrays, enums / flags,
-  INOUT (incl. float-by-pointer), GList IN, explicit GType aliases;
-  `Bin.gtype_to_alias` public for consumers
-- FFI `"S"` / `"as"` pin a live `GStrv` across `cif.call`; `"o"` resolves
-  wire lease ids (same as Gi)
-- GI property / GValue: no double-wrap on `GObject.Value` args; initialize out
-  GValues for `get_property`; FLAGS wire as uint; UTF8 IN/OUT (no dangling
-  `get_string`, no garbage / int-null sentinels); OUT scalars with null
-  `v_pointer`; lease id `0` → INVALID_PARAMS
-- Live GI callbacks (register / invoke / reply) and `SCM_RIGHTS` on
-  `Response`
-- Live leases: stamp lease id on proxy decode; write path uses the lease key;
-  `Live.Handle` interface
-- Namespace (top-level) GI functions — bare `Clutter.` / `Meta.` wire prefixes
-  with no lease
-- Drop `CallParam`. Positional **`Request.args`** / **`Response.args`**.
-  Typed **`Response.retval`** for the GIR C return. `Request.add_class` FFI
-  handlers
-- `ANY[]` values consume `TOKEN_REG_TYPE` (`0xFF`) before the type byte
-  (`StreamValue.read`) so a first-use object in callback / request args
-  decodes
-- Bin protocol **v3.1** method-name tokens (`NAME_REF`)
-- `OLLMrpc.rpc_register()`; client throws server errors to callers
-- **GiMock** / `register_mock`: test-only GI dispatch that mints leased fakes for
-  registered OBJECT / INTERFACE returns (including GIR pointer types); ctors
-  mint the constructor class, not a mismatched GIR return type; no
-  `val("o", null)` packing
-- Nullable OBJECT returns and null `"o"` args pack safely (no `get_type()` on
-  null)
+Not in this release: PIN pairing and mDNS (the dialog only), the LAN client, the Windows desktop server, Android remote `bash`, source-view diff approval, and WebDriver fill/press. Still open on device: phone chrome, editor scroll, pinch-zoom, the Add Model popover, and codebase-search markdown.
 
-### FILES
+### Added
 
-- `ollmfilesd` / `libocfiles`: File, Folder, FileHistory, ProjectManager,
-  Codebase, and Daemon methods on positional `args`; `CallParam` bags
-  deleted
-- Client wrappers throw. UI surfaces failures with Banner / Alert (file
-  dropdown, save / reload, approve / revert, project load / create /
-  remove, overlay scan)
-- Daemon boot uses `OLLMrpc.rpc_register()`; file payloads can ride the
-  `Response` SCM buffer
-- Pending-file **diff** DB: `file_history.reviewed`, `file_diff_part`,
-  `backup_path` on pending rows
+#### libocrpc
 
-### EDITOR
+- The HTTP server maps a path to a type, with JSON, NDJSON streaming, and bin POST
+- `HttpClient` calls that server in JSON or bin and can reset the session
+- `Client.call_poll` waits on the socket without a nested `MainLoop`
+- `call_poll` keeps SCM file descriptors attached to the reply
+- A live GI callback can be registered, invoked, and answered
+- `Response` can carry `SCM_RIGHTS` file descriptors
+- Top-level GI functions such as `Clutter.` and `Meta.` need no object lease
+- A live object can subscribe to `notify::` property signals
+- `rpc_signal_alias` maps a notify name onto another signal
+- Several signals can be registered in one call
+- GiMock mints a leased fake when a test return is an object or interface
 
-- **SourceView** inline diff: `show_diff` / `clear_diff` from
-  `OLLMfiles.Diff.Differ`; open / refresh pending-approval files show backup ↔
-  disk hunks
+#### ollmfilesd
 
-### TOOLS
+- The daemon can listen on HTTPS with the product CA
+- An unknown client certificate can request registration
+- File Server settings can accept, reject, or ban that request
+- Desktop can check a remote file daemon and reconnect to it
+- Android opens a file connection over HTTPS and takes over the project
+- `SslListen` serves bin RPC on the LAN with the same client certificates
+- Desktop server rows show Unix, systemd, HTTPS, and the LAN SSL listener
+- Allow New Device opens a one-minute PIN dialog. Pairing is not wired yet
 
-- **run_command**: Stop; last-slice tail (do not kill for length); live
-  tool frame; wall-clock timeout; live output stream; spill file
-- Sudo: first-draft **libsecret** store and two-second hold Allow; Exec
-  approval shows the command as the bold label
+#### Android
 
-### BROWSER
+- The phone uses one stack. The tablet uses a side-by-side pane
+- Agent Π runs only while the desktop environment is reachable, with `read` and `write`
+- The phone shows a startup bar, a history bar, and editor chrome
 
-- WebDriver automation path for the browser tool (Linux RemoteInspector;
-  Windows / Android CDP) — controlled views, session hand-off; fill/press
-  smoke still open
-- Hide `navigator.webdriver` when the linked WebKit `.so` exports the
-  navigator-policy API (`HAVE_WEBKIT_NAVIGATOR_WEBDRIVER_POLICY`)
-- Meson probes the WebKit `.so` for interactions (required) and navigator-policy
-  (optional) — prefer `webkitgtk-6.0-webdriver`, else stock with interactions
-  (Fedora / RPM)
+#### liboccoder
 
-### ANDROID
+- SourceView draws backup-versus-disk hunks on files waiting for approval
+- The diff test app includes a ReviewBar for those hunks
 
-- About dialog no longer hangs; Add Model search TLS; settings tab order
+#### liboctools
+
+- `run_command` can be stopped from the tool frame
+- Long command output keeps the last slice
+- Command output streams into the live tool frame
+- `run_command` stops when its wall-clock timeout is hit
+- Output past the cap spills to a file
+- The sudo password can be stored in libsecret
+- Allow on a sudo prompt stays down for two seconds
+- The exec approval label is the command
+
+#### libocwebkit
+
+- The browser tool can drive a page through WebDriver
+- Linux uses RemoteInspector. Windows and Android use CDP
+- Automation attaches only to views opened as controlled
+- The tool session is handed to that controlled view
+
+### Changed
+
+#### libocrpc
+
+- `CallParam` bags are removed
+- Arguments are positional `Request.args` and `Response.args`
+- The GIR C return is `Response.retval`
+- FFI classes register with `Request.add_class`
+- Bin protocol v3.1 sends method names as `NAME_REF` tokens
+- FFI resolves each symbol once and reuses that slot
+- Daemons boot through `OLLMrpc.rpc_register()`
+- A server error is thrown to the caller
+- A file payload can travel in the `Response` SCM buffer
+- The same lease id returns the existing live proxy
+- `Live.Interface` replaces the `Live.Handle` class
+- Live `Object.new` waits for `TOKEN_END` before a nested call can run
+- GI and FFI cover boxed structs, floats, numeric arrays, enums, and flags
+- GI and FFI cover INOUT arguments and GList IN
+- A GType can be sent with an explicit alias
+- `GValue` arguments use the `V` wire type
+- A bin type override can replace the GIR type on the wire
+- An `ANY[]` value reads its type token before the value
+
+#### ollmfilesd / libocfiles
+
+- File, Folder, FileHistory, ProjectManager, Codebase, and Daemon take positional `args`
+- Those client wrappers throw
+- The UI shows those failures as a Banner or an Alert
+- The HTTPS switch is `https_enabled`
+- `ssl_enabled` turns on the LAN TLS listener
+- The Linux daemon still listens on its Unix socket
+- Tree-sitter stays in the daemon
+- A pending file stores `reviewed`, `file_diff_part`, and `backup_path`
+
+#### libocwebkit
+
+- `navigator.webdriver` is hidden when the linked WebKit exports that API
+- The build uses `webkitgtk-6.0-webdriver` when it is installed
 
 ### Fixed
 
-- SortedList finalize no longer double-disconnects signal handlers
-- Ollama non-200 JSON `error` body is used for the throw (missing model is
-  not reported as “Endpoint not found”)
+#### libocrpc
+
+- A null object return no longer calls `get_type()`
+- A null `"o"` argument is packed safely
+- UTF-8 strings stay valid across a GI call
+- FLAGS values travel as uint
+- An inout float no longer crashes
+- Lease id `0` is rejected
+- An FFI string array keeps its length
+- Out `GValue`s are initialized before `get_property`
+- A signal emit still includes its arguments when there is no reply frame
+- A null object argument is written with a real type on the wire
+- `libocrpc-dev` and `libocrpc-devel` install `ocrpc.h`
+
+#### ollmfilesd
+
+- Saving Config2 keeps the `filesd` block
+- The file-server port can be edited
+- File-server edits apply when they change
+- The filesd systemd unit starts the daemon
+- Windows uses the configured loopback port
+
+#### libollamaweb
+
+- A non-200 Ollama response throws the JSON `error` text
+- A missing model reports that Ollama error
+
+#### ollmapp
+
+- Startup finishes when the selected model has been deleted
+
+#### libollmchatgtk
+
+- SortedList finalize disconnects each handler once
+
+#### liboccoder
+
+- A ReviewBar hover menu closes when the pointer leaves
+- A ReviewBar menu closes on click-away
+- The first prev or next click moves the review
+
+#### Android
+
+- The About dialog opens
+- Add Model search reaches the catalog over TLS
+- Settings tabs follow the desktop order
+- The browser loads the page
+- Checking a connection no longer crashes
+- Checking a connection keeps the URL that was typed
 
 ## [1.3.0] - 2026-08-22
 

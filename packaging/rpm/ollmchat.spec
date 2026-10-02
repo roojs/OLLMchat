@@ -4,8 +4,8 @@
 # Tumbleweed. Fedora CI produces *.fc44.*.rpm; openSUSE CI omits %{dist}.
 #
 # Build with:
-#   rpmbuild -bb --define "ollmchat_version 1.3.0" packaging/rpm/ollmchat.spec
-#   rpmbuild -bb --without local_gguf --define "ollmchat_version 1.3.0" ...
+#   rpmbuild -bb --define "ollmchat_version 1.4.0" packaging/rpm/ollmchat.spec
+#   rpmbuild -bb --without local_gguf --define "ollmchat_version 1.4.0" ...
 
 %bcond_without local_gguf
 
@@ -607,6 +607,7 @@ rm -rf %{buildroot}%{_includedir}
 
 %files -n libocrpc-devel
 %{_datadir}/vala/vapi/ocrpc.vapi
+%{_includedir}/ocrpc.h
 
 %files -n libocmarkdown
 %{_libdir}/libocmarkdown.so
