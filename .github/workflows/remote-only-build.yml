@@ -27,7 +27,8 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          apt-get update
+          chmod +x scripts/ci/enable-roojs-apt.sh
+          ./scripts/ci/enable-roojs-apt.sh
           apt-get install -y --no-install-recommends \
             build-essential \
             ca-certificates \
@@ -56,6 +57,7 @@ jobs:
             libsqlite3-dev \
             libtree-sitter-dev \
             libwebkitgtk-6.0-dev \
+            libwebkitgtk-6.0-webdriver-dev \
             libxml2-dev \
             meson \
             ninja-build \

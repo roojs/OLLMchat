@@ -18,13 +18,15 @@
 
 #if LINUX
 using WebKit;
+#elif WINDOWS
+using WebView2Gtk;
 #endif
 
 /**
  * Target-site Cloudflare challenge detection for a {@link Browser}.
  *
- * Linux: WebKitGTK ''decide_policy'' RESPONSE. Windows / Android: WebView
- * ''main_document_response'' (status + Soup headers). Shared
+ * Linux and Windows: ''decide_policy'' RESPONSE. Android: WebView
+ * ''main_document_response'' (status and Soup headers). Shared
  * {@link check_browser_response} / ''is_blocked'' / {@link cleared}.
  *
  * == Example ==
@@ -60,7 +62,33 @@ public class OLLMwebkit.Cloudflare : Object
 	public Cloudflare(OLLMwebkit.Browser browser)
 	{
 		Object(browser: browser);
-#if LINUX
+#if ANDROID
+		this.browser.web_view.main_document_response.connect((status, headers) => {
+			var was_blocked = this.is_blocked;
+			this.is_blocked = false;
+			if (this.check_browser_response(status, headers)) {
+				this.is_blocked = true;
+			}
+			var response_uri = this.browser.web_view.get_uri();
+			if (!was_blocked || this.is_blocked || response_uri == "") {
+				return;
+			}
+			var pending = this.browser.pending_load_uri;
+			var same_host = false;
+			if (pending != "") {
+				try {
+					var host_a = GLib.Uri.parse(response_uri, GLib.UriFlags.NONE).get_host();
+					var host_b = GLib.Uri.parse(pending, GLib.UriFlags.NONE).get_host();
+					same_host = host_a != null && host_b != null
+						&& host_a.down() == host_b.down();
+				} catch (GLib.Error e) {
+				}
+			}
+			if (same_host || response_uri == pending) {
+				this.cleared();
+			}
+		});
+#else
 		this.browser.web_view.decide_policy.connect((decision, type) => {
 			if (type != PolicyDecisionType.RESPONSE) {
 				return false;
@@ -94,32 +122,6 @@ public class OLLMwebkit.Cloudflare : Object
 				this.cleared();
 			}
 			return false;
-		});
-#else
-		this.browser.web_view.main_document_response.connect((status, headers) => {
-			var was_blocked = this.is_blocked;
-			this.is_blocked = false;
-			if (this.check_browser_response(status, headers)) {
-				this.is_blocked = true;
-			}
-			var response_uri = this.browser.web_view.get_uri();
-			if (!was_blocked || this.is_blocked || response_uri == "") {
-				return;
-			}
-			var pending = this.browser.pending_load_uri;
-			var same_host = false;
-			if (pending != "") {
-				try {
-					var host_a = GLib.Uri.parse(response_uri, GLib.UriFlags.NONE).get_host();
-					var host_b = GLib.Uri.parse(pending, GLib.UriFlags.NONE).get_host();
-					same_host = host_a != null && host_b != null
-						&& host_a.down() == host_b.down();
-				} catch (GLib.Error e) {
-				}
-			}
-			if (same_host || response_uri == pending) {
-				this.cleared();
-			}
 		});
 #endif
 	}

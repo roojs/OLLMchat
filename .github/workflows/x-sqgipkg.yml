@@ -13,12 +13,24 @@ on:
 
 env:
   APPIMAGE_EXTRACT_AND_RUN: '1'
+  DEBIAN_FRONTEND: noninteractive
+  ROOJS_APT_SUITE: plucky
+  TZ: UTC
 
 jobs:
   appimage:
     name: AppImage
     runs-on: ubuntu-24.04
+    # Ubuntu 24.04 has no roojs suite. The sysroot needs plucky plus
+    # libwebkitgtk-6.0-webdriver-dev or meson rejects WebKit.
+    container:
+      image: ubuntu:25.04
     steps:
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates curl sudo
+
       - name: Checkout OLLMchat
         uses: actions/checkout@v4
         with:
@@ -28,9 +40,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: OLLMchat/.sqgipkg
-          key: sqgipkg-deps-v1-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/sqgipkg.json', 'OLLMchat/scripts/release/sqgi.revision') }}
+          key: sqgipkg-deps-v2-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/sqgipkg.json', 'OLLMchat/scripts/release/sqgi.revision') }}
           restore-keys: |
-            sqgipkg-deps-v1-stable-
+            sqgipkg-deps-v2-stable-
 
       - name: Restore sqgipkg Meson build cache
         uses: actions/cache@v6
@@ -38,21 +50,22 @@ jobs:
           path: |
             OLLMchat/build-linux-x86_64
             OLLMchat/build-linux-aarch64
-          key: sqgipkg-meson-v2-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/**/*.vala', 'OLLMchat/**/meson.build', 'OLLMchat/meson.build', 'OLLMchat/meson_options.txt', 'OLLMchat/sqgipkg.json') }}
+          key: sqgipkg-meson-v3-${{ inputs.refresh_cache && github.run_id || 'stable' }}-${{ hashFiles('OLLMchat/**/*.vala', 'OLLMchat/**/meson.build', 'OLLMchat/meson.build', 'OLLMchat/meson_options.txt', 'OLLMchat/sqgipkg.json') }}
           restore-keys: |
-            sqgipkg-meson-v2-stable-
-            sqgipkg-meson-v1-stable-
+            sqgipkg-meson-v3-stable-
 
       - name: Install host build dependencies
+        working-directory: OLLMchat
         run: |
-          sudo apt-get update
+          chmod +x scripts/ci/enable-roojs-apt.sh
+          ./scripts/ci/enable-roojs-apt.sh
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build pkg-config git file ca-certificates wget curl \
-            meson valac gobject-introspection \
+            meson valac gobject-introspection lsb-release \
             libglib2.0-dev libgirepository1.0-dev libffi-dev libcairo2-dev \
             libgee-0.8-dev libjson-glib-dev libsoup-3.0-dev libgnutls28-dev libxml2-dev \
             libsqlite3-dev libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev libsecret-1-dev \
-            libwebkitgtk-6.0-dev libatspi2.0-dev \
+            libwebkitgtk-6.0-dev libwebkitgtk-6.0-webdriver-dev libatspi2.0-dev \
             libtree-sitter-dev libseccomp-dev libgit2-glib-1.0-dev \
             libopenblas-dev liblapack-dev
 
