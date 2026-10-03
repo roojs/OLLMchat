@@ -61,8 +61,13 @@ Nested `gsr-server` (mutter 48), shell started, then a Wayland client opens a wi
 - 🔷 ✔️ In `Subscription.emit` and the `notify::` handler, after packing and when `connection.live_handles` is set, call `connection.export(obj)` for each non-null GObject arg that is not `Bin.Serializable`. `export` is idempotent, so objects that are already leased keep their id.
 - ✔️ The `notify::` handler now builds `packed` and the method name (`rpc_signal_alias` when a `TypeOverride` exists) first, then writes once. It uses a local instead of a ternary (Vala ternary bug).
 - 🚫 Not changed: a `TypeOverride.pack` that returns a `Gee.ArrayList` of live objects is not walked. No in-tree override does that.
-- ⏳ 💩 An unregistered GType still throws in `write_gtype`. That is a separate failure; it is not hit by the gate or the live log.
-- 💩 ⏳ Separately: one bad notification calling `stop()` from inside `write` takes the whole connection down. A serialize error on a notification could drop that notification and keep the connection. That is a behaviour change; not without approval.
+- 🔷 An unregistered GType throws `StreamError.REGISTRATION "Unregistered class type schema: %s"` in `Bin.Stream.write_reg_gtype`. `Connection.write` catches it and stops that connection only; the server keeps listening. Disconnect is the accepted result (user, 2026-10-03). Not hit by the gate or the live log.
+## Notification write error stops the connection
+
+- 🔷 Decision (user, 2026-10-03): keep `stop()`. A notification that cannot be encoded is a bug. It must crash, throw, or disconnect the client so it surfaces. It must not be dropped quietly.
+- ✔️ `stop()` is also the only option that keeps the wire consistent. `Bin.Stream` writes straight to the socket and updates `server_names` / `client_names` / `name_to_token` during the write, so a mid-message throw leaves partial bytes and token state the peer never saw.
+- 🚫 Catch and continue: desyncs the stream, and hides the bug.
+- 🚫 Encode to memory first, roll back the name tables, drop the notification: considered and rejected. It masks encode bugs.
 
 ## Attempts / changelog
 

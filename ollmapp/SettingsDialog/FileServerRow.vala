@@ -407,12 +407,12 @@ namespace OLLMapp.SettingsDialog
 			}
 			this.proxy_switch.active = this.filesd.proxy;
 			this.systemd_switch.active = this.filesd.systemd;
-			var n = 0;
-			int.try_parse(port, out n);
+			var port_n = 0;
+			int.try_parse(port, out port_n);
 			this.port_entry.text = port;
 			this.port_row.subtitle = "";
 			this.port_entry.remove_css_class("error");
-			if (port != "" && (n < 1024 || n > 65535)) {
+			if (port != "" && (port_n < 1024 || port_n > 65535)) {
 				this.port_row.subtitle = "Invalid";
 				this.port_entry.add_css_class("error");
 			}
@@ -478,7 +478,7 @@ namespace OLLMapp.SettingsDialog
 				via_systemd = active_out.strip() == "active";
 			} catch (GLib.Error e) {
 			}
-			var https_ok = this.filesd.https_enabled && n >= 1024 && n <= 65535;
+			var https_ok = this.filesd.https_enabled && port_n >= 1024 && port_n <= 65535;
 			var ssl_ok = this.filesd.ssl_enabled && socket_host != ""
 				&& socket_n >= 1024 && socket_n <= 65535;
 			var how = "Not running";
