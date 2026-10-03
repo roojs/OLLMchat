@@ -422,7 +422,7 @@ namespace OLLMapp.SettingsDialog
 			try {
 				response = yield win.project_manager.rpc.call(
 					new OLLMrpc.Request() {
-						method = "RPC-ClientCert.approved_certs"
+						method = "ClientCert.approved_certs"
 					});
 			} catch (GLib.Error e) {
 				GLib.debug("approved_certs failed: %s", e.message);
@@ -457,7 +457,7 @@ namespace OLLMapp.SettingsDialog
 			}
 			try {
 				yield win.project_manager.rpc.call(new OLLMrpc.Request() {
-					method = "RPC-ClientCert.client_cert",
+					method = "ClientCert.client_cert",
 					args = OLLMrpc.args("sx", "remove", id)
 				});
 			} catch (GLib.Error e) {

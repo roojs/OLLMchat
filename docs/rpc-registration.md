@@ -2,6 +2,8 @@
 
 How a `Request.method` string reaches a Vala instance method. The byte layout of objects is [`bin-rpc-protocol.md`](bin-rpc-protocol.md). That file’s `rpc_register()` / `Bin.register` path is **type aliases only**. This file is the **handler** path.
 
+The handler prefix is the class name (`Folder`, `File`). `RPC-` is only for RPC plumbing (`RPC-Daemon`, `RPC-Live-Remote`). A nested namespace is hyphenated (`Sandbox-Bubble`).
+
 ---
 
 ## Two tables
@@ -17,7 +19,7 @@ The instance is a third call, at server boot:
 
 ```vala
 Folder.rpc_register();
-Request.register("RPC-Folder", this.folder);
+Request.register("Folder", this.folder);
 ```
 
 `Application` already calls `Request.register(name, instance)`. It does not list methods.
@@ -30,13 +32,13 @@ Pairs of method suffix + letters. Letters match `OLLMrpc.args`, except `S`.
 
 ```vala
 Request.add_class(
-    "RPC-Folder", typeof(Folder),
+    "Folder", typeof(Folder),
     "fetch", "s",
     "fetch_files", "siisSb"
 );
 ```
 
-Wire method is `RPC-Folder.fetch_files`. The C symbol is GType + `_` + suffix (`changed.check` → `changed_check`). `Ffi` looks that symbol up in the process (`g_module_open(NULL)`), so handlers in the main executable must be exported (ollmfilesd does; in-tree RPC tests that list dummy methods set Meson `export_dynamic`).
+Wire method is `Folder.fetch_files`. The C symbol is GType + `_` + suffix (`changed.check` → `changed_check`). `Ffi` looks that symbol up in the process (`g_module_open(NULL)`), so handlers in the main executable must be exported (ollmfilesd does; in-tree RPC tests that list dummy methods set Meson `export_dynamic`).
 
 | Letter | One `Request.args` value | C args after `(self, Request)` |
 | --- | --- | --- |

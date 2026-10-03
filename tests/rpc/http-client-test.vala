@@ -11,7 +11,7 @@ namespace RpcDummy
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"RPC-Hello", typeof(Hello),
+				"Hello", typeof(Hello),
 				"world", ""
 			);
 		}
@@ -46,7 +46,7 @@ namespace OLLMrpcTests
 			OLLMrpc.Error.rpc_register();
 			OLLMrpc.Notification.rpc_register();
 			RpcDummy.Hello.rpc_register();
-			OLLMrpc.Request.register("RPC-Hello", new RpcDummy.Hello());
+			OLLMrpc.Request.register("Hello", new RpcDummy.Hello());
 
 			var http = new OLLMrpc.Transport.HttpServer(0);
 			this.check(command_line, http.start(), "http server start");
@@ -57,7 +57,7 @@ namespace OLLMrpcTests
 			var err_msg = "";
 			var loop = new GLib.MainLoop();
 			json_client.call.begin(new OLLMrpc.Request() {
-				method = "RPC-Hello.world"
+				method = "Hello.world"
 			}, (obj, res) => {
 				try {
 					response = json_client.call.end(res);
@@ -89,7 +89,7 @@ namespace OLLMrpcTests
 			err_msg = "";
 			loop = new GLib.MainLoop();
 			json_client.call.begin(new OLLMrpc.Request() {
-				method = "RPC-Hello.world"
+				method = "Hello.world"
 			}, (obj, res) => {
 				try {
 					response = json_client.call.end(res);
@@ -113,7 +113,7 @@ namespace OLLMrpcTests
 			err_msg = "";
 			loop = new GLib.MainLoop();
 			bin_client.call.begin(new OLLMrpc.Request() {
-				method = "RPC-Hello.world"
+				method = "Hello.world"
 			}, (obj, res) => {
 				try {
 					response = bin_client.call.end(res);
@@ -146,7 +146,7 @@ namespace OLLMrpcTests
 			err_msg = "";
 			loop = new GLib.MainLoop();
 			bin_client.call.begin(new OLLMrpc.Request() {
-				method = "RPC-Hello.world"
+				method = "Hello.world"
 			}, (obj, res) => {
 				try {
 					response = bin_client.call.end(res);
@@ -168,7 +168,7 @@ namespace OLLMrpcTests
 			err_msg = "";
 			loop = new GLib.MainLoop();
 			bin_client.call.begin(new OLLMrpc.Request() {
-				method = "RPC-Hello.world"
+				method = "Hello.world"
 			}, (obj, res) => {
 				try {
 					response = bin_client.call.end(res);
@@ -196,7 +196,7 @@ namespace OLLMrpcTests
 			var threw_409 = false;
 			loop = new GLib.MainLoop();
 			bin_client.call.begin(new OLLMrpc.Request() {
-				method = "RPC-Hello.world"
+				method = "Hello.world"
 			}, (obj, res) => {
 				try {
 					response = bin_client.call.end(res);

@@ -28,7 +28,7 @@ namespace OLLMrpc.Transport
 	 *     tls_database = GLib.TlsFileDatabase.@new(ca_pem_path)
 	 * };
 	 * var resp = yield http.call(new OLLMrpc.Request() {
-	 *     method = "RPC-Hello.world"
+	 *     method = "Hello.world"
 	 * });
 	 * }}}
 	 */

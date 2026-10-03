@@ -34,7 +34,7 @@ namespace OLLMfilesd
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"RPC-ProjectManager", typeof(ProjectManager),
+				"ProjectManager", typeof(ProjectManager),
 				"remove_project", "s",
 				"rpc_load_projects_from_db", "",
 				"rpc_create_project", "s",
@@ -55,8 +55,7 @@ namespace OLLMfilesd
 		public SQ.Database? db { get; set; default = null; }
 		
 		public Gee.HashMap<string,FileBase> file_cache {
-			get; set;
-			default = new Gee.HashMap<string,FileBase>(); 
+			get; set; default = new Gee.HashMap<string,FileBase>(); 
 		}
 		
 		/**
@@ -64,15 +63,13 @@ namespace OLLMfilesd
 		 * Maps file path to Tree instance.
 		 */
 		public Gee.HashMap<string,Tree> tree_cache {
-			get; private set;
-			default = new Gee.HashMap<string,Tree>(); 
+			get; private set; default = new Gee.HashMap<string,Tree>(); 
 		}
 		
 		/**
 		 * List of all projects (folders where is_project = true).
 		 */
-		public ProjectList projects { get; private set;
-			default = new ProjectList(); }
+		public ProjectList projects { get; private set; default = new ProjectList(); }
 		
 		/**
 		 * Folder paths currently inside a {@link Folder.read_dir} pass (main thread only).
@@ -80,8 +77,7 @@ namespace OLLMfilesd
 		 * {@link Gee.HashMap.unset} on a missing key is safe (returns false, does not throw).
 		 */
 		public Gee.HashMap<string, Folder> scanning {
-			get; set;
-			default = new Gee.HashMap<string, Folder> ();
+			get; set; default = new Gee.HashMap<string, Folder> ();
 		}
 
 		/**

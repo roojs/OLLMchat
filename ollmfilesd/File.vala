@@ -41,7 +41,7 @@ namespace OLLMfilesd
 		{
 			OLLMrpc.Bin.register("File", typeof(File));
 			OLLMrpc.Request.add_class(
-				"RPC-File", typeof(File),
+				"File", typeof(File),
 				"read", "s",
 				"exists", "s",
 				"fetch", "ss",
@@ -529,7 +529,7 @@ namespace OLLMfilesd
 			var detected = this.manager.buffer_provider.detect_language(this);
 			if (detected != "") {
 				this.language = detected;
-				//GLib.debug("RPC-File.detect_language: Detected language '%s' for file '%s'", 
+				//GLib.debug("File.detect_language: Detected language '%s' for file '%s'", 
 				//	this.language, this.path);
 			}
 		}

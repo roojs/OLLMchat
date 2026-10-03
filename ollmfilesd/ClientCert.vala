@@ -19,7 +19,7 @@
 namespace OLLMfilesd
 {
 	/**
-	 * Client TLS certificate row + ''RPC-ClientCert'' handler.
+	 * Client TLS certificate row + ''ClientCert'' handler.
 	 *
 	 * ''status'': ''0'' pending, ''1'' approved, ''-1'' IP ban, ''-2'' rejected
 	 * (kept for audit). Three ''-2'' rows from one IP within 30 days auto-bans
@@ -31,7 +31,7 @@ namespace OLLMfilesd
 	 *
 	 * {{{
 	 * ClientCert.init_db(db);
-	 * OLLMrpc.Request.register("RPC-ClientCert", new ClientCert.for_rpc(app));
+	 * OLLMrpc.Request.register("ClientCert", new ClientCert.for_rpc(app));
 	 * }}}
 	 */
 	public class ClientCert : GLib.Object, OLLMrpc.Bin.Serializable
@@ -40,7 +40,7 @@ namespace OLLMfilesd
 		{
 			OLLMrpc.Bin.register("ClientCert", typeof(ClientCert));
 			OLLMrpc.Request.add_class(
-				"RPC-ClientCert", typeof(ClientCert),
+				"ClientCert", typeof(ClientCert),
 				"request_registration", "s",
 				"pending_cert", "",
 				"client_cert", "sx",
@@ -63,7 +63,7 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * Wire dispatch singleton for ''RPC-ClientCert''.
+		 * Wire dispatch singleton for ''ClientCert''.
 		 *
 		 * @param app daemon application (DB + HTTPS ban list)
 		 */

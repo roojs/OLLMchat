@@ -91,7 +91,14 @@ namespace OLLMrpc.Transport
 		protected GLib.IOChannel? channel;
 		protected bool channel_open = false;
 		protected uint input_watch_id = 0;
-		protected bool running = false;
+
+		/**
+		 * True from {@link start} until {@link stop}.
+		 *
+		 * {@link Live.Hook.emit} returns without waiting when
+		 * this is false.
+		 */
+		public bool running = false;
 
 		public Connection(GLib.SocketConnection? stream = null)
 		{

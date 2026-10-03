@@ -144,8 +144,8 @@ namespace OLLMfilesd
 			OLLMrpc.Transport.HttpReply reply, OLLMrpc.Request request)
 		{
 			switch (request.method) {
-				case "RPC-ClientCert.pending_cert":
-				case "RPC-ClientCert.client_cert":
+				case "ClientCert.pending_cert":
+				case "ClientCert.client_cert":
 					reply.write(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
@@ -153,7 +153,7 @@ namespace OLLMfilesd
 					});
 					return false;
 			}
-			if (request.method == "RPC-ClientCert.request_registration") {
+			if (request.method == "ClientCert.request_registration") {
 				return true;
 			}
 			if (reply.cert_fingerprint == "") {

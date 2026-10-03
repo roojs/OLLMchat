@@ -59,7 +59,7 @@ menu — Accept file changes
 - 🔷 The active hunk uses the deeper red and green. Click a red or green hunk to make it active. Click white space and there is no active hunk. Accept and Reject hide until a hunk is selected again.
 - 🔷 Remove the header changed-files popover. `show_pending_diff` is the only way to open a pending diff. Whole-file approve and reject are the bulk menu, not a second way to open the diff.
 - ✅ Shades in `resources/style.css` stay. Source: `.oc-diff-add` `rgb(239, 252, 239)`, `.oc-diff-remove` `rgb(252, 239, 239)`. Active source and active bar: `.oc-diff-add-active` `rgb(191, 242, 191)`, `.oc-diff-remove-active` `rgb(242, 191, 191)`. Other bar bands: `.oc-diff-add-band` `rgb(215, 247, 215)`, `.oc-diff-remove-band` `rgb(247, 215, 215)`. Accepted bar: `.oc-diff-accepted` `rgb(191, 191, 242)`. Rejected bar: `.oc-diff-rejected` `rgb(221, 221, 221)`.
-- ℹ️ Menu labels are in `liboccoder/Diff/ReviewBar.vala`. Today they only flip in-memory decisions. Today the whole-file wire is `RPC-FileHistory.rpc_approve` and `RPC-FileHistory.rpc_revert`.
+- ℹ️ Menu labels are in `liboccoder/Diff/ReviewBar.vala`. Today they only flip in-memory decisions. Today the whole-file wire is `FileHistory.rpc_approve` and `FileHistory.rpc_revert`.
 - ℹ️ No separate undo call. Looking back at approved batches is file history's job. Git already covers uncommitted work in the tree.
 - 💩 **Accept changes to all files** and **Reject changes to all files** are `decide` once per file.
 - 💩 The hunk reply is that one updated item. The desktop adjusts the editor from the hunk text it already has.

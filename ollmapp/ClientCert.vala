@@ -19,7 +19,7 @@
 namespace OLLMapp
 {
 	/**
-	 * Desktop-side blank wire container for ''RPC-ClientCert'' rows.
+	 * Desktop-side blank wire container for ''ClientCert'' rows.
 	 *
 	 * Mirrors the {@link OLLMfilesd.ClientCert} properties that cross the
 	 * wire (the daemon skips its ''app'' handle). ''Bin.register'' is

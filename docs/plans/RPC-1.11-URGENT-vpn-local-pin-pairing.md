@@ -27,14 +27,14 @@
 - **🔷** Registration does not need a valid client certificate, and it does not need the CA installed on the phone. That install is the gateway problem this avoids.
 - **🔷** HTTPS is not a downgrade path and not the out-of-LAN fallback in this plan.
 - **ℹ️** Phases 1 and 2 are in this file. Phases 3 and 4 are [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md). Phase 5 stays here and is later.
-- **ℹ️** Landed registration is always-on `RPC-ClientCert.request_registration` plus desktop Accept / Reject / Ban. This plan is the replacement for that open path.
+- **ℹ️** Landed registration is always-on `ClientCert.request_registration` plus desktop Accept / Reject / Ban. This plan is the replacement for that open path.
 - **ℹ️** Prior write-up [`RPC-8.2.7`](RPC-8.2.7-client-cert-registration.md) and parent Phase 7 described admin approval with no PIN and no CSR. This plan is the newer requirement.
 
 ---
 
 ## Current behaviour
 
-- **ℹ️** Unknown client certs may call `RPC-ClientCert.request_registration` on HTTPS (`ollmfilesd/Https.vala`) and on the TLS bin socket (`ollmfilesd/SslConnection.vala`). See `ollmfilesd/ClientCert.vala`.
+- **ℹ️** Unknown client certs may call `ClientCert.request_registration` on HTTPS (`ollmfilesd/Https.vala`) and on the TLS bin socket (`ollmfilesd/SslConnection.vala`). See `ollmfilesd/ClientCert.vala`.
 - **ℹ️** The LAN listener this plan uses is `ollmfilesd/SslListen.vala`: TLS bin on `filesd.socket`. HTTPS is a separate listener.
 - **ℹ️** The phone presents a valid client certificate (`client.pem` from `Transport.Cert.ensure`) before it is registered. `SslConnection.allow_request` allows `request_registration` for that unregistered certificate and refuses every other method until the fingerprint is stored with status approved.
 - **ℹ️** Desktop shows the newest pending row on `ollmapp/SettingsDialog/RegistrationBanner.vala` (Accept / Reject / Ban).
@@ -129,7 +129,7 @@
 - **🔷** `✔️` The dialog closes when the timeout fires, and `pairing` turns off. Closing when a device finishes pairing waits on the registration response (Phase 3).
 - **🔷** `⏳` Pair mode off stops the mDNS broadcast and rejects a non-registered connection outright. Registration does not start.
 - **💩** The pasted draft said `register_client`. That is not a request to add a method.
-- **ℹ️** The live method is `RPC-ClientCert.request_registration`. Gate that method. A second method name needs a separate decision (see **LLM notes**).
+- **ℹ️** The live method is `ClientCert.request_registration`. Gate that method. A second method name needs a separate decision (see **LLM notes**).
 - **🔷** `✔️` Generate the six digits with `GLib.Random`. A 60-second PIN on the local network does not need a cryptographic generator.
 
 ### Notes

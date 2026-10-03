@@ -71,7 +71,7 @@
 
 - **ℹ️** `Config2.filesd` — `https`, `proxy`, `systemd` (and reserved `unix` / `socket`).
 - **ℹ️** `ollmfilesd` starts `OLLMfilesd.Https` when `filesd.https` is non-empty.
-- **✔️** `client_cert.status` is int `0` / `1` / `-1`; cert RPC on `RPC-ClientCert` (`request_registration`, `pending_cert`, `client_cert`).
+- **✔️** `client_cert.status` is int `0` / `1` / `-1`; cert RPC on `ClientCert` (`request_registration`, `pending_cert`, `client_cert`).
 - **✔️** Banned IPs: DB `status = -1` + `HttpServer.banned_ips`; drop on accept with `GLib.debug`.
 - **ℹ️** Desktop Connections tab = LLM API `Settings.Connection` rows only — Phase 2.
 - **ℹ️** Connections tab has no outbound file-server row yet — Phase 3.
@@ -89,7 +89,7 @@
   - `1` — approved
   - `-1` — IP banned (flood control; row is an IP block, not a banned cert)
 - **🔷** `✔️` Leftover TEXT `status` table → detect + DROP + recreate INTEGER (no row copy).
-- **🔷** `✔️` All cert RPC on **`ClientCert`** (`RPC-ClientCert`) — not fat `Daemon`.
+- **🔷** `✔️` All cert RPC on **`ClientCert`** (`ClientCert`) — not fat `Daemon`.
   - **`request_registration`**
   - **`pending_cert`** — newest `status = 0`; one object (`id = 0` if none)
   - **`client_cert`** (`sx`) — `"accept"` / `"reject"` / `"ban"` / `"remove"` → **bool**
@@ -109,7 +109,7 @@
 
 ### Notes
 
-- **🔷** Wire prefix: `RPC-ClientCert`.
+- **🔷** Wire prefix: `ClientCert`.
 - **🔷** Desktop talks to local `ollmfilesd` via Unix socket for admin calls.
 - **ℹ️** nginx unchanged — drop is in `ollmfilesd` after PROXY parse (or direct peer).
 - **💩** `⏳` List approved (`status = 1`) for Connections rows — Phase 2 ([`8.2.8.1`](done/RPC-8.2.8.1-DONE-filesd-desktop-connections-ui.md)).
@@ -224,7 +224,7 @@ Tracked on the sub-plans:
 
 - **ℹ️** Extends **8.2.7**; does not replace Phase 0/1 transport/gate.
 - **ℹ️** Operator nginx doc stays [`docs/filesd-behind-nginx-proxy.md`](../filesd-behind-nginx-proxy.md).
-- **ℹ️** Phase 1 admin wire: `RPC-ClientCert.pending_cert` (object) + `RPC-ClientCert.client_cert` (`sx`, bool); registration moved off `Daemon`.
+- **ℹ️** Phase 1 admin wire: `ClientCert.pending_cert` (object) + `ClientCert.client_cert` (`sx`, bool); registration moved off `Daemon`.
 - **ℹ️** Banned IPs: DB `status = -1` + in-memory `HttpServer.banned_ips`; drop on accept with `GLib.debug("dropping banned client IP %s", …)`.
 - **🚫** Unban.
 - **🚫** Ban-as-certificate-revoke — ban is IP flood control only.

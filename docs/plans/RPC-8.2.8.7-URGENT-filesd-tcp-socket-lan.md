@@ -735,15 +735,15 @@ namespace OLLMfilesd
 		public override bool allow_request(OLLMrpc.Request request)
 		{
 			switch (request.method) {
-				case "RPC-ClientCert.pending_cert":
-				case "RPC-ClientCert.client_cert":
+				case "ClientCert.pending_cert":
+				case "ClientCert.client_cert":
 					this.reply(request, new OLLMrpc.Response() {
 						error = new OLLMrpc.Error(
 							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "local admin only")
 					});
 					return false;
 			}
-			if (request.method == "RPC-ClientCert.request_registration") {
+			if (request.method == "ClientCert.request_registration") {
 				return true;
 			}
 			if (this.cert_fingerprint == "") {

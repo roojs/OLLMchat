@@ -11,7 +11,7 @@ namespace RpcDummy
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"RPC-Strv", typeof(Strv),
+				"Strv", typeof(Strv),
 				"hello", "",
 				"echo", "S"
 			);
@@ -63,7 +63,7 @@ namespace OLLMrpcTests
 		protected override void run_rpc_test(ApplicationCommandLine command_line) throws Error
 		{
 			RpcDummy.Strv.rpc_register();
-			OLLMrpc.Request.register("RPC-Strv", new RpcDummy.Strv());
+			OLLMrpc.Request.register("Strv", new RpcDummy.Strv());
 			var dir = GLib.DirUtils.make_tmp("ocrpc-ffi-as-XXXXXX");
 			var sock = GLib.Path.build_filename(dir, "rpc.sock");
 			var listen = new OLLMrpc.Transport.SocketListen(sock);
@@ -72,7 +72,7 @@ namespace OLLMrpcTests
 			var connected = false;
 			var loop = new GLib.MainLoop();
 			rpc.connect.begin(new OLLMrpc.Request() {
-				method = "RPC-Strv.hello"
+				method = "Strv.hello"
 			}, null, (obj, res) => {
 				connected = rpc.connect.end(res);
 				loop.quit();
@@ -81,7 +81,7 @@ namespace OLLMrpcTests
 			this.check(command_line, connected, "client connect failed");
 			string[] payload = { "meta", "wayland-client", "--nested", "prove" };
 			var req = new OLLMrpc.Request() {
-				method = "RPC-Strv.echo",
+				method = "Strv.echo",
 				args = OLLMrpc.args("S", payload)
 			};
 			OLLMrpc.Response? response = null;

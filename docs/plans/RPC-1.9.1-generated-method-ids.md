@@ -22,7 +22,7 @@
 ## Purpose
 
 - **🔷** After **A+B**, the server already gets a short name (name-ref → string, then `slot` when bound).
-- **🔷** The leftover is the **client**: every call site still starts from a method string (`RPC-Folder.fetch_files`, or a typelib name like `Clutter-Actor.show`).
+- **🔷** The leftover is the **client**: every call site still starts from a method string (`Folder.fetch_files`, or a typelib name like `Clutter-Actor.show`).
 - **🔷** gnome-shell-rpc’s generator already knows every method the stubs will call. It can emit **integer constants** for that set.
 - **🔷** Both ends **register** those integers (same meaning on client and server). That is the **shared table**.
 - **🔷** A slightly modified RPC call then sends the **integer**, not the string.

@@ -225,7 +225,7 @@ namespace OLLMfiles
 			}
 
 			this.rpc.call.begin(new OLLMrpc.Request() {
-				method = "RPC-ProjectManager.rpc_activate_project",
+				method = "ProjectManager.rpc_activate_project",
 				args = OLLMrpc.args(
 					"sb",
 					project != null ? project.path : "",
@@ -273,7 +273,7 @@ namespace OLLMfiles
 		public async void rpc_load_projects_from_db() throws GLib.Error
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-ProjectManager.rpc_load_projects_from_db"
+				method = "ProjectManager.rpc_load_projects_from_db"
 			});
 			if (response.retval.type() == GLib.Type.INVALID) {
 				return;
@@ -297,7 +297,7 @@ namespace OLLMfiles
 		public async Folder? fetch_folder(string path) throws GLib.Error
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Folder.fetch",
+				method = "Folder.fetch",
 				args = OLLMrpc.args("s", path)
 			});
 			if (response.retval.type() == GLib.Type.INVALID) {
@@ -321,7 +321,7 @@ namespace OLLMfiles
 		public async Folder rpc_create_project(string path) throws GLib.Error
 		{
 			var response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-ProjectManager.rpc_create_project",
+				method = "ProjectManager.rpc_create_project",
 				args = OLLMrpc.args("s", path)
 			});
 			if (response.retval.type() == GLib.Type.INVALID) {
@@ -354,7 +354,7 @@ namespace OLLMfiles
 			project.is_project = false;
 
 			this.rpc.call.begin(new OLLMrpc.Request() {
-				method = "RPC-ProjectManager.remove_project",
+				method = "ProjectManager.remove_project",
 				args = OLLMrpc.args("s", project.path)
 			}, (obj, res) => {
 				try {

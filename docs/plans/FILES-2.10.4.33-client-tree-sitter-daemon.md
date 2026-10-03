@@ -14,8 +14,8 @@ Edits are **Remove** / **Replace with** / **Add** from the tree;
 verify surrounding context before applying.
 
 Named methods this plan adds: `File.ast_lookup` (client + daemon),
-`File.ast_summarize` (daemon). Wire: `RPC-File.ast_lookup`,
-`RPC-File.ast_summarize`. Same underscore names as the Vala methods
+`File.ast_summarize` (daemon). Wire: `File.ast_lookup`,
+`File.ast_summarize`. Same underscore names as the Vala methods
 (not `ast.lookup` / `ast.summarize` from [`2.10.4.6`](done/2.10.4.6-DONE-file.md)).
 
 ---
@@ -39,7 +39,7 @@ Named methods this plan adds: `File.ast_lookup` (client + daemon),
 - ℹ️ Client `FileChange`, `ReadFile.Request.resolve_ast_path`, and
   `ResolveLink` call `new OLLMfiles.Tree` / `lookup_path` locally.
 - ℹ️ Daemon `Tree.parse` + `lookup_path` and `tree_factory` already exist.
-- ℹ️ `RPC-File` has no `ast_lookup`. Client `File` has no lookup method.
+- ℹ️ `File` has no `ast_lookup`. Client `File` has no lookup method.
 - ℹ️ `OLLMtools.ReadFile.Summarize` subclasses client `TreeBase`.
 
 ---
@@ -52,7 +52,7 @@ Named methods this plan adds: `File.ast_lookup` (client + daemon),
 
 ### 1. `ollmfilesd/File.vala` — `rpc_register`: add `ast_lookup`
 
-**Why:** Wire name matches the Vala method (`RPC-File.ast_lookup`).
+**Why:** Wire name matches the Vala method (`File.ast_lookup`).
 
 **Where:** `add_class` method list.
 
@@ -152,7 +152,7 @@ spaces. Empty `msg` means the path was not found.
 
 ```vala
 		/**
-		 * Line range for an AST path (''RPC-File.ast_lookup'').
+		 * Line range for an AST path (''File.ast_lookup'').
 		 *
 		 * ''response.msg'' is ''start end comment_start'' (1-based lines).
 		 * Empty msg means the path was not found.
@@ -178,7 +178,7 @@ spaces. Empty `msg` means the path was not found.
 				return false;
 			}
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-File.ast_lookup",
+				method = "File.ast_lookup",
 				args = OLLMrpc.args("ss", this.path, ast_path)
 			});
 			var parts = response.msg.split(" ");
@@ -419,7 +419,7 @@ One method: pass three ints to store, empty list to read. Empty return means no 
 
 - 🔷 `✔︎` Move `liboctools/ReadFile/Summarize.vala` → `ollmfilesd/Summarize.vala`.
   Namespace `OLLMfilesd`, base daemon `TreeBase`.
-- 🔷 Wire `RPC-File.ast_summarize` / method `ast_summarize` (`"sb"` path +
+- 🔷 Wire `File.ast_summarize` / method `ast_summarize` (`"sb"` path +
   `show_lines`).
 - 🔷 `✔︎` Client summarize branch and `oc-test-files --summarize` call that RPC.
   Markdown comes back in `response.msg`.
@@ -482,7 +482,7 @@ namespace OLLMfilesd
 			try {
 				var response = yield this.file.manager.rpc.call (
 					new OLLMrpc.Request () {
-						method = "RPC-Codebase.file_info",
+						method = "Codebase.file_info",
 						args = OLLMrpc.args ("s", this.file.path)
 					});
 				if (response.retval.type() == GLib.Type.INVALID) {
@@ -618,7 +618,7 @@ map because the `WHERE` already dropped them. No Vala `strip` / `continue`.
 ```vala
 			if (this.summarize) {
 				var response = yield this.file.manager.rpc.call(new OLLMrpc.Request() {
-					method = "RPC-File.ast_summarize",
+					method = "File.ast_summarize",
 					args = OLLMrpc.args("sb", this.file.path, this.show_lines)
 				});
 				var preview_summary = this.get_first_lines(response.msg, 20);
@@ -652,7 +652,7 @@ map because the `WHERE` already dropped them. No Vala `strip` / `continue`.
 
 ```vala
 		var response = yield file.manager.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-File.ast_summarize",
+			method = "File.ast_summarize",
 			args = OLLMrpc.args("sb", file.path, opt_show_lines)
 		});
 		print(response.msg);

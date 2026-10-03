@@ -951,7 +951,7 @@ namespace OLLMcoder
 			var v_backup = "";
 			try {
 				var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-					method = "RPC-File.read",
+					method = "File.read",
 					args = OLLMrpc.args("s", row.backup_path)
 				});
 				if (this.current_file != file) {

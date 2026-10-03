@@ -11,7 +11,7 @@ namespace RpcDummy
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"RPC-Hello", typeof(Hello),
+				"Hello", typeof(Hello),
 				"world", ""
 			);
 		}
@@ -46,7 +46,7 @@ namespace OLLMrpcTests
 			OLLMrpc.Error.rpc_register();
 			OLLMrpc.Notification.rpc_register();
 			RpcDummy.Hello.rpc_register();
-			OLLMrpc.Request.register("RPC-Hello", new RpcDummy.Hello());
+			OLLMrpc.Request.register("Hello", new RpcDummy.Hello());
 
 			var http = new OLLMrpc.Transport.HttpServer(0);
 			this.check(command_line, http.start(), "http server start");
@@ -59,7 +59,7 @@ namespace OLLMrpcTests
 			client_bin.out_stream = new GLib.DataOutputStream(mem);
 			client_bin.write(new OLLMrpc.Request() {
 				id = 1,
-				method = "RPC-Hello.world"
+				method = "Hello.world"
 			});
 			client_bin.out_stream.close();
 			client_bin.out_stream = null;
@@ -112,7 +112,7 @@ namespace OLLMrpcTests
 			client_bin.out_stream = new GLib.DataOutputStream(mem);
 			client_bin.write(new OLLMrpc.Request() {
 				id = 2,
-				method = "RPC-Hello.world"
+				method = "Hello.world"
 			});
 			client_bin.out_stream.close();
 			client_bin.out_stream = null;
@@ -203,7 +203,7 @@ namespace OLLMrpcTests
 			fresh.out_stream = new GLib.DataOutputStream(mem);
 			fresh.write(new OLLMrpc.Request() {
 				id = 3,
-				method = "RPC-Hello.world"
+				method = "Hello.world"
 			});
 			fresh.out_stream.close();
 			fresh.out_stream = null;

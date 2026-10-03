@@ -27,9 +27,9 @@
 - **🔷** Stop compiling a `GLib.Regex` and `dlsym`-ing the C symbol on every listed FFI call.
 - **🔷** Do that work once in `Request.add_class` (startup / `rpc_register`).
 - **🔷** `add_class` appends one `FfiSlot` to a lazy `Gee.ArrayList<FfiSlot>`. No C `Type[]` tables.
-- **🔷** After that table exists, later bin FFI calls use the **transport name-ref id** (the uint16 from 8.6) → that slot. Not `"RPC-Folder.fetch_files"`.
+- **🔷** After that table exists, later bin FFI calls use the **transport name-ref id** (the uint16 from 8.6) → that slot. Not `"Folder.fetch_files"`.
 - **🔷** If the token is already bound to an FFI slot, Ffi uses `slot` and does **not** hash `methods`. Miss stays `read_name_ref` (same as today).
-- **🔷** No wire change. Client call sites stay `method = "RPC-File.read"`.
+- **🔷** No wire change. Client call sites stay `method = "File.read"`.
 - **⏳** `🔷` C/D expanded in [`RPC-1.9.1-generated-method-ids.md`](RPC-1.9.1-generated-method-ids.md) (generator constants, shared table, integer call).
 - **⏳** `💩` E–F (handshake, two-level ids) stay later.
 - **ℹ️** Vfunc numbered lookups are [`done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md`](done/RPC-1.10-ARCHIVED-vfunc-id-lookups.md) — not a string-name cache in this file.
@@ -39,10 +39,10 @@
 
 ## Current behaviour
 
-- **🔷** Startup: each class `rpc_register()` calls `Request.add_class("RPC-Folder", typeof(Folder), "fetch_files", "siisSb", …)`.
+- **🔷** Startup: each class `rpc_register()` calls `Request.add_class("Folder", typeof(Folder), "fetch_files", "siisSb", …)`.
 - **🔷** That fills `Request.methods` — `HashMap<string, HashMap<string, string>>` (prefix → suffix → **arg signature**).
-- **🔷** Boot also `Request.register("RPC-Folder", instance)` → `Request.handlers` string map.
-- **🔷** Client constructs `new Request() { method = "RPC-Folder.fetch_files" }` (literal string every call site).
+- **🔷** Boot also `Request.register("Folder", instance)` → `Request.handlers` string map.
+- **🔷** Client constructs `new Request() { method = "Folder.fetch_files" }` (literal string every call site).
 - **ℹ️** Bin encode (`Request.bin_write_prop` `method`): `write_name_ref` — first use introduces UTF-8 + uint16; later uses `TYPE_NAME_REF` + uint16 only ([8.6](done/RPC-8.6-URGENT-rpc-bin-learn-method-names.md)).
 - **ℹ️** Bin decode: `read_name_ref` expands the uint16 **back to a string** and stores it on `Request.method`.
 - **ℹ️** `Request.dispatch` splits that string on `.`, then `new Ffi(this).dispatch()`.
@@ -53,7 +53,7 @@
 
 - **🔷** Not the method name. The **type of each extra FFI argument** after `(self, Request)`.
 - **🔷** Same letters as `OLLMrpc.args`. One character per arg (except `S`, which is one `string[]` plus Vala’s hidden length).
-- **ℹ️** `add_class("RPC-Folder", typeof(Folder), "fetch", "s", "fetch_files", "siisSb")`:
+- **ℹ️** `add_class("Folder", typeof(Folder), "fetch", "s", "fetch_files", "siisSb")`:
   - `fetch` → `"s"` — one string
   - `fetch_files` → `"siisSb"` — string, int, int, string, `string[]`+length, bool
 - **ℹ️** Other in-tree examples: `""` (no extra args), `"is"` (`Daemon.hello`), `"ssissss"` (`Codebase.rpc_search`).
@@ -70,7 +70,7 @@ Steady-state **bin** call (names already learned on this connection). First use 
 - **ℹ️** `write_gtype(Request)`: `gtype_to_alias` HashMap + `name_to_token` HashMap (type alias `"Request"`).
 - **ℹ️** `bin_write` walks every GObject property (`id`, `method`, `args`, `lease-id`, …).
 - **ℹ️** Each written property: `write_tag(prop_name)` → `name_to_token` HashMap (`"method"`, `"id"`, `"args"`, `"lease-id"` as seen).
-- **ℹ️** Method value: `write_name_ref(this.method)` → `name_to_token` HashMap on the **full** `"RPC-Folder.fetch_files"` string.
+- **ℹ️** Method value: `write_name_ref(this.method)` → `name_to_token` HashMap on the **full** `"Folder.fetch_files"` string.
 - **ℹ️** Typical encode: **~5–7 string HashMap hits** (type alias + 3–5 property keys + 1 method name).
 - **🔷** Caller still starts from a string. There is no client-side integer constant today.
 
@@ -111,7 +111,7 @@ Steady-state **bin** call (names already learned on this connection). First use 
 
 ## What 8.6 already did — and did not
 
-- **ℹ️** Wire payload after first use is already a uint16. We are not sending `"RPC-Folder.fetch_files"` UTF-8 on every later call.
+- **ℹ️** Wire payload after first use is already a uint16. We are not sending `"Folder.fetch_files"` UTF-8 on every later call.
 - **🔷** The later waste is expand → string → hash → Regex / `dlsym`. **A** only moves Regex / `dlsym`. **B** stops the expand → hash for listed FFI.
 - **ℹ️** Tokens are **per connection**, even/odd by who first sent the name. They are **not** process-wide method ids.
 - **🚫** Do not treat today’s name-table token as a stable ABI constant unless we pre-seed the table in a fixed order on both ends.
@@ -159,7 +159,7 @@ Before `public class Request`. Two small GObjects.
 
 ```vala
 	/**
-	 * Handler singleton for one ''add_class'' prefix (e.g. RPC-Folder).
+	 * Handler singleton for one ''add_class'' prefix (e.g. Folder).
 	 *
 	 * {@link Request.register} sets {@link handler}.
 	 * {@link Request.register_live} sets {@link live}.

@@ -45,7 +45,7 @@ End-to-end RPC stack beyond the bin socket cutover (**8.1**):
 - **ℹ️** Server accepts a connection, sets up **`Connection`**, **does not write** until the client sends the first message (bin `Request` today).
 - **ℹ️** Client **`connect()`** opens socket, then sends **`RPC-Daemon.hello`** as first bin `Request`.
 - **ℹ️** **`Bin.Json`** (`libocrpc/Bin/Json.vala`) — test/tooling bridge; every object needs `*type` meta; nested objects and object arrays require explicit element aliases.
-- **ℹ️** **`Request.register(name, target, param_type)`** — maps handler singleton → param **`GLib.Type`**; **not** keyed by full method string (`RPC-File.read` vs `RPC-Folder.list`). Handler names use an `RPC-` prefix; nested Vala namespaces use hyphens (`RPC-Live-Remote.ref`).
+- **ℹ️** **`Request.register(name, target, param_type)`** — maps handler singleton → param **`GLib.Type`**; **not** keyed by full method string (`File.read` vs `Folder.list`). The handler prefix is the class name (`File`, `Folder`). `RPC-` is only for RPC plumbing (`RPC-Daemon`, `RPC-Live-Remote`). Nested Vala namespaces use hyphens (`Sandbox-Bubble`, `RPC-Live-Remote.ref`).
 - **ℹ️** **`libollmchat`** — HTTP to Ollama/OpenAI uses **`Json.Serializable`** overrides on **`Call.*`**, **`Response.*`**, **`Settings.Connection`** (separate from RPC bin stack).
 - **ℹ️** RPC assumes a **persistent** socket; no session reattach after disconnect.
 - **ℹ️** HTTPS server/client done on the HTTP track (**8.2.3.5** / **8.2.3.6**); no client-cert flow yet; socket RPC still plain.
@@ -93,7 +93,7 @@ End-to-end RPC stack beyond the bin socket cutover (**8.1**):
 ### Why hints are required
 
 - **🔷** Auto JSON cannot rely on `*type` in the payload.
-- **🔷** **`Request.param`** — JSON has `"param": { "path": "..." }` with no type tag; server must know `RPC-File.*` → `FileParams`, `RPC-Daemon.hello` → `DaemonParams`, etc.
+- **🔷** **`Request.param`** — JSON has `"param": { "path": "..." }` with no type tag; server must know `File.*` → `FileParams`, `RPC-Daemon.hello` → `DaemonParams`, etc.
 - **🔷** **`Response.result`** — root object arrays (`fetch_files` → `[File, …]`) need a declared element type when JSON elements lack `*type`.
 
 ### Phase 2a — `Bin.Json` configuration API

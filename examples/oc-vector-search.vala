@@ -208,11 +208,11 @@ Examples:
 		}
 
 		var load_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-ProjectManager.rpc_load_projects_from_db"
+			method = "ProjectManager.rpc_load_projects_from_db"
 		});
 
 		var activate_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-ProjectManager.rpc_activate_project",
+			method = "ProjectManager.rpc_activate_project",
 			args = OLLMrpc.args("sb", abs_folder, true)
 		});
 
@@ -250,7 +250,7 @@ Examples:
 		}
 
 		var response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-Codebase.file_info",
+			method = "Codebase.file_info",
 			args = OLLMrpc.args("s", resolved_path)
 		});
 
@@ -318,7 +318,7 @@ Examples:
 	private async void run_dump_vector(string abs_folder, string ast_path) throws Error
 	{
 		var response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-Codebase.rpc_debug_get",
+			method = "Codebase.rpc_debug_get",
 			args = OLLMrpc.args("ss", abs_folder, ast_path)
 		});
 		stdout.printf("%s", response.msg);
@@ -353,7 +353,7 @@ Examples:
 		}
 
 		var response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-Codebase.rpc_search",
+			method = "Codebase.rpc_search",
 			args = OLLMrpc.args(
 				"ssissss",
 				abs_folder,

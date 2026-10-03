@@ -30,7 +30,7 @@ namespace OLLMfiles
 		public async void rpc_approve() throws GLib.Error
 		{
 			yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-FileHistory.rpc_approve",
+				method = "FileHistory.rpc_approve",
 				args = OLLMrpc.args("sx", this.path, this.id)
 			});
 		}
@@ -44,7 +44,7 @@ namespace OLLMfiles
 		{
 			var response = yield this.manager.rpc.call(
 				new OLLMrpc.Request() {
-					method = "RPC-FileHistory.rpc_revert",
+					method = "FileHistory.rpc_revert",
 					args = OLLMrpc.args("sx", this.path, this.id)
 				}
 			);

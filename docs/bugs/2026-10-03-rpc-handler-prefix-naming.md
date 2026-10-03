@@ -1,6 +1,6 @@
 # RPC handler prefix naming
 
-**Status:** ⏳ rule stated — non-RPC handlers drop `RPC-`; rename not approved
+**Status:** ✔️ renamed — non-RPC handlers drop `RPC-`; `RPC-Daemon` and `RPC-Live-*` stay
 
 - ℹ️ Found while writing [`RPC-8.2.8.10`](../plans/RPC-8.2.8.10-URGENT-android-remote-bash.md). `Sandbox.Bubble` needed a prefix and there was no correct name to copy.
 
@@ -107,8 +107,7 @@ Test fixtures carry the strings as literal JSON (13 files):
 
 - 🔷 Non-RPC handlers drop `RPC-`. `RPC-Live-*` and `RPC-Daemon` stay. `Sandbox.Bubble` → `Sandbox-Bubble`.
 - ℹ️ `Folder` then matches the `Bin.register` alias `Folder`. The tables are separate in code. The wire strings would be the same.
-- 🔷 ⏳ Rename the six shipped `ollmfilesd` prefixes, or grandfather them and apply the rule only to new handlers.
-  - A rename is a protocol break: ~150 sites, and app / daemon version skew.
+- ✔️ The six shipped `ollmfilesd` prefixes are renamed. Both ends in this tree use the new wire strings.
 - 💩 ⏳ After the rule is stated, correct `RPC-8.2 §48` and `docs/rpc-registration.md`. Worth doing even if the six names stay.
 - 💩 ⏳ Reject a bad prefix inside `Request.add_class`. That is new API behaviour. Not without approval.
 
@@ -120,5 +119,4 @@ Test fixtures carry the strings as literal JSON (13 files):
 
 ## Next
 
-- 🔷 ⏳ Decide whether the six shipped prefixes are renamed or grandfathered.
-- 💩 ⏳ Then correct the two docs and set `Sandbox.Bubble` to `Sandbox-Bubble` in `RPC-8.2.8.10`.
+- ✔️ Docs that state the rule now match the rename. `RPC-8.2.8.10` uses `Sandbox-Bubble`.

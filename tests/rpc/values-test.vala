@@ -27,7 +27,7 @@ namespace RpcDummy
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"RPC-Probe", typeof(Probe),
+				"Probe", typeof(Probe),
 				"echo", "si",
 				"blob", ""
 			);
@@ -117,7 +117,7 @@ namespace OLLMrpcTests
 				new RpcDummy.Hello()
 			);
 			OLLMrpc.Request.register(
-				"RPC-Probe",
+				"Probe",
 				new RpcDummy.Probe()
 			);
 			var dir = GLib.DirUtils.make_tmp("ocrpc-values-XXXXXX");
@@ -140,7 +140,7 @@ namespace OLLMrpcTests
 			var number = GLib.Value(typeof(int));
 			number.set_int(3);
 			var req = new OLLMrpc.Request() {
-				method = "RPC-Probe.echo"
+				method = "Probe.echo"
 			};
 			req.args.add(text);
 			req.args.add(number);
@@ -164,7 +164,7 @@ namespace OLLMrpcTests
 			var blob = GLib.Value(typeof(GLib.Bytes));
 			blob.set_boxed(new GLib.Bytes(payload));
 			var blob_req = new OLLMrpc.Request() {
-				method = "RPC-Probe.blob"
+				method = "Probe.blob"
 			};
 			blob_req.args.add(blob);
 			response = null;
@@ -187,7 +187,7 @@ namespace OLLMrpcTests
 			var f_val = GLib.Value(typeof(float));
 			f_val.set_float((float) 1.5);
 			var f_req = new OLLMrpc.Request() {
-				method = "RPC-Probe.blob"
+				method = "Probe.blob"
 			};
 			f_req.args.add(f_val);
 			response = null;
@@ -206,7 +206,7 @@ namespace OLLMrpcTests
 			var d_val = GLib.Value(typeof(double));
 			d_val.set_double(2.5);
 			var d_req = new OLLMrpc.Request() {
-				method = "RPC-Probe.blob"
+				method = "Probe.blob"
 			};
 			d_req.args.add(d_val);
 			response = null;
@@ -224,7 +224,7 @@ namespace OLLMrpcTests
 			this.check(command_line, response.args.get(0).get_double() == 2.5, "double value");
 			var ints = new int[] { 1, 2, 3 };
 			var i_req = new OLLMrpc.Request() {
-				method = "RPC-Probe.blob"
+				method = "Probe.blob"
 			};
 			i_req.args.add(GLib.Variant.new_fixed_array(
 				new GLib.VariantType("i"), ints, sizeof(int)));

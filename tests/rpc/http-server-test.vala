@@ -11,7 +11,7 @@ namespace RpcDummy
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"RPC-Hello", typeof(Hello),
+				"Hello", typeof(Hello),
 				"world", "",
 				"stream", ""
 			);
@@ -62,7 +62,7 @@ namespace OLLMrpcTests
 			OLLMrpc.Error.rpc_register();
 			OLLMrpc.Notification.rpc_register();
 			RpcDummy.Hello.rpc_register();
-			OLLMrpc.Request.register("RPC-Hello", new RpcDummy.Hello());
+			OLLMrpc.Request.register("Hello", new RpcDummy.Hello());
 
 			var http = new OLLMrpc.Transport.HttpServer(0);
 			this.check(command_line, http.start(), "http server start");
@@ -74,7 +74,7 @@ namespace OLLMrpcTests
 			);
 			unary.set_request_body_from_bytes(
 				"application/json",
-				new GLib.Bytes("{\"id\":1,\"method\":\"RPC-Hello.world\",\"args\":[]}".data)
+				new GLib.Bytes("{\"id\":1,\"method\":\"Hello.world\",\"args\":[]}".data)
 			);
 			var status = 0u;
 			var text = "";
@@ -110,7 +110,7 @@ namespace OLLMrpcTests
 			);
 			stream_msg.set_request_body_from_bytes(
 				"application/json",
-				new GLib.Bytes("{\"id\":2,\"method\":\"RPC-Hello.stream\",\"args\":[]}".data)
+				new GLib.Bytes("{\"id\":2,\"method\":\"Hello.stream\",\"args\":[]}".data)
 			);
 			status = 0u;
 			text = "";

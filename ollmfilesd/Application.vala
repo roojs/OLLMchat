@@ -295,14 +295,12 @@ Examples:
 
 			this.daemon = new Daemon(this);
 			OLLMrpc.Request.register("RPC-Daemon", this.daemon);
-			OLLMrpc.Request.register("RPC-ClientCert", new ClientCert.for_rpc(this));
-			OLLMrpc.Request.register("RPC-ProjectManager", this.project_manager);
-			OLLMrpc.Request.register("RPC-File", new File(this.project_manager));
-			OLLMrpc.Request.register("RPC-Folder", new Folder(this.project_manager));
-			OLLMrpc.Request.register("RPC-FileHistory", 
-				new FileHistory.for_rpc(this.project_manager));
-			OLLMrpc.Request.register("RPC-Codebase", 
-				new Codebase(this.project_manager, this.config));
+			OLLMrpc.Request.register("ClientCert", new ClientCert.for_rpc(this));
+			OLLMrpc.Request.register("ProjectManager", this.project_manager);
+			OLLMrpc.Request.register("File", new File(this.project_manager));
+			OLLMrpc.Request.register("Folder", new Folder(this.project_manager));
+			OLLMrpc.Request.register("FileHistory", new FileHistory.for_rpc(this.project_manager));
+			OLLMrpc.Request.register("Codebase",  new Codebase(this.project_manager, this.config));
 
 			if (opt_interactive) {
 				this.listen = new Stdio(this, opt_rpc_script);

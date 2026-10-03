@@ -64,7 +64,7 @@ namespace OLLMrpc
 	 *     GLib.error("%s", rpc.connect_error);
 	 * }
 	 * var resp = yield rpc.call(new OLLMrpc.Request() {
-	 *     method = "RPC-ProjectManager.rpc_load_projects_from_db"
+	 *     method = "ProjectManager.rpc_load_projects_from_db"
 	 * });
 	 * }}}
 	 *

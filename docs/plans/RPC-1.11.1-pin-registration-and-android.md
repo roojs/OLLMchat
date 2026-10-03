@@ -36,7 +36,7 @@
 ### Notes
 
 - **ℹ️** The PIN is on `PairingDialog` in the GTK process. The TLS listener is `ollmfilesd`. The dialog sends the PIN to the daemon on the existing Unix RPC. An empty PIN is pair mode off.
-- **💩** That local call is `RPC-ClientCert.pair`. It is not a second registration method. `request_registration` stays the phone’s method.
+- **💩** That local call is `ClientCert.pair`. It is not a second registration method. `request_registration` stays the phone’s method.
 - **💩** A wrong PIN and a finished pairing notify the desktop as `event.pair` (`rejected` / `done`). `event.client_cert` stays the pending-row signal, and this phase does not emit it.
 - **ℹ️** Landed clients already hold a self-signed device cert and wait for Accept. This phase returns a server-signed cert and stores it approved. The phone does not get the CA private key.
 - **ℹ️** Already-approved `client_cert` rows stay the steady-state allow list. This plan does not describe wiping them.
@@ -54,7 +54,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 **Depends on:** none.
 
-#### Add — field after `app`. The dialog sets it through `RPC-ClientCert.pair`.
+#### Add — field after `app`. The dialog sets it through `ClientCert.pair`.
 
 ```vala
 		/**
@@ -423,15 +423,15 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 ```vala
 			switch (request.method) {
-				case "RPC-ClientCert.pending_cert":
-				case "RPC-ClientCert.client_cert":
+				case "ClientCert.pending_cert":
+				case "ClientCert.client_cert":
 					this.reply(request, new OLLMrpc.Response() {
 						error = new OLLMrpc.Error(
 							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "local admin only")
 					});
 					return false;
 			}
-			if (request.method == "RPC-ClientCert.request_registration") {
+			if (request.method == "ClientCert.request_registration") {
 				return true;
 			}
 ```
@@ -440,16 +440,16 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 ```vala
 			switch (request.method) {
-				case "RPC-ClientCert.pending_cert":
-				case "RPC-ClientCert.client_cert":
-				case "RPC-ClientCert.pair":
+				case "ClientCert.pending_cert":
+				case "ClientCert.client_cert":
+				case "ClientCert.pair":
 					this.reply(request, new OLLMrpc.Response() {
 						error = new OLLMrpc.Error(
 							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "local admin only")
 					});
 					return false;
 			}
-			if (request.method == "RPC-ClientCert.request_registration") {
+			if (request.method == "ClientCert.request_registration") {
 				if (this.app.ssl_listen != null && this.app.ssl_listen.pin != "") {
 					return true;
 				}
@@ -474,8 +474,8 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 ```vala
 			switch (request.method) {
-				case "RPC-ClientCert.pending_cert":
-				case "RPC-ClientCert.client_cert":
+				case "ClientCert.pending_cert":
+				case "ClientCert.client_cert":
 					reply.write(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
@@ -483,7 +483,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 					});
 					return false;
 			}
-			if (request.method == "RPC-ClientCert.request_registration") {
+			if (request.method == "ClientCert.request_registration") {
 				return true;
 			}
 ```
@@ -492,9 +492,9 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 ```vala
 			switch (request.method) {
-				case "RPC-ClientCert.pending_cert":
-				case "RPC-ClientCert.client_cert":
-				case "RPC-ClientCert.pair":
+				case "ClientCert.pending_cert":
+				case "ClientCert.client_cert":
+				case "ClientCert.pair":
 					reply.write(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
@@ -502,7 +502,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 					});
 					return false;
 			}
-			if (request.method == "RPC-ClientCert.request_registration") {
+			if (request.method == "ClientCert.request_registration") {
 				reply.write(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
@@ -577,7 +577,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 				return;
 			}
 			win.project_manager.rpc.call.begin(new OLLMrpc.Request() {
-				method = "RPC-ClientCert.pair",
+				method = "ClientCert.pair",
 				args = OLLMrpc.args("s", pin)
 			}, (obj, res) => {
 				try {
@@ -669,7 +669,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 ## LLM notes
 
-- **ℹ️** The pasted draft said `register_client`. Tree name is `RPC-ClientCert.request_registration`. Gate the existing method. Do not add a parallel RPC until a rename is explicitly requested.
+- **ℹ️** The pasted draft said `register_client`. Tree name is `ClientCert.request_registration`. Gate the existing method. Do not add a parallel RPC until a rename is explicitly requested.
 - **ℹ️** Nginx WAN registration in `docs/filesd-behind-nginx-proxy.md` is the exposure this plan removes. Update that doc in the same change as the listener gate, not as a drive-by.
 - **ℹ️** Avahi stays on the Linux server as the mDNS publisher. The Android browser is `NsdManager` via JNI. Do not link `Avahi.ServiceBrowser` into the phone build.
 - **ℹ️** Do not add an HTTPS registration or steady-state fallback. [`RPC-8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) still describes HTTPS outside the LAN. The parent wins for pairing and for notifications.

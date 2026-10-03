@@ -177,7 +177,7 @@ namespace OLLMapp.SettingsDialog
 			});
 			try {
 				yield http.call(new OLLMrpc.Request() {
-					method = "RPC-ClientCert.request_registration",
+					method = "ClientCert.request_registration",
 					args = OLLMrpc.args("s", requester)
 				});
 			} catch (GLib.Error e) {

@@ -138,7 +138,7 @@ this.client.bind_property("state", check_row, "visible",
   - `file read path=… loaded=false chars=0`
 - **ℹ️** The project list is the remote daemon (`opening project path=/home/alan/gitlive/OLLMchat`, 1811 files).
 - **ℹ️** `SourceView.open_file` then calls `file.buffer.read_async()`. `GtkSourceFileBuffer` reads `GLib.File.new_for_path` on that desktop path. The path is not on the phone, so the read throws and the editor is set to `""`.
-- **ℹ️** `OLLMfiles.File.read` already loads the same path with `RPC-File.read`. Its comment says a thin client does not read local disk.
+- **ℹ️** `OLLMfiles.File.read` already loads the same path with `File.read`. Its comment says a thin client does not read local disk.
 
 ### Root cause
 
@@ -146,7 +146,7 @@ this.client.bind_property("state", check_row, "visible",
 
 ### Proposed fix
 
-- **✔️** `SourceView.open_file` calls `file.read()` (`RPC-File.read`). `File.read` clears the buffer first, which sets `is_loaded`, then applies the RPC text. It does not call `buffer.read_async()`.
+- **✔️** `SourceView.open_file` calls `file.read()` (`File.read`). `File.read` clears the buffer first, which sets `is_loaded`, then applies the RPC text. It does not call `buffer.read_async()`.
 
 #### Replace with
 
@@ -203,7 +203,7 @@ yield file.read();
 ## Problem 8 — An already approved certificate stays Requested
 
 - **🔷** Registering a certificate the desktop has already approved leaves the row at Requested. Check is still required.
-- **🔷** `RPC-ClientCert.request_registration` should say the certificate is already accepted, and the phone should skip Check and become active.
+- **🔷** `ClientCert.request_registration` should say the certificate is already accepted, and the phone should skip Check and become active.
 - **🔷** 2026-09-28 pid 32754: register at 09:52:13, Check at 09:52:58. Check was still required.
 
 ### Evidence

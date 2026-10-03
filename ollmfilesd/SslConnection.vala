@@ -47,7 +47,7 @@ namespace OLLMfilesd
 		 * Same gate as {@link Https.allow_rpc} for bin RPC.
 		 *
 		 * Unknown certs may only call
-		 * ''RPC-ClientCert.request_registration''.
+		 * ''ClientCert.request_registration''.
 		 *
 		 * @param request inbound RPC
 		 * @return true when the method may run
@@ -55,15 +55,15 @@ namespace OLLMfilesd
 		public override bool allow_request(OLLMrpc.Request request)
 		{
 			switch (request.method) {
-				case "RPC-ClientCert.pending_cert":
-				case "RPC-ClientCert.client_cert":
+				case "ClientCert.pending_cert":
+				case "ClientCert.client_cert":
 					this.reply(request, new OLLMrpc.Response() {
 						error = new OLLMrpc.Error(
 							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "local admin only")
 					});
 					return false;
 			}
-			if (request.method == "RPC-ClientCert.request_registration") {
+			if (request.method == "ClientCert.request_registration") {
 				return true;
 			}
 			if (this.cert_fingerprint == "") {
@@ -78,8 +78,7 @@ namespace OLLMfilesd
 			var int_binds = new Gee.HashMap<string, int>();
 			var text_binds = new Gee.HashMap<string, string>();
 			text_binds.set("fingerprint", this.cert_fingerprint);
-			cert_q.selectWhere(
-				"WHERE fingerprint = $fingerprint AND status = 1",
+			cert_q.selectWhere("WHERE fingerprint = $fingerprint AND status = 1",
 				int_binds, text_binds, rows);
 			if (rows.size > 0) {
 				return true;

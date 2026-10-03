@@ -642,7 +642,7 @@ BACKUP_PATH: (tracked_in_file_history)
 		
 		// Create Summarize instance (pass show_lines option)
 		var response = yield file.manager.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-File.ast_summarize",
+			method = "File.ast_summarize",
 			args = OLLMrpc.args("sb", file.path, opt_show_lines)
 		});
 		print(response.msg);

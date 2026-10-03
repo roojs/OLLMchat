@@ -67,7 +67,7 @@ show_pending_diff
 - 🔷 That stamp is the project file's modification time in microseconds, read from the file at diff time.
 - 🔷 A different stamp does not return that list. `parts` calls `rebuild_parts`.
 - 🔷 Keep or remove is the bullet list above `rebuild_parts`.
-- 🔷 `show_pending_diff` does not call `RPC-File.read` on `backup_path`.
+- 🔷 `show_pending_diff` does not call `File.read` on `backup_path`.
 - ℹ️ `file_diff_part` today has no hunk text. `ollmfilesd/FileDiffPart.vala`. The daemon cannot link `libocfiles`.
 - 🔷 The review diff runs on the file server. If that is the only user, `Differ` / `Patch` / `PatchApplier` move out of `libocfiles` into `ollmfilesd`.
 - ℹ️ Still compiled against `libocfiles/Diff` today: `liboccoder/SourceView.vala` `show_diff`, `liboccoder/Diff/ReviewBar.vala` (`HunkBand`, `update_diff(Differ)`), `examples/oc-diff.vala`, `examples/oc-test-source-diff.vala`. `PatchApplier` has no caller.
@@ -308,7 +308,7 @@ ln -s ../../libocfiles/Diff/Differ.vala ollmfilesd/Diff/Differ.vala
 		 * Whole-file approve/reject sets {@code reviewed=1}.
 ```
 
-#### Add — second `add_class` at the end of `rpc_register`, after the `RPC-FileHistory` registration.
+#### Add — second `add_class` at the end of `rpc_register`, after the `FileHistory` registration.
 
 ```vala
 			OLLMrpc.Request.add_class(
@@ -552,14 +552,14 @@ Looking at one file. The backup and the project file are the two texts. `Differ`
 
 **Why:** `add_class` names the method. `Request.register` binds the live `FileHistory` that handles it. One instance serves both names.
 
-**Where:** the existing `Request.register("RPC-FileHistory", …)` call.
+**Where:** the existing `Request.register("FileHistory", …)` call.
 
 **Depends on:** §4.
 
 #### Remove
 
 ```vala
-			OLLMrpc.Request.register("RPC-FileHistory", 
+			OLLMrpc.Request.register("FileHistory", 
 				new FileHistory.for_rpc(this.project_manager));
 ```
 
@@ -567,7 +567,7 @@ Looking at one file. The backup and the project file are the two texts. `Differ`
 
 ```vala
 			var history_rpc = new FileHistory.for_rpc(this.project_manager);
-			OLLMrpc.Request.register("RPC-FileHistory", history_rpc);
+			OLLMrpc.Request.register("FileHistory", history_rpc);
 			OLLMrpc.Request.register("OLLMfilesd-FileHistory", history_rpc);
 ```
 
@@ -707,7 +707,7 @@ namespace OLLMfiles
 			var v_backup = "";
 			try {
 				var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-					method = "RPC-File.read",
+					method = "File.read",
 					args = OLLMrpc.args("s", row.backup_path)
 				});
 				if (this.current_file != file) {
@@ -972,8 +972,8 @@ Bands from the line range. `accepted` 0 is pending, 1 accepted, -1 rejected. The
 - 🚫 Copy `rows` into a `Gee.ArrayList<GLib.Object>` before `val("o", …)`. `rows` is already that array.
 - 🚫 `Differ` inside `parts`. A cache miss calls `rebuild_parts`.
 - 🚫 No row until Accept or Reject. The items exist when the diff is shown.
-- 🚫 Client `Differ`, and `RPC-File.read` of `backup_path`, inside `show_pending_diff`.
-- 🚫 `RPC-File` rename in this plan. New calls use `OLLMfilesd-`. The hyphen joins the namespace and the class. The dot is only the method. `RPC-` stays for internal calls such as `RPC-Daemon.hello`.
+- 🚫 Client `Differ`, and `File.read` of `backup_path`, inside `show_pending_diff`.
+- 🚫 `File` rename in this plan. New calls use `OLLMfilesd-`. The hyphen joins the namespace and the class. The dot is only the method. `RPC-` stays for internal calls such as `RPC-Daemon.hello`.
 - 🚫 Return `live` because the history id is present. The project file's modification stamp from that diff has to match `live_stamp`.
 - 🚫 Delete every `file_diff_part` row for a history and insert a new set. `rebuild_parts` deletes a row only when `compare` says so. A return of `3` keeps that row.
 - 🚫 Delete a row because `hunk_remove` and `hunk_add` are empty. Those strings are not columns. A load from the table always looks empty.

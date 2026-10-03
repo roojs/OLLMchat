@@ -105,7 +105,7 @@ namespace OLLMfiles
 
 			try {
 				var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-					method = "RPC-Folder.rpc_project_description",
+					method = "Folder.rpc_project_description",
 					args = OLLMrpc.args("s", this.path)
 				});
 				return response.msg;
@@ -131,7 +131,7 @@ namespace OLLMfiles
 
 			try {
 				var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-					method = "RPC-Folder.rpc_roots",
+					method = "Folder.rpc_roots",
 					args = OLLMrpc.args("s", this.path)
 				});
 				if (response.retval.type() == GLib.Type.INVALID) {
@@ -171,7 +171,7 @@ namespace OLLMfiles
 			}
 
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-File.fetch",
+				method = "File.fetch",
 				args = OLLMrpc.args("ss", this.path, path)
 			});
 
@@ -197,7 +197,7 @@ namespace OLLMfiles
 		public async bool contains_folder(string dir_path) throws GLib.Error
 		{
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Folder.contains_folder",
+				method = "Folder.contains_folder",
 				args = OLLMrpc.args("ss", this.path, dir_path)
 			});
 			return response.msg == "true";
@@ -224,7 +224,7 @@ namespace OLLMfiles
 		) throws GLib.Error
 		{
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Folder.fetch_files",
+				method = "Folder.fetch_files",
 				args = OLLMrpc.args(
 					"siisSb",
 					this.path,

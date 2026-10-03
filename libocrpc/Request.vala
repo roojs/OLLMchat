@@ -19,7 +19,7 @@
 namespace OLLMrpc
 {
 	/**
-	 * Handler singleton for one ''add_class'' prefix (e.g. RPC-Folder).
+	 * Handler singleton for one ''add_class'' prefix (e.g. Folder).
 	 *
 	 * {@link Request.register} sets {@link handler}.
 	 * {@link Request.register_live} sets {@link live}.
@@ -76,7 +76,7 @@ namespace OLLMrpc
 	 *
 	 * {{{
 	 * var req = new OLLMrpc.Request() {
-	 *     method = "RPC-Folder.fetch_files",
+	 *     method = "Folder.fetch_files",
 	 *     args = OLLMrpc.args(
 	 *         "siisSb", "/home/user/project", 0, 50, "",
 	 *         new string[] {}, false
@@ -187,7 +187,7 @@ namespace OLLMrpc
 		/**
 		 * Register a server dispatch handler.
 		 *
-		 * @param name wire object prefix (e.g. RPC-Folder)
+		 * @param name wire object prefix (e.g. Folder)
 		 * @param target handler singleton
 		 */
 		public static void register(
@@ -270,7 +270,7 @@ namespace OLLMrpc
 		 * OLLMrpc.Request.register("RPC-Daemon", this.daemon);
 		 * }}}
 		 *
-		 * @param name wire object prefix (e.g. RPC-Folder)
+		 * @param name wire object prefix (e.g. Folder)
 		 * @param type handler GType (C prefix)
 		 * @param ... method, signature pairs
 		 */

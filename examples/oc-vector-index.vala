@@ -160,7 +160,7 @@ Examples:
 
 		if (opt_reset_database) {
 			var reset_response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Codebase.reset"
+				method = "Codebase.reset"
 			});
 			stdout.printf("✓ Database reset complete\n");
 			return;
@@ -203,11 +203,11 @@ Examples:
 		}
 
 		var load_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-ProjectManager.rpc_load_projects_from_db"
+			method = "ProjectManager.rpc_load_projects_from_db"
 		});
 
 		var fetch_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-Folder.fetch",
+			method = "Folder.fetch",
 			args = OLLMrpc.args("s", project_path)
 		});
 		if (fetch_response.retval.type() == GLib.Type.INVALID && !opt_create_project) {
@@ -230,7 +230,7 @@ Examples:
 		if (opt_create_project) {
 			stdout.printf("Creating folder as project: %s\n", project_path);
 			var create_response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-ProjectManager.rpc_create_project",
+				method = "ProjectManager.rpc_create_project",
 				args = OLLMrpc.args("s", project_path)
 			});
 			stdout.printf("✓ Project created\n\n");
@@ -238,7 +238,7 @@ Examples:
 
 		stdout.printf("Scanning folder for files...\n");
 		var scan_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-ProjectManager.rpc_activate_project",
+			method = "ProjectManager.rpc_activate_project",
 			args = OLLMrpc.args("sb", project_path, false)
 		});
 		stdout.printf("✓ Filesystem scan complete\n\n");
@@ -246,7 +246,7 @@ Examples:
 		if (opt_project_summary) {
 			stdout.printf("=== Project summary ===\n\n");
 			var summary_response = yield this.rpc.call(new OLLMrpc.Request() {
-				method = "RPC-Folder.rpc_project_description",
+				method = "Folder.rpc_project_description",
 				args = OLLMrpc.args("s", project_path)
 			});
 			if (summary_response.msg == "") {
@@ -307,7 +307,7 @@ Examples:
 		});
 
 		var start_response = yield this.rpc.call(new OLLMrpc.Request() {
-			method = "RPC-Codebase.start",
+			method = "Codebase.start",
 			args = OLLMrpc.args("ss", project_path, opt_only_file)
 		});
 		yield index_done.future.wait_async();

@@ -82,9 +82,9 @@ Proposed Vala follows `docs/coding-standards.md`.
 - **ℹ️** `2.10.4.15` Phase A writes the wire as JSON (`"method":"Bubble.exec"`, a `params` object, `BubbleParams` in `ollmfilesd/CallParam.vala`). The shipping daemon does not dispatch that way.
 - **ℹ️** Shipping dispatch is `OLLMrpc.Request.add_class(prefix, type, suffix, signature)` plus `OLLMrpc.Request.register(prefix, instance)`, with **positional** `request.args`. See `ollmfilesd/Folder.vala` and `ollmfilesd/File.vala`.
 - **ℹ️** There is no `ollmfilesd/CallParam.vala` and no `*Params` class in the tree. That part of `2.10.4.15` is stale.
-- **⏳** **🔷** **The handler prefix below is wrong and is parked.** `RPC-` is reserved for the RPC classes (`RPC-Daemon`, `RPC-Live-*`); `OLLMfilesd.Sandbox.Bubble` is not one, so it is `Sandbox-Bubble` or similar — not `RPC-Bubble` and not `RPC-Sandbox-Bubble`. The tree has no correct example to copy and [`RPC-8.2 §48`](RPC-8.2-full-rpc-system.md) states the rule wrongly. Audit and open questions: [`2026-10-03-rpc-handler-prefix-naming`](../bugs/2026-10-03-rpc-handler-prefix-naming.md). The fences below still say `RPC-Sandbox-Bubble`; **rename before applying.**
-  - **ℹ️** Nested namespaces hyphenate either way (`RPC-Live-Remote` for `OLLMrpc.Live.Remote`), so the `Sandbox-` segment is carried whatever is decided about `RPC-`.
-  - **ℹ️** The `rpc_` suffix on `rpc_exec` is unrelated and stays — it is on the wire for existing handlers too (`RPC-File.rpc_write`), and marks the sync FFI entry point that pairs with a private `async` method.
+- **🔷** Handler prefix is `Sandbox-Bubble`. `RPC-` stays on `RPC-Daemon` and `RPC-Live-*` only.
+  - **ℹ️** Nested namespaces hyphenate (`RPC-Live-Remote` for `OLLMrpc.Live.Remote`), so this prefix carries `Sandbox-`.
+  - **ℹ️** The `rpc_` suffix on `rpc_exec` is unrelated and stays — it is on the wire for existing handlers too (`File.rpc_write`), and marks the sync FFI entry point that pairs with a private `async` method.
 - **💩** So the proposals below use the shipping style. Decisions you may want to overrule:
   - `exec` signature string is `sssbS`.
   - `can_wrap` replies `msg` = `1` / `0`. `OLLMbwrap.Bubble.can_wrap()` is a bool with no `reason`, so the `{available, reason}` result in `2.10.4.15` has nothing to fill `reason` with.
@@ -247,8 +247,8 @@ namespace OLLMfilesd
 	 * {@link OLLMbwrap.Bubble.exec} and calls one method per change.
 	 * Each change is realized through {@link Folder}, {@link FileAlias},
 	 * and {@link File}, and removals retire through
-	 * {@link DeleteManager} — the same work ''RPC-File.rpc_write'' and
-	 * ''RPC-File.rpc_delete'' do for a remote client. In-app callers use
+	 * {@link DeleteManager} — the same work ''File.rpc_write'' and
+	 * ''File.rpc_delete'' do for a remote client. In-app callers use
 	 * {@link OLLMtools.FileVerification}, which sends those two calls over
 	 * RPC; nothing here leaves the daemon.
 	 *
@@ -547,7 +547,7 @@ namespace OLLMfilesd
 }
 ```
 
-### 3. `ollmfilesd/Sandbox/Bubble.vala` — `RPC-Sandbox-Bubble` handlers
+### 3. `ollmfilesd/Sandbox/Bubble.vala` — `Sandbox-Bubble` handlers
 
 **Why:** `2.10.4.15` wants RPC glue only — no `Exec.vala`, no `Sandbox/*` copy under `ollmfilesd/`. This class resolves the project, builds `write_roots`, and hands off to `OLLMbwrap.Bubble`.
 
@@ -590,7 +590,7 @@ namespace OLLMfilesd
 namespace OLLMfilesd.Sandbox
 {
 	/**
-	 * Server ''RPC-Sandbox-Bubble.*'' wire handlers — sandbox
+	 * Server ''Sandbox-Bubble.*'' wire handlers — sandbox
 	 * availability and one-shot command execution on the daemon.
 	 *
 	 * {@link OLLMbwrap.Bubble} owns the bubblewrap spawn, overlay, and
@@ -604,10 +604,10 @@ namespace OLLMfilesd.Sandbox
 	 *
 	 * {{{
 	 * OLLMfilesd.Sandbox.Bubble.rpc_register();
-	 * OLLMrpc.Request.register("RPC-Sandbox-Bubble",
+	 * OLLMrpc.Request.register("Sandbox-Bubble",
 	 *     new OLLMfilesd.Sandbox.Bubble(project_manager));
 	 * var req = new OLLMrpc.Request() {
-	 *     method = "RPC-Sandbox-Bubble.rpc_exec",
+	 *     method = "Sandbox-Bubble.rpc_exec",
 	 *     args = OLLMrpc.args("sssbS", path, "make test", "", false, roots)
 	 * };
 	 * }}}
@@ -617,7 +617,7 @@ namespace OLLMfilesd.Sandbox
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"RPC-Sandbox-Bubble", typeof(Bubble),
+				"Sandbox-Bubble", typeof(Bubble),
 				"can_wrap", "",
 				"rpc_exec", "sssbS"
 			);
@@ -631,7 +631,7 @@ namespace OLLMfilesd.Sandbox
 		}
 
 		/**
-		 * ''RPC-Sandbox-Bubble.can_wrap'' — whether bubblewrap is
+		 * ''Sandbox-Bubble.can_wrap'' — whether bubblewrap is
 		 * usable on this daemon host.
 		 *
 		 * Reply ''msg'' is ''1'' or ''0''.
@@ -649,7 +649,7 @@ namespace OLLMfilesd.Sandbox
 		}
 
 		/**
-		 * ''RPC-Sandbox-Bubble.rpc_exec'' — run one shell command in
+		 * ''Sandbox-Bubble.rpc_exec'' — run one shell command in
 		 * the daemon sandbox.
 		 *
 		 * The typed parameters are the FFI signature; {@link exec}
@@ -748,7 +748,7 @@ namespace OLLMfilesd.Sandbox
 }
 ```
 
-### 4. `ollmfilesd/Application.vala` — register `RPC-Sandbox-Bubble`
+### 4. `ollmfilesd/Application.vala` — register `Sandbox-Bubble`
 
 **Why:** `add_class` fills the method table; `register` binds the handler instance. Both are needed before the first request arrives.
 
@@ -774,23 +774,23 @@ namespace OLLMfilesd.Sandbox
 #### Remove
 
 ```vala
-			OLLMrpc.Request.register("RPC-Codebase", 
+			OLLMrpc.Request.register("Codebase", 
 				new Codebase(this.project_manager, this.config));
 ```
 
 #### Replace with
 
 ```vala
-			OLLMrpc.Request.register("RPC-Codebase", 
+			OLLMrpc.Request.register("Codebase", 
 				new Codebase(this.project_manager, this.config));
-			OLLMrpc.Request.register("RPC-Sandbox-Bubble",
+			OLLMrpc.Request.register("Sandbox-Bubble",
 				new Sandbox.Bubble(this.project_manager));
 ```
 
 ### Testing Phase 1
 
-- **🔷** `⏳` `RPC-Sandbox-Bubble.*` is the primary way to test this. Exercise it before any caller change.
-- **💩** `⏳` `oc-rpc-script` / `--interactive` on the daemon drives `RPC-Sandbox-Bubble.can_wrap` and `RPC-Sandbox-Bubble.rpc_exec` without touching `RunCommand`. `2.10.4.15` calls this the T3 harness.
+- **🔷** `⏳` `Sandbox-Bubble.*` is the primary way to test this. Exercise it before any caller change.
+- **💩** `⏳` `oc-rpc-script` / `--interactive` on the daemon drives `Sandbox-Bubble.can_wrap` and `Sandbox-Bubble.rpc_exec` without touching `RunCommand`. `2.10.4.15` calls this the T3 harness.
 - **💩** `⏳` Smoke the overlay path too, not just exit codes: a command that creates, edits, and deletes a project file should leave the index and the live tree correct through §2.
 
 ---

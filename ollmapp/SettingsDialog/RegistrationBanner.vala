@@ -87,7 +87,7 @@ namespace OLLMapp.SettingsDialog
 			try {
 				response = yield win.project_manager.rpc.call(
 					new OLLMrpc.Request() {
-						method = "RPC-ClientCert.pending_cert"
+						method = "ClientCert.pending_cert"
 					});
 			} catch (GLib.Error e) {
 				GLib.debug("pending_cert failed: %s", e.message);
@@ -120,7 +120,7 @@ namespace OLLMapp.SettingsDialog
 			}
 			try {
 				yield win.project_manager.rpc.call(new OLLMrpc.Request() {
-					method = "RPC-ClientCert.client_cert",
+					method = "ClientCert.client_cert",
 					args = OLLMrpc.args("sx", action, this.pending_id)
 				});
 			} catch (GLib.Error e) {

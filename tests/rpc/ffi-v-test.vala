@@ -11,7 +11,7 @@ namespace RpcDummy
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"RPC-Value", typeof(ValueEcho),
+				"Value", typeof(ValueEcho),
 				"hello", "",
 				"set_relay_value", "bV"
 			);
@@ -66,7 +66,7 @@ namespace OLLMrpcTests
 		protected override void run_rpc_test(ApplicationCommandLine command_line) throws Error
 		{
 			RpcDummy.ValueEcho.rpc_register();
-			OLLMrpc.Request.register("RPC-Value", new RpcDummy.ValueEcho());
+			OLLMrpc.Request.register("Value", new RpcDummy.ValueEcho());
 			var dir = GLib.DirUtils.make_tmp("ocrpc-ffi-v-XXXXXX");
 			var sock = GLib.Path.build_filename(dir, "rpc.sock");
 			var listen = new OLLMrpc.Transport.SocketListen(sock);
@@ -75,7 +75,7 @@ namespace OLLMrpcTests
 			var connected = false;
 			var loop = new GLib.MainLoop();
 			rpc.connect.begin(new OLLMrpc.Request() {
-				method = "RPC-Value.hello"
+				method = "Value.hello"
 			}, null, (obj, res) => {
 				connected = rpc.connect.end(res);
 				loop.quit();
@@ -85,7 +85,7 @@ namespace OLLMrpcTests
 			var held = GLib.Value(typeof(float));
 			held.set_float((float) 1.25);
 			var req = new OLLMrpc.Request() {
-				method = "RPC-Value.set_relay_value",
+				method = "Value.set_relay_value",
 				args = OLLMrpc.args("bV", true, held)
 			};
 			OLLMrpc.Response? response = null;

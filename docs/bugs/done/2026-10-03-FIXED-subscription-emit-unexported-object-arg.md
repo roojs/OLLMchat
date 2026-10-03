@@ -62,6 +62,7 @@ Nested `gsr-server` (mutter 48), shell started, then a Wayland client opens a wi
 - ✔️ The `notify::` handler now builds `packed` and the method name (`rpc_signal_alias` when a `TypeOverride` exists) first, then writes once. It uses a local instead of a ternary (Vala ternary bug).
 - 🚫 Not changed: a `TypeOverride.pack` that returns a `Gee.ArrayList` of live objects is not walked. No in-tree override does that.
 - 🔷 An unregistered GType throws `StreamError.REGISTRATION "Unregistered class type schema: %s"` in `Bin.Stream.write_reg_gtype`. `Connection.write` catches it and stops that connection only; the server keeps listening. Disconnect is the accepted result (user, 2026-10-03). Not hit by the gate or the live log.
+
 ## Notification write error stops the connection
 
 - 🔷 Decision (user, 2026-10-03): keep `stop()`. A notification that cannot be encoded is a bug. It must crash, throw, or disconnect the client so it surfaces. It must not be dropped quietly.

@@ -50,10 +50,18 @@ namespace OLLMrpc.Live
 		/**
 		 * Write {@link Invoke} and wait for {@link Callback.reply}.
 		 *
+		 * Returns immediately with {@link reply_args} empty when
+		 * {@link Transport.Connection.running} is false. A stopped
+		 * connection cannot deliver a reply.
+		 *
 		 * @param args packed GI callback arguments
 		 */
 		public virtual void emit(Gee.ArrayList<GLib.Value?> args)
 		{
+			if (!this.connection.running) {
+				this.reply_args.clear();
+				return;
+			}
 			var correlation = this.connection.next_handle;
 			this.connection.next_handle++;
 			var frame = new Frame();
@@ -66,7 +74,7 @@ namespace OLLMrpc.Live
 				reply_id = correlation,
 				args = args
 			});
-			while (!frame.replied && !this.replied) {
+			while (!frame.replied && !this.replied && this.connection.running) {
 				this.connection.emit_wait_poll();
 			}
 			this.frames.unset(correlation);

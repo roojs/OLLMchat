@@ -41,7 +41,7 @@ namespace OLLMfilesd
 		{
 			OLLMrpc.Bin.register("Folder", typeof(Folder));
 			OLLMrpc.Request.add_class(
-				"RPC-Folder", typeof(Folder),
+				"Folder", typeof(Folder),
 				"fetch", "s",
 				"contains_folder", "ss",
 				"fetch_pending_approvals", "sx",
@@ -481,12 +481,12 @@ namespace OLLMfilesd
 		 */
 		public async void read_dir(int64 check_time, bool recurse = false) throws Error
 		{
-			//GLib.debug("RPC-Folder.read_dir: Starting scan for path='%s', is_project=%s, check_time=%lld, recurse=%s, last_check_time=%lld", 
+			//GLib.debug("Folder.read_dir: Starting scan for path='%s', is_project=%s, check_time=%lld, recurse=%s, last_check_time=%lld", 
 			//	this.path, this.is_project.to_string(), check_time, recurse.to_string(), this.last_check_time);
 			
 			// If this folder was already checked in this scan, skip it
 			if (this.last_check_time == check_time) {
-				//GLib.debug("RPC-Folder.read_dir: Already checked in this scan (check_time=%lld), skipping path='%s'", 
+				//GLib.debug("Folder.read_dir: Already checked in this scan (check_time=%lld), skipping path='%s'", 
 				//	check_time, this.path);
 				return;
 			}
@@ -930,7 +930,7 @@ namespace OLLMfilesd
 		public async void load_files_from_db()
 		{
 			if (this.id <= 0 || this.manager.db == null) {
-				//GLib.debug("RPC-Folder.load_files_from_db: Skipping (id=%lld or db=null)", this.id);
+				//GLib.debug("Folder.load_files_from_db: Skipping (id=%lld or db=null)", this.id);
 				return;
 			}
 
@@ -942,7 +942,7 @@ namespace OLLMfilesd
 			// Step a: Create id => FileBase map and add self (root folder) to it
 			var id_map = new Gee.HashMap<int, FileBase>();
 			id_map.set((int)this.id, this);
-			//GLib.debug("RPC-Folder.load_files_from_db: Starting for '%s' (id=%lld)", this.path, this.id);
+			//GLib.debug("Folder.load_files_from_db: Starting for '%s' (id=%lld)", this.path, this.id);
 			
 		// Step b: Load children starting from project path using while loop
 			string[] paths = { this.path };
@@ -951,12 +951,12 @@ namespace OLLMfilesd
 			int iteration = 0;
 			while (paths.length > 0) {
 				iteration++;
-				//GLib.debug("RPC-Folder.load_files_from_db: Iteration %d, loading %d paths", iteration, paths.length);
+				//GLib.debug("Folder.load_files_from_db: Iteration %d, loading %d paths", iteration, paths.length);
 				paths = yield this.load_children(id_map, paths, seen_ids);
-				//GLib.debug("RPC-Folder.load_files_from_db: After iteration %d, id_map has %d items, next_paths=%d", iteration, id_map.size, paths.length);
+				//GLib.debug("Folder.load_files_from_db: After iteration %d, id_map has %d items, next_paths=%d", iteration, id_map.size, paths.length);
 			}
 			
-			//GLib.debug("RPC-Folder.load_files_from_db: Loaded %d items total, building tree structure", id_map.size);
+			//GLib.debug("Folder.load_files_from_db: Loaded %d items total, building tree structure", id_map.size);
 			// Step c: Build the tree structure
 			// Skip the root folder itself (it's already in the tree, doesn't need to be added to a parent)
 			foreach (var file_base in id_map.values) {
@@ -1110,7 +1110,7 @@ namespace OLLMfilesd
 			
 			// Check if target_dir is within this folder
 			if (!target_dir.has_prefix(this.path)) {
-				GLib.warning("RPC-Folder.make_children: Target path %s is not within folder %s", target_dir, this.path);
+				GLib.warning("Folder.make_children: Target path %s is not within folder %s", target_dir, this.path);
 				return null;
 			}
 			
@@ -1150,7 +1150,7 @@ namespace OLLMfilesd
 			// Query folder info from disk
 			var gfile = GLib.File.new_for_path(child_path);
 			if (!GLib.FileUtils.test(gfile.get_path(), GLib.FileTest.EXISTS)) {
-				GLib.warning("RPC-Folder.make_children: Folder does not exist on disk: %s", child_path);
+				GLib.warning("Folder.make_children: Folder does not exist on disk: %s", child_path);
 				return null;
 			}
 			
@@ -1162,7 +1162,7 @@ namespace OLLMfilesd
 					null
 				);
 			} catch (GLib.Error e) {
-				GLib.warning("RPC-Folder.make_children: Could not query folder info for %s: %s", child_path, e.message);
+				GLib.warning("Folder.make_children: Could not query folder info for %s: %s", child_path, e.message);
 				return null;
 			}
 			

@@ -90,7 +90,7 @@ namespace RpcDummy.Alarm
 			AlarmCreate.rpc_register();
 			AlarmListQuery.rpc_register();
 
-			OLLMrpc.Http.routes("RPC-Alarm", typeof(Service),
+			OLLMrpc.Http.routes("Alarm", typeof(Service),
 				"/v1/alarms/{id}", "GET", "get", "s", typeof(void), typeof(void),
 				"/v1/alarms", "POST", "create", "o", typeof(AlarmCreate), typeof(Alarm),
 				"/v1/alarms/{id}", "DELETE", "remove", "s", typeof(void), typeof(void)
@@ -178,7 +178,7 @@ namespace OLLMrpcTests
 			OLLMrpc.Error.rpc_register();
 			OLLMrpc.Notification.rpc_register();
 			RpcDummy.Alarm.Service.rpc_register();
-			OLLMrpc.Request.register("RPC-Alarm", new RpcDummy.Alarm.Service());
+			OLLMrpc.Request.register("Alarm", new RpcDummy.Alarm.Service());
 
 			var http = new OLLMrpc.Transport.HttpServer(0);
 			this.check(command_line, http.start(), "http server start");

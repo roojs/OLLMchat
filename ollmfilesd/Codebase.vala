@@ -31,7 +31,7 @@ namespace OLLMfilesd
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"RPC-Codebase", typeof(Codebase),
+				"Codebase", typeof(Codebase),
 				"file_info", "s",
 				"reset", "",
 				"start", "ss",
@@ -535,7 +535,7 @@ namespace OLLMfilesd
 			var path = request.args.get(0).get_string();
 			var ast_path = request.args.get(1).get_string();
 			if (ast_path == "") {
-				GLib.error("RPC-Codebase.debug_get: ast_path is required");
+				GLib.error("Codebase.debug_get: ast_path is required");
 			}
 			var project = this.manager.project_root(path);
 			if (project == null) {

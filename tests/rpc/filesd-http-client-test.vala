@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
  *
  * Manual HTTPS client against a live ollmfilesd (systemd). Default
- * sends RPC-ClientCert.request_registration; --hello sends
+ * sends ClientCert.request_registration; --hello sends
  * RPC-Daemon.hello after desktop Accept.
  */
 
@@ -20,7 +20,7 @@ Mints a throwaway client cert under
 ~/.cache/ollmchat/testing/filesd-http-client.
 
   {ARG} --url=https://192.168.1.10:8443
-      Send RPC-ClientCert.request_registration. Accept the pending
+      Send ClientCert.request_registration. Accept the pending
       request on the desktop Connections banner.
 
   {ARG} --url=https://192.168.1.10:8443 --hello
@@ -94,7 +94,7 @@ Without --url, uses https:// plus filesd.https from
 			};
 
 			var request = new OLLMrpc.Request() {
-				method = "RPC-ClientCert.request_registration",
+				method = "ClientCert.request_registration",
 				args = OLLMrpc.args("s", "test-rpc-filesd-http-client")
 			};
 			if (opt_hello) {

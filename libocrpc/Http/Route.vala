@@ -33,12 +33,12 @@ namespace OLLMrpc
 	 * === Bulk from a service ===
 	 *
 	 * {{{
-	 * OLLMrpc.Http.routes("RPC-Alarm", typeof(Service),
+	 * OLLMrpc.Http.routes("Alarm", typeof(Service),
 	 *     "/v1/alarms/{id}", "GET", "get", "s", typeof(void), typeof(void),
 	 *     "/v1/alarms", "POST", "create", "o", typeof(AlarmCreate), typeof(Alarm),
 	 *     "/v1/alarms/{id}", "DELETE", "remove", "s", typeof(void), typeof(void)
 	 * );
-	 * OLLMrpc.Request.register("RPC-Alarm", new Service());
+	 * OLLMrpc.Request.register("Alarm", new Service());
 	 * }}}
 	 *
 	 * One registration per verb+path. A trailing ''/{id}'' is stripped
@@ -49,7 +49,7 @@ namespace OLLMrpc
 	 * === One extra path ===
 	 *
 	 * {{{
-	 * OLLMrpc.Http.add("RPC-Alarm", typeof(Service),
+	 * OLLMrpc.Http.add("Alarm", typeof(Service),
 	 *     "/v1/alarms/ping", "GET", "ping", typeof(void), typeof(void)
 	 * );
 	 * }}}
@@ -71,7 +71,7 @@ namespace OLLMrpc
 			public string method { get; set; default = ""; }
 
 			/**
-			 * Wire object prefix (e.g. ''RPC-Alarm''), same as
+			 * Wire object prefix (e.g. ''Alarm''), same as
 			 * {@link Request.add_class}.
 			 */
 			public string wire_name { get; set; default = ""; }
@@ -116,13 +116,13 @@ namespace OLLMrpc
 		 * == Example ==
 		 *
 		 * {{{
-		 * OLLMrpc.Request.add_class("RPC-Alarm", typeof(Service), "ping", "");
-		 * OLLMrpc.Http.add("RPC-Alarm", typeof(Service),
+		 * OLLMrpc.Request.add_class("Alarm", typeof(Service), "ping", "");
+		 * OLLMrpc.Http.add("Alarm", typeof(Service),
 		 *     "/v1/alarms/ping", "GET", "ping", typeof(void), typeof(void)
 		 * );
 		 * }}}
 		 *
-		 * @param wire_name wire object prefix (e.g. RPC-Alarm)
+		 * @param wire_name wire object prefix (e.g. Alarm)
 		 * @param handler handler GType (same as add_class)
 		 * @param path path key (e.g. /v1/alarms or /v1/alarms/{id})
 		 * @param verb HTTP verb (GET, POST, …)
@@ -179,13 +179,13 @@ namespace OLLMrpc
 		 * == Example ==
 		 *
 		 * {{{
-		 * OLLMrpc.Http.routes("RPC-Alarm", typeof(Service),
+		 * OLLMrpc.Http.routes("Alarm", typeof(Service),
 		 *     "/v1/alarms/{id}", "GET", "get", "s", typeof(void), typeof(void),
 		 *     "/v1/alarms", "POST", "create", "o", typeof(AlarmCreate), typeof(Alarm)
 		 * );
 		 * }}}
 		 *
-		 * @param name wire object prefix (e.g. RPC-Alarm)
+		 * @param name wire object prefix (e.g. Alarm)
 		 * @param type handler GType
 		 * @param ... path, verb, method, sig, request_type,
 		 *   response_type (repeat; end with null path)

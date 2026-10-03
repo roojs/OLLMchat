@@ -403,7 +403,7 @@ namespace OLLMtools.ReadFile
 			// Handle summarize option
 			if (this.summarize) {
 				var response = yield this.file.manager.rpc.call(new OLLMrpc.Request() {
-					method = "RPC-File.ast_summarize",
+					method = "File.ast_summarize",
 					args = OLLMrpc.args("sb", this.file.path, this.show_lines)
 				});
 				var preview_summary = this.get_first_lines(response.msg, 20);

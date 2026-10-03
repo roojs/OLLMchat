@@ -11,7 +11,7 @@ namespace RpcDummy
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"RPC-Hello", typeof(Hello),
+				"Hello", typeof(Hello),
 				"world", ""
 			);
 		}
@@ -46,7 +46,7 @@ namespace OLLMrpcTests
 			OLLMrpc.Error.rpc_register();
 			OLLMrpc.Notification.rpc_register();
 			RpcDummy.Hello.rpc_register();
-			OLLMrpc.Request.register("RPC-Hello", new RpcDummy.Hello());
+			OLLMrpc.Request.register("Hello", new RpcDummy.Hello());
 
 			var tls_dir = GLib.DirUtils.make_tmp("ollmrpc-https-XXXXXX");
 			var ca_pem = GLib.Environment.get_variable("OLLM_RPC_CA_PEM");
@@ -81,7 +81,7 @@ namespace OLLMrpcTests
 			var err_msg = "";
 			var loop = new GLib.MainLoop();
 			client.call.begin(new OLLMrpc.Request() {
-				method = "RPC-Hello.world"
+				method = "Hello.world"
 			}, (obj, res) => {
 				try {
 					response = client.call.end(res);

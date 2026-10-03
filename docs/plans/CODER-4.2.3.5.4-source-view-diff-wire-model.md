@@ -44,7 +44,7 @@ file_history                         one agent write
 
 project file on the daemon
   full text after that write
-  client loads it with File.read (RPC-File.read)
+  client loads it with File.read (File.read)
 
 file_diff_part                       empty until a hunk is decided
   file_history_id, part_index, accepted, decided_at
@@ -63,7 +63,7 @@ The project file comes from the daemon. So does the backup. The desktop then dif
 desktop                                          ollmfilesd
 ────────────────────────────────────────────────────────────────
 ReviewFiles.refresh
-  RPC-Folder.fetch_pending_approvals
+  Folder.fetch_pending_approvals
     project path, since id          →
                                     ←  FileWithHistory list
                                        path, backup_path, ids
@@ -71,14 +71,14 @@ ReviewFiles.refresh
 
 SourceView.open_file
   File.read
-    RPC-File.read(project path)     →
+    File.read(project path)     →
                                        reads the project file
                                    ←  File row
                                       + entire project text in msg
                                        editor buffer filled from that
 
 show_pending_diff   (only if pending)
-  RPC-File.read
+  File.read
     backup_path                 →
                                     reads the cache file
                                 ←  File row tagged along
@@ -87,11 +87,11 @@ show_pending_diff   (only if pending)
     patches stay on the desktop        (no wire)
 ```
 
-- 🔷 `File.read` is the client load. `RPC-File.read`. The daemon reads the path. The client does not. `libocfiles/File.vala` `read`. Save is already `File.rpc_write`. Reload is already `File.read` (`ProjectManager.reload_file_from_disk`).
+- 🔷 `File.read` is the client load. `File.read`. The daemon reads the path. The client does not. `libocfiles/File.vala` `read`. Save is already `File.rpc_write`. Reload is already `File.read` (`ProjectManager.reload_file_from_disk`).
 - ℹ️ `SourceView.open_file` and `refresh_file` still call `buffer.read_async`. `GtkSourceFileBuffer.read_async` then reads `GLib.File.new_for_path` on the client. That local read is the wrong path. `liboccoder/SourceView.vala`, `liboccoder/GtkSourceFileBuffer.vala`.
 - ℹ️ `FileWithHistory` is the pending-list row. `backup_path` is only a path string. `ollmfilesd/FileWithHistory.vala` `pending`.
-- ℹ️ `SourceView.show_pending_diff` is the diff. It calls `RPC-File.read` with `backup_path`, keeps `response.msg`, ignores the `File` in `retval`, then `new OLLMfiles.Diff.Differ(v_backup, gtk_buffer.text)`. `liboccoder/SourceView.vala`.
-- ℹ️ `RPC-File.read` always attaches a `File` row beside the body. For a cache path that row is `id = -1`. The desktop throws it away. `ollmfilesd/File.vala` `read`.
+- ℹ️ `SourceView.show_pending_diff` is the diff. It calls `File.read` with `backup_path`, keeps `response.msg`, ignores the `File` in `retval`, then `new OLLMfiles.Diff.Differ(v_backup, gtk_buffer.text)`. `liboccoder/SourceView.vala`.
+- ℹ️ `File.read` always attaches a `File` row beside the body. For a cache path that row is `id = -1`. The desktop throws it away. `ollmfilesd/File.vala` `read`.
 - 🔷 Two full texts cross the wire: the project file, then the backup. The backup call is the extra one. The cache file is already on the daemon. The desktop only needs the hunks.
 
 ---
@@ -104,7 +104,7 @@ Same open. `show_pending_diff` does not read the backup. The file server returns
 desktop                                          ollmfilesd
 ────────────────────────────────────────────────────────────────
 ReviewFiles.refresh
-  RPC-Folder.fetch_pending_approvals
+  Folder.fetch_pending_approvals
     project path, since id          →
                                     ←  FileWithHistory list
                                        path, backup_path, ids
@@ -112,7 +112,7 @@ ReviewFiles.refresh
 
 SourceView.open_file
   File.read
-    RPC-File.read(project path)     →
+    File.read(project path)     →
                                        reads the project file
                                    ←  File row
                                       + entire project text in msg
@@ -130,7 +130,7 @@ show_pending_diff   (only if pending)
   backup file stays on the daemon      (no wire)
 ```
 
-- 🔷 `show_pending_diff` is an RPC. It does not call `RPC-File.read` on `backup_path`.
+- 🔷 `show_pending_diff` is an RPC. It does not call `File.read` on `backup_path`.
 - 🔷 The `parts` request is the trigger. The diff itself is `FileHistory.rebuild_parts`. Inputs are the cache backup and the project file.
 - 🔷 No rows yet: `Differ`, store the rows, set `hunk_remove`, `hunk_add`, and the line range on the objects, and remember them.
 - 🔷 A later `parts` in the same process returns those objects only when the project file's modification stamp still matches the stamp captured when that list was diffed. The history id alone is not enough. Settled in [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md).
@@ -238,7 +238,7 @@ backup and project text stay put        (no wire)
 - 🔷 That call covers every diff item on that history. It does not call the diff item once per hunk.
 - 🔷 The daemon does not run `Differ` again. The hunk text is already on the object from `show_pending_diff`.
 - ℹ️ The menu labels are in `liboccoder/Diff/ReviewBar.vala`. Today they only flip in-memory hunk decisions.
-- ℹ️ Today the whole-file wire is two methods, `RPC-FileHistory.rpc_approve` and `RPC-FileHistory.rpc_revert`. Each sends `path` and `history id`. `libocfiles/FileHistory.vala`, `ollmfilesd/FileHistory.vala`.
+- ℹ️ Today the whole-file wire is two methods, `FileHistory.rpc_approve` and `FileHistory.rpc_revert`. Each sends `path` and `history id`. `libocfiles/FileHistory.vala`, `ollmfilesd/FileHistory.vala`.
 - 💩 **Accept changes to all files** and **Reject changes to all files** are `decide` once per file. Not a new call.
 - 💩 The hunk reply is that one updated row. The desktop adjusts the editor from the hunk it already has.
 
@@ -246,21 +246,21 @@ backup and project text stay put        (no wire)
 
 ## Call prefix
 
-`RPC-File` is the wrong prefix for these calls. The daemon class is `OLLMfilesd-File`. The hyphen joins the namespace and the class. The dot is only the method.
+`File` is the wrong prefix for these calls. The daemon class is `OLLMfilesd-File`. The hyphen joins the namespace and the class. The dot is only the method.
 
 ```
 today                         should
-RPC-File.read                 OLLMfilesd-File.read
-RPC-File.rpc_write            OLLMfilesd-File.rpc_write
-RPC-FileHistory.rpc_approve   OLLMfilesd-FileHistory.decide
-RPC-FileHistory.rpc_revert    OLLMfilesd-FileHistory.decide
+File.read                 OLLMfilesd-File.read
+File.rpc_write            OLLMfilesd-File.rpc_write
+FileHistory.rpc_approve   OLLMfilesd-FileHistory.decide
+FileHistory.rpc_revert    OLLMfilesd-FileHistory.decide
 ```
 
 - 🔷 Hyphen between `OLLMfilesd` and the class. Dot before the method.
 - 🔷 `RPC-` stays for internal calls such as `RPC-Daemon.hello`.
 - 🔷 `rpc_approve` and `rpc_revert` become one `decide`. The action argument is accept, reject, or reset.
-- ℹ️ Registered today in `ollmfilesd/File.vala` `rpc_register` and `ollmfilesd/Application.vala` as `RPC-File`. Methods: `read`, `exists`, `fetch`, `apply_permissions`, `register`, `changed.check`, `rpc_write`, `rpc_delete`, `ast_lookup`, `ast_summarize`.
-- 💩 Rename the whole `RPC-File` prefix in one pass with the callers. This plan does not do that rename.
+- ℹ️ Registered today in `ollmfilesd/File.vala` `rpc_register` and `ollmfilesd/Application.vala` as `File`. Methods: `read`, `exists`, `fetch`, `apply_permissions`, `register`, `changed.check`, `rpc_write`, `rpc_delete`, `ast_lookup`, `ast_summarize`.
+- 💩 Rename the whole `File` prefix in one pass with the callers. This plan does not do that rename.
 - 💩 `decide` here is the menu for every diff item on that history. It is not the per-hunk `decide` in the superseded plan. The individual hunk call stays on the diff item. Its method name is still open.
 
 ---
