@@ -1,6 +1,6 @@
 # 8.2.8.10 — URGENT — `bash` as a remote tool Android can use
 
-**Status:** **URGENT** — Phase 1 has code proposals; Phases 2–3 design only
+**Status:** **URGENT** — Phases 1 and 3 have code proposals; Phase 2 design only
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
@@ -25,7 +25,7 @@ Proposed Vala follows `docs/coding-standards.md`.
   - Not on the phone.
 - **ℹ️** [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) already said that. It pointed at [`BWRAP-2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) and left no child ticket.
 - **ℹ️** [`2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) is the daemon sandbox RPC. This ticket is the Android `bash` **tool**.
-- **🔷** `⏳` Phase 1 (daemon `Bubble.*`) has code fences here. Phase 2 and Phase 3 fences wait on the caller shape.
+- **🔷** `⏳` Phase 1 (daemon `Bubble.*`) and Phase 3 (Android registration) have code fences here. Phase 2 fences wait on the caller shape.
 
 ---
 
@@ -82,8 +82,10 @@ Proposed Vala follows `docs/coding-standards.md`.
 - **ℹ️** `2.10.4.15` Phase A writes the wire as JSON (`"method":"Bubble.exec"`, a `params` object, `BubbleParams` in `ollmfilesd/CallParam.vala`). The shipping daemon does not dispatch that way.
 - **ℹ️** Shipping dispatch is `OLLMrpc.Request.add_class(prefix, type, suffix, signature)` plus `OLLMrpc.Request.register(prefix, instance)`, with **positional** `request.args`. See `ollmfilesd/Folder.vala` and `ollmfilesd/File.vala`.
 - **ℹ️** There is no `ollmfilesd/CallParam.vala` and no `*Params` class in the tree. That part of `2.10.4.15` is stale.
+- **⏳** **🔷** **The handler prefix below is wrong and is parked.** `RPC-` is reserved for the RPC classes (`RPC-Daemon`, `RPC-Live-*`); `OLLMfilesd.Sandbox.Bubble` is not one, so it is `Sandbox-Bubble` or similar — not `RPC-Bubble` and not `RPC-Sandbox-Bubble`. The tree has no correct example to copy and [`RPC-8.2 §48`](RPC-8.2-full-rpc-system.md) states the rule wrongly. Audit and open questions: [`2026-10-03-rpc-handler-prefix-naming`](../bugs/2026-10-03-rpc-handler-prefix-naming.md). The fences below still say `RPC-Sandbox-Bubble`; **rename before applying.**
+  - **ℹ️** Nested namespaces hyphenate either way (`RPC-Live-Remote` for `OLLMrpc.Live.Remote`), so the `Sandbox-` segment is carried whatever is decided about `RPC-`.
+  - **ℹ️** The `rpc_` suffix on `rpc_exec` is unrelated and stays — it is on the wire for existing handlers too (`RPC-File.rpc_write`), and marks the sync FFI entry point that pairs with a private `async` method.
 - **💩** So the proposals below use the shipping style. Decisions you may want to overrule:
-  - Prefix is `RPC-Bubble`, like `RPC-File` / `RPC-Folder`. Wire names become `RPC-Bubble.can_wrap` and `RPC-Bubble.rpc_exec` (the `rpc_` prefix is on the wire — compare `RPC-File.rpc_write`).
   - `exec` signature string is `sssbS`.
   - `can_wrap` replies `msg` = `1` / `0`. `OLLMbwrap.Bubble.can_wrap()` is a bool with no `reason`, so the `{available, reason}` result in `2.10.4.15` has nothing to fill `reason` with.
   - `exec` replies `msg` = the exec output string. `OLLMbwrap.Bubble.exec` already embeds exit code and seccomp evidence in that string, so the 4-field result object (`output`, `exit_code`, `seccomp_network`, `seccomp_fs`) in `2.10.4.15` would need a new return type on `OLLMbwrap.Bubble`.
@@ -200,13 +202,17 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 
 **Depends on:** §1 (`--pkg=ocbwrap`).
 
-- **ℹ️** This is a **copy** of two approved blocks, not new code:
-  - Class shape and all five method bodies — `liboctools/FileVerification.vala` **verbatim**.
-  - The `switch (base_type)` that ends `created` / `modified` — `File.write` in `ollmfilesd/File.vala` **verbatim** (`path` reads `real_path`). That method is the current receiver of the in-app `rpc_write` call, so this is the same code the write already runs, minus the round trip.
-- **ℹ️** Blanket `try` per method, `Banner.show` on failure, private fields assigned in the constructor, duplicated `created` / `modified`, nullable `project` — all **as approved**. Not restyled.
-- **ℹ️** The `catch` is forced anyway: `created` / `modified` / `removed` / `finish` on `OLLMbwrap.FileVerification` have no `throws`, so an implementation cannot propagate. Only `has_file` has `throws`.
-- **💩** Only three substitutions, each because the in-app call has no daemon counterpart:
-  - `yield new OLLMfiles.File.new_fake(…).rpc_write(…)` → the `File.write` switch above. The daemon is the write target; it cannot RPC itself.
+- **ℹ️** Copied from two approved sources, not written fresh:
+  - Class shape, constructor, nullable `project`, `Banner.show` on failure, the `unix_mode` query block, the duplicated `created` / `modified` pair — `liboctools/FileVerification.vala`.
+  - The per-path work (`get_folder_at_path` / `file_cache` / `get_file_from_active_project`, the `id < 0` fake rows, `to_real`, `change_type`, the `FileHistory` + `saveToDB` approval bookkeeping, `realize`, `invalidate_cache`) — `File.write` in `ollmfilesd/File.vala`, the current receiver of the in-app `rpc_write` call.
+- **ℹ️** The `catch` itself is forced: `created` / `modified` / `removed` / `finish` on `OLLMbwrap.FileVerification` have no `throws`, so an implementation cannot propagate. Only `has_file` has `throws`.
+- **🔷** **Try scope is narrow — one `try` per case, around only the throwing calls.** This is a deliberate deviation. Both source files wrap the whole switch in one blanket `try`; that shape is not copied forward.
+  - Outside the `try`: the lookups, the `new Folder` / `new FileAlias` / `new File` construction, `change_type`, `saveToDB`, and the `invalidate_cache` notification. None of those throw.
+  - Inside: `to_real`, `realize`, `read_link`, `load_bytes`, `FileHistory.commit`.
+  - **💩** Cost of narrowing: the `Banner.show` block repeats in each `catch`, three times per method. The alternative is a flag to defer one emit, which is worse. Say the word if you would rather have the flag.
+- **💩** Four substitutions, each because the in-app call has no daemon counterpart:
+  - `yield new OLLMfiles.File.new_fake(…).rpc_write(…)` → the `File.write` work inline. The daemon is the write target; it cannot RPC itself.
+  - The `base_type` string (`d` / `fa` / `f`) is **dropped**. It only existed to carry the file kind over the wire to `File.write`. In-process the `switch` runs straight off `GLib.FileType`, so `created` / `modified` now switch once instead of mapping to a string and switching again.
   - `yield this.project.fetch_file(real_path)` — **dropped** in `has_file`, replaced by `get_file_from_active_project` / `get_folder_at_path` in `removed`. `fetch_file` is the client warming its cache **from** this daemon; there is no such method in `ollmfilesd`, and the daemon already holds the index.
     - **💩** `has_file` therefore answers from `file_cache` only. A row that is in the database but not loaded in memory reads as `UNKNOWN`, which `Scan` treats as created rather than modified. If that matters, the fix is a DB lookup here — say so and I will add one.
   - `this.manager.review_files.refresh()` → `this.project.refresh_review()`, and `this.manager.rpc.notification` → `this.manager.notification`. Daemon names for the same two calls.
@@ -264,9 +270,7 @@ namespace OLLMfilesd
 		 * @param project Active project, or null when no project is open
 		 * @param manager Project manager for the index and file_cache
 		 */
-		public FileVerification(
-			Folder? project,
-			ProjectManager manager)
+		public FileVerification(Folder? project, ProjectManager manager)
 		{
 			this.project = project;
 			this.manager = manager;
@@ -298,125 +302,99 @@ namespace OLLMfilesd
 			if (this.project == null) {
 				return;
 			}
+			var unix_mode = 0U;
 			try {
-				var base_type = "f";
-				var content = "";
-				var target = "";
-				switch (file_type) {
-					case GLib.FileType.DIRECTORY:
-						base_type = "d";
-						break;
-
-					case GLib.FileType.SYMBOLIC_LINK:
-						base_type = "fa";
-						var link = GLib.FileUtils.read_link(overlay_path);
-						if (link == null) {
-							throw new GLib.IOError.FAILED("Cannot read symlink target");
-						}
-						target = link;
-						break;
-
-					case GLib.FileType.REGULAR:
-						var bytes = GLib.File.new_for_path(
-							overlay_path
-						).load_bytes(null);
-						content = (string) bytes.get_data();
-						break;
-
-					default:
-						break;
-				}
-				var unix_mode = 0U;
-				try {
-					var info = GLib.File.new_for_path(overlay_path).query_info(
-						GLib.FileAttribute.UNIX_MODE,
-						GLib.FileQueryInfoFlags.NONE,
-						null
-					);
-					unix_mode = info.get_attribute_uint32(
-						GLib.FileAttribute.UNIX_MODE
-					) & 0777;
-				} catch (GLib.Error e) {
-					GLib.warning(
-						"Cannot query overlay mode (%s): %s",
-						overlay_path,
-						e.message
-					);
-				}
-				switch (base_type) {
-					case "d": {
-						var folder = this.manager.get_folder_at_path(real_path);
-						if (folder == null) {
-							folder = new Folder(this.manager) {
-								path = real_path,
-								id = -1
-							};
-						}
+				var info = GLib.File.new_for_path(overlay_path).query_info(
+					GLib.FileAttribute.UNIX_MODE, GLib.FileQueryInfoFlags.NONE, null);
+				unix_mode = info.get_attribute_uint32(GLib.FileAttribute.UNIX_MODE) & 0777;
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot query overlay mode (%s): %s", overlay_path, e.message);
+			}
+			switch (file_type) {
+				case GLib.FileType.DIRECTORY:
+					var folder = this.manager.get_folder_at_path(real_path);
+					if (folder == null) {
+						folder = new Folder(this.manager) {
+							path = real_path,
+							id = -1
+						};
+					}
+					try {
 						if (folder.id < 0) {
 							yield folder.to_real();
 						}
 						yield folder.realize(unix_mode);
-						break;
+					} catch (GLib.Error e) {
+						GLib.critical("overlay created folder %s: %s", real_path, e.message);
+						this.manager.notification(new OLLMrpc.Notification() {
+							method = "Banner.show",
+							message = "Could not save overlay file: " + real_path
+						});
 					}
-					case "fa": {
-						var alias = this.manager.file_cache.get(
-							real_path
-						) as FileAlias;
-						if (alias == null) {
-							alias = new FileAlias(this.manager) {
-								path = real_path,
-								id = -1
-							};
-						}
+					break;
+
+				case GLib.FileType.SYMBOLIC_LINK:
+					var alias = this.manager.file_cache.get(real_path) as FileAlias;
+					if (alias == null) {
+						alias = new FileAlias(this.manager) {
+							path = real_path,
+							id = -1
+						};
+					}
+					try {
+						var target = GLib.FileUtils.read_link(overlay_path);
 						if (alias.id < 0) {
 							yield alias.to_real(target);
 						}
 						yield alias.realize(target, unix_mode);
-						break;
+					} catch (GLib.Error e) {
+						GLib.critical("overlay created symlink %s: %s", real_path, e.message);
+						this.manager.notification(new OLLMrpc.Notification() {
+							method = "Banner.show",
+							message = "Could not save overlay file: " + real_path
+						});
 					}
-					default: {
-						var file = this.manager.get_file_from_active_project(
-							real_path
-						);
-						if (file == null) {
-							file = new File(this.manager) {
-								path = real_path,
-								id = -1
-							};
-						}
-						var change_type = file.id < 0 ? "added" : "modified";
+					break;
+
+				default:
+					var file = this.manager.get_file_from_active_project(real_path);
+					if (file == null) {
+						file = new File(this.manager) {
+							path = real_path,
+							id = -1
+						};
+					}
+					var change_type = file.id < 0 ? "added" : "modified";
+					try {
 						if (file.id < 0) {
 							yield file.to_real();
 						}
 						if (change_type == "modified" && this.manager.db != null) {
 							file.is_need_approval = true;
 							file.last_change_type = "modified";
-							var file_history = new FileHistory(
-								this.manager.db,
-								file,
-								"modified",
-								new GLib.DateTime.now_local()
-							);
+							var file_history = new FileHistory(this.manager.db,
+								file, "modified", new GLib.DateTime.now_local());
 							yield file_history.commit();
 							file.saveToDB(this.manager.db, null, false);
 						}
-						yield file.realize(content, unix_mode);
-						if (change_type == "modified") {
-							this.manager.notification(new OLLMrpc.Notification() {
-								method = "event.project.invalidate_cache",
-								object_type = "Project",
-								message = this.manager.active_project.path
-							});
-						}
-						break;
+						var bytes = GLib.File.new_for_path(overlay_path).load_bytes(null);
+						yield file.realize((string) bytes.get_data(), unix_mode);
+					} catch (GLib.Error e) {
+						GLib.critical("overlay created file %s: %s", real_path, e.message);
+						this.manager.notification(new OLLMrpc.Notification() {
+							method = "Banner.show",
+							message = "Could not save overlay file: " + real_path
+						});
+						return;
 					}
-				}
-			} catch (GLib.Error e) {
-				GLib.critical("overlay created failed %s: %s", real_path, e.message);
-				this.manager.notification(new OLLMrpc.Notification() {
-					method = "Banner.show",
-					message = "Could not save overlay file: " + real_path
-				});
+					if (change_type == "modified") {
+						this.manager.notification(new OLLMrpc.Notification() {
+							method = "event.project.invalidate_cache",
+							object_type = "Project",
+							message = this.manager.active_project.path
+						});
+					}
+					break;
 			}
 		}
 
@@ -428,125 +406,99 @@ namespace OLLMfilesd
 			if (this.project == null) {
 				return;
 			}
+			var unix_mode = 0U;
 			try {
-				var base_type = "f";
-				var content = "";
-				var target = "";
-				switch (file_type) {
-					case GLib.FileType.DIRECTORY:
-						base_type = "d";
-						break;
-
-					case GLib.FileType.SYMBOLIC_LINK:
-						base_type = "fa";
-						var link = GLib.FileUtils.read_link(overlay_path);
-						if (link == null) {
-							throw new GLib.IOError.FAILED("Cannot read symlink target");
-						}
-						target = link;
-						break;
-
-					case GLib.FileType.REGULAR:
-						var bytes = GLib.File.new_for_path(
-							overlay_path
-						).load_bytes(null);
-						content = (string) bytes.get_data();
-						break;
-
-					default:
-						break;
-				}
-				var unix_mode = 0U;
-				try {
-					var info = GLib.File.new_for_path(overlay_path).query_info(
-						GLib.FileAttribute.UNIX_MODE,
-						GLib.FileQueryInfoFlags.NONE,
-						null
-					);
-					unix_mode = info.get_attribute_uint32(
-						GLib.FileAttribute.UNIX_MODE
-					) & 0777;
-				} catch (GLib.Error e) {
-					GLib.warning(
-						"Cannot query overlay mode (%s): %s",
-						overlay_path,
-						e.message
-					);
-				}
-				switch (base_type) {
-					case "d": {
-						var folder = this.manager.get_folder_at_path(real_path);
-						if (folder == null) {
-							folder = new Folder(this.manager) {
-								path = real_path,
-								id = -1
-							};
-						}
+				var info = GLib.File.new_for_path(overlay_path).query_info(
+					GLib.FileAttribute.UNIX_MODE, GLib.FileQueryInfoFlags.NONE, null);
+				unix_mode = info.get_attribute_uint32(GLib.FileAttribute.UNIX_MODE) & 0777;
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot query overlay mode (%s): %s", overlay_path, e.message);
+			}
+			switch (file_type) {
+				case GLib.FileType.DIRECTORY:
+					var folder = this.manager.get_folder_at_path(real_path);
+					if (folder == null) {
+						folder = new Folder(this.manager) {
+							path = real_path,
+							id = -1
+						};
+					}
+					try {
 						if (folder.id < 0) {
 							yield folder.to_real();
 						}
 						yield folder.realize(unix_mode);
-						break;
+					} catch (GLib.Error e) {
+						GLib.critical("overlay modified folder %s: %s", real_path, e.message);
+						this.manager.notification(new OLLMrpc.Notification() {
+							method = "Banner.show",
+							message = "Could not update overlay file: " + real_path
+						});
 					}
-					case "fa": {
-						var alias = this.manager.file_cache.get(
-							real_path
-						) as FileAlias;
-						if (alias == null) {
-							alias = new FileAlias(this.manager) {
-								path = real_path,
-								id = -1
-							};
-						}
+					break;
+
+				case GLib.FileType.SYMBOLIC_LINK:
+					var alias = this.manager.file_cache.get(real_path) as FileAlias;
+					if (alias == null) {
+						alias = new FileAlias(this.manager) {
+							path = real_path,
+							id = -1
+						};
+					}
+					try {
+						var target = GLib.FileUtils.read_link(overlay_path);
 						if (alias.id < 0) {
 							yield alias.to_real(target);
 						}
 						yield alias.realize(target, unix_mode);
-						break;
+					} catch (GLib.Error e) {
+						GLib.critical("overlay modified symlink %s: %s", real_path, e.message);
+						this.manager.notification(new OLLMrpc.Notification() {
+							method = "Banner.show",
+							message = "Could not update overlay file: " + real_path
+						});
 					}
-					default: {
-						var file = this.manager.get_file_from_active_project(
-							real_path
-						);
-						if (file == null) {
-							file = new File(this.manager) {
-								path = real_path,
-								id = -1
-							};
-						}
-						var change_type = file.id < 0 ? "added" : "modified";
+					break;
+
+				default:
+					var file = this.manager.get_file_from_active_project(real_path);
+					if (file == null) {
+						file = new File(this.manager) {
+							path = real_path,
+							id = -1
+						};
+					}
+					var change_type = file.id < 0 ? "added" : "modified";
+					try {
 						if (file.id < 0) {
 							yield file.to_real();
 						}
 						if (change_type == "modified" && this.manager.db != null) {
 							file.is_need_approval = true;
 							file.last_change_type = "modified";
-							var file_history = new FileHistory(
-								this.manager.db,
-								file,
-								"modified",
-								new GLib.DateTime.now_local()
-							);
+							var file_history = new FileHistory(this.manager.db,
+								file, "modified", new GLib.DateTime.now_local());
 							yield file_history.commit();
 							file.saveToDB(this.manager.db, null, false);
 						}
-						yield file.realize(content, unix_mode);
-						if (change_type == "modified") {
-							this.manager.notification(new OLLMrpc.Notification() {
-								method = "event.project.invalidate_cache",
-								object_type = "Project",
-								message = this.manager.active_project.path
-							});
-						}
-						break;
+						var bytes = GLib.File.new_for_path(overlay_path).load_bytes(null);
+						yield file.realize((string) bytes.get_data(), unix_mode);
+					} catch (GLib.Error e) {
+						GLib.critical("overlay modified file %s: %s", real_path, e.message);
+						this.manager.notification(new OLLMrpc.Notification() {
+							method = "Banner.show",
+							message = "Could not update overlay file: " + real_path
+						});
+						return;
 					}
-				}
-			} catch (GLib.Error e) {
-				GLib.critical("overlay modified failed %s: %s", real_path, e.message);
-				this.manager.notification(new OLLMrpc.Notification() {
-					method = "Banner.show",
-					message = "Could not update overlay file: " + real_path
-				});
+					if (change_type == "modified") {
+						this.manager.notification(new OLLMrpc.Notification() {
+							method = "event.project.invalidate_cache",
+							object_type = "Project",
+							message = this.manager.active_project.path
+						});
+					}
+					break;
 			}
 		}
 
@@ -572,10 +524,8 @@ namespace OLLMfilesd
 				return;
 			}
 			try {
-				yield this.manager.delete_manager.remove(
-					filebase,
-					new GLib.DateTime.now_local()
-				);
+				yield this.manager.delete_manager.remove(filebase,
+					new GLib.DateTime.now_local());
 			} catch (GLib.Error e) {
 				GLib.critical("overlay removed failed %s: %s", real_path, e.message);
 				this.manager.notification(new OLLMrpc.Notification() {
@@ -597,7 +547,7 @@ namespace OLLMfilesd
 }
 ```
 
-### 3. `ollmfilesd/Sandbox/Bubble.vala` — `RPC-Bubble` handlers
+### 3. `ollmfilesd/Sandbox/Bubble.vala` — `RPC-Sandbox-Bubble` handlers
 
 **Why:** `2.10.4.15` wants RPC glue only — no `Exec.vala`, no `Sandbox/*` copy under `ollmfilesd/`. This class resolves the project, builds `write_roots`, and hands off to `OLLMbwrap.Bubble`.
 
@@ -606,7 +556,13 @@ namespace OLLMfilesd
 **Depends on:** §1 and §2.
 
 - **ℹ️** The private `async exec` is not an optional helper. The FFI entry point cannot `yield`, so every async daemon handler is split this way (`File.rpc_write` → `File.write`, `Codebase.rpc_search` → `Codebase.search`). This plan names it.
-- **ℹ️** The project / `write_roots` / `Bubble` setup is copied from `execute_tool_async` in `liboctools/RunCommand/Request.vala`, including the nullable `project` and the `// avoid async vala ctor bug` property assignments.
+- **🔷** `exec` tests `request.args` directly and returns first — no block of arg locals at the top. `File.write` and `Codebase.search` both open with one `var` per argument; that shape is **not** copied forward, because those locals are single-use aliases of `request.args.get(N).get_*()` and `temporary-variables` forbids them. Only `project`, `bubble` and `output` remain, and each is used more than once or holds built-up state.
+- **ℹ️** The guards are copied from `execute_tool_async` in `liboctools/RunCommand/Request.vala` — empty-command rejection first, then `can_wrap`, then the project, with `project` nullable.
+- **🔷** `Bubble` is built with object-initializer syntax, not the post-construction assignments `execute_tool_async` uses. `project_path`, `allow_network`, `write_tokens` and `write_roots` are all plain `get; set;` auto-properties on `OLLMbwrap.Bubble` — none is derived or `construct`-only — so the `// due to vala async ctor quirk` comment does not apply here and is dropped along with the separate assignment lines.
+  - **💩** `write_roots` cannot go in the initializer because it is populated conditionally. It defaults to `new Gee.HashMap<string, string>()` per instance, so the one entry is set on `bubble.write_roots` after construction. This also removes the `write_roots` local and the `verification` local.
+- **ℹ️** Empty command replies `INVALID_PARAMS`, not `INTERNAL_ERROR`. In-process that path is `throw new GLib.IOError.INVALID_ARGUMENT("Command cannot be empty")`; a bad argument is the closest wire code.
+- **💩** Everything `execute_tool_async` does **after** `bubble.exec` stays with the caller: the `"No output received from command"` substitution, the timeout note, the `// LLM received last 50 of N lines` footer, the spill path, and the `Exit code:` footer. All of it reads `this.timed_out` / `this.stopped` / `this.output_lines` / `this.spill_path`, which only the caller has. The daemon replies with the raw `exec` string.
+- **💩** `working_dir` arrives already normalized — `normalize_working_dir()` runs caller-side in Phase 2 and is not repeated here.
 - **💩** `write_roots` is one entry, `project.path` → `project.path`, matching in-process `RunCommand.Request` today. `Folder.roots()` would widen writes to every distinct project root; not changing that here.
 - **💩** `project_path` empty means no-project mode, so `project` stays null and `FileVerification` early-returns — same as in-app with no project open. No `OLLMbwrap.NoOpFileVerification` needed.
 
@@ -634,8 +590,8 @@ namespace OLLMfilesd
 namespace OLLMfilesd.Sandbox
 {
 	/**
-	 * Server ''RPC-Bubble.*'' wire handlers — sandbox availability and
-	 * one-shot command execution on the daemon.
+	 * Server ''RPC-Sandbox-Bubble.*'' wire handlers — sandbox
+	 * availability and one-shot command execution on the daemon.
 	 *
 	 * {@link OLLMbwrap.Bubble} owns the bubblewrap spawn, overlay, and
 	 * seccomp stack. This class is RPC glue: it resolves the project,
@@ -648,10 +604,10 @@ namespace OLLMfilesd.Sandbox
 	 *
 	 * {{{
 	 * OLLMfilesd.Sandbox.Bubble.rpc_register();
-	 * OLLMrpc.Request.register(
-	 *     "RPC-Bubble", new OLLMfilesd.Sandbox.Bubble(project_manager));
+	 * OLLMrpc.Request.register("RPC-Sandbox-Bubble",
+	 *     new OLLMfilesd.Sandbox.Bubble(project_manager));
 	 * var req = new OLLMrpc.Request() {
-	 *     method = "RPC-Bubble.rpc_exec",
+	 *     method = "RPC-Sandbox-Bubble.rpc_exec",
 	 *     args = OLLMrpc.args("sssbS", path, "make test", "", false, roots)
 	 * };
 	 * }}}
@@ -661,7 +617,7 @@ namespace OLLMfilesd.Sandbox
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
-				"RPC-Bubble", typeof(Bubble),
+				"RPC-Sandbox-Bubble", typeof(Bubble),
 				"can_wrap", "",
 				"rpc_exec", "sssbS"
 			);
@@ -675,8 +631,8 @@ namespace OLLMfilesd.Sandbox
 		}
 
 		/**
-		 * ''RPC-Bubble.can_wrap'' — whether bubblewrap is usable on this
-		 * daemon host.
+		 * ''RPC-Sandbox-Bubble.can_wrap'' — whether bubblewrap is
+		 * usable on this daemon host.
 		 *
 		 * Reply ''msg'' is ''1'' or ''0''.
 		 * {@link OLLMbwrap.Bubble.can_wrap} reports no reason string, so
@@ -693,8 +649,8 @@ namespace OLLMfilesd.Sandbox
 		}
 
 		/**
-		 * ''RPC-Bubble.rpc_exec'' — run one shell command in the daemon
-		 * sandbox.
+		 * ''RPC-Sandbox-Bubble.rpc_exec'' — run one shell command in
+		 * the daemon sandbox.
 		 *
 		 * The typed parameters are the FFI signature; {@link exec}
 		 * re-reads them from {@link OLLMrpc.Request.args}.
@@ -720,12 +676,25 @@ namespace OLLMfilesd.Sandbox
 		 * Reply to {@link rpc_exec} after the sandboxed command ends.
 		 *
 		 * Reply ''msg'' is the {@link OLLMbwrap.Bubble.exec} string, which
-		 * already carries the exit code and any seccomp evidence.
+		 * already carries the exit code and any seccomp evidence. The
+		 * empty-output text, timeout note and truncation footer stay with
+		 * the caller in {@link OLLMtools.RunCommand.Request}.
 		 *
-		 * @param request the RPC request to reply to
+		 * @param request inbound RPC
 		 */
 		private async void exec(OLLMrpc.Request request)
 		{
+			if (request.args.get(1).get_string() == "") {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INVALID_PARAMS,
+						"Command cannot be empty"
+					)
+				});
+				return;
+			}
+
 			if (!OLLMbwrap.Bubble.can_wrap()) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -736,33 +705,30 @@ namespace OLLMfilesd.Sandbox
 				});
 				return;
 			}
-			var project_path = request.args.get(0).get_string();
-			var command = request.args.get(1).get_string();
-			var working_dir = request.args.get(2).get_string();
-			var network = request.args.get(3).get_boolean();
-			var allow_write = (string[]) request.args.get(4).get_boxed();
-			var project = this.manager.project_root(project_path);
-			if (project_path != "" && project == null) {
+
+			var project = this.manager.project_root(request.args.get(0).get_string());
+			if (request.args.get(0).get_string() != "" && project == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					msg = "project not found"
 				});
 				return;
 			}
-			var write_roots = new Gee.HashMap<string, string>();
-			if (project != null) {
-				write_roots.set(project.path, project.path);
-			}
-			// avoid async vala ctor bug
+
 			var bubble = new OLLMbwrap.Bubble(
-				new FileVerification(project, this.manager));
-			bubble.project_path = project_path;
-			bubble.allow_network = network;
-			bubble.write_tokens = allow_write;
-			bubble.write_roots = write_roots;
+				new FileVerification(project, this.manager)) {
+				project_path = request.args.get(0).get_string(),
+				allow_network = request.args.get(3).get_boolean(),
+				write_tokens = (string[]) request.args.get(4).get_boxed()
+			};
+			if (project != null) {
+				bubble.write_roots.set(project.path, project.path);
+			}
+
 			var output = "";
 			try {
-				output = yield bubble.exec(command, working_dir);
+				output = yield bubble.exec(request.args.get(1).get_string(),
+					request.args.get(2).get_string());
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -782,7 +748,7 @@ namespace OLLMfilesd.Sandbox
 }
 ```
 
-### 4. `ollmfilesd/Application.vala` — register `RPC-Bubble`
+### 4. `ollmfilesd/Application.vala` — register `RPC-Sandbox-Bubble`
 
 **Why:** `add_class` fills the method table; `register` binds the handler instance. Both are needed before the first request arrives.
 
@@ -817,14 +783,14 @@ namespace OLLMfilesd.Sandbox
 ```vala
 			OLLMrpc.Request.register("RPC-Codebase", 
 				new Codebase(this.project_manager, this.config));
-			OLLMrpc.Request.register("RPC-Bubble",
+			OLLMrpc.Request.register("RPC-Sandbox-Bubble",
 				new Sandbox.Bubble(this.project_manager));
 ```
 
 ### Testing Phase 1
 
-- **🔷** `⏳` `RPC-Bubble.*` is the primary way to test this. Exercise it before any caller change.
-- **💩** `⏳` `oc-rpc-script` / `--interactive` on the daemon drives `RPC-Bubble.can_wrap` and `RPC-Bubble.rpc_exec` without touching `RunCommand`. `2.10.4.15` calls this the T3 harness.
+- **🔷** `⏳` `RPC-Sandbox-Bubble.*` is the primary way to test this. Exercise it before any caller change.
+- **💩** `⏳` `oc-rpc-script` / `--interactive` on the daemon drives `RPC-Sandbox-Bubble.can_wrap` and `RPC-Sandbox-Bubble.rpc_exec` without touching `RunCommand`. `2.10.4.15` calls this the T3 harness.
 - **💩** `⏳` Smoke the overlay path too, not just exit codes: a command that creates, edits, and deletes a project file should leave the index and the live tree correct through §2.
 
 ---
@@ -845,7 +811,65 @@ namespace OLLMfilesd.Sandbox
 
 - **🔷** `⏳` `ollmapp/android/OllmchatWindow.vala` `initialize_client` registers `OLLMtools.RunCommand.Bash` next to `write` / `read`, then `AgentPi.Factory.register_config`.
 - **🔷** `⏳` Still no in-process exec on the phone. Registration is only valid once Phase 2 uses RPC.
-- **⏳** Code proposals — after Phase 2 compiles.
+- **🚫** Do not apply this before Phase 2. `Bash` in `history_manager.tools` is a tool Agent Pi can call, and until `Request` routes through RPC that call runs `OLLMbwrap` / `GLib.Subprocess` **on the phone**.
+
+### Key facts
+
+- **ℹ️** `register_config` on `liboccoder/AgentPi/Factory.vala` `GLib.error`s on a missing `write`, `read`, or `bash` in the tool map. `bash` is the only one still absent on Android, which is why [`8.2.8.11`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) §4 says not to call it yet.
+- **ℹ️** `History.Manager.register_tool` is only `this.tools.set(tool.name, tool)`. No config type registration, which is why `write` / `read` work today without being in `AndroidToolsRegistration.init_config`. `bash` needs nothing extra either.
+- **ℹ️** `RunCommand/Bash.vala` is unconditional in `liboctools/meson.build`, so the class is already in the Android build.
+- **ℹ️** Calling `register_config` is not just an assert. It also seeds `config.agents["agent-pi"]` with the `forbid` list and the skills array. Android has never seeded that, so Agent Pi has been running with no forbid list and no skills.
+- **💩** No explicit `save()` after `register_config`, matching desktop `ollmapp/Window.vala`. The seeded agent row persists on the next save, which on the `LIVE` path is the `this.app.config.save()` already in `initialize_client`.
+
+Edits are **Remove** / **Replace with** against the tree. Verify surrounding context before applying.
+
+### 1. `ollmapp/android/OllmchatWindow.vala` — register `bash`, then `register_config`
+
+**Why:** `bash` completes the three tools `AgentPi.Factory.register_config` asserts, so the call can finally run. Registration order is tools first, then the factory — same as desktop.
+
+**Where:** `initialize_client`, the `read` tool block and the `agent-pi` factory block, between `this.register_default_agents()` and `this.agent_dropdown.wire()`.
+
+**Depends on:** Phase 2. `Bash` must already route through `Bubble.exec` RPC.
+
+- **ℹ️** The `register_config` line is copied from `ollmapp/Window.vala`, which does `agent_pi.register_config(app.config, this.history_manager.tools)`. Android passes the `config` parameter instead of `app.config`; the bootstrap path assigns `this.app.config = config` before calling `initialize_client`, so they are the same object on both paths.
+- **💩** The `has_key` guard shape is kept from the surrounding Android block rather than the unguarded desktop form.
+
+#### Remove
+
+```vala
+			if (!this.history_manager.tools.has_key("read")) {
+				this.history_manager.register_tool(
+					new OLLMtools.ReadFile.Read(this.project_manager));
+			}
+			if (!this.history_manager.agent_factories.has_key("agent-pi")) {
+				var agent_pi = new OLLMcoder.AgentPi.Factory(this.project_manager);
+				this.history_manager.agent_factories.set(agent_pi.name, agent_pi);
+			}
+```
+
+#### Replace with
+
+```vala
+			if (!this.history_manager.tools.has_key("read")) {
+				this.history_manager.register_tool(
+					new OLLMtools.ReadFile.Read(this.project_manager));
+			}
+			if (!this.history_manager.tools.has_key("bash")) {
+				this.history_manager.register_tool(
+					new OLLMtools.RunCommand.Bash(this.project_manager));
+			}
+			if (!this.history_manager.agent_factories.has_key("agent-pi")) {
+				var agent_pi = new OLLMcoder.AgentPi.Factory(this.project_manager);
+				this.history_manager.agent_factories.set(agent_pi.name, agent_pi);
+				agent_pi.register_config(config, this.history_manager.tools);
+			}
+```
+
+### Testing Phase 3
+
+- **🔷** `⏳` On the phone, Agent Pi runs a command and the output comes back from the desktop. Check the command ran on the desktop, not the handset.
+- **💩** `⏳` Startup must still reach chat when the desktop is unreachable (`UNREACHABLE` → Chatter). `register_config` runs before the hello result is known, so a missing tool aborts the app rather than falling back.
+- **💩** `⏳` Confirm the seeded `agent-pi` config appears in the saved config with the `forbid` list and skills, since Android has not had that row before.
 
 ---
 

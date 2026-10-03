@@ -19,7 +19,9 @@ namespace OLLMrpc.Live
 	 * {@link connect} records this row in
 	 * {@link Transport.Connection.signal_subs} and writes no reply.
 	 * {@link emit} is the C-callable method GObject invokes for named
-	 * signals. {@link hid} is the handler id for disconnect.
+	 * signals. {@link hid} is the handler id for disconnect. Live GObject
+	 * args and property values are exported on the connection before the
+	 * notification is written.
 	 *
 	 * == Example ==
 	 *
@@ -75,20 +77,24 @@ namespace OLLMrpc.Live
 				obj.get_property(pspec.name, ref current);
 				var helper = OLLMrpc.Bin.TypeOverride.lookup(pspec.value_type);
 				var packed = new Gee.ArrayList<GLib.Value?>();
-				if (helper == null) {
-					packed.add(current);
-					this.connection.write(new Notification() {
-						method = this.method,
-						id = this.id,
-						args = packed
-					});
-					return;
+				packed.add(current);
+				var name = this.method;
+				if (helper != null) {
+					packed = helper.pack(current);
+					name = helper.rpc_signal_alias(this.method);
 				}
-				foreach (var field in helper.pack(current)) {
-					packed.add(field);
+				foreach (var arg in packed) {
+					if (!this.connection.live_handles || !arg.type().is_a(GLib.Type.OBJECT)) {
+						continue;
+					}
+					// object properties may hold null
+					if (arg.get_object() == null || arg.get_object() is Bin.Serializable) {
+						continue;
+					}
+					this.connection.export(arg.get_object());
 				}
 				this.connection.write(new Notification() {
-					method = helper.rpc_signal_alias(this.method),
+					method = name,
 					id = this.id,
 					args = packed
 				});
@@ -101,7 +107,9 @@ namespace OLLMrpc.Live
 		 * GClosure marshal for a named GObject signal.
 		 *
 		 * Packs parameters after the instance into
-		 * {@link Notification.args} and writes the notification.
+		 * {@link Notification.args} and writes the notification. With
+		 * ''live_handles'', each non-Serializable GObject arg is exported
+		 * first, so objects the peer has not seen yet get a handle.
 		 *
 		 * @param closure unused GObject slot
 		 * @param return_value unused; null on void signals
@@ -119,6 +127,16 @@ namespace OLLMrpc.Live
 		) {
 			var subscription = (Subscription) marshal_data;
 			var packed = OLLMrpc.Bin.TypeOverride.pack_params(param_values);
+			foreach (var arg in packed) {
+				if (!subscription.connection.live_handles || !arg.type().is_a(GLib.Type.OBJECT)) {
+					continue;
+				}
+				// signal emitters may pass a null object arg
+				if (arg.get_object() == null || arg.get_object() is Bin.Serializable) {
+					continue;
+				}
+				subscription.connection.export(arg.get_object());
+			}
 			subscription.connection.write(new Notification() {
 				method = subscription.method,
 				id = subscription.id,

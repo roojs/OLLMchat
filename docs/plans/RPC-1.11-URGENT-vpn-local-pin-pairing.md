@@ -2,7 +2,7 @@
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
-**Status:** **URGENT** — proposed. Design only. Browse name is `_rpc._tcp.local`.
+**Status:** **URGENT** — Phases 1 and 2 agent-done. Phases 3–5 not started. Browse name is `_rpc._tcp.local`.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**. Proposed Vala follows `docs/coding-standards.md`.
 
@@ -106,15 +106,15 @@
 
 ## Suggested order
 
-1. Phase 1 — `PairingDialog` on the GTK server
-2. Phase 2 — Listen on one interface or all, then mDNS advertise
+1. ✔️ Phase 1 — `PairingDialog` on the GTK server
+2. ✔️ Phase 2 — Listen on one interface or all, then mDNS advertise
 3. Phase 3 — PIN check, CSR, signed cert, address list — [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md)
 4. Phase 4 — Android discovery, PIN prompt, route probe — [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md)
 5. Phase 5 — **Register a friend** (later, not urgent)
 
 ---
 
-## Phase 1 — `PairingDialog` (server)
+## Phase 1 — `PairingDialog` (server) (`✔️`)
 
 ### Goal
 
@@ -141,7 +141,7 @@
 
 Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surrounding context before applying.
 
-### 1. `ollmapp/SettingsDialog/PairingDialog.vala` — new pairing dialog
+### ✔️ 1. `ollmapp/SettingsDialog/PairingDialog.vala` — new pairing dialog
 
 **Why:** The PIN, the countdown, and the **number rejected** toast live in one class.
 
@@ -286,7 +286,7 @@ namespace OLLMapp.SettingsDialog
 }
 ```
 
-### 2. `resources/style.css` — large PIN digits
+### ✔️ 2. `resources/style.css` — large PIN digits
 
 **Why:** Adwaita `title-1` is a heading. The six digits are the dialog.
 
@@ -306,7 +306,7 @@ namespace OLLMapp.SettingsDialog
 }
 ```
 
-### 3. `ollmapp/meson.build` — compile `PairingDialog` on every app build
+### ✔️ 3. `ollmapp/meson.build` — compile `PairingDialog` on every app build
 
 **Why:** The dialog itself is portable. Hiding the button is the platform split, so Android and Windows still compile the class.
 
@@ -326,7 +326,7 @@ namespace OLLMapp.SettingsDialog
     'SettingsDialog/PairingDialog.vala',
 ```
 
-### 4. `ollmapp/SettingsDialog/ConnectionsPage.vala` — **Allow New Device** on the bottom bar
+### ✔️ 4. `ollmapp/SettingsDialog/ConnectionsPage.vala` — **Allow New Device** on the bottom bar
 
 **Why:** That bar already holds **LLM Connection** and **Remote Desktop Connection**, fixed under the page.
 
@@ -363,7 +363,7 @@ namespace OLLMapp.SettingsDialog
 
 ---
 
-## Phase 2 — Listen on one interface or all (server)
+## Phase 2 — Listen on one interface or all (server) (`✔️`)
 
 ### Goal
 
@@ -414,7 +414,7 @@ A    ollmchat.local. → 10.8.0.1
 
 Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surrounding context before applying.
 
-### 1. `libocrpc/Transport/TcpListen.vala` — `ifaces`
+### ✔️ 1. `libocrpc/Transport/TcpListen.vala` — `ifaces`
 
 **Why:** The broadcast and the host dropdown share one walk. It sits on the TCP listener. No new class.
 
@@ -481,7 +481,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 		}
 ```
 
-### 2. `libocrpc/Transport/PairPublish.vala` — mDNS A records
+### ✔️ 2. `libocrpc/Transport/PairPublish.vala` — mDNS A records
 
 **Why:** Pair mode broadcasts `_rpc._tcp` with one A record per listen-choice address. The PIN is not in the packet. No TXT address list.
 
@@ -682,7 +682,7 @@ namespace OLLMrpc.Transport
 }
 ```
 
-### 3. `libocrpc/meson.build` — compile the list and the publish
+### ✔️ 3. `libocrpc/meson.build` — compile the list and the publish
 
 **Why:** Desktop Linux links Avahi and the `linux` vapi. `PairPublish.vala` is only in that source list.
 
@@ -715,7 +715,7 @@ namespace OLLMrpc.Transport
   ])
 ```
 
-### 4. `docs/meson.build` — valadoc inputs
+### ✔️ 4. `docs/meson.build` — valadoc inputs
 
 **Why:** New `libocrpc` sources are listed by path for valadoc.
 
@@ -729,7 +729,7 @@ namespace OLLMrpc.Transport
     '../libocrpc/Transport/PairPublish.vala',
 ```
 
-### 5. `ollmapp/SettingsDialog/FileServerRow.vala` — **All** stores `0.0.0.0`
+### ✔️ 5. `ollmapp/SettingsDialog/FileServerRow.vala` — **All** stores `0.0.0.0`
 
 **Why:** The SSL host dropdown uses the RPC list and adds **All**. Choosing it writes `0.0.0.0` into `filesd.socket`. HTTPS is unchanged. `running` is the daemon check this row already makes, so the pairing button can read it.
 
@@ -908,7 +908,7 @@ namespace OLLMrpc.Transport
 			}
 ```
 
-### 6. `ollmapp/SettingsDialog/PairingDialog.vala` — publish while the dialog is open
+### ✔️ 6. `ollmapp/SettingsDialog/PairingDialog.vala` — publish while the dialog is open
 
 **Why:** Pair mode is this dialog. Opening it publishes the listen-choice addresses. A false return or {@link OLLMrpc.Transport.PairPublish.failed} toasts. Closing the dialog, or the minute ending, withdraws the broadcast.
 
@@ -986,7 +986,7 @@ namespace OLLMrpc.Transport
 				this.publish.stop();
 ```
 
-### 7. `ollmapp/SettingsDialog/ConnectionsPage.vala` — button follows the server
+### ✔️ 7. `ollmapp/SettingsDialog/ConnectionsPage.vala` — button follows the server
 
 **Why:** **Allow New Device** is hidden until this page can set the file server up and that server is running. The button starts hidden. `load_config` shows it from `FileServerRow.running`. Android and Windows have no server row, so nothing sets it visible.
 
