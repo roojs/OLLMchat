@@ -81,6 +81,7 @@ jobs:
             libgit2-glib-1.0-dev \
             gobject-introspection \
             libgirepository1.0-dev \
+            libavahi-gobject-dev \
             libomp-dev \
             libblas-dev \
             liblapack-dev \

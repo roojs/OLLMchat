@@ -1,6 +1,6 @@
 # 8.2.8.10 — URGENT — `bash` as a remote tool Android can use
 
-**Status:** **URGENT** — Phases 1 and 3 have code proposals; Phase 2 design only
+**Status:** **URGENT** — ⏳ Phase 1 fences are superseded: the wire is a **live handle** the client streams from, not one-shot `exec` (see Phase 1). Phase 3 code stands; Phase 2 design only
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
@@ -91,11 +91,39 @@ Proposed Vala follows `docs/coding-standards.md`.
   - `exec` replies `msg` = the exec output string. `OLLMbwrap.Bubble.exec` already embeds exit code and seccomp evidence in that string, so the 4-field result object (`output`, `exit_code`, `seccomp_network`, `seccomp_fs`) in `2.10.4.15` would need a new return type on `OLLMbwrap.Bubble`.
   - Error codes `-32001` / `-32003` / `-32004` from `2.10.4.15` are **not** in `OLLMrpc.RpcErrorCode` (`PARSE_ERROR`, `INVALID_REQUEST`, `METHOD_NOT_FOUND`, `INVALID_PARAMS`, `INTERNAL_ERROR`, `NOT_IMPLEMENTED`). Proposals use `INTERNAL_ERROR`, and a plain `msg` for “project not found” the way `Folder.rpc_roots` does.
 
-### Gaps this phase does not close
+### ⏳ 🔷 One-shot `exec` is the wrong shape — blocked on a decision
 
-- **💩** `⏳` No live output. In-process `RunCommand.Request` streams `bubble.output` into `client.run_tool.output` notifications. A one-shot reply gives the phone nothing until the command ends.
-- **💩** `⏳` No stop and no timeout. `Request.stop()` calls `bubble.stop()` in-process. Over RPC there is no handle to kill the daemon child.
-- **ℹ️** Both are Phase 2 caller concerns. Naming them here so the one-shot reply is not mistaken for feature parity.
+- **🔷** A command can run for minutes. A single request/reply holds the connection open for the whole run and returns only the final output. The right shape is to return **a reference/handle the client can stream content from**, not to block on the final string.
+- **ℹ️** This is not a Phase 2 caller concern as this plan previously claimed. It decides the Phase 1 wire, so the fences below are wrong until it is settled.
+
+#### What in-process does today that one-shot cannot
+
+- **ℹ️** `OLLMbwrap.Bubble` already has what a handle would expose: `public signal void output(string line)`, a `stop()`, and a `stopped` property. `execute_tool_async` connects `output` and batches lines into `client.run_tool.output` notifications on a 500 ms timer, tagged `id = this.request_id`.
+- **ℹ️** `RunCommand.Request.stop()` calls `bubble.stop()` directly. The timeout path sets `timed_out` and does the same.
+- **💩** Over a one-shot RPC neither exists: the phone sees nothing until the command ends, and there is no handle to kill the child.
+
+#### Transport — **🔷** HTTPS is being dropped, so the push channel is available
+
+- **🔷** The HTTPS transport is being retired. The phone reaches the daemon over the TLS TCP socket (`filesd.socket`, `OLLMrpc.Transport.TcpListen`), so HTTP's limits do not constrain this design.
+  - **ℹ️** Not yet reflected in the written plans — [`RPC-1.11 §374`](RPC-1.11-URGENT-vpn-local-pin-pairing.md) still says the HTTPS listener is left unchanged. Recorded here as a user decision.
+  - **ℹ️** For the record, had HTTPS stayed, streaming was impossible on it: `Transport.HttpServer` never overrides `Listen.broadcast` (so HTTPS clients receive no notifications at all), and `X-rpc-sequence` forbids a second in-flight call on a session, so even a **stop** could not be sent while `exec` ran.
+- **✔️** `TcpListen` overrides `broadcast` and fans out to `this.connections` (`libocrpc/Transport/TcpListen.vala:77`), same as `SocketListen`. Server → client push works.
+- **✔️** `TcpListen` already passes `live_handles` down to each accepted connection (`TcpListen.vala:66`).
+- **⏳** **💩** But **no `ollmfilesd` listener sets `live_handles = true`** — the only `= true` in the tree is under `tests/rpc/`. `Live.Subscribe.rpc_signal` calls `GLib.error("Subscribe.signal requires live_handles")` when off, so this is a hard prerequisite. One line on the daemon's listener construction; needs your approval since it changes daemon-wide behaviour, not just this feature.
+- **⏳** **💩** `Live.BufferStream` is skipped for `tcp://` (`Client.vala:408`). That is the fd-passing buffer channel and is Unix-socket only. Signal subscriptions travel as ordinary `Notification` writes on the same connection, so they should be unaffected — **verify before relying on it.**
+
+#### Direction — **🔷** live handle
+
+- **🔷** `start` replies with `request.connection.export(bubble)`. The client subscribes to `output` with `RPC-Live-Subscribe.rpc_signal` on that lease, calls `stop` on the lease, and releases with `RPC-Live-Remote.rpc_unref`. This is the shape the user asked for: a reference the client streams from, not a blocking call that returns the final string.
+- **ℹ️** It reuses machinery that already ships and is covered by `tests/rpc/subscribe-test.vala` — no new streaming protocol.
+- **🚫** Poll handle (client polls `poll(job_id, from_line)` for new lines). Only existed to work around HTTP having no push. Dropping HTTPS removes the reason.
+- **🚫** One-shot `exec` returning the final output string. This is what the fences below still contain; they are superseded.
+
+#### Still open
+
+- **⏳** **🔷** **`OLLMbwrap.Bubble` has no completion signal.** It has `output`, `stop()`, and `stopped`, but `stopped` is set **only by `stop()`** (`Bubble.vala:146-148`) — it does not fire when the command ends on its own. So subscribing to `output` never tells the client the run finished, and the final string from `exec` has nowhere to go once the `start` request has already been replied to. This is the one piece the shipped machinery does not provide. Options: add a `finished(string output)` signal to `OLLMbwrap.Bubble` for the client to subscribe to, or have the daemon emit a notification on completion. Adding a signal to a shipped class needs your call.
+- **⏳** **💩** Timeout ownership. In-process the caller owns `timeout_src`. With a handle the daemon could own it, or the client could call `stop` on expiry.
+- **⏳** **💩** Orphan cleanup. A handle outlives its request, so a client that disconnects mid-run leaves a live `Bubble` and a running child on the daemon.
 
 Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surrounding context before applying. `ollmfilesd` is not in the `docs/meson.build` valadoc inputs, so these new files need no valadoc entry.
 

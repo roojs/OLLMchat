@@ -1,6 +1,6 @@
 # libocrpc-dev / libocrpc-devel do not ship `ocrpc.h`
 
-**Status:** ✔️ file lists updated — package contents not verified until the 1.4.0 build
+**Status:** ✔️ archived 2026-10-03 — `ocrpc.h` is on the Debian and RPM dev file lists. Left open only for a post-1.4.0 `dpkg -c` / `rpm -qlp` check that was never run.
 
 **Related:**
 
@@ -52,5 +52,6 @@ usr/include/ocrpc.h
 
 ## Next
 
-- **⏳** **🔷** Ship in 1.4.0. gnome-shell-rpc requires `libocrpc-dev (>= 1.3.1~)` and is waiting on that release.
-- **⏳** **💩** After the release: `dpkg -c libocrpc-dev_*.deb` and `rpm -qlp libocrpc-devel-*.rpm` list `ocrpc.h`.
+- **✔️** File lists and `CHANGELOG.md` already install `ocrpc.h`. The v1.4.0 remote-only `dh_missing` for that header is recorded in [`2026-10-02-FIXED-v140-release-jobs.md`](2026-10-02-FIXED-v140-release-jobs.md) and fixed there (`debian/monolithic/ollmchat.install`, `debian/monolithic-remote-only/ollmchat-remote-only.install`, RPM `%{_includedir}/ocrpc.h`).
+- **🚫** The built `.deb` / `.rpm` were not listed with `dpkg -c` / `rpm -qlp` in this log. User closed it 2026-10-03.
+- **✔️** Archived to `docs/bugs/done/`.

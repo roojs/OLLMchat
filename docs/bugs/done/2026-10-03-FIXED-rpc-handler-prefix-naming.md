@@ -1,8 +1,8 @@
 # RPC handler prefix naming
 
-**Status:** ✔️ renamed — non-RPC handlers drop `RPC-`; `RPC-Daemon` and `RPC-Live-*` stay
+**Status:** ✔️ archived 2026-10-03 — non-RPC handlers drop `RPC-`; `RPC-Daemon` and `RPC-Live-*` stay
 
-- ℹ️ Found while writing [`RPC-8.2.8.10`](../plans/RPC-8.2.8.10-URGENT-android-remote-bash.md). `Sandbox.Bubble` needed a prefix and there was no correct name to copy.
+- ℹ️ Found while writing [`RPC-8.2.8.10`](../../plans/RPC-8.2.8.10-URGENT-android-remote-bash.md). `Sandbox.Bubble` needed a prefix and there was no correct name to copy.
 
 ## Problem
 
@@ -72,7 +72,7 @@ Third namespace. Dotted lowercase. No prefix.
 
 ## Root cause
 
-- ✔️ [`RPC-8.2 §48`](../plans/RPC-8.2-full-rpc-system.md) wrote the wrong rule, then it was copied.
+- ✔️ [`RPC-8.2` line 48](../../plans/RPC-8.2-full-rpc-system.md) wrote the wrong rule, then it was copied.
   - Written rule: handler names use an `RPC-` prefix; nested namespaces use hyphens (`RPC-Live-Remote.ref`).
   - That takes the three `libocrpc` `Live` classes and applies them to every handler.
   - That is how `RPC-File`, `RPC-Folder`, and `RPC-Codebase` were named.
@@ -86,7 +86,7 @@ Third namespace. Dotted lowercase. No prefix.
 
 - ℹ️ The prefix is a wire string. Both ends must match. A rename is a protocol break.
 - ℹ️ `rg '"RPC-[A-Za-z-]+\.' --type vala` — about 150 call sites in about 50 files.
-- 🚫 Do not rename `RPC-Live-*`. `gnome-shell-rpc` calls `RPC-Live-Callback.reply`. See [`2026-09-10`](done/2026-09-10-FIXED-call-sync-nested-io-watch-reentrancy-hang.md). Those names are also correct.
+- 🚫 Do not rename `RPC-Live-*`. `gnome-shell-rpc` calls `RPC-Live-Callback.reply`. See [`2026-09-10`](2026-09-10-FIXED-call-sync-nested-io-watch-reentrancy-hang.md). Those names are also correct.
 
 | Callers | Files |
 | --- | --- |
@@ -108,14 +108,15 @@ Test fixtures carry the strings as literal JSON (13 files):
 - 🔷 Non-RPC handlers drop `RPC-`. `RPC-Live-*` and `RPC-Daemon` stay. `Sandbox.Bubble` → `Sandbox-Bubble`.
 - ℹ️ `Folder` then matches the `Bin.register` alias `Folder`. The tables are separate in code. The wire strings would be the same.
 - ✔️ The six shipped `ollmfilesd` prefixes are renamed. Both ends in this tree use the new wire strings.
-- 💩 ⏳ After the rule is stated, correct `RPC-8.2 §48` and `docs/rpc-registration.md`. Worth doing even if the six names stay.
-- 💩 ⏳ Reject a bad prefix inside `Request.add_class`. That is new API behaviour. Not without approval.
+- ✔️ `RPC-8.2` line 48 and `docs/rpc-registration.md` state the rule.
+- 🚫 `Request.add_class` does not reject a bad prefix. That stays out until approved.
 
 ## Attempts / changelog
 
 - 2026-10-03 — ✔️ Audit only. No code changed. Listed every `Request.register`, `register_live`, `add_class`, and `Bin.register`. Split handler prefix, type alias, and notification method. Sized the rename. Traced the wrong rule to `RPC-8.2 §48`.
 - 2026-10-03 — ℹ️ `RPC-8.2.8.10` Phase 1 proposes `RPC-Sandbox-Bubble`. That becomes `Sandbox-Bubble`.
 - 2026-10-03 — 🔷 Proposed column: strip `RPC-` on the six data / manager handlers. Plumbing prefixes stay.
+- 2026-10-03 — ✔️ Archived to `docs/bugs/done/` (user).
 
 ## Next
 

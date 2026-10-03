@@ -42,6 +42,7 @@ sudo apt install \
   libseccomp-dev \
   gobject-introspection \
   libgirepository1.0-dev \
+  libavahi-gobject-dev \
   libomp-dev \
   libblas-dev \
   liblapack-dev \
@@ -57,6 +58,7 @@ sudo apt install \
 
 - **libwebkitgtk-6.0-dev** + **libwebkitgtk-6.0-webdriver-dev** / **libatspi2.0-dev** — Linux browser tool (`libocwebkit`; runtime **`libwebkitgtk-6.0-webdriver4`** from roojs APT). Configure probes interactions via `scripts/meson/check-webkit-interactions.sh` (see webkitgtk-automation `docs/consuming.md`)
 - **libseccomp-dev** — sandbox syscall reporting (`libocbwrap`)
+- **libavahi-gobject-dev** — mDNS pairing (`libocrpc` `Transport/PairPublish.vala`; Meson requires it when Unix sockets are enabled)
 - **libsecret-1-dev** — sudo password keyring (`OLLMchatGtk.Sudo`, Linux)
 - **bubblewrap** — `bwrap` for sandboxed `run_command` and MCP stdio servers
 - **libblas-dev** / **liblapack-dev** / **libopenblas-dev** — required to link
