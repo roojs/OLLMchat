@@ -1,12 +1,12 @@
-# 8.2.8.13 — Desktop server rows and LAN client
+# 8.2.8.13 — Desktop server rows
 
-**Status:** **⏳** — Desktop server rows **✔️**. LAN client not started. Windows build is [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md).
+**Status:** **✅ DONE** — Desktop server rows §1–§6 are in `ollmapp/SettingsDialog/FileServerRow.vala` and `ollmapp/SettingsDialog/ConnectionsPage.vala`. Signed off in commit `685273c2`.
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
-**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](RPC-8.2.8-filesd-connections-ui.md)
+**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](../RPC-8.2.8-filesd-connections-ui.md)
 
-**Depends on:** [`RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) — `ssl_enabled`, `https_enabled`, and `SslListen` are in the tree
+**Depends on:** [`RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md`](../RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) — `ssl_enabled`, `https_enabled`, and `SslListen` are in the tree
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -14,12 +14,11 @@
 
 ## Purpose
 
-- 🔷 Desktop server is one expander on the Connections tab. Nothing sits on the right of that row. The subtitle says what is running.
-- 🔷 Linux order: Unix socket, systemd, HTTPS server, Local network SSL server.
-- 🔷 The LAN client connects to `filesd.socket` `host:port`, not an `https://` URL.
-- ℹ️ The TLS listener is already [`8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md). This plan is the rows and the client.
-- ℹ️ Windows row layout is drawn below. Building it is [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md), later.
-- ⏳ Row fences are under Desktop server rows. The LAN client still has no fences.
+- 🔷 `✅` Desktop server is one expander on the Connections tab. Nothing sits on the right of that row. The subtitle says what is running.
+- 🔷 `✅` Linux order: Unix socket, systemd, HTTPS server, Local network SSL server.
+- ℹ️ The TLS listener is [`8.2.8.7`](../RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md). This plan was the rows only.
+- ℹ️ Windows row layout is drawn below. Building it is [`8.2.8.14`](../RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md), later.
+- ℹ️ The LAN client, the one-or-all socket host, and the shared interface list are [`RPC-1.11`](../RPC-1.11-URGENT-vpn-local-pin-pairing.md). They are not part of this plan.
 
 ---
 
@@ -79,15 +78,15 @@ Windows — expanded
 - 🔷 `✔️` Replace the File Server Enabled suffix with this layout in `FileServerRow`. Linux host list only. Fences are below.
 - 🔷 `✔️` HTTPS server and Local network SSL server each have an on/off toggle. Off keeps the saved host and port and does not listen.
 - 🔷 `✔️` Desktop server Local network SSL server edits `filesd.socket` host and port. Apply/reboot when those fields change (same bounce as HTTPS).
-- 💩 `⏳` Those toggles are `Gtk.Switch`, same as today's File Server Enabled switch.
-- 💩 `⏳` “Set up” means `filesd.socket` has a host and a port in 1024–65535.
-- 💩 `⏳` Localhost TCP subtitle can show the live listen address. The row stays status-only.
-- ℹ️ Windows loopback port is still [`docs/bugs/done/2026-09-20-FIXED-filesd-windows-socket-port.md`](../bugs/done/2026-09-20-FIXED-filesd-windows-socket-port.md). This row does not add a port editor for it.
-- ℹ️ Windows does not build `FileServerRow` today (`ConnectionsPage.vala`, `#if !ANDROID && !G_OS_WIN32`). The Windows host list and per-user service are [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md).
+- 💩 `✔️` Those toggles are `Gtk.Switch`, same as today's File Server Enabled switch.
+- 💩 `✔️` “Set up” means `filesd.socket` has a host and a port in 1024–65535.
+- ℹ️ The Localhost TCP live-address subtitle idea moved to [`8.2.8.14`](../RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md).
+- ℹ️ Windows loopback port is still [`docs/bugs/done/2026-09-20-FIXED-filesd-windows-socket-port.md`](../../bugs/done/2026-09-20-FIXED-filesd-windows-socket-port.md). This row does not add a port editor for it.
+- ℹ️ Windows does not build `FileServerRow` today (`ConnectionsPage.vala`, `#if !ANDROID && !G_OS_WIN32`). The Windows host list and per-user service are [`8.2.8.14`](../RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md).
 
 Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surrounding context before applying. Linux only. Do not build the Windows host list here.
 
-### 1. `ollmapp/SettingsDialog/FileServerRow.vala` — Desktop server chrome
+### 1. ✔️ `ollmapp/SettingsDialog/FileServerRow.vala` — Desktop server chrome
 
 **Why:** The outer row is Desktop server. Nothing sits on its right. Unix socket, systemd, HTTPS server, and Local network SSL server are the rows under it.
 
@@ -217,7 +216,7 @@ After `systemd_row`. Unix socket has a Running label, not a switch. The SSL swit
 		 * @param filesd Config listen settings (https, socket, proxy, systemd)
 ```
 
-### 2. `FileServerRow` constructor
+### 2. ✔️ `FileServerRow` constructor
 
 **Why:** One replace for the widget tree. Order is Unix socket, systemd, HTTPS server, Local network SSL server. Desktop server has no switch.
 
@@ -532,7 +531,13 @@ After `systemd_row`. Unix socket has a Running label, not a switch. The SSL swit
 		}
 ```
 
-### 3. `load_config` — two host lists and the subtitle
+### 3. ✔️ `load_config` — two host lists and the subtitle
+
+- ✔️ Landed, but the host lists differ from the fences below. Read the tree, not these fences, for that part.
+  - The address walk is the private method `ifaces()`. It fills the field `addresses` once.
+  - `ips` and `ssl_ips` are both copies of `addresses`. Neither has `127.0.0.1`. There is no `ip != "127.0.0.1"` check in the loop.
+  - The SSL dropdown, SSL port, switch, and subtitle parts match the fences.
+- ℹ️ [`RPC-1.11`](../RPC-1.11-URGENT-vpn-local-pin-pairing.md) Phase 2 moves `ifaces()` into `libocrpc`.
 
 **Why:** `ifaces` skips `127.0.0.1`, so neither host list has localhost. The SSL switch appears only after `filesd.socket` is saved in range. The Desktop server subtitle names what is up.
 
@@ -677,7 +682,7 @@ HTTPS and local network SSL are appended when those listeners are on. 💩 The c
 			this.ssl_switch.visible = ssl_ready;
 ```
 
-### 4. `apply_config` — save `filesd.socket` and reboot
+### 4. ✔️ `apply_config` — save `filesd.socket` and reboot
 
 **Why:** Host and port edits write `filesd.socket` even while the SSL switch is hidden, so the switch can appear. A change of `socket` or `ssl_enabled` bounces `ollmfilesd` the same way HTTPS does. Off does not clear the saved address.
 
@@ -780,7 +785,7 @@ The SSL switch is not written while it is hidden, so a first save of host and po
 					this.filesd.https, this.filesd.socket);
 ```
 
-### 5. `reboot` subtitle
+### 5. ✔️ `reboot` subtitle
 
 **Why:** After the bounce, the subtitle has to match `load_config`.
 
@@ -828,7 +833,7 @@ The SSL switch is not written while it is hidden, so a first save of host and po
 			this.expander.subtitle = how;
 ```
 
-### 6. `ollmapp/SettingsDialog/ConnectionsPage.vala`
+### 6. ✔️ `ollmapp/SettingsDialog/ConnectionsPage.vala`
 
 **Why:** The dialog comment still says File Server.
 
@@ -848,17 +853,11 @@ The SSL switch is not written while it is hidden, so a first save of host and po
 		 * Fill Desktop server widgets from {@link OLLMchat.Settings.Config2.filesd}.
 ```
 
-## LAN client
-
-- 🔷 `⏳` A LAN client connects with device cert + trust (same `Cert.ensure` as HTTPS file connection), to the socket `host:port`, not an `https://` URL.
-- ℹ️ Outbound “Add file connection” today is HTTPS URL only ([`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md)). A `tcp://` / TLS-socket client row is this plan.
-- ⏳ Code proposals — not written.
-
 ---
 
 ## LLM notes
 
-- ℹ️ The listener, cert gate, and flags stay on [`8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md).
+- ℹ️ The listener, cert gate, and flags stay on [`8.2.8.7`](../RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md).
 - 🚫 A control on the right of the Desktop server row. Subtitle only.
 - 🚫 A toggle on Unix socket, or on Windows Localhost TCP.
 - 🚫 `127.0.0.1` in the HTTPS or Local network SSL server host list.
@@ -866,4 +865,4 @@ The SSL switch is not written while it is hidden, so a first save of host and po
 - 🚫 Titling the TLS row HTTP server. The title is HTTPS server.
 - 🚫 A Proxy row on Local network SSL server.
 - 🚫 Turning off the Unix socket because Local network SSL server is on.
-- 🚫 Building the Windows host list or a Windows per-user service here. That is [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md).
+- 🚫 Building the Windows host list or a Windows per-user service here. That is [`8.2.8.14`](../RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md).

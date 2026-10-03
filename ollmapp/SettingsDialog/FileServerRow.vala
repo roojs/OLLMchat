@@ -138,8 +138,8 @@ namespace OLLMapp.SettingsDialog
 		public Gtk.Switch ssl_switch { get; private set; }
 
 		/**
-		 * SSL listen IP. Same list as HTTPS. Neither includes
-		 * ''127.0.0.1''.
+		 * SSL listen IP. {@link OLLMrpc.Transport.TcpListen.ifaces} plus ''All''.
+		 * ''All'' stores ''0.0.0.0''.
 		 */
 		public Gtk.DropDown ssl_host_dropdown { get; private set; }
 
@@ -163,6 +163,13 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public OLLMchat.Settings.Filesd filesd { get; private set; }
 		/**
+		 * True when the files daemon accepts a connection.
+		 *
+		 * Set at the end of {@link load_config} from
+		 * {@link OLLMrpc.ClientBoot.connectable}.
+		 */
+		public bool running { get; private set; default = false; }
+		/**
 		 * Host window: {@link OLLMfiles.ProjectManager} after a local bounce.
 		 */
 		public OllmchatWindow win { get; private set; }
@@ -172,13 +179,6 @@ namespace OLLMapp.SettingsDialog
 		public Adw.ToastOverlay toast_overlay { get; private set; }
 		private bool loading = false;
 
-		/**
-		 * IPv4 addresses on interfaces that are up.
-		 *
-		 * Filled by {@link ifaces}. Skips ''0.0.0.0'' and
-		 * ''127.0.0.1''.
-		 */
-		private string[] addresses = {};
 		private bool was_systemd = false;
 		private bool rebooting = false;
 		private bool reboot_again = false;
@@ -374,60 +374,11 @@ namespace OLLMapp.SettingsDialog
 		}
 
 		/**
-		 * List this machine's IPv4 addresses into {@link addresses}.
-		 *
-		 * Returns when {@link addresses} is already filled, and
-		 * when ''getifaddrs'' is not zero. Up interfaces only.
-		 * Skips ''0.0.0.0'', ''127.0.0.1'', and duplicates.
-		 * HTTPS and the local network socket both use this list.
-		 */
-		private void ifaces()
-		{
-			if (this.addresses.length > 0) {
-				return;
-			}
-			Linux.Network.IfAddrs addrs;
-			if (Linux.Network.getifaddrs(out addrs) != 0) {
-				return;
-			}
-			string[] found = {};
-			for (unowned var iface = addrs; iface != null; iface = iface.ifa_next) {
-				if (iface.ifa_addr == null) {
-					continue;
-				}
-				if (iface.ifa_addr.sa_family != Posix.AF_INET) {
-					continue;
-				}
-				if ((iface.ifa_flags & Linux.Network.IfFlag.UP) == 0) {
-					continue;
-				}
-				var sin = (Posix.SockAddrIn*) iface.ifa_addr;
-				var buf = new uint8[Posix.INET_ADDRSTRLEN];
-				var ip = Posix.inet_ntop(Posix.AF_INET, &sin.sin_addr, buf);
-				if (ip == null || ip == "" || ip == "0.0.0.0" || ip == "127.0.0.1") {
-					continue;
-				}
-				var seen = false;
-				foreach (var existing in found) {
-					if (existing != ip) {
-						continue;
-					}
-					seen = true;
-					break;
-				}
-				if (seen) {
-					continue;
-				}
-				found += ip;
-			}
-			this.addresses = found;
-		}
-
-		/**
 		 * Fill the Desktop server rows from {@link filesd}.
 		 *
-		 * Both host lists are {@link addresses}. That list
-		 * never includes ''127.0.0.1''. No addresses: hide
+		 * HTTPS uses {@link OLLMrpc.Transport.TcpListen.ifaces}.
+		 * SSL adds ''All'' first. That list never includes
+		 * ''127.0.0.1''. No addresses: hide
 		 * {@link host_row} and {@link port_row}. Call when the
 		 * settings dialog is shown, not from the constructor.
 		 */
@@ -441,9 +392,12 @@ namespace OLLMapp.SettingsDialog
 				host = this.filesd.https.substring(0, colon);
 				port = this.filesd.https.substring(colon + 1);
 			}
-			this.ifaces();
-			var ips = this.addresses[0:this.addresses.length];
-			var ssl_ips = this.addresses[0:this.addresses.length];
+			var ips = OLLMrpc.Transport.TcpListen.ifaces();
+			var n = ips.length;
+			var ssl_ips = ips[0:n];
+			ssl_ips.resize(n + 1);
+			ssl_ips.move(0, 1, n);
+			ssl_ips[0] = "All";
 			var socket_host = "";
 			var socket_port = "";
 			var socket_colon = this.filesd.socket.last_index_of(":");
@@ -480,6 +434,9 @@ namespace OLLMapp.SettingsDialog
 			}
 			if (ssl_ips.length > 0) {
 				var ssl_selected = Gtk.INVALID_LIST_POSITION;
+				if (socket_host == "0.0.0.0") {
+					ssl_selected = 0;
+				}
 				for (var i = 0; i < ssl_ips.length; i++) {
 					if (ssl_ips[i] != socket_host) {
 						continue;
@@ -487,7 +444,8 @@ namespace OLLMapp.SettingsDialog
 					ssl_selected = i;
 					break;
 				}
-				if (socket_host != "" && ssl_selected == Gtk.INVALID_LIST_POSITION) {
+				if (socket_host != "" && socket_host != "0.0.0.0"
+					&& ssl_selected == Gtk.INVALID_LIST_POSITION) {
 					ssl_ips += socket_host;
 					ssl_selected = ssl_ips.length - 1;
 				}
@@ -509,6 +467,7 @@ namespace OLLMapp.SettingsDialog
 				GLib.Environment.get_user_data_dir(), "ollmchat");
 			var boot = new OLLMrpc.ClientBoot(data_dir, "ollmfilesd.pid", "ollmfilesd.sock");
 			var up = boot.connectable();
+			this.running = up;
 			var via_systemd = false;
 			string active_out, active_err;
 			int active_status;
@@ -586,6 +545,9 @@ namespace OLLMapp.SettingsDialog
 			var ssl_item = this.ssl_host_dropdown.selected_item as Gtk.StringObject;
 			if (ssl_item != null) {
 				ssl_host = ssl_item.string;
+			}
+			if (ssl_host == "All") {
+				ssl_host = "0.0.0.0";
 			}
 			var ssl_n = 0;
 			var ssl_port = this.ssl_port_entry.text.strip();

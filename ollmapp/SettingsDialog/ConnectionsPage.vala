@@ -40,7 +40,12 @@ namespace OLLMapp.SettingsDialog
 
 		private Gtk.Button add_btn;
 		private Gtk.ScrolledWindow scrolled_window;
-		private Adw.ToastOverlay toast_overlay;
+		/**
+		 * Overlay for toasts on this tab.
+		 *
+		 * Pairing and the connection dialogs add toasts here.
+		 */
+		public Adw.ToastOverlay toast_overlay { get; private set; }
 		private Adw.PreferencesGroup group;
 		private Gtk.Box boxed_list;
 		private Gee.HashMap<string, ConnectionRow> rows {
@@ -54,6 +59,7 @@ namespace OLLMapp.SettingsDialog
 		private FileConnectionAdd add_file_dialog;
 		private FileConnectionRow? file_connection_row;
 		private PairingDialog pairing_dialog;
+		private Gtk.Button allow_btn;
 #if !ANDROID && !G_OS_WIN32
 		private FileServerRow file_server_row;
 #endif
@@ -132,7 +138,7 @@ namespace OLLMapp.SettingsDialog
 			this.toast_overlay = new Adw.ToastOverlay();
 			this.toast_overlay.set_child(this.scrolled_window);
 			this.append(this.toast_overlay);
-			this.pairing_dialog = new PairingDialog(this.toast_overlay);
+			this.pairing_dialog = new PairingDialog(this);
 			var allow_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
 			allow_box.append(new Gtk.Image.from_icon_name("list-add-symbolic"));
 			var allow_label = new Gtk.Label("Allow New Device") {
@@ -140,14 +146,15 @@ namespace OLLMapp.SettingsDialog
 				hexpand = true
 			};
 			allow_box.append(allow_label);
-			var allow = new Gtk.Button() {
+			this.allow_btn = new Gtk.Button() {
 				child = allow_box,
-				hexpand = true
+				hexpand = true,
+				visible = false
 			};
-			allow.clicked.connect(() => {
-				this.pairing_dialog.open(this.dialog);
+			this.allow_btn.clicked.connect(() => {
+				this.pairing_dialog.open();
 			});
-			this.action_widget.append(allow);
+			this.action_widget.append(this.allow_btn);
 
 			// Create ConnectionAdd dialog
 			this.add_dialog = new ConnectionAdd();
@@ -586,6 +593,7 @@ namespace OLLMapp.SettingsDialog
 		{
 #if !ANDROID && !G_OS_WIN32
 			this.file_server_row.load_config();
+			this.allow_btn.visible = this.file_server_row.running;
 #endif
 		}
 

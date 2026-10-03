@@ -80,7 +80,15 @@ if use_unix_sockets
   ocrpc_vapi_gen_pkgs += [
     '--pkg', 'gobject-introspection-1.0',
   ]
-  transport_socket_src = files(['Transport/SocketListen.vala'])
+  ocrpc_deps += dependency('avahi-gobject')
+  ocrpc_vapi_pkgs += '--pkg=avahi-gobject'
+  ocrpc_vapi_pkgs += '--pkg=linux'
+  ocrpc_vapi_gen_pkgs += ['--pkg', 'avahi-gobject']
+  ocrpc_vapi_gen_pkgs += ['--pkg', 'linux']
+  transport_socket_src = files([
+    'Transport/SocketListen.vala',
+    'Transport/PairPublish.vala',
+  ])
   client_boot_src = files(['ClientBoot.vala'])
   gi_src = files(['Gi.vala', 'GiMock.vala'])
 endif

@@ -95,6 +95,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocrpc/Transport/SocketListen.vala',
     '../libocrpc/Client.vala',
     '../libocrpc/ClientBoot.vala',
+    '../libocrpc/Transport/PairPublish.vala',
     # libochf sources (Hub catalog — depends on libocrpc)
     '../libochf/namespace.vala',
     '../libochf/ModelFile.vala',
@@ -473,6 +474,7 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=tree-sitter',  # Tree-sitter via vapi (used by libocvector)
     '--pkg=seccomp',  # RunSeccomp / Bubble (liboctools)
     '--pkg=linux',  # RunSeccomp: Linux.O_PATH (not in Posix)
+    '--pkg=avahi-gobject',  # Transport/PairPublish.vala
     '-D', 'LINUX',  # libocwebkit #if LINUX (WebKit using / WebView)
     # Don't use --pkg for internal libraries (ocmarkdown, ocmarkdowngtk, ocsqlite, occoder, ocvector, octools)
     # - valadoc processes source files directly, so it doesn't need VAPI files.

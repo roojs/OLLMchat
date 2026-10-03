@@ -2,7 +2,7 @@
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
-**Status:** **URGENT** — proposed. Design only. Code fences after the Avahi service type is confirmed.
+**Status:** **URGENT** — proposed. Design only. Browse name is `_rpc._tcp.local`.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**. Proposed Vala follows `docs/coding-standards.md`.
 
@@ -26,7 +26,7 @@
 - **🔷** The registration authority is the server. Its CA private key is generated on the server and stored on the filesystem. The distribution does not ship that public or private key.
 - **🔷** Registration does not need a valid client certificate, and it does not need the CA installed on the phone. That install is the gateway problem this avoids.
 - **🔷** HTTPS is not a downgrade path and not the out-of-LAN fallback in this plan.
-- **⏳** `🔷` Phases 1–4 below. No code in this file yet.
+- **ℹ️** Phases 1 and 2 are in this file. Phases 3 and 4 are [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md). Phase 5 stays here and is later.
 - **ℹ️** Landed registration is always-on `RPC-ClientCert.request_registration` plus desktop Accept / Reject / Ban. This plan is the replacement for that open path.
 - **ℹ️** Prior write-up [`RPC-8.2.7`](RPC-8.2.7-client-cert-registration.md) and parent Phase 7 described admin approval with no PIN and no CSR. This plan is the newer requirement.
 
@@ -108,8 +108,8 @@
 
 1. Phase 1 — `PairingDialog` on the GTK server
 2. Phase 2 — Listen on one interface or all, then mDNS advertise
-3. Phase 3 — PIN check, CSR, signed cert, address list in the registration response
-4. Phase 4 — Android discovery, PIN prompt, route probe, fallbacks
+3. Phase 3 — PIN check, CSR, signed cert, address list — [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md)
+4. Phase 4 — Android discovery, PIN prompt, route probe — [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md)
 5. Phase 5 — **Register a friend** (later, not urgent)
 
 ---
@@ -120,7 +120,7 @@
 
 - **🔷** `✔️` New class `OLLMapp.SettingsDialog.PairingDialog` in `ollmapp/SettingsDialog/PairingDialog.vala`. The pairing dialog and most of the pairing logic live in that class.
 - **🔷** `✔️` That class owns the session: generate the PIN, show it, run the 60-second countdown line, fire the timeout, and toast **number rejected**.
-- **🔷** `⏳` Opening and closing pair mode still has to start and stop mDNS (Phase 2). `pairing` is the flag.
+- **🔷** `✔️` Opening and closing pair mode starts and stops mDNS. `pairing` is the flag.
 - **🔷** `✔️` **Allow New Device** on the connections action bar opens `PairingDialog`.
 - **🔷** `✔️` Pair mode on shows the 6-digit PIN in that dialog. The PIN is the main focus: large, spaced digits from the `.pairing-pin` class in `resources/style.css`.
 - **🔷** `✔️` That dialog draws a sliding line that counts the 60 seconds down so the remaining time is visible.
@@ -128,7 +128,7 @@
 - **🔷** `✔️` `rejected()` toasts **number rejected** and leaves the dialog and PIN up. Nothing calls it until a wrong PIN arrives from the server.
 - **🔷** `✔️` The dialog closes when the timeout fires, and `pairing` turns off. Closing when a device finishes pairing waits on the registration response (Phase 3).
 - **🔷** `⏳` Pair mode off stops the mDNS broadcast and rejects a non-registered connection outright. Registration does not start.
-- **🔷** The user named this RPC `register_client`.
+- **💩** The pasted draft said `register_client`. That is not a request to add a method.
 - **ℹ️** The live method is `RPC-ClientCert.request_registration`. Gate that method. A second method name needs a separate decision (see **LLM notes**).
 - **🔷** `✔️` Generate the six digits with `GLib.Random`. A 60-second PIN on the local network does not need a cryptographic generator.
 
@@ -137,7 +137,7 @@
 - **ℹ️** Today’s approval UI is `RegistrationBanner` on the settings action bar (Accept / Reject / Ban). `PairingDialog` replaces that for this flow. Connections already toasts from `ConnectionsPage.toast_overlay`.
 - **ℹ️** The listener still rejects a non-registered connection when pair mode is off. That check stays in `ollmfilesd`. `PairingDialog.pairing` is the flag Phase 2 and that listener follow. mDNS itself is Phase 2.
 - **🔷** `✔️` **Allow New Device** is a third button on the connections action bar, beside **LLM Connection** and **Remote Desktop Connection**.
-- **🔷** `⏳` **Allow New Device** is hidden when this app cannot set the file server up, and while that server is not active. That is the visibility catch. There is no OS `#if` on the button. Windows and Android have no server setup, so the same check hides it there. Wire the show and hide after the listen rejig in Phase 2.
+- **🔷** `✔️` **Allow New Device** is hidden when this app cannot set the file server up, and while that server is not active. That is the visibility catch. There is no OS `#if` on the button. Windows and Android have no server setup, so the same check hides it there.
 
 Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surrounding context before applying.
 
@@ -367,72 +367,691 @@ namespace OLLMapp.SettingsDialog
 
 ### Goal
 
-- **🔷** `⏳` One-or-all applies to the TLS bin socket (`filesd.socket` / `SslListen`) only.
+- **🔷** `✔️` One-or-all applies to the TLS bin socket (`filesd.socket` / `SslListen`) only.
   - **One:** bind that address only, same as today’s `filesd.socket` host.
-  - **All:** listen on every interface. The phone’s address list is every up non-loopback IPv4 from the same enumeration `FileServerRow.ifaces` already uses.
+  - **All:** one bind to `0.0.0.0`. The listener does not walk interfaces. `SslListen` already binds the single host in `filesd.socket` and does not reject `0.0.0.0`.
 - **🔷** `⏳` A list of specific interfaces (more than one, short of all) is later. This plan does not build that multi-select.
-- **🔷** `⏳` Leave the HTTPS listener and its Host dropdown unchanged. HTTPS is not the pairing transport and not a fallback when the socket is unreachable.
-- **🔷** `⏳` After this listen change, show **Allow New Device** only when this app can set the file server up and that server is active.
+- **🔷** `✔️` Leave the HTTPS listener and its Host dropdown unchanged. HTTPS is not the pairing transport and not a fallback when the socket is unreachable.
+- **🔷** `✔️` After this listen change, show **Allow New Device** only when this app can set the file server up and that server is active.
   - Do not hide the button with `#if ANDROID` or `#if G_OS_WIN32`. Those builds have no server setup, so this check covers them.
   - **ℹ️** `FileServerRow` already calls the daemon running when `OLLMrpc.ClientBoot.connectable()` is true. Use that same check. Do not add a second probe.
-- **🔷** `⏳` Component the user named `NetworkUtils` enumerates those interfaces with `Posix.getifaddrs`.
-  - VPN adapters (examples `wg0`, `tun0`)
-  - local adapters (examples `eth0`, `wlan0`)
-- **🔷** `⏳` Publish the pairing service over mDNS while pair mode is on. Advertise only the addresses for the listen choice.
-- **🔷** Service type the user wrote: `_myapp_pair._tcp`.
+- **🚫** Do not add a `NetworkUtils` class, and do not call `Posix.getifaddrs`. That name is not in the tree.
+- **🔷** `✔️` The broadcast needs the real interface list. `0.0.0.0` is not an address to advertise.
+- **🔷** `⏳` The registration response carries that same list. That response is [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md).
+- **🔷** `✔️` That list is `OLLMrpc.Transport.TcpListen.ifaces`. It does not stay as the private `FileServerRow.ifaces` method, and it is not a new class.
+- **🔷** `✔️` The Host dropdown uses that RPC list. Do not keep a second walk on the row.
+- **ℹ️** Today the walk is private on `FileServerRow` and uses `Linux.Network.getifaddrs` (up IPv4, skip `0.0.0.0` and `127.0.0.1`). That already includes VPN adapters (`wg0`, `tun0`) and local adapters (`eth0`, `wlan0`). `0.0.0.0` is IPv4 only.
+- **🔷** `✔️` Publish the pairing service over mDNS while pair mode is on. Advertise only the addresses for the listen choice.
+- **🔷** The browse label is `rpc`. The full name is `_rpc._tcp.local`.
+- **ℹ️** The browse name is always `_<label>._tcp.local`. The two underscores, `_tcp`, and `.local` stay. `rpc` is a legal label: letters only, under 15 characters.
+- **ℹ️** The broadcast is mDNS to `224.0.0.251` port `5353`. With label `rpc`, listen port `8422`, instance name `ollmchat`, and addresses `192.168.1.5` and `10.8.0.1`, the records are:
+
+```
+PTR  _rpc._tcp.local.
+     → ollmchat._rpc._tcp.local.
+
+SRV  ollmchat._rpc._tcp.local.
+     0 0 8422 ollmchat.local.
+
+A    ollmchat.local. → 192.168.1.5
+A    ollmchat.local. → 10.8.0.1
+```
+
+- **ℹ️** The phone browses `_rpc._tcp.local`. The SRV carries the port. The PIN is not in this packet.
+- **🔷** `✔️` The listen-choice addresses are A records on `ollmchat.local`, one record per address, in the same packet. The example above is that list.
+- **ℹ️** An A record holds the address only. `eth0` or `wg0` cannot be written on that line. The phone tells the addresses apart by which one answers.
+- **🚫** Do not put the address list in a TXT record.
+- **ℹ️** Any other device advertising `_rpc._tcp` on the same network shows up in that browse.
 - **🔷** `⏳` The registration response carries that same address set and the listen port.
 - **ℹ️** Avahi is not a dependency in this repo yet. This phase adds it.
-- **💩** `⏳` Store **All** as host `0.0.0.0` in the existing `host:port` string. No new config key. Confirm before implement.
-- **💩** `⏳` `_myapp_pair._tcp` reads as a placeholder. Confirm a product type (for example `_ollmfilesd-pair._tcp`) before implement.
+- **🔷** `✔️` Store **All** as host `0.0.0.0` in the existing `filesd.socket` string. No new config key. The SSL host dropdown shows **All** for that value. The HTTPS host dropdown stays a single address.
 
 ### Notes
 
 - **ℹ️** Listen port stays `filesd.socket` (local network SSL, default 8422 in [`RPC-8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md)). This phase does not add a listener.
-- **ℹ️** **All** includes every address the Host dropdown can already show. A public address on the machine is included when the operator picks All. The PIN window is still required.
-- **⏳** Code proposals after the service type string is confirmed.
+- **ℹ️** `SslListen` already binds the host in `filesd.socket` and does not reject `0.0.0.0`. This phase does not edit that bind.
+- **ℹ️** **All** advertises every address from `OLLMrpc.Transport.TcpListen.ifaces`. A public address on the machine is included. The PIN window is still required.
+
+Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surrounding context before applying.
+
+### 1. `libocrpc/Transport/TcpListen.vala` — `ifaces`
+
+**Why:** The broadcast and the host dropdown share one walk. It sits on the TCP listener. No new class.
+
+**Where:** static method at the end of `TcpListen`, after `stop`. `Linux.Network.getifaddrs` is compiled only on desktop Linux. Android and Windows return an empty list.
+
+**Depends on:** none.
+
+#### Add — after `stop`, before the class closing brace. Up non-loopback IPv4 addresses.
+
+```vala
+		/**
+		 * Up non-loopback IPv4 addresses on this machine.
+		 *
+		 * Skips ''0.0.0.0'', ''127.0.0.1'', and duplicates.
+		 * The SSL **All** choice is not an entry. The dropdown
+		 * adds that label itself.
+		 *
+		 * @return One string per address. Empty when this
+		 * platform has no ''getifaddrs'' or the call fails.
+		 */
+		public static string[] ifaces()
+		{
+#if ANDROID || G_OS_WIN32
+			string[] none = {};
+			return none;
+#else
+			Linux.Network.IfAddrs addrs;
+			if (Linux.Network.getifaddrs(out addrs) != 0) {
+				string[] none = {};
+				return none;
+			}
+			string[] found = {};
+			for (unowned var iface = addrs; iface != null; iface = iface.ifa_next) {
+				if (iface.ifa_addr == null) {
+					continue;
+				}
+				if (iface.ifa_addr.sa_family != Posix.AF_INET) {
+					continue;
+				}
+				if ((iface.ifa_flags & Linux.Network.IfFlag.UP) == 0) {
+					continue;
+				}
+				var sin = (Posix.SockAddrIn*) iface.ifa_addr;
+				var buf = new uint8[Posix.INET_ADDRSTRLEN];
+				var ip = Posix.inet_ntop(Posix.AF_INET, &sin.sin_addr, buf);
+				if (ip == null || ip == "" || ip == "0.0.0.0" || ip == "127.0.0.1") {
+					continue;
+				}
+				var seen = false;
+				foreach (var existing in found) {
+					if (existing != ip) {
+						continue;
+					}
+					seen = true;
+					break;
+				}
+				if (seen) {
+					continue;
+				}
+				found += ip;
+			}
+			return found;
+#endif
+		}
+```
+
+### 2. `libocrpc/Transport/PairPublish.vala` — mDNS A records
+
+**Why:** Pair mode broadcasts `_rpc._tcp` with one A record per listen-choice address. The PIN is not in the packet. No TXT address list.
+
+**Where:** new file in `OLLMrpc.Transport`, same folder as `TcpListen`. Desktop Linux source list only. Android and Windows do not compile it, so the file has no platform `#if`.
+
+**Depends on:** §1.
+
+#### Add — new file. Publish the service and one A record per address. Each Avahi call that throws has its own try.
+
+```vala
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+namespace OLLMrpc.Transport
+{
+	/**
+	 * mDNS publish for the pairing window.
+	 *
+	 * {@link start} sends PTR, SRV, and one A record per address
+	 * for ''_rpc._tcp'' in ''.local''. {@link stop} withdraws them.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * var pub = new OLLMrpc.Transport.PairPublish();
+	 * pub.start(OLLMrpc.Transport.TcpListen.ifaces(), 8422);
+	 * pub.stop();
+	 * }}}
+	 */
+	public class PairPublish : GLib.Object
+	{
+		private string[] addresses = {};
+		private uint16 port = 0;
+		private bool up = false;
+		private Avahi.Client? client = null;
+		private Avahi.EntryGroup? group = null;
+
+		/**
+		 * Avahi failed after {@link start} had already returned.
+		 *
+		 * The dialog toasts. {@link start} itself returns false
+		 * for a failure that happens before it returns.
+		 */
+		public signal void failed();
+
+		/**
+		 * Publish ''addresses'' on ''_rpc._tcp'' at ''port''.
+		 *
+		 * Returns false when the list is empty, the port is
+		 * outside 1024–65535, or Avahi rejects the records now.
+		 * A later failure emits {@link failed}.
+		 *
+		 * @param addresses Listen-choice IPv4 addresses
+		 * @param port TLS bin listen port
+		 * @return false when the publish did not succeed
+		 */
+		public bool start(string[] addresses, uint16 port)
+		{
+			this.stop();
+			if (addresses.length == 0 || port < 1024) {
+				this.failed();
+				return false;
+			}
+			this.addresses = addresses;
+			this.port = port;
+			var fresh = this.client == null;
+			if (fresh) {
+				var client = new Avahi.Client(Avahi.ClientFlags.NO_FAIL);
+				var group = new Avahi.EntryGroup();
+				client.state_changed.connect((state) => {
+					if (state == Avahi.ClientState.FAILURE) {
+						this.failed();
+						return;
+					}
+					if (state != Avahi.ClientState.S_RUNNING) {
+						return;
+					}
+					if (this.commit()) {
+						return;
+					}
+					this.failed();
+				});
+				try {
+					group.attach(client);
+				} catch (Avahi.Error e) {
+					this.failed();
+					return false;
+				}
+				try {
+					client.start();
+				} catch (Avahi.Error e) {
+					this.failed();
+					return false;
+				}
+				this.client = client;
+				this.group = group;
+			}
+			if (this.client.state == Avahi.ClientState.FAILURE) {
+				return false;
+			}
+			if (fresh || this.client.state != Avahi.ClientState.S_RUNNING) {
+				return true;
+			}
+			if (this.commit()) {
+				return true;
+			}
+			this.failed();
+			return false;
+		}
+
+		/**
+		 * Withdraw the pairing service.
+		 */
+		public void stop()
+		{
+			if (!this.up || this.group == null) {
+				return;
+			}
+			this.up = false;
+			try {
+				this.group.reset();
+			} catch (Avahi.Error e) {
+				return;
+			}
+		}
+
+		/**
+		 * Commit PTR, SRV, and one A record per address.
+		 *
+		 * DNS class and type are both 1 (IN, A). The A record
+		 * holds the address only.
+		 *
+		 * @return false when Avahi rejects the records
+		 */
+		private bool commit()
+		{
+			if (this.addresses.length == 0 || this.group == null) {
+				return false;
+			}
+			var name = GLib.Environment.get_host_name();
+			var dot = name.index_of(".");
+			if (dot > 0) {
+				name = name.substring(0, dot);
+			}
+			var host = name + ".local";
+			if (this.up) {
+				try {
+					this.group.reset();
+				} catch (Avahi.Error e) {
+					return false;
+				}
+				this.up = false;
+			}
+			try {
+				this.group.add_service_full(Avahi.Interface.UNSPEC,
+					Avahi.Protocol.INET, Avahi.PublishFlags.NO_COOKIE,
+					name, "_rpc._tcp", "local", host, this.port);
+			} catch (Avahi.Error e) {
+				return false;
+			}
+			foreach (var ip in this.addresses) {
+				var packed = new char[4];
+				if (Posix.inet_pton(Posix.AF_INET, ip, packed) != 1) {
+					continue;
+				}
+				try {
+					this.group.add_record_full(Avahi.Interface.UNSPEC,
+						Avahi.Protocol.INET, (Avahi.PublishFlags) 0,
+						host, 1, 1, 120, packed);
+				} catch (Avahi.Error e) {
+					return false;
+				}
+			}
+			try {
+				this.group.commit();
+			} catch (Avahi.Error e) {
+				return false;
+			}
+			this.up = true;
+			return true;
+		}
+	}
+}
+```
+
+### 3. `libocrpc/meson.build` — compile the list and the publish
+
+**Why:** Desktop Linux links Avahi and the `linux` vapi. `PairPublish.vala` is only in that source list.
+
+**Where:** inside `if use_unix_sockets`, with the existing gio-unix deps. The file joins `transport_socket_src`.
+
+**Depends on:** §1, §2.
+
+#### Add — inside `if use_unix_sockets`, after the `gobject-introspection-1.0` dependency lines. Avahi and `linux` for the desktop walk and publish.
+
+```meson
+  ocrpc_deps += dependency('avahi-gobject')
+  ocrpc_vapi_pkgs += '--pkg=avahi-gobject'
+  ocrpc_vapi_pkgs += '--pkg=linux'
+  ocrpc_vapi_gen_pkgs += ['--pkg', 'avahi-gobject']
+  ocrpc_vapi_gen_pkgs += ['--pkg', 'linux']
+```
+
+#### Remove — the desktop Linux socket source list.
+
+```meson
+  transport_socket_src = files(['Transport/SocketListen.vala'])
+```
+
+#### Replace with — same list, plus the publish.
+
+```meson
+  transport_socket_src = files([
+    'Transport/SocketListen.vala',
+    'Transport/PairPublish.vala',
+  ])
+```
+
+### 4. `docs/meson.build` — valadoc inputs
+
+**Why:** New `libocrpc` sources are listed by path for valadoc.
+
+**Where:** after `'../libocrpc/ClientBoot.vala'`.
+
+**Depends on:** §1, §2.
+
+#### Add — after `'../libocrpc/ClientBoot.vala'`.
+
+```meson
+    '../libocrpc/Transport/PairPublish.vala',
+```
+
+### 5. `ollmapp/SettingsDialog/FileServerRow.vala` — **All** stores `0.0.0.0`
+
+**Why:** The SSL host dropdown uses the RPC list and adds **All**. Choosing it writes `0.0.0.0` into `filesd.socket`. HTTPS is unchanged. `running` is the daemon check this row already makes, so the pairing button can read it.
+
+**Where:** drop `addresses` and `ifaces`. `load_config` fills the dropdowns. `apply_config` maps **All**.
+
+**Depends on:** §1.
+
+#### Remove — field `addresses` and its docblock.
+
+```vala
+		/**
+		 * IPv4 addresses on interfaces that are up.
+		 *
+		 * Filled by {@link ifaces}. Skips ''0.0.0.0'' and
+		 * ''127.0.0.1''.
+		 */
+		private string[] addresses = {};
+```
+
+#### Add — property, on the line after `public OLLMchat.Settings.Filesd filesd { get; private set; }`. True after `load_config` when the daemon accepts a connection.
+
+```vala
+		/**
+		 * True when the files daemon accepts a connection.
+		 *
+		 * Set at the end of {@link load_config} from
+		 * {@link OLLMrpc.ClientBoot.connectable}.
+		 */
+		public bool running { get; private set; default = false; }
+```
+
+#### Remove — docblock sentence that the SSL host list matches HTTPS.
+
+```vala
+		 * SSL listen IP. Same list as HTTPS. Neither includes
+		 * ''127.0.0.1''.
+```
+
+#### Replace with — SSL host list is the RPC walk plus **All**.
+
+```vala
+		 * SSL listen IP. {@link OLLMrpc.Transport.TcpListen.ifaces} plus ''All''.
+		 * ''All'' stores ''0.0.0.0''.
+```
+
+#### Remove — `ifaces`. The walk now lives on `OLLMrpc.Transport.TcpListen`.
+
+```vala
+		/**
+		 * List this machine's IPv4 addresses into {@link addresses}.
+		 *
+		 * Returns when {@link addresses} is already filled, and
+		 * when ''getifaddrs'' is not zero. Up interfaces only.
+		 * Skips ''0.0.0.0'', ''127.0.0.1'', and duplicates.
+		 * HTTPS and the local network socket both use this list.
+		 */
+		private void ifaces()
+		{
+			if (this.addresses.length > 0) {
+				return;
+			}
+			Linux.Network.IfAddrs addrs;
+			if (Linux.Network.getifaddrs(out addrs) != 0) {
+				return;
+			}
+			string[] found = {};
+			for (unowned var iface = addrs; iface != null; iface = iface.ifa_next) {
+				if (iface.ifa_addr == null) {
+					continue;
+				}
+				if (iface.ifa_addr.sa_family != Posix.AF_INET) {
+					continue;
+				}
+				if ((iface.ifa_flags & Linux.Network.IfFlag.UP) == 0) {
+					continue;
+				}
+				var sin = (Posix.SockAddrIn*) iface.ifa_addr;
+				var buf = new uint8[Posix.INET_ADDRSTRLEN];
+				var ip = Posix.inet_ntop(Posix.AF_INET, &sin.sin_addr, buf);
+				if (ip == null || ip == "" || ip == "0.0.0.0" || ip == "127.0.0.1") {
+					continue;
+				}
+				var seen = false;
+				foreach (var existing in found) {
+					if (existing != ip) {
+						continue;
+					}
+					seen = true;
+					break;
+				}
+				if (seen) {
+					continue;
+				}
+				found += ip;
+			}
+			this.addresses = found;
+		}
+```
+
+#### Remove — `load_config` list fill, from `this.ifaces()` through the SSL dropdown `selected` assignment.
+
+```vala
+			this.ifaces();
+			var ips = this.addresses[0:this.addresses.length];
+			var ssl_ips = this.addresses[0:this.addresses.length];
+```
+
+#### Replace with — HTTPS uses the RPC list. SSL puts **All** first. A saved `0.0.0.0` selects **All**.
+
+```vala
+			var found = OLLMrpc.Transport.TcpListen.ifaces();
+			var ips = found[0:found.length];
+			string[] ssl_ips = { "All" };
+			foreach (var ip in found) {
+				ssl_ips += ip;
+			}
+```
+
+#### Remove — SSL dropdown selection that appends an unknown host, including `0.0.0.0`.
+
+```vala
+			if (ssl_ips.length > 0) {
+				var ssl_selected = Gtk.INVALID_LIST_POSITION;
+				for (var i = 0; i < ssl_ips.length; i++) {
+					if (ssl_ips[i] != socket_host) {
+						continue;
+					}
+					ssl_selected = i;
+					break;
+				}
+				if (socket_host != "" && ssl_selected == Gtk.INVALID_LIST_POSITION) {
+					ssl_ips += socket_host;
+					ssl_selected = ssl_ips.length - 1;
+				}
+				this.ssl_host_dropdown.model = new Gtk.StringList(ssl_ips);
+				this.ssl_host_dropdown.selected = ssl_selected;
+			}
+```
+
+#### Replace with — `0.0.0.0` selects **All**. Any other saved host that is not in the list is still appended.
+
+```vala
+			if (ssl_ips.length > 0) {
+				var ssl_selected = Gtk.INVALID_LIST_POSITION;
+				if (socket_host == "0.0.0.0") {
+					ssl_selected = 0;
+				}
+				for (var i = 0; i < ssl_ips.length; i++) {
+					if (ssl_ips[i] != socket_host) {
+						continue;
+					}
+					ssl_selected = i;
+					break;
+				}
+				if (socket_host != "" && socket_host != "0.0.0.0"
+					&& ssl_selected == Gtk.INVALID_LIST_POSITION) {
+					ssl_ips += socket_host;
+					ssl_selected = ssl_ips.length - 1;
+				}
+				this.ssl_host_dropdown.model = new Gtk.StringList(ssl_ips);
+				this.ssl_host_dropdown.selected = ssl_selected;
+			}
+```
+
+#### Add — in `load_config`, on the line after `var up = boot.connectable();`. The pairing button reads this.
+
+```vala
+			this.running = up;
+```
+
+#### Add — in `apply_config`, on the line after the `ssl_item` null check that sets `ssl_host`. **All** is stored as `0.0.0.0`.
+
+```vala
+			if (ssl_host == "All") {
+				ssl_host = "0.0.0.0";
+			}
+```
+
+### 6. `ollmapp/SettingsDialog/PairingDialog.vala` — publish while the dialog is open
+
+**Why:** Pair mode is this dialog. Opening it publishes the listen-choice addresses. A false return or {@link OLLMrpc.Transport.PairPublish.failed} toasts. Closing the dialog, or the minute ending, withdraws the broadcast.
+
+**Where:** constructor, `open`, and the `closed` handler.
+
+**Depends on:** §1, §2, §5.
+
+#### Add — field, on the line after `public Adw.ToastOverlay toast_overlay { get; construct; }`. The page owns the dialog. The dialog reads toasts, the listen socket, and the parent window from that page.
+
+```vala
+		/**
+		 * Connections tab that owns this dialog.
+		 *
+		 * Toasts, the listen socket, and the parent window
+		 * are read from this page.
+		 */
+		private unowned ConnectionsPage page;
+
+		private OLLMrpc.Transport.PairPublish publish;
+```
+
+#### Remove
+
+```vala
+		public PairingDialog(Adw.ToastOverlay toast_overlay)
+		{
+			Object(toast_overlay: toast_overlay, title: "Allow New Device");
+```
+
+#### Replace with — the connections page, not the overlay and the listen settings as separate arguments.
+
+```vala
+		public PairingDialog(ConnectionsPage page)
+		{
+			Object(title: "Allow New Device");
+			this.page = page;
+			this.publish = new OLLMrpc.Transport.PairPublish();
+			this.publish.failed.connect(() => {
+				this.page.toast_overlay.add_toast(new Adw.Toast(
+					"Could not publish the pairing service"));
+			});
+```
+
+#### Add — inside the existing `closed` handler, on the line after `this.pairing = false;`. Withdraws the broadcast when the dialog closes.
+
+```vala
+				this.publish.stop();
+```
+
+#### Add — in `open`, on the line after `this.pairing = true;`. One address, or every address when the socket host is `0.0.0.0`. `open` takes no parent; it presents on `this.page.dialog`.
+
+```vala
+			var socket = this.page.dialog.app.config.filesd.socket;
+			var colon = socket.last_index_of(":");
+			if (colon > 0) {
+				var host = socket.substring(0, colon);
+				var parsed = 0;
+				int.try_parse(socket.substring(colon + 1), out parsed);
+				if (parsed >= 1024 && parsed <= 65535) {
+					string[] addrs = {};
+					if (host == "0.0.0.0") {
+						addrs = OLLMrpc.Transport.TcpListen.ifaces();
+					}
+					if (host != "" && host != "0.0.0.0") {
+						addrs = { host };
+					}
+					this.publish.start(addrs, (uint16) parsed);
+				}
+			}
+```
+
+#### Add — in the timeout lambda, on the line after `this.pairing = false;`. The minute ending withdraws the broadcast before `close`.
+
+```vala
+				this.publish.stop();
+```
+
+### 7. `ollmapp/SettingsDialog/ConnectionsPage.vala` — button follows the server
+
+**Why:** **Allow New Device** is hidden until this page can set the file server up and that server is running. The button starts hidden. `load_config` shows it from `FileServerRow.running`. Android and Windows have no server row, so nothing sets it visible.
+
+**Where:** the button field, its constructor, the `PairingDialog` call, and `load_config`.
+
+**Depends on:** §5, §6.
+
+#### Add — field, on the line after `private PairingDialog pairing_dialog;`.
+
+```vala
+		private Gtk.Button allow_btn;
+```
+
+#### Remove
+
+```vala
+			this.pairing_dialog = new PairingDialog(this.toast_overlay);
+```
+
+#### Replace with
+
+```vala
+			this.pairing_dialog = new PairingDialog(this);
+```
+
+#### Remove
+
+```vala
+			var allow = new Gtk.Button() {
+				child = allow_box,
+				hexpand = true
+			};
+			allow.clicked.connect(() => {
+				this.pairing_dialog.open(this.dialog);
+			});
+			this.action_widget.append(allow);
+```
+
+#### Replace with — hidden until `load_config` sees the daemon up.
+
+```vala
+			this.allow_btn = new Gtk.Button() {
+				child = allow_box,
+				hexpand = true,
+				visible = false
+			};
+			this.allow_btn.clicked.connect(() => {
+				this.pairing_dialog.open();
+			});
+			this.action_widget.append(this.allow_btn);
+```
+
+#### Add — in `load_config`, inside the existing `#if !ANDROID && !G_OS_WIN32` block, on the line after `this.file_server_row.load_config();`.
+
+```vala
+			this.allow_btn.visible = this.file_server_row.running;
+```
 
 ---
 
-## Phase 3 — Registration response
+## Phase 3 and Phase 4
 
-### Goal
-
-- **🔷** `⏳` During the pairing window the phone submits a CSR and the 6-digit PIN on the TLS bin socket.
-- **🔷** `⏳` Server checks the PIN against the value from Phase 1.
-- **🔷** `⏳` Valid PIN: sign the CSR with the server CA key from disk, return that client certificate and the CA public certificate, and return the listen-choice address list from Phase 2 (one IP, or all).
-- **🔷** `⏳` Wrong PIN: refuse that attempt, leave pair mode on, leave the PIN unchanged, and toast **number rejected**. No pending row.
-- **🔷** `⏳` Expired window or pair mode off: reject the connection outright. Do not run registration. No pending row.
-- **🔷** `⏳` One successful pairing ends the window (Phase 1).
-
-### Notes
-
-- **ℹ️** Landed clients already hold a self-signed device cert and wait for Accept. This phase returns a server-signed cert instead. The phone does not get the CA private key.
-- **ℹ️** Already-approved `client_cert` rows stay the steady-state allow list. This plan does not describe wiping them.
-- **⏳** Code proposals after Phase 1’s gate shape is confirmed.
-
----
-
-## Phase 4 — Android discovery and route selection
-
-### Goal
-
-- **🔷** `⏳` **Add connection** on the phone shows **Listening for connection** and browses for the pairing service. No manual IP entry. The six-digit prompt waits until mDNS finds the server.
-- **💩** `⏳` Browse with Android `NsdManager` (`android.net.nsd`) through JNI, same pattern as `ollmapp/android/android-partial-wake-lock.c`. The service type is the one the Linux Avahi publisher registered. `Avahi.ServiceBrowser` does not run on the phone.
-- **🔷** `⏳` After discovery, prompt for the six digits.
-- **🔷** `⏳` Connect the TLS bin socket, send CSR + PIN, read the signed cert and the address list.
-- **🔷** `⏳` Store every returned address with the connection, including the VPN address and the local address.
-- **🔷** `⏳` On each app start, probe the stored addresses and connect to one that answers.
-  - 2-second timeout per address
-  - In the house or the office the local address answers
-  - Outside, the local network is absent, so the stored VPN address is the one that answers
-- **🔷** `⏳` Later RPC stays on that bin socket so server notifications have a live connection.
-
-### Notes
-
-- **ℹ️** `FileConnectionAdd` today asks for a URL and calls `request_registration` over HTTPS. This phase is the socket pairing path on Android (`FilesdClient.State.SOCKET`).
-- **ℹ️** `OLLMchat.Settings.FilesdClient` stores one `url` today. This phase stores the full address list beside that connection.
-- **ℹ️** [`RPC-8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) sent the phone to HTTPS when it left the LAN. This plan does not add that downgrade. Notifications need the socket.
-- **⏳** Code proposals after Phases 1–3 response fields are confirmed.
+- **ℹ️** PIN check, CSR, the registration response, and Android discovery are [`RPC-1.11.1-pin-registration-and-android.md`](RPC-1.11.1-pin-registration-and-android.md).
+- **🔷** `⏳` Phase 3 — CSR plus PIN on the TLS bin socket. Valid PIN returns the signed cert, the CA public certificate, and the listen-choice address list.
+- **🔷** `⏳` Phase 4 — Android **Add connection** browses for the pairing service, then stores every returned address and probes them on later starts.
 
 ---
 
@@ -457,11 +1076,10 @@ namespace OLLMapp.SettingsDialog
 ## LLM notes
 
 - **ℹ️** The PIN comes from `GLib.Random`. Do not replace it with an OS CSPRNG. The window is 60 seconds and the network is local.
-- **ℹ️** User RPC name is `register_client`. Tree name is `RPC-ClientCert.request_registration`. Gate the existing method. Do not add a parallel RPC until that rename is explicitly requested.
 - **ℹ️** Parent Phase 7 and **8.2.7** still say “no CSR, no pairing codes, admin approval, internet-facing daemon”. This file wins for new pairing work.
-- **ℹ️** Nginx WAN registration in `docs/filesd-behind-nginx-proxy.md` is the exposure this plan removes. Update that doc in the same change as the listener gate, not as a drive-by.
+- **ℹ️** The listener gate, the CSR response, and the Android browse are [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md).
 - **ℹ️** One completed pairing closes the window. Until Phase 5, another device needs **Allow New Device** on the desktop again. **Register a friend** is Phase 5 only.
 - **ℹ️** A wrong PIN does not regenerate the PIN and does not close the dialog. The user considered both and kept the same PIN for the rest of the minute. **number rejected** is an `Adw.Toast`, not dialog text and not an action-bar banner.
 - **ℹ️** Multi-select of specific interfaces is later. Implement one address or all interfaces only, on `filesd.socket`.
-- **ℹ️** Avahi stays on the Linux server as the mDNS publisher. The Android browser is `NsdManager` via JNI. Do not link `Avahi.ServiceBrowser` into the phone build.
+- **ℹ️** Avahi on this plan is the Linux publisher only. The phone browse is Phase 4 in [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md).
 - **ℹ️** Do not add an HTTPS registration or steady-state fallback in this plan. [`RPC-8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) still describes HTTPS outside the LAN. This file wins for pairing and for notifications.

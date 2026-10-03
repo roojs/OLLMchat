@@ -1,6 +1,6 @@
 #  8.2.8.7 — URGENT — File-daemon TCP socket on the LAN (TLS + registration)
 
-**Status:** **URGENT** — Phase 1 **✔️**. Phase 2 **✔️** (`SslListen` and `SslConnection`, one class per file). Desktop server rows are [`8.2.8.13`](RPC-8.2.8.13-filesd-desktop-server-rows.md). Windows is [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md), later.
+**Status:** **URGENT** — Phase 1 **✔️**. Phase 2 **✔️** (`SslListen` and `SslConnection`, one class per file). Desktop server rows are [`8.2.8.13`](done/RPC-8.2.8.13-DONE-filesd-desktop-server-rows.md). Windows is [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md), later.
 
 > **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
 
@@ -24,7 +24,7 @@
 - 🔷 LAN only. This path is **not** for the public internet: no nginx PROXY, no WAN registration, no reverse-proxy IP rewrite.
 - 🔷 The phone uses this socket on the home LAN and the office LAN. HTTPS is only for when the phone is outside those networks.
 - ℹ️ HTTPS remains the internet / proxy path (`[docs/filesd-behind-nginx-proxy.md](../filesd-behind-nginx-proxy.md)`).
-- ℹ️ Desktop server rows and the LAN client are [`8.2.8.13`](RPC-8.2.8.13-filesd-desktop-server-rows.md). Windows service and the Windows host list are [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md), later.
+- ℹ️ Desktop server rows are [`8.2.8.13`](done/RPC-8.2.8.13-DONE-filesd-desktop-server-rows.md) ✅. The LAN client is [`RPC-1.11`](RPC-1.11-URGENT-vpn-local-pin-pairing.md) Phase 4. Windows service and the Windows host list are [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md), later.
 
 ---
 
@@ -899,7 +899,7 @@ Manual ban updates both listeners.
 
 1. ✔️ Phase 1 — rename `enabled` to `https_enabled`. Add `ssl_enabled`. Unix stays up. Windows localhost TCP stays plaintext. No warning-only gate.
 2. ✔️ Phase 2 — `OLLMfilesd.SslListen` TLS bin on `filesd.socket`. Skip when the address is not a LAN `host:port`. Same `ClientCert` rows. No TLS on `127.0.0.1`. `TcpListen` stays plaintext. `SslConnection` is its own file.
-3. ⏳ Desktop server rows and the LAN client — [`8.2.8.13`](RPC-8.2.8.13-filesd-desktop-server-rows.md).
+3. ✅ Desktop server rows — [`8.2.8.13`](done/RPC-8.2.8.13-DONE-filesd-desktop-server-rows.md). The LAN client is [`RPC-1.11`](RPC-1.11-URGENT-vpn-local-pin-pairing.md) Phase 4.
 4. ⏳ Windows per-user service and the Windows host list — [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md), later.
 5. ℹ️ Windows localhost TCP stays a Running row. Changing its port is the bug log, not these plans.
 
@@ -913,7 +913,7 @@ Manual ban updates both listeners.
 - 🚫 Replacing HTTPS with TCP for WAN / Android-over-internet.
 - 🚫 Migrating the old `filesd.enabled` JSON key into `https_enabled`.
 - 🚫 Stopping `ollmfilesd` because `ssl_enabled` is on and `socket` is bad. Skip the SSL socket only.
-- 🚫 Desktop server rows or the LAN client in this file. That is [`8.2.8.13`](RPC-8.2.8.13-filesd-desktop-server-rows.md).
+- 🚫 Desktop server rows or the LAN client in this file. Those are [`8.2.8.13`](done/RPC-8.2.8.13-DONE-filesd-desktop-server-rows.md) and [`RPC-1.11`](RPC-1.11-URGENT-vpn-local-pin-pairing.md).
 - 🚫 A Windows per-user service or a Windows host list here. That is [`8.2.8.14`](RPC-8.2.8.14-LATER-filesd-windows-desktop-server.md).
 - 🚫 New CLI flags for listen host/port (config object already exists).
 - 🚫 Wrapping `TcpListen` for the local network SSL server. That class stays plaintext.

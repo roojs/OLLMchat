@@ -29,17 +29,22 @@ namespace OLLMapp.SettingsDialog
 	 * == Example ==
 	 *
 	 * {{{
-	 * var pair = new OLLMapp.SettingsDialog.PairingDialog(overlay);
-	 * pair.open(window);
+	 * var pair = new OLLMapp.SettingsDialog.PairingDialog(page);
+	 * pair.open();
 	 * pair.rejected();
 	 * }}}
 	 */
 	public class PairingDialog : Adw.Dialog
 	{
 		/**
-		 * Overlay that shows ''number rejected''.
+		 * Connections tab that owns this dialog.
+		 *
+		 * Toasts, the listen socket, and the parent window
+		 * are read from this page.
 		 */
-		public Adw.ToastOverlay toast_overlay { get; construct; }
+		private unowned ConnectionsPage page;
+
+		private OLLMrpc.Transport.PairPublish publish;
 
 		/**
 		 * Six digits the phone must type. Empty until {@link open}.
@@ -57,11 +62,17 @@ namespace OLLMapp.SettingsDialog
 		private int remaining = 60;
 
 		/**
-		 * @param toast_overlay Connections-tab overlay for the toast
+		 * @param page Connections tab that owns this dialog
 		 */
-		public PairingDialog(Adw.ToastOverlay toast_overlay)
+		public PairingDialog(ConnectionsPage page)
 		{
-			Object(toast_overlay: toast_overlay, title: "Allow New Device");
+			Object(title: "Allow New Device");
+			this.page = page;
+			this.publish = new OLLMrpc.Transport.PairPublish();
+			this.publish.failed.connect(() => {
+				this.page.toast_overlay.add_toast(new Adw.Toast(
+					"Could not publish the pairing service"));
+			});
 			var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 12) {
 				margin_top = 24,
 				margin_bottom = 24,
@@ -87,15 +98,18 @@ namespace OLLMapp.SettingsDialog
 				GLib.Source.remove(this.tick_id);
 				this.tick_id = 0;
 				this.pairing = false;
+				this.publish.stop();
 			});
 		}
 
 		/**
 		 * Show a new PIN and start the sixty-second line.
 		 *
-		 * @param parent Widget the dialog is attached to
+		 * Host ''0.0.0.0'' publishes
+		 * {@link OLLMrpc.Transport.TcpListen.ifaces}. Any other
+		 * host publishes that one address.
 		 */
-		public void open(Gtk.Widget parent)
+		public void open()
 		{
 			if (this.tick_id != 0) {
 				GLib.Source.remove(this.tick_id);
@@ -107,7 +121,24 @@ namespace OLLMapp.SettingsDialog
 			this.remaining = 60;
 			this.line.fraction = 1;
 			this.pairing = true;
-			this.present(parent);
+			var socket = this.page.dialog.app.config.filesd.socket;
+			var colon = socket.last_index_of(":");
+			if (colon > 0) {
+				var host = socket.substring(0, colon);
+				var parsed = 0;
+				int.try_parse(socket.substring(colon + 1), out parsed);
+				if (parsed >= 1024 && parsed <= 65535) {
+					string[] addrs = {};
+					if (host == "0.0.0.0") {
+						addrs = OLLMrpc.Transport.TcpListen.ifaces();
+					}
+					if (host != "" && host != "0.0.0.0") {
+						addrs = { host };
+					}
+					this.publish.start(addrs, (uint16) parsed);
+				}
+			}
+			this.present(this.page.dialog);
 			this.tick_id = GLib.Timeout.add_seconds(1, () => {
 				this.remaining -= 1;
 				this.line.fraction = this.remaining / 60.0;
@@ -116,6 +147,7 @@ namespace OLLMapp.SettingsDialog
 				}
 				this.tick_id = 0;
 				this.pairing = false;
+				this.publish.stop();
 				this.close();
 				return false;
 			});
@@ -126,7 +158,7 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public void rejected()
 		{
-			this.toast_overlay.add_toast(new Adw.Toast("number rejected"));
+			this.page.toast_overlay.add_toast(new Adw.Toast("number rejected"));
 		}
 	}
 }

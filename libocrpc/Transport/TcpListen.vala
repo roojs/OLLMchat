@@ -94,5 +94,60 @@ namespace OLLMrpc.Transport
 			}
 			this.connections.clear();
 		}
+
+		/**
+		 * Up non-loopback IPv4 addresses on this machine.
+		 *
+		 * Skips ''0.0.0.0'', ''127.0.0.1'', and duplicates.
+		 * The SSL **All** choice is not an entry. The dropdown
+		 * adds that label itself.
+		 *
+		 * @return One string per address. Empty when this
+		 * platform has no ''getifaddrs'' or the call fails.
+		 */
+		public static string[] ifaces()
+		{
+#if ANDROID || G_OS_WIN32
+			string[] none = {};
+			return none;
+#else
+			Linux.Network.IfAddrs addrs;
+			if (Linux.Network.getifaddrs(out addrs) != 0) {
+				string[] none = {};
+				return none;
+			}
+			string[] found = {};
+			for (unowned var iface = addrs; iface != null; iface = iface.ifa_next) {
+				if (iface.ifa_addr == null) {
+					continue;
+				}
+				if (iface.ifa_addr.sa_family != Posix.AF_INET) {
+					continue;
+				}
+				if ((iface.ifa_flags & Linux.Network.IfFlag.UP) == 0) {
+					continue;
+				}
+				var sin = (Posix.SockAddrIn*) iface.ifa_addr;
+				var buf = new uint8[Posix.INET_ADDRSTRLEN];
+				var ip = Posix.inet_ntop(Posix.AF_INET, &sin.sin_addr, buf);
+				if (ip == null || ip == "" || ip == "0.0.0.0" || ip == "127.0.0.1") {
+					continue;
+				}
+				var seen = false;
+				foreach (var existing in found) {
+					if (existing != ip) {
+						continue;
+					}
+					seen = true;
+					break;
+				}
+				if (seen) {
+					continue;
+				}
+				found += ip;
+			}
+			return found;
+#endif
+		}
 	}
 }
