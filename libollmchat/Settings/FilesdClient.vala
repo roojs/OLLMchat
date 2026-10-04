@@ -32,6 +32,12 @@ namespace OLLMchat.Settings
 		public string url { get; set; default = ""; }
 
 		/**
+		 * Every ''host:port'' from the last successful pairing reply,
+		 * one per line. Empty when this phone has not paired.
+		 */
+		public string addresses { get; set; default = ""; }
+
+		/**
 		 * Connection state. JSON is the ordinal.
 		 *
 		 * 0 requested, 1 disabled, 2 enabled, 3 live, 4 unreachable,

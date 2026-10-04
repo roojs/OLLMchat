@@ -325,6 +325,7 @@ install_poc_java() {
   local dest_dir="$ROOT_DIR/.pixiewood/android/app/src/main/java/org/roojs/ollmchat/androidpoc"
   local java_root="$ROOT_DIR/.pixiewood/android/app/src/main/java"
   local wake_src="$ROOT_DIR/android/PartialWakeLock.java"
+  local browse_src="$ROOT_DIR/android/PairBrowse.java"
   local fg_src="$ROOT_DIR/android/StreamingForeground.java"
   local fgs_src="$ROOT_DIR/android/StreamingForegroundService.java"
   local wka_dir="$ROOT_DIR/subprojects/webkitgtk-android"
@@ -341,6 +342,11 @@ install_poc_java() {
   mkdir -p "$dest_dir"
   rm -f "$dest_dir/KeepScreenOn.java"
   cp -a "$wake_src" "$dest_dir/PartialWakeLock.java"
+  if [ ! -f "$browse_src" ]; then
+    echo "PairBrowse.java missing: $browse_src" >&2
+    exit 1
+  fi
+  cp -a "$browse_src" "$dest_dir/PairBrowse.java"
   cp -a "$fg_src" "$dest_dir/StreamingForeground.java"
   cp -a "$fgs_src" "$dest_dir/StreamingForegroundService.java"
 

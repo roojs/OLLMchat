@@ -30,6 +30,11 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public string? registered_url { get; private set; }
 
+		/**
+		 * Every ''host:port'' from the last pairing reply, one per line.
+		 */
+		public string registered_addresses { get; private set; default = ""; }
+
 		private Gtk.Entry url_entry;
 		private Gtk.Button request_button;
 		private Gtk.Spinner spinner;
@@ -60,24 +65,8 @@ namespace OLLMapp.SettingsDialog
 			var url_row = new Adw.ActionRow() {
 				title = "URL"
 			};
-#if ANDROID
-			var url_suffix = new Gtk.Box(Gtk.Orientation.VERTICAL, 4) {
-				halign = Gtk.Align.END
-			};
-			url_suffix.append(this.url_entry);
-			url_suffix.append(new Gtk.Label("Host:port or HTTPS URL of the desktop") {
-				wrap = true,
-				wrap_mode = Pango.WrapMode.WORD,
-				xalign = 1.0f,
-				justify = Gtk.Justification.RIGHT,
-				css_classes = {"dim-label"},
-				max_width_chars = 45
-			});
-			url_row.add_suffix(url_suffix);
-#else
 			url_row.subtitle = "Host:port or HTTPS URL of the desktop";
 			url_row.add_suffix(this.url_entry);
-#endif
 			this.group.add(url_row);
 
 			page.add(this.group);
@@ -122,6 +111,7 @@ namespace OLLMapp.SettingsDialog
 		public void show_add()
 		{
 			this.registered_url = null;
+			this.registered_addresses = "";
 			this.url_entry.text = "";
 			this.request_button.sensitive = false;
 		}
@@ -139,76 +129,6 @@ namespace OLLMapp.SettingsDialog
 			if (!url.has_prefix("https://")) {
 				url = "https://" + url;
 			}
-
-			this.request_button.sensitive = false;
-			this.spinner.spinning = true;
-			this.spinner.visible = true;
-			this.can_close = false;
-
-			var tls = new OLLMrpc.Transport.Cert() {
-				dir = GLib.Path.build_filename(
-					GLib.Environment.get_user_data_dir(), "ollmchat"),
-				cert_pem = "client.pem",
-				key_pem = "client-key.pem",
-				cn = "ollmchat-device",
-				product_ca_resource = true,
-			};
-			tls.ensure();
-			var http = new OLLMrpc.Transport.HttpClient(url) {
-				bin_body = true,
-				tls_certificate = tls.certificate,
-				tls_database = tls.trust
-			};
-			var os = GLib.Environment.get_os_info("PRETTY_NAME");
-			var requester = (os != null && os != "") ? os : "unknown OS";
-			GLib.debug("file connection request url=%s", url);
-			var finished = false;
-			var timeout_id = GLib.Timeout.add_seconds(15, () => {
-				if (finished) {
-					return false;
-				}
-				finished = true;
-				this.request_button.sensitive = true;
-				this.spinner.spinning = false;
-				this.spinner.visible = false;
-				GLib.debug("file connection request timed out");
-				this.error_occurred("Could not connect: timed out");
-				return false;
-			});
-			try {
-				yield http.call(new OLLMrpc.Request() {
-					method = "ClientCert.request_registration",
-					args = OLLMrpc.args("s", requester)
-				});
-			} catch (GLib.Error e) {
-				if (finished) {
-					return;
-				}
-				finished = true;
-				if (timeout_id != 0) {
-					GLib.Source.remove(timeout_id);
-				}
-				this.request_button.sensitive = true;
-				this.spinner.spinning = false;
-				this.spinner.visible = false;
-				GLib.debug("file connection request failed: %s", e.message);
-				this.error_occurred("Could not connect: " + e.message);
-				return;
-			}
-			if (finished) {
-				return;
-			}
-			finished = true;
-			if (timeout_id != 0) {
-				GLib.Source.remove(timeout_id);
-			}
-			this.can_close = true;
-			GLib.debug("file connection request ok");
-			this.registered_url = url;
-			this.request_button.sensitive = true;
-			this.spinner.spinning = false;
-			this.spinner.visible = false;
-			this.force_close();
 		}
 	}
 }

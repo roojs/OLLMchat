@@ -59,6 +59,7 @@ namespace OLLMapp.SettingsDialog
 		private FileConnectionAdd add_file_dialog;
 		private FileConnectionRow? file_connection_row;
 		private PairingDialog pairing_dialog;
+		private bool pair_wired = false;
 		private Gtk.Button allow_btn;
 #if !ANDROID && !G_OS_WIN32
 		private FileServerRow file_server_row;
@@ -177,14 +178,11 @@ namespace OLLMapp.SettingsDialog
 					return;
 				}
 				this.dialog.app.config.filesd_client.url = this.add_file_dialog.registered_url;
-				this.dialog.app.config.filesd_client.state = FilesdClient.State.REQUESTED;
+				this.dialog.app.config.filesd_client.addresses =
+					this.add_file_dialog.registered_addresses;
+				this.dialog.app.config.filesd_client.state = FilesdClient.State.SOCKET;
 				this.dialog.app.config.save();
 				this.render_file_connection();
-				this.toast_overlay.add_toast(new Adw.Toast(
-					"Registration pending — accept the request on the desktop"
-				) {
-					timeout = 5
-				});
 			});
 			this.add_file_dialog.error_occurred.connect((error_message) => {
 				this.toast_overlay.add_toast(new Adw.Toast(error_message) {
@@ -587,7 +585,8 @@ namespace OLLMapp.SettingsDialog
 		 * Fill Desktop server widgets from {@link OLLMchat.Settings.Config2.filesd}.
 		 *
 		 * Called when the settings dialog is shown, same moment as
-		 * {@link ToolsPage.load_configs}.
+		 * {@link ToolsPage.load_configs}. The first time a project
+		 * manager exists, this also listens for ''event.pair''.
 		 */
 		public void load_config()
 		{
@@ -595,6 +594,16 @@ namespace OLLMapp.SettingsDialog
 			this.file_server_row.load_config();
 			this.allow_btn.visible = this.file_server_row.running;
 #endif
+			if (this.pair_wired || this.dialog.parent.project_manager == null) {
+				return;
+			}
+			this.pair_wired = true;
+			this.dialog.parent.project_manager.notification.connect((notif) => {
+				if (notif.method != "event.pair") {
+					return;
+				}
+				this.pairing_dialog.result(notif.action);
+			});
 		}
 
 

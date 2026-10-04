@@ -459,46 +459,14 @@ namespace OLLMapp
 			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
 			var desktop_checked = false;
 			var desktop_reached = false;
-			if (config.filesd_client.url != ""
+			if (config.filesd_client.addresses != ""
 				&& (config.filesd_client.state == FilesdClient.State.ENABLED
 					|| config.filesd_client.state == FilesdClient.State.LIVE
 					|| config.filesd_client.state == FilesdClient.State.UNREACHABLE
 					|| config.filesd_client.state == FilesdClient.State.SOCKET)) {
 				desktop_checked = true;
 				this.startup_status_label.label = "Checking desktop environment…";
-				var tls = new OLLMrpc.Transport.Cert() {
-					dir = GLib.Path.build_filename(
-						GLib.Environment.get_user_data_dir(), "ollmchat"),
-					cert_pem = "client.pem",
-					key_pem = "client-key.pem",
-					cn = "ollmchat-device",
-					product_ca_resource = true,
-				};
-				tls.ensure();
-				var http = new OLLMrpc.Transport.HttpClient(config.filesd_client.url) {
-					bin_body = true,
-					tls_certificate = tls.certificate,
-					tls_database = tls.trust
-				};
-				http.soup.timeout = 15;
-				this.project_manager.replace_rpc(
-					new OLLMrpc.Client("", "", config.filesd_client.url) { 
-						http = http 
-					}
-				);
-				var hello = new OLLMrpc.Request() {
-					method = "RPC-Daemon.hello",
-					args = OLLMrpc.args("is", 1, "ollmchat")
-				};
-				desktop_reached = yield this.project_manager.rpc.connect(hello);
-				http.soup.timeout = 0;
-				if (!desktop_reached) {
-					var msg = this.project_manager.rpc.connect_error;
-					if (msg == "") {
-						msg = "could not reach the file server";
-					}
-					GLib.warning("%s", msg);
-				}
+				desktop_reached = yield this.probe_addresses(config);
 				this.startup_status_label.label = "Opening chat…";
 			}
 			this.project_manager.notification.connect((notif) => {
@@ -680,6 +648,109 @@ namespace OLLMapp
 				this.history_manager.agent_factories.size);
 
 			yield this.activate_session_and_sync_ui();
+		}
+
+		/**
+		 * Tries each stored host:port for 2 seconds.
+		 *
+		 * The url becomes the address whose hello succeeded.
+		 *
+		 * @return true when a hello succeeds
+		 */
+		private async bool probe_addresses(OLLMchat.Settings.Config2 config)
+		{
+			var tls = new OLLMrpc.Transport.Cert() {
+				dir = GLib.Path.build_filename(
+					GLib.Environment.get_user_data_dir(), "ollmchat"),
+				cert_pem = "client.pem",
+				key_pem = "client-key.pem",
+				cn = "ollmchat-device",
+				product_ca_resource = false
+			};
+			tls.ensure();
+			var lines = config.filesd_client.addresses.split("\n");
+			for (var i = 0; i < lines.length; i++) {
+				var line = lines[i].strip();
+				var colon = line.last_index_of(":");
+				if (colon <= 0) {
+					continue;
+				}
+				var port = 0;
+				if (!int.try_parse(line.substring(colon + 1), out port)) {
+					continue;
+				}
+				var host = line.substring(0, colon);
+				var client = new GLib.SocketClient();
+				client.timeout = 2;
+				GLib.SocketConnection conn;
+				try {
+					conn = yield client.connect_to_host_async(
+						host, (uint16) port, null);
+				} catch (GLib.Error e) {
+					GLib.warning("%s", e.message);
+					continue;
+				}
+				GLib.TlsClientConnection link;
+				try {
+					link = GLib.TlsClientConnection.@new(conn, null);
+				} catch (GLib.Error e) {
+					GLib.warning("%s", e.message);
+					continue;
+				}
+				link.certificate = tls.certificate;
+				link.database = tls.trust;
+				link.accept_certificate.connect((peer_cert, errors) => {
+					return peer_cert != null
+						&& (errors & ~GLib.TlsCertificateFlags.BAD_IDENTITY) == 0;
+				});
+				try {
+					link.handshake();
+				} catch (GLib.Error e) {
+					GLib.warning("%s", e.message);
+					continue;
+				}
+				OLLMrpc.Bin.Stream bin;
+				try {
+					bin = new OLLMrpc.Bin.Stream(
+						new GLib.DataInputStream(link.get_input_stream()),
+						new GLib.DataOutputStream(link.get_output_stream())
+					);
+				} catch (GLib.Error e) {
+					GLib.warning("%s", e.message);
+					continue;
+				}
+				try {
+					bin.write(new OLLMrpc.Request() {
+						method = "RPC-Daemon.hello",
+						args = OLLMrpc.args("is", 1, "ollmchat")
+					});
+				} catch (GLib.Error e) {
+					GLib.warning("%s", e.message);
+					continue;
+				}
+				OLLMrpc.Bin.Serializable parsed;
+				try {
+					parsed = bin.parse();
+				} catch (GLib.Error e) {
+					GLib.warning("%s", e.message);
+					continue;
+				}
+				var hello = parsed as OLLMrpc.Response;
+				if (hello == null) {
+					continue;
+				}
+				if (hello.error != null) {
+					continue;
+				}
+				if (hello.msg != "ok") {
+					continue;
+				}
+				config.filesd_client.url =
+					"tcp://" + host + ":" + port.to_string();
+				config.filesd_client.state = FilesdClient.State.SOCKET;
+				return true;
+			}
+			return false;
 		}
 	}
 

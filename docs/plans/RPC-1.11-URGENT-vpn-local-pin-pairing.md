@@ -2,7 +2,7 @@
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this plan.**
 
-**Status:** **URGENT** — Phases 1 and 2 agent-done. Phases 3–5 not started. Browse name is `_rpc._tcp.local`.
+**Status:** **URGENT** — Phases 1–3 agent-done. Phases 4 and 5 not started. Browse name is `_rpc._tcp.local`.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**. Proposed Vala follows `docs/coding-standards.md`.
 
@@ -26,7 +26,7 @@
 - **🔷** The registration authority is the server. Its CA private key is generated on the server and stored on the filesystem. The distribution does not ship that public or private key.
 - **🔷** Registration does not need a valid client certificate, and it does not need the CA installed on the phone. That install is the gateway problem this avoids.
 - **🔷** HTTPS is not a downgrade path and not the out-of-LAN fallback in this plan.
-- **ℹ️** Phases 1 and 2 are in this file. Phases 3 and 4 are [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md). Phase 5 stays here and is later.
+- **ℹ️** Phases 1 and 2 are in this file. Phase 3 is [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md). Phase 4 is [`RPC-1.11.2`](RPC-1.11.2-android-discovery-and-pair-cli.md). Phase 5 stays here and is later.
 - **ℹ️** Landed registration is always-on `ClientCert.request_registration` plus desktop Accept / Reject / Ban. This plan is the replacement for that open path.
 - **ℹ️** Prior write-up [`RPC-8.2.7`](RPC-8.2.7-client-cert-registration.md) and parent Phase 7 described admin approval with no PIN and no CSR. This plan is the newer requirement.
 
@@ -108,9 +108,10 @@
 
 1. ✔️ Phase 1 — `PairingDialog` on the GTK server
 2. ✔️ Phase 2 — Listen on one interface or all, then mDNS advertise
-3. Phase 3 — PIN check, CSR, signed cert, address list — [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md)
-4. Phase 4 — Android discovery, PIN prompt, route probe — [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md)
-5. Phase 5 — **Register a friend** (later, not urgent)
+3. ✔️ Phase 3 — PIN check, CSR, signed cert, address list — [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md)
+4. Phase 4 — Android discovery, route probe, and a command-line pairing check — [`RPC-1.11.2`](RPC-1.11.2-android-discovery-and-pair-cli.md)
+5. TCP client handover — the socket stays open, then the HTTP client goes — [`RPC-1.11.3`](RPC-1.11.3-tcp-client-handover.md)
+6. Phase 5 — **Register a friend** (later, not urgent)
 
 ---
 
@@ -127,7 +128,7 @@
 - **🔷** `✔️` Pair mode on starts a 60-second `GLib.Timeout`.
 - **🔷** `✔️` `rejected()` toasts **number rejected** and leaves the dialog and PIN up. Nothing calls it until a wrong PIN arrives from the server.
 - **🔷** `✔️` The dialog closes when the timeout fires, and `pairing` turns off. Closing when a device finishes pairing waits on the registration response (Phase 3).
-- **🔷** `⏳` Pair mode off stops the mDNS broadcast and rejects a non-registered connection outright. Registration does not start.
+- **🔷** `✔️` Pair mode off stops the mDNS broadcast and rejects a non-registered connection outright. Registration does not start.
 - **💩** The pasted draft said `register_client`. That is not a request to add a method.
 - **ℹ️** The live method is `ClientCert.request_registration`. Gate that method. A second method name needs a separate decision (see **LLM notes**).
 - **🔷** `✔️` Generate the six digits with `GLib.Random`. A 60-second PIN on the local network does not need a cryptographic generator.
@@ -1049,9 +1050,9 @@ namespace OLLMrpc.Transport
 
 ## Phase 3 and Phase 4
 
-- **ℹ️** PIN check, CSR, the registration response, and Android discovery are [`RPC-1.11.1-pin-registration-and-android.md`](RPC-1.11.1-pin-registration-and-android.md).
-- **🔷** `⏳` Phase 3 — CSR plus PIN on the TLS bin socket. Valid PIN returns the signed cert, the CA public certificate, and the listen-choice address list.
-- **🔷** `⏳` Phase 4 — Android **Add connection** browses for the pairing service, then stores every returned address and probes them on later starts.
+- **ℹ️** Phase 3 is [`RPC-1.11.1-pin-registration-and-android.md`](RPC-1.11.1-pin-registration-and-android.md). Phase 4 is [`RPC-1.11.2-android-discovery-and-pair-cli.md`](RPC-1.11.2-android-discovery-and-pair-cli.md).
+- **🔷** `✔️` Phase 3 — CSR plus PIN on the TLS bin socket. Valid PIN returns the signed cert, the CA public certificate, and the listen-choice address list.
+- **🔷** `⏳` Phase 4 — A command-line program checks that pairing reply. Android **Add connection** browses for the pairing service, then stores every returned address and probes them on later starts.
 
 ---
 

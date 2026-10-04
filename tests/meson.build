@@ -313,6 +313,16 @@ test_rpc_filesd_http_client = executable('test-rpc-filesd-http-client',
     '--pkg=libsoup-3.0',
   ],
 )
+test_rpc_filesd_pair = executable('test-rpc-filesd-pair',
+  'rpc/filesd-pair-test.vala',
+  dependencies: rpc_test_deps + [
+    rpc_test_app_dep,
+  ],
+  link_with: rpc_test_link_with,
+  build_rpath: rpc_test_build_rpath,
+  export_dynamic: true,
+  vala_args: rpc_test_vala_args,
+)
 test_rpc_gi = executable('test-rpc-gi',
   'rpc/gi-test.vala',
   dependencies: rpc_test_deps + [

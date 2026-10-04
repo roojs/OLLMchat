@@ -39,6 +39,16 @@ namespace OLLMfilesd
 	public class SslListen : GLib.Object
 	{
 		public OllmfilesdApplication app { get; private set; }
+
+		/**
+		 * Six-digit PIN while the pairing window is open.
+		 *
+		 * Empty when the window is closed. The handshake then
+		 * requires a client certificate. While this is set, a
+		 * phone with no certificate can connect and send the PIN.
+		 */
+		public string pin { get; set; default = ""; }
+
 		public Gee.ArrayList<string> banned_ips {
 			get; set; default = new Gee.ArrayList<string>();
 		}
@@ -162,9 +172,18 @@ namespace OLLMfilesd
 					GLib.warning("ssl accept failed: %s", e.message);
 					return true;
 				}
-				tls.authentication_mode = GLib.TlsAuthenticationMode.REQUESTED;
+				tls.authentication_mode = GLib.TlsAuthenticationMode.REQUIRED;
+				if (this.pin != "") {
+					tls.authentication_mode = GLib.TlsAuthenticationMode.REQUESTED;
+				}
 				tls.accept_certificate.connect((peer_cert, errors) => {
-					return true;
+					if (this.pin != "") {
+						return true;
+					}
+					if (peer_cert == null) {
+						return false;
+					}
+					return (errors & ~GLib.TlsCertificateFlags.BAD_IDENTITY) == 0;
 				});
 				tls.handshake_async.begin(GLib.Priority.DEFAULT, null, (obj, res) => {
 					try {

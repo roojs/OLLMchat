@@ -68,10 +68,23 @@ namespace OLLMrpc.Transport
 			}
 			this.addresses = addresses;
 			this.port = port;
-			var fresh = this.client == null;
-			if (fresh) {
+			if (this.client == null) {
 				var client = new Avahi.Client(Avahi.ClientFlags.NO_FAIL);
 				var group = new Avahi.EntryGroup();
+				try {
+					client.start();
+				} catch (Avahi.Error e) {
+					this.failed();
+					return false;
+				}
+				try {
+					group.attach(client);
+				} catch (Avahi.Error e) {
+					this.failed();
+					return false;
+				}
+				this.client = client;
+				this.group = group;
 				client.state_changed.connect((state) => {
 					if (state == Avahi.ClientState.FAILURE) {
 						this.failed();
@@ -85,25 +98,12 @@ namespace OLLMrpc.Transport
 					}
 					this.failed();
 				});
-				try {
-					group.attach(client);
-				} catch (Avahi.Error e) {
-					this.failed();
-					return false;
-				}
-				try {
-					client.start();
-				} catch (Avahi.Error e) {
-					this.failed();
-					return false;
-				}
-				this.client = client;
-				this.group = group;
 			}
 			if (this.client.state == Avahi.ClientState.FAILURE) {
+				this.failed();
 				return false;
 			}
-			if (fresh || this.client.state != Avahi.ClientState.S_RUNNING) {
+			if (this.client.state != Avahi.ClientState.S_RUNNING) {
 				return true;
 			}
 			if (this.commit()) {
@@ -147,7 +147,7 @@ namespace OLLMrpc.Transport
 			if (dot > 0) {
 				name = name.substring(0, dot);
 			}
-			var host = name + ".local";
+			var host = name + "-rpc.local";
 			if (this.up) {
 				try {
 					this.group.reset();

@@ -242,15 +242,6 @@ namespace OLLMapp
 
 			this.notification.connect((notif) => {
 				this.activity_banner.notification(notif);
-				if (notif.method == "event.client_cert") {
-					this.banner_queue.add("Pending device registration — open Settings → Connections");
-					if (this.tool_error_banner.revealed) {
-						return;
-					}
-					this.tool_error_banner.title = this.banner_queue.get(0);
-					this.tool_error_banner.revealed = true;
-					return;
-				}
 				if (notif.method == "Alert.show") {
 					var alert = new Adw.AlertDialog("Alert", notif.message);
 					alert.add_response("ok", "OK");

@@ -55,8 +55,8 @@ namespace OLLMfilesd
 		public override bool allow_request(OLLMrpc.Request request)
 		{
 			switch (request.method) {
-				case "ClientCert.pending_cert":
 				case "ClientCert.client_cert":
+				case "ClientCert.pair":
 					this.reply(request, new OLLMrpc.Response() {
 						error = new OLLMrpc.Error(
 							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "local admin only")

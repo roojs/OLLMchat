@@ -153,6 +153,62 @@ namespace OLLMrpc.Transport
 			if (!GLib.FileUtils.test(cert_path, GLib.FileTest.EXISTS)) {
 				this.create_pem_files(cert_path, key_path);
 			}
+			var csr_path = cert_path.substring(0, cert_path.last_index_of(".")) + ".csr";
+			if (!GLib.FileUtils.test(csr_path, GLib.FileTest.EXISTS)) {
+				var key_text = "";
+				try {
+					GLib.FileUtils.get_contents(key_path, out key_text);
+				} catch (GLib.Error e) {
+					GLib.error("read %s: %s", key_path, e.message);
+				}
+				var init_ret = GnuTLS.global_init();
+				if (init_ret < 0) {
+					GLib.error("gnutls_global_init: %s",
+						((GnuTLS.ErrorCode)init_ret).to_string());
+				}
+				var key = GnuTLS.X509.PrivateKey.create();
+				var key_datum = GnuTLS.Datum() {
+					data = (uint8[]) key_text.to_utf8(),
+					size = key_text.length
+				};
+				var key_imp = key.import(
+					ref key_datum, GnuTLS.X509.CertificateFormat.PEM);
+				if (key_imp < 0) {
+					GLib.error("key import: %s",
+						((GnuTLS.ErrorCode)key_imp).to_string());
+				}
+				var crq = GnuTLS.X509.CertificateRequest.create();
+				var crq_dn = crq.set_dn_by_oid(
+					"2.5.4.3", 0, this.cn, this.cn.length);
+				if (crq_dn < 0) {
+					GLib.error("crq set_dn: %s",
+						((GnuTLS.ErrorCode)crq_dn).to_string());
+				}
+				var crq_key = crq.set_key(key);
+				if (crq_key < 0) {
+					GLib.error("crq set_key: %s",
+						((GnuTLS.ErrorCode)crq_key).to_string());
+				}
+				var crq_sign = crq.sign2(key, GnuTLS.DigestAlgorithm.SHA256, 0);
+				if (crq_sign < 0) {
+					GLib.error("crq sign: %s",
+						((GnuTLS.ErrorCode)crq_sign).to_string());
+				}
+				var crq_len = (size_t)0;
+				crq.export(GnuTLS.X509.CertificateFormat.PEM, null, ref crq_len);
+				var crq_pem = new uint8[crq_len];
+				var crq_exp = crq.export(
+					GnuTLS.X509.CertificateFormat.PEM, crq_pem, ref crq_len);
+				if (crq_exp < 0) {
+					GLib.error("crq export: %s",
+						((GnuTLS.ErrorCode)crq_exp).to_string());
+				}
+				try {
+					GLib.FileUtils.set_contents(csr_path, (string) crq_pem);
+				} catch (GLib.Error e) {
+					GLib.error("write %s: %s", csr_path, e.message);
+				}
+			}
 
 			var trust_path = this.ca_pem_path;
 			if (trust_path == "") {
@@ -288,6 +344,33 @@ namespace OLLMrpc.Transport
 				GnuTLS.X509.CertificateFormat.PEM, crt_pem, ref crt_pem_len);
 			if (crt_exp < 0) {
 				GLib.error("crt_export: %s", ((GnuTLS.ErrorCode)crt_exp).to_string());
+			}
+			var csr_path = cert_path.substring(0, cert_path.last_index_of(".")) + ".csr";
+			var crq = GnuTLS.X509.CertificateRequest.create();
+			var crq_dn = crq.set_dn_by_oid("2.5.4.3", 0, this.cn, this.cn.length);
+			if (crq_dn < 0) {
+				GLib.error("crq set_dn: %s", ((GnuTLS.ErrorCode)crq_dn).to_string());
+			}
+			var crq_key = crq.set_key(key);
+			if (crq_key < 0) {
+				GLib.error("crq set_key: %s", ((GnuTLS.ErrorCode)crq_key).to_string());
+			}
+			var crq_sign = crq.sign2(key, GnuTLS.DigestAlgorithm.SHA256, 0);
+			if (crq_sign < 0) {
+				GLib.error("crq sign: %s", ((GnuTLS.ErrorCode)crq_sign).to_string());
+			}
+			var crq_len = (size_t)0;
+			crq.export(GnuTLS.X509.CertificateFormat.PEM, null, ref crq_len);
+			var crq_pem = new uint8[crq_len];
+			var crq_exp = crq.export(
+				GnuTLS.X509.CertificateFormat.PEM, crq_pem, ref crq_len);
+			if (crq_exp < 0) {
+				GLib.error("crq export: %s", ((GnuTLS.ErrorCode)crq_exp).to_string());
+			}
+			try {
+				GLib.FileUtils.set_contents(csr_path, (string) crq_pem);
+			} catch (GLib.Error e) {
+				GLib.error("write %s: %s", csr_path, e.message);
 			}
 			try {
 				GLib.FileUtils.set_contents(key_path, (string)key_pem);

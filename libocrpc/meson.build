@@ -164,6 +164,9 @@ ocrpc_src = ocrpc_core_src + files(['Client.vala']) + transport_socket_src + cli
 if is_windows
   ocrpc_src += files(['windows/CreatePipe.vala'])
 endif
+if is_android
+  ocrpc_src += files('android/PairPublish.vala')
+endif
 
 ocrpc_resources = gnome.compile_resources(
   'ollmrpc-resources',

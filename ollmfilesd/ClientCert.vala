@@ -21,9 +21,8 @@ namespace OLLMfilesd
 	/**
 	 * Client TLS certificate row + ''ClientCert'' handler.
 	 *
-	 * ''status'': ''0'' pending, ''1'' approved, ''-1'' IP ban, ''-2'' rejected
-	 * (kept for audit). Three ''-2'' rows from one IP within 30 days auto-bans
-	 * that IP for 30 days (''created'' on ban rows).
+	 * ''status'' ''1'' is an approved certificate. Pairing inserts that
+	 * row immediately. {@link client_cert} ''remove'' deletes it.
 	 * RPC singleton from {@link for_rpc}; plain rows from {@link query} have
 	 * no ''app''.
 	 *
@@ -41,8 +40,8 @@ namespace OLLMfilesd
 			OLLMrpc.Bin.register("ClientCert", typeof(ClientCert));
 			OLLMrpc.Request.add_class(
 				"ClientCert", typeof(ClientCert),
-				"request_registration", "s",
-				"pending_cert", "",
+				"request_registration", "sss",
+				"pair", "s",
 				"client_cert", "sx",
 				"approved_certs", ""
 			);
@@ -135,123 +134,215 @@ namespace OLLMfilesd
 			q.deleteWhere("WHERE status = $status AND created < $before", int_binds, null);
 		}
 
+		[CCode (cname = "gnutls_x509_crt_set_crq", cheader_filename = "gnutls/x509.h")]
+		private static extern int gnutls_x509_crt_set_crq(
+			GnuTLS.X509.Certificate crt,
+			GnuTLS.X509.CertificateRequest request
+		);
+
 		/**
-		 * Record this connection's client cert as pending registration.
+		 * Sign ''csr'' when ''pin'' matches {@link OLLMfilesd.SslListen.pin}.
 		 *
-		 * @param request inbound RPC (connection must be
-		 * {@link OLLMrpc.Transport.HttpReply})
-		 * @param requester best-effort device string sent by the client
+		 * The reply ''retval'' is a string array. Index 0 is the new
+		 * client certificate PEM. Index 1 is the CA certificate PEM.
+		 * Each later entry is a ''host:port'' for the listen choice.
+		 * A wrong PIN leaves the window up and writes no row.
+		 *
+		 * @param request inbound RPC on the TLS bin socket
+		 * @param pin six digits from the desktop dialog
+		 * @param csr PEM certificate request
+		 * @param requester best-effort device string
 		 */
-		public void request_registration(OLLMrpc.Request request, string requester)
-		{
-			var reply = request.connection as OLLMrpc.Transport.HttpReply;
-			if (reply == null) {
+		public void request_registration(
+			OLLMrpc.Request request,
+			string pin,
+			string csr,
+			string requester
+		) {
+			var rpc = request.connection as SslConnection;
+			if (rpc == null) {
 				request.reply(new OLLMrpc.Response() {
 					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "HTTPS registration only")
+						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "socket registration only")
 				});
 				return;
 			}
-			if (reply.cert_fingerprint == "") {
+			var listen = this.app.ssl_listen;
+			if (listen == null) {
 				request.reply(new OLLMrpc.Response() {
 					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "client certificate required")
+						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "SSL listener is off")
 				});
 				return;
 			}
-			var db = this.app.project_manager.db;
-			var q = ClientCert.query(db);
-			var int_binds = new Gee.HashMap<string, int>();
-			var text_binds = new Gee.HashMap<string, string>();
-			int_binds["status"] = 0;
-			int_binds["before"] = (int) (new GLib.DateTime.now_utc().to_unix() - (24 * 60 * 60));
-			q.deleteWhere("WHERE status = $status AND created < $before", int_binds, null);
-			var banned_ip = new Gee.ArrayList<ClientCert>();
-			int_binds["status"] = -1;
-			text_binds["ip"] = reply.client_ip;
-			q.selectWhere("WHERE status = $status AND ip = $ip", int_binds, text_binds, banned_ip);
-			if (banned_ip.size > 0) {
-				var ban_cutoff = new GLib.DateTime.now_utc().to_unix() - (30 * 24 * 60 * 60);
-				if (banned_ip.get(0).created < ban_cutoff) {
-					q.deleteId(banned_ip.get(0).id);
-				} else {
-					request.reply(new OLLMrpc.Response() {
-						error = new OLLMrpc.Error(
-							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "IP banned")
-					});
-					return;
-				}
-			}
-			var existing = new Gee.ArrayList<ClientCert>();
-			int_binds.clear();
-			text_binds.clear();
-			text_binds["fingerprint"] = reply.cert_fingerprint;
-			q.selectWhere("WHERE fingerprint = $fingerprint", int_binds, text_binds, existing);
-			if (existing.size > 0) {
-				var row = existing.get(0);
-				if (row.status != 0) {
-					request.reply(new OLLMrpc.Response() {
-						msg = "ok"
-					});
-					return;
-				}
-				row.created = new GLib.DateTime.now_utc().to_unix();
-				row.requester = requester;
-				q.updateById(row);
+			if (pin != listen.pin) {
 				this.app.broadcast(new OLLMrpc.Notification() {
-					method = "event.client_cert",
-					object_type = "ClientCert",
-					action = "request"
+					method = "event.pair",
+					action = "rejected"
 				});
-				request.reply(new OLLMrpc.Response() {
-					msg = "ok"
-				});
-				return;
-			}
-			var by_ip = new Gee.ArrayList<ClientCert>();
-			int_binds["status"] = 0;
-			text_binds["ip"] = reply.client_ip;
-			q.selectWhere("WHERE status = $status AND ip = $ip", int_binds, text_binds, by_ip);
-			if (by_ip.size >= 3) {
 				request.reply(new OLLMrpc.Response() {
 					error = new OLLMrpc.Error(
-						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST,
-						"too many pending registrations for this IP")
+						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "number rejected")
 				});
 				return;
 			}
-			var row = new ClientCert() {
-				fingerprint = reply.cert_fingerprint,
-				status = 0,
-				ip = reply.client_ip,
+			var init_ret = GnuTLS.global_init();
+			if (init_ret < 0) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error(
+						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "could not sign")
+				});
+				return;
+			}
+			var csr_datum = GnuTLS.Datum() {
+				data = csr,
+				size = csr.length
+			};
+			var crq = GnuTLS.X509.CertificateRequest.create();
+			if (crq.import(ref csr_datum, GnuTLS.X509.CertificateFormat.PEM) < 0) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error(
+						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "bad csr")
+				});
+				return;
+			}
+			var crt = GnuTLS.X509.Certificate.create();
+			if (gnutls_x509_crt_set_crq(crt, crq) < 0 || crt.set_version(3) < 0) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error(
+						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "bad csr")
+				});
+				return;
+			}
+			var serial = new uint8[16];
+			for (var i = 0; i < serial.length; i++) {
+				serial[i] = (uint8) GLib.Random.int_range(0, 256);
+			}
+			var now = (time_t) (GLib.get_real_time() / 1000000);
+			if (crt.set_serial(serial, serial.length) < 0
+				|| crt.set_activation_time(now) < 0
+				|| crt.set_expiration_time(now + (time_t) (3650 * 24 * 60 * 60)) < 0) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error(
+						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "could not sign")
+				});
+				return;
+			}
+			var tls_dir = GLib.Path.build_filename(this.app.data_dir, "tls");
+			var ca_pem = "";
+			var ca_key_pem = "";
+			try {
+				GLib.FileUtils.get_contents(
+					GLib.Path.build_filename(tls_dir, "ollmrpc-ca.pem"), out ca_pem);
+				GLib.FileUtils.get_contents(
+					GLib.Path.build_filename(tls_dir, "ollmrpc-ca-key.pem"), out ca_key_pem);
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error(
+						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "could not sign")
+				});
+				return;
+			}
+			var ca_datum = GnuTLS.Datum() {
+				data = ca_pem,
+				size = ca_pem.length
+			};
+			var key_datum = GnuTLS.Datum() {
+				data = ca_key_pem,
+				size = ca_key_pem.length
+			};
+			var ca_crt = GnuTLS.X509.Certificate.create();
+			var ca_key = GnuTLS.X509.PrivateKey.create();
+			if (ca_crt.import(ref ca_datum, GnuTLS.X509.CertificateFormat.PEM) < 0
+				|| ca_key.import(ref key_datum, GnuTLS.X509.CertificateFormat.PEM) < 0
+				|| crt.sign2(ca_crt, ca_key, GnuTLS.DigestAlgorithm.SHA256, 0) < 0) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error(
+						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "could not sign")
+				});
+				return;
+			}
+			var crt_len = (size_t) 0;
+			crt.export(GnuTLS.X509.CertificateFormat.PEM, null, ref crt_len);
+			var crt_buf = new uint8[crt_len];
+			if (crt.export(GnuTLS.X509.CertificateFormat.PEM, crt_buf, ref crt_len) < 0) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error(
+						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "could not sign")
+				});
+				return;
+			}
+			var crt_pem = (string) crt_buf;
+			var fingerprint = "";
+			try {
+				var issued = new GLib.TlsCertificate.from_pem(crt_pem, crt_pem.length);
+				fingerprint = GLib.Checksum.compute_for_data(
+					GLib.ChecksumType.SHA256, issued.certificate.data);
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error(
+						(int) OLLMrpc.RpcErrorCode.INTERNAL_ERROR, "could not sign")
+				});
+				return;
+			}
+			var q = ClientCert.query(this.app.project_manager.db);
+			q.insert(new ClientCert() {
+				fingerprint = fingerprint,
+				status = 1,
 				created = new GLib.DateTime.now_utc().to_unix(),
 				requester = requester
-			};
-			q.insert(row);
+			});
+			listen.pin = "";
+			var socket = this.app.config.filesd.socket;
+			var colon = socket.last_index_of(":");
+			var host = "";
+			var port_text = "";
+			if (colon > 0) {
+				host = socket.substring(0, colon);
+				port_text = socket.substring(colon + 1);
+			}
+			string[] packed = {};
+			packed += crt_pem;
+			packed += ca_pem;
+			if (host == "0.0.0.0") {
+				foreach (var ip in OLLMrpc.Transport.TcpListen.ifaces()) {
+					packed += ip + ":" + port_text;
+				}
+			}
+			if (host != "" && host != "0.0.0.0") {
+				packed += host + ":" + port_text;
+			}
 			this.app.broadcast(new OLLMrpc.Notification() {
-				method = "event.client_cert",
-				object_type = "ClientCert",
-				action = "request"
+				method = "event.pair",
+				action = "done"
 			});
 			request.reply(new OLLMrpc.Response() {
+				retval = OLLMrpc.val("as", packed),
 				msg = "ok"
 			});
 		}
 
 		/**
-		 * Newest pending client cert for the preferences banner.
+		 * Set {@link OLLMfilesd.SslListen.pin} from the desktop dialog.
 		 *
-		 * @param request inbound RPC (local Unix / bin)
+		 * Empty ''pin'' means the handshake requires a client
+		 * certificate. Unix socket only.
+		 *
+		 * @param request inbound RPC from the GTK app
+		 * @param pin six digits, or empty to close the window
 		 */
-		public void pending_cert(OLLMrpc.Request request)
+		public void pair(OLLMrpc.Request request, string pin)
 		{
-			var q = ClientCert.query(this.app.project_manager.db);
-			var rows = new Gee.ArrayList<ClientCert>();
-			var int_binds = new Gee.HashMap<string, int>();
-			int_binds["status"] = 0;
-			q.selectWhere("WHERE status = $status ORDER BY created DESC LIMIT 1", int_binds, null, rows);
+			var listen = this.app.ssl_listen;
+			if (listen == null) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error(
+						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "SSL listener is off")
+				});
+				return;
+			}
+			listen.pin = pin;
 			request.reply(new OLLMrpc.Response() {
-				retval = OLLMrpc.val("o", rows.size > 0 ? rows.get(0) : new ClientCert()),
 				msg = "ok"
 			});
 		}
@@ -280,8 +371,8 @@ namespace OLLMfilesd
 		/**
 		 * Mutate a client-cert row (local Unix / bin).
 		 *
-		 * ''action'': ''accept'' / ''reject'' / ''ban'' / ''remove''.
-		 * Retval ''true'' on success, ''false'' if not found / unknown action.
+		 * ''action'' is ''remove''. Retval ''true'' when that approved
+		 * row was deleted, ''false'' otherwise.
 		 *
 		 * @param request inbound RPC
 		 * @param action op indicator
@@ -291,119 +382,7 @@ namespace OLLMfilesd
 		{
 			var q = ClientCert.query(this.app.project_manager.db);
 			var int_binds = new Gee.HashMap<string, int>();
-			var text_binds = new Gee.HashMap<string, string>();
 			switch (action) {
-				case "accept":
-					var accept_rows = new Gee.ArrayList<ClientCert>();
-					int_binds["id"] = (int) id;
-					int_binds["status"] = 0;
-					q.selectWhere("WHERE id = $id AND status = $status", int_binds, null, accept_rows);
-					if (accept_rows.size == 0) {
-						request.reply(new OLLMrpc.Response() {
-							retval = OLLMrpc.val("b", false),
-							msg = "ok"
-						});
-						return;
-					}
-					accept_rows.get(0).status = 1;
-					accept_rows.get(0).ip = "";
-					q.updateById(accept_rows.get(0));
-					request.reply(new OLLMrpc.Response() {
-						retval = OLLMrpc.val("b", true),
-						msg = "ok"
-					});
-					return;
-
-				case "reject":
-					var reject_rows = new Gee.ArrayList<ClientCert>();
-					int_binds["id"] = (int) id;
-					int_binds["status"] = 0;
-					q.selectWhere("WHERE id = $id AND status = $status", int_binds, null, reject_rows);
-					if (reject_rows.size == 0) {
-						request.reply(new OLLMrpc.Response() {
-							retval = OLLMrpc.val("b", false),
-							msg = "ok"
-						});
-						return;
-					}
-					var rejected = reject_rows.get(0);
-					var reject_now = new GLib.DateTime.now_utc().to_unix();
-					rejected.status = -2;
-					rejected.created = reject_now;
-					q.updateById(rejected);
-					var recent_rejects = new Gee.ArrayList<ClientCert>();
-					text_binds["ip"] = rejected.ip;
-					int_binds["since"] = (int) (reject_now - (30 * 24 * 60 * 60));
-					q.selectWhere("WHERE status = -2 AND ip = $ip AND created > $since",
-						int_binds, text_binds, recent_rejects);
-					if (recent_rejects.size < 3 || rejected.ip == "") {
-						request.reply(new OLLMrpc.Response() {
-							retval = OLLMrpc.val("b", true),
-							msg = "ok"
-						});
-						return;
-					}
-					var auto_ban = new Gee.ArrayList<ClientCert>();
-					int_binds["status"] = -1;
-					q.selectWhere("WHERE status = $status AND ip = $ip", int_binds, text_binds, auto_ban);
-					if (auto_ban.size == 0) {
-						q.insert(new ClientCert() {
-							fingerprint = "ip:" + rejected.ip,
-							status = -1,
-							ip = rejected.ip,
-							created = reject_now
-						});
-					} else {
-						auto_ban.get(0).created = reject_now;
-						auto_ban.get(0).fingerprint = "ip:" + rejected.ip;
-						q.updateById(auto_ban.get(0));
-					}
-					if (this.app.https_listen != null
-						&& !this.app.https_listen.banned_ips.contains(rejected.ip)) {
-						this.app.https_listen.banned_ips.add(rejected.ip);
-					}
-					if (this.app.ssl_listen != null
-						&& !this.app.ssl_listen.banned_ips.contains(rejected.ip)) {
-						this.app.ssl_listen.banned_ips.add(rejected.ip);
-					}
-					GLib.debug("auto-banned IP %s after %d rejects in 30 days",
-						rejected.ip, recent_rejects.size);
-					request.reply(new OLLMrpc.Response() {
-						retval = OLLMrpc.val("b", true),
-						msg = "ok"
-					});
-					return;
-
-				case "ban":
-					var ban_rows = new Gee.ArrayList<ClientCert>();
-					int_binds["id"] = (int) id;
-					int_binds["status"] = 0;
-					q.selectWhere("WHERE id = $id AND status = $status", int_binds, null, ban_rows);
-					if (ban_rows.size == 0) {
-						request.reply(new OLLMrpc.Response() {
-							retval = OLLMrpc.val("b", false),
-							msg = "ok"
-						});
-						return;
-					}
-					ban_rows.get(0).status = -1;
-					ban_rows.get(0).fingerprint = "ip:" + ban_rows.get(0).ip;
-					ban_rows.get(0).created = new GLib.DateTime.now_utc().to_unix();
-					q.updateById(ban_rows.get(0));
-					if (this.app.https_listen != null && ban_rows.get(0).ip != ""
-						&& !this.app.https_listen.banned_ips.contains(ban_rows.get(0).ip)) {
-						this.app.https_listen.banned_ips.add(ban_rows.get(0).ip);
-					}
-					if (this.app.ssl_listen != null && ban_rows.get(0).ip != ""
-						&& !this.app.ssl_listen.banned_ips.contains(ban_rows.get(0).ip)) {
-						this.app.ssl_listen.banned_ips.add(ban_rows.get(0).ip);
-					}
-					request.reply(new OLLMrpc.Response() {
-						retval = OLLMrpc.val("b", true),
-						msg = "ok"
-					});
-					return;
-
 				case "remove":
 					var remove_rows = new Gee.ArrayList<ClientCert>();
 					int_binds["id"] = (int) id;

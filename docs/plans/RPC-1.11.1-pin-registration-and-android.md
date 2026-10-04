@@ -1,12 +1,12 @@
-# RPC-1.11.1 — PIN registration and Android discovery
+# RPC-1.11.1 — PIN registration
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this sub-plan** until it is done and archived.
 
-**Status:** proposed
+**Status:** Phase 3 agent-done.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**. Proposed Vala follows `docs/coding-standards.md`.
 
-**Parent:** [`RPC-1.11-URGENT-vpn-local-pin-pairing.md`](RPC-1.11-URGENT-vpn-local-pin-pairing.md) — Phases 3 and 4
+**Parent:** [`RPC-1.11-URGENT-vpn-local-pin-pairing.md`](RPC-1.11-URGENT-vpn-local-pin-pairing.md) — Phase 3
 
 **Depends on:** Phase 1 and Phase 2 of the parent (PIN dialog, listen choice, mDNS publish)
 
@@ -14,40 +14,39 @@
 
 ## Purpose
 
-- **🔷** `⏳` During the pairing window the phone submits a CSR and the 6-digit PIN on the TLS bin socket.
-- **🔷** `⏳` A valid PIN signs that CSR with the server CA and returns the signed cert, the CA public certificate, and the listen-choice address list.
-- **🔷** `⏳` Android **Add connection** finds that server over mDNS, then asks for the PIN. No typed IP.
-- **🔷** `⏳` The phone stores every returned address and, on later starts, connects to one that answers.
+- **🔷** `✔️` During the pairing window the phone submits a CSR and the 6-digit PIN on the TLS bin socket.
+- **🔷** `✔️` A valid PIN signs that CSR with the server CA and returns the signed cert, the CA public certificate, and the listen-choice address list.
+- **ℹ️** Android discovery, the address probe, and the command-line pairing check are [`RPC-1.11.2`](RPC-1.11.2-android-discovery-and-pair-cli.md).
 - **ℹ️** The PIN dialog, the 60-second window, **All** as `0.0.0.0`, and the `_rpc._tcp.local` publish are Phase 1 and Phase 2 of the parent.
 
 ---
 
-## Phase 3 — Registration response
+## Phase 3 — Registration response (`✔️`)
 
 ### Goal
 
-- **🔷** `⏳` During the pairing window the phone submits a CSR and the 6-digit PIN on the TLS bin socket.
-- **🔷** `⏳` Server checks the PIN against the value from Phase 1.
-- **🔷** `⏳` Valid PIN: sign the CSR with the server CA key from disk, return that client certificate and the CA public certificate, and return the listen-choice address list from Phase 2 (one IP, or all).
-- **🔷** `⏳` Wrong PIN: refuse that attempt, leave pair mode on, leave the PIN unchanged, and toast **number rejected**. No pending row.
-- **🔷** `⏳` Expired window or pair mode off: reject the connection outright. Do not run registration. No pending row.
-- **🔷** `⏳` One successful pairing ends the window (Phase 1).
+- **🔷** `✔️` During the pairing window the phone submits a CSR and the 6-digit PIN on the TLS bin socket.
+- **🔷** `✔️` Server checks the PIN against the value from Phase 1.
+- **🔷** `✔️` Valid PIN: sign the CSR with the server CA key from disk, return that client certificate and the CA public certificate, and return the listen-choice address list from Phase 2 (one IP, or all).
+- **🔷** `✔️` Wrong PIN: refuse that attempt, leave pair mode on, leave the PIN unchanged, and toast **number rejected**. No pending row.
+- **🔷** `✔️` Expired window or pair mode off: reject the connection outright. Do not run registration. No pending row.
+- **🔷** `✔️` One successful pairing ends the window (Phase 1).
 
 ### Notes
 
 - **ℹ️** The PIN is on `PairingDialog` in the GTK process. The TLS listener is `ollmfilesd`. The dialog sends the PIN to the daemon on the existing Unix RPC. An empty PIN is pair mode off.
 - **💩** That local call is `ClientCert.pair`. It is not a second registration method. `request_registration` stays the phone’s method.
 - **💩** A wrong PIN and a finished pairing notify the desktop as `event.pair` (`rejected` / `done`).
-- **🔷** `⏳` Delete the pending-registration calls. `pending_cert`, `client_cert` actions `accept` / `reject` / `ban`, and `event.client_cert` go away, and so does `RegistrationBanner`. A match inserts the row approved. `approved_certs` and `client_cert` action `remove` stay.
+- **🔷** `✔️` Delete the pending-registration calls. `pending_cert`, `client_cert` actions `accept` / `reject` / `ban`, and `event.client_cert` go away, and so does `RegistrationBanner`. A match inserts the row approved. `approved_certs` and `client_cert` action `remove` stay.
 - **ℹ️** This phase returns a server-signed cert and stores it approved. The phone does not get the CA private key.
 - **ℹ️** Already-approved `client_cert` rows stay the steady-state allow list. This plan does not describe wiping them.
 - **ℹ️** Signing uses the CA already on disk, `{data_dir}/tls/ollmrpc-ca.pem` and `ollmrpc-ca-key.pem`. Removing the bundled CA stays in the parent Certificates section.
 - **💩** If the dialog cannot hand the PIN to the daemon, the toast is **Could not start pairing**.
-- **💩** Names in the fences that this write-up chose: `pair`, `event.pair`, `arm`, `finish`, `pair_notice`.
+- **💩** Names in the fences that this write-up chose: `pair`, `event.pair`, `arm`, `finish`.
 
 Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surrounding context before applying.
 
-### 1. `ollmfilesd/SslListen.vala` — `pin`
+### ✔️ 1. `ollmfilesd/SslListen.vala` — `pin`
 
 **Why:** Pair mode is this string. Empty means the window is closed. While it is set, TLS accepts a client with no certificate. While it is empty, the handshake requires a client certificate and does not read the cert table.
 
@@ -95,7 +94,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 				});
 ```
 
-### 2. `ollmfilesd/ClientCert.vala` — `pair` and the registration reply
+### ✔️ 2. `ollmfilesd/ClientCert.vala` — `pair` and the registration reply
 
 **Why:** The phone’s existing method takes the PIN and the CSR. It runs only after §3 has let the call through, which is while a PIN is set. A match signs the CSR with the on-disk CA, stores the new cert approved, and returns that cert, the CA certificate, and the listen-choice addresses. A mismatch toasts and writes no row. HTTPS can no longer register.
 
@@ -583,7 +582,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 					return;
 ```
 
-### 3. `ollmfilesd/SslConnection.vala` — `pair` is local admin
+### ✔️ 3. `ollmfilesd/SslConnection.vala` — `pair` is local admin
 
 **Why:** An unknown client never reaches this method when the PIN is empty. §1 fails that handshake inside TLS. `request_registration` stays allowed on a connection that was accepted while the window was open. `pair` is local admin, same as `client_cert`. `pending_cert` is gone.
 
@@ -625,7 +624,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 			}
 ```
 
-### 4. `ollmfilesd/Https.vala` — HTTPS does not register
+### ✔️ 4. `ollmfilesd/Https.vala` — HTTPS does not register
 
 **Why:** Pairing is the TLS bin socket. HTTPS does not register, and it does not keep `pending_cert`.
 
@@ -674,7 +673,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 			}
 ```
 
-### 5. `ollmapp/SettingsDialog/PairingDialog.vala` — hand the PIN to the daemon
+### ✔️ 5. `ollmapp/SettingsDialog/PairingDialog.vala` — hand the PIN to the daemon
 
 **Why:** Opening the dialog arms the listener. Closing it, the minute ending, or one success clears the PIN and withdraws mDNS.
 
@@ -755,44 +754,25 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 		}
 ```
 
-### 6. `ollmapp/SettingsDialog/ConnectionsPage.vala` — toast or close
-
-**Why:** `event.pair` is how the daemon tells this page the PIN was wrong or a device finished.
-
-**Where:** new method after `load_config`.
-
-**Depends on:** §5.
-
-#### Add — method after `load_config`. `rejected` leaves the dialog up. `done` closes it.
-
-```vala
-		/**
-		 * Handle one pairing notification from the daemon.
-		 *
-		 * ''rejected'' toasts. ''done'' ends the window.
-		 *
-		 * @param action ''rejected'' or ''done''
-		 */
-		public void pair_notice(string action)
-		{
-			if (action == "rejected") {
-				this.pairing_dialog.rejected();
-				return;
-			}
-			if (action != "done") {
-				return;
-			}
-			this.pairing_dialog.finish();
-		}
-```
-
-### 7. `ollmapp/SettingsDialog/MainDialog.vala` — `event.pair`, no pending banner
+### ✔️ 6. `ollmapp/SettingsDialog/MainDialog.vala` — `event.pair`, no pending banner
 
 **Why:** `event.client_cert` and `RegistrationBanner` exist for the pending calls. Those calls are deleted. This socket hears `event.pair` instead.
 
-**Where:** the banner field and its construct, then the `registration_wired` block in `show_dialog`.
+**Where:** `ConnectionsPage.pairing_dialog` is public. Then the banner field and its construct, then the `registration_wired` block in `show_dialog`.
 
-**Depends on:** §6.
+**Depends on:** §5. The listener calls `PairingDialog` directly, so `ConnectionsPage.pairing_dialog` is not private.
+
+#### Remove — `ConnectionsPage`, the private dialog field.
+
+```vala
+		private PairingDialog pairing_dialog;
+```
+
+#### Replace with — the settings dialog can toast or close it.
+
+```vala
+		public PairingDialog pairing_dialog;
+```
 
 #### Remove — the banner field.
 
@@ -827,20 +807,27 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 			if (this.parent.project_manager != null && !this.registration_wired) {
 				this.registration_wired = true;
 				this.parent.project_manager.notification.connect((notif) => {
-					if (notif.method == "event.pair") {
-						this.connections_page.pair_notice(notif.action);
+					if (notif.method != "event.pair") {
+						return;
+					}
+					if (notif.action == "rejected") {
+						this.connections_page.pairing_dialog.rejected();
+						return;
+					}
+					if (notif.action == "done") {
+						this.connections_page.pairing_dialog.finish();
 					}
 				});
 			}
 ```
 
-### 8. Pending banner and the old phone call
+### ✔️ 7. Pending banner and the old phone call
 
 **Why:** `RegistrationBanner` only calls `pending_cert` and `client_cert` accept / reject / ban. `Window` shows a banner for `event.client_cert`. `FileConnectionAdd` posts the one-string HTTPS `request_registration`. None of those calls remain.
 
 **Where:** delete `ollmapp/SettingsDialog/RegistrationBanner.vala`. Drop its source line in `ollmapp/meson.build` and `docs/meson.build`. `Window.notification` and `FileConnectionAdd`.
 
-**Depends on:** §2, §7.
+**Depends on:** §2, §6.
 
 #### Remove — `ollmapp/meson.build`
 
@@ -944,33 +931,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 
 ---
 
-## Phase 4 — Android discovery and route selection
-
-### Goal
-
-- **🔷** `⏳` **Add connection** on the phone shows **Listening for connection** and browses for the pairing service. No manual IP entry. The six-digit prompt waits until mDNS finds the server.
-- **💩** `⏳` Browse with Android `NsdManager` (`android.net.nsd`) through JNI, same pattern as `ollmapp/android/android-partial-wake-lock.c`. The service type is the one the Linux Avahi publisher registered. `Avahi.ServiceBrowser` does not run on the phone.
-- **🔷** `⏳` After discovery, prompt for the six digits.
-- **🔷** `⏳` Connect the TLS bin socket, send CSR + PIN, read the signed cert and the address list.
-- **🔷** `⏳` Store every returned address with the connection, including the VPN address and the local address.
-- **🔷** `⏳` On each app start, probe the stored addresses and connect to one that answers.
-  - 2-second timeout per address
-  - In the house or the office the local address answers
-  - Outside, the local network is absent, so the stored VPN address is the one that answers
-- **🔷** `⏳` Later RPC stays on that bin socket so server notifications have a live connection.
-
-### Notes
-
-- **ℹ️** `FileConnectionAdd` today asks for a URL and calls `request_registration` over HTTPS. This phase is the socket pairing path on Android (`FilesdClient.State.SOCKET`).
-- **ℹ️** `OLLMchat.Settings.FilesdClient` stores one `url` today. This phase stores the full address list beside that connection.
-- **ℹ️** [`RPC-8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) sent the phone to HTTPS when it left the LAN. This plan does not add that downgrade. Notifications need the socket.
-- **ℹ️** `⏳` Code proposals after Phase 3 response fields are confirmed.
-
----
-
 ## LLM notes
 
 - **ℹ️** The pasted draft said `register_client`. The phone method stays `ClientCert.request_registration`, with the new arguments. `pending_cert`, accept / reject / ban, and `event.client_cert` are deleted, not left as a second path.
 - **ℹ️** Nginx WAN registration in `docs/filesd-behind-nginx-proxy.md` is the exposure this plan removes. Update that doc in the same change as the listener gate, not as a drive-by.
-- **ℹ️** Avahi stays on the Linux server as the mDNS publisher. The Android browser is `NsdManager` via JNI. Do not link `Avahi.ServiceBrowser` into the phone build.
-- **ℹ️** Do not add an HTTPS registration or steady-state fallback. [`RPC-8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md) still describes HTTPS outside the LAN. The parent wins for pairing and for notifications.

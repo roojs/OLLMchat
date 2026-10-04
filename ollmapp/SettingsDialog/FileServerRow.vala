@@ -398,6 +398,8 @@ namespace OLLMapp.SettingsDialog
 			ssl_ips.resize(n + 1);
 			ssl_ips.move(0, 1, n);
 			ssl_ips[0] = "All";
+			// resize+move drops the strv terminator; the slice puts it back.
+			ssl_ips = ssl_ips[0:n + 1];
 			var socket_host = "";
 			var socket_port = "";
 			var socket_colon = this.filesd.socket.last_index_of(":");

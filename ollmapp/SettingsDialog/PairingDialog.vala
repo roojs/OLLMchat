@@ -22,16 +22,17 @@ namespace OLLMapp.SettingsDialog
 	 * One-minute window that shows a PIN while a device pairs.
 	 *
 	 * {@link open} draws a new six-digit PIN and a line that counts
-	 * down from sixty seconds. {@link rejected} toasts
-	 * ''number rejected'' and leaves that PIN up. {@link pairing}
-	 * is true only while the dialog is open.
+	 * down from sixty seconds. {@link result} toasts
+	 * ''number rejected'' or closes after one device pairs.
+	 * The title bar closes the dialog. {@link pairing} is true
+	 * only while the dialog is open.
 	 *
 	 * == Example ==
 	 *
 	 * {{{
 	 * var pair = new OLLMapp.SettingsDialog.PairingDialog(page);
 	 * pair.open();
-	 * pair.rejected();
+	 * pair.result("rejected");
 	 * }}}
 	 */
 	public class PairingDialog : Adw.Dialog
@@ -73,7 +74,9 @@ namespace OLLMapp.SettingsDialog
 				this.page.toast_overlay.add_toast(new Adw.Toast(
 					"Could not publish the pairing service"));
 			});
-			var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 12) {
+			var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+			box.append(new Adw.HeaderBar());
+			var body = new Gtk.Box(Gtk.Orientation.VERTICAL, 12) {
 				margin_top = 24,
 				margin_bottom = 24,
 				margin_start = 24,
@@ -83,12 +86,13 @@ namespace OLLMapp.SettingsDialog
 				halign = Gtk.Align.CENTER,
 				css_classes = { "pairing-pin" }
 			};
-			box.append(this.pin_label);
+			body.append(this.pin_label);
 			this.line = new Gtk.ProgressBar() {
 				fraction = 1,
 				hexpand = true
 			};
-			box.append(this.line);
+			body.append(this.line);
+			box.append(body);
 			this.set_child(box);
 			this.set_content_width(560);
 			this.closed.connect(() => {
@@ -98,6 +102,7 @@ namespace OLLMapp.SettingsDialog
 				GLib.Source.remove(this.tick_id);
 				this.tick_id = 0;
 				this.pairing = false;
+				this.arm("");
 				this.publish.stop();
 			});
 		}
@@ -121,6 +126,7 @@ namespace OLLMapp.SettingsDialog
 			this.remaining = 60;
 			this.line.fraction = 1;
 			this.pairing = true;
+			this.arm(this.pin);
 			var socket = this.page.dialog.app.config.filesd.socket;
 			var colon = socket.last_index_of(":");
 			if (colon > 0) {
@@ -147,6 +153,7 @@ namespace OLLMapp.SettingsDialog
 				}
 				this.tick_id = 0;
 				this.pairing = false;
+				this.arm("");
 				this.publish.stop();
 				this.close();
 				return false;
@@ -154,11 +161,67 @@ namespace OLLMapp.SettingsDialog
 		}
 
 		/**
-		 * Toast ''number rejected''. The PIN and the dialog stay.
+		 * Apply one ''event.pair'' result.
+		 *
+		 * ''rejected'' toasts ''number rejected'' and leaves the PIN
+		 * up. ''done'' clears the daemon PIN, withdraws mDNS, and
+		 * closes.
+		 *
+		 * @param action ''rejected'' or ''done''
 		 */
-		public void rejected()
+		public void result(string action)
 		{
-			this.page.toast_overlay.add_toast(new Adw.Toast("number rejected"));
+			switch (action) {
+				case "rejected":
+					this.page.toast_overlay.add_toast(new Adw.Toast("number rejected"));
+					return;
+				case "done":
+					this.arm("");
+					this.publish.stop();
+					this.pairing = false;
+					if (this.tick_id != 0) {
+						GLib.Source.remove(this.tick_id);
+						this.tick_id = 0;
+					}
+					this.close();
+					return;
+				default:
+					return;
+			}
+		}
+
+		/**
+		 * Send ''pin'' to {@link OLLMfilesd.ClientCert.pair}.
+		 *
+		 * Empty clears the window. A failed arm while a PIN is
+		 * showing toasts ''Could not start pairing''.
+		 *
+		 * @param pin six digits, or empty
+		 */
+		private void arm(string pin)
+		{
+			var mgr = this.page.dialog.parent.project_manager;
+			if (mgr == null) {
+				if (pin == "") {
+					return;
+				}
+				this.page.toast_overlay.add_toast(new Adw.Toast("Could not start pairing"));
+				return;
+			}
+			mgr.rpc.call.begin(new OLLMrpc.Request() {
+				method = "ClientCert.pair",
+				args = OLLMrpc.args("s", pin)
+			}, (obj, res) => {
+				try {
+					mgr.rpc.call.end(res);
+				} catch (GLib.Error e) {
+					if (pin == "") {
+						return;
+					}
+					this.page.toast_overlay.add_toast(
+						new Adw.Toast("Could not start pairing"));
+				}
+			});
 		}
 	}
 }

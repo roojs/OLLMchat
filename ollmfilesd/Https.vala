@@ -21,10 +21,9 @@ namespace OLLMfilesd
 	/**
 	 * HTTPS RPC server with client-cert registration gate.
 	 *
-	 * Extends {@link OLLMrpc.Transport.HttpServer}. Unknown certs may only
-	 * call {@link ClientCert.request_registration}; registered certs pass
-	 * through. Call {@link listen} after construct to bind from ''filesd''
-	 * settings.
+	 * Extends {@link OLLMrpc.Transport.HttpServer}. Registration is the
+	 * TLS bin socket. Registered certs pass through. Call {@link listen}
+	 * after construct to bind from ''filesd'' settings.
 	 *
 	 * == Example ==
 	 *
@@ -133,8 +132,8 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * Gate HTTPS RPC: admin wires blocked; unknown certs may only
-		 * register; approved certs pass.
+		 * Gate HTTPS RPC: admin wires and registration stay off this
+		 * listener. Approved certs pass.
 		 *
 		 * @param reply HTTPS connection (client IP + cert fingerprint)
 		 * @param request inbound RPC
@@ -144,8 +143,8 @@ namespace OLLMfilesd
 			OLLMrpc.Transport.HttpReply reply, OLLMrpc.Request request)
 		{
 			switch (request.method) {
-				case "ClientCert.pending_cert":
 				case "ClientCert.client_cert":
+				case "ClientCert.pair":
 					reply.write(new OLLMrpc.Response() {
 						id = request.id,
 						error = new OLLMrpc.Error(
@@ -154,7 +153,12 @@ namespace OLLMfilesd
 					return false;
 			}
 			if (request.method == "ClientCert.request_registration") {
-				return true;
+				reply.write(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "socket registration only")
+				});
+				return false;
 			}
 			if (reply.cert_fingerprint == "") {
 				reply.write(new OLLMrpc.Response() {

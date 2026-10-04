@@ -62,8 +62,6 @@ namespace OLLMapp.SettingsDialog
 		 * Progress banner for pull operations (displayed above action widgets)
 		 */
 		private PullManagerBanner progress_banner;
-		private RegistrationBanner registration_banner;
-		private bool registration_wired = false;
 		
 		/**
 		 * Checking connection dialog (reused for connection verification)
@@ -124,8 +122,6 @@ namespace OLLMapp.SettingsDialog
 			// Add progress banner above action widgets (always visible when action bar area is visible)
 			this.action_bar_area.prepend(this.progress_banner);
 			this.progress_banner.visible = false;
-			this.registration_banner = new RegistrationBanner(this);
-			this.action_bar_area.prepend(this.registration_banner);
 			main_box.append(this.action_bar_area);
 			
 			// Set main box as dialog content
@@ -239,15 +235,6 @@ namespace OLLMapp.SettingsDialog
 
 			// Initialize progress bars for any existing active pulls
 			this.progress_banner.initialize_existing_pulls();
-			if (this.parent.project_manager != null && !this.registration_wired) {
-				this.registration_wired = true;
-				this.parent.project_manager.notification.connect((notif) => {
-					if (notif.method == "event.client_cert") {
-						this.registration_banner.refresh.begin();
-					}
-				});
-			}
-			this.registration_banner.refresh.begin();
 
 			// Switch to specified page if provided
 			if (page_name != null) {
