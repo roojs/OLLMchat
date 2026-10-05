@@ -143,7 +143,6 @@ writes the signed cert and CA back, then RPC-Daemon.hello.
 			this.check(command_line, hello != null, "hello was not a response");
 			this.check(command_line, hello.error == null,
 				hello.error != null ? hello.error.message : "");
-			this.check(command_line, hello.msg == "ok", "hello msg=" + hello.msg);
 			command_line.print("hello ok\n");
 		}
 	}

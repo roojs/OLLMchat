@@ -172,6 +172,7 @@ namespace OLLMfilesd
 					GLib.warning("ssl accept failed: %s", e.message);
 					return true;
 				}
+				tls.database = cert.trust;
 				tls.authentication_mode = GLib.TlsAuthenticationMode.REQUIRED;
 				if (this.pin != "") {
 					tls.authentication_mode = GLib.TlsAuthenticationMode.REQUESTED;

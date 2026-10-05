@@ -90,6 +90,7 @@ namespace OLLMapp
 			Gtk.Settings.get_default().gtk_icon_theme_name = "Adwaita";
 			AndroidToolsRegistration.init_config();
 			this.data_dir = GLib.Path.build_filename(app_private_files_dir(), "ollmchat");
+			OLLMrpc.rpc_register();
 			OLLMfiles.rpc_register();
 			ClientCert.rpc_register();
 			/* Config loads on window realize when XDG paths are ready. */

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Picks android/local-build.{office,local}.env from office storage presence,
-# or android/local-build.env if you create that gitignored override.
+# Standard layout is android/local-build.local.env (trees inside the clone).
+# Gitignored android/local-build.env is the one override when a machine keeps
+# those trees elsewhere. Paths in that file are canonicalized before Meson
+# sees the build directory.
 # shellcheck shell=bash
-
-OLLMCHAT_OFFICE_BUILD_ROOT="${OLLMCHAT_OFFICE_BUILD_ROOT:-/storage/Downloads/OLLMchat-build}"
 
 _ollmchat_android_build_env_file() {
   local root_dir="$1"
@@ -12,11 +12,14 @@ _ollmchat_android_build_env_file() {
     echo "$root_dir/android/local-build.env"
     return
   fi
-  if [ -d "$OLLMCHAT_OFFICE_BUILD_ROOT" ]; then
-    echo "$root_dir/android/local-build.office.env"
-    return
-  fi
   echo "$root_dir/android/local-build.local.env"
+}
+
+_ollmchat_canonicalize_dir() {
+  local path="$1"
+
+  mkdir -p "$path"
+  realpath "$path"
 }
 
 ensure_android_build_dirs() {
@@ -29,6 +32,27 @@ ensure_android_build_dirs() {
   # shellcheck source=/dev/null
   source "$env_file"
   set +a
+
+  if [ -n "${OLLMCHAT_ANDROID_SDK:-}" ]; then
+    OLLMCHAT_ANDROID_SDK="$(_ollmchat_canonicalize_dir "$OLLMCHAT_ANDROID_SDK")"
+    export OLLMCHAT_ANDROID_SDK
+  fi
+  if [ -n "${OLLMCHAT_PIXIEWOOD:-}" ]; then
+    OLLMCHAT_PIXIEWOOD="$(_ollmchat_canonicalize_dir "$OLLMCHAT_PIXIEWOOD")"
+    export OLLMCHAT_PIXIEWOOD
+  fi
+  if [ -n "${OLLMCHAT_ANDROID_TOOLS:-}" ]; then
+    OLLMCHAT_ANDROID_TOOLS="$(_ollmchat_canonicalize_dir "$OLLMCHAT_ANDROID_TOOLS")"
+    export OLLMCHAT_ANDROID_TOOLS
+  fi
+  if [ -n "${OLLMCHAT_JAVA_HOME:-}" ]; then
+    if [ ! -x "${OLLMCHAT_JAVA_HOME}/bin/java" ] || [ ! -x "${OLLMCHAT_JAVA_HOME}/bin/javac" ]; then
+      echo "OLLMCHAT_JAVA_HOME needs bin/java and bin/javac: ${OLLMCHAT_JAVA_HOME}" >&2
+      exit 1
+    fi
+    export JAVA_HOME="$OLLMCHAT_JAVA_HOME"
+    export PATH="$JAVA_HOME/bin:$PATH"
+  fi
 
   _ensure_android_build_link "$root_dir" .android-sdk "${OLLMCHAT_ANDROID_SDK:-}"
   _ensure_android_build_link "$root_dir" .pixiewood "${OLLMCHAT_PIXIEWOOD:-}"

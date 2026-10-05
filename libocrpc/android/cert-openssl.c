@@ -185,3 +185,55 @@ out:
   EVP_PKEY_free (pkey);
   return ok;
 }
+
+gboolean
+ocrpc_cert_write_csr (const gchar *key_path,
+                      const gchar *csr_path,
+                      const gchar *cn,
+                      GError **error)
+{
+  BIO *bio = NULL;
+  EVP_PKEY *pkey = NULL;
+  X509_REQ *req = NULL;
+  gboolean ok = FALSE;
+
+  bio = BIO_new_file (key_path, "r");
+  if (bio == NULL)
+    {
+      set_openssl_error (error, "key import");
+      goto out;
+    }
+  pkey = PEM_read_bio_PrivateKey (bio, NULL, NULL, NULL);
+  BIO_free (bio);
+  bio = NULL;
+  if (pkey == NULL)
+    {
+      set_openssl_error (error, "key import");
+      goto out;
+    }
+  req = X509_REQ_new ();
+  if (req == NULL
+      || X509_REQ_set_pubkey (req, pkey) != 1
+      || X509_NAME_add_entry_by_txt (X509_REQ_get_subject_name (req), "CN",
+                                     MBSTRING_ASC, (const unsigned char *) cn,
+                                     -1, -1, 0)
+             != 1
+      || X509_REQ_sign (req, pkey, EVP_sha256 ()) == 0)
+    {
+      set_openssl_error (error, "crq");
+      goto out;
+    }
+  bio = BIO_new_file (csr_path, "w");
+  if (bio == NULL || PEM_write_bio_X509_REQ (bio, req) != 1)
+    {
+      set_openssl_error (error, "crq export");
+      goto out;
+    }
+  ok = TRUE;
+
+out:
+  BIO_free (bio);
+  X509_REQ_free (req);
+  EVP_PKEY_free (pkey);
+  return ok;
+}

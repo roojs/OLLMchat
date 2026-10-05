@@ -5,11 +5,13 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=ensure-build-dirs.sh
 source "$ROOT_DIR/scripts/android/ensure-build-dirs.sh"
 ensure_android_build_dirs "$ROOT_DIR"
-ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ROOT_DIR/.android-sdk}"
+ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-${OLLMCHAT_ANDROID_SDK:-$ROOT_DIR/.android-sdk}}"
 PIXIEWOOD_MANIFEST="${PIXIEWOOD_MANIFEST:-$ROOT_DIR/android/pixiewood-shell-poc.xml}"
-PIXIEWOOD_DIR="${PIXIEWOOD_DIR:-$ROOT_DIR/.android-tools/gtk-android-builder}"
+PIXIEWOOD_DIR="${PIXIEWOOD_DIR:-${OLLMCHAT_ANDROID_TOOLS:-$ROOT_DIR/.android-tools}/gtk-android-builder}"
 PIXIEWOOD_ARCH="${PIXIEWOOD_ARCH:-aarch64}"
-PIXIEWOOD_BUILD_DIR="$ROOT_DIR/.pixiewood/bin-$PIXIEWOOD_ARCH"
+# Canonical directory from local-build.env when set. The in-clone symlink is
+# only a pointer; Meson relatives are computed from this path.
+PIXIEWOOD_BUILD_DIR="${OLLMCHAT_PIXIEWOOD:-$ROOT_DIR/.pixiewood}/bin-$PIXIEWOOD_ARCH"
 PIXIEWOOD="${PIXIEWOOD:-}"
 GTK_ANDROID_BUILDER_REVISION="${GTK_ANDROID_BUILDER_REVISION:-}"
 PIXIEWOOD_PHASE="${PIXIEWOOD_PHASE:-all}"
@@ -326,6 +328,7 @@ install_poc_java() {
   local java_root="$ROOT_DIR/.pixiewood/android/app/src/main/java"
   local wake_src="$ROOT_DIR/android/PartialWakeLock.java"
   local browse_src="$ROOT_DIR/android/PairBrowse.java"
+  local app_src="$ROOT_DIR/android/OllmApplication.java"
   local fg_src="$ROOT_DIR/android/StreamingForeground.java"
   local fgs_src="$ROOT_DIR/android/StreamingForegroundService.java"
   local wka_dir="$ROOT_DIR/subprojects/webkitgtk-android"
@@ -347,6 +350,11 @@ install_poc_java() {
     exit 1
   fi
   cp -a "$browse_src" "$dest_dir/PairBrowse.java"
+  if [ ! -f "$app_src" ]; then
+    echo "OllmApplication.java missing: $app_src" >&2
+    exit 1
+  fi
+  cp -a "$app_src" "$dest_dir/OllmApplication.java"
   cp -a "$fg_src" "$dest_dir/StreamingForeground.java"
   cp -a "$fgs_src" "$dest_dir/StreamingForegroundService.java"
 
@@ -370,6 +378,7 @@ patch_android_manifest() {
     echo "AndroidManifest missing: $manifest" >&2
     exit 1
   fi
+  sed -i 's/android:name="org.gtk.android.RuntimeApplication"/android:name="org.roojs.ollmchat.androidpoc.OllmApplication"/' "$manifest"
   if ! grep -q 'android.permission.WAKE_LOCK' "$manifest"; then
     sed -i '/android.permission.INTERNET/a\  <uses-permission android:name="android.permission.WAKE_LOCK"/>' "$manifest"
   fi

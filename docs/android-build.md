@@ -87,11 +87,17 @@ Build the debug APK locally with:
 scripts/android/build-chat-poc-apk.sh
 ```
 
-**Build trees outside the clone:** `scripts/android/ensure-build-dirs.sh` (run from
-the APK scripts) loads `android/local-build.office.env` when
-`/storage/Downloads/OLLMchat-build` exists, otherwise `android/local-build.local.env`
-(in-repo `.android-sdk/`, `.pixiewood/`, `.android-tools/`). Optional gitignored
-`android/local-build.env` overrides both.
+**Build trees outside the clone:** the standard layout is
+`android/local-build.local.env` (in-repo `.pixiewood/` and `.android-tools/`,
+SDK at `$HOME/Android/Sdk`). A machine that keeps those trees elsewhere has
+one gitignored file, `android/local-build.env`, setting `OLLMCHAT_ANDROID_SDK`,
+`OLLMCHAT_PIXIEWOOD`, and `OLLMCHAT_ANDROID_TOOLS`. Optional
+`OLLMCHAT_JAVA_HOME` points Gradle at a JDK 17 or newer (with `javac`)
+when `java` on `PATH` is older. `ensure-build-dirs.sh`
+canonicalizes those paths and passes the real build directory to Meson. The
+in-clone names stay symlinks to that directory. `glib-mkenums` in
+`android/pixiewood-extra.cross` uses `@GLOBAL_SOURCE_ROOT@` so the script is
+found from the clone when the build directory lives on another disk.
 
 `build-chat-poc-apk.sh` bootstraps the Android command-line SDK/NDK under
 `.android-sdk/` when needed, clones Pixiewood under `.android-tools/`, and runs

@@ -62,7 +62,8 @@ namespace OLLMapp.SettingsDialog
 			this.group.add(this.listen_label);
 			this.pin_entry = new Gtk.Entry() {
 				placeholder_text = "Six digits",
-				max_length = 6
+				max_length = 6,
+				input_purpose = Gtk.InputPurpose.DIGITS
 			};
 			this.pin_row = new Adw.ActionRow() {
 				title = "PIN",
@@ -82,8 +83,8 @@ namespace OLLMapp.SettingsDialog
 			page.add(footer);
 			this.add(page);
 
-			this.pin_entry.changed.connect(() => {
-				this.request_button.sensitive = this.pin_entry.text.length == 6;
+			this.pin_entry.activate.connect(() => {
+				this.request.begin();
 			});
 			this.request_button.clicked.connect(() => {
 				this.request.begin();
@@ -145,6 +146,8 @@ namespace OLLMapp.SettingsDialog
 					this.found = hit;
 					this.listen_label.label = hit;
 					this.pin_row.visible = true;
+					this.request_button.sensitive = true;
+					this.pin_entry.grab_focus();
 					return false;
 				});
 				return false;
@@ -190,7 +193,9 @@ namespace OLLMapp.SettingsDialog
 				this.error_occurred(e.message);
 				return;
 			}
-			var client = new GLib.SocketClient();
+			var client = new GLib.SocketClient() {
+				timeout = 10
+			};
 			GLib.SocketConnection conn;
 			try {
 				conn = client.connect_to_host(host, (uint16) port);
@@ -329,10 +334,6 @@ namespace OLLMapp.SettingsDialog
 			}
 			if (hello.error != null) {
 				this.error_occurred(hello.error.message);
-				return;
-			}
-			if (hello.msg != "ok") {
-				this.error_occurred("hello failed");
 				return;
 			}
 			this.registered_url = "tcp://" + host + ":" + port.to_string();

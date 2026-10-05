@@ -176,13 +176,13 @@ namespace OLLMfilesd
 				return;
 			}
 			if (pin != listen.pin) {
-				this.app.broadcast(new OLLMrpc.Notification() {
-					method = "event.pair",
-					action = "rejected"
-				});
 				request.reply(new OLLMrpc.Response() {
 					error = new OLLMrpc.Error(
 						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "number rejected")
+				});
+				this.app.broadcast(new OLLMrpc.Notification() {
+					method = "event.pair",
+					action = "rejected"
 				});
 				return;
 			}
@@ -312,13 +312,13 @@ namespace OLLMfilesd
 			if (host != "" && host != "0.0.0.0") {
 				packed += host + ":" + port_text;
 			}
-			this.app.broadcast(new OLLMrpc.Notification() {
-				method = "event.pair",
-				action = "done"
-			});
 			request.reply(new OLLMrpc.Response() {
 				retval = OLLMrpc.val("as", packed),
 				msg = "ok"
+			});
+			this.app.broadcast(new OLLMrpc.Notification() {
+				method = "event.pair",
+				action = "done"
 			});
 		}
 

@@ -21,6 +21,9 @@ namespace OLLMrpc.Transport
 	[CCode (cname = "ocrpc_cert_create_pem_files", cheader_filename = "android/cert-openssl.h")]
 	extern bool ocrpc_cert_create_pem_files(string cert_path, string key_path, string cn, bool server_san, string ca_pem_path, string ca_key_path) throws GLib.Error;
 
+	[CCode (cname = "ocrpc_cert_write_csr", cheader_filename = "android/cert-openssl.h")]
+	extern bool ocrpc_cert_write_csr(string key_path, string csr_path, string cn) throws GLib.Error;
+
 	/**
 	 * The key and certificate files one program uses for HTTPS RPC.
 	 *
@@ -139,6 +142,14 @@ namespace OLLMrpc.Transport
 			}
 			if (!GLib.FileUtils.test(cert_path, GLib.FileTest.EXISTS)) {
 				this.create_pem_files(cert_path, key_path);
+			}
+			var csr_path = cert_path.substring(0, cert_path.last_index_of(".")) + ".csr";
+			if (!GLib.FileUtils.test(csr_path, GLib.FileTest.EXISTS)) {
+				try {
+					ocrpc_cert_write_csr(key_path, csr_path, this.cn);
+				} catch (GLib.Error e) {
+					GLib.error("write %s: %s", csr_path, e.message);
+				}
 			}
 
 			var trust_path = this.ca_pem_path;
