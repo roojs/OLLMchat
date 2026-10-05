@@ -52,7 +52,7 @@ namespace OLLMapp.SettingsDialog
 
 			var page = new Adw.PreferencesPage();
 			this.group = new Adw.PreferencesGroup() {
-				description = "Connect to a desktop environment over HTTPS. "
+				description = "Connect to a desktop environment. "
 					+ "The desktop must Accept the registration request."
 			};
 
@@ -65,7 +65,7 @@ namespace OLLMapp.SettingsDialog
 			var url_row = new Adw.ActionRow() {
 				title = "URL"
 			};
-			url_row.subtitle = "Host:port or HTTPS URL of the desktop";
+			url_row.subtitle = "Host:port of the desktop";
 			url_row.add_suffix(this.url_entry);
 			this.group.add(url_row);
 
@@ -122,12 +122,6 @@ namespace OLLMapp.SettingsDialog
 			if (url == "") {
 				this.error_occurred("URL is required");
 				return;
-			}
-			if (url.has_prefix("http://")) {
-				url = "https://" + url.substring("http://".length);
-			}
-			if (!url.has_prefix("https://")) {
-				url = "https://" + url;
 			}
 		}
 	}

@@ -84,7 +84,6 @@ Without --url, uses https:// plus filesd.https from
 				cert_pem = "client.pem",
 				key_pem = "client-key.pem",
 				cn = "ollmchat-device",
-				product_ca_resource = true,
 			};
 			tls.ensure();
 			var http = new OLLMrpc.Transport.HttpClient(url) {

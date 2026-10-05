@@ -457,16 +457,16 @@ namespace OLLMapp
 
 			this.project_manager = new OLLMfiles.ProjectManager();
 			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
-			var desktop_checked = false;
-			var desktop_reached = false;
+			var is_desktop_connected = false;
+			var is_desktop_available = false;
 			if (config.filesd_client.addresses != ""
 				&& (config.filesd_client.state == FilesdClient.State.ENABLED
 					|| config.filesd_client.state == FilesdClient.State.LIVE
 					|| config.filesd_client.state == FilesdClient.State.UNREACHABLE
 					|| config.filesd_client.state == FilesdClient.State.SOCKET)) {
-				desktop_checked = true;
+				is_desktop_connected = true;
 				this.startup_status_label.label = "Checking desktop environment…";
-				desktop_reached = yield this.probe_addresses(config);
+				is_desktop_available = yield this.probe_addresses(config);
 				this.startup_status_label.label = "Opening chat…";
 			}
 			this.project_manager.notification.connect((notif) => {
@@ -475,6 +475,17 @@ namespace OLLMapp
 					return false;
 				});
 			});
+
+			if (is_desktop_available) {
+				// Certificate for this server is filled in later on the handshake.
+				var rpc = new OLLMrpc.Client("", "", config.filesd_client.url);
+				this.project_manager.replace_rpc(rpc);
+				var hello = new OLLMrpc.Request() {
+					method = "RPC-Daemon.hello",
+					args = OLLMrpc.args("is", 1, "ollmchat")
+				};
+				is_desktop_available = yield rpc.connect(hello);
+			}
 
 			this.register_default_agents();
 
@@ -572,7 +583,7 @@ namespace OLLMapp
 
 			this.connect_agent_factory_signals();
 
-			if (desktop_checked && desktop_reached) {
+			if (is_desktop_connected && is_desktop_available) {
 				var empty = this.history_manager.create_new_session();
 				empty.project_path = this.history_manager.session.project_path;
 				empty.agent_name = "agent-pi";
@@ -580,7 +591,7 @@ namespace OLLMapp
 				config.filesd_client.state = FilesdClient.State.LIVE;
 				this.app.config.save();
 			}
-			if (desktop_checked && !desktop_reached) {
+			if (is_desktop_connected && !is_desktop_available) {
 				config.filesd_client.state = FilesdClient.State.UNREACHABLE;
 				this.app.config.save();
 				this.notification(new OLLMrpc.Notification() {
@@ -665,7 +676,6 @@ namespace OLLMapp
 				cert_pem = "client.pem",
 				key_pem = "client-key.pem",
 				cn = "ollmchat-device",
-				product_ca_resource = false
 			};
 			tls.ensure();
 			var lines = config.filesd_client.addresses.split("\n");

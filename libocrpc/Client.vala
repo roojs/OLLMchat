@@ -400,8 +400,29 @@ namespace OLLMrpc
 				}
 			}
 
-			this.input = new GLib.DataInputStream(this.socket.get_input_stream());
-			this.output = new GLib.DataOutputStream(this.socket.get_output_stream());
+			var bin_in = this.socket.get_input_stream();
+			var bin_out = this.socket.get_output_stream();
+			if (this.protocol == Protocol.TCP
+				&& !this.socket_path.has_prefix("tcp://127.0.0.1")) {
+				try {
+					var tls_link = GLib.TlsClientConnection.@new(this.socket, null);
+					// certificate and database are filled in later
+					// from the certificate kept for this server.
+					tls_link.accept_certificate.connect((peer_cert, errors) => {
+						return peer_cert != null
+							&& (errors & ~GLib.TlsCertificateFlags.BAD_IDENTITY) == 0;
+					});
+					yield tls_link.handshake_async();
+					bin_in = tls_link.get_input_stream();
+					bin_out = tls_link.get_output_stream();
+				} catch (GLib.Error e) {
+					this.connect_error = e.message;
+					GLib.critical("connect %s: %s", this.socket_path, this.connect_error);
+					return false;
+				}
+			}
+			this.input = new GLib.DataInputStream(bin_in);
+			this.output = new GLib.DataOutputStream(bin_out);
 			this.bin = new Bin.Stream(this.input, this.output) {
 				client = this
 			};

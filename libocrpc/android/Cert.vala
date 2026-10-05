@@ -50,7 +50,6 @@ namespace OLLMrpc.Transport
 	 *     cert_pem = "client.pem",
 	 *     key_pem = "client-key.pem",
 	 *     cn = "ollmchat-device",
-	 *     product_ca_resource = true,
 	 * };
 	 * client.ensure();
 	 * var http = new OLLMrpc.Transport.HttpClient(url) {
@@ -92,13 +91,6 @@ namespace OLLMrpc.Transport
 		 */
 		public string trust_pem { get; set; default = "ollmrpc-ca.pem"; }
 
-		/**
-		 * When true, {@link ensure} (re)writes the trust PEM from the
-		 * bundled ''/ollmrpc/ollmrpc-ca.pem'' GResource on every call, so
-		 * device clients always trust the current product CA.
-		 */
-		public bool product_ca_resource { get; set; default = false; }
-
 		/** This program's own certificate and key, set by {@link ensure}. */
 		public GLib.TlsCertificate certificate { get; private set; }
 
@@ -118,9 +110,8 @@ namespace OLLMrpc.Transport
 		 *
 		 * If the key/certificate files are missing or will not load
 		 * they are deleted and created again with
-		 * {@link create_pem_files}. With {@link product_ca_resource}
-		 * the trust file is rewritten from the bundled copy each time.
-		 * Anything else that goes wrong (cannot create the directory,
+		 * {@link create_pem_files}. Trust is the CA file already
+		 * on disk. Anything else that goes wrong (cannot create the directory,
 		 * cannot write a file, CA files unreadable) means the install
 		 * is broken and aborts with {@link GLib.error}.
 		 */
@@ -153,15 +144,6 @@ namespace OLLMrpc.Transport
 			var trust_path = this.ca_pem_path;
 			if (trust_path == "") {
 				trust_path = GLib.Path.build_filename(this.dir, this.trust_pem);
-			}
-			if (this.product_ca_resource) {
-				try {
-					GLib.FileUtils.set_contents(trust_path,
-						(string) GLib.resources_lookup_data("/ollmrpc/ollmrpc-ca.pem",
-							GLib.ResourceLookupFlags.NONE).get_data());
-				} catch (GLib.Error e) {
-					GLib.error("write trust PEM %s: %s", trust_path, e.message);
-				}
 			}
 			if (!GLib.FileUtils.test(trust_path, GLib.FileTest.EXISTS)) {
 				return;

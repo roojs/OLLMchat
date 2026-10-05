@@ -20,6 +20,15 @@ ollmapp_android_jni_env (void)
 		if (helper != NULL) {
 			get_vms = dlsym (helper, "JNI_GetCreatedJavaVMs");
 		}
+		/* Arm translation loads the x86_64 helper in another
+		 * linker namespace, so NOLOAD misses it. Load the
+		 * arm64 helper, which forwards to that VM. */
+		if (helper == NULL) {
+			helper = dlopen ("libnativehelper.so", RTLD_NOW);
+		}
+		if (get_vms == NULL && helper != NULL) {
+			get_vms = dlsym (helper, "JNI_GetCreatedJavaVMs");
+		}
 		if (get_vms == NULL) {
 			get_vms = dlsym (RTLD_DEFAULT, "JNI_GetCreatedJavaVMs");
 		}

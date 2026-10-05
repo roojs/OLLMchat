@@ -181,7 +181,6 @@ namespace OLLMapp.SettingsDialog
 				cert_pem = "client.pem",
 				key_pem = "client-key.pem",
 				cn = "ollmchat-device",
-				product_ca_resource = false
 			};
 			tls_files.ensure();
 			var csr = "";

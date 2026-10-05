@@ -491,6 +491,9 @@ Examples:
 			if (this.listen != null) {
 				this.listen.broadcast(notification);
 			}
+			if (this.ssl_listen != null) {
+				this.ssl_listen.broadcast(notification);
+			}
 		}
 
 		public void cleanup()

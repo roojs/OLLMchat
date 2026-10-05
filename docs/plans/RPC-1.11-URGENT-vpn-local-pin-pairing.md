@@ -110,7 +110,7 @@
 2. ✔️ Phase 2 — Listen on one interface or all, then mDNS advertise
 3. ✔️ Phase 3 — PIN check, CSR, signed cert, address list — [`RPC-1.11.1`](RPC-1.11.1-pin-registration-and-android.md)
 4. Phase 4 — Android discovery, route probe, and a command-line pairing check — [`RPC-1.11.2`](RPC-1.11.2-android-discovery-and-pair-cli.md)
-5. TCP client handover — the socket stays open, then the HTTP client goes — [`RPC-1.11.3`](RPC-1.11.3-tcp-client-handover.md)
+5. TCP client handover — the socket stays open — [`RPC-1.11.3`](RPC-1.11.3-tcp-client-handover.md). Then `ollmfilesd` stops HTTP — [`RPC-1.11.4`](RPC-1.11.4-ollmfilesd-stop-http.md). Then the phone reconnects — [`RPC-1.11.5`](RPC-1.11.5-phone-reconnect.md)
 6. Phase 5 — **Register a friend** (later, not urgent)
 
 ---

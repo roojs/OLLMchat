@@ -227,6 +227,18 @@ namespace OLLMfilesd
 		}
 
 		/**
+		 * Write one object on every accepted TLS connection.
+		 *
+		 * @param gobject bin serializable, usually a notification
+		 */
+		public void broadcast(GLib.Object gobject)
+		{
+			foreach (var connection in this.connections) {
+				connection.write(gobject);
+			}
+		}
+
+		/**
 		 * Unbind the socket and stop each bin connection.
 		 *
 		 * No-op when {@link listen} did not bind.

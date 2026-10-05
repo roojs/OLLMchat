@@ -511,24 +511,8 @@ namespace OLLMapp
 					|| config.filesd_client.state == FilesdClient.State.LIVE
 					|| config.filesd_client.state == FilesdClient.State.UNREACHABLE
 					|| config.filesd_client.state == FilesdClient.State.SOCKET)) {
-				var tls = new OLLMrpc.Transport.Cert() {
-					dir = GLib.Path.build_filename(GLib.Environment.get_user_data_dir(), 
-							"ollmchat"),
-					cert_pem = "client.pem",
-					key_pem = "client-key.pem",
-					cn = "ollmchat-device",
-					product_ca_resource = true,
-				};
-				tls.ensure();
-				var http = new OLLMrpc.Transport.HttpClient(config.filesd_client.url) {
-					bin_body = true,
-					tls_certificate = tls.certificate,
-					tls_database = tls.trust
-				};
 				this.project_manager.replace_rpc(
-					new OLLMrpc.Client("", "", config.filesd_client.url) { 
-						http = http 
-					}
+					new OLLMrpc.Client("", "", config.filesd_client.url)
 				);
 			}
 
@@ -556,7 +540,9 @@ namespace OLLMapp
 				method = "RPC-Daemon.hello",
 				args = OLLMrpc.args("is", 1, "ollmchat")
 			};
-			if (!yield this.project_manager.rpc.connect(hello, new OLLMrpc.ClientBoot())) {
+			if (!yield this.project_manager.rpc.connect(hello,
+				config.filesd_client.url == ""
+					? new OLLMrpc.ClientBoot() : null)) {
 				if (this.busy_dialog != null) {
 					this.busy_dialog.close();
 				}

@@ -19,27 +19,28 @@
 - **🔷** The file-daemon client via TCP works.
 - **🔷** `OLLMrpc.Transport.HttpClient` is not used to talk to `ollmfilesd`. It is not deleted from the RPC library (`libocrpc`).
 - **🔷** Localhost still accepts cleartext. It does not need TLS. Windows especially.
-- **🔷** `⏳` The `ollmapp` file-daemon connection (`Window`, `FileConnectionRow`, Android `OllmchatWindow`) stops constructing `OLLMrpc.Transport.HttpClient` and uses `OLLMrpc.Client` on `tcp://` instead.
-- **🔷** `⏳` Remote `tcp://` sets a `tls` flag and wraps `TlsClientConnection`. Localhost and Windows `ClientBoot` leave `tls` false, so `ollmfilesd`'s `TcpListen` on `127.0.0.1` stays cleartext.
-- **🔷** `⏳` After the address probe, `ProjectManager` keeps that client.
-- **🔷** `⏳` Remove `ollmfilesd/Https.vala` and the `filesd.https` settings that start it. That is the file daemon's HTTP server, not `libocrpc`.
+- **🔷** `✔️` `ollmapp` talks to `ollmfilesd` with `OLLMrpc.Client` on `tcp://`. It does not call `Transport.HttpClient.call` for that daemon.
+- **🔷** `⏳` A remote `tcp://` handshake uses the certificate kept for that server. `ollmapp` does not construct `Transport.HttpClient` for `ollmfilesd`. Localhost `ClientBoot` on `127.0.0.1` stays cleartext.
+- **🚫** Do not add `tls`, `tls_certificate`, or `tls_database` on `OLLMrpc.Client`.
+- **🔷** `✔️` After the address probe, `ProjectManager` keeps that client.
 - **🔷** Same-machine Linux stays the Unix socket.
-- **🔷** `⏳` When that connection drops, try to reconnect.
-- **🔷** `⏳` On the phone, walking off the local network onto the VPN uses the stored VPN address. VPN up or VPN down drops the current socket and tries the stored addresses a few times.
-- **🔷** `⏳` If those tries fail, and the user is actually using the file daemon, tell them it can no longer connect. Follow the existing disabling of `ollmfilesd`: state `UNREACHABLE`, the banner `The desktop environment is unavailable.`, leave Agent Pi, and use Chatter. `AgentDropdown` already hides Agent Pi unless the state is `LIVE` or `SOCKET`.
-- **💩** `⏳` `ollmfilesd`'s `SslListen.broadcast` carries notifications.
+- **ℹ️** Removing `ollmfilesd/Https.vala` and the `filesd.https` settings is [`RPC-1.11.4`](RPC-1.11.4-ollmfilesd-stop-http.md).
+- **ℹ️** Reconnect after the socket drops is [`RPC-1.11.5`](RPC-1.11.5-phone-reconnect.md).
+- **🔷** `✔️` `ollmfilesd`'s `SslListen.broadcast` carries notifications.
+- **🔷** `⏳` The phone keeps one certificate per server. Connecting to a server uses the certificate that server supplied.
 - **🚫** Do not edit `poll_drain_readable`, `on_read`, `call_poll`, `poll_close`, or `read_channel`. That polling is GNOME shell.
 
 ---
 
 ## Current behaviour
 
-- **ℹ️** `SslListen` accepts TLS on `filesd.socket`. `probe_addresses` in `ollmapp/android/OllmchatWindow.vala` handshakes, sends hello, then closes. It stores `tcp://host:port` and never calls `replace_rpc`.
+- **ℹ️** `SslListen` accepts TLS on `filesd.socket`. `probe_addresses` in `ollmapp/android/OllmchatWindow.vala` runs at startup only. It tries each stored address once. None answering sets `UNREACHABLE`, shows `The desktop environment is unavailable.`, and opens Chatter. Nothing retries after a later drop.
 - **ℹ️** `OLLMrpc.Client` `tcp://` is plaintext. On Android `connect` then drops the socket: the read watch is `IOChannel.unix_new`.
 - **ℹ️** `ollmapp` `Window.initialize_client` and `FileConnectionRow` still build `OLLMrpc.Transport.HttpClient` to reach `ollmfilesd`. The type itself lives in `libocrpc` and is also used by the RPC HTTP tests.
 - **ℹ️** `Application.broadcast` writes only `this.listen` (Unix or plaintext `--tcp`). `SslListen` keeps its connections and has no broadcast, so a phone on that socket hears nothing.
 - **ℹ️** `Connection.start` on the daemon already reads and writes the TLS `io` when set. The Linux read watch there is fine.
 - **💩** This plan does not retarget that daemon read watch.
+- **ℹ️** Pairing stores the server's reply in one place. `FileConnectionAdd` writes the signed client PEM and the CA PEM to `{user_data}/ollmchat/client.pem` and `ollmrpc-ca.pem`. The phone's key stays `client-key.pem`. `probe_addresses`, `Window.initialize_client`, and `FileConnectionRow` all load those same names. A second server overwrites them. `FilesdClient` is one row. The reply does not include the server's `client_cert` row id.
 
 ---
 
@@ -47,11 +48,12 @@
 
 - **🔷** `ollmfilesd` no longer serves HTTP. The file-daemon client uses TCP. `libocrpc`'s `Transport.HttpClient` stays.
 - **🔷** Localhost cleartext stays, with no TLS. Windows especially.
-- **💩** Remote file connections set `tls` and present the device certificate. `connect` wraps TLS only then. The existing `IOChannel` watch is left alone.
-- **💩** `TcpListen` on `127.0.0.1` is not given a handshake. Windows `ClientBoot` does not set `tls`.
-- **💩** After the address probe, `ProjectManager` keeps a `Client` on that `tcp://` URL.
-- **💩** `Application.broadcast` also writes each `SslListen` connection.
-- **💩** Trust for that remote client is the on-disk CA (`product_ca_resource = false`).
+- **🔷** A remote `tcp://` handshake uses the certificate kept for that server. The existing `IOChannel` watch is left alone.
+- **🔷** `TcpListen` on `127.0.0.1` is not given a handshake. Windows `ClientBoot` does not set `http`.
+- **🔷** After the address probe, `ProjectManager` keeps a `Client` on that `tcp://` URL.
+- **🔷** `Application.broadcast` also writes each `SslListen` connection.
+- **🔷** The phone keeps one certificate per server. Pairing with a second server leaves the first server's certificate in place.
+- **🔷** Connecting to a server uses the certificate that server supplied.
 - **🔷** A dropped phone connection tries the stored addresses a few times, including the VPN address when the local one is gone, and the local address when the VPN is gone.
 - **🔷** After those tries fail, if the user is using the file daemon, the phone follows the startup failure path already in `OllmchatWindow.initialize_client`: `UNREACHABLE`, that banner, Chatter instead of Agent Pi.
 
@@ -61,59 +63,33 @@
 
 ### Goal
 
-- **🔷** `⏳` The client via TCP works. Localhost stays cleartext, with no TLS. Windows especially.
-- **💩** `⏳` `connect` to `tcp://` with `tls` set handshakes, sends hello, and returns true while the socket stays open.
-- **💩** `⏳` `connect` to `tcp://127.0.0.1` with `tls` left false is still cleartext. This phase does not put TLS on `TcpListen`.
+- **🔷** `✔️` The client via TCP works. Localhost stays cleartext, with no TLS. Windows especially.
+- **🔷** `✔️` `connect` to a remote `tcp://` handshakes with the certificate kept for that server, sends hello, and returns true while the socket stays open.
+- **🔷** `✔️` `connect` to `tcp://127.0.0.1` is still cleartext. This phase does not put TLS on `TcpListen`.
 - **🚫** Do not edit `poll_drain_readable`, `on_read`, `call_poll`, `poll_close`, or `read_channel` in `libocrpc/Client.vala`. That is the GNOME shell poll path.
 - **💩** `⏳` `call` on the existing read watch receives the reply. A notification written by the daemon arrives on `Client.notification`. The watch itself stays `IOChannel`.
 
-### 1. `libocrpc/Client.vala` — TLS fields on `Client`
+### 1. `libocrpc/Client.vala` — `connect`: TLS on a remote `tcp://` socket
 
-**Why:** 💩 The file client has to present its certificate. `HttpClient` is the type going away, so the fields move here. `tls` false keeps plaintext `tcp://`.
+**Why:** `tcp://` connect is plaintext. `SslListen` is TLS. The handshake uses the certificate kept for that server.
 
-**Where:** property block, after `call_timeout_seconds`.
+**Where:** `connect`, after `this.socket` is assigned (both the `boot` path and the direct path), immediately before `this.input = new GLib.DataInputStream(...)`.
 
 **Depends on:** none.
 
-#### Add — after `call_timeout_seconds`. `tls` selects the TLS wrap; the certificate and trust are set by the caller before `connect`.
+#### Add — before the `DataInputStream` line. A remote `tcp://` handshakes. `tcp://127.0.0.1` stays cleartext. No new properties. `certificate` and `database` are filled in later from the certificate kept for that server.
 
-```vala
-		/**
-		 * Wrap a ''tcp://'' connect in TLS before the bin streams.
-		 *
-		 * False leaves that connect plaintext (Windows local daemon).
-		 */
-		public bool tls { get; set; default = false; }
-
-		/**
-		 * Client certificate presented when {@link tls} is true.
-		 */
-		public GLib.TlsCertificate tls_certificate { get; set; }
-
-		/**
-		 * CA trust for the server certificate when {@link tls} is true.
-		 */
-		public GLib.TlsDatabase tls_database { get; set; }
-```
-
-### 2. `libocrpc/Client.vala` — `connect`: TLS wrap, then a socket read source
-
-**Why:** 💩 The bin streams have to sit on the TLS connection, and the read watch cannot be a Unix `IOChannel` or Android drops the socket.
-
-**Where:** `connect`, after `this.socket` is assigned (both the `boot` path and the direct path), and the `#if ANDROID` bail that follows `this.connected = true`.
-
-**Depends on:** §1.
-
-#### Add — immediately before `this.input = new GLib.DataInputStream(...)`. When `tls` is set, handshake on a `TlsClientConnection` and point the bin streams at it. The watch stays on `this.socket`.
+`GLib.TlsClientConnection` is an interface. `TlsClientConnection.new` is a static factory, not a Vala creation method, so a `{ certificate = …, database = … }` initializer on that call does not compile. The factory's two arguments are the construct properties `base_io_stream` and `server_identity`. `TlsConnection.certificate` and `TlsConnection.database` are ordinary `{ get; set; }` properties, so they are assigned after `@new` returns, the same way `FileConnectionAdd` sets them on the second handshake.
 
 ```vala
 			var bin_in = this.socket.get_input_stream();
 			var bin_out = this.socket.get_output_stream();
-			if (this.protocol == Protocol.TCP && this.tls) {
+			if (this.protocol == Protocol.TCP
+				&& !this.socket_path.has_prefix("tcp://127.0.0.1")) {
 				try {
 					var tls_link = GLib.TlsClientConnection.@new(this.socket, null);
-					tls_link.certificate = this.tls_certificate;
-					tls_link.database = this.tls_database;
+					// certificate and database are filled in later
+					// from the certificate kept for this server.
 					tls_link.accept_certificate.connect((peer_cert, errors) => {
 						return peer_cert != null
 							&& (errors & ~GLib.TlsCertificateFlags.BAD_IDENTITY) == 0;
@@ -129,7 +105,14 @@
 			}
 ```
 
-#### Replace with — the two lines that build `input` and `output` read `bin_in` / `bin_out`.
+#### Remove — the two lines that build `input` and `output` from `this.socket`.
+
+```vala
+			this.input = new GLib.DataInputStream(this.socket.get_input_stream());
+			this.output = new GLib.DataOutputStream(this.socket.get_output_stream());
+```
+
+#### Replace with — those two lines read `bin_in` / `bin_out`.
 
 ```vala
 			this.input = new GLib.DataInputStream(bin_in);
@@ -140,11 +123,11 @@ The `#if ANDROID` bail, the `IOChannel` watch, `on_read`, and `poll_drain_readab
 
 ### 3. `ollmfilesd/SslListen.vala` — `broadcast` to accepted connections
 
-**Why:** 💩 `Application.broadcast` never reaches a phone on `filesd.socket`. Notifications are the reason the socket stays open.
+**Why:** `Application.broadcast` never reaches a phone on `filesd.socket`. Notifications are the reason the socket stays open.
 
 **Where:** next to `stop()`. `Application.broadcast` calls it after `this.listen.broadcast`.
 
-**Depends on:** none. The client in §2 has to be connected before a notification can be observed.
+**Depends on:** none. The client in §4 has to be connected before a notification can be observed.
 
 #### Add — same loop as `OLLMrpc.Transport.TcpListen.broadcast`.
 
@@ -176,43 +159,31 @@ The `#if ANDROID` bail, the `IOChannel` watch, `on_read`, and `poll_drain_readab
 
 ### Goal
 
-- **🔷** `⏳` The `ollmapp` file-daemon client works over TCP, on Android and on the desktop, and does not use `OLLMrpc.Transport.HttpClient` for `ollmfilesd`.
-- **💩** `⏳` Android startup, after an address answers, sets `ProjectManager` to a TLS `Client` on that `tcp://` URL and leaves it connected.
-- **💩** `⏳` Desktop remote connect does the same.
-- **💩** `⏳` Trust is the paired CA on disk (`product_ca_resource = false`).
+- **🔷** `✔️` The `ollmapp` file-daemon client works over TCP, on Android and on the desktop, and does not use `OLLMrpc.Transport.HttpClient` for `ollmfilesd`.
+- **🔷** `✔️` Android startup, after an address answers, sets `ProjectManager` to a TLS `Client` on that `tcp://` URL and leaves it connected.
+- **🔷** `✔️` Desktop remote connect does the same.
+- **ℹ️** `Cert.ensure` loads the CA file already on disk. It does not copy a CA out of the app.
 
 ### 4. `ollmapp/android/OllmchatWindow.vala` — `probe_addresses` then `replace_rpc`
 
 **Why:** 💩 The probe currently proves an address and closes. The chat then runs with no remote RPC.
 
-**Where:** `initialize_client`, the block that sets `desktop_reached`. `probe_addresses` still picks the address and writes `filesd_client.url`. The one-shot hello inside the probe can stay as the reachability test. The held connection is the `Client` below.
+**Where:** `initialize_client`, after `probe_addresses`. `is_desktop_connected` is true when this startup tries the file daemon: stored addresses exist and the saved state is `ENABLED`, `LIVE`, `UNREACHABLE`, or `SOCKET`. `REQUESTED` and `DISABLED` leave both flags false and skip the file daemon. `is_desktop_available` is the probe's return: one stored `host:port` finished TLS and `RPC-Daemon.hello` replied `ok`. On that reply the probe writes `filesd_client.url` as `tcp://host:port` and sets state `SOCKET`. Later, both flags true opens Agent Pi and sets `LIVE`. Connected and not available sets `UNREACHABLE`, the banner, and Chatter. The one-shot hello inside the probe stays the reachability test. The held connection is the `Client` below.
 
 **Depends on:** Phase 1.
 
-#### Add — when `desktop_reached` is true, before `register_default_agents`. Build the client from the url the probe stored.
+#### Add — when `is_desktop_available` is true, before `register_default_agents`. Build the client from the url the probe stored. The certificate directory and file names are not set here.
 
 ```vala
-			if (desktop_reached) {
-				var tls = new OLLMrpc.Transport.Cert() {
-					dir = GLib.Path.build_filename(
-						GLib.Environment.get_user_data_dir(), "ollmchat"),
-					cert_pem = "client.pem",
-					key_pem = "client-key.pem",
-					cn = "ollmchat-device",
-					product_ca_resource = false
-				};
-				tls.ensure();
-				var rpc = new OLLMrpc.Client("", "", config.filesd_client.url) {
-					tls = true,
-					tls_certificate = tls.certificate,
-					tls_database = tls.trust
-				};
+			if (is_desktop_available) {
+				// Certificate for this server is filled in later on the handshake.
+				var rpc = new OLLMrpc.Client("", "", config.filesd_client.url);
 				this.project_manager.replace_rpc(rpc);
 				var hello = new OLLMrpc.Request() {
 					method = "RPC-Daemon.hello",
 					args = OLLMrpc.args("is", 1, "ollmchat")
 				};
-				desktop_reached = yield rpc.connect(hello);
+				is_desktop_available = yield rpc.connect(hello);
 			}
 ```
 
@@ -220,13 +191,20 @@ The `#if ANDROID` bail, the `IOChannel` watch, `on_read`, and `poll_drain_readab
 
 **Why:** 💩 Desktop `ollmapp` still constructs `OLLMrpc.Transport.HttpClient` to reach `ollmfilesd`. The class in `libocrpc` stays.
 
-**Where:** `initialize_client`, the `if (config.filesd_client.url != "")` branch.
+**Where:** `initialize_client`, the `if (config.filesd_client.url != "")` branch, and the `rpc.connect` call that follows it.
 
 **Depends on:** Phase 1.
 
 #### Remove
 
 ```vala
+				var tls = new OLLMrpc.Transport.Cert() {
+					dir = GLib.Path.build_filename(GLib.Environment.get_user_data_dir(), 
+							"ollmchat"),
+					cert_pem = "client.pem",
+					key_pem = "client-key.pem",
+					cn = "ollmchat-device",
+				};
 				tls.ensure();
 				var http = new OLLMrpc.Transport.HttpClient(config.filesd_client.url) {
 					bin_body = true,
@@ -240,17 +218,50 @@ The `#if ANDROID` bail, the `IOChannel` watch, `on_read`, and `poll_drain_readab
 				);
 ```
 
-#### Replace with — same `Cert` block above this, with `product_ca_resource = false`.
+#### Replace with — the socket path is `tcp://`. This branch does not construct `Transport.HttpClient`. The certificate for this server is filled in later on the handshake.
 
 ```vala
-				tls.ensure();
 				this.project_manager.replace_rpc(
-					new OLLMrpc.Client("", "", config.filesd_client.url) {
-						tls = true,
-						tls_certificate = tls.certificate,
-						tls_database = tls.trust
-					}
+					new OLLMrpc.Client("", "", config.filesd_client.url)
 				);
+```
+
+#### Remove — the `connect` that always passes `ClientBoot`.
+
+```vala
+			if (!yield this.project_manager.rpc.connect(hello, new OLLMrpc.ClientBoot())) {
+				if (this.busy_dialog != null) {
+					this.busy_dialog.close();
+				}
+				var msg = this.project_manager.rpc.connect_error;
+				if (msg == "") {
+					msg = "could not start or reach the filesystem daemon (ollmfilesd)";
+				}
+				GLib.warning("ollmchat: %s", msg);
+				this.tool_error_banner.title = "Filesystem daemon: " + msg;
+				this.tool_error_banner.revealed = true;
+				return;
+			}
+```
+
+#### Replace with — one `connect`. An empty url passes `ClientBoot`. A stored remote url passes null.
+
+```vala
+			if (!yield this.project_manager.rpc.connect(hello,
+				config.filesd_client.url == ""
+					? new OLLMrpc.ClientBoot() : null)) {
+				if (this.busy_dialog != null) {
+					this.busy_dialog.close();
+				}
+				var msg = this.project_manager.rpc.connect_error;
+				if (msg == "") {
+					msg = "could not start or reach the filesystem daemon (ollmfilesd)";
+				}
+				GLib.warning("ollmchat: %s", msg);
+				this.tool_error_banner.title = "Filesystem daemon: " + msg;
+				this.tool_error_banner.revealed = true;
+				return;
+			}
 ```
 
 ### 6. `ollmapp/SettingsDialog/FileConnectionRow.vala` — `check` and `reconnect`
@@ -261,9 +272,17 @@ The `#if ANDROID` bail, the `IOChannel` watch, `on_read`, and `poll_drain_readab
 
 **Depends on:** Phase 1.
 
-#### Remove — `check`, the `HttpClient` and its `call`.
+#### Remove — `check`, the `Cert`, the `HttpClient`, and its `call`.
 
 ```vala
+			var tls = new OLLMrpc.Transport.Cert() {
+				dir = GLib.Path.build_filename(
+					GLib.Environment.get_user_data_dir(), "ollmchat"),
+				cert_pem = "client.pem",
+				key_pem = "client-key.pem",
+				cn = "ollmchat-device",
+			};
+			tls.ensure();
 			var http = new OLLMrpc.Transport.HttpClient(this.client.url) {
 				bin_body = true,
 				tls_certificate = tls.certificate,
@@ -283,14 +302,10 @@ The `#if ANDROID` bail, the `IOChannel` watch, `on_read`, and `poll_drain_readab
 			}
 ```
 
-#### Replace with — `product_ca_resource = false` on the `Cert` above. Hello goes through `Client.connect`. The old `catch` body is inlined on `connect_error`.
+#### Replace with — hello goes through `Client.connect`. This call does not construct `Transport.HttpClient`. The certificate for this server is filled in later on the handshake. The old `catch` body is inlined on `connect_error`.
 
 ```vala
-			var rpc = new OLLMrpc.Client("", "", this.client.url) {
-				tls = true,
-				tls_certificate = tls.certificate,
-				tls_database = tls.trust
-			};
+			var rpc = new OLLMrpc.Client("", "", this.client.url);
 			this.check_button.sensitive = false;
 			if (!yield rpc.connect(new OLLMrpc.Request() {
 				method = "RPC-Daemon.hello",
@@ -303,9 +318,16 @@ The `#if ANDROID` bail, the `IOChannel` watch, `on_read`, and `poll_drain_readab
 			}
 ```
 
-#### Remove — `reconnect`, remote `HttpClient`.
+#### Remove — `reconnect`, remote `Cert` and `HttpClient`.
 
 ```vala
+				var tls = new OLLMrpc.Transport.Cert() {
+					dir = data_dir,
+					cert_pem = "client.pem",
+					key_pem = "client-key.pem",
+					cn = "ollmchat-device",
+				};
+				tls.ensure();
 				var http = new OLLMrpc.Transport.HttpClient(this.client.url) {
 					bin_body = true,
 					tls_certificate = tls.certificate,
@@ -314,17 +336,11 @@ The `#if ANDROID` bail, the `IOChannel` watch, `on_read`, and `poll_drain_readab
 				rpc = new OLLMrpc.Client("", "", this.client.url) { http = http };
 ```
 
-#### Replace with
+#### Replace with — this call does not construct `Transport.HttpClient`. The certificate for this server is filled in later on the handshake.
 
 ```vala
-				rpc = new OLLMrpc.Client("", "", this.client.url) {
-					tls = true,
-					tls_certificate = tls.certificate,
-					tls_database = tls.trust
-				};
+				rpc = new OLLMrpc.Client("", "", this.client.url);
 ```
-
-Set `product_ca_resource = false` on that `Cert` too.
 
 ### 7. `ollmapp/SettingsDialog/FileConnectionAdd.vala` — stop rewriting a host into an HTTPS URL
 
@@ -345,36 +361,42 @@ Set `product_ca_resource = false` on that `Cert` too.
 			}
 ```
 
-The dialog description and the URL row subtitle drop the HTTPS wording. Pairing stays **Allow New Device** and the phone dialog. This method does not grow a second pair flow.
+#### Remove — the group description and the URL row subtitle.
 
----
+```vala
+			this.group = new Adw.PreferencesGroup() {
+				description = "Connect to a desktop environment over HTTPS. "
+					+ "The desktop must Accept the registration request."
+			};
+```
 
-## Phase 3 — `ollmfilesd` stops serving HTTP
+```vala
+			url_row.subtitle = "Host:port or HTTPS URL of the desktop";
+```
 
-### Goal
+#### Replace with
 
-- **🔷** `⏳` The HTTP file server on `ollmfilesd` is removed. `ollmapp` does not use `OLLMrpc.Transport.HttpClient` to reach that daemon.
-- **🚫** Do not delete `libocrpc/Transport/HttpClient.vala`, `libocrpc/Transport/HttpServer.vala`, `Client.http`, or the `libocrpc` HTTP tests (`http-client-test.vala`, `http-server-test.vala`, `http-https-test.vala`, `http-routes-test.vala`, `http-bin-session-test.vala`).
-- **💩** `⏳` Remove `ollmfilesd/Https.vala`, `https_listen`, the `listen()` call, and the `cleanup` stop. Drop that file from `ollmfilesd/meson.build`.
-- **💩** `⏳` Delete `filesd.https`, `https_enabled`, and `proxy` from `libollmchat/Settings/Filesd.vala`. `ollmapp` `FileServerRow` drops the HTTPS expander. The local network SSL row stays.
-- **💩** `⏳` `tests/rpc/filesd-http-client-test.vala` calls `ollmfilesd` over HTTP. With that server gone it has nothing to call.
-- **💩** `⏳` `docs/filesd-behind-nginx-proxy.md` currently tells an operator to set `filesd.https` on `ollmfilesd`.
+```vala
+			this.group = new Adw.PreferencesGroup() {
+				description = "Connect to a desktop environment. "
+					+ "The desktop must Accept the registration request."
+			};
+```
 
-### 8. `ollmfilesd` — stop the HTTPS listener
+```vala
+			url_row.subtitle = "Host:port of the desktop";
+```
 
-**Why:** 💩 `ollmfilesd/Https.vala` is the HTTP file server. `libocrpc`'s `Transport.HttpServer` is the library it subclasses, and that library type stays.
-
-**Where:** `ollmfilesd/Application.vala` constructs `Https` and stores `https_listen`. `ollmfilesd/meson.build` lists `Https.vala`.
-
-**Depends on:** Phase 2, so `ollmapp` is no longer posting to that listener.
+Pairing stays **Allow New Device** and the phone dialog. This method does not grow a second pair flow.
 
 ---
 
 ## Suggested order
 
-1. Phase 1 — `Client` TLS connect and `SslListen.broadcast`
-2. Phase 2 — Android and desktop use that client
-3. Phase 3 — `ollmfilesd` stops its HTTP server. `libocrpc`'s `Transport.HttpClient` stays.
+1. ✔️ Phase 1 — `Client` TLS connect and `SslListen.broadcast`
+2. ✔️ Phase 2 — Android and desktop use that client
+3. `ollmfilesd` stops its HTTP server — [`RPC-1.11.4`](RPC-1.11.4-ollmfilesd-stop-http.md)
+4. The phone reconnects — [`RPC-1.11.5`](RPC-1.11.5-phone-reconnect.md)
 
 ---
 

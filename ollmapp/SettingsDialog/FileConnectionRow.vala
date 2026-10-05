@@ -160,30 +160,15 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public async void check()
 		{
-			var tls = new OLLMrpc.Transport.Cert() {
-				dir = GLib.Path.build_filename(
-					GLib.Environment.get_user_data_dir(), "ollmchat"),
-				cert_pem = "client.pem",
-				key_pem = "client-key.pem",
-				cn = "ollmchat-device",
-				product_ca_resource = true
-			};
-			tls.ensure();
-			var http = new OLLMrpc.Transport.HttpClient(this.client.url) {
-				bin_body = true,
-				tls_certificate = tls.certificate,
-				tls_database = tls.trust
-			};
+			var rpc = new OLLMrpc.Client("", "", this.client.url);
 			this.check_button.sensitive = false;
-			try {
-				yield http.call(new OLLMrpc.Request() {
-					method = "RPC-Daemon.hello",
-					args = OLLMrpc.args("is", 1, "ollmchat")
-				});
-			} catch (GLib.Error e) {
-				GLib.debug("file connection check: %s", e.message);
+			if (!yield rpc.connect(new OLLMrpc.Request() {
+				method = "RPC-Daemon.hello",
+				args = OLLMrpc.args("is", 1, "ollmchat")
+			})) {
+				GLib.debug("file connection check: %s", rpc.connect_error);
 				this.check_button.sensitive = true;
-				this.expander.subtitle = "Requested: " + e.message;
+				this.expander.subtitle = "Requested: " + rpc.connect_error;
 				return;
 			}
 			this.expander.subtitle = "Active";
@@ -225,20 +210,7 @@ namespace OLLMapp.SettingsDialog
 				GLib.Environment.get_user_data_dir(), "ollmchat");
 			var rpc = new OLLMrpc.Client(data_dir, "ollmfilesd.pid", "ollmfilesd.sock");
 			if (remote) {
-				var tls = new OLLMrpc.Transport.Cert() {
-					dir = data_dir,
-					cert_pem = "client.pem",
-					key_pem = "client-key.pem",
-					cn = "ollmchat-device",
-					product_ca_resource = true,
-				};
-				tls.ensure();
-				var http = new OLLMrpc.Transport.HttpClient(this.client.url) {
-					bin_body = true,
-					tls_certificate = tls.certificate,
-					tls_database = tls.trust
-				};
-				rpc = new OLLMrpc.Client("", "", this.client.url) { http = http };
+				rpc = new OLLMrpc.Client("", "", this.client.url);
 			}
 			this.win.notification(new OLLMrpc.Notification() {
 				method = "client.project.load_start"
