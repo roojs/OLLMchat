@@ -83,6 +83,10 @@ namespace OLLMapp.SettingsDialog
 			page.add(footer);
 			this.add(page);
 
+			this.error_occurred.connect((error_message) => {
+				this.listen_label.label = error_message;
+				GLib.warning("%s", error_message);
+			});
 			this.pin_entry.activate.connect(() => {
 				this.request.begin();
 			});
@@ -247,7 +251,7 @@ namespace OLLMapp.SettingsDialog
 			}
 			var response = parsed as OLLMrpc.Response;
 			if (response == null) {
-				this.error_occurred("reply was not a response");
+				this.error_occurred("reply was " + parsed.get_type().name());
 				return;
 			}
 			if (response.error != null) {
