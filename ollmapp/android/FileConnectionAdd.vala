@@ -38,6 +38,7 @@ namespace OLLMapp.SettingsDialog
 
 		private Gtk.Label listen_label;
 		private Gtk.Entry pin_entry;
+		private Adw.ActionRow pin_row;
 		private Gtk.Button request_button;
 		private Adw.PreferencesGroup group;
 		private string found = "";
@@ -53,24 +54,22 @@ namespace OLLMapp.SettingsDialog
 			this.set_content_width(720);
 
 			var page = new Adw.PreferencesPage();
-			this.group = new Adw.PreferencesGroup() {
-				description = "Listening for connection"
-			};
-			this.listen_label = new Gtk.Label("Listening for connection") {
+			this.group = new Adw.PreferencesGroup();
+			this.listen_label = new Gtk.Label("Listening") {
 				wrap = true,
 				xalign = 0
 			};
 			this.group.add(this.listen_label);
 			this.pin_entry = new Gtk.Entry() {
 				placeholder_text = "Six digits",
-				visible = false,
 				max_length = 6
 			};
-			var pin_row = new Adw.ActionRow() {
-				title = "PIN"
+			this.pin_row = new Adw.ActionRow() {
+				title = "PIN",
+				visible = false
 			};
-			pin_row.add_suffix(this.pin_entry);
-			this.group.add(pin_row);
+			this.pin_row.add_suffix(this.pin_entry);
+			this.group.add(this.pin_row);
 			page.add(this.group);
 
 			this.request_button = new Gtk.Button() {
@@ -114,8 +113,8 @@ namespace OLLMapp.SettingsDialog
 			this.registered_addresses = "";
 			this.found = "";
 			this.pin_entry.text = "";
-			this.pin_entry.visible = false;
-			this.listen_label.label = "Listening for connection";
+			this.pin_row.visible = false;
+			this.listen_label.label = "Listening";
 			this.request_button.sensitive = false;
 			if (this.browse_id != 0) {
 				GLib.Source.remove(this.browse_id);
@@ -145,7 +144,7 @@ namespace OLLMapp.SettingsDialog
 					}
 					this.found = hit;
 					this.listen_label.label = hit;
-					this.pin_entry.visible = true;
+					this.pin_row.visible = true;
 					return false;
 				});
 				return false;

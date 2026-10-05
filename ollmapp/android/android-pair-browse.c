@@ -1,53 +1,18 @@
 #include "android-pair-browse.h"
 
-#include <dlfcn.h>
 #include <jni.h>
 #include <gdk/android/gdkandroid.h>
 
-static JavaVM *ollmapp_android_vm = NULL;
+extern JNIEnv *gdk_android_ollmchat_jni_env (void);
+
+static jclass ollmapp_android_pair_cls = NULL;
 
 static JNIEnv *
 ollmapp_android_jni_env (void)
 {
-	JNIEnv *env = NULL;
-	jsize vm_count = 0;
-
-	/* GTK loads this .so with g_module_open, which does not run JNI_OnLoad. */
-	if (ollmapp_android_vm == NULL) {
-		void *helper = dlopen ("libnativehelper.so", RTLD_NOW | RTLD_NOLOAD);
-		jint (*get_vms) (JavaVM **, jsize, jsize *) = NULL;
-
-		if (helper != NULL) {
-			get_vms = dlsym (helper, "JNI_GetCreatedJavaVMs");
-		}
-		/* Arm translation loads the x86_64 helper in another
-		 * linker namespace, so NOLOAD misses it. Load the
-		 * arm64 helper, which forwards to that VM. */
-		if (helper == NULL) {
-			helper = dlopen ("libnativehelper.so", RTLD_NOW);
-		}
-		if (get_vms == NULL && helper != NULL) {
-			get_vms = dlsym (helper, "JNI_GetCreatedJavaVMs");
-		}
-		if (get_vms == NULL) {
-			get_vms = dlsym (RTLD_DEFAULT, "JNI_GetCreatedJavaVMs");
-		}
-		if (get_vms == NULL
-			|| get_vms (&ollmapp_android_vm, 1, &vm_count) != JNI_OK
-			|| vm_count < 1) {
-			g_message ("android jni: no JavaVM helper=%p get_vms=%p count=%d",
-				helper, (void *) get_vms, (int) vm_count);
-			ollmapp_android_vm = NULL;
-			return NULL;
-		}
-	}
-	if ((*ollmapp_android_vm)->GetEnv (ollmapp_android_vm, (void **) &env,
-		JNI_VERSION_1_6) == JNI_OK) {
-		return env;
-	}
-	if ((*ollmapp_android_vm)->AttachCurrentThread (ollmapp_android_vm, &env,
-		NULL) != JNI_OK) {
-		return NULL;
+	JNIEnv *env = gdk_android_ollmchat_jni_env ();
+	if (env == NULL) {
+		g_message ("android jni: GTK has no JNIEnv");
 	}
 	return env;
 }
@@ -121,10 +86,15 @@ ollmapp_android_pair_browse_start (GtkWindow *window)
 	cls = ollmapp_android_load_class (env, activity,
 		"org.roojs.ollmchat.androidpoc.PairBrowse");
 	if (cls == NULL || (*env)->ExceptionCheck (env)) {
+		g_message ("android pair: PairBrowse class missing");
 		(*env)->ExceptionClear (env);
 		(*env)->DeleteLocalRef (env, activity);
 		return;
 	}
+	if (ollmapp_android_pair_cls != NULL) {
+		(*env)->DeleteGlobalRef (env, ollmapp_android_pair_cls);
+	}
+	ollmapp_android_pair_cls = (*env)->NewGlobalRef (env, cls);
 	mid = (*env)->GetStaticMethodID (env, cls, "start",
 		"(Landroid/content/Context;)V");
 	if (mid != NULL && !(*env)->ExceptionCheck (env)) {
@@ -148,28 +118,19 @@ ollmapp_android_pair_browse_poll (void)
 	char *copy;
 
 	env = ollmapp_android_jni_env ();
-	if (env == NULL) {
+	if (env == NULL || ollmapp_android_pair_cls == NULL) {
 		return g_strdup ("");
 	}
-	cls = (*env)->FindClass (env, "org/roojs/ollmchat/androidpoc/PairBrowse");
-	if (cls == NULL || (*env)->ExceptionCheck (env)) {
-		(*env)->ExceptionClear (env);
-		if (cls != NULL) {
-			(*env)->DeleteLocalRef (env, cls);
-		}
-		return g_strdup ("");
-	}
+	cls = ollmapp_android_pair_cls;
 	mid = (*env)->GetStaticMethodID (env, cls, "poll",
 		"()Ljava/lang/String;");
 	if (mid == NULL || (*env)->ExceptionCheck (env)) {
 		(*env)->ExceptionClear (env);
-		(*env)->DeleteLocalRef (env, cls);
 		return g_strdup ("");
 	}
 	value = (*env)->CallStaticObjectMethod (env, cls, mid);
 	if (value == NULL || (*env)->ExceptionCheck (env)) {
 		(*env)->ExceptionClear (env);
-		(*env)->DeleteLocalRef (env, cls);
 		return g_strdup ("");
 	}
 	utf = (*env)->GetStringUTFChars (env, value, NULL);
@@ -178,7 +139,6 @@ ollmapp_android_pair_browse_poll (void)
 		(*env)->ReleaseStringUTFChars (env, value, utf);
 	}
 	(*env)->DeleteLocalRef (env, value);
-	(*env)->DeleteLocalRef (env, cls);
 	return copy;
 }
 
