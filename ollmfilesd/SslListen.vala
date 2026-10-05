@@ -24,8 +24,8 @@ namespace OLLMfilesd
 	 * Binds ''filesd.socket'' when ''ssl_enabled'' is on and the
 	 * address is a non-loopback ''host:port'' in 1024–65535.
 	 * Otherwise {@link listen} returns false and the daemon stays
-	 * up on Unix and HTTPS. Same product CA and {@link ClientCert}
-	 * rows as {@link Https}.
+	 * up on the Unix socket. Same product CA and {@link ClientCert}
+	 * rows.
 	 *
 	 * == Example ==
 	 *

@@ -21,7 +21,6 @@ namespace OLLMfilesd
 	/**
 	 * Bin connection on the local network SSL server.
 	 *
-	 * {@link allow_request} matches {@link Https.allow_rpc}.
 	 * {@link SslListen} constructs one after the TLS handshake.
 	 *
 	 * == Example ==
@@ -44,8 +43,6 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * Same gate as {@link Https.allow_rpc} for bin RPC.
-		 *
 		 * Unknown certs may only call
 		 * ''ClientCert.request_registration''.
 		 *

@@ -22,8 +22,7 @@ namespace OLLMchat.Settings
 	 * File-daemon listen settings on {@link Config2}.
 	 *
 	 * JSON key ''filesd''. ''ssl_enabled'' binds the local network
-	 * SSL server from ''socket''. ''https_enabled'' binds HTTPS from
-	 * ''https''. Do not read the old ''enabled'' key.
+	 * SSL server from ''socket''. Do not read the old ''enabled'' key.
 	 * {@link install} sets up the user systemd unit from
 	 * {@link systemd}.
 	 *
@@ -34,9 +33,6 @@ namespace OLLMchat.Settings
 	 *   "unix": true,
 	 *   "socket": "",
 	 *   "ssl_enabled": false,
-	 *   "https": "127.0.0.1:8443",
-	 *   "https_enabled": true,
-	 *   "proxy": true,
 	 *   "systemd": true
 	 * }
 	 * }}}
@@ -60,24 +56,6 @@ namespace OLLMchat.Settings
 		 * SSL server. {@link socket} keeps its host and port.
 		 */
 		public bool ssl_enabled { get; set; default = false; }
-
-		/**
-		 * HTTPS listen as ''host:port''. Kept when
-		 * {@link https_enabled} is false. Empty means no address
-		 * stored yet.
-		 */
-		public string https { get; set; default = ""; }
-
-		/**
-		 * When false, ollmfilesd does not bind HTTPS. Host, port,
-		 * {@link proxy}, and {@link systemd} keep their last values.
-		 */
-		public bool https_enabled { get; set; default = true; }
-
-		/**
-		 * Expect PROXY Protocol v1 on the HTTPS TCP listener.
-		 */
-		public bool proxy { get; set; default = false; }
 
 		/**
 		 * Install and enable the systemd user unit when true.

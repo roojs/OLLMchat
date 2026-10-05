@@ -2,7 +2,7 @@
 
 > **Do not update `docs/plans/RPC-1.0-summary.md` for this sub-plan** until it is done and archived.
 
-**Status:** proposed
+**Status:** applied
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**. Proposed Vala follows `docs/coding-standards.md`.
 
@@ -14,10 +14,10 @@
 
 ## Purpose
 
-- **🔷** `⏳` Remove `ollmfilesd/Https.vala` and the `filesd.https` settings that start it. That is the file daemon's HTTP server, not `libocrpc`.
+- **🔷** `✔️` Remove `ollmfilesd/Https.vala` and the `filesd.https` settings that start it. That is the file daemon's HTTP server, not `libocrpc`.
 - **🚫** Do not delete `libocrpc/Transport/HttpClient.vala`, `libocrpc/Transport/HttpServer.vala`, `Client.http`, or the `libocrpc` HTTP tests (`http-client-test.vala`, `http-server-test.vala`, `http-https-test.vala`, `http-routes-test.vala`, `http-bin-session-test.vala`).
-- **🔷** `⏳` The Desktop server row drops the HTTPS expander. Unix, systemd, and the local network SSL row stay.
-- **🔷** `⏳` `filesd.https`, `https_enabled`, and `proxy` go. `systemd` stays.
+- **🔷** `✔️` The Desktop server row drops the HTTPS expander. Unix, systemd, and the local network SSL row stay.
+- **🔷** `✔️` `filesd.https`, `https_enabled`, and `proxy` go. `systemd` stays.
 
 ---
 
@@ -27,7 +27,7 @@
 - **ℹ️** `ollmfilesd/meson.build` lists `Https.vala`.
 - **ℹ️** `FileServerRow` builds the HTTPS expander (host, port, proxy) and writes `filesd.https`, `https_enabled`, and `proxy`.
 - **ℹ️** `tests/rpc/filesd-http-client-test.vala` is a manual executable. It talks to a live `ollmfilesd` over HTTPS. It is not a `meson test()`.
-- **ℹ️** `docs/filesd-behind-nginx-proxy.md` tells an operator to set `filesd.https` and `proxy`.
+- **ℹ️** `docs/filesd-behind-nginx-proxy.md` is the operator page for that listener.
 - **ℹ️** `FileServerRow.reboot` treats `project_manager.rpc.http != null` as a remote file connection. After RPC-1.11.3 that client does not set `http`.
 
 ---
@@ -616,38 +616,20 @@ test_rpc_filesd_http_client = executable('test-rpc-filesd-http-client',
 
 Delete `tests/rpc/filesd-http-client-test.vala`.
 
-### 7. `docs/filesd-behind-nginx-proxy.md` — stop telling operators to set `filesd.https`
+### 7. `docs/filesd-behind-nginx-proxy.md` — delete the file
 
-**Why:** That listener is gone. The phone uses the TLS socket.
+**Why:** The listener it describes is gone. There is nothing left to document.
 
 **Where:** the whole file.
 
 **Depends on:** §4.
 
-#### Replace with
-
-````markdown
-# ollmfilesd
-
-`ollmfilesd` does not serve HTTP. The phone connects to the TLS socket
-on `filesd.socket`.
-
-`systemd` still installs the user unit. With `"systemd": true`,
-`Filesd.install()` writes `~/.config/systemd/user/ollmfilesd.service`
-only when the contents differ, reloads when it wrote, and runs
-`enable --now` only if the unit is not already active.
-
-Enable lingering if the daemon should survive logout:
-
-```bash
-loginctl enable-linger "$USER"
-```
-````
+Delete `docs/filesd-behind-nginx-proxy.md`.
 
 ---
 
 ## Suggested order
 
-1. Phase 1 — delete `Https.vala` and stop starting it
-2. Phase 2 — drop `filesd.https`, `https_enabled`, `proxy`, and the HTTPS expander
-3. Phase 3 — drop the manual HTTPS client and the nginx operator page
+1. ✔️ Phase 1 — delete `Https.vala` and stop starting it
+2. ✔️ Phase 2 — drop `filesd.https`, `https_enabled`, `proxy`, and the HTTPS expander
+3. ✔️ Phase 3 — drop the manual HTTPS client and delete `docs/filesd-behind-nginx-proxy.md`

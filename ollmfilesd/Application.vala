@@ -47,7 +47,6 @@ namespace OLLMfilesd
 		public ProjectManager project_manager { get; private set; }
 		public Daemon daemon { get; private set; }
 		private OLLMrpc.Transport.Listen? listen;
-		public OLLMfilesd.Https? https_listen { get; private set; default = null; }
 		public OLLMfilesd.SslListen? ssl_listen { get; private set; default = null; }
 		private static weak OllmfilesdApplication? instance;
 
@@ -339,10 +338,6 @@ Examples:
 				GLib.debug("listening on %s", this.socket_path);
 			}
 
-			var https = new OLLMfilesd.Https(this);
-			if (https.listen()) {
-				this.https_listen = https;
-			}
 			var ssl = new OLLMfilesd.SslListen(this);
 			if (ssl.listen()) {
 				this.ssl_listen = ssl;
@@ -499,10 +494,6 @@ Examples:
 		public void cleanup()
 		{
 			this.project_manager.db.backup_real();
-			if (this.https_listen != null) {
-				this.https_listen.stop();
-				this.https_listen = null;
-			}
 			if (this.ssl_listen != null) {
 				this.ssl_listen.stop();
 				this.ssl_listen = null;

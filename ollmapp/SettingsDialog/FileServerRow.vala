@@ -22,9 +22,7 @@ namespace OLLMapp.SettingsDialog
 	 * Widget group for the Desktop server expander.
 	 *
 	 * No control on the right. Rows are Unix socket, systemd,
-	 * HTTPS server, then Local network SSL server.
-	 * {@link https_switch} writes
-	 * {@link OLLMchat.Settings.Filesd.https_enabled}.
+	 * then Local network SSL server.
 	 * {@link ssl_switch} writes
 	 * {@link OLLMchat.Settings.Filesd.ssl_enabled} after a
 	 * host and port are saved.
@@ -50,60 +48,10 @@ namespace OLLMapp.SettingsDialog
 		public Adw.ExpanderRow expander { get; private set; }
 
 		/**
-		 * HTTPS server on/off. Writes
-		 * {@link OLLMchat.Settings.Filesd.https_enabled}.
-		 * Off keeps the saved host and port.
-		 */
-		public Gtk.Switch https_switch { get; private set; }
-
-		/**
-		 * HTTPS server expander. Host, Port, and Proxy are its rows.
-		 */
-		public Adw.ExpanderRow https_expander { get; private set; }
-
-		/**
-		 * HTTPS listen IP from this machine (left of ''host:port'' in
-		 * {@link OLLMchat.Settings.Filesd.https}).
-		 */
-		public Gtk.DropDown host_dropdown { get; private set; }
-		/**
-		 * HTTPS listen IP row. Hidden when this machine has no
-		 * IPv4 addresses.
-		 */
-		public Adw.ActionRow host_row { get; private set; }
-
-		/**
-		 * HTTPS listen port (right of ''host:port'' in
-		 * {@link OLLMchat.Settings.Filesd.https}). Suffix
-		 * {@link Gtk.Entry} with
-		 * {@link Adw.ActionRow.set_activatable_widget} like Tools
-		 * Engine ID. ''width_chars = 5'' fits 65535. Valid range
-		 * 1024–65535; empty is off. Too low or too high sets this
-		 * row's subtitle to ''Invalid'' and is not written.
-		 */
-		public Gtk.Entry port_entry { get; private set; }
-		/**
-		 * HTTPS port row. Hidden when this machine has no IPv4
-		 * addresses.
-		 */
-		public Adw.ActionRow port_row { get; private set; }
-
-		/**
-		 * PROXY Protocol switch bound to
-		 * {@link OLLMchat.Settings.Filesd.proxy}.
-		 */
-		public Gtk.Switch proxy_switch { get; private set; }
-
-		/**
 		 * systemd user-unit switch bound to
 		 * {@link OLLMchat.Settings.Filesd.systemd}.
 		 */
 		public Gtk.Switch systemd_switch { get; private set; }
-
-		/**
-		 * Proxy action row inside the HTTPS server expander.
-		 */
-		private Adw.ActionRow proxy_row;
 
 		/**
 		 * systemd action row under Unix socket. The toggle is
@@ -186,7 +134,7 @@ namespace OLLMapp.SettingsDialog
 		/**
 		 * Desktop server expander for one {@link OLLMchat.Settings.Filesd}.
 		 *
-		 * @param filesd Config listen settings (https, socket, proxy, systemd)
+		 * @param filesd Config listen settings (socket, systemd)
 		 * @param win Host window for ProjectManager reconnect
 		 * @param toast_overlay Connections-tab overlay for restart toasts
 		 */
@@ -221,69 +169,6 @@ namespace OLLMapp.SettingsDialog
 			};
 			this.systemd_row.add_suffix(this.systemd_switch);
 			this.expander.add_row(this.systemd_row);
-
-			this.host_dropdown = new Gtk.DropDown(new Gtk.StringList({}), null) {
-				selected = Gtk.INVALID_LIST_POSITION,
-				vexpand = false,
-				valign = Gtk.Align.CENTER
-			};
-			this.host_row = new Adw.ActionRow() {
-				title = "Host",
-				visible = false
-			};
-			this.host_row.add_suffix(this.host_dropdown);
-			this.host_row.set_activatable_widget(this.host_dropdown);
-
-			this.port_entry = new Gtk.Entry() {
-				width_chars = 5,
-				valign = Gtk.Align.CENTER,
-				max_length = 5,
-				placeholder_text = "8443"
-			};
-			this.port_entry.insert_text.connect((new_text, new_text_length, ref position) => {
-				if (GLib.Regex.match_simple("^[0-9]*$", new_text)) {
-					return;
-				}
-				GLib.Signal.stop_emission_by_name(this.port_entry, "insert-text");
-			});
-			this.port_row = new Adw.ActionRow() {
-				title = "Port",
-				visible = false
-			};
-			this.port_row.add_suffix(this.port_entry);
-			this.port_row.set_activatable_widget(this.port_entry);
-			var port_focus = new Gtk.EventControllerFocus();
-			port_focus.leave.connect(() => {
-				if (this.loading) {
-					return;
-				}
-				this.apply_config();
-			});
-			this.port_entry.add_controller(port_focus);
-
-			this.proxy_switch = new Gtk.Switch() {
-				active = false,
-				vexpand = false,
-				valign = Gtk.Align.CENTER
-			};
-			this.proxy_row = new Adw.ActionRow() {
-				title = "Proxy"
-			};
-			this.proxy_row.add_suffix(this.proxy_switch);
-
-			this.https_switch = new Gtk.Switch() {
-				active = false,
-				vexpand = false,
-				valign = Gtk.Align.CENTER
-			};
-			this.https_expander = new Adw.ExpanderRow() {
-				title = "HTTPS server"
-			};
-			this.https_expander.add_suffix(this.https_switch);
-			this.https_expander.add_row(this.host_row);
-			this.https_expander.add_row(this.port_row);
-			this.https_expander.add_row(this.proxy_row);
-			this.expander.add_row(this.https_expander);
 
 			this.ssl_switch = new Gtk.Switch() {
 				active = false,
@@ -335,31 +220,13 @@ namespace OLLMapp.SettingsDialog
 			this.ssl_expander.add_row(this.ssl_port_row);
 			this.expander.add_row(this.ssl_expander);
 
-			this.https_switch.notify["active"].connect(() => {
-				if (this.loading) {
-					return;
-				}
-				this.apply_config();
-			});
 			this.ssl_switch.notify["active"].connect(() => {
 				if (this.loading) {
 					return;
 				}
 				this.apply_config();
 			});
-			this.host_dropdown.notify["selected"].connect(() => {
-				if (this.loading) {
-					return;
-				}
-				this.apply_config();
-			});
 			this.ssl_host_dropdown.notify["selected"].connect(() => {
-				if (this.loading) {
-					return;
-				}
-				this.apply_config();
-			});
-			this.proxy_switch.notify["active"].connect(() => {
 				if (this.loading) {
 					return;
 				}
@@ -376,22 +243,14 @@ namespace OLLMapp.SettingsDialog
 		/**
 		 * Fill the Desktop server rows from {@link filesd}.
 		 *
-		 * HTTPS uses {@link OLLMrpc.Transport.TcpListen.ifaces}.
-		 * SSL adds ''All'' first. That list never includes
-		 * ''127.0.0.1''. No addresses: hide
-		 * {@link host_row} and {@link port_row}. Call when the
+		 * SSL uses {@link OLLMrpc.Transport.TcpListen.ifaces} and
+		 * adds ''All'' first. That list never includes
+		 * ''127.0.0.1''. Call when the
 		 * settings dialog is shown, not from the constructor.
 		 */
 		public void load_config()
 		{
 			this.loading = true;
-			var host = "";
-			var port = "";
-			var colon = this.filesd.https.last_index_of(":");
-			if (colon > 0) {
-				host = this.filesd.https.substring(0, colon);
-				port = this.filesd.https.substring(colon + 1);
-			}
 			var ips = OLLMrpc.Transport.TcpListen.ifaces();
 			var n = ips.length;
 			var ssl_ips = ips[0:n];
@@ -407,33 +266,7 @@ namespace OLLMapp.SettingsDialog
 				socket_host = this.filesd.socket.substring(0, socket_colon);
 				socket_port = this.filesd.socket.substring(socket_colon + 1);
 			}
-			this.proxy_switch.active = this.filesd.proxy;
 			this.systemd_switch.active = this.filesd.systemd;
-			var port_n = 0;
-			int.try_parse(port, out port_n);
-			this.port_entry.text = port;
-			this.port_row.subtitle = "";
-			this.port_entry.remove_css_class("error");
-			if (port != "" && (port_n < 1024 || port_n > 65535)) {
-				this.port_row.subtitle = "Invalid";
-				this.port_entry.add_css_class("error");
-			}
-			if (ips.length > 0) {
-				var selected = Gtk.INVALID_LIST_POSITION;
-				for (var i = 0; i < ips.length; i++) {
-					if (ips[i] != host) {
-						continue;
-					}
-					selected = i;
-					break;
-				}
-				if (host != "" && selected == Gtk.INVALID_LIST_POSITION) {
-					ips += host;
-					selected = ips.length - 1;
-				}
-				this.host_dropdown.model = new Gtk.StringList(ips);
-				this.host_dropdown.selected = selected;
-			}
 			if (ssl_ips.length > 0) {
 				var ssl_selected = Gtk.INVALID_LIST_POSITION;
 				if (socket_host == "0.0.0.0") {
@@ -463,7 +296,6 @@ namespace OLLMapp.SettingsDialog
 				this.ssl_port_row.subtitle = "Invalid";
 				this.ssl_port_entry.add_css_class("error");
 			}
-			this.https_switch.active = this.filesd.https_enabled;
 			this.ssl_switch.active = this.filesd.ssl_enabled;
 			var data_dir = GLib.Path.build_filename(
 				GLib.Environment.get_user_data_dir(), "ollmchat");
@@ -480,7 +312,6 @@ namespace OLLMapp.SettingsDialog
 				via_systemd = active_out.strip() == "active";
 			} catch (GLib.Error e) {
 			}
-			var https_ok = this.filesd.https_enabled && port_n >= 1024 && port_n <= 65535;
 			var ssl_ok = this.filesd.ssl_enabled && socket_host != ""
 				&& socket_n >= 1024 && socket_n <= 65535;
 			var how = "Not running";
@@ -490,15 +321,10 @@ namespace OLLMapp.SettingsDialog
 			if (up && via_systemd) {
 				how = "Running via systemd";
 			}
-			if (up && https_ok) {
-				how = how + " and HTTPS";
-			}
 			if (up && ssl_ok) {
 				how = how + " and local network SSL";
 			}
 			this.expander.subtitle = how;
-			this.host_row.visible = ips.length > 0;
-			this.port_row.visible = ips.length > 0;
 			var ssl_ready = socket_host != ""
 				&& socket_n >= 1024 && socket_n <= 65535;
 			this.ssl_switch.visible = ssl_ready;
@@ -508,41 +334,17 @@ namespace OLLMapp.SettingsDialog
 		/**
 		 * Write the Desktop server rows back into {@link filesd}.
 		 *
-		 * Off keeps the saved HTTPS and socket addresses. A saved
+		 * Off keeps the saved socket address. A saved
 		 * socket host and port shows {@link ssl_switch}. If listen
 		 * fields changed, save config and {@link reboot}.
 		 */
 		public void apply_config()
 		{
-			var prev_https = this.filesd.https;
 			var prev_socket = this.filesd.socket;
-			var prev_proxy = this.filesd.proxy;
 			var prev_systemd = this.filesd.systemd;
-			var prev_enabled = this.filesd.https_enabled;
 			var prev_ssl = this.filesd.ssl_enabled;
 			this.was_systemd = prev_systemd;
-			this.filesd.https_enabled = this.https_switch.active;
-			if (this.host_row.visible) {
-				var host = "";
-				var item = this.host_dropdown.selected_item as Gtk.StringObject;
-				if (item != null) {
-					host = item.string;
-				}
-				var n = 0;
-				var port = this.port_entry.text.strip();
-				int.try_parse(port, out n);
-				this.port_row.subtitle = "";
-				this.port_entry.remove_css_class("error");
-				if (port != "" && (n < 1024 || n > 65535)) {
-					this.port_row.subtitle = "Invalid";
-					this.port_entry.add_css_class("error");
-				}
-				if (host != "" && n >= 1024 && n <= 65535) {
-					this.filesd.https = host + ":" + n.to_string();
-				}
-			}
 			this.filesd.systemd = this.systemd_switch.active;
-			this.filesd.proxy = this.proxy_switch.active;
 			var ssl_host = "";
 			var ssl_item = this.ssl_host_dropdown.selected_item as Gtk.StringObject;
 			if (ssl_item != null) {
@@ -576,17 +378,14 @@ namespace OLLMapp.SettingsDialog
 			if (this.ssl_switch.visible) {
 				this.filesd.ssl_enabled = this.ssl_switch.active;
 			}
-			if (this.filesd.https_enabled != prev_enabled
-				|| this.filesd.ssl_enabled != prev_ssl
-				|| this.filesd.https != prev_https
+			if (this.filesd.ssl_enabled != prev_ssl
 				|| this.filesd.socket != prev_socket
-				|| this.filesd.proxy != prev_proxy
 				|| this.filesd.systemd != prev_systemd) {
 				this.win.app.config.save();
-				GLib.debug("file server apply systemd=%s was=%s https=%s socket=%s",
+				GLib.debug("file server apply systemd=%s was=%s socket=%s",
 					this.filesd.systemd ? "on" : "off",
 					this.was_systemd ? "on" : "off",
-					this.filesd.https, this.filesd.socket);
+					this.filesd.socket);
 				if (this.rebooting) {
 					this.reboot_again = true;
 					return;
@@ -602,8 +401,9 @@ namespace OLLMapp.SettingsDialog
 		 * {@link OLLMrpc.ClientBoot.ensure_daemon}. Spawn or stay-up
 		 * failure toasts ''File server did not stay up'' on
 		 * Connections. Stay-up success toasts the expander subtitle
-		 * (socket only vs socket and HTTPS). If this window is still
-		 * on Unix, reconnect {@link OLLMfiles.ProjectManager} like
+		 * (socket only vs socket and local network SSL). If this
+		 * window is still on Unix, reconnect
+		 * {@link OLLMfiles.ProjectManager} like
 		 * {@link FileConnectionRow.reconnect} with ''remote = false''.
 		 * If the window is on a remote file connection, only bounce
 		 * the local daemon.
@@ -683,15 +483,6 @@ namespace OLLMapp.SettingsDialog
 				via_systemd = active_out.strip() == "active";
 			} catch (GLib.Error e) {
 			}
-			var https_ok = false;
-			var colon = this.filesd.https.last_index_of(":");
-			if (this.filesd.https_enabled && colon > 0) {
-				var n = 0;
-				if (int.try_parse(this.filesd.https.substring(colon + 1), out n)
-					&& n >= 1024 && n <= 65535) {
-					https_ok = true;
-				}
-			}
 			var ssl_ok = false;
 			var socket_colon = this.filesd.socket.last_index_of(":");
 			if (this.filesd.ssl_enabled && socket_colon > 0) {
@@ -705,15 +496,12 @@ namespace OLLMapp.SettingsDialog
 			if (via_systemd) {
 				how = "Running via systemd";
 			}
-			if (https_ok) {
-				how = how + " and HTTPS";
-			}
 			if (ssl_ok) {
 				how = how + " and local network SSL";
 			}
 			this.expander.subtitle = how;
 			this.toast_overlay.add_toast(new Adw.Toast(this.expander.subtitle) { timeout = 2 });
-			if (this.win.project_manager.rpc.http != null) {
+			if (this.win.app.config.filesd_client.url != "") {
 				this.rebooting = false;
 				if (this.reboot_again) {
 					this.reboot.begin();

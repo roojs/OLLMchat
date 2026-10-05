@@ -55,6 +55,7 @@ namespace OLLMapp
 		private Gtk.Button browser_picker;
 		private Gtk.Button editor_picker;
 		private uint fog_source = 0;
+		private bool reconnecting = false;
 		public OLLMfiles.ProjectManager? project_manager { 
 			get; private set; default = null; }
 		/**
@@ -485,6 +486,15 @@ namespace OLLMapp
 					args = OLLMrpc.args("is", 1, "ollmchat")
 				};
 				is_desktop_available = yield rpc.connect(hello);
+				if (is_desktop_available) {
+					rpc.notify["connected"].connect(() => {
+						if (rpc.connected || this.reconnecting) {
+							return;
+						}
+						this.reconnecting = true;
+						this.reconnect.begin();
+					});
+				}
 			}
 
 			this.register_default_agents();
@@ -761,6 +771,58 @@ namespace OLLMapp
 				return true;
 			}
 			return false;
+		}
+
+		/**
+		 * After the desktop socket drops, try each stored address
+		 * again. Three passes. A hit replaces the client and
+		 * connects. None left, when the user is using the file
+		 * daemon, sets state UNREACHABLE, shows the banner, and
+		 * opens Chatter.
+		 */
+		private async void reconnect()
+		{
+			var config = this.app.config;
+			for (var pass = 0; pass < 3; pass++) {
+				if (!yield this.probe_addresses(config)) {
+					continue;
+				}
+				var rpc = new OLLMrpc.Client("", "", config.filesd_client.url);
+				this.project_manager.replace_rpc(rpc);
+				var hello = new OLLMrpc.Request() {
+					method = "RPC-Daemon.hello",
+					args = OLLMrpc.args("is", 1, "ollmchat")
+				};
+				if (!yield rpc.connect(hello)) {
+					continue;
+				}
+				config.filesd_client.state = FilesdClient.State.LIVE;
+				this.app.config.save();
+				rpc.notify["connected"].connect(() => {
+					if (rpc.connected || this.reconnecting) {
+						return;
+					}
+					this.reconnecting = true;
+					this.reconnect.begin();
+				});
+				this.reconnecting = false;
+				return;
+			}
+			this.reconnecting = false;
+			if (config.filesd_client.state == FilesdClient.State.REQUESTED
+				|| config.filesd_client.state == FilesdClient.State.DISABLED) {
+				return;
+			}
+			config.filesd_client.state = FilesdClient.State.UNREACHABLE;
+			this.app.config.save();
+			this.notification(new OLLMrpc.Notification() {
+				method = "Banner.show",
+				message = "The desktop environment is unavailable."
+			});
+			var empty = this.history_manager.create_new_session();
+			empty.project_path = this.history_manager.session.project_path;
+			empty.agent_name = "chatter";
+			yield this.chat_widget.switch_to_session(empty);
 		}
 	}
 
