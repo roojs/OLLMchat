@@ -206,6 +206,11 @@ The constructor assigns this row. `show_add` and the poll hit show or hide it.
 - **✔️** The process still running was pid 623731, started 09:40, `/usr/bin/ollmfilesd (deleted)`. Its string table is `SslListen.vala:192`. The build from 09:42 is `SslListen.vala:193`, which is the extra line `tls.database = cert.trust`. Without that database, GLib sets `UNKNOWN_CA` and `accept_certificate` returns false. The phone sees the reset on the hello handshake.
 - **✔️** `Gio.TlsFileDatabase.verify_chain` on the pulled leaf is flags 0. A local `GTlsServerConnection` with the CA database accepts it. The same leaf against the 09:40 process was rejected. After `systemctl --user restart ollmfilesd` (pid 779770, line 193), that leaf completes the handshake and the daemon starts the RPC reader (`Unexpected early end-of-stream` only because the probe sent no request).
 
+## Server required TLS certificate
+
+- **🔷** A Request tap after the cert is already stored still opens the first handshake with no client certificate. The PIN window is already closed, so the desktop requires a certificate and the phone shows `Server required TLS certificate`.
+- **✔️** `ollmapp/android/FileConnectionAdd.vala`: when `ollmrpc-ca.pem` is already on the phone, skip that handshake and `ClientCert.request_registration`. Connect with the stored certificate and send `RPC-Daemon.hello`. The six digits are required only when the CA file is absent.
+
 ## Next
 
-- **⏳** **🔷** Allow New Device, then Request on the phone again. The hello handshake should stay up, hello should finish, and the add dialog should close.
+- **⏳** **🔷** Install this APK. Request on the phone (PIN window can stay closed). Hello should finish and the add dialog should close.

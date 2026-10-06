@@ -168,11 +168,6 @@ namespace OLLMapp.SettingsDialog
 				this.error_occurred("No desktop found");
 				return;
 			}
-			var pin = this.pin_entry.text.strip();
-			if (pin.length != 6) {
-				this.error_occurred("Enter the six digits");
-				return;
-			}
 			var colon = this.found.last_index_of(":");
 			if (colon <= 0) {
 				this.error_occurred("Bad address");
@@ -184,8 +179,7 @@ namespace OLLMapp.SettingsDialog
 				return;
 			}
 			var host = this.found.substring(0, colon);
-			var dir = GLib.Path.build_filename(
-				GLib.Environment.get_user_data_dir(), "ollmchat");
+			var dir = GLib.Path.build_filename(GLib.Environment.get_user_data_dir(), "ollmchat");
 			var tls_files = new OLLMrpc.Transport.Cert() {
 				dir = dir,
 				cert_pem = "client.pem",
@@ -193,115 +187,126 @@ namespace OLLMapp.SettingsDialog
 				cn = "ollmchat-device",
 			};
 			tls_files.ensure();
-			var csr = "";
-			try {
-				GLib.FileUtils.get_contents(
-					GLib.Path.build_filename(dir, "client.csr"), out csr);
-			} catch (GLib.Error e) {
-				this.error_occurred(e.message);
-				return;
-			}
 			var client = new GLib.SocketClient() {
 				timeout = 10
 			};
-			GLib.SocketConnection conn;
-			try {
-				conn = client.connect_to_host(host, (uint16) port);
-			} catch (GLib.Error e) {
-				this.error_occurred(e.message);
-				return;
-			}
-			try {
-				conn.socket.blocking = true;
-			} catch (GLib.Error e) {
-				this.error_occurred(e.message);
-				return;
-			}
-			GLib.TlsClientConnection tls;
-			try {
-				tls = GLib.TlsClientConnection.@new(conn, null);
-			} catch (GLib.Error e) {
-				this.error_occurred(e.message);
-				return;
-			}
-			tls.accept_certificate.connect((peer_cert, errors) => {
-				return true;
-			});
-			try {
-				tls.handshake();
-			} catch (GLib.Error e) {
-				this.error_occurred(e.message);
-				return;
-			}
-			OLLMrpc.Bin.Stream bin;
-			try {
-				bin = new OLLMrpc.Bin.Stream(
-					new GLib.DataInputStream(tls.get_input_stream()),
-					new GLib.DataOutputStream(tls.get_output_stream())
-				);
-			} catch (GLib.Error e) {
-				this.error_occurred(e.message);
-				return;
-			}
-			try {
-				bin.write(new OLLMrpc.Request() {
-					method = "ClientCert.request_registration",
-					args = OLLMrpc.args("sss", pin, csr, "ollmchat")
-				});
-			} catch (GLib.Error e) {
-				this.error_occurred(e.message);
-				return;
-			}
-			OLLMrpc.Bin.Serializable parsed;
-			var reply_wait = GLib.get_monotonic_time() + 10 * 1000000;
-			while (true) {
+			if (!GLib.FileUtils.test(GLib.Path.build_filename(dir, "ollmrpc-ca.pem"),
+					GLib.FileTest.EXISTS)) {
+				var pin = this.pin_entry.text.strip();
+				if (pin.length != 6) {
+					this.error_occurred("Enter the six digits");
+					return;
+				}
+				var csr = "";
 				try {
-					parsed = bin.parse();
-				} catch (GLib.IOError e) {
-					if (e.code != GLib.IOError.WOULD_BLOCK || GLib.get_monotonic_time() >= reply_wait) {
-						this.error_occurred(e.message);
-						return;
-					}
-					var reply_poll = GLib.PollFD();
-					reply_poll.fd = conn.socket.fd;
-					reply_poll.events = GLib.IOCondition.IN;
-					GLib.poll(new GLib.PollFD[] { reply_poll }, 200);
-					continue;
+					GLib.FileUtils.get_contents(
+						GLib.Path.build_filename(dir, "client.csr"), out csr);
 				} catch (GLib.Error e) {
 					this.error_occurred(e.message);
 					return;
 				}
-				if (!(parsed is OLLMrpc.Response)) {
-					continue;
+				GLib.SocketConnection conn;
+				try {
+					conn = client.connect_to_host(host, (uint16) port);
+				} catch (GLib.Error e) {
+					this.error_occurred(e.message);
+					return;
 				}
-				break;
+				try {
+					conn.socket.blocking = true;
+				} catch (GLib.Error e) {
+					this.error_occurred(e.message);
+					return;
+				}
+				GLib.TlsClientConnection tls;
+				try {
+					tls = GLib.TlsClientConnection.@new(conn, null);
+				} catch (GLib.Error e) {
+					this.error_occurred(e.message);
+					return;
+				}
+				tls.accept_certificate.connect((peer_cert, errors) => {
+					return true;
+				});
+				try {
+					tls.handshake();
+				} catch (GLib.Error e) {
+					this.error_occurred(e.message);
+					return;
+				}
+				OLLMrpc.Bin.Stream bin;
+				try {
+					bin = new OLLMrpc.Bin.Stream(
+						new GLib.DataInputStream(tls.get_input_stream()),
+						new GLib.DataOutputStream(tls.get_output_stream())
+					);
+				} catch (GLib.Error e) {
+					this.error_occurred(e.message);
+					return;
+				}
+				try {
+					bin.write(new OLLMrpc.Request() {
+						method = "ClientCert.request_registration",
+						args = OLLMrpc.args("sss", pin, csr, "ollmchat")
+					});
+				} catch (GLib.Error e) {
+					this.error_occurred(e.message);
+					return;
+				}
+				OLLMrpc.Bin.Serializable parsed;
+				var reply_wait = GLib.get_monotonic_time() + 10 * 1000000;
+				while (true) {
+					try {
+						parsed = bin.parse();
+					} catch (GLib.IOError e) {
+						if (e.code != GLib.IOError.WOULD_BLOCK || GLib.get_monotonic_time() >= reply_wait) {
+							this.error_occurred(e.message);
+							return;
+						}
+						var reply_poll = GLib.PollFD();
+						reply_poll.fd = conn.socket.fd;
+						reply_poll.events = GLib.IOCondition.IN;
+						GLib.poll(new GLib.PollFD[] { reply_poll }, 200);
+						continue;
+					} catch (GLib.Error e) {
+						this.error_occurred(e.message);
+						return;
+					}
+					if (!(parsed is OLLMrpc.Response)) {
+						continue;
+					}
+					break;
+				}
+				var response = (OLLMrpc.Response) parsed;
+				if (response.error != null) {
+					this.error_occurred(response.error.message);
+					return;
+				}
+				var packed = (string[]) response.retval;
+				if (packed.length < 2) {
+					this.error_occurred("reply needs a client cert and a CA");
+					return;
+				}
+				try {
+					GLib.FileUtils.set_contents(
+						GLib.Path.build_filename(dir, "client.pem"), packed[0]);
+				} catch (GLib.Error e) {
+					this.error_occurred(e.message);
+					return;
+				}
+				try {
+					GLib.FileUtils.set_contents(
+						GLib.Path.build_filename(dir, "ollmrpc-ca.pem"), packed[1]);
+				} catch (GLib.Error e) {
+					this.error_occurred(e.message);
+					return;
+				}
+				tls_files.ensure();
+				this.registered_addresses = string.joinv("\n", packed[2:packed.length]);
 			}
-			var response = (OLLMrpc.Response) parsed;
-			if (response.error != null) {
-				this.error_occurred(response.error.message);
-				return;
+			if (this.registered_addresses == "") {
+				this.registered_addresses = this.found;
 			}
-			var packed = (string[]) response.retval;
-			if (packed.length < 2) {
-				this.error_occurred("reply needs a client cert and a CA");
-				return;
-			}
-			try {
-				GLib.FileUtils.set_contents(
-					GLib.Path.build_filename(dir, "client.pem"), packed[0]);
-			} catch (GLib.Error e) {
-				this.error_occurred(e.message);
-				return;
-			}
-			try {
-				GLib.FileUtils.set_contents(
-					GLib.Path.build_filename(dir, "ollmrpc-ca.pem"), packed[1]);
-			} catch (GLib.Error e) {
-				this.error_occurred(e.message);
-				return;
-			}
-			tls_files.ensure();
-			this.registered_addresses = string.joinv("\n", packed[2:packed.length]);
 			GLib.SocketConnection again;
 			try {
 				again = client.connect_to_host(host, (uint16) port);
