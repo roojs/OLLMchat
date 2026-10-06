@@ -55,11 +55,6 @@ namespace OLLMapp.SettingsDialog
 
 			var page = new Adw.PreferencesPage();
 			this.group = new Adw.PreferencesGroup();
-			this.listen_label = new Gtk.Label("Listening") {
-				wrap = true,
-				xalign = 0
-			};
-			this.group.add(this.listen_label);
 			this.pin_entry = new Gtk.Entry() {
 				placeholder_text = "Six digits",
 				max_length = 6,
@@ -71,6 +66,13 @@ namespace OLLMapp.SettingsDialog
 			};
 			this.pin_row.add_suffix(this.pin_entry);
 			this.group.add(this.pin_row);
+			this.listen_label = new Gtk.Label("Listening") {
+				wrap = true,
+				xalign = 0.5f,
+				justify = Gtk.Justification.CENTER,
+				margin_top = 18
+			};
+			this.group.add(this.listen_label);
 			page.add(this.group);
 
 			this.request_button = new Gtk.Button() {
@@ -85,6 +87,7 @@ namespace OLLMapp.SettingsDialog
 
 			this.error_occurred.connect((error_message) => {
 				this.listen_label.label = error_message;
+				this.request_button.sensitive = this.found != "";
 				GLib.warning("%s", error_message);
 			});
 			this.pin_entry.activate.connect(() => {
@@ -160,6 +163,7 @@ namespace OLLMapp.SettingsDialog
 
 		private async void request()
 		{
+			this.request_button.sensitive = false;
 			if (this.found == "") {
 				this.error_occurred("No desktop found");
 				return;
@@ -207,6 +211,12 @@ namespace OLLMapp.SettingsDialog
 				this.error_occurred(e.message);
 				return;
 			}
+			try {
+				conn.socket.blocking = true;
+			} catch (GLib.Error e) {
+				this.error_occurred(e.message);
+				return;
+			}
 			GLib.TlsClientConnection tls;
 			try {
 				tls = GLib.TlsClientConnection.@new(conn, null);
@@ -243,17 +253,30 @@ namespace OLLMapp.SettingsDialog
 				return;
 			}
 			OLLMrpc.Bin.Serializable parsed;
-			try {
-				parsed = bin.parse();
-			} catch (GLib.Error e) {
-				this.error_occurred(e.message);
-				return;
+			var reply_wait = GLib.get_monotonic_time() + 10 * 1000000;
+			while (true) {
+				try {
+					parsed = bin.parse();
+				} catch (GLib.IOError e) {
+					if (e.code != GLib.IOError.WOULD_BLOCK || GLib.get_monotonic_time() >= reply_wait) {
+						this.error_occurred(e.message);
+						return;
+					}
+					var reply_poll = GLib.PollFD();
+					reply_poll.fd = conn.socket.fd;
+					reply_poll.events = GLib.IOCondition.IN;
+					GLib.poll(new GLib.PollFD[] { reply_poll }, 200);
+					continue;
+				} catch (GLib.Error e) {
+					this.error_occurred(e.message);
+					return;
+				}
+				if (!(parsed is OLLMrpc.Response)) {
+					continue;
+				}
+				break;
 			}
-			var response = parsed as OLLMrpc.Response;
-			if (response == null) {
-				this.error_occurred("reply was " + parsed.get_type().name());
-				return;
-			}
+			var response = (OLLMrpc.Response) parsed;
 			if (response.error != null) {
 				this.error_occurred(response.error.message);
 				return;
@@ -282,6 +305,12 @@ namespace OLLMapp.SettingsDialog
 			GLib.SocketConnection again;
 			try {
 				again = client.connect_to_host(host, (uint16) port);
+			} catch (GLib.Error e) {
+				this.error_occurred(e.message);
+				return;
+			}
+			try {
+				again.socket.blocking = true;
 			} catch (GLib.Error e) {
 				this.error_occurred(e.message);
 				return;
@@ -325,17 +354,30 @@ namespace OLLMapp.SettingsDialog
 				return;
 			}
 			OLLMrpc.Bin.Serializable hello_parsed;
-			try {
-				hello_parsed = bin2.parse();
-			} catch (GLib.Error e) {
-				this.error_occurred(e.message);
-				return;
+			var hello_wait = GLib.get_monotonic_time() + 10 * 1000000;
+			while (true) {
+				try {
+					hello_parsed = bin2.parse();
+				} catch (GLib.IOError e) {
+					if (e.code != GLib.IOError.WOULD_BLOCK || GLib.get_monotonic_time() >= hello_wait) {
+						this.error_occurred(e.message);
+						return;
+					}
+					var hello_poll = GLib.PollFD();
+					hello_poll.fd = again.socket.fd;
+					hello_poll.events = GLib.IOCondition.IN;
+					GLib.poll(new GLib.PollFD[] { hello_poll }, 200);
+					continue;
+				} catch (GLib.Error e) {
+					this.error_occurred(e.message);
+					return;
+				}
+				if (!(hello_parsed is OLLMrpc.Response)) {
+					continue;
+				}
+				break;
 			}
-			var hello = hello_parsed as OLLMrpc.Response;
-			if (hello == null) {
-				this.error_occurred("hello failed");
-				return;
-			}
+			var hello = (OLLMrpc.Response) hello_parsed;
 			if (hello.error != null) {
 				this.error_occurred(hello.error.message);
 				return;

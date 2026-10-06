@@ -1,99 +1,21 @@
-# 5)]
+# 2.31 — URGENT — `bash` as a process tool
 
-[New Thread 0x7fffa0ff96c0 (LWP 112966)]
+**Status:** ⏳ **design** — phased, built back-to-front from the daemon. No phase is ready to apply; Phase A's open questions gate the rest.
 
-[New Thread 0x7fff8ffff6c0 (LWP 112967)]
+> **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
-[New Thread 0x7fff8f7fe6c0 (LWP 112970)]
+**Was:** `RPC-8.2.8.10-URGENT-android-remote-bash.md`. Moved to `TOOLS` because this is a tool problem, not an RPC one.
 
-[New Thread 0x7fff8effd6c0 (LWP 112971)]
+**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](RPC-8.2.8-filesd-connections-ui.md) Phase 12
 
-Thread 1 "ollmchat" received signal SIGSEGV, Segmentation fault.
+**Sub-plans:** phases A–E below become `TOOLS-2.31.1` … `TOOLS-2.31.5` as each one's open questions close.
 
-__strlen_avx2 () at ../sysdeps/x86_64/multiarch/strlen-avx2.S:76
-
-warning: 76	../sysdeps/x86_64/multiarch/strlen-avx2.S: No such file or directory
-
-(gdb) bt
-
-#0  __strlen_avx2 () at ../sysdeps/x86_64/multiarch/strlen-avx2.S:76
-
-#1  0x00007ffff6d3825d in g_strdup () at /lib/x86_64-linux-gnu/[libglib-2.0.so](http://libglib-2.0.so).0
-
-#2  0x00007ffff7279f82 in gtk_string_object_new () at /lib/x86_64-linux-gnu/[libgtk-4.so](http://libgtk-4.so).1
-
-#3  0x00007ffff727f20a in gtk_string_list_splice () at /lib/x86_64-linux-gnu/[libgtk-4.so](http://libgtk-4.so).1
-
-#4  0x00007ffff7e8d963 in ??? () at /lib/x86_64-linux-gnu/[libgobject-2.0.so](http://libgobject-2.0.so).0
-
-#5  0x00007ffff7e903db in g_object_new_valist () at /lib/x86_64-linux-gnu/[libgobject-2.0.so](http://libgobject-2.0.so).0
-
-#6  0x00007ffff7e907cf in g_object_new () at /lib/x86_64-linux-gnu/[libgobject-2.0.so](http://libgobject-2.0.so).0
-
-#7  0x00005555555f1108 in oll_mapp_settings_dialog_file_server_row_load_config (self=0x555555bc0000) at ../ollmapp/SettingsDialog/FileServerRow.vala:452
-
-#8  0x00005555555b0d08 in oll_mapp_settings_dialog_connections_page_load_config (self=0x555555806200) at ../ollmapp/SettingsDialog/ConnectionsPage.vala:597
-
-#9  0x00005555555d5bb6 in oll_mapp_settings_dialog_main_dialog_show_dialog_co (_data_=0x5555584830c0) at ../ollmapp/SettingsDialog/MainDialog.vala:230
-
-#10 0x00005555555d599b in oll_mapp_settings_dialog_main_dialog_show_dialog_ready
-
-    (source_object=0x555555931c70, *res*=0x555556cce900, *user*data_=0x5555584830c0) at ../ollmapp/SettingsDialog/MainDialog.vala:223
-
-#11 0x00007ffff6ed783a in ??? () at /lib/x86_64-linux-gnu/[libgio-2.0.so](http://libgio-2.0.so).0
-
-#12 0x00005555555d693e in oll_mapp_settings_dialog_main_dialog_check_all_connections_co (_data_=0x555557c624e0)
-
-    at ../ollmapp/SettingsDialog/MainDialog.vala:285
-
-#13 0x00005555555d614f in oll_mapp_settings_dialog_main_dialog_check_all_connections_ready
-
-    (source_object=0x5555585d8550, *res*=0x5555585dec80, *user*data_=0x555557c624e0) at ../ollmapp/SettingsDialog/MainDialog.vala:297
-
-#14 0x00007ffff6ed783a in ??? () at /lib/x86_64-linux-gnu/[libgio-2.0.so](http://libgio-2.0.so).0
-
-#15 0x00007ffff7d5eacc in oll_mchat_call_models_exec_models_co (_data_=0x555558603610) at ../libollmchat/Call/Models.vala:48
-
-#16 0x00007ffff7d5e702 in oll_mchat_call_models_exec_models_ready (source_object=0x5555585d8550, *res*=0x555557b83b70, *user*data_=0x555558603610)
-
-    at ../libollmchat/Call/Models.vala:42
-
-#17 0x00007ffff6ed783a in ??? () at /lib/x86_64-linux-gnu/[libgio-2.0.so](http://libgio-2.0.so).0
-
-#18 0x00007ffff7d28a8e in oll_mchat_call_base_get_models_co (_data_=0x5555585e3bb0) at ../libollmchat/Call/Base.vala:442
-
-#19 0x00007ffff7d2849e in oll_mchat_call_base_get_models_ready (source_object=0x5555585d8550, *res*=0x555557b82260, *user*data_=0x5555585e3bb0)
-
-    at ../libollmchat/Call/Base.vala:430
-
-#20 0x00007ffff6ed783a in ??? () at /lib/x86_64-linux-gnu/[libgio-2.0.so](http://libgio-2.0.so).0
-
-#21 0x00007ffff7d21d00 in oll_mchat_call_base_send_request_co (_data_=0x555557d877d0) at ../libollmchat/Call/Base.vala:116
-
-#22 0x00007ffff7d21478 in oll_mchat_call_base_send_request_ready (source_object=0x5555557295a0, *res*=0x555555ebfc10, *user*data_=0x555557d877d0)
-
-    at ../libollmchat/Call/Base.vala:106
-
-#23 0x00007ffff6ed783a in ??? () at /lib/x86_64-linux-gnu/[libgio-2.0.so](http://libgio-2.0.so).0
-
---Type <RET> for more, q to quit, c to continue without paging--
-
-8.2.8.10 — URGENT — `bash` as a remote tool Android can use
-
-**Status:** ⏳ **design** — tool contract is being reworked before any implementation lands. Daemon implementation is parked in `[8.2.8.10.1](RPC-8.2.8.10.1-daemon-sandbox-bubble-rpc.md)`.
-
-> **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
-
-**Parent:** `[RPC-8.2.8-filesd-connections-ui.md](RPC-8.2.8-filesd-connections-ui.md)` Phase 12
-
-**Sub-plans:**
-
-- `[RPC-8.2.8.10.1](RPC-8.2.8.10.1-daemon-sandbox-bubble-rpc.md)` — daemon `Sandbox-Bubble` RPC implementation. **Parked, do not apply.**
+- [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) — earlier daemon `Sandbox-Bubble` RPC draft. **Parked, do not apply.**
 
 **Depends on:**
 
-- `[RPC-8.2.8.9](done/RPC-8.2.8.9-DONE-android-agent-pi.md)` — Agent Pi on `LIVE` / `SOCKET`. Registers `write` / `read` only. Does not register `Bash`.
-- `[BWRAP-2.10.4.15](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)` — daemon sandbox RPC design. Not on the wire yet.
+- [`RPC-8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — Agent Pi on `LIVE` / `SOCKET`. Registers `write` / `read` only. Does not register `Bash`.
+- [`BWRAP-2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) — daemon sandbox RPC design. Not on the wire yet.
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -105,17 +27,17 @@ Proposed Vala follows `docs/coding-standards.md`.
 
 ## Purpose
 
-- **🔷** A separate ticket. Not stuffed into `[8.2.8.9](done/RPC-8.2.8.9-DONE-android-agent-pi.md)`.
+- **🔷** A separate ticket. Not stuffed into [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md).
 - **🔷** Turn `bash` into a tool the phone can use **remotely**.
   - The command runs on the desktop `ollmfilesd`.
   - Not on the phone.
-- **🔷** `⏳` Settle the **tool** contract first, then work down to the daemon.
-  - A long command must not hold the tool call open.
-  - `timeout = -1` returns after 15 s and hands the agent a **running process** to manage.
+- **🔷** `bash` becomes its **own tool**, taking over the name it already owns as an alias. `run_command` is left alone.
+- **🔷** `⏳` `timeout = -1` returns after 15 s and hands the agent a **running process** to manage. Every other timeout still kills.
 - **🔷** `⏳` The **user** must be able to kill a background process, not just the agent.
 - **🔷** `⏳` The agent manages running processes through the **same tool**, with the pid as an argument and `kill` / `tail` / `wait` / `send` as the command. No second tool.
-- **🔷** `⏳` Describe the current tool API before designing the new one.
-- **ℹ️** The daemon implementation already drafted is parked in `[8.2.8.10.1](RPC-8.2.8.10.1-daemon-sandbox-bubble-rpc.md)`, not deleted.
+- **🔷** `⏳` Build it back-to-front: the daemon job model first, the tool last.
+- **ℹ️** The current tool API is written out below, as the thing being replaced.
+- **ℹ️** An earlier daemon implementation is parked in [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md), kept to be mined, not applied.
 
 ---
 
@@ -273,16 +195,11 @@ Do not read this file whole — it is 4120 lines. Use grep, head, or tail
 on it with this tool to find the part you need.
 ```
 
-- **🔷** `⏳` The cap itself is probably too aggressive. **100** or so is likely better than 50.
-- **⏳** **🔷** Confirm the new number. 50 → 100 doubles the worst-case tokens from a single noisy command, which matters more on a phone.
-- **💩** The same cap governs `tail <pid>`, so whatever is chosen applies to background reads too.
-
-#### The cap is a magic number in eleven places
-
-- **ℹ️** `50` is written out literally throughout `RunCommand/Request.vala` — the spill-delete test, both `output_lines > 50` footer tests in the bwrap and subprocess paths, the two `"last 50 of"` message strings, the `truncate_output` default parameter, its call site, the `tail` ring-buffer bound, and the two tests in the bwrap tail reader.
-- **💩** Changing the number means editing all of them consistently, and two of them are inside message text where a mismatch would not fail the build — it would just lie to the agent.
-- **💩** Worth a single constant before the value changes, not after.
-- **⏳** **💩** Should the cap be configurable per call, given `tail` on a long-running job may want more than a one-shot command does?
+- **✅** The cap stays **50**. That is the consistent number everywhere — it is not being raised to 100.
+- **🔷** `tail <pid>` uses the same 50, so background reads match one-shot commands.
+- **ℹ️** 50 is already the value at all eleven sites in `RunCommand/Request.vala`, so nothing has to change for the cap itself. Only the advice text above is new.
+- **🚫** Do not extract 50 into a `const`. `docs/coding-standards-router.md` requires user or plan approval for a new named constant and prefers the literal at the use site.
+- **ℹ️** Two of the eleven are inside message strings (`"// LLM received last 50 of "` and `"showing last 50 of "`). If the cap is ever revisited, those two must move with the tests — a mismatch would not fail the build, it would just misreport the count to the agent.
 
 ### Where the dispatch goes
 
@@ -343,11 +260,11 @@ on it with this tool to find the part you need.
 ## Current behaviour (remote path)
 
 - **ℹ️** `Request.execute_tool_async` calls in-process `OLLMbwrap.Bubble.exec`. The command never leaves the app process.
-- **ℹ️** Overlay apply after a local exec is File.* RPC (`[done/2.10.4.19](done/2.10.4.19-DONE-runcommand-overlay-index.md)`).
+- **ℹ️** Overlay apply after a local exec is File.* RPC ([`done/2.10.4.19`](done/2.10.4.19-DONE-runcommand-overlay-index.md)).
 - **ℹ️** `write` / `read` already go through `ProjectManager` RPC when the client is remote.
-- **ℹ️** Android `initialize_client` registers `write` / `read` only (`[8.2.8.9](done/RPC-8.2.8.9-DONE-android-agent-pi.md)` Phase 2).
+- **ℹ️** Android `initialize_client` registers `write` / `read` only ([`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) Phase 2).
 - **ℹ️** `AgentPi.Factory.register_config` `GLib.error`s without `write` / `read` / `bash`. Android therefore does not call `register_config` yet.
-- **ℹ️** Daemon `Bubble.`* is still **DEFERRED** (`[FILES-2.10.4.1](FILES-2.10.4.1-ollmfilesd-rpc-api.md)` · `[2.10.4.15](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)`).
+- **ℹ️** Daemon `Bubble.*` is still **DEFERRED** ([`FILES-2.10.4.1`](FILES-2.10.4.1-ollmfilesd-rpc-api.md) · [`2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)).
 
 ---
 
@@ -368,49 +285,103 @@ on it with this tool to find the part you need.
   - **ℹ️** Handover is [`RPC-1.11.3`](RPC-1.11.3-tcp-client-handover.md). `TcpListen` stays the plaintext Windows listener.
 - **ℹ️** `Bash` today only sets `name`, `title`, and `example_call`. `Request.execute_tool_async` is what spawns. Whether that method is the only edit is not decided.
 - **🔷** Whether this needs another V2 cutover is open.
-  - `[2.10.4.15](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)` still says the daemon RPC caller lands at the V2 flip.
+  - [`2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) still says the daemon RPC caller lands at the V2 flip.
   - This ticket does not decide that.
 
 ---
 
 
 
-## Phase 1 — Daemon exec wire (`⏳`)
+## Parked implementation
 
-- **ℹ️** Moved out to `[8.2.8.10.1](RPC-8.2.8.10.1-daemon-sandbox-bubble-rpc.md)`. Code proposals are complete there.
-- **🔷** `⏳` **Parked.** Do not apply until the tool contract above is settled.
-- **⏳** **🔷** What the sub-plan does **not** cover yet, because it predates the detached-process model:
-  - it has `rpc_create` / `rpc_run` / `stop` only, so three of the four verbs have no wire — nothing for `tail`, `wait`, or `send`
-  - `send` additionally needs `STDIN_PIPE` on the bubble, which nothing in the sub-plan touches
-  - lease lifetime assumes the client unrefs when the command finishes, which a detached process breaks
+- **ℹ️** [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) holds a complete set of daemon code proposals written before this design. **Do not apply it.**
+- **ℹ️** What still stands in it: the `OLLMbwrap.Bubble` changes, the `FileVerification` work, the live-handle streaming design, `live_handles = true` on the listeners, and the Vala test approach modelled on `tests/rpc/subscribe-test.vala`.
+- **ℹ️** What Phases A and B supersede: its `rpc_create` / `rpc_run` / `stop` wire covers `kill` only, it has no `STDIN_PIPE`, no job registry, and a lease lifetime that assumes the client unrefs when the command finishes.
+- **💩** Mine it during Phase B rather than rewriting from scratch.
 
 ---
 
 
 
-## Phase 2 — `RunCommand.Request` drives the remote process (`⏳`)
+## `bash` becomes its own tool
 
-- **🔷** `⏳` When the file client is `LIVE`, `Request` runs the command on the daemon. Not `OLLMbwrap` in the Android process.
-- **ℹ️** `SOCKET` is the desktop local Unix hello (`[8.2.8.9](done/RPC-8.2.8.9-DONE-android-agent-pi.md)`). `ollmfilesd` is already up on this machine. Empty `url`. Not a remote row.
+- **🔷** This does not get bolted onto `run_command`. `pid`, four verbs, `-1`, and a job registry are too much to clutter it with.
+- **🔷** `bash` is the tool that takes it over. It is already the Pi-facing name, and today it is only an alias.
+- **ℹ️** `RunCommand.Bash` currently overrides `name`, `title`, `example_call`, and `clone` — nothing else. Same `Request`, same `execute`, same everything.
+- **🔷** `run_command` stays as it is. In-process, one call one string, hard timeout, no pid.
+- **💩** So the split is: `run_command` is the simple local tool, `bash` is the RPC tool that can detach and be managed.
+
+### What that costs — **ℹ️** facts to design against
+
+- **ℹ️** `liboctools/Registry.vala` `fill_tools` registers **both** on desktop, back to back. So desktop agents would see two shell tools with different capabilities.
+- **ℹ️** `bash` has **no config registration today**. `init_config`, `setup_config_defaults`, and `register_config` all name `RunCommand.Tool` only. A first-class `bash` needs adding to all three, or it has no settings row and cannot be disabled.
+- **ℹ️** `libollmchatgtk/ChatWidget.vala` special-cases `m.name == "run_command"` when restoring a session, to re-render tool output as a collapsed `Execution results` frame. `bash` has never matched it, so restored `bash` output already renders differently.
+- **ℹ️** `AgentPi.Factory.register_config` `GLib.error`s on a missing `bash`, so whatever `bash` becomes has to keep that name.
+- **ℹ️** `RunCommand/Bash.vala` is unconditional in `liboctools/meson.build`, so it is already in the Android build.
+
+### Open — **🔷** decide
+
+- **⏳** **🔷** Does `bash` stop subclassing `RunCommand.Tool`, or keep inheriting and override the parts that differ? It needs its own `Request`, which is the bulk of the class.
+- **⏳** **🔷** Where does it live? Staying in `liboctools/RunCommand/` is odd once it is not a `RunCommand` variant.
+- **⏳** **🔷** Do desktop agents get both tools, or does `bash` replace `run_command` there too? Two shell tools in one tool list invites the model to pick the wrong one.
+- **⏳** **💩** Does `run_command` keep its own `Request`, or does it become the degenerate case of the new one? Two copies of the bwrap and subprocess paths is the thing most likely to rot.
+
+---
+
+## Phase A — daemon job model (`⏳`)
+
+**🔷** The first question is what the back end needs. Everything above is tool-level; none of it works without a daemon-side job that outlives a single call.
+
+- **🔷** `⏳` A job on the daemon must survive the call that created it. Today nothing does.
+- **🔷** `⏳` `OLLMbwrap.Bubble` needs what the parked sub-plan already drafted — `command` / `working_dir` properties and a `finished` signal, because `exec` has no completion signal and `stopped` is set only by `stop()`.
+- **🔷** `⏳` It additionally needs `GLib.SubprocessFlags.STDIN_PIPE` and the stream retained, for `send`. The sub-plan does not touch this.
+- **🔷** `⏳` Something must map a pid to a job. That registry is the one genuinely new piece of state in the whole design.
+- **⏳** **🔷** Decide what the registry is keyed on and who owns it — the connection, the daemon, or the session. Connection-owned dies with the phone's connection, which may be wrong for a detached process.
+- **⏳** **🔷** Decide the job's lifetime. The parked sub-plan assumes the client unrefs its lease when the command finishes; a detached job breaks that assumption.
+- **⏳** **💩** Decide what happens to a detached job when the last client disconnects. Nothing kills it today.
+
+---
+
+## Phase B — daemon RPC verbs (`⏳`)
+
+- **🔷** `⏳` `Sandbox-Bubble` gains a call per verb — kill, tail, wait, send — on top of create and run.
+- **ℹ️** The parked [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) has `rpc_create` / `rpc_run` / `stop` only, so it covers `kill` and nothing else. Phase B **supersedes its wire shape**; the `Bubble` and `FileVerification` work in it still stands.
+- **🔷** `⏳` Output streaming stays the live-handle design already worked out in the sub-plan — `connection.export`, `RPC-Live-Subscribe.rpc_signal` on `output`, and `live_handles = true` on the daemon's listeners.
+- **ℹ️** HTTPS cannot carry this. `HttpServer` does not override `Listen.broadcast` and enforces `X-rpc-sequence` with a 409 on mismatch. The TLS TCP listener is the transport, which is why HTTPS is being retired.
+- **⏳** Code proposals — after Phase A settles the registry and lifetime.
+
+---
+
+## Phase C — the `bash` tool (`⏳`)
+
+- **🔷** `⏳` Build the tool contract designed above: `pid` parameter, the four verbs, `timeout = -1`, the pid-return block, and the truncation advice.
+- **🔷** `⏳` When the file client is `LIVE`, `bash` runs the command on the daemon. Not `OLLMbwrap` in the Android process.
+- **ℹ️** `SOCKET` is the desktop local Unix hello ([`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md)). `ollmfilesd` is already up on this machine. Empty `url`. Not a remote row.
 - **🔷** What `SOCKET` does for exec is not decided. Not enough here to choose in-process bwrap versus the same RPC.
 - **ℹ️** Overlay / index update after daemon exec is the daemon's job in `2.10.4.15` (`Scan` + `FileVerification` on `ollmfilesd`).
-- **⏳** Code proposals — after the tool contract and Phase 1 are settled.
+- **⏳** Code proposals — after Phase B is on the wire.
 
 ---
 
+## Phase D — user-facing kill (`⏳`)
 
+- **🔷** `⏳` Deliver the UI side already analysed above — a Stop that survives the tool call returning, per-job rather than all-or-nothing, and `run_tool.start` / `end` carrying `id` so more than one job can render.
+- **🚫** Do not ship Phase C's `-1` without this. A detached process the user cannot see or stop is worse than no backgrounding at all.
 
-## Phase 3 — Android registers `bash` (`⏳`)
+---
 
-- **🔷** `⏳` `ollmapp/android/OllmchatWindow.vala` `initialize_client` registers `OLLMtools.RunCommand.Bash` next to `write` / `read`, then `AgentPi.Factory.register_config`.
-- **🔷** `⏳` Still no in-process exec on the phone. Registration is only valid once Phase 2 uses RPC.
-- **🚫** Do not apply this before Phase 2. `Bash` in `history_manager.tools` is a tool Agent Pi can call, and until `Request` routes through RPC that call runs `OLLMbwrap` / `GLib.Subprocess` **on the phone**.
+## Phase E — Android registers `bash` (`⏳`)
+
+- **🔷** `⏳` `ollmapp/android/OllmchatWindow.vala` `initialize_client` registers the `bash` tool next to `write` / `read`, then `AgentPi.Factory.register_config`.
+- **🔷** `⏳` Still no in-process exec on the phone. Registration is only valid once Phase C routes through RPC.
+- **🚫** Do not apply this before Phase C. `bash` in `history_manager.tools` is a tool Agent Pi can call, and until it routes through RPC that call runs `OLLMbwrap` / `GLib.Subprocess` **on the phone**.
+- **⏳** **💩** The class name in the hunk below is `OLLMtools.RunCommand.Bash`, which is only correct if Phase C leaves it in that namespace. Re-check before applying.
 
 
 
 ### Key facts
 
-- **ℹ️** `register_config` on `liboccoder/AgentPi/Factory.vala` `GLib.error`s on a missing `write`, `read`, or `bash` in the tool map. `bash` is the only one still absent on Android, which is why `[8.2.8.11](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md)` §4 says not to call it yet.
+- **ℹ️** `register_config` on `liboccoder/AgentPi/Factory.vala` `GLib.error`s on a missing `write`, `read`, or `bash` in the tool map. `bash` is the only one still absent on Android, which is why [`8.2.8.11`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) §4 says not to call it yet.
 - **ℹ️** `History.Manager.register_tool` is only `this.tools.set(tool.name, tool)`. No config type registration, which is why `write` / `read` work today without being in `AndroidToolsRegistration.init_config`. `bash` needs nothing extra either.
 - **ℹ️** `RunCommand/Bash.vala` is unconditional in `liboctools/meson.build`, so the class is already in the Android build.
 - **ℹ️** Calling `register_config` is not just an assert. It also seeds `config.agents["agent-pi"]` with the `forbid` list and the skills array. Android has never seeded that, so Agent Pi has been running with no forbid list and no skills.
@@ -425,7 +396,7 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 
 **Where:** `initialize_client`, the `read` tool block and the `agent-pi` factory block, between `this.register_default_agents()` and `this.agent_dropdown.wire()`.
 
-**Depends on:** Phase 2. `Bash` must already route through the daemon.
+**Depends on:** Phase C. `bash` must already route through the daemon.
 
 - **ℹ️** The `register_config` line is copied from `ollmapp/Window.vala`, which does `agent_pi.register_config(app.config, this.history_manager.tools)`. Android passes the `config` parameter instead of `app.config`; the bootstrap path assigns `this.app.config = config` before calling `initialize_client`, so they are the same object on both paths.
 - **💩** The `has_key` guard shape is kept from the surrounding Android block rather than the unguarded desktop form.
@@ -467,7 +438,7 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 
 
 
-### Testing Phase 3
+### Testing Phase E
 
 - **🔷** `⏳` On the phone, Agent Pi runs a command and the output comes back from the desktop. Check the command ran on the desktop, not the handset.
 - **💩** `⏳` Startup must still reach chat when the desktop is unreachable (`UNREACHABLE` → Chatter). `register_config` runs before the hello result is known, so a missing tool aborts the app rather than falling back.
@@ -479,10 +450,15 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 
 ## Suggested order
 
-1. **⏳** Settle the tool contract — timeout return, process id, management tool shape, user kill
-2. **⏳** Revisit `[8.2.8.10.1](RPC-8.2.8.10.1-daemon-sandbox-bubble-rpc.md)` against that contract, then apply
-3. **⏳** Phase 2 — `RunCommand.Request` daemon caller when `LIVE`
-4. **⏳** Phase 3 — Android `Bash` + `AgentPi.Factory.register_config`
+1. **⏳** Answer the open questions in **Phase A** — registry owner, key, and job lifetime. Nothing above it can be built first.
+2. **⏳** Decide whether `bash` stops subclassing `RunCommand.Tool`, and whether desktop keeps both tools.
+3. **⏳** **Phase A** — daemon job model and the `Bubble` changes, mining the parked sub-plan
+4. **⏳** **Phase B** — `Sandbox-Bubble` calls for kill / tail / wait / send
+5. **⏳** **Phase C** — the `bash` tool: `pid`, verbs, `-1`, truncation advice
+6. **⏳** **Phase D** — user-facing kill, before `-1` ships
+7. **⏳** **Phase E** — Android registration + `AgentPi.Factory.register_config`
+
+- **💩** Phases A and B are each big enough for their own sub-plan once their open questions close. C is likely two — the tool contract and the RPC caller.
 
 ---
 
@@ -490,11 +466,13 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 
 ## LLM notes
 
-- **🚫** Registering in-process `Bash` on Android so Agent Pi can start. That runs on the phone.
+- **🚫** Registering in-process `bash` on Android so Agent Pi can start. That runs on the phone.
 - **🚫** A long-term in-process `OLLMbwrap.Bubble.exec` on Linux desktop beside the exec RPC. RPC is the exec path.
-- **🚫** Applying `[8.2.8.10.1](RPC-8.2.8.10.1-daemon-sandbox-bubble-rpc.md)` before the tool contract is agreed.
-- **🚫** Putting these hunks into `[8.2.8.9](done/RPC-8.2.8.9-DONE-android-agent-pi.md)`.
-- **🚫** `run_as_root` / sudo over RPC (`[2.10.4.15](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)`).
+- **🚫** Applying [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md). It predates this design.
+- **🚫** Adding `pid`, verbs, or `-1` to `run_command`. That is what `bash` is for.
+- **🚫** A second management tool. One tool, `pid` as the argument.
+- **🚫** Putting these hunks into [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md).
+- **🚫** `run_as_root` / sudo over RPC ([`2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)).
 - **🚫** MCP stdio session RPC (`2.10.4.15` Phase B).
 - **🚫** Helper methods unless a fence names one.
 

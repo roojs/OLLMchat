@@ -162,8 +162,43 @@ The constructor assigns this row. `show_add` and the poll hit show or hide it.
 - **✔️** Opened Add Remote Desktop on emulator-5554. PIN row visible. Logcat as above. No NsdManager lines.
 - **ℹ️** GTK patch edit was reverted. `gdk_android_get_env` stays hidden.
 - **✔️** `OllmApplication` binds the JavaVM after the GTK runtime is up. Browse no longer dlopens `libnativehelper.so`.
+- **🔷** That product change was tested and did not hear the broadcast. Stop editing the chat app and the GTK patch for this.
+- **💩** `android/pair-listen-probe/` is a separate app. It browses `_rpc._tcp` with `NsdManager`, stays on Listening until a foreign host resolves, then shows the PIN field.
+
+## PIN submit 2026-10-06
+
+- **✔️** Rebuilt APK, installed on emulator-5554. Log: `android pair: bound`. PIN submit was not tried in that step.
+- **✔️** User entered the PIN. Logcat pid 17516, `FileConnectionAdd.vala:88`, five times: `Could not connect to 10.0.2.16: Connection refused`.
+- **✔️** `10.0.2.16/24` is the emulator `wlan0` address. `eth0` is `10.0.2.15`.
+- **✔️** `serviceDiscovery` for `_rpc._tcp` on that emulator lists `pair-probe-local` with `ip4: [10.0.2.16]` port 9753. That registration is the probe app on the emulator. Nothing listens on 9753.
+- **✔️** Host `avahi-browse -rtk _rpc._tcp` shows only `pair-probe-host` port 9754 (`avahi-publish-service`, pid 443072). Addresses include `192.168.0.16`. `ollmfilesd` is listening on `192.168.0.16:8422` and `:8443` and is not in that browse.
+
+## Phone test 2026-10-06 09:01
+
+- **✔️** `/usr/bin/ollmfilesd` pid 173034 SIGTRAP at 09:01:15. Kernel: `int3` in `libglib-2.0.so`, file offset `0x73e0f` is `g_logv`. No coredump. The debug log was replaced by the restart at 09:01:16, so the fatal message is gone.
+- **✔️** `~/.cache/ollmchat/ollmchat.debug.log` just before that: `09:00:58` `ClientCert.pair` id 9 replied, then `09:01:15` notification `event.pair`, then `ClientCert.pair` id 10, then `socket closed` / `disconnect abort ClientCert.pair id=10`.
+- **✔️** `/usr/bin/ollmchat` pid 368450 SIGTRAP at 09:01:22, same `g_logv` int3. The debug log line is `Client.vala:775: ClientCert.pair id=11: not connected`. That line is `GLib.error`, which aborts.
+- **ℹ️** `event.pair` with action `done` is what {@link OLLMapp.SettingsDialog.ConnectionsPage.load_config} sends into {@link OLLMapp.SettingsDialog.PairingDialog.result}, and `done` calls `ClientCert.pair` with an empty PIN.
+- **ℹ️** Phone logcat for this attempt has no `org.roojs.ollmchat.androidpoc` lines of its own. The phone UI string that contains “try again” is the startup alert in `ollmapp/android/AndroidStartup.vala`.
+
+## Fix
+
+- **✔️** `libocrpc/Transport/Connection.vala` `on_input_ready`: a parse error stops that connection. It no longer `GLib.error`s, which aborted `ollmfilesd`.
+- **✔️** `libocrpc/Client.vala` `call`, `call_sync`, `call_poll`: not connected throws. It no longer `GLib.error`s, which aborted `ollmchat` on `ClientCert.pair` id 11. `poll_drain_readable` disconnects on a parse error instead of aborting.
+- **✔️** Rebuilt `build/libocrpc/libocrpc.so`. Restarted `ollmfilesd` (pid 610653) with `LD_LIBRARY_PATH` on that library. A dropped handshake logged `ssl handshake failed` and the same pid stayed up.
+- **ℹ️** `/usr/bin/ollmchat` still loads `/lib/x86_64-linux-gnu/libocrpc.so` from Oct 5. Copying the new library there needs a password. That abort only runs when the daemon socket is already dead.
+
+## Phone registration 2026-10-06 09:42
+
+- **✔️** Daemon `~/.cache/ollmchat/ollmfilesd.debug.log`: `09:42:50.301` `ClientCert.request_registration`, then `ClientCert.pair` id 4 (PIN cleared, dialog closes), then `Connection.vala:343` `Unexpected early end-of-stream`.
+- **✔️** Phone logcat pid 27707 thread 27730 `09:42:50.152`: `FileConnectionAdd.vala:88: Try again`. Cert files under `files/share/ollmchat/` stayed at `09:01`. The signed cert and CA were never stored.
+- **✔️** `09:44:06` the user tapped Request again. Phone: `Server required TLS certificate`. Daemon: `ssl handshake failed: TLS connection peer did not send a certificate`. The PIN was already cleared, and that handshake does not send a client certificate.
+- **✔️** GLib reports `EAGAIN` as the message `Try again` (`socket_set_error_lazy` uses `socket_strerror` for `G_IO_ERROR_WOULD_BLOCK`). The phone treated that as a failed registration and closed the socket. The daemon had already accepted the PIN.
+
+## Fix
+
+- **✔️** `ollmapp/android/FileConnectionAdd.vala`: the registration reply read and the hello read wait through `GLib.IOError.WOULD_BLOCK` instead of closing the socket. Both sockets are set blocking. The status line sits under the PIN, centered, with space above. Request stays off until that attempt finishes.
 
 ## Next
 
-- **⏳** **🔷** Rebuild the chat POC APK, install on emulator-5554.
-- **⏳** **💩** With Allow New Device open on the desktop, the dialog should stay on Listening with no PIN row, then show the PIN row with `host:port` once `poll` returns a hit. Log should show `android pair: bound` and no `no JavaVM` line.
+- **⏳** **🔷** Install the rebuilt APK and run Allow New Device again. The phone should store the cert, finish hello, and close. A second tap must not be required.

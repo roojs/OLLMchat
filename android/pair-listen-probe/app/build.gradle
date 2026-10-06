@@ -1,0 +1,23 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'org.roojs.ollmchat.pairprobe'
+    compileSdk {
+        version = release(36)
+    }
+
+    defaultConfig {
+        applicationId 'org.roojs.ollmchat.pairprobe'
+        minSdk 31
+        targetSdk 36
+        versionCode 1
+        versionName '0.1'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}

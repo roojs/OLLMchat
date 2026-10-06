@@ -340,11 +340,9 @@ namespace OLLMrpc.Transport
 				try {
 					request = this.bin.parse() as OLLMrpc.Request;
 				} catch (GLib.Error e) {
-					if (e.message == "Unexpected early end-of-stream") {
-						this.stop();
-						return false;
-					}
-					GLib.error("%s", e.message);
+					GLib.warning("%s", e.message);
+					this.stop();
+					return false;
 				}
 				if (request == null) {
 					GLib.warning("connection read: expected Request");

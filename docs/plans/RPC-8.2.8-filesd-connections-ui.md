@@ -42,7 +42,7 @@
 | **9** | [`RPC-8.2.8.8-DONE-android-phone-tablet-pane.md`](done/RPC-8.2.8.8-DONE-android-phone-tablet-pane.md) — Android `ChatDesktopInterface`, phone stack / tablet landscape columns | **✔️** |
 | **10** | [`RPC-8.2.8.9-DONE-android-agent-pi.md`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — Android Agent Pi on `SOCKET` / `LIVE` (state + Check listen) | **✔️** |
 | **11** | [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) — startup hello, history when Agent Pi is off, phone pickers | **✔️** |
-| **12** | [`RPC-8.2.8.10-URGENT-android-remote-bash.md`](RPC-8.2.8.10-URGENT-android-remote-bash.md) — `bash` as an RPC tool Android can use on the desktop | **URGENT** |
+| **12** | [`TOOLS-2.31-URGENT-bash-process-tool.md`](TOOLS-2.31-URGENT-bash-process-tool.md) — `bash` as an RPC tool Android can use on the desktop | **URGENT** |
 | **13** | (this file) More than one desktop environment on Android: home, office, online via proxy | **⏳** |
 | **14** | [`RPC-8.2.8.12-DONE-android-editor-chrome-bars.md`](done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md) — editor chrome, tablet buttons on the right, pickers on the right, desktop coding-edit agents use the tablet bar | **✔️** |
 
@@ -61,7 +61,7 @@
 9. **✔️** Phase 9 — [`8.2.8.8`](done/RPC-8.2.8.8-DONE-android-phone-tablet-pane.md) — Android phone/tablet `ChatDesktopInterface`
 10. **✔️** Phase 10 — [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — `FilesdClient.State`, Agent Pi visible on `SOCKET` or `LIVE`, Check listen. Registers `write` / `read` only. Does not register `bash`.
 11. **✔️** Phase 11 — [`8.2.8.11`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md). Startup hello uses a short timeout. A miss is `UNREACHABLE` (not the user switch), leaves Agent Pi off, starts a new Chatter session, and uses `Banner.show`. History rows for a missing agent stay listed, marked disabled, and cannot be restored. Phone bottom bar flips browser, editor, and chat. Thinking icon cycles on the chat button while the session runs. Idle chat button is a speech bubble. Still one desktop environment.
-12. **URGENT** Phase 12 — [`8.2.8.10`](RPC-8.2.8.10-URGENT-android-remote-bash.md) — `bash` as a remote tool. Commands run on desktop `ollmfilesd`, not on the phone. Daemon `Bubble.exec` is [`BWRAP-2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md).
+12. **URGENT** Phase 12 — [`TOOLS-2.31`](TOOLS-2.31-URGENT-bash-process-tool.md) — `bash` as a remote tool. Commands run on desktop `ollmfilesd`, not on the phone. Daemon `Bubble.exec` is [`BWRAP-2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md).
 13. **🔷** `⏳` Phase 13 — Android keeps more than one desktop environment. Home (one network), office (another network), and later an online one through the proxy. Not part of Phase 10, Phase 11, or Phase 14.
 14. **✔️** Phase 14 — [`8.2.8.12`](done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md). Editor chrome. Tablet browser and text-editor buttons move to the right of the left-column bar. Pickers sit on the right and the model selector moves fully left. While the session is a coding-edit agent, desktop uses that same tablet bar.
 
@@ -184,7 +184,7 @@
 
 ## Phase 12 — Android remote `bash` (`URGENT`)
 
-**➡️** [`RPC-8.2.8.10-URGENT-android-remote-bash.md`](RPC-8.2.8.10-URGENT-android-remote-bash.md) — `bash` tool over RPC. Exec on desktop `ollmfilesd`.
+**➡️** [`TOOLS-2.31-URGENT-bash-process-tool.md`](TOOLS-2.31-URGENT-bash-process-tool.md) — `bash` tool over RPC. Exec on desktop `ollmfilesd`.
 
 ---
 

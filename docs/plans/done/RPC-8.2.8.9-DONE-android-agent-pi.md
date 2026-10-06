@@ -367,8 +367,8 @@ Live means Phase 1 state `LIVE`: the row is approved, the user left it on, and t
 - **ℹ️** `this.filter.changed(Gtk.FilterChange.DIFFERENT)` is the same call as `libollmchatgtk/HistoryBrowser.vala`.
 - **ℹ️** `Gtk.DropDown.selected_item` is how `FileServerRow` and `ProjectDropdown` read the current row.
 - **ℹ️** `write` / `read` already go through `ProjectManager` RPC when the client is on HTTPS.
-- **ℹ️** `bash` does not exec on the daemon. `RunCommand` calls in-process `OLLMbwrap.Bubble.exec` (or `GLib.Subprocess` when bwrap is missing). Overlay apply is File.* RPC ([`2.10.4.19-DONE-runcommand-overlay-index.md`](2.10.4.19-DONE-runcommand-overlay-index.md)). Remote `bash` is [`RPC-8.2.8.10-URGENT-android-remote-bash.md`](../RPC-8.2.8.10-URGENT-android-remote-bash.md). Daemon `Bubble.exec` is [`BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md`](../BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md).
-- **🔷** Android Agent Pi needs `bash` on the desktop. That is [`8.2.8.10`](../RPC-8.2.8.10-URGENT-android-remote-bash.md), not this plan’s hunks. Registering `Bash` on the phone would run on the phone.
+- **ℹ️** `bash` does not exec on the daemon. `RunCommand` calls in-process `OLLMbwrap.Bubble.exec` (or `GLib.Subprocess` when bwrap is missing). Overlay apply is File.* RPC ([`2.10.4.19-DONE-runcommand-overlay-index.md`](2.10.4.19-DONE-runcommand-overlay-index.md)). Remote `bash` is [`TOOLS-2.31-URGENT-bash-process-tool.md`](../TOOLS-2.31-URGENT-bash-process-tool.md). Daemon `Bubble.exec` is [`BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md`](../BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md).
+- **🔷** Android Agent Pi needs `bash` on the desktop. That is [`TOOLS-2.31`](../TOOLS-2.31-URGENT-bash-process-tool.md), not this plan’s hunks. Registering `Bash` on the phone would run on the phone.
 - **💩** Check hello is only the approval probe. Going live still needs `reconnect(true)` so `ProjectManager` is on the remote daemon.
 - **💩** Android tool fill does not register `write` / `read`. Register those before `wire()`. Do not register `bash` until `Bubble.exec` is RPC.
 - **💩** Manager `switch_to_session` does not clear the transcript. `ChatWidget` `session_activated` clears only for `EmptySession`, not when an empty session converts to a real `Session`.
@@ -631,7 +631,7 @@ Save `window_config.agent` on a LIVE-driven switch. `select_only` does not run t
 			}
 ```
 
-`bash` and `AgentPi.Factory.register_config` wait on [`RPC-8.2.8.10`](../RPC-8.2.8.10-URGENT-android-remote-bash.md). Do not register `Bash` here.
+`bash` and `AgentPi.Factory.register_config` wait on [`TOOLS-2.31`](../TOOLS-2.31-URGENT-bash-process-tool.md). Do not register `Bash` here.
 
 ### 6. `ollmapp/Window.vala` — local hello sets `SOCKET`
 
@@ -793,7 +793,7 @@ Save `window_config.agent` on a LIVE-driven switch. `select_only` does not run t
 - **🚫** Changing Linux Agent Pi registration.
 - **🚫** `#if ANDROID` to decide whether Agent Pi is in the list. That check is `SOCKET` or `LIVE`.
 - **🚫** Index loops / `ListStore.find` to locate the selected agent.
-- **🚫** Registering in-process `Bash` on Android. Exec stays on the daemon ([`8.2.8.10`](../RPC-8.2.8.10-URGENT-android-remote-bash.md)).
+- **🚫** Registering in-process `Bash` on Android. Exec stays on the daemon ([`TOOLS-2.31`](../TOOLS-2.31-URGENT-bash-process-tool.md)).
 - **🚫** `FileConnectionRow` registering tools, constructing `AgentPi.Factory`, appending the dropdown store, calling `switch_to_session`, or `activate_agent`.
 - **🚫** A second agent `ListStore` class, or rebuilding the dropdown store when `state` changes.
 - **🚫** More than one desktop environment. That is parent Phase 13.

@@ -26,7 +26,7 @@ Proposed Vala follows `docs/coding-standards.md`. Code fences after each phase i
 - **🔷** Each phase below is the whole design for that slice. Read that phase on its own.
 - **ℹ️** Startup hello, history when Agent Pi is off, and the phone pickers are [`8.2.8.11`](RPC-8.2.8.11-DONE-android-startup-history-bars.md).
 - **ℹ️** Still one desktop environment. Home, office, and an online proxy host are [`8.2.8`](../RPC-8.2.8-filesd-connections-ui.md) Phase 13.
-- **ℹ️** Remote `bash` is [`8.2.8.10`](../RPC-8.2.8.10-URGENT-android-remote-bash.md). Not this plan.
+- **ℹ️** Remote `bash` is [`TOOLS-2.31`](../TOOLS-2.31-URGENT-bash-process-tool.md). Not this plan.
 
 ---
 
@@ -411,5 +411,5 @@ Buttons are created the same way as Android, one property per line. `end_box` st
 - **🚫** A phone split (editor over a short chat strip) and a draggable sash (`Gtk.Paned`).
 - **🚫** A spinner on the chat picker. Running is the fog frames, one wave at a time. Idle is a speech bubble.
 - **🚫** More than one desktop environment. That is parent Phase 13.
-- **🚫** Registering in-process `Bash` on Android. That is [`8.2.8.10`](../RPC-8.2.8.10-URGENT-android-remote-bash.md).
+- **🚫** Registering in-process `Bash` on Android. That is [`TOOLS-2.31`](../TOOLS-2.31-URGENT-bash-process-tool.md).
 - **🚫** Reopening [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md) or [`8.2.8.11`](RPC-8.2.8.11-DONE-android-startup-history-bars.md) for these hunks.

@@ -2,7 +2,7 @@
 
 **Status:** ✔️ archived 2026-10-03 — non-RPC handlers drop `RPC-`; `RPC-Daemon` and `RPC-Live-*` stay
 
-- ℹ️ Found while writing [`RPC-8.2.8.10`](../../plans/RPC-8.2.8.10-URGENT-android-remote-bash.md). `Sandbox.Bubble` needed a prefix and there was no correct name to copy.
+- ℹ️ Found while writing [`TOOLS-2.31`](../../plans/TOOLS-2.31-URGENT-bash-process-tool.md), then named `RPC-8.2.8.10`. `Sandbox.Bubble` needed a prefix and there was no correct name to copy.
 
 ## Problem
 

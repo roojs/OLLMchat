@@ -1,10 +1,14 @@
-# 8.2.8.10.1 — Daemon `Sandbox-Bubble` RPC (implementation)
+# 2.31.6 — Daemon `Sandbox-Bubble` RPC (parked draft)
 
-**Status:** ⏳ **PARKED — do not apply.** Code proposals are complete and kept here on purpose. The tool-level design that sits above them is being reworked in the parent, and that rework may change the wire.
+**Status:** ⏳ **PARKED — do not apply.** Code proposals are complete and kept on purpose, to be mined by Phases A and B of the parent. The wire shape in here is superseded.
 
-> **Do not update** `docs/plans/RPC-1.0-summary.md` **for this sub-plan.**
+> **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
-**Parent:** [`RPC-8.2.8.10`](RPC-8.2.8.10-URGENT-android-remote-bash.md) — `bash` as a remote tool Android can use
+**Was:** `RPC-8.2.8.10.1-daemon-sandbox-bubble-rpc.md`. Moved with its parent into the `TOOLS` series.
+
+**Parent:** [`TOOLS-2.31`](TOOLS-2.31-URGENT-bash-process-tool.md) — `bash` as a process tool
+
+**Numbered `.6`** so `TOOLS-2.31.1` … `TOOLS-2.31.5` stay free for the parent's phases A–E.
 
 **Depends on:**
 

@@ -719,10 +719,10 @@ namespace OLLMrpc
 			try {
 				var msg = this.bin.parse();
 				this.dispatch_message(msg);
-			} catch (GLib.IOError e) {
-				GLib.error("%s", e.message);
 			} catch (GLib.Error e) {
-				GLib.error("%s", e.message);
+				GLib.warning("%s", e.message);
+				this.disconnect();
+				return true;
 			}
 			if (this.bin.in_stream.get_available() > 0) {
 				return this.poll_drain_readable(source);
@@ -772,11 +772,7 @@ namespace OLLMrpc
 		{
 			request.id = this.next_id++;
 			if (!this.connected) {
-				GLib.error(
-					"%s id=%d: not connected",
-					request.method,
-					request.id
-				);
+				throw new GLib.IOError.FAILED("%s id=%d: not connected", request.method, request.id);
 			}
 
 			var entry = new PendingWrite(request);
@@ -842,7 +838,8 @@ namespace OLLMrpc
 			}
 			request.id = this.next_id++;
 			if (!this.connected) {
-				GLib.error("%s id=%d: not connected", request.method, request.id);
+				throw new GLib.IOError.FAILED("%s id=%d: not connected",
+					 request.method, request.id);
 			}
 
 			var entry = new PendingWrite(request);
@@ -1022,7 +1019,7 @@ namespace OLLMrpc
 			}
 			request.id = this.next_id++;
 			if (!this.connected) {
-				GLib.error("%s id=%d: not connected", request.method, request.id);
+				throw new GLib.IOError.FAILED("%s id=%d: not connected", request.method, request.id);
 			}
 
 			var entry = new PendingWrite(request);
