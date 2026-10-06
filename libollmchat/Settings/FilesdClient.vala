@@ -38,6 +38,15 @@ namespace OLLMchat.Settings
 		public string addresses { get; set; default = ""; }
 
 		/**
+		 * Desktop id from the pairing mDNS TXT record.
+		 *
+		 * PEM files for that desktop live in a directory of this
+		 * name under the user data directory. Empty until pairing
+		 * stores a reply.
+		 */
+		public string server_id { get; set; default = ""; }
+
+		/**
 		 * Connection state. JSON is the ordinal.
 		 *
 		 * 0 requested, 1 disabled, 2 enabled, 3 live, 4 unreachable,

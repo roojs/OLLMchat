@@ -80,7 +80,17 @@ public final class PairBrowse {
 				if (resolved.getHost() == null) {
 					return;
 				}
-				found = resolved.getHost().getHostAddress()
+				byte[] raw = resolved.getAttributes().get("id");
+				if (raw == null || raw.length == 0) {
+					return;
+				}
+				String id;
+				try {
+					id = new String(raw, "UTF-8");
+				} catch (java.io.UnsupportedEncodingException e) {
+					return;
+				}
+				found = id + "\n" + resolved.getHost().getHostAddress()
 					+ ":" + resolved.getPort();
 			}
 		});

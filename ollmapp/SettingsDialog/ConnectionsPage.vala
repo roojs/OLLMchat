@@ -180,6 +180,8 @@ namespace OLLMapp.SettingsDialog
 				this.dialog.app.config.filesd_client.url = this.add_file_dialog.registered_url;
 				this.dialog.app.config.filesd_client.addresses =
 					this.add_file_dialog.registered_addresses;
+				this.dialog.app.config.filesd_client.server_id =
+					this.add_file_dialog.server_id;
 				this.dialog.app.config.filesd_client.state = FilesdClient.State.SOCKET;
 				this.dialog.app.config.save();
 				this.render_file_connection();

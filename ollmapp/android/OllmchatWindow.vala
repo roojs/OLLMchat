@@ -680,9 +680,13 @@ namespace OLLMapp
 		 */
 		private async bool probe_addresses(OLLMchat.Settings.Config2 config)
 		{
+			if (!GLib.Uuid.string_is_valid(config.filesd_client.server_id)) {
+				return false;
+			}
 			var tls = new OLLMrpc.Transport.Cert() {
 				dir = GLib.Path.build_filename(
-					GLib.Environment.get_user_data_dir(), "ollmchat"),
+					GLib.Environment.get_user_data_dir(), "ollmchat",
+					config.filesd_client.server_id),
 				cert_pem = "client.pem",
 				key_pem = "client-key.pem",
 				cn = "ollmchat-device",

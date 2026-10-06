@@ -35,6 +35,13 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public string registered_addresses { get; private set; default = ""; }
 
+		/**
+		 * Desktop id from the pairing mDNS TXT record.
+		 *
+		 * The phone dialog sets this. This URL dialog leaves it empty.
+		 */
+		public string server_id { get; private set; default = ""; }
+
 		private Gtk.Entry url_entry;
 		private Gtk.Button request_button;
 		private Gtk.Spinner spinner;

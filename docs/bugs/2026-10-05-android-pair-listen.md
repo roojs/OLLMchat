@@ -213,4 +213,4 @@ The constructor assigns this row. `show_add` and the poll hit show or hide it.
 
 ## Next
 
-- **⏳** **🔷** Install this APK. Request on the phone (PIN window can stay closed). Hello should finish and the add dialog should close.
+- **ℹ️** 2026-10-06 15:59 hello returned `certificate not registered`. Continued in `docs/bugs/2026-10-06-certificate-not-registered.md`.

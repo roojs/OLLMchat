@@ -21,8 +21,10 @@ namespace OLLMrpc.Transport
 	/**
 	 * mDNS publish for the pairing window.
 	 *
-	 * {@link start} sends PTR, SRV, and one A record per address
-	 * for ''_rpc._tcp'' in ''.local''. {@link stop} withdraws them.
+	 * {@link start} sends PTR, SRV, one A record per address, and a
+	 * TXT ''id'' for ''_rpc._tcp'' in ''.local''. The id is created
+	 * once and kept in the user data directory. {@link stop}
+	 * withdraws the records.
 	 *
 	 * == Example ==
 	 *
@@ -36,9 +38,11 @@ namespace OLLMrpc.Transport
 	{
 		private string[] addresses = {};
 		private uint16 port = 0;
+		private string server_id = "";
 		private bool up = false;
 		private Avahi.Client? client = null;
 		private Avahi.EntryGroup? group = null;
+		private Avahi.EntryGroupService? record = null;
 
 		/**
 		 * Avahi failed after {@link start} had already returned.
@@ -68,6 +72,30 @@ namespace OLLMrpc.Transport
 			}
 			this.addresses = addresses;
 			this.port = port;
+			var id_dir = GLib.Path.build_filename(
+				GLib.Environment.get_user_data_dir(), "ollmchat");
+			if (GLib.DirUtils.create_with_parents(id_dir, 0700) != 0) {
+				this.failed();
+				return false;
+			}
+			var id_path = GLib.Path.build_filename(id_dir, "server-id");
+			var id = "";
+			try {
+				GLib.FileUtils.get_contents(id_path, out id);
+			} catch (GLib.Error e) {
+				id = "";
+			}
+			id = id.strip();
+			if (!GLib.Uuid.string_is_valid(id)) {
+				id = GLib.Uuid.string_random();
+				try {
+					GLib.FileUtils.set_contents(id_path, id + "\n");
+				} catch (GLib.Error e) {
+					this.failed();
+					return false;
+				}
+			}
+			this.server_id = id;
 			if (this.client == null) {
 				var client = new Avahi.Client(Avahi.ClientFlags.NO_FAIL);
 				var group = new Avahi.EntryGroup();
@@ -130,10 +158,10 @@ namespace OLLMrpc.Transport
 		}
 
 		/**
-		 * Commit PTR, SRV, and one A record per address.
+		 * Commit PTR, SRV, one A record per address, and TXT ''id''.
 		 *
 		 * DNS class and type are both 1 (IN, A). The A record
-		 * holds the address only.
+		 * holds the address only. The TXT record is the desktop id.
 		 *
 		 * @return false when Avahi rejects the records
 		 */
@@ -157,9 +185,11 @@ namespace OLLMrpc.Transport
 				this.up = false;
 			}
 			try {
-				this.group.add_service_full(Avahi.Interface.UNSPEC,
+				this.record = this.group.add_service_full(Avahi.Interface.UNSPEC,
 					Avahi.Protocol.INET, Avahi.PublishFlags.NO_COOKIE,
 					name, "_rpc._tcp", "local", host, this.port);
+				this.record.freeze();
+				this.record.set("id", this.server_id);
 			} catch (Avahi.Error e) {
 				return false;
 			}
@@ -178,6 +208,11 @@ namespace OLLMrpc.Transport
 			}
 			try {
 				this.group.commit();
+			} catch (Avahi.Error e) {
+				return false;
+			}
+			try {
+				this.record.thaw();
 			} catch (Avahi.Error e) {
 				return false;
 			}

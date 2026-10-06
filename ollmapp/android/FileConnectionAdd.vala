@@ -36,6 +36,11 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public string registered_addresses { get; private set; default = ""; }
 
+		/**
+		 * Desktop id from the pairing mDNS TXT record.
+		 */
+		public string server_id { get; private set; default = ""; }
+
 		private Gtk.Label listen_label;
 		private Gtk.Entry pin_entry;
 		private Adw.ActionRow pin_row;
@@ -119,6 +124,7 @@ namespace OLLMapp.SettingsDialog
 		{
 			this.registered_url = null;
 			this.registered_addresses = "";
+			this.server_id = "";
 			this.found = "";
 			this.pin_entry.text = "";
 			this.pin_row.visible = false;
@@ -150,8 +156,14 @@ namespace OLLMapp.SettingsDialog
 						this.listen_label.label = "No desktop found";
 						return false;
 					}
-					this.found = hit;
-					this.listen_label.label = hit;
+					var nl = hit.index_of("\n");
+					if (nl <= 0 || !GLib.Uuid.string_is_valid(hit.substring(0, nl))) {
+						this.listen_label.label = "No server id";
+						return false;
+					}
+					this.server_id = hit.substring(0, nl);
+					this.found = hit.substring(nl + 1);
+					this.listen_label.label = this.found;
 					this.pin_row.visible = true;
 					this.request_button.sensitive = true;
 					this.pin_entry.grab_focus();
@@ -179,7 +191,12 @@ namespace OLLMapp.SettingsDialog
 				return;
 			}
 			var host = this.found.substring(0, colon);
-			var dir = GLib.Path.build_filename(GLib.Environment.get_user_data_dir(), "ollmchat");
+			if (!GLib.Uuid.string_is_valid(this.server_id)) {
+				this.error_occurred("No server id");
+				return;
+			}
+			var dir = GLib.Path.build_filename(
+				GLib.Environment.get_user_data_dir(), "ollmchat", this.server_id);
 			var tls_files = new OLLMrpc.Transport.Cert() {
 				dir = dir,
 				cert_pem = "client.pem",

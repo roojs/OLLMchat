@@ -51,6 +51,50 @@ namespace OLLMrpc.Bin
 		);
 
 		/**
+		 * One wire field: {@code data} as a {@link GLib.Bytes} value.
+		 *
+		 * @param data the record image, {@code sizeof} the boxed type
+		 * @return a one-element list
+		 */
+		protected Gee.ArrayList<GLib.Value?> pack_bytes(uint8[] data)
+		{
+			var list = new Gee.ArrayList<GLib.Value?>();
+			var bv = GLib.Value(typeof(GLib.Bytes));
+			bv.set_boxed(new GLib.Bytes(data));
+			list.add(bv);
+			return list;
+		}
+
+		/**
+		 * Read the one {@link GLib.Bytes} field back into {@code n} bytes.
+		 *
+		 * A null field is {@code n} zero bytes. {@code consumed} is 1.
+		 *
+		 * @param fields the notification arguments
+		 * @param index first field for this argument
+		 * @param consumed how many fields this argument used
+		 * @param n record size in bytes
+		 * @return the image, length {@code n}
+		 */
+		protected uint8[] unpack_bytes(
+			Gee.ArrayList<GLib.Value?> fields,
+			int index,
+			out int consumed,
+			int n
+		) {
+			consumed = 1;
+			var data = new uint8[n];
+			if (index >= fields.size) {
+				return data;
+			}
+			var blob = (GLib.Bytes) fields.get(index).get_boxed();
+			if (blob == null || blob.get_size() < n) {
+				return data;
+			}
+			return blob.get_data();
+		}
+
+		/**
 		 * Signal name to write on a notify message.
 		 *
 		 * Called from {@link OLLMrpc.Live.Subscription.connect} with the
