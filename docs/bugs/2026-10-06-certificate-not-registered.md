@@ -41,6 +41,13 @@ Reproduction: desktop Allow New Device, phone Add Remote Desktop, type the six d
 - **✔️** The phone keeps that desktop’s PEMs in `{user_data}/ollmchat/{id}/`. A second desktop’s id is a different directory.
 - **🚫** Do not key the directory on the host or the certificate fingerprint. The id is the mDNS TXT value.
 
+## After the id broadcast
+
+- **✔️** 16:58:20 phone `FileConnectionAdd.vala:96`: `expected object type byte, got 0x6F`. Daemon had just taken `ClientCert.request_registration` and then `RPC-Daemon.hello`.
+- **✔️** 16:59:01 same line, `got 0x00`. 16:59:04 another hello, then `Unexpected early end-of-stream`, and no phone error. Phone config then has `url` `tcp://192.168.88.132:8422`, `server-id` `f31fbb6f-a585-4281-bbe9-cd7fca0a78ad`, `state` 5 (socket).
+- **✔️** 17:01:54 `Factory.vala:244`: `ProjectManager.rpc_load_projects_from_db id=1: not connected`. `Client.connect` on Android still opens TLS and then `disconnect`s with `unix IO watch is not available` (`libocrpc/Client.vala`). The pairing dialog does not use that client.
+- **ℹ️** RPC-1.11.3 and RPC-1.11.5 say to leave that bail in place.
+
 ## Next
 
-- **⏳** **🔷** Rebuild the desktop app and the APK. Open Allow New Device so the broadcast includes `id`. Pair the phone. Pair a second desktop and confirm the first desktop’s directory is still there.
+- **⏳** **🔷** A live phone client has to keep the TCP socket open without `IOChannel.unix_new`. That is the read path those plans left out.
