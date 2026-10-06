@@ -199,6 +199,13 @@ The constructor assigns this row. `show_add` and the poll hit show or hide it.
 
 - **✔️** `ollmapp/android/FileConnectionAdd.vala`: the registration reply read and the hello read wait through `GLib.IOError.WOULD_BLOCK` instead of closing the socket. Both sockets are set blocking. The status line sits under the PIN, centered, with space above. Request stays off until that attempt finishes.
 
+## Phone registration 2026-10-06 10:29
+
+- **✔️** Phone logcat `FileConnectionAdd.vala:91`: `Error receiving data: Connection reset by peer` at 10:29:02 and 10:29:19. Cert files were written at 10:29 (`client.pem` signed by `OLLMrpc Product CA`, key modulus matches, CA bytes match the desktop CA).
+- **✔️** Daemon log: `ClientCert.request_registration`, then `ClientCert.pair` (dialog closes), then `SslListen.vala:192: ssl handshake failed: Unacceptable TLS certificate`, then `Unexpected early end-of-stream` on the registration connection.
+- **✔️** The process still running was pid 623731, started 09:40, `/usr/bin/ollmfilesd (deleted)`. Its string table is `SslListen.vala:192`. The build from 09:42 is `SslListen.vala:193`, which is the extra line `tls.database = cert.trust`. Without that database, GLib sets `UNKNOWN_CA` and `accept_certificate` returns false. The phone sees the reset on the hello handshake.
+- **✔️** `Gio.TlsFileDatabase.verify_chain` on the pulled leaf is flags 0. A local `GTlsServerConnection` with the CA database accepts it. The same leaf against the 09:40 process was rejected. After `systemctl --user restart ollmfilesd` (pid 779770, line 193), that leaf completes the handshake and the daemon starts the RPC reader (`Unexpected early end-of-stream` only because the probe sent no request).
+
 ## Next
 
-- **⏳** **🔷** Install the rebuilt APK and run Allow New Device again. The phone should store the cert, finish hello, and close. A second tap must not be required.
+- **⏳** **🔷** Allow New Device, then Request on the phone again. The hello handshake should stay up, hello should finish, and the add dialog should close.
