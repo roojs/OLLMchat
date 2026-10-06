@@ -1,6 +1,6 @@
 # libocrpc discards the declared GObject wire type
 
-**Status:** ⏳ open. Consumer FAIL gate: `gnome-shell-rpc/tests/call-sync-repro/declared-object-type-gate.vala`.
+**Status:** ⏳ open. The first implementation fixes the unregistered leaf but regresses boot by overriding an existing exact alias. Consumer FAIL gate: `gnome-shell-rpc/tests/call-sync-repro/declared-object-type-gate.vala`.
 
 ## Problem
 
@@ -15,7 +15,20 @@ The live consumer failure is `Clutter.Stage.get_actor_at_pos()`. Its GIR return 
 18:24:19.616044  Client.vala:723: Unexpected early end-of-stream
 ```
 
-The correct wire class is the declared public `Clutter.Actor`. The RPC layer must not know, register, audit, or hunt for Mutter's private implementation classes.
+The correct wire class is the declared public `Clutter.Actor` when the runtime leaf has no exact alias. The RPC layer must not know, register, audit, or hunt for Mutter's private implementation classes.
+
+## Regression after the first fix
+
+Installed libocrpc from commit `a92533df` always writes the declared type. Both the installed native session and `weston-gsr-prove.sh` die during bootstrap. `Meta.Backend.get_stage()` is declared as broad `Clutter.Actor`, while the runtime `MetaStageX11`/native stage already has an intentional exact alias to `Clutter-Stage`. The fix discards that exact alias, the client receives `ClutterActor`, and `Shell.Global` cannot cast it to `ClutterStage`.
+
+```text
+Meta-Backend.get_stage
+invalid cast from 'ClutterActor' to 'ClutterStage'
+g_object_new_valist: invalid object type 'ClutterActor' for value type 'ClutterStage'
+st_theme_context_get_for_stage: assertion 'stage != NULL' failed
+```
+
+The rule is not “declared type always wins.” An existing exact runtime alias is the explicit canonical wire role and must win. Only an unregistered runtime leaf falls back to the declared public type. This is one exact hash lookup, not a superclass search or a private-class audit.
 
 ## FAIL gate
 
@@ -46,9 +59,10 @@ Sections 1, 3, and 4 are in the tree. Object lists are not part of this change.
 - A handler that already built `GLib.Value(typeof(GatePublic))` (the FAIL gate, a signal parameter, or `notify` via `pspec.value_type`) reaches `StreamValue.write`. That method calls `write_gtype(object.get_type())`, which throws `Unregistered class type schema: GatePrivate` and stops the connection.
 - `Clutter.Stage.get_actor_at_pos` goes through `Gi.dispatch_function`. That method rejects `created.get_type()` (`MetaSurfaceActorWayland`) with `INVALID_PARAMS` (`-32602`) before it writes. `OLLMrpc.val("o", created)` would also stamp the `GValue` with the private type, so a `StreamValue`-only change leaves this call on the error-reply path.
 
-The wire class has to be the type the caller already declared. The lease id stays the runtime instance.
+The wire class is an existing exact runtime alias when one is registered; otherwise it is the type the caller already declared. The lease id stays the runtime instance.
 
 - 🚫 No superclass walk, no `is_a` search, no `MetaSurfaceActorWayland` alias.
+- ✔️ An exact `gtype_to_alias` entry for the runtime GType takes precedence. This preserves intentional mappings such as `MetaStageX11` → `Clutter-Stage`.
 - 🚫 No edit to signal or property packing. Those `GValue`s already use the signal parameter type or `pspec.value_type`. `StreamValue` is what discards them.
 - 🚫 No change to `dispatch_new`. A constructor's instance type is the public class that was invoked.
 - 🚫 No change to IN lease checks. An inbound proxy's `get_type()` is already the registered wire class.
@@ -59,20 +73,13 @@ The wire class has to be the type the caller already declared. The lease id stay
 
 ### 1. `libocrpc/Bin/StreamValue.vala` — `write`: live object schema
 
-**Why:** The gate, signals, and properties already put the public type on the `GValue`. The lease lookup keeps using the instance pointer.
+**Why:** The gate, signals, and properties already put the public type on the `GValue`. Use it only when the runtime type has no exact alias. The lease lookup keeps using the instance pointer.
 
 **Where:** `write`, live-handle branch of `val.type().is_a(GLib.Type.OBJECT)`, the `write_gtype(live.get_type())` call. The `Serializable` test above it stays on `get_type()` so a property dump still follows the concrete class.
 
 **Depends on:** none.
 
 #### Remove
-
-```vala
-					var live = val.get_object();
-					ctx.write_gtype(live.get_type());
-```
-
-#### Replace with
 
 ```vala
 					var live = val.get_object();
@@ -84,7 +91,22 @@ The wire class has to be the type the caller already declared. The lease id stay
 					ctx.write_gtype(val.type());
 ```
 
-`live` is still the pointer hashed into `lease_ids`. `GatePrivate` stored as `GatePublic` writes `Gate-Public` and the existing lease id.
+#### Replace with
+
+```vala
+					var live = val.get_object();
+					var schema_type = gtype_to_alias.has_key(live.get_type())
+						? live.get_type()
+						: val.type();
+					if (schema_type == typeof(GLib.Object)
+							|| !gtype_to_alias.has_key(schema_type)) {
+						throw new StreamError.REGISTRATION("Unregistered declared class type schema: %s",
+							schema_type.name());
+					}
+					ctx.write_gtype(schema_type);
+```
+
+`live` is still the pointer hashed into `lease_ids`. An unregistered `GateUnregistered` stored as `GatePublic` writes the declared `Gate-Public`. An exactly aliased `GateAliasedPrivate` stored as broad `GateBase` also writes `Gate-Public`.
 
 ### 2. Object lists — rejected
 
@@ -190,10 +212,15 @@ A null OUT object is uint64 lease `0`, same as a null object already written by 
 - ✔️ 2026-10-06 — Applied the proposal without a `gtype_to_alias == null` test. `ninja -C build libocrpc/libocrpc.so`.
 - ✔️ 2026-10-06 — Reverted the `ollmrpc-schema` `set_data` path. Object lists and hashes again use each element's runtime type. Single-object returns, OUT values, and `StreamValue.write` for one live object stay.
 - ✔️ Gate against that library: `LD_LIBRARY_PATH=…/OLLMchat/build/libocrpc timeout 5 ./build/tests/call-sync-repro/declared-object-type-gate` → `PASS declared-object-type-gate: private leaf crossed as GatePublic`, exit 0.
+- ❌ Installed native boot and Weston prove: `Meta-Backend.get_stage` crosses as declared `Clutter-Actor`, discarding the exact `MetaStage*` → `Clutter-Stage` alias. Client exits before the shell UI starts.
+- ❌ Expanded gate: the unregistered-leaf/declared-type arm passes, then the exact-alias arm fails with `exact GatePublic alias lost to declared GateBase`.
+- ✔️ 2026-10-06 — `StreamValue.write` keeps an exact runtime alias and uses the declared type only when that lookup misses. Expanded gate: `PASS declared-object-type-gate: declared fallback and exact alias preserved`, exit 0.
 
 ## Exit
 
-- `declared-object-type-gate` passes.
-- The returned proxy is `GatePublic`, with the server lease still referring to `GatePrivate`.
+- Both arms of `declared-object-type-gate` pass.
+- An unregistered private leaf crosses as its declared registered public type.
+- An exactly aliased runtime leaf crosses using that alias even when its declared type is a broader registered base.
 - A later ping succeeds on the same connection.
 - `MetaSurfaceActorWayland` needs no alias and does not appear in libocrpc.
+- Native installed boot and Weston prove pass `Meta-Backend.get_stage` with a `ClutterStage` proxy.
