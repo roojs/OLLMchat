@@ -286,7 +286,12 @@ namespace OLLMrpc.Bin
 				if (!val.get_object().get_type().is_a(typeof(Serializable))
 					&& ctx.connection.live_handles) {
 					var live = val.get_object();
-					ctx.write_gtype(live.get_type());
+					if (val.type() == typeof(GLib.Object)
+							|| !gtype_to_alias.has_key(val.type())) {
+						throw new StreamError.REGISTRATION("Unregistered declared class type schema: %s",
+							val.type().name());
+					}
+					ctx.write_gtype(val.type());
 					var ptr = (uint64) (void*) live;
 					var lo = (int) ptr;
 					var id = ctx.connection.lease_ids.get((int) (ptr >> 32)).get(lo);

@@ -1,6 +1,6 @@
 # Add Remote Desktop — Request toasts a missing client.csr
 
-**Status:** ⏳ Request stayed disabled until `pin_entry.text` was already six characters, so the tap that commits the IME never ran `request()`. The button is enabled when a desktop is found. The registration read is one `Response` again (`ClientCert.request_registration` replies before `event.pair`). APK installed on SM-S9380. Not verified from a phone tap. `build/ollmfilesd/ollmfilesd` (pid 2275116) is still the process on port 8422.
+**Status:** 🚫 CLOSED — a phone tap completed registration, stored the signed certificate and CA, and reached hello. The remaining failure is the separate Android live RPC read watch.
 
 **Device:** SM-S9380, `adb-R5CY134DA0W`.  
 **Related:** ℹ️ `ollmapp/android/FileConnectionAdd.vala`, `libocrpc/android/Cert.vala`, `libocrpc/Transport/Cert.vala`

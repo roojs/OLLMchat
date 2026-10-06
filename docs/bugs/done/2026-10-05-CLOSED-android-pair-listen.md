@@ -1,6 +1,6 @@
 # Add Remote Desktop — PIN before mDNS, browse never starts
 
-**Status:** ⏳ JNI env comes from the app, not the GTK patch. Patch edit reverted. APK not rebuilt yet.
+**Status:** 🚫 CLOSED — discovery, PIN registration, certificate storage, and hello progressed on SM-S9380. The remaining failure is the separate Android live RPC read watch.
 
 **Package:** `org.roojs.ollmchat.androidpoc`  
 **Device:** emulator-5554, `sdk_gphone16k_x86_64`, API 37. APK is arm64-v8a under translation.  

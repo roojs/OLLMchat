@@ -695,13 +695,17 @@ namespace OLLMrpc
 					if (created == null) {
 						break;
 					}
-					if (Bin.gtype_to_alias == null || !Bin.gtype_to_alias.has_key(created.get_type())) {
+					var schema_type = ((GI.RegisteredTypeInfo) ret_type.get_interface()).get_g_type();
+					if (schema_type == typeof(GLib.Object)
+							|| !Bin.gtype_to_alias.has_key(schema_type)) {
 						this.request.connection.reply_error(
 							this.request, (int) RpcErrorCode.INVALID_PARAMS);
 						return true;
 					}
 					this.request.connection.export(created);
-					response.retval = OLLMrpc.val("o", created);
+					var packed = GLib.Value(schema_type);
+					packed.set_object(created);
+					response.retval = packed;
 					break;
 
 				default:
@@ -1488,6 +1492,27 @@ namespace OLLMrpc
 
 				case GI.TypeTag.INTERFACE:
 					var kind = type.get_interface().get_type();
+					if (kind == GI.InfoType.OBJECT || kind == GI.InfoType.INTERFACE) {
+						if (arg.v_pointer == null) {
+							var z = GLib.Value(typeof(GLib.Object));
+							z.set_object(null);
+							dest.add(z);
+							return true;
+						}
+						var schema_type = ((GI.RegisteredTypeInfo) type.get_interface()).get_g_type();
+						if (schema_type == typeof(GLib.Object)
+								|| !Bin.gtype_to_alias.has_key(schema_type)) {
+							this.request.connection.reply_error(
+								this.request, (int) RpcErrorCode.INVALID_PARAMS);
+							return false;
+						}
+						var obj = (GLib.Object) arg.v_pointer;
+						this.request.connection.export(obj);
+						var packed = GLib.Value(schema_type);
+						packed.set_object(obj);
+						dest.add(packed);
+						return true;
+					}
 					if (kind == GI.InfoType.ENUM) {
 						var e = GLib.Value(typeof(int));
 						e.set_int(arg.v_int32);

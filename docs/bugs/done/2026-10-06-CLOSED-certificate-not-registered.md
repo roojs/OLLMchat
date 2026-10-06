@@ -1,6 +1,6 @@
 # Pairing — hello says certificate not registered
 
-**Status:** ⏳ per-server PEM directory is in the tree — await a phone pair against two desktops
+**Status:** 🚫 CLOSED — per-server PEM directories are in the tree and pairing reached stored socket state. The remaining failure is the separate Android live RPC read watch.
 
 **Device:** SM-S9380, `adb-R5CY134DA0W`.  
 **Related:** ℹ️ `docs/bugs/2026-10-05-android-pair-listen.md`, `ollmapp/android/FileConnectionAdd.vala`, `ollmfilesd/ClientCert.vala`, `ollmfilesd/SslConnection.vala`
@@ -50,4 +50,4 @@ Reproduction: desktop Allow New Device, phone Add Remote Desktop, type the six d
 
 ## Next
 
-- **⏳** **🔷** A live phone client has to keep the TCP socket open without `IOChannel.unix_new`. That is the read path those plans left out.
+- **ℹ️** The missing Android steady-state RPC reader is a separate defect: `docs/bugs/2026-10-06-android-live-rpc-read-watch.md`.
