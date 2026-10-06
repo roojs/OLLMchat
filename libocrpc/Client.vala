@@ -709,7 +709,7 @@ namespace OLLMrpc
 		 * Parse and dispatch buffered socket messages recursively.
 		 *
 		 * @param source RPC socket channel
-		 * @return {@code true} when the buffer has no more readable data
+		 * @return ''true'' when the buffer has no more readable data
 		 */
 		private bool poll_drain_readable(GLib.IOChannel source)
 		{

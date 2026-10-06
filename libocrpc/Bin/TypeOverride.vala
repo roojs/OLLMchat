@@ -51,9 +51,9 @@ namespace OLLMrpc.Bin
 		);
 
 		/**
-		 * One wire field: {@code data} as a {@link GLib.Bytes} value.
+		 * One wire field: ''data'' as a {@link GLib.Bytes} value.
 		 *
-		 * @param data the record image, {@code sizeof} the boxed type
+		 * @param data the record image, ''sizeof'' the boxed type
 		 * @return a one-element list
 		 */
 		protected Gee.ArrayList<GLib.Value?> pack_bytes(uint8[] data)
@@ -66,15 +66,15 @@ namespace OLLMrpc.Bin
 		}
 
 		/**
-		 * Read the one {@link GLib.Bytes} field back into {@code n} bytes.
+		 * Read the one {@link GLib.Bytes} field back into ''n'' bytes.
 		 *
-		 * A null field is {@code n} zero bytes. {@code consumed} is 1.
+		 * A null field is ''n'' zero bytes. ''consumed'' is 1.
 		 *
 		 * @param fields the notification arguments
 		 * @param index first field for this argument
 		 * @param consumed how many fields this argument used
 		 * @param n record size in bytes
-		 * @return the image, length {@code n}
+		 * @return the image, length ''n''
 		 */
 		protected uint8[] unpack_bytes(
 			Gee.ArrayList<GLib.Value?> fields,

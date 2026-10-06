@@ -88,9 +88,9 @@ namespace OLLMrpc
 		private Gee.ArrayList<string> string_keep = new Gee.ArrayList<string>();
 
 		/**
-		 * Pinned {@link GLib.Value} IN buffers for GIR {@code GObject.Value}
-		 * ({@code GValue*}) — wire row copy or empty get fill-slot.
-		 * {@link GI.Argument} ''v_pointer'' aliases {@code &value_keep[i]}.
+		 * Pinned {@link GLib.Value} IN buffers for GIR ''GObject.Value''
+		 * (''GValue*'') — wire row copy or empty get fill-slot.
+		 * {@link GI.Argument} ''v_pointer'' aliases ''&value_keep[i]''.
 		 */
 		private GLib.Value[] value_keep = {};
 
@@ -1253,7 +1253,7 @@ namespace OLLMrpc
 		 * GObject / GInterface: lease id or a live object in
 		 * {@link request}.args. The instance GType must be in
 		 * {@link Bin.gtype_to_alias} (''Gi.register'' object types).
-		 * {@code GObject.Value}: pin the wire {@link GLib.Value} into
+		 * ''GObject.Value'': pin the wire {@link GLib.Value} into
 		 * {@link value_keep} (pointer is that row — no Bytes, no
 		 * Value-in-Value). Other STRUCT / BOXED / UNION:
 		 * {@link GLib.Bytes} of {@link GI.StructInfo.get_size}.
