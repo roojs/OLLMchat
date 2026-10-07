@@ -8,18 +8,33 @@
 
 namespace OLLMrpcTests
 {
+	class ApprovedClient : GLib.Object, OLLMrpc.Bin.Serializable
+	{
+		public int64 id { get; set; default = 0; }
+		public string fingerprint { get; set; default = ""; }
+		public int status { get; set; default = 0; }
+		public string ip { get; set; default = ""; }
+		public int64 created { get; set; default = 0; }
+		public string requester { get; set; default = ""; }
+	}
+
 	class TestRpcFilesdPair : RpcTestAppBase
 	{
 		protected static string opt_host = "";
 		protected static int opt_port = 0;
 		protected static string opt_pin = "";
+		protected static bool opt_arm_only = false;
+		protected static bool opt_list_approved = false;
 
 		protected override string help { get; set; default = """
-Usage: {ARG} [--host=IP] [--port=N] --pin=DIGITS
+Usage: {ARG} [--host=IP] [--port=N] [--arm-only|--list-approved] [--pin=DIGITS]
 
 Talk to a running ollmfilesd TLS bin listener while Allow New
 Device is open. Reads client.csr from the app cert directory,
 writes the signed cert and CA back, then RPC-Daemon.hello.
+
+--arm-only sets the daemon PIN over its local Unix socket and exits.
+--list-approved queries approved clients over the local Unix socket and exits.
 """; }
 
 		public TestRpcFilesdPair()
@@ -35,7 +50,7 @@ writes the signed cert and CA back, then RPC-Daemon.hello.
 		protected override OptionContext app_options()
 		{
 			var opt_context = new OptionContext(this.get_app_name());
-			var entries = new OptionEntry[6];
+			var entries = new OptionEntry[8];
 			entries[0] = base_options[0];
 			entries[1] = base_options[1];
 			entries[2] = { "host", 0, 0, OptionArg.STRING, ref opt_host,
@@ -44,7 +59,11 @@ writes the signed cert and CA back, then RPC-Daemon.hello.
 				"TLS bin port. 0 reads filesd.socket.", "N" };
 			entries[4] = { "pin", 0, 0, OptionArg.STRING, ref opt_pin,
 				"Six digits from Allow New Device.", "DIGITS" };
-			entries[5] = { null };
+			entries[5] = { "arm-only", 0, 0, OptionArg.NONE, ref opt_arm_only,
+				"Set the daemon PIN over its local Unix socket and exit.", null };
+			entries[6] = { "list-approved", 0, 0, OptionArg.NONE, ref opt_list_approved,
+				"List approved clients over the local Unix socket and exit.", null };
+			entries[7] = { null };
 			opt_context.add_main_entries(entries, null);
 			return opt_context;
 		}
@@ -56,6 +75,7 @@ writes the signed cert and CA back, then RPC-Daemon.hello.
 			OLLMrpc.Error.rpc_register();
 			OLLMrpc.Notification.rpc_register();
 			OLLMrpc.Daemon.rpc_register();
+			OLLMrpc.Bin.register("ClientCert", typeof(ApprovedClient));
 
 			var host = opt_host;
 			var port = opt_port;
@@ -71,6 +91,45 @@ writes the signed cert and CA back, then RPC-Daemon.hello.
 						int.try_parse(socket.substring(colon + 1), out port),
 						"filesd.socket port");
 				}
+			}
+			if (opt_arm_only || opt_list_approved) {
+				var local = new GLib.SocketClient().connect(
+					new GLib.UnixSocketAddress(GLib.Path.build_filename(
+						GLib.Environment.get_user_data_dir(), "ollmchat", "ollmfilesd.sock"))
+				);
+				var local_bin = new OLLMrpc.Bin.Stream(
+					new GLib.DataInputStream(local.get_input_stream()),
+					new GLib.DataOutputStream(local.get_output_stream())
+				);
+				if (opt_list_approved) {
+					local_bin.write(new OLLMrpc.Request() {
+						id = 1,
+						method = "ClientCert.approved_certs"
+					});
+					var approved = local_bin.parse() as OLLMrpc.Response;
+					this.check(command_line, approved != null, "approved reply was not a response");
+					this.check(command_line, approved.error == null,
+						approved.error != null ? approved.error.message : "");
+					var clients = (Gee.ArrayList<ApprovedClient>) approved.retval.get_object();
+					foreach (var approved_client in clients) {
+						command_line.print("%" + int64.FORMAT + " %s %s\n", approved_client.id,
+							approved_client.fingerprint, approved_client.requester);
+					}
+					command_line.print("approved clients: %d\n", clients.size);
+					return;
+				}
+				this.check(command_line, opt_pin != "", "--pin is required");
+				local_bin.write(new OLLMrpc.Request() {
+					id = 1,
+					method = "ClientCert.pair",
+					args = OLLMrpc.args("s", opt_pin)
+				});
+				var armed = local_bin.parse() as OLLMrpc.Response;
+				this.check(command_line, armed != null, "pair reply was not a response");
+				this.check(command_line, armed.error == null,
+					armed.error != null ? armed.error.message : "");
+				command_line.print("pair armed with %s\n", opt_pin);
+				return;
 			}
 			this.check(command_line, opt_pin != "", "--pin is required");
 			var dir = GLib.Path.build_filename(

@@ -196,6 +196,22 @@ namespace OLLMrpc
 		}
 
 		/**
+		 * Whether ''gtype'' is a class in a loaded typelib.
+		 *
+		 * {@link GI.Repository.find_by_gtype} is null for a private
+		 * subclass. {@link Bin.StreamValue.write} then aliases the
+		 * nearest registered parent. A typelib type still has to be
+		 * registered with {@link Bin.register}.
+		 *
+		 * @param gtype runtime GType of the instance being written
+		 * @return true when the typelib has this GType
+		 */
+		public static bool in_typelib(GLib.Type gtype)
+		{
+			return GI.Repository.get_default().find_by_gtype(gtype) != null;
+		}
+
+		/**
 		 * Byte offset of ''vfunc_name'' in
 		 * ''ns''.''class_name'''s class struct, from the loaded
 		 * typelib (g-ir-compiler computed it; cached). A missing

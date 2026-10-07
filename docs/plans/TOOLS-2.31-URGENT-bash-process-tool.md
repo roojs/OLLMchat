@@ -110,7 +110,7 @@ Proposed Vala follows `docs/coding-standards.md`.
   - **Finished inside a positive timeout** — return the output (or its tail) and the result, as today.
   - **Still running at a positive timeout** — killed, as today.
   - **`timeout = -1`** — after 15 s, return the output so far **and the pid**. Nothing is killed.
-- **💩** Backgrounding being opt-in is what keeps this safe. An agent that never asks for `-1` cannot leave processes behind, so nothing about existing behaviour drifts.
+- **ℹ️** Backgrounding being opt-in is what keeps this safe. An agent that never asks for `-1` cannot leave processes behind, so nothing about existing behaviour drifts.
 - **🔷** Any return that hands back a pid also **lists the commands that can be run on it**. The agent is told what to do next at the point it needs to know.
 - **🔷** Process management stays on the **same tool**. No second tool, no `action` parameter, no extra RPC call for kill / status / wait.
 - **🔷** The pid is a **tool argument**, not part of the command line. `command` carries only the verb.
@@ -123,18 +123,20 @@ Proposed Vala follows `docs/coding-standards.md`.
   - `command = "tail"`, `pid = 1234` — return its output so far and whether it is still alive.
   - `command = "wait"`, `pid = 1234` — block up to the timeout, then return as the first call did.
   - `command = "send yes"`, `pid = 1234` — write `yes` to that job's stdin.
-- **🔷** `send` is the one verb that takes an argument. Everything after `send ` is the text to write.
-  - **🔷** A trailing line break is **inferred**. The agent does not have to supply one.
-  - **💩** Append `\n` only when the text does not already end in one, so `send yes` and `send yes\n` behave the same.
-  - **💩** Interpret a literal `\n` in the text as a line break, so multi-line input is possible in one call.
+- **🔷** `send` is the verb, the rest of the string is the payload. That is the whole of it.
+- **🔷** **No newline is added.** The payload is written exactly as given.
+  - **🔷** If the model wants an Enter, it puts a real newline in the payload. It is capable of that; this is not an escape sequence to parse.
+  - **🚫** Do not append a trailing newline, and do not translate a literal `\n` into one.
+- **🔷** Instead, **hint after the fact**. When a `send` produces little or no new output, the reply notes that ending the payload with a newline may help if the command is waiting on a prompt.
+  - **💩** Define "little or no new output" as no new log lines within the usual output flush window after the write. Not decided.
 - **🔷** When `pid` is unset the tool behaves exactly as it does today. Nothing about normal commands changes.
-- **💩** Dispatch is therefore `if (this.pid != 0)`, then the first word of `command` selects the verb, and for `send` the remainder is the payload.
+- **🔷** Dispatch is `if (this.pid != 0)`, then the first word of `command` selects the verb, and for `send` the remainder is the payload.
 - **🚫** The `pid` argument is the **only** trigger. Never sniff the command text to decide whether a call is management — splitting verb from payload happens only once `pid` is already set.
 
 #### Why the verb runs in the tool, not in a shell
 
 - **ℹ️** The shell *could* do some of this. The sandbox **shares the host PID namespace** — `build_args` adds `--unshare-user` and optionally `--unshare-net`, but no `--unshare-pid` and no `--proc`, and `--ro-bind / /` gives the sandbox the **host** `/proc`. A pid from one `exec` is visible and signallable from the next.
-- **💩** Handling it in the tool is still better on four counts:
+- **ℹ️** Handling it in the tool is still better on four counts:
   - `Request.stop()` kills the process **group** (`Posix.kill(-pid, KILL)` then `force_exit()`). A shell `kill 1234` does not, so a command that spawned children leaves orphans.
   - Stopping through the job runs the overlay copy-back and cleanup that `exec` does on the way out. A raw signal from a second sandbox bypasses all of it.
   - The UI can be told the job is gone. A raw `kill` leaves the frame and its Stop button believing the process is live.
@@ -147,17 +149,17 @@ Proposed Vala follows `docs/coding-standards.md`.
 
 - **ℹ️** `Bubble.exec` builds its subprocess with `GLib.SubprocessFlags.STDIN_INHERIT`, so the child's stdin **is the daemon's own stdin**. There is no pipe to write to, and `/proc/PID/fd/0` points at the daemon's stdin as well.
 - **🔷** `⏳` So `send` needs `GLib.SubprocessFlags.STDIN_PIPE` and the resulting stream kept on the bubble for the life of the job.
-- **💩** That is a change to `OLLMbwrap.Bubble`, not just to the tool, and it affects every command — including ones that today inherit a terminal.
-- **💩** `kill` / `tail` / `wait` need none of it. `send` can land after them if the pipe turns out to be awkward.
+- **ℹ️** Phase A has the tested answer for how to do that without hanging ordinary commands.
+- **ℹ️** `kill` / `tail` / `wait` need none of it. `send` can land after them if the pipe turns out to be awkward.
 
 ### `timeout = -1` — start it and come back
 
 - **🔷** `-1` is the agent saying "this will not finish quickly". The tool waits **15 seconds** and then returns with the pid.
-- **💩** The 15 seconds is not wasted. It is long enough to catch the common failure where the command dies immediately — a typo, a missing binary, a port already bound. Those come back as an ordinary failed command, not as a pid the agent then has to poll.
+- **ℹ️** The 15 seconds is not wasted. It is long enough to catch the common failure where the command dies immediately — a typo, a missing binary, a port already bound. Those come back as an ordinary failed command, not as a pid the agent then has to poll.
 - **ℹ️** `timeout` is already `public int timeout { get; set; default = 60; }`, so `-1` needs no type change.
-- **💩** It must be mapped to 15 before it reaches the timer. `GLib.Timeout.add_seconds` takes a `uint`, so an unmapped `-1` wraps to 4294967295 seconds and the timeout never fires at all.
-- **💩** `to_summary()` prints the timeout whenever it is not 60, so it would show `Timeout: -1s` in the permission prompt. It should say what `-1` means instead.
-- **💩** `-1` is not interchangeable with `timeout = 15`. The latter still kills at 15 s. Only `-1` detaches.
+- **ℹ️** It must be mapped to 15 before it reaches the timer. `GLib.Timeout.add_seconds` takes a `uint`, so an unmapped `-1` wraps to 4294967295 seconds and the timeout never fires at all.
+- **ℹ️** `to_summary()` prints the timeout whenever it is not 60, so it would show `Timeout: -1s` in the permission prompt.
+- **ℹ️** `-1` is not interchangeable with `timeout = 15`. The latter still kills at 15 s. Only `-1` detaches.
 - **⏳** **💩** Does the permission prompt say the command will be left running? A user approving `npm run dev` with `-1` is approving something that outlives the turn, which the current wording does not convey.
 - **⏳** **💩** Are other negative values an error, or do they all mean `-1`? An error is safer than silently detaching on a typo.
 
@@ -195,7 +197,7 @@ Do not read this file whole — it is 4120 lines. Use grep, head, or tail
 on it with this tool to find the part you need.
 ```
 
-- **✅** The cap stays **50**. That is the consistent number everywhere — it is not being raised to 100.
+- **🔷** The cap stays **50**. That is the consistent number everywhere — it is not being raised to 100.
 - **🔷** `tail <pid>` uses the same 50, so background reads match one-shot commands.
 - **ℹ️** 50 is already the value at all eleven sites in `RunCommand/Request.vala`, so nothing has to change for the cap itself. Only the advice text above is new.
 - **🚫** Do not extract 50 into a `const`. `docs/coding-standards-router.md` requires user or plan approval for a new named constant and prefers the literal at the use site.
@@ -209,15 +211,27 @@ on it with this tool to find the part you need.
 
 ### Open — **🔷** confirm
 
-- **⏳** **💩** Does switching to `STDIN_PIPE` change behaviour for ordinary commands? Anything that reads stdin today sees the daemon's; with a pipe nobody writes to, it would see a pipe that never closes. A command like `cat` would hang where it used to end.
-- **⏳** **💩** Should `send` on a job that already exited be an error, or a no-op with a note?
-- **⏳** **💩** Nothing maps a pid back to a job today. `active_tools` is keyed by `request_id` and is cleared when the call ends, so a live-job registry is the one genuinely new piece of state this needs.
-- **⏳** **💩** Which pid is handed out? `Bubble.stop()` signals `this.child.get_identifier()`, the **bwrap** pid, not the inner `/bin/sh`. It only has to be a key the registry understands, so an opaque id would work equally well now that the agent never types it into a shell.
-- **⏳** **💩** Permission: a management call never reaches `build_perm_question`, so killing a job prompts for nothing. Confirm that is wanted.
-- **⏳** **🔷** What does `tail` show on the second and later calls — everything since the last read, or the whole tail again?
-- **⏳** **💩** What kills a job still running when the session ends or the phone disconnects? Nothing does today.
-- **⏳** **💩** The spill stream is **closed** in the `finally` of `execute()`, and deleted outright when the command produced 50 lines or fewer. On the `-1` path that would stop the file growing at 15 s and might delete it, so `tail` would find nothing. Both have to move to process end — but only for detached jobs; a positive timeout should keep today's cleanup.
-- **ℹ️** The four `"Command timed out after Ns. Raise timeout in run_command if this was expected to run longer."` messages stay correct, since a positive timeout still kills. The `-1` path needs its own text and must not reuse them.
+- **ℹ️** Switching to `STDIN_PIPE` is safe as long as the pipe is closed right after spawn for jobs that do not want `send`. Measured; see Phase A.
+- **🔷** `send` to a job that has already exited is **not an error**. It returns a note that the command has ended.
+  - **🔷** The RPC layer may still answer with an error code. The tool turns that into the plain "command has ended" line the model reads.
+  - **ℹ️** Nothing is written anywhere in that case.
+- **🔷** The pid is the bwrap pid from `child.get_identifier()`. Phase A explains why that one and not an opaque id.
+- **🔷** The registry is the pid-to-`Bubble` map in Phase A. The daemon returns the pid on the first exec, the model quotes it back through the `pid` argument, and the registry resolves it.
+- **🔷** A management call raises **no permission prompt**. It never reaches `build_perm_question` and that is intended.
+- **🔷** `tail` always shows the **last 50 lines of the log**, like `tail` does. Not a delta, not "since last read".
+  - **🔷** It ends with the helpful block — the log file path and the pid being looked at.
+- **🔷** A detached job survives client disconnect and dies on a 15–20 minute idle timer. Phase A.
+- **ℹ️** The four `"Command timed out after Ns. Raise timeout in run_command if this was expected to run longer."` messages stay correct, since a positive timeout still kills, and behaviour there is unchanged. The `-1` path needs its own wording, which is a free choice as long as it is sensible.
+
+#### Spill file on the `-1` path
+
+- **ℹ️** The spill file is the log `tail` reads. It is `task_dir()/run_command-<request_id>.log` and `Request` appends every output line to it while the command runs.
+- **ℹ️** Two things happen to it in the `finally` of `execute()`, both tied to the **tool call** ending rather than the **command** ending:
+  - the write stream is closed
+  - the file is deleted if the command produced 50 lines or fewer
+- **ℹ️** On a positive timeout those are both right, because the command is dead by then. That path is unchanged.
+- **ℹ️** On `-1` the call returns at 15 s while the command runs on. If the `finally` still fires, the log stops growing and may be deleted, so a later `tail` shows a stale file or none at all.
+- **💩** So for a detached job only, closing and deleting move to where the process actually ends.
 
 
 
@@ -251,7 +265,7 @@ on it with this tool to find the part you need.
 - **⏳** **💩** `run_tool.start` / `end` need to carry `id`, and `ChatWidget` needs a map keyed by it, if more than one process can be live at once.
 - **⏳** **💩** `stop()` has to become per-process instead of "everything in `active_tools`".
 - **⏳** **💩** What kills a background process on session close or app quit? Nothing does today.
-- **⏳** **💩** On Android the process runs on the desktop. Killing it from the phone is the same daemon stop call, but the UI has to find the handle after the tool call has already returned.
+- **ℹ️** On Android the process runs on the desktop. Killing it from the phone is the same daemon stop call, but the UI has to find the handle after the tool call has already returned.
 
 ---
 
@@ -309,7 +323,7 @@ on it with this tool to find the part you need.
 - **🔷** `bash` is the tool that takes it over. It is already the Pi-facing name, and today it is only an alias.
 - **ℹ️** `RunCommand.Bash` currently overrides `name`, `title`, `example_call`, and `clone` — nothing else. Same `Request`, same `execute`, same everything.
 - **🔷** `run_command` stays as it is. In-process, one call one string, hard timeout, no pid.
-- **💩** So the split is: `run_command` is the simple local tool, `bash` is the RPC tool that can detach and be managed.
+- **ℹ️** So the split is: `run_command` is the simple local tool, `bash` is the RPC tool that can detach and be managed.
 
 ### What that costs — **ℹ️** facts to design against
 
@@ -334,11 +348,46 @@ on it with this tool to find the part you need.
 
 - **🔷** `⏳` A job on the daemon must survive the call that created it. Today nothing does.
 - **🔷** `⏳` `OLLMbwrap.Bubble` needs what the parked sub-plan already drafted — `command` / `working_dir` properties and a `finished` signal, because `exec` has no completion signal and `stopped` is set only by `stop()`.
-- **🔷** `⏳` It additionally needs `GLib.SubprocessFlags.STDIN_PIPE` and the stream retained, for `send`. The sub-plan does not touch this.
-- **🔷** `⏳` Something must map a pid to a job. That registry is the one genuinely new piece of state in the whole design.
-- **⏳** **🔷** Decide what the registry is keyed on and who owns it — the connection, the daemon, or the session. Connection-owned dies with the phone's connection, which may be wrong for a detached process.
-- **⏳** **🔷** Decide the job's lifetime. The parked sub-plan assumes the client unrefs its lease when the command finishes; a detached job breaks that assumption.
-- **⏳** **💩** Decide what happens to a detached job when the last client disconnects. Nothing kills it today.
+- **🔷** `⏳` Keep a map of pid to `Bubble`. That is the registry, and it is the one genuinely new piece of state.
+- **🔷** The pid handed out is `this.child.get_identifier()` — the **bwrap** pid. Whichever works best, and this one does; see the process-group finding below.
+- **🔷** A detached job is **not** killed when the client disconnects. A phone going into a lift must not kill the build.
+- **🔷** `⏳` Instead a detached job dies after **15–20 minutes with no client activity**. Idle timer, not a disconnect hook.
+- **⏳** **💩** Which calls count as "activity" — any RPC on that job, or any RPC on the connection at all?
+- **⏳** **🔷** Decide who owns the registry. It cannot be the connection, given the above. Daemon-wide or session-scoped.
+
+### `stop()` is already correct — **🚫** do not "fix" it
+
+- **ℹ️** `stop()` does `Posix.kill(-(int.parse(id)), Posix.Signal.KILL)` then `force_exit()`. The negative pid targets a **process group**, which only works if the child leads one.
+- **ℹ️** It does. `RunSeccomp.wire_launcher` sets `launcher.set_child_setup(() => { Posix.setpgid(0, 0); … })`, on **both** branches — the socketpair-failure path does it too.
+- **ℹ️** So the bwrap pid is also the process **group** id. One signal reaches bwrap, the inner `/bin/sh`, and everything the command spawned.
+- **ℹ️** This is the reason the registry keys on that pid and nothing else. It is simultaneously the handle, the kill target, and the group.
+- **ℹ️** The Windows `RunSeccomp.wire_launcher` is empty, so there is no `setpgid` there. Not a problem — bwrap is Linux-only and `can_wrap()` returns false under Flatpak and when `bwrap` is off PATH.
+
+### Overlay copy-back survives a kill — **ℹ️** no change needed
+
+- **ℹ️** `exec` runs `read_subprocess_output`, then `overlay.scan.run()`, then `detach_sources()` and `overlay.cleanup()`. None of that is guarded on `stopped`.
+- **ℹ️** A killed process closes its pipes, so `read_subprocess_output` returns normally and the scan and cleanup still run. Copy-back happens on a kill just as it does on a clean exit.
+- **ℹ️** That holds whether the kill came from `stop()` or from a signal sent outside the process, because `stopped` is not consulted on this path.
+
+### Detach must not be an `exec` timer
+
+- **ℹ️** `exec` owns the overlay. It calls `overlay.cleanup()` on the way out, and the overlay must stay mounted for as long as the command runs.
+- **ℹ️** So the 15 s detach cannot make `exec` return early. `exec` keeps awaiting the process to completion exactly as it does now.
+- **💩** The 15 s timer therefore belongs **above** `exec` — the caller stops waiting and reports the pid, while the `Bubble` keeps running and eventually fires `finished`.
+- **ℹ️** This is what the registry buys: it holds the still-awaiting `Bubble` so nothing drops the last reference when the call returns.
+
+### `send` needs `STDIN_PIPE`, but not unconditionally
+
+- **ℹ️** Measured with a throwaway `GLib.Subprocess` probe, three seconds per case:
+  - `STDIN_PIPE` with the pipe **left open** — `cat` and `grep -c .` both **hang indefinitely**. They are waiting on a pipe nobody will ever write to or close.
+  - `STDIN_PIPE` with the pipe **closed immediately** — `cat` exits in about 1 ms.
+  - `STDIN_PIPE`, **write then close** — same, about 1 ms, and the data arrives.
+  - `STDIN_PIPE` with a command that ignores stdin (`echo hello`) — unaffected either way.
+- **💩** So the flag flips to `STDIN_PIPE` for every run, and the pipe is **closed straight after spawn** unless the job wants `send`.
+- **💩** Only a `send`-capable job keeps it open, and that job accepts that a stdin-reading command will sit there until written to or killed — which is the point of `send`.
+- **ℹ️** Today's `STDIN_INHERIT` is worse than it looks. The probe shows `cat` under `STDIN_INHERIT` **hangs when the parent has a terminal on stdin**, and returns instantly when it does not. So current behaviour depends on how the app was launched.
+- **ℹ️** Closing a pipe immediately is therefore a **fix**, not a regression. It makes stdin consistently EOF instead of inheriting whatever the parent had.
+- **⏳** **💩** Confirm the same holds under bwrap itself. The probe ran bare `GLib.Subprocess`; bwrap adds a layer between the pipe and `/bin/sh`.
 
 ---
 
@@ -348,7 +397,7 @@ on it with this tool to find the part you need.
 - **ℹ️** The parked [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) has `rpc_create` / `rpc_run` / `stop` only, so it covers `kill` and nothing else. Phase B **supersedes its wire shape**; the `Bubble` and `FileVerification` work in it still stands.
 - **🔷** `⏳` Output streaming stays the live-handle design already worked out in the sub-plan — `connection.export`, `RPC-Live-Subscribe.rpc_signal` on `output`, and `live_handles = true` on the daemon's listeners.
 - **ℹ️** HTTPS cannot carry this. `HttpServer` does not override `Listen.broadcast` and enforces `X-rpc-sequence` with a 409 on mismatch. The TLS TCP listener is the transport, which is why HTTPS is being retired.
-- **⏳** Code proposals — after Phase A settles the registry and lifetime.
+- **🔷** `⏳` Code proposals — after Phase A settles the registry and lifetime.
 
 ---
 
@@ -359,7 +408,7 @@ on it with this tool to find the part you need.
 - **ℹ️** `SOCKET` is the desktop local Unix hello ([`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md)). `ollmfilesd` is already up on this machine. Empty `url`. Not a remote row.
 - **🔷** What `SOCKET` does for exec is not decided. Not enough here to choose in-process bwrap versus the same RPC.
 - **ℹ️** Overlay / index update after daemon exec is the daemon's job in `2.10.4.15` (`Scan` + `FileVerification` on `ollmfilesd`).
-- **⏳** Code proposals — after Phase B is on the wire.
+- **🔷** `⏳` Code proposals — after Phase B is on the wire.
 
 ---
 
@@ -375,7 +424,7 @@ on it with this tool to find the part you need.
 - **🔷** `⏳` `ollmapp/android/OllmchatWindow.vala` `initialize_client` registers the `bash` tool next to `write` / `read`, then `AgentPi.Factory.register_config`.
 - **🔷** `⏳` Still no in-process exec on the phone. Registration is only valid once Phase C routes through RPC.
 - **🚫** Do not apply this before Phase C. `bash` in `history_manager.tools` is a tool Agent Pi can call, and until it routes through RPC that call runs `OLLMbwrap` / `GLib.Subprocess` **on the phone**.
-- **⏳** **💩** The class name in the hunk below is `OLLMtools.RunCommand.Bash`, which is only correct if Phase C leaves it in that namespace. Re-check before applying.
+- **ℹ️** The class name in the hunk below is `OLLMtools.RunCommand.Bash`, which is only correct if Phase C leaves it in that namespace. Re-check before applying.
 
 
 
@@ -385,8 +434,7 @@ on it with this tool to find the part you need.
 - **ℹ️** `History.Manager.register_tool` is only `this.tools.set(tool.name, tool)`. No config type registration, which is why `write` / `read` work today without being in `AndroidToolsRegistration.init_config`. `bash` needs nothing extra either.
 - **ℹ️** `RunCommand/Bash.vala` is unconditional in `liboctools/meson.build`, so the class is already in the Android build.
 - **ℹ️** Calling `register_config` is not just an assert. It also seeds `config.agents["agent-pi"]` with the `forbid` list and the skills array. Android has never seeded that, so Agent Pi has been running with no forbid list and no skills.
-- **💩** No explicit `save()` after `register_config`, matching desktop `ollmapp/Window.vala`. The seeded agent row persists on the next save, which on the `LIVE` path is the `this.app.config.save()` already in `initialize_client`.
-- **⏳** **💩** If process management becomes a second tool, `register_config` may need it in the asserted set too. Unknown until the tool is named.
+- **ℹ️** No explicit `save()` after `register_config`, matching desktop `ollmapp/Window.vala`. The seeded agent row persists on the next save, which on the `LIVE` path is the `this.app.config.save()` already in `initialize_client`.
 
 Edits are **Remove** / **Replace with** against the tree. Verify surrounding context before applying.
 
@@ -399,7 +447,7 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 **Depends on:** Phase C. `bash` must already route through the daemon.
 
 - **ℹ️** The `register_config` line is copied from `ollmapp/Window.vala`, which does `agent_pi.register_config(app.config, this.history_manager.tools)`. Android passes the `config` parameter instead of `app.config`; the bootstrap path assigns `this.app.config = config` before calling `initialize_client`, so they are the same object on both paths.
-- **💩** The `has_key` guard shape is kept from the surrounding Android block rather than the unguarded desktop form.
+- **ℹ️** The `has_key` guard shape is kept from the surrounding Android block rather than the unguarded desktop form.
 
 
 

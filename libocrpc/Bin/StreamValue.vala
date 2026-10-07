@@ -289,8 +289,19 @@ namespace OLLMrpc.Bin
 					var schema_type = gtype_to_alias.has_key(live.get_type())
 						? live.get_type()
 						: val.type();
-					if (schema_type == typeof(GLib.Object)
-							|| !gtype_to_alias.has_key(schema_type)) {
+					if (!gtype_to_alias.has_key(schema_type) && !OLLMrpc.Gi.in_typelib(schema_type)) {
+						// auto register private(only) subclasses
+						var parent = schema_type.parent();
+						while (parent != GLib.Type.INVALID && parent != GLib.Type.OBJECT) {
+							if (gtype_to_alias.has_key(parent)) {
+								register_alias(gtype_to_alias.get(parent), schema_type);
+								GLib.debug("auto registered %s as %s", schema_type.name(), gtype_to_alias.get(parent));
+								break;
+							}
+							parent = parent.parent();
+						}
+					}
+					if (schema_type == GLib.Type.OBJECT || !gtype_to_alias.has_key(schema_type)) {
 						throw new StreamError.REGISTRATION("Unregistered declared class type schema: %s",
 							schema_type.name());
 					}

@@ -21,8 +21,9 @@ namespace OLLMrpc
 	/**
 	 * Compile-only {@link Gi} shell when typelib invoke is not built.
 	 *
-	 * {@link register} is a no-op. {@link dispatch} always returns false
-	 * so unlisted methods do not fall through to a signal path.
+	 * {@link register} is a no-op. {@link in_typelib} is always false.
+	 * {@link dispatch} always returns false so unlisted methods do not
+	 * fall through to a signal path.
 	 */
 	public class Gi : GLib.Object
 	{
@@ -37,6 +38,20 @@ namespace OLLMrpc
 
 		public static void register(string ns, string version) throws GLib.Error
 		{
+		}
+
+		/**
+		 * Whether ''gtype'' is a class in a loaded typelib.
+		 *
+		 * This build has no girepository, so the answer is false. Unix
+		 * uses {@link Gi.in_typelib} in ''Gi.vala''.
+		 *
+		 * @param gtype runtime GType of the instance being written
+		 * @return false
+		 */
+		public static bool in_typelib(GLib.Type gtype)
+		{
+			return false;
 		}
 
 		/**

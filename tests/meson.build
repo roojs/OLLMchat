@@ -303,6 +303,7 @@ test_rpc_filesd_pair = executable('test-rpc-filesd-pair',
   'rpc/filesd-pair-test.vala',
   dependencies: rpc_test_deps + [
     rpc_test_app_dep,
+    dependency('gio-unix-2.0'),
   ],
   link_with: rpc_test_link_with,
   build_rpath: rpc_test_build_rpath,
