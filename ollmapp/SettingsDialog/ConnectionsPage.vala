@@ -182,9 +182,20 @@ namespace OLLMapp.SettingsDialog
 					this.add_file_dialog.registered_addresses;
 				this.dialog.app.config.filesd_client.server_id =
 					this.add_file_dialog.server_id;
+
+				//FIXME =- this ifdef does not make sense - why not do the same thing on desktop
+#if ANDROID
+				/* The Android pairing hello uses a temporary TLS stream.
+				 * Connect the persistent RPC before exposing Agent Pi. */
+				this.dialog.app.config.filesd_client.state = FilesdClient.State.ENABLED;
+#else
 				this.dialog.app.config.filesd_client.state = FilesdClient.State.SOCKET;
+#endif
 				this.dialog.app.config.save();
 				this.render_file_connection();
+#if ANDROID
+				this.dialog.parent.reconnect.begin();
+#endif
 			});
 			this.add_file_dialog.error_occurred.connect((error_message) => {
 				this.toast_overlay.add_toast(new Adw.Toast(error_message) {

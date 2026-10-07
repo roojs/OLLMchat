@@ -210,7 +210,19 @@ namespace OLLMrpc
 		 */
 		public signal void failed(Request request, Error error);
 
+		/**
+		 * Lets the owner supply credentials for a remote TCP TLS connection.
+		 *
+		 * Emitted after the TLS connection is created and before its handshake.
+		 * The owner may set the client certificate and trust database selected
+		 * for the remote server.
+		 *
+		 * @param connection TLS connection about to handshake
+		 */
+		public signal void configure_tls(GLib.TlsClientConnection connection);
+
 		private GLib.SocketConnection? socket;
+		private GLib.TlsClientConnection? tls_connection;
 		private GLib.DataInputStream? input;
 		private GLib.DataOutputStream? output;
 		private int next_id = 1;
@@ -406,13 +418,13 @@ namespace OLLMrpc
 				&& !this.socket_path.has_prefix("tcp://127.0.0.1")) {
 				try {
 					var tls_link = GLib.TlsClientConnection.@new(this.socket, null);
-					// certificate and database are filled in later
-					// from the certificate kept for this server.
+					this.configure_tls(tls_link);
 					tls_link.accept_certificate.connect((peer_cert, errors) => {
 						return peer_cert != null
 							&& (errors & ~GLib.TlsCertificateFlags.BAD_IDENTITY) == 0;
 					});
 					yield tls_link.handshake_async();
+					this.tls_connection = tls_link;
 					bin_in = tls_link.get_input_stream();
 					bin_out = tls_link.get_output_stream();
 				} catch (GLib.Error e) {
@@ -431,13 +443,11 @@ namespace OLLMrpc
 				yield this.buffer_stream.connect_client(this.socket_path);
 			}
 			this.connected = true;
-#if ANDROID
-			this.connect_error = "unix IO watch is not available";
-			GLib.critical("connect %s: %s",
-				this.socket_path, this.connect_error);
-			this.disconnect();
-			return false;
-#else
+			// Android's GLib provides the Unix IOChannel API used below.
+			// Keep one socket watch so every platform uses on_read and the
+			// same RPC parser and disconnect path.
+			// The channel only watches the socket fd for readiness; Bin.Stream
+			// reads the plaintext or TLS input stream selected above.
 			var fd = this.socket.get_socket().get_fd();
 			this.read_channel = new GLib.IOChannel.unix_new(fd);
 			this.read_channel.set_encoding(null);
@@ -487,7 +497,6 @@ namespace OLLMrpc
 			GLib.debug("connect ok hello id=%d", hello_request.id);
 			this.connect_error = "";
 			return true;
-#endif
 		}
 
 		public void disconnect()
@@ -519,6 +528,7 @@ namespace OLLMrpc
 			this.bin = null;
 			this.input = null;
 			this.output = null;
+			this.tls_connection = null;
 			if (this.buffer_stream != null) {
 				this.buffer_stream.close();
 				this.buffer_stream = null;

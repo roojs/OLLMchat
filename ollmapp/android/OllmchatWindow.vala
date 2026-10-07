@@ -478,8 +478,23 @@ namespace OLLMapp
 			});
 
 			if (is_desktop_available) {
-				// Certificate for this server is filled in later on the handshake.
+				/* Android stores credentials in one directory per paired server.
+				 * Configure the long-lived RPC TLS stream before its handshake;
+				 * the earlier address probe only authenticates a temporary stream. */
+				var persistent_tls = new OLLMrpc.Transport.Cert() {
+					dir = GLib.Path.build_filename(
+						GLib.Environment.get_user_data_dir(), "ollmchat",
+						config.filesd_client.server_id),
+					cert_pem = "client.pem",
+					key_pem = "client-key.pem",
+					cn = "ollmchat-device",
+				};
+				persistent_tls.ensure();
 				var rpc = new OLLMrpc.Client("", "", config.filesd_client.url);
+				rpc.configure_tls.connect((connection) => {
+					connection.certificate = persistent_tls.certificate;
+					connection.database = persistent_tls.trust;
+				});
 				this.project_manager.replace_rpc(rpc);
 				var hello = new OLLMrpc.Request() {
 					method = "RPC-Daemon.hello",
@@ -714,6 +729,14 @@ namespace OLLMapp
 					GLib.warning("%s", e.message);
 					continue;
 				}
+				/* The async Android connect leaves this socket nonblocking.
+				 * The probe uses a synchronous TLS and bin reply exchange. */
+				try {
+					conn.socket.blocking = true;
+				} catch (GLib.Error e) {
+					GLib.warning("%s", e.message);
+					continue;
+				}
 				GLib.TlsClientConnection link;
 				try {
 					link = GLib.TlsClientConnection.@new(conn, null);
@@ -766,32 +789,46 @@ namespace OLLMapp
 				if (hello.error != null) {
 					continue;
 				}
-				if (hello.msg != "ok") {
-					continue;
-				}
 				config.filesd_client.url =
 					"tcp://" + host + ":" + port.to_string();
-				config.filesd_client.state = FilesdClient.State.SOCKET;
 				return true;
 			}
 			return false;
 		}
 
 		/**
-		 * After the desktop socket drops, try each stored address
-		 * again. Three passes. A hit replaces the client and
-		 * connects. None left, when the user is using the file
-		 * daemon, sets state UNREACHABLE, shows the banner, and
-		 * opens Chatter.
+		 * Connects Android's persistent desktop RPC after pairing or a drop.
+		 *
+		 * Pairing verifies certificates on a temporary TLS stream. This path
+		 * probes stored addresses, replaces ''ProjectManager.rpc'', connects
+		 * it, and sets filesd state ''LIVE'' before Agent Pi is exposed.
+		 *
+		 * @since 1.0
 		 */
-		private async void reconnect()
+		public async void reconnect()
 		{
 			var config = this.app.config;
 			for (var pass = 0; pass < 3; pass++) {
 				if (!yield this.probe_addresses(config)) {
 					continue;
 				}
+				/* The probe's TLS stream closes after hello. This persistent
+				 * client needs the paired server's Android credential directory
+				 * before it can keep project and file RPC replies flowing. */
+				var persistent_tls = new OLLMrpc.Transport.Cert() {
+					dir = GLib.Path.build_filename(
+						GLib.Environment.get_user_data_dir(), "ollmchat",
+						config.filesd_client.server_id),
+					cert_pem = "client.pem",
+					key_pem = "client-key.pem",
+					cn = "ollmchat-device",
+				};
+				persistent_tls.ensure();
 				var rpc = new OLLMrpc.Client("", "", config.filesd_client.url);
+				rpc.configure_tls.connect((connection) => {
+					connection.certificate = persistent_tls.certificate;
+					connection.database = persistent_tls.trust;
+				});
 				this.project_manager.replace_rpc(rpc);
 				var hello = new OLLMrpc.Request() {
 					method = "RPC-Daemon.hello",
