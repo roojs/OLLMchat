@@ -207,13 +207,14 @@ namespace OLLMapp.SettingsDialog
 			var client = new GLib.SocketClient() {
 				timeout = 10
 			};
-			if (!GLib.FileUtils.test(GLib.Path.build_filename(dir, "ollmrpc-ca.pem"),
-					GLib.FileTest.EXISTS)) {
-				var pin = this.pin_entry.text.strip();
-				if (pin.length != 6) {
-					this.error_occurred("Enter the six digits");
-					return;
-				}
+			var pin = this.pin_entry.text.strip();
+			if (pin.length != 6) {
+				this.error_occurred("Enter the six digits");
+				return;
+			}
+			var has_credentials = GLib.FileUtils.test(
+				GLib.Path.build_filename(dir, "ollmrpc-ca.pem"), GLib.FileTest.EXISTS);
+			if (!has_credentials) {
 				var csr = "";
 				try {
 					GLib.FileUtils.get_contents(
@@ -366,6 +367,10 @@ namespace OLLMapp.SettingsDialog
 				this.error_occurred(e.message);
 				return;
 			}
+			if (has_credentials
+				&& !this.complete_pairing(bin2, again.socket, pin)) {
+				return;
+			}
 			try {
 				bin2.write(new OLLMrpc.Request() {
 					method = "RPC-Daemon.hello",
@@ -406,6 +411,61 @@ namespace OLLMapp.SettingsDialog
 			}
 			this.registered_url = "tcp://" + host + ":" + port.to_string();
 			this.close();
+		}
+
+		/**
+		 * Completes a new pairing window with stored credentials.
+		 *
+		 * The server validates the stored certificate before accepting the
+		 * current PIN through ''ClientCert.pair''.
+		 *
+		 * @param bin authenticated TLS bin stream
+		 * @param socket raw socket polled while TLS buffers the reply
+		 * @param pin current pairing PIN
+		 * @return true when the server accepts the pairing
+		 */
+		private bool complete_pairing(
+			OLLMrpc.Bin.Stream bin,
+			GLib.Socket socket,
+			string pin
+		) {
+			try {
+				bin.write(new OLLMrpc.Request() {
+					method = "ClientCert.pair",
+					args = OLLMrpc.args("s", pin)
+				});
+			} catch (GLib.Error e) {
+				this.error_occurred(e.message);
+				return false;
+			}
+			var wait = GLib.get_monotonic_time() + 10 * 1000000;
+			while (true) {
+				try {
+					var response = bin.parse() as OLLMrpc.Response;
+					if (response == null) {
+						continue;
+					}
+					if (response.error != null) {
+						this.error_occurred(response.error.message);
+						return false;
+					}
+					return true;
+				} catch (GLib.IOError e) {
+					if (e.code != GLib.IOError.WOULD_BLOCK
+						|| GLib.get_monotonic_time() >= wait) {
+						this.error_occurred(e.message);
+						return false;
+					}
+					var poll = GLib.PollFD();
+					poll.fd = socket.fd;
+					poll.events = GLib.IOCondition.IN;
+					GLib.poll(new GLib.PollFD[] { poll }, 200);
+					continue;
+				} catch (GLib.Error e) {
+					this.error_occurred(e.message);
+					return false;
+				}
+			}
 		}
 	}
 

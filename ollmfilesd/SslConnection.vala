@@ -53,13 +53,14 @@ namespace OLLMfilesd
 		{
 			switch (request.method) {
 				case "ClientCert.client_cert":
-				case "ClientCert.pair":
 					this.reply(request, new OLLMrpc.Response() {
 						error = new OLLMrpc.Error(
 							(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "local admin only")
 					});
 					return false;
 			}
+			/* Approved TLS clients use ClientCert.pair to finish a pairing
+			 * window. Let it pass through certificate validation below. */
 			if (request.method == "ClientCert.request_registration") {
 				return true;
 			}

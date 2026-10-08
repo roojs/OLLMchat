@@ -33,7 +33,7 @@ Proposed Vala follows `docs/coding-standards.md`.
   - Not on the phone.
 - **🔷** `bash` becomes its **own tool**, taking over the name it already owns as an alias. `run_command` is left alone.
 - **🔷** `⏳` `timeout = -1` returns after 15 s and hands the agent a **running process** to manage. Every other timeout still kills.
-- **🔷** `⏳` The **user** must be able to kill a background process, not just the agent.
+- **🔷** `⏳` The UI must **show** that a background process is running, and the **user** must be able to kill it, not just the agent.
 - **🔷** `⏳` The agent manages running processes through the **same tool**, with the pid as an argument and `kill` / `tail` / `wait` / `send` as the command. No second tool.
 - **🔷** `⏳` Build it back-to-front: the daemon job model first, the tool last.
 - **ℹ️** The current tool API is written out below, as the thing being replaced.
@@ -105,7 +105,7 @@ Proposed Vala follows `docs/coding-standards.md`.
 ## Proposed behaviour — `timeout = -1` detaches, everything else kills
 
 - **🔷** `timeout` stays a **hard** timeout. A positive value kills the command when it expires, exactly as today.
-- **🔷** `timeout = -1` is the **only** way to get a background process. It waits **15 seconds**, then returns with the pid and leaves the command running.
+- **🔷** A **negative** timeout is the only way to get a background process. It waits **15 seconds**, then returns with the pid and leaves the command running. `-1` is what the tool advertises, but the test is `timeout < 0`, so any negative value behaves the same way.
 - **🔷** So there are three outcomes:
   - **Finished inside a positive timeout** — return the output (or its tail) and the result, as today.
   - **Still running at a positive timeout** — killed, as today.
@@ -121,14 +121,14 @@ Proposed Vala follows `docs/coding-standards.md`.
 - **🔷** One new parameter, `pid`. When it is set, `command` is a management verb rather than a shell line.
   - `command = "kill"`, `pid = 1234` — stop that job.
   - `command = "tail"`, `pid = 1234` — return its output so far and whether it is still alive.
-  - `command = "wait"`, `pid = 1234` — block up to the timeout, then return as the first call did.
+  - `command = "wait"`, `pid = 1234`, `timeout = 60` — wait that many seconds, then return as the first call did.
   - `command = "send yes"`, `pid = 1234` — write `yes` to that job's stdin.
 - **🔷** `send` is the verb, the rest of the string is the payload. That is the whole of it.
 - **🔷** **No newline is added.** The payload is written exactly as given.
   - **🔷** If the model wants an Enter, it puts a real newline in the payload. It is capable of that; this is not an escape sequence to parse.
   - **🚫** Do not append a trailing newline, and do not translate a literal `\n` into one.
 - **🔷** Instead, **hint after the fact**. When a `send` produces little or no new output, the reply notes that ending the payload with a newline may help if the command is waiting on a prompt.
-  - **💩** Define "little or no new output" as no new log lines within the usual output flush window after the write. Not decided.
+  - **ℹ️** "Produced no effect" does not need a guessed threshold. Phase A can see from `/proc` whether the command is *still* blocked on the job's stdin after the write, which is the actual condition.
 - **🔷** When `pid` is unset the tool behaves exactly as it does today. Nothing about normal commands changes.
 - **🔷** Dispatch is `if (this.pid != 0)`, then the first word of `command` selects the verb, and for `send` the remainder is the payload.
 - **🚫** The `pid` argument is the **only** trigger. Never sniff the command text to decide whether a call is management — splitting verb from payload happens only once `pid` is already set.
@@ -152,6 +152,29 @@ Proposed Vala follows `docs/coding-standards.md`.
 - **ℹ️** Phase A has the tested answer for how to do that without hanging ordinary commands.
 - **ℹ️** `kill` / `tail` / `wait` need none of it. `send` can land after them if the pipe turns out to be awkward.
 
+### How a detached job is watched
+
+- **🔷** Start the command with `timeout = -1`, then **poll it about every 5 seconds**.
+- **🔷** The poll is looking for the job becoming stuck. Two things end the watch:
+  - the command **ended**
+  - the command is **waiting on stdin**
+- **🔷** Either one is the trigger to report back to the model. The return is driven by what the job is doing, not only by a flat timer.
+- **🔷** The report tells the model its four options:
+  - **`send`** text to it
+  - **`kill`** it
+  - **`wait`** a number of seconds
+  - **do nothing** — in which case it is killed within about the next **60 seconds**
+- **🔷** `wait` **defaults to 60 seconds**. A bare `command = "wait"`, `pid = 1234` is a complete call and needs nothing else.
+  - **🔷** The job carries on as if it were still on its negative timeout. `wait` only parks the agent for 60 seconds.
+  - **🔷** At the end of the wait, if the job is still alive, the **same pid block is returned again**. The agent can `wait` as many times as it likes.
+  - **🔷** A duration can still be given, and it rides on the existing `timeout` parameter rather than a new one. `command = "wait"`, `pid = 1234`, `timeout = 90`.
+- **🔷** The loop only ends when the agent kills the job, stops waiting, or the job finishes on its own.
+- **ℹ️** Detecting "waiting on stdin" is the `/proc` check in Phase A, not a guess from output going quiet.
+- **ℹ️** The 60 second reap and the 15–20 minute idle rule are separate triggers, not rival settings for one timer:
+  - **60 s** — the job was reported stuck, the model was handed its four options, and it did nothing about them.
+  - **15–20 min** — no client activity at all. The phone is gone. This reaps a job that is still working perfectly well, just unattended.
+- **ℹ️** A job that is running and being watched hits neither.
+
 ### `timeout = -1` — start it and come back
 
 - **🔷** `-1` is the agent saying "this will not finish quickly". The tool waits **15 seconds** and then returns with the pid.
@@ -160,28 +183,29 @@ Proposed Vala follows `docs/coding-standards.md`.
 - **ℹ️** It must be mapped to 15 before it reaches the timer. `GLib.Timeout.add_seconds` takes a `uint`, so an unmapped `-1` wraps to 4294967295 seconds and the timeout never fires at all.
 - **ℹ️** `to_summary()` prints the timeout whenever it is not 60, so it would show `Timeout: -1s` in the permission prompt.
 - **ℹ️** `-1` is not interchangeable with `timeout = 15`. The latter still kills at 15 s. Only `-1` detaches.
-- **⏳** **💩** Does the permission prompt say the command will be left running? A user approving `npm run dev` with `-1` is approving something that outlives the turn, which the current wording does not convey.
-- **⏳** **💩** Are other negative values an error, or do they all mean `-1`? An error is safer than silently detaching on a typo.
+- **🚫** The permission prompt does **not** need extra wording about the command being left running. `to_summary()` showing the timeout is enough. The user sees the running job in the UI instead — see Phase D.
+- **🔷** **Any** negative timeout detaches. The test is `timeout < 0`, not `timeout == -1`. No error on `-2`, no special case, no validation.
 
 ### What a pid return says
 
 - **🔷** When the tool returns a pid, it lists the commands available for it. The model does not have to remember the management verbs from the tool description.
-- **💩** Shape of the returned text, as the agent would read it:
+- **🔷** Shape of the returned text, as the agent would read it:
 
 ```
-Left running in the background. pid 1234.
+Waiting for input. pid 1234.
 
-To manage it, call this tool again with pid=1234 and command set to:
-  tail         output since you last read it
-  wait         wait up to timeout seconds for it to finish
-  send <text>  write a line to its stdin
+Call this tool again with pid=1234 and command set to one of:
+  send <text>  write to its stdin
+  wait         wait 60 more seconds for it
+  tail         show the last 50 lines of its output
   kill         stop it
+Left alone, it is killed in about 60 seconds.
 ```
 
-- **💩** The same block is appended by `wait` when it returns with the job still alive, so the agent never has to scroll back for the verbs.
-- **💩** Nothing repeats it once the job is gone. A finished `wait`, a `tail` on a dead job, and `kill` all end with an ordinary result.
+- **🔷** The same block is returned by `wait` whenever it comes back with the job still alive, so the agent never has to scroll back for the verbs.
+- **🔷** Nothing repeats it once the job is gone. A `wait` that outlives the job, a `tail` on a dead job, and `kill` all end with an ordinary result — output and exit status, no verb list.
 - **ℹ️** A positive timeout never produces this block. It kills and reports as it does today.
-- **⏳** **💩** This text is a per-call token cost on every background return. If it proves expensive, shorten it to one line once the model has seen it in a session.
+- **🚫** Do not shorten or suppress the block to save tokens. It is cheap enough to repeat on every background return.
 
 ### Truncation — tell the agent how to read the spill file
 
@@ -191,11 +215,16 @@ To manage it, call this tool again with pid=1234 and command set to:
 - **💩** Wording, appended where the path is given:
 
 ```
-// LLM received last 50 of 4120 lines.
+**Below are the last 50 of 4120 lines.**
 Full output: /path/to/run_command-7.log
 Do not read this file whole — it is 4120 lines. Use grep, head, or tail
 on it with this tool to find the part you need.
 ```
+
+- **🔷** Drop the leading `//`. It reads as a code comment and means nothing here.
+- **🔷** Mark the line in **bold** (`**…**`) so it stands out from the command output above it.
+- **🔷** Say **"below are the last 50 of 4120 lines"**. The existing `"// LLM received last 50 of 4120 lines."` does not say *where* those lines are.
+- **ℹ️** Three sites carry this wording in `RunCommand/Request.vala` — two `"// LLM received last 50 of "` at lines 468 and 696, and `"// ... (output truncated: showing last 50 of "` at line 808.
 
 - **🔷** The cap stays **50**. That is the consistent number everywhere — it is not being raised to 100.
 - **🔷** `tail <pid>` uses the same 50, so background reads match one-shot commands.
@@ -205,9 +234,30 @@ on it with this tool to find the part you need.
 
 ### Where the dispatch goes
 
-- **💩** At the top of `Request.execute()`, straight after the empty-`command` guard and before `normalize_working_dir()`.
-- **ℹ️** That position matters: a management call has no working directory to validate, must not raise a permission prompt, and must not open a spill file or emit `client.run_tool.start`. All of that begins below this point.
-- **💩** `pid` is declared beside `timeout` on `Request`, and documented in `Tool.parameter_description` next to it.
+- **🔷** `pid` is declared beside `timeout` on `Request`, and documented in `Tool.parameter_description` next to it.
+- **💩** The dispatch sits at the top of `Request.execute()`, between the empty-`command` guard and `normalize_working_dir()`. Here is the existing anchor:
+
+```232:240:liboctools/RunCommand/Request.vala
+		public override async string execute()
+		{
+			// Parameters are already deserialized in constructor
+			if (this.command.strip() == "") {
+				return "ERROR: Invalid parameters";
+			}
+			
+			// Normalize and validate working_dir if provided
+			var normalized_working_dir = this.normalize_working_dir();
+```
+
+- **ℹ️** That position matters. A management call has no working directory to validate, must not raise a permission prompt, and must not open a spill file or emit `client.run_tool.start`. Every one of those begins below this line.
+- **⏳** **🔷** This is not reviewable as prose. Phase C writes the actual hunk — the `pid != 0` branch, the verb switch, and what each verb returns — and it gets confirmed against real code, not against this description.
+
+#### Only our own pids
+
+- **🔷** The tool acts **only on pids it created**. A pid belonging to any other process on the machine is refused.
+- **🔷** So the pids of our own jobs are stored, in a map or equivalent, and an incoming `pid` is looked up there before anything is done with it. No lookup hit, no action.
+- **ℹ️** This is not optional hardening. The sandbox shares the host PID namespace, so an unchecked `kill` would reach any process the user can signal — including the app itself.
+- **ℹ️** The map is the same registry Phase A has to build for the daemon. Who owns it is still open there.
 
 ### Open — **🔷** confirm
 
@@ -240,6 +290,8 @@ on it with this tool to find the part you need.
 ## The user must be able to kill a background process
 
 - **🔷** If a process can outlive the tool call, the **user** needs a way to kill it. Not only the agent.
+- **🔷** The UI must **show that something is running in the background**. A detached job is invisible today once the tool frame closes, and the user has no way to know it is there.
+- **🔷** From that indication the user must be able to **kill the job**. Seeing it is not enough on its own.
 - **ℹ️** There are two kill paths today, and both do the same unconditional thing:
   - `libollmchatgtk/ToolOutput.vala` — the **Stop** button on the tool frame.
   - `libollmchat/History/Session.vala` `cancel_current_request()` — the chat-level stop.
@@ -257,10 +309,10 @@ on it with this tool to find the part you need.
 
 ### Open — **🔷** decide with the tool contract
 
-- **⏳** **🔷** Where does the user kill it from?
-  - **💩** Keep the tool frame open with Stop live, and emit `run_tool.end` when the **process** ends rather than when the call returns.
-  - **💩** A separate background-process list, since a process can outlive the frame, the message, and the session.
-  - Not chosen.
+- **⏳** **🔷** Which surface carries the indication and the kill? The requirement is settled, the surface is not.
+  - **💩** Keep the tool frame open with Stop live, and emit `run_tool.end` when the **process** ends rather than when the call returns. Closest to what exists, but dies with the message and the session.
+  - **💩** A persistent background-job indicator, since a process can outlive the frame, the message, and the session. Survives everything, but is new UI.
+  - **ℹ️** The frame alone cannot satisfy the requirement on its own, because a job can still be running after the conversation has moved on.
 - **⏳** **🔷** Does the chat-level stop kill background processes, or only the in-flight turn?
 - **⏳** **💩** `run_tool.start` / `end` need to carry `id`, and `ChatWidget` needs a map keyed by it, if more than one process can be live at once.
 - **⏳** **💩** `stop()` has to become per-process instead of "everything in `active_tools`".
@@ -349,6 +401,7 @@ on it with this tool to find the part you need.
 - **🔷** `⏳` A job on the daemon must survive the call that created it. Today nothing does.
 - **🔷** `⏳` `OLLMbwrap.Bubble` needs what the parked sub-plan already drafted — `command` / `working_dir` properties and a `finished` signal, because `exec` has no completion signal and `stopped` is set only by `stop()`.
 - **🔷** `⏳` Keep a map of pid to `Bubble`. That is the registry, and it is the one genuinely new piece of state.
+- **🔷** `⏳` The registry is also the **authorisation check**. Every verb looks the incoming pid up in it first, and refuses a pid that is not ours. We never signal a process we did not start.
 - **🔷** The pid handed out is `this.child.get_identifier()` — the **bwrap** pid. Whichever works best, and this one does; see the process-group finding below.
 - **🔷** A detached job is **not** killed when the client disconnects. A phone going into a lift must not kill the build.
 - **🔷** `⏳` Instead a detached job dies after **15–20 minutes with no client activity**. Idle timer, not a disconnect hook.
@@ -383,8 +436,40 @@ on it with this tool to find the part you need.
   - `STDIN_PIPE` with the pipe **closed immediately** — `cat` exits in about 1 ms.
   - `STDIN_PIPE`, **write then close** — same, about 1 ms, and the data arrives.
   - `STDIN_PIPE` with a command that ignores stdin (`echo hello`) — unaffected either way.
-- **💩** So the flag flips to `STDIN_PIPE` for every run, and the pipe is **closed straight after spawn** unless the job wants `send`.
-- **💩** Only a `send`-capable job keeps it open, and that job accepts that a stdin-reading command will sit there until written to or killed — which is the point of `send`.
+- **ℹ️** A job whose pipe stays open will sit there if the command reads stdin, until written to or killed. That is the behaviour `send` exists to drive, and the detection below is how the tool notices it.
+
+#### The decision has to be made at spawn — **ℹ️** measured
+
+- **ℹ️** There is no closing and reopening. A second probe closed the write end, and the child got EOF immediately; writing again fails with `Stream is already closed`. The fd is gone and nothing can reattach it to a running process.
+- **ℹ️** A FIFO was tried as the way round it. Writers opening and closing one at a time does **not** work either — the child gets EOF the moment the last writer closes.
+- **ℹ️** A FIFO **with a keepalive writer** does work: two separate `send`s each opened and closed their own writer, the child stayed alive through both, received `send-1` and `send-2` in order, and exited cleanly when the keepalive was finally closed.
+- **ℹ️** But that buys nothing here. We already know at spawn whether a job wants `send`, and holding the `STDIN_PIPE` write end open gives the same repeated-write ability with no FIFO to create, bind, or clean up.
+- **ℹ️** The FIFO would also fight the sandbox. `build_args` adds `--tmpfs /tmp`, so a host FIFO under `/tmp` is **not** visible inside the bubble; it would need its own bind mount.
+- **🚫** Do not build the FIFO path. It solves a problem we do not have.
+
+#### No flag at all — detect the wait from `/proc` — **ℹ️** measured
+
+- **🔷** Declaring "this job will want `send`" up front is a poor interface. The tool should work out for itself that a command is sitting on stdin.
+- **ℹ️** It can. A process blocked reading stdin is visible in `/proc`, and it is distinguishable from every other kind of waiting:
+  - `/proc/PID/wchan` reads `pipe_read`
+  - `/proc/PID/syscall` starts `0` (the `read` syscall) with first argument `0x0` (fd 0)
+- **ℹ️** Measured against the cases that could confuse it:
+  - `cat` and `grep foo` waiting on stdin — both detected.
+  - `read x` as a shell builtin — detected, and the blocked process is the **shell itself**, with no child. So the whole descendant tree has to be walked, not just the direct child.
+  - `sleep 30` — `wchan=hrtimer_nanosleep`, syscall 230. Not matched.
+  - A busy loop and `cat /dev/zero` — state `R`, `syscall=running`. Not matched.
+- **ℹ️** One false positive had to be closed. In `tail -f /dev/null | cat`, the `cat` really is blocked reading its own fd 0 — but that fd is the **pipeline's** pipe, not the job's stdin. Matching on fd 0 alone wrongly flags it.
+- **ℹ️** Comparing the pipe identity fixes it. `/proc/PID/fd/0` resolves to `pipe:[inode]`, and the job's own stdin has a known inode. Verified:
+  - `cat` — fd 0 inode equals the job's stdin. Flagged.
+  - `tail -f | cat` — the `cat` has a different inode. Correctly not flagged.
+  - `cat | cat` — the first is flagged, the second is not, in the same tree.
+- **💩** So: always `STDIN_PIPE`, always held open, and no parameter. When the tool needs to decide anything, it looks.
+  - Command ends on its own — nothing changes, the pipe is irrelevant.
+  - Command is genuinely waiting on the job's stdin — that is a real state worth acting on, rather than an unexplained hang.
+- **💩** What to do on detection is the open part. Closing the pipe gives EOF and reproduces today's behaviour; reporting "waiting for input, use `send`" is more useful on a detached job. Likely both, chosen by whether the job is detached.
+- **ℹ️** This is also what powers the post-`send` hint above. "No new output after a write" becomes "still blocked on our stdin", which is a fact rather than a guess at a threshold.
+- **ℹ️** It relies on the sandbox sharing the host PID namespace, which it does. Adding `--unshare-pid` would break it along with everything else in this design.
+- **ℹ️** Linux only, which matches bwrap. The non-bwrap `GLib.Subprocess` fallback does not get this and keeps the simple behaviour.
 - **ℹ️** Today's `STDIN_INHERIT` is worse than it looks. The probe shows `cat` under `STDIN_INHERIT` **hangs when the parent has a terminal on stdin**, and returns instantly when it does not. So current behaviour depends on how the app was launched.
 - **ℹ️** Closing a pipe immediately is therefore a **fix**, not a regression. It makes stdin consistently EOF instead of inheriting whatever the parent had.
 - **⏳** **💩** Confirm the same holds under bwrap itself. The probe ran bare `GLib.Subprocess`; bwrap adds a layer between the pipe and `/bin/sh`.
@@ -415,6 +500,7 @@ on it with this tool to find the part you need.
 ## Phase D — user-facing kill (`⏳`)
 
 - **🔷** `⏳` Deliver the UI side already analysed above — a Stop that survives the tool call returning, per-job rather than all-or-nothing, and `run_tool.start` / `end` carrying `id` so more than one job can render.
+- **🔷** `⏳` Show the user that a background job exists, and let them kill it from there. This is the half that does not exist in any form today: the current Stop button is attached to an in-flight call, so it has nothing to attach to once the call has returned.
 - **🚫** Do not ship Phase C's `-1` without this. A detached process the user cannot see or stop is worse than no backgrounding at all.
 
 ---
@@ -503,7 +589,7 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 3. **⏳** **Phase A** — daemon job model and the `Bubble` changes, mining the parked sub-plan
 4. **⏳** **Phase B** — `Sandbox-Bubble` calls for kill / tail / wait / send
 5. **⏳** **Phase C** — the `bash` tool: `pid`, verbs, `-1`, truncation advice
-6. **⏳** **Phase D** — user-facing kill, before `-1` ships
+6. **⏳** **Phase D** — background-job indicator and user-facing kill, before `-1` ships
 7. **⏳** **Phase E** — Android registration + `AgentPi.Factory.register_config`
 
 - **💩** Phases A and B are each big enough for their own sub-plan once their open questions close. C is likely two — the tool contract and the RPC caller.

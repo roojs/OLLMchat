@@ -775,14 +775,29 @@ namespace OLLMapp
 					GLib.warning("%s", e.message);
 					continue;
 				}
-				OLLMrpc.Bin.Serializable parsed;
-				try {
-					parsed = bin.parse();
-				} catch (GLib.Error e) {
-					GLib.warning("%s", e.message);
-					continue;
+				/* Android TLS can report WOULD_BLOCK until decrypted reply data
+				 * is buffered, even though the raw socket is blocking. Match the
+				 * registration exchange by polling and retrying with a deadline. */
+				OLLMrpc.Response? hello = null;
+				var hello_wait = GLib.get_monotonic_time() + 10 * 1000000;
+				while (hello == null) {
+					try {
+						hello = bin.parse() as OLLMrpc.Response;
+					} catch (GLib.IOError e) {
+						if (e.code != GLib.IOError.WOULD_BLOCK
+							|| GLib.get_monotonic_time() >= hello_wait) {
+							GLib.warning("%s", e.message);
+							break;
+						}
+						var hello_poll = GLib.PollFD();
+						hello_poll.fd = conn.socket.fd;
+						hello_poll.events = GLib.IOCondition.IN;
+						GLib.poll(new GLib.PollFD[] { hello_poll }, 200);
+					} catch (GLib.Error e) {
+						GLib.warning("%s", e.message);
+						break;
+					}
 				}
-				var hello = parsed as OLLMrpc.Response;
 				if (hello == null) {
 					continue;
 				}

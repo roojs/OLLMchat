@@ -328,30 +328,19 @@ namespace OLLMfilesd
 			}
 
 			// --- Vector scan (FAISS): semantic index queue; waits if read_dir still active ---
-			if (this.vector_scan != null) {
-				if (this.vector_db == null
-					|| this.vector_db.dimension == 0) {
-					var probe_timeout_id = GLib.Timeout.add_seconds (15, () => {
-						GLib.error (
-							"vector embed probe timed out after 15 s; "
-							+ "restart ollmfilesd after codebase_search config is fixed "
-							+ "(TODO: reload daemon when app notifies config change)"
-						);
-						return false;
-					});
-					yield this.vector_scan.open_vector_db ();
-					GLib.Source.remove (probe_timeout_id);
-					if (this.vector_db == null
-						|| this.vector_db.dimension == 0) {
-						GLib.error (
-							"vector embed unavailable; restart ollmfilesd after "
-							+ "codebase_search config is fixed "
-							+ "(TODO: reload daemon when app notifies config change)"
-						);
-					}
-				}
-				this.vector_scan.queue_project (project);
+			if (this.vector_scan == null) {
+				return;
 			}
+			if (this.vector_db == null || this.vector_db.dimension == 0) {
+				yield this.vector_scan.open_vector_db ();
+			}
+			if (this.vector_db == null || this.vector_db.dimension == 0) {
+				this.notification(new OLLMrpc.Notification() {
+					method = "Banner.show",
+					message = "Codebase search model is unavailable. Update the tool model in Settings."
+				});
+			}
+			this.vector_scan.queue_project (project);
 
 		}
 		

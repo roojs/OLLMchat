@@ -1,9 +1,9 @@
 # Android pairing reply fails before certificate storage
 
-**Status:** ⏳ pairing succeeds on the emulator with matching current client/server builds, but the ticket remains open until the complete Agent Pi file-browsing flow passes without errors
+**Status:** ✅ fixed — physical phone reaches `LIVE`, exposes Agent Pi, and loads project files; complete file opening also passes on the emulator
 
 **Devices:** SM-S9380 physical phone for the original failure; `emulator-5554` for the controlled current-build flow.
-**Related:** ℹ️ `docs/bugs/done/2026-10-05-CLOSED-android-pair-listen.md`, `docs/bugs/2026-10-06-android-live-rpc-read-watch.md`, `ollmapp/android/FileConnectionAdd.vala`, `tests/rpc/filesd-pair-test.vala`, `android/pair-listen-probe/`
+**Related:** ℹ️ `docs/bugs/done/2026-10-05-CLOSED-android-pair-listen.md`, `docs/bugs/2026-10-06-android-live-rpc-read-watch.md`, `docs/bugs/2026-10-08-android-remote-connection-lifecycle.md`, `ollmapp/android/FileConnectionAdd.vala`, `tests/rpc/filesd-pair-test.vala`, `android/pair-listen-probe/`
 
 ---
 
@@ -50,6 +50,16 @@ Original phone reproduction: uninstall the APK installed from the other machine,
 - **✔️** Retaining the TLS connection fixed the live channel on `emulator-5554`: hello replied, `ProjectManager.rpc_load_projects_from_db` replied, state became `LIVE`, and Agent Pi appeared.
 - **✔️** Selecting the OLLMchat project exercised `Folder.fetch_files`, `Folder.fetch_pending_approvals`, `ProjectManager.rpc_activate_project`, a second `Folder.fetch_files`, and filesystem scan notifications; the file dropdown displayed repository files and reported 1,818 total / 50 loaded.
 - **❌** The full flow is not complete. During that project activation/scan, `/usr/bin/ollmfilesd` emitted invalid-GType criticals, dumped core with `SIGTRAP`, and systemd restarted it. Android logged `TLS connection closed unexpectedly`, reconnected, and lost the selected file state before the chosen file opened.
+- **✔️** The retained core resolves to the 15-second vector probe timeout callback at `ollmfilesd/ProjectManager.vala:335`, whose `GLib.error` deliberately terminates the process with `SIGTRAP`.
+- **✔️** The vector probe was waiting on model discovery after DNS failed for `ollama.roojs.com`; model availability is external and is not required for project or file RPC.
+- **✔️** `BackgroundScan.open_vector_db` already defines unavailable or unconfigured codebase-search models as dimension zero, and `queue_project` already skips dimension zero. `ProjectManager.activate_project` contradicts that contract by treating the same state and a slow probe as fatal process errors.
+- **✔️** A controlled repeat with the same config while DNS and the remote model server were available completed project activation and vector work without a critical or crash, confirming that Android transport and filesystem scanning are not the crash source.
+- **✔️** After removing the fatal probe timer, flattening the vector tail, and routing unavailable-model state through `Banner.show`, the complete `emulator-5554` flow passed against the build-tree daemon: persistent hello, `LIVE` state, Agent Pi, OLLMchat project selection, 1,854 file entries, `File.read` reply, and rendered file contents.
+- **✔️** The build-tree daemon remained alive through project scan, vector startup, file-list loading, and file reading; Android logged no TLS disconnect, critical, warning, or RPC error during the verified flow.
+- **✔️** On the physical SM-S9380, pairing stored the connection and changed state to `ENABLED`, but each of the three post-pair probes failed at `bin.parse()` with `GLib.IOError.WOULD_BLOCK` (`Try again`) and ended `UNREACHABLE`.
+- **✔️** Setting the raw socket blocking is insufficient for a TLS stream whose reply is not already buffered. The emulator passed because its reply was available immediately; the physical network exposed the race.
+- **✔️** `FileConnectionAdd` already handles the same Android TLS/bin behavior by retrying `Bin.Stream.parse()` on `WOULD_BLOCK`, polling the socket fd for readiness, and enforcing a ten-second deadline.
+- **✔️** The rebuilt APK on the physical SM-S9380 completed persistent hello, changed filesd state to `LIVE`, exposed Agent Pi, activated OLLMchat, and received replies for repeated `Folder.fetch_files` calls.
 - **💩** The original `0x08` failure is most consistent with the stale daemon/client protocol mismatch, but the exact stale server revision and emitted registration-reply bytes were not preserved, so that attribution is not yet proven.
 
 ## Proposed changes
@@ -64,9 +74,13 @@ Original phone reproduction: uninstall the APK installed from the other machine,
 - **🔷** In both Android persistent-client construction sites, load the certificate directory identified by `filesd_client.server_id` and configure the client's TLS connection with that client certificate and CA.
 - **🔷** Apply the existing `2026-10-06-android-live-rpc-read-watch.md` proposal: remove the Android disconnect branch and use the shared IOChannel readiness watch, while `Bin.Stream` continues reading the selected TLS stream.
 - **🔷** Keep the `GLib.TlsClientConnection` in a private `OLLMrpc.Client` field for the lifetime of the live RPC connection, and release it during `disconnect`.
-- **⏳** Diagnose the daemon invalid-GType crash triggered by the remote project activation/scan before proposing another code change.
+- **🔷** Remove the fatal vector-probe timer from `ProjectManager.rpc_activate_project`; the HTTP connection already owns its request timeout, and this asynchronous vector work must not kill unrelated project/file RPC.
+- **🔷** Report dimension-zero vector availability to the connected client with the existing `Banner.show` notification path, then allow the existing `queue_project` contract to skip indexing.
+- **🔷** Flatten the vector tail of `rpc_activate_project` with an early return when no scanner is configured and sequential readiness checks.
+- **🔷** Make `probe_addresses` use the existing `FileConnectionAdd` reply-wait pattern: retry `Bin.Stream.parse()` after `WOULD_BLOCK`, poll the raw fd only for readiness, and stop after ten seconds.
 - **🚫** Do not replace `GLib.IOChannel` or alter the shared RPC codec based on the historical `0x08` result; reproduce the failure with matching current binaries and capture the raw reply before proposing such a change.
 - **🚫** Do not disable certificate validation, trust every certificate, or add `tls_certificate` / `tls_database` properties to `OLLMrpc.Client`.
+- **🚫** Do not suppress the invalid-GType diagnostics; they remain evidence of a model-discovery failure path, but they are not a valid reason for the file daemon to terminate.
 
 ### Connect Android after the pairing dialog closes
 
@@ -174,6 +188,56 @@ Original phone reproduction: uninstall the APK installed from the other machine,
 
 ```vala
 				if (hello.msg != "ok") {
+					continue;
+				}
+```
+
+### Wait for TLS application data on a physical device
+
+**Why:** Making the raw socket blocking does not guarantee that Android's TLS input stream has decrypted application data when `Bin.Stream.parse()` first runs. The pairing flow already proves the required poll-and-retry pattern.
+
+**Where:** `ollmapp/android/OllmchatWindow.vala`, in `probe_addresses` after writing `RPC-Daemon.hello`.
+
+#### Remove
+
+```vala
+				OLLMrpc.Bin.Serializable parsed;
+				try {
+					parsed = bin.parse();
+				} catch (GLib.Error e) {
+					GLib.warning("%s", e.message);
+					continue;
+				}
+				var hello = parsed as OLLMrpc.Response;
+				if (hello == null) {
+					continue;
+				}
+```
+
+#### Replace with
+
+```vala
+				OLLMrpc.Response? hello = null;
+				var hello_wait = GLib.get_monotonic_time() + 10 * 1000000;
+				while (hello == null) {
+					try {
+						hello = bin.parse() as OLLMrpc.Response;
+					} catch (GLib.IOError e) {
+						if (e.code != GLib.IOError.WOULD_BLOCK
+							|| GLib.get_monotonic_time() >= hello_wait) {
+							GLib.warning("%s", e.message);
+							break;
+						}
+						var hello_poll = GLib.PollFD();
+						hello_poll.fd = conn.socket.fd;
+						hello_poll.events = GLib.IOCondition.IN;
+						GLib.poll(new GLib.PollFD[] { hello_poll }, 200);
+					} catch (GLib.Error e) {
+						GLib.warning("%s", e.message);
+						break;
+					}
+				}
+				if (hello == null) {
 					continue;
 				}
 ```
@@ -329,6 +393,59 @@ Original phone reproduction: uninstall the APK installed from the other machine,
 			this.tls_connection = null;
 ```
 
+### Keep model availability from terminating file RPC
+
+**Why:** Codebase-search model discovery is optional asynchronous work. A slow or unavailable model endpoint must not terminate `ollmfilesd` after project activation has already succeeded.
+
+**Where:** `ollmfilesd/ProjectManager.vala`, in `rpc_activate_project` before `queue_project`.
+
+#### Remove
+
+```vala
+			if (this.vector_scan != null) {
+				if (this.vector_db == null
+					|| this.vector_db.dimension == 0) {
+					var probe_timeout_id = GLib.Timeout.add_seconds (15, () => {
+						GLib.error (
+							"vector embed probe timed out after 15 s; "
+							+ "restart ollmfilesd after codebase_search config is fixed "
+							+ "(TODO: reload daemon when app notifies config change)"
+						);
+						return false;
+					});
+					yield this.vector_scan.open_vector_db ();
+					GLib.Source.remove (probe_timeout_id);
+					if (this.vector_db == null
+						|| this.vector_db.dimension == 0) {
+						GLib.error (
+							"vector embed unavailable; restart ollmfilesd after "
+							+ "codebase_search config is fixed "
+							+ "(TODO: reload daemon when app notifies config change)"
+						);
+					}
+				}
+				this.vector_scan.queue_project (project);
+			}
+```
+
+#### Replace with
+
+```vala
+			if (this.vector_scan == null) {
+				return;
+			}
+			if (this.vector_db == null || this.vector_db.dimension == 0) {
+				yield this.vector_scan.open_vector_db ();
+			}
+			if (this.vector_db == null || this.vector_db.dimension == 0) {
+				this.notification(new OLLMrpc.Notification() {
+					method = "Banner.show",
+					message = "Codebase search model is unavailable. Update the tool model in Settings."
+				});
+			}
+			this.vector_scan.queue_project (project);
+```
+
 ## Attempts / changelog
 
 - **✔️** Captured physical-phone logcat, daemon log, certificate directory, and config after the failed requests.
@@ -343,15 +460,19 @@ Original phone reproduction: uninstall the APK installed from the other machine,
 - **✔️** Retained the TLS connection; emulator startup then completed persistent hello, loaded projects, switched to `LIVE`, and exposed Agent Pi.
 - **✔️** Selected OLLMchat and loaded its file list through the persistent RPC connection.
 - **❌** Opening a listed file did not complete because `ollmfilesd` crashed and restarted during the preceding project scan. Journal evidence: `type id '0' is invalid`, `cannot initialize GValue with type '(null)'`, core dump, `status=5/TRAP`; Android then reconnected successfully but the selected file state had been cleared.
+- **✔️** Symbolized the retained core and identified `ProjectManager.vala:335` as the fatal frame; the later process death was the timeout callback's `GLib.error`, not a TLS or file-parser crash.
+- **✔️** Repeated project activation directly through `ollmfilesd --interactive` with the current data directory; filesystem and vector work completed when the configured model endpoint was reachable.
+- **✔️** Built `ollmfilesd`, ran it directly without the desktop app, relaunched the installed app on `emulator-5554`, selected OLLMchat, opened a listed Markdown file, and confirmed `File.read` id 7 replied and the editor rendered the contents.
+- **✔️** Installed the APK on the physical SM-S9380 and reproduced the post-pair failure: state `ENABLED`, three `Try again` parse failures, state `UNREACHABLE`, and the desktop-unavailable banner.
+- **✔️** Implemented the documented `FileConnectionAdd` poll-and-retry pattern in `probe_addresses` and built the APK successfully.
+- **✔️** Reconnected the physical phone, installed the rebuilt APK through the standard script, completed persistent hello, reached `LIVE`, exposed Agent Pi, activated OLLMchat, and received repeated `Folder.fetch_files` replies.
 
-## Current stopping point
+## Current state
 
-- **⏸️** Work paused at the user's request.
-- **⏳** Acceptance is still open: pairing, active desktop, and Agent Pi/project listing now pass; opening and browsing a file without a daemon error still fails.
-- **⏳** Next investigation starts from the `ollmfilesd` core dump at 10:25:44 and the invalid `GType` critical first logged at 10:25:25. No speculative daemon fix has been made.
+- **✅** The original physical-phone pairing and reconnect failures are fixed: pairing persists, authenticated reconnect reaches `LIVE`, Agent Pi appears, and project files load.
+- **✔️** Complete file opening passes on `emulator-5554`: a selected Markdown file produced a `File.read` reply and rendered without a daemon or client error.
+- **ℹ️** Removal, approved-certificate re-add, and the remaining full-flow regression harness are tracked in `2026-10-08-android-remote-connection-lifecycle.md`.
 
 ## Next
 
-- **🔷** ⏳ On `emulator-5554`, select Agent Pi and browse files through it; capture and fix any error as part of this ticket.
-- **🔷** ⏳ Add the standalone Android full-flow test app so the complete pairing-through-file-browsing flow is repeatable without driving the product UI.
-- **💩** ⏳ If the physical-phone failure recurs against the current daemon, capture the first registration-reply bytes and both type registries before changing product code.
+- **ℹ️** Continue with `docs/bugs/2026-10-08-android-remote-connection-lifecycle.md`.

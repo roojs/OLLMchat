@@ -557,15 +557,32 @@ namespace OLLMapp.SettingsDialog
 			this.file_connection_row.remove_requested.connect(() => {
 				var was_live = client.state == FilesdClient.State.LIVE
 					|| client.state == FilesdClient.State.SOCKET;
+#if !ANDROID
 				var row = this.file_connection_row;
-				this.dialog.app.config.filesd_client =
-					new OLLMchat.Settings.FilesdClient();
+#endif
+				/* AgentDropdown listens to this object. Mutating its state
+				 * notifies the filter before the connection data is cleared. */
+				client.state = FilesdClient.State.REQUESTED;
+				client.url = "";
+				client.addresses = "";
+				client.server_id = "";
 				this.render_file_connection();
 				this.dialog.app.config.save();
 				if (!was_live) {
 					return;
 				}
-#if !ANDROID
+#if ANDROID
+				/* Android has no local file daemon to reconnect after removal.
+				 * Drop the remote RPC state and return to Chatter. */
+				var data_dir = GLib.Path.build_filename(
+					GLib.Environment.get_user_data_dir(), "ollmchat");
+				this.dialog.parent.project_manager.replace_rpc(
+					new OLLMrpc.Client(data_dir, "ollmfilesd.pid", "ollmfilesd.sock"));
+				var empty = this.dialog.parent.history_manager.create_new_session();
+				empty.project_path = this.dialog.parent.history_manager.session.project_path;
+				empty.agent_name = "chatter";
+				this.dialog.parent.chat_widget.switch_to_session.begin(empty);
+#else
 				row.reconnect.begin(false);
 #endif
 			});

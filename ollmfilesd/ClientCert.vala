@@ -341,9 +341,31 @@ namespace OLLMfilesd
 				});
 				return;
 			}
-			listen.pin = pin;
+			if (!(request.connection is SslConnection)) {
+				listen.pin = pin;
+				request.reply(new OLLMrpc.Response() {
+					msg = "ok"
+				});
+				return;
+			}
+			if (pin != listen.pin) {
+				request.reply(new OLLMrpc.Response() {
+					error = new OLLMrpc.Error(
+						(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "number rejected")
+				});
+				this.app.broadcast(new OLLMrpc.Notification() {
+					method = "event.pair",
+					action = "rejected"
+				});
+				return;
+			}
+			listen.pin = "";
 			request.reply(new OLLMrpc.Response() {
 				msg = "ok"
+			});
+			this.app.broadcast(new OLLMrpc.Notification() {
+				method = "event.pair",
+				action = "done"
 			});
 		}
 
