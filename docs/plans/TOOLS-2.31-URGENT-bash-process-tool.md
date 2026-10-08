@@ -10,6 +10,7 @@
 
 **Sub-plans:** phases A–E below become `TOOLS-2.31.1` … `TOOLS-2.31.5` as each one's open questions close.
 
+- [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md) — **Phase A**, the daemon job model. Code proposals written and measured.
 - [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) — earlier daemon `Sandbox-Bubble` RPC draft. **Parked, do not apply.**
 
 **Depends on:**
@@ -235,21 +236,8 @@ on it with this tool to find the part you need.
 ### Where the dispatch goes
 
 - **🔷** `pid` is declared beside `timeout` on `Request`, and documented in `Tool.parameter_description` next to it.
-- **💩** The dispatch sits at the top of `Request.execute()`, between the empty-`command` guard and `normalize_working_dir()`. Here is the existing anchor:
-
-```232:240:liboctools/RunCommand/Request.vala
-		public override async string execute()
-		{
-			// Parameters are already deserialized in constructor
-			if (this.command.strip() == "") {
-				return "ERROR: Invalid parameters";
-			}
-			
-			// Normalize and validate working_dir if provided
-			var normalized_working_dir = this.normalize_working_dir();
-```
-
-- **ℹ️** That position matters. A management call has no working directory to validate, must not raise a permission prompt, and must not open a spill file or emit `client.run_tool.start`. Every one of those begins below this line.
+- **💩** The dispatch sits at the top of `Request.execute()` in `liboctools/RunCommand/Request.vala`, between the empty-`command` guard and the `normalize_working_dir()` call.
+- **ℹ️** That position matters. A management call has no working directory to validate, must not raise a permission prompt, and must not open a spill file or emit `client.run_tool.start`. Every one of those begins below that line.
 - **⏳** **🔷** This is not reviewable as prose. Phase C writes the actual hunk — the `pid != 0` branch, the verb switch, and what each verb returns — and it gets confirmed against real code, not against this description.
 
 #### Only our own pids
@@ -396,83 +384,16 @@ on it with this tool to find the part you need.
 
 ## Phase A — daemon job model (`⏳`)
 
-**🔷** The first question is what the back end needs. Everything above is tool-level; none of it works without a daemon-side job that outlives a single call.
+**ℹ️** Split out to [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md), which carries the measurements and the code proposals. Summary only below.
 
-- **🔷** `⏳` A job on the daemon must survive the call that created it. Today nothing does.
-- **🔷** `⏳` `OLLMbwrap.Bubble` needs what the parked sub-plan already drafted — `command` / `working_dir` properties and a `finished` signal, because `exec` has no completion signal and `stopped` is set only by `stop()`.
-- **🔷** `⏳` Keep a map of pid to `Bubble`. That is the registry, and it is the one genuinely new piece of state.
-- **🔷** `⏳` The registry is also the **authorisation check**. Every verb looks the incoming pid up in it first, and refuses a pid that is not ours. We never signal a process we did not start.
-- **🔷** The pid handed out is `this.child.get_identifier()` — the **bwrap** pid. Whichever works best, and this one does; see the process-group finding below.
+- **🔷** `⏳` A job must survive the call that created it. Today nothing does.
+- **🔷** `⏳` A map of pid to `Bubble` is the registry, and it is the one genuinely new piece of state. It is also the **authorisation check** — a pid that is not in it was not started by us, and nothing is done to it.
+- **🔷** The pid is the **bwrap** pid, which is also the process group leader, so one number is the handle, the key, and the kill target.
+- **🔷** `⏳` `OLLMbwrap.Bubble` gains `command` / `working_dir` properties and a `finished` signal, because `exec` has no completion signal and `stopped` is set only by `stop()`.
+- **🔷** `⏳` A job can be written to and can be asked whether it is stuck on stdin. Neither is declared up front by the agent.
 - **🔷** A detached job is **not** killed when the client disconnects. A phone going into a lift must not kill the build.
-- **🔷** `⏳` Instead a detached job dies after **15–20 minutes with no client activity**. Idle timer, not a disconnect hook.
-- **⏳** **💩** Which calls count as "activity" — any RPC on that job, or any RPC on the connection at all?
-- **⏳** **🔷** Decide who owns the registry. It cannot be the connection, given the above. Daemon-wide or session-scoped.
-
-### `stop()` is already correct — **🚫** do not "fix" it
-
-- **ℹ️** `stop()` does `Posix.kill(-(int.parse(id)), Posix.Signal.KILL)` then `force_exit()`. The negative pid targets a **process group**, which only works if the child leads one.
-- **ℹ️** It does. `RunSeccomp.wire_launcher` sets `launcher.set_child_setup(() => { Posix.setpgid(0, 0); … })`, on **both** branches — the socketpair-failure path does it too.
-- **ℹ️** So the bwrap pid is also the process **group** id. One signal reaches bwrap, the inner `/bin/sh`, and everything the command spawned.
-- **ℹ️** This is the reason the registry keys on that pid and nothing else. It is simultaneously the handle, the kill target, and the group.
-- **ℹ️** The Windows `RunSeccomp.wire_launcher` is empty, so there is no `setpgid` there. Not a problem — bwrap is Linux-only and `can_wrap()` returns false under Flatpak and when `bwrap` is off PATH.
-
-### Overlay copy-back survives a kill — **ℹ️** no change needed
-
-- **ℹ️** `exec` runs `read_subprocess_output`, then `overlay.scan.run()`, then `detach_sources()` and `overlay.cleanup()`. None of that is guarded on `stopped`.
-- **ℹ️** A killed process closes its pipes, so `read_subprocess_output` returns normally and the scan and cleanup still run. Copy-back happens on a kill just as it does on a clean exit.
-- **ℹ️** That holds whether the kill came from `stop()` or from a signal sent outside the process, because `stopped` is not consulted on this path.
-
-### Detach must not be an `exec` timer
-
-- **ℹ️** `exec` owns the overlay. It calls `overlay.cleanup()` on the way out, and the overlay must stay mounted for as long as the command runs.
-- **ℹ️** So the 15 s detach cannot make `exec` return early. `exec` keeps awaiting the process to completion exactly as it does now.
-- **💩** The 15 s timer therefore belongs **above** `exec` — the caller stops waiting and reports the pid, while the `Bubble` keeps running and eventually fires `finished`.
-- **ℹ️** This is what the registry buys: it holds the still-awaiting `Bubble` so nothing drops the last reference when the call returns.
-
-### `send` needs `STDIN_PIPE`, but not unconditionally
-
-- **ℹ️** Measured with a throwaway `GLib.Subprocess` probe, three seconds per case:
-  - `STDIN_PIPE` with the pipe **left open** — `cat` and `grep -c .` both **hang indefinitely**. They are waiting on a pipe nobody will ever write to or close.
-  - `STDIN_PIPE` with the pipe **closed immediately** — `cat` exits in about 1 ms.
-  - `STDIN_PIPE`, **write then close** — same, about 1 ms, and the data arrives.
-  - `STDIN_PIPE` with a command that ignores stdin (`echo hello`) — unaffected either way.
-- **ℹ️** A job whose pipe stays open will sit there if the command reads stdin, until written to or killed. That is the behaviour `send` exists to drive, and the detection below is how the tool notices it.
-
-#### The decision has to be made at spawn — **ℹ️** measured
-
-- **ℹ️** There is no closing and reopening. A second probe closed the write end, and the child got EOF immediately; writing again fails with `Stream is already closed`. The fd is gone and nothing can reattach it to a running process.
-- **ℹ️** A FIFO was tried as the way round it. Writers opening and closing one at a time does **not** work either — the child gets EOF the moment the last writer closes.
-- **ℹ️** A FIFO **with a keepalive writer** does work: two separate `send`s each opened and closed their own writer, the child stayed alive through both, received `send-1` and `send-2` in order, and exited cleanly when the keepalive was finally closed.
-- **ℹ️** But that buys nothing here. We already know at spawn whether a job wants `send`, and holding the `STDIN_PIPE` write end open gives the same repeated-write ability with no FIFO to create, bind, or clean up.
-- **ℹ️** The FIFO would also fight the sandbox. `build_args` adds `--tmpfs /tmp`, so a host FIFO under `/tmp` is **not** visible inside the bubble; it would need its own bind mount.
-- **🚫** Do not build the FIFO path. It solves a problem we do not have.
-
-#### No flag at all — detect the wait from `/proc` — **ℹ️** measured
-
-- **🔷** Declaring "this job will want `send`" up front is a poor interface. The tool should work out for itself that a command is sitting on stdin.
-- **ℹ️** It can. A process blocked reading stdin is visible in `/proc`, and it is distinguishable from every other kind of waiting:
-  - `/proc/PID/wchan` reads `pipe_read`
-  - `/proc/PID/syscall` starts `0` (the `read` syscall) with first argument `0x0` (fd 0)
-- **ℹ️** Measured against the cases that could confuse it:
-  - `cat` and `grep foo` waiting on stdin — both detected.
-  - `read x` as a shell builtin — detected, and the blocked process is the **shell itself**, with no child. So the whole descendant tree has to be walked, not just the direct child.
-  - `sleep 30` — `wchan=hrtimer_nanosleep`, syscall 230. Not matched.
-  - A busy loop and `cat /dev/zero` — state `R`, `syscall=running`. Not matched.
-- **ℹ️** One false positive had to be closed. In `tail -f /dev/null | cat`, the `cat` really is blocked reading its own fd 0 — but that fd is the **pipeline's** pipe, not the job's stdin. Matching on fd 0 alone wrongly flags it.
-- **ℹ️** Comparing the pipe identity fixes it. `/proc/PID/fd/0` resolves to `pipe:[inode]`, and the job's own stdin has a known inode. Verified:
-  - `cat` — fd 0 inode equals the job's stdin. Flagged.
-  - `tail -f | cat` — the `cat` has a different inode. Correctly not flagged.
-  - `cat | cat` — the first is flagged, the second is not, in the same tree.
-- **💩** So: always `STDIN_PIPE`, always held open, and no parameter. When the tool needs to decide anything, it looks.
-  - Command ends on its own — nothing changes, the pipe is irrelevant.
-  - Command is genuinely waiting on the job's stdin — that is a real state worth acting on, rather than an unexplained hang.
-- **💩** What to do on detection is the open part. Closing the pipe gives EOF and reproduces today's behaviour; reporting "waiting for input, use `send`" is more useful on a detached job. Likely both, chosen by whether the job is detached.
-- **ℹ️** This is also what powers the post-`send` hint above. "No new output after a write" becomes "still blocked on our stdin", which is a fact rather than a guess at a threshold.
-- **ℹ️** It relies on the sandbox sharing the host PID namespace, which it does. Adding `--unshare-pid` would break it along with everything else in this design.
-- **ℹ️** Linux only, which matches bwrap. The non-bwrap `GLib.Subprocess` fallback does not get this and keeps the simple behaviour.
-- **ℹ️** Today's `STDIN_INHERIT` is worse than it looks. The probe shows `cat` under `STDIN_INHERIT` **hangs when the parent has a terminal on stdin**, and returns instantly when it does not. So current behaviour depends on how the app was launched.
-- **ℹ️** Closing a pipe immediately is therefore a **fix**, not a regression. It makes stdin consistently EOF instead of inheriting whatever the parent had.
-- **⏳** **💩** Confirm the same holds under bwrap itself. The probe ran bare `GLib.Subprocess`; bwrap adds a layer between the pipe and `/bin/sh`.
+- **🔷** `⏳` Instead it dies after **15–20 minutes with no client activity**. Idle timer, not a disconnect hook.
+- **⏳** **🔷** Still open there: who owns the registry, and which calls count as "activity".
 
 ---
 
@@ -584,15 +505,15 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 
 ## Suggested order
 
-1. **⏳** Answer the open questions in **Phase A** — registry owner, key, and job lifetime. Nothing above it can be built first.
+1. **⏳** Answer the two questions left open in [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md) — registry owner, and what counts as activity for the idle timer.
 2. **⏳** Decide whether `bash` stops subclassing `RunCommand.Tool`, and whether desktop keeps both tools.
-3. **⏳** **Phase A** — daemon job model and the `Bubble` changes, mining the parked sub-plan
+3. **⏳** **Phase A** — apply [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md)
 4. **⏳** **Phase B** — `Sandbox-Bubble` calls for kill / tail / wait / send
 5. **⏳** **Phase C** — the `bash` tool: `pid`, verbs, `-1`, truncation advice
 6. **⏳** **Phase D** — background-job indicator and user-facing kill, before `-1` ships
 7. **⏳** **Phase E** — Android registration + `AgentPi.Factory.register_config`
 
-- **💩** Phases A and B are each big enough for their own sub-plan once their open questions close. C is likely two — the tool contract and the RPC caller.
+- **💩** Phase B is big enough for its own sub-plan once its open questions close, as Phase A already is. C is likely two — the tool contract and the RPC caller.
 
 ---
 

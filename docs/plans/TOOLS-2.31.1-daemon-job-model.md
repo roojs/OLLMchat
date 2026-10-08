@@ -1,6 +1,6 @@
 # 2.31.1 — Phase A — daemon job model
 
-**Status:** ⏳ **proposed** — code below is applicable as written. Two open questions remain and neither blocks these hunks.
+**Status:** ⏳ **proposed** — every hunk below was compiled and run outside the tree before being written down. Two open questions remain and neither blocks these hunks.
 
 > **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
@@ -31,6 +31,13 @@
 - **🔷** **A writable stdin, but only when asked for.** Holding a pipe open on a job nobody can write to just hangs it.
 - **🔷** **Detection instead of declaration.** The job works out for itself that it is sitting on stdin. The agent never has to say so up front.
 
+### Two things that already work
+
+- **ℹ️** `stop()` is correct as it stands. `Posix.kill(-(int.parse(id)), Posix.Signal.KILL)` targets a process group, and the bwrap child leads one.
+  - **ℹ️** The Windows `RunSeccomp.wire_launcher` is empty and has no `setpgid`. Not a problem: bwrap is Linux-only, and `can_wrap()` returns false under Flatpak and when `bwrap` is off PATH.
+- **ℹ️** Overlay copy-back already survives a kill. `exec` runs `read_subprocess_output`, then `overlay.scan.run()`, then `detach_sources()` and `overlay.cleanup()`, and none of it is guarded on `stopped`.
+  - **ℹ️** A killed process closes its pipes, so `read_subprocess_output` returns normally and the scan and cleanup still run. That holds whether the kill came from `stop()` or from a signal sent outside the process.
+
 ### stdin: `/dev/null` by default, a pipe on request
 
 - **ℹ️** Measured with a throwaway `GLib.Subprocess` probe:
@@ -38,19 +45,19 @@
   - `STDIN_PIPE` **closed immediately**, or written then closed — about 1 ms.
   - A command that ignores stdin (`echo hello`) — unaffected either way.
 - **ℹ️** Today's `STDIN_INHERIT` is worse than it looks. The same probe shows `cat` hanging when the parent has a terminal on stdin and returning instantly when it does not, so current behaviour depends on how the app was launched.
-- **💩** So the default becomes **neither flag**, which GLib documents as stdin redirected from `/dev/null`. Reads EOF at once, every time, however the app was started.
-  - **⏳** **💩** That `/dev/null` default is from the GLib contract, not from the probe set. Confirm on the first run.
-- **🚫** Reopening a closed pipe. A second probe closed the write end, the child got EOF, and writing again fails with `Stream is already closed`.
-- **🚫** A FIFO. Writers opening one at a time EOF the child on every close, and a FIFO with a keepalive writer works but buys nothing we do not already get from holding the pipe. `--tmpfs /tmp` would also hide a host FIFO from inside the bubble.
+- **💩** So the default becomes **neither flag**, which GLib redirects from `/dev/null`. Reads EOF at once, every time, however the app was started.
+  - **ℹ️** Measured with the §2 launcher expression as written: `/bin/cat` spawned with no stdin flag had already exited two seconds later.
+- **ℹ️** The choice has to be made at spawn, because a closed pipe cannot be reopened. A probe closed the write end, the child got EOF, and writing again failed with `Stream is already closed`.
+- **ℹ️** A FIFO was tried as the way round that. Writers opening one at a time EOF the child on every close. A FIFO with a permanent keepalive writer does work, but it buys nothing over holding the pipe open, and `--tmpfs /tmp` would hide a host FIFO from inside the bubble anyway.
 
 ### Detecting a job blocked on stdin
 
-- **ℹ️** Measured against the cases that could confuse it:
-  - `cat` and `grep foo` waiting on stdin — both detected.
-  - `read x` as a shell builtin — detected, and the blocked process is the **shell itself** with no child, which is why the whole descendant tree is walked.
-  - `sleep 30` — `syscall` 230. A busy loop and `cat /dev/zero` — state `R`, `syscall=running`. Neither matched.
-  - `tail -f /dev/null | cat` — the `cat` is blocked on fd 0, but that fd is the pipeline's pipe. Comparing `pipe:[inode]` against our own write end keeps it out.
-  - `cat | cat` — the first is flagged, the second is not, in the same tree.
+- **ℹ️** Measured by compiling §1 to §4 as written and running them against the cases that could confuse it. Every result below is from that run, not from the earlier exploratory probe:
+  - `cat` waiting on stdin — detected.
+  - `sh -c 'read x; echo got $x'` — detected, and the blocked process is the **shell itself** with no child, which is why the whole descendant tree is walked. `send("zebra\n")` unblocked it and it ran to completion.
+  - `tail -f /dev/null | cat` — **not** detected, correctly. The `cat` is genuinely blocked on fd 0, but that fd is the pipeline's pipe, and the `pipe:[inode]` comparison keeps it out.
+  - `sleep 30` — not detected.
+- **ℹ️** From the earlier exploratory probe, not re-run here: `grep foo` on stdin is detected; a busy loop and `cat /dev/zero` read `syscall=running` and are not; in `cat | cat` the first is flagged and the second is not, in the same tree.
 - **💩** `wchan` is read in the probe but **not** in the proposal. `syscall` field 0 says the process is inside `read`, field 1 says the fd is 0, and the inode match says the fd is ours. `wchan` adding `pipe_read` on top of that is a redundant check.
 
 ---
@@ -98,56 +105,29 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 		public signal void output(string line);
 
 		/**
-		 * Live sandboxed jobs in this process, keyed by {@link pid}.
-		 *
-		 * {@link exec} adds an entry on spawn and drops it when the
-		 * command ends. The entry is also the reference that keeps a
-		 * detached job alive once the call that started it has
-		 * returned.
-		 *
-		 * Membership is the authorisation check for ''kill'',
-		 * ''tail'' and {@link send}. A pid that is not a key here was
-		 * not started by us. The sandbox shares the host pid
-		 * namespace, so an unchecked signal would otherwise reach any
-		 * process the user can signal.
-		 *
-		 * The initializer runs in ''class_init'', so this is set
-		 * inside any instance method. A static read before the first
-		 * {@link Bubble} exists sees null, which means the same as a
-		 * missing key.
+		 * Live jobs keyed by {@link pid}, added on spawn and dropped
+		 * when the command ends. Holds the only reference to a
+		 * detached job, and membership is what authorises ''kill'',
+		 * ''tail'' and {@link send}.
 		 */
 		public static Gee.HashMap<int, Bubble> jobs =
 			new Gee.HashMap<int, Bubble>();
 
 		/**
-		 * Process id of the bwrap child, or ''0'' before {@link exec}
-		 * has spawned it.
-		 *
-		 * bwrap also leads the process //group//, because
-		 * {@link RunSeccomp.wire_launcher} calls ''setpgid(0, 0)'' in
-		 * child setup. One number is therefore the handle, the key in
-		 * {@link jobs}, and the kill target for the whole tree.
+		 * Bwrap child pid, or ''0'' before {@link exec} spawns it.
+		 * Also the process group id, so it is the kill target too.
 		 */
 		public int pid { get; private set; default = 0; }
 
 		/**
-		 * When true, {@link exec} gives the command a stdin pipe and
-		 * holds the write end open for {@link send}.
-		 *
-		 * When false the command reads ''/dev/null'' and sees EOF at
-		 * once. That is the right default: a command nobody can write
-		 * to must not be able to hang waiting for input.
-		 *
-		 * The owner sets this before {@link exec}. It is not an
-		 * agent-facing option — the tool turns it on for a detached
-		 * job and leaves it off otherwise.
+		 * When true {@link exec} holds a stdin pipe open for
+		 * {@link send}; when false the command reads ''/dev/null''.
 		 */
 		public bool keep_stdin { get; set; default = false; }
 
 		/**
 		 * Shell string for a deferred run, when the owner leases this
-		 * object and starts it on a later call. Not read by
-		 * {@link exec} — pass it in.
+		 * object and starts it later. Not read by {@link exec}.
 		 */
 		public string command { get; set; default = ""; }
 
@@ -158,14 +138,11 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 		public string working_dir { get; set; default = ""; }
 
 		/**
-		 * Emitted once the command has ended, carrying the string
-		 * {@link exec} returns, or its error message when it threw.
+		 * Emitted once the command has ended, for owners that never
+		 * see the {@link exec} return value.
 		 *
-		 * For owners that hold this object as a live handle and never
-		 * see the {@link exec} return value — a remote caller, or the
-		 * watcher of a detached job.
-		 *
-		 * @param output final command output
+		 * @param output what {@link exec} returned, or its error
+		 *   message when it threw
 		 */
 		public signal void finished(string output);
 
@@ -290,18 +267,16 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 
 ```vala
 		/**
-		 * Write to the running command's stdin.
+		 * Write to the running command's stdin. Needs
+		 * {@link keep_stdin} set before {@link exec}; otherwise the
+		 * command is reading ''/dev/null'' and there is no pipe.
 		 *
-		 * Only possible when {@link keep_stdin} was set before
-		 * {@link exec}. Otherwise the command is reading
-		 * ''/dev/null'' and there is no pipe to write to.
-		 *
-		 * Nothing is appended. A caller that wants the command to see
-		 * a completed line sends the newline itself.
+		 * Nothing is appended — a caller that wants a completed line
+		 * sends the newline itself.
 		 *
 		 * @param text bytes to write, verbatim
-		 * @throws GLib.Error if the command has ended, was started
-		 *   without a stdin pipe, or the write fails
+		 * @throws GLib.Error if the command has ended, has no stdin
+		 *   pipe, or the write fails
 		 */
 		public void send(string text) throws GLib.Error
 		{
@@ -336,20 +311,14 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 		/**
 		 * Whether the job is blocked reading the stdin we gave it.
 		 *
-		 * Walks the whole descendant tree of {@link pid}, because a
-		 * shell builtin such as ''read x'' blocks in the shell itself
-		 * and has no child to find. A process counts only when it is
-		 * inside ''read'' on fd 0 //and// that fd is the same pipe as
-		 * our write end.
+		 * The whole descendant tree is walked because a builtin such
+		 * as ''read x'' blocks in the shell with no child to find. A
+		 * process counts only when it is inside ''read'' on fd 0
+		 * //and// that fd is our pipe — comparing the pipe is what
+		 * keeps a blocked pipeline from reading as a stdin wait.
 		 *
-		 * Comparing the pipe is what makes it reliable. In
-		 * ''tail -f /dev/null | cat'' the ''cat'' is genuinely blocked
-		 * on its own fd 0, but that is the pipeline's pipe, so it does
-		 * not match and is not reported.
-		 *
-		 * Linux only, and it needs the host pid namespace, which the
-		 * sandbox shares — {@link build_bubble_args} adds no
-		 * ''--unshare-pid''.
+		 * Linux only, and needs the host pid namespace that
+		 * {@link build_bubble_args} leaves shared.
 		 *
 		 * @return true when something in the job is waiting for
 		 *   {@link send}
@@ -413,9 +382,10 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 ## Testing Phase A
 
 - **🔷** `⏳` Everything here is reachable from the existing in-process path, so it is testable before any RPC work. Drive it from a `Bubble` directly.
+- **ℹ️** The stdin and detection behaviour is already measured outside the tree, as noted above. What is **not** yet covered is any of it running through bwrap, the overlay, or seccomp.
 - **💩** `⏳` Sequence to assert, all with `keep_stdin = false`:
   - `echo hello` — `pid` is non-zero during the run, `Bubble.jobs` has that key, and the key is gone once `exec` returns.
-  - `cat` — exits at once on EOF rather than hanging. This is the `/dev/null` default, and the case that behaves differently today depending on how the app was launched.
+  - `cat` — exits at once on EOF rather than hanging. This is the case that behaves differently today depending on how the app was launched.
   - `finished` fires with the same string `exec` returned.
 - **💩** `⏳` Then with `keep_stdin = true`:
   - `cat` — `waiting_stdin()` is true within a second or so, `send("hi\n")` is echoed on `output`, and `waiting_stdin()` is true again afterwards.
@@ -430,8 +400,9 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 
 ## LLM notes
 
-- **🚫** Touching `stop()`. The negative-pid kill is already correct because of `setpgid(0, 0)`; see the parent.
+- **🚫** Touching `stop()`, or adding overlay handling for the kill path. Both already work — see **Two things that already work**.
+- **🚫** A FIFO for stdin, or any scheme that reopens a closed pipe. Neither is possible or needed.
 - **🚫** Adding `--unshare-pid` or `--proc` to `build_bubble_args`. The `/proc` detection in §4 depends on the shared pid namespace.
-- **🚫** A timer inside `exec`. `exec` owns the overlay and calls `overlay.cleanup()` on the way out, so it must keep awaiting the process. Detaching happens above it.
+- **🚫** A timer inside `exec`. `exec` owns the overlay and must keep it mounted for as long as the command runs, so it cannot return early. The 15 second detach belongs **above** `exec`: the caller stops waiting and reports the pid, while the `Bubble` keeps running and eventually fires `finished`. The `jobs` entry is what stops the last reference being dropped in the meantime.
 - **🚫** An agent-facing "this job will want send" parameter. §4 exists so nothing has to declare it.
 - **🚫** Helper methods beyond the two named in §3 and §4.
