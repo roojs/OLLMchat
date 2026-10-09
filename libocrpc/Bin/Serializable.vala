@@ -113,6 +113,19 @@ namespace OLLMrpc.Bin
 			if (val.type().is_a(GLib.Type.OBJECT) && val.get_object() == null) {
 				return;
 			}
+			if (val.type() == GLib.Type.STRING) {
+				var s = val.get_string();
+				s = s != null ? s : "";
+				if (s.length > 32767) {
+					/* Compact STRING stays in StreamValue. Long properties
+					 * use the §13 blob. */
+					ctx.write_tag(tag);
+					ctx.out_stream.put_byte((uint8) GLib.Type.BOXED);
+					ctx.out_stream.put_uint32((uint32) s.length);
+					ctx.out_stream.write_all(((uint8[]) s)[0:s.length], null);
+					return;
+				}
+			}
 			ctx.write_tag(tag);
 			StreamValue.write(ctx, val);
 		}
@@ -305,6 +318,24 @@ namespace OLLMrpc.Bin
 		) throws GLib.Error
 		{
 			var val = StreamValue.read(ctx, type_byte);
+			if (prop.value_type == GLib.Type.STRING && val.type() == typeof(GLib.Bytes)) {
+				var bytes = (GLib.Bytes) val.get_boxed();
+				var text = GLib.Value(typeof(string));
+				if (bytes.get_size() == 0) {
+					text.set_string("");
+					this.set_property(prop.name, text);
+					return;
+				}
+				/* (string) get_data() ignores the blob length. Same trailing
+				 * NUL copy StreamValue uses for compact strings. */
+				var n = (int) bytes.get_size();
+				var raw = new uint8[n + 1];
+				GLib.Memory.copy(raw, (!) bytes.get_data(), bytes.get_size());
+				raw[n] = 0;
+				text.set_string((string) raw);
+				this.set_property(prop.name, text);
+				return;
+			}
 			if (prop.value_type.is_a(GLib.Type.ENUM) && val.type() == GLib.Type.INT) {
 				var typed = GLib.Value(prop.value_type);
 				typed.set_enum(val.get_int());

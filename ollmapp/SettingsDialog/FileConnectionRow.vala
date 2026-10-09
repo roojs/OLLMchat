@@ -113,10 +113,27 @@ namespace OLLMapp.SettingsDialog
 					this.client.state = FilesdClient.State.DISABLED;
 				}
 				this.win.app.config.save();
+#if ANDROID
+				if (this.client.state == FilesdClient.State.DISABLED) {
+					/* Android has no local file daemon after remote disable.
+					 * Clear remote project state and return to Just Ask. */
+					manager.replace_rpc(new OLLMrpc.Client(
+						GLib.Path.build_filename(
+							GLib.Environment.get_user_data_dir(), "ollmchat"),
+						"ollmfilesd.pid", "ollmfilesd.sock"));
+					var empty = this.win.history_manager.create_new_session();
+					empty.project_path = this.win.history_manager.session.project_path;
+					empty.agent_name = "just-ask";
+					this.win.chat_widget.switch_to_session.begin(empty);
+					return;
+				}
+				this.win.reconnect.begin();
+#else
 				if (this.client.state != FilesdClient.State.ENABLED) {
 					return;
 				}
 				this.reconnect.begin(true);
+#endif
 			});
 			this.expander.add_row(enabled_row);
 

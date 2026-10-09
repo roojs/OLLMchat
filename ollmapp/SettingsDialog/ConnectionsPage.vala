@@ -624,7 +624,11 @@ namespace OLLMapp.SettingsDialog
 			this.file_server_row.load_config();
 			this.allow_btn.visible = this.file_server_row.running;
 #endif
-			if (this.pair_wired || this.dialog.parent.project_manager == null) {
+			if (this.dialog.parent.project_manager == null) {
+				return;
+			}
+			this.render_approved.begin();
+			if (this.pair_wired) {
 				return;
 			}
 			this.pair_wired = true;
@@ -633,6 +637,9 @@ namespace OLLMapp.SettingsDialog
 					return;
 				}
 				this.pairing_dialog.result(notif.action);
+				if (notif.action == "done") {
+					this.render_approved.begin();
+				}
 			});
 		}
 

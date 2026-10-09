@@ -1,5 +1,7 @@
 # 4.2.1. Tree Navigation in FileDropdown
 
+ℹ️ The file-picker chrome (button, desktop pop-down, phone/tablet pull-over) is [`CODER-4.2.5-project-file-selector.md`](CODER-4.2.5-project-file-selector.md). This plan only specifies the tree tab that sits inside the desktop file pop-down.
+
 ## Overview
 
 Add tabbed interface to FileDropdown widget to provide tree navigation mode alongside the existing search mode.

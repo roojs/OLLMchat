@@ -26,6 +26,9 @@
 class TestSourceDiff : TestAppBase
 {
 	private static bool opt_mock_inactive = false;
+	private static bool opt_selectors = false;
+	private static bool opt_phone = false;
+	private static bool opt_tablet = false;
 
 	private Gtk.Window window;
 	private Gtk.Box root_box;
@@ -41,6 +44,9 @@ class TestSourceDiff : TestAppBase
 	private Gtk.Label remove_swatch;
 	private Gtk.Label add_active_swatch;
 	private Gtk.Label remove_active_swatch;
+	private TestSelectorRow selector_row;
+	private bool has_selector = false;
+	private bool show_pull = false;
 
 	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS] <baseline> <current> [<baseline> <current> ...]
@@ -55,6 +61,10 @@ Arguments:
 
 Options:
   --mock-inactive            Show "N changes pending review" instead of hunk bands
+  --selectors                Selector subtest. Loads projects and files from filesd.
+                             File pairs are optional in this mode.
+  --phone                    Selector subtest, phone pull-over and file-name label
+  --tablet                   Selector subtest, tablet pull-over and relative path
 
 Click a red or green line to make that hunk the deep color. Click unchanged
 text to clear it and hide Accept and Reject. Shades are .oc-diff-add,
@@ -68,6 +78,9 @@ Examples:
   {ARG} --mock-inactive \\
       tests/source-diff/review-smoke-baseline.txt tests/source-diff/review-smoke-current.txt \\
       tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
+  {ARG} --selectors
+  {ARG} --phone
+  {ARG} --tablet
 """; }
 
 	public TestSourceDiff()
@@ -83,23 +96,35 @@ Examples:
 	protected override OptionContext app_options()
 	{
 		var opt_context = new OptionContext(this.get_app_name());
-		var opts = new OptionEntry[4];
+		var opts = new OptionEntry[7];
 		opts[0] = base_options[0];
 		opts[1] = base_options[1];
 		opts[2] = { "mock-inactive", 0, 0, OptionArg.NONE, ref opt_mock_inactive,
 			"Show pending-review label instead of hunk bands", null };
-		opts[3] = { null };
+		opts[3] = { "selectors", 0, 0, OptionArg.NONE, ref opt_selectors,
+			"Selector subtest; load projects and files from filesd", null };
+		opts[4] = { "phone", 0, 0, OptionArg.NONE, ref opt_phone,
+			"Selector subtest with the phone pull-over", null };
+		opts[5] = { "tablet", 0, 0, OptionArg.NONE, ref opt_tablet,
+			"Selector subtest with the tablet pull-over", null };
+		opts[6] = { null };
 		opt_context.add_main_entries(opts, null);
 		return opt_context;
 	}
 
 	protected override string? validate_args(string[] args)
 	{
-		if (args.length < 3 || args[1] == "" || args[2] == "") {
-			return "ERROR: At least one baseline/current pair required.\nUsage: %s <baseline> <current> [...]\n".printf(args[0]);
+		if (opt_phone && opt_tablet) {
+			return "ERROR: Pass only one of --phone or --tablet.\n";
+		}
+		if (opt_phone || opt_tablet) {
+			opt_selectors = true;
 		}
 		if ((args.length - 1) % 2 != 0) {
 			return "ERROR: File arguments must be baseline/current pairs (even count).\n";
+		}
+		if (!opt_selectors && (args.length < 3 || args[1] == "" || args[2] == "")) {
+			return "ERROR: At least one baseline/current pair required.\nUsage: %s <baseline> <current> [...]\n".printf(args[0]);
 		}
 		return null;
 	}
@@ -133,6 +158,67 @@ Examples:
 			this.pair_titles += "%s → %s".printf(
 				GLib.Path.get_basename(baseline_path),
 				GLib.Path.get_basename(current_path));
+		}
+		if (opt_selectors) {
+			OLLMfiles.rpc_register();
+			var manager = new OLLMfiles.ProjectManager();
+			if (!yield manager.rpc.connect(new OLLMrpc.Request() {
+				method = "RPC-Daemon.hello",
+				args = OLLMrpc.args("is", 1, "oc-test-source-diff")
+			}, new OLLMrpc.ClientBoot())) {
+				var msg = manager.rpc.connect_error;
+				if (msg == "") {
+					msg = "could not start or reach the filesystem daemon (ollmfilesd)";
+				}
+				throw new GLib.IOError.FAILED("%s", msg);
+			}
+			yield manager.rpc_load_projects_from_db();
+			var form = "desktop";
+			if (opt_phone) {
+				form = "phone";
+			}
+			if (opt_tablet) {
+				form = "tablet";
+			}
+			this.selector_row = new TestSelectorRow(manager, form);
+			this.has_selector = true;
+			this.show_pull = form != "desktop";
+		}
+		if (this.pair_baselines.length == 0) {
+			this.window = new Gtk.Window() {
+				title = "Selectors",
+				default_width = 720,
+				default_height = 520,
+			};
+			if (opt_phone) {
+				this.window.default_width = 400;
+				this.window.default_height = 700;
+			}
+			var column = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = true,
+			};
+			column.append(this.selector_row);
+			if (!this.show_pull) {
+				this.window.child = column;
+			}
+			if (this.show_pull) {
+				var cover = new Gtk.Overlay() {
+					hexpand = true,
+					vexpand = true,
+				};
+				cover.set_child(column);
+				cover.add_overlay(this.selector_row.pull);
+				this.window.child = cover;
+			}
+			var selector_loop = new GLib.MainLoop();
+			this.window.close_request.connect(() => {
+				selector_loop.quit();
+				return false;
+			});
+			this.window.present();
+			selector_loop.run();
+			return;
 		}
 		this.window = new Gtk.Window() {
 			title = this.pair_titles[0],
@@ -207,7 +293,21 @@ Examples:
 		this.root_box.append(this.remove_swatch);
 		this.root_box.append(this.add_active_swatch);
 		this.root_box.append(this.remove_active_swatch);
-		this.window.set_child(this.root_box);
+		if (this.has_selector) {
+			this.root_box.prepend(this.selector_row);
+		}
+		if (!this.show_pull) {
+			this.window.set_child(this.root_box);
+		}
+		if (this.show_pull) {
+			var cover = new Gtk.Overlay() {
+				hexpand = true,
+				vexpand = true,
+			};
+			cover.set_child(this.root_box);
+			cover.add_overlay(this.selector_row.pull);
+			this.window.set_child(cover);
+		}
 		var text_view = (GtkSource.View) ((Gtk.ScrolledWindow) ((Gtk.Overlay) this.source_view
 			.get_first_child().get_next_sibling()).get_child()).child;
 		var hunk_click = new Gtk.GestureClick();

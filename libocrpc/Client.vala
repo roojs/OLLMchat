@@ -729,6 +729,15 @@ namespace OLLMrpc
 			try {
 				var msg = this.bin.parse();
 				this.dispatch_message(msg);
+			} catch (GLib.IOError e) {
+				if (e.code == GLib.IOError.WOULD_BLOCK) {
+					/* TLS consumed raw readiness without yielding application
+					 * data. Keep the event-loop watch for the next readiness. */
+					return true;
+				}
+				GLib.warning("%s", e.message);
+				this.disconnect();
+				return true;
 			} catch (GLib.Error e) {
 				GLib.warning("%s", e.message);
 				this.disconnect();

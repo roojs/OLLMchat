@@ -1,14 +1,19 @@
 # Android remote connection removal and re-add lifecycle
 
-**Status:** ⏳ root causes confirmed; fixes approved and proposed
+**Status:** ⏳ follow-up lifecycle changes are in the working tree and have not had a new phone pass; editor-pane evidence and the regression harness remain open
 
-**Related:** ℹ️ `docs/bugs/done/2026-10-07-FIXED-android-pair-reply-wire.md`
+**Related:** ℹ️ `docs/bugs/done/2026-10-07-FIXED-android-pair-reply-wire.md`, ℹ️ `docs/bugs/done/2026-10-09-FIXED-file-read-string-limit.md`
 
 ## Problem
 
 - **🔷** Removing a live remote desktop on Android must disconnect and clear its project state, hide Agent Pi, and switch back to Chatter.
 - **🔷** Re-adding a removed remote desktop with an already-approved certificate must close the desktop Allow New Device window immediately after the PIN succeeds.
 - **🔷** Keep a standalone Android regression flow for pairing, removal, approved-certificate re-add, Agent Pi activation, project/file loading, and opening a selected file.
+- **🔷** When Android starts in Chatter after the file-daemon connection failure notification, the text editor remains visible even though Agent Pi is unavailable.
+- **🔷** A remote desktop can initially report connected, but disabling and re-enabling it fails with `File server: Unacceptable TLS certificate`.
+- **🔷** Disabling a working remote desktop must select Just Ask and hide Agent Pi/editor state; re-enabling currently exposes Agent Pi even when TLS reconnection fails.
+- **🔷** The phone reports that the pairing number was accepted, but the desktop approved-certificate list does not add the phone.
+- **🔷** Opening the project selector can produce no search response, progress indication, toast, or error; restarting the app makes project search work.
 
 ## Evidence
 
@@ -16,6 +21,16 @@
 - **✔️** Desktop cache log: `ClientCert.pair` armed a new pairing window at 09:23:32, no `event.pair` arrived, and `ClientCert.pair` cleared it at the 09:24:32 timeout.
 - **✔️** Phone log at 09:23:40 shows the re-add changed state to `ENABLED` and sent only authenticated `RPC-Daemon.hello`; it sent no `ClientCert.request_registration`.
 - **✔️** A fresh registration at 09:10 received `event.pair`; the desktop immediately called `ClientCert.pair` with an empty PIN and closed correctly.
+- **✔️** The initial 07:58 connection-loss notification followed the deliberate `ollmfilesd` service restart at 07:58:36; Android had connected successfully before the restart.
+- **✔️** At 08:06:45, disabling the working connection changed filesd state to `DISABLED` and hid Agent Pi from the dropdown, but the active session remained `agent-pi`.
+- **✔️** At 08:06:53, the settings-row reconnect failed with `Unacceptable TLS certificate`; 46 milliseconds later the Android window reconnect path completed authenticated hello with the stored credentials and restored state `LIVE`.
+- **✔️** The 08:04 approved-certificate re-add sent `ClientCert.pair` over the approved TLS connection, emitted `event.pair`, closed the desktop pairing window, and then completed hello without issuing a duplicate certificate.
+- **✔️** A direct `ClientCert.approved_certs` query returns 15 approved rows, but the desktop startup log contains no `ClientCert.approved_certs` request.
+- **✔️** After runtime re-add, the project popup logged `filtered=0` and sent no project-list RPC. After restart, startup sent `ProjectManager.rpc_load_projects_from_db`, the project selector loaded, and the physical phone completed `Folder.fetch_files`, project activation, and `File.read`.
+- **✔️** The live Android read watch later logged `Try again` and disconnected three times even though each reconnect immediately completed hello, exposing a separate TLS readiness race in the persistent channel.
+- **✔️** The updated disable branch ran at 08:32:08, selected Just Ask, disconnected the old RPC, and hid Agent Pi. The old RPC's disconnect notification immediately invoked `reconnect`, which restored `LIVE` and Agent Pi 130 milliseconds later.
+- **✔️** The desktop process started at 08:30 from the 07:55 installed binary; the certificate-list fix exists only in the 08:27 build tree and has not yet been installed or tested.
+- **ℹ️** Physical browsing reached `File.read` id 9 and then failed because the file body exceeded the bin string cap. That defect is `docs/bugs/done/2026-10-09-FIXED-file-read-string-limit.md`.
 
 ## Root cause
 
@@ -23,6 +38,14 @@
 - **✔️** The removal callback's only live cleanup is `FileConnectionRow.reconnect(false)`, which is compiled out on Android. The remote RPC and project state remain live and no Chatter session is selected.
 - **✔️** `FileConnectionAdd.request` skips `ClientCert.request_registration` whenever the per-server CA already exists. Re-adding a removed connection therefore reuses its approved certificate and performs hello without sending the PIN or triggering the daemon's `event.pair`.
 - **✔️** `ClientCert.pair` already owns the pairing PIN. The TLS request gate can permit this existing call only after validating an approved certificate, avoiding a new RPC method and duplicate certificate issuance.
+- **✔️** The Enabled switch calls `FileConnectionRow.reconnect(true)` on Android. That path constructs a generic remote `OLLMrpc.Client` without the stored client certificate and CA, so it emits the TLS error before the separately triggered Android window reconnect succeeds.
+- **✔️** Disabling the switch changes only `FilesdClient.state`; unlike removal or unreachable reconnect handling, it does not disconnect the RPC or replace the active Agent Pi session with Just Ask.
+- **✔️** `ConnectionsPage` calls `render_approved` during construction, before the desktop project manager is available, so it returns immediately. `load_config` wires `event.pair` later but neither loads nor refreshes the approved list.
+- **✔️** Runtime reconnect sets state `LIVE` after hello but does not call `ProjectManager.rpc_load_projects_from_db`; the project selector therefore remains empty until startup performs that load.
+- **⏳** The editor pane remained visible after the active session changed from Agent Pi to Chatter, but current logs do not record pane visibility and do not yet isolate whether session activation or pane switching was missed.
+- **✔️** The persistent Android IO watch can call `Bin.Stream.parse` before TLS has decrypted readable application data; `GLib.IOError.WOULD_BLOCK` is currently treated as a fatal transport error instead of a readiness retry.
+- **✔️** `OllmchatWindow.reconnect` checks `DISABLED` only after exhausting probes. A disconnect callback can therefore enter the probe/connect loop while disabled and restore the connection that the user just turned off.
+- **ℹ️** The `File.read` body-size failure is tracked in `docs/bugs/done/2026-10-09-FIXED-file-read-string-limit.md`. It is not part of this lifecycle.
 
 ## Proposed changes
 
@@ -309,12 +332,181 @@
 		}
 ```
 
+### Keep the Enabled switch on the Android lifecycle path
+
+**Why:** The settings-row reconnect does not configure Android's stored TLS credentials. Disabling must also disconnect and clear Agent Pi state instead of only hiding its dropdown row.
+
+**Where:** `ollmapp/SettingsDialog/FileConnectionRow.vala`, in the Enabled switch callback after saving the new state.
+
+#### Remove
+
+```vala
+				if (this.client.state != FilesdClient.State.ENABLED) {
+					return;
+				}
+				this.reconnect.begin(true);
+```
+
+#### Replace with
+
+```vala
+#if ANDROID
+				if (this.client.state == FilesdClient.State.DISABLED) {
+					/* Android has no local file daemon after remote disable.
+					 * Clear remote project state and return to Just Ask. */
+					manager.replace_rpc(new OLLMrpc.Client(
+						GLib.Path.build_filename(
+							GLib.Environment.get_user_data_dir(), "ollmchat"),
+						"ollmfilesd.pid", "ollmfilesd.sock"));
+					var empty = this.win.history_manager.create_new_session();
+					empty.project_path = this.win.history_manager.session.project_path;
+					empty.agent_name = "just-ask";
+					this.win.chat_widget.switch_to_session.begin(empty);
+					return;
+				}
+				this.win.reconnect.begin();
+#else
+				if (this.client.state != FilesdClient.State.ENABLED) {
+					return;
+				}
+				this.reconnect.begin(true);
+#endif
+```
+
+### Load the approved-certificate list after the project manager exists
+
+**Why:** The constructor's early `render_approved` call runs before the desktop project manager exists. Settings load must fetch the list, and successful pairing must refresh it.
+
+**Where:** `ollmapp/SettingsDialog/ConnectionsPage.vala`, in `load_config`.
+
+#### Remove
+
+```vala
+			if (this.pair_wired || this.dialog.parent.project_manager == null) {
+				return;
+			}
+			this.pair_wired = true;
+			this.dialog.parent.project_manager.notification.connect((notif) => {
+				if (notif.method != "event.pair") {
+					return;
+				}
+				this.pairing_dialog.result(notif.action);
+			});
+```
+
+#### Replace with
+
+```vala
+			if (this.dialog.parent.project_manager == null) {
+				return;
+			}
+			this.render_approved.begin();
+			if (this.pair_wired) {
+				return;
+			}
+			this.pair_wired = true;
+			this.dialog.parent.project_manager.notification.connect((notif) => {
+				if (notif.method != "event.pair") {
+					return;
+				}
+				this.pairing_dialog.result(notif.action);
+				if (notif.action == "done") {
+					this.render_approved.begin();
+				}
+			});
+```
+
+### Load projects on every successful Android reconnect
+
+**Why:** `ProjectManager.replace_rpc` clears cached projects. Runtime reconnect must reload them and expose progress or failure before publishing `LIVE`.
+
+**Where:** `ollmapp/android/OllmchatWindow.vala`, in `reconnect` after persistent hello succeeds.
+
+#### Add
+
+```vala
+				this.notification(new OLLMrpc.Notification() {
+					method = "client.project.load_start"
+				});
+				try {
+					yield this.project_manager.rpc_load_projects_from_db();
+				} catch (GLib.Error e) {
+					this.notification(new OLLMrpc.Notification() {
+						method = "Alert.show",
+						message = "Could not load projects: " + e.message
+					});
+				}
+				this.notification(new OLLMrpc.Notification() {
+					method = "client.project.load_end"
+				});
+```
+
+### Keep the persistent TLS read watch on `WOULD_BLOCK`
+
+**Why:** Raw socket readiness can be consumed by TLS without producing decrypted application data. The persistent event-loop watch must wait for the next readiness event instead of disconnecting a healthy RPC channel.
+
+**Where:** `libocrpc/Client.vala`, in `poll_drain_readable`.
+
+#### Remove
+
+```vala
+			} catch (GLib.Error e) {
+				GLib.warning("%s", e.message);
+				this.disconnect();
+				return true;
+			}
+```
+
+#### Replace with
+
+```vala
+			} catch (GLib.IOError e) {
+				if (e.code == GLib.IOError.WOULD_BLOCK) {
+					/* TLS consumed raw readiness without yielding application
+					 * data. Keep the event-loop watch for the next readiness. */
+					return true;
+				}
+				GLib.warning("%s", e.message);
+				this.disconnect();
+				return true;
+			} catch (GLib.Error e) {
+				GLib.warning("%s", e.message);
+				this.disconnect();
+				return true;
+			}
+```
+
+### Do not reconnect while the remote desktop is disabled
+
+**Why:** Replacing the live RPC during disable emits its disconnect notification. `reconnect` must reject that stale callback before probing or connecting.
+
+**Where:** `ollmapp/android/OllmchatWindow.vala`, at the start of `reconnect`.
+
+#### Add
+
+```vala
+			switch (config.filesd_client.state) {
+				case FilesdClient.State.REQUESTED:
+				case FilesdClient.State.DISABLED:
+					this.reconnecting = false;
+					return;
+				default:
+					break;
+			}
+```
+
 ## Attempts / changelog
 
 - **✔️** Correlated physical-phone logcat with `/home/alan/.cache/ollmchat/ollmchat.debug.log`.
 - **✔️** Confirmed fresh registration closes the window and approved-certificate reuse does not emit `event.pair`.
+- **✔️** Built and installed the current Android APK through the standard scripts, installed the current desktop build, and restarted `ollmfilesd`.
+- **✔️** Physical-phone testing reproduced the startup editor-state mismatch, TLS failure after disable/re-enable, missing approved-certificate row after accepted PIN, and silent project-selector failure until restart.
+- **✔️** The follow-up proposals are in the working tree: removal returns to Chatter, approved re-add calls `ClientCert.pair`, the Enabled switch uses the Android reconnect path and selects Just Ask on disable, `load_config` loads and refreshes the approved list, runtime reconnect loads projects before `LIVE`, `reconnect` returns immediately while `REQUESTED` or `DISABLED`, and the persistent read watch keeps `WOULD_BLOCK`.
+- **ℹ️** That tree has not been installed or run on the phone. The 08:30 desktop process was still the 07:55 binary, so the certificate-list load was not in that pass.
+- **ℹ️** The `File.read` body longer than 32767 bytes was split out and closed in `docs/bugs/done/2026-10-09-FIXED-file-read-string-limit.md`. The codec round-trip passed. The phone file open was not repeated.
 
 ## Next
 
-- **🔷** ⏳ Apply the approved changes, rebuild and install through the standard scripts, then verify removal and approved-certificate re-add on the physical phone.
+- **🔷** ⏳ Install this tree on the phone and desktop, then rerun removal, approved-certificate re-add, disable/enable, the approved list, and project search.
+- **💩** ⏳ Add targeted pane-state evidence for the Chatter/editor mismatch before proposing that fix.
 - **🔷** ⏳ Complete the standalone Android full-flow regression harness.

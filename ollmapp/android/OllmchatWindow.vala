@@ -823,6 +823,14 @@ namespace OLLMapp
 		public async void reconnect()
 		{
 			var config = this.app.config;
+			switch (config.filesd_client.state) {
+				case FilesdClient.State.REQUESTED:
+				case FilesdClient.State.DISABLED:
+					this.reconnecting = false;
+					return;
+				default:
+					break;
+			}
 			for (var pass = 0; pass < 3; pass++) {
 				if (!yield this.probe_addresses(config)) {
 					continue;
@@ -852,6 +860,20 @@ namespace OLLMapp
 				if (!yield rpc.connect(hello)) {
 					continue;
 				}
+				this.notification(new OLLMrpc.Notification() {
+					method = "client.project.load_start"
+				});
+				try {
+					yield this.project_manager.rpc_load_projects_from_db();
+				} catch (GLib.Error e) {
+					this.notification(new OLLMrpc.Notification() {
+						method = "Alert.show",
+						message = "Could not load projects: " + e.message
+					});
+				}
+				this.notification(new OLLMrpc.Notification() {
+					method = "client.project.load_end"
+				});
 				config.filesd_client.state = FilesdClient.State.LIVE;
 				this.app.config.save();
 				rpc.notify["connected"].connect(() => {

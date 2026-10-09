@@ -395,18 +395,18 @@ namespace OLLMcoder
 				}
 				this.phone_tap.set_state(Gtk.EventSequenceState.DENIED);
 			});
-			this.phone_tap.released.connect((n_press, x, y) => {
+			this.source_view.add_controller(this.phone_tap);
+			this.map.connect(() => {
 				if (this.source_view.editable || this.diff_active) {
 					return;
 				}
-				if (this.current_file != null && this.current_file.delete_id > 0) {
+				if (this.current_file == null || this.current_file.delete_id > 0) {
 					return;
 				}
 				this.phone_toast.add_toast(new Adw.Toast("Long hold to start editing") {
 					timeout = 3
 				});
 			});
-			this.source_view.add_controller(this.phone_tap);
 			this.map.connect(() => {
 				if (this.phone_watch) {
 					return;
@@ -779,6 +779,11 @@ namespace OLLMcoder
 				this.source_view.can_focus = false;
 				if (this.source_view.has_focus) {
 					((Gtk.Root) this.get_root()).set_focus(null);
+				}
+				if (this.get_mapped()) {
+					this.phone_toast.add_toast(new Adw.Toast("Long hold to start editing") {
+						timeout = 3
+					});
 				}
 #else
 				this.source_view.editable = true;

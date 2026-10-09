@@ -10,6 +10,7 @@
 - [CODER-2.33-coder-prompt-templates.md](CODER-2.33-coder-prompt-templates.md)
 - [CODER-4.1-bugs.md](CODER-4.1-bugs.md)
 - [CODER-4.2.1-tree-navigation-filedropdown.md](CODER-4.2.1-tree-navigation-filedropdown.md)
+- [CODER-4.2.5-project-file-selector.md](CODER-4.2.5-project-file-selector.md)
 - [CODER-4.2.2-code-editor-manager-tool.md](CODER-4.2.2-code-editor-manager-tool.md)
 - [CODER-6.1-agent-pi.md](CODER-6.1-agent-pi.md)
 - [CODER-6.1.11-extended-base-skills.md](CODER-6.1.11-extended-base-skills.md)

@@ -40,15 +40,18 @@ When fixing a bug, follow this order. Do not skip steps or apply code changes be
 - Propose a concrete fix that addresses the root cause, not the symptom.
 - Describe the change and where it goes. No defensive workarounds.
 - When the fix needs code edits, put **verbatim** **`#### Remove`** / **`#### Replace with`** / **`#### Add`** fences in the bug log under the topic that owns the change — same contract as **`docs/guide-to-writing-plans.md`** (**Edit syntax contract**, **Code proposals — one place, not two**). Do not leave “change X to Y” as prose only.
+- Do not hack product code while discovering the fix. Debugging may add minimal, recorded instrumentation, but implementation must match the documented proposal. If evidence changes the fix, update the proposal before changing product code.
 
-### d) Get approval
+### d) Continue or request a decision
 
-- Present the diagnosis and proposed fix to the user (or reviewer).
-- Wait for explicit approval before editing code.
+- Continue autonomously when the root cause is confirmed and the proposal uses an existing in-tree pattern or is a routine, reversible correction with no material product-design choice.
+- Stop only when user input is genuinely required, the user explicitly asks to pause, or the proposal introduces a major design, API, security, persistence, compatibility, or destructive change. Present that decision and wait for approval.
+- Do not stop merely to report progress, restate status, or ask permission for a routine next step already determined by the evidence.
+- When a new failure appears during verification, record and diagnose it, update the proposal, and continue under the same rule. Do not apply an improvised workaround.
 
-### e) Only apply after approval
+### e) Apply the documented proposal
 
-- Implement the approved fix only.
+- Implement only the documented proposal once section d permits continuing or the user approves the major change.
 - Do not add extra "safety" checks or fallbacks unless they were part of the approved fix.
 
 ## Bug log markup (emoji + shape)
@@ -84,6 +87,6 @@ Example status line:
 
 ## Summary
 
-1. **DEBUG first** (including **`docs/bugs/YYYY-MM-DD-*.md`** unless a **one-line** fix is already certain) → 2. **Understand real issue** → 3. **Propose fix** (emoji + fences) → 4. **Get approval** → 5. **Apply only after approval**
+1. **DEBUG first** (including **`docs/bugs/YYYY-MM-DD-*.md`** unless a **one-line** fix is already certain) → 2. **Understand real issue** → 3. **Propose fix** (emoji + fences) → 4. **Continue routine fixes or request a major decision** → 5. **Apply only the documented proposal**
 
 No guards or symptom-only patches that hide the real bug.

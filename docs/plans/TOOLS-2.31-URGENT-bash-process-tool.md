@@ -10,7 +10,8 @@
 
 **Sub-plans:** phases A–E below become `TOOLS-2.31.1` … `TOOLS-2.31.5` as each one's open questions close.
 
-- [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md) — **Phase A**, the daemon job model. Code proposals written and measured.
+- [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md) — **Phase A**, the daemon job model. **✔️** Applied.
+- [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md) — **Phase B**, daemon RPC verbs. Code proposals written.
 - [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) — earlier daemon `Sandbox-Bubble` RPC draft. **Parked, do not apply.**
 
 **Depends on:**
@@ -382,28 +383,31 @@ on it with this tool to find the part you need.
 
 ---
 
-## Phase A — daemon job model (`⏳`)
+## Phase A — daemon job model (`✔️`)
 
-**ℹ️** Split out to [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md), which carries the measurements and the code proposals. Summary only below.
+**ℹ️** Split out to [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md). **✔️** Applied to `libocbwrap/Bubble.vala`. Summary only below.
 
-- **🔷** `⏳` A job must survive the call that created it. Today nothing does.
-- **🔷** `⏳` A map of pid to `Bubble` is the registry, and it is the one genuinely new piece of state. It is also the **authorisation check** — a pid that is not in it was not started by us, and nothing is done to it.
+- **🔷** `✔️` A job must survive the call that created it. `Bubble.jobs` holds the reference.
+- **🔷** `✔️` A map of pid to `Bubble` is the registry, and it is the one genuinely new piece of state. It is also the **authorisation check** — a pid that is not in it was not started by us, and nothing is done to it.
 - **🔷** The pid is the **bwrap** pid, which is also the process group leader, so one number is the handle, the key, and the kill target.
-- **🔷** `⏳` `OLLMbwrap.Bubble` gains `command` / `working_dir` properties and a `finished` signal, because `exec` has no completion signal and `stopped` is set only by `stop()`.
-- **🔷** `⏳` A job can be written to and can be asked whether it is stuck on stdin. Neither is declared up front by the agent.
+- **🔷** `✔️` `OLLMbwrap.Bubble` gains `command` / `working_dir` properties and a `finished` signal, because `exec` has no completion signal and `stopped` is set only by `stop()`.
+- **🔷** `✔️` A job can be written to and can be asked whether it is stuck on stdin. Neither is declared up front by the agent.
 - **🔷** A detached job is **not** killed when the client disconnects. A phone going into a lift must not kill the build.
-- **🔷** `⏳` Instead it dies after **15–20 minutes with no client activity**. Idle timer, not a disconnect hook.
-- **⏳** **🔷** Still open there: who owns the registry, and which calls count as "activity".
+- **🔷** `⏳` Instead it dies after **15–20 minutes of silence**. Output from the job is what resets the clock, not client traffic.
+- **🔷** The job is referenced **twice**: a global table so the user can see and kill everything, and a per-session list so one session cannot touch another session's processes.
+- **ℹ️** Nothing is open there. The `bash` end of the session list is Phase C.
 
 ---
 
 ## Phase B — daemon RPC verbs (`⏳`)
 
+**ℹ️** Split out to [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md), which carries the wire and the code proposals. Summary only below.
+
 - **🔷** `⏳` `Sandbox-Bubble` gains a call per verb — kill, tail, wait, send — on top of create and run.
-- **ℹ️** The parked [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) has `rpc_create` / `rpc_run` / `stop` only, so it covers `kill` and nothing else. Phase B **supersedes its wire shape**; the `Bubble` and `FileVerification` work in it still stands.
-- **🔷** `⏳` Output streaming stays the live-handle design already worked out in the sub-plan — `connection.export`, `RPC-Live-Subscribe.rpc_signal` on `output`, and `live_handles = true` on the daemon's listeners.
-- **ℹ️** HTTPS cannot carry this. `HttpServer` does not override `Listen.broadcast` and enforces `X-rpc-sequence` with a 409 on mismatch. The TLS TCP listener is the transport, which is why HTTPS is being retired.
-- **🔷** `⏳` Code proposals — after Phase A settles the registry and lifetime.
+- **🔷** After `rpc_run`, later calls use the **pid**, looked up in `Bubble.jobs`. A connection lease is only for streaming on the call that started the job.
+- **ℹ️** The parked [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) has `rpc_create` / `rpc_run` / `stop` only, and keys them on a lease. Phase B **supersedes that wire**. FileVerification from that draft still stands.
+- **🔷** `⏳` Output streaming stays the live-handle design — `connection.export`, `RPC-Live-Subscribe.rpc_signal` on `output`, and `live_handles = true` on the daemon's listeners **and** on `SslConnection`.
+- **ℹ️** HTTPS cannot carry this. The phone is TLS TCP.
 
 ---
 
@@ -505,15 +509,14 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 
 ## Suggested order
 
-1. **⏳** Answer the two questions left open in [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md) — registry owner, and what counts as activity for the idle timer.
+1. **✔️** **Phase A** — apply [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md). Agent applied; not user-verified.
 2. **⏳** Decide whether `bash` stops subclassing `RunCommand.Tool`, and whether desktop keeps both tools.
-3. **⏳** **Phase A** — apply [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md)
-4. **⏳** **Phase B** — `Sandbox-Bubble` calls for kill / tail / wait / send
-5. **⏳** **Phase C** — the `bash` tool: `pid`, verbs, `-1`, truncation advice
-6. **⏳** **Phase D** — background-job indicator and user-facing kill, before `-1` ships
-7. **⏳** **Phase E** — Android registration + `AgentPi.Factory.register_config`
+3. **⏳** **Phase B** — apply [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md)
+4. **⏳** **Phase C** — the `bash` tool: `pid`, verbs, `-1`, truncation advice, the per-session job list and its idle timer
+5. **⏳** **Phase D** — background-job indicator and user-facing kill, before `-1` ships
+6. **⏳** **Phase E** — Android registration + `AgentPi.Factory.register_config`
 
-- **💩** Phase B is big enough for its own sub-plan once its open questions close, as Phase A already is. C is likely two — the tool contract and the RPC caller.
+- **💩** Phase C is likely two sub-plans — the tool contract and the RPC caller.
 
 ---
 

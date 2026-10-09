@@ -26,6 +26,8 @@ namespace OLLMbwrap
 	 */
 	public class Bubble : GLib.Object
 	{
+		public static Gee.HashMap<int, Bubble> jobs;
+
 		public static bool can_wrap()
 		{
 			return false;
@@ -44,6 +46,11 @@ namespace OLLMbwrap
 		public string fail_str { get; private set; default = ""; }
 		public bool stopped { get; private set; default = false; }
 		public signal void output(string line);
+		public int pid { get; private set; default = 0; }
+		public bool keep_stdin { get; set; default = false; }
+		public string command { get; set; default = ""; }
+		public string working_dir { get; set; default = ""; }
+		public signal void finished(string output);
 
 		public Bubble (FileVerification verification)
 		{
@@ -53,6 +60,17 @@ namespace OLLMbwrap
 
 		public void stop()
 		{
+		}
+
+		public void send(string text) throws GLib.Error
+		{
+			throw new GLib.IOError.NOT_SUPPORTED(
+				"Bubble sandboxing is not available on Windows");
+		}
+
+		public bool waiting_stdin()
+		{
+			return false;
 		}
 
 		public async string exec (string command, string working_dir = "") throws Error

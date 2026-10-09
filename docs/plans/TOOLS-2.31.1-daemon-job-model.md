@@ -1,6 +1,6 @@
 # 2.31.1 — Phase A — daemon job model
 
-**Status:** ⏳ **proposed** — every hunk below was compiled and run outside the tree before being written down. Two open questions remain and neither blocks these hunks.
+**Status:** ✔️ **applied** — `libocbwrap/Bubble.vala` plus the matching public surface on `libocbwrap/windows/Bubble.vala`. Not user-verified.
 
 > **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
@@ -12,12 +12,12 @@
 
 ## Purpose
 
-- **🔷** Make a sandboxed command into a **job** that outlives the call which started it. Nothing in the tree does that today.
-- **🔷** Give that job a stable handle, a way to write to its stdin, and a way to tell that it is stuck waiting for input.
-- **🔷** Make the job table the **authorisation check** — we act only on processes we started.
+- **🔷** `✔️` Make a sandboxed command into a **job** that outlives the call which started it.
+- **🔷** `✔️` Give that job a stable handle, a way to write to its stdin, and a way to tell that it is stuck waiting for input.
+- **🔷** `✔️` The global job table is the **authorisation check** for "did we start this". A session list is Phase C.
 - **ℹ️** Everything here is `libocbwrap/Bubble.vala`. No daemon file changes, no wire changes. Those are [`TOOLS-2.31`](TOOLS-2.31-URGENT-bash-process-tool.md) Phase B.
 - **ℹ️** Mined from the parked [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) §3, which already drafted `command` / `working_dir` / `finished`.
-- **⏳** **🔷** The idle reaper — a detached job dies after 15–20 minutes with no client activity — has no code here. See **Still open**.
+- **🔷** `⏳` The idle reaper — a job silent for 15–20 minutes dies — has no code here. The timer belongs with the session that holds the job, which is Phase C.
 
 ---
 
@@ -26,8 +26,8 @@
 - **🔷** **Survive its call.** The registry holds the reference, so nothing drops the last one when `exec`'s caller stops waiting.
 - **🔷** **One handle.** The bwrap pid is the key, the kill target, and the process group.
   - **ℹ️** `RunSeccomp.wire_launcher` calls `Posix.setpgid(0, 0)` in child setup on both branches, so the bwrap pid leads the group and `stop()`'s `Posix.kill(-pid, KILL)` already reaches the whole tree.
-- **🔷** **Only our own pids.** A pid that is not in the registry is not ours and nothing is done to it.
-  - **ℹ️** This is not optional. `build_bubble_args` adds no `--unshare-pid`, so the sandbox shares the host pid namespace and an unchecked signal would reach anything the user can signal.
+- **🔷** **Only our own pids, and only this session's.** A pid that is not in the registry is not ours; a pid that belongs to another session is not this caller's.
+  - **ℹ️** Neither check is optional. `build_bubble_args` adds no `--unshare-pid`, so the sandbox shares the host pid namespace and an unchecked signal would reach anything the user can signal.
 - **🔷** **A writable stdin, but only when asked for.** Holding a pipe open on a job nobody can write to just hangs it.
 - **🔷** **Detection instead of declaration.** The job works out for itself that it is sitting on stdin. The agent never has to say so up front.
 
@@ -60,13 +60,41 @@
 - **ℹ️** From the earlier exploratory probe, not re-run here: `grep foo` on stdin is detected; a busy loop and `cat /dev/zero` read `syscall=running` and are not; in `cat | cat` the first is flagged and the second is not, in the same tree.
 - **💩** `wchan` is read in the probe but **not** in the proposal. `syscall` field 0 says the process is inside `read`, field 1 says the fd is 0, and the inode match says the fd is ours. `wchan` adding `pipe_read` on top of that is a redundant check.
 
+#### Re-measured **through bwrap** — **ℹ️** it all holds
+
+- **ℹ️** The runs above were bare `GLib.Subprocess`. Repeated with the same code spawning real `bwrap 0.11.0`, with the arguments `build_bubble_args` produces — `--unshare-user`, `--ro-bind / /`, `--tmpfs /tmp`, `--ro-bind /dev /dev`, `--dev-bind /dev/null /dev/null`, `--chdir`, `--unshare-net`, then `/bin/sh -c`, and `setpgid(0, 0)` in child setup. Every case came out the same:
+  - `cat` with **no** stdin flag — exited. The `/dev/null` default survives the bwrap layer.
+  - `cat` with the pipe held — detected as waiting. The walk found it three processes down, at `bwrap` then `sh` then `cat`.
+  - `read x` as a builtin — detected two processes down, blocked in the `sh` with no child, as it is outside bwrap.
+  - `tail -f /dev/null | cat` — **not** detected across a four-process tree. The inode comparison still rejects it through the sandbox.
+  - `sleep 30` — not detected.
+- **ℹ️** `send` works through bwrap. Writing to the pipe unblocked the `read` builtin and it ran to completion, and the `cat` took its line and went back to waiting, so a job can be written to more than once.
+- **ℹ️** `Posix.kill(-pid, KILL)` on the bwrap pid killed the sandboxed job, confirming the process group reaches through bwrap.
+- **ℹ️** The descendant walk crossing the sandbox boundary is the part that was genuinely in doubt, and it works for the same reason the rest of this design does: `build_bubble_args` adds no `--unshare-pid` and no `--proc`, so the sandboxed processes are ordinary entries in the host `/proc`.
+
 ---
 
-## Still open
+## Who owns the registry — two references, not one
 
-- **⏳** **🔷** Who owns the registry. §1 proposes a static on `Bubble`, which makes it daemon-wide and automatic. The alternative is a field on a daemon-side owner, which then has to be reachable from every verb.
-- **⏳** **🔷** What counts as "activity" for the 15–20 minute idle reaper — any call on that job, or any call on the connection. No timer code until that is settled, because the answer decides where the timestamp lives.
-- **⏳** **💩** Whether `STDIN_PIPE` behaves the same **under bwrap**. The probes ran bare `GLib.Subprocess`; bwrap adds a layer between the pipe and `/bin/sh`.
+- **🔷** There are **two** places a job is referenced, and they answer different questions.
+  - **Global** — every live job in the process. This is what lets the **user** see what is running and kill it.
+  - **Per session** — the jobs that session started. One session must not be able to touch another session's processes.
+- **🔷** So a session's own list is the **authorisation** check for the agent's verbs. A pid belonging to a different session is simply not found.
+- **💩** The static `jobs` map in §1 is the **global** one. It is per process, which on the daemon is daemon-wide, and membership there answers the separate question of whether we started the process at all.
+- **💩** The per-session list is a second reference to the same `Bubble`, held by the session. Phase C decides which object that is, because it is the tool side rather than the sandbox side.
+- **ℹ️** Two checks at two layers, which is what the split buys:
+  - Session list — is this pid **mine**. Stops cross-session interference.
+  - Global map — did **we** start this pid at all. Stops a signal reaching an unrelated host process.
+- **ℹ️** A window is not the unit. A session is, because a session is what owns a conversation and its tool calls.
+- **🚫** Keying the registry on the connection. A phone going into a lift must not kill the build.
+
+## What counts as activity — the job talking
+
+- **🔷** **Output is activity.** The idle clock resets whenever the job produces a line, so the `output` signal is the thing that feeds it.
+- **🔷** **Silence is not activity.** A job that says nothing for 15–20 minutes is reaped.
+- **ℹ️** This is the job talking, not the client calling. It supersedes the earlier wording about "no client activity" — a detached job stays alive on its own output, with no RPC traffic at all.
+- **ℹ️** The consequence worth knowing: a genuinely quiet long job — a `make` that prints nothing for 20 minutes — is reaped even though it is working. Raising the window is the only lever, since the whole point is that we cannot see inside a silent process.
+- **ℹ️** Jobs blocked on stdin are silent by definition, which is the case the reaper is for. They are caught sooner by the 60 second rule in the parent, not by this one.
 
 ---
 
@@ -78,15 +106,27 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 
 **Why:** Every other change in this plan needs one of these. `jobs` is the registry, the lifetime anchor, and the authorisation check. `pid` is the handle. `keep_stdin` picks the stdin shape at spawn, which is the only point it can be picked. `command` / `working_dir` / `finished` are carried from [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) §3 for an owner that leases the object and cannot see the `exec` return value.
 
-**Where:** class body, the five-line block that starts at `public bool stopped` and ends at `private bool child_active`.
+**Where:** `jobs` is the first member of the class, above `can_wrap`. The rest sit in the block that starts at `public bool stopped` and ends at `private bool child_active`.
 
 **Depends on:** none.
 
 - **💩** `jobs` is **static**. One table per process covers the daemon, and membership answers "is this ours" with no second structure to keep in step.
-  - **ℹ️** The initializer runs in `class_init`, which fires on the first `new Bubble(...)`. Inside any instance method it is therefore set. A cold static read before any bubble was ever built sees `null`, and `null` means the same thing as a missing key — not our job.
+  - **ℹ️** A static `Gee.HashMap` cannot be initialized on the declaration. The map is created on first `set`, same as `OLLMrpc.Request.handlers`. `null` means no jobs yet.
 - **💩** `keep_stdin` is the name for "this job may be written to". It is set by the tool for a detached job, not by the agent.
 - **🔷** `finished` carries the string `exec` returns, which already embeds the exit code and any seccomp evidence.
 - **ℹ️** All of it is additive for in-process callers. `RunCommand.Request` keeps passing `exec` its arguments and reading the return value, and never connects `finished`.
+
+#### Add — first member of the class, above `can_wrap`
+
+```vala
+		/**
+		 * Every live job in this process, keyed by {@link pid}, added
+		 * on spawn and dropped when the command ends. Keeps a
+		 * detached job alive, and answers whether a pid is one of
+		 * ours at all. A session holds its own jobs separately.
+		 */
+		public static Gee.HashMap<int, Bubble> jobs;
+```
 
 #### Remove
 
@@ -103,15 +143,6 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 ```vala
 		public bool stopped { get; private set; default = false; }
 		public signal void output(string line);
-
-		/**
-		 * Live jobs keyed by {@link pid}, added on spawn and dropped
-		 * when the command ends. Holds the only reference to a
-		 * detached job, and membership is what authorises ''kill'',
-		 * ''tail'' and {@link send}.
-		 */
-		public static Gee.HashMap<int, Bubble> jobs =
-			new Gee.HashMap<int, Bubble>();
 
 		/**
 		 * Bwrap child pid, or ''0'' before {@link exec} spawns it.
@@ -212,6 +243,9 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 				this.child_active = true;
 				var id = subprocess.get_identifier();
 				this.pid = id != null ? int.parse(id) : 0;
+				if (Bubble.jobs == null) {
+					Bubble.jobs = new Gee.HashMap<int, Bubble>();
+				}
 				Bubble.jobs.set(this.pid, this);
 			}
 ```
@@ -242,7 +276,9 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 			run_seccomp.detach_sources();
 			this.child_active = false;
 			this.overlay.cleanup();
-			Bubble.jobs.unset(this.pid);
+			if (Bubble.jobs != null) {
+				Bubble.jobs.unset(this.pid);
+			}
 			if (err != null) {
 				this.finished("ERROR: " + err.message);
 				throw err;
@@ -382,7 +418,7 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 ## Testing Phase A
 
 - **🔷** `⏳` Everything here is reachable from the existing in-process path, so it is testable before any RPC work. Drive it from a `Bubble` directly.
-- **ℹ️** The stdin and detection behaviour is already measured outside the tree, as noted above. What is **not** yet covered is any of it running through bwrap, the overlay, or seccomp.
+- **ℹ️** The stdin and detection behaviour is already measured outside the tree, bare and through real bwrap. What is **not** yet covered is any of it running with the **overlay** mounted or **seccomp** attached, which only the in-tree `exec` sets up.
 - **💩** `⏳` Sequence to assert, all with `keep_stdin = false`:
   - `echo hello` — `pid` is non-zero during the run, `Bubble.jobs` has that key, and the key is gone once `exec` returns.
   - `cat` — exits at once on EOF rather than hanging. This is the case that behaves differently today depending on how the app was launched.
@@ -394,7 +430,9 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
   - `sleep 30` and a busy loop — both stay false.
   - `send` after the command exits throws, and does not write anywhere.
 - **💩** `⏳` `stop()` on a `keep_stdin` job still kills the whole group, and `finished` still fires with `Command stopped by user.` in the string.
-- **🔷** `⏳` Re-run the `STDIN_PIPE` probe **through bwrap** rather than bare `GLib.Subprocess`, which is the open question above.
+- **💩** `⏳` The two cases the outside-the-tree runs could not reach:
+  - A `keep_stdin` job that **writes to a project file** — the overlay still copies back after a `send` and a normal exit.
+  - A `keep_stdin` job under **seccomp** — `waiting_stdin()` still detects it, since the notify filter sits on the same process the walk inspects.
 
 ---
 

@@ -46,6 +46,14 @@ namespace OLLMbwrap
 	public class Bubble : GLib.Object
 	{
 		/**
+		 * Every live job in this process, keyed by {@link pid}, added
+		 * on spawn and dropped when the command ends. Keeps a
+		 * detached job alive, and answers whether a pid is one of
+		 * ours at all. A session holds its own jobs separately.
+		 */
+		public static Gee.HashMap<int, Bubble> jobs;
+
+		/**
 		 * Check if bubblewrap can be used for sandboxing.
 		 * 
 		 * Returns true only if:
@@ -127,6 +135,40 @@ namespace OLLMbwrap
 
 		public bool stopped { get; private set; default = false; }
 		public signal void output(string line);
+
+		/**
+		 * Bwrap child pid, or ''0'' before {@link exec} spawns it.
+		 * Also the process group id, so it is the kill target too.
+		 */
+		public int pid { get; private set; default = 0; }
+
+		/**
+		 * When true {@link exec} holds a stdin pipe open for
+		 * {@link send}; when false the command reads ''/dev/null''.
+		 */
+		public bool keep_stdin { get; set; default = false; }
+
+		/**
+		 * Shell string for a deferred run, when the owner leases this
+		 * object and starts it later. Not read by {@link exec}.
+		 */
+		public string command { get; set; default = ""; }
+
+		/**
+		 * Working directory for a deferred run. Same contract as
+		 * {@link command}.
+		 */
+		public string working_dir { get; set; default = ""; }
+
+		/**
+		 * Emitted once the command has ended, for owners that never
+		 * see the {@link exec} return value.
+		 *
+		 * @param output what {@link exec} returned, or its error
+		 *   message when it threw
+		 */
+		public signal void finished(string output);
+
 		private string[] tail = {};
 		private GLib.Subprocess child;
 		private bool child_active = false;
@@ -155,7 +197,100 @@ namespace OLLMbwrap
 			}
 			this.child.force_exit();
 		}
-		
+
+		/**
+		 * Write to the running command's stdin. Needs
+		 * {@link keep_stdin} set before {@link exec}; otherwise the
+		 * command is reading ''/dev/null'' and there is no pipe.
+		 *
+		 * Nothing is appended — a caller that wants a completed line
+		 * sends the newline itself.
+		 *
+		 * @param text bytes to write, verbatim
+		 * @throws GLib.Error if the command has ended, has no stdin
+		 *   pipe, or the write fails
+		 */
+		public void send(string text) throws GLib.Error
+		{
+			if (!this.child_active) {
+				throw new GLib.IOError.CLOSED("Command has already ended");
+			}
+			var stdin_pipe = this.child.get_stdin_pipe();
+			if (stdin_pipe == null) {
+				throw new GLib.IOError.NOT_SUPPORTED("Command has no stdin pipe");
+			}
+			stdin_pipe.write(text.data);
+			stdin_pipe.flush();
+		}
+
+		/**
+		 * Whether the job is blocked reading the stdin we gave it.
+		 *
+		 * The whole descendant tree is walked because a builtin such
+		 * as ''read x'' blocks in the shell with no child to find. A
+		 * process counts only when it is inside ''read'' on fd 0
+		 * //and// that fd is our pipe — comparing the pipe is what
+		 * keeps a blocked pipeline from reading as a stdin wait.
+		 *
+		 * Linux only, and needs the host pid namespace that
+		 * {@link build_bubble_args} leaves shared.
+		 *
+		 * @return true when something in the job is waiting for
+		 *   {@link send}
+		 */
+		public bool waiting_stdin()
+		{
+			if (!this.child_active || !this.keep_stdin) {
+				return false;
+			}
+			var stdin_pipe = this.child.get_stdin_pipe() as GLib.UnixOutputStream;
+			if (stdin_pipe == null) {
+				return false;
+			}
+			var ours = "";
+			try {
+				ours = GLib.FileUtils.read_link(
+					"/proc/self/fd/" + stdin_pipe.get_fd().to_string());
+			} catch (GLib.FileError e) {
+				return false;
+			}
+			string[] pids = { this.pid.to_string() };
+			for (var i = 0; i < pids.length; i++) {
+				var proc = "/proc/" + pids[i];
+				var children = "";
+				try {
+					GLib.FileUtils.get_contents(
+						proc + "/task/" + pids[i] + "/children", out children);
+				} catch (GLib.FileError e) {
+					continue;
+				}
+				foreach (var kid in children.strip().split(" ")) {
+					if (kid == "") {
+						continue;
+					}
+					pids += kid;
+				}
+				var syscall = "";
+				try {
+					GLib.FileUtils.get_contents(proc + "/syscall", out syscall);
+				} catch (GLib.FileError e) {
+					continue;
+				}
+				var fields = syscall.strip().split(" ");
+				if (fields.length < 2 || fields[0] != "0" || fields[1] != "0x0") {
+					continue;
+				}
+				try {
+					if (GLib.FileUtils.read_link(proc + "/fd/0") == ours) {
+						return true;
+					}
+				} catch (GLib.FileError e) {
+					continue;
+				}
+			}
+			return false;
+		}
+
 		/**
 		 * Execute command string in bubblewrap sandbox and return output as string.
 		 * 
@@ -182,7 +317,9 @@ namespace OLLMbwrap
 			var launcher = new GLib.SubprocessLauncher(
 				GLib.SubprocessFlags.STDOUT_PIPE |
 				GLib.SubprocessFlags.STDERR_PIPE |
-				GLib.SubprocessFlags.STDIN_INHERIT);
+				(this.keep_stdin
+					? GLib.SubprocessFlags.STDIN_PIPE
+					: GLib.SubprocessFlags.NONE));
 			run_seccomp.wire_launcher(launcher);
 			
 			
@@ -208,6 +345,12 @@ namespace OLLMbwrap
 			if (subprocess != null) {
 				this.child = subprocess;
 				this.child_active = true;
+				var id = subprocess.get_identifier();
+				this.pid = id != null ? int.parse(id) : 0;
+				if (Bubble.jobs == null) {
+					Bubble.jobs = new Gee.HashMap<int, Bubble>();
+				}
+				Bubble.jobs.set(this.pid, this);
 			}
 			var result = "";
 			 
@@ -226,9 +369,14 @@ namespace OLLMbwrap
 			run_seccomp.detach_sources();
 			this.child_active = false;
 			this.overlay.cleanup();
+			if (Bubble.jobs != null) {
+				Bubble.jobs.unset(this.pid);
+			}
 			if (err != null) {
+				this.finished("ERROR: " + err.message);
 				throw err;
 			}
+			this.finished(result);
 			return result;
 		}
 		
