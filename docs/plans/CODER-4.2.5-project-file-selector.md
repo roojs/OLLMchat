@@ -1,6 +1,6 @@
 # CODER-4.2.5 Project and file selector
 
-**Status:** ⏳ proposed. ✔️ Phase 1 selector row is in the diff smoke app only. Product chrome is still backlog.
+**Status:** ⏳ proposed. ✔️ First selector row is in the diff smoke app. ⏳ Next phase 1 step is [`2026-10-09-selector-subtest.md`](../bugs/2026-10-09-selector-subtest.md). Product chrome is still backlog.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**.
 
@@ -12,6 +12,7 @@
 - ℹ️ Phone history today: `ollmapp/android/OllmchatWindow.vala` swaps `view_stack` to `HistoryBrowser` and keeps the window header. Search is at the top and takes focus (`libollmchatgtk/HistoryBrowser.vala`).
 - ℹ️ Diff smoke app: `examples/oc-test-source-diff.vala` (`TestAppBase`). Desktop executable only. It already constructs `OLLMfiles.ProjectManager` and fills the view from local file pairs.
 - ℹ️ Header history button is `Approvals` in `liboccoder/SourceView.vala`. The view toggle that replaces it is [`CODER-4.2.4-source-view-markdown-preview.md`](CODER-4.2.4-source-view-markdown-preview.md).
+- ℹ️ Next phase 1 step: [`2026-10-09-selector-subtest.md`](../bugs/2026-10-09-selector-subtest.md).
 
 ---
 
@@ -128,6 +129,16 @@
 - 🔷 ⏳ The same extended window is the Android test.
 - 💩 ⏳ How that window is packaged on Android is not specified. `oc-test-source-diff` is not in the Android APK build today.
 - ℹ️ Until that packaging exists, `--phone` and `--tablet` are how the pull-over is opened.
+
+### Next
+
+- 🔷 ⏳ First project click flips into the search entry, focuses it, and opens the list. The click seen so far did nothing.
+- 🔷 ⏳ Project pop-down is left aligned. Each row is left aligned.
+- 🔷 ⏳ Pop-down height fills the parent window. Width is the longest row. Load every project.
+- 🔷 ⏳ File pop-down in this subtest is the full selector: wide, tree, history, and search results. The one seen was about five pixels wide and empty.
+- 🔷 ⏳ Phone and tablet pull-overs use the history session list styling. Both look like an overlay today.
+- 🔷 ⏳ The phone test after that is an Android build. Not this pass.
+- ℹ️ Detail: [`2026-10-09-selector-subtest.md`](../bugs/2026-10-09-selector-subtest.md).
 
 ---
 
