@@ -1,6 +1,6 @@
 # CODER-4.2.5 Project and file selector
 
-**Status:** ⏳ proposed. ✔️ First selector row is in the diff smoke app. ⏳ Next phase 1 step is [`2026-10-09-selector-subtest.md`](../bugs/2026-10-09-selector-subtest.md). Product chrome is still backlog.
+**Status:** ⏳ proposed. ✔️ First selector row is in the diff smoke app. ⏳ Next is the pop-down, file selector, and pull-over styling below. Product chrome is still backlog.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**.
 
@@ -12,7 +12,6 @@
 - ℹ️ Phone history today: `ollmapp/android/OllmchatWindow.vala` swaps `view_stack` to `HistoryBrowser` and keeps the window header. Search is at the top and takes focus (`libollmchatgtk/HistoryBrowser.vala`).
 - ℹ️ Diff smoke app: `examples/oc-test-source-diff.vala` (`TestAppBase`). Desktop executable only. It already constructs `OLLMfiles.ProjectManager` and fills the view from local file pairs.
 - ℹ️ Header history button is `Approvals` in `liboccoder/SourceView.vala`. The view toggle that replaces it is [`CODER-4.2.4-source-view-markdown-preview.md`](CODER-4.2.4-source-view-markdown-preview.md).
-- ℹ️ Next phase 1 step: [`2026-10-09-selector-subtest.md`](../bugs/2026-10-09-selector-subtest.md).
 
 ---
 
@@ -109,7 +108,7 @@
 - 🔷 ✔️ Same idea as the diff work: an out-of-band window, not the product app.
 - 🔷 ✔️ Extend `examples/oc-test-source-diff.vala`. Do not start a second app.
 - 🚫 A temporary selection tool that copies the selectors out of the diff smoke app.
-- ℹ️ Row widget: `examples/oc-test-source-diff-selectors.vala` (`TestSelectorRow`). No library files change.
+- ℹ️ First mock: `examples/oc-test-source-diff-selectors.vala` (`TestSelectorRow`). That widget hard-coded the pop-down and the pull-over. See **Critical** below.
 
 ### Top row
 
@@ -117,7 +116,7 @@
 - 🔷 ✔️ Desktop run uses the desktop pop-down.
 - 🔷 ✔️ `--phone` and `--tablet` use the pull-over in this same binary.
 - ℹ️ `--phone` or `--tablet` turns the selector subtest on. File pairs stay optional.
-- ℹ️ Tree, history, and search-results tabs are not in this subtest. The file list is one search page from filesd.
+- ℹ️ The file list landed as one search page. The next step replaces that with the full file selector.
 
 ### filesd
 
@@ -130,15 +129,36 @@
 - 💩 ⏳ How that window is packaged on Android is not specified. `oc-test-source-diff` is not in the Android APK build today.
 - ℹ️ Until that packaging exists, `--phone` and `--tablet` are how the pull-over is opened.
 
+### Critical
+
+- 🔷 The mock hard-coded the pull-downs inside `TestSelectorRow`.
+- 🚫 Do not keep that. Do not patch the hard-coded popover, the button list, or the overlay.
+- 🔷 Start new classes from this design, one for the project selector and one for the file selector.
+- 🔷 The smoke window only hosts those classes.
+- 🔷 The click, alignment, height, file selector, and history styling in **Next** are behavior of those classes.
+
 ### Next
 
-- 🔷 ⏳ First project click flips into the search entry, focuses it, and opens the list. The click seen so far did nothing.
-- 🔷 ⏳ Project pop-down is left aligned. Each row is left aligned.
-- 🔷 ⏳ Pop-down height fills the parent window. Width is the longest row. Load every project.
-- 🔷 ⏳ File pop-down in this subtest is the full selector: wide, tree, history, and search results. The one seen was about five pixels wide and empty.
-- 🔷 ⏳ Phone and tablet pull-overs use the history session list styling. Both look like an overlay today.
-- 🔷 ⏳ The phone test after that is an Android build. Not this pass.
-- ℹ️ Detail: [`2026-10-09-selector-subtest.md`](../bugs/2026-10-09-selector-subtest.md).
+Seen on `--selectors`, then `--phone` and `--tablet`. The hard-coded mock showed these. The new classes are what get built.
+
+- 🔷 ⏳ The first project click flips the button into the search entry, focuses it, and opens the list.
+  - 🔷 The click seen so far did nothing.
+- 🔷 ⏳ The project pop-down is left aligned under the button.
+  - 🔷 The one seen sat in the middle of the screen.
+- 🔷 ⏳ Each project row is left aligned.
+- 🔷 ⏳ Pop-down height fills what the parent window allows.
+- 🔷 ⏳ Pop-down width is the longest row. The current width can stay until that measurement exists.
+- 🔷 ⏳ Load every project. There are not many. Do not page them.
+- 🔷 ⏳ The file pop-down in this subtest is the full selector.
+  - 🔷 Wide pop-down, tree, history, and search results when text is typed.
+  - 🔷 That is where the filesystem layout gets designed.
+  - 🔷 The one seen, after a project was chosen, was about five pixels wide and empty.
+  - ℹ️ The empty list may be the test fetch. The full selector is still required either way.
+- 🔷 ⏳ Phone and tablet pull-overs look like the history session list.
+  - ℹ️ `libollmchatgtk/HistoryBrowser.vala` and `resources/style.css` (`.list-chat-title` and the caption classes).
+  - 🔷 Both look like an overlay today. The history styling is not showing in this test.
+- 🔷 ⏳ The phone test after that styling is an Android build, not `--phone` on the desktop.
+- 🚫 Do not package that Android build in this next step.
 
 ---
 
@@ -155,3 +175,4 @@
 - 🚫 A phone or tablet copy of the desktop tabbed file pop-down. Tabs were specified for the desktop file pop-down only.
 - 🚫 Auto-opening the file pull-over after a project pick on phone or tablet. The focus flip was specified for desktop only.
 - 🚫 A new standalone selection executable. Phase 1 stays on `oc-test-source-diff`.
+- 🚫 Hard-coded pull-downs inside the smoke row. The selectors are their own classes.
