@@ -44,7 +44,8 @@ class TestSourceDiff : TestAppBase
 	private Gtk.Label remove_swatch;
 	private Gtk.Label add_active_swatch;
 	private Gtk.Label remove_active_swatch;
-	private TestSelectorRow selector_row;
+	private Gtk.Box selector_row;
+	private SelectorPull selector_pull;
 	private bool has_selector = false;
 	private bool show_pull = false;
 
@@ -180,9 +181,59 @@ Examples:
 			if (opt_tablet) {
 				form = "tablet";
 			}
-			this.selector_row = new TestSelectorRow(manager, form);
+			this.selector_pull = new SelectorPull(form);
+			this.selector_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+				valign = Gtk.Align.START,
+				margin_start = 6,
+				margin_end = 6,
+				margin_top = 4,
+				margin_bottom = 4,
+			};
+			var projects = new ProjectSelector(manager, form, this.selector_pull);
+			var files = new FileSelector(manager, form, this.selector_pull);
+			var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				hexpand = true,
+			};
+			this.selector_row.append(projects);
+			this.selector_row.append(spacer);
+			this.selector_row.append(files);
+			files.notify["visible"].connect(() => {
+				spacer.visible = !files.visible;
+			});
+			var history = new Gtk.Button.from_icon_name("task-due") {
+				tooltip_text = "History",
+				hexpand = false,
+				valign = Gtk.Align.CENTER,
+			};
+			history.add_css_class("flat");
+			this.selector_row.append(history);
+			projects.opened.connect(() => {
+				files.popover.popdown();
+			});
+			files.opened.connect(() => {
+				projects.popover.popdown();
+			});
+			projects.chosen.connect((folder) => {
+				files.project = folder;
+			});
 			this.has_selector = true;
 			this.show_pull = form != "desktop";
+			if (this.pair_baselines.length == 0) {
+				this.source_view = new OLLMcoder.SourceView(manager) {
+					hexpand = true,
+					vexpand = true,
+				};
+				/* Product header stays hidden. The test row is the header. */
+				this.source_view.get_first_child().visible = false;
+				var editor = (Gtk.Overlay) this.source_view.get_first_child().get_next_sibling();
+				editor.child.visible = true;
+				manager.active_file_changed.connect((file) => {
+					if (file == null) {
+						return;
+					}
+					this.source_view.open_file.begin(file);
+				});
+			}
 		}
 		if (this.pair_baselines.length == 0) {
 			this.window = new Gtk.Window() {
@@ -199,6 +250,7 @@ Examples:
 				vexpand = true,
 			};
 			column.append(this.selector_row);
+			column.append(this.source_view);
 			if (!this.show_pull) {
 				this.window.child = column;
 			}
@@ -208,7 +260,7 @@ Examples:
 					vexpand = true,
 				};
 				cover.set_child(column);
-				cover.add_overlay(this.selector_row.pull);
+				cover.add_overlay(this.selector_pull);
 				this.window.child = cover;
 			}
 			var selector_loop = new GLib.MainLoop();
@@ -305,7 +357,7 @@ Examples:
 				vexpand = true,
 			};
 			cover.set_child(this.root_box);
-			cover.add_overlay(this.selector_row.pull);
+			cover.add_overlay(this.selector_pull);
 			this.window.set_child(cover);
 		}
 		var text_view = (GtkSource.View) ((Gtk.ScrolledWindow) ((Gtk.Overlay) this.source_view

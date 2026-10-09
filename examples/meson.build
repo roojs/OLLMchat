@@ -245,7 +245,13 @@ test_gtkmd = executable('oc-test-gtkmd',
 # Smoke: SourceView.show_diff of two files (Phase 2) — TestAppBase flow
 test_source_diff = executable('oc-test-source-diff',
   dependencies: [test_window_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ollamaweb_vapi_dep],
-  sources: ['TestAppBase.vala', 'oc-test-source-diff.vala', 'oc-test-source-diff-selectors.vala'],
+  sources: [
+    'TestAppBase.vala',
+    'oc-test-source-diff.vala',
+    'oc-test-source-diff/SelectorPull.vala',
+    'oc-test-source-diff/ProjectSelector.vala',
+    'oc-test-source-diff/FileSelector.vala',
+  ],
   link_with: [ollmchat_base_lib, occoder_base_lib],
   include_directories: [
     include_directories('../libocfiles'),

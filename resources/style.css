@@ -469,3 +469,11 @@ button.page-picker.picker-on {
 	letter-spacing: 0.35em;
 	font-family: monospace;
 }
+
+row.selector-mark {
+	background-color: alpha(@theme_selected_bg_color, 0.35);
+}
+
+.selector-pull {
+	background-color: @window_bg_color;
+}

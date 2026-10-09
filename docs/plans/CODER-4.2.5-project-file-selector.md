@@ -1,6 +1,6 @@
 # CODER-4.2.5 Project and file selector
 
-**Status:** ⏳ proposed. ✔️ First selector row is in the diff smoke app. ⏳ Next is the pop-down, file selector, and pull-over styling below. Product chrome is still backlog.
+**Status:** ⏳ proposed. ✔️ The smoke row hosts project and file selector classes. ⏳ The pop-down alignment, file tabs, and pull-over styling are in those classes and still need a look on screen. Product chrome is still backlog.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**.
 
@@ -12,6 +12,24 @@
 - ℹ️ Phone history today: `ollmapp/android/OllmchatWindow.vala` swaps `view_stack` to `HistoryBrowser` and keeps the window header. Search is at the top and takes focus (`libollmchatgtk/HistoryBrowser.vala`).
 - ℹ️ Diff smoke app: `examples/oc-test-source-diff.vala` (`TestAppBase`). Desktop executable only. It already constructs `OLLMfiles.ProjectManager` and fills the view from local file pairs.
 - ℹ️ Header history button is `Approvals` in `liboccoder/SourceView.vala`. The view toggle that replaces it is [`CODER-4.2.4-source-view-markdown-preview.md`](CODER-4.2.4-source-view-markdown-preview.md).
+
+---
+
+## Run
+
+From the repo root. The window loads projects from filesd. No file-pair arguments.
+
+```
+ninja -C build examples/oc-test-source-diff
+./build/examples/oc-test-source-diff --selectors
+./build/examples/oc-test-source-diff --phone
+./build/examples/oc-test-source-diff --tablet
+```
+
+- ℹ️ `--selectors` is the desktop pop-down.
+- ℹ️ `--phone` and `--tablet` are the pull-over. Each one turns the selector subtest on.
+- ℹ️ With no file pairs, the window is that row over a source view. The source view's own header stays hidden. Choosing a file opens it there.
+- 🚫 Do not pass `--phone` and `--tablet` together.
 
 ---
 
@@ -131,32 +149,45 @@
 
 ### Critical
 
-- 🔷 The mock hard-coded the pull-downs inside `TestSelectorRow`.
+- 🔷 ✔️ The mock hard-coded the pull-downs inside `TestSelectorRow`.
 - 🚫 Do not keep that. Do not patch the hard-coded popover, the button list, or the overlay.
-- 🔷 Start new classes from this design, one for the project selector and one for the file selector.
-- 🔷 The smoke window only hosts those classes.
-- 🔷 The click, alignment, height, file selector, and history styling in **Next** are behavior of those classes.
+- 🔷 ✔️ `ProjectSelector` and `FileSelector` live under `examples/oc-test-source-diff/`, named for the dropdowns they replace. Phone and tablet share `SelectorPull`. The smoke row only hosts them.
+- 🔷 ✔️ The smoke window only hosts those classes.
+- 🔷 ✔️ The click, alignment, height, file selector, and history styling in **Next** are behavior of those classes.
 
 ### Next
 
-Seen on `--selectors`, then `--phone` and `--tablet`. The hard-coded mock showed these. The new classes are what get built.
+Seen on `--selectors`, then `--phone` and `--tablet`. The hard-coded mock showed these. The new classes are what get built. They compile. They have not been looked at on screen yet.
 
 - 🔷 ⏳ The first project click flips the button into the search entry, focuses it, and opens the list.
-  - 🔷 The click seen so far did nothing.
+  - ℹ️ Caret and typing are still open: `docs/bugs/2026-10-09-selector-search-focus.md`. File search must not grow the top row.
+  - 🔷 The click on the hard-coded mock did nothing. The class opens the pop-down on idle after that click, so autohide does not eat it.
 - 🔷 ⏳ The project pop-down is left aligned under the button.
-  - 🔷 The one seen sat in the middle of the screen.
+  - 🔷 The hard-coded one sat in the middle of the screen. The class anchors a 280-wide rect to the left edge of the button.
 - 🔷 ⏳ Each project row is left aligned.
-- 🔷 ⏳ Pop-down height fills what the parent window allows.
-- 🔷 ⏳ Pop-down width is the longest row. The current width can stay until that measurement exists.
+  - 🔷 Rows are a title plus a path, same classes as the history list.
+- 🔷 ✔️ Pop-down height fills the space under the row and stays inside the window.
+- 🔷 ✔️ Project names are alphabetical. A `Gtk.StringSorter` on the basename orders the model. Rows are not built in that order.
+- 🔷 ⏳ Searching highlights the first match. That mark is not a list selection. Up and Down move it.
+- 🔷 ⏳ Enter and Tab accept that mark on every tab and move to the next control. Project moves to the file entry. A file moves to the source view. The search entry was eating both keys, so the controller has to see them first. The tree tab has no rows.
+- 🔷 ⏳ With no project, a spacer keeps the history button on the right. The file control takes that gap once a project is chosen.
+- 🔷 ⏳ The file pop-down is inset from the left and right of the window, and tall enough to cover the source view.
+  - 🔷 The outer edge was still past the window. Popover padding and shadow sit outside the content width, so that extra has to come off the width.
+- 🔷 ⏳ File search uses `Folder.fetch_files` and shows the match page. The same mark and keys work there.
+  - 🔷 Typing was not showing that page. The search list was hidden with `visible = false`, which also hides a stack page. The stack page is what shows and hides it. An empty entry stays on history. Text switches to search.
+- 🔷 ✔️ No file pairs: `OLLMcoder.SourceView` fills the area under the selector row. Its own header is hidden. A chosen file opens there.
+- 🔷 ⏳ Project pop-down width is the longest row. The current width can stay until that measurement exists.
+  - ℹ️ Project pop-down stays 280 wide. File pop-down width is the window minus padding, then minus the popover chrome.
 - 🔷 ⏳ Load every project. There are not many. Do not page them.
 - 🔷 ⏳ The file pop-down in this subtest is the full selector.
   - 🔷 Wide pop-down, tree, history, and search results when text is typed.
   - 🔷 That is where the filesystem layout gets designed.
-  - 🔷 The one seen, after a project was chosen, was about five pixels wide and empty.
-  - ℹ️ The empty list may be the test fetch. The full selector is still required either way.
+  - ℹ️ Tree contents stay in `CODER-4.2.1`. This tab only says the client has not loaded the folder tree.
+  - ℹ️ History is the first file page, keeping rows with a last-view time.
+  - ℹ️ Search is one ''Folder.fetch_files'' page of 50. It appears only after the entry has text.
 - 🔷 ⏳ Phone and tablet pull-overs look like the history session list.
   - ℹ️ `libollmchatgtk/HistoryBrowser.vala` and `resources/style.css` (`.list-chat-title` and the caption classes).
-  - 🔷 Both look like an overlay today. The history styling is not showing in this test.
+  - 🔷 The hard-coded rows were buttons. The classes use those history label classes.
 - 🔷 ⏳ The phone test after that styling is an Android build, not `--phone` on the desktop.
 - 🚫 Do not package that Android build in this next step.
 

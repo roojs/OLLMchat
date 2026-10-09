@@ -1,6 +1,6 @@
 # Editor long-hold toast repeats on every tap
 
-**Status:** ✔️ §1–§3 applied in `liboccoder/SourceView.vala`; phone check still open
+**Status:** ✅ user closed 2026-10-09 — per-tap toast removed. The hint shows once when Text view is mapped, and once when a document opens while the editor is already mapped. Phone check not run.
 
 **Related:** ℹ️ `liboccoder/SourceView.vala` (Android `phone_tap` / `phone_toast`)
 
@@ -109,7 +109,8 @@ After the `has_focus` block. Skip when the editor is not mapped, so a restore th
 ## Attempts / changelog
 
 - **✔️** `liboccoder/SourceView.vala`: removed the per-tap toast, show the hint on `map` into Text view, and show it from `open_file` only when the editor is already mapped.
+- **✅** 2026-10-09 — User closed the log. Phone check not run.
 
 ## Next
 
-- **⏳** **🔷** On the phone: open a document and confirm the hint shows once, later taps stay quiet, and chat or browser back into Text view shows it once more.
+- **✅** Closed.

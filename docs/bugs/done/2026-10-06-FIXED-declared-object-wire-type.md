@@ -1,6 +1,6 @@
 # libocrpc discards the declared GObject wire type
 
-**Status:** ⏳ open. The first implementation fixes the unregistered leaf but regresses boot by overriding an existing exact alias. Consumer FAIL gate: `gnome-shell-rpc/tests/call-sync-repro/declared-object-type-gate.vala`.
+**Status:** ✅ user closed 2026-10-09 — an exact runtime alias wins; otherwise the declared public type is the wire class. Expanded `declared-object-type-gate` PASS. Native boot was not re-logged after that alias fix.
 
 ## Problem
 
@@ -215,6 +215,7 @@ A null OUT object is uint64 lease `0`, same as a null object already written by 
 - ❌ Installed native boot and Weston prove: `Meta-Backend.get_stage` crosses as declared `Clutter-Actor`, discarding the exact `MetaStage*` → `Clutter-Stage` alias. Client exits before the shell UI starts.
 - ❌ Expanded gate: the unregistered-leaf/declared-type arm passes, then the exact-alias arm fails with `exact GatePublic alias lost to declared GateBase`.
 - ✔️ 2026-10-06 — `StreamValue.write` keeps an exact runtime alias and uses the declared type only when that lookup misses. Expanded gate: `PASS declared-object-type-gate: declared fallback and exact alias preserved`, exit 0.
+- ✅ 2026-10-09 — User closed the log. Native boot and Weston prove were not re-logged after the alias fix.
 
 ## Exit
 

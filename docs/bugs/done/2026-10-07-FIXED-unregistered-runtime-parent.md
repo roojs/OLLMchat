@@ -1,8 +1,8 @@
 # Unregistered runtime type does not fall back to a registered parent
 
-**Status:** ✔️ applied. Consumer gate passed. Debug line on the auto-`register_alias` path.
+**Status:** ✅ user closed 2026-10-09 — first miss walks to the registered parent and `register_alias` stores it. `runtime-parent-schema-gate` PASS.
 
-Related: [`2026-10-06-declared-object-wire-type.md`](2026-10-06-declared-object-wire-type.md). That change uses a public type only when the caller already put it on the `GValue`. This bug is the pack that never does.
+Related: [`2026-10-06-FIXED-declared-object-wire-type.md`](2026-10-06-FIXED-declared-object-wire-type.md). That change uses a public type only when the caller already put it on the `GValue`. This bug is the pack that never does.
 
 ## Problem
 
@@ -112,6 +112,8 @@ FAIL runtime-parent-schema-gate: Client: disconnected
 - 🔷 2026-10-07 — User: auto-`register_alias` only when `find_by_gtype` is null. A normal GI type stays a registration error.
 - 🔷 2026-10-07 — User: `Gi.in_typelib` on both GI classes. Windows returns false. No `#if` in `StreamValue`.
 
+- ✅ 2026-10-09 — User closed the log.
+
 ## Next
 
-- ✔️ 2026-10-07 — `Gi.in_typelib` is in the rebuilt library. Gate: `PASS runtime-parent-schema-gate: unregistered parent and exact alias preserved`, exit 0.
+- ✅ Closed. `runtime-parent-schema-gate`: `PASS runtime-parent-schema-gate: unregistered parent and exact alias preserved`, exit 0.
