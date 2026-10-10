@@ -84,10 +84,77 @@ ninja -C build examples/oc-test-source-diff
   - Tree
   - History
   - Search results, when the entry has typed text
+- ℹ️ **File list** below is the open rename of History to Recent, and filtering both lists while typing.
 - 🔷 ⏳ Choosing a project still moves focus to the file control, as it does now.
   - ℹ️ `SourceView` calls `file_dropdown.grab_focus()` after a project is chosen.
   - 🔷 On desktop that focus is the file control in its entry state, so the file pop-down opens.
 - ℹ️ Tree-tab contents stay specified in `CODER-4.2.1`. This plan only places that tab in the wide file pop-down.
+
+---
+
+## Project list
+
+`ProjectSelector` already lists every project, alphabetical by basename. The Recent / All bar is not in that class.
+
+- 🔷 ⏳ A Recent / All bar on the project pop-down and on the project pull-over.
+- ℹ️ A pass at that bar edited `examples/oc-test-source-diff-selectors.vala` after that file had been replaced. That pass is dropped. The classes under `examples/oc-test-source-diff/` stay.
+- 🔷 ⏳ The file list gets that same kind of bar later.
+- 🔷 ⏳ Default is Recent.
+- 🔷 ⏳ Recent shows projects that have actually been edited, newest first.
+- 🔷 ⏳ Projects that have not been edited are left out.
+- 🔷 ⏳ If none have been edited, Recent is empty.
+- 🔷 ⏳ All lists every project by name, A to Z, ignoring case.
+- 🔷 ⏳ Search still applies on top of whichever choice is showing.
+- ℹ️ The loaded project row’s edit stamp is `Folder.last_viewed`.
+- ℹ️ Nothing writes that stamp today, so Recent is empty until a project is marked edited.
+- ℹ️ `Folder.last_modified` is the directory time from scan. Using that would not leave Recent empty.
+- ℹ️ Agent edits live in `file_history` by file path. That list is not on the project row the client already has.
+
+---
+
+## File list
+
+`FileSelector` already has Tree, History, and a search page. These notes are still open.
+
+- 🔷 ⏳ The file tab is Recent. The old title History is dropped.
+- ℹ️ Chat history on the phone pull-over keeps the title Chat history. That list is sessions, not files.
+- 🔷 ⏳ A type filter, document versus code, is an idea for this list.
+  - ℹ️ Daemon `File.is_documentation()` is markdown or plain text. Other languages are code.
+  - ℹ️ Not part of the project-list work.
+- 🔷 ⏳ Search filters Recent and the tree together.
+- 🔷 ⏳ The client holds the whole project tree and filters it there.
+- ℹ️ Today file search is server-side. `FileDropdown` debounces and `ProjectFiles.cached_search` on the daemon returns a flat page.
+- 🔷 ⏳ A matching file keeps its parent folders in the tree.
+- ℹ️ RooTerm does that in `app.RooTerm/src/Host/Tree.vala`.
+  - A name match is kept.
+  - Each parent of that match is kept, up to the root.
+  - Children of a matching folder stay visible.
+  - Those parents are expanded so the match is on screen.
+- 🔷 ⏳ Collapse-all shortcut on the file dialog.
+- 🔷 ⏳ Refresh is a last line of defence.
+  - ℹ️ The server is meant to stay current.
+  - ℹ️ File watch on the active project is not implemented.
+  - ℹ️ Refresh covers that watch missing a change.
+- 🔷 This selector reads and shows files. It does not create them.
+
+### Questions
+
+Current file sorting, from `ollmfilesd/ProjectFiles.cached_search`. Decide later whether the new file list uses it.
+
+- ❓ Empty search, the browse list.
+  - Files with `last_viewed` in the last 24 hours come first, newest view first.
+  - The rest follow by full path.
+  - `ProjectFile.is_recent` is that same 24-hour window. The row CSS is `oc-recent`.
+- ❓ Typed text, no `*` or `?`.
+  - Substring match on the file name or the full path, ignoring case.
+  - Names that start with the text come first, then by name.
+  - Names that contain the text come next.
+  - Path-only matches sit with the name sort.
+- ❓ Typed text with `*` or `?`.
+  - Those wildcards match the file name or the full path.
+  - Hits sort by full path only.
+- ❓ `ProjectFiles.get_recent_list` is a different order. It uses `last_modified` over N days, newest change first. The dropdown does not use it.
+- ❓ Whether this selector copies those three orders now. The file list has not been started, so this can wait.
 
 ---
 

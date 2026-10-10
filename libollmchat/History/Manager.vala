@@ -282,6 +282,7 @@ namespace OLLMchat.History
 			this.cancel_restore = new GLib.Cancellable();
 			var cancellable = this.cancel_restore;
 
+			var previous_agent_name = this.session.agent_name;
 			this.session.deactivate();
 
 			SessionBase? loaded_session = yield session.load();
@@ -294,6 +295,15 @@ namespace OLLMchat.History
 			loaded_session.activate();
 
 			loaded_session.ensure_agent_handler();
+			/* The replacement session already carries its agent name, so
+			 * activate_agent emits nothing. Pane hide listens here. */
+			if (previous_agent_name != ""
+				&& previous_agent_name != loaded_session.agent_name) {
+				this.agent_deactivated(this.agent_factories.get(previous_agent_name));
+			}
+			if (previous_agent_name != loaded_session.agent_name) {
+				this.agent_activated(this.get_active_agent());
+			}
 
 			this.session_activated(loaded_session);
 			this.agent_status_change();
