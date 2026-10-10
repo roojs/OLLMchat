@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMapp.Android
 {
 	/**
 	 * Optional whole-window touch/button capture for popover hit-testing debug.
@@ -29,7 +29,7 @@ namespace OLLMapp
 	 *
 	 * @since 1.0
 	 */
-	public class AndroidTouchDebug : GLib.Object
+	public class TouchDebug : GLib.Object
 	{
 		public static bool enabled { get; private set; }
 
@@ -37,7 +37,7 @@ namespace OLLMapp
 		{
 			foreach (var arg in args) {
 				if (arg == "--touch-debug") {
-					AndroidTouchDebug.enabled = true;
+					TouchDebug.enabled = true;
 					OLLMchat.debug_on = true;
 				}
 				if (arg == "--debug") {
@@ -52,7 +52,7 @@ namespace OLLMapp
 		 */
 		public static void try_enable_from_storage ()
 		{
-			if (AndroidTouchDebug.enabled) {
+			if (TouchDebug.enabled) {
 				return;
 			}
 
@@ -70,12 +70,12 @@ namespace OLLMapp
 				return;
 			}
 
-			AndroidTouchDebug.enabled = true;
+			TouchDebug.enabled = true;
 			OLLMchat.debug_on = true;
 			GLib.message ("touch-debug: enabled via %s", flag_path);
 		}
 
-		public AndroidTouchDebug (Gtk.Widget root, Gtk.Label hud)
+		public TouchDebug (Gtk.Widget root, Gtk.Label hud)
 		{
 			Object ();
 			this.attach_phase (root, hud, Gtk.PropagationPhase.CAPTURE);
@@ -90,7 +90,7 @@ namespace OLLMapp
 			var controller = new Gtk.EventControllerLegacy ();
 			controller.propagation_phase = phase;
 			controller.event.connect ((event) => {
-				if (!AndroidTouchDebug.enabled) {
+				if (!TouchDebug.enabled) {
 					return false;
 				}
 

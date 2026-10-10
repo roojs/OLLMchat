@@ -16,14 +16,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMapp.Android
 {
 	/**
 	 * Android header agent picker — prefixes the row label with {@code OLLMchat }.
 	 */
-	public class AndroidAgentDropdown : Agent.Dropdown
+	public class AgentDropdown : Agent.Dropdown
 	{
-		public AndroidAgentDropdown(ChatUserInterface host)
+		public AgentDropdown(ChatUserInterface host)
 		{
 			base(host);
 		}

@@ -6,14 +6,14 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-namespace OLLMapp
+namespace OLLMapp.Android
 {
 	/**
 	 * Applies bundled CA trust to libollmchat connection objects on Android.
 	 *
 	 * @since 1.0
 	 */
-	public class AndroidConnectionConfigTls : Object
+	public class ConnectionConfigTls : Object
 	{
 		public static void apply_to_connection (
 			OLLMchat.Settings.Connection connection)
@@ -22,7 +22,7 @@ namespace OLLMapp
 				return;
 			}
 
-			AndroidConnectionTls.apply_to_session (connection.soup);
+			ConnectionTls.apply_to_session (connection.soup);
 		}
 
 		public static void apply_to_config (OLLMchat.Settings.Config2 config)

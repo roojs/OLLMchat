@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMapp.Android
 {
 	/**
 	 * Android remote-chat application entry.
@@ -25,7 +25,7 @@ namespace OLLMapp
 	 *
 	 * @since 1.0
 	 */
-	public class AndroidApplication : Adw.Application, OLLMchat.ApplicationInterface
+	public class Application : Adw.Application, OLLMchat.ApplicationInterface
 	{
 		public OLLMchat.Settings.Config2 config { get; set; }
 		public string data_dir { get; set; }
@@ -81,24 +81,24 @@ namespace OLLMapp
 				GLib.Environment.get_user_data_dir(), "ollmchat", "models"));
 		}
 
-		public AndroidApplication()
+		public Application()
 		{
 			Object(
 				application_id: "org.roojs.ollmchat.androidpoc",
 				flags: GLib.ApplicationFlags.DEFAULT_FLAGS
 			);
 			Gtk.Settings.get_default().gtk_icon_theme_name = "Adwaita";
-			AndroidToolsRegistration.init_config();
+			ToolsRegistration.init_config();
 			this.data_dir = GLib.Path.build_filename(app_private_files_dir(), "ollmchat");
 			OLLMrpc.rpc_register();
 			OLLMfiles.rpc_register();
 			ClientCert.rpc_register();
 			/* Config loads on window realize when XDG paths are ready. */
 			this.config = new OLLMchat.Settings.Config2();
-			AndroidConnectionConfigTls.apply_to_config(this.config);
+			ConnectionConfigTls.apply_to_config(this.config);
 			this.activate.connect(() => {
 				try {
-					AndroidApplication.ensure_app_data_directories(this.data_dir);
+					Application.ensure_app_data_directories(this.data_dir);
 				} catch (GLib.Error e) {
 					GLib.critical("data dir: %s", e.message);
 					return;

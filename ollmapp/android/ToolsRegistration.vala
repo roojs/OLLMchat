@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMapp.Android
 {
 	/**
 	 * Registers the Android POC tool subset on {@link OLLMchat.History.Manager}.
@@ -34,7 +34,7 @@ namespace OLLMapp
 	 *
 	 * @since 1.0
 	 */
-	public class AndroidToolsRegistration : GLib.Object
+	public class ToolsRegistration : GLib.Object
 	{
 		/**
 		 * Register tool config types before config load.
@@ -76,18 +76,18 @@ namespace OLLMapp
 		public static void fill_tools(OLLMchat.History.Manager manager)
 		{
 			var web_fetch = new OLLMtools.WebFetch.Tool(null);
-			AndroidConnectionTls.apply_to_session(web_fetch.soup);
+			ConnectionTls.apply_to_session(web_fetch.soup);
 			manager.register_tool(web_fetch);
 
 			manager.register_tool(new OLLMtools.SessionFetch.Tool());
 
 			var google_search = new OLLMtools.GoogleSearch.Tool(null);
-			AndroidConnectionTls.apply_to_session(google_search.soup);
+			ConnectionTls.apply_to_session(google_search.soup);
 			manager.register_tool(google_search);
 			manager.tools.set("web_search", google_search);
 
 			var browser_tool = new OLLMwebkit.Tool();
-			AndroidConnectionTls.apply_to_session(browser_tool.stack.primary.soup);
+			ConnectionTls.apply_to_session(browser_tool.stack.primary.soup);
 			manager.register_tool(browser_tool);
 			manager.notification_reply.connect((notif) => {
 				if (!notif.method.has_prefix("event.browser.download.")) {

@@ -66,7 +66,11 @@ class ProjectSelector : Gtk.Box
 	private Gtk.ScrolledWindow scroll;
 	private Gtk.ListBox rows;
 	private Gtk.ListBox pull_rows;
-	private bool project_recent { get; set; default = true; }
+
+	/**
+	 * Recent is showing. False means All, every project by name.
+	 */
+	public bool project_recent { get; private set; default = true; }
 
 	/**
 	 * Build the project button, pop-down, and pull-over page.
@@ -180,6 +184,12 @@ class ProjectSelector : Gtk.Box
 		this.popover.map.connect(() => {
 			GLib.Idle.add(() => {
 				this.place();
+				this.scroll.vadjustment.value = this.scroll.vadjustment.lower;
+				var child = this.rows.get_first_child();
+				while (child != null) {
+					child.remove_css_class("selector-mark");
+					child = child.get_next_sibling();
+				}
 				return false;
 			});
 		});
@@ -550,6 +560,9 @@ class ProjectSelector : Gtk.Box
 				break;
 			}
 			this.opened();
+			if (!project_recent_toggle.active) {
+				project_recent_toggle.active = true;
+			}
 			this.stack.visible_child_name = "entry";
 			/* After the click, so autohide does not treat it as outside. */
 			GLib.Idle.add(() => {
@@ -559,15 +572,6 @@ class ProjectSelector : Gtk.Box
 				this.entry.grab_focus();
 				this.entry.set_position(-1);
 				this.entry.select_region(-1, -1);
-				var child = this.rows.get_first_child();
-				while (child != null) {
-					child.remove_css_class("selector-mark");
-					child = child.get_next_sibling();
-				}
-				var first = this.rows.get_row_at_index(0);
-				if (first != null && first.activatable) {
-					first.add_css_class("selector-mark");
-				}
 				return false;
 			});
 		});

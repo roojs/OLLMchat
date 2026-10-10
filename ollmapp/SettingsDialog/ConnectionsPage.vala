@@ -246,7 +246,7 @@ namespace OLLMapp.SettingsDialog
 			}
 			newUrl = test_connection.url;
 #if ANDROID
-			AndroidConnectionConfigTls.apply_to_connection(test_connection);
+			Android.ConnectionConfigTls.apply_to_connection(test_connection);
 #endif
 
 			var original_timeout = test_connection.timeout;

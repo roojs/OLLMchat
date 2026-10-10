@@ -135,7 +135,7 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public async void show_dialog(string page_name = "")
 		{
-			AndroidConnectionConfigTls.apply_to_config(this.app.config);
+			Android.ConnectionConfigTls.apply_to_config(this.app.config);
 
 			var busy_dialog = new OLLMapp.BusyDialog(this.parent);
 			busy_dialog.status_label.label = "Checking connection…";
@@ -168,13 +168,13 @@ namespace OLLMapp.SettingsDialog
 			this.models_page.save_all_options();
 			this.connections_page.apply_config();
 			this.check_all_connections.begin();
-			(this.app as AndroidApplication).persist_config ();
+			(this.app as Android.Application).persist_config ();
 			this.app.config.changed();
 		}
 
 		private async void check_all_connections()
 		{
-			AndroidConnectionConfigTls.apply_to_config(this.app.config);
+			Android.ConnectionConfigTls.apply_to_config(this.app.config);
 
 			foreach (var entry in this.app.config.connections.entries) {
 				var connection = entry.value;

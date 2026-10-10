@@ -46,14 +46,12 @@ namespace OLLMapp
 		private Gtk.Button new_chat_button;
 		public Agent.Dropdown agent_dropdown { get; set; }
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
-		private AndroidBootstrapConnectionAdd? bootstrap_dialog = null;
+		private Android.BootstrapConnectionAdd? bootstrap_dialog = null;
 		public Gtk.Label startup_status_label;
 		private Adw.Banner tool_error_banner;
 		private Adw.ViewStack pane_stack;
 		private bool is_tablet = false;
-		private Gtk.Button chat_picker;
-		private Gtk.Button browser_picker;
-		private Gtk.Button editor_picker;
+		private Android.AgentManager agent_manager;
 		private uint fog_source = 0;
 		private bool reconnecting = false;
 		public OLLMfiles.ProjectManager? project_manager { 
@@ -104,28 +102,6 @@ namespace OLLMapp
 			return this.pane_stack;
 		}
 
-		public void schedule_pane_update(bool visible)
-		{
-			if (this.is_tablet) {
-				this.pane_stack.visible = visible;
-			}
-			if (!this.is_tablet) {
-				this.chat_widget.view_stack.visible_child_name = visible ? "pane" : "chat";
-			}
-			this.browser_picker.remove_css_class("picker-on");
-			this.editor_picker.remove_css_class("picker-on");
-			this.chat_picker.remove_css_class("picker-on");
-			if (!visible) {
-				this.chat_picker.add_css_class("picker-on");
-				return;
-			}
-			if (this.pane_stack.visible_child_name == "browser") {
-				this.browser_picker.add_css_class("picker-on");
-				return;
-			}
-			this.editor_picker.add_css_class("picker-on");
-		}
-
 		public void scroll_to_message(int idx)
 		{
 			if (idx < 0) {
@@ -134,10 +110,10 @@ namespace OLLMapp
 			this.chat_widget.chat_view.scroll_to_idx(idx);
 		}
 
-		public OllmchatWindow(AndroidApplication app)
+		public OllmchatWindow(Android.Application app)
 		{
 			Object(application: app, app: app);
-			AndroidTouchDebug.try_enable_from_storage ();
+			Android.TouchDebug.try_enable_from_storage ();
 			if (OLLMchat.debug_on) {
 				GLib.Log.set_default_handler ((dom, lvl, msg) => {
 					GLib.stderr.printf (
@@ -209,7 +185,7 @@ namespace OLLMapp
 			});
 			this.header_bar.pack_start(this.new_chat_button);
 
-			this.agent_dropdown = new AndroidAgentDropdown(this);
+			this.agent_dropdown = new Android.AgentDropdown(this);
 			this.header_bar.set_title_widget(this.agent_dropdown);
 
 			var settings_button = new Gtk.Button() {
@@ -288,7 +264,7 @@ namespace OLLMapp
 					"sidebar-show-symbolic";
 			});
 
-			if (AndroidTouchDebug.enabled) {
+			if (Android.TouchDebug.enabled) {
 				var touch_hud = new Gtk.Label ("") {
 					halign = Gtk.Align.FILL,
 					valign = Gtk.Align.END,
@@ -303,7 +279,7 @@ namespace OLLMapp
 				content_overlay.set_child (this.view_stack);
 				content_overlay.add_overlay (touch_hud);
 				toolbar_view.content = content_overlay;
-				new AndroidTouchDebug (this, touch_hud);
+				new Android.TouchDebug (this, touch_hud);
 			} else {
 				toolbar_view.content = this.view_stack;
 			}
@@ -316,9 +292,9 @@ namespace OLLMapp
 
 		private async void load_config_and_initialize()
 		{
-			this.app.config = (this.app as AndroidApplication).load_config();
-			AndroidConnectionConfigTls.apply_to_config(this.app.config);
-			AndroidToolsRegistration.setup_config_defaults(this.app.config);
+			this.app.config = (this.app as Android.Application).load_config();
+			Android.ConnectionConfigTls.apply_to_config(this.app.config);
+			Android.ToolsRegistration.setup_config_defaults(this.app.config);
 
 			if (this.app.config.connections.size == 0) {
 				GLib.message (
@@ -327,7 +303,7 @@ namespace OLLMapp
 				return;
 			}
 
-			var startup = new AndroidStartup(this);
+			var startup = new Android.Startup(this);
 			startup.reinitialize.connect(() => {
 				this.load_config_and_initialize.begin();
 			});
@@ -357,7 +333,7 @@ namespace OLLMapp
 		private async void show_bootstrap_dialog(string error_message)
 		{
 			if (this.bootstrap_dialog == null) {
-				this.bootstrap_dialog = new AndroidBootstrapConnectionAdd();
+				this.bootstrap_dialog = new Android.BootstrapConnectionAdd();
 			}
 			this.bootstrap_dialog.show_bootstrap();
 
@@ -405,8 +381,8 @@ namespace OLLMapp
 				});
 
 				this.app.config = config;
-				AndroidToolsRegistration.setup_config_defaults(config);
-				(this.app as AndroidApplication).persist_config (config);
+				Android.ToolsRegistration.setup_config_defaults(config);
+				(this.app as Android.Application).persist_config (config);
 				this.initialize_after_bootstrap.begin(config);
 			});
 
@@ -415,7 +391,7 @@ namespace OLLMapp
 
 		private async void initialize_after_bootstrap(OLLMchat.Settings.Config2 config)
 		{
-			var startup = new AndroidStartup(this);
+			var startup = new Android.Startup(this);
 			startup.reinitialize.connect(() => {
 				this.load_config_and_initialize.begin();
 			});
@@ -542,66 +518,7 @@ namespace OLLMapp
 			this.setup_chat_widget(
 				this.app as Gtk.Application,
 				GLib.Path.build_filename(this.app.data_dir, "config"));
-
-			// avoid async vala ctor bug
-			this.browser_picker = new Gtk.Button();
-			this.browser_picker.icon_name = "web-browser-symbolic";
-			this.browser_picker.tooltip_text = "Browser";
-			this.browser_picker.has_frame = false;
-			this.browser_picker.add_css_class("page-picker");
-			this.editor_picker = new Gtk.Button();
-			this.editor_picker.icon_name = "document-edit-symbolic";
-			this.editor_picker.tooltip_text = "Text editor";
-			this.editor_picker.has_frame = false;
-			this.editor_picker.add_css_class("page-picker");
-			this.chat_picker = new Gtk.Button();
-			this.chat_picker.icon_name = "chat-message-symbolic";
-			this.chat_picker.tooltip_text = "Chat";
-			this.chat_picker.visible = !this.is_tablet;
-			this.chat_picker.has_frame = false;
-			this.chat_picker.add_css_class("page-picker");
-			this.chat_picker.add_css_class("picker-on");
-			this.chat_widget.chat_bar.end_box.append(this.browser_picker);
-			this.chat_widget.chat_bar.end_box.append(this.editor_picker);
-			this.chat_widget.chat_bar.end_box.append(this.chat_picker);
-			this.chat_widget.chat_bar.end_box.visible = true;
-			this.chat_widget.chat_bar.tool_button_box.visible = false;
-			this.chat_picker.clicked.connect(() => {
-				this.schedule_pane_update(false);
-			});
-			this.browser_picker.clicked.connect(() => {
-				var ui = this.history_manager.tools.get("browser") as OLLMchat.Tool.UiWidgets;
-				var view = (Gtk.Widget) ui.view_widget;
-				if (this.pane_stack.get_child_by_name("browser") == null) {
-					this.pane_stack.add_named(view, "browser");
-				}
-				this.pane_stack.set_visible_child_name("browser");
-				this.schedule_pane_update(true);
-			});
-			this.editor_picker.clicked.connect(() => {
-				var factory = this.history_manager.get_active_agent();
-				factory.activate.begin(this, (obj, res) => {
-					factory.activate.end(res);
-					this.schedule_pane_update(true);
-				});
-			});
-			this.editor_picker.visible = this.history_manager.get_active_agent().has_editor;
-			this.history_manager.agent_activated.connect((factory) => {
-				this.editor_picker.visible = factory.has_editor;
-				if (factory.has_editor) {
-					this.schedule_pane_update(true);
-					return;
-				}
-				if (!this.is_tablet) {
-					this.schedule_pane_update(false);
-					return;
-				}
-				if (this.pane_stack.visible_child_name == "browser") {
-					this.schedule_pane_update(true);
-					return;
-				}
-				this.schedule_pane_update(false);
-			});
+			this.agent_manager = new Android.AgentManager(this, !this.is_tablet);
 
 			this.history_browser.session_selected.connect((session) => {
 				this.history_toggle_button.active = false;
@@ -630,7 +547,6 @@ namespace OLLMapp
 				empty.agent_name = "chatter";
 				yield this.chat_widget.switch_to_session(empty);
 			}
-			this.editor_picker.visible = this.history_manager.get_active_agent().has_editor;
 
 			this.history_manager.agent_status_change.connect(() => {
 				var running = this.history_manager.session.is_running;
@@ -640,7 +556,7 @@ namespace OLLMapp
 					GLib.Source.remove(this.fog_source);
 					this.fog_source = 0;
 				}
-				var image = (Gtk.Image) this.chat_picker.child;
+				var image = (Gtk.Image) this.agent_manager.chat_picker.child;
 				if (!running) {
 					image.set_from_icon_name("chat-message-symbolic");
 					return;
@@ -923,7 +839,7 @@ namespace OLLMapp
 
 	int main(string[] args)
 	{
-		AndroidTouchDebug.parse_args (args);
+		Android.TouchDebug.parse_args (args);
 		if (OLLMchat.debug_on) {
 			GLib.Log.set_default_handler ((dom, lvl, msg) => {
 				GLib.stderr.printf (
@@ -938,7 +854,7 @@ namespace OLLMapp
 		} catch (GLib.Error e) {
 			GLib.warning("%s", e.message);
 		}
-		var app = new AndroidApplication();
+		var app = new Android.Application();
 		return app.run(args);
 	}
 }

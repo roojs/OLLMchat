@@ -21,9 +21,12 @@ namespace OLLMapp.Agent
 	/**
 	 * Subscribes to the chat shell and decides which section is visible.
 	 * The desktop window constructs this after the chat bar and the right
-	 * pane exist. This class creates the browser and editor buttons, the
-	 * tool toggles, and decides which of those strips is visible. The agent
-	 * dropdown stays on the window.
+	 * pane exist. ''is_phone'' is ''true'' only for the Android phone
+	 * stack, where the pane replaces the transcript. ''is_android'' is
+	 * ''true'' for that phone and for a tablet. The desktop leaves both
+	 * false and resizes with {@link WindowPane}. ''Android.AgentManager''
+	 * overrides the pane on that build. This class creates the browser
+	 * and editor buttons. The agent dropdown stays on the window.
 	 *
 	 * The browser is shown when {@link OLLMchatGtk.ChatBar.tool_toggle} is
 	 * ''browser'' and active, when that tool emits
@@ -63,12 +66,29 @@ namespace OLLMapp.Agent
 	{
 		/** Main window. It also implements {@link OLLMchat.ChatDesktopInterface}. */
 		public ChatUserInterface shell { get; construct; }
-		private Gtk.Button browser_picker;
-		private Gtk.Button editor_picker;
+		/**
+		 * ''true'' when the pane replaces the transcript. The phone
+		 * window passes that. Desktop and tablet leave it false.
+		 */
+		public bool is_phone { get; construct; default = false; }
+		/**
+		 * ''true'' on the Android build, phone or tablet. The desktop
+		 * window leaves it false and resizes with {@link WindowPane}.
+		 */
+		public bool is_android { get; construct; default = false; }
+		/** Browser button on the editor strip. */
+		protected Gtk.Button browser_picker;
+		/** Editor button on the editor strip. */
+		protected Gtk.Button editor_picker;
 
-		public Manager(ChatUserInterface shell)
+		/**
+		 * @param shell main window
+		 * @param is_phone ''true'' when the pane replaces the transcript
+		 * @param is_android ''true'' on the Android phone or tablet
+		 */
+		public Manager(ChatUserInterface shell, bool is_phone = false, bool is_android = false)
 		{
-			Object(shell: shell);
+			Object(shell: shell, is_phone: is_phone, is_android: is_android);
 
 			this.browser_picker = new Gtk.Button() {
 				icon_name = "web-browser-symbolic",
@@ -93,11 +113,7 @@ namespace OLLMapp.Agent
 				this.schedule_pane_update(true);
 			});
 			this.editor_picker.clicked.connect(() => {
-				var desktop = (OLLMchat.ChatDesktopInterface) this.shell;
-				var tabs = (Adw.ViewStack) desktop.tab_view();
-				var widget_id = this.shell.history_manager.session.agent_name + "-widget";
-				tabs.set_visible_child_name(widget_id);
-				this.schedule_pane_update(true);
+				this.on_editor();
 			});
 
 			this.shell.history_manager.agent_activated.connect(
@@ -130,12 +146,15 @@ namespace OLLMapp.Agent
 			this.shell.chat_widget.chat_bar.tool_button_box.visible = false;
 			this.shell.chat_widget.chat_bar.end_box.visible = true;
 			this.editor_picker.visible = this.shell.history_manager.get_active_agent().has_editor;
-			if (this.editor_picker.visible
-				&& ((OllmchatWindow) this.shell).window_pane.intended_pane_visible) {
-				this.schedule_pane_update(true);
+			var desktop = (OLLMchat.ChatDesktopInterface) this.shell;
+			if (!this.is_android && this.editor_picker.visible) {
+				var tabs = (Gtk.Widget) desktop.tab_view();
+				var pane = tabs.get_ancestor(typeof(WindowPane)) as WindowPane;
+				if (pane != null && pane.intended_pane_visible) {
+					this.schedule_pane_update(true);
+				}
 			}
 
-			var desktop = (OLLMchat.ChatDesktopInterface) this.shell;
 			desktop.notification.connect((notif) => {
 				switch (notif.method) {
 					case "client.filesd.unreachable":
@@ -149,33 +168,50 @@ namespace OLLMapp.Agent
 		}
 
 		/**
-		 * Show or hide the desktop right pane on idle, then mark the browser or editor picker.
+		 * Show or hide the pane, then mark the browser or editor picker.
+		 *
+		 * When ''is_android'' is false and the tab stack sits in a
+		 * {@link WindowPane}, that pane resizes the window on idle.
+		 * Android overrides this to show the phone stack or the tablet
+		 * column.
 		 *
 		 * @param visible ''true'' to show the pane, ''false'' to hide it
 		 */
-		public void schedule_pane_update(bool visible)
+		public virtual void schedule_pane_update(bool visible)
 		{
-			var window = (OllmchatWindow) this.shell;
-			var pane = window.window_pane;
-			pane.intended_pane_visible = visible;
-			GLib.Idle.add(() => {
-				if (pane.intended_pane_visible) {
-					pane.show_right_pane();
-					return false;
+			var desktop = (OLLMchat.ChatDesktopInterface) this.shell;
+			if (!this.is_android) {
+				var host = (Gtk.Widget) desktop.tab_view();
+				var pane = host.get_ancestor(typeof(WindowPane)) as WindowPane;
+				if (pane != null) {
+					pane.schedule_pane_update(visible);
 				}
-				pane.hide_right_pane();
-				return false;
-			});
+			}
+			var tabs = (Adw.ViewStack) desktop.tab_view();
 			this.browser_picker.remove_css_class("picker-on");
 			this.editor_picker.remove_css_class("picker-on");
 			if (!visible) {
 				return;
 			}
-			if (pane.tab_view.visible_child_name == "browser") {
+			if (tabs.visible_child_name == "browser") {
 				this.browser_picker.add_css_class("picker-on");
 				return;
 			}
 			this.editor_picker.add_css_class("picker-on");
+		}
+
+		/**
+		 * Show the active agent's editor page.
+		 *
+		 * Android overrides this so the page is mounted before it is shown.
+		 */
+		protected virtual void on_editor()
+		{
+			var desktop = (OLLMchat.ChatDesktopInterface) this.shell;
+			var tabs = (Adw.ViewStack) desktop.tab_view();
+			var widget_id = this.shell.history_manager.session.agent_name + "-widget";
+			tabs.set_visible_child_name(widget_id);
+			this.schedule_pane_update(true);
 		}
 
 		private void on_agent_activated(OLLMchat.Agent.Factory factory)
@@ -191,6 +227,10 @@ namespace OLLMapp.Agent
 					tabs.set_visible_child_name(widget_id);
 				}
 				this.schedule_pane_update(true);
+				return;
+			}
+			if (this.is_phone) {
+				this.schedule_pane_update(false);
 				return;
 			}
 			if (tabs.visible_child_name == "browser") {

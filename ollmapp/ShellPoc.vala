@@ -16,11 +16,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMapp.Android
 {
-	public class AndroidShellPocWindow : Adw.ApplicationWindow
+	public class ShellPocWindow : Adw.ApplicationWindow
 	{
-		public AndroidShellPocWindow(AndroidShellPocApplication app)
+		public ShellPocWindow(ShellPocApplication app)
 		{
 			Object(
 				application: app,
@@ -64,9 +64,9 @@ namespace OLLMapp
 		}
 	}
 
-	public class AndroidShellPocApplication : Adw.Application
+	public class ShellPocApplication : Adw.Application
 	{
-		public AndroidShellPocApplication()
+		public ShellPocApplication()
 		{
 			Object(
 				application_id: "org.roojs.ollmchat.androidpoc",
@@ -74,7 +74,7 @@ namespace OLLMapp
 			);
 
 			this.activate.connect(() => {
-				var window = new AndroidShellPocWindow(this);
+				var window = new ShellPocWindow(this);
 				window.present();
 			});
 		}
@@ -82,7 +82,7 @@ namespace OLLMapp
 
 	int main(string[] args)
 	{
-		var app = new AndroidShellPocApplication();
+		var app = new ShellPocApplication();
 		return app.run(args);
 	}
 }

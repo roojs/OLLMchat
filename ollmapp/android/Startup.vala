@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMapp.Android
 {
 	/**
 	 * Android startup: connection check, default model, history manager.
@@ -25,7 +25,7 @@ namespace OLLMapp
 	 *
 	 * @since 1.0
 	 */
-	public class AndroidStartup : Object
+	public class Startup : Object
 	{
 		private OllmchatWindow window;
 
@@ -34,7 +34,7 @@ namespace OLLMapp
 		 */
 		public signal void reinitialize();
 
-		public AndroidStartup(OllmchatWindow window)
+		public Startup(OllmchatWindow window)
 		{
 			this.window = window;
 		}
@@ -47,10 +47,10 @@ namespace OLLMapp
 		 */
 		public async bool run(OLLMchat.Settings.Config2 config)
 		{
-			AndroidConnectionConfigTls.apply_to_config (config);
+			ConnectionConfigTls.apply_to_config (config);
 
 			GLib.message (
-				"AndroidStartup: run connections=%u",
+				"Startup: run connections=%u",
 				config.connections.size);
 
 			while (true) {
@@ -63,7 +63,7 @@ namespace OLLMapp
 				     attempt++) {
 					if (attempt > 0) {
 						GLib.message (
-							"AndroidStartup: connection retry %u",
+							"Startup: connection retry %u",
 							attempt);
 						GLib.Thread.usleep (1500000);
 					}
@@ -80,7 +80,7 @@ namespace OLLMapp
 
 				if (working_conn == null) {
 					GLib.message (
-						"AndroidStartup: run failed no working connection");
+						"Startup: run failed no working connection");
 					yield this.show_settings(
 						"No working connection found. Please check your connection settings.",
 						"connections"
@@ -92,7 +92,7 @@ namespace OLLMapp
 
 				if (!(yield this.initialize_model (config, working_conn))) {
 					GLib.message (
-						"AndroidStartup: run failed no chat model");
+						"Startup: run failed no chat model");
 					yield this.show_settings(
 						"No chat model found (only embedding models available). "
 						+ "Please add or select a model.",
@@ -104,16 +104,16 @@ namespace OLLMapp
 				this.window.startup_status_label.label = "Preparing chat history…";
 
 				try {
-					AndroidApplication.ensure_app_data_directories(this.window.app.data_dir);
+					Application.ensure_app_data_directories(this.window.app.data_dir);
 				} catch (GLib.Error e) {
-					GLib.warning ("AndroidStartup: data dirs: %s", e.message);
+					GLib.warning ("Startup: data dirs: %s", e.message);
 				}
 
 				this.window.history_manager = new OLLMchat.History.Manager(
 					this.window.app
 				);
 
-				AndroidToolsRegistration.fill_tools(this.window.history_manager);
+				ToolsRegistration.fill_tools(this.window.history_manager);
 				var tools = this.window.history_manager.tools;
 				foreach (var entry in config.tools.entries) {
 					if (!tools.has_key(entry.key)) {
@@ -136,7 +136,7 @@ namespace OLLMapp
 					yield this.window.history_manager.ensure_model_usage();
 				} catch (GLib.Error e) {
 					GLib.warning(
-						"AndroidStartup: model verification failed: %s",
+						"Startup: model verification failed: %s",
 						e.message);
 					if (!(yield this.initialize_model(config, working_conn))) {
 						yield this.show_settings(
@@ -151,11 +151,11 @@ namespace OLLMapp
 				break;
 			}
 
-			(this.window.app as AndroidApplication).persist_config (config);
+			(this.window.app as Application).persist_config (config);
 			var default_usage = config.usage.get ("default_model")
 				as OLLMchat.Settings.ModelUsage;
 			GLib.message (
-				"AndroidStartup: run ok model=%s",
+				"Startup: run ok model=%s",
 				default_usage != null ? default_usage.model : "");
 			return true;
 		}
@@ -217,7 +217,7 @@ namespace OLLMapp
 			);
 			if (connection_models == null || connection_models.size == 0) {
 				GLib.warning(
-					"AndroidStartup: no models for connection '%s'",
+					"Startup: no models for connection '%s'",
 					working_conn.url);
 				return false;
 			}
@@ -246,7 +246,7 @@ namespace OLLMapp
 					    || usage.model_obj == null
 					    || !usage.model_obj.is_embedding) {
 						GLib.message (
-							"AndroidStartup: initialize_model ok model=%s",
+							"Startup: initialize_model ok model=%s",
 							default_model.model);
 						return true;
 					}
@@ -259,7 +259,7 @@ namespace OLLMapp
 						    || usage.model_obj == null
 						    || !usage.model_obj.is_embedding) {
 							GLib.message (
-								"AndroidStartup: initialize_model ok model=%s",
+								"Startup: initialize_model ok model=%s",
 								default_model.model);
 							return true;
 						}
@@ -282,7 +282,7 @@ namespace OLLMapp
 			}
 			if (first_chat_model == null) {
 				GLib.warning(
-					"AndroidStartup: no chat model for connection '%s'",
+					"Startup: no chat model for connection '%s'",
 					working_conn.url);
 				return false;
 			}
@@ -300,9 +300,9 @@ namespace OLLMapp
 				default_model.options = first_chat_model.options.clone();
 			}
 
-			(this.window.app as AndroidApplication).persist_config (config);
+			(this.window.app as Application).persist_config (config);
 			GLib.message (
-				"AndroidStartup: initialize_model ok model=%s",
+				"Startup: initialize_model ok model=%s",
 				default_model.model);
 			return true;
 		}

@@ -1,6 +1,6 @@
 # Agent manager for section visibility
 
-**Status:** ⏳ desktop window constructs `Agent.Manager` after picker buttons and tool toggles exist; Android still owns its own pane updates
+**Status:** ⏳ desktop constructs `Agent.Manager`; Android overrides it with `Android.AgentManager`. `reconnect` still switches session itself
 
 **Related:** ℹ️ `docs/bugs/2026-10-08-android-remote-connection-lifecycle.md`, ℹ️ `docs/plans/done/1.7-DONE-agent-management.md`
 
@@ -29,20 +29,18 @@
 
 ## Duties
 
-The desktop window constructs the manager after the picker buttons and tool toggles exist, then the manager subscribes. `ChatUserInterface` is unchanged. Android still has its own pane updates.
+Each window constructs the manager after the chat bar exists. Desktop leaves `is_phone` and `is_android` false. Android passes `is_android` true and `is_phone` as `!is_tablet`. `ChatUserInterface` is unchanged.
 
-- **🔷** `History.Manager.agent_activated` and `session_restored`. An editor factory shows `{factory}-widget`. A non-editor factory keeps the browser when that page is already visible, and otherwise hides the pane. `editor_picker.visible` stays on each window. The phone "always hide" branch stays in `ollmapp/android/OllmchatWindow.vala` because `is_tablet` is private. The browser, editor, and chat picker clicks are not signals on the shell, so this draft does not subscribe to them.
+- **🔷** `History.Manager.agent_activated` and `session_restored`. An editor factory shows `{factory}-widget`. A non-editor factory keeps the browser when that page is already visible, and otherwise hides the pane. On a phone a non-editor factory always hides the pane. The browser, editor, and chat picker clicks live on the manager.
 - **🔷** `History.Manager.agent_deactivated` for an editor factory hides the pane. Same pane line as `AgentPi.Factory.deactivate`, `OLLMcoder.AgentFactory.deactivate`, and `Skill.Factory.deactivate`. Creating the source view, loading projects, the skill progress strip, and `can_queue(false)` stay in the factories.
 - **🔷** `ChatBar.tool_toggle` and each tool's `UiWidgets.show_view`. Taken from desktop `Window` tool chrome. Turning a tool on shows its page. Turning it off hides the pane only while the editor strip is down. `show_view` while that strip is down only flips the toggle, so `tool_toggle` does the show.
 - **🔷** `ChatDesktopInterface.notification` method `client.filesd.unreachable` asks Retry or Close. Retry emits `client.filesd.retry`. Close starts a Chatter session the way `OllmchatWindow.reconnect` does today. That session change emits `agent_deactivated`, which is what hides the editor. No Configure. Close does not quit.
-- **💩** The manager creates the desktop browser button, editor button, and tool toggles, and shows or hides those strips. The agent dropdown stays on the window. Android pickers stay on `android/OllmchatWindow.vala`.
-- **💩** Desktop `Window` constructs `Agent.Manager` after those buttons exist. Its `schedule_pane_update` forwards to the manager. The window's `tool_toggle`, `show_view`, and pane hide on `agent_activated` are gone. Picker clicks still call `schedule_pane_update`. Factories still call it through `ChatDesktopInterface`.
-- **🚫** Do not add `Agent/Manager.vala` to the Android sources. It uses desktop `WindowPane`.
+- **💩** The manager creates the browser button, the editor button, and the tool toggles, and shows or hides those strips. On Android it also creates the chat button. The agent dropdown stays on the window.
+- **💩** Desktop uses `Agent.Manager` directly, including the `WindowPane` resize. `Android.AgentManager` overrides the pane. There is no desktop subclass.
 
 ## Proposed changes
 
-- **💩** Desktop window constructs the manager and forwards `schedule_pane_update`. Desktop tool and agent pane listeners that the manager owns are removed.
-- **🔷** ⏳ Android pane updates, and stop the factories calling `schedule_pane_update` once the manager's own handlers cover that path on both builds.
+- **💩** Both windows construct the manager. Android pane updates and picker buttons are in the manager. Desktop resize runs when `is_android` is false and the tab stack is inside a `WindowPane`.
 - **🔷** ⏳ On give-up, `reconnect` only sets `UNREACHABLE` and emits `client.filesd.unreachable`. The subscription answers that. The window notification handler runs `reconnect` again for `client.filesd.retry`.
 
 ## Attempts / changelog
@@ -50,9 +48,10 @@ The desktop window constructs the manager after the picker buttons and tool togg
 - **✔️** Split from the Android remote lifecycle bug. The lifecycle tree already contains the connection fixes and the `switch_to_session` agent signals.
 - **💩** Drafted the class at the real path. Not in the Meson sources. No window constructs it.
 - **💩** Replaced the poke methods with subscriptions to signals the shell already has. The class docblock states when the browser, editor, and chat are shown and hidden. The `section` signal added on `ChatUserInterface` was removed. That file is compiled, and this draft does not change it.
-- **💩** Desktop `ollmchat` constructs the manager after the picker buttons and tool toggles exist. `Window.schedule_pane_update` forwards to it. The desktop `tool_toggle`, `show_view`, and `agent_activated` pane updates are removed. Desktop build linked.
+- **💩** Desktop `ollmchat` constructs the manager after the chat bar exists. Desktop `tool_toggle`, `show_view`, and `agent_activated` pane updates are removed. Desktop build linked.
+- **💩** Android `OllmchatWindow` constructs `Android.AgentManager(this, !is_tablet)`. The window still swaps the chat-button icon while a reply streams.
+- **💩** Dropped the desktop subclass. `is_phone` and `is_android` replace `#if !ANDROID`. The desktop resize runs only when `is_android` is false and a `WindowPane` is the tab stack's ancestor.
 
 ## Next
 
-- **🔷** ⏳ Android pane updates stay on `android/OllmchatWindow.vala` until the manager can show that pane without desktop `WindowPane`.
 - **🔷** ⏳ Stop `reconnect` from switching session itself, and emit `client.filesd.unreachable` for the manager's notification subscription.

@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMapp
+namespace OLLMapp.Android
 {
 	/**
 	 * Android bootstrap connection dialog.
@@ -28,7 +28,7 @@ namespace OLLMapp
 	 *
 	 * @since 1.0
 	 */
-	public class AndroidBootstrapConnectionAdd : Adw.PreferencesDialog
+	public class BootstrapConnectionAdd : Adw.PreferencesDialog
 	{
 		private Gtk.Entry host_entry;
 		private Gtk.Entry api_key_entry;
@@ -57,7 +57,7 @@ namespace OLLMapp
 		/**
 		 * Creates a new Android bootstrap connection dialog.
 		 */
-		public AndroidBootstrapConnectionAdd()
+		public BootstrapConnectionAdd()
 		{
 			this.set_content_height(480);
 			this.set_content_width(800);
@@ -210,7 +210,7 @@ namespace OLLMapp
 					api_key = api_key
 				};
 
-				AndroidConnectionConfigTls.apply_to_connection(connection);
+				ConnectionConfigTls.apply_to_connection(connection);
 
 				var original_timeout = connection.timeout;
 				connection.timeout = 5;

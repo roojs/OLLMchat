@@ -228,7 +228,7 @@ namespace OLLMapp.SettingsDialog
 			};
 
 #if ANDROID
-			AndroidConnectionConfigTls.apply_to_connection(connection);
+			Android.ConnectionConfigTls.apply_to_connection(connection);
 #endif
 
 			var original_timeout = connection.timeout;

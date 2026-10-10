@@ -6,7 +6,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 
-namespace OLLMapp
+namespace OLLMapp.Android
 {
 	[CCode (cname = "ollmapp_apply_bundled_tls_database_to_session",
 	        cheader_filename = "android-gio-tls.h")]
@@ -17,7 +17,7 @@ namespace OLLMapp
 	 *
 	 * @since 1.0
 	 */
-	public class AndroidConnectionTls : Object
+	public class ConnectionTls : Object
 	{
 		public static void apply_to_session (Soup.Session session)
 		{
