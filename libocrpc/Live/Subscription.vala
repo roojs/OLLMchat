@@ -40,6 +40,10 @@ namespace OLLMrpc.Live
 		public string method { get; set; default = ""; }
 		public int id { get; set; default = 0; }
 		public ulong hid { get; set; default = 0; }
+		/**
+		 * Handler bool finishes inside the emission.
+		 */
+		public bool blocking { get; set; default = false; }
 
 		/**
 		 * Connect ''method'' on lease ''id'' for ''connection''.
@@ -110,9 +114,11 @@ namespace OLLMrpc.Live
 		 * {@link Notification.args} and writes the notification. With
 		 * ''live_handles'', each non-Serializable GObject arg is exported
 		 * first, so objects the peer has not seen yet get a handle.
+		 * {@link blocking} writes {@link Notification.reply_id} and waits
+		 * for ''RPC-Live-Callback.reply'', then stores the handler bool.
 		 *
 		 * @param closure unused GObject slot
-		 * @param return_value unused; null on void signals
+		 * @param return_value handler bool; null on void signals
 		 * @param param_values instance then signal arguments
 		 * @param invocation_hint unused GObject slot
 		 * @param marshal_data the {@link Subscription}
@@ -137,11 +143,32 @@ namespace OLLMrpc.Live
 				}
 				subscription.connection.export(arg.get_object());
 			}
-			subscription.connection.write(new Notification() {
+			var note = new Notification() {
 				method = subscription.method,
 				id = subscription.id,
 				args = packed
-			});
+			};
+			if (!subscription.blocking || return_value == null) {
+				subscription.connection.write(note);
+				return;
+			}
+			var waiter = new OLLMrpc.Live.Hook() {
+				connection = subscription.connection
+			};
+			waiter.id = subscription.connection.next_handle;
+			subscription.connection.next_handle++;
+			subscription.connection.callbacks.set(waiter.id, waiter);
+			waiter.reply_id = subscription.connection.next_handle;
+			note.reply_id = waiter.reply_id;
+			subscription.connection.next_handle++;
+			subscription.connection.write(note);
+			while (!waiter.replied && subscription.connection.running) {
+				subscription.connection.emit_wait_poll();
+			}
+			subscription.connection.callbacks.unset(waiter.id);
+			return_value.set_boolean(waiter.reply_args.size > 0
+				&& waiter.reply_args.get(0).type() == GLib.Type.BOOLEAN
+				&& waiter.reply_args.get(0).get_boolean());
 		}
 	}
 }

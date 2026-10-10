@@ -94,21 +94,19 @@ ninja -C build examples/oc-test-source-diff
 
 ## Project list
 
-`ProjectSelector` already lists every project, alphabetical by basename. The Recent / All bar is not in that class.
+`ProjectSelector` lists projects. Recent / All is on that pop-down and on the project pull-over.
 
-- 🔷 ⏳ A Recent / All bar on the project pop-down and on the project pull-over.
-- ℹ️ A pass at that bar edited `examples/oc-test-source-diff-selectors.vala` after that file had been replaced. That pass is dropped. The classes under `examples/oc-test-source-diff/` stay.
+- 🔷 ✔️ A Recent / All bar on the project pop-down and on the project pull-over.
+- ℹ️ The bar does not take keyboard focus. The search entry keeps the mark. The pop-down stays anchored by `place()`.
 - 🔷 ⏳ The file list gets that same kind of bar later.
-- 🔷 ⏳ Default is Recent.
-- 🔷 ⏳ Recent shows projects that have actually been edited, newest first.
-- 🔷 ⏳ Projects that have not been edited are left out.
-- 🔷 ⏳ If none have been edited, Recent is empty.
-- 🔷 ⏳ All lists every project by name, A to Z, ignoring case.
-- 🔷 ⏳ Search still applies on top of whichever choice is showing.
-- ℹ️ The loaded project row’s edit stamp is `Folder.last_viewed`.
-- ℹ️ Nothing writes that stamp today, so Recent is empty until a project is marked edited.
-- ℹ️ `Folder.last_modified` is the directory time from scan. Using that would not leave Recent empty.
-- ℹ️ Agent edits live in `file_history` by file path. That list is not on the project row the client already has.
+- 🔷 ✔️ Default is Recent.
+- 🔷 ✔️ Recent shows projects that contain a viewed file, newest file view first.
+- 🔷 ✔️ Projects with no viewed file under them are left out.
+- 🔷 ✔️ If none have a viewed file, Recent says `No recent projects`.
+- 🔷 ✔️ All lists every project by name, A to Z, ignoring case.
+- 🔷 ✔️ Search still applies on top of whichever choice is showing.
+- ℹ️ Project rows in `filebase` do not use `last_viewed`. Those values stay 0.
+- ℹ️ `load_projects_from_db` sets the loaded folder from `MAX(last_viewed)` of files under that path. It does not write the project row.
 
 ---
 

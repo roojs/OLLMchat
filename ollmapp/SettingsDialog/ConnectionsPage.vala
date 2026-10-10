@@ -560,7 +560,7 @@ namespace OLLMapp.SettingsDialog
 #if !ANDROID
 				var row = this.file_connection_row;
 #endif
-				/* AgentDropdown listens to this object. Mutating its state
+				/* Agent.Dropdown listens to this object. Mutating its state
 				 * notifies the filter before the connection data is cleared. */
 				client.state = FilesdClient.State.REQUESTED;
 				client.url = "";

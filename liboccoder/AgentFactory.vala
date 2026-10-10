@@ -466,15 +466,8 @@ namespace OLLMcoder
 			}
 			this.widget.visible = true;
 			tabs.set_visible_child_name(widget_id);
-			host.schedule_pane_update(true);
 		}
 
-		public override async void deactivate(GLib.Object window)
-		{
-			var host = (OLLMchat.ChatDesktopInterface) window;
-			host.schedule_pane_update(false);
-		}
-		
 		/**
 		 * Initializes the widget asynchronously.
 		 * 

@@ -260,7 +260,6 @@ namespace OLLMcoder.AgentPi
 			}
 			this.widget.visible = true;
 			tabs.set_visible_child_name(widget_id);
-			ui.schedule_pane_update(true);
 			var coder = ui.session_agent() as Agent;
 			if (coder == null) {
 				return;
@@ -275,7 +274,6 @@ namespace OLLMcoder.AgentPi
 		{
 			var ui = (OLLMchat.ChatDesktopInterface) window;
 			ui.chat_message_queue().can_queue(false);
-			ui.schedule_pane_update(false);
 		}
 	}
 }

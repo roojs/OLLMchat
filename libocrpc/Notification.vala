@@ -20,6 +20,12 @@ namespace OLLMrpc
 		public string object_type { get; set; default = ""; }
 		/** Referenced object id when {@link object_type} has one; 0 for singletons. */
 		public int id { get; set; default = 0; }
+		/**
+		 * Non-zero while the sender waits on
+		 * ''RPC-Live-Callback.reply''.
+		 * Zero is one-way.
+		 */
+		public int reply_id { get; set; default = 0; }
 		public string message { get; set; default = ""; }
 		/**
 		 * Named-signal parameters (GIR order), or the new property
@@ -57,6 +63,12 @@ namespace OLLMrpc
 		{
 			switch (prop.name) {
 				case "buffer":
+					return;
+				case "reply-id":
+					if (this.reply_id == 0) {
+						return;
+					}
+					this.bin_default_write_prop(ctx, prop);
 					return;
 				case "method":
 					ctx.write_tag(prop.name);

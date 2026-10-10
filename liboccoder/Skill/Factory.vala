@@ -96,15 +96,12 @@ namespace OLLMcoder.Skill
 			}
 			this.widget.visible = true;
 			tabs.set_visible_child_name(widget_id);
-			host.schedule_pane_update(true);
 			this.progress_view.visible = true;
 		}
 
 		public override async void deactivate(GLib.Object window)
 		{
-			var host = (OLLMchat.ChatDesktopInterface) window;
 			this.progress_view.visible = false;
-			host.schedule_pane_update(false);
 		}
 
 		/**

@@ -397,7 +397,8 @@ valadoc_docs = custom_target('valadoc',
     '../ollmapp/ClientCert.vala',
     '../ollmapp/About.vala',
     '../ollmapp/ChatUserInterface.vala',  # Must come before Window (Window implements interface)
-    '../ollmapp/AgentDropdown.vala',  # Must come before Window (Window uses AgentDropdown)
+    '../ollmapp/Agent/Dropdown.vala',  # Must come before Window (Window uses Agent.Dropdown)
+    '../ollmapp/Agent/Manager.vala',  # Must come before Window (Window uses Agent.Manager)
     '../ollmapp/Initialize.vala',  # Must come before Window (Window uses Initialize)
     '../ollmapp/Window.vala',
     '../ollmapp/WindowPane.vala',

@@ -395,9 +395,11 @@ namespace OLLMfilesd
 		
 		/**
 		 * Load projects from database.
-		 * 
-		 * Queries database for all folders where is_project = 1 and loads them
-		 * into the manager.projects list.
+		 *
+		 * Queries folders where is_project = 1. Project rows do not store
+		 * last_viewed. Each loaded folder gets the newest last_viewed of a
+		 * file under that path, so Recent can list projects that were opened.
+		 * That value stays in memory. The project row in filebase is not updated.
 		 */
 		public async void load_projects_from_db()
 		{
@@ -407,7 +409,15 @@ namespace OLLMfilesd
 			var query = FileBase.query(this.db, this);
 			var projects_list = new Gee.ArrayList<Folder>();
 			yield query.select_async("WHERE is_project = 1 AND delete_id = 0", projects_list);
+			var stmt = query.selectPrepare("SELECT MAX(last_viewed) FROM filebase"
+				+ " WHERE delete_id = 0 AND is_project = 0 AND path LIKE ?");
 			foreach (var project in projects_list) {
+				stmt.reset();
+				stmt.bind_text(1, project.path + "/%");
+				var viewed = query.fetchAllInt64(stmt);
+				if (viewed.size > 0 && viewed.get(0) > 0) {
+					project.last_viewed = viewed.get(0);
+				}
 				this.projects.append(project);
 			}
 		}

@@ -1,24 +1,19 @@
 # Android remote connection removal and re-add lifecycle
 
-**Status:** ⏳ disconnect give-up must ask Retry or Close before leaving Agent Pi; that dialog is not built yet
+**Status:** ⏳ connection lifecycle changes are in the working tree and have not had a new phone pass
 
-**Related:** ℹ️ `docs/bugs/done/2026-10-07-FIXED-android-pair-reply-wire.md`, ℹ️ `docs/bugs/done/2026-10-09-FIXED-file-read-string-limit.md`
+**Related:** ℹ️ `docs/bugs/done/2026-10-07-FIXED-android-pair-reply-wire.md`, ℹ️ `docs/bugs/done/2026-10-09-FIXED-file-read-string-limit.md`, ℹ️ `docs/bugs/2026-10-10-agent-manager.md`
 
 ## Problem
 
 - **🔷** Removing a live remote desktop on Android must disconnect and clear its project state, hide Agent Pi, and switch back to Chatter.
 - **🔷** Re-adding a removed remote desktop with an already-approved certificate must close the desktop Allow New Device window immediately after the PIN succeeds.
 - **🔷** Keep a standalone Android regression flow for pairing, removal, approved-certificate re-add, Agent Pi activation, project/file loading, and opening a selected file.
-- **🔷** When Android starts in Chatter after the file-daemon connection failure notification, the text editor remains visible even though Agent Pi is unavailable.
+- **ℹ️** Editor visibility after a drop, and the Retry or Close dialog, are `docs/bugs/2026-10-10-agent-manager.md`.
 - **🔷** A remote desktop can initially report connected, but disabling and re-enabling it fails with `File server: Unacceptable TLS certificate`.
 - **🔷** Disabling a working remote desktop must select Just Ask and hide Agent Pi/editor state; re-enabling currently exposes Agent Pi even when TLS reconnection fails.
 - **🔷** The phone reports that the pairing number was accepted, but the desktop approved-certificate list does not add the phone.
 - **🔷** Opening the project selector can produce no search response, progress indication, toast, or error; restarting the app makes project search work.
-- **🔷** A dropped desktop connection is not the Enabled switch. The switch still leaves Agent Pi immediately and selects Just Ask.
-- **🔷** After a drop, retry the desktop a few times. Giving up must not turn off Agent Pi or hide the editor by itself.
-- **🔷** Giving up shows a dialog in the style of the model-unavailable alert. That alert's Configure action is not part of this dialog.
-- **🔷** The dialog offers Retry and Close. Retry runs the connection attempt again. Close is the trigger that deactivates Agent Pi, hides the editor, and starts a new Chatter session. Close does not quit the app.
-- **🔷** `reconnect` reports the client state. It does not create a session or pick an agent. `AgentDropdown` already watches `filesd_client.state` and already switches sessions when the agent changes. That is the response to a drop.
 
 ## Evidence
 
@@ -47,9 +42,7 @@
 - **✔️** Disabling the switch changes only `FilesdClient.state`; unlike removal or unreachable reconnect handling, it does not disconnect the RPC or replace the active Agent Pi session with Just Ask.
 - **✔️** `ConnectionsPage` calls `render_approved` during construction, before the desktop project manager is available, so it returns immediately. `load_config` wires `event.pair` later but neither loads nor refreshes the approved list.
 - **✔️** Runtime reconnect sets state `LIVE` after hello but does not call `ProjectManager.rpc_load_projects_from_db`; the project selector therefore remains empty until startup performs that load.
-- **✔️** `switch_to_session` creates the replacement agent through `ensure_agent_handler` and does not emit `agent_deactivated`. `AgentPi.Factory.deactivate` is what calls `schedule_pane_update(false)`. A Chatter or Just Ask switch therefore leaves the editor pane up. The signal is now emitted when the agent name changes. Phone not retested.
-- **✔️** `OllmchatWindow.reconnect` tries three passes, then sets `UNREACHABLE`, shows `The desktop environment is unavailable.`, and switches to Chatter immediately. There is no Retry or Close choice, so the editor is not waiting on the user.
-- **✔️** The same session construction is copied in the startup unavailable branch, in `FileConnectionRow` on disable, and in `ConnectionsPage` on removal. `AgentDropdown.wire` already refreshes the agent list from `filesd_client.state` and is the code that calls `switch_to_session` for an agent change.
+- **ℹ️** The editor staying up, the give-up dialog, and where an agent manager lives are `docs/bugs/2026-10-10-agent-manager.md`. `switch_to_session` already emits `agent_deactivated` and `agent_activated` when the agent name changes. That part is in the tree.
 - **✔️** The persistent Android IO watch can call `Bin.Stream.parse` before TLS has decrypted readable application data; `GLib.IOError.WOULD_BLOCK` is currently treated as a fatal transport error instead of a readiness retry.
 - **✔️** `OllmchatWindow.reconnect` checks `DISABLED` only after exhausting probes. A disconnect callback can therefore enter the probe/connect loop while disabled and restore the connection that the user just turned off.
 - **ℹ️** The `File.read` body-size failure is tracked in `docs/bugs/done/2026-10-09-FIXED-file-read-string-limit.md`. It is not part of this lifecycle.
@@ -546,92 +539,6 @@
 			this.session_activated(loaded_session);
 ```
 
-### Report a dropped desktop without switching session in the window
-
-**Why:** `reconnect` is the client retry. `AgentDropdown` is what changes the agent and the session. Giving up only publishes `UNREACHABLE`. The dropdown's existing state listener asks Retry or Close.
-
-**Where:** `ollmapp/android/OllmchatWindow.vala`, in `reconnect`, after the three passes fail.
-
-#### Remove
-
-```vala
-			config.filesd_client.state = FilesdClient.State.UNREACHABLE;
-			this.app.config.save();
-			this.notification(new OLLMrpc.Notification() {
-				method = "Banner.show",
-				message = "The desktop environment is unavailable."
-			});
-			var empty = this.history_manager.create_new_session();
-			empty.project_path = this.history_manager.session.project_path;
-			empty.agent_name = "chatter";
-			yield this.chat_widget.switch_to_session(empty);
-```
-
-#### Replace with
-
-```vala
-			config.filesd_client.state = FilesdClient.State.UNREACHABLE;
-			this.app.config.save();
-			this.notification(new OLLMrpc.Notification() {
-				method = "client.filesd.unreachable"
-			});
-```
-
-**Where:** `ollmapp/AgentDropdown.vala`, in the `filesd_client.notify["state"]` handler, after the list filter refresh.
-
-#### Add
-
-```vala
-#if ANDROID
-				if (active.name != "agent-pi") {
-					return;
-				}
-				switch (filesd_client.state) {
-					case FilesdClient.State.UNREACHABLE:
-						break;
-					default:
-						return;
-				}
-				var alert = new Adw.AlertDialog(
-					"Desktop Unavailable",
-					"The desktop environment is unavailable."
-				);
-				alert.add_response("close", "Close");
-				alert.add_response("retry", "Retry");
-				alert.set_response_appearance("retry", Adw.ResponseAppearance.SUGGESTED);
-				var desktop = this.host as OLLMchat.ChatDesktopInterface;
-				alert.choose.begin((Gtk.Window) this.host, null, (obj, res) => {
-					if (alert.choose.end(res) == "retry") {
-						desktop.notification(new OLLMrpc.Notification() {
-							method = "client.filesd.retry"
-						});
-						return;
-					}
-					var empty = this.host.history_manager.create_new_session();
-					empty.project_path = this.host.history_manager.session.project_path;
-					empty.agent_name = "chatter";
-					this.host.chat_widget.switch_to_session.begin(empty);
-				});
-#endif
-```
-
-**Where:** `ollmapp/android/OllmchatWindow.vala`, in the `notification` handler.
-
-#### Add
-
-```vala
-				if (notif.method == "client.filesd.retry") {
-					this.reconnecting = true;
-					this.reconnect.begin();
-					return;
-				}
-```
-
-- **🚫** Do not create a session inside `reconnect` or the startup unavailable branch.
-- **🚫** Do not add Configure. That belongs to the model and connection startup alerts.
-- **🚫** Do not quit the app on Close. `AndroidStartup.show_settings` quits when the user declines Configure. This Close only leaves Agent Pi.
-- **🚫** Do not show this dialog from the Enabled switch. Disable still selects Just Ask immediately.
-
 ## Attempts / changelog
 
 - **✔️** Correlated physical-phone logcat with `/home/alan/.cache/ollmchat/ollmchat.debug.log`.
@@ -641,11 +548,10 @@
 - **✔️** The follow-up proposals are in the working tree: removal returns to Chatter, approved re-add calls `ClientCert.pair`, the Enabled switch uses the Android reconnect path and selects Just Ask on disable, `load_config` loads and refreshes the approved list, runtime reconnect loads projects before `LIVE`, `reconnect` returns immediately while `REQUESTED` or `DISABLED`, and the persistent read watch keeps `WOULD_BLOCK`.
 - **ℹ️** That tree has not been installed or run on the phone. The 08:30 desktop process was still the 07:55 binary, so the certificate-list load was not in that pass.
 - **ℹ️** The `File.read` body longer than 32767 bytes was split out and closed in `docs/bugs/done/2026-10-09-FIXED-file-read-string-limit.md`. The codec round-trip passed. The phone file open was not repeated.
-- **✔️** `switch_to_session` now emits `agent_deactivated` and `agent_activated` when the agent name changes. `AgentPi.Factory.deactivate` hides the editor pane on the way to Chatter or Just Ask.
-- **ℹ️** Pattern for the give-up dialog is `AndroidStartup.show_settings`: `Adw.AlertDialog` with Close plus one suggested action. That action is Configure and declining it quits. The disconnect dialog keeps Close and uses Retry instead.
+- **✔️** `switch_to_session` now emits `agent_deactivated` and `agent_activated` when the agent name changes.
+- **ℹ️** Section visibility and the Retry or Close dialog moved to `docs/bugs/2026-10-10-agent-manager.md`.
 
 ## Next
 
-- **🔷** ⏳ After the three reconnect passes fail, publish `client.filesd.unreachable` and let `AgentDropdown` ask Retry or Close. Leave Agent Pi only on Close.
-- **🔷** ⏳ Install this tree on the phone and desktop, then rerun removal, approved-certificate re-add, disable/enable, the approved list, project search, and a dropped connection.
+- **🔷** ⏳ Install this tree on the phone and desktop, then rerun removal, approved-certificate re-add, disable/enable, the approved list, and project search.
 - **🔷** ⏳ Complete the standalone Android full-flow regression harness.

@@ -21,7 +21,7 @@ namespace OLLMapp
 	/**
 	 * Android header agent picker — prefixes the row label with {@code OLLMchat }.
 	 */
-	public class AndroidAgentDropdown : AgentDropdown
+	public class AndroidAgentDropdown : Agent.Dropdown
 	{
 		public AndroidAgentDropdown(ChatUserInterface host)
 		{

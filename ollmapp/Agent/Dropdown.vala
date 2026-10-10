@@ -20,7 +20,7 @@
 // OLLMchat.Settings.FilesdClient.State.* at every site.
 using OLLMchat.Settings;
 
-namespace OLLMapp
+namespace OLLMapp.Agent
 {
 	/**
 	 * Agent picker for the chat header ({@link Gtk.DropDown} is sealed).
@@ -28,7 +28,7 @@ namespace OLLMapp
 	 * Construct builds the shell and row factory. Call {@link wire} from
 	 * initialize_client after agent factories are registered.
 	 */
-	public class AgentDropdown : Gtk.Box
+	public class Dropdown : Gtk.Box
 	{
 		public ChatUserInterface host { get; construct; }
 
@@ -66,7 +66,7 @@ namespace OLLMapp
 			uint agent_index
 		);
 
-		public AgentDropdown (ChatUserInterface host)
+		public Dropdown (ChatUserInterface host)
 		{
 			Object(host: host);
 

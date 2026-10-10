@@ -207,6 +207,18 @@ class FileSelector : Gtk.Box
 			child = frame,
 		};
 		this.popover.set_parent(this);
+		this.realize.connect(() => {
+			var window = this.get_root() as Gtk.Window;
+			if (window == null) {
+				return;
+			}
+			window.notify["is-active"].connect(() => {
+				if (window.is_active || !this.popover.visible) {
+					return;
+				}
+				this.popover.popdown();
+			});
+		});
 		this.popover.closed.connect(() => {
 			this.face_stack.visible_child_name = "button";
 		});

@@ -44,7 +44,7 @@ namespace OLLMapp
 		private Adw.HeaderBar header_bar;
 		private Gtk.ToggleButton history_toggle_button;
 		private Gtk.Button new_chat_button;
-		public AgentDropdown agent_dropdown { get; set; }
+		public Agent.Dropdown agent_dropdown { get; set; }
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
 		private AndroidBootstrapConnectionAdd? bootstrap_dialog = null;
 		public Gtk.Label startup_status_label;
@@ -582,12 +582,14 @@ namespace OLLMapp
 				var factory = this.history_manager.get_active_agent();
 				factory.activate.begin(this, (obj, res) => {
 					factory.activate.end(res);
+					this.schedule_pane_update(true);
 				});
 			});
 			this.editor_picker.visible = this.history_manager.get_active_agent().has_editor;
 			this.history_manager.agent_activated.connect((factory) => {
 				this.editor_picker.visible = factory.has_editor;
 				if (factory.has_editor) {
+					this.schedule_pane_update(true);
 					return;
 				}
 				if (!this.is_tablet) {

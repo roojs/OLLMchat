@@ -27,7 +27,7 @@ namespace OLLMapp
 	public interface ChatUserInterface : GLib.Object
 	{
 		public abstract OLLMchat.History.Manager history_manager { get; set; }
-		public abstract AgentDropdown agent_dropdown { get; set; }
+		public abstract Agent.Dropdown agent_dropdown { get; set; }
 		public abstract OLLMchatGtk.ChatWidget chat_widget { get; set; }
 
 		/** Shared with {@link OLLMchat.ChatDesktopInterface} on desktop. */

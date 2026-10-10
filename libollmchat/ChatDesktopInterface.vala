@@ -38,7 +38,6 @@ namespace OLLMchat
 	 *     var ui = (OLLMchat.ChatDesktopInterface) window;
 	 *     var tabs = (Adw.ViewStack) ui.tab_view();
 	 *     tabs.add_named(this.widget, this.name + "-widget");
-	 *     ui.schedule_pane_update(true);
 	 *     var queue = ui.chat_message_queue();
 	 *     queue.items = agent.session.queued_messages;
 	 *     queue.can_queue(true);
@@ -85,14 +84,6 @@ namespace OLLMchat
 		 * @return tab stack as {@link GLib.Object}
 		 */
 		public abstract GLib.Object tab_view();
-
-		/**
-		 * Show or hide the right pane on idle.
-		 *
-		 * @param visible ''true'' to show the pane, ''false'' to
-		 *   hide
-		 */
-		public abstract void schedule_pane_update(bool visible);
 
 		/**
 		 * Daemon ''event.*'' or client ''client.*'' activity for
