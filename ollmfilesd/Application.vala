@@ -36,6 +36,7 @@ namespace OLLMfilesd
 		public static bool opt_interactive = false;
 		public static bool opt_tcp = false;
 		public static string? opt_data_dir = null;
+		public static string opt_socket = "";
 		public static string opt_rpc_script = "";
 		public static string opt_scan_project = "";
 		public static string opt_tcp_host = "127.0.0.1";
@@ -60,6 +61,7 @@ Examples:
   {ARG} --interactive          # stdin/stdout NDJSON-RPC
   {ARG} --tcp                  # TCP JSON-RPC listener
   {ARG} --scan-project=PATH    # filesystem + vector scan and exit
+  {ARG} --socket=HOST:PORT     # TLS bin listen for this process
 """; }
 
 		private const OptionEntry[] app_options = {
@@ -71,6 +73,7 @@ Examples:
 			{ "tcp-host", 0, 0, OptionArg.STRING, ref opt_tcp_host, "TCP listen host", "HOST" },
 			{ "tcp-port", 0, 0, OptionArg.INT, ref opt_tcp_port, "TCP listen port", "PORT" },
 			{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory (DB, socket, pid)", "DIR" },
+			{ "socket", 0, 0, OptionArg.STRING, ref opt_socket, "TLS bin listen host:port for this process", "HOST:PORT" },
 			{ "scan-project", 0, 0, OptionArg.FILENAME, ref opt_scan_project, "Filesystem then vector scan PATH and exit (no RPC)", "PATH" },
 			{ null }
 		};
@@ -147,6 +150,7 @@ Examples:
 			opt_interactive = false;
 			opt_tcp = false;
 			opt_data_dir = null;
+			opt_socket = "";
 			opt_rpc_script = "";
 			opt_scan_project = "";
 			opt_tcp_host = "127.0.0.1";
@@ -199,6 +203,11 @@ Examples:
 			if (opt_tcp_port <= 0 || opt_tcp_port > 65535) {
 				command_line.printerr("error: invalid TCP port\n");
 				return 1;
+			}
+
+			if (opt_socket != "") {
+				this.config.filesd.socket = opt_socket;
+				this.config.filesd.ssl_enabled = true;
 			}
 
 			if (opt_data_dir != null) {
@@ -685,6 +694,10 @@ Examples:
 					break;
 				}
 				if (arg.has_prefix("--scan-project")) {
+					background = false;
+					break;
+				}
+				if (arg.has_prefix("--socket")) {
 					background = false;
 					break;
 				}

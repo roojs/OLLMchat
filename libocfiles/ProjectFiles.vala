@@ -96,6 +96,13 @@ namespace OLLMfiles
 			} catch (GLib.Error e) {
 				this.loading = false;
 				GLib.critical ("ProjectFiles.refresh: %s", e.message);
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					this.project.manager.rpc.notification (new OLLMrpc.Notification () {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+					return;
+				}
 				this.project.manager.rpc.notification (new OLLMrpc.Notification () {
 					method = "Banner.show",
 					message = "Could not load project files: " + e.message
@@ -166,6 +173,13 @@ namespace OLLMfiles
 			} catch (GLib.Error e) {
 				this.loading = false;
 				GLib.critical ("ProjectFiles.load_more: %s", e.message);
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					this.project.manager.rpc.notification (new OLLMrpc.Notification () {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+					return;
+				}
 				this.project.manager.rpc.notification (new OLLMrpc.Notification () {
 					method = "Banner.show",
 					message = "Could not load more files: " + e.message

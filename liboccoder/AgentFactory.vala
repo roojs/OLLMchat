@@ -488,10 +488,18 @@ namespace OLLMcoder
 				yield this.widget.apply_manager_state();
 			} catch (GLib.Error e) {
 				GLib.critical ("initialize AgentFactory widget: %s", e.message);
-				host.notification (new OLLMrpc.Notification () {
-					method = "Alert.show",
-					message = "Could not load projects: " + e.message
-				});
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					host.notification (new OLLMrpc.Notification () {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+				}
+				if (e.code != (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					host.notification (new OLLMrpc.Notification () {
+						method = "Alert.show",
+						message = "Could not load projects: " + e.message
+					});
+				}
 			} finally {
 				host.notification(new OLLMrpc.Notification() {
 					method = "client.project.load_end",

@@ -36,7 +36,21 @@ namespace OLLMrpc
 		METHOD_NOT_FOUND = -32601,
 		INVALID_PARAMS = -32602,
 		INTERNAL_ERROR = -32603,
-		NOT_IMPLEMENTED = -32000;
+		NOT_IMPLEMENTED = -32000,
+		/**
+		 * TLS client certificate is not in the approved table.
+		 *
+		 * Pair and hello use this so the phone can register with the PIN
+		 * instead of matching the message text.
+		 */
+		CERT_NOT_REGISTERED = -32001,
+		/**
+		 * {@link Client.call} has no live transport.
+		 *
+		 * Handlers read this code and choose the notice. The message
+		 * is empty.
+		 */
+		NOT_CONNECTED = -32002;
 
 		/**
 		 * Build wire {@link Error} from an RPC error number.

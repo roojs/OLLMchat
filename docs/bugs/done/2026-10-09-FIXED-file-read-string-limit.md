@@ -2,7 +2,7 @@
 
 **Status:** ✔️ long string properties round-trip through the boxed blob; phone `File.read` was not re-run
 
-**Related:** ℹ️ `docs/bugs/2026-10-08-android-remote-connection-lifecycle.md`, ℹ️ `docs/bin-rpc-protocol.md` §13, ℹ️ `docs/plans/done/RPC-8.4.5-DONE-rpc-ffi-leftovers.md`
+**Related:** ℹ️ `docs/bugs/done/2026-10-08-CLOSED-android-remote-connection-lifecycle.md`, ℹ️ `docs/bin-rpc-protocol.md` §13, ℹ️ `docs/plans/done/RPC-8.4.5-DONE-rpc-ffi-leftovers.md`
 
 ## Problem
 

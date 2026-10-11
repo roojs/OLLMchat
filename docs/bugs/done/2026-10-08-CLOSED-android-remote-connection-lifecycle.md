@@ -1,15 +1,15 @@
 # Android remote connection removal and re-add lifecycle
 
-**Status:** ⏳ connection lifecycle changes are in the working tree and have not had a new phone pass
+**Status:** 🚫 CLOSED — connection changes are in the tree and have not had a new phone pass. Give-up calling the agent manager is `docs/bugs/2026-10-10-desktop-unreachable-give-up.md`.
 
-**Related:** ℹ️ `docs/bugs/done/2026-10-07-FIXED-android-pair-reply-wire.md`, ℹ️ `docs/bugs/done/2026-10-09-FIXED-file-read-string-limit.md`, ℹ️ `docs/bugs/2026-10-10-agent-manager.md`
+**Related:** ℹ️ `docs/bugs/done/2026-10-07-FIXED-android-pair-reply-wire.md`, ℹ️ `docs/bugs/done/2026-10-09-FIXED-file-read-string-limit.md`, ℹ️ `docs/bugs/done/2026-10-10-CLOSED-agent-manager.md`, ℹ️ `docs/bugs/2026-10-10-desktop-unreachable-give-up.md`
 
 ## Problem
 
 - **🔷** Removing a live remote desktop on Android must disconnect and clear its project state, hide Agent Pi, and switch back to Chatter.
 - **🔷** Re-adding a removed remote desktop with an already-approved certificate must close the desktop Allow New Device window immediately after the PIN succeeds.
 - **🔷** Keep a standalone Android regression flow for pairing, removal, approved-certificate re-add, Agent Pi activation, project/file loading, and opening a selected file.
-- **ℹ️** Editor visibility after a drop, and the Retry or Close dialog, are `docs/bugs/2026-10-10-agent-manager.md`.
+- **ℹ️** Section visibility and the Retry or Close dialog are `docs/bugs/done/2026-10-10-CLOSED-agent-manager.md`. Give-up calling that dialog is `docs/bugs/2026-10-10-desktop-unreachable-give-up.md`.
 - **🔷** A remote desktop can initially report connected, but disabling and re-enabling it fails with `File server: Unacceptable TLS certificate`.
 - **🔷** Disabling a working remote desktop must select Just Ask and hide Agent Pi/editor state; re-enabling currently exposes Agent Pi even when TLS reconnection fails.
 - **🔷** The phone reports that the pairing number was accepted, but the desktop approved-certificate list does not add the phone.
@@ -42,7 +42,7 @@
 - **✔️** Disabling the switch changes only `FilesdClient.state`; unlike removal or unreachable reconnect handling, it does not disconnect the RPC or replace the active Agent Pi session with Just Ask.
 - **✔️** `ConnectionsPage` calls `render_approved` during construction, before the desktop project manager is available, so it returns immediately. `load_config` wires `event.pair` later but neither loads nor refreshes the approved list.
 - **✔️** Runtime reconnect sets state `LIVE` after hello but does not call `ProjectManager.rpc_load_projects_from_db`; the project selector therefore remains empty until startup performs that load.
-- **ℹ️** The editor staying up, the give-up dialog, and where an agent manager lives are `docs/bugs/2026-10-10-agent-manager.md`. `switch_to_session` already emits `agent_deactivated` and `agent_activated` when the agent name changes. That part is in the tree.
+- **ℹ️** The agent manager is in the tree and listens for `client.filesd.unreachable`. Give-up in `reconnect`, the startup unavailable branch, and connection removal still build a Chatter session and show a banner, so the dialog does not run.
 - **✔️** The persistent Android IO watch can call `Bin.Stream.parse` before TLS has decrypted readable application data; `GLib.IOError.WOULD_BLOCK` is currently treated as a fatal transport error instead of a readiness retry.
 - **✔️** `OllmchatWindow.reconnect` checks `DISABLED` only after exhausting probes. A disconnect callback can therefore enter the probe/connect loop while disabled and restore the connection that the user just turned off.
 - **ℹ️** The `File.read` body-size failure is tracked in `docs/bugs/done/2026-10-09-FIXED-file-read-string-limit.md`. It is not part of this lifecycle.
@@ -549,9 +549,9 @@
 - **ℹ️** That tree has not been installed or run on the phone. The 08:30 desktop process was still the 07:55 binary, so the certificate-list load was not in that pass.
 - **ℹ️** The `File.read` body longer than 32767 bytes was split out and closed in `docs/bugs/done/2026-10-09-FIXED-file-read-string-limit.md`. The codec round-trip passed. The phone file open was not repeated.
 - **✔️** `switch_to_session` now emits `agent_deactivated` and `agent_activated` when the agent name changes.
-- **ℹ️** Section visibility and the Retry or Close dialog moved to `docs/bugs/2026-10-10-agent-manager.md`.
+- **ℹ️** The agent manager redesign is closed. See `docs/bugs/done/2026-10-10-CLOSED-agent-manager.md`.
 
 ## Next
 
-- **🔷** ⏳ Install this tree on the phone and desktop, then rerun removal, approved-certificate re-add, disable/enable, the approved list, and project search.
-- **🔷** ⏳ Complete the standalone Android full-flow regression harness.
+- **ℹ️** Closed without a new phone pass. The phone rerun and the regression harness were not done.
+- **ℹ️** Give-up calling the manager continued in `docs/bugs/2026-10-10-desktop-unreachable-give-up.md`.

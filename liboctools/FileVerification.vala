@@ -130,6 +130,13 @@ namespace OLLMtools
 				}
 			} catch (GLib.Error e) {
 				GLib.critical("overlay created failed %s: %s", real_path, e.message);
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					this.manager.rpc.notification(new OLLMrpc.Notification() {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+					return;
+				}
 				this.manager.rpc.notification(new OLLMrpc.Notification() {
 					method = "Banner.show",
 					message = "Could not save overlay file: " + real_path
@@ -203,6 +210,13 @@ namespace OLLMtools
 				}
 			} catch (GLib.Error e) {
 				GLib.critical("overlay modified failed %s: %s", real_path, e.message);
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					this.manager.rpc.notification(new OLLMrpc.Notification() {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+					return;
+				}
 				this.manager.rpc.notification(new OLLMrpc.Notification() {
 					method = "Banner.show",
 					message = "Could not update overlay file: " + real_path
@@ -230,6 +244,13 @@ namespace OLLMtools
 					}
 				} catch (GLib.Error e) {
 					GLib.critical("overlay removed lookup failed %s: %s", real_path, e.message);
+					if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+						this.manager.rpc.notification(new OLLMrpc.Notification() {
+							method = "client.filesd.unreachable",
+							id = e.code
+						});
+						return;
+					}
 					this.manager.rpc.notification(new OLLMrpc.Notification() {
 						method = "Banner.show",
 						message = "Could not remove overlay path: " + real_path
@@ -247,6 +268,13 @@ namespace OLLMtools
 				);
 			} catch (GLib.Error e) {
 				GLib.critical("overlay removed failed %s: %s", real_path, e.message);
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					this.manager.rpc.notification(new OLLMrpc.Notification() {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+					return;
+				}
 				this.manager.rpc.notification(new OLLMrpc.Notification() {
 					method = "Banner.show",
 					message = "Could not remove overlay path: " + real_path

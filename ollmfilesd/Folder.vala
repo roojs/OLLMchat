@@ -47,7 +47,9 @@ namespace OLLMfilesd
 				"fetch_pending_approvals", "sx",
 				"rpc_project_description", "s",
 				"rpc_roots", "s",
-				"fetch_files", "siisSb"
+				"fetch_files", "siisSb",
+				"fetch_children", "s",
+				"fetch_dir", "s"
 			);
 		}
 		/**
@@ -150,6 +152,95 @@ namespace OLLMfilesd
 				return;
 			}
 			this.fetch_files_reply.begin(request, project);
+		}
+
+		/**
+		 * Immediate child folders of ''path''. Files are left out.
+		 * The row is a copy, so the live child list is not sent.
+		 *
+		 * @param request inbound RPC
+		 * @param path folder path
+		 */
+		public void fetch_children(OLLMrpc.Request request, string path)
+		{
+			var folder = this.manager.get_folder_at_path(path);
+			if (folder == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "folder not found"
+				});
+				return;
+			}
+			var list = new Gee.ArrayList<GLib.Object>();
+			foreach (var child in folder.children.items) {
+				if (!(child is Folder)) {
+					continue;
+				}
+				var row = new Folder(this.manager);
+				row.copy_from(child, {
+					"manager", "children", "project-files", "parent", 
+					"points-to", "buffer"
+				});
+				list.add(row);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("o", list),
+				msg = list.size.to_string()
+			});
+		}
+
+		/**
+		 * Files directly inside ''path''. Subfolders are left out.
+		 * Each row is a copy, with size and modified time from disk.
+		 *
+		 * @param request inbound RPC
+		 * @param path folder path
+		 */
+		public void fetch_dir(OLLMrpc.Request request, string path)
+		{
+			var folder = this.manager.get_folder_at_path(path);
+			if (folder == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					msg = "folder not found"
+				});
+				return;
+			}
+			var list = new Gee.ArrayList<GLib.Object>();
+			foreach (var child in folder.children.items) {
+				if (child.delete_id != 0) {
+					continue;
+				}
+				if (child.base_type != "f" && child.base_type != "fa") {
+					continue;
+				}
+				var row = new File(this.manager);
+				row.copy_from((File) child, {
+					"manager", "buffer", "parent", "points-to"
+				});
+				try {
+					var info = GLib.File.new_for_path(row.path).query_info(
+						GLib.FileAttribute.STANDARD_SIZE + ","
+							+ GLib.FileAttribute.TIME_MODIFIED,
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+					row.size = (int64) info.get_size();
+					var modified = info.get_modification_date_time();
+					if (modified != null) {
+						row.last_modified = modified.to_unix();
+					}
+				} catch (GLib.Error e) {
+					row.size = 0;
+				}
+				list.add(row);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("o", list),
+				msg = list.size.to_string()
+			});
 		}
 
 		public void fetch(OLLMrpc.Request request, string path)

@@ -19,10 +19,10 @@
 /**
  * File selector. Replaces {@link OLLMcoder.FileDropdown}.
  *
- * Hidden until a project is chosen. Desktop opens a wide pop-down
- * with Tree, History, and Search. Search appears once the entry has
- * text. Phone and tablet use {@link SelectorPull} and do not copy
- * the desktop tabs.
+ * The resting button shows a file icon. Hidden until a project
+ * is chosen. Desktop opens a wide pop-down on the Tree tab,
+ * with Recent beside it. Phone and tablet use
+ * {@link SelectorPull} and do not copy the desktop tabs.
  *
  * == Example ==
  *
@@ -74,17 +74,23 @@ class FileSelector : Gtk.Box
 	 * Shared phone and tablet surface. Desktop leaves it hidden.
 	 */
 	public SelectorPull pull { get; set; }
-	private Gtk.Label label;
+	/**
+	 * Caption on the file button. The coder screen sets this when
+	 * the editor reports a different open file.
+	 */
+	public Gtk.Label label { get; private set; }
 	private Gtk.Button button;
 	private Gtk.Stack face_stack;
 	private Gtk.SearchEntry entry;
 	private Gtk.ScrolledWindow scroll;
 	private Gtk.Stack pages;
 	private Gtk.ListBox history_rows;
-	private Gtk.ListBox search_rows;
 	private Gtk.ListBox pull_rows;
+	/**
+	 * Tree page. Folder rows arrive in {@link FileTree.folders}.
+	 */
+	public FileTree tree { get; private set; }
 	private uint file_wait = 0;
-	private int search_epoch = 0;
 	private int history_epoch = 0;
 	private int pull_epoch = 0;
 
@@ -123,7 +129,7 @@ class FileSelector : Gtk.Box
 			break;
 		}
 		var face = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
-		face.append(new Gtk.Image.from_icon_name("system-search-symbolic"));
+		face.append(new Gtk.Image.from_icon_name("text-x-generic-symbolic"));
 		face.append(this.label);
 		this.button = new Gtk.Button() {
 			child = face,
@@ -145,26 +151,8 @@ class FileSelector : Gtk.Box
 		this.face_stack.add_named(this.entry, "entry");
 		this.append(this.face_stack);
 
-		var tree_note = new Gtk.Label(
-			"Folder tree is not loaded on the client. The tree model stays in CODER-4.2.1."
-		) {
-			xalign = 0,
-			halign = Gtk.Align.START,
-			wrap = true,
-			margin_start = 12,
-			margin_end = 12,
-			margin_top = 12,
-			margin_bottom = 12,
-		};
-		tree_note.add_css_class("caption");
-		tree_note.add_css_class("dim-label");
+		this.tree = new FileTree();
 		this.history_rows = new Gtk.ListBox() {
-			selection_mode = Gtk.SelectionMode.NONE,
-			activate_on_single_click = true,
-			hexpand = true,
-			can_focus = false,
-		};
-		this.search_rows = new Gtk.ListBox() {
 			selection_mode = Gtk.SelectionMode.NONE,
 			activate_on_single_click = true,
 			hexpand = true,
@@ -175,26 +163,35 @@ class FileSelector : Gtk.Box
 			hhomogeneous = true,
 			vhomogeneous = false,
 		};
-		this.pages.add_titled(tree_note, "tree", "Tree");
-		this.pages.add_titled(this.history_rows, "history", "History");
-		this.pages.add_titled(this.search_rows, "search", "Search");
-		this.pages.get_page(this.search_rows).visible = false;
-		this.pages.visible_child_name = "history";
+		this.pages.add_titled(this.tree, "tree", "Tree");
+		this.pages.add_titled(this.history_rows, "history", "Recent");
+		this.pages.visible_child_name = "tree";
+		this.manager.rpc.notification.connect((notif) => {
+			if (notif.method != "event.filesystem.scan_end") {
+				return;
+			}
+			if (!this.project.is_project) {
+				return;
+			}
+			if (notif.args.get(0).get_string() != this.project.path) {
+				return;
+			}
+			this.tree.folders.loaded.remove(this.project.path);
+			this.tree.folders.load.begin(this.project);
+		});
 		var switcher = new Gtk.StackSwitcher() {
 			stack = this.pages,
 			hexpand = true,
 		};
 		this.scroll = new Gtk.ScrolledWindow() {
 			child = this.pages,
-			min_content_width = 560,
-			max_content_width = 560,
 			propagate_natural_height = true,
 			propagate_natural_width = true,
 			hscrollbar_policy = Gtk.PolicyType.NEVER,
 			can_focus = false,
 		};
 		var frame = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-			width_request = 560,
+			hexpand = true,
 		};
 		frame.append(switcher);
 		frame.append(this.scroll);
@@ -225,6 +222,7 @@ class FileSelector : Gtk.Box
 		this.popover.map.connect(() => {
 			GLib.Idle.add(() => {
 				this.place();
+				this.pages.visible_child_name = "tree";
 				return false;
 			});
 		});
@@ -246,31 +244,8 @@ class FileSelector : Gtk.Box
 		this.history_rows.row_activated.connect((line) => {
 			this.choose(line);
 		});
-		this.search_rows.row_activated.connect((line) => {
-			this.choose(line);
-		});
 		this.pull_rows.row_activated.connect((line) => {
 			this.choose(line);
-		});
-		this.entry.search_changed.connect(() => {
-			var query = this.entry.text.strip();
-			var search_page = this.pages.get_page(this.search_rows);
-			if (query == "") {
-				search_page.visible = false;
-				if (this.pages.visible_child_name == "search") {
-					this.pages.visible_child_name = "history";
-				}
-				return;
-			}
-			search_page.visible = true;
-			this.pages.visible_child_name = "search";
-			this.schedule(query, this.search_rows, false, "search");
-		});
-		this.pages.notify["visible-child-name"].connect(() => {
-			if (this.pages.visible_child_name != "search") {
-				return;
-			}
-			this.schedule(this.entry.text.strip(), this.search_rows, false, "search");
 		});
 		this.pull.search.search_changed.connect(() => {
 			if (this.pull.kind != "file") {
@@ -318,27 +293,58 @@ class FileSelector : Gtk.Box
 			default:
 				break;
 			}
-			this.open_desktop();
+			this.opened();
+			this.face_stack.visible_child_name = "entry";
+			/* After the click, so autohide does not treat it as outside. */
+			GLib.Idle.add(() => {
+				this.place();
+				this.pages.visible_child_name = "tree";
+				if (this.project.is_project) {
+					this.tree.folders.load.begin(this.project);
+				}
+				this.entry.text = "";
+				this.history_epoch++;
+				this.load("", this.history_rows, true, this.history_epoch, "history");
+				this.popover.popup();
+				this.entry.grab_focus();
+				this.entry.set_position(-1);
+				this.entry.select_region(-1, -1);
+				return false;
+			});
 		});
 		this.notify["project"].connect(() => {
 			if (!this.project.is_project) {
 				return;
 			}
-			this.search_epoch++;
 			this.history_epoch++;
 			this.pull_epoch++;
 			this.clear(this.history_rows);
-			this.clear(this.search_rows);
 			this.clear(this.pull_rows);
-			this.pages.get_page(this.search_rows).visible = false;
-			this.pages.visible_child_name = "history";
+			this.pages.visible_child_name = "tree";
 			this.label.label = "Select file";
 			this.button.tooltip_text = "";
 			this.visible = true;
 			if (this.form != "desktop") {
 				return;
 			}
-			this.open_desktop();
+			this.opened();
+			this.face_stack.visible_child_name = "entry";
+			/* After the click, so autohide does not treat it as outside. */
+			GLib.Idle.add(() => {
+				this.place();
+				this.pages.visible_child_name = "tree";
+				if (this.project.is_project) {
+					this.tree.folders.load.begin(this.project);
+				}
+				this.entry.text = "";
+				this.history_epoch++;
+				this.load("", this.history_rows, true, this.history_epoch, "history");
+				this.popover.popup();
+				this.entry.grab_focus();
+				this.entry.set_position(-1);
+				this.entry.select_region(-1, -1);
+				return false;
+			});
 		});
 	}
 
@@ -440,7 +446,7 @@ class FileSelector : Gtk.Box
 	 * @param target List that receives the page
 	 * @param recent History filter
 	 * @param epoch Generation captured when the fetch started
-	 * @param slot ''search'', ''history'', or ''pull''
+	 * @param slot ''history'' or ''pull''
 	 */
 	private void load(
 		string query,
@@ -450,25 +456,20 @@ class FileSelector : Gtk.Box
 		string slot
 	) {
 		this.project.fetch_files.begin(0, 50, query, {}, false, (obj, res) => {
+			//FIXME - wrong way to do this..
 			switch (slot) {
-			case "search":
-				if (epoch != this.search_epoch) {
-					return;
-				}
-				break;
+				case "history":
+					if (epoch != this.history_epoch) {
+						return;
+					}
+					break;
 
-			case "history":
-				if (epoch != this.history_epoch) {
-					return;
+				default:
+					if (epoch != this.pull_epoch) {
+						return;
+					}
+					break;
 				}
-				break;
-
-			default:
-				if (epoch != this.pull_epoch) {
-					return;
-				}
-				break;
-			}
 			OLLMrpc.Response response;
 			try {
 				response = this.project.fetch_files.end(res);
@@ -486,7 +487,7 @@ class FileSelector : Gtk.Box
 	 * @param query Daemon filter
 	 * @param target List that receives the page
 	 * @param recent History filter
-	 * @param slot ''search'', ''history'', or ''pull''
+	 * @param slot ''history'' or ''pull''
 	 */
 	private void schedule(string query, Gtk.ListBox target, bool recent, string slot)
 	{
@@ -499,21 +500,16 @@ class FileSelector : Gtk.Box
 				return false;
 			}
 			switch (slot) {
-			case "search":
-				this.search_epoch++;
-				this.load(query, target, recent, this.search_epoch, slot);
-				break;
+				case "history":
+					this.history_epoch++;
+					this.load(query, target, recent, this.history_epoch, slot);
+					break;
 
-			case "history":
-				this.history_epoch++;
-				this.load(query, target, recent, this.history_epoch, slot);
-				break;
-
-			default:
-				this.pull_epoch++;
-				this.load(query, target, recent, this.pull_epoch, slot);
-				break;
-			}
+				default:
+					this.pull_epoch++;
+					this.load(query, target, recent, this.pull_epoch, slot);
+					break;
+				}
 			return false;
 		});
 	}
@@ -538,18 +534,10 @@ class FileSelector : Gtk.Box
 			this.popover.popdown();
 			return true;
 		}
-		var lines = this.history_rows;
-		switch (this.pages.visible_child_name) {
-			case "search":
-				lines = this.search_rows;
-				break;
-
-			case "history":
-				break;
-
-			default:
-				return false;
+		if (this.pages.visible_child_name != "history") {
+			return false;
 		}
+		var lines = this.history_rows;
 		switch (keyval) {
 			case Gdk.Key.Return:
 			case Gdk.Key.KP_Enter:
@@ -642,8 +630,8 @@ class FileSelector : Gtk.Box
 	}
 
 	/**
-	 * Size the file pop-down to the window. Left and right sit inset
-	 * from the window edges. Height fills from under this control to
+	 * Size the file pop-down to the window. The width matches the
+	 * window. Height fills from under this control to
 	 * the bottom of the window, so the source view underneath is
 	 * covered. The minimum lives on the popover contents, which the
 	 * header row does not measure.
@@ -658,35 +646,29 @@ class FileSelector : Gtk.Box
 		if (!this.compute_bounds(root, out bounds)) {
 			return;
 		}
-		var pad = 12;
-		var width = root.get_width() - pad * 2;
-		var nudge = 0;
+		var width = root.get_width();
+		var shift = 0;
 		if (this.popover.get_mapped()) {
 			Graphene.Rect pop_bounds;
 			if (this.popover.compute_bounds(root, out pop_bounds)) {
-				var left_over = pad - (int) pop_bounds.origin.x;
-				var right_edge = (int) (pop_bounds.origin.x + pop_bounds.size.width);
-				var right_over = right_edge - (root.get_width() - pad);
-				if (left_over > 0) {
-					nudge = left_over;
-					width = width - left_over;
+				var chrome = (int) pop_bounds.size.width - this.scroll.get_parent().get_width();
+				if (chrome > 0 && chrome < width) {
+					width = width - chrome;
 				}
-				if (right_over > 0) {
-					width = width - right_over;
-				}
+				shift = (int) pop_bounds.origin.x;
 			}
 		}
 		if (width < 1) {
 			width = 1;
 		}
 		var point = Gdk.Rectangle();
-		point.x = pad - (int) bounds.origin.x + nudge;
+		point.x = -(int) bounds.origin.x - shift;
 		point.y = this.get_height();
 		point.width = width;
 		point.height = 1;
 		this.popover.set_pointing_to(point);
 		var anchor = (int) bounds.origin.y + (int) bounds.size.height;
-		var room = root.get_height() - anchor - pad;
+		var room = root.get_height() - anchor - 12;
 		if (this.popover.get_mapped() && this.scroll.get_height() > 0) {
 			Graphene.Rect pop_bounds;
 			if (this.popover.compute_bounds(root, out pop_bounds)) {
@@ -710,26 +692,4 @@ class FileSelector : Gtk.Box
 		this.scroll.max_content_height = room;
 	}
 
-	/**
-	 * Turn the file button into the search entry and open the pop-down.
-	 * History loads immediately. Search waits until the entry has text.
-	 */
-	private void open_desktop()
-	{
-		this.opened();
-		this.face_stack.visible_child_name = "entry";
-		/* After the click, so autohide does not treat it as outside. */
-		GLib.Idle.add(() => {
-			this.place();
-			this.pages.visible_child_name = "history";
-			this.entry.text = "";
-			this.history_epoch++;
-			this.load("", this.history_rows, true, this.history_epoch, "history");
-			this.popover.popup();
-			this.entry.grab_focus();
-			this.entry.set_position(-1);
-			this.entry.select_region(-1, -1);
-			return false;
-		});
-	}
 }

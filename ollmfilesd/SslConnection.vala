@@ -82,8 +82,8 @@ namespace OLLMfilesd
 				return true;
 			}
 			this.reply(request, new OLLMrpc.Response() {
-				error = new OLLMrpc.Error(
-					(int) OLLMrpc.RpcErrorCode.INVALID_REQUEST, "certificate not registered")
+				error = new OLLMrpc.Error((int) OLLMrpc.RpcErrorCode.CERT_NOT_REGISTERED,
+					"certificate not registered")
 			});
 			return false;
 		}

@@ -29,6 +29,7 @@ class TestSourceDiff : TestAppBase
 	private static bool opt_selectors = false;
 	private static bool opt_phone = false;
 	private static bool opt_tablet = false;
+	private static bool opt_test_flow = false;
 
 	private Gtk.Window window;
 	private Gtk.Box root_box;
@@ -46,6 +47,7 @@ class TestSourceDiff : TestAppBase
 	private Gtk.Label remove_active_swatch;
 	private Gtk.Box selector_row;
 	private SelectorPull selector_pull;
+	private CoderView coder;
 	private bool has_selector = false;
 	private bool show_pull = false;
 
@@ -66,6 +68,9 @@ Options:
                              File pairs are optional in this mode.
   --phone                    Selector subtest, phone pull-over and file-name label
   --tablet                   Selector subtest, tablet pull-over and relative path
+  --test-flow                Selector test flow. After the window is shown,
+                             open the first project and quit when the folder
+                             tree has rows
 
 Click a red or green line to make that hunk the deep color. Click unchanged
 text to clear it and hide Accept and Reject. Shades are .oc-diff-add,
@@ -80,6 +85,7 @@ Examples:
       tests/source-diff/review-smoke-baseline.txt tests/source-diff/review-smoke-current.txt \\
       tests/source-diff/hello-baseline.txt tests/source-diff/hello-current.txt
   {ARG} --selectors
+  {ARG} --test-flow
   {ARG} --phone
   {ARG} --tablet
 """; }
@@ -97,7 +103,7 @@ Examples:
 	protected override OptionContext app_options()
 	{
 		var opt_context = new OptionContext(this.get_app_name());
-		var opts = new OptionEntry[7];
+		var opts = new OptionEntry[8];
 		opts[0] = base_options[0];
 		opts[1] = base_options[1];
 		opts[2] = { "mock-inactive", 0, 0, OptionArg.NONE, ref opt_mock_inactive,
@@ -108,7 +114,9 @@ Examples:
 			"Selector subtest with the phone pull-over", null };
 		opts[5] = { "tablet", 0, 0, OptionArg.NONE, ref opt_tablet,
 			"Selector subtest with the tablet pull-over", null };
-		opts[6] = { null };
+		opts[6] = { "test-flow", 0, 0, OptionArg.NONE, ref opt_test_flow,
+			"Selector test flow: open a project and quit when folders arrive", null };
+		opts[7] = { null };
 		opt_context.add_main_entries(opts, null);
 		return opt_context;
 	}
@@ -118,7 +126,7 @@ Examples:
 		if (opt_phone && opt_tablet) {
 			return "ERROR: Pass only one of --phone or --tablet.\n";
 		}
-		if (opt_phone || opt_tablet) {
+		if (opt_phone || opt_tablet || opt_test_flow) {
 			opt_selectors = true;
 		}
 		if ((args.length - 1) % 2 != 0) {
@@ -128,6 +136,96 @@ Examples:
 			return "ERROR: At least one baseline/current pair required.\nUsage: %s <baseline> <current> [...]\n".printf(args[0]);
 		}
 		return null;
+	}
+
+	/**
+	 * Open the first project after the window is shown.
+	 *
+	 * Activates the first project row, then quits ''loop''
+	 * when folder rows arrive or the wait ends. The caller
+	 * fails the run when the folder list stayed empty.
+	 *
+	 * @param command_line Prints the project path and folder count
+	 * @param loop Selector main loop to quit when the flow finishes
+	 */
+	private void test_flow(
+		GLib.ApplicationCommandLine command_line,
+		GLib.MainLoop loop
+	) {
+		var step = 0;
+		GLib.Timeout.add(400, () => {
+			if (step == 0) {
+				this.coder.projects.button.clicked();
+				step = 1;
+				return true;
+			}
+			if (step == 1) {
+				var line = this.coder.projects.rows.get_row_at_index(0);
+				var index = 0;
+				while (line != null && !line.activatable) {
+					index++;
+					line = this.coder.projects.rows.get_row_at_index(index);
+				}
+				if (line == null) {
+					command_line.printerr("no project row\n");
+					command_line.set_exit_status(1);
+					loop.quit();
+					return false;
+				}
+				var picked = line.get_child().get_data<OLLMfiles.Folder>("folder");
+				if (picked != null) {
+					command_line.print("project %s\n", picked.path);
+				}
+				this.coder.projects.rows.row_activated(line);
+				step = 2;
+				return true;
+			}
+			step++;
+			var count = this.coder.files.tree.folders.flat.size;
+			if ((count == 0 || this.coder.files.tree.folders.loading) && step < 40) {
+				return true;
+			}
+			command_line.print("folders=%u loading=%s\n", count,
+				this.coder.files.tree.folders.loading.to_string());
+			if (count == 0 || this.coder.files.tree.folders.loading) {
+				command_line.set_exit_status(1);
+				loop.quit();
+				return false;
+			}
+			var column = this.coder.files.tree.get_first_child() as Gtk.Box;
+			var pane = column.get_first_child().get_next_sibling() as Gtk.Paned;
+			var tree_column = pane.start_child as Gtk.Box;
+			var scrolled = tree_column.get_first_child() as Gtk.ScrolledWindow;
+			var selection = ((Gtk.ListView) scrolled.child).model as Gtk.SingleSelection;
+			var shown = selection.model as Gtk.TreeListModel;
+			var first = "";
+			var previous = "";
+			var saw = false;
+			var n = shown.get_n_items();
+			for (var i = 0; i < n; i++) {
+				var row = (Gtk.TreeListRow) shown.get_item(i);
+				if (row.depth != 0) {
+					continue;
+				}
+				var name = ((OLLMfiles.Folder) row.item).path_basename;
+				if (!saw) {
+					first = name;
+				}
+				if (saw && previous.casefold().collate(name.casefold()) > 0) {
+					command_line.printerr("unsorted %s then %s\n", previous, name);
+					command_line.set_exit_status(1);
+				}
+				previous = name;
+				saw = true;
+			}
+			if (!saw) {
+				command_line.printerr("no root rows\n");
+				command_line.set_exit_status(1);
+			}
+			command_line.print("order=%s .. %s\n", first, previous);
+			loop.quit();
+			return false;
+		});
 	}
 
 	protected override async void run_test(ApplicationCommandLine command_line, string[] args) throws Error
@@ -181,58 +279,42 @@ Examples:
 			if (opt_tablet) {
 				form = "tablet";
 			}
-			this.selector_pull = new SelectorPull(form);
-			this.selector_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
-				valign = Gtk.Align.START,
-				margin_start = 6,
-				margin_end = 6,
-				margin_top = 4,
-				margin_bottom = 4,
-			};
-			var projects = new ProjectSelector(manager, form, this.selector_pull);
-			var files = new FileSelector(manager, form, this.selector_pull);
-			var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-				hexpand = true,
-			};
-			this.selector_row.append(projects);
-			this.selector_row.append(spacer);
-			this.selector_row.append(files);
-			files.notify["visible"].connect(() => {
-				spacer.visible = !files.visible;
-			});
-			var history = new Gtk.Button.from_icon_name("task-due") {
-				tooltip_text = "History",
-				hexpand = false,
-				valign = Gtk.Align.CENTER,
-			};
-			history.add_css_class("flat");
-			this.selector_row.append(history);
-			projects.opened.connect(() => {
-				files.popover.popdown();
-			});
-			files.opened.connect(() => {
-				projects.popover.popdown();
-			});
-			projects.chosen.connect((folder) => {
-				files.project = folder;
-			});
-			this.has_selector = true;
 			this.show_pull = form != "desktop";
 			if (this.pair_baselines.length == 0) {
-				this.source_view = new OLLMcoder.SourceView(manager) {
-					hexpand = true,
-					vexpand = true,
+				var coder = new CoderView(manager, form);
+				this.selector_pull = coder.pull;
+				this.coder = coder;
+			}
+			if (this.pair_baselines.length > 0) {
+				this.selector_pull = new SelectorPull(form);
+				this.selector_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+					valign = Gtk.Align.START,
+					margin_start = 6,
+					margin_end = 6,
+					margin_top = 4,
+					margin_bottom = 4,
 				};
-				/* Product header stays hidden. The test row is the header. */
-				this.source_view.get_first_child().visible = false;
-				var editor = (Gtk.Overlay) this.source_view.get_first_child().get_next_sibling();
-				editor.child.visible = true;
-				manager.active_file_changed.connect((file) => {
-					if (file == null) {
-						return;
-					}
-					this.source_view.open_file.begin(file);
+				var projects = new ProjectSelector(manager, form, this.selector_pull);
+				var files = new FileSelector(manager, form, this.selector_pull);
+				var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+					hexpand = true,
+				};
+				this.selector_row.append(projects);
+				this.selector_row.append(spacer);
+				this.selector_row.append(files);
+				files.notify["visible"].connect(() => {
+					spacer.visible = !files.visible;
 				});
+				projects.opened.connect(() => {
+					files.popover.popdown();
+				});
+				files.opened.connect(() => {
+					projects.popover.popdown();
+				});
+				projects.chosen.connect((folder) => {
+					files.project = folder;
+				});
+				this.has_selector = true;
 			}
 		}
 		if (this.pair_baselines.length == 0) {
@@ -245,21 +327,15 @@ Examples:
 				this.window.default_width = 400;
 				this.window.default_height = 700;
 			}
-			var column = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-				hexpand = true,
-				vexpand = true,
-			};
-			column.append(this.selector_row);
-			column.append(this.source_view);
 			if (!this.show_pull) {
-				this.window.child = column;
+				this.window.child = this.coder;
 			}
 			if (this.show_pull) {
 				var cover = new Gtk.Overlay() {
 					hexpand = true,
 					vexpand = true,
 				};
-				cover.set_child(column);
+				cover.set_child(this.coder);
 				cover.add_overlay(this.selector_pull);
 				this.window.child = cover;
 			}
@@ -268,9 +344,23 @@ Examples:
 				selector_loop.quit();
 				return false;
 			});
-			this.window.present();
+		this.window.present();
+		if (opt_test_flow) {
+			this.test_flow(command_line, selector_loop);
+		}
+		// The load-projects reply resumes this method inside the
+		// socket read callback. Running the window loop there holds
+		// that callback, so the activate reply is never read.
+		GLib.Idle.add(() => {
 			selector_loop.run();
-			return;
+			this.run_test.callback();
+			return false;
+		});
+		yield;
+		if (opt_test_flow && this.coder.files.tree.folders.flat.size == 0) {
+			throw new GLib.IOError.FAILED("folder list stayed empty");
+		}
+		return;
 		}
 		this.window = new Gtk.Window() {
 			title = this.pair_titles[0],

@@ -76,6 +76,8 @@ namespace OLLMapp.Agent
 		 * window leaves it false and resizes with {@link WindowPane}.
 		 */
 		public bool is_android { get; construct; default = false; }
+		/** True while the desktop-unavailable dialog is open. */
+		private bool unavailable_open = false;
 		/** Browser button on the editor strip. */
 		protected Gtk.Button browser_picker;
 		/** Editor button on the editor strip. */
@@ -158,7 +160,7 @@ namespace OLLMapp.Agent
 			desktop.notification.connect((notif) => {
 				switch (notif.method) {
 					case "client.filesd.unreachable":
-						this.on_unavailable();
+						this.on_unavailable(notif.id);
 						break;
 
 					default:
@@ -297,13 +299,27 @@ namespace OLLMapp.Agent
 			this.schedule_pane_update(true);
 		}
 
-		private void on_unavailable()
+		/**
+		 * Ask Retry or Close after a desktop probe misses.
+		 *
+		 * Close marks the file connection disabled and starts Chatter.
+		 * The Enabled switch does not call this.
+		 *
+		 * @param code hello {@link OLLMrpc.RpcErrorCode}, or zero when
+		 *   the probe never got an RPC error
+		 */
+		private void on_unavailable(int code)
 		{
+			if (!this.is_android || this.unavailable_open) {
+				return;
+			}
+			this.unavailable_open = true;
 			var desktop = (OLLMchat.ChatDesktopInterface) this.shell;
-			var alert = new Adw.AlertDialog(
-				"Desktop unavailable",
-				"The desktop environment is unavailable."
-			);
+			var body = "The desktop environment is unavailable.";
+			if (code == (int) OLLMrpc.RpcErrorCode.CERT_NOT_REGISTERED) {
+				body = "This phone is not registered with the desktop.";
+			}
+			var alert = new Adw.AlertDialog("Desktop unavailable", body);
 			alert.add_response("close", "Close");
 			alert.add_response("retry", "Retry");
 			alert.set_response_appearance(
@@ -312,6 +328,7 @@ namespace OLLMapp.Agent
 			alert.set_close_response("close");
 			alert.set_default_response("retry");
 			alert.choose.begin((Gtk.Window) this.shell, null, (obj, res) => {
+				this.unavailable_open = false;
 				var response = alert.choose.end(res);
 				if (response == "retry") {
 					desktop.notification(new OLLMrpc.Notification() {
@@ -321,6 +338,18 @@ namespace OLLMapp.Agent
 				}
 				if (response != "close") {
 					return;
+				}
+				this.shell.history_manager.config.filesd_client.state =
+					OLLMchat.Settings.FilesdClient.State.DISABLED;
+				this.shell.history_manager.config.save();
+				if (this.is_android) {
+					var window = (OLLMapp.OllmchatWindow) this.shell;
+					if (window.project_manager != null) {
+						window.project_manager.replace_rpc(new OLLMrpc.Client(
+							GLib.Path.build_filename(
+								GLib.Environment.get_user_data_dir(), "ollmchat"),
+							"ollmfilesd.pid", "ollmfilesd.sock"));
+					}
 				}
 				var empty_session = this.shell.history_manager.create_new_session();
 				empty_session.project_path =

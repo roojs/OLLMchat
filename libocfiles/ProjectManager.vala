@@ -188,17 +188,54 @@ namespace OLLMfiles
 		/**
 		 * Activate a project in this client ProjectManager.
 		 *
-		 * Updates local ''is_active'' / {@link active_project} for UI.
-		 * RPC ''ProjectManager.rpc_activate_project'' asks the daemon to
-		 * load/scan/index that path — not to persist UI selection
-		 * (Config2 ''Settings.Window'' owns that).
+		 * Waits until ''ProjectManager.rpc_activate_project'' replies,
+		 * then updates ''is_active'' / {@link active_project}. The
+		 * daemon replies before its filesystem scan, so this returns
+		 * quickly and the scan keeps running there. Callers that send
+		 * another RPC must yield this method first: the client allows
+		 * one request in flight, and a call queued while this one is
+		 * still running waits for it.
+		 *
+		 * The RPC does not persist UI selection (Config2
+		 * ''Settings.Window'' owns that).
 		 *
 		 * @param project The project folder to activate (must have is_project = true)
+		 * @param pending When false, do not send ''Folder.fetch_pending_approvals''
 		 */
-		public void activate_project(Folder? project)
+		public async void activate_project(Folder? project, bool pending = true)
 		{
 			if (this.active_project == project && project != null && project.is_active) {
 				GLib.debug ("opening project skipped already active path=%s", project.path);
+				return;
+			}
+
+			this.disable_initial_scan = false;
+			if (project != null && project.is_project) {
+				GLib.debug ("opening project path=%s", project.path);
+			}
+			try {
+				yield this.rpc.call(new OLLMrpc.Request() {
+					method = "ProjectManager.rpc_activate_project",
+					args = OLLMrpc.args(
+						"sb",
+						project != null ? project.path : "",
+						this.disable_initial_scan
+					)
+				});
+			} catch (GLib.Error e) {
+				GLib.critical ("activate project failed %s: %s",
+					project != null ? project.path : "", e.message);
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					this.rpc.notification (new OLLMrpc.Notification () {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+					return;
+				}
+				this.rpc.notification (new OLLMrpc.Notification () {
+					method = "Banner.show",
+					message = "Could not activate project: " + e.message
+				});
 				return;
 			}
 
@@ -213,36 +250,14 @@ namespace OLLMfiles
 
 			this.active_project = project;
 			if (project != null && project.is_project) {
-				GLib.debug ("opening project path=%s", project.path);
 				project.is_active = true;
 			}
-			this.disable_initial_scan = false;
 			this.active_project_changed(project);
 
-			if (project != null && project.is_project) {
+			if (pending && project != null && project.is_project) {
 				this.review_files.clear();
 				this.review_files.refresh.begin();
 			}
-
-			this.rpc.call.begin(new OLLMrpc.Request() {
-				method = "ProjectManager.rpc_activate_project",
-				args = OLLMrpc.args(
-					"sb",
-					project != null ? project.path : "",
-					this.disable_initial_scan
-				)
-			}, (obj, res) => {
-				try {
-					this.rpc.call.end(res);
-				} catch (GLib.Error e) {
-					GLib.critical ("activate project failed %s: %s",
-						project != null ? project.path : "", e.message);
-					this.rpc.notification (new OLLMrpc.Notification () {
-						method = "Banner.show",
-						message = "Could not activate project: " + e.message
-					});
-				}
-			});
 		}
 		
 		
@@ -362,6 +377,13 @@ namespace OLLMfiles
 				} catch (GLib.Error e) {
 					GLib.critical ("remove project failed %s: %s",
 						project.path, e.message);
+					if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+						this.rpc.notification (new OLLMrpc.Notification () {
+							method = "client.filesd.unreachable",
+							id = e.code
+						});
+						return;
+					}
 					this.rpc.notification (new OLLMrpc.Notification () {
 						method = "Alert.show",
 						message = "Could not remove project from daemon: "
@@ -391,7 +413,7 @@ namespace OLLMfiles
 			}
 			var project = this.projects.path_map.get(project_path);
 			GLib.debug("restoring window config project path=%s", project.path);
-			this.activate_project(project);
+			yield this.activate_project(project);
 			if (file_path == "") {
 				return;
 			}
@@ -403,6 +425,13 @@ namespace OLLMfiles
 				}
 			} catch (GLib.Error e) {
 				GLib.critical("restore open file failed %s: %s", file_path, e.message);
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					this.rpc.notification(new OLLMrpc.Notification() {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+					return;
+				}
 				this.rpc.notification(new OLLMrpc.Notification() {
 					method = "Alert.show",
 					message = "Could not restore last file: " + e.message
@@ -438,6 +467,13 @@ namespace OLLMfiles
 			} catch (GLib.Error e) {
 				GLib.critical ("check_active_file_changed: %s: %s",
 					this.active_file.path, e.message);
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					this.rpc.notification (new OLLMrpc.Notification () {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+					return FileUpdateStatus.NO_CHANGE;
+				}
 				this.rpc.notification (new OLLMrpc.Notification () {
 					method = "Banner.show",
 					message = "Could not check file on disk: " + e.message
@@ -461,6 +497,13 @@ namespace OLLMfiles
 			} catch (GLib.Error e) {
 				GLib.critical ("write_buffer_to_disk: %s: %s",
 					this.active_file.path, e.message);
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					this.rpc.notification (new OLLMrpc.Notification () {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+					return;
+				}
 				this.rpc.notification (new OLLMrpc.Notification () {
 					method = "Alert.show",
 					message = "Could not save file: " + e.message
@@ -482,6 +525,13 @@ namespace OLLMfiles
 			} catch (GLib.Error e) {
 				GLib.critical ("reload_file_from_disk: %s: %s",
 					this.active_file.path, e.message);
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					this.rpc.notification (new OLLMrpc.Notification () {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+					return;
+				}
 				this.rpc.notification (new OLLMrpc.Notification () {
 					method = "Banner.show",
 					message = "Could not reload file: " + e.message

@@ -984,7 +984,7 @@ namespace OLLMcoder
 		 */
 		public async void open_project(OLLMfiles.Folder project)
 		{
-			this.manager.activate_project(project);
+			yield this.manager.activate_project(project);
 
 			yield this.file_dropdown.update_project(project);
 

@@ -19,9 +19,10 @@
 /**
  * Project selector. Replaces {@link OLLMcoder.ProjectDropdown}.
  *
- * Resting state is a flat button. A desktop click turns it into a
- * search entry and opens a left-aligned pop-down. Recent is the
- * default. A project is recent when a file under it has been viewed.
+ * Resting state is a flat button with a folder icon. A desktop
+ * click turns it into a search entry and opens a left-aligned
+ * pop-down. Recent is the default. A project is recent when a
+ * file under it has been viewed.
  * That time is the newest file ''last_viewed'', not the project row.
  * All lists every name. Phone and tablet open {@link SelectorPull}.
  *
@@ -60,11 +61,20 @@ class ProjectSelector : Gtk.Box
 	private string form = "desktop";
 	private SelectorPull pull;
 	private Gtk.Label label;
-	private Gtk.Button button;
+
+	/**
+	 * Resting project button. A click opens the pop-down.
+	 */
+	public Gtk.Button button { get; private set; }
+
 	private Gtk.Stack stack;
 	private Gtk.SearchEntry entry;
 	private Gtk.ScrolledWindow scroll;
-	private Gtk.ListBox rows;
+
+	/**
+	 * Desktop project rows. Activating a row chooses that project.
+	 */
+	public Gtk.ListBox rows { get; private set; }
 	private Gtk.ListBox pull_rows;
 
 	/**
@@ -102,7 +112,7 @@ class ProjectSelector : Gtk.Box
 			break;
 		}
 		var face = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
-		face.append(new Gtk.Image.from_icon_name("system-search-symbolic"));
+		face.append(new Gtk.Image.from_icon_name("folder-symbolic"));
 		face.append(this.label);
 		this.button = new Gtk.Button() {
 			child = face,
@@ -469,10 +479,10 @@ class ProjectSelector : Gtk.Box
 			});
 		});
 		this.rows.row_activated.connect((line) => {
-			this.choose(line);
+			this.choose.begin(line);
 		});
 		this.pull_rows.row_activated.connect((line) => {
-			this.choose(line);
+			this.choose.begin(line);
 		});
 		this.entry.search_changed.connect(() => {
 			desktop_filter.changed(Gtk.FilterChange.DIFFERENT);
@@ -656,7 +666,7 @@ class ProjectSelector : Gtk.Box
 	 *
 	 * @param line Row that holds the folder, or an empty-state row
 	 */
-	private void choose(Gtk.ListBoxRow line)
+	private async void choose(Gtk.ListBoxRow line)
 	{
 		var folder = line.get_child().get_data<OLLMfiles.Folder>("folder");
 		if (folder == null) {
@@ -666,7 +676,10 @@ class ProjectSelector : Gtk.Box
 		if (this.form != "phone") {
 			this.button.tooltip_text = folder.path;
 		}
-		this.manager.activate_project(folder);
+		yield this.manager.activate_project(folder, false);
+		if (this.manager.active_project != folder) {
+			return;
+		}
 		this.popover.popdown();
 		this.pull.visible = false;
 		this.chosen(folder);

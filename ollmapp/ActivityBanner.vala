@@ -135,17 +135,13 @@ namespace OLLMapp
 
 				case "event.filesystem.scan_start":
 					this.label.label = "Filesystem scan: %s…".printf(
-						GLib.Path.get_basename(notif.message));
+						GLib.Path.get_basename(notif.args.get(0).get_string()));
 					this.show();
 					break;
 
 				case "event.filesystem.scan_end":
-					var fs_end_space = notif.message.index_of(" ");
-					if (fs_end_space < 0) {
-						return;
-					}
-					var fs_file_count = int.parse(notif.message.substring(0, fs_end_space));
-					this.label.label = "Filesystem scan ended — %d files".printf(fs_file_count);
+					var fs_file_count = notif.args.get(1).get_uint();
+					this.label.label = "Filesystem scan ended — %u files".printf(fs_file_count);
 					this.hide();
 					break;
 

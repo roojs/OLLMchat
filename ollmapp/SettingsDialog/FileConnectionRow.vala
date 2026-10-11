@@ -53,10 +53,7 @@ namespace OLLMapp.SettingsDialog
 		{
 			this.client = client;
 			this.win = win;
-			var subtitle = "Requested";
-			if (client.state != FilesdClient.State.REQUESTED) {
-				subtitle = "Active";
-			}
+			var subtitle = client.state.label();
 			this.expander = new Adw.ExpanderRow() {
 				title = "Remote Desktop: " + client.url,
 				subtitle = subtitle,
@@ -127,13 +124,20 @@ namespace OLLMapp.SettingsDialog
 					this.win.chat_widget.switch_to_session.begin(empty);
 					return;
 				}
-				this.win.reconnect.begin();
+				this.win.reconnect.begin(false);
 #else
 				if (this.client.state != FilesdClient.State.ENABLED) {
 					return;
 				}
 				this.reconnect.begin(true);
 #endif
+			});
+			this.client.notify["state"].connect(() => {
+				var label = this.client.state.label();
+				this.expander.subtitle = label;
+				this.status_label.label = label;
+				this.enabled_switch.active =
+					this.client.state != FilesdClient.State.DISABLED;
 			});
 			this.expander.add_row(enabled_row);
 
@@ -210,8 +214,8 @@ namespace OLLMapp.SettingsDialog
 		 * Swaps RPC and runs ''RPC-Daemon.hello'' only; project reload is
 		 * left to startup, the Projects tab, or session activation.
 		 *
-		 * A remote connect failure sets the row to unreachable and falls
-		 * back to the local daemon once (desktop only).
+		 * A remote connect failure on Android sets the row to disabled.
+		 * Desktop sets unreachable and falls back to the local daemon once.
 		 *
 		 * @param remote true for HTTPS to this row's URL, false for
 		 *   the local Unix socket
@@ -255,12 +259,15 @@ namespace OLLMapp.SettingsDialog
 				if (!remote) {
 					return;
 				}
+#if ANDROID
+				this.client.state = FilesdClient.State.DISABLED;
+				this.win.app.config.save();
+				return;
+#endif
 				this.client.state = FilesdClient.State.UNREACHABLE;
 				this.win.app.config.save();
 				this.expander.subtitle = "Unreachable: " + rpc.connect_error;
-#if !ANDROID
 				yield this.reconnect(false);
-#endif
 				return;
 			}
 			this.win.notification(new OLLMrpc.Notification() {

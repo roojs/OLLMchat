@@ -66,6 +66,12 @@ namespace OLLMfilesd
 			this.base_type = "f";
 		}
 
+		/**
+		 * Size in bytes. A folder listing sets this from disk.
+		 * Other replies leave it at zero.
+		 */
+		public int64 size { get; set; default = 0; }
+
 		public void read(OLLMrpc.Request request, string path)
 		{
 			uint8[] data;

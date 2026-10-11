@@ -791,7 +791,7 @@ namespace OLLMrpc
 		{
 			request.id = this.next_id++;
 			if (!this.connected) {
-				throw new GLib.IOError.FAILED("%s id=%d: not connected", request.method, request.id);
+				throw new RpcErrorCode.NOT_CONNECTED("");
 			}
 
 			var entry = new PendingWrite(request);
@@ -857,8 +857,7 @@ namespace OLLMrpc
 			}
 			request.id = this.next_id++;
 			if (!this.connected) {
-				throw new GLib.IOError.FAILED("%s id=%d: not connected",
-					 request.method, request.id);
+				throw new RpcErrorCode.NOT_CONNECTED("");
 			}
 
 			var entry = new PendingWrite(request);
@@ -1038,7 +1037,7 @@ namespace OLLMrpc
 			}
 			request.id = this.next_id++;
 			if (!this.connected) {
-				throw new GLib.IOError.FAILED("%s id=%d: not connected", request.method, request.id);
+				throw new RpcErrorCode.NOT_CONNECTED("");
 			}
 
 			var entry = new PendingWrite(request);

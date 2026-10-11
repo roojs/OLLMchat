@@ -43,7 +43,7 @@
 | **10** | [`RPC-8.2.8.9-DONE-android-agent-pi.md`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — Android Agent Pi on `SOCKET` / `LIVE` (state + Check listen) | **✔️** |
 | **11** | [`RPC-8.2.8.11-DONE-android-startup-history-bars.md`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) — startup hello, history when Agent Pi is off, phone pickers | **✔️** |
 | **12** | [`TOOLS-2.31-URGENT-bash-process-tool.md`](TOOLS-2.31-URGENT-bash-process-tool.md) — `bash` as an RPC tool Android can use on the desktop | **URGENT** |
-| **13** | (this file) More than one desktop environment on Android: home, office, online via proxy | **⏳** |
+| **13** | [`RPC-8.2.8.15-android-filesd-client-records.md`](RPC-8.2.8.15-android-filesd-client-records.md) — Phone stores a record per desktop | **⏳** |
 | **14** | [`RPC-8.2.8.12-DONE-android-editor-chrome-bars.md`](done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md) — editor chrome, tablet buttons on the right, pickers on the right, desktop coding-edit agents use the tablet bar | **✔️** |
 
 ---
@@ -62,7 +62,7 @@
 10. **✔️** Phase 10 — [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — `FilesdClient.State`, Agent Pi visible on `SOCKET` or `LIVE`, Check listen. Registers `write` / `read` only. Does not register `bash`.
 11. **✔️** Phase 11 — [`8.2.8.11`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md). Startup hello uses a short timeout. A miss is `UNREACHABLE` (not the user switch), leaves Agent Pi off, starts a new Chatter session, and uses `Banner.show`. History rows for a missing agent stay listed, marked disabled, and cannot be restored. Phone bottom bar flips browser, editor, and chat. Thinking icon cycles on the chat button while the session runs. Idle chat button is a speech bubble. Still one desktop environment.
 12. **URGENT** Phase 12 — [`TOOLS-2.31`](TOOLS-2.31-URGENT-bash-process-tool.md) — `bash` as a remote tool. Commands run on desktop `ollmfilesd`, not on the phone. Daemon `Bubble.exec` is [`BWRAP-2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md).
-13. **🔷** `⏳` Phase 13 — Android keeps more than one desktop environment. Home (one network), office (another network), and later an online one through the proxy. Not part of Phase 10, Phase 11, or Phase 14.
+13. **🔷** `⏳` Phase 13 — [`8.2.8.15`](RPC-8.2.8.15-android-filesd-client-records.md). The phone stores one record per desktop. Only one is enabled. Startup uses the first enabled desktop that connects.
 14. **✔️** Phase 14 — [`8.2.8.12`](done/RPC-8.2.8.12-DONE-android-editor-chrome-bars.md). Editor chrome. Tablet browser and text-editor buttons move to the right of the left-column bar. Pickers sit on the right and the model selector moves fully left. While the session is a coding-edit agent, desktop uses that same tablet bar.
 
 ---
@@ -190,14 +190,7 @@
 
 ## Phase 13 — Several desktop environments (`⏳`)
 
-- **🔷** The phone is used against more than one machine.
-  - Home, on the home network, already connected there.
-  - Office, on the office network, already connected there.
-  - A third, online, through the proxy. Not built yet.
-- **ℹ️** Today `Config2.filesd_client` is one object (`libollmchat/Settings/FilesdClient.vala`). Empty `url` means none. Android cannot store home and office together.
-- **ℹ️** [`8.2.8.2`](done/RPC-8.2.8.2-DONE-filesd-android-file-connection.md) chose one URL. This phase is the follow-up, after Phase 10 and Phase 11.
-- **🔷** `⏳` Which row is live at startup (home vs office vs online) is not decided. Do not invent a picker inside Phase 10 or Phase 11.
-- **ℹ️** Phase 8 ([`8.2.8.7`](RPC-8.2.8.7-URGENT-filesd-tcp-socket-lan.md)) is the Linux LAN TCP socket the phone uses at home and in the office. Phase 7 is the Android takeover and is already done.
+**➡️** [`RPC-8.2.8.15-android-filesd-client-records.md`](RPC-8.2.8.15-android-filesd-client-records.md) — one record per desktop on `Config2`. Only one is enabled. Startup uses the first enabled desktop that connects. The online desktop through the proxy is not in that plan.
 
 ---
 

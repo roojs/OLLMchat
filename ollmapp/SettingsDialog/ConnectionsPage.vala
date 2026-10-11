@@ -555,8 +555,10 @@ namespace OLLMapp.SettingsDialog
 			this.file_connection_row = new FileConnectionRow(client, this.dialog.parent);
 			this.arrow(this.file_connection_row.expander, this.file_connection_row.expander);
 			this.file_connection_row.remove_requested.connect(() => {
-				var was_live = client.state == FilesdClient.State.LIVE
-					|| client.state == FilesdClient.State.SOCKET;
+				var was_live = client.state == FilesdClient.State.LIVE || 
+					client.state == FilesdClient.State.SOCKET;
+					
+				client.remove();
 #if !ANDROID
 				var row = this.file_connection_row;
 #endif

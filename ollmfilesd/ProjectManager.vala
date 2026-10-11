@@ -306,7 +306,7 @@ namespace OLLMfilesd
 					this.notification(new OLLMrpc.Notification() {
 						method = "event.filesystem.scan_start",
 						object_type = "Project",
-						message = project.path,
+						args = OLLMrpc.args("s", project.path),
 					});
 					yield project.read_dir(new DateTime.now_local().to_unix(), true);
 					GLib.debug (
@@ -320,9 +320,8 @@ namespace OLLMfilesd
 					this.notification(new OLLMrpc.Notification() {
 						method = "event.filesystem.scan_end",
 						object_type = "Project",
-						message = "%u %s".printf(
-							project.project_files.get_n_items(),
-							project.path),
+						args = OLLMrpc.args("su",
+							project.path, project.project_files.get_n_items()),
 					});
 				}
 			}

@@ -165,6 +165,13 @@ namespace OLLMapp.SettingsDialog
 				yield win.project_manager.rpc_load_projects_from_db();
 			} catch (GLib.Error e) {
 				GLib.critical ("ProjectsPage.load_projects: %s", e.message);
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					win.project_manager.rpc.notification (new OLLMrpc.Notification () {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+					return;
+				}
 				win.project_manager.rpc.notification (new OLLMrpc.Notification () {
 					method = "Banner.show",
 					message = "Could not load projects: " + e.message
@@ -234,6 +241,14 @@ namespace OLLMapp.SettingsDialog
 						} catch (GLib.Error e) {
 							GLib.critical ("create project %s: %s",
 								normalized, e.message);
+							if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+								this.project_manager.rpc.notification (
+									new OLLMrpc.Notification () {
+										method = "client.filesd.unreachable",
+										id = e.code
+									});
+								return;
+							}
 							this.project_manager.rpc.notification (
 								new OLLMrpc.Notification () {
 									method = "Alert.show",

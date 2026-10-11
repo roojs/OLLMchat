@@ -115,6 +115,13 @@ namespace OLLMfiles
 					files = yield this.fetch_pending();
 				} catch (GLib.Error e) {
 					GLib.critical ("ReviewFiles.refresh: %s", e.message);
+					if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+						this.manager.rpc.notification (new OLLMrpc.Notification () {
+							method = "client.filesd.unreachable",
+							id = e.code
+						});
+						break;
+					}
 					this.manager.rpc.notification (new OLLMrpc.Notification () {
 						method = "Banner.show",
 						message = "Could not refresh pending files: " + e.message

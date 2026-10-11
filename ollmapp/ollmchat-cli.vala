@@ -455,7 +455,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 			}
 
 			this.project_manager.disable_initial_scan = true;
-			this.project_manager.activate_project(project);
+			yield this.project_manager.activate_project(project);
 		}
 		
 		private async void run_test(string query, ApplicationCommandLine command_line) throws Error

@@ -1,6 +1,6 @@
 # Selector search focus and file-search bar height
 
-**Status:** ⏳
+**Status:** ✅ fixed — user closed the search-focus and file-search-height report on 2026-10-11
 
 **Started:** 2026-10-09
 
@@ -111,10 +111,8 @@ The file scrolled window, page stack, and lists do not `vexpand`. The file contr
 - ✔️ 2026-10-09 — Applied the proposal in `ProjectSelector.vala` and `FileSelector.vala`.
 - ✔️ 2026-10-09 — Recorded Enter, Tab, file search, and file pop-down width. Those were not in this log.
 
-## Next
+## Current state
 
-- ⏳ 🔷 User checks `--selectors`: project click leaves a caret in the entry and typing filters the list.
-- ⏳ 🔷 User checks file search: the left button and the top bar stay one row.
-- ⏳ 🔷 User checks Enter and Tab: the highlighted row is accepted and focus moves to the next control.
-- ⏳ 🔷 User checks file search: typed text shows matching files.
-- ⏳ 🔷 User checks the file pop-down stays inside the window.
+- ✅ Project search keeps the caret and keyboard focus.
+- ✅ File search leaves the selector bar at one-row height.
+- ℹ️ The later Enter/Tab, file-filtering, and pop-down-width notes were not part of the title scope closed here.

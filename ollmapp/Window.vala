@@ -226,21 +226,34 @@ namespace OLLMapp
 
 			this.notification.connect((notif) => {
 				this.activity_banner.notification(notif);
-				if (notif.method == "Alert.show") {
-					var alert = new Adw.AlertDialog("Alert", notif.message);
-					alert.add_response("ok", "OK");
-					alert.choose.begin(this, null);
-					return;
+				switch (notif.method) {
+					case "client.filesd.unreachable":
+						this.banner_queue.add("The file service is not connected.");
+						if (this.tool_error_banner.revealed) {
+							return;
+						}
+						this.tool_error_banner.title = this.banner_queue.get(0);
+						this.tool_error_banner.revealed = true;
+						return;
+
+					case "Alert.show":
+						var alert = new Adw.AlertDialog("Alert", notif.message);
+						alert.add_response("ok", "OK");
+						alert.choose.begin(this, null);
+						return;
+
+					case "Banner.show":
+						this.banner_queue.add(notif.message);
+						if (this.tool_error_banner.revealed) {
+							return;
+						}
+						this.tool_error_banner.title = notif.message;
+						this.tool_error_banner.revealed = true;
+						return;
+
+					default:
+						return;
 				}
-				if (notif.method != "Banner.show") {
-					return;
-				}
-				this.banner_queue.add(notif.message);
-				if (this.tool_error_banner.revealed) {
-					return;
-				}
-				this.tool_error_banner.title = notif.message;
-				this.tool_error_banner.revealed = true;
 			});
 			this.activity_banner.notification_reply.connect((notif) => {
 				this.history_manager.notification_reply(notif);
@@ -259,6 +272,13 @@ namespace OLLMapp
 						this.project_manager.rpc.call.end(res);
 					} catch (GLib.Error e) {
 						GLib.critical ("banner rpc action: %s", e.message);
+						if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+							this.notification (new OLLMrpc.Notification () {
+								method = "client.filesd.unreachable",
+								id = e.code
+							});
+							return;
+						}
 						this.notification (new OLLMrpc.Notification () {
 							method = "Banner.show",
 							message = "Action failed: " + e.message
@@ -639,7 +659,7 @@ namespace OLLMapp
 					var project = this.project_manager.projects.path_map.get(
 						session.project_path);
 					if (project != null) {
-						this.project_manager.activate_project(project);
+						this.project_manager.activate_project.begin(project);
 						this.agent_dropdown.select_only(agent_index);
 						return true;
 					}
@@ -651,10 +671,18 @@ namespace OLLMapp
 							this.project_manager.rpc_load_projects_from_db.end(res);
 						} catch (GLib.Error e) {
 							GLib.critical ("session project load: %s", e.message);
-							this.notification (new OLLMrpc.Notification () {
-								method = "Alert.show",
-								message = "Could not load projects: " + e.message
-							});
+							if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+								this.notification (new OLLMrpc.Notification () {
+									method = "client.filesd.unreachable",
+									id = e.code
+								});
+							}
+							if (e.code != (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+								this.notification (new OLLMrpc.Notification () {
+									method = "Alert.show",
+									message = "Could not load projects: " + e.message
+								});
+							}
 							this.notification(new OLLMrpc.Notification() {
 								method = "client.project.load_end",
 							});
@@ -676,7 +704,7 @@ namespace OLLMapp
 							});
 							return;
 						}
-						this.project_manager.activate_project(project);
+						this.project_manager.activate_project.begin(project);
 						this.agent_dropdown.select_only(agent_index);
 					});
 					return true;

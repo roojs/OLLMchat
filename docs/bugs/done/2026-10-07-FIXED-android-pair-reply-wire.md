@@ -3,7 +3,7 @@
 **Status:** ✅ fixed — physical phone reaches `LIVE`, exposes Agent Pi, and loads project files; complete file opening also passes on the emulator
 
 **Devices:** SM-S9380 physical phone for the original failure; `emulator-5554` for the controlled current-build flow.
-**Related:** ℹ️ `docs/bugs/done/2026-10-05-CLOSED-android-pair-listen.md`, `docs/bugs/2026-10-06-android-live-rpc-read-watch.md`, `docs/bugs/2026-10-08-android-remote-connection-lifecycle.md`, `ollmapp/android/FileConnectionAdd.vala`, `tests/rpc/filesd-pair-test.vala`, `android/pair-listen-probe/`
+**Related:** ℹ️ `docs/bugs/done/2026-10-05-CLOSED-android-pair-listen.md`, `docs/bugs/2026-10-06-android-live-rpc-read-watch.md`, `docs/bugs/done/2026-10-08-CLOSED-android-remote-connection-lifecycle.md`, `ollmapp/android/FileConnectionAdd.vala`, `tests/rpc/filesd-pair-test.vala`, `android/pair-listen-probe/`
 
 ---
 
@@ -471,8 +471,8 @@ Original phone reproduction: uninstall the APK installed from the other machine,
 
 - **✅** The original physical-phone pairing and reconnect failures are fixed: pairing persists, authenticated reconnect reaches `LIVE`, Agent Pi appears, and project files load.
 - **✔️** Complete file opening passes on `emulator-5554`: a selected Markdown file produced a `File.read` reply and rendered without a daemon or client error.
-- **ℹ️** Removal, approved-certificate re-add, and the remaining full-flow regression harness are tracked in `2026-10-08-android-remote-connection-lifecycle.md`.
+- **ℹ️** Removal, approved-certificate re-add, and the remaining full-flow regression harness are tracked in `docs/bugs/done/2026-10-08-CLOSED-android-remote-connection-lifecycle.md`.
 
 ## Next
 
-- **ℹ️** Continue with `docs/bugs/2026-10-08-android-remote-connection-lifecycle.md`.
+- **ℹ️** Continue with `docs/bugs/done/2026-10-08-CLOSED-android-remote-connection-lifecycle.md`.

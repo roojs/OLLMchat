@@ -26,11 +26,17 @@ namespace OLLMrpc
 		 * Zero is one-way.
 		 */
 		public int reply_id { get; set; default = 0; }
+		/**
+		 * Human-readable text for the user, such as a warning.
+		 * A path, a count, or any other structured value belongs
+		 * in {@link args}.
+		 */
 		public string message { get; set; default = ""; }
 		/**
-		 * Named-signal parameters (GIR order), or the new property
-		 * value for ''notify::''. A {@link Bin.TypeOverride} replaces
-		 * that value with its wire fields. Empty for zero-arg signals.
+		 * Named-signal parameters (GIR order), the new property
+		 * value for ''notify::'', or the values of an event.
+		 * A {@link Bin.TypeOverride} replaces that value with its
+		 * wire fields. Empty for zero-arg signals.
 		 */
 		public Gee.ArrayList<GLib.Value?> args {
 			get; set; default = new Gee.ArrayList<GLib.Value?>();

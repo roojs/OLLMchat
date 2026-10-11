@@ -63,6 +63,13 @@ namespace OLLMfiles
 					);
 				} catch (GLib.Error e) {
 					GLib.critical("revert reload lookup failed %s: %s", this.path, e.message);
+					if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+						this.manager.rpc.notification(new OLLMrpc.Notification() {
+							method = "client.filesd.unreachable",
+							id = e.code
+						});
+						return;
+					}
 					this.manager.rpc.notification(new OLLMrpc.Notification() {
 						method = "Alert.show",
 						message = "Reverted, but could not reload the editor: "

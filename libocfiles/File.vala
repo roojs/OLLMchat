@@ -69,6 +69,55 @@ namespace OLLMfiles
 		}
 
 		/**
+		 * Size in bytes. A folder listing sets this from disk.
+		 * Other replies leave it at zero.
+		 */
+		public int64 size { get; set; default = 0; }
+
+		/**
+		 * Byte count shown in the file grid.
+		 *
+		 * Reads {@link size}. Zero is a real empty file.
+		 */
+		public string display_size {
+			owned get {
+				return GLib.format_size((uint64) this.size);
+			}
+		}
+
+		/**
+		 * Modified time shown in the file grid.
+		 *
+		 * Today is the clock time. The past week is the weekday and the time.
+		 * The same year is the day and month. A previous year adds the year.
+		 * Empty when {@link last_modified} is unset.
+		 */
+		public string display_modified {
+			owned get {
+				if (this.last_modified < 1) {
+					return "";
+				}
+				var when = new GLib.DateTime.from_unix_local(this.last_modified);
+				var now = new GLib.DateTime.now_local();
+				if (when.get_year() == now.get_year()
+					&& when.get_day_of_year() == now.get_day_of_year()) {
+					var clock = when.format("%H:%M");
+					return clock != null ? clock : "";
+				}
+				if (now.difference(when) <= 7 * GLib.TimeSpan.DAY) {
+					var recent = when.format("%a %H:%M");
+					return recent != null ? recent : "";
+				}
+				if (when.get_year() == now.get_year()) {
+					var same_year = when.format("%e %b");
+					return same_year != null ? same_year.strip() : "";
+				}
+				var older = when.format("%e %b %Y");
+				return older != null ? older.strip() : "";
+			}
+		}
+
+		/**
 		 * Named constructor: create a {@link File} from {@link GLib.FileInfo} during scan.
 		 *
 		 * Removed — use {@link read} or {@link register}.
@@ -734,6 +783,8 @@ namespace OLLMfiles
 				case "buffer":
 				case "display-with-path":
 				case "display-basename":
+				case "display-size":
+				case "display-modified":
 					return;
 				default:
 					base.bin_write_prop(ctx, prop);
@@ -751,6 +802,8 @@ namespace OLLMfiles
 				case "buffer":
 				case "display-with-path":
 				case "display-basename":
+				case "display-size":
+				case "display-modified":
 					return;
 				default:
 					base.bin_read_prop(ctx, prop, type_byte);

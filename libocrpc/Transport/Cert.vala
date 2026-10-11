@@ -108,6 +108,28 @@ namespace OLLMrpc.Transport
 		public GLib.TlsDatabase? trust { get; private set; default = null; }
 
 		/**
+		 * Delete the key, certificate, CSR, and trust file under {@link dir}.
+		 *
+		 * Missing files are ignored. The directory is removed when it
+		 * is empty afterwards.
+		 */
+		public void remove()
+		{
+			if (this.dir == "") {
+				return;
+			}
+			var cert_path = GLib.Path.build_filename(this.dir, this.cert_pem);
+			GLib.FileUtils.remove(cert_path);
+			GLib.FileUtils.remove(GLib.Path.build_filename(this.dir, this.key_pem));
+			GLib.FileUtils.remove(GLib.Path.build_filename(this.dir, this.trust_pem));
+			var dot = cert_path.last_index_of(".");
+			if (dot > 0) {
+				GLib.FileUtils.remove(cert_path.substring(0, dot) + ".csr");
+			}
+			GLib.DirUtils.remove(this.dir);
+		}
+
+		/**
 		 * Make sure this program's key and certificate files exist
 		 * under {@link dir}, then set {@link certificate} and
 		 * {@link trust} from them.

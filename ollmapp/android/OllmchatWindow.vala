@@ -54,6 +54,12 @@ namespace OLLMapp
 		private Android.AgentManager agent_manager;
 		private uint fog_source = 0;
 		private bool reconnecting = false;
+		/**
+		 * Last hello {@link OLLMrpc.RpcErrorCode}. Zero when the probe
+		 * got no RPC error.
+		 */
+		private int probe_code = 0;
+		private bool unavailable_notice = false;
 		public OLLMfiles.ProjectManager? project_manager { 
 			get; private set; default = null; }
 		/**
@@ -146,17 +152,32 @@ namespace OLLMapp
 				this.tool_error_banner.revealed = false;
 			});
 			this.notification.connect((notif) => {
-				if (notif.method == "Banner.show") {
-					this.tool_error_banner.title = notif.message;
-					this.tool_error_banner.revealed = true;
-					return;
+				switch (notif.method) {
+					case "client.filesd.retry":
+						this.view_stack.visible_child_name = "startup";
+						this.startup_status_label.label = "Checking desktop environment…";
+						this.app.config.filesd_client.state = FilesdClient.State.ENABLED;
+						this.app.config.save();
+						this.reconnect.begin(true, (obj, res) => {
+							this.reconnect.end(res);
+							this.view_stack.visible_child_name = "chat";
+						});
+						return;
+
+					case "Banner.show":
+						this.tool_error_banner.title = notif.message;
+						this.tool_error_banner.revealed = true;
+						return;
+
+					case "Alert.show":
+						var alert = new Adw.AlertDialog("Alert", notif.message);
+						alert.add_response("ok", "OK");
+						alert.choose.begin(this, null);
+						return;
+
+					default:
+						return;
 				}
-				if (notif.method != "Alert.show") {
-					return;
-				}
-				var alert = new Adw.AlertDialog("Alert", notif.message);
-				alert.add_response("ok", "OK");
-				alert.choose.begin(this, null);
 			});
 
 			var toolbar_view = new Adw.ToolbarView();
@@ -434,12 +455,15 @@ namespace OLLMapp
 
 			this.project_manager = new OLLMfiles.ProjectManager();
 			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
+			if (config.filesd_client.state == FilesdClient.State.UNREACHABLE) {
+				config.filesd_client.state = FilesdClient.State.DISABLED;
+				this.app.config.save();
+			}
 			var is_desktop_connected = false;
 			var is_desktop_available = false;
 			if (config.filesd_client.addresses != ""
 				&& (config.filesd_client.state == FilesdClient.State.ENABLED
 					|| config.filesd_client.state == FilesdClient.State.LIVE
-					|| config.filesd_client.state == FilesdClient.State.UNREACHABLE
 					|| config.filesd_client.state == FilesdClient.State.SOCKET)) {
 				is_desktop_connected = true;
 				this.startup_status_label.label = "Checking desktop environment…";
@@ -536,16 +560,13 @@ namespace OLLMapp
 				this.app.config.save();
 			}
 			if (is_desktop_connected && !is_desktop_available) {
-				config.filesd_client.state = FilesdClient.State.UNREACHABLE;
+				config.filesd_client.state = FilesdClient.State.DISABLED;
 				this.app.config.save();
+				this.unavailable_notice = true;
 				this.notification(new OLLMrpc.Notification() {
-					method = "Banner.show",
-					message = "The desktop environment is unavailable."
+					method = "client.filesd.unreachable",
+					id = this.probe_code
 				});
-				var empty = this.history_manager.create_new_session();
-				empty.project_path = this.history_manager.session.project_path;
-				empty.agent_name = "chatter";
-				yield this.chat_widget.switch_to_session(empty);
 			}
 
 			this.history_manager.agent_status_change.connect(() => {
@@ -625,6 +646,7 @@ namespace OLLMapp
 				cn = "ollmchat-device",
 			};
 			tls.ensure();
+			this.probe_code = 0;
 			var lines = config.filesd_client.addresses.split("\n");
 			for (var i = 0; i < lines.length; i++) {
 				var line = lines[i].strip();
@@ -720,6 +742,8 @@ namespace OLLMapp
 					continue;
 				}
 				if (hello.error != null) {
+					this.probe_code = hello.error.code;
+					GLib.warning("%s", hello.error.message);
 					continue;
 				}
 				config.filesd_client.url =
@@ -735,11 +759,17 @@ namespace OLLMapp
 		 * Pairing verifies certificates on a temporary TLS stream. This path
 		 * probes stored addresses, replaces ''ProjectManager.rpc'', connects
 		 * it, and sets filesd state ''LIVE'' before Agent Pi is exposed.
+		 * A miss sets {@link FilesdClient.State.DISABLED} and points project
+		 * RPC at the local socket. The Enabled switch asks for another hello.
 		 *
+		 * @param report_give_up true after a drop or a startup miss. False
+		 *   when the Enabled switch is asking for a hello, so a miss leaves
+		 *   the switch off and does not open Retry or Close.
 		 * @since 1.0
 		 */
-		public async void reconnect()
+		public async void reconnect(bool report_give_up = true)
 		{
+			this.unavailable_notice = false;
 			var config = this.app.config;
 			switch (config.filesd_client.state) {
 				case FilesdClient.State.REQUESTED:
@@ -784,10 +814,18 @@ namespace OLLMapp
 				try {
 					yield this.project_manager.rpc_load_projects_from_db();
 				} catch (GLib.Error e) {
-					this.notification(new OLLMrpc.Notification() {
-						method = "Alert.show",
-						message = "Could not load projects: " + e.message
-					});
+					if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+						this.notification(new OLLMrpc.Notification() {
+							method = "client.filesd.unreachable",
+							id = e.code
+						});
+					}
+					if (e.code != (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+						this.notification(new OLLMrpc.Notification() {
+							method = "Alert.show",
+							message = "Could not load projects: " + e.message
+						});
+					}
 				}
 				this.notification(new OLLMrpc.Notification() {
 					method = "client.project.load_end"
@@ -809,16 +847,23 @@ namespace OLLMapp
 				|| config.filesd_client.state == FilesdClient.State.DISABLED) {
 				return;
 			}
-			config.filesd_client.state = FilesdClient.State.UNREACHABLE;
+			config.filesd_client.state = FilesdClient.State.DISABLED;
 			this.app.config.save();
+			this.project_manager.replace_rpc(new OLLMrpc.Client(
+				GLib.Path.build_filename(
+					GLib.Environment.get_user_data_dir(), "ollmchat"),
+				"ollmfilesd.pid", "ollmfilesd.sock"));
+			if (!report_give_up) {
+				return;
+			}
+			if (this.unavailable_notice) {
+				return;
+			}
+			this.unavailable_notice = true;
 			this.notification(new OLLMrpc.Notification() {
-				method = "Banner.show",
-				message = "The desktop environment is unavailable."
+				method = "client.filesd.unreachable",
+				id = this.probe_code
 			});
-			var empty = this.history_manager.create_new_session();
-			empty.project_path = this.history_manager.session.project_path;
-			empty.agent_name = "chatter";
-			yield this.chat_widget.switch_to_session(empty);
 		}
 	}
 

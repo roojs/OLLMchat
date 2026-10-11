@@ -240,13 +240,21 @@ namespace OLLMcoder.AgentPi
 						win_cfg.file
 					);
 					yield this.widget.apply_manager_state();
-				} catch (GLib.Error e) {
-					GLib.critical ("initialize Agent Pi widget: %s", e.message);
+			} catch (GLib.Error e) {
+				GLib.critical ("initialize Agent Pi widget: %s", e.message);
+				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+					ui.notification (new OLLMrpc.Notification () {
+						method = "client.filesd.unreachable",
+						id = e.code
+					});
+				}
+				if (e.code != (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
 					ui.notification (new OLLMrpc.Notification () {
 						method = "Alert.show",
 						message = "Could not load projects: " + e.message
 					});
-				} finally {
+				}
+			} finally {
 					ui.notification(new OLLMrpc.Notification() {
 						method = "client.project.load_end",
 					});

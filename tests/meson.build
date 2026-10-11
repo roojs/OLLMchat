@@ -310,6 +310,26 @@ test_rpc_filesd_pair = executable('test-rpc-filesd-pair',
   export_dynamic: true,
   vala_args: rpc_test_vala_args,
 )
+test_rpc_filesd_pair_flow = executable('test-rpc-filesd-pair-flow',
+  'rpc/filesd-pair-flow-test.vala',
+  dependencies: rpc_test_deps + [
+    rpc_test_app_dep,
+    dependency('gio-unix-2.0'),
+  ],
+  link_with: rpc_test_link_with,
+  build_rpath: rpc_test_build_rpath,
+  export_dynamic: true,
+  vala_args: rpc_test_vala_args + ['--pkg=gio-unix-2.0'],
+)
+test('test-rpc-filesd-pair-flow',
+  test_rpc_filesd_pair_flow,
+  suite: 'rpc',
+  timeout: 60,
+  depends: [ollmfilesd_bin],
+  env: {
+    'OLLMFILESD': meson.current_build_dir() / '..' / 'ollmfilesd' / 'ollmfilesd',
+  },
+)
 test_rpc_gi = executable('test-rpc-gi',
   'rpc/gi-test.vala',
   dependencies: rpc_test_deps + [

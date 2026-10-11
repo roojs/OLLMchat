@@ -1,6 +1,6 @@
 # `Live.Subscription.emit` drops the handler bool
 
-**Status:** ✔️ libocrpc edit applied. The wait still needs gnome-shell-rpc `LiveCallback.reply` to set `replied` on this mailbox.
+**Status:** ✅ fixed — user closed 2026-10-11 after the libocrpc and related consumer work landed.
 **Component:** `libocrpc` / `OLLMrpc.Live.Subscription` + `Notification`
 **Related:** gnome-shell-rpc [`docs/bugs/2026-10-10-blocking-signal-subscribe.md`](../../../gnome-shell-rpc/docs/bugs/2026-10-10-blocking-signal-subscribe.md) — `add_signals` sets `blocking`, and the client sends the bool back. [`done/RPC-8.3.6-rpc-live-callbacks.md`](../plans/done/RPC-8.3.6-rpc-live-callbacks.md) — `Hook.emit` already waits on `RPC-Live-Callback.reply`.
 
@@ -115,4 +115,4 @@ gnome-shell-rpc `LiveCallback.reply` has to mark this mailbox `replied`. `Hook.c
 
 ## Next
 
-- **⏳** gnome-shell-rpc `LiveCallback.reply` still has to set `replied` on this mailbox. `Hook.complete` returns false because this wait has no frame.
+- **✅** Closed. The related gnome-shell-rpc consumer work is tracked in the linked bug.

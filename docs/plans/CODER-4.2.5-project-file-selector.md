@@ -1,274 +1,245 @@
 # CODER-4.2.5 Project and file selector
 
-**Status:** ⏳ proposed. ✔️ The smoke row hosts project and file selector classes. ⏳ The pop-down alignment, file tabs, and pull-over styling are in those classes and still need a look on screen. Product chrome is still backlog.
+**Status:** proposed. Phase 1 desktop project selector is confirmed. Phase 2 is the desktop file selector. Phase 3 is the Android review. Phase 4 is file content search, and it is held off.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**.
 
 **Related:**
 
-- ℹ️ [`CODER-4.2.1-tree-navigation-filedropdown.md`](CODER-4.2.1-tree-navigation-filedropdown.md) — tree tab inside the file picker. The popup chrome in that plan is replaced by this one.
-- ℹ️ Phone source-view selection trouble, partly worked: [`docs/bugs/2026-09-29-android-source-view-phone.md`](../bugs/2026-09-29-android-source-view-phone.md).
-- ℹ️ Today: `liboccoder/ProjectDropdown.vala`, `liboccoder/FileDropdown.vala`, `liboccoder/SearchableDropdown.vala`, header in `liboccoder/SourceView.vala`.
-- ℹ️ Phone history today: `ollmapp/android/OllmchatWindow.vala` swaps `view_stack` to `HistoryBrowser` and keeps the window header. Search is at the top and takes focus (`libollmchatgtk/HistoryBrowser.vala`).
-- ℹ️ Diff smoke app: `examples/oc-test-source-diff.vala` (`TestAppBase`). Desktop executable only. It already constructs `OLLMfiles.ProjectManager` and fills the view from local file pairs.
-- ℹ️ Header history button is `Approvals` in `liboccoder/SourceView.vala`. The view toggle that replaces it is [`CODER-4.2.4-source-view-markdown-preview.md`](CODER-4.2.4-source-view-markdown-preview.md).
+- ℹ️ [`CODER-4.2.1-tree-navigation-filedropdown.md`](CODER-4.2.1-tree-navigation-filedropdown.md) — older tree note. The tree is Phase 2 of this plan.
+- ℹ️ Today: `liboccoder/ProjectDropdown.vala`, `liboccoder/FileDropdown.vala`, `liboccoder/SearchableDropdown.vala`.
+- ℹ️ Smoke app: `examples/oc-test-source-diff.vala`. Classes live in `examples/oc-test-source-diff/`.
+- ℹ️ Phone history today: `ollmapp/android/OllmchatWindow.vala` and `libollmchatgtk/HistoryBrowser.vala`.
+- ℹ️ Phone source-view trouble, partly worked: [`docs/bugs/2026-09-29-android-source-view-phone.md`](../bugs/2026-09-29-android-source-view-phone.md).
 
 ---
 
-## Run
+## Purpose
+
+- 🔷 Phase 1 is the desktop project selector. Phase 2 is the desktop file selector. Phase 3 is an Android review. Phase 4 is file content search.
+- ✅ Phase 1 is confirmed.
+- 🔷 ✔️ marks code that is in the smoke app and not approved yet.
+- 🔷 Never do status theatre. Do not mark an item done, rewrite Status, or report ticks in place of the behavior. A tick waits until that behavior is what the running app does.
+- 🔷 Next step is the Phase 2 behavior that is still open: Recent search while typing, and the tree search marks. Phase 3 and Phase 4 wait.
+
+---
+
+## Phase 1 — Desktop project selector ✅
+
+### Run
 
 From the repo root. The window loads projects from filesd. No file-pair arguments.
 
 ```
 ninja -C build examples/oc-test-source-diff
 ./build/examples/oc-test-source-diff --selectors
-./build/examples/oc-test-source-diff --phone
-./build/examples/oc-test-source-diff --tablet
 ```
 
 - ℹ️ `--selectors` is the desktop pop-down.
-- ℹ️ `--phone` and `--tablet` are the pull-over. Each one turns the selector subtest on.
-- ℹ️ With no file pairs, the window is that row over a source view. The source view's own header stays hidden. Choosing a file opens it there.
-- 🚫 Do not pass `--phone` and `--tablet` together.
 
----
+### Desktop
 
-## Purpose
+- ✅ Resting state is a flat button. A folder icon, then the project name.
+- ✅ No project: the button says `Select project`. The file button is not shown.
+- ✅ A click turns the button into a search entry, focuses it, and opens the pop-down.
+- ✅ The pop-down is left aligned under the button. `place()` anchors it. Width stays 280.
+- ✅ Height fills the space under the row and stays inside the window.
+- ✅ The pop-down closes when the window stops being the active one.
+- ✅ Each row is a title and a path, left aligned.
+- ✅ Choosing a project moves to the file control and opens the file pop-down.
+- ✅ Every project is loaded. They are not paged.
+- ℹ️ `examples/oc-test-source-diff/ProjectSelector.vala`. The smoke row only hosts it.
 
-- 🔷 Replace the project selector and the file selector.
-- 🔷 They stop being a text entry plus a pull-down.
-- 🔷 Resting state on every layout is a flattened button: the current name as text, search icon on the left.
-- 🔷 Desktop stays a pop-down. Phone and tablet share a pull-over. Tablet follows the phone, not the desktop.
-- 🔷 Phone and tablet also move chat history onto that same pull-over.
-- 🔷 Phase 1 proves that row on the existing diff smoke app, on desktop and on Android, with data from filesd.
-- ⏳ All work below is backlog.
+### Recent and All
 
----
-
-## Shared button
-
-- 🔷 ⏳ Project control and file control are buttons, not entries, until activated.
-- 🔷 ⏳ Flattened button. Search icon sits to the left of the label.
-- ℹ️ Desktop and touch use the same resting button. What a click does is what splits.
-
-### File button label
-
-- 🔷 ⏳ Phone shows the file name only.
-- 🔷 ⏳ Tablet and desktop show the path relative to the project.
-- 🔷 ⏳ That relative path ellipsizes at the start, so the end of the path stays visible.
-- 🔷 ⏳ Mouse over on tablet and desktop shows the full path.
-- 🔷 ⏳ That full-path hover is on the project button and the file button.
-
-### Row
-
-- 🔷 ⏳ No project: the project button says `Select project`.
-- 🔷 ⏳ No project: the file button is not shown.
-- ℹ️ `SourceView` already hides `file_dropdown` until a project is selected.
-- 🔷 ⏳ After a project is selected, the file button is shown.
-- 🔷 ⏳ On the phone, the project button has a maximum width.
-- 🔷 ⏳ That cap is wide enough for a typical project name.
-- 🔷 ⏳ A shorter project name makes the project button narrower than the cap.
-- 🔷 ⏳ The file button takes the remaining width of the row.
-- 🔷 ⏳ The header history button stays for this pass.
-- 🔷 ⏳ That history button is replaced later by the view toggle.
-- 🚫 Do not remove the history button in this plan.
-
-## Desktop
-
-- 🔷 ⏳ Click the button and it becomes a text entry and takes focus.
-- 🔷 ⏳ That entry is a search, not the old fake pull-down.
-- 🔷 ⏳ Search opens a pop-down under the control.
-- 🔷 ⏳ Project pop-down is a list of projects.
-- 🔷 ⏳ File pop-down is wide.
-- 🔷 ⏳ File pop-down tabs:
-  - Tree
-  - History
-  - Search results, when the entry has typed text
-- ℹ️ **File list** below is the open rename of History to Recent, and filtering both lists while typing.
-- 🔷 ⏳ Choosing a project still moves focus to the file control, as it does now.
-  - ℹ️ `SourceView` calls `file_dropdown.grab_focus()` after a project is chosen.
-  - 🔷 On desktop that focus is the file control in its entry state, so the file pop-down opens.
-- ℹ️ Tree-tab contents stay specified in `CODER-4.2.1`. This plan only places that tab in the wide file pop-down.
-
----
-
-## Project list
-
-`ProjectSelector` lists projects. Recent / All is on that pop-down and on the project pull-over.
-
-- 🔷 ✔️ A Recent / All bar on the project pop-down and on the project pull-over.
-- ℹ️ The bar does not take keyboard focus. The search entry keeps the mark. The pop-down stays anchored by `place()`.
-- 🔷 ⏳ The file list gets that same kind of bar later.
-- 🔷 ✔️ Default is Recent.
-- 🔷 ✔️ Recent shows projects that contain a viewed file, newest file view first.
-- 🔷 ✔️ Projects with no viewed file under them are left out.
-- 🔷 ✔️ If none have a viewed file, Recent says `No recent projects`.
-- 🔷 ✔️ All lists every project by name, A to Z, ignoring case.
-- 🔷 ✔️ Search still applies on top of whichever choice is showing.
+- ✅ A Recent / All bar on the desktop pop-down.
+- ✅ Default is Recent.
+- ✅ Recent shows projects that contain a viewed file, newest file view first.
+- ✅ Projects with no viewed file under them are left out.
+- ✅ If none have a viewed file, Recent says `No recent projects`.
+- ✅ All lists every project by name, A to Z, ignoring case.
+- ✅ Search still applies on top of whichever choice is showing.
+- ✅ The bar does not take keyboard focus. The search entry keeps the keys.
 - ℹ️ Project rows in `filebase` do not use `last_viewed`. Those values stay 0.
 - ℹ️ `load_projects_from_db` sets the loaded folder from `MAX(last_viewed)` of files under that path. It does not write the project row.
+- ✅ Opening the project list again always shows Recent.
+- ✅ That open scrolls to the top.
+- ✅ That open does not highlight a row.
+- ✅ Choosing a project does not change this list. Recent stays the list the server already sent.
 
 ---
 
-## File list
+## Phase 2 — Desktop file selector
 
-`FileSelector` already has Tree, History, and a search page. These notes are still open.
+`FileSelector` is on the desktop smoke row. A grey tick is behavior that app already does. An open item is still missing.
 
-- 🔷 ⏳ The file tab is Recent. The old title History is dropped.
-- ℹ️ Chat history on the phone pull-over keeps the title Chat history. That list is sessions, not files.
-- 🔷 ⏳ A type filter, document versus code, is an idea for this list.
+### Pop-down
+
+- ✔️ The file control is a flat button until activated, same resting shape as the project button.
+- ✔️ After a file is chosen, desktop shows the path relative to the project. The label ellipsizes at the start.
+- ✔️ Mouse over shows the full path.
+- ✔️ A click turns the button into a search entry and opens a wide pop-down.
+- ✔️ The resting file button shows a file icon. The project button shows a folder icon.
+- ✔️ The tabs are Tree and Recent. Tree is the primary tab. Opening the pop-down shows Tree.
+- ✔️ The second tab is titled Recent.
+- ✔️ Opening the pop-down shows Tree, and that show starts `FolderTreeStore.load`.
+- ✔️ The Search tab is off this pop-down.
+- ✔️ The Tree tab is two panes. Detail is under Tree. The lists start empty.
+- ✔️ Recent loads files that have a last-view time. Empty copy is `No recent files`.
+- ✔️ The pop-down is inset from the left and right of the window, and tall enough to cover the source view.
+  - ℹ️ Popover padding and shadow sit outside the content width, so that extra comes off the width.
+- ✔️ With no project, a spacer keeps the header history button on the right. The file control takes that gap once a project is chosen.
+- ✔️ Choosing a file closes the pop-down and moves focus to the source view.
+- ✔️ The pop-down closes when the window stops being the active one.
+- ℹ️ `examples/oc-test-source-diff/FileSelector.vala`.
+
+### Recent
+
+- ✔️ An empty search shows the recent files, up to 50.
+- 🔷 ⏳ Typing in the desktop search entry does not filter Recent yet. That search stays on Recent and orders matches by how recent they are. It does not jump to Tree.
+
+### First step
+
+Widgets first, then the lists behind them. `FolderTreeStore.load` asks the file server for child folders and appends them. It does not clear the store.
+
+- ✔️ Replace the Tree note with two panes: a folder tree on the left and a file list on the right. `examples/oc-test-source-diff/FileTree.vala`.
+- ✔️ The left holder is `FolderTreeStore`. It lists folders only. The shape follows RooTerm `TreeNodes`, with path as the key instead of uuid. `examples/oc-test-source-diff/FolderTreeStore.vala`.
+- ✔️ While a folder request is waiting on the file server, the folder pane shows a spinner. It stays up for the folders asked for under that same load.
+- ✔️ The top `FolderTreeStore` owns a path-to-folder hash map and a flat list of every folder. There is no uuid map.
+- ✔️ Each folder's children are a `FolderTreeStore` for that segment. The same folder object sits in the segment, the path map, and the flat list. Add and remove go through the top store and signal `items-changed` for that one position.
+- ✔️ A `Gtk.TreeListModel` binds the top list and, for each folder, that folder's child store. One search filter is used on the top list and on every child list. The filter currently keeps every row.
+- 🔷 ⏳ Refresh is a progressive update. A notification adds or removes the one path that changed. It does not clear the map, the flat list, or the segments, and it does not walk the tree again.
+- ℹ️ Today `scan_end` drops the project path from `loaded` and calls `load` on that project. `append` skips a path already stored, so the rows are not deleted and replaced. Deeper folders already in `loaded` are not fetched again. A folder that disappeared stays in the tree. The first open still walks every folder.
+- ℹ️ When `loading` goes false, `FileTree` calls `name_sorter.changed(DIFFERENT)`. That re-sorts every segment, and the list is hidden for the whole load. That full re-render is not the design. Leave it until the progressive update above.
+- ℹ️ `ProjectFiles.refresh` clears its page and loads another. This store does not follow that.
+- ✔️ The right holder is a `GLib.ListStore` of `File` for the folder that is selected. It starts empty.
+- ℹ️ On the client today there is no folder tree. `ProjectList.path_map` is project roots only. `ProjectManager.file_cache` is path to `FileBase` for rows fetched one at a time, files and folders mixed. `Folder.children` stays empty. `ProjectFiles` is one dropdown page from `Folder.fetch_files`, not a kept tree. `Folder.fetch_children` is named on `FolderFiles` and does not exist.
+
+### Existing stores
+
+Reference only. Each one is a `GLib.ListModel` with an array behind it, except the settings page, which uses `GLib.ListStore` directly. Client and daemon each have their own copy of the named classes.
+
+| Store | Holds | Used for |
+| --- | --- | --- |
+| `FolderFiles` | `FileBase`. Files and subfolders of one folder. | Daemon folder tree, as `Folder.children`. The client copy stays empty. |
+| `ProjectList` | `Folder`. Project roots only. | The project selector. Subfolders are not kept here. |
+| `ProjectFiles` | `ProjectFile`. One flat list. | File dropdown and file search. Not a tree. |
+| `ReviewFiles` | `FileWithHistory`. | Files waiting for approval. |
+| `GLib.ListStore` of `Folder` | `Folder`. | Settings projects page only. Not a named store class. |
+
+### Tree
+
+Folders on the left, files on the right. This is a main part of Phase 2. The file server is queried for each side after the first step. File content search is Phase 4.
+
+- ✔️ The left side is a folder tree. It does not list files.
+- ✔️ That tree is expanded.
+- ✔️ Clicking a folder asks the file server (''Folder.fetch_dir'') for that folder's files and shows them on the right.
+- 🔷 ⏳ With no search text, the folder that contains the current file is the one selected, and that file sits about halfway down the right list. A load currently selects nothing and scrolls to the top.
+- ✔️ A selected folder's files are a three-column grid: name with a type icon, size, and modified time. Names are alphabetical, ignoring case.
+- 🔷 ⏳ Search on this tab is a global file search. The file server returns those files in a separate query. That result marks folders on the existing `FolderTreeStore`. It does not build a second tree and it does not refill the hash map.
+- ℹ️ RooTerm `TreeNodes` is the reference. The root owns `by_uuid` and `flat`. Each row's `children` is another `TreeNodes`. Search walks `by_uuid`, then `filter.changed` on those same lists. This store uses the path map where RooTerm uses `by_uuid`. Non-matches are hidden there. Here they stay and go grey.
+- 🔷 ⏳ Folders with no matching file under them stay in the left tree. A folder is not empty when a match is inside it, including inside a subfolder.
+- 🔷 ⏳ An empty folder uses a greyed folder icon, not the normal one, and a light grey colour.
+- 🔷 ⏳ Clicking a folder while searching shows that folder's matching files on the right, on that same grid.
+- 🔷 ⏳ Control-click clears the left selection.
+- 🔷 ⏳ With no folder selected during a search, the right list is every matching file. Each row has the path relative to the project underneath the name.
+
+### Other controls
+
+- 🔷 ⏳ A type filter, document versus code.
   - ℹ️ Daemon `File.is_documentation()` is markdown or plain text. Other languages are code.
-  - ℹ️ Not part of the project-list work.
-- 🔷 ⏳ Search filters Recent and the tree together.
-- 🔷 ⏳ The client holds the whole project tree and filters it there.
-- ℹ️ Today file search is server-side. `FileDropdown` debounces and `ProjectFiles.cached_search` on the daemon returns a flat page.
-- 🔷 ⏳ A matching file keeps its parent folders in the tree.
-- ℹ️ RooTerm does that in `app.RooTerm/src/Host/Tree.vala`.
-  - A name match is kept.
-  - Each parent of that match is kept, up to the root.
-  - Children of a matching folder stay visible.
-  - Those parents are expanded so the match is on screen.
 - 🔷 ⏳ Collapse-all shortcut on the file dialog.
 - 🔷 ⏳ Refresh is a last line of defence.
   - ℹ️ The server is meant to stay current.
   - ℹ️ File watch on the active project is not implemented.
   - ℹ️ Refresh covers that watch missing a change.
-- 🔷 This selector reads and shows files. It does not create them.
-
-### Questions
-
-Current file sorting, from `ollmfilesd/ProjectFiles.cached_search`. Decide later whether the new file list uses it.
-
-- ❓ Empty search, the browse list.
-  - Files with `last_viewed` in the last 24 hours come first, newest view first.
-  - The rest follow by full path.
-  - `ProjectFile.is_recent` is that same 24-hour window. The row CSS is `oc-recent`.
-- ❓ Typed text, no `*` or `?`.
-  - Substring match on the file name or the full path, ignoring case.
-  - Names that start with the text come first, then by name.
-  - Names that contain the text come next.
-  - Path-only matches sit with the name sort.
-- ❓ Typed text with `*` or `?`.
-  - Those wildcards match the file name or the full path.
-  - Hits sort by full path only.
-- ❓ `ProjectFiles.get_recent_list` is a different order. It uses `last_modified` over N days, newest change first. The dropdown does not use it.
-- ❓ Whether this selector copies those three orders now. The file list has not been started, so this can wait.
+- ✔️ This selector reads and shows files. It does not create them.
+- ✔️ Folder names are alphabetical, ignoring case, through the name sorter on each filter. That order does not copy the old file-dropdown sorts.
 
 ---
 
-## Phone and tablet
+## Phase 3 — Android review
 
-- 🔷 ⏳ Tablet uses this pull-over. It does not use the desktop pop-down.
-- 🔷 ⏳ A click does not open a search field and does not raise the keyboard.
-- 🔷 ⏳ A click opens a pull-over.
-- 🔷 ⏳ Same pull-over for chat history, projects, and files.
-- 🔷 ⏳ Top bar: back arrow, then a title.
-  - Chat history
-  - Projects
-  - Files
-- 🔷 ⏳ Current selection is text at the top of the page, under that bar.
-- 🔷 ⏳ The list sits under the current selection.
-- 🔷 ⏳ Search entry is at the bottom.
-- 🔷 ⏳ The keyboard stays down until that bottom entry is focused.
-- 🔷 ⏳ When the keyboard is up, the list collapses upward to the space left above it.
-- 🔷 ⏳ Back arrow closes the pull-over.
-- 🔷 ⏳ Choosing a row closes the pull-over.
-- 🔷 ⏳ Which edge the pull-over comes from is not decided, and the tablet case is the open one.
-- 🚫 Do not treat “left” or “right” as chosen.
+Review the pull-over on a device after Phase 2. `--phone` and `--tablet` on the desktop binary are only a stand-in.
 
-### History moves onto this pull-over
+```
+./build/examples/oc-test-source-diff --phone
+./build/examples/oc-test-source-diff --tablet
+```
 
-- 🔷 ⏳ Phone history today keeps the window header, slides the list in, and puts search at the top.
-- 🔷 ⏳ That layout changes to this pull-over.
-- 🔷 ⏳ Search moves from the top to the bottom.
-- 🔷 ⏳ Opening history must not focus the search entry and must not raise the keyboard.
-- ℹ️ Today `history_toggle_button` grabs `history_browser.search_entry` as soon as history is shown.
+- ℹ️ Do not pass `--phone` and `--tablet` together.
+- 🔷 ⏳ The same window on an Android build, not only `--phone` on the desktop.
 
----
+### Project pull-over
 
-## Phase 1 — extend `oc-test-source-diff`
+- ✔️ A click opens the pull-over. It does not open a search field.
+- ✔️ Top bar: back arrow, then the title `Projects`.
+- ✔️ Recent / All is on that page.
+- ✔️ Current selection is text under the bar. The list sits under it. Search is at the bottom.
+- ✔️ Back, or choosing a row, closes the pull-over.
+- ✔️ Choosing a project does not open the file pull-over.
+- 🔷 Tablet uses this pull-over. It does not use the desktop pop-down.
+- 🔷 ⏳ Which edge the pull-over comes from. The tablet case is the open one.
 
-- 🔷 ✔️ Same idea as the diff work: an out-of-band window, not the product app.
-- 🔷 ✔️ Extend `examples/oc-test-source-diff.vala`. Do not start a second app.
-- 🚫 A temporary selection tool that copies the selectors out of the diff smoke app.
-- ℹ️ First mock: `examples/oc-test-source-diff-selectors.vala` (`TestSelectorRow`). That widget hard-coded the pop-down and the pull-over. See **Critical** below.
+### File pull-over
 
-### Top row
+- ✔️ The file page is one list. It does not copy the desktop tabs.
+- ✔️ Phone shows the file name only. Tablet shows the path relative to the project, ellipsized at the start.
+- ✔️ Tablet mouse-over shows the full path. Phone does not.
+- ✔️ The project button has a maximum width. A shorter name stays narrower than that cap. The file button takes the rest of the row.
 
-- 🔷 ✔️ Put the project and file selector row on that window.
-- 🔷 ✔️ Desktop run uses the desktop pop-down.
-- 🔷 ✔️ `--phone` and `--tablet` use the pull-over in this same binary.
-- ℹ️ `--phone` or `--tablet` turns the selector subtest on. File pairs stay optional.
-- ℹ️ The file list landed as one search page. The next step replaces that with the full file selector.
+### Phone file navigation
 
-### filesd
+The phone does not use the desktop tree. It browses one folder at a time.
 
-- 🔷 ✔️ The selectors load projects and files from a running filesd.
-- ℹ️ `OLLMfiles.rpc_register`, then `ProjectManager.rpc.connect` and `rpc_load_projects_from_db`.
+- 🔷 ⏳ The list is the files and folders in the current folder. The first folder is the project root.
+- 🔷 ⏳ Clicking a folder drills into that folder.
+- 🔷 ⏳ The next folder slides in from the side.
+- 🔷 ⏳ Swipe sideways to move back and forward through the folders already opened.
 
-### Android
+### Tablet file navigation
 
-- 🔷 ⏳ The same extended window is the Android test.
-- 💩 ⏳ How that window is packaged on Android is not specified. `oc-test-source-diff` is not in the Android APK build today.
-- ℹ️ Until that packaging exists, `--phone` and `--tablet` are how the pull-over is opened.
+The tablet follows the desktop tree. It does not use the phone drill-down.
 
-### Critical
+- 🔷 ⏳ Folders on the left, files on the right.
+- 🔷 ⏳ Normal use is a swipe down the tree to find the file and view that folder.
+- 🔷 ⏳ Searching puts the keyboard over about half the screen. The tree and the file list share the height that is left.
 
-- 🔷 ✔️ The mock hard-coded the pull-downs inside `TestSelectorRow`.
-- 🚫 Do not keep that. Do not patch the hard-coded popover, the button list, or the overlay.
-- 🔷 ✔️ `ProjectSelector` and `FileSelector` live under `examples/oc-test-source-diff/`, named for the dropdowns they replace. Phone and tablet share `SelectorPull`. The smoke row only hosts them.
-- 🔷 ✔️ The smoke window only hosts those classes.
-- 🔷 ✔️ The click, alignment, height, file selector, and history styling in **Next** are behavior of those classes.
+### Chat history
 
-### Next
-
-Seen on `--selectors`, then `--phone` and `--tablet`. The hard-coded mock showed these. The new classes are what get built. They compile. They have not been looked at on screen yet.
-
-- 🔷 ⏳ The first project click flips the button into the search entry, focuses it, and opens the list.
-  - ℹ️ Caret and typing are still open: `docs/bugs/2026-10-09-selector-search-focus.md`. File search must not grow the top row.
-  - 🔷 The click on the hard-coded mock did nothing. The class opens the pop-down on idle after that click, so autohide does not eat it.
-- 🔷 ⏳ The project pop-down is left aligned under the button.
-  - 🔷 The hard-coded one sat in the middle of the screen. The class anchors a 280-wide rect to the left edge of the button.
-- 🔷 ⏳ Each project row is left aligned.
-  - 🔷 Rows are a title plus a path, same classes as the history list.
-- 🔷 ✔️ Pop-down height fills the space under the row and stays inside the window.
-- 🔷 ✔️ Project names are alphabetical. A `Gtk.StringSorter` on the basename orders the model. Rows are not built in that order.
-- 🔷 ⏳ Searching highlights the first match. That mark is not a list selection. Up and Down move it.
-- 🔷 ⏳ Enter and Tab accept that mark on every tab and move to the next control. Project moves to the file entry. A file moves to the source view. The search entry was eating both keys, so the controller has to see them first. The tree tab has no rows.
-- 🔷 ⏳ With no project, a spacer keeps the history button on the right. The file control takes that gap once a project is chosen.
-- 🔷 ⏳ The file pop-down is inset from the left and right of the window, and tall enough to cover the source view.
-  - 🔷 The outer edge was still past the window. Popover padding and shadow sit outside the content width, so that extra has to come off the width.
-- 🔷 ⏳ File search uses `Folder.fetch_files` and shows the match page. The same mark and keys work there.
-  - 🔷 Typing was not showing that page. The search list was hidden with `visible = false`, which also hides a stack page. The stack page is what shows and hides it. An empty entry stays on history. Text switches to search.
-- 🔷 ✔️ No file pairs: `OLLMcoder.SourceView` fills the area under the selector row. Its own header is hidden. A chosen file opens there.
-- 🔷 ⏳ Project pop-down width is the longest row. The current width can stay until that measurement exists.
-  - ℹ️ Project pop-down stays 280 wide. File pop-down width is the window minus padding, then minus the popover chrome.
-- 🔷 ⏳ Load every project. There are not many. Do not page them.
-- 🔷 ⏳ The file pop-down in this subtest is the full selector.
-  - 🔷 Wide pop-down, tree, history, and search results when text is typed.
-  - 🔷 That is where the filesystem layout gets designed.
-  - ℹ️ Tree contents stay in `CODER-4.2.1`. This tab only says the client has not loaded the folder tree.
-  - ℹ️ History is the first file page, keeping rows with a last-view time.
-  - ℹ️ Search is one ''Folder.fetch_files'' page of 50. It appears only after the entry has text.
-- 🔷 ⏳ Phone and tablet pull-overs look like the history session list.
-  - ℹ️ `libollmchatgtk/HistoryBrowser.vala` and `resources/style.css` (`.list-chat-title` and the caption classes).
-  - 🔷 The hard-coded rows were buttons. The classes use those history label classes.
-- 🔷 ⏳ The phone test after that styling is an Android build, not `--phone` on the desktop.
-- 🚫 Do not package that Android build in this next step.
+- 🔷 ⏳ Phone and tablet chat history moves onto this same pull-over.
+  - The title stays Chat history. That list is sessions, not files.
+  - Search moves from the top to the bottom.
+  - Opening history must not focus search and must not raise the keyboard.
+  - ℹ️ Today `history_toggle_button` grabs `history_browser.search_entry` as soon as history is shown.
+- ℹ️ Product `SourceView` header comes after the smoke window.
 
 ---
 
-## Later
+## Phase 4 — File content search
 
-- 🔷 ⏳ Product `SourceView` header and the phone history pull-over come after the smoke window shows the row on desktop and on Android.
+Held off. Not the next step, and not a tab on the file pop-down.
+
+- 🔷 Search that looks inside file contents waits until after the desktop file list and the Android review.
+- 🔷 ⏳ That search is its own piece of work. It does not replace the tree name filter.
 
 ---
 
-## Out of scope
+## LLM notes
 
-- 🚫 Desktop chat history. This pass only moves the phone and tablet history list onto the pull-over.
-- 🚫 Implementing the tree model. That stays in `CODER-4.2.1`.
-- 🚫 A phone or tablet copy of the desktop tabbed file pop-down. Tabs were specified for the desktop file pop-down only.
-- 🚫 Auto-opening the file pull-over after a project pick on phone or tablet. The focus flip was specified for desktop only.
-- 🚫 A new standalone selection executable. Phase 1 stays on `oc-test-source-diff`.
-- 🚫 Hard-coded pull-downs inside the smoke row. The selectors are their own classes.
+- 🚫 Do not remove the header history button in this plan. The view toggle that replaces it is [`CODER-4.2.4-source-view-markdown-preview.md`](CODER-4.2.4-source-view-markdown-preview.md).
+- 🚫 Desktop chat history stays where it is.
+- 🚫 Do not leave the folder tree for `CODER-4.2.1`. Phase 2 shows folders on the left and files on the right.
+- 🚫 Do not put files on the left tree. Do not bind that tree to `Folder.children`, and do not name the holder `FolderStore`. The holder is `FolderTreeStore`.
+- 🚫 Do not clear `FolderTreeStore` and reload it on a notification. Update the path that changed.
+- 🚫 Do not filter a client-held copy of the whole tree. Ask the file server for the folders and for the file results separately.
+- 🚫 Do not give the phone the desktop tabbed pop-down or the two-pane tree. Phone file navigation is one folder at a time.
+- 🚫 Do not give the tablet the phone drill-down. Tablet file browsing follows the desktop tree.
+- 🚫 Do not auto-open the file pull-over after a project pick on phone or tablet.
+- 🚫 No second smoke app. This stays on `oc-test-source-diff`.
+- 🚫 Do not bring back `examples/oc-test-source-diff-selectors.vala`.
+- 🚫 Do not start the Android review before the desktop file work.
+- 🚫 Do not put a Search tab on the file pop-down. Tree name matches stay on Tree. Recent name matches stay on Recent. Content search is Phase 4.
+- 🚫 No wildcard matching (`*` or `?`) in this pass.
+- 🚫 Do not copy `ProjectFiles.cached_search` sort orders, and do not use `ProjectFiles.get_recent_list`.
+- 🚫 No status theatre. Do not add ✔️ or ✅, rewrite the Status line, or answer with what was ticked, unless the running app already does that thing.

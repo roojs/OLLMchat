@@ -23,10 +23,13 @@ namespace OllamaWeb
 		public int64 pulls { get; set; default = 0; }
 		public int64 downloads { get; set; default = 0; }
 		public bool refined { get; set; default = false; }
-		public Gee.ArrayList<string> features { get; set; default = new Gee.ArrayList<string>(); }
-		public Gee.ArrayList<ModelVariant> tags { get; set; default = new Gee.ArrayList<ModelVariant>(); }
+		public Gee.ArrayList<string> features { 
+			get; set; default = new Gee.ArrayList<string>(); }
+		public Gee.ArrayList<ModelVariant> tags { 
+			get; set; default = new Gee.ArrayList<ModelVariant>(); }
 
-		public Gee.ArrayList<string> unique_sizes { get; private set; default = new Gee.ArrayList<string>(); }
+		public Gee.ArrayList<string> unique_sizes { 
+			get; private set; default = new Gee.ArrayList<string>(); }
 
 		public string display {
 			owned get {
@@ -255,7 +258,8 @@ namespace OllamaWeb
 					var array = property_node.get_array();
 					for (int i = 0; i < array.get_length(); i++) {
 						var element = array.get_element(i);
-						var tag = Json.gobject_deserialize(typeof(ModelVariant), element) as ModelVariant;
+						var tag = Json.gobject_deserialize(typeof(ModelVariant), element)
+							 as ModelVariant;
 						this.tags.add(tag);
 					}
 					this.rebuild_unique_sizes();

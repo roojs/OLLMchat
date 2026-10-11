@@ -447,10 +447,18 @@ namespace OLLMcoder
 				} catch (GLib.Error e) {
 					GLib.critical ("approve failed %s: %s",
 						this.selected_file.path, e.message);
-					this.project_manager.rpc.notification (new OLLMrpc.Notification () {
-						method = "Alert.show",
-						message = "Could not approve change: " + e.message
-					});
+					if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+						this.project_manager.rpc.notification (new OLLMrpc.Notification () {
+							method = "client.filesd.unreachable",
+							id = e.code
+						});
+					}
+					if (e.code != (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+						this.project_manager.rpc.notification (new OLLMrpc.Notification () {
+							method = "Alert.show",
+							message = "Could not approve change: " + e.message
+						});
+					}
 					this.approve_button.sensitive = true;
 					this.reject_button.sensitive = true;
 					return;
@@ -477,10 +485,18 @@ namespace OLLMcoder
 				} catch (GLib.Error e) {
 					GLib.critical ("revert failed %s: %s",
 						this.selected_file.path, e.message);
-					this.project_manager.rpc.notification (new OLLMrpc.Notification () {
-						method = "Alert.show",
-						message = "Could not revert change: " + e.message
-					});
+					if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+						this.project_manager.rpc.notification (new OLLMrpc.Notification () {
+							method = "client.filesd.unreachable",
+							id = e.code
+						});
+					}
+					if (e.code != (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+						this.project_manager.rpc.notification (new OLLMrpc.Notification () {
+							method = "Alert.show",
+							message = "Could not revert change: " + e.message
+						});
+					}
 					this.approve_button.sensitive = true;
 					this.reject_button.sensitive = true;
 					return;

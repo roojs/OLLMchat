@@ -1,6 +1,6 @@
 # Project All filter does not change the list
 
-**Status:** ⏳ debug is in the selector; the click has not been logged yet
+**Status:** ✅ fixed — user confirmed the All filter changes the list on 2026-10-11
 
 ## Problem
 
@@ -25,10 +25,10 @@
 
 - **✔️** The toggle updates the flag. The list refresh is only connected to a notify that this private property does not emit.
 
-## Proposed changes
+## Fix
 
-- **💩** `project_recent` is a real property (`public` get, `private` set) so the existing notify handler runs `filter.changed` and swaps the sorter.
+- **✔️** `project_recent` is a real property (`public` get, `private` set), so the existing notify handler runs `filter.changed` and swaps the sorter.
 
-## Next
+## Current state
 
-- **🔷** ⏳ Click All again with `--debug` and confirm a `recent=false` line whose `shown` count is the full project total.
+- **✅** Closed. All shows the complete project list and keeps search filtering active.
