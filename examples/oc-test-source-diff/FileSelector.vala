@@ -185,6 +185,7 @@ class FileSelector : Gtk.Box
 		var switcher = new Gtk.StackSwitcher() {
 			stack = this.pages,
 			hexpand = true,
+			margin_bottom = 3,
 		};
 		this.scroll = new Gtk.ScrolledWindow() {
 			child = this.pages,

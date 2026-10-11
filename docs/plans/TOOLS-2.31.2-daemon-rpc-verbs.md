@@ -1,6 +1,6 @@
 # 2.31.2 — Phase B — daemon RPC verbs
 
-**Status:** ⏳ **proposed** — apply after [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md). FileVerification and the meson link are taken from the parked draft; the handler is new.
+**Status:** ✔️ **applied** — `ollmfilesd` links `ocbwrap`, `FileVerification` applies overlay writes, `Sandbox-Bubble` verbs key on the bwrap pid, and `live_handles` is on for TCP, the Unix socket, and `SslConnection`. Not user-verified. **Testing Phase B** is still ⏳.
 
 > **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
@@ -12,9 +12,9 @@
 
 ## Purpose
 
-- **🔷** Put sandboxed jobs on the daemon wire: create, run, then `kill` / `tail` / `wait` / `send` by **pid**.
-- **🔷** A job outlives the connection that started it. Verbs look up [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md) `Bubble.jobs`, not a connection lease.
-- **🔷** Live output still uses a lease, so the current client can subscribe to `output` and `finished` before `rpc_run` starts the child.
+- **🔷** `✔️` Put sandboxed jobs on the daemon wire: create, run, then `kill` / `tail` / `wait` / `send` by **pid**.
+- **🔷** `✔️` A job outlives the connection that started it. Verbs look up [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md) `Bubble.jobs`, not a connection lease.
+- **🔷** `✔️` Live output still uses a lease, so the current client can subscribe to `output` and `finished` before `rpc_run` starts the child.
 - **ℹ️** Overlay apply is [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) §2. Apply that file as written. Do not apply the rest of that plan.
 - **ℹ️** The tool, the pid-return text, and the session list are Phase C.
 
@@ -162,16 +162,16 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 
 - **ℹ️** Apply [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) §2 **as written**. That fence is the file. Do not apply §3–§5 of that plan.
 
-### 3. `libocbwrap/Bubble.vala` — `output_lines` and `last_lines` for `tail`
+### 3. `libocbwrap/Bubble.vala` — `output_lines` and `tail` for `tail`
 
 **Why:** `tail` has to read the ring buffer. Both are private today.
 
-**Where:** the `output_lines` field, and a property beside `finished`.
+**Where:** the `output_lines` field, and `tail` beside `finished`.
 
 **Depends on:** [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md).
 
-- **💩** `output_lines` becomes a public property so the count can travel on the wire. The increment in `read_from_channel` stays as it is.
-- **💩** `last_lines` is a public read of `tail`. No new method.
+- **💩** `✔️` `output_lines` becomes a public property so the count can travel on the wire. The increment in `read_from_channel` stays as it is.
+- **🔷** `✔️` `tail` is the public name. Private setter, because Vala will not append to a public array field. `read_from_channel` copies into a local, appends, and assigns back.
 
 #### Remove
 
@@ -185,20 +185,22 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 		public int output_lines { get; private set; default = 0; }
 ```
 
-#### Add — immediately after the `finished` signal
+#### Remove
+
+```vala
+		private string[] tail = {};
+```
+
+#### Replace with
 
 ```vala
 		/**
-		 * Last 50 output lines. What ''tail'' returns.
+		 * Last 50 output lines. The ''tail'' verb reads this.
 		 */
-		public string[] last_lines {
-			owned get {
-				return this.tail;
-			}
-		}
+		public string[] tail { get; private set; default = {}; }
 ```
 
-- **ℹ️** The Windows stub needs the same two members, returning `0` and `{}`.
+- **ℹ️** The Windows stub has the same two members. `output_lines` stays `0`. `tail` stays `{}`.
 
 ### 4. `ollmfilesd/Sandbox/Bubble.vala` — `Sandbox-Bubble` handlers
 
@@ -469,7 +471,7 @@ namespace OLLMfilesd.Sandbox
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("i", bubble.output_lines),
-				msg = string.joinv("\n", bubble.last_lines)
+				msg = string.joinv("\n", bubble.tail)
 			});
 		}
 
@@ -515,7 +517,7 @@ namespace OLLMfilesd.Sandbox
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						retval = OLLMrpc.val("i", 1),
-						msg = string.joinv("\n", bubble.last_lines)
+						msg = string.joinv("\n", bubble.tail)
 					});
 					return;
 				}
@@ -539,7 +541,7 @@ namespace OLLMfilesd.Sandbox
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("i", 2),
-				msg = string.joinv("\n", still.last_lines)
+				msg = string.joinv("\n", still.tail)
 			});
 		}
 

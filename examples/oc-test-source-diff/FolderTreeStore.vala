@@ -25,8 +25,9 @@
  * the path map, and the flat list. The same maps remember the index
  * of each folder in its segment and in the flat list, so remove does
  * not scan. Add and remove go through the top store and signal
- * ''items-changed'' for that one position. There is no uuid map, and
- * a change does not clear the lists.
+ * ''items-changed'' for that one position. There is no uuid map.
+ * A notification does not clear the lists. Loading a different
+ * project removes the rows already stored.
  * {@link load} asks the file server for the child folders of one
  * folder and appends any that are not already stored, then does the
  * same for each of those children. {@link loading} stays true while
@@ -95,6 +96,16 @@ class FolderTreeStore : Object, GLib.ListModel
 	public bool loading { get; private set; default = false; }
 
 	private int pending = 0;
+
+	/**
+	 * Project path this tree is showing. Empty until a project loads.
+	 */
+	private string project_path = "";
+
+	/**
+	 * Generation of a project load. A switch drops the previous reply.
+	 */
+	private int load_epoch = 0;
 
 	/**
 	 * Top store. Child segments use {@link FolderTreeStore.child}.
@@ -231,8 +242,8 @@ class FolderTreeStore : Object, GLib.ListModel
 
 	/**
 	 * Fetch child folders of ''folder'' and append the ones not already
-	 * stored. Then do the same for each new child. Does not clear the
-	 * map, the flat list, or the segments.
+	 * stored. Then do the same for each new child. A different project
+	 * removes the rows already stored.
 	 *
 	 * @param folder Project, or a folder already in this store
 	 */
@@ -242,9 +253,26 @@ class FolderTreeStore : Object, GLib.ListModel
 			yield this.root.load(folder);
 			return;
 		}
-		if (folder.path == "" || this.loaded.contains(folder.path)) {
+		if (folder.path == "") {
 			return;
 		}
+		if (folder.is_project && !this.path_map.has_key(folder.path)
+			&& this.project_path != folder.path) {
+			this.load_epoch++;
+			while (this.flat.size > 0) {
+				this.remove(this.flat.get(this.flat.size - 1));
+			}
+			this.loaded.clear();
+			this.project_path = folder.path;
+		}
+		if (this.project_path != "" && folder.path != this.project_path
+			&& !folder.path.has_prefix(this.project_path + "/")) {
+			return;
+		}
+		if (this.loaded.contains(folder.path)) {
+			return;
+		}
+		var epoch = this.load_epoch;
 		this.loaded.add(folder.path);
 		this.pending++;
 		if (!this.loading) {
@@ -255,6 +283,13 @@ class FolderTreeStore : Object, GLib.ListModel
 		 */
 		GLib.Idle.add(this.load.callback);
 		yield;
+		if (epoch != this.load_epoch) {
+			this.pending--;
+			if (this.pending == 0) {
+				this.loading = false;
+			}
+			return;
+		}
 		OLLMrpc.Response response;
 		try {
 			response = yield folder.manager.rpc.call(new OLLMrpc.Request() {
@@ -262,8 +297,22 @@ class FolderTreeStore : Object, GLib.ListModel
 				args = OLLMrpc.args("s", folder.path)
 			});
 		} catch (GLib.Error e) {
+			if (epoch != this.load_epoch) {
+				this.pending--;
+				if (this.pending == 0) {
+					this.loading = false;
+				}
+				return;
+			}
 			this.loaded.remove(folder.path);
 			GLib.warning("folder list failed: %s", e.message);
+			this.pending--;
+			if (this.pending == 0) {
+				this.loading = false;
+			}
+			return;
+		}
+		if (epoch != this.load_epoch) {
 			this.pending--;
 			if (this.pending == 0) {
 				this.loading = false;
@@ -274,6 +323,9 @@ class FolderTreeStore : Object, GLib.ListModel
 			var rows = (Gee.ArrayList<OLLMfiles.Folder>) response.retval.get_object();
 			var parent = this.path_map.has_key(folder.path) ? this.path_map.get(folder.path) : null;
 			foreach (var row in rows) {
+				if (epoch != this.load_epoch) {
+					break;
+				}
 				if (row.path == "" || row.path == folder.path) {
 					continue;
 				}

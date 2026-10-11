@@ -26,6 +26,7 @@ ollmfilesd_deps = [
   ocmarkdown_vapi_dep,
   ollmchat_vapi_dep,
   ocvector2_vapi_dep,
+  ocbwrap_vapi_dep,
 ]
 ollmfilesd_vapi_pkgs = []
 if is_windows
@@ -65,6 +66,8 @@ ollmfilesd_src = files(
   'ProjectMigrate.vala',
   'ProjectManager.vala',
   'SQT/VectorMetadata.vala',
+  'FileVerification.vala',
+  'Sandbox/Bubble.vala',
   'Daemon.vala',
   'ClientCert.vala',
   'SslListen.vala',
@@ -92,6 +95,7 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollamaweb',
   meson.current_build_dir() / '..' / 'libocvector2',
+  meson.current_build_dir() / '..' / 'libocbwrap',
 ])
 
 ollmfilesd_bin = executable('ollmfilesd',
@@ -104,6 +108,7 @@ ollmfilesd_bin = executable('ollmfilesd',
     include_directories('../libocsqlite'),
     include_directories('../libocrpc'),
     include_directories('../libocvector2'),
+    include_directories('../libocbwrap'),
   ],
   build_rpath: build_rpath,
   install: true,
@@ -119,6 +124,7 @@ ollmfilesd_bin = executable('ollmfilesd',
     '--pkg=ollamaweb',
     '--pkg=fiass',
     '--pkg=ocvector2',
+    '--pkg=ocbwrap',
     '--pkg=libsoup-3.0',
     '--pkg=gnutls',
   ] + ollmfilesd_vapi_pkgs + [
@@ -127,6 +133,7 @@ ollmfilesd_bin = executable('ollmfilesd',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libollamaweb',
     '--vapidir', meson.current_build_dir() / '..' / 'libocvector2',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocbwrap',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', '/usr/share/vala/vapi',
   ],

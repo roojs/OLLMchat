@@ -26,10 +26,12 @@
  * {@link OLLMfiles.File}. {@link FolderTreeStore.load} fills the
  * left list. While that load is waiting on the file server, the
  * folder names are hidden and a spinner is shown across the top.
- * The names are already in order when they appear. Clicking a
- * folder asks the file server for that folder's files. The right
- * side is a name, size, and modified grid. Each cell binds a
- * property on the file. The name column binds the type icon.
+ * The names are already in order when they appear. A folder with
+ * one child folder is a single row. The label joins the names with
+ * ''/'', so ''scalable'' holding only ''apps'' reads ''scalable/apps''.
+ * Clicking a folder asks the file server for that folder's files.
+ * The right side is a name, size, and modified grid. Each cell binds
+ * a property on the file. The name column binds the type icon.
  *
  * == Example ==
  *
@@ -105,23 +107,29 @@ class FileTree : Gtk.Box
 		) {
 			ignore_case = true,
 		};
+		Gtk.TreeListModelCreateModelFunc child_model = (item) => {
+			var folder = item as OLLMfiles.Folder;
+			if (folder == null) {
+				return null;
+			}
+			if (!this.folders.segments.has_key(folder.path)) {
+				return null;
+			}
+			var tip = folder;
+			while (this.folders.segments.has_key(tip.path)
+				&& this.folders.segments.get(tip.path).get_n_items() == 1) {
+				tip = (OLLMfiles.Folder) this.folders.segments.get(tip.path).get_item(0);
+			}
+			return new Gtk.SortListModel(
+				new Gtk.FilterListModel(this.folders.segments.get(tip.path), this.filter),
+				name_sorter
+			);
+		};
 		var tree_model = new Gtk.TreeListModel(
 			new Gtk.SortListModel(new Gtk.FilterListModel(this.folders, this.filter), name_sorter),
 			false,
 			true,
-			(item) => {
-				var folder = item as OLLMfiles.Folder;
-				if (folder == null) {
-					return null;
-				}
-				if (!this.folders.segments.has_key(folder.path)) {
-					return null;
-				}
-				return new Gtk.SortListModel(
-					new Gtk.FilterListModel(this.folders.segments.get(folder.path), this.filter),
-					name_sorter
-				);
-			}
+			child_model
 		);
 		var tree_factory = new Gtk.SignalListItemFactory();
 		tree_factory.setup.connect((obj) => {
@@ -141,8 +149,16 @@ class FileTree : Gtk.Box
 			var expander = (Gtk.TreeExpander) row.child;
 			var tree_row = (Gtk.TreeListRow) row.item;
 			expander.list_row = tree_row;
-			((OLLMfiles.Folder) tree_row.item).bind_property("path_basename", (Gtk.Label) expander.child,
-				"label", GLib.BindingFlags.SYNC_CREATE);
+			var folder = (OLLMfiles.Folder) tree_row.item;
+			var parts = new Gee.ArrayList<string>();
+			parts.add(folder.path_basename);
+			var tip = folder;
+			while (this.folders.segments.has_key(tip.path) &&
+					this.folders.segments.get(tip.path).get_n_items() == 1) {
+				tip = (OLLMfiles.Folder) this.folders.segments.get(tip.path).get_item(0);
+				parts.add(tip.path_basename);
+			}
+			((Gtk.Label) expander.child).label = string.joinv("/", parts.to_array());
 		});
 		tree_factory.unbind.connect((obj) => {
 			var row = (Gtk.ListItem) obj;
@@ -294,7 +310,11 @@ class FileTree : Gtk.Box
 				tree_view.opacity = 0;
 				return;
 			}
-			name_sorter.changed(Gtk.SorterChange.DIFFERENT);
+			this.tree_selection.model = new Gtk.TreeListModel(
+				new Gtk.SortListModel(new Gtk.FilterListModel(this.folders, this.filter), 
+						name_sorter),
+				false, true, child_model
+			);
 			this.tree_selection.selected = Gtk.INVALID_LIST_POSITION;
 			tree_view.opacity = 1;
 			if (this.tree_selection.n_items > 0) {
@@ -332,8 +352,8 @@ class FileTree : Gtk.Box
 	}
 
 	/**
-	 * Folder row selected. Ask the file server for that folder's
-	 * files and fill the grid. A newer selection drops the reply.
+	 * Folder row selected. A joined row asks for the last folder's
+	 * files and fills the grid. A newer selection drops the reply.
 	 * The header sort goes back to the file name.
 	 */
 	private void on_selection_changed()
@@ -346,6 +366,10 @@ class FileTree : Gtk.Box
 			return;
 		}
 		var folder = (OLLMfiles.Folder) ((Gtk.TreeListRow) this.tree_selection.selected_item).item;
+		while (this.folders.segments.has_key(folder.path) && 
+				this.folders.segments.get(folder.path).get_n_items() == 1) {
+			folder = (OLLMfiles.Folder) this.folders.segments.get(folder.path).get_item(0);
+		}
 		var epoch = this.file_epoch;
 		folder.manager.rpc.call.begin(new OLLMrpc.Request() {
 			method = "Folder.fetch_dir",

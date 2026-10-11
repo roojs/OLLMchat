@@ -87,6 +87,7 @@ A grey tick is behavior that app already does.
 - ✔️ A click turns the button into a search entry and opens a wide pop-down.
 - ✔️ The resting file button shows a file icon. The project button shows a folder icon.
 - ✔️ The tabs are Tree and Recent. Tree is the primary tab. Opening the pop-down shows Tree.
+- ✔️ Three pixels sit under those titles, before the list.
 - ✔️ The second tab is titled Recent.
 - ✔️ Opening the pop-down shows Tree, and that show starts `FolderTreeStore.load`.
 - ✔️ The Search tab is off this pop-down.
@@ -147,17 +148,17 @@ Folders on the left, files on the right. The file server is queried for each sid
 
 Outstanding Phase 2 work that is not search.
 
-- 🔷 ⏳ The tree shows the selected project. It does not keep showing the first project.
-  - ℹ️ Choosing another project calls `FolderTreeStore.load` on that project and does not remove folders already stored. The first project's rows stay.
+- ✔️ The tree shows the selected project. Choosing another project removes the previous project's folders, then loads the new one.
 - 🔷 ⏳ An empty folder uses a greyed folder icon, not the normal one, and a light grey colour.
-- 🔷 ⏳ A folder that contains only one child, and that child is a folder, is not its own row.
+- ✔️ A folder that contains only one child, and that child is a folder, is not its own row.
   - 🔷 That chain is one row.
   - 🔷 The label joins the folder names with `/`.
   - 🔷 `A/B` when `A` holds only `B`.
   - 🔷 `A/B/C` when the chain is one folder deeper.
+  - 🔷 `scalable/apps` when `scalable` holds only `apps`.
   - 🔷 The row stops at the first folder that contains anything other than a single child folder.
   - 🔷 Children of that last folder stay under the combined row.
-  - 💩 Clicking the row selects that last folder and shows its files on the right.
+  - ✔️ Clicking the row selects that last folder and shows its files on the right.
   - 💩 The combined row uses the empty-folder grey icon when the chain has no files.
 - 🔷 ⏳ The pop-down header is three slots.
   - 🔷 The left slot is two icon buttons.
@@ -174,7 +175,8 @@ Outstanding Phase 2 work that is not search.
 - 🔷 ⏳ A type filter, document versus code. It sits in the right slot.
   - ℹ️ Daemon `File.is_documentation()` is markdown or plain text. Other languages are code.
 - 🔷 ⏳ With no search text, the folder that contains the current file is the one selected, and that file sits about halfway down the right list. A load currently selects nothing and scrolls to the top.
-- 🔷 ⏳ Control-click clears the left selection.
+- 🔷 ⏳ A click on the left tree selects that folder.
+- 🔷 ⏳ A second click on that same folder deselects it and clears the file list.
 - 🔷 ⏳ Refresh is a progressive update. A notification adds or removes the one path that changed. It does not clear the map, the flat list, or the segments, and it does not walk the tree again.
   - ℹ️ Today `scan_end` drops the project path from `loaded` and calls `load` on that project. `append` skips a path already stored, so the rows are not deleted and replaced. Deeper folders already in `loaded` are not fetched again. A folder that disappeared stays in the tree. The first open still walks every folder.
   - ℹ️ When `loading` goes false, `FileTree` calls `name_sorter.changed(DIFFERENT)`. That re-sorts every segment, and the list is hidden for the whole load. That full re-render is not the design. Leave it until the progressive update above.

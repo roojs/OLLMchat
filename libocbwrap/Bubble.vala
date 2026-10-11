@@ -131,7 +131,7 @@ namespace OLLMbwrap
 		/**
 		 * Combined stdout+stderr lines read during {@link exec}.
 		 */
-		private int output_lines = 0;
+		public int output_lines { get; private set; default = 0; }
 
 		public bool stopped { get; private set; default = false; }
 		public signal void output(string line);
@@ -169,7 +169,10 @@ namespace OLLMbwrap
 		 */
 		public signal void finished(string output);
 
-		private string[] tail = {};
+		/**
+		 * Last 50 output lines. The ''tail'' verb reads this.
+		 */
+		public string[] tail { get; private set; default = {}; }
 		private GLib.Subprocess child;
 		private bool child_active = false;
 		
@@ -781,10 +784,12 @@ namespace OLLMbwrap
 				return;
 			}
 			var line = buffer.chomp();
-			if (this.tail.length >= 50) {
-				this.tail = this.tail[1:this.tail.length];
+			var lines = this.tail;
+			if (lines.length >= 50) {
+				lines = lines[1:lines.length];
 			}
-			this.tail += line;
+			lines += line;
+			this.tail = lines;
 			this.output_lines++;
 			this.output(line);
 		}

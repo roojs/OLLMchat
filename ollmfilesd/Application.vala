@@ -300,6 +300,7 @@ Examples:
 			FileWithHistory.rpc_register();
 			SQT.VectorMetadata.rpc_register();
 			Codebase.rpc_register();
+			Sandbox.Bubble.rpc_register();
 
 			this.daemon = new Daemon(this);
 			OLLMrpc.Request.register("RPC-Daemon", this.daemon);
@@ -309,6 +310,8 @@ Examples:
 			OLLMrpc.Request.register("Folder", new Folder(this.project_manager));
 			OLLMrpc.Request.register("FileHistory", new FileHistory.for_rpc(this.project_manager));
 			OLLMrpc.Request.register("Codebase",  new Codebase(this.project_manager, this.config));
+			OLLMrpc.Request.register("Sandbox-Bubble",
+				new Sandbox.Bubble(this.project_manager));
 
 			if (opt_interactive) {
 				this.listen = new Stdio(this, opt_rpc_script);
@@ -326,7 +329,9 @@ Examples:
 				this.listen = new OLLMrpc.Transport.TcpListen(
 					opt_tcp_host,
 					(uint16) opt_tcp_port
-				);
+				) {
+					live_handles = true
+				};
 				if (!this.listen.start()) {
 					GLib.error("failed to start TCP RPC listener");
 				}
@@ -340,7 +345,9 @@ Examples:
 			if (!opt_interactive && !opt_tcp) {
 				this.listen = new OLLMrpc.Transport.SocketListen(
 					this.socket_path
-				);
+				) {
+					live_handles = true
+				};
 				if (!this.listen.start()) {
 					GLib.error("failed to start RPC listener");
 				}

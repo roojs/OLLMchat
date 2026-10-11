@@ -1,6 +1,6 @@
 # 2.31 — URGENT — `bash` as a process tool
 
-**Status:** ⏳ **design** — phased, built back-to-front from the daemon. No phase is ready to apply; Phase A's open questions gate the rest.
+**Status:** ⏳ **design** — Phase A and Phase B are applied. Phase C is proposed in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md). Not user-verified.
 
 > **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
@@ -11,7 +11,8 @@
 **Sub-plans:** phases A–E below become `TOOLS-2.31.1` … `TOOLS-2.31.5` as each one's open questions close.
 
 - [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md) — **Phase A**, the daemon job model. **✔️** Applied.
-- [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md) — **Phase B**, daemon RPC verbs. Code proposals written.
+- [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md) — **Phase B**, daemon RPC verbs. **✔️** Applied. Socket tests still ⏳.
+- [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md) — **Phase C**, the `bash` tool on that wire. **⏳** Proposed.
 - [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) — earlier daemon `Sandbox-Bubble` RPC draft. **Parked, do not apply.**
 
 **Depends on:**
@@ -399,26 +400,28 @@ on it with this tool to find the part you need.
 
 ---
 
-## Phase B — daemon RPC verbs (`⏳`)
+## Phase B — daemon RPC verbs (`✔️`)
 
-**ℹ️** Split out to [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md), which carries the wire and the code proposals. Summary only below.
+**ℹ️** Split out to [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md). **✔️** Applied. Summary only below. Socket tests there are still ⏳.
 
-- **🔷** `⏳` `Sandbox-Bubble` gains a call per verb — kill, tail, wait, send — on top of create and run.
-- **🔷** After `rpc_run`, later calls use the **pid**, looked up in `Bubble.jobs`. A connection lease is only for streaming on the call that started the job.
+- **🔷** `✔️` `Sandbox-Bubble` gains a call per verb — kill, tail, wait, send — on top of create and run.
+- **🔷** `✔️` After `rpc_run`, later calls use the **pid**, looked up in `Bubble.jobs`. A connection lease is only for streaming on the call that started the job.
 - **ℹ️** The parked [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) has `rpc_create` / `rpc_run` / `stop` only, and keys them on a lease. Phase B **supersedes that wire**. FileVerification from that draft still stands.
-- **🔷** `⏳` Output streaming stays the live-handle design — `connection.export`, `RPC-Live-Subscribe.rpc_signal` on `output`, and `live_handles = true` on the daemon's listeners **and** on `SslConnection`.
+- **🔷** `✔️` Output streaming stays the live-handle design — `connection.export`, `RPC-Live-Subscribe.rpc_signal` on `output`, and `live_handles = true` on the daemon's listeners **and** on `SslConnection`.
 - **ℹ️** HTTPS cannot carry this. The phone is TLS TCP.
 
 ---
 
 ## Phase C — the `bash` tool (`⏳`)
 
+**ℹ️** Proposed in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md). Summary only below.
+
 - **🔷** `⏳` Build the tool contract designed above: `pid` parameter, the four verbs, `timeout = -1`, the pid-return block, and the truncation advice.
 - **🔷** `⏳` When the file client is `LIVE`, `bash` runs the command on the daemon. Not `OLLMbwrap` in the Android process.
 - **ℹ️** `SOCKET` is the desktop local Unix hello ([`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md)). `ollmfilesd` is already up on this machine. Empty `url`. Not a remote row.
 - **🔷** What `SOCKET` does for exec is not decided. Not enough here to choose in-process bwrap versus the same RPC.
 - **ℹ️** Overlay / index update after daemon exec is the daemon's job in `2.10.4.15` (`Scan` + `FileVerification` on `ollmfilesd`).
-- **🔷** `⏳` Code proposals — after Phase B is on the wire.
+- **ℹ️** Code proposals are in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md).
 
 ---
 
@@ -511,8 +514,8 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 
 1. **✔️** **Phase A** — apply [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md). Agent applied; not user-verified.
 2. **⏳** Decide whether `bash` stops subclassing `RunCommand.Tool`, and whether desktop keeps both tools.
-3. **⏳** **Phase B** — apply [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md)
-4. **⏳** **Phase C** — the `bash` tool: `pid`, verbs, `-1`, truncation advice, the per-session job list and its idle timer
+3. **✔️** **Phase B** — apply [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md). Agent applied; socket tests still ⏳.
+4. **⏳** **Phase C** — [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md): `pid`, verbs, `-1`, truncation advice, the per-session job list and its idle timer
 5. **⏳** **Phase D** — background-job indicator and user-facing kill, before `-1` ships
 6. **⏳** **Phase E** — Android registration + `AgentPi.Factory.register_config`
 

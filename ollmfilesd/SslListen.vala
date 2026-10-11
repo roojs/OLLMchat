@@ -201,7 +201,8 @@ namespace OLLMfilesd
 					}
 					var rpc = new SslConnection(conn, this.app) {
 						io = tls,
-						cert_fingerprint = fingerprint
+						cert_fingerprint = fingerprint,
+						live_handles = true
 					};
 					rpc.start();
 					this.connections.add(rpc);

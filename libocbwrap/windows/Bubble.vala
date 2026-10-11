@@ -51,6 +51,12 @@ namespace OLLMbwrap
 		public string command { get; set; default = ""; }
 		public string working_dir { get; set; default = ""; }
 		public signal void finished(string output);
+		public int output_lines { get; private set; default = 0; }
+
+		/**
+		 * Last 50 output lines. The ''tail'' verb reads this.
+		 */
+		public string[] tail { get; private set; default = {}; }
 
 		public Bubble (FileVerification verification)
 		{
