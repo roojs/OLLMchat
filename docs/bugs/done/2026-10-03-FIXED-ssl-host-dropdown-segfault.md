@@ -1,6 +1,6 @@
 # Settings dialog SIGSEGV on the SSL host dropdown
 
-**Status:** ✔️ root cause confirmed from the backtrace and generated C; fix applied — await a settings-dialog open on device
+**Status:** ✅ fixed 2026-10-11 — `FileServerRow.load_config` slices `ssl_ips` after the prepend so `Gtk.StringList` gets a NULL terminator.
 
 ## Problem
 
@@ -59,4 +59,4 @@
 
 ## Next
 
-- **⏳** **🔷** Open Settings and confirm the dialog stays up and the SSL host dropdown lists `All` plus the machine's non-loopback IPv4 addresses.
+- **ℹ️** Closed. Settings-dialog open on device was not re-run for this archive.

@@ -152,6 +152,9 @@ class FileSelector : Gtk.Box
 		this.append(this.face_stack);
 
 		this.tree = new FileTree();
+		this.tree.file_activated.connect((file) => {
+			this.choose(file);
+		});
 		this.history_rows = new Gtk.ListBox() {
 			selection_mode = Gtk.SelectionMode.NONE,
 			activate_on_single_click = true,
@@ -242,10 +245,18 @@ class FileSelector : Gtk.Box
 		this.pull.pages.add_named(pull_scroll, "file");
 
 		this.history_rows.row_activated.connect((line) => {
-			this.choose(line);
+			var file = line.get_data<OLLMfiles.File>("file");
+			if (file == null) {
+				return;
+			}
+			this.choose(file);
 		});
 		this.pull_rows.row_activated.connect((line) => {
-			this.choose(line);
+			var file = line.get_data<OLLMfiles.File>("file");
+			if (file == null) {
+				return;
+			}
+			this.choose(file);
 		});
 		this.pull.search.search_changed.connect(() => {
 			if (this.pull.kind != "file") {
@@ -595,16 +606,12 @@ class FileSelector : Gtk.Box
 	}
 
 	/**
-	 * Apply a chosen file row and close whichever surface is open.
+	 * Open a chosen file and close whichever surface is open.
 	 *
-	 * @param line Row that holds the file, or an empty-state row
+	 * @param file File the user activated
 	 */
-	private void choose(Gtk.ListBoxRow line)
+	private void choose(OLLMfiles.File file)
 	{
-		var file = line.get_data<OLLMfiles.File>("file");
-		if (file == null) {
-			return;
-		}
 		var shown = file.path_basename;
 		if (this.form != "phone" && this.project.path.length > 0
 			&& file.path.has_prefix(this.project.path + "/")) {

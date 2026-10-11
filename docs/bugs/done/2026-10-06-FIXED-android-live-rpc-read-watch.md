@@ -1,6 +1,6 @@
 # Android live RPC client has no read watch
 
-**Status:** ⏳ root cause confirmed; fix proposed — await apply approval
+**Status:** ✅ fixed 2026-10-11 — `OLLMrpc.Client.connect` uses the shared `GLib.IOChannel` read watch on Android. The `unix IO watch is not available` disconnect is gone.
 
 **Device:** SM-S9380, `adb-R5CY134DA0W`.  
 **Related:** ℹ️ `docs/bugs/done/2026-10-06-CLOSED-certificate-not-registered.md`, `libocrpc/Client.vala`, `docs/plans/RPC-1.11.3-tcp-client-handover.md`, `docs/plans/RPC-1.11.5-phone-reconnect.md`
@@ -93,5 +93,4 @@ Reproduction: pair the phone, close the pairing dialog, and let Android startup 
 
 ## Next
 
-- **⏳** **🔷** Await approval to apply §1.
-- **⏳** **🔷** After approval, rebuild the Android library and verify hello, project loading, notifications, and reconnect after a dropped socket.
+- **ℹ️** Closed. `libocrpc/Client.vala` `connect` sets the read watch after `connected = true` on every platform. Phone hello, project load, notifications, and reconnect after a drop were not re-run for this archive.

@@ -3,7 +3,7 @@
 **Status:** ✅ fixed — physical phone reaches `LIVE`, exposes Agent Pi, and loads project files; complete file opening also passes on the emulator
 
 **Devices:** SM-S9380 physical phone for the original failure; `emulator-5554` for the controlled current-build flow.
-**Related:** ℹ️ `docs/bugs/done/2026-10-05-CLOSED-android-pair-listen.md`, `docs/bugs/2026-10-06-android-live-rpc-read-watch.md`, `docs/bugs/done/2026-10-08-CLOSED-android-remote-connection-lifecycle.md`, `ollmapp/android/FileConnectionAdd.vala`, `tests/rpc/filesd-pair-test.vala`, `android/pair-listen-probe/`
+**Related:** ℹ️ `docs/bugs/done/2026-10-05-CLOSED-android-pair-listen.md`, `docs/bugs/done/2026-10-06-FIXED-android-live-rpc-read-watch.md`, `docs/bugs/done/2026-10-08-CLOSED-android-remote-connection-lifecycle.md`, `ollmapp/android/FileConnectionAdd.vala`, `tests/rpc/filesd-pair-test.vala`, `android/pair-listen-probe/`
 
 ---
 
@@ -44,7 +44,7 @@ Original phone reproduction: uninstall the APK installed from the other machine,
 - **✔️** The working pairing path and `OLLMrpc.Client.connect` treat hello as successful when `response.error` is null; the daemon does not guarantee an `"ok"` message.
 - **✔️** After accepting the real hello contract, the address probe succeeds but the persistent `OLLMrpc.Client` fails with `connect tcp://192.168.0.16:8422: Unacceptable TLS certificate`.
 - **✔️** `OLLMrpc.Client.connect` creates its `GLib.TlsClientConnection`, but the adjacent “certificate and database are filled in later” comment has no implementation; the paired per-server client certificate and CA are never supplied to the persistent connection.
-- **✔️** After TLS setup, `OLLMrpc.Client.connect` still contains the explicit Android `unix IO watch is not available` disconnect path documented in `2026-10-06-android-live-rpc-read-watch.md`; project and file browsing require the persistent read watch.
+- **✔️** After TLS setup, `OLLMrpc.Client.connect` still contains the explicit Android `unix IO watch is not available` disconnect path documented in `docs/bugs/done/2026-10-06-FIXED-android-live-rpc-read-watch.md`; project and file browsing require the persistent read watch.
 - **✔️** With both fixes applied, the persistent client completes TLS and starts the read watch, but its first hello read fails with `Connection is closed`.
 - **✔️** The `tls_link` variable is scoped to the remote-TCP block and is released before the client installs the read watch and sends hello; releasing the `GLib.TlsClientConnection` closes the TLS stream even though the underlying socket field remains.
 - **✔️** Retaining the TLS connection fixed the live channel on `emulator-5554`: hello replied, `ProjectManager.rpc_load_projects_from_db` replied, state became `LIVE`, and Agent Pi appeared.
@@ -72,7 +72,7 @@ Original phone reproduction: uninstall the APK installed from the other machine,
 - **🔷** Accept the probe hello when it is a response without `response.error`, matching the real daemon hello contract; do not require the optional `response.msg` to equal `"ok"`.
 - **🔷** Add a `configure_tls` signal on `OLLMrpc.Client` and emit it before the remote TCP TLS handshake so the owning application can supply the paired server's credentials without adding forbidden TLS properties to the shared client.
 - **🔷** In both Android persistent-client construction sites, load the certificate directory identified by `filesd_client.server_id` and configure the client's TLS connection with that client certificate and CA.
-- **🔷** Apply the existing `2026-10-06-android-live-rpc-read-watch.md` proposal: remove the Android disconnect branch and use the shared IOChannel readiness watch, while `Bin.Stream` continues reading the selected TLS stream.
+- **🔷** Apply the existing `docs/bugs/done/2026-10-06-FIXED-android-live-rpc-read-watch.md` proposal: remove the Android disconnect branch and use the shared IOChannel readiness watch, while `Bin.Stream` continues reading the selected TLS stream.
 - **🔷** Keep the `GLib.TlsClientConnection` in a private `OLLMrpc.Client` field for the lifetime of the live RPC connection, and release it during `disconnect`.
 - **🔷** Remove the fatal vector-probe timer from `ProjectManager.rpc_activate_project`; the HTTP connection already owns its request timeout, and this asynchronous vector work must not kill unrelated project/file RPC.
 - **🔷** Report dimension-zero vector availability to the connected client with the existing `Banner.show` notification path, then allow the existing `queue_project` contract to skip indexing.

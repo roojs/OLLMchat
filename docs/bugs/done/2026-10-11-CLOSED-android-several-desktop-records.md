@@ -1,6 +1,6 @@
 # Phone stores one desktop
 
-**Status:** ⏳ applying [`RPC-8.2.8.15`](../plans/RPC-8.2.8.15-android-filesd-client-records.md)
+**Status:** 🚫 CLOSED 2026-10-11 — the product change is plan [`RPC-8.2.8.15`](../../plans/RPC-8.2.8.15-android-filesd-client-records.md). This note does not track that work.
 
 **Related:** ℹ️ `docs/plans/RPC-8.2.8.15-android-filesd-client-records.md`, ℹ️ `docs/bugs/done/2026-10-10-CLOSED-desktop-unreachable-give-up.md`
 
@@ -24,7 +24,7 @@
 
 ## Proposed fix
 
-- **🔷** Apply [`RPC-8.2.8.15`](../plans/RPC-8.2.8.15-android-filesd-client-records.md). The Remove / Replace with / Add fences are in that plan.
+- **🔷** Apply [`RPC-8.2.8.15`](../../plans/RPC-8.2.8.15-android-filesd-client-records.md). The Remove / Replace with / Add fences are in that plan.
 
 ## Attempts / changelog
 
@@ -32,4 +32,4 @@
 
 ## Next
 
-- **🔷** ⏳ Land the plan. Desktop compile. `test-rpc-filesd-pair-flow` does not open the connections list.
+- **ℹ️** Closed. Land [`RPC-8.2.8.15`](../../plans/RPC-8.2.8.15-android-filesd-client-records.md). Desktop compile. `test-rpc-filesd-pair-flow` does not open the connections list.

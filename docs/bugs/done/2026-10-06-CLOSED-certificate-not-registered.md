@@ -50,4 +50,4 @@ Reproduction: desktop Allow New Device, phone Add Remote Desktop, type the six d
 
 ## Next
 
-- **ℹ️** The missing Android steady-state RPC reader is a separate defect: `docs/bugs/2026-10-06-android-live-rpc-read-watch.md`.
+- **ℹ️** The missing Android steady-state RPC reader is a separate defect: `docs/bugs/done/2026-10-06-FIXED-android-live-rpc-read-watch.md`.

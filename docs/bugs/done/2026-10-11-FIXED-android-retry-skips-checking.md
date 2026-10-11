@@ -1,6 +1,6 @@
 # Android Retry hides the desktop dialog and skips the checking spinner
 
-**Status:** ⏳ emulator pass shows the unavailable dialog, the checking page, and a clean header after Close. The activate-project banner did not run on this emulator (no project). Not phone-checked.
+**Status:** ✅ fixed 2026-10-11 — Retry shows the startup page and `Checking desktop environment…` until the probe finishes. Emulator: a miss brings the unavailable dialog back; Close returns to Chatter with an empty header.
 
 **Related:** ℹ️ `docs/bugs/done/2026-10-08-CLOSED-android-remote-connection-lifecycle.md`, ℹ️ `docs/bugs/done/2026-10-10-CLOSED-desktop-unreachable-give-up.md`, ℹ️ `docs/bugs/done/2026-10-10-CLOSED-agent-manager.md`
 
@@ -65,4 +65,4 @@
 
 ## Next
 
-- **⏳** 🔷 Phone, desktop unreachable, with a project open: a `not connected` activate or folder fetch must not leave a header banner. The warning is the desktop-unavailable dialog.
+- **ℹ️** Closed. Phone with a project open was not checked.

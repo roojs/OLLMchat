@@ -20,7 +20,9 @@
 - ✅ Phase 1 is confirmed.
 - 🔷 ✔️ marks code that is in the smoke app and not approved yet.
 - 🔷 Never do status theatre. Do not mark an item done, rewrite Status, or report ticks in place of the behavior. A tick waits until that behavior is what the running app does.
-- 🔷 Next step is the Phase 2 behavior that is still open: Recent search while typing, and the tree search marks. Phase 3 and Phase 4 wait.
+- 🔷 Phase 2.1 is the file selector already in the smoke app.
+- 🔷 Next is Phase 2.2. Empty folders, single-child folder chains, and the other controls that are not search.
+- 🔷 Phase 2.3 is search. Phase 3 and Phase 4 wait.
 
 ---
 
@@ -71,9 +73,13 @@ ninja -C build examples/oc-test-source-diff
 
 ## Phase 2 — Desktop file selector
 
-`FileSelector` is on the desktop smoke row. A grey tick is behavior that app already does. An open item is still missing.
+`FileSelector` is on the desktop smoke row. Phase 2.1 is what that app already does. Phase 2.2 is the rest that is not search. Phase 2.3 is search.
 
-### Pop-down
+### 2.1 — Smoke app
+
+A grey tick is behavior that app already does.
+
+#### Pop-down
 
 - ✔️ The file control is a flat button until activated, same resting shape as the project button.
 - ✔️ After a file is chosen, desktop shows the path relative to the project. The label ellipsizes at the start.
@@ -93,12 +99,11 @@ ninja -C build examples/oc-test-source-diff
 - ✔️ The pop-down closes when the window stops being the active one.
 - ℹ️ `examples/oc-test-source-diff/FileSelector.vala`.
 
-### Recent
+#### Recent
 
 - ✔️ An empty search shows the recent files, up to 50.
-- 🔷 ⏳ Typing in the desktop search entry does not filter Recent yet. That search stays on Recent and orders matches by how recent they are. It does not jump to Tree.
 
-### First step
+#### First step
 
 Widgets first, then the lists behind them. `FolderTreeStore.load` asks the file server for child folders and appends them. It does not clear the store.
 
@@ -108,14 +113,11 @@ Widgets first, then the lists behind them. `FolderTreeStore.load` asks the file 
 - ✔️ The top `FolderTreeStore` owns a path-to-folder hash map and a flat list of every folder. There is no uuid map.
 - ✔️ Each folder's children are a `FolderTreeStore` for that segment. The same folder object sits in the segment, the path map, and the flat list. Add and remove go through the top store and signal `items-changed` for that one position.
 - ✔️ A `Gtk.TreeListModel` binds the top list and, for each folder, that folder's child store. One search filter is used on the top list and on every child list. The filter currently keeps every row.
-- 🔷 ⏳ Refresh is a progressive update. A notification adds or removes the one path that changed. It does not clear the map, the flat list, or the segments, and it does not walk the tree again.
-- ℹ️ Today `scan_end` drops the project path from `loaded` and calls `load` on that project. `append` skips a path already stored, so the rows are not deleted and replaced. Deeper folders already in `loaded` are not fetched again. A folder that disappeared stays in the tree. The first open still walks every folder.
-- ℹ️ When `loading` goes false, `FileTree` calls `name_sorter.changed(DIFFERENT)`. That re-sorts every segment, and the list is hidden for the whole load. That full re-render is not the design. Leave it until the progressive update above.
 - ℹ️ `ProjectFiles.refresh` clears its page and loads another. This store does not follow that.
 - ✔️ The right holder is a `GLib.ListStore` of `File` for the folder that is selected. It starts empty.
 - ℹ️ On the client today there is no folder tree. `ProjectList.path_map` is project roots only. `ProjectManager.file_cache` is path to `FileBase` for rows fetched one at a time, files and folders mixed. `Folder.children` stays empty. `ProjectFiles` is one dropdown page from `Folder.fetch_files`, not a kept tree. `Folder.fetch_children` is named on `FolderFiles` and does not exist.
 
-### Existing stores
+#### Existing stores
 
 Reference only. Each one is a `GLib.ListModel` with an array behind it, except the settings page, which uses `GLib.ListStore` directly. Client and daemon each have their own copy of the named classes.
 
@@ -127,34 +129,68 @@ Reference only. Each one is a `GLib.ListModel` with an array behind it, except t
 | `ReviewFiles` | `FileWithHistory`. | Files waiting for approval. |
 | `GLib.ListStore` of `Folder` | `Folder`. | Settings projects page only. Not a named store class. |
 
-### Tree
+#### Tree
 
-Folders on the left, files on the right. This is a main part of Phase 2. The file server is queried for each side after the first step. File content search is Phase 4.
+Folders on the left, files on the right. The file server is queried for each side after the first step. File content search is Phase 4.
 
 - ✔️ The left side is a folder tree. It does not list files.
 - ✔️ That tree is expanded.
 - ✔️ Clicking a folder asks the file server (''Folder.fetch_dir'') for that folder's files and shows them on the right.
-- 🔷 ⏳ With no search text, the folder that contains the current file is the one selected, and that file sits about halfway down the right list. A load currently selects nothing and scrolls to the top.
 - ✔️ A selected folder's files are a three-column grid: name with a type icon, size, and modified time. Names are alphabetical, ignoring case.
-- 🔷 ⏳ Search on this tab is a global file search. The file server returns those files in a separate query. That result marks folders on the existing `FolderTreeStore`. It does not build a second tree and it does not refill the hash map.
-- ℹ️ RooTerm `TreeNodes` is the reference. The root owns `by_uuid` and `flat`. Each row's `children` is another `TreeNodes`. Search walks `by_uuid`, then `filter.changed` on those same lists. This store uses the path map where RooTerm uses `by_uuid`. Non-matches are hidden there. Here they stay and go grey.
-- 🔷 ⏳ Folders with no matching file under them stay in the left tree. A folder is not empty when a match is inside it, including inside a subfolder.
+
+#### Other controls
+
+- ✔️ This selector reads and shows files. It does not create them.
+- ✔️ Folder names are alphabetical, ignoring case, through the name sorter on each filter. That order does not copy the old file-dropdown sorts.
+
+### 2.2 — Empty folders and other controls
+
+Outstanding Phase 2 work that is not search.
+
+- 🔷 ⏳ The tree shows the selected project. It does not keep showing the first project.
+  - ℹ️ Choosing another project calls `FolderTreeStore.load` on that project and does not remove folders already stored. The first project's rows stay.
 - 🔷 ⏳ An empty folder uses a greyed folder icon, not the normal one, and a light grey colour.
-- 🔷 ⏳ Clicking a folder while searching shows that folder's matching files on the right, on that same grid.
-- 🔷 ⏳ Control-click clears the left selection.
-- 🔷 ⏳ With no folder selected during a search, the right list is every matching file. Each row has the path relative to the project underneath the name.
-
-### Other controls
-
-- 🔷 ⏳ A type filter, document versus code.
+- 🔷 ⏳ A folder that contains only one child, and that child is a folder, is not its own row.
+  - 🔷 That chain is one row.
+  - 🔷 The label joins the folder names with `/`.
+  - 🔷 `A/B` when `A` holds only `B`.
+  - 🔷 `A/B/C` when the chain is one folder deeper.
+  - 🔷 The row stops at the first folder that contains anything other than a single child folder.
+  - 🔷 Children of that last folder stay under the combined row.
+  - 💩 Clicking the row selects that last folder and shows its files on the right.
+  - 💩 The combined row uses the empty-folder grey icon when the chain has no files.
+- 🔷 ⏳ The pop-down header is three slots.
+  - 🔷 The left slot is two icon buttons.
+  - 🔷 Collapse all.
+  - 🔷 A tree filter beside it.
+  - 🔷 That filter hides empty folders and gitignored folders.
+  - 🔷 Build directories are empty and gitignored, so the filter hides them.
+  - 🔷 The tree filter has its own icon.
+  - 🔷 Middle is Tree and Recent.
+  - 🔷 Right is the type filter.
+  - 🔷 On Recent, the two left buttons are hidden.
+  - 🔷 The left slot keeps its width, so Tree and Recent do not move or shrink.
+- 🔷 ⏳ Collapse all collapses the folder tree.
+- 🔷 ⏳ A type filter, document versus code. It sits in the right slot.
   - ℹ️ Daemon `File.is_documentation()` is markdown or plain text. Other languages are code.
-- 🔷 ⏳ Collapse-all shortcut on the file dialog.
+- 🔷 ⏳ With no search text, the folder that contains the current file is the one selected, and that file sits about halfway down the right list. A load currently selects nothing and scrolls to the top.
+- 🔷 ⏳ Control-click clears the left selection.
+- 🔷 ⏳ Refresh is a progressive update. A notification adds or removes the one path that changed. It does not clear the map, the flat list, or the segments, and it does not walk the tree again.
+  - ℹ️ Today `scan_end` drops the project path from `loaded` and calls `load` on that project. `append` skips a path already stored, so the rows are not deleted and replaced. Deeper folders already in `loaded` are not fetched again. A folder that disappeared stays in the tree. The first open still walks every folder.
+  - ℹ️ When `loading` goes false, `FileTree` calls `name_sorter.changed(DIFFERENT)`. That re-sorts every segment, and the list is hidden for the whole load. That full re-render is not the design. Leave it until the progressive update above.
 - 🔷 ⏳ Refresh is a last line of defence.
   - ℹ️ The server is meant to stay current.
   - ℹ️ File watch on the active project is not implemented.
   - ℹ️ Refresh covers that watch missing a change.
-- ✔️ This selector reads and shows files. It does not create them.
-- ✔️ Folder names are alphabetical, ignoring case, through the name sorter on each filter. That order does not copy the old file-dropdown sorts.
+
+### 2.3 — Search
+
+- 🔷 ⏳ Typing in the desktop search entry does not filter Recent yet. That search stays on Recent and orders matches by how recent they are. It does not jump to Tree.
+- 🔷 ⏳ Search on the Tree tab is a global file search. The file server returns those files in a separate query. That result marks folders on the existing `FolderTreeStore`. It does not build a second tree and it does not refill the hash map.
+  - ℹ️ RooTerm `TreeNodes` is the reference. The root owns `by_uuid` and `flat`. Each row's `children` is another `TreeNodes`. Search walks `by_uuid`, then `filter.changed` on those same lists. This store uses the path map where RooTerm uses `by_uuid`. Non-matches are hidden there. Here they stay and go grey.
+- 🔷 ⏳ Folders with no matching file under them stay in the left tree. A folder is not empty when a match is inside it, including inside a subfolder.
+- 🔷 ⏳ Clicking a folder while searching shows that folder's matching files on the right, on that same grid.
+- 🔷 ⏳ With no folder selected during a search, the right list is every matching file. Each row has the path relative to the project underneath the name.
 
 ---
 

@@ -51,6 +51,13 @@ class FileTree : Gtk.Box
 	public GLib.ListStore files { get; private set; }
 
 	/**
+	 * A file row was activated. The file selector opens it.
+	 *
+	 * @param file File the user activated
+	 */
+	public signal void file_activated(OLLMfiles.File file);
+
+	/**
 	 * Generation of the folder-file request. A newer click drops
 	 * the reply from the previous one.
 	 */
@@ -239,6 +246,10 @@ class FileTree : Gtk.Box
 		this.file_view.append_column(modified_column);
 		file_selection.model = new Gtk.SortListModel(this.files, this.file_view.sorter);
 		this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
+		this.file_view.activate.connect((position) => {
+			var file = (OLLMfiles.File) file_selection.get_item(position);
+			this.file_activated(file);
+		});
 		this.file_empty = new Gtk.Label("No files") {
 			halign = Gtk.Align.CENTER,
 			valign = Gtk.Align.CENTER,
