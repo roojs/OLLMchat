@@ -27,8 +27,11 @@
  * left list. While that load is waiting on the file server, the
  * folder names are hidden and a spinner is shown across the top.
  * The names are already in order when they appear. A folder with
- * one child folder is a single row. The label joins the names with
- * ''/'', so ''scalable'' holding only ''apps'' reads ''scalable/apps''.
+ * one child folder is a single row, unless that folder also holds
+ * a file. The label joins the names with ''/'', so ''scalable''
+ * holding only ''apps'' reads ''scalable/apps''. ''libochf'' stays
+ * its own row because it has files beside ''Param''. A folder with
+ * no child folder has no expander.
  * Clicking a folder asks the file server for that folder's files.
  * The right side is a name, size, and modified grid. Each cell binds
  * a property on the file. The name column binds the type icon.
@@ -117,8 +120,12 @@ class FileTree : Gtk.Box
 			}
 			var tip = folder;
 			while (this.folders.segments.has_key(tip.path)
-				&& this.folders.segments.get(tip.path).get_n_items() == 1) {
+				&& this.folders.segments.get(tip.path).get_n_items() == 1
+				&& !this.folders.with_files.contains(tip.path)) {
 				tip = (OLLMfiles.Folder) this.folders.segments.get(tip.path).get_item(0);
+			}
+			if (this.folders.segments.get(tip.path).get_n_items() == 0) {
+				return null;
 			}
 			return new Gtk.SortListModel(
 				new Gtk.FilterListModel(this.folders.segments.get(tip.path), this.filter),
@@ -154,7 +161,8 @@ class FileTree : Gtk.Box
 			parts.add(folder.path_basename);
 			var tip = folder;
 			while (this.folders.segments.has_key(tip.path) &&
-					this.folders.segments.get(tip.path).get_n_items() == 1) {
+					this.folders.segments.get(tip.path).get_n_items() == 1 &&
+					!this.folders.with_files.contains(tip.path)) {
 				tip = (OLLMfiles.Folder) this.folders.segments.get(tip.path).get_item(0);
 				parts.add(tip.path_basename);
 			}
@@ -366,8 +374,9 @@ class FileTree : Gtk.Box
 			return;
 		}
 		var folder = (OLLMfiles.Folder) ((Gtk.TreeListRow) this.tree_selection.selected_item).item;
-		while (this.folders.segments.has_key(folder.path) && 
-				this.folders.segments.get(folder.path).get_n_items() == 1) {
+		while (this.folders.segments.has_key(folder.path) &&
+				this.folders.segments.get(folder.path).get_n_items() == 1 &&
+				!this.folders.with_files.contains(folder.path)) {
 			folder = (OLLMfiles.Folder) this.folders.segments.get(folder.path).get_item(0);
 		}
 		var epoch = this.file_epoch;

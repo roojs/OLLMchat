@@ -87,7 +87,7 @@ A grey tick is behavior that app already does.
 - ✔️ A click turns the button into a search entry and opens a wide pop-down.
 - ✔️ The resting file button shows a file icon. The project button shows a folder icon.
 - ✔️ The tabs are Tree and Recent. Tree is the primary tab. Opening the pop-down shows Tree.
-- ✔️ Three pixels sit under those titles, before the list.
+- ✔️ Six pixels sit under those titles, before the list, matching the space above them.
 - ✔️ The second tab is titled Recent.
 - ✔️ Opening the pop-down shows Tree, and that show starts `FolderTreeStore.load`.
 - ✔️ The Search tab is off this pop-down.
@@ -136,6 +136,7 @@ Folders on the left, files on the right. The file server is queried for each sid
 
 - ✔️ The left side is a folder tree. It does not list files.
 - ✔️ That tree is expanded.
+- ✔️ A folder with no child folder has no expander.
 - ✔️ Clicking a folder asks the file server (''Folder.fetch_dir'') for that folder's files and shows them on the right.
 - ✔️ A selected folder's files are a three-column grid: name with a type icon, size, and modified time. Names are alphabetical, ignoring case.
 
@@ -157,6 +158,7 @@ Outstanding Phase 2 work that is not search.
   - 🔷 `A/B/C` when the chain is one folder deeper.
   - 🔷 `scalable/apps` when `scalable` holds only `apps`.
   - 🔷 The row stops at the first folder that contains anything other than a single child folder.
+  - 🔷 A file in that folder stops the chain. `libochf` has files beside `Param`, so the row stays `libochf`.
   - 🔷 Children of that last folder stay under the combined row.
   - ✔️ Clicking the row selects that last folder and shows its files on the right.
   - 💩 The combined row uses the empty-folder grey icon when the chain has no files.

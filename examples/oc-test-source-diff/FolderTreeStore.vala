@@ -90,6 +90,14 @@ class FolderTreeStore : Object, GLib.ListModel
 	}
 
 	/**
+	 * Folders that contain a file as well as child folders. A joined
+	 * row does not run through these.
+	 */
+	public Gee.HashSet<string> with_files {
+		get; private set; default = new Gee.HashSet<string>();
+	}
+
+	/**
 	 * True while a child-folder request is waiting on the file server.
 	 * Stays true for the folders asked for under that same load.
 	 */
@@ -263,6 +271,7 @@ class FolderTreeStore : Object, GLib.ListModel
 				this.remove(this.flat.get(this.flat.size - 1));
 			}
 			this.loaded.clear();
+			this.with_files.clear();
 			this.project_path = folder.path;
 		}
 		if (this.project_path != "" && folder.path != this.project_path
@@ -274,6 +283,23 @@ class FolderTreeStore : Object, GLib.ListModel
 		}
 		var epoch = this.load_epoch;
 		this.loaded.add(folder.path);
+		try {
+			var enumerator = GLib.File.new_for_path(folder.path).enumerate_children(
+				GLib.FileAttribute.STANDARD_TYPE,
+				GLib.FileQueryInfoFlags.NOFOLLOW_SYMLINKS,
+				null
+			);
+			GLib.FileInfo? info;
+			while ((info = enumerator.next_file(null)) != null) {
+				if (info.get_file_type() != GLib.FileType.REGULAR) {
+					continue;
+				}
+				this.with_files.add(folder.path);
+				break;
+			}
+		} catch (GLib.Error e) {
+			this.with_files.add(folder.path);
+		}
 		this.pending++;
 		if (!this.loading) {
 			this.loading = true;
