@@ -138,7 +138,10 @@ Folders on the left, files on the right. The file server is queried for each sid
 - ✔️ That tree is expanded.
 - ✔️ A folder with no child folder has no expander.
 - ✔️ Clicking a folder asks the file server (''Folder.fetch_dir'') for that folder's files and shows them on the right.
+- ✔️ That file list opens at the top.
 - ✔️ A selected folder's files are a three-column grid: name with a type icon, size, and modified time. Names are alphabetical, ignoring case.
+- ✔️ A symlink whose stored target is a folder is not listed. A symlink to a file is.
+- ℹ️ ''fetch_dir'' copies stored rows. It does not read the filesystem. Size is not a stored column, so that column stays zero. Modified time is the stored ''last_modified''.
 
 #### Other controls
 
@@ -160,24 +163,24 @@ Outstanding Phase 2 work that is not search.
   - 🔷 `scalable/apps` when `scalable` holds only `apps`.
   - 🔷 The row stops at the first folder that contains anything other than a single child folder.
   - 🔷 A file in that folder stops the chain. `libochf` has files beside `Param`, so the row stays `libochf`.
-  - ℹ️ The folder load query counts files and folders sitting directly inside each row. The tree reads those counts on the folder. It does not read the directory and does not send another call.
+  - ℹ️ The folder load query counts files and folders sitting directly inside each row. Gitignored children are not counted, so a folder that only holds them is empty. The tree reads those counts on the folder. It does not read the directory and does not send another call.
   - 🔷 Children of that last folder stay under the combined row.
   - ✔️ Clicking the row selects that last folder and shows its files on the right.
   - ✔️ A combined row has no folder icon. Its name and tooltip bind those same properties on the last folder, so the name is that light grey when the last folder has no files.
 - ✔️ The top-level folder is displayed. Critical. Selecting it shows the files in that folder. The project is that row, and it is expanded.
-- 🔷 ⏳ The pop-down header is three slots.
-  - 🔷 The left slot is two icon buttons.
-  - 🔷 Collapse all.
-  - 🔷 A ghost button beside it. That button starts pressed.
-  - 🔷 Pressed, the ghost hides empty folders and gitignored folders.
-  - 🔷 Build directories are empty and gitignored, so the pressed ghost hides them.
-  - 🔷 Unpressing the ghost shows those folders.
-  - 🔷 A gitignored folder that is shown has a ghost next to its name. An emoji is fine for that ghost.
-  - 🔷 Middle is Tree and Recent.
-  - 🔷 Right is the type filter.
-  - 🔷 On Recent, the two left buttons are hidden.
-  - 🔷 The left slot keeps its width, so Tree and Recent do not move or shrink.
-- 🔷 ⏳ Collapse all collapses the folder tree.
+- ✔️ The pop-down header is three slots.
+  - ✔️ The left slot is two icon buttons. Each has 3 pixels on its right.
+  - ✔️ Collapse all. It is a normal button and does not stay down. The icon is ''document-send-symbolic''. It folds every open row under the project. The project row stays open and has no expander.
+  - ✔️ A ghost button beside it. It starts hiding. The icon is a crossed eye while hiding and an eye while showing. It does not stay pressed.
+  - ✔️ While hiding, the ghost hides a gitignored folder, and a folder with no files and no child folders. A folder that only holds gitignored children is empty.
+  - ✔️ Build directories are empty and gitignored, so hiding them drops them.
+  - ✔️ The eye shows those folders again.
+  - ✔️ A gitignored folder that is shown has a conceal icon beside its name.
+  - ✔️ Middle is Tree and Recent.
+  - 🔷 ⏳ Right is the type filter. The slot holds document and code buttons. They do not filter yet.
+  - ✔️ On Recent, the two left buttons are hidden.
+  - ✔️ The left slot keeps its width, so Tree and Recent do not move or shrink.
+- ✔️ Collapse all collapses the folder tree under the project. The project row stays open.
 - 🔷 ⏳ A type filter, document versus code. It sits in the right slot.
   - ℹ️ Daemon `File.is_documentation()` is markdown or plain text. Other languages are code.
 - 🔷 ⏳ With no search text, the folder that contains the current file is the one selected, and that file sits about halfway down the right list. A load currently selects nothing and scrolls to the top.

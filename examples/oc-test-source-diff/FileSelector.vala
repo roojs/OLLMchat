@@ -21,7 +21,11 @@
  *
  * The resting button shows a file icon. Hidden until a project
  * is chosen. Desktop opens a wide pop-down on the Tree tab,
- * with Recent beside it. Phone and tablet use
+ * with Recent beside it. The header is three slots. Collapse
+ * and the ghost sit on the left, Tree and Recent in the middle,
+ * and the type buttons on the right. Those type buttons do not
+ * filter yet. On Recent the left buttons are hidden and that
+ * slot keeps its width. Phone and tablet use
  * {@link SelectorPull} and do not copy the desktop tabs.
  *
  * == Example ==
@@ -182,11 +186,51 @@ class FileSelector : Gtk.Box
 			this.tree.folders.loaded.remove(this.project.path);
 			this.tree.folders.load.begin(this.project);
 		});
+		var left = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+			margin_start = 6,
+			halign = Gtk.Align.START,
+		};
+		left.append(this.tree.collapse);
+		left.append(this.tree.ghost);
+		var documents = new Gtk.Button() {
+			icon_name = "x-office-document-symbolic",
+			tooltip_text = "Documents",
+			can_focus = false,
+			sensitive = false,
+			valign = Gtk.Align.CENTER,
+		};
+		documents.add_css_class("flat");
+		var code = new Gtk.Button() {
+			icon_name = "text-x-script",
+			tooltip_text = "Code",
+			can_focus = false,
+			sensitive = false,
+			valign = Gtk.Align.CENTER,
+		};
+		code.add_css_class("flat");
+		var right = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+			margin_end = 6,
+			halign = Gtk.Align.END,
+		};
+		right.append(documents);
+		right.append(code);
 		var switcher = new Gtk.StackSwitcher() {
 			stack = this.pages,
 			hexpand = true,
+		};
+		var header = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 			margin_bottom = 6,
 		};
+		header.append(left);
+		header.append(switcher);
+		header.append(right);
+		this.pages.notify["visible-child-name"].connect(() => {
+			var on_tree = this.pages.visible_child_name == "tree";
+			this.tree.collapse.opacity = on_tree ? 1 : 0;
+			this.tree.ghost.opacity = on_tree ? 1 : 0;
+			this.tree.collapse.sensitive = on_tree;
+			this.tree.ghost.sensitive = on_tree;
+		});
 		this.scroll = new Gtk.ScrolledWindow() {
 			child = this.pages,
 			propagate_natural_height = true,
@@ -197,7 +241,7 @@ class FileSelector : Gtk.Box
 		var frame = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 			hexpand = true,
 		};
-		frame.append(switcher);
+		frame.append(header);
 		frame.append(this.scroll);
 		this.popover = new Gtk.Popover() {
 			has_arrow = false,

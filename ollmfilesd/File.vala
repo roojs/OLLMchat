@@ -67,8 +67,8 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * Size in bytes. A folder listing sets this from disk.
-		 * Other replies leave it at zero.
+		 * Size in bytes. Not a stored column, so replies leave
+		 * this at zero.
 		 */
 		public int64 size { get; set; default = 0; }
 
@@ -597,32 +597,27 @@ namespace OLLMfilesd
 		}
 		
 		/**
-		 * Whether this file is a documentation file (plain text or markdown, not code).
-		 * 
-		 * Uses is_text and language (from BufferProvider.detect_language()).
-		 * Returns true for markdown, plain text, and unknown text; false for code and structured formats.
+		 * Whether this file is documentation: plain text or markdown,
+		 * not code.
+		 *
+		 * Uses ''is_text'' and ''language''. True for markdown, plain
+		 * text, and text with no language. False for code.
 		 */
 		public bool is_documentation()
 		{
 			if (!this.is_text) {
 				return false;
 			}
-			
-			var lang = this.language;
-			if (lang == null || lang == "") {
+			if (this.language == null || this.language == "") {
 				return true;
 			}
-			
-			var lang_lower = lang.down();
-			
-			switch (lang_lower) {
+			switch (this.language.down()) {
 				case "markdown":
 				case "txt":
 				case "text":
 				case "plaintext":
 					return true;
 				default:
-					// Code languages (vala, python, c, etc.) and structured formats (html, xml, json, yaml, css, etc.)
 					return false;
 			}
 		}

@@ -157,9 +157,10 @@ namespace OLLMfilesd
 		/**
 		 * Immediate child folders of ''path''. Files are left out.
 		 * Each row already carries ''file_count'' and ''folder_count''
-		 * from the load query. The row is a copy, so the live child
-		 * list is not sent. The reply args are that same pair for
-		 * ''path'' itself, so the caller can show that folder.
+		 * from the load query. Gitignored children are not in those
+		 * counts. The row is a copy, so the live child list is not
+		 * sent. The reply args are that same pair for ''path''
+		 * itself, so the caller can show that folder.
 		 *
 		 * @param request inbound RPC
 		 * @param path folder path
@@ -197,7 +198,9 @@ namespace OLLMfilesd
 
 		/**
 		 * Files directly inside ''path''. Subfolders are left out.
-		 * Each row is a copy, with size and modified time from disk.
+		 * A symlink whose stored target is a folder is left out.
+		 * A symlink to a file is kept. Each row is a copy of the
+		 * stored file. Nothing here reads the filesystem.
 		 *
 		 * @param request inbound RPC
 		 * @param path folder path
@@ -220,25 +223,13 @@ namespace OLLMfilesd
 				if (child.base_type != "f" && child.base_type != "fa") {
 					continue;
 				}
+				if (child.points_to is Folder) {
+					continue;
+				}
 				var row = new File(this.manager);
 				row.copy_from((File) child, {
 					"manager", "buffer", "parent", "points-to"
 				});
-				try {
-					var info = GLib.File.new_for_path(row.path).query_info(
-						GLib.FileAttribute.STANDARD_SIZE + ","
-							+ GLib.FileAttribute.TIME_MODIFIED,
-						GLib.FileQueryInfoFlags.NONE,
-						null
-					);
-					row.size = (int64) info.get_size();
-					var modified = info.get_modification_date_time();
-					if (modified != null) {
-						row.last_modified = modified.to_unix();
-					}
-				} catch (GLib.Error e) {
-					row.size = 0;
-				}
 				list.add(row);
 			}
 			request.reply(new OLLMrpc.Response() {
@@ -1051,11 +1042,13 @@ namespace OLLMfilesd
 				paths = yield this.load_children(id_map, paths, seen_ids);
 				//GLib.debug("Folder.load_files_from_db: After iteration %d, id_map has %d items, next_paths=%d", iteration, id_map.size, paths.length);
 			}
+			/* Ignored children do not count. A folder that only
+			 * holds them is empty, so hide-empty can drop it. */
 			var count_stmt = FileBase.query(this.manager.db, this.manager).selectPrepare("""
 SELECT
 	filebase.parent_id,
-	SUM(filebase.base_type = 'd') AS folder_count,
-	SUM(filebase.base_type IN ('f', 'fa')) AS file_count
+	SUM(filebase.base_type = 'd' AND filebase.is_ignored = 0) AS folder_count,
+	SUM(filebase.base_type IN ('f', 'fa') AND filebase.is_ignored = 0) AS file_count
 FROM
 	filebase
 WHERE

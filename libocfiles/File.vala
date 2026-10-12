@@ -69,8 +69,8 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Size in bytes. A folder listing sets this from disk.
-		 * Other replies leave it at zero.
+		 * Size in bytes. Not a stored column, so a folder listing
+		 * leaves this at zero.
 		 */
 		public int64 size { get; set; default = 0; }
 

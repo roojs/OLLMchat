@@ -16,6 +16,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+URGENTLY NEED TO BE FIXED
+FileTree must implement GLib.ListModel.
+The file list must not be copied into a backing GLib.ListStore.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 /**
  * Desktop tree tab. Folders on the left, files on the right.
  *
@@ -37,6 +43,13 @@
  * Its name binds the folder's ''css-classes'', so a folder with no
  * files is light grey. The tooltip binds the folder's ''tooltip'',
  * the full path.
+ * The ghost button starts hiding empty and ignored folders. Its
+ * icon is a crossed eye while hiding and an eye while showing.
+ * It does not stay pressed. A gitignored folder that is shown
+ * has a conceal icon beside its name. Collapse all uses
+ * ''document-send-symbolic''. It folds every open row under the
+ * project and does not stay down. The project row stays open
+ * and has no expander.
  * Clicking a folder asks the file server for that folder's files.
  * The right side is a name, size, and modified grid. Each cell binds
  * a property on the file. The name column binds the type icon.
@@ -48,7 +61,7 @@
  * pages.add_titled(tree, "tree", "Tree");
  * }}}
  */
-class FileTree : Gtk.Box
+class FileTree : Gtk.Boxmessedup-stipd llm made a mess here
 {
 	/**
 	 * Folder tree. The top store owns the path map and the flat list.
@@ -68,10 +81,29 @@ class FileTree : Gtk.Box
 	public signal void file_activated(OLLMfiles.File file);
 
 	/**
+	 * Collapse the folder tree. A normal button, so it does not
+	 * stay down.
+	 */
+	public Gtk.Button collapse { get; private set; }
+
+	/**
+	 * Hide empty folders and gitignored folders. Starts hiding.
+	 * A crossed eye means hiding. An eye means showing. It does
+	 * not stay pressed.
+	 */
+	public Gtk.Button ghost { get; private set; }
+
+	/**
 	 * Generation of the folder-file request. A newer click drops
 	 * the reply from the previous one.
 	 */
 	private int file_epoch = 0;
+
+	/**
+	 * While true, empty folders and gitignored folders are left
+	 * out. Starts true. The ghost icon shows that state.
+	 */
+	private bool hiding = true;
 
 	/**
 	 * Left folder list. {@link on_selection_changed} reads the row.
@@ -89,13 +121,19 @@ class FileTree : Gtk.Box
 	private Gtk.ColumnView file_view;
 
 	/**
+	 * Scroll around the file grid. A new folder sets it to the top.
+	 */
+	private Gtk.ScrolledWindow file_scroll;
+
+	/**
 	 * Name column. A fresh folder load sorts by this, ascending.
 	 */
 	private Gtk.ColumnViewColumn name_column;
 
 	/**
 	 * Shared by the top folder list and every child segment.
-	 * Matches every row until search is wired.
+	 * While hiding, an empty folder or a gitignored folder is
+	 * left out. The project row stays.
 	 */
 	public Gtk.CustomFilter filter { get; private set; }
 
@@ -107,8 +145,33 @@ class FileTree : Gtk.Box
 		Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 0, hexpand: true, vexpand: true);
 		this.folders = new FolderTreeStore();
 		this.files = new GLib.ListStore(typeof(OLLMfiles.File));
+		this.ghost = new Gtk.Button() {
+			icon_name = "view-conceal-symbolic",
+			tooltip_text = "Hide empty and ignored folders",
+			can_focus = false,
+			valign = Gtk.Align.CENTER,
+			margin_end = 3,
+		};
+		this.ghost.add_css_class("flat");
 		this.filter = new Gtk.CustomFilter((item) => {
+			var folder = (OLLMfiles.Folder) item;
+			if (!this.hiding || folder.is_project) {
+				return true;
+			}
+			if (folder.is_ignored) {
+				return false;
+			}
+			if (folder.file_count == 0 && folder.folder_count == 0) {
+				return false;
+			}
 			return true;
+		});
+		this.ghost.clicked.connect(() => {
+			this.hiding = !this.hiding;
+			this.ghost.icon_name = this.hiding
+				? "view-conceal-symbolic"
+				: "view-reveal-symbolic";
+			this.filter.changed(Gtk.FilterChange.DIFFERENT);
 		});
 		var name_sorter = new Gtk.StringSorter(
 			new Gtk.PropertyExpression(typeof(OLLMfiles.Folder), null, "path_basename")
@@ -149,13 +212,18 @@ class FileTree : Gtk.Box
 		tree_factory.setup.connect((obj) => {
 			var row = (Gtk.ListItem) obj;
 			var expander = new Gtk.TreeExpander();
-			var label = new Gtk.Label("") {
+			var line = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
+			line.append(new Gtk.Label("") {
 				halign = Gtk.Align.START,
 				hexpand = true,
 				xalign = 0,
 				ellipsize = Pango.EllipsizeMode.END,
-			};
-			expander.child = label;
+			});
+			line.append(new Gtk.Image.from_icon_name("view-conceal-symbolic") {
+				pixel_size = 16,
+				visible = false,
+			});
+			expander.child = line;
 			row.child = expander;
 		});
 		tree_factory.bind.connect((obj) => {
@@ -164,6 +232,19 @@ class FileTree : Gtk.Box
 			var tree_row = (Gtk.TreeListRow) row.item;
 			expander.list_row = tree_row;
 			var folder = (OLLMfiles.Folder) tree_row.item;
+			expander.hide_expander = folder.is_project;
+			if (folder.is_project && !tree_row.expanded) {
+				tree_row.expanded = true;
+			}
+			if (folder.is_project && tree_row.get_data<bool>("keep-open") != true) {
+				tree_row.set_data("keep-open", true);
+				tree_row.notify["expanded"].connect(() => {
+					if (tree_row.expanded) {
+						return;
+					}
+					tree_row.expanded = true;
+				});
+			}
 			var parts = new Gee.ArrayList<string>();
 			parts.add(folder.path_basename);
 			var tip = folder;
@@ -175,10 +256,13 @@ class FileTree : Gtk.Box
 				tip = (OLLMfiles.Folder) this.folders.segments.get(tip.path).get_item(0);
 				parts.add(tip.path_basename);
 			}
-			((Gtk.Label) expander.child).label = string.joinv("/", parts.to_array());
-			tip.bind_property("css-classes", (Gtk.Label) expander.child,
+			var line = (Gtk.Box) expander.child;
+			var name_label = (Gtk.Label) line.get_first_child();
+			name_label.label = string.joinv("/", parts.to_array());
+			((Gtk.Image) name_label.get_next_sibling()).visible = tip.is_ignored;
+			tip.bind_property("css-classes", name_label,
 				"css-classes", GLib.BindingFlags.SYNC_CREATE);
-			tip.bind_property("tooltip", (Gtk.Label) expander.child,
+			tip.bind_property("tooltip", name_label,
 				"tooltip-text", GLib.BindingFlags.SYNC_CREATE);
 		});
 		tree_factory.unbind.connect((obj) => {
@@ -294,18 +378,48 @@ class FileTree : Gtk.Box
 			visible = false,
 			css_classes = { "dim-label", "title-4" },
 		};
+		this.file_scroll = new Gtk.ScrolledWindow() {
+			child = this.file_view,
+			hexpand = true,
+			vexpand = true,
+			propagate_natural_width = false,
+			hscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
+		};
 		var file_overlay = new Gtk.Overlay() {
 			hexpand = true,
 			vexpand = true,
-			child = new Gtk.ScrolledWindow() {
-				child = this.file_view,
-				hexpand = true,
-				vexpand = true,
-				propagate_natural_width = false,
-				hscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
-			},
+			child = this.file_scroll,
 		};
 		file_overlay.add_overlay(this.file_empty);
+		this.collapse = new Gtk.Button() {
+			icon_name = "document-send-symbolic",
+			tooltip_text = "Collapse all",
+			can_focus = false,
+			valign = Gtk.Align.CENTER,
+			margin_end = 3,
+		};
+		this.collapse.add_css_class("flat");
+		this.collapse.clicked.connect(() => {
+			var model = (Gtk.TreeListModel) this.tree_selection.model;
+			/* TreeListModel has no collapse-all. The project row stays
+			 * open: collapsing it does not stick, the next expand
+			 * shuts again. A collapsed parent leaves the flat list
+			 * and takes its children with it, so later indexes move.
+			 * Walk from the end: those children are already past the
+			 * cursor and the parent index holds. */
+			var index = model.n_items;
+			while (index > 0) {
+				index--;
+				var row = model.get_row(index);
+				if (!row.expanded) {
+					continue;
+				}
+				if (((OLLMfiles.Folder) row.item).is_project) {
+					continue;
+				}
+				row.expanded = false;
+			}
+		});
 		this.tree_selection.selection_changed.connect(this.on_selection_changed);
 		var status = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8) {
 			visible = false,
@@ -375,12 +489,14 @@ class FileTree : Gtk.Box
 	/**
 	 * Folder row selected. A joined row asks for the last folder's
 	 * files and fills the grid. A newer selection drops the reply.
-	 * The header sort goes back to the file name.
+	 * The header sort goes back to the file name. The list opens
+	 * at the top.
 	 */
 	private void on_selection_changed()
 	{
 		this.file_epoch++;
 		this.files.remove_all();
+		this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;
 		this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
 		this.file_empty.visible = false;
 		if (this.tree_selection.selected == Gtk.INVALID_LIST_POSITION) {
@@ -420,8 +536,9 @@ class FileTree : Gtk.Box
 			}
 			foreach (var file in rows) {
 				file.manager = folder.manager;
-				this.files.append(file);
 			}
+			this.files.splice(0, 0, (GLib.Object[]) rows.to_array());
+			this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;
 		});
 	}
 }
