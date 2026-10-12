@@ -8,6 +8,7 @@ implement until required reads are done. **Top mistakes: helper methods, gratuit
 (`ensure_*`, “extract for clarity”, DRY) — **inline** in the method you are
 already editing unless user or plan names the helper (`method-names-new-methods`).
 Short `if` / `||` lines stay on one line unless genuinely long (`line-length-breaking`).
+When a condition wraps, `&&` and `||` end the line; they do not start the next one.
 **Long** method/constructor definitions: **one parameter per line**, then
 `) {` on its own line (`brace-placement`). **Short** signatures stay on one line.
 Keep format-string **calls** (`throw` / error-ctor / `GLib.debug` /
@@ -39,7 +40,7 @@ say the task is done.
 | Add a **null check**, empty guard, or “just in case” validation? | `defensive-code-null-checks` | Duplicated checks already enforced upstream (UI, permission, caller) |
 | Tempted to add a **helper method** (`ensure_*`, extract “for clarity”)? | `method-names-new-methods` | Added a helper the user or plan did not name — **inline instead** |
 | Add a **new named constant** (`const`)? | `method-names-new-methods` | New `const` without user/plan approval — use literal at use site |
-| Add or change **`if`** with `\|\|` / `&&` on a **short** line? | `line-length-breaking` | Split a line that fits on one line in the surrounding file |
+| Add or change **`if`** / **`while`** / **`for`** with `\|\|` / `&&`? | `line-length-breaking` | Split a condition that fits on one line, or put `&&` / `\|\|` at the start of the next line |
 | Add or change a **method/constructor definition**? | `brace-placement`, `line-length-breaking` | Wrapped a short signature, grouped a long definition, hung `) {` off the last parameter, or put `{` on a line by itself after `)` |
 | Add or change **`throw`** / error ctor / `GLib.debug`/`warning`/`critical` with a format message? | `line-length-breaking` | Broke so the format/literal sits alone after `(`; or one-arg-per-line wrap for that call |
 | Finish the task? | `agent-compliance-gate` | Skipped the verification table or the `rg` local-type search |

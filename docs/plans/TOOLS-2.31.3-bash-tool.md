@@ -12,28 +12,35 @@
 
 ## Purpose
 
+- **🔷** `bash` is a new class. Copy `RunCommand` `Tool` and `Request` into it, then change the copy. It does not subclass `OLLMtools.RunCommand.Tool`.
+- **🔷** `run_command` is deprecated. Desktop stops registering it. The copy does not stay compatible with it, and pieces of the copy can be deleted.
 - **🔷** `bash` runs the command on `ollmfilesd` through `Sandbox-Bubble`, then manages it with `pid`.
-- **🔷** `run_command` stays the local tool. No `pid`, no verbs, no `timeout < 0`.
 - **🔷** One tool. `pid` set means `command` is `kill` / `tail` / `wait` / `send`. No second tool.
 - **🔷** A negative timeout waits 15 seconds, then returns the pid and leaves the command running. Any other timeout still kills.
 - **🔷** The pid return lists `send`, `wait`, `tail`, and `kill`. A dead job does not get that list.
 - **🔷** Truncation tells the agent to `grep` / `head` / `tail` the spill file.
 - **🔷** A job the daemon started is the only pid these verbs will touch. Another session's pid is refused.
 - **ℹ️** Phase D is the Stop button that outlives the call. Do not treat `-1` as shipped until that lands.
-- **ℹ️** Phase E is Android registration. Not this plan.
+- **ℹ️** Phase E is Android registration. Not this plan. The class there is `OLLMtools.Bash.Tool`.
 
 ---
 
-## Decisions to confirm
+## Decided
 
-The parent left these open. Each recommendation is **💩** until you promote it.
-
-- **💩** `bash` keeps subclassing `OLLMtools.RunCommand.Tool`. It does not get a second `Request` type. `Request.execute` already holds permission, the spill file, and `stop`. A new request would copy that.
-- **💩** The RPC path runs only when `this.tool.name == "bash"`. `run_command` never enters it, even if a caller stuffed `pid` into its JSON.
-- **💩** `LIVE` and `SOCKET` use the same calls. Both already have `project_manager.rpc` connected to `ollmfilesd`. In-process `Bubble.exec` remains the path when that client is not connected, when `can_wrap` is `0`, and when `run_as_root` is set.
-- **💩** Desktop keeps both tools registered. This plan does not edit `Registry.fill_tools`.
-- **💩** The per-session list is a static map on `Request`, each row remembering the session id. `libollmchat` does not gain a bash type. `manage` refuses a pid whose session id is not the caller's.
-- **💩** The 15-minute silence kill lives on the daemon bubble, reset by output lines. A phone in a lift cannot run that timer. The 60-second "model was told and did nothing" kill stays on the client, and only after a **waiting for input** return.
+- **🔷** New files `liboctools/Bash/Tool.vala` and `liboctools/Bash/Request.vala`, namespace `OLLMtools.Bash`. `RunCommand/Bash.vala` goes away. It was only the alias subclass.
+- **🔷** `Registry` registers `Bash.Tool` and does not register `RunCommand.Tool` or `RunCommand.Bash`. Config `init_config`, `register_config`, and `setup_config_defaults` name `Bash.Tool`.
+- **🔷** `LIVE` and `SOCKET` both use the daemon calls. There is no in-process spawn on this class.
+- **🔷** `grep.tool`, `glob.tool`, and `ls.tool` wrap `bash`. They wrap `run_command` today, and that name will not be registered.
+- **🔷** `RunCommand/Tool.vala` and `RunCommand/Request.vala` stay until the new `bash` has been tested. They are not registered. Delete them after that testing, not before.
+- **🔷** A chat can only `kill`, `tail`, `wait`, or `send` a process that same chat started. A pid from another chat is refused.
+- **🔷** The tool passes the chat's session id to `ollmfilesd` when it starts the command. The daemon stores that id on the job. Later calls pass the same id, and the daemon refuses the call when it does not match. The tool does not keep its own list of which chat owns which pid.
+- **🔷** A background command that prints nothing for 15 minutes is killed. Any new line of output starts that 15 minutes again. The clock runs on the desktop daemon, next to the process. The phone may be offline, so the phone cannot be the thing watching.
+- **💩** A second, shorter clock: if the tool has already told the model "this command is waiting for you to type", and the model sends nothing for 60 seconds, the app kills it. A command that is still working does not get that one-minute kill.
+- **🚫** Subclassing `RunCommand.Tool`, or a second code path inside `RunCommand.Request` gated on `tool.name == "bash"`.
+- **🚫** Keeping `run_command` registered beside `bash`.
+- **🚫** In-process `Bubble.exec`, `GLib.Subprocess`, or `run_as_root` on the new class. `run_as_root` set on a call is an error.
+- **🚫** Editing `liboctools/RunCommand/` so that `bash` and `run_command` stay in step.
+- **🚫** A client-side table of pid to session id. The daemon is the check.
 
 ---
 
@@ -44,17 +51,22 @@ The parent left these open. Each recommendation is **💩** until you promote it
 - **🔷** Order for a new command: `can_wrap`, then `rpc_create`, then subscribe `output` and `finished`, then `rpc_run`.
 - **🔷** `keep_stdin` is true only when `timeout < 0`.
 - **🔷** After `rpc_run`, every later call uses the pid.
-- **💩** `wait` seconds are the tool timeout for a positive timeout, and **15** for a negative one. Never send `0` — the daemon treats that as 60.
-- **💩** `wait` retval `0` is the finished command. Retval `1` or `2` with a negative timeout is the pid return. Retval `2` with a positive timeout is killed, then the result is whatever `finished` already delivered.
+- **🔷** `wait` seconds are the tool timeout when that timeout is positive, and **15** when it is negative. A wait of **0** means **60** seconds.
+- **🔷** When the command has finished, `wait`'s retval is that command's exit code. `0` means the command exited 0. It does not mean a special "ended" state.
+- **🔷** A pid handed back to the model is negative, so it cannot be read as an exit code. The real process id is the positive number. The daemon is called with that positive id.
+- **🔷** "Waiting for input" and "still working" are not the same answer, and neither is an exit code.
+- **💩** Still working: retval is minus the pid (`-4321` for pid 4321). Waiting for input: retval is that same minus-pid, and the tool text says it is waiting. Those two live answers share one number, so the words are what separate them. Say if the number itself has to differ.
+- **ℹ️** `ollmfilesd` `wait` today replies `0` ended, `1` waiting, `2` still running. `1` and `2` are real exit codes, so that reply has to change before this tool trusts it. The exit code is not kept once the pid leaves `Bubble.jobs`.
 
 ### Calls
 
 - `Sandbox-Bubble.can_wrap` `""` — `msg` `1` / `0`
-- `Sandbox-Bubble.rpc_create` `sssbSb` — `project_path`, `command`, `working_dir`, `network`, `allow_write`, `keep_stdin` — `retval` lease (`t`)
+- `Sandbox-Bubble.rpc_create` `sssbSbx` — `project_path`, `command`, `working_dir`, `network`, `allow_write`, `keep_stdin`, `session_id` — `retval` lease (`t`)
 - `RPC-Live-Subscribe.rpc_signal` lease + `output`, then the same for `finished`
-- `Sandbox-Bubble.rpc_run` lease — `retval` pid (`i`)
-- `Sandbox-Bubble.wait` pid, seconds — `retval` `0` / `1` / `2`, `msg` last lines
-- `Sandbox-Bubble.kill` / `tail` / `send` as in Phase B
+- `Sandbox-Bubble.rpc_run` lease — `retval` pid (`i`), the positive process id
+- `Sandbox-Bubble.wait` `iix` — pid, seconds, session id. `retval` the exit code when it has finished, or minus the pid when it has not. `msg` last lines. A `seconds` of `0` waits 60.
+- `Sandbox-Bubble.kill` / `tail` `ix` — pid, session id
+- `Sandbox-Bubble.send` `isx` — pid, text, session id
 
 ---
 
@@ -62,68 +74,173 @@ The parent left these open. Each recommendation is **💩** until you promote it
 
 Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surrounding context before applying.
 
-### 1. `liboctools/RunCommand/Request.vala` — truncation advice
+The `Request` hunks below apply to the copy, `liboctools/Bash/Request.vala`. Do not apply them to `liboctools/RunCommand/`.
+
+### 1. `liboctools/Bash/` — new class, old tool deprecated
+
+**Why:** `bash` owns its code. `run_command` is no longer registered, so nothing in this plan has to keep the old class working.
+
+**Where:** copy, meson, registry, the three wrapped tools, and delete `RunCommand/Bash.vala`.
+
+**Depends on:** none.
+
+- **🔷** Copy `RunCommand/Tool.vala` to `Bash/Tool.vala` and `RunCommand/Request.vala` to `Bash/Request.vala`. Namespace on both copies is `OLLMtools.Bash`.
+- **🔷** The copied tool's `name` is `bash`. `clone` returns `new Tool`.
+- **🚫** Do not leave `RunCommand.Bash` in the build. Do not register `RunCommand.Tool`.
+
+#### Remove — copied `Bash/Tool.vala`
+
+```vala
+namespace OLLMtools.RunCommand
+```
+
+#### Replace with
+
+```vala
+namespace OLLMtools.Bash
+```
+
+#### Remove
+
+```vala
+		public override string name { get { return "run_command"; } }
+```
+
+#### Replace with
+
+```vala
+		public override string name { get { return "bash"; } }
+```
+
+#### Remove
+
+```vala
+		public override string title { get { return "Run Shell Commands Tool"; } }
+		public override string example_call {
+			get { return "{\"name\": \"run_command\", \"arguments\": {\"command\": \"ls -la\"}}"; }
+		}
+```
+
+#### Replace with
+
+```vala
+		public override string title { get { return "Bash"; } }
+		public override string example_call {
+			get { return "{\"name\": \"bash\", \"arguments\": {\"command\": \"ls -la\"}}"; }
+		}
+```
+
+- **ℹ️** The same namespace replacement applies to the copied `Bash/Request.vala`. One line, `namespace OLLMtools.RunCommand` to `namespace OLLMtools.Bash`.
+
+#### Remove — `liboctools/meson.build`
+
+```vala
+  'RunCommand/Bash.vala',
+```
+
+#### Add — beside the RunCommand sources
+
+```vala
+  'Bash/Tool.vala',
+  'Bash/Request.vala',
+```
+
+- **🔷** Delete `liboctools/RunCommand/Bash.vala`.
+
+#### Remove — `liboctools/Registry.vala` `init_config`, and the same swap in `register_config` and `setup_config_defaults`
+
+```vala
+			typeof(RunCommand.Tool).ensure();
+```
+
+#### Replace with
+
+```vala
+			typeof(Bash.Tool).ensure();
+```
+
+#### Remove
+
+```vala
+			OLLMchat.Tool.BaseTool.register_config(typeof(RunCommand.Tool));
+```
+
+#### Replace with
+
+```vala
+			OLLMchat.Tool.BaseTool.register_config(typeof(Bash.Tool));
+```
+
+#### Remove
+
+```vala
+			(new RunCommand.Tool(null)).setup_tool_config_default(config);
+```
+
+#### Replace with
+
+```vala
+			(new Bash.Tool(null)).setup_tool_config_default(config);
+```
+
+#### Remove — `fill_tools`
+
+```vala
+			manager.register_tool(new RunCommand.Tool(project_manager));
+			manager.register_tool(new RunCommand.Bash(project_manager));
+```
+
+#### Replace with
+
+```vala
+			manager.register_tool(new Bash.Tool(project_manager));
+```
+
+#### Remove — `resources/wrapped-tools/grep.tool`, `glob.tool`, and `ls.tool`
+
+```
+@wrapped run_command
+```
+
+#### Replace with
+
+```
+@wrapped bash
+```
+
+### 2. Truncation wording
 
 **Why:** The agent is told where the rest of the output is, and not to `cat` it. The cap stays 50.
 
-**Where:** the bwrap footer, the subprocess footer, and the subprocess return line.
+**Where:** `bash_finished_text` in §5. The old footer sites are inside the local spawn §3 deletes.
 
 **Depends on:** none.
 
 - **🔷** Drop the leading `//`. Bold the count line. Name the file and the way to read it.
 - **ℹ️** The count in the sentence is `output_lines`, not a new constant.
-
-#### Remove
-
-```vala
-				if (this.output_lines > 50) {
-					footer += "// LLM received last 50 of " + this.output_lines.to_string() + " lines.\n";
-					if (this.spill_path != "") {
-						footer += "Full output: " + this.spill_path + "\n";
-					}
-				}
-```
-
-#### Replace with
+- **🚫** Do not patch the copied bwrap footer or the subprocess footer. Those methods are deleted.
 
 ```vala
-				if (this.output_lines > 50) {
-					footer += "**Below are the last 50 of " + this.output_lines.to_string() + " lines.**\n";
-					if (this.spill_path != "") {
-						footer += "Full output: " + this.spill_path + "\n";
-						footer += "Do not read this file whole — it is "
-							+ this.output_lines.to_string()
-							+ " lines. Use grep, head, or tail on it with this tool to find the part you need.\n";
-					}
-				}
+"**Below are the last 50 of " + this.output_lines.to_string() + " lines.**\n"
++ "Full output: " + this.spill_path + "\n"
++ "Do not read this file whole — it is "
++ this.output_lines.to_string()
++ " lines. Use grep, head, or tail on it with this tool to find the part you need.\n"
 ```
 
-- **ℹ️** That block appears twice (bwrap footer near the `Exit code:` slice, subprocess footer under `#if !G_OS_WIN32`). Both get the same replacement.
+### 3. `liboctools/Bash/Request.vala` — the copy talks to the daemon
 
-#### Remove
-
-```vala
-			return "// ... (output truncated: showing last 50 of " + this.output_lines.to_string() + " lines) ...\n" + output;
-```
-
-#### Replace with
-
-```vala
-			return "**Below are the last 50 of " + this.output_lines.to_string() + " lines.**\n" + output;
-```
-
-### 2. `liboctools/RunCommand/Request.vala` — `bash` enters the daemon
-
-**Why:** Management must return before permission and the spill file. A new `bash` command still walks the existing permission code, but the sandbox question has to follow the daemon, not the phone.
+**Why:** Management returns before permission and the spill file. A new command still walks the copied permission code. The sandbox question follows the daemon.
 
 **Where:** the `pid` property beside `timeout`, the top of `execute`, `build_perm_question`, and the spawn branch inside `execute_tool_async`.
 
-**Depends on:** [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md).
+**Depends on:** [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md). §1.
 
-- **💩** This plan names `bash_remote` and `manage`. They are the two paths `execute` cannot inline without copying the permission body.
-- **💩** `remote_wrap` is set only after `can_wrap` returns `1` on a connected client, and only for `bash`. `build_perm_question` treats that as a sandbox, so the phone does not show "sandbox unavailable".
+- **💩** This plan names `bash_remote` and `manage`.
 - **🔷** `pid != 0` returns before `normalize_working_dir`, permission, `client.run_tool.start`, and the spill file.
-- **💩** `timeout < 0` on a local fallback (no daemon, or `can_wrap` is `0`) is still a kill at 15 seconds. Detach exists only on the daemon path. `GLib.Timeout.add_seconds` must not see a negative value.
+- **🔷** No daemon, `can_wrap` not `1`, or `run_as_root` set: return an error. Do not spawn on the phone.
+- **🔷** Delete the copied `GLib.Timeout.add_seconds` arm. The daemon `wait` is the clock.
+- **💩** `remote_wrap` is set after `can_wrap` returns `1`. `build_perm_question` treats that as a sandbox, so the phone does not show "sandbox unavailable".
 
 #### Add — beside `timeout`
 
@@ -157,25 +274,26 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 ```vala
 		public override async string execute()
 		{
-			if (this.tool.name == "bash" && this.pid != 0) {
+			if (this.pid != 0) {
 				return yield this.manage();
 			}
 			if (this.command.strip() == "") {
 				return "ERROR: Invalid parameters";
 			}
-			if (this.tool.name == "bash" && !this.run_as_root) {
-				var bash_tool = this.tool as Tool;
-				if (bash_tool != null && bash_tool.project_manager != null
-					&& bash_tool.project_manager.rpc.connected) {
-					var wrap = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
-						method = "Sandbox-Bubble.can_wrap"
-					});
-					this.remote_wrap = wrap.msg == "1";
-				}
+			if (this.run_as_root) {
+				return "ERROR: run_as_root is not available";
 			}
-			if (this.tool.name == "bash" && this.timeout < 0 && !this.remote_wrap) {
-				this.timeout = 15;
+			var bash_tool = (Tool) this.tool;
+			if (bash_tool.project_manager == null || !bash_tool.project_manager.rpc.connected) {
+				return "ERROR: bash needs the file daemon";
 			}
+			var wrap = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
+				method = "Sandbox-Bubble.can_wrap"
+			});
+			if (wrap.msg != "1") {
+				return "ERROR: sandbox unavailable";
+			}
+			this.remote_wrap = true;
 ```
 
 #### Remove
@@ -201,13 +319,11 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 #### Replace with
 
 ```vala
-			if (this.remote_wrap) {
-				return yield this.bash_remote();
-			}
-			if (!OLLMbwrap.Bubble.can_wrap()) {
-				return yield this.execute_with_subprocess();
-			}
+			return yield this.bash_remote();
 ```
+
+- **🔷** Also delete the copied `if (this.run_as_root) return yield this.execute_with_subprocess()` just above that branch.
+- **🔷** `execute_with_subprocess` and the in-process `Bubble.exec` body below the return are unused. Delete them from the copy.
 
 - **💩** In the `finally` of `execute`, a detached job must not close the spill, delete it, or emit `client.run_tool.end`. Those wait for `finished`. One-shot jobs keep the current `finally`.
 
@@ -263,8 +379,6 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 				}
 ```
 
-- **💩** The local `Timeout.add_seconds(this.timeout, …)` must be skipped when `this.remote_wrap` is set. The daemon `wait` is the clock. Arming both would kill a command the daemon is still streaming.
-
 #### Remove
 
 ```vala
@@ -276,40 +390,71 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 			});
 ```
 
+- **ℹ️** The `finally` that clears `timeout_src` can stay. Nothing arms it.
+
+### 4. `ollmfilesd` — store the session id and check it
+
+**Why:** The daemon is the place that knows which chat started a process. A later call from another chat is refused there.
+
+**Where:** `OLLMbwrap.Bubble` gains `session_id`. `ollmfilesd/Sandbox/Bubble.vala` `rpc_register`, `rpc_create`, and `kill` / `tail` / `wait` / `send`.
+
+**Depends on:** [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md).
+
+- **🔷** `session_id` is the chat session's `id` (`int64`). The tool sends it on create, and again on `kill`, `tail`, `wait`, and `send`.
+- **🔷** It is stored on the bubble. The job table stays keyed by the positive pid.
+- **🔷** Unknown pid, or a pid stored for a different session: reply `command has ended`. Same sentence as a job that is already gone.
+
+#### Add — field on `libocbwrap/Bubble.vala`, beside `pid`
+
+```vala
+		public int64 session_id { get; set; default = -1; }
+```
+
+#### Remove — `rpc_register`
+
+```vala
+				"rpc_create", "sssbSb",
+				"rpc_run", "t",
+				"kill", "i",
+				"tail", "i",
+				"wait", "ii",
+				"send", "is"
+```
+
 #### Replace with
 
 ```vala
-			if (!this.remote_wrap) {
-				this.timeout_src = GLib.Timeout.add_seconds((uint) this.timeout, () => {
-					this.timed_out = true;
-					this.stop();
-					this.timeout_src = 0;
-					return false;
-				});
-			}
+				"rpc_create", "sssbSbx",
+				"rpc_run", "t",
+				"kill", "ix",
+				"tail", "ix",
+				"wait", "iix",
+				"send", "isx"
 ```
 
-### 3. `liboctools/RunCommand/Request.vala` — `bash_remote` and `manage`
+- **🔷** `rpc_create` takes `int64 session_id` after `keep_stdin` and sets `bubble.session_id` before the lease is returned.
+- **🔷** `kill`, `tail`, `wait`, and `send` take `int64 session_id` after their current arguments. Look the pid up. If the bubble's `session_id` is not the one passed, reply `command has ended` and do nothing else.
+
+### 5. `liboctools/Bash/Request.vala` — `bash_remote` and `manage`
 
 **Why:** Create, subscribe, run, then either return the command result or the pid block. Later calls are the four verbs.
 
-**Where:** new methods on `Request`. The plan names both.
+**Where:** new methods on `OLLMtools.Bash.Request`. The plan names both.
 
-**Depends on:** §2.
+**Depends on:** §3 and §4.
 
 - **🔷** Subscribe before `rpc_run`.
 - **🔷** `send` writes the payload with no added newline. The verb is the first word. The rest is the payload, including a leading space that gets stripped once.
-- **🔷** Unknown pid, or a pid from another session: the result is `command has ended`. Nothing is signalled.
+- **🔷** Unknown pid, or a pid from another session: the daemon replies `command has ended`. The tool returns that sentence. Nothing is signalled.
 - **🔷** `wait` with no extra timeout argument waits 60 seconds. A duration rides on `timeout` when it is not 60.
-- **💩** `bash_jobs` is the session list. The value is the session id. A `0` source id on the side map is "no 60-second reap". The reap is armed only for a waiting-for-input return.
+- **🔷** Every `rpc_create`, `kill`, `tail`, `wait`, and `send` from this tool includes `this.agent.chat().agent.session.id`.
+- **💩** The 60-second kill is not in this hunk: "waiting for input" and "still working" currently come back as the same negative pid, so there is nothing to test.
 - **💩** `finished` text is the tool result when the command ends inside the wait. The truncation footer from §1 is applied when `output_lines > 50`.
 - **💩** Streaming to the UI stays `client.run_tool.output` on the same `request_id`, fed from the `output` notification.
 
 #### Add
 
 ```vala
-		private static Gee.HashMap<int, int64> bash_jobs;
-		private static Gee.HashMap<int, uint> bash_reap;
 		private static bool bash_listening = false;
 
 		/**
@@ -332,13 +477,14 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 			var created = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
 				method = "Sandbox-Bubble.rpc_create",
 				args = OLLMrpc.args(
-					"sssbSb",
+					"sssbSbx",
 					project_path,
 					this.command,
 					this.working_dir,
 					this.network,
 					this.write_array,
-					keep_stdin
+					keep_stdin,
+					this.agent.chat().agent.session.id
 				)
 			});
 			if (created.error != null) {
@@ -366,34 +512,31 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 			var pid = (int) started.retval.get_int();
 			var waited = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
 				method = "Sandbox-Bubble.wait",
-				args = OLLMrpc.args("ii", pid, seconds)
+				args = OLLMrpc.args(
+					"iix",
+					pid,
+					seconds,
+					this.agent.chat().agent.session.id
+				)
 			});
 			var state = (int) waited.retval.get_int();
-			if (state == 0) {
+			if (state >= 0) {
 				return this.bash_finished_text(waited.msg);
 			}
 			if (!keep_stdin) {
 				yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
 					method = "Sandbox-Bubble.kill",
-					args = OLLMrpc.args("i", pid)
+					args = OLLMrpc.args(
+						"ix",
+						pid,
+						this.agent.chat().agent.session.id
+					)
 				});
 				this.timed_out = true;
 				return this.bash_finished_text(waited.msg);
 			}
-			if (Request.bash_jobs == null) {
-				Request.bash_jobs = new Gee.HashMap<int, int64>();
-				Request.bash_reap = new Gee.HashMap<int, uint>();
-			}
-			Request.bash_jobs.set(pid, this.agent.chat().agent.session.id);
 			this.detached = true;
-			if (state == 1) {
-				var src = GLib.Timeout.add_seconds(60, () => {
-					this.reap_stuck(pid);
-					return false;
-				});
-				Request.bash_reap.set(pid, src);
-			}
-			return this.pid_block(pid, state == 1);
+			return this.pid_block(-pid, false);
 		}
 
 		/**
@@ -403,14 +546,11 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 		 */
 		private async string manage()
 		{
-			if (Request.bash_jobs == null || !Request.bash_jobs.has_key(this.pid)
-				|| Request.bash_jobs.get(this.pid) != this.agent.chat().agent.session.id) {
+			if (this.pid >= 0) {
 				return "command has ended";
 			}
-			if (Request.bash_reap != null && Request.bash_reap.has_key(this.pid)) {
-				GLib.Source.remove(Request.bash_reap.get(this.pid));
-				Request.bash_reap.unset(this.pid);
-			}
+			var os_pid = -this.pid;
+			var session_id = this.agent.chat().agent.session.id;
 			var bash_tool = this.tool as Tool;
 			if (bash_tool == null || bash_tool.project_manager == null
 				|| !bash_tool.project_manager.rpc.connected) {
@@ -426,15 +566,14 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 			if (verb == "kill") {
 				yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
 					method = "Sandbox-Bubble.kill",
-					args = OLLMrpc.args("i", this.pid)
+					args = OLLMrpc.args("ix", os_pid, session_id)
 				});
-				Request.bash_jobs.unset(this.pid);
 				return "command has ended";
 			}
 			if (verb == "tail") {
 				var tail = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
 					method = "Sandbox-Bubble.tail",
-					args = OLLMrpc.args("i", this.pid)
+					args = OLLMrpc.args("ix", os_pid, session_id)
 				});
 				return tail.msg + "\n" + this.pid_block(this.pid, false);
 			}
@@ -445,28 +584,19 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 				}
 				var waited = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
 					method = "Sandbox-Bubble.wait",
-					args = OLLMrpc.args("ii", this.pid, seconds)
+					args = OLLMrpc.args("iix", os_pid, seconds, session_id)
 				});
-				if ((int) waited.retval.get_int() == 0) {
-					Request.bash_jobs.unset(this.pid);
+				if ((int) waited.retval.get_int() >= 0) {
 					return this.bash_finished_text(waited.msg);
 				}
-				if ((int) waited.retval.get_int() == 1) {
-					var src = GLib.Timeout.add_seconds(60, () => {
-						this.reap_stuck(this.pid);
-						return false;
-					});
-					Request.bash_reap.set(this.pid, src);
-				}
-				return waited.msg + "\n" + this.pid_block(this.pid, (int) waited.retval.get_int() == 1);
+				return waited.msg + "\n" + this.pid_block(this.pid, false);
 			}
 			if (verb == "send") {
 				var sent = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
 					method = "Sandbox-Bubble.send",
-					args = OLLMrpc.args("is", this.pid, payload)
+					args = OLLMrpc.args("isx", os_pid, payload, session_id)
 				});
 				if (sent.msg != "ok") {
-					Request.bash_jobs.unset(this.pid);
 					return "command has ended";
 				}
 				return "ok";
@@ -497,36 +627,37 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 		}
 ```
 
-- **💩** `arm_bash_listener`, `bash_finished_text`, and `reap_stuck` are the three leftovers. `arm_bash_listener` connects `rpc.notification` once and appends `output` lines to the spill and to `client.run_tool.output` while the lease matches. `bash_finished_text` applies the §1 footer when the line count is over 50. `reap_stuck` calls `Sandbox-Bubble.kill` and drops the pid from `bash_jobs`. Same three names, no further helpers.
+- **💩** `arm_bash_listener`, `bash_finished_text`, and `reap_stuck` are the three leftovers. `arm_bash_listener` connects `rpc.notification` once and appends `output` lines to the spill and to `client.run_tool.output` while the lease matches. `bash_finished_text` applies the §2 wording when the line count is over 50. `reap_stuck` calls `Sandbox-Bubble.kill` with the session id. Same three names, no further helpers.
 - **💩** `tail` on a live job appends `pid_block`. `tail` on a missing pid returns only `command has ended`, from the session check above, so the block is not repeated for a dead job.
 - **💩** `send` that gets `ok` and then no new output does not guess a threshold. The next `wait` is what reports stdin. A one-line note on the `ok` return — "end the text with a newline if the command is waiting for a line" — is optional and not in the block above.
 
-### 4. `liboctools/RunCommand/Bash.vala` — tell the model about `pid`
+### 6. `liboctools/Bash/Tool.vala` — `pid` and `-1` in the description
 
-**Why:** `parameter_description` is what the model sees. `run_command` must not gain the `pid` line.
+**Why:** The model reads `parameter_description` on this class. There is no base tool to append to.
 
-**Where:** override on `Bash`.
+**Where:** the copied `parameter_description`, the `timeout` line.
 
-**Depends on:** §2.
+**Depends on:** §1.
 
 - **🔷** `-1` is the advertised detach value. The code tests `timeout < 0`.
-- **🚫** Do not add this text to `RunCommand.Tool.parameter_description`.
+- **🔷** Add the `pid` line. Replace the copied timeout line. It still describes a hard kill and nothing else.
 
-#### Add
+#### Remove
 
 ```vala
-		public override string parameter_description {
-			get {
-				return base.parameter_description
-					+ "\n@param pid {integer} [optional] Bwrap pid from an earlier call. When set, command is kill, tail, wait, or send <text>.\n"
-					+ "@param timeout {integer} [optional] Wall-clock seconds before the command is killed. -1 waits 15 seconds, then returns the pid and leaves the command running.\n";
-			}
-		}
+@param timeout {integer} [optional] Wall-clock seconds before the command is killed. Defaults to 60s. Increase for long jobs.
 ```
 
-- **ℹ️** `base.parameter_description` already documents `timeout` as a hard kill. The extra line is the `-1` meaning. Phase D still gates shipping this to Android.
+#### Replace with
 
-### 5. `libocbwrap/Bubble.vala` — silence kill
+```vala
+@param pid {integer} [optional] Bwrap pid from an earlier call. When set, command is kill, tail, wait, or send <text>.
+@param timeout {integer} [optional] Wall-clock seconds before the command is killed. Defaults to 60s. -1 waits 15 seconds, then returns the pid and leaves the command running.
+```
+
+- **ℹ️** Phase D still gates shipping `-1` to Android.
+
+### 7. `libocbwrap/Bubble.vala` — silence kill
 
 **Why:** Output is what resets the clock, and the daemon is where the output is read. Fifteen minutes is the short end of the 15–20 minute rule.
 
@@ -603,18 +734,22 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 - **💩** `⏳` `timeout` `-1` on `cat`: the result is the pid block, `wait` returns waiting, `send` of `hi\n` produces output, `kill` ends it.
 - **💩** `⏳` A pid from another session, and a pid that was never returned, both come back `command has ended`.
 - **🔷** `⏳` Truncation over 50 lines includes the bold count, the spill path, and the grep / head / tail line.
-- **💩** `⏳` `run_command` with `pid` set still runs the command string. It does not kill anything.
+- **🔷** `⏳` `run_command` is not in the tool list. `grep`, `glob`, and `ls` still run, through `bash`.
 - **💩** `⏳` A job with no output for 15 minutes is killed on the daemon. Output during that window resets the clock.
+- **💩** `⏳` `run_as_root` set, and a call with the file daemon disconnected, both return an error and do not spawn locally.
 
 ---
 
 ## LLM notes
 
-- **🚫** `pid`, verbs, or `-1` on `run_command`.
+- **🚫** Subclassing `RunCommand.Tool`, or patching `RunCommand.Request` so `bash` and `run_command` share a path.
+- **🚫** Registering `run_command` beside `bash`.
+- **🚫** In-process `Bubble.exec` or `GLib.Subprocess` on `OLLMtools.Bash`.
 - **🚫** A second management tool.
 - **🚫** Registering `bash` on Android in this plan. Phase E.
 - **🚫** The Phase D Stop button, stuffed in here so `-1` can ship early.
 - **🚫** Applying [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md).
-- **🚫** `run_as_root` on `Sandbox-Bubble`. That call stays on the local path.
+- **🚫** `run_as_root` on `Sandbox-Bubble`, and a local root path kept on the copy so that flag still works.
 - **🚫** `Client.live_handles = true` on the file client. String signals do not need a proxy.
 - **🚫** Helper methods beyond `bash_remote`, `manage`, `pid_block`, `arm_bash_listener`, `bash_finished_text`, `reap_stuck`, and `arm_idle`.
+- **🚫** Rewriting skills and docs that still say `run_command`. Trash those when the old tool is deleted.

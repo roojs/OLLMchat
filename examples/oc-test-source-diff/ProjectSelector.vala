@@ -676,13 +676,10 @@ class ProjectSelector : Gtk.Box
 		if (this.form != "phone") {
 			this.button.tooltip_text = folder.path;
 		}
-		yield this.manager.activate_project(folder, false);
-		if (this.manager.active_project != folder) {
-			return;
-		}
 		this.popover.popdown();
 		this.pull.visible = false;
 		this.chosen(folder);
+		yield this.manager.activate_project(folder, false);
 	}
 
 	/**

@@ -16,7 +16,7 @@
 - **🔷** `✔️` A job outlives the connection that started it. Verbs look up [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md) `Bubble.jobs`, not a connection lease.
 - **🔷** `✔️` Live output still uses a lease, so the current client can subscribe to `output` and `finished` before `rpc_run` starts the child.
 - **ℹ️** Overlay apply is [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) §2. Apply that file as written. Do not apply the rest of that plan.
-- **ℹ️** The tool, the pid-return text, and the session list are Phase C.
+- **ℹ️** The tool, the pid-return text, and passing the session id are Phase C.
 
 ---
 

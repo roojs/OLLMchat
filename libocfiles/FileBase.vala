@@ -55,6 +55,34 @@ namespace OLLMfiles
 		 * Parent folder ID for database storage.
 		 */
 		public int64 parent_id { get; set; default = 0; }
+
+		/**
+		 * How many files sit directly in this folder. The folder load
+		 * query sets this. It is not a ''filebase'' column.
+		 */
+		public int file_count { get; set; default = 0; }
+
+		/**
+		 * How many folders sit directly in this folder. The folder load
+		 * query sets this. It is not a ''filebase'' column.
+		 */
+		public int folder_count { get; set; default = 0; }
+
+		/**
+		 * CSS classes for this row's name. A folder with no files uses
+		 * ''dim-label'', so the name is light grey. Child folders do
+		 * not change that. Any other row uses none.
+		 */
+		public string[] css_classes {
+			owned get {
+				if (!(this is Folder) || this.file_count != 0) {
+					string[] plain = {};
+					return plain;
+				}
+				string[] dim = { "dim-label" };
+				return dim;
+			}
+		}
 		
 		/**
 		 * Reference to parent folder (nullable for root folders/projects).
@@ -124,9 +152,12 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Tooltip text for binding in lists.
+		 * Tooltip for list rows. The full path, so a clipped name still
+		 * shows where the file or folder is.
 		 */
-		public string tooltip { get; set; default = ""; }
+		public string tooltip {
+			owned get { return this.path; }
+		}
 		
 		/**
 		 * Base type identifier for serialization and database storage.
@@ -360,6 +391,7 @@ namespace OLLMfiles
 				case "display-approval-tooltip":
 				case "display-name":
 				case "tooltip":
+				case "css-classes":
 					return;
 				default:
 					this.bin_default_write_prop(ctx, prop);
@@ -384,6 +416,7 @@ namespace OLLMfiles
 				case "display-approval-tooltip":
 				case "display-name":
 				case "tooltip":
+				case "css-classes":
 					return;
 				default:
 					this.bin_default_read_prop(ctx, prop, type_byte);

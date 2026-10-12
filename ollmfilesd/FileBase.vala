@@ -55,6 +55,18 @@ namespace OLLMfilesd
 		 * Parent folder ID for database storage.
 		 */
 		public int64 parent_id { get; set; default = 0; }
+
+		/**
+		 * How many files sit directly in this folder. The folder load
+		 * query sets this. It is not a ''filebase'' column.
+		 */
+		public int file_count { get; set; default = 0; }
+
+		/**
+		 * How many folders sit directly in this folder. The folder load
+		 * query sets this. It is not a ''filebase'' column.
+		 */
+		public int folder_count { get; set; default = 0; }
 		
 		/**
 		 * Reference to parent folder (nullable for root folders/projects).

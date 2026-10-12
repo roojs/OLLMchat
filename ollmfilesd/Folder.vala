@@ -156,7 +156,10 @@ namespace OLLMfilesd
 
 		/**
 		 * Immediate child folders of ''path''. Files are left out.
-		 * The row is a copy, so the live child list is not sent.
+		 * Each row already carries ''file_count'' and ''folder_count''
+		 * from the load query. The row is a copy, so the live child
+		 * list is not sent. The reply args are that same pair for
+		 * ''path'' itself, so the caller can show that folder.
 		 *
 		 * @param request inbound RPC
 		 * @param path folder path
@@ -183,11 +186,13 @@ namespace OLLMfilesd
 				});
 				list.add(row);
 			}
-			request.reply(new OLLMrpc.Response() {
+			var reply = new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("o", list),
 				msg = list.size.to_string()
-			});
+			};
+			reply.args = OLLMrpc.args("ii", folder.file_count, folder.folder_count);
+			request.reply(reply);
 		}
 
 		/**
@@ -1046,6 +1051,30 @@ namespace OLLMfilesd
 				paths = yield this.load_children(id_map, paths, seen_ids);
 				//GLib.debug("Folder.load_files_from_db: After iteration %d, id_map has %d items, next_paths=%d", iteration, id_map.size, paths.length);
 			}
+			var count_stmt = FileBase.query(this.manager.db, this.manager).selectPrepare("""
+SELECT
+	filebase.parent_id,
+	SUM(filebase.base_type = 'd') AS folder_count,
+	SUM(filebase.base_type IN ('f', 'fa')) AS file_count
+FROM
+	filebase
+WHERE
+	filebase.delete_id = 0
+	AND
+		filebase.parent_id IN (""" + string.joinv(", ", seen_ids.to_array()) + """)
+GROUP BY
+	filebase.parent_id
+""");
+			this.manager.db.db_mutex.lock();
+			while (count_stmt.step() == Sqlite.ROW) {
+				var parent_id = (int) count_stmt.column_int64(0);
+				if (!id_map.has_key(parent_id)) {
+					continue;
+				}
+				id_map.get(parent_id).folder_count = (int) count_stmt.column_int64(1);
+				id_map.get(parent_id).file_count = (int) count_stmt.column_int64(2);
+			}
+			this.manager.db.db_mutex.unlock();
 			
 			//GLib.debug("Folder.load_files_from_db: Loaded %d items total, building tree structure", id_map.size);
 			// Step c: Build the tree structure
@@ -1091,12 +1120,12 @@ namespace OLLMfilesd
 					escaped_path + "')";
 			}
 			
-			// Load files matching the path conditions
 			var query = FileBase.query(this.manager.db, this.manager);
 			var new_files = new Gee.ArrayList<FileBase>();
-			yield query.select_async("WHERE (" + 
-				string.joinv(" OR ", path_conds) + ") AND id NOT IN (" + 
-				string.joinv(", ", seen_ids.to_array()) + ") AND delete_id = 0", new_files);
+			yield query.select_async("WHERE (" +
+				string.joinv(" OR ", path_conds) + ") AND id NOT IN (" +
+				string.joinv(", ", seen_ids.to_array()) + ") AND delete_id = 0",
+				new_files);
 				
 			// If no new files found, we're done
 			if (new_files.size == 0) {

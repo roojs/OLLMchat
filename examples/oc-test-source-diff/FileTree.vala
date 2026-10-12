@@ -31,7 +31,12 @@
  * a file. The label joins the names with ''/'', so ''scalable''
  * holding only ''apps'' reads ''scalable/apps''. ''libochf'' stays
  * its own row because it has files beside ''Param''. A folder with
- * no child folder has no expander.
+ * no child folder has no expander. The project is the top row and
+ * it is expanded. Selecting it shows the files in that folder.
+ * An empty folder has no icon.
+ * Its name binds the folder's ''css-classes'', so a folder with no
+ * files is light grey. The tooltip binds the folder's ''tooltip'',
+ * the full path.
  * Clicking a folder asks the file server for that folder's files.
  * The right side is a name, size, and modified grid. Each cell binds
  * a property on the file. The name column binds the type icon.
@@ -119,9 +124,11 @@ class FileTree : Gtk.Box
 				return null;
 			}
 			var tip = folder;
-			while (this.folders.segments.has_key(tip.path)
-				&& this.folders.segments.get(tip.path).get_n_items() == 1
-				&& !this.folders.with_files.contains(tip.path)) {
+			while (!tip.is_project &&
+				this.folders.segments.has_key(tip.path) &&
+				this.folders.segments.get(tip.path).get_n_items() == 1 &&
+				tip.folder_count == 1 &&
+				tip.file_count == 0) {
 				tip = (OLLMfiles.Folder) this.folders.segments.get(tip.path).get_item(0);
 			}
 			if (this.folders.segments.get(tip.path).get_n_items() == 0) {
@@ -160,13 +167,19 @@ class FileTree : Gtk.Box
 			var parts = new Gee.ArrayList<string>();
 			parts.add(folder.path_basename);
 			var tip = folder;
-			while (this.folders.segments.has_key(tip.path) &&
+			while (!tip.is_project &&
+					this.folders.segments.has_key(tip.path) &&
 					this.folders.segments.get(tip.path).get_n_items() == 1 &&
-					!this.folders.with_files.contains(tip.path)) {
+					tip.folder_count == 1 &&
+					tip.file_count == 0) {
 				tip = (OLLMfiles.Folder) this.folders.segments.get(tip.path).get_item(0);
 				parts.add(tip.path_basename);
 			}
 			((Gtk.Label) expander.child).label = string.joinv("/", parts.to_array());
+			tip.bind_property("css-classes", (Gtk.Label) expander.child,
+				"css-classes", GLib.BindingFlags.SYNC_CREATE);
+			tip.bind_property("tooltip", (Gtk.Label) expander.child,
+				"tooltip-text", GLib.BindingFlags.SYNC_CREATE);
 		});
 		tree_factory.unbind.connect((obj) => {
 			var row = (Gtk.ListItem) obj;
@@ -205,7 +218,7 @@ class FileTree : Gtk.Box
 				"icon-name", GLib.BindingFlags.SYNC_CREATE);
 			file.bind_property("path_basename", name_label,
 				"label", GLib.BindingFlags.SYNC_CREATE);
-			file.bind_property("path_basename", name_label,
+			file.bind_property("tooltip", name_label,
 				"tooltip-text", GLib.BindingFlags.SYNC_CREATE);
 		});
 		var size_factory = new Gtk.SignalListItemFactory();
@@ -374,9 +387,11 @@ class FileTree : Gtk.Box
 			return;
 		}
 		var folder = (OLLMfiles.Folder) ((Gtk.TreeListRow) this.tree_selection.selected_item).item;
-		while (this.folders.segments.has_key(folder.path) &&
+		while (!folder.is_project &&
+				this.folders.segments.has_key(folder.path) &&
 				this.folders.segments.get(folder.path).get_n_items() == 1 &&
-				!this.folders.with_files.contains(folder.path)) {
+				folder.folder_count == 1 &&
+				folder.file_count == 0) {
 			folder = (OLLMfiles.Folder) this.folders.segments.get(folder.path).get_item(0);
 		}
 		var epoch = this.file_epoch;

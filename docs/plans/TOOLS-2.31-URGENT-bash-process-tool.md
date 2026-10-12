@@ -34,7 +34,7 @@ Proposed Vala follows `docs/coding-standards.md`.
 - **🔷** Turn `bash` into a tool the phone can use **remotely**.
   - The command runs on the desktop `ollmfilesd`.
   - Not on the phone.
-- **🔷** `bash` becomes its **own tool**, taking over the name it already owns as an alias. `run_command` is left alone.
+- **🔷** `bash` becomes its **own class**, with the `RunCommand` code copied across. `run_command` is deprecated. The copy does not stay compatible with it.
 - **🔷** `⏳` `timeout = -1` returns after 15 s and hands the agent a **running process** to manage. Every other timeout still kills.
 - **🔷** `⏳` The UI must **show** that a background process is running, and the **user** must be able to kill it, not just the agent.
 - **🔷** `⏳` The agent manages running processes through the **same tool**, with the pid as an argument and `kill` / `tail` / `wait` / `send` as the command. No second tool.
@@ -364,23 +364,22 @@ on it with this tool to find the part you need.
 - **🔷** This does not get bolted onto `run_command`. `pid`, four verbs, `-1`, and a job registry are too much to clutter it with.
 - **🔷** `bash` is the tool that takes it over. It is already the Pi-facing name, and today it is only an alias.
 - **ℹ️** `RunCommand.Bash` currently overrides `name`, `title`, `example_call`, and `clone` — nothing else. Same `Request`, same `execute`, same everything.
-- **🔷** `run_command` stays as it is. In-process, one call one string, hard timeout, no pid.
-- **ℹ️** So the split is: `run_command` is the simple local tool, `bash` is the RPC tool that can detach and be managed.
+- **🔷** That alias is replaced by `OLLMtools.Bash`. `run_command` is deprecated, not kept as the local twin.
 
 ### What that costs — **ℹ️** facts to design against
 
-- **ℹ️** `liboctools/Registry.vala` `fill_tools` registers **both** on desktop, back to back. So desktop agents would see two shell tools with different capabilities.
-- **ℹ️** `bash` has **no config registration today**. `init_config`, `setup_config_defaults`, and `register_config` all name `RunCommand.Tool` only. A first-class `bash` needs adding to all three, or it has no settings row and cannot be disabled.
+- **ℹ️** `liboctools/Registry.vala` `fill_tools` registers **both** on desktop, back to back. Phase C registers `Bash.Tool` only.
+- **ℹ️** `bash` has **no config registration today**. `init_config`, `setup_config_defaults`, and `register_config` all name `RunCommand.Tool` only. Phase C points those three at `Bash.Tool`.
 - **ℹ️** `libollmchatgtk/ChatWidget.vala` special-cases `m.name == "run_command"` when restoring a session, to re-render tool output as a collapsed `Execution results` frame. `bash` has never matched it, so restored `bash` output already renders differently.
 - **ℹ️** `AgentPi.Factory.register_config` `GLib.error`s on a missing `bash`, so whatever `bash` becomes has to keep that name.
 - **ℹ️** `RunCommand/Bash.vala` is unconditional in `liboctools/meson.build`, so it is already in the Android build.
 
-### Open — **🔷** decide
+### Decided — **🔷**
 
-- **⏳** **🔷** Does `bash` stop subclassing `RunCommand.Tool`, or keep inheriting and override the parts that differ? It needs its own `Request`, which is the bulk of the class.
-- **⏳** **🔷** Where does it live? Staying in `liboctools/RunCommand/` is odd once it is not a `RunCommand` variant.
-- **⏳** **🔷** Do desktop agents get both tools, or does `bash` replace `run_command` there too? Two shell tools in one tool list invites the model to pick the wrong one.
-- **⏳** **💩** Does `run_command` keep its own `Request`, or does it become the degenerate case of the new one? Two copies of the bwrap and subprocess paths is the thing most likely to rot.
+- **🔷** `bash` does not subclass `RunCommand.Tool`. New class `OLLMtools.Bash` in `liboctools/Bash/`, with its own `Tool` and `Request`, copied from `RunCommand` and then cut down.
+- **🔷** Desktop registers `bash` only. `run_command` is deprecated and not registered.
+- **🚫** Sharing one `Request` so the two tools cannot drift. The copy is the one that is allowed to change. The old files can be trashed once nothing references them.
+- **ℹ️** Detail is in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md).
 
 ---
 
@@ -395,8 +394,8 @@ on it with this tool to find the part you need.
 - **🔷** `✔️` A job can be written to and can be asked whether it is stuck on stdin. Neither is declared up front by the agent.
 - **🔷** A detached job is **not** killed when the client disconnects. A phone going into a lift must not kill the build.
 - **🔷** `⏳` Instead it dies after **15–20 minutes of silence**. Output from the job is what resets the clock, not client traffic.
-- **🔷** The job is referenced **twice**: a global table so the user can see and kill everything, and a per-session list so one session cannot touch another session's processes.
-- **ℹ️** Nothing is open there. The `bash` end of the session list is Phase C.
+- **🔷** The job table is on the daemon. The session id is stored on the job, passed in when it starts, and checked again on `kill`, `tail`, `wait`, and `send`. One session cannot touch another session's processes.
+- **ℹ️** Phase C sends that session id. The tool does not keep a second list.
 
 ---
 
@@ -417,9 +416,8 @@ on it with this tool to find the part you need.
 **ℹ️** Proposed in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md). Summary only below.
 
 - **🔷** `⏳` Build the tool contract designed above: `pid` parameter, the four verbs, `timeout = -1`, the pid-return block, and the truncation advice.
-- **🔷** `⏳` When the file client is `LIVE`, `bash` runs the command on the daemon. Not `OLLMbwrap` in the Android process.
+- **🔷** `⏳` `LIVE` and `SOCKET` both run `bash` on the daemon. Not in-process `OLLMbwrap`.
 - **ℹ️** `SOCKET` is the desktop local Unix hello ([`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md)). `ollmfilesd` is already up on this machine. Empty `url`. Not a remote row.
-- **🔷** What `SOCKET` does for exec is not decided. Not enough here to choose in-process bwrap versus the same RPC.
 - **ℹ️** Overlay / index update after daemon exec is the daemon's job in `2.10.4.15` (`Scan` + `FileVerification` on `ollmfilesd`).
 - **ℹ️** Code proposals are in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md).
 
@@ -438,7 +436,7 @@ on it with this tool to find the part you need.
 - **🔷** `⏳` `ollmapp/android/OllmchatWindow.vala` `initialize_client` registers the `bash` tool next to `write` / `read`, then `AgentPi.Factory.register_config`.
 - **🔷** `⏳` Still no in-process exec on the phone. Registration is only valid once Phase C routes through RPC.
 - **🚫** Do not apply this before Phase C. `bash` in `history_manager.tools` is a tool Agent Pi can call, and until it routes through RPC that call runs `OLLMbwrap` / `GLib.Subprocess` **on the phone**.
-- **ℹ️** The class name in the hunk below is `OLLMtools.RunCommand.Bash`, which is only correct if Phase C leaves it in that namespace. Re-check before applying.
+- **ℹ️** The class in the hunk below is `OLLMtools.Bash.Tool`. Phase C deletes `RunCommand.Bash`.
 
 
 
@@ -489,7 +487,7 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 			}
 			if (!this.history_manager.tools.has_key("bash")) {
 				this.history_manager.register_tool(
-					new OLLMtools.RunCommand.Bash(this.project_manager));
+					new OLLMtools.Bash.Tool(this.project_manager));
 			}
 			if (!this.history_manager.agent_factories.has_key("agent-pi")) {
 				var agent_pi = new OLLMcoder.AgentPi.Factory(this.project_manager);
@@ -513,13 +511,13 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 ## Suggested order
 
 1. **✔️** **Phase A** — apply [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md). Agent applied; not user-verified.
-2. **⏳** Decide whether `bash` stops subclassing `RunCommand.Tool`, and whether desktop keeps both tools.
+2. **🔷** `bash` is a new class. `run_command` is deprecated. See [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md).
 3. **✔️** **Phase B** — apply [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md). Agent applied; socket tests still ⏳.
-4. **⏳** **Phase C** — [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md): `pid`, verbs, `-1`, truncation advice, the per-session job list and its idle timer
+4. **⏳** **Phase C** — [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md): `pid`, verbs, `-1`, truncation advice, the session id on the daemon job, and its idle timer
 5. **⏳** **Phase D** — background-job indicator and user-facing kill, before `-1` ships
 6. **⏳** **Phase E** — Android registration + `AgentPi.Factory.register_config`
 
-- **💩** Phase C is likely two sub-plans — the tool contract and the RPC caller.
+- **🚫** Splitting Phase C so the tool stays a `RunCommand` subclass. One new class, copied, then cut down.
 
 ---
 

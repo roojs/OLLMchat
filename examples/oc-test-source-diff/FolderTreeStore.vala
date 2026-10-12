@@ -28,10 +28,11 @@
  * ''items-changed'' for that one position. There is no uuid map.
  * A notification does not clear the lists. Loading a different
  * project removes the rows already stored.
- * {@link load} asks the file server for the child folders of one
- * folder and appends any that are not already stored, then does the
- * same for each of those children. {@link loading} stays true while
- * any of those requests is still waiting on the file server.
+ * {@link load} puts the project on the top row, then asks the file
+ * server for its child folders and appends any that are not already
+ * stored. It does the same for each of those children.
+ * {@link loading} stays true while any of those requests is still
+ * waiting on the file server.
  *
  * == Example ==
  *
@@ -86,14 +87,6 @@ class FolderTreeStore : Object, GLib.ListModel
 	 * Paths already requested. Owned by the top store. Segments share it.
 	 */
 	public Gee.HashSet<string> loaded {
-		get; private set; default = new Gee.HashSet<string>();
-	}
-
-	/**
-	 * Folders that contain a file as well as child folders. A joined
-	 * row does not run through these.
-	 */
-	public Gee.HashSet<string> with_files {
 		get; private set; default = new Gee.HashSet<string>();
 	}
 
@@ -271,7 +264,6 @@ class FolderTreeStore : Object, GLib.ListModel
 				this.remove(this.flat.get(this.flat.size - 1));
 			}
 			this.loaded.clear();
-			this.with_files.clear();
 			this.project_path = folder.path;
 		}
 		if (this.project_path != "" && folder.path != this.project_path
@@ -281,25 +273,11 @@ class FolderTreeStore : Object, GLib.ListModel
 		if (this.loaded.contains(folder.path)) {
 			return;
 		}
+		if (folder.is_project && !this.path_map.has_key(folder.path)) {
+			this.append(null, folder);
+		}
 		var epoch = this.load_epoch;
 		this.loaded.add(folder.path);
-		try {
-			var enumerator = GLib.File.new_for_path(folder.path).enumerate_children(
-				GLib.FileAttribute.STANDARD_TYPE,
-				GLib.FileQueryInfoFlags.NOFOLLOW_SYMLINKS,
-				null
-			);
-			GLib.FileInfo? info;
-			while ((info = enumerator.next_file(null)) != null) {
-				if (info.get_file_type() != GLib.FileType.REGULAR) {
-					continue;
-				}
-				this.with_files.add(folder.path);
-				break;
-			}
-		} catch (GLib.Error e) {
-			this.with_files.add(folder.path);
-		}
 		this.pending++;
 		if (!this.loading) {
 			this.loading = true;
@@ -344,6 +322,10 @@ class FolderTreeStore : Object, GLib.ListModel
 				this.loading = false;
 			}
 			return;
+		}
+		if (response.args.size >= 2) {
+			folder.file_count = response.args.get(0).get_int();
+			folder.folder_count = response.args.get(1).get_int();
 		}
 		if (response.retval.type() != GLib.Type.INVALID) {
 			var rows = (Gee.ArrayList<OLLMfiles.Folder>) response.retval.get_object();

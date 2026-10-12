@@ -114,6 +114,11 @@ class CoderView : Gtk.Box
 			this.projects.popover.popdown();
 		});
 		this.projects.chosen.connect((folder) => {
+			if (this.files.project.is_project &&
+				this.files.project.path == folder.path) {
+				this.files.notify_property("project");
+				return;
+			}
 			this.files.project = folder;
 		});
 		var search_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5) {

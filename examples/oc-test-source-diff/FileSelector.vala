@@ -345,7 +345,8 @@ class FileSelector : Gtk.Box
 			GLib.Idle.add(() => {
 				this.place();
 				this.pages.visible_child_name = "tree";
-				if (this.project.is_project) {
+				if (this.project.is_project &&
+					!this.tree.folders.loaded.contains(this.project.path)) {
 					this.tree.folders.load.begin(this.project);
 				}
 				this.entry.text = "";

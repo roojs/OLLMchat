@@ -1088,6 +1088,22 @@ public void process_item(Item? item)
 
 **CRITICAL — do not chop short lines:** The **72-character** limit applies to **docblocks and comments only**, not ordinary code. Do **not** split `if` conditions, `||` / `&&` chains, or short method calls to “comply” with line length. Break **only** when a line is genuinely long (rough guide: past ~100 characters, or clearly longer than the surrounding file). **Match the file you are editing** — if nearby `if` lines are single-line, keep yours single-line.
 
+**CRITICAL — `&&` / `||` end the line:** In `if`, `while`, `for`, and the same kind of condition, the operator that joins the parts goes at the **end** of the line. It does not start the next line. Same for a wrapped call or concatenation that already breaks on `&&`, `||`, or `+`.
+
+**Bad (`&&` starts the next line):**
+```vala
+while (this.folders.segments.has_key(tip.path)
+	&& this.folders.segments.get(tip.path).get_n_items() == 1
+	&& tip.file_count == 0) {
+```
+
+**Good (operator ends the line):**
+```vala
+while (this.folders.segments.has_key(tip.path) &&
+	this.folders.segments.get(tip.path).get_n_items() == 1 &&
+	tip.file_count == 0) {
+```
+
 **CRITICAL — format-string calls (`throw`, error ctors, `GLib.debug` /
 `warning` / `critical`):** Keep the **format string (or literal message) on
 the same line as the call**. Do **not** break after `(` so the string sits
@@ -1169,7 +1185,7 @@ this.whitelist_respond(want_json, true,
 
 **Maximum line length:** In docblocks and comments, no line may extend past **72 characters** (including leading spaces/tab). Break after a word so the next line continues the sentence; a good rule of thumb is “break after a comma or before the next phrase” so that the first line does not go beyond roughly “… add all references,” in length. **Do not wrap a comment well short of 72** — use the budget; wrap only the overflow.
 
-- **Code:** **Long** method/constructor **definitions**: one parameter per line (`brace-placement`). **Short** signatures stay on one line. **Calls:** break on `(` when invocations are long; break on `+` when string concatenation creates long lines; when call arguments wrap, **group** them on the continuation line(s). **Do not** default to one argument per line on a **call** — see **CRITICAL — one argument per line needs justification (calls only)** above. Format-string calls (`throw` / `GLib.IOError` / wire `Error` / `GLib.debug` / `warning` / `critical`) — see **CRITICAL — format-string calls**: string stays on the call line; remaining args wrap **grouped**. A short `if` / `||` / `&&` stays on one line; wrap those only when the line is genuinely long (past ~100).
+- **Code:** **Long** method/constructor **definitions**: one parameter per line (`brace-placement`). **Short** signatures stay on one line. **Calls:** break on `(` when invocations are long; break on `+` when string concatenation creates long lines; when call arguments wrap, **group** them on the continuation line(s). **Do not** default to one argument per line on a **call** — see **CRITICAL — one argument per line needs justification (calls only)** above. Format-string calls (`throw` / `GLib.IOError` / wire `Error` / `GLib.debug` / `warning` / `critical`) — see **CRITICAL — format-string calls**: string stays on the call line; remaining args wrap **grouped**. A short `if` / `||` / `&&` stays on one line; wrap those only when the line is genuinely long (past ~100). When a condition wraps, `&&` and `||` end the line.
 - **Docblocks and comments:** Break so that no line exceeds 72 characters; prefer breaking after commas or natural phrase boundaries.
 
 **Bad:**
@@ -1827,7 +1843,7 @@ Run these checks on **every file you changed**. Fix violations; do not hand-wave
 | **`var` on locals** | Search: `^\s+(string\|int\|bool\|uint\|int64)\s+\w+\s*[=;]` — no local matches except `string[] … = {}` |
 | **No `handle_*` for signals** | Button/signal handlers inline in lambda, not new `handle_*` methods |
 | **No gratuitous `else`** | New `else` / `else if` chains restructure to early return/`continue` |
-| **No gratuitous line breaks** | Short `if`, `\|\|`, `&&`, **calls**, and **short** method signatures stay on one line; wrap only when genuinely long (past ~100). **format-string calls (`throw` / error ctor / `GLib.debug`/`warning`/`critical`): message on the call line**; if a **call** wraps, group remaining args (not one-per-line). **Long definitions**: one parameter per line, then `) {` on its own line. Comment/docblock lines may reach **72** characters — do not wrap them early. |
+| **No gratuitous line breaks** | Short `if`, `\|\|`, `&&`, **calls**, and **short** method signatures stay on one line; wrap only when genuinely long (past ~100). When a condition wraps, `&&` and `\|\|` **end** the line; they do not start the next line. **format-string calls (`throw` / error ctor / `GLib.debug`/`warning`/`critical`): message on the call line**; if a **call** wraps, group remaining args (not one-per-line). **Long definitions**: one parameter per line, then `) {` on its own line. Comment/docblock lines may reach **72** characters — do not wrap them early. |
 | **Enum branches use `switch`** | Multi-value response/status checks use `switch`, not `\|\|` chains |
 | **No defensive re-checks** | No duplicate validation after a module boundary already enforced it |
 | **Debug text** | No class/method names in `GLib.debug()` / `GLib.warning()` messages |

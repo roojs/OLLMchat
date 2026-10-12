@@ -14,7 +14,7 @@
 
 - **🔷** `✔️` Make a sandboxed command into a **job** that outlives the call which started it.
 - **🔷** `✔️` Give that job a stable handle, a way to write to its stdin, and a way to tell that it is stuck waiting for input.
-- **🔷** `✔️` The global job table is the **authorisation check** for "did we start this". A session list is Phase C.
+- **🔷** `✔️` The global job table is the **authorisation check** for "did we start this". Which chat started it is the session id stored on the job. Phase C.
 - **ℹ️** Everything here is `libocbwrap/Bubble.vala`. No daemon file changes, no wire changes. Those are [`TOOLS-2.31`](TOOLS-2.31-URGENT-bash-process-tool.md) Phase B.
 - **ℹ️** Mined from the parked [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) §3, which already drafted `command` / `working_dir` / `finished`.
 - **🔷** `⏳` The idle reaper — a job silent for 15–20 minutes dies — has no code here. The timer belongs with the session that holds the job, which is Phase C.
@@ -76,14 +76,14 @@
 
 ## Who owns the registry — two references, not one
 
-- **🔷** There are **two** places a job is referenced, and they answer different questions.
+- **🔷** There are **two** questions, answered from the one job table on the daemon.
   - **Global** — every live job in the process. This is what lets the **user** see what is running and kill it.
-  - **Per session** — the jobs that session started. One session must not be able to touch another session's processes.
-- **🔷** So a session's own list is the **authorisation** check for the agent's verbs. A pid belonging to a different session is simply not found.
+  - **Session** — which chat started that job. One session must not be able to touch another session's processes.
+- **🔷** The session id stored on the job is the authorisation check for the agent's verbs. A pid belonging to a different session is simply not found.
 - **💩** The static `jobs` map in §1 is the **global** one. It is per process, which on the daemon is daemon-wide, and membership there answers the separate question of whether we started the process at all.
-- **💩** The per-session list is a second reference to the same `Bubble`, held by the session. Phase C decides which object that is, because it is the tool side rather than the sandbox side.
+- **🔷** The session id is passed to `ollmfilesd` when the job is created, and stored on the bubble. `kill`, `tail`, `wait`, and `send` pass it again. The daemon refuses a pid whose stored id is not the caller's. Phase C. The tool does not keep a second list.
 - **ℹ️** Two checks at two layers, which is what the split buys:
-  - Session list — is this pid **mine**. Stops cross-session interference.
+  - Session id on the job — is this pid **mine**. Stops cross-session interference.
   - Global map — did **we** start this pid at all. Stops a signal reaching an unrelated host process.
 - **ℹ️** A window is not the unit. A session is, because a session is what owns a conversation and its tool calls.
 - **🚫** Keying the registry on the connection. A phone going into a lift must not kill the build.

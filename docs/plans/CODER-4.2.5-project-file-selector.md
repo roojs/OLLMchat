@@ -150,7 +150,8 @@ Folders on the left, files on the right. The file server is queried for each sid
 Outstanding Phase 2 work that is not search.
 
 - ✔️ The tree shows the selected project. Choosing another project removes the previous project's folders, then loads the new one.
-- 🔷 ⏳ An empty folder uses a greyed folder icon, not the normal one, and a light grey colour.
+- ✔️ Choosing a project opens the file tree. Choosing the project already shown opens that tree again and does not load it.
+- ✔️ An empty folder has no folder icon. Its name binds the folder's `css-classes`, which is `dim-label` when the folder has no files, so the text is light grey. Child folders do not change that. The tooltip binds the folder's `tooltip`, the full path.
 - ✔️ A folder that contains only one child, and that child is a folder, is not its own row.
   - 🔷 That chain is one row.
   - 🔷 The label joins the folder names with `/`.
@@ -159,16 +160,19 @@ Outstanding Phase 2 work that is not search.
   - 🔷 `scalable/apps` when `scalable` holds only `apps`.
   - 🔷 The row stops at the first folder that contains anything other than a single child folder.
   - 🔷 A file in that folder stops the chain. `libochf` has files beside `Param`, so the row stays `libochf`.
+  - ℹ️ The folder load query counts files and folders sitting directly inside each row. The tree reads those counts on the folder. It does not read the directory and does not send another call.
   - 🔷 Children of that last folder stay under the combined row.
   - ✔️ Clicking the row selects that last folder and shows its files on the right.
-  - 💩 The combined row uses the empty-folder grey icon when the chain has no files.
+  - ✔️ A combined row has no folder icon. Its name and tooltip bind those same properties on the last folder, so the name is that light grey when the last folder has no files.
+- ✔️ The top-level folder is displayed. Critical. Selecting it shows the files in that folder. The project is that row, and it is expanded.
 - 🔷 ⏳ The pop-down header is three slots.
   - 🔷 The left slot is two icon buttons.
   - 🔷 Collapse all.
-  - 🔷 A tree filter beside it.
-  - 🔷 That filter hides empty folders and gitignored folders.
-  - 🔷 Build directories are empty and gitignored, so the filter hides them.
-  - 🔷 The tree filter has its own icon.
+  - 🔷 A ghost button beside it. That button starts pressed.
+  - 🔷 Pressed, the ghost hides empty folders and gitignored folders.
+  - 🔷 Build directories are empty and gitignored, so the pressed ghost hides them.
+  - 🔷 Unpressing the ghost shows those folders.
+  - 🔷 A gitignored folder that is shown has a ghost next to its name. An emoji is fine for that ghost.
   - 🔷 Middle is Tree and Recent.
   - 🔷 Right is the type filter.
   - 🔷 On Recent, the two left buttons are hidden.
