@@ -41,11 +41,13 @@
  * folder that is shown has a conceal icon beside its name. Collapse
  * all uses ''document-send-symbolic''. It folds every open row under
  * the project and does not stay down. The project row stays open
- * and has no expander. {@link kind} is the type filter. Empty
- * shows every folder the ghost allows. ''document'' hides a folder
- * with no documents and no child folders. ''code'' does the same
- * for code files. A folder that only holds child folders stays,
- * so those children can still be opened.
+ * and has no expander. {@link kind} is the type filter.
+ * {@link FileKind.ANY} shows every folder the ghost allows.
+ * {@link FileKind.DOCUMENT} hides a folder whose document
+ * count is zero. {@link FileKind.CODE} hides a folder whose
+ * code count is zero. An empty folder is hidden while either
+ * type is set.
+ * A second click on the selected row clears that selection.
  *
  * == Example ==
  *
@@ -56,6 +58,21 @@
  * });
  * }}}
  */
+
+/**
+ * Which rows the file selector keeps.
+ *
+ * {@link ANY} shows every row the ghost allows. {@link DOCUMENT}
+ * keeps documents. {@link CODE} keeps code. An empty folder is
+ * hidden while either type is set. A folder stays when a child
+ * holds that type.
+ */
+public enum FileKind {
+	ANY,
+	DOCUMENT,
+	CODE
+}
+
 class FolderTree : Gtk.Box
 {
 	/**
@@ -103,18 +120,19 @@ class FolderTree : Gtk.Box
 	private Gtk.SingleSelection tree_selection;
 
 	/**
-	 * ''document'', ''code'', or empty. Empty shows every folder
-	 * the ghost allows. Document hides a folder with no documents
-	 * and no child folders. Code does the same for code files.
-	 * The project row stays.
+	 * Type filter. {@link FileKind.ANY} shows every folder the
+	 * ghost allows. {@link FileKind.DOCUMENT} hides a folder
+	 * whose document count is zero. {@link FileKind.CODE} hides
+	 * a folder whose code count is zero. Those counts already
+	 * include a child that has the type. The project row stays.
 	 */
-	public string kind { get; set; default = ""; }
+	public FileKind kind { get; set; default = FileKind.ANY; }
 
 	/**
 	 * Shared by the top folder list and every child segment.
 	 * While hiding, an empty folder or a gitignored folder is
-	 * left out. {@link kind} can hide the other type. The
-	 * project row stays.
+	 * left out. {@link kind} hides a folder whose count for
+	 * that type is zero. The project row stays.
 	 */
 	public Gtk.CustomFilter filter { get; private set; }
 
@@ -143,10 +161,10 @@ class FolderTree : Gtk.Box
 			if (this.hiding && folder.file_count == 0 && folder.folder_count == 0) {
 				return false;
 			}
-			if (this.kind == "document" && folder.document_count == 0 && folder.folder_count == 0) {
+			if (this.kind == FileKind.DOCUMENT && folder.document_count == 0) {
 				return false;
 			}
-			if (this.kind == "code" && folder.code_count == 0 && folder.folder_count == 0) {
+			if (this.kind == FileKind.CODE && folder.code_count == 0) {
 				return false;
 			}
 			return true;
@@ -266,6 +284,67 @@ class FolderTree : Gtk.Box
 			hexpand = true,
 			vexpand = true,
 		};
+		/* select_item keeps a selected row. A second click on
+		 * the row body clears it. Capture runs before the list's
+		 * own click. Press records the selected row. Release
+		 * claims that click and clears the selection. The
+		 * expander arrow is outside the row box, so it still
+		 * opens and closes. */
+		var armed = Gtk.INVALID_LIST_POSITION;
+		var click = new Gtk.GestureClick() {
+			button = 1,
+			propagation_phase = Gtk.PropagationPhase.CAPTURE,
+		};
+		tree_view.add_controller(click);
+		click.pressed.connect((n_press, x, y) => {
+			armed = Gtk.INVALID_LIST_POSITION;
+			if (n_press != 1 || this.tree_selection.selected == Gtk.INVALID_LIST_POSITION) {
+				return;
+			}
+			var widget = tree_view.pick(x, y, Gtk.PickFlags.DEFAULT);
+			var on_line = false;
+			while (widget != null && !(widget is Gtk.TreeExpander)) {
+				if (widget is Gtk.Box) {
+					on_line = true;
+				}
+				widget = widget.get_parent();
+			}
+			if (widget == null || !on_line) {
+				return;
+			}
+			var row = ((Gtk.TreeExpander) widget).list_row;
+			if (row == null || row.get_position() != this.tree_selection.selected) {
+				return;
+			}
+			armed = this.tree_selection.selected;
+		});
+		click.released.connect((n_press, x, y) => {
+			if (n_press != 1 || armed == Gtk.INVALID_LIST_POSITION) {
+				return;
+			}
+			var held = armed;
+			armed = Gtk.INVALID_LIST_POSITION;
+			if (this.tree_selection.selected != held) {
+				return;
+			}
+			var widget = tree_view.pick(x, y, Gtk.PickFlags.DEFAULT);
+			var on_line = false;
+			while (widget != null && !(widget is Gtk.TreeExpander)) {
+				if (widget is Gtk.Box) {
+					on_line = true;
+				}
+				widget = widget.get_parent();
+			}
+			if (widget == null || !on_line) {
+				return;
+			}
+			var row = ((Gtk.TreeExpander) widget).list_row;
+			if (row == null || row.get_position() != held) {
+				return;
+			}
+			click.set_state(Gtk.EventSequenceState.CLAIMED);
+			this.tree_selection.selected = Gtk.INVALID_LIST_POSITION;
+		});
 		this.collapse = new Gtk.Button() {
 			icon_name = "document-send-symbolic",
 			tooltip_text = "Collapse all",

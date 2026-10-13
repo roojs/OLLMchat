@@ -69,8 +69,8 @@ Options:
   --phone                    Selector subtest, phone pull-over and file-name label
   --tablet                   Selector subtest, tablet pull-over and relative path
   --test-flow                Selector test flow. After the window is shown,
-                             open the first project and quit when the folder
-                             tree has rows
+                             open the first project, press the type buttons,
+                             and quit when that check finishes
 
 Click a red or green line to make that hunk the deep color. Click unchanged
 text to clear it and hide Accept and Reject. Shades are .oc-diff-add,
@@ -92,7 +92,9 @@ Examples:
 
 	public TestSourceDiff()
 	{
-		base("com.roojs.ollmchat.test-source-diff");
+		base("com.roojs.ollmchat.test-source-diff",
+			GLib.ApplicationFlags.HANDLES_COMMAND_LINE |
+			GLib.ApplicationFlags.NON_UNIQUE);
 	}
 
 	protected override string get_app_name()
@@ -115,7 +117,7 @@ Examples:
 		opts[5] = { "tablet", 0, 0, OptionArg.NONE, ref opt_tablet,
 			"Selector subtest with the tablet pull-over", null };
 		opts[6] = { "test-flow", 0, 0, OptionArg.NONE, ref opt_test_flow,
-			"Selector test flow: open a project and quit when folders arrive", null };
+			"Selector test flow: open a project and check the type filter", null };
 		opts[7] = { null };
 		opt_context.add_main_entries(opts, null);
 		return opt_context;
@@ -141,11 +143,16 @@ Examples:
 	/**
 	 * Open the first project after the window is shown.
 	 *
-	 * Activates the first project row, then quits ''loop''
-	 * when folder rows arrive or the wait ends. The caller
-	 * fails the run when the folder list stayed empty.
+	 * Activates the first project row, then checks the type
+	 * buttons. Nothing down shows every folder the ghost is
+	 * showing, including an empty one. Code down hides folders
+	 * with no code under them and turns documents off. Documents
+	 * down does the same for documents. Selecting the project
+	 * row loads its files, and clearing that selection drops
+	 * them. The caller fails the run when the folder list stayed
+	 * empty or a check failed.
 	 *
-	 * @param command_line Prints the project path and folder count
+	 * @param command_line Prints the project path and check lines
 	 * @param loop Selector main loop to quit when the flow finishes
 	 */
 	private void test_flow(
@@ -154,6 +161,76 @@ Examples:
 	) {
 		var step = 0;
 		GLib.Timeout.add(400, () => {
+			if (step >= 200) {
+				var files = this.coder.files.file_list.files;
+				var scrolled = this.coder.files.folder_tree.get_first_child().get_next_sibling()
+					as Gtk.ScrolledWindow;
+				var selection = ((Gtk.ListView) scrolled.child).model as Gtk.SingleSelection;
+				if ((selection.selected != Gtk.INVALID_LIST_POSITION || files.get_n_items() != 0) &&
+					step < 210) {
+					step++;
+					return true;
+				}
+				if (selection.selected != Gtk.INVALID_LIST_POSITION || files.get_n_items() != 0) {
+					command_line.printerr("deselect left files=%u selected=%u\n",
+						files.get_n_items(), selection.selected);
+					command_line.set_exit_status(1);
+				}
+				command_line.print("deselect files=%u selected=%u\n",
+					files.get_n_items(), selection.selected);
+				loop.quit();
+				return false;
+			}
+			if (step >= 100) {
+				var files = this.coder.files.file_list.files;
+				if (!files.empty && files.get_n_items() == 0 && step < 160) {
+					step++;
+					return true;
+				}
+				if (!files.empty && files.get_n_items() == 0) {
+					command_line.printerr("select loaded no files\n");
+					command_line.set_exit_status(1);
+					loop.quit();
+					return false;
+				}
+				command_line.print("select files=%u\n", files.get_n_items());
+				this.window.title = "oc-test-flow-deselect";
+				this.window.present();
+				var scrolled = this.coder.files.folder_tree.get_first_child().get_next_sibling()
+					as Gtk.ScrolledWindow;
+				var list = (Gtk.ListView) scrolled.child;
+				var spot = Graphene.Point();
+				spot.x = 80;
+				spot.y = 12;
+				var at = Graphene.Point();
+				if (!list.compute_point(this.window, spot, out at)) {
+					command_line.printerr("row point missing\n");
+					command_line.set_exit_status(1);
+					loop.quit();
+					return false;
+				}
+				var click_at = ("xdotool search --name oc-test-flow-deselect " +
+					"windowraise %%1 windowfocus %%1 sleep 0.05 " +
+					"mousemove --window %%1 %d %d click 1").printf((int) at.x, (int) at.y);
+				var click_status = 0;
+				try {
+					GLib.Process.spawn_command_line_sync(click_at, null, null, out click_status);
+				} catch (GLib.Error e) {
+					command_line.printerr("click failed %s\n", e.message);
+					command_line.set_exit_status(1);
+					loop.quit();
+					return false;
+				}
+				if (click_status != 0) {
+					command_line.printerr("click status %d\n", click_status);
+					command_line.set_exit_status(1);
+					loop.quit();
+					return false;
+				}
+				command_line.print("click %d %d\n", (int) at.x, (int) at.y);
+				step = 200;
+				return true;
+			}
 			if (step == 0) {
 				this.coder.projects.button.clicked();
 				step = 1;
@@ -221,8 +298,245 @@ Examples:
 				command_line.set_exit_status(1);
 			}
 			command_line.print("order=%s .. %s\n", first, previous);
-			loop.quit();
-			return false;
+			if (this.coder.files.code.icon_name != "completion-snippet-symbolic") {
+				command_line.printerr("code icon %s\n", this.coder.files.code.icon_name);
+				command_line.set_exit_status(1);
+			}
+			if (this.coder.files.code.active || this.coder.files.documents.active) {
+				command_line.printerr("type button started down\n");
+				command_line.set_exit_status(1);
+			}
+			if (this.coder.files.folder_tree.kind != FileKind.ANY) {
+				command_line.printerr("kind started as %s\n",
+					this.coder.files.folder_tree.kind.to_string());
+				command_line.set_exit_status(1);
+			}
+			/* Ghost starts hiding empty folders. Show them so the
+			 * type buttons have an empty row to remove. */
+			this.coder.files.folder_tree.ghost.clicked();
+			var store = this.coder.files.folder_tree.folders;
+			var code_kept = "";
+			var code_dropped = "";
+			var doc_kept = "";
+			var doc_dropped = "";
+			var empty_shown = "";
+			var open_n = shown.get_n_items();
+			for (var i = 0; i < open_n; i++) {
+				var row = (Gtk.TreeListRow) shown.get_item(i);
+				var folder = (OLLMfiles.Folder) row.item;
+				if (folder.is_project) {
+					continue;
+				}
+				if (folder.file_count == 0 && folder.folder_count == 0 && empty_shown == "") {
+					empty_shown = folder.path;
+				}
+				var code_match = false;
+				var doc_match = false;
+				var pending = new Gee.ArrayList<OLLMfiles.Folder>();
+				pending.add(folder);
+				var at = 0;
+				while (at < pending.size) {
+					var next = pending.get(at);
+					at++;
+					if (next.code_count > 0) {
+						code_match = true;
+					}
+					if (next.document_count > 0) {
+						doc_match = true;
+					}
+					if (!store.segments.has_key(next.path)) {
+						continue;
+					}
+					var child_at = 0;
+					var children = store.segments.get(next.path);
+					while (child_at < children.get_n_items()) {
+						pending.add((OLLMfiles.Folder) children.get_item(child_at));
+						child_at++;
+					}
+				}
+				if (code_match && code_kept == "") {
+					code_kept = folder.path;
+				}
+				if (!code_match && folder.file_count > 0 && code_dropped == "") {
+					code_dropped = folder.path;
+				}
+				if (doc_match && doc_kept == "") {
+					doc_kept = folder.path;
+				}
+				if (!doc_match && folder.file_count > 0 && doc_dropped == "") {
+					doc_dropped = folder.path;
+				}
+			}
+			command_line.print("type=off shown=%u\n", open_n);
+			if (code_kept == "" || code_dropped == "" || doc_kept == "" || doc_dropped == "") {
+				command_line.printerr("type sample code=%s without=%s doc=%s without=%s\n",
+					code_kept, code_dropped, doc_kept, doc_dropped);
+				command_line.set_exit_status(1);
+				loop.quit();
+				return false;
+			}
+			if (empty_shown == "") {
+				command_line.printerr("no empty folder\n");
+				command_line.set_exit_status(1);
+				loop.quit();
+				return false;
+			}
+			this.coder.files.code.clicked();
+			var code_bad = "";
+			var code_visible = new Gee.HashSet<string>();
+			var code_n = shown.get_n_items();
+			for (var i = 0; i < code_n; i++) {
+				var row = (Gtk.TreeListRow) shown.get_item(i);
+				var folder = (OLLMfiles.Folder) row.item;
+				code_visible.add(folder.path);
+				if (folder.is_project) {
+					continue;
+				}
+				if (code_bad != "") {
+					continue;
+				}
+				if (folder.file_count == 0 && folder.folder_count == 0) {
+					code_bad = folder.path;
+					continue;
+				}
+				var code_match = false;
+				var pending = new Gee.ArrayList<OLLMfiles.Folder>();
+				pending.add(folder);
+				var at = 0;
+				while (at < pending.size && !code_match) {
+					var next = pending.get(at);
+					at++;
+					if (next.code_count > 0) {
+						code_match = true;
+						continue;
+					}
+					if (!store.segments.has_key(next.path)) {
+						continue;
+					}
+					var child_at = 0;
+					var children = store.segments.get(next.path);
+					while (child_at < children.get_n_items()) {
+						pending.add((OLLMfiles.Folder) children.get_item(child_at));
+						child_at++;
+					}
+				}
+				if (!code_match) {
+					code_bad = folder.path;
+				}
+			}
+			command_line.print("type=code shown=%u\n", code_n);
+			if (!this.coder.files.code.active || this.coder.files.documents.active) {
+				command_line.printerr("code press documents=%s code=%s\n",
+					this.coder.files.documents.active.to_string(),
+					this.coder.files.code.active.to_string());
+				command_line.set_exit_status(1);
+			}
+			if (this.coder.files.folder_tree.kind != FileKind.CODE ||
+				this.coder.files.file_list.kind != FileKind.CODE) {
+				command_line.printerr("code kind %s %s\n",
+					this.coder.files.folder_tree.kind.to_string(),
+					this.coder.files.file_list.kind.to_string());
+				command_line.set_exit_status(1);
+			}
+			if (!code_visible.contains(code_kept) || code_visible.contains(code_dropped) ||
+				code_visible.contains(empty_shown) || code_bad != "") {
+				command_line.printerr("code filter kept=%s dropped=%s empty=%s bad=%s\n",
+					code_visible.contains(code_kept).to_string(),
+					code_visible.contains(code_dropped).to_string(),
+					code_visible.contains(empty_shown).to_string(), code_bad);
+				command_line.set_exit_status(1);
+			}
+			this.coder.files.documents.clicked();
+			var doc_bad = "";
+			var doc_visible = new Gee.HashSet<string>();
+			var doc_n = shown.get_n_items();
+			for (var i = 0; i < doc_n; i++) {
+				var row = (Gtk.TreeListRow) shown.get_item(i);
+				var folder = (OLLMfiles.Folder) row.item;
+				doc_visible.add(folder.path);
+				if (folder.is_project) {
+					continue;
+				}
+				if (doc_bad != "") {
+					continue;
+				}
+				if (folder.file_count == 0 && folder.folder_count == 0) {
+					doc_bad = folder.path;
+					continue;
+				}
+				var doc_match = false;
+				var pending = new Gee.ArrayList<OLLMfiles.Folder>();
+				pending.add(folder);
+				var at = 0;
+				while (at < pending.size && !doc_match) {
+					var next = pending.get(at);
+					at++;
+					if (next.document_count > 0) {
+						doc_match = true;
+						continue;
+					}
+					if (!store.segments.has_key(next.path)) {
+						continue;
+					}
+					var child_at = 0;
+					var children = store.segments.get(next.path);
+					while (child_at < children.get_n_items()) {
+						pending.add((OLLMfiles.Folder) children.get_item(child_at));
+						child_at++;
+					}
+				}
+				if (!doc_match) {
+					doc_bad = folder.path;
+				}
+			}
+			command_line.print("type=document shown=%u\n", doc_n);
+			if (!this.coder.files.documents.active || this.coder.files.code.active) {
+				command_line.printerr("document press documents=%s code=%s\n",
+					this.coder.files.documents.active.to_string(),
+					this.coder.files.code.active.to_string());
+				command_line.set_exit_status(1);
+			}
+			if (this.coder.files.folder_tree.kind != FileKind.DOCUMENT ||
+				this.coder.files.file_list.kind != FileKind.DOCUMENT) {
+				command_line.printerr("document kind %s %s\n",
+					this.coder.files.folder_tree.kind.to_string(),
+					this.coder.files.file_list.kind.to_string());
+				command_line.set_exit_status(1);
+			}
+			if (!doc_visible.contains(doc_kept) || doc_visible.contains(doc_dropped) ||
+				doc_visible.contains(empty_shown) || doc_bad != "") {
+				command_line.printerr("document filter kept=%s dropped=%s empty=%s bad=%s\n",
+					doc_visible.contains(doc_kept).to_string(),
+					doc_visible.contains(doc_dropped).to_string(),
+					doc_visible.contains(empty_shown).to_string(), doc_bad);
+				command_line.set_exit_status(1);
+			}
+			this.coder.files.documents.clicked();
+			var cleared = new Gee.HashSet<string>();
+			var cleared_n = shown.get_n_items();
+			for (var i = 0; i < cleared_n; i++) {
+				var row = (Gtk.TreeListRow) shown.get_item(i);
+				cleared.add(((OLLMfiles.Folder) row.item).path);
+			}
+			command_line.print("type=off shown=%u\n", cleared_n);
+			if (this.coder.files.documents.active || this.coder.files.code.active ||
+				this.coder.files.folder_tree.kind != FileKind.ANY) {
+				command_line.printerr("type stayed down kind=%s\n",
+					this.coder.files.folder_tree.kind.to_string());
+				command_line.set_exit_status(1);
+			}
+			if (!cleared.contains(code_dropped) || !cleared.contains(doc_dropped) ||
+				!cleared.contains(empty_shown)) {
+				command_line.printerr("cleared hid code=%s doc=%s empty=%s\n",
+					cleared.contains(code_dropped).to_string(),
+					cleared.contains(doc_dropped).to_string(),
+					cleared.contains(empty_shown).to_string());
+				command_line.set_exit_status(1);
+			}
+			this.window.title = "oc-test-flow-deselect";
+			selection.selected = 0;
+			step = 100;
+			return true;
 		});
 	}
 

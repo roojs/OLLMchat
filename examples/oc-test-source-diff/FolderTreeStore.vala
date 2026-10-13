@@ -29,10 +29,9 @@
  * A notification does not clear the lists. Loading a different
  * project removes the rows already stored.
  * {@link load} puts the project on the top row, then asks the file
- * server for its child folders and appends any that are not already
- * stored. It does the same for each of those children.
- * {@link loading} stays true while any of those requests is still
- * waiting on the file server.
+ * server once for every folder under it and appends any that are
+ * not already stored. {@link loading} stays true while that one
+ * request is waiting on the file server.
  *
  * == Example ==
  *
@@ -91,8 +90,8 @@ class FolderTreeStore : Object, GLib.ListModel
 	}
 
 	/**
-	 * True while a child-folder request is waiting on the file server.
-	 * Stays true for the folders asked for under that same load.
+	 * True while the one folder-tree request is waiting on the file
+	 * server.
 	 */
 	public bool loading { get; private set; default = false; }
 
@@ -165,7 +164,9 @@ class FolderTreeStore : Object, GLib.ListModel
 	/**
 	 * Place ''folder'' under ''parent'', or on the top list when
 	 * ''parent'' is null. A folder already stored at that path is left
-	 * where it is.
+	 * where it is. A child that has code or a document writes 1 into
+	 * each parent whose count for that type is zero. The walk stops
+	 * at the first parent that already has it, so a real count stays.
 	 *
 	 * @param parent Parent folder, or null for a top row
 	 * @param folder Folder to attach
@@ -191,6 +192,18 @@ class FolderTreeStore : Object, GLib.ListModel
 		this.flat_at.set(folder.path, this.flat.size);
 		this.flat.add(folder);
 		folder.parent = parent;
+		/* 1 is a mark, not a file total. Stop at a parent that
+		 * already has that type. Code and documents stop apart. */
+		var need_document = folder.document_count > 0;
+		var need_code = folder.code_count > 0;
+		var above = parent;
+		while (above != null && (need_document || need_code)) {
+			need_document = above.document_count > 0 ? false : need_document;
+			above.document_count = need_document ? 1 : above.document_count;
+			need_code = above.code_count > 0 ? false : need_code;
+			above.code_count = need_code ? 1 : above.code_count;
+			above = above.parent;
+		}
 		var position = segment.items.size;
 		this.item_at.set(folder.path, position);
 		segment.items.add(folder);
@@ -263,9 +276,10 @@ class FolderTreeStore : Object, GLib.ListModel
 	}
 
 	/**
-	 * Fetch child folders of ''folder'' and append the ones not already
-	 * stored. Then do the same for each new child. A different project
-	 * removes the rows already stored.
+	 * Fetch every folder under ''folder'' in one request and append
+	 * the ones not already stored. The rows are sorted here by path,
+	 * so a parent is appended before the folders inside it. A
+	 * different project removes the rows already stored.
 	 *
 	 * @param folder Project, or a folder already in this store
 	 */
@@ -301,7 +315,7 @@ class FolderTreeStore : Object, GLib.ListModel
 			this.loading = true;
 		}
 		/* Leave the read callback so the file pane can draw the
-		 * spinner before this request, and between folders.
+		 * spinner before this request.
 		 */
 		GLib.Idle.add(this.load.callback);
 		yield;
@@ -353,7 +367,9 @@ class FolderTreeStore : Object, GLib.ListModel
 		}
 		if (response.retval.type() != GLib.Type.INVALID) {
 			var rows = (Gee.ArrayList<OLLMfiles.Folder>) response.retval.get_object();
-			/* The first row is the folder this call asked for. */
+			/* Row 0 is the folder this call asked for. The sort
+			 * below can move it, so the loop skips that path.
+			 */
 			var incoming = rows.get(0);
 			if (this.path_map.has_key(folder.path)) {
 				folder.copy_from(incoming, {
@@ -370,17 +386,23 @@ class FolderTreeStore : Object, GLib.ListModel
 				this.append(folder.parent, incoming);
 				folder = incoming;
 			}
-			for (var i = 1; i < rows.size; i++) {
+			rows.sort((a, b) => {
+				return GLib.strcmp(a.path, b.path);
+			});
+			for (var i = 0; i < rows.size; i++) {
 				if (epoch != this.load_epoch) {
 					break;
 				}
 				var row = rows.get(i);
-				if (row.path == "") {
+				if (row.path == "" || row.path == folder.path) {
+					continue;
+				}
+				var parent_path = GLib.Path.get_dirname(row.path);
+				if (!this.path_map.has_key(parent_path)) {
 					continue;
 				}
 				row.manager = folder.manager;
-				this.append(folder, row);
-				yield this.load(row);
+				this.append(this.path_map.get(parent_path), row);
 			}
 		}
 		this.pending--;

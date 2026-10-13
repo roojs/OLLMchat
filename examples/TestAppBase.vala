@@ -50,11 +50,13 @@
 			{ null }
 		};
 		
-		protected TestAppBase(string application_id)
-		{
+		protected TestAppBase(
+			string application_id,
+			GLib.ApplicationFlags flags = GLib.ApplicationFlags.HANDLES_COMMAND_LINE
+		) {
 			Object(
 				application_id: application_id,
-				flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
+				flags: flags
 			);
 			
 			// Set up data_dir

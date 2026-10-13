@@ -24,10 +24,11 @@
  * with Recent beside it. The header is three slots. Collapse
  * and the ghost sit on the left, Tree and Recent in the middle,
  * and the type buttons on the right. Documents and code are
- * separate. The one that is down hides the other type. A second
- * click on that button shows every type again. On Recent the
- * left buttons are hidden and that
- * slot keeps its width. Phone and tablet use
+ * separate. Code uses ''completion-snippet-symbolic''. The one
+ * that is down hides folders with none of that type, and turns
+ * the other off. A second click shows every type again. On Recent
+ * the left buttons are hidden and that slot keeps its width.
+ * Phone and tablet use
  * {@link SelectorPull} and do not copy the desktop tabs.
  *
  * == Example ==
@@ -102,6 +103,20 @@ class FileSelector : Gtk.Box
 	 * Files for the folder selected in {@link folder_tree}.
 	 */
 	public FileList file_list { get; private set; default = new FileList(); }
+
+	/**
+	 * Documents type button. Down shows document folders and
+	 * turns the code button off. A second click clears the type.
+	 */
+	public Gtk.ToggleButton documents { get; private set; }
+
+	/**
+	 * Code type button. The icon is
+	 * ''completion-snippet-symbolic''. Down shows code folders
+	 * and turns the documents button off. A second click clears
+	 * the type.
+	 */
+	public Gtk.ToggleButton code { get; private set; }
 	private uint file_wait = 0;
 	private int history_epoch = 0;
 	private int pull_epoch = 0;
@@ -215,50 +230,51 @@ class FileSelector : Gtk.Box
 		};
 		left.append(this.folder_tree.collapse);
 		left.append(this.folder_tree.ghost);
-		var documents = new Gtk.ToggleButton() {
+		this.documents = new Gtk.ToggleButton() {
 			icon_name = "x-office-document-symbolic",
 			tooltip_text = "Documents",
 			can_focus = false,
 			valign = Gtk.Align.CENTER,
-			margin_end = 3,
+			margin_start = 6,
+			margin_end = 6,
 		};
-		documents.add_css_class("flat");
-		var code = new Gtk.ToggleButton() {
-			icon_name = "text-x-script",
+		this.documents.add_css_class("flat");
+		this.code = new Gtk.ToggleButton() {
+			icon_name = "completion-snippet-symbolic",
 			tooltip_text = "Code",
 			can_focus = false,
 			valign = Gtk.Align.CENTER,
 		};
-		code.add_css_class("flat");
+		this.code.add_css_class("flat");
 		var right = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 			margin_end = 6,
 			halign = Gtk.Align.END,
 		};
-		right.append(documents);
-		right.append(code);
+		right.append(this.documents);
+		right.append(this.code);
 		var type_sync = false;
-		documents.toggled.connect(() => {
+		this.documents.toggled.connect(() => {
 			if (type_sync) {
 				return;
 			}
 			type_sync = true;
-			if (documents.active) {
-				code.active = false;
+			if (this.documents.active) {
+				this.code.active = false;
 			}
 			type_sync = false;
-			this.folder_tree.kind = documents.active ? "document" : "";
+			this.folder_tree.kind = this.documents.active ? FileKind.DOCUMENT : FileKind.ANY;
 			this.file_list.kind = this.folder_tree.kind;
 		});
-		code.toggled.connect(() => {
+		this.code.toggled.connect(() => {
 			if (type_sync) {
 				return;
 			}
 			type_sync = true;
-			if (code.active) {
-				documents.active = false;
+			if (this.code.active) {
+				this.documents.active = false;
 			}
 			type_sync = false;
-			this.folder_tree.kind = code.active ? "code" : "";
+			this.folder_tree.kind = this.code.active ? FileKind.CODE : FileKind.ANY;
 			this.file_list.kind = this.folder_tree.kind;
 		});
 		var switcher = new Gtk.StackSwitcher() {

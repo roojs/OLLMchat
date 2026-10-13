@@ -7,6 +7,7 @@
 **Related:**
 
 - ℹ️ [`CODER-4.2.1-tree-navigation-filedropdown.md`](CODER-4.2.1-tree-navigation-filedropdown.md) — older tree note. The tree is Phase 2 of this plan.
+- ℹ️ [`docs/bugs/2026-10-13-folder-tree-filter-slow.md`](../bugs/2026-10-13-folder-tree-filter-slow.md) — eye and type buttons freeze the pop-down.
 - ℹ️ Today: `liboccoder/ProjectDropdown.vala`, `liboccoder/FileDropdown.vala`, `liboccoder/SearchableDropdown.vala`.
 - ℹ️ Smoke app: `examples/oc-test-source-diff.vala`. Classes live in `examples/oc-test-source-diff/`.
 - ℹ️ Phone history today: `ollmapp/android/OllmchatWindow.vala` and `libollmchatgtk/HistoryBrowser.vala`.
@@ -186,13 +187,7 @@ Outstanding Phase 2 work that is not search.
 - 🔷 ⏳ With no search text, the folder that contains the current file is the one selected, and that file sits about halfway down the right list. A load currently selects nothing and scrolls to the top.
 - 🔷 ⏳ A click on the left tree selects that folder.
 - 🔷 ⏳ A second click on that same folder deselects it and clears the file list.
-- 🔷 ⏳ Refresh is a progressive update. A notification adds or removes the one path that changed. It does not clear the map, the flat list, or the segments, and it does not walk the tree again.
-  - ℹ️ Today `scan_end` drops the project path from `loaded` and calls `load` on that project. `append` skips a path already stored, so the rows are not deleted and replaced. Deeper folders already in `loaded` are not fetched again. A folder that disappeared stays in the tree. The first open still walks every folder.
-  - ℹ️ When `loading` goes false, `FolderTree` replaces the tree model. That re-sorts every segment, and the list is hidden for the whole load. That full re-render is not the design. Leave it until the progressive update above.
-- 🔷 ⏳ Refresh is a last line of defence.
-  - ℹ️ The server is meant to stay current.
-  - ℹ️ File watch on the active project is not implemented.
-  - ℹ️ Refresh covers that watch missing a change.
+- ℹ️ A scan that adds a file does not update an open tree. The file list is loaded when a folder is selected, and it is not kept on screen. Closing the pop-down and opening it again is the refresh. A progressive update, one path at a time, is later. Performance of the full load is fine.
 
 ### 2.3 — Search
 
@@ -278,7 +273,7 @@ Held off. Not the next step, and not a tab on the file pop-down.
 - 🚫 Desktop chat history stays where it is.
 - 🚫 Do not leave the folder tree for `CODER-4.2.1`. Phase 2 shows folders on the left and files on the right.
 - 🚫 Do not put files on the left tree. Do not bind that tree to `Folder.children`, and do not name the holder `FolderStore`. The holder is `FolderTreeStore`.
-- 🚫 Do not clear `FolderTreeStore` and reload it on a notification. Update the path that changed.
+- 🚫 Do not add a progressive refresh in this plan. A new file from a scan does not update the open tree. Opening the pop-down again is the refresh.
 - 🚫 Do not filter a client-held copy of the whole tree. Ask the file server for the folders and for the file results separately.
 - 🚫 Do not give the phone the desktop tabbed pop-down or the two-pane tree. Phone file navigation is one folder at a time.
 - 🚫 Do not give the tablet the phone drill-down. Tablet file browsing follows the desktop tree.

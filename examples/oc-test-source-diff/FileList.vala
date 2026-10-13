@@ -71,12 +71,12 @@ class FileList : Gtk.Box
 	private Gtk.ColumnViewColumn name_column;
 
 	/**
-	 * ''document'', ''code'', or empty. Empty shows every file
-	 * in the folder. Document shows markdown and plain text.
-	 * Code shows other text. A file that is not text stays
-	 * hidden while either one is set.
+	 * Type filter. {@link FileKind.ANY} shows every file in the
+	 * folder. {@link FileKind.DOCUMENT} shows markdown and plain
+	 * text. {@link FileKind.CODE} shows other text. A file that
+	 * is not text stays hidden while either type is set.
 	 */
-	public string kind { get; set; default = ""; }
+	public FileKind kind { get; set; default = FileKind.ANY; }
 
 	/**
 	 * Build the grid over an empty {@link FileListStore}.
@@ -163,7 +163,7 @@ class FileList : Gtk.Box
 			),
 		};
 		var file_filter = new Gtk.CustomFilter((item) => {
-			if (this.kind == "") {
+			if (this.kind == FileKind.ANY) {
 				return true;
 			}
 			var file = (OLLMfiles.File) item;
@@ -183,10 +183,14 @@ class FileList : Gtk.Box
 						break;
 				}
 			}
-			if (this.kind == "document") {
-				return document;
+			switch (this.kind) {
+				case FileKind.DOCUMENT:
+					return document;
+				case FileKind.CODE:
+					return file.is_text && !document;
+				default:
+					return true;
 			}
-			return file.is_text && !document;
 		});
 		var file_selection = new Gtk.SingleSelection(null) {
 			autoselect = false,

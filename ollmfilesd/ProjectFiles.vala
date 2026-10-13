@@ -364,6 +364,9 @@ namespace OLLMfilesd
 		 * @param found_files Set of file paths found during this scan
 		 * @param found_folders Set of folder paths found during this scan
 		 * @param symlink_path The accumulated relative path through symlinks (empty string if not in a symlink)
+		 *
+		 * An ignored folder is stored in {@link folder_map} and not
+		 * scanned. Its files stay out of the project list.
 		 */
 		private void update_from_recursive(
 			Folder folder,
@@ -378,8 +381,12 @@ namespace OLLMfilesd
 				return;
 			}
 			
-			// Skip ignored folders (e.g., folders with .generated file)
+			/* Keep the folder so the tree can show it. Do not index
+			 * the files inside it.
+			 */
 			if (folder.is_ignored) {
+				this.folder_map.set(folder.path, folder);
+				found_folders.add(folder.path);
 				return;
 			}
 			

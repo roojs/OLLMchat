@@ -155,14 +155,15 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * Immediate child folders of ''path''. Files are left out.
-		 * The first row is ''path'' itself. The rows after it are
-		 * the immediate child folders. Files are left out. Each row
-		 * carries ''file_count'', ''folder_count'', ''document_count'',
-		 * and ''code_count'' from the load query. Gitignored children
-		 * are not in those counts. A document is markdown or plain
-		 * text. Other text is code. The row is a copy, so the live
-		 * child list is not sent.
+		 * Every folder under ''path'', in one list. The rows come
+		 * from the project's ''folder_map''. Files are left out.
+		 * ''path'' is the first row. A deleted folder is left out.
+		 * Each row carries ''file_count'',
+		 * ''folder_count'', ''document_count'', and ''code_count''
+		 * from the load query. Gitignored children are not in those
+		 * counts. A document is markdown or plain text. Other text
+		 * is code. The row is a copy, so the live child list is not
+		 * sent.
 		 *
 		 * @param request inbound RPC
 		 * @param path folder path
@@ -177,19 +178,24 @@ namespace OLLMfilesd
 				});
 				return;
 			}
-			var list = new Gee.ArrayList<GLib.Object>();
-			var self_row = new Folder(this.manager);
-			self_row.copy_from(folder, {
-				"manager", "children", "project-files", "parent",
-				"points-to", "buffer"
-			});
-			list.add(self_row);
-			foreach (var child in folder.children.items) {
-				if (!(child is Folder)) {
-					continue;
+			var project = folder.is_project ? folder : folder.find_project_root();
+			var rows = new Gee.ArrayList<Folder>();
+			rows.add(folder);
+			if (project != null) {
+				foreach (var item in project.project_files.folder_map.values) {
+					if (item.path == "" || item.path == folder.path || item.delete_id != 0) {
+						continue;
+					}
+					if (!folder.is_project && !item.path.has_prefix(folder.path + "/")) {
+						continue;
+					}
+					rows.add(item);
 				}
+			}
+			var list = new Gee.ArrayList<GLib.Object>();
+			foreach (var next in rows) {
 				var row = new Folder(this.manager);
-				row.copy_from(child, {
+				row.copy_from(next, {
 					"manager", "children", "project-files", "parent",
 					"points-to", "buffer"
 				});
