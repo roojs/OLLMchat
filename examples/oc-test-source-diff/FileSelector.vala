@@ -23,8 +23,10 @@
  * is chosen. Desktop opens a wide pop-down on the Tree tab,
  * with Recent beside it. The header is three slots. Collapse
  * and the ghost sit on the left, Tree and Recent in the middle,
- * and the type buttons on the right. Those type buttons do not
- * filter yet. On Recent the left buttons are hidden and that
+ * and the type buttons on the right. Documents and code are
+ * separate. The one that is down hides the other type. A second
+ * click on that button shows every type again. On Recent the
+ * left buttons are hidden and that
  * slot keeps its width. Phone and tablet use
  * {@link SelectorPull} and do not copy the desktop tabs.
  *
@@ -91,9 +93,15 @@ class FileSelector : Gtk.Box
 	private Gtk.ListBox history_rows;
 	private Gtk.ListBox pull_rows;
 	/**
-	 * Tree page. Folder rows arrive in {@link FileTree.folders}.
+	 * Folder tree on the Tree tab. Rows arrive in
+	 * {@link FolderTree.folders}.
 	 */
-	public FileTree tree { get; private set; }
+	public FolderTree folder_tree { get; private set; default = new FolderTree(); }
+
+	/**
+	 * Files for the folder selected in {@link folder_tree}.
+	 */
+	public FileList file_list { get; private set; default = new FileList(); }
 	private uint file_wait = 0;
 	private int history_epoch = 0;
 	private int pull_epoch = 0;
@@ -155,8 +163,13 @@ class FileSelector : Gtk.Box
 		this.face_stack.add_named(this.entry, "entry");
 		this.append(this.face_stack);
 
-		this.tree = new FileTree();
-		this.tree.file_activated.connect((file) => {
+		this.folder_tree.selected.connect((folder) => {
+			this.file_list.load(folder);
+		});
+		this.folder_tree.cleared.connect(() => {
+			this.file_list.clear();
+		});
+		this.file_list.file_activated.connect((file) => {
 			this.choose(file);
 		});
 		this.history_rows = new Gtk.ListBox() {
@@ -170,7 +183,17 @@ class FileSelector : Gtk.Box
 			hhomogeneous = true,
 			vhomogeneous = false,
 		};
-		this.pages.add_titled(this.tree, "tree", "Tree");
+		this.pages.add_titled(new Gtk.Paned(Gtk.Orientation.HORIZONTAL) {
+			hexpand = true,
+			vexpand = true,
+			position = 240,
+			resize_start_child = true,
+			resize_end_child = true,
+			shrink_start_child = false,
+			shrink_end_child = true,
+			start_child = this.folder_tree,
+			end_child = this.file_list,
+		}, "tree", "Tree");
 		this.pages.add_titled(this.history_rows, "history", "Recent");
 		this.pages.visible_child_name = "tree";
 		this.manager.rpc.notification.connect((notif) => {
@@ -183,28 +206,27 @@ class FileSelector : Gtk.Box
 			if (notif.args.get(0).get_string() != this.project.path) {
 				return;
 			}
-			this.tree.folders.loaded.remove(this.project.path);
-			this.tree.folders.load.begin(this.project);
+			this.folder_tree.folders.loaded.remove(this.project.path);
+			this.folder_tree.folders.load.begin(this.project);
 		});
 		var left = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 			margin_start = 6,
 			halign = Gtk.Align.START,
 		};
-		left.append(this.tree.collapse);
-		left.append(this.tree.ghost);
-		var documents = new Gtk.Button() {
+		left.append(this.folder_tree.collapse);
+		left.append(this.folder_tree.ghost);
+		var documents = new Gtk.ToggleButton() {
 			icon_name = "x-office-document-symbolic",
 			tooltip_text = "Documents",
 			can_focus = false,
-			sensitive = false,
 			valign = Gtk.Align.CENTER,
+			margin_end = 3,
 		};
 		documents.add_css_class("flat");
-		var code = new Gtk.Button() {
+		var code = new Gtk.ToggleButton() {
 			icon_name = "text-x-script",
 			tooltip_text = "Code",
 			can_focus = false,
-			sensitive = false,
 			valign = Gtk.Align.CENTER,
 		};
 		code.add_css_class("flat");
@@ -214,6 +236,31 @@ class FileSelector : Gtk.Box
 		};
 		right.append(documents);
 		right.append(code);
+		var type_sync = false;
+		documents.toggled.connect(() => {
+			if (type_sync) {
+				return;
+			}
+			type_sync = true;
+			if (documents.active) {
+				code.active = false;
+			}
+			type_sync = false;
+			this.folder_tree.kind = documents.active ? "document" : "";
+			this.file_list.kind = this.folder_tree.kind;
+		});
+		code.toggled.connect(() => {
+			if (type_sync) {
+				return;
+			}
+			type_sync = true;
+			if (code.active) {
+				documents.active = false;
+			}
+			type_sync = false;
+			this.folder_tree.kind = code.active ? "code" : "";
+			this.file_list.kind = this.folder_tree.kind;
+		});
 		var switcher = new Gtk.StackSwitcher() {
 			stack = this.pages,
 			hexpand = true,
@@ -226,10 +273,10 @@ class FileSelector : Gtk.Box
 		header.append(right);
 		this.pages.notify["visible-child-name"].connect(() => {
 			var on_tree = this.pages.visible_child_name == "tree";
-			this.tree.collapse.opacity = on_tree ? 1 : 0;
-			this.tree.ghost.opacity = on_tree ? 1 : 0;
-			this.tree.collapse.sensitive = on_tree;
-			this.tree.ghost.sensitive = on_tree;
+			this.folder_tree.collapse.opacity = on_tree ? 1 : 0;
+			this.folder_tree.ghost.opacity = on_tree ? 1 : 0;
+			this.folder_tree.collapse.sensitive = on_tree;
+			this.folder_tree.ghost.sensitive = on_tree;
 		});
 		this.scroll = new Gtk.ScrolledWindow() {
 			child = this.pages,
@@ -356,7 +403,7 @@ class FileSelector : Gtk.Box
 				this.place();
 				this.pages.visible_child_name = "tree";
 				if (this.project.is_project) {
-					this.tree.folders.load.begin(this.project);
+					this.folder_tree.folders.load.begin(this.project);
 				}
 				this.entry.text = "";
 				this.history_epoch++;
@@ -390,8 +437,8 @@ class FileSelector : Gtk.Box
 				this.place();
 				this.pages.visible_child_name = "tree";
 				if (this.project.is_project &&
-					!this.tree.folders.loaded.contains(this.project.path)) {
-					this.tree.folders.load.begin(this.project);
+					!this.folder_tree.folders.loaded.contains(this.project.path)) {
+					this.folder_tree.folders.load.begin(this.project);
 				}
 				this.entry.text = "";
 				this.history_epoch++;

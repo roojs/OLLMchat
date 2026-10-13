@@ -1,0 +1,276 @@
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+/**
+ * File grid for one folder.
+ *
+ * Sits beside {@link FolderTree}. Three columns: name with a type
+ * icon, size, and modified time. The name column starts in
+ * alphabetical order, ignoring case. The model is a
+ * {@link FileListStore}. An empty reply shows ''No files''.
+ * {@link kind} narrows that grid to documents or to code.
+ * Activating a row emits {@link file_activated}.
+ *
+ * == Example ==
+ *
+ * {{{
+ * var list = new FileList();
+ * list.load(folder);
+ * list.file_activated.connect((file) => {
+ *     selector.choose(file);
+ * });
+ * }}}
+ */
+class FileList : Gtk.Box
+{
+	/**
+	 * Files for the folder currently shown.
+	 */
+	public FileListStore files { get; private set; default = new FileListStore(); }
+
+	/**
+	 * A file row was activated. The file selector opens it.
+	 *
+	 * @param file File the user activated
+	 */
+	public signal void file_activated(OLLMfiles.File file);
+
+	/**
+	 * Centered on the grid when the selected folder has no files.
+	 */
+	private Gtk.Label file_empty;
+
+	/**
+	 * File grid. A new folder resets the header sort to the name.
+	 */
+	private Gtk.ColumnView file_view;
+
+	/**
+	 * Scroll around the file grid. A new folder sets it to the top.
+	 */
+	private Gtk.ScrolledWindow file_scroll;
+
+	/**
+	 * Name column. A fresh folder load sorts by this, ascending.
+	 */
+	private Gtk.ColumnViewColumn name_column;
+
+	/**
+	 * ''document'', ''code'', or empty. Empty shows every file
+	 * in the folder. Document shows markdown and plain text.
+	 * Code shows other text. A file that is not text stays
+	 * hidden while either one is set.
+	 */
+	public string kind { get; set; default = ""; }
+
+	/**
+	 * Build the grid over an empty {@link FileListStore}.
+	 */
+	public FileList()
+	{
+		Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0, hexpand: true, vexpand: true);
+		var name_factory = new Gtk.SignalListItemFactory();
+		name_factory.setup.connect((obj) => {
+			var row = (Gtk.ListItem) obj;
+			var line = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8);
+			line.append(new Gtk.Image() {
+				pixel_size = 16,
+			});
+			line.append(new Gtk.Label("") {
+				halign = Gtk.Align.START,
+				hexpand = true,
+				xalign = 0,
+				ellipsize = Pango.EllipsizeMode.END,
+			});
+			row.child = line;
+		});
+		name_factory.bind.connect((obj) => {
+			var row = (Gtk.ListItem) obj;
+			var line = (Gtk.Box) row.child;
+			var file = (OLLMfiles.File) row.item;
+			var name_label = (Gtk.Label) line.get_first_child().get_next_sibling();
+			file.bind_property("icon_name", (Gtk.Image) line.get_first_child(),
+				"icon-name", GLib.BindingFlags.SYNC_CREATE);
+			file.bind_property("path_basename", name_label,
+				"label", GLib.BindingFlags.SYNC_CREATE);
+			file.bind_property("tooltip", name_label,
+				"tooltip-text", GLib.BindingFlags.SYNC_CREATE);
+		});
+		var size_factory = new Gtk.SignalListItemFactory();
+		size_factory.setup.connect((obj) => {
+			var row = (Gtk.ListItem) obj;
+			row.child = new Gtk.Label("") {
+				halign = Gtk.Align.END,
+				xalign = 1,
+				css_classes = { "caption", "dim-label" },
+			};
+		});
+		size_factory.bind.connect((obj) => {
+			var row = (Gtk.ListItem) obj;
+			((OLLMfiles.File) row.item).bind_property("display_size", (Gtk.Label) row.child,
+				"label", GLib.BindingFlags.SYNC_CREATE);
+		});
+		var modified_factory = new Gtk.SignalListItemFactory();
+		modified_factory.setup.connect((obj) => {
+			var row = (Gtk.ListItem) obj;
+			row.child = new Gtk.Label("") {
+				halign = Gtk.Align.END,
+				xalign = 1,
+				css_classes = { "caption", "dim-label" },
+			};
+		});
+		modified_factory.bind.connect((obj) => {
+			var row = (Gtk.ListItem) obj;
+			((OLLMfiles.File) row.item).bind_property("display_modified", (Gtk.Label) row.child,
+				"label", GLib.BindingFlags.SYNC_CREATE);
+		});
+		this.name_column = new Gtk.ColumnViewColumn("Name", name_factory) {
+			expand = true,
+			resizable = true,
+			sorter = new Gtk.StringSorter(
+				new Gtk.PropertyExpression(typeof(OLLMfiles.File), null, "path_basename")
+			) {
+				ignore_case = true,
+			},
+		};
+		var size_column = new Gtk.ColumnViewColumn("Size", size_factory) {
+			resizable = false,
+			fixed_width = 44,
+			sorter = new Gtk.NumericSorter(
+				new Gtk.PropertyExpression(typeof(OLLMfiles.File), null, "size")
+			),
+		};
+		var modified_column = new Gtk.ColumnViewColumn("Modified", modified_factory) {
+			resizable = false,
+			fixed_width = 64,
+			sorter = new Gtk.NumericSorter(
+				new Gtk.PropertyExpression(typeof(OLLMfiles.File), null, "last_modified")
+			),
+		};
+		var file_filter = new Gtk.CustomFilter((item) => {
+			if (this.kind == "") {
+				return true;
+			}
+			var file = (OLLMfiles.File) item;
+			var document = false;
+			if (file.is_text && file.language == "") {
+				document = true;
+			}
+			if (file.is_text && file.language != "") {
+				switch (file.language.down()) {
+					case "markdown":
+					case "txt":
+					case "text":
+					case "plaintext":
+						document = true;
+						break;
+					default:
+						break;
+				}
+			}
+			if (this.kind == "document") {
+				return document;
+			}
+			return file.is_text && !document;
+		});
+		var file_selection = new Gtk.SingleSelection(null) {
+			autoselect = false,
+			can_unselect = true,
+		};
+		this.file_view = new Gtk.ColumnView(file_selection) {
+			hexpand = true,
+			vexpand = true,
+			single_click_activate = false,
+		};
+		this.file_view.append_column(this.name_column);
+		this.file_view.append_column(size_column);
+		this.file_view.append_column(modified_column);
+		file_selection.model = new Gtk.SortListModel(
+			new Gtk.FilterListModel(this.files, file_filter),
+			this.file_view.sorter
+		);
+		this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
+		this.file_view.activate.connect((position) => {
+			var file = (OLLMfiles.File) file_selection.get_item(position);
+			this.file_activated(file);
+		});
+		this.file_empty = new Gtk.Label("No files") {
+			halign = Gtk.Align.CENTER,
+			valign = Gtk.Align.CENTER,
+			can_target = false,
+			visible = false,
+			css_classes = { "dim-label", "title-4" },
+		};
+		this.file_scroll = new Gtk.ScrolledWindow() {
+			child = this.file_view,
+			hexpand = true,
+			vexpand = true,
+			propagate_natural_width = false,
+			hscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
+		};
+		var file_overlay = new Gtk.Overlay() {
+			hexpand = true,
+			vexpand = true,
+			child = this.file_scroll,
+		};
+		file_overlay.add_overlay(this.file_empty);
+		this.append(file_overlay);
+		this.files.notify["empty"].connect(() => {
+			this.file_empty.visible = this.files.empty ||
+				(this.files.get_n_items() > 0 && file_selection.n_items == 0);
+		});
+		this.notify["kind"].connect(() => {
+			file_filter.changed(Gtk.FilterChange.DIFFERENT);
+			this.file_empty.visible = this.files.empty ||
+				(this.files.get_n_items() > 0 && file_selection.n_items == 0);
+		});
+		file_selection.items_changed.connect(() => {
+			this.file_empty.visible = this.files.empty ||
+				(this.files.get_n_items() > 0 && file_selection.n_items == 0);
+		});
+		this.files.items_changed.connect(() => {
+			this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;
+		});
+	}
+
+	/**
+	 * Show ''folder''. The header sort goes back to the file name
+	 * and the list opens at the top. {@link FileListStore.load}
+	 * fills the grid.
+	 *
+	 * @param folder Folder whose files should be shown
+	 */
+	public void load(OLLMfiles.Folder folder)
+	{
+		this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;
+		this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
+		this.files.load.begin(folder);
+	}
+
+	/**
+	 * Drop the rows. A cleared folder selection uses this. The
+	 * header sort goes back to the file name and the list opens
+	 * at the top.
+	 */
+	public void clear()
+	{
+		this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;
+		this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
+		this.files.clear();
+	}
+}

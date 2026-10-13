@@ -74,145 +74,13 @@
 
 Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surrounding context before applying.
 
-The `Request` hunks below apply to the copy, `liboctools/Bash/Request.vala`. Do not apply them to `liboctools/RunCommand/`.
+The `Request` hunks below apply to the copy, `liboctools/Bash/Request.vala`. Do not apply them to `liboctools/RunCommand/`. Copying the files, the namespace, the tool name, meson, and the registry swap are in **Decided**. They are not repeated here.
 
-### 1. `liboctools/Bash/` — new class, old tool deprecated
-
-**Why:** `bash` owns its code. `run_command` is no longer registered, so nothing in this plan has to keep the old class working.
-
-**Where:** copy, meson, registry, the three wrapped tools, and delete `RunCommand/Bash.vala`.
-
-**Depends on:** none.
-
-- **🔷** Copy `RunCommand/Tool.vala` to `Bash/Tool.vala` and `RunCommand/Request.vala` to `Bash/Request.vala`. Namespace on both copies is `OLLMtools.Bash`.
-- **🔷** The copied tool's `name` is `bash`. `clone` returns `new Tool`.
-- **🚫** Do not leave `RunCommand.Bash` in the build. Do not register `RunCommand.Tool`.
-
-#### Remove — copied `Bash/Tool.vala`
-
-```vala
-namespace OLLMtools.RunCommand
-```
-
-#### Replace with
-
-```vala
-namespace OLLMtools.Bash
-```
-
-#### Remove
-
-```vala
-		public override string name { get { return "run_command"; } }
-```
-
-#### Replace with
-
-```vala
-		public override string name { get { return "bash"; } }
-```
-
-#### Remove
-
-```vala
-		public override string title { get { return "Run Shell Commands Tool"; } }
-		public override string example_call {
-			get { return "{\"name\": \"run_command\", \"arguments\": {\"command\": \"ls -la\"}}"; }
-		}
-```
-
-#### Replace with
-
-```vala
-		public override string title { get { return "Bash"; } }
-		public override string example_call {
-			get { return "{\"name\": \"bash\", \"arguments\": {\"command\": \"ls -la\"}}"; }
-		}
-```
-
-- **ℹ️** The same namespace replacement applies to the copied `Bash/Request.vala`. One line, `namespace OLLMtools.RunCommand` to `namespace OLLMtools.Bash`.
-
-#### Remove — `liboctools/meson.build`
-
-```vala
-  'RunCommand/Bash.vala',
-```
-
-#### Add — beside the RunCommand sources
-
-```vala
-  'Bash/Tool.vala',
-  'Bash/Request.vala',
-```
-
-- **🔷** Delete `liboctools/RunCommand/Bash.vala`.
-
-#### Remove — `liboctools/Registry.vala` `init_config`, and the same swap in `register_config` and `setup_config_defaults`
-
-```vala
-			typeof(RunCommand.Tool).ensure();
-```
-
-#### Replace with
-
-```vala
-			typeof(Bash.Tool).ensure();
-```
-
-#### Remove
-
-```vala
-			OLLMchat.Tool.BaseTool.register_config(typeof(RunCommand.Tool));
-```
-
-#### Replace with
-
-```vala
-			OLLMchat.Tool.BaseTool.register_config(typeof(Bash.Tool));
-```
-
-#### Remove
-
-```vala
-			(new RunCommand.Tool(null)).setup_tool_config_default(config);
-```
-
-#### Replace with
-
-```vala
-			(new Bash.Tool(null)).setup_tool_config_default(config);
-```
-
-#### Remove — `fill_tools`
-
-```vala
-			manager.register_tool(new RunCommand.Tool(project_manager));
-			manager.register_tool(new RunCommand.Bash(project_manager));
-```
-
-#### Replace with
-
-```vala
-			manager.register_tool(new Bash.Tool(project_manager));
-```
-
-#### Remove — `resources/wrapped-tools/grep.tool`, `glob.tool`, and `ls.tool`
-
-```
-@wrapped run_command
-```
-
-#### Replace with
-
-```
-@wrapped bash
-```
-
-### 2. Truncation wording
+### 1. Truncation wording
 
 **Why:** The agent is told where the rest of the output is, and not to `cat` it. The cap stays 50.
 
-**Where:** `bash_finished_text` in §5. The old footer sites are inside the local spawn §3 deletes.
+**Where:** `bash_finished_text` in §4. The old footer sites are inside the local spawn §2 deletes.
 
 **Depends on:** none.
 
@@ -228,13 +96,13 @@ namespace OLLMtools.Bash
 + " lines. Use grep, head, or tail on it with this tool to find the part you need.\n"
 ```
 
-### 3. `liboctools/Bash/Request.vala` — the copy talks to the daemon
+### 2. `liboctools/Bash/Request.vala` — the copy talks to the daemon
 
 **Why:** Management returns before permission and the spill file. A new command still walks the copied permission code. The sandbox question follows the daemon.
 
 **Where:** the `pid` property beside `timeout`, the top of `execute`, `build_perm_question`, and the spawn branch inside `execute_tool_async`.
 
-**Depends on:** [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md). §1.
+**Depends on:** [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md).
 
 - **💩** This plan names `bash_remote` and `manage`.
 - **🔷** `pid != 0` returns before `normalize_working_dir`, permission, `client.run_tool.start`, and the spill file.
@@ -392,7 +260,7 @@ namespace OLLMtools.Bash
 
 - **ℹ️** The `finally` that clears `timeout_src` can stay. Nothing arms it.
 
-### 4. `ollmfilesd` — store the session id and check it
+### 3. `ollmfilesd` — store the session id and check it
 
 **Why:** The daemon is the place that knows which chat started a process. A later call from another chat is refused there.
 
@@ -435,16 +303,18 @@ namespace OLLMtools.Bash
 - **🔷** `rpc_create` takes `int64 session_id` after `keep_stdin` and sets `bubble.session_id` before the lease is returned.
 - **🔷** `kill`, `tail`, `wait`, and `send` take `int64 session_id` after their current arguments. Look the pid up. If the bubble's `session_id` is not the one passed, reply `command has ended` and do nothing else.
 
-### 5. `liboctools/Bash/Request.vala` — `bash_remote` and `manage`
+### 4. `liboctools/Bash/Request.vala` — `bash_remote` and `manage`
 
 **Why:** Create, subscribe, run, then either return the command result or the pid block. Later calls are the four verbs.
 
 **Where:** new methods on `OLLMtools.Bash.Request`. The plan names both.
 
-**Depends on:** §3 and §4.
+**Depends on:** §2 and §3.
 
 - **🔷** Subscribe before `rpc_run`.
 - **🔷** `send` writes the payload with no added newline. The verb is the first word. The rest is the payload, including a leading space that gets stripped once.
+- **🔷** The four verbs are a `switch` on that word.
+- **🔷** `pid_block` is one `@"""` string. The pid is `$(pid)` inside it.
 - **🔷** Unknown pid, or a pid from another session: the daemon replies `command has ended`. The tool returns that sentence. Nothing is signalled.
 - **🔷** `wait` with no extra timeout argument waits 60 seconds. A duration rides on `timeout` when it is not 60.
 - **🔷** Every `rpc_create`, `kill`, `tail`, `wait`, and `send` from this tool includes `this.agent.chat().agent.session.id`.
@@ -523,20 +393,20 @@ namespace OLLMtools.Bash
 			if (state >= 0) {
 				return this.bash_finished_text(waited.msg);
 			}
-			if (!keep_stdin) {
-				yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
-					method = "Sandbox-Bubble.kill",
-					args = OLLMrpc.args(
-						"ix",
-						pid,
-						this.agent.chat().agent.session.id
-					)
-				});
-				this.timed_out = true;
-				return this.bash_finished_text(waited.msg);
+			if (keep_stdin) {
+				this.detached = true;
+				return this.pid_block(-pid, false);
 			}
-			this.detached = true;
-			return this.pid_block(-pid, false);
+			yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
+				method = "Sandbox-Bubble.kill",
+				args = OLLMrpc.args(
+					"ix",
+					pid,
+					this.agent.chat().agent.session.id
+				)
+			});
+			this.timed_out = true;
+			return this.bash_finished_text(waited.msg);
 		}
 
 		/**
@@ -563,45 +433,44 @@ namespace OLLMtools.Bash
 				payload = verb.substring(space + 1);
 				verb = verb.substring(0, space);
 			}
-			if (verb == "kill") {
-				yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
-					method = "Sandbox-Bubble.kill",
-					args = OLLMrpc.args("ix", os_pid, session_id)
-				});
-				return "command has ended";
-			}
-			if (verb == "tail") {
-				var tail = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
-					method = "Sandbox-Bubble.tail",
-					args = OLLMrpc.args("ix", os_pid, session_id)
-				});
-				return tail.msg + "\n" + this.pid_block(this.pid, false);
-			}
-			if (verb == "wait") {
-				var seconds = this.timeout == 60 ? 60 : this.timeout;
-				if (seconds < 1) {
-					seconds = 60;
-				}
-				var waited = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
-					method = "Sandbox-Bubble.wait",
-					args = OLLMrpc.args("iix", os_pid, seconds, session_id)
-				});
-				if ((int) waited.retval.get_int() >= 0) {
-					return this.bash_finished_text(waited.msg);
-				}
-				return waited.msg + "\n" + this.pid_block(this.pid, false);
-			}
-			if (verb == "send") {
-				var sent = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
-					method = "Sandbox-Bubble.send",
-					args = OLLMrpc.args("isx", os_pid, payload, session_id)
-				});
-				if (sent.msg != "ok") {
+			switch (verb) {
+				case "kill":
+					yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
+						method = "Sandbox-Bubble.kill",
+						args = OLLMrpc.args("ix", os_pid, session_id)
+					});
 					return "command has ended";
-				}
-				return "ok";
+				case "tail":
+					var tail = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
+						method = "Sandbox-Bubble.tail",
+						args = OLLMrpc.args("ix", os_pid, session_id)
+					});
+					return tail.msg + "\n" + this.pid_block(this.pid, false);
+				case "wait":
+					var seconds = this.timeout == 60 ? 60 : this.timeout;
+					if (seconds < 1) {
+						seconds = 60;
+					}
+					var waited = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
+						method = "Sandbox-Bubble.wait",
+						args = OLLMrpc.args("iix", os_pid, seconds, session_id)
+					});
+					if ((int) waited.retval.get_int() >= 0) {
+						return this.bash_finished_text(waited.msg);
+					}
+					return waited.msg + "\n" + this.pid_block(this.pid, false);
+				case "send":
+					var sent = yield bash_tool.project_manager.rpc.call(new OLLMrpc.Request() {
+						method = "Sandbox-Bubble.send",
+						args = OLLMrpc.args("isx", os_pid, payload, session_id)
+					});
+					if (sent.msg == "ok") {
+						return "ok";
+					}
+					return "command has ended";
+				default:
+					return "ERROR: Unknown command for pid " + this.pid.to_string();
 			}
-			return "ERROR: Unknown command for pid " + this.pid.to_string();
 		}
 
 		/**
@@ -613,31 +482,30 @@ namespace OLLMtools.Bash
 		 */
 		private string pid_block(int pid, bool waiting)
 		{
-			var head = waiting ? "Waiting for input. pid " : "Still running. pid ";
-			var text = head + pid.to_string() + ".\n\n"
-				+ "Call this tool again with pid=" + pid.to_string() + " and command set to one of:\n"
-				+ "  send <text>  write to its stdin\n"
-				+ "  wait         wait 60 more seconds for it\n"
-				+ "  tail         show the last 50 lines of its output\n"
-				+ "  kill         stop it\n";
-			if (waiting) {
-				text += "Left alone, it is killed in about 60 seconds.\n";
-			}
-			return text;
+			var head = waiting ? "Waiting for input" : "Still running";
+			var reap = waiting ? "Left alone, it is killed in about 60 seconds.\n" : "";
+			return @"$(head). pid $(pid).
+
+Call this tool again with pid=$(pid) and command set to one of:
+  send <text>  write to its stdin
+  wait         wait 60 more seconds for it
+  tail         show the last 50 lines of its output
+  kill         stop it
+$(reap)";
 		}
 ```
 
-- **💩** `arm_bash_listener`, `bash_finished_text`, and `reap_stuck` are the three leftovers. `arm_bash_listener` connects `rpc.notification` once and appends `output` lines to the spill and to `client.run_tool.output` while the lease matches. `bash_finished_text` applies the §2 wording when the line count is over 50. `reap_stuck` calls `Sandbox-Bubble.kill` with the session id. Same three names, no further helpers.
+- **💩** `arm_bash_listener`, `bash_finished_text`, and `reap_stuck` are the three leftovers. `arm_bash_listener` connects `rpc.notification` once and appends `output` lines to the spill and to `client.run_tool.output` while the lease matches. `bash_finished_text` applies the §1 wording when the line count is over 50. `reap_stuck` calls `Sandbox-Bubble.kill` with the session id. Same three names, no further helpers.
 - **💩** `tail` on a live job appends `pid_block`. `tail` on a missing pid returns only `command has ended`, from the session check above, so the block is not repeated for a dead job.
 - **💩** `send` that gets `ok` and then no new output does not guess a threshold. The next `wait` is what reports stdin. A one-line note on the `ok` return — "end the text with a newline if the command is waiting for a line" — is optional and not in the block above.
 
-### 6. `liboctools/Bash/Tool.vala` — `pid` and `-1` in the description
+### 5. `liboctools/Bash/Tool.vala` — `pid` and `-1` in the description
 
 **Why:** The model reads `parameter_description` on this class. There is no base tool to append to.
 
 **Where:** the copied `parameter_description`, the `timeout` line.
 
-**Depends on:** §1.
+**Depends on:** none.
 
 - **🔷** `-1` is the advertised detach value. The code tests `timeout < 0`.
 - **🔷** Add the `pid` line. Replace the copied timeout line. It still describes a hard kill and nothing else.
@@ -657,7 +525,7 @@ namespace OLLMtools.Bash
 
 - **ℹ️** Phase D still gates shipping `-1` to Android.
 
-### 7. `libocbwrap/Bubble.vala` — silence kill
+### 6. `libocbwrap/Bubble.vala` — silence kill
 
 **Why:** Output is what resets the clock, and the daemon is where the output is read. Fifteen minutes is the short end of the 15–20 minute rule.
 

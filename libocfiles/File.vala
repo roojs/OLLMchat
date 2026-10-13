@@ -50,7 +50,7 @@ namespace OLLMfiles
 	 * var contents = file.buffer.get_text();
 	 * }}}
 	 */
-	public class File : FileBase, Copyable
+	public class File : FileBase
 	{
 		public static void rpc_register()
 		{

@@ -36,7 +36,7 @@ namespace OLLMfiles
 	 *  * id > 0: real filebase id from daemon
 	 *  * id < 0: fake file ({@link File.new_fake}) until {@link File.to_real}
 	 */
-	public abstract class FileBase : Object, OLLMrpc.Bin.Serializable
+	public abstract class FileBase : Object, Copyable, OLLMrpc.Bin.Serializable
 	{
 		/**
 		 * Database ID.
@@ -67,6 +67,18 @@ namespace OLLMfiles
 		 * query sets this. It is not a ''filebase'' column.
 		 */
 		public int folder_count { get; set; default = 0; }
+
+		/**
+		 * How many documents sit directly in this folder. Markdown
+		 * or plain text. The folder load query sets this.
+		 */
+		public int document_count { get; set; default = 0; }
+
+		/**
+		 * How many code files sit directly in this folder. Text that
+		 * is not a document. The folder load query sets this.
+		 */
+		public int code_count { get; set; default = 0; }
 
 		/**
 		 * CSS classes for this row's name. A folder with no files uses

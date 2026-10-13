@@ -181,21 +181,19 @@ Examples:
 				return true;
 			}
 			step++;
-			var count = this.coder.files.tree.folders.flat.size;
-			if ((count == 0 || this.coder.files.tree.folders.loading) && step < 40) {
+			var count = this.coder.files.folder_tree.folders.flat.size;
+			if ((count == 0 || this.coder.files.folder_tree.folders.loading) && step < 40) {
 				return true;
 			}
 			command_line.print("folders=%u loading=%s\n", count,
-				this.coder.files.tree.folders.loading.to_string());
-			if (count == 0 || this.coder.files.tree.folders.loading) {
+				this.coder.files.folder_tree.folders.loading.to_string());
+			if (count == 0 || this.coder.files.folder_tree.folders.loading) {
 				command_line.set_exit_status(1);
 				loop.quit();
 				return false;
 			}
-			var column = this.coder.files.tree.get_first_child() as Gtk.Box;
-			var pane = column.get_first_child().get_next_sibling() as Gtk.Paned;
-			var tree_column = pane.start_child as Gtk.Box;
-			var scrolled = tree_column.get_first_child() as Gtk.ScrolledWindow;
+			var scrolled = this.coder.files.folder_tree.get_first_child().get_next_sibling()
+				as Gtk.ScrolledWindow;
 			var selection = ((Gtk.ListView) scrolled.child).model as Gtk.SingleSelection;
 			var shown = selection.model as Gtk.TreeListModel;
 			var first = "";
@@ -357,7 +355,7 @@ Examples:
 			return false;
 		});
 		yield;
-		if (opt_test_flow && this.coder.files.tree.folders.flat.size == 0) {
+		if (opt_test_flow && this.coder.files.folder_tree.folders.flat.size == 0) {
 			throw new GLib.IOError.FAILED("folder list stayed empty");
 		}
 		return;

@@ -156,11 +156,13 @@ namespace OLLMfilesd
 
 		/**
 		 * Immediate child folders of ''path''. Files are left out.
-		 * Each row already carries ''file_count'' and ''folder_count''
-		 * from the load query. Gitignored children are not in those
-		 * counts. The row is a copy, so the live child list is not
-		 * sent. The reply args are that same pair for ''path''
-		 * itself, so the caller can show that folder.
+		 * The first row is ''path'' itself. The rows after it are
+		 * the immediate child folders. Files are left out. Each row
+		 * carries ''file_count'', ''folder_count'', ''document_count'',
+		 * and ''code_count'' from the load query. Gitignored children
+		 * are not in those counts. A document is markdown or plain
+		 * text. Other text is code. The row is a copy, so the live
+		 * child list is not sent.
 		 *
 		 * @param request inbound RPC
 		 * @param path folder path
@@ -176,24 +178,28 @@ namespace OLLMfilesd
 				return;
 			}
 			var list = new Gee.ArrayList<GLib.Object>();
+			var self_row = new Folder(this.manager);
+			self_row.copy_from(folder, {
+				"manager", "children", "project-files", "parent",
+				"points-to", "buffer"
+			});
+			list.add(self_row);
 			foreach (var child in folder.children.items) {
 				if (!(child is Folder)) {
 					continue;
 				}
 				var row = new Folder(this.manager);
 				row.copy_from(child, {
-					"manager", "children", "project-files", "parent", 
+					"manager", "children", "project-files", "parent",
 					"points-to", "buffer"
 				});
 				list.add(row);
 			}
-			var reply = new OLLMrpc.Response() {
+			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("o", list),
 				msg = list.size.to_string()
-			};
-			reply.args = OLLMrpc.args("ii", folder.file_count, folder.folder_count);
-			request.reply(reply);
+			});
 		}
 
 		/**
@@ -1042,13 +1048,23 @@ namespace OLLMfilesd
 				paths = yield this.load_children(id_map, paths, seen_ids);
 				//GLib.debug("Folder.load_files_from_db: After iteration %d, id_map has %d items, next_paths=%d", iteration, id_map.size, paths.length);
 			}
-			/* Ignored children do not count. A folder that only
-			 * holds them is empty, so hide-empty can drop it. */
+			/* Ignored children do not count. A document is markdown
+			 * or plain text. Other text is code. */
 			var count_stmt = FileBase.query(this.manager.db, this.manager).selectPrepare("""
 SELECT
 	filebase.parent_id,
 	SUM(filebase.base_type = 'd' AND filebase.is_ignored = 0) AS folder_count,
-	SUM(filebase.base_type IN ('f', 'fa') AND filebase.is_ignored = 0) AS file_count
+	SUM(filebase.base_type IN ('f', 'fa') AND filebase.is_ignored = 0) AS file_count,
+	SUM(filebase.base_type IN ('f', 'fa') AND filebase.is_ignored = 0
+		AND filebase.is_text != 0
+		AND (filebase.language IS NULL OR filebase.language = ''
+			OR lower(filebase.language) IN
+				('markdown', 'txt', 'text', 'plaintext'))) AS document_count,
+	SUM(filebase.base_type IN ('f', 'fa') AND filebase.is_ignored = 0
+		AND filebase.is_text != 0
+		AND filebase.language != ''
+		AND lower(filebase.language) NOT IN
+			('markdown', 'txt', 'text', 'plaintext')) AS code_count
 FROM
 	filebase
 WHERE
@@ -1066,6 +1082,8 @@ GROUP BY
 				}
 				id_map.get(parent_id).folder_count = (int) count_stmt.column_int64(1);
 				id_map.get(parent_id).file_count = (int) count_stmt.column_int64(2);
+				id_map.get(parent_id).document_count = (int) count_stmt.column_int64(3);
+				id_map.get(parent_id).code_count = (int) count_stmt.column_int64(4);
 			}
 			this.manager.db.db_mutex.unlock();
 			

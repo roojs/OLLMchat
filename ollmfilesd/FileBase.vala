@@ -67,6 +67,18 @@ namespace OLLMfilesd
 		 * query sets this. It is not a ''filebase'' column.
 		 */
 		public int folder_count { get; set; default = 0; }
+
+		/**
+		 * How many documents sit directly in this folder. Markdown
+		 * or plain text. The folder load query sets this.
+		 */
+		public int document_count { get; set; default = 0; }
+
+		/**
+		 * How many code files sit directly in this folder. Text that
+		 * is not a document. The folder load query sets this.
+		 */
+		public int code_count { get; set; default = 0; }
 		
 		/**
 		 * Reference to parent folder (nullable for root folders/projects).

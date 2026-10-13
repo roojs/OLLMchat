@@ -242,6 +242,27 @@ class FolderTreeStore : Object, GLib.ListModel
 	}
 
 	/**
+	 * Drop every folder. The top list emits one items-changed.
+	 * The path map, the flat list, and the segment map are cleared.
+	 */
+	public void clear()
+	{
+		if (this.root != this) {
+			this.root.clear();
+			return;
+		}
+		var removed = this.items.size;
+		this.items.clear();
+		this.items_changed(0, (uint) removed, 0);
+		this.flat.clear();
+		this.path_map.clear();
+		this.segments.clear();
+		this.item_at.clear();
+		this.flat_at.clear();
+		this.loaded.clear();
+	}
+
+	/**
 	 * Fetch child folders of ''folder'' and append the ones not already
 	 * stored. Then do the same for each new child. A different project
 	 * removes the rows already stored.
@@ -260,10 +281,7 @@ class FolderTreeStore : Object, GLib.ListModel
 		if (folder.is_project && !this.path_map.has_key(folder.path)
 			&& this.project_path != folder.path) {
 			this.load_epoch++;
-			while (this.flat.size > 0) {
-				this.remove(this.flat.get(this.flat.size - 1));
-			}
-			this.loaded.clear();
+			this.clear();
 			this.project_path = folder.path;
 		}
 		if (this.project_path != "" && folder.path != this.project_path
@@ -309,11 +327,21 @@ class FolderTreeStore : Object, GLib.ListModel
 				return;
 			}
 			this.loaded.remove(folder.path);
-			GLib.warning("folder list failed: %s", e.message);
 			this.pending--;
 			if (this.pending == 0) {
 				this.loading = false;
 			}
+			if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
+				folder.manager.rpc.notification(new OLLMrpc.Notification() {
+					method = "client.filesd.unreachable",
+					id = e.code
+				});
+				return;
+			}
+			folder.manager.rpc.notification(new OLLMrpc.Notification() {
+				method = "Banner.show",
+				message = "Could not load folders: " + e.message
+			});
 			return;
 		}
 		if (epoch != this.load_epoch) {
@@ -323,22 +351,35 @@ class FolderTreeStore : Object, GLib.ListModel
 			}
 			return;
 		}
-		if (response.args.size >= 2) {
-			folder.file_count = response.args.get(0).get_int();
-			folder.folder_count = response.args.get(1).get_int();
-		}
 		if (response.retval.type() != GLib.Type.INVALID) {
 			var rows = (Gee.ArrayList<OLLMfiles.Folder>) response.retval.get_object();
-			var parent = this.path_map.has_key(folder.path) ? this.path_map.get(folder.path) : null;
-			foreach (var row in rows) {
+			/* The first row is the folder this call asked for. */
+			var incoming = rows.get(0);
+			if (this.path_map.has_key(folder.path)) {
+				folder.copy_from(incoming, {
+					"manager",
+					"children",
+					"project-files",
+					"parent",
+					"points-to",
+					"buffer"
+				});
+			}
+			if (!this.path_map.has_key(folder.path)) {
+				incoming.manager = folder.manager;
+				this.append(folder.parent, incoming);
+				folder = incoming;
+			}
+			for (var i = 1; i < rows.size; i++) {
 				if (epoch != this.load_epoch) {
 					break;
 				}
-				if (row.path == "" || row.path == folder.path) {
+				var row = rows.get(i);
+				if (row.path == "") {
 					continue;
 				}
 				row.manager = folder.manager;
-				this.append(parent, row);
+				this.append(folder, row);
 				yield this.load(row);
 			}
 		}

@@ -108,14 +108,14 @@ A grey tick is behavior that app already does.
 
 Widgets first, then the lists behind them. `FolderTreeStore.load` asks the file server for child folders and appends them. It does not clear the store.
 
-- ✔️ Replace the Tree note with two panes: a folder tree on the left and a file list on the right. `examples/oc-test-source-diff/FileTree.vala`.
+- ✔️ Replace the Tree note with two panes: a folder tree on the left and a file list on the right. `examples/oc-test-source-diff/FolderTree.vala`, `examples/oc-test-source-diff/FileList.vala`, `examples/oc-test-source-diff/FileListStore.vala`.
 - ✔️ The left holder is `FolderTreeStore`. It lists folders only. The shape follows RooTerm `TreeNodes`, with path as the key instead of uuid. `examples/oc-test-source-diff/FolderTreeStore.vala`.
 - ✔️ While a folder request is waiting on the file server, the folder pane shows a spinner. It stays up for the folders asked for under that same load.
 - ✔️ The top `FolderTreeStore` owns a path-to-folder hash map and a flat list of every folder. There is no uuid map.
 - ✔️ Each folder's children are a `FolderTreeStore` for that segment. The same folder object sits in the segment, the path map, and the flat list. Add and remove go through the top store and signal `items-changed` for that one position.
 - ✔️ A `Gtk.TreeListModel` binds the top list and, for each folder, that folder's child store. One search filter is used on the top list and on every child list. The filter currently keeps every row.
 - ℹ️ `ProjectFiles.refresh` clears its page and loads another. This store does not follow that.
-- ✔️ The right holder is a `GLib.ListStore` of `File` for the folder that is selected. It starts empty.
+- ✔️ The right holder is `FileListStore`, a `GLib.ListModel` of `File` for the folder that is selected. The rows from the file server are that model. They are not copied into a `GLib.ListStore`. It starts empty.
 - ℹ️ On the client today there is no folder tree. `ProjectList.path_map` is project roots only. `ProjectManager.file_cache` is path to `FileBase` for rows fetched one at a time, files and folders mixed. `Folder.children` stays empty. `ProjectFiles` is one dropdown page from `Folder.fetch_files`, not a kept tree. `Folder.fetch_children` is named on `FolderFiles` and does not exist.
 
 #### Existing stores
@@ -188,7 +188,7 @@ Outstanding Phase 2 work that is not search.
 - 🔷 ⏳ A second click on that same folder deselects it and clears the file list.
 - 🔷 ⏳ Refresh is a progressive update. A notification adds or removes the one path that changed. It does not clear the map, the flat list, or the segments, and it does not walk the tree again.
   - ℹ️ Today `scan_end` drops the project path from `loaded` and calls `load` on that project. `append` skips a path already stored, so the rows are not deleted and replaced. Deeper folders already in `loaded` are not fetched again. A folder that disappeared stays in the tree. The first open still walks every folder.
-  - ℹ️ When `loading` goes false, `FileTree` calls `name_sorter.changed(DIFFERENT)`. That re-sorts every segment, and the list is hidden for the whole load. That full re-render is not the design. Leave it until the progressive update above.
+  - ℹ️ When `loading` goes false, `FolderTree` replaces the tree model. That re-sorts every segment, and the list is hidden for the whole load. That full re-render is not the design. Leave it until the progressive update above.
 - 🔷 ⏳ Refresh is a last line of defence.
   - ℹ️ The server is meant to stay current.
   - ℹ️ File watch on the active project is not implemented.
