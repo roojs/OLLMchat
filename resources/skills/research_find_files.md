@@ -1,18 +1,18 @@
 ---
 name: research_find_files
 description: Use when you need to list directories, find files by name or glob, or search file contents for exact text (shell-style find/ls/grep). Prefer analyze_codebase for semantic “where is this implemented?” code search instead of this skill.
-tools: run_command
+tools: bash
 ---
 
 **During refinement**
 
-**Purpose of this skill:** Run shell commands that **list** paths or **search** filenames and file contents. The executor only **interprets** command output — refinement must emit **## Tool Calls** with one or more **`run_command`** invocations so those commands run first.
+**Purpose of this skill:** Run shell commands that **list** paths or **search** filenames and file contents. The executor only **interprets** command output — refinement must emit **## Tool Calls** with one or more **`bash`** invocations so those commands run first.
 
-**What is needed** should state what to locate (e.g. “all `*.vala` under `liboccoder/`”, “files whose name contains `Runner`”, “lines containing `exec_extract` in `ResultParser.vala`”). Turn that into concrete **`run_command`** calls — in-repo, prefer **`git ls-files`** / **`git grep`**; outside the project or without git, use **`find`** / plain **`grep`**.
+**What is needed** should state what to locate (e.g. “all `*.vala` under `liboccoder/`”, “files whose name contains `Runner`”, “lines containing `exec_extract` in `ResultParser.vala`”). Turn that into concrete **`bash`** calls — in-repo, prefer **`git ls-files`** / **`git grep`**; outside the project or without git, use **`find`** / plain **`grep`**.
 
 ### Do's
 
-- **Emit `## Tool Calls`** — one or more fenced JSON **`run_command`** blocks; that is the main refinement output for this skill.
+- **Emit `## Tool Calls`** — one or more fenced JSON **`bash`** blocks; that is the main refinement output for this skill.
 - **Keep scope narrow** — in a repo, use a **path prefix** on **`git ls-files`** or **`git grep`** (after **`--`**) or a tight pathspec; outside git or the project, use **`find`** with **`-maxdepth`**, **`-name`**, etc., instead of scanning everything in one shot.
 - **Cap noisy output** — pipe to `head -n 80` (or similar) when breadth is unknown so results stay usable.
 - **Use `working_dir`** when the whole run should start in one directory — especially an **absolute path** outside the project (read-only lookup is fine); you can also use absolute paths inside **`command`**.
@@ -23,11 +23,11 @@ tools: run_command
 
 ### Don'ts
 
-- **Do not fill in References** — leave **References** as **—** or **(none)**; put intent only in **What is needed** and in **`run_command`** arguments.
-- **Do not set `network`** or **`allow_write`** on **`run_command`** — this skill is read-only research; those flags are unnecessary and **trigger extra user permission** prompts.
+- **Do not fill in References** — leave **References** as **—** or **(none)**; put intent only in **What is needed** and in **`bash`** arguments.
+- **Do not set `network`** or **`allow_write`** on **`bash`** — this skill is read-only research; those flags are unnecessary and **trigger extra user permission** prompts.
 - **Do not run huge unbounded searches** when a smaller directory or pattern would answer **What is needed** — avoid blasting **`node_modules`**, **`.git`**, and build output; prefer scoped **`git grep`** (or restrict paths and use **`grep`** with **`--exclude-dir`**, or search only under **`src/`**, etc.) instead of unscoped **`grep -r`** from the repo root.
 
-### Tool: run_command (options worth using)
+### Tool: bash (options worth using)
 
 - **command** (required): a single shell command string (run via `/bin/sh -c`).
 - **working_dir** (optional): directory used as the **current working directory** for this run.
@@ -81,11 +81,11 @@ For this skill, leave **References** as **—**; use **## Tool Calls** only. Exa
 ## Tool Calls
 
 ```json
-{ "name": "run_command", "arguments": { "command": "git ls-files --exclude-standard liboccoder/Task/ | grep '\\.vala$' 2>/dev/null | head -100" } }
+{ "name": "bash", "arguments": { "command": "git ls-files --exclude-standard liboccoder/Task/ | grep '\\.vala$' 2>/dev/null | head -100" } }
 ```
 
 ```json
-{ "name": "run_command", "arguments": { "command": "git grep -nI \"exec_extract\" -- liboccoder/Task/ 2>/dev/null | head -80" } }
+{ "name": "bash", "arguments": { "command": "git grep -nI \"exec_extract\" -- liboccoder/Task/ 2>/dev/null | head -80" } }
 ```
 
 Narrow by extension when needed: **`git grep -nI \"pattern\" -- '*.vala'`** or **`git grep -nI \"pattern\" -- 'liboccoder/Task/**/*.vala'`** (quote pathspecs so the shell does not expand them early).
@@ -96,7 +96,7 @@ Do **not** add file paths or URLs under **References** unless a different instru
 
 **At execution**
 
-You receive **run_command** output (and any **References** if present) in **Tool Output and/or Reference information**. You **do not** run tools; you **summarize** what the commands showed.
+You receive **bash** output (and any **References** if present) in **Tool Output and/or Reference information**. You **do not** run tools; you **summarize** what the commands showed.
 
 ### Do's
 
@@ -107,7 +107,7 @@ You receive **run_command** output (and any **References** if present) in **Tool
 
 ### Don'ts
 
-- **Do not run tools** — do not emit **`run_command`** or ask for more shell runs here; you only interpret output already in **Tool Output and/or Reference information**.
+- **Do not run tools** — do not emit **`bash`** or ask for more shell runs here; you only interpret output already in **Tool Output and/or Reference information**.
 - **Do not paste long logs** — summarize hits and use **markdown links** instead of dumping command output.
 - **Do not** use a leading **`/`** on a project path unless it is a **full** OS absolute path. **`/`** is filesystem root, not project root — **`/.cursor/...`**, **`/liboccoder/...`** are **wrong** for repo files (they resolve to **`/.cursor`**, **`/liboccoder`** on disk). Use **`.cursor/...`**, **`liboccoder/...`** with **no** leading slash.
 - **Do not** add extra **`##`** sections or fenced deliverables unless **What is needed** explicitly asks — default is **`## Result summary`** only.

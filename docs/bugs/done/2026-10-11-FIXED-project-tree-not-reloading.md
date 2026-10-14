@@ -1,6 +1,6 @@
 # Project tree stays on the previous project
 
-**Status:** ⏳ Root cause confirmed. Fix is in `FolderTreeStore.load`. Not yet checked by flipping projects in the window.
+**Status:** ✅ closed 2026-10-14. `FolderTreeStore.load` clears the stored rows before it drops a folder from another project.
 
 ## Problem
 

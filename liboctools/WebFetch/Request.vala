@@ -117,9 +117,9 @@ namespace OLLMtools.WebFetch
 						" lines; showing the first " + TOOL_BODY_MAX_LINES.to_string() +
 						" lines only. Do not pull large page slices here (e.g. curl piped " +
 						"to head or wide ranges); that still floods context. For a targeted " +
-						"follow-up via run_command, use a narrow pipeline — for example " +
+						"follow-up via bash, use a narrow pipeline — for example " +
 						"curl -sL '" + this.url + "' | grep -E 'YourPattern' — so only matching " +
-						"lines are returned. That run_command must include \"network\": true " +
+						"lines are returned. That bash call must include \"network\": true " +
 						"(curl needs outbound network; the user may need to approve).]\n";
 				}
 

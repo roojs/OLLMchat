@@ -791,6 +791,10 @@ namespace OLLMrpc
 		{
 			request.id = this.next_id++;
 			if (!this.connected) {
+				this.failed(request, new OLLMrpc.Error(
+					(int) RpcErrorCode.NOT_CONNECTED,
+					""
+				));
 				throw new RpcErrorCode.NOT_CONNECTED("");
 			}
 
@@ -857,6 +861,10 @@ namespace OLLMrpc
 			}
 			request.id = this.next_id++;
 			if (!this.connected) {
+				this.failed(request, new OLLMrpc.Error(
+					(int) RpcErrorCode.NOT_CONNECTED,
+					""
+				));
 				throw new RpcErrorCode.NOT_CONNECTED("");
 			}
 
@@ -1037,6 +1045,10 @@ namespace OLLMrpc
 			}
 			request.id = this.next_id++;
 			if (!this.connected) {
+				this.failed(request, new OLLMrpc.Error(
+					(int) RpcErrorCode.NOT_CONNECTED,
+					""
+				));
 				throw new RpcErrorCode.NOT_CONNECTED("");
 			}
 

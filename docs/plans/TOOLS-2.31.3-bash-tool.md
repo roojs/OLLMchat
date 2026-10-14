@@ -1,6 +1,6 @@
 # 2.31.3 — Phase C — `bash` on the daemon wire
 
-**Status:** ⏳ **proposed** — review before apply. Phase B is on the wire in [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md).
+**Status:** ✔️ **applied** — agent implemented. Tests below are still ⏳. Not user-verified. Phase B is on the wire in [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md).
 
 > **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
@@ -13,10 +13,10 @@
 ## Purpose
 
 - **🔷** `bash` is a new class. Copy `RunCommand` `Tool` and `Request` into it, then change the copy. It does not subclass `OLLMtools.RunCommand.Tool`.
-- **🔷** `run_command` is deprecated. Desktop stops registering it. The copy does not stay compatible with it, and pieces of the copy can be deleted.
+- **🔷** `run_command` stays registered. The new class does not subclass it, and the copy does not stay compatible with it.
 - **🔷** `bash` runs the command on `ollmfilesd` through `Sandbox-Bubble`, then manages it with `pid`.
 - **🔷** One tool. `pid` set means `command` is `kill` / `tail` / `wait` / `send`. No second tool.
-- **🔷** A negative timeout waits 15 seconds, then returns the pid and leaves the command running. Any other timeout still kills.
+- **🔷** `-1` runs the command in the background. It waits 15 seconds, then returns the pid and leaves the command running. Any other timeout still kills.
 - **🔷** The pid return lists `send`, `wait`, `tail`, and `kill`. A dead job does not get that list.
 - **🔷** Truncation tells the agent to `grep` / `head` / `tail` the spill file.
 - **🔷** A job the daemon started is the only pid these verbs will touch. Another session's pid is refused.
@@ -28,16 +28,16 @@
 ## Decided
 
 - **🔷** New files `liboctools/Bash/Tool.vala` and `liboctools/Bash/Request.vala`, namespace `OLLMtools.Bash`. `RunCommand/Bash.vala` goes away. It was only the alias subclass.
-- **🔷** `Registry` registers `Bash.Tool` and does not register `RunCommand.Tool` or `RunCommand.Bash`. Config `init_config`, `register_config`, and `setup_config_defaults` name `Bash.Tool`.
+- **🔷** `Registry` registers `RunCommand.Tool` and `Bash.Tool`. `RunCommand.Bash` is gone. Config `init_config`, `register_config`, and `setup_config_defaults` name both tools.
 - **🔷** `LIVE` and `SOCKET` both use the daemon calls. There is no in-process spawn on this class.
-- **🔷** `grep.tool`, `glob.tool`, and `ls.tool` wrap `bash`. They wrap `run_command` today, and that name will not be registered.
-- **🔷** `RunCommand/Tool.vala` and `RunCommand/Request.vala` stay until the new `bash` has been tested. They are not registered. Delete them after that testing, not before.
+- **🔷** `grep.tool`, `glob.tool`, and `ls.tool` wrap `bash`. `run_command` stays registered and is off in a new config. A saved config that already enabled it stays on.
+- **🔷** `RunCommand/Tool.vala` and `RunCommand/Request.vala` stay registered until the new `bash` has been tested. Delete them after that testing, not before.
 - **🔷** A chat can only `kill`, `tail`, `wait`, or `send` a process that same chat started. A pid from another chat is refused.
 - **🔷** The tool passes the chat's session id to `ollmfilesd` when it starts the command. The daemon stores that id on the job. Later calls pass the same id, and the daemon refuses the call when it does not match. The tool does not keep its own list of which chat owns which pid.
 - **🔷** A background command that prints nothing for 15 minutes is killed. Any new line of output starts that 15 minutes again. The clock runs on the desktop daemon, next to the process. The phone may be offline, so the phone cannot be the thing watching.
 - **💩** A second, shorter clock: if the tool has already told the model "this command is waiting for you to type", and the model sends nothing for 60 seconds, the app kills it. A command that is still working does not get that one-minute kill.
 - **🚫** Subclassing `RunCommand.Tool`, or a second code path inside `RunCommand.Request` gated on `tool.name == "bash"`.
-- **🚫** Keeping `run_command` registered beside `bash`.
+- **🚫** Dropping `run_command` from the registry while `bash` is still untested.
 - **🚫** In-process `Bubble.exec`, `GLib.Subprocess`, or `run_as_root` on the new class. `run_as_root` set on a call is an error.
 - **🚫** Editing `liboctools/RunCommand/` so that `bash` and `run_command` stay in step.
 - **🚫** A client-side table of pid to session id. The daemon is the check.
@@ -507,8 +507,8 @@ $(reap)";
 
 **Depends on:** none.
 
-- **🔷** `-1` is the advertised detach value. The code tests `timeout < 0`.
-- **🔷** Add the `pid` line. Replace the copied timeout line. It still describes a hard kill and nothing else.
+- **🔷** The timeout line leads with `-1`: it runs the command in the background. The kill behaviour follows that. The code tests `timeout < 0`.
+- **🔷** Add the `pid` line. Replace the copied timeout line.
 
 #### Remove
 
@@ -520,7 +520,7 @@ $(reap)";
 
 ```vala
 @param pid {integer} [optional] Bwrap pid from an earlier call. When set, command is kill, tail, wait, or send <text>.
-@param timeout {integer} [optional] Wall-clock seconds before the command is killed. Defaults to 60s. -1 waits 15 seconds, then returns the pid and leaves the command running.
+@param timeout {integer} [optional] -1 runs the command in the background. It waits 15 seconds, then returns the pid and leaves the command running. Any other value is wall-clock seconds before the command is killed. Defaults to 60s.
 ```
 
 - **ℹ️** Phase D still gates shipping `-1` to Android.
@@ -602,7 +602,7 @@ $(reap)";
 - **💩** `⏳` `timeout` `-1` on `cat`: the result is the pid block, `wait` returns waiting, `send` of `hi\n` produces output, `kill` ends it.
 - **💩** `⏳` A pid from another session, and a pid that was never returned, both come back `command has ended`.
 - **🔷** `⏳` Truncation over 50 lines includes the bold count, the spill path, and the grep / head / tail line.
-- **🔷** `⏳` `run_command` is not in the tool list. `grep`, `glob`, and `ls` still run, through `bash`.
+- **🔷** `⏳` `run_command` is still registered, off by default on a new config. `grep`, `glob`, and `ls` run through `bash`.
 - **💩** `⏳` A job with no output for 15 minutes is killed on the daemon. Output during that window resets the clock.
 - **💩** `⏳` `run_as_root` set, and a call with the file daemon disconnected, both return an error and do not spawn locally.
 
@@ -611,7 +611,7 @@ $(reap)";
 ## LLM notes
 
 - **🚫** Subclassing `RunCommand.Tool`, or patching `RunCommand.Request` so `bash` and `run_command` share a path.
-- **🚫** Registering `run_command` beside `bash`.
+- **🚫** Unregistering `run_command` in this phase.
 - **🚫** In-process `Bubble.exec` or `GLib.Subprocess` on `OLLMtools.Bash`.
 - **🚫** A second management tool.
 - **🚫** Registering `bash` on Android in this plan. Phase E.
@@ -620,4 +620,4 @@ $(reap)";
 - **🚫** `run_as_root` on `Sandbox-Bubble`, and a local root path kept on the copy so that flag still works.
 - **🚫** `Client.live_handles = true` on the file client. String signals do not need a proxy.
 - **🚫** Helper methods beyond `bash_remote`, `manage`, `pid_block`, `arm_bash_listener`, `bash_finished_text`, `reap_stuck`, and `arm_idle`.
-- **🚫** Rewriting skills and docs that still say `run_command`. Trash those when the old tool is deleted.
+- **🚫** Unregistering `run_command`. It stays as the legacy shell tool.

@@ -15,7 +15,7 @@ MUST — CALL HELP WHEN YOU DO NOT HAVE THIS MANIFEST
 WHEN THE USER ASKS FOR A MODEL
   If the user wants to download, find, or install a GGUF from Hugging Face, you do
   the Hub pipeline with this tool: help → search → detail → download. Do NOT use
-  run_command, wget, curl, huggingface-cli, or any other shell or CLI to fetch Hub
+  bash, run_command, wget, curl, huggingface-cli, or any other shell or CLI to fetch Hub
   files — those paths are wrong here and will not integrate with the app
   (permissions, activity bar, install layout). Do NOT tell the user to download
   manually or run commands themselves. Call action "download" on this tool; the
@@ -102,7 +102,7 @@ often returns ZERO results even when matching repos exist.
   Step B: Call "detail" using the exact "model_ref" repo string to fetch its file tree.
   Step C: Review file sizes under the "siblings" list to calculate memory compliance.
   Step D: Execute "download" with precise filenames in the "files" array.
-          Never substitute run_command or shell downloads for this step.
+          Never substitute bash, run_command, or shell downloads for this step.
           You will be asked to confirm the download (file list and total size)
           before it starts. Progress appears in the activity bar.
           (Always include ALL related .gguf-split-x parts if the model is sharded).

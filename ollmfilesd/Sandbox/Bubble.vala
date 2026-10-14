@@ -35,9 +35,9 @@ namespace OLLMfilesd.Sandbox
 	 * //   RPC-Live-Subscribe.rpc_signal lease "output"
 	 * //   RPC-Live-Subscribe.rpc_signal lease "finished"
 	 * //   Sandbox-Bubble.rpc_run lease -> pid
-	 * //   Sandbox-Bubble.wait pid 60
-	 * //   Sandbox-Bubble.send pid "yes\n"
-	 * //   Sandbox-Bubble.kill pid
+	 * //   Sandbox-Bubble.wait pid 60 session_id
+	 * //   Sandbox-Bubble.send pid "yes\n" session_id
+	 * //   Sandbox-Bubble.kill pid session_id
 	 * }}}
 	 */
 	public class Bubble : GLib.Object
@@ -47,12 +47,12 @@ namespace OLLMfilesd.Sandbox
 			OLLMrpc.Request.add_class(
 				"Sandbox-Bubble", typeof(Bubble),
 				"can_wrap", "",
-				"rpc_create", "sssbSb",
+				"rpc_create", "sssbSbx",
 				"rpc_run", "t",
-				"kill", "i",
-				"tail", "i",
-				"wait", "ii",
-				"send", "is"
+				"kill", "ix",
+				"tail", "ix",
+				"wait", "iix",
+				"send", "isx"
 			);
 		}
 
@@ -88,11 +88,13 @@ namespace OLLMfilesd.Sandbox
 		 * @param network true leaves the network namespace shared
 		 * @param allow_write ''no'' / ''project'' / absolute roots
 		 * @param keep_stdin true holds a stdin pipe for {@link send}
+		 * @param session_id chat that started this command
 		 */
 		public void rpc_create(
 			OLLMrpc.Request request,
 			string project_path, string command, string working_dir,
-			bool network, string[] allow_write, bool keep_stdin
+			bool network, string[] allow_write, bool keep_stdin,
+			int64 session_id
 		) {
 			if (command == "") {
 				request.reply(new OLLMrpc.Response() {
@@ -129,7 +131,8 @@ namespace OLLMfilesd.Sandbox
 				write_tokens = allow_write,
 				command = command,
 				working_dir = working_dir,
-				keep_stdin = keep_stdin
+				keep_stdin = keep_stdin,
+				session_id = session_id
 			};
 			if (project != null) {
 				bubble.write_roots.set(project.path, project.path);
@@ -215,10 +218,12 @@ namespace OLLMfilesd.Sandbox
 		 *
 		 * @param request inbound RPC
 		 * @param pid bwrap pid from {@link rpc_run}
+		 * @param session_id chat that started this command
 		 */
-		public void kill(OLLMrpc.Request request, int pid)
+		public void kill(OLLMrpc.Request request, int pid, int64 session_id)
 		{
-			if (OLLMbwrap.Bubble.jobs == null || !OLLMbwrap.Bubble.jobs.has_key(pid)) {
+			if (OLLMbwrap.Bubble.jobs == null || !OLLMbwrap.Bubble.jobs.has_key(pid)
+				|| OLLMbwrap.Bubble.jobs.get(pid).session_id != session_id) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					msg = "command has ended"
@@ -237,10 +242,12 @@ namespace OLLMfilesd.Sandbox
 		 *
 		 * @param request inbound RPC
 		 * @param pid bwrap pid from {@link rpc_run}
+		 * @param session_id chat that started this command
 		 */
-		public void tail(OLLMrpc.Request request, int pid)
+		public void tail(OLLMrpc.Request request, int pid, int64 session_id)
 		{
-			if (OLLMbwrap.Bubble.jobs == null || !OLLMbwrap.Bubble.jobs.has_key(pid)) {
+			if (OLLMbwrap.Bubble.jobs == null || !OLLMbwrap.Bubble.jobs.has_key(pid)
+				|| OLLMbwrap.Bubble.jobs.get(pid).session_id != session_id) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					msg = "command has ended"
@@ -258,14 +265,15 @@ namespace OLLMfilesd.Sandbox
 		/**
 		 * ''Sandbox-Bubble.wait'' — wait on a job we started.
 		 *
-		 * Seconds below 1 means 60. Returns early when the job ends
-		 * or is waiting on stdin.
+		 * Seconds below 1 means 60. Retval is the exit code once the
+		 * job has ended, or the negative pid while it is still running.
 		 *
 		 * @param request inbound RPC
 		 * @param pid bwrap pid from {@link rpc_run}
 		 * @param seconds how long to wait
+		 * @param session_id chat that started this command
 		 */
-		public void wait(OLLMrpc.Request request, int pid, int seconds)
+		public void wait(OLLMrpc.Request request, int pid, int seconds, int64 session_id)
 		{
 			this.wait_run.begin(request, (obj, res) => {
 				this.wait_run.end(res);
@@ -273,8 +281,10 @@ namespace OLLMfilesd.Sandbox
 		}
 
 		/**
-		 * Poll the job every 5 seconds until it ends, waits on stdin,
-		 * or the wait expires.
+		 * Poll the job every 5 seconds until it ends or the wait expires.
+		 *
+		 * A finished job replies with its exit code. A live job replies
+		 * with the negative pid, including when it is waiting on stdin.
 		 *
 		 * @param request inbound RPC
 		 */
@@ -282,9 +292,26 @@ namespace OLLMfilesd.Sandbox
 		{
 			var pid = (int) request.args.get(0).get_int();
 			var seconds = (int) request.args.get(1).get_int();
+			var session_id = request.args.get(2).get_int64();
 			var left = seconds < 1 ? 60 : seconds;
 			while (left > 0) {
 				if (OLLMbwrap.Bubble.jobs == null || !OLLMbwrap.Bubble.jobs.has_key(pid)) {
+					if (OLLMbwrap.Bubble.ended.has_key(pid)
+						&& OLLMbwrap.Bubble.ended.get(pid).session_id == session_id) {
+						var done = OLLMbwrap.Bubble.ended.get(pid);
+						var msg = string.joinv("\n", done.tail);
+						if (msg != "") {
+							msg += "\n";
+						}
+						msg += "Exit code: " + done.exit_status.to_string();
+						OLLMbwrap.Bubble.ended.unset(pid);
+						request.reply(new OLLMrpc.Response() {
+							id = request.id,
+							retval = OLLMrpc.val("i", done.exit_status),
+							msg = msg
+						});
+						return;
+					}
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
 						retval = OLLMrpc.val("i", 0),
@@ -293,10 +320,18 @@ namespace OLLMfilesd.Sandbox
 					return;
 				}
 				var bubble = OLLMbwrap.Bubble.jobs.get(pid);
+				if (bubble.session_id != session_id) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						retval = OLLMrpc.val("i", 0),
+						msg = "command has ended"
+					});
+					return;
+				}
 				if (bubble.waiting_stdin()) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						retval = OLLMrpc.val("i", 1),
+						retval = OLLMrpc.val("i", -pid),
 						msg = string.joinv("\n", bubble.tail)
 					});
 					return;
@@ -310,6 +345,22 @@ namespace OLLMfilesd.Sandbox
 				left -= step;
 			}
 			if (OLLMbwrap.Bubble.jobs == null || !OLLMbwrap.Bubble.jobs.has_key(pid)) {
+				if (OLLMbwrap.Bubble.ended.has_key(pid)
+					&& OLLMbwrap.Bubble.ended.get(pid).session_id == session_id) {
+					var done = OLLMbwrap.Bubble.ended.get(pid);
+					var msg = string.joinv("\n", done.tail);
+					if (msg != "") {
+						msg += "\n";
+					}
+					msg += "Exit code: " + done.exit_status.to_string();
+					OLLMbwrap.Bubble.ended.unset(pid);
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						retval = OLLMrpc.val("i", done.exit_status),
+						msg = msg
+					});
+					return;
+				}
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					retval = OLLMrpc.val("i", 0),
@@ -318,9 +369,17 @@ namespace OLLMfilesd.Sandbox
 				return;
 			}
 			var still = OLLMbwrap.Bubble.jobs.get(pid);
+			if (still.session_id != session_id) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("i", 0),
+					msg = "command has ended"
+				});
+				return;
+			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				retval = OLLMrpc.val("i", 2),
+				retval = OLLMrpc.val("i", -pid),
 				msg = string.joinv("\n", still.tail)
 			});
 		}
@@ -333,10 +392,12 @@ namespace OLLMfilesd.Sandbox
 		 * @param request inbound RPC
 		 * @param pid bwrap pid from {@link rpc_run}
 		 * @param text bytes to write, verbatim
+		 * @param session_id chat that started this command
 		 */
-		public void send(OLLMrpc.Request request, int pid, string text)
+		public void send(OLLMrpc.Request request, int pid, string text, int64 session_id)
 		{
-			if (OLLMbwrap.Bubble.jobs == null || !OLLMbwrap.Bubble.jobs.has_key(pid)) {
+			if (OLLMbwrap.Bubble.jobs == null || !OLLMbwrap.Bubble.jobs.has_key(pid)
+				|| OLLMbwrap.Bubble.jobs.get(pid).session_id != session_id) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					msg = "command has ended"

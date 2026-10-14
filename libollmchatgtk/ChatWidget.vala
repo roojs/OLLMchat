@@ -338,7 +338,8 @@ namespace OLLMchatGtk
 				GLib.warning("ChatWidget.on_message_created: session is null, cannot render message");
 				return;
 			}
-			if (this.restoring_session && m.role == "tool" && m.name == "run_command") {
+			if (this.restoring_session && m.role == "tool" &&
+				(m.name == "bash" || m.name == "run_command")) {
 				var ui_msg = new OLLMchat.Message("assistant",
 					OLLMchat.Message.fenced(
 						"text.oc-frame-success.collapsed Execution results",

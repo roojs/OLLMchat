@@ -27,6 +27,7 @@ namespace OLLMbwrap
 	public class Bubble : GLib.Object
 	{
 		public static Gee.HashMap<int, Bubble> jobs;
+		public static Gee.HashMap<int, Bubble> ended;
 
 		public static bool can_wrap()
 		{
@@ -47,6 +48,8 @@ namespace OLLMbwrap
 		public bool stopped { get; private set; default = false; }
 		public signal void output(string line);
 		public int pid { get; private set; default = 0; }
+		public int64 session_id { get; set; default = -1; }
+		public int exit_status { get; private set; default = 0; }
 		public bool keep_stdin { get; set; default = false; }
 		public string command { get; set; default = ""; }
 		public string working_dir { get; set; default = ""; }
@@ -61,6 +64,10 @@ namespace OLLMbwrap
 		public Bubble (FileVerification verification)
 		{
 			Object (verification: verification);
+			if (Bubble.jobs == null) {
+				Bubble.jobs = new Gee.HashMap<int, Bubble>();
+				Bubble.ended = new Gee.HashMap<int, Bubble>();
+			}
 			this.overlay = new Overlay (verification);
 		}
 

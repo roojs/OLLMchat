@@ -7,7 +7,7 @@
 **Related:**
 
 - ℹ️ [`CODER-4.2.1-tree-navigation-filedropdown.md`](CODER-4.2.1-tree-navigation-filedropdown.md) — older tree note. The tree is Phase 2 of this plan.
-- ℹ️ [`docs/bugs/2026-10-13-folder-tree-filter-slow.md`](../bugs/2026-10-13-folder-tree-filter-slow.md) — eye and type buttons freeze the pop-down.
+- ℹ️ [`docs/bugs/done/2026-10-13-FIXED-folder-tree-filter-slow.md`](../bugs/done/2026-10-13-FIXED-folder-tree-filter-slow.md) — folder tree load. Closed. The current open is 74ms.
 - ℹ️ Today: `liboccoder/ProjectDropdown.vala`, `liboccoder/FileDropdown.vala`, `liboccoder/SearchableDropdown.vala`.
 - ℹ️ Smoke app: `examples/oc-test-source-diff.vala`. Classes live in `examples/oc-test-source-diff/`.
 - ℹ️ Phone history today: `ollmapp/android/OllmchatWindow.vala` and `libollmchatgtk/HistoryBrowser.vala`.
@@ -22,7 +22,7 @@
 - 🔷 ✔️ marks code that is in the smoke app and not approved yet.
 - 🔷 Never do status theatre. Do not mark an item done, rewrite Status, or report ticks in place of the behavior. A tick waits until that behavior is what the running app does.
 - 🔷 Phase 2.1 is the file selector already in the smoke app.
-- 🔷 Next is Phase 2.2. Empty folders, single-child folder chains, and the other controls that are not search.
+- 🔷 Phase 2.2 is in the smoke app. Next is Phase 2.3.
 - 🔷 Phase 2.3 is search. Phase 3 and Phase 4 wait.
 
 ---
@@ -149,9 +149,9 @@ Folders on the left, files on the right. The file server is queried for each sid
 - ✔️ This selector reads and shows files. It does not create them.
 - ✔️ Folder names are alphabetical, ignoring case, through the name sorter on each filter. That order does not copy the old file-dropdown sorts.
 
-### 2.2 — Empty folders and other controls
+### 2.2 — Empty folders and other controls ✔️
 
-Outstanding Phase 2 work that is not search.
+In the smoke app. Search is Phase 2.3.
 
 - ✔️ The tree shows the selected project. Choosing another project removes the previous project's folders, then loads the new one.
 - ✔️ Choosing a project opens the file tree. Choosing the project already shown opens that tree again and does not load it.
@@ -178,19 +178,20 @@ Outstanding Phase 2 work that is not search.
   - ✔️ The eye shows those folders again.
   - ✔️ A gitignored folder that is shown has a conceal icon beside its name.
   - ✔️ Middle is Tree and Recent.
-  - 🔷 ⏳ Right is the type filter. The slot holds document and code buttons. They do not filter yet.
+  - ✔️ Right is the type filter. The slot holds document and code buttons. The one that is down hides folders and files of the other type. A second click on it shows every type again.
   - ✔️ On Recent, the two left buttons are hidden.
   - ✔️ The left slot keeps its width, so Tree and Recent do not move or shrink.
 - ✔️ Collapse all collapses the folder tree under the project. The project row stays open.
-- 🔷 ⏳ A type filter, document versus code. It sits in the right slot.
+- ✔️ A type filter, document versus code. It sits in the right slot.
   - ℹ️ Daemon `File.is_documentation()` is markdown or plain text. Other languages are code.
-- 🔷 ⏳ With no search text, the folder that contains the current file is the one selected, and that file sits about halfway down the right list. A load currently selects nothing and scrolls to the top.
-- 🔷 ⏳ A click on the left tree selects that folder.
-- 🔷 ⏳ A second click on that same folder deselects it and clears the file list.
+- ✔️ A click on the left tree selects that folder.
+- ✔️ A second click on that same folder deselects it and clears the file list.
+- ✔️ With no folder selected, the right pane says ''Select a folder''. A selected folder with no files says ''No files''.
 - ℹ️ A scan that adds a file does not update an open tree. The file list is loaded when a folder is selected, and it is not kept on screen. Closing the pop-down and opening it again is the refresh. A progressive update, one path at a time, is later. Performance of the full load is fine.
 
 ### 2.3 — Search
 
+- 🔷 ⏳ Clearing the search returns to the folder that contains the current file, with that file about halfway down the right list. A load with no search still selects nothing and opens at the top. This waits until search is in, so clearing it has a place to return from.
 - 🔷 ⏳ Typing in the desktop search entry does not filter Recent yet. That search stays on Recent and orders matches by how recent they are. It does not jump to Tree.
 - 🔷 ⏳ Search on the Tree tab is a global file search. The file server returns those files in a separate query. That result marks folders on the existing `FolderTreeStore`. It does not build a second tree and it does not refill the hash map.
   - ℹ️ RooTerm `TreeNodes` is the reference. The root owns `by_uuid` and `flat`. Each row's `children` is another `TreeNodes`. Search walks `by_uuid`, then `filter.changed` on those same lists. This store uses the path map where RooTerm uses `by_uuid`. Non-matches are hidden there. Here they stay and go grey.

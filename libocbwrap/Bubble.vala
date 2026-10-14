@@ -49,9 +49,16 @@ namespace OLLMbwrap
 		 * Every live job in this process, keyed by {@link pid}, added
 		 * on spawn and dropped when the command ends. Keeps a
 		 * detached job alive, and answers whether a pid is one of
-		 * ours at all. A session holds its own jobs separately.
+		 * ours at all. {@link session_id} is the chat that started it.
 		 */
 		public static Gee.HashMap<int, Bubble> jobs;
+
+		/**
+		 * Jobs that have left {@link jobs}, keyed by pid, so a
+		 * follow-up wait can still read the exit code. That wait
+		 * consumes the row.
+		 */
+		public static Gee.HashMap<int, Bubble> ended;
 
 		/**
 		 * Check if bubblewrap can be used for sandboxing.
@@ -143,6 +150,19 @@ namespace OLLMbwrap
 		public int pid { get; private set; default = 0; }
 
 		/**
+		 * Chat session that started this job. Later verbs must pass
+		 * the same id.
+		 */
+		public int64 session_id { get; set; default = -1; }
+
+		/**
+		 * Process exit code, kept after the pid leaves {@link jobs}.
+		 */
+		public int exit_status { get; private set; default = 0; }
+
+		private uint idle_src = 0;
+
+		/**
 		 * When true {@link exec} holds a stdin pipe open for
 		 * {@link send}; when false the command reads ''/dev/null''.
 		 */
@@ -183,6 +203,10 @@ namespace OLLMbwrap
 		{
 			Object (verification: verification);
 
+			if (Bubble.jobs == null) {
+				Bubble.jobs = new Gee.HashMap<int, Bubble>();
+				Bubble.ended = new Gee.HashMap<int, Bubble>();
+			}
 			string? bp = GLib.Environment.find_program_in_path("bwrap");
 			this.bwrap_exe = bp != null ? bp : "";
 			this.overlay = new Overlay (this.verification);
@@ -350,10 +374,8 @@ namespace OLLMbwrap
 				this.child_active = true;
 				var id = subprocess.get_identifier();
 				this.pid = id != null ? int.parse(id) : 0;
-				if (Bubble.jobs == null) {
-					Bubble.jobs = new Gee.HashMap<int, Bubble>();
-				}
 				Bubble.jobs.set(this.pid, this);
+				this.arm_idle();
 			}
 			var result = "";
 			 
@@ -372,6 +394,13 @@ namespace OLLMbwrap
 			run_seccomp.detach_sources();
 			this.child_active = false;
 			this.overlay.cleanup();
+			if (this.idle_src != 0) {
+				GLib.Source.remove(this.idle_src);
+				this.idle_src = 0;
+			}
+			if (this.pid != 0) {
+				Bubble.ended.set(this.pid, this);
+			}
 			if (Bubble.jobs != null) {
 				Bubble.jobs.unset(this.pid);
 			}
@@ -661,16 +690,18 @@ namespace OLLMbwrap
 		);
 		
 		// Wait for process to complete
-		int exit_status = 0;
+		var exit_status = 0;
 		try {
 			yield subprocess.wait_async(null);
 			// Always get exit status, regardless of success/failure
 			exit_status = subprocess.get_exit_status();
+			this.exit_status = exit_status;
 		} catch (GLib.Error e) {
 			// If wait_async failed, try to get exit status if process has terminated
 			if (!subprocess.get_successful()) {
 				exit_status = subprocess.get_exit_status();
 			}
+			this.exit_status = exit_status;
 			// Clean up watches - only remove if they haven't been removed already
 			// (watch callbacks remove themselves when HUP/ERR is detected)
 			if (stdout_open) {
@@ -792,8 +823,27 @@ namespace OLLMbwrap
 			this.tail = lines;
 			this.output_lines++;
 			this.output(line);
+			this.arm_idle();
 		}
 	}
+
+	/**
+	 * Restart the 15 minute silence kill.
+	 *
+	 * Spawn and every output line both call this. No output
+	 * for that long stops the job.
+	 */
+	private void arm_idle()
+	{
+		if (this.idle_src != 0) {
+			GLib.Source.remove(this.idle_src);
+		}
+		this.idle_src = GLib.Timeout.add_seconds(900, () => {
+			this.idle_src = 0;
+			this.stop();
+			return false;
+		});
 	}
+}
 }
 

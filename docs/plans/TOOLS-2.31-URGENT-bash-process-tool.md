@@ -1,6 +1,6 @@
 # 2.31 — URGENT — `bash` as a process tool
 
-**Status:** ⏳ **design** — Phase A and Phase B are applied. Phase C is proposed in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md). Not user-verified.
+**Status:** ⏳ **design** — Phase A, Phase B, and Phase C are applied. Phase C tests are still ⏳. Not user-verified.
 
 > **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
@@ -12,7 +12,7 @@
 
 - [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md) — **Phase A**, the daemon job model. **✔️** Applied.
 - [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md) — **Phase B**, daemon RPC verbs. **✔️** Applied. Socket tests still ⏳.
-- [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md) — **Phase C**, the `bash` tool on that wire. **⏳** Proposed.
+- [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md) — **Phase C**, the `bash` tool on that wire. **✔️** Applied. Tests still ⏳.
 - [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) — earlier daemon `Sandbox-Bubble` RPC draft. **Parked, do not apply.**
 
 **Depends on:**
@@ -35,7 +35,7 @@ Proposed Vala follows `docs/coding-standards.md`.
   - The command runs on the desktop `ollmfilesd`.
   - Not on the phone.
 - **🔷** `bash` becomes its **own class**, with the `RunCommand` code copied across. `run_command` is deprecated. The copy does not stay compatible with it.
-- **🔷** `⏳` `timeout = -1` returns after 15 s and hands the agent a **running process** to manage. Every other timeout still kills.
+- **🔷** `⏳` `timeout = -1` runs the command in the background. It waits 15 seconds, then hands the agent the pid. Every other timeout still kills.
 - **🔷** `⏳` The UI must **show** that a background process is running, and the **user** must be able to kill it, not just the agent.
 - **🔷** `⏳` The agent manages running processes through the **same tool**, with the pid as an argument and `kill` / `tail` / `wait` / `send` as the command. No second tool.
 - **🔷** `⏳` Build it back-to-front: the daemon job model first, the tool last.
@@ -368,7 +368,7 @@ on it with this tool to find the part you need.
 
 ### What that costs — **ℹ️** facts to design against
 
-- **ℹ️** `liboctools/Registry.vala` `fill_tools` registers **both** on desktop, back to back. Phase C registers `Bash.Tool` only.
+- **ℹ️** `liboctools/Registry.vala` `fill_tools` registers **both** on desktop, back to back. Phase C keeps `RunCommand.Tool` and registers `OLLMtools.Bash.Tool` in place of `RunCommand.Bash`.
 - **ℹ️** `bash` has **no config registration today**. `init_config`, `setup_config_defaults`, and `register_config` all name `RunCommand.Tool` only. Phase C points those three at `Bash.Tool`.
 - **ℹ️** `libollmchatgtk/ChatWidget.vala` special-cases `m.name == "run_command"` when restoring a session, to re-render tool output as a collapsed `Execution results` frame. `bash` has never matched it, so restored `bash` output already renders differently.
 - **ℹ️** `AgentPi.Factory.register_config` `GLib.error`s on a missing `bash`, so whatever `bash` becomes has to keep that name.
@@ -377,7 +377,7 @@ on it with this tool to find the part you need.
 ### Decided — **🔷**
 
 - **🔷** `bash` does not subclass `RunCommand.Tool`. New class `OLLMtools.Bash` in `liboctools/Bash/`, with its own `Tool` and `Request`, copied from `RunCommand` and then cut down.
-- **🔷** Desktop registers `bash` only. `run_command` is deprecated and not registered.
+- **🔷** Desktop keeps `run_command` registered. `bash` is the new class, registered beside it.
 - **🚫** Sharing one `Request` so the two tools cannot drift. The copy is the one that is allowed to change. The old files can be trashed once nothing references them.
 - **ℹ️** Detail is in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md).
 
@@ -411,12 +411,12 @@ on it with this tool to find the part you need.
 
 ---
 
-## Phase C — the `bash` tool (`⏳`)
+## Phase C — the `bash` tool (`✔️`)
 
-**ℹ️** Proposed in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md). Summary only below.
+**ℹ️** Applied in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md). Tests there are still ⏳. Summary only below.
 
-- **🔷** `⏳` Build the tool contract designed above: `pid` parameter, the four verbs, `timeout = -1`, the pid-return block, and the truncation advice.
-- **🔷** `⏳` `LIVE` and `SOCKET` both run `bash` on the daemon. Not in-process `OLLMbwrap`.
+- **🔷** `✔️` Build the tool contract designed above: `pid` parameter, the four verbs, `timeout = -1`, the pid-return block, and the truncation advice.
+- **🔷** `✔️` `LIVE` and `SOCKET` both run `bash` on the daemon. Not in-process `OLLMbwrap`.
 - **ℹ️** `SOCKET` is the desktop local Unix hello ([`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md)). `ollmfilesd` is already up on this machine. Empty `url`. Not a remote row.
 - **ℹ️** Overlay / index update after daemon exec is the daemon's job in `2.10.4.15` (`Scan` + `FileVerification` on `ollmfilesd`).
 - **ℹ️** Code proposals are in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md).
@@ -513,7 +513,7 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 1. **✔️** **Phase A** — apply [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md). Agent applied; not user-verified.
 2. **🔷** `bash` is a new class. `run_command` is deprecated. See [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md).
 3. **✔️** **Phase B** — apply [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md). Agent applied; socket tests still ⏳.
-4. **⏳** **Phase C** — [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md): `pid`, verbs, `-1`, truncation advice, the session id on the daemon job, and its idle timer
+4. **✔️** **Phase C** — [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md): `pid`, verbs, `-1`, truncation advice, the session id on the daemon job, and its idle timer. Agent applied; tests still ⏳.
 5. **⏳** **Phase D** — background-job indicator and user-facing kill, before `-1` ships
 6. **⏳** **Phase E** — Android registration + `AgentPi.Factory.register_config`
 

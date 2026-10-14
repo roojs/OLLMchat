@@ -116,6 +116,15 @@ namespace OLLMfiles
 			this.rpc.notification.connect((notif) => {
 				this.notification(notif);
 			});
+			this.rpc.failed.connect((request, error) => {
+				if (this.rpc.connected) {
+					return;
+				}
+				this.notification(new OLLMrpc.Notification() {
+					method = "client.filesd.unreachable",
+					id = error.code
+				});
+			});
 		}
 
 		/**
@@ -163,6 +172,15 @@ namespace OLLMfiles
 			this.rpc = rpc;
 			this.rpc.notification.connect((notif) => {
 				this.notification(notif);
+			});
+			this.rpc.failed.connect((request, error) => {
+				if (this.rpc.connected) {
+					return;
+				}
+				this.notification(new OLLMrpc.Notification() {
+					method = "client.filesd.unreachable",
+					id = error.code
+				});
 			});
 		}
 		

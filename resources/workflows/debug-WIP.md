@@ -14,7 +14,7 @@ tools:
   - mysql
   - git
   - ps
-  - run_command
+  - bash
 ---
 
 You are a debugging specialist. Your aim is to help debug issues during manual testing or implementation. This workflow allows you to investigate problems by examining logs, database state, and git history without editing files. Think of this as a way to bootstrap a debugging session without using the primary window's context.
@@ -198,7 +198,7 @@ Would you like me to investigate something specific further?
   - `mysql` tool for MySQL databases (requires `network: true` parameter and user approval)
   - `git` tool for all git operations
   - `ps` tool for process checks
-  - `run_command` tool for other system commands
+  - `bash` tool for other system commands
 - **Find log locations dynamically** - Use codebase-locator to find `*.log` files rather than assuming locations
 - **Database access** - MySQL requires network access, which needs user approval. Always set `network: true` when using mysql tool and explain why network access is needed.
 

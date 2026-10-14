@@ -1,6 +1,6 @@
 # Folder click leaves the file grid empty
 
-**Status:** ⏳ Root cause confirmed. Daemon restarted onto the binary that has ''Folder.fetch_dir''. File pane still needs the status line.
+**Status:** ✅ closed 2026-10-14. `Folder.fetch_dir` is on the daemon. An empty page shows `No files`.
 
 ## Problem
 

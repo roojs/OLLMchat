@@ -22,7 +22,8 @@
  * Sits beside {@link FolderTree}. Three columns: name with a type
  * icon, size, and modified time. The name column starts in
  * alphabetical order, ignoring case. The model is a
- * {@link FileListStore}. An empty reply shows ''No files''.
+ * {@link FileListStore}. No folder selected shows
+ * ''Select a folder''. An empty reply shows ''No files''.
  * {@link kind} narrows that grid to documents or to code.
  * Activating a row emits {@link file_activated}.
  *
@@ -51,7 +52,8 @@ class FileList : Gtk.Box
 	public signal void file_activated(OLLMfiles.File file);
 
 	/**
-	 * Centered on the grid when the selected folder has no files.
+	 * Centered on the grid. ''Select a folder'' when none is
+	 * selected. ''No files'' when the selected folder has none.
 	 */
 	private Gtk.Label file_empty;
 
@@ -213,11 +215,11 @@ class FileList : Gtk.Box
 			var file = (OLLMfiles.File) file_selection.get_item(position);
 			this.file_activated(file);
 		});
-		this.file_empty = new Gtk.Label("No files") {
+		this.file_empty = new Gtk.Label("Select a folder") {
 			halign = Gtk.Align.CENTER,
 			valign = Gtk.Align.CENTER,
 			can_target = false,
-			visible = false,
+			visible = true,
 			css_classes = { "dim-label", "title-4" },
 		};
 		this.file_scroll = new Gtk.ScrolledWindow() {
@@ -235,17 +237,35 @@ class FileList : Gtk.Box
 		file_overlay.add_overlay(this.file_empty);
 		this.append(file_overlay);
 		this.files.notify["empty"].connect(() => {
-			this.file_empty.visible = this.files.empty ||
-				(this.files.get_n_items() > 0 && file_selection.n_items == 0);
+			if (!this.files.empty && this.files.get_n_items() == 0) {
+				return;
+			}
+			var show = this.files.empty || file_selection.n_items == 0;
+			if (show) {
+				this.file_empty.label = "No files";
+			}
+			this.file_empty.visible = show;
 		});
 		this.notify["kind"].connect(() => {
 			file_filter.changed(Gtk.FilterChange.DIFFERENT);
-			this.file_empty.visible = this.files.empty ||
-				(this.files.get_n_items() > 0 && file_selection.n_items == 0);
+			if (!this.files.empty && this.files.get_n_items() == 0) {
+				return;
+			}
+			var show = this.files.empty || file_selection.n_items == 0;
+			if (show) {
+				this.file_empty.label = "No files";
+			}
+			this.file_empty.visible = show;
 		});
 		file_selection.items_changed.connect(() => {
-			this.file_empty.visible = this.files.empty ||
-				(this.files.get_n_items() > 0 && file_selection.n_items == 0);
+			if (!this.files.empty && this.files.get_n_items() == 0) {
+				return;
+			}
+			var show = this.files.empty || file_selection.n_items == 0;
+			if (show) {
+				this.file_empty.label = "No files";
+			}
+			this.file_empty.visible = show;
 		});
 		this.files.items_changed.connect(() => {
 			this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;
@@ -263,6 +283,7 @@ class FileList : Gtk.Box
 	{
 		this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;
 		this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
+		this.file_empty.visible = false;
 		this.files.load.begin(folder);
 	}
 
@@ -276,5 +297,7 @@ class FileList : Gtk.Box
 		this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;
 		this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
 		this.files.clear();
+		this.file_empty.label = "Select a folder";
+		this.file_empty.visible = true;
 	}
 }

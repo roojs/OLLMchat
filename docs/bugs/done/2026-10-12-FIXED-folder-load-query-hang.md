@@ -1,6 +1,6 @@
 # Folder load query hangs project open
 
-**Status:** ⏳
+**Status:** ✅ closed 2026-10-14. The grouped child count is in `ollmfilesd/Folder.vala`. `--test-flow` printed `folders=234 loading=false`.
 
 ## Problem
 

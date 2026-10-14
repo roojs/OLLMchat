@@ -1,12 +1,13 @@
-# Folder tree eye and type buttons freeze the pop-down
+# Folder tree load is too slow
 
-**Status:** ⏳ root cause confirmed. The one-pass trial was reverted. GTK's documented fill path is recorded below. The next step is the measurement, not another rewrite.
+**Status:** ✅ closed 2026-10-14. The 13 Oct open was 2.0s after the store. The same span on the current tree is 74ms.
 
 ## Problem
 
-- **🔷** Showing and hiding folders, and switching the document and code buttons, has to stay on the pop-down. A wait of one to three seconds is not acceptable.
-- **🔷** Opening the tree for this project is the same kind of wait. The folder reply itself is not the slow part.
-- **ℹ️** `docs/plans/CODER-4.2.5-project-file-selector.md`. The eye starts hiding gitignored and empty folders. The project row stays expanded. A chain of single-child folders is one row. Collapse-all folds every row under the project.
+- **🔷** Opening the folder tree for this project takes about two seconds. That is too slow.
+- **🔷** The folder reply itself is not the slow part.
+- **🚫** The eye button and the type buttons do not freeze the pop-down. That title was wrong.
+- **ℹ️** `docs/plans/CODER-4.2.5-project-file-selector.md`.
 
 ## Evidence
 
@@ -18,18 +19,24 @@
 - **✔️** Code, 17:05:46.049 to 17:05:47.598. 1.5s. `type=code shown=110`.
 - **✔️** Documents, 17:05:47.599 to 17:05:49.796. 2.2s. `type=document shown=114`.
 - **✔️** Back to every folder, 17:05:49.805 to 17:05:52.460. 2.7s. `type=off shown=287`.
+- **✔️** The child callback was timed with the same tree.
+  - Returning the stored segment, with no filter and no sort, builds the tree in 24ms. Child rows are not filtered. `Gtk.TreeListModel` only filters its root model.
+  - A `Gtk.FilterListModel` on each segment, and no `Gtk.SortListModel`, builds in about 30ms. One filter change is 44ms to 75ms.
+  - The current filter plus sort builds in about 50ms. One filter change is 41ms to 78ms.
+- **✔️** `tree_factory.bind` ran for every folder on that open, about 200 rows. `FileSelector` puts the page stack in `this.scroll` with `propagate_natural_height = true`, so the list's natural height is the whole tree. The flat-list trial was still several seconds for the same reason: every row was built.
+- **✔️** Current `--test-flow`, 09:38:33. `Folder.fetch_children` at .694. 234 rows in hand at .729. Stored at .734. Tree build at .734, ready with 197 rows at .809. That is 35ms for the reply, 5ms for the store, 74ms for the expanded tree. This open is not 2 seconds.
 
 ## Root cause
 
 - **✔️** `examples/oc-test-source-diff/FolderTree.vala` builds a `Gtk.TreeListModel` with auto-expand on. The child function makes a new filter model and a new sort model for every folder that has children, and they all share one `Gtk.CustomFilter`.
-- **✔️** When loading finishes, that model is built over the whole project. The eye button and the type buttons call `filter.changed(Gtk.FilterChange.DIFFERENT)`. Each of those calls walks that expanded tree again. That is the 1.5s to 2.7s.
+- **✔️** When loading finishes, that model is built over the whole project. That build is the 2.0s. The later eye and type clicks walk the same tree again. They are the same cost, not a separate freeze.
 - **🚫** The daemon reply and `FolderTreeStore.append` are not this wait. 307 rows were stored in 9ms.
 - **🚫** Building the same auto-expanded tree a second time does not fix it. The first build was already 2.0s.
 
 ## What the store already is
 
 - **ℹ️** `FolderTreeStore.flat` is already the top list. Every folder is in it once. The same folder also sits in `path_map` and in the child segment of its parent. Filling that list was the 9ms.
-- **🔷** The buttons are slow because the widget does not read `flat`. `FolderTree` asks GTK for a child model per folder, and each of those is a new filter and a new sort. The eye and the type buttons then tell every one of those filters to walk again.
+- **ℹ️** `FolderTree` asks GTK for a child model per folder, and each of those is a new filter and a new sort. The first build of that tree is the 2.0s.
 - **🚫** Starting the tree collapsed. That only waits until the user expands it. The whole project open is the case that has to be fast.
 
 ## Trial
@@ -50,14 +57,10 @@ Checked against the GTK 4 docs and the GTK list-model posts. This tree is about 
 - **ℹ️** [`GtkCustomFilter.set_filter_func`](https://docs.gtk.org/gtk4/method.CustomFilter.set_filter_func.html) says to call `gtk_filter_changed` when the match function starts answering differently. [`GTK_FILTER_CHANGE_DIFFERENT`](https://docs.gtk.org/gtk4/enum.FilterChange.html) is documented as always a correct choice. The eye and the type buttons do that. `LESS_STRICT` and `MORE_STRICT` only help when the new match is strictly wider or stricter. They do not apply to the first build.
 - **ℹ️** GTK's own directory model is [`GtkDirectoryList`](https://blogs.gnome.org/gtk/2020/09/08/on-list-models/): one directory, filled asynchronously. The file chooser does not expand a whole project in one go.
 
-## Next
-
-- **💩** ⏳ Same data, `autoexpand` left on. The child callback returns the segment already in the store, or `NULL` for a leaf. No new filter model and no new sort model in that callback. Time `--test-flow` again.
-- **💩** If that is still about 2s, the seconds are `TreeListModel` expanding every node. The docs' way to avoid that is to leave the rows collapsed, which is already ruled out.
-- **💩** If that drops the seconds, the per-folder filter and sort are the cost. The shared filter on the root model is the piece the button docs already describe.
-
 ## Ruled out
 
 - **🚫** A second backing tree. `flat` and the parent segments are already that.
 - **🚫** Editing each child segment from the button. That is still a walk of the tree, one list per folder, which is the wait we measured.
 - **🚫** `LESS_STRICT` / `MORE_STRICT` on the shared filter. The first build is already 2.0s before any button.
+- **🚫** Returning the raw child segment from `child_model`. The tree builds in 24ms and the child rows are no longer filtered.
+- **🚫** `propagate_natural_height = false` on `FileSelector.scroll`. Tested with `--test-flow`. With the flag on, the open bound 198 rows for 197 shown, the list was 406px tall, and its natural height was 4334. With the flag off, the same numbers: 198 binds, height 406, natural height 4334. It does not stop the list building every row. `place()` had already set min and max content height to 406 in both runs.

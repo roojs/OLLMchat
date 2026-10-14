@@ -42,6 +42,8 @@
 - `wait` `ii` — pid, seconds — `retval` `0` ended / `1` waiting / `2` still running, `msg` last 50 lines
 - `send` `is` — pid, text — `msg` `ok` or `command has ended`
 
+- **ℹ️** Phase C ([`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md)) added `session_id` (`x`) on `rpc_create`, `kill`, `tail`, `wait`, and `send`. `wait` retval is the process exit code, or `-pid` while the job is still running.
+
 ### Streaming
 
 - **🔷** Between `rpc_create` and `rpc_run` the client subscribes with `RPC-Live-Subscribe.rpc_signal` on the lease: `output`, `finished`.

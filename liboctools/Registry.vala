@@ -21,7 +21,7 @@ namespace OLLMtools
 	/**
 	 * Registry for all tools in liboctools.
 	 *
-	 * Registers: ReadFile (+ Read), RunCommand (+ Bash), WebFetch, EditMode (+ Write),
+	 * Registers: ReadFile (+ Read), RunCommand, Bash, WebFetch, EditMode (+ Write),
 	 * WriteFile, GoogleSearch, CodebaseSearch, SessionFetch, HuggingFace, and
 	 * wrapped tools (via ToolBuilder). The GTK app registers the browser tool
 	 * (wire name ''browser''); this library stays GTK-free.
@@ -33,6 +33,7 @@ namespace OLLMtools
 			// Ensure all liboctools tool GTypes are registered
 			typeof(ReadFile.Tool).ensure();
 			typeof(RunCommand.Tool).ensure();
+			typeof(Bash.Tool).ensure();
 			typeof(WebFetch.Tool).ensure();
 			typeof(EditMode.Tool).ensure();
 			typeof(WriteFile.Tool).ensure();
@@ -45,6 +46,7 @@ namespace OLLMtools
 			// Tools with BaseToolConfig get enabled/disabled in Settings; tools with custom config get that plus their options
 			OLLMchat.Tool.BaseTool.register_config(typeof(ReadFile.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(RunCommand.Tool));
+			OLLMchat.Tool.BaseTool.register_config(typeof(Bash.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(WebFetch.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(EditMode.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(WriteFile.Tool));
@@ -61,7 +63,12 @@ namespace OLLMtools
 		public void setup_config_defaults(OLLMchat.Settings.Config2 config)
 		{
 			(new ReadFile.Tool(null)).setup_tool_config_default(config);
+			var had_run_command = config.tools.has_key("run_command");
 			(new RunCommand.Tool(null)).setup_tool_config_default(config);
+			if (!had_run_command) {
+				config.tools.get("run_command").enabled = false;
+			}
+			(new Bash.Tool(null)).setup_tool_config_default(config);
 			(new WebFetch.Tool(null)).setup_tool_config_default(config);
 			(new EditMode.Tool(null)).setup_tool_config_default(config);
 			(new WriteFile.Tool(null)).setup_tool_config_default(config);
@@ -80,7 +87,7 @@ namespace OLLMtools
 			manager.register_tool(new ReadFile.Tool(project_manager));
 			manager.register_tool(new ReadFile.Read(project_manager));
 			manager.register_tool(new RunCommand.Tool(project_manager));
-			manager.register_tool(new RunCommand.Bash(project_manager));
+			manager.register_tool(new Bash.Tool(project_manager));
 			manager.register_tool(new WebFetch.Tool(project_manager));
 			manager.register_tool(new EditMode.Tool(project_manager));
 			manager.register_tool(new EditMode.Write(project_manager));

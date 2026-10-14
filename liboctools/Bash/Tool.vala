@@ -1,0 +1,198 @@
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+namespace OLLMtools.Bash
+{
+	/**
+	 * Tool for running a shell command on the file daemon.
+	 * 
+	 * Simple commands (single command or cd <path> && <command> with no bash operators)
+	 * use permission caching based on resolved executable realpath.
+	 * Complex commands (with bash operators or multiple &&) always require approval.
+	 */
+	public class Tool : OLLMchat.Tool.BaseTool, OLLMchat.Tool.WrapInterface
+	{
+		private string desc_backing = "";
+		private string param_desc_backing = "";
+
+		// Base directory for command execution (project directory if available, otherwise home directory)
+		public string base_directory {
+			get {
+				if (this.project_manager != null && this.project_manager.active_project != null) {
+					return this.project_manager.active_project.path;
+				}
+				return GLib.Environment.get_home_dir();
+			}
+		}
+			
+		public override string name { get { return "bash"; } }
+		
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
+		public override string title { get { return "Bash"; } }
+		public override string example_call {
+			get { return "{\"name\": \"bash\", \"arguments\": {\"command\": \"ls -la\"}}"; }
+		}
+		public override string description { 
+			get {
+				var intro = "You have command-line (shell/terminal) access. Run a terminal command in the home directory (or specified working directory) and return the output.";
+				var fs_perms = """
+File System Permissions:
+- Default working directory is home. Use allow_write with a PATH-style list of absolute directory roots to request writes outside the sandbox defaults; \"no\" or \"project\" (default) keeps the usual read-only host root with only permitted locations writable.""";
+				if (this.project_manager != null && this.project_manager.active_project != null) {
+					intro = "You have command-line (shell/terminal) access. Run a terminal command in the project's root directory (or specified working directory) and return the output.";
+					fs_perms = """
+File System Permissions:
+- You have read-write access to the project directory and $HOME/playground. To write elsewhere on the host, set allow_write to a PATH-style list (\":\" on Unix) of absolute directory roots; the user is prompted. Use \"no\" or \"project\" (default) to stay within the project.""";
+				}
+				this.desc_backing = intro + """
+
+""" + fs_perms + """
+
+Network Access:
+- By default, this tool does not have access to the network.
+- If you require access to the network, you must set the `network` parameter to `true`.
+- For fetching websites or web content, you should use the `web_fetch` tool instead of this tool.
+
+Command string:
+- Send only the shell to run. Do NOT append `#` comments (for example `apt update # refresh package lists`).
+- Commands that include `#` comments are always rejected. Put any explanation in your chat reply, not in the command.
+
+Output:
+- Keep listings and searches narrow. Do not recursively list large trees (for example `ls -R` / `ls -RL` on home, or `find` from `/` or `$HOME` without `-maxdepth` or a name filter).
+- Prefer a specific directory, non-recursive `ls`, `find -maxdepth`, `git ls-files`, or pipe through `head` / `grep`.
+- If output is long, you see the **last** lines only (not the first). Prefer a narrow listing, or write to a file and read a slice.
+
+Timeout:
+- `-1` runs the command in the background. It waits 15 seconds, then returns the pid and leaves the command running.
+- Any other value is wall-clock seconds before the command is killed. Default is 60s.
+
+If the command fails, you should handle the error gracefully and provide a helpful error message to the user.
+""";
+				return this.desc_backing;
+			}
+		}
+		
+		public override string parameter_description { get {
+			var	working_dir_default = "Defaults to home.";
+			var	allow_write_line = "@param allow_write {string} [optional] \"project\" (default) or \"no\" for default sandbox writes, or a PATH-style list (\":\" on Unix) of absolute directory roots to request extra host write access (user may be prompted).";
+			if (this.project_manager != null && this.project_manager.active_project != null) {
+				working_dir_default = "Defaults to the project directory.";
+				allow_write_line = "@param allow_write {string} [optional] \"project\" (default) or \"no\" for project-only writes, or a PATH-style list of absolute directory roots for additional host paths (user may be prompted).";
+			}
+			this.param_desc_backing = """
+@param command {string} [required] The terminal command to run. Do not include `#` comments; those commands are rejected.
+@param working_dir {string} [optional] The working directory where the command will be executed. Should be an absolute path. """ + working_dir_default + """
+@param network {boolean} [optional] Whether to allow network access. Defaults to false. For fetching websites or web content, use the `web_fetch` tool instead.
+@param run_as_root {boolean} [optional] Run the command as root via sudo. Defaults to false. Do not use sudo in the command string.
+@param pid {integer} [optional] Bwrap pid from an earlier call. When set, command is kill, tail, wait, or send <text>.
+@param timeout {integer} [optional] -1 runs the command in the background. It waits 15 seconds, then returns the pid and leaves the command running. Any other value is wall-clock seconds before the command is killed. Defaults to 60s.
+""" + allow_write_line;
+			return this.param_desc_backing;
+		} }
+		
+		/**
+		 * ProjectManager instance for accessing project context.
+		 * Optional - set to null if not available.
+		 */
+		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
+		
+		public Tool(OLLMfiles.ProjectManager? project_manager = null)
+		{
+			base();
+			this.project_manager = project_manager;
+		}
+		
+		public OLLMchat.Tool.BaseTool clone() throws Error
+		{
+			return new Tool(this.project_manager);
+		}
+		
+		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
+		{
+			return Json.gobject_deserialize(typeof(Request), parameters_node) as OLLMchat.Tool.RequestBase;
+		}
+
+		/**
+		 * When is_markdown is true (skills/task executor path), wrap stdout in a fenced code block,
+		 * same as read_file. Terminal output is opaque bytes; we do not pass it through as markdown.
+		 * Tools that return structured markdown (e.g. codebase_search via SearchResult.to_markdown())
+		 * do not override execute — only plain-output tools fence here.
+		 */
+		public override async string execute(
+			OLLMchat.Call.ChatBase chat_call,
+			OLLMchat.Response.ToolCall tool_call,
+			bool is_markdown = false)
+		{
+			var result = yield base.execute(chat_call, tool_call, is_markdown);
+			if (!is_markdown || result == "" || result.has_prefix("ERROR:")) {
+				return result;
+			}
+			var fence = (result.index_of("\n```") >= 0 || result.has_prefix("```")) ? "~~~~" : "```";
+			return fence + "text\n" + result + "\n" + fence;
+		}
+
+		/**
+		 * Implements WrapInterface.deserialize_wrapped() for wrapped tool execution.
+		 * 
+		 * Extracts the arguments array from JSON parameters, replaces {arguments}
+		 * in the command template with the joined arguments, and creates a
+		 * Bash.Request with the constructed command.
+		 * 
+		 * @param parameters_node The parameters as a Json.Node
+		 * @param command_template The command template with {arguments} placeholder
+		 * @return A Request instance or null if deserialization fails
+		 */
+		public OLLMchat.Tool.RequestBase? deserialize_wrapped(Json.Node parameters_node, string command_template)
+		{
+			if (parameters_node.get_node_type() != Json.NodeType.OBJECT) {
+				return null;
+			}
+			
+			var parameters_obj = parameters_node.get_object();
+			
+			// Extract arguments array
+			if (!parameters_obj.has_member("arguments")) {
+				return null;
+			}
+			
+			var arguments_array = parameters_obj.get_array_member("arguments");
+			if (arguments_array == null) {
+				return null;
+			}
+			string[] quoted_args = {};
+			
+			for (uint i = 0; i < arguments_array.get_length(); i++) {
+				quoted_args += GLib.Shell.quote(arguments_array.get_string_element(i));
+			}
+			
+			var joined_args = string.joinv(" ", quoted_args);
+			
+			// Replace {arguments} in template with joined arguments
+			var command = command_template.replace("{arguments}", joined_args);
+			
+			// Create Request with constructed command
+			var request = new Request();
+			request.command = command;
+			request.working_dir = "";
+			request.network = false;
+			
+			return request;
+		}
+	}
+}
+
