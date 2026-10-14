@@ -63,11 +63,7 @@ namespace OLLMtools
 		public void setup_config_defaults(OLLMchat.Settings.Config2 config)
 		{
 			(new ReadFile.Tool(null)).setup_tool_config_default(config);
-			var had_run_command = config.tools.has_key("run_command");
 			(new RunCommand.Tool(null)).setup_tool_config_default(config);
-			if (!had_run_command) {
-				config.tools.get("run_command").enabled = false;
-			}
 			(new Bash.Tool(null)).setup_tool_config_default(config);
 			(new WebFetch.Tool(null)).setup_tool_config_default(config);
 			(new EditMode.Tool(null)).setup_tool_config_default(config);

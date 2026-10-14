@@ -30,7 +30,7 @@
 - **🔷** New files `liboctools/Bash/Tool.vala` and `liboctools/Bash/Request.vala`, namespace `OLLMtools.Bash`. `RunCommand/Bash.vala` goes away. It was only the alias subclass.
 - **🔷** `Registry` registers `RunCommand.Tool` and `Bash.Tool`. `RunCommand.Bash` is gone. Config `init_config`, `register_config`, and `setup_config_defaults` name both tools.
 - **🔷** `LIVE` and `SOCKET` both use the daemon calls. There is no in-process spawn on this class.
-- **🔷** `grep.tool`, `glob.tool`, and `ls.tool` wrap `bash`. `run_command` stays registered and is off in a new config. A saved config that already enabled it stays on.
+- **🔷** `grep.tool`, `glob.tool`, and `ls.tool` wrap `bash`. `run_command` stays registered. Enabling or disabling it is the user's setting.
 - **🔷** `RunCommand/Tool.vala` and `RunCommand/Request.vala` stay registered until the new `bash` has been tested. Delete them after that testing, not before.
 - **🔷** A chat can only `kill`, `tail`, `wait`, or `send` a process that same chat started. A pid from another chat is refused.
 - **🔷** The tool passes the chat's session id to `ollmfilesd` when it starts the command. The daemon stores that id on the job. Later calls pass the same id, and the daemon refuses the call when it does not match. The tool does not keep its own list of which chat owns which pid.
@@ -602,7 +602,7 @@ $(reap)";
 - **💩** `⏳` `timeout` `-1` on `cat`: the result is the pid block, `wait` returns waiting, `send` of `hi\n` produces output, `kill` ends it.
 - **💩** `⏳` A pid from another session, and a pid that was never returned, both come back `command has ended`.
 - **🔷** `⏳` Truncation over 50 lines includes the bold count, the spill path, and the grep / head / tail line.
-- **🔷** `⏳` `run_command` is still registered, off by default on a new config. `grep`, `glob`, and `ls` run through `bash`.
+- **🔷** `⏳` `run_command` is still registered. `grep`, `glob`, and `ls` run through `bash`.
 - **💩** `⏳` A job with no output for 15 minutes is killed on the daemon. Output during that window resets the clock.
 - **💩** `⏳` `run_as_root` set, and a call with the file daemon disconnected, both return an error and do not spawn locally.
 

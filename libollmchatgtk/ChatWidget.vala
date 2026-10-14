@@ -339,7 +339,7 @@ namespace OLLMchatGtk
 				return;
 			}
 			if (this.restoring_session && m.role == "tool" &&
-				(m.name == "bash" || m.name == "run_command")) {
+					(m.name == "bash" || m.name == "run_command")) {
 				var ui_msg = new OLLMchat.Message("assistant",
 					OLLMchat.Message.fenced(
 						"text.oc-frame-success.collapsed Execution results",

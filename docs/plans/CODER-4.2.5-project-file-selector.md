@@ -191,13 +191,49 @@ In the smoke app. Search is Phase 2.3.
 
 ### 2.3 — Search
 
-- 🔷 ⏳ Clearing the search returns to the folder that contains the current file, with that file about halfway down the right list. A load with no search still selects nothing and opens at the top. This waits until search is in, so clearing it has a place to return from.
-- 🔷 ⏳ Typing in the desktop search entry does not filter Recent yet. That search stays on Recent and orders matches by how recent they are. It does not jump to Tree.
-- 🔷 ⏳ Search on the Tree tab is a global file search. The file server returns those files in a separate query. That result marks folders on the existing `FolderTreeStore`. It does not build a second tree and it does not refill the hash map.
-  - ℹ️ RooTerm `TreeNodes` is the reference. The root owns `by_uuid` and `flat`. Each row's `children` is another `TreeNodes`. Search walks `by_uuid`, then `filter.changed` on those same lists. This store uses the path map where RooTerm uses `by_uuid`. Non-matches are hidden there. Here they stay and go grey.
-- 🔷 ⏳ Folders with no matching file under them stay in the left tree. A folder is not empty when a match is inside it, including inside a subfolder.
+The desktop search entry drives whichever tab is showing. Tree is the first filter. Recent is after that. Clearing the search is last.
+
+- 🔷 ⏳ Typing in the desktop search entry applies that text to the tab that is showing.
+  - 🔷 Tree applies it to the folder tree.
+  - 🔷 Recent applies it to the recent list.
+  - 🔷 It does not switch tabs.
+- 🔷 ⏳ Flipping Tree / Recent applies the same text to the tab that is now showing.
+- 🔷 ⏳ Tree search matches file names and folder names. The test ignores case. No `*` or `?`.
+  - 🔷 A folder stays when its own name contains the text.
+  - 🔷 A folder stays when a file under it contains the text, at any depth.
+  - 🔷 A folder stays when a folder under it contains the text. That is the parent walk, so the path to a match stays on screen.
+  - 🔷 Every other folder is hidden.
+  - 🔷 An empty search is the normal tree. The ghost and the type filter still apply.
+- 🔷 ⏳ The first search step gets the matching files, then flags each parent folder already in `FolderTreeStore`. Folder-name matches are the folders already in `flat`.
+  - ℹ️ The file server returns the files. The tree does not hold a second copy of every file.
+  - ℹ️ `FolderTreeStore.path_map` and `Folder.parent` are already there. The walk uses those. It does not build another tree.
+- 💩 ⏳ How a folder is flagged is not chosen yet. See the options under this list. Do not implement a flag until one of them is picked.
+- 🔷 ⏳ Recent search stays on Recent. It orders matches by how recent they are. It does not jump to Tree.
 - 🔷 ⏳ Clicking a folder while searching shows that folder's matching files on the right, on that same grid.
 - 🔷 ⏳ With no folder selected during a search, the right list is every matching file. Each row has the path relative to the project underneath the name.
+- 🔷 ⏳ Clearing the search returns to the folder that contains the current file, with that file about halfway down the right list. A load with no search still selects nothing and opens at the top.
+
+#### Flagging parent folders
+
+RooTerm does not use a search-result column. `app.RooTerm/src/Host/Tree.vala` keeps `search_uuids`, a `Gee.HashSet` of uuids. Each search clears that set, walks `by_uuid`, and adds the match plus every parent. One `Gtk.CustomFilter` then keeps a row whose uuid is in the set. Children of a name match are not all in the set. The filter also walks ancestors and keeps a row when an ancestor name matches.
+
+This tree is not that walk. A hit is often a file, and files are not rows. The folders are already loaded. The filter already walks every segment on `filter.changed`.
+
+- 💩 Option A. An int on the folder, one new value per search.
+  - 💩 Each search takes the next int. The first pass stamps that int on a folder whose name matches, and on each parent of a matching file or matching folder.
+  - 💩 The filter keeps a folder whose int equals the current search. An older stamp fails the compare, so nothing is cleared.
+  - 💩 A late reply stamps only when the folder's int is lower than the reply's int. An older reply cannot wipe a newer stamp.
+  - 💩 `FileBase` writes every property in `bin_write`. A new property there is sent if a folder is written. `file_count` is on that class because the server sends it. This int is not a server column.
+- 💩 Option B. The same int, stored off the folder.
+  - 💩 The top `FolderTreeStore` holds path to int. The filter reads that map.
+  - 💩 The stamp rule is the same as option A, including the late reply.
+  - 💩 Nothing new is written by `bin_write`.
+- 💩 Option C. Copy RooTerm's set.
+  - 💩 A `Gee.HashSet` of paths, cleared and filled on every search, then `filter.changed`.
+  - 💩 A late reply must be dropped before it fills the set. Membership is yes or no, so an older reply cannot be ignored by comparing ints.
+- 🚫 The filter does not walk children to decide a row. `filter.changed` already walks every segment. A walk inside the match function is the slow path.
+- 🚫 Non-matching folders are not left on screen in grey. RooTerm hides them. This tree hides them too.
+- 🚫 A folder whose name matches does not keep every child folder. A child stays only when that child matches, or a file or folder under that child matches. RooTerm's ancestor-name test in the filter does the opposite for hosts.
 
 ---
 
