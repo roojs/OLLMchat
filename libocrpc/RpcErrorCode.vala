@@ -50,7 +50,14 @@ namespace OLLMrpc
 		 * Handlers read this code and choose the notice. The message
 		 * is empty.
 		 */
-		NOT_CONNECTED = -32002;
+		NOT_CONNECTED = -32002,
+		/**
+		 * A name search matched more than 100 files and folders.
+		 *
+		 * The reply has no rows. The client chooses the notice.
+		 * The message is empty.
+		 */
+		TOO_MANY_RESULTS = -32003;
 
 		/**
 		 * Build wire {@link Error} from an RPC error number.

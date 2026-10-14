@@ -110,7 +110,7 @@ namespace OLLMfilesd
 		
 		/**
 		 * Constructor.
-		 * 
+		 *
 		 * @param manager The ProjectManager instance (required)
 		 */
 		protected FileBase(ProjectManager manager)

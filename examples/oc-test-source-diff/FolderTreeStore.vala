@@ -59,6 +59,13 @@ class FolderTreeStore : Object, GLib.ListModel
 	}
 
 	/**
+	 * Id to folder. Owned by the top store. Segments share the map.
+	 */
+	public Gee.HashMap<int, OLLMfiles.Folder> id_map {
+		get; private set; default = new Gee.HashMap<int, OLLMfiles.Folder>();
+	}
+
+	/**
 	 * Every folder, in the order they were added. Owned by the top store.
 	 */
 	public Gee.ArrayList<OLLMfiles.Folder> flat {
@@ -126,6 +133,7 @@ class FolderTreeStore : Object, GLib.ListModel
 		Object();
 		this.root = root;
 		this.path_map = root.path_map;
+		this.id_map = root.id_map;
 		this.flat = root.flat;
 		this.segments = root.segments;
 		this.loaded = root.loaded;
@@ -189,6 +197,7 @@ class FolderTreeStore : Object, GLib.ListModel
 		}
 		this.segments.set(folder.path, new FolderTreeStore.child(this));
 		this.path_map.set(folder.path, folder);
+		this.id_map.set((int) folder.id, folder);
 		this.flat_at.set(folder.path, this.flat.size);
 		this.flat.add(folder);
 		folder.parent = parent;
@@ -211,7 +220,8 @@ class FolderTreeStore : Object, GLib.ListModel
 	}
 
 	/**
-	 * Detach ''folder'' from its segment, the path map, and the flat list.
+	 * Detach ''folder'' from its segment, the path map, the id map,
+	 * and the flat list.
 	 *
 	 * @param folder Folder to detach
 	 */
@@ -249,6 +259,7 @@ class FolderTreeStore : Object, GLib.ListModel
 		}
 		this.flat.remove_at(flat_last);
 		this.path_map.unset(folder.path);
+		this.id_map.unset((int) folder.id);
 		this.segments.unset(folder.path);
 		this.loaded.remove(folder.path);
 		folder.parent = null;
@@ -256,7 +267,8 @@ class FolderTreeStore : Object, GLib.ListModel
 
 	/**
 	 * Drop every folder. The top list emits one items-changed.
-	 * The path map, the flat list, and the segment map are cleared.
+	 * The path map, the id map, the flat list, and the segment map
+	 * are cleared.
 	 */
 	public void clear()
 	{
@@ -269,6 +281,7 @@ class FolderTreeStore : Object, GLib.ListModel
 		this.items_changed(0, (uint) removed, 0);
 		this.flat.clear();
 		this.path_map.clear();
+		this.id_map.clear();
 		this.segments.clear();
 		this.item_at.clear();
 		this.flat_at.clear();
@@ -397,12 +410,11 @@ class FolderTreeStore : Object, GLib.ListModel
 				if (row.path == "" || row.path == folder.path) {
 					continue;
 				}
-				var parent_path = GLib.Path.get_dirname(row.path);
-				if (!this.path_map.has_key(parent_path)) {
+				if (!this.id_map.has_key((int) row.parent_id)) {
 					continue;
 				}
 				row.manager = folder.manager;
-				this.append(this.path_map.get(parent_path), row);
+				this.append(this.id_map.get((int) row.parent_id), row);
 			}
 		}
 		this.pending--;

@@ -204,33 +204,22 @@ The desktop search entry drives whichever tab is showing. Tree is the first filt
   - 🔷 A folder stays when a folder under it contains the text. That is the parent walk, so the path to a match stays on screen.
   - 🔷 Every other folder is hidden.
   - 🔷 An empty search is the normal tree. The ghost and the type filter still apply.
-- 🔷 ⏳ The first search step gets the matching files, then flags each parent folder already in `FolderTreeStore`. Folder-name matches are the folders already in `flat`.
-  - ℹ️ The file server returns the files. The tree does not hold a second copy of every file.
-  - ℹ️ `FolderTreeStore.path_map` and `Folder.parent` are already there. The walk uses those. It does not build another tree.
-- 💩 ⏳ How a folder is flagged is not chosen yet. See the options under this list. Do not implement a flag until one of them is picked.
+- 🔷 ⏳ The first search step gets the matching files. A folder is keyed by `(int) FileBase.id`, not by the folder name or the path.
+  - ℹ️ A non-empty `Folder.fetch_files` query matches the filename, ignoring case. The parent ids are the project folders in `folder_map`, including a folder linked in through an alias. The reply is those folder ids packed as native-endian int32 bytes. A file contributes its parent id. A folder contributes its own id. More than 100 matches fails with `RpcErrorCode.TOO_MANY_RESULTS` and sends no rows. An empty query stays a file page. The tree does not hold a second copy of every file.
+  - ℹ️ `FolderTreeStore.id_map` is id to folder. The walk starts at a file's `parent_id` or a folder's `id`, then each `parent_id`. It does not look up a path.
+- 🔷 ⏳ More than 100 matches: do not filter the tree. The file path shows `too many results`.
+- 🔷 ⏳ 100 matches or fewer: take those folder ids, walk each parent, and `set` each of those ids to `true` on the map. The filter keeps a row whose id is on that map.
 - 🔷 ⏳ Recent search stays on Recent. It orders matches by how recent they are. It does not jump to Tree.
 - 🔷 ⏳ Clicking a folder while searching shows that folder's matching files on the right, on that same grid.
 - 🔷 ⏳ With no folder selected during a search, the right list is every matching file. Each row has the path relative to the project underneath the name.
 - 🔷 ⏳ Clearing the search returns to the folder that contains the current file, with that file about halfway down the right list. A load with no search still selects nothing and opens at the top.
 
-#### Flagging parent folders
+#### Visible folders
 
-RooTerm does not use a search-result column. `app.RooTerm/src/Host/Tree.vala` keeps `search_uuids`, a `Gee.HashSet` of uuids. Each search clears that set, walks `by_uuid`, and adds the match plus every parent. One `Gtk.CustomFilter` then keeps a row whose uuid is in the set. Children of a name match are not all in the set. The filter also walks ancestors and keeps a row when an ancestor name matches.
+The visible folders are a `Gee.HashMap<int, bool>`. The key is `(int) FileBase.id`. The value is `true` for a matching folder. Each search clears the map, then `set`s the match ids and each parent id. The filter keeps a row when `has_key` is true for that cast. Folder ids are not expected to exceed an `int`. `ProjectFiles.update_from_recursive` already casts folder ids to `int` for a hash lookup.
 
-This tree is not that walk. A hit is often a file, and files are not rows. The folders are already loaded. The filter already walks every segment on `filter.changed`.
-
-- 💩 Option A. An int on the folder, one new value per search.
-  - 💩 Each search takes the next int. The first pass stamps that int on a folder whose name matches, and on each parent of a matching file or matching folder.
-  - 💩 The filter keeps a folder whose int equals the current search. An older stamp fails the compare, so nothing is cleared.
-  - 💩 A late reply stamps only when the folder's int is lower than the reply's int. An older reply cannot wipe a newer stamp.
-  - 💩 `FileBase` writes every property in `bin_write`. A new property there is sent if a folder is written. `file_count` is on that class because the server sends it. This int is not a server column.
-- 💩 Option B. The same int, stored off the folder.
-  - 💩 The top `FolderTreeStore` holds path to int. The filter reads that map.
-  - 💩 The stamp rule is the same as option A, including the late reply.
-  - 💩 Nothing new is written by `bin_write`.
-- 💩 Option C. Copy RooTerm's set.
-  - 💩 A `Gee.HashSet` of paths, cleared and filled on every search, then `filter.changed`.
-  - 💩 A late reply must be dropped before it fills the set. Membership is yes or no, so an older reply cannot be ignored by comparing ints.
+- ℹ️ `Gee.ArrayList.contains` scans from the start until it finds the id. `has_key` hashes the id and checks that bucket.
+- 🔷 The map holds only those ids. It does not hold the folder. The filter already has the folder it is testing.
 - 🚫 The filter does not walk children to decide a row. `filter.changed` already walks every segment. A walk inside the match function is the slow path.
 - 🚫 Non-matching folders are not left on screen in grey. RooTerm hides them. This tree hides them too.
 - 🚫 A folder whose name matches does not keep every child folder. A child stays only when that child matches, or a file or folder under that child matches. RooTerm's ancestor-name test in the filter does the opposite for hosts.
@@ -320,5 +309,6 @@ Held off. Not the next step, and not a tab on the file pop-down.
 - 🚫 Do not start the Android review before the desktop file work.
 - 🚫 Do not put a Search tab on the file pop-down. Tree name matches stay on Tree. Recent name matches stay on Recent. Content search is Phase 4.
 - 🚫 No wildcard matching (`*` or `?`) in this pass.
+- 🚫 Search visibility is not a stamp on the folder, and not a set of paths. It is a `Gee.HashMap<int, bool>` of `(int) FileBase.id`. Above 100 matches, the tree is not filtered.
 - 🚫 Do not copy `ProjectFiles.cached_search` sort orders, and do not use `ProjectFiles.get_recent_list`.
 - 🚫 No status theatre. Do not add ✔️ or ✅, rewrite the Status line, or answer with what was ticked, unless the running app already does that thing.

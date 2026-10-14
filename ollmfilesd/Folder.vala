@@ -124,21 +124,33 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * ''Folder.fetch_files'' — page of file rows, or path-filter
-		 * batch.
+		 * ''Folder.fetch_files'' — file page, name search, or path batch.
+		 *
+		 * A name query matches the filename and ignores case. A star or
+		 * a question mark is an ordinary character. The parent ids are
+		 * the project folders, including one linked in by an alias.
+		 * Matching files and folders come back as native-endian int32
+		 * folder ids in a byte blob. A file contributes its parent id.
+		 * A folder contributes its own id. More than 100 matches fails with
+		 * {@link OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS} and sends no rows.
+		 * An empty query is still one file page, and ''msg'' is that total.
 		 *
 		 * @param request inbound RPC
 		 * @param path project path
-		 * @param offset rows to skip
-		 * @param limit page size
-		 * @param query dropdown filter
-		 * @param paths path-filter batch (empty = paged mode)
+		 * @param offset rows to skip on an empty query
+		 * @param limit page size on an empty query
+		 * @param query name filter; empty browses files
+		 * @param paths path-filter batch (empty = search or page)
 		 * @param metadata_only unused on the daemon today
 		 */
 		public void fetch_files(
 			OLLMrpc.Request request,
-			string path, int offset, int limit, string query,
-			string[] paths, bool metadata_only
+			string path,
+			int offset, 
+			int limit, 
+			string query,
+			string[] paths,
+			 bool metadata_only
 		) {
 			var project = this.manager.project_root(path);
 			if (project == null) {
@@ -151,7 +163,8 @@ namespace OLLMfilesd
 				});
 				return;
 			}
-			this.fetch_files_reply.begin(request, project);
+			this.fetch_files_reply.begin(
+				request, project, offset, limit, query, paths);
 		}
 
 		/**
@@ -401,18 +414,29 @@ namespace OLLMfilesd
 		}
 
 		/**
-		 * Reply to {@link fetch_files} after filesystem scan is idle.
+		 * Reply to {@link fetch_files} after the scan is idle.
+		 *
+		 * A path batch looks up those paths. A name query matches
+		 * filenames whose parent is a project folder, including a
+		 * folder linked in by an alias, or fails past 100 matches.
+		 * An empty query returns one file page.
 		 *
 		 * @param request the RPC request to reply to
 		 * @param project resolved project folder for this fetch
+		 * @param offset rows to skip on an empty query
+		 * @param limit page size on an empty query
+		 * @param query name filter; empty browses files
+		 * @param paths path-filter batch (empty = search or page)
 		 */
 		private async void fetch_files_reply(
 			OLLMrpc.Request request,
-			Folder project
-		)
-		{
+			Folder project,
+			int offset,
+			int limit,
+			string query,
+			string[] paths
+		) {
 			yield this.manager.wait_scan_idle();
-			var paths = (string[]) request.args.get(4).get_boxed();
 			if (paths.length > 0) {
 				var list = new Gee.ArrayList<GLib.Object>();
 				foreach (var lookup_path in paths) {
@@ -436,25 +460,99 @@ namespace OLLMfilesd
 				});
 				return;
 			}
-			var limit = request.args.get(2).get_int();
-			var offset = request.args.get(1).get_int();
-			limit = limit < 1 ? 50 : limit;
-			offset = offset < 0 ? 0 : offset;
-			var matched = project.project_files.cached_search(
-				request.args.get(3).get_string().strip().down()
-			);
-			var list = new Gee.ArrayList<GLib.Object>();
-			if (offset < matched.size) {
-				list.add_all(matched.slice(
-					offset,
-					int.min(limit, matched.size - offset)
-				));
+			var needle = query.strip().down();
+			if (needle == "") {
+				limit = limit < 1 ? 50 : limit;
+				offset = offset < 0 ? 0 : offset;
+				var matched = project.project_files.cached_search(needle);
+				var list = new Gee.ArrayList<GLib.Object>();
+				if (offset < matched.size) {
+					list.add_all(matched.slice(
+						offset,
+						int.min(limit, matched.size - offset)
+					));
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("o", list),
+					msg = matched.size.to_string()
+				});
+				return;
 			}
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				retval = OLLMrpc.val("o", list),
-				msg = matched.size.to_string()
-			});
+			/* folder_map is the project folders, including a
+			 * folder linked in through an alias. Search the
+			 * rows whose parent is one of those ids.
+			 */
+			var parents = new Gee.ArrayList<string>();
+			foreach (var folder in project.project_files.folder_map.values) {
+				if (folder.delete_id != 0) {
+					continue;
+				}
+				parents.add(folder.id.to_string());
+			}
+			if (parents.size < 1) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INVALID_REQUEST,
+						"no folders"
+					)
+				});
+				return;
+			}
+			var lookup = FileBase.query(this.manager.db, this.manager);
+			var stmt = lookup.selectPrepare("""
+				SELECT
+				""" + string.joinv(", ", lookup.getColsExcept(null)) + """
+				FROM
+					filebase
+				WHERE
+					filebase.delete_id = 0
+					AND 
+					filebase.parent_id IN ("""
+						+ string.joinv(", ", parents.to_array()) + """
+					)
+					AND 
+					instr(lower(replace(
+						filebase.path,
+						rtrim(filebase.path, replace(filebase.path, '/', '')),
+						''
+					)), $needle) > 0
+				LIMIT 101
+			""");
+			stmt.bind_text(stmt.bind_parameter_index("$needle"), needle);
+			var rows = new Gee.ArrayList<FileBase>();
+			lookup.selectExecute(stmt, rows);
+			if (rows.size > 100) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = OLLMrpc.RpcErrorCode.to_error(
+						(int) OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS
+					)
+				});
+				return;
+			}
+			var ids = new Gee.ArrayList<int>();
+			foreach (var item in rows) {
+				var id = (int) item.parent_id;
+				if (item.base_type == "d" || item.base_type == "da") {
+					id = (int) item.id;
+				}
+				if (id < 1) {
+					continue;
+				}
+				ids.add(id);
+			}
+			var reply = new OLLMrpc.Response() {
+				id = request.id
+			};
+			if (ids.size > 0) {
+				var native = ids.to_array();
+				var raw = new uint8[native.length * sizeof(int)];
+				GLib.Memory.copy(raw, native, raw.length);
+				reply.retval = OLLMrpc.val("ay", new GLib.Bytes(raw));
+			}
+			request.reply(reply);
 		}
 
 		/**

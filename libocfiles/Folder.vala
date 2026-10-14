@@ -204,16 +204,19 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Fetch a page of file rows for this project (file dropdown).
+		 * Fetch a file page, or the files and folders matching a name.
 		 *
-		 * Returns the daemon RPC response. Caller reads ''result'' (file page)
-		 * and ''msg'' (total match count as decimal string).
+		 * An empty query is one file page. ''msg'' is that page total.
+		 * A name query returns those folder ids as native-endian
+		 * int32 bytes. More than 100 matches fails with
+		 * {@link OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS}.
 		 *
-		 * @param offset Rows to skip (default 0)
-		 * @param limit Page size (default 50)
-		 * @param query Dropdown filter (default browse all)
-		 * @return {@link OLLMrpc.Response} — ''result'' = file page, ''msg'' = total
-		 * @throws GLib.Error if the RPC fails
+		 * @param offset Rows to skip on an empty query (default 0)
+		 * @param limit Page size on an empty query (default 50)
+		 * @param query Name filter; empty browses files
+		 * @return {@link OLLMrpc.Response} for the page or the search
+		 * @throws GLib.Error if the RPC fails, including
+		 *   {@link OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS}
 		 */
 		public async OLLMrpc.Response fetch_files(
 			int offset = 0,
@@ -235,11 +238,12 @@ namespace OLLMfiles
 					metadata_only
 				)
 			});
-			if (response.retval.type() != GLib.Type.INVALID) {
-				var files = (Gee.ArrayList<File>) response.retval.get_object();
-				foreach (var file in files) {
-					file.manager = this.manager;
-					this.manager.file_cache.set(file.path, file);
+			if (response.retval.type().is_a(typeof(Gee.ArrayList))) {
+				var rows = (Gee.ArrayList<GLib.Object>) response.retval.get_object();
+				foreach (var row in rows) {
+					var item = (FileBase) row;
+					item.manager = this.manager;
+					this.manager.file_cache.set(item.path, item);
 				}
 			}
 			return response;

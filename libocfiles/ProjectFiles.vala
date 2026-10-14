@@ -95,6 +95,9 @@ namespace OLLMfiles
 				response = yield this.project.fetch_files(0, 50, query);
 			} catch (GLib.Error e) {
 				this.loading = false;
+				if (e is OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS) {
+					return;
+				}
 				GLib.critical ("ProjectFiles.refresh: %s", e.message);
 				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
 					this.project.manager.rpc.notification (new OLLMrpc.Notification () {
@@ -115,12 +118,26 @@ namespace OLLMfiles
 			var old_n_items = this.items.size;
 			this.items.clear();
 			this.total = int.parse(response.msg);
-			if (response.retval.type() != GLib.Type.INVALID) {
-				var files = (Gee.ArrayList<File>) response.retval.get_object();
-				foreach (var file in files) {
+			if (response.retval.type().is_a(typeof(Gee.ArrayList))) {
+				var rows = (Gee.ArrayList<GLib.Object>) response.retval.get_object();
+				foreach (var row in rows) {
+					var item = (FileBase) row;
+					if (item.base_type == "d" || item.base_type == "da") {
+						continue;
+					}
+					if (!(row is File)) {
+						var made = new File(this.project.manager);
+						made.copy_from(item, { "manager" });
+						this.items.add(new ProjectFile(
+							this.project.manager,
+							made,
+							this.project
+						));
+						continue;
+					}
 					this.items.add(new ProjectFile(
 						this.project.manager,
-						file,
+						(File) row,
 						this.project
 					));
 				}

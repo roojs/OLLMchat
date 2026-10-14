@@ -118,8 +118,15 @@ class FileSelector : Gtk.Box
 	 */
 	public Gtk.ToggleButton code { get; private set; }
 	private uint file_wait = 0;
+	private uint search_wait = 0;
 	private int history_epoch = 0;
 	private int pull_epoch = 0;
+	private int search_epoch = 0;
+	/**
+	 * File path shown on the button. A search that is too wide
+	 * replaces the label until the text is narrowed or cleared.
+	 */
+	private string path_text = "Select file";
 
 	/**
 	 * Build the file button, tabbed pop-down, and pull-over page.
@@ -375,6 +382,31 @@ class FileSelector : Gtk.Box
 		var keys = new Gtk.EventControllerKey();
 		keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
 		keys.key_pressed.connect(this.key_press);
+		this.entry.search_changed.connect(() => {
+			if (this.search_wait != 0) {
+				GLib.Source.remove(this.search_wait);
+			}
+			var text = this.entry.text.strip();
+			this.search_wait = GLib.Timeout.add(200, () => {
+				this.search_wait = 0;
+				if (!this.project.is_project) {
+					return false;
+				}
+				if (text == "") {
+					this.folder_tree.searching = false;
+					this.folder_tree.visible.clear();
+					this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
+					this.label.label = this.path_text;
+					return false;
+				}
+				this.search_epoch++;
+				var epoch = this.search_epoch;
+				this.project.fetch_files.begin(0, 50, text, {}, false, (obj, res) => {
+					this.on_load_results(epoch, res);
+				});
+				return false;
+			});
+		});
 		this.entry.add_controller(keys);
 		var focus = new Gtk.EventControllerFocus();
 		focus.leave.connect(() => {
@@ -440,7 +472,8 @@ class FileSelector : Gtk.Box
 			this.clear(this.history_rows);
 			this.clear(this.pull_rows);
 			this.pages.visible_child_name = "tree";
-			this.label.label = "Select file";
+			this.path_text = "Select file";
+			this.label.label = this.path_text;
 			this.button.tooltip_text = "";
 			this.visible = true;
 			if (this.form != "desktop") {
@@ -496,9 +529,13 @@ class FileSelector : Gtk.Box
 	{
 		this.clear(target);
 		var showed = false;
-		if (response.retval.type() != GLib.Type.INVALID) {
-			var files = (Gee.ArrayList<OLLMfiles.File>) response.retval.get_object();
-			foreach (var file in files) {
+		if (response.retval.type().is_a(typeof(Gee.ArrayList))) {
+			var rows = (Gee.ArrayList<GLib.Object>) response.retval.get_object();
+			foreach (var row in rows) {
+				var file = (OLLMfiles.FileBase) row;
+				if (file.base_type == "d" || file.base_type == "da") {
+					continue;
+				}
 				if (recent && file.last_viewed < 1) {
 					continue;
 				}
@@ -528,7 +565,14 @@ class FileSelector : Gtk.Box
 				var line = new Gtk.ListBoxRow() {
 					child = column,
 				};
-				line.set_data<OLLMfiles.File>("file", file);
+				if (!(row is OLLMfiles.File)) {
+					var made = new OLLMfiles.File(file.manager);
+					made.copy_from(file, { "manager" });
+					line.set_data<OLLMfiles.File>("file", made);
+				}
+				if (row is OLLMfiles.File) {
+					line.set_data<OLLMfiles.File>("file", (OLLMfiles.File) row);
+				}
 				target.append(line);
 			}
 		}
@@ -599,6 +643,62 @@ class FileSelector : Gtk.Box
 			}
 			this.paint(response, target, recent);
 		});
+	}
+
+	/**
+	 * Apply one search reply to the folder tree.
+	 *
+	 * A stale reply is dropped.
+	 * {@link OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS} leaves the tree
+	 * unfiltered and shows ''too many results'' on the file path.
+	 * An empty return is ''no results''. The reply is native-endian
+	 * int32 folder ids. Each match and each parent stays.
+	 *
+	 * @param epoch Search generation captured when the fetch started
+	 * @param res Async result from {@link OLLMfiles.Folder.fetch_files}
+	 */
+	private void on_load_results(int epoch, GLib.AsyncResult res)
+	{
+		if (epoch != this.search_epoch) {
+			return;
+		}
+		OLLMrpc.Response response;
+		try {
+			response = this.project.fetch_files.end(res);
+		} catch (GLib.Error e) {
+			if (!(e is OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS)) {
+				GLib.warning("file search failed: %s", e.message);
+				return;
+			}
+			this.folder_tree.searching = false;
+			this.folder_tree.visible.clear();
+			this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
+			this.label.label = "too many results";
+			return;
+		}
+		if (response.retval.type() == GLib.Type.INVALID) {
+			this.folder_tree.visible.clear();
+			this.folder_tree.searching = true;
+			this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
+			this.label.label = "no results";
+			return;
+		}
+		var blob = (GLib.Bytes) response.retval.get_boxed();
+		var ids = new int[(int) (blob.get_size() / sizeof(int))];
+		if (ids.length > 0) {
+			GLib.Memory.copy(ids, blob.get_data(), blob.get_size());
+		}
+		this.folder_tree.visible.clear();
+		this.folder_tree.searching = true;
+		this.label.label = this.path_text;
+		for (var i = 0; i < ids.length; i++) {
+			var id = ids[i];
+			while (id > 0 && this.folder_tree.folders.id_map.has_key(id)) {
+				this.folder_tree.visible.set(id, true);
+				id = (int) this.folder_tree.folders.id_map.get(id).parent_id;
+			}
+		}
+		this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
 	}
 
 	/**
@@ -726,7 +826,8 @@ class FileSelector : Gtk.Box
 			&& file.path.has_prefix(this.project.path + "/")) {
 			shown = file.path.substring(this.project.path.length + 1);
 		}
-		this.label.label = shown;
+		this.path_text = shown;
+		this.label.label = this.path_text;
 		if (this.form != "phone") {
 			this.button.tooltip_text = file.path;
 		}

@@ -46,7 +46,9 @@
  * {@link FileKind.DOCUMENT} hides a folder whose document
  * count is zero. {@link FileKind.CODE} hides a folder whose
  * code count is zero. An empty folder is hidden while either
- * type is set.
+ * type is set. A search keeps a folder whose id is on
+ * {@link visible}, and each parent of a match. An empty search
+ * leaves that map unused, so the ghost and the type filter apply.
  * A second click on the selected row clears that selection.
  *
  * == Example ==
@@ -129,10 +131,28 @@ class FolderTree : Gtk.Box
 	public FileKind kind { get; set; default = FileKind.ANY; }
 
 	/**
+	 * True while a name search is showing. The filter then keeps
+	 * a folder whose id is on {@link visible}. The project row
+	 * stays. An empty search sets this false.
+	 */
+	public bool searching { get; set; default = false; }
+
+	/**
+	 * Folder ids kept for the current search. The key is
+	 * ''(int) FileBase.id''. The value is true. A match and each
+	 * parent are set. Empty when {@link searching} is false.
+	 */
+	public Gee.HashMap<int, bool> visible {
+		get; private set; default = new Gee.HashMap<int, bool>();
+	}
+
+	/**
 	 * Shared by the top folder list and every child segment.
 	 * While hiding, an empty folder or a gitignored folder is
 	 * left out. {@link kind} hides a folder whose count for
-	 * that type is zero. The project row stays.
+	 * that type is zero. The project row stays. While
+	 * {@link searching} is true, a folder stays when its id is
+	 * on {@link visible}.
 	 */
 	public Gtk.CustomFilter filter { get; private set; }
 
@@ -154,6 +174,9 @@ class FolderTree : Gtk.Box
 			var folder = (OLLMfiles.Folder) item;
 			if (folder.is_project) {
 				return true;
+			}
+			if (this.searching) {
+				return this.visible.has_key((int) folder.id);
 			}
 			if (this.hiding && folder.is_ignored) {
 				return false;
