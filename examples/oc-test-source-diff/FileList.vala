@@ -26,9 +26,11 @@
  * ''Select a folder''. An empty reply shows ''No files''.
  * {@link kind} narrows that grid to documents or to code.
  * {@link query} is the desktop search text. Empty shows every
- * file that type allows. A non-empty value hides a file whose
- * name does not contain that text, ignoring case. Activating
- * a row emits {@link file_activated}.
+ * file that type allows. A non-empty value keeps a file whose
+ * path, under the project, contains that text, ignoring case.
+ * A folder named like the search shows every file in it.
+ * {@link notice} replaces the grid. Activating a row emits
+ * {@link file_activated}.
  *
  * == Example ==
  *
@@ -57,6 +59,7 @@ class FileList : Gtk.Box
 	/**
 	 * Centered on the grid. ''Select a folder'' when none is
 	 * selected. ''No files'' when the selected folder has none.
+	 * {@link notice} uses this same label.
 	 */
 	private Gtk.Label file_empty;
 
@@ -64,6 +67,11 @@ class FileList : Gtk.Box
 	 * File grid. A new folder resets the header sort to the name.
 	 */
 	private Gtk.ColumnView file_view;
+
+	/**
+	 * File rows. Up and Down step this when a file is selected.
+	 */
+	public Gtk.SingleSelection file_selection { get; private set; }
 
 	/**
 	 * Scroll around the file grid. A new folder sets it to the top.
@@ -84,11 +92,18 @@ class FileList : Gtk.Box
 	public FileKind kind { get; set; default = FileKind.ANY; }
 
 	/**
-	 * Name filter from the desktop search entry. Empty shows
+	 * Path filter from the desktop search entry. Empty shows
 	 * every file {@link kind} allows. A non-empty value keeps a
-	 * file whose name contains that text, ignoring case.
+	 * file whose path, under the project, contains that text,
+	 * ignoring case.
 	 */
 	public string query { get; set; default = ""; }
+
+	/**
+	 * Message in place of the grid. Empty leaves the folder
+	 * text. Search uses ''too many results'' and ''no results''.
+	 */
+	public string notice { get; set; default = ""; }
 
 	/**
 	 * Build the grid over an empty {@link FileListStore}.
@@ -169,16 +184,22 @@ class FileList : Gtk.Box
 		};
 		var modified_column = new Gtk.ColumnViewColumn("Modified", modified_factory) {
 			resizable = false,
-			fixed_width = 64,
+			fixed_width = 74,
 			sorter = new Gtk.NumericSorter(
 				new Gtk.PropertyExpression(typeof(OLLMfiles.File), null, "last_modified")
 			),
 		};
 		var file_filter = new Gtk.CustomFilter((item) => {
 			var file = (OLLMfiles.File) item;
-			if (this.query != "" &&
-					!file.path_basename.down().contains(this.query.down())) {
-				return false;
+			if (this.query != "") {
+				var shown = file.path;
+				var project = file.manager.active_project;
+				if (project != null && shown.has_prefix(project.path + "/")) {
+					shown = shown.substring(project.path.length + 1);
+				}
+				if (!shown.down().contains(this.query.down())) {
+					return false;
+				}
 			}
 			if (this.kind == FileKind.ANY) {
 				return true;
@@ -208,11 +229,11 @@ class FileList : Gtk.Box
 					return true;
 			}
 		});
-		var file_selection = new Gtk.SingleSelection(null) {
+		this.file_selection = new Gtk.SingleSelection(null) {
 			autoselect = false,
 			can_unselect = true,
 		};
-		this.file_view = new Gtk.ColumnView(file_selection) {
+		this.file_view = new Gtk.ColumnView(this.file_selection) {
 			hexpand = true,
 			vexpand = true,
 			single_click_activate = false,
@@ -220,14 +241,21 @@ class FileList : Gtk.Box
 		this.file_view.append_column(this.name_column);
 		this.file_view.append_column(size_column);
 		this.file_view.append_column(modified_column);
-		file_selection.model = new Gtk.SortListModel(
+		this.file_selection.model = new Gtk.SortListModel(
 			new Gtk.FilterListModel(this.files, file_filter),
 			this.file_view.sorter
 		);
 		this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
 		this.file_view.activate.connect((position) => {
-			var file = (OLLMfiles.File) file_selection.get_item(position);
+			var file = (OLLMfiles.File) this.file_selection.get_item(position);
 			this.file_activated(file);
+		});
+		this.file_selection.selection_changed.connect(() => {
+			if (this.file_selection.selected == Gtk.INVALID_LIST_POSITION) {
+				return;
+			}
+			this.file_view.scroll_to(this.file_selection.selected, null,
+				Gtk.ListScrollFlags.FOCUS, null);
 		});
 		this.file_empty = new Gtk.Label("Select a folder") {
 			halign = Gtk.Align.CENTER,
@@ -250,11 +278,34 @@ class FileList : Gtk.Box
 		};
 		file_overlay.add_overlay(this.file_empty);
 		this.append(file_overlay);
+		this.notify["notice"].connect(() => {
+			if (this.notice != "") {
+				this.file_empty.label = this.notice;
+				this.file_empty.visible = true;
+				this.file_view.visible = false;
+				return;
+			}
+			this.file_view.visible = true;
+			if (this.files.empty) {
+				this.file_empty.label = "No files";
+				this.file_empty.visible = true;
+				return;
+			}
+			if (this.files.get_n_items() == 0) {
+				this.file_empty.label = "Select a folder";
+				this.file_empty.visible = true;
+				return;
+			}
+			this.file_empty.visible = false;
+		});
 		this.files.notify["empty"].connect(() => {
+			if (this.notice != "") {
+				return;
+			}
 			if (!this.files.empty && this.files.get_n_items() == 0) {
 				return;
 			}
-			if (this.files.empty || file_selection.n_items == 0) {
+			if (this.files.empty || this.file_selection.n_items == 0) {
 				this.file_empty.label = "No files";
 				this.file_empty.visible = true;
 				return;
@@ -263,10 +314,13 @@ class FileList : Gtk.Box
 		});
 		this.notify["kind"].connect(() => {
 			file_filter.changed(Gtk.FilterChange.DIFFERENT);
+			if (this.notice != "") {
+				return;
+			}
 			if (!this.files.empty && this.files.get_n_items() == 0) {
 				return;
 			}
-			if (this.files.empty || file_selection.n_items == 0) {
+			if (this.files.empty || this.file_selection.n_items == 0) {
 				this.file_empty.label = "No files";
 				this.file_empty.visible = true;
 				return;
@@ -275,21 +329,27 @@ class FileList : Gtk.Box
 		});
 		this.notify["query"].connect(() => {
 			file_filter.changed(Gtk.FilterChange.DIFFERENT);
+			if (this.notice != "") {
+				return;
+			}
 			if (!this.files.empty && this.files.get_n_items() == 0) {
 				return;
 			}
-			if (this.files.empty || file_selection.n_items == 0) {
+			if (this.files.empty || this.file_selection.n_items == 0) {
 				this.file_empty.label = "No files";
 				this.file_empty.visible = true;
 				return;
 			}
 			this.file_empty.visible = false;
 		});
-		file_selection.items_changed.connect(() => {
+		this.file_selection.items_changed.connect(() => {
+			if (this.notice != "") {
+				return;
+			}
 			if (!this.files.empty && this.files.get_n_items() == 0) {
 				return;
 			}
-			if (this.files.empty || file_selection.n_items == 0) {
+			if (this.files.empty || this.file_selection.n_items == 0) {
 				this.file_empty.label = "No files";
 				this.file_empty.visible = true;
 				return;
@@ -312,7 +372,10 @@ class FileList : Gtk.Box
 	{
 		this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;
 		this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
+		this.notice = "";
+		this.file_selection.selected = Gtk.INVALID_LIST_POSITION;
 		this.file_empty.visible = false;
+		this.file_view.visible = true;
 		this.files.load.begin(folder);
 	}
 
@@ -325,6 +388,9 @@ class FileList : Gtk.Box
 	{
 		this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;
 		this.file_view.sort_by_column(this.name_column, Gtk.SortType.ASCENDING);
+		this.notice = "";
+		this.file_selection.selected = Gtk.INVALID_LIST_POSITION;
+		this.file_view.visible = true;
 		this.files.clear();
 		this.file_empty.label = "Select a folder";
 		this.file_empty.visible = true;

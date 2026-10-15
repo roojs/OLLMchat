@@ -1,10 +1,10 @@
 # 2.31.3 — Phase C — `bash` on the daemon wire
 
-**Status:** ✔️ **applied** — agent implemented. Tests below are still ⏳. Not user-verified. Phase B is on the wire in [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md).
+**Status:** ✔️ **archived** — agent implemented. Tests below were still ⏳. Not user-verified. Phase B is [`TOOLS-2.31.2`](TOOLS-2.31.2-DONE-daemon-rpc-verbs.md).
 
 > **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
-**Parent:** [`TOOLS-2.31`](TOOLS-2.31-URGENT-bash-process-tool.md) — `bash` as a process tool, Phase C
+**Parent:** [`TOOLS-2.31`](TOOLS-2.31-DONE-bash-process-tool.md) — `bash` as a process tool, Phase C
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**. Proposed Vala follows `docs/coding-standards.md`.
 
@@ -102,7 +102,7 @@ The `Request` hunks below apply to the copy, `liboctools/Bash/Request.vala`. Do 
 
 **Where:** the `pid` property beside `timeout`, the top of `execute`, `build_perm_question`, and the spawn branch inside `execute_tool_async`.
 
-**Depends on:** [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md).
+**Depends on:** [`TOOLS-2.31.2`](TOOLS-2.31.2-DONE-daemon-rpc-verbs.md).
 
 - **💩** This plan names `bash_remote` and `manage`.
 - **🔷** `pid != 0` returns before `normalize_working_dir`, permission, `client.run_tool.start`, and the spill file.
@@ -266,7 +266,7 @@ The `Request` hunks below apply to the copy, `liboctools/Bash/Request.vala`. Do 
 
 **Where:** `OLLMbwrap.Bubble` gains `session_id`. `ollmfilesd/Sandbox/Bubble.vala` `rpc_register`, `rpc_create`, and `kill` / `tail` / `wait` / `send`.
 
-**Depends on:** [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md).
+**Depends on:** [`TOOLS-2.31.2`](TOOLS-2.31.2-DONE-daemon-rpc-verbs.md).
 
 - **🔷** `session_id` is the chat session's `id` (`int64`). The tool sends it on create, and again on `kill`, `tail`, `wait`, and `send`.
 - **🔷** It is stored on the bubble. The job table stays keyed by the positive pid.
@@ -531,7 +531,7 @@ $(reap)";
 
 **Where:** arm when the pid is stored, remove when the pid leaves `jobs`, reset from `read_from_channel`.
 
-**Depends on:** [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md).
+**Depends on:** [`TOOLS-2.31.1`](TOOLS-2.31.1-DONE-daemon-job-model.md).
 
 - **💩** 900 seconds, literal, no new constant.
 - **💩** The Windows stub arms nothing. `can_wrap` is false there, so no job is stored.

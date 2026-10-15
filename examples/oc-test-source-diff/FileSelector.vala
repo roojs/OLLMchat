@@ -20,16 +20,16 @@
  * File selector. Replaces {@link OLLMcoder.FileDropdown}.
  *
  * The resting button shows a file icon. Hidden until a project
- * is chosen. Desktop opens a wide pop-down on the Tree tab,
- * with Recent beside it. The header is three slots. Collapse
- * and the ghost sit on the left, Tree and Recent in the middle,
- * and the type buttons on the right. Documents and code are
- * separate. Code uses ''completion-snippet-symbolic''. The one
- * that is down hides folders with none of that type, and turns
- * the other off. A second click shows every type again. On Recent
- * the left buttons are hidden and that slot keeps its width.
- * Phone and tablet use
- * {@link SelectorPull} and do not copy the desktop tabs.
+ * is chosen. Desktop draws the file sheet over the editor. It
+ * covers that editor. Recent sits beside Tree. The header is
+ * three slots. Collapse and the ghost sit on the left, Tree and
+ * Recent in the middle, and a stop mark on the right. That
+ * mark closes the sheet. Documents and code stay in the code
+ * and stay hidden. The one that is down hides folders with none
+ * of that type, and turns the other off. On Recent the left
+ * buttons are hidden and that slot keeps its width. Phone and
+ * tablet use {@link SelectorPull} and do not copy the desktop
+ * tabs.
  *
  * == Example ==
  *
@@ -57,13 +57,14 @@ class FileSelector : Gtk.Box
 	public signal void chosen(OLLMfiles.File file);
 
 	/**
-	 * Desktop file pop-down. The host closes it when projects open.
+	 * Desktop file sheet. Covers the editor. The host closes it
+	 * when projects open.
 	 */
-	public Gtk.Popover popover { get; private set; }
+	public Gtk.Box list { get; private set; }
 
 	/**
 	 * Active project. Setting a real project shows this control.
-	 * Desktop then opens the pop-down. An empty folder stays hidden.
+	 * Desktop then opens the sheet. An empty folder stays hidden.
 	 */
 	public OLLMfiles.Folder project { get; set; }
 
@@ -105,13 +106,14 @@ class FileSelector : Gtk.Box
 	public FileList file_list { get; private set; default = new FileList(); }
 
 	/**
-	 * Documents type button. Down shows document folders and
-	 * turns the code button off. A second click clears the type.
+	 * Documents type button. Hidden. Down shows document folders
+	 * and turns the code button off. A second click clears the
+	 * type.
 	 */
 	public Gtk.ToggleButton documents { get; private set; }
 
 	/**
-	 * Code type button. The icon is
+	 * Code type button. Hidden. The icon is
 	 * ''completion-snippet-symbolic''. Down shows code folders
 	 * and turns the documents button off. A second click clears
 	 * the type.
@@ -244,21 +246,33 @@ class FileSelector : Gtk.Box
 			valign = Gtk.Align.CENTER,
 			margin_start = 6,
 			margin_end = 6,
+			visible = false,
+			css_classes = { "flat" },
 		};
-		this.documents.add_css_class("flat");
 		this.code = new Gtk.ToggleButton() {
 			icon_name = "completion-snippet-symbolic",
 			tooltip_text = "Code",
 			can_focus = false,
 			valign = Gtk.Align.CENTER,
+			visible = false,
+			css_classes = { "flat" },
 		};
-		this.code.add_css_class("flat");
+		var close_files = new Gtk.Button.from_icon_name("process-stop-symbolic") {
+			tooltip_text = "Close",
+			has_tooltip = true,
+			can_focus = false,
+			valign = Gtk.Align.CENTER,
+			css_classes = { "flat" },
+		};
+		var pointer = new Gdk.Cursor.from_name("pointer", null);
+		if (pointer != null) {
+			close_files.set_cursor(pointer);
+		}
 		var right = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 			margin_end = 6,
 			halign = Gtk.Align.END,
 		};
-		right.append(this.documents);
-		right.append(this.code);
+		right.append(close_files);
 		var type_sync = false;
 		this.documents.toggled.connect(() => {
 			if (type_sync) {
@@ -290,6 +304,7 @@ class FileSelector : Gtk.Box
 		};
 		var header = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 			margin_bottom = 6,
+			css_classes = { "horizontal", "file-bar" },
 		};
 		header.append(left);
 		header.append(switcher);
@@ -312,6 +327,7 @@ class FileSelector : Gtk.Box
 			if (text == "") {
 				this.folder_tree.search_reset();
 				this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
+				this.file_list.notice = "";
 				this.file_list.query = "";
 				this.label.label = this.path_text;
 				return;
@@ -325,45 +341,42 @@ class FileSelector : Gtk.Box
 		});
 		this.scroll = new Gtk.ScrolledWindow() {
 			child = this.pages,
-			propagate_natural_height = true,
-			propagate_natural_width = true,
+			hexpand = true,
+			vexpand = true,
 			hscrollbar_policy = Gtk.PolicyType.NEVER,
 			can_focus = false,
 		};
-		var frame = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+		this.list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 			hexpand = true,
-		};
-		frame.append(header);
-		frame.append(this.scroll);
-		this.popover = new Gtk.Popover() {
-			has_arrow = false,
-			position = Gtk.PositionType.BOTTOM,
-			halign = Gtk.Align.START,
-			autohide = false,
+			vexpand = true,
+			visible = false,
 			can_focus = false,
-			child = frame,
+			css_classes = { "vertical", "file-sheet" },
 		};
-		this.popover.set_parent(this);
+		this.list.append(header);
+		this.list.append(this.scroll);
+		close_files.clicked.connect(() => {
+			GLib.Idle.add(() => {
+				this.list.visible = false;
+				return false;
+			});
+		});
+		this.list.notify["visible"].connect(() => {
+			if (this.list.visible) {
+				return;
+			}
+			this.face_stack.visible_child_name = "button";
+		});
 		this.realize.connect(() => {
 			var window = this.get_root() as Gtk.Window;
 			if (window == null) {
 				return;
 			}
 			window.notify["is-active"].connect(() => {
-				if (window.is_active || !this.popover.visible) {
+				if (window.is_active || !this.list.visible) {
 					return;
 				}
-				this.popover.popdown();
-			});
-		});
-		this.popover.closed.connect(() => {
-			this.face_stack.visible_child_name = "button";
-		});
-		this.popover.map.connect(() => {
-			GLib.Idle.add(() => {
-				this.place();
-				this.pages.visible_child_name = "tree";
-				return false;
+				this.list.visible = false;
 			});
 		});
 
@@ -401,9 +414,15 @@ class FileSelector : Gtk.Box
 			}
 			this.schedule(this.pull.search.text.strip(), this.pull_rows, false, "pull");
 		});
-		var keys = new Gtk.EventControllerKey();
-		keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+		var keys = new Gtk.EventControllerKey() {
+			propagation_phase = Gtk.PropagationPhase.CAPTURE,
+		};
 		keys.key_pressed.connect(this.key_press);
+		var sheet_keys = new Gtk.EventControllerKey() {
+			propagation_phase = Gtk.PropagationPhase.CAPTURE,
+		};
+		sheet_keys.key_pressed.connect(this.key_press);
+		this.list.add_controller(sheet_keys);
 		this.entry.search_changed.connect(() => {
 			if (this.search_wait != 0) {
 				GLib.Source.remove(this.search_wait);
@@ -423,6 +442,7 @@ class FileSelector : Gtk.Box
 				if (text == "") {
 					this.folder_tree.search_reset();
 					this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
+					this.file_list.notice = "";
 					this.file_list.query = "";
 					this.label.label = this.path_text;
 					return false;
@@ -439,19 +459,19 @@ class FileSelector : Gtk.Box
 		this.entry.add_controller(keys);
 		var focus = new Gtk.EventControllerFocus();
 		focus.leave.connect(() => {
-			if (!this.popover.visible) {
+			if (!this.list.visible) {
 				return;
 			}
 			var root = this.get_root();
 			if (root == null) {
-				this.popover.popdown();
+				this.list.visible = false;
 				return;
 			}
 			var focused = root.get_focus() as Gtk.Widget;
-			if (focused != null && (focused == this.popover || focused.is_ancestor(this.popover))) {
+			if (focused != null && (focused == this.list || focused.is_ancestor(this.list))) {
 				return;
 			}
-			this.popover.popdown();
+			this.list.visible = false;
 		});
 		this.entry.add_controller(focus);
 		this.button.clicked.connect(() => {
@@ -473,24 +493,23 @@ class FileSelector : Gtk.Box
 			default:
 				break;
 			}
+			if (this.list.visible) {
+				this.list.visible = false;
+				return;
+			}
 			this.opened();
 			this.face_stack.visible_child_name = "entry";
-			/* After the click, so autohide does not treat it as outside. */
-			GLib.Idle.add(() => {
-				this.place();
-				this.pages.visible_child_name = "tree";
-				if (this.project.is_project) {
-					this.folder_tree.folders.load.begin(this.project);
-				}
-				this.entry.text = "";
-				this.history_epoch++;
-				this.load("", this.history_rows, true, this.history_epoch, "history");
-				this.popover.popup();
-				this.entry.grab_focus();
-				this.entry.set_position(-1);
-				this.entry.select_region(-1, -1);
-				return false;
-			});
+			this.pages.visible_child_name = "tree";
+			if (this.project.is_project) {
+				this.folder_tree.folders.load.begin(this.project);
+			}
+			this.entry.text = "";
+			this.history_epoch++;
+			this.load("", this.history_rows, true, this.history_epoch, "history");
+			this.list.visible = true;
+			this.entry.grab_focus();
+			this.entry.set_position(-1);
+			this.entry.select_region(-1, -1);
 		});
 		this.notify["project"].connect(() => {
 			if (!this.project.is_project) {
@@ -510,23 +529,18 @@ class FileSelector : Gtk.Box
 			}
 			this.opened();
 			this.face_stack.visible_child_name = "entry";
-			/* After the click, so autohide does not treat it as outside. */
-			GLib.Idle.add(() => {
-				this.place();
-				this.pages.visible_child_name = "tree";
-				if (this.project.is_project &&
-					!this.folder_tree.folders.loaded.contains(this.project.path)) {
-					this.folder_tree.folders.load.begin(this.project);
-				}
-				this.entry.text = "";
-				this.history_epoch++;
-				this.load("", this.history_rows, true, this.history_epoch, "history");
-				this.popover.popup();
-				this.entry.grab_focus();
-				this.entry.set_position(-1);
-				this.entry.select_region(-1, -1);
-				return false;
-			});
+			this.pages.visible_child_name = "tree";
+			if (this.project.is_project &&
+				!this.folder_tree.folders.loaded.contains(this.project.path)) {
+				this.folder_tree.folders.load.begin(this.project);
+			}
+			this.entry.text = "";
+			this.history_epoch++;
+			this.load("", this.history_rows, true, this.history_epoch, "history");
+			this.list.visible = true;
+			this.entry.grab_focus();
+			this.entry.set_position(-1);
+			this.entry.select_region(-1, -1);
 		});
 	}
 
@@ -679,8 +693,9 @@ class FileSelector : Gtk.Box
 	 *
 	 * A stale reply is dropped.
 	 * {@link OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS} leaves the tree
-	 * unfiltered and shows ''too many results'' on the file path.
-	 * An empty return is ''no results'' and the tree is reset.
+	 * unfiltered and shows ''too many results'' on the file list.
+	 * An empty return is ''no results'' on that same list, and
+	 * the tree is reset. The current file button stays.
 	 * The reply is native-endian int32 folder ids. A match is
 	 * ''true''. The walk stops at a parent already on the map.
 	 * Any other parent is ''false'',
@@ -704,13 +719,15 @@ class FileSelector : Gtk.Box
 			}
 			this.folder_tree.search_reset();
 			this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
-			this.label.label = "too many results";
+			this.label.label = this.path_text;
+			this.file_list.notice = "too many results";
 			return;
 		}
 		if (response.retval.type() == GLib.Type.INVALID) {
 			this.folder_tree.search_reset();
 			this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
-			this.label.label = "no results";
+			this.label.label = this.path_text;
+			this.file_list.notice = "no results";
 			return;
 		}
 		var blob = (GLib.Bytes) response.retval.get_boxed();
@@ -721,6 +738,7 @@ class FileSelector : Gtk.Box
 		this.folder_tree.search_reset();
 		this.folder_tree.searching = true;
 		this.label.label = this.path_text;
+		this.file_list.notice = "";
 		for (var i = 0; i < ids.length; i++) {
 			var id = ids[i];
 			if (!this.folder_tree.folders.id_map.has_key(id)) {
@@ -782,10 +800,11 @@ class FileSelector : Gtk.Box
 	}
 
 	/**
-	 * Keyboard for the open pop-down. Escape closes it. Enter
-	 * and Tab activate the marked row on the visible list and
-	 * move on. Up and Down move that mark. The tree tab has
-	 * no rows.
+	 * Keyboard for the open sheet. Escape closes it. On the
+	 * tree tab, Up and Down step the selected folder. A
+	 * selected file takes those keys and steps the file list.
+	 * On Recent, Enter and Tab activate the marked row. Up and
+	 * Down move that mark.
 	 *
 	 * @param keyval Key that was pressed
 	 * @param keycode Hardware key code, unused
@@ -794,15 +813,41 @@ class FileSelector : Gtk.Box
 	 */
 	private bool key_press(uint keyval, uint keycode, Gdk.ModifierType state)
 	{
-		if (!this.popover.visible) {
+		if (!this.list.visible) {
 			return false;
 		}
 		if (keyval == Gdk.Key.Escape) {
-			this.popover.popdown();
+			this.list.visible = false;
 			return true;
 		}
 		if (this.pages.visible_child_name != "history") {
-			return false;
+			if (keyval != Gdk.Key.Down && keyval != Gdk.Key.Up) {
+				return false;
+			}
+			var step = 1;
+			if (keyval == Gdk.Key.Up) {
+				step = -1;
+			}
+			var files = this.file_list.file_selection;
+			if (this.file_list.notice == "" && files.n_items > 0 &&
+					files.selected != Gtk.INVALID_LIST_POSITION) {
+				var next = (int) files.selected + step;
+				if (next < 0 || next >= (int) files.n_items) {
+					return true;
+				}
+				files.selected = (uint) next;
+				return true;
+			}
+			var folders = this.folder_tree.tree_selection;
+			if (folders.n_items < 1 || folders.selected == Gtk.INVALID_LIST_POSITION) {
+				return true;
+			}
+			var next_folder = (int) folders.selected + step;
+			if (next_folder < 0 || next_folder >= (int) folders.n_items) {
+				return true;
+			}
+			folders.selected = (uint) next_folder;
+			return true;
 		}
 		var lines = this.history_rows;
 		switch (keyval) {
@@ -879,8 +924,11 @@ class FileSelector : Gtk.Box
 			this.button.tooltip_text = file.path;
 		}
 		this.manager.activate_file(file);
-		this.popover.popdown();
 		this.pull.visible = false;
+		GLib.Idle.add(() => {
+			this.list.visible = false;
+			return false;
+		});
 		this.chosen(file);
 		var row = this.get_parent();
 		if (row == null) {
@@ -891,69 +939,6 @@ class FileSelector : Gtk.Box
 			return;
 		}
 		next.child_focus(Gtk.DirectionType.TAB_FORWARD);
-	}
-
-	/**
-	 * Size the file pop-down to the window. The width matches the
-	 * window. Height fills from under this control to
-	 * the bottom of the window, so the source view underneath is
-	 * covered. The minimum lives on the popover contents, which the
-	 * header row does not measure.
-	 */
-	private void place()
-	{
-		var root = this.get_root();
-		if (root == null) {
-			return;
-		}
-		Graphene.Rect bounds;
-		if (!this.compute_bounds(root, out bounds)) {
-			return;
-		}
-		var width = root.get_width();
-		var shift = 0;
-		if (this.popover.get_mapped()) {
-			Graphene.Rect pop_bounds;
-			if (this.popover.compute_bounds(root, out pop_bounds)) {
-				var chrome = (int) pop_bounds.size.width - this.scroll.get_parent().get_width();
-				if (chrome > 0 && chrome < width) {
-					width = width - chrome;
-				}
-				shift = (int) pop_bounds.origin.x;
-			}
-		}
-		if (width < 1) {
-			width = 1;
-		}
-		var point = Gdk.Rectangle();
-		point.x = -(int) bounds.origin.x - shift;
-		point.y = this.get_height();
-		point.width = width;
-		point.height = 1;
-		this.popover.set_pointing_to(point);
-		var anchor = (int) bounds.origin.y + (int) bounds.size.height;
-		var room = root.get_height() - anchor - 12;
-		if (this.popover.get_mapped() && this.scroll.get_height() > 0) {
-			Graphene.Rect pop_bounds;
-			if (this.popover.compute_bounds(root, out pop_bounds)) {
-				var chrome = (int) pop_bounds.size.height - this.scroll.get_height();
-				var gap = (int) pop_bounds.origin.y - anchor;
-				if (chrome > 0) {
-					room = room - chrome;
-				}
-				if (gap > 0) {
-					room = room - gap;
-				}
-			}
-		}
-		if (room < 1) {
-			room = 1;
-		}
-		this.scroll.min_content_width = width;
-		this.scroll.max_content_width = width;
-		this.scroll.get_parent().width_request = width;
-		this.scroll.min_content_height = room;
-		this.scroll.max_content_height = room;
 	}
 
 }

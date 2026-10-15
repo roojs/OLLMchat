@@ -24,7 +24,7 @@
 - 🔷 Phase 2.1 is the file selector already in the smoke app.
 - 🔷 Phase 2.2 is in the smoke app.
 - ✅ Phase 2.3 search is done. The no-folder search and restoring the current file on clear are Phase 4.
-- 🔷 Phase 2.4 is next. The popovers go. The lists are overlays on the editor.
+- 🔷 Phase 2.4 is next. The folder list and the file list are overlays on the editor. The folder bar's left arrow is still to do, and it stays hidden on desktop.
 - 🔷 Phase 3 and Phase 4 wait.
 
 ---
@@ -144,7 +144,11 @@ Folders on the left, files on the right. The file server is queried for each sid
 - ✔️ That file list opens at the top.
 - ✔️ A selected folder's files are a three-column grid: name with a type icon, size, and modified time. Names are alphabetical, ignoring case.
 - ✔️ A symlink whose stored target is a folder is not listed. A symlink to a file is.
-- ℹ️ ''fetch_dir'' copies stored rows. It does not read the filesystem. Size is not a stored column, so that column stays zero. Modified time is the stored ''last_modified''.
+- ℹ️ ''fetch_dir'' copies stored rows. It does not read the filesystem. Modified time is the stored ''last_modified''.
+
+#### File size is not showing
+
+The Size column is on the grid. It does not show a real file size. `Folder.fetch_dir` copies stored rows, and size is not one of those columns, so every row stays at zero. Leave it until size is stored. Do not read the size off disk in this plan.
 
 #### Other controls
 
@@ -209,11 +213,11 @@ The desktop search entry drives whichever tab is showing. Tree is the first filt
 - ✔️ The first search step gets the matching files. A folder is keyed by `(int) FileBase.id`, not by the folder name or the path.
   - ℹ️ A non-empty `Folder.fetch_files` query matches the filename, ignoring case. The parent ids are the project folders in `folder_map`, including a folder linked in through an alias. The reply is those folder ids packed as native-endian int32 bytes. A file contributes its parent id. A folder contributes its own id. More than 100 matches fails with `RpcErrorCode.TOO_MANY_RESULTS` and sends no rows. An empty query stays a file page. The tree does not hold a second copy of every file.
   - ℹ️ `FolderTreeStore.id_map` is id to folder. The walk starts at a file's `parent_id` or a folder's `id`, then each `parent_id`. It does not look up a path.
-- ✔️ More than 100 matches: do not filter the tree. The file path shows `too many results`.
-- ✔️ An empty reply resets the tree. The file path shows `no results`.
+- ✔️ More than 100 matches: do not filter the tree. The right list shows ''too many results''. The current file button keeps the open file.
+- ✔️ An empty reply resets the tree. The right list shows ''no results''. The current file button keeps the open file.
 - ✔️ 100 matches or fewer: take those folder ids and `set` each to `true`. Walk each parent. Stop when that parent is already on the map. Otherwise `set` it to `false` and set that folder's `is_show_empty`, so the bound name is light grey. The caller notifies `css-classes`. The filter keeps a row whose id is on that map. A later reply calls `search_reset` before that fill.
 - ✔️ Recent search stays on Recent. It orders matches by how recent they are. It does not jump to Tree.
-- ✔️ Clicking a folder while searching shows that folder's matching files on the right, on that same grid. The file list filters on the client. A file stays when its name contains the search text, ignoring case. An empty search shows every file the type filter allows.
+- ✔️ Clicking a folder while searching shows that folder's matching files on the right, on that same grid. The file list filters on the client. A file stays when its path, under the project, contains the search text, ignoring case. A folder named like the search shows every file in it. An empty search shows every file the type filter allows.
 - ℹ️ With no folder selected, the right list stays ''Select a folder''. Showing every match there, and restoring the current file when the search clears, are Phase 4.
 
 #### Visible folders
@@ -231,10 +235,13 @@ The visible folders are a `Gee.HashMap<int, bool>`. The key is `(int) FileBase.i
 
 The popovers go. Windowing with them is nasty. The project list and the file list are drawn on the editor instead.
 
-- 🔷 ⏳ No popover. The project list and the file list are overlays on the editor area.
-- 🔷 ⏳ The overlay covers part of the editor, or the whole editor. It does not cover the whole window. About half the screen stays clear.
-- 🔷 ⏳ A close icon on the file bar, and one on the folder bar.
-- 🔷 ⏳ A click in any other area clears the overlay. That is enough because the overlay does not cover the whole screen.
+- ✔️ No popover. Both lists are overlays on the editor area.
+- ✔️ The folder overlay is the size of the old popover, 280 wide, on the left of the editor. A click on the editor outside that list closes it. The desktop folder bar has no close button.
+- ✔️ The file overlay covers the editor. It is the one that needs a close control.
+- ✔️ Hide the document and code buttons. Leave that filter code in place. The right slot does not keep an empty gap.
+- ✔️ That slot is a process-stop icon. It closes the file overlay.
+- 🔷 ⏳ The folder bar has the same left arrow. It is hidden on the desktop.
+- ℹ️ On the Android phone that same arrow is the collapse control, and the folder one is shown there. Desktop does not show it.
 
 ---
 
@@ -327,5 +334,7 @@ Not the next step. Phase 2.4 is next.
 - 🚫 Search visibility is not a stamp on the folder, and not a set of paths. It is a `Gee.HashMap<int, bool>` of `(int) FileBase.id`. Above 100 matches, the tree is not filtered. Numbers in that map are Phase 4.
 - 🚫 Do not build the no-folder search, or restore the current file when search clears, in Phase 2.4. Both are Phase 4.
 - 🚫 Do not keep the project list or the file list as a popover. Phase 2.4 draws them on the editor.
+- 🚫 Do not delete the document and code filter. Hide those buttons. The right slot is the file overlay's process-stop icon.
+- 🚫 Do not fill the Size column from the filesystem. Size is not stored, so that column stays empty until a later change.
 - 🚫 Do not copy `ProjectFiles.cached_search` sort orders, and do not use `ProjectFiles.get_recent_list`.
 - 🚫 No status theatre. Do not add ✔️ or ✅, rewrite the Status line, or answer with what was ticked, unless the running app already does that thing.

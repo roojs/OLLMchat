@@ -20,9 +20,11 @@
  * Project selector. Replaces {@link OLLMcoder.ProjectDropdown}.
  *
  * Resting state is a flat button with a folder icon. A desktop
- * click turns it into a search entry and opens a left-aligned
- * pop-down. Recent is the default. A project is recent when a
- * file under it has been viewed.
+ * click turns it into a search entry and opens the project list
+ * on the left of the editor. That list is the old pop-down
+ * width. A click on the editor outside the list closes it.
+ * Typing in the search entry does not. Recent is the default.
+ * A project is recent when a file under it has been viewed.
  * That time is the newest file ''last_viewed'', not the project row.
  * All lists every name. Phone and tablet open {@link SelectorPull}.
  *
@@ -36,7 +38,7 @@
 class ProjectSelector : Gtk.Box
 {
 	/**
-	 * Emitted when the desktop pop-down is about to open.
+	 * Emitted when the desktop list is about to open.
 	 *
 	 * The host closes the file pop-down from this.
 	 */
@@ -53,9 +55,16 @@ class ProjectSelector : Gtk.Box
 	public signal void chosen(OLLMfiles.Folder folder);
 
 	/**
-	 * Desktop project pop-down. The host closes it when files open.
+	 * Project list drawn on the editor. Hidden until the folder
+	 * button opens it. A click outside it closes it.
 	 */
-	public Gtk.Popover popover { get; private set; }
+	public Gtk.Box list { get; private set; }
+
+	/**
+	 * Covers the editor while {@link list} is open. A click here
+	 * closes the list. Hidden with the list.
+	 */
+	public Gtk.Box shade { get; private set; }
 
 	private OLLMfiles.ProjectManager manager;
 	private string form = "desktop";
@@ -63,7 +72,8 @@ class ProjectSelector : Gtk.Box
 	private Gtk.Label label;
 
 	/**
-	 * Resting project button. A click opens the pop-down.
+	 * Resting project button. A click opens the list. A click
+	 * while that list is open closes it.
 	 */
 	public Gtk.Button button { get; private set; }
 
@@ -83,7 +93,7 @@ class ProjectSelector : Gtk.Box
 	public bool project_recent { get; private set; default = true; }
 
 	/**
-	 * Build the project button, pop-down, and pull-over page.
+	 * Build the project button, the editor list, and the pull-over page.
 	 *
 	 * @param manager Connected manager whose projects are already loaded
 	 * @param form ''desktop'', ''phone'', or ''tablet''
@@ -92,25 +102,21 @@ class ProjectSelector : Gtk.Box
 	 */
 	public ProjectSelector(OLLMfiles.ProjectManager manager, string form, SelectorPull pull)
 	{
-		Object(orientation: Gtk.Orientation.HORIZONTAL, spacing: 0);
+		Object(
+			orientation: Gtk.Orientation.HORIZONTAL,
+			spacing: 0,
+			hexpand: false,
+			valign: Gtk.Align.START
+		);
 		this.manager = manager;
 		this.form = form;
 		this.pull = pull;
-		this.hexpand = false;
-		this.valign = Gtk.Align.START;
 		this.label = new Gtk.Label("Select project") {
 			xalign = 0,
 			halign = Gtk.Align.START,
+			max_width_chars = this.form == "phone" ? 18 : -1,
+			ellipsize = this.form == "phone" ? Pango.EllipsizeMode.END : Pango.EllipsizeMode.NONE,
 		};
-		switch (this.form) {
-		case "phone":
-			this.label.max_width_chars = 18;
-			this.label.ellipsize = Pango.EllipsizeMode.END;
-			break;
-
-		default:
-			break;
-		}
 		var face = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
 		face.append(new Gtk.Image.from_icon_name("folder-symbolic"));
 		face.append(this.label);
@@ -118,8 +124,8 @@ class ProjectSelector : Gtk.Box
 			child = face,
 			hexpand = false,
 			valign = Gtk.Align.CENTER,
+			css_classes = { "flat" },
 		};
-		this.button.add_css_class("flat");
 		this.entry = new Gtk.SearchEntry() {
 			placeholder_text = "Search projects",
 			hexpand = true,
@@ -140,10 +146,9 @@ class ProjectSelector : Gtk.Box
 		this.scroll = new Gtk.ScrolledWindow() {
 			child = this.rows,
 			min_content_width = 280,
-			max_content_width = 280,
-			min_content_height = 200,
-			propagate_natural_height = true,
-			propagate_natural_width = true,
+			hexpand = true,
+			vexpand = true,
+			propagate_natural_height = false,
 			hscrollbar_policy = Gtk.PolicyType.NEVER,
 			can_focus = false,
 		};
@@ -154,53 +159,63 @@ class ProjectSelector : Gtk.Box
 			margin_end = 6,
 			margin_top = 6,
 			margin_bottom = 6,
+			css_classes = { "horizontal", "linked" },
 		};
-		project_bar.add_css_class("linked");
-		var project_recent_toggle = new Gtk.ToggleButton.with_label("Recent");
+		var project_recent_toggle = new Gtk.ToggleButton.with_label("Recent") {
+			active = true,
+		};
 		var project_all_toggle = new Gtk.ToggleButton.with_label("All");
 		project_all_toggle.set_group(project_recent_toggle);
-		project_recent_toggle.active = true;
 		project_bar.append(project_recent_toggle);
 		project_bar.append(project_all_toggle);
-		var project_popup = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+		this.list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 			can_focus = false,
-		};
-		project_popup.append(project_bar);
-		project_popup.append(this.scroll);
-		this.popover = new Gtk.Popover() {
-			has_arrow = false,
-			position = Gtk.PositionType.BOTTOM,
+			width_request = 280,
 			halign = Gtk.Align.START,
-			autohide = false,
-			can_focus = false,
-			child = project_popup,
+			valign = Gtk.Align.FILL,
+			vexpand = true,
+			visible = false,
+			overflow = Gtk.Overflow.VISIBLE,
+			css_classes = { "vertical", "project-sheet" },
 		};
-		this.popover.set_parent(this);
+		this.list.append(project_bar);
+		this.list.append(this.scroll);
+		this.shade = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+			hexpand = true,
+			vexpand = true,
+			can_focus = false,
+			can_target = true,
+			visible = false,
+			css_classes = { "horizontal", "project-shade" },
+		};
+		var outside = new Gtk.GestureClick();
+		outside.pressed.connect(() => {
+			this.list.visible = false;
+		});
+		this.shade.add_controller(outside);
+		this.list.notify["visible"].connect(() => {
+			this.shade.visible = this.list.visible;
+			if (!this.list.visible) {
+				this.stack.visible_child_name = "button";
+				return;
+			}
+			this.scroll.vadjustment.value = this.scroll.vadjustment.lower;
+			var child = this.rows.get_first_child();
+			while (child != null) {
+				child.remove_css_class("selector-mark");
+				child = child.get_next_sibling();
+			}
+		});
 		this.realize.connect(() => {
 			var window = this.get_root() as Gtk.Window;
 			if (window == null) {
 				return;
 			}
 			window.notify["is-active"].connect(() => {
-				if (window.is_active || !this.popover.visible) {
+				if (window.is_active || !this.list.visible) {
 					return;
 				}
-				this.popover.popdown();
-			});
-		});
-		this.popover.closed.connect(() => {
-			this.stack.visible_child_name = "button";
-		});
-		this.popover.map.connect(() => {
-			GLib.Idle.add(() => {
-				this.place();
-				this.scroll.vadjustment.value = this.scroll.vadjustment.lower;
-				var child = this.rows.get_first_child();
-				while (child != null) {
-					child.remove_css_class("selector-mark");
-					child = child.get_next_sibling();
-				}
-				return false;
+				this.list.visible = false;
 			});
 		});
 
@@ -222,12 +237,13 @@ class ProjectSelector : Gtk.Box
 			margin_start = 6,
 			margin_end = 6,
 			margin_bottom = 6,
+			css_classes = { "horizontal", "linked" },
 		};
-		pull_bar.add_css_class("linked");
-		var pull_recent_toggle = new Gtk.ToggleButton.with_label("Recent");
+		var pull_recent_toggle = new Gtk.ToggleButton.with_label("Recent") {
+			active = true,
+		};
 		var pull_all_toggle = new Gtk.ToggleButton.with_label("All");
 		pull_all_toggle.set_group(pull_recent_toggle);
-		pull_recent_toggle.active = true;
 		pull_bar.append(pull_recent_toggle);
 		pull_bar.append(pull_all_toggle);
 		var pull_page = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -360,8 +376,8 @@ class ProjectSelector : Gtk.Box
 			margin_start = 12,
 			margin_top = 8,
 			margin_bottom = 8,
+			css_classes = { "dim-label" },
 		};
-		desktop_empty.add_css_class("dim-label");
 		this.rows.set_placeholder(desktop_empty);
 		var pull_empty = new Gtk.Label("No recent projects") {
 			xalign = 0,
@@ -369,8 +385,8 @@ class ProjectSelector : Gtk.Box
 			margin_start = 12,
 			margin_top = 8,
 			margin_bottom = 8,
+			css_classes = { "dim-label" },
 		};
-		pull_empty.add_css_class("dim-label");
 		this.pull_rows.set_placeholder(pull_empty);
 
 		var filter_sync = false;
@@ -513,24 +529,25 @@ class ProjectSelector : Gtk.Box
 				pull_empty.label = "No recent projects";
 			}
 		});
-		var keys = new Gtk.EventControllerKey();
-		keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+		var keys = new Gtk.EventControllerKey() {
+			propagation_phase = Gtk.PropagationPhase.CAPTURE,
+		};
 		keys.key_pressed.connect(this.key_press);
 		this.entry.add_controller(keys);
 		var focus = new Gtk.EventControllerFocus();
 		focus.leave.connect(() => {
-			if (!this.popover.visible) {
+			if (!this.list.visible) {
 				return;
 			}
 			/* Focus is cleared before this runs. All's click then
 			   puts it on the entry's text child, not the entry. */
 			GLib.Idle.add(() => {
-				if (!this.popover.visible) {
+				if (!this.list.visible) {
 					return false;
 				}
 				var root = this.get_root();
 				if (root == null) {
-					this.popover.popdown();
+					this.list.visible = false;
 					return false;
 				}
 				var focused = root.get_focus() as Gtk.Widget;
@@ -539,56 +556,55 @@ class ProjectSelector : Gtk.Box
 					focus_name = focused.get_type().name();
 				}
 				var stay = focused == this.entry || (focused != null && focused.is_ancestor(this.entry));
-				if (focused != null && (focused == this.popover || focused.is_ancestor(this.popover))) {
+				if (focused != null && (focused == this.list || focused.is_ancestor(this.list))) {
 					stay = true;
 				}
 				GLib.debug("focus leave widget=%s stay=%s", focus_name, stay.to_string());
 				if (stay) {
 					return false;
 				}
-				this.popover.popdown();
+				this.list.visible = false;
 				return false;
 			});
 		});
 		this.entry.add_controller(focus);
 		this.button.clicked.connect(() => {
 			switch (this.form) {
-			case "phone":
-			case "tablet":
-				this.pull.kind = "project";
-				this.pull.heading.label = "Projects";
-				this.pull.current.label = this.label.label;
-				if (this.form != "phone" && this.button.tooltip_text != "") {
-					this.pull.current.label = this.button.tooltip_text;
-				}
-				this.pull.pages.visible_child_name = "project";
-				this.pull.search.placeholder_text = "Search projects";
-				this.pull.visible = true;
-				this.pull.search.text = "";
+				case "phone":
+				case "tablet":
+					this.pull.kind = "project";
+					this.pull.heading.label = "Projects";
+					this.pull.current.label = this.label.label;
+					if (this.form != "phone" && this.button.tooltip_text != "") {
+						this.pull.current.label = this.button.tooltip_text;
+					}
+					this.pull.pages.visible_child_name = "project";
+					this.pull.search.placeholder_text = "Search projects";
+					this.pull.visible = true;
+					this.pull.search.text = "";
+					return;
+				default:
+					break;
+			}
+			if (this.list.visible) {
+				this.list.visible = false;
 				return;
-			default:
-				break;
 			}
 			this.opened();
 			if (!project_recent_toggle.active) {
 				project_recent_toggle.active = true;
 			}
 			this.stack.visible_child_name = "entry";
-			/* After the click, so autohide does not treat it as outside. */
-			GLib.Idle.add(() => {
-				this.place();
-				this.entry.text = "";
-				this.popover.popup();
-				this.entry.grab_focus();
-				this.entry.set_position(-1);
-				this.entry.select_region(-1, -1);
-				return false;
-			});
+			this.entry.text = "";
+			this.list.visible = true;
+			this.entry.grab_focus();
+			this.entry.set_position(-1);
+			this.entry.select_region(-1, -1);
 		});
 	}
 
 	/**
-	 * Keyboard for the open pop-down. Escape closes it. Enter
+	 * Keyboard for the open list. Escape closes it. Enter
 	 * and Tab activate the marked row, and choosing a project
 	 * moves to the file control. Up and Down move that mark.
 	 *
@@ -599,12 +615,12 @@ class ProjectSelector : Gtk.Box
 	 */
 	private bool key_press(uint keyval, uint keycode, Gdk.ModifierType state)
 	{
-		if (!this.popover.visible) {
+		if (!this.list.visible) {
 			return false;
 		}
 		switch (keyval) {
 			case Gdk.Key.Escape:
-				this.popover.popdown();
+				this.list.visible = false;
 				return true;
 			case Gdk.Key.Return:
 			case Gdk.Key.KP_Enter:
@@ -676,53 +692,10 @@ class ProjectSelector : Gtk.Box
 		if (this.form != "phone") {
 			this.button.tooltip_text = folder.path;
 		}
-		this.popover.popdown();
+		this.list.visible = false;
 		this.pull.visible = false;
 		this.chosen(folder);
 		yield this.manager.activate_project(folder, false);
 	}
 
-	/**
-	 * Left-align the pop-down under the button and stretch it to the
-	 * space the window still has below the row. Popover padding and
-	 * the gap under the button are taken off that space, so the
-	 * pop-down stays inside the window.
-	 */
-	private void place()
-	{
-		var point = Gdk.Rectangle();
-		point.x = 0;
-		point.y = this.get_height();
-		point.width = 280;
-		point.height = 1;
-		this.popover.set_pointing_to(point);
-		var root = this.get_root();
-		if (root == null) {
-			return;
-		}
-		Graphene.Rect bounds;
-		if (!this.compute_bounds(root, out bounds)) {
-			return;
-		}
-		var anchor = (int) bounds.origin.y + (int) bounds.size.height;
-		var room = root.get_height() - anchor - 8;
-		if (this.popover.get_mapped() && this.scroll.get_height() > 0) {
-			Graphene.Rect pop_bounds;
-			if (this.popover.compute_bounds(root, out pop_bounds)) {
-				var chrome = (int) pop_bounds.size.height - this.scroll.get_height();
-				var gap = (int) pop_bounds.origin.y - anchor;
-				if (chrome > 0) {
-					room = room - chrome;
-				}
-				if (gap > 0) {
-					room = room - gap;
-				}
-			}
-		}
-		if (room < 1) {
-			room = 1;
-		}
-		this.scroll.min_content_height = room;
-		this.scroll.max_content_height = room;
-	}
 }

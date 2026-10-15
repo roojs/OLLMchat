@@ -1,24 +1,24 @@
 # 2.31 — URGENT — `bash` as a process tool
 
-**Status:** ⏳ **design** — Phase A, Phase B, and Phase C are applied. Phase C tests are still ⏳. Not user-verified.
+**Status:** ✔️ **archived** — Phases A–C applied. Their tests were still ⏳. Not user-verified. Removal of `run_command` is [`TOOLS-2.32`](../TOOLS-2.32-remove-run-command.md).
 
 > **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
 **Was:** `RPC-8.2.8.10-URGENT-android-remote-bash.md`. Moved to `TOOLS` because this is a tool problem, not an RPC one.
 
-**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](RPC-8.2.8-filesd-connections-ui.md) Phase 12
+**Parent:** [`RPC-8.2.8-filesd-connections-ui.md`](../RPC-8.2.8-filesd-connections-ui.md) Phase 12
 
 **Sub-plans:** phases A–E below become `TOOLS-2.31.1` … `TOOLS-2.31.5` as each one's open questions close.
 
-- [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md) — **Phase A**, the daemon job model. **✔️** Applied.
-- [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md) — **Phase B**, daemon RPC verbs. **✔️** Applied. Socket tests still ⏳.
-- [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md) — **Phase C**, the `bash` tool on that wire. **✔️** Applied. Tests still ⏳.
+- [`TOOLS-2.31.1`](TOOLS-2.31.1-DONE-daemon-job-model.md) — **Phase A**, the daemon job model. **✔️** Applied.
+- [`TOOLS-2.31.2`](TOOLS-2.31.2-DONE-daemon-rpc-verbs.md) — **Phase B**, daemon RPC verbs. **✔️** Applied. Socket tests still ⏳.
+- [`TOOLS-2.31.3`](TOOLS-2.31.3-DONE-bash-tool.md) — **Phase C**, the `bash` tool on that wire. **✔️** Applied. Tests still ⏳.
 - [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) — earlier daemon `Sandbox-Bubble` RPC draft. **Parked, do not apply.**
 
 **Depends on:**
 
-- [`RPC-8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) — Agent Pi on `LIVE` / `SOCKET`. Registers `write` / `read` only. Does not register `Bash`.
-- [`BWRAP-2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) — daemon sandbox RPC design. Not on the wire yet.
+- [`RPC-8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md) — Agent Pi on `LIVE` / `SOCKET`. Registers `write` / `read` only. Does not register `Bash`.
+- [`BWRAP-2.10.4.15`](../BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) — daemon sandbox RPC design. Not on the wire yet.
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -30,7 +30,7 @@ Proposed Vala follows `docs/coding-standards.md`.
 
 ## Purpose
 
-- **🔷** A separate ticket. Not stuffed into [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md).
+- **🔷** A separate ticket. Not stuffed into [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md).
 - **🔷** Turn `bash` into a tool the phone can use **remotely**.
   - The command runs on the desktop `ollmfilesd`.
   - Not on the phone.
@@ -316,11 +316,11 @@ on it with this tool to find the part you need.
 ## Current behaviour (remote path)
 
 - **ℹ️** `Request.execute_tool_async` calls in-process `OLLMbwrap.Bubble.exec`. The command never leaves the app process.
-- **ℹ️** Overlay apply after a local exec is File.* RPC ([`done/2.10.4.19`](done/2.10.4.19-DONE-runcommand-overlay-index.md)).
+- **ℹ️** Overlay apply after a local exec is File.* RPC ([`done/2.10.4.19`](2.10.4.19-DONE-runcommand-overlay-index.md)).
 - **ℹ️** `write` / `read` already go through `ProjectManager` RPC when the client is remote.
-- **ℹ️** Android `initialize_client` registers `write` / `read` only ([`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md) Phase 2).
+- **ℹ️** Android `initialize_client` registers `write` / `read` only ([`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md) Phase 2).
 - **ℹ️** `AgentPi.Factory.register_config` `GLib.error`s without `write` / `read` / `bash`. Android therefore does not call `register_config` yet.
-- **ℹ️** Daemon `Bubble.*` is still **DEFERRED** ([`FILES-2.10.4.1`](FILES-2.10.4.1-ollmfilesd-rpc-api.md) · [`2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)).
+- **ℹ️** Daemon `Bubble.*` is still **DEFERRED** ([`FILES-2.10.4.1`](../FILES-2.10.4.1-ollmfilesd-rpc-api.md) · [`2.10.4.15`](../BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)).
 
 ---
 
@@ -338,10 +338,10 @@ on it with this tool to find the part you need.
 - **🔷** After the exec wire exists, Android registers `Bash`, then `AgentPi.Factory.register_config`.
   - Same order as `write` / `read` today.
 - **🔷** HTTPS is being retired. The phone reaches the daemon over the TLS TCP socket (`filesd.socket`, `SslListen`).
-  - **ℹ️** Handover is [`RPC-1.11.3`](RPC-1.11.3-tcp-client-handover.md). `TcpListen` stays the plaintext Windows listener.
+  - **ℹ️** Handover is [`RPC-1.11.3`](../RPC-1.11.3-tcp-client-handover.md). `TcpListen` stays the plaintext Windows listener.
 - **ℹ️** `Bash` today only sets `name`, `title`, and `example_call`. `Request.execute_tool_async` is what spawns. Whether that method is the only edit is not decided.
 - **🔷** Whether this needs another V2 cutover is open.
-  - [`2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) still says the daemon RPC caller lands at the V2 flip.
+  - [`2.10.4.15`](../BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) still says the daemon RPC caller lands at the V2 flip.
   - This ticket does not decide that.
 
 ---
@@ -379,13 +379,13 @@ on it with this tool to find the part you need.
 - **🔷** `bash` does not subclass `RunCommand.Tool`. New class `OLLMtools.Bash` in `liboctools/Bash/`, with its own `Tool` and `Request`, copied from `RunCommand` and then cut down.
 - **🔷** Desktop keeps `run_command` registered. `bash` is the new class, registered beside it.
 - **🚫** Sharing one `Request` so the two tools cannot drift. The copy is the one that is allowed to change. The old files can be trashed once nothing references them.
-- **ℹ️** Detail is in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md).
+- **ℹ️** Detail is in [`TOOLS-2.31.3`](TOOLS-2.31.3-DONE-bash-tool.md).
 
 ---
 
 ## Phase A — daemon job model (`✔️`)
 
-**ℹ️** Split out to [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md). **✔️** Applied to `libocbwrap/Bubble.vala`. Summary only below.
+**ℹ️** Split out to [`TOOLS-2.31.1`](TOOLS-2.31.1-DONE-daemon-job-model.md). **✔️** Applied to `libocbwrap/Bubble.vala`. Summary only below.
 
 - **🔷** `✔️` A job must survive the call that created it. `Bubble.jobs` holds the reference.
 - **🔷** `✔️` A map of pid to `Bubble` is the registry, and it is the one genuinely new piece of state. It is also the **authorisation check** — a pid that is not in it was not started by us, and nothing is done to it.
@@ -401,7 +401,7 @@ on it with this tool to find the part you need.
 
 ## Phase B — daemon RPC verbs (`✔️`)
 
-**ℹ️** Split out to [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md). **✔️** Applied. Summary only below. Socket tests there are still ⏳.
+**ℹ️** Split out to [`TOOLS-2.31.2`](TOOLS-2.31.2-DONE-daemon-rpc-verbs.md). **✔️** Applied. Summary only below. Socket tests there are still ⏳.
 
 - **🔷** `✔️` `Sandbox-Bubble` gains a call per verb — kill, tail, wait, send — on top of create and run.
 - **🔷** `✔️` After `rpc_run`, later calls use the **pid**, looked up in `Bubble.jobs`. A connection lease is only for streaming on the call that started the job.
@@ -413,13 +413,13 @@ on it with this tool to find the part you need.
 
 ## Phase C — the `bash` tool (`✔️`)
 
-**ℹ️** Applied in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md). Tests there are still ⏳. Summary only below.
+**ℹ️** Applied in [`TOOLS-2.31.3`](TOOLS-2.31.3-DONE-bash-tool.md). Tests there are still ⏳. Summary only below.
 
 - **🔷** `✔️` Build the tool contract designed above: `pid` parameter, the four verbs, `timeout = -1`, the pid-return block, and the truncation advice.
 - **🔷** `✔️` `LIVE` and `SOCKET` both run `bash` on the daemon. Not in-process `OLLMbwrap`.
-- **ℹ️** `SOCKET` is the desktop local Unix hello ([`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md)). `ollmfilesd` is already up on this machine. Empty `url`. Not a remote row.
+- **ℹ️** `SOCKET` is the desktop local Unix hello ([`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md)). `ollmfilesd` is already up on this machine. Empty `url`. Not a remote row.
 - **ℹ️** Overlay / index update after daemon exec is the daemon's job in `2.10.4.15` (`Scan` + `FileVerification` on `ollmfilesd`).
-- **ℹ️** Code proposals are in [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md).
+- **ℹ️** Code proposals are in [`TOOLS-2.31.3`](TOOLS-2.31.3-DONE-bash-tool.md).
 
 ---
 
@@ -442,7 +442,7 @@ on it with this tool to find the part you need.
 
 ### Key facts
 
-- **ℹ️** `register_config` on `liboccoder/AgentPi/Factory.vala` `GLib.error`s on a missing `write`, `read`, or `bash` in the tool map. `bash` is the only one still absent on Android, which is why [`8.2.8.11`](done/RPC-8.2.8.11-DONE-android-startup-history-bars.md) §4 says not to call it yet.
+- **ℹ️** `register_config` on `liboccoder/AgentPi/Factory.vala` `GLib.error`s on a missing `write`, `read`, or `bash` in the tool map. `bash` is the only one still absent on Android, which is why [`8.2.8.11`](RPC-8.2.8.11-DONE-android-startup-history-bars.md) §4 says not to call it yet.
 - **ℹ️** `History.Manager.register_tool` is only `this.tools.set(tool.name, tool)`. No config type registration, which is why `write` / `read` work today without being in `AndroidToolsRegistration.init_config`. `bash` needs nothing extra either.
 - **ℹ️** `RunCommand/Bash.vala` is unconditional in `liboctools/meson.build`, so the class is already in the Android build.
 - **ℹ️** Calling `register_config` is not just an assert. It also seeds `config.agents["agent-pi"]` with the `forbid` list and the skills array. Android has never seeded that, so Agent Pi has been running with no forbid list and no skills.
@@ -510,10 +510,10 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 
 ## Suggested order
 
-1. **✔️** **Phase A** — apply [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md). Agent applied; not user-verified.
-2. **🔷** `bash` is a new class. `run_command` is deprecated. See [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md).
-3. **✔️** **Phase B** — apply [`TOOLS-2.31.2`](TOOLS-2.31.2-daemon-rpc-verbs.md). Agent applied; socket tests still ⏳.
-4. **✔️** **Phase C** — [`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md): `pid`, verbs, `-1`, truncation advice, the session id on the daemon job, and its idle timer. Agent applied; tests still ⏳.
+1. **✔️** **Phase A** — apply [`TOOLS-2.31.1`](TOOLS-2.31.1-DONE-daemon-job-model.md). Agent applied; not user-verified.
+2. **🔷** `bash` is a new class. `run_command` is deprecated. See [`TOOLS-2.31.3`](TOOLS-2.31.3-DONE-bash-tool.md).
+3. **✔️** **Phase B** — apply [`TOOLS-2.31.2`](TOOLS-2.31.2-DONE-daemon-rpc-verbs.md). Agent applied; socket tests still ⏳.
+4. **✔️** **Phase C** — [`TOOLS-2.31.3`](TOOLS-2.31.3-DONE-bash-tool.md): `pid`, verbs, `-1`, truncation advice, the session id on the daemon job, and its idle timer. Agent applied; tests still ⏳.
 5. **⏳** **Phase D** — background-job indicator and user-facing kill, before `-1` ships
 6. **⏳** **Phase E** — Android registration + `AgentPi.Factory.register_config`
 
@@ -530,8 +530,8 @@ Edits are **Remove** / **Replace with** against the tree. Verify surrounding con
 - **🚫** Applying [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md). It predates this design.
 - **🚫** Adding `pid`, verbs, or `-1` to `run_command`. That is what `bash` is for.
 - **🚫** A second management tool. One tool, `pid` as the argument.
-- **🚫** Putting these hunks into [`8.2.8.9`](done/RPC-8.2.8.9-DONE-android-agent-pi.md).
-- **🚫** `run_as_root` / sudo over RPC ([`2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)).
+- **🚫** Putting these hunks into [`8.2.8.9`](RPC-8.2.8.9-DONE-android-agent-pi.md).
+- **🚫** `run_as_root` / sudo over RPC ([`2.10.4.15`](../BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)).
 - **🚫** MCP stdio session RPC (`2.10.4.15` Phase B).
 - **🚫** Helper methods unless a fence names one.
 

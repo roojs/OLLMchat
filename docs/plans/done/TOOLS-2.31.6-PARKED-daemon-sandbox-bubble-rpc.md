@@ -1,18 +1,18 @@
 # 2.31.6 — Daemon `Sandbox-Bubble` RPC (parked draft)
 
-**Status:** ⏳ **PARKED — do not apply.** Code proposals are complete and kept on purpose, to be mined by Phases A and B of the parent. The wire shape in here is superseded.
+**Status:** ✔️ **archived, still parked — do not apply.** Superseded by Phases A and B. Kept so the old wire is not rebuilt from memory.
 
 > **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
 **Was:** `RPC-8.2.8.10.1-daemon-sandbox-bubble-rpc.md`. Moved with its parent into the `TOOLS` series.
 
-**Parent:** [`TOOLS-2.31`](TOOLS-2.31-URGENT-bash-process-tool.md) — `bash` as a process tool
+**Parent:** [`TOOLS-2.31`](TOOLS-2.31-DONE-bash-process-tool.md) — `bash` as a process tool
 
 **Numbered `.6`** so `TOOLS-2.31.1` … `TOOLS-2.31.5` stay free for the parent's phases A–E.
 
 **Depends on:**
 
-- [`BWRAP-2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) — daemon sandbox RPC design. Phase A is the source for params and vetoes.
+- [`BWRAP-2.10.4.15`](../BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) — daemon sandbox RPC design. Phase A is the source for params and vetoes.
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**
 
@@ -25,7 +25,7 @@ Proposed Vala follows `docs/coding-standards.md`.
 - **🔷** Put the daemon side of remote `bash` on the wire: `ollmfilesd` runs the sandboxed command, the client drives it over RPC.
 - **🔷** `⏳` Hold the implementation without applying it. The parent is reworking the **tool** contract first (timeout, detached processes, status / kill / stdin), and that may change what the daemon has to expose.
 - **ℹ️** Everything below was written against the tree and reviewed. It is parked, not abandoned.
-- **ℹ️** Read [`BWRAP-2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) Phase A first for the full design, params, and vetoes.
+- **ℹ️** Read [`BWRAP-2.10.4.15`](../BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md) Phase A first for the full design, params, and vetoes.
 
 ---
 
@@ -85,7 +85,7 @@ Proposed Vala follows `docs/coding-standards.md`.
 #### Transport
 
 - **🔷** HTTPS is being retired. The phone reaches the daemon over the TLS TCP socket (`filesd.socket`, `SslListen`).
-  - **ℹ️** Handover is [`RPC-1.11.3`](RPC-1.11.3-tcp-client-handover.md). `TcpListen` stays the plaintext Windows listener.
+  - **ℹ️** Handover is [`RPC-1.11.3`](../RPC-1.11.3-tcp-client-handover.md). `TcpListen` stays the plaintext Windows listener.
   - **ℹ️** HTTPS could not have carried this: `Transport.HttpServer` never overrides `Listen.broadcast`, and `X-rpc-sequence` forbids a second in-flight call on a session, so even `stop` could not be sent mid-run.
 - **✔️** `TcpListen` overrides `broadcast` (`libocrpc/Transport/TcpListen.vala:77`) and passes `live_handles` to each accepted connection (`:66`). `SocketListen` does both too.
 - **🔷** `live_handles` must be switched on for the daemon's listeners — §5. No `ollmfilesd` listener sets it today; `Live.Subscribe.rpc_signal` calls `GLib.error("Subscribe.signal requires live_handles")` when off.
@@ -964,6 +964,6 @@ namespace OLLMfilesd.Sandbox
 
 - **🚫** Applying any of this before the parent's tool design is settled.
 - **🚫** A new RPC object (`Exec.*`, `Bash.*`, `RunCommand.*`). The wire is `Sandbox-Bubble.*`.
-- **🚫** `run_as_root` / sudo over RPC ([`2.10.4.15`](BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)).
+- **🚫** `run_as_root` / sudo over RPC ([`2.10.4.15`](../BWRAP-2.10.4.15-DEFERRED-execution-rpc-sandbox.md)).
 - **🚫** MCP stdio session RPC (`2.10.4.15` Phase B).
 - **🚫** Helper methods unless a fence above names one.

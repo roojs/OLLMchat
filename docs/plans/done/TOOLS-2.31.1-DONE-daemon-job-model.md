@@ -1,10 +1,10 @@
 # 2.31.1 — Phase A — daemon job model
 
-**Status:** ✔️ **applied** — `libocbwrap/Bubble.vala` plus the matching public surface on `libocbwrap/windows/Bubble.vala`. Not user-verified.
+**Status:** ✔️ **archived** — applied in `libocbwrap/Bubble.vala` and `libocbwrap/windows/Bubble.vala`. Not user-verified.
 
 > **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
-**Parent:** [`TOOLS-2.31`](TOOLS-2.31-URGENT-bash-process-tool.md) — `bash` as a process tool, Phase A
+**Parent:** [`TOOLS-2.31`](TOOLS-2.31-DONE-bash-process-tool.md) — `bash` as a process tool, Phase A
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**. Proposed Vala follows `docs/coding-standards.md`.
 
@@ -15,7 +15,7 @@
 - **🔷** `✔️` Make a sandboxed command into a **job** that outlives the call which started it.
 - **🔷** `✔️` Give that job a stable handle, a way to write to its stdin, and a way to tell that it is stuck waiting for input.
 - **🔷** `✔️` The global job table is the **authorisation check** for "did we start this". Which chat started it is the session id stored on the job. Phase C.
-- **ℹ️** Everything here is `libocbwrap/Bubble.vala`. No daemon file changes, no wire changes. Those are [`TOOLS-2.31`](TOOLS-2.31-URGENT-bash-process-tool.md) Phase B.
+- **ℹ️** Everything here is `libocbwrap/Bubble.vala`. No daemon file changes, no wire changes. Those are [`TOOLS-2.31`](TOOLS-2.31-DONE-bash-process-tool.md) Phase B.
 - **ℹ️** Mined from the parked [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) §3, which already drafted `command` / `working_dir` / `finished`.
 - **🔷** `⏳` The idle reaper — a job silent for 15–20 minutes dies — has no code here. The timer belongs with the session that holds the job, which is Phase C.
 

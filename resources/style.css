@@ -477,3 +477,35 @@ row.selector-mark {
 .selector-pull {
 	background-color: @window_bg_color;
 }
+
+.project-sheet {
+	background-color: @window_bg_color;
+	box-shadow: 12px 0 10px -10px alpha(black, 0.45);
+}
+
+.project-sheet > box,
+.file-sheet > box,
+.file-sheet stackswitcher {
+	background-color: @window_bg_color;
+}
+
+.project-sheet button,
+.file-sheet button {
+	background-color: @window_bg_color;
+	background-image: none;
+}
+
+.project-sheet button:checked,
+.file-sheet button:checked {
+	background-color: @theme_selected_bg_color;
+	background-image: none;
+	color: @theme_selected_fg_color;
+}
+
+.project-shade {
+	background-color: transparent;
+}
+
+.file-sheet {
+	background-color: @window_bg_color;
+}

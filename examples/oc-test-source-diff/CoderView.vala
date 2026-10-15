@@ -21,8 +21,9 @@
  *
  * The header is {@link ProjectSelector}, {@link FileSelector}, and
  * the editor save button.
- * The editor is {@link SourceView}. Project selection and search
- * stay here. A chosen file is opened on the editor.
+ * The editor is {@link SourceView}. The project list is an
+ * overlay on that editor. Project selection and search stay
+ * here. A chosen file is opened on the editor.
  * {@link SourceView.file_changed} updates the file button.
  * {@link SourceView.find} and {@link SourceView.find_again} drive
  * this search bar.
@@ -43,7 +44,7 @@ class CoderView : Gtk.Box
 	public SelectorPull pull { get; private set; }
 
 	/**
-	 * Header project button and pop-down.
+	 * Header project button and the list on the editor.
 	 */
 	public ProjectSelector projects { get; private set; }
 
@@ -108,10 +109,10 @@ class CoderView : Gtk.Box
 		history.add_css_class("flat");
 		header.append(history);
 		this.projects.opened.connect(() => {
-			this.files.popover.popdown();
+			this.files.list.visible = false;
 		});
 		this.files.opened.connect(() => {
-			this.projects.popover.popdown();
+			this.projects.list.visible = false;
 		});
 		this.projects.chosen.connect((folder) => {
 			if (this.files.project.is_project &&
@@ -202,9 +203,22 @@ class CoderView : Gtk.Box
 		search_bar.append(this.search_next_button);
 		search_bar.append(this.search_back_button);
 		search_bar.append(settings_menu_button);
+		var editor_column = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+			hexpand = true,
+			vexpand = true,
+		};
+		editor_column.append(this.editor);
+		editor_column.append(search_bar);
+		var editor_layer = new Gtk.Overlay() {
+			hexpand = true,
+			vexpand = true,
+			child = editor_column,
+		};
+		editor_layer.add_overlay(this.projects.shade);
+		editor_layer.add_overlay(this.projects.list);
+		editor_layer.add_overlay(this.files.list);
 		this.append(header);
-		this.append(this.editor);
-		this.append(search_bar);
+		this.append(editor_layer);
 		this.files.chosen.connect((file) => {
 			this.editor.open_file.begin(file);
 		});

@@ -618,10 +618,10 @@ Examples:
 					spacer.visible = !files.visible;
 				});
 				projects.opened.connect(() => {
-					files.popover.popdown();
+					files.list.visible = false;
 				});
 				files.opened.connect(() => {
-					projects.popover.popdown();
+					projects.list.visible = false;
 				});
 				projects.chosen.connect((folder) => {
 					files.project = folder;
@@ -737,6 +737,13 @@ Examples:
 		};
 		this.editor_overlay.set_child(this.source_view);
 		this.editor_overlay.add_overlay(this.review_bar.review_overlay);
+		if (this.has_selector) {
+			var projects = (ProjectSelector) this.selector_row.get_first_child();
+			var files = (FileSelector) this.selector_row.get_last_child();
+			this.editor_overlay.add_overlay(projects.shade);
+			this.editor_overlay.add_overlay(projects.list);
+			this.editor_overlay.add_overlay(files.list);
+		}
 		this.root_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 			hexpand = true,
 			vexpand = true,

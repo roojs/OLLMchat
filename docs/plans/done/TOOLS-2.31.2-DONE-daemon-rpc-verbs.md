@@ -1,10 +1,10 @@
 # 2.31.2 — Phase B — daemon RPC verbs
 
-**Status:** ✔️ **applied** — `ollmfilesd` links `ocbwrap`, `FileVerification` applies overlay writes, `Sandbox-Bubble` verbs key on the bwrap pid, and `live_handles` is on for TCP, the Unix socket, and `SslConnection`. Not user-verified. **Testing Phase B** is still ⏳.
+**Status:** ✔️ **archived** — applied on `ollmfilesd` / `Sandbox-Bubble`. Not user-verified. **Testing Phase B** was still ⏳.
 
 > **Do not update** `docs/plans/TOOLS-1.0-summary.md` **for this sub-plan.**
 
-**Parent:** [`TOOLS-2.31`](TOOLS-2.31-URGENT-bash-process-tool.md) — `bash` as a process tool, Phase B
+**Parent:** [`TOOLS-2.31`](TOOLS-2.31-DONE-bash-process-tool.md) — `bash` as a process tool, Phase B
 
 **Layout:** `docs/guide-to-writing-plans.md` — **Checklist for plans**. Proposed Vala follows `docs/coding-standards.md`.
 
@@ -13,7 +13,7 @@
 ## Purpose
 
 - **🔷** `✔️` Put sandboxed jobs on the daemon wire: create, run, then `kill` / `tail` / `wait` / `send` by **pid**.
-- **🔷** `✔️` A job outlives the connection that started it. Verbs look up [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md) `Bubble.jobs`, not a connection lease.
+- **🔷** `✔️` A job outlives the connection that started it. Verbs look up [`TOOLS-2.31.1`](TOOLS-2.31.1-DONE-daemon-job-model.md) `Bubble.jobs`, not a connection lease.
 - **🔷** `✔️` Live output still uses a lease, so the current client can subscribe to `output` and `finished` before `rpc_run` starts the child.
 - **ℹ️** Overlay apply is [`TOOLS-2.31.6`](TOOLS-2.31.6-PARKED-daemon-sandbox-bubble-rpc.md) §2. Apply that file as written. Do not apply the rest of that plan.
 - **ℹ️** The tool, the pid-return text, and passing the session id are Phase C.
@@ -42,7 +42,7 @@
 - `wait` `ii` — pid, seconds — `retval` `0` ended / `1` waiting / `2` still running, `msg` last 50 lines
 - `send` `is` — pid, text — `msg` `ok` or `command has ended`
 
-- **ℹ️** Phase C ([`TOOLS-2.31.3`](TOOLS-2.31.3-bash-tool.md)) added `session_id` (`x`) on `rpc_create`, `kill`, `tail`, `wait`, and `send`. `wait` retval is the process exit code, or `-pid` while the job is still running.
+- **ℹ️** Phase C ([`TOOLS-2.31.3`](TOOLS-2.31.3-DONE-bash-tool.md)) added `session_id` (`x`) on `rpc_create`, `kill`, `tail`, `wait`, and `send`. `wait` retval is the process exit code, or `-pid` while the job is still running.
 
 ### Streaming
 
@@ -170,7 +170,7 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 
 **Where:** the `output_lines` field, and `tail` beside `finished`.
 
-**Depends on:** [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md).
+**Depends on:** [`TOOLS-2.31.1`](TOOLS-2.31.1-DONE-daemon-job-model.md).
 
 - **💩** `✔️` `output_lines` becomes a public property so the count can travel on the wire. The increment in `read_from_channel` stays as it is.
 - **🔷** `✔️` `tail` is the public name. Private setter, because Vala will not append to a public array field. `read_from_channel` copies into a local, appends, and assigns back.
@@ -210,7 +210,7 @@ Edits are **Remove** / **Replace with** / **Add** against the tree. Verify surro
 
 **Where:** New file, new `ollmfilesd/Sandbox/` directory.
 
-**Depends on:** §1, §2, §3, and [`TOOLS-2.31.1`](TOOLS-2.31.1-daemon-job-model.md).
+**Depends on:** §1, §2, §3, and [`TOOLS-2.31.1`](TOOLS-2.31.1-DONE-daemon-job-model.md).
 
 - **ℹ️** `run` and `wait_run` are the FFI splits. The entry points cannot `yield`. Both names are part of this plan.
 - **ℹ️** `rpc_create` does no `yield`, so it stays a plain handler.

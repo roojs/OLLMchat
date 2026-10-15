@@ -120,9 +120,10 @@ class FolderTree : Gtk.Box
 	private bool hiding = true;
 
 	/**
-	 * Folder list. The selection signal reads the row.
+	 * Folder rows. Up and Down step this when a folder is
+	 * selected and no file is.
 	 */
-	private Gtk.SingleSelection tree_selection;
+	public Gtk.SingleSelection tree_selection { get; private set; }
 
 	/**
 	 * Type filter. {@link FileKind.ANY} shows every folder the
@@ -438,6 +439,7 @@ class FolderTree : Gtk.Box
 				this.cleared();
 				return;
 			}
+			tree_view.scroll_to(this.tree_selection.selected, Gtk.ListScrollFlags.FOCUS, null);
 			var folder = (OLLMfiles.Folder) ((Gtk.TreeListRow) this.tree_selection.selected_item).item;
 			while (!folder.is_project &&
 					this.folders.segments.has_key(folder.path) &&
