@@ -479,19 +479,21 @@ row.selector-mark {
 }
 
 .project-sheet {
-	background-color: @window_bg_color;
+	background-color: @theme_bg_color;
+	background-image: none;
 	box-shadow: 12px 0 10px -10px alpha(black, 0.45);
 }
 
 .project-sheet > box,
 .file-sheet > box,
 .file-sheet stackswitcher {
-	background-color: @window_bg_color;
+	background-color: @theme_bg_color;
+	background-image: none;
 }
 
 .project-sheet button,
 .file-sheet button {
-	background-color: @window_bg_color;
+	background-color: @theme_bg_color;
 	background-image: none;
 }
 
@@ -507,5 +509,6 @@ row.selector-mark {
 }
 
 .file-sheet {
-	background-color: @window_bg_color;
+	background-color: @theme_bg_color;
+	background-image: none;
 }
