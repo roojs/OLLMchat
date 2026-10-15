@@ -1,8 +1,9 @@
 # `Live.Subscription` does not block void signals
 
-**Status:** ✔️ library fix applied; consumer gate passed against the rebuilt
-libocrpc. Consumer follow-up (mark `before-update` blocking, then its
-signal-reentrancy suite and Weston drag smoke) is still open.
+**Status:** ✅ FIXED — user archived 2026-10-15. Blocking void signals wait
+for the remote reply. gnome-shell-rpc marked `before-update` blocking; its
+35-check signal-reentrancy suite had no unexpected failures, and nested
+Weston kept the drag scale transition alive across the forced 400ms gap.
 
 ## Problem
 
@@ -25,10 +26,16 @@ meson compile -C build tests/call-sync-repro/blocking-void-signal-gate
 timeout 5 ./build/tests/call-sync-repro/blocking-void-signal-gate
 ```
 
-✔️ Current result, exit 1:
+✔️ Result before the library fix, exit 1:
 
 ```text
 FAIL blocking-void-signal-gate: blocking void signal was one-way tick=true reply-id=false observed-during-emit=false error=
+```
+
+✔️ Result after the library fix, exit 0:
+
+```text
+PASS blocking-void-signal-gate: void signal waited for reply
 ```
 
 ℹ️ Gate:
@@ -172,13 +179,22 @@ not belong on a `Notification`.
 PASS blocking-void-signal-gate: void signal waited for reply
 ```
 
-ℹ️ gnome-shell-rpc is configured with an empty `ocrpc_libdir`, so the
-binary's default link is the system library. The run above set
-`LD_LIBRARY_PATH` to the rebuilt build-tree library. No boolean blocking
-test exists in this repository.
+✔️ gnome-shell-rpc was reconfigured with:
+
+```bash
+meson configure build -Docrpc_libdir=/home/alan/gitlive/OLLMchat/build/libocrpc
+```
+
+✔️ After adding `before-update` to the consumer blocking list, its
+signal-reentrancy suite reported 25 passes and 10 expected failures, with no
+unexpected failures or timeouts.
+
+✔️ Nested Weston: the `dnd.js` transition read 403ms after creation returned
+the transition, then `new-frame` fired. The old `transition-gone` error did
+not occur. The drag smoke continued to a separate consumer failure:
+`miss preview-moved dx=0`.
 
 ## Next
 
-🔷 ⏳ Consumer: mark `before-update` blocking, then rerun its
-signal-reentrancy suite and Weston drag smoke. `clicked` and `long-press`
-need regression coverage now that configured blocking waits.
+✅ Closed. The zero-displacement drag (`miss preview-moved dx=0`) is a
+separate gnome-shell-rpc failure and is not this library bug.

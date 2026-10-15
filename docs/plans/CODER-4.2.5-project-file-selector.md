@@ -1,6 +1,6 @@
 # CODER-4.2.5 Project and file selector
 
-**Status:** proposed. Phase 1 desktop project selector is confirmed. Phase 2 is the desktop file selector. Phase 3 is the Android review. Phase 4 is file content search, and it is held off.
+**Status:** proposed. Phase 1 is confirmed. Phase 2.3 search is done. Phase 2.4 replaces the popovers with overlays on the editor. Phase 3 is the Android review. Phase 4 is open later work.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**.
 
@@ -17,12 +17,14 @@
 
 ## Purpose
 
-- 🔷 Phase 1 is the desktop project selector. Phase 2 is the desktop file selector. Phase 3 is an Android review. Phase 4 is file content search.
+- 🔷 Phase 1 is the desktop project selector. Phase 2 is the desktop file selector. Phase 3 is an Android review. Phase 4 is open later work.
 - ✅ Phase 1 is confirmed.
 - 🔷 ✔️ marks code that is in the smoke app and not approved yet.
 - 🔷 Never do status theatre. Do not mark an item done, rewrite Status, or report ticks in place of the behavior. A tick waits until that behavior is what the running app does.
 - 🔷 Phase 2.1 is the file selector already in the smoke app.
-- 🔷 Phase 2.2 is in the smoke app. Phase 2.3 tree search and recent search are in the smoke app. Restoring the current file on clear waits.
+- 🔷 Phase 2.2 is in the smoke app.
+- ✅ Phase 2.3 search is done. The no-folder search and restoring the current file on clear are Phase 4.
+- 🔷 Phase 2.4 is next. The popovers go. The lists are overlays on the editor.
 - 🔷 Phase 3 and Phase 4 wait.
 
 ---
@@ -74,7 +76,7 @@ ninja -C build examples/oc-test-source-diff
 
 ## Phase 2 — Desktop file selector
 
-`FileSelector` is on the desktop smoke row. Phase 2.1 is what that app already does. Phase 2.2 is the rest that is not search. Phase 2.3 is search.
+`FileSelector` is on the desktop smoke row. Phase 2.1 is what that app already does. Phase 2.2 is the rest that is not search. Phase 2.3 is search. Phase 2.4 replaces the popovers.
 
 ### 2.1 — Smoke app
 
@@ -189,9 +191,9 @@ In the smoke app. Search is Phase 2.3.
 - ✔️ With no folder selected, the right pane says ''Select a folder''. A selected folder with no files says ''No files''.
 - ℹ️ A scan that adds a file does not update an open tree. The file list is loaded when a folder is selected, and it is not kept on screen. Closing the pop-down and opening it again is the refresh. A progressive update, one path at a time, is later. Performance of the full load is fine.
 
-### 2.3 — Search
+### 2.3 — Search ✅
 
-The desktop search entry drives whichever tab is showing. Tree is the first filter. Recent is after that. Clearing the search is last.
+The desktop search entry drives whichever tab is showing. Tree is the first filter. Recent is after that. An empty search is the normal tree again.
 
 - ✔️ Typing in the desktop search entry applies that text to the tab that is showing.
   - ✔️ Tree applies it to the folder tree.
@@ -212,8 +214,7 @@ The desktop search entry drives whichever tab is showing. Tree is the first filt
 - ✔️ 100 matches or fewer: take those folder ids and `set` each to `true`. Walk each parent. Stop when that parent is already on the map. Otherwise `set` it to `false` and set that folder's `is_show_empty`, so the bound name is light grey. The caller notifies `css-classes`. The filter keeps a row whose id is on that map. A later reply calls `search_reset` before that fill.
 - ✔️ Recent search stays on Recent. It orders matches by how recent they are. It does not jump to Tree.
 - ✔️ Clicking a folder while searching shows that folder's matching files on the right, on that same grid. The file list filters on the client. A file stays when its name contains the search text, ignoring case. An empty search shows every file the type filter allows.
-- 🔷 ⏳ With no folder selected during a search, the right list is every matching file. Each row has the path relative to the project underneath the name.
-- 🔷 ⏳ Clearing the search returns to the folder that contains the current file, with that file about halfway down the right list. A load with no search still selects nothing and opens at the top.
+- ℹ️ With no folder selected, the right list stays ''Select a folder''. Showing every match there, and restoring the current file when the search clears, are Phase 4.
 
 #### Visible folders
 
@@ -224,6 +225,16 @@ The visible folders are a `Gee.HashMap<int, bool>`. The key is `(int) FileBase.i
 - 🚫 The filter does not walk children to decide a row. `filter.changed` already walks every segment. A walk inside the match function is the slow path.
 - 🚫 A folder with no key is hidden. A parent whose value is `false` stays, and its name is light grey. Folders that are not on a path to a match are not left on screen.
 - 🚫 A folder whose name matches does not keep every child folder. A child stays only when that child matches, or a file or folder under that child matches. RooTerm's ancestor-name test in the filter does the opposite for hosts.
+- 🚫 Do not change this map to numbers here. A count in brackets on the tree is Phase 4.
+
+### 2.4 — Overlays on the editor
+
+The popovers go. Windowing with them is nasty. The project list and the file list are drawn on the editor instead.
+
+- 🔷 ⏳ No popover. The project list and the file list are overlays on the editor area.
+- 🔷 ⏳ The overlay covers part of the editor, or the whole editor. It does not cover the whole window. About half the screen stays clear.
+- 🔷 ⏳ A close icon on the file bar, and one on the folder bar.
+- 🔷 ⏳ A click in any other area clears the overlay. That is enough because the overlay does not cover the whole screen.
 
 ---
 
@@ -285,12 +296,15 @@ The tablet follows the desktop tree. It does not use the phone drill-down.
 
 ---
 
-## Phase 4 — File content search
+## Phase 4 — Open
 
-Held off. Not the next step, and not a tab on the file pop-down.
+Not the next step. Phase 2.4 is next.
 
-- 🔷 Search that looks inside file contents waits until after the desktop file list and the Android review.
-- 🔷 ⏳ That search is its own piece of work. It does not replace the tree name filter.
+- 🔷 ⏳ With no folder selected during a search, the right list is every matching file. Each row has the path relative to the project underneath the name.
+- 🔷 ⏳ Clearing the search returns to the folder that contains the current file, with that file about halfway down the right list. A load with no search still selects nothing and opens at the top. This only matters with the no-folder search above.
+- 🔷 ⏳ A number in brackets next to a tree row. The visible map would store numbers instead of bools. Think about it. Do not do it in Phase 2.
+- ℹ️ The first open of a project holds the file dialog while the folders load. A second open is already fast. We might have that scan send notifications and show a progress bar on the file dialog. We might leave it.
+- 🔷 ⏳ Search that looks inside file contents. It does not replace the tree name filter, and it is not a tab on the file list.
 
 ---
 
@@ -310,6 +324,8 @@ Held off. Not the next step, and not a tab on the file pop-down.
 - 🚫 Do not start the Android review before the desktop file work.
 - 🚫 Do not put a Search tab on the file pop-down. Tree name matches stay on Tree. Recent name matches stay on Recent. Content search is Phase 4.
 - 🚫 No wildcard matching (`*` or `?`) in this pass.
-- 🚫 Search visibility is not a stamp on the folder, and not a set of paths. It is a `Gee.HashMap<int, bool>` of `(int) FileBase.id`. Above 100 matches, the tree is not filtered.
+- 🚫 Search visibility is not a stamp on the folder, and not a set of paths. It is a `Gee.HashMap<int, bool>` of `(int) FileBase.id`. Above 100 matches, the tree is not filtered. Numbers in that map are Phase 4.
+- 🚫 Do not build the no-folder search, or restore the current file when search clears, in Phase 2.4. Both are Phase 4.
+- 🚫 Do not keep the project list or the file list as a popover. Phase 2.4 draws them on the editor.
 - 🚫 Do not copy `ProjectFiles.cached_search` sort orders, and do not use `ProjectFiles.get_recent_list`.
 - 🚫 No status theatre. Do not add ✔️ or ✅, rewrite the Status line, or answer with what was ticked, unless the running app already does that thing.
