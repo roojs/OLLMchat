@@ -300,6 +300,28 @@ class FileSelector : Gtk.Box
 			this.folder_tree.ghost.opacity = on_tree ? 1 : 0;
 			this.folder_tree.collapse.sensitive = on_tree;
 			this.folder_tree.ghost.sensitive = on_tree;
+			if (!this.project.is_project) {
+				return;
+			}
+			var text = this.entry.text.strip();
+			if (!on_tree) {
+				this.history_epoch++;
+				this.load(text, this.history_rows, true, this.history_epoch, "history");
+				return;
+			}
+			if (text == "") {
+				this.folder_tree.search_reset();
+				this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
+				this.file_list.query = "";
+				this.label.label = this.path_text;
+				return;
+			}
+			this.file_list.query = text;
+			this.search_epoch++;
+			var epoch = this.search_epoch;
+			this.project.fetch_files.begin(50, text, {}, false, false, (obj, res) => {
+				this.on_load_results(epoch, res);
+			});
 		});
 		this.scroll = new Gtk.ScrolledWindow() {
 			child = this.pages,
@@ -392,16 +414,23 @@ class FileSelector : Gtk.Box
 				if (!this.project.is_project) {
 					return false;
 				}
+				if (this.pages.visible_child_name == "history") {
+					this.file_list.query = text;
+					this.history_epoch++;
+					this.load(text, this.history_rows, true, this.history_epoch, "history");
+					return false;
+				}
 				if (text == "") {
-					this.folder_tree.searching = false;
-					this.folder_tree.visible.clear();
+					this.folder_tree.search_reset();
 					this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
+					this.file_list.query = "";
 					this.label.label = this.path_text;
 					return false;
 				}
+				this.file_list.query = text;
 				this.search_epoch++;
 				var epoch = this.search_epoch;
-				this.project.fetch_files.begin(0, 50, text, {}, false, (obj, res) => {
+				this.project.fetch_files.begin(50, text, {}, false, false, (obj, res) => {
 					this.on_load_results(epoch, res);
 				});
 				return false;
@@ -619,7 +648,7 @@ class FileSelector : Gtk.Box
 		int epoch,
 		string slot
 	) {
-		this.project.fetch_files.begin(0, 50, query, {}, false, (obj, res) => {
+		this.project.fetch_files.begin(50, query, {}, false, recent, (obj, res) => {
 			//FIXME - wrong way to do this..
 			switch (slot) {
 				case "history":
@@ -651,8 +680,11 @@ class FileSelector : Gtk.Box
 	 * A stale reply is dropped.
 	 * {@link OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS} leaves the tree
 	 * unfiltered and shows ''too many results'' on the file path.
-	 * An empty return is ''no results''. The reply is native-endian
-	 * int32 folder ids. Each match and each parent stays.
+	 * An empty return is ''no results'' and the tree is reset.
+	 * The reply is native-endian int32 folder ids. A match is
+	 * ''true''. The walk stops at a parent already on the map.
+	 * Any other parent is ''false'',
+	 * and that folder's ''is-show-empty'' is set.
 	 *
 	 * @param epoch Search generation captured when the fetch started
 	 * @param res Async result from {@link OLLMfiles.Folder.fetch_files}
@@ -670,15 +702,13 @@ class FileSelector : Gtk.Box
 				GLib.warning("file search failed: %s", e.message);
 				return;
 			}
-			this.folder_tree.searching = false;
-			this.folder_tree.visible.clear();
+			this.folder_tree.search_reset();
 			this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
 			this.label.label = "too many results";
 			return;
 		}
 		if (response.retval.type() == GLib.Type.INVALID) {
-			this.folder_tree.visible.clear();
-			this.folder_tree.searching = true;
+			this.folder_tree.search_reset();
 			this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
 			this.label.label = "no results";
 			return;
@@ -688,14 +718,31 @@ class FileSelector : Gtk.Box
 		if (ids.length > 0) {
 			GLib.Memory.copy(ids, blob.get_data(), blob.get_size());
 		}
-		this.folder_tree.visible.clear();
+		this.folder_tree.search_reset();
 		this.folder_tree.searching = true;
 		this.label.label = this.path_text;
 		for (var i = 0; i < ids.length; i++) {
 			var id = ids[i];
+			if (!this.folder_tree.folders.id_map.has_key(id)) {
+				continue;
+			}
+			var match = this.folder_tree.folders.id_map.get(id);
+			this.folder_tree.visible.set(id, true);
+			if (match.is_show_empty) {
+				match.is_show_empty = false;
+				match.notify_property("css-classes");
+			}
+			id = (int) match.parent_id;
 			while (id > 0 && this.folder_tree.folders.id_map.has_key(id)) {
-				this.folder_tree.visible.set(id, true);
-				id = (int) this.folder_tree.folders.id_map.get(id).parent_id;
+				// check the visible map next
+				if (this.folder_tree.visible.has_key(id)) {
+					break;
+				}
+				var parent = this.folder_tree.folders.id_map.get(id);
+				this.folder_tree.visible.set(id, false);
+				parent.is_show_empty = true;
+				parent.notify_property("css-classes");
+				id = (int) parent.parent_id;
 			}
 		}
 		this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);

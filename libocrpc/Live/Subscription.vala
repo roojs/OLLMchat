@@ -41,7 +41,10 @@ namespace OLLMrpc.Live
 		public int id { get; set; default = 0; }
 		public ulong hid { get; set; default = 0; }
 		/**
-		 * Handler bool finishes inside the emission.
+		 * Wait for the remote handler before the signal emission returns.
+		 *
+		 * Boolean signals copy the handler result into the return value.
+		 * Void signals only wait.
 		 */
 		public bool blocking { get; set; default = false; }
 
@@ -143,13 +146,13 @@ namespace OLLMrpc.Live
 				}
 				subscription.connection.export(arg.get_object());
 			}
-			var note = new Notification() {
+			var notif = new Notification() {
 				method = subscription.method,
 				id = subscription.id,
 				args = packed
 			};
-			if (!subscription.blocking || return_value == null) {
-				subscription.connection.write(note);
+			if (!subscription.blocking) {
+				subscription.connection.write(notif);
 				return;
 			}
 			var waiter = new OLLMrpc.Live.Hook() {
@@ -159,16 +162,18 @@ namespace OLLMrpc.Live
 			subscription.connection.next_handle++;
 			subscription.connection.callbacks.set(waiter.id, waiter);
 			waiter.reply_id = subscription.connection.next_handle;
-			note.reply_id = waiter.reply_id;
+			notif.reply_id = waiter.reply_id;
 			subscription.connection.next_handle++;
-			subscription.connection.write(note);
+			subscription.connection.write(notif);
 			while (!waiter.replied && subscription.connection.running) {
 				subscription.connection.emit_wait_poll();
 			}
 			subscription.connection.callbacks.unset(waiter.id);
-			return_value.set_boolean(waiter.reply_args.size > 0
-				&& waiter.reply_args.get(0).type() == GLib.Type.BOOLEAN
-				&& waiter.reply_args.get(0).get_boolean());
+			if (return_value != null) {
+				return_value.set_boolean(waiter.reply_args.size > 0 &&
+					waiter.reply_args.get(0).type() == GLib.Type.BOOLEAN &&
+					waiter.reply_args.get(0).get_boolean());
+			}
 		}
 	}
 }

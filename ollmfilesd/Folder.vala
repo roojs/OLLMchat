@@ -47,7 +47,7 @@ namespace OLLMfilesd
 				"fetch_pending_approvals", "sx",
 				"rpc_project_description", "s",
 				"rpc_roots", "s",
-				"fetch_files", "siisSb",
+				"fetch_files", "sisSbb",
 				"fetch_children", "s",
 				"fetch_dir", "s"
 			);
@@ -134,23 +134,25 @@ namespace OLLMfilesd
 		 * A folder contributes its own id. More than 100 matches fails with
 		 * {@link OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS} and sends no rows.
 		 * An empty query is still one file page, and ''msg'' is that total.
+		 * ''recent'' is {@link recent_reply}: viewed files, newest
+		 * ''last_viewed'' first, at most ''limit'' rows.
 		 *
 		 * @param request inbound RPC
 		 * @param path project path
-		 * @param offset rows to skip on an empty query
-		 * @param limit page size on an empty query
+		 * @param limit page size
 		 * @param query name filter; empty browses files
 		 * @param paths path-filter batch (empty = search or page)
 		 * @param metadata_only unused on the daemon today
+		 * @param recent viewed files only, newest first
 		 */
 		public void fetch_files(
 			OLLMrpc.Request request,
 			string path,
-			int offset, 
-			int limit, 
+			int limit,
 			string query,
 			string[] paths,
-			 bool metadata_only
+			bool metadata_only,
+			bool recent
 		) {
 			var project = this.manager.project_root(path);
 			if (project == null) {
@@ -163,8 +165,102 @@ namespace OLLMfilesd
 				});
 				return;
 			}
+			if (recent) {
+				this.recent_reply.begin(request, project, limit, query);
+				return;
+			}
 			this.fetch_files_reply.begin(
-				request, project, offset, limit, query, paths);
+				request, project, limit, query, paths);
+		}
+
+		/**
+		 * Reply to a recent {@link fetch_files} after the scan is idle.
+		 *
+		 * The ids come from ''filebase'', scoped to the project folders
+		 * the same way a tree name search is. Viewed text files only,
+		 * newest ''last_viewed'' first, at most ''limit'' rows. A name
+		 * query matches the filename and ignores case. Each id is then
+		 * the file on the project list.
+		 *
+		 * @param request the RPC request to reply to
+		 * @param project resolved project folder for this fetch
+		 * @param limit page size; below 1 means 50
+		 * @param query name filter; empty returns the newest viewed files
+		 */
+		private async void recent_reply(
+			OLLMrpc.Request request,
+			Folder project,
+			int limit,
+			string query
+		) {
+			yield this.manager.wait_scan_idle();
+			var parents = new Gee.ArrayList<string>();
+			foreach (var folder in project.project_files.folder_map.values) {
+				if (folder.delete_id != 0) {
+					continue;
+				}
+				parents.add(folder.id.to_string());
+			}
+			if (parents.size < 1) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INVALID_REQUEST,
+						"no folders"
+					)
+				});
+				return;
+			}
+			var needle = query.strip().down();
+			var lookup = FileBase.query(this.manager.db, this.manager);
+			var stmt = lookup.selectPrepare("""
+				SELECT
+					filebase.id
+				FROM
+					filebase
+				WHERE
+					filebase.delete_id = 0
+					AND 
+					filebase.last_viewed >= 1
+					AND 
+					filebase.base_type = 'f'
+					AND 
+					filebase.is_text = 1
+					AND 
+					filebase.is_ignored = 0
+					AND 
+					filebase.parent_id IN ("""
+						+ string.joinv(", ", parents.to_array()) + """
+					)
+					AND 
+					(
+						$needle = ''
+						OR 
+						instr(lower(replace(
+							filebase.path,
+							rtrim(filebase.path, replace(filebase.path, '/', '')),
+							''
+						)), $needle) > 0
+					)
+				ORDER BY
+					filebase.last_viewed DESC
+				LIMIT
+			""" + (limit < 1 ? 50 : limit).to_string());
+			stmt.bind_text(stmt.bind_parameter_index("$needle"), needle);
+			var ids = lookup.fetchAllInt64(stmt);
+			var list = new Gee.ArrayList<GLib.Object>();
+			foreach (var id in ids) {
+				var file = project.project_files.get_by_id(id);
+				if (file == null) {
+					continue;
+				}
+				list.add(file);
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("o", list),
+				msg = list.size.to_string()
+			});
 		}
 
 		/**
@@ -419,19 +515,17 @@ namespace OLLMfilesd
 		 * A path batch looks up those paths. A name query matches
 		 * filenames whose parent is a project folder, including a
 		 * folder linked in by an alias, or fails past 100 matches.
-		 * An empty query returns one file page.
+		 * An empty query returns one file page from the start.
 		 *
 		 * @param request the RPC request to reply to
 		 * @param project resolved project folder for this fetch
-		 * @param offset rows to skip on an empty query
-		 * @param limit page size on an empty query
+		 * @param limit page size
 		 * @param query name filter; empty browses files
 		 * @param paths path-filter batch (empty = search or page)
 		 */
 		private async void fetch_files_reply(
 			OLLMrpc.Request request,
 			Folder project,
-			int offset,
 			int limit,
 			string query,
 			string[] paths
@@ -463,14 +557,10 @@ namespace OLLMfilesd
 			var needle = query.strip().down();
 			if (needle == "") {
 				limit = limit < 1 ? 50 : limit;
-				offset = offset < 0 ? 0 : offset;
 				var matched = project.project_files.cached_search(needle);
 				var list = new Gee.ArrayList<GLib.Object>();
-				if (offset < matched.size) {
-					list.add_all(matched.slice(
-						offset,
-						int.min(limit, matched.size - offset)
-					));
+				if (matched.size > 0) {
+					list.add_all(matched.slice(0, int.min(limit, matched.size)));
 				}
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,

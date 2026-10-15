@@ -50,11 +50,6 @@ namespace OLLMfiles
 		public int total { get; private set; default = 0; }
 
 		/**
-		 * Next {@link Folder.fetch_files} offset (rows already loaded).
-		 */
-		public int offset { get; private set; default = 0; }
-
-		/**
 		 * Active dropdown filter passed to the last {@link refresh}.
 		 */
 		public string query { get; private set; default = ""; }
@@ -83,7 +78,7 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Reload file rows from the daemon (''Folder.fetch_files''), first page.
+		 * Reload file rows from the daemon (''Folder.fetch_files'').
 		 *
 		 * @param query Dropdown filter (empty = browse all)
 		 */
@@ -92,7 +87,7 @@ namespace OLLMfiles
 			this.loading = true;
 			OLLMrpc.Response response;
 			try {
-				response = yield this.project.fetch_files(0, 50, query);
+				response = yield this.project.fetch_files(50, query);
 			} catch (GLib.Error e) {
 				this.loading = false;
 				if (e is OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS) {
@@ -114,7 +109,6 @@ namespace OLLMfiles
 			}
 			this.loading = false;
 			this.query = query;
-			this.offset = 0;
 			var old_n_items = this.items.size;
 			this.items.clear();
 			this.total = int.parse(response.msg);
@@ -142,8 +136,6 @@ namespace OLLMfiles
 					));
 				}
 			}
-			this.offset = this.items.size;
-
 			var new_n_items = this.items.size;
 			if (old_n_items > 0 || new_n_items > 0) {
 				GLib.debug(
@@ -165,65 +157,6 @@ namespace OLLMfiles
 				this.total,
 				new_n_items
 			);
-		}
-
-		/**
-		 * Append the next ''Folder.fetch_files'' page when more rows exist.
-		 */
-		public async void load_more()
-		{
-			if (this.loading) {
-				return;
-			}
-			if (this.offset >= this.total) {
-				return;
-			}
-
-			this.loading = true;
-			OLLMrpc.Response response;
-			try {
-				response = yield this.project.fetch_files(
-					this.offset,
-					50,
-					this.query
-				);
-			} catch (GLib.Error e) {
-				this.loading = false;
-				GLib.critical ("ProjectFiles.load_more: %s", e.message);
-				if (e.code == (int) OLLMrpc.RpcErrorCode.NOT_CONNECTED) {
-					this.project.manager.rpc.notification (new OLLMrpc.Notification () {
-						method = "client.filesd.unreachable",
-						id = e.code
-					});
-					return;
-				}
-				this.project.manager.rpc.notification (new OLLMrpc.Notification () {
-					method = "Banner.show",
-					message = "Could not load more files: " + e.message
-				});
-				return;
-			}
-			this.loading = false;
-
-			this.total = int.parse(response.msg);
-			if (response.retval.type() == GLib.Type.INVALID) {
-				return;
-			}
-			var files = (Gee.ArrayList<File>) response.retval.get_object();
-			if (files.size == 0) {
-				return;
-			}
-
-			var start = this.items.size;
-			foreach (var file in files) {
-				this.items.add(new ProjectFile(
-					this.project.manager,
-					file,
-					this.project
-				));
-			}
-			this.offset = this.items.size;
-			this.items_changed(start, 0, files.size);
 		}
 
 		/**

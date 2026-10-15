@@ -22,8 +22,8 @@
 - 🔷 ✔️ marks code that is in the smoke app and not approved yet.
 - 🔷 Never do status theatre. Do not mark an item done, rewrite Status, or report ticks in place of the behavior. A tick waits until that behavior is what the running app does.
 - 🔷 Phase 2.1 is the file selector already in the smoke app.
-- 🔷 Phase 2.2 is in the smoke app. Next is Phase 2.3.
-- 🔷 Phase 2.3 is search. Phase 3 and Phase 4 wait.
+- 🔷 Phase 2.2 is in the smoke app. Phase 2.3 tree search and recent search are in the smoke app. Restoring the current file on clear waits.
+- 🔷 Phase 3 and Phase 4 wait.
 
 ---
 
@@ -193,35 +193,36 @@ In the smoke app. Search is Phase 2.3.
 
 The desktop search entry drives whichever tab is showing. Tree is the first filter. Recent is after that. Clearing the search is last.
 
-- 🔷 ⏳ Typing in the desktop search entry applies that text to the tab that is showing.
-  - 🔷 Tree applies it to the folder tree.
-  - 🔷 Recent applies it to the recent list.
-  - 🔷 It does not switch tabs.
-- 🔷 ⏳ Flipping Tree / Recent applies the same text to the tab that is now showing.
-- 🔷 ⏳ Tree search matches file names and folder names. The test ignores case. No `*` or `?`.
-  - 🔷 A folder stays when its own name contains the text.
-  - 🔷 A folder stays when a file under it contains the text, at any depth.
-  - 🔷 A folder stays when a folder under it contains the text. That is the parent walk, so the path to a match stays on screen.
-  - 🔷 Every other folder is hidden.
-  - 🔷 An empty search is the normal tree. The ghost and the type filter still apply.
-- 🔷 ⏳ The first search step gets the matching files. A folder is keyed by `(int) FileBase.id`, not by the folder name or the path.
+- ✔️ Typing in the desktop search entry applies that text to the tab that is showing.
+  - ✔️ Tree applies it to the folder tree.
+  - ✔️ Recent applies it to the recent list. `Folder.fetch_files` with `recent` set returns viewed files whose name contains the text, newest `last_viewed` first, at most 50. There is no separate recent call, and there is no offset.
+  - ✔️ It does not switch tabs.
+- ✔️ Flipping Tree / Recent applies the same text to the tab that is now showing.
+- ✔️ Tree search matches file names and folder names. The test ignores case. No `*` or `?`.
+  - ✔️ A folder stays when its own name contains the text.
+  - ✔️ A folder stays when a file under it contains the text, at any depth.
+  - ✔️ A folder stays when a folder under it contains the text. That is the parent walk, so the path to a match stays on screen.
+  - ✔️ Every other folder is hidden.
+  - ✔️ An empty search is the normal tree. The ghost and the type filter still apply.
+- ✔️ The first search step gets the matching files. A folder is keyed by `(int) FileBase.id`, not by the folder name or the path.
   - ℹ️ A non-empty `Folder.fetch_files` query matches the filename, ignoring case. The parent ids are the project folders in `folder_map`, including a folder linked in through an alias. The reply is those folder ids packed as native-endian int32 bytes. A file contributes its parent id. A folder contributes its own id. More than 100 matches fails with `RpcErrorCode.TOO_MANY_RESULTS` and sends no rows. An empty query stays a file page. The tree does not hold a second copy of every file.
   - ℹ️ `FolderTreeStore.id_map` is id to folder. The walk starts at a file's `parent_id` or a folder's `id`, then each `parent_id`. It does not look up a path.
-- 🔷 ⏳ More than 100 matches: do not filter the tree. The file path shows `too many results`.
-- 🔷 ⏳ 100 matches or fewer: take those folder ids, walk each parent, and `set` each of those ids to `true` on the map. The filter keeps a row whose id is on that map.
-- 🔷 ⏳ Recent search stays on Recent. It orders matches by how recent they are. It does not jump to Tree.
-- 🔷 ⏳ Clicking a folder while searching shows that folder's matching files on the right, on that same grid.
+- ✔️ More than 100 matches: do not filter the tree. The file path shows `too many results`.
+- ✔️ An empty reply resets the tree. The file path shows `no results`.
+- ✔️ 100 matches or fewer: take those folder ids and `set` each to `true`. Walk each parent. Stop when that parent is already on the map. Otherwise `set` it to `false` and set that folder's `is_show_empty`, so the bound name is light grey. The caller notifies `css-classes`. The filter keeps a row whose id is on that map. A later reply calls `search_reset` before that fill.
+- ✔️ Recent search stays on Recent. It orders matches by how recent they are. It does not jump to Tree.
+- ✔️ Clicking a folder while searching shows that folder's matching files on the right, on that same grid. The file list filters on the client. A file stays when its name contains the search text, ignoring case. An empty search shows every file the type filter allows.
 - 🔷 ⏳ With no folder selected during a search, the right list is every matching file. Each row has the path relative to the project underneath the name.
 - 🔷 ⏳ Clearing the search returns to the folder that contains the current file, with that file about halfway down the right list. A load with no search still selects nothing and opens at the top.
 
 #### Visible folders
 
-The visible folders are a `Gee.HashMap<int, bool>`. The key is `(int) FileBase.id`. The value is `true` for a matching folder. Each search clears the map, then `set`s the match ids and each parent id. The filter keeps a row when `has_key` is true for that cast. Folder ids are not expected to exceed an `int`. `ProjectFiles.update_from_recursive` already casts folder ids to `int` for a hash lookup.
+The visible folders are a `Gee.HashMap<int, bool>`. The key is `(int) FileBase.id`. `true` means a file in that folder matches, or the folder name matches. `false` means that folder has no match and is a parent of one, so the path stays and the name is light grey. A missing key is hidden. Each search clears the map, then `set`s each match id to `true`. The parent walk stops when that id is already on the map. Any other parent is `set` to `false`, and that folder's `is_show_empty` is set. The caller notifies `css-classes`. The filter keeps a row when `has_key` is true for that cast. Folder ids are not expected to exceed an `int`. `ProjectFiles.update_from_recursive` already casts folder ids to `int` for a hash lookup.
 
 - ℹ️ `Gee.ArrayList.contains` scans from the start until it finds the id. `has_key` hashes the id and checks that bucket.
-- 🔷 The map holds only those ids. It does not hold the folder. The filter already has the folder it is testing.
+- ✔️ The map holds only those ids. It does not hold the folder. The filter already has the folder it is testing.
 - 🚫 The filter does not walk children to decide a row. `filter.changed` already walks every segment. A walk inside the match function is the slow path.
-- 🚫 Non-matching folders are not left on screen in grey. RooTerm hides them. This tree hides them too.
+- 🚫 A folder with no key is hidden. A parent whose value is `false` stays, and its name is light grey. Folders that are not on a path to a match are not left on screen.
 - 🚫 A folder whose name matches does not keep every child folder. A child stays only when that child matches, or a file or folder under that child matches. RooTerm's ancestor-name test in the filter does the opposite for hosts.
 
 ---

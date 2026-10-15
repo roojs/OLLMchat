@@ -81,12 +81,24 @@ namespace OLLMfiles
 		public int code_count { get; set; default = 0; }
 
 		/**
-		 * CSS classes for this row's name. A folder with no files uses
-		 * ''dim-label'', so the name is light grey. Child folders do
-		 * not change that. Any other row uses none.
+		 * Show this folder's name as an empty folder. Search sets
+		 * this on a parent that has no match of its own. The caller
+		 * notifies {@link css_classes} after changing it.
+		 */
+		public bool is_show_empty { get; set; default = false; }
+
+		/**
+		 * CSS classes for this row's name. A folder with no files, or
+		 * one with {@link is_show_empty} set, uses ''dim-label'',
+		 * so the name is light grey. Child folders do not change
+		 * that. Any other row uses none.
 		 */
 		public string[] css_classes {
 			owned get {
+				if (this.is_show_empty) {
+					string[] dim = { "dim-label" };
+					return dim;
+				}
 				if (!(this is Folder) || this.file_count != 0) {
 					string[] plain = {};
 					return plain;
@@ -404,6 +416,7 @@ namespace OLLMfiles
 				case "display-name":
 				case "tooltip":
 				case "css-classes":
+				case "is-show-empty":
 					return;
 				default:
 					this.bin_default_write_prop(ctx, prop);
@@ -429,6 +442,7 @@ namespace OLLMfiles
 				case "display-name":
 				case "tooltip":
 				case "css-classes":
+				case "is-show-empty":
 					return;
 				default:
 					this.bin_default_read_prop(ctx, prop, type_byte);

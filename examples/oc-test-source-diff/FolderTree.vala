@@ -47,8 +47,11 @@
  * count is zero. {@link FileKind.CODE} hides a folder whose
  * code count is zero. An empty folder is hidden while either
  * type is set. A search keeps a folder whose id is on
- * {@link visible}, and each parent of a match. An empty search
- * leaves that map unused, so the ghost and the type filter apply.
+ * {@link visible}. ''true'' is a match. ''false'' is a parent
+ * with no match of its own, and that folder's ''is-show-empty'' is
+ * set so the bound name is light grey. A missing key is hidden.
+ * An empty search leaves that map unused, so the ghost and the
+ * type filter apply.
  * A second click on the selected row clears that selection.
  *
  * == Example ==
@@ -132,15 +135,20 @@ class FolderTree : Gtk.Box
 
 	/**
 	 * True while a name search is showing. The filter then keeps
-	 * a folder whose id is on {@link visible}. The project row
-	 * stays. An empty search sets this false.
+	 * a folder whose id is on {@link visible}. ''false'' stays.
+	 * That folder's ''is-show-empty'' is set, so the bound name is
+	 * light grey. The project row stays. An empty search sets
+	 * this false.
 	 */
 	public bool searching { get; set; default = false; }
 
 	/**
 	 * Folder ids kept for the current search. The key is
-	 * ''(int) FileBase.id''. The value is true. A match and each
-	 * parent are set. Empty when {@link searching} is false.
+	 * ''(int) FileBase.id''. ''true'' means a file in that
+	 * folder matches, or the folder name matches. ''false''
+	 * means that folder has no match and is a parent of one.
+	 * A missing key is hidden. Empty when {@link searching}
+	 * is false.
 	 */
 	public Gee.HashMap<int, bool> visible {
 		get; private set; default = new Gee.HashMap<int, bool>();
@@ -152,9 +160,37 @@ class FolderTree : Gtk.Box
 	 * left out. {@link kind} hides a folder whose count for
 	 * that type is zero. The project row stays. While
 	 * {@link searching} is true, a folder stays when its id is
-	 * on {@link visible}.
+	 * on {@link visible}. A ''false'' folder has
+	 * ''is-show-empty'' set.
 	 */
 	public Gtk.CustomFilter filter { get; private set; }
+
+	/**
+	 * Clear ''is-show-empty'' on every folder. Used before a
+	 * new search is applied. A folder that was set notifies
+	 * ''css-classes''.
+	 */
+	public void clear_is_empty()
+	{
+		foreach (var folder in this.folders.id_map.values) {
+			if (!folder.is_show_empty) {
+				continue;
+			}
+			folder.is_show_empty = false;
+			folder.notify_property("css-classes");
+		}
+	}
+
+	/**
+	 * Drop the current search. {@link searching} is false, the
+	 * map is cleared, and every ''is-show-empty'' flag is cleared.
+	 */
+	public void search_reset()
+	{
+		this.searching = false;
+		this.visible.clear();
+		this.clear_is_empty();
+	}
 
 	/**
 	 * Build the folder list with an empty store.

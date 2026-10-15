@@ -25,7 +25,10 @@
  * {@link FileListStore}. No folder selected shows
  * ''Select a folder''. An empty reply shows ''No files''.
  * {@link kind} narrows that grid to documents or to code.
- * Activating a row emits {@link file_activated}.
+ * {@link query} is the desktop search text. Empty shows every
+ * file that type allows. A non-empty value hides a file whose
+ * name does not contain that text, ignoring case. Activating
+ * a row emits {@link file_activated}.
  *
  * == Example ==
  *
@@ -79,6 +82,13 @@ class FileList : Gtk.Box
 	 * is not text stays hidden while either type is set.
 	 */
 	public FileKind kind { get; set; default = FileKind.ANY; }
+
+	/**
+	 * Name filter from the desktop search entry. Empty shows
+	 * every file {@link kind} allows. A non-empty value keeps a
+	 * file whose name contains that text, ignoring case.
+	 */
+	public string query { get; set; default = ""; }
 
 	/**
 	 * Build the grid over an empty {@link FileListStore}.
@@ -165,10 +175,14 @@ class FileList : Gtk.Box
 			),
 		};
 		var file_filter = new Gtk.CustomFilter((item) => {
+			var file = (OLLMfiles.File) item;
+			if (this.query != "" &&
+					!file.path_basename.down().contains(this.query.down())) {
+				return false;
+			}
 			if (this.kind == FileKind.ANY) {
 				return true;
 			}
-			var file = (OLLMfiles.File) item;
 			var document = false;
 			if (file.is_text && file.language == "") {
 				document = true;
@@ -240,32 +254,47 @@ class FileList : Gtk.Box
 			if (!this.files.empty && this.files.get_n_items() == 0) {
 				return;
 			}
-			var show = this.files.empty || file_selection.n_items == 0;
-			if (show) {
+			if (this.files.empty || file_selection.n_items == 0) {
 				this.file_empty.label = "No files";
+				this.file_empty.visible = true;
+				return;
 			}
-			this.file_empty.visible = show;
+			this.file_empty.visible = false;
 		});
 		this.notify["kind"].connect(() => {
 			file_filter.changed(Gtk.FilterChange.DIFFERENT);
 			if (!this.files.empty && this.files.get_n_items() == 0) {
 				return;
 			}
-			var show = this.files.empty || file_selection.n_items == 0;
-			if (show) {
+			if (this.files.empty || file_selection.n_items == 0) {
 				this.file_empty.label = "No files";
+				this.file_empty.visible = true;
+				return;
 			}
-			this.file_empty.visible = show;
+			this.file_empty.visible = false;
+		});
+		this.notify["query"].connect(() => {
+			file_filter.changed(Gtk.FilterChange.DIFFERENT);
+			if (!this.files.empty && this.files.get_n_items() == 0) {
+				return;
+			}
+			if (this.files.empty || file_selection.n_items == 0) {
+				this.file_empty.label = "No files";
+				this.file_empty.visible = true;
+				return;
+			}
+			this.file_empty.visible = false;
 		});
 		file_selection.items_changed.connect(() => {
 			if (!this.files.empty && this.files.get_n_items() == 0) {
 				return;
 			}
-			var show = this.files.empty || file_selection.n_items == 0;
-			if (show) {
+			if (this.files.empty || file_selection.n_items == 0) {
 				this.file_empty.label = "No files";
+				this.file_empty.visible = true;
+				return;
 			}
-			this.file_empty.visible = show;
+			this.file_empty.visible = false;
 		});
 		this.files.items_changed.connect(() => {
 			this.file_scroll.vadjustment.value = this.file_scroll.vadjustment.lower;

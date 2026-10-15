@@ -22,7 +22,7 @@ namespace OLLMcoder
 	 * Searchable dropdown widget for selecting files.
 	 * 
 	 * Wraps Gtk.DropDown and adds search/filter functionality.
-	 * V2: paged {@link OLLMfiles.ProjectFiles} via ''Folder.fetch_files'' RPC.
+	 * Loads {@link OLLMfiles.ProjectFiles} via ''Folder.fetch_files''.
 	 */
 	public class FileDropdown : SearchableDropdown
 	{
@@ -32,7 +32,7 @@ namespace OLLMcoder
 		private uint search_debounce_id = 0;
 		
 		/**
-		 * Switch project and load the first file page from the daemon.
+		 * Switch project and load the file list from the daemon.
 		 *
 		 * @param project Active project folder
 		 */
@@ -70,24 +70,10 @@ namespace OLLMcoder
 				halign = Gtk.Align.CENTER
 			};
 			popup_wrapper.append(this.loading_label);
-
-			this.scrolled_window.vadjustment.changed.connect(() => {
-				if (this.project_files.loading) {
-					return;
-				}
-				if (this.project_files.offset >= this.project_files.total) {
-					return;
-				}
-				var adj = this.scrolled_window.vadjustment;
-				if (adj.value < adj.upper - adj.page_size - 48.0) {
-					return;
-				}
-				this.project_files.load_more.begin();
-			});
 		}
 		
 		/**
-		 * Reload the first browse page from {@link ProjectFiles.refresh}.
+		 * Reload the file list from {@link ProjectFiles.refresh}.
 		 */
 		public async void refresh()
 		{

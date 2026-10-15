@@ -206,36 +206,40 @@ namespace OLLMfiles
 		/**
 		 * Fetch a file page, or the files and folders matching a name.
 		 *
-		 * An empty query is one file page. ''msg'' is that page total.
-		 * A name query returns those folder ids as native-endian
-		 * int32 bytes. More than 100 matches fails with
+		 * An empty query is one file page from the start. ''msg'' is
+		 * that page total. A name query returns those folder ids as
+		 * native-endian int32 bytes. More than 100 matches fails with
 		 * {@link OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS}.
+		 * ''recent'' returns viewed files, newest first, at most
+		 * ''limit'' rows.
 		 *
-		 * @param offset Rows to skip on an empty query (default 0)
-		 * @param limit Page size on an empty query (default 50)
+		 * @param limit Page size (default 50)
 		 * @param query Name filter; empty browses files
+		 * @param paths Path-filter batch
+		 * @param metadata_only Unused on the daemon today
+		 * @param recent Viewed files only, newest first
 		 * @return {@link OLLMrpc.Response} for the page or the search
 		 * @throws GLib.Error if the RPC fails, including
 		 *   {@link OLLMrpc.RpcErrorCode.TOO_MANY_RESULTS}
 		 */
 		public async OLLMrpc.Response fetch_files(
-			int offset = 0,
 			int limit = 50,
 			string query = "",
 			string[] paths = {},
-			bool metadata_only = false
+			bool metadata_only = false,
+			bool recent = false
 		) throws GLib.Error
 		{
 			var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
 				method = "Folder.fetch_files",
 				args = OLLMrpc.args(
-					"siisSb",
+					"sisSbb",
 					this.path,
-					offset,
 					limit,
 					query,
 					paths,
-					metadata_only
+					metadata_only,
+					recent
 				)
 			});
 			if (response.retval.type().is_a(typeof(Gee.ArrayList))) {
