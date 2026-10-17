@@ -287,20 +287,115 @@ Review the pull-over on a device after Phase 2. `--phone` and `--tablet` on the 
 
 ### Phone file navigation
 
-The phone does not use the desktop tree. It browses one folder at a time.
+The phone does not use a tree. A tree does not work on that screen. It shows one folder level at a time.
 
-- 🔷 ⏳ The list is the files and folders in the current folder. The first folder is the project root.
-- 🔷 ⏳ Clicking a folder drills into that folder.
+From the top of the page:
+
+- ℹ️ Sketch only. Not code to apply. Names are an example.
+
+```
+Root. No left arrow. No place line. Tree.
+Folders, then files. A root row is one line.
+
++--------------------------------------+
+| OLLMchat                          X  |
+|  Tree          Recent                |
+|--------------------------------------|
+| [folder] android                     |
+| [folder] docs                        |
+| [file]   meson.build                 |
+| [ Search files                     ] |
++--------------------------------------+
+
+Inside docs. Left arrow. Place line is docs.
+A row's second line is the path from the
+project, including its own name.
+
++--------------------------------------+
+| <  OLLMchat                       X  |
+|    docs                              |
+|  Tree          Recent                |
+|--------------------------------------|
+| [folder] plans                       |
+|          docs/plans                  |
+| [file]   BUILD.md                    |
+|          docs/BUILD.md               |
+| [ Search files                     ] |
++--------------------------------------+
+
+Recent. A file at the project root is one
+line. A short path keeps the name. A long
+path drops the name, then keeps the first
+folder and ellipsizes the rest.
+
++--------------------------------------+
+| OLLMchat                          X  |
+|  Tree          Recent                |
+|--------------------------------------|
+| [file] meson.build                   |
+| [file] FileNav.vala                  |
+|        examples/…                    |
+| [ Search files                     ] |
++--------------------------------------+
+
+Tablet. Same top, same filters, search at
+the bottom. Left is folders only. Right is
+the files of that level.
+
++--------------------------------------------------+
+| OLLMchat                                      X  |
+|  Tree          Recent                            |
+|--------------------------------------------------|
+| [folder] android     | [file] Android.vala       |
+| [folder] docs        | [file] meson.build        |
+|                      |                           |
+| [ Search files                                 ] |
++--------------------------------------------------+
+```
+
+- 🔷 ⏳ The top row is the left arrow, the place in the tree, and an X.
+  - The left arrow is only there when the list is below the project root.
+  - The lead text is the project name. At the root of OLLMchat that line is OLLMchat.
+  - The place line is the path relative to the project. At the root that line is not shown. Inside `docs` it is `docs`.
+  - The X is on the right. It closes the file picker.
+  - The left arrow goes up one directory. From `docs` it returns to the project root.
+  - The back key does the same as the left arrow. It goes up one level. It does not close the picker.
+- 🔷 ⏳ Under that row are two filters, Tree and Recent.
+- 🔷 ⏳ The list for the chosen filter sits under those filters.
+- 🔷 ⏳ Search sits at the bottom, the same place as on the project page.
+  - Tree is the one-level folder list.
+  - Recent is the recent files.
+- 🔷 ⏳ The first level is the project root.
+  - Folders in that folder come first.
+  - Files in that folder come after the folders.
+- 🔷 ⏳ The folders are one load, and that load stays in memory.
+  - Opening a folder does not ask for the folders again.
+  - ℹ️ `FolderTreeStore.load` is that load. The phone reads the kept segments.
+- 🔷 ⏳ Clicking a folder drills into that one level.
+  - Its child folders come first.
+  - Its files come after those folders.
+- 🔷 ⏳ A row is an icon and a basename. The basename ellipsizes.
+  - Below the project root, the second line is the path relative to the project, including the item's own name. `plans` reads `docs/plans`. `BUILD.md` reads `docs/BUILD.md`.
+  - The same line is used for a deep folder and for a search result.
+  - When the line is too long, drop the item's own name first. The basename is already the title.
+  - If it is still too long, keep the first folder under the project and ellipsize the remainder. `examples/oc-test-source-diff/FileNav.vala` becomes `examples/…`. The first folder stays. The middle goes.
+  - A row at the project root has no second line.
+  - A folder has a folder icon.
+  - A file has a file icon.
+- 💩 ⏳ A file row shows its size in brackets after the basename, for example `BUILD.md (4 KB)`. Not decided.
 - 🔷 ⏳ The next folder slides in from the side.
 - 🔷 ⏳ Swipe sideways to move back and forward through the folders already opened.
+- ℹ️ The smoke page still draws `FolderTree` above `FileList`. That is not this list.
 
 ### Tablet file navigation
 
-The tablet follows the desktop tree. It does not use the phone drill-down.
+The tablet uses the same navigation as the phone. The difference is where the files sit.
 
-- 🔷 ⏳ Folders on the left, files on the right.
-- 🔷 ⏳ Normal use is a swipe down the tree to find the file and view that folder.
-- 🔷 ⏳ Searching puts the keyboard over about half the screen. The tree and the file list share the height that is left.
+- 🔷 ⏳ The top row, Tree and Recent, and the search box at the bottom are the same as the phone.
+- 🔷 ⏳ The left side is the one-level folder list. It does not show files.
+- 🔷 ⏳ The right side shows the files of that level.
+- 🔷 ⏳ Clicking a folder on the left drills into that folder. The left list becomes its child folders. The right list becomes its files.
+- 🔷 ⏳ The left arrow and the back key go up one directory, the same as on the phone.
 
 ### Chat history
 
@@ -344,8 +439,8 @@ Not the next step. Phase 3 is next. Phase 3.5 follows that.
 - 🚫 Do not put files on the left tree. Do not bind that tree to `Folder.children`, and do not name the holder `FolderStore`. The holder is `FolderTreeStore`.
 - 🚫 Do not add a progressive refresh in this plan. A new file from a scan does not update the open tree. Opening the pop-down again is the refresh.
 - 🚫 Do not filter a client-held copy of the whole tree. Ask the file server for the folders and for the file results separately.
-- 🚫 Do not give the phone the desktop tabbed pop-down or the two-pane tree. Phone file navigation is one folder at a time.
-- 🚫 Do not give the tablet the phone drill-down. Tablet file browsing follows the desktop tree.
+- 🚫 Do not give the phone the desktop two-pane tree or `FolderTree`. Phone file navigation is one level: folders, then files. A click drills into that folder only. The phone page does have Tree and Recent filters under the title row. The X closes. The left arrow and the back key go up one directory.
+- 🚫 Do not give the tablet the desktop tree. It uses the phone drill-down. The left list is folders only. The right list is the files of that level. Search stays at the bottom.
 - 🚫 Do not auto-open the file pull-over after a project pick on phone or tablet.
 - 🚫 No second smoke app. This stays on `oc-test-source-diff`.
 - 🚫 Do not bring back `examples/oc-test-source-diff-selectors.vala`.

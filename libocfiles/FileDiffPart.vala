@@ -19,12 +19,12 @@
 namespace OLLMfiles
 {
 	/**
-	 * One diff item on the wire ({@code FileHistory.parts}).
+	 * One diff item on the wire (''FileHistory.parts'').
 	 *
-	 * {@code hunk_remove} and {@code hunk_add} are the changed lines.
+	 * {@link hunk_remove} and {@link hunk_add} are the changed lines.
 	 * No '+' or '-' prefix. No line numbers in those strings.
-	 * {@code accepted} is 0 undecided, 1 accepted, -1 rejected.
-	 * {@code compare} is on the file-server part. It takes another
+	 * {@link accepted} is 0 undecided, 1 accepted, -1 rejected.
+	 * ''compare'' is on the file-server part. It takes another
 	 * part.
 	 */
 	public class FileDiffPart : Object, OLLMrpc.Bin.Serializable
@@ -44,12 +44,12 @@ namespace OLLMfiles
 		public string checksum { get; set; default = ""; }
 
 		/**
-		 * Removed lines from {@code parts}. No '-' prefix.
+		 * Removed lines from ''parts''. No '-' prefix.
 		 */
 		public string hunk_remove { get; set; default = ""; }
 
 		/**
-		 * Added lines from {@code parts}. No '+' prefix.
+		 * Added lines from ''parts''. No '+' prefix.
 		 */
 		public string hunk_add { get; set; default = ""; }
 

@@ -939,7 +939,7 @@ namespace OLLMcoder
 		/**
 		 * If ''file'' is pending approval, load diff items and paint them.
 		 *
-		 * Calls {@code FileHistory.parts}. Does not read the backup.
+		 * Calls ''FileHistory.parts''. Does not read the backup.
 		 *
 		 * @param file open project file (buffer already holds V_disk)
 		 */

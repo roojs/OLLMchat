@@ -114,6 +114,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocfiles/FileHistory.vala',  # Uses FileBase
     '../libocfiles/FileAlias.vala',
     '../libocfiles/FileWithHistory.vala',
+    '../libocfiles/FileDiffPart.vala',  # after FileWithHistory — match libocfiles/meson.build
     '../libocfiles/GitProviderBase.vala',
     '../libocfiles/Copyable.vala',
     '../libocfiles/Diff/Patch.vala',

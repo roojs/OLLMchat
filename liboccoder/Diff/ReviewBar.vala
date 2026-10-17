@@ -1019,9 +1019,9 @@ namespace OLLMcoder.Diff
 		}
 
 		/**
-		 * Paint hunk bands from {@code FileHistory.parts}.
+		 * Paint hunk bands from ''FileHistory.parts''.
 		 *
-		 * Keeps {@code parts} so the hunk text stays on the client.
+		 * Keeps ''parts'' so the hunk text stays on the client.
 		 *
 		 * @param parts diff items, remove and add text on each
 		 * @param file_index file position in the pending list
