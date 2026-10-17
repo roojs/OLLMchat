@@ -440,11 +440,11 @@ namespace OLLMfilesd
 		}
 		
 		private ProjectManager rpc_manager;
-		private Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>> live {
-			get; set; default = new Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>>();
+		private Gee.HashMap<int, Gee.ArrayList<FileDiffPart>> live {
+			get; set; default = new Gee.HashMap<int, Gee.ArrayList<FileDiffPart>>();
 		}
-		private Gee.HashMap<int64, int64> live_stamp {
-			get; set; default = new Gee.HashMap<int64, int64>();
+		private Gee.HashMap<int, int> live_stamp {
+			get; set; default = new Gee.HashMap<int, int>();
 		}
 
 		public static void rpc_register()
@@ -489,8 +489,7 @@ namespace OLLMfilesd
 			if (histories.size == 0) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+					error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 						"history row not found"
 					)
 				});
@@ -507,18 +506,17 @@ namespace OLLMfilesd
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(
-						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+					error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
 						e.message
 					)
 				});
 				return;
 			}
-			if (this.live.has_key(id) && this.live_stamp.has_key(id) &&
-				this.live_stamp.get(id) == stamp) {
+			if (this.live.has_key((int) id) && this.live_stamp.has_key((int) id) &&
+				this.live_stamp.get((int) id) == (int) stamp) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					retval = OLLMrpc.val("o", this.live.get(id))
+					retval = OLLMrpc.val("o", this.live.get((int) id))
 				});
 				return;
 			}
@@ -601,12 +599,12 @@ namespace OLLMfilesd
 				foreach (var part in fresh) {
 					FileDiffPart.query(this.rpc_manager.db).insert(part);
 				}
-				this.live.set(history.id, fresh);
-				this.live_stamp.set(history.id, stamp);
+				this.live.set((int) history.id, fresh);
+				this.live_stamp.set((int) history.id, (int) stamp);
 				return fresh;
 			}
-			if (this.live.has_key(history.id) && this.live.get(history.id).size > 0) {
-				rows = this.live.get(history.id);
+			if (this.live.has_key((int) history.id) && this.live.get((int) history.id).size > 0) {
+				rows = this.live.get((int) history.id);
 			}
 			var next_index = rows.get(rows.size - 1).part_index + 1;
 			var older = new Gee.HashMap<int, FileDiffPart>();
@@ -658,8 +656,8 @@ namespace OLLMfilesd
 			foreach (var old in older.values) {
 				FileDiffPart.query(this.rpc_manager.db).deleteId(old.id);
 			}
-			this.live.set(history.id, kept);
-			this.live_stamp.set(history.id, stamp);
+			this.live.set((int) history.id, kept);
+			this.live_stamp.set((int) history.id, (int) stamp);
 			return kept;
 		}
 

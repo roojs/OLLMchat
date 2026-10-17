@@ -17,34 +17,45 @@
  */
 
 /**
- * Pull-over view of {@link FileRows}.
+ * App namespace for the source-diff smoke window.
  *
- * Keeps every file in the page. The placeholder is
- * ''No files''.
+ * Project and file selectors live here while they are
+ * still in the smoke test. {@link Form} is the layout.
  *
  * == Example ==
  *
  * {{{
- * var list = new PullRows();
- * list.replace(response);
+ * var coder = new CoderView(manager, Form.PHONE);
  * }}}
  */
-class PullRows : FileRows
+namespace OLLMapp
 {
 	/**
-	 * Search page for the phone and tablet pull-over.
+	 * Layout of the project and file selectors.
+	 *
+	 * Desktop draws the lists on the editor. Phone and tablet
+	 * use {@link SelectorPull}.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * var coder = new CoderView(manager, Form.PHONE);
+	 * }}}
 	 */
-	public PullRows()
-	{
-		base();
-		this.vexpand = true;
-		this.set_placeholder(new Gtk.Label("No files") {
-			xalign = 0,
-			halign = Gtk.Align.START,
-			margin_start = 12,
-			margin_top = 8,
-			margin_bottom = 8,
-			css_classes = { "dim-label" },
-		});
+	enum Form {
+		DESKTOP,
+		PHONE,
+		TABLET
+	}
+
+	/**
+	 * Which file list a fetch fills.
+	 *
+	 * Recent is the desktop history list. Pullout is the
+	 * phone and tablet page.
+	 */
+	enum Slot {
+		HISTORY,
+		PULLOUT
 	}
 }

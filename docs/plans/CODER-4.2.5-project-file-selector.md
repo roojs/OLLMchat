@@ -1,6 +1,6 @@
 # CODER-4.2.5 Project and file selector
 
-**Status:** proposed. Phase 1 is confirmed. Phase 2.3 search is done. Phase 2.4 is signed off. Phase 3 is the Android review of the smoke window. Phase 4 is open later work.
+**Status:** proposed. Phase 1 is confirmed. Phase 2.3 search is done. Phase 2.4 is signed off. Phase 3 is the Android review of the smoke window. Phase 3.5 is the semantic file search, taken out of Phase 4. Phase 4 is the rest of the open later work.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**.
 
@@ -17,7 +17,7 @@
 
 ## Purpose
 
-- 🔷 Phase 1 is the desktop project selector. Phase 2 is the desktop file selector. Phase 3 is an Android review. Phase 4 is open later work.
+- 🔷 Phase 1 is the desktop project selector. Phase 2 is the desktop file selector. Phase 3 is an Android review. Phase 3.5 is the semantic file search. Phase 4 is open later work.
 - ✅ Phase 1 is confirmed.
 - 🔷 ✔️ marks code that is in the smoke app and not approved yet.
 - 🔷 Never do status theatre. Do not mark an item done, rewrite Status, or report ticks in place of the behavior. A tick waits until that behavior is what the running app does.
@@ -25,7 +25,7 @@
 - 🔷 Phase 2.2 is in the smoke app.
 - ✅ Phase 2.3 search is done. The no-folder search and restoring the current file on clear are Phase 4.
 - ✅ Phase 2.4 is signed off. The folder list and the file list are overlays on the editor. The folder bar's left arrow is still to do, and it stays hidden on desktop.
-- 🔷 Phase 3 is the Android review. Phase 4 waits.
+- 🔷 Phase 3 is the Android review. Phase 3.5 follows that. Phase 4 waits.
 
 ---
 
@@ -135,7 +135,7 @@ Reference only. Each one is a `GLib.ListModel` with an array behind it, except t
 
 #### Tree
 
-Folders on the left, files on the right. The file server is queried for each side after the first step. File content search is Phase 4.
+Folders on the left, files on the right. The file server is queried for each side after the first step. Semantic file search is Phase 3.5.
 
 - ✔️ The left side is a folder tree. It does not list files.
 - ✔️ That tree is expanded.
@@ -313,15 +313,26 @@ The tablet follows the desktop tree. It does not use the phone drill-down.
 
 ---
 
+## Phase 3.5 — Semantic file search
+
+Taken out of Phase 4. The file search is semantic. The index and the call already exist, so this phase is small. Phase 3 is still next.
+
+- 🔷 ⏳ The file search uses semantic search. It does not read file text to find matches.
+- ℹ️ `Codebase.search` on `ollmfilesd` is that call. `liboctools/CodebaseSearch/Request.vala` already sends it.
+- 🔷 It does not replace the tree name filter. Tree and Recent keep matching names.
+- 🔷 It is not a tab on the file list. The Search tab stays off.
+
+---
+
 ## Phase 4 — Open
 
-Not the next step. Phase 3 is next.
+Not the next step. Phase 3 is next. Phase 3.5 follows that.
 
 - 🔷 ⏳ With no folder selected during a search, the right list is every matching file. Each row has the path relative to the project underneath the name.
 - 🔷 ⏳ Clearing the search returns to the folder that contains the current file, with that file about halfway down the right list. A load with no search still selects nothing and opens at the top. This only matters with the no-folder search above.
 - 🔷 ⏳ A number in brackets next to a tree row. The visible map would store numbers instead of bools. Think about it. Do not do it in Phase 2.
 - ℹ️ The first open of a project holds the file dialog while the folders load. A second open is already fast. We might have that scan send notifications and show a progress bar on the file dialog. We might leave it.
-- 🔷 ⏳ Search that looks inside file contents. It does not replace the tree name filter, and it is not a tab on the file list.
+- ℹ️ Semantic file search is Phase 3.5. It is not in this phase.
 
 ---
 
@@ -339,7 +350,7 @@ Not the next step. Phase 3 is next.
 - 🚫 No second smoke app. This stays on `oc-test-source-diff`.
 - 🚫 Do not bring back `examples/oc-test-source-diff-selectors.vala`.
 - 🚫 Do not start the Android review before the desktop file work.
-- 🚫 Do not put a Search tab on the file pop-down. Tree name matches stay on Tree. Recent name matches stay on Recent. Content search is Phase 4.
+- 🚫 Do not put a Search tab on the file pop-down. Tree name matches stay on Tree. Recent name matches stay on Recent. Semantic file search is Phase 3.5. Do not scan file text for it.
 - 🚫 No wildcard matching (`*` or `?`) in this pass.
 - 🚫 Search visibility is not a stamp on the folder, and not a set of paths. It is a `Gee.HashMap<int, bool>` of `(int) FileBase.id`. Above 100 matches, the tree is not filtered. Numbers in that map are Phase 4.
 - 🚫 Do not build the no-folder search, or restore the current file when search clears, in Phase 2.4. Both are Phase 4.
