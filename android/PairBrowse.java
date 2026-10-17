@@ -15,7 +15,11 @@ public final class PairBrowse {
 	}
 
 	public static void bind(Context context) {
-		System.loadLibrary("ollmchat-android-poc");
+		bindLibrary(context, "ollmchat-android-poc");
+	}
+
+	public static void bindLibrary(Context context, String library) {
+		System.loadLibrary(library);
 		nativeBind(context.getApplicationContext());
 	}
 

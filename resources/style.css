@@ -474,8 +474,15 @@ row.selector-mark {
 	background-color: alpha(@theme_selected_bg_color, 0.35);
 }
 
-.selector-pull {
-	background-color: @window_bg_color;
+.selector-pull,
+.selector-pull > box,
+.selector-pull stack,
+.selector-pull list,
+.selector-pull row,
+.selector-pull button,
+.selector-pull entry {
+	background-color: @theme_bg_color;
+	background-image: none;
 }
 
 .project-sheet {

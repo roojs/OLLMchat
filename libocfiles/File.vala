@@ -69,8 +69,8 @@ namespace OLLMfiles
 		}
 
 		/**
-		 * Size in bytes. Not a stored column, so a folder listing
-		 * leaves this at zero.
+		 * Size in bytes from the stored file row. The directory scan
+		 * writes it. A folder listing copies that stored value.
 		 */
 		public int64 size { get; set; default = 0; }
 

@@ -128,6 +128,7 @@ namespace OLLMfiles
 		File.rpc_register();
 		FileAlias.rpc_register();
 		FileWithHistory.rpc_register();
+		FileDiffPart.rpc_register();
 		SQT.VectorMetadata.rpc_register();
 	}
 }

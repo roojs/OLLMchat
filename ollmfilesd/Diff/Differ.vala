@@ -49,11 +49,15 @@ namespace OLLMfiles.Diff
 	
 	/**
 	 * Simple line-based diff implementation using Myers algorithm.
-	 * 
+	 *
 	 * Computes the differences between two texts and returns
 	 * a list of patches with line numbers.
-	 * 
 	 * Implementation based on diffseq.h from GNU diffutils.
+	 * Client callers are deprecated. The review diff runs in
+	 * ollmfilesd. libocfiles still compiles this file so the
+	 * diff UI tests build.
+	 *
+	 * @deprecated Client use. New review diffs use FileHistory.parts.
 	 */
 	public class Differ : Object
 	{

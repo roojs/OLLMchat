@@ -370,6 +370,37 @@ install_poc_java() {
   "$wka_install" "$java_root"
 }
 
+# Pairing browse for the source-diff smoke app. Same PairBrowse class,
+# loaded from liboc-test-source-diff.so instead of the chat library.
+install_source_diff_java() {
+  local poc_dir="$ROOT_DIR/.pixiewood/android/app/src/main/java/org/roojs/ollmchat/androidpoc"
+  local app_dir="$ROOT_DIR/.pixiewood/android/app/src/main/java/org/roojs/ollmchat/sourcediff"
+  local browse_src="$ROOT_DIR/android/PairBrowse.java"
+  local app_src="$ROOT_DIR/android/SourceDiffApplication.java"
+
+  if [ ! -f "$browse_src" ]; then
+    echo "PairBrowse.java missing: $browse_src" >&2
+    exit 1
+  fi
+  if [ ! -f "$app_src" ]; then
+    echo "SourceDiffApplication.java missing: $app_src" >&2
+    exit 1
+  fi
+  mkdir -p "$poc_dir" "$app_dir"
+  cp -a "$browse_src" "$poc_dir/PairBrowse.java"
+  cp -a "$app_src" "$app_dir/SourceDiffApplication.java"
+}
+
+patch_source_diff_manifest() {
+  local manifest="$ROOT_DIR/.pixiewood/android/app/src/main/AndroidManifest.xml"
+
+  if [ ! -f "$manifest" ]; then
+    echo "AndroidManifest missing: $manifest" >&2
+    exit 1
+  fi
+  sed -i 's/android:name="org.gtk.android.RuntimeApplication"/android:name="org.roojs.ollmchat.sourcediff.SourceDiffApplication"/' "$manifest"
+}
+
 # Pixiewood regenerate may omit permissions / reset launchMode; keep POC defaults.
 patch_android_manifest() {
   local manifest="$ROOT_DIR/.pixiewood/android/app/src/main/AndroidManifest.xml"
@@ -627,6 +658,23 @@ run_pixiewood_setup() {
   fi
 }
 
+# generate reads the manifest path from pixiewood.ini, which prepare writes.
+# A later build can skip prepare, so point the ini at this run's manifest
+# before generate. Otherwise a source-diff build keeps the chat application id.
+sync_pixiewood_ini_manifest() {
+  local ini="$ROOT_DIR/.pixiewood/pixiewood.ini"
+
+  if [ ! -f "$ini" ]; then
+    echo "pixiewood.ini missing: $ini" >&2
+    exit 1
+  fi
+  if ! grep -q '^manifest=' "$ini"; then
+    echo "pixiewood.ini has no manifest key: $ini" >&2
+    exit 1
+  fi
+  sed -i "s|^manifest=.*|manifest=$PIXIEWOOD_MANIFEST|" "$ini"
+}
+
 run_pixiewood_build() {
   init_pixiewood_env
   maybe_download_meson_subprojects "$MESON_FOR_ANDROID"
@@ -638,6 +686,7 @@ run_pixiewood_build() {
   # directory and unlink(2) fails with EISDIR.
   rm -rf "$ROOT_DIR/.pixiewood/android/app/src/main/jniLibs"
 
+  sync_pixiewood_ini_manifest
   run_pixiewood generate
   patch_pixiewood_gradle_native_libs
   run_pixiewood build --skip-gradle
@@ -646,8 +695,16 @@ run_pixiewood_build() {
   install_ca_certificates_to_assets
   install_gtksourceview_language_schema
   install_icon_themes_to_assets
-  install_poc_java
-  patch_android_manifest
+  # Chat Java and the chat Application class belong to the chat package.
+  # The source-diff smoke app binds pairing against its own library.
+  if [[ "$PIXIEWOOD_MANIFEST" == *pixiewood-source-diff.xml ]]; then
+    install_source_diff_java
+    patch_source_diff_manifest
+  fi
+  if [[ "$PIXIEWOOD_MANIFEST" != *pixiewood-source-diff.xml ]]; then
+    install_poc_java
+    patch_android_manifest
+  fi
   run_pixiewood_gradle_assemble
   verify_apk_script="${PIXIEWOOD_VERIFY_APK_SCRIPT:-$ROOT_DIR/scripts/android/verify-apk.sh}"
   "$verify_apk_script"

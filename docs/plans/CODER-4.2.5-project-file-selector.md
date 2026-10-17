@@ -1,6 +1,6 @@
 # CODER-4.2.5 Project and file selector
 
-**Status:** proposed. Phase 1 is confirmed. Phase 2.3 search is done. Phase 2.4 replaces the popovers with overlays on the editor. Phase 3 is the Android review. Phase 4 is open later work.
+**Status:** proposed. Phase 1 is confirmed. Phase 2.3 search is done. Phase 2.4 is signed off. Phase 3 is the Android review of the smoke window. Phase 4 is open later work.
 
 **Pointer:** `docs/guide-to-writing-plans.md` — **Checklist for plans**.
 
@@ -24,8 +24,8 @@
 - 🔷 Phase 2.1 is the file selector already in the smoke app.
 - 🔷 Phase 2.2 is in the smoke app.
 - ✅ Phase 2.3 search is done. The no-folder search and restoring the current file on clear are Phase 4.
-- 🔷 Phase 2.4 is next. The folder list and the file list are overlays on the editor. The folder bar's left arrow is still to do, and it stays hidden on desktop.
-- 🔷 Phase 3 and Phase 4 wait.
+- ✅ Phase 2.4 is signed off. The folder list and the file list are overlays on the editor. The folder bar's left arrow is still to do, and it stays hidden on desktop.
+- 🔷 Phase 3 is the Android review. Phase 4 waits.
 
 ---
 
@@ -146,9 +146,9 @@ Folders on the left, files on the right. The file server is queried for each sid
 - ✔️ A symlink whose stored target is a folder is not listed. A symlink to a file is.
 - ℹ️ ''fetch_dir'' copies stored rows. It does not read the filesystem. Modified time is the stored ''last_modified''.
 
-#### File size is not showing
+#### File size
 
-The Size column is on the grid. It does not show a real file size. `Folder.fetch_dir` copies stored rows, and size is not one of those columns, so every row stays at zero. Leave it until size is stored. Do not read the size off disk in this plan.
+The Size column shows the stored byte size. The directory scan records ''STANDARD_SIZE'' on the file row. ''fetch_dir'' copies that stored value. It does not read the filesystem. An existing project picks the size up on the next scan.
 
 #### Other controls
 
@@ -231,7 +231,7 @@ The visible folders are a `Gee.HashMap<int, bool>`. The key is `(int) FileBase.i
 - 🚫 A folder whose name matches does not keep every child folder. A child stays only when that child matches, or a file or folder under that child matches. RooTerm's ancestor-name test in the filter does the opposite for hosts.
 - 🚫 Do not change this map to numbers here. A count in brackets on the tree is Phase 4.
 
-### 2.4 — Overlays on the editor
+### 2.4 — Overlays on the editor ✅
 
 The popovers go. Windowing with them is nasty. The project list and the file list are drawn on the editor instead.
 
@@ -256,6 +256,16 @@ Review the pull-over on a device after Phase 2. `--phone` and `--tablet` on the 
 
 - ℹ️ Do not pass `--phone` and `--tablet` together.
 - 🔷 ⏳ The same window on an Android build, not only `--phone` on the desktop.
+  - ℹ️ `scripts/android/build-source-diff-apk.sh` packages this smoke window. It does not replace the chat APK.
+
+### File navigation classes
+
+- ℹ️ `FileNav` is the base. `FileOverlay` is the desktop sheet. `FilePullout` is the phone and tablet page.
+- ℹ️ `form` is the string `desktop`, `phone`, or `tablet` on `FileNav`, `ProjectSelector`, `SelectorPull`, and `CoderView`.
+- 🔷 ⏳ `FileNav` does not build widgets.
+  - The button, the lists, and the type buttons are drawn by `FileOverlay` and `FilePullout`.
+- 🔷 ⏳ The form factor is an enum.
+  - Replace the `form` string.
 
 ### Project pull-over
 
@@ -305,7 +315,7 @@ The tablet follows the desktop tree. It does not use the phone drill-down.
 
 ## Phase 4 — Open
 
-Not the next step. Phase 2.4 is next.
+Not the next step. Phase 3 is next.
 
 - 🔷 ⏳ With no folder selected during a search, the right list is every matching file. Each row has the path relative to the project underneath the name.
 - 🔷 ⏳ Clearing the search returns to the folder that contains the current file, with that file about halfway down the right list. A load with no search still selects nothing and opens at the top. This only matters with the no-folder search above.
@@ -335,6 +345,6 @@ Not the next step. Phase 2.4 is next.
 - 🚫 Do not build the no-folder search, or restore the current file when search clears, in Phase 2.4. Both are Phase 4.
 - 🚫 Do not keep the project list or the file list as a popover. Phase 2.4 draws them on the editor.
 - 🚫 Do not delete the document and code filter. Hide those buttons. The right slot is the file overlay's process-stop icon.
-- 🚫 Do not fill the Size column from the filesystem. Size is not stored, so that column stays empty until a later change.
+- 🚫 Do not read file size off disk in ''fetch_dir''. The scan stores it on the file row.
 - 🚫 Do not copy `ProjectFiles.cached_search` sort orders, and do not use `ProjectFiles.get_recent_list`.
 - 🚫 No status theatre. Do not add ✔️ or ✅, rewrite the Status line, or answer with what was ticked, unless the running app already does that thing.

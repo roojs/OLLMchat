@@ -66,12 +66,6 @@ namespace OLLMfilesd
 			this.base_type = "f";
 		}
 
-		/**
-		 * Size in bytes. Not a stored column, so replies leave
-		 * this at zero.
-		 */
-		public int64 size { get; set; default = 0; }
-
 		public void read(OLLMrpc.Request request, string path)
 		{
 			uint8[] data;
@@ -507,6 +501,7 @@ namespace OLLMfilesd
 			if (mod_time != null) {
 				this.last_modified = mod_time.to_unix();
 			}
+			this.size = (int64) info.get_size();
 			
 			// Detect and set is_text from content type
 			var  content_type = info.get_content_type();

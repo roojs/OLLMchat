@@ -1814,6 +1814,26 @@ obj.set_string_member("reasoning_effort",
     this.reasoning_effort != "" ? this.reasoning_effort : (this.think ? "medium" : "none"));
 ```
 
+## C extern names <!-- section: c-extern-names -->
+
+**IMPORTANT:** A Vala `extern` uses the C function's full name. Do not
+shorten it with `[CCode (cname = ...)]`. The name at the call site is
+the name in the header, so the C function is obvious.
+
+**Bad (Vala name drops the library prefix):**
+```vala
+[CCode (cname = "ollmapp_configure_android_gio_tls_modules", cheader_filename = "android-gio-tls.h")]
+extern bool configure_android_gio_tls_modules();
+```
+
+**Good:**
+```vala
+[CCode (cheader_filename = "android-gio-tls.h")]
+extern bool ollmapp_configure_android_gio_tls_modules();
+```
+
+`cname` is only for a C name that is not a legal Vala identifier.
+
 ## Agent compliance gate (mandatory before finishing Vala work) <!-- section: agent-compliance-gate -->
 
 **AI agents:** Partial compliance is a violation. Use
@@ -1849,6 +1869,7 @@ Run these checks on **every file you changed**. Fix violations; do not hand-wave
 | **Debug text** | No class/method names in `GLib.debug()` / `GLib.warning()` messages |
 | **Docblocks** | New/changed APIs have multiline `/** … */` with `@param` where needed |
 | **No `??`** | Search changed `.vala` files for `??` — use ternary or `if (x == null)` default instead |
+| **C extern keeps the C name** | New `extern` uses the full C name. No `[CCode (cname = ...)]` that renames it |
 
 If you skipped any row because you "already knew" the rule, **stop and run it
 anyway**. Agents repeatedly miss rules they did not verify in the diff.

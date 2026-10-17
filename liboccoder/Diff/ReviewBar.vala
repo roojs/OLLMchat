@@ -146,6 +146,9 @@ namespace OLLMcoder.Diff
 
 		private OLLMcoder.SourceView source_view;
 		private HunkList hunks { get; set; default = new HunkList(); }
+		public Gee.ArrayList<OLLMfiles.FileDiffPart> parts {
+			get; set; default = new Gee.ArrayList<OLLMfiles.FileDiffPart>();
+		}
 		private int active = -1;
 		private int file_count = 1;
 		public int file_index = 0;
@@ -946,12 +949,13 @@ namespace OLLMcoder.Diff
 		}
 
 		/**
-		 * Owner calls after {@link OLLMcoder.SourceView.show_diff} when the differ changes.
+		 * Old Differ path. The client is dropping Differ; new callers
+		 * use {@link update_diff} with {@link OLLMfiles.FileDiffPart}.
 		 *
 		 * @param differ current diff (patches only — ReviewBar does not apply hunks)
 		 * @param file_index optional footer file index (-1 = keep current)
 		 */
-		public void update_diff(
+		public void update_diff_old(
 			OLLMfiles.Diff.Differ differ,
 			int file_index = -1)
 		{
@@ -968,6 +972,102 @@ namespace OLLMcoder.Diff
 				var band = new HunkBand(patch) {
 					band_index = bi,
 				};
+				if (bulk_decision != HunkDecision.PENDING) {
+					band.decision = bulk_decision;
+				}
+				this.hunks.add(band);
+				this.hunk_line_sum += band.line_count;
+				bi++;
+			}
+			this.file_nav.visible = this.live_queue ? this.file_count > 0 : this.file_count > 1;
+			this.file_prev.visible = this.file_count > 1;
+			this.file_next.visible = this.file_count > 1;
+			if (this.file_nav.visible) {
+				this.file_nav_btn.label = "File %d of %d".printf(
+					this.file_index + 1, this.file_count);
+			}
+			if (this.mock_inactive) {
+				this.pending_label.visible = true;
+				this.map_area.visible = false;
+				this.map_scroll_left.visible = false;
+				this.map_scroll_right.visible = false;
+				this.pending_label.label = "%d changes pending review".printf(
+					this.file_count);
+				this.accept_btn.visible = false;
+				this.reject_btn.visible = false;
+				this.feedback_btn.visible = false;
+				this.unapprove_btn.visible = false;
+				return;
+			}
+			this.pending_label.visible = false;
+			this.map_area.visible = true;
+			this.active = this.hunks.pending_after(-1);
+			this.active = this.active < 0 && this.hunks.size > 0 ? 0 : this.active;
+			if (this.active >= 0) {
+				this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
+			}
+			var pending = this.active >= 0
+				&& this.hunks.get(this.active).decision == HunkDecision.PENDING;
+			this.accept_btn.visible = pending;
+			this.reject_btn.visible = pending;
+			this.feedback_btn.visible = this.review_responses.size > 0;
+			this.unapprove_btn.visible = false;
+			this.map_width = 0;
+			GLib.Idle.add_once(() => {
+				this.on_width();
+			});
+		}
+
+		/**
+		 * Paint hunk bands from {@code FileHistory.parts}.
+		 *
+		 * Keeps {@code parts} so the hunk text stays on the client.
+		 *
+		 * @param parts diff items, remove and add text on each
+		 * @param file_index file position in the pending list
+		 */
+		public void update_diff(
+			Gee.ArrayList<OLLMfiles.FileDiffPart> parts,
+			int file_index = -1)
+		{
+			this.parts = parts;
+			this.file_index = file_index >= 0 ? file_index : this.file_index;
+			this.hunks.clear();
+			this.hunk_line_sum = 0;
+			var bi = 0;
+			var bulk_decision = HunkDecision.PENDING;
+			if (this.file_index < this.file_bulk.length) {
+				bulk_decision = this.file_bulk[this.file_index];
+			}
+			foreach (var part in this.parts) {
+				var old_count = part.old_line_end < part.old_line_start ? 0 : part.old_line_end - part.old_line_start + 1;
+				var new_count = part.new_line_end < part.new_line_start ? 0 : part.new_line_end - part.new_line_start + 1;
+				var op = OLLMfiles.Diff.PatchOperation.REPLACE;
+				if (old_count == 0) {
+					op = OLLMfiles.Diff.PatchOperation.ADD;
+				}
+				if (old_count > 0 && new_count == 0) {
+					op = OLLMfiles.Diff.PatchOperation.REMOVE;
+				}
+				var patch = new OLLMfiles.Diff.Patch(
+					op, part.old_line_start, part.old_line_end,
+					part.new_line_start, part.new_line_end,
+					new string[0], new string[0]);
+				var band = new HunkBand(patch) {
+					band_index = bi,
+				};
+				switch (part.accepted) {
+					case 1:
+						band.decision = HunkDecision.ACCEPTED;
+						break;
+
+					case -1:
+						band.decision = HunkDecision.REJECTED;
+						break;
+
+					default:
+						break;
+				}
 				if (bulk_decision != HunkDecision.PENDING) {
 					band.decision = bulk_decision;
 				}

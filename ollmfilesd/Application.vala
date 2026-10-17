@@ -298,6 +298,7 @@ Examples:
 			File.rpc_register();
 			FileAlias.rpc_register();
 			FileWithHistory.rpc_register();
+			FileDiffPart.rpc_register();
 			SQT.VectorMetadata.rpc_register();
 			Codebase.rpc_register();
 			Sandbox.Bubble.rpc_register();

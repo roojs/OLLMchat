@@ -156,6 +156,7 @@ elif android_poc_opt and host_machine.system() == 'android'
   subdir('libollmchatgtk')
   subdir('liboccoder')       # Same sources as desktop (see liboccoder/meson.build)
   subdir('ollmapp')         # Remote-chat Android APK target
+  subdir('examples')        # oc-test-source-diff only; that file stops after it
 else
   subdir('libocsqlite')      # No dependencies
   subdir('libocrpc')         # Binary RPC wire types — no OLLMfiles dependency
@@ -207,6 +208,7 @@ if android_shell_poc
 elif android_poc_opt and host_machine.system() == 'android'
   executables_info = [
     ['ollmchat-android-poc', 'ollmapp/ollmchat-android-poc'],
+    ['oc-test-source-diff', 'examples/oc-test-source-diff'],
   ]
 else
   executables_info = [

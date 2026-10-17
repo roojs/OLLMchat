@@ -16,6 +16,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#if ANDROID_SOURCE_DIFF
+[CCode (cheader_filename = "android-gio-tls.h")]
+extern bool ollmapp_configure_android_gio_tls_modules();
+#endif
+
 /**
  * Smoke: {@link TestAppBase} window showing {@link OLLMcoder.SourceView} inline diff
  * and {@link OLLMcoder.Diff.ReviewBar} Phase A mock review chrome.
@@ -48,6 +53,7 @@ class TestSourceDiff : TestAppBase
 	private Gtk.Box selector_row;
 	private SelectorPull selector_pull;
 	private CoderView coder;
+	private OLLMfiles.ProjectManager project_manager;
 	private bool has_selector = false;
 	private bool show_pull = false;
 
@@ -125,6 +131,11 @@ Examples:
 
 	protected override string? validate_args(string[] args)
 	{
+#if ANDROID_SOURCE_DIFF
+		if (!opt_tablet) {
+			opt_phone = true;
+		}
+#endif
 		if (opt_phone && opt_tablet) {
 			return "ERROR: Pass only one of --phone or --tablet.\n";
 		}
@@ -542,10 +553,19 @@ Examples:
 
 	protected override async void run_test(ApplicationCommandLine command_line, string[] args) throws Error
 	{
+#if ANDROID_SOURCE_DIFF
+		var activity_ready = false;
+		this.activate.connect(() => {
+			activity_ready = true;
+		});
+#endif
 		if (!Gtk.init_check()) {
 			command_line.printerr("ERROR: Failed to initialize GTK (no display?)\n");
 			throw new GLib.IOError.FAILED("Failed to initialize GTK");
 		}
+#if ANDROID_SOURCE_DIFF
+		ollmapp_configure_android_gio_tls_modules();
+#endif
 		var css_provider = new Gtk.CssProvider();
 		css_provider.load_from_resource("/ollmchat/style.css");
 		Gtk.StyleContext.add_provider_for_display(
@@ -573,17 +593,208 @@ Examples:
 		if (opt_selectors) {
 			OLLMfiles.rpc_register();
 			var manager = new OLLMfiles.ProjectManager();
-			if (!yield manager.rpc.connect(new OLLMrpc.Request() {
-				method = "RPC-Daemon.hello",
-				args = OLLMrpc.args("is", 1, "oc-test-source-diff")
-			}, new OLLMrpc.ClientBoot())) {
+			this.project_manager = manager;
+			var connected = false;
+#if ANDROID_SOURCE_DIFF
+			this.window = new Gtk.Window() {
+				title = "Selectors",
+				default_width = 400,
+				default_height = 700,
+			};
+			var startup_status = new Gtk.Label("Connecting…") {
+				margin_top = 8,
+				halign = Gtk.Align.CENTER,
+				wrap = true,
+				wrap_mode = Pango.WrapMode.WORD,
+				max_width_chars = 40,
+			};
+			var startup_spinner = new Gtk.Spinner() {
+				halign = Gtk.Align.CENTER,
+			};
+			startup_spinner.start();
+			var startup_panel = new Gtk.Box(Gtk.Orientation.VERTICAL, 12) {
+				margin_top = 24,
+				margin_bottom = 24,
+				margin_start = 24,
+				margin_end = 24,
+				halign = Gtk.Align.CENTER,
+				valign = Gtk.Align.CENTER,
+				vexpand = true,
+			};
+			startup_panel.append(startup_spinner);
+			startup_panel.append(startup_status);
+			this.window.child = startup_panel;
+			if (activity_ready) {
+				this.window.present();
+			}
+			if (!activity_ready) {
+				this.activate.connect(() => {
+					this.window.present();
+				});
+			}
+			OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename(
+				GLib.Environment.get_user_config_dir(), "ollmchat", "config.2.json");
+			if (GLib.FileUtils.test(
+				OLLMchat.Settings.Config2.config_path, GLib.FileTest.EXISTS)) {
+				var saved = OLLMchat.Settings.Config2.load();
+				var check = false;
+				switch (saved.filesd_client.state) {
+					case OLLMchat.Settings.FilesdClient.State.ENABLED:
+					case OLLMchat.Settings.FilesdClient.State.LIVE:
+					case OLLMchat.Settings.FilesdClient.State.SOCKET:
+						check = saved.filesd_client.addresses != "";
+						break;
+					default:
+						break;
+				}
+				if (check && GLib.Uuid.string_is_valid(saved.filesd_client.server_id)) {
+					startup_status.label = "Checking desktop environment…";
+					var tls = new OLLMrpc.Transport.Cert() {
+						dir = GLib.Path.build_filename(
+							GLib.Environment.get_user_data_dir(), "ollmchat",
+							saved.filesd_client.server_id),
+						cert_pem = "client.pem",
+						key_pem = "client-key.pem",
+						cn = "ollmchat-device",
+					};
+					tls.ensure();
+					var lines = saved.filesd_client.addresses.split("\n");
+					for (var i = 0; i < lines.length; i++) {
+						var line = lines[i].strip();
+						var colon = line.last_index_of(":");
+						if (colon <= 0) {
+							continue;
+						}
+						var port = 0;
+						if (!int.try_parse(line.substring(colon + 1), out port)) {
+							continue;
+						}
+						var host = line.substring(0, colon);
+						var client = new GLib.SocketClient();
+						client.timeout = 2;
+						GLib.SocketConnection conn;
+						try {
+							conn = yield client.connect_to_host_async(
+								host, (uint16) port, null);
+						} catch (GLib.Error e) {
+							GLib.warning("%s", e.message);
+							continue;
+						}
+						try {
+							conn.socket.blocking = true;
+						} catch (GLib.Error e) {
+							GLib.warning("%s", e.message);
+							continue;
+						}
+						GLib.TlsClientConnection link;
+						try {
+							link = GLib.TlsClientConnection.@new(conn, null);
+						} catch (GLib.Error e) {
+							GLib.warning("%s", e.message);
+							continue;
+						}
+						link.certificate = tls.certificate;
+						link.database = tls.trust;
+						link.accept_certificate.connect((peer_cert, errors) => {
+							return peer_cert != null
+								&& (errors & ~GLib.TlsCertificateFlags.BAD_IDENTITY) == 0;
+						});
+						try {
+							link.handshake();
+						} catch (GLib.Error e) {
+							GLib.warning("%s", e.message);
+							continue;
+						}
+						OLLMrpc.Bin.Stream bin;
+						try {
+							bin = new OLLMrpc.Bin.Stream(
+								new GLib.DataInputStream(link.get_input_stream()),
+								new GLib.DataOutputStream(link.get_output_stream())
+							);
+						} catch (GLib.Error e) {
+							GLib.warning("%s", e.message);
+							continue;
+						}
+						try {
+							bin.write(new OLLMrpc.Request() {
+								method = "RPC-Daemon.hello",
+								args = OLLMrpc.args("is", 1, "oc-test-source-diff")
+							});
+						} catch (GLib.Error e) {
+							GLib.warning("%s", e.message);
+							continue;
+						}
+						OLLMrpc.Response? hello = null;
+						var hello_wait = GLib.get_monotonic_time() + 10 * 1000000;
+						while (hello == null) {
+							try {
+								hello = bin.parse() as OLLMrpc.Response;
+							} catch (GLib.IOError e) {
+								if (e.code != GLib.IOError.WOULD_BLOCK
+									|| GLib.get_monotonic_time() >= hello_wait) {
+									GLib.warning("%s", e.message);
+									break;
+								}
+								var hello_poll = GLib.PollFD();
+								hello_poll.fd = conn.socket.fd;
+								hello_poll.events = GLib.IOCondition.IN;
+								GLib.poll(new GLib.PollFD[] { hello_poll }, 200);
+							} catch (GLib.Error e) {
+								GLib.warning("%s", e.message);
+								break;
+							}
+						}
+						if (hello == null || hello.error != null) {
+							continue;
+						}
+						saved.filesd_client.url =
+							"tcp://" + host + ":" + port.to_string();
+						var rpc = new OLLMrpc.Client("", "", saved.filesd_client.url);
+						rpc.configure_tls.connect((connection) => {
+							connection.certificate = tls.certificate;
+							connection.database = tls.trust;
+						});
+						manager.replace_rpc(rpc);
+						connected = yield rpc.connect(new OLLMrpc.Request() {
+							method = "RPC-Daemon.hello",
+							args = OLLMrpc.args("is", 1, "oc-test-source-diff")
+						});
+						if (!connected) {
+							continue;
+						}
+						saved.filesd_client.state =
+							OLLMchat.Settings.FilesdClient.State.LIVE;
+						saved.save();
+						break;
+					}
+				}
+			}
+			if (connected) {
+				startup_status.label = "Opening…";
+			}
+#endif
+#if !ANDROID_SOURCE_DIFF
+			if (!connected) {
+				connected = yield manager.rpc.connect(new OLLMrpc.Request() {
+					method = "RPC-Daemon.hello",
+					args = OLLMrpc.args("is", 1, "oc-test-source-diff")
+				}, new OLLMrpc.ClientBoot());
+			}
+#endif
+			if (!connected) {
 				var msg = manager.rpc.connect_error;
 				if (msg == "") {
 					msg = "could not start or reach the filesystem daemon (ollmfilesd)";
 				}
+#if ANDROID_SOURCE_DIFF
+				GLib.warning("file server: %s", msg);
+#else
 				throw new GLib.IOError.FAILED("%s", msg);
+#endif
 			}
-			yield manager.rpc_load_projects_from_db();
+			if (connected) {
+				yield manager.rpc_load_projects_from_db();
+			}
 			var form = "desktop";
 			if (opt_phone) {
 				form = "phone";
@@ -607,7 +818,9 @@ Examples:
 					margin_bottom = 4,
 				};
 				var projects = new ProjectSelector(manager, form, this.selector_pull);
-				var files = new FileSelector(manager, form, this.selector_pull);
+				var files = form == "desktop"
+					? (FileNav) new FileOverlay(manager)
+					: (FileNav) new FilePullout(manager, form, this.selector_pull);
 				var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 					hexpand = true,
 				};
@@ -618,7 +831,10 @@ Examples:
 					spacer.visible = !files.visible;
 				});
 				projects.opened.connect(() => {
-					files.list.visible = false;
+					if (form != "desktop") {
+						return;
+					}
+					((FileOverlay) files).list.visible = false;
 				});
 				files.opened.connect(() => {
 					projects.list.visible = false;
@@ -630,6 +846,7 @@ Examples:
 			}
 		}
 		if (this.pair_baselines.length == 0) {
+#if !ANDROID_SOURCE_DIFF
 			this.window = new Gtk.Window() {
 				title = "Selectors",
 				default_width = 720,
@@ -639,15 +856,95 @@ Examples:
 				this.window.default_width = 400;
 				this.window.default_height = 700;
 			}
+#endif
+			var host = this.coder as Gtk.Widget;
+#if ANDROID_SOURCE_DIFF
+			var configure_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				halign = Gtk.Align.END,
+				margin_end = 6,
+				margin_top = 4,
+			};
+			var configure = new Gtk.Button.from_icon_name("applications-system-symbolic") {
+				tooltip_text = "Settings",
+				hexpand = false,
+				valign = Gtk.Align.CENTER,
+			};
+			configure.add_css_class("flat");
+			configure_row.append(configure);
+			var file_add = new OLLMapp.SettingsDialog.FileConnectionAdd();
+			configure.clicked.connect(() => {
+				file_add.show_add();
+				file_add.present(this.window);
+			});
+			file_add.dialog_closed.connect(() => {
+				var paired_url = file_add.registered_url;
+				if (paired_url == null) {
+					return;
+				}
+				OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename(
+					GLib.Environment.get_user_config_dir(), "ollmchat", "config.2.json");
+				var saved = new OLLMchat.Settings.Config2();
+				if (GLib.FileUtils.test(
+					OLLMchat.Settings.Config2.config_path, GLib.FileTest.EXISTS)) {
+					saved = OLLMchat.Settings.Config2.load();
+				}
+				saved.filesd_client.url = paired_url;
+				saved.filesd_client.addresses = file_add.registered_addresses;
+				saved.filesd_client.server_id = file_add.server_id;
+				saved.filesd_client.state = OLLMchat.Settings.FilesdClient.State.ENABLED;
+				saved.save();
+				var tls = new OLLMrpc.Transport.Cert() {
+					dir = GLib.Path.build_filename(
+						GLib.Environment.get_user_data_dir(), "ollmchat",
+						saved.filesd_client.server_id),
+					cert_pem = "client.pem",
+					key_pem = "client-key.pem",
+					cn = "ollmchat-device",
+				};
+				tls.ensure();
+				var rpc = new OLLMrpc.Client("", "", saved.filesd_client.url);
+				rpc.configure_tls.connect((connection) => {
+					connection.certificate = tls.certificate;
+					connection.database = tls.trust;
+				});
+				this.project_manager.replace_rpc(rpc);
+				var hello = new OLLMrpc.Request() {
+					method = "RPC-Daemon.hello",
+					args = OLLMrpc.args("is", 1, "oc-test-source-diff")
+				};
+				rpc.connect.begin(hello, null, (obj, res) => {
+					if (!rpc.connect.end(res)) {
+						GLib.warning("file server: %s", rpc.connect_error);
+						return;
+					}
+					saved.filesd_client.state = OLLMchat.Settings.FilesdClient.State.LIVE;
+					saved.save();
+					this.project_manager.rpc_load_projects_from_db.begin((load_obj, load_res) => {
+						try {
+							this.project_manager.rpc_load_projects_from_db.end(load_res);
+						} catch (GLib.Error e) {
+							GLib.warning("file server: %s", e.message);
+						}
+					});
+				});
+			});
+			var column = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = true,
+			};
+			column.append(configure_row);
+			column.append(this.coder);
+			host = column;
+#endif
 			if (!this.show_pull) {
-				this.window.child = this.coder;
+				this.window.child = host;
 			}
 			if (this.show_pull) {
 				var cover = new Gtk.Overlay() {
 					hexpand = true,
 					vexpand = true,
 				};
-				cover.set_child(this.coder);
+				cover.set_child(host);
 				cover.add_overlay(this.selector_pull);
 				this.window.child = cover;
 			}
@@ -656,7 +953,9 @@ Examples:
 				selector_loop.quit();
 				return false;
 			});
-		this.window.present();
+#if !ANDROID_SOURCE_DIFF
+			this.window.present();
+#endif
 		if (opt_test_flow) {
 			this.test_flow(command_line, selector_loop);
 		}
@@ -728,7 +1027,7 @@ Examples:
 			var differ = new OLLMfiles.Diff.Differ(
 				this.pair_baselines[index], this.pair_currents[index]);
 			this.source_view.show_diff(differ);
-			this.review_bar.update_diff(differ, index);
+			this.review_bar.update_diff_old(differ, index);
 			this.apply_highlight();
 		});
 		this.editor_overlay = new Gtk.Overlay() {
@@ -739,10 +1038,12 @@ Examples:
 		this.editor_overlay.add_overlay(this.review_bar.review_overlay);
 		if (this.has_selector) {
 			var projects = (ProjectSelector) this.selector_row.get_first_child();
-			var files = (FileSelector) this.selector_row.get_last_child();
 			this.editor_overlay.add_overlay(projects.shade);
 			this.editor_overlay.add_overlay(projects.list);
-			this.editor_overlay.add_overlay(files.list);
+			if (!this.show_pull) {
+				this.editor_overlay.add_overlay(
+					((FileOverlay) this.selector_row.get_last_child()).list);
+			}
 		}
 		this.root_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 			hexpand = true,
@@ -805,7 +1106,7 @@ Examples:
 		var differ = new OLLMfiles.Diff.Differ(
 			this.pair_baselines[0], this.pair_currents[0]);
 		this.source_view.show_diff(differ);
-		this.review_bar.update_diff(differ, 0);
+		this.review_bar.update_diff_old(differ, 0);
 		this.review_bar.review_response.connect((response, file_index, hunk_index) => {
 			GLib.print("Review response [%s] file=%d hunk=%d:\n%s\n\n".printf(
 				response.label, file_index, hunk_index, response.prompt));
@@ -815,7 +1116,18 @@ Examples:
 			loop.quit();
 			return false;
 		});
+#if ANDROID_SOURCE_DIFF
+		if (activity_ready) {
+			this.window.present();
+		}
+		if (!activity_ready) {
+			this.activate.connect(() => {
+				this.window.present();
+			});
+		}
+#else
 		this.window.present();
+#endif
 		GLib.Idle.add(() => {
 			this.apply_highlight();
 			return Source.REMOVE;

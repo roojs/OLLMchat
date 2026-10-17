@@ -19,7 +19,7 @@
 /**
  * Coder screen: header, editor, and the search bar along the bottom.
  *
- * The header is {@link ProjectSelector}, {@link FileSelector}, and
+ * The header is {@link ProjectSelector}, {@link FileNav}, and
  * the editor save button.
  * The editor is {@link SourceView}. The project list is an
  * overlay on that editor. Project selection and search stay
@@ -51,7 +51,7 @@ class CoderView : Gtk.Box
 	/**
 	 * Header file button and folder tree.
 	 */
-	public FileSelector files { get; private set; }
+	public FileNav files { get; private set; }
 
 	private SourceView editor;
 	private Gtk.SearchEntry search_entry;
@@ -76,7 +76,9 @@ class CoderView : Gtk.Box
 		manager.buffer_provider = new OLLMcoder.BufferProvider();
 		this.pull = new SelectorPull(form);
 		this.projects = new ProjectSelector(manager, form, this.pull);
-		this.files = new FileSelector(manager, form, this.pull);
+		this.files = form == "desktop"
+			? (FileNav) new FileOverlay(manager)
+			: (FileNav) new FilePullout(manager, form, this.pull);
 		this.editor = new SourceView(manager) {
 			hexpand = true,
 			vexpand = true,
@@ -109,7 +111,10 @@ class CoderView : Gtk.Box
 		history.add_css_class("flat");
 		header.append(history);
 		this.projects.opened.connect(() => {
-			this.files.list.visible = false;
+			if (form != "desktop") {
+				return;
+			}
+			((FileOverlay) this.files).list.visible = false;
 		});
 		this.files.opened.connect(() => {
 			this.projects.list.visible = false;
@@ -216,7 +221,9 @@ class CoderView : Gtk.Box
 		};
 		editor_layer.add_overlay(this.projects.shade);
 		editor_layer.add_overlay(this.projects.list);
-		editor_layer.add_overlay(this.files.list);
+		if (form == "desktop") {
+			editor_layer.add_overlay(((FileOverlay) this.files).list);
+		}
 		this.append(header);
 		this.append(editor_layer);
 		this.files.chosen.connect((file) => {

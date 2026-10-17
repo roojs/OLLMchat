@@ -108,8 +108,8 @@ namespace OLLMfilesd
 		/**
 		 * Chunk review closed flag (0 = open, 1 = every hunk decided or whole-file done).
 		 *
-		 * Accept vs reject lives on {@link FileDiffPart.accepted} when parts exist.
-		 * Whole-file approve/reject sets {@code reviewed=1} with no part rows.
+		 * {@link FileDiffPart.accepted} is 0 undecided, 1 accepted, -1 rejected.
+		 * Whole-file approve/reject sets {@code reviewed=1}.
 		 */
 		public int reviewed { get; set; default = 0; }
 
@@ -440,25 +440,227 @@ namespace OLLMfilesd
 		}
 		
 		private ProjectManager rpc_manager;
+		private Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>> live {
+			get; set; default = new Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>>();
+		}
+		private Gee.HashMap<int64, int64> live_stamp {
+			get; set; default = new Gee.HashMap<int64, int64>();
+		}
 
 		public static void rpc_register()
 		{
 			OLLMrpc.Request.add_class(
 				"FileHistory", typeof(FileHistory),
 				"rpc_approve", "sx",
-				"rpc_revert", "sx"
+				"rpc_revert", "sx",
+				"parts", "x"
 			);
 		}
 
 		/**
 		 * Wire dispatch singleton ({@code FileHistory.rpc_approve} /
-		 * {@code FileHistory.rpc_revert}).
+		 * {@code FileHistory.rpc_revert} / {@code FileHistory.parts}).
 		 */
 		public FileHistory.for_rpc(ProjectManager manager)
 		{
 			Object();
 			FileHistory.rpc_register();
 			this.rpc_manager = manager;
+		}
+
+		/**
+		 * Diff items for one file_history row.
+		 *
+		 * Returns the remembered list when the project file's
+		 * modification stamp still matches the stamp from
+		 * {@link rebuild_parts}. Otherwise calls {@link rebuild_parts}
+		 * and replies with that array.
+		 *
+		 * @param request inbound RPC
+		 * @param id file_history.id
+		 */
+		public void parts(OLLMrpc.Request request, int64 id)
+		{
+			var histories = new Gee.ArrayList<FileHistory>();
+			FileHistory.query(this.rpc_manager.db).select(
+				"WHERE id = %lld".printf(id),
+				histories
+			);
+			if (histories.size == 0) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"history row not found"
+					)
+				});
+				return;
+			}
+			var stamp = (int64) 0;
+			try {
+				var info = GLib.File.new_for_path(histories.get(0).path).query_info(
+					GLib.FileAttribute.TIME_MODIFIED_USEC,
+					GLib.FileQueryInfoFlags.NONE,
+					null);
+				stamp = (int64) info.get_attribute_uint64(
+					GLib.FileAttribute.TIME_MODIFIED_USEC);
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			if (this.live.has_key(id) && this.live_stamp.has_key(id) &&
+				this.live_stamp.get(id) == stamp) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("o", this.live.get(id))
+				});
+				return;
+			}
+			Gee.ArrayList<FileDiffPart> rows;
+			try {
+				rows = this.rebuild_parts(histories.get(0));
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("o", rows)
+			});
+		}
+
+		/**
+		 * Build the diff items for one history row.
+		 *
+		 * Reads the backup and the project file, then runs
+		 * {@link OLLMfiles.Diff.Differ}. No stored rows: insert
+		 * one part per patch. Stored rows are indexed by
+		 * ''old_line_start'' and checked with
+		 * {@link FileDiffPart.compare}. ''3'' keeps the row.
+		 * ''1'' replaces the hunk text and clears the decision.
+		 * ''2'' keeps the decision and writes the new line range.
+		 * ''0'' deletes that row and inserts the new part.
+		 * A stored part with no new part at its start line is
+		 * deleted. Old parts come from the remembered list.
+		 * A load from the table does not have the hunk text.
+		 * Does not write the hunk strings into the table.
+		 *
+		 * @param history the file_history row to diff
+		 * @return the parts to paint, in file order
+		 * @throws GLib.Error the backup or project file could not be read
+		 */
+		public Gee.ArrayList<FileDiffPart> rebuild_parts(FileHistory history) throws GLib.Error
+		{
+			var rows = new Gee.ArrayList<FileDiffPart>();
+			FileDiffPart.query(this.rpc_manager.db).select(
+				"WHERE file_history_id = %lld ORDER BY part_index".printf(history.id),
+				rows
+			);
+			var backup = "";
+			if (history.backup_path != "") {
+				backup = (string) GLib.File.new_for_path(
+					history.backup_path).load_bytes(null).get_data();
+			}
+			var project = (string) GLib.File.new_for_path(
+				history.path).load_bytes(null).get_data();
+			var info = GLib.File.new_for_path(history.path).query_info(
+				GLib.FileAttribute.TIME_MODIFIED_USEC, GLib.FileQueryInfoFlags.NONE, null);
+			var stamp = (int64) info.get_attribute_uint64(GLib.FileAttribute.TIME_MODIFIED_USEC);
+			var differ = new OLLMfiles.Diff.Differ(backup, project);
+			var patches = differ.diff();
+			var fresh = new Gee.ArrayList<FileDiffPart>();
+			var index = 0;
+			foreach (var patch in patches) {
+				var part = new FileDiffPart() {
+					file_history_id = history.id,
+					part_index = index,
+					hunk_remove = string.joinv("\n", patch.old_lines()),
+					hunk_add = string.joinv("\n", patch.new_lines()),
+					old_line_start = patch.old_line_start,
+					old_line_end = patch.old_line_end,
+					new_line_start = patch.new_line_start,
+					new_line_end = patch.new_line_end
+				};
+				part.update_sum();
+				fresh.add(part);
+				index++;
+			}
+			if (rows.size == 0) {
+				foreach (var part in fresh) {
+					FileDiffPart.query(this.rpc_manager.db).insert(part);
+				}
+				this.live.set(history.id, fresh);
+				this.live_stamp.set(history.id, stamp);
+				return fresh;
+			}
+			if (this.live.has_key(history.id) && this.live.get(history.id).size > 0) {
+				rows = this.live.get(history.id);
+			}
+			var next_index = rows.get(rows.size - 1).part_index + 1;
+			var older = new Gee.HashMap<int, FileDiffPart>();
+			foreach (var part in rows) {
+				older.set(part.old_line_start, part);
+			}
+			var kept = new Gee.ArrayList<FileDiffPart>();
+			foreach (var part in fresh) {
+				if (!older.has_key(part.old_line_start)) {
+					part.part_index = next_index;
+					next_index++;
+					FileDiffPart.query(this.rpc_manager.db).insert(part);
+					kept.add(part);
+					continue;
+				}
+				var old = older.get(part.old_line_start);
+				older.unset(part.old_line_start);
+				switch (old.compare(part)) {
+					case 3:
+						kept.add(old);
+						break;
+
+					case 1:
+						old.hunk_remove = part.hunk_remove;
+						old.hunk_add = part.hunk_add;
+						old.update_sum();
+						old.accepted = 0;
+						old.decided_at = 0;
+						FileDiffPart.query(this.rpc_manager.db).updateById(old);
+						kept.add(old);
+						break;
+
+					case 2:
+						old.old_line_end = part.old_line_end;
+						old.new_line_start = part.new_line_start;
+						old.new_line_end = part.new_line_end;
+						kept.add(old);
+						break;
+
+					default:
+						FileDiffPart.query(this.rpc_manager.db).deleteId(old.id);
+						part.part_index = next_index;
+						next_index++;
+						FileDiffPart.query(this.rpc_manager.db).insert(part);
+						kept.add(part);
+						break;
+				}
+			}
+			foreach (var old in older.values) {
+				FileDiffPart.query(this.rpc_manager.db).deleteId(old.id);
+			}
+			this.live.set(history.id, kept);
+			this.live_stamp.set(history.id, stamp);
+			return kept;
 		}
 
 		/**

@@ -47,7 +47,7 @@ File.read
                                    ←  File row + project text
 
 show_pending_diff
-  OLLMfilesd-FileHistory.parts
+  FileHistory.parts
     file_history id                 →
                                       stored file_diff_part rows, if any
                                       else Differ, then store
@@ -69,15 +69,15 @@ show_pending_diff
 - 🔷 Keep or remove is the bullet list above `rebuild_parts`.
 - 🔷 `show_pending_diff` does not call `File.read` on `backup_path`.
 - ℹ️ `file_diff_part` today has no hunk text. `ollmfilesd/FileDiffPart.vala`. The daemon cannot link `libocfiles`.
-- 🔷 The review diff runs on the file server. If that is the only user, `Differ` / `Patch` / `PatchApplier` move out of `libocfiles` into `ollmfilesd`.
-- ℹ️ Still compiled against `libocfiles/Diff` today: `liboccoder/SourceView.vala` `show_diff`, `liboccoder/Diff/ReviewBar.vala` (`HunkBand`, `update_diff(Differ)`), `examples/oc-diff.vala`, `examples/oc-test-source-diff.vala`. `PatchApplier` has no caller.
-- 🔷 Those callers are the old path. They are deprecated.
-- 💩 This phase still symlinks `libocfiles/Diff` into `ollmfilesd`, same as `Copyable.vala`. Moving the files now would fork the algorithm or break `show_diff` and the examples. The move waits until those callers are gone.
+- 🔷 The diff lives in `ollmfilesd`. `libocfiles` is not its home.
+- 🔷 `libocfiles/Diff` (`Differ`, `Patch`, `PatchApplier`) and `SourceView.show_diff` are the old client diff. Deprecated. Remove them when the diff UI tests no longer need them.
+- 🔷 This phase keeps those client compiles. `examples/oc-diff.vala`, `examples/oc-test-source-diff.vala`, and `ReviewBar`'s `Differ` overload still exercise the diff UI.
+- 🔷 The source files move to `ollmfilesd/Diff`. `libocfiles/Diff` becomes symlinks to that directory so the old tests still build. `ollmfilesd` compiles `Patch` and `Differ` only. It does not link `libocfiles`.
 - 🔷 The table is already `file_diff_part`. `hunk_remove` and `hunk_add` are properties on `FileDiffPart`, not columns. Not a new table, and not `edited/parts/…patch`.
 - 🔷 `accepted` `0` is undecided. `1` accepted. `-1` rejected. Same values as the old `file_history.status`. A row exists before anyone decides.
 - ℹ️ Today’s comment says the opposite: no row means pending, and `accepted` `0` means reject. Nothing writes `file_diff_part` yet, and the column default is already `0`, so `0` becomes undecided. Reject is `-1`.
 - ℹ️ `HunkDecision` in the bar is a separate enum. Its third value is not the stored reject.
-- 🔷 `OLLMfilesd-FileHistory.parts` takes the `file_history` id. `FileWithHistory.approve_id` is that same id on the pending-list row. It is not a separate argument.
+- 🔷 `FileHistory.parts` takes the `file_history` id. `FileWithHistory.approve_id` is that same id on the pending-list row. It is not a separate argument.
 - 🔷 `hunk_remove` is the removed lines. `hunk_add` is the added lines. No `+` or `-` prefix. No `@@` header. Line numbers are not inside those strings.
 - 🔷 The range is `old_line_start`, `old_line_end`, `new_line_start`, `new_line_end`. A count is `end - start + 1` when `end >= start`, otherwise `0`.
 - 💩 Those four ints are properties on the object, not columns. A removal has no place in the current file, so the editor still needs the old range.
@@ -261,22 +261,26 @@ The table already exists on databases created before `checksum`. `CREATE TABLE I
 			FileDiffPart.rpc_register();
 ```
 
-### 3. `ollmfilesd/Diff/*.vala` — symlink `Differ` into the daemon
+### 3. `ollmfilesd/Diff/*.vala` — diff sources live in the daemon
 
-**Why:** `parts` runs `Differ` on the daemon. `ollmfilesd/meson.build` bans linking `libocfiles`. `Copyable.vala` is already a symlink of an `OLLMfiles` source into this binary. The long-term home is `ollmfilesd` once the deprecated callers listed above are gone. This phase does not move the files.
+**Why:** The diff lives in `ollmfilesd`, not `libocfiles`. `parts` runs `Differ` there. `ollmfilesd/meson.build` bans linking `libocfiles`. Move the three sources into `ollmfilesd/Diff`. Leave symlinks at the old `libocfiles/Diff` paths so `show_diff`, `ReviewBar`'s `Differ` overload, and the diff examples still compile. Those callers are the old client diff. Deprecated. Delete the symlinks and `show_diff` when the diff UI tests no longer need them. The daemon compiles `Patch` and `Differ` only.
 
-**Where:** new symlinks under `ollmfilesd/Diff/`, then `ollmfilesd_src` after `'FileDiffPart.vala',`.
+**Where:** `git mv` into `ollmfilesd/Diff/`, symlinks back under `libocfiles/Diff/`, then `ollmfilesd_src` after `'FileDiffPart.vala',`. Deprecation lines on the three class docs and on `show_diff`.
 
 **Depends on:** none.
 
-#### Add — create the symlinks from the repo root
+#### Add — move the sources, then symlink the old paths, from the repo root
 
-`mkdir` and `ln -s`. Same kind of symlink as `ollmfilesd/Copyable.vala`.
+The files now live in `ollmfilesd`. `libocfiles/Diff` is only the deprecated path the current diff UI tests still compile.
 
 ```sh
 mkdir -p ollmfilesd/Diff
-ln -s ../../libocfiles/Diff/Patch.vala ollmfilesd/Diff/Patch.vala
-ln -s ../../libocfiles/Diff/Differ.vala ollmfilesd/Diff/Differ.vala
+git mv libocfiles/Diff/Patch.vala ollmfilesd/Diff/Patch.vala
+git mv libocfiles/Diff/Differ.vala ollmfilesd/Diff/Differ.vala
+git mv libocfiles/Diff/PatchApplier.vala ollmfilesd/Diff/PatchApplier.vala
+ln -s ../../ollmfilesd/Diff/Patch.vala libocfiles/Diff/Patch.vala
+ln -s ../../ollmfilesd/Diff/Differ.vala libocfiles/Diff/Differ.vala
+ln -s ../../ollmfilesd/Diff/PatchApplier.vala libocfiles/Diff/PatchApplier.vala
 ```
 
 #### Add — `ollmfilesd/meson.build` `ollmfilesd_src`, after `'FileDiffPart.vala',`
@@ -286,11 +290,112 @@ ln -s ../../libocfiles/Diff/Differ.vala ollmfilesd/Diff/Differ.vala
   'Diff/Differ.vala',
 ```
 
+`PatchApplier.vala` stays out of `ollmfilesd_src`. The old client tests reach it through the `libocfiles` symlink.
+
+#### Remove — `ollmfilesd/Diff/Differ.vala` class doc
+
+```vala
+	/**
+	 * Simple line-based diff implementation using Myers algorithm.
+	 * 
+	 * Computes the differences between two texts and returns
+	 * a list of patches with line numbers.
+	 * 
+	 * Implementation based on diffseq.h from GNU diffutils.
+	 */
+```
+
+#### Replace with
+
+Client use is deprecated. The daemon still runs this class.
+
+```vala
+	/**
+	 * Simple line-based diff implementation using Myers algorithm.
+	 *
+	 * Computes the differences between two texts and returns
+	 * a list of patches with line numbers.
+	 * Implementation based on diffseq.h from GNU diffutils.
+	 * Client callers are deprecated. The review diff runs in
+	 * ollmfilesd. libocfiles still compiles this file so the
+	 * diff UI tests build.
+	 *
+	 * @deprecated Client use. New review diffs use FileHistory.parts.
+	 */
+```
+
+#### Remove — `ollmfilesd/Diff/Patch.vala` class doc
+
+```vala
+	/**
+	 * Represents a patch operation with line numbers.
+	 * 
+	 * Patches can be:
+	 * - ADD: Inserts new_lines at start_line
+	 * - REMOVE: Removes old_lines starting at start_line
+	 * - REPLACE: Removes old_lines and inserts new_lines at start_line
+	 */
+```
+
+#### Replace with
+
+```vala
+	/**
+	 * Represents a patch operation with line numbers.
+	 *
+	 * Patches can be:
+	 * - ADD: Inserts new_lines at start_line
+	 * - REMOVE: Removes old_lines starting at start_line
+	 * - REPLACE: Removes old_lines and inserts new_lines at start_line
+	 *
+	 * @deprecated Client use. The review diff lives in ollmfilesd.
+	 *   Kept so the diff UI tests still build.
+	 */
+```
+
+#### Remove — `ollmfilesd/Diff/PatchApplier.vala` class doc
+
+```vala
+	/**
+	 * Applies patches to text.
+	 * 
+	 * Takes a list of patches and applies them to the given text,
+	 * returning the modified text.
+	 */
+```
+
+#### Replace with
+
+```vala
+	/**
+	 * Applies patches to text.
+	 *
+	 * Takes a list of patches and applies them to the given text,
+	 * returning the modified text. No caller. Kept so the diff UI
+	 * tests still compile.
+	 *
+	 * @deprecated Old client diff. Remove with libocfiles/Diff.
+	 */
+```
+
+#### Remove — `liboccoder/SourceView.vala` `show_diff` docblock `@param` line
+
+```vala
+		 * @param differ already constructed (text1 = V_backup, text2 = V_disk)
+```
+
+#### Replace with
+
+```vala
+		 * @param differ already constructed (text1 = V_backup, text2 = V_disk)
+		 * @deprecated Client diff. Pending review uses {@link show_pending_diff}.
+```
+
 ### 4. `ollmfilesd/FileHistory.vala` — `parts` and `rebuild_parts`
 
 **Why:** The client asks for the parts. `parts` returns the remembered list when the file stamp still matches. Otherwise it calls `rebuild_parts`. The diff is that method, not the request.
 
-**Where:** `rpc_register` gains the `OLLMfilesd-FileHistory` class. A `live` map sits after `rpc_manager`. `parts` is a new method after `for_rpc`. `rebuild_parts` follows `parts`. The reviewed-flag comment above `reviewed` is the old “no row means pending” wording.
+**Where:** `rpc_register` adds `parts` on the existing `FileHistory` name. A `live` map sits after `rpc_manager`. `parts` is a new method after `for_rpc`. `rebuild_parts` follows `parts`. The reviewed-flag comment above `reviewed` is the old “no row means pending” wording.
 
 **Depends on:** §1, §3.
 
@@ -308,11 +413,25 @@ ln -s ../../libocfiles/Diff/Differ.vala ollmfilesd/Diff/Differ.vala
 		 * Whole-file approve/reject sets {@code reviewed=1}.
 ```
 
-#### Add — second `add_class` at the end of `rpc_register`, after the `FileHistory` registration.
+#### Remove — `rpc_register` `add_class` for `FileHistory`
+
+One wire name. Approve, revert, and `parts` are methods on it.
 
 ```vala
 			OLLMrpc.Request.add_class(
-				"OLLMfilesd-FileHistory", typeof(FileHistory),
+				"FileHistory", typeof(FileHistory),
+				"rpc_approve", "sx",
+				"rpc_revert", "sx"
+			);
+```
+
+#### Replace with
+
+```vala
+			OLLMrpc.Request.add_class(
+				"FileHistory", typeof(FileHistory),
+				"rpc_approve", "sx",
+				"rpc_revert", "sx",
 				"parts", "x"
 			);
 ```
@@ -322,8 +441,12 @@ ln -s ../../libocfiles/Diff/Differ.vala ollmfilesd/Diff/Differ.vala
 Remembered objects for this process. `hunk_remove` and `hunk_add` stay on them. The table does not store them. `live_stamp` is the project file's modification time in microseconds when that list was diffed.
 
 ```vala
-		private Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>> live { get; set; default = new Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>>(); }
-		private Gee.HashMap<int64, int64> live_stamp { get; set; default = new Gee.HashMap<int64, int64>(); }
+		private Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>> live {
+			get; set; default = new Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>>();
+		}
+		private Gee.HashMap<int64, int64> live_stamp {
+			get; set; default = new Gee.HashMap<int64, int64>();
+		}
 ```
 
 #### Add — new method `parts` after `for_rpc`.
@@ -384,12 +507,9 @@ This request returns the remembered list when `live_stamp` for that history id s
 				});
 				return;
 			}
+			Gee.ArrayList<FileDiffPart> rows;
 			try {
-				var rows = this.rebuild_parts(histories.get(0));
-				request.reply(new OLLMrpc.Response() {
-					id = request.id,
-					retval = OLLMrpc.val("o", rows)
-				});
+				rows = this.rebuild_parts(histories.get(0));
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
@@ -398,7 +518,12 @@ This request returns the remembered list when `live_stamp` for that history id s
 						e.message
 					)
 				});
+				return;
 			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("o", rows)
+			});
 		}
 ```
 
@@ -449,16 +574,12 @@ Looking at one file. The backup and the project file are the two texts. `Differ`
 				rows
 			);
 			var backup = "";
-			uint8[] data;
-			string etag;
 			if (history.backup_path != "") {
-				GLib.File.new_for_path(history.backup_path).load_contents(
-					null, out data, out etag);
-				backup = (string) data;
+				backup = (string) GLib.File.new_for_path(
+					history.backup_path).load_bytes(null).get_data();
 			}
-			GLib.File.new_for_path(history.path).load_contents(
-				null, out data, out etag);
-			var project = (string) data;
+			var project = (string) GLib.File.new_for_path(
+				history.path).load_bytes(null).get_data();
 			var info = GLib.File.new_for_path(history.path).query_info(
 				GLib.FileAttribute.TIME_MODIFIED_USEC, GLib.FileQueryInfoFlags.NONE, null);
 			var stamp = (int64) info.get_attribute_uint64(GLib.FileAttribute.TIME_MODIFIED_USEC);
@@ -548,28 +669,13 @@ Looking at one file. The backup and the project file are the two texts. `Differ`
 		}
 ```
 
-### 5. `ollmfilesd/Application.vala` — dispatch `OLLMfilesd-FileHistory`
+### 5. `ollmfilesd/Application.vala` — `FileHistory` stays the wire name
 
-**Why:** `add_class` names the method. `Request.register` binds the live `FileHistory` that handles it. One instance serves both names.
+**Why:** `FileHistory` is already registered. `parts` is another method on that name. Approve and revert stay on it. There is no `OLLMfilesd-FileHistory` prefix.
 
-**Where:** the existing `Request.register("FileHistory", …)` call.
+**Where:** the existing `Request.register("FileHistory", …)` call. No edit.
 
 **Depends on:** §4.
-
-#### Remove
-
-```vala
-			OLLMrpc.Request.register("FileHistory", 
-				new FileHistory.for_rpc(this.project_manager));
-```
-
-#### Replace with
-
-```vala
-			var history_rpc = new FileHistory.for_rpc(this.project_manager);
-			OLLMrpc.Request.register("FileHistory", history_rpc);
-			OLLMrpc.Request.register("OLLMfilesd-FileHistory", history_rpc);
-```
 
 ### 6. `libocfiles/FileDiffPart.vala` — client wire object
 
@@ -603,7 +709,7 @@ Looking at one file. The backup and the project file are the two texts. `Differ`
 namespace OLLMfiles
 {
 	/**
-	 * One diff item on the wire ({@code OLLMfilesd-FileHistory.parts}).
+	 * One diff item on the wire ({@code FileHistory.parts}).
 	 *
 	 * {@code hunk_remove} and {@code hunk_add} are the changed lines.
 	 * No '+' or '-' prefix. No line numbers in those strings.
@@ -683,6 +789,8 @@ namespace OLLMfiles
 
 **Depends on:** §4, §6.
 
+- 🔷 The `try` wraps only the RPC call. The response checks sit outside it.
+
 #### Remove
 
 ```vala
@@ -735,7 +843,7 @@ namespace OLLMfiles
 		/**
 		 * If ''file'' is pending approval, load diff items and paint them.
 		 *
-		 * Calls {@code OLLMfilesd-FileHistory.parts}. Does not read the backup.
+		 * Calls {@code FileHistory.parts}. Does not read the backup.
 		 *
 		 * @param file open project file (buffer already holds V_disk)
 		 */
@@ -745,26 +853,12 @@ namespace OLLMfiles
 				return;
 			}
 			var row = this.manager.review_files.file_map.get(file.path);
-			var parts = new Gee.ArrayList<OLLMfiles.FileDiffPart>();
+			OLLMrpc.Response response;
 			try {
-				var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-					method = "OLLMfilesd-FileHistory.parts",
+				response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+					method = "FileHistory.parts",
 					args = OLLMrpc.args("x", row.approve_id)
 				});
-				if (this.current_file != file) {
-					return;
-				}
-				if (response.error != null) {
-					GLib.warning("Failed to load diff parts for %s: %s", file.path, response.error.message);
-					return;
-				}
-				if (response.retval.type() == GLib.Type.INVALID) {
-					if (this.diff_active) {
-						this.clear_diff();
-					}
-					return;
-				}
-				parts = (Gee.ArrayList<OLLMfiles.FileDiffPart>) response.retval.get_object();
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to load diff parts for %s: %s", file.path, e.message);
 				return;
@@ -772,6 +866,17 @@ namespace OLLMfiles
 			if (this.current_file != file) {
 				return;
 			}
+			if (response.error != null) {
+				GLib.warning("Failed to load diff parts for %s: %s", file.path, response.error.message);
+				return;
+			}
+			if (response.retval.type() == GLib.Type.INVALID) {
+				if (this.diff_active) {
+					this.clear_diff();
+				}
+				return;
+			}
+			var parts = (Gee.ArrayList<OLLMfiles.FileDiffPart>) response.retval.get_object();
 			if (this.diff_active) {
 				this.clear_diff();
 			}
@@ -856,6 +961,8 @@ namespace OLLMfiles
 
 **Depends on:** §6.
 
+- ℹ️ `file_bulk` is `private HunkDecision[] file_bulk`. A Vala array, not a `Gee.ArrayList`. Index it with `[]` and `.length`, the same way `update_diff(Differ)` already does. Do not use `.get()` / `.set()`.
+
 #### Add — after `private HunkList hunks`
 
 ```vala
@@ -868,7 +975,7 @@ Bands from the line range. `accepted` 0 is pending, 1 accepted, -1 rejected. The
 
 ```vala
 		/**
-		 * Paint hunk bands from {@code OLLMfilesd-FileHistory.parts}.
+		 * Paint hunk bands from {@code FileHistory.parts}.
 		 *
 		 * Keeps {@code parts} so the hunk text stays on the client.
 		 *
@@ -909,9 +1016,11 @@ Bands from the line range. `accepted` 0 is pending, 1 accepted, -1 rejected. The
 					case 1:
 						band.decision = HunkDecision.ACCEPTED;
 						break;
+
 					case -1:
 						band.decision = HunkDecision.REJECTED;
 						break;
+
 					default:
 						break;
 				}
@@ -973,12 +1082,14 @@ Bands from the line range. `accepted` 0 is pending, 1 accepted, -1 rejected. The
 - 🚫 `Differ` inside `parts`. A cache miss calls `rebuild_parts`.
 - 🚫 No row until Accept or Reject. The items exist when the diff is shown.
 - 🚫 Client `Differ`, and `File.read` of `backup_path`, inside `show_pending_diff`.
-- 🚫 `File` rename in this plan. New calls use `OLLMfilesd-`. The hyphen joins the namespace and the class. The dot is only the method. `RPC-` stays for internal calls such as `RPC-Daemon.hello`.
+- 🚫 A second wire name for `FileHistory`. `parts` is `FileHistory.parts`. Approve and revert stay on that name.
+- 🚫 `File` rename in this plan. `RPC-` stays for internal calls such as `RPC-Daemon.hello`.
 - 🚫 Return `live` because the history id is present. The project file's modification stamp from that diff has to match `live_stamp`.
 - 🚫 Delete every `file_diff_part` row for a history and insert a new set. `rebuild_parts` deletes a row only when `compare` says so. A return of `3` keeps that row.
 - 🚫 Delete a row because `hunk_remove` and `hunk_add` are empty. Those strings are not columns. A load from the table always looks empty.
 - ℹ️ [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md) calls the same `rebuild_parts` after save. That writes `live` and `live_stamp` for the kept parts.
 - 🚫 A `+` or `-` prefix on hunk lines, and a `@@` line-number header inside `hunk_remove` or `hunk_add`.
-- 🚫 Move `libocfiles/Diff` into `ollmfilesd` in this phase. Symlink until `show_diff`, `ReviewBar`'s `Differ` / `Patch` API, and the two examples are gone.
+- 🚫 Leave the diff sources in `libocfiles` and only symlink them into `ollmfilesd`. The files move to `ollmfilesd/Diff`. `libocfiles/Diff` is the deprecated symlink kept for the current diff UI tests.
+- 🚫 Delete `libocfiles/Diff`, `show_diff`, or the diff examples in this phase. Those tests still need the old client diff.
 - 💩 `ReviewBar.update_diff` still builds an `OLLMfiles.Diff.Patch` so `HunkBand` can take one. That is the deprecated client use. The counts come from the range.
-- ℹ️ Touch points: `liboccoder/SourceView.vala` `show_pending_diff`, `liboccoder/Diff/ReviewBar.vala`, `ollmfilesd/FileDiffPart.vala`, `ollmfilesd/FileHistory.vala`, `libocfiles/Diff/Differ.vala`.
+- ℹ️ Touch points: `liboccoder/SourceView.vala` `show_pending_diff`, `liboccoder/Diff/ReviewBar.vala`, `ollmfilesd/FileDiffPart.vala`, `ollmfilesd/FileHistory.vala`, `ollmfilesd/Diff/Differ.vala`.

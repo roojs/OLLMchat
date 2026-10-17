@@ -205,6 +205,12 @@ namespace OLLMfilesd
 		 * Unix timestamp of last modification (stored in database, default: 0).
 		 */
 		public int64 last_modified { get; set; default = 0; }
+
+		/**
+		 * Size in bytes. The directory scan sets this from the file
+		 * info and stores it on the file row. Folders stay at zero.
+		 */
+		public int64 size { get; set; default = 0; }
 		
 		/**
 		 * Whether this file is ignored by git (stored in database, default: false).
@@ -263,6 +269,7 @@ namespace OLLMfilesd
 				"scroll_position INTEGER NOT NULL DEFAULT 0, " +
 				"last_viewed INT64 NOT NULL DEFAULT 0, " +
 				"last_modified INT64 NOT NULL DEFAULT 0, " +
+				"size INT64 NOT NULL DEFAULT 0, " +
 				"points_to_id INT64 NOT NULL DEFAULT 0, " +
 				"target_path TEXT NOT NULL DEFAULT '', " +
 				"is_project INTEGER NOT NULL DEFAULT 0, " +
@@ -278,6 +285,13 @@ namespace OLLMfilesd
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
 			}
 			
+			var migrate_size = "ALTER TABLE filebase ADD COLUMN size INT64 NOT NULL DEFAULT 0";
+			if (Sqlite.OK != db.db.exec(migrate_size, null, out errmsg)) {
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
+
 			// Migrate existing databases: add last_vector_scan column if it doesn't exist
 			var migrate_query = "ALTER TABLE filebase ADD COLUMN last_vector_scan INT64 NOT NULL DEFAULT 0";
 			if (Sqlite.OK != db.db.exec(migrate_query, null, out errmsg)) {

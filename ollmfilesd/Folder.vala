@@ -934,6 +934,7 @@ namespace OLLMfilesd
 					GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
 					GLib.FileAttribute.STANDARD_SYMLINK_TARGET + "," +
 					GLib.FileAttribute.STANDARD_CONTENT_TYPE + "," +
+					GLib.FileAttribute.STANDARD_SIZE + "," +
 					GLib.FileAttribute.TIME_MODIFIED,
 				GLib.FileQueryInfoFlags.NONE,
 				null
@@ -1127,7 +1128,7 @@ namespace OLLMfilesd
 				"manager", "path", "parent-id",
 				"target-path", "base-type", "parent",
 				"is-ignored", "is-repo",
-				"is-text", "language",
+				"is-text", "language", "size",
 			});
 			//GLib.debug(
 			//	"path=%s is_ignored=%s is_repo=%d",
@@ -1142,6 +1143,7 @@ namespace OLLMfilesd
 			old_item.is_repo = new_item.is_repo;
 			old_item.is_text = new_item.is_text;
 			old_item.language = new_item.language;
+			old_item.size = new_item.size;
 			
 			// Ensure it's in children list
 			// this will not actually do anything as it's 

@@ -48,6 +48,8 @@ ollmfilesd_src = files(
   'FileBase.vala',
   'FileHistory.vala',
   'FileDiffPart.vala',
+  'Diff/Patch.vala',
+  'Diff/Differ.vala',
   'FileWithHistory.vala',
   'FileAlias.vala',
   'File.vala',

@@ -88,6 +88,7 @@ namespace OLLMfilesd
 			base(parent.manager);
 			this.base_type = "fa";
 			this.path = path; // Alias path
+			this.size = (int64) info.get_size();
 			this.parent = parent;
 			this.parent_id = parent.id;
 

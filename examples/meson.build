@@ -51,6 +51,71 @@ test_window_deps = [
   valac.find_library('posix'),
 ]
 
+# Android APK of this smoke window. The chat APK stays ollmchat-android-poc.
+# Desktop examples are the rest of this file.
+if host_machine.system() == 'android' and get_option('android_poc')
+  executable('oc-test-source-diff',
+    dependencies: [
+      test_window_deps,
+      dependency('gioopenssl'),
+      ocsqlite_vapi_dep,
+      ocfiles_vapi_dep,
+      ollmchat_vapi_dep,
+      ollamaweb_vapi_dep
+    ],
+    sources: [
+      'TestAppBase.vala',
+      'oc-test-source-diff.vala',
+      'oc-test-source-diff/SelectorPull.vala',
+      'oc-test-source-diff/ProjectSelector.vala',
+      'oc-test-source-diff/FolderTreeStore.vala',
+      'oc-test-source-diff/FolderTree.vala',
+      'oc-test-source-diff/FileListStore.vala',
+      'oc-test-source-diff/FileList.vala',
+      'oc-test-source-diff/FileRows.vala',
+      'oc-test-source-diff/HistoryRows.vala',
+      'oc-test-source-diff/PullRows.vala',
+      'oc-test-source-diff/FileNav.vala',
+      'oc-test-source-diff/FileOverlay.vala',
+      'oc-test-source-diff/FilePullout.vala',
+      'oc-test-source-diff/ReviewBar.vala',
+      'oc-test-source-diff/SourceView.vala',
+      'oc-test-source-diff/CoderView.vala',
+      'oc-test-source-diff/FileConnectionAdd.vala',
+      '../ollmapp/android/android-pair-browse.c',
+      '../ollmapp/android/android-gio-tls.c',
+    ],
+    link_with: [ollmchat_base_lib, occoder_base_lib],
+    include_directories: [
+      include_directories('../libocfiles'),
+      include_directories('../libollmchat'),
+      include_directories('../liboccoder'),
+      include_directories('../ollmapp/android'),
+      ollmchat_consumer_include
+    ],
+    build_rpath: build_rpath,
+    vala_args: [
+      '--define=ANDROID_SOURCE_DIFF',
+      '--pkg=gtk4',
+      '--pkg=libadwaita-1',
+      '--pkg=gtksourceview-5',
+      '--pkg=sqlite3',
+      '--pkg=ocsqlite',
+      '--pkg=ocfiles',
+      '--pkg=ollmchat',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+      '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+      '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+      '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+      '--vapidir', meson.current_source_dir() / '../vapi',
+    ] + ollmchat_consumer_vala_args,
+    android_exe_type: 'application',
+    install: true,
+    install_dir: get_option('libdir')
+  )
+  subdir_done()
+endif
+
 base_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
@@ -254,7 +319,12 @@ test_source_diff = executable('oc-test-source-diff',
     'oc-test-source-diff/FolderTree.vala',
     'oc-test-source-diff/FileListStore.vala',
     'oc-test-source-diff/FileList.vala',
-    'oc-test-source-diff/FileSelector.vala',
+    'oc-test-source-diff/FileRows.vala',
+    'oc-test-source-diff/HistoryRows.vala',
+    'oc-test-source-diff/PullRows.vala',
+    'oc-test-source-diff/FileNav.vala',
+    'oc-test-source-diff/FileOverlay.vala',
+    'oc-test-source-diff/FilePullout.vala',
     'oc-test-source-diff/ReviewBar.vala',
     'oc-test-source-diff/SourceView.vala',
     'oc-test-source-diff/CoderView.vala',

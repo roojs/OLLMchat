@@ -83,6 +83,7 @@ Answer each question for your task. **Yes** → add the section slug(s).
 | Run subprocesses, async I/O, or permission flows? | `try-catch-scope`, `file-info-try-catch`, `defensive-code-null-checks` |
 | Add `using` namespace imports? | `using-statements` |
 | Write long lines (calls, concatenation, docblocks)? | `line-length-breaking` |
+| Bind a C function with `extern` or `[CCode (cname = ...)]`? | `c-extern-names` |
 
 ---
 
@@ -124,6 +125,7 @@ is authoritative. Hints below are for humans only.
 | `signal-handlers-construct` | 1331 |
 | `property-getters-vs-get-methods` | 1355 |
 | `method-names-new-methods` | 1535 |
+| `c-extern-names` | 1817 |
 | `agent-compliance-gate` | 1451 |
 
 ---

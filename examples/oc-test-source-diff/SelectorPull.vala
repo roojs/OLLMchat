@@ -18,7 +18,7 @@
 
 /**
  * Phone and tablet pull-over shared by {@link ProjectSelector}
- * and {@link FileSelector}.
+ * and {@link FilePullout}.
  *
  * Back arrow, title, the current selection, a page stack, and
  * search at the bottom. Opening it does not focus search, so the
@@ -57,6 +57,12 @@ class SelectorPull : Gtk.Box
 	 * Project page and file page. Each selector adds its own list.
 	 */
 	public Gtk.Stack pages { get; private set; }
+
+	/**
+	 * Back arrow. A handler that returns true keeps the pull-over
+	 * open. Otherwise the pull-over closes.
+	 */
+	public signal bool back();
 
 	/**
 	 * Build the pull-over chrome for one layout.
@@ -125,6 +131,9 @@ class SelectorPull : Gtk.Box
 		this.append(this.pages);
 		this.append(this.search);
 		back.clicked.connect(() => {
+			if (this.back()) {
+				return;
+			}
 			this.visible = false;
 		});
 	}

@@ -34,11 +34,14 @@ namespace OLLMfiles.Diff
 	
 	/**
 	 * Represents a patch operation with line numbers.
-	 * 
+	 *
 	 * Patches can be:
 	 * - ADD: Inserts new_lines at start_line
 	 * - REMOVE: Removes old_lines starting at start_line
 	 * - REPLACE: Removes old_lines and inserts new_lines at start_line
+	 *
+	 * @deprecated Client use. The review diff lives in ollmfilesd.
+	 *   Kept so the diff UI tests still build.
 	 */
 	public class Patch : Object
 	{

@@ -45,6 +45,7 @@ ocfiles_gir_src = files([
   'FileHistory.vala',
   'FileAlias.vala',
   'FileWithHistory.vala',
+  'FileDiffPart.vala',
   'GitProviderBase.vala',
   'Copyable.vala',
   'Diff/Patch.vala',

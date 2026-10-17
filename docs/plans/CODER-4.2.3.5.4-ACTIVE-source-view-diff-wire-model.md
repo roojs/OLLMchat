@@ -23,7 +23,7 @@
 - 🔷 Approval must not ship large bodies back. The server already holds the rows and the texts.
 - 🔷 `show_pending_diff` does not read the backup. That call runs `Differ` on the daemon, creates one diff-item row per hunk, and returns the array of those rows.
 - 🔷 One hunk sends only the decision for that diff item. That row applies the change.
-- 🔷 The menu that covers every diff item on the file is `OLLMfilesd-FileHistory.decide`. One method. The action says accept, reject, or reset. Individual acceptance stays on the diff item.
+- 🔷 The menu that covers every diff item on the file is `FileHistory.decide`. One method. The action says accept, reject, or reset. Individual acceptance stays on the diff item.
 - 🔷 A save after the user has edited the file means the diff items are stale. Diff update, then re-render and refill. Resync everything.
 - 💩 This file stays the wire design. Each phase is its own plan. No Vala fences here.
 
@@ -142,7 +142,7 @@ show_pending_diff   (only if pending)
 - 🔷 The file server writes the diff items to disk and is in charge of that store. `hunk` is not in that row. A later open sets the text on the object and returns it.
 - 🔷 The client hangs that text on the diff item in memory. The client does not write diff items.
 - ℹ️ `file_diff_part` today is only `id`, `file_history_id`, `part_index`, `accepted`, `decided_at`. No hunk text. Rows are unused. `ollmfilesd/FileDiffPart.vala`.
-- 🔷 Settled in [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md). The table is `file_diff_part`. `hunk_remove` and `hunk_add` are properties on that object, not columns. `accepted` `0` is undecided, `1` accepted, `-1` rejected. `OLLMfilesd-FileHistory.parts` takes the `file_history` id.
+- 🔷 Settled in [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md). The table is `file_diff_part`. `hunk_remove` and `hunk_add` are properties on that object, not columns. `accepted` `0` is undecided, `1` accepted, `-1` rejected. `FileHistory.parts` takes the `file_history` id.
 - 🔷 The review diff belongs with the file server. Move `Differ`, `Patch`, and `PatchApplier` out of `libocfiles` into `ollmfilesd` when that is the only user.
 - 💩 Not this phase. Still used from `SourceView.show_diff`, `ReviewBar`'s `Differ` / `Patch` API, `examples/oc-diff.vala`, and `examples/oc-test-source-diff.vala`. Symlink until those are gone.
 
@@ -206,7 +206,7 @@ after reject, or reset of a reject
 
 ## Approval call — what it should do
 
-Individual acceptance is a call on the diff item. The menu that covers every diff item on the file is `OLLMfilesd-FileHistory.decide`.
+Individual acceptance is a call on the diff item. The menu that covers every diff item on the file is `FileHistory.decide`.
 
 ```
 desktop                                          ollmfilesd
@@ -224,7 +224,7 @@ one hunk — Accept / Reject / Reset on the bar
 menu — Accept file changes
        Reject file changes
        Reset
-  OLLMfilesd-FileHistory.decide
+  FileHistory.decide
     history id, action              →
                                       action is accept, reject, or reset
                                       applied to every diff item
@@ -234,7 +234,7 @@ backup and project text stay put        (no wire)
 ```
 
 - 🔷 One hunk goes through the diff item. The request is that item and the approval. That item makes the adjustment.
-- 🔷 **Accept file changes**, **Reject file changes**, and **Reset** are one method: `OLLMfilesd-FileHistory.decide`. The action is the difference. It is not a separate accept method and reject method.
+- 🔷 **Accept file changes**, **Reject file changes**, and **Reset** are one method: `FileHistory.decide`. The action is the difference. It is not a separate accept method and reject method.
 - 🔷 That call covers every diff item on that history. It does not call the diff item once per hunk.
 - 🔷 The daemon does not run `Differ` again. The hunk text is already on the object from `show_pending_diff`.
 - ℹ️ The menu labels are in `liboccoder/Diff/ReviewBar.vala`. Today they only flip in-memory hunk decisions.
@@ -252,8 +252,8 @@ backup and project text stay put        (no wire)
 today                         should
 File.read                 OLLMfilesd-File.read
 File.rpc_write            OLLMfilesd-File.rpc_write
-FileHistory.rpc_approve   OLLMfilesd-FileHistory.decide
-FileHistory.rpc_revert    OLLMfilesd-FileHistory.decide
+FileHistory.rpc_approve   FileHistory.decide
+FileHistory.rpc_revert    FileHistory.decide
 ```
 
 - 🔷 Hyphen between `OLLMfilesd` and the class. Dot before the method.
@@ -289,7 +289,7 @@ show_pending_diff
 
 ## LLM notes
 
-- 🚫 Implement the per-hunk `OLLMfilesd-FileHistory.decide` from the superseded plan. `decide` is the menu for every diff item on that history.
+- 🚫 Implement the per-hunk `FileHistory.decide` from the superseded plan. `decide` is the menu for every diff item on that history.
 - 🚫 A hunk file that stores the full project text.
 - 🚫 Client `Differ` on the backup body as the long-term review path.
 - ℹ️ Touch points: `liboccoder/SourceView.vala` `show_pending_diff`, `ollmfilesd/File.vala` `read`, `ollmfilesd/FileWithHistory.vala`, `ollmfilesd/FileHistory.vala`, `ollmfilesd/FileDiffPart.vala`, `libocfiles/Diff/Differ.vala`.

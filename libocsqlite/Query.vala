@@ -232,8 +232,9 @@ namespace SQ {
 						stmt.bind_int (stmt.bind_parameter_index ("$"+ s.name), this.getInt(newer, prop_name, value_type));
 					 	break;
 					case "INT64":
-						// might be better to have getInt64
-						stmt.bind_int64 (stmt.bind_parameter_index ("$"+ s.name), (int64) this.getInt(newer, prop_name, value_type));
+						var bound = GLib.Value(value_type);
+						((GLib.Object) newer).get_property(prop_name, ref bound);
+						stmt.bind_int64(stmt.bind_parameter_index("$" + s.name), bound.get_int64());
 					 	break;
 					case "TEXT":
 						stmt.bind_text (stmt.bind_parameter_index ("$"+ s.name), this.getText(newer, prop_name, value_type));
@@ -387,14 +388,16 @@ namespace SQ {
 				switch(types.get(n)) {
 					case "INTEGER":
 					case "INT2":
-						stmt.bind_int (stmt.bind_parameter_index ("$"+ n), this.getInt(newer, prop_name, value_type));
+						stmt.bind_int (stmt.bind_parameter_index("$"+ n), this.getInt(newer, prop_name, value_type));
 					 	break;
 					case "INT64":
-						stmt.bind_int64 (stmt.bind_parameter_index ("$"+ n), (int64) this.getInt(newer, prop_name, value_type));
+						var bound = GLib.Value(value_type);
+						((GLib.Object) newer).get_property(prop_name, ref bound);
+						stmt.bind_int64(stmt.bind_parameter_index("$" + n), bound.get_int64());
 						break;
 					
 					case "TEXT":
-						stmt.bind_text (stmt.bind_parameter_index ("$"+ n), this.getText(newer, prop_name, value_type));
+						stmt.bind_text (stmt.bind_parameter_index("$"+ n), this.getText(newer, prop_name, value_type));
 						break;
 					default:
 					    GLib.error("Unhandled SQlite type : %s", types.get(n));

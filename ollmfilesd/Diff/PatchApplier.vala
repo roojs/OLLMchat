@@ -26,9 +26,12 @@ namespace OLLMfiles.Diff
 {
 	/**
 	 * Applies patches to text.
-	 * 
+	 *
 	 * Takes a list of patches and applies them to the given text,
-	 * returning the modified text.
+	 * returning the modified text. No caller. Kept so the diff UI
+	 * tests still compile.
+	 *
+	 * @deprecated Old client diff. Remove with libocfiles/Diff.
 	 */
 	public class PatchApplier : Object
 	{
