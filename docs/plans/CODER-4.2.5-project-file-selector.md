@@ -241,7 +241,7 @@ The popovers go. Windowing with them is nasty. The project list and the file lis
 - ✔️ Hide the document and code buttons. Leave that filter code in place. The right slot does not keep an empty gap.
 - ✔️ That slot is a process-stop icon. It closes the file overlay.
 - 🔷 ⏳ The folder bar has the same left arrow. It is hidden on the desktop.
-- ℹ️ On the Android phone that same arrow is the collapse control, and the folder one is shown there. Desktop does not show it.
+- ℹ️ The phone left arrow goes up one directory. It is not a collapse control. See Phone file navigation.
 
 ---
 
@@ -280,9 +280,13 @@ Review the pull-over on a device after Phase 2. `--phone` and `--tablet` on the 
 
 ### File pull-over
 
-- ✔️ The file page is one list. It does not copy the desktop tabs.
-- ✔️ Phone shows the file name only. Tablet shows the path relative to the project, ellipsized at the start.
-- ✔️ Tablet mouse-over shows the full path. Phone does not.
+The file page is Phone file navigation and Tablet file navigation.
+
+- ℹ️ These older rules do not apply.
+  - The page is not one list without Tree and Recent.
+  - Phone does not show the file name only.
+  - Tablet does not ellipsize a project-relative path at the start.
+  - Tablet has no mouse-over for the full path.
 - ✔️ The project button has a maximum width. A shorter name stays narrower than that cap. The file button takes the rest of the row.
 
 ### Phone file navigation
@@ -396,6 +400,15 @@ The tablet uses the same navigation as the phone. The difference is where the fi
 - 🔷 ⏳ The right side shows the files of that level.
 - 🔷 ⏳ Clicking a folder on the left drills into that folder. The left list becomes its child folders. The right list becomes its files.
 - 🔷 ⏳ The left arrow and the back key go up one directory, the same as on the phone.
+
+### Search while a folder is open
+
+Later. Not a numbered phase. The phone and tablet lists come first.
+
+- 🔷 ⏳ A search that starts inside a folder stays there when that folder contains a match.
+- 🔷 ⏳ When that folder has no match, the list walks up until it reaches a folder that contains one.
+- 🔷 ⏳ No match anywhere shows ''no results''.
+- 🔷 ⏳ The folder that was open when the search started is remembered. Clearing the search returns there.
 
 ### Chat history
 

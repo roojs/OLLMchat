@@ -577,6 +577,9 @@ namespace OLLMapp
 					case Form.TABLET:
 						this.selector.kind = "project";
 						this.selector.heading.label = "Projects";
+						this.selector.close.visible = false;
+						this.selector.previous.visible = true;
+						this.selector.current.visible = true;
 						this.selector.current.label = this.label.label;
 						if (this.form != Form.PHONE && this.button.tooltip_text != "") {
 							this.selector.current.label = this.button.tooltip_text;

@@ -23,8 +23,10 @@ namespace OLLMapp
 	 * and {@link FilePullout}.
 	 *
 	 * Back arrow, title, the current selection, a page stack, and
-	 * search at the bottom. Opening it does not focus search, so the
-	 * keyboard stays down. Which edge it uses is still open.
+	 * search at the bottom. The phone file page adds a close button
+	 * and hides the arrow at the project root. Opening it does not
+	 * focus search, so the keyboard stays down. Which edge it uses
+	 * is still open.
 	 *
 	 * == Example ==
 	 *
@@ -46,9 +48,23 @@ namespace OLLMapp
 		public Gtk.Label heading { get; private set; }
 
 		/**
-		 * Current selection under the top bar.
+		 * Line under the top bar. The project page shows the current
+		 * selection. The phone file page shows the path relative to
+		 * the project, and hides this line at the project root.
 		 */
 		public Gtk.Label current { get; private set; }
+
+		/**
+		 * Left arrow. Hidden on the phone file page at the project
+		 * root. Shown again below that root, and on the project page.
+		 */
+		public Gtk.Button previous { get; private set; }
+
+		/**
+		 * Closes the pull-over. The phone file page shows it. The
+		 * project page hides it.
+		 */
+		public Gtk.Button close { get; private set; }
 
 		/**
 		 * Search entry along the bottom edge.
@@ -95,15 +111,26 @@ namespace OLLMapp
 				margin_end = 6,
 				margin_top = 6,
 			};
-			var back = new Gtk.Button.from_icon_name("go-previous-symbolic");
-			back.add_css_class("flat");
+			this.previous = new Gtk.Button.from_icon_name("go-previous-symbolic") {
+				can_focus = false,
+				valign = Gtk.Align.CENTER,
+				css_classes = { "flat" },
+			};
+			this.close = new Gtk.Button.from_icon_name("window-close-symbolic") {
+				tooltip_text = "Close",
+				can_focus = false,
+				valign = Gtk.Align.CENTER,
+				visible = false,
+				css_classes = { "flat" },
+			};
 			this.heading = new Gtk.Label("") {
 				hexpand = true,
 				xalign = 0,
 			};
 			this.heading.add_css_class("title-2");
-			pull_top.append(back);
+			pull_top.append(this.previous);
 			pull_top.append(this.heading);
+			pull_top.append(this.close);
 			this.current = new Gtk.Label("Select project") {
 				xalign = 0,
 				ellipsize = Pango.EllipsizeMode.START,
@@ -132,10 +159,13 @@ namespace OLLMapp
 			this.append(this.current);
 			this.append(this.pages);
 			this.append(this.search);
-			back.clicked.connect(() => {
+			this.previous.clicked.connect(() => {
 				if (this.back()) {
 					return;
 				}
+				this.visible = false;
+			});
+			this.close.clicked.connect(() => {
 				this.visible = false;
 			});
 		}
