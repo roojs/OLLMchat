@@ -261,6 +261,11 @@ Review the pull-over on a device after Phase 2. `--phone` and `--tablet` on the 
 ### File navigation classes
 
 - ℹ️ `FileNav` is the base. `FileOverlay` is the desktop sheet, and the tablet file sheet. `FilePullout` is the phone file page. The tablet project list stays on `SelectorPull`.
+- ℹ️ `FolderTree` is the desktop left pane. `FolderBrowse` is the one-level folder list.
+- 🔷 ✅ `FolderBrowse` is that list. `load_files` lists the files under the folders.
+  - Phone passes true. Search and Recent stay on `FilePullout`.
+  - Tablet passes false. That widget is the overlay's left pane, where the desktop uses `FolderTree`.
+- 🔷 ✅ `FilePullout` is phone only. The tablet file list is the overlay.
 - ℹ️ `form` is the string `desktop`, `phone`, or `tablet` on `FileNav`, `ProjectSelector`, `SelectorPull`, and `CoderView`.
 - 🔷 ⏳ `FileNav` does not build widgets.
   - The button, the lists, and the type buttons are drawn by `FileOverlay` and `FilePullout`.
@@ -388,36 +393,46 @@ The tablet project list stays on the pull-over. The tablet file list does not. I
 - ℹ️ Sketch only. Not code to apply.
 
 ```
-The sheet covers the editor, split like
-the desktop overlay. Left is folders only,
-one level at a time. Right is the desktop
-file list. There is no tree.
+The sheet covers the editor. Tree and
+Recent sit above the folder location.
+Search is at the bottom. Left is folders
+only, one level at a time. Right is the
+desktop file list. There is no tree.
 
 +------------------------------------------+
+| Tree              Recent            [h]  |
+| <  OLLMchat                          X   |
+|    docs                                  |
 | [folder] plans        |  files in docs   |
-| [folder] bugs         |  desktop list    |
+| [ Search files                         ] |
 +------------------------------------------+
 ```
 
-- 🔷 ⏳ The tablet file sheet is `FileOverlay`. It covers the editor. It is not `FilePullout`.
-- 🔷 ⏳ The sheet splits in two, the same way the desktop overlay does.
-- 🔷 ⏳ The left pane is a drill-down folder list, the same navigation as the phone.
+- 🔷 ✅ The tablet file sheet is `FileOverlay`. It covers the editor. It is not `FilePullout`.
+- 🔷 ✅ The sheet splits in two, the same way the desktop overlay does.
+- 🔷 ✅ The left pane is `FolderBrowse` with file loading off, not `FolderTree`.
   - It shows one folder level at a time.
   - It shows folders only. It does not show files.
   - Clicking a folder drills into that folder. The left list becomes its child folders.
   - Going up one directory works the same as on the phone.
   - There is no folder tree.
-- 🔷 ⏳ The right pane is the desktop file list.
-- 🔷 ⏳ Aside from that left pane, the sheet works the same as the desktop overlay.
+- 🔷 ✅ The right pane is the desktop file list.
+- 🔷 ✅ Aside from that left pane and the chrome below, the panes work the same as the desktop overlay.
+- 🔷 ✔️ Tree and Recent sit above the folder location. That row is the full path from the project name, such as ''OLLMchat/lib'', with the up arrow beside it when the folder is not the project.
+- 🔷 ✔️ The tablet file sheet covers the top bar.
+- 🔷 ✔️ A folder with no child folders stays highlighted in the list that contains it. The left pane does not go blank.
+- 🔷 ✔️ Search sits at the bottom of the sheet. Opening the sheet does not focus it.
 
 ### Search while a folder is open
 
-Later. Not a numbered phase. The phone and tablet lists come first.
+Phone and tablet. Not the desktop tree.
 
-- 🔷 ⏳ A search that starts inside a folder stays there when that folder contains a match.
-- 🔷 ⏳ When that folder has no match, the list walks up until it reaches a folder that contains one.
-- 🔷 ⏳ No match anywhere shows ''no results''.
-- 🔷 ⏳ The folder that was open when the search started is remembered. Clearing the search returns there.
+- 🔷 ✔️ A search checks the files already on screen before it asks the server.
+- 🔷 ✔️ A search that starts inside a folder stays there when that folder contains a match.
+- 🔷 ✔️ When that folder has no match, the list walks up until it reaches a folder that contains one.
+- 🔷 ✔️ No match anywhere shows ''no results''.
+- 🔷 ✔️ A search the server will not return still shows matches from the open folder. Opening another folder that has none shows ''too many results''.
+- 🔷 ✔️ The folder that was open when the search started is remembered. Clearing the search returns there.
 
 ### Chat history
 
@@ -462,7 +477,7 @@ Not the next step. Phase 3 is next. Phase 3.5 follows that.
 - 🚫 Do not add a progressive refresh in this plan. A new file from a scan does not update the open tree. Opening the pop-down again is the refresh.
 - 🚫 Do not filter a client-held copy of the whole tree. Ask the file server for the folders and for the file results separately.
 - 🚫 Do not give the phone the desktop two-pane tree or `FolderTree`. Phone file navigation is one level: folders, then files. A click drills into that folder only. Tree, Recent, and the hide-empty button sit above the title row. The X closes. The left arrow and the back key go up one directory.
-- 🚫 Do not put the tablet file list on the pull-over. The tablet project list stays on the pull-over. The tablet file sheet is the desktop overlay. The left pane is a drill-down of folders only, the same navigation as the phone. It is not the desktop tree. The right pane is the desktop file list.
+- 🚫 Do not put the tablet file list on the pull-over. The tablet project list stays on the pull-over. The tablet file sheet is the desktop overlay. The left pane is `FolderBrowse` with file loading off. It is not `FolderTree`, and it is not a tablet-only class. Do not put a drill-down mode inside `FolderTree`. The right pane is the desktop file list.
 - 🚫 Do not stay on the project page after a project pick on the phone. Open the file page.
 - 🚫 No second smoke app. This stays on `oc-test-source-diff`.
 - 🚫 Do not bring back `examples/oc-test-source-diff-selectors.vala`.

@@ -827,9 +827,10 @@ namespace OLLMapp
 						margin_bottom = 4,
 					};
 					var projects = new ProjectSelector(manager, form, this.selector_pull);
-					var files = form == Form.DESKTOP
-						? (FileNav) new FileOverlay(manager)
-						: (FileNav) new FilePullout(manager, form, this.selector_pull);
+					var files = (FileNav) new FileOverlay(manager, form);
+					if (form == Form.PHONE) {
+						files = new FilePullout(manager, form, this.selector_pull);
+					}
 					var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 						hexpand = true,
 					};
@@ -840,7 +841,7 @@ namespace OLLMapp
 						spacer.visible = !files.visible;
 					});
 					projects.opened.connect(() => {
-						if (form != Form.DESKTOP) {
+						if (form == Form.PHONE) {
 							return;
 						}
 						((FileOverlay) files).list.visible = false;

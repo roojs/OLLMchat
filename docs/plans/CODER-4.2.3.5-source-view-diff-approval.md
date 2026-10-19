@@ -1,6 +1,6 @@
 # 4.2.3.5 — SourceView diff Phase 4: block approval flow
 
-**Status:** **✅** Phase A + [`4.2.3.5.1`](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) user-smoked · **✔️** [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) editor wire · **⏳** [`4.2.3.5.4`](CODER-4.2.3.5.4-source-view-diff-wire-model.md) design · **⏳** [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md) · **⏳** [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md) · **⏳** [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md)
+**Status:** **✅** Phase A + [`4.2.3.5.1`](done/CODER-4.2.3.5.1-DONE-source-view-diff-review-responses.md) user-smoked · **✔️** [`4.2.3.5.2`](CODER-4.2.3.5.2-source-view-diff-approval-phase-b.md) editor wire · **⏳** [`4.2.3.5.4`](CODER-4.2.3.5.4-source-view-diff-wire-model.md) design · **⏳** [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md) · **✔️** [`4.2.3.5.6`](CODER-4.2.3.5.6-ACTIVE-source-view-diff-approval-calls.md) · **⏳** [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md)
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 

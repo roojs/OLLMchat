@@ -1,6 +1,6 @@
 # 4.2.3.5.6 — Approval calls
 
-**Status:** **⏳** proposed — fences below. Not applied.
+**Status:** **✔️** in tree — fences applied. Not user-smoked.
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 
@@ -65,7 +65,7 @@ menu — Accept file changes
 - 💩 The hunk reply is that one updated item. The desktop adjusts the editor from the hunk text it already has.
 - 💩 The hunk method is `FileDiffPart.apply`. It is not `FileHistory.decide`.
 - 💩 The action on the wire is an int. `1` accept, `-1` reject, `0` reset. Same values as `accepted`. Reset stores `accepted` 0 and `decided_at` 0.
-- 💩 `live` and `live_stamp` stay instance properties on the one `FileHistory` handler. `FileDiffPart.for_rpc` is given that handler. Keys are `int`. A history id is cast at the lookup. Line numbers are not columns.
+- 💩 `live` and `live_stamp` stay instance properties on the one `FileHistory` handler. `part` is a `Gee.HashMap<int, FileDiffPart>` on that same handler, keyed by diff-item id. `apply` looks up that map. `FileDiffPart.for_rpc` is given that handler. Keys are `int`. An id is cast at the lookup. Line numbers are not columns.
 
 ---
 
@@ -76,18 +76,30 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 - 🔷 `FileDiffPart.apply` is one hunk. `FileHistory.decide` is every hunk on that history. One wire call each.
 - 🔷 Accept of a pending hunk does not write the project file. Reject replaces that hunk's new lines with `hunk_remove`. Reset of a reject puts `hunk_add` back. Reset of an accept does not write the file.
 - 💩 Accept of an already rejected hunk puts `hunk_add` back, then stores `accepted` 1. Bulk accept would otherwise leave the undone lines on disk.
-- 💩 A file write updates `live_stamp` to the new modification time. Otherwise the next `parts` treats the list as stale and runs `Differ` again.
+- 💩 A file write updates `live_stamp` from that file's `mtime_on_disk`. `parts` and `rebuild_parts` use the same value. Otherwise the next `parts` treats the list as stale and runs `Differ` again.
 - 💩 `decide` runs the same span write as `apply`, in process, from the bottom of the file upward. It does not send `FileDiffPart.apply` once per hunk.
 - ℹ️ Band colours, the deeper active red and green, and scrolling to a clicked band are already in `ReviewBar`. No fence for those.
 - ℹ️ `FileHistory.rpc_approve` and `FileHistory.rpc_revert` stay registered. The header popover was their caller. This phase stops showing that popover.
 
 ### 1. `ollmfilesd/FileHistory.vala` — the remembered list stays on the handler
 
-**Why:** `apply` runs on a `FileDiffPart` handler. `decide` runs on the `FileHistory` handler. Both use the one `FileHistory` object registered for `"FileHistory"`. `parts` and `rebuild_parts` keep `this.live` and `this.live_stamp`.
+**Why:** `apply` runs on a `FileDiffPart` handler. `decide` runs on the `FileHistory` handler. Both use the one `FileHistory` object registered for `"FileHistory"`. `parts` and `rebuild_parts` keep `this.live` and `this.live_stamp`. `part` is the same objects, keyed by diff-item id, so `apply` does not walk every list.
 
-**Where:** visibility of `live` and `live_stamp`, so the diff-item handler can use the history object it is given.
+**Where:** visibility of `live`, `live_stamp`, and `rpc_manager`. The `part` map is new. `rebuild_parts` drops the previous ids for that history and stores the list it just kept. The project file is the `File` from the active project. Its buffer supplies the text. The backup path is a cache file, not a project `File`.
 
 **Depends on:** [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md).
+
+#### Remove
+
+```vala
+		private ProjectManager rpc_manager;
+```
+
+#### Replace with
+
+```vala
+		internal ProjectManager rpc_manager;
+```
 
 #### Remove
 
@@ -109,6 +121,119 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 		internal Gee.HashMap<int, int> live_stamp {
 			get; set; default = new Gee.HashMap<int, int>();
 		}
+		internal Gee.HashMap<int, FileDiffPart> part {
+			get; set; default = new Gee.HashMap<int, FileDiffPart>();
+		}
+```
+
+#### Remove — `rebuild_parts` stores a fresh list
+
+```vala
+				this.live.set((int) history.id, fresh);
+				this.live_stamp.set((int) history.id, (int) stamp);
+				return fresh;
+```
+
+#### Replace with
+
+```vala
+				if (this.live.has_key((int) history.id)) {
+					foreach (var old in this.live.get((int) history.id)) {
+						this.part.unset((int) old.id);
+					}
+				}
+				foreach (var part in fresh) {
+					this.part.set((int) part.id, part);
+				}
+				this.live.set((int) history.id, fresh);
+				this.live_stamp.set((int) history.id, (int) stamp);
+				return fresh;
+```
+
+#### Remove — `rebuild_parts` stores the kept list
+
+```vala
+			this.live.set((int) history.id, kept);
+			this.live_stamp.set((int) history.id, (int) stamp);
+```
+
+#### Replace with
+
+```vala
+			if (this.live.has_key((int) history.id)) {
+				foreach (var old in this.live.get((int) history.id)) {
+					this.part.unset((int) old.id);
+				}
+			}
+			foreach (var part in kept) {
+				this.part.set((int) part.id, part);
+			}
+			this.live.set((int) history.id, kept);
+			this.live_stamp.set((int) history.id, (int) stamp);
+```
+
+#### Remove — `parts` reads the stamp from a path
+
+```vala
+			var stamp = (int64) 0;
+			try {
+				var info = GLib.File.new_for_path(histories.get(0).path).query_info(
+					GLib.FileAttribute.TIME_MODIFIED_USEC,
+					GLib.FileQueryInfoFlags.NONE,
+					null);
+				stamp = (int64) info.get_attribute_uint64(
+					GLib.FileAttribute.TIME_MODIFIED_USEC);
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+```
+
+#### Replace with
+
+```vala
+			var file = this.rpc_manager.get_file_from_active_project(
+				histories.get(0).path);
+			if (file == null) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"file not found"
+					)
+				});
+				return;
+			}
+			var stamp = file.mtime_on_disk();
+```
+
+#### Remove — `rebuild_parts` reads the project file from a path
+
+```vala
+			var project = (string) GLib.File.new_for_path(
+				history.path).load_bytes(null).get_data();
+			var info = GLib.File.new_for_path(history.path).query_info(
+				GLib.FileAttribute.TIME_MODIFIED_USEC, GLib.FileQueryInfoFlags.NONE, null);
+			var stamp = (int64) info.get_attribute_uint64(GLib.FileAttribute.TIME_MODIFIED_USEC);
+```
+
+#### Replace with
+
+```vala
+			var file = this.rpc_manager.get_file_from_active_project(history.path);
+			if (file == null) {
+				throw new GLib.IOError.FAILED("file not found");
+			}
+			if (file.buffer == null) {
+				file.manager.buffer_provider.create_buffer(file);
+			}
+			var project = file.buffer.get_text();
+			var stamp = file.mtime_on_disk();
 ```
 
 ### 2. `ollmfilesd/FileDiffPart.vala` — `apply` one hunk
@@ -171,36 +296,34 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 		 */
 		public void apply(OLLMrpc.Request request, int64 id, int action)
 		{
-			foreach (var list in this.history.live.values) {
-				foreach (var item in list) {
-					if (item.id != id) {
-						continue;
-					}
-					try {
-						item.commit(this.history, this.rpc_manager.db, action);
-					} catch (GLib.Error e) {
-						request.reply(new OLLMrpc.Response() {
-							id = request.id,
-							error = new OLLMrpc.Error(
-								OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-								e.message
-							)
-						});
-						return;
-					}
+			if (!this.history.part.has_key((int) id)) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"diff item is not loaded"
+					)
+				});
+				return;
+			}
+			var item = this.history.part.get((int) id);
+			item.commit.begin(this.history, this.rpc_manager.db, action, (obj, res) => {
+				try {
+					item.commit.end(res);
+				} catch (GLib.Error e) {
 					request.reply(new OLLMrpc.Response() {
 						id = request.id,
-						retval = OLLMrpc.val("o", item)
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							e.message
+						)
 					});
 					return;
 				}
-			}
-			request.reply(new OLLMrpc.Response() {
-				id = request.id,
-				error = new OLLMrpc.Error(
-					OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-					"diff item is not loaded"
-				)
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("o", item)
+				});
 			});
 		}
 
@@ -210,17 +333,18 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 		 *
 		 * A decision that leaves the file alone stores and returns.
 		 * Reject of a pending or accepted hunk writes ''hunk_remove''.
-		 * Accept or reset of a rejected hunk writes ''hunk_add''.
-		 * Later hunks on the remembered list shift by the line delta.
-		 * Updates ''live_stamp'' after a write. The store after a
-		 * write repeats the no-write store.
+		 * Accept or reset of a rejected hunk writes ''hunk_add''
+		 * through the project file's buffer. Later hunks on the
+		 * remembered list shift by the line delta. Updates
+		 * ''live_stamp'' from {@link File.mtime_on_disk} after the
+		 * write. The store after a write repeats the no-write store.
 		 *
 		 * @param history the registered {@code FileHistory} handler
 		 * @param db daemon database
 		 * @param action 1 accept, -1 reject, 0 reset
 		 * @throws GLib.Error the project file could not be read or written
 		 */
-		public void commit(FileHistory history, SQ.Database db, int action) throws GLib.Error
+		public async void commit(FileHistory history, SQ.Database db, int action) throws GLib.Error
 		{
 			var histories = new Gee.ArrayList<FileHistory>();
 			FileHistory.query(db).select(
@@ -249,32 +373,28 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 			if (action == -1) {
 				insert = this.hunk_remove;
 			}
-			var body = (string) GLib.File.new_for_path(
-				histories.get(0).path).load_bytes(null).get_data();
-			var lines = body.split("\n");
+			var file = history.rpc_manager.get_file_from_active_project(
+				histories.get(0).path);
+			if (file == null) {
+				throw new GLib.IOError.FAILED("file not found");
+			}
+			if (file.buffer == null) {
+				file.manager.buffer_provider.create_buffer(file);
+			}
 			var add_count = this.new_line_end < this.new_line_start
 				? 0 : this.new_line_end - this.new_line_start + 1;
 			var remove_count = this.old_line_end < this.old_line_start
 				? 0 : this.old_line_end - this.old_line_start + 1;
 			var span = this.accepted == -1 ? remove_count : add_count;
 			var at = this.new_line_start;
-			string[] next = {};
-			for (var i = 1; i < at && i <= lines.length; i++) {
-				next += lines[i - 1];
-			}
-			if (insert != "") {
-				var chunk = insert.split("\n");
-				for (var i = 0; i < chunk.length; i++) {
-					next += chunk[i];
-				}
-			}
-			for (var i = at + span; i <= lines.length; i++) {
-				next += lines[i - 1];
-			}
-			GLib.File.new_for_path(histories.get(0).path).replace_contents(
-				string.joinv("\n", next).data, null, false,
-				GLib.FileCreateFlags.NONE, null);
 			var inserted = insert == "" ? 0 : insert.split("\n").length;
+			var changes = new Gee.ArrayList<FileChange>();
+			changes.add(new FileChange(file) {
+				start = at,
+				end = at + span,
+				replacement = insert
+			});
+			yield file.buffer.apply_edits(changes);
 			var delta = inserted - span;
 			this.new_line_end = inserted == 0
 				? this.new_line_start - 1
@@ -286,12 +406,7 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 				other.new_line_start += delta;
 				other.new_line_end += delta;
 			}
-			var info = GLib.File.new_for_path(histories.get(0).path).query_info(
-				GLib.FileAttribute.TIME_MODIFIED_USEC,
-				GLib.FileQueryInfoFlags.NONE, null);
-			history.live_stamp.set((int) this.file_history_id,
-				(int) info.get_attribute_uint64(
-					GLib.FileAttribute.TIME_MODIFIED_USEC));
+			history.live_stamp.set((int) this.file_history_id, (int) file.mtime_on_disk());
 			this.accepted = action == 0 ? 0 : action;
 			this.decided_at = action == 0 ? (int64) 0 : GLib.get_real_time();
 			FileDiffPart.query(db).updateById(this);
@@ -370,9 +485,28 @@ Bottom of the file first, so a later hunk's `new_line_start` still matches the t
 			rows.sort((a, b) => {
 				return b.new_line_start - a.new_line_start;
 			});
+			this.commit_decided.begin(request, (int) id, rows, action);
+		}
+
+		/**
+		 * Yields {@link FileDiffPart.commit} from the bottom upward,
+		 * then replies with the remembered list.
+		 *
+		 * @param request inbound RPC
+		 * @param id file_history.id cast for the {@code live} key
+		 * @param rows hunks, highest {@code new_line_start} first
+		 * @param action 1 accept, -1 reject, 0 reset
+		 */
+		private async void commit_decided(
+			OLLMrpc.Request request,
+			int id,
+			Gee.ArrayList<FileDiffPart> rows,
+			int action
+		)
+		{
 			try {
 				foreach (var part in rows) {
-					part.commit(this, this.rpc_manager.db, action);
+					yield part.commit(this, this.rpc_manager.db, action);
 				}
 			} catch (GLib.Error e) {
 				request.reply(new OLLMrpc.Response() {
@@ -386,7 +520,7 @@ Bottom of the file first, so a later hunk's `new_line_start` still matches the t
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				retval = OLLMrpc.val("o", this.live.get((int) id))
+				retval = OLLMrpc.val("o", this.live.get(id))
 			});
 		}
 ```
@@ -418,11 +552,11 @@ Bottom of the file first, so a later hunk's `new_line_start` still matches the t
 
 **Why:** Accept, Reject, and the bar's Unapprove button send one hunk. The file menu sends `decide` for the open history. Accept all files and Reject all files send `decide` once per pending file.
 
-**Where:** `on_accept_clicked`, `on_reject_clicked`, the Unapprove `clicked` handler, and the bulk action lambdas.
+**Where:** the Accept and Reject `clicked` handlers, the Unapprove `clicked` handler, and the bulk action lambdas. They call `send_part`.
 
 **Depends on:** §3, §4.
 
-#### Remove — Accept and Reject button handlers call the async methods
+#### Remove — Accept and Reject call `send_part`
 
 ```vala
 			this.accept_btn.clicked.connect(() => {
@@ -434,7 +568,7 @@ Bottom of the file first, so a later hunk's `new_line_start` still matches the t
 
 ```vala
 			this.accept_btn.clicked.connect(() => {
-				this.on_accept_clicked.begin();
+				this.send_part.begin(1);
 			});
 ```
 
@@ -450,7 +584,7 @@ Bottom of the file first, so a later hunk's `new_line_start` still matches the t
 
 ```vala
 			this.reject_btn.clicked.connect(() => {
-				this.on_reject_clicked.begin();
+				this.send_part.begin(-1);
 			});
 ```
 
@@ -487,16 +621,6 @@ Bottom of the file first, so a later hunk's `new_line_start` still matches the t
 #### Replace with
 
 ```vala
-		private async void on_accept_clicked()
-		{
-			yield this.send_part(1);
-		}
-
-		private async void on_reject_clicked()
-		{
-			yield this.send_part(-1);
-		}
-
 		/**
 		 * ''FileDiffPart.apply'' for the active hunk, then the next pending band.
 		 *
@@ -560,21 +684,27 @@ Bottom of the file first, so a later hunk's `new_line_start` still matches the t
 					? 0 : before.old_line_end - before.old_line_start + 1;
 				var span = before.accepted == -1 ? remove_count : add_count;
 				var want = action == -1 ? before.hunk_remove : before.hunk_add;
-				var lines = (file.buffer as GtkSource.Buffer).text.split("\n");
-				string[] next = {};
-				for (var i = 1; i < before.new_line_start && i <= lines.length; i++) {
-					next += lines[i - 1];
+				var buffer = file.buffer as Gtk.TextBuffer;
+				Gtk.TextIter start_iter;
+				Gtk.TextIter end_iter;
+				buffer.get_iter_at_line(out start_iter, before.new_line_start - 1);
+				end_iter = start_iter;
+				var at_end = start_iter.is_end();
+				if (span > 0 && buffer.get_iter_at_line(
+					out end_iter, before.new_line_start - 1 + span)) {
+					at_end = false;
 				}
+				if (span > 0 && at_end) {
+					buffer.get_end_iter(out end_iter);
+				}
+				buffer.delete(ref start_iter, ref end_iter);
 				if (want != "") {
-					var chunk = want.split("\n");
-					for (var i = 0; i < chunk.length; i++) {
-						next += chunk[i];
+					var replacement = want;
+					if (!at_end) {
+						replacement = want + "\n";
 					}
+					buffer.insert(ref start_iter, replacement, -1);
 				}
-				for (var i = before.new_line_start + span; i <= lines.length; i++) {
-					next += lines[i - 1];
-				}
-				(file.buffer as GtkSource.Buffer).set_text(string.joinv("\n", next), -1);
 			}
 			if (file != null) {
 				this.source_view.show_pending_diff.begin(file);
@@ -584,10 +714,10 @@ Bottom of the file first, so a later hunk's `new_line_start` still matches the t
 		/**
 		 * ''FileHistory.decide'' for one pending row.
 		 *
-		 * When that row is the open file, the editor is spliced from
-		 * the hunks already on the bar, bottom upward, before the
-		 * next paint. The reply's shifted line numbers are not used
-		 * for that splice.
+		 * When that row is the open file, the source buffer deletes
+		 * each hunk's line range and inserts the hunk text, from
+		 * the bottom upward, before the next paint. The reply's
+		 * shifted line numbers are not used for that edit.
 		 *
 		 * @param history_id file_history.id
 		 * @param action 1 accept, -1 reject, 0 reset
@@ -635,21 +765,27 @@ Bottom of the file first, so a later hunk's `new_line_start` still matches the t
 					? 0 : before.old_line_end - before.old_line_start + 1;
 				var span = before.accepted == -1 ? remove_count : add_count;
 				var want = action == -1 ? before.hunk_remove : before.hunk_add;
-				var lines = (file.buffer as GtkSource.Buffer).text.split("\n");
-				string[] next = {};
-				for (var i = 1; i < before.new_line_start && i <= lines.length; i++) {
-					next += lines[i - 1];
+				var buffer = file.buffer as Gtk.TextBuffer;
+				Gtk.TextIter start_iter;
+				Gtk.TextIter end_iter;
+				buffer.get_iter_at_line(out start_iter, before.new_line_start - 1);
+				end_iter = start_iter;
+				var at_end = start_iter.is_end();
+				if (span > 0 && buffer.get_iter_at_line(
+					out end_iter, before.new_line_start - 1 + span)) {
+					at_end = false;
 				}
+				if (span > 0 && at_end) {
+					buffer.get_end_iter(out end_iter);
+				}
+				buffer.delete(ref start_iter, ref end_iter);
 				if (want != "") {
-					var chunk = want.split("\n");
-					for (var i = 0; i < chunk.length; i++) {
-						next += chunk[i];
+					var replacement = want;
+					if (!at_end) {
+						replacement = want + "\n";
 					}
+					buffer.insert(ref start_iter, replacement, -1);
 				}
-				for (var i = before.new_line_start + span; i <= lines.length; i++) {
-					next += lines[i - 1];
-				}
-				(file.buffer as GtkSource.Buffer).set_text(string.joinv("\n", next), -1);
 			}
 			this.source_view.show_pending_diff.begin(file);
 		}
@@ -914,13 +1050,13 @@ The three `activate` lambdas for `accept-file`, `reject-file`, and `reset-file`.
 
 ### 8. `liboccoder/SourceView.vala` — paint a decided hunk as plain lines
 
-**Why:** After accept, removed lines leave the view and the green comes off the added lines. A decided hunk's colour is the bar band. The open buffer is spliced from the hunk text the bar already has, using line numbers from before the reply. The reply's shifted numbers are only for the next paint.
+**Why:** After accept, removed lines leave the view and the green comes off the added lines. A decided hunk's colour is the bar band. The open `Gtk.TextBuffer` deletes that line range and inserts the hunk. It does not replace the whole buffer. Line numbers are from before the reply. The reply's shifted numbers are only for the next paint.
 
-**Where:** `show_pending_diff`, inside the hunk loop. `send_part` splices `current_file.buffer` before that paint.
+**Where:** `show_pending_diff`, inside the hunk loop. `send_part` edits `current_file.buffer` before that paint.
 
 **Depends on:** §5.
 
-`send_part` splices the open buffer from the hunk it sent, using that hunk's line numbers from before the reply. This section only changes the paint.
+`send_part` deletes the hunk's line range in the source buffer and inserts the hunk text, using line numbers from before the reply. This section only changes the paint.
 
 #### Remove — red and green rows for every hunk
 

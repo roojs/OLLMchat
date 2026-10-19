@@ -78,9 +78,10 @@ namespace OLLMapp
 			manager.buffer_provider = new OLLMcoder.BufferProvider();
 			this.selector = new SelectorPull(form);
 			this.projects = new ProjectSelector(manager, form, this.selector);
-			this.files = form == Form.DESKTOP
-				? (FileNav) new FileOverlay(manager)
-				: (FileNav) new FilePullout(manager, form, this.selector);
+			this.files = new FileOverlay(manager, form);
+			if (form == Form.PHONE) {
+				this.files = new FilePullout(manager, form, this.selector);
+			}
 			this.editor = new SourceView(manager) {
 				hexpand = true,
 				vexpand = true,
@@ -113,7 +114,7 @@ namespace OLLMapp
 			history.add_css_class("flat");
 			header.append(history);
 			this.projects.opened.connect(() => {
-				if (form != Form.DESKTOP) {
+				if (form == Form.PHONE) {
 					return;
 				}
 				((FileOverlay) this.files).list.visible = false;
@@ -226,8 +227,28 @@ namespace OLLMapp
 			if (form == Form.DESKTOP) {
 				editor_layer.add_overlay(((FileOverlay) this.files).list);
 			}
-			this.append(header);
-			this.append(editor_layer);
+			if (form == Form.TABLET) {
+				var column = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+					hexpand = true,
+					vexpand = true,
+				};
+				column.append(header);
+				column.append(editor_layer);
+				var cover = new Gtk.Overlay() {
+					hexpand = true,
+					vexpand = true,
+					child = column,
+				};
+				var sheet = ((FileOverlay) this.files).list;
+				sheet.halign = Gtk.Align.FILL;
+				sheet.valign = Gtk.Align.FILL;
+				cover.add_overlay(sheet);
+				this.append(cover);
+			}
+			if (form != Form.TABLET) {
+				this.append(header);
+				this.append(editor_layer);
+			}
 			this.files.chosen.connect((file) => {
 				this.editor.open_file.begin(file);
 			});

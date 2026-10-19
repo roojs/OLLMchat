@@ -19,13 +19,13 @@
 namespace OLLMapp
 {
 	/**
-	 * Phone and tablet file page on {@link SelectorPull}.
+	 * Phone file page on {@link SelectorPull}.
 	 *
-	 * Phone shows one folder at a time: its child folders, then its
-	 * files. The left arrow and the back key go up one directory.
-	 * An X closes the page. Tree and Recent sit under the title.
-	 * Search stays at the bottom of the pull-over. Tablet keeps one
-	 * file list.
+	 * One folder at a time: its child folders, then its files. The
+	 * left arrow and the back key go up one directory. An X closes
+	 * the page. Tree and Recent sit above the title. Search stays
+	 * at the bottom of the pull-over. Tablet files are
+	 * {@link FileOverlay}.
 	 *
 	 * == Example ==
 	 *
@@ -37,36 +37,44 @@ namespace OLLMapp
 	class FilePullout : FileNav
 	{
 		/**
-		 * Shared phone and tablet surface.
+		 * Phone pull-over. Tablet files are not on this page.
 		 */
 		public SelectorPull selector { get; set; }
 
 		private Gtk.ListBox list;
 		private GLib.ListStore files; // suspect
-		private Gtk.ListBox folders;
-		private Gtk.Box browse;
+		private FolderBrowse browse;
 		private Gtk.Box tree_box;
 		private Gtk.ScrolledWindow recent_scroll;
 		private Gtk.Stack filters;
 		private Gtk.Box file_bar;
-		private GLib.ListModel folder_model;
 		private OLLMfiles.Folder level;
 		private string chosen_path = "";
 		private uint file_wait = 0;
+		private Gtk.Label list_note;
 
 		/**
 		 * Build the file page on the shared pull-over.
 		 *
 		 * @param manager Connected manager. Rows come from the project.
-		 * @param form Phone or tablet
-		 * @param selector Shared phone and tablet surface
+		 * @param form Phone
+		 * @param selector Phone pull-over
 		 */
 		public FilePullout(OLLMfiles.ProjectManager manager, Form form, SelectorPull selector)
 		{
 			base(manager, form);
 			this.selector = selector;
 			this.level = this.project;
-			this.folder_model = this.folder_tree.folders;
+			this.browse = new FolderBrowse(this.folder_tree, this.file_list, this.project, true);
+			this.browse.selected.connect((folder) => {
+				this.refresh_folder(folder);
+				if (this.search_open) {
+					this.browse.query = this.selector.search.text.strip();
+				}
+			});
+			this.browse.file_activated.connect((file) => {
+				this.choose(file);
+			});
 			this.append(this.button);
 			this.files = new GLib.ListStore(typeof(OLLMfiles.File));
 			this.list = new Gtk.ListBox() {
@@ -76,38 +84,64 @@ namespace OLLMapp
 			};
 			this.list.bind_model(this.files, (item) => {
 				var file = (OLLMfiles.File) item;
-				if (this.form != Form.PHONE) {
-					var column = new Gtk.Box(Gtk.Orientation.VERTICAL, 4) {
-						margin_start = 12,
-						margin_end = 12,
-						margin_top = 8,
-						margin_bottom = 8,
-					};
-					column.append(new Gtk.Label(file.path_basename) {
-						xalign = 0,
-						halign = Gtk.Align.START,
-						hexpand = true,
-						ellipsize = Pango.EllipsizeMode.END,
-						css_classes = { "body", "list-chat-title" },
-					});
-					column.append(new Gtk.Label(file.path) {
-						xalign = 0,
-						halign = Gtk.Align.START,
-						hexpand = true,
-						ellipsize = Pango.EllipsizeMode.START,
-						css_classes = { "caption", "dim-label" },
-					});
-					return column;
-				}
-				return this.list_box_factory(file, "text-x-generic-symbolic");
+				return this.browse.list_box_factory(file, "text-x-generic-symbolic");
 			});
-			this.list.set_placeholder(new Gtk.Label("No files") {
+			this.list_note = new Gtk.Label("No files") {
 				xalign = 0,
 				halign = Gtk.Align.START,
 				margin_start = 12,
 				margin_top = 8,
 				margin_bottom = 8,
 				css_classes = { "dim-label" },
+			};
+			this.list.set_placeholder(this.list_note);
+			this.file_list.files.items_changed.connect(() => {
+				if (!this.search_open || !this.search_wide) {
+					return;
+				}
+				if (this.filters.visible_child_name == "recent") {
+					return;
+				}
+				if (this.file_list.files.get_n_items() == 0 && !this.file_list.files.empty) {
+					return;
+				}
+				var query = this.selector.search.text.strip();
+				var shown = false;
+				var count = this.file_list.files.get_n_items();
+				for (var i = 0; i < count; i++) {
+					var file = (OLLMfiles.File) this.file_list.files.get_item(i);
+					if (file != null && file.path_basename.down().contains(query.down())) {
+						shown = true;
+						break;
+					}
+				}
+				if (shown) {
+					this.browse.query = query;
+					this.browse.visible = true;
+					return;
+				}
+				this.browse.visible = false;
+				this.files.remove_all();
+				this.list_note.label = "too many results";
+				if (this.list.get_parent() != this.tree_box) {
+					this.list.unparent();
+					this.tree_box.append(this.list);
+				}
+			});
+			this.file_list.files.notify["empty"].connect(() => {
+				if (!this.search_open || !this.search_wide || !this.file_list.files.empty) {
+					return;
+				}
+				if (this.filters.visible_child_name == "recent") {
+					return;
+				}
+				this.browse.visible = false;
+				this.files.remove_all();
+				this.list_note.label = "too many results";
+				if (this.list.get_parent() != this.tree_box) {
+					this.list.unparent();
+					this.tree_box.append(this.list);
+				}
 			});
 			this.list.row_activated.connect((line) => {
 				var file = (OLLMfiles.File) this.files.get_item((uint) line.get_index());
@@ -116,51 +150,6 @@ namespace OLLMapp
 				}
 				this.choose(file);
 			});
-			this.folders = new Gtk.ListBox() {
-				hexpand = true,
-				activate_on_single_click = true,
-				selection_mode = Gtk.SelectionMode.NONE,
-			};
-			this.folders.row_activated.connect((line) => {
-				var folder = (OLLMfiles.Folder) this.folder_model.get_item((uint) line.get_index());
-				if (folder == null) {
-					return;
-				}
-				this.refresh_folder(folder);
-			});
-			var file_sorted = new Gtk.SortListModel(this.file_list.files, new Gtk.StringSorter(
-				new Gtk.PropertyExpression(typeof(OLLMfiles.File), null, "path_basename")
-			) {
-				ignore_case = true,
-			});
-			var file_box = new Gtk.ListBox() {
-				hexpand = true,
-				activate_on_single_click = true,
-				selection_mode = Gtk.SelectionMode.NONE,
-			};
-			file_box.bind_model(file_sorted, (item) => {
-				return this.list_box_factory((OLLMfiles.FileBase) item, "text-x-generic-symbolic");
-			});
-			file_box.set_placeholder(new Gtk.Label("No files") {
-				xalign = 0,
-				halign = Gtk.Align.START,
-				margin_start = 12,
-				margin_top = 8,
-				margin_bottom = 8,
-				css_classes = { "dim-label" },
-			});
-			file_box.row_activated.connect((line) => {
-				var file = (OLLMfiles.File) file_sorted.get_item((uint) line.get_index());
-				if (file == null) {
-					return;
-				}
-				this.choose(file);
-			});
-			this.browse = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-				hexpand = true,
-			};
-			this.browse.append(this.folders);
-			this.browse.append(file_box);
 			this.tree_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
 				vexpand = true,
@@ -183,12 +172,8 @@ namespace OLLMapp
 			};
 			this.filters.add_titled(tree_scroll, "tree", "Tree");
 			this.filters.add_titled(this.recent_scroll, "recent", "Recent");
-			var pull_page = (Gtk.Widget) new Gtk.ScrolledWindow() {
-				child = this.list,
-				hexpand = true,
-				vexpand = true,
-				hscrollbar_policy = Gtk.PolicyType.NEVER,
-			};
+			this.list.selection_mode = Gtk.SelectionMode.NONE;
+			this.recent_scroll.child = this.list;
 			this.file_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				visible = false,
 			};
@@ -197,26 +182,18 @@ namespace OLLMapp
 				stack = this.filters,
 				hexpand = true,
 			});
-			if (this.form == Form.PHONE) {
-				this.list.selection_mode = Gtk.SelectionMode.NONE;
-				this.recent_scroll.child = this.list;
-				this.selector.prepend(this.file_bar);
-				var page = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-					hexpand = true,
-					vexpand = true,
-				};
-				page.append(this.filters);
-				pull_page = page;
-			}
-			this.selector.pages.add_named(pull_page, "file");
+			this.selector.prepend(this.file_bar);
+			var page = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = true,
+			};
+			page.append(this.filters);
+			this.selector.pages.add_named(page, "file");
 			this.selector.pages.notify["visible-child-name"].connect(() => {
-				if (this.form != Form.PHONE) {
-					return;
-				}
 				this.file_bar.visible = this.selector.pages.visible_child_name == "file";
 			});
 			this.selector.back.connect(() => {
-				if (this.form != Form.PHONE || this.selector.kind != "file") {
+				if (this.selector.kind != "file") {
 					return false;
 				}
 				var up = this.level.parent;
@@ -228,7 +205,7 @@ namespace OLLMapp
 			});
 			var keys = new Gtk.EventControllerKey();
 			keys.key_pressed.connect((keyval, keycode, state) => {
-				if (this.form != Form.PHONE || !this.selector.visible || this.selector.kind != "file") {
+				if (!this.selector.visible || this.selector.kind != "file") {
 					return false;
 				}
 				if (keyval != Gdk.Key.Back && keyval != Gdk.Key.Escape) {
@@ -243,9 +220,6 @@ namespace OLLMapp
 			});
 			this.selector.add_controller(keys);
 			this.filters.notify["visible-child-name"].connect(() => {
-				if (this.form != Form.PHONE) {
-					return;
-				}
 				var on_tree = this.filters.visible_child_name == "tree";
 				this.folder_tree.ghost.opacity = on_tree ? 1 : 0;
 				this.folder_tree.ghost.sensitive = on_tree;
@@ -271,6 +245,7 @@ namespace OLLMapp
 				this.show_files();
 			});
 			this.notify["project"].connect(() => {
+				this.browse.project = this.project;
 				if (!this.project.is_project) {
 					return;
 				}
@@ -300,44 +275,31 @@ namespace OLLMapp
 			this.selector.pages.visible_child_name = "file";
 			this.selector.search.placeholder_text = "Search files";
 			this.selector.visible = true;
-			if (this.form == Form.PHONE) {
-				this.selector.close.visible = true;
-				this.file_bar.visible = true;
-				this.filters.visible_child_name = "tree";
-				if (this.selector.search.text != "") {
-					this.selector.search.text = "";
-				}
-				if (!this.project.is_project) {
-					return;
-				}
-				if (this.folder_tree.folders.loaded.contains(this.project.path)) {
-					this.refresh_folder(this.file_folder());
-					return;
-				}
-				this.folder_tree.folders.load.begin(this.project, (obj, res) => {
-					this.folder_tree.folders.load.end(res);
-					this.refresh_folder(this.file_folder());
-				});
+			this.selector.close.visible = true;
+			this.file_bar.visible = true;
+			this.filters.visible_child_name = "tree";
+			this.search_open = false;
+			this.search_epoch++;
+			if (this.selector.search.text != "") {
+				this.selector.search.text = "";
+			}
+			if (!this.project.is_project) {
 				return;
 			}
-			this.selector.heading.label = "Files";
-			this.selector.close.visible = false;
-			this.selector.previous.visible = true;
-			this.selector.current.visible = true;
-			this.selector.current.label = this.label.label;
-			if (this.button.tooltip_text != "") {
-				this.selector.current.label = this.button.tooltip_text;
+			if (this.folder_tree.folders.loaded.contains(this.project.path)) {
+				this.refresh_folder(this.file_folder());
+				return;
 			}
-			this.selector.search.text = " ";
-			this.selector.search.text = "";
+			this.folder_tree.folders.load.begin(this.project, (obj, res) => {
+				this.folder_tree.folders.load.end(res);
+				this.refresh_folder(this.file_folder());
+			});
 		}
 
 		/**
-		 * Refresh the phone page to one folder. Child folders come
-		 * from the folder tree kept in memory. Empty and ignored
-		 * folders stay hidden while the ghost button is on, which
-		 * is how it starts. Files come from {@link FileListStore}.
-		 * The arrow is hidden at the project root.
+		 * Refresh the phone page to one folder. The title and the
+		 * place line follow that folder. {@link FolderBrowse} shows
+		 * the level. The arrow is hidden at the project root.
 		 *
 		 * @param folder Folder now shown
 		 */
@@ -361,25 +323,7 @@ namespace OLLMapp
 				this.list.unparent();
 				this.recent_scroll.child = this.list;
 			}
-			this.folders.visible = false;
-			this.folders.bind_model(null, null);
-			if (!this.folder_tree.folders.segments.has_key(folder.path)) {
-				this.file_list.files.load.begin(folder);
-				return;
-			}
-			var shown = new Gtk.FilterListModel(
-				this.folder_tree.folders.segments.get(folder.path),
-				this.folder_tree.filter
-			);
-			this.folder_model = shown;
-			this.folders.bind_model(shown, (item) => {
-				return this.list_box_factory((OLLMfiles.FileBase) item, "folder-symbolic");
-			});
-			this.folders.visible = shown.get_n_items() > 0;
-			shown.items_changed.connect(() => {
-				this.folders.visible = shown.get_n_items() > 0;
-			});
-			this.file_list.files.load.begin(folder);
+			this.browse.refresh_folder(folder);
 		}
 
 		/**
@@ -405,111 +349,149 @@ namespace OLLMapp
 		}
 
 		/**
-		 * List box factory for a phone folder or file. The caller
-		 * picks the icon, so the folder list and the file list can
-		 * diverge later. The second line is the path relative to the
-		 * project, including the item name. That line is absent at
-		 * the project root. A long path drops the item name first,
-		 * then keeps the first folder.
+		 * Fill the visible phone list from the search box.
 		 *
-		 * @param item Folder or file for this list box
-		 * @param icon_name Icon chosen by that list
-		 * @return The list box child
-		 */
-		private Gtk.Widget list_box_factory(OLLMfiles.FileBase item, string icon_name)
-		{
-			var line = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 8) {
-				margin_start = 12,
-				margin_end = 12,
-				margin_top = 8,
-				margin_bottom = 8,
-			};
-			line.append(new Gtk.Image.from_icon_name(icon_name) {
-				valign = Gtk.Align.CENTER,
-			});
-			var column = new Gtk.Box(Gtk.Orientation.VERTICAL, 4) {
-				hexpand = true,
-			};
-			column.append(new Gtk.Label(item.path_basename) {
-				xalign = 0,
-				halign = Gtk.Align.START,
-				hexpand = true,
-				ellipsize = Pango.EllipsizeMode.END,
-				css_classes = { "body", "list-chat-title" },
-			});
-			var rel = item.path;
-			if (this.project.path != "" && rel.has_prefix(this.project.path)) {
-				rel = rel.substring(this.project.path.length);
-			}
-			if (rel.has_prefix("/")) {
-				rel = rel.substring(1);
-			}
-			var below = rel.contains("/");
-			if (below && rel.length > 36) {
-				var cut = rel.last_index_of_char('/');
-				if (cut > 0) {
-					rel = rel.substring(0, cut);
-				}
-			}
-			if (below && rel.contains("/") && rel.length > 36) {
-				var first = rel.index_of_char('/');
-				if (first > 0) {
-					rel = rel.substring(0, first) + "/…";
-				}
-			}
-			if (below) {
-				column.append(new Gtk.Label(rel) {
-					xalign = 0,
-					halign = Gtk.Align.START,
-					hexpand = true,
-					ellipsize = Pango.EllipsizeMode.END,
-					css_classes = { "caption", "dim-label" },
-				});
-			}
-			line.append(column);
-			return line;
-		}
-
-		/**
-		 * Fill the visible phone or tablet list from the search box.
-		 *
-		 * An empty phone query on Tree shows the open folder. A
-		 * query on Tree fills the pullout list. Recent fills that
-		 * same list with viewed files. Tablet always fills it.
+		 * An empty query on Tree returns to the folder that was open
+		 * when the search started. A query checks the files already
+		 * on screen before asking the server. It stays in that folder
+		 * when it contains a match, and walks up until one does. No
+		 * match shows ''no results''. A search the server will not
+		 * return still shows matches from the open folder. Another
+		 * folder with none shows ''too many results''. Recent fills
+		 * the list with viewed files.
 		 */
 		private void on_search_changed_tree()
 		{
 			if (!this.project.is_project) {
 				return;
 			}
-			if (this.form != Form.PHONE) {
-				this.pullout_epoch++;
-				this.load(this.selector.search.text.strip(), this.files, this.list,
-					this.pullout_epoch, Slot.PULLOUT);
-				return;
-			}
+			var query = this.selector.search.text.strip();
 			if (this.filters.visible_child_name == "recent") {
 				if (this.recent_scroll.child != this.list) {
 					this.list.unparent();
 					this.recent_scroll.child = this.list;
 				}
 				this.history_epoch++;
-				this.load(this.selector.search.text.strip(), this.files, this.list,
-					this.history_epoch, Slot.HISTORY);
+				this.load(query, this.files, this.list, this.history_epoch, Slot.HISTORY);
 				return;
 			}
-			if (this.selector.search.text.strip() == "") {
+			if (query == "") {
+				this.search_epoch++;
+				this.search_wide = false;
+				this.browse.query = "";
+				this.folder_tree.search_reset();
+				this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
+				if (this.search_open) {
+					this.search_open = false;
+					this.refresh_folder(this.search_home);
+					return;
+				}
 				this.refresh_folder(this.level);
 				return;
 			}
-			this.browse.visible = false;
-			if (this.list.get_parent() != this.tree_box) {
-				this.list.unparent();
-				this.tree_box.append(this.list);
+			if (!this.search_open) {
+				this.search_home = this.level;
+				this.search_open = true;
 			}
-			this.pullout_epoch++;
-			this.load(this.selector.search.text.strip(), this.files, this.list,
-				this.pullout_epoch, Slot.PULLOUT);
+			var shown = false;
+			var count = this.file_list.files.get_n_items();
+			for (var i = 0; i < count; i++) {
+				var file = (OLLMfiles.File) this.file_list.files.get_item(i);
+				if (file != null && file.path_basename.down().contains(query.down())) {
+					shown = true;
+					break;
+				}
+			}
+			if (shown) {
+				this.search_epoch++;
+				this.search_wide = false;
+				this.folder_tree.search_reset();
+				this.folder_tree.filter.changed(Gtk.FilterChange.DIFFERENT);
+				this.browse.query = query;
+				this.browse.visible = true;
+				if (this.recent_scroll.child != this.list) {
+					this.list.unparent();
+					this.recent_scroll.child = this.list;
+				}
+				return;
+			}
+			this.search_epoch++;
+			var epoch = this.search_epoch;
+			this.project.fetch_files.begin(50, query, {}, false, false, (obj, res) => {
+				this.on_load_results(epoch, res);
+				if (epoch != this.search_epoch) {
+					return;
+				}
+				if (this.file_list.notice == "too many results") {
+					this.search_wide = true;
+					var local = false;
+					var n = this.file_list.files.get_n_items();
+					for (var i = 0; i < n; i++) {
+						var file = (OLLMfiles.File) this.file_list.files.get_item(i);
+						if (file != null && file.path_basename.down().contains(query.down())) {
+							local = true;
+							break;
+						}
+					}
+					if (local) {
+						this.browse.query = query;
+						this.browse.visible = true;
+						return;
+					}
+					this.browse.visible = false;
+					this.files.remove_all();
+					this.list_note.label = "too many results";
+					if (this.list.get_parent() != this.tree_box) {
+						this.list.unparent();
+						this.tree_box.append(this.list);
+					}
+					return;
+				}
+				this.search_wide = false;
+				if (this.file_list.notice != "") {
+					this.browse.visible = false;
+					this.files.remove_all();
+					this.list_note.label = this.file_list.notice;
+					if (this.list.get_parent() != this.tree_box) {
+						this.list.unparent();
+						this.tree_box.append(this.list);
+					}
+					return;
+				}
+				var here = this.search_home;
+				if (this.folder_tree.folders.path_map.has_key(here.path)) {
+					here = this.folder_tree.folders.path_map.get(here.path);
+				}
+				var found = here;
+				var matched = false;
+				while (true) {
+					if (this.folder_tree.visible.has_key((int) here.id)) {
+						found = here;
+						matched = true;
+						break;
+					}
+					if (here.is_project) {
+						break;
+					}
+					var parent_id = (int) here.parent_id;
+					if (!this.folder_tree.folders.id_map.has_key(parent_id)) {
+						break;
+					}
+					here = this.folder_tree.folders.id_map.get(parent_id);
+				}
+				if (!matched) {
+					this.browse.visible = false;
+					this.files.remove_all();
+					this.list_note.label = "no results";
+					if (this.list.get_parent() != this.tree_box) {
+						this.list.unparent();
+						this.tree_box.append(this.list);
+					}
+					return;
+				}
+				this.browse.query = query;
+				this.refresh_folder(found);
+			});
 		}
 	}
 }

@@ -111,6 +111,25 @@ namespace OLLMapp
 		protected int search_epoch = 0;
 
 		/**
+		 * Folder open when a name search started. Clearing the
+		 * search returns here. Phone and tablet use this.
+		 */
+		protected OLLMfiles.Folder search_home;
+
+		/**
+		 * True from the first character of a name search until the
+		 * query is cleared.
+		 */
+		protected bool search_open = false;
+
+		/**
+		 * The name search was wider than the server will return.
+		 * A folder with matching files still shows those files.
+		 * A folder with none shows ''too many results''.
+		 */
+		protected bool search_wide = false;
+
+		/**
 		 * File path shown on the button. A search that is too wide
 		 * replaces the label until the text is narrowed or cleared.
 		 */
@@ -134,6 +153,7 @@ namespace OLLMapp
 				form: form,
 				project: new OLLMfiles.Folder(manager)
 			);
+			this.search_home = this.project;
 			this.label = new Gtk.Label("Select file") {
 				xalign = 0,
 				halign = Gtk.Align.START,

@@ -31,6 +31,26 @@ namespace OLLMfilesd
 		public static void rpc_register()
 		{
 			OLLMrpc.Bin.register("FileDiffPart", typeof(FileDiffPart));
+			OLLMrpc.Request.add_class(
+				"FileDiffPart", typeof(FileDiffPart),
+				"apply", "xi"
+			);
+		}
+
+		private ProjectManager rpc_manager;
+		private FileHistory history;
+
+		/**
+		 * Wire handler for {@code FileDiffPart.apply}.
+		 *
+		 * @param manager daemon projects and the database
+		 * @param history the registered {@code FileHistory} handler
+		 */
+		public FileDiffPart.for_rpc(ProjectManager manager, FileHistory history)
+		{
+			Object();
+			this.rpc_manager = manager;
+			this.history = history;
 		}
 
 		public int64 id { get; set; default = 0; }
@@ -107,6 +127,139 @@ namespace OLLMfilesd
 				&& this.new_line_end == other.new_line_end;
 			var hunks = this.checksum != "" && this.checksum == other.checksum;
 			return lines ? (hunks ? 3 : 1) : (hunks ? 2 : 0);
+		}
+
+		/**
+		 * ''FileDiffPart.apply'' — accept, reject, or reset one hunk.
+		 *
+		 * @param request inbound RPC
+		 * @param id file_diff_part.id
+		 * @param action 1 accept, -1 reject, 0 reset
+		 */
+		public void apply(OLLMrpc.Request request, int64 id, int action)
+		{
+			if (!this.history.part.has_key((int) id)) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"diff item is not loaded"
+					)
+				});
+				return;
+			}
+			var item = this.history.part.get((int) id);
+			item.commit.begin(this.history, this.rpc_manager.db, action, (obj, res) => {
+				try {
+					item.commit.end(res);
+				} catch (GLib.Error e) {
+					request.reply(new OLLMrpc.Response() {
+						id = request.id,
+						error = new OLLMrpc.Error(
+							OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+							e.message
+						)
+					});
+					return;
+				}
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					retval = OLLMrpc.val("o", item)
+				});
+			});
+		}
+
+		/**
+		 * Store one decision and write the project file when the
+		 * hunk text on disk has to change.
+		 *
+		 * A decision that leaves the file alone stores and returns.
+		 * Reject of a pending or accepted hunk writes ''hunk_remove''.
+		 * Accept or reset of a rejected hunk writes ''hunk_add''
+		 * through the project file's buffer. Later hunks on the
+		 * remembered list shift by the line delta. Updates
+		 * ''live_stamp'' from {@link File.mtime_on_disk} after the
+		 * write. The store after a write repeats the no-write store.
+		 *
+		 * @param history the registered {@code FileHistory} handler
+		 * @param db daemon database
+		 * @param action 1 accept, -1 reject, 0 reset
+		 * @throws GLib.Error the project file could not be read or written
+		 */
+		public async void commit(FileHistory history, SQ.Database db, int action) throws GLib.Error
+		{
+			var histories = new Gee.ArrayList<FileHistory>();
+			FileHistory.query(db).select(
+				"WHERE id = %lld".printf(this.file_history_id),
+				histories
+			);
+			if (histories.size == 0) {
+				throw new GLib.IOError.FAILED("history row not found");
+			}
+			var list = history.live.get((int) this.file_history_id);
+			if ((action != -1 && this.accepted != -1) || (action == -1 && this.accepted == -1)) {
+				this.accepted = action == 0 ? 0 : action;
+				this.decided_at = action == 0 ? (int64) 0 : GLib.get_real_time();
+				FileDiffPart.query(db).updateById(this);
+				var open = false;
+				foreach (var item in list) {
+					if (item.accepted == 0) {
+						open = true;
+					}
+				}
+				histories.get(0).reviewed = open ? 0 : 1;
+				FileHistory.query(db).updateById(histories.get(0));
+				return;
+			}
+			var insert = this.hunk_add;
+			if (action == -1) {
+				insert = this.hunk_remove;
+			}
+			var file = history.rpc_manager.get_file_from_active_project(
+				histories.get(0).path);
+			if (file == null) {
+				throw new GLib.IOError.FAILED("file not found");
+			}
+			if (file.buffer == null) {
+				file.manager.buffer_provider.create_buffer(file);
+			}
+			var add_count = this.new_line_end < this.new_line_start
+				? 0 : this.new_line_end - this.new_line_start + 1;
+			var remove_count = this.old_line_end < this.old_line_start
+				? 0 : this.old_line_end - this.old_line_start + 1;
+			var span = this.accepted == -1 ? remove_count : add_count;
+			var at = this.new_line_start;
+			var inserted = insert == "" ? 0 : insert.split("\n").length;
+			var changes = new Gee.ArrayList<FileChange>();
+			changes.add(new FileChange(file) {
+				start = at,
+				end = at + span,
+				replacement = insert
+			});
+			yield file.buffer.apply_edits(changes);
+			var delta = inserted - span;
+			this.new_line_end = inserted == 0
+				? this.new_line_start - 1
+				: this.new_line_start + inserted - 1;
+			foreach (var other in list) {
+				if (other.id == this.id || other.new_line_start < at + span) {
+					continue;
+				}
+				other.new_line_start += delta;
+				other.new_line_end += delta;
+			}
+			history.live_stamp.set((int) this.file_history_id, (int) file.mtime_on_disk());
+			this.accepted = action == 0 ? 0 : action;
+			this.decided_at = action == 0 ? (int64) 0 : GLib.get_real_time();
+			FileDiffPart.query(db).updateById(this);
+			var open = false;
+			foreach (var item in list) {
+				if (item.accepted == 0) {
+					open = true;
+				}
+			}
+			histories.get(0).reviewed = open ? 0 : 1;
+			FileHistory.query(db).updateById(histories.get(0));
 		}
 
 		/**

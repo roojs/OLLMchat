@@ -196,17 +196,6 @@ namespace OLLMcoder
 				this.save_file.begin();
 			});
 			header_bar.append(this.save_button);
-			
-			// Create Approvals widget with ProjectManager
-			this.approvals = new Approvals(this.manager);
-			
-			// Add approvals bar to header bar (after save button)
-			header_bar.append(this.approvals);
-			
-			// Connect file_selected signal to open files
-			this.approvals.file_selected.connect((file) => {
-				this.open_file.begin(file);
-			});
 			this.manager.review_files.refreshed.connect(() => {
 				var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
 				rows.add_all(this.manager.review_files.file_map.values);
@@ -991,6 +980,23 @@ namespace OLLMcoder
 					this.diff_baseline.add(new_i);
 					kinds.add(0);
 					new_i++;
+				}
+				if (part.accepted != 0) {
+					if (add_count == 0) {
+						if (part.new_line_start > new_i) {
+							new_i = part.new_line_start;
+						}
+						continue;
+					}
+					for (var ln = part.new_line_start;
+						ln < part.new_line_start + add_count && ln <= editor_lines.length;
+						ln++) {
+						display.add(editor_lines[ln - 1]);
+						this.diff_baseline.add(ln);
+						kinds.add(0);
+					}
+					new_i = part.new_line_start + add_count;
+					continue;
 				}
 				if (remove_count > 0 && part.hunk_remove != "") {
 					this.diff_remove_at.add(part.new_line_start);

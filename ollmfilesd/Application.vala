@@ -309,7 +309,10 @@ Examples:
 			OLLMrpc.Request.register("ProjectManager", this.project_manager);
 			OLLMrpc.Request.register("File", new File(this.project_manager));
 			OLLMrpc.Request.register("Folder", new Folder(this.project_manager));
-			OLLMrpc.Request.register("FileHistory", new FileHistory.for_rpc(this.project_manager));
+			var history = new FileHistory.for_rpc(this.project_manager);
+			OLLMrpc.Request.register("FileHistory", history);
+			OLLMrpc.Request.register("FileDiffPart",
+				new FileDiffPart.for_rpc(this.project_manager, history));
 			OLLMrpc.Request.register("Codebase",  new Codebase(this.project_manager, this.config));
 			OLLMrpc.Request.register("Sandbox-Bubble",
 				new Sandbox.Bubble(this.project_manager));

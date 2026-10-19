@@ -439,12 +439,15 @@ namespace OLLMfilesd
 			}
 		}
 		
-		private ProjectManager rpc_manager;
-		private Gee.HashMap<int, Gee.ArrayList<FileDiffPart>> live {
+		internal ProjectManager rpc_manager;
+		internal Gee.HashMap<int, Gee.ArrayList<FileDiffPart>> live {
 			get; set; default = new Gee.HashMap<int, Gee.ArrayList<FileDiffPart>>();
 		}
-		private Gee.HashMap<int, int> live_stamp {
+		internal Gee.HashMap<int, int> live_stamp {
 			get; set; default = new Gee.HashMap<int, int>();
+		}
+		internal Gee.HashMap<int, FileDiffPart> part {
+			get; set; default = new Gee.HashMap<int, FileDiffPart>();
 		}
 
 		public static void rpc_register()
@@ -453,7 +456,8 @@ namespace OLLMfilesd
 				"FileHistory", typeof(FileHistory),
 				"rpc_approve", "sx",
 				"rpc_revert", "sx",
-				"parts", "x"
+				"parts", "x",
+				"decide", "xi"
 			);
 		}
 
@@ -495,23 +499,19 @@ namespace OLLMfilesd
 				});
 				return;
 			}
-			var stamp = (int64) 0;
-			try {
-				var info = GLib.File.new_for_path(histories.get(0).path).query_info(
-					GLib.FileAttribute.TIME_MODIFIED_USEC,
-					GLib.FileQueryInfoFlags.NONE,
-					null);
-				stamp = (int64) info.get_attribute_uint64(
-					GLib.FileAttribute.TIME_MODIFIED_USEC);
-			} catch (GLib.Error e) {
+			var file = this.rpc_manager.get_file_from_active_project(
+				histories.get(0).path);
+			if (file == null) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					error = new OLLMrpc.Error(OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
-						e.message
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"file not found"
 					)
 				});
 				return;
 			}
+			var stamp = file.mtime_on_disk();
 			if (this.live.has_key((int) id) && this.live_stamp.has_key((int) id) &&
 				this.live_stamp.get((int) id) == (int) stamp) {
 				request.reply(new OLLMrpc.Response() {
@@ -536,6 +536,73 @@ namespace OLLMfilesd
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
 				retval = OLLMrpc.val("o", rows)
+			});
+		}
+
+		/**
+		 * ''FileHistory.decide'' — accept, reject, or reset every
+		 * hunk on one history row.
+		 *
+		 * Does not call {@code FileDiffPart.apply} on the wire.
+		 * Runs {@link FileDiffPart.commit} from the bottom upward.
+		 *
+		 * @param request inbound RPC
+		 * @param id file_history.id
+		 * @param action 1 accept, -1 reject, 0 reset
+		 */
+		public void decide(OLLMrpc.Request request, int64 id, int action)
+		{
+			if (!this.live.has_key((int) id)) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						"diff items are not loaded"
+					)
+				});
+				return;
+			}
+			var rows = new Gee.ArrayList<FileDiffPart>();
+			rows.add_all(this.live.get((int) id));
+			rows.sort((a, b) => {
+				return b.new_line_start - a.new_line_start;
+			});
+			this.commit_decided.begin(request, (int) id, rows, action);
+		}
+
+		/**
+		 * Yields {@link FileDiffPart.commit} from the bottom upward,
+		 * then replies with the remembered list.
+		 *
+		 * @param request inbound RPC
+		 * @param id file_history.id cast for the {@code live} key
+		 * @param rows hunks, highest {@code new_line_start} first
+		 * @param action 1 accept, -1 reject, 0 reset
+		 */
+		private async void commit_decided(
+			OLLMrpc.Request request,
+			int id,
+			Gee.ArrayList<FileDiffPart> rows,
+			int action
+		)
+		{
+			try {
+				foreach (var part in rows) {
+					yield part.commit(this, this.rpc_manager.db, action);
+				}
+			} catch (GLib.Error e) {
+				request.reply(new OLLMrpc.Response() {
+					id = request.id,
+					error = new OLLMrpc.Error(
+						OLLMrpc.RpcErrorCode.INTERNAL_ERROR,
+						e.message
+					)
+				});
+				return;
+			}
+			request.reply(new OLLMrpc.Response() {
+				id = request.id,
+				retval = OLLMrpc.val("o", this.live.get(id))
 			});
 		}
 
@@ -571,11 +638,15 @@ namespace OLLMfilesd
 				backup = (string) GLib.File.new_for_path(
 					history.backup_path).load_bytes(null).get_data();
 			}
-			var project = (string) GLib.File.new_for_path(
-				history.path).load_bytes(null).get_data();
-			var info = GLib.File.new_for_path(history.path).query_info(
-				GLib.FileAttribute.TIME_MODIFIED_USEC, GLib.FileQueryInfoFlags.NONE, null);
-			var stamp = (int64) info.get_attribute_uint64(GLib.FileAttribute.TIME_MODIFIED_USEC);
+			var file = this.rpc_manager.get_file_from_active_project(history.path);
+			if (file == null) {
+				throw new GLib.IOError.FAILED("file not found");
+			}
+			if (file.buffer == null) {
+				file.manager.buffer_provider.create_buffer(file);
+			}
+			var project = file.buffer.get_text();
+			var stamp = file.mtime_on_disk();
 			var differ = new OLLMfiles.Diff.Differ(backup, project);
 			var patches = differ.diff();
 			var fresh = new Gee.ArrayList<FileDiffPart>();
@@ -598,6 +669,14 @@ namespace OLLMfilesd
 			if (rows.size == 0) {
 				foreach (var part in fresh) {
 					FileDiffPart.query(this.rpc_manager.db).insert(part);
+				}
+				if (this.live.has_key((int) history.id)) {
+					foreach (var old in this.live.get((int) history.id)) {
+						this.part.unset((int) old.id);
+					}
+				}
+				foreach (var part in fresh) {
+					this.part.set((int) part.id, part);
 				}
 				this.live.set((int) history.id, fresh);
 				this.live_stamp.set((int) history.id, (int) stamp);
@@ -655,6 +734,14 @@ namespace OLLMfilesd
 			}
 			foreach (var old in older.values) {
 				FileDiffPart.query(this.rpc_manager.db).deleteId(old.id);
+			}
+			if (this.live.has_key((int) history.id)) {
+				foreach (var old in this.live.get((int) history.id)) {
+					this.part.unset((int) old.id);
+				}
+			}
+			foreach (var part in kept) {
+				this.part.set((int) part.id, part);
 			}
 			this.live.set((int) history.id, kept);
 			this.live_stamp.set((int) history.id, (int) stamp);
