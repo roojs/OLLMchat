@@ -438,14 +438,14 @@ One wire name. Approve, revert, and `parts` are methods on it.
 
 #### Add — `live` after `private ProjectManager rpc_manager;`
 
-Remembered objects for this process. `hunk_remove` and `hunk_add` stay on them. The table does not store them. `live_stamp` is the project file's modification time in microseconds when that list was diffed.
+Remembered objects for this process. `hunk_remove` and `hunk_add` stay on them. The table does not store them. `live_stamp` is the project file's modification time in microseconds when that list was diffed. `Gee.HashMap` has no `int64` key. The history id and the usec stamp are cast to `int` at each lookup.
 
 ```vala
-		private Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>> live {
-			get; set; default = new Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>>();
+		private Gee.HashMap<int, Gee.ArrayList<FileDiffPart>> live {
+			get; set; default = new Gee.HashMap<int, Gee.ArrayList<FileDiffPart>>();
 		}
-		private Gee.HashMap<int64, int64> live_stamp {
-			get; set; default = new Gee.HashMap<int64, int64>();
+		private Gee.HashMap<int, int> live_stamp {
+			get; set; default = new Gee.HashMap<int, int>();
 		}
 ```
 
@@ -500,10 +500,11 @@ This request returns the remembered list when `live_stamp` for that history id s
 				});
 				return;
 			}
-			if (this.live.has_key(id) && this.live_stamp.has_key(id) && this.live_stamp.get(id) == stamp) {
+			if (this.live.has_key((int) id) && this.live_stamp.has_key((int) id) &&
+				this.live_stamp.get((int) id) == (int) stamp) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
-					retval = OLLMrpc.val("o", this.live.get(id))
+					retval = OLLMrpc.val("o", this.live.get((int) id))
 				});
 				return;
 			}
@@ -606,12 +607,13 @@ Looking at one file. The backup and the project file are the two texts. `Differ`
 				foreach (var part in fresh) {
 					FileDiffPart.query(this.rpc_manager.db).insert(part);
 				}
-				this.live.set(history.id, fresh);
-				this.live_stamp.set(history.id, stamp);
+				this.live.set((int) history.id, fresh);
+				this.live_stamp.set((int) history.id, (int) stamp);
 				return fresh;
 			}
-			if (this.live.has_key(history.id) && this.live.get(history.id).size > 0) {
-				rows = this.live.get(history.id);
+			if (this.live.has_key((int) history.id) &&
+				this.live.get((int) history.id).size > 0) {
+				rows = this.live.get((int) history.id);
 			}
 			var next_index = rows.get(rows.size - 1).part_index + 1;
 			var older = new Gee.HashMap<int, FileDiffPart>();
@@ -663,8 +665,8 @@ Looking at one file. The backup and the project file are the two texts. `Differ`
 			foreach (var old in older.values) {
 				FileDiffPart.query(this.rpc_manager.db).deleteId(old.id);
 			}
-			this.live.set(history.id, kept);
-			this.live_stamp.set(history.id, stamp);
+			this.live.set((int) history.id, kept);
+			this.live_stamp.set((int) history.id, (int) stamp);
 			return kept;
 		}
 ```

@@ -65,7 +65,7 @@ menu — Accept file changes
 - 💩 The hunk reply is that one updated item. The desktop adjusts the editor from the hunk text it already has.
 - 💩 The hunk method is `FileDiffPart.apply`. It is not `FileHistory.decide`.
 - 💩 The action on the wire is an int. `1` accept, `-1` reject, `0` reset. Same values as `accepted`. Reset stores `accepted` 0 and `decided_at` 0.
-- 💩 `live` and `live_stamp` stay instance properties on the one `FileHistory` handler. `FileDiffPart.for_rpc` is given that handler. Line numbers are not columns.
+- 💩 `live` and `live_stamp` stay instance properties on the one `FileHistory` handler. `FileDiffPart.for_rpc` is given that handler. Keys are `int`. A history id is cast at the lookup. Line numbers are not columns.
 
 ---
 
@@ -92,22 +92,22 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 #### Remove
 
 ```vala
-		private Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>> live {
-			get; set; default = new Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>>();
+		private Gee.HashMap<int, Gee.ArrayList<FileDiffPart>> live {
+			get; set; default = new Gee.HashMap<int, Gee.ArrayList<FileDiffPart>>();
 		}
-		private Gee.HashMap<int64, int64> live_stamp {
-			get; set; default = new Gee.HashMap<int64, int64>();
+		private Gee.HashMap<int, int> live_stamp {
+			get; set; default = new Gee.HashMap<int, int>();
 		}
 ```
 
 #### Replace with
 
 ```vala
-		internal Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>> live {
-			get; set; default = new Gee.HashMap<int64, Gee.ArrayList<FileDiffPart>>();
+		internal Gee.HashMap<int, Gee.ArrayList<FileDiffPart>> live {
+			get; set; default = new Gee.HashMap<int, Gee.ArrayList<FileDiffPart>>();
 		}
-		internal Gee.HashMap<int64, int64> live_stamp {
-			get; set; default = new Gee.HashMap<int64, int64>();
+		internal Gee.HashMap<int, int> live_stamp {
+			get; set; default = new Gee.HashMap<int, int>();
 		}
 ```
 
@@ -208,9 +208,12 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 		 * Store one decision and write the project file when the
 		 * hunk text on disk has to change.
 		 *
-		 * Pending or accepted text is ''hunk_add''. Rejected text is
-		 * ''hunk_remove''. Later hunks on the remembered list shift
-		 * by the line delta. Updates ''live_stamp'' after a write.
+		 * A decision that leaves the file alone stores and returns.
+		 * Reject of a pending or accepted hunk writes ''hunk_remove''.
+		 * Accept or reset of a rejected hunk writes ''hunk_add''.
+		 * Later hunks on the remembered list shift by the line delta.
+		 * Updates ''live_stamp'' after a write. The store after a
+		 * write repeats the no-write store.
 		 *
 		 * @param history the registered {@code FileHistory} handler
 		 * @param db daemon database
@@ -219,16 +222,6 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 		 */
 		public void commit(FileHistory history, SQ.Database db, int action) throws GLib.Error
 		{
-			var write = false;
-			var insert = this.hunk_add;
-			if (action == -1 && this.accepted != -1) {
-				write = true;
-				insert = this.hunk_remove;
-			}
-			if (action != -1 && this.accepted == -1) {
-				write = true;
-				insert = this.hunk_add;
-			}
 			var histories = new Gee.ArrayList<FileHistory>();
 			FileHistory.query(db).select(
 				"WHERE id = %lld".printf(this.file_history_id),
@@ -237,52 +230,68 @@ Edits are **Remove** / **Replace with** / **Add** from the tree. Verify surround
 			if (histories.size == 0) {
 				throw new GLib.IOError.FAILED("history row not found");
 			}
-			var list = history.live.get(this.file_history_id);
-			if (write) {
-				var body = (string) GLib.File.new_for_path(
-					histories.get(0).path).load_bytes(null).get_data();
-				var lines = body.split("\n");
-				var add_count = this.new_line_end < this.new_line_start
-					? 0 : this.new_line_end - this.new_line_start + 1;
-				var remove_count = this.old_line_end < this.old_line_start
-					? 0 : this.old_line_end - this.old_line_start + 1;
-				var span = this.accepted == -1 ? remove_count : add_count;
-				var at = this.new_line_start;
-				string[] next = {};
-				for (var i = 1; i < at && i <= lines.length; i++) {
-					next += lines[i - 1];
-				}
-				if (insert != "") {
-					var chunk = insert.split("\n");
-					for (var i = 0; i < chunk.length; i++) {
-						next += chunk[i];
+			var list = history.live.get((int) this.file_history_id);
+			if ((action != -1 && this.accepted != -1) || (action == -1 && this.accepted == -1)) {
+				this.accepted = action == 0 ? 0 : action;
+				this.decided_at = action == 0 ? (int64) 0 : GLib.get_real_time();
+				FileDiffPart.query(db).updateById(this);
+				var open = false;
+				foreach (var item in list) {
+					if (item.accepted == 0) {
+						open = true;
 					}
 				}
-				for (var i = at + span; i <= lines.length; i++) {
-					next += lines[i - 1];
-				}
-				GLib.File.new_for_path(histories.get(0).path).replace_contents(
-					string.joinv("\n", next).data, null, false,
-					GLib.FileCreateFlags.NONE, null);
-				var inserted = insert == "" ? 0 : insert.split("\n").length;
-				var delta = inserted - span;
-				this.new_line_end = inserted == 0
-					? this.new_line_start - 1
-					: this.new_line_start + inserted - 1;
-				foreach (var other in list) {
-					if (other.id == this.id || other.new_line_start < at + span) {
-						continue;
-					}
-					other.new_line_start += delta;
-					other.new_line_end += delta;
-				}
-				var info = GLib.File.new_for_path(histories.get(0).path).query_info(
-					GLib.FileAttribute.TIME_MODIFIED_USEC,
-					GLib.FileQueryInfoFlags.NONE, null);
-				history.live_stamp.set(this.file_history_id,
-					(int64) info.get_attribute_uint64(
-						GLib.FileAttribute.TIME_MODIFIED_USEC));
+				histories.get(0).reviewed = open ? 0 : 1;
+				FileHistory.query(db).updateById(histories.get(0));
+				return;
 			}
+			var insert = this.hunk_add;
+			if (action == -1) {
+				insert = this.hunk_remove;
+			}
+			var body = (string) GLib.File.new_for_path(
+				histories.get(0).path).load_bytes(null).get_data();
+			var lines = body.split("\n");
+			var add_count = this.new_line_end < this.new_line_start
+				? 0 : this.new_line_end - this.new_line_start + 1;
+			var remove_count = this.old_line_end < this.old_line_start
+				? 0 : this.old_line_end - this.old_line_start + 1;
+			var span = this.accepted == -1 ? remove_count : add_count;
+			var at = this.new_line_start;
+			string[] next = {};
+			for (var i = 1; i < at && i <= lines.length; i++) {
+				next += lines[i - 1];
+			}
+			if (insert != "") {
+				var chunk = insert.split("\n");
+				for (var i = 0; i < chunk.length; i++) {
+					next += chunk[i];
+				}
+			}
+			for (var i = at + span; i <= lines.length; i++) {
+				next += lines[i - 1];
+			}
+			GLib.File.new_for_path(histories.get(0).path).replace_contents(
+				string.joinv("\n", next).data, null, false,
+				GLib.FileCreateFlags.NONE, null);
+			var inserted = insert == "" ? 0 : insert.split("\n").length;
+			var delta = inserted - span;
+			this.new_line_end = inserted == 0
+				? this.new_line_start - 1
+				: this.new_line_start + inserted - 1;
+			foreach (var other in list) {
+				if (other.id == this.id || other.new_line_start < at + span) {
+					continue;
+				}
+				other.new_line_start += delta;
+				other.new_line_end += delta;
+			}
+			var info = GLib.File.new_for_path(histories.get(0).path).query_info(
+				GLib.FileAttribute.TIME_MODIFIED_USEC,
+				GLib.FileQueryInfoFlags.NONE, null);
+			history.live_stamp.set((int) this.file_history_id,
+				(int) info.get_attribute_uint64(
+					GLib.FileAttribute.TIME_MODIFIED_USEC));
 			this.accepted = action == 0 ? 0 : action;
 			this.decided_at = action == 0 ? (int64) 0 : GLib.get_real_time();
 			FileDiffPart.query(db).updateById(this);
@@ -346,7 +355,7 @@ Bottom of the file first, so a later hunk's `new_line_start` still matches the t
 		 */
 		public void decide(OLLMrpc.Request request, int64 id, int action)
 		{
-			if (!this.live.has_key(id)) {
+			if (!this.live.has_key((int) id)) {
 				request.reply(new OLLMrpc.Response() {
 					id = request.id,
 					error = new OLLMrpc.Error(
@@ -357,7 +366,7 @@ Bottom of the file first, so a later hunk's `new_line_start` still matches the t
 				return;
 			}
 			var rows = new Gee.ArrayList<FileDiffPart>();
-			rows.add_all(this.live.get(id));
+			rows.add_all(this.live.get((int) id));
 			rows.sort((a, b) => {
 				return b.new_line_start - a.new_line_start;
 			});
@@ -377,7 +386,7 @@ Bottom of the file first, so a later hunk's `new_line_start` still matches the t
 			}
 			request.reply(new OLLMrpc.Response() {
 				id = request.id,
-				retval = OLLMrpc.val("o", this.live.get(id))
+				retval = OLLMrpc.val("o", this.live.get((int) id))
 			});
 		}
 ```

@@ -150,11 +150,34 @@ namespace OLLMapp
 			this.search = new Gtk.SearchEntry() {
 				placeholder_text = "Search",
 				hexpand = true,
+				can_focus = false,
+				focus_on_click = false,
 				margin_start = 8,
 				margin_end = 8,
 				margin_bottom = 8,
 				margin_top = 8,
 			};
+			var search_inner = this.search.get_first_child();
+			while (search_inner != null) {
+				search_inner.can_focus = false;
+				search_inner.focus_on_click = false;
+				search_inner = search_inner.get_next_sibling();
+			}
+			var search_press = new Gtk.GestureClick() {
+				propagation_phase = Gtk.PropagationPhase.CAPTURE,
+			};
+			search_press.pressed.connect(() => {
+				this.search.can_focus = true;
+				this.search.focus_on_click = true;
+				var child = this.search.get_first_child();
+				while (child != null) {
+					child.can_focus = true;
+					child.focus_on_click = true;
+					child = child.get_next_sibling();
+				}
+				this.search.grab_focus();
+			});
+			this.search.add_controller(search_press);
 			this.append(pull_top);
 			this.append(this.current);
 			this.append(this.pages);

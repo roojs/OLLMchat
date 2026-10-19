@@ -1,22 +1,24 @@
 # 4.2.3.5.4 — Diff wire and cache model
 
-**Status:** **⏳** design — [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md), [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md), [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md)
+**Status:** **⏳** design — `[4.2.3.5.5](CODER-4.2.3.5.5-source-view-diff-items.md)`, `[4.2.3.5.6](CODER-4.2.3.5.6-source-view-diff-approval-calls.md)`, `[4.2.3.5.7](CODER-4.2.3.5.7-source-view-diff-resync.md)`
 
-> **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
+> **Do not update** `docs/plans/CODER-1.0-summary.md` **for this sub-plan.**
 
-**Parent:** [`CODER-4.2.3.5-source-view-diff-approval.md`](CODER-4.2.3.5-source-view-diff-approval.md)
+**Parent:** `[CODER-4.2.3.5-source-view-diff-approval.md](CODER-4.2.3.5-source-view-diff-approval.md)`
 
-**Supersedes:** [`done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) — do not apply that plan
+**Supersedes:** `[done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md)` — do not apply that plan
 
-**Phases:** [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md) diff items · [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md) approval · [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md) resync
+**Phases:** `[4.2.3.5.5](CODER-4.2.3.5.5-source-view-diff-items.md)` diff items · `[4.2.3.5.6](CODER-4.2.3.5.6-source-view-diff-approval-calls.md)` approval · `[4.2.3.5.7](CODER-4.2.3.5.7-source-view-diff-resync.md)` resync
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
 
 ---
 
+
+
 ## Purpose
 
-- 🔷 [`4.2.3.5.3`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) is superseded. One plan per phase: [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md), [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md), [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md). This file is the design.
+- 🔷 `[4.2.3.5.3](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md)` is superseded. One plan per phase: `[4.2.3.5.5](CODER-4.2.3.5.5-source-view-diff-items.md)`, `[4.2.3.5.6](CODER-4.2.3.5.6-source-view-diff-approval-calls.md)`, `[4.2.3.5.7](CODER-4.2.3.5.7-source-view-diff-resync.md)`. This file is the design.
 - 🔷 Two sides: `ollmfilesd` holds the texts. The desktop paints. Start from what crosses the wire.
 - 🔷 The client computes the diff today. That is the wrong side.
 - 🔷 The daemon already has the backup in the cache. Review data should come from that cache.
@@ -28,6 +30,8 @@
 - 💩 This file stays the wire design. Each phase is its own plan. No Vala fences here.
 
 ---
+
+
 
 ## What is already on disk
 
@@ -54,6 +58,8 @@ file_diff_part                       empty until a hunk is decided
 - ℹ️ `file_diff_part` is created and unused. `ollmfilesd/FileDiffPart.vala`.
 
 ---
+
+
 
 ## Open a pending file — wire
 
@@ -96,6 +102,8 @@ show_pending_diff   (only if pending)
 
 ---
 
+
+
 ## Open a pending file — what it should do
 
 Same open. `show_pending_diff` does not read the backup. The file server returns the stored diff items, or runs `Differ` and stores them. Each item includes its hunk text.
@@ -133,20 +141,22 @@ show_pending_diff   (only if pending)
 - 🔷 `show_pending_diff` is an RPC. It does not call `File.read` on `backup_path`.
 - 🔷 The `parts` request is the trigger. The diff itself is `FileHistory.rebuild_parts`. Inputs are the cache backup and the project file.
 - 🔷 No rows yet: `Differ`, store the rows, set `hunk_remove`, `hunk_add`, and the line range on the objects, and remember them.
-- 🔷 A later `parts` in the same process returns those objects only when the project file's modification stamp still matches the stamp captured when that list was diffed. The history id alone is not enough. Settled in [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md).
+- 🔷 A later `parts` in the same process returns those objects only when the project file's modification stamp still matches the stamp captured when that list was diffed. The history id alone is not enough. Settled in `[4.2.3.5.5](CODER-4.2.3.5.5-source-view-diff-items.md)`.
 - 🔷 Rows already in the table, with no remembered objects: `checksum` is still on the row. The hunk text is not.
 - 💩 Do not match those rows by `part_index`.
 - 🔷 `FileDiffPart.compare` checks one stored part against another file part and returns an int. `0` neither. `1` line numbers only. `2` checksum only. `3` both.
-- 🔷 A later diff indexes stored parts by start line and `compare`s each to the new part. `3` keeps the row. `1` replaces the hunk text and clears the decision. `2` keeps the decision and writes the new line range. `0` deletes that row and inserts the new part. A stored part with no new part at its start line is deleted. [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md).
+- 🔷 A later diff indexes stored parts by start line and `compare`s each to the new part. `3` keeps the row. `1` replaces the hunk text and clears the decision. `2` keeps the decision and writes the new line range. `0` deletes that row and inserts the new part. A stored part with no new part at its start line is deleted. `[4.2.3.5.5](CODER-4.2.3.5.5-source-view-diff-items.md)`.
 - 🔷 The diff item holds `hunk_remove` and `hunk_add`. Those strings are properties on the object that comes down the wire. They are not database columns. No `+` or `-` prefix. The line range is on the object too. Counts come from the range.
 - 🔷 The file server writes the diff items to disk and is in charge of that store. `hunk` is not in that row. A later open sets the text on the object and returns it.
 - 🔷 The client hangs that text on the diff item in memory. The client does not write diff items.
 - ℹ️ `file_diff_part` today is only `id`, `file_history_id`, `part_index`, `accepted`, `decided_at`. No hunk text. Rows are unused. `ollmfilesd/FileDiffPart.vala`.
-- 🔷 Settled in [`4.2.3.5.5`](CODER-4.2.3.5.5-source-view-diff-items.md). The table is `file_diff_part`. `hunk_remove` and `hunk_add` are properties on that object, not columns. `accepted` `0` is undecided, `1` accepted, `-1` rejected. `FileHistory.parts` takes the `file_history` id.
+- 🔷 Settled in `[4.2.3.5.5](CODER-4.2.3.5.5-source-view-diff-items.md)`. The table is `file_diff_part`. `hunk_remove` and `hunk_add` are properties on that object, not columns. `accepted` `0` is undecided, `1` accepted, `-1` rejected. `FileHistory.parts` takes the `file_history` id.
 - 🔷 The review diff belongs with the file server. Move `Differ`, `Patch`, and `PatchApplier` out of `libocfiles` into `ollmfilesd` when that is the only user.
 - 💩 Not this phase. Still used from `SourceView.show_diff`, `ReviewBar`'s `Differ` / `Patch` API, `examples/oc-diff.vala`, and `examples/oc-test-source-diff.vala`. Symlink until those are gone.
 
 ---
+
+
 
 ## Save while a review is open
 
@@ -177,9 +187,11 @@ diff update
 
 ---
 
+
+
 ## Approval call — superseded
 
-Not built. [`4.2.3.5.3`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) sent one hunk through `FileHistory.decide`, re-read both full texts, and replied with a `File` row. [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md) replaces that.
+Not built. `[4.2.3.5.3](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md)` sent one hunk through `FileHistory.decide`, re-read both full texts, and replied with a `File` row. `[4.2.3.5.6](CODER-4.2.3.5.6-source-view-diff-approval-calls.md)` replaces that.
 
 ```
 desktop                                          ollmfilesd
@@ -203,6 +215,8 @@ after reject, or reset of a reject
 - ℹ️ Planned `decide` reply is `retval = File`. `libocfiles/FileHistory.decide` does not read that retval.
 
 ---
+
+
 
 ## Approval call — what it should do
 
@@ -244,14 +258,16 @@ backup and project text stay put        (no wire)
 
 ---
 
+
+
 ## Call prefix
 
 `File` is the wrong prefix for these calls. The daemon class is `OLLMfilesd-File`. The hyphen joins the namespace and the class. The dot is only the method.
 
 ```
 today                         should
-File.read                 OLLMfilesd-File.read
-File.rpc_write            OLLMfilesd-File.rpc_write
+File.read                 File.read
+File.rpc_write            File.rpc_write
 FileHistory.rpc_approve   FileHistory.decide
 FileHistory.rpc_revert    FileHistory.decide
 ```
@@ -264,6 +280,8 @@ FileHistory.rpc_revert    FileHistory.decide
 - 💩 `decide` here is the menu for every diff item on that history. It is not the per-hunk `decide` in the superseded plan. The individual hunk call stays on the diff item. Its method name is still open.
 
 ---
+
+
 
 ## Working backwards
 
@@ -287,9 +305,12 @@ show_pending_diff
 
 ---
 
+
+
 ## LLM notes
 
 - 🚫 Implement the per-hunk `FileHistory.decide` from the superseded plan. `decide` is the menu for every diff item on that history.
 - 🚫 A hunk file that stores the full project text.
 - 🚫 Client `Differ` on the backup body as the long-term review path.
 - ℹ️ Touch points: `liboccoder/SourceView.vala` `show_pending_diff`, `ollmfilesd/File.vala` `read`, `ollmfilesd/FileWithHistory.vala`, `ollmfilesd/FileHistory.vala`, `ollmfilesd/FileDiffPart.vala`, `libocfiles/Diff/Differ.vala`.
+

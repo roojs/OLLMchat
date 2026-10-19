@@ -48,7 +48,10 @@ namespace OLLMapp
 		private Gtk.Box tree_box;
 		private Gtk.ScrolledWindow recent_scroll;
 		private Gtk.Stack filters;
+		private Gtk.Box file_bar;
+		private GLib.ListModel folder_model;
 		private OLLMfiles.Folder level;
+		private string chosen_path = "";
 		private uint file_wait = 0;
 
 		/**
@@ -63,6 +66,7 @@ namespace OLLMapp
 			base(manager, form);
 			this.selector = selector;
 			this.level = this.project;
+			this.folder_model = this.folder_tree.folders;
 			this.append(this.button);
 			this.files = new GLib.ListStore(typeof(OLLMfiles.File));
 			this.list = new Gtk.ListBox() {
@@ -118,21 +122,23 @@ namespace OLLMapp
 				selection_mode = Gtk.SelectionMode.NONE,
 			};
 			this.folders.row_activated.connect((line) => {
-				if (!this.folder_tree.folders.segments.has_key(this.level.path)) {
-					return;
-				}
-				var folder = (OLLMfiles.Folder) this.folder_tree.folders.segments.get(this.level.path).get_item((uint) line.get_index());
+				var folder = (OLLMfiles.Folder) this.folder_model.get_item((uint) line.get_index());
 				if (folder == null) {
 					return;
 				}
 				this.refresh_folder(folder);
+			});
+			var file_sorted = new Gtk.SortListModel(this.file_list.files, new Gtk.StringSorter(
+				new Gtk.PropertyExpression(typeof(OLLMfiles.File), null, "path_basename")
+			) {
+				ignore_case = true,
 			});
 			var file_box = new Gtk.ListBox() {
 				hexpand = true,
 				activate_on_single_click = true,
 				selection_mode = Gtk.SelectionMode.NONE,
 			};
-			file_box.bind_model(this.file_list.files, (item) => {
+			file_box.bind_model(file_sorted, (item) => {
 				return this.list_box_factory((OLLMfiles.FileBase) item, "text-x-generic-symbolic");
 			});
 			file_box.set_placeholder(new Gtk.Label("No files") {
@@ -144,7 +150,7 @@ namespace OLLMapp
 				css_classes = { "dim-label" },
 			});
 			file_box.row_activated.connect((line) => {
-				var file = (OLLMfiles.File) this.file_list.files.get_item((uint) line.get_index());
+				var file = (OLLMfiles.File) file_sorted.get_item((uint) line.get_index());
 				if (file == null) {
 					return;
 				}
@@ -183,21 +189,32 @@ namespace OLLMapp
 				vexpand = true,
 				hscrollbar_policy = Gtk.PolicyType.NEVER,
 			};
+			this.file_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				visible = false,
+			};
+			this.file_bar.append(this.folder_tree.ghost);
+			this.file_bar.append(new Gtk.StackSwitcher() {
+				stack = this.filters,
+				hexpand = true,
+			});
 			if (this.form == Form.PHONE) {
 				this.list.selection_mode = Gtk.SelectionMode.NONE;
 				this.recent_scroll.child = this.list;
+				this.selector.prepend(this.file_bar);
 				var page = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 					hexpand = true,
 					vexpand = true,
 				};
-				page.append(new Gtk.StackSwitcher() {
-					stack = this.filters,
-					hexpand = true,
-				});
 				page.append(this.filters);
 				pull_page = page;
 			}
 			this.selector.pages.add_named(pull_page, "file");
+			this.selector.pages.notify["visible-child-name"].connect(() => {
+				if (this.form != Form.PHONE) {
+					return;
+				}
+				this.file_bar.visible = this.selector.pages.visible_child_name == "file";
+			});
 			this.selector.back.connect(() => {
 				if (this.form != Form.PHONE || this.selector.kind != "file") {
 					return false;
@@ -226,7 +243,13 @@ namespace OLLMapp
 			});
 			this.selector.add_controller(keys);
 			this.filters.notify["visible-child-name"].connect(() => {
-				if (this.form != Form.PHONE || this.selector.kind != "file") {
+				if (this.form != Form.PHONE) {
+					return;
+				}
+				var on_tree = this.filters.visible_child_name == "tree";
+				this.folder_tree.ghost.opacity = on_tree ? 1 : 0;
+				this.folder_tree.ghost.sensitive = on_tree;
+				if (this.selector.kind != "file") {
 					return;
 				}
 				this.on_search_changed_tree();
@@ -245,50 +268,7 @@ namespace OLLMapp
 				});
 			});
 			this.button.clicked.connect(() => {
-				switch (this.form) {
-					case Form.PHONE:
-						this.selector.kind = "file";
-						this.selector.close.visible = true;
-						this.selector.pages.visible_child_name = "file";
-						this.selector.search.placeholder_text = "Search files";
-						this.selector.visible = true;
-						this.filters.visible_child_name = "tree";
-						if (this.selector.search.text != "") {
-							this.selector.search.text = "";
-						}
-						if (!this.project.is_project) {
-							return;
-						}
-						if (this.folder_tree.folders.loaded.contains(this.project.path)) {
-							this.refresh_folder(this.project);
-							return;
-						}
-						this.folder_tree.folders.load.begin(this.project, (obj, res) => {
-							this.folder_tree.folders.load.end(res);
-							this.refresh_folder(this.project);
-						});
-						return;
-
-					case Form.TABLET:
-						this.selector.kind = "file";
-						this.selector.heading.label = "Files";
-						this.selector.close.visible = false;
-						this.selector.previous.visible = true;
-						this.selector.current.visible = true;
-						this.selector.current.label = this.label.label;
-						if (this.button.tooltip_text != "") {
-							this.selector.current.label = this.button.tooltip_text;
-						}
-						this.selector.pages.visible_child_name = "file";
-						this.selector.search.placeholder_text = "Search files";
-						this.selector.visible = true;
-						this.selector.search.text = " ";
-						this.selector.search.text = "";
-						return;
-
-					default:
-						return;
-				}
+				this.show_files();
 			});
 			this.notify["project"].connect(() => {
 				if (!this.project.is_project) {
@@ -296,19 +276,68 @@ namespace OLLMapp
 				}
 				this.pullout_epoch++;
 				this.level = this.project;
+				if (!this.chosen_path.has_prefix(this.project.path + "/")) {
+					this.chosen_path = "";
+				}
 				this.files.remove_all();
 				this.file_list.files.clear();
+				this.show_files();
 			});
-			this.chosen.connect(() => {
+			this.chosen.connect((file) => {
+				this.chosen_path = file.path;
 				this.selector.visible = false;
 			});
 		}
 
 		/**
+		 * Open the file page for this layout. Phone shows the
+		 * folder that holds the chosen file, or the project root.
+		 * Search is left unfocused.
+		 */
+		private void show_files()
+		{
+			this.selector.kind = "file";
+			this.selector.pages.visible_child_name = "file";
+			this.selector.search.placeholder_text = "Search files";
+			this.selector.visible = true;
+			if (this.form == Form.PHONE) {
+				this.selector.close.visible = true;
+				this.file_bar.visible = true;
+				this.filters.visible_child_name = "tree";
+				if (this.selector.search.text != "") {
+					this.selector.search.text = "";
+				}
+				if (!this.project.is_project) {
+					return;
+				}
+				if (this.folder_tree.folders.loaded.contains(this.project.path)) {
+					this.refresh_folder(this.file_folder());
+					return;
+				}
+				this.folder_tree.folders.load.begin(this.project, (obj, res) => {
+					this.folder_tree.folders.load.end(res);
+					this.refresh_folder(this.file_folder());
+				});
+				return;
+			}
+			this.selector.heading.label = "Files";
+			this.selector.close.visible = false;
+			this.selector.previous.visible = true;
+			this.selector.current.visible = true;
+			this.selector.current.label = this.label.label;
+			if (this.button.tooltip_text != "") {
+				this.selector.current.label = this.button.tooltip_text;
+			}
+			this.selector.search.text = " ";
+			this.selector.search.text = "";
+		}
+
+		/**
 		 * Refresh the phone page to one folder. Child folders come
-		 * from the folder tree kept in memory. Files come from
-		 * {@link FileListStore}. The arrow is hidden at the project
-		 * root.
+		 * from the folder tree kept in memory. Empty and ignored
+		 * folders stay hidden while the ghost button is on, which
+		 * is how it starts. Files come from {@link FileListStore}.
+		 * The arrow is hidden at the project root.
 		 *
 		 * @param folder Folder now shown
 		 */
@@ -338,12 +367,41 @@ namespace OLLMapp
 				this.file_list.files.load.begin(folder);
 				return;
 			}
-			var segment = this.folder_tree.folders.segments.get(folder.path);
-			this.folders.bind_model(segment, (item) => {
+			var shown = new Gtk.FilterListModel(
+				this.folder_tree.folders.segments.get(folder.path),
+				this.folder_tree.filter
+			);
+			this.folder_model = shown;
+			this.folders.bind_model(shown, (item) => {
 				return this.list_box_factory((OLLMfiles.FileBase) item, "folder-symbolic");
 			});
-			this.folders.visible = segment.get_n_items() > 0;
+			this.folders.visible = shown.get_n_items() > 0;
+			shown.items_changed.connect(() => {
+				this.folders.visible = shown.get_n_items() > 0;
+			});
 			this.file_list.files.load.begin(folder);
+		}
+
+		/**
+		 * Folder holding the chosen file. The project is used when
+		 * no file is chosen, or when that folder is not in the tree.
+		 *
+		 * @return Folder the phone page should show
+		 */
+		private OLLMfiles.Folder file_folder()
+		{
+			if (this.chosen_path == "" || !this.chosen_path.has_prefix(this.project.path + "/")) {
+				return this.project;
+			}
+			var slash = this.chosen_path.last_index_of_char('/');
+			if (slash < 1) {
+				return this.project;
+			}
+			var dir = this.chosen_path.substring(0, slash);
+			if (!this.folder_tree.folders.path_map.has_key(dir)) {
+				return this.project;
+			}
+			return this.folder_tree.folders.path_map.get(dir);
 		}
 
 		/**

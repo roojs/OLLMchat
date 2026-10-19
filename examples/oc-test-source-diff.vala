@@ -19,6 +19,8 @@
 #if ANDROID_SOURCE_DIFF
 [CCode (cheader_filename = "android-gio-tls.h")]
 extern bool ollmapp_configure_android_gio_tls_modules();
+[CCode (cheader_filename = "sys/system_properties.h")]
+extern int __system_property_get(string name, [CCode (array_length = false)] uint8[] value);
 #endif
 
 namespace OLLMapp
@@ -134,6 +136,11 @@ namespace OLLMapp
 		protected override string? validate_args(string[] args)
 		{
 	#if ANDROID_SOURCE_DIFF
+			var model = new uint8[92];
+			__system_property_get("ro.build.characteristics", model);
+			if (((string) model).contains("tablet")) {
+				opt_tablet = true;
+			}
 			if (!opt_tablet) {
 				opt_phone = true;
 			}
