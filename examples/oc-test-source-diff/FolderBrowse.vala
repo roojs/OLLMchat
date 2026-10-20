@@ -102,6 +102,16 @@ namespace OLLMapp
 			if (!load_files) {
 				this.folders.selection_mode = Gtk.SelectionMode.SINGLE;
 			}
+			this.folders.set_filter_func((row) => {
+				var item = (OLLMfiles.Folder) this.folder_model.get_item((uint) row.get_index());
+				if (item == null) {
+					return false;
+				}
+				return this.tree.filter.match(item);
+			});
+			this.tree.filter.changed.connect(() => {
+				this.folders.invalidate_filter();
+			});
 			this.folders.row_activated.connect((line) => {
 				var folder = (OLLMfiles.Folder) this.folder_model.get_item((uint) line.get_index());
 				if (folder == null) {
@@ -167,7 +177,37 @@ namespace OLLMapp
 		 */
 		public void refresh_folder(OLLMfiles.Folder folder)
 		{
-			if (this.select_leaf(folder)) {
+			var leaf = !this.load_files && !folder.is_project;
+			if (leaf && this.tree.folders.segments.has_key(folder.path)) {
+				var child_model = new Gtk.FilterListModel(
+					this.tree.folders.segments.get(folder.path),
+					this.tree.filter
+				);
+				leaf = child_model.get_n_items() == 0;
+			}
+			if (leaf) {
+				var parent_id = (int) folder.parent_id;
+				if (!this.tree.folders.id_map.has_key(parent_id)) {
+					return;
+				}
+				var parent = this.tree.folders.id_map.get(parent_id);
+				if (!this.tree.folders.segments.has_key(parent.path)) {
+					return;
+				}
+				var segment = this.tree.folders.segments.get(parent.path);
+				if (this.folder_model != segment) {
+					this.refresh_folder(parent);
+				}
+				if (!this.tree.folders.item_at.has_key(folder.path)) {
+					return;
+				}
+				var row = this.folders.get_row_at_index(
+					this.tree.folders.item_at.get(folder.path)
+				);
+				if (row == null) {
+					return;
+				}
+				this.folders.select_row(row);
 				return;
 			}
 			this.folders.visible = false;
@@ -178,12 +218,10 @@ namespace OLLMapp
 				}
 				return;
 			}
-			var shown = new Gtk.FilterListModel(
-				this.tree.folders.segments.get(folder.path),
-				this.tree.filter
-			);
-			this.folder_model = shown;
-			this.folders.bind_model(shown, (item) => {
+			var segment = this.tree.folders.segments.get(folder.path);
+			var shown = new Gtk.FilterListModel(segment, this.tree.filter);
+			this.folder_model = segment;
+			this.folders.bind_model(segment, (item) => {
 				return this.list_box_factory((OLLMfiles.FileBase) item, "folder-symbolic");
 			});
 			this.folders.visible = shown.get_n_items() > 0;
@@ -194,68 +232,6 @@ namespace OLLMapp
 				return;
 			}
 			this.file_list.files.load.begin(folder);
-		}
-
-		/**
-		 * Select a folder that has no child folders.
-		 *
-		 * The list already on screen stays. The row is selected when
-		 * it is in that list. Otherwise the parent is shown first,
-		 * then the row. Phone lists files, so this does not apply.
-		 * A project, or a folder that still has child folders,
-		 * returns false and the caller opens those children.
-		 *
-		 * @param folder Folder the user opened
-		 * @return Whether the list was left as it is
-		 */
-		private bool select_leaf(OLLMfiles.Folder folder)
-		{
-			if (this.load_files || folder.is_project) {
-				return false;
-			}
-			if (this.tree.folders.segments.has_key(folder.path)) {
-				var child_model = new Gtk.FilterListModel(
-					this.tree.folders.segments.get(folder.path),
-					this.tree.filter
-				);
-				if (child_model.get_n_items() > 0) {
-					return false;
-				}
-			}
-			if (this.select_shown(folder)) {
-				return true;
-			}
-			var parent_id = (int) folder.parent_id;
-			if (!this.tree.folders.id_map.has_key(parent_id)) {
-				return true;
-			}
-			this.refresh_folder(this.tree.folders.id_map.get(parent_id));
-			this.select_shown(folder);
-			return true;
-		}
-
-		/**
-		 * Select ''folder'' when it is a row in the list on screen.
-		 *
-		 * @param folder Folder to mark
-		 * @return Whether that row was selected
-		 */
-		private bool select_shown(OLLMfiles.Folder folder)
-		{
-			var n = this.folder_model.get_n_items();
-			for (var i = 0; i < n; i++) {
-				var item = (OLLMfiles.Folder) this.folder_model.get_item(i);
-				if (item == null || item.path != folder.path) {
-					continue;
-				}
-				var row = this.folders.get_row_at_index(i);
-				if (row == null) {
-					return false;
-				}
-				this.folders.select_row(row);
-				return true;
-			}
-			return false;
 		}
 
 		/**

@@ -59,7 +59,19 @@ namespace OLLMapp
 		/**
 		 * Folder shown in the tablet left pane.
 		 */
-		private OLLMfiles.Folder level { get; set; }
+		private OLLMfiles.Folder level;
+
+		/**
+		 * Why the file sheet is opening.
+		 *
+		 * Button closes an open sheet and always fetches the
+		 * folder tree. Project drops the recent list and fetches
+		 * the tree only when it is not loaded yet.
+		 */
+		private enum OpenReason {
+			BUTTON,
+			PROJECT
+		}
 
 		/**
 		 * Build the tabbed sheet that covers the editor.
@@ -166,13 +178,14 @@ namespace OLLMapp
 				};
 				this.browse.selected.connect((folder) => {
 					this.level = folder;
+					this.heading.label = folder.context(this.project);
+					this.up.visible = !folder.is_project;
 					this.browse.project = this.project;
 					this.browse.refresh_folder(folder);
 					this.file_list.load(folder);
 					if (this.search_open) {
 						this.file_list.query = this.entry.text.strip();
 					}
-					this.up.visible = !folder.is_project;
 				});
 				this.up.clicked.connect(() => {
 					var parent = this.level.parent;
@@ -180,13 +193,14 @@ namespace OLLMapp
 						return;
 					}
 					this.level = parent;
+					this.heading.label = parent.context(this.project);
+					this.up.visible = !parent.is_project;
 					this.browse.project = this.project;
 					this.browse.refresh_folder(parent);
 					this.file_list.load(parent);
 					if (this.search_open) {
 						this.file_list.query = this.entry.text.strip();
 					}
-					this.up.visible = !parent.is_project;
 				});
 				this.file_list.files.items_changed.connect(() => {
 					if (!this.search_open || !this.search_wide) {
@@ -285,27 +299,14 @@ namespace OLLMapp
 				this.heading = new Gtk.Label("") {
 					hexpand = true,
 					xalign = 0,
-					ellipsize = Pango.EllipsizeMode.START,
+					visible = true,
+					ellipsize = Pango.EllipsizeMode.END,
 				};
 				this.heading.add_css_class("title-2");
+				place_row.hexpand = true;
 				place_row.append(this.up);
 				place_row.append(this.heading);
 				place_row.append(close_files);
-				this.notify["level"].connect(() => {
-					var shown = this.level.path;
-					var root = this.project.path;
-					var slash = root.last_index_of_char('/');
-					if (slash >= 0 && shown.has_prefix(root.substring(0, slash + 1))) {
-						shown = shown.substring(slash + 1);
-					}
-					if (shown == "") {
-						shown = this.project.path_basename;
-					}
-					this.heading.label = shown;
-					this.up.visible = !this.level.is_project;
-				});
-				this.level = this.project;
-				this.notify_property("level");
 			}
 			this.pages.notify["visible-child-name"].connect(() => {
 				var on_tree = this.pages.visible_child_name == "tree";
@@ -433,112 +434,88 @@ namespace OLLMapp
 			});
 			this.entry.add_controller(focus);
 			this.button.clicked.connect(() => {
-				if (this.list.visible) {
-					this.list.visible = false;
-					return;
-				}
-				this.opened();
-				this.search_open = false;
-				this.search_epoch++;
-				this.pages.visible_child_name = "tree";
-				if (this.form != Form.TABLET) {
-					this.face_stack.visible_child_name = "entry";
-					this.folder_tree.folders.load.begin(this.project);
-					this.entry.text = "";
-					this.history_epoch++;
-					this.load("", this.recent_files, this.recent_list,
-						this.history_epoch, Slot.HISTORY);
-					this.list.visible = true;
-					this.entry.grab_focus();
-					this.entry.set_position(-1);
-					this.entry.select_region(-1, -1);
-					return;
-				}
-				if (this.folder_tree.folders.loaded.contains(this.project.path)) {
-					this.level = this.project;
-					this.browse.project = this.project;
-					this.browse.refresh_folder(this.project);
-					this.file_list.load(this.project);
-					this.up.visible = false;
-					this.entry.text = "";
-					this.history_epoch++;
-					this.load("", this.recent_files, this.recent_list,
-						this.history_epoch, Slot.HISTORY);
-					this.list.visible = true;
-					return;
-				}
-				this.folder_tree.folders.load.begin(this.project, (obj, res) => {
-					this.folder_tree.folders.load.end(res);
-					this.level = this.project;
-					this.browse.project = this.project;
-					this.browse.refresh_folder(this.project);
-					this.file_list.load(this.project);
-					this.up.visible = false;
-					this.entry.text = "";
-					this.history_epoch++;
-					this.load("", this.recent_files, this.recent_list,
-						this.history_epoch, Slot.HISTORY);
-					this.list.visible = true;
-				});
+				this.activate(OpenReason.BUTTON);
 			});
 			this.notify["project"].connect(() => {
 				if (!this.project.is_project) {
 					return;
 				}
-				this.history_epoch++;
-				this.recent_files.remove_all();
-				this.pages.visible_child_name = "tree";
-				this.opened();
-				this.search_open = false;
-				this.search_epoch++;
-				this.pages.visible_child_name = "tree";
-				if (this.form != Form.TABLET) {
-					this.face_stack.visible_child_name = "entry";
-					if (!this.folder_tree.folders.loaded.contains(this.project.path)) {
-						this.folder_tree.folders.load.begin(this.project);
-					}
-					this.entry.text = "";
-					this.history_epoch++;
-					this.load("", this.recent_files, this.recent_list,
-						this.history_epoch, Slot.HISTORY);
-					this.list.visible = true;
-					this.entry.grab_focus();
-					this.entry.set_position(-1);
-					this.entry.select_region(-1, -1);
-					return;
-				}
-				if (this.folder_tree.folders.loaded.contains(this.project.path)) {
-					this.level = this.project;
-					this.browse.project = this.project;
-					this.browse.refresh_folder(this.project);
-					this.file_list.load(this.project);
-					this.up.visible = false;
-					this.entry.text = "";
-					this.history_epoch++;
-					this.load("", this.recent_files, this.recent_list,
-						this.history_epoch, Slot.HISTORY);
-					this.list.visible = true;
-					return;
-				}
-				this.folder_tree.folders.load.begin(this.project, (obj, res) => {
-					this.folder_tree.folders.load.end(res);
-					this.level = this.project;
-					this.browse.project = this.project;
-					this.browse.refresh_folder(this.project);
-					this.file_list.load(this.project);
-					this.up.visible = false;
-					this.entry.text = "";
-					this.history_epoch++;
-					this.load("", this.recent_files, this.recent_list,
-						this.history_epoch, Slot.HISTORY);
-					this.list.visible = true;
-				});
+				this.activate(OpenReason.PROJECT);
 			});
 			this.chosen.connect(() => {
 				GLib.Idle.add(() => {
 					this.list.visible = false;
 					return false;
 				});
+			});
+		}
+
+		/**
+		 * Open the file sheet on the current project.
+		 *
+		 * Desktop swaps the file button for the search box and
+		 * focuses it. Tablet shows the project folder and leaves
+		 * the search box alone.
+		 *
+		 * @param reason Button click or a project change
+		 */
+		private void activate(OpenReason reason)
+		{
+			if (reason == OpenReason.BUTTON && this.list.visible) {
+				this.list.visible = false;
+				return;
+			}
+			if (reason == OpenReason.PROJECT) {
+				this.history_epoch++;
+				this.recent_files.remove_all();
+			}
+			this.opened();
+			this.search_open = false;
+			this.search_epoch++;
+			this.pages.visible_child_name = "tree";
+			if (this.form != Form.TABLET) {
+				this.face_stack.visible_child_name = "entry";
+				if (reason == OpenReason.BUTTON ||
+					!this.folder_tree.folders.loaded.contains(this.project.path)) {
+					this.folder_tree.folders.load.begin(this.project);
+				}
+				this.entry.text = "";
+				this.history_epoch++;
+				this.load("", this.recent_files, this.recent_list,
+					this.history_epoch, Slot.HISTORY);
+				this.list.visible = true;
+				this.entry.grab_focus();
+				this.entry.set_position(-1);
+				this.entry.select_region(-1, -1);
+				return;
+			}
+			if (this.folder_tree.folders.loaded.contains(this.project.path)) {
+				this.level = this.project;
+				this.heading.label = this.project.context(this.project);
+				this.up.visible = false;
+				this.browse.project = this.project;
+				this.browse.refresh_folder(this.project);
+				this.file_list.load(this.project);
+				this.entry.text = "";
+				this.history_epoch++;
+				this.load("", this.recent_files, this.recent_list,
+					this.history_epoch, Slot.HISTORY);
+				this.list.visible = true;
+				return;
+			}
+			this.folder_tree.folders.load.begin(this.project, (obj, res) => {
+				this.folder_tree.folders.load.end(res);
+				this.level = this.project;
+				this.heading.label = this.project.context(this.project);
+				this.up.visible = false;
+				this.browse.project = this.project;
+				this.browse.refresh_folder(this.project);
+				this.file_list.load(this.project);
+				this.entry.text = "";
+				this.history_epoch++;
+				this.load("", this.recent_files, this.recent_list,
+					this.history_epoch, Slot.HISTORY);
+				this.list.visible = true;
 			});
 		}
 
@@ -606,9 +583,10 @@ namespace OLLMapp
 				}
 				this.search_open = false;
 				this.level = this.search_home;
+				this.heading.label = this.search_home.context(this.project);
+				this.up.visible = !this.search_home.is_project;
 				this.browse.refresh_folder(this.search_home);
 				this.file_list.load(this.search_home);
-				this.up.visible = !this.search_home.is_project;
 				return;
 			}
 			if (!this.search_open) {
@@ -687,10 +665,11 @@ namespace OLLMapp
 					return;
 				}
 				this.level = found;
+				this.heading.label = found.context(this.project);
+				this.up.visible = !found.is_project;
 				this.browse.refresh_folder(found);
 				this.file_list.query = query;
 				this.file_list.load(found);
-				this.up.visible = !found.is_project;
 			});
 		}
 

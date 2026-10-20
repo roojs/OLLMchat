@@ -1,6 +1,6 @@
 # 4.2.3.5.6 — Approval calls
 
-**Status:** **✔️** in tree — fences applied. Not user-smoked.
+**Status:** **✔️** in tree — fences applied on `ollmfilesd` and on the flip editor `examples/oc-test-source-diff/` (`SourceView.vala`, `ReviewBar.vala`). `liboccoder` has the same editor calls. Not user-smoked.
 
 > **Do not update `docs/plans/CODER-1.0-summary.md` for this sub-plan.**
 

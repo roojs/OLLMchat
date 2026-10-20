@@ -1,6 +1,6 @@
 # 4.2.3.5.4 — Diff wire and cache model
 
-**Status:** **⏳** design — `[4.2.3.5.5](CODER-4.2.3.5.5-source-view-diff-items.md)`, `[4.2.3.5.6](CODER-4.2.3.5.6-source-view-diff-approval-calls.md)`, `[4.2.3.5.7](CODER-4.2.3.5.7-source-view-diff-resync.md)`
+**Status:** **⏳** design — `[4.2.3.5.5](CODER-4.2.3.5.5-source-view-diff-items.md)`, `[4.2.3.5.6](CODER-4.2.3.5.6-source-view-diff-approval-calls.md)`, `[4.2.3.5.7](CODER-4.2.3.5.7-ACTIVE-source-view-diff-resync.md)`
 
 > **Do not update** `docs/plans/CODER-1.0-summary.md` **for this sub-plan.**
 
@@ -8,7 +8,7 @@
 
 **Supersedes:** `[done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md)` — do not apply that plan
 
-**Phases:** `[4.2.3.5.5](CODER-4.2.3.5.5-source-view-diff-items.md)` diff items · `[4.2.3.5.6](CODER-4.2.3.5.6-source-view-diff-approval-calls.md)` approval · `[4.2.3.5.7](CODER-4.2.3.5.7-source-view-diff-resync.md)` resync
+**Phases:** `[4.2.3.5.5](CODER-4.2.3.5.5-source-view-diff-items.md)` diff items · `[4.2.3.5.6](CODER-4.2.3.5.6-source-view-diff-approval-calls.md)` approval · `[4.2.3.5.7](CODER-4.2.3.5.7-ACTIVE-source-view-diff-resync.md)` resync
 
 **Pointer:** `docs/guide-to-writing-plans.md` — Checklist for plans
 
@@ -18,7 +18,7 @@
 
 ## Purpose
 
-- 🔷 `[4.2.3.5.3](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md)` is superseded. One plan per phase: `[4.2.3.5.5](CODER-4.2.3.5.5-source-view-diff-items.md)`, `[4.2.3.5.6](CODER-4.2.3.5.6-source-view-diff-approval-calls.md)`, `[4.2.3.5.7](CODER-4.2.3.5.7-source-view-diff-resync.md)`. This file is the design.
+- 🔷 `[4.2.3.5.3](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md)` is superseded. One plan per phase: `[4.2.3.5.5](CODER-4.2.3.5.5-source-view-diff-items.md)`, `[4.2.3.5.6](CODER-4.2.3.5.6-source-view-diff-approval-calls.md)`, `[4.2.3.5.7](CODER-4.2.3.5.7-ACTIVE-source-view-diff-resync.md)`. This file is the design.
 - 🔷 Two sides: `ollmfilesd` holds the texts. The desktop paints. Start from what crosses the wire.
 - 🔷 The client computes the diff today. That is the wrong side.
 - 🔷 The daemon already has the backup in the cache. Review data should come from that cache.

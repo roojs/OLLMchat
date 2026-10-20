@@ -84,7 +84,9 @@ namespace OLLMapp
 		/**
 		 * Path to the index in that folder's segment. Owned by the top store.
 		 */
-		private Gee.HashMap<string, int> item_at = new Gee.HashMap<string, int>();
+		public Gee.HashMap<string, int> item_at {
+			get; private set; default = new Gee.HashMap<string, int>();
+		}
 
 		/**
 		 * Path to the index in {@link flat}. Owned by the top store.
@@ -138,6 +140,7 @@ namespace OLLMapp
 			this.id_map = root.id_map;
 			this.flat = root.flat;
 			this.segments = root.segments;
+			this.item_at = root.item_at;
 			this.loaded = root.loaded;
 		}
 

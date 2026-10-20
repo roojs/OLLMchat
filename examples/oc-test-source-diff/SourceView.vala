@@ -49,7 +49,6 @@ namespace OLLMapp
 			 * is open.
 			 */
 			public Gtk.Button save_button { get; private set; }
-			private OLLMcoder.Approvals? approvals = null;
 			private ReviewBar review_bar;
 			private Gtk.TextTagTable diff_tag_table {
 					 get; set; default = new Gtk.TextTagTable(); 
@@ -128,14 +127,6 @@ namespace OLLMapp
 			{
 				Object(orientation: Gtk.Orientation.VERTICAL);
 				this.manager = manager;
-		
-				// Create header bar with dropdowns
-				var header_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-					margin_start = 5,
-					margin_end = 5,
-					margin_top = 0,
-					margin_bottom = 0
-				};
 			
 				this.manager.notification.connect((notif) => {
 					if (notif.method != "event.project.invalidate_cache"
@@ -173,11 +164,6 @@ namespace OLLMapp
 					});
 				});
 			
-				var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-					hexpand = true
-				};
-				header_bar.append(spacer);
-
 				this.save_button = new Gtk.Button.from_icon_name("media-floppy") {
 					tooltip_text = "Save file",
 					hexpand = false,
@@ -187,12 +173,6 @@ namespace OLLMapp
 					this.save_file.begin();
 				});
 
-				// Create Approvals widget with ProjectManager
-				this.approvals = new OLLMcoder.Approvals(this.manager);
-			
-				// Add approvals bar to header bar (after save button)
-				header_bar.append(this.approvals);
-				this.approvals.sensitive = false;
 				this.manager.review_files.refreshed.connect(() => {
 					var rows = new Gee.ArrayList<OLLMfiles.FileWithHistory>();
 					rows.add_all(this.manager.review_files.file_map.values);
@@ -226,8 +206,6 @@ namespace OLLMapp
 						this.open_file.begin(file);
 					});
 				});
-			
-				this.append(header_bar);
 			
 				// Create ScrolledWindow for code editor
 				this.scrolled_window = new Gtk.ScrolledWindow() {
@@ -757,7 +735,9 @@ namespace OLLMapp
 			}
 
 			/**
-			 * If ''file'' is pending approval, load V_backup via daemon and show inline diff.
+			 * If ''file'' is pending approval, load diff items and paint them.
+			 *
+			 * Calls ''FileHistory.parts''. Does not read the backup.
 			 *
 			 * @param file open project file (buffer already holds V_disk)
 			 */
@@ -767,35 +747,125 @@ namespace OLLMapp
 					return;
 				}
 				var row = this.manager.review_files.file_map.get(file.path);
-				var gtk_buffer = file.buffer as GtkSource.Buffer;
-				if (row.backup_path == "") {
-					var differ = new OLLMfiles.Diff.Differ("", gtk_buffer.text);
-					this.show_diff(differ);
-					this.review_bar.update_diff(differ, this.review_bar.file_index);
-					return;
-				}
-				var v_backup = "";
+				OLLMrpc.Response response;
 				try {
-					var response = yield this.manager.rpc.call(new OLLMrpc.Request() {
-						method = "File.read",
-						args = OLLMrpc.args("s", row.backup_path)
+					response = yield this.manager.rpc.call(new OLLMrpc.Request() {
+						method = "FileHistory.parts",
+						args = OLLMrpc.args("x", row.approve_id)
 					});
-					if (this.current_file != file) {
-						return;
-					}
-					v_backup = response.msg;
-					if (response.msg_encode == 1) {
-						v_backup = (string) GLib.Base64.decode(response.msg);
-					}
 				} catch (GLib.Error e) {
-					GLib.warning("Failed to read backup %s: %s", row.backup_path, e.message);
+					GLib.warning("Failed to load diff parts for %s: %s", file.path, e.message);
+					return;
 				}
 				if (this.current_file != file) {
 					return;
 				}
-				var differ = new OLLMfiles.Diff.Differ(v_backup, gtk_buffer.text);
-				this.show_diff(differ);
-				this.review_bar.update_diff(differ, this.review_bar.file_index);
+				if (response.error != null) {
+					GLib.warning("Failed to load diff parts for %s: %s", file.path, response.error.message);
+					return;
+				}
+				if (response.retval.type() == GLib.Type.INVALID) {
+					if (this.diff_active) {
+						this.clear_diff();
+					}
+					return;
+				}
+				if (this.diff_active) {
+					this.clear_diff();
+				}
+				var parts = (Gee.ArrayList<OLLMfiles.FileDiffPart>) response.retval.get_object();
+				var editor_lines = (file.buffer as GtkSource.Buffer).text.split("\n");
+				var display = new Gee.ArrayList<string>();
+				var kinds = new Gee.ArrayList<int>();
+				this.diff_baseline.clear();
+				this.diff_remove_at.clear();
+				this.diff_remove_n.clear();
+				var new_i = 1;
+				foreach (var part in parts) {
+					var add_count = part.new_line_end < part.new_line_start
+						? 0 : part.new_line_end - part.new_line_start + 1;
+					var remove_count = part.old_line_end < part.old_line_start
+						? 0 : part.old_line_end - part.old_line_start + 1;
+					while (new_i < part.new_line_start && new_i <= editor_lines.length) {
+						display.add(editor_lines[new_i - 1]);
+						this.diff_baseline.add(new_i);
+						kinds.add(0);
+						new_i++;
+					}
+					if (part.accepted != 0) {
+						if (add_count == 0) {
+							if (part.new_line_start > new_i) {
+								new_i = part.new_line_start;
+							}
+							continue;
+						}
+						for (var ln = part.new_line_start;
+							ln < part.new_line_start + add_count && ln <= editor_lines.length;
+							ln++) {
+							display.add(editor_lines[ln - 1]);
+							this.diff_baseline.add(ln);
+							kinds.add(0);
+						}
+						new_i = part.new_line_start + add_count;
+						continue;
+					}
+					if (remove_count > 0 && part.hunk_remove != "") {
+						this.diff_remove_at.add(part.new_line_start);
+						this.diff_remove_n.add(remove_count);
+						var removed = part.hunk_remove.split("\n");
+						for (var r = 0; r < remove_count && r < removed.length; r++) {
+							display.add(removed[r]);
+							this.diff_baseline.add(0);
+							kinds.add(2);
+						}
+					}
+					if (add_count == 0) {
+						if (part.new_line_start > new_i) {
+							new_i = part.new_line_start;
+						}
+						continue;
+					}
+					for (var ln = part.new_line_start;
+						ln < part.new_line_start + add_count && ln <= editor_lines.length;
+						ln++) {
+						display.add(editor_lines[ln - 1]);
+						this.diff_baseline.add(ln);
+						kinds.add(1);
+					}
+					new_i = part.new_line_start + add_count;
+				}
+				while (new_i <= editor_lines.length) {
+					display.add(editor_lines[new_i - 1]);
+					this.diff_baseline.add(new_i);
+					kinds.add(0);
+					new_i++;
+				}
+				this.diff_buffer = new GtkSource.Buffer(this.diff_tag_table);
+				this.diff_buffer.set_text(string.joinv("\n", display.to_array()), -1);
+				var add_tag = this.diff_tag_table.lookup("diff-add");
+				var remove_tag = this.diff_tag_table.lookup("diff-remove");
+				for (var i = 0; i < kinds.size; i++) {
+					if (kinds.get(i) == 0) {
+						continue;
+					}
+					Gtk.TextIter iter;
+					this.diff_buffer.get_iter_at_line(out iter, i);
+					var line_end = iter;
+					if (!line_end.ends_line()) {
+						line_end.forward_to_line_end();
+					}
+					if (!line_end.is_end()) {
+						line_end.forward_char();
+					}
+					this.diff_buffer.apply_tag(
+						kinds.get(i) == 1 ? add_tag : remove_tag, iter, line_end);
+				}
+				this.pre_diff_buffer = this.source_view.buffer as GtkSource.Buffer;
+				this.source_view.set_buffer(this.diff_buffer);
+				this.source_view.show_line_numbers = false;
+				this.diff_active = true;
+				this.scrolled_window.visible = true;
+				this.review_bar.update_diff(parts, this.review_bar.file_index);
 			}
 		
 			/**
@@ -1036,14 +1106,16 @@ namespace OLLMapp
 				}
 			
 				// Sync buffer to file
+				var file = this.current_file;
 				try {
-					yield this.current_file.buffer.sync_to_file();
-					this.current_file.is_unsaved = false;
-				
-					this.save_current_file_state();
+					yield file.buffer.sync_to_file();
 				} catch (Error e) {
-					GLib.warning("Failed to save file %s: %s", this.current_file.path, e.message);
+					GLib.warning("Failed to save file %s: %s", file.path, e.message);
+					return;
 				}
+				file.is_unsaved = false;
+				this.save_current_file_state();
+				yield this.show_pending_diff(file);
 			}
 		
 			/**

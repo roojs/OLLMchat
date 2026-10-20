@@ -74,6 +74,35 @@ namespace OLLMfiles
 			this.base_type = "d";
 		}
 
+		/**
+		 * Path from a project folder, for a navigation bar.
+		 *
+		 * The project name alone when this folder is that
+		 * project. Below it, the project name and the path
+		 * under it, such as OLLMchat/lib.
+		 *
+		 * @param project Folder the path is measured from
+		 * @return That path, or the project name when this path is empty
+		 */
+		public string context(Folder project)
+		{
+			var shown = this.path;
+			if (project.path != "" && shown.has_prefix(project.path)) {
+				var tail = shown.substring(project.path.length);
+				if (tail.has_prefix("/")) {
+					tail = tail.substring(1);
+				}
+				shown = project.path_basename;
+				if (tail != "") {
+					shown = shown + "/" + tail;
+				}
+			}
+			if (shown == "") {
+				shown = project.path_basename;
+			}
+			return shown;
+		}
+
 		public override string to_summary(
 			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, 
 			string indent)

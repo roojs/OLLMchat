@@ -146,6 +146,9 @@ namespace OLLMapp
 
 			private SourceView source_view;
 			private HunkList hunks { get; set; default = new HunkList(); }
+			public Gee.ArrayList<OLLMfiles.FileDiffPart> parts {
+				get; set; default = new Gee.ArrayList<OLLMfiles.FileDiffPart>();
+			}
 			private int active = -1;
 			private int file_count = 1;
 			public int file_index = 0;
@@ -549,89 +552,44 @@ namespace OLLMapp
 				var bulk_actions = new GLib.SimpleActionGroup();
 				var accept_file_action = new GLib.SimpleAction("accept-file", null);
 				accept_file_action.activate.connect(() => {
-					foreach (var hunk in this.hunks) {
-						hunk.decision = HunkDecision.ACCEPTED;
+					if (this.file_index >= this.queue.size) {
+						return;
 					}
-					if (this.file_index < this.file_bulk.length) {
-						this.file_bulk[this.file_index] = HunkDecision.ACCEPTED;
-					}
-					this.active = -1;
-					this.accept_btn.visible = false;
-					this.reject_btn.visible = false;
-					this.unapprove_btn.visible = false;
 					((Gtk.Popover) this.bulk_menu_popover).popdown();
-					this.map_area.queue_draw();
+					this.decide_file.begin(this.queue.get(this.file_index).approve_id, 1);
 				});
 				var reject_file_action = new GLib.SimpleAction("reject-file", null);
 				reject_file_action.activate.connect(() => {
-					foreach (var hunk in this.hunks) {
-						hunk.decision = HunkDecision.REJECTED;
+					if (this.file_index >= this.queue.size) {
+						return;
 					}
-					if (this.file_index < this.file_bulk.length) {
-						this.file_bulk[this.file_index] = HunkDecision.REJECTED;
-					}
-					this.active = -1;
-					this.accept_btn.visible = false;
-					this.reject_btn.visible = false;
-					this.unapprove_btn.visible = false;
 					((Gtk.Popover) this.bulk_menu_popover).popdown();
-					this.map_area.queue_draw();
+					this.decide_file.begin(this.queue.get(this.file_index).approve_id, -1);
 				});
 				var reset_file_action = new GLib.SimpleAction("reset-file", null);
 				reset_file_action.activate.connect(() => {
-					foreach (var hunk in this.hunks) {
-						hunk.decision = HunkDecision.PENDING;
+					if (this.file_index >= this.queue.size) {
+						return;
 					}
-					if (this.file_index < this.file_bulk.length) {
-						this.file_bulk[this.file_index] = HunkDecision.PENDING;
-					}
-					this.active = this.hunks.pending_after(-1);
-					this.active = this.active < 0 && this.hunks.size > 0 ? 0 : this.active;
-					if (this.active >= 0) {
-						this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
-					}
-					var pending = this.active >= 0
-						&& this.hunks.get(this.active).decision == HunkDecision.PENDING;
-					this.accept_btn.visible = pending;
-					this.reject_btn.visible = pending;
-					this.unapprove_btn.visible = false;
 					((Gtk.Popover) this.bulk_menu_popover).popdown();
-					this.map_area.queue_draw();
+					this.decide_file.begin(this.queue.get(this.file_index).approve_id, 0);
 				});
 				bulk_actions.add_action(accept_file_action);
 				bulk_actions.add_action(reject_file_action);
 				bulk_actions.add_action(reset_file_action);
 				var accept_all_files_action = new GLib.SimpleAction("accept-all-files", null);
 				accept_all_files_action.activate.connect(() => {
-					for (var fi = 0; fi < this.file_bulk.length; fi++) {
-						this.file_bulk[fi] = HunkDecision.ACCEPTED;
-					}
-					foreach (var hunk in this.hunks) {
-						hunk.decision = HunkDecision.ACCEPTED;
-					}
-					this.active = -1;
-					this.accept_btn.visible = false;
-					this.reject_btn.visible = false;
-					this.unapprove_btn.visible = false;
 					((Gtk.Popover) this.bulk_menu_popover).popdown();
-					this.map_area.queue_draw();
-					this.accept_all_files();
+					for (var fi = 0; fi < this.queue.size; fi++) {
+						this.decide_file.begin(this.queue.get(fi).approve_id, 1);
+					}
 				});
 				var reject_all_files_action = new GLib.SimpleAction("reject-all-files", null);
 				reject_all_files_action.activate.connect(() => {
-					for (var fi = 0; fi < this.file_bulk.length; fi++) {
-						this.file_bulk[fi] = HunkDecision.REJECTED;
-					}
-					foreach (var hunk in this.hunks) {
-						hunk.decision = HunkDecision.REJECTED;
-					}
-					this.active = -1;
-					this.accept_btn.visible = false;
-					this.reject_btn.visible = false;
-					this.unapprove_btn.visible = false;
 					((Gtk.Popover) this.bulk_menu_popover).popdown();
-					this.map_area.queue_draw();
-					this.reject_all_files();
+					for (var fi = 0; fi < this.queue.size; fi++) {
+						this.decide_file.begin(this.queue.get(fi).approve_id, -1);
+					}
 				});
 
 				bulk_actions.add_action(accept_all_files_action);
@@ -804,29 +762,19 @@ namespace OLLMapp
 					visible = false,
 				};
 				this.accept_btn.clicked.connect(() => {
-					this.on_accept_clicked();
+					this.send_part.begin(1);
 				});
 				this.reject_btn = new Gtk.Button.with_label("Reject") {
 					visible = false,
 				};
 				this.reject_btn.clicked.connect(() => {
-					this.on_reject_clicked();
+					this.send_part.begin(-1);
 				});
 				this.unapprove_btn = new Gtk.Button.with_label("Unapprove") {
 					visible = false,
 				};
 				this.unapprove_btn.clicked.connect(() => {
-					if (this.active < 0 || this.active >= this.hunks.size) {
-						return;
-					}
-					if (this.hunks.get(this.active).decision == HunkDecision.PENDING) {
-						return;
-					}
-					this.hunks.get(this.active).decision = HunkDecision.PENDING;
-					this.accept_btn.visible = true;
-					this.reject_btn.visible = true;
-					this.unapprove_btn.visible = false;
-					this.map_area.queue_draw();
+					this.send_part.begin(0);
 				});
 				this.review_decision_box.append(this.accept_btn);
 				this.review_decision_box.append(this.reject_btn);
@@ -946,28 +894,60 @@ namespace OLLMapp
 			}
 
 			/**
-			 * Owner calls after {@link SourceView.show_diff} when the differ changes.
+			 * Paint hunk bands from ''FileHistory.parts''.
 			 *
-			 * @param differ current diff (patches only — ReviewBar does not apply hunks)
-			 * @param file_index optional footer file index (-1 = keep current)
+			 * Keeps ''parts'' so the hunk text stays on the client.
+			 *
+			 * @param parts diff items, remove and add text on each
+			 * @param file_index file position in the pending list
 			 */
 			public void update_diff(
-				OLLMfiles.Diff.Differ differ,
+				Gee.ArrayList<OLLMfiles.FileDiffPart> parts,
 				int file_index = -1)
 			{
+				var same_file = this.parts.size > 0 && parts.size > 0
+					&& this.parts.get(0).file_history_id == parts.get(0).file_history_id;
+				var keep = this.active;
+				this.parts = parts;
 				this.file_index = file_index >= 0 ? file_index : this.file_index;
 				this.hunks.clear();
 				this.hunk_line_sum = 0;
-				differ.diff();
 				var bi = 0;
 				var bulk_decision = HunkDecision.PENDING;
 				if (this.file_index < this.file_bulk.length) {
 					bulk_decision = this.file_bulk[this.file_index];
 				}
-				foreach (var patch in differ.patches) {
+				foreach (var part in this.parts) {
+					var old_count = part.old_line_end < part.old_line_start
+						? 0 : part.old_line_end - part.old_line_start + 1;
+					var new_count = part.new_line_end < part.new_line_start
+						? 0 : part.new_line_end - part.new_line_start + 1;
+					var op = OLLMfiles.Diff.PatchOperation.REPLACE;
+					if (old_count == 0) {
+						op = OLLMfiles.Diff.PatchOperation.ADD;
+					}
+					if (old_count > 0 && new_count == 0) {
+						op = OLLMfiles.Diff.PatchOperation.REMOVE;
+					}
+					var patch = new OLLMfiles.Diff.Patch(
+						op, part.old_line_start, part.old_line_end,
+						part.new_line_start, part.new_line_end,
+						new string[0], new string[0]);
 					var band = new HunkBand(patch) {
 						band_index = bi,
 					};
+					switch (part.accepted) {
+						case 1:
+							band.decision = HunkDecision.ACCEPTED;
+							break;
+
+						case -1:
+							band.decision = HunkDecision.REJECTED;
+							break;
+
+						default:
+							break;
+					}
 					if (bulk_decision != HunkDecision.PENDING) {
 						band.decision = bulk_decision;
 					}
@@ -997,8 +977,10 @@ namespace OLLMapp
 				}
 				this.pending_label.visible = false;
 				this.map_area.visible = true;
-				this.active = this.hunks.pending_after(-1);
-				this.active = this.active < 0 && this.hunks.size > 0 ? 0 : this.active;
+				if (!same_file || keep < 0 || keep >= this.hunks.size) {
+					this.active = this.hunks.pending_after(-1);
+					this.active = this.active < 0 && this.hunks.size > 0 ? 0 : this.active;
+				}
 				if (this.active >= 0) {
 					this.source_view.navigate_to_line(this.hunks.get(this.active).scroll_line);
 				}
@@ -1233,6 +1215,11 @@ namespace OLLMapp
 				var map_x = this.map_scroll_mode ? x + this.map_scroll_x : x;
 				var i = this.hunks.index_at(map_x);
 				if (i < 0) {
+					this.active = -1;
+					this.accept_btn.visible = false;
+					this.reject_btn.visible = false;
+					this.unapprove_btn.visible = false;
+					this.map_area.queue_draw();
 					return;
 				}
 				if (this.active == i) {
@@ -1273,30 +1260,173 @@ namespace OLLMapp
 				this.map_area.queue_draw();
 			}
 
-			private void on_accept_clicked()
+			/**
+			 * ''FileDiffPart.apply'' for the active hunk, then the next pending band.
+			 *
+			 * @param action 1 accept, -1 reject, 0 reset
+			 */
+			private async void send_part(int action)
 			{
-				if (this.active < 0 || this.active >= this.hunks.size) {
+				if (this.active < 0 || this.active >= this.parts.size) {
 					return;
 				}
-				if (this.hunks.get(this.active).decision != HunkDecision.PENDING) {
+				if (action != 0 && this.parts.get(this.active).accepted != 0) {
 					return;
 				}
-				var decided = this.active;
-				this.hunks.get(decided).decision = HunkDecision.ACCEPTED;
-				this.next();
+				if (action == 0 && this.parts.get(this.active).accepted == 0) {
+					return;
+				}
+				var before = this.parts.get(this.active);
+				var file = this.source_view.current_file;
+				OLLMrpc.Response response;
+				try {
+					response = yield this.source_view.manager.rpc.call(new OLLMrpc.Request() {
+						method = "FileDiffPart.apply",
+						args = OLLMrpc.args("xi", before.id, action)
+					});
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to apply diff item: %s", e.message);
+					return;
+				}
+				if (response.error != null) {
+					GLib.warning("Failed to apply diff item: %s", response.error.message);
+					return;
+				}
+				this.parts.set(this.active,
+					(OLLMfiles.FileDiffPart) response.retval.get_object());
+				switch (action) {
+					case 1:
+						this.hunks.get(this.active).decision = HunkDecision.ACCEPTED;
+						break;
+
+					case -1:
+						this.hunks.get(this.active).decision = HunkDecision.REJECTED;
+						break;
+
+					default:
+						this.hunks.get(this.active).decision = HunkDecision.PENDING;
+						break;
+				}
+				if (action == 0) {
+					this.accept_btn.visible = true;
+					this.reject_btn.visible = true;
+					this.unapprove_btn.visible = false;
+					this.map_area.queue_draw();
+				}
+				if (action != 0) {
+					this.next();
+				}
+				if (file != null && (action == -1 || before.accepted == -1)) {
+					var add_count = before.new_line_end < before.new_line_start
+						? 0 : before.new_line_end - before.new_line_start + 1;
+					var remove_count = before.old_line_end < before.old_line_start
+						? 0 : before.old_line_end - before.old_line_start + 1;
+					var span = before.accepted == -1 ? remove_count : add_count;
+					var want = action == -1 ? before.hunk_remove : before.hunk_add;
+					var buffer = file.buffer as Gtk.TextBuffer;
+					Gtk.TextIter start_iter;
+					Gtk.TextIter end_iter;
+					buffer.get_iter_at_line(out start_iter, before.new_line_start - 1);
+					end_iter = start_iter;
+					var at_end = start_iter.is_end();
+					if (span > 0 && buffer.get_iter_at_line(
+						out end_iter, before.new_line_start - 1 + span)) {
+						at_end = false;
+					}
+					if (span > 0 && at_end) {
+						buffer.get_end_iter(out end_iter);
+					}
+					buffer.delete(ref start_iter, ref end_iter);
+					if (want != "") {
+						var replacement = want;
+						if (!at_end) {
+							replacement = want + "\n";
+						}
+						buffer.insert(ref start_iter, replacement, -1);
+					}
+				}
+				if (file != null) {
+					this.source_view.show_pending_diff.begin(file);
+				}
 			}
 
-			private void on_reject_clicked()
+			/**
+			 * ''FileHistory.decide'' for one pending row.
+			 *
+			 * When that row is the open file, the source buffer deletes
+			 * each hunk's line range and inserts the hunk text, from
+			 * the bottom upward, before the next paint. The reply's
+			 * shifted line numbers are not used for that edit.
+			 *
+			 * @param history_id file_history.id
+			 * @param action 1 accept, -1 reject, 0 reset
+			 */
+			private async void decide_file(int64 history_id, int action)
 			{
-				if (this.active < 0 || this.active >= this.hunks.size) {
+				OLLMrpc.Response response;
+				try {
+					response = yield this.source_view.manager.rpc.call(new OLLMrpc.Request() {
+						method = "FileHistory.decide",
+						args = OLLMrpc.args("xi", history_id, action)
+					});
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to decide file: %s", e.message);
 					return;
 				}
-				if (this.hunks.get(this.active).decision != HunkDecision.PENDING) {
+				if (response.error != null) {
+					GLib.warning("Failed to decide file: %s", response.error.message);
 					return;
 				}
-				var decided = this.active;
-				this.hunks.get(decided).decision = HunkDecision.REJECTED;
-				this.next();
+				if (this.queue.size < 1 || this.file_index >= this.queue.size) {
+					return;
+				}
+				if (this.queue.get(this.file_index).approve_id != history_id) {
+					return;
+				}
+				var file = this.source_view.current_file;
+				if (file == null) {
+					return;
+				}
+				var ordered = new Gee.ArrayList<OLLMfiles.FileDiffPart>();
+				ordered.add_all(this.parts);
+				ordered.sort((a, b) => {
+					return b.new_line_start - a.new_line_start;
+				});
+				foreach (var before in ordered) {
+					var write = (action == -1 && before.accepted != -1)
+						|| (action != -1 && before.accepted == -1);
+					if (!write) {
+						continue;
+					}
+					var add_count = before.new_line_end < before.new_line_start
+						? 0 : before.new_line_end - before.new_line_start + 1;
+					var remove_count = before.old_line_end < before.old_line_start
+						? 0 : before.old_line_end - before.old_line_start + 1;
+					var span = before.accepted == -1 ? remove_count : add_count;
+					var want = action == -1 ? before.hunk_remove : before.hunk_add;
+					var buffer = file.buffer as Gtk.TextBuffer;
+					Gtk.TextIter start_iter;
+					Gtk.TextIter end_iter;
+					buffer.get_iter_at_line(out start_iter, before.new_line_start - 1);
+					end_iter = start_iter;
+					var at_end = start_iter.is_end();
+					if (span > 0 && buffer.get_iter_at_line(
+						out end_iter, before.new_line_start - 1 + span)) {
+						at_end = false;
+					}
+					if (span > 0 && at_end) {
+						buffer.get_end_iter(out end_iter);
+					}
+					buffer.delete(ref start_iter, ref end_iter);
+					if (want != "") {
+						var replacement = want;
+						if (!at_end) {
+							replacement = want + "\n";
+						}
+						buffer.insert(ref start_iter, replacement, -1);
+					}
+				}
+				this.source_view.show_pending_diff.begin(file);
 			}
 
 			/**

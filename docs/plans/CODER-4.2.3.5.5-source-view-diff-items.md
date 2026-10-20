@@ -10,7 +10,7 @@
 
 **Supersedes:** [`done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md`](done/CODER-4.2.3.5.3-SUPERSEDED-source-view-diff-part-rows.md) — do not apply its fences.
 
-**Next:** [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md) — approval. [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md) — resync after save.
+**Next:** [`4.2.3.5.6`](CODER-4.2.3.5.6-source-view-diff-approval-calls.md) — approval. [`4.2.3.5.7`](CODER-4.2.3.5.7-ACTIVE-source-view-diff-resync.md) — resync after save.
 
 **Depends on:**
 
@@ -1089,7 +1089,7 @@ Bands from the line range. `accepted` 0 is pending, 1 accepted, -1 rejected. The
 - 🚫 Return `live` because the history id is present. The project file's modification stamp from that diff has to match `live_stamp`.
 - 🚫 Delete every `file_diff_part` row for a history and insert a new set. `rebuild_parts` deletes a row only when `compare` says so. A return of `3` keeps that row.
 - 🚫 Delete a row because `hunk_remove` and `hunk_add` are empty. Those strings are not columns. A load from the table always looks empty.
-- ℹ️ [`4.2.3.5.7`](CODER-4.2.3.5.7-source-view-diff-resync.md) calls the same `rebuild_parts` after save. That writes `live` and `live_stamp` for the kept parts.
+- ℹ️ [`4.2.3.5.7`](CODER-4.2.3.5.7-ACTIVE-source-view-diff-resync.md) calls the same `rebuild_parts` after save. That writes `live` and `live_stamp` for the kept parts.
 - 🚫 A `+` or `-` prefix on hunk lines, and a `@@` line-number header inside `hunk_remove` or `hunk_add`.
 - 🚫 Leave the diff sources in `libocfiles` and only symlink them into `ollmfilesd`. The files move to `ollmfilesd/Diff`. `libocfiles/Diff` is the deprecated symlink kept for the current diff UI tests.
 - 🚫 Delete `libocfiles/Diff`, `show_diff`, or the diff examples in this phase. Those tests still need the old client diff.

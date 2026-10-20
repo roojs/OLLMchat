@@ -1,6 +1,6 @@
 # 4.2.3.5.3 — ReviewBar part rows and Approvals cleanup
 
-> **SUPERSEDED** by [`4.2.3.5.5`](../CODER-4.2.3.5.5-source-view-diff-items.md), [`4.2.3.5.6`](../CODER-4.2.3.5.6-source-view-diff-approval-calls.md), and [`4.2.3.5.7`](../CODER-4.2.3.5.7-source-view-diff-resync.md). Design: [`CODER-4.2.3.5.4-source-view-diff-wire-model.md`](../CODER-4.2.3.5.4-source-view-diff-wire-model.md). Do not apply the fences in this file.
+> **SUPERSEDED** by [`4.2.3.5.5`](../CODER-4.2.3.5.5-source-view-diff-items.md), [`4.2.3.5.6`](../CODER-4.2.3.5.6-source-view-diff-approval-calls.md), and [`4.2.3.5.7`](../CODER-4.2.3.5.7-ACTIVE-source-view-diff-resync.md). Design: [`CODER-4.2.3.5.4-source-view-diff-wire-model.md`](../CODER-4.2.3.5.4-source-view-diff-wire-model.md). Do not apply the fences in this file.
 
 **Status:** **superseded**
 
