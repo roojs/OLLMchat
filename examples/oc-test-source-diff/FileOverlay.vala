@@ -272,11 +272,6 @@ namespace OLLMapp
 			if (pointer != null) {
 				close_files.set_cursor(pointer);
 			}
-			var right = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-				margin_end = 6,
-				halign = Gtk.Align.END,
-			};
-			right.append(close_files);
 			var switcher = new Gtk.StackSwitcher() {
 				stack = this.pages,
 				hexpand = true,
@@ -288,6 +283,11 @@ namespace OLLMapp
 			header.append(left);
 			header.append(switcher);
 			if (this.form != Form.TABLET) {
+				var right = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+					margin_end = 6,
+					halign = Gtk.Align.END,
+				};
+				right.append(close_files);
 				header.append(right);
 			}
 			var place_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
@@ -373,18 +373,6 @@ namespace OLLMapp
 				}
 				this.face_stack.visible_child_name = "button";
 			});
-			this.realize.connect(() => {
-				var window = this.get_root() as Gtk.Window;
-				if (window == null) {
-					return;
-				}
-				window.notify["is-active"].connect(() => {
-					if (window.is_active || !this.list.visible) {
-						return;
-					}
-					this.list.visible = false;
-				});
-			});
 			this.recent_list.row_activated.connect((line) => {
 				var file = (OLLMfiles.File) this.recent_files.get_item((uint) line.get_index());
 				if (file == null) {
@@ -416,23 +404,6 @@ namespace OLLMapp
 				});
 			});
 			this.entry.add_controller(keys);
-			var focus = new Gtk.EventControllerFocus();
-			focus.leave.connect(() => {
-				if (!this.list.visible) {
-					return;
-				}
-				var root = this.get_root();
-				if (root == null) {
-					this.list.visible = false;
-					return;
-				}
-				var focused = root.get_focus() as Gtk.Widget;
-				if (focused != null && (focused == this.list || focused.is_ancestor(this.list))) {
-					return;
-				}
-				this.list.visible = false;
-			});
-			this.entry.add_controller(focus);
 			this.button.clicked.connect(() => {
 				this.activate(OpenReason.BUTTON);
 			});
